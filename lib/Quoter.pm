@@ -27,6 +27,11 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
+use Data::Dumper;
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Sortkeys  = 1;
+$Data::Dumper::Quotekeys = 0;
+
 # Sub: new
 #
 # Parameters:
@@ -155,68 +160,65 @@ sub join_quote {
 # and the results concatenated with ','.
 sub serialize_list {
    my ( $self, @args ) = @_;
+   PTDEBUG && _d('Serializing', Dumper(\@args));
    return unless @args;
 
-   # If the only value is undef, which is NULL for MySQL, then return
-   # the same.  undef/NULL is a valid boundary value, however...
-   return $args[0] if @args == 1 && !defined $args[0];
+   my @parts;
+   foreach my $arg  ( @args ) {
+      if ( defined $arg ) {
+         $arg =~ s/,/\\,/g;      # escape commas
+         $arg =~ s/\\N/\\\\N/g;  # escape literal \N
+         push @parts, $arg;
+      }
+      else {
+         push @parts, '\N';
+      }
+   }
 
-   # ... if there's an undef/NULL value and more than one value,
-   # then we have no easy way to serialize the values into a list.
-   # We can't convert undef to "NULL" because "NULL" is a valid
-   # value itself, and we can't make it "" because a blank string
-   # is also a valid value.  In practice, a boundary value with
-   # two NULL values should be rare.
-   die "Cannot serialize multiple values with undef/NULL"
-      if grep { !defined $_ } @args;
-
-   return join ',', map { quotemeta } @args;
+   my $string = join(',', @parts);
+   PTDEBUG && _d('Serialized: <', $string, '>');
+   return $string;
 }
 
 sub deserialize_list {
    my ( $self, $string ) = @_;
-   return $string unless defined $string;
-   my @escaped_parts = $string =~ /
-         \G             # Start of string, or end of previous match.
-         (              # Each of these is an element in the original list.
-            [^\\,]*     # Anything not a backslash or a comma
-            (?:         # When we get here, we found one of the above.
-               \\.      # A backslash followed by something so we can continue
-               [^\\,]*  # Same as above.
-            )*          # Repeat zero of more times.
-         )
-         ,              # Comma dividing elements
-      /sxgc;
+   PTDEBUG && _d('Deserializing <', $string, '>');
+   die "Cannot deserialize an undefined string" unless defined $string;
 
-   # Grab the rest of the string following the last match.
-   # If there wasn't a last match, like for a single-element list,
-   # the entire string represents the single element, so grab that.
-   push @escaped_parts, pos($string) ? substr( $string, pos($string) ) : $string;
+   my @parts;
+   foreach my $arg ( split(/(?<!\\),/, $string) ) {
+      if ( $arg eq '\N' ) {
+         $arg = undef;
+      }
+      else {
+         $arg =~ s/\\,/,/g;
+         $arg =~ s/\\\\N/\\N/g;
+      }
+      push @parts, $arg;
+   }
 
-   # Undo the quotemeta().
-   my @unescaped_parts = map {
-      my $part = $_;
-      # Here be weirdness. Unfortunately quotemeta() is broken, and exposes
-      # the internal representation of scalars. Namely, the latin-1 range,
-      # \128-\377 (\p{Latin1} in newer Perls) is all escaped in downgraded
-      # strings, but left alone in UTF-8 strings. Thus, this.
+   if ( !@parts ) {
+      # Perl split() won't split ",,", so handle it manually.
+      my $n_empty_strings = $string =~ tr/,//;
+      $n_empty_strings++;
+      PTDEBUG && _d($n_empty_strings, 'empty strings');
+      map { push @parts, '' } 1..$n_empty_strings;
+   }
+   elsif ( $string =~ m/(?<!\\),$/ ) {
+      PTDEBUG && _d('Last value is an empty string');
+      push @parts, '';
+   }
 
-      # TODO: quotemeta() might change in 5.16 to mean
-      # qr/(?=\p{ASCII})\W|\p{Pattern_Syntax}/
-      # And also fix this whole weird behavior under
-      # use feature 'unicode_strings' --  If/once that's
-      # implemented, this will have to change.
-      my $char_class = utf8::is_utf8($part)  # If it's a UTF-8 string,
-                     ? qr/(?=\p{ASCII})\W/   # We only care about non-word
-                                             # characters in the ASCII range
-                     : qr/(?=\p{ASCII})\W|[\x{80}-\x{FF}]/; # Otherwise,
-                                             # same as above, but also
-                                             # unescape the latin-1 range.
-      $part =~ s/\\($char_class)/$1/g;
-      $part;
-   } @escaped_parts;
+   PTDEBUG && _d('Deserialized', Dumper(\@parts));
+   return @parts;
+}
 
-   return @unescaped_parts;
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
 1;

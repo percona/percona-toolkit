@@ -73,7 +73,7 @@ is_deeply(
 $row = $master_dbh->selectrow_arrayref("select lower_boundary, upper_boundary from percona.checksums where db='test' and tbl='ascii' and chunk=10");
 is_deeply(
    $row,
-   [ 'ZESUS\!\!\!', undef ],
+   [ 'ZESUS!!!', undef ],
    "Upper oob boundary"
 );
 
