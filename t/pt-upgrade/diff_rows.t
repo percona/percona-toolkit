@@ -68,16 +68,16 @@ test_diff (
    query1 => "select user from mysql.user order by user ASC",
    query2 => "select user from mysql.user order by user DESC",
    expect => [
-      {
-         row_number => 1,
-         sth1_rows  => [qw(msandbox)],
-         sth2_rows  => [qw(root)],
-      },
-      {
-         row_number => 2,
-         sth1_rows  => [qw(root)],
-         sth2_rows  => [qw(msandbox)],
-      }
+      [
+         1,
+         [qw(msandbox)],
+         [qw(root)],
+      ],
+      [
+         2,
+         [qw(root)],
+         [qw(msandbox)],
+      ]
    ],
 );
 

@@ -39,8 +39,9 @@ sub clear_warnings {
 $dbh1->do("INSERT INTO test.t VALUES (2, '', 123456789)");
 $dbh2->do("INSERT INTO test.t VALUES (3, '', 123456789)");
 
-my $w1 = pt_upgrade::get_warnings(dbh => $dbh1);
-my $w2 = pt_upgrade::get_warnings(dbh => $dbh2);
+my $event_exec = EventExecutor->new();
+my $w1 = $event_exec->get_warnings(dbh => $dbh1);
+my $w2 = $event_exec->get_warnings(dbh => $dbh2);
 
 my $error_1264 = {
    code    => '1264',
@@ -65,8 +66,8 @@ is_deeply(
 ) or diag(Dumper($w2));
 
 my $diffs = pt_upgrade::diff_warnings(
-   host1_warnings => $w1,
-   host2_warnings => $w2,
+   warnings1 => $w1,
+   warnings2 => $w2,
 );
 
 is_deeply(
@@ -76,17 +77,18 @@ is_deeply(
 ) or diag(Dumper($diffs));
 
 $diffs = pt_upgrade::diff_warnings(
-   host1_warnings => {},
-   host2_warnings => $w2,
+   warnings1 => {},
+   warnings2 => $w2,
 );
 
 is_deeply(
    $diffs,
    [
-      {
-         host1 => undef,
-         host2 => $error_1264,
-      },
+      [
+         1264,
+         undef,
+         $error_1264,
+      ],
    ],
    "host1 doesn't have the warning"
 ) or diag(Dumper($diffs));
@@ -97,8 +99,8 @@ is_deeply(
 
 $diffs = pt_upgrade::diff_warnings(
    ignore_warnings => { 1264 => 1 },
-   host1_warnings  => $w1,
-   host2_warnings  => $w2,
+   warnings1       => $w1,
+   warnings2       => $w2,
 );
 
 is_deeply(
