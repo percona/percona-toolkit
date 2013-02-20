@@ -1,0 +1,7 @@
+$meta = {
+  error => undef,
+  query_time => '0',
+  warnings => {}
+};
+
+##

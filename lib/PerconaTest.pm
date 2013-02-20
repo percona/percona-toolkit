@@ -561,8 +561,13 @@ sub no_diff {
    die "I need a cmd argument" unless $cmd;
    die "I need an expected_output argument" unless $expected_output;
 
-   die "$expected_output does not exist" unless -f "$trunk/$expected_output";
-   $expected_output = "$trunk/$expected_output";
+   if ( $args{full_path} ) {
+      die "$expected_output does not exist" unless -f $expected_output;
+   }
+   else {
+      die "$expected_output does not exist" unless -f "$trunk/$expected_output";
+      $expected_output = "$trunk/$expected_output";
+   }
 
    my $tmp_file      = '/tmp/percona-toolkit-test-output.txt';
    my $tmp_file_orig = '/tmp/percona-toolkit-test-output-original.txt';
@@ -581,6 +586,9 @@ sub no_diff {
       open my $tmp_fh, '>', $tmp_file or die "Cannot open $tmp_file: $OS_ERROR";
       print $tmp_fh $cmd;
       close $tmp_fh;
+   }
+   elsif ( -f $cmd ) {
+      `cp $cmd $tmp_file`;
    }
    else {
       `$cmd > $tmp_file`;

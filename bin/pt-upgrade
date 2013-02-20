@@ -5332,10 +5332,10 @@ sub exec_event {
       $results->{sth}        = $sth;
       $results->{warnings}   = $self->get_warnings(dbh => $host->dbh);
    };
-   if ( $EVAL_ERROR ) {
-      PTDEBUG && _d($EVAL_ERROR);
-      chomp($EVAL_ERROR);
-      $results->{error} = $EVAL_ERROR;
+   if ( my $e = $EVAL_ERROR ) {
+      PTDEBUG && _d($e);
+      $e =~ s/ at \S+ line \d+, \S+ line \d+\.$//;
+      $results->{error} = $e;
    }
    PTDEBUG && _d('Result on', $host->name, Dumper($results));
    return $results;
@@ -6355,6 +6355,12 @@ sub main {
          host          => $host1,
          results_dir   => $results_dir,
          upgrade_table => $o->get('upgrade-table'),
+         # Optional
+         database        => $o->get('database'),
+         filter          => $o->get('filter'),
+         ignore_warnings => $o->get('ignore-warnings'),
+         read_only       => $o->get('read-only') ?  1 : 0,
+         read_timeout    => $o->get('read-timeout'),
       );
    }
    elsif ( $results_dir && $host2 ) {

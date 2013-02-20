@@ -11,30 +11,26 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 use File::Basename;
-   
-$ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} = 1;
+use File::Temp qw(tempdir);
+
+$ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} = 1; 
+$ENV{PRETTY_RESULTS} = 1; 
 
 use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-upgrade";
 
-# This runs immediately if the server is already running, else it starts it.
-# diag(`$trunk/sandbox/start-sandbox master 12348 >/dev/null`);
-
-my $dp = new DSNParser(opts=>$dsn_opts);
-my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dp   = new DSNParser(opts=>$dsn_opts);
+my $sb   = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh1 = $sb->get_dbh_for('host1');
-my $dbh2 = $sb->get_dbh_for('host2');
 
 if ( !$dbh1 ) {
    plan skip_all => 'Cannot connect to sandbox host1'; 
 }
-elsif ( !$dbh2 ) {
-   plan skip_all => 'Cannot connect to sandbox host2';
-}
 
 my $host1_dsn = $sb->dsn_for('host1');
-my $host2_dsn = $sb->dsn_for('host2');
+
+my $tmpdir = tempdir("/tmp/pt-upgrade.$PID.XXXXXX", CLEANUP => 1);
 
 my $sample      = "t/pt-upgrade/samples";
 my $samples_dir = "$trunk/t/pt-upgrade/samples";
@@ -58,41 +54,40 @@ sub load_sample_sql_files {
 
 while ( my $sampleno = readdir $dh ) {
    next unless $sampleno =~ m/^\d+$/;
-
    my $conf = "$samples_dir/$sampleno/conf";
-
    load_sample_sql_files($sampleno);
-
    foreach my $log ( glob("$samples_dir/$sampleno/*.log") ) {
-
       (my $basename = basename($log)) =~ s/\.\S+$//;
-      my $sed;
-      if ( -f "$samples_dir/$sampleno/$basename.sed" ) {
-         chomp($sed = `cat $samples_dir/$sampleno/$basename.sed`);
+      my $results_dir = "$samples_dir/$sampleno/${basename}_results";
+      if ( -d $results_dir ) {
+         diag(`rm -rf $tmpdir/*`);
+
+         my $output = output(
+            sub { pt_upgrade::main(
+               (-f $conf ? ('--config', $conf) : ()),
+               $log,
+               $host1_dsn,
+               '--save-results', $tmpdir
+            ) },
+            stderr => 1,
+         );
+
+         foreach my $file ( glob("$results_dir/*") ) {
+            my $result = basename($file);
+            ok(
+               no_diff(
+                  "$tmpdir/$result",
+                  $file,
+                  full_path => 1,
+                  sed => [
+                     q{"s/query_time => '[0-9.]*'/query_time => '0'/"},
+                  ],
+               ), 
+               "$sampleno: results: $result"
+            ) or diag($test_diff);
+         }
       }
 
-      my $output = output(
-         sub { pt_upgrade::main(
-            (-f $conf ? ('--config', $conf) : ()),
-            $log,
-            $host1_dsn,
-            $host2_dsn,
-         ) },
-         stderr => 1,
-      );
-
-      if ( -f "$samples_dir/$sampleno/$basename.txt" ) {
-         ok(
-            no_diff(
-               $output,
-               "$sample/$sampleno/$basename.txt",
-               cmd_output => 1,
-               ($sed ? (sed => [ $sed ]) : ()),
-            ),
-            "$sampleno: $basename.txt"
-         ) or diag("\n\n---- DIFF ----\n\n", $test_diff,
-                   "\n\n---- OUTPUT ----\n\n",  $output);
-      }
    }
 }
 
@@ -101,8 +96,6 @@ close $dh;
 # #############################################################################
 # Done.
 # #############################################################################
-#$sb->wipe_clean($dbh2);
 #$sb->wipe_clean($dbh1);
-#diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
 #ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
