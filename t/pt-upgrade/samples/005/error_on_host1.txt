@@ -16,7 +16,7 @@ select host?_col from test.t
 
 -- 1.
 
-DBD::mysql::st execute failed: Unknown column 'host2_col' in 'field list' [for Statement "select host2_col from test.t"] at /Users/daniel/p/pt-upgrade-2.2/bin/pt-upgrade line 5327, <> line 1.
+DBD::mysql::st execute failed: Unknown column 'host2_col' in 'field list' [for Statement "select host2_col from test.t"]
 
 vs.
 

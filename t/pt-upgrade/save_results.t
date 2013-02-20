@@ -83,11 +83,11 @@ while ( my $sampleno = readdir $dh ) {
                      q{"s/query_time => '[0-9.]*'/query_time => '0'/"},
                   ],
                ), 
-               "$sampleno: results: $result"
-            ) or diag($test_diff);
+               "$sampleno/${basename}_results/$result"
+            ) or diag("\n\n---- DIFF ----\n\n", $test_diff,
+                      "\n\n---- OUTPUT ----\n\n",  $output);
          }
       }
-
    }
 }
 
