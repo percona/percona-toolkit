@@ -6060,12 +6060,25 @@ sub main {
    # Execute and compare the queries.
    # ##########################################################################
    if ( $host1 && $host2 ) {
+      check_upgrade_table(
+         host          => $host1,
+         upgrade_table => $o->get('upgrade-table'),
+         OptionParser  => $o,
+      );
+
+      check_upgrade_table(
+         host          => $host2,
+         upgrade_table => $o->get('upgrade-table'),
+         OptionParser  => $o,
+      );
+
       compare_host_to_host(
          file            => $file,
          host1           => $host1,
          host2           => $host2,
          max_class_size  => $o->get('max-class-size'),
          max_examples    => $o->get('max-examples'),
+         upgrade_table   => $o->get('upgrade-table'),
          # Optional
          database        => $o->get('database'),
          filter          => $o->get('filter'),
@@ -6103,6 +6116,144 @@ sub main {
 # Subroutines.
 # ############################################################################
 
+sub check_upgrade_table {
+   my ( %args ) = @_;
+   my @required_args = qw(host upgrade_table OptionParser);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($host, $upgrade_table, $o) = @args{@required_args};
+
+   PTDEBUG && _d('Checking --upgrade-table', $upgrade_table);
+   my $dbh        = $host->dbh;
+   my $q          = 'Quoter';
+   my ($db, $tbl) = $q->split_unquote($upgrade_table);
+
+   # ########################################################################
+   # Create the --upgrade-table database.
+   # ########################################################################
+
+   # If the repl db doesn't exit, auto-create it, maybe.
+   my $show_db_sql = "SHOW DATABASES LIKE '$db'";
+   PTDEBUG && _d($show_db_sql);
+   my @db_exists = $dbh->selectrow_array($show_db_sql);
+   if ( !@db_exists && !$o->get('create-upgrade-table') ) {
+      die "--upgrade-table database $db on " . $host->name . " does not "
+         . "exist and --no-create-upgrade-table was specified.  You need "
+         . "to create the database.\n";
+   }
+
+   if ( $o->get('create-upgrade-table') ) {
+      # Even if the db already exists, do this in case it does not exist
+      # on a slave.
+      my $create_db_sql
+         = "CREATE DATABASE IF NOT EXISTS "
+         . $q->quote($db)
+         . " /* pt-upgrade */";
+      PTDEBUG && _d($create_db_sql);
+      eval {
+         $dbh->do($create_db_sql);
+      };
+      if ( $EVAL_ERROR ) {
+         # CREATE DATABASE IF NOT EXISTS failed but the db could already
+         # exist and the error could be due, for example, to the user not
+         # having privs to create it, but they still have privs to use it.
+         if ( !@db_exists ) {
+            warn $EVAL_ERROR;
+            die "--upgrade-table database $db on " . $host->name
+               . " does not exist and it cannot be created automatically.  "
+               . "You need to create the database.\n";
+         }
+      }
+   }
+
+   # ########################################################################
+   # Create the --upgrade-table table.
+   # ########################################################################
+
+   # Check if the repl table exists; if not, create it, maybe.
+   my $tbl_exists = check_table(
+      dbh => $dbh,
+      db  => $db,
+      tbl => $tbl,
+   );
+   PTDEBUG && _d('--upgrade-table table exists:', $tbl_exists ? 'yes' : 'no');
+
+   if ( !$tbl_exists && !$o->get('create-upgrade-table') ) {
+      die "--upgrade-table table $upgrade_table on " . $host->name
+        . " does not exist and --no-create-upgrade-table was specified.  "
+        . "You need to create the table.\n";
+   }
+
+   # Always create the table, unless --no-create-upgrade-table
+   # was given; see https://bugs.launchpad.net/percona-toolkit/+bug/950294
+   if ( $o->get('create-upgrade-table') ) {
+      eval {
+         PTDEBUG && _d('Creating --upgrade-table table', $upgrade_table); 
+         my $sql = $o->read_para_after(__FILE__, qr/MAGIC_upgrade_table/);
+         $sql =~ s/CREATE TABLE pt_upgrade/CREATE TABLE IF NOT EXISTS $upgrade_table/;
+         $sql =~ s/;$//;
+         PTDEBUG && _d($dbh, $sql);
+         $dbh->do($sql);
+      };
+      if ( $EVAL_ERROR ) {
+         if ( !$tbl_exists ) {
+            warn $EVAL_ERROR;
+            die "--upgrade table $tbl on " . $host->name . " does not exist "
+               . "and it cannot be created automatically.  You need to "
+               . "create the table.\n"
+         }
+      }
+   }
+
+   my $sql = "SELECT * FROM $upgrade_table LIMIT 1 "
+           . "/* pt-upgrade check --upgrade-table */";
+   eval {
+      $dbh->do($sql);
+   };
+   if ( $EVAL_ERROR ) {
+      die "Error querying the --upgrade-table $upgrade_table on "
+         . $host->name . ": $EVAL_ERROR\n";
+   }
+
+   return;
+}
+
+# Copied from TableParser.
+sub check_table {
+   my ( %args ) = @_;
+   my @required_args = qw(dbh db tbl);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($dbh, $db, $tbl) = @args{@required_args};
+   my $q      = 'Quoter';
+   my $db_tbl = $q->quote($db, $tbl);
+   PTDEBUG && _d('Checking', $db_tbl);
+
+   my $sql = "SHOW TABLES FROM " . $q->quote($db)
+           . ' LIKE ' . $q->literal_like($tbl);
+   PTDEBUG && _d($sql);
+   my $row;
+   eval {
+      $row = $dbh->selectrow_arrayref($sql);
+   };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d($EVAL_ERROR);
+      return 0;
+   }
+   if ( !$row->[0] || $row->[0] ne $tbl ) {
+      PTDEBUG && _d('Table does not exist');
+      return 0;
+   }
+
+   PTDEBUG && _d('Table', $db, $tbl, 'exists');
+   return 1;
+
+   # No more privs check:
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1036747
+}
+
 sub compare_host_to_host {
    my (%args) = @_;
 
@@ -6115,6 +6266,7 @@ sub compare_host_to_host {
    my $host2          = $args{host2};
    my $max_class_size = $args{max_class_size};
    my $max_examples   = $args{max_examples}; 
+   my $upgrade_table  = $args{upgrade_table};
    PTDEBUG && _d('Compare', $host1->name, 'to', $host2->name);
 
    # Optional args
@@ -6123,6 +6275,11 @@ sub compare_host_to_host {
    my $ignore_warnings = $args{ignore_warnings};
    my $read_only       = $args{read_only};
    my $read_timeout    = $args{read_timeout};
+
+   my $clear_warnings_sql = "SELECT * FROM $upgrade_table LIMIT 1 "
+                          . "/* pt-upgrade clear warnings */";
+   my $clear_warnings_sth1 = $host1->dbh->prepare($clear_warnings_sql);
+   my $clear_warnings_sth2 = $host2->dbh->prepare($clear_warnings_sql);
 
    my $results = UpgradeResults->new(
       max_class_size => $max_class_size,
@@ -6151,11 +6308,13 @@ sub compare_host_to_host {
    );
 
    while ( my $event = $query_iter->next() ) {
+      $clear_warnings_sth1->execute();
       my $results1 = $executor->exec_event(
          event => $event,
          host  => $host1,
       );
 
+      $clear_warnings_sth2->execute();
       my $results2 = $executor->exec_event(
          event    => $event,
          host     => $host2,
@@ -6908,6 +7067,12 @@ default: yes
 
 Continue running even if there is an error.
 
+=item --[no]create-upgrade-table
+
+default: yes
+
+Create the L<"--upgrade-table"> database and table.
+
 =item --database
 
 short form: -D; type: string
@@ -7037,11 +7202,9 @@ type: time; default: 0
 
 Wait this long for an event from the input; 0 to wait forever.
 
-This option sets the maximum time to wait for an event from the input.  It
-applies to all types of input except L<"--processlist">.  If an
-event is not received after the specified time, the script stops reading the
-input and prints its reports.  If L<"--iterations"> is 0 or greater than
-1, the next iteration will begin, else the script will exit.
+This option sets the maximum time to wait for an event from the input.  If
+an event is not received after the specified time, the tool stops reading
+the input and prints its reports.
 
 This option requires the Perl POSIX module.
 
@@ -7106,23 +7269,22 @@ short form: -S; type: string
 
 Socket file to use for connection.
 
-=item --sys-schema
+=item --upgrade-table
 
-type: string; default: percona_schema
+type: string; default: percona_schema.pt_upgrade
 
-Use table C<pt_upgrade> in this schema.  pt-upgrade requires a known,
-good table for various technical reasons.  The given schema and the
-C<pt_upgrade> table are created (if they don't already exist), but
-neither is dropped.
+Use this table to clear warnings.  To clear all warnings from previous
+queries, pt-upgrade executes C<SELECT * FROM --upgrade-table LIMIT 1>
+on each host before executing each query.
 
-If you run the tool with C<SELECT> only privileges (which is a good idea
-unless using C<--no-read-only>), then be sure to give the L<"--user"> write
-privileges to the schema and table; else, you must manually create the schema
-and C<pt_upgrade> table with this MAGIC_pt_upgrade_table definition:
+The table must be database-qualified.  The database and table are
+automatically created unless C<--no-create-upgrade-table> is specified
+(see L<"--[no]create-upgrade-table">).  If the table does not already
+exist, it is created with this MAGIC_upgrade_table definition:
 
    CREATE TABLE pt_upgrade (
-     id INT NOT NULL PRIMARY KEY,
-   ) ENGINE=InnoDB
+     id INT NOT NULL PRIMARY KEY
+   )
 
 =item --user
 
