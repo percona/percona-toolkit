@@ -1,0 +1,12 @@
+$results = {
+  query_time => '0',
+  warnings => {
+    '1265' => {
+      code => '1265',
+      level => 'Warning',
+      message => 'Data truncated for column \'username\' at row 1'
+    }
+  }
+};
+
+##

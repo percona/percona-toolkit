@@ -1,0 +1,2 @@
+select nonexistent_col from test.t
+##

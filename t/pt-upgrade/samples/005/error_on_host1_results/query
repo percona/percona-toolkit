@@ -1,0 +1,2 @@
+select host2_col from test.t
+##
