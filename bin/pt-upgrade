@@ -37,6 +37,7 @@ BEGIN {
       UpgradeResults
       ResultWriter
       ResultIterator
+      FakeSth
    ));
 }
 
@@ -6086,13 +6087,13 @@ has '_query_fh' => (
     required => 0,
 );
 
-has '_meta_fh' => (
+has '_results_fh' => (
     is       => 'rw',
     isa      => 'Maybe[FileHandle]',
     required => 0,
 );
 
-has '_results_fh' => (
+has '_rows_fh' => (
     is       => 'rw',
     isa      => 'Maybe[FileHandle]',
     required => 0,
@@ -6110,21 +6111,21 @@ sub BUILDARGS {
    open my $_query_fh, '<', $query_file
       or die "Cannot open $query_file for writing: $OS_ERROR";
 
-   my $meta_file = "$dir/meta";
-   PTDEBUG && _d('Meta file:', $meta_file);
-   open my $_meta_fh, '<', $meta_file
-      or die "Cannot open $meta_file for writing: $OS_ERROR";
-
    my $results_file = "$dir/results";
-   PTDEBUG && _d('Results file:', $results_file);
+   PTDEBUG && _d('Meta file:', $results_file);
    open my $_results_fh, '<', $results_file
       or die "Cannot open $results_file for writing: $OS_ERROR";
+
+   my $rows_file = "$dir/rows";
+   PTDEBUG && _d('Results file:', $rows_file);
+   open my $_rows_fh, '<', $rows_file
+      or die "Cannot open $rows_file for writing: $OS_ERROR";
 
    my $self = {
       %$args,
       _query_fh   => $_query_fh,
-      _meta_fh    => $_meta_fh,
       _results_fh => $_results_fh,
+      _rows_fh    => $_rows_fh,
    };
 
    return $self;
@@ -6136,32 +6137,40 @@ sub next {
    local $INPUT_RECORD_SEPARATOR = "\n##\n";
 
    my $_query_fh   = $self->_query_fh;
-   my $_meta_fh    = $self->_meta_fh;
    my $_results_fh = $self->_results_fh;
+   my $_rows_fh    = $self->_rows_fh;
 
    my $query   = <$_query_fh>;
-   my $meta    = <$_meta_fh>;
    my $results = <$_results_fh>;
+   my $rows    = <$_rows_fh>;
 
    return unless $query;
    
    chomp($query);
-
-   if ( $meta ) {
-      chomp($meta);
-      eval $meta;
-   }
 
    if ( $results ) {
       chomp($results);
       eval $results;
    }
 
-   return {
-      query   => $query,
-      meta    => $meta,
-      results => $results,
-   };
+   if ( $rows ) {
+      chomp($rows);
+      eval $rows;
+   }
+
+   $query =~ s/^use ([^;]+);\n//;
+
+   my $db = $1;
+   if ( $db ) {
+      $db =~ s/^`//;
+      $db =~ s/`$//;
+      $results->{db} = $db;
+   }
+
+   $results->{query} = $query;
+   $results->{rows}  = $rows;
+
+   return $results;
 }
 
 sub _d {
@@ -6177,6 +6186,47 @@ no Lmo;
 }
 # ###########################################################################
 # End ResultIterator package
+# ###########################################################################
+
+# ###########################################################################
+# FakeSth package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/FakeSth.pm
+#   t/lib/FakeSth.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package FakeSth;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+sub new {
+   my ( $class, $rows ) = @_;
+   my $n_rows = scalar @$rows;
+   my $self = {
+      rows   => $rows,
+      n_rows => $n_rows,
+   };
+   return bless $self, $class;
+}
+
+sub fetchall_arrayref {
+   my ( $self ) = @_;
+   return $self->{rows};
+}
+
+sub finish {
+   return;
+}
+
+1;
+}
+# ###########################################################################
+# End FakeSth package
 # ###########################################################################
 
 # ###########################################################################
@@ -6367,6 +6417,14 @@ sub main {
    # ##########################################################################
    # Execute and compare the queries.
    # ##########################################################################
+   my %optional_args = (
+      database        => $o->get('database'),
+      filter          => $o->get('filter'),
+      ignore_warnings => $o->get('ignore-warnings'),
+      read_only       => $o->get('read-only') ?  1 : 0,
+      read_timeout    => $o->get('read-timeout'),
+   );
+
    if ( $host1 && $host2 ) {
       compare_host_to_host(
          file            => $file,
@@ -6375,12 +6433,7 @@ sub main {
          max_class_size  => $o->get('max-class-size'),
          max_examples    => $o->get('max-examples'),
          upgrade_table   => $o->get('upgrade-table'),
-         # Optional
-         database        => $o->get('database'),
-         filter          => $o->get('filter'),
-         ignore_warnings => $o->get('ignore-warnings'),
-         read_only       => $o->get('read-only') ?  1 : 0,
-         read_timeout    => $o->get('read-timeout'),
+         %optional_args,
       );
    }
    elsif ( $host1 && $results_dir ) {
@@ -6389,19 +6442,17 @@ sub main {
          host          => $host1,
          results_dir   => $results_dir,
          upgrade_table => $o->get('upgrade-table'),
-         # Optional
-         database        => $o->get('database'),
-         filter          => $o->get('filter'),
-         ignore_warnings => $o->get('ignore-warnings'),
-         read_only       => $o->get('read-only') ?  1 : 0,
-         read_timeout    => $o->get('read-timeout'),
+         %optional_args,
       );
    }
    elsif ( $results_dir && $host2 ) {
       compare_results_to_host(
-         results_dir   => $results_dir,
-         host          => $host2,
-         upgrade_table => $o->get('upgrade-table'),
+         results_dir     => $results_dir,
+         host            => $host2,
+         max_class_size  => $o->get('max-class-size'),
+         max_examples    => $o->get('max-examples'),
+         upgrade_table   => $o->get('upgrade-table'),
+         %optional_args,
       );
    }
    else {
@@ -6619,75 +6670,16 @@ sub compare_host_to_host {
       my $results2 = $executor->exec_event(
          event    => $event,
          host     => $host2,
-         database => $executor->current_database,
+         database => $host1->{current_db},
       );
 
-      if ( $results1->{error} && $results2->{error} ) {
-         PTDEBUG && _d('Failed query');
-         $stats->{failed_queries}++;
-         $results->save_failed_query(
-            event  => $event,
-            error1 => $results1->{error},
-            error2 => $results2->{error},
-         );
-      }
-      elsif (   ($results1->{error} && !$results2->{error})
-             || ($results2->{error} && !$results1->{error}) ) {
-         PTDEBUG && _d('Query error');
-         $stats->{queries_with_errors}++;
-         $results->save_error(
-            event  => $event,
-            error1 => $results1->{error},
-            error2 => $results2->{error},
-         );
-      }
-      else {
-         my $query_time_diffs = diff_query_times(
-            query_time1 => $results1->{query_time},
-            query_time2 => $results2->{query_time},
-         );
-
-         my $warning_diffs = diff_warnings(
-            warnings1 => $results1->{warnings},
-            warnings2 => $results2->{warnings},
-         );
-
-         my $row_diffs;
-         if ( $event->{arg} =~ m/(?:^\s*SELECT|(?:\*\/\s*SELECT))/i ) {
-            $row_diffs = diff_rows(
-               sth1 => $results1->{sth},
-               sth2 => $results2->{sth},
-            );
-         }
-
-         eval {
-            foreach my $result ( $results1, $results2 ) {
-               $result->{sth}->finish();
-               delete $result->{sth};
-            }
-         };
-         if ( $EVAL_ERROR ) {
-            PTDEBUG && _d($EVAL_ERROR);
-         }
-
-         if (    ($query_time_diffs && scalar @$query_time_diffs)
-              || ($warning_diffs    && scalar @$warning_diffs)
-              || ($row_diffs        && scalar @$row_diffs) )
-         {
-            PTDEBUG && _d('Query diffs');
-            $stats->{queries_with_diffs}++;
-            $results->save_diffs(
-               event            => $event,
-               query_time_diffs => $query_time_diffs,
-               warning_diffs    => $warning_diffs,
-               row_diffs        => $row_diffs,
-            );
-         }
-         else {
-            PTDEBUG && _d('Query OK, no diffs');
-            $stats->{queries_no_diffs}++;
-         }
-      }
+      save_and_report_results(
+         event           => $event,
+         results         => $results,
+         results1        => $results1,
+         results2        => $results2,
+         ignore_warnings => $ignore_warnings,
+      );
    }
 
    $results->report_unreported_classes();
@@ -6751,6 +6743,7 @@ sub save_results {
          event => $event,
          host  => $host,
       );
+
       $results->save(
          host    => $host,
          event   => $event,
@@ -6768,30 +6761,147 @@ sub compare_results_to_host {
 #      host1
 #      host2
 #   )) or die;
-   my $results_dir   = $args{results_dir};
-   my $host          = $args{host};
-   my $upgrade_table = $args{upgrade_table};
-   PTDEBUG && _d('Compare results in', $results_dir, 'to', $host->name);
+   my $results_dir    = $args{results_dir};
+   my $host           = $args{host};
+   my $max_class_size = $args{max_class_size};
+   my $max_examples   = $args{max_examples}; 
+   my $upgrade_table  = $args{upgrade_table};
+   PTDEBUG && _d('Compare', $results_dir, 'to', $host->name);
 
    # Optional args
    my $database        = $args{database};
    my $ignore_warnings = $args{ignore_warnings};
-   my $read_timeout    = $args{read_timeout};
 
    my $clear_warnings_sql = "SELECT * FROM $upgrade_table LIMIT 1 "
                           . "/* pt-upgrade clear warnings */";
    my $clear_warnings_sth = $host->dbh->prepare($clear_warnings_sql);
 
+   my $results = UpgradeResults->new(
+      max_class_size => $max_class_size,
+      max_examples   => $max_examples,
+   );
+
+   my $qr = QueryRewriter->new();  # fingerprint
+
+   # Results from host1, obtained earlier with --save-results.
    my $result_iter = ResultIterator->new(
       dir => $results_dir,
    );
 
+   # Results for host2, obtaining now.
    my $executor = EventExecutor->new(
       default_database => $database,
    );
 
-   while ( my $event = $result_iter->next() ) {
-      print Dumper($event);
+   while ( my $results1 = $result_iter->next() ) {
+      $results1->{sth} = FakeSth->new($results1->{rows});
+
+      my $event = {
+         arg         => $results1->{query},
+         fingerprint => $qr->fingerprint($results1->{query}),
+      };
+
+      $clear_warnings_sth->execute();
+      my $results2 = $executor->exec_event(
+         event => $event,
+         host  => $host,
+      );
+
+      save_and_report_results(
+         event           => $event,
+         results         => $results,
+         results1        => $results1,
+         results2        => $results2,
+         ignore_warnings => $ignore_warnings,
+      );
+   }
+
+   $results->report_unreported_classes();
+
+   return;
+}
+
+sub save_and_report_results {
+   my (%args) = @_;
+
+#   have_required_args(\%args, qw(
+#      host1
+#      host2
+#   )) or die;
+   my $event    = $args{event};
+   my $results  = $args{results};
+   my $results1 = $args{results1};
+   my $results2 = $args{results2};
+
+   # Optional args
+   my $ignore_warnings = $args{ignore_warnings};
+
+   if ( $results1->{error} && $results2->{error} ) {
+      PTDEBUG && _d('Failed query');
+      $stats->{failed_queries}++;
+      $results->save_failed_query(
+         event  => $event,
+         error1 => $results1->{error},
+         error2 => $results2->{error},
+      );
+   }
+   elsif (   ($results1->{error} && !$results2->{error})
+          || ($results2->{error} && !$results1->{error}) ) {
+      PTDEBUG && _d('Query error');
+      $stats->{queries_with_errors}++;
+      $results->save_error(
+         event  => $event,
+         error1 => $results1->{error},
+         error2 => $results2->{error},
+      );
+   }
+   else {
+      my $query_time_diffs = diff_query_times(
+         query_time1 => $results1->{query_time},
+         query_time2 => $results2->{query_time},
+      );
+
+      my $warning_diffs = diff_warnings(
+         warnings1       => $results1->{warnings},
+         warnings2       => $results2->{warnings},
+         ignore_warnings => $ignore_warnings,
+      );
+
+      my $row_diffs;
+      if ( $event->{arg} =~ m/(?:^\s*SELECT|(?:\*\/\s*SELECT))/i ) {
+         $row_diffs = diff_rows(
+            sth1 => $results1->{sth},
+            sth2 => $results2->{sth},
+         );
+      }
+
+      eval {
+         foreach my $result ( $results1, $results2 ) {
+            $result->{sth}->finish();
+            delete $result->{sth};
+         }
+      };
+      if ( $EVAL_ERROR ) {
+         PTDEBUG && _d($EVAL_ERROR);
+      }
+
+      if (    ($query_time_diffs && scalar @$query_time_diffs)
+           || ($warning_diffs    && scalar @$warning_diffs)
+           || ($row_diffs        && scalar @$row_diffs) )
+      {
+         PTDEBUG && _d('Query diffs');
+         $stats->{queries_with_diffs}++;
+         $results->save_diffs(
+            event            => $event,
+            query_time_diffs => $query_time_diffs,
+            warning_diffs    => $warning_diffs,
+            row_diffs        => $row_diffs,
+         );
+      }
+      else {
+         PTDEBUG && _d('Query OK, no diffs');
+         $stats->{queries_no_diffs}++;
+      }
    }
 
    return;
@@ -7201,7 +7311,7 @@ The query execution plan (C<EXPLAIN>) should be roughly the same or better.
 
 =head1 REPORT
 
-The final report (L<"--save-report">) is a human-readable text file that
+The final report is a human-readable text file that
 details all the L<"QUERY DIFFERENCES">.  To prevent the report from
 becoming too long, queries are not reported individually but grouped by
 fingerprint into classes.  A query fingerprint is the abstracted form of
@@ -7411,9 +7521,8 @@ first two parts of the query class report):
 
 =head1 OUTPUT
 
-Status information is printed to C<STDOUT> as the tool runs.  L<"--progress">
-reports are enabled by default.  The final report is saved to
-L<"--save-report">.  Warnings and errors are printed to C<STDERR>.
+Status information is printed to C<STDOUT> as the tool runs.
+Warnings and errors are printed to C<STDERR>.
 
 =head1 EXIT STATUS
 
@@ -7478,18 +7587,6 @@ This only works for POSIX operating systems.
 default: yes
 
 C<SET SESSION query_cache_type = OFF> to disable the query cache.
-
-=item --disk-bytes-free
-
-type: size; default: 100M
-
-Stop running if the disk has less than this much free space.
-
-=item --disk-pct-free
-
-type: int; default: 5
-
-Stop running if the disk has less than this percent free space.
 
 =item --filter
 
@@ -7566,16 +7663,6 @@ short form: -P; type: int
 
 MySQL port number.
 
-=item --progress
-
-type: array; default: time,60
-
-Print progress reports to C<STDOUT>.
-
-The value is a comma-separated list with two parts.  The first part can be
-percentage, time, or iterations; the second part specifies how often an update
-should be printed, in percentage, seconds, or number of iterations.
-
 =item --[no]read-only
 
 default: yes
@@ -7597,53 +7684,16 @@ the input and prints its reports.
 
 This option requires the Perl POSIX module.
 
-=item --resume
-
-type: string
-
-Resume C<LOG> from the offset in the given file.  pt-upgrade can stop
-prematurely and resume by reading and writing the current file offset to
-given file.   The tool warns if this file cannot be written, and dies if
-L<"--resume"> is specified and this file cannot be read.
-
-=item --run-time
-
-type: time
-
-How long to run before exiting.  The default is to run until all queries
-in the C<LOG> have been executed.  You can interrupt with CTRL-C.
-
-=item --save-report
-
-type: string
-
-Save the report to this file.  If not specified, the report will be
-saved to C<pt-upgrade-report-TS.txt> in the current working directory,
-where C<TS> is the current GMT Unix timestamp.
-
 =item --save-results
 
 type: string
 
-Save reference results to this directory.  If not specified, the current
-working directory is used.  This option works only when one DSN is specified,
-to generate reference results.  When comparing a host to reference results,
-specify its results directory instead of its DSN.  See the second
-example in the L<"SYNOPSIS">.
+Save reference results to this directory.  This option works only when
+one DSN is specified, to generate reference results.  When comparing
+a host to reference results, specify its results directory instead of
+its DSN.  See the second example in the L<"SYNOPSIS">.
 
-Although the directories and files created by the tool in the results
-directory are not meant to be human-readable, the basic structure is:
-
-   --results/
-      <class_id>/
-         <query_id>/
-            query
-            results
-            explain
-            meta
-
-Reference results can use I<a lot> of disk space.  Consequently, the tool
-will stop if L<"--disk-bytes-free"> or L<"--disk-pct-free"> are exceeded.
+Reference results can use I<a lot> of disk space.
 
 =item --set-vars
 
