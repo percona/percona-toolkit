@@ -48,13 +48,13 @@ has '_query_fh' => (
     required => 0,
 );
 
-has '_meta_fh' => (
+has '_results_fh' => (
     is       => 'rw',
     isa      => 'Maybe[FileHandle]',
     required => 0,
 );
 
-has '_results_fh' => (
+has '_rows_fh' => (
     is       => 'rw',
     isa      => 'Maybe[FileHandle]',
     required => 0,
@@ -70,19 +70,19 @@ sub BUILDARGS {
    open my $_query_fh, '>', $query_file
       or die "Cannot open $query_file for writing: $OS_ERROR";
 
-   my $meta_file = "$dir/meta";
-   open my $_meta_fh, '>', $meta_file
-      or die "Cannot open $meta_file for writing: $OS_ERROR";
-
    my $results_file = "$dir/results";
    open my $_results_fh, '>', $results_file
       or die "Cannot open $results_file for writing: $OS_ERROR";
 
+   my $rows_file = "$dir/rows";
+   open my $_rows_fh, '>', $rows_file
+      or die "Cannot open $rows_file for writing: $OS_ERROR";
+
    my $self = {
       %$args,
       _query_fh   => $_query_fh,
-      _meta_fh    => $_meta_fh,
       _results_fh => $_results_fh,
+      _rows_fh    => $_rows_fh,
    };
 
    return $self;
@@ -95,21 +95,38 @@ sub save {
    my $event   = $args{event};
    my $results = $args{results};
 
+   # Save the query.
    print { $self->_query_fh } $event->{arg}, "\n##\n";
 
    if ( my $error = $results->{error} ) {
-      print { $self->_meta_fh    } $error, "\n##\n";
-      print { $self->_results_fh } '',     "\n##\n";
+      # Save the error.
+      print { $self->_results_fh }
+         $self->dumper({ error => $error}, 'results'), "\n##\n";
+
+      # Save empty rows.
+      print { $self->_rows_fh } "\n##\n";
    }
    else {
-      my $sth  = $results->{sth};
-      my $rows = $sth->fetchall_arrayref();
-      eval {
-         $sth->finish;
-         delete $results->{sth};
-      };
-      print { $self->_meta_fh    } $self->dumper($results, 'meta'), "\n##\n";
-      print { $self->_results_fh } $self->dumper($rows, 'results'), "\n##\n";
+      # Save rows, if any (i.e. if it's a SELECT statement).
+      my $rows;
+      if ( my $sth = $results->{sth} ) {
+         if ( $event->{arg} =~ m/(?:^\s*SELECT|(?:\*\/\s*SELECT))/i ) {
+            $rows = $sth->fetchall_arrayref();
+         }
+         eval {
+            $sth->finish;
+         };
+         if ( $EVAL_ERROR ) {
+            PTDEBUG && _d($EVAL_ERROR);
+         }
+      }
+      print { $self->_rows_fh }
+         ($rows ? $self->dumper($rows, 'rows') : ''), "\n##\n";
+
+      # Save results.
+      delete $results->{error};
+      delete $results->{sth};
+      print { $self->_results_fh } $self->dumper($results, 'results'), "\n##\n";
    }
 
    return;

@@ -1,5 +1,4 @@
-$meta = {
-  error => undef,
+$results = {
   query_time => '0',
   warnings => {}
 };
