@@ -39,13 +39,13 @@ has '_query_fh' => (
     required => 0,
 );
 
-has '_meta_fh' => (
+has '_results_fh' => (
     is       => 'rw',
     isa      => 'Maybe[FileHandle]',
     required => 0,
 );
 
-has '_results_fh' => (
+has '_rows_fh' => (
     is       => 'rw',
     isa      => 'Maybe[FileHandle]',
     required => 0,
@@ -63,21 +63,21 @@ sub BUILDARGS {
    open my $_query_fh, '<', $query_file
       or die "Cannot open $query_file for writing: $OS_ERROR";
 
-   my $meta_file = "$dir/meta";
-   PTDEBUG && _d('Meta file:', $meta_file);
-   open my $_meta_fh, '<', $meta_file
-      or die "Cannot open $meta_file for writing: $OS_ERROR";
-
    my $results_file = "$dir/results";
-   PTDEBUG && _d('Results file:', $results_file);
+   PTDEBUG && _d('Meta file:', $results_file);
    open my $_results_fh, '<', $results_file
       or die "Cannot open $results_file for writing: $OS_ERROR";
+
+   my $rows_file = "$dir/rows";
+   PTDEBUG && _d('Results file:', $rows_file);
+   open my $_rows_fh, '<', $rows_file
+      or die "Cannot open $rows_file for writing: $OS_ERROR";
 
    my $self = {
       %$args,
       _query_fh   => $_query_fh,
-      _meta_fh    => $_meta_fh,
       _results_fh => $_results_fh,
+      _rows_fh    => $_rows_fh,
    };
 
    return $self;
@@ -89,32 +89,40 @@ sub next {
    local $INPUT_RECORD_SEPARATOR = "\n##\n";
 
    my $_query_fh   = $self->_query_fh;
-   my $_meta_fh    = $self->_meta_fh;
    my $_results_fh = $self->_results_fh;
+   my $_rows_fh    = $self->_rows_fh;
 
    my $query   = <$_query_fh>;
-   my $meta    = <$_meta_fh>;
    my $results = <$_results_fh>;
+   my $rows    = <$_rows_fh>;
 
    return unless $query;
    
    chomp($query);
-
-   if ( $meta ) {
-      chomp($meta);
-      eval $meta;
-   }
 
    if ( $results ) {
       chomp($results);
       eval $results;
    }
 
-   return {
-      query   => $query,
-      meta    => $meta,
-      results => $results,
-   };
+   if ( $rows ) {
+      chomp($rows);
+      eval $rows;
+   }
+
+   $query =~ s/^use ([^;]+);\n//;
+
+   my $db = $1;
+   if ( $db ) {
+      $db =~ s/^`//;
+      $db =~ s/`$//;
+      $results->{db} = $db;
+   }
+
+   $results->{query} = $query;
+   $results->{rows}  = $rows;
+
+   return $results;
 }
 
 sub _d {
