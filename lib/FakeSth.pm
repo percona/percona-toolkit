@@ -27,7 +27,7 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class, $rows ) = @_;
-   my $n_rows = scalar @$rows;
+   my $n_rows = $rows && ref $rows eq 'ARRAY' ? scalar @$rows : 0;
    my $self = {
       rows   => $rows,
       n_rows => $n_rows,
