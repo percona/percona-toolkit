@@ -84,10 +84,10 @@ sub exec_event {
       $results->{sth}        = $sth;
       $results->{warnings}   = $self->get_warnings(dbh => $host->dbh);
    };
-   if ( $EVAL_ERROR ) {
-      PTDEBUG && _d($EVAL_ERROR);
-      chomp($EVAL_ERROR);
-      $results->{error} = $EVAL_ERROR;
+   if ( my $e = $EVAL_ERROR ) {
+      PTDEBUG && _d($e);
+      $e =~ s/ at \S+ line \d+, \S+ line \d+\.$//;
+      $results->{error} = $e;
    }
    PTDEBUG && _d('Result on', $host->name, Dumper($results));
    return $results;
