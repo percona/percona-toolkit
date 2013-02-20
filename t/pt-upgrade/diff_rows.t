@@ -10,13 +10,13 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
-
-use PerconaTest;
-use Sandbox;
+use Data::Dumper;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
+use PerconaTest;
+use Sandbox;
 require "$trunk/bin/pt-upgrade";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
@@ -82,10 +82,33 @@ test_diff (
 );
 
 test_diff (
-   name   => "Stops when there's not 2 rows",
+   name   => 'Host1 missing a row',
    query1 => "select user from mysql.user where user='msandbox' order by user",
    query2 => 'select user from mysql.user order by user',
-   expect => [],
+   expect => [
+      [
+         1,
+         undef,
+         [
+            [qw(root)],
+         ],
+      ],
+   ],
+);
+
+test_diff (
+   name   => 'Host2 missing a row',
+   query1 => 'select user from mysql.user order by user',
+   query2 => "select user from mysql.user where user='msandbox' order by user",
+   expect => [
+      [
+         1,
+         [
+            [qw(root)],
+         ],
+         undef,
+      ],
+   ],
 );
 
 # #############################################################################

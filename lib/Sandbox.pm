@@ -62,6 +62,8 @@ my %port_for = (
    node7   => 2903,
    cmaster => 12349, # master -> cluster
    cslave1 => 12348, # cluster -> slave
+   host1   => 12345, # pt-upgrade
+   host2   => 12348, # pt-upgrade
 );
 
 my %server_type = (

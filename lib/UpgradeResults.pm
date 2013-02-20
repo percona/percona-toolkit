@@ -51,19 +51,19 @@ has 'classes' => (
 sub save_diffs {
    my ($self, %args) = @_;
 
-   my $event           = $args{event};
-   my $query_time_diff = $args{query_time_diff};
-   my $warning_diffs   = $args{warning_diffs};
-   my $row_diffs       = $args{row_diffs};
+   my $event            = $args{event};
+   my $query_time_diffs = $args{query_time_diffs};
+   my $warning_diffs    = $args{warning_diffs};
+   my $row_diffs        = $args{row_diffs};
 
    my $class = $self->class(event => $event);
 
    if ( my $query = $self->_can_save(event => $event, class => $class) ) {
-      if ( $query_time_diff
+      if ( $query_time_diffs
            && scalar @{$class->{query_time_diffs}} < $self->max_examples ) {
          push @{$class->{query_time_diffs}}, [
             $query,
-            @$query_time_diff,
+            @$query_time_diffs,
          ];
       }
 
@@ -284,24 +284,21 @@ sub report_class {
    }
 
    if ( scalar @{$class->{errors}} ) {
-      $self->_print_diffs(
-         diffs         => $class->{errors},
-         name          => 'Query error',
-         inline        => 0,
-         default_value => 'No error',
+      $self->_print_errors(
+         errors => $class->{errors},
       );
    }
 
    if ( scalar @{$class->{query_time_diffs}} ) {
       $self->_print_diffs(
-         diffs  => $class->{query_time_diffs},
-         name   => 'Query time',
-         inline => 1,
+         diffs     => $class->{query_time_diffs},
+         name      => 'Query time',
+         formatter => \&_format_query_times,
       );
    }
 
    if ( scalar @{$class->{warning_diffs}} ) {
-      $self->_print_multiple_diffs(
+      $self->_print_diffs(
          diffs     => $class->{warning_diffs},
          name      => 'Warning',
          formatter => \&_format_warnings,
@@ -309,7 +306,7 @@ sub report_class {
    }
 
    if ( scalar @{$class->{row_diffs}} ) {
-      $self->_print_multiple_diffs(
+      $self->_print_diffs(
          diffs     => $class->{row_diffs},
          name      => 'Row',
          formatter => \&_format_rows,
@@ -381,56 +378,6 @@ sub _print_diff_header {
    return;
 }
 
-sub _print_diffs {
-   my ($self, %args) = @_;
-   my $diffs         = $args{diffs};
-   my $name          = $args{name};
-   my $inline        = $args{inline};
-   my $default_value = $args{default_value} || '?';
-
-   $self->_print_diff_header(
-      name  => $name,
-      count => scalar @$diffs,
-   );
-
-   my $fmt = $inline ? "\n%s vs. %s\n" : "\n%s\n\nvs.\n\n%s\n";
-
-   my $diffno = 1;
-   foreach my $diff ( @$diffs ) {
-      print "\n-- $diffno.\n";
-      printf $fmt,
-         ($diff->[1] || $default_value), 
-         ($diff->[2] || $default_value);
-      print "\n" . ($diff->[0] || '?') . "\n";
-      $diffno++;
-   }
-
-   return;
-}
-
-sub _print_multiple_diffs {
-   my ($self, %args) = @_;
-   my $diffs     = $args{diffs};
-   my $name      = $args{name};
-   my $formatter = $args{formatter};
-
-   $self->_print_diff_header(
-      name  => $name,
-      count => scalar @$diffs,
-   );
-
-   my $diffno = 1;
-   foreach my $diff ( @$diffs ) {
-      print "\n-- $diffno.\n";
-      my $formatted_diff = $formatter->($diff->[1]);
-      print $formatted_diff || '?';
-      print "\n" . ($diff->[0] || '?') . "\n";
-      $diffno++;
-   }
-
-   return;
-}
-
 sub _print_failures {
    my ($self, %args) = @_;
    my $failures = $args{failures};
@@ -452,6 +399,53 @@ sub _print_failures {
       }
       print "\n" . ($failure->[0] || '?') . "\n";
       $failno++;
+   }
+
+   return;
+}
+
+sub _print_errors {
+   my ($self, %args) = @_;
+   my $errors = $args{errors};
+
+   $self->_print_diff_header(
+      name  => 'Query errors',
+      count => scalar @$errors,
+   );
+
+   my $fmt = "\n%s\n\nvs.\n\n%s\n";
+
+   my $errorno = 1;
+   foreach my $error ( @$errors ) {
+      print "\n-- $errorno.\n";
+      printf $fmt,
+         ($error->[1] || 'No error'),
+         ($error->[2] || 'No error');
+      print "\n" . ($error->[0] || '?') . "\n";
+      $errorno++;
+   }
+
+   return;
+}
+
+sub _print_diffs {
+   my ($self, %args) = @_;
+   my $diffs     = $args{diffs};
+   my $name      = $args{name};
+   my $formatter = $args{formatter};
+
+   $self->_print_diff_header(
+      name  => $name,
+      count => scalar @$diffs,
+   );
+
+   my $diffno = 1;
+   foreach my $diff ( @$diffs ) {
+      print "\n-- $diffno.\n";
+      my $formatted_diff = $formatter->($diff->[1]);
+      print $formatted_diff || '?';
+      print "\n" . ($diff->[0] || '?') . "\n";
+      $diffno++;
    }
 
    return;
@@ -495,16 +489,41 @@ sub _format_rows {
    return unless $rows && @$rows;
    my @diffs;
    foreach my $row ( @$rows ) {
-      my $rowno = $row->[0];
-      my $cols1 = $row->[1];
-      my $cols2 = $row->[2];
-      my $diff
-         = "@ row " . ($rowno || '?') . "\n"
-         . '< ' . join(',', map {defined $_ ? $_ : 'NULL'} @$cols1) . "\n"
-         . '> ' . join(',', map {defined $_ ? $_ : 'NULL'} @$cols2) . "\n";
-      push @diffs, $diff;
+      if ( !defined $row->[1] || !defined $row->[2] ) {
+         # missing rows
+         my $n_missing_rows = $row->[0];
+         my $missing_rows   = $row->[1] || $row->[2];
+         my $dir            = !defined $row->[1] ? '>' : '<';
+         my $diff
+            = '@ first ' . scalar @$missing_rows
+            . ' of ' . ($n_missing_rows || '?') . " missing rows\n";
+         foreach my $row ( @$missing_rows ) {
+            $diff .= "$dir "
+                   . join(',', map {defined $_ ? $_ : 'NULL'} @$row) . "\n";
+         }
+         push @diffs, $diff;
+      }
+      else {
+         # diff rows
+         my $rowno = $row->[0];
+         my $cols1 = $row->[1];
+         my $cols2 = $row->[2];
+         my $diff
+            = "@ row " . ($rowno || '?') . "\n"
+            . '< ' . join(',', map {defined $_ ? $_ : 'NULL'} @$cols1) . "\n"
+            . '> ' . join(',', map {defined $_ ? $_ : 'NULL'} @$cols2) . "\n";
+         push @diffs, $diff;
+      }
    }
    return "\n" . join("\n", @diffs);
+}
+
+sub _format_query_times {
+   my ($query_times) = @_;
+   return unless $query_times && @$query_times;
+   my $fmt = "%s vs. %s seconds (%s increase)\n";
+   return "\n" . 
+   my @diffs;
 }
 
 sub _d {
