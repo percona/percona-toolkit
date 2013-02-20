@@ -42,6 +42,18 @@ has 'pretty' => (
     default  => 0,
 );
 
+has 'default_database' => (
+   is       => 'rw',
+   isa      => 'Maybe[Str]',
+   required => 0,
+);
+
+has 'current_database' => (
+   is       => 'rw',
+   isa      => 'Maybe[Str]',
+   required => 0,
+);
+
 has '_query_fh' => (
     is       => 'rw',
     isa      => 'Maybe[FileHandle]',
@@ -92,10 +104,18 @@ sub BUILDARGS {
 sub save {
    my ($self, %args) = @_;
 
+   my $host    = $args{host};
    my $event   = $args{event};
    my $results = $args{results};
 
    # Save the query.
+   my $current_db = $self->current_database;
+   my $db = $event->{db} || $event->{Schema} || $self->default_database;
+   if ( $db && (!$current_db || $current_db ne $db) ) {
+      PTDEBUG && _d('New current db:', $db);
+      print { $self->_query_fh } "use `$db`;\n";
+      $self->current_database($db);
+   }
    print { $self->_query_fh } $event->{arg}, "\n##\n";
 
    if ( my $error = $results->{error} ) {

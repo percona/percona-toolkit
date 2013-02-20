@@ -36,12 +36,6 @@ has 'default_database' => (
    required => 0,
 );
 
-has 'current_database' => (
-   is       => 'rw',
-   isa      => 'Maybe[Str]',
-   required => 0,
-);
-
 ##
 # Private
 ##
@@ -71,7 +65,7 @@ sub exec_event {
 
    eval {
       my $db = $event->{db} || $event->{Schema} || $self->default_database;
-      if ( !$host->{current_db} || $host->{current_db} ne $db ) {
+      if ( $db && (!$host->{current_db} || $host->{current_db} ne $db) ) {
          PTDEBUG && _d('New current db:', $db);
          $host->dbh->do("USE `$db`");
          $host->{current_db} = $db;
