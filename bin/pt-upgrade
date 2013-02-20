@@ -35,6 +35,8 @@ BEGIN {
       QueryIterator
       EventExecutor
       UpgradeResults
+      ResultWriter
+      ResultIterator
    ));
 }
 
@@ -5891,6 +5893,266 @@ no Lmo;
 # ###########################################################################
 
 # ###########################################################################
+# ResultWriter package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/ResultWriter.pm
+#   t/lib/ResultWriter.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package ResultWriter;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use Data::Dumper;
+
+use Lmo;
+
+has 'dir' => (
+    is       => 'ro',
+    isa      => 'Str',
+    required => 1,
+);
+
+has 'pretty' => (
+    is       => 'ro',
+    isa      => 'Bool',
+    required => 0,
+    default  => 0,
+);
+
+has '_query_fh' => (
+    is       => 'rw',
+    isa      => 'Maybe[FileHandle]',
+    required => 0,
+);
+
+has '_meta_fh' => (
+    is       => 'rw',
+    isa      => 'Maybe[FileHandle]',
+    required => 0,
+);
+
+has '_results_fh' => (
+    is       => 'rw',
+    isa      => 'Maybe[FileHandle]',
+    required => 0,
+);
+
+sub BUILDARGS {
+   my $class = shift;
+   my $args  = $class->SUPER::BUILDARGS(@_);
+
+   my $dir = $args->{dir};
+
+   my $query_file = "$dir/query";
+   open my $_query_fh, '>', $query_file
+      or die "Cannot open $query_file for writing: $OS_ERROR";
+
+   my $meta_file = "$dir/meta";
+   open my $_meta_fh, '>', $meta_file
+      or die "Cannot open $meta_file for writing: $OS_ERROR";
+
+   my $results_file = "$dir/results";
+   open my $_results_fh, '>', $results_file
+      or die "Cannot open $results_file for writing: $OS_ERROR";
+
+   my $self = {
+      %$args,
+      _query_fh   => $_query_fh,
+      _meta_fh    => $_meta_fh,
+      _results_fh => $_results_fh,
+   };
+
+   return $self;
+}
+
+
+sub save {
+   my ($self, %args) = @_;
+
+   my $event   = $args{event};
+   my $results = $args{results};
+
+   print { $self->_query_fh } $event->{arg}, "\n##\n";
+
+   if ( my $error = $results->{error} ) {
+      print { $self->_meta_fh    } $error, "\n##\n";
+      print { $self->_results_fh } '',     "\n##\n";
+   }
+   else {
+      my $sth  = $results->{sth};
+      my $rows = $sth->fetchall_arrayref();
+      eval {
+         $sth->finish;
+         delete $results->{sth};
+      };
+      print { $self->_meta_fh    } $self->dumper($results, 'meta'), "\n##\n";
+      print { $self->_results_fh } $self->dumper($rows, 'results'), "\n##\n";
+   }
+
+   return;
+}
+
+sub dumper {
+   my ($self, $data, $name) = @_;
+   if ( $self->pretty ) {
+      local $Data::Dumper::Indent    = 1;
+      local $Data::Dumper::Sortkeys  = 1;
+      local $Data::Dumper::Quotekeys = 0;
+      return Data::Dumper->Dump([$data], [$name]);
+   }
+   else {
+      local $Data::Dumper::Indent    = 0;
+      local $Data::Dumper::Sortkeys  = 0;
+      local $Data::Dumper::Quotekeys = 0;
+      return Data::Dumper->Dump([$data], [$name]);
+   }
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+no Lmo;
+1;
+}
+# ###########################################################################
+# End ResultWriter package
+# ###########################################################################
+
+# ###########################################################################
+# ResultIterator package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/ResultIterator.pm
+#   t/lib/ResultIterator.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package ResultIterator;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use Lmo;
+
+has 'dir' => (
+    is       => 'ro',
+    isa      => 'Str',
+    required => 1,
+);
+
+has '_query_fh' => (
+    is       => 'rw',
+    isa      => 'Maybe[FileHandle]',
+    required => 0,
+);
+
+has '_meta_fh' => (
+    is       => 'rw',
+    isa      => 'Maybe[FileHandle]',
+    required => 0,
+);
+
+has '_results_fh' => (
+    is       => 'rw',
+    isa      => 'Maybe[FileHandle]',
+    required => 0,
+);
+
+sub BUILDARGS {
+   my $class = shift;
+   my $args  = $class->SUPER::BUILDARGS(@_);
+
+   my $dir = $args->{dir};
+   die "$dir does not exist\n" unless -d $dir;
+
+   my $query_file = "$dir/query";
+   PTDEBUG && _d('Query file:', $query_file);
+   open my $_query_fh, '<', $query_file
+      or die "Cannot open $query_file for writing: $OS_ERROR";
+
+   my $meta_file = "$dir/meta";
+   PTDEBUG && _d('Meta file:', $meta_file);
+   open my $_meta_fh, '<', $meta_file
+      or die "Cannot open $meta_file for writing: $OS_ERROR";
+
+   my $results_file = "$dir/results";
+   PTDEBUG && _d('Results file:', $results_file);
+   open my $_results_fh, '<', $results_file
+      or die "Cannot open $results_file for writing: $OS_ERROR";
+
+   my $self = {
+      %$args,
+      _query_fh   => $_query_fh,
+      _meta_fh    => $_meta_fh,
+      _results_fh => $_results_fh,
+   };
+
+   return $self;
+}
+
+sub next {
+   my ($self, %args) = @_;
+
+   local $INPUT_RECORD_SEPARATOR = "\n##\n";
+
+   my $_query_fh   = $self->_query_fh;
+   my $_meta_fh    = $self->_meta_fh;
+   my $_results_fh = $self->_results_fh;
+
+   my $query   = <$_query_fh>;
+   my $meta    = <$_meta_fh>;
+   my $results = <$_results_fh>;
+
+   return unless $query;
+   
+   chomp($query);
+
+   if ( $meta ) {
+      chomp($meta);
+      eval $meta;
+   }
+
+   if ( $results ) {
+      chomp($results);
+      eval $results;
+   }
+
+   return {
+      query   => $query,
+      meta    => $meta,
+      results => $results,
+   };
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+no Lmo;
+1;
+}
+# ###########################################################################
+# End ResultIterator package
+# ###########################################################################
+
+# ###########################################################################
 # This is a combination of modules and programs in one -- a runnable module.
 # http://www.perl.com/pub/a/2006/07/13/lightning-articles.html?page=last
 # Or, look it up in the Camel book on pages 642 and 643 in the 3rd edition.
@@ -5979,7 +6241,7 @@ sub main {
               && !$o->got('save-results') )
       {
          PTDEBUG && _d('Use case: DIR HOST');
-         ($results_dir, $host1_dsn_string) = @ARGV;
+         ($results_dir, $host2_dsn_string) = @ARGV;
       } 
       else {
          $o->save_error('Invalid combination of command line arguments.  '
@@ -6025,7 +6287,7 @@ sub main {
    if ( $host2_dsn_string ) {
       $host2 = $make_cxn->(
          dsn_string => $host2_dsn_string,
-         prev_dsn   => $host1->dsn,
+         prev_dsn   => $host1 ? $host1->dsn : undef,
       );
    }
 
@@ -6088,16 +6350,18 @@ sub main {
       );
    }
    elsif ( $host1 && $results_dir ) {
-      save_host_results(
-         file        => $file,
-         host        => $host1,
-         results_dir => $results_dir,
+      save_results(
+         file          => $file,
+         host          => $host1,
+         results_dir   => $results_dir,
+         upgrade_table => $o->get('upgrade-table'),
       );
    }
    elsif ( $results_dir && $host2 ) {
       compare_results_to_host(
-         results_dir => $results_dir,
-         host        => $host2,
+         host          => $host2,
+         results_dir   => $results_dir,
+         upgrade_table => $o->get('upgrade-table'),
       );
    }
    else {
@@ -6394,17 +6658,104 @@ sub compare_host_to_host {
    return;
 }
 
-sub save_host_results {
-      # oktorun
-      # run-time
-      # my $query = $query_iter->next() ) {
-      # Exec query on host
-      # Save results to disk
-      # Report progress
+sub save_results {
+   my (%args) = @_;
+
+#   have_required_args(\%args, qw(
+#      host1
+#      host2
+#   )) or die;
+   my $file          = $args{file};
+   my $host          = $args{host};
+   my $results_dir   = $args{results_dir};
+   my $upgrade_table = $args{upgrade_table};
+   PTDEBUG && _d('Save results to', $results_dir);
+
+   # Optional args
+   my $database        = $args{database};
+   my $filter          = $args{filter};
+   my $ignore_warnings = $args{ignore_warnings};
+   my $read_only       = $args{read_only};
+   my $read_timeout    = $args{read_timeout};
+
+   my $clear_warnings_sql = "SELECT * FROM $upgrade_table LIMIT 1 "
+                          . "/* pt-upgrade clear warnings */";
+   my $clear_warnings_sth = $host->dbh->prepare($clear_warnings_sql);
+
+   my $results = ResultWriter->new(
+      dir    => $results_dir,
+      pretty => $ENV{PRETTY_RESULTS},
+   );
+
+   my $qr = QueryRewriter->new();  # fingerprint
+
+   my $file_iter = FileIterator->new();
+   my $files = $file_iter->get_file_itr($file);
+
+   my $query_iter = QueryIterator->new(
+      file_iter        => $files,
+      parser           => SlowLogParser->new(),
+      fingerprint      => sub { return $qr->fingerprint(@_) },
+      oktorun          => sub { return $oktorun },
+      stats            => $stats,
+      ($database     ? (default_database => $database)     : ()),
+      ($filter       ? (filter           => $filter)       : ()),
+      ($read_only    ? (read_only        => $read_only)    : ()),
+      ($read_timeout ? (read_timeout     => $read_timeout) : ()),
+   );
+
+   my $executor = EventExecutor->new(
+      default_database => $database,
+   );
+
+   while ( my $event = $query_iter->next() ) {
+      $clear_warnings_sth->execute();
+      my $host_results = $executor->exec_event(
+         event => $event,
+         host  => $host,
+      );
+      $results->save(
+         event   => $event,
+         results => $host_results,
+      );
+   }
+
    return;
 }
 
 sub compare_results_to_host {
+   my (%args) = @_;
+
+#   have_required_args(\%args, qw(
+#      host1
+#      host2
+#   )) or die;
+   my $results_dir   = $args{results_dir};
+   my $host          = $args{host};
+   my $upgrade_table = $args{upgrade_table};
+   PTDEBUG && _d('Compare results in', $results_dir, 'to', $host->name);
+
+   # Optional args
+   my $database        = $args{database};
+   my $ignore_warnings = $args{ignore_warnings};
+   my $read_timeout    = $args{read_timeout};
+
+   my $clear_warnings_sql = "SELECT * FROM $upgrade_table LIMIT 1 "
+                          . "/* pt-upgrade clear warnings */";
+   my $clear_warnings_sth = $host->dbh->prepare($clear_warnings_sql);
+
+   my $result_iter = ResultIterator->new(
+      dir => $results_dir,
+   );
+
+   my $executor = EventExecutor->new(
+      default_database => $database,
+   );
+
+   while ( my $event = $result_iter->next() ) {
+      print Dumper($event);
+   }
+
    return;
 }
 
