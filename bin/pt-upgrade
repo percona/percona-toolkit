@@ -5287,12 +5287,6 @@ has 'default_database' => (
    required => 0,
 );
 
-has 'current_database' => (
-   is       => 'rw',
-   isa      => 'Maybe[Str]',
-   required => 0,
-);
-
 
 has 'stats' => (
    is       => 'ro',
@@ -5319,7 +5313,7 @@ sub exec_event {
 
    eval {
       my $db = $event->{db} || $event->{Schema} || $self->default_database;
-      if ( !$host->{current_db} || $host->{current_db} ne $db ) {
+      if ( $db && (!$host->{current_db} || $host->{current_db} ne $db) ) {
          PTDEBUG && _d('New current db:', $db);
          $host->dbh->do("USE `$db`");
          $host->{current_db} = $db;
@@ -5926,6 +5920,18 @@ has 'pretty' => (
     default  => 0,
 );
 
+has 'default_database' => (
+   is       => 'rw',
+   isa      => 'Maybe[Str]',
+   required => 0,
+);
+
+has 'current_database' => (
+   is       => 'rw',
+   isa      => 'Maybe[Str]',
+   required => 0,
+);
+
 has '_query_fh' => (
     is       => 'rw',
     isa      => 'Maybe[FileHandle]',
@@ -5976,9 +5982,17 @@ sub BUILDARGS {
 sub save {
    my ($self, %args) = @_;
 
+   my $host    = $args{host};
    my $event   = $args{event};
    my $results = $args{results};
 
+   my $current_db = $self->current_database;
+   my $db = $event->{db} || $event->{Schema} || $self->default_database;
+   if ( $db && (!$current_db || $current_db ne $db) ) {
+      PTDEBUG && _d('New current db:', $db);
+      print { $self->_query_fh } "use `$db`;\n";
+      $self->current_database($db);
+   }
    print { $self->_query_fh } $event->{arg}, "\n##\n";
 
    if ( my $error = $results->{error} ) {
@@ -6385,8 +6399,8 @@ sub main {
    }
    elsif ( $results_dir && $host2 ) {
       compare_results_to_host(
-         host          => $host2,
          results_dir   => $results_dir,
+         host          => $host2,
          upgrade_table => $o->get('upgrade-table'),
       );
    }
@@ -6539,9 +6553,6 @@ sub check_table {
 
    PTDEBUG && _d('Table', $db, $tbl, 'exists');
    return 1;
-
-   # No more privs check:
-   # https://bugs.launchpad.net/percona-toolkit/+bug/1036747
 }
 
 sub compare_host_to_host {
@@ -6741,6 +6752,7 @@ sub save_results {
          host  => $host,
       );
       $results->save(
+         host    => $host,
          event   => $event,
          results => $host_results,
       );
