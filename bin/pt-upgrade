@@ -6073,6 +6073,8 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
+use Data::Dumper;
+
 use Lmo;
 
 has 'dir' => (
@@ -6144,8 +6146,11 @@ sub next {
    my $results = <$_results_fh>;
    my $rows    = <$_rows_fh>;
 
-   return unless $query;
-   
+   if ( !$query ) {
+      PTDEBUG && _d('No more results');
+      return;
+   }
+
    chomp($query);
 
    if ( $results ) {
@@ -6170,6 +6175,7 @@ sub next {
    $results->{query} = $query;
    $results->{rows}  = $rows;
 
+   PTDEBUG && _d('Results:', Dumper($results));
    return $results;
 }
 
@@ -6206,7 +6212,7 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class, $rows ) = @_;
-   my $n_rows = scalar @$rows;
+   my $n_rows = $rows && ref $rows eq 'ARRAY' ? scalar @$rows : 0;
    my $self = {
       rows   => $rows,
       n_rows => $n_rows,
@@ -6273,6 +6279,7 @@ sub main {
       queries_no_diffs    => 0,
       queries_with_errors => 0,
       failed_queries      => 0,
+      not_select          => 0,
    };
 
    # ##########################################################################
@@ -6668,9 +6675,8 @@ sub compare_host_to_host {
 
       $clear_warnings_sth2->execute();
       my $results2 = $executor->exec_event(
-         event    => $event,
-         host     => $host2,
-         database => $host1->{current_db},
+         event => $event,
+         host  => $host2,
       );
 
       save_and_report_results(
@@ -6794,10 +6800,13 @@ sub compare_results_to_host {
    );
 
    while ( my $results1 = $result_iter->next() ) {
+      $stats->{queries_read}++;
+
       $results1->{sth} = FakeSth->new($results1->{rows});
 
       my $event = {
          arg         => $results1->{query},
+         db          => $results1->{db},
          fingerprint => $qr->fingerprint($results1->{query}),
       };
 

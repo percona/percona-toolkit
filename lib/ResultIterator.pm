@@ -25,6 +25,8 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
+use Data::Dumper;
+
 use Lmo;
 
 has 'dir' => (
@@ -96,8 +98,11 @@ sub next {
    my $results = <$_results_fh>;
    my $rows    = <$_rows_fh>;
 
-   return unless $query;
-   
+   if ( !$query ) {
+      PTDEBUG && _d('No more results');
+      return;
+   }
+
    chomp($query);
 
    if ( $results ) {
@@ -122,6 +127,7 @@ sub next {
    $results->{query} = $query;
    $results->{rows}  = $rows;
 
+   PTDEBUG && _d('Results:', Dumper($results));
    return $results;
 }
 
