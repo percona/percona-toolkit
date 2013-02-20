@@ -20,7 +20,7 @@ No error
 
 vs.
 
-DBD::mysql::st execute failed: Unknown column 'host1_col' in 'field list' [for Statement "select host1_col from test.t"] at /Users/daniel/p/pt-upgrade-2.2/bin/pt-upgrade line 5327, <> line 1.
+DBD::mysql::st execute failed: Unknown column 'host1_col' in 'field list' [for Statement "select host1_col from test.t"]
 
 select host1_col from test.t
 

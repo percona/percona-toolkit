@@ -5334,6 +5334,7 @@ sub exec_event {
    };
    if ( my $e = $EVAL_ERROR ) {
       PTDEBUG && _d($e);
+      chomp($e);
       $e =~ s/ at \S+ line \d+, \S+ line \d+\.$//;
       $results->{error} = $e;
    }
@@ -6319,21 +6320,28 @@ sub main {
    }
 
    # ##########################################################################
-   # Execute and compare the queries.
+   # Check and maybe create the --upgrade-table.
    # ##########################################################################
-   if ( $host1 && $host2 ) {
+   if ( $host1 ) {
       check_upgrade_table(
          host          => $host1,
          upgrade_table => $o->get('upgrade-table'),
          OptionParser  => $o,
       );
+   }
 
+   if ( $host2 ) {
       check_upgrade_table(
          host          => $host2,
          upgrade_table => $o->get('upgrade-table'),
          OptionParser  => $o,
       );
+   }
 
+   # ##########################################################################
+   # Execute and compare the queries.
+   # ##########################################################################
+   if ( $host1 && $host2 ) {
       compare_host_to_host(
          file            => $file,
          host1           => $host1,

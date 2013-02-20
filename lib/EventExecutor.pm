@@ -86,6 +86,7 @@ sub exec_event {
    };
    if ( my $e = $EVAL_ERROR ) {
       PTDEBUG && _d($e);
+      chomp($e);
       $e =~ s/ at \S+ line \d+, \S+ line \d+\.$//;
       $results->{error} = $e;
    }

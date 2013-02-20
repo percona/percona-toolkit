@@ -18,7 +18,7 @@ select nonexistent_col from test.t
 
 On both hosts:
 
-DBD::mysql::st execute failed: Unknown column 'nonexistent_col' in 'field list' [for Statement "select nonexistent_col from test.t"] at /Users/daniel/p/pt-upgrade-2.2/bin/pt-upgrade line 5327, <> line 1.
+DBD::mysql::st execute failed: Unknown column 'nonexistent_col' in 'field list' [for Statement "select nonexistent_col from test.t"]
 
 select nonexistent_col from test.t
 
