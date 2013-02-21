@@ -4947,9 +4947,12 @@ sub main {
 
       $heartbeat_sth = $dbh->prepare($heartbeat_sql);
 
+      my $ro_check = !!$o->get('check-read-only');
       $update_heartbeat = sub {
          my ($sth) = @_;
          my @vals;
+
+         return if $ro_check && server_is_readonly($dbh);
         
          my $sql; 
          if ( @master_status_cols ) {
@@ -5197,6 +5200,18 @@ sub main {
 # ############################################################################
 # Subroutines.
 # ############################################################################
+
+sub server_is_readonly {
+   my ($dbh) = @_;
+   my ( $is_read_only ) = $dbh->selectrow_array(q{SELECT @@global.read_only});
+   if ( $is_read_only ) {
+      my ( $privs ) = eval { $dbh->selectrow_array(q{SHOW GRANTS}) };
+      if ( $privs && $privs =~ /\b(?:ALL|SUPER)\b/ ) {
+         $is_read_only = undef;
+      }
+   }
+   return $is_read_only;
+}
 
 # Check the delay on a single server.  Optionally recurse to all its slaves.
 sub check_delay {
@@ -5515,6 +5530,11 @@ Check slave delay once and exit.  If you also specify L<"--recurse">, the
 tool will try to discover slave's of the given slave and check and print
 their lag, too.  The hostname or IP and port for each slave is printed
 before its delay.  L<"--recurse"> only works with MySQL.
+
+=item --check-read-only
+
+Check if the server has read_only enabled; If it does, the tool skips doing
+any inserts.
 
 =item --config
 
