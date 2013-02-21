@@ -4779,7 +4779,9 @@ sub main {
    # Do the version-check
    # ########################################################################
    if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
-      VersionCheck::version_check();
+      VersionCheck::version_check(
+         force => $o->got('version-check'),
+      );
    }
 
    # ########################################################################

@@ -9204,6 +9204,7 @@ sub main {
    # ########################################################################
    if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
       VersionCheck::version_check(
+         force     => $o->got('version-check'),
          instances => [
             { dbh => $master_dbh, dsn => $master_dsn },
             map({ +{ dbh => $_->dbh(), dsn => $_->dsn() } } @$slaves)
