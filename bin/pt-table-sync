@@ -9652,6 +9652,7 @@ sub main {
       } @dsns;
 
       VersionCheck::version_check(
+         force     => $o->got('version-check'),
          instances => \@instances,
       );
 

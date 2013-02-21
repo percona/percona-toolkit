@@ -4668,6 +4668,7 @@ sub main {
    # ########################################################################
    if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
       VersionCheck::version_check(
+         force     => $o->got('version-check'),
          instances => [ {dbh => $dbh, dsn => $dsn} ],
       );
    }

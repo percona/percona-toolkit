@@ -4055,6 +4055,7 @@ sub main {
          = $master_dsn ? $master_dsn
          :              {h=>$status->{master_host}, P=>$status->{master_port}};
       VersionCheck::version_check(
+         force     => $o->got('version-check'),
          instances => [
             { dbh => $slave_dbh,  dsn => $slave_dsn      },
             { dbh => $master_dbh, dsn => $tmp_master_dsn }
