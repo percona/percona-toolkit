@@ -9407,31 +9407,21 @@ pt-upgrade - Verify that queries results are identical on different servers.
 
 =head1 SYNOPSIS
 
-Usage: pt-upgrade [OPTIONS] LOG|RESULTS DSN [DSN]
+Usage: pt-upgrade [OPTIONS] LOGS|RESULTS DSN [DSN]
 
-pt-upgrade executes the queries in C<LOG> on each C<DSN>, compares
-the results, and reports any significant differences.  C<LOG> can be
-a slow, general, or binary log.
+pt-upgrade executes queries in MySQL C<LOGS> on each C<DSN>, compares
+the results, and reports any significant differences.  C<LOGS> can be
+slow, general, binary, tcpdump, and "raw".
 
-Compare host1 to host2 using queries from C<slow.log>:
+Compare host1 to host2 using queries in C<slow.log>:
 
-   pt-upgrade slow.log h=host1 h=host2
+   pt-upgrade h=host1 h=host2 slow.log
 
-Save results for host1, then compare host2 to them:
+Save results for host1, then compare to host2:
 
-   pt-upgrade slow.log h=host1 --save-results host1_results/
+   pt-upgrade h=host1 --save-results host1_results/ slow.log
 
    pt-upgrade host1_results1/ h=host2
-
-These examples demonstrate the three valid combinations of command line
-arguments:
-
-   LOG DSN DSN
-   LOG DSN --save-results
-   DIR DSN
-
-The error "Invalid combination of command line arguments" indicates that
-the command line arguments do not match one of these combinations.
 
 =head1 RISKS
 
@@ -9461,20 +9451,20 @@ a new version of MySQL.  A safe and conservative upgrade plan has several
 steps, one of which is ensuring that queries will produce identical results
 on the new version of MySQL.
 
-pt-upgrade executes queries from a slow, general, or binary log on two
-servers, compares many aspects of each query's exeuction and results,
-and reports any signficant differences.  The two servers are typically
-development servers, one running the current production version of MySQL
-and the other running the new version of MySQL.
+pt-upgrade executes queries from slow, general, binary, tcpdump, and
+"raw" logs on two servers, compares many aspects of each query's exeuction
+and results, and reports any signficant differences.  The two servers are
+typically development servers, one running the current production version
+of MySQL and the other running the new version of MySQL.
 
 =head1 USE CASES
 
-The tool has two use cases.  The first, canonical case is running "host
+pt-upgrade has two use cases.  The first, canonical case is running "host
 to host".  A log file and two DSN are given on the command line, one for
 each MySQL server.  See the first example in the L<"SYNOPSIS">.  Queries
-are executed and compared on each server as the tool runs.  Any queries
-with differences are saved and reported when the tool finishes.  Unless
-interrupted, nothing is saved except the final report. -- This use case
+are executed and compared on each server as the tool runs.  Queries with
+differences are printed as the tool runs, or when it finishes (see
+L<"WHEN QUERIES ARE REPORTED">.  Nothing is saved to disk, so this use case
 requires less hard disk space, but the queries must be executed on both
 servers if the tool is ran again, even if one of the servers hasn't
 changed.  If there are a lot of queries or executing them all takes a
@@ -9483,12 +9473,12 @@ use case.
 
 The second use case is running "reference results to host".  Reference
 results are the complete results from a single MySQL server, saved to
-hard disk.  In this case, you must first generate the reference results,
-then run the tool a second time to compare another MySQL server to the
-reference results.  See the second example in the L<"SYNOPSIS">.  Reference
-results are typically generated for the current version of MySQL which
-doesn't change. -- This use case can require I<a lot> of hard disk space
-because the results (i.e. data rows) from all unique queries must be saved,
+disk.  In this case, you must first generate the reference results
+(with L<"--save-results">), then run the tool a second time to compare
+the results to another MySQL server.  See the second example in the
+L<"SYNOPSIS">.  Results are typically generated for the current version
+of MySQL which doesn't change.  This use case can require I<a lot> of
+disk space because the results (i.e. rows) for all queries must be saved,
 plus other data about the queries.  If you plan to do many comparisons
 against a fixed version of MySQL, this use case is more efficient.  Or if
 you don't have access to both servers at the same time, this use case
@@ -9559,6 +9549,7 @@ of each query from both hosts:
 =item Row count
 
 The number of rows returned by the query should be the same.
+This is reported as "missing rows" under "Row diffs".
 
 =item Row data
 
@@ -9575,16 +9566,24 @@ the same errors or warnings.
 A query rarely executes with a constant time, but its execution time
 should be within the same order of magnitude or smaller.
 
-=item Query plan
+=item Query errors
 
-The query execution plan (C<EXPLAIN>) should be roughly the same or better.
+If a query causes a SQL error on only one host, this is reported as
+"Query errors".  Since the query works on one host, its syntax is
+probably valid, and the error is due to some condition unique to
+the other host.
+
+=item SQL errors
+
+If a query causes a SQL error on both hosts, this is reported as
+"SQL errors".  The SQL syntax of the query could be invalid.
 
 =back
 
 =head1 REPORT
 
-The final report is a human-readable text file that
-details all the L<"QUERY DIFFERENCES">.  To prevent the report from
+As pt-upgrade runs, it prints queries with differences as soon as it can
+(see L<"WHEN QUERIES ARE REPORTED">).  To prevent the report from
 becoming too long, queries are not reported individually but grouped by
 fingerprint into classes.  A query fingerprint is the abstracted form of
 a query, created by removing literal values, normalizing whitespace, etc.
@@ -9608,180 +9607,97 @@ indicated in the report.
 
 =head2 EXAMPLE
 
-A report begins with the following three sections:
+ #-----------------------------------------------------------------------
+ # Logs
+ #-----------------------------------------------------------------------
 
-  host1:
+ File: /opt/mysql/slow.log
+ Size: 59700
 
-    DSN:      h=host1,P=12345
-    MySQL:    MySQL 5.1.59
-    hostname: dev1.mysql
+ #-----------------------------------------------------------------------
+ # Hosts
+ #-----------------------------------------------------------------------
 
-  host2:
+ host1:
 
-    DSN:      h=host2,P=12345
-    MySQL:    MySQL 5.5.10
-    hostname: dev2.mysql
+   DSN:       h=127.1,P=12345
+   hostname:  dev1
+   MySQL:     MySQL 5.1.68
 
-  Log file: /opt/mysql/slow.log
+ host2:
 
-  #######################################################################
-  # Counters
-  #######################################################################
+   DSN:       h=127.1,P=12348
+   hostname:  dev2
+   MySQL:     MySQL 5.5.10
 
-  queries_read            900
-  queries_filtered        5
-  unique_queries          300
-  queries_with_diffs      10
-  queries_no_diffs        290
-  query_classes           24
-  class_size_exceeded     1
-  lost_connection         1
-  lock_wait_timeout       1
+ ########################################################################
+ # Query class AAD020567F8398EE
+ ########################################################################
 
-The "Summary" section is a summary of the report and run.  The "Hosts"
-section lists which hosts which were compared.  The "Counters" section lists
-values that give an idea of how effective the run was.
+ Reporting class because it has diffs, but hasn't been reported yet.
 
-A section for each query class with difference follows, like:
+ Total queries      1
+ Unique queries     1
+ Discarded queries  0
 
-  #######################################################################
-  # Query class 1 of 24
-  #######################################################################
+ insert into t (id, username) values(?+)
 
-  Class ID           D7D2F2B7AB4602A4
-  Total queries      10
-  Unique queries     5
-  Discarded queries  0
+ ##
+ ## Warning diffs: 1
+ ##
 
-  select * from t where id in (?)
+ -- 1.
 
-  ##
-  ## Row count diffs: 2
-  ##
+    Code: 1265
+   Level: Warning
+ Message: Data truncated for column 'username' at row 1
 
-  --- 1.
+ vs.
 
-  3 vs. 2 (-1) rows
+ No warning 1265
 
-  SELECT * FROM t WHERE id IN (1,2,3);
+ INSERT INTO t (id, username) VALUES (NULL, 'long_username')
 
-  --- 2.
+ #-----------------------------------------------------------------------
+ # Stats
+ #-----------------------------------------------------------------------
 
-  3 vs. 1 (-2) rows
+ failed_queries        0
+ not_select            0
+ queries_filtered      0
+ queries_no_diffs      0
+ queries_read          1
+ queries_with_diffs    1
+ queries_with_errors   0
 
-  SELECT * FROM t WHERE id IN (10,11,12);
+The "Query class <ID>" sections are the most important because they list
+L<"QUERY DIFFERENCES">.  The first part of the section lists the reason
+why the query class was report, followed by counts of queries in the class,
+followed by the fingerprint which defines the class.
 
-The first part of a query class report lists the query class ID and counts
-of queries in the class.  The query class ID can be used to L<"--filter">
-and compare only queries in the class on subsequent runs of the tool.  The
-"Total queries" count is the total number of queries that belong to the class
-before duplicates and L<"--max-class-size">.  The "Unique queries"
-count is the number of unique queries in the class; it cannot exceed
-L<"--max-class-size">.  The "Discarded queries" count is the number
-of unique queries discarded due to L<"--max-class-size">.
+The rest of the query class section lists the L<"QUERY DIFFERENCES"> that
+caused the class to be reported.  Each type of difference begins with
+a double hash mark header that lists the type and total number of queries
+in the class with the difference.  Then up to L<"--max-examples"> are listed,
+numbered "-- 1.", "--- 2.", etc.  Each example lists the difference for
+the first and second hosts (respective to the "Hosts" section), followed by
+the first SQL statement that revealed the difference.
 
-The second part of a query class report lists the the fingerprint which
-defines the class.
+=head1 WHEN QUERIES ARE REPORTED
 
-The rest of a query class report lists the L<"QUERY DIFFERENCES"> that caused
-the class to be reported.  Each type of difference begins with a double hash
-mark header that lists the type and total number of queries in the class
-with the change.  Then up to L<"--max-examples"> are listed, numbered
-"-- 1.", "--- 2.", etc.  Each example lists the difference for the first and
-second hosts (respective to the "Hosts" section), followed by the first SQL
-statement from the C<LOG> that revealed the difference.  Executing this SQL
-statement again should reproduce the same difference (presuming that data
-on the server has not changed).
+A query class is reported as soon as any one of the L<"QUERY DIFFERENCES">
+or query errors has L<"--max-examples">.  Else, all queries with differences
+are reported when the tool finishes.
 
-Here are examples of other differences (without a query class header or the
-first two parts of the query class report):
-
-  ##
-  ## Row data diffs: 1
-  ##
-
-  --- 1.
-
-  col1, col2
-  < foo    bar
-  ---
-  > foox   bar
-
-  SELECT col1, col2 FROM t WHERE id=5;
-
-  ##
-  ## Warnings diff: 5
-  ##
-
-  --- 1.
-
-  No warnings
-
-  vs.
-
-    Level: Warning
-     Code: 1265
-  Message: Data truncated for column 'b' at row 1
-
-  INSERT INTO t (b) VALUES ('Hello, world!');
-
-  ##
-  ## Query time diff: 50
-  ##
-
-  --- 1.
-
-  0.01 vs. 0.5 (+0.49) seconds
-
-  SELECT * FROM a JOIN b ON (id) WHERE a.ts < 555555555;
-
-  --- 2.
-
-  0.04 vs. 0.8 (+0.76) seconds
-
-  SELECT * FROM a JOIN b ON (id) WHERE a.ts < 123456789;
-
-  --- 3.
-
-  0.04 vs. 0.5 (+0.46) seconds  
-
-  SELECT * FROM a JOIN b ON (id) WHERE a.ts < 123456789;
-
-  ##
-  ## Query plan diffs: 1
-  ##
-
-  --- 1.
-
-             id: 1
-    select_type: SIMPLE
-          table: city
-           type: ref 
-  possible_keys: PRIMARY
-            key: PRIMARY
-        key_len: 2
-            ref: NULL
-           rows: 550
-          Extra: Using where; Using index
-
-  vs.
-
-             id: 1
-    select_type: SIMPLE
-          table: city
-           type: range
-  possible_keys: PRIMARY
-            key: PRIMARY
-        key_len: 2
-            ref: NULL
-           rows: 214
-          Extra: Using where; Using index
-
-  EXPLAIN SELECT city_id FROM sakila.city WHERE city_id > 10\G
+For example, if two query time differences are found for a query class,
+it is not reported yet.  Once a third query time diffence is found,
+the query class is reported, including any other differences that may
+have been found too.  Queries for the class will continue to be executed,
+but the class will not be reported again.
 
 =head1 OUTPUT
 
-Status information is printed to C<STDOUT> as the tool runs.
+The L<"REPORT"> is printed to C<STDOUT> as the tool runs.
 Warnings and errors are printed to C<STDERR>.
 
 =head1 EXIT STATUS
@@ -9818,12 +9734,6 @@ type: Array
 
 Read this comma-separated list of config files; if specified, this must be the
 first option on the command line.
-
-=item --[no]continue-on-error
-
-default: yes
-
-Continue running even if there is an error.
 
 =item --[no]create-upgrade-table
 
@@ -9903,7 +9813,9 @@ Max number of unique queries in each query class.  See L<"REPORT">.
 
 type: int; default: 3
 
-Max number of examples to list for each L<"QUERY DIFFERENCES">.
+Max number of examples to list for each L<"QUERY DIFFERENCES">.  A query
+class is reported as soon as this many examples for any type of query
+difference are found.
 
 =item --password
 
