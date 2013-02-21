@@ -25,6 +25,8 @@ my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
 my $slave1_dbh = $sb->get_dbh_for('slave1');
 
+local $ENV{PERCONA_FORCE_VERSION_CHECK} = 1;
+
 sub test_v {
    my (%args) = @_;
 
