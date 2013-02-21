@@ -4043,10 +4043,11 @@ local $Data::Dumper::Indent    = 1;
 local $Data::Dumper::Sortkeys  = 1;
 local $Data::Dumper::Quotekeys = 0;
 
-use Digest::MD5    qw(md5_hex);
-use Sys::Hostname  qw(hostname);
+use Digest::MD5 qw(md5_hex);
+use Sys::Hostname qw(hostname);
 use File::Basename qw();
 use File::Spec;
+use FindBin qw();
 
 eval {
    require Percona::Toolkit;
@@ -4086,12 +4087,14 @@ sub version_check {
    my $instances = $args{instances} || [];
    my $instances_to_check;
 
-   eval {
-      if (exists $ENV{PERCONA_VERSION_CHECK} && !$ENV{PERCONA_VERSION_CHECK}) {
-         PTDEBUG && _d('--version-check disabled by PERCONA_VERSION_CHECK=0');
+   if ( !$args{force} ) {
+      if ( $FindBin::Bin && -d "$FindBin::Bin/../.bzr" ) {
+         PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
          return;
       }
+   }
 
+   eval {
       foreach my $instance ( @$instances ) {
          my ($name, $id) = get_instance_id($instance);
          $instance->{name} = $name;
@@ -4139,15 +4142,17 @@ sub version_check {
       PTDEBUG && _d('Version check failed:', $EVAL_ERROR);
    }
 
-   eval {
-      update_check_times(
-         instances => $instances_to_check,
-         vc_file   => $args{vc_file},  # testing
-         now       => $args{now},      # testing
-      );
-   };
-   if ( $EVAL_ERROR ) {
-      PTDEBUG && _d('Error updating version check file:', $EVAL_ERROR);
+   if ( @$instances_to_check ) {
+      eval {
+         update_check_times(
+            instances => $instances_to_check,
+            vc_file   => $args{vc_file},  # testing
+            now       => $args{now},      # testing
+         );
+      };
+      if ( $EVAL_ERROR ) {
+         PTDEBUG && _d('Error updating version check file:', $EVAL_ERROR);
+      }
    }
 
    if ( $ENV{PTDEBUG_VERSION_CHECK} ) {
