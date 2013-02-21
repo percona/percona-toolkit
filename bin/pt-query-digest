@@ -14869,6 +14869,7 @@ sub main {
    # ########################################################################
    if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
       VersionCheck::version_check(
+         force     => $o->got('version-check'),
          instances => [
             ($qv_dbh ? { dbh => $qv_dbh, dsn => $review_dsn } : ()),
             ($ps_dbh ? { dbh => $ps_dbh, dsn => $ps_dsn     } : ()),
