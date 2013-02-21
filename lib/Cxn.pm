@@ -97,15 +97,19 @@ sub new {
       $dsn = $dp->copy($prev_dsn, $dsn);
    }
 
+   my $dsn_name = $dp->as_string($dsn, [qw(h P S)])
+               || $dp->as_string($dsn, [qw(F)])
+               || '';
+
    my $self = {
       dsn          => $dsn,
       dbh          => $args{dbh},
-      dsn_name     => $dp->as_string($dsn, [qw(h P S)]),
+      dsn_name     => $dsn_name,
       hostname     => '',
       set          => $args{set},
       NAME_lc      => defined($args{NAME_lc}) ? $args{NAME_lc} : 1,
       dbh_set      => 0,
-      OptionParser => $o,
+      ask_pass     => $o->get('ask-pass'),
       DSNParser    => $dp,
       is_cluster_node => undef,
    };
@@ -117,12 +121,11 @@ sub connect {
    my ( $self ) = @_;
    my $dsn = $self->{dsn};
    my $dp  = $self->{DSNParser};
-   my $o   = $self->{OptionParser};
 
    my $dbh = $self->{dbh};
    if ( !$dbh || !$dbh->ping() ) {
       # Ask for password once.
-      if ( $o->get('ask-pass') && !$self->{asked_for_pass} ) {
+      if ( $self->{ask_pass} && !$self->{asked_for_pass} ) {
          $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
          $self->{asked_for_pass} = 1;
       }
