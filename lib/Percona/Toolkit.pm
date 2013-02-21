@@ -1,4 +1,4 @@
-# This program is copyright 2012 Percona Inc.
+# This program is copyright 2012-2013 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -20,8 +20,6 @@
 {
 package Percona::Toolkit;
 our $VERSION = '2.1.8';
-
-sub bzr_repo { q{~percona-toolkit-dev} }
 
 1;
 }

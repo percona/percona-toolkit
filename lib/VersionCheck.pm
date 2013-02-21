@@ -37,14 +37,11 @@ local $Data::Dumper::Indent    = 1;
 local $Data::Dumper::Sortkeys  = 1;
 local $Data::Dumper::Quotekeys = 0;
 
-use Digest::MD5    qw(md5_hex);
-use Sys::Hostname  qw(hostname);
+use Digest::MD5 qw(md5_hex);
+use Sys::Hostname qw(hostname);
 use File::Basename qw();
 use File::Spec;
-
-use IPC::Cmd qw(can_run);
-use FindBin  qw();
-use Cwd      qw();
+use FindBin qw();
 
 eval {
    require Percona::Toolkit;
@@ -104,42 +101,19 @@ sub version_check {
    my $instances = $args{instances} || [];
    my $instances_to_check;
 
-   eval {
-      if (exists $ENV{PERCONA_VERSION_CHECK} && !$ENV{PERCONA_VERSION_CHECK}) {
-         PTDEBUG && _d('--version-check disabled by PERCONA_VERSION_CHECK=0');
+   # This sub should only be called if $o->get('version-check') is true,
+   # and it is by default because the option is on by default in PT 2.2.
+   # However, we do not want dev and testing to v-c, so even though this
+   # sub is called, force should be false because $o->got('version-check')
+   # is false, then check for a .bzr dir which indicates dev or testing. 
+   if ( !$args{force} ) {
+      if ( $FindBin::Bin && -d "$FindBin::Bin/../.bzr" ) {
+         PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
          return;
       }
+   }
 
-      if ( !$ENV{PERCONA_FORCE_VERSION_CHECK} ) {
-         # Check if we're running from a bzr repo, and that repo is ours.
-         if ( my $bzr = can_run('bzr') ) {
-            my $percona_repo = Percona::Toolkit::bzr_repo();
-            my $info         = `$bzr info 2>/dev/null`;
-            if ( $info && $info =~ /\Q$percona_repo/ ) {
-               PTDEBUG && _d('--version-check disabled by running from a bzr checkout');
-               return;
-            }
-         }
-
-         # Perhaps bzr isn't available, but we're still running from
-         # a bzr repo. Brian occasionally does this when running in
-         # his VMs, since it's usually easier than installing bzr.
-         # So check if $Cwd/.bzrignore or $FindBin::Bin/../.bzrignore
-         # exist, and if they do, check if it has this line:
-         # special/percona-toolkit/v-c-internal
-         for my $dir ( Cwd::cwd(), File::Spec->updir($FindBin::Bin) ) {
-            my $ignore = File::Spec->catfile($dir, '.bzrignore');
-            next unless -r $ignore;
-            open my $fh, '<', $ignore or next;
-            chomp(my $file_contents = do { local $/ = undef; <$fh> });
-            close $fh;
-            if ( $file_contents =~ m{special/percona-toolkit/v-c-internal} ) {
-               PTDEBUG && _d('--version-check disabled by running from a bzr checkout');
-               return;
-            }
-         }
-      }
-
+   eval {
       # Name and ID the instances.  The name is for debugging,
       # and the ID is what the code uses to prevent double-checking.
       foreach my $instance ( @$instances ) {
@@ -195,17 +169,19 @@ sub version_check {
    }
 
    # Always update the vc file, even if the version check fails.
-   eval {
-      # Update the check time for things we checked.  I.e. if we
-      # didn't check it, do _not_ update its time.
-      update_check_times(
-         instances => $instances_to_check,
-         vc_file   => $args{vc_file},  # testing
-         now       => $args{now},      # testing
-      );
-   };
-   if ( $EVAL_ERROR ) {
-      PTDEBUG && _d('Error updating version check file:', $EVAL_ERROR);
+   if ( @$instances_to_check ) {
+      eval {
+         # Update the check time for things we checked.  I.e. if we
+         # didn't check it, do _not_ update its time.
+         update_check_times(
+            instances => $instances_to_check,
+            vc_file   => $args{vc_file},  # testing
+            now       => $args{now},      # testing
+         );
+      };
+      if ( $EVAL_ERROR ) {
+         PTDEBUG && _d('Error updating version check file:', $EVAL_ERROR);
+      }
    }
 
    if ( $ENV{PTDEBUG_VERSION_CHECK} ) {

@@ -38,12 +38,22 @@ unlink $vc_file if -f $vc_file;
 $sb->create_dbs($master_dbh, ['test']);
 $sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
 
+# Normally --version-check is on by default, but in dev/testing envs,
+# there's going to be a .bzr dir that auto-disables --version-check so
+# our dev/test boxes don't flood the v-c database.  Consequently,
+# have have to explicitly give --version-check to force the check.
+
 $output = `PTDEBUG=1 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge --version-check 2>&1`;
 
 like(
    $output,
-   qr/VersionCheck/,
+   qr/VersionCheck:\d+ \d+ Server response/,
    "Looks like the version-check happened"
+) or diag($output);
+
+ok(
+   -f $vc_file,
+   "Version check file was created"
 ) or diag($output);
 
 $rows = $master_dbh->selectall_arrayref("SELECT * FROM test.table_1");
@@ -51,18 +61,13 @@ is_deeply(
    $rows,
    [],
    "Tool ran after version-check"
-) or diag(Dumper($rows));
-
-ok(
-   -f $vc_file,
-   "Created version check file"
-);
-
-my $orig_vc_file = `cat $vc_file 2>/dev/null`;
+) or diag(Dumper($rows), $output);
 
 # ###########################################################################
 # v-c file should limit checks to 1 per 24 hours
 # ###########################################################################
+
+my $orig_vc_file = `cat $vc_file 2>/dev/null`;
 
 $output = `PTDEBUG=1 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge --version-check 2>&1`;
 
@@ -78,7 +83,7 @@ is(
    $new_vc_file,
    $orig_vc_file,
    "Version check file not changed"
-);
+) or diag($output);
 
 unlink $vc_file if -f $vc_file;
 
@@ -94,7 +99,7 @@ my $t = time - $t0;
 
 like(
    $output,
-   qr/Error.+?(?:GET on https?:\/\/x\.percona\.com.+?HTTP status 5\d+|Failed to get any program versions; should have at least gotten Perl)/,
+   qr/Version check failed: GET on \S+x.percona.com returned HTTP status 5../,
    "The Percona server didn't respond"
 );
 
@@ -109,33 +114,46 @@ cmp_ok(
    "Tool waited a short while for the Percona server to respond"
 );
 
+# ###########################################################################
+# Disable --version-check.
+# ###########################################################################
+
 unlink $vc_file if -f $vc_file;
 
-# ###########################################################################
-# Disable the v-c.  It's already disabled, actually: test-env requires
-# no-version-check in /etc/percona-toolkit/percona-toolkit.conf (to keep
-# every test everywhere from version-checking).
-# ###########################################################################
-
-$output = `PTDEBUG=1 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge 2>&1`;
+$output = `PTDEBUG=1 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge --no-version-check 2>&1`;
 
 unlike(
    $output,
    qr/VersionCheck/,
-   "Looks like no --version-check disabled the version-check"
+   "Looks like --no-version-check disabled the check"
 ) or diag($output);
 
 ok(
    !-f $vc_file,
-   "percona-toolkit-version-check file not created with --no-version-check"
-);
+   "... version check file was not created"
+) or diag(`cat $vc_file`);
 
-$output = `PTDEBUG=1 PERCONA_VERSION_CHECK=0 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge --version-check 2>&1`;
+# Since this is a test, VersionCheck should detect the .bzr dir
+# and disble itself even without --no-version-check.
+
+$output = `PTDEBUG=1 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge 2>&1`;
+
+like(
+   $output,
+   qr/\.bzr disables --version-check/,
+   "Looks like .bzr disabled the check"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Updating last check time/,
+   "... version check file was not updated"
+) or diag($output);
 
 ok(
    !-f $vc_file,
-   "Looks like PERCONA_VERSION_CHECK=0 disabled the version-check"
-);
+   "... version check file was not created"
+) or diag($output, `cat $vc_file`);
 
 # #############################################################################
 # Done.
@@ -144,4 +162,3 @@ unlink $vc_file if -f $vc_file;
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
-exit;
