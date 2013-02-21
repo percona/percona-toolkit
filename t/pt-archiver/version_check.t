@@ -155,6 +155,33 @@ ok(
    "... version check file was not created"
 ) or diag($output, `cat $vc_file`);
 
+
+# #############################################################################
+# Test --version-check as if tool isn't in a dev/test env by copying
+# to another dir so VersionCheck won't see a ../.bzr/.
+# #############################################################################
+
+unlink $vc_file if -f $vc_file;
+
+diag(`cp $trunk/bin/pt-archiver /tmp/pt-archiver.$PID`);
+
+# Notice: --version-check is NOT on the command line, because
+# it should be enabled by default.
+$output = `PTDEBUG=1 /tmp/pt-archiver.$PID --source F=$cnf,D=test,t=table_1 --where 1=1 --purge 2>&1`;
+
+like(
+   $output,
+   qr/VersionCheck:\d+ \d+ Server response/,
+   "Looks like the version-check happened by default"
+) or diag($output);
+
+ok(
+   -f $vc_file,
+   "Version check file was created by default"
+) or diag($output);
+
+unlink "/tmp/pt-archiver.$PID" if "/tmp/pt-archiver.$PID";
+
 # #############################################################################
 # Done.
 # #############################################################################
