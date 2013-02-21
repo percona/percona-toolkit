@@ -21,6 +21,8 @@
 package Percona::Toolkit;
 our $VERSION = '2.1.8';
 
+sub bzr_repo { q{~percona-toolkit-dev} }
+
 1;
 }
 # ###########################################################################

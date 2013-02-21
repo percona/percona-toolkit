@@ -7,3 +7,4 @@ release
 snapshot
 .DS_Store
 build
+special/percona-toolkit/v-c-internal

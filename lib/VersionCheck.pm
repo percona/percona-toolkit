@@ -42,6 +42,10 @@ use Sys::Hostname  qw(hostname);
 use File::Basename qw();
 use File::Spec;
 
+use IPC::Cmd qw(can_run);
+use FindBin  qw();
+use Cwd      qw();
+
 eval {
    require Percona::Toolkit;
    require HTTPMicro;
@@ -104,6 +108,36 @@ sub version_check {
       if (exists $ENV{PERCONA_VERSION_CHECK} && !$ENV{PERCONA_VERSION_CHECK}) {
          PTDEBUG && _d('--version-check disabled by PERCONA_VERSION_CHECK=0');
          return;
+      }
+
+      if ( !$ENV{PERCONA_FORCE_VERSION_CHECK} ) {
+         # Check if we're running from a bzr repo, and that repo is ours.
+         if ( my $bzr = can_run('bzr') ) {
+            my $percona_repo = Percona::Toolkit::bzr_repo();
+            my $info         = `$bzr info 2>/dev/null`;
+            if ( $info && $info =~ /\Q$percona_repo/ ) {
+               PTDEBUG && _d('--version-check disabled by running from a bzr checkout');
+               return;
+            }
+         }
+
+         # Perhaps bzr isn't available, but we're still running from
+         # a bzr repo. Brian occasionally does this when running in
+         # his VMs, since it's usually easier than installing bzr.
+         # So check if $Cwd/.bzrignore or $FindBin::Bin/../.bzrignore
+         # exist, and if they do, check if it has this line:
+         # special/percona-toolkit/v-c-internal
+         for my $dir ( Cwd::cwd(), File::Spec->updir($FindBin::Bin) ) {
+            my $ignore = File::Spec->catfile($dir, '.bzrignore');
+            next unless -r $ignore;
+            open my $fh, '<', $ignore or next;
+            chomp(my $file_contents = do { local $/ = undef; <$fh> });
+            close $fh;
+            if ( $file_contents =~ m{special/percona-toolkit/v-c-internal} ) {
+               PTDEBUG && _d('--version-check disabled by running from a bzr checkout');
+               return;
+            }
+         }
       }
 
       # Name and ID the instances.  The name is for debugging,
