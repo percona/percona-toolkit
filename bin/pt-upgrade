@@ -9340,7 +9340,7 @@ host2:
 }
 
 sub report_stats {
-   print_header('Stats');
+   print_header('Stats', '-');
    my $fmt = "%-20s  %d\n";
    print "\n";
    foreach my $stat ( sort keys %$stats ) {
