@@ -24,13 +24,13 @@ BEGIN {
       OptionParser
       Cxn
       Transformers
-      SlowLogParser
       Daemon
       Outfile
       Retry
       HTTPMicro
       VersionCheck
       QueryRewriter
+      VersionParser
       FileIterator
       QueryIterator
       EventExecutor
@@ -38,6 +38,11 @@ BEGIN {
       ResultWriter
       ResultIterator
       FakeSth
+      SlowLogParser
+      GeneralLogParser
+      BinaryLogParser
+      TcpdumpParser
+      MySQLProtocolParser
    ));
 }
 
@@ -2272,15 +2277,19 @@ sub new {
       $dsn = $dp->copy($prev_dsn, $dsn);
    }
 
+   my $dsn_name = $dp->as_string($dsn, [qw(h P S)])
+               || $dp->as_string($dsn, [qw(F)])
+               || '';
+
    my $self = {
       dsn          => $dsn,
       dbh          => $args{dbh},
-      dsn_name     => $dp->as_string($dsn, [qw(h P S)]),
+      dsn_name     => $dsn_name,
       hostname     => '',
       set          => $args{set},
       NAME_lc      => defined($args{NAME_lc}) ? $args{NAME_lc} : 1,
       dbh_set      => 0,
-      OptionParser => $o,
+      ask_pass     => $o->get('ask-pass'),
       DSNParser    => $dp,
       is_cluster_node => undef,
    };
@@ -2292,11 +2301,10 @@ sub connect {
    my ( $self ) = @_;
    my $dsn = $self->{dsn};
    my $dp  = $self->{DSNParser};
-   my $o   = $self->{OptionParser};
 
    my $dbh = $self->{dbh};
    if ( !$dbh || !$dbh->ping() ) {
-      if ( $o->get('ask-pass') && !$self->{asked_for_pass} ) {
+      if ( $self->{ask_pass} && !$self->{asked_for_pass} ) {
          $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
          $self->{asked_for_pass} = 1;
       }
@@ -2728,218 +2736,6 @@ sub _d {
 }
 # ###########################################################################
 # End Transformers package
-# ###########################################################################
-
-# ###########################################################################
-# SlowLogParser package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/SlowLogParser.pm
-#   t/lib/SlowLogParser.t
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-{
-package SlowLogParser;
-
-use strict;
-use warnings FATAL => 'all';
-use English qw(-no_match_vars);
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
-
-use Data::Dumper;
-$Data::Dumper::Indent    = 1;
-$Data::Dumper::Sortkeys  = 1;
-$Data::Dumper::Quotekeys = 0;
-
-sub new {
-   my ( $class ) = @_;
-   my $self = {
-      pending => [],
-   };
-   return bless $self, $class;
-}
-
-my $slow_log_ts_line = qr/^# Time: ([0-9: ]{15})/;
-my $slow_log_uh_line = qr/# User\@Host: ([^\[]+|\[[^[]+\]).*?@ (\S*) \[(.*)\]/;
-my $slow_log_hd_line = qr{
-      ^(?:
-      T[cC][pP]\s[pP]ort:\s+\d+ # case differs on windows/unix
-      |
-      [/A-Z].*mysqld,\sVersion.*(?:started\swith:|embedded\slibrary)
-      |
-      Time\s+Id\s+Command
-      ).*\n
-   }xm;
-
-sub parse_event {
-   my ( $self, %args ) = @_;
-   my @required_args = qw(next_event tell);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my ($next_event, $tell) = @args{@required_args};
-
-   my $pending = $self->{pending};
-   local $INPUT_RECORD_SEPARATOR = ";\n#";
-   my $trimlen    = length($INPUT_RECORD_SEPARATOR);
-   my $pos_in_log = $tell->();
-   my $stmt;
-
-   EVENT:
-   while (
-         defined($stmt = shift @$pending)
-      or defined($stmt = $next_event->())
-   ) {
-      my @properties = ('cmd', 'Query', 'pos_in_log', $pos_in_log);
-      $pos_in_log = $tell->();
-
-      if ( $stmt =~ s/$slow_log_hd_line//go ){ # Throw away header lines in log
-         my @chunks = split(/$INPUT_RECORD_SEPARATOR/o, $stmt);
-         if ( @chunks > 1 ) {
-            PTDEBUG && _d("Found multiple chunks");
-            $stmt = shift @chunks;
-            unshift @$pending, @chunks;
-         }
-      }
-
-      $stmt = '#' . $stmt unless $stmt =~ m/\A#/;
-      $stmt =~ s/;\n#?\Z//;
-
-
-      my ($got_ts, $got_uh, $got_ac, $got_db, $got_set, $got_embed);
-      my $pos = 0;
-      my $len = length($stmt);
-      my $found_arg = 0;
-      LINE:
-      while ( $stmt =~ m/^(.*)$/mg ) { # /g is important, requires scalar match.
-         $pos     = pos($stmt);  # Be careful not to mess this up!
-         my $line = $1;          # Necessary for /g and pos() to work.
-         PTDEBUG && _d($line);
-
-         if ($line =~ m/^(?:#|use |SET (?:last_insert_id|insert_id|timestamp))/o) {
-
-            if ( !$got_ts && (my ( $time ) = $line =~ m/$slow_log_ts_line/o)) {
-               PTDEBUG && _d("Got ts", $time);
-               push @properties, 'ts', $time;
-               ++$got_ts;
-               if ( !$got_uh
-                  && ( my ( $user, $host, $ip ) = $line =~ m/$slow_log_uh_line/o )
-               ) {
-                  PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
-                  push @properties, 'user', $user, 'host', $host, 'ip', $ip;
-                  ++$got_uh;
-               }
-            }
-
-            elsif ( !$got_uh
-                  && ( my ( $user, $host, $ip ) = $line =~ m/$slow_log_uh_line/o )
-            ) {
-               PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
-               push @properties, 'user', $user, 'host', $host, 'ip', $ip;
-               ++$got_uh;
-            }
-
-            elsif (!$got_ac && $line =~ m/^# (?:administrator command:.*)$/) {
-               PTDEBUG && _d("Got admin command");
-               $line =~ s/^#\s+//;  # string leading "# ".
-               push @properties, 'cmd', 'Admin', 'arg', $line;
-               push @properties, 'bytes', length($properties[-1]);
-               ++$found_arg;
-               ++$got_ac;
-            }
-
-            elsif ( $line =~ m/^# +[A-Z][A-Za-z_]+: \S+/ ) { # Make the test cheap!
-               PTDEBUG && _d("Got some line with properties");
-
-               if ( $line =~ m/Schema:\s+\w+: / ) {
-                  PTDEBUG && _d('Removing empty Schema attrib');
-                  $line =~ s/Schema:\s+//;
-                  PTDEBUG && _d($line);
-               }
-
-               my @temp = $line =~ m/(\w+):\s+(\S+|\Z)/g;
-               push @properties, @temp;
-            }
-
-            elsif ( !$got_db && (my ( $db ) = $line =~ m/^use ([^;]+)/ ) ) {
-               PTDEBUG && _d("Got a default database:", $db);
-               push @properties, 'db', $db;
-               ++$got_db;
-            }
-
-            elsif (!$got_set && (my ($setting) = $line =~ m/^SET\s+([^;]*)/)) {
-               PTDEBUG && _d("Got some setting:", $setting);
-               push @properties, split(/,|\s*=\s*/, $setting);
-               ++$got_set;
-            }
-
-            if ( !$found_arg && $pos == $len ) {
-               PTDEBUG && _d("Did not find arg, looking for special cases");
-               local $INPUT_RECORD_SEPARATOR = ";\n";  # get next line
-               if ( defined(my $l = $next_event->()) ) {
-                  if ( $l =~ /^\s*[A-Z][a-z_]+: / ) {
-                     PTDEBUG && _d("Found NULL query before", $l);
-                     local $INPUT_RECORD_SEPARATOR = ";\n#";
-                     my $rest_of_event = $next_event->();
-                     push @{$self->{pending}}, $l . $rest_of_event;
-                     push @properties, 'cmd', 'Query', 'arg', '/* No query */';
-                     push @properties, 'bytes', 0;
-                     $found_arg++;
-                  }
-                  else {
-                     chomp $l;
-                     $l =~ s/^\s+//;
-                     PTDEBUG && _d("Found admin statement", $l);
-                     push @properties, 'cmd', 'Admin', 'arg', $l;
-                     push @properties, 'bytes', length($properties[-1]);
-                     $found_arg++;
-                  }
-               }
-               else {
-                  PTDEBUG && _d("I can't figure out what to do with this line");
-                  next EVENT;
-               }
-            }
-         }
-         else {
-            PTDEBUG && _d("Got the query/arg line");
-            my $arg = substr($stmt, $pos - length($line));
-            push @properties, 'arg', $arg, 'bytes', length($arg);
-            if ( $args{misc} && $args{misc}->{embed}
-               && ( my ($e) = $arg =~ m/($args{misc}->{embed})/)
-            ) {
-               push @properties, $e =~ m/$args{misc}->{capture}/g;
-            }
-            last LINE;
-         }
-      }
-
-      PTDEBUG && _d('Properties of event:', Dumper(\@properties));
-      my $event = { @properties };
-      if ( $args{stats} ) {
-         $args{stats}->{events_read}++;
-         $args{stats}->{events_parsed}++;
-      }
-      return $event;
-   } # EVENT
-
-   @$pending = ();
-   $args{oktorun}->(0) if $args{oktorun};
-   return;
-}
-
-sub _d {
-   my ($package, undef, $line) = caller 0;
-   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
-        map { defined $_ ? $_ : 'undef' }
-        @_;
-   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
-}
-
-1;
-}
-# ###########################################################################
-# End SlowLogParser package
 # ###########################################################################
 
 # ###########################################################################
@@ -4921,6 +4717,200 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# VersionParser package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/VersionParser.pm
+#   t/lib/VersionParser.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package VersionParser;
+
+use Lmo;
+use Scalar::Util qw(blessed);
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use overload (
+   '""'     => "version",
+   '<=>'    => "cmp",
+   'cmp'    => "cmp",
+   fallback => 1,
+);
+
+use Carp ();
+
+our $VERSION = 0.01;
+
+has major => (
+    is       => 'ro',
+    isa      => 'Int',
+    required => 1,
+);
+
+has [qw( minor revision )] => (
+    is  => 'ro',
+    isa => 'Num',
+);
+
+has flavor => (
+    is      => 'ro',
+    isa     => 'Str',
+    default => sub { 'Unknown' },
+);
+
+has innodb_version => (
+    is      => 'ro',
+    isa     => 'Str',
+    default => sub { 'NO' },
+);
+
+sub series {
+   my $self = shift;
+   return $self->_join_version($self->major, $self->minor);
+}
+
+sub version {
+   my $self = shift;
+   return $self->_join_version($self->major, $self->minor, $self->revision);
+}
+
+sub is_in {
+   my ($self, $target) = @_;
+
+   return $self eq $target;
+}
+
+sub _join_version {
+    my ($self, @parts) = @_;
+
+    return join ".", map { my $c = $_; $c =~ s/^0\./0/; $c } grep defined, @parts;
+}
+sub _split_version {
+   my ($self, $str) = @_;
+   my @version_parts = map { s/^0(?=\d)/0./; $_ } $str =~ m/(\d+)/g;
+   return @version_parts[0..2];
+}
+
+sub normalized_version {
+   my ( $self ) = @_;
+   my $result = sprintf('%d%02d%02d', map { $_ || 0 } $self->major,
+                                                      $self->minor,
+                                                      $self->revision);
+   PTDEBUG && _d($self->version, 'normalizes to', $result);
+   return $result;
+}
+
+sub comment {
+   my ( $self, $cmd ) = @_;
+   my $v = $self->normalized_version();
+
+   return "/*!$v $cmd */"
+}
+
+my @methods = qw(major minor revision);
+sub cmp {
+   my ($left, $right) = @_;
+   my $right_obj = (blessed($right) && $right->isa(ref($left)))
+                   ? $right
+                   : ref($left)->new($right);
+
+   my $retval = 0;
+   for my $m ( @methods ) {
+      last unless defined($left->$m) && defined($right_obj->$m);
+      $retval = $left->$m <=> $right_obj->$m;
+      last if $retval;
+   }
+   return $retval;
+}
+
+sub BUILDARGS {
+   my $self = shift;
+
+   if ( @_ == 1 ) {
+      my %args;
+      if ( blessed($_[0]) && $_[0]->can("selectrow_hashref") ) {
+         PTDEBUG && _d("VersionParser got a dbh, trying to get the version");
+         my $dbh = $_[0];
+         local $dbh->{FetchHashKeyName} = 'NAME_lc';
+         my $query = eval {
+            $dbh->selectall_arrayref(q/SHOW VARIABLES LIKE 'version%'/, { Slice => {} })
+         };
+         if ( $query ) {
+            $query = { map { $_->{variable_name} => $_->{value} } @$query };
+            @args{@methods} = $self->_split_version($query->{version});
+            $args{flavor} = delete $query->{version_comment}
+                  if $query->{version_comment};
+         }
+         elsif ( eval { ($query) = $dbh->selectrow_array(q/SELECT VERSION()/) } ) {
+            @args{@methods} = $self->_split_version($query);
+         }
+         else {
+            Carp::confess("Couldn't get the version from the dbh while "
+                        . "creating a VersionParser object: $@");
+         }
+         $args{innodb_version} = eval { $self->_innodb_version($dbh) };
+      }
+      elsif ( !ref($_[0]) ) {
+         @args{@methods} = $self->_split_version($_[0]);
+      }
+
+      for my $method (@methods) {
+         delete $args{$method} unless defined $args{$method};
+      }
+      @_ = %args if %args;
+   }
+
+   return $self->SUPER::BUILDARGS(@_);
+}
+
+sub _innodb_version {
+   my ( $self, $dbh ) = @_;
+   return unless $dbh;
+   my $innodb_version = "NO";
+
+   my ($innodb) =
+      grep { $_->{engine} =~ m/InnoDB/i }
+      map  {
+         my %hash;
+         @hash{ map { lc $_ } keys %$_ } = values %$_;
+         \%hash;
+      }
+      @{ $dbh->selectall_arrayref("SHOW ENGINES", {Slice=>{}}) };
+   if ( $innodb ) {
+      PTDEBUG && _d("InnoDB support:", $innodb->{support});
+      if ( $innodb->{support} =~ m/YES|DEFAULT/i ) {
+         my $vars = $dbh->selectrow_hashref(
+            "SHOW VARIABLES LIKE 'innodb_version'");
+         $innodb_version = !$vars ? "BUILTIN"
+                         :          ($vars->{Value} || $vars->{value});
+      }
+      else {
+         $innodb_version = $innodb->{support};  # probably DISABLED or NO
+      }
+   }
+
+   PTDEBUG && _d("InnoDB version:", $innodb_version);
+   return $innodb_version;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+no Lmo;
+1;
+}
+# ###########################################################################
+# End VersionParser package
+# ###########################################################################
+
+# ###########################################################################
 # FileIterator package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -5671,6 +5661,7 @@ sub report_class {
 }
 
 my $class_header_format = <<'EOF';
+
 %s
 %s
 %s
@@ -6236,6 +6227,2028 @@ sub finish {
 # ###########################################################################
 
 # ###########################################################################
+# SlowLogParser package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/SlowLogParser.pm
+#   t/lib/SlowLogParser.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package SlowLogParser;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use Data::Dumper;
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Sortkeys  = 1;
+$Data::Dumper::Quotekeys = 0;
+
+sub new {
+   my ( $class ) = @_;
+   my $self = {
+      pending => [],
+   };
+   return bless $self, $class;
+}
+
+my $slow_log_ts_line = qr/^# Time: ([0-9: ]{15})/;
+my $slow_log_uh_line = qr/# User\@Host: ([^\[]+|\[[^[]+\]).*?@ (\S*) \[(.*)\]/;
+my $slow_log_hd_line = qr{
+      ^(?:
+      T[cC][pP]\s[pP]ort:\s+\d+ # case differs on windows/unix
+      |
+      [/A-Z].*mysqld,\sVersion.*(?:started\swith:|embedded\slibrary)
+      |
+      Time\s+Id\s+Command
+      ).*\n
+   }xm;
+
+sub parse_event {
+   my ( $self, %args ) = @_;
+   my @required_args = qw(next_event tell);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($next_event, $tell) = @args{@required_args};
+
+   my $pending = $self->{pending};
+   local $INPUT_RECORD_SEPARATOR = ";\n#";
+   my $trimlen    = length($INPUT_RECORD_SEPARATOR);
+   my $pos_in_log = $tell->();
+   my $stmt;
+
+   EVENT:
+   while (
+         defined($stmt = shift @$pending)
+      or defined($stmt = $next_event->())
+   ) {
+      my @properties = ('cmd', 'Query', 'pos_in_log', $pos_in_log);
+      $pos_in_log = $tell->();
+
+      if ( $stmt =~ s/$slow_log_hd_line//go ){ # Throw away header lines in log
+         my @chunks = split(/$INPUT_RECORD_SEPARATOR/o, $stmt);
+         if ( @chunks > 1 ) {
+            PTDEBUG && _d("Found multiple chunks");
+            $stmt = shift @chunks;
+            unshift @$pending, @chunks;
+         }
+      }
+
+      $stmt = '#' . $stmt unless $stmt =~ m/\A#/;
+      $stmt =~ s/;\n#?\Z//;
+
+
+      my ($got_ts, $got_uh, $got_ac, $got_db, $got_set, $got_embed);
+      my $pos = 0;
+      my $len = length($stmt);
+      my $found_arg = 0;
+      LINE:
+      while ( $stmt =~ m/^(.*)$/mg ) { # /g is important, requires scalar match.
+         $pos     = pos($stmt);  # Be careful not to mess this up!
+         my $line = $1;          # Necessary for /g and pos() to work.
+         PTDEBUG && _d($line);
+
+         if ($line =~ m/^(?:#|use |SET (?:last_insert_id|insert_id|timestamp))/o) {
+
+            if ( !$got_ts && (my ( $time ) = $line =~ m/$slow_log_ts_line/o)) {
+               PTDEBUG && _d("Got ts", $time);
+               push @properties, 'ts', $time;
+               ++$got_ts;
+               if ( !$got_uh
+                  && ( my ( $user, $host, $ip ) = $line =~ m/$slow_log_uh_line/o )
+               ) {
+                  PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
+                  push @properties, 'user', $user, 'host', $host, 'ip', $ip;
+                  ++$got_uh;
+               }
+            }
+
+            elsif ( !$got_uh
+                  && ( my ( $user, $host, $ip ) = $line =~ m/$slow_log_uh_line/o )
+            ) {
+               PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
+               push @properties, 'user', $user, 'host', $host, 'ip', $ip;
+               ++$got_uh;
+            }
+
+            elsif (!$got_ac && $line =~ m/^# (?:administrator command:.*)$/) {
+               PTDEBUG && _d("Got admin command");
+               $line =~ s/^#\s+//;  # string leading "# ".
+               push @properties, 'cmd', 'Admin', 'arg', $line;
+               push @properties, 'bytes', length($properties[-1]);
+               ++$found_arg;
+               ++$got_ac;
+            }
+
+            elsif ( $line =~ m/^# +[A-Z][A-Za-z_]+: \S+/ ) { # Make the test cheap!
+               PTDEBUG && _d("Got some line with properties");
+
+               if ( $line =~ m/Schema:\s+\w+: / ) {
+                  PTDEBUG && _d('Removing empty Schema attrib');
+                  $line =~ s/Schema:\s+//;
+                  PTDEBUG && _d($line);
+               }
+
+               my @temp = $line =~ m/(\w+):\s+(\S+|\Z)/g;
+               push @properties, @temp;
+            }
+
+            elsif ( !$got_db && (my ( $db ) = $line =~ m/^use ([^;]+)/ ) ) {
+               PTDEBUG && _d("Got a default database:", $db);
+               push @properties, 'db', $db;
+               ++$got_db;
+            }
+
+            elsif (!$got_set && (my ($setting) = $line =~ m/^SET\s+([^;]*)/)) {
+               PTDEBUG && _d("Got some setting:", $setting);
+               push @properties, split(/,|\s*=\s*/, $setting);
+               ++$got_set;
+            }
+
+            if ( !$found_arg && $pos == $len ) {
+               PTDEBUG && _d("Did not find arg, looking for special cases");
+               local $INPUT_RECORD_SEPARATOR = ";\n";  # get next line
+               if ( defined(my $l = $next_event->()) ) {
+                  if ( $l =~ /^\s*[A-Z][a-z_]+: / ) {
+                     PTDEBUG && _d("Found NULL query before", $l);
+                     local $INPUT_RECORD_SEPARATOR = ";\n#";
+                     my $rest_of_event = $next_event->();
+                     push @{$self->{pending}}, $l . $rest_of_event;
+                     push @properties, 'cmd', 'Query', 'arg', '/* No query */';
+                     push @properties, 'bytes', 0;
+                     $found_arg++;
+                  }
+                  else {
+                     chomp $l;
+                     $l =~ s/^\s+//;
+                     PTDEBUG && _d("Found admin statement", $l);
+                     push @properties, 'cmd', 'Admin', 'arg', $l;
+                     push @properties, 'bytes', length($properties[-1]);
+                     $found_arg++;
+                  }
+               }
+               else {
+                  PTDEBUG && _d("I can't figure out what to do with this line");
+                  next EVENT;
+               }
+            }
+         }
+         else {
+            PTDEBUG && _d("Got the query/arg line");
+            my $arg = substr($stmt, $pos - length($line));
+            push @properties, 'arg', $arg, 'bytes', length($arg);
+            if ( $args{misc} && $args{misc}->{embed}
+               && ( my ($e) = $arg =~ m/($args{misc}->{embed})/)
+            ) {
+               push @properties, $e =~ m/$args{misc}->{capture}/g;
+            }
+            last LINE;
+         }
+      }
+
+      PTDEBUG && _d('Properties of event:', Dumper(\@properties));
+      my $event = { @properties };
+      if ( $args{stats} ) {
+         $args{stats}->{events_read}++;
+         $args{stats}->{events_parsed}++;
+      }
+      return $event;
+   } # EVENT
+
+   @$pending = ();
+   $args{oktorun}->(0) if $args{oktorun};
+   return;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End SlowLogParser package
+# ###########################################################################
+
+# ###########################################################################
+# GeneralLogParser package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/GeneralLogParser.pm
+#   t/lib/GeneralLogParser.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package GeneralLogParser;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use Data::Dumper;
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Sortkeys  = 1;
+$Data::Dumper::Quotekeys = 0;
+
+sub new {
+   my ( $class ) = @_;
+   my $self = {
+      pending => [],
+      db_for  => {},
+   };
+   return bless $self, $class;
+}
+
+my $genlog_line_1= qr{
+   \A
+   (?:(\d{6}\s+\d{1,2}:\d\d:\d\d))? # Timestamp
+   \s+
+   (?:\s*(\d+))                     # Thread ID
+   \s
+   (\w+)                            # Command
+   \s+
+   (.*)                             # Argument
+   \Z
+}xs;
+
+sub parse_event {
+   my ( $self, %args ) = @_;
+   my @required_args = qw(next_event tell);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($next_event, $tell) = @args{@required_args};
+
+   my $pending = $self->{pending};
+   my $db_for  = $self->{db_for};
+   my $line;
+   my $pos_in_log = $tell->();
+   LINE:
+   while (
+         defined($line = shift @$pending)
+      or defined($line = $next_event->())
+   ) {
+      PTDEBUG && _d($line);
+      my ($ts, $thread_id, $cmd, $arg) = $line =~ m/$genlog_line_1/;
+      if ( !($thread_id && $cmd) ) {
+         PTDEBUG && _d('Not start of general log event');
+         next;
+      }
+      my @properties = ('pos_in_log', $pos_in_log, 'ts', $ts,
+         'Thread_id', $thread_id);
+
+      $pos_in_log = $tell->();
+
+      @$pending = ();
+      if ( $cmd eq 'Query' ) {
+         my $done = 0;
+         do {
+            $line = $next_event->();
+            if ( $line ) {
+               my (undef, $next_thread_id, $next_cmd)
+                  = $line =~ m/$genlog_line_1/;
+               if ( $next_thread_id && $next_cmd ) {
+                  PTDEBUG && _d('Event done');
+                  $done = 1;
+                  push @$pending, $line;
+               }
+               else {
+                  PTDEBUG && _d('More arg:', $line);
+                  $arg .= $line;
+               }
+            }
+            else {
+               PTDEBUG && _d('No more lines');
+               $done = 1;
+            }
+         } until ( $done );
+
+         chomp $arg;
+         push @properties, 'cmd', 'Query', 'arg', $arg;
+         push @properties, 'bytes', length($properties[-1]);
+         push @properties, 'db', $db_for->{$thread_id} if $db_for->{$thread_id};
+      }
+      else {
+         push @properties, 'cmd', 'Admin';
+
+         if ( $cmd eq 'Connect' ) {
+            if ( $arg =~ m/^Access denied/ ) {
+               $cmd = $arg;
+            }
+            else {
+               my ($user) = $arg =~ m/(\S+)/;
+               my ($db)   = $arg =~ m/on (\S+)/;
+               my $host;
+               ($user, $host) = split(/@/, $user);
+               PTDEBUG && _d('Connect', $user, '@', $host, 'on', $db);
+
+               push @properties, 'user', $user if $user;
+               push @properties, 'host', $host if $host;
+               push @properties, 'db',   $db   if $db;
+               $db_for->{$thread_id} = $db;
+            }
+         }
+         elsif ( $cmd eq 'Init' ) {
+            $cmd = 'Init DB';
+            $arg =~ s/^DB\s+//;
+            my ($db) = $arg =~ /(\S+)/;
+            PTDEBUG && _d('Init DB:', $db);
+            push @properties, 'db',   $db   if $db;
+            $db_for->{$thread_id} = $db;
+         }
+
+         push @properties, 'arg', "administrator command: $cmd";
+         push @properties, 'bytes', length($properties[-1]);
+      }
+
+      push @properties, 'Query_time', 0;
+
+      PTDEBUG && _d('Properties of event:', Dumper(\@properties));
+      my $event = { @properties };
+      if ( $args{stats} ) {
+         $args{stats}->{events_read}++;
+         $args{stats}->{events_parsed}++;
+      }
+      return $event;
+   } # LINE
+
+   @{$self->{pending}} = ();
+   $args{oktorun}->(0) if $args{oktorun};
+   return;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End GeneralLogParser package
+# ###########################################################################
+
+# ###########################################################################
+# BinaryLogParser package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/BinaryLogParser.pm
+#   t/lib/BinaryLogParser.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package BinaryLogParser;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use Data::Dumper;
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Sortkeys  = 1;
+$Data::Dumper::Quotekeys = 0;
+
+my $binlog_line_1 = qr/at (\d+)$/m;
+my $binlog_line_2 = qr/^#(\d{6}\s+\d{1,2}:\d\d:\d\d)\s+server\s+id\s+(\d+)\s+end_log_pos\s+(\d+)\s+(\S+)\s*([^\n]*)$/m;
+my $binlog_line_2_rest = qr/thread_id=(\d+)\s+exec_time=(\d+)\s+error_code=(\d+)/m;
+
+sub new {
+   my ( $class, %args ) = @_;
+   my $self = {
+      delim     => undef,
+      delim_len => 0,
+   };
+   return bless $self, $class;
+}
+
+
+sub parse_event {
+   my ( $self, %args ) = @_;
+   my @required_args = qw(next_event tell);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($next_event, $tell) = @args{@required_args};
+
+   local $INPUT_RECORD_SEPARATOR = ";\n#";
+   my $pos_in_log = $tell->();
+   my $stmt;
+   my ($delim, $delim_len) = ($self->{delim}, $self->{delim_len});
+
+   EVENT:
+   while ( defined($stmt = $next_event->()) ) {
+      my @properties = ('pos_in_log', $pos_in_log);
+      my ($ts, $sid, $end, $type, $rest);
+      $pos_in_log = $tell->();
+      $stmt =~ s/;\n#?\Z//;
+
+      my ( $got_offset, $got_hdr );
+      my $pos = 0;
+      my $len = length($stmt);
+      my $found_arg = 0;
+      LINE:
+      while ( $stmt =~ m/^(.*)$/mg ) { # /g requires scalar match.
+         $pos     = pos($stmt);  # Be careful not to mess this up!
+         my $line = $1;          # Necessary for /g and pos() to work.
+         $line    =~ s/$delim// if $delim;
+         PTDEBUG && _d($line);
+
+         if ( $line =~ m/^\/\*.+\*\/;/ ) {
+            PTDEBUG && _d('Comment line');
+            next LINE;
+         }
+ 
+         if ( $line =~ m/^DELIMITER/m ) {
+            my ( $del ) = $line =~ m/^DELIMITER (\S*)$/m;
+            if ( $del ) {
+               $self->{delim_len} = $delim_len = length $del;
+               $self->{delim}     = $delim     = quotemeta $del;
+               PTDEBUG && _d('delimiter:', $delim);
+            }
+            else {
+               PTDEBUG && _d('Delimiter reset to ;');
+               $self->{delim}     = $delim     = undef;
+               $self->{delim_len} = $delim_len = 0;
+            }
+            next LINE;
+         }
+
+         next LINE if $line =~ m/End of log file/;
+
+         if ( !$got_offset && (my ( $offset ) = $line =~ m/$binlog_line_1/m) ) {
+            PTDEBUG && _d('Got the at offset line');
+            push @properties, 'offset', $offset;
+            $got_offset++;
+         }
+
+         elsif ( !$got_hdr && $line =~ m/^#(\d{6}\s+\d{1,2}:\d\d:\d\d)/ ) {
+            ($ts, $sid, $end, $type, $rest) = $line =~ m/$binlog_line_2/m;
+            PTDEBUG && _d('Got the header line; type:', $type, 'rest:', $rest);
+            push @properties, 'cmd', 'Query', 'ts', $ts, 'server_id', $sid,
+               'end_log_pos', $end;
+            $got_hdr++;
+         }
+
+         elsif ( $line =~ m/^(?:#|use |SET)/i ) {
+
+            if ( my ( $db ) = $line =~ m/^use ([^;]+)/ ) {
+               PTDEBUG && _d("Got a default database:", $db);
+               push @properties, 'db', $db;
+            }
+
+            elsif ( my ($setting) = $line =~ m/^SET\s+([^;]*)/ ) {
+               PTDEBUG && _d("Got some setting:", $setting);
+               push @properties, map { s/\s+//; lc } split(/,|\s*=\s*/, $setting);
+            }
+
+         }
+         else {
+            PTDEBUG && _d("Got the query/arg line at pos", $pos);
+            $found_arg++;
+            if ( $got_offset && $got_hdr ) {
+               if ( $type eq 'Xid' ) {
+                  my ($xid) = $rest =~ m/(\d+)/;
+                  push @properties, 'Xid', $xid;
+               }
+               elsif ( $type eq 'Query' ) {
+                  my ($i, $t, $c) = $rest =~ m/$binlog_line_2_rest/m;
+                  push @properties, 'Thread_id', $i, 'Query_time', $t,
+                                    'error_code', $c;
+               }
+               elsif ( $type eq 'Start:' ) {
+                  PTDEBUG && _d("Binlog start");
+               }
+               else {
+                  PTDEBUG && _d('Unknown event type:', $type);
+                  next EVENT;
+               }
+            }
+            else {
+               PTDEBUG && _d("It's not a query/arg, it's just some SQL fluff");
+               push @properties, 'cmd', 'Query', 'ts', undef;
+            }
+
+            my $delim_len = ($pos == length($stmt) ? $delim_len : 0);
+            my $arg = substr($stmt, $pos - length($line) - $delim_len);
+
+            $arg =~ s/$delim// if $delim; # Remove the delimiter.
+
+            if ( $arg =~ m/^DELIMITER/m ) {
+               my ( $del ) = $arg =~ m/^DELIMITER (\S*)$/m;
+               if ( $del ) {
+                  $self->{delim_len} = $delim_len = length $del;
+                  $self->{delim}     = $delim     = quotemeta $del;
+                  PTDEBUG && _d('delimiter:', $delim);
+               }
+               else {
+                  PTDEBUG && _d('Delimiter reset to ;');
+                  $del       = ';';
+                  $self->{delim}     = $delim     = undef;
+                  $self->{delim_len} = $delim_len = 0;
+               }
+
+               $arg =~ s/^DELIMITER.*$//m;  # Remove DELIMITER from arg.
+            }
+
+            $arg =~ s/;$//gm;  # Ensure ending ; are gone.
+            $arg =~ s/\s+$//;  # Remove trailing spaces and newlines.
+
+            push @properties, 'arg', $arg, 'bytes', length($arg);
+            last LINE;
+         }
+      } # LINE
+
+      if ( $found_arg ) {
+         PTDEBUG && _d('Properties of event:', Dumper(\@properties));
+         my $event = { @properties };
+         if ( $args{stats} ) {
+            $args{stats}->{events_read}++;
+            $args{stats}->{events_parsed}++;
+         }
+         return $event;
+      }
+      else {
+         PTDEBUG && _d('Event had no arg');
+      }
+   } # EVENT
+
+   $args{oktorun}->(0) if $args{oktorun};
+   return;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End BinaryLogParser package
+# ###########################################################################
+
+# ###########################################################################
+# TcpdumpParser package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/TcpdumpParser.pm
+#   t/lib/TcpdumpParser.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package TcpdumpParser;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use Data::Dumper;
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Sortkeys  = 1;
+$Data::Dumper::Quotekeys = 0;
+
+sub new {
+   my ( $class, %args ) = @_;
+   my $self = {};
+   return bless $self, $class;
+}
+
+sub parse_event {
+   my ( $self, %args ) = @_;
+   my @required_args = qw(next_event tell);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($next_event, $tell) = @args{@required_args};
+
+   local $INPUT_RECORD_SEPARATOR = "\n20";
+
+   my $pos_in_log = $tell->();
+   while ( defined(my $raw_packet = $next_event->()) ) {
+      next if $raw_packet =~ m/^$/;  # issue 564
+      $pos_in_log -= 1 if $pos_in_log;
+
+      $raw_packet =~ s/\n20\Z//;
+      $raw_packet = "20$raw_packet" unless $raw_packet =~ m/\A20/;
+
+      $raw_packet =~ s/0x0000:.+?(450.) /0x0000:  $1 /;
+
+      my $packet = $self->_parse_packet($raw_packet);
+      $packet->{pos_in_log} = $pos_in_log;
+      $packet->{raw_packet} = $raw_packet;
+
+      $args{stats}->{events_read}++ if $args{stats};
+
+      return $packet;
+   }
+
+   $args{oktorun}->(0) if $args{oktorun};
+   return;
+}
+
+sub _parse_packet {
+   my ( $self, $packet ) = @_;
+   die "I need a packet" unless $packet;
+
+   my ( $ts, $source, $dest )  = $packet =~ m/\A(\S+ \S+).*? IP .*?(\S+) > (\S+):/;
+   my ( $src_host, $src_port ) = $source =~ m/((?:\d+\.){3}\d+)\.(\w+)/;
+   my ( $dst_host, $dst_port ) = $dest   =~ m/((?:\d+\.){3}\d+)\.(\w+)/;
+
+   $src_port = $self->port_number($src_port);
+   $dst_port = $self->port_number($dst_port);
+   
+   my $hex = qr/[0-9a-f]/;
+   (my $data = join('', $packet =~ m/\s+0x$hex+:\s((?:\s$hex{2,4})+)/go)) =~ s/\s+//g; 
+
+   my $ip_hlen = hex(substr($data, 1, 1)); # Num of 32-bit words in header.
+   my $ip_plen = hex(substr($data, 4, 4)); # Num of BYTES in IPv4 datagram.
+   my $complete = length($data) == 2 * $ip_plen ? 1 : 0;
+
+   my $tcp_hlen = hex(substr($data, ($ip_hlen + 3) * 8, 1));
+
+   my $seq = hex(substr($data, ($ip_hlen + 1) * 8, 8));
+   my $ack = hex(substr($data, ($ip_hlen + 2) * 8, 8));
+
+   my $flags = hex(substr($data, (($ip_hlen + 3) * 8) + 2, 2));
+
+   $data = substr($data, ($ip_hlen + $tcp_hlen) * 8);
+
+   my $pkt = {
+      ts        => $ts,
+      seq       => $seq,
+      ack       => $ack,
+      fin       => $flags & 0x01,
+      syn       => $flags & 0x02,
+      rst       => $flags & 0x04,
+      src_host  => $src_host,
+      src_port  => $src_port,
+      dst_host  => $dst_host,
+      dst_port  => $dst_port,
+      complete  => $complete,
+      ip_hlen   => $ip_hlen,
+      tcp_hlen  => $tcp_hlen,
+      dgram_len => $ip_plen,
+      data_len  => $ip_plen - (($ip_hlen + $tcp_hlen) * 4),
+      data      => $data ? substr($data, 0, 10).(length $data > 10 ? '...' : '')
+                         : '',
+   };
+   PTDEBUG && _d('packet:', Dumper($pkt));
+   $pkt->{data} = $data;
+   return $pkt;
+}
+
+sub port_number {
+   my ( $self, $port ) = @_;
+   return unless $port;
+   return $port eq 'memcached' ? 11211
+        : $port eq 'http'      ? 80
+        : $port eq 'mysql'     ? 3306
+        :                        $port; 
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End TcpdumpParser package
+# ###########################################################################
+
+# ###########################################################################
+# MySQLProtocolParser package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/MySQLProtocolParser.pm
+#   t/lib/MySQLProtocolParser.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package MySQLProtocolParser;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+eval {
+   require IO::Uncompress::Inflate; # yum: perl-IO-Compress-Zlib
+   IO::Uncompress::Inflate->import(qw(inflate $InflateError));
+};
+
+use Data::Dumper;
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Sortkeys  = 1;
+$Data::Dumper::Quotekeys = 0;
+
+require Exporter;
+our @ISA         = qw(Exporter);
+our %EXPORT_TAGS = ();
+our @EXPORT      = ();
+our @EXPORT_OK   = qw(
+   parse_error_packet
+   parse_ok_packet
+   parse_ok_prepared_statement_packet
+   parse_server_handshake_packet
+   parse_client_handshake_packet
+   parse_com_packet
+   parse_flags
+);
+
+use constant {
+   COM_SLEEP               => '00',
+   COM_QUIT                => '01',
+   COM_INIT_DB             => '02',
+   COM_QUERY               => '03',
+   COM_FIELD_LIST          => '04',
+   COM_CREATE_DB           => '05',
+   COM_DROP_DB             => '06',
+   COM_REFRESH             => '07',
+   COM_SHUTDOWN            => '08',
+   COM_STATISTICS          => '09',
+   COM_PROCESS_INFO        => '0a',
+   COM_CONNECT             => '0b',
+   COM_PROCESS_KILL        => '0c',
+   COM_DEBUG               => '0d',
+   COM_PING                => '0e',
+   COM_TIME                => '0f',
+   COM_DELAYED_INSERT      => '10',
+   COM_CHANGE_USER         => '11',
+   COM_BINLOG_DUMP         => '12',
+   COM_TABLE_DUMP          => '13',
+   COM_CONNECT_OUT         => '14',
+   COM_REGISTER_SLAVE      => '15',
+   COM_STMT_PREPARE        => '16',
+   COM_STMT_EXECUTE        => '17',
+   COM_STMT_SEND_LONG_DATA => '18',
+   COM_STMT_CLOSE          => '19',
+   COM_STMT_RESET          => '1a',
+   COM_SET_OPTION          => '1b',
+   COM_STMT_FETCH          => '1c',
+   SERVER_QUERY_NO_GOOD_INDEX_USED => 16,
+   SERVER_QUERY_NO_INDEX_USED      => 32,
+};
+
+my %com_for = (
+   '00' => 'COM_SLEEP',
+   '01' => 'COM_QUIT',
+   '02' => 'COM_INIT_DB',
+   '03' => 'COM_QUERY',
+   '04' => 'COM_FIELD_LIST',
+   '05' => 'COM_CREATE_DB',
+   '06' => 'COM_DROP_DB',
+   '07' => 'COM_REFRESH',
+   '08' => 'COM_SHUTDOWN',
+   '09' => 'COM_STATISTICS',
+   '0a' => 'COM_PROCESS_INFO',
+   '0b' => 'COM_CONNECT',
+   '0c' => 'COM_PROCESS_KILL',
+   '0d' => 'COM_DEBUG',
+   '0e' => 'COM_PING',
+   '0f' => 'COM_TIME',
+   '10' => 'COM_DELAYED_INSERT',
+   '11' => 'COM_CHANGE_USER',
+   '12' => 'COM_BINLOG_DUMP',
+   '13' => 'COM_TABLE_DUMP',
+   '14' => 'COM_CONNECT_OUT',
+   '15' => 'COM_REGISTER_SLAVE',
+   '16' => 'COM_STMT_PREPARE',
+   '17' => 'COM_STMT_EXECUTE',
+   '18' => 'COM_STMT_SEND_LONG_DATA',
+   '19' => 'COM_STMT_CLOSE',
+   '1a' => 'COM_STMT_RESET',
+   '1b' => 'COM_SET_OPTION',
+   '1c' => 'COM_STMT_FETCH',
+);
+
+my %flag_for = (
+   'CLIENT_LONG_PASSWORD'     => 1,       # new more secure passwords 
+   'CLIENT_FOUND_ROWS'        => 2,       # Found instead of affected rows 
+   'CLIENT_LONG_FLAG'         => 4,       # Get all column flags 
+   'CLIENT_CONNECT_WITH_DB'   => 8,       # One can specify db on connect 
+   'CLIENT_NO_SCHEMA'         => 16,      # Don't allow database.table.column 
+   'CLIENT_COMPRESS'          => 32,      # Can use compression protocol 
+   'CLIENT_ODBC'              => 64,      # Odbc client 
+   'CLIENT_LOCAL_FILES'       => 128,     # Can use LOAD DATA LOCAL 
+   'CLIENT_IGNORE_SPACE'      => 256,     # Ignore spaces before '(' 
+   'CLIENT_PROTOCOL_41'       => 512,     # New 4.1 protocol 
+   'CLIENT_INTERACTIVE'       => 1024,    # This is an interactive client 
+   'CLIENT_SSL'               => 2048,    # Switch to SSL after handshake 
+   'CLIENT_IGNORE_SIGPIPE'    => 4096,    # IGNORE sigpipes 
+   'CLIENT_TRANSACTIONS'      => 8192,    # Client knows about transactions 
+   'CLIENT_RESERVED'          => 16384,   # Old flag for 4.1 protocol  
+   'CLIENT_SECURE_CONNECTION' => 32768,   # New 4.1 authentication 
+   'CLIENT_MULTI_STATEMENTS'  => 65536,   # Enable/disable multi-stmt support 
+   'CLIENT_MULTI_RESULTS'     => 131072,  # Enable/disable multi-results 
+);
+
+use constant {
+   MYSQL_TYPE_DECIMAL      => 0,
+   MYSQL_TYPE_TINY         => 1,
+   MYSQL_TYPE_SHORT        => 2,
+   MYSQL_TYPE_LONG         => 3,
+   MYSQL_TYPE_FLOAT        => 4,
+   MYSQL_TYPE_DOUBLE       => 5,
+   MYSQL_TYPE_NULL         => 6,
+   MYSQL_TYPE_TIMESTAMP    => 7,
+   MYSQL_TYPE_LONGLONG     => 8,
+   MYSQL_TYPE_INT24        => 9,
+   MYSQL_TYPE_DATE         => 10,
+   MYSQL_TYPE_TIME         => 11,
+   MYSQL_TYPE_DATETIME     => 12,
+   MYSQL_TYPE_YEAR         => 13,
+   MYSQL_TYPE_NEWDATE      => 14,
+   MYSQL_TYPE_VARCHAR      => 15,
+   MYSQL_TYPE_BIT          => 16,
+   MYSQL_TYPE_NEWDECIMAL   => 246,
+   MYSQL_TYPE_ENUM         => 247,
+   MYSQL_TYPE_SET          => 248,
+   MYSQL_TYPE_TINY_BLOB    => 249,
+   MYSQL_TYPE_MEDIUM_BLOB  => 250,
+   MYSQL_TYPE_LONG_BLOB    => 251,
+   MYSQL_TYPE_BLOB         => 252,
+   MYSQL_TYPE_VAR_STRING   => 253,
+   MYSQL_TYPE_STRING       => 254,
+   MYSQL_TYPE_GEOMETRY     => 255,
+};
+
+my %type_for = (
+   0   => 'MYSQL_TYPE_DECIMAL',
+   1   => 'MYSQL_TYPE_TINY',
+   2   => 'MYSQL_TYPE_SHORT',
+   3   => 'MYSQL_TYPE_LONG',
+   4   => 'MYSQL_TYPE_FLOAT',
+   5   => 'MYSQL_TYPE_DOUBLE',
+   6   => 'MYSQL_TYPE_NULL',
+   7   => 'MYSQL_TYPE_TIMESTAMP',
+   8   => 'MYSQL_TYPE_LONGLONG',
+   9   => 'MYSQL_TYPE_INT24',
+   10  => 'MYSQL_TYPE_DATE',
+   11  => 'MYSQL_TYPE_TIME',
+   12  => 'MYSQL_TYPE_DATETIME',
+   13  => 'MYSQL_TYPE_YEAR',
+   14  => 'MYSQL_TYPE_NEWDATE',
+   15  => 'MYSQL_TYPE_VARCHAR',
+   16  => 'MYSQL_TYPE_BIT',
+   246 => 'MYSQL_TYPE_NEWDECIMAL',
+   247 => 'MYSQL_TYPE_ENUM',
+   248 => 'MYSQL_TYPE_SET',
+   249 => 'MYSQL_TYPE_TINY_BLOB',
+   250 => 'MYSQL_TYPE_MEDIUM_BLOB',
+   251 => 'MYSQL_TYPE_LONG_BLOB',
+   252 => 'MYSQL_TYPE_BLOB',
+   253 => 'MYSQL_TYPE_VAR_STRING',
+   254 => 'MYSQL_TYPE_STRING',
+   255 => 'MYSQL_TYPE_GEOMETRY',
+);
+
+my %unpack_type = (
+   MYSQL_TYPE_NULL       => sub { return 'NULL', 0; },
+   MYSQL_TYPE_TINY       => sub { return to_num(@_, 1), 1; },
+   MySQL_TYPE_SHORT      => sub { return to_num(@_, 2), 2; },
+   MYSQL_TYPE_LONG       => sub { return to_num(@_, 4), 4; },
+   MYSQL_TYPE_LONGLONG   => sub { return to_num(@_, 8), 8; },
+   MYSQL_TYPE_DOUBLE     => sub { return to_double(@_), 8; },
+   MYSQL_TYPE_VARCHAR    => \&unpack_string,
+   MYSQL_TYPE_VAR_STRING => \&unpack_string,
+   MYSQL_TYPE_STRING     => \&unpack_string,
+);
+
+sub new {
+   my ( $class, %args ) = @_;
+
+   my $self = {
+      server         => $args{server},
+      port           => $args{port} || '3306',
+      version        => '41',    # MySQL proto version; not used yet
+      sessions       => {},
+      o              => $args{o},
+      fake_thread_id => 2**32,   # see _make_event()
+   };
+   PTDEBUG && $self->{server} && _d('Watching only server', $self->{server});
+   return bless $self, $class;
+}
+
+sub parse_event {
+   my ( $self, %args ) = @_;
+   my @required_args = qw(event);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my $packet = @args{@required_args};
+
+   my $src_host = "$packet->{src_host}:$packet->{src_port}";
+   my $dst_host = "$packet->{dst_host}:$packet->{dst_port}";
+
+   if ( my $server = $self->{server} ) {  # Watch only the given server.
+      $server .= ":$self->{port}";
+      if ( $src_host ne $server && $dst_host ne $server ) {
+         PTDEBUG && _d('Packet is not to or from', $server);
+         return;
+      }
+   }
+
+   my $packet_from;
+   my $client;
+   if ( $src_host =~ m/:$self->{port}$/ ) {
+      $packet_from = 'server';
+      $client      = $dst_host;
+   }
+   elsif ( $dst_host =~ m/:$self->{port}$/ ) {
+      $packet_from = 'client';
+      $client      = $src_host;
+   }
+   else {
+      PTDEBUG && _d('Packet is not to or from a MySQL server');
+      return;
+   }
+   PTDEBUG && _d('Client', $client);
+
+   my $packetno = -1;
+   if ( $packet->{data_len} >= 5 ) {
+      $packetno = to_num(substr($packet->{data}, 6, 2));
+   }
+   if ( !exists $self->{sessions}->{$client} ) {
+      if ( $packet->{syn} ) {
+         PTDEBUG && _d('New session (SYN)');
+      }
+      elsif ( $packetno == 0 ) {
+         PTDEBUG && _d('New session (packetno 0)');
+      }
+      else {
+         PTDEBUG && _d('Ignoring mid-stream', $packet_from, 'data,',
+            'packetno', $packetno);
+         return;
+      }
+
+      $self->{sessions}->{$client} = {
+         client        => $client,
+         ts            => $packet->{ts},
+         state         => undef,
+         compress      => undef,
+         raw_packets   => [],
+         buff          => '',
+         sths          => {},
+         attribs       => {},
+         n_queries     => 0,
+      };
+   }
+   my $session = $self->{sessions}->{$client};
+   PTDEBUG && _d('Client state:', $session->{state});
+
+   push @{$session->{raw_packets}}, $packet->{raw_packet};
+
+   if ( $packet->{syn} && ($session->{n_queries} > 0 || $session->{state}) ) {
+      PTDEBUG && _d('Client port reuse and last session did not quit');
+      $self->fail_session($session,
+            'client port reuse and last session did not quit');
+      return $self->parse_event(%args);
+   }
+
+   if ( $packet->{data_len} == 0 ) {
+      PTDEBUG && _d('TCP control:',
+         map { uc $_ } grep { $packet->{$_} } qw(syn ack fin rst));
+      if ( $packet->{'fin'}
+           && ($session->{state} || '') eq 'server_handshake' ) {
+         PTDEBUG && _d('Client aborted connection');
+         my $event = {
+            cmd => 'Admin',
+            arg => 'administrator command: Connect',
+            ts  => $packet->{ts},
+         };
+         $session->{attribs}->{Error_msg} = 'Client closed connection during handshake';
+         $event = $self->_make_event($event, $packet, $session);
+         delete $self->{sessions}->{$session->{client}};
+         return $event;
+      }
+      return;
+   }
+
+   if ( $session->{compress} ) {
+      return unless $self->uncompress_packet($packet, $session);
+   }
+
+   if ( $session->{buff} && $packet_from eq 'client' ) {
+      $session->{buff}      .= $packet->{data};
+      $packet->{data}        = $session->{buff};
+      $session->{buff_left} -= $packet->{data_len};
+
+      $packet->{mysql_data_len} = $session->{mysql_data_len};
+      $packet->{number}         = $session->{number};
+
+      PTDEBUG && _d('Appending data to buff; expecting',
+         $session->{buff_left}, 'more bytes');
+   }
+   else { 
+      eval {
+         remove_mysql_header($packet);
+      };
+      if ( $EVAL_ERROR ) {
+         PTDEBUG && _d('remove_mysql_header() failed; failing session');
+         $session->{EVAL_ERROR} = $EVAL_ERROR;
+         $self->fail_session($session, 'remove_mysql_header() failed');
+         return;
+      }
+   }
+
+   my $event;
+   if ( $packet_from eq 'server' ) {
+      $event = $self->_packet_from_server($packet, $session, $args{misc});
+   }
+   elsif ( $packet_from eq 'client' ) {
+      if ( $session->{buff} ) {
+         if ( $session->{buff_left} <= 0 ) {
+            PTDEBUG && _d('Data is complete');
+            $self->_delete_buff($session);
+         }
+         else {
+            return;  # waiting for more data; buff_left was reported earlier
+         }
+      }
+      elsif ( $packet->{mysql_data_len} > ($packet->{data_len} - 4) ) {
+
+         if ( $session->{cmd} && ($session->{state} || '') eq 'awaiting_reply' ) {
+            PTDEBUG && _d('No server OK to previous command (frag)');
+            $self->fail_session($session, 'no server OK to previous command');
+            $packet->{data} = $packet->{mysql_hdr} . $packet->{data};
+            return $self->parse_event(%args);
+         }
+
+         $session->{buff}           = $packet->{data};
+         $session->{mysql_data_len} = $packet->{mysql_data_len};
+         $session->{number}         = $packet->{number};
+
+         $session->{buff_left}
+            ||= $packet->{mysql_data_len} - ($packet->{data_len} - 4);
+
+         PTDEBUG && _d('Data not complete; expecting',
+            $session->{buff_left}, 'more bytes');
+         return;
+      }
+
+      if ( $session->{cmd} && ($session->{state} || '') eq 'awaiting_reply' ) {
+         PTDEBUG && _d('No server OK to previous command');
+         $self->fail_session($session, 'no server OK to previous command');
+         $packet->{data} = $packet->{mysql_hdr} . $packet->{data};
+         return $self->parse_event(%args);
+      }
+
+      $event = $self->_packet_from_client($packet, $session, $args{misc});
+   }
+   else {
+      die 'Packet origin unknown';
+   }
+
+   PTDEBUG && _d('Done parsing packet; client state:', $session->{state});
+   if ( $session->{closed} ) {
+      delete $self->{sessions}->{$session->{client}};
+      PTDEBUG && _d('Session deleted');
+   }
+
+   $args{stats}->{events_parsed}++ if $args{stats};
+   return $event;
+}
+
+sub _packet_from_server {
+   my ( $self, $packet, $session, $misc ) = @_;
+   die "I need a packet"  unless $packet;
+   die "I need a session" unless $session;
+
+   PTDEBUG && _d('Packet is from server; client state:', $session->{state}); 
+
+   if ( ($session->{server_seq} || '') eq $packet->{seq} ) {
+      push @{ $session->{server_retransmissions} }, $packet->{seq};
+      PTDEBUG && _d('TCP retransmission');
+      return;
+   }
+   $session->{server_seq} = $packet->{seq};
+
+   my $data = $packet->{data};
+
+
+   my ( $first_byte ) = substr($data, 0, 2, '');
+   PTDEBUG && _d('First byte of packet:', $first_byte);
+   if ( !$first_byte ) {
+      $self->fail_session($session, 'no first byte');
+      return;
+   }
+
+   if ( !$session->{state} ) {
+      if ( $first_byte eq '0a' && length $data >= 33 && $data =~ m/00{13}/ ) {
+         my $handshake = parse_server_handshake_packet($data);
+         if ( !$handshake ) {
+            $self->fail_session($session, 'failed to parse server handshake');
+            return;
+         }
+         $session->{state}     = 'server_handshake';
+         $session->{thread_id} = $handshake->{thread_id};
+
+         $session->{ts} = $packet->{ts} unless $session->{ts};
+      }
+      elsif ( $session->{buff} ) {
+         $self->fail_session($session,
+            'got server response before full buffer');
+         return;
+      }
+      else {
+         PTDEBUG && _d('Ignoring mid-stream server response');
+         return;
+      }
+   }
+   else {
+      if ( $first_byte eq '00' ) { 
+         if ( ($session->{state} || '') eq 'client_auth' ) {
+
+            $session->{compress} = $session->{will_compress};
+            delete $session->{will_compress};
+            PTDEBUG && $session->{compress} && _d('Packets will be compressed');
+
+            PTDEBUG && _d('Admin command: Connect');
+            return $self->_make_event(
+               {  cmd => 'Admin',
+                  arg => 'administrator command: Connect',
+                  ts  => $packet->{ts}, # Events are timestamped when they end
+               },
+               $packet, $session
+            );
+         }
+         elsif ( $session->{cmd} ) {
+            my $com = $session->{cmd}->{cmd};
+            my $ok;
+            if ( $com eq COM_STMT_PREPARE ) {
+               PTDEBUG && _d('OK for prepared statement');
+               $ok = parse_ok_prepared_statement_packet($data);
+               if ( !$ok ) {
+                  $self->fail_session($session,
+                     'failed to parse OK prepared statement packet');
+                  return;
+               }
+               my $sth_id = $ok->{sth_id};
+               $session->{attribs}->{Statement_id} = $sth_id;
+
+               $session->{sths}->{$sth_id} = $ok;
+               $session->{sths}->{$sth_id}->{statement}
+                  = $session->{cmd}->{arg};
+            }
+            else {
+               $ok  = parse_ok_packet($data);
+               if ( !$ok ) {
+                  $self->fail_session($session, 'failed to parse OK packet');
+                  return;
+               }
+            }
+
+            my $arg;
+            if ( $com eq COM_QUERY
+                 || $com eq COM_STMT_EXECUTE || $com eq COM_STMT_RESET ) {
+               $com = 'Query';
+               $arg = $session->{cmd}->{arg};
+            }
+            elsif ( $com eq COM_STMT_PREPARE ) {
+               $com = 'Query';
+               $arg = "PREPARE $session->{cmd}->{arg}";
+            }
+            else {
+               $arg = 'administrator command: '
+                    . ucfirst(lc(substr($com_for{$com}, 4)));
+               $com = 'Admin';
+            }
+
+            return $self->_make_event(
+               {  cmd           => $com,
+                  arg           => $arg,
+                  ts            => $packet->{ts},
+                  Insert_id     => $ok->{insert_id},
+                  Warning_count => $ok->{warnings},
+                  Rows_affected => $ok->{affected_rows},
+               },
+               $packet, $session
+            );
+         } 
+         else {
+            PTDEBUG && _d('Looks like an OK packet but session has no cmd');
+         }
+      }
+      elsif ( $first_byte eq 'ff' ) {
+         my $error = parse_error_packet($data);
+         if ( !$error ) {
+            $self->fail_session($session, 'failed to parse error packet');
+            return;
+         }
+         my $event;
+
+         if (   $session->{state} eq 'client_auth'
+             || $session->{state} eq 'server_handshake' ) {
+            PTDEBUG && _d('Connection failed');
+            $event = {
+               cmd      => 'Admin',
+               arg      => 'administrator command: Connect',
+               ts       => $packet->{ts},
+               Error_no => $error->{errno},
+            };
+            $session->{attribs}->{Error_msg} = $error->{message};
+            $session->{closed} = 1;  # delete session when done
+            return $self->_make_event($event, $packet, $session);
+         }
+         elsif ( $session->{cmd} ) {
+            my $com = $session->{cmd}->{cmd};
+            my $arg;
+
+            if ( $com eq COM_QUERY || $com eq COM_STMT_EXECUTE ) {
+               $com = 'Query';
+               $arg = $session->{cmd}->{arg};
+            }
+            else {
+               $arg = 'administrator command: '
+                    . ucfirst(lc(substr($com_for{$com}, 4)));
+               $com = 'Admin';
+            }
+
+            $event = {
+               cmd => $com,
+               arg => $arg,
+               ts  => $packet->{ts},
+            };
+            if ( $error->{errno} ) {
+               $event->{Error_no} = $error->{errno};
+            }
+            $session->{attribs}->{Error_msg} = $error->{message};
+            return $self->_make_event($event, $packet, $session);
+         }
+         else {
+            PTDEBUG && _d('Looks like an error packet but client is not '
+               . 'authenticating and session has no cmd');
+         }
+      }
+      elsif ( $first_byte eq 'fe' && $packet->{mysql_data_len} < 9 ) {
+         if ( $packet->{mysql_data_len} == 1
+              && $session->{state} eq 'client_auth'
+              && $packet->{number} == 2 )
+         {
+            PTDEBUG && _d('Server has old password table;',
+               'client will resend password using old algorithm');
+            $session->{state} = 'client_auth_resend';
+         }
+         else {
+            PTDEBUG && _d('Got an EOF packet');
+            $self->fail_session($session, 'got an unexpected EOF packet');
+         }
+      }
+      else {
+         if ( $session->{cmd} ) {
+            PTDEBUG && _d('Got a row/field/result packet');
+            my $com = $session->{cmd}->{cmd};
+            PTDEBUG && _d('Responding to client', $com_for{$com});
+            my $event = { ts  => $packet->{ts} };
+            if ( $com eq COM_QUERY || $com eq COM_STMT_EXECUTE ) {
+               $event->{cmd} = 'Query';
+               $event->{arg} = $session->{cmd}->{arg};
+            }
+            else {
+               $event->{arg} = 'administrator command: '
+                    . ucfirst(lc(substr($com_for{$com}, 4)));
+               $event->{cmd} = 'Admin';
+            }
+
+            if ( $packet->{complete} ) {
+               my ( $warning_count, $status_flags )
+                  = $data =~ m/fe(.{4})(.{4})\Z/;
+               if ( $warning_count ) { 
+                  $event->{Warnings} = to_num($warning_count);
+                  my $flags = to_num($status_flags); # TODO set all flags?
+                  $event->{No_good_index_used}
+                     = $flags & SERVER_QUERY_NO_GOOD_INDEX_USED ? 1 : 0;
+                  $event->{No_index_used}
+                     = $flags & SERVER_QUERY_NO_INDEX_USED ? 1 : 0;
+               }
+            }
+
+            return $self->_make_event($event, $packet, $session);
+         }
+         else {
+            PTDEBUG && _d('Unknown in-stream server response');
+         }
+      }
+   }
+
+   return;
+}
+
+sub _packet_from_client {
+   my ( $self, $packet, $session, $misc ) = @_;
+   die "I need a packet"  unless $packet;
+   die "I need a session" unless $session;
+
+   PTDEBUG && _d('Packet is from client; state:', $session->{state}); 
+
+   if ( ($session->{client_seq} || '') eq $packet->{seq} ) {
+      push @{ $session->{client_retransmissions} }, $packet->{seq};
+      PTDEBUG && _d('TCP retransmission');
+      return;
+   }
+   $session->{client_seq} = $packet->{seq};
+
+   my $data  = $packet->{data};
+   my $ts    = $packet->{ts};
+
+   if ( ($session->{state} || '') eq 'server_handshake' ) {
+      PTDEBUG && _d('Expecting client authentication packet');
+      my $handshake = parse_client_handshake_packet($data);
+      if ( !$handshake ) {
+         $self->fail_session($session, 'failed to parse client handshake');
+         return;
+      }
+      $session->{state}         = 'client_auth';
+      $session->{pos_in_log}    = $packet->{pos_in_log};
+      $session->{user}          = $handshake->{user};
+      $session->{db}            = $handshake->{db};
+
+      $session->{will_compress} = $handshake->{flags}->{CLIENT_COMPRESS};
+   }
+   elsif ( ($session->{state} || '') eq 'client_auth_resend' ) {
+      PTDEBUG && _d('Client resending password using old algorithm');
+      $session->{state} = 'client_auth';
+   }
+   elsif ( ($session->{state} || '') eq 'awaiting_reply' ) {
+      my $arg = $session->{cmd}->{arg} ? substr($session->{cmd}->{arg}, 0, 50)
+              : 'unknown';
+      PTDEBUG && _d('More data for previous command:', $arg, '...'); 
+      return;
+   }
+   else {
+      if ( $packet->{number} != 0 ) {
+         $self->fail_session($session, 'client cmd not packet 0');
+         return;
+      }
+
+      if ( !defined $session->{compress} ) {
+         return unless $self->detect_compression($packet, $session);
+         $data = $packet->{data};
+      }
+
+      my $com = parse_com_packet($data, $packet->{mysql_data_len});
+      if ( !$com ) {
+         $self->fail_session($session, 'failed to parse COM packet');
+         return;
+      }
+
+      if ( $com->{code} eq COM_STMT_EXECUTE ) {
+         PTDEBUG && _d('Execute prepared statement');
+         my $exec = parse_execute_packet($com->{data}, $session->{sths});
+         if ( !$exec ) {
+            PTDEBUG && _d('Failed to parse execute packet');
+            $session->{state} = undef;
+            return;
+         }
+         $com->{data} = $exec->{arg};
+         $session->{attribs}->{Statement_id} = $exec->{sth_id};
+      }
+      elsif ( $com->{code} eq COM_STMT_RESET ) {
+         my $sth_id = get_sth_id($com->{data});
+         if ( !$sth_id ) {
+            $self->fail_session($session,
+               'failed to parse prepared statement reset packet');
+            return;
+         }
+         $com->{data} = "RESET $sth_id";
+         $session->{attribs}->{Statement_id} = $sth_id;
+      }
+
+      $session->{state}      = 'awaiting_reply';
+      $session->{pos_in_log} = $packet->{pos_in_log};
+      $session->{ts}         = $ts;
+      $session->{cmd}        = {
+         cmd => $com->{code},
+         arg => $com->{data},
+      };
+
+      if ( $com->{code} eq COM_QUIT ) { # Fire right away; will cleanup later.
+         PTDEBUG && _d('Got a COM_QUIT');
+
+         $session->{closed} = 1;  # delete session when done
+
+         return $self->_make_event(
+            {  cmd       => 'Admin',
+               arg       => 'administrator command: Quit',
+               ts        => $ts,
+            },
+            $packet, $session
+         );
+      }
+      elsif ( $com->{code} eq COM_STMT_CLOSE ) {
+         my $sth_id = get_sth_id($com->{data});
+         if ( !$sth_id ) {
+            $self->fail_session($session,
+               'failed to parse prepared statement close packet');
+            return;
+         }
+         delete $session->{sths}->{$sth_id};
+         return $self->_make_event(
+            {  cmd       => 'Query',
+               arg       => "DEALLOCATE PREPARE $sth_id",
+               ts        => $ts,
+            },
+            $packet, $session
+         );
+      }
+   }
+
+   return;
+}
+
+sub _make_event {
+   my ( $self, $event, $packet, $session ) = @_;
+   PTDEBUG && _d('Making event');
+
+   $session->{raw_packets}  = [];
+   $self->_delete_buff($session);
+
+   if ( !$session->{thread_id} ) {
+      PTDEBUG && _d('Giving session fake thread id', $self->{fake_thread_id});
+      $session->{thread_id} = $self->{fake_thread_id}++;
+   }
+
+   my ($host, $port) = $session->{client} =~ m/((?:\d+\.){3}\d+)\:(\w+)/;
+   my $new_event = {
+      cmd        => $event->{cmd},
+      arg        => $event->{arg},
+      bytes      => length( $event->{arg} ),
+      ts         => tcp_timestamp( $event->{ts} ),
+      host       => $host,
+      ip         => $host,
+      port       => $port,
+      db         => $session->{db},
+      user       => $session->{user},
+      Thread_id  => $session->{thread_id},
+      pos_in_log => $session->{pos_in_log},
+      Query_time => timestamp_diff($session->{ts}, $packet->{ts}),
+      Rows_affected      => ($event->{Rows_affected} || 0),
+      Warning_count      => ($event->{Warning_count} || 0),
+      No_good_index_used => ($event->{No_good_index_used} ? 'Yes' : 'No'),
+      No_index_used      => ($event->{No_index_used}      ? 'Yes' : 'No'),
+   };
+   @{$new_event}{keys %{$session->{attribs}}} = values %{$session->{attribs}};
+   foreach my $opt_attrib ( qw(Error_no) ) {
+      if ( defined $event->{$opt_attrib} ) {
+         $new_event->{$opt_attrib} = $event->{$opt_attrib};
+      }
+   }
+   PTDEBUG && _d('Properties of event:', Dumper($new_event));
+
+   delete $session->{cmd};
+
+   $session->{state} = undef;
+
+   $session->{attribs} = {};
+
+   $session->{n_queries}++;
+   $session->{server_retransmissions} = [];
+   $session->{client_retransmissions} = [];
+
+   return $new_event;
+}
+
+sub tcp_timestamp {
+   my ( $ts ) = @_;
+   $ts =~ s/^\d\d(\d\d)-(\d\d)-(\d\d)/$1$2$3/;
+   return $ts;
+}
+
+sub timestamp_diff {
+   my ( $start, $end ) = @_;
+   my $sd = substr($start, 0, 11, '');
+   my $ed = substr($end,   0, 11, '');
+   my ( $sh, $sm, $ss ) = split(/:/, $start);
+   my ( $eh, $em, $es ) = split(/:/, $end);
+   my $esecs = ($eh * 3600 + $em * 60 + $es);
+   my $ssecs = ($sh * 3600 + $sm * 60 + $ss);
+   if ( $sd eq $ed ) {
+      return sprintf '%.6f', $esecs - $ssecs;
+   }
+   else { # Assume only one day boundary has been crossed, no DST, etc
+      return sprintf '%.6f', ( 86_400 - $ssecs ) + $esecs;
+   }
+}
+
+sub to_string {
+   my ( $data ) = @_;
+   return pack('H*', $data);
+}
+
+sub unpack_string {
+   my ( $data ) = @_;
+   my $len        = 0;
+   my $encode_len = 0;
+   ($data, $len, $encode_len) = decode_len($data);
+   my $t = 'H' . ($len ? $len * 2 : '*');
+   $data = pack($t, $data);
+   return "\"$data\"", $encode_len + $len;
+}
+
+sub decode_len {
+   my ( $data ) = @_;
+   return unless $data;
+
+   my $first_byte = to_num(substr($data, 0, 2, ''));
+
+   my $len;
+   my $encode_len;
+   if ( $first_byte <= 251 ) {
+      $len        = $first_byte;
+      $encode_len = 1;
+   }
+   elsif ( $first_byte == 252 ) {
+      $len        = to_num(substr($data, 4, ''));
+      $encode_len = 2;
+   }
+   elsif ( $first_byte == 253 ) {
+      $len        = to_num(substr($data, 6, ''));
+      $encode_len = 3;
+   }
+   elsif ( $first_byte == 254 ) {
+      $len        = to_num(substr($data, 16, ''));
+      $encode_len = 8;
+   }
+   else {
+      PTDEBUG && _d('data:', $data, 'first byte:', $first_byte);
+      die "Invalid length encoded byte: $first_byte";
+   }
+
+   PTDEBUG && _d('len:', $len, 'encode len', $encode_len);
+   return $data, $len, $encode_len;
+}
+
+sub to_num {
+   my ( $str, $len ) = @_;
+   if ( $len ) {
+      $str = substr($str, 0, $len * 2);
+   }
+   my @bytes = $str =~ m/(..)/g;
+   my $result = 0;
+   foreach my $i ( 0 .. $#bytes ) {
+      $result += hex($bytes[$i]) * (16 ** ($i * 2));
+   }
+   return $result;
+}
+
+sub to_double {
+   my ( $str ) = @_;
+   return unpack('d', pack('H*', $str));
+}
+
+sub get_lcb {
+   my ( $string ) = @_;
+   my $first_byte = hex(substr($$string, 0, 2, ''));
+   if ( $first_byte < 251 ) {
+      return $first_byte;
+   }
+   elsif ( $first_byte == 252 ) {
+      return to_num(substr($$string, 0, 4, ''));
+   }
+   elsif ( $first_byte == 253 ) {
+      return to_num(substr($$string, 0, 6, ''));
+   }
+   elsif ( $first_byte == 254 ) {
+      return to_num(substr($$string, 0, 16, ''));
+   }
+}
+
+sub parse_error_packet {
+   my ( $data ) = @_;
+   return unless $data;
+   PTDEBUG && _d('ERROR data:', $data);
+   if ( length $data < 16 ) {
+      PTDEBUG && _d('Error packet is too short:', $data);
+      return;
+   }
+   my $errno    = to_num(substr($data, 0, 4));
+   my $marker   = to_string(substr($data, 4, 2));
+   my $sqlstate = '';
+   my $message  = '';
+   if ( $marker eq '#' ) {
+      $sqlstate = to_string(substr($data, 6, 10));
+      $message  = to_string(substr($data, 16));
+   }
+   else {
+      $marker  = '';
+      $message = to_string(substr($data, 4));
+   }
+   return unless $message;
+   my $pkt = {
+      errno    => $errno,
+      sqlstate => $marker . $sqlstate,
+      message  => $message,
+   };
+   PTDEBUG && _d('Error packet:', Dumper($pkt));
+   return $pkt;
+}
+
+sub parse_ok_packet {
+   my ( $data ) = @_;
+   return unless $data;
+   PTDEBUG && _d('OK data:', $data);
+   if ( length $data < 12 ) {
+      PTDEBUG && _d('OK packet is too short:', $data);
+      return;
+   }
+   my $affected_rows = get_lcb(\$data);
+   my $insert_id     = get_lcb(\$data);
+   my $status        = to_num(substr($data, 0, 4, ''));
+   my $warnings      = to_num(substr($data, 0, 4, ''));
+   my $message       = to_string($data);
+   my $pkt = {
+      affected_rows => $affected_rows,
+      insert_id     => $insert_id,
+      status        => $status,
+      warnings      => $warnings,
+      message       => $message,
+   };
+   PTDEBUG && _d('OK packet:', Dumper($pkt));
+   return $pkt;
+}
+
+sub parse_ok_prepared_statement_packet {
+   my ( $data ) = @_;
+   return unless $data;
+   PTDEBUG && _d('OK prepared statement data:', $data);
+   if ( length $data < 8 ) {
+      PTDEBUG && _d('OK prepared statement packet is too short:', $data);
+      return;
+   }
+   my $sth_id     = to_num(substr($data, 0, 8, ''));
+   my $num_cols   = to_num(substr($data, 0, 4, ''));
+   my $num_params = to_num(substr($data, 0, 4, ''));
+   my $pkt = {
+      sth_id     => $sth_id,
+      num_cols   => $num_cols,
+      num_params => $num_params,
+   };
+   PTDEBUG && _d('OK prepared packet:', Dumper($pkt));
+   return $pkt;
+}
+
+sub parse_server_handshake_packet {
+   my ( $data ) = @_;
+   return unless $data;
+   PTDEBUG && _d('Server handshake data:', $data);
+   my $handshake_pattern = qr{
+      ^                 # -----                ----
+      (.+?)00           # n Null-Term String   server_version
+      (.{8})            # 4                    thread_id
+      .{16}             # 8                    scramble_buff
+      .{2}              # 1                    filler: always 0x00
+      (.{4})            # 2                    server_capabilities
+      .{2}              # 1                    server_language
+      .{4}              # 2                    server_status
+      .{26}             # 13                   filler: always 0x00
+   }x;
+   my ( $server_version, $thread_id, $flags ) = $data =~ m/$handshake_pattern/;
+   my $pkt = {
+      server_version => to_string($server_version),
+      thread_id      => to_num($thread_id),
+      flags          => parse_flags($flags),
+   };
+   PTDEBUG && _d('Server handshake packet:', Dumper($pkt));
+   return $pkt;
+}
+
+sub parse_client_handshake_packet {
+   my ( $data ) = @_;
+   return unless $data;
+   PTDEBUG && _d('Client handshake data:', $data);
+   my ( $flags, $user, $buff_len ) = $data =~ m{
+      ^
+      (.{8})         # Client flags
+      .{10}          # Max packet size, charset
+      (?:00){23}     # Filler
+      ((?:..)+?)00   # Null-terminated user name
+      (..)           # Length-coding byte for scramble buff
+   }x;
+
+   if ( !$buff_len ) {
+      PTDEBUG && _d('Did not match client handshake packet');
+      return;
+   }
+
+   my $code_len = hex($buff_len);
+   my ( $db ) = $data =~ m!
+      ^.{64}${user}00..   # Everything matched before
+      (?:..){$code_len}   # The scramble buffer
+      (.*)00\Z            # The database name
+   !x;
+   my $pkt = {
+      user  => to_string($user),
+      db    => $db ? to_string($db) : '',
+      flags => parse_flags($flags),
+   };
+   PTDEBUG && _d('Client handshake packet:', Dumper($pkt));
+   return $pkt;
+}
+
+sub parse_com_packet {
+   my ( $data, $len ) = @_;
+   return unless $data && $len;
+   PTDEBUG && _d('COM data:',
+      (substr($data, 0, 100).(length $data > 100 ? '...' : '')),
+      'len:', $len);
+   my $code = substr($data, 0, 2);
+   my $com  = $com_for{$code};
+   if ( !$com ) {
+      PTDEBUG && _d('Did not match COM packet');
+      return;
+   }
+   if (    $code ne COM_STMT_EXECUTE
+        && $code ne COM_STMT_CLOSE
+        && $code ne COM_STMT_RESET )
+   {
+      $data = to_string(substr($data, 2, ($len - 1) * 2));
+   }
+   my $pkt = {
+      code => $code,
+      com  => $com,
+      data => $data,
+   };
+   PTDEBUG && _d('COM packet:', Dumper($pkt));
+   return $pkt;
+}
+
+sub parse_execute_packet {
+   my ( $data, $sths ) = @_;
+   return unless $data && $sths;
+
+   my $sth_id = to_num(substr($data, 2, 8));
+   return unless defined $sth_id;
+
+   my $sth = $sths->{$sth_id};
+   if ( !$sth ) {
+      PTDEBUG && _d('Skipping unknown statement handle', $sth_id);
+      return;
+   }
+   my $null_count  = int(($sth->{num_params} + 7) / 8) || 1;
+   my $null_bitmap = to_num(substr($data, 20, $null_count * 2));
+   PTDEBUG && _d('NULL bitmap:', $null_bitmap, 'count:', $null_count);
+   
+   substr($data, 0, 20 + ($null_count * 2), '');
+
+   my $new_params = to_num(substr($data, 0, 2, ''));
+   my @types; 
+   if ( $new_params ) {
+      PTDEBUG && _d('New param types');
+      for my $i ( 0..($sth->{num_params}-1) ) {
+         my $type = to_num(substr($data, 0, 4, ''));
+         push @types, $type_for{$type};
+         PTDEBUG && _d('Param', $i, 'type:', $type, $type_for{$type});
+      }
+      $sth->{types} = \@types;
+   }
+   else {
+      @types = @{$sth->{types}} if $data;
+   }
+
+
+   my $arg  = $sth->{statement};
+   PTDEBUG && _d('Statement:', $arg);
+   for my $i ( 0..($sth->{num_params}-1) ) {
+      my $val;
+      my $len;  # in bytes
+      if ( $null_bitmap & (2**$i) ) {
+         PTDEBUG && _d('Param', $i, 'is NULL (bitmap)');
+         $val = 'NULL';
+         $len = 0;
+      }
+      else {
+         if ( $unpack_type{$types[$i]} ) {
+            ($val, $len) = $unpack_type{$types[$i]}->($data);
+         }
+         else {
+            PTDEBUG && _d('No handler for param', $i, 'type', $types[$i]);
+            $val = '?';
+            $len = 0;
+         }
+      }
+
+      PTDEBUG && _d('Param', $i, 'val:', $val);
+      $arg =~ s/\?/$val/;
+
+      substr($data, 0, $len * 2, '') if $len;
+   }
+
+   my $pkt = {
+      sth_id => $sth_id,
+      arg    => "EXECUTE $arg",
+   };
+   PTDEBUG && _d('Execute packet:', Dumper($pkt));
+   return $pkt;
+}
+
+sub get_sth_id {
+   my ( $data ) = @_;
+   return unless $data;
+   my $sth_id = to_num(substr($data, 2, 8));
+   return $sth_id;
+}
+
+sub parse_flags {
+   my ( $flags ) = @_;
+   die "I need flags" unless $flags;
+   PTDEBUG && _d('Flag data:', $flags);
+   my %flags     = %flag_for;
+   my $flags_dec = to_num($flags);
+   foreach my $flag ( keys %flag_for ) {
+      my $flagno    = $flag_for{$flag};
+      $flags{$flag} = ($flags_dec & $flagno ? 1 : 0);
+   }
+   return \%flags;
+}
+
+sub uncompress_data {
+   my ( $data, $len ) = @_;
+   die "I need data" unless $data;
+   die "I need a len argument" unless $len;
+   die "I need a scalar reference to data" unless ref $data eq 'SCALAR';
+   PTDEBUG && _d('Uncompressing data');
+   our $InflateError;
+
+   my $comp_bin_data = pack('H*', $$data);
+
+   my $uncomp_bin_data = '';
+   my $z = new IO::Uncompress::Inflate(
+      \$comp_bin_data
+   ) or die "IO::Uncompress::Inflate failed: $InflateError";
+   my $status = $z->read(\$uncomp_bin_data, $len)
+      or die "IO::Uncompress::Inflate failed: $InflateError";
+
+   my $uncomp_data = unpack('H*', $uncomp_bin_data);
+
+   return \$uncomp_data;
+}
+
+sub detect_compression {
+   my ( $self, $packet, $session ) = @_;
+   PTDEBUG && _d('Checking for client compression');
+   my $com = parse_com_packet($packet->{data}, $packet->{mysql_data_len});
+   if ( $com && $com->{code} eq COM_SLEEP ) {
+      PTDEBUG && _d('Client is using compression');
+      $session->{compress} = 1;
+
+      $packet->{data} = $packet->{mysql_hdr} . $packet->{data};
+      return 0 unless $self->uncompress_packet($packet, $session);
+      remove_mysql_header($packet);
+   }
+   else {
+      PTDEBUG && _d('Client is NOT using compression');
+      $session->{compress} = 0;
+   }
+   return 1;
+}
+
+sub uncompress_packet {
+   my ( $self, $packet, $session ) = @_;
+   die "I need a packet"  unless $packet;
+   die "I need a session" unless $session;
+
+
+   my $data;
+   my $comp_hdr;
+   my $comp_data_len;
+   my $pkt_num;
+   my $uncomp_data_len;
+   eval {
+      $data            = \$packet->{data};
+      $comp_hdr        = substr($$data, 0, 14, '');
+      $comp_data_len   = to_num(substr($comp_hdr, 0, 6));
+      $pkt_num         = to_num(substr($comp_hdr, 6, 2));
+      $uncomp_data_len = to_num(substr($comp_hdr, 8, 6));
+      PTDEBUG && _d('Compression header data:', $comp_hdr,
+         'compressed data len (bytes)', $comp_data_len,
+         'number', $pkt_num,
+         'uncompressed data len (bytes)', $uncomp_data_len);
+   };
+   if ( $EVAL_ERROR ) {
+      $session->{EVAL_ERROR} = $EVAL_ERROR;
+      $self->fail_session($session, 'failed to parse compression header');
+      return 0;
+   }
+
+   if ( $uncomp_data_len ) {
+      eval {
+         $data = uncompress_data($data, $uncomp_data_len);
+         $packet->{data} = $$data;
+      };
+      if ( $EVAL_ERROR ) {
+         $session->{EVAL_ERROR} = $EVAL_ERROR;
+         $self->fail_session($session, 'failed to uncompress data');
+         die "Cannot uncompress packet.  Check that IO::Uncompress::Inflate "
+            . "is installed.\nError: $EVAL_ERROR";
+      }
+   }
+   else {
+      PTDEBUG && _d('Packet is not really compressed');
+      $packet->{data} = $$data;
+   }
+
+   return 1;
+}
+
+sub remove_mysql_header {
+   my ( $packet ) = @_;
+   die "I need a packet" unless $packet;
+
+   my $mysql_hdr      = substr($packet->{data}, 0, 8, '');
+   my $mysql_data_len = to_num(substr($mysql_hdr, 0, 6));
+   my $pkt_num        = to_num(substr($mysql_hdr, 6, 2));
+   PTDEBUG && _d('MySQL packet: header data', $mysql_hdr,
+      'data len (bytes)', $mysql_data_len, 'number', $pkt_num);
+
+   $packet->{mysql_hdr}      = $mysql_hdr;
+   $packet->{mysql_data_len} = $mysql_data_len;
+   $packet->{number}         = $pkt_num;
+
+   return;
+}
+
+sub _get_errors_fh {
+   my ( $self ) = @_;
+   my $errors_fh = $self->{errors_fh};
+   return $errors_fh if $errors_fh;
+
+   my $o = $self->{o};
+   if ( $o && $o->has('tcpdump-errors') && $o->got('tcpdump-errors') ) {
+      my $errors_file = $o->get('tcpdump-errors');
+      PTDEBUG && _d('tcpdump-errors file:', $errors_file);
+      open $errors_fh, '>>', $errors_file
+         or die "Cannot open tcpdump-errors file $errors_file: $OS_ERROR";
+   }
+
+   $self->{errors_fh} = $errors_fh;
+   return $errors_fh;
+}
+
+sub fail_session {
+   my ( $self, $session, $reason ) = @_;
+   PTDEBUG && _d('Client', $session->{client}, 'failed because', $reason);
+   my $errors_fh = $self->_get_errors_fh();
+   if ( $errors_fh ) {
+      my $raw_packets = $session->{raw_packets};
+      delete $session->{raw_packets};  # Don't dump, it's printed below.
+      $session->{reason_for_failure} = $reason;
+      my $session_dump = '# ' . Dumper($session);
+      chomp $session_dump;
+      $session_dump =~ s/\n/\n# /g;
+      print $errors_fh "$session_dump\n";
+      {
+         local $LIST_SEPARATOR = "\n";
+         print $errors_fh "@$raw_packets";
+         print $errors_fh "\n";
+      }
+   }
+   delete $self->{sessions}->{$session->{client}};
+   return;
+}
+
+sub _delete_buff {
+   my ( $self, $session ) = @_;
+   map { delete $session->{$_} } qw(buff buff_left mysql_data_len);
+   return;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End MySQLProtocolParser package
+# ###########################################################################
+
+# ###########################################################################
 # This is a combination of modules and programs in one -- a runnable module.
 # http://www.perl.com/pub/a/2006/07/13/lightning-articles.html?page=last
 # Or, look it up in the Camel book on pages 642 and 643 in the 3rd edition.
@@ -6265,6 +8278,14 @@ use sigtrap 'handler', \&sig_int, 'normal-signals';
 my $oktorun     = 1;
 my $exit_status = 0;
 my $stats       = {};
+         
+my %modules_for_log_type = (
+   slowlog => ['SlowLogParser'],
+   binlog  => ['BinaryLogParser'],
+   genlog  => ['GeneralLogParser'],
+   tcpdump => ['TcpdumpParser','MySQLProtocolParser'],
+   rawlog  => ['RawLogParser'],
+);
 
 sub main {
    local @ARGV = @_;  # set global ARGV for this package
@@ -6292,44 +8313,76 @@ sub main {
    my $dp = $o->DSNParser();
    $dp->prop('set-vars', $o->get('set-vars'));
 
-   my $host1_dsn_string;
-   my $host2_dsn_string;
-   my $results_dir;
-   my $file;
+   my @dsns;
+   my @dirs;
+   my @logs;
+   my $report = $o->get('report');
 
-   if ( @ARGV > 3 ) {
-      $o->save_error('Too many command line arguments.  '
-         . 'Please see the SYNOPSIS in the tool\'s documentation.');
-   }
-   else {
-      if ( -f $ARGV[0]
-           && ($ARGV[1] && !-f $ARGV[1] && !-d $ARGV[1])
-           && ($ARGV[2] && !-f $ARGV[2] && !-d $ARGV[2])
-           && !$o->got('save-results') )
-      {
-         PTDEBUG && _d('Use case: FILE HOST HOST');
-         ($file, $host1_dsn_string, $host2_dsn_string) = @ARGV;
+   foreach my $arg ( @ARGV ) {
+      if ( -f $arg ) {
+         PTDEBUG && _d($arg, 'is a file');
+         push @logs, $arg;
       }
-      elsif ( -f $ARGV[0]
-              && ($ARGV[1] && !-f $ARGV[1] && !-d $ARGV[1])
-              && !$ARGV[2]
-              && $o->got('save-results') )
-      {
-         PTDEBUG && _d('Use case: FILE HOST --save-results');
-         ($file, $host1_dsn_string) = @ARGV;
-         $results_dir = $o->get('save-results');
-      } 
-      elsif ( -d $ARGV[0]
-              && ($ARGV[1] && !-f $ARGV[1] && !-d $ARGV[1])
-              && !$ARGV[2]
-              && !$o->got('save-results') )
-      {
-         PTDEBUG && _d('Use case: DIR HOST');
-         ($results_dir, $host2_dsn_string) = @ARGV;
-      } 
+      elsif ( -d $arg ) {
+         PTDEBUG && _d($arg, 'is a dir');
+         push @dirs, $arg;
+      }
       else {
-         $o->save_error('Invalid combination of command line arguments.  '
-            . 'Please see the SYNOPSIS in the tool\'s documentation.');
+         PTDEBUG && _d($arg, 'is a DSN');
+         push @dsns, $arg;
+      }
+   }
+
+   if ( !$o->get('help') ) {
+      if ( !@dsns ) {
+         $o->save_error('No DSNs were specified.');
+      }
+      elsif ( @dsns > 2 ) {
+         $o->save_error('Only one or two DSNs can be specified; got '
+             . scalar @dsns . ': ' . join(', ', @dsns));
+      }
+      elsif ( my $dir = $o->get('save-results') ) {
+         # 1 DSN, --save-results, and LOGS
+         if ( @dsns > 1 ) {
+            $o->save_error('Only one DSN can be specified with --save-results; '
+               . 'got ' . scalar @dsns . ': ' . join(', ', @dsns));
+         }
+         if ( !@logs ) {
+            $o->save_error('No log files specified; at least one is required.');
+         }
+         if ( @dirs ) {
+            $o->save_error('No other directories can be specified with '
+               . '--save-results; got ' . scalar @dirs . ': '
+               . join(', ', @dirs));
+         }
+         if ( ! -d $dir ) {
+            $o->save_error("$dir is not a directory.");
+         }
+      }
+      elsif ( @dirs ) {
+         # 1 DIR, and 1 DSN
+         if ( @dirs > 1 ) {
+            $o->save_error('Only one results directory can be specified; got '
+               . scalar @dirs . ': ' . join(', ', @dirs));
+         }
+         if ( @dsns > 1 ) {
+            $o->save_error('Only one DSN can be specified with a results '
+               . 'directory; got ' . scalar @dsns . ': ' . join(', ', @dsns));
+         }
+         if ( @logs ) {
+            $o->save_error('Log files cannot be specified with a results '
+               . 'directory; got ' . scalar @logs . ': ' . join(', ', @logs));
+         }
+      }
+      elsif ( !@logs ) {
+         # 2 DSN and LOGS
+         $o->save_error('No log files specified; at least one is required.');
+      }
+
+      foreach my $val ( keys %$report ) {
+         if ( $val !~ m/^(?:hosts|logs|queries|stats)$/ ) {
+            $o->save_error("Invalid --report value: $val");
+         }
       }
    }
 
@@ -6338,7 +8391,10 @@ sub main {
    # ########################################################################
    # Connect to the hosts.
    # ########################################################################
-   my ($host1, $host2);
+   my $host1_dsn_string = shift @dsns;
+   my $host2_dsn_string = shift @dsns;
+   my $host1;
+   my $host2;
 
    my $set_on_connect = sub {
       my ($dbh) = @_;
@@ -6402,9 +8458,9 @@ sub main {
       $daemon->make_PID_file();
    }
 
-   # ##########################################################################
+   # ########################################################################
    # Check and maybe create the --upgrade-table.
-   # ##########################################################################
+   # ########################################################################
    if ( $host1 ) {
       check_upgrade_table(
          host          => $host1,
@@ -6421,10 +8477,26 @@ sub main {
       );
    }
 
-   # ##########################################################################
+   # ######################################################################## 
+   # Preprocess the log files.
+   # ######################################################################## 
+   my $parser = make_parser(
+      type         => $o->get('type'),
+      watch_server => $o->get('watch-server'),
+   );
+   if ( $report->{logs} ) {
+      report_logs(
+         logs => \@logs,
+      );
+   }
+
+   # ########################################################################
    # Execute and compare the queries.
-   # ##########################################################################
+   # ########################################################################
+   my $results_dir = shift @dirs;
+
    my %optional_args = (
+      dry_run         => $o->get('dry-run'),
       database        => $o->get('database'),
       filter          => $o->get('filter'),
       ignore_warnings => $o->get('ignore-warnings'),
@@ -6432,9 +8504,18 @@ sub main {
       read_timeout    => $o->get('read-timeout'),
    );
 
+
    if ( $host1 && $host2 ) {
+      if ( $report->{hosts} ) {
+         report_hosts(
+            host1 => $host1,
+            host2 => $host2,
+         );
+      }
+
       compare_host_to_host(
-         file            => $file,
+         logs            => \@logs,
+         parser          => $parser,
          host1           => $host1,
          host2           => $host2,
          max_class_size  => $o->get('max-class-size'),
@@ -6445,7 +8526,8 @@ sub main {
    }
    elsif ( $host1 && $results_dir ) {
       save_results(
-         file          => $file,
+         logs          => \@logs,
+         parser        => $parser,
          host          => $host1,
          results_dir   => $results_dir,
          upgrade_table => $o->get('upgrade-table'),
@@ -6469,7 +8551,10 @@ sub main {
          . "with the exact command line used to run the tool.\n";
    }
 
-   report_stats();
+   PTDEBUG && _d('Stats:', Dumper($stats));
+   if ( $report->{stats} ) {
+      report_stats();
+   }
 
    return $exit_status;
 }
@@ -6477,6 +8562,51 @@ sub main {
 # ############################################################################
 # Subroutines.
 # ############################################################################
+
+sub make_parser {
+   my (%args) = @_;
+   my $type = $args{type};
+
+   # Optional args
+   my $watch_server = $args{watch_server};
+
+   my ($server, $port);
+   if ( $watch_server ) {
+      ($server, $port) = $watch_server
+            =~ m/^((?:\d+\.\d+\.\d+\.\d+|[\w\.\-]+\w))(?:[\:\.](\S+))?/;
+      PTDEBUG && _d('Watch server', $server, 'port', $port);
+   }
+
+   my @parsers;
+   foreach my $module ( @{$modules_for_log_type{$type}} ) {
+      my $parser = eval {
+         $module->new(
+            server => $server,
+            port   => $port,
+         );
+      };
+      if ( $EVAL_ERROR ) {
+         die "Error loading module $module for log type $type: $EVAL_ERROR";
+      }
+      push @parsers, $parser;
+   }
+
+   if ( @parsers == 1 ) {
+      return $parsers[0];
+   }
+
+   my $parser = sub {
+      my (%args) = @_;
+      my $event = $parsers[0]->parse_event(%args);
+      if ( $event ) {
+         $args{event} = $event;
+         $event = $parsers[1]->parse_event(%args);
+      }
+      return $event;
+   };
+
+   return $parser;
+}
 
 sub check_upgrade_table {
    my ( %args ) = @_;
@@ -6620,21 +8750,23 @@ sub compare_host_to_host {
 #      host1
 #      host2
 #   )) or die;
-   my $file           = $args{file};
+   my $logs           = $args{logs};
+   my $parser         = $args{parser};
    my $host1          = $args{host1};
    my $host2          = $args{host2};
    my $max_class_size = $args{max_class_size};
    my $max_examples   = $args{max_examples}; 
    my $upgrade_table  = $args{upgrade_table};
-   PTDEBUG && _d('Compare', $host1->name, 'to', $host2->name);
 
    # Optional args
+   my $dry_run         = $args{dry_run};
    my $database        = $args{database};
    my $filter          = $args{filter};
    my $ignore_warnings = $args{ignore_warnings};
    my $read_only       = $args{read_only};
    my $read_timeout    = $args{read_timeout};
 
+   # Get set up to execute and compare queries.
    my $clear_warnings_sql = "SELECT * FROM $upgrade_table LIMIT 1 "
                           . "/* pt-upgrade clear warnings */";
    my $clear_warnings_sth1 = $host1->dbh->prepare($clear_warnings_sql);
@@ -6648,11 +8780,11 @@ sub compare_host_to_host {
    my $qr = QueryRewriter->new();  # fingerprint
 
    my $file_iter = FileIterator->new();
-   my $files = $file_iter->get_file_itr($file);
+   my $files = $file_iter->get_file_itr(@$logs);
 
    my $query_iter = QueryIterator->new(
       file_iter        => $files,
-      parser           => SlowLogParser->new(),
+      parser           => $parser,
       fingerprint      => sub { return $qr->fingerprint(@_) },
       oktorun          => sub { return $oktorun },
       stats            => $stats,
@@ -6666,7 +8798,10 @@ sub compare_host_to_host {
       default_database => $database,
    );
 
+   # Execute and compare queries.
    while ( my $event = $query_iter->next() ) {
+      next if $dry_run;
+
       $clear_warnings_sth1->execute();
       my $results1 = $executor->exec_event(
          event => $event,
@@ -6707,12 +8842,34 @@ sub save_results {
    PTDEBUG && _d('Save results to', $results_dir);
 
    # Optional args
+   my $dry_run         = $args{dry_run};
    my $database        = $args{database};
    my $filter          = $args{filter};
    my $ignore_warnings = $args{ignore_warnings};
    my $read_only       = $args{read_only};
    my $read_timeout    = $args{read_timeout};
+   
+   # Print the host and where we're saving the results.
+   my $v        = VersionParser->new($host->dbh);
+   my $hostname = get_hostname($host->dbh);
 
+   printf "Log file: %s
+
+host1:
+
+  DSN:       %s
+  hostname:  %s
+  MySQL:     %s
+
+Results directory: $results_dir
+",
+      $file,
+      ($host->{dsn_name} || '?'),
+      $hostname,
+      ($v->flavor . ' ' . $v->version),
+      $results_dir;
+
+   # Get set up to execute queries and save the results.
    my $clear_warnings_sql = "SELECT * FROM $upgrade_table LIMIT 1 "
                           . "/* pt-upgrade clear warnings */";
    my $clear_warnings_sth = $host->dbh->prepare($clear_warnings_sql);
@@ -6743,6 +8900,7 @@ sub save_results {
       default_database => $database,
    );
 
+   # Execute queries and save the results.
    while ( my $event = $query_iter->next() ) {
       $clear_warnings_sth->execute();
       my $host_results = $executor->exec_event(
@@ -6775,6 +8933,7 @@ sub compare_results_to_host {
    PTDEBUG && _d('Compare', $results_dir, 'to', $host->name);
 
    # Optional args
+   my $dry_run         = $args{dry_run};
    my $database        = $args{database};
    my $ignore_warnings = $args{ignore_warnings};
 
@@ -7090,18 +9249,81 @@ sub identical_rows {
    return 1;
 } 
 
-sub report_stats {
-   print "
-########################################################################
-# Stats
-########################################################################
+sub report_logs {
+   my (%args) = @_;
+   my $logs = $args{logs};
 
-";
+   print_header('Logs', '-');
+
+   foreach my $log ( @$logs ) {
+      printf "\nFile: %s\nSize: %s\n", $log, (-s $log || '?');
+   }
+
+   return;
+}
+
+sub report_hosts {
+   my (%args) = @_;
+   my $host1 = $args{host1};
+   my $host2 = $args{host2};
+
+   # Print which hosts we're comparing.
+   my $v1 = VersionParser->new($host1->dbh);
+   my $v2 = VersionParser->new($host2->dbh);
+   my $hostname1 = get_hostname($host1->dbh);
+   my $hostname2 = get_hostname($host2->dbh);
+
+   print_header('Hosts', '-');
+
+   printf "
+host1:
+
+  DSN:       %s
+  hostname:  %s
+  MySQL:     %s
+
+host2:
+
+  DSN:       %s
+  hostname:  %s
+  MySQL:     %s
+",
+      ($host1->{dsn_name} || '?'),
+      $hostname1,
+      ($v1->flavor . ' ' . $v1->version),
+      ($host2->{dsn_name} || '?'),
+      $hostname2,
+      ($v2->flavor . ' ' . $v2->version);
+
+   return;
+}
+
+sub report_stats {
+   print_header('Stats');
    my $fmt = "%-20s  %d\n";
+   print "\n";
    foreach my $stat ( sort keys %$stats ) {
       printf $fmt, $stat, $stats->{$stat} || 0;
    }
    return;
+}
+
+sub print_header {
+   my ($name, $c) = @_;
+   $name ||= '?';
+   $c    ||= '#';
+   print "\n#" . ($c x 71) . "\n";
+   print "# $name\n";
+   print "#" . ($c x 71) . "\n";
+}
+
+sub get_hostname {
+   my ($dbh, $v) = @_;
+   my ($hostname) = $dbh->selectrow_array(q{SELECT /*!50038 @@hostname */});
+   if ( !$hostname ) {
+      chomp($hostname = `hostname`);
+   }
+   return $hostname || '?';
 }
 
 # Catches signals so we can exit gracefully.
@@ -7347,31 +9569,19 @@ indicated in the report.
 
 A report begins with the following three sections:
 
-  #######################################################################
-  # Summary
-  #######################################################################
+  host1:
 
-  Report                  pt-upgrade-report.1357416568.txt
-  Date                    Sat Jan  5 13:15:05 MST 2013
-  Log                     /var/lib/mysql/slow.log
-  Run time                00:01:00
-  Completed               No, 70% complete
-  Exit status             1 (--run-time expired)
+    DSN:      h=host1,P=12345
+    MySQL:    MySQL 5.1.59
+    hostname: dev1.mysql
 
-  #######################################################################
-  # Hosts
-  #######################################################################
+  host2:
 
-  DSN                     (Reference results) 
-  Hostname                foo.domain.com
-  MySQL version           5.0.95
-  Reference results       Yes, ~/host1/refres
+    DSN:      h=host2,P=12345
+    MySQL:    MySQL 5.5.10
+    hostname: dev2.mysql
 
-  compared to:
-
-  DSN                     h=127.1,P=12346
-  Hostname                bar.domain.com
-  MySQL version           5.5.6
+  Log file: /opt/mysql/slow.log
 
   #######################################################################
   # Counters
@@ -7591,6 +9801,10 @@ Database to use for queries that do not specify a database.
 Fork to the background and detach from the shell.
 This only works for POSIX operating systems.
 
+=item --dry-run
+
+Run but do not execute or compare queries.
+
 =item --[no]disable-query-cache
 
 default: yes
@@ -7693,6 +9907,12 @@ the input and prints its reports.
 
 This option requires the Perl POSIX module.
 
+=item --report
+
+type: Hash; default: hosts, logs, queries, stats
+
+Print these sections of the L<"REPORT">.
+
 =item --save-results
 
 type: string
@@ -7716,6 +9936,19 @@ string will be appended to SET and executed.
 short form: -S; type: string
 
 Socket file to use for connection.
+
+=item --type
+
+type: string; default: slowlog
+
+Type of log files.  Valid types are:
+
+  VALUE    LOG TYPE
+  =======  ==========================================
+  slowlog  MySQL slow log
+  genlog   MySQL general log
+  binlog   MySQL binary log (converted by mysqlbinlog)
+  rawlog   Custom log with one SQL statement per line
 
 =item --upgrade-table
 
@@ -7752,6 +9985,23 @@ Send program versions to Percona and print suggested upgrades and problems.
 Possible values for --version-check:
 
 For more information, visit L<http://www.percona.com/version-check>.
+
+=item --watch-server
+
+type: string
+
+This option tells pt-upgrade which server IP address and port (like
+"10.0.0.1:3306") to watch when parsing tcpdump (for L<"--type"> tcpdump and
+memcached); all other servers are ignored.  If you don't specify it,
+pt-upgrade watches all servers by looking for any IP address using port
+3306 or "mysql".  If you're watching a server with a non-standard port, this
+won't work, so you must specify the IP address and port to watch.
+
+If you want to watch a mix of servers, some running on standard port 3306
+and some running on non-standard ports, you need to create separate
+tcpdump outputs for the non-standard port servers and then specify this
+option for each.  At present pt-upgrade cannot auto-detect servers on
+port 3306 and also be told to watch a server on a non-standard port.
 
 =back
 

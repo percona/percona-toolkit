@@ -322,6 +322,7 @@ sub report_class {
 # for this header, util/update-modules will remove them from the code.
 # *facepalm*
 my $class_header_format = <<'EOF';
+
 %s
 %s
 %s

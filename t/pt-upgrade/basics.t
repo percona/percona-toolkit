@@ -87,7 +87,12 @@ while ( my $sampleno = readdir $dh ) {
                $output,
                "$sample/$sampleno/$basename.txt",
                cmd_output => 1,
-               ($sed ? (sed => [ $sed ]) : ()),
+               sed => [
+                  q{'s/File: .*/File: .../'},
+                  q{'s/  hostname:  .*/  hostname:  .../'},
+                  q{'s/  MySQL:     .*/  MySQL:     .../'},
+                  ($sed ? $sed : ()),
+               ],
             ),
             "$sampleno: $basename.txt"
          ) or diag("\n\n---- DIFF ----\n\n", $test_diff,
