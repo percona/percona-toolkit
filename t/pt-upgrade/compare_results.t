@@ -97,17 +97,20 @@ while ( my $sampleno = readdir $dh ) {
          stderr => 1,
       );
 
-      my $file
-         =  -f "$samples_dir/$sampleno/${basename}_results.txt" ? "${basename}_results.txt"
-         : -f "$samples_dir/$sampleno/${basename}.txt" ? "${basename}.txt"
-         : undef;
-      if ( $file ) {
+      if ( -f "$samples_dir/$sampleno/${basename}_results.txt" ) {
          ok(
             no_diff(
                $output,
-               "$sample/$sampleno/$file",
+               "$sample/$sampleno/${basename}_results.txt",
                cmd_output => 1,
-               ($sed ? (sed => [ $sed ]) : ()),
+               sed => [
+                  q{'s/Results directory: .*/Results directory: .../'},
+                  q{'s/Reading results from .*/Reading results from .../'},
+                  q{'s/Saving results in .*/Saving results in .../'},
+                  q{'s/  hostname:  .*/  hostname:  .../'},
+                  q{'s/  MySQL:     .*/  MySQL:     .../'},
+                  ($sed ? $sed : ()),
+               ],
             ),
             "$sampleno: $basename.txt"
          ) or diag("\n\n---- DIFF ----\n\n", $test_diff,

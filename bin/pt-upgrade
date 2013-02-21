@@ -8389,10 +8389,27 @@ sub main {
    $o->usage_or_errors();
 
    # ########################################################################
+   # Get results dir and DSN strings from whatever we just parsed.
+   # ########################################################################
+   my $results_dir;
+   my $host1_dsn_string;
+   my $host2_dsn_string;
+   if ( $o->get('save-results')) {
+      $results_dir = $o->get('save-results');
+      $host1_dsn_string = shift @dsns;
+   }
+   elsif ( @dirs ) {
+      $results_dir = shift @dirs;
+      $host2_dsn_string = shift @dsns;
+   }
+   else {
+      $host1_dsn_string = shift @dsns;
+      $host2_dsn_string = shift @dsns;
+   }
+
+   # ########################################################################
    # Connect to the hosts.
    # ########################################################################
-   my $host1_dsn_string = shift @dsns;
-   my $host2_dsn_string = shift @dsns;
    my $host1;
    my $host2;
 
@@ -8486,14 +8503,21 @@ sub main {
    );
    if ( $report->{logs} ) {
       report_logs(
-         logs => \@logs,
+         logs        => \@logs,
+         results_dir => $results_dir,
       );
    }
 
    # ########################################################################
    # Execute and compare the queries.
    # ########################################################################
-   my $results_dir = shift @dirs;
+   if ( $report->{hosts} ) {
+      report_hosts(
+         host1       => $host1,
+         host2       => $host2,
+         results_dir => $results_dir,
+      );
+   }
 
    my %optional_args = (
       dry_run         => $o->get('dry-run'),
@@ -8504,15 +8528,7 @@ sub main {
       read_timeout    => $o->get('read-timeout'),
    );
 
-
    if ( $host1 && $host2 ) {
-      if ( $report->{hosts} ) {
-         report_hosts(
-            host1 => $host1,
-            host2 => $host2,
-         );
-      }
-
       compare_host_to_host(
          logs            => \@logs,
          parser          => $parser,
@@ -8835,7 +8851,8 @@ sub save_results {
 #      host1
 #      host2
 #   )) or die;
-   my $file          = $args{file};
+   my $logs          = $args{logs};
+   my $parser        = $args{parser};
    my $host          = $args{host};
    my $results_dir   = $args{results_dir};
    my $upgrade_table = $args{upgrade_table};
@@ -8848,26 +8865,6 @@ sub save_results {
    my $ignore_warnings = $args{ignore_warnings};
    my $read_only       = $args{read_only};
    my $read_timeout    = $args{read_timeout};
-   
-   # Print the host and where we're saving the results.
-   my $v        = VersionParser->new($host->dbh);
-   my $hostname = get_hostname($host->dbh);
-
-   printf "Log file: %s
-
-host1:
-
-  DSN:       %s
-  hostname:  %s
-  MySQL:     %s
-
-Results directory: $results_dir
-",
-      $file,
-      ($host->{dsn_name} || '?'),
-      $hostname,
-      ($v->flavor . ' ' . $v->version),
-      $results_dir;
 
    # Get set up to execute queries and save the results.
    my $clear_warnings_sql = "SELECT * FROM $upgrade_table LIMIT 1 "
@@ -8882,11 +8879,11 @@ Results directory: $results_dir
    my $qr = QueryRewriter->new();  # fingerprint
 
    my $file_iter = FileIterator->new();
-   my $files = $file_iter->get_file_itr($file);
+   my $files = $file_iter->get_file_itr(@$logs);
 
    my $query_iter = QueryIterator->new(
       file_iter        => $files,
-      parser           => SlowLogParser->new(),
+      parser           => $parser,
       fingerprint      => sub { return $qr->fingerprint(@_) },
       oktorun          => sub { return $oktorun },
       stats            => $stats,
@@ -9251,12 +9248,18 @@ sub identical_rows {
 
 sub report_logs {
    my (%args) = @_;
-   my $logs = $args{logs};
+   my $logs        = $args{logs};
+   my $results_dir = $args{results_dir};
 
    print_header('Logs', '-');
 
-   foreach my $log ( @$logs ) {
-      printf "\nFile: %s\nSize: %s\n", $log, (-s $log || '?');
+   if ( @$logs ) {
+      foreach my $log ( @$logs ) {
+         printf "\nFile: %s\nSize: %s\n", $log, (-s $log || '?');
+      }
+   }
+   elsif ( $results_dir ) {
+      printf "\nResults directory: $results_dir\n";
    }
 
    return;
@@ -9264,18 +9267,20 @@ sub report_logs {
 
 sub report_hosts {
    my (%args) = @_;
-   my $host1 = $args{host1};
-   my $host2 = $args{host2};
+   my $host1       = $args{host1};
+   my $host2       = $args{host2};
+   my $results_dir = $args{results_dir};
 
    # Print which hosts we're comparing.
-   my $v1 = VersionParser->new($host1->dbh);
-   my $v2 = VersionParser->new($host2->dbh);
-   my $hostname1 = get_hostname($host1->dbh);
-   my $hostname2 = get_hostname($host2->dbh);
+   my $v1 = $host1 ? VersionParser->new($host1->dbh) : undef;
+   my $v2 = $host2 ? VersionParser->new($host2->dbh) : undef;
+   my $hostname1 = $host1 ? get_hostname($host1->dbh) : undef;
+   my $hostname2 = $host2 ? get_hostname($host2->dbh) : undef;
 
    print_header('Hosts', '-');
 
-   printf "
+   if ( $host1 && $host2 ) {
+      printf "
 host1:
 
   DSN:       %s
@@ -9288,12 +9293,48 @@ host2:
   hostname:  %s
   MySQL:     %s
 ",
-      ($host1->{dsn_name} || '?'),
-      $hostname1,
-      ($v1->flavor . ' ' . $v1->version),
-      ($host2->{dsn_name} || '?'),
-      $hostname2,
-      ($v2->flavor . ' ' . $v2->version);
+         ($host1->{dsn_name} || '?'),
+         $hostname1,
+         ($v1->flavor . ' ' . $v1->version),
+         ($host2->{dsn_name} || '?'),
+         $hostname2,
+         ($v2->flavor . ' ' . $v2->version);
+   }
+   elsif ( $host1 && $results_dir ) {
+      printf "
+host1:
+
+  DSN:       %s
+  hostname:  %s
+  MySQL:     %s
+
+Saving results in %s
+",
+         ($host1->{dsn_name} || '?'),
+         $hostname1,
+         ($v1->flavor . ' ' . $v1->version),
+         $results_dir;
+   }
+   elsif ( $results_dir && $host2 ) {
+      printf "
+host1:
+
+  Reading results from %s
+
+host2:
+
+  DSN:       %s
+  hostname:  %s
+  MySQL:     %s
+",
+         $results_dir,
+         ($host2->{dsn_name} || '?'),
+         $hostname2,
+         ($v2->flavor . ' ' . $v2->version);
+   }
+   else {
+      print "\nUnknown hosts.\n";
+   }
 
    return;
 }
