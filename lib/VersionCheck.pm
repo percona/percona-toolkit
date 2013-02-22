@@ -106,8 +106,12 @@ sub version_check {
    # However, we do not want dev and testing to v-c, so even though this
    # sub is called, force should be false because $o->got('version-check')
    # is false, then check for a .bzr dir which indicates dev or testing. 
+   # ../.bzr is when a tool is ran from /bin/; ../../.bzr is when a tool
+   # is ran as a module from /t/<tool>/.
+   PTDEBUG && _d('FindBin::Bin:', $FindBin::Bin);
    if ( !$args{force} ) {
-      if ( $FindBin::Bin && -d "$FindBin::Bin/../.bzr" ) {
+      if ( $FindBin::Bin
+           && (-d "$FindBin::Bin/../.bzr" || -d "$FindBin::Bin/../../.bzr") ) {
          PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
          return;
       }
