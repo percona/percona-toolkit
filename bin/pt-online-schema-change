@@ -7214,8 +7214,10 @@ sub version_check {
    my $instances = $args{instances} || [];
    my $instances_to_check;
 
+   PTDEBUG && _d('FindBin::Bin:', $FindBin::Bin);
    if ( !$args{force} ) {
-      if ( $FindBin::Bin && -d "$FindBin::Bin/../.bzr" ) {
+      if ( $FindBin::Bin
+           && (-d "$FindBin::Bin/../.bzr" || -d "$FindBin::Bin/../../.bzr") ) {
          PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
          return;
       }
