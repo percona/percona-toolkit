@@ -173,6 +173,15 @@ sub set_dbh {
    return $dbh;
 }
 
+sub lost_connection {
+   my ($self, $e) = @_;
+   return 0 unless $e;
+   return $e =~ m/MySQL server has gone away/
+       || $e =~ m/Lost connection to MySQL server/;
+      # The 1st pattern means that MySQL itself died or was stopped.
+      # The 2nd pattern means that our cxn was killed (KILL <id>).
+}
+
 # Sub: dbh
 #   Return the cxn's dbh.
 sub dbh {
