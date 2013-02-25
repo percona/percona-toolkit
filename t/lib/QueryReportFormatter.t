@@ -464,7 +464,7 @@ ok(
 # #############################################################################
 
 # This test uses the $ea from the Bool pretty printer test above.
-my $sorted = $qrf->sort_attribs($ea->get_attributes(), $ea);
+my $sorted = $qrf->sort_attribs($ea);
 is_deeply(
    $sorted,
    {
@@ -511,7 +511,7 @@ foreach my $event (@$events) {
 }
 $ea->calculate_statistical_metrics();
 
-$sorted = $qrf->sort_attribs($ea->get_attributes(), $ea);
+$sorted = $qrf->sort_attribs($ea);
 is_deeply(
    $sorted,
    {
@@ -689,7 +689,7 @@ ok(
       "t/lib/samples/QueryReportFormatter/report010.txt",
       cmd_output => 1,
    ),
-   'Truncate one long string'
+   "Don't truncate one long string"
 );
 
 $ea->reset_aggregated_data();
@@ -721,7 +721,7 @@ ok(
       "t/lib/samples/QueryReportFormatter/report011.txt",
       cmd_output => 1,
    ),
-   'Truncate multiple long strings'
+   "Don't truncate multiple long strings"
 );
 
 $ea->reset_aggregated_data();
@@ -753,7 +753,7 @@ ok(
       "t/lib/samples/QueryReportFormatter/report012.txt",
       cmd_output => 1,
    ),
-   'Truncate multiple strings longer than whole line'
+   "Don't truncate multiple strings longer than whole line"
 );
 
 # #############################################################################
@@ -881,16 +881,6 @@ ok(
    "IPs not shortened with more"
 );
 
-# Test show_all.
-@ARGV = qw(--show-all host);
-$o->get_opts();
-$qrf = new QueryReportFormatter(
-   OptionParser    => $o,
-   QueryRewriter   => $qr,
-   QueryParser     => $qp,
-   Quoter          => $q, 
-   ExplainAnalyzer => $ex,
-);
 $result = $qrf->event_report(
    ea       => $ea,
    select   => [ qw(Query_time host) ],

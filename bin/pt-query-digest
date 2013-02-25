@@ -3488,7 +3488,7 @@ sub _parse_packet {
 sub port_number {
    my ( $self, $port ) = @_;
    return unless $port;
-   return $port eq 'mysql' ? 3306 : $port; 
+   return $port eq 'mysql' ? 3306 : $port;
 }
 
 sub _d {
@@ -6511,8 +6511,7 @@ sub BUILDARGS {
    my $self = {
       %$args,
       options        => {
-         show_all         => $o->get('show-all'),
-         shorten          => $o->get('shorten'),
+         shorten          => 1024,
          report_all       => $o->get('report-all'),
          report_histogram => $o->get('report-histogram'),
       },
@@ -6642,10 +6641,7 @@ sub header {
 
    push @result, $self->make_global_header();
 
-   my $attribs = $self->sort_attribs(
-      ($args{select} ? $args{select} : $ea->get_attributes()),
-      $ea,
-   );
+   my $attribs = $self->sort_attribs( $ea );
 
    foreach my $type ( qw(num innodb) ) {
       if ( $type eq 'innodb' && @{$attribs->{$type}} ) {
@@ -6767,10 +6763,7 @@ sub query_report {
                . '# ' . ( '#' x 72 ) . "\n\n";
    }
 
-   my $attribs = $self->sort_attribs(
-      ($args{select} ? $args{select} : $ea->get_attributes()),
-      $ea,
-   );
+   my $attribs = $self->sort_attribs( $ea );
 
    ITEM:
    foreach my $vals ( @$report_values ) {
@@ -6902,10 +6895,7 @@ sub event_report_values {
 
    my $attribs = $args{attribs};
    if ( !$attribs ) {
-      $attribs = $self->sort_attribs(
-         ($args{select} ? $args{select} : $ea->get_attributes()),
-         $ea
-      );
+      $attribs = $self->sort_attribs( $ea );
    }
 
    $vals{attributes} = { map { $_ => [] } qw(num innodb bool string) };
@@ -7372,7 +7362,6 @@ sub bool_percents {
 
 sub format_string_list {
    my ( $self, $attrib, $vals, $class_cnt ) = @_;
-   my $show_all = $self->{options}->{show_all};
 
    if ( !exists $vals->{unq} ) {
       return ($vals->{cnt});
@@ -7402,9 +7391,6 @@ sub format_string_list {
       }
       my $p = percentage_of($cnt_for->{$str}, $class_cnt);
       $print_str .= " ($cnt_for->{$str}/$p%)";
-      if ( !$show_all->{$attrib} ) {
-         last if (length $line) + (length $print_str)  > LINE_LENGTH - 27;
-      }
       $line .= "$print_str, ";
       $i++;
    }
@@ -7419,7 +7405,8 @@ sub format_string_list {
 }
 
 sub sort_attribs {
-   my ( $self, $attribs, $ea ) = @_;
+   my ( $self, $ea ) = @_;
+   my $attribs = $ea->get_attributes();
    return unless $attribs && @$attribs;
    PTDEBUG && _d("Sorting attribs:", @$attribs);
 
@@ -12560,23 +12547,6 @@ sub main {
       my $pat = $o->read_para_after(__FILE__, qr/MAGIC_history_cols/);
       $pat    =~ s/\s+//g;
       $pat    = qr/^(.*?)_($pat)$/;
-      # Get original --select values.
-      my %select = map { $_ => 1 } @{$o->get('select')};
-      foreach my $col ( @{$tbl->{cols}} ) {
-         my ( $attr, $metric ) = $col =~ $pat;
-         next unless $attr && $metric;
-         $attr = ucfirst $attr if $attr =~ m/_/; # TableParser lowercases
-         # Add history table values to original select values.
-         $select{$attr}++;
-      }
-
-      if ( $o->got('select') ) {
-         # Re-set --select with its original values plus the history
-         # table values.
-         $o->set('select', [sort keys %select]);
-         PTDEBUG && _d("--select after parsing the history table:", 
-            @{$o->get('select')});
-      }
 
       # And tell the QueryReview that it has more work to do.
       $qv->set_history_options(
@@ -13053,9 +13023,9 @@ sub main {
                PTDEBUG && _d('Iteration', $args->{iter},
                   'started at', ts($iter_start));
                
-               if ( $o->get('print-iterations') ) {
-                  print "\n# Iteration $args->{iter} started at ",
-                     ts($iter_start), "\n";
+               if ( PTDEBUG ) {
+                  _d("\n# Iteration $args->{iter} started at ",
+                     ts($iter_start), "\n");
                }
             }
 
@@ -13428,13 +13398,6 @@ sub main {
 
       my ( $orderby_attrib, $orderby_func ) = split(/:/, $orderby[$i]);
 
-      my %attributes = map {
-         my ($name, @alt) = split(/:/, $_);
-         $name => [$name, @alt];
-      }
-      grep { $_ !~ m/^$groupby\b/ }
-      @{$o->get('select')};
-
       # Create an EventAggregator for this groupby attrib and
       # add it to callbacks.
       my $type_for = {
@@ -13451,7 +13414,7 @@ sub main {
 
       my $ea = new EventAggregator(
          groupby           => $groupby,
-         attributes        => { %attributes },
+         attributes        => { },
          worst             => $orderby_attrib,
          attrib_limit      => $o->get('attribute-value-limit'),
          ignore_attributes => $o->get('ignore-attributes'),
