@@ -18,7 +18,7 @@ use PerconaTest;
 # #############################################################################
 ok(
    no_diff("$trunk/bin/pt-query-digest $trunk/t/lib/samples/slowlogs/slow006.txt "
-      . '--no-report --print --sample 2',
+      . '--no-report --output slowlog --sample 2',
       "t/pt-query-digest/samples/slow006-first2.txt"),
    'Print only first N unique occurrences with explicit --group-by',
 );
@@ -28,7 +28,7 @@ ok(
 # #############################################################################
 ok(
    no_diff("$trunk/bin/pt-query-digest $trunk/t/lib/samples/slowlogs/slow006.txt "
-      . '--no-report --print --sample 2',
+      . '--no-report --output slowlog --sample 2',
       "t/pt-query-digest/samples/slow006-first2.txt"),
    'Print only first N unique occurrences, --no-report',
 );
