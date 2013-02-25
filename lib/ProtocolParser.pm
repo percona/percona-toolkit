@@ -27,6 +27,9 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
+use File::Basename qw(basename);
+use File::Temp qw(tempfile);
+
 eval {
    require IO::Uncompress::Inflate; # yum: perl-IO-Compress-Zlib
    IO::Uncompress::Inflate->import(qw(inflate $InflateError));
@@ -245,39 +248,34 @@ sub make_event {
 
 sub _get_errors_fh {
    my ( $self ) = @_;
-   my $errors_fh = $self->{errors_fh};
-   return $errors_fh if $errors_fh;
+   return $self->{errors_fh} if $self->{errors_fh};
 
+   my $exec = basename($0);
    # Errors file isn't open yet; try to open it.
-   my $o = $self->{o};
-   if ( $o && $o->has('tcpdump-errors') && $o->got('tcpdump-errors') ) {
-      my $errors_file = $o->get('tcpdump-errors');
-      PTDEBUG && _d('tcpdump-errors file:', $errors_file);
-      open $errors_fh, '>>', $errors_file
-         or die "Cannot open tcpdump-errors file $errors_file: $OS_ERROR";
-   }
+   my ($errors_fh, $filename) = tempfile("/tmp/$exec-errors.XXXXXXX", UNLINK => 0);
 
-   $self->{errors_fh} = $errors_fh;
+   $self->{errors_file} = $filename;
+   $self->{errors_fh}   = $errors_fh;
    return $errors_fh;
 }
 
 sub fail_session {
    my ( $self, $session, $reason ) = @_;
-   my $errors_fh = $self->_get_errors_fh();
-   if ( $errors_fh ) {
-      $session->{reason_for_failure} = $reason;
-      my $session_dump = '# ' . Dumper($session);
-      chomp $session_dump;
-      $session_dump =~ s/\n/\n# /g;
-      print $errors_fh "$session_dump\n";
-      {
-         local $LIST_SEPARATOR = "\n";
-         print $errors_fh "@{$session->{raw_packets}}";
-         print $errors_fh "\n";
-      }
-   }
    PTDEBUG && _d('Failed session', $session->{client}, 'because', $reason);
    delete $self->{sessions}->{$session->{client}};
+
+   return if $self->{_no_save_error};
+
+   my $errors_fh = $self->_get_errors_fh();
+
+   print "Session $session->{client} had errors, will save them in $self->{errors_file}\n";
+
+   my $raw_packets = delete $session->{raw_packets};
+   $session->{reason_for_failure} = $reason;
+   my $session_dump = '# ' . Dumper($session);
+   chomp $session_dump;
+   $session_dump =~ s/\n/\n# /g;
+   print $errors_fh join("\n", $session_dump, @$raw_packets), "\n";
    return;
 }
 

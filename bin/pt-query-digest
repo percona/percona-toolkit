@@ -3531,20 +3531,6 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-require Exporter;
-our @ISA         = qw(Exporter);
-our %EXPORT_TAGS = ();
-our @EXPORT      = ();
-our @EXPORT_OK   = qw(
-   parse_error_packet
-   parse_ok_packet
-   parse_ok_prepared_statement_packet
-   parse_server_handshake_packet
-   parse_client_handshake_packet
-   parse_com_packet
-   parse_flags
-);
-
 use constant {
    COM_SLEEP               => '00',
    COM_QUIT                => '01',
@@ -12377,7 +12363,7 @@ sub main {
 
    my $dp = $o->DSNParser();
    $dp->prop('set-vars', $o->get('set-vars'));
-
+   
    # Frequently used options.
    my $review_dsn = $o->get('review'); 
    my @groupby    = @{$o->get('group-by')};
