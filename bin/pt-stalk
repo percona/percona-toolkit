@@ -347,14 +347,14 @@ _parse_command_line() {
 
       if [ "$next_opt_is_val" ]; then
          next_opt_is_val=""
-         if [ $# -eq 0 ] || [ $(expr "$opt" : "-") -eq 1 ]; then
+         if [ $# -eq 0 ] || [ $(expr "$opt" : "\-") -eq 1 ]; then
             option_error "$real_opt requires a $required_arg argument"
             continue
          fi
          val="$opt"
          opt_is_ok=1
       else
-         if [ $(expr "$opt" : "-") -eq 0 ]; then
+         if [ $(expr "$opt" : "\-") -eq 0 ]; then
             if [ -z "$ARGV" ]; then
                ARGV="$opt"
             else
@@ -448,6 +448,46 @@ size_to_bytes() {
 
 # ###########################################################################
 # End parse_options package
+# ###########################################################################
+
+# ###########################################################################
+# mysql_options package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/mysql_options.sh
+#   t/lib/bash/mysql_options.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+
+set -u
+
+mysql_options() {
+   local MYSQL_ARGS=""
+   if [ -n "$OPT_DEFAULTS_FILE" ]; then
+      MYSQL_ARGS="--defaults-file=$OPT_DEFAULTS_FILE"
+   fi
+   if [ -n "$OPT_PORT" ]; then
+      MYSQL_ARGS="$MYSQL_ARGS --port=$OPT_PORT"
+   fi
+   if [ -n "$OPT_SOCKET" ]; then
+      MYSQL_ARGS="$MYSQL_ARGS --socket=$OPT_SOCKET"
+   fi
+   if [ -n "$OPT_HOST" ]; then
+      MYSQL_ARGS="$MYSQL_ARGS --host=$OPT_HOST"
+   fi
+   if [ -n "$OPT_USER" ]; then
+      MYSQL_ARGS="$MYSQL_ARGS --user='$OPT_USER'"
+   fi
+   if [ -n "$OPT_PASSWORD" ]; then
+      MYSQL_ARGS="$MYSQL_ARGS --password='$OPT_PASSWORD'"
+   fi
+   
+   echo $MYSQL_ARGS
+}
+
+# ###########################################################################
+# End mysql_options package
 # ###########################################################################
 
 # ###########################################################################
@@ -1347,6 +1387,9 @@ if    [ "${0##*/}" = "$TOOL" ] \
       exit 0
    fi
 
+   local MYSQL_ARGS="$(mysql_options)"
+   EXT_ARGV="$EXT_ARGV $MYSQL_ARGS"
+
    # Check that mysql and mysqladmin are in PATH.  If not, we're
    # already dead in the water, so don't bother with cmd line opts,
    # just error and exit.
@@ -1416,7 +1459,7 @@ pt-stalk - Gather forensic data about MySQL when a problem occurs.
 
 =head1 SYNOPSIS
 
-Usage: pt-stalk [OPTIONS] [-- MYSQL OPTIONS]
+Usage: pt-stalk [OPTIONS] [-- EXTRA MYSQL OPTIONS]
 
 pt-stalk watches for a trigger condition to become true, and then collects data
 to help in diagnosing problems. It is designed to run as a daemon with root
@@ -1882,6 +1925,43 @@ want to use a higher verbosity level.
 =item --version
 
 Print tool's version and exit.
+
+=item --defaults-file
+
+short form: -F; type: string
+
+Only read mysql options from the given file.  You must give an absolute
+pathname.
+
+=item --host
+
+short form: -h; type: string; default: localhost
+
+Host to connect to.
+
+=item --password
+
+short form: -p; type: string
+
+Password to use when connecting.
+
+=item --port
+
+short form: -P; type: int
+
+Port number to use for connection.
+
+=item --socket
+
+short form: -S; type: string
+
+Socket file to use for connection.
+
+=item --user
+
+short form: -u; type: string
+
+User for login if not current user.
 
 =back
 

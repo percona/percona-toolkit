@@ -1489,6 +1489,7 @@ report_mysql_summary () {
    # ########################################################################
    section "Configuration File"
    local cnf_file="$(get_var "pt-summary-internal-Config_File_path" "$dir/mysql-variables")"
+
    if [ -n "${cnf_file}" ]; then
       name_val "Config File" "${cnf_file}"
       pretty_print_cnf_file "$dir/mysql-config-file"
