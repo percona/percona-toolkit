@@ -13404,14 +13404,14 @@ sub main {
       }
    } # sample
 
-   if ( $o->get('print') ) {
+   if ( $o->get('output') =~ /slowlog/i ) {
       my $w = new SlowLogWriter();
       $pipeline->add(
-         name    => 'print',
+         name    => '--output slowlog',
          process => sub {
             my ( $args ) = @_;
             my $event = $args->{event};
-            PTDEBUG && _d('callback: print');
+            PTDEBUG && _d('callback: --output slowlog');
             $w->write(*STDOUT, $event);
             return $args;
          },
