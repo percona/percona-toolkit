@@ -481,9 +481,7 @@ sub query_report {
          }
 
          my $log_type = $args{log_type} || '';
-         my $mark     = $log_type eq 'memcached'
-                     || $log_type eq 'http'
-                     || $log_type eq 'pglog' ? '' : '\G';
+         my $mark     = '\G';
 
          if ( $item =~ m/^(?:[\(\s]*select|insert|replace)/ ) {
             if ( $item =~ m/^(?:insert|replace)/ ) { # No EXPLAIN
