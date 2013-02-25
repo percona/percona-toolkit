@@ -23,7 +23,8 @@ my $output;
 # #############################################################################
 # This issue actually introduced --check-attributes-limit.
 $cmd = "${run_with}slow030.txt";
-$output = `$cmd --check-attributes-limit 100 2>&1`;
+local $ENV{PT_QUERY_DIGEST_CHECK_ATTRIB_LIMIT} = 100;
+$output = `$cmd 2>&1`;
 unlike(
    $output,
    qr/IDB IO rb/,
