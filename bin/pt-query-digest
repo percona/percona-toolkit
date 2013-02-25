@@ -5171,7 +5171,7 @@ sub new {
          keys %$attributes
       },
       worst          => $args{worst},
-      unroll_limit   => $args{unroll_limit} || 1000,
+      unroll_limit   => $ENV{PT_QUERY_DIGEST_CHECK_ATTRIB_LIMIT} || 1000,
       attrib_limit   => $args{attrib_limit},
       result_classes => {},
       result_globals => {},
@@ -13455,7 +13455,6 @@ sub main {
          worst             => $orderby_attrib,
          attrib_limit      => $o->get('attribute-value-limit'),
          ignore_attributes => $o->get('ignore-attributes'),
-         unroll_limit      => $o->get('check-attributes-limit'),
          type_for          => $type_for,
       );
       push @ea, $ea;

@@ -387,8 +387,11 @@ ok(
 # #############################################################################
 ok(
    no_diff(
-      sub { pt_query_digest::main(@args, $sample.'slow054.txt',
-         qw(--check-attributes-limit 5)) },
+      sub {
+         local $ENV{PT_QUERY_DIGEST_CHECK_ATTRIB_LIMIT} = 5;
+         pt_query_digest::main(@args, $sample.'slow054.txt',
+            qw(--check-attributes-limit 5))
+      },
       "t/pt-query-digest/samples/slow054.txt",
    ),
    'Analysis for slow054 (InnoDB_trx_id bug 821694)'
