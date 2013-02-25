@@ -175,6 +175,34 @@ Format EXPLAIN output as a tree.
 For more free, open-source software developed Percona, visit
 L<http://www.percona.com/software/>.
 
+=head1 SPECIAL OPTION TYPES
+
+=over
+
+=item time
+
+Time values are seconds by default.  For example, C<--run-time 60> means
+60 seconds.  Time values support an optional suffix: s (seconds),
+m (minutes), h (hours), d (days).  C<--run-time 1m> means 1 minute
+(the same as 60 seconds).
+
+=item size
+
+Size values are bytes by default.  For example, C<--disk-space-free 1024>
+means 1 Kibibyte.  Size values support an optional suffix: k (Kibibyte),
+M (Mebibyte), G (Gibibyte).
+
+=item DSN
+
+See L<"DSN (DATA SOURCE NAME) SPECIFICATIONS">.
+
+=item Hash, hash, Array, array
+
+Hash, hash, Array, and array values are comma-separated lists of values.
+For example, C<--ignore-tables foo,bar> ignores tables C<foo> and C<bar>.
+
+=back
+
 =head1 CONFIGURATION FILES
 
 Percona Toolkit tools can read options from configuration files.  The
