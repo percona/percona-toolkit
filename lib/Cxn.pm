@@ -98,23 +98,24 @@ sub new {
    }
 
    my $self = {
-      dsn          => $dsn,
-      dbh          => $args{dbh},
-      dsn_name     => $dp->as_string($dsn, [qw(h P S)]),
-      hostname     => '',
-      set          => $args{set},
-      NAME_lc      => defined($args{NAME_lc}) ? $args{NAME_lc} : 1,
-      dbh_set      => 0,
-      OptionParser => $o,
-      DSNParser    => $dp,
+      dsn             => $dsn,
+      dbh             => $args{dbh},
+      dsn_name        => $dp->as_string($dsn, [qw(h P S)]),
+      hostname        => '',
+      set             => $args{set},
+      NAME_lc         => defined($args{NAME_lc}) ? $args{NAME_lc} : 1,
+      dbh_set         => 0,
+      OptionParser    => $o,
+      DSNParser       => $dp,
       is_cluster_node => undef,
+      parent          => $args{parent},
    };
 
    return bless $self, $class;
 }
 
 sub connect {
-   my ( $self ) = @_;
+   my ( $self, %opts ) = @_;
    my $dsn = $self->{dsn};
    my $dp  = $self->{DSNParser};
    my $o   = $self->{OptionParser};
@@ -126,7 +127,13 @@ sub connect {
          $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
          $self->{asked_for_pass} = 1;
       }
-      $dbh = $dp->get_dbh($dp->get_cxn_params($dsn),  { AutoCommit => 1 });
+      $dbh = $dp->get_dbh(
+         $dp->get_cxn_params($dsn),
+         {
+            AutoCommit => 1,
+            %opts,
+         },
+      );
    }
    PTDEBUG && _d($dbh, 'Connected dbh to', $self->{name});
 
@@ -161,6 +168,11 @@ sub set_dbh {
    PTDEBUG && _d($dbh, 'hostname:', $hostname, $server_id);
    if ( $hostname ) {
       $self->{hostname} = $hostname;
+   }
+
+   if ( $self->{parent} ) {
+      PTDEBUG && _d($dbh, 'Setting InactiveDestroy=1 in parent');
+      $dbh->{InactiveDestroy} = 1;
    }
 
    # Call the set callback to let the caller SET any MySQL variables.
@@ -206,12 +218,18 @@ sub name {
 
 sub DESTROY {
    my ($self) = @_;
-   if ( $self->{dbh}
-         && blessed($self->{dbh})
-         && $self->{dbh}->can("disconnect") ) {
+
+   if ( $self->{parent} ) {
+      PTDEBUG && _d('Not disconnecting dbh in parent');
+   }
+   elsif ( $self->{dbh}
+           && blessed($self->{dbh})
+           && $self->{dbh}->can("disconnect") )
+   {
       PTDEBUG && _d('Disconnecting dbh', $self->{dbh}, $self->{name});
       $self->{dbh}->disconnect();
    }
+
    return;
 }
 
