@@ -135,9 +135,10 @@ sub connect {
          },
       );
    }
-   PTDEBUG && _d($dbh, 'Connected dbh to', $self->{name});
 
-   return $self->set_dbh($dbh);
+   $dbh = $self->set_dbh($dbh);
+   PTDEBUG && _d($dbh, 'Connected dbh to', $self->{hostname},$self->{dsn_name});
+   return $dbh;
 }
 
 sub set_dbh {
@@ -219,14 +220,17 @@ sub name {
 sub DESTROY {
    my ($self) = @_;
 
+   PTDEBUG && _d('Destroying cxn');
+
    if ( $self->{parent} ) {
-      PTDEBUG && _d('Not disconnecting dbh in parent');
+      PTDEBUG && _d($self->{dbh}, 'Not disconnecting dbh in parent');
    }
    elsif ( $self->{dbh}
            && blessed($self->{dbh})
            && $self->{dbh}->can("disconnect") )
    {
-      PTDEBUG && _d('Disconnecting dbh', $self->{dbh}, $self->{name});
+      PTDEBUG && _d($self->{dbh}, 'Disconnecting dbh on', $self->{hostname},
+         $self->{dsn_name});
       $self->{dbh}->disconnect();
    }
 
