@@ -11,6 +11,8 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
+$ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} = 1;
+
 use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-deadlock-logger";
@@ -25,8 +27,8 @@ if ( !$dbh1 || !$dbh2 ) {
 }
 
 my $output;
-my $cnf = "/tmp/12345/my.sandbox.cnf";
-my $cmd = "$trunk/bin/pt-deadlock-logger -F $cnf h=127.1";
+my $dsn  = $sb->dsn_for('master');
+my @args = ($dsn, qw(--iterations 1));
 
 $dbh1->commit;
 $dbh2->commit;
@@ -90,20 +92,29 @@ make_deadlock();
 $output = $dbh1->selectrow_hashref('show /*!40101 engine*/ innodb status')->{status};
 like($output, qr/WE ROLL BACK/, 'There was a deadlock');
 
-$output = `$cmd --print`;
+$output = output(
+   sub {
+      pt_deadlock_logger::main(@args);
+   }
+);
+
 like(
    $output,
    qr/127\.1.+msandbox.+GEN_CLUST_INDEX/,
    'Deadlock logger prints the output'
 );
 
-$output = `$cmd`;
-like(
-   $output,
-   qr/127\.1.+msandbox.+GEN_CLUST_INDEX/,
-   '--print is implicit'
+$output = output(
+   sub {
+      pt_deadlock_logger::main(@args, qw(--quiet));
+   }
 );
 
+is(
+   $output,
+   "",
+   "No output with --quiet"
+);
 
 # #############################################################################
 # Issue 943: mk-deadlock-logger reports the same deadlock with --interval
@@ -112,55 +123,59 @@ like(
 # The deadlock from above won't be re-printed so even after running for
 # 3 seconds and checking multiple times only the single, 3 line deadlock
 # should be reported.
-chomp($output = `$cmd --run-time 3 | wc -l`);
+
+$output = output(
+   sub {
+      pt_deadlock_logger::main(@args, qw(--run-time 3));
+   }
+);
 $output =~ s/^\s+//;
+my @lines = split("\n", $output);
 is(
-   $output,
+   scalar @lines,
    3,
    "Doesn't re-print same deadlock (issue 943)"
-);
+) or diag($output);
 
 # #############################################################################
 # Check that deadlocks from previous test were stored in table.
 # #############################################################################
-`$cmd --dest D=test,t=deadlocks --create-dest-table`;
+$output = output(
+   sub {
+      pt_deadlock_logger::main(@args, '--dest', 'D=test,t=deadlocks',
+         qw(--create-dest-table))
+   }
+);
+
 my $res = $dbh1->selectall_arrayref('SELECT * FROM test.deadlocks');
 ok(
    scalar @$res,
-   'Deadlocks recorded in --dest table'
-);
+   'Deadlock saved in --dest table'
+) or diag($output);
 
 # #############################################################################
-# Check that --dest suppress --print output unless --print is explicit.
+# In 2.1, --dest suppressed output (--print).  In 2.2, output is only
+# suppressed by --quiet.
 # #############################################################################
-$output = 'foo';
-$dbh1->do('TRUNCATE TABLE test.deadlocks');
-$output = `$cmd --dest D=test,t=deadlocks`;
-is(
-   $output,
-   '',
-   'No output with --dest'
-);
-
-$res = $dbh1->selectall_arrayref('SELECT * FROM test.deadlocks');
-ok(
-   scalar @$res,
-   'Deadlocks still recorded in table'
-);
-
 $output = '';
 $dbh1->do('TRUNCATE TABLE test.deadlocks');
-$output = `$trunk/bin/pt-deadlock-logger --print --dest D=test,t=deadlocks --host 127.1 --port 12345 --user msandbox --password msandbox`;
-like(
+$output = output(
+   sub {
+      pt_deadlock_logger::main(@args, '--dest', 'D=test,t=deadlocks',
+         qw(--quiet))
+   }
+);
+
+is(
    $output,
-   qr/127\.1.+msandbox.+GEN_CLUST_INDEX/,
-   'Prints output with --dest and explicit --print'
+   "",
+   "No output with --dest and --quiet"
 );
 
 $res = $dbh1->selectall_arrayref('SELECT * FROM test.deadlocks');
 ok(
    scalar @$res,
-   'Deadlocks recorded in table again'
+   "... deadlock still saved in the table"
 );
 
 # #############################################################################
@@ -180,9 +195,7 @@ SKIP: {
    make_deadlock();
 
    $output = output(
-      sub { pt_deadlock_logger::main("F=/tmp/12345/my.sandbox.cnf",
-         qw(--print) );
-      }
+      sub { pt_deadlock_logger::main(@args) }
    );
 
    like(
@@ -200,4 +213,3 @@ $dbh2->commit;
 $sb->wipe_clean($dbh1);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
-exit;

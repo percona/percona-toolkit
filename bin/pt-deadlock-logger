@@ -23,9 +23,11 @@ BEGIN {
       VersionParser
       Quoter
       DSNParser
+      Cxn
       Daemon
       HTTPMicro
       VersionCheck
+      Runtime
    ));
 }
 
@@ -2439,6 +2441,177 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# Cxn package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Cxn.pm
+#   t/lib/Cxn.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Cxn;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use Scalar::Util qw(blessed);
+use constant {
+   PTDEBUG => $ENV{PTDEBUG} || 0,
+   PERCONA_TOOLKIT_TEST_USE_DSN_NAMES => $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} || 0,
+};
+
+sub new {
+   my ( $class, %args ) = @_;
+   my @required_args = qw(DSNParser OptionParser);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my ($dp, $o) = @args{@required_args};
+
+   my $dsn_defaults = $dp->parse_options($o);
+   my $prev_dsn     = $args{prev_dsn};
+   my $dsn          = $args{dsn};
+   if ( !$dsn ) {
+      $args{dsn_string} ||= 'h=' . ($dsn_defaults->{h} || 'localhost');
+
+      $dsn = $dp->parse(
+         $args{dsn_string}, $prev_dsn, $dsn_defaults);
+   }
+   elsif ( $prev_dsn ) {
+      $dsn = $dp->copy($prev_dsn, $dsn);
+   }
+
+   my $self = {
+      dsn             => $dsn,
+      dbh             => $args{dbh},
+      dsn_name        => $dp->as_string($dsn, [qw(h P S)]),
+      hostname        => '',
+      set             => $args{set},
+      NAME_lc         => defined($args{NAME_lc}) ? $args{NAME_lc} : 1,
+      dbh_set         => 0,
+      OptionParser    => $o,
+      DSNParser       => $dp,
+      is_cluster_node => undef,
+      parent          => $args{parent},
+   };
+
+   return bless $self, $class;
+}
+
+sub connect {
+   my ( $self, %opts ) = @_;
+   my $dsn = $self->{dsn};
+   my $dp  = $self->{DSNParser};
+   my $o   = $self->{OptionParser};
+
+   my $dbh = $self->{dbh};
+   if ( !$dbh || !$dbh->ping() ) {
+      if ( $o->get('ask-pass') && !$self->{asked_for_pass} ) {
+         $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
+         $self->{asked_for_pass} = 1;
+      }
+      $dbh = $dp->get_dbh(
+         $dp->get_cxn_params($dsn),
+         {
+            AutoCommit => 1,
+            %opts,
+         },
+      );
+   }
+   PTDEBUG && _d($dbh, 'Connected dbh to', $self->{name});
+
+   return $self->set_dbh($dbh);
+}
+
+sub set_dbh {
+   my ($self, $dbh) = @_;
+
+   if ( $self->{dbh} && $self->{dbh} == $dbh && $self->{dbh_set} ) {
+      PTDEBUG && _d($dbh, 'Already set dbh');
+      return $dbh;
+   }
+
+   PTDEBUG && _d($dbh, 'Setting dbh');
+
+   $dbh->{FetchHashKeyName} = 'NAME_lc' if $self->{NAME_lc};
+
+   my $sql = 'SELECT @@hostname, @@server_id';
+   PTDEBUG && _d($dbh, $sql);
+   my ($hostname, $server_id) = $dbh->selectrow_array($sql);
+   PTDEBUG && _d($dbh, 'hostname:', $hostname, $server_id);
+   if ( $hostname ) {
+      $self->{hostname} = $hostname;
+   }
+
+   if ( $self->{parent} ) {
+      PTDEBUG && _d($dbh, 'Setting InactiveDestroy=1 in parent');
+      $dbh->{InactiveDestroy} = 1;
+   }
+
+   if ( my $set = $self->{set}) {
+      $set->($dbh);
+   }
+
+   $self->{dbh}     = $dbh;
+   $self->{dbh_set} = 1;
+   return $dbh;
+}
+
+sub lost_connection {
+   my ($self, $e) = @_;
+   return 0 unless $e;
+   return $e =~ m/MySQL server has gone away/
+       || $e =~ m/Lost connection to MySQL server/;
+}
+
+sub dbh {
+   my ($self) = @_;
+   return $self->{dbh};
+}
+
+sub dsn {
+   my ($self) = @_;
+   return $self->{dsn};
+}
+
+sub name {
+   my ($self) = @_;
+   return $self->{dsn_name} if PERCONA_TOOLKIT_TEST_USE_DSN_NAMES;
+   return $self->{hostname} || $self->{dsn_name} || 'unknown host';
+}
+
+sub DESTROY {
+   my ($self) = @_;
+
+   if ( $self->{parent} ) {
+      PTDEBUG && _d('Not disconnecting dbh in parent');
+   }
+   elsif ( $self->{dbh}
+           && blessed($self->{dbh})
+           && $self->{dbh}->can("disconnect") )
+   {
+      PTDEBUG && _d('Disconnecting dbh', $self->{dbh}, $self->{name});
+      $self->{dbh}->disconnect();
+   }
+
+   return;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End Cxn package
+# ###########################################################################
+
+# ###########################################################################
 # Daemon package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -3865,6 +4038,139 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# Runtime package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Runtime.pm
+#   t/lib/Runtime.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Runtime;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+sub new {
+   my ( $class, %args ) = @_;
+   my @required_args = qw(run_time now);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless exists $args{$arg};
+   }
+
+   my $run_time = $args{run_time};
+   if ( defined $run_time ) {
+      die "run_time must be > 0" if $run_time <= 0;
+   }
+
+   my $now = $args{now};
+   die "now must be a callback" unless ref $now eq 'CODE';
+
+   my $self = {
+      run_time   => $run_time,
+      now        => $now,
+      start_time => undef,
+      end_time   => undef,
+      time_left  => undef,
+      stop       => 0,
+   };
+
+   return bless $self, $class;
+}
+
+sub time_left {
+   my ( $self, %args ) = @_;
+
+   if ( $self->{stop} ) {
+      PTDEBUG && _d("No time left because stop was called");
+      return 0;
+   }
+
+   my $now = $self->{now}->(%args);
+   PTDEBUG && _d("Current time:", $now);
+
+   if ( !defined $self->{start_time} ) {
+      $self->{start_time} = $now;
+   }
+
+   return unless defined $now;
+
+   my $run_time = $self->{run_time};
+   return unless defined $run_time;
+
+   if ( !$self->{end_time} ) {
+      $self->{end_time} = $now + $run_time;
+      PTDEBUG && _d("End time:", $self->{end_time});
+   }
+
+   $self->{time_left} = $self->{end_time} - $now;
+   PTDEBUG && _d("Time left:", $self->{time_left});
+   return $self->{time_left};
+}
+
+sub have_time {
+   my ( $self, %args ) = @_;
+   my $time_left = $self->time_left(%args);
+   return 1 if !defined $time_left;  # run forever
+   return $time_left <= 0 ? 0 : 1;   # <=0s means run time has elapsed
+}
+
+sub time_elapsed {
+   my ( $self, %args ) = @_;
+
+   my $start_time = $self->{start_time};
+   return 0 unless $start_time;
+
+   my $now = $self->{now}->(%args);
+   PTDEBUG && _d("Current time:", $now);
+
+   my $time_elapsed = $now - $start_time;
+   PTDEBUG && _d("Time elapsed:", $time_elapsed);
+   if ( $time_elapsed < 0 ) {
+      warn "Current time $now is earlier than start time $start_time";
+   }
+   return $time_elapsed;
+}
+
+sub reset {
+   my ( $self ) = @_;
+   $self->{start_time} = undef;
+   $self->{end_time}   = undef;
+   $self->{time_left}  = undef;
+   $self->{stop}       = 0;
+   PTDEBUG && _d("Reset run time");
+   return;
+}
+
+sub stop {
+   my ( $self ) = @_;
+   $self->{stop} = 1;
+   return;
+}
+
+sub start {
+   my ( $self ) = @_;
+   $self->{stop} = 0;
+   return;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End Runtime package
+# ###########################################################################
+
+# ###########################################################################
 # This is a combination of modules and programs in one -- a runnable module.
 # http://www.perl.com/pub/a/2006/07/13/lightning-articles.html?page=last
 # Or, look it up in the Camel book on pages 642 and 643 in the 3rd edition.
@@ -3877,20 +4183,14 @@ package pt_deadlock_logger;
 use English qw(-no_match_vars);
 use List::Util qw(max);
 use Socket qw(inet_aton);
-use sigtrap qw(handler finish untrapped normal-signals);
+use Time::HiRes qw(sleep);
+use File::Temp qw(tempfile);
+use File::Spec;
+
+use sigtrap 'handler', \&sig_int, 'normal-signals';
 
 use Percona::Toolkit;
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
-
-my $o;
-my $oktorun;
-my $dp;
-
-# ########################################################################
-# Configuration info.
-# ########################################################################
-my $source_dsn;
-my $dest_dsn;
 
 # Some common patterns and variables
 my $d = qr/(\d+)/;                    # Digit
@@ -3934,48 +4234,54 @@ my %is_proc_info = (
    'update'                       => 1,
 );
 
-sub main {
-   local @ARGV = @_;  # set global ARGV for this package
+my $oktorun     = 1;
+my $exit_status = 0;
 
-   my $q  = new Quoter();
+sub main {
+   local @ARGV  = @_;  # set global ARGV for this package
+   $oktorun     = 1;
+   $exit_status = 0;
 
    # ########################################################################
    # Get configuration information.
    # ########################################################################
-   $o = new OptionParser();
+   my $o = new OptionParser();
    $o->get_specs();
    $o->get_opts();
 
-   $o->set('collapse', $o->get('print')) unless $o->got('collapse'); 
+   my $dp = $o->DSNParser();
+   $dp->prop('set-vars', $o->get('set-vars'));
 
-   $dp = $o->DSNParser(); 
-   my $dsn_defaults = $dp->parse_options($o);
-   $source_dsn = @ARGV ? $dp->parse(shift @ARGV,$dsn_defaults) : $dsn_defaults;
-   $dest_dsn   = $o->get('dest');
+   my $src;
+   if ( my $src_dsn_string = shift @ARGV ) {
+      $src = Cxn->new(
+         dsn_string   => $src_dsn_string,
+         DSNParser    => $dp,
+         OptionParser => $o,
+         parent       => $o->get('daemonize'),
+      );
+   }
 
-   # The source dsn is not an option so --dest cannot use OptionParser
-   # to inherit values from it.  Thus, we do it manually.  --dest will
-   # inherit from --user, --port, etc.
-   if ( $source_dsn && $dest_dsn ) {
-      # If dest DSN only has D and t, this will copy h, P, S, etc.
-      # from the source DSN.
-      $dest_dsn = $dp->copy($source_dsn, $dest_dsn);
+   my $dst;
+   if ( my $dst_dsn = $o->get('dest') ) {
+      $dst = Cxn->new(
+         dsn          => $dst_dsn,
+         prev_dsn     => ($src ? $src->dsn : undef),
+         DSNParser    => $dp,
+         OptionParser => $o,
+         parent       => $o->get('daemonize'),
+      );
    }
 
    if ( !$o->get('help') ) {
-      if ( !$source_dsn ) {
-         $o->save_error('Missing or invalid source host');
+      if ( !$src ) {
+         $o->save_error('No DSN was specified.');
       }
-      if ( $dest_dsn && !$dest_dsn->{D} ) {
-         $o->save_error("--dest requires a 'D' (database) part");
+      if ( $dst && !$dst->dsn->{D} ) {
+         $o->save_error("--dest requires a 'D' (database) part.");
       }
-      if ( $dest_dsn && !$dest_dsn->{t} ) {
-         $o->save_error("--dest requires a 't' (table) part");
-      }
-
-      # Avoid running forever with zero second interval.
-      if ( $o->get('run-time') && !$o->get('interval') ) {
-         $o->set('interval', 1);
+      if ( $dst && !$dst->dsn->{t} ) {
+         $o->save_error("--dest requires a 't' (table) part.");
       }
    }
 
@@ -3984,43 +4290,29 @@ sub main {
    # ########################################################################
    # Connect to MySQL and set up the --dest, if any.
    # ########################################################################
-   my $dbh   = get_cxn($source_dsn, 1);
-   my $dest_dbh;
-   my $sth;
+   my $q = new Quoter();
+
+   $src->connect();
+
+   my @cols = @{ $o->get('columns') };
    my $ins_sth;
+   my $ins_sql;
+   if ( $dst ) {
+      $dst->connect(AutoCommit => 0);
 
-   # Since the user might not have specified a hostname for the connection,
-   # try to extract it from the $dbh
-   if ( !$source_dsn->{h} ) {
-      ($source_dsn->{h}) = $dbh->{mysql_hostinfo} =~ m/(\w+) via/;
-      PTDEBUG && _d('Got source host from dbh:', $source_dsn->{h});
-   }
-
-   my @cols = qw( server ts thread txn_id txn_time user hostname ip db tbl idx
-                  lock_type lock_mode wait_hold victim query );
-   if ( $o->got('columns') ) {
-      @cols = grep { $o->get('columns')->{$_} } @cols;
-   }
-
-   if ( $dest_dsn ) {
-      my $db_tbl = 
-         join('.',
-         map  {  $q->quote($_) }
-         grep { $_ }
-         ( $dest_dsn->{D}, $dest_dsn->{t} ));
-      $dest_dbh = get_cxn($dest_dsn, 0);
+      my $db_tbl = $q->join_quote($dst->dsn->{D}, $dst->dsn->{t});
       my $cols  = join(',', map { $q->quote($_) } @cols);
-      my $parms = join(',', map { '?' } @cols);
-      my $sql   = "INSERT IGNORE INTO $db_tbl($cols) VALUES($parms)";
-      PTDEBUG && _d($sql);
-      $ins_sth  = $dest_dbh->prepare($sql);
+      my $parms = join(',', map { '?' }           @cols);
+      $ins_sql  = "INSERT IGNORE INTO $db_tbl ($cols) VALUES ($parms) "
+                . "/* pt-deadlock-logger */";
+      PTDEBUG && _d($ins_sql);
+      $ins_sth  = $dst->dbh->prepare($ins_sql);
 
       if ( $o->get('create-dest-table') ) {
-         my $db_tbl = $q->quote($dest_dsn->{D}, $dest_dsn->{t});
-         $sql       = $o->read_para_after(__FILE__, qr/MAGIC_dest_table/);
-         $sql       =~ s/deadlocks/IF NOT EXISTS $db_tbl/;
+         my $sql = $o->read_para_after(__FILE__, qr/MAGIC_dest_table/);
+         $sql =~ s/deadlocks/IF NOT EXISTS $db_tbl/;
          PTDEBUG && _d($sql);
-         $dest_dbh->do($sql);
+         $dst->dbh->do($sql);
       }
    }
 
@@ -4039,6 +4331,10 @@ sub main {
       $daemon->make_PID_file();
    }
 
+   # Let Cxn::DESTROY() disconenct the dbh.
+   $src->{parent} = 0;
+   $dst->{parent} = 0 if $dst;
+
    # ########################################################################
    # Do the version-check
    # ########################################################################
@@ -4046,117 +4342,155 @@ sub main {
       VersionCheck::version_check(
          force     => $o->got('version-check'),
          instances => [
-            { dbh => $dbh, dsn => $source_dsn },
-            ($dest_dsn ? { dbh => $dest_dsn, dsn => $dest_dsn } : ()),
+            { dbh => $src->dbh, dsn => $src->dsn },
+            ($dst ? { dbh => $dst->dbh, dsn => $dst->dsn } : ())
          ],
       );
    }
 
    # ########################################################################
+   # Set upt the --clear-deadlocks table.
+   # ########################################################################
+   my $clear_deadlocks_table_def;
+   my $clear_deadlocks_table = $o->get('clear-deadlocks');
+   if ( $clear_deadlocks_table ) { 
+      $clear_deadlocks_table_def
+         = $o->read_para_after(__FILE__, qr/MAGIC_clear_deadlocks/);
+      if ( VersionParser->new($src->dbh) < '4.1.2') {
+         $clear_deadlocks_table_def =~ s/ENGINE=/TYPE=/;
+      }
+      $clear_deadlocks_table_def
+         =~ s/percona_schema.clear_deadlocks/$clear_deadlocks_table/;
+      PTDEBUG && _d('--clear-deadlocks table:', $clear_deadlocks_table_def);
+   }
+
+   # ########################################################################
    # Start looking for and logging deadlocks.
    # ########################################################################
-   my $last_fingerprint = '';
+   my $sep                     = $o->get('tab') ? "\t" : ' ';
+   my $last_fingerprint        = '';
+   my $parse_deadlocks_options = {
+      'server'     => $src->dsn->{h} || $src->{hostname},
+      'numeric-ip' => $o->got('numeric-ip'),
+   };
 
-   $oktorun  = 1;
-   my $start = time();
-   my $end   = $start + ($o->get('run-time') || 0); # When we should exit
-   my $now   = $start;
-   while (                            # Quit if:
-      ($start == $end || $now < $end) # time is exceeded
-      && $oktorun                     # or instructed to quit
-      )
-   {
-      my $text        = $dbh->selectrow_hashref("SHOW /*!40100 ENGINE*/ INNODB STATUS")->{Status};
-      my $parse_deadlocks_options = {
-            'numeric-ip' => $o->got('numeric-ip'),
-            'collapse'   => $o->got('collapse'),
+   my $run_time = Runtime->new(
+      run_time => $o->get('run-time'),
+      now      => sub { return time },
+   );
+
+   my $interval = $o->get('interval');
+   my $iters    = $o->get('iterations');
+   PTDEBUG && _d('iterations:', $iters, 'interval:', $interval);
+
+   ITERATION:
+   while (
+      $oktorun
+      && $run_time->have_time()
+      && (!defined $iters || $iters--)
+   ) {
+
+      my %txns;
+      my $fingerprint;
+      eval {
+         my $sql  = "SHOW /*!40100 ENGINE*/ INNODB STATUS "
+                  . "/* pt-deadlock-logger */";
+         my $text = $src->dbh->selectrow_hashref($sql)->{status};
+
+         %txns        = %{parse_deadlocks($text, $parse_deadlocks_options)};
+         $fingerprint = fingerprint(\%txns);
       };
-      my %txns        = %{parse_deadlocks($text, $parse_deadlocks_options)};
-      my $fingerprint = fingerprint(\%txns);
-
-      if ( $ins_sth ) {
-         foreach my $txn (sort { $a->{thread} <=> $b->{thread} } values %txns) {
-            $ins_sth->execute(@{$txn}{@cols});
-         }
-         $dest_dbh->commit();
-      }
-
-      if ( $fingerprint ne $last_fingerprint ) {
-         PTDEBUG && _d('New deadlock');
-         if ( $o->got('print') || !$o->got('dest') ) {
-            my $sep = $o->get('tab') ? "\t" : ' ';
-            print join($sep, @cols), "\n";
-            foreach my $txn (sort {$a->{thread}<=>$b->{thread}} values %txns) {
-               # If 'collapse' is on, it's already been taken care of,
-               # but if it's unset, by default strip whitespace.
-               if ( !$o->got('collapse') ) {
-                  $txn->{query} =~ s/\s+/ /g;
-               }
-               print join($sep, map { $txn->{$_} } @cols), "\n";
+      if ( my $e = $EVAL_ERROR ) {
+         PTDEBUG && _d('Error getting InnoDB status:', $e);
+         if ( $src->lost_connection($e) ) {
+            eval { $src->connect() };
+            if ( $EVAL_ERROR ) {
+               warn "Lost connection to " . $src->name . ".  Will try "
+                  . "to reconnect in the next iteration.\n";
+            }
+            else {
+               PTDEBUG && _d('Reconnected to MySQL');
+               redo ITERATION;
             }
          }
+         else {
+            warn "Error getting SHOW ENGINE INNODB STATUS: $EVAL_ERROR";
+            $exit_status |= 1;
+         }
       }
       else {
-         PTDEBUG && _d('Same deadlock, not printing');
-      }
-      # Save deadlock's fingerprint for next interval.
-      $last_fingerprint = $fingerprint;
-
-      # If specified, clear the deadlock... 
-      if ( my $db_tbl = $o->get('clear-deadlocks') ) {
-         PTDEBUG && _d('Creating --clear-deadlocks table', $db_tbl);
-         $dbh->{AutoCommit} = 0;
-         my $sql = $o->read_para_after(__FILE__, qr/MAGIC_clear_deadlocks/);
-
-         if ( VersionParser->new($dbh) < '4.1.2') {
-            $sql =~ s/ENGINE=/TYPE=/;
+         if ( $ins_sth ) {
+            eval {
+               PTDEBUG && _d('Saving deadlock to --dest');
+               foreach my $txn (
+                  sort { $a->{thread} <=> $b->{thread} } values %txns
+               ) {
+                  $ins_sth->execute(@{$txn}{@cols});
+               }
+               $dst->dbh->commit();
+            };
+            if ( my $e = $EVAL_ERROR ) {
+               PTDEBUG && _d('Error saving to --dest:', $e);
+               if ( $dst->lost_connection($e) ) {
+                  eval {
+                     $ins_sth->finish() if $ins_sth;
+                     $dst->dbh->disconnect() if $dst->dbh;
+                     $dst->connect(AutoCommit => 0);
+                     $ins_sth = $dst->dbh->prepare($ins_sql);
+                  }; 
+                  if ( $EVAL_ERROR ) {
+                     warn "Lost connection to " . $dst->name . ".  Will try "
+                        . "to reconnect in the next iteration.\n";
+                  }
+                  else {
+                     PTDEBUG && _d('Reconnected to MySQL (--dest)');
+                     redo ITERATION;
+                  }
+               }
+               else {
+                  warn "Error saving to --dest: $EVAL_ERROR";
+                  $exit_status |= 1;
+               }
+            }
          }
-         $sql =~ s/test.deadlock_maker/$db_tbl/;
-         PTDEBUG && _d($sql);
-         $dbh->do($sql);
-         $sql = "INSERT INTO $db_tbl(a) VALUES(1)";
-         PTDEBUG && _d($sql);
-         $dbh->do($sql); # I'm holding locks on the table now.
 
-         # Fork off a child to try to take a lock on the table.
-         my $pid = fork();
-         if ( defined($pid) && $pid == 0 ) { # I am a child
-            my $dbh_child = get_cxn($source_dsn, 0);
-            $sql = "SELECT * FROM $db_tbl FOR UPDATE";
-            PTDEBUG && _d($sql);
-            eval { $dbh_child->do($sql); }; # Should block against parent.
-            PTDEBUG && _d($EVAL_ERROR); # Parent inserted value 0.
-            $sql = "COMMIT";
-            PTDEBUG && _d($sql);
-            $dbh_child->do($sql);
-            exit;
+         if ( $fingerprint ne $last_fingerprint ) {
+            PTDEBUG && _d('New deadlock');
+            if ( !$o->get('quiet') ) {
+               print join($sep, @cols), "\n";
+               foreach my $txn (
+                  sort { $a->{thread} <=> $b->{thread} } values %txns
+               ) {
+                  $txn->{query} =~ s/\s+/ /g;
+                  print join($sep, map { $txn->{$_} } @cols), "\n";
+               }
+            }
          }
-         elsif ( !defined($pid) ) {
-            die("Unable to fork for clearing deadlocks!\n");
+         else {
+            PTDEBUG && _d('Same deadlock, not printing');
          }
-         sleep 1;
-         $sql = "INSERT INTO $db_tbl(a) VALUES(0)";# Will make child deadlock
-         PTDEBUG && _d($sql);
-         eval { $dbh->do($sql); };
-         PTDEBUG && _d($EVAL_ERROR);
-         waitpid($pid, 0);
-         $sql = "DROP TABLE $db_tbl";
-         PTDEBUG && _d($sql);
-         $dbh->do($sql);
+
+         $last_fingerprint = $fingerprint;
+
+         if ( $clear_deadlocks_table ) {
+            clear_deadlocks(
+               dsn       => $src->dsn,
+               table     => $clear_deadlocks_table,
+               table_def => $clear_deadlocks_table_def,
+               DSNParser => $dp,
+            );
+         }
       }
-      
-      # If there's an --interval argument, run forever or till specified.
-      # Otherwise just run once.
-      if ( $o->get('interval') ) {
-         sleep($o->get('interval'));
-         $now = time();
-      }
-      else {
-         $oktorun = 0;
+
+      # Sleep if there's an --iteration left.
+      if ( !defined $iters || $iters ) {
+         PTDEBUG && _d('Sleeping', $interval, 'seconds');
+         sleep $interval;
       }
    }
 
-   return 0;
+   PTDEBUG && _d('Done running, exiting', $exit_status);
+   return $exit_status;
 }
 
 # ############################################################################
@@ -4244,7 +4578,7 @@ sub parse_deadlocks {
 
          my ( $query_text ) = $body =~ m/\nMySQL thread id .*\n((?s).*)/;
          $query_text =~ s/\s+$//;
-         $query_text =~ s/\s+/ /g if $args->{'collapse'};
+         $query_text =~ s/\s+/ /g;
 
          @{$hash}{qw(thread hostname ip user query)}
             = ($mysql_thread_id, $hostname, $ip, $user, $query_text);
@@ -4290,11 +4624,99 @@ sub parse_deadlocks {
    foreach my $txn ( values %txns ) {
       $txn->{victim} = $txn->{id} == $victim ? 1 : 0;
       $txn->{ts}     = $ts;
-      $txn->{server} = $source_dsn->{h} || '';
+      $txn->{server} = $args->{server} || '';
       $txn->{ip}     = inet_aton($txn->{ip}) if $args->{'numeric-ip'};
    }
 
    return \%txns;
+}
+
+sub clear_deadlocks {
+   my (%args) = @_;
+   my @required_args = qw(dsn table table_def DSNParser);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my $dsn       = $args{dsn};
+   my $table     = $args{table};
+   my $table_def = $args{table_def};
+   my $dp        = $args{DSNParser};
+   PTDEBUG && _d('Clearing deadlocks with table', $table, $table_def);
+
+   my $parent_dbh = $dp->get_dbh($dp->get_cxn_params($dsn), { AutoCommit=>0 });
+   $parent_dbh->{AutoCommit} = 0;
+   $parent_dbh->{InactiveDestroy} = 1; # because of forking
+
+   # Create the deadlocks table.
+   PTDEBUG && _d($table_def);
+   $parent_dbh->do($table_def);
+
+   # Get a lock on it.
+   my $sql = "INSERT INTO $table (a) VALUES (1) "
+           . "/* pt-deadlock-logger clear deadlocks parent */";
+   PTDEBUG && _d($sql);
+   $parent_dbh->do($sql);
+
+   my ($sync_fh, $sync_file) = tempfile(
+      'pt-deadlock-logger-clear-deadlocks.XXXXXXX',
+      DIR => File::Spec->tmpdir(),
+   );
+   PTDEBUG && _d('Sync file:', $sync_file);
+   close $sync_fh;
+   unlink $sync_file;
+
+   # Fork a child to try to take a lock on the table.
+   my $pid = fork();
+   if ( defined($pid) && $pid == 0 ) {
+      # I am the child
+      PTDEBUG && _d('Clear deadlocks child', $PID);
+      my $child_dbh = $dp->get_dbh($dp->get_cxn_params($dsn), {AutoCommit=>0});
+      my $sql = "SELECT * FROM $table FOR UPDATE "
+              . "/* pt-deadlock-logger clear deadlocks child */";
+      PTDEBUG && _d($sql);
+      open my $fh, '>', $sync_file
+         or die "Error creating $sync_file: $OS_ERROR";
+      close $fh;
+      PTDEBUG && _d('Clear deadlocks child ready (child)');
+      eval { $child_dbh->do($sql); }; # Should block against parent.
+      PTDEBUG && _d($EVAL_ERROR); # Parent inserted value 0.
+      $child_dbh->commit();
+      $child_dbh->disconnect();
+      exit;
+   }
+   elsif ( !defined($pid) ) {
+      die "Failed to fork for --clear-deadlocks: " . ($OS_ERROR || '');
+   }
+
+   # Wait up to 10s for the child to connect and become ready.
+   for ( 1..40 ) {
+      last if -f $sync_file;
+      PTDEBUG && _d('Waiting for the clear deadlocks child');
+      sleep 0.25;
+   }
+   PTDEBUG && _d('Clear deadlocks child ready (parent)');
+   sleep 0.25;  # wait for child to exec its SELECT statement
+
+   # Make the child deadlock.
+   $sql = "INSERT INTO $table (a) VALUES (0) "
+        . "/* pt-deadlock-logger clear deadlocks parent */";
+   PTDEBUG && _d($sql);
+   eval { $parent_dbh->do($sql); };
+   PTDEBUG && _d($EVAL_ERROR);
+
+   # Reap the child.
+   waitpid($pid, 0);
+
+   # Drop the table.
+   $sql = "DROP TABLE IF EXISTS $table";
+   PTDEBUG && _d($sql);
+   $parent_dbh->do($sql);
+
+   $parent_dbh->disconnect();
+
+   unlink $sync_file;
+
+   return;
 }
 
 sub fingerprint {
@@ -4308,21 +4730,11 @@ sub fingerprint {
    return $fingerprint;
 }
 
-# Catches signals so the program can exit gracefully.
-sub finish {
-   my ($signal) = @_;
-   print STDERR "Exiting on SIG$signal.\n";
+sub sig_int {
+   my ( $signal ) = @_;
    $oktorun = 0;
-}
-
-sub get_cxn {
-   my ( $dsn, $ac ) = @_;
-   if ( $o->get('ask-pass') ) {
-      $dsn->{p} = OptionParser::prompt_noecho("Enter password: "); 
-   }
-   my $dbh = $dp->get_dbh($dp->get_cxn_params($dsn), {AutoCommit => $ac});
-   $dbh->{InactiveDestroy} = 1; # Because of forking.
-   return $dbh;
+   print STDERR "# Caught SIG$signal.  Use 'kill -ABRT $PID' if "
+      . "the tool does not exit normally in a few seconds.\n";
 }
 
 sub _d {
@@ -4347,32 +4759,28 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-pt-deadlock-logger - Extract and log MySQL deadlock information.
+pt-deadlock-logger - Log MySQL deadlocks.
 
 =head1 SYNOPSIS
 
-Usage: pt-deadlock-logger [OPTION...] SOURCE_DSN
+Usage: pt-deadlock-logger [OPTIONS] DSN
 
-pt-deadlock-logger extracts and saves information about the most recent deadlock
-in a MySQL server.
+pt-deadlock-logger logs information about MySQL deadlocks on the given
+DSN.  Information is printed to C<STDOUT>, and it can also be saved to a
+table by specifying L<"--dest">.  The tool runs for forever unless
+L<"--run-time"> or L<"--iterations"> is specified.
 
-Print deadlocks on SOURCE_DSN:
+Print deadlocks on host1:
 
-   pt-deadlock-logger SOURCE_DSN
+   pt-fk-error-logger h=host1
 
-Store deadlock information from SOURCE_DSN in test.deadlocks table on SOURCE_DSN
-(source and destination are the same host):
+Print deadlocks on host1 once then exit:
 
-   pt-deadlock-logger SOURCE_DSN --dest D=test,t=deadlocks
+   pt-fk-error-logger h=host1 --iterations 1
 
-Store deadlock information from SOURCE_DSN in test.deadlocks table on DEST_DSN
-(source and destination are different hosts):
+Save deadlocks on host1 to percona_schema.fke on host2:
 
-   pt-deadlock-logger SOURCE_DSN --dest DEST_DSN,D=test,t=deadlocks
-
-Daemonize and check for deadlocks on SOURCE_DSN every 30 seconds for 4 hours:
-
-   pt-deadlock-logger SOURCE_DSN --dest D=test,t=deadlocks --daemonize --run-time 4h --interval 30s
+  pt-fk-error-logger h=host1 --dest h=host2,D=percona_schema,t=deadlocks
 
 =head1 RISKS
 
@@ -4398,43 +4806,88 @@ See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-pt-deadlock-logger extracts deadlock data from a MySQL server.  Currently only
-InnoDB deadlock information is available.  You can print the information to
-standard output, store it in a database table, or both.  If neither
-L<"--print"> nor L<"--dest"> are given, then the deadlock information is
-printed by default.  If only L<"--dest"> is given, then the deadlock
-information is only stored.  If both options are given, then the deadlock
-information is printed and stored.
+pt-deadlock-logger prints information about MySQL deadlocks by polling
+and parsing C<SHOW ENGINE INNODB STATUS>.  When a new deadlock occurs,
+it's printed to C<STDOUT> and, if specified, saved to L<"--dest">.
 
-The source host can be specified using one of two methods.  The first method is
-to use at least one of the standard connection-related command line options:
-L<"--defaults-file">, L<"--password">, L<"--host">, L<"--port">, L<"--socket">
-or L<"--user">.  These options only apply to the source host; they cannot be
-used to specify the destination host.
+Only new deadlocks are printed.  A fingerprint for each deadlock is created
+using the deadlock's server, ts, and thread values (even if these
+columns are not specified by L<"--columns">).  A deadlock is printed if
+its fingerprint is different than the last deadlock's fingerprint.
 
-The second method to specify the source host, or the optional destination host
-using L<"--dest">, is a DSN.  A DSN is a special syntax that can be either just
-a hostname (like C<server.domain.com> or C<1.2.3.4>), or a
-C<key=value,key=value> string. Keys are a single letter:
-
-  KEY MEANING
-  === =======
-  h   Connect to host
-  P   Port number to use for connection
-  S   Socket file to use for connection
-  u   User for login if not current user
-  p   Password to use when connecting
-  F   Only read default options from the given file
-
-If you omit any values from the destination host DSN, they are filled in with
-values from the source host, so you don't need to specify them in both places.
-C<pt-deadlock-logger> reads all normal MySQL option files, such as ~/.my.cnf, so
-you may not need to specify username, password and other common options at all.
+The L<"--dest"> statement uses C<INSERT IGNORE> to eliminate duplicate
+deadlocks, so every deadlock is saved for every L<"--iterations">.
 
 =head1 OUTPUT
 
-You can choose which columns are output and/or saved to L<"--dest"> with the
-L<"--columns"> argument.  The default columns are as follows:
+New deadlocks are printed to C<STDOUT>, unless L<"--quiet"> is specified.
+Errors and warnings  are printed to C<STDERR>.
+
+See also L<"--columns"> and L<"--tab">.
+
+=head1 INNODB CAVEATS AND DETAILS
+
+InnoDB's output is hard to parse and sometimes there's no way to do it right.
+
+Sometimes not all information (for example, username or IP address) is included
+in the deadlock information.  In this case there's nothing for the script to put
+in those columns.  It may also be the case that the deadlock output is so long
+(because there were a lot of locks) that the whole thing is truncated.
+
+Though there are usually two transactions involved in a deadlock, there are more
+locks than that; at a minimum, one more lock than transactions is necessary to
+create a cycle in the waits-for graph.  pt-deadlock-logger prints the
+transactions (always two in the InnoDB output, even when there are more
+transactions in the waits-for graph than that) and fills in locks.  It prefers
+waited-for over held when choosing lock information to output, but you can
+figure out the rest with a moment's thought.  If you see one wait-for and one
+held lock, you're looking at the same lock, so of course you'd prefer to see
+both wait-for locks and get more information.  If the two waited-for locks are
+not on the same table, more than two transactions were involved in the deadlock.
+
+Finally, keep in mind that, because usernames with spaces are not quoted by
+InnoDB, the tool will generally misreport the second word of these usernames
+as the hostname.
+
+=head1 OPTIONS
+
+This tool accepts additional command-line arguments.  Refer to the
+L<"SYNOPSIS"> and usage information for details.
+
+=over
+
+=item --ask-pass
+
+Prompt for a password when connecting to MySQL.
+
+=item --charset
+
+short form: -A; type: string
+
+Default character set.  If the value is utf8, sets Perl's binmode on
+STDOUT to utf8, passes the mysql_enable_utf8 option to DBD::mysql, and runs SET
+NAMES UTF8 after connecting to MySQL.  Any other value sets binmode on STDOUT
+without the utf8 layer, and runs SET NAMES after connecting to MySQL.
+
+=item --clear-deadlocks
+
+type: string
+
+Use this table to create a small deadlock.  This usually has the effect of
+clearing out a huge deadlock, which otherwise consumes the entire output of
+C<SHOW INNODB STATUS>.  The table must not exist.  pt-deadlock-logger will
+create it with the following MAGIC_clear_deadlocks structure:
+
+  CREATE TABLE percona_schema.clear_deadlocks (a INT PRIMARY KEY) ENGINE=InnoDB;
+
+After creating the table and causing a small deadlock, the tool will drop the
+table again.
+
+=item --columns
+
+type: Array; default: server, ts, thread, txn_id, txn_time, user, hostname, ip, db, tbl, idx, lock_type, lock_mode, wait_hold, victim, query
+
+The columns are:
 
 =over
 
@@ -4509,78 +4962,6 @@ The query that caused the deadlock.
 
 =back
 
-=head1 INNODB CAVEATS AND DETAILS
-
-InnoDB's output is hard to parse and sometimes there's no way to do it right.
-
-Sometimes not all information (for example, username or IP address) is included
-in the deadlock information.  In this case there's nothing for the script to put
-in those columns.  It may also be the case that the deadlock output is so long
-(because there were a lot of locks) that the whole thing is truncated.
-
-Though there are usually two transactions involved in a deadlock, there are more
-locks than that; at a minimum, one more lock than transactions is necessary to
-create a cycle in the waits-for graph.  pt-deadlock-logger prints the
-transactions (always two in the InnoDB output, even when there are more
-transactions in the waits-for graph than that) and fills in locks.  It prefers
-waited-for over held when choosing lock information to output, but you can
-figure out the rest with a moment's thought.  If you see one wait-for and one
-held lock, you're looking at the same lock, so of course you'd prefer to see
-both wait-for locks and get more information.  If the two waited-for locks are
-not on the same table, more than two transactions were involved in the deadlock.
-
-Finally, keep in mind that, because usernames with spaces are not quoted by
-InnoDB, the tool will generally misreport the second word of these usernames
-as the hostname.
-
-=head1 OPTIONS
-
-This tool accepts additional command-line arguments.  Refer to the
-L<"SYNOPSIS"> and usage information for details.
-
-=over
-
-=item --ask-pass
-
-Prompt for a password when connecting to MySQL.
-
-=item --charset
-
-short form: -A; type: string
-
-Default character set.  If the value is utf8, sets Perl's binmode on
-STDOUT to utf8, passes the mysql_enable_utf8 option to DBD::mysql, and runs SET
-NAMES UTF8 after connecting to MySQL.  Any other value sets binmode on STDOUT
-without the utf8 layer, and runs SET NAMES after connecting to MySQL.
-
-=item --clear-deadlocks
-
-type: string
-
-Use this table to create a small deadlock.  This usually has the effect of
-clearing out a huge deadlock, which otherwise consumes the entire output of
-C<SHOW INNODB STATUS>.  The table must not exist.  pt-deadlock-logger will
-create it with the following MAGIC_clear_deadlocks structure:
-
-  CREATE TABLE test.deadlock_maker(a INT PRIMARY KEY) ENGINE=InnoDB;
-
-After creating the table and causing a small deadlock, the tool will drop the
-table again.
-
-=item --[no]collapse
-
-Collapse whitespace in queries to a single space.  This might make it easier to
-inspect on the command line or in a query.  By default, whitespace is collapsed
-when printing with L<"--print">, but not modified when storing to L<"--dest">.
-(That is, the default is different for each action).
-
-=item --columns
-
-type: hash
-
-Output only this comma-separated list of columns.  See L<"OUTPUT"> for more
-details on columns.
-
 =item --config
 
 type: Array
@@ -4616,9 +4997,6 @@ DSN for where to store deadlocks; specify at least a database (D) and table (t).
 Missing values are filled in with the same values from the source host, so you
 can usually omit most parts of this argument if you're storing deadlocks on the
 same server on which they happen.
-
-By default, whitespace in the query column is left intact;
-use L<"--[no]collapse"> if you want whitespace collapsed.
 
 The following MAGIC_dest_table is suggested if you want to store all the
 information pt-deadlock-logger can extract about deadlocks:
@@ -4658,11 +5036,22 @@ Connect to host.
 
 =item --interval
 
-type: time
+type: time; default: 30
 
 How often to check for deadlocks.  If no L<"--run-time"> is specified,
 pt-deadlock-logger runs forever, checking for deadlocks at every interval.
 See also L<"--run-time">.
+
+=item --iterations
+
+type: int
+
+How many times to check for deadlocks.  By default, this option
+is undefined which means an infinite number of iterations.  The tool always
+exits for L<"--run-time">, regardless of the value specified for this option.
+For example, the tool will exit after 1 minute with
+C<--run-time 1m --iterations 4 --interval 30> because 4 iterations at 30
+second intervals would take 2 minutes, longer than the 1 mintue run-time.
 
 =item --log
 
@@ -4695,16 +5084,9 @@ short form: -P; type: int
 
 Port number to use for connection.
 
-=item --print
+=item --quiet
 
-Print results on standard output.  See L<"OUTPUT"> for more.  By default,
-enables L<"--[no]collapse"> unless you explicitly disable it.
-
-If L<"--interval"> or L<"--run-time"> is specified, only new deadlocks are
-printed at each interval.  A fingerprint for each deadlock is created using
-L<"--columns"> server, ts and thread (even if those columns were not specified
-by L<"--columns">) and if the current deadlock's fingerprint is different from
-the last deadlock's fingerprint, then it is printed.
+Do not deadlocks; only print errors and warnings to C<STDERR>.
 
 =item --run-time
 
@@ -4729,7 +5111,7 @@ Socket file to use for connection.
 
 =item --tab
 
-Print tab-separated columns, instead of aligned.
+Use tabs to separate columns instead of spaces.
 
 =item --user
 
@@ -4886,7 +5268,7 @@ Replace C<TOOL> with the name of any tool.
 
 =head1 AUTHORS
 
-Baron Schwartz
+Baron Schwartz and Daniel Nichter
 
 =head1 ABOUT PERCONA TOOLKIT
 
