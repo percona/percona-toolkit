@@ -4290,23 +4290,23 @@ sub main {
    # ########################################################################
    # Connect to MySQL and set up the --dest, if any.
    # ########################################################################
-   my $q  = new Quoter();
+   my $q = new Quoter();
 
    $src->connect();
 
-   my $sth;
-   my $ins_sth;
-
    my @cols = @{ $o->get('columns') };
+   my $ins_sth;
+   my $ins_sql;
    if ( $dst ) {
       $dst->connect(AutoCommit => 0);
 
       my $db_tbl = $q->join_quote($dst->dsn->{D}, $dst->dsn->{t});
       my $cols  = join(',', map { $q->quote($_) } @cols);
       my $parms = join(',', map { '?' }           @cols);
-      my $sql   = "INSERT IGNORE INTO $db_tbl($cols) VALUES($parms)";
-      PTDEBUG && _d($sql);
-      $ins_sth  = $dst->dbh->prepare($sql);
+      $ins_sql  = "INSERT IGNORE INTO $db_tbl ($cols) VALUES ($parms) "
+                . "/* pt-deadlock-logger */";
+      PTDEBUG && _d($ins_sql);
+      $ins_sth  = $dst->dbh->prepare($ins_sql);
 
       if ( $o->get('create-dest-table') ) {
          my $sql = $o->read_para_after(__FILE__, qr/MAGIC_dest_table/);
@@ -4331,6 +4331,7 @@ sub main {
       $daemon->make_PID_file();
    }
 
+   # Let Cxn::DESTROY() disconenct the dbh.
    $src->{parent} = 0;
    $dst->{parent} = 0 if $dst;
 
@@ -4369,7 +4370,7 @@ sub main {
    my $sep                     = $o->get('tab') ? "\t" : ' ';
    my $last_fingerprint        = '';
    my $parse_deadlocks_options = {
-      'server'     => $src->dsn->{h},
+      'server'     => $src->dsn->{h} || $src->{hostname},
       'numeric-ip' => $o->got('numeric-ip'),
    };
 
@@ -4404,8 +4405,8 @@ sub main {
          if ( $src->lost_connection($e) ) {
             eval { $src->connect() };
             if ( $EVAL_ERROR ) {
-               warn "Lost connection to MySQL.  Will try to reconnect "
-                  . "in the next iteration.\n";
+               warn "Lost connection to " . $src->name . ".  Will try "
+                  . "to reconnect in the next iteration.\n";
             }
             else {
                PTDEBUG && _d('Reconnected to MySQL');
@@ -4419,12 +4420,38 @@ sub main {
       }
       else {
          if ( $ins_sth ) {
-            foreach my $txn (
-               sort { $a->{thread} <=> $b->{thread} } values %txns
-            ) {
-               $ins_sth->execute(@{$txn}{@cols});
+            eval {
+               PTDEBUG && _d('Saving deadlock to --dest');
+               foreach my $txn (
+                  sort { $a->{thread} <=> $b->{thread} } values %txns
+               ) {
+                  $ins_sth->execute(@{$txn}{@cols});
+               }
+               $dst->dbh->commit();
+            };
+            if ( my $e = $EVAL_ERROR ) {
+               PTDEBUG && _d('Error saving to --dest:', $e);
+               if ( $dst->lost_connection($e) ) {
+                  eval {
+                     $ins_sth->finish() if $ins_sth;
+                     $dst->dbh->disconnect() if $dst->dbh;
+                     $dst->connect(AutoCommit => 0);
+                     $ins_sth = $dst->dbh->prepare($ins_sql);
+                  }; 
+                  if ( $EVAL_ERROR ) {
+                     warn "Lost connection to " . $dst->name . ".  Will try "
+                        . "to reconnect in the next iteration.\n";
+                  }
+                  else {
+                     PTDEBUG && _d('Reconnected to MySQL (--dest)');
+                     redo ITERATION;
+                  }
+               }
+               else {
+                  warn "Error saving to --dest: $EVAL_ERROR";
+                  $exit_status |= 1;
+               }
             }
-            $dst->dbh->commit();
          }
 
          if ( $fingerprint ne $last_fingerprint ) {
@@ -4732,32 +4759,28 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-pt-deadlock-logger - Extract and log MySQL deadlock information.
+pt-deadlock-logger - Log MySQL deadlocks.
 
 =head1 SYNOPSIS
 
 Usage: pt-deadlock-logger [OPTIONS] DSN
 
-pt-deadlock-logger extracts and saves information about the most recent deadlock
-in a MySQL server.
+pt-deadlock-logger logs information about MySQL deadlocks on the given
+DSN.  Information is printed to C<STDOUT>, and it can also be saved to a
+table by specifying L<"--dest">.  The tool runs for forever unless
+L<"--run-time"> or L<"--iterations"> is specified.
 
-Print deadlocks on SOURCE_DSN:
+Print deadlocks on host1:
 
-   pt-deadlock-logger SOURCE_DSN
+   pt-fk-error-logger h=host1
 
-Store deadlock information from SOURCE_DSN in test.deadlocks table on SOURCE_DSN
-(source and destination are the same host):
+Print deadlocks on host1 once then exit:
 
-   pt-deadlock-logger SOURCE_DSN --dest D=test,t=deadlocks
+   pt-fk-error-logger h=host1 --iterations 1
 
-Store deadlock information from SOURCE_DSN in test.deadlocks table on DEST_DSN
-(source and destination are different hosts):
+Save deadlocks on host1 to percona_schema.fke on host2:
 
-   pt-deadlock-logger SOURCE_DSN --dest DEST_DSN,D=test,t=deadlocks
-
-Daemonize and check for deadlocks on SOURCE_DSN every 30 seconds for 4 hours:
-
-   pt-deadlock-logger SOURCE_DSN --dest D=test,t=deadlocks --daemonize --run-time 4h --interval 30s
+  pt-fk-error-logger h=host1 --dest h=host2,D=percona_schema,t=deadlocks
 
 =head1 RISKS
 
@@ -4783,18 +4806,24 @@ See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-pt-deadlock-logger prints InnoDB deadlock data from a MySQL server.
-The deadlock data can also be saved to a table by specifying L<"--dest">.
+pt-deadlock-logger prints information about MySQL deadlocks by polling
+and parsing C<SHOW ENGINE INNODB STATUS>.  When a new deadlock occurs,
+it's printed to C<STDOUT> and, if specified, saved to L<"--dest">.
+
+Only new deadlocks are printed.  A fingerprint for each deadlock is created
+using the deadlock's server, ts, and thread values (even if these
+columns are not specified by L<"--columns">).  A deadlock is printed if
+its fingerprint is different than the last deadlock's fingerprint.
+
+The L<"--dest"> statement uses C<INSERT IGNORE> to eliminate duplicate
+deadlocks, so every deadlock is saved for every L<"--iterations">.
 
 =head1 OUTPUT
 
-Deadlocks are printed to C<STDOUT>, unless L<"--quiet"> is specified.
+New deadlocks are printed to C<STDOUT>, unless L<"--quiet"> is specified.
 Errors and warnings  are printed to C<STDERR>.
 
-Only new deadlocks are printed.  A fingerprint for each deadlock is created
-using columns server, ts and thread (even if those columns were not specified
-by L<"--columns">) and if the current deadlock's fingerprint is different from
-the last deadlock's fingerprint, then it is printed.
+See also L<"--columns"> and L<"--tab">.
 
 =head1 INNODB CAVEATS AND DETAILS
 
@@ -5017,7 +5046,7 @@ See also L<"--run-time">.
 
 type: int
 
-How many times to check for foreign key errors.  By default, this option
+How many times to check for deadlocks.  By default, this option
 is undefined which means an infinite number of iterations.  The tool always
 exits for L<"--run-time">, regardless of the value specified for this option.
 For example, the tool will exit after 1 minute with
@@ -5082,7 +5111,7 @@ Socket file to use for connection.
 
 =item --tab
 
-Print tab-separated columns, instead of aligned.
+Use tabs to separate columns instead of spaces.
 
 =item --user
 
