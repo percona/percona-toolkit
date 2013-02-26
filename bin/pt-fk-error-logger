@@ -3915,7 +3915,8 @@ Usage: pt-fk-error-logger [OPTIONS] DSN
 
 pt-fk-error-logger logs information about foreign key errors on the given
 DSN.  Information is printed to C<STDOUT>, and it can also be saved to a
-table by specifying L<"--dest">.
+table by specifying L<"--dest">.  The tool runs for forever unless
+L<"--run-time"> or L<"--iterations"> is specified.
 
 Print foreign key errors on host1:
 
