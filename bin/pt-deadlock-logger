@@ -4654,7 +4654,6 @@ sub clear_deadlocks {
    PTDEBUG && _d('Clearing deadlocks with table', $table, $table_def);
 
    my $parent_dbh = $dp->get_dbh($dp->get_cxn_params($dsn), { AutoCommit=>0 });
-   $parent_dbh->{AutoCommit} = 0;
    $parent_dbh->{InactiveDestroy} = 1; # because of forking
 
    # Create the deadlocks table.
@@ -4886,9 +4885,14 @@ type: string
 Use this table to create a small deadlock.  This usually has the effect of
 clearing out a huge deadlock, which otherwise consumes the entire output of
 C<SHOW INNODB STATUS>.  The table must not exist.  pt-deadlock-logger will
-create it with the following MAGIC_clear_deadlocks structure:
+create it with the following structure:
 
-  CREATE TABLE percona_schema.clear_deadlocks (a INT PRIMARY KEY) ENGINE=InnoDB;
+=for comment ignore-pt-internal-value
+MAGIC_clear_deadlocks
+
+  CREATE TABLE percona_schema.clear_deadlocks (
+    a INT PRIMARY KEY
+  ) ENGINE=InnoDB
 
 After creating the table and causing a small deadlock, the tool will drop the
 table again.
@@ -5008,8 +5012,11 @@ Missing values are filled in with the same values from the source host, so you
 can usually omit most parts of this argument if you're storing deadlocks on the
 same server on which they happen.
 
-The following MAGIC_dest_table is suggested if you want to store all the
+The following table structure is suggested if you want to store all the
 information pt-deadlock-logger can extract about deadlocks:
+
+=for comment ignore-pt-internal-value
+MAGIC_dest_table
 
  CREATE TABLE deadlocks (
    server char(20) NOT NULL,
