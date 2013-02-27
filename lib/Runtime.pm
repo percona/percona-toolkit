@@ -18,13 +18,6 @@
 # Runtime package
 # ###########################################################################
 {
-# Package: Runtime
-# Runtime keeps track of time to control how long a tool's main loop runs.
-# This package was created to handle mk-query-digest --run-time-mode event.
-# In essence, we abstract time so that the tool doesn't know/care whether
-# now() comes from a clock, a log timestamp, or wherever.  The creator of
-# Runtime object determines how, or from where, time is gotten so that the
-# caller of the object can simply ask, "What time is it?".
 package Runtime;
 
 use strict;
@@ -32,30 +25,24 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-# Sub: new
-#
-# Parameters:
-#   %args - Arguments
-#
-# Required Arguments:
-#   now     - Callback that sets current time.
-#   runtime - Amount of time to run in seconds, or undef for forever.
-#
-# Returns:
-#   Runtime object
 sub new {
    my ( $class, %args ) = @_;
-   my @required_args = qw(now);
+   my @required_args = qw(run_time now);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
+      die "I need a $arg argument" unless exists $args{$arg};
    }
 
-   if ( ($args{runtime} || 0) < 0 ) {
-      die "runtime argument must be greater than zero"
+   my $run_time = $args{run_time};
+   if ( defined $run_time ) {
+      die "run_time must be > 0" if $run_time <= 0;
    }
+
+   my $now = $args{now};
+   die "now must be a callback" unless ref $now eq 'CODE';
 
    my $self = {
-      %args,
+      run_time   => $run_time,
+      now        => $now,
       start_time => undef,
       end_time   => undef,
       time_left  => undef,
@@ -66,8 +53,8 @@ sub new {
 }
 
 # Sub: time_left
-#   Return the number of runtime seconds left or undef for forever.
-#   The return may be less than zero if the runtime has been exceeded.
+#   Return the number of run time seconds left or undef for forever.
+#   The return may be less than zero if the run time has been exceeded.
 #   The first call to this subroutine "starts the clock", so to speak,
 #   if the now callbackup returns a defined value.
 #
@@ -75,7 +62,7 @@ sub new {
 #   %args - Arguments passed to now callback.
 #
 # Returns:
-#   Number of runtime seconds left, possibly less than zero, or undef
+#   Number of run time seconds left, possibly less than zero, or undef
 #   if running forever.
 sub time_left {
    my ( $self, %args ) = @_;
@@ -99,14 +86,14 @@ sub time_left {
    # we know the current time.
    return unless defined $now;
 
-   # If runtime is also defined, then we can determine time left.
+   # If run_time is also defined, then we can determine time left.
    # If it's not defined, then we're running forever.
-   my $runtime = $self->{runtime};
-   return unless defined $runtime;
+   my $run_time = $self->{run_time};
+   return unless defined $run_time;
 
    # Set the end time once.
    if ( !$self->{end_time} ) {
-      $self->{end_time} = $now + $runtime;
+      $self->{end_time} = $now + $run_time;
       PTDEBUG && _d("End time:", $self->{end_time});
    }
 
@@ -118,7 +105,7 @@ sub time_left {
 }
 
 # Sub: have_time
-#   Return true or false if there's runtime left.  This sub is a simpler
+#   Return true or false if there's run time left.  This sub is a simpler
 #   wrapper around <time_left()> which returns true (1) if time left is
 #   defined and greater than zero or undef, else returns false.
 #
@@ -131,7 +118,7 @@ sub have_time {
    my ( $self, %args ) = @_;
    my $time_left = $self->time_left(%args);
    return 1 if !defined $time_left;  # run forever
-   return $time_left <= 0 ? 0 : 1;   # <=0s means runtime has elapsed
+   return $time_left <= 0 ? 0 : 1;   # <=0s means run time has elapsed
 }
 
 # Sub: time_elapsed
@@ -173,7 +160,7 @@ sub reset {
    $self->{end_time}   = undef;
    $self->{time_left}  = undef;
    $self->{stop}       = 0;
-   PTDEBUG && _d("Reset runtime");
+   PTDEBUG && _d("Reset run time");
    return;
 }
 
