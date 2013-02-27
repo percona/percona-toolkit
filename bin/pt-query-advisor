@@ -9092,11 +9092,11 @@ Password to use when connecting.
 
 type: string
 
-Create the given PID file when daemonized.  The file contains the process
-ID of the daemonized instance.  The PID file is removed when the
-daemonized instance exits.  The program checks for the existence of the
-PID file when starting; if it exists and the process with the matching PID
-exists, the program exits.
+Create the given PID file.  The tool won't start if the PID file already
+exists and the PID it contains is different than the current PID.  However,
+if the PID file exists and the PID it contains is no longer running, the
+tool will overwrite the PID file with the current PID.  The PID file is
+removed automatically when the tool exits.
 
 =item --port
 
