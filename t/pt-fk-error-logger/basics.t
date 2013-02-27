@@ -27,8 +27,9 @@ if ( !$dbh ) {
 $sb->create_dbs($dbh, [qw(test)]);
 
 my $output;
-my $cnf = '/tmp/12345/my.sandbox.cnf';
-my $cmd = "$trunk/bin/pt-fk-error-logger -F $cnf ";
+my $cnf  = '/tmp/12345/my.sandbox.cnf';
+my $cmd  = "$trunk/bin/pt-fk-error-logger -F $cnf ";
+my @args = qw(--iterations 1);
 
 $sb->load_file('master', 't/pt-fk-error-logger/samples/fke_tbl.sql', 'test');
 
@@ -39,8 +40,45 @@ $sb->load_file('master', 't/pt-fk-error-logger/samples/fke_tbl.sql', 'test');
 # First, create a foreign key error.
 `/tmp/12345/use -D test < $trunk/t/pt-fk-error-logger/samples/fke.sql 1>/dev/null 2>/dev/null`;
 
-# Then get and save that fke.
-output(sub { pt_fk_error_logger::main('h=127.1,P=12345,u=msandbox,p=msandbox', '--dest', 'h=127.1,P=12345,D=test,t=foreign_key_errors'); } );
+$output = output(
+   sub {
+      pt_fk_error_logger::main(@args, 'h=127.1,P=12345,u=msandbox,p=msandbox'),
+   }
+);
+
+like(
+   $output,
+   qr/Foreign key constraint fails/,
+   "Prints fk error by default"
+);
+
+$output = output(
+   sub {
+      pt_fk_error_logger::main(@args, 'h=127.1,P=12345,u=msandbox,p=msandbox',
+         qw(--quiet))
+   }
+);
+
+is(
+   $output,
+   "",
+   "No output with --quiet"
+);
+
+
+# #############################################################################
+# --dest
+# #############################################################################
+
+$output = output(
+   sub {
+      pt_fk_error_logger::main(@args,
+         'h=127.1,P=12345,u=msandbox,p=msandbox',
+         '--dest', 'h=127.1,P=12345,D=test,t=foreign_key_errors',
+      )
+   }
+);
+
 sleep 0.1;
 
 # And then test that it was actually saved.
@@ -61,7 +99,7 @@ like(
 
 # Check again to make sure that the same fke isn't saved twice.
 my $first_ts = $fke->[0]->[0];
-output(sub { pt_fk_error_logger::main('h=127.1,P=12345,u=msandbox,p=msandbox', '--dest', 'h=127.1,P=12345,D=test,t=foreign_key_errors'); } );
+output(sub { pt_fk_error_logger::main(@args, 'h=127.1,P=12345,u=msandbox,p=msandbox', '--dest', 'h=127.1,P=12345,D=test,t=foreign_key_errors'); } );
 sleep 0.1;
 $fke = $dbh->selectall_arrayref('SELECT * FROM test.foreign_key_errors');
 is(
@@ -82,7 +120,7 @@ $dbh->do('INSERT INTO child VALUES (1, 2)');
 eval {
    $dbh->do('DELETE FROM parent WHERE id = 2');  # Causes foreign key error.
 };
-output( sub { pt_fk_error_logger::main('h=127.1,P=12345,u=msandbox,p=msandbox', '--dest', 'h=127.1,P=12345,D=test,t=foreign_key_errors'); } );
+output( sub { pt_fk_error_logger::main(@args, 'h=127.1,P=12345,u=msandbox,p=msandbox', '--dest', 'h=127.1,P=12345,D=test,t=foreign_key_errors'); } );
 sleep 0.1;
 $fke = $dbh->selectall_arrayref('SELECT * FROM test.foreign_key_errors');
 like(
@@ -99,11 +137,14 @@ is(
 # ##########################################################################
 # Test printing the errors.
 # ##########################################################################
+
 $dbh->do('USE test');
 eval {
    $dbh->do('DELETE FROM parent WHERE id = 2');  # Causes foreign key error.
 };
-$output = output(sub { pt_fk_error_logger::main('h=127.1,P=12345,u=msandbox,p=msandbox'); });
+
+$output = output(sub { pt_fk_error_logger::main(@args, 'h=127.1,P=12345,u=msandbox,p=msandbox'); });
+
 like(
    $output,
    qr/DELETE FROM parent WHERE id = 2/,
@@ -127,7 +168,7 @@ $sb->load_file('master1', 't/pt-fk-error-logger/samples/fke_tbl.sql', 'test');
 
 $output = output(
    sub {
-      pt_fk_error_logger::main('h=127.1,P=12348,u=msandbox,p=msandbox',
+      pt_fk_error_logger::main(@args, 'h=127.1,P=12348,u=msandbox,p=msandbox',
       '--dest', 'h=127.1,P=12348,D=test,t=foreign_key_errors')
    },
    stderr => 1,
@@ -140,6 +181,23 @@ is(
 );
 
 diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
+
+# #############################################################################
+# Test --pid
+# #############################################################################
+
+my $pid_file = "/tmp/pt-fk-error-log-test-$PID.pid";
+diag(`touch $pid_file`);
+
+$output = `$trunk/bin/pt-fk-error-logger h=127.1,P=12345,u=msandbox,p=msandbox --pid $pid_file --iterations 1 2>&1`;
+
+like(
+   $output,
+   qr{PID file $pid_file already exists},
+   'Dies if PID file already exists (--pid without --daemonize) (issue 391)'
+);
+
+unlink $pid_file;
 
 # #############################################################################
 # Done.

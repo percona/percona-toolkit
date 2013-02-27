@@ -1723,7 +1723,11 @@ Send mail to this list of addresses when data is collected.
 
 type: string; default: /var/run/pt-stalk.pid
 
-Create a PID file when daemonized.
+Create the given PID file.  The tool won't start if the PID file already
+exists and the PID it contains is different than the current PID.  However,
+if the PID file exists and the PID it contains is no longer running, the
+tool will overwrite the PID file with the current PID.  The PID file is
+removed automatically when the tool exits.
 
 =item --plugin
 
