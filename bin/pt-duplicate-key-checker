@@ -5130,14 +5130,11 @@ Password to use when connecting.
 
 type: string
 
-Create the given PID file.  The file contains the process ID of the script.
-The PID file is removed when the script exits.  Before starting, the script
-checks if the PID file already exists.  If it does not, then the script creates
-and writes its own PID to it.  If it does, then the script checks the following:
-if the file contains a PID and a process is running with that PID, then
-the script dies; or, if there is no process running with that PID, then the
-script overwrites the file with its own PID and starts; else, if the file
-contains no PID, then the script dies.
+Create the given PID file.  The tool won't start if the PID file already
+exists and the PID it contains is different than the current PID.  However,
+if the PID file exists and the PID it contains is no longer running, the
+tool will overwrite the PID file with the current PID.  The PID file is
+removed automatically when the tool exits.
 
 =item --port
 

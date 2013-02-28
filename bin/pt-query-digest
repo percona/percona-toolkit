@@ -10803,15 +10803,20 @@ sub new {
    my ( $class, %args ) = @_;
    my @required_args = qw(now);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
+      die "I need a $arg argument" unless exists $args{$arg};
    }
 
-   if ( ($args{runtime} || 0) < 0 ) {
-      die "runtime argument must be greater than zero"
+   my $run_time = $args{run_time};
+   if ( defined $run_time ) {
+      die "run_time must be > 0" if $run_time <= 0;
    }
+
+   my $now = $args{now};
+   die "now must be a callback" unless ref $now eq 'CODE';
 
    my $self = {
-      %args,
+      run_time   => $run_time,
+      now        => $now,
       start_time => undef,
       end_time   => undef,
       time_left  => undef,
@@ -10838,11 +10843,11 @@ sub time_left {
 
    return unless defined $now;
 
-   my $runtime = $self->{runtime};
-   return unless defined $runtime;
+   my $run_time = $self->{run_time};
+   return unless defined $run_time;
 
    if ( !$self->{end_time} ) {
-      $self->{end_time} = $now + $runtime;
+      $self->{end_time} = $now + $run_time;
       PTDEBUG && _d("End time:", $self->{end_time});
    }
 
@@ -10855,7 +10860,7 @@ sub have_time {
    my ( $self, %args ) = @_;
    my $time_left = $self->time_left(%args);
    return 1 if !defined $time_left;  # run forever
-   return $time_left <= 0 ? 0 : 1;   # <=0s means runtime has elapsed
+   return $time_left <= 0 ? 0 : 1;   # <=0s means run time has elapsed
 }
 
 sub time_elapsed {
@@ -10881,7 +10886,7 @@ sub reset {
    $self->{end_time}   = undef;
    $self->{time_left}  = undef;
    $self->{stop}       = 0;
-   PTDEBUG && _d("Reset runtime");
+   PTDEBUG && _d("Reset run time");
    return;
 }
 
@@ -12892,8 +12897,8 @@ sub main {
          $now_callback = sub { return; };
       }
       $pipeline_data->{Runtime} = new Runtime(
-         now     => $now_callback,
-         runtime => $o->get('run-time'),
+         now      => $now_callback,
+         run_time => $o->get('run-time'),
       );
 
       $pipeline->add(
@@ -14967,11 +14972,11 @@ Password to use when connecting.
 
 type: string
 
-Create the given PID file when daemonized.  The file contains the process
-ID of the daemonized instance.  The PID file is removed when the
-daemonized instance exits.  The program checks for the existence of the
-PID file when starting; if it exists and the process with the matching PID
-exists, the program exits.
+Create the given PID file.  The tool won't start if the PID file already
+exists and the PID it contains is different than the current PID.  However,
+if the PID file exists and the PID it contains is no longer running, the
+tool will overwrite the PID file with the current PID.  The PID file is
+removed automatically when the tool exits.
 
 =item --port
 

@@ -22,9 +22,6 @@ my $dbh1 = $sb->get_dbh_for('master');
 if ( !$dbh1 ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-else {
-   plan tests => 4;
-}
 
 my $output;
 my $cnf = "/tmp/12345/my.sandbox.cnf";
@@ -39,7 +36,7 @@ $sb->create_dbs($dbh1, ['test']);
 
 # The clear-deadlocks table comes and goes quickly so we can really
 # only search the debug output for evidence that it was created.
-$output = `PTDEBUG=1 $trunk/bin/pt-deadlock-logger F=$cnf,D=test --clear-deadlocks test.make_deadlock 2>&1`;
+$output = `PTDEBUG=1 $trunk/bin/pt-deadlock-logger F=$cnf,D=test --clear-deadlocks test.make_deadlock --iterations 1 2>&1`;
 like(
    $output,
    qr/INSERT INTO test.make_deadlock/,
@@ -67,4 +64,4 @@ like(
 # #############################################################################
 $sb->wipe_clean($dbh1);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+done_testing;

@@ -21,7 +21,7 @@ my $output;
 $output = `$trunk/bin/pt-deadlock-logger --dest D=test,t=deadlocks 2>&1`;
 like(
    $output,
-   qr/Missing or invalid source host/,
+   qr/No DSN was specified/,
    'Requires source host'
 );
 

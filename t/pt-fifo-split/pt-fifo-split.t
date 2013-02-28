@@ -9,25 +9,21 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use File::Temp qw(tempfile);
 use Test::More;
-
-if ( !$ENV{SLOW_TESTS} ) {
-   plan skip_all => "pt-fifo-split/pt-fifo-split. is a top 5 slowest file; set SLOW_TESTS=1 to enable it.";
-}
+use File::Temp qw(tempfile);
+use IO::File;
 
 use PerconaTest;
 require "$trunk/bin/pt-fifo-split";
 
 my $fifo = '/tmp/pt-fifo-split';
-unlink($fifo);
+unlink($fifo) if $fifo;
 
 my $cmd = "$trunk/bin/pt-fifo-split";
 
 my $output = `$cmd --help`;
 like($output, qr/Options and values/, 'It lives');
 
-require IO::File;
 my ($fh, $filename) = tempfile("pt-fifo-split-data.XXXXXXXXX", OPEN => 1, TMPDIR => 1, UNLINK => 1);
 $fh->autoflush(1);
 print { $fh } "$_\n" for 1..9;
@@ -40,7 +36,7 @@ if ( !$pid ) {
    exit 1;
 }
 
-PerconaTest::wait_for_files($fifo);
+PerconaTest::wait_until(sub { -p $fifo });
 my @fifo;
 while (kill 0, $pid) {
    push @fifo, slurp_file($fifo) if -e $fifo;
@@ -65,7 +61,7 @@ if ( !$pid ) {
    exec { $cmd } $cmd, qw(--lines 15), $filename;
    exit 1;
 }
-PerconaTest::wait_for_files($fifo);
+PerconaTest::wait_until(sub { -p $fifo });
 
 @fifo = ();
 while (kill 0, $pid) {
@@ -84,7 +80,7 @@ is_deeply(
 close $fh or die "Cannot close $filename: $OS_ERROR";
 
 system("($cmd --lines 10000 $trunk/bin/pt-fifo-split > /dev/null 2>&1 < /dev/null)&");
-PerconaTest::wait_for_files($fifo);
+PerconaTest::wait_until(sub { -p $fifo });
 
 my $contents  = slurp_file($fifo);
 my $contents2 = load_file('bin/pt-fifo-split');
@@ -92,7 +88,7 @@ my $contents2 = load_file('bin/pt-fifo-split');
 is($contents, $contents2, 'I read the file');
 
 system("($cmd $trunk/t/pt-fifo-split/samples/file_with_lines --offset 2 > /dev/null 2>&1 < /dev/null)&");
-PerconaTest::wait_for_files($fifo);
+PerconaTest::wait_until(sub { -p $fifo });
 
 $contents = slurp_file($fifo);
 
@@ -108,17 +104,19 @@ EOF
 # #########################################################################
 # Issue 391: Add --pid option to all scripts
 # #########################################################################
-`touch /tmp/pt-script.pid`;
-$output = `$cmd --pid /tmp/pt-script.pid 2>&1`;
+my $pid_file = "/tmp/pt-fifo-split.pid.$PID";
+diag(`touch $pid_file`);
+
+$output = `$cmd --pid $pid_file 2>&1`;
 like(
    $output,
-   qr{PID file /tmp/pt-script.pid already exists},
+   qr{PID file $pid_file already exists},
    'Dies if PID file already exists (issue 391)'
 );
-unlink '/tmp/pt-script.pid';
+
+unlink $pid_file if -f $pid_file;
 
 # #############################################################################
 # Done.
 # #############################################################################
 done_testing;
-exit;
