@@ -1368,7 +1368,7 @@ pt-fifo-split - Split files and pipe lines to a fifo without really splitting.
 
 =head1 SYNOPSIS
 
-Usage: pt-fifo-split [options] [FILE ...]
+Usage: pt-fifo-split [OPTIONS] [FILE]
 
 pt-fifo-split splits FILE and pipes lines to a fifo.  With no FILE, or when FILE
 is -, read standard input.
