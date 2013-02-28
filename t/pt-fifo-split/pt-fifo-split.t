@@ -39,7 +39,12 @@ if ( !$pid ) {
 PerconaTest::wait_until(sub { -p $fifo });
 my @fifo;
 while (kill 0, $pid) {
-   push @fifo, slurp_file($fifo) if -e $fifo;
+   if ( -e $fifo ) {
+       eval {
+          my $contents = slurp_file($fifo);
+          push @fifo,  $contents;
+       }
+   }
 }
 waitpid($pid, 0);
 
@@ -65,7 +70,12 @@ PerconaTest::wait_until(sub { -p $fifo });
 
 @fifo = ();
 while (kill 0, $pid) {
-   push @fifo, slurp_file($fifo) if -e $fifo;
+   if ( -e $fifo ) {
+       eval {
+          my $contents = slurp_file($fifo);
+          push @fifo,  $contents;
+       }
+   }
 }
 waitpid($pid, 0);
 
@@ -82,7 +92,7 @@ close $fh or die "Cannot close $filename: $OS_ERROR";
 system("($cmd --lines 10000 $trunk/bin/pt-fifo-split > /dev/null 2>&1 < /dev/null)&");
 PerconaTest::wait_until(sub { -p $fifo });
 
-my $contents  = slurp_file($fifo);
+my $contents  = slurp_file($fifo) if -e $fifo;
 my $contents2 = load_file('bin/pt-fifo-split');
 
 is($contents, $contents2, 'I read the file');
@@ -90,7 +100,7 @@ is($contents, $contents2, 'I read the file');
 system("($cmd $trunk/t/pt-fifo-split/samples/file_with_lines --offset 2 > /dev/null 2>&1 < /dev/null)&");
 PerconaTest::wait_until(sub { -p $fifo });
 
-$contents = slurp_file($fifo);
+$contents = slurp_file($fifo) if -e $fifo;
 
 is($contents, <<EOF
      2	hi
