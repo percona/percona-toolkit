@@ -355,17 +355,40 @@ $output = output(
    stderr => 1,
 );
 
-is(
-   $exit_status,
-   0,
-   "No host in DSN, zero exit status"
-);
+# This test no longer works because of
+# https://bugs.launchpad.net/percona-toolkit/+bug/1087804
+# So comment out this test...
+#is(
+#   $exit_status,
+#   0,
+#   "No host in DSN, zero exit status"
+#) or diag($output);
+
+# ... and use this one instead:
+like(
+   $output,
+   qr/sakila.store/,
+   "No host in DSN, checksums happened"
+) or diag($output);
 
 is(
    PerconaTest::count_checksum_results($output, 'errors'),
    0,
    "No host in DSN, 0 errors"
-);
+) or diag($output);
+
+# While we're at it, we might as well test bug 1087804:
+like(
+   $output,
+   qr/no slaves were found/,
+   "Warns when no slave are found (bug 1087804)"
+) or diag($output);
+
+is(
+   $exit_status,
+   1,
+   "Exit status 1 when no slaves are found (bug 1087804)"
+) or diag($output);
 
 # #############################################################################
 # Test --where.
