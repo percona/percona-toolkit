@@ -23,7 +23,6 @@ BEGIN {
       VersionParser
       DSNParser
       Daemon
-      ReportFormatter
       Quoter
       TableNibbler
       TableParser
@@ -2587,427 +2586,6 @@ sub _d {
 }
 # ###########################################################################
 # End Daemon package
-# ###########################################################################
-
-# ###########################################################################
-# ReportFormatter package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/ReportFormatter.pm
-#   t/lib/ReportFormatter.t
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-{
-package ReportFormatter;
-
-use Lmo;
-use English qw(-no_match_vars);
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
-
-use List::Util qw(min max);
-use POSIX qw(ceil);
-
-eval { require Term::ReadKey };
-my $have_term = $EVAL_ERROR ? 0 : 1;
-
-
-has underline_header => (
-   is      => 'ro',
-   isa     => 'Bool',
-   default => sub { 1 },
-);
-has line_prefix => (
-   is      => 'ro',
-   isa     => 'Str',
-   default => sub { '# ' },
-);
-has line_width => (
-   is      => 'ro',
-   isa     => 'Int',
-   default => sub { 78 },
-);
-has column_spacing => (
-   is      => 'ro',
-   isa     => 'Str',
-   default => sub { ' ' },
-);
-has extend_right => (
-   is      => 'ro',
-   isa     => 'Bool',
-   default => sub { '' },
-);
-has truncate_line_mark => (
-   is      => 'ro',
-   isa     => 'Str',
-   default => sub { '...' },
-);
-has column_errors => (
-   is      => 'ro',
-   isa     => 'Str',
-   default => sub { 'warn' },
-);
-has truncate_header_side => (
-   is      => 'ro',
-   isa     => 'Str',
-   default => sub { 'left' },
-);
-has strip_whitespace => (
-   is      => 'ro',
-   isa     => 'Bool',
-   default => sub { 1 },
-);
-has title => (
-   is        => 'rw',
-   isa       => 'Str',
-   predicate => 'has_title',
-);
-
-
-has n_cols => (
-   is      => 'rw',
-   isa     => 'Int',
-   default => sub { 0 },
-   init_arg => undef,
-);
-
-has cols => (
-   is       => 'ro',
-   isa      => 'ArrayRef',
-   init_arg => undef,
-   default  => sub { [] },
-   clearer  => 'clear_cols',
-);
-
-has lines => (
-   is       => 'ro',
-   isa      => 'ArrayRef',
-   init_arg => undef,
-   default  => sub { [] },
-   clearer  => 'clear_lines',
-);
-
-has truncate_headers => (
-   is       => 'rw',
-   isa      => 'Bool',
-   default  => sub { undef },
-   init_arg => undef,
-   clearer  => 'clear_truncate_headers',
-);
-
-sub BUILDARGS {
-   my $class = shift;
-   my $args  = $class->SUPER::BUILDARGS(@_);
-
-   if ( ($args->{line_width} || '') eq 'auto' ) {
-      die "Cannot auto-detect line width because the Term::ReadKey module "
-         . "is not installed" unless $have_term;
-      ($args->{line_width}) = GetTerminalSize();
-      PTDEBUG && _d('Line width:', $args->{line_width});
-   }
-
-   return $args;
-}
-
-sub set_columns {
-   my ( $self, @cols ) = @_;
-   my $min_hdr_wid = 0;  # check that header fits on line
-   my $used_width  = 0;
-   my @auto_width_cols;
-
-   for my $i ( 0..$#cols ) {
-      my $col      = $cols[$i];
-      my $col_name = $col->{name};
-      my $col_len  = length $col_name;
-      die "Column does not have a name" unless defined $col_name;
-
-      if ( $col->{width} ) {
-         $col->{width_pct} = ceil(($col->{width} * 100) / $self->line_width());
-         PTDEBUG && _d('col:', $col_name, 'width:', $col->{width}, 'chars =',
-            $col->{width_pct}, '%');
-      }
-
-      if ( $col->{width_pct} ) {
-         $used_width += $col->{width_pct};
-      }
-      else {
-         PTDEBUG && _d('Auto width col:', $col_name);
-         $col->{auto_width} = 1;
-         push @auto_width_cols, $i;
-      }
-
-      $col->{truncate}        = 1 unless defined $col->{truncate};
-      $col->{truncate_mark}   = '...' unless defined $col->{truncate_mark};
-      $col->{truncate_side} ||= 'right';
-      $col->{undef_value}     = '' unless defined $col->{undef_value};
-
-      $col->{min_val} = 0;
-      $col->{max_val} = 0;
-
-      $min_hdr_wid        += $col_len;
-      $col->{header_width} = $col_len;
-
-      $col->{right_most} = 1 if $i == $#cols;
-
-      push @{$self->cols}, $col;
-   }
-
-   $self->n_cols( scalar @cols );
-
-   if ( ($used_width || 0) > 100 ) {
-      die "Total width_pct for all columns is >100%";
-   }
-
-   if ( @auto_width_cols ) {
-      my $wid_per_col = int((100 - $used_width) / scalar @auto_width_cols);
-      PTDEBUG && _d('Line width left:', (100-$used_width), '%;',
-         'each auto width col:', $wid_per_col, '%');
-      map { $self->cols->[$_]->{width_pct} = $wid_per_col } @auto_width_cols;
-   }
-
-   $min_hdr_wid += ($self->n_cols() - 1) * length $self->column_spacing();
-   PTDEBUG && _d('min header width:', $min_hdr_wid);
-   if ( $min_hdr_wid > $self->line_width() ) {
-      PTDEBUG && _d('Will truncate headers because min header width',
-         $min_hdr_wid, '> line width', $self->line_width());
-      $self->truncate_headers(1);
-   }
-
-   return;
-}
-
-sub add_line {
-   my ( $self, @vals ) = @_;
-   my $n_vals = scalar @vals;
-   if ( $n_vals != $self->n_cols() ) {
-      $self->_column_error("Number of values $n_vals does not match "
-         . "number of columns " . $self->n_cols());
-   }
-   for my $i ( 0..($n_vals-1) ) {
-      my $col   = $self->cols->[$i];
-      my $val   = defined $vals[$i] ? $vals[$i] : $col->{undef_value};
-      if ( $self->strip_whitespace() ) {
-         $val =~ s/^\s+//g;
-         $val =~ s/\s+$//;
-         $vals[$i] = $val;
-      }
-      my $width = length $val;
-      $col->{min_val} = min($width, ($col->{min_val} || $width));
-      $col->{max_val} = max($width, ($col->{max_val} || $width));
-   }
-   push @{$self->lines}, \@vals;
-   return;
-}
-
-sub get_report {
-   my ( $self, %args ) = @_;
-
-   $self->_calculate_column_widths();
-   if ( $self->truncate_headers() ) {
-      $self->_truncate_headers();
-   }
-   $self->_truncate_line_values(%args);
-
-   my @col_fmts = $self->_make_column_formats();
-   my $fmt      = $self->line_prefix()
-                . join($self->column_spacing(), @col_fmts);
-   PTDEBUG && _d('Format:', $fmt);
-
-   (my $hdr_fmt = $fmt) =~ s/%([^-])/%-$1/g;
-
-   my @lines;
-   push @lines, $self->line_prefix() . $self->title() if $self->has_title();
-   push @lines, $self->_truncate_line(
-         sprintf($hdr_fmt, map { $_->{name} } @{$self->cols}),
-         strip => 1,
-         mark  => '',
-   );
-
-   if ( $self->underline_header() ) {
-      my @underlines = map { '=' x $_->{print_width} } @{$self->cols};
-      push @lines, $self->_truncate_line(
-         sprintf($fmt, map { $_ || '' } @underlines),
-         mark  => '',
-      );
-   }
-
-   push @lines, map {
-      my $vals = $_;
-      my $i    = 0;
-      my @vals = map {
-            my $val = defined $_ ? $_ : $self->cols->[$i++]->{undef_value};
-            $val = '' if !defined $val;
-            $val =~ s/\n/ /g;
-            $val;
-      } @$vals;
-      my $line = sprintf($fmt, @vals);
-      if ( $self->extend_right() ) {
-         $line;
-      }
-      else {
-         $self->_truncate_line($line);
-      }
-   } @{$self->lines};
-
-   $self->clear_cols();
-   $self->clear_lines();
-   $self->clear_truncate_headers();
-
-   return join("\n", @lines) . "\n";
-}
-
-sub truncate_value {
-   my ( $self, $col, $val, $width, $side ) = @_;
-   return $val if length $val <= $width;
-   return $val if $col->{right_most} && $self->extend_right();
-   $side  ||= $col->{truncate_side};
-   my $mark = $col->{truncate_mark};
-   if ( $side eq 'right' ) {
-      $val  = substr($val, 0, $width - length $mark);
-      $val .= $mark;
-   }
-   elsif ( $side eq 'left') {
-      $val = $mark . substr($val, -1 * $width + length $mark);
-   }
-   else {
-      PTDEBUG && _d("I don't know how to", $side, "truncate values");
-   }
-   return $val;
-}
-
-sub _calculate_column_widths {
-   my ( $self ) = @_;
-
-   my $extra_space = 0;
-   foreach my $col ( @{$self->cols} ) {
-      my $print_width = int($self->line_width() * ($col->{width_pct} / 100));
-
-      PTDEBUG && _d('col:', $col->{name}, 'width pct:', $col->{width_pct},
-         'char width:', $print_width,
-         'min val:', $col->{min_val}, 'max val:', $col->{max_val});
-
-      if ( $col->{auto_width} ) {
-         if ( $col->{min_val} && $print_width < $col->{min_val} ) {
-            PTDEBUG && _d('Increased to min val width:', $col->{min_val});
-            $print_width = $col->{min_val};
-         }
-         elsif ( $col->{max_val} &&  $print_width > $col->{max_val} ) {
-            PTDEBUG && _d('Reduced to max val width:', $col->{max_val});
-            $extra_space += $print_width - $col->{max_val};
-            $print_width  = $col->{max_val};
-         }
-      }
-
-      $col->{print_width} = $print_width;
-      PTDEBUG && _d('print width:', $col->{print_width});
-   }
-
-   PTDEBUG && _d('Extra space:', $extra_space);
-   while ( $extra_space-- ) {
-      foreach my $col ( @{$self->cols} ) {
-         if (    $col->{auto_width}
-              && (    $col->{print_width} < $col->{max_val}
-                   || $col->{print_width} < $col->{header_width})
-         ) {
-            $col->{print_width}++;
-         }
-      }
-   }
-
-   return;
-}
-
-sub _truncate_headers {
-   my ( $self, $col ) = @_;
-   my $side = $self->truncate_header_side();
-   foreach my $col ( @{$self->cols} ) {
-      my $col_name    = $col->{name};
-      my $print_width = $col->{print_width};
-      next if length $col_name <= $print_width;
-      $col->{name}  = $self->truncate_value($col, $col_name, $print_width, $side);
-      PTDEBUG && _d('Truncated hdr', $col_name, 'to', $col->{name},
-         'max width:', $print_width);
-   }
-   return;
-}
-
-sub _truncate_line_values {
-   my ( $self, %args ) = @_;
-   my $n_vals = $self->n_cols() - 1;
-   foreach my $vals ( @{$self->lines} ) {
-      for my $i ( 0..$n_vals ) {
-         my $col   = $self->cols->[$i];
-         my $val   = defined $vals->[$i] ? $vals->[$i] : $col->{undef_value};
-         my $width = length $val;
-
-         if ( $col->{print_width} && $width > $col->{print_width} ) {
-            if ( !$col->{truncate} ) {
-               $self->_column_error("Value '$val' is too wide for column "
-                  . $col->{name});
-            }
-
-            my $callback    = $args{truncate_callback};
-            my $print_width = $col->{print_width};
-            $val = $callback ? $callback->($col, $val, $print_width)
-                 :             $self->truncate_value($col, $val, $print_width);
-            PTDEBUG && _d('Truncated val', $vals->[$i], 'to', $val,
-               '; max width:', $print_width);
-            $vals->[$i] = $val;
-         }
-      }
-   }
-   return;
-}
-
-sub _make_column_formats {
-   my ( $self ) = @_;
-   my @col_fmts;
-   my $n_cols = $self->n_cols() - 1;
-   for my $i ( 0..$n_cols ) {
-      my $col = $self->cols->[$i];
-
-      my $width = $col->{right_most} && !$col->{right_justify} ? ''
-                : $col->{print_width};
-
-      my $col_fmt  = '%' . ($col->{right_justify} ? '' : '-') . $width . 's';
-      push @col_fmts, $col_fmt;
-   }
-   return @col_fmts;
-}
-
-sub _truncate_line {
-   my ( $self, $line, %args ) = @_;
-   my $mark = defined $args{mark} ? $args{mark} : $self->truncate_line_mark();
-   if ( $line ) {
-      $line =~ s/\s+$// if $args{strip};
-      my $len  = length($line);
-      if ( $len > $self->line_width() ) {
-         $line  = substr($line, 0, $self->line_width() - length $mark);
-         $line .= $mark if $mark;
-      }
-   }
-   return $line;
-}
-
-sub _column_error {
-   my ( $self, $err ) = @_;
-   my $msg = "Column error: $err";
-   $self->column_errors() eq 'die' ? die $msg : warn $msg;
-   return;
-}
-
-sub _d {
-   my ($package, undef, $line) = caller 0;
-   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
-        map { defined $_ ? $_ : 'undef' }
-        @_;
-   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
-}
-
-no Lmo;
-1;
-}
-# ###########################################################################
-# End ReportFormatter package
 # ###########################################################################
 
 # ###########################################################################
@@ -7954,6 +7532,7 @@ use English qw(-no_match_vars);
 use Percona::Toolkit;
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
+use List::Util qw(max);
 use Time::HiRes qw(time sleep);
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -8105,7 +7684,7 @@ sub main {
    # and it might be good to just make a convention of it.
    my $make_cxn = sub {
       my (%args) = @_;
-      my $cxn = new Cxn(
+      my $cxn = Cxn->new(
          %args,
          DSNParser    => $dp,
          OptionParser => $o,
@@ -8118,7 +7697,8 @@ sub main {
       return $cxn;
    };
 
-   my $cxn = $make_cxn->(dsn => $dsn);
+   my $cxn     = $make_cxn->(dsn => $dsn);
+   my $aux_cxn = $make_cxn->(dsn => $dsn, prev_dsn => $dsn);
 
    my $cluster = Percona::XtraDB::Cluster->new;
    if ( $cluster->is_cluster_node($cxn) ) {
@@ -8162,6 +7742,32 @@ sub main {
    # Use LOCK IN SHARE mode unless MySQL 5.0 because there's a bug like
    # http://bugs.mysql.com/bug.php?id=45694
    my $lock_in_share_mode = $server_version < '5.1' ? 0 : 1;
+
+   # ########################################################################
+   # Create --plugin.
+   # ########################################################################   
+   my $plugin;
+   if ( my $file = $o->get('plugin') ) {
+      die "--plugin file $file does not exist\n" unless -f $file;
+      eval {
+         require $file;
+      };
+      die "Error loading --plugin $file: $EVAL_ERROR" if $EVAL_ERROR;
+      eval {
+         $plugin = pt_online_schema_change_plugin->new(
+            cxn     => $cxn,
+            aux_cxn => $aux_cxn,
+            alter   => $o->get('alter'),
+            execute => $o->get('execute'),
+            dry_run => $o->get('dry-run'),
+            print   => $o->get('print'),
+            quiet   => $o->get('quiet'),
+            Quoter  => $q,
+         );
+      };
+      die "Error creating --plugin: $EVAL_ERROR" if $EVAL_ERROR;
+      print "Created plugin from $file.\n";
+   }
 
    # ########################################################################
    # Setup lag and load monitors.
@@ -8344,7 +7950,7 @@ sub main {
          ],
       );
    }
-   
+
    # ########################################################################
    # Setup and check the original table.
    # ########################################################################
@@ -8506,6 +8112,21 @@ sub main {
       return;
    };
 
+   # The 2nd to last cleanup task is printing the --statistics which
+   # may reveal something about the failure.
+   if ( $o->get('statistics') ) {
+      push @cleanup_tasks, sub {
+         my $n = max( map { length $_ } keys %stats );
+         my $fmt = "# %-${n}s %5s\n";
+         printf $fmt, 'Event', 'Count';
+         printf $fmt, ('=' x $n),'=====';
+         foreach my $event ( sort keys %stats ) {
+            printf $fmt,
+               $event, (defined $stats{$event} ? $stats{$event} : '?');
+         }
+      };
+   }
+
    # ########################################################################
    # Check the --alter statement.
    # ########################################################################
@@ -8545,9 +8166,28 @@ sub main {
       $daemon->make_PID_file();
    }
 
+   # ########################################################################
+   # Init the --plugin.
+   # ########################################################################   
+   if ( $plugin && $plugin->can('init') ) {
+      $plugin->init(
+         orig_tbl       => $orig_tbl,
+         child_tables   => $child_tables,
+         renamed_cols   => $renamed_cols,
+         slaves         => $slaves,
+         slave_lag_cxns => $slave_lag_cxns,
+      );
+   }
+
    # #####################################################################
    # Step 1: Create the new table.
    # #####################################################################
+
+   # --plugin hook
+   if ( $plugin && $plugin->can('before_create_new_table') ) {
+      $plugin->before_create_new_table();
+   }
+
    my $new_tbl;
    eval {
       $new_tbl = create_new_table(
@@ -8618,10 +8258,25 @@ sub main {
                       );
    }
 
+   # --plugin hook
+   if ( $plugin && $plugin->can('after_create_new_table') ) {
+      $plugin->after_create_new_table(
+         new_tbl => $new_tbl,
+      );
+   }
+
    # #####################################################################
    # Step 2: Alter the new, empty table.  This should be very quick,
    # or die if the user specified a bad alter statement.
    # #####################################################################
+
+   # --plugin hook
+   if ( $plugin && $plugin->can('before_alter_new_table') ) {
+      $plugin->before_alter_new_table(
+         new_tbl => $new_tbl,
+      );
+   }
+
    if ( my $alter = $o->get('alter') ) {
       print "Altering new table...\n";
       my $sql = "ALTER TABLE $new_tbl->{name} $alter";
@@ -8733,22 +8388,43 @@ sub main {
          'columns', @$del_cols);
    }
 
+   # --plugin hook
+   if ( $plugin && $plugin->can('after_alter_new_table') ) {
+      $plugin->after_alter_new_table(
+         new_tbl => $new_tbl,
+         del_tbl => $del_tbl,
+      );
+   }
+
    # ########################################################################
    # Step 3: Create the triggers to capture changes on the original table and
    # apply them to the new table.
    # ########################################################################
+
+   my $retry = new Retry();
 
    # Drop the triggers.  We can save this cleanup task before
    # adding the triggers because if adding them fails, this will be
    # called which will drop whichever triggers were created.
    push @cleanup_tasks, sub {
       PTDEBUG && _d('Clean up triggers');
+      # --plugin hook
+      if ( $plugin && $plugin->can('before_drop_triggers') ) {
+         $plugin->before_drop_triggers(
+            oktorun           => $oktorun,
+            drop_trigger_sqls => \@drop_trigger_sqls,
+         );
+      }
+
       if ( $oktorun ) {
          drop_triggers(
             tbl          => $orig_tbl,
             Cxn          => $cxn,
             Quoter       => $q,
             OptionParser => $o,
+            Retry        => $retry,
+            retries      => $o->get('retries'),
+            stats        => \%stats,
          );
       }
       else {
@@ -8757,6 +8433,11 @@ sub main {
              . join("\n", @drop_trigger_sqls) . "\n";
       }
    };
+
+   # --plugin hook
+   if ( $plugin && $plugin->can('before_create_triggers') ) {
+      $plugin->before_create_triggers();
+   }
 
    my @trigger_names = eval {
       create_triggers(
@@ -8767,11 +8448,19 @@ sub main {
          Cxn          => $cxn,
          Quoter       => $q,
          OptionParser => $o,
+         Retry        => $retry,
+         retries      => $o->get('retries'),
+         stats        => \%stats,
       );
    };
    if ( $EVAL_ERROR ) {
       die "Error creating triggers: $EVAL_ERROR\n";
    };
+
+   # --plugin hook
+   if ( $plugin && $plugin->can('after_create_triggers') ) {
+      $plugin->after_create_triggers();
+   }
 
    # #####################################################################
    # Step 4: Copy rows.
@@ -8784,7 +8473,6 @@ sub main {
    my $total_rows = 0;
    my $total_time = 0;
    my $avg_rate   = 0;  # rows/second
-   my $retry      = new Retry();  # for retrying to exec the copy statement
    my $limit      = $o->get('chunk-size-limit');  # brevity
    my $chunk_time = $o->get('chunk-time');        # brevity
 
@@ -8950,10 +8638,10 @@ sub main {
          # Exec and time the chunk checksum query.
          $tbl->{nibble_time} = exec_nibble(
             %args,
-            Retry        => $retry,
-            Quoter       => $q,
-            OptionParser => $o,
-            stats        => \%stats,
+            retries => $o->get('retries'),
+            Retry   => $retry,
+            Quoter  => $q,
+            stats   => \%stats,
          );
          PTDEBUG && _d('Nibble time:', $tbl->{nibble_time});
 
@@ -9085,6 +8773,11 @@ sub main {
       );
    }
 
+   # --plugin hook
+   if ( $plugin && $plugin->can('before_copy_rows') ) {
+      $plugin->before_copy_rows();
+   }
+
    # Start copying rows.  This may take awhile, but --progress is on
    # by default so there will be progress updates to stderr.
    eval {
@@ -9125,6 +8818,11 @@ sub main {
       }
    }
 
+   # --plugin hook
+   if ( $plugin && $plugin->can('after_copy_rows') ) {
+      $plugin->after_copy_rows();
+   }
+
    # #####################################################################
    # XXX
    # Step 5: Rename tables: orig -> old, new -> orig
@@ -9133,6 +8831,12 @@ sub main {
    # state the tables are left in.
    # XXX
    # #####################################################################
+
+   # --plugin hook
+   if ( $plugin && $plugin->can('before_swap_tables') ) {
+      $plugin->before_swap_tables();
+   }
+
    my $old_tbl;
    if ( $o->get('swap-tables') ) {
       eval {
@@ -9143,22 +8847,38 @@ sub main {
             Cxn          => $cxn,
             Quoter       => $q,
             OptionParser => $o,
+            Retry        => $retry,
+            retries      => $o->get('retries'),
+            stats        => \%stats,
          );
       };
       if ( $EVAL_ERROR ) {
-         die "Error swapping the tables: $EVAL_ERROR\n"
-           . "Verify that the original table $orig_tbl->{name} has not "
-           . "been modified or renamed to the old table $old_tbl->{name}.  "
-           . "Then drop the new table $new_tbl->{name} if it exists.\n";
+         # TODO: one of these values can be undefined
+         die "Error swapping tables: $EVAL_ERROR\n"
+           . "To clean up, first verify that the original table "
+           . "$orig_tbl->{name} has not been modified or renamed, "
+           . "then drop the new table $new_tbl->{name} if it exists.\n";
       }
    }
    $orig_tbl->{swapped} = 1;  # flag for cleanup tasks
    PTDEBUG && _d('Old table:', Dumper($old_tbl));
 
+   # --plugin hook
+   if ( $plugin && $plugin->can('after_swap_tables') ) {
+      $plugin->after_swap_tables(
+         old_tbl => $old_tbl,
+      );
+   }
+
    # #####################################################################
    # Step 6: Update foreign key constraints if there are child tables.
    # #####################################################################
    if ( $child_tables ) {
+      # --plugin hook
+      if ( $plugin && $plugin->can('before_update_foreign_keys') ) {
+         $plugin->before_update_foreign_keys();
+      }
+
       eval {
          if ( $alter_fk_method eq 'none' ) {
             # This shouldn't happen, but in case it does we should know.
@@ -9201,6 +8921,11 @@ sub main {
          # TODO: improve error message and handling.
          die "Error updating foreign key constraints: $EVAL_ERROR\n";
       }
+
+      # --plugin hook
+      if ( $plugin && $plugin->can('after_update_foreign_keys') ) {
+         $plugin->after_update_foreign_keys();
+      }
    }
 
    # ########################################################################
@@ -9214,6 +8939,11 @@ sub main {
          print "Not dropping old table because --no-swap-tables was specified.\n";
       }
       else {
+         # --plugin hook
+         if ( $plugin && $plugin->can('before_drop_old_table') ) {
+            $plugin->before_drop_old_table();
+         }
+
          print "Dropping old table...\n";
 
          if ( $alter_fk_method eq 'none' ) {
@@ -9236,32 +8966,25 @@ sub main {
             die "Error dropping the old table: $EVAL_ERROR\n";
          }
          print "Dropped old table $old_tbl->{name} OK.\n";
+
+         # --plugin hook
+         if ( $plugin && $plugin->can('after_drop_old_table') ) {
+            $plugin->after_drop_old_table();
+         }
       }
    }
-   
+
    # ########################################################################
    # Done.
    # ########################################################################
    $orig_tbl->{success} = 1;  # flag for cleanup tasks
    $cleanup = undef;          # exec cleanup tasks
 
-   if ( $o->get('statistics') ) {
-      my $report = new ReportFormatter(
-         line_width => 74,
+   # --plugin hook
+   if ( $plugin && $plugin->can('before_exit') ) {
+      $plugin->before_exit(
+         exit_status => $exit_status,
       );
-      $report->set_columns(
-         { name => 'Event',                    },
-         { name => 'Count', right_justify => 1 },
-      );
-
-      foreach my $event ( sort keys %stats ) {
-         $report->add_line(
-            $event,
-            $stats{$event},
-         );
-      }
-
-      print $report->get_report();
    }
 
    return $exit_status;
@@ -9478,7 +9201,7 @@ sub nibble_is_safe {
    return 1; # safe
 }
 
-sub create_new_table{
+sub create_new_table {
    my (%args) = @_;
    my @required_args = qw(orig_tbl Cxn Quoter OptionParser TableParser);
    foreach my $arg ( @required_args ) {
@@ -9568,15 +9291,16 @@ sub create_new_table{
 
 sub swap_tables {
    my (%args) = @_;
-   my @required_args = qw(orig_tbl new_tbl Cxn Quoter OptionParser);
+   my @required_args = qw(orig_tbl new_tbl Cxn Quoter OptionParser Retry retries stats);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($orig_tbl, $new_tbl, $cxn, $q, $o) = @args{@required_args};
+   my ($orig_tbl, $new_tbl, $cxn, $q, $o, $retry, $retries, $stats) = @args{@required_args};
 
-   my $prefix     = '_';
-   my $table_name = $orig_tbl->{tbl} . ($args{suffix} || '');
-   my $tries      = 10;  # don't try forever
+   my $prefix       = '_';
+   my $table_name   = $orig_tbl->{tbl} . ($args{suffix} || '');
+   my $tries        = 10;  # don't try forever
+   my $table_exists = qr/table.+?already exists/i;
 
    # This sub only works for --execute.  Since the options are
    # mutually exclusive and we return in the if case, the elsif
@@ -9592,7 +9316,7 @@ sub swap_tables {
    }
    elsif ( $o->get('execute') ) {
       print "Swapping tables...\n";
-      
+
       while ( $tries-- ) {
          $table_name = $prefix . $table_name;
          
@@ -9606,22 +9330,36 @@ sub swap_tables {
          my $sql     = "RENAME TABLE $orig_tbl->{name} "
                      . "TO " . $q->quote($orig_tbl->{db}, $table_name)
                      . ", $new_tbl->{name} TO $orig_tbl->{name}"; 
-         PTDEBUG && _d($sql); 
-         eval {
-            $cxn->dbh()->do($sql);
-         };
-         if ( $EVAL_ERROR ) {
-            # Ignore this error because if multiple instances of the tool
-            # are running, or previous runs failed and weren't cleaned up,
-            # then there will be other similarly named tables with fewer
-            # leading prefix chars.  Or, in rarer cases, the db just happens
-            # to have a similarly named table created by the user for other
-            # purposes.
-            next if $EVAL_ERROR =~ m/table.+?already exists/i;
 
-            # Some other error happened.  Let caller catch it.
-            die $EVAL_ERROR;
+         eval {
+            osc_retry(
+               Cxn     => $cxn,
+               Retry   => $retry,
+               retries => $retries,
+               stats   => $stats,
+               code    => sub {
+                  PTDEBUG && _d($sql);
+                  $cxn->dbh()->do($sql);
+               },
+               ignore_errors => [
+                  # Ignore this error because if multiple instances of the tool
+                  # are running, or previous runs failed and weren't cleaned up,
+                  # then there will be other similarly named tables with fewer
+                  # leading prefix chars.  Or, in rare cases, the db happens
+                  # to have a similarly named table created by the user for
+                  # other purposes.
+                  $table_exists,
+               ],
+            );
+         };
+         if ( my $e = $EVAL_ERROR ) {
+            if ( $e =~ $table_exists ) {
+               PTDEBUG && _d($e);
+               next;
+            }
+            die $e;
          }
+
          print $sql, "\n" if $o->get('print');
          print "Swapped original and new tables OK.\n";
          return { # success
@@ -9910,11 +9648,11 @@ sub drop_swap {
 
 sub create_triggers {
    my ( %args ) = @_;
-   my @required_args = qw(orig_tbl new_tbl del_tbl columns Cxn Quoter OptionParser);
+   my @required_args = qw(orig_tbl new_tbl del_tbl columns Cxn Quoter OptionParser Retry retries stats);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($orig_tbl, $new_tbl, $del_tbl, $cols, $cxn, $q, $o) = @args{@required_args};
+   my ($orig_tbl, $new_tbl, $del_tbl, $cols, $cxn, $q, $o, $retry, $retries, $stats) = @args{@required_args};
 
    # This sub works for --dry-run and --execute.  With --dry-run it's
    # only interesting if --print is specified, too; then the user can
@@ -9982,9 +9720,16 @@ sub create_triggers {
       my ($name, $sql) = @$trg;
       print $sql, "\n" if $o->get('print');
       if ( $o->get('execute') ) {
-         # Let caller catch errors.
-         PTDEBUG && _d($sql);
-         $cxn->dbh()->do($sql);
+         osc_retry(
+            Cxn     => $cxn,
+            Retry   => $retry,
+            retries => $retries,
+            stats   => $stats,
+            code    => sub {
+               PTDEBUG && _d($sql);
+               $cxn->dbh()->do($sql);
+            },
+         );
       }
       # Only save the trigger once it has been created
       # (or faked to be created) so if the 2nd trigger
@@ -10004,11 +9749,11 @@ sub create_triggers {
 
 sub drop_triggers {
    my ( %args ) = @_;
-   my @required_args = qw(tbl Cxn Quoter OptionParser);
+   my @required_args = qw(tbl Cxn Quoter OptionParser Retry retries stats);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($tbl, $cxn, $q, $o) = @args{@required_args};
+   my ($tbl, $cxn, $q, $o, $retry, $retries, $stats) = @args{@required_args};
 
    # This sub works for --dry-run and --execute, although --dry-run is
    # only interesting with --print so the user can see the drop trigger
@@ -10024,9 +9769,17 @@ sub drop_triggers {
    foreach my $sql ( @drop_trigger_sqls ) {
       print $sql, "\n" if $o->get('print');
       if ( $o->get('execute') ) {
-         PTDEBUG && _d($sql);
          eval {
-            $cxn->dbh()->do($sql);
+            osc_retry(
+               Cxn     => $cxn,
+               Retry   => $retry,
+               retries => $retries,
+               stats   => $stats,
+               code    => sub {
+                  PTDEBUG && _d($sql);
+                  $cxn->dbh()->do($sql);
+               },
+            );
          };
          if ( $EVAL_ERROR ) {
             warn "Error dropping trigger: $EVAL_ERROR\n";
@@ -10049,15 +9802,93 @@ sub drop_triggers {
    return;
 }
 
-sub exec_nibble {
+sub error_event {
+   my ($error) = @_;
+   return 'undefined_error' unless $error;
+   my $event
+      = $error =~ m/Lock wait timeout/         ? 'lock_wait_timeout'
+      : $error =~ m/Deadlock found/            ? 'deadlock'
+      : $error =~ m/execution was interrupted/ ? 'query_killed'
+      : $error =~ m/server has gone away/      ? 'lost_connection'
+      : $error =~ m/Lost connection/           ? 'connection_killed'
+      :                                          'unknown_error';
+   return $event;
+}
+
+sub osc_retry {
    my (%args) = @_;
-   my @required_args = qw(Cxn tbl stats NibbleIterator Retry Quoter OptionParser);
+   my @required_args = qw(Cxn Retry retries code stats);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($cxn, $tbl, $stats, $nibble_iter, $retry, $q, $o)= @args{@required_args};
+   my $cxn           = $args{Cxn};
+   my $retry         = $args{Retry};
+   my $retries       = $args{retries};
+   my $code          = $args{code};
+   my $stats         = $args{stats};
+   my $ignore_errors = $args{ignore_errors};
 
-   my $dbh         = $cxn->dbh();
+   return $retry->retry(
+      tries => $retries,
+      wait  => sub { sleep 0.25; return; },
+      try   => $code,
+      fail => sub {
+         my (%args) = @_;
+         my $error = $args{error};
+         PTDEBUG && _d('Retry fail:', $error);
+
+         if ( $ignore_errors ) {
+            return 0 if grep { $error =~ $_ } @$ignore_errors;
+         }
+
+         # The query failed/caused an error.  If the error is one of these,
+         # then we can possibly retry.
+         if (   $error =~ m/Lock wait timeout exceeded/
+             || $error =~ m/Deadlock found/
+             || $error =~ m/Query execution was interrupted/
+         ) {
+            # These errors/warnings can be retried, so don't print
+            # a warning yet; do that in final_fail.
+            $stats->{ error_event($error) }++;
+            return 1;  # try again
+         }
+         elsif (   $error =~ m/MySQL server has gone away/
+                || $error =~ m/Lost connection to MySQL server/
+         ) {
+            # The 1st pattern means that MySQL itself died or was stopped.
+            # The 2nd pattern means that our cxn was killed (KILL <id>).
+            $stats->{ error_event($error) }++;
+            $cxn->connect();  # connect or die trying
+            return 1;  # reconnected, try again
+         }
+
+         $stats->{retry_fail}++;
+
+         # At this point, either the error/warning cannot be retried,
+         # or we failed to reconnect.  Don't retry; call final_fail.
+         return 0;
+      },
+      final_fail => sub {
+         my (%args) = @_;
+         my $error = $args{error};
+         # This die should be caught by the caller.  Copying rows and
+         # the tool will stop, which is probably good because by this
+         # point the error or warning indicates that something is wrong.
+         $stats->{ error_event($error) }++;
+         die $error;
+      }
+   );
+}
+
+sub exec_nibble {
+   my (%args) = @_;
+   my @required_args = qw(Cxn tbl stats retries Retry NibbleIterator Quoter);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($cxn, $tbl, $stats, $retries, $retry, $nibble_iter, $q)
+      = @args{@required_args};
+
    my $sth         = $nibble_iter->statements();
    my $boundary    = $nibble_iter->boundaries();
    my $lb_quoted   = $q->serialize_list(@{$boundary->{lower}});
@@ -10089,10 +9920,12 @@ sub exec_nibble {
       },
    );
 
-   return $retry->retry(
-      tries => $o->get('retries'),
-      wait  => sub { sleep 0.25; return; },
-      try   => sub {
+   return osc_retry(
+      Cxn     => $cxn,
+      Retry   => $retry,
+      retries => $retries,
+      stats   => $stats,
+      code    => sub {
          # ###################################################################
          # Start timing the query.
          # ###################################################################
@@ -10121,7 +9954,7 @@ sub exec_nibble {
          # Check if query caused any warnings.
          my $sql_warn = 'SHOW WARNINGS';
          PTDEBUG && _d($sql_warn);
-         my $warnings = $dbh->selectall_arrayref($sql_warn, { Slice => {} } );
+         my $warnings = $cxn->dbh->selectall_arrayref($sql_warn, {Slice => {}});
          foreach my $warning ( @$warnings ) {
             my $code    = ($warning->{code} || 0);
             my $message = $warning->{message};
@@ -10141,7 +9974,7 @@ sub exec_nibble {
                         ? $warn_code{$code}->{message}
                         : $message)
                      . "\nThis MySQL error is being ignored ";
-                  if ( $o->get('statistics') ) {
+                  if ( get('statistics') ) {
                      $err .= "but further occurrences will be reported "
                            . "by --statistics when the tool finishes.\n";
                   }
@@ -10168,54 +10001,6 @@ sub exec_nibble {
          # Success: no warnings, no errors.  Return nibble time.
          return $t_end - $t_start;
       },
-      fail => sub {
-         my (%args) = @_;
-         my $error = $args{error};
-         PTDEBUG && _d('Retry fail:', $error);
-
-         # The query failed/caused an error.  If the error is one of these,
-         # then we can possibly retry.
-         if (   $error =~ m/Lock wait timeout exceeded/
-             || $error =~ m/Deadlock found/
-             || $error =~ m/Query execution was interrupted/
-         ) {
-            # These errors/warnings can be retried, so don't print
-            # a warning yet; do that in final_fail.
-            my $event
-               = $error =~ m/Lock wait timeout/         ? 'lock_wait_timeout'
-               : $error =~ m/Deadlock found/            ? 'deadlock'
-               : $error =~ m/execution was interrupted/ ? 'query_killed'
-               :                                          'unknown1';
-            $stats->{$event}++;
-            return 1;  # try again
-         }
-         elsif (   $error =~ m/MySQL server has gone away/
-                || $error =~ m/Lost connection to MySQL server/
-         ) {
-            # The 1st pattern means that MySQL itself died or was stopped.
-            # The 2nd pattern means that our cxn was killed (KILL <id>).
-            my $event
-               = $error =~ m/server has gone away/ ? 'lost_connection'
-               : $error =~ m/Lost connection/      ? 'connection_killed'
-               :                                     'unknown2';
-            $stats->{$event}++;
-            $dbh = $cxn->connect();  # connect or die trying
-            return 1;  # reconnected, try again
-         }
-
-         $stats->{retry_fail}++;
-
-         # At this point, either the error/warning cannot be retried,
-         # or we failed to reconnect.  Don't retry; call final_fail.
-         return 0;
-      },
-      final_fail => sub {
-         my (%args) = @_;
-         # This die should be caught by the caller.  Copying rows and
-         # the tool will stop, which is probably good because by this
-         # point the error or warning indicates that something is wrong.
-         die $args{error};
-      }
    );
 }
 
@@ -10915,6 +10700,13 @@ exists and the PID it contains is different than the current PID.  However,
 if the PID file exists and the PID it contains is no longer running, the
 tool will overwrite the PID file with the current PID.  The PID file is
 removed automatically when the tool exits.
+
+=item --plugin
+
+type: string
+
+Use the given Perl module to access hooks in the tool.
+C<package pt_online_schema_change_plugin> must be defined in the file.
 
 =item --port
 
