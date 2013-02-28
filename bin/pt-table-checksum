@@ -8430,15 +8430,20 @@ sub new {
    my ( $class, %args ) = @_;
    my @required_args = qw(now);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
+      die "I need a $arg argument" unless exists $args{$arg};
    }
 
-   if ( ($args{runtime} || 0) < 0 ) {
-      die "runtime argument must be greater than zero"
+   my $run_time = $args{run_time};
+   if ( defined $run_time ) {
+      die "run_time must be > 0" if $run_time <= 0;
    }
+
+   my $now = $args{now};
+   die "now must be a callback" unless ref $now eq 'CODE';
 
    my $self = {
-      %args,
+      run_time   => $run_time,
+      now        => $now,
       start_time => undef,
       end_time   => undef,
       time_left  => undef,
@@ -8465,11 +8470,11 @@ sub time_left {
 
    return unless defined $now;
 
-   my $runtime = $self->{runtime};
-   return unless defined $runtime;
+   my $run_time = $self->{run_time};
+   return unless defined $run_time;
 
    if ( !$self->{end_time} ) {
-      $self->{end_time} = $now + $runtime;
+      $self->{end_time} = $now + $run_time;
       PTDEBUG && _d("End time:", $self->{end_time});
    }
 
@@ -8482,7 +8487,7 @@ sub have_time {
    my ( $self, %args ) = @_;
    my $time_left = $self->time_left(%args);
    return 1 if !defined $time_left;  # run forever
-   return $time_left <= 0 ? 0 : 1;   # <=0s means runtime has elapsed
+   return $time_left <= 0 ? 0 : 1;   # <=0s means run time has elapsed
 }
 
 sub time_elapsed {
@@ -8508,7 +8513,7 @@ sub reset {
    $self->{end_time}   = undef;
    $self->{time_left}  = undef;
    $self->{stop}       = 0;
-   PTDEBUG && _d("Reset runtime");
+   PTDEBUG && _d("Reset run time");
    return;
 }
 
@@ -8821,8 +8826,8 @@ sub main {
    my $have_time;
    if ( my $run_time = $o->get('run-time') ) {
       my $rt = Runtime->new(
-         now     => sub { return time; },
-         runtime => $run_time,
+         now      => sub { return time; },
+         run_time => $run_time,
       );
       $have_time = sub { return $rt->have_time(); };
    }
