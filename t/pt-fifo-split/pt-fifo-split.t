@@ -24,7 +24,7 @@ my $cmd = "$trunk/bin/pt-fifo-split";
 my $output = `$cmd --help`;
 like($output, qr/Options and values/, 'It lives');
 
-my ($fh, $filename) = tempfile("/tmp/pt-fifo-split-data.XXXXXXXXX", OPEN => 1, TMPDIR => 1, UNLINK => 1);
+my ($fh, $filename) = tempfile("pt-fifo-split-data.XXXXXXXXX", OPEN => 1, TMPDIR => 1, UNLINK => 1);
 $fh->autoflush(1);
 print { $fh } "$_\n" for 1..9;
 
