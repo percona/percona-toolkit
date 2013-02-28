@@ -31,7 +31,7 @@ if ( !$master_dbh ) {
 
 my $q      = new Quoter();
 my $tp     = new TableParser(Quoter => $q);
-my @args   = qw(--lock-wait-timeout 3);
+my @args   = qw(--set-vars innodb_lock_wait_timeout=3);
 my $output = "";
 my $dsn    = "h=127.1,P=12345,u=msandbox,p=msandbox";
 my $exit   = 0;

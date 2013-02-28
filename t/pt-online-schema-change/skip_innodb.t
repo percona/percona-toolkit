@@ -31,7 +31,7 @@ if ( !$master_dbh ) {
 }
 
 my $master_dsn = 'h=127.1,P=12348,u=msandbox,p=msandbox';
-my @args       = (qw(--lock-wait-timeout 3), '--max-load', ''); 
+my @args       = (qw(--set-vars innodb_lock_wait_timeout=3), '--max-load', ''); 
 
 my ($output, $retval) = full_output(
    sub { pt_online_schema_change::main(@args,
