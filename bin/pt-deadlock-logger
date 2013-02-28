@@ -4059,7 +4059,7 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
-   my @required_args = qw(run_time now);
+   my @required_args = qw(now);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless exists $args{$arg};
    }
