@@ -41,8 +41,14 @@ my @fifo;
 while (kill 0, $pid) {
    if ( -e $fifo ) {
        eval {
+          local $SIG{ALRM} = sub { die "read timeout" };
+          alarm 3;
           my $contents = slurp_file($fifo);
           push @fifo,  $contents;
+          alarm 0;
+       };
+       if (my $e = $@) {
+          die $e unless $e =~ /\Aread timeout\z/;
        }
    }
 }
@@ -72,8 +78,14 @@ PerconaTest::wait_until(sub { -p $fifo });
 while (kill 0, $pid) {
    if ( -e $fifo ) {
        eval {
+          local $SIG{ALRM} = sub { die "read timeout" };
+          alarm 3;
           my $contents = slurp_file($fifo);
           push @fifo,  $contents;
+          alarm 0;
+       };
+       if (my $e = $@) {
+          die $e unless $e =~ /\Aread timeout\z/;
        }
    }
 }
