@@ -6055,9 +6055,9 @@ sub one_nibble {
    return $self->{one_nibble};
 }
 
-sub chunk_size {
+sub limit {
    my ($self) = @_;
-   return $self->{limit} + 1;
+   return $self->{limit};
 }
 
 sub set_chunk_size {
@@ -9533,7 +9533,7 @@ sub main {
          my $expl = explain_statement(
             tbl  => $tbl,
             sth  => $sth->{explain_upper_boundary},
-            vals => [ @{$boundary->{lower}}, $nibble_iter->chunk_size() ],
+            vals => [ @{$boundary->{lower}}, $nibble_iter->limit() ],
          );
          if (   lc($expl->{key} || '')
              ne lc($nibble_iter->nibble_index() || '') ) {
