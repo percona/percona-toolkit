@@ -8169,6 +8169,8 @@ sub main {
    # ########################################################################
    # Init the --plugin.
    # ########################################################################   
+
+   # --plugin hook
    if ( $plugin && $plugin->can('init') ) {
       $plugin->init(
          orig_tbl       => $orig_tbl,
@@ -10168,9 +10170,10 @@ server. See L<"--max-load"> and L<"--critical-load"> for details.
 
 =item *
 
-The tool sets its lock wait timeout to 1 second so that it is more likely to be
-the victim of any lock contention, and less likely to disrupt other
-transactions. See L<"--lock-wait-timeout"> for details.
+The tool sets C<innodb_lock_wait_timeout=1> and (for MySQL 5.5 and newer)
+C<lock_wait_timeout=60> so that it is more likely to be the victim of any
+lock contention, and less likely to disrupt other transactions.  These
+values can be changed by specifying L<"--set-vars">.
 
 =item *
 
@@ -10705,8 +10708,13 @@ removed automatically when the tool exits.
 
 type: string
 
-Use the given Perl module to access hooks in the tool.
-C<package pt_online_schema_change_plugin> must be defined in the file.
+Perl module file that defines a C<pt_online_schema_change_plugin> class.
+A plugin allows you to write a Perl module that can hook into many parts
+of pt-online-schema-change.  This requires a good knowledge of Perl and
+Percona Toolkit conventions, which are beyond this scope of this
+documentation.  Please contact Percona if you have questions or need help.
+
+See L<"PLUGIN"> for more information.
 
 =item --port
 
@@ -10861,6 +10869,52 @@ tool.
 For more information, visit L<https://www.percona.com/version-check>.
 
 =back
+
+=head1 PLUGIN
+
+The file specified by L<"--plugin"> must define a class (i.e. a package)
+called C<pt_online_schema_change_plugin> with a C<new()> subroutine.
+The tool will create an instance of this class and call any hooks that
+it defines.  No hooks are required, but a plugin isn't very useful without
+them.
+
+These hooks, in this order, are called if defined:
+
+   init
+   before_create_new_table
+   after_create_new_table
+   before_alter_new_table
+   after_alter_new_table
+   before_create_triggers
+   after_create_triggers
+   before_copy_rows
+   after_copy_rows
+   before_swap_tables
+   after_swap_tables
+   before_update_foreign_keys
+   after_update_foreign_keys
+   before_drop_old_table
+   after_drop_old_table
+   before_drop_triggers
+   before_exit
+
+Each hook is passed different arguments.  To see which arguments are passed
+to a hook, search for the hook's name in the tool's source code, like:
+
+   # --plugin hook
+   if ( $plugin && $plugin->can('init') ) {
+      $plugin->init(
+         orig_tbl       => $orig_tbl,
+         child_tables   => $child_tables,
+         renamed_cols   => $renamed_cols,
+         slaves         => $slaves,
+         slave_lag_cxns => $slave_lag_cxns,
+      );
+   }
+
+The comment C<# --plugin hook> precedes every hook call.
+
+Please contact Percona if you have questions or need help.
 
 =head1 DSN OPTIONS
 
