@@ -401,7 +401,7 @@ $output = output(
       '--review',  "$dsn,D=test,t=query_review",
       '--history', "$dsn,D=test,t=query_review_history",
       qw(--no-report --no-continue-on-error),
-      "$trunk/t/lib/samples/slow002.txt")
+      "$trunk/t/lib/samples/slowlogs/slow002.txt")
    },
    stderr => 1,
 );

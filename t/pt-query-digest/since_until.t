@@ -71,12 +71,12 @@ SKIP: {
    # The result file is correct: it's the one that has all quries from
    # slow033.txt.
    ok(
-      no_diff($run_with.'slow033.txt --aux-dsn h=127.1,P=12345,u=msandbox,p=msandbox --since "\'2009-07-08\' - INTERVAL 7 DAY"', "t/pt-query-digest/samples/slow033-since-Nd.txt"),
+      no_diff($run_with.'slow033.txt h=127.1,P=12345,u=msandbox,p=msandbox --since "\'2009-07-08\' - INTERVAL 7 DAY"', "t/pt-query-digest/samples/slow033-since-Nd.txt"),
       '--since "\'2009-07-08\' - INTERVAL 7 DAY"',
    );
 
    ok(
-      no_diff($run_with.'slow033.txt --aux-dsn h=127.1,P=12345,u=msandbox,p=msandbox --until "\'2009-07-28\' - INTERVAL 1 DAY"', "t/pt-query-digest/samples/slow033-until-date.txt"),
+      no_diff($run_with.'slow033.txt h=127.1,P=12345,u=msandbox,p=msandbox --until "\'2009-07-28\' - INTERVAL 1 DAY"', "t/pt-query-digest/samples/slow033-until-date.txt"),
       '--until "\'2009-07-28\' - INTERVAL 1 DAY"',
    );
 

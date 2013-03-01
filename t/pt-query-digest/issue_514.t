@@ -13,7 +13,7 @@ use Test::More tests => 1;
 
 use PerconaTest;
 
-my $run_with = "$trunk/bin/pt-query-digest --report-format=query_report --limit 10 $trunk/t/lib/samples/";
+my $run_with = "$trunk/bin/pt-query-digest --report-format=query_report --limit 10 $trunk/t/lib/samples/slowlogs/";
 my $cmd;
 my $output;
 

@@ -12378,6 +12378,13 @@ sub main {
 
    my $dp = $o->DSNParser();
    $dp->prop('set-vars', $o->get('set-vars'));
+
+   my $aux_dsn;
+   for my $i (0..$#ARGV) {
+       next if -e $ARGV[$i];
+       $aux_dsn = $dp->parse(splice(@ARGV, $i, 1));
+       last;
+   }
    
    # Frequently used options.
    my $review_dsn  = handle_special_defaults($o, 'review');
@@ -12943,7 +12950,7 @@ sub main {
    # will need this callback to execute the expression.  We don't know what
    # type of time value the user gave, so we'll create the callback in any case.
    if ( $o->get('since') || $o->get('until') ) {
-      if ( my $aux_dsn = $o->get('aux-dsn') ) {
+      if ( $aux_dsn ) {
          $aux_dbh = get_cxn(
             for          => '--aux',
             dsn          => $aux_dsn,
