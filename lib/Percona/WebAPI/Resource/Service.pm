@@ -28,9 +28,9 @@ has 'name' => (
    required => 1,
 );
 
-has 'runs' => (
+has 'tasks' => (
    is       => 'ro',
-   isa      => 'ArrayRef[Percona::WebAPI::Resource::Run]',
+   isa      => 'ArrayRef[Percona::WebAPI::Resource::Task]',
    required => 1,
 );
 
@@ -55,13 +55,13 @@ has 'links' => (
 
 sub BUILDARGS {
    my ($class, %args) = @_;
-   if ( ref $args{runs} eq 'ARRAY' ) {
-      my @runs;
-      foreach my $run_hashref ( @{$args{runs}} ) {
-         my $run = Percona::WebAPI::Resource::Run->new(%$run_hashref);
-         push @runs, $run;
+   if ( ref $args{tasks} eq 'ARRAY' ) {
+      my @tasks;
+      foreach my $run_hashref ( @{$args{tasks}} ) {
+         my $task = Percona::WebAPI::Resource::Task->new(%$run_hashref);
+         push @tasks, $task;
       }
-      $args{runs} = \@runs;
+      $args{tasks} = \@tasks;
    }
    return $class->SUPER::BUILDARGS(%args);
 }

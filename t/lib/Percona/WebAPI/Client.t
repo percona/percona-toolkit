@@ -19,7 +19,7 @@ use Percona::WebAPI::Client;
 use Percona::WebAPI::Resource::Agent;
 use Percona::WebAPI::Resource::Config;
 use Percona::WebAPI::Resource::Service;
-use Percona::WebAPI::Resource::Run;
+use Percona::WebAPI::Resource::Task;
 
 Percona::Toolkit->import(qw(Dumper have_required_args));
 Percona::WebAPI::Representation->import(qw(as_json as_hashref));
@@ -155,7 +155,7 @@ $return_links = {
 };
 
 my $return_config = Percona::WebAPI::Resource::Config->new(
-   id      => '1',
+   ts      => '100',
    name    => 'Default',
    options => {},
    links   => $return_links,
@@ -186,7 +186,8 @@ $return_links = {
    'send_data' => '/query-monitor',
 };
 
-my $run0 = Percona::WebAPI::Resource::Run->new(
+my $run0 = Percona::WebAPI::Resource::Task->new(
+   name    => 'run-pqd',
    number  => '0',
    program => 'pt-query-digest',
    options => '--output json',
@@ -197,7 +198,7 @@ my $svc0 = Percona::WebAPI::Resource::Service->new(
    name           => 'query-monitor',
    run_schedule   => '1 * * * *',
    spool_schedule => '2 * * * *',
-   runs           => [ $run0 ],
+   tasks          => [ $run0 ],
    links          => $return_links,
 );
 

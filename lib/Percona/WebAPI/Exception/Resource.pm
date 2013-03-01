@@ -15,48 +15,52 @@
 # this program; if not, write to the Free Software Foundation, Inc., 59 Temple
 # Place, Suite 330, Boston, MA  02111-1307  USA.
 # ###########################################################################
-# Percona::WebAPI::Resource::Run package
+# Percona::WebAPI::Exception::Resource package
 # ###########################################################################
 {
-package Percona::WebAPI::Resource::Run;
+package Percona::WebAPI::Exception::Resource;
 
 use Lmo;
+use overload '""' => \&as_string;
+use Data::Dumper;
 
-has 'number' => (
-   is       => 'ro',
-   isa      => 'Int',
-   required => 1,
-);
-
-has 'program' => (
+has 'type' => (
    is       => 'ro',
    isa      => 'Str',
    required => 1,
 );
 
-has 'options' => (
-   is       => 'ro',
-   isa      => 'Maybe[Str]',
-   required => 0,
-);
-
-has 'query' => (
-   is       => 'ro',
-   isa      => 'Maybe[Str]',
-   required => 0,
-);
-
-has 'output' => (
+has 'link' => (
    is       => 'ro',
    isa      => 'Str',
    required => 1,
 );
 
-sub TO_JSON { return { %{ shift() } }; }
+has 'data' => (
+   is       => 'ro',
+   isa      => 'ArrayRef',
+   required => 1,
+);
+
+has 'error' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 1,
+);
+
+sub as_string {
+   my $self = shift;
+   chomp(my $error = $self->error);
+   local $Data::Dumper::Indent    = 1;
+   local $Data::Dumper::Sortkeys  = 1;
+   local $Data::Dumper::Quotekeys = 0;
+   return sprintf "Invalid %s resource from %s:\n\n%s\nError: %s\n\n",
+      $self->type, $self->link, Dumper($self->data), $error;
+}
 
 no Lmo;
 1;
 }
 # ###########################################################################
-# End Percona::WebAPI::Resource::Run package
+# End Percona::WebAPI::Exception::Resource package
 # ###########################################################################

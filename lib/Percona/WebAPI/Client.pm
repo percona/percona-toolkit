@@ -35,6 +35,7 @@ use Lmo;
 use Percona::Toolkit;
 use Percona::WebAPI::Representation;
 use Percona::WebAPI::Exception::Request;
+use Percona::WebAPI::Exception::Resource;
 
 Percona::WebAPI::Representation->import(qw(as_json));
 Percona::Toolkit->import(qw(_d Dumper have_required_args));
@@ -133,9 +134,13 @@ sub get {
             $resource_objects = $type->new(%$resource);
          }
       };
-      if ( $EVAL_ERROR ) {
-         warn "Error creating $type resource objects: $EVAL_ERROR";
-         return;
+      if ( my $e = $EVAL_ERROR ) {
+         die Percona::WebAPI::Exception::Resource->new(
+            type  => $type,
+            link  => $link,
+            data  => (ref $resource eq 'ARRAY' ? $resource : [ $resource ]),
+            error => $e,
+         );
       }
    }
    elsif ( exists $resource->{links} ) {
