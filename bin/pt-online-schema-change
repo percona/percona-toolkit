@@ -8897,6 +8897,8 @@ sub main {
                Cxn          => $cxn,
                TableParser  => $tp,
                stats        => \%stats,
+               Retry        => $retry,
+               retries      => $o->get('retries'),
             );
          }
          elsif ( $alter_fk_method eq 'drop_swap' ) {
@@ -8905,6 +8907,9 @@ sub main {
                new_tbl      => $new_tbl,
                Cxn          => $cxn,
                OptionParser => $o,
+               stats        => \%stats,
+               Retry        => $retry,
+               retries      => $o->get('retries'),
             );
          }
          elsif ( !$alter_fk_method
@@ -9321,7 +9326,7 @@ sub swap_tables {
 
       while ( $tries-- ) {
          $table_name = $prefix . $table_name;
-         
+
          if ( length($table_name) > 64 ) {
             my $truncated_table_name = substr($table_name, 0, 64);
             PTDEBUG && _d($table_name, 'is over 64 characters long, truncating to',
@@ -9522,11 +9527,12 @@ sub determine_alter_fk_method {
 sub rebuild_constraints {
    my ( %args ) = @_;
    my @required_args = qw(orig_tbl old_tbl child_tables stats
-                          Cxn Quoter OptionParser TableParser);
+                          Cxn Quoter OptionParser TableParser
+                          Retry retries);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($orig_tbl, $old_tbl, $child_tables, $stats, $cxn, $q, $o, $tp)
+   my ($orig_tbl, $old_tbl, $child_tables, $stats, $cxn, $q, $o, $tp, $retry, $retries)
       = @args{@required_args};
 
    # MySQL has a "feature" where if the parent tbl is in the same db,
@@ -9601,9 +9607,17 @@ sub rebuild_constraints {
               . join(', ', @rebuilt_constraints);
       print $sql, "\n" if $o->get('print');
       if ( $o->get('execute') ) {
-         PTDEBUG && _d($sql);
-         $cxn->dbh()->do($sql);
-         $stats->{rebuilt_constraint}++;
+         osc_retry(
+            Cxn     => $cxn,
+            Retry   => $retry,
+            retries => $retries,
+            stats   => $stats,
+            code    => sub {
+               PTDEBUG && _d($sql);
+               $cxn->dbh()->do($sql);
+               $stats->{rebuilt_constraint}++;
+            },
+         );
       }
    }
 
@@ -9616,11 +9630,11 @@ sub rebuild_constraints {
 
 sub drop_swap {
    my ( %args ) = @_;
-   my @required_args = qw(orig_tbl new_tbl Cxn OptionParser);
+   my @required_args = qw(orig_tbl new_tbl Cxn OptionParser stats Retry retries);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($orig_tbl, $new_tbl, $cxn, $o) = @args{@required_args};
+   my ($orig_tbl, $new_tbl, $cxn, $o, $stats, $retry, $retries) = @args{@required_args};
 
    if ( $o->get('dry-run') ) {
       print "Not drop-swapping tables because this is a dry run.\n";
@@ -9637,8 +9651,19 @@ sub drop_swap {
 
    foreach my $sql ( @sqls ) {
       PTDEBUG && _d($sql);
-      print $sql, "\n"      if $o->get('print');
-      $cxn->dbh()->do($sql) if $o->get('execute');
+      print $sql, "\n" if $o->get('print');
+      if ( $o->get('execute') ) {
+         osc_retry(
+            Cxn     => $cxn,
+            Retry   => $retry,
+            retries => $retries,
+            stats   => $stats,
+            code    => sub {
+               PTDEBUG && _d($sql);
+               $cxn->dbh()->do($sql);
+            },
+         );
+      }
    }
 
    if ( $o->get('execute') ) {
@@ -10793,9 +10818,41 @@ ignored.
 
 type: int; default: 10
 
-Retry a chunk this many times when there is a nonfatal error.  Nonfatal errors
-are problems such as a lock wait timeout or the query being killed. This option
-applies to the data copy operation.
+Retry critical operations and recover from non-fatal errors.  The tool
+retries these operations:
+
+   Creating triggers
+   Dropping triggers
+   Copying chunks
+   Swapping tables
+   Rebuilding foreign key constraints
+
+For creating and dropping triggers, the number of retries applies to each
+C<CREATE TRIGGER> and C<DROP TRIGGER> statement for each trigger.
+For copying chunks, the number of retries applies to each chunk, not the
+entire table.  For swapping tables, the number of retries usually applies
+once because there is usually only one C<RENAME TABLE> statement.
+For rebuilding foreign key constraints, the number of retries applies to
+each statment (C<ALTER> statements for the C<rebuild_constraints>
+L<"--alter-foreign-keys-method">; other statements for the C<drop_swap>
+method).
+
+The tool retries each operation if these errors occur:
+
+   Lock wait timeout (innod_lock_wait_timeout and lock_wait_timeout)
+   Deadlock found
+   Query is killed (KILL QUERY <thread_id>)
+   Connection is killed (KILL CONNECTION <thread_id)
+   Lost connection to MySQL
+
+In the case of lost and killed connections, the tool will automatically
+reconnect.
+
+To alter extremely busy tables, it may be necessary to increase L<"--retries">,
+and also C<innodb_lock_wait_timeout> and (for MySQL 5.5 and newer)
+C<lock_wait_timeout> by specifying higher values with L<"--set-vars">.
+
+Failures and retries are recorded in the L<"--statistics">.
 
 =item --set-vars
 
