@@ -10842,7 +10842,7 @@ The tool retries each operation if these errors occur:
    Lock wait timeout (innod_lock_wait_timeout and lock_wait_timeout)
    Deadlock found
    Query is killed (KILL QUERY <thread_id>)
-   Connection is killed (KILL CONNECTION <thread_id)
+   Connection is killed (KILL CONNECTION <thread_id>)
    Lost connection to MySQL
 
 In the case of lost and killed connections, the tool will automatically
