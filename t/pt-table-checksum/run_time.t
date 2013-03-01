@@ -44,7 +44,7 @@ $exit_status = pt_table_checksum::main(@args,
 my $t  = time - $t0;
 
 ok(
-   $t >= 1.1 && $t <= 2.5,
+   $t >= 1.0 && $t <= 2.5,
    "Ran in roughly --run-time 1 second"
 ) or diag("Actual run time: $t");
 
@@ -72,4 +72,3 @@ ok(
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
-exit;
