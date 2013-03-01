@@ -37,6 +37,7 @@ BEGIN {
       QueryParser
       TableParser
       QueryReview
+      QueryHistory
       Daemon
       BinaryLogParser
       GeneralLogParser
@@ -3531,6 +3532,8 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
+BEGIN { our @ISA = 'ProtocolParser'; }
+
 use constant {
    COM_SLEEP               => '00',
    COM_QUIT                => '01',
@@ -4740,45 +4743,6 @@ sub remove_mysql_header {
    $packet->{mysql_data_len} = $mysql_data_len;
    $packet->{number}         = $pkt_num;
 
-   return;
-}
-
-sub _get_errors_fh {
-   my ( $self ) = @_;
-   my $errors_fh = $self->{errors_fh};
-   return $errors_fh if $errors_fh;
-
-   my $o = $self->{o};
-   if ( $o && $o->has('tcpdump-errors') && $o->got('tcpdump-errors') ) {
-      my $errors_file = $o->get('tcpdump-errors');
-      PTDEBUG && _d('tcpdump-errors file:', $errors_file);
-      open $errors_fh, '>>', $errors_file
-         or die "Cannot open tcpdump-errors file $errors_file: $OS_ERROR";
-   }
-
-   $self->{errors_fh} = $errors_fh;
-   return $errors_fh;
-}
-
-sub fail_session {
-   my ( $self, $session, $reason ) = @_;
-   PTDEBUG && _d('Client', $session->{client}, 'failed because', $reason);
-   my $errors_fh = $self->_get_errors_fh();
-   if ( $errors_fh ) {
-      my $raw_packets = $session->{raw_packets};
-      delete $session->{raw_packets};  # Don't dump, it's printed below.
-      $session->{reason_for_failure} = $reason;
-      my $session_dump = '# ' . Dumper($session);
-      chomp $session_dump;
-      $session_dump =~ s/\n/\n# /g;
-      print $errors_fh "$session_dump\n";
-      {
-         local $LIST_SEPARATOR = "\n";
-         print $errors_fh "@$raw_packets";
-         print $errors_fh "\n";
-      }
-   }
-   delete $self->{sessions}->{$session->{client}};
    return;
 }
 
@@ -8751,60 +8715,6 @@ sub new {
    return bless $self, $class;
 }
 
-sub set_history_options {
-   my ( $self, %args ) = @_;
-   foreach my $arg ( qw(table tbl_struct col_pat) ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-
-   my @cols;
-   my @metrics;
-   foreach my $col ( @{$args{tbl_struct}->{cols}} ) {
-      my ( $attr, $metric ) = $col =~ m/$args{col_pat}/;
-      next unless $attr && $metric;
-
-
-      $attr = ucfirst $attr if $attr =~ m/_/;
-      $attr = 'Filesort' if $attr eq 'filesort';
-
-      $attr =~ s/^Qc_hit/QC_Hit/;  # Qc_hit is really QC_Hit
-      $attr =~ s/^Innodb/InnoDB/g; # Innodb is really InnoDB
-      $attr =~ s/_io_/_IO_/g;      # io is really IO
-
-      push @cols, $col;
-      push @metrics, [$attr, $metric];
-   }
-
-   my $sql = "REPLACE INTO $args{table}("
-      . join(', ',
-         map { $self->{quoter}->quote($_) } ('checksum', 'sample', @cols))
-      . ') VALUES (CONV(?, 16, 10), ?'
-      . (@cols ? ', ' : '')  # issue 1265
-      . join(', ', map {
-         $_ eq 'ts_min' || $_ eq 'ts_max'
-            ? "COALESCE(?, $self->{ts_default})"
-            : '?'
-        } @cols) . ')';
-   PTDEBUG && _d($sql);
-
-   $self->{history_sth}     = $self->{dbh}->prepare($sql);
-   $self->{history_metrics} = \@metrics;
-
-   return;
-}
-
-sub set_review_history {
-   my ( $self, $id, $sample, %data ) = @_;
-   foreach my $thing ( qw(min max) ) {
-      next unless defined $data{ts} && defined $data{ts}->{$thing};
-      $data{ts}->{$thing} = parse_timestamp($data{ts}->{$thing});
-   }
-   $self->{history_sth}->execute(
-      make_checksum($id),
-      $sample,
-      map { $data{$_->[0]}->{$_->[1]} } @{$self->{history_metrics}});
-}
-
 sub get_review_info {
    my ( $self, $id ) = @_;
    $self->{select_sth}->execute(make_checksum($id));
@@ -8841,6 +8751,113 @@ sub _d {
 }
 # ###########################################################################
 # End QueryReview package
+# ###########################################################################
+
+# ###########################################################################
+# QueryHistory package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/QueryHistory.pm
+#   t/lib/QueryHistory.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package QueryHistory;
+
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use Lmo;
+
+use Quoter;
+use Transformers qw(make_checksum parse_timestamp);
+
+has history_dbh => (
+   is       => 'ro',
+   required => 1,
+);
+
+has history_sth => (
+   is => 'rw',
+);
+
+has history_metrics => (
+   is => 'rw',
+   isa => 'ArrayRef',
+);
+
+has column_pattern => (
+   is       => 'ro',
+   isa      => 'Regexp',
+   required => 1,
+);
+
+has ts_default => (
+   is      => 'ro',
+   isa     => 'Str',
+   default => sub { 'NOW()' },
+);
+
+sub set_history_options {
+   my ( $self, %args ) = @_;
+   foreach my $arg ( qw(table tbl_struct) ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+
+   my $col_pat = $self->column_pattern();
+
+   my @cols;
+   my @metrics;
+   foreach my $col ( @{$args{tbl_struct}->{cols}} ) {
+      my ( $attr, $metric ) = $col =~ m/$col_pat/;
+      next unless $attr && $metric;
+
+
+      $attr = ucfirst $attr if $attr =~ m/_/;
+      $attr = 'Filesort' if $attr eq 'filesort';
+
+      $attr =~ s/^Qc_hit/QC_Hit/;  # Qc_hit is really QC_Hit
+      $attr =~ s/^Innodb/InnoDB/g; # Innodb is really InnoDB
+      $attr =~ s/_io_/_IO_/g;      # io is really IO
+
+      push @cols, $col;
+      push @metrics, [$attr, $metric];
+   }
+
+   my $ts_default = $self->ts_default;
+
+   my $sql = "REPLACE INTO $args{table}("
+      . join(', ',
+         map { Quoter->quote($_) } ('checksum', 'sample', @cols))
+      . ') VALUES (CONV(?, 16, 10), ?'
+      . (@cols ? ', ' : '')  # issue 1265
+      . join(', ', map {
+         $_ eq 'ts_min' || $_ eq 'ts_max'
+            ? "COALESCE(?, $ts_default)"
+            : '?'
+        } @cols) . ')';
+   PTDEBUG && _d($sql);
+
+   $self->history_sth($self->history_dbh->prepare($sql));
+   $self->history_metrics(\@metrics);
+
+   return;
+}
+
+sub set_review_history {
+   my ( $self, $id, $sample, %data ) = @_;
+   foreach my $thing ( qw(min max) ) {
+      next unless defined $data{ts} && defined $data{ts}->{$thing};
+      $data{ts}->{$thing} = parse_timestamp($data{ts}->{$thing});
+   }
+   $self->history_sth->execute(
+      make_checksum($id),
+      $sample,
+      map { $data{$_->[0]}->{$_->[1]} } @{$self->history_metrics});
+}
+}
+# ###########################################################################
+# End QueryHistory package
 # ###########################################################################
 
 # ###########################################################################
@@ -9506,6 +9523,9 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
+use File::Basename qw(basename);
+use File::Temp qw(tempfile);
+
 eval {
    require IO::Uncompress::Inflate; # yum: perl-IO-Compress-Zlib
    IO::Uncompress::Inflate->import(qw(inflate $InflateError));
@@ -9707,38 +9727,33 @@ sub make_event {
 
 sub _get_errors_fh {
    my ( $self ) = @_;
-   my $errors_fh = $self->{errors_fh};
-   return $errors_fh if $errors_fh;
+   return $self->{errors_fh} if $self->{errors_fh};
 
-   my $o = $self->{o};
-   if ( $o && $o->has('tcpdump-errors') && $o->got('tcpdump-errors') ) {
-      my $errors_file = $o->get('tcpdump-errors');
-      PTDEBUG && _d('tcpdump-errors file:', $errors_file);
-      open $errors_fh, '>>', $errors_file
-         or die "Cannot open tcpdump-errors file $errors_file: $OS_ERROR";
-   }
+   my $exec = basename($0);
+   my ($errors_fh, $filename) = tempfile("/tmp/$exec-errors.XXXXXXX", UNLINK => 0);
 
-   $self->{errors_fh} = $errors_fh;
+   $self->{errors_file} = $filename;
+   $self->{errors_fh}   = $errors_fh;
    return $errors_fh;
 }
 
 sub fail_session {
    my ( $self, $session, $reason ) = @_;
-   my $errors_fh = $self->_get_errors_fh();
-   if ( $errors_fh ) {
-      $session->{reason_for_failure} = $reason;
-      my $session_dump = '# ' . Dumper($session);
-      chomp $session_dump;
-      $session_dump =~ s/\n/\n# /g;
-      print $errors_fh "$session_dump\n";
-      {
-         local $LIST_SEPARATOR = "\n";
-         print $errors_fh "@{$session->{raw_packets}}";
-         print $errors_fh "\n";
-      }
-   }
    PTDEBUG && _d('Failed session', $session->{client}, 'because', $reason);
    delete $self->{sessions}->{$session->{client}};
+
+   return if $self->{_no_save_error};
+
+   my $errors_fh = $self->_get_errors_fh();
+
+   print "Session $session->{client} had errors, will save them in $self->{errors_file}\n";
+
+   my $raw_packets = delete $session->{raw_packets};
+   $session->{reason_for_failure} = $reason;
+   my $session_dump = '# ' . Dumper($session);
+   chomp $session_dump;
+   $session_dump =~ s/\n/\n# /g;
+   print $errors_fh join("\n", $session_dump, @$raw_packets), "\n";
    return;
 }
 
@@ -12365,7 +12380,9 @@ sub main {
    $dp->prop('set-vars', $o->get('set-vars'));
    
    # Frequently used options.
-   my $review_dsn = $o->get('review'); 
+   my $review_dsn  = handle_special_defaults($o, 'review');
+   my $history_dsn = handle_special_defaults($o, 'history');
+
    my @groupby    = @{$o->get('group-by')};
    my @orderby;
    if ( (grep { $_ =~ m/genlog|GeneralLogParser|rawlog|RawLogParser/ } @{$o->get('type')})
@@ -12387,20 +12404,6 @@ sub main {
          if ( $EVAL_ERROR ) {
             chomp $EVAL_ERROR;
             $o->save_error("--progress $EVAL_ERROR");
-         }
-      }
-
-      if ( my $review_dsn = $o->get('review') ) {
-         $o->save_error('--review does not accept a t option. Perhaps you meant '
-                      . 'to use --review-table or --history-table?')
-            if defined $review_dsn->{t};
-      }
-
-      for my $tables ('review-table', 'history-table') {
-         my $got = $o->get($tables);
-         if ( grep !defined, Quoter->split_unquote($got) ) {
-            $o->save_error("--$tables should be passed a "
-                         . "fully-qualified table name, got $got");
          }
       }
 
@@ -12474,44 +12477,37 @@ sub main {
    # ########################################################################
    my $qv;      # QueryReview
    my $qv_dbh;  # For QueryReview
+
+   my $tp = new TableParser(Quoter => $q);
    if ( $review_dsn ) {
-      my $tp  = new TableParser(Quoter => $q);
+      my %dsn_without_Dt = %$review_dsn;
+      delete $dsn_without_Dt{D};
+      delete $dsn_without_Dt{t};
+      
       $qv_dbh = get_cxn(
          for          => '--review',
-         dsn          => $review_dsn,
+         dsn          => \%dsn_without_Dt,
          OptionParser => $o,
          DSNParser    => $dp,
          opts         => { AutoCommit => 1 },
       );
       $qv_dbh->{InactiveDestroy}  = 1;  # Don't die on fork().
 
-      my @db_tbl  = Quoter->split_unquote($o->get('review-table'));
-      my @hdb_tbl = Quoter->split_unquote($o->get('history-table'));
-
-      my $db_tbl  = $q->quote(@db_tbl);
-      my $hdb_tbl = $q->quote(@hdb_tbl);
-
+      my @db_tbl = @{$review_dsn}{qw(D t)};
+      my $db_tbl = $q->quote(@db_tbl);
+      
       my $create_review_sql = $o->read_para_after(
-         __FILE__, qr/MAGIC_create_review/);
-      $create_review_sql =~ s/query_review/IF NOT EXISTS $db_tbl/;
-
-      my $create_history_sql = $o->read_para_after(
-         __FILE__, qr/MAGIC_create_review_history/);
-      $create_history_sql =~ s/query_review_history/IF NOT EXISTS $hdb_tbl/;
-
-      for my $create (
-         [ $db_tbl,  $create_review_sql  ],
-         [ $hdb_tbl, $create_history_sql ],
-      ) {
-         my ($tbl_name, $sql) = @$create;
-         create_review_tables(
-            dbh              => $qv_dbh,
-            full_table       => $tbl_name,
-            create_table_sql => $sql,
-            create_table     => $o->get('create-review-tables'),
-            TableParser      => $tp,
-         );
-      }
+         __FILE__, qr/\bMAGIC_create_review\b/);
+      $create_review_sql =~ s/\bquery_review\b/$db_tbl/;
+      
+      create_review_tables(
+          type             => 'review',
+          dbh              => $qv_dbh,
+          full_table       => $db_tbl,
+          create_table_sql => $create_review_sql,
+          create_table     => $o->get('create-review-table'),
+          TableParser      => $tp,
+      );
 
       # Set up the new QueryReview object.
       my $struct = $tp->parse($tp->get_create_table($qv_dbh, @db_tbl));
@@ -12521,24 +12517,55 @@ sub main {
          tbl_struct  => $struct,
          quoter      => $q,
       );
+   }
 
-      # Inspect for MAGIC_history_cols.  Add them to the --select list
-      # only if an explicit --select list was given.  Otherwise, leave
-      # --select undef which will cause EventAggregator to aggregate every
-      # attribute available which will include the history columns.
-      # If no --select list was given and we make one by adding the history
-      # columsn to it, then EventAggregator will only aggregate the
-      # history columns and nothing else--we don't want this.
-      my $tbl = $tp->parse($tp->get_create_table($qv_dbh, @hdb_tbl));
-      my $pat = $o->read_para_after(__FILE__, qr/MAGIC_history_cols/);
+   # ########################################################################
+   # Set up for --history.
+   # ########################################################################
+   my $qh;      # QueryHistory
+   my $qh_dbh;
+   if ( $history_dsn ) {
+      my %dsn_without_Dt = %$history_dsn;
+      delete $dsn_without_Dt{D};
+      delete $dsn_without_Dt{t};
+      my $qh_dbh = get_cxn(
+         for          => '--history',
+         dsn          => \%dsn_without_Dt,
+         OptionParser => $o,
+         DSNParser    => $dp,
+         opts         => { AutoCommit => 1 },
+      );
+      $qh_dbh->{InactiveDestroy}  = 1;  # Don't die on fork().
+
+      my @hdb_tbl = @{$history_dsn}{qw(D t)};
+      my $hdb_tbl = $q->quote(@hdb_tbl);
+      
+      my $create_history_sql = $o->read_para_after(
+         __FILE__, qr/\bMAGIC_create_review_history\b/);
+      $create_history_sql =~ s/\bquery_history\b/$hdb_tbl/;
+   
+      create_review_tables(
+         type             => 'history',
+         dbh              => $qh_dbh,
+         full_table       => $hdb_tbl,
+         create_table_sql => $create_history_sql,
+         create_table     => $o->get('create-history-table'),
+         TableParser      => $tp,
+      );
+      
+      my $tbl = $tp->parse($tp->get_create_table($qh_dbh, @hdb_tbl));
+      my $pat = $o->read_para_after(__FILE__, qr/\bMAGIC_history_cols\b/);
       $pat    =~ s/\s+//g;
       $pat    = qr/^(.*?)_($pat)$/;
 
+      $qh = QueryHistory->new(
+                history_dbh    => $qh_dbh,
+                column_pattern => $pat,
+            );
       # And tell the QueryReview that it has more work to do.
-      $qv->set_history_options(
+      $qh->set_history_options(
          table      => $hdb_tbl,
          tbl_struct => $tbl,
-         col_pat    => $pat,
       );
    }
 
@@ -12926,7 +12953,7 @@ sub main {
          );
          $aux_dbh->{InactiveDestroy}  = 1;  # Don't die on fork().
       }
-      $aux_dbh ||= $qv_dbh || $ps_dbh || $ep_dbh;
+      $aux_dbh ||= $qv_dbh || $qh_dbh || $ps_dbh || $ep_dbh;
       PTDEBUG && _d('aux dbh:', $aux_dbh);
 
       my $time_callback = sub {
@@ -13058,6 +13085,7 @@ sub main {
                      files           => \@read_files,
                      Pipeline        => $pipeline,
                      QueryReview     => $qv,
+                     QueryHistory    => $qh,
                      %common_modules,
                   );
                }
@@ -13459,8 +13487,9 @@ sub main {
       VersionCheck::version_check(
          force     => $o->got('version-check'),
          instances => [
-            ($qv_dbh ? { dbh => $qv_dbh, dsn => $review_dsn } : ()),
-            ($ps_dbh ? { dbh => $ps_dbh, dsn => $ps_dsn     } : ()),
+            ($qv_dbh ? { dbh => $qv_dbh, dsn => $review_dsn  } : ()),
+            ($qh_dbh ? { dbh => $qh_dbh, dsn => $history_dsn } : ()),
+            ($ps_dbh ? { dbh => $ps_dbh, dsn => $ps_dsn      } : ()),
          ],
       );
    }
@@ -13492,7 +13521,7 @@ sub main {
       PTDEBUG && _d('Disconnected dbh', $_);
    }
    grep { $_ }
-   ($qv_dbh, $ps_dbh, $ep_dbh, $aux_dbh);
+   ($qv_dbh, $qh_dbh, $ps_dbh, $ep_dbh, $aux_dbh);
 
    return 0;
 } # End main()
@@ -13503,12 +13532,12 @@ sub main {
 
 sub create_review_tables {
    my ( %args ) = @_;
-   my @required_args = qw(dbh full_table TableParser);
+   my @required_args = qw(dbh full_table TableParser type);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
    my $create_table_sql = $args{create_table_sql};
-   my ($dbh, $full_table, $tp) = @args{@required_args};
+   my ($dbh, $full_table, $tp, $type) = @args{@required_args};
 
    PTDEBUG && _d('Checking --review table', $full_table);
 
@@ -13518,8 +13547,8 @@ sub create_review_tables {
    PTDEBUG && _d($show_db_sql);
    my @db_exists = $dbh->selectrow_array($show_db_sql);
    if ( !@db_exists && !$args{create_table} ) {
-      die "--review database $db does not exist and "
-        . "--no-create-review-tables was specified.  You need "
+      die "--$type database $db does not exist and "
+        . "--no-create-$type-table was specified.  You need "
         . "to create the database.\n";
    }
    else {
@@ -13535,7 +13564,7 @@ sub create_review_tables {
       };
       if ( $EVAL_ERROR && !@db_exists ) {
          warn $EVAL_ERROR;
-         die "--review database $db does not exist and it cannot be "
+         die "--$type database $db does not exist and it cannot be "
             . "created automatically.  You need to create the database.\n";
       }
    }
@@ -13556,7 +13585,7 @@ sub create_review_tables {
 
    if ( !$tbl_exists && !$args{create_table} ) {
       die "Table $full_table does not exist and "
-        . "--no-create-review-tables was specified.  "
+        . "--no-create-$type-table was specified.  "
         . "You need to create the table.\n";
    }
    else {
@@ -13566,7 +13595,7 @@ sub create_review_tables {
       };
       if ( $EVAL_ERROR && !$args{create_table} ) {
          warn $EVAL_ERROR;
-         die "--review history table $full_table does not exist and it cannot be "
+         die "--$type history table $full_table does not exist and it cannot be "
            . "created automatically.  You need to create the table.\n"
       }
    }
@@ -13583,6 +13612,7 @@ sub print_reports {
 
    my ($o, $qv, $pipeline) = @args{qw(OptionParser QueryReview Pipeline)};
    my ($eas, $tls, $stats) = @args{qw(eas tls stats)};
+   my $qh                  = $args{QueryHistory};
 
    my @reports = @{$o->get('report-format')};
    my @groupby = @{$args{groupby}};
@@ -13657,12 +13687,18 @@ sub print_reports {
       }
 
       if ( $qv ) {  # query review
-         update_query_review_tables(
+         update_query_review_table(
             ea           => $eas->[$i],
             worst        => $worst,
             QueryReview  => $qv,
-            OptionParser => $o,
          );
+      }
+      if ( $qh ) { # query history
+         update_query_history_table(
+            ea           => $eas->[$i],
+            worst        => $worst,
+            QueryHistory => $qh,
+         );      
       }
 
       if ( $o->get('timeline') ) {  # --timeline
@@ -13719,6 +13755,22 @@ sub sig_int {
       save_resume_offset();
       exit(1);
    }
+}
+
+# Handle the special defaults for --review & --history
+sub handle_special_defaults {
+   my ($o, $opt) = @_;
+   my $dsn = $o->get($opt);
+   return unless $dsn;
+   
+   my $default_table = $o->read_para_after(
+         __FILE__, qr/MAGIC_${opt}_table/);
+   $default_table =~ s/.+\s(\S+)$/$1/;
+   my ($D, $t) = Quoter->split_unquote($default_table);
+   $dsn->{D} ||= $D;
+   $dsn->{t} ||= $t;
+   
+   return $dsn;
 }
 
 sub make_alt_attrib {
@@ -13856,15 +13908,14 @@ sub get_worst_queries {
    return $ea->top_events(%top_spec);
 }
 
-sub update_query_review_tables {
+sub update_query_review_table {
    my ( %args ) = @_;
-   foreach my $arg ( qw(ea worst QueryReview OptionParser) ) {
+   foreach my $arg ( qw(ea worst QueryReview) ) {
       die "I need a $arg argument" unless $args{$arg};
    }
    my $ea    = $args{ea};
    my $worst = $args{worst};
    my $qv    = $args{QueryReview};
-   my $o     = $args{OptionParser};
 
    my $attribs = $ea->get_attributes();
 
@@ -13881,6 +13932,28 @@ sub update_query_review_tables {
          first_seen  => $stats->{ts}->{min},
          last_seen   => $stats->{ts}->{max}
       );
+   }
+
+   return;
+}
+
+sub update_query_history_table {
+   my ( %args ) = @_;
+   foreach my $arg ( qw(ea worst QueryHistory) ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my $ea    = $args{ea};
+   my $worst = $args{worst};
+   my $qh    = $args{QueryHistory};
+
+   my $attribs = $ea->get_attributes();
+
+   PTDEBUG && _d('Updating query review tables'); 
+
+   foreach my $worst_info ( @$worst ) {
+      my $item        = $worst_info->[0];
+      my $sample      = $ea->results->{samples}->{$item};
+
       my %history;
       foreach my $attrib ( @$attribs ) {
          $history{$attrib} = $ea->metrics(
@@ -13888,12 +13961,13 @@ sub update_query_review_tables {
             where  => $item,
          );
       }
-      $qv->set_review_history(
+      $qh->set_review_history(
          $item, $sample->{arg} || '', %history);
    }
 
    return;
 }
+
 
 # Sub: verify_run_time
 #   Verify that the given run mode and run time are valid.  If the run mode
@@ -14320,9 +14394,9 @@ example,
 You can see how useful this meta-data is -- as you analyze your queries, you get
 your comments integrated right into the report.
 
-The tool will also store information into a separate database table specified
-by the L<"--history-table"> option, so you can keep historical trending information
-on classes of queries.
+If you add the L<"--history"> option, it will also store information into
+a separate database table, so you can keep historical trending information on
+classes of queries.
 
 =back
 
@@ -14483,15 +14557,23 @@ Continue parsing even if there is an error.  The tool will not continue
 forever: it stops once any process causes 100 errors, in which case there
 is probably a bug in the tool or the input is invalid.
 
-=item --[no]create-review-tables
+=item --[no]create-history-table
 
 default: yes
 
-Create the L<"--review"> tables if they do not exist.
+Create the L<"--history"> table if it does not exist.
 
-This option causes the tables specified by L<"--review-table"> and
-L<"--history-table"> to be created with the default structures shown
-in the documentation for L<"--review">.
+This option causes the table specified by L<"--history"> to be created
+with the default structure shown in the documentation for L<"--history">.
+
+=item --[no]create-review-table
+
+default: yes
+
+Create the L<"--review"> table if it does not exist.
+
+This option causes the table specified by L<"--review"> to be created
+with the default structure shown in the documentation for L<"--review">.
 
 =item --daemonize
 
@@ -14703,12 +14785,6 @@ into a suggestion of what they do, such as C<INSERT SELECT table1 table2>.
 =item --help
 
 Show help and exit.
-
-=item --history-table
-
-type: string; default: percona_schema.query_history
-
-Where to save the historical data produced by L<"--review">.
 
 =item --host
 
@@ -14968,6 +15044,11 @@ type: DSN
 
 Save query classes and historical values for later review and trend analysis.
 
+=for comment ignore-pt-internal-value
+MAGIC_review_table
+
+Defaults to percona_schema.query_review
+
 The argument specifies a host to store all unique query fingerprints in; the
 databases and tables were this data is stored can be specified with the
 L<"--review-table"> and L<"--history-table"> options.
@@ -14980,7 +15061,7 @@ by pt-query-digest.  The following CREATE TABLE definition is also used:
 =for comment ignore-pt-internal-value
 MAGIC_create_review:
 
-  CREATE TABLE query_review (
+  CREATE TABLE IF NOT EXISTS query_review (
      checksum     BIGINT UNSIGNED NOT NULL PRIMARY KEY,
      fingerprint  TEXT NOT NULL,
      sample       TEXT NOT NULL,
@@ -15012,9 +15093,26 @@ After parsing and aggregating events, your table should contain a row for each
 fingerprint.  This option depends on C<--group-by fingerprint> (which is the
 default).  It will not work otherwise.
 
-Additionally, pt-query-digest will save historical information in the
-L<"--history-table"> so you can see how classes of queries have changed
-over time.  The table must have at least the following columns:
+=item --history
+
+type: DSN
+
+The table in which to store historical values for review trend analysis.
+
+=for comment ignore-pt-internal-value
+MAGIC_history_table
+
+Defaults to percona_schema.query_history
+
+Each time you review queries with L<"--review">, pt-query-digest will save
+information into this table so you can see how classes of queries have changed
+over time.
+
+This DSN should mention a table in which to store statistics about each
+class of queries.  pt-query-digest verifies the existence of the table.
+
+pt-query-digest then inspects the columns in the table.  The table must have at
+least the following columns:
 
   CREATE TABLE query_review_history (
     checksum     BIGINT UNSIGNED NOT NULL,
@@ -15033,7 +15131,8 @@ MAGIC_history_cols
 If the column ends with one of those values, then the prefix is interpreted as
 the event attribute to store in that column, and the suffix is interpreted as
 the metric to be stored.  For example, a column named Query_time_min will be
-used to store the minimum Query_time for the class of events.
+used to store the minimum Query_time for the class of events.  The presence of
+this column will also add Query_time to the L<"--select"> list.
 
 The table should also have a primary key, but that is up to you, depending on
 how you want to store the historical data.  We suggest adding ts_min and ts_max
@@ -15041,13 +15140,13 @@ columns and making them part of the primary key along with the checksum.  But
 you could also just add a ts_min column and make it a DATE type, so you'd get
 one row per class of queries per day.
 
-The default table structure follows.  The following table definition is used
-for L<"--[no]create-review-tables">:
+The default table structure follows.  The following 
+table definition is used for L<"--create-history-table">:
 
 =for comment ignore-pt-internal-value
 MAGIC_create_review_history
 
- CREATE TABLE query_review_history (
+ CREATE TABLE IF NOT EXISTS query_history (
    checksum             BIGINT UNSIGNED NOT NULL,
    sample               TEXT NOT NULL,
    ts_min               DATETIME,
@@ -15150,12 +15249,6 @@ MAGIC_create_review_history
 
 Note that we store the count (cnt) for the ts attribute only; it will be
 redundant to store this for other attributes.
-
-=item --review-table
-
-type: string; default: percona_schema.query_review
-
-Where to save the samples produced by L<"--review">.
 
 =item --run-time
 

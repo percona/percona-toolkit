@@ -19,29 +19,6 @@ my $help = qx{$cmd --help};
 my $output;
 
 # #############################################################################
-# Test cmd line op sanity.
-# #############################################################################
-for my $opt (qw(review-table history-table)) {
-   $output = `$cmd --review h=127.1,P=12345,u=msandbox,p=msandbox --$opt test`;
-   like($output, qr/--$opt should be passed a/, "Dies if no database part in --$opt");
-}
-
-$output = `$cmd --review h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=test`;
-like($output, qr/--review does not accept a t option/, 'Dies if t part in --review DSN');
-
-like(
-   $help,
-   qr/review-table\s+\Qpercona_schema.query_review\E/,
-   "--review-table has a sane default"
-);
-
-like(
-   $help,
-   qr/history-table\s+\Qpercona_schema.query_history\E/,
-   "--history-table has a sane default"
-);
-
-# #############################################################################
 # https://bugs.launchpad.net/percona-toolkit/+bug/885382
 # pt-query-digest --embedded-attributes doesn't check cardinality
 # #############################################################################

@@ -11,6 +11,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
+use ProtocolParser;
 use MySQLProtocolParser;
 use TcpdumpParser;
 use PerconaTest;
@@ -1777,4 +1778,7 @@ like(
 # #############################################################################
 # Done.
 # #############################################################################
+
+# Get rid of error files
+`rm /tmp/MySQLProtocolParser.t-errors.*`;
 done_testing;

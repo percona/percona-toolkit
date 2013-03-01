@@ -51,7 +51,7 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-use base 'ProtocolParser';
+BEGIN { our @ISA = 'ProtocolParser'; }
 
 use constant {
    COM_SLEEP               => '00',
