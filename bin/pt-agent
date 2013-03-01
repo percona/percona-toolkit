@@ -21,10 +21,11 @@ BEGIN {
       Percona::WebAPI::Representation
       Percona::WebAPI::Client
       Percona::WebAPI::Exception::Request
+      Percona::WebAPI::Exception::Resource
       Percona::WebAPI::Resource::Agent
       Percona::WebAPI::Resource::Config
       Percona::WebAPI::Resource::Service
-      Percona::WebAPI::Resource::Run
+      Percona::WebAPI::Resource::Task
       Percona::WebAPI::Util
       VersionCheck
       DSNParser
@@ -771,6 +772,7 @@ use Lmo;
 use Percona::Toolkit;
 use Percona::WebAPI::Representation;
 use Percona::WebAPI::Exception::Request;
+use Percona::WebAPI::Exception::Resource;
 
 Percona::WebAPI::Representation->import(qw(as_json));
 Percona::Toolkit->import(qw(_d Dumper have_required_args));
@@ -862,9 +864,13 @@ sub get {
             $resource_objects = $type->new(%$resource);
          }
       };
-      if ( $EVAL_ERROR ) {
-         warn "Error creating $type resource objects: $EVAL_ERROR";
-         return;
+      if ( my $e = $EVAL_ERROR ) {
+         die Percona::WebAPI::Exception::Resource->new(
+            type  => $type,
+            link  => $link,
+            data  => (ref $resource eq 'ARRAY' ? $resource : [ $resource ]),
+            error => $e,
+         );
       }
    }
    elsif ( exists $resource->{links} ) {
@@ -892,7 +898,7 @@ sub put {
       %args,
       method => 'PUT',
    );
-   return $args{link};
+   return $self->response->header('Location');
 }
 
 sub delete {
@@ -1091,6 +1097,62 @@ no Lmo;
 # ###########################################################################
 
 # ###########################################################################
+# Percona::WebAPI::Exception::Resource package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Percona/WebAPI/Exception/Resource.pm
+#   t/lib/Percona/WebAPI/Exception/Resource.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Percona::WebAPI::Exception::Resource;
+
+use Lmo;
+use overload '""' => \&as_string;
+use Data::Dumper;
+
+has 'type' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 1,
+);
+
+has 'link' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 1,
+);
+
+has 'data' => (
+   is       => 'ro',
+   isa      => 'ArrayRef',
+   required => 1,
+);
+
+has 'error' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 1,
+);
+
+sub as_string {
+   my $self = shift;
+   chomp(my $error = $self->error);
+   local $Data::Dumper::Indent    = 1;
+   local $Data::Dumper::Sortkeys  = 1;
+   local $Data::Dumper::Quotekeys = 0;
+   return sprintf "Invalid %s resource from %s:\n\n%s\nError: %s\n\n",
+      $self->type, $self->link, Dumper($self->data), $error;
+}
+
+no Lmo;
+1;
+}
+# ###########################################################################
+# End Percona::WebAPI::Exception::Resource package
+# ###########################################################################
+
+# ###########################################################################
 # Percona::WebAPI::Resource::Agent package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -1159,7 +1221,7 @@ package Percona::WebAPI::Resource::Config;
 
 use Lmo;
 
-has 'config_id' => (
+has 'ts' => (
    is       => 'ro',
    isa      => 'Int',
    required => 1,
@@ -1210,9 +1272,9 @@ has 'name' => (
    required => 1,
 );
 
-has 'runs' => (
+has 'tasks' => (
    is       => 'ro',
-   isa      => 'ArrayRef[Percona::WebAPI::Resource::Run]',
+   isa      => 'ArrayRef[Percona::WebAPI::Resource::Task]',
    required => 1,
 );
 
@@ -1237,13 +1299,13 @@ has 'links' => (
 
 sub BUILDARGS {
    my ($class, %args) = @_;
-   if ( ref $args{runs} eq 'ARRAY' ) {
-      my @runs;
-      foreach my $run_hashref ( @{$args{runs}} ) {
-         my $run = Percona::WebAPI::Resource::Run->new(%$run_hashref);
-         push @runs, $run;
+   if ( ref $args{tasks} eq 'ARRAY' ) {
+      my @tasks;
+      foreach my $run_hashref ( @{$args{tasks}} ) {
+         my $task = Percona::WebAPI::Resource::Task->new(%$run_hashref);
+         push @tasks, $task;
       }
-      $args{runs} = \@runs;
+      $args{tasks} = \@tasks;
    }
    return $class->SUPER::BUILDARGS(%args);
 }
@@ -1256,17 +1318,23 @@ no Lmo;
 # ###########################################################################
 
 # ###########################################################################
-# Percona::WebAPI::Resource::Run package
+# Percona::WebAPI::Resource::Task package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
-#   lib/Percona/WebAPI/Resource/Run.pm
-#   t/lib/Percona/WebAPI/Resource/Run.t
+#   lib/Percona/WebAPI/Resource/Task.pm
+#   t/lib/Percona/WebAPI/Resource/Task.t
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 {
-package Percona::WebAPI::Resource::Run;
+package Percona::WebAPI::Resource::Task;
 
 use Lmo;
+
+has 'name' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 1,
+);
 
 has 'number' => (
    is       => 'ro',
@@ -1276,7 +1344,7 @@ has 'number' => (
 
 has 'program' => (
    is       => 'ro',
-   isa      => 'Str',
+   isa      => 'Maybe[Str]',
    required => 1,
 );
 
@@ -1294,7 +1362,7 @@ has 'query' => (
 
 has 'output' => (
    is       => 'ro',
-   isa      => 'Str',
+   isa      => 'Maybe[Str]',
    required => 1,
 );
 
@@ -1304,7 +1372,7 @@ no Lmo;
 1;
 }
 # ###########################################################################
-# End Percona::WebAPI::Resource::Run package
+# End Percona::WebAPI::Resource::Task package
 # ###########################################################################
 
 # ###########################################################################
@@ -4080,10 +4148,10 @@ use File::Path;
 use Percona::Toolkit; 
 use Percona::WebAPI::Client;
 use Percona::WebAPI::Exception::Request;
+use Percona::WebAPI::Exception::Resource;
 use Percona::WebAPI::Resource::Agent;
 use Percona::WebAPI::Resource::Config;
 use Percona::WebAPI::Resource::Service;
-use Percona::WebAPI::Resource::Run;
 use Percona::WebAPI::Representation;
 use Percona::WebAPI::Util;
 
@@ -4381,7 +4449,6 @@ sub init_agent {
       }
       $action    = 'put';  # must be lc
       $link      = $agents_link . '/' . $agent->uuid;
-      $agent_uri = $link;
    }
    else {
       _info("Creating new Agent");
@@ -4473,35 +4540,42 @@ sub run_agent {
          );
       };
       if ( my $e = $EVAL_ERROR ) {
-         if (blessed($e) && $e->isa('Percona::WebAPI::Exception::Request')) {
-            if ( $e->status == 404 ) {
-               _info('Agent ' . $agent->name. ' is not configured.');
+         if (blessed($e)) {
+            if ($e->isa('Percona::WebAPI::Exception::Request')) {
+               if ( $e->status == 404 ) {
+                  _info('Agent ' . $agent->name. ' is not configured.');
+               }
+               else {
+                  _info("$e");  # PWS API error?
+               }
             }
-            else {
-               _info("$e");  # PWS API error?
+            elsif ($e->isa('Percona::WebAPI::Exception::Resource')) {
+               _warn("$e");
             }
          }
          else {
-            _err("$e");  # internal error
+            _err($e);  # internal error
          }
       }
       else {
          eval {
-            if ( !$config || $new_config->config_id != $config->config_id ) {
+            if ( !$config || $new_config->ts > $config->ts ) {
                $lib_dir = apply_config(
                   agent   => $agent,
                   config  => $new_config,
                   lib_dir => $lib_dir,
                );
                $config = $new_config;
-               _info('Config ' . $config->config_id . ' applied successfully');
+               _info('Config ' . $config->ts . ' applied successfully');
             }
             else {
                _info('Config has not changed');
             }
          };
          if ( $EVAL_ERROR ) {
-            _warn($EVAL_ERROR);
+            chomp $EVAL_ERROR;
+            _warn("Failed to apply config " . $new_config->ts
+               . ": $EVAL_ERROR  Will try again.");
          }
       }
 
@@ -4629,12 +4703,7 @@ sub apply_config {
    my $config  = $args{config};
    my $lib_dir = $args{lib_dir};
 
-   _info('Applying config ' . $config->config_id);
-
-   # Save config in $HOME/.pt-agent.conf
-   write_config(
-      config => $config,
-   );
+   _info('Applying config ' . $config->ts);
 
    # If the --lib dir has changed, init the new one and re-write
    # the Agent resource in it.
@@ -4650,6 +4719,11 @@ sub apply_config {
       );
       # TODO: copy old-lib/services/* to new-lib/services/ ?
    }
+
+   # Save config in $HOME/.pt-agent.conf if successful.
+   write_config(
+      config => $config,
+   );
 
    return $new_lib_dir || $lib_dir;
 }

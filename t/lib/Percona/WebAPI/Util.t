@@ -17,6 +17,8 @@ use Percona::WebAPI::Resource::Config;
 use Percona::WebAPI::Util qw(resource_diff);
 
 my $x = Percona::WebAPI::Resource::Config->new(
+   ts      => '100',
+   name    => 'Default',
    options => {
       'lib'   => '/var/lib',
       'spool' => '/var/spool',
@@ -24,6 +26,8 @@ my $x = Percona::WebAPI::Resource::Config->new(
 );
 
 my $y = Percona::WebAPI::Resource::Config->new(
+   ts      => '100',
+   name    => 'Default',
    options => {
       'lib'   => '/var/lib',
       'spool' => '/var/spool',

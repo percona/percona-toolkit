@@ -15,18 +15,12 @@
 # this program; if not, write to the Free Software Foundation, Inc., 59 Temple
 # Place, Suite 330, Boston, MA  02111-1307  USA.
 # ###########################################################################
-# Percona::WebAPI::Resource::Config package
+# Percona::WebAPI::Resource::Task package
 # ###########################################################################
 {
-package Percona::WebAPI::Resource::Config;
+package Percona::WebAPI::Resource::Task;
 
 use Lmo;
-
-has 'ts' => (
-   is       => 'ro',
-   isa      => 'Int',
-   required => 1,
-);
 
 has 'name' => (
    is       => 'ro',
@@ -34,22 +28,41 @@ has 'name' => (
    required => 1,
 );
 
-has 'options' => (
+has 'number' => (
    is       => 'ro',
-   isa      => 'HashRef',
+   isa      => 'Int',
    required => 1,
 );
 
-has 'links' => (
-   is       => 'rw',
-   isa      => 'Maybe[HashRef]',
-   required => 0,
-   default  => sub { return {} },
+has 'program' => (
+   is       => 'ro',
+   isa      => 'Maybe[Str]',
+   required => 1,
 );
+
+has 'options' => (
+   is       => 'ro',
+   isa      => 'Maybe[Str]',
+   required => 0,
+);
+
+has 'query' => (
+   is       => 'ro',
+   isa      => 'Maybe[Str]',
+   required => 0,
+);
+
+has 'output' => (
+   is       => 'ro',
+   isa      => 'Maybe[Str]',
+   required => 1,
+);
+
+sub TO_JSON { return { %{ shift() } }; }
 
 no Lmo;
 1;
 }
 # ###########################################################################
-# End Percona::WebAPI::Resource::Config package
+# End Percona::WebAPI::Resource::Task package
 # ###########################################################################

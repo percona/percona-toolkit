@@ -32,6 +32,8 @@ is(
 );
 
 my $config = Percona::WebAPI::Resource::Config->new(
+   ts      => '100',
+   name    => 'Default',
    options => {
       'check-interval' => 60,
    },
