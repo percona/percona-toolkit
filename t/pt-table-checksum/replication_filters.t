@@ -282,18 +282,11 @@ elsif ( -x "$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqlbinlog" ) {
    $mysqlbinlog = "$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqlbinlog";
 }
 
-$output = `$mysqlbinlog /tmp/12345/data/$row->{file} --start-position=$row->{position} | grep 'use ' | grep -v '^# Warning' |  sort -u`;
+$output = `$mysqlbinlog /tmp/12345/data/$row->{file} --start-position=$row->{position} | grep 'use ' | grep -v '^# Warning' |  sort -u | sed -e 's/\`//g'`;
 
-my $use_dbs = $sandbox_version ge '5.6' ?
-   "use `mysql`/*!*/;
-use `percona_test`/*!*/;
-use `percona`/*!*/;
-use `sakila`/*!*/;
-"
-   :
-   "use mysql/*!*/;
-use percona/*!*/;
+my $use_dbs = "use mysql/*!*/;
 use percona_test/*!*/;
+use percona/*!*/;
 use sakila/*!*/;
 ";
 
@@ -308,13 +301,11 @@ $row = $master_dbh->selectrow_hashref('show master status');
 
 pt_table_checksum::main(@args, qw(--quiet --replicate-database percona));
 
-$output = `$mysqlbinlog /tmp/12345/data/$row->{file} --start-position=$row->{position} | grep 'use ' | grep -v '^# Warning' | sort -u`;
+$output = `$mysqlbinlog /tmp/12345/data/$row->{file} --start-position=$row->{position} | grep 'use ' | grep -v '^# Warning' | sort -u | sed -e 's/\`//g'`;
 
-$use_dbs = $sandbox_version ge '5.6' ? "use `percona`/*!*/;\n"
-                                     : "use percona/*!*/;\n";
 is(
    $output,
-   $use_dbs,
+   "use percona/*!*/;\n",
    "USE only --replicate-database (binlog dump)"
 );
 
