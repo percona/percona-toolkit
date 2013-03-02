@@ -44,7 +44,7 @@ my $dp = new DSNParser(opts=>$dsn_opts);
 my $o  = new OptionParser(description => 'Cxn');
 $o->get_specs("$trunk/bin/pt-table-checksum");
 $o->get_opts();
-$dp->prop('set-vars', $o->get('set-vars'));
+$dp->prop('set-vars', $o->set_vars());
 
 my $r1 = new Cxn(dsn=>{n=>'slave1'}, dbh=>1, DSNParser=>$dp, OptionParser=>$o);
 my $r2 = new Cxn(dsn=>{n=>'slave2'}, dbh=>2, DSNParser=>$dp, OptionParser=>$o);

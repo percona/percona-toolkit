@@ -47,7 +47,7 @@ elsif ( $db_flavor !~ /XtraDB Cluster/ ) {
 my $o  = new OptionParser(description => 'Cxn');
 $o->get_specs("$trunk/bin/pt-table-checksum");
 $o->get_opts();
-$dp->prop('set-vars', $o->get('set-vars'));
+$dp->prop('set-vars', $o->set_vars());
 
 sub make_cxn {
    my (%args) = @_;
