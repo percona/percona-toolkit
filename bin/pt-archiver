@@ -5335,7 +5335,7 @@ sub main {
    $o->get_opts();
 
    my $dp = $o->DSNParser();
-   $dp->prop('set-vars', $o->get('set-vars'));
+   $dp->prop('set-vars', $o->set_vars());
 
    # Frequently used options.
    $src             = $o->get('source');
@@ -7094,12 +7094,22 @@ L<"--stop">.
 
 =item --set-vars
 
-type: string; default: wait_timeout=10000
+type: Array
 
-Set these MySQL variables.
+Set the MySQL variables in this comma-separated list of C<variable=value> pairs.
 
-Specify any variables you want to be set immediately after connecting to MySQL.
-These will be included in a C<SET> command.
+By default, the tool sets:
+
+=for comment ignore-pt-internal-value
+MAGIC_set_vars
+
+   wait_timeout=10000
+
+Variables specified on the command line override these defaults.  For
+example, specifying C<--set-vars wait_timeout=500> overrides the default
+value of C<10000>.
+
+The tool prints a warning and continues if a variable cannot be set.
 
 =item --share-lock
 
