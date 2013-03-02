@@ -15133,7 +15133,7 @@ followed by any of these values:
 =for comment ignore-pt-internal-value
 MAGIC_history_cols
 
-  pct|avt|cnt|sum|min|max|pct_95|stddev|median|rank
+  pct|avg|cnt|sum|min|max|pct_95|stddev|median|rank
 
 If the column ends with one of those values, then the prefix is interpreted as
 the event attribute to store in that column, and the suffix is interpreted as
