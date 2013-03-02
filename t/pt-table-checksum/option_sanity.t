@@ -57,11 +57,11 @@ like(
    "Default --host=localhost"
 );
 
-like(
-   $output,
-   qr/^  --lock-wait-timeout\s+1$/m,
-   "Default --lock-wait-timeout=1"
-);
+#like(
+#   $output,
+#   qr/^  --lock-wait-timeout\s+1$/m,
+#   "Default --lock-wait-timeout=1"
+#);
 
 like(
    $output,
