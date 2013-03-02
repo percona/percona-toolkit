@@ -439,7 +439,7 @@ SKIP: {
    $dbh->disconnect();
 
    $dp = new DSNParser(opts => $opts);
-   $dp->prop('set-vars', 'wait_timeout=1000');
+   $dp->prop('set-vars', { wait_timeout => { val => 1000, default => 1}});
    $d  = $dp->parse('h=127.0.0.1,P=12345,A=utf8,u=msandbox,p=msandbox');
    my $dbh2 = $dp->get_dbh($dp->get_cxn_params($d), {mysql_use_result=>1});
    sleep 2;
@@ -560,7 +560,7 @@ like(
    "get_dbh dies with an unknown charset"
 );
 
-$dp->prop('set-vars', "time_zoen='UTC'");
+$dp->prop('set-vars',  { time_zoen => { val => 'UTC' }});
 ($out, undef) = full_output(sub { $dp->get_dbh($dp->get_cxn_params($dsn), {}) });
 
 like(
@@ -575,7 +575,7 @@ $dp->prop('set-vars', undef);
 # https://bugs.launchpad.net/percona-toolkit/+bug/1078887
 # #############################################################################
 
-$dp->prop('set-vars', "sql_mode=ANSI_QUOTES");
+$dp->prop('set-vars', { sql_mode => { val=>'ANSI_QUOTES' }});
 my $sql_mode_dbh = $dp->get_dbh($dp->get_cxn_params($dsn), {});
 
 my (undef, $sql_mode) = $sql_mode_dbh->selectrow_array(q{SHOW VARIABLES LIKE 'sql\_mode'});

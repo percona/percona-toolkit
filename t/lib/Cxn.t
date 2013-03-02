@@ -29,10 +29,10 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 
-my $o  = new OptionParser(description => 'Cxn');
+my $o  = new OptionParser(description => 'Cxn', file => "$trunk/bin/pt-table-checksum");
 $o->get_specs("$trunk/bin/pt-table-checksum");
 $o->get_opts();
-$dp->prop('set-vars', $o->get('set-vars'));
+$dp->prop('set-vars', $o->set_vars());
 
 sub make_cxn {
    my (%args) = @_;
