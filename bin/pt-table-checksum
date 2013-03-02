@@ -8838,43 +8838,7 @@ sub main {
             . "level to REPEATABLE-READ.\n";
       }
 
-      # We set innodb_lock_wait_timeout=1 (the option's default value)
-      # so that if this tool happens to cause some locking, it will more
-      # likely be the victim than other connections and thus avoid disrupting
-      # the server.  The var is only dynamic with the InnoDB plugin, so
-      # if setting it fails we only warn if the server's value is greater
-      # than the desired value.  E.g. if user does --lock-wait-timeout 5
-      # and the set fails but the server's value is 1, then that's ok, but
-      # if the server's value is 10, then that's not ok.
-      my $lock_wait_timeout = $o->get('lock-wait-timeout');
-      my $set_lwt = "SET SESSION innodb_lock_wait_timeout=$lock_wait_timeout";
-      PTDEBUG && _d($dbh, $set_lwt);
-      eval {
-         $dbh->do($set_lwt);
-      };
-      if ( $EVAL_ERROR ) {
-         PTDEBUG && _d($EVAL_ERROR);
-         # Get the server's current value.
-         $sql = "SHOW SESSION VARIABLES LIKE 'innodb_lock_wait_timeout'";
-         PTDEBUG && _d($dbh, $sql);
-         my (undef, $curr_lwt) = $dbh->selectrow_array($sql);
-         PTDEBUG && _d('innodb_lock_wait_timeout on server:', $curr_lwt);
-         if ( !defined $curr_lwt ) {
-            PTDEBUG && _d('innodb_lock_wait_timeout does not exist;',
-               'InnoDB is probably disabled');
-         }
-         elsif ( $curr_lwt > $lock_wait_timeout ) { 
-            warn "Failed to $set_lwt: $EVAL_ERROR\n"
-               . "The current innodb_lock_wait_timeout value "
-               . "$curr_lwt is greater than the --lock-wait-timeout "
-               . "value $lock_wait_timeout and the variable cannot be "
-               . "changed.  innodb_lock_wait_timeout is only dynamic when "
-               . "using the InnoDB plugin.  To prevent this warning, either "
-               . "specify --lock-wait-time=$curr_lwt, or manually set "
-               . "innodb_lock_wait_timeout to a value less than or equal "
-               . "to $lock_wait_timeout and restart MySQL.\n";
-         }
-      }
+      return;
    };
 
    # Do not call "new Cxn(" directly; use this sub so that set_on_connect
@@ -11637,18 +11601,6 @@ type: string; group: Filter
 
 Ignore tables whose names match the Perl regex.
 
-=item --lock-wait-timeout
-
-type: int; default: 1
-
-Set the session value of C<innodb_lock_wait_timeout> on the master host.
-This option helps guard against long lock waits if the checksum queries
-become slow for some reason.  Setting this option dynamically requires the
-InnoDB plugin, so this works only on newer InnoDB and MySQL versions.  If
-setting the value fails and the current server value is greater than the
-specified value, then a warning is printed; else, if the current server
-value is less than or equal to the specified value, no warning is printed.
-
 =item --max-lag
 
 type: time; default: 1s; group: Throttle
@@ -11918,6 +11870,7 @@ By default, the tool sets:
 MAGIC_set_vars
 
    wait_timeout=10000
+   innodb_lock_wait_timeout=1
 
 Variables specified on the command line override these defaults.  For
 example, specifying C<--set-vars wait_timeout=500> overrides the defaultvalue of C<10000>.
