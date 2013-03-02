@@ -6371,7 +6371,7 @@ sub main {
    $o->get_opts();
 
    my $dp = $o->DSNParser();
-   $dp->prop('set-vars', $o->get('set-vars'));
+   $dp->prop('set-vars', $o->set_vars());
 
    if ( !$o->got('busy-time') ) {
       $o->set('interval', 30) unless $o->got('interval');
@@ -7383,10 +7383,21 @@ jobs gracefully if necessary.  See also L<"--stop">.
 
 =item --set-vars
 
-type: string; default: wait_timeout=10000
+type: Array
 
-Set these MySQL variables.  Immediately after connecting to MySQL, this string
-will be appended to SET and executed.
+Set the MySQL variables in this comma-separated list of C<variable=value> pairs.
+
+By default, the tool sets:
+
+=for comment ignore-pt-internal-value
+MAGIC_set_vars
+
+   wait_timeout=10000
+
+Variables specified on the command line override these defaults.  For
+example, specifying C<--set-vars wait_timeout=500> overrides the defaultvalue of C<10000>.
+
+The tool prints a warning and continues if a variable cannot be set.
 
 =item --socket
 

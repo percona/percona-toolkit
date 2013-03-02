@@ -3721,7 +3721,7 @@ sub main {
    $o->get_opts();
 
    my $dp = $o->DSNParser();
-   $dp->prop('set-vars', $o->get('set-vars'));
+   $dp->prop('set-vars', $o->set_vars());
 
    my $src;
    if ( my $src_dsn_string = shift @ARGV ) {
@@ -4127,10 +4127,21 @@ How long to run before exiting.  By default, the tool runs forever.
 
 =item --set-vars
 
-type: string; default: wait_timeout=10000
+type: Array
 
-Set these MySQL variables.  Immediately after connecting to MySQL, this string
-will be appended to SET and executed.
+Set the MySQL variables in this comma-separated list of C<variable=value> pairs.
+
+By default, the tool sets:
+
+=for comment ignore-pt-internal-value
+MAGIC_set_vars
+
+   wait_timeout=10000
+
+Variables specified on the command line override these defaults.  For
+example, specifying C<--set-vars wait_timeout=500> overrides the defaultvalue of C<10000>.
+
+The tool prints a warning and continues if a variable cannot be set.
 
 =item --socket
 
