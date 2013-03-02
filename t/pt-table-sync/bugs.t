@@ -46,7 +46,7 @@ $sb->load_file('master', "$sample/wrong-tbl-struct-bug-1003014.sql");
 $slave_dbh->do("DELETE FROM test.aaa WHERE STOP_ARCHIVE IN (5,6,7)");
 $slave_dbh->do("UPDATE test.zzz SET c='x' WHERE id IN (44,45,46)");
 
-$output = `$trunk/bin/pt-table-checksum $master_dsn --lock-wait-timeout 3 --max-load '' -d test --chunk-size 10 2>&1`;
+$output = `$trunk/bin/pt-table-checksum $master_dsn --set-vars innodb_lock_wait_timeout=3 --max-load '' -d test --chunk-size 10 2>&1`;
 
 is(
    PerconaTest::count_checksum_results($output, 'diffs'),
@@ -112,7 +112,7 @@ $sb->load_file('master', "$sample/wrong-tbl-struct-bug-1003014.sql");
 $slave_dbh->do("DELETE FROM test.aaa WHERE STOP_ARCHIVE IN (5,6,7)");
 $slave_dbh->do("UPDATE test.zzz SET c='x' WHERE id IN (44,45,46)");
 
-$output = `$trunk/bin/pt-table-checksum $master_dsn --lock-wait-timeout 3 --max-load '' -d test --chunk-size 10 2>&1`;
+$output = `$trunk/bin/pt-table-checksum $master_dsn --set-vars innodb_lock_wait_timeout=3 --max-load '' -d test --chunk-size 10 2>&1`;
 
 is(
    PerconaTest::count_checksum_results($output, 'diffs'),

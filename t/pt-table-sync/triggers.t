@@ -44,7 +44,7 @@ $sb->create_dbs($master_dbh, [qw(test)]);
 $sb->load_file('master', 't/pt-table-sync/samples/issue_37.sql');
 $sb->use('master', '-e "SET SQL_LOG_BIN=0; INSERT INTO test.issue_37 VALUES (1), (2);"');
 
-`$trunk/bin/pt-table-checksum h=127.0.0.1,P=12345,u=msandbox,p=msandbox --replicate test.checksum -d test --lock-wait-time 3 2>&1 > /dev/null`;
+`$trunk/bin/pt-table-checksum h=127.0.0.1,P=12345,u=msandbox,p=msandbox --replicate test.checksum -d test --set-vars innodb_lock_wait_timeout=3 2>&1 > /dev/null`;
 
 $output = `$trunk/bin/pt-table-sync --no-check-slave --execute u=msandbox,p=msandbox,h=127.0.0.1,P=12345,D=test,t=issue_37 h=127.1,P=12346 2>&1`;
 like($output,
@@ -103,7 +103,7 @@ $slave_dbh->do('INSERT INTO db1.t1 VALUES (9)');
 $slave_dbh->do('DELETE FROM db2.t1 WHERE i > 4');
 
 # Replicate checksum of db2.t1.
-$output = `$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox --replicate db1.checksum --create-replicate-table --databases db1,db2 --lock-wait-time 3 2>&1`;
+$output = `$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox --replicate db1.checksum --create-replicate-table --databases db1,db2 --set-vars innodb_lock_wait_timeout=3 2>&1`;
 like(
    $output,
    qr/db2.t1/,
