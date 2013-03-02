@@ -44,7 +44,16 @@ my $dp = new DSNParser(opts=>$dsn_opts);
 my $o  = new OptionParser(description => 'Cxn');
 $o->get_specs("$trunk/bin/pt-table-checksum");
 $o->get_opts();
-$dp->prop('set-vars', $o->set_vars());
+
+# In 2.1, these tests did not set innodb_lock_wait_timeout because
+# it was not a --set-vars default but rather its own option handled
+# by/in the tool.  In 2.2, the var is a --set-vars default, which
+# means it will cause a warning on 5.0 and 5.1, so we remoe the var
+# to remove the warning.
+my $set_vars = $o->set_vars();
+delete $set_vars->{innodb_lock_wait_timeout};
+delete $set_vars->{lock_wait_timeout};
+$dp->prop('set-vars', $set_vars);
 
 my $r1 = new Cxn(dsn=>{n=>'slave1'}, dbh=>1, DSNParser=>$dp, OptionParser=>$o);
 my $r2 = new Cxn(dsn=>{n=>'slave2'}, dbh=>2, DSNParser=>$dp, OptionParser=>$o);
