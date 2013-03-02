@@ -41,7 +41,10 @@ sub sleep {
 }
 
 my $dp = new DSNParser(opts=>$dsn_opts);
-my $o  = new OptionParser(description => 'Cxn');
+my $o  = new OptionParser(
+   description => 'Cxn',
+   file        => "$trunk/bin/pt-table-checksum",
+);
 $o->get_specs("$trunk/bin/pt-table-checksum");
 $o->get_opts();
 

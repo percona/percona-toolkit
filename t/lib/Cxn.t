@@ -29,7 +29,10 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 
-my $o  = new OptionParser(description => 'Cxn', file => "$trunk/bin/pt-table-checksum");
+my $o = new OptionParser(
+   description => 'Cxn',
+   file        => "$trunk/bin/pt-table-checksum",
+);
 $o->get_specs("$trunk/bin/pt-table-checksum");
 $o->get_opts();
 
