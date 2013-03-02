@@ -285,8 +285,8 @@ elsif ( -x "$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqlbinlog" ) {
 $output = `$mysqlbinlog /tmp/12345/data/$row->{file} --start-position=$row->{position} | grep 'use ' | grep -v '^# Warning' |  sort -u | sed -e 's/\`//g'`;
 
 my $use_dbs = "use mysql/*!*/;
-use percona_test/*!*/;
 use percona/*!*/;
+use percona_test/*!*/;
 use sakila/*!*/;
 ";
 
