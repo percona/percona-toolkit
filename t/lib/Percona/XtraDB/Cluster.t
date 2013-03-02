@@ -44,7 +44,10 @@ elsif ( $db_flavor !~ /XtraDB Cluster/ ) {
    plan skip_all => "PXC-only test";
 }
 
-my $o  = new OptionParser(description => 'Cxn');
+my $o  = new OptionParser(
+   description => 'Cxn',
+   file        => "$trunk/bin/pt-table-checksum",
+);
 $o->get_specs("$trunk/bin/pt-table-checksum");
 $o->get_opts();
 
