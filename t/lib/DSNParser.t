@@ -561,7 +561,13 @@ like(
 );
 
 $dp->prop('set-vars',  { time_zoen => { val => 'UTC' }});
-($out, undef) = full_output(sub { $dp->get_dbh($dp->get_cxn_params($dsn), {}) });
+$out = output(
+   sub {
+      my $dbh = $dp->get_dbh($dp->get_cxn_params($dsn), {});
+      $dbh->disconnect();
+   },
+   stderr => 1,
+);
 
 like(
    $out,
