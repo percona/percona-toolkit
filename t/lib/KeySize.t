@@ -144,18 +144,18 @@ is(
    '',
    'No error (issue 364)'
 );
-is(
+like(
    $ks->explain(),
-   "extra: Using where; Using index
+   qr/^extra: Using where; Using index
 id: 1
 key: BASE_KID_ID
 key_len: 17
 possible_keys: BASE_KID_ID
 ref: NULL
-rows: 176
+rows: 17[1-9]
 select_type: SIMPLE
 table: issue_364
-type: index",
+type: index\Z/,
    'EXPLAIN plan (issue 364)'
 );
 is(
