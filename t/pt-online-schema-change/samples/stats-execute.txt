@@ -1,6 +1,9 @@
 Altering `bug_1045317`.`bits`...
 Dropping triggers...
 Dropped triggers OK.
+# Event  Count
+# ====== =====
+# INSERT     1
 Successfully altered `bug_1045317`.`bits`.
 Creating new table...
 Created new table bug_1045317._bits_new OK.
@@ -14,6 +17,3 @@ Swapping tables...
 Swapped original and new tables OK.
 Dropping old table...
 Dropped old table `bug_1045317`.`_bits_old` OK.
-# Event  Count
-# ====== =====
-# INSERT     1

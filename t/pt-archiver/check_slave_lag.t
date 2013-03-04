@@ -29,12 +29,9 @@ elsif ( !$dbh2 ) {
 elsif ( $sb->is_cluster_mode ) {
    plan skip_all => 'Not for PXC',
 }
-else {
-   plan tests => 7;
+elsif ( $sandbox_version ge '5.6' ) {
+   plan skip_all => 'Slave trick does not work on MySQL 5.6+';
 }
-
-$sb->wipe_clean($dbh);
-$sb->wipe_clean($dbh2);
 
 my $output;
 my $sql;
@@ -44,6 +41,7 @@ my $cmd = "$trunk/bin/pt-archiver";
 # #############################################################################
 # Issue 758: Make mk-archiver wait for a slave
 # #############################################################################
+
 $sb->load_file('master', 't/pt-archiver/samples/issue_758.sql');
 
 is_deeply(
@@ -52,11 +50,9 @@ is_deeply(
    'Table not purged yet (issue 758)'
 );
 
-# TODO: MySQL 5.6 is no longer tricked by this method.
-
 # Once this goes through repl, the slave will sleep causing
 # seconds behind master to increase > 0.
-system('/tmp/12345/use -e "insert into issue_758.t select sleep(2)"');
+system('/tmp/12345/use -e "insert into issue_758.t select sleep(3)"');
 
 # Slave seems to be lagging now so the first row should get purged
 # immediately, then the script should wait about 2 seconds until
@@ -70,14 +66,11 @@ is_deeply(
    'No changes on slave yet (issue 758)'
 );
 
-TODO: {
-   local $::TODO = "Timing-related test, may fail";
-   is_deeply(
-      $dbh->selectall_arrayref('select * from issue_758.t'),
-      [[0],[2]],
-      'First row purged (issue 758)'
-   );
-}
+is_deeply(
+   $dbh->selectall_arrayref('select * from issue_758.t'),
+   [[0],[2]],
+   'First row purged (issue 758)'
+);
 
 # The script it waiting for slave lag so no more rows should be purged yet.
 sleep 1;
@@ -106,6 +99,5 @@ is_deeply(
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
-$sb->wipe_clean($dbh2);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+done_testing;

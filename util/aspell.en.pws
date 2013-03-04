@@ -45,6 +45,7 @@ INFILE
 OUTFILE
 umask
 InnoDB
+innodb
 transactional
 MyISAM
 checksum
@@ -88,3 +89,5 @@ IP
 runnable
 online
 Aspersa
+XtraDB
+PXC

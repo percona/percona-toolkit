@@ -46,8 +46,6 @@ if ( $db_flavor !~ /XtraDB Cluster/ ) {
    plan skip_all => "PXC tests";
 }
 
-# The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
-# so we need to specify --lock-wait-timeout=3 else the tool will die.
 my $node1_dsn = $sb->dsn_for('node1');
 my $output;
 my $exit;
@@ -62,7 +60,7 @@ $sb->load_file('node1', "$sample/basic_no_fks.sql");
 ($output, $exit) = full_output(
    sub { pt_online_schema_change::main(
       "$node1_dsn,D=pt_osc,t=t",
-      qw(--lock-wait-timeout 5),
+      qw(--set-vars innodb_lock_wait_timeout=5),
       qw(--print --execute --alter ENGINE=InnoDB)) },
    stderr => 1,
 );
@@ -87,7 +85,7 @@ $sb->load_file('node1', "$sample/basic_no_fks_innodb.sql");
 ($output, $exit) = full_output(
    sub { pt_online_schema_change::main(
       "$node1_dsn,D=pt_osc,t=t",
-      qw(--lock-wait-timeout 5),
+      qw(--set-vars innodb_lock_wait_timeout=5),
       qw(--print --execute --alter ENGINE=MyISAM)) },
    stderr => 1,
 );
@@ -112,7 +110,7 @@ $node1->do("SET GLOBAL wsrep_OSU_method='RSU'");
 ($output, $exit) = full_output(
    sub { pt_online_schema_change::main(
       "$node1_dsn,D=pt_osc,t=t",
-      qw(--lock-wait-timeout 5),
+      qw(--set-vars innodb_lock_wait_timeout=5),
       qw(--print --execute --alter ENGINE=MyISAM)) },
    stderr => 1,
 );
