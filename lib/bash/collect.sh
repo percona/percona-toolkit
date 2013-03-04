@@ -109,7 +109,19 @@ collect() {
    else
       local mutex="SHOW MUTEX STATUS"
    fi
-   $CMD_MYSQL $EXT_ARGV -e "$innostat" >> "$d/$p-innodbstatus1" &
+   (
+       $CMD_MYSQL $EXT_ARGV -e "$innostat" >> "$d/$p-innodbstatus1"
+       grep "END OF INNODB" "$d/$p-innodbstatus1" >/dev/null || {
+	   for fd in /proc/$mysqld_pid/fd/*; do
+	       file $fd | grep deleted > /dev/null && {
+		   grep 'INNODB' $fd >/dev/null && {
+		       cat $fd > "$d/$p-innodbstatus1"
+		       break
+		       }
+	       }
+	   done
+       }
+   ) &
    $CMD_MYSQL $EXT_ARGV -e "$mutex"    >> "$d/$p-mutex-status1" &
    open_tables                         >> "$d/$p-opentables1"   &
 
