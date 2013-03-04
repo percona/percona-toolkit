@@ -1649,6 +1649,8 @@ sub copy {
 sub set_vars {
    my ($self, $dbh, $vars) = @_;
 
+   return unless $vars;
+
    foreach my $var ( sort keys %$vars ) {
       my $val = $vars->{$var}->{val};
 
