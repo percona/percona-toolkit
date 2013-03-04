@@ -10117,23 +10117,21 @@ non-blocking fashion because it is already an InnoDB table:
 
 =head1 RISKS
 
-The following section is included to inform users about the potential risks,
-whether known or unknown, of using this tool.  The two main categories of risks
-are those created by the nature of the tool (e.g. read-only tools vs. read-write
-tools) and those created by bugs.
+Percona Toolkit is mature, proven in the real world, and well tested,
+but all database tools can pose a risk to the system and the database
+server.  Before using this tool, please:
 
-pt-online-schema-change modifies data and structures. You should be careful with
-it, and test it before using it in production.  You should also ensure that you
-have recoverable backups before using this tool.
+=over
 
-At the time of this release, we know of no bugs that could cause harm to users.
+=item * Read the tool's documentation
 
-The authoritative source for updated information is always the online issue
-tracking system.  Issues that affect this tool will be marked as such.  You can
-see a list of such issues at the following URL:
-L<http://www.percona.com/bugs/pt-online-schema-change>.
+=item * Review the tool's known L<"BUGS">
 
-See also L<"BUGS"> for more information on filing bugs and getting help.
+=item * Test the tool on a non-production server
+
+=item * Backup your production server and verify the backups
+
+=back
 
 =head1 DESCRIPTION
 
@@ -10278,7 +10276,7 @@ specify the default.
 C<DROP FOREIGN KEY constraint_name> requires specifying C<_constraint_name>
 rather than the real C<constraint_name>.  Due to a limitation in MySQL,
 pt-online-schema-change adds a leading underscore to foreign key constraint
-names when creating the new table.  For example, to drop this contraint:
+names when creating the new table.  For example, to drop this constraint:
 
   CONSTRAINT `fk_foo` FOREIGN KEY (`foo_id`) REFERENCES `bar` (`foo_id`)
 
@@ -10835,13 +10833,13 @@ For copying chunks, the number of retries applies to each chunk, not the
 entire table.  For swapping tables, the number of retries usually applies
 once because there is usually only one C<RENAME TABLE> statement.
 For rebuilding foreign key constraints, the number of retries applies to
-each statment (C<ALTER> statements for the C<rebuild_constraints>
+each statement (C<ALTER> statements for the C<rebuild_constraints>
 L<"--alter-foreign-keys-method">; other statements for the C<drop_swap>
 method).
 
 The tool retries each operation if these errors occur:
 
-   Lock wait timeout (innod_lock_wait_timeout and lock_wait_timeout)
+   Lock wait timeout (innodb_lock_wait_timeout and lock_wait_timeout)
    Deadlock found
    Query is killed (KILL QUERY <thread_id>)
    Connection is killed (KILL CONNECTION <thread_id>)
