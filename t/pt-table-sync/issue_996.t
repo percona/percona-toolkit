@@ -33,7 +33,7 @@ else {
 my $output;
 my @args = ('--sync-to-master', 'h=127.1,P=12346,u=msandbox,p=msandbox',
             qw(-d issue_375 --replicate issue_375.checksums --print));
-my $pt_table_checksum = "$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox -d issue_375 --chunk-size 20 --chunk-size-limit 0 --lock-wait-time 3";
+my $pt_table_checksum = "$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox -d issue_375 --chunk-size 20 --chunk-size-limit 0 --set-vars innodb_lock_wait_timeout=3";
 
 # #############################################################################
 # Issue 996: might not chunk inside of mk-table-checksum's boundaries

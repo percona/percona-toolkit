@@ -2,6 +2,9 @@ Starting a dry run.  `bug_1045317`.`bits` will not be altered.  Specify --execut
 Not dropping triggers because this is a dry run.
 Dropping new table...
 Dropped new table OK.
+# Event  Count
+# ====== =====
+# INSERT     0
 Dry run complete.  `bug_1045317`.`bits` was not altered.
 Creating new table...
 Created new table bug_1045317._bits_new OK.
@@ -11,6 +14,3 @@ Not creating triggers because this is a dry run.
 Not copying rows because this is a dry run.
 Not swapping tables because this is a dry run.
 Not dropping old table because this is a dry run.
-# Event  Count
-# ====== =====
-# INSERT     0

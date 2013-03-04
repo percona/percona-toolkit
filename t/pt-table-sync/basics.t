@@ -172,7 +172,7 @@ $ENV{PTDEBUG} = $dbg || 0;
 
 # pt-table-checksum waits for all checksums to replicate to all slaves,
 # so no need to call $sb->wait_for_slaves() after this.
-`$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox --max-load '' --lock-wait 3 --chunk-size 50 --chunk-index idx_actor_last_name -t sakila.actor --quiet`;
+`$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox --max-load '' --set-vars innodb_lock_wait_timeout=3 --chunk-size 50 --chunk-index idx_actor_last_name -t sakila.actor --quiet`;
 
 $slave_dbh->do("update percona.checksums set this_crc='' where db='sakila' and tbl='actor' and chunk=3");
 $slave_dbh->do("update sakila.actor set last_name='' where actor_id=30");
@@ -192,7 +192,7 @@ like(
    "--replicate with char index col (bug 911996)"
 );
 
-$output = `$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox --max-load '' --lock-wait 3 --chunk-size 50 --chunk-index idx_actor_last_name -t sakila.actor`;
+$output = `$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox --max-load '' --set-vars innodb_lock_wait_timeout=3 --chunk-size 50 --chunk-index idx_actor_last_name -t sakila.actor`;
 is(
    PerconaTest::count_checksum_results($output, 'diffs'),
    0,
@@ -205,7 +205,7 @@ $slave_dbh->do("update test.t set c='z' where id>8");
 
 # pt-table-checksum waits for all checksums to replicate to all slaves,
 # so no need to call $sb->wait_for_slaves() after this.
-`$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox --max-load '' --lock-wait 3 --chunk-size 2 -t test.t --quiet`;
+`$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox --max-load '' --set-vars innodb_lock_wait_timeout=3 --chunk-size 2 -t test.t --quiet`;
 
 $output = output(
    sub {

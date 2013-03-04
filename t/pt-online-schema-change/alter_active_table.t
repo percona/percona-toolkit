@@ -176,7 +176,7 @@ start_query_table(qw(pt_osc t id));
 ($output, $exit) = full_output(
    sub { pt_online_schema_change::main(
       "$master_dsn,D=pt_osc,t=t",
-      qw(--lock-wait-timeout 5),
+      qw(--set-vars innodb_lock_wait_timeout=5),
       qw(--print --execute --chunk-size 100 --alter ENGINE=InnoDB)) },
    stderr => 1,
 );
@@ -226,7 +226,7 @@ start_query_table(qw(pt_osc t id));
 ($output, $exit) = full_output(
    sub { pt_online_schema_change::main(
       "$master_dsn,D=pt_osc,t=t",
-      qw(--lock-wait-timeout 5),
+      qw(--set-vars innodb_lock_wait_timeout=5),
       qw(--print --execute --chunk-size 100 --no-check-alter),
       '--alter', 'CHANGE COLUMN d q date',
    ) },
