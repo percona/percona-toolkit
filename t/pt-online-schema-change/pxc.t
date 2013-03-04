@@ -46,8 +46,6 @@ if ( $db_flavor !~ /XtraDB Cluster/ ) {
    plan skip_all => "PXC tests";
 }
 
-# The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
-# so we need to specify --lock-wait-timeout=3 else the tool will die.
 my $node1_dsn = $sb->dsn_for('node1');
 my $output;
 my $exit;

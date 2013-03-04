@@ -40,9 +40,9 @@ elsif ( !@{$master_dbh->selectall_arrayref("show databases like 'sakila'")} ) {
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
-# so we need to specify --lock-wait-timeout=3 else the tool will die.
+# so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
-my @args       = ($master_dsn, qw(--lock-wait-timeout 3));
+my @args       = ($master_dsn, qw(--set-vars innodb_lock_wait_timeout=3));
 my $row;
 my $output;
 my $exit_status;
@@ -351,7 +351,7 @@ like(
 $output = output(
    sub { $exit_status =  pt_table_checksum::main(
    qw(--user msandbox --pass msandbox),
-   qw(-S /tmp/12345/mysql_sandbox12345.sock --lock-wait-timeout 3)) },
+   qw(-S /tmp/12345/mysql_sandbox12345.sock --set-vars innodb_lock_wait_timeout=3)) },
    stderr => 1,
 );
 

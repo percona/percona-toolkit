@@ -319,7 +319,7 @@ sub get_dbh {
 
       if ( my ($charset) = $cxn_string =~ m/charset=([\w]+)/ ) {
          $sql = qq{/*!40101 SET NAMES "$charset"*/};
-         PTDEBUG && _d($dbh, ':', $sql);
+         PTDEBUG && _d($dbh, $sql);
          eval { $dbh->do($sql) };
          if ( $EVAL_ERROR ) {
             die "Error setting NAMES to $charset: $EVAL_ERROR";
@@ -334,13 +334,8 @@ sub get_dbh {
          }
       }
 
-      if ( my $var = $self->prop('set-vars') ) {
-         $sql = "SET $var";
-         PTDEBUG && _d($dbh, ':', $sql);
-         eval { $dbh->do($sql) };
-         if ( $EVAL_ERROR ) {
-            die "Error setting $var: $EVAL_ERROR";
-         }
+      if ( my $vars = $self->prop('set-vars') ) {
+         $self->set_vars($dbh, $vars);
       }
 
       $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
@@ -413,6 +408,55 @@ sub copy {
       $key => $val;
    } keys %{$self->{opts}};
    return \%new_dsn;
+}
+
+sub set_vars {
+   my ($self, $dbh, $vars) = @_;
+
+   foreach my $var ( sort keys %$vars ) {
+      my $val = $vars->{$var}->{val};
+
+      (my $quoted_var = $var) =~ s/_/\\_/;
+      my ($var_exists, $current_val);
+      eval {
+         ($var_exists, $current_val) = $dbh->selectrow_array(
+            "SHOW VARIABLES LIKE '$quoted_var'");
+      };
+      my $e = $EVAL_ERROR;
+      if ( $e ) {
+         PTDEBUG && _d($e);
+      }
+
+      if ( $vars->{$var}->{default} && !$var_exists ) {
+         PTDEBUG && _d('Not setting default var', $var,
+            'because it does not exist');
+         next;
+      }
+
+      if ( $current_val && $current_val eq $val ) {
+         PTDEBUG && _d('Not setting var', $var, 'because its value',
+            'is already', $val);
+         next;
+      }
+
+      my $sql = "SET SESSION $var=$val";
+      PTDEBUG && _d($dbh, $sql);
+      eval { $dbh->do($sql) };
+      if ( my $set_error = $EVAL_ERROR ) {
+         chomp($set_error);
+         $set_error =~ s/ at \S+ line \d+//;
+         my $msg = "Error setting $var: $set_error";
+         if ( $current_val ) {
+            $msg .= "  The current value for $var is $current_val.  "
+                  . "If the variable is read only (not dynamic), specify "
+                  . "--set-vars $var=$current_val to avoid this warning, "
+                  . "else manually set the variable and restart MySQL.";
+         }
+         warn $msg . "\n\n";
+      }
+   }
+
+   return; 
 }
 
 sub _d {
@@ -598,6 +642,7 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use List::Util qw(max);
 use Getopt::Long;
+use Data::Dumper;
 
 my $POD_link_re = '[LC]<"?([^">]+)"?>';
 
@@ -1580,6 +1625,45 @@ sub _parse_synopsis {
       usage       => $usage,
    );
 };
+
+sub set_vars {
+   my ($self, $file) = @_;
+   $file ||= $self->{file} || __FILE__;
+
+   my %user_vars;
+   my $user_vars = $self->has('set-vars') ? $self->get('set-vars') : undef;
+   if ( $user_vars ) {
+      foreach my $var_val ( @$user_vars ) {
+         my ($var, $val) = $var_val =~ m/([^\s=]+)=(\S+)/;
+         die "Invalid --set-vars value: $var_val\n" unless $var && $val;
+         $user_vars{$var} = {
+            val     => $val,
+            default => 0,
+         };
+      }
+   }
+
+   my %default_vars;
+   my $default_vars = $self->read_para_after($file, qr/MAGIC_set_vars/);
+   if ( $default_vars ) {
+      %default_vars = map {
+         my $var_val = $_;
+         my ($var, $val) = $var_val =~ m/([^\s=]+)=(\S+)/;
+         die "Invalid --set-vars value: $var_val\n" unless $var && $val;
+         $var => {
+            val     => $val,
+            default => 1,
+         };
+      } split("\n", $default_vars);
+   }
+
+   my %vars = (
+      %default_vars, # first the tool's defaults
+      %user_vars,    # then the user's which overwrite the defaults
+   );
+   PTDEBUG && _d('--set-vars:', Dumper(\%vars));
+   return \%vars;
+}
 
 sub _d {
    my ($package, undef, $line) = caller 0;
@@ -6112,7 +6196,7 @@ sub main {
    $o->get_specs();
    $o->get_opts();
    my $dp = $o->DSNParser();
-   $dp->prop('set-vars', $o->get('set-vars'));
+   $dp->prop('set-vars', $o->set_vars());
    $o->set('progress', undef) if $o->get('q');
 
    if ( !$o->got('help') ) {
@@ -7159,10 +7243,21 @@ is no alternative)?  MAGIC_view_required_indexes:
 
 =item --set-vars
 
-type: string; default: wait_timeout=10000
+type: Array
 
-Set these MySQL variables.  Immediately after connecting to MySQL, this
-string will be appended to SET and executed.
+Set the MySQL variables in this comma-separated list of C<variable=value> pairs.
+
+By default, the tool sets:
+
+=for comment ignore-pt-internal-value
+MAGIC_set_vars
+
+   wait_timeout=10000
+
+Variables specified on the command line override these defaults.  For
+example, specifying C<--set-vars wait_timeout=500> overrides the defaultvalue of C<10000>.
+
+The tool prints a warning and continues if a variable cannot be set.
 
 =item --socket
 

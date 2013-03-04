@@ -42,9 +42,9 @@ elsif ( !$sb->is_cluster_mode ) {
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
-# so we need to specify --lock-wait-timeout=3 else the tool will die.
+# so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 my $node1_dsn = $sb->dsn_for('node1');
-my @args      = ($node1_dsn, qw(--lock-wait-timeout 3));
+my @args      = ($node1_dsn, qw(--set-vars innodb_lock_wait_timeout=3));
 my $output;
 my $exit_status;
 my $sample  = "t/pt-table-checksum/samples/";
