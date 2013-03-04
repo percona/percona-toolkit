@@ -1079,7 +1079,7 @@ sleep_ok() {
    local seconds="$1"
    local msg="${2:-""}"
    if oktorun; then
-      [ "$msg" ] && info "$msg"
+      [ "$msg" ] && log "$msg"
       sleep $seconds
    fi
 }
@@ -1333,10 +1333,8 @@ if    [ "${0##*/}" = "$TOOL" ] \
 
    if [ -z "$OPT_STALK" -a "$OPT_COLLECT" ]; then
       # Not stalking; do immediate collect once.
-      OPT_ITERATIONS=1
       OPT_CYCLES=0
-      OPT_SLEEP=0
-      OPT_INTERVAL=0
+      echo "[iter=$OPT_ITERATIONS] [cycle=$OPT_CYCLES] [sleep=$OPT_SLEEP] [interval=$OPT_INTERVAL]"
    fi
 
    usage_or_errors "$0"
@@ -1412,17 +1410,17 @@ fi
 
 =head1 NAME
 
-pt-stalk - Gather forensic data about MySQL when a problem occurs.
+pt-stalk - Collect forensic data about MySQL when problems occur.
 
 =head1 SYNOPSIS
 
 Usage: pt-stalk [OPTIONS] [-- MYSQL OPTIONS]
 
-pt-stalk watches for a trigger condition to become true, and then collects data
-to help in diagnosing problems. It is designed to run as a daemon with root
+pt-stalk watches for a trigger condition to occur, then collects data
+to help diagnose problems.  The tool is designed to run as a daemon with root
 privileges, so that you can diagnose intermittent problems that you cannot
-observe directly. You can also use it to execute a custom command, or to gather
-the data on demand without waiting for the trigger to happen.
+observe directly.  You can also use it to execute a custom command, or to
+collect data on demand without waiting for the stalk trigger to occur.
 
 =head1 RISKS
 
@@ -1474,25 +1472,45 @@ quality of your results will depend on the trigger you choose.
 
 You can define the trigger with the L<"--function">, L<"--variable">, and
 L<"--threshold"> options, among others.  Please read the documentation for
---function to learn how to do this.
+L<"--function"> to learn how to do this.
 
 The pt-stalk tool, by default, simply watches MySQL repeatedly until the trigger
 becomes true. It then gathers diagnostics for a while, and sleeps afterwards for
 some time to prevent repeatedly gathering data if the condition remains true.
 In crude pseudocode, omitting some subtleties,
 
-  while true; do
-    if --variable from --function is greater than --threshold; then
-      observations++
-      if observations is greater than --cycles; then
-        capture diagnostics for --run-time seconds
-        exit if --iterations is exceeded
-        sleep for --sleep seconds
-      done
-    done
-    clean up data that's older than --retention-time
-    sleep for --interval seconds
-  done
+   while true; do
+      if --variable from --function > --threshold; then
+         cycles_true++
+         if cycles_true >= --cycles; then
+            --notify-by-email
+            if --collect; then
+               if --disk-bytes-free and --disk-pct-free ok; then
+                  (--collect for --run-time seconds) &
+               fi
+               rm files in --dest older than --retention-time
+            fi
+            iter++
+            cycles_true=0
+         fi
+         if iter < --iterations; then
+            sleep --sleep seconds
+         else
+            break
+         fi
+      else
+         if iter < --iterations; then
+            sleep --interval seconds
+         else
+            break
+         fi
+      fi
+   done
+   rm old --dest files older than --retention-time
+   if --collect process are still running; then
+      wait up to --run-time * 3 seconds
+      kill any remaining --collect processes 
+   fi
 
 The diagnostic data is written to files whose names begin with a timestamp, so
 you can distinguish samples from each other in case the tool collects data
@@ -1530,8 +1548,8 @@ are writable by non-root users.
 
 default: yes; negatable: yes
 
-Collect system information.  You can negate this option to make the tool watch
-the system but not actually gather any diagnostic data.
+Collect diagnostic data when the L<"--stalk"> trigger occurs.  Specify
+C<--no-collect> to make the tool watch the system but not collect data.
 
 See also L<"--stalk">.
 
@@ -1581,9 +1599,8 @@ first option on the command line.
 
 type: int; default: 5
 
-The number of times the trigger condition must be true before collecting data.
-This helps prevent false positives, and makes the trigger condition less likely
-to fire when the problem recovers quickly.
+How many times L<"--variable"> must be greater than L<"--threshold"> before triggering L<"--collect">.  This helps prevent false positives, and makes
+the trigger condition less likely to fire when the problem recovers quickly.
 
 =item --daemonize
 
@@ -1594,14 +1611,15 @@ its output as specified in --log.
 
 type: string; default: /var/lib/pt-stalk
 
-Where to store the diagnostic data.  Each time the tool collects data, it writes
-to a new set of files, which are named with the current system timestamp.
+Where to save diagnostic data from L<"--collect">.  Each time the tool
+collects data, it writes to a new set of files, which are named with the
+current system timestamp.
 
 =item --disk-bytes-free
 
 type: size; default: 100M
 
-Don't collect data if the disk has less than this much free space.
+Do not L<"--collect"> if the disk has less than this much free space.
 This prevents the tool from filling up the disk with diagnostic data.
 
 If the L<"--dest"> directory contains a previously captured sample of data,
@@ -1618,7 +1636,7 @@ Valid size value suffixes are k, M, G, and T.
 
 type: int; default: 5
 
-Don't collect data if the disk has less than this percent free space.
+Do not L<"--collect"> if the disk has less than this percent free space.
 This prevents the tool from filling up the disk with diagnostic data.
 
 This option works similarly to L<"--disk-bytes-free"> but specifies a
@@ -1630,57 +1648,57 @@ margins are satisfied.
 
 type: string; default: status
 
-Specifies what to watch for a diagnostic trigger.  The default value watches
-SHOW GLOBAL STATUS, but you can also watch SHOW PROCESSLIST or supply a plugin
-file with your own custom code.  This function supplies the value of
+What to watch for L<"--stalk"> trigger.  The default value watches
+C<SHOW GLOBAL STATUS>, but you can also watch C<SHOW PROCESSLIST> and specify
+a file with your own custom code.  This function supplies the value of
 L<"--variable">, which is then compared against L<"--threshold"> to see if the
-trigger condition is met.  Additional options may be required as well; see
-below. Possible values:
+L<"--stalk"> trigger condition is met.  Additional options may be required as
+well; see below. Possible values are:
 
 =over
 
 =item * status
 
-This value specifies that the source of data for the diagnostic trigger is SHOW
-GLOBAL STATUS.  The value of L<"--variable"> then defines which status counter
-is the trigger.
+Watch C<SHOW GLOBAL STATUS> for the L<"--stalk"> trigger.  The value of
+L<"--variable"> then defines which status counter is the trigger.
 
 =item * processlist
 
-This value specifies that the data for the diagnostic trigger comes from SHOW
-FULL PROCESSLIST.  The trigger value is the count of processes whose
-L<"--variable"> column matches the L<"--match"> option.  For example, to trigger
-when more than 10 processes are in the "statistics" state, use the following
-options:
+Watch C<SHOW FULL PROCESSLIST> for the L<"--stalk"> trigger.  The trigger
+value is the count of processes whose L<"--variable"> column matches the
+L<"--match"> option.  For example, to trigger L<"--collect"> when more than
+10 processes are in the "statistics" state, specify:
 
-  --function processlist --variable State \
-    --match statistics --threshold 10
+   --function processlist \
+   --variable State       \
+   --match statistics     \
+   --threshold 10
 
 =back
 
-In addition, you can specify a file that contains your custom trigger function,
-written in Unix shell script.  This can be a wrapper that executes anything you
-wish.  If the argument to --function is a file, then it takes precedence over
-builtin functions, so if there is a file in the working directory named "status"
-or "processlist" then the tool will use that file as a plugin, even though those
-are otherwise recognized as reserved words for this option.
+In addition, you can specify a file that contains your custom trigger
+function, written in Unix shell script.  This can be a wrapper that executes
+anything you wish.  If the argument to L<"--function"> is a file, then it
+takes precedence over built-in functions, so if there is a file in the working
+directory named "status" or "processlist" then the tool will use that file
+even though are valid built-in values.
 
-The plugin file works by providing a function called C<trg_plugin>, and the tool
-simply sources the file and executes the function.  For example, the function
-might look like the following:
+The file works by providing a function called C<trg_plugin>, and the tool
+simply sources the file and executes the function.  For example, the file
+might contain:
 
    trg_plugin() {
       mysql $EXT_ARGV -e "SHOW ENGINE INNODB STATUS" \
         | grep -c "has waited at"
    }
 
-This snippet will count the number of mutex waits inside of InnoDB. It
+This snippet will count the number of mutex waits inside InnoDB.  It
 illustrates the general principle: the function must output a number, which is
-then compared to the threshold as usual.  The $EXT_ARGV variable contains the
-MySQL options mentioned in the L<"SYNOPSIS"> above.
+then compared to L<"--threshold"> as usual.  The C<$EXT_ARGV> variable
+contains the MySQL options mentioned in the L<"SYNOPSIS"> above.
 
-The plugin should not alter the tool's existing global variables.  Prefix any
-plugin-specific global variables with "PLUGIN_" or make them local.
+The file should not alter the tool's existing global variables.  Prefix any
+file-specific global variables with "PLUGIN_" or make them local.
 
 =item --help
 
@@ -1690,15 +1708,17 @@ Print help and exit.
 
 type: int; default: 1
 
-Interval between checks for the diagnostic trigger.
+How often to check the L<"--stalk"> trigger, in seconds.
 
 =item --iterations
 
 type: int
 
-Exit after collecting diagnostics this many times.  By default, the tool
-will continue to watch the server forever, but this is useful for scenarios
-where you want to capture once and then exit, for example.
+How many times to L<"--collect"> diagnostic data.  By default, the tool
+runs forever and collects data every time the L<"--stalk"> trigger occurs.
+Specify L<"--iterations"> to collect data a limited number of times.
+This option is also useful with C<--no-stalk> to collect data once and
+exit, for example.
 
 =item --log
 
@@ -1710,14 +1730,14 @@ Print all output to this file when daemonized.
 
 type: string
 
-The pattern to use when watching SHOW PROCESSLIST. See the documentation for
-L<"--function"> for details.
+The pattern to use when watching SHOW PROCESSLIST.  See L<"--function">
+for details.
 
 =item --notify-by-email
 
 type: string
 
-Send mail to this list of addresses when data is collected.
+Send an email to these addresses for every L<"--collect">.
 
 =item --pid
 
@@ -1746,7 +1766,7 @@ Called before stalking.
 
 =item before_collect
 
-Called when the stalk condition is triggered, before running a collector
+Called when the L<"--stalk"> trigger occurs, before running a L<"--collect">
 process as a backgrounded subshell.
 
 =item after_collect
@@ -1771,8 +1791,8 @@ this hook is only called if L<"--iterations"> is specified.
 
 =back
 
-For example, a very simple plugin that touches a file when a collector
-process is triggered:
+For example, a very simple plugin that touches a file when L<"--collect">
+is triggered:
 
    before_colllect() {
       touch /tmp/foo
@@ -1797,9 +1817,9 @@ be set to indicate why the tool was stopped.
 
 type: string
 
-The filename prefix for diagnostic samples. By default, samples have a timestamp
-prefix based on the current local time, such as 2011_12_06_14_02_02, which is
-December 6, 2011 at 14:02:02.
+The filename prefix for diagnostic samples.  By default, all files created
+by the same L<"--collect"> instance have a timestamp prefix based on the current
+local time, like C<2011_12_06_14_02_02>, which is December 6, 2011 at 14:02:02.
 
 =item --retention-time
 
@@ -1812,10 +1832,12 @@ purged.
 
 type: int; default: 30
 
-How long the tool will collect data when it triggers.  This should not be longer
-than L<"--sleep">. It is usually not necessary to change this; if the default 30
-seconds hasn't gathered enough diagnostic data, running longer is not likely to
-do so. In fact, in many cases a shorter collection period is appropriate.
+How long to L<"--collect"> diagnostic data when the L<"--stalk"> trigger occurs.
+The value is in seconds and should not be longer than L<"--sleep">.  It is
+usually not necessary to change this; if the default 30 seconds doesn't
+collect enough data, running longer is not likely to help because the system
+or MySQL server is probably too busy to respond.  In fact, in many cases a
+shorter collection period is appropriate.
 
 This value is used two other times.  After collecting, the collect subprocess
 will wait another L<"--run-time"> seconds for its commands to finish.  Some
@@ -1833,8 +1855,8 @@ all of its subprocesses.
 
 type: int; default: 300
 
-How long to sleep after collecting data.  This prevents the tool from triggering
-continuously, which might be a problem if the collection process is intrusive.
+How long to sleep after L<"--collect">.  This prevents the tool
+from triggering continuously, which might be a problem if the collection process is intrusive.
 It also prevents filling up the disk or gathering too much data to analyze
 reasonably.
 
@@ -1842,14 +1864,16 @@ reasonably.
 
 default: yes; negatable: yes
 
-Watch the server and wait for the trigger to occur.  You can negate this option
-to make the tool immediately gather any diagnostic data once and exit.  This is
-useful if a problem is already happening, but pt-stalk is not running, so
-you only want to collect diagnostic data.
+Watch the server and wait for the trigger to occur.  Specify C<--no-stalk>
+to collect diagnostic data immediately, that is, without waiting for the
+trigger to occur.  You probably also want to specify values for
+L<"--interval">, L<"--iterations">, and L<"--sleep">.  For example, to
+immediately collect data for 1 minute then exit, specify:
 
-If this option is negate, L<"--daemonize">, L<"--log">, L<"--pid">, and other
-stalking-related options have no effect; the tool simply collects diagnostic
-data and exits.  Safeguard options, like L<"--disk-bytes-free"> and
+   --no-stalk --run-time 60 --iterations 1
+
+L<"--cycles">, L<"--daemonize">, L<"--log"> and L<"--pid"> have no effect
+with C<--no-stalk>.  Safeguard options, like L<"--disk-bytes-free"> and
 L<"--disk-pct-free">, are still respected.
 
 See also L<"--collect">.
@@ -1858,14 +1882,18 @@ See also L<"--collect">.
 
 type: int; default: 25
 
-The threshold at which the diagnostic trigger should fire.  See L<"--function">
-for details.
+The maximum acceptable value for L<"--variable">.  L<"--collect"> is
+triggered when the value of L<"--variable"> is greater than L<"--threshold">
+for L<"--cycles"> many times.  Currently, there is no way to define a lower
+threshold to check for a L<"--variable"> value that is too low.
+
+See also L<"--function">.
 
 =item --variable
 
 type: string; default: Threads_running
 
-The variable to compare against the threshold. See L<"--function"> for details.
+The variable to compare against L<"--threshold">.  See also L<"--function">.
 
 =item --verbose
 
@@ -1995,7 +2023,8 @@ Replace C<TOOL> with the name of any tool.
 
 =head1 AUTHORS
 
-Baron Schwartz, Justin Swanhart, Fernando Ipar, and Daniel Nichter
+Baron Schwartz, Justin Swanhart, Fernando Ipar, Daniel Nichter,
+and Brian Fraser.
 
 =head1 ABOUT PERCONA TOOLKIT
 
