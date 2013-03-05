@@ -1551,7 +1551,7 @@ this tool is designed to prevent.
 
 =head1 CONFIGURING
 
-You can use standard Percona Toolkit configuration files to set commandline
+You can use standard Percona Toolkit configuration files to set command line
 options.
 
 You will probably want to run the tool as a daemon and customize at least the
@@ -1792,7 +1792,7 @@ Called before stalking.
 =item before_collect
 
 Called when the L<"--stalk"> trigger occurs, before running a L<"--collect">
-process as a backgrounded subshell.
+subprocesses in the background.
 
 =item after_collect
 
@@ -1819,7 +1819,7 @@ this hook is only called if L<"--iterations"> is specified.
 For example, a very simple plugin that touches a file when L<"--collect">
 is triggered:
 
-   before_colllect() {
+   before_collect() {
       touch /tmp/foo
    }
 
