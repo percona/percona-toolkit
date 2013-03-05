@@ -13337,21 +13337,22 @@ sub main {
       }
    } # distill
 
-   if ( $o->get('zero-admin') ) {
-      $pipeline->add(
-         name    => 'zero admin',
-         process => sub {
-            my ( $args ) = @_;
-            my $event = $args->{event};
-            if ( $event->{arg} && $event->{arg} =~ m/^administrator/ ) {
-               $event->{Rows_sent}     = 0 if exists $event->{Rows_sent};
-               $event->{Rows_examined} = 0 if exists $event->{Rows_examined};
-               $event->{Rows_read}     = 0 if exists $event->{Rows_read};
-            }
-            return $args;
-         },
-      );
-   } # zero admin
+   # Former --zero-admin
+   $pipeline->add(
+      name    => 'zero admin',
+      process => sub {
+         my ( $args ) = @_;
+         my $event = $args->{event};
+         if ( $event->{arg} && $event->{arg} =~ m/^administrator/ ) {
+            $event->{Rows_sent}     = 0 if exists $event->{Rows_sent};
+            $event->{Rows_examined} = 0 if exists $event->{Rows_examined};
+            $event->{Rows_read}     = 0 if exists $event->{Rows_read};
+            $event->{Rows_affected} = 0 if exists $event->{Rows_affected};
+         }
+         return $args;
+      },
+   );
+   # zero admin
    
    # Filter after special attributes, like fingerprint, tables,
    # distill, etc., have been created.
@@ -14271,7 +14272,7 @@ Notice that you must remove the C<0x> prefix from the checksum.
 
 Finally, in case you want to find a sample of the query in the log file, there's
 the byte offset where you can look.  (This is not always accurate, due to some
-anomalies in the slow-log format, but it's usually right.)  The position
+anomalies in the slow log format, but it's usually right.)  The position
 refers to the worst sample, which we'll see more about below.
 
 Next is the table of metrics about this class of queries.
@@ -14547,7 +14548,7 @@ type: int; default: 4294967296
 
 A sanity limit for attribute values.
 
-This option deals with bugs in slow-logging functionality that causes large
+This option deals with bugs in slow logging functionality that causes large
 values for attributes.  If the attribute's value is bigger than this, the
 last-seen value for that class of query is used instead.
 
@@ -15085,10 +15086,19 @@ You can specify an --outliers option for each value in L<"--group-by">.
 
 =item --output
 
-type: string; default: query
+type: string; default: report
 
-Type of report to use. Accepted values are C<"query">, C<"json">, and
-C<"slowlog">.
+How to format and print the query analsis results.  Accepted values are:
+
+   VALUE    FORMAT
+   =======  ==============================
+   report   Standard query analysis report
+   slowlog  MySQL slow log
+   json     JSON, on array per query class
+
+The entire C<report> output can be disabled by specifying C<--no-report>
+(see L<"--[no]report">), and its sections can be disabled or rearranged
+by specifying L<"--report-format">.
 
 =item --password
 
@@ -15147,14 +15157,19 @@ This option requires the Perl POSIX module.
 
 default: yes
 
-Print out reports on the aggregate results from L<"--group-by">.
-
-This is the standard slow-log analysis functionality.  See L<"OUTPUT"> for the
+Print query analysis reports for each L<"--group-by"> attribute.  This is
+the standard slow log analysis functionality.  See L<"OUTPUT"> for the
 description of what this does and what the results look like.
+
+If you don't need a report (for example, when using L<"--review"> or
+L<"--history">), it is best to specify C<--no-report> because this allows
+the tool to skip some expensive operations.
 
 =item --report-all
 
-Include all queries, even if they have already been reviewed.
+Report all queries, even ones that have been reviewed.  This only affects
+the C<report> L<"--output"> when using L<"--review">.  Otherwise, all
+queries are always printed.
 
 =item --report-format
 
@@ -15429,9 +15444,9 @@ will print something like:
 
 =item --type
 
-type: Array
+type: Array; default: slowlog
 
-The type of input to parse (default slowlog).  The permitted types are
+The type of input to parse.  The permitted types are
 
 =over
 
@@ -15447,7 +15462,7 @@ changes to C<Query_time:cnt>.
 
 =item slowlog
 
-Parse a log file in any variation of MySQL slow-log format.
+Parse a log file in any variation of MySQL slow log format.
 
 =item tcpdump
 
@@ -15596,12 +15611,6 @@ tcpdump outputs for the non-standard port servers and then specify this
 option for each.  At present pt-query-digest cannot auto-detect servers on
 port 3306 and also be told to watch a server on a non-standard port.
 
-=item --[no]zero-admin
-
-default: yes
-
-Zero out the Rows_XXX properties for administrator command events.
-
 =back
 
 =head1 DSN OPTIONS
@@ -15734,10 +15743,10 @@ using it, else the filter code may crash the tool with a
 
 You can dump event attributes for any input like:
 
-  $ pt-query-digest \
-      slowlog \
+  $ pt-query-digest                  \
+      slow.log                       \
       --filter 'print Dumper $event' \
-      --no-report \
+      --no-report                    \
       --sample 1
 
 That will produce a lot of output with "attribute => value" pairs like:
