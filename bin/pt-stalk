@@ -477,10 +477,10 @@ mysql_options() {
       MYSQL_ARGS="$MYSQL_ARGS --host=$OPT_HOST"
    fi
    if [ -n "$OPT_USER" ]; then
-      MYSQL_ARGS="$MYSQL_ARGS --user='$OPT_USER'"
+      MYSQL_ARGS="$MYSQL_ARGS --user=$OPT_USER"
    fi
    if [ -n "$OPT_PASSWORD" ]; then
-      MYSQL_ARGS="$MYSQL_ARGS --password='$OPT_PASSWORD'"
+      MYSQL_ARGS="$MYSQL_ARGS --password=$OPT_PASSWORD"
    fi
    
    echo $MYSQL_ARGS
@@ -1387,7 +1387,7 @@ if    [ "${0##*/}" = "$TOOL" ] \
       exit 0
    fi
 
-   local MYSQL_ARGS="$(mysql_options)"
+   MYSQL_ARGS="$(mysql_options)"
    EXT_ARGV="$EXT_ARGV $MYSQL_ARGS"
 
    # Check that mysql and mysqladmin are in PATH.  If not, we're

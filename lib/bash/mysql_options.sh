@@ -38,10 +38,10 @@ mysql_options() {
       MYSQL_ARGS="$MYSQL_ARGS --host=$OPT_HOST"
    fi
    if [ -n "$OPT_USER" ]; then
-      MYSQL_ARGS="$MYSQL_ARGS --user='$OPT_USER'"
+      MYSQL_ARGS="$MYSQL_ARGS --user=$OPT_USER"
    fi
    if [ -n "$OPT_PASSWORD" ]; then
-      MYSQL_ARGS="$MYSQL_ARGS --password='$OPT_PASSWORD'"
+      MYSQL_ARGS="$MYSQL_ARGS --password=$OPT_PASSWORD"
    fi
    
    echo $MYSQL_ARGS
