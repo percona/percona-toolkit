@@ -135,59 +135,19 @@
             "sum" : 0
          },
          "bytes" : {
-            "avg" : "129.000000",
-            "cnt" : "1.000000",
-            "max" : "129.000000",
-            "median" : "129.000000",
-            "min" : "129.000000",
-            "pct" : "0.12",
-            "pct_95" : "129.000000",
-            "stddev" : 0,
-            "sum" : "129.000000"
+            "value" : 129
          },
          "db" : {
-            "avg" : 0,
-            "cnt" : 1,
-            "max" : "db1",
-            "median" : 0,
-            "min" : "db1",
-            "pct" : 0.142857142857143,
-            "pct_95" : 0,
-            "stddev" : 0,
-            "sum" : null
+            "value" : "db1"
          },
          "host" : {
-            "avg" : 0,
-            "cnt" : 1,
-            "max" : "",
-            "median" : 0,
-            "min" : "",
-            "pct" : 0.125,
-            "pct_95" : 0,
-            "stddev" : 0,
-            "sum" : null
+            "value" : ""
          },
          "pos_in_log" : {
-            "avg" : "338.000000",
-            "cnt" : "1.000000",
-            "max" : "338.000000",
-            "median" : "338.000000",
-            "min" : "338.000000",
-            "pct" : "0.12",
-            "pct_95" : "338.000000",
-            "stddev" : 0,
-            "sum" : "338.000000"
+            "value" : 338
          },
          "user" : {
-            "avg" : 0,
-            "cnt" : 1,
-            "max" : "[SQL_SLAVE]",
-            "median" : 0,
-            "min" : "[SQL_SLAVE]",
-            "pct" : 0.125,
-            "pct_95" : 0,
-            "stddev" : 0,
-            "sum" : null
+            "value" : "[SQL_SLAVE]"
          }
       },
       "class" : {

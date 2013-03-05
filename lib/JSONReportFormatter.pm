@@ -9,8 +9,8 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 my $have_json = eval { require JSON };
 
-our $pretty_json = undef;
-our $sorted_json = undef;
+our $pretty_json = 0;
+our $sorted_json = 0;
 
 extends qw(QueryReportFormatter);
 
@@ -56,6 +56,8 @@ override query_report => sub {
    my $worst = $args{worst};
 
    my @attribs = @{$ea->get_attributes()};
+
+   my %string_args = map { $_ => 1 } qw( db host arg user bytes pos_in_log );
    
    my @queries;
    foreach my $worst_info ( @$worst ) {
@@ -95,6 +97,9 @@ override query_report => sub {
             }
             $class{ts_min} = $ts->{min};
             $class{ts_max} = $ts->{max};
+         }
+         elsif ( $string_args{$attrib} ) {
+            $metrics{$attrib} = { value => $metrics{$attrib}{max} }; 
          }
          elsif ( ($ea->{type_for}->{$attrib} || '') eq 'num' ) {
             # Avoid scientific notation in the metrics by forcing it to use
