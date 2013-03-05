@@ -10,6 +10,7 @@ TOOL="pt-stalk"
 mkdir "$PT_TMPDIR/collect" 2>/dev/null
 
 source "$LIB_DIR/log_warn_die.sh"
+source "$LIB_DIR/subshell.sh"
 source "$LIB_DIR/parse_options.sh"
 source "$LIB_DIR/safeguards.sh"
 source "$LIB_DIR/alt_cmds.sh"
