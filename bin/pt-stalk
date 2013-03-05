@@ -1441,11 +1441,11 @@ pt-stalk - Collect forensic data about MySQL when problems occur.
 
 Usage: pt-stalk [OPTIONS] [-- MYSQL OPTIONS]
 
-pt-stalk watches for a trigger condition to occur, then collects data
+pt-stalk waits for a trigger condition to occur, then collects data
 to help diagnose problems.  The tool is designed to run as a daemon with root
 privileges, so that you can diagnose intermittent problems that you cannot
 observe directly.  You can also use it to execute a custom command, or to
-collect data on demand without waiting for the stalk trigger to occur.
+collect data on demand without waiting for the trigger to occur.
 
 =head1 RISKS
 
@@ -1476,16 +1476,20 @@ chance to see the system when it happens. How do you solve intermittent MySQL
 problems when you can't observe them? That's why pt-stalk exists. In addition to
 using it when there's a known problem on your servers, it is a good idea to run
 pt-stalk all the time, even when you think nothing is wrong.  You will
-appreciate the data it gathers when a problem occurs, because problems such as
-MySQL lockups or spikes of activity typically leave no evidence to use in root
+appreciate the data it collects when a problem occurs, because problems such as
+MySQL lockups or spikes in activity typically leave no evidence to use in root
 cause analysis.
 
-This tool does two things: it watches a server (typically MySQL) for a trigger
-to occur, and it gathers diagnostic data.  To use it effectively, you need to
-define a good trigger condition. A good trigger is sensitive enough to fire
-reliably when a problem occurs, so that you don't miss a chance to solve
-problems. On the other hand, a good trigger isn't prone to false positives, so
-you don't gather information when the server is functioning normally.
+pt-stalk does two things: it watches a MySQL server and waits for a trigger
+condition to occur, and it collects diagnostic data when that trigger occurs.
+To avoid false-positives caused by short-lived problems, the trigger condition
+must be true at least L<"--cycles"> times before a L<"--collect"> is triggered.
+
+To use pt-stalk effectively, you need to define a good trigger.  A good trigger
+is sensitive enough to fire reliably when a problem occurs, so that you don't
+miss a chance to solve problems.  On the other hand, a good trigger isn't
+prone to false positives, so you don't gather information when the server
+is functioning normally.
 
 The most reliable triggers for MySQL tend to be the number of connections to the
 server, and the number of queries running concurrently. These are available in
@@ -1495,14 +1499,15 @@ Threads_running usually is.  Your job, as the tool's user, is to define an
 appropriate trigger condition for the tool.  Choose carefully, because the
 quality of your results will depend on the trigger you choose.
 
-You can define the trigger with the L<"--function">, L<"--variable">, and
-L<"--threshold"> options, among others.  Please read the documentation for
-L<"--function"> to learn how to do this.
+You define the trigger with the L<"--function">, L<"--variable">, 
+L<"--threshold">, and L<"--cycles"> options.  The default values
+for these options define a reasonable trigger, but you should adjust
+or change them to suite your particular system and needs.
 
-The pt-stalk tool, by default, simply watches MySQL repeatedly until the trigger
-becomes true. It then gathers diagnostics for a while, and sleeps afterwards for
-some time to prevent repeatedly gathering data if the condition remains true.
-In crude pseudocode, omitting some subtleties,
+By default, pt-stalk tool watches MySQL forever until the trigger occurs,
+then it collects diagnostic data for a while, and sleeps afterwards to avoid
+repeatedly collecting data if the trigger remains true.  The general order of
+operations is:
 
    while true; do
       if --variable from --function > --threshold; then
@@ -1539,15 +1544,15 @@ In crude pseudocode, omitting some subtleties,
 
 The diagnostic data is written to files whose names begin with a timestamp, so
 you can distinguish samples from each other in case the tool collects data
-multiple times.  The pt-sift tool is designed to help you browse and analyze the
-resulting samples of data.
+multiple times.  The pt-sift tool is designed to help you browse and analyze
+the resulting data samples.
 
 Although this sounds simple enough, in practice there are a number of
 subtleties, such as detecting when the disk is beginning to fill up so that the
 tool doesn't cause the server to run out of disk space.  This tool handles these
 types of potential problems, so it's a good idea to use this tool instead of
 writing something from scratch and possibly experiencing some of the hazards
-this tool is designed to prevent.
+this tool is designed to avoid.
 
 =head1 CONFIGURING
 
@@ -1555,15 +1560,15 @@ You can use standard Percona Toolkit configuration files to set command line
 options.
 
 You will probably want to run the tool as a daemon and customize at least the
-diagnostic threshold.  Here's a sample configuration file for triggering when
+L<"--threshold">.  Here's a sample configuration file for triggering when
 there are more than 20 queries running at once:
 
   daemonize
   threshold=20
 
-If you're not running the tool as it's designed (as a root user, daemonized)
-then you'll need to set several options, such as L<"--dest">, to locations that
-are writable by non-root users.
+If you don't run the tool as root, then you will need specify several options,
+such as L<"--pid">, L<"--log">, and L<"--dest">, else the tool will probably
+fail to start.
 
 =head1 OPTIONS
 
@@ -1573,8 +1578,8 @@ are writable by non-root users.
 
 default: yes; negatable: yes
 
-Collect diagnostic data when the L<"--stalk"> trigger occurs.  Specify
-C<--no-collect> to make the tool watch the system but not collect data.
+Collect diagnostic data when the trigger occurs.  Specify C<--no-collect>
+to make the tool watch the system but not collect data.
 
 See also L<"--stalk">.
 
@@ -1673,23 +1678,23 @@ margins are satisfied.
 
 type: string; default: status
 
-What to watch for L<"--stalk"> trigger.  The default value watches
+What to watch for the trigger.  The default value watches
 C<SHOW GLOBAL STATUS>, but you can also watch C<SHOW PROCESSLIST> and specify
 a file with your own custom code.  This function supplies the value of
 L<"--variable">, which is then compared against L<"--threshold"> to see if the
-L<"--stalk"> trigger condition is met.  Additional options may be required as
+the trigger condition is met.  Additional options may be required as
 well; see below. Possible values are:
 
 =over
 
 =item * status
 
-Watch C<SHOW GLOBAL STATUS> for the L<"--stalk"> trigger.  The value of
+Watch C<SHOW GLOBAL STATUS> for the trigger.  The value of
 L<"--variable"> then defines which status counter is the trigger.
 
 =item * processlist
 
-Watch C<SHOW FULL PROCESSLIST> for the L<"--stalk"> trigger.  The trigger
+Watch C<SHOW FULL PROCESSLIST> for the trigger.  The trigger
 value is the count of processes whose L<"--variable"> column matches the
 L<"--match"> option.  For example, to trigger L<"--collect"> when more than
 10 processes are in the "statistics" state, specify:
@@ -1733,14 +1738,14 @@ Print help and exit.
 
 type: int; default: 1
 
-How often to check the L<"--stalk"> trigger, in seconds.
+How often to check the if trigger is true, in seconds.
 
 =item --iterations
 
 type: int
 
 How many times to L<"--collect"> diagnostic data.  By default, the tool
-runs forever and collects data every time the L<"--stalk"> trigger occurs.
+runs forever and collects data every time the trigger occurs.
 Specify L<"--iterations"> to collect data a limited number of times.
 This option is also useful with C<--no-stalk> to collect data once and
 exit, for example.
@@ -1791,7 +1796,7 @@ Called before stalking.
 
 =item before_collect
 
-Called when the L<"--stalk"> trigger occurs, before running a L<"--collect">
+Called when the trigger occurs, before running a L<"--collect">
 subprocesses in the background.
 
 =item after_collect
@@ -1857,7 +1862,7 @@ purged.
 
 type: int; default: 30
 
-How long to L<"--collect"> diagnostic data when the L<"--stalk"> trigger occurs.
+How long to L<"--collect"> diagnostic data when the trigger occurs.
 The value is in seconds and should not be longer than L<"--sleep">.  It is
 usually not necessary to change this; if the default 30 seconds doesn't
 collect enough data, running longer is not likely to help because the system
