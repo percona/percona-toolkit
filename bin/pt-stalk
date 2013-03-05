@@ -1877,7 +1877,7 @@ are deleted, the extra wait gives commands time to finish and write their
 data.  The value is potentially used again just before the tool exits to wait
 again for any collect subprocesses to finish.  In most cases this won't
 happen because of the aforementioned extra wait.  If it happens, the tool
-will log "Waiting up to N seconds for collectors to finish..." where N is
+will log "Waiting up to N seconds for subprocesses to finish..." where N is
 three times L<"--run-time">.  In both cases, after waiting, the tool kills
 all of its subprocesses.
 
