@@ -12504,7 +12504,7 @@ sub main {
       my $db_tbl = $q->quote(@db_tbl);
       
       my $create_review_sql = $o->read_para_after(
-         __FILE__, qr/\bMAGIC_create_review\b/);
+         __FILE__, qr/\bMAGIC_create_review_table\b/);
       $create_review_sql =~ s/\bquery_review\b/$db_tbl/;
       
       create_review_tables(
@@ -12548,9 +12548,9 @@ sub main {
       my $hdb_tbl = $q->quote(@hdb_tbl);
       
       my $create_history_sql = $o->read_para_after(
-         __FILE__, qr/\bMAGIC_create_review_history\b/);
+         __FILE__, qr/\bMAGIC_create_history_table\b/);
       $create_history_sql =~ s/\bquery_history\b/$hdb_tbl/;
-   
+
       create_review_tables(
          type             => 'history',
          dbh              => $qh_dbh,
@@ -12561,7 +12561,7 @@ sub main {
       );
       
       my $tbl = $tp->parse($tp->get_create_table($qh_dbh, @hdb_tbl));
-      my $pat = $o->read_para_after(__FILE__, qr/\bMAGIC_history_cols\b/);
+      my $pat = $o->read_para_after(__FILE__, qr/\bMAGIC_history_columns\b/);
       $pat    =~ s/\s+//g;
       $pat    = qr/^(.*?)_($pat)$/;
 
@@ -13769,10 +13769,12 @@ sub handle_special_defaults {
    my ($o, $opt) = @_;
    my $dsn = $o->get($opt);
    return unless $dsn;
-   
-   my $default_table = $o->read_para_after(
-         __FILE__, qr/MAGIC_${opt}_table/);
-   $default_table =~ s/.+\s(\S+)$/$1/;
+
+   my $para = $o->read_para_after(
+      __FILE__, qr/MAGIC_default_${opt}_table/);
+   my ($default_table) = $para =~ m/default table is C<[^>]+>/;
+   die "Error parsing special default for --$opt"
+      unless $default_table;
    my ($D, $t) = Quoter->split_unquote($default_table);
    $dsn->{D} ||= $D;
    $dsn->{t} ||= $t;
@@ -14087,7 +14089,7 @@ pt-query-digest - Analyze MySQL queries from logs, processlist, and tcpdump.
 
 Usage: pt-query-digest [OPTIONS] [FILES] [DSN]
 
-pt-query-digest analyzes queries from MySQL slow, general, and binary log
+pt-query-digest analyzes MySQL queries from slow, general, and binary log
 files.  It can also analyze queries from C<SHOW PROCESSLIST> and MySQL
 protocol data from tcpdump.  By default, queries are grouped by fingerprint
 and reported in descending order of query time (i.e. the slowest queries
@@ -14140,25 +14142,34 @@ See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-C<pt-query-digest> is a framework for doing things with events from a query
-source such as the slow query log or PROCESSLIST.  By default it acts as a very
-sophisticated log analysis tool.  You can group and sort queries in many
-different ways simultaneously and find the most expensive queries, or create a
-timeline of queries in the log, for example.  It can also do a "query review,"
-which means to save a sample of each type of query into a MySQL table so you can
-easily see whether you've reviewed and analyzed a query before.  The benefit of
-this is that you can keep track of changes to your server's queries and avoid
-repeated work.  You can also save other information with the queries, such as
-comments, issue numbers in your ticketing system, and so on.
+pt-query-digest is a sophisticated but easy to use tool for analyzing
+MySQL queries.  It can analyze queries from MySQL slow, general, and binary
+logs, as well as C<SHOW PROCESSLIST> and MySQL protocol data from tcpdump.
+By default, the tool reports which queries are the slowest, and therefore
+the most important to optimize.  More complex and custom-tailored reports
+can be created by using options like L<"--group-by">, L<"--filter">, and
+L<"--embedded-attributes">.
+
+Query analysis is a best-practice that should be done frequently.  To
+make this easier, pt-query-digest has two features: query review
+(L<"--review">) and query history (L<"--history">).  When the L<"--review">
+option is used, all unique queries are saved to a database.  When the
+tool is ran again with L<"--review">, queries marked as reviewed in
+the database are not printed in the report.  This highlights new queries
+that need to be reviewed.  When the L<"--history"> option is used,
+query metrics (query time, lock time, etc.) for each unique query are
+saved to database.  Each time the tool is ran with L<"--history">, the
+more historical data is saved which can be used to trend and analyze
+query performance over time.
 
 =head1 ATTRIBUTES
 
-pt-query-digest works on events, which are a collection of key/value pairs
+pt-query-digest works on events, which are a collection of key-value pairs
 called attributes.  You'll recognize most of the attributes right away:
-Query_time, Lock_time, and so on.  You can just look at a slow log and see them.
-However, there are some that don't exist in the slow log, and slow logs
-may actually include different kinds of attributes (for example, you may have a
-server with the Percona patches).
+C<Query_time>, C<Lock_time>, and so on.  You can just look at a slow log
+and see them.  However, there are some that don't exist in the slow log,
+and slow logs may actually include different kinds of attributes (for example,
+you may have a server with the Percona patches).
 
 See L<"ATTRIBUTES REFERENCE"> near the end of this documentation for a list
 of common and L<"--type"> specific attributes.  A familiarity with these
@@ -14176,7 +14187,7 @@ The C<&& 1> trick is needed to create a valid one-line syntax that is always
 true, even if the assignment happens to evaluate false.  The new attribute will
 automatically appears in the output:
 
-  # Row ratio           1.00    0.00       1    0.50       1    0.71    0.50
+  # Row ratio        1.00    0.00      1    0.50      1    0.71    0.50
 
 Attributes created this way can be specified for L<"--order-by"> or any
 option that requires an attribute.
@@ -14186,11 +14197,11 @@ option that requires an attribute.
 The default L<"--output"> is a query analysis report.  The L<"--[no]report">
 option controls whether or not this report is printed.  Sometimes you may
 want to parse all the queries but suppress the report, for example when using
-L<"--review">.
+L<"--review"> or L<"--history">.
 
 There is one paragraph for each class of query analyzed.  A "class" of queries
 all have the same value for the L<"--group-by"> attribute which is
-"fingerprint" by default.  (See L<"ATTRIBUTES">.)  A fingerprint is an
+C<fingerprint> by default.  (See L<"ATTRIBUTES">.)  A fingerprint is an
 abstracted version of the query text with literals removed, whitespace
 collapsed, and so forth.  The report is formatted so it's easy to paste into
 emails without wrapping, and all non-query lines begin with a comment, so you
@@ -14245,17 +14256,17 @@ select the reviewed query's details from the database with a query like C<SELECT
 If you are investigating the report and want to print out every sample of a
 particular query, then the following L<"--filter"> may be helpful:
 
-   pt-query-digest slow.log \
-      --no-report \
-      --output slowlog \
+   pt-query-digest slow.log           \
+      --no-report                     \
+      --output slowlog                \
       --filter '$event->{fingerprint} \
-                && make_checksum($event->{fingerprint}) eq "FDEA8D2993C9CAF3"'
+           && make_checksum($event->{fingerprint}) eq "FDEA8D2993C9CAF3"'
 
 Notice that you must remove the C<0x> prefix from the checksum.
 
 Finally, in case you want to find a sample of the query in the log file, there's
 the byte offset where you can look.  (This is not always accurate, due to some
-silly anomalies in the slow-log format, but it's usually right.)  The position
+anomalies in the slow-log format, but it's usually right.)  The position
 refers to the worst sample, which we'll see more about below.
 
 Next is the table of metrics about this class of queries.
@@ -14300,10 +14311,10 @@ of the most frequent ones, followed by the number of times it appears.
  #  10us
  # 100us
  #   1ms
- #  10ms
- # 100ms
- #    1s
- #  10s+  #############################################################
+ #  10ms  #####
+ # 100ms  ####################
+ #    1s  ##########
+ #  10s+
 
 The execution times show a logarithmic chart of time clustering.  Each query
 goes into one of the "buckets" and is counted up.  The buckets are powers of
@@ -14346,7 +14357,7 @@ analyzed.  This has several benefits:
 
 =item *
 
-You can add meta-data to classes of queries, such as marking them for follow-up,
+You can add metadata to classes of queries, such as marking them for follow-up,
 adding notes to queries, or marking them with an issue ID for your issue
 tracking system.
 
@@ -14385,9 +14396,9 @@ output.
 =item *
 
 If you want to see the queries you've already reviewed, you can specify
-L<"--report-all">.  Then you'll see the normal analysis output, but you'll also see
-the information from the review table, just below the execution time graph.  For
-example,
+L<"--report-all">.  Then you'll see the normal analysis output, but you'll
+also see the information from the review table, just below the execution time
+graph.  For example,
 
   # Review information
   #      comments: really bad IN() subquery, fix soon!
@@ -14398,12 +14409,8 @@ example,
   #   reviewed_by: xaprb
   #   reviewed_on: 2008-12-18 15:03:11
 
-You can see how useful this meta-data is -- as you analyze your queries, you get
+This metadata is useful because, as you analyze your queries, you get
 your comments integrated right into the report.
-
-If you add the L<"--history"> option, it will also store information into
-a separate database table, so you can keep historical trending information on
-classes of queries.
 
 =back
 
@@ -14445,21 +14452,21 @@ The corresponding pseudo-SQL looks like this:
 You can also use the value C<distill>, which is a kind of super-fingerprint.
 See L<"--group-by"> for more.
 
-Query fingerprinting accommodates a great many special cases, which have proven
-necessary in the real world.  For example, an IN list with 5 literals is really
-equivalent to one with 4 literals, so lists of literals are collapsed to a
-single one.  If you want to understand more about how and why all of these cases
-are handled, please review the test cases in the Launchpad repository.  If you
-find something that is not fingerprinted properly, please submit a bug report
-with a reproducible test case.  Here is a list of transformations during
-fingerprinting, which might not be exhaustive:
+Query fingerprinting accommodates many special cases, which have proven
+necessary in the real world.  For example, an C<IN> list with 5 literals
+is really equivalent to one with 4 literals, so lists of literals are
+collapsed to a single one.  If you find something that is not fingerprinted
+properly, please submit a bug report with a reproducible test case. 
+
+Here is a list of transformations during fingerprinting, which might not
+be exhaustive:
 
 =over
 
 =item *
 
 Group all SELECT queries from mysqldump together, even if they are against
-different tables.  Ditto for all of pt-table-checksum's checksum queries.
+different tables.  The same applies to all queries from pt-table-checksum.
 
 =item *
 
@@ -14793,6 +14800,159 @@ into a suggestion of what they do, such as C<INSERT SELECT table1 table2>.
 
 Show help and exit.
 
+=item --history
+
+type: DSN
+
+Save metrics for each query class in the given table.  pt-query-digest saves
+query metrics (query time, lock time, etc.) to this table so you can see how
+query classes change over time.
+
+=for comment ignore-pt-internal-value
+MAGIC_default_history_table
+
+The default table is C<percona_schema.query_history>.  Specify database
+(D) and table (t) DSN options to override the default.  The database and
+table are automatically created unless C<--no-create-history-table>
+is specified (see L<"--[no]create-history-table">).
+
+pt-query-digest inspects the columns in the table.  The table must have at
+least the following columns:
+
+  CREATE TABLE query_review_history (
+    checksum     BIGINT UNSIGNED NOT NULL,
+    sample       TEXT NOT NULL
+  );
+
+Any columns not mentioned above are inspected to see if they follow a certain
+naming convention.  The column is special if the name ends with an underscore
+followed by any of these values:
+
+=for comment ignore-pt-internal-value
+MAGIC_history_columns
+
+  pct|avg|cnt|sum|min|max|pct_95|stddev|median|rank
+
+If the column ends with one of those values, then the prefix is interpreted as
+the event attribute to store in that column, and the suffix is interpreted as
+the metric to be stored.  For example, a column named C<Query_time_min> will be
+used to store the minimum C<Query_time> for the class of events.
+
+The table should also have a primary key, but that is up to you, depending on
+how you want to store the historical data.  We suggest adding ts_min and ts_max
+columns and making them part of the primary key along with the checksum.  But
+you could also just add a ts_min column and make it a DATE type, so you'd get
+one row per class of queries per day.
+
+The following table definition is used for L<"--[no]create-history-table">:
+
+=for comment ignore-pt-internal-value
+MAGIC_create_history_table
+
+ CREATE TABLE IF NOT EXISTS query_history (
+   checksum             BIGINT UNSIGNED NOT NULL,
+   sample               TEXT NOT NULL,
+   ts_min               DATETIME,
+   ts_max               DATETIME,
+   ts_cnt               FLOAT,
+   Query_time_sum       FLOAT,
+   Query_time_min       FLOAT,
+   Query_time_max       FLOAT,
+   Query_time_pct_95    FLOAT,
+   Query_time_stddev    FLOAT,
+   Query_time_median    FLOAT,
+   Lock_time_sum        FLOAT,
+   Lock_time_min        FLOAT,
+   Lock_time_max        FLOAT,
+   Lock_time_pct_95     FLOAT,
+   Lock_time_stddev     FLOAT,
+   Lock_time_median     FLOAT,
+   Rows_sent_sum        FLOAT,
+   Rows_sent_min        FLOAT,
+   Rows_sent_max        FLOAT,
+   Rows_sent_pct_95     FLOAT,
+   Rows_sent_stddev     FLOAT,
+   Rows_sent_median     FLOAT,
+   Rows_examined_sum    FLOAT,
+   Rows_examined_min    FLOAT,
+   Rows_examined_max    FLOAT,
+   Rows_examined_pct_95 FLOAT,
+   Rows_examined_stddev FLOAT,
+   Rows_examined_median FLOAT,
+   -- Percona extended slowlog attributes 
+   -- http://www.percona.com/docs/wiki/patches:slow_extended
+   Rows_affected_sum             FLOAT,
+   Rows_affected_min             FLOAT,
+   Rows_affected_max             FLOAT,
+   Rows_affected_pct_95          FLOAT,
+   Rows_affected_stddev          FLOAT,
+   Rows_affected_median          FLOAT,
+   Rows_read_sum                 FLOAT,
+   Rows_read_min                 FLOAT,
+   Rows_read_max                 FLOAT,
+   Rows_read_pct_95              FLOAT,
+   Rows_read_stddev              FLOAT,
+   Rows_read_median              FLOAT,
+   Merge_passes_sum              FLOAT,
+   Merge_passes_min              FLOAT,
+   Merge_passes_max              FLOAT,
+   Merge_passes_pct_95           FLOAT,
+   Merge_passes_stddev           FLOAT,
+   Merge_passes_median           FLOAT,
+   InnoDB_IO_r_ops_min           FLOAT,
+   InnoDB_IO_r_ops_max           FLOAT,
+   InnoDB_IO_r_ops_pct_95        FLOAT,
+   InnoDB_IO_r_ops_stddev        FLOAT,
+   InnoDB_IO_r_ops_median        FLOAT,
+   InnoDB_IO_r_bytes_min         FLOAT,
+   InnoDB_IO_r_bytes_max         FLOAT,
+   InnoDB_IO_r_bytes_pct_95      FLOAT,
+   InnoDB_IO_r_bytes_stddev      FLOAT,
+   InnoDB_IO_r_bytes_median      FLOAT,
+   InnoDB_IO_r_wait_min          FLOAT,
+   InnoDB_IO_r_wait_max          FLOAT,
+   InnoDB_IO_r_wait_pct_95       FLOAT,
+   InnoDB_IO_r_wait_stddev       FLOAT,
+   InnoDB_IO_r_wait_median       FLOAT,
+   InnoDB_rec_lock_wait_min      FLOAT,
+   InnoDB_rec_lock_wait_max      FLOAT,
+   InnoDB_rec_lock_wait_pct_95   FLOAT,
+   InnoDB_rec_lock_wait_stddev   FLOAT,
+   InnoDB_rec_lock_wait_median   FLOAT,
+   InnoDB_queue_wait_min         FLOAT,
+   InnoDB_queue_wait_max         FLOAT,
+   InnoDB_queue_wait_pct_95      FLOAT,
+   InnoDB_queue_wait_stddev      FLOAT,
+   InnoDB_queue_wait_median      FLOAT,
+   InnoDB_pages_distinct_min     FLOAT,
+   InnoDB_pages_distinct_max     FLOAT,
+   InnoDB_pages_distinct_pct_95  FLOAT,
+   InnoDB_pages_distinct_stddev  FLOAT,
+   InnoDB_pages_distinct_median  FLOAT,
+   -- Boolean (Yes/No) attributes.  Only the cnt and sum are needed for these.
+   -- cnt is how many times is attribute was recorded and sum is how many of
+   -- those times the value was Yes.  Therefore sum/cnt * 100 = % of recorded
+   -- times that the value was Yes.
+   QC_Hit_cnt          FLOAT,
+   QC_Hit_sum          FLOAT,
+   Full_scan_cnt       FLOAT,
+   Full_scan_sum       FLOAT,
+   Full_join_cnt       FLOAT,
+   Full_join_sum       FLOAT,
+   Tmp_table_cnt       FLOAT,
+   Tmp_table_sum       FLOAT,
+   Tmp_table_on_disk_cnt FLOAT,
+   Tmp_table_on_disk_sum FLOAT,
+   Filesort_cnt          FLOAT,
+   Filesort_sum          FLOAT,
+   Filesort_on_disk_cnt  FLOAT,
+   Filesort_on_disk_sum  FLOAT,
+   PRIMARY KEY(checksum, ts_min, ts_max)
+ );
+
+Note that we store the count (cnt) for the ts attribute only; it will be
+redundant to store this for other attributes.
+
 =item --host
 
 short form: -h; type: string
@@ -15049,24 +15209,22 @@ in the log, and resumes parsing events from that point onward.
 
 type: DSN
 
-Save query classes and historical values for later review and trend analysis.
+Save query classes for later review, and don't report already reviewed classes.
 
 =for comment ignore-pt-internal-value
-MAGIC_review_table
+MAGIC_default_review_table
 
-Defaults to percona_schema.query_review
+The default table is C<percona_schema.query_review>.  Specify database
+(D) and table (t) DSN options to override the default.  The database and
+table are automatically created unless C<--no-create-review-table>
+is specified (see L<"--[no]create-review-table">).
 
-The argument specifies a host to store all unique query fingerprints in; the
-databases and tables were this data is stored can be specified with the
-L<"--review-table"> and L<"--history-table"> options.
-By default, if the table doesn't exist the tool tries creating it; This
-behavior can bhe controlled with the L<"--[no]create-review-tables"> option.
 If the table was created manually, it must have at least the following columns.
 You can add more columns for your own special purposes, but they won't be used
-by pt-query-digest.  The following CREATE TABLE definition is also used:
+by pt-query-digest.
 
 =for comment ignore-pt-internal-value
-MAGIC_create_review:
+MAGIC_create_review_table:
 
   CREATE TABLE IF NOT EXISTS query_review (
      checksum     BIGINT UNSIGNED NOT NULL PRIMARY KEY,
@@ -15079,10 +15237,10 @@ MAGIC_create_review:
      comments     TEXT
   )
 
-The columns are as follows:
+The columns are:
 
   COLUMN       MEANING
-  ===========  ===============
+  ===========  ====================================================
   checksum     A 64-bit checksum of the query fingerprint
   fingerprint  The abstracted version of the query; its primary key
   sample       The query text of a sample of the class of queries
@@ -15099,163 +15257,6 @@ provides a shorter value that is very likely to also be unique.
 After parsing and aggregating events, your table should contain a row for each
 fingerprint.  This option depends on C<--group-by fingerprint> (which is the
 default).  It will not work otherwise.
-
-=item --history
-
-type: DSN
-
-The table in which to store historical values for review trend analysis.
-
-=for comment ignore-pt-internal-value
-MAGIC_history_table
-
-Defaults to percona_schema.query_history
-
-Each time you review queries with L<"--review">, pt-query-digest will save
-information into this table so you can see how classes of queries have changed
-over time.
-
-This DSN should mention a table in which to store statistics about each
-class of queries.  pt-query-digest verifies the existence of the table.
-
-pt-query-digest then inspects the columns in the table.  The table must have at
-least the following columns:
-
-  CREATE TABLE query_review_history (
-    checksum     BIGINT UNSIGNED NOT NULL,
-    sample       TEXT NOT NULL
-  );
-
-Any columns not mentioned above are inspected to see if they follow a certain
-naming convention.  The column is special if the name ends with an underscore
-followed by any of these values:
-
-=for comment ignore-pt-internal-value
-MAGIC_history_cols
-
-  pct|avg|cnt|sum|min|max|pct_95|stddev|median|rank
-
-If the column ends with one of those values, then the prefix is interpreted as
-the event attribute to store in that column, and the suffix is interpreted as
-the metric to be stored.  For example, a column named Query_time_min will be
-used to store the minimum Query_time for the class of events.  The presence of
-this column will also add Query_time to the L<"--select"> list.
-
-The table should also have a primary key, but that is up to you, depending on
-how you want to store the historical data.  We suggest adding ts_min and ts_max
-columns and making them part of the primary key along with the checksum.  But
-you could also just add a ts_min column and make it a DATE type, so you'd get
-one row per class of queries per day.
-
-The default table structure follows.  The following 
-table definition is used for L<"--create-history-table">:
-
-=for comment ignore-pt-internal-value
-MAGIC_create_review_history
-
- CREATE TABLE IF NOT EXISTS query_history (
-   checksum             BIGINT UNSIGNED NOT NULL,
-   sample               TEXT NOT NULL,
-   ts_min               DATETIME,
-   ts_max               DATETIME,
-   ts_cnt               FLOAT,
-   Query_time_sum       FLOAT,
-   Query_time_min       FLOAT,
-   Query_time_max       FLOAT,
-   Query_time_pct_95    FLOAT,
-   Query_time_stddev    FLOAT,
-   Query_time_median    FLOAT,
-   Lock_time_sum        FLOAT,
-   Lock_time_min        FLOAT,
-   Lock_time_max        FLOAT,
-   Lock_time_pct_95     FLOAT,
-   Lock_time_stddev     FLOAT,
-   Lock_time_median     FLOAT,
-   Rows_sent_sum        FLOAT,
-   Rows_sent_min        FLOAT,
-   Rows_sent_max        FLOAT,
-   Rows_sent_pct_95     FLOAT,
-   Rows_sent_stddev     FLOAT,
-   Rows_sent_median     FLOAT,
-   Rows_examined_sum    FLOAT,
-   Rows_examined_min    FLOAT,
-   Rows_examined_max    FLOAT,
-   Rows_examined_pct_95 FLOAT,
-   Rows_examined_stddev FLOAT,
-   Rows_examined_median FLOAT,
-   -- Percona extended slowlog attributes 
-   -- http://www.percona.com/docs/wiki/patches:slow_extended
-   Rows_affected_sum             FLOAT,
-   Rows_affected_min             FLOAT,
-   Rows_affected_max             FLOAT,
-   Rows_affected_pct_95          FLOAT,
-   Rows_affected_stddev          FLOAT,
-   Rows_affected_median          FLOAT,
-   Rows_read_sum                 FLOAT,
-   Rows_read_min                 FLOAT,
-   Rows_read_max                 FLOAT,
-   Rows_read_pct_95              FLOAT,
-   Rows_read_stddev              FLOAT,
-   Rows_read_median              FLOAT,
-   Merge_passes_sum              FLOAT,
-   Merge_passes_min              FLOAT,
-   Merge_passes_max              FLOAT,
-   Merge_passes_pct_95           FLOAT,
-   Merge_passes_stddev           FLOAT,
-   Merge_passes_median           FLOAT,
-   InnoDB_IO_r_ops_min           FLOAT,
-   InnoDB_IO_r_ops_max           FLOAT,
-   InnoDB_IO_r_ops_pct_95        FLOAT,
-   InnoDB_IO_r_ops_stddev        FLOAT,
-   InnoDB_IO_r_ops_median        FLOAT,
-   InnoDB_IO_r_bytes_min         FLOAT,
-   InnoDB_IO_r_bytes_max         FLOAT,
-   InnoDB_IO_r_bytes_pct_95      FLOAT,
-   InnoDB_IO_r_bytes_stddev      FLOAT,
-   InnoDB_IO_r_bytes_median      FLOAT,
-   InnoDB_IO_r_wait_min          FLOAT,
-   InnoDB_IO_r_wait_max          FLOAT,
-   InnoDB_IO_r_wait_pct_95       FLOAT,
-   InnoDB_IO_r_wait_stddev       FLOAT,
-   InnoDB_IO_r_wait_median       FLOAT,
-   InnoDB_rec_lock_wait_min      FLOAT,
-   InnoDB_rec_lock_wait_max      FLOAT,
-   InnoDB_rec_lock_wait_pct_95   FLOAT,
-   InnoDB_rec_lock_wait_stddev   FLOAT,
-   InnoDB_rec_lock_wait_median   FLOAT,
-   InnoDB_queue_wait_min         FLOAT,
-   InnoDB_queue_wait_max         FLOAT,
-   InnoDB_queue_wait_pct_95      FLOAT,
-   InnoDB_queue_wait_stddev      FLOAT,
-   InnoDB_queue_wait_median      FLOAT,
-   InnoDB_pages_distinct_min     FLOAT,
-   InnoDB_pages_distinct_max     FLOAT,
-   InnoDB_pages_distinct_pct_95  FLOAT,
-   InnoDB_pages_distinct_stddev  FLOAT,
-   InnoDB_pages_distinct_median  FLOAT,
-   -- Boolean (Yes/No) attributes.  Only the cnt and sum are needed for these.
-   -- cnt is how many times is attribute was recorded and sum is how many of
-   -- those times the value was Yes.  Therefore sum/cnt * 100 = % of recorded
-   -- times that the value was Yes.
-   QC_Hit_cnt          FLOAT,
-   QC_Hit_sum          FLOAT,
-   Full_scan_cnt       FLOAT,
-   Full_scan_sum       FLOAT,
-   Full_join_cnt       FLOAT,
-   Full_join_sum       FLOAT,
-   Tmp_table_cnt       FLOAT,
-   Tmp_table_sum       FLOAT,
-   Tmp_table_on_disk_cnt FLOAT,
-   Tmp_table_on_disk_sum FLOAT,
-   Filesort_cnt          FLOAT,
-   Filesort_sum          FLOAT,
-   Filesort_on_disk_cnt  FLOAT,
-   Filesort_on_disk_sum  FLOAT,
-   PRIMARY KEY(checksum, ts_min, ts_max)
- );
-
-Note that we store the count (cnt) for the ts attribute only; it will be
-redundant to store this for other attributes.
 
 =item --run-time
 
@@ -15371,7 +15372,7 @@ several types:
     CURRENT_DATE - INTERVAL 7 DAY
 
 If you give a MySQL time expression, and you have not also specified a DSN
-for L<"--explain">, L<"--processlist">, or L<"--review">, then you specify
+for L<"--explain">, L<"--processlist">, or L<"--review">, then you must specify
 a DSN on the command line so that pt-query-digest can connect to MySQL to
 evaluate the expression.
 
