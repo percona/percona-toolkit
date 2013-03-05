@@ -10466,13 +10466,6 @@ STDOUT to utf8, passes the mysql_enable_utf8 option to DBD::mysql, and runs SET
 NAMES UTF8 after connecting to MySQL.  Any other value sets binmode on STDOUT
 without the utf8 layer, and runs SET NAMES after connecting to MySQL.
 
-=item --check-interval
-
-type: time; default: 1
-
-Sleep time between checks for L<"--max-lag">.
-
-
 =item --[no]check-alter
 
 default: yes
@@ -10503,6 +10496,12 @@ for its triggers.  You should first run the tool with L<"--dry-run"> and
 L<"--print"> and verify that the triggers are correct.
 
 =back
+
+=item --check-interval
+
+type: time; default: 1
+
+Sleep time between checks for L<"--max-lag">.
 
 =item --[no]check-plan
 
@@ -10884,60 +10883,6 @@ replication lag, insert the values C<h=10.10.1.16> and C<h=10.10.1.17> into the
 table. Currently, the DSNs are ordered by id, but id and parent_id are otherwise
 ignored.  
 
-=item --tries
-
-type: array
-
-How many times to try critical operations.  If certain operations fail due
-to non-fatal, recoverable errors, the tool waits and tries the operation
-again.  These are the operations that are retried, with their default number
-of tries and wait time between tries (in seconds):
-
-=for comment ignore-pt-internal-value
-MAGIC_tries
-
-   OPERATION            TRIES   WAIT
-   ===================  =====   ====
-   create_triggers         10      1
-   drop_triggers           10      1
-   copy_rows               10   0.25
-   swap_tables             10      1
-   update_foreign_keys     10      1
-
-To change the defaults, specify the new values like:
-
-   --tries create_triggers:5:0.5,drop_triggers:5:0.5
-
-That makes the tool try C<create_triggers> and C<drop_triggers> 2 times
-with a 0.5 second wait between tries.  So the format is:
-
-   operation:tries:wait[,operation:tries:wait]
-
-All three values must be specified.
-
-For creating and dropping triggers, the number of tries applies to each
-C<CREATE TRIGGER> and C<DROP TRIGGER> statement for each trigger.
-For copying rows, the number of tries applies to each chunk, not the
-entire table.  For swapping tables, the number of tries usually applies
-once because there is usually only one C<RENAME TABLE> statement.
-For rebuilding foreign key constraints, the number of tries applies to
-each statement (C<ALTER> statements for the C<rebuild_constraints>
-L<"--alter-foreign-keys-method">; other statements for the C<drop_swap>
-method).
-
-The tool retries each operation if these errors occur:
-
-   Lock wait timeout (innodb_lock_wait_timeout and lock_wait_timeout)
-   Deadlock found
-   Query is killed (KILL QUERY <thread_id>)
-   Connection is killed (KILL CONNECTION <thread_id>)
-   Lost connection to MySQL
-
-In the case of lost and killed connections, the tool will automatically
-reconnect.
-
-Failures and retries are recorded in the L<"--statistics">.
-
 =item --set-vars
 
 type: Array
@@ -10978,6 +10923,65 @@ Swap the original table and the new, altered table.  This step completes the
 online schema change process by making the table with the new schema take the
 place of the original table.  The original table becomes the "old table," and
 the tool drops it unless you disable L<"--[no]drop-old-table">.
+
+=item --tries
+
+type: array
+
+How many times to try critical operations.  If certain operations fail due
+to non-fatal, recoverable errors, the tool waits and tries the operation
+again.  These are the operations that are retried, with their default number
+of tries and wait time between tries (in seconds):
+
+=for comment ignore-pt-internal-value
+MAGIC_tries
+
+   OPERATION            TRIES   WAIT
+   ===================  =====   ====
+   create_triggers         10      1
+   drop_triggers           10      1
+   copy_rows               10   0.25
+   swap_tables             10      1
+   update_foreign_keys     10      1
+
+To change the defaults, specify the new values like:
+
+   --tries create_triggers:5:0.5,drop_triggers:5:0.5
+
+That makes the tool try C<create_triggers> and C<drop_triggers> 2 times
+with a 0.5 second wait between tries.  So the format is:
+
+   operation:tries:wait[,operation:tries:wait]
+
+All three values must be specified.
+
+Note that most operations are affected only in MySQL 5.5 and newer by
+C<lock_wait_timeout> (see L<"--set-vars">) because of metadata locks.
+The C<copy_rows> operation is affected in any version of MySQL by
+C<innodb_lock_wait_timeout>.
+
+For creating and dropping triggers, the number of tries applies to each
+C<CREATE TRIGGER> and C<DROP TRIGGER> statement for each trigger.
+For copying rows, the number of tries applies to each chunk, not the
+entire table.  For swapping tables, the number of tries usually applies
+once because there is usually only one C<RENAME TABLE> statement.
+For rebuilding foreign key constraints, the number of tries applies to
+each statement (C<ALTER> statements for the C<rebuild_constraints>
+L<"--alter-foreign-keys-method">; other statements for the C<drop_swap>
+method).
+
+The tool retries each operation if these errors occur:
+
+   Lock wait timeout (innodb_lock_wait_timeout and lock_wait_timeout)
+   Deadlock found
+   Query is killed (KILL QUERY <thread_id>)
+   Connection is killed (KILL CONNECTION <thread_id>)
+   Lost connection to MySQL
+
+In the case of lost and killed connections, the tool will automatically
+reconnect.
+
+Failures and retries are recorded in the L<"--statistics">.
 
 =item --user
 
