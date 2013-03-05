@@ -51,7 +51,8 @@ $sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
 ($output) = full_output(
    sub { pt_online_schema_change::main(
       "$master_dsn,D=pt_osc,t=t",
-      qw(--statistics --execute --retries 2 --set-vars lock_wait_timeout=1),
+      qw(--statistics --execute --tries create_triggers:2:0.1),
+      qw(--set-vars lock_wait_timeout=1),
       '--plugin', "$plugin/block_create_triggers.pm",
    )},
    stderr => 1,
@@ -76,7 +77,8 @@ like(
 ($output) = full_output(
    sub { pt_online_schema_change::main(
       "$master_dsn,D=pt_osc,t=t",
-      qw(--statistics --execute --retries 2 --set-vars lock_wait_timeout=1),
+      qw(--statistics --execute --tries swap_tables:2:0.1),
+      qw(--set-vars lock_wait_timeout=1),
       '--plugin', "$plugin/block_swap_tables.pm",
    )},
    stderr => 1,
