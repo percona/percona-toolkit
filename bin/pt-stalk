@@ -55,6 +55,58 @@ _d () {
 # ###########################################################################
 
 # ###########################################################################
+# subshell package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/subshell.sh
+#   t/lib/bash/subshell.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+
+set -u
+
+wait_for_subshells() {
+   local max_wait=$1
+   if [ "$(jobs)" ]; then
+      log "Waiting up to $max_wait seconds for subprocesses to finish..."
+      local slept=0
+      while [ -n "$(jobs)" ]; do
+         local subprocess_still_running=""
+         for pid in $(jobs -p); do
+            if kill -0 $pid >/dev/null 2>&1; then
+               subprocess_still_running=1
+            fi
+         done
+         if [ "$subprocess_still_running" ]; then
+            sleep 1
+            slept=$((slept + 1))
+            [ $slept -ge $max_wait ] && break
+         else
+            break
+         fi
+      done
+   fi
+}
+
+kill_all_subshells() {
+   if [ "$(jobs)" ]; then
+      for pid in $(jobs -p); do
+         if kill -0 $pid >/dev/null 2>&1; then
+            log "Killing subprocess $pid"
+            kill $pid >/dev/null 2>&1
+         fi
+      done
+   else
+      log "All subprocesses have finished"
+   fi
+}
+
+# ###########################################################################
+# End subshell package
+# ###########################################################################
+
+# ###########################################################################
 # parse_options package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -871,16 +923,8 @@ collect() {
 
    hostname > "$d/$p-hostname"
 
-   local slept=0
-   while [ -n "$(jobs)" -a $slept -lt $OPT_RUN_TIME ]; do
-      sleep 1
-      slept=$((slept + 1))
-   done
-
-   for pid in $(jobs -p); do
-      kill $pid >/dev/null 2>&1
-   done
-
+   wait_for_subshells $OPT_RUN_TIME
+   kill_all_subshells
    for file in "$d/$p-"*; do
       if [ -z "$(grep -v '^TS ' --max-count 1 "$file")" ]; then
          log "Removing empty file $file";
@@ -1244,27 +1288,8 @@ stalk() {
    # we may get in sync with the collector and kill it a microsecond
    # before it kills itself, thus 3 * run-time.
    # https://bugs.launchpad.net/percona-toolkit/+bug/1070434
-   if [ "$(jobs)" ]; then
-      local sleep_time=$((OPT_RUN_TIME * 3))
-      log "Waiting up to $sleep_time seconds for collectors to finish..."
-      local slept=0
-      while [ -n "$(jobs)" -a $slept -lt $sleep_time ]; do
-         sleep 1
-         slept=$((slept + 1))
-      done
-
-      if [ "$(jobs)" ]; then
-         for pid in $(jobs -p); do
-            # This isn't an warning (we don't want exit status 1) because
-            # the system may be running slowly so it's just "natural" that
-            # a collector may get stuck or run really slowly.
-            log "Killing collector $pid"
-            kill $pid >/dev/null 2>&1
-         done
-      else
-         log "All collectors have finished"
-      fi
-   fi
+   wait_for_subshells $((OPT_RUN_TIME * 3))
+   kill_all_subshells
 }
 
 # ###########################################################################
