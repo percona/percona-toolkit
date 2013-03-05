@@ -7985,13 +7985,13 @@ sub main {
    # ########################################################################
    # Print --tries.
    # ########################################################################
-#   print "Operation, tries, wait:\n";
-#   {
-#      my $fmt = "  %s, %s, %s\n";
-#      foreach my $op ( sort keys %$tries ) {
-#         printf $fmt, $op, $tries->{$op}->{tries}, $tries->{$op}->{wait};
-#      }
-#   }
+   print "Operation, tries, wait:\n";
+   {
+      my $fmt = "  %s, %s, %s\n";
+      foreach my $op ( sort keys %$tries ) {
+         printf $fmt, $op, $tries->{$op}->{tries}, $tries->{$op}->{wait};
+      }
+   }
 
    # ########################################################################
    # Get child tables of the original table, if necessary.
