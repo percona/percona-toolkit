@@ -10669,6 +10669,12 @@ single value of Threads_running that is wrong for every server, but a default of
 50 seems likely to be unacceptably high for most servers, indicating that the
 operation should be canceled immediately.
 
+=item --database
+
+short form: -D; type: string
+
+Connect to this database.
+
 =item --default-engine
 
 Remove C<ENGINE> from the new table.
