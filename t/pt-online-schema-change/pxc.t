@@ -119,7 +119,7 @@ ok(
    $exit,
    "wsrep_OSU_method=RSU: non-zero exit"
 ) or diag($output);
-print $output;
+
 like(
    $output,
    qr/wsrep_OSU_method=TOI is required.+?currently set to RSU/,
@@ -134,8 +134,37 @@ is_deeply(
 ) or BAIL_OUT("Failed to restore wsrep_OSU_method=TOI");
 
 # #############################################################################
+# master -> cluster, run on master on table with foreign keys.
+# #############################################################################
+
+my ($master_dbh, $master_dsn) = $sb->start_sandbox(
+   server => 'cmaster',
+   type   => 'master',
+   env    => q/BINLOG_FORMAT="ROW"/,
+);
+
+# CAREFUL: The master and the cluster are different, so we must load dbs on
+# the master then flush the logs, else node1 will apply the master's binlogs
+# and blow up because it already had these dbs.
+$master_dbh->do("FLUSH LOGS");
+$master_dbh->do("RESET MASTER");
+
+$sb->set_as_slave('node1', 'cmaster');
+
+$sb->load_file('cmaster', "$sample/basic_with_fks.sql");
+
+($output, $exit) = full_output(
+   sub { pt_online_schema_change::main(
+      "$master_dsn,D=pt_osc,t=city",
+      qw(--print --execute --alter-foreign-keys-method auto),
+      '--alter', 'DROP COLUMN last_update'
+   )},
+   stderr => 1,
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($node1);
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+#$sb->wipe_clean($node1);
+#ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
