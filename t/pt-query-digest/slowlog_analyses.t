@@ -204,14 +204,6 @@ ok(
    '--zero-admin works'
 );
 
-ok(
-   no_diff(
-      sub { pt_query_digest::main(@args, $sample.'slow019.txt', qw(--nozero-admin)) },
-      "t/pt-query-digest/samples/slow019_report_noza.txt"
-   ),
-   '--nozero-admin works'
-);
-
 # This was fixed at some point by checking the fingerprint to see if the
 # query needed to be converted to a SELECT.
 ok(
