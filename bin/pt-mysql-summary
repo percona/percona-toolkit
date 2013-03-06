@@ -2422,7 +2422,7 @@ main() {
    trap sigtrap HUP INT TERM
 
    local MYSQL_ARGS="$(mysql_options)"
-   EXT_ARGV="$EXT_ARGV $MYSQL_ARGS"
+   EXT_ARGV="$(arrange_mysql_options "$EXT_ARGV $MYSQL_ARGS")"
 
    # Check if mysql and mysqldump are there, otherwise bail out early.
    # But don't if they passed in --read-samples, since we don't need
@@ -2980,7 +2980,7 @@ pathname.
 
 =item --host
 
-short form: -h; type: string; default: localhost
+short form: -h; type: string
 
 Host to connect to.
 
