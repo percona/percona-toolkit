@@ -156,15 +156,32 @@ $sb->load_file('cmaster', "$sample/basic_with_fks.sql");
 ($output, $exit) = full_output(
    sub { pt_online_schema_change::main(
       "$master_dsn,D=pt_osc,t=city",
-      qw(--print --execute --alter-foreign-keys-method auto),
+      qw(--print --execute --alter-foreign-keys-method drop_swap),
       '--alter', 'DROP COLUMN last_update'
    )},
    stderr => 1,
 );
 
+my $rows = $node1->selectrow_hashref("SHOW SLAVE STATUS");
+is(
+   $rows->{last_error},
+   "",
+   "Alter table with foreign keys on master replicating to cluster"
+) or diag(Dumper($rows), $output);
+
+is(
+   $exit,
+   0,
+   "... exit 0"
+) or diag($output);
+
+$sb->stop_sandbox(qw(cmaster));
+$node1->do("STOP SLAVE");
+$node1->do("RESET SLAVE");
+
 # #############################################################################
 # Done.
 # #############################################################################
-#$sb->wipe_clean($node1);
-#ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+$sb->wipe_clean($node1);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
