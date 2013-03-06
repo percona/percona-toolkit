@@ -31,8 +31,17 @@ sub normalize_numbers {
    }
 }
 
+sub run_with {
+   my ($file, @args) = @_;
+   $file = "$trunk/t/lib/samples/slowlogs/$file";
+   
+   return output(sub{
+      pt_query_digest::main(qw(--report-format=query_report),
+                            qw(--limit 10), @args, $file)
+   }, stderr => 1);
+}
+
 my $dsn      = 'h=127.1,P=12345,u=msandbox,p=msandbox';
-my $run_with = "$trunk/bin/pt-query-digest --report-format=query_report --limit 10 $trunk/t/lib/samples/slowlogs/";
 my $output;
 my $cmd;
 
@@ -41,10 +50,10 @@ $sb->load_file('master', 't/pt-query-digest/samples/query_review.sql');
 
 # Test --create-review and --create-review-history-table
 $output = 'foo'; # clear previous test results
-$cmd = "${run_with}slow006.txt --create-review-table  --create-history-table --review "
-   . "$dsn,D=test,t=query_review "
-   . "--history $dsn,D=test,t=query_review_history";
-$output = `$cmd >/dev/null 2>&1`;
+$output = run_with("slow006.txt", qw(--create-review-table),
+                qw(--create-history-table --review),
+                "$dsn,D=test,t=query_review",
+                "--history", "$dsn,D=test,t=query_review_history");
 
 my ($table) = $dbh->selectrow_array(
    "show tables from test like 'query_review'");
@@ -53,10 +62,9 @@ is($table, 'query_review', '--create-review-table');
    "show tables from test like 'query_review_history'");
 is($table, 'query_review_history', '--create-history-table');
 
-$output = 'foo'; # clear previous test results
-$cmd = "${run_with}slow006.txt --review $dsn,D=test,t=query_review "
-   . "--history $dsn,D=test,t=query_review_history";
-$output = `$cmd`;
+$output = run_with("slow006.txt",
+                   '--review', "$dsn,D=test,t=query_review",
+                   '--history', "$dsn,D=test,t=query_review_history");
 my $res = $dbh->selectall_arrayref( 'SELECT * FROM test.query_review',
    { Slice => {} } );
 
@@ -178,8 +186,11 @@ is_deeply(
 # This time we'll run with --report and since none of the queries
 # have been reviewed, the report should include both of them with
 # their respective query review info added to the report.
+$output = run_with("slow006.txt",
+                   '--review', "$dsn,D=test,t=query_review",
+                   '--history', "$dsn");
 ok(
-   no_diff($run_with."slow006.txt --history $dsn --review $dsn,D=test,t=query_review", "t/pt-query-digest/samples/slow006_AR_1.txt"),
+   no_diff($output, "t/pt-query-digest/samples/slow006_AR_1.txt", cmd_output => 1),
    'Analyze-review pass 1 reports not-reviewed queries'
 );
 
@@ -192,16 +203,20 @@ is($table, 'query_history', '--create-history-table creates both percona_schema 
 $dbh->do('UPDATE test.query_review
    SET reviewed_by="daniel", reviewed_on="2008-12-24 12:00:00", comments="foo_tbl is ok, so are cranberries"
    WHERE checksum=11676753765851784517');
+$output = run_with("slow006.txt",
+                   '--review', "$dsn,D=test,t=query_review");
 ok(
-   no_diff($run_with."slow006.txt --review $dsn,D=test,t=query_review", "t/pt-query-digest/samples/slow006_AR_2.txt"),
+   no_diff($output, "t/pt-query-digest/samples/slow006_AR_2.txt", cmd_output => 1),
    'Analyze-review pass 2 does not report the reviewed query'
 );
 
 # And a 4th pass with --report-all which should cause the reviewed query
 # to re-appear in the report with the reviewed_by, reviewed_on and comments
 # info included.
+$output = run_with("slow006.txt", '--report-all',
+                   '--review', "$dsn,D=test,t=query_review");
 ok(
-   no_diff($run_with."slow006.txt --review $dsn,D=test,t=query_review   --report-all", "t/pt-query-digest/samples/slow006_AR_4.txt"),
+   no_diff($output, "t/pt-query-digest/samples/slow006_AR_4.txt", cmd_output => 1),
    'Analyze-review pass 4 with --report-all reports reviewed query'
 );
 
@@ -209,8 +224,11 @@ ok(
 $dbh->do('ALTER TABLE test.query_review ADD COLUMN foo INT');
 $dbh->do('UPDATE test.query_review
    SET foo=42 WHERE checksum=15334040482108055940');
+
+$output = run_with("slow006.txt",
+                   '--review', "$dsn,D=test,t=query_review");
 ok(
-   no_diff($run_with."slow006.txt --review $dsn,D=test,t=query_review", "t/pt-query-digest/samples/slow006_AR_5.txt"),
+   no_diff($output, "t/pt-query-digest/samples/slow006_AR_5.txt", cmd_output => 1),
    'Analyze-review pass 5 reports new review info column'
 );
 
@@ -218,9 +236,8 @@ ok(
 # output because they are useless of course (issue 202).
 $dbh->do("update test.query_review set first_seen='0000-00-00 00:00:00', "
    . " last_seen='0000-00-00 00:00:00'");
-$output = 'foo'; # clear previous test results
-$cmd = "${run_with}slow022.txt --review $dsn,D=test,t=query_review"; 
-$output = `$cmd`;
+$output = run_with("slow022.txt",
+                   '--review', "$dsn,D=test,t=query_review");
 unlike($output, qr/last_seen/, 'no last_seen when 0000 timestamp');
 unlike($output, qr/first_seen/, 'no first_seen when 0000 timestamp');
 unlike($output, qr/0000-00-00 00:00:00/, 'no 0000-00-00 00:00:00 timestamp');
@@ -232,17 +249,17 @@ unlike($output, qr/0000-00-00 00:00:00/, 'no 0000-00-00 00:00:00 timestamp');
 
 # Make sure a missing Time property does not cause a crash.  Don't test data
 # in table, because it varies based on when you run the test.
-$output = 'foo'; # clear previous test results
-$cmd = "${run_with}slow021.txt --review $dsn,D=test,t=query_review"; 
-$output = `$cmd`;
+$output = run_with("slow021.txt",
+                   '--review', "$dsn,D=test,t=query_review");
+
 unlike($output, qr/Use of uninitialized value/, 'didnt crash due to undef ts');
 
 # Make sure a really ugly Time property that doesn't parse does not cause a
 # crash.  Don't test data in table, because it varies based on when you run
 # the test.
-$output = 'foo'; # clear previous test results
-$cmd = "${run_with}slow022.txt --review $dsn,D=test,t=query_review"; 
-$output = `$cmd`;
+$output = run_with("slow022.txt",
+                   '--review', "$dsn,D=test,t=query_review");
+
 # Don't test data in table, because it varies based on when you run the test.
 unlike($output, qr/Use of uninitialized value/, 'no crash due to totally missing ts');
 
@@ -250,7 +267,9 @@ unlike($output, qr/Use of uninitialized value/, 'no crash due to totally missing
 # --review --no-report
 # #############################################################################
 $sb->load_file('master', 't/pt-query-digest/samples/query_review.sql');
-$output = `${run_with}slow006.txt --review $dsn,D=test,t=query_review --no-report`;
+$output = run_with("slow006.txt", '--no-report',
+                   '--review', "$dsn,D=test,t=query_review");
+
 $res = $dbh->selectall_arrayref('SELECT * FROM test.query_review');
 is(
    $res->[0]->[1],
@@ -270,7 +289,10 @@ is(
 $dbh->do('truncate table test.query_review');
 $dbh->do('truncate table test.query_review_history');
 
-`${run_with}slow002.txt --review $dsn,D=test,t=query_review --history $dsn,D=test,t=query_review_history --no-report --filter '\$event->{arg} =~ m/foo\.bar/' > /dev/null`;
+run_with("slow002.txt",
+         '--review', "$dsn,D=test,t=query_review",
+         '--history', "$dsn,D=test,t=query_review_history",
+         '--no-report', '--filter', '$event->{arg} =~ m/foo\.bar/');
 
 $res = $dbh->selectall_arrayref( 'SELECT * FROM test.query_review_history',
    { Slice => {} } );
