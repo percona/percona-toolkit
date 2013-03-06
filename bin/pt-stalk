@@ -486,6 +486,21 @@ mysql_options() {
    echo $MYSQL_ARGS
 }
 
+arrange_mysql_options() {
+   local opts="$1"
+   
+   local rearranged=""
+   for opt in $opts; do
+      if [ "$(echo $opt | awk -F= '{print $1}')" = "--defaults-file" ]; then
+          rearranged="$opt $rearranged"
+      else
+         rearranged="$rearranged $opt"
+      fi
+   done
+   
+   echo "$rearranged"
+}
+
 # ###########################################################################
 # End mysql_options package
 # ###########################################################################
@@ -1388,7 +1403,7 @@ if    [ "${0##*/}" = "$TOOL" ] \
    fi
 
    MYSQL_ARGS="$(mysql_options)"
-   EXT_ARGV="$EXT_ARGV $MYSQL_ARGS"
+   EXT_ARGV="$(arrange_mysql_options "$EXT_ARGV $MYSQL_ARGS")"
 
    # Check that mysql and mysqladmin are in PATH.  If not, we're
    # already dead in the water, so don't bother with cmd line opts,
@@ -1935,7 +1950,7 @@ pathname.
 
 =item --host
 
-short form: -h; type: string; default: localhost
+short form: -h; type: string
 
 Host to connect to.
 

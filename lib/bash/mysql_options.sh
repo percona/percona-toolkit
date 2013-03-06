@@ -47,6 +47,22 @@ mysql_options() {
    echo $MYSQL_ARGS
 }
 
+# This basically makes sure that --defaults-file comes first
+arrange_mysql_options() {
+   local opts="$1"
+   
+   local rearranged=""
+   for opt in $opts; do
+      if [ "$(echo $opt | awk -F= '{print $1}')" = "--defaults-file" ]; then
+          rearranged="$opt $rearranged"
+      else
+         rearranged="$rearranged $opt"
+      fi
+   done
+   
+   echo "$rearranged"
+}
+
 # ###########################################################################
 # End mysql_options package
 # ###########################################################################
