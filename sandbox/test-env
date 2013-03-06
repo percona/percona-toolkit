@@ -379,8 +379,9 @@ case $opt in
       done
       ;;
    restart)
-      $0 stop
-      $0 start
+      shift;
+      $0 stop "$@"
+      $0 start "$@"
       ;;
    status)
       sandbox_status 'master' '12345'
