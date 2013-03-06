@@ -58,7 +58,7 @@ like $output,
 # We removed --statistics, but they should still print out if we use PTDEBUG.
 
 $output = qx{PTDEBUG=1 $cmd --no-report ${sample}slow002.txt 2>&1};
-my $stats = slurp_file("t/pt-query-digest/samples/stats-slow002.txt");
+my $stats = load_file("t/pt-query-digest/samples/stats-slow002.txt");
 
 like(
    $output,
