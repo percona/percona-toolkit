@@ -3578,6 +3578,8 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
+use Time::HiRes qw(sleep);
+
 sub new {
    my ( $class, %args ) = @_;
    my $self = {
@@ -7617,6 +7619,13 @@ sub main {
          . $n_chunk_index_cols);
    }
 
+   my $tries = eval {
+      validate_tries($o);
+   };
+   if ( $EVAL_ERROR ) {
+      $o->save_error($EVAL_ERROR);
+   }
+
    if ( !$o->get('help') ) {
       if ( @ARGV ) {
          $o->save_error('Specify only one DSN on the command line');
@@ -7972,6 +7981,17 @@ sub main {
       TableParser  => $tp,
       Quoter       => $q,
    );
+
+   # ########################################################################
+   # Print --tries.
+   # ########################################################################
+   print "Operation, tries, wait:\n";
+   {
+      my $fmt = "  %s, %s, %s\n";
+      foreach my $op ( sort keys %$tries ) {
+         printf $fmt, $op, $tries->{$op}->{tries}, $tries->{$op}->{wait};
+      }
+   }
 
    # ########################################################################
    # Get child tables of the original table, if necessary.
@@ -8427,7 +8447,7 @@ sub main {
             Quoter       => $q,
             OptionParser => $o,
             Retry        => $retry,
-            retries      => $o->get('retries'),
+            tries        => $tries,
             stats        => \%stats,
          );
       }
@@ -8453,7 +8473,7 @@ sub main {
          Quoter       => $q,
          OptionParser => $o,
          Retry        => $retry,
-         retries      => $o->get('retries'),
+         tries        => $tries,
          stats        => \%stats,
       );
    };
@@ -8642,7 +8662,7 @@ sub main {
          # Exec and time the chunk checksum query.
          $tbl->{nibble_time} = exec_nibble(
             %args,
-            retries => $o->get('retries'),
+            tries   => $tries,
             Retry   => $retry,
             Quoter  => $q,
             stats   => \%stats,
@@ -8852,7 +8872,7 @@ sub main {
             Quoter       => $q,
             OptionParser => $o,
             Retry        => $retry,
-            retries      => $o->get('retries'),
+            tries        => $tries,
             stats        => \%stats,
          );
       };
@@ -8900,7 +8920,7 @@ sub main {
                TableParser  => $tp,
                stats        => \%stats,
                Retry        => $retry,
-               retries      => $o->get('retries'),
+               tries        => $tries,
             );
          }
          elsif ( $alter_fk_method eq 'drop_swap' ) {
@@ -8911,7 +8931,7 @@ sub main {
                OptionParser => $o,
                stats        => \%stats,
                Retry        => $retry,
-               retries      => $o->get('retries'),
+               tries        => $tries,
             );
          }
          elsif ( !$alter_fk_method
@@ -9002,6 +9022,56 @@ sub main {
 # ############################################################################
 # Subroutines.
 # ############################################################################
+
+sub validate_tries {
+   my ($o) = @_;
+   my @ops = qw(
+      create_triggers
+      drop_triggers
+      copy_rows
+      swap_tables 
+      update_foreign_keys
+   );
+   my %user_tries;
+   my $user_tries = $o->get('tries');
+   if ( $user_tries ) {
+      foreach my $var_val ( @$user_tries ) {
+         my ($op, $tries, $wait) = split(':', $var_val);
+         die "Invalid --tries value: $var_val\n" unless $op && $tries && $wait;
+         die "Invalid --tries operation: $op\n" unless grep { $op eq $_ } @ops;
+         die "Invalid --tries tries: $tries\n" unless $tries > 0;
+         die "Invalid --tries wait: $wait\n" unless $wait > 0;
+         $user_tries{$op} = {
+            tries   => $tries,
+            wait    => $wait,
+         };
+      }
+   }
+
+   my %default_tries;
+   my $default_tries = $o->read_para_after(__FILE__, qr/MAGIC_tries/);
+   if ( $default_tries ) {
+      %default_tries = map {
+         my $var_val = $_;
+         my ($op, $tries, $wait) = $var_val =~ m/(\S+)/g;
+         die "Invalid --tries value: $var_val\n" unless $op && $tries && $wait;
+         die "Invalid --tries operation: $op\n" unless grep { $op eq $_ } @ops;
+         die "Invalid --tries tries: $tries\n" unless $tries > 0;
+         die "Invalid --tries wait: $wait\n" unless $wait > 0;
+         $op => {
+            tries => $tries,
+            wait  => $wait,
+         };
+      } grep { m/^\s+\w+\s+\d+\s+[\d\.]+/ } split("\n", $default_tries);
+   }
+
+   my %tries = (
+      %default_tries, # first the tool's defaults
+      %user_tries,    # then the user's which overwrite the defaults
+   );
+   PTDEBUG && _d('--tries:', Dumper(\%tries));
+   return \%tries;
+}
 
 sub check_alter {
    my (%args) = @_;
@@ -9300,15 +9370,15 @@ sub create_new_table {
 
 sub swap_tables {
    my (%args) = @_;
-   my @required_args = qw(orig_tbl new_tbl Cxn Quoter OptionParser Retry retries stats);
+   my @required_args = qw(orig_tbl new_tbl Cxn Quoter OptionParser Retry tries stats);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($orig_tbl, $new_tbl, $cxn, $q, $o, $retry, $retries, $stats) = @args{@required_args};
+   my ($orig_tbl, $new_tbl, $cxn, $q, $o, $retry, $tries, $stats) = @args{@required_args};
 
    my $prefix       = '_';
    my $table_name   = $orig_tbl->{tbl} . ($args{suffix} || '');
-   my $tries        = 10;  # don't try forever
+   my $name_tries   = 10;  # don't try forever
    my $table_exists = qr/table.+?already exists/i;
 
    # This sub only works for --execute.  Since the options are
@@ -9326,7 +9396,7 @@ sub swap_tables {
    elsif ( $o->get('execute') ) {
       print "Swapping tables...\n";
 
-      while ( $tries-- ) {
+      while ( $name_tries-- ) {
          $table_name = $prefix . $table_name;
 
          if ( length($table_name) > 64 ) {
@@ -9344,7 +9414,7 @@ sub swap_tables {
             osc_retry(
                Cxn     => $cxn,
                Retry   => $retry,
-               retries => $retries,
+               tries   => $tries->{swap_tables},
                stats   => $stats,
                code    => sub {
                   PTDEBUG && _d($sql);
@@ -9380,7 +9450,7 @@ sub swap_tables {
 
       # This shouldn't happen.
       # Here and in the attempt to find a new table name we probably ought to
-      # use --retries (and maybe a Retry object?)
+      # use --tries (and maybe a Retry object?)
       die "Failed to find a unique old table name after serveral attempts.\n";
    }
 }
@@ -9530,11 +9600,11 @@ sub rebuild_constraints {
    my ( %args ) = @_;
    my @required_args = qw(orig_tbl old_tbl child_tables stats
                           Cxn Quoter OptionParser TableParser
-                          Retry retries);
+                          Retry tries);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($orig_tbl, $old_tbl, $child_tables, $stats, $cxn, $q, $o, $tp, $retry, $retries)
+   my ($orig_tbl, $old_tbl, $child_tables, $stats, $cxn, $q, $o, $tp, $retry, $tries)
       = @args{@required_args};
 
    # MySQL has a "feature" where if the parent tbl is in the same db,
@@ -9612,7 +9682,7 @@ sub rebuild_constraints {
          osc_retry(
             Cxn     => $cxn,
             Retry   => $retry,
-            retries => $retries,
+            tries   => $tries->{update_foreign_keys},
             stats   => $stats,
             code    => sub {
                PTDEBUG && _d($sql);
@@ -9632,11 +9702,11 @@ sub rebuild_constraints {
 
 sub drop_swap {
    my ( %args ) = @_;
-   my @required_args = qw(orig_tbl new_tbl Cxn OptionParser stats Retry retries);
+   my @required_args = qw(orig_tbl new_tbl Cxn OptionParser stats Retry tries);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($orig_tbl, $new_tbl, $cxn, $o, $stats, $retry, $retries) = @args{@required_args};
+   my ($orig_tbl, $new_tbl, $cxn, $o, $stats, $retry, $tries) = @args{@required_args};
 
    if ( $o->get('dry-run') ) {
       print "Not drop-swapping tables because this is a dry run.\n";
@@ -9658,7 +9728,7 @@ sub drop_swap {
          osc_retry(
             Cxn     => $cxn,
             Retry   => $retry,
-            retries => $retries,
+            tries   => $tries->{update_foreign_keys},
             stats   => $stats,
             code    => sub {
                PTDEBUG && _d($sql);
@@ -9677,11 +9747,11 @@ sub drop_swap {
 
 sub create_triggers {
    my ( %args ) = @_;
-   my @required_args = qw(orig_tbl new_tbl del_tbl columns Cxn Quoter OptionParser Retry retries stats);
+   my @required_args = qw(orig_tbl new_tbl del_tbl columns Cxn Quoter OptionParser Retry tries stats);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($orig_tbl, $new_tbl, $del_tbl, $cols, $cxn, $q, $o, $retry, $retries, $stats) = @args{@required_args};
+   my ($orig_tbl, $new_tbl, $del_tbl, $cols, $cxn, $q, $o, $retry, $tries, $stats) = @args{@required_args};
 
    # This sub works for --dry-run and --execute.  With --dry-run it's
    # only interesting if --print is specified, too; then the user can
@@ -9752,7 +9822,7 @@ sub create_triggers {
          osc_retry(
             Cxn     => $cxn,
             Retry   => $retry,
-            retries => $retries,
+            tries   => $tries->{create_triggers},
             stats   => $stats,
             code    => sub {
                PTDEBUG && _d($sql);
@@ -9778,11 +9848,11 @@ sub create_triggers {
 
 sub drop_triggers {
    my ( %args ) = @_;
-   my @required_args = qw(tbl Cxn Quoter OptionParser Retry retries stats);
+   my @required_args = qw(tbl Cxn Quoter OptionParser Retry tries stats);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($tbl, $cxn, $q, $o, $retry, $retries, $stats) = @args{@required_args};
+   my ($tbl, $cxn, $q, $o, $retry, $tries, $stats) = @args{@required_args};
 
    # This sub works for --dry-run and --execute, although --dry-run is
    # only interesting with --print so the user can see the drop trigger
@@ -9802,7 +9872,7 @@ sub drop_triggers {
             osc_retry(
                Cxn     => $cxn,
                Retry   => $retry,
-               retries => $retries,
+               tries   => $tries->{drop_triggers},
                stats   => $stats,
                code    => sub {
                   PTDEBUG && _d($sql);
@@ -9846,20 +9916,20 @@ sub error_event {
 
 sub osc_retry {
    my (%args) = @_;
-   my @required_args = qw(Cxn Retry retries code stats);
+   my @required_args = qw(Cxn Retry tries code stats);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
    my $cxn           = $args{Cxn};
    my $retry         = $args{Retry};
-   my $retries       = $args{retries};
+   my $tries         = $args{tries};
    my $code          = $args{code};
    my $stats         = $args{stats};
    my $ignore_errors = $args{ignore_errors};
 
    return $retry->retry(
-      tries => $retries,
-      wait  => sub { sleep 0.25; return; },
+      tries => $tries->{tries},
+      wait  => sub { sleep ($tries->{wait} || 0.25) },
       try   => $code,
       fail => sub {
          my (%args) = @_;
@@ -9911,11 +9981,11 @@ sub osc_retry {
 
 sub exec_nibble {
    my (%args) = @_;
-   my @required_args = qw(Cxn tbl stats retries Retry NibbleIterator Quoter);
+   my @required_args = qw(Cxn tbl stats tries Retry NibbleIterator Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($cxn, $tbl, $stats, $retries, $retry, $nibble_iter, $q)
+   my ($cxn, $tbl, $stats, $tries, $retry, $nibble_iter, $q)
       = @args{@required_args};
 
    my $sth         = $nibble_iter->statements();
@@ -9952,7 +10022,7 @@ sub exec_nibble {
    return osc_retry(
       Cxn     => $cxn,
       Retry   => $retry,
-      retries => $retries,
+      tries   => $tries->{copy_rows},
       stats   => $stats,
       code    => sub {
          # ###################################################################
@@ -10396,13 +10466,6 @@ STDOUT to utf8, passes the mysql_enable_utf8 option to DBD::mysql, and runs SET
 NAMES UTF8 after connecting to MySQL.  Any other value sets binmode on STDOUT
 without the utf8 layer, and runs SET NAMES after connecting to MySQL.
 
-=item --check-interval
-
-type: time; default: 1
-
-Sleep time between checks for L<"--max-lag">.
-
-
 =item --[no]check-alter
 
 default: yes
@@ -10433,6 +10496,12 @@ for its triggers.  You should first run the tool with L<"--dry-run"> and
 L<"--print"> and verify that the triggers are correct.
 
 =back
+
+=item --check-interval
+
+type: time; default: 1
+
+Sleep time between checks for L<"--max-lag">.
 
 =item --[no]check-plan
 
@@ -10814,46 +10883,6 @@ replication lag, insert the values C<h=10.10.1.16> and C<h=10.10.1.17> into the
 table. Currently, the DSNs are ordered by id, but id and parent_id are otherwise
 ignored.  
 
-=item --retries
-
-type: int; default: 10
-
-Retry critical operations and recover from non-fatal errors.  The tool
-retries these operations:
-
-   Creating triggers
-   Dropping triggers
-   Copying chunks
-   Swapping tables
-   Rebuilding foreign key constraints
-
-For creating and dropping triggers, the number of retries applies to each
-C<CREATE TRIGGER> and C<DROP TRIGGER> statement for each trigger.
-For copying chunks, the number of retries applies to each chunk, not the
-entire table.  For swapping tables, the number of retries usually applies
-once because there is usually only one C<RENAME TABLE> statement.
-For rebuilding foreign key constraints, the number of retries applies to
-each statement (C<ALTER> statements for the C<rebuild_constraints>
-L<"--alter-foreign-keys-method">; other statements for the C<drop_swap>
-method).
-
-The tool retries each operation if these errors occur:
-
-   Lock wait timeout (innodb_lock_wait_timeout and lock_wait_timeout)
-   Deadlock found
-   Query is killed (KILL QUERY <thread_id>)
-   Connection is killed (KILL CONNECTION <thread_id>)
-   Lost connection to MySQL
-
-In the case of lost and killed connections, the tool will automatically
-reconnect.
-
-To alter extremely busy tables, it may be necessary to increase L<"--retries">,
-and also C<innodb_lock_wait_timeout> and (for MySQL 5.5 and newer)
-C<lock_wait_timeout> by specifying higher values with L<"--set-vars">.
-
-Failures and retries are recorded in the L<"--statistics">.
-
 =item --set-vars
 
 type: Array
@@ -10894,6 +10923,65 @@ Swap the original table and the new, altered table.  This step completes the
 online schema change process by making the table with the new schema take the
 place of the original table.  The original table becomes the "old table," and
 the tool drops it unless you disable L<"--[no]drop-old-table">.
+
+=item --tries
+
+type: array
+
+How many times to try critical operations.  If certain operations fail due
+to non-fatal, recoverable errors, the tool waits and tries the operation
+again.  These are the operations that are retried, with their default number
+of tries and wait time between tries (in seconds):
+
+=for comment ignore-pt-internal-value
+MAGIC_tries
+
+   OPERATION            TRIES   WAIT
+   ===================  =====   ====
+   create_triggers         10      1
+   drop_triggers           10      1
+   copy_rows               10   0.25
+   swap_tables             10      1
+   update_foreign_keys     10      1
+
+To change the defaults, specify the new values like:
+
+   --tries create_triggers:5:0.5,drop_triggers:5:0.5
+
+That makes the tool try C<create_triggers> and C<drop_triggers> 2 times
+with a 0.5 second wait between tries.  So the format is:
+
+   operation:tries:wait[,operation:tries:wait]
+
+All three values must be specified.
+
+Note that most operations are affected only in MySQL 5.5 and newer by
+C<lock_wait_timeout> (see L<"--set-vars">) because of metadata locks.
+The C<copy_rows> operation is affected in any version of MySQL by
+C<innodb_lock_wait_timeout>.
+
+For creating and dropping triggers, the number of tries applies to each
+C<CREATE TRIGGER> and C<DROP TRIGGER> statement for each trigger.
+For copying rows, the number of tries applies to each chunk, not the
+entire table.  For swapping tables, the number of tries usually applies
+once because there is usually only one C<RENAME TABLE> statement.
+For rebuilding foreign key constraints, the number of tries applies to
+each statement (C<ALTER> statements for the C<rebuild_constraints>
+L<"--alter-foreign-keys-method">; other statements for the C<drop_swap>
+method).
+
+The tool retries each operation if these errors occur:
+
+   Lock wait timeout (innodb_lock_wait_timeout and lock_wait_timeout)
+   Deadlock found
+   Query is killed (KILL QUERY <thread_id>)
+   Connection is killed (KILL CONNECTION <thread_id>)
+   Lost connection to MySQL
+
+In the case of lost and killed connections, the tool will automatically
+reconnect.
+
+Failures and retries are recorded in the L<"--statistics">.
 
 =item --user
 
