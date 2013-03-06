@@ -16,18 +16,14 @@ parse_options "$PERCONA_TOOLKIT_BRANCH/bin/pt-mysql-summary" --defaults-file $cn
 is "$OPT_DEFAULTS_FILE" "$cnf" "--defaults-file works"
 
 # ############################################################################
-# --host's default works
-# ############################################################################
-
-parse_options "$PERCONA_TOOLKIT_BRANCH/bin/pt-mysql-summary"
-is "$OPT_HOST" "localhost" "--host has default: localhost"
-
-# ############################################################################
 # Short forms work
 # ############################################################################
 
 parse_options "$PERCONA_TOOLKIT_BRANCH/bin/pt-mysql-summary" -F $cnf
 is "$OPT_DEFAULTS_FILE" "$cnf" "-F works"
+
+parse_options "$PERCONA_TOOLKIT_BRANCH/bin/pt-mysql-summary" -u msandbox
+is "$OPT_USER" "msandbox" "-u works"
 
 # ############################################################################
 # Done
