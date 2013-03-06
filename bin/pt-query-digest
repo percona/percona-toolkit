@@ -13778,7 +13778,7 @@ sub handle_special_defaults {
 
    my $para = $o->read_para_after(
       __FILE__, qr/MAGIC_default_${opt}_table/);
-   my ($default_table) = $para =~ m/default table is C<[^>]+>/;
+   my ($default_table) = $para =~ m/default table is C<([^>]+)>/;
    die "Error parsing special default for --$opt"
       unless $default_table;
    my ($D, $t) = Quoter->split_unquote($default_table);
