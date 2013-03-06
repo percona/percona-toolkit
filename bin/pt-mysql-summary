@@ -477,13 +477,28 @@ mysql_options() {
       MYSQL_ARGS="$MYSQL_ARGS --host=$OPT_HOST"
    fi
    if [ -n "$OPT_USER" ]; then
-      MYSQL_ARGS="$MYSQL_ARGS --user='$OPT_USER'"
+      MYSQL_ARGS="$MYSQL_ARGS --user=$OPT_USER"
    fi
    if [ -n "$OPT_PASSWORD" ]; then
-      MYSQL_ARGS="$MYSQL_ARGS --password='$OPT_PASSWORD'"
+      MYSQL_ARGS="$MYSQL_ARGS --password=$OPT_PASSWORD"
    fi
    
    echo $MYSQL_ARGS
+}
+
+arrange_mysql_options() {
+   local opts="$1"
+   
+   local rearranged=""
+   for opt in $opts; do
+      if [ "$(echo $opt | awk -F= '{print $1}')" = "--defaults-file" ]; then
+          rearranged="$opt $rearranged"
+      else
+         rearranged="$rearranged $opt"
+      fi
+   done
+   
+   echo "$rearranged"
 }
 
 # ###########################################################################
@@ -2229,7 +2244,7 @@ report_mysql_summary () {
       || [ -e "$dir/mysqldump" -a -s "$dir/mysqldump" ]; then
       reply="y"
    elif [ -t 0 -a -t 1 ]; then
-      printf "Would you like to mysqldump -d the schema and analyze it? y/n "
+      echo -n "Would you like to mysqldump -d the schema and analyze it? y/n "
       read reply
       reply=${reply:-n}
    fi
@@ -2237,7 +2252,7 @@ report_mysql_summary () {
       if [ -z "${OPT_DATABASES}" ] && [ -z "$OPT_READ_SAMPLES" ] \
          && [ ! -e "$dir/mysqldump" ]; then
          echo "There are ${num_dbs} databases.  Would you like to dump all, or just one?"
-         printf "Type the name of the database, or press Enter to dump all of them. "
+         echo -n "Type the name of the database, or press Enter to dump all of them. "
          local dbtodump=""
          read dbtodump
          local trg_arg="$( get_mysqldump_args "$dir/mysql-variables" )"
