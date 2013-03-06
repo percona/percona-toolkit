@@ -14694,6 +14694,12 @@ This option causes the tables specified by L<"--review-table"> and
 L<"--history-table"> to be created with the default structures shown
 in the documentation for L<"--review">.
 
+=item --database
+
+short form: -D; type: string
+
+Connect to this database.
+
 =item --daemonize
 
 Fork to the background and detach from the shell.  POSIX
