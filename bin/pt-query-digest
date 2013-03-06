@@ -13632,7 +13632,7 @@ sub print_reports {
    my @orderby = @{$args{orderby}};
 
    for my $i ( 0..$#groupby ) {
-      if ( $o->get('report') || $qv ) {
+      if ( $o->get('report') || $qv || $qh ) {
          $eas->[$i]->calculate_statistical_metrics();
       }
 
