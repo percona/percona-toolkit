@@ -130,3 +130,17 @@ sub set_review_history {
       $sample,
       map { $data{$_->[0]}->{$_->[1]} } @{$self->history_metrics});
 }
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End QueryHistory package
+# ###########################################################################
