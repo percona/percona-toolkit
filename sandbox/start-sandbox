@@ -143,7 +143,6 @@ make_sandbox() {
 
    /tmp/$port/use -e "CREATE DATABASE IF NOT EXISTS percona_test";
    /tmp/$port/use -e "CREATE TABLE IF NOT EXISTS percona_test.sentinel (id INT PRIMARY KEY, ping VARCHAR(64) NOT NULL DEFAULT '')";
-   /tmp/$port/use -e "REPLACE INTO percona_test.sentinel (id, ping) VALUES (1, '')";
 
    if [ -n "${MYSQL_UPGRADE:-""}" ]; then
       mysql_upgrade_on /tmp/$port/my.sandbox.cnf

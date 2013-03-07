@@ -137,21 +137,25 @@ is_deeply(
 # master -> cluster, run on master on table with foreign keys.
 # #############################################################################
 
+# CAREFUL: The master and the cluster are different, so don't do stuff
+# on the master that will conflict with stuff already done on the cluster.
+# And since we're using RBR, we have to do a lot of stuff on the master
+# again, manually, because REPLACE and INSERT IGNORE don't work in RBR
+# like they do SBR.
+
 my ($master_dbh, $master_dsn) = $sb->start_sandbox(
    server => 'cmaster',
    type   => 'master',
    env    => q/BINLOG_FORMAT="ROW"/,
 );
 
-# CAREFUL: The master and the cluster are different, so we must load dbs on
-# the master then flush the logs, else node1 will apply the master's binlogs
-# and blow up because it already had these dbs.
-$master_dbh->do("FLUSH LOGS");
-$master_dbh->do("RESET MASTER");
-
 $sb->set_as_slave('node1', 'cmaster');
 
-$sb->load_file('cmaster', "$sample/basic_with_fks.sql");
+$sb->load_file('cmaster', "$sample/basic_with_fks.sql", undef, no_wait => 1);
+
+$master_dbh->do("SET SESSION binlog_format=STATEMENT");
+$master_dbh->do("REPLACE INTO percona_test.sentinel (id, ping) VALUES (1, '')");
+$sb->wait_for_slaves(master => 'cmaster', slave => 'node1');
 
 ($output, $exit) = full_output(
    sub { pt_online_schema_change::main(
