@@ -68,7 +68,17 @@ if [ -z "$MYSQL_BASE_DIR" ]; then
    MYSQL_BASE_DIR="$(find_mysql_base_dir $MYSQL)"
 fi
 
-if [ -z "$("$MYSQL_BASE_DIR/bin/mysqld" -V)" ]; then
+if [ $APP = "mysql" ]; then
+   mysqld_check="$("$MYSQL_BASE_DIR/bin/mysqld" -V)"
+elif [ $APP = "pxc" ]; then
+   ip="$(perl -MNet::Address::IP::Local -le 'print Net::Address::IP::Local->public')"
+   mysqld_check="$("$MYSQL_BASE_DIR/bin/mysqld" -V --bind-address $ip)"
+else
+   echo "Invalid FORK=$APP" >&2
+   exit 1
+fi
+
+if [ -z "$mysqld_check" ]; then
    echo "$MYSQL_BASE_DIR/bin/mysqld does not execute" >&2
    exit 1
 fi
@@ -102,7 +112,7 @@ if [ $APP = "mysql" ]; then
 elif [ $APP = "pxc" ]; then
    sandbox/test-env start cluster || exit 1
 else
-   echo "Invalid APP=$app" >&2
+   echo "Invalid FORK=$app" >&2
    exit 1
 fi
 
