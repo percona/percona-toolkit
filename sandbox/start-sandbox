@@ -223,12 +223,16 @@ elif [ -x "$PERCONA_TOOLKIT_SANDBOX/libexec/mysqld" ]; then
 else
    die "Cannot find executable mysqld in $PERCONA_TOOLKIT_SANDBOX/bin, $PERCONA_TOOLKIT_SANDBOX/sbin or $PERCONA_TOOLKIT_SANDBOX/libexec."
 fi
-if [ $type != "cluster" ]; then
-   version=`$PERCONA_TOOLKIT_SANDBOX/$mysqld -V 2>/dev/null | awk '{print $3}' | cut -d. -f 1,2`;
-else
+
+APP="${FORK:-"mysql"}"
+
+if [ $type = "cluster" -o $APP = "pxc" ]; then
    ip=$(perl -MNet::Address::IP::Local -le 'print Net::Address::IP::Local->public')
    version=`$PERCONA_TOOLKIT_SANDBOX/$mysqld -V --bind-address $ip 2>/dev/null | awk '{print $3}' | cut -d. -f 1,2`;
+else
+   version=`$PERCONA_TOOLKIT_SANDBOX/$mysqld -V 2>/dev/null | awk '{print $3}' | cut -d. -f 1,2`;
 fi
+
 if [ ! -d "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version" ]; then
    die "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version does not exist."
 fi

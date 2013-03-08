@@ -81,7 +81,7 @@ sub start_update_instance {
       exit 1;
    }
    push @exec_pids, $pid;
-   
+
    PerconaTest::wait_for_files($pidfile);
    ok(
       -f $pidfile,
@@ -235,11 +235,11 @@ my ($slave_dbh, $slave_dsn) = $sb->start_sandbox(
    server => 'cslave1',
    type   => 'slave',
    master => 'node1',
-   env    => q/BINLOG_FORMAT="ROW"/,
+   env    => q/FORK="pxc" BINLOG_FORMAT="ROW"/,
 );
 
 $sb->create_dbs($slave_dbh, ['test']);
-
+$sb->wait_for_slaves(master => 'node1', slave => 'cslave1');
 start_update_instance($sb->port_for('cslave1'));
 PerconaTest::wait_for_table($slave_dbh, "test.heartbeat", "1=1");
 
@@ -292,31 +292,37 @@ like(
 my ($master_dbh, $master_dsn) = $sb->start_sandbox(
    server => 'cmaster',
    type   => 'master',
-   env    => q/BINLOG_FORMAT="ROW"/,
+   env    => q/FORK="pxc" BINLOG_FORMAT="ROW"/,
 );
 
 my $cmaster_port = $sb->port_for('cmaster');
 
 $sb->create_dbs($master_dbh, ['test']);
-
+$master_dbh->do("INSERT INTO percona_test.sentinel (id, ping) VALUES (1, '')");
 $master_dbh->do("FLUSH LOGS");
 $master_dbh->do("RESET MASTER");
 
 $sb->set_as_slave('node1', 'cmaster');
+$sb->wait_for_slaves(master => 'cmaster', slave => 'node1');
 
 start_update_instance($sb->port_for('cmaster'));
 PerconaTest::wait_for_table($node1, "test.heartbeat", "server_id=$cmaster_port");
 
-$output = output(sub{
-      pt_heartbeat::main($node1_dsn, qw(-D test --check --print-master-server-id)),
-   },
+# Auto-detecting the master id only works when ran on node1, the direct
+# slave of the master, because other nodes aren't slaves, but this could
+# be made to work; see the node autodiscovery branch.
+$output = output(
+   sub {
+      pt_heartbeat::main($node1_dsn,
+         qw(-D test --check --print-master-server-id)
+   )},
    stderr => 1,
 );
 
 like(
    $output,
    qr/^\d.\d{2} $cmaster_port$/,
-   "--print-master-id works for master -> $node1_port, when run from $node1_port"
+   "Auto-detect master ID from node1"
 );
 
 # Wait until node2 & node3 get cmaster in their heartbeat tables
@@ -324,38 +330,39 @@ $sb->wait_for_slaves(master => 'node1', slave => 'node2');
 $sb->wait_for_slaves(master => 'node1', slave => 'node3');
 
 foreach my $test (
-   [ $node2_port, $node2_dsn, $node2 ],
-   [ $node3_port, $node3_dsn, $node3 ],
+   [ $node2_port, $node2_dsn, $node2, 'node2' ],
+   [ $node3_port, $node3_dsn, $node3, 'node3' ],
 ) {
-   my ($port, $dsn, $dbh) = @$test;
+   my ($port, $dsn, $dbh, $name) = @$test;
    
-   $output = output(sub{
-         pt_heartbeat::main($dsn, qw(-D test --check --print-master-server-id)),
-      },
+   $output = output(
+      sub {
+         pt_heartbeat::main($dsn,
+            qw(-D test --check --print-master-server-id)
+      )},
       stderr => 1,
    );
 
-   # This could be made to work, see the node autodiscovery branch
-   TODO: {
-      local $::TODO = "cmaster -> node1, other nodes can't autodetect the master";
-      like(
-         $output,
-         qr/$cmaster_port/,
-         "--print-master-id works for master -> $node1_port, when run from $port"
-      );
-   }
+   like(
+      $output,
+      qr/server's master could not be automatically determined/,
+      "Limitation: cannot auto-detect master id from $name"
+   );
 
-   $output = output(sub{
-         pt_heartbeat::main($dsn, qw(-D test --check --master-server-id), $cmaster_port),
-      },
+   $output = output(
+      sub {
+         pt_heartbeat::main($dsn,
+            qw(-D test --check --master-server-id), $cmaster_port
+      )},
       stderr => 1,
    );
 
    $output =~ s/\d\.\d{2}/0.00/g;
+
    is(
       $output,
       "0.00\n",
-      "--check + explicit --master-server-id work for master -> node1, run from $port"
+      "$name --check --master-server-id $cmaster_port"
    );
 }
 
