@@ -119,7 +119,7 @@ ok(
    $exit,
    "wsrep_OSU_method=RSU: non-zero exit"
 ) or diag($output);
-print $output;
+
 like(
    $output,
    qr/wsrep_OSU_method=TOI is required.+?currently set to RSU/,
@@ -132,6 +132,56 @@ is_deeply(
    [qw(wsrep_OSU_method TOI)],
    "Restored wsrep_OSU_method=TOI"
 ) or BAIL_OUT("Failed to restore wsrep_OSU_method=TOI");
+
+# #############################################################################
+# master -> cluster, run on master on table with foreign keys.
+# #############################################################################
+
+# CAREFUL: The master and the cluster are different, so don't do stuff
+# on the master that will conflict with stuff already done on the cluster.
+# And since we're using RBR, we have to do a lot of stuff on the master
+# again, manually, because REPLACE and INSERT IGNORE don't work in RBR
+# like they do SBR.
+
+my ($master_dbh, $master_dsn) = $sb->start_sandbox(
+   server => 'cmaster',
+   type   => 'master',
+   env    => q/FORK="pxc" BINLOG_FORMAT="ROW"/,
+);
+
+$sb->set_as_slave('node1', 'cmaster');
+
+$sb->load_file('cmaster', "$sample/basic_with_fks.sql", undef, no_wait => 1);
+
+$master_dbh->do("SET SESSION binlog_format=STATEMENT");
+$master_dbh->do("REPLACE INTO percona_test.sentinel (id, ping) VALUES (1, '')");
+$sb->wait_for_slaves(master => 'cmaster', slave => 'node1');
+
+($output, $exit) = full_output(
+   sub { pt_online_schema_change::main(
+      "$master_dsn,D=pt_osc,t=city",
+      qw(--print --execute --alter-foreign-keys-method drop_swap),
+      '--alter', 'DROP COLUMN last_update'
+   )},
+   stderr => 1,
+);
+
+my $rows = $node1->selectrow_hashref("SHOW SLAVE STATUS");
+is(
+   $rows->{last_error},
+   "",
+   "Alter table with foreign keys on master replicating to cluster"
+) or diag(Dumper($rows), $output);
+
+is(
+   $exit,
+   0,
+   "... exit 0"
+) or diag($output);
+
+$sb->stop_sandbox(qw(cmaster));
+$node1->do("STOP SLAVE");
+$node1->do("RESET SLAVE");
 
 # #############################################################################
 # Done.
