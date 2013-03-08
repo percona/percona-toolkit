@@ -183,7 +183,7 @@ my ($slave_dbh, $slave_dsn) = $sb->start_sandbox(
    server => 'cslave1',
    type   => 'slave',
    master => 'node1',
-   env    => q/BINLOG_FORMAT="ROW"/,
+   env    => q/FORK="pxc" BINLOG_FORMAT="ROW"/,
 );
 
 # Add the slave to the DSN table.
@@ -251,7 +251,7 @@ $sb->stop_sandbox('cslave1');
    server => 'cslave1',
    type   => 'slave',
    master => 'node2',
-   env    => q/BINLOG_FORMAT="ROW"/,
+   env    => q/FORK="pxc" BINLOG_FORMAT="ROW"/,
 );
 
 # Wait for the slave to apply the binlogs from node2 (its master).
@@ -300,7 +300,7 @@ $node1->do(qq/DELETE FROM dsns.dsns WHERE id=4/);
 my ($master_dbh, $master_dsn) = $sb->start_sandbox(
    server => 'cmaster',
    type   => 'master',
-   env    => q/BINLOG_FORMAT="ROW"/,
+   env    => q/FORK="pxc" BINLOG_FORMAT="ROW"/,
 );
 
 # Since master is new, node1 shouldn't have binlog to replay.
