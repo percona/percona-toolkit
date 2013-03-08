@@ -39,7 +39,9 @@ tar xvfz "$tarball" \
    "$full_dir/bin/mysqld" \
    "$full_dir/bin/mysqld_safe" \
    "$full_dir/bin/safe_mysqld" \
-   "$full_dir/lib/libgalera_smm.so"
+   "$full_dir/lib/libgalera_smm.so" \
+   "$full_dir/bin/clustercheck" \
+   "$full_dir/bin/wsrep*"
 
 echo "This tarball was created from $tarball.  It contains only the files necessary for creating a Percona Toolkit sandbox test server." > $full_dir/README.barebones
 
