@@ -50,7 +50,6 @@ make_sandbox() {
    if [ "${type}" = "cluster" ]; then
       cp $PERCONA_TOOLKIT_BRANCH/sandbox/servers/pxc/$version/my.sandbox.cnf /tmp/$port
 
-      local ip="$(perl -MNet::Address::IP::Local -le 'print Net::Address::IP::Local->public')"
       local libgalera="$PERCONA_TOOLKIT_SANDBOX/lib/libgalera_smm.so"
       local cluster_name="${CLUSTER_NAME:-"pt_sandbox_cluster"}"
       local cluster_address="gcomm://"
@@ -143,7 +142,6 @@ make_sandbox() {
 
    /tmp/$port/use -e "CREATE DATABASE IF NOT EXISTS percona_test";
    /tmp/$port/use -e "CREATE TABLE IF NOT EXISTS percona_test.sentinel (id INT PRIMARY KEY, ping VARCHAR(64) NOT NULL DEFAULT '')";
-   /tmp/$port/use -e "REPLACE INTO percona_test.sentinel (id, ping) VALUES (1, '')";
 
    if [ -n "${MYSQL_UPGRADE:-""}" ]; then
       mysql_upgrade_on /tmp/$port/my.sandbox.cnf
@@ -225,7 +223,16 @@ elif [ -x "$PERCONA_TOOLKIT_SANDBOX/libexec/mysqld" ]; then
 else
    die "Cannot find executable mysqld in $PERCONA_TOOLKIT_SANDBOX/bin, $PERCONA_TOOLKIT_SANDBOX/sbin or $PERCONA_TOOLKIT_SANDBOX/libexec."
 fi
-version=`$PERCONA_TOOLKIT_SANDBOX/$mysqld -V 2>/dev/null | awk '{print $3}' | cut -d. -f 1,2`;
+
+APP="${FORK:-"mysql"}"
+
+if [ $type = "cluster" -o $APP = "pxc" ]; then
+   ip=$(perl -MNet::Address::IP::Local -le 'print Net::Address::IP::Local->public')
+   version=`$PERCONA_TOOLKIT_SANDBOX/$mysqld -V --bind-address $ip 2>/dev/null | awk '{print $3}' | cut -d. -f 1,2`;
+else
+   version=`$PERCONA_TOOLKIT_SANDBOX/$mysqld -V 2>/dev/null | awk '{print $3}' | cut -d. -f 1,2`;
+fi
+
 if [ ! -d "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version" ]; then
    die "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version does not exist."
 fi
