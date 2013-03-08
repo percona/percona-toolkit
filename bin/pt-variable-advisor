@@ -5790,6 +5790,12 @@ runs SET NAMES UTF8 after connecting to MySQL.  Any other value sets
 binmode on STDOUT without the utf8 layer, and runs SET NAMES after
 connecting to MySQL.
 
+=item --database
+
+short form: -D; type: string
+
+Connect to this database.
+
 =item --config
 
 type: Array
