@@ -341,7 +341,7 @@ sub wait_for_slaves {
       sub {
          my ($pong) = $slave2_dbh->selectrow_array(
             "SELECT ping FROM percona_test.sentinel WHERE id=1 /* wait_for_slaves */");
-         return $ping eq $pong;
+         return $ping eq ($pong || '');
       }, undef, 300
    );
 }

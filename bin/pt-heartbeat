@@ -5395,7 +5395,7 @@ pt-heartbeat - Monitor MySQL replication delay.
 
 =head1 SYNOPSIS
 
-Usage: pt-heartbeat [OPTION...] [DSN] --update|--monitor|--check|--stop
+Usage: pt-heartbeat [OPTIONS] [DSN] --update|--monitor|--check|--stop
 
 pt-heartbeat measures replication lag on a MySQL or PostgreSQL server.  You can
 use it to update a master or monitor a replica.  If possible, MySQL connection

@@ -146,7 +146,7 @@ is_deeply(
 my ($master_dbh, $master_dsn) = $sb->start_sandbox(
    server => 'cmaster',
    type   => 'master',
-   env    => q/BINLOG_FORMAT="ROW"/,
+   env    => q/FORK="pxc" BINLOG_FORMAT="ROW"/,
 );
 
 $sb->set_as_slave('node1', 'cmaster');
