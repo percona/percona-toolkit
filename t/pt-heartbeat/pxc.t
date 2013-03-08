@@ -115,11 +115,13 @@ is(
    "Sanity check: All nodes are in the heartbeat table"
 );
 
+# These values may be 0 or '' depending on whether or not a previous test
+# turned 12345 into a slave or not.  For this purpose 0 == undef == ''.
 my $only_slave_data = {
    map {
       $_ => {
-         relay_master_log_file => $rows->{$_}->{relay_master_log_file},
-         exec_master_log_pos   => $rows->{$_}->{exec_master_log_pos},
+         relay_master_log_file => $rows->{$_}->{relay_master_log_file} || undef,
+         exec_master_log_pos   => $rows->{$_}->{exec_master_log_pos}   || undef,
       } } keys %$rows
 };
 
