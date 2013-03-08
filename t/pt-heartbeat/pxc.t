@@ -134,7 +134,7 @@ is_deeply(
       12347 => $same_data,
    },
    "Sanity check: No slave data (relay log or master pos) is stored"
-);
+) or diag(Dumper($rows));
 
 $output = output(sub{
       pt_heartbeat::main($node1_dsn, qw(-D test --check)),
