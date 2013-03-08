@@ -13429,6 +13429,12 @@ to SELECT statements, executed and compared.
 For example, C<DELETE col FROM tbl WHERE id=1> is converted to
 C<SELECT col FROM tbl WHERE id=1>.
 
+=item --database
+
+short form: -D; type: string
+
+Connect to this database.
+
 =item --daemonize
 
 Fork to the background and detach from the shell.  POSIX

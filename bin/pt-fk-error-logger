@@ -4114,6 +4114,12 @@ type: Array
 Read this comma-separated list of config files; if specified, this must be the
 first option on the command line.
 
+=item --database
+
+short form: -D; type: string
+
+Connect to this database.
+
 =item --daemonize
 
 Fork to the background and detach from the shell.  POSIX operating systems only.
