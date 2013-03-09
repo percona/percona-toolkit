@@ -1474,12 +1474,12 @@ pt-stalk - Gather forensic data about MySQL when a problem occurs.
 
 =head1 SYNOPSIS
 
-Usage: pt-stalk [OPTIONS] [-- EXTRA MYSQL OPTIONS]
+Usage: pt-stalk [OPTIONS]
 
 pt-stalk watches for a trigger condition to become true, and then collects data
-to help in diagnosing problems. It is designed to run as a daemon with root
+to help in diagnosing problems.  It is designed to run as a daemon with root
 privileges, so that you can diagnose intermittent problems that you cannot
-observe directly. You can also use it to execute a custom command, or to gather
+observe directly.  You can also use it to execute a custom command, or to gather
 the data on demand without waiting for the trigger to happen.
 
 =head1 RISKS
@@ -1648,6 +1648,13 @@ to fire when the problem recovers quickly.
 Daemonize the tool.  This causes the tool to fork into the background and log
 its output as specified in --log.
 
+=item --defaults-file
+
+short form: -F; type: string
+
+Only read mysql options from the given file.  You must give an absolute
+pathname.
+
 =item --dest
 
 type: string; default: /var/lib/pt-stalk
@@ -1744,6 +1751,12 @@ plugin-specific global variables with "PLUGIN_" or make them local.
 
 Print help and exit.
 
+=item --host
+
+short form: -h; type: string
+
+Host to connect to.
+
 =item --interval
 
 type: int; default: 1
@@ -1776,6 +1789,12 @@ L<"--function"> for details.
 type: string
 
 Send mail to this list of addresses when data is collected.
+
+=item --password
+
+short form: -p; type: string
+
+Password to use when connecting.
 
 =item --pid
 
@@ -1847,6 +1866,12 @@ Plugins can stop the tool by setting the global variable C<OKTORUN>
 to C<1>.  In this case, the global variable C<EXIT_REASON> should also
 be set to indicate why the tool was stopped.
 
+=item --port
+
+short form: -P; type: int
+
+Port number to use for connection.
+
 =item --prefix 
 
 type: string
@@ -1892,6 +1917,12 @@ continuously, which might be a problem if the collection process is intrusive.
 It also prevents filling up the disk or gathering too much data to analyze
 reasonably.
 
+=item --socket
+
+short form: -S; type: string
+
+Socket file to use for connection.
+
 =item --stalk
 
 default: yes; negatable: yes
@@ -1914,6 +1945,12 @@ type: int; default: 25
 
 The threshold at which the diagnostic trigger should fire.  See L<"--function">
 for details.
+
+=item --user
+
+short form: -u; type: string
+
+User for login if not current user.
 
 =item --variable
 
@@ -1940,43 +1977,6 @@ want to use a higher verbosity level.
 =item --version
 
 Print tool's version and exit.
-
-=item --defaults-file
-
-short form: -F; type: string
-
-Only read mysql options from the given file.  You must give an absolute
-pathname.
-
-=item --host
-
-short form: -h; type: string
-
-Host to connect to.
-
-=item --password
-
-short form: -p; type: string
-
-Password to use when connecting.
-
-=item --port
-
-short form: -P; type: int
-
-Port number to use for connection.
-
-=item --socket
-
-short form: -S; type: string
-
-Socket file to use for connection.
-
-=item --user
-
-short form: -u; type: string
-
-User for login if not current user.
 
 =back
 
