@@ -916,9 +916,9 @@ the result. If you specify a FILE, then step 1) is not performed.
 
 =head1 RISKS
 
-Percona Toolkit is mature, proven in the real world, and well tested,
-but all database tools can pose a risk to the system and the database
-server.  Before using this tool, please:
+B<WARNING>: pt-ioprofile freezes the server and may crash the process, or
+make it perform badly after detaching, or leave it in a sleeping state!
+Before using this tool, please:
 
 =over
 
@@ -929,6 +929,9 @@ server.  Before using this tool, please:
 =item * Test the tool on a non-production server
 
 =item * Backup your production server and verify the backups
+
+pt-ioprofile should be considered an intrusive tool, and should not be used
+on production servers unless you understand and accept the risks.
 
 =back
 
@@ -944,6 +947,14 @@ process for 30 seconds.  The output is like:
     0.000150   0.000029   0.000068   0.000038   0.000015 /tmp/ibBE5opS
 
 You probably need to run this tool as root.
+
+pt-ioprofile works by attaching C<strace> to the process using C<ptrace()>,
+which will make it run very slowly until C<strace> detaches.  In addition to
+freezing the server, there is some risk of the process crashing or performing
+badly after C<strace> detaches from it, or of C<strace> not detaching cleanly
+and leaving the process in a sleeping state.  As a result, this should be
+considered an intrusive tool, and should not be used on production servers
+unless you are comfortable with that.
 
 =head1 OPTIONS
 

@@ -11337,7 +11337,7 @@ through replication and change master1's data:
 
 =head1 RISKS
 
-C<WARNING>: pt-table-sync changes data!  Before using this tool, please:
+B<WARNING>: pt-table-sync changes data!  Before using this tool, please:
 
 =over
 
