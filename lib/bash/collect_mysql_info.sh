@@ -43,7 +43,6 @@ collect_mysqld_instances () {
          echo "internal::oom_of_$pid    $oom" >> "$variables_file"
       done
 
-      pids="$pids"
       pids="$(echo $pids | sed -e 's/ /,/g')"
       ps ww -p "$pids" 2>/dev/null
    else
@@ -201,8 +200,13 @@ get_mysqldump_args () {
 collect_mysqld_executables () {
    local mysqld_instances="$1"
 
+   local ps_opt="cmd="
+   if [ "$(uname -s)" = "Darwin" ]; then
+      ps_opt="command="
+   fi
+
    for pid in $( grep '/mysqld' "$mysqld_instances" | awk '/^.*[0-9]/{print $1}' ); do
-      ps -o cmd -p $pid | sed -e 's/^\(.*mysqld\) .*/\1/' | grep -v '^CMD$'
+      ps -o $ps_opt -p $pid | sed -e 's/^\(.*mysqld\) .*/\1/'
    done | sort -u
 }
 
