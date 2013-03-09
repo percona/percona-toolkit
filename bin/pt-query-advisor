@@ -8817,7 +8817,7 @@ pt-query-advisor - Analyze queries and advise on possible problems.
 
 =head1 SYNOPSIS
 
-Usage: pt-query-advisor [OPTION...] [FILE]
+Usage: pt-query-advisor [OPTIONS] [FILE]
 
 pt-query-advisor analyzes queries and advises on possible problems. It can read
 queries from several types of log files, or you can use the --query or --review
@@ -8829,21 +8829,21 @@ To analyze all queries in a MySQL slow query log file:
 
 =head1 RISKS
 
-The following section is included to inform users about the potential risks,
-whether known or unknown, of using this tool.  The two main categories of risks
-are those created by the nature of the tool (e.g. read-only tools vs. read-write
-tools) and those created by bugs.
+Percona Toolkit is mature, proven in the real world, and well tested,
+but all database tools can pose a risk to the system and the database
+server.  Before using this tool, please:
 
-pt-query-advisor simply reads queries and examines them, and is thus
-very low risk. At the time of this release we know of no issues that could harm
-users.
+=over
 
-The authoritative source for updated information is always the online issue
-tracking system.  Issues that affect this tool will be marked as such.  You can
-see a list of such issues at the following URL:
-L<http://www.percona.com/bugs/pt-query-advisor>.
+=item * Read the tool's documentation
 
-See also L<"BUGS"> for more information on filing bugs and getting help.
+=item * Review the tool's known L<"BUGS">
+
+=item * Test the tool on a non-production server
+
+=item * Backup your production server and verify the backups
+
+=back
 
 =head1 DESCRIPTION
 
