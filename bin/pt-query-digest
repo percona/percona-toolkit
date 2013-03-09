@@ -14945,10 +14945,11 @@ MAGIC_create_history_table
    InnoDB_pages_distinct_pct_95  FLOAT,
    InnoDB_pages_distinct_stddev  FLOAT,
    InnoDB_pages_distinct_median  FLOAT,
-   -- Boolean (Yes/No) attributes.  Only the cnt and sum are needed for these.
-   -- cnt is how many times is attribute was recorded and sum is how many of
-   -- those times the value was Yes.  Therefore sum/cnt * 100 = % of recorded
-   -- times that the value was Yes.
+   -- Boolean (Yes/No) attributes.  Only the cnt and sum are needed
+   -- for these.  cnt is how many times is attribute was recorded,
+   -- and sum is how many of those times the value was Yes.  So
+   -- sum/cnt * 100 equals the percentage of recorded times that
+   -- the value was Yes.
    QC_Hit_cnt          FLOAT,
    QC_Hit_sum          FLOAT,
    Full_scan_cnt       FLOAT,
@@ -15219,8 +15220,8 @@ like:
   #  10us
   # 100us
   #   1ms
-  #  10ms  ################################
-  # 100ms  ################################################################
+  #  10ms  ###########################
+  # 100ms  ########################################################
   #    1s  ########
   #  10s+
 
@@ -15677,7 +15678,7 @@ Socket file to use for connection.
 
 =item * t
 
-Not used.
+The L<"--review"> or L<"--history"> table.
 
 =item * u
 
@@ -15834,8 +15835,7 @@ need to look at the log file to see which events are available, but remember:
 not all events have the same attributes.
 
 Percona Server adds many attributes to the slow log; see
-http://www.percona.com/doc/percona-server/5.1/diagnostics/slow_extended.html#changes-to-the-log-format
-for more information.
+http://www.percona.com/docs/wiki/patches:slow_extended for more information.
 
 =head2 TCPDUMP
 
@@ -15876,7 +15876,7 @@ the process ID, in addition to the common attributes.
 
 =head1 AUTHORS
 
-Baron Schwartz, Daniel Nichter, and Brian Fraser.
+Baron Schwartz, Daniel Nichter, and Brian Fraser
 
 =head1 ABOUT PERCONA TOOLKIT
 
