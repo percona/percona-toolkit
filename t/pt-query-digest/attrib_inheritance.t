@@ -20,13 +20,13 @@ my $run_with = "$trunk/bin/pt-query-digest --report-format=query_report --limit 
 # pipeline
 # #############################################################################
 ok(
-   no_diff($run_with.'slow034.txt --no-report --print', "t/pt-query-digest/samples/slow034-inheritance.txt"),
+   no_diff($run_with.'slow034.txt --no-report --output slowlog', "t/pt-query-digest/samples/slow034-inheritance.txt"),
    'Analysis for slow034 with inheritance'
 );
 
 # Make sure we can turn off some default inheritance, 'ts' in this test.
 ok(
-   no_diff($run_with.'slow034.txt --no-report --print --inherit-attributes db', "t/pt-query-digest/samples/slow034-no-ts-inheritance.txt"),
+   no_diff($run_with.'slow034.txt --no-report --output slowlog --inherit-attributes db', "t/pt-query-digest/samples/slow034-no-ts-inheritance.txt"),
    'Analysis for slow034 without default ts inheritance'
 );
 

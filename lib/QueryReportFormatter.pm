@@ -113,8 +113,7 @@ sub BUILDARGS {
    my $self = {
       %$args,
       options        => {
-         show_all         => $o->get('show-all'),
-         shorten          => $o->get('shorten'),
+         shorten          => 1024,
          report_all       => $o->get('report-all'),
          report_histogram => $o->get('report-histogram'),
       },
@@ -271,10 +270,7 @@ sub header {
    push @result, $self->make_global_header();
 
    # Sort the attributes, removing any hidden attributes.
-   my $attribs = $self->sort_attribs(
-      ($args{select} ? $args{select} : $ea->get_attributes()),
-      $ea,
-   );
+   my $attribs = $self->sort_attribs( $ea );
 
    foreach my $type ( qw(num innodb) ) {
       # Add "InnoDB:" sub-header before grouped InnoDB_* attributes.
@@ -414,10 +410,7 @@ sub query_report {
    }
 
    # Sort the attributes, removing any hidden attributes.
-   my $attribs = $self->sort_attribs(
-      ($args{select} ? $args{select} : $ea->get_attributes()),
-      $ea,
-   );
+   my $attribs = $self->sort_attribs( $ea );
 
    # Print each worst item: its stats/metrics (sum/min/max/95%/etc.),
    # Query_time distro chart, tables, EXPLAIN, fingerprint, etc.
@@ -584,10 +577,7 @@ sub event_report_values {
    # will sort and pass the attribs so they're not for every event.
    my $attribs = $args{attribs};
    if ( !$attribs ) {
-      $attribs = $self->sort_attribs(
-         ($args{select} ? $args{select} : $ea->get_attributes()),
-         $ea
-      );
+      $attribs = $self->sort_attribs( $ea );
    }
 
    $vals{attributes} = { map { $_ => [] } qw(num innodb bool string) };
@@ -1124,7 +1114,6 @@ sub bool_percents {
 # Does pretty-printing for lists of strings like users, hosts, db.
 sub format_string_list {
    my ( $self, $attrib, $vals, $class_cnt ) = @_;
-   my $show_all = $self->{options}->{show_all};
 
    # Only class result values have unq.  So if unq doesn't exist,
    # then we've been given global values.
@@ -1157,9 +1146,6 @@ sub format_string_list {
       }
       my $p = percentage_of($cnt_for->{$str}, $class_cnt);
       $print_str .= " ($cnt_for->{$str}/$p%)";
-      if ( !$show_all->{$attrib} ) {
-         last if (length $line) + (length $print_str)  > LINE_LENGTH - 27;
-      }
       $line .= "$print_str, ";
       $i++;
    }
@@ -1174,7 +1160,8 @@ sub format_string_list {
 }
 
 sub sort_attribs {
-   my ( $self, $attribs, $ea ) = @_;
+   my ( $self, $ea ) = @_;
+   my $attribs = $ea->get_attributes();
    return unless $attribs && @$attribs;
    PTDEBUG && _d("Sorting attribs:", @$attribs);
 

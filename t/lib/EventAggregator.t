@@ -1526,11 +1526,14 @@ ok(
    'New event class has new attrib; default unroll_limit(issue 514)'
 );
 
-$ea = new EventAggregator(
-   groupby      => 'arg',
-   worst        => 'Query_time',
-   unroll_limit => 50,
-);
+$ea = do {
+   local $ENV{PT_QUERY_DIGEST_CHECK_ATTRIB_LIMIT} = 50;
+   new EventAggregator(
+      groupby      => 'arg',
+      worst        => 'Query_time'
+   );
+};
+
 parse_file('t/lib/samples/slowlogs/slow030.txt', $p, $ea);
 ok(
    !exists $ea->{unrolled_for}->{InnoDB_rec_lock_wait},
