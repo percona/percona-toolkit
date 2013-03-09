@@ -6975,18 +6975,21 @@ FILE is specified, it reads STDIN.  It prints a report for each query.
 
 =head1 RISKS
 
-pt-table-use is very low risk. By default, it simply reads queries from a log.
-It executes C<EXPLAIN EXTENDED> if you specify the L<"--explain-extended">
-option.
+Percona Toolkit is mature, proven in the real world, and well tested,
+but all database tools can pose a risk to the system and the database
+server.  Before using this tool, please:
 
-At the time of this release, we know of no bugs that could harm users.
+=over
 
-The authoritative source for updated information is always the online issue
-tracking system.  Issues that affect this tool will be marked as such.  You can
-see a list of such issues at the following URL:
-L<http://www.percona.com/bugs/pt-table-usage>.
+=item * Read the tool's documentation
 
-See also L<"BUGS"> for more information on filing bugs and getting help.
+=item * Review the tool's known L<"BUGS">
+
+=item * Test the tool on a non-production server
+
+=item * Backup your production server and verify the backups
+
+=back
 
 =head1 DESCRIPTION
 

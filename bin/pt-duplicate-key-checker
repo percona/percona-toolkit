@@ -5038,7 +5038,7 @@ pt-duplicate-key-checker - Find duplicate indexes and foreign keys on MySQL tabl
 
 =head1 SYNOPSIS
 
-Usage: pt-duplicate-key-checker [OPTION...] [DSN]
+Usage: pt-duplicate-key-checker [OPTIONS] [DSN]
 
 pt-duplicate-key-checker examines MySQL tables for duplicate or redundant
 indexes and foreign keys.  Connection options are read from MySQL option files.
@@ -5047,23 +5047,21 @@ indexes and foreign keys.  Connection options are read from MySQL option files.
 
 =head1 RISKS
 
-The following section is included to inform users about the potential risks,
-whether known or unknown, of using this tool.  The two main categories of risks
-are those created by the nature of the tool (e.g. read-only tools vs. read-write
-tools) and those created by bugs.
+Percona Toolkit is mature, proven in the real world, and well tested,
+but all database tools can pose a risk to the system and the database
+server.  Before using this tool, please:
 
-pt-duplicate-key-checker is a read-only tool that executes SHOW CREATE TABLE and
-related queries to inspect table structures, and thus is very low-risk.
+=over
 
-At the time of this release, there is an unconfirmed bug that causes the tool
-to crash.
+=item * Read the tool's documentation
 
-The authoritative source for updated information is always the online issue
-tracking system.  Issues that affect this tool will be marked as such.  You can
-see a list of such issues at the following URL:
-L<http://www.percona.com/bugs/pt-duplicate-key-checker>.
+=item * Review the tool's known L<"BUGS">
 
-See also L<"BUGS"> for more information on filing bugs and getting help.
+=item * Test the tool on a non-production server
+
+=item * Backup your production server and verify the backups
+
+=back
 
 =head1 DESCRIPTION
 

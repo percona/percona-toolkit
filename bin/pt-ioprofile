@@ -916,29 +916,21 @@ the result. If you specify a FILE, then step 1) is not performed.
 
 =head1 RISKS
 
-The following section is included to inform users about the potential risks,
-whether known or unknown, of using this tool.  The two main categories of risks
-are those created by the nature of the tool (e.g. read-only tools vs. read-write
-tools) and those created by bugs.
+Percona Toolkit is mature, proven in the real world, and well tested,
+but all database tools can pose a risk to the system and the database
+server.  Before using this tool, please:
 
-pt-ioprofile is a read-only tool, so your data is not at risk. However, it works
-by attaching C<strace> to the process using C<ptrace()>, which will make it run
-very slowly until C<strace> detaches.  In addition to freezing the server, there
-is also some risk of the process crashing or performing badly after C<strace>
-detaches from it, or indeed of C<strace> not detaching cleanly and leaving the
-process in a sleeping state.  As a result, this should be considered an
-intrusive tool, and should not be used on production servers unless you are
-comfortable with that.
+=over
 
-At the time of this release, we know of no bugs that could cause serious harm
-to users.
+=item * Read the tool's documentation
 
-The authoritative source for updated information is always the online issue
-tracking system.  Issues that affect this tool will be marked as such.  You can
-see a list of such issues at the following URL:
-L<http://www.percona.com/bugs/pt-ioprofile>.
+=item * Review the tool's known L<"BUGS">
 
-See also L<"BUGS"> for more information on filing bugs and getting help.
+=item * Test the tool on a non-production server
+
+=item * Backup your production server and verify the backups
+
+=back
 
 =head1 DESCRIPTION
 

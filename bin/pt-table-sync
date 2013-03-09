@@ -11288,19 +11288,19 @@ pt-table-sync - Synchronize MySQL table data efficiently.
 
 =head1 SYNOPSIS
 
-Usage: pt-table-sync [OPTION...] DSN [DSN...]
+Usage: pt-table-sync [OPTIONS] DSN [DSN]
 
 pt-table-sync synchronizes data efficiently between MySQL tables.
 
 This tool changes data, so for maximum safety, you should back up your data
-before you use it.  When synchronizing a server that is a replication slave with
-the --replicate or --sync-to-master methods, it B<always> makes the changes on
-the replication master, B<never> the replication slave directly.  This is in
-general the only safe way to bring a replica back in sync with its master;
-changes to the replica are usually the source of the problems in the first
-place.  However, the changes it makes on the master should be no-op changes that
-set the data to their current values, and actually affect only the replica.
-Please read the detailed documentation that follows to learn more about this.
+before using it.  When synchronizing a server that is a replication slave
+with the L<"--replicate"> or L<"--sync-to-master"> methods, it B<always>
+makes the changes on the replication master, B<never> the replication slave
+directly.  This is in general the only safe way to bring a replica back in
+sync with its master; changes to the replica are usually the source of the
+problems in the first place.  However, the changes it makes on the master
+should be no-op changes that set the data to their current values, and
+actually affect only the replica.
 
 Sync db.tbl on host1 to host2:
 
@@ -11337,41 +11337,23 @@ through replication and change master1's data:
 
 =head1 RISKS
 
-The following section is included to inform users about the potential risks,
-whether known or unknown, of using this tool.  The two main categories of risks
-are those created by the nature of the tool (e.g. read-only tools vs. read-write
-tools) and those created by bugs.
+C<WARNING>: pt-table-sync changes data!  Before using this tool, please:
 
-With great power comes great responsibility!  This tool changes data, so it is a
-good idea to back up your data.  It is also very powerful, which means it is
-very complex, so you should run it with the L<"--dry-run"> option to see what it
-will do, until you're familiar with its operation.  If you want to see which
-rows are different, without changing any data, use L<"--print"> instead of
-L<"--execute">.  
+=over
 
-Be careful when using pt-table-sync in any master-master setup.  Master-master
-replication is inherently tricky, and it's easy to make mistakes.  You need to
-be sure you're using the tool correctly for master-master replication.  See the
-L<"SYNOPSIS"> for the overview of the correct usage.
+=item * Read the tool's documentation
 
-Also be careful with tables that have foreign key constraints with C<ON DELETE>
-or C<ON UPDATE> definitions because these might cause unintended changes on the
-child tables.
+=item * Review the tool's known L<"BUGS">
 
-In general, this tool is best suited when your tables have a primary key or
-unique index.  Although it can synchronize data in tables lacking a primary key
-or unique index, it might be best to synchronize that data by another means.
+=item * Test the tool on a non-production server
 
-At the time of this release, due to bugs in earlier versions of MySQL,
-L<"--lock-and-rename"> is disabled in versions earlier than 5.5. Consider
-using pt-online-schema-change instead.
+=item * Backup your production server and verify the backups
 
-The authoritative source for updated information is always the online issue
-tracking system.  Issues that affect this tool will be marked as such.  You can
-see a list of such issues at the following URL:
-L<http://www.percona.com/bugs/pt-table-sync>.
+pt-table-sync is mature, proven in the real world, and well tested,
+but if used improperly it can have adverse consequences.  Always test
+syncing first with L<"--dry-run"> and L<"--print">.
 
-See also L<"BUGS"> for more information on filing bugs and getting help.
+=back
 
 =head1 DESCRIPTION
 
@@ -11498,6 +11480,19 @@ statements:
 The tool rewrites queries to C<DELETE> and C<REPLACE> in this case.  This is
 automatically handled after the first index violation, so you don't have to
 worry about it.
+
+Be careful when using pt-table-sync in any master-master setup.  Master-master
+replication is inherently tricky, and it's easy to make mistakes.  You need to
+be sure you're using the tool correctly for master-master replication.  See the
+L<"SYNOPSIS"> for the overview of the correct usage.
+
+Also be careful with tables that have foreign key constraints with C<ON DELETE>
+or C<ON UPDATE> definitions because these might cause unintended changes on the
+child tables.
+
+In general, this tool is best suited when your tables have a primary key or
+unique index.  Although it can synchronize data in tables lacking a primary key
+or unique index, it might be best to synchronize that data by another means.
 
 =head1 REPLICATION SAFETY
 

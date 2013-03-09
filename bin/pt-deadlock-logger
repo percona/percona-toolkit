@@ -4879,25 +4879,21 @@ Save deadlocks on host1 to percona_schema.fke on host2:
 
 =head1 RISKS
 
-The following section is included to inform users about the potential risks,
-whether known or unknown, of using this tool.  The two main categories of risks
-are those created by the nature of the tool (e.g. read-only tools vs. read-write
-tools) and those created by bugs.
+Percona Toolkit is mature, proven in the real world, and well tested,
+but all database tools can pose a risk to the system and the database
+server.  Before using this tool, please:
 
-pt-deadlock-logger is a read-only tool unless you specify a L<"--dest"> table.
-In some cases polling SHOW INNODB STATUS too rapidly can cause extra load on the
-server.  If you're using it on a production server under very heavy load, you
-might want to set L<"--interval"> to 30 seconds or more.
+=over
 
-At the time of this release, we know of no bugs that could cause serious harm to
-users.
+=item * Read the tool's documentation
 
-The authoritative source for updated information is always the online issue
-tracking system.  Issues that affect this tool will be marked as such.  You can
-see a list of such issues at the following URL:
-L<http://www.percona.com/bugs/pt-deadlock-logger>.
+=item * Review the tool's known L<"BUGS">
 
-See also L<"BUGS"> for more information on filing bugs and getting help.
+=item * Test the tool on a non-production server
+
+=item * Backup your production server and verify the backups
+
+=back
 
 =head1 DESCRIPTION
 

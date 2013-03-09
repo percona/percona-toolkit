@@ -5175,22 +5175,21 @@ errors, and tries to restart replication if it stops.
 
 =head1 RISKS
 
-The following section is included to inform users about the potential risks,
-whether known or unknown, of using this tool.  The two main categories of risks
-are those created by the nature of the tool (e.g. read-only tools vs. read-write
-tools) and those created by bugs.
+Percona Toolkit is mature, proven in the real world, and well tested,
+but all database tools can pose a risk to the system and the database
+server.  Before using this tool, please:
 
-pt-slave-restart is a brute-force way to try to keep a slave server running when
-it is having problems with replication.  Don't be too hasty to use it unless you
-need to.  If you use this tool carelessly, you might miss the chance to really
-solve the slave server's problems.
+=over
 
-The authoritative source for updated information is always the online issue
-tracking system.  Issues that affect this tool will be marked as such.  You can
-see a list of such issues at the following URL:
-L<http://www.percona.com/bugs/pt-slave-restart>.
+=item * Read the tool's documentation
 
-See also L<"BUGS"> for more information on filing bugs and getting help.
+=item * Review the tool's known L<"BUGS">
+
+=item * Test the tool on a non-production server
+
+=item * Backup your production server and verify the backups
+
+=back
 
 =head1 DESCRIPTION
 

@@ -6474,7 +6474,7 @@ pt-archiver - Archive rows from a MySQL table into another table or a file.
 
 =head1 SYNOPSIS
 
-Usage: pt-archiver [OPTION...] --source DSN --where WHERE
+Usage: pt-archiver [OPTIONS] --source DSN --where WHERE
 
 pt-archiver nibbles records from a MySQL table.  The --source and --dest
 arguments use DSN syntax; if COPY is yes, --dest defaults to the key's value
@@ -6495,29 +6495,21 @@ Purge (delete) orphan rows from child table:
 
 =head1 RISKS
 
-The following section is included to inform users about the potential risks,
-whether known or unknown, of using this tool.  The two main categories of risks
-are those created by the nature of the tool (e.g. read-only tools vs. read-write
-tools) and those created by bugs.
+Percona Toolkit is mature, proven in the real world, and well tested,
+but all database tools can pose a risk to the system and the database
+server.  Before using this tool, please:
 
-pt-archiver is a read-write tool.  It deletes data from the source by default,
-so you should test your archiving jobs with the L<"--dry-run"> option if
-you're not sure about them.  It is designed to have as little impact on
-production systems as possible, but tuning with L<"--limit">, L<"--txn-size">
-and similar options might be a good idea too.
+=over
 
-If you write or use L<"--plugin"> modules, you should ensure they are good
-quality and well-tested. 
+=item * Read the tool's documentation
 
-At the time of this release there is an unverified bug with
-L<"--bulk-insert"> that may cause data loss.
+=item * Review the tool's known L<"BUGS">
 
-The authoritative source for updated information is always the online issue
-tracking system.  Issues that affect this tool will be marked as such.  You can
-see a list of such issues at the following URL:
-L<http://www.percona.com/bugs/pt-archiver>.
+=item * Test the tool on a non-production server
 
-See also L<"BUGS"> for more information on filing bugs and getting help.
+=item * Backup your production server and verify the backups
+
+=back
 
 =head1 DESCRIPTION
 
