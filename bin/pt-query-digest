@@ -15099,7 +15099,7 @@ You can specify an --outliers option for each value in L<"--group-by">.
 
 type: string; default: report
 
-How to format and print the query analsis results.  Accepted values are:
+How to format and print the query analysis results.  Accepted values are:
 
    VALUE    FORMAT
    =======  ==============================
@@ -15110,6 +15110,9 @@ How to format and print the query analsis results.  Accepted values are:
 The entire C<report> output can be disabled by specifying C<--no-report>
 (see L<"--[no]report">), and its sections can be disabled or rearranged
 by specifying L<"--report-format">.
+
+C<json> output was introduced in 2.2.1 and is still in development,
+so the data structure may change in future versions.
 
 =item --password
 
