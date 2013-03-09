@@ -10888,28 +10888,23 @@ different, you can resolve the problem with pt-table-sync.
 
 =head1 RISKS
 
-The following section is included to inform users about the potential risks,
-whether known or unknown, of using this tool.  The two main categories of risks
-are those created by the nature of the tool (e.g. read-only tools vs. read-write
-tools) and those created by bugs.
+Percona Toolkit is mature, proven in the real world, and well tested,
+but all database tools can pose a risk to the system and the database
+server.  Before using this tool, please:
 
-pt-table-checksum can add load to the MySQL server, although it has many
-safeguards to prevent this.  It inserts a small amount of data into a table that
-contains checksum results.  It has checks that, if disabled, can potentially
-cause replication to fail when unsafe replication options are used.  In short,
-it is safe by default, but it permits you to turn off its safety checks.
+=over
 
-The tool presumes that schemas and tables are identical on the master and
-all replicas.  Replication will break if, for example, a replica does not
-have a schema that exists on the master (and that schema is checksummed),
-or if the structure of a table on a replica is different than on the master.
+=item * Read the tool's documentation
 
-The authoritative source for updated information is always the online issue
-tracking system.  Issues that affect this tool will be marked as such.  You can
-see a list of such issues at the following URL:
-L<http://www.percona.com/bugs/pt-table-checksum>.
+=item * Review the tool's known L<"BUGS">
 
-See also L<"LIMITATIONS"> and L<"BUGS">.
+=item * Test the tool on a non-production server
+
+=item * Backup your production server and verify the backups
+
+=back
+
+See also L<"LIMITATIONS">.
 
 =head1 DESCRIPTION
 
@@ -11046,6 +11041,32 @@ can try something like the following:
   UPDATE checksums
    SET boundaries = COALESCE(CONCAT('id BETWEEN ', lower_boundary,
       ' AND ', upper_boundary), '1=1');
+
+=head1 LIMITATIONS
+
+=over
+
+=item Replicas using row-based replication
+
+pt-table-checksum requires statement-based replication, and it sets
+C<binlog_format=STATEMENT> on the master, but due to a MySQL limitation
+replicas do not honor this change.  Therefore, checksums will not replicate
+past any replicas using row-based replication that are masters for
+further replicas.
+
+The tool automatically checks the C<binlog_format> on all servers.
+See L<"--[no]check-binlog-format"> .
+
+(L<Bug 899415|https://bugs.launchpad.net/percona-toolkit/+bug/899415>)
+
+=item Schema and table differences
+
+The tool presumes that schemas and tables are identical on the master and
+all replicas.  Replication will break if, for example, a replica does not
+have a schema that exists on the master (and that schema is checksummed),
+or if the structure of a table on a replica is different than on the master.
+
+=back
 
 =head1 Percona XtraDB Cluster
 
@@ -12089,25 +12110,6 @@ of output.
 You need Perl, DBI, DBD::mysql, and some core packages that ought to be
 installed in any reasonably new version of Perl.
 
-=head1 LIMITATIONS
-
-=over
-
-=item Replicas using row-based replication
-
-pt-table-checksum requires statement-based replication, and it sets
-C<binlog_format=STATEMENT> on the master, but due to a MySQL limitation
-replicas do not honor this change.  Therefore, checksums will not replicate
-past any replicas using row-based replication that are masters for
-further replicas.
-
-The tool automatically checks the C<binlog_format> on all servers.
-See L<"--[no]check-binlog-format"> .
-
-(L<Bug 899415|https://bugs.launchpad.net/percona-toolkit/+bug/899415>)
-
-=back
-
 =head1 BUGS
 
 For a list of known bugs, see L<http://www.percona.com/bugs/pt-table-checksum>.
@@ -12162,11 +12164,11 @@ James Briggs, Martin Friebe, and Sergey Zhuravlev
 =head1 ABOUT PERCONA TOOLKIT
 
 This tool is part of Percona Toolkit, a collection of advanced command-line
-tools developed by Percona for MySQL support and consulting.  Percona Toolkit
-was forked from two projects in June, 2011: Maatkit and Aspersa.  Those
-projects were created by Baron Schwartz and developed primarily by him and
-Daniel Nichter, both of whom are employed by Percona.  Visit
-L<http://www.percona.com/software/> for more software developed by Percona.
+tools for MySQL developed by Percona.  Percona Toolkit was forked from two
+projects in June, 2011: Maatkit and Aspersa.  Those projects were created by
+Baron Schwartz and primarily developed by him and Daniel Nichter.  Visit
+L<http://www.percona.com/software/> to learn about other free, open-source
+software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
