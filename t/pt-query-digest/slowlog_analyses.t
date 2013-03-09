@@ -65,14 +65,6 @@ ok(
 
 ok(
    no_diff(
-      sub { pt_query_digest::main(@args, $sample.'slow001.txt', qw(--select Query_time)) },
-      "t/pt-query-digest/samples/slow001_select_report.txt"
-   ),
-   'Analysis for slow001 --select'
-);
-
-ok(
-   no_diff(
       sub { pt_query_digest::main(@args, $sample.'slow002.txt') },
       "t/pt-query-digest/samples/slow002_report.txt"
    ),
@@ -212,14 +204,6 @@ ok(
    '--zero-admin works'
 );
 
-ok(
-   no_diff(
-      sub { pt_query_digest::main(@args, $sample.'slow019.txt', qw(--nozero-admin)) },
-      "t/pt-query-digest/samples/slow019_report_noza.txt"
-   ),
-   '--nozero-admin works'
-);
-
 # This was fixed at some point by checking the fingerprint to see if the
 # query needed to be converted to a SELECT.
 ok(
@@ -307,23 +291,13 @@ is(
 );
 diag(`rm -rf /tmp/mqd-warnings.txt`);
 
-# Issue 940
 ok(
    no_diff(
       sub { pt_query_digest::main(@args, $sample.'slow042.txt',
             qw(--report-format query_report)) },
-      "t/pt-query-digest/samples/slow042.txt",
-   ),
-   'Analysis for slow042'
-);
-
-ok(
-   no_diff(
-      sub { pt_query_digest::main(@args, $sample.'slow042.txt',
-            qw(--report-format query_report --show-all host)) },
       "t/pt-query-digest/samples/slow042-show-all-host.txt",
    ),
-   'Analysis for slow042 with --show-all hosts'
+   'Analysis for slow042 (previously the --show-all test)'
 );
 
 # #############################################################################
@@ -387,8 +361,10 @@ ok(
 # #############################################################################
 ok(
    no_diff(
-      sub { pt_query_digest::main(@args, $sample.'slow054.txt',
-         qw(--check-attributes-limit 5)) },
+      sub {
+         local $ENV{PT_QUERY_DIGEST_CHECK_ATTRIB_LIMIT} = 5;
+         pt_query_digest::main(@args, $sample.'slow054.txt')
+      },
       "t/pt-query-digest/samples/slow054.txt",
    ),
    'Analysis for slow054 (InnoDB_trx_id bug 821694)'

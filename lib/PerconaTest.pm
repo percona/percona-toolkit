@@ -450,6 +450,7 @@ sub test_protocol_parser {
    keys %args;
 
    my $file = "$trunk/$args{file}";
+   my ($base_file_name) = $args{file} =~ m/([^\/]+)$/;
    my @e;
    eval {
       open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
@@ -465,11 +466,10 @@ sub test_protocol_parser {
       close $fh;
    };
 
-   my ($base_file_name) = $args{file} =~ m/([^\/]+)$/;
    is(
       $EVAL_ERROR,
       '',
-      "$base_file_name: no errors"
+      "$base_file_name: no perl errors"
    );
 
    if ( defined $args{result} ) {
