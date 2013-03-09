@@ -2525,7 +2525,7 @@ pt-mysql-summary - Summarize MySQL information nicely.
 
 =head1 SYNOPSIS
 
-Usage: pt-mysql-summary [OPTIONS] [-- MYSQL OPTIONS]
+Usage: pt-mysql-summary [OPTIONS]
 
 pt-mysql-summary conveniently summarizes the status and configuration of a
 MySQL database server so that you can learn about it at a glance.  It is not
@@ -2620,24 +2620,24 @@ unlike the system date and time printed earlier, so you can see whether the
 database and operating system times match.
 
   # Processlist ################################################
-  
+
     Command                        COUNT(*) Working SUM(Time) MAX(Time)
     ------------------------------ -------- ------- --------- ---------
     Binlog Dump                           1       1    150000    150000
     Query                                 1       1         0         0
-  
+
     User                           COUNT(*) Working SUM(Time) MAX(Time)
     ------------------------------ -------- ------- --------- ---------
     msandbox                              2       2    150000    150000
-  
+
     Host                           COUNT(*) Working SUM(Time) MAX(Time)
     ------------------------------ -------- ------- --------- ---------
     localhost                             2       2    150000    150000
-  
+
     db                             COUNT(*) Working SUM(Time) MAX(Time)
     ------------------------------ -------- ------- --------- ---------
     NULL                                  2       2    150000    150000
-  
+
     State                          COUNT(*) Working SUM(Time) MAX(Time)
     ------------------------------ -------- ------- --------- ---------
     Master has sent all binlog to         1       1    150000    150000
@@ -2730,22 +2730,22 @@ are fuzzy-rounded.
   Would you like to mysqldump -d the schema and analyze it? y/n y
   There are 4 databases.  Would you like to dump all, or just one?
   Type the name of the database, or press Enter to dump all of them. 
-  
+
     Database           Tables Views SPs Trigs Funcs   FKs Partn
     mysql                  24                                  
     performance_schema     17                                  
     sakila                 16     7   3     6     3    22      
-  
+
     Database           MyISAM CSV PERFORMANCE_SCHEMA InnoDB
     mysql                  22   2                          
     performance_schema                            17       
     sakila                  8                            15
-  
+
     Database           BTREE FULLTEXT
     mysql                 31         
     performance_schema               
     sakila                63        1
-  
+
                          c   t   s   e   l   d   i   t   m   v   s
                          h   i   e   n   o   a   n   i   e   a   m
                          a   m   t   u   n   t   t   n   d   r   a
@@ -2952,22 +2952,6 @@ type: string
 Read this comma-separated list of config files.  If specified, this must be the
 first option on the command line.
 
-=item --help
-
-Print help and exit.
-
-=item --save-samples
-
-type: string
-
-Save the data files used to generate the summary in this directory.
-
-=item --read-samples
-
-type: string
-
-Create a report from the files found in this directory.
-
 =item --databases
 
 type: string
@@ -2976,22 +2960,16 @@ Names of databases to summarize. If you want all of them, you can use the value
 C<--all-databases>; you can also pass in a comma-separated list of database
 names. If not provided, the program will ask you for manual input.
 
-=item --sleep
-
-type: int; default: 10
-
-Seconds to sleep when gathering status counters.
-
-=item --version
-
-Print tool's version and exit.
-
 =item --defaults-file
 
 short form: -F; type: string
 
 Only read mysql options from the given file.  You must give an absolute
 pathname.
+
+=item --help
+
+Print help and exit.
 
 =item --host
 
@@ -3011,6 +2989,24 @@ short form: -P; type: int
 
 Port number to use for connection.
 
+=item --read-samples
+
+type: string
+
+Create a report from the files found in this directory.
+
+=item --save-samples
+
+type: string
+
+Save the data files used to generate the summary in this directory.
+
+=item --sleep
+
+type: int; default: 10
+
+Seconds to sleep when gathering status counters.
+
 =item --socket
 
 short form: -S; type: string
@@ -3023,10 +3019,14 @@ short form: -u; type: string
 
 User for login if not current user.
 
+=item --version
+
+Print tool's version and exit.
+
 =back
 
 =head1 ENVIRONMENT
- 
+
 This tool does not use any environment variables.
 
 =head1 SYSTEM REQUIREMENTS
