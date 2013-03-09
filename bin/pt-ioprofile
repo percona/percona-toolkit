@@ -916,29 +916,24 @@ the result. If you specify a FILE, then step 1) is not performed.
 
 =head1 RISKS
 
-The following section is included to inform users about the potential risks,
-whether known or unknown, of using this tool.  The two main categories of risks
-are those created by the nature of the tool (e.g. read-only tools vs. read-write
-tools) and those created by bugs.
+B<WARNING>: pt-ioprofile freezes the server and may crash the process, or
+make it perform badly after detaching, or leave it in a sleeping state!
+Before using this tool, please:
 
-pt-ioprofile is a read-only tool, so your data is not at risk. However, it works
-by attaching C<strace> to the process using C<ptrace()>, which will make it run
-very slowly until C<strace> detaches.  In addition to freezing the server, there
-is also some risk of the process crashing or performing badly after C<strace>
-detaches from it, or indeed of C<strace> not detaching cleanly and leaving the
-process in a sleeping state.  As a result, this should be considered an
-intrusive tool, and should not be used on production servers unless you are
-comfortable with that.
+=over
 
-At the time of this release, we know of no bugs that could cause serious harm
-to users.
+=item * Read the tool's documentation
 
-The authoritative source for updated information is always the online issue
-tracking system.  Issues that affect this tool will be marked as such.  You can
-see a list of such issues at the following URL:
-L<http://www.percona.com/bugs/pt-ioprofile>.
+=item * Review the tool's known L<"BUGS">
 
-See also L<"BUGS"> for more information on filing bugs and getting help.
+=item * Test the tool on a non-production server
+
+=item * Backup your production server and verify the backups
+
+pt-ioprofile should be considered an intrusive tool, and should not be used
+on production servers unless you understand and accept the risks.
+
+=back
 
 =head1 DESCRIPTION
 
@@ -952,6 +947,14 @@ process for 30 seconds.  The output is like:
     0.000150   0.000029   0.000068   0.000038   0.000015 /tmp/ibBE5opS
 
 You probably need to run this tool as root.
+
+pt-ioprofile works by attaching C<strace> to the process using C<ptrace()>,
+which will make it run very slowly until C<strace> detaches.  In addition to
+freezing the server, there is some risk of the process crashing or performing
+badly after C<strace> detaches from it, or of C<strace> not detaching cleanly
+and leaving the process in a sleeping state.  As a result, this should be
+considered an intrusive tool, and should not be used on production servers
+unless you are comfortable with that.
 
 =head1 OPTIONS
 
@@ -1085,11 +1088,11 @@ Baron Schwartz
 =head1 ABOUT PERCONA TOOLKIT
 
 This tool is part of Percona Toolkit, a collection of advanced command-line
-tools developed by Percona for MySQL support and consulting.  Percona Toolkit
-was forked from two projects in June, 2011: Maatkit and Aspersa.  Those
-projects were created by Baron Schwartz and developed primarily by him and
-Daniel Nichter, both of whom are employed by Percona.  Visit
-L<http://www.percona.com/software/> for more software developed by Percona.
+tools for MySQL developed by Percona.  Percona Toolkit was forked from two
+projects in June, 2011: Maatkit and Aspersa.  Those projects were created by
+Baron Schwartz and primarily developed by him and Daniel Nichter.  Visit
+L<http://www.percona.com/software/> to learn about other free, open-source
+software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 

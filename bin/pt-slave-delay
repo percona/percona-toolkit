@@ -4225,7 +4225,7 @@ sub main {
       if ( $master_dbh ) {
          PTDEBUG && _d('Getting binlog pos from master');
          my $res = $master_dbh->selectrow_hashref("SHOW MASTER STATUS");
-         die "Binary logging is disabled on the MASTER-HOST"
+         die "Binary logging is disabled on the MASTER_DSN"
             unless $res && %$res && $res->{file};
          my $pos = $positions[-1];
          if ( !@positions || $pos->[$FILE] ne $res->{file}
@@ -4396,11 +4396,11 @@ pt-slave-delay - Make a MySQL slave server lag behind its master.
 
 =head1 SYNOPSIS
 
-Usage: pt-slave-delay [OPTION...] SLAVE-HOST [MASTER-HOST]
+Usage: pt-slave-delay [OPTIONS] SLAVE_DSN [MASTER_DSN]
 
 pt-slave-delay starts and stops a slave server as needed to make it lag
-behind the master.  The SLAVE-HOST and MASTER-HOST use DSN syntax, and
-values are copied from the SLAVE-HOST to the MASTER-HOST if omitted.
+behind the master.  The SLAVE_DSN and MASTER_DSN use DSN syntax, and
+values are copied from the SLAVE_DSN to the MASTER_DSN if omitted.
 
 To hold slavehost one minute behind its master for ten minutes:
 
@@ -4408,24 +4408,21 @@ To hold slavehost one minute behind its master for ten minutes:
 
 =head1 RISKS
 
-The following section is included to inform users about the potential risks,
-whether known or unknown, of using this tool.  The two main categories of risks
-are those created by the nature of the tool (e.g. read-only tools vs. read-write
-tools) and those created by bugs.
+Percona Toolkit is mature, proven in the real world, and well tested,
+but all database tools can pose a risk to the system and the database
+server.  Before using this tool, please:
 
-pt-slave-delay is generally very low-risk.  It simply starts and stops the
-replication SQL thread.  This might cause monitoring systems to think the slave
-is having trouble.
+=over
 
-At the time of this release, we know of no bugs that could cause serious harm to
-users.
+=item * Read the tool's documentation
 
-The authoritative source for updated information is always the online issue
-tracking system.  Issues that affect this tool will be marked as such.  You can
-see a list of such issues at the following URL:
-L<http://www.percona.com/bugs/pt-slave-delay>.
+=item * Review the tool's known L<"BUGS">
 
-See also L<"BUGS"> for more information on filing bugs and getting help.
+=item * Test the tool on a non-production server
+
+=item * Backup your production server and verify the backups
+
+=back
 
 =head1 DESCRIPTION
 
@@ -4449,8 +4446,8 @@ daemonized.  In this case, it exits.  Therefore, if you think your slave might
 encounter this condition, you should be sure to either specify
 L<"--use-master"> explicitly when daemonizing, or don't specify L<"--ask-pass">.
 
-The SLAVE-HOST and optional MASTER-HOST are both DSNs.  See L<"DSN OPTIONS">.
-Missing MASTER-HOST values are filled in with values from SLAVE-HOST, so you
+The SLAVE_DSN and optional MASTER_DSN are both DSNs.  See L<"DSN OPTIONS">.
+Missing MASTER_DSN values are filled in with values from SLAVE_DSN, so you
 don't need to specify them in both places.  C<pt-slave-delay> reads all normal
 MySQL option files, such as ~/.my.cnf, so you may not need to specify username,
 password and other common options at all.
@@ -4617,14 +4614,14 @@ Socket file to use for connection.
 
 Get binlog positions from master, not slave.  Don't trust the binlog positions
 in the slave's relay log.  Connect to the master and get binlog positions
-instead.  If you specify this option without giving a MASTER-HOST on the command
+instead.  If you specify this option without giving a MASTER_DSN on the command
 line, C<pt-slave-delay> examines the slave's SHOW SLAVE STATUS to determine the
 hostname and port for connecting to the master.
 
 C<pt-slave-delay> uses only the MASTER_HOST and MASTER_PORT values from SHOW
 SLAVE STATUS for the master connection.  It does not use the MASTER_USER
 value.  If you want to specify a different username for the master than the
-one you use to connect to the slave, you should specify the MASTER-HOST option
+one you use to connect to the slave, you should specify the MASTER_DSN option
 explicitly on the command line.
 
 =item --user
@@ -4783,11 +4780,11 @@ Sergey Zhuravlev and Baron Schwartz
 =head1 ABOUT PERCONA TOOLKIT
 
 This tool is part of Percona Toolkit, a collection of advanced command-line
-tools developed by Percona for MySQL support and consulting.  Percona Toolkit
-was forked from two projects in June, 2011: Maatkit and Aspersa.  Those
-projects were created by Baron Schwartz and developed primarily by him and
-Daniel Nichter, both of whom are employed by Percona.  Visit
-L<http://www.percona.com/software/> for more software developed by Percona.
+tools for MySQL developed by Percona.  Percona Toolkit was forked from two
+projects in June, 2011: Maatkit and Aspersa.  Those projects were created by
+Baron Schwartz and primarily developed by him and Daniel Nichter.  Visit
+L<http://www.percona.com/software/> to learn about other free, open-source
+software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
