@@ -347,14 +347,14 @@ _parse_command_line() {
 
       if [ "$next_opt_is_val" ]; then
          next_opt_is_val=""
-         if [ $# -eq 0 ] || [ $(expr "$opt" : "-") -eq 1 ]; then
+         if [ $# -eq 0 ] || [ $(expr "$opt" : "\-") -eq 1 ]; then
             option_error "$real_opt requires a $required_arg argument"
             continue
          fi
          val="$opt"
          opt_is_ok=1
       else
-         if [ $(expr "$opt" : "-") -eq 0 ]; then
+         if [ $(expr "$opt" : "\-") -eq 0 ]; then
             if [ -z "$ARGV" ]; then
                ARGV="$opt"
             else
@@ -448,6 +448,61 @@ size_to_bytes() {
 
 # ###########################################################################
 # End parse_options package
+# ###########################################################################
+
+# ###########################################################################
+# mysql_options package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/mysql_options.sh
+#   t/lib/bash/mysql_options.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+
+set -u
+
+mysql_options() {
+   local MYSQL_ARGS=""
+   if [ -n "$OPT_DEFAULTS_FILE" ]; then
+      MYSQL_ARGS="--defaults-file=$OPT_DEFAULTS_FILE"
+   fi
+   if [ -n "$OPT_PORT" ]; then
+      MYSQL_ARGS="$MYSQL_ARGS --port=$OPT_PORT"
+   fi
+   if [ -n "$OPT_SOCKET" ]; then
+      MYSQL_ARGS="$MYSQL_ARGS --socket=$OPT_SOCKET"
+   fi
+   if [ -n "$OPT_HOST" ]; then
+      MYSQL_ARGS="$MYSQL_ARGS --host=$OPT_HOST"
+   fi
+   if [ -n "$OPT_USER" ]; then
+      MYSQL_ARGS="$MYSQL_ARGS --user=$OPT_USER"
+   fi
+   if [ -n "$OPT_PASSWORD" ]; then
+      MYSQL_ARGS="$MYSQL_ARGS --password=$OPT_PASSWORD"
+   fi
+   
+   echo $MYSQL_ARGS
+}
+
+arrange_mysql_options() {
+   local opts="$1"
+   
+   local rearranged=""
+   for opt in $opts; do
+      if [ "$(echo $opt | awk -F= '{print $1}')" = "--defaults-file" ]; then
+          rearranged="$opt $rearranged"
+      else
+         rearranged="$rearranged $opt"
+      fi
+   done
+   
+   echo "$rearranged"
+}
+
+# ###########################################################################
+# End mysql_options package
 # ###########################################################################
 
 # ###########################################################################
@@ -788,7 +843,6 @@ collect_mysqld_instances () {
          echo "internal::oom_of_$pid    $oom" >> "$variables_file"
       done
 
-      pids="$pids"
       pids="$(echo $pids | sed -e 's/ /,/g')"
       ps ww -p "$pids" 2>/dev/null
    else
@@ -930,8 +984,13 @@ get_mysqldump_args () {
 collect_mysqld_executables () {
    local mysqld_instances="$1"
 
+   local ps_opt="cmd="
+   if [ "$(uname -s)" = "Darwin" ]; then
+      ps_opt="command="
+   fi
+
    for pid in $( grep '/mysqld' "$mysqld_instances" | awk '/^.*[0-9]/{print $1}' ); do
-      ps -o cmd -p $pid | sed -e 's/^\(.*mysqld\) .*/\1/' | grep -v '^CMD$'
+      ps -o $ps_opt -p $pid | sed -e 's/^\(.*mysqld\) .*/\1/'
    done | sort -u
 }
 
@@ -2320,6 +2379,7 @@ report_mysql_summary () {
 
    section "Configuration File"
    local cnf_file="$(get_var "pt-summary-internal-Config_File_path" "$dir/mysql-variables")"
+
    if [ -n "${cnf_file}" ]; then
       name_val "Config File" "${cnf_file}"
       pretty_print_cnf_file "$dir/mysql-config-file"
@@ -2375,6 +2435,14 @@ sigtrap() {
 main() {
    # Prepending SIG to these doesn't work with NetBSD's sh
    trap sigtrap HUP INT TERM
+
+   local MYSQL_ARGS="$(mysql_options)"
+   EXT_ARGV="$(arrange_mysql_options "$EXT_ARGV $MYSQL_ARGS")"
+
+   # Check if mysql and mysqldump are there, otherwise bail out early.
+   # But don't if they passed in --read-samples, since we don't need
+   # a connection then.
+   [ "$OPT_READ_SAMPLES" ] || check_mysql
 
    local RAN_WITH="--sleep=$OPT_SLEEP --databases=$OPT_DATABASES --save-samples=$OPT_SAVE_SAMPLES"
 
@@ -2442,11 +2510,6 @@ if    [ "${0##*/}" = "$TOOL" ] \
       exit 0
    fi
 
-   # Check if mysql and mysqldump are there, otherwise bail out early.
-   # But don't if they passed in --read-samples, since we don't need
-   # a connection then.
-   [ "$OPT_READ_SAMPLES" ] || check_mysql
-
    main "${@:-""}"
 fi
 
@@ -2462,7 +2525,7 @@ pt-mysql-summary - Summarize MySQL information nicely.
 
 =head1 SYNOPSIS
 
-Usage: pt-mysql-summary [OPTIONS] [-- MYSQL OPTIONS]
+Usage: pt-mysql-summary [OPTIONS]
 
 pt-mysql-summary conveniently summarizes the status and configuration of a
 MySQL database server so that you can learn about it at a glance.  It is not
@@ -2498,7 +2561,7 @@ and other scripting languages.
 To use, simply execute it.  Optionally add a double dash and then the same
 command-line options you would use to connect to MySQL, such as the following:
 
-  pt-mysql-summary -- --user=root
+  pt-mysql-summary --user=root
 
 The tool interacts minimally with the server upon which it runs.  It assumes
 that you'll run it on the same server you're inspecting, and therefore it
@@ -2557,24 +2620,24 @@ unlike the system date and time printed earlier, so you can see whether the
 database and operating system times match.
 
   # Processlist ################################################
-  
+
     Command                        COUNT(*) Working SUM(Time) MAX(Time)
     ------------------------------ -------- ------- --------- ---------
     Binlog Dump                           1       1    150000    150000
     Query                                 1       1         0         0
-  
+
     User                           COUNT(*) Working SUM(Time) MAX(Time)
     ------------------------------ -------- ------- --------- ---------
     msandbox                              2       2    150000    150000
-  
+
     Host                           COUNT(*) Working SUM(Time) MAX(Time)
     ------------------------------ -------- ------- --------- ---------
     localhost                             2       2    150000    150000
-  
+
     db                             COUNT(*) Working SUM(Time) MAX(Time)
     ------------------------------ -------- ------- --------- ---------
     NULL                                  2       2    150000    150000
-  
+
     State                          COUNT(*) Working SUM(Time) MAX(Time)
     ------------------------------ -------- ------- --------- ---------
     Master has sent all binlog to         1       1    150000    150000
@@ -2667,22 +2730,22 @@ are fuzzy-rounded.
   Would you like to mysqldump -d the schema and analyze it? y/n y
   There are 4 databases.  Would you like to dump all, or just one?
   Type the name of the database, or press Enter to dump all of them. 
-  
+
     Database           Tables Views SPs Trigs Funcs   FKs Partn
     mysql                  24                                  
     performance_schema     17                                  
     sakila                 16     7   3     6     3    22      
-  
+
     Database           MyISAM CSV PERFORMANCE_SCHEMA InnoDB
     mysql                  22   2                          
     performance_schema                            17       
     sakila                  8                            15
-  
+
     Database           BTREE FULLTEXT
     mysql                 31         
     performance_schema               
     sakila                63        1
-  
+
                          c   t   s   e   l   d   i   t   m   v   s
                          h   i   e   n   o   a   n   i   e   a   m
                          a   m   t   u   n   t   t   n   d   r   a
@@ -2889,22 +2952,6 @@ type: string
 Read this comma-separated list of config files.  If specified, this must be the
 first option on the command line.
 
-=item --help
-
-Print help and exit.
-
-=item --save-samples
-
-type: string
-
-Save the data files used to generate the summary in this directory.
-
-=item --read-samples
-
-type: string
-
-Create a report from the files found in this directory.
-
 =item --databases
 
 type: string
@@ -2913,11 +2960,64 @@ Names of databases to summarize. If you want all of them, you can use the value
 C<--all-databases>; you can also pass in a comma-separated list of database
 names. If not provided, the program will ask you for manual input.
 
+=item --defaults-file
+
+short form: -F; type: string
+
+Only read mysql options from the given file.  You must give an absolute
+pathname.
+
+=item --help
+
+Print help and exit.
+
+=item --host
+
+short form: -h; type: string
+
+Host to connect to.
+
+=item --password
+
+short form: -p; type: string
+
+Password to use when connecting.
+
+=item --port
+
+short form: -P; type: int
+
+Port number to use for connection.
+
+=item --read-samples
+
+type: string
+
+Create a report from the files found in this directory.
+
+=item --save-samples
+
+type: string
+
+Save the data files used to generate the summary in this directory.
+
 =item --sleep
 
 type: int; default: 10
 
 Seconds to sleep when gathering status counters.
+
+=item --socket
+
+short form: -S; type: string
+
+Socket file to use for connection.
+
+=item --user
+
+short form: -u; type: string
+
+User for login if not current user.
 
 =item --version
 
