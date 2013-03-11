@@ -37,6 +37,13 @@ has 'dir' => (
 
 has 'progress' => (
    is       => 'ro',
+   isa      => 'Maybe[Str]',
+   required => 0,
+   default  => sub { return },
+);
+
+has '_progress' => (
+   is       => 'rw',
    isa      => 'Maybe[Object]',
    required => 0,
    default  => sub { return },
@@ -82,11 +89,21 @@ sub BUILDARGS {
    open my $_rows_fh, '<', $rows_file
       or die "Cannot open $rows_file for writing: $OS_ERROR";
 
+   my $_progress;
+   if ( my $spec = $args->{progress} ) {
+      $_progress = new Progress(
+         jobsize => -s $query_file,
+         spec    => $spec,
+         name    => $query_file,
+      );
+   }
+
    my $self = {
       %$args,
       _query_fh   => $_query_fh,
       _results_fh => $_results_fh,
       _rows_fh    => $_rows_fh,
+      _progress   => $_progress,
    };
 
    return $self;
@@ -134,7 +151,7 @@ sub next {
    $results->{query} = $query;
    $results->{rows}  = $rows;
       
-   if ( my $pr = $self->progress ) {
+   if ( my $pr = $self->_progress ) {
       $pr->update(sub { tell $_query_fh });
    }
 

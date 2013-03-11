@@ -5145,11 +5145,18 @@ has 'read_timeout' => (
 
 has 'progress' => (
    is       => 'ro',
-   isa      => 'Maybe[Object]',
+   isa      => 'Maybe[Str]',
    required => 0,
    default  => sub { return },
 );
 
+
+has '_progress' => (
+   is       => 'rw',
+   isa      => 'Maybe[Object]',
+   required => 0,
+   default  => sub { return },
+);
 
 has 'stats' => (
    is       => 'ro',
@@ -5252,6 +5259,16 @@ sub next {
          return $offset;  # legacy: return global $offset
       };
 
+      my $_progress;
+      if ( my $spec = $self->progress ) {
+         $_progress = new Progress(
+            jobsize => $file_size,
+            spec    => $spec,
+            name    => $file_name,
+         );
+      }
+      $self->_progress($_progress);
+
       $self->_parser_args($parser_args);
    }
 
@@ -5262,7 +5279,7 @@ sub next {
    ) {
       $self->stats->{queries_read}++;
 
-      if ( my $pr = $self->progress ) {
+      if ( my $pr = $self->_progress ) {
          $pr->update($self->_parser_args->{tell});
       }
 
@@ -6183,6 +6200,13 @@ has 'dir' => (
 
 has 'progress' => (
    is       => 'ro',
+   isa      => 'Maybe[Str]',
+   required => 0,
+   default  => sub { return },
+);
+
+has '_progress' => (
+   is       => 'rw',
    isa      => 'Maybe[Object]',
    required => 0,
    default  => sub { return },
@@ -6228,11 +6252,21 @@ sub BUILDARGS {
    open my $_rows_fh, '<', $rows_file
       or die "Cannot open $rows_file for writing: $OS_ERROR";
 
+   my $_progress;
+   if ( my $spec = $args->{progress} ) {
+      $_progress = new Progress(
+         jobsize => -s $query_file,
+         spec    => $spec,
+         name    => $query_file,
+      );
+   }
+
    my $self = {
       %$args,
       _query_fh   => $_query_fh,
       _results_fh => $_results_fh,
       _rows_fh    => $_rows_fh,
+      _progress   => $_progress,
    };
 
    return $self;
@@ -6280,7 +6314,7 @@ sub next {
    $results->{query} = $query;
    $results->{rows}  = $rows;
       
-   if ( my $pr = $self->progress ) {
+   if ( my $pr = $self->_progress ) {
       $pr->update(sub { tell $_query_fh });
    }
 
@@ -9267,26 +9301,6 @@ sub main {
       now      => sub { return time },
    );
 
-   my $progress;
-   if ( my $spec = $o->get('progress') ) {
-      my $jobsize = 0;
-      if ( scalar @logs ) {
-         foreach my $file ( @logs ) {
-            $jobsize += -s $file if -f $file;
-         }
-      }
-      elsif ( $results_dir ) {
-         $jobsize = -s "$results_dir/query";
-      }
-      PTDEBUG && _d('Job size:', $jobsize);
-      $progress = new Progress(
-         jobsize => $jobsize,
-         spec    => $spec,
-         name    => (@logs && $results_dir ? 'Saving results'
-                                           : 'Executing queries'),
-      );
-   }
-
    my %optional_args = (
       dry_run         => $o->get('dry-run'),
       database        => $o->get('database'),
@@ -9295,7 +9309,7 @@ sub main {
       read_only       => $o->get('read-only') ?  1 : 0,
       read_timeout    => $o->get('read-timeout'),
       allowed_errors  => $o->get('continue-on-error') ? 100 : 0,
-      progress        => $progress,
+      progress        => $o->get('progress'),
    );
 
    if ( $host1 && $host2 ) {
