@@ -54,7 +54,7 @@ my $files = $file_iter->get_file_itr(
 
 $query_iter = QueryIterator->new(
    file_iter   => $files,
-   parser      => $parser,
+   parser      => sub { return $parser->parse_event(@_) },
    fingerprint => sub { return $qr->fingerprint(@_) },
    oktorun     => sub { return 1 },
    read_only   => 1,

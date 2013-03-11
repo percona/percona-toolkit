@@ -6655,9 +6655,6 @@ sub main {
          # just tweak the code below to be like pt-query-digest.
          my %alias_for = (
             slowlog   => ['SlowLogParser'],
-            # binlog    => ['BinaryLogParser'],
-            # genlog    => ['GeneralLogParser'],
-            # tcpdump   => ['TcpdumpParser','MySQLProtocolParser'],
          );
          my $type = ['slowlog'];
          $type    = $alias_for{$type->[0]} if $alias_for{$type->[0]};

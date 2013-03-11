@@ -42,7 +42,7 @@ has 'file_iter' => (
 
 has 'parser' => (
    is       => 'ro',
-   isa      => 'Object',
+   isa      => 'CodeRef',
    required => 1,
 );
 
@@ -193,7 +193,7 @@ sub next {
    EVENT:
    while (
       $self->oktorun
-      &&  (my $event = $self->parser->parse_event(%{ $self->_parser_args }) )
+      &&  (my $event = $self->parser->(%{ $self->_parser_args }) )
    ) {
       $self->stats->{queries_read}++;
 
