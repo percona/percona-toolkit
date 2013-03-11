@@ -82,6 +82,13 @@ has 'read_timeout' => (
    default  => 0,
 );
 
+has 'progress' => (
+   is       => 'ro',
+   isa      => 'Maybe[Object]',
+   required => 0,
+   default  => sub { return },
+);
+
 ##
 # Private
 ##
@@ -196,6 +203,10 @@ sub next {
       &&  (my $event = $self->parser->(%{ $self->_parser_args }) )
    ) {
       $self->stats->{queries_read}++;
+
+      if ( my $pr = $self->progress ) {
+         $pr->update($self->_parser_args->{tell});
+      }
 
       if ( ($event->{cmd} || '') ne 'Query' ) {
          PTDEBUG && _d('Skipping non-Query cmd');

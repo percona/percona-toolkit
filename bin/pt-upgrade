@@ -5143,6 +5143,13 @@ has 'read_timeout' => (
    default  => 0,
 );
 
+has 'progress' => (
+   is       => 'ro',
+   isa      => 'Maybe[Object]',
+   required => 0,
+   default  => sub { return },
+);
+
 
 has 'stats' => (
    is       => 'ro',
@@ -5254,6 +5261,10 @@ sub next {
       &&  (my $event = $self->parser->(%{ $self->_parser_args }) )
    ) {
       $self->stats->{queries_read}++;
+
+      if ( my $pr = $self->progress ) {
+         $pr->update($self->_parser_args->{tell});
+      }
 
       if ( ($event->{cmd} || '') ne 'Query' ) {
          PTDEBUG && _d('Skipping non-Query cmd');
@@ -6170,6 +6181,13 @@ has 'dir' => (
     required => 1,
 );
 
+has 'progress' => (
+   is       => 'ro',
+   isa      => 'Maybe[Object]',
+   required => 0,
+   default  => sub { return },
+);
+
 has '_query_fh' => (
     is       => 'rw',
     isa      => 'Maybe[FileHandle]',
@@ -6261,6 +6279,10 @@ sub next {
 
    $results->{query} = $query;
    $results->{rows}  = $rows;
+      
+   if ( my $pr = $self->progress ) {
+      $pr->update(sub { tell $_query_fh });
+   }
 
    PTDEBUG && _d('Results:', Dumper($results));
    return $results;
@@ -9085,6 +9107,11 @@ sub main {
          # 2 DSN and LOGS
          $o->save_error('No log files specified; at least one is required.');
       }
+      elsif ( @dsns < 2 ) {
+         # 1 DSN, LOGS, but no --save-results a 2nd DSN
+         $o->save_error('A DSN and at least one log file was specified, '
+            . 'but a second DSN or --save-results must also be specified.');
+      }
 
       foreach my $val ( keys %$report ) {
          if ( $val !~ m/^(?:hosts|logs|queries|stats)$/ ) {
@@ -9255,7 +9282,8 @@ sub main {
       $progress = new Progress(
          jobsize => $jobsize,
          spec    => $spec,
-         name    => (@logs ? 'Reading logs' : 'Reading reference results'),
+         name    => (@logs && $results_dir ? 'Saving results'
+                                           : 'Executing queries'),
       );
    }
 
@@ -9533,6 +9561,7 @@ sub compare_host_to_host {
    my $read_only       = $args{read_only};
    my $read_timeout    = $args{read_timeout};
    my $allowed_errors  = $args{allowed_errors} || 0;
+   my $progress        = $args{progress};
 
    # Get set up to execute and compare queries.
    my $clear_warnings_sql = "SELECT * FROM $upgrade_table LIMIT 1 "
@@ -9560,6 +9589,7 @@ sub compare_host_to_host {
       ($filter       ? (filter           => $filter)       : ()),
       ($read_only    ? (read_only        => $read_only)    : ()),
       ($read_timeout ? (read_timeout     => $read_timeout) : ()),
+      ($progress     ? (progress         => $progress)     : ()),
    );
 
    my $executor = EventExecutor->new(
@@ -9642,6 +9672,7 @@ sub save_results {
    my $read_only       = $args{read_only};
    my $read_timeout    = $args{read_timeout};
    my $allowed_errors  = $args{allowed_errors} || 0;
+   my $progress        = $args{progress};
 
    # Get set up to execute queries and save the results.
    my $clear_warnings_sql = "SELECT * FROM $upgrade_table LIMIT 1 "
@@ -9668,6 +9699,7 @@ sub save_results {
       ($filter       ? (filter           => $filter)       : ()),
       ($read_only    ? (read_only        => $read_only)    : ()),
       ($read_timeout ? (read_timeout     => $read_timeout) : ()),
+      ($progress     ? (progress         => $progress)     : ()),
    );
 
    my $executor = EventExecutor->new(
@@ -9740,6 +9772,7 @@ sub compare_results_to_host {
    my $database        = $args{database};
    my $ignore_warnings = $args{ignore_warnings};
    my $allowed_errors  = $args{allowed_errors} || 0;
+   my $progress        = $args{progress};
 
    my $clear_warnings_sql = "SELECT * FROM $upgrade_table LIMIT 1 "
                           . "/* pt-upgrade clear warnings */";
@@ -9754,7 +9787,8 @@ sub compare_results_to_host {
 
    # Results from host1, obtained earlier with --save-results.
    my $result_iter = ResultIterator->new(
-      dir => $results_dir,
+      dir      => $results_dir,
+      progress => $progress,
    );
 
    # Results for host2, obtaining now.
