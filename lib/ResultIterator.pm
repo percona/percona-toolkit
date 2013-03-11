@@ -35,6 +35,13 @@ has 'dir' => (
     required => 1,
 );
 
+has 'progress' => (
+   is       => 'ro',
+   isa      => 'Maybe[Object]',
+   required => 0,
+   default  => sub { return },
+);
+
 has '_query_fh' => (
     is       => 'rw',
     isa      => 'Maybe[FileHandle]',
@@ -126,6 +133,10 @@ sub next {
 
    $results->{query} = $query;
    $results->{rows}  = $rows;
+      
+   if ( my $pr = $self->progress ) {
+      $pr->update(sub { tell $_query_fh });
+   }
 
    PTDEBUG && _d('Results:', Dumper($results));
    return $results;
