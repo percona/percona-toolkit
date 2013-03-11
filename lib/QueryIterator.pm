@@ -215,7 +215,7 @@ sub next {
       }
 
       if ( $self->read_only ) {
-         if ( $event->{arg} !~ m/(?:^SELECT|(?:\*\/\s*SELECT))/i ) {
+         if ( $event->{arg} !~ m{^(?:/\*[^!].*?\*/)?\s*(?:SELECT|SET)}i ) {
             PTDEBUG && _d('Skipping non-SELECT query');
             $self->stats->{not_select}++;
             next EVENT;
