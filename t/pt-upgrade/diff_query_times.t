@@ -47,6 +47,12 @@ test_diff_query_times(
 );
 
 test_diff_query_times(
+   t1     => 0.01,
+   t2     => 0.5,
+   expect => ['0.01', '0.5', '50.0'],
+);
+
+test_diff_query_times(
    t1     => 23,
    t2     => 82,
    expect => undef,
