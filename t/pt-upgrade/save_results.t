@@ -20,15 +20,23 @@ use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-upgrade";
 
-my $dp   = new DSNParser(opts=>$dsn_opts);
-my $sb   = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+# This runs immediately if the server is already running, else it starts it.
+diag(`$trunk/sandbox/start-sandbox master 12348 >/dev/null`);
+
+my $dp = new DSNParser(opts=>$dsn_opts);
+my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh1 = $sb->get_dbh_for('host1');
+my $dbh2 = $sb->get_dbh_for('host2');
 
 if ( !$dbh1 ) {
    plan skip_all => 'Cannot connect to sandbox host1'; 
 }
+elsif ( !$dbh2 ) {
+   plan skip_all => 'Cannot connect to sandbox host2';
+}
 
 my $host1_dsn = $sb->dsn_for('host1');
+my $host2_dsn = $sb->dsn_for('host2');
 
 my $tmpdir = tempdir("/tmp/pt-upgrade.$PID.XXXXXX", CLEANUP => 1);
 
