@@ -11,6 +11,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
+use ProtocolParser;
 use MySQLProtocolParser;
 use TcpdumpParser;
 use PerconaTest;
@@ -285,16 +286,9 @@ test_protocol_parser(
 # #############################################################################
 # Check the individual packet parsing subs.
 # #############################################################################
-MySQLProtocolParser->import(qw(
-   parse_error_packet
-   parse_ok_packet
-   parse_server_handshake_packet
-   parse_client_handshake_packet
-   parse_com_packet
-));
  
 is_deeply(
-   parse_error_packet(load_data("t/lib/samples/mysql_proto_001.txt")),
+   MySQLProtocolParser::parse_error_packet(load_data("t/lib/samples/mysql_proto_001.txt")),
    {
       errno    => '1046',
       sqlstate => '#3D000',
@@ -304,7 +298,7 @@ is_deeply(
 );
 
 is_deeply(
-   parse_ok_packet('010002000100'),
+   MySQLProtocolParser::parse_ok_packet('010002000100'),
    {
       affected_rows => 1,
       insert_id     => 0,
@@ -316,7 +310,7 @@ is_deeply(
 );
 
 is_deeply(
-   parse_server_handshake_packet(load_data("t/lib/samples/mysql_proto_002.txt")),
+   MySQLProtocolParser::parse_server_handshake_packet(load_data("t/lib/samples/mysql_proto_002.txt")),
    {
       thread_id      => '9',
       server_version => '5.0.67-0ubuntu6-log',
@@ -345,7 +339,7 @@ is_deeply(
 );
 
 is_deeply(
-   parse_client_handshake_packet(load_data("t/lib/samples/mysql_proto_003.txt")),
+   MySQLProtocolParser::parse_client_handshake_packet(load_data("t/lib/samples/mysql_proto_003.txt")),
    {
       db    => 'mysql',
       user  => 'msandbox',
@@ -374,7 +368,7 @@ is_deeply(
 );
 
 is_deeply(
-   parse_com_packet('0373686f77207761726e696e67738d2dacbc', 14),
+   MySQLProtocolParser::parse_com_packet('0373686f77207761726e696e67738d2dacbc', 14),
    {
       code => '03',
       com  => 'COM_QUERY',
@@ -1274,6 +1268,7 @@ test_protocol_parser(
 # Issue 761: mk-query-digest --tcpdump does not handle incomplete packets
 # #############################################################################
 $protocol = new MySQLProtocolParser(server=>'127.0.0.1',port=>'3306');
+$protocol->{_no_save_error} = 1;
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -1449,6 +1444,7 @@ test_protocol_parser(
 );
 
 $protocol = new MySQLProtocolParser();
+$protocol->{_no_save_error} = 1;
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -1528,6 +1524,7 @@ test_protocol_parser(
 );
 
 $protocol = new MySQLProtocolParser();
+$protocol->{_no_save_error} = 1;
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -1576,6 +1573,7 @@ test_protocol_parser(
 # client query
 # #############################################################################
 $protocol = new MySQLProtocolParser(server => '127.0.0.1',port=>'12345');
+$protocol->{_no_save_error} = 1;
 $e = test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -1595,6 +1593,7 @@ $protocol = new MySQLProtocolParser(
    server => '127.0.0.1',
    port   => '3306',
 );
+$protocol->{_no_save_error} = 1;
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -1746,6 +1745,40 @@ test_protocol_parser(
 );
 
 # #############################################################################
+# Save errors by default
+# #############################################################################
+$protocol = new MySQLProtocolParser(server=>'127.0.0.1',port=>'3306');
+
+my $out = output(sub {
+      open my $fh, "<", "$sample/tcpdump032.txt" or die "Cannot open tcpdump032.txt: $OS_ERROR";
+      my %parser_args = (
+         next_event => sub { return <$fh>; },
+         tell       => sub { return tell($fh);  },
+      );
+      while ( my $p = $tcpdump->parse_event(%parser_args) ) {
+         $protocol->parse_event(%parser_args, event => $p);
+      }
+      close $fh;
+});
+
+like(
+   $out,
+   qr/had errors, will save them in /,
+   "Saves errors by default"
+);
+
+close $protocol->{errors_fh}; # flush the handle
+
+like(
+   slurp_file($protocol->{errors_file}),
+   qr/got server response before full buffer/,
+   "The right error is saved"
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
+
+# Get rid of error files
+`rm /tmp/MySQLProtocolParser.t-errors.*`;
 done_testing;

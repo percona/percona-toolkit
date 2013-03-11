@@ -51,19 +51,7 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-require Exporter;
-our @ISA         = qw(Exporter);
-our %EXPORT_TAGS = ();
-our @EXPORT      = ();
-our @EXPORT_OK   = qw(
-   parse_error_packet
-   parse_ok_packet
-   parse_ok_prepared_statement_packet
-   parse_server_handshake_packet
-   parse_client_handshake_packet
-   parse_com_packet
-   parse_flags
-);
+BEGIN { our @ISA = 'ProtocolParser'; }
 
 use constant {
    COM_SLEEP               => '00',
@@ -1523,46 +1511,6 @@ sub remove_mysql_header {
    $packet->{mysql_data_len} = $mysql_data_len;
    $packet->{number}         = $pkt_num;
 
-   return;
-}
-
-sub _get_errors_fh {
-   my ( $self ) = @_;
-   my $errors_fh = $self->{errors_fh};
-   return $errors_fh if $errors_fh;
-
-   # Errors file isn't open yet; try to open it.
-   my $o = $self->{o};
-   if ( $o && $o->has('tcpdump-errors') && $o->got('tcpdump-errors') ) {
-      my $errors_file = $o->get('tcpdump-errors');
-      PTDEBUG && _d('tcpdump-errors file:', $errors_file);
-      open $errors_fh, '>>', $errors_file
-         or die "Cannot open tcpdump-errors file $errors_file: $OS_ERROR";
-   }
-
-   $self->{errors_fh} = $errors_fh;
-   return $errors_fh;
-}
-
-sub fail_session {
-   my ( $self, $session, $reason ) = @_;
-   PTDEBUG && _d('Client', $session->{client}, 'failed because', $reason);
-   my $errors_fh = $self->_get_errors_fh();
-   if ( $errors_fh ) {
-      my $raw_packets = $session->{raw_packets};
-      delete $session->{raw_packets};  # Don't dump, it's printed below.
-      $session->{reason_for_failure} = $reason;
-      my $session_dump = '# ' . Dumper($session);
-      chomp $session_dump;
-      $session_dump =~ s/\n/\n# /g;
-      print $errors_fh "$session_dump\n";
-      {
-         local $LIST_SEPARATOR = "\n";
-         print $errors_fh "@$raw_packets";
-         print $errors_fh "\n";
-      }
-   }
-   delete $self->{sessions}->{$session->{client}};
    return;
 }
 

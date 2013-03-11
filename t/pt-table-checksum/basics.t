@@ -40,9 +40,9 @@ elsif ( !@{$master_dbh->selectall_arrayref("show databases like 'sakila'")} ) {
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
-# so we need to specify --lock-wait-timeout=3 else the tool will die.
+# so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
-my @args       = ($master_dsn, qw(--lock-wait-timeout 3));
+my @args       = ($master_dsn, qw(--set-vars innodb_lock_wait_timeout=3));
 my $row;
 my $output;
 my $exit_status;
@@ -79,10 +79,10 @@ ok(
 # Since this varies by default, there's no use checking the checksums
 # other than to ensure that there's at one for each table.
 $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums");
-cmp_ok(
-   $row->[0], '>=', ($sandbox_version gt "5.0" ? 37 : 33),
-   'At least 37 checksums'
-);
+ok(
+   $row->[0] > 30 && $row->[0] < 50,
+   'Between 30 and 50 chunks'
+) or diag($row->[0]);
 
 # ############################################################################
 # Static chunk size (disable --chunk-time)
@@ -97,24 +97,18 @@ ok(
    "Static chunk size (--chunk-time 0)"
 );
 
-my $n_checksums = $sandbox_version eq "5.6" ? 89
-                : $sandbox_version eq "5.5" ? 90
-                : $sandbox_version eq "5.1" ? 89
-                :                             85;
-
 $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums");
-is(
-   $row->[0],
-   $n_checksums,
-   'Expected checksums on master'
-);
+ok(
+   $row->[0] >= 85 && $row->[0] <= 90,
+   'Between 85 and 90 chunks on master'
+) or diag($row->[0]);
 
-$row = $slave1_dbh->selectrow_arrayref("select count(*) from percona.checksums");
+my $row2 = $slave1_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 is(
+   $row2->[0],
    $row->[0],
-   $n_checksums,
-   'Expected checksums on slave'
-);
+   '... same number of chunks on slave'
+) or diag($row->[0], ' ', $row2->[0]);
 
 # ############################################################################
 # --[no]replicate-check and, implicitly, the tool's exit status.
@@ -357,22 +351,44 @@ like(
 $output = output(
    sub { $exit_status =  pt_table_checksum::main(
    qw(--user msandbox --pass msandbox),
-   qw(-S /tmp/12345/mysql_sandbox12345.sock --lock-wait-timeout 3)) },
+   qw(-S /tmp/12345/mysql_sandbox12345.sock --set-vars innodb_lock_wait_timeout=3)) },
    stderr => 1,
 );
 
-# Before 2.2 the exit status was 0, but bug 1087804 changed this to 1.
-is(
-   $exit_status,
-   1,
-   "No host in DSN, non-zero exit status"
-);
+# This test no longer works because of
+# https://bugs.launchpad.net/percona-toolkit/+bug/1087804
+# So comment out this test...
+#is(
+#   $exit_status,
+#   0,
+#   "No host in DSN, zero exit status"
+#) or diag($output);
+
+# ... and use this one instead:
+like(
+   $output,
+   qr/sakila.store/,
+   "No host in DSN, checksums happened"
+) or diag($output);
 
 is(
    PerconaTest::count_checksum_results($output, 'errors'),
    0,
    "No host in DSN, 0 errors"
-);
+) or diag($output);
+
+# While we're at it, we might as well test bug 1087804:
+like(
+   $output,
+   qr/no slaves were found/,
+   "Warns when no slave are found (bug 1087804)"
+) or diag($output);
+
+is(
+   $exit_status,
+   1,
+   "Exit status 1 when no slaves are found (bug 1087804)"
+) or diag($output);
 
 # #############################################################################
 # Test --where.
@@ -489,55 +505,6 @@ is(
    PerconaTest::count_checksum_results($output, 'errors'),
    0,
    "Bug 821675 (dot): 0 errors"
-);
-
-# #############################################################################
-# Bug 1087804: pt-table-checksum doesn't warn if no slaves are found
-# #############################################################################
-$sb->load_file('master', "$sample/dsn-table.sql");
-$master_dbh->do('TRUNCATE TABLE dsns.dsns');
-$sb->wait_for_slaves;
-
-my $slave1_dsn = $sb->dsn_for('slave1');
-
-$output = output(
-   sub { $exit_status = pt_table_checksum::main(@args,
-      qw(-t sakila.country),
-      "--recursion-method", "dsn=$slave1_dsn,t=dsns.dsns")
-   },
-   stderr => 1,
-);
-
-like(
-   $output,
-   qr/no slaves were found/,
-   "Warns if no slaves are found"
-);
-
-is(
-   $exit_status,
-   1,
-   '...exit status 1'
-);
-
-$output = output(
-   sub { $exit_status = pt_table_checksum::main(@args,
-      qw(-t sakila.country),
-      "--recursion-method", "none")
-   },
-   stderr => 1,
-);
-
-unlike(
-   $output,
-   qr/no slaves were found/,
-   "No warning if no slaves and --recursion-method=none"
-);
-
-is(
-   $exit_status,
-   0,
-   '...exit status 0'
 );
 
 # #############################################################################

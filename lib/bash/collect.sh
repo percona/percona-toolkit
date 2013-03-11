@@ -22,7 +22,7 @@
 # collect collects system information.
 
 # XXX
-# THIS LIB REQUIRES log_warn_die.sh, safeguards.sh, and alt_cmds.sh!
+# THIS LIB REQUIRES log_warn_die, safeguards, alt_cmds, and subshell!
 # XXX
 
 set -u
@@ -289,16 +289,8 @@ collect() {
    # it may leave an empty file.  But first wait another --run-time
    # seconds for any slow process to finish:
    # https://bugs.launchpad.net/percona-toolkit/+bug/1047701
-   local slept=0
-   while [ -n "$(jobs)" -a $slept -lt $OPT_RUN_TIME ]; do
-      sleep 1
-      slept=$((slept + 1))
-   done
-
-   for pid in $(jobs -p); do
-      kill $pid >/dev/null 2>&1
-   done
-
+   wait_for_subshells $OPT_RUN_TIME
+   kill_all_subshells
    for file in "$d/$p-"*; do
       # If there's not at least 1 line that's not a TS,
       # then the file is empty.

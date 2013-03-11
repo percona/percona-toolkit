@@ -16,7 +16,7 @@ use PerconaTest;
 # #############################################################################
 # Issue 565: mk-query-digest isn't compiling filter correctly
 # #############################################################################
-my $output = `$trunk/bin/pt-query-digest --type tcpdump --filter '\$event->{No_index_used} || \$event->{No_good_index_used}' --group-by tables  $trunk/t/lib/samples/tcpdump014.txt 2>&1`;
+my $output = `$trunk/bin/pt-query-digest --type tcpdump --filter '\$event->{No_index_used} || \$event->{No_good_index_used}' --group-by tables  $trunk/t/lib/samples/tcpdump/tcpdump014.txt 2>&1`;
 unlike(
    $output,
    qr/Can't use string/,

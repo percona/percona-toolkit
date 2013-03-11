@@ -40,9 +40,9 @@ elsif ( !$slave2_dbh ) {
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
-# so we need to specify --lock-wait-timeout=3 else the tool will die.
+# so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
-my @args       = ($master_dsn, qw(--lock-wait-timeout 3));
+my @args       = ($master_dsn, qw(--set-vars innodb_lock_wait_timeout=3));
 my $output;
 my $exit_status;
 my $sample  = "t/pt-table-checksum/samples/";
@@ -195,7 +195,7 @@ is(
 # #############################################################################
 
 ($output) = output(
-   sub { pt_table_checksum::main(@args, '--tables', 'mysql.user,mysql.host',
+   sub { pt_table_checksum::main(@args, '--tables', 'mysql.user,mysql.db',
                                  '--columns', 'some_fale_column') },
    stderr => 1,
 );
@@ -269,7 +269,7 @@ SKIP: {
       "...and warns for both level 1 and level 2 slaves"
    ) or diag($output);
 
-   diag(`$trunk/sandbox/stop-sandbox 12348 12349`);
+   diag(`$trunk/sandbox/stop-sandbox 12349 12348`);
 }
 
 # #############################################################################
@@ -278,4 +278,3 @@ SKIP: {
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
-exit;

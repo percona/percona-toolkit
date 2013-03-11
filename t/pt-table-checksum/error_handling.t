@@ -30,10 +30,10 @@ elsif ( !$slave1_dbh ) {
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
-# so we need to specify --lock-wait-timeout=3 else the tool will die.
+# so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
 my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
-my @args       = ($master_dsn, qw(--lock-wait-timeout 3), '--max-load', ''); 
+my @args       = ($master_dsn, qw(--set-vars innodb_lock_wait_timeout=3), '--max-load', ''); 
 my $output;
 my $exit_status;
 
@@ -178,8 +178,8 @@ is(
 # Use the --replicate table created by the previous ^ tests.
 
 # Create a user that can't create the --replicate table.
-diag(`/tmp/12345/use -uroot < $trunk/t/lib/samples/ro-checksum-user.sql`);
-diag(`/tmp/12345/use -uroot -e "GRANT REPLICATION CLIENT, REPLICATION SLAVE ON *.* TO ro_checksum_user\@'%'"`);
+diag(`/tmp/12345/use -uroot -pmsandbox < $trunk/t/lib/samples/ro-checksum-user.sql 2>&1`);
+diag(`/tmp/12345/use -uroot -pmsandbox -e "GRANT REPLICATION CLIENT, REPLICATION SLAVE ON *.* TO ro_checksum_user\@'%'" 2>&1`);
 
 # Remove the --replicate table from slave1 and slave2,
 # so it's only on the master...
@@ -189,7 +189,7 @@ $sb->wait_for_slaves;
 $output = output(
    sub { $exit_status = pt_table_checksum::main(
       "h=127.1,u=ro_checksum_user,p=msandbox,P=12345",
-      qw(--lock-wait-timeout 3 -t mysql.user)) },
+      qw(--set-vars innodb_lock_wait_timeout=3 -t mysql.user)) },
    stderr => 1,
 );
 
@@ -199,7 +199,7 @@ like(
    "CREATE DATABASE error and db is missing on slaves (bug 1039569)"
 );
 
-diag(`/tmp/12345/use -uroot -e "DROP USER ro_checksum_user\@'%'"`);
+diag(`/tmp/12345/use -uroot -pmsandbox -e "DROP USER ro_checksum_user\@'%'" 2>&1`);
 
 # #############################################################################
 # Done.

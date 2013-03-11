@@ -35,6 +35,8 @@ use constant PTDEVDEBUG => $ENV{PTDEVDEBUG} || 0;
 
 use Percona::Toolkit;
 
+use Carp qw(croak);
+
 use Test::More;
 use Time::HiRes qw(sleep time);
 use File::Temp qw(tempfile);
@@ -195,7 +197,7 @@ sub output {
 sub load_data {
    my ( $file ) = @_;
    $file = "$trunk/$file";
-   open my $fh, '<', $file or die "Cannot open $file: $OS_ERROR";
+   open my $fh, '<', $file or croak "Cannot open $file: $OS_ERROR";
    my $contents = do { local $/ = undef; <$fh> };
    close $fh;
    (my $data = join('', $contents =~ m/(.*)/g)) =~ s/\s+//g;
@@ -213,7 +215,7 @@ sub load_file {
 
 sub slurp_file {
    my ($file) = @_;
-   open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
+   open my $fh, "<", $file or croak "Cannot open $file: $OS_ERROR";
    my $contents = do { local $/ = undef; <$fh> };
    close $fh;
    return $contents;
@@ -451,6 +453,7 @@ sub test_protocol_parser {
    keys %args;
 
    my $file = "$trunk/$args{file}";
+   my ($base_file_name) = $args{file} =~ m/([^\/]+)$/;
    my @e;
    eval {
       open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
@@ -466,11 +469,10 @@ sub test_protocol_parser {
       close $fh;
    };
 
-   my ($base_file_name) = $args{file} =~ m/([^\/]+)$/;
    is(
       $EVAL_ERROR,
       '',
-      "$base_file_name: no errors"
+      "$base_file_name: no perl errors"
    );
 
    if ( defined $args{result} ) {

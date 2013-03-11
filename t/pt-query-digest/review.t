@@ -31,31 +31,33 @@ sub normalize_numbers {
    }
 }
 
-my $run_with = "$trunk/bin/pt-query-digest --report-format=query_report --limit 10 $trunk/t/lib/samples/slowlogs/";
+sub run_with {
+   my ($file, @args) = @_;
+   $file = "$trunk/t/lib/samples/slowlogs/$file";
+   
+   return output(sub{
+      pt_query_digest::main(qw(--report-format=query_report),
+                            qw(--limit 10), @args, $file)
+   }, stderr => 1);
+}
+
+my $dsn      = 'h=127.1,P=12345,u=msandbox,p=msandbox';
 my $output;
 my $cmd;
 
 $sb->create_dbs($dbh, ['test']);
 $sb->load_file('master', 't/pt-query-digest/samples/query_review.sql');
 
-# Test --create-review and --create-review-history-table
-$output = 'foo'; # clear previous test results
-$cmd = "${run_with}slow006.txt --create-review-tables --review "
-   . "h=127.1,P=12345,u=msandbox,p=msandbox --review-table test.query_review "
-   . "--history-table test.query_review_history";
-$output = `$cmd >/dev/null 2>&1`;
+# Test --create-review
+$output = run_with("slow006.txt", qw(--create-review-table),
+                '--review', "$dsn,D=test,t=query_review");
 
 my ($table) = $dbh->selectrow_array(
    "show tables from test like 'query_review'");
-is($table, 'query_review', '--create-review-tables');
-($table) = $dbh->selectrow_array(
-   "show tables from test like 'query_review_history'");
-is($table, 'query_review_history', '--create-review-tables');
+is($table, 'query_review', '--create-review-table');
 
-$output = 'foo'; # clear previous test results
-$cmd = "${run_with}slow006.txt --review h=127.1,u=msandbox,p=msandbox,P=12345 --review-table test.query_review "
-   . "--history-table test.query_review_history";
-$output = `$cmd`;
+$output = run_with("slow006.txt",
+                   '--review', "$dsn,D=test,t=query_review" );
 my $res = $dbh->selectall_arrayref( 'SELECT * FROM test.query_review',
    { Slice => {} } );
 
@@ -88,119 +90,35 @@ is_deeply(
    'Adds/updates queries to query review table'
 );
 
-$res = $dbh->selectall_arrayref('SELECT lock_time_median, lock_time_stddev,
-FORMAT(query_time_sum, 6) AS query_time_sum, checksum,
-FORMAT(rows_examined_stddev, 6) AS rows_examined_stddev, ts_cnt, sample,
-FORMAT(rows_examined_median, 6) AS rows_examined_median, rows_sent_min,
-rows_examined_min, rows_sent_sum, FORMAT(query_time_min, 6) AS query_time_min,
-FORMAT(query_time_pct_95, 6) AS query_time_pct_95, rows_examined_sum,
-FORMAT(rows_sent_stddev, 6) AS rows_sent_stddev, FORMAT(rows_sent_pct_95, 6) AS
-rows_sent_pct_95, FORMAT(query_time_max, 6) AS query_time_max,
-rows_examined_max, FORMAT(query_time_stddev, 6) AS query_time_stddev,
-rows_sent_median, FORMAT(lock_time_pct_95, 6) AS lock_time_pct_95, ts_min,
-FORMAT(lock_time_min, 6) AS lock_time_min, lock_time_max, ts_max,
-FORMAT(rows_examined_pct_95, 6) AS rows_examined_pct_95, rows_sent_max,
-FORMAT(query_time_median, 6) AS query_time_median, lock_time_sum FROM
-test.query_review_history', { Slice => {} } );
-
-$expected =   [  {  lock_time_median     => '0',
-         lock_time_stddev     => '0',
-         query_time_sum       => '0.000036',
-         checksum             => '11676753765851784517',
-         rows_examined_stddev => '0.000000',
-         ts_cnt               => '3',
-         sample               => 'SELECT col FROM foo_tbl',
-         rows_examined_median => '0.000000',
-         rows_sent_min        => '0',
-         rows_examined_min    => '0',
-         rows_sent_sum        => '0',
-         query_time_min       => '0.000012',
-         query_time_pct_95    => '0.000012',
-         rows_examined_sum    => '0',
-         rows_sent_stddev     => '0.000000',
-         rows_sent_pct_95     => '0.000000',
-         query_time_max       => '0.000012',
-         rows_examined_max    => '0',
-         query_time_stddev    => '0.000000',
-         rows_sent_median     => '0',
-         lock_time_pct_95     => '0.000000',
-         ts_min               => '2007-12-18 11:48:27',
-         lock_time_min        => '0.000000',
-         lock_time_max        => '0',
-         ts_max               => '2007-12-18 11:49:30',
-         rows_examined_pct_95 => '0.000000',
-         rows_sent_max        => '0',
-         query_time_median    => '0.000012',
-         lock_time_sum        => '0'
-      },
-      {  lock_time_median     => '0',
-         lock_time_stddev     => '0',
-         query_time_sum       => '0.000036',
-         checksum             => '15334040482108055940',
-         rows_examined_stddev => '0.000000',
-         ts_cnt               => '3',
-         sample               => 'SELECT col FROM bar_tbl',
-         rows_examined_median => '0.000000',
-         rows_sent_min        => '0',
-         rows_examined_min    => '0',
-         rows_sent_sum        => '0',
-         query_time_min       => '0.000012',
-         query_time_pct_95    => '0.000012',
-         rows_examined_sum    => '0',
-         rows_sent_stddev     => '0.000000',
-         rows_sent_pct_95     => '0.000000',
-         query_time_max       => '0.000012',
-         rows_examined_max    => '0',
-         query_time_stddev    => '0.000000',
-         rows_sent_median     => '0',
-         lock_time_pct_95     => '0.000000',
-         ts_min               => '2007-12-18 11:48:57',
-         lock_time_min        => '0.000000',
-         lock_time_max        => '0',
-         ts_max               => '2007-12-18 11:49:07',
-         rows_examined_pct_95 => '0.000000',
-         rows_sent_max        => '0',
-         query_time_median    => '0.000012',
-         lock_time_sum        => '0'
-      }
-   ];
-
-normalize_numbers($res);
-normalize_numbers($expected);
-
-is_deeply(
-   $res,
-   $expected,
-   'Adds/updates queries to query review history table'
-);
-
 # This time we'll run with --report and since none of the queries
 # have been reviewed, the report should include both of them with
 # their respective query review info added to the report.
+$output = run_with("slow006.txt",
+                   '--review', "$dsn,D=test,t=query_review" );
 ok(
-   no_diff($run_with.'slow006.txt --review h=127.1,P=12345,u=msandbox,p=msandbox --review-table test.query_review --create-review-tables', "t/pt-query-digest/samples/slow006_AR_1.txt"),
+   no_diff($output, "t/pt-query-digest/samples/slow006_AR_1.txt", cmd_output => 1),
    'Analyze-review pass 1 reports not-reviewed queries'
 );
-
-($table) = $dbh->selectrow_array(
-   "show tables from percona_schema like 'query_history'");
-is($table, 'query_history', '--create-review-tables creates both percona_schema and query_review_history');
 
 # Mark a query as reviewed and run --report again and that query should
 # not be reported.
 $dbh->do('UPDATE test.query_review
    SET reviewed_by="daniel", reviewed_on="2008-12-24 12:00:00", comments="foo_tbl is ok, so are cranberries"
    WHERE checksum=11676753765851784517');
+$output = run_with("slow006.txt",
+                   '--review', "$dsn,D=test,t=query_review");
 ok(
-   no_diff($run_with.'slow006.txt --review h=127.1,P=12345,u=msandbox,p=msandbox --review-table test.query_review', "t/pt-query-digest/samples/slow006_AR_2.txt"),
+   no_diff($output, "t/pt-query-digest/samples/slow006_AR_2.txt", cmd_output => 1),
    'Analyze-review pass 2 does not report the reviewed query'
 );
 
 # And a 4th pass with --report-all which should cause the reviewed query
 # to re-appear in the report with the reviewed_by, reviewed_on and comments
 # info included.
+$output = run_with("slow006.txt", '--report-all',
+                   '--review', "$dsn,D=test,t=query_review");
 ok(
-   no_diff($run_with.'slow006.txt --review h=127.1,P=12345,u=msandbox,p=msandbox --review-table test.query_review   --report-all', "t/pt-query-digest/samples/slow006_AR_4.txt"),
+   no_diff($output, "t/pt-query-digest/samples/slow006_AR_4.txt", cmd_output => 1),
    'Analyze-review pass 4 with --report-all reports reviewed query'
 );
 
@@ -208,8 +126,11 @@ ok(
 $dbh->do('ALTER TABLE test.query_review ADD COLUMN foo INT');
 $dbh->do('UPDATE test.query_review
    SET foo=42 WHERE checksum=15334040482108055940');
+
+$output = run_with("slow006.txt",
+                   '--review', "$dsn,D=test,t=query_review");
 ok(
-   no_diff($run_with.'slow006.txt --review h=127.1,P=12345,u=msandbox,p=msandbox --review-table test.query_review', "t/pt-query-digest/samples/slow006_AR_5.txt"),
+   no_diff($output, "t/pt-query-digest/samples/slow006_AR_5.txt", cmd_output => 1),
    'Analyze-review pass 5 reports new review info column'
 );
 
@@ -217,9 +138,8 @@ ok(
 # output because they are useless of course (issue 202).
 $dbh->do("update test.query_review set first_seen='0000-00-00 00:00:00', "
    . " last_seen='0000-00-00 00:00:00'");
-$output = 'foo'; # clear previous test results
-$cmd = "${run_with}slow022.txt --review h=127.1,P=12345,u=msandbox,p=msandbox --review-table test.query_review"; 
-$output = `$cmd`;
+$output = run_with("slow022.txt",
+                   '--review', "$dsn,D=test,t=query_review");
 unlike($output, qr/last_seen/, 'no last_seen when 0000 timestamp');
 unlike($output, qr/first_seen/, 'no first_seen when 0000 timestamp');
 unlike($output, qr/0000-00-00 00:00:00/, 'no 0000-00-00 00:00:00 timestamp');
@@ -231,17 +151,17 @@ unlike($output, qr/0000-00-00 00:00:00/, 'no 0000-00-00 00:00:00 timestamp');
 
 # Make sure a missing Time property does not cause a crash.  Don't test data
 # in table, because it varies based on when you run the test.
-$output = 'foo'; # clear previous test results
-$cmd = "${run_with}slow021.txt --review h=127.1,P=12345,u=msandbox,p=msandbox --review-table test.query_review"; 
-$output = `$cmd`;
+$output = run_with("slow021.txt",
+                   '--review', "$dsn,D=test,t=query_review");
+
 unlike($output, qr/Use of uninitialized value/, 'didnt crash due to undef ts');
 
 # Make sure a really ugly Time property that doesn't parse does not cause a
 # crash.  Don't test data in table, because it varies based on when you run
 # the test.
-$output = 'foo'; # clear previous test results
-$cmd = "${run_with}slow022.txt --review h=127.1,P=12345,u=msandbox,p=msandbox --review-table test.query_review"; 
-$output = `$cmd`;
+$output = run_with("slow022.txt",
+                   '--review', "$dsn,D=test,t=query_review");
+
 # Don't test data in table, because it varies based on when you run the test.
 unlike($output, qr/Use of uninitialized value/, 'no crash due to totally missing ts');
 
@@ -249,7 +169,9 @@ unlike($output, qr/Use of uninitialized value/, 'no crash due to totally missing
 # --review --no-report
 # #############################################################################
 $sb->load_file('master', 't/pt-query-digest/samples/query_review.sql');
-$output = `${run_with}slow006.txt --review h=127.1,P=12345,u=msandbox,p=msandbox --review-table test.query_review --no-report --create-review-table`;
+$output = run_with("slow006.txt", '--no-report',
+                   '--review', "$dsn,D=test,t=query_review");
+
 $res = $dbh->selectall_arrayref('SELECT * FROM test.query_review');
 is(
    $res->[0]->[1],
@@ -262,155 +184,6 @@ is(
    'No output with --review and --no-report'
 );
 
-
-# #############################################################################
-# Issue 1149: Add Percona attributes to mk-query-digest review table
-# #############################################################################
-$dbh->do('truncate table test.query_review');
-$dbh->do('truncate table test.query_review_history');
-
-`${run_with}slow002.txt --review h=127.1,u=msandbox,p=msandbox,P=12345 --review-table test.query_review --history-table test.query_review_history --no-report --filter '\$event->{arg} =~ m/foo\.bar/' > /dev/null`;
-
-$res = $dbh->selectall_arrayref( 'SELECT * FROM test.query_review_history',
-   { Slice => {} } );
-
-$expected =    [
-      {
-         sample => "UPDATE foo.bar
-SET    biz = '91848182522'",
-         checksum => '12831241509574346332',
-         filesort_on_disk_cnt => '2',
-         filesort_on_disk_sum => '0',
-         tmp_table_on_disk_cnt => '2',
-         tmp_table_on_disk_sum => '0',
-         filesort_cnt => '2',
-         filesort_sum => '0',
-         full_join_cnt => '2',
-         full_join_sum => '0',
-         full_scan_cnt => '2',
-         full_scan_sum => '0',
-         innodb_io_r_bytes_max => 0,
-         innodb_io_r_bytes_median => 0,
-         innodb_io_r_bytes_min => 0,
-         innodb_io_r_bytes_pct_95 => 0,
-         innodb_io_r_bytes_stddev => 0,
-         innodb_io_r_ops_max => 0,
-         innodb_io_r_ops_median => 0,
-         innodb_io_r_ops_min => 0,
-         innodb_io_r_ops_pct_95 => 0,
-         innodb_io_r_ops_stddev => 0,
-         innodb_io_r_wait_max => 0,
-         innodb_io_r_wait_median => 0,
-         innodb_io_r_wait_min => 0,
-         innodb_io_r_wait_pct_95 => 0,
-         innodb_io_r_wait_stddev => 0,
-         innodb_pages_distinct_max => 18,
-         innodb_pages_distinct_median => 18,
-         innodb_pages_distinct_min => 18,
-         innodb_pages_distinct_pct_95 => 18,
-         innodb_pages_distinct_stddev => 0,
-         innodb_queue_wait_max => 0,
-         innodb_queue_wait_median => 0,
-         innodb_queue_wait_min => 0,
-         innodb_queue_wait_pct_95 => 0,
-         innodb_queue_wait_stddev => 0,
-         innodb_rec_lock_wait_max => 0,
-         innodb_rec_lock_wait_median => 0,
-         innodb_rec_lock_wait_min => 0,
-         innodb_rec_lock_wait_pct_95 => 0,
-         innodb_rec_lock_wait_stddev => 0,
-         lock_time_max => '0.000027',
-         lock_time_median => '0.000027',
-         lock_time_min => '0.000027',
-         lock_time_pct_95 => '0.000027',
-         lock_time_stddev => '0',
-         lock_time_sum => '0.000054',
-         merge_passes_max => '0',
-         merge_passes_median => '0',
-         merge_passes_min => '0',
-         merge_passes_pct_95 => '0',
-         merge_passes_stddev => '0',
-         merge_passes_sum => '0',
-         qc_hit_cnt => '2',
-         qc_hit_sum => '0',
-         query_time_max => '0.00053',
-         query_time_median => '0.00053',
-         query_time_min => '0.00053',
-         query_time_pct_95 => '0.00053',
-         query_time_stddev => '0',
-         query_time_sum => '0.00106',
-         rows_affected_max => undef,
-         rows_affected_median => undef,
-         rows_affected_min => undef,
-         rows_affected_pct_95 => undef,
-         rows_affected_stddev => undef,
-         rows_affected_sum => undef,
-         rows_examined_max => 0,
-         rows_examined_median => '0',
-         rows_examined_min => 0,
-         rows_examined_pct_95 => '0',
-         rows_examined_stddev => '0',
-         rows_examined_sum => 0,
-         rows_read_max => undef,
-         rows_read_median => undef,
-         rows_read_min => undef,
-         rows_read_pct_95 => undef,
-         rows_read_stddev => undef,
-         rows_read_sum => undef,
-         rows_sent_max => '0',
-         rows_sent_median => '0',
-         rows_sent_min => '0',
-         rows_sent_pct_95 => '0',
-         rows_sent_stddev => '0',
-         rows_sent_sum => '0',
-         tmp_table_cnt => '2',
-         tmp_table_sum => '0',
-         ts_cnt => 2,
-         ts_max => '2007-12-18 11:48:27',
-         ts_min => '2007-12-18 11:48:27',
-      },
-   ];
-
-normalize_numbers($res);
-normalize_numbers($expected);
-
-is_deeply(
-   $res,
-   $expected,
-   "Review history has Percona extended slowlog attribs (issue 1149)",
-);
-
-
-# #############################################################################
-# Issue 1265: mk-query-digest --review-history table with minimum 2 columns
-# #############################################################################
-$dbh->do('use test');
-$dbh->do('truncate table test.query_review');
-$dbh->do('drop table test.query_review_history');
-
-# mqd says "The table must have at least the following columns:"
-my $min_tbl = "CREATE TABLE query_review_history (
-  checksum     BIGINT UNSIGNED NOT NULL,
-  sample       TEXT NOT NULL
-)";
-$dbh->do($min_tbl);
-
-$output = output(
-   sub { pt_query_digest::main(
-      '--review', 'h=127.1,u=msandbox,p=msandbox,P=12345',
-      '--review-table',  'test.query_review',
-      '--history-table', 'test.query_review_history',
-      qw(--no-report --no-continue-on-error),
-      "$trunk/t/lib/samples/slow002.txt")
-   },
-   stderr => 1,
-);
-
-unlike(
-   $output,
-   qr/error/,
-   "No error using minimum 2-column query review history table (issue 1265)",
-);
 
 # #############################################################################
 # Done.
