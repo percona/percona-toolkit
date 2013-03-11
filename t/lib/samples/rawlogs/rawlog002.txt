@@ -1,0 +1,4 @@
+SELECT c FROM t WHERE id=1
+/* Hello, world! */ SELECT * FROM t2 LIMIT 1
+INSERT INTO t (a, b) VALUES ('foo', 'bar')
+INSERT INTO t SELECT * FROM monkeys
