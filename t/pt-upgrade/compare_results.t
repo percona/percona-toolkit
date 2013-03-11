@@ -20,7 +20,7 @@ use Sandbox;
 require "$trunk/bin/pt-upgrade";
 
 # This runs immediately if the server is already running, else it starts it.
-# diag(`$trunk/sandbox/start-sandbox master 12348 >/dev/null`);
+diag(`$trunk/sandbox/start-sandbox master 12348 >/dev/null`);
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
@@ -127,7 +127,7 @@ close $dh;
 # Done.
 # #############################################################################
 #$sb->wipe_clean($dbh2);
-#$sb->wipe_clean($dbh1);
-#diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
-#ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+$sb->wipe_clean($dbh1);
+diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
