@@ -84,7 +84,7 @@ has 'read_timeout' => (
 
 has 'progress' => (
    is       => 'ro',
-   isa      => 'Maybe[Object]',
+   isa      => 'Maybe[Str]',
    required => 0,
    default  => sub { return },
 );
@@ -92,6 +92,13 @@ has 'progress' => (
 ##
 # Private
 ##
+
+has '_progress' => (
+   is       => 'rw',
+   isa      => 'Maybe[Object]',
+   required => 0,
+   default  => sub { return },
+);
 
 has 'stats' => (
    is       => 'ro',
@@ -194,6 +201,16 @@ sub next {
          return $offset;  # legacy: return global $offset
       };
 
+      my $_progress;
+      if ( my $spec = $self->progress ) {
+         $_progress = new Progress(
+            jobsize => $file_size,
+            spec    => $spec,
+            name    => $file_name,
+         );
+      }
+      $self->_progress($_progress);
+
       $self->_parser_args($parser_args);
    }
 
@@ -204,7 +221,7 @@ sub next {
    ) {
       $self->stats->{queries_read}++;
 
-      if ( my $pr = $self->progress ) {
+      if ( my $pr = $self->_progress ) {
          $pr->update($self->_parser_args->{tell});
       }
 
