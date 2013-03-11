@@ -46,7 +46,9 @@ my $w2 = $event_exec->get_warnings(dbh => $dbh2);
 my $error_1264 = {
    code    => '1264',
    level   => 'Warning',
-   message => "Out of range value for column 't' at row 1",
+   message => ($sandbox_version eq '5.0'
+            ? "Out of range value adjusted for column 't' at row 1"
+            : "Out of range value for column 't' at row 1"),
 };
 
 is_deeply(
@@ -113,5 +115,6 @@ is_deeply(
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh1);
+diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
