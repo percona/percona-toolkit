@@ -43,6 +43,8 @@ BEGIN {
       BinaryLogParser
       TcpdumpParser
       MySQLProtocolParser
+      Runtime
+      Progress
    ));
 }
 
@@ -5452,6 +5454,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
+use Data::Dumper;
 use Digest::MD5 qw(md5_hex);
 
 use Lmo;
@@ -5624,29 +5627,37 @@ sub _new_class {
 
 sub report_unreported_classes {
    my ($self) = @_;
+   my $success = 1;
    my $classes = $self->classes;
    foreach my $id ( sort keys %$classes ) {
-      my $class = $classes->{$id};
-      my $reason;
-      if ( !scalar @{$class->{failures}} ) {
-         $reason = 'it has diffs';
+      eval {
+         my $class = $classes->{$id};
+         my $reason;
+         if ( !scalar @{$class->{failures}} ) {
+            $reason = 'it has diffs';
+         }
+         elsif (    scalar @{$class->{errors}}
+                 || scalar @{$class->{query_time_diffs}}
+                 || scalar @{$class->{warning_diffs}}
+                 || scalar @{$class->{row_diffs}} ) {
+            $reason = 'it has SQL errors and diffs';
+         }
+         else {
+            $reason = 'it has SQL errors'
+         }
+         $self->report_class(
+            class   => $class,
+            reasons => ["$reason, but hasn't been reported yet"],
+         );
+         $class = { reported => 1 };
+      };
+      if ( $EVAL_ERROR ) {
+         $success = 1;
+         warn Dumper($classes->{$id});
+         warn "Error reporting query class $id: $EVAL_ERROR";
       }
-      elsif (    scalar @{$class->{errors}}
-              || scalar @{$class->{query_time_diffs}}
-              || scalar @{$class->{warning_diffs}}
-              || scalar @{$class->{row_diffs}} ) {
-         $reason = 'it has SQL errors and diffs';
-      }
-      else {
-         $reason = 'it has SQL errors'
-      }
-      $self->report_class(
-         class   => $class,
-         reasons => ["$reason, but hasn't been reported yet"],
-      );
-      $class = { reported => 1 };
    }
-   return;
+   return $success;
 }
 
 sub report_if_ready {
@@ -8278,6 +8289,287 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# Runtime package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Runtime.pm
+#   t/lib/Runtime.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Runtime;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+sub new {
+   my ( $class, %args ) = @_;
+   my @required_args = qw(now);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless exists $args{$arg};
+   }
+
+   my $run_time = $args{run_time};
+   if ( defined $run_time ) {
+      die "run_time must be > 0" if $run_time <= 0;
+   }
+
+   my $now = $args{now};
+   die "now must be a callback" unless ref $now eq 'CODE';
+
+   my $self = {
+      run_time   => $run_time,
+      now        => $now,
+      start_time => undef,
+      end_time   => undef,
+      time_left  => undef,
+      stop       => 0,
+   };
+
+   return bless $self, $class;
+}
+
+sub time_left {
+   my ( $self, %args ) = @_;
+
+   if ( $self->{stop} ) {
+      PTDEBUG && _d("No time left because stop was called");
+      return 0;
+   }
+
+   my $now = $self->{now}->(%args);
+   PTDEBUG && _d("Current time:", $now);
+
+   if ( !defined $self->{start_time} ) {
+      $self->{start_time} = $now;
+   }
+
+   return unless defined $now;
+
+   my $run_time = $self->{run_time};
+   return unless defined $run_time;
+
+   if ( !$self->{end_time} ) {
+      $self->{end_time} = $now + $run_time;
+      PTDEBUG && _d("End time:", $self->{end_time});
+   }
+
+   $self->{time_left} = $self->{end_time} - $now;
+   PTDEBUG && _d("Time left:", $self->{time_left});
+   return $self->{time_left};
+}
+
+sub have_time {
+   my ( $self, %args ) = @_;
+   my $time_left = $self->time_left(%args);
+   return 1 if !defined $time_left;  # run forever
+   return $time_left <= 0 ? 0 : 1;   # <=0s means run time has elapsed
+}
+
+sub time_elapsed {
+   my ( $self, %args ) = @_;
+
+   my $start_time = $self->{start_time};
+   return 0 unless $start_time;
+
+   my $now = $self->{now}->(%args);
+   PTDEBUG && _d("Current time:", $now);
+
+   my $time_elapsed = $now - $start_time;
+   PTDEBUG && _d("Time elapsed:", $time_elapsed);
+   if ( $time_elapsed < 0 ) {
+      warn "Current time $now is earlier than start time $start_time";
+   }
+   return $time_elapsed;
+}
+
+sub reset {
+   my ( $self ) = @_;
+   $self->{start_time} = undef;
+   $self->{end_time}   = undef;
+   $self->{time_left}  = undef;
+   $self->{stop}       = 0;
+   PTDEBUG && _d("Reset run time");
+   return;
+}
+
+sub stop {
+   my ( $self ) = @_;
+   $self->{stop} = 1;
+   return;
+}
+
+sub start {
+   my ( $self ) = @_;
+   $self->{stop} = 0;
+   return;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End Runtime package
+# ###########################################################################
+
+# ###########################################################################
+# Progress package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Progress.pm
+#   t/lib/Progress.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Progress;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+sub new {
+   my ( $class, %args ) = @_;
+   foreach my $arg (qw(jobsize)) {
+      die "I need a $arg argument" unless defined $args{$arg};
+   }
+   if ( (!$args{report} || !$args{interval}) ) {
+      if ( $args{spec} && @{$args{spec}} == 2 ) {
+         @args{qw(report interval)} = @{$args{spec}};
+      }
+      else {
+         die "I need either report and interval arguments, or a spec";
+      }
+   }
+
+   my $name  = $args{name} || "Progress";
+   $args{start} ||= time();
+   my $self;
+   $self = {
+      last_reported => $args{start},
+      fraction      => 0,       # How complete the job is
+      callback      => sub {
+         my ($fraction, $elapsed, $remaining, $eta) = @_;
+         printf STDERR "$name: %3d%% %s remain\n",
+            $fraction * 100,
+            Transformers::secs_to_time($remaining),
+            Transformers::ts($eta);
+      },
+      %args,
+   };
+   return bless $self, $class;
+}
+
+sub validate_spec {
+   shift @_ if $_[0] eq 'Progress'; # Permit calling as Progress-> or Progress::
+   my ( $spec ) = @_;
+   if ( @$spec != 2 ) {
+      die "spec array requires a two-part argument\n";
+   }
+   if ( $spec->[0] !~ m/^(?:percentage|time|iterations)$/ ) {
+      die "spec array's first element must be one of "
+        . "percentage,time,iterations\n";
+   }
+   if ( $spec->[1] !~ m/^\d+$/ ) {
+      die "spec array's second element must be an integer\n";
+   }
+}
+
+sub set_callback {
+   my ( $self, $callback ) = @_;
+   $self->{callback} = $callback;
+}
+
+sub start {
+   my ( $self, $start ) = @_;
+   $self->{start} = $self->{last_reported} = $start || time();
+   $self->{first_report} = 0;
+}
+
+sub update {
+   my ( $self, $callback, %args ) = @_;
+   my $jobsize   = $self->{jobsize};
+   my $now    ||= $args{now} || time;
+
+   $self->{iterations}++; # How many updates have happened;
+
+   if ( !$self->{first_report} && $args{first_report} ) {
+      $args{first_report}->();
+      $self->{first_report} = 1;
+   }
+
+   if ( $self->{report} eq 'time'
+         && $self->{interval} > $now - $self->{last_reported}
+   ) {
+      return;
+   }
+   elsif ( $self->{report} eq 'iterations'
+         && ($self->{iterations} - 1) % $self->{interval} > 0
+   ) {
+      return;
+   }
+   $self->{last_reported} = $now;
+
+   my $completed = $callback->();
+   $self->{updates}++; # How many times we have run the update callback
+
+   return if $completed > $jobsize;
+
+   my $fraction = $completed > 0 ? $completed / $jobsize : 0;
+
+   if ( $self->{report} eq 'percentage'
+         && $self->fraction_modulo($self->{fraction})
+            >= $self->fraction_modulo($fraction)
+   ) {
+      $self->{fraction} = $fraction;
+      return;
+   }
+   $self->{fraction} = $fraction;
+
+   my $elapsed   = $now - $self->{start};
+   my $remaining = 0;
+   my $eta       = $now;
+   if ( $completed > 0 && $completed <= $jobsize && $elapsed > 0 ) {
+      my $rate = $completed / $elapsed;
+      if ( $rate > 0 ) {
+         $remaining = ($jobsize - $completed) / $rate;
+         $eta       = $now + int($remaining);
+      }
+   }
+   $self->{callback}->($fraction, $elapsed, $remaining, $eta, $completed);
+}
+
+sub fraction_modulo {
+   my ( $self, $num ) = @_;
+   $num *= 100; # Convert from fraction to percentage
+   return sprintf('%d',
+      sprintf('%d', $num / $self->{interval}) * $self->{interval});
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End Progress package
+# ###########################################################################
+
+# ###########################################################################
 # This is a combination of modules and programs in one -- a runnable module.
 # http://www.perl.com/pub/a/2006/07/13/lightning-articles.html?page=last
 # Or, look it up in the Camel book on pages 642 and 643 in the 3rd edition.
@@ -8413,6 +8705,14 @@ sub main {
             $o->save_error("Invalid --report value: $val");
          }
       }
+
+      if ( my $spec = $o->get('progress') ) {
+         eval { Progress->validate_spec($spec) };
+         if ( $EVAL_ERROR ) {
+            chomp $EVAL_ERROR;
+            $o->save_error("--progress $EVAL_ERROR");
+         }
+      }
    }
 
    $o->usage_or_errors();
@@ -8480,15 +8780,15 @@ sub main {
    # ########################################################################
    # Do the version-check
    # ########################################################################
-#   if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
-#      VersionCheck::version_check(
-#         force     => $o->got('version-check'),
-#         instances => [
-#            ($host1 ? { dbh => $host1->dbh, dsn => $host1->dsn } : ()),
-#            ($host2 ? { dbh => $host2->dbh, dsn => $host2->dsn } : ()),
-#         ],
-#      );
-#   }
+   if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
+      VersionCheck::version_check(
+         force     => $o->got('version-check'),
+         instances => [
+            ($host1 ? { dbh => $host1->dbh, dsn => $host1->dsn } : ()),
+            ($host2 ? { dbh => $host2->dbh, dsn => $host2->dsn } : ()),
+         ],
+      );
+   }
 
    # ########################################################################
    # Daemonize now that everything is setup and ready to work.
@@ -8549,6 +8849,30 @@ sub main {
       );
    }
 
+   my $run_time = Runtime->new(
+      run_time => $o->get('run-time'),
+      now      => sub { return time },
+   );
+
+   my $progress;
+   if ( my $spec = $o->get('progress') ) {
+      my $jobsize = 0;
+      if ( scalar @logs ) {
+         foreach my $file ( @logs ) {
+            $jobsize += -s $file if -f $file;
+         }
+      }
+      elsif ( $results_dir ) {
+         $jobsize = -s "$results_dir/query";
+      }
+      PTDEBUG && _d('Job size:', $jobsize);
+      $progress = new Progress(
+         jobsize => $jobsize,
+         spec    => $spec,
+         name    => (@logs ? 'Reading logs' : 'Reading reference results'),
+      );
+   }
+
    my %optional_args = (
       dry_run         => $o->get('dry-run'),
       database        => $o->get('database'),
@@ -8556,6 +8880,8 @@ sub main {
       ignore_warnings => $o->get('ignore-warnings'),
       read_only       => $o->get('read-only') ?  1 : 0,
       read_timeout    => $o->get('read-timeout'),
+      allowed_errors  => $o->get('continue-on-error') ? 100 : 0,
+      progress        => $progress,
    );
 
    if ( $host1 && $host2 ) {
@@ -8564,6 +8890,7 @@ sub main {
          parser          => $parser,
          host1           => $host1,
          host2           => $host2,
+         run_time        => $run_time,
          max_class_size  => $o->get('max-class-size'),
          max_examples    => $o->get('max-examples'),
          upgrade_table   => $o->get('upgrade-table'),
@@ -8576,6 +8903,7 @@ sub main {
          parser        => $parser,
          host          => $host1,
          results_dir   => $results_dir,
+         run_time      => $run_time,
          upgrade_table => $o->get('upgrade-table'),
          %optional_args,
       );
@@ -8584,6 +8912,7 @@ sub main {
       compare_results_to_host(
          results_dir     => $results_dir,
          host            => $host2,
+         run_time        => $run_time,
          max_class_size  => $o->get('max-class-size'),
          max_examples    => $o->get('max-examples'),
          upgrade_table   => $o->get('upgrade-table'),
@@ -8789,13 +9118,13 @@ sub check_table {
    return 1;
 }
 
+# Execute and compare queries on host1 and host2.
 sub compare_host_to_host {
    my (%args) = @_;
-
-#   have_required_args(\%args, qw(
-#      host1
-#      host2
-#   )) or die;
+   my @required_args = qw(logs parser host1 host2 max_class_size max_examples upgrade_table run_time);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
    my $logs           = $args{logs};
    my $parser         = $args{parser};
    my $host1          = $args{host1};
@@ -8803,6 +9132,7 @@ sub compare_host_to_host {
    my $max_class_size = $args{max_class_size};
    my $max_examples   = $args{max_examples}; 
    my $upgrade_table  = $args{upgrade_table};
+   my $run_time       = $args{run_time};
 
    # Optional args
    my $dry_run         = $args{dry_run};
@@ -8811,6 +9141,7 @@ sub compare_host_to_host {
    my $ignore_warnings = $args{ignore_warnings};
    my $read_only       = $args{read_only};
    my $read_timeout    = $args{read_timeout};
+   my $allowed_errors  = $args{allowed_errors} || 0;
 
    # Get set up to execute and compare queries.
    my $clear_warnings_sql = "SELECT * FROM $upgrade_table LIMIT 1 "
@@ -8845,47 +9176,71 @@ sub compare_host_to_host {
    );
 
    # Execute and compare queries.
-   while ( my $event = $query_iter->next() ) {
-      next if $dry_run;
+   my $errors = 0;
+   TRY:
+   while ( $errors <= $allowed_errors ) {
+      eval {
+         EVENT:
+         while (
+            $oktorun
+            && $run_time->have_time()
+            && defined(my $event = $query_iter->next())
+         ) {
+            next if $dry_run;
 
-      $clear_warnings_sth1->execute();
-      my $results1 = $executor->exec_event(
-         event => $event,
-         host  => $host1,
-      );
+            $clear_warnings_sth1->execute();
+            my $results1 = $executor->exec_event(
+               event => $event,
+               host  => $host1,
+            );
 
-      $clear_warnings_sth2->execute();
-      my $results2 = $executor->exec_event(
-         event => $event,
-         host  => $host2,
-      );
+            $clear_warnings_sth2->execute();
+            my $results2 = $executor->exec_event(
+               event => $event,
+               host  => $host2,
+            );
 
-      save_and_report_results(
-         event           => $event,
-         results         => $results,
-         results1        => $results1,
-         results2        => $results2,
-         ignore_warnings => $ignore_warnings,
-      );
+            save_and_report_results(
+               event           => $event,
+               results         => $results,
+               results1        => $results1,
+               results2        => $results2,
+               ignore_warnings => $ignore_warnings,
+            );
+         }
+      };
+      if ( $EVAL_ERROR ) {
+         warn "Error: $EVAL_ERROR";
+         $errors++;
+         $exit_status |= 1;
+      }
+
+      PTDEBUG && _d('Done parsing events');
+      last TRY;  # VERY IMPORTANT
    }
 
-   $results->report_unreported_classes();
+   # Did we finish because time ran out?
+   $run_time->have_time() or $exit_status |= 8;
+
+   # Report whatever is left.
+   $results->report_unreported_classes() or $exit_status |= 1;
 
    return;
 }
 
+# Execute queries on host and save the results to various files in results_dir.
 sub save_results {
    my (%args) = @_;
-
-#   have_required_args(\%args, qw(
-#      host1
-#      host2
-#   )) or die;
-   my $logs          = $args{logs};
-   my $parser        = $args{parser};
-   my $host          = $args{host};
-   my $results_dir   = $args{results_dir};
-   my $upgrade_table = $args{upgrade_table};
+   my @required_args = qw(logs parser host results_dir upgrade_table run_time);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my $logs           = $args{logs};
+   my $parser         = $args{parser};
+   my $host           = $args{host};
+   my $results_dir    = $args{results_dir};
+   my $upgrade_table  = $args{upgrade_table};
+   my $run_time       = $args{run_time};
    PTDEBUG && _d('Save results to', $results_dir);
 
    # Optional args
@@ -8895,6 +9250,7 @@ sub save_results {
    my $ignore_warnings = $args{ignore_warnings};
    my $read_only       = $args{read_only};
    my $read_timeout    = $args{read_timeout};
+   my $allowed_errors  = $args{allowed_errors} || 0;
 
    # Get set up to execute queries and save the results.
    my $clear_warnings_sql = "SELECT * FROM $upgrade_table LIMIT 1 "
@@ -8928,41 +9284,70 @@ sub save_results {
    );
 
    # Execute queries and save the results.
-   while ( my $event = $query_iter->next() ) {
-      $clear_warnings_sth->execute();
-      my $host_results = $executor->exec_event(
-         event => $event,
-         host  => $host,
-      );
+   my $errors = 0;
+   TRY:
+   while ( $errors <= $allowed_errors ) {
+      eval {
+         EVENT:
+         while (
+            $oktorun
+            && $run_time->have_time()
+            && defined(my $event = $query_iter->next())
+         ) {
+            next if $dry_run;
 
-      $results->save(
-         host    => $host,
-         event   => $event,
-         results => $host_results,
-      );
+            $clear_warnings_sth->execute();
+            my $host_results = $executor->exec_event(
+               event => $event,
+               host  => $host,
+            );
+
+            $results->save(
+               host    => $host,
+               event   => $event,
+               results => $host_results,
+            );
+         }
+      };
+      if ( $EVAL_ERROR ) {
+         warn "Error: $EVAL_ERROR";
+         $errors++;
+         $exit_status |= 1;
+      }
+
+      PTDEBUG && _d('Done parsing events');
+      last TRY;  # VERY IMPORTANT
    }
+
+   # Did we finish because time ran out?
+   $run_time->have_time() or $exit_status |= 8;
+
+   # Report whatever is left.
+   $results->report_unreported_classes() or $exit_status |= 1;
 
    return;
 }
 
+# Execute queries on host and compoare to results in results_dir.
 sub compare_results_to_host {
    my (%args) = @_;
-
-#   have_required_args(\%args, qw(
-#      host1
-#      host2
-#   )) or die;
+   my @required_args = qw(results_dir host max_class_size max_examples upgrade_table run_time);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
    my $results_dir    = $args{results_dir};
    my $host           = $args{host};
    my $max_class_size = $args{max_class_size};
    my $max_examples   = $args{max_examples}; 
    my $upgrade_table  = $args{upgrade_table};
+   my $run_time       = $args{run_time};
    PTDEBUG && _d('Compare', $results_dir, 'to', $host->name);
 
    # Optional args
    my $dry_run         = $args{dry_run};
    my $database        = $args{database};
    my $ignore_warnings = $args{ignore_warnings};
+   my $allowed_errors  = $args{allowed_errors} || 0;
 
    my $clear_warnings_sql = "SELECT * FROM $upgrade_table LIMIT 1 "
                           . "/* pt-upgrade clear warnings */";
@@ -8985,44 +9370,73 @@ sub compare_results_to_host {
       default_database => $database,
    );
 
-   while ( my $results1 = $result_iter->next() ) {
-      $stats->{queries_read}++;
+   my $errors = 0;
+   TRY:
+   while ( $errors <= $allowed_errors ) {
+      eval {
+         EVENT:
+         while (
+            $oktorun
+            && $run_time->have_time()
+            && defined(my $results1 = $result_iter->next())
+         ) {
+            # Increment this stat manually because we're not using
+            # a QueryIterator.
+            # TODO: increment this stat in ResultIterator?
+            $stats->{queries_read}++;
 
-      $results1->{sth} = FakeSth->new($results1->{rows});
+            next if $dry_run;
 
-      my $event = {
-         arg         => $results1->{query},
-         db          => $results1->{db},
-         fingerprint => $qr->fingerprint($results1->{query}),
+            $results1->{sth} = FakeSth->new($results1->{rows});
+
+            my $event = {
+               arg         => $results1->{query},
+               db          => $results1->{db},
+               fingerprint => $qr->fingerprint($results1->{query}),
+            };
+
+            $clear_warnings_sth->execute();
+            my $results2 = $executor->exec_event(
+               event => $event,
+               host  => $host,
+            );
+
+            save_and_report_results(
+               event           => $event,
+               results         => $results,
+               results1        => $results1,
+               results2        => $results2,
+               ignore_warnings => $ignore_warnings,
+            );
+         }
       };
+      if ( $EVAL_ERROR ) {
+         warn "Error: $EVAL_ERROR";
+         $errors++;
+         $exit_status |= 1;
+      }
 
-      $clear_warnings_sth->execute();
-      my $results2 = $executor->exec_event(
-         event => $event,
-         host  => $host,
-      );
-
-      save_and_report_results(
-         event           => $event,
-         results         => $results,
-         results1        => $results1,
-         results2        => $results2,
-         ignore_warnings => $ignore_warnings,
-      );
+      PTDEBUG && _d('Done parsing results');
+      last TRY;  # VERY IMPORTANT
    }
 
-   $results->report_unreported_classes();
+   # Did we finish because time ran out?
+   $run_time->have_time() or $exit_status |= 8;
+
+   # Report whatever is left.
+   $results->report_unreported_classes() or $exit_status |= 1;
 
    return;
 }
 
+# Diff results1 and results2 and if different save them with results,
+# the poorly named UpgradeResults object.
 sub save_and_report_results {
    my (%args) = @_;
-
-#   have_required_args(\%args, qw(
-#      host1
-#      host2
-#   )) or die;
+   my @required_args = qw(event results results1 results2);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
    my $event    = $args{event};
    my $results  = $args{results};
    my $results1 = $args{results1};
@@ -9062,6 +9476,7 @@ sub save_and_report_results {
          ignore_warnings => $ignore_warnings,
       );
 
+      # Only SELECT statements return rows.
       my $row_diffs;
       if ( $event->{arg} =~ m/(?:^\s*SELECT|(?:\*\/\s*SELECT))/i ) {
          $row_diffs = diff_rows(
@@ -9085,6 +9500,7 @@ sub save_and_report_results {
            || ($row_diffs        && scalar @$row_diffs) )
       {
          PTDEBUG && _d('Query diffs');
+         $exit_status |= 4;
          $stats->{queries_with_diffs}++;
          $results->save_diffs(
             event            => $event,
@@ -9142,6 +9558,10 @@ sub diff_query_times {
    # time should be the base/reference system.
    return if $t2 < $t1;
 
+   # From http://en.wikipedia.org/wiki/Order_of_magnitude: "We say two
+   # numbers have the same order of magnitude of a number if the big
+   # one divided by the little one is less than 10. For example, 23 and
+   # 82 have the same order of magnitude, but 23 and 820 do not."
    my $incr = $t2 / $t1;
    return if $incr < 10;
    return [
@@ -9231,7 +9651,6 @@ sub diff_rows {
          ];
       }
    }
-
 
    my $rowno = -1;  # so first ++ will incr to 0
    while ( ++$rowno < $max_rowno && scalar(@diffs) < $max_diffs ) {
@@ -9440,8 +9859,9 @@ pt-upgrade - Verify that queries results are identical on different servers.
 Usage: pt-upgrade [OPTIONS] LOGS|RESULTS DSN [DSN]
 
 pt-upgrade executes queries in MySQL C<LOGS> on each C<DSN>, compares
-the results, and reports any significant differences.  C<LOGS> can be
-slow, general, binary, tcpdump, and "raw".
+the results, and reports any significant differences.  The tool can
+also save results for later analyses.  C<LOGS> can be slow, general,
+binary, tcpdump, and "raw".
 
 Compare host1 to host2 using queries in C<slow.log>:
 
@@ -9527,17 +9947,15 @@ except maybe query times, so read-only slaves could be used.
 
 =head2 COMPARED TO
 
-The first DSN or reference results is compared to the second DSN.
-Phrases like "or smaller" and "or better" mean the first DSN or reference
-results compared to the second DSN.  Therefore, the first DSN or reference
-results must be the current version of MySQL to which the new (or old,
-if downgrading) version of MySQL is being compared.
+In a host to host comparison, results from the first host establish the
+norm to which results from the second host are compared.  In a reference
+results to host comparison, the reference results are the norm to which
+the host is compared.  Comparative phrases like "smaller than", "better
+than", etc. mean compared to the norm.
 
-For the query time comparison, for example, if the first DNS or reference
-results value is C<0.01> and the second DSN is C<0.5>, that is a significant
-difference that will be reported.  But the reverse is a positive difference
-because the query is C<0.49> seconds faster on the second host, so it will
-not be reported.
+For example, if the query time for an event is C<0.01> on the first host
+and C<0.5> on the second host, that is a significant difference because
+C<0.5> is worse than C<0.1>, and so the query will be reported.
 
 =head2 READ-ONLY
 
@@ -9581,7 +9999,7 @@ This is reported as "missing rows" under "Row diffs".
 =item Row data
 
 The row data returned by the query should be the same.  All differences are
-significant: whitespace, L<"--float-precision">, etc.
+significant: whitespace, float-precision, etc.
 
 =item Warnings
 
@@ -9724,15 +10142,44 @@ but the class will not be reported again.
 
 =head1 OUTPUT
 
-The L<"REPORT"> is printed to C<STDOUT> as the tool runs.
-Warnings and errors are printed to C<STDERR>.
+The L<"REPORT"> is printed to STDOUT as the tool runs.  Internal warnings,
+errors, and L<"--progress"> are printed to STDERR.  To avoid mixing the
+two, you should run the tool like:
+
+   pt-upgrade ... 1>report 2>err &
+
+You can then C<tail -f err> while the tool is running to track its
+L<"--progress">.
 
 =head1 EXIT STATUS
 
-pt-upgrade exits 0 if it finishes executing all queries in the C<LOG>
-and there were no errors or warnings.  Else the tool exits 1 and the
-L<"OUTPUT"> will end with a specific exit reason (e.g. caught CTRL-C,
-not enough disk space, etc.).
+In general, the tool exits zero if it finishes normally and there were
+no internal warnings or errors, and no L<"QUERY DIFFERENCES"> were found.
+Else the tool exits non-zero with one or more of the following codes: 
+
+=over
+
+=item 1
+
+There were internal errors or warnings; see STDERR.
+
+=item 4
+
+There were L<"QUERY DIFFERENCES">; see the L<"REPORT">.
+
+=item 8
+
+L<"--run-time"> expired; the tool did not finish reading the logs or
+reference results.
+
+=back
+
+Other exit codes indicate that the tool crashed or died, for example,
+if L<"--[no]create-upgrade-table"> fails.
+
+To check for a particular exit code, logical C<AND> (C<&>) the final exit
+status with the exit code.  For example, exit status 5 implies codes 1 and 4
+because C<5 & 1> is true, and C<5 & 4> is true.
 
 =head1 OPTIONS
 
@@ -9762,11 +10209,31 @@ type: Array
 Read this comma-separated list of config files; if specified, this must be the
 first option on the command line.
 
+=item --[no]continue-on-error
+
+default: yes
+
+Continue parsing even if there is an error.  The tool will not continue
+forever: it stops after 100 errors, in which case there is probably a bug
+in the tool or the input is invalid.
+
 =item --[no]create-upgrade-table
 
 default: yes
 
 Create the L<"--upgrade-table"> database and table.
+
+=item --daemonize
+
+Fork to the background and detach from the shell.  POSIX
+operating systems only.
+
+=item --defaults-file
+
+short form: -F; type: string
+
+Only read MySQL options from the given file.  You must give an absolute
+pathname.
 
 =item --database
 
@@ -9774,14 +10241,11 @@ short form: -D; type: string
 
 Database to use for queries that do not specify a database.
 
-=item --daemonize
-
-Fork to the background and detach from the shell.
-This only works for POSIX operating systems.
-
 =item --dry-run
 
-Run but do not execute or compare queries.
+Run but do not execute or compare queries.  This is useful for checking
+command line options, connections to MySQL, and log or reference results
+parsing.
 
 =item --[no]disable-query-cache
 
@@ -9795,17 +10259,7 @@ type: string
 
 Allow events for which this Perl code returns true.
 
-See "FILTERING" in the C<percona-toolkit> man page, or
-C<perldoc docs/percona-toolkit.pod> if installed from a tarball.
-
-=item --float-precision
-
-type: int
-
-Round float, double and decimal values to this many places.
-
-This option helps eliminate false-positives caused by floating-point
-imprecision.
+See the same option in the documentation for pt-query-digest.
 
 =item --help
 
@@ -9827,8 +10281,9 @@ Ignore these MySQL warning codes when comparing warnings.
 
 type: string
 
-Print all output to this file when daemonized.  This option has no effect
-unless L<"--daemonize"> is used.
+Print STDOUT and STDERR to this file when daemonized.  This option
+only takes affect when L<"--daemonize"> is specified.  The file is created
+if it doesn't exist, else output is appended to it.
 
 =item --max-class-size
 
@@ -9866,14 +10321,26 @@ short form: -P; type: int
 
 MySQL port number.
 
+=item --progress
+
+type: array; default: time,30
+
+Print progress reports to STDERR.  The tool prints progress reports while
+reading logs or reference results, roughly estimating how long until it
+finishes.
+
+The value is a comma-separated list with two parts.  The first part can be
+percentage, time, or iterations; the second part specifies how often an update
+should be printed, in percentage, seconds, or number of iterations.
+
 =item --[no]read-only
 
 default: yes
 
-Execute only SELECT and SET statements.  If C<--no-read-only> is specified,
-I<all> queries are exeucted: C<DROP>, C<DELETE>, C<UPDATE>, etc.  Even when
-running in default read-only mode, you should use a MySQL user with only
-C<SELECT> privileges to insure against bugs in the tool.
+Execute only C<SELECT> and C<SET> statements.  If C<--no-read-only> is
+specified, I<all> queries are exeucted: C<DROP>, C<DELETE>, C<UPDATE>, etc.
+Even when running in default read-only mode, you should use a MySQL user
+with only C<SELECT> privileges to insure against bugs in the tool.
 
 =item --read-timeout
 
@@ -9892,6 +10359,13 @@ This option requires the Perl POSIX module.
 type: Hash; default: hosts, logs, queries, stats
 
 Print these sections of the L<"REPORT">.
+
+=item --run-time
+
+type: time
+
+How long to run before exiting.  By default, the tool runs until it
+finishes reading the logs or reference results.
 
 =item --save-results
 
@@ -9935,7 +10409,7 @@ type: string; default: slowlog
 Type of log files.  Valid types are:
 
   VALUE    LOG TYPE
-  =======  ==========================================
+  =======  ===========================================
   slowlog  MySQL slow log
   genlog   MySQL general log
   binlog   MySQL binary log (converted by mysqlbinlog)
@@ -9952,7 +10426,10 @@ on each host before executing each query.
 The table must be database-qualified.  The database and table are
 automatically created unless C<--no-create-upgrade-table> is specified
 (see L<"--[no]create-upgrade-table">).  If the table does not already
-exist, it is created with this MAGIC_upgrade_table definition:
+exist, it is created with this definition:
+
+=for comment ignore-pt-internal-value
+MAGIC_upgrade_table
 
    CREATE TABLE pt_upgrade (
      id INT NOT NULL PRIMARY KEY
@@ -9992,12 +10469,11 @@ For more information, visit L<https://www.percona.com/version-check>.
 
 type: string
 
-This option tells pt-upgrade which server IP address and port (like
-"10.0.0.1:3306") to watch when parsing tcpdump (for L<"--type"> tcpdump and
-memcached); all other servers are ignored.  If you don't specify it,
-pt-upgrade watches all servers by looking for any IP address using port
-3306 or "mysql".  If you're watching a server with a non-standard port, this
-won't work, so you must specify the IP address and port to watch.
+Parse only events for this IP:port for L<"--type"> tcpdump.  All other
+IP addresses are ignored.  If not specified, pt-upgrade watches all servers
+by looking for any IP address using port 3306 or "mysql".  If you're watching
+a server with a non-standard port, this won't work, so you must specify the
+IP address and port to watch.
 
 If you want to watch a mix of servers, some running on standard port 3306
 and some running on non-standard ports, you need to create separate

@@ -25,6 +25,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
+use Data::Dumper;
 use Digest::MD5 qw(md5_hex);
 
 use Lmo;
@@ -197,29 +198,37 @@ sub _new_class {
 
 sub report_unreported_classes {
    my ($self) = @_;
+   my $success = 1;
    my $classes = $self->classes;
    foreach my $id ( sort keys %$classes ) {
-      my $class = $classes->{$id};
-      my $reason;
-      if ( !scalar @{$class->{failures}} ) {
-         $reason = 'it has diffs';
+      eval {
+         my $class = $classes->{$id};
+         my $reason;
+         if ( !scalar @{$class->{failures}} ) {
+            $reason = 'it has diffs';
+         }
+         elsif (    scalar @{$class->{errors}}
+                 || scalar @{$class->{query_time_diffs}}
+                 || scalar @{$class->{warning_diffs}}
+                 || scalar @{$class->{row_diffs}} ) {
+            $reason = 'it has SQL errors and diffs';
+         }
+         else {
+            $reason = 'it has SQL errors'
+         }
+         $self->report_class(
+            class   => $class,
+            reasons => ["$reason, but hasn't been reported yet"],
+         );
+         $class = { reported => 1 };
+      };
+      if ( $EVAL_ERROR ) {
+         $success = 1;
+         warn Dumper($classes->{$id});
+         warn "Error reporting query class $id: $EVAL_ERROR";
       }
-      elsif (    scalar @{$class->{errors}}
-              || scalar @{$class->{query_time_diffs}}
-              || scalar @{$class->{warning_diffs}}
-              || scalar @{$class->{row_diffs}} ) {
-         $reason = 'it has SQL errors and diffs';
-      }
-      else {
-         $reason = 'it has SQL errors'
-      }
-      $self->report_class(
-         class   => $class,
-         reasons => ["$reason, but hasn't been reported yet"],
-      );
-      $class = { reported => 1 };
    }
-   return;
+   return $success;
 }
 
 sub report_if_ready {
