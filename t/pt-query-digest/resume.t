@@ -48,7 +48,7 @@ sub resume_offset_ok {
 sub run_pqd {
    my @extra_args = @_;
    my $run = output(sub { pt_query_digest::main(qw(--limit 10), @extra_args, $filename) }, stderr => 1);
-   $run =~ s/\d+ms user time.+//;
+   $run =~ s/[\d.]+m?s user time.+//;
    $run =~ s/Current date: .+//;
    return $run;
 }
@@ -73,7 +73,7 @@ is(
 like(
    $resume_runs[0],
    qr/\QSaved resume file offset\E/,
-   "SAves offset with --resume"
+   "Saves offset with --resume"
 );
 
 like(

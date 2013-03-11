@@ -398,7 +398,7 @@ _parse_command_line() {
 
       if [ "$next_opt_is_val" ]; then
          next_opt_is_val=""
-         if [ $# -eq 0 ] || [ $(expr "$opt" : "-") -eq 1 ]; then
+         if [ $# -eq 0 ] || [ $(expr "$opt" : "\-") -eq 1 ]; then
             option_error "$real_opt requires a $required_arg argument"
             continue
          fi
@@ -406,7 +406,7 @@ _parse_command_line() {
          opt_is_ok=1
       else
          # If option does not begin with a hyphen (-), it's a filename, etc.
-         if [ $(expr "$opt" : "-") -eq 0 ]; then
+         if [ $(expr "$opt" : "\-") -eq 0 ]; then
             if [ -z "$ARGV" ]; then
                ARGV="$opt"
             else

@@ -29,10 +29,10 @@ if ( !$master_dbh ) {
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
-# so we need to specify --lock-wait-timeout=3 else the tool will die.
+# so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
 my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
-my @args       = ($master_dsn, qw(--lock-wait-timeout 3), '--max-load', ''); 
+my @args       = ($master_dsn, qw(--set-vars innodb_lock_wait_timeout=3), '--max-load', ''); 
 my $output;
 my $exit_status;
 
@@ -44,7 +44,7 @@ $exit_status = pt_table_checksum::main(@args,
 my $t  = time - $t0;
 
 ok(
-   $t >= 1.1 && $t <= 2.5,
+   $t >= 1.0 && $t <= 2.5,
    "Ran in roughly --run-time 1 second"
 ) or diag("Actual run time: $t");
 
@@ -72,4 +72,3 @@ ok(
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
-exit;

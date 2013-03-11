@@ -42,9 +42,9 @@ elsif ( !$sb->is_cluster_mode ) {
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
-# so we need to specify --lock-wait-timeout=3 else the tool will die.
+# so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 my $node1_dsn = $sb->dsn_for('node1');
-my @args      = ($node1_dsn, qw(--lock-wait-timeout 3));
+my @args      = ($node1_dsn, qw(--set-vars innodb_lock_wait_timeout=3));
 my $output;
 my $exit_status;
 my $sample  = "t/pt-table-checksum/samples/";
@@ -183,7 +183,7 @@ my ($slave_dbh, $slave_dsn) = $sb->start_sandbox(
    server => 'cslave1',
    type   => 'slave',
    master => 'node1',
-   env    => q/BINLOG_FORMAT="ROW"/,
+   env    => q/FORK="pxc" BINLOG_FORMAT="ROW"/,
 );
 
 # Add the slave to the DSN table.
@@ -214,7 +214,7 @@ $output = output(
 
 like(
    $output,
-   qr/replica h=127.1,P=12348 has binlog_format ROW/,
+   qr/replica h=127.1,P=12348 has binlog_format ROW/i,
    "--check-binlog-format warns about slave's binlog format"
 );
 
@@ -251,7 +251,7 @@ $sb->stop_sandbox('cslave1');
    server => 'cslave1',
    type   => 'slave',
    master => 'node2',
-   env    => q/BINLOG_FORMAT="ROW"/,
+   env    => q/FORK="pxc" BINLOG_FORMAT="ROW"/,
 );
 
 # Wait for the slave to apply the binlogs from node2 (its master).
@@ -291,28 +291,46 @@ $node1->do(qq/DELETE FROM dsns.dsns WHERE id=4/);
 # master -> node1 in cluster, run on master
 # #############################################################################
 
+# CAREFUL: The master and the cluster are different, so don't do stuff
+# on the master that will conflict with stuff already done on the cluster.
+# And since we're using RBR, we have to do a lot of stuff on the master
+# again, manually, because REPLACE and INSERT IGNORE don't work in RBR
+# like they do SBR.
+
 my ($master_dbh, $master_dsn) = $sb->start_sandbox(
    server => 'cmaster',
    type   => 'master',
-   env    => q/BINLOG_FORMAT="ROW"/,
+   env    => q/FORK="pxc" BINLOG_FORMAT="ROW"/,
 );
 
-# CAREFUL: The master and the cluster are different, so we must load dbs on
-# the master then flush the logs, else node1 will apply the master's binlogs
-# and blow up because it already had these dbs.
-
-# Remember: this DSN table only has node2 and node3 (12346 and 12347) which is
-# sufficient for this test.
-$sb->load_file('cmaster', "$sample/dsn-table.sql");
+# Since master is new, node1 shouldn't have binlog to replay.
+$sb->set_as_slave('node1', 'cmaster');
 
 # We have to load a-z-cluster.sql else the pk id won'ts match because nodes use
 # auto-inc offsets but the master doesn't.
-$sb->load_file('cmaster', "$sample/a-z-cluster.sql");
+$sb->load_file('cmaster', "$sample/a-z-cluster.sql", undef, no_wait => 1);
 
-$master_dbh->do("FLUSH LOGS");
-$master_dbh->do("RESET MASTER");
+# Do this stuff manually and only on the master because node1/the cluster
+# already has it, and due to RBR, we can't do it other ways.
+$master_dbh->do("SET sql_log_bin=0");
 
-$sb->set_as_slave('node1', 'cmaster');
+# This DSN table does not include 12345 (node1/slave) intentionally,
+# so a later test can auto-find 12345 then warn "Diffs will only be
+# detected if the cluster is consistent with h=127.1,P=12345...".
+$master_dbh->do("CREATE DATABASE dsns");
+$master_dbh->do("CREATE TABLE dsns.dsns (
+  id int auto_increment primary key,
+  parent_id int default null,
+  dsn varchar(255) not null
+)");
+$master_dbh->do("INSERT INTO dsns.dsns VALUES
+  (2, 1,    'h=127.1,P=12346,u=msandbox,p=msandbox'),
+  (3, 2,    'h=127.1,P=12347,u=msandbox,p=msandbox')");
+
+$master_dbh->do("INSERT INTO percona_test.sentinel (id, ping) VALUES (1, '')");
+$master_dbh->do("SET sql_log_bin=1");
+
+$sb->wait_for_slaves(master => 'cmaster', slave => 'node1');
 
 # Notice: no --recursion-method=dsn yet.  Since node1 is a traditional slave
 # of the master, ptc should auto-detect it, which we'll test later by making

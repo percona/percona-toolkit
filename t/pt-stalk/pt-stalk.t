@@ -144,7 +144,7 @@ like(
 
 cleanup();
 
-$retval = system("$trunk/bin/pt-stalk --daemonize --pid $pid_file --log $log_file --dest $dest --verbose 3 -- --defaults-file=$cnf");
+$retval = system("$trunk/bin/pt-stalk --daemonize --pid $pid_file --log $log_file --variable Threads_running --dest $dest --verbose 3 -- --defaults-file=$cnf");
 
 PerconaTest::wait_for_files($pid_file, $log_file);
 PerconaTest::wait_for_sh("grep -q 'Check results' $log_file >/dev/null");
@@ -155,7 +155,7 @@ like(
    $output,
    qr/Check results: Threads_running=\d+, matched=no, cycles_true=0/,
    "Matching results logged with --verbose 3"
-) or diag(`cat $log_file 2>/dev/null`, `cat $dest/*-output 2>/dev/null`);
+) or diag(`cat $dest/*-output 2>/dev/null`);
 
 # #############################################################################
 # --verbose 1 (just errors and warnings)
@@ -317,7 +317,11 @@ diag(`cp $ENV{HOME}/.pt-stalk.conf.original $ENV{HOME}/.pt-stalk.conf 2>/dev/nul
 
 cleanup();
 
-$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --prefix nostalk --pid $pid_file -- --defaults-file=$cnf >$log_file 2>&1");
+# As of 2.2, --no-stalk means just that: don't stalk, just collect, so
+# we have to specify --iterations=1 else the tool will continue to run,
+# whereas in 2.1 --no-stalk implied/forced "collect once and exit".
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --prefix nostalk --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
 
 PerconaTest::wait_until(sub { !-f $pid_file });
 

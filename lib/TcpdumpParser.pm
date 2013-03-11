@@ -172,10 +172,7 @@ sub _parse_packet {
 sub port_number {
    my ( $self, $port ) = @_;
    return unless $port;
-   return $port eq 'memcached' ? 11211
-        : $port eq 'http'      ? 80
-        : $port eq 'mysql'     ? 3306
-        :                        $port; 
+   return $port eq 'mysql' ? 3306 : $port;
 }
 
 sub _d {

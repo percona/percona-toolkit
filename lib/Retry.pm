@@ -27,6 +27,8 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
+use Time::HiRes qw(sleep);
+
 sub new {
    my ( $class, %args ) = @_;
    my $self = {

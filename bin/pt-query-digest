@@ -27,8 +27,6 @@ BEGIN {
       Processlist
       TcpdumpParser
       MySQLProtocolParser
-      SysLogParser
-      PgLogParser
       SlowLogParser
       SlowLogWriter
       EventAggregator
@@ -39,14 +37,12 @@ BEGIN {
       QueryParser
       TableParser
       QueryReview
+      QueryHistory
       Daemon
-      MemcachedProtocolParser
-      MemcachedEvent
       BinaryLogParser
       GeneralLogParser
       RawLogParser
       ProtocolParser
-      HTTPProtocolParser
       MasterSlave
       Progress
       FileIterator
@@ -986,7 +982,7 @@ sub get_dbh {
 
       if ( my ($charset) = $cxn_string =~ m/charset=([\w]+)/ ) {
          $sql = qq{/*!40101 SET NAMES "$charset"*/};
-         PTDEBUG && _d($dbh, ':', $sql);
+         PTDEBUG && _d($dbh, $sql);
          eval { $dbh->do($sql) };
          if ( $EVAL_ERROR ) {
             die "Error setting NAMES to $charset: $EVAL_ERROR";
@@ -1001,13 +997,8 @@ sub get_dbh {
          }
       }
 
-      if ( my $var = $self->prop('set-vars') ) {
-         $sql = "SET $var";
-         PTDEBUG && _d($dbh, ':', $sql);
-         eval { $dbh->do($sql) };
-         if ( $EVAL_ERROR ) {
-            die "Error setting $var: $EVAL_ERROR";
-         }
+      if ( my $vars = $self->prop('set-vars') ) {
+         $self->set_vars($dbh, $vars);
       }
 
       $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
@@ -1082,6 +1073,57 @@ sub copy {
    return \%new_dsn;
 }
 
+sub set_vars {
+   my ($self, $dbh, $vars) = @_;
+
+   return unless $vars;
+
+   foreach my $var ( sort keys %$vars ) {
+      my $val = $vars->{$var}->{val};
+
+      (my $quoted_var = $var) =~ s/_/\\_/;
+      my ($var_exists, $current_val);
+      eval {
+         ($var_exists, $current_val) = $dbh->selectrow_array(
+            "SHOW VARIABLES LIKE '$quoted_var'");
+      };
+      my $e = $EVAL_ERROR;
+      if ( $e ) {
+         PTDEBUG && _d($e);
+      }
+
+      if ( $vars->{$var}->{default} && !$var_exists ) {
+         PTDEBUG && _d('Not setting default var', $var,
+            'because it does not exist');
+         next;
+      }
+
+      if ( $current_val && $current_val eq $val ) {
+         PTDEBUG && _d('Not setting var', $var, 'because its value',
+            'is already', $val);
+         next;
+      }
+
+      my $sql = "SET SESSION $var=$val";
+      PTDEBUG && _d($dbh, $sql);
+      eval { $dbh->do($sql) };
+      if ( my $set_error = $EVAL_ERROR ) {
+         chomp($set_error);
+         $set_error =~ s/ at \S+ line \d+//;
+         my $msg = "Error setting $var: $set_error";
+         if ( $current_val ) {
+            $msg .= "  The current value for $var is $current_val.  "
+                  . "If the variable is read only (not dynamic), specify "
+                  . "--set-vars $var=$current_val to avoid this warning, "
+                  . "else manually set the variable and restart MySQL.";
+         }
+         warn $msg . "\n\n";
+      }
+   }
+
+   return; 
+}
+
 sub _d {
    my ($package, undef, $line) = caller 0;
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
@@ -1111,6 +1153,11 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use Data::Dumper;
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Sortkeys  = 1;
+$Data::Dumper::Quotekeys = 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -1176,44 +1223,64 @@ sub join_quote {
 
 sub serialize_list {
    my ( $self, @args ) = @_;
+   PTDEBUG && _d('Serializing', Dumper(\@args));
    return unless @args;
 
-   return $args[0] if @args == 1 && !defined $args[0];
+   my @parts;
+   foreach my $arg  ( @args ) {
+      if ( defined $arg ) {
+         $arg =~ s/,/\\,/g;      # escape commas
+         $arg =~ s/\\N/\\\\N/g;  # escape literal \N
+         push @parts, $arg;
+      }
+      else {
+         push @parts, '\N';
+      }
+   }
 
-   die "Cannot serialize multiple values with undef/NULL"
-      if grep { !defined $_ } @args;
-
-   return join ',', map { quotemeta } @args;
+   my $string = join(',', @parts);
+   PTDEBUG && _d('Serialized: <', $string, '>');
+   return $string;
 }
 
 sub deserialize_list {
    my ( $self, $string ) = @_;
-   return $string unless defined $string;
-   my @escaped_parts = $string =~ /
-         \G             # Start of string, or end of previous match.
-         (              # Each of these is an element in the original list.
-            [^\\,]*     # Anything not a backslash or a comma
-            (?:         # When we get here, we found one of the above.
-               \\.      # A backslash followed by something so we can continue
-               [^\\,]*  # Same as above.
-            )*          # Repeat zero of more times.
-         )
-         ,              # Comma dividing elements
-      /sxgc;
+   PTDEBUG && _d('Deserializing <', $string, '>');
+   die "Cannot deserialize an undefined string" unless defined $string;
 
-   push @escaped_parts, pos($string) ? substr( $string, pos($string) ) : $string;
+   my @parts;
+   foreach my $arg ( split(/(?<!\\),/, $string) ) {
+      if ( $arg eq '\N' ) {
+         $arg = undef;
+      }
+      else {
+         $arg =~ s/\\,/,/g;
+         $arg =~ s/\\\\N/\\N/g;
+      }
+      push @parts, $arg;
+   }
 
-   my @unescaped_parts = map {
-      my $part = $_;
+   if ( !@parts ) {
+      my $n_empty_strings = $string =~ tr/,//;
+      $n_empty_strings++;
+      PTDEBUG && _d($n_empty_strings, 'empty strings');
+      map { push @parts, '' } 1..$n_empty_strings;
+   }
+   elsif ( $string =~ m/(?<!\\),$/ ) {
+      PTDEBUG && _d('Last value is an empty string');
+      push @parts, '';
+   }
 
-      my $char_class = utf8::is_utf8($part)  # If it's a UTF-8 string,
-                     ? qr/(?=\p{ASCII})\W/   # We only care about non-word
-                     : qr/(?=\p{ASCII})\W|[\x{80}-\x{FF}]/; # Otherwise,
-      $part =~ s/\\($char_class)/$1/g;
-      $part;
-   } @escaped_parts;
+   PTDEBUG && _d('Deserialized', Dumper(\@parts));
+   return @parts;
+}
 
-   return @unescaped_parts;
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
 1;
@@ -1240,6 +1307,7 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use List::Util qw(max);
 use Getopt::Long;
+use Data::Dumper;
 
 my $POD_link_re = '[LC]<"?([^">]+)"?>';
 
@@ -2222,6 +2290,45 @@ sub _parse_synopsis {
       usage       => $usage,
    );
 };
+
+sub set_vars {
+   my ($self, $file) = @_;
+   $file ||= $self->{file} || __FILE__;
+
+   my %user_vars;
+   my $user_vars = $self->has('set-vars') ? $self->get('set-vars') : undef;
+   if ( $user_vars ) {
+      foreach my $var_val ( @$user_vars ) {
+         my ($var, $val) = $var_val =~ m/([^\s=]+)=(\S+)/;
+         die "Invalid --set-vars value: $var_val\n" unless $var && $val;
+         $user_vars{$var} = {
+            val     => $val,
+            default => 0,
+         };
+      }
+   }
+
+   my %default_vars;
+   my $default_vars = $self->read_para_after($file, qr/MAGIC_set_vars/);
+   if ( $default_vars ) {
+      %default_vars = map {
+         my $var_val = $_;
+         my ($var, $val) = $var_val =~ m/([^\s=]+)=(\S+)/;
+         die "Invalid --set-vars value: $var_val\n" unless $var && $val;
+         $var => {
+            val     => $val,
+            default => 1,
+         };
+      } split("\n", $default_vars);
+   }
+
+   my %vars = (
+      %default_vars, # first the tool's defaults
+      %user_vars,    # then the user's which overwrite the defaults
+   );
+   PTDEBUG && _d('--set-vars:', Dumper(\%vars));
+   return \%vars;
+}
 
 sub _d {
    my ($package, undef, $line) = caller 0;
@@ -3468,10 +3575,7 @@ sub _parse_packet {
 sub port_number {
    my ( $self, $port ) = @_;
    return unless $port;
-   return $port eq 'memcached' ? 11211
-        : $port eq 'http'      ? 80
-        : $port eq 'mysql'     ? 3306
-        :                        $port; 
+   return $port eq 'mysql' ? 3306 : $port;
 }
 
 sub _d {
@@ -3514,19 +3618,7 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-require Exporter;
-our @ISA         = qw(Exporter);
-our %EXPORT_TAGS = ();
-our @EXPORT      = ();
-our @EXPORT_OK   = qw(
-   parse_error_packet
-   parse_ok_packet
-   parse_ok_prepared_statement_packet
-   parse_server_handshake_packet
-   parse_client_handshake_packet
-   parse_com_packet
-   parse_flags
-);
+BEGIN { our @ISA = 'ProtocolParser'; }
 
 use constant {
    COM_SLEEP               => '00',
@@ -4740,45 +4832,6 @@ sub remove_mysql_header {
    return;
 }
 
-sub _get_errors_fh {
-   my ( $self ) = @_;
-   my $errors_fh = $self->{errors_fh};
-   return $errors_fh if $errors_fh;
-
-   my $o = $self->{o};
-   if ( $o && $o->has('tcpdump-errors') && $o->got('tcpdump-errors') ) {
-      my $errors_file = $o->get('tcpdump-errors');
-      PTDEBUG && _d('tcpdump-errors file:', $errors_file);
-      open $errors_fh, '>>', $errors_file
-         or die "Cannot open tcpdump-errors file $errors_file: $OS_ERROR";
-   }
-
-   $self->{errors_fh} = $errors_fh;
-   return $errors_fh;
-}
-
-sub fail_session {
-   my ( $self, $session, $reason ) = @_;
-   PTDEBUG && _d('Client', $session->{client}, 'failed because', $reason);
-   my $errors_fh = $self->_get_errors_fh();
-   if ( $errors_fh ) {
-      my $raw_packets = $session->{raw_packets};
-      delete $session->{raw_packets};  # Don't dump, it's printed below.
-      $session->{reason_for_failure} = $reason;
-      my $session_dump = '# ' . Dumper($session);
-      chomp $session_dump;
-      $session_dump =~ s/\n/\n# /g;
-      print $errors_fh "$session_dump\n";
-      {
-         local $LIST_SEPARATOR = "\n";
-         print $errors_fh "@$raw_packets";
-         print $errors_fh "\n";
-      }
-   }
-   delete $self->{sessions}->{$session->{client}};
-   return;
-}
-
 sub _delete_buff {
    my ( $self, $session ) = @_;
    map { delete $session->{$_} } qw(buff buff_left mysql_data_len);
@@ -4797,617 +4850,6 @@ sub _d {
 }
 # ###########################################################################
 # End MySQLProtocolParser package
-# ###########################################################################
-
-# ###########################################################################
-# SysLogParser package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/SysLogParser.pm
-#   t/lib/SysLogParser.t
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-{
-package SysLogParser;
-
-use strict;
-use warnings FATAL => 'all';
-use English qw(-no_match_vars);
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
-
-my $syslog_regex = qr{\A.*\w+\[\d+\]: \[(\d+)-(\d+)\] (.*)\Z};
-
-sub new {
-   my ( $class ) = @_;
-   my $self = {};
-   return bless $self, $class;
-}
-
-sub parse_event {
-   my ( $self, %args ) = @_;
-   my ( $next_event, $tell, $is_syslog ) = $self->generate_wrappers(%args);
-   return $next_event->();
-}
-
-sub generate_wrappers {
-   my ( $self, %args ) = @_;
-
-   if ( ($self->{sanity} || '') ne "$args{next_event}" ){
-      PTDEBUG && _d("Clearing and recreating internal state");
-      @{$self}{qw(next_event tell is_syslog)} = $self->make_closures(%args);
-      $self->{sanity} = "$args{next_event}";
-   }
-
-   return @{$self}{qw(next_event tell is_syslog)};
-}
-
-sub make_closures {
-   my ( $self, %args ) = @_;
-
-   my $next_event     = $args{'next_event'};
-   my $tell           = $args{'tell'};
-   my $new_event_test = $args{'misc'}->{'new_event_test'};
-   my $line_filter    = $args{'misc'}->{'line_filter'};
-
-   my $test_line = $next_event->();
-   PTDEBUG && _d('Read first sample/test line:', $test_line);
-
-   if ( defined $test_line && $test_line =~ m/$syslog_regex/o ) {
-
-      PTDEBUG && _d('This looks like a syslog line, PTDEBUG prefix=LLSP');
-
-      my ($msg_nr, $line_nr, $content) = $test_line =~ m/$syslog_regex/o;
-      my @pending = ($test_line);
-      my $last_msg_nr = $msg_nr;
-      my $pos_in_log  = 0;
-
-      my $new_next_event = sub {
-         PTDEBUG && _d('LLSP: next_event()');
-
-         PTDEBUG && _d('LLSP: Current virtual $fh position:', $pos_in_log);
-         my $new_pos = 0;
-
-         my @arg_lines;
-
-         my $line;
-         LINE:
-         while (
-            defined($line = shift @pending)
-            || do {
-               eval { $new_pos = -1; $new_pos = $tell->() };
-               defined($line = $next_event->());
-            }
-         ) {
-            PTDEBUG && _d('LLSP: Line:', $line);
-
-            ($msg_nr, $line_nr, $content) = $line =~ m/$syslog_regex/o;
-            if ( !$msg_nr ) {
-               die "Can't parse line: $line";
-            }
-
-            elsif ( $msg_nr != $last_msg_nr ) {
-               PTDEBUG && _d('LLSP: $msg_nr', $last_msg_nr, '=>', $msg_nr);
-               $last_msg_nr = $msg_nr;
-               last LINE;
-            }
-
-            elsif ( @arg_lines && $new_event_test && $new_event_test->($content) ) {
-               PTDEBUG && _d('LLSP: $new_event_test matches');
-               last LINE;
-            }
-
-            $content =~ s/#(\d{3})/chr(oct($1))/ge;
-            $content =~ s/\^I/\t/g;
-            if ( $line_filter ) {
-               PTDEBUG && _d('LLSP: applying $line_filter');
-               $content = $line_filter->($content);
-            }
-
-            push @arg_lines, $content;
-         }
-         PTDEBUG && _d('LLSP: Exited while-loop after finding a complete entry');
-
-         my $psql_log_event = @arg_lines ? join('', @arg_lines) : undef;
-         PTDEBUG && _d('LLSP: Final log entry:', $psql_log_event);
-
-         if ( defined $line ) {
-            PTDEBUG && _d('LLSP: Saving $line:', $line);
-            @pending = $line;
-            PTDEBUG && _d('LLSP: $pos_in_log:', $pos_in_log, '=>', $new_pos);
-            $pos_in_log = $new_pos;
-         }
-         else {
-            PTDEBUG && _d('LLSP: EOF reached');
-            @pending     = ();
-            $last_msg_nr = 0;
-         }
-
-         return $psql_log_event;
-      };
-
-      my $new_tell = sub {
-         PTDEBUG && _d('LLSP: tell()', $pos_in_log);
-         return $pos_in_log;
-      };
-
-      return ($new_next_event, $new_tell, 1);
-   }
-
-   else {
-
-      PTDEBUG && _d('Plain log, or we are at EOF; PTDEBUG prefix=PLAIN');
-
-      my @pending = defined $test_line ? ($test_line) : ();
-
-      my $new_next_event = sub {
-         PTDEBUG && _d('PLAIN: next_event(); @pending:', scalar @pending);
-         return @pending ? shift @pending : $next_event->();
-      };
-      my $new_tell = sub {
-         PTDEBUG && _d('PLAIN: tell(); @pending:', scalar @pending);
-         return @pending ? 0 : $tell->();
-      };
-      return ($new_next_event, $new_tell, 0);
-   }
-}
-
-sub _d {
-   my ($package, undef, $line) = caller 0;
-   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
-        map { defined $_ ? $_ : 'undef' }
-        @_;
-   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
-}
-
-1;
-}
-# ###########################################################################
-# End SysLogParser package
-# ###########################################################################
-
-# ###########################################################################
-# PgLogParser package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/PgLogParser.pm
-#   t/lib/PgLogParser.t
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-{
-package PgLogParser;
-
-use strict;
-use warnings FATAL => 'all';
-use English qw(-no_match_vars);
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
-
-use Data::Dumper;
-$Data::Dumper::Indent    = 1;
-$Data::Dumper::Sortkeys  = 1;
-$Data::Dumper::Quotekeys = 0;
-
-my $log_line_regex = qr{
-   (LOG|DEBUG|CONTEXT|WARNING|ERROR|FATAL|PANIC|HINT
-    |DETAIL|NOTICE|STATEMENT|INFO|LOCATION)
-   :\s\s+
-   }x;
-
-my %attrib_name_for = (
-   u => 'user',
-   d => 'db',
-   r => 'host', # With port
-   h => 'host',
-   p => 'Process_id',
-   t => 'ts',
-   m => 'ts',   # With milliseconds
-   i => 'Query_type',
-   c => 'Session_id',
-   l => 'Line_no',
-   s => 'Session_id',
-   v => 'Vrt_trx_id',
-   x => 'Trx_id',
-);
-
-sub new {
-   my ( $class ) = @_;
-   my $self = {
-      pending    => [],
-      is_syslog  => undef,
-      next_event => undef,
-      'tell'     => undef,
-   };
-   return bless $self, $class;
-}
-
-sub parse_event {
-   my ( $self, %args ) = @_;
-   my @required_args = qw(next_event tell);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-
-   my ( $next_event, $tell, $is_syslog ) = $self->generate_wrappers(%args);
-
-   my @properties = ();
-
-   my ($pos_in_log, $line, $was_pending) = $self->get_line();
-   my $new_pos;
-
-   my @arg_lines;
-
-   my $done;
-
-   my $got_duration;
-
-   if ( !$was_pending && (!defined $line || $line !~ m/$log_line_regex/o) ) {
-      PTDEBUG && _d('Skipping lines until I find a header');
-      my $found_header;
-      LINE:
-      while (
-         eval {
-            ($new_pos, $line) = $self->get_line();
-            defined $line;
-         }
-      ) {
-         if ( $line =~ m/$log_line_regex/o ) {
-            $pos_in_log = $new_pos;
-            last LINE;
-         }
-         else {
-            PTDEBUG && _d('Line was not a header, will fetch another');
-         }
-      }
-      PTDEBUG && _d('Found a header line, now at pos_in_line', $pos_in_log);
-   }
-
-   my $first_line;
-
-   my $line_type;
-
-   LINE:
-   while ( !$done && defined $line ) {
-
-      chomp $line unless $is_syslog;
-
-      if ( (($line_type) = $line =~ m/$log_line_regex/o) && $line_type ne 'LOG' ) {
-
-         if ( @arg_lines ) {
-            PTDEBUG && _d('Found a non-LOG line, exiting loop');
-            last LINE;
-         }
-
-         else {
-            $first_line ||= $line;
-
-            if ( my ($e) = $line =~ m/ERROR:\s+(\S.*)\Z/s ) {
-               push @properties, 'Error_msg', $e;
-               PTDEBUG && _d('Found an error msg, saving and continuing');
-               ($new_pos, $line) = $self->get_line();
-               next LINE;
-            }
-
-            elsif ( my ($s) = $line =~ m/STATEMENT:\s+(\S.*)\Z/s ) {
-               push @properties, 'arg', $s, 'cmd', 'Query';
-               PTDEBUG && _d('Found a statement, finishing up event');
-               $done = 1;
-               last LINE;
-            }
-
-            else {
-               PTDEBUG && _d("I don't know what to do with this line");
-            }
-         }
-
-      }
-
-      if (
-         $line =~ m{
-            Address\sfamily\snot\ssupported\sby\sprotocol
-            |archived\stransaction\slog\sfile
-            |autovacuum:\sprocessing\sdatabase
-            |checkpoint\srecord\sis\sat
-            |checkpoints\sare\soccurring\stoo\sfrequently\s\(
-            |could\snot\sreceive\sdata\sfrom\sclient
-            |database\ssystem\sis\sready
-            |database\ssystem\sis\sshut\sdown
-            |database\ssystem\swas\sshut\sdown
-            |incomplete\sstartup\spacket
-            |invalid\slength\sof\sstartup\spacket
-            |next\sMultiXactId:
-            |next\stransaction\sID:
-            |received\ssmart\sshutdown\srequest
-            |recycled\stransaction\slog\sfile
-            |redo\srecord\sis\sat
-            |removing\sfile\s"
-            |removing\stransaction\slog\sfile\s"
-            |shutting\sdown
-            |transaction\sID\swrap\slimit\sis
-         }x
-      ) {
-         PTDEBUG && _d('Skipping this line because it matches skip-pattern');
-         ($new_pos, $line) = $self->get_line();
-         next LINE;
-      }
-
-      $first_line ||= $line;
-
-      if ( $line !~ m/$log_line_regex/o && @arg_lines ) {
-
-         if ( !$is_syslog ) {
-            $line =~ s/\A\t?/\n/;
-         }
-
-         push @arg_lines, $line;
-         PTDEBUG && _d('This was a continuation line');
-      }
-
-      elsif (
-         my ( $sev, $label, $rest )
-            = $line =~ m/$log_line_regex(.+?):\s+(.*)\Z/so
-      ) {
-         PTDEBUG && _d('Line is case 1 or case 3');
-
-         if ( @arg_lines ) {
-            $done = 1;
-            PTDEBUG && _d('There are saved @arg_lines, we are done');
-
-            if ( $label eq 'duration' && $rest =~ m/[0-9.]+\s+\S+\Z/ ) {
-               if ( $got_duration ) {
-                  PTDEBUG && _d('Discarding line, duration already found');
-               }
-               else {
-                  push @properties, 'Query_time', $self->duration_to_secs($rest);
-                  PTDEBUG && _d("Line's duration is for previous event:", $rest);
-               }
-            }
-            else {
-               $self->pending($new_pos, $line);
-               PTDEBUG && _d('Deferred line');
-            }
-         }
-
-         elsif ( $label =~ m/\A(?:duration|statement|query)\Z/ ) {
-            PTDEBUG && _d('Case 1: start a multi-line event');
-
-            if ( $label eq 'duration' ) {
-
-               if (
-                  (my ($dur, $stmt)
-                     = $rest =~ m/([0-9.]+ \S+)\s+(?:statement|query): *(.*)\Z/s)
-               ) {
-                  push @properties, 'Query_time', $self->duration_to_secs($dur);
-                  $got_duration = 1;
-                  push @arg_lines, $stmt;
-                  PTDEBUG && _d('Duration + statement');
-               }
-
-               else {
-                  $first_line = undef;
-                  ($pos_in_log, $line) = $self->get_line();
-                  PTDEBUG && _d('Line applies to event we never saw, discarding');
-                  next LINE;
-               }
-            }
-            else {
-               push @arg_lines, $rest;
-               PTDEBUG && _d('Putting onto @arg_lines');
-            }
-         }
-
-         else {
-            $done = 1;
-            PTDEBUG && _d('Line is case 3, event is done');
-
-            if ( @arg_lines ) {
-               $self->pending($new_pos, $line);
-               PTDEBUG && _d('There was @arg_lines, putting line to pending');
-            }
-
-            else {
-               PTDEBUG && _d('No need to defer, process event from this line now');
-               push @properties, 'cmd', 'Admin', 'arg', $label;
-
-               if ( $label =~ m/\A(?:dis)?connection(?: received| authorized)?\Z/ ) {
-                  push @properties, $self->get_meta($rest);
-               }
-
-               else {
-                  die "I don't understand line $line";
-               }
-
-            }
-         }
-
-      }
-
-      else {
-         die "I don't understand line $line";
-      }
-
-      if ( !$done ) {
-         ($new_pos, $line) = $self->get_line();
-      }
-   } # LINE
-
-   if ( !defined $line ) {
-      PTDEBUG && _d('Line not defined, at EOF; calling oktorun(0) if exists');
-      $args{oktorun}->(0) if $args{oktorun};
-      if ( !@arg_lines ) {
-         PTDEBUG && _d('No saved @arg_lines either, we are all done');
-         return undef;
-      }
-   }
-
-   if ( $line_type && $line_type ne 'LOG' ) {
-      PTDEBUG && _d('Line is not a LOG line');
-
-      if ( $line_type eq 'ERROR' ) {
-         PTDEBUG && _d('Line is ERROR');
-
-         if ( @arg_lines ) {
-            PTDEBUG && _d('There is @arg_lines, will peek ahead one line');
-            my ( $temp_pos, $temp_line ) = $self->get_line();
-            my ( $type, $msg );
-            if (
-               defined $temp_line
-               && ( ($type, $msg) = $temp_line =~ m/$log_line_regex(.*)/o )
-               && ( $type ne 'STATEMENT' || $msg eq $arg_lines[-1] )
-            ) {
-               PTDEBUG && _d('Error/statement line pertain to current event');
-               push @properties, 'Error_msg', $line =~ m/ERROR:\s*(\S.*)\Z/s;
-               if ( $type ne 'STATEMENT' ) {
-                  PTDEBUG && _d('Must save peeked line, it is a', $type);
-                  $self->pending($temp_pos, $temp_line);
-               }
-            }
-            elsif ( defined $temp_line && defined $type ) {
-               PTDEBUG && _d('Error/statement line are a new event');
-               $self->pending($new_pos, $line);
-               $self->pending($temp_pos, $temp_line);
-            }
-            else {
-               PTDEBUG && _d("Unknown line", $line);
-            }
-         }
-      }
-      else {
-         PTDEBUG && _d("Unknown line", $line);
-      }
-   }
-
-   if ( $done || @arg_lines ) {
-      PTDEBUG && _d('Making event');
-
-      push @properties, 'pos_in_log', $pos_in_log;
-
-      if ( @arg_lines ) {
-         PTDEBUG && _d('Assembling @arg_lines: ', scalar @arg_lines);
-         push @properties, 'arg', join('', @arg_lines), 'cmd', 'Query';
-      }
-
-      if ( $first_line ) {
-         if ( my ($ts) = $first_line =~ m/([0-9-]{10} [0-9:.]{8,12})/ ) {
-            PTDEBUG && _d('Getting timestamp', $ts);
-            push @properties, 'ts', $ts;
-         }
-
-         if ( my ($meta) = $first_line =~ m/(.*?)[A-Z]{3,}:  / ) {
-            PTDEBUG && _d('Found a meta-data chunk:', $meta);
-            push @properties, $self->get_meta($meta);
-         }
-      }
-
-      PTDEBUG && _d('Properties of event:', Dumper(\@properties));
-      my $event = { @properties };
-      $event->{bytes} = length($event->{arg} || '');
-      return $event;
-   }
-
-}
-
-sub get_meta {
-   my ( $self, $meta ) = @_;
-   my @properties;
-   foreach my $set ( $meta =~ m/(\w+=[^, ]+)/g ) {
-      my ($key, $val) = split(/=/, $set);
-      if ( $key && $val ) {
-         if ( my $prop = $attrib_name_for{lc substr($key, 0, 1)} ) {
-            push @properties, $prop, $val;
-         }
-         else {
-            PTDEBUG && _d('Bad meta key', $set);
-         }
-      }
-      else {
-         PTDEBUG && _d("Can't figure out meta from", $set);
-      }
-   }
-   return @properties;
-}
-
-sub get_line {
-   my ( $self ) = @_;
-   my ($pos, $line, $was_pending) = $self->pending;
-   if ( ! defined $line ) {
-      PTDEBUG && _d('Got nothing from pending, trying the $fh');
-      my ( $next_event, $tell) = @{$self}{qw(next_event tell)};
-      eval {
-         $pos  = $tell->();
-         $line = $next_event->();
-      };
-      if ( PTDEBUG && $EVAL_ERROR ) {
-         _d($EVAL_ERROR);
-      }
-   }
-
-   PTDEBUG && _d('Got pos/line:', $pos, $line);
-   return ($pos, $line);
-}
-
-sub pending {
-   my ( $self, $val, $pos_in_log ) = @_;
-   my $was_pending;
-   PTDEBUG && _d('In sub pending, val:', $val);
-   if ( $val ) {
-      push @{$self->{pending}}, [$val, $pos_in_log];
-   }
-   elsif ( @{$self->{pending}} ) {
-      ($val, $pos_in_log) = @{ shift @{$self->{pending}} };
-      $was_pending = 1;
-   }
-   PTDEBUG && _d('Return from pending:', $val, $pos_in_log);
-   return ($val, $pos_in_log, $was_pending);
-}
-
-sub generate_wrappers {
-   my ( $self, %args ) = @_;
-
-   if ( ($self->{sanity} || '') ne "$args{next_event}" ){
-      PTDEBUG && _d("Clearing and recreating internal state");
-      eval { require SysLogParser; }; # Required for tests to work.
-      my $sl = new SysLogParser();
-
-      $args{misc}->{new_event_test} = sub {
-         my ( $content ) = @_;
-         return unless defined $content;
-         return $content =~ m/$log_line_regex/o;
-      };
-
-      $args{misc}->{line_filter} = sub {
-         my ( $content ) = @_;
-         $content =~ s/\A\t/\n/;
-         return $content;
-      };
-
-      @{$self}{qw(next_event tell is_syslog)} = $sl->make_closures(%args);
-      $self->{sanity} = "$args{next_event}";
-   }
-
-   return @{$self}{qw(next_event tell is_syslog)};
-}
-
-sub duration_to_secs {
-   my ( $self, $str ) = @_;
-   PTDEBUG && _d('Duration:', $str);
-   my ( $num, $suf ) = split(/\s+/, $str);
-   my $factor = $suf eq 'ms'  ? 1000
-              : $suf eq 'sec' ? 1
-              :                 die("Unknown suffix '$suf'");
-   return $num / $factor;
-}
-
-sub _d {
-   my ($package, undef, $line) = caller 0;
-   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
-        map { defined $_ ? $_ : 'undef' }
-        @_;
-   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
-}
-
-1;
-}
-# ###########################################################################
-# End PgLogParser package
 # ###########################################################################
 
 # ###########################################################################
@@ -5765,7 +5207,7 @@ sub new {
          keys %$attributes
       },
       worst          => $args{worst},
-      unroll_limit   => $args{unroll_limit} || 1000,
+      unroll_limit   => $ENV{PT_QUERY_DIGEST_CHECK_ATTRIB_LIMIT} || 1000,
       attrib_limit   => $args{attrib_limit},
       result_classes => {},
       result_globals => {},
@@ -7105,8 +6547,7 @@ sub BUILDARGS {
    my $self = {
       %$args,
       options        => {
-         show_all         => $o->get('show-all'),
-         shorten          => $o->get('shorten'),
+         shorten          => 1024,
          report_all       => $o->get('report-all'),
          report_histogram => $o->get('report-histogram'),
       },
@@ -7236,10 +6677,7 @@ sub header {
 
    push @result, $self->make_global_header();
 
-   my $attribs = $self->sort_attribs(
-      ($args{select} ? $args{select} : $ea->get_attributes()),
-      $ea,
-   );
+   my $attribs = $self->sort_attribs( $ea );
 
    foreach my $type ( qw(num innodb) ) {
       if ( $type eq 'innodb' && @{$attribs->{$type}} ) {
@@ -7361,10 +6799,7 @@ sub query_report {
                . '# ' . ( '#' x 72 ) . "\n\n";
    }
 
-   my $attribs = $self->sort_attribs(
-      ($args{select} ? $args{select} : $ea->get_attributes()),
-      $ea,
-   );
+   my $attribs = $self->sort_attribs( $ea );
 
    ITEM:
    foreach my $vals ( @$report_values ) {
@@ -7411,9 +6846,7 @@ sub query_report {
          }
 
          my $log_type = $args{log_type} || '';
-         my $mark     = $log_type eq 'memcached'
-                     || $log_type eq 'http'
-                     || $log_type eq 'pglog' ? '' : '\G';
+         my $mark     = '\G';
 
          if ( $item =~ m/^(?:[\(\s]*select|insert|replace)/ ) {
             if ( $item =~ m/^(?:insert|replace)/ ) { # No EXPLAIN
@@ -7498,10 +6931,7 @@ sub event_report_values {
 
    my $attribs = $args{attribs};
    if ( !$attribs ) {
-      $attribs = $self->sort_attribs(
-         ($args{select} ? $args{select} : $ea->get_attributes()),
-         $ea
-      );
+      $attribs = $self->sort_attribs( $ea );
    }
 
    $vals{attributes} = { map { $_ => [] } qw(num innodb bool string) };
@@ -7968,7 +7398,6 @@ sub bool_percents {
 
 sub format_string_list {
    my ( $self, $attrib, $vals, $class_cnt ) = @_;
-   my $show_all = $self->{options}->{show_all};
 
    if ( !exists $vals->{unq} ) {
       return ($vals->{cnt});
@@ -7998,9 +7427,6 @@ sub format_string_list {
       }
       my $p = percentage_of($cnt_for->{$str}, $class_cnt);
       $print_str .= " ($cnt_for->{$str}/$p%)";
-      if ( !$show_all->{$attrib} ) {
-         last if (length $line) + (length $print_str)  > LINE_LENGTH - 27;
-      }
       $line .= "$print_str, ";
       $i++;
    }
@@ -8015,7 +7441,8 @@ sub format_string_list {
 }
 
 sub sort_attribs {
-   my ( $self, $attribs, $ea ) = @_;
+   my ( $self, $ea ) = @_;
+   my $attribs = $ea->get_attributes();
    return unless $attribs && @$attribs;
    PTDEBUG && _d("Sorting attribs:", @$attribs);
 
@@ -8200,8 +7627,8 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 my $have_json = eval { require JSON };
 
-our $pretty_json = undef;
-our $sorted_json = undef;
+our $pretty_json = 0;
+our $sorted_json = 0;
 
 extends qw(QueryReportFormatter);
 
@@ -8247,6 +7674,8 @@ override query_report => sub {
    my $worst = $args{worst};
 
    my @attribs = @{$ea->get_attributes()};
+
+   my %string_args = map { $_ => 1 } qw( db host arg user bytes pos_in_log );
    
    my @queries;
    foreach my $worst_info ( @$worst ) {
@@ -8286,6 +7715,9 @@ override query_report => sub {
             }
             $class{ts_min} = $ts->{min};
             $class{ts_max} = $ts->{max};
+         }
+         elsif ( $string_args{$attrib} ) {
+            $metrics{$attrib} = { value => $metrics{$attrib}{max} }; 
          }
          elsif ( ($ea->{type_for}->{$attrib} || '') eq 'num' ) {
             for my $value ( values %{$metrics{$attrib}} ) {
@@ -9374,60 +8806,6 @@ sub new {
    return bless $self, $class;
 }
 
-sub set_history_options {
-   my ( $self, %args ) = @_;
-   foreach my $arg ( qw(table tbl_struct col_pat) ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-
-   my @cols;
-   my @metrics;
-   foreach my $col ( @{$args{tbl_struct}->{cols}} ) {
-      my ( $attr, $metric ) = $col =~ m/$args{col_pat}/;
-      next unless $attr && $metric;
-
-
-      $attr = ucfirst $attr if $attr =~ m/_/;
-      $attr = 'Filesort' if $attr eq 'filesort';
-
-      $attr =~ s/^Qc_hit/QC_Hit/;  # Qc_hit is really QC_Hit
-      $attr =~ s/^Innodb/InnoDB/g; # Innodb is really InnoDB
-      $attr =~ s/_io_/_IO_/g;      # io is really IO
-
-      push @cols, $col;
-      push @metrics, [$attr, $metric];
-   }
-
-   my $sql = "REPLACE INTO $args{table}("
-      . join(', ',
-         map { $self->{quoter}->quote($_) } ('checksum', 'sample', @cols))
-      . ') VALUES (CONV(?, 16, 10), ?'
-      . (@cols ? ', ' : '')  # issue 1265
-      . join(', ', map {
-         $_ eq 'ts_min' || $_ eq 'ts_max'
-            ? "COALESCE(?, $self->{ts_default})"
-            : '?'
-        } @cols) . ')';
-   PTDEBUG && _d($sql);
-
-   $self->{history_sth}     = $self->{dbh}->prepare($sql);
-   $self->{history_metrics} = \@metrics;
-
-   return;
-}
-
-sub set_review_history {
-   my ( $self, $id, $sample, %data ) = @_;
-   foreach my $thing ( qw(min max) ) {
-      next unless defined $data{ts} && defined $data{ts}->{$thing};
-      $data{ts}->{$thing} = parse_timestamp($data{ts}->{$thing});
-   }
-   $self->{history_sth}->execute(
-      make_checksum($id),
-      $sample,
-      map { $data{$_->[0]}->{$_->[1]} } @{$self->{history_metrics}});
-}
-
 sub get_review_info {
    my ( $self, $id ) = @_;
    $self->{select_sth}->execute(make_checksum($id));
@@ -9464,6 +8842,123 @@ sub _d {
 }
 # ###########################################################################
 # End QueryReview package
+# ###########################################################################
+
+# ###########################################################################
+# QueryHistory package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/QueryHistory.pm
+#   t/lib/QueryHistory.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package QueryHistory;
+
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use Lmo;
+
+use Quoter;
+use Transformers qw(make_checksum parse_timestamp);
+
+has history_dbh => (
+   is       => 'ro',
+   required => 1,
+);
+
+has history_sth => (
+   is => 'rw',
+);
+
+has history_metrics => (
+   is => 'rw',
+   isa => 'ArrayRef',
+);
+
+has column_pattern => (
+   is       => 'ro',
+   isa      => 'Regexp',
+   required => 1,
+);
+
+has ts_default => (
+   is      => 'ro',
+   isa     => 'Str',
+   default => sub { 'NOW()' },
+);
+
+sub set_history_options {
+   my ( $self, %args ) = @_;
+   foreach my $arg ( qw(table tbl_struct) ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+
+   my $col_pat = $self->column_pattern();
+
+   my @cols;
+   my @metrics;
+   foreach my $col ( @{$args{tbl_struct}->{cols}} ) {
+      my ( $attr, $metric ) = $col =~ m/$col_pat/;
+      next unless $attr && $metric;
+
+
+      $attr = ucfirst $attr if $attr =~ m/_/;
+      $attr = 'Filesort' if $attr eq 'filesort';
+
+      $attr =~ s/^Qc_hit/QC_Hit/;  # Qc_hit is really QC_Hit
+      $attr =~ s/^Innodb/InnoDB/g; # Innodb is really InnoDB
+      $attr =~ s/_io_/_IO_/g;      # io is really IO
+
+      push @cols, $col;
+      push @metrics, [$attr, $metric];
+   }
+
+   my $ts_default = $self->ts_default;
+
+   my $sql = "REPLACE INTO $args{table}("
+      . join(', ',
+         map { Quoter->quote($_) } ('checksum', 'sample', @cols))
+      . ') VALUES (CONV(?, 16, 10), ?'
+      . (@cols ? ', ' : '')  # issue 1265
+      . join(', ', map {
+         $_ eq 'ts_min' || $_ eq 'ts_max'
+            ? "COALESCE(?, $ts_default)"
+            : '?'
+        } @cols) . ')';
+   PTDEBUG && _d($sql);
+
+   $self->history_sth($self->history_dbh->prepare($sql));
+   $self->history_metrics(\@metrics);
+
+   return;
+}
+
+sub set_review_history {
+   my ( $self, $id, $sample, %data ) = @_;
+   foreach my $thing ( qw(min max) ) {
+      next unless defined $data{ts} && defined $data{ts}->{$thing};
+      $data{ts}->{$thing} = parse_timestamp($data{ts}->{$thing});
+   }
+   $self->history_sth->execute(
+      make_checksum($id),
+      $sample,
+      map { $data{$_->[0]}->{$_->[1]} } @{$self->history_metrics});
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End QueryHistory package
 # ###########################################################################
 
 # ###########################################################################
@@ -9666,522 +9161,6 @@ sub _d {
 }
 # ###########################################################################
 # End Daemon package
-# ###########################################################################
-
-# ###########################################################################
-# MemcachedProtocolParser package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/MemcachedProtocolParser.pm
-#   t/lib/MemcachedProtocolParser.t
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-{
-package MemcachedProtocolParser;
-
-use strict;
-use warnings FATAL => 'all';
-use English qw(-no_match_vars);
-
-use Data::Dumper;
-$Data::Dumper::Indent    = 1;
-$Data::Dumper::Sortkeys  = 1;
-$Data::Dumper::Quotekeys = 0;
-
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
-
-sub new {
-   my ( $class, %args ) = @_;
-
-   my $self = {
-      server      => $args{server},
-      port        => $args{port} || '11211',
-      sessions    => {},
-      o           => $args{o},
-   };
-   return bless $self, $class;
-}
-
-sub parse_event {
-   my ( $self, %args ) = @_;
-   my @required_args = qw(event);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my $packet = @args{@required_args};
-
-   if ( $packet->{data_len} == 0 ) {
-      PTDEBUG && _d('No TCP data');
-      $args{stats}->{no_tcp_data}++ if $args{stats};
-      return;
-   }
-
-   my $src_host = "$packet->{src_host}:$packet->{src_port}";
-   my $dst_host = "$packet->{dst_host}:$packet->{dst_port}";
-
-   if ( my $server = $self->{server} ) {  # Watch only the given server.
-      $server .= ":$self->{port}";
-      if ( $src_host ne $server && $dst_host ne $server ) {
-         PTDEBUG && _d('Packet is not to or from', $server);
-         $args{stats}->{not_watched_server}++ if $args{stats};
-         return;
-      }
-   }
-
-   my $packet_from;
-   my $client;
-   if ( $src_host =~ m/:$self->{port}$/ ) {
-      $packet_from = 'server';
-      $client      = $dst_host;
-   }
-   elsif ( $dst_host =~ m/:$self->{port}$/ ) {
-      $packet_from = 'client';
-      $client      = $src_host;
-   }
-   else {
-      warn 'Packet is not to or from memcached server: ', Dumper($packet);
-      return;
-   }
-   PTDEBUG && _d('Client:', $client);
-
-   if ( !exists $self->{sessions}->{$client} ) {
-      PTDEBUG && _d('New session');
-      $self->{sessions}->{$client} = {
-         client      => $client,
-         state       => undef,
-         raw_packets => [],
-      };
-   };
-   my $session = $self->{sessions}->{$client};
-
-   push @{$session->{raw_packets}}, $packet->{raw_packet};
-
-   $packet->{data} = pack('H*', $packet->{data});
-   my $event;
-   if ( $packet_from eq 'server' ) {
-      $event = $self->_packet_from_server($packet, $session, %args);
-   }
-   elsif ( $packet_from eq 'client' ) {
-      $event = $self->_packet_from_client($packet, $session, %args);
-   }
-   else {
-      $args{stats}->{unknown_packet_origin}++ if $args{stats};
-      die 'Packet origin unknown';
-   }
-
-   PTDEBUG && _d('Done with packet; event:', Dumper($event));
-   $args{stats}->{events_parsed}++ if $args{stats};
-   return $event;
-}
-
-sub _packet_from_server {
-   my ( $self, $packet, $session, %args ) = @_;
-   die "I need a packet"  unless $packet;
-   die "I need a session" unless $session;
-
-   PTDEBUG && _d('Packet is from server; client state:', $session->{state}); 
-
-   my $data = $packet->{data};
-
-   if ( !$session->{state} ) {
-      PTDEBUG && _d('Ignoring mid-stream server response');
-      $args{stats}->{ignored_midstream_server_response}++ if $args{stats};
-      return;
-   }
-
-   if ( $session->{state} eq 'awaiting reply' ) {
-      PTDEBUG && _d('State is awaiting reply');
-      my ($line1, $rest) = $packet->{data} =~ m/\A(.*?)\r\n(.*)?/s;
-      if ( !$line1 ) {
-         $args{stats}->{unknown_server_data}++ if $args{stats};
-         die "Unknown memcached data from server";
-      }
-
-      my @vals = $line1 =~ m/(\S+)/g;
-      $session->{res} = shift @vals;
-      PTDEBUG && _d('Result of last', $session->{cmd}, 'cmd:', $session->{res});
-
-      if ( $session->{cmd} eq 'incr' || $session->{cmd} eq 'decr' ) {
-         PTDEBUG && _d('It is an incr or decr');
-         if ( $session->{res} !~ m/\D/ ) { # It's an integer, not an error
-            PTDEBUG && _d('Got a value for the incr/decr');
-            $session->{val} = $session->{res};
-            $session->{res} = '';
-         }
-      }
-      elsif ( $session->{res} eq 'VALUE' ) {
-         PTDEBUG && _d('It is the result of a "get"');
-         my ($key, $flags, $bytes) = @vals;
-         defined $session->{flags} or $session->{flags} = $flags;
-         defined $session->{bytes} or $session->{bytes} = $bytes;
-
-         if ( $rest && $bytes ) {
-            PTDEBUG && _d('There is a value');
-            if ( length($rest) > $bytes ) {
-               PTDEBUG && _d('Got complete response');
-               $session->{val} = substr($rest, 0, $bytes);
-            }
-            else {
-               PTDEBUG && _d('Got partial response, saving for later');
-               push @{$session->{partial}}, [ $packet->{seq}, $rest ];
-               $session->{gathered} += length($rest);
-               $session->{state} = 'partial recv';
-               return; # Prevent firing an event.
-            }
-         }
-      }
-      elsif ( $session->{res} eq 'END' ) {
-         PTDEBUG && _d('Got an END without any data, firing NOT_FOUND');
-         $session->{res} = 'NOT_FOUND';
-      }
-      elsif ( $session->{res} !~ m/STORED|DELETED|NOT_FOUND/ ) {
-         PTDEBUG && _d('Unknown result');
-      }
-      else {
-         $args{stats}->{unknown_server_response}++ if $args{stats};
-      }
-   }
-   else { # Should be 'partial recv'
-      PTDEBUG && _d('Session state: ', $session->{state});
-      push @{$session->{partial}}, [ $packet->{seq}, $data ];
-      $session->{gathered} += length($data);
-      PTDEBUG && _d('Gathered', $session->{gathered}, 'bytes in',
-         scalar(@{$session->{partial}}), 'packets from server');
-      if ( $session->{gathered} >= $session->{bytes} + 2 ) { # Done.
-         PTDEBUG && _d('End of partial response, preparing event');
-         my $val = join('',
-            map  { $_->[1] }
-            sort { $a->[0] <=> $b->[0] }
-                 @{$session->{partial}});
-         $session->{val} = substr($val, 0, $session->{bytes});
-      }
-      else {
-         PTDEBUG && _d('Partial response continues, no action');
-         return; # Prevent firing event.
-      }
-   }
-
-   PTDEBUG && _d('Creating event, deleting session');
-   my $event = make_event($session, $packet);
-   delete $self->{sessions}->{$session->{client}}; # memcached is stateless!
-   $session->{raw_packets} = []; # Avoid keeping forever
-   return $event;
-}
-
-sub _packet_from_client {
-   my ( $self, $packet, $session, %args ) = @_;
-   die "I need a packet"  unless $packet;
-   die "I need a session" unless $session;
-
-   PTDEBUG && _d('Packet is from client; state:', $session->{state});
-
-   my $event;
-   if ( ($session->{state} || '') =~m/awaiting reply|partial recv/ ) {
-      PTDEBUG && _d("Expected data from the client, looks like interrupted");
-      $session->{res} = 'INTERRUPTED';
-      $event = make_event($session, $packet);
-      my $client = $session->{client};
-      delete @{$session}{keys %$session};
-      $session->{client} = $client;
-   }
-
-   my ($line1, $val);
-   my ($cmd, $key, $flags, $exptime, $bytes);
-   
-   if ( !$session->{state} ) {
-      PTDEBUG && _d('Session state: ', $session->{state});
-      ($line1, $val) = $packet->{data} =~ m/\A(.*?)\r\n(.+)?/s;
-      if ( !$line1 ) {
-         PTDEBUG && _d('Unknown memcached data from client, skipping packet');
-         $args{stats}->{unknown_client_data}++ if $args{stats};
-         return;
-      }
-
-      my @vals = $line1 =~ m/(\S+)/g;
-      $cmd = lc shift @vals;
-      PTDEBUG && _d('$cmd is a ', $cmd);
-      if ( $cmd eq 'set' || $cmd eq 'add' || $cmd eq 'replace' ) {
-         ($key, $flags, $exptime, $bytes) = @vals;
-         $session->{bytes} = $bytes;
-      }
-      elsif ( $cmd eq 'get' ) {
-         ($key) = @vals;
-         if ( $val ) {
-            PTDEBUG && _d('Multiple cmds:', $val);
-            $val = undef;
-         }
-      }
-      elsif ( $cmd eq 'delete' ) {
-         ($key) = @vals; # TODO: handle the <queue_time>
-         if ( $val ) {
-            PTDEBUG && _d('Multiple cmds:', $val);
-            $val = undef;
-         }
-      }
-      elsif ( $cmd eq 'incr' || $cmd eq 'decr' ) {
-         ($key) = @vals;
-      }
-      else {
-         PTDEBUG && _d("Don't know how to handle", $cmd, "command");
-         $args{stats}->{unknown_client_command}++ if $args{stats};
-         return;
-      }
-
-      @{$session}{qw(cmd key flags exptime)}
-         = ($cmd, $key, $flags, $exptime);
-      $session->{host}       = $packet->{src_host};
-      $session->{pos_in_log} = $packet->{pos_in_log};
-      $session->{ts}         = $packet->{ts};
-   }
-   else {
-      PTDEBUG && _d('Session state: ', $session->{state});
-      $val = $packet->{data};
-   }
-
-   $session->{state} = 'awaiting reply'; # Assume we got the whole packet
-   if ( $val ) {
-      if ( $session->{bytes} + 2 == length($val) ) { # +2 for the \r\n
-         PTDEBUG && _d('Complete send');
-         $val =~ s/\r\n\Z//; # We got the whole thing.
-         $session->{val} = $val;
-      }
-      else { # We apparently did NOT get the whole thing.
-         PTDEBUG && _d('Partial send, saving for later');
-         push @{$session->{partial}},
-            [ $packet->{seq}, $val ];
-         $session->{gathered} += length($val);
-         PTDEBUG && _d('Gathered', $session->{gathered}, 'bytes in',
-            scalar(@{$session->{partial}}), 'packets from client');
-         if ( $session->{gathered} >= $session->{bytes} + 2 ) { # Done.
-            PTDEBUG && _d('Message looks complete now, saving value');
-            $val = join('',
-               map  { $_->[1] }
-               sort { $a->[0] <=> $b->[0] }
-                    @{$session->{partial}});
-            $val =~ s/\r\n\Z//;
-            $session->{val} = $val;
-         }
-         else {
-            PTDEBUG && _d('Message not complete');
-            $val = '[INCOMPLETE]';
-            $session->{state} = 'partial send';
-         }
-      }
-   }
-
-   return $event;
-}
-
-sub make_event {
-   my ( $session, $packet ) = @_;
-   my $event = {
-      cmd        => $session->{cmd},
-      key        => $session->{key},
-      val        => $session->{val} || '',
-      res        => $session->{res},
-      ts         => $session->{ts},
-      host       => $session->{host},
-      flags      => $session->{flags}   || 0,
-      exptime    => $session->{exptime} || 0,
-      bytes      => $session->{bytes}   || 0,
-      Query_time => timestamp_diff($session->{ts}, $packet->{ts}),
-      pos_in_log => $session->{pos_in_log},
-   };
-   return $event;
-}
-
-sub _get_errors_fh {
-   my ( $self ) = @_;
-   my $errors_fh = $self->{errors_fh};
-   return $errors_fh if $errors_fh;
-
-   my $o = $self->{o};
-   if ( $o && $o->has('tcpdump-errors') && $o->got('tcpdump-errors') ) {
-      my $errors_file = $o->get('tcpdump-errors');
-      PTDEBUG && _d('tcpdump-errors file:', $errors_file);
-      open $errors_fh, '>>', $errors_file
-         or die "Cannot open tcpdump-errors file $errors_file: $OS_ERROR";
-   }
-
-   $self->{errors_fh} = $errors_fh;
-   return $errors_fh;
-}
-
-sub _d {
-   my ($package, undef, $line) = caller 0;
-   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
-        map { defined $_ ? $_ : 'undef' }
-        @_;
-   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
-}
-
-sub timestamp_diff {
-   my ( $start, $end ) = @_;
-   my $sd = substr($start, 0, 11, '');
-   my $ed = substr($end,   0, 11, '');
-   my ( $sh, $sm, $ss ) = split(/:/, $start);
-   my ( $eh, $em, $es ) = split(/:/, $end);
-   my $esecs = ($eh * 3600 + $em * 60 + $es);
-   my $ssecs = ($sh * 3600 + $sm * 60 + $ss);
-   if ( $sd eq $ed ) {
-      return sprintf '%.6f', $esecs - $ssecs;
-   }
-   else { # Assume only one day boundary has been crossed, no DST, etc
-      return sprintf '%.6f', ( 86_400 - $ssecs ) + $esecs;
-   }
-}
-
-1;
-}
-# ###########################################################################
-# End MemcachedProtocolParser package
-# ###########################################################################
-
-# ###########################################################################
-# MemcachedEvent package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/MemcachedEvent.pm
-#   t/lib/MemcachedEvent.t
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-{
-package MemcachedEvent;
-
-use strict;
-use warnings FATAL => 'all';
-use English qw(-no_match_vars);
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
-
-use Data::Dumper;
-$Data::Dumper::Indent    = 1;
-$Data::Dumper::Sortkeys  = 1;
-$Data::Dumper::Quotekeys = 0;
-
-my %cmds = map { $_ => 1 } qw(
-   set
-   add
-   replace
-   append
-   prepend
-   cas
-   get
-   gets
-   delete
-   incr
-   decr
-);
-
-my %cmd_handler_for = (
-   set      => \&handle_storage_cmd,
-   add      => \&handle_storage_cmd,
-   replace  => \&handle_storage_cmd,
-   append   => \&handle_storage_cmd,
-   prepend  => \&handle_storage_cmd,
-   cas      => \&handle_storage_cmd,
-   get      => \&handle_retr_cmd,
-   gets     => \&handle_retr_cmd,
-);
-
-sub new {
-   my ( $class, %args ) = @_;
-   my $self = {};
-   return bless $self, $class;
-}
-
-sub parse_event {
-   my ( $self, %args ) = @_;
-   my $event = $args{event};
-   return unless $event;
-
-   if ( !$event->{cmd} || !$event->{key} ) {
-      PTDEBUG && _d('Event has no cmd or key:', Dumper($event));
-      return;
-   }
-
-   if ( !$cmds{$event->{cmd}} ) {
-      PTDEBUG && _d("Don't know how to handle cmd:", $event->{cmd});
-      return;
-   }
-
-   $event->{arg}         = "$event->{cmd} $event->{key}";
-   $event->{fingerprint} = $self->fingerprint($event->{arg});
-   $event->{key_print}   = $self->fingerprint($event->{key});
-
-   map { $event->{"Memc_$_"} = 'No' } keys %cmds;
-   $event->{"Memc_$event->{cmd}"} = 'Yes';  # Got this cmd.
-   $event->{Memc_error}           = 'No';  # A handler may change this.
-   $event->{Memc_miss}            = 'No';
-   if ( $event->{res} ) {
-      $event->{Memc_miss}         = 'Yes' if $event->{res} eq 'NOT_FOUND';
-   }
-   else {
-      PTDEBUG && _d('Event has no res:', Dumper($event));
-   }
-
-   if ( $cmd_handler_for{$event->{cmd}} ) {
-      return $cmd_handler_for{$event->{cmd}}->($event);
-   }
-
-   return $event;
-}
-
-sub fingerprint {
-   my ( $self, $val ) = @_;
-   $val =~ s/[0-9A-Fa-f]{16,}|\d+/?/g;
-   return $val;
-}
-
-sub handle_storage_cmd {
-   my ( $event ) = @_;
-
-   if ( !$event->{res} ) {
-      PTDEBUG && _d('No result for event:', Dumper($event));
-      return;
-   }
-
-   $event->{'Memc_Not_Stored'} = $event->{res} eq 'NOT_STORED' ? 'Yes' : 'No';
-   $event->{'Memc_Exists'}     = $event->{res} eq 'EXISTS'     ? 'Yes' : 'No';
-
-   return $event;
-}
-
-sub handle_retr_cmd {
-   my ( $event ) = @_;
-
-   if ( !$event->{res} ) {
-      PTDEBUG && _d('No result for event:', Dumper($event));
-      return;
-   }
-
-   $event->{'Memc_error'} = $event->{res} eq 'INTERRUPTED' ? 'Yes' : 'No';
-
-   return $event;
-}
-
-
-sub handle_delete {
-   my ( $event ) = @_;
-   return $event;
-}
-
-sub handle_incr_decr_cmd {
-   my ( $event ) = @_;
-   return $event;
-}
-
-sub _d {
-   my ($package, undef, $line) = caller 0;
-   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
-        map { defined $_ ? $_ : 'undef' }
-        @_;
-   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
-}
-
-1;
-}
-# ###########################################################################
-# End MemcachedEvent package
 # ###########################################################################
 
 # ###########################################################################
@@ -10645,6 +9624,9 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
+use File::Basename qw(basename);
+use File::Temp qw(tempfile);
+
 eval {
    require IO::Uncompress::Inflate; # yum: perl-IO-Compress-Zlib
    IO::Uncompress::Inflate->import(qw(inflate $InflateError));
@@ -10846,38 +9828,33 @@ sub make_event {
 
 sub _get_errors_fh {
    my ( $self ) = @_;
-   my $errors_fh = $self->{errors_fh};
-   return $errors_fh if $errors_fh;
+   return $self->{errors_fh} if $self->{errors_fh};
 
-   my $o = $self->{o};
-   if ( $o && $o->has('tcpdump-errors') && $o->got('tcpdump-errors') ) {
-      my $errors_file = $o->get('tcpdump-errors');
-      PTDEBUG && _d('tcpdump-errors file:', $errors_file);
-      open $errors_fh, '>>', $errors_file
-         or die "Cannot open tcpdump-errors file $errors_file: $OS_ERROR";
-   }
+   my $exec = basename($0);
+   my ($errors_fh, $filename) = tempfile("/tmp/$exec-errors.XXXXXXX", UNLINK => 0);
 
-   $self->{errors_fh} = $errors_fh;
+   $self->{errors_file} = $filename;
+   $self->{errors_fh}   = $errors_fh;
    return $errors_fh;
 }
 
 sub fail_session {
    my ( $self, $session, $reason ) = @_;
-   my $errors_fh = $self->_get_errors_fh();
-   if ( $errors_fh ) {
-      $session->{reason_for_failure} = $reason;
-      my $session_dump = '# ' . Dumper($session);
-      chomp $session_dump;
-      $session_dump =~ s/\n/\n# /g;
-      print $errors_fh "$session_dump\n";
-      {
-         local $LIST_SEPARATOR = "\n";
-         print $errors_fh "@{$session->{raw_packets}}";
-         print $errors_fh "\n";
-      }
-   }
    PTDEBUG && _d('Failed session', $session->{client}, 'because', $reason);
    delete $self->{sessions}->{$session->{client}};
+
+   return if $self->{_no_save_error};
+
+   my $errors_fh = $self->_get_errors_fh();
+
+   print "Session $session->{client} had errors, will save them in $self->{errors_file}\n";
+
+   my $raw_packets = delete $session->{raw_packets};
+   $session->{reason_for_failure} = $reason;
+   my $session_dump = '# ' . Dumper($session);
+   chomp $session_dump;
+   $session_dump =~ s/\n/\n# /g;
+   print $errors_fh join("\n", $session_dump, @$raw_packets), "\n";
    return;
 }
 
@@ -10932,209 +9909,6 @@ sub _d {
 }
 # ###########################################################################
 # End ProtocolParser package
-# ###########################################################################
-
-# ###########################################################################
-# HTTPProtocolParser package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/HTTPProtocolParser.pm
-#   t/lib/HTTPProtocolParser.t
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-{
-package HTTPProtocolParser;
-use base 'ProtocolParser';
-
-use strict;
-use warnings FATAL => 'all';
-use English qw(-no_match_vars);
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
-
-sub new {
-   my ( $class, %args ) = @_;
-   my $self = $class->SUPER::new(
-      %args,
-      port => 80,
-   );
-   return $self;
-}
-
-sub _packet_from_server {
-   my ( $self, $packet, $session, $misc ) = @_;
-   die "I need a packet"  unless $packet;
-   die "I need a session" unless $session;
-
-   PTDEBUG && _d('Packet is from server; client state:', $session->{state}); 
-
-   if ( !$session->{state} ) {
-      PTDEBUG && _d('Ignoring mid-stream server response');
-      return;
-   }
-
-   if ( $session->{out_of_order} ) {
-      my ($line1, $content);
-      if ( !$session->{have_header} ) {
-         ($line1, $content) = $self->_parse_header(
-            $session, $packet->{data}, $packet->{data_len});
-      }
-      if ( $line1 ) {
-         $session->{have_header} = 1;
-         $packet->{content_len}  = length $content;
-         PTDEBUG && _d('Got out of order header with',
-            $packet->{content_len}, 'bytes of content');
-      }
-      my $have_len = $packet->{content_len} || $packet->{data_len};
-      map { $have_len += $_->{data_len} }
-         @{$session->{packets}};
-      $session->{have_all_packets}
-         = 1 if $session->{attribs}->{bytes}
-                && $have_len >= $session->{attribs}->{bytes};
-      PTDEBUG && _d('Have', $have_len, 'of', $session->{attribs}->{bytes});
-      return;
-   }
-
-   if ( $session->{state} eq 'awaiting reply' ) {
-
-      $session->{start_reply} = $packet->{ts} unless $session->{start_reply};
-
-      my ($line1, $content) = $self->_parse_header($session, $packet->{data},
-            $packet->{data_len});
-
-      if ( !$line1 ) {
-         $session->{out_of_order}     = 1;  # alert parent
-         $session->{have_all_packets} = 0;
-         return;
-      }
-
-      my ($version, $code, $phrase) = $line1 =~ m/(\S+)/g;
-      $session->{attribs}->{Status_code} = $code;
-      PTDEBUG && _d('Status code for last', $session->{attribs}->{arg},
-         'request:', $session->{attribs}->{Status_code});
-
-      my $content_len = $content ? length $content : 0;
-      PTDEBUG && _d('Got', $content_len, 'bytes of content');
-      if ( $session->{attribs}->{bytes}
-           && $content_len < $session->{attribs}->{bytes} ) {
-         $session->{data_len}  = $session->{attribs}->{bytes};
-         $session->{buff}      = $content;
-         $session->{buff_left} = $session->{attribs}->{bytes} - $content_len;
-         PTDEBUG && _d('Contents not complete,', $session->{buff_left},
-            'bytes left');
-         $session->{state} = 'recving content';
-         return;
-      }
-   }
-   elsif ( $session->{state} eq 'recving content' ) {
-      if ( $session->{buff} ) {
-         PTDEBUG && _d('Receiving content,', $session->{buff_left},
-            'bytes left');
-         return;
-      }
-      PTDEBUG && _d('Contents received');
-   }
-   else {
-      warn "Server response in unknown state"; 
-      return;
-   }
-
-   PTDEBUG && _d('Creating event, deleting session');
-   $session->{end_reply} = $session->{ts_max} || $packet->{ts};
-   my $event = $self->make_event($session, $packet);
-   delete $self->{sessions}->{$session->{client}}; # http is stateless!
-   return $event;
-}
-
-sub _packet_from_client {
-   my ( $self, $packet, $session, $misc ) = @_;
-   die "I need a packet"  unless $packet;
-   die "I need a session" unless $session;
-
-   PTDEBUG && _d('Packet is from client; state:', $session->{state});
-
-   my $event;
-   if ( ($session->{state} || '') =~ m/awaiting / ) {
-      PTDEBUG && _d('More client headers:', $packet->{data});
-      return;
-   }
-
-   if ( !$session->{state} ) {
-      $session->{state} = 'awaiting reply';
-      my ($line1, undef) = $self->_parse_header($session, $packet->{data}, $packet->{data_len});
-      my ($request, $page, $version) = $line1 =~ m/(\S+)/g;
-      if ( !$request || !$page ) {
-         PTDEBUG && _d("Didn't get a request or page:", $request, $page);
-         return;
-      }
-      $request = lc $request;
-      my $vh   = $session->{attribs}->{Virtual_host} || '';
-      my $arg = "$request $vh$page";
-      PTDEBUG && _d('arg:', $arg);
-
-      if ( $request eq 'get' || $request eq 'post' ) {
-         @{$session->{attribs}}{qw(arg)} = ($arg);
-      }
-      else {
-         PTDEBUG && _d("Don't know how to handle a", $request, "request");
-         return;
-      }
-
-      $session->{start_request}         = $packet->{ts};
-      $session->{attribs}->{host}       = $packet->{src_host};
-      $session->{attribs}->{pos_in_log} = $packet->{pos_in_log};
-      $session->{attribs}->{ts}         = $packet->{ts};
-   }
-   else {
-      die "Probably multiple GETs from client before a server response?"; 
-   }
-
-   return $event;
-}
-
-sub _parse_header {
-   my ( $self, $session, $data, $len, $no_recurse ) = @_;
-   die "I need data" unless $data;
-   my ($header, $content)    = split(/\r\n\r\n/, $data);
-   my ($line1, $header_vals) = $header  =~ m/\A(\S+ \S+ .+?)\r\n(.+)?/s;
-   PTDEBUG && _d('HTTP header:', $line1);
-   return unless $line1;
-
-   if ( !$header_vals ) {
-      PTDEBUG && _d('No header vals');
-      return $line1, undef;
-   }
-   my @headers;
-   foreach my $val ( split(/\r\n/, $header_vals) ) {
-      last unless $val;
-      PTDEBUG && _d('HTTP header:', $val);
-      if ( $val =~ m/^Content-Length/i ) {
-         ($session->{attribs}->{bytes}) = $val =~ /: (\d+)/;
-         PTDEBUG && _d('Saved Content-Length:', $session->{attribs}->{bytes});
-      }
-      if ( $val =~ m/Content-Encoding/i ) {
-         ($session->{compressed}) = $val =~ /: (\w+)/;
-         PTDEBUG && _d('Saved Content-Encoding:', $session->{compressed});
-      }
-      if ( $val =~ m/^Host/i ) {
-         ($session->{attribs}->{Virtual_host}) = $val =~ /: (\S+)/;
-         PTDEBUG && _d('Saved Host:', ($session->{attribs}->{Virtual_host}));
-      }
-   }
-   return $line1, $content;
-}
-
-sub _d {
-   my ($package, undef, $line) = caller 0;
-   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
-        map { defined $_ ? $_ : 'undef' }
-        @_;
-   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
-}
-
-1;
-}
-# ###########################################################################
-# End HTTPProtocolParser package
 # ###########################################################################
 
 # ###########################################################################
@@ -12118,15 +10892,20 @@ sub new {
    my ( $class, %args ) = @_;
    my @required_args = qw(now);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
+      die "I need a $arg argument" unless exists $args{$arg};
    }
 
-   if ( ($args{runtime} || 0) < 0 ) {
-      die "runtime argument must be greater than zero"
+   my $run_time = $args{run_time};
+   if ( defined $run_time ) {
+      die "run_time must be > 0" if $run_time <= 0;
    }
+
+   my $now = $args{now};
+   die "now must be a callback" unless ref $now eq 'CODE';
 
    my $self = {
-      %args,
+      run_time   => $run_time,
+      now        => $now,
       start_time => undef,
       end_time   => undef,
       time_left  => undef,
@@ -12153,11 +10932,11 @@ sub time_left {
 
    return unless defined $now;
 
-   my $runtime = $self->{runtime};
-   return unless defined $runtime;
+   my $run_time = $self->{run_time};
+   return unless defined $run_time;
 
    if ( !$self->{end_time} ) {
-      $self->{end_time} = $now + $runtime;
+      $self->{end_time} = $now + $run_time;
       PTDEBUG && _d("End time:", $self->{end_time});
    }
 
@@ -12170,7 +10949,7 @@ sub have_time {
    my ( $self, %args ) = @_;
    my $time_left = $self->time_left(%args);
    return 1 if !defined $time_left;  # run forever
-   return $time_left <= 0 ? 0 : 1;   # <=0s means runtime has elapsed
+   return $time_left <= 0 ? 0 : 1;   # <=0s means run time has elapsed
 }
 
 sub time_elapsed {
@@ -12196,7 +10975,7 @@ sub reset {
    $self->{end_time}   = undef;
    $self->{time_left}  = undef;
    $self->{stop}       = 0;
-   PTDEBUG && _d("Reset runtime");
+   PTDEBUG && _d("Reset run time");
    return;
 }
 
@@ -13070,271 +11849,202 @@ if ( $INC{"IO/Socket/SSL.pm"} ) {
 {
 package VersionCheck;
 
+
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-use Data::Dumper   qw();
-use Digest::MD5    qw(md5_hex);
-use Sys::Hostname  qw(hostname);
-use Fcntl          qw(:DEFAULT);
+use Data::Dumper;
+local $Data::Dumper::Indent    = 1;
+local $Data::Dumper::Sortkeys  = 1;
+local $Data::Dumper::Quotekeys = 0;
+
+use Digest::MD5 qw(md5_hex);
+use Sys::Hostname qw(hostname);
 use File::Basename qw();
 use File::Spec;
+use FindBin qw();
 
-my $dir              = File::Spec->tmpdir();
-my $check_time_file  = File::Spec->catfile($dir,'percona-toolkit-version-check');
-my $check_time_limit = 60 * 60 * 24;  # one day
-
-sub Dumper {
-   local $Data::Dumper::Indent    = 1;
-   local $Data::Dumper::Sortkeys  = 1;
-   local $Data::Dumper::Quotekeys = 0;
-
-   Data::Dumper::Dumper(@_);
-}
-
-local $EVAL_ERROR;
 eval {
    require Percona::Toolkit;
    require HTTPMicro;
 };
 
-sub version_check {
-   my %args      = @_;
-   my @instances = $args{instances} ? @{ $args{instances} } : ();
+{
+   my $file    = 'percona-version-check';
+   my $home    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
+   my @vc_dirs = (
+      '/etc/percona',
+      '/etc/percona-toolkit',
+      '/tmp',
+      "$home",
+   );
 
-   if (exists $ENV{PERCONA_VERSION_CHECK} && !$ENV{PERCONA_VERSION_CHECK}) {
-      warn '--version-check is disabled by the PERCONA_VERSION_CHECK ',
-                   "environment variable.\n\n";
-      return;
+   sub version_check_file {
+      foreach my $dir ( @vc_dirs ) {
+         if ( -d $dir && -w $dir ) {
+            PTDEBUG && _d('Version check file', $file, 'in', $dir);
+            return $dir . '/' . $file;
+         }
+      }
+      PTDEBUG && _d('Version check file', $file, 'in', $ENV{PWD});
+      return $file;  # in the CWD
+   } 
+}
+
+sub version_check_time_limit {
+   return 60 * 60 * 24;  # one day
+}
+
+
+sub version_check {
+   my (%args) = @_;
+
+   my $instances = $args{instances} || [];
+   my $instances_to_check;
+
+   PTDEBUG && _d('FindBin::Bin:', $FindBin::Bin);
+   if ( !$args{force} ) {
+      if ( $FindBin::Bin
+           && (-d "$FindBin::Bin/../.bzr" || -d "$FindBin::Bin/../../.bzr") ) {
+         PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
+         return;
+      }
    }
 
-   $args{protocol} ||= 'https';
-   my @protocols = $args{protocol} eq 'auto'
-                 ? qw(https http)
-                 : $args{protocol};
-   
-   my $instances_to_check = [];
-   my $time               = int(time());
    eval {
-      foreach my $instance ( @instances ) {
-         my ($name, $id) = _generate_identifier($instance);
+      foreach my $instance ( @$instances ) {
+         my ($name, $id) = get_instance_id($instance);
          $instance->{name} = $name;
          $instance->{id}   = $id;
       }
 
-      my $time_to_check;
-      ($time_to_check, $instances_to_check)
-         = time_to_check($check_time_file, \@instances, $time);
-      if ( !$time_to_check ) {
-         warn 'It is not time to --version-check again; ',
-                      "only 1 check per day.\n\n";
-         return;
-      }
+      push @$instances, { name => 'system', id => 0 };
 
-      my $advice;
-      my $e;
-      for my $protocol ( @protocols ) {
-         $advice = eval { pingback(
-            url       => $ENV{PERCONA_VERSION_CHECK_URL} || "$protocol://v.percona.com",
-            instances => $instances_to_check,
-            protocol  => $protocol,
-         ) };
-         last if !$advice && !$EVAL_ERROR;
-         $e ||= $EVAL_ERROR;
+      $instances_to_check = get_instances_to_check(
+         instances => $instances,
+         vc_file   => $args{vc_file},  # testing
+         now       => $args{now},      # testing
+      );
+      PTDEBUG && _d(scalar @$instances_to_check, 'instances to check');
+      return unless @$instances_to_check;
+
+      my $protocol = 'https';  # optimistic, but...
+      eval { require IO::Socket::SSL; };
+      if ( $EVAL_ERROR ) {
+         PTDEBUG && _d($EVAL_ERROR);
+         $protocol = 'http';
       }
+      PTDEBUG && _d('Using', $protocol);
+
+      my $advice = pingback(
+         instances => $instances_to_check,
+         protocol  => $protocol,
+         url       => $args{url}                       # testing
+                   || $ENV{PERCONA_VERSION_CHECK_URL}  # testing
+                   || "$protocol://v.percona.com",
+      );
       if ( $advice ) {
-         print "# Percona suggests these upgrades:\n";
+         PTDEBUG && _d('Advice:', Dumper($advice));
+         if ( scalar @$advice > 1) {
+            print "\n# " . scalar @$advice . " software updates are "
+               . "available:\n";
+         }
+         else {
+            print "\n# A software update is available:\n";
+         }
          print join("\n", map { "#   * $_" } @$advice), "\n\n";
-      }
-      else {
-         die $e if $e;
-         print "# No suggestions at this time.\n\n";
-         ($ENV{PTVCDEBUG} || PTDEBUG )
-            && _d('--version-check worked, but there were no suggestions');
       }
    };
    if ( $EVAL_ERROR ) {
-      warn "Error doing --version-check: $EVAL_ERROR";
+      PTDEBUG && _d('Version check failed:', $EVAL_ERROR);
    }
-   else {
-      update_checks_file($check_time_file, $instances_to_check, $time);
+
+   if ( @$instances_to_check ) {
+      eval {
+         update_check_times(
+            instances => $instances_to_check,
+            vc_file   => $args{vc_file},  # testing
+            now       => $args{now},      # testing
+         );
+      };
+      if ( $EVAL_ERROR ) {
+         PTDEBUG && _d('Error updating version check file:', $EVAL_ERROR);
+      }
    }
-   
+
+   if ( $ENV{PTDEBUG_VERSION_CHECK} ) {
+      warn "Exiting because the PTDEBUG_VERSION_CHECK "
+         . "environment variable is defined.\n";
+      exit 255;
+   }
+
    return;
 }
 
-sub pingback {
+sub get_instances_to_check {
    my (%args) = @_;
-   my @required_args = qw(url);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
-   }
-   my ($url) = @args{@required_args};
 
-   my ($instances, $ua) = @args{qw(instances ua)};
+   my $instances = $args{instances};
+   my $now       = $args{now}     || int(time);
+   my $vc_file   = $args{vc_file} || version_check_file();
 
-   $ua ||= HTTPMicro->new( timeout => 5 );
-
-   my $response = $ua->request('GET', $url);
-   ($ENV{PTVCDEBUG} || PTDEBUG) && _d('Server response:', Dumper($response));
-   die "No response from GET $url"
-      if !$response;
-   die("GET on $url returned HTTP status $response->{status}; expected 200\n",
-       ($response->{content} || '')) if $response->{status} != 200;
-   die("GET on $url did not return any programs to check")
-      if !$response->{content};
-
-   my $items = __PACKAGE__->parse_server_response(
-      response => $response->{content}
-   );
-   die "Failed to parse server requested programs: $response->{content}"
-      if !scalar keys %$items;
-      
-   my $versions = __PACKAGE__->get_versions(
-      items     => $items,
-      instances => $instances,
-   );
-   die "Failed to get any program versions; should have at least gotten Perl"
-      if !scalar keys %$versions;
-
-   my $client_content = encode_client_response(
-      items      => $items,
-      versions   => $versions,
-      general_id => md5_hex( hostname() ),
-   );
-
-   my $client_response = {
-      headers => { "X-Percona-Toolkit-Tool" => File::Basename::basename($0) },
-      content => $client_content,
-   };
-   if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-      _d('Client response:', Dumper($client_response));
+   if ( !-f $vc_file ) {
+      PTDEBUG && _d('Version check file', $vc_file, 'does not exist;',
+         'version checking all instances');
+      return $instances;
    }
 
-   $response = $ua->request('POST', $url, $client_response);
-   PTDEBUG && _d('Server suggestions:', Dumper($response));
-   die "No response from POST $url $client_response"
-      if !$response;
-   die "POST $url returned HTTP status $response->{status}; expected 200"
-      if $response->{status} != 200;
+   open my $fh, '<', $vc_file or die "Cannot open $vc_file: $OS_ERROR";
+   chomp(my $file_contents = do { local $/ = undef; <$fh> });
+   PTDEBUG && _d('Version check file', $vc_file, 'contents:', $file_contents);
+   close $fh;
+   my %last_check_time_for = $file_contents =~ /^([^,]+),(.+)$/mg;
 
-   return unless $response->{content};
-
-   $items = __PACKAGE__->parse_server_response(
-      response   => $response->{content},
-      split_vars => 0,
-   );
-   die "Failed to parse server suggestions: $response->{content}"
-      if !scalar keys %$items;
-   my @suggestions = map { $_->{vars} }
-                     sort { $a->{item} cmp $b->{item} }
-                     values %$items;
-
-   return \@suggestions;
-}
-
-sub time_to_check {
-   my ($file, $instances, $time) = @_;
-   die "I need a file argument" unless $file;
-   $time ||= int(time());  # current time
-
-   if ( @$instances ) {
-      my $instances_to_check = instances_to_check($file, $instances, $time);
-      return scalar @$instances_to_check, $instances_to_check;
-   }
-
-   return 1 if !-f $file;
-   
-   my $mtime  = (stat $file)[9];
-   if ( !defined $mtime ) {
-      PTDEBUG && _d('Error getting modified time of', $file);
-      return 1;
-   }
-   PTDEBUG && _d('time=', $time, 'mtime=', $mtime);
-   if ( ($time - $mtime) > $check_time_limit ) {
-      return 1;
-   }
-
-   return 0;
-}
-
-sub instances_to_check {
-   my ($file, $instances, $time, %args) = @_;
-
-   my $file_contents = '';
-   if (open my $fh, '<', $file) {
-      chomp($file_contents = do { local $/ = undef; <$fh> });
-      close $fh;
-   }
-   my %cached_instances = $file_contents =~ /^([^,]+),(.+)$/mg;
-
+   my $check_time_limit = version_check_time_limit();
    my @instances_to_check;
    foreach my $instance ( @$instances ) {
-      my $mtime = $cached_instances{ $instance->{id} };
-      if ( !$mtime || (($time - $mtime) > $check_time_limit) ) {
-         if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-            _d('Time to check MySQL instance', $instance->{name});
-         }
+      my $last_check_time = $last_check_time_for{ $instance->{id} };
+      PTDEBUG && _d('Intsance', $instance->{id}, 'last checked',
+         $last_check_time, 'now', $now, 'diff', $now - ($last_check_time || 0),
+         'hours until next check',
+         sprintf '%.2f',
+            ($check_time_limit - ($now - ($last_check_time || 0))) / 3600);
+      if ( !defined $last_check_time
+           || ($now - $last_check_time) >= $check_time_limit ) {
+         PTDEBUG && _d('Time to check', Dumper($instance));
          push @instances_to_check, $instance;
-         $cached_instances{ $instance->{id} } = $time;
       }
-   }
-
-   if ( $args{update_file} ) {
-      open my $fh, '>', $file or die "Cannot open $file for writing: $OS_ERROR";
-      while ( my ($id, $time) = each %cached_instances ) {
-         print { $fh } "$id,$time\n";
-      }
-      close $fh or die "Cannot close $file: $OS_ERROR";
    }
 
    return \@instances_to_check;
 }
 
-sub update_checks_file {
-   my ($file, $instances, $time) = @_;
+sub update_check_times {
+   my (%args) = @_;
 
-   if ( !-f $file ) {
-      if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-         _d('Creating time limit file', $file);
-      }
-      _touch($file);
-   }
+   my $instances = $args{instances};
+   my $now       = $args{now}     || int(time);
+   my $vc_file   = $args{vc_file} || version_check_file();
+   PTDEBUG && _d('Updating last check time:', $now);
 
-   if ( $instances && @$instances ) {
-      instances_to_check($file, $instances, $time, update_file => 1);
-      return;
+   open my $fh, '>', $vc_file or die "Cannot write to $vc_file: $OS_ERROR";
+   foreach my $instance ( sort { $a->{id} cmp $b->{id} } @$instances ) {
+      PTDEBUG && _d('Updated:', Dumper($instance));
+      print { $fh } $instance->{id} . ',' . $now . "\n";
    }
-
-   my $mtime  = (stat $file)[9];
-   if ( !defined $mtime ) {
-      _touch($file);
-      return;
-   }
-   PTDEBUG && _d('time=', $time, 'mtime=', $mtime);
-   if ( ($time - $mtime) > $check_time_limit ) {
-      _touch($file);
-      return;
-   }
+   close $fh;
 
    return;
 }
 
-sub _touch {
-   my ($file) = @_;
-   sysopen my $fh, $file, O_WRONLY|O_CREAT
-      or die "Cannot create $file : $!";
-   close $fh or die "Cannot close $file : $!";
-   utime(undef, undef, $file);
-}
+sub get_instance_id {
+   my ($instance) = @_;
 
-sub _generate_identifier {
-   my $instance = shift;
-   my $dbh      = $instance->{dbh};
-   my $dsn      = $instance->{dsn};
+   my $dbh = $instance->{dbh};
+   my $dsn = $instance->{dsn};
 
    my $sql = q{SELECT CONCAT(@@hostname, @@port)};
    PTDEBUG && _d($sql);
@@ -13358,11 +12068,77 @@ sub _generate_identifier {
    }
    my $id = md5_hex($name);
 
-   if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-      _d('MySQL instance', $name, 'is', $id);
-   }
+   PTDEBUG && _d('MySQL instance:', $id, $name, $dsn);
 
    return $name, $id;
+}
+
+
+sub pingback {
+   my (%args) = @_;
+   my @required_args = qw(url instances);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg arugment" unless $args{$arg};
+   }
+   my $url       = $args{url};
+   my $instances = $args{instances};
+
+   my $ua = $args{ua} || HTTPMicro->new( timeout => 3 );
+
+   my $response = $ua->request('GET', $url);
+   PTDEBUG && _d('Server response:', Dumper($response));
+   die "No response from GET $url"
+      if !$response;
+   die("GET on $url returned HTTP status $response->{status}; expected 200\n",
+       ($response->{content} || '')) if $response->{status} != 200;
+   die("GET on $url did not return any programs to check")
+      if !$response->{content};
+
+   my $items = parse_server_response(
+      response => $response->{content}
+   );
+   die "Failed to parse server requested programs: $response->{content}"
+      if !scalar keys %$items;
+      
+   my $versions = get_versions(
+      items     => $items,
+      instances => $instances,
+   );
+   die "Failed to get any program versions; should have at least gotten Perl"
+      if !scalar keys %$versions;
+
+   my $client_content = encode_client_response(
+      items      => $items,
+      versions   => $versions,
+      general_id => md5_hex( hostname() ),
+   );
+
+   my $client_response = {
+      headers => { "X-Percona-Toolkit-Tool" => File::Basename::basename($0) },
+      content => $client_content,
+   };
+   PTDEBUG && _d('Client response:', Dumper($client_response));
+
+   $response = $ua->request('POST', $url, $client_response);
+   PTDEBUG && _d('Server suggestions:', Dumper($response));
+   die "No response from POST $url $client_response"
+      if !$response;
+   die "POST $url returned HTTP status $response->{status}; expected 200"
+      if $response->{status} != 200;
+
+   return unless $response->{content};
+
+   $items = parse_server_response(
+      response   => $response->{content},
+      split_vars => 0,
+   );
+   die "Failed to parse server suggestions: $response->{content}"
+      if !scalar keys %$items;
+   my @suggestions = map { $_->{vars} }
+                     sort { $a->{item} cmp $b->{item} }
+                     values %$items;
+
+   return \@suggestions;
 }
 
 sub encode_client_response {
@@ -13391,23 +12167,8 @@ sub encode_client_response {
    return $client_response;
 }
 
-sub validate_options {
-   my ($o) = @_;
-
-   return if !$o->got('version-check');
-
-   my $value  = $o->get('version-check');
-   my @values = split /, /,
-                $o->read_para_after(__FILE__, qr/MAGIC_version_check/);
-   chomp(@values);
-                
-   return if grep { $value eq $_ } @values;
-   $o->save_error("--version-check invalid value $value.  Accepted values are "
-                . join(", ", @values[0..$#values-1]) . " and $values[-1]" );
-}
-
 sub parse_server_response {
-   my ($self, %args) = @_;
+   my (%args) = @_;
    my @required_args = qw(response);
    foreach my $arg ( @required_args ) {
       die "I need a $arg arugment" unless $args{$arg};
@@ -13431,8 +12192,26 @@ sub parse_server_response {
    return \%items;
 }
 
+my %sub_for_type = (
+   os_version          => \&get_os_version,
+   perl_version        => \&get_perl_version,
+   perl_module_version => \&get_perl_module_version,
+   mysql_variable      => \&get_mysql_variable,
+   bin_version         => \&get_bin_version,
+);
+
+sub valid_item {
+   my ($item) = @_;
+   return unless $item;
+   if ( !exists $sub_for_type{ $item->{type} } ) {
+      PTDEBUG && _d('Invalid type:', $item->{type});
+      return 0;
+   }
+   return 1;
+}
+
 sub get_versions {
-   my ($self, %args) = @_;
+   my (%args) = @_;
    my @required_args = qw(items);
    foreach my $arg ( @required_args ) {
       die "I need a $arg arugment" unless $args{$arg};
@@ -13441,11 +12220,9 @@ sub get_versions {
 
    my %versions;
    foreach my $item ( values %$items ) {
-      next unless $self->valid_item($item);
-
+      next unless valid_item($item);
       eval {
-         my $func    = 'get_' . $item->{type};
-         my $version = $self->$func(
+         my $version = $sub_for_type{ $item->{type} }->(
             item      => $item,
             instances => $args{instances},
          );
@@ -13462,28 +12239,8 @@ sub get_versions {
    return \%versions;
 }
 
-sub valid_item {
-   my ($self, $item) = @_;
-   return unless $item;
-
-   if ( ($item->{type} || '') !~ m/
-         ^(?:
-             os_version
-            |perl_version
-            |perl_module_version
-            |mysql_variable
-            |bin_version
-         )$/x ) {
-      PTDEBUG && _d('Invalid type:', $item->{type});
-      return;
-   }
-
-   return 1;
-}
 
 sub get_os_version {
-   my ($self) = @_;
-
    if ( $OSNAME eq 'MSWin32' ) {
       require Win32;
       return Win32::GetOSDisplayName();
@@ -13559,7 +12316,7 @@ sub get_os_version {
 }
 
 sub get_perl_version {
-   my ($self, %args) = @_;
+   my (%args) = @_;
    my $item = $args{item};
    return unless $item;
 
@@ -13569,47 +12326,40 @@ sub get_perl_version {
 }
 
 sub get_perl_module_version {
-   my ($self, %args) = @_;
+   my (%args) = @_;
    my $item = $args{item};
    return unless $item;
 
-   my $var          = $item->{item} . '::VERSION';
-   my $version      = _get_scalar($var);
-   PTDEBUG && _d('Perl version for', $var, '=', "$version");
-
-   return $version ? "$version" : $version;
-}
-
-sub _get_scalar {
-   no strict;
-   return ${*{shift()}};
+   my $var     = '$' . $item->{item} . '::VERSION';
+   my $version = eval "use $item->{item}; $var;";
+   PTDEBUG && _d('Perl version for', $var, '=', $version);
+   return $version;
 }
 
 sub get_mysql_variable {
-   my $self = shift;
-   return $self->_get_from_mysql(
+   return get_from_mysql(
       show => 'VARIABLES',
       @_,
    );
 }
 
-sub _get_from_mysql {
-   my ($self, %args) = @_;
+sub get_from_mysql {
+   my (%args) = @_;
    my $show      = $args{show};
    my $item      = $args{item};
    my $instances = $args{instances};
    return unless $show && $item;
 
    if ( !$instances || !@$instances ) {
-      if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-         _d('Cannot check', $item, 'because there are no MySQL instances');
-      }
+      PTDEBUG && _d('Cannot check', $item,
+         'because there are no MySQL instances');
       return;
    }
 
    my @versions;
    my %version_for;
    foreach my $instance ( @$instances ) {
+      next unless $instance->{id};  # special system instance has id=0
       my $dbh = $instance->{dbh};
       local $dbh->{FetchHashKeyName} = 'NAME_lc';
       my $sql = qq/SHOW $show/;
@@ -13624,7 +12374,6 @@ sub _get_from_mysql {
             'on', $instance->{name});
          push @versions, $version;
       }
-
       $version_for{ $instance->{id} } = join(' ', @versions);
    }
 
@@ -13632,7 +12381,7 @@ sub _get_from_mysql {
 }
 
 sub get_bin_version {
-   my ($self, %args) = @_;
+   my (%args) = @_;
    my $item = $args{item};
    my $cmd  = $item->{item};
    return unless $cmd;
@@ -13734,10 +12483,19 @@ sub main {
    $o->get_opts();
 
    my $dp = $o->DSNParser();
-   $dp->prop('set-vars', $o->get('set-vars'));
+   $dp->prop('set-vars', $o->set_vars());
 
+   my $aux_dsn;
+   for my $i (0..$#ARGV) {
+       next if -e $ARGV[$i];
+       $aux_dsn = $dp->parse(splice(@ARGV, $i, 1));
+       last;
+   }
+   
    # Frequently used options.
-   my $review_dsn = $o->get('review'); 
+   my $review_dsn  = handle_special_defaults($o, 'review');
+   my $history_dsn = handle_special_defaults($o, 'history');
+
    my @groupby    = @{$o->get('group-by')};
    my @orderby;
    if ( (grep { $_ =~ m/genlog|GeneralLogParser|rawlog|RawLogParser/ } @{$o->get('type')})
@@ -13759,20 +12517,6 @@ sub main {
          if ( $EVAL_ERROR ) {
             chomp $EVAL_ERROR;
             $o->save_error("--progress $EVAL_ERROR");
-         }
-      }
-
-      if ( my $review_dsn = $o->get('review') ) {
-         $o->save_error('--review does not accept a t option. Perhaps you meant '
-                      . 'to use --review-table or --history-table?')
-            if defined $review_dsn->{t};
-      }
-
-      for my $tables ('review-table', 'history-table') {
-         my $got = $o->get($tables);
-         if ( grep !defined, Quoter->split_unquote($got) ) {
-            $o->save_error("--$tables should be passed a "
-                         . "fully-qualified table name, got $got");
          }
       }
 
@@ -13798,7 +12542,6 @@ sub main {
    }
    $o->set('order-by', \@orderby);
 
-
    my $run_time_mode = lc $o->get('run-time-mode');
    my $run_time_interval; 
    eval {
@@ -13812,8 +12555,6 @@ sub main {
       $o->save_error($EVAL_ERROR);
    }
 
-   VersionCheck::validate_options($o);
-   
    $o->usage_or_errors();
 
    # ########################################################################
@@ -13849,44 +12590,37 @@ sub main {
    # ########################################################################
    my $qv;      # QueryReview
    my $qv_dbh;  # For QueryReview
+
+   my $tp = new TableParser(Quoter => $q);
    if ( $review_dsn ) {
-      my $tp  = new TableParser(Quoter => $q);
+      my %dsn_without_Dt = %$review_dsn;
+      delete $dsn_without_Dt{D};
+      delete $dsn_without_Dt{t};
+      
       $qv_dbh = get_cxn(
          for          => '--review',
-         dsn          => $review_dsn,
+         dsn          => \%dsn_without_Dt,
          OptionParser => $o,
          DSNParser    => $dp,
          opts         => { AutoCommit => 1 },
       );
       $qv_dbh->{InactiveDestroy}  = 1;  # Don't die on fork().
 
-      my @db_tbl  = Quoter->split_unquote($o->get('review-table'));
-      my @hdb_tbl = Quoter->split_unquote($o->get('history-table'));
-
-      my $db_tbl  = $q->quote(@db_tbl);
-      my $hdb_tbl = $q->quote(@hdb_tbl);
-
+      my @db_tbl = @{$review_dsn}{qw(D t)};
+      my $db_tbl = $q->quote(@db_tbl);
+      
       my $create_review_sql = $o->read_para_after(
-         __FILE__, qr/MAGIC_create_review/);
-      $create_review_sql =~ s/query_review/IF NOT EXISTS $db_tbl/;
-
-      my $create_history_sql = $o->read_para_after(
-         __FILE__, qr/MAGIC_create_review_history/);
-      $create_history_sql =~ s/query_review_history/IF NOT EXISTS $hdb_tbl/;
-
-      for my $create (
-         [ $db_tbl,  $create_review_sql  ],
-         [ $hdb_tbl, $create_history_sql ],
-      ) {
-         my ($tbl_name, $sql) = @$create;
-         create_review_tables(
-            dbh              => $qv_dbh,
-            full_table       => $tbl_name,
-            create_table_sql => $sql,
-            create_table     => $o->get('create-review-tables'),
-            TableParser      => $tp,
-         );
-      }
+         __FILE__, qr/\bMAGIC_create_review_table\b/);
+      $create_review_sql =~ s/\bquery_review\b/$db_tbl/;
+      
+      create_review_tables(
+          type             => 'review',
+          dbh              => $qv_dbh,
+          full_table       => $db_tbl,
+          create_table_sql => $create_review_sql,
+          create_table     => $o->get('create-review-table'),
+          TableParser      => $tp,
+      );
 
       # Set up the new QueryReview object.
       my $struct = $tp->parse($tp->get_create_table($qv_dbh, @db_tbl));
@@ -13896,41 +12630,55 @@ sub main {
          tbl_struct  => $struct,
          quoter      => $q,
       );
+   }
 
-      # Inspect for MAGIC_history_cols.  Add them to the --select list
-      # only if an explicit --select list was given.  Otherwise, leave
-      # --select undef which will cause EventAggregator to aggregate every
-      # attribute available which will include the history columns.
-      # If no --select list was given and we make one by adding the history
-      # columsn to it, then EventAggregator will only aggregate the
-      # history columns and nothing else--we don't want this.
-      my $tbl = $tp->parse($tp->get_create_table($qv_dbh, @hdb_tbl));
-      my $pat = $o->read_para_after(__FILE__, qr/MAGIC_history_cols/);
+   # ########################################################################
+   # Set up for --history.
+   # ########################################################################
+   my $qh;      # QueryHistory
+   my $qh_dbh;
+   if ( $history_dsn ) {
+      my %dsn_without_Dt = %$history_dsn;
+      delete $dsn_without_Dt{D};
+      delete $dsn_without_Dt{t};
+      my $qh_dbh = get_cxn(
+         for          => '--history',
+         dsn          => \%dsn_without_Dt,
+         OptionParser => $o,
+         DSNParser    => $dp,
+         opts         => { AutoCommit => 1 },
+      );
+      $qh_dbh->{InactiveDestroy}  = 1;  # Don't die on fork().
+
+      my @hdb_tbl = @{$history_dsn}{qw(D t)};
+      my $hdb_tbl = $q->quote(@hdb_tbl);
+      
+      my $create_history_sql = $o->read_para_after(
+         __FILE__, qr/\bMAGIC_create_history_table\b/);
+      $create_history_sql =~ s/\bquery_history\b/$hdb_tbl/;
+
+      create_review_tables(
+         type             => 'history',
+         dbh              => $qh_dbh,
+         full_table       => $hdb_tbl,
+         create_table_sql => $create_history_sql,
+         create_table     => $o->get('create-history-table'),
+         TableParser      => $tp,
+      );
+      
+      my $tbl = $tp->parse($tp->get_create_table($qh_dbh, @hdb_tbl));
+      my $pat = $o->read_para_after(__FILE__, qr/\bMAGIC_history_columns\b/);
       $pat    =~ s/\s+//g;
       $pat    = qr/^(.*?)_($pat)$/;
-      # Get original --select values.
-      my %select = map { $_ => 1 } @{$o->get('select')};
-      foreach my $col ( @{$tbl->{cols}} ) {
-         my ( $attr, $metric ) = $col =~ $pat;
-         next unless $attr && $metric;
-         $attr = ucfirst $attr if $attr =~ m/_/; # TableParser lowercases
-         # Add history table values to original select values.
-         $select{$attr}++;
-      }
 
-      if ( $o->got('select') ) {
-         # Re-set --select with its original values plus the history
-         # table values.
-         $o->set('select', [sort keys %select]);
-         PTDEBUG && _d("--select after parsing the history table:", 
-            @{$o->get('select')});
-      }
-
+      $qh = QueryHistory->new(
+                history_dbh    => $qh_dbh,
+                column_pattern => $pat,
+            );
       # And tell the QueryReview that it has more work to do.
-      $qv->set_history_options(
+      $qh->set_history_options(
          table      => $hdb_tbl,
          tbl_struct => $tbl,
-         col_pat    => $pat,
       );
    }
 
@@ -14150,10 +12898,6 @@ sub main {
             binlog    => ['BinaryLogParser'],
             genlog    => ['GeneralLogParser'],
             tcpdump   => ['TcpdumpParser','MySQLProtocolParser'],
-            memcached => ['TcpdumpParser','MemcachedProtocolParser',
-                          'MemcachedEvent'],
-            http      => ['TcpdumpParser','HTTPProtocolParser'],
-            pglog     => ['PgLogParser'],
             rawlog    => ['RawLogParser'],
          );
          my $type = $o->get('type');
@@ -14243,8 +12987,8 @@ sub main {
          $now_callback = sub { return; };
       }
       $pipeline_data->{Runtime} = new Runtime(
-         now     => $now_callback,
-         runtime => $o->get('run-time'),
+         now      => $now_callback,
+         run_time => $o->get('run-time'),
       );
 
       $pipeline->add(
@@ -14312,7 +13056,7 @@ sub main {
    # will need this callback to execute the expression.  We don't know what
    # type of time value the user gave, so we'll create the callback in any case.
    if ( $o->get('since') || $o->get('until') ) {
-      if ( my $aux_dsn = $o->get('aux-dsn') ) {
+      if ( $aux_dsn ) {
          $aux_dbh = get_cxn(
             for          => '--aux',
             dsn          => $aux_dsn,
@@ -14322,7 +13066,7 @@ sub main {
          );
          $aux_dbh->{InactiveDestroy}  = 1;  # Don't die on fork().
       }
-      $aux_dbh ||= $qv_dbh || $ps_dbh || $ep_dbh;
+      $aux_dbh ||= $qv_dbh || $qh_dbh || $ps_dbh || $ep_dbh;
       PTDEBUG && _d('aux dbh:', $aux_dbh);
 
       my $time_callback = sub {
@@ -14405,9 +13149,9 @@ sub main {
                PTDEBUG && _d('Iteration', $args->{iter},
                   'started at', ts($iter_start));
                
-               if ( $o->get('print-iterations') ) {
-                  print "\n# Iteration $args->{iter} started at ",
-                     ts($iter_start), "\n";
+               if ( PTDEBUG ) {
+                  _d("\n# Iteration $args->{iter} started at ",
+                     ts($iter_start), "\n");
                }
             }
 
@@ -14454,6 +13198,7 @@ sub main {
                      files           => \@read_files,
                      Pipeline        => $pipeline,
                      QueryReview     => $qv,
+                     QueryHistory    => $qh,
                      %common_modules,
                   );
                }
@@ -14462,37 +13207,6 @@ sub main {
                }
 
                if ( PTDEBUG ) {
-                  # Print statistics about internal counters.  This option is mostly for
-                  # development and debugging.  The statistics report is printed for each
-                  # iteration after all other reports, even if no events are processed or
-                  # C<--no-report> is specified.  The statistics report looks like:
-
-                     # No events processed.
-
-                     # Statistic                                        Count  %/Events
-                     # ================================================ ====== ========
-                     # events_read                                      142030   100.00
-                     # events_parsed                                     50430    35.51
-                     # events_aggregated                                     0     0.00
-                     # ignored_midstream_server_response                 18111    12.75
-                     # no_tcp_data                                       91600    64.49
-                     # pipeline_restarted_after_MemcachedProtocolParser 142030   100.00
-                     # pipeline_restarted_after_TcpdumpParser                1     0.00
-                     # unknown_client_command                                1     0.00
-                     # unknown_client_data                               32318    22.75
-
-                  # The first column is the internal counter name; the second column is counter's
-                  # count; and the third column is the count as a percentage of C<events_read>.
-
-                  # In this case, it shows why no events were processed/aggregated: 100% of events
-                  # were rejected by the C<MemcachedProtocolParser>.  Of those, 35.51% were data
-                  # packets, but of these 12.75% of ignored mid-stream server response, one was
-                  # an unknown client command, and 22.75% were unknown client data.  The other
-                  # 64.49% were TCP control packets (probably most ACKs).
-
-                  # Since pt-query-digest is complex, you will probably need someone familiar
-                  # with its code to decipher the statistics report.
-
                   if ( keys %stats ) {
                      my $report = new ReportFormatter(
                         line_width => 74,
@@ -14707,17 +13421,6 @@ sub main {
 
    { # distill
       my %distill_args;
-      if ( $o->get('type') eq 'memcached' || $o->get('type') eq 'http' ) {
-         $distill_args{generic} = 1;
-         if ( $o->get('type') eq 'http' ) {
-            # Remove stuff after url.
-            $distill_args{trf} = sub {
-               my ( $query ) = @_;
-               $query =~ s/(\S+ \S+?)(?:[?;].+)/$1/;
-               return $query;
-            };
-         }
-      }
       if ( grep { $_ eq 'distill' } @groupby ) {
          $pipeline->add(
             name    => 'distill',
@@ -14735,21 +13438,22 @@ sub main {
       }
    } # distill
 
-   if ( $o->get('zero-admin') ) {
-      $pipeline->add(
-         name    => 'zero admin',
-         process => sub {
-            my ( $args ) = @_;
-            my $event = $args->{event};
-            if ( $event->{arg} && $event->{arg} =~ m/^administrator/ ) {
-               $event->{Rows_sent}     = 0 if exists $event->{Rows_sent};
-               $event->{Rows_examined} = 0 if exists $event->{Rows_examined};
-               $event->{Rows_read}     = 0 if exists $event->{Rows_read};
-            }
-            return $args;
-         },
-      );
-   } # zero admin
+   # Former --zero-admin
+   $pipeline->add(
+      name    => 'zero admin',
+      process => sub {
+         my ( $args ) = @_;
+         my $event = $args->{event};
+         if ( $event->{arg} && $event->{arg} =~ m/^administrator/ ) {
+            $event->{Rows_sent}     = 0 if exists $event->{Rows_sent};
+            $event->{Rows_examined} = 0 if exists $event->{Rows_examined};
+            $event->{Rows_read}     = 0 if exists $event->{Rows_read};
+            $event->{Rows_affected} = 0 if exists $event->{Rows_affected};
+         }
+         return $args;
+      },
+   );
+   # zero admin
    
    # Filter after special attributes, like fingerprint, tables,
    # distill, etc., have been created.
@@ -14798,14 +13502,14 @@ sub main {
       }
    } # sample
 
-   if ( $o->get('print') ) {
+   if ( $o->get('output') =~ /slowlog/i ) {
       my $w = new SlowLogWriter();
       $pipeline->add(
-         name    => 'print',
+         name    => '--output slowlog',
          process => sub {
             my ( $args ) = @_;
             my $event = $args->{event};
-            PTDEBUG && _d('callback: print');
+            PTDEBUG && _d('callback: --output slowlog');
             $w->write(*STDOUT, $event);
             return $args;
          },
@@ -14821,13 +13525,6 @@ sub main {
       die "No --order-by value for --group-by $groupby" unless $orderby[$i];
 
       my ( $orderby_attrib, $orderby_func ) = split(/:/, $orderby[$i]);
-
-      my %attributes = map {
-         my ($name, @alt) = split(/:/, $_);
-         $name => [$name, @alt];
-      }
-      grep { $_ !~ m/^$groupby\b/ }
-      @{$o->get('select')};
 
       # Create an EventAggregator for this groupby attrib and
       # add it to callbacks.
@@ -14845,11 +13542,10 @@ sub main {
 
       my $ea = new EventAggregator(
          groupby           => $groupby,
-         attributes        => { %attributes },
+         attributes        => { },
          worst             => $orderby_attrib,
          attrib_limit      => $o->get('attribute-value-limit'),
          ignore_attributes => $o->get('ignore-attributes'),
-         unroll_limit      => $o->get('check-attributes-limit'),
          type_for          => $type_for,
       );
       push @ea, $ea;
@@ -14901,13 +13597,14 @@ sub main {
    # ########################################################################
    # Do the version-check
    # ########################################################################
-   if ( $o->get('version-check') ne 'off' && (!$o->has('quiet') || !$o->get('quiet')) ) {
+   if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
       VersionCheck::version_check(
+         force     => $o->got('version-check'),
          instances => [
-            ($qv_dbh ? { dbh => $qv_dbh, dsn => $review_dsn } : ()),
-            ($ps_dbh ? { dbh => $ps_dbh, dsn => $ps_dsn     } : ()),
+            ($qv_dbh ? { dbh => $qv_dbh, dsn => $review_dsn  } : ()),
+            ($qh_dbh ? { dbh => $qh_dbh, dsn => $history_dsn } : ()),
+            ($ps_dbh ? { dbh => $ps_dbh, dsn => $ps_dsn      } : ()),
          ],
-         protocol => $o->get('version-check'),
       );
    }
 
@@ -14938,7 +13635,7 @@ sub main {
       PTDEBUG && _d('Disconnected dbh', $_);
    }
    grep { $_ }
-   ($qv_dbh, $ps_dbh, $ep_dbh, $aux_dbh);
+   ($qv_dbh, $qh_dbh, $ps_dbh, $ep_dbh, $aux_dbh);
 
    return 0;
 } # End main()
@@ -14949,12 +13646,12 @@ sub main {
 
 sub create_review_tables {
    my ( %args ) = @_;
-   my @required_args = qw(dbh full_table TableParser);
+   my @required_args = qw(dbh full_table TableParser type);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
    my $create_table_sql = $args{create_table_sql};
-   my ($dbh, $full_table, $tp) = @args{@required_args};
+   my ($dbh, $full_table, $tp, $type) = @args{@required_args};
 
    PTDEBUG && _d('Checking --review table', $full_table);
 
@@ -14964,8 +13661,8 @@ sub create_review_tables {
    PTDEBUG && _d($show_db_sql);
    my @db_exists = $dbh->selectrow_array($show_db_sql);
    if ( !@db_exists && !$args{create_table} ) {
-      die "--review database $db does not exist and "
-        . "--no-create-review-tables was specified.  You need "
+      die "--$type database $db does not exist and "
+        . "--no-create-$type-table was specified.  You need "
         . "to create the database.\n";
    }
    else {
@@ -14981,7 +13678,7 @@ sub create_review_tables {
       };
       if ( $EVAL_ERROR && !@db_exists ) {
          warn $EVAL_ERROR;
-         die "--review database $db does not exist and it cannot be "
+         die "--$type database $db does not exist and it cannot be "
             . "created automatically.  You need to create the database.\n";
       }
    }
@@ -15002,7 +13699,7 @@ sub create_review_tables {
 
    if ( !$tbl_exists && !$args{create_table} ) {
       die "Table $full_table does not exist and "
-        . "--no-create-review-tables was specified.  "
+        . "--no-create-$type-table was specified.  "
         . "You need to create the table.\n";
    }
    else {
@@ -15012,7 +13709,7 @@ sub create_review_tables {
       };
       if ( $EVAL_ERROR && !$args{create_table} ) {
          warn $EVAL_ERROR;
-         die "--review history table $full_table does not exist and it cannot be "
+         die "--$type history table $full_table does not exist and it cannot be "
            . "created automatically.  You need to create the table.\n"
       }
    }
@@ -15029,13 +13726,14 @@ sub print_reports {
 
    my ($o, $qv, $pipeline) = @args{qw(OptionParser QueryReview Pipeline)};
    my ($eas, $tls, $stats) = @args{qw(eas tls stats)};
+   my $qh                  = $args{QueryHistory};
 
    my @reports = @{$o->get('report-format')};
    my @groupby = @{$args{groupby}};
    my @orderby = @{$args{orderby}};
 
    for my $i ( 0..$#groupby ) {
-      if ( $o->get('report') || $qv ) {
+      if ( $o->get('report') || $qv || $qh ) {
          $eas->[$i]->calculate_statistical_metrics();
       }
 
@@ -15103,12 +13801,18 @@ sub print_reports {
       }
 
       if ( $qv ) {  # query review
-         update_query_review_tables(
+         update_query_review_table(
             ea           => $eas->[$i],
             worst        => $worst,
             QueryReview  => $qv,
-            OptionParser => $o,
          );
+      }
+      if ( $qh ) { # query history
+         update_query_history_table(
+            ea           => $eas->[$i],
+            worst        => $worst,
+            QueryHistory => $qh,
+         );      
       }
 
       if ( $o->get('timeline') ) {  # --timeline
@@ -15165,6 +13869,24 @@ sub sig_int {
       save_resume_offset();
       exit(1);
    }
+}
+
+# Handle the special defaults for --review & --history
+sub handle_special_defaults {
+   my ($o, $opt) = @_;
+   my $dsn = $o->get($opt);
+   return unless $dsn;
+
+   my $para = $o->read_para_after(
+      __FILE__, qr/MAGIC_default_${opt}_table/);
+   my ($default_table) = $para =~ m/default table is C<([^>]+)>/;
+   die "Error parsing special default for --$opt"
+      unless $default_table;
+   my ($D, $t) = Quoter->split_unquote($default_table);
+   $dsn->{D} ||= $D;
+   $dsn->{t} ||= $t;
+   
+   return $dsn;
 }
 
 sub make_alt_attrib {
@@ -15302,15 +14024,14 @@ sub get_worst_queries {
    return $ea->top_events(%top_spec);
 }
 
-sub update_query_review_tables {
+sub update_query_review_table {
    my ( %args ) = @_;
-   foreach my $arg ( qw(ea worst QueryReview OptionParser) ) {
+   foreach my $arg ( qw(ea worst QueryReview) ) {
       die "I need a $arg argument" unless $args{$arg};
    }
    my $ea    = $args{ea};
    my $worst = $args{worst};
    my $qv    = $args{QueryReview};
-   my $o     = $args{OptionParser};
 
    my $attribs = $ea->get_attributes();
 
@@ -15327,6 +14048,28 @@ sub update_query_review_tables {
          first_seen  => $stats->{ts}->{min},
          last_seen   => $stats->{ts}->{max}
       );
+   }
+
+   return;
+}
+
+sub update_query_history_table {
+   my ( %args ) = @_;
+   foreach my $arg ( qw(ea worst QueryHistory) ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my $ea    = $args{ea};
+   my $worst = $args{worst};
+   my $qh    = $args{QueryHistory};
+
+   my $attribs = $ea->get_attributes();
+
+   PTDEBUG && _d('Updating query review tables'); 
+
+   foreach my $worst_info ( @$worst ) {
+      my $item        = $worst_info->[0];
+      my $sample      = $ea->results->{samples}->{$item};
+
       my %history;
       foreach my $attrib ( @$attribs ) {
          $history{$attrib} = $ea->metrics(
@@ -15334,12 +14077,13 @@ sub update_query_review_tables {
             where  => $item,
          );
       }
-      $qv->set_review_history(
+      $qh->set_review_history(
          $item, $sample->{arg} || '', %history);
    }
 
    return;
 }
+
 
 # Sub: verify_run_time
 #   Verify that the given run mode and run time are valid.  If the run mode
@@ -15446,89 +14190,85 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-pt-query-digest - Analyze query execution logs and generate a query report, filter, replay, or transform queries for MySQL, PostgreSQL, memcached, and more.
+pt-query-digest - Analyze MySQL queries from logs, processlist, and tcpdump.
 
 =head1 SYNOPSIS
 
-Usage: pt-query-digest [OPTION...] [FILE]
+Usage: pt-query-digest [OPTIONS] [FILES] [DSN]
 
-pt-query-digest parses and analyzes MySQL log files.  With no FILE, or when
-FILE is -, it read standard input.
+pt-query-digest analyzes MySQL queries from slow, general, and binary log
+files.  It can also analyze queries from C<SHOW PROCESSLIST> and MySQL
+protocol data from tcpdump.  By default, queries are grouped by fingerprint
+and reported in descending order of query time (i.e. the slowest queries
+first).  If no C<FILES> are given, the tool reads C<STDIN>.  The optional
+C<DSN> is used for certain options like L<"--since"> and L<"--until">.
 
-Analyze, aggregate, and report on a slow query log:
+Report the slowest queries from C<slow.log>:
 
- pt-query-digest /path/to/slow.log
+   pt-query-digest slow.log
 
-Review a slow log, saving results to the test.query_review table in a MySQL
-server running on host1.  See L<"--review"> for more on reviewing queries:
+Report the slowest queries from the processlist on host1:
 
- pt-query-digest --review h=host1 --review-table test.query_review
-   --history-table test.query_history /path/to/slow.log
+   pt-query-digest --processlist h=host1
 
-Print the structure of events so you can construct a complex L<"--filter">:
+Capture MySQL protocol data with tcppdump, then report the slowest queries:
 
- pt-query-digest /path/to/slow.log --no-report \
-   --filter 'print Dumper($event)'
+   tcpdump -s 65535 -x -nn -q -tttt -i any -c 1000 port 3306 > mysql.tcp.txt
 
-Watch SHOW FULL PROCESSLIST and output a log in slow query log format:
+   pt-query-digest --type tcpdump mysql.tcp.txt
 
- pt-query-digest --processlist h=host1 --print --no-report
+Save query data from C<slow.log> to host2 for later review and trend analysis:
 
-The default aggregation and analysis is CPU and memory intensive.  Disable it if
-you don't need the default report:
-
- pt-query-digest <arguments> --no-report
+   pt-query-digest --review h=host2 --no-report slow.log
 
 =head1 RISKS
 
-The following section is included to inform users about the potential risks,
-whether known or unknown, of using this tool.  The two main categories of risks
-are those created by the nature of the tool (e.g. read-only tools vs. read-write
-tools) and those created by bugs.
+Percona Toolkit is mature, proven in the real world, and well tested,
+but all database tools can pose a risk to the system and the database
+server.  Before using this tool, please:
 
-By default pt-query-digest merely collects and aggregates data from the files
-specified.  It is designed to be as efficient as possible, but depending on the
-input you give it, it can use a lot of CPU and memory.  Practically speaking, it
-is safe to run even on production systems, but you might want to monitor it
-until you are satisfied that the input you give it does not cause undue load.
+=over
 
-Various options will cause pt-query-digest to insert data into tables, execute
-SQL queries, and so on.  These include the L<"--review"> option.
+=item * Read the tool's documentation
 
-At the time of this release, we know of no bugs that could cause serious harm
-to users.
+=item * Review the tool's known L<"BUGS">
 
-The authoritative source for updated information is always the online issue
-tracking system.  Issues that affect this tool will be marked as such.  You can
-see a list of such issues at the following URL:
-L<http://www.percona.com/bugs/pt-query-digest>.
+=item * Test the tool on a non-production server
 
-See also L<"BUGS"> for more information on filing bugs and getting help.
+=item * Backup your production server and verify the backups
+
+=back
 
 =head1 DESCRIPTION
 
-C<pt-query-digest> is a framework for doing things with events from a query
-source such as the slow query log or PROCESSLIST.  By default it acts as a very
-sophisticated log analysis tool.  You can group and sort queries in many
-different ways simultaneously and find the most expensive queries, or create a
-timeline of queries in the log, for example.  It can also do a "query review,"
-which means to save a sample of each type of query into a MySQL table so you can
-easily see whether you've reviewed and analyzed a query before.  The benefit of
-this is that you can keep track of changes to your server's queries and avoid
-repeated work.  You can also save other information with the queries, such as
-comments, issue numbers in your ticketing system, and so on.
+pt-query-digest is a sophisticated but easy to use tool for analyzing
+MySQL queries.  It can analyze queries from MySQL slow, general, and binary
+logs, as well as C<SHOW PROCESSLIST> and MySQL protocol data from tcpdump.
+By default, the tool reports which queries are the slowest, and therefore
+the most important to optimize.  More complex and custom-tailored reports
+can be created by using options like L<"--group-by">, L<"--filter">, and
+L<"--embedded-attributes">.
 
-Note that this is a work in *very* active progress and you should expect
-incompatible changes in the future.
+Query analysis is a best-practice that should be done frequently.  To
+make this easier, pt-query-digest has two features: query review
+(L<"--review">) and query history (L<"--history">).  When the L<"--review">
+option is used, all unique queries are saved to a database.  When the
+tool is ran again with L<"--review">, queries marked as reviewed in
+the database are not printed in the report.  This highlights new queries
+that need to be reviewed.  When the L<"--history"> option is used,
+query metrics (query time, lock time, etc.) for each unique query are
+saved to database.  Each time the tool is ran with L<"--history">, the
+more historical data is saved which can be used to trend and analyze
+query performance over time.
 
 =head1 ATTRIBUTES
 
-pt-query-digest works on events, which are a collection of key/value pairs
+pt-query-digest works on events, which are a collection of key-value pairs
 called attributes.  You'll recognize most of the attributes right away:
-Query_time, Lock_time, and so on.  You can just look at a slow log and see them.
-However, there are some that don't exist in the slow log, and slow logs
-may actually include different kinds of attributes (for example, you may have a
-server with the Percona patches).
+C<Query_time>, C<Lock_time>, and so on.  You can just look at a slow log
+and see them.  However, there are some that don't exist in the slow log,
+and slow logs may actually include different kinds of attributes (for example,
+you may have a server with the Percona patches).
 
 See L<"ATTRIBUTES REFERENCE"> near the end of this documentation for a list
 of common and L<"--type"> specific attributes.  A familiarity with these
@@ -15546,34 +14286,21 @@ The C<&& 1> trick is needed to create a valid one-line syntax that is always
 true, even if the assignment happens to evaluate false.  The new attribute will
 automatically appears in the output:
 
-  # Row ratio           1.00    0.00       1    0.50       1    0.71    0.50
+  # Row ratio        1.00    0.00      1    0.50      1    0.71    0.50
 
 Attributes created this way can be specified for L<"--order-by"> or any
 option that requires an attribute.
 
-=head2 memcached
-
-memcached events have additional attributes related to the memcached protocol:
-cmd, key, res (result) and val.  Also, boolean attributes are created for
-the various commands, misses and errors: Memc_CMD where CMD is a memcached
-command (get, set, delete, etc.), Memc_error and Memc_miss.
-
-These attributes are no different from slow log attributes, so you can use them
-with L<"--[no]report">, L<"--group-by">, in a L<"--filter">, etc.
-
-See the memcached section of L<"ATTRIBUTES REFERENCE"> for a list of
-memcached-specific attributes.
-
 =head1 OUTPUT
 
-The default output is a query analysis report.  The L<"--[no]report"> option
-controls whether or not this report is printed.  Sometimes you may wish to
-parse all the queries but suppress the report, for example when using
-L<"--print"> or L<"--review">.
+The default L<"--output"> is a query analysis report.  The L<"--[no]report">
+option controls whether or not this report is printed.  Sometimes you may
+want to parse all the queries but suppress the report, for example when using
+L<"--review"> or L<"--history">.
 
 There is one paragraph for each class of query analyzed.  A "class" of queries
 all have the same value for the L<"--group-by"> attribute which is
-"fingerprint" by default.  (See L<"ATTRIBUTES">.)  A fingerprint is an
+C<fingerprint> by default.  (See L<"ATTRIBUTES">.)  A fingerprint is an
 abstracted version of the query text with literals removed, whitespace
 collapsed, and so forth.  The report is formatted so it's easy to paste into
 emails without wrapping, and all non-query lines begin with a comment, so you
@@ -15627,14 +14354,18 @@ select the reviewed query's details from the database with a query like C<SELECT
 
 If you are investigating the report and want to print out every sample of a
 particular query, then the following L<"--filter"> may be helpful:
-C<pt-query-digest slow-log.log --no-report --print --filter '$event->{fingerprint} 
-&& make_checksum($event->{fingerprint}) eq "FDEA8D2993C9CAF3"'>. 
 
-Notice that you must remove the 0x prefix from the checksum in order for this to work.
+   pt-query-digest slow.log           \
+      --no-report                     \
+      --output slowlog                \
+      --filter '$event->{fingerprint} \
+           && make_checksum($event->{fingerprint}) eq "FDEA8D2993C9CAF3"'
+
+Notice that you must remove the C<0x> prefix from the checksum.
 
 Finally, in case you want to find a sample of the query in the log file, there's
 the byte offset where you can look.  (This is not always accurate, due to some
-silly anomalies in the slow-log format, but it's usually right.)  The position
+anomalies in the slow log format, but it's usually right.)  The position
 refers to the worst sample, which we'll see more about below.
 
 Next is the table of metrics about this class of queries.
@@ -15679,10 +14410,10 @@ of the most frequent ones, followed by the number of times it appears.
  #  10us
  # 100us
  #   1ms
- #  10ms
- # 100ms
- #    1s
- #  10s+  #############################################################
+ #  10ms  #####
+ # 100ms  ####################
+ #    1s  ##########
+ #  10s+
 
 The execution times show a logarithmic chart of time clustering.  Each query
 goes into one of the "buckets" and is counted up.  The buckets are powers of
@@ -15716,16 +14447,16 @@ above, and something like the following:
 
 See also L<"--report-format">.
 
-=head1 QUERY REVIEWS
+=head1 QUERY REVIEW
 
-A "query review" is the process of storing all the query fingerprints analyzed.
-This has several benefits:
+A query L<"--review"> is the process of storing all the query fingerprints 
+analyzed.  This has several benefits:
 
 =over
 
 =item *
 
-You can add meta-data to classes of queries, such as marking them for follow-up,
+You can add metadata to classes of queries, such as marking them for follow-up,
 adding notes to queries, or marking them with an issue ID for your issue
 tracking system.
 
@@ -15764,9 +14495,9 @@ output.
 =item *
 
 If you want to see the queries you've already reviewed, you can specify
-L<"--report-all">.  Then you'll see the normal analysis output, but you'll also see
-the information from the review table, just below the execution time graph.  For
-example,
+L<"--report-all">.  Then you'll see the normal analysis output, but you'll
+also see the information from the review table, just below the execution time
+graph.  For example,
 
   # Review information
   #      comments: really bad IN() subquery, fix soon!
@@ -15777,12 +14508,8 @@ example,
   #   reviewed_by: xaprb
   #   reviewed_on: 2008-12-18 15:03:11
 
-You can see how useful this meta-data is -- as you analyze your queries, you get
+This metadata is useful because, as you analyze your queries, you get
 your comments integrated right into the report.
-
-The tool will also store information into a separate database table specified
-by the L<"--history-table"> option, so you can keep historical trending information
-on classes of queries.
 
 =back
 
@@ -15807,8 +14534,11 @@ What C<pt-query-digest> does is analogous to a GROUP BY statement in SQL.  (But
 note that "multiple columns" doesn't define a multi-column grouping; it defines
 multiple reports!) If your command-line looks like this,
 
-  pt-query-digest /path/to/slow.log --select Rows_read,Rows_sent \
-      --group-by fingerprint --order-by Query_time:sum --limit 10
+  pt-query-digest               \
+      --group-by fingerprint    \
+      --order-by Query_time:sum \
+      --limit 10                \
+      slow.log
 
 The corresponding pseudo-SQL looks like this:
 
@@ -15821,27 +14551,21 @@ The corresponding pseudo-SQL looks like this:
 You can also use the value C<distill>, which is a kind of super-fingerprint.
 See L<"--group-by"> for more.
 
-When parsing memcached input (L<"--type"> memcached), the fingerprint is an
-abstracted version of the command and key, with placeholders removed.  For
-example, C<get user_123_preferences> fingerprints to C<get user_?_preferences>.
-There is also a C<key_print> which a fingerprinted version of the key.  This
-example's key_print is C<user_?_preferences>.
+Query fingerprinting accommodates many special cases, which have proven
+necessary in the real world.  For example, an C<IN> list with 5 literals
+is really equivalent to one with 4 literals, so lists of literals are
+collapsed to a single one.  If you find something that is not fingerprinted
+properly, please submit a bug report with a reproducible test case. 
 
-Query fingerprinting accommodates a great many special cases, which have proven
-necessary in the real world.  For example, an IN list with 5 literals is really
-equivalent to one with 4 literals, so lists of literals are collapsed to a
-single one.  If you want to understand more about how and why all of these cases
-are handled, please review the test cases in the Launchpad repository.  If you
-find something that is not fingerprinted properly, please submit a bug report
-with a reproducible test case.  Here is a list of transformations during
-fingerprinting, which might not be exhaustive:
+Here is a list of transformations during fingerprinting, which might not
+be exhaustive:
 
 =over
 
 =item *
 
 Group all SELECT queries from mysqldump together, even if they are against
-different tables.  Ditto for all of pt-table-checksum's checksum queries.
+different tables.  The same applies to all queries from pt-table-checksum.
 
 =item *
 
@@ -15917,22 +14641,9 @@ type: int; default: 4294967296
 
 A sanity limit for attribute values.
 
-This option deals with bugs in slow-logging functionality that causes large
+This option deals with bugs in slow logging functionality that causes large
 values for attributes.  If the attribute's value is bigger than this, the
 last-seen value for that class of query is used instead.
-
-=item --aux-dsn
-
-type: DSN
-
-Auxiliary DSN used for special options.
-
-The following options may require a DSN even when only parsing a slow log file:
-
-  * --since
-  * --until
-
-See each option for why it might require a DSN.
 
 =item --charset
 
@@ -15943,21 +14654,6 @@ STDOUT to utf8, passes the mysql_enable_utf8 option to DBD::mysql, and
 runs SET NAMES UTF8 after connecting to MySQL.  Any other value sets
 binmode on STDOUT without the utf8 layer, and runs SET NAMES after
 connecting to MySQL.
-
-=item --check-attributes-limit
-
-type: int; default: 1000
-
-Stop checking for new attributes after this many events.
-
-For better speed, pt-query-digest stops checking events for new attributes
-after a certain number of events.  Any new attributes after this number
-will be ignored and will not be reported.
-
-One special case is new attributes for pre-existing query classes
-(see L<"--group-by"> about query classes).  New attributes will not be added
-to pre-existing query classes even if the attributes are detected before the
-L<"--check-attributes-limit"> limit.
 
 =item --config
 
@@ -15974,15 +14670,23 @@ Continue parsing even if there is an error.  The tool will not continue
 forever: it stops once any process causes 100 errors, in which case there
 is probably a bug in the tool or the input is invalid.
 
-=item --[no]create-review-tables
+=item --[no]create-history-table
 
 default: yes
 
-Create the L<"--review"> tables if they do not exist.
+Create the L<"--history"> table if it does not exist.
 
-This option causes the tables specified by L<"--review-table"> and
-L<"--history-table"> to be created with the default structures shown
-in the documentation for L<"--review">.
+This option causes the table specified by L<"--history"> to be created
+with the default structure shown in the documentation for L<"--history">.
+
+=item --[no]create-review-table
+
+default: yes
+
+Create the L<"--review"> table if it does not exist.
+
+This option causes the table specified by L<"--review"> to be created
+with the default structure shown in the documentation for L<"--review">.
 
 =item --daemonize
 
@@ -16191,20 +14895,163 @@ into a suggestion of what they do, such as C<INSERT SELECT table1 table2>.
 
 =back
 
-If parsing memcached input (L<"--type"> memcached), there are other
-attributes which you can group by: key_print (see memcached section in
-L<"FINGERPRINTS">), cmd, key, res and val (see memcached section in
-L<"ATTRIBUTES">).
-
 =item --help
 
 Show help and exit.
 
-=item --history-table
+=item --history
 
-type: string; default: percona_schema.query_history
+type: DSN
 
-Where to save the historical data produced by L<"--review">.
+Save metrics for each query class in the given table.  pt-query-digest saves
+query metrics (query time, lock time, etc.) to this table so you can see how
+query classes change over time.
+
+=for comment ignore-pt-internal-value
+MAGIC_default_history_table
+
+The default table is C<percona_schema.query_history>.  Specify database
+(D) and table (t) DSN options to override the default.  The database and
+table are automatically created unless C<--no-create-history-table>
+is specified (see L<"--[no]create-history-table">).
+
+pt-query-digest inspects the columns in the table.  The table must have at
+least the following columns:
+
+  CREATE TABLE query_review_history (
+    checksum     BIGINT UNSIGNED NOT NULL,
+    sample       TEXT NOT NULL
+  );
+
+Any columns not mentioned above are inspected to see if they follow a certain
+naming convention.  The column is special if the name ends with an underscore
+followed by any of these values:
+
+=for comment ignore-pt-internal-value
+MAGIC_history_columns
+
+  pct|avg|cnt|sum|min|max|pct_95|stddev|median|rank
+
+If the column ends with one of those values, then the prefix is interpreted as
+the event attribute to store in that column, and the suffix is interpreted as
+the metric to be stored.  For example, a column named C<Query_time_min> will be
+used to store the minimum C<Query_time> for the class of events.
+
+The table should also have a primary key, but that is up to you, depending on
+how you want to store the historical data.  We suggest adding ts_min and ts_max
+columns and making them part of the primary key along with the checksum.  But
+you could also just add a ts_min column and make it a DATE type, so you'd get
+one row per class of queries per day.
+
+The following table definition is used for L<"--[no]create-history-table">:
+
+=for comment ignore-pt-internal-value
+MAGIC_create_history_table
+
+ CREATE TABLE IF NOT EXISTS query_history (
+   checksum             BIGINT UNSIGNED NOT NULL,
+   sample               TEXT NOT NULL,
+   ts_min               DATETIME,
+   ts_max               DATETIME,
+   ts_cnt               FLOAT,
+   Query_time_sum       FLOAT,
+   Query_time_min       FLOAT,
+   Query_time_max       FLOAT,
+   Query_time_pct_95    FLOAT,
+   Query_time_stddev    FLOAT,
+   Query_time_median    FLOAT,
+   Lock_time_sum        FLOAT,
+   Lock_time_min        FLOAT,
+   Lock_time_max        FLOAT,
+   Lock_time_pct_95     FLOAT,
+   Lock_time_stddev     FLOAT,
+   Lock_time_median     FLOAT,
+   Rows_sent_sum        FLOAT,
+   Rows_sent_min        FLOAT,
+   Rows_sent_max        FLOAT,
+   Rows_sent_pct_95     FLOAT,
+   Rows_sent_stddev     FLOAT,
+   Rows_sent_median     FLOAT,
+   Rows_examined_sum    FLOAT,
+   Rows_examined_min    FLOAT,
+   Rows_examined_max    FLOAT,
+   Rows_examined_pct_95 FLOAT,
+   Rows_examined_stddev FLOAT,
+   Rows_examined_median FLOAT,
+   -- Percona extended slowlog attributes 
+   -- http://www.percona.com/docs/wiki/patches:slow_extended
+   Rows_affected_sum             FLOAT,
+   Rows_affected_min             FLOAT,
+   Rows_affected_max             FLOAT,
+   Rows_affected_pct_95          FLOAT,
+   Rows_affected_stddev          FLOAT,
+   Rows_affected_median          FLOAT,
+   Rows_read_sum                 FLOAT,
+   Rows_read_min                 FLOAT,
+   Rows_read_max                 FLOAT,
+   Rows_read_pct_95              FLOAT,
+   Rows_read_stddev              FLOAT,
+   Rows_read_median              FLOAT,
+   Merge_passes_sum              FLOAT,
+   Merge_passes_min              FLOAT,
+   Merge_passes_max              FLOAT,
+   Merge_passes_pct_95           FLOAT,
+   Merge_passes_stddev           FLOAT,
+   Merge_passes_median           FLOAT,
+   InnoDB_IO_r_ops_min           FLOAT,
+   InnoDB_IO_r_ops_max           FLOAT,
+   InnoDB_IO_r_ops_pct_95        FLOAT,
+   InnoDB_IO_r_ops_stddev        FLOAT,
+   InnoDB_IO_r_ops_median        FLOAT,
+   InnoDB_IO_r_bytes_min         FLOAT,
+   InnoDB_IO_r_bytes_max         FLOAT,
+   InnoDB_IO_r_bytes_pct_95      FLOAT,
+   InnoDB_IO_r_bytes_stddev      FLOAT,
+   InnoDB_IO_r_bytes_median      FLOAT,
+   InnoDB_IO_r_wait_min          FLOAT,
+   InnoDB_IO_r_wait_max          FLOAT,
+   InnoDB_IO_r_wait_pct_95       FLOAT,
+   InnoDB_IO_r_wait_stddev       FLOAT,
+   InnoDB_IO_r_wait_median       FLOAT,
+   InnoDB_rec_lock_wait_min      FLOAT,
+   InnoDB_rec_lock_wait_max      FLOAT,
+   InnoDB_rec_lock_wait_pct_95   FLOAT,
+   InnoDB_rec_lock_wait_stddev   FLOAT,
+   InnoDB_rec_lock_wait_median   FLOAT,
+   InnoDB_queue_wait_min         FLOAT,
+   InnoDB_queue_wait_max         FLOAT,
+   InnoDB_queue_wait_pct_95      FLOAT,
+   InnoDB_queue_wait_stddev      FLOAT,
+   InnoDB_queue_wait_median      FLOAT,
+   InnoDB_pages_distinct_min     FLOAT,
+   InnoDB_pages_distinct_max     FLOAT,
+   InnoDB_pages_distinct_pct_95  FLOAT,
+   InnoDB_pages_distinct_stddev  FLOAT,
+   InnoDB_pages_distinct_median  FLOAT,
+   -- Boolean (Yes/No) attributes.  Only the cnt and sum are needed
+   -- for these.  cnt is how many times is attribute was recorded,
+   -- and sum is how many of those times the value was Yes.  So
+   -- sum/cnt * 100 equals the percentage of recorded times that
+   -- the value was Yes.
+   QC_Hit_cnt          FLOAT,
+   QC_Hit_sum          FLOAT,
+   Full_scan_cnt       FLOAT,
+   Full_scan_sum       FLOAT,
+   Full_join_cnt       FLOAT,
+   Full_join_sum       FLOAT,
+   Tmp_table_cnt       FLOAT,
+   Tmp_table_sum       FLOAT,
+   Tmp_table_on_disk_cnt FLOAT,
+   Tmp_table_on_disk_sum FLOAT,
+   Filesort_cnt          FLOAT,
+   Filesort_sum          FLOAT,
+   Filesort_on_disk_cnt  FLOAT,
+   Filesort_on_disk_sum  FLOAT,
+   PRIMARY KEY(checksum, ts_min, ts_max)
+ );
+
+Note that we store the count (cnt) for the ts attribute only; it will be
+redundant to store this for other attributes.
 
 =item --host
 
@@ -16216,13 +15063,8 @@ Connect to host.
 
 type: array; default: arg, cmd, insert_id, ip, port, Thread_id, timestamp, exptime, flags, key, res, val, server_id, offset, end_log_pos, Xid
 
-Do not aggregate these attributes when auto-detecting L<"--select">.
-
-If you do not specify L<"--select"> then pt-query-digest auto-detects and
-aggregates every attribute that it finds in the slow log.  Some attributes,
-however, should not be aggregated.  This option allows you to specify a list
-of attributes to ignore.  This only works when no explicit L<"--select"> is
-given.
+Do not aggregate these attributes.  Some attributes are not query metrics
+but metadata which doesn't need to be (or can't be) aggregated.
 
 =item --inherit-attributes
 
@@ -16336,12 +15178,24 @@ seconds and which are seen at least 5 times, use the following argument:
 
 You can specify an --outliers option for each value in L<"--group-by">.
 
-
 =item --output
 
-type: string; default: query
+type: string; default: report
 
-Type of report to use. Accepted values are C<"query"> and C<"json">.
+How to format and print the query analysis results.  Accepted values are:
+
+   VALUE    FORMAT
+   =======  ==============================
+   report   Standard query analysis report
+   slowlog  MySQL slow log
+   json     JSON, on array per query class
+
+The entire C<report> output can be disabled by specifying C<--no-report>
+(see L<"--[no]report">), and its sections can be disabled or rearranged
+by specifying L<"--report-format">.
+
+C<json> output was introduced in 2.2.1 and is still in development,
+so the data structure may change in future versions.
 
 =item --password
 
@@ -16353,33 +15207,17 @@ Password to use when connecting.
 
 type: string
 
-Create the given PID file when daemonized.  The file contains the process
-ID of the daemonized instance.  The PID file is removed when the
-daemonized instance exits.  The program checks for the existence of the
-PID file when starting; if it exists and the process with the matching PID
-exists, the program exits.
+Create the given PID file.  The tool won't start if the PID file already
+exists and the PID it contains is different than the current PID.  However,
+if the PID file exists and the PID it contains is no longer running, the
+tool will overwrite the PID file with the current PID.  The PID file is
+removed automatically when the tool exits.
 
 =item --port
 
 short form: -P; type: int
 
 Port number to use for connection.
-
-=item --print
-
-Print log events to STDOUT in standard slow-query-log format.
-
-=item --print-iterations
-
-Print the start time for each L<"--iterations">.
-
-This option causes a line like the following to be printed at the start
-of each L<"--iterations"> report:
-
-  # Iteration 2 started at 2009-11-24T14:39:48.345780 
-
-This line will print even if C<--no-report> is specified.  If C<--iterations 0>
-is specified, each iteration number will be C<0>.
 
 =item --processlist
 
@@ -16416,14 +15254,19 @@ This option requires the Perl POSIX module.
 
 default: yes
 
-Print out reports on the aggregate results from L<"--group-by">.
-
-This is the standard slow-log analysis functionality.  See L<"OUTPUT"> for the
+Print query analysis reports for each L<"--group-by"> attribute.  This is
+the standard slow log analysis functionality.  See L<"OUTPUT"> for the
 description of what this does and what the results look like.
+
+If you don't need a report (for example, when using L<"--review"> or
+L<"--history">), it is best to specify C<--no-report> because this allows
+the tool to skip some expensive operations.
 
 =item --report-all
 
-Include all queries, even if they have already been reviewed.
+Report all queries, even ones that have been reviewed.  This only affects
+the C<report> L<"--output"> when using L<"--review">.  Otherwise, all
+queries are always printed.
 
 =item --report-format
 
@@ -16463,8 +15306,8 @@ like:
   #  10us
   # 100us
   #   1ms
-  #  10ms  ################################
-  # 100ms  ################################################################
+  #  10ms  ###########################
+  # 100ms  ########################################################
   #    1s  ########
   #  10s+
 
@@ -16483,23 +15326,24 @@ in the log, and resumes parsing events from that point onward.
 
 type: DSN
 
-Store a sample of each class of query in this DSN, plus historical values
-for review trend analysis
-
-The argument specifies a host to store all unique query fingerprints in; the
-databases and tables were this data is stored can be specified with the
-L<"--review-table"> and L<"--history-table"> options.
-By default, if the table doesn't exist the tool mtries creating it; This
-behavior can bhe controlled with the L<"--[no]create-review-tables"> option.
-If the table was created manually, it must have at least the following columns.
-You can add more columns for your own special purposes, but they won't be used
-by pt-query-digest.  The following CREATE TABLE definition is also used by
-L<"--no-create-review-tables">.
+Save query classes for later review, and don't report already reviewed classes.
 
 =for comment ignore-pt-internal-value
-MAGIC_create_review:
+MAGIC_default_review_table
 
-  CREATE TABLE query_review (
+The default table is C<percona_schema.query_review>.  Specify database
+(D) and table (t) DSN options to override the default.  The database and
+table are automatically created unless C<--no-create-review-table>
+is specified (see L<"--[no]create-review-table">).
+
+If the table was created manually, it must have at least the following columns.
+You can add more columns for your own special purposes, but they won't be used
+by pt-query-digest.
+
+=for comment ignore-pt-internal-value
+MAGIC_create_review_table:
+
+  CREATE TABLE IF NOT EXISTS query_review (
      checksum     BIGINT UNSIGNED NOT NULL PRIMARY KEY,
      fingerprint  TEXT NOT NULL,
      sample       TEXT NOT NULL,
@@ -16510,10 +15354,10 @@ MAGIC_create_review:
      comments     TEXT
   )
 
-The columns are as follows:
+The columns are:
 
   COLUMN       MEANING
-  ===========  ===============
+  ===========  ====================================================
   checksum     A 64-bit checksum of the query fingerprint
   fingerprint  The abstracted version of the query; its primary key
   sample       The query text of a sample of the class of queries
@@ -16530,155 +15374,6 @@ provides a shorter value that is very likely to also be unique.
 After parsing and aggregating events, your table should contain a row for each
 fingerprint.  This option depends on C<--group-by fingerprint> (which is the
 default).  It will not work otherwise.
-
-
-Additionally, pt-query-digest will save historical information into a review table,
-so you can see how classes of queries have changed over time.  You can
-change the destination table with the L<"--history-table">
-
-The table must have at least the following columns:
-
-  CREATE TABLE query_review_history (
-    checksum     BIGINT UNSIGNED NOT NULL,
-    sample       TEXT NOT NULL
-  );
-
-Any columns not mentioned above are inspected to see if they follow a certain
-naming convention.  The column is special if the name ends with an underscore
-followed by any of these values:
-
-=for comment ignore-pt-internal-value
-MAGIC_history_cols
-
-  pct|avt|cnt|sum|min|max|pct_95|stddev|median|rank
-
-If the column ends with one of those values, then the prefix is interpreted as
-the event attribute to store in that column, and the suffix is interpreted as
-the metric to be stored.  For example, a column named Query_time_min will be
-used to store the minimum Query_time for the class of events.  The presence of
-this column will also add Query_time to the L<"--select"> list.
-
-The table should also have a primary key, but that is up to you, depending on
-how you want to store the historical data.  We suggest adding ts_min and ts_max
-columns and making them part of the primary key along with the checksum.  But
-you could also just add a ts_min column and make it a DATE type, so you'd get
-one row per class of queries per day.
-
-The default table structure follows.  The following table definition is used
-for L<"--[no]create-review-tables">:
-
-=for comment ignore-pt-internal-value
-MAGIC_create_review_history
-
- CREATE TABLE query_review_history (
-   checksum             BIGINT UNSIGNED NOT NULL,
-   sample               TEXT NOT NULL,
-   ts_min               DATETIME,
-   ts_max               DATETIME,
-   ts_cnt               FLOAT,
-   Query_time_sum       FLOAT,
-   Query_time_min       FLOAT,
-   Query_time_max       FLOAT,
-   Query_time_pct_95    FLOAT,
-   Query_time_stddev    FLOAT,
-   Query_time_median    FLOAT,
-   Lock_time_sum        FLOAT,
-   Lock_time_min        FLOAT,
-   Lock_time_max        FLOAT,
-   Lock_time_pct_95     FLOAT,
-   Lock_time_stddev     FLOAT,
-   Lock_time_median     FLOAT,
-   Rows_sent_sum        FLOAT,
-   Rows_sent_min        FLOAT,
-   Rows_sent_max        FLOAT,
-   Rows_sent_pct_95     FLOAT,
-   Rows_sent_stddev     FLOAT,
-   Rows_sent_median     FLOAT,
-   Rows_examined_sum    FLOAT,
-   Rows_examined_min    FLOAT,
-   Rows_examined_max    FLOAT,
-   Rows_examined_pct_95 FLOAT,
-   Rows_examined_stddev FLOAT,
-   Rows_examined_median FLOAT,
-   -- Percona extended slowlog attributes 
-   -- http://www.percona.com/docs/wiki/patches:slow_extended
-   Rows_affected_sum             FLOAT,
-   Rows_affected_min             FLOAT,
-   Rows_affected_max             FLOAT,
-   Rows_affected_pct_95          FLOAT,
-   Rows_affected_stddev          FLOAT,
-   Rows_affected_median          FLOAT,
-   Rows_read_sum                 FLOAT,
-   Rows_read_min                 FLOAT,
-   Rows_read_max                 FLOAT,
-   Rows_read_pct_95              FLOAT,
-   Rows_read_stddev              FLOAT,
-   Rows_read_median              FLOAT,
-   Merge_passes_sum              FLOAT,
-   Merge_passes_min              FLOAT,
-   Merge_passes_max              FLOAT,
-   Merge_passes_pct_95           FLOAT,
-   Merge_passes_stddev           FLOAT,
-   Merge_passes_median           FLOAT,
-   InnoDB_IO_r_ops_min           FLOAT,
-   InnoDB_IO_r_ops_max           FLOAT,
-   InnoDB_IO_r_ops_pct_95        FLOAT,
-   InnoDB_IO_r_ops_stddev        FLOAT,
-   InnoDB_IO_r_ops_median        FLOAT,
-   InnoDB_IO_r_bytes_min         FLOAT,
-   InnoDB_IO_r_bytes_max         FLOAT,
-   InnoDB_IO_r_bytes_pct_95      FLOAT,
-   InnoDB_IO_r_bytes_stddev      FLOAT,
-   InnoDB_IO_r_bytes_median      FLOAT,
-   InnoDB_IO_r_wait_min          FLOAT,
-   InnoDB_IO_r_wait_max          FLOAT,
-   InnoDB_IO_r_wait_pct_95       FLOAT,
-   InnoDB_IO_r_wait_stddev       FLOAT,
-   InnoDB_IO_r_wait_median       FLOAT,
-   InnoDB_rec_lock_wait_min      FLOAT,
-   InnoDB_rec_lock_wait_max      FLOAT,
-   InnoDB_rec_lock_wait_pct_95   FLOAT,
-   InnoDB_rec_lock_wait_stddev   FLOAT,
-   InnoDB_rec_lock_wait_median   FLOAT,
-   InnoDB_queue_wait_min         FLOAT,
-   InnoDB_queue_wait_max         FLOAT,
-   InnoDB_queue_wait_pct_95      FLOAT,
-   InnoDB_queue_wait_stddev      FLOAT,
-   InnoDB_queue_wait_median      FLOAT,
-   InnoDB_pages_distinct_min     FLOAT,
-   InnoDB_pages_distinct_max     FLOAT,
-   InnoDB_pages_distinct_pct_95  FLOAT,
-   InnoDB_pages_distinct_stddev  FLOAT,
-   InnoDB_pages_distinct_median  FLOAT,
-   -- Boolean (Yes/No) attributes.  Only the cnt and sum are needed for these.
-   -- cnt is how many times is attribute was recorded and sum is how many of
-   -- those times the value was Yes.  Therefore sum/cnt * 100 = % of recorded
-   -- times that the value was Yes.
-   QC_Hit_cnt          FLOAT,
-   QC_Hit_sum          FLOAT,
-   Full_scan_cnt       FLOAT,
-   Full_scan_sum       FLOAT,
-   Full_join_cnt       FLOAT,
-   Full_join_sum       FLOAT,
-   Tmp_table_cnt       FLOAT,
-   Tmp_table_sum       FLOAT,
-   Tmp_table_on_disk_cnt FLOAT,
-   Tmp_table_on_disk_sum FLOAT,
-   Filesort_cnt          FLOAT,
-   Filesort_sum          FLOAT,
-   Filesort_on_disk_cnt  FLOAT,
-   Filesort_on_disk_sum  FLOAT,
-   PRIMARY KEY(checksum, ts_min, ts_max)
- );
-
-Note that we store the count (cnt) for the ts attribute only; it will be
-redundant to store this for other attributes.
-
-=item --review-table
-
-type: string; default: percona_schema.query_review
-
-Where to save the samples produced by L<"--review">.
 
 =item --run-time
 
@@ -16759,69 +15454,30 @@ type: int
 Filter out all but the first N occurrences of each query.  The queries are
 filtered on the first value in L<"--group-by">, so by default, this will filter
 by query fingerprint.  For example, C<--sample 2> will permit two sample queries
-for each fingerprint.  Useful in conjunction with L<"--print"> to print out the
-queries.  You probably want to set C<--no-report> to avoid the overhead of
+for each fingerprint.  Useful in conjunction with C<--output slowlog> to print
+the queries.  You probably want to set C<--no-report> to avoid the overhead of
 aggregating and reporting if you're just using this to print out samples of
 queries.  A complete example:
 
-  pt-query-digest --sample 2 --no-report --print slow.log
-
-=item --select
-
-type: Array
-
-Compute aggregate statistics for these attributes.
-
-By default pt-query-digest auto-detects, aggregates and prints metrics for
-every query attribute that it finds in the slow query log.  This option
-specifies a list of only the attributes that you want.  You can specify an
-alternative attribute with a colon.  For example, C<db:Schema> uses db if it's
-available, and Schema if it's not.
-
-Previously, pt-query-digest only aggregated these attributes:
-
-  Query_time,Lock_time,Rows_sent,Rows_examined,user,db:Schema,ts
-
-Attributes in the table specified by L<"--history-table"> will always be selected 
-even if you do not specify L<"--select">.
-
-See also L<"--ignore-attributes"> and L<"ATTRIBUTES">.
+  pt-query-digest --sample 2 --no-report --output slowlog slow.log
 
 =item --set-vars
 
-type: string; default: wait_timeout=10000
+type: Array
 
-Set these MySQL variables.  Immediately after connecting to MySQL, this
-string will be appended to SET and executed.
+Set the MySQL variables in this comma-separated list of C<variable=value> pairs.
 
-=item --shorten
+By default, the tool sets:
 
-type: int; default: 1024
+=for comment ignore-pt-internal-value
+MAGIC_set_vars
 
-Shorten long statements in reports.
+   wait_timeout=10000
 
-Shortens long statements, replacing the omitted portion with a C</*... omitted
-...*/> comment.  This applies only to the output in reports, not to information
-stored for L<"--review"> or other places.  It prevents a large statement from
-causing difficulty in a report.  The argument is the preferred length of the
-shortened statement.  Not all statements can be shortened, but very large INSERT
-and similar statements often can; and so can IN() lists, although only the first
-such list in the statement will be shortened.
+Variables specified on the command line override these defaults.  For
+example, specifying C<--set-vars wait_timeout=500> overrides the defaultvalue of C<10000>.
 
-If it shortens something beyond recognition, you can find the original statement
-in the log, at the offset shown in the report header (see L<"OUTPUT">).
-
-=item --show-all
-
-type: Hash
-
-Show all values for these attributes.
-
-By default pt-query-digest only shows as many of an attribute's value that
-fit on a single line.  This option allows you to specify attributes for which
-all values will be shown (line width is ignored).  This only works for
-attributes with string values like user, host, db, etc.  Multiple attributes
-can be specified, comma-separated.
+The tool prints a warning and continues if a variable cannot be set.
 
 =item --since
 
@@ -16843,12 +15499,10 @@ several types:
   * Any time expression evaluated by MySQL:
     CURRENT_DATE - INTERVAL 7 DAY
 
-If you give a MySQL time expression, then you must also specify a DSN
-so that pt-query-digest can connect to MySQL to evaluate the expression.
-If you specify L<"--explain">, L<"--processlist">, L<"--review">, then
-one of these DSNs will be used automatically.
-Otherwise, you must specify an L<"--aux-dsn"> or pt-query-digest will die
-saying that the value is invalid.
+If you give a MySQL time expression, and you have not also specified a DSN
+for L<"--explain">, L<"--processlist">, or L<"--review">, then you must specify
+a DSN on the command line so that pt-query-digest can connect to MySQL to
+evaluate the expression.
 
 The MySQL time expression is wrapped inside a query like
 "SELECT UNIX_TIMESTAMP(<expression>)", so be sure that the expression is
@@ -16868,17 +15522,6 @@ See also L<"--until">.
 short form: -S; type: string
 
 Socket file to use for connection.
-
-=item --tcpdump-errors
-
-type: string
-
-Write the tcpdump data to this file on error.  If pt-query-digest doesn't
-parse the stream correctly for some reason, the session's packets since the
-last query event will be written out to create a usable test case.  If this
-happens, pt-query-digest will not raise an error; it will just discard the
-session's saved state and permit the tool to continue working.  See L<"tcpdump">
-for more information about parsing tcpdump output.
 
 =item --timeline
 
@@ -16909,9 +15552,9 @@ will print something like:
 
 =item --type
 
-type: Array
+type: Array; default: slowlog
 
-The type of input to parse (default slowlog).  The permitted types are
+The type of input to parse.  The permitted types are
 
 =over
 
@@ -16925,55 +15568,9 @@ Parse a MySQL general log file.  General logs lack a lot of L<"ATTRIBUTES">,
 notably C<Query_time>.  The default L<"--order-by"> for general logs
 changes to C<Query_time:cnt>.
 
-=item http
-
-Parse HTTP traffic from tcpdump.
-
-=item pglog
-
-Parse a log file in PostgreSQL format.  The parser will automatically recognize
-logs sent to syslog and transparently parse the syslog format, too.  The
-recommended configuration for logging in your postgresql.conf is as follows.
-
-The log_destination setting can be set to either syslog or stderr.  Syslog has
-the added benefit of not interleaving log messages from several sessions
-concurrently, which the parser cannot handle, so this might be better than
-stderr.  CSV-formatted logs are not supported at this time.
-
-The log_min_duration_statement setting should be set to 0 to capture all
-statements with their durations.  Alternatively, the parser will also recognize
-and handle various combinations of log_duration and log_statement.
-
-You may enable log_connections and log_disconnections, but this is optional.
-
-It is highly recommended to set your log_line_prefix to the following:
-
-  log_line_prefix = '%m c=%c,u=%u,D=%d '
-
-This lets the parser find timestamps with milliseconds, session IDs, users, and
-databases from the log.  If these items are missing, you'll simply get less
-information to analyze.  For compatibility with other log analysis tools such as
-PQA and pgfouine, various log line prefix formats are supported.  The general
-format is as follows: a timestamp can be detected and extracted (the syslog
-timestamp is NOT parsed), and a name=value list of properties can also.
-Although the suggested format is as shown above, any name=value list will be
-captured and interpreted by using the first letter of the 'name' part,
-lowercased, to determine the meaning of the item.  The lowercased first letter
-is interpreted to mean the same thing as PostgreSQL's built-in %-codes for the
-log_line_prefix format string.  For example, u means user, so unicorn=fred
-will be interpreted as user=fred; d means database, so D=john will be
-interpreted as database=john.  The pgfouine-suggested formatting is user=%u and
-db=%d, so it should Just Work regardless of which format you choose.  The main
-thing is to add as much information as possible into the log_line_prefix to
-permit richer analysis.
-
-Currently, only English locale messages are supported, so if your server's
-locale is set to something else, the log won't be parsed properly.  (Log
-messages with "duration:" and "statement:" won't be recognized.)
-
 =item slowlog
 
-Parse a log file in any variation of MySQL slow-log format.
+Parse a log file in any variation of MySQL slow log format.
 
 =item tcpdump
 
@@ -17036,17 +15633,6 @@ database.
 Server-side prepared statements are supported.  SSL-encrypted traffic cannot be
 inspected and decoded.
 
-=item memcached
-
-Similar to tcpdump, but the expected input is memcached packets
-instead of MySQL packets.  For example:
-
-  tcpdump -i any port 11211 -s 65535 -x -nn -q -tttt \
-    > memcached.tcp.txt
-  pt-query-digest --type memcached memcached.tcp.txt
-
-memcached uses port 11211 by default.
-
 =back
 
 =item --until
@@ -17096,38 +15682,33 @@ distinct checksums are treated as equal.
 
 Show version and exit.
 
-=item --version-check
+=item --[no]version-check
 
-type: string; default: off
+default: yes
 
-Send program versions to Percona and print suggested upgrades and problems.
-Possible values for --version-check:
+Check for the latest version of Percona Toolkit, MySQL, and other programs.
 
-=for comment ignore-pt-internal-value
-MAGIC_version_check
+This is a standard "check for updates automatically" feature, with two
+additional features.  First, the tool checks the version of other programs
+on the local system in addition to its own version.  For example, it checks
+the version of every MySQL server it connects to, Perl, and the Perl module
+DBD::mysql.  Second, it checks for and warns about versions with known
+problems.  For example, MySQL 5.5.25 had a critical bug and was re-released
+as 5.5.25a.
 
-https, http, auto, off
+Any updates or known problems are printed to STDOUT before the tool's normal
+output.  This feature should never interfere with the normal operation of the
+tool.  
 
-C<auto> first tries using C<https>, and resorts to C<http> if that fails.
-Keep in mind that C<https> might not be available if
-C<IO::Socket::SSL> is not installed on your system, although
-C<--version-check http> should work everywhere.
-
-The version check feature causes the tool to send and receive data from
-Percona over the web.  The data contains program versions from the local
-machine.  Percona uses the data to focus development on the most widely
-used versions of programs, and to suggest to customers possible upgrades
-and known bad versions of programs.
-
-For more information, visit L<http://www.percona.com/version-check>.
+For more information, visit L<https://www.percona.com/version-check>.
 
 =item --watch-server
 
 type: string
 
 This option tells pt-query-digest which server IP address and port (like
-"10.0.0.1:3306") to watch when parsing tcpdump (for L<"--type"> tcpdump and
-memcached); all other servers are ignored.  If you don't specify it,
+"10.0.0.1:3306") to watch when parsing tcpdump (for L<"--type"> tcpdump);
+all other servers are ignored.  If you don't specify it,
 pt-query-digest watches all servers by looking for any IP address using port
 3306 or "mysql".  If you're watching a server with a non-standard port, this
 won't work, so you must specify the IP address and port to watch.
@@ -17137,12 +15718,6 @@ and some running on non-standard ports, you need to create separate
 tcpdump outputs for the non-standard port servers and then specify this
 option for each.  At present pt-query-digest cannot auto-detect servers on
 port 3306 and also be told to watch a server on a non-standard port.
-
-=item --[no]zero-admin
-
-default: yes
-
-Zero out the Rows_XXX properties for administrator command events.
 
 =back
 
@@ -17166,14 +15741,13 @@ Default character set.
 
 dsn: database; copy: yes
 
-Default database for the review option. Only useful if there are replication
-filters set up.
+Default database to use when connecting to MySQL.
 
 =item * F
 
 dsn: mysql_read_default_file; copy: yes
 
-Only read default options from the given file
+Only read default options from the given file.
 
 =item * h
 
@@ -17201,7 +15775,7 @@ Socket file to use for connection.
 
 =item * t
 
-Not used.
+The L<"--review"> or L<"--history"> table.
 
 =item * u
 
@@ -17277,10 +15851,10 @@ using it, else the filter code may crash the tool with a
 
 You can dump event attributes for any input like:
 
-  $ pt-query-digest \
-      slowlog \
+  $ pt-query-digest                  \
+      slow.log                       \
       --filter 'print Dumper $event' \
-      --no-report \
+      --no-report                    \
       --sample 1
 
 That will produce a lot of output with "attribute => value" pairs like:
@@ -17320,13 +15894,12 @@ The byte length of the C<arg>.
 
 =item cmd
 
-"Query" or "Admin" for all except memcached. For memcached it's
-the memcached command: get, set, etc.
+"Query" or "Admin".
 
 =item db
 
-The current database, except for memcached.  The value comes from USE
-database statements.  By default, C<Schema> is an alias which is automatically
+The current database.  The value comes from USE database statements.  
+By default, C<Schema> is an alias which is automatically
 changed to C<db>; see L<"--attribute-aliases">.
 
 =item fingerprint 
@@ -17359,8 +15932,7 @@ need to look at the log file to see which events are available, but remember:
 not all events have the same attributes.
 
 Percona Server adds many attributes to the slow log; see
-http://www.percona.com/doc/percona-server/5.1/diagnostics/slow_extended.html#changes-to-the-log-format
-for more information.
+http://www.percona.com/docs/wiki/patches:slow_extended for more information.
 
 =head2 TCPDUMP
 
@@ -17399,87 +15971,18 @@ The number of warnings, as otherwise shown by C<SHOW WARNINGS>.
 If using L<"--processlist">, an C<id> attribute is available for
 the process ID, in addition to the common attributes.
 
-=head2 MEMCACHED
-
-These attributes are available when parsing L<"--type"> memcached.
-
-=over
-
-=item exptime
-
-Expiration time.
-
-=item key
-
-The key used by cmd.
-
-=item key_print
-
-An abstracted form of the key.
-
-=item Memc_add
-
-Yes/No if the command is add.
-
-=item Memc_append
-
-Yes/No if the command is append.
-
-=item Memc_cas
-
-Yes/No if the command is cas.
-
-=item Memc_error
-
-Yes/No if command caused an error. Currently, the only error is when
-a retrieval command is interrupted.
-
-=item Memc_get
-
-Yes/No if the command is get.
-
-=item Memc_gets
-
-Yes/No if the command is gets.
-
-=item Memc_miss
-
-Yes/No if the command tried to access a nonexistent key.
-
-=item Memc_prepend
-
-Yes/No if the command is prepend.
-
-=item Memc_replace
-
-Yes/No if the command is replace.
-
-=item Memc_set
-
-Yes/No if the command is set.
-
-=item res
-
-Result of cmd.
-
-=item val
-
-The return value of cmd, if any.
-
-=back
-
 =head1 AUTHORS
 
-Baron Schwartz and Daniel Nichter
+Baron Schwartz, Daniel Nichter, and Brian Fraser
 
 =head1 ABOUT PERCONA TOOLKIT
 
 This tool is part of Percona Toolkit, a collection of advanced command-line
-tools developed by Percona for MySQL support and consulting.  Percona Toolkit
-was forked from two projects in June, 2011: Maatkit and Aspersa.  Those
-projects were created by Baron Schwartz and developed primarily by him and
-Daniel Nichter, both of whom are employed by Percona.  Visit
-L<http://www.percona.com/software/> for more software developed by Percona.
+tools for MySQL developed by Percona.  Percona Toolkit was forked from two
+projects in June, 2011: Maatkit and Aspersa.  Those projects were created by
+Baron Schwartz and primarily developed by him and Daniel Nichter.  Visit
+L<http://www.percona.com/software/> to learn about other free, open-source
+software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
@@ -17501,6 +16004,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-query-digest 2.1.8
+pt-query-digest 2.2.0
 
 =cut

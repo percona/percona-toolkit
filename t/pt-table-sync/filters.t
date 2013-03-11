@@ -110,7 +110,7 @@ test_filters(
 # Checksum the filter tables.
 $master_dbh->do("DROP DATABASE IF EXISTS percona");
 $sb->wait_for_slaves();
-diag(`$trunk/bin/pt-table-checksum $master_dsn -d d1,d2,d3 --chunk-size 100 --quiet --lock-wait-timeout 3 --max-load ''`);
+diag(`$trunk/bin/pt-table-checksum $master_dsn -d d1,d2,d3 --chunk-size 100 --quiet --set-vars innodb_lock_wait_timeout=3 --max-load ''`);
 
 my $rows = $master_dbh->selectall_arrayref("SELECT CONCAT(db, '.', tbl) FROM percona.checksums ORDER BY db, tbl");
 is_deeply(
@@ -180,7 +180,7 @@ $sb->load_file("master", "t/pt-table-sync/samples/simple-tbls.sql");
 $slave_dbh->do("INSERT INTO test.empty_it VALUES (null,11,11,'eleven')");
 
 # Create the checksums.
-diag(`$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox -d test --quiet --quiet --lock-wait-timeout 3 --max-load ''`);
+diag(`$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox -d test --quiet --quiet --set-vars innodb_lock_wait_timeout=3 --max-load ''`);
 
 # Make sure all the tables were checksummed.
 $rows = $master_dbh->selectall_arrayref("SELECT DISTINCT db, tbl FROM percona.checksums ORDER BY db, tbl");

@@ -405,9 +405,9 @@ sub one_nibble {
    return $self->{one_nibble};
 }
 
-sub chunk_size {
+sub limit {
    my ($self) = @_;
-   return $self->{limit} + 1;
+   return $self->{limit};
 }
 
 sub set_chunk_size {
