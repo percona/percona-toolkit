@@ -530,10 +530,13 @@ sub _format_rows {
 
 sub _format_query_times {
    my ($query_times) = @_;
-   return unless $query_times && @$query_times;
-   my $fmt = "%s vs. %s seconds (%s increase)\n";
-   return "\n" . 
-   my @diffs;
+   return unless $query_times;
+   my $fmt = "\n%s vs. %s seconds (%s%% increase)\n";
+   my $diff = sprintf $fmt,
+      ($query_times->[1] || '?'),
+      ($query_times->[2] || '?'),
+      ($query_times->[3] || '?');
+   return $diff;
 }
 
 sub _d {
