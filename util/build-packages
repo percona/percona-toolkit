@@ -398,9 +398,9 @@ build_deb() {
    fi
    cp $BRANCH/config/deb/* $RELEASE_DIR/$PKG/debian/
 
-   # Build Debian "binary" package.
+   # Build Debian binary and source packages.
    cd $RELEASE_DIR/$PKG
-   dpkg-buildpackage -b -us -uc >$tmpdir/dpkg-buildpackage 2>&1
+   dpkg-buildpackage -us -uc >$tmpdir/dpkg-buildpackage 2>&1
    if [ $? -ne 0 ]; then
       warn "dpkg-buildpackage has warnings; see $tmpdir/dpkg-buildpackage"
    fi
