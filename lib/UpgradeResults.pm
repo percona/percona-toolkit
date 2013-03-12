@@ -64,7 +64,7 @@ sub save_diffs {
            && scalar @{$class->{query_time_diffs}} < $self->max_examples ) {
          push @{$class->{query_time_diffs}}, [
             $query,
-            @$query_time_diffs,
+            $query_time_diffs,
          ];
       }
 
