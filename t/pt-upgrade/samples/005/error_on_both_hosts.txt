@@ -1,0 +1,59 @@
+
+#-----------------------------------------------------------------------
+# Logs
+#-----------------------------------------------------------------------
+
+File: ...
+Size: 147
+
+#-----------------------------------------------------------------------
+# Hosts
+#-----------------------------------------------------------------------
+
+host1:
+
+  DSN:       h=127.1,P=12345
+  hostname:  ...
+  MySQL:     ...
+
+host2:
+
+  DSN:       h=127.1,P=12348
+  hostname:  ...
+  MySQL:     ...
+
+########################################################################
+# Query class 0F88A9418F511C18
+########################################################################
+
+Reporting class because it has SQL errors, but hasn't been reported yet.
+
+Total queries      1
+Unique queries     1
+Discarded queries  0
+
+select nonexistent_col from test.t
+
+##
+## SQL errors: 1
+##
+
+-- 1.
+
+On both hosts:
+
+DBD::mysql::st execute failed: Unknown column 'nonexistent_col' in 'field list' [for Statement "select nonexistent_col from test.t"]
+
+select nonexistent_col from test.t
+
+#-----------------------------------------------------------------------
+# Stats
+#-----------------------------------------------------------------------
+
+failed_queries        1
+not_select            0
+queries_filtered      0
+queries_no_diffs      0
+queries_read          1
+queries_with_diffs    0
+queries_with_errors   0

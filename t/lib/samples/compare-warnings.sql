@@ -8,4 +8,3 @@ CREATE TABLE t (
    t tinyint
 );
 INSERT INTO t VALUES (1,'hi',1);
-

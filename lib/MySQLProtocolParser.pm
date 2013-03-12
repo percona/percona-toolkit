@@ -225,6 +225,7 @@ sub new {
       sessions       => {},
       o              => $args{o},
       fake_thread_id => 2**32,   # see _make_event()
+      null_event     => $args{null_event},
    };
    PTDEBUG && $self->{server} && _d('Watching only server', $self->{server});
    return bless $self, $class;
@@ -247,7 +248,7 @@ sub parse_event {
       $server .= ":$self->{port}";
       if ( $src_host ne $server && $dst_host ne $server ) {
          PTDEBUG && _d('Packet is not to or from', $server);
-         return;
+         return $self->{null_event};
       }
    }
 
@@ -265,7 +266,7 @@ sub parse_event {
    }
    else {
       PTDEBUG && _d('Packet is not to or from a MySQL server');
-      return;
+      return $self->{null_event};
    }
    PTDEBUG && _d('Client', $client);
 
@@ -290,7 +291,7 @@ sub parse_event {
       else {
          PTDEBUG && _d('Ignoring mid-stream', $packet_from, 'data,',
             'packetno', $packetno);
-         return;
+         return $self->{null_event};
       }
 
       $self->{sessions}->{$client} = {
@@ -341,7 +342,7 @@ sub parse_event {
          delete $self->{sessions}->{$session->{client}};
          return $event;
       }
-      return;
+      return $self->{null_event};
    }
 
    # Return unless the compressed packet can be uncompressed.
@@ -380,7 +381,7 @@ sub parse_event {
          PTDEBUG && _d('remove_mysql_header() failed; failing session');
          $session->{EVAL_ERROR} = $EVAL_ERROR;
          $self->fail_session($session, 'remove_mysql_header() failed');
-         return;
+         return $self->{null_event};
       }
    }
 
@@ -397,7 +398,7 @@ sub parse_event {
             $self->_delete_buff($session);
          }
          else {
-            return;  # waiting for more data; buff_left was reported earlier
+            return $self->{null_event};  # waiting for more data; buff_left was reported earlier
          }
       }
       elsif ( $packet->{mysql_data_len} > ($packet->{data_len} - 4) ) {
@@ -425,7 +426,7 @@ sub parse_event {
 
          PTDEBUG && _d('Data not complete; expecting',
             $session->{buff_left}, 'more bytes');
-         return;
+         return $self->{null_event};
       }
 
       if ( $session->{cmd} && ($session->{state} || '') eq 'awaiting_reply' ) {
@@ -456,7 +457,7 @@ sub parse_event {
    }
 
    $args{stats}->{events_parsed}++ if $args{stats};
-   return $event;
+   return $event || $self->{null_event};
 }
 
 # Handles a packet from the server given the state of the session.
