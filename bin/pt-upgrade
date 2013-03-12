@@ -9307,7 +9307,6 @@ sub main {
       filter          => $o->get('filter'),
       ignore_warnings => $o->get('ignore-warnings'),
       read_only       => $o->get('read-only') ?  1 : 0,
-      read_timeout    => $o->get('read-timeout'),
       allowed_errors  => $o->get('continue-on-error') ? 100 : 0,
       progress        => $o->get('progress'),
    );
@@ -9573,7 +9572,6 @@ sub compare_host_to_host {
    my $filter          = $args{filter};
    my $ignore_warnings = $args{ignore_warnings};
    my $read_only       = $args{read_only};
-   my $read_timeout    = $args{read_timeout};
    my $allowed_errors  = $args{allowed_errors} || 0;
    my $progress        = $args{progress};
 
@@ -9602,7 +9600,6 @@ sub compare_host_to_host {
       ($database     ? (default_database => $database)     : ()),
       ($filter       ? (filter           => $filter)       : ()),
       ($read_only    ? (read_only        => $read_only)    : ()),
-      ($read_timeout ? (read_timeout     => $read_timeout) : ()),
       ($progress     ? (progress         => $progress)     : ()),
    );
 
@@ -9684,7 +9681,6 @@ sub save_results {
    my $filter          = $args{filter};
    my $ignore_warnings = $args{ignore_warnings};
    my $read_only       = $args{read_only};
-   my $read_timeout    = $args{read_timeout};
    my $allowed_errors  = $args{allowed_errors} || 0;
    my $progress        = $args{progress};
 
@@ -9712,7 +9708,6 @@ sub save_results {
       ($database     ? (default_database => $database)     : ()),
       ($filter       ? (filter           => $filter)       : ()),
       ($read_only    ? (read_only        => $read_only)    : ()),
-      ($read_timeout ? (read_timeout     => $read_timeout) : ()),
       ($progress     ? (progress         => $progress)     : ()),
    );
 
@@ -10292,22 +10287,22 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-pt-upgrade - Verify that queries results are identical on different servers.
+pt-upgrade - Verify that query results are identical on different servers.
 
 =head1 SYNOPSIS
 
 Usage: pt-upgrade [OPTIONS] LOGS|RESULTS DSN [DSN]
 
-pt-upgrade executes queries in MySQL C<LOGS> on each C<DSN>, compares
-the results, and reports any significant differences.  The tool can
-also save results for later analyses.  C<LOGS> can be slow, general,
+pt-upgrade executes queries in the given MySQL C<LOGS> on each C<DSN>,
+compares the results, and reports any significant differences.  The tool can
+also save the results for later analyses.  C<LOGS> can be slow, general,
 binary, tcpdump, and "raw".
 
-Compare host1 to host2 using queries in C<slow.log>:
+Compare host2 to host1 using queries in C<slow.log>:
 
    pt-upgrade h=host1 h=host2 slow.log
 
-Save results for host1, then compare to host2:
+Compare host2 to saved results from host1:
 
    pt-upgrade h=host1 --save-results host1_results/ slow.log
 
@@ -10351,18 +10346,18 @@ to host".  A log file and two DSN are given on the command line, one for
 each MySQL server.  See the first example in the L<"SYNOPSIS">.  Queries
 are executed and compared on each server as the tool runs.  Queries with
 differences are printed as the tool runs, or when it finishes (see
-L<"WHEN QUERIES ARE REPORTED">.  Nothing is saved to disk, so this use case
+L<"WHEN QUERIES ARE REPORTED">).  Nothing is saved to disk, so this use case
 requires less hard disk space, but the queries must be executed on both
 servers if the tool is ran again, even if one of the servers hasn't
-changed.  If there are a lot of queries or executing them all takes a
+changed.  If there are a lot of queries or executing them takes a
 long time, and one server doesn't change, you may want to use the second
 use case.
 
 The second use case is running "reference results to host".  Reference
 results are the complete results from a single MySQL server, saved to
 disk.  In this case, you must first generate the reference results
-(with L<"--save-results">), then run the tool a second time to compare
-the results to another MySQL server.  See the second example in the
+with L<"--save-results">, then run the tool a second time to compare
+another MySQL server to the results.  See the second example in the
 L<"SYNOPSIS">.  Results are typically generated for the current version
 of MySQL which doesn't change.  This use case can require I<a lot> of
 disk space because the results (i.e. rows) for all queries must be saved,
@@ -10583,13 +10578,12 @@ but the class will not be reported again.
 =head1 OUTPUT
 
 The L<"REPORT"> is printed to STDOUT as the tool runs.  Internal warnings,
-errors, and L<"--progress"> are printed to STDERR.  To avoid mixing the
-two, you should run the tool like:
+errors, and L<"--progress"> are printed to STDERR.  To keep the two separate,
+run the tool like:
 
    pt-upgrade ... 1>report 2>err &
 
-You can then C<tail -f err> while the tool is running to track its
-L<"--progress">.
+Then C<tail -f err> while the tool is running to track its L<"--progress">.
 
 =head1 EXIT STATUS
 
@@ -10599,23 +10593,24 @@ Else the tool exits non-zero with one or more of the following codes:
 
 =over
 
-=item 1
+=item * 1
 
-There were internal errors or warnings; see STDERR.
+There were too many internal errors or warnings; see STDERR.
+See also L<"--continue-on-error">.
 
-=item 4
+=item * 4
 
 There were L<"QUERY DIFFERENCES">; see the L<"REPORT">.
 
-=item 8
+=item * 8
 
 L<"--run-time"> expired; the tool did not finish reading the logs or
 reference results.
 
 =back
 
-Other exit codes indicate that the tool crashed or died, for example,
-if L<"--[no]create-upgrade-table"> fails.
+Other exit codes indicate that the tool crashed or died unexpectedly.
+The error that caused this should have printed to STDERR.
 
 To check for a particular exit code, logical C<AND> (C<&>) the final exit
 status with the exit code.  For example, exit status 5 implies codes 1 and 4
@@ -10781,18 +10776,6 @@ Execute only C<SELECT> and C<SET> statements.  If C<--no-read-only> is
 specified, I<all> queries are exeucted: C<DROP>, C<DELETE>, C<UPDATE>, etc.
 Even when running in default read-only mode, you should use a MySQL user
 with only C<SELECT> privileges to insure against bugs in the tool.
-
-=item --read-timeout
-
-type: time; default: 0
-
-Wait this long for an event from the input; 0 to wait forever.
-
-This option sets the maximum time to wait for an event from the input.  If
-an event is not received after the specified time, the tool stops reading
-the input and prints its reports.
-
-This option requires the Perl POSIX module.
 
 =item --report
 
