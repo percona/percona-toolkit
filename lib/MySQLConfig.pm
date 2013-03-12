@@ -121,7 +121,32 @@ sub _parse_config {
       die "Unknown config source";
    }
 
+   handle_special_vars(\%config_data);
+   
    return %config_data;
+}
+
+sub handle_special_vars {
+   my ($config_data) = @_;
+   
+   if ( $config_data->{vars}->{wsrep_provider_options} ) {
+      my $vars  = $config_data->{vars};
+      my $dupes = $config_data->{duplicate_vars};
+      for my $wpo ( $vars->{wsrep_provider_options}, @{$dupes->{wsrep_provider_options} || [] } ) {
+         my %opts = $wpo =~ /(\S+)\s*=\s*(\S*)(?:;|;?$)/g;
+         while ( my ($var, $val) = each %opts ) {
+            $val =~ s/;$//;
+            if ( exists $vars->{$var} ) {
+               push @{$dupes->{$var} ||= []}, $val;
+            }
+            $vars->{$var} = $val;
+         }
+      }
+      # Delete from vars, but not from dupes, since we still want that
+      delete $vars->{wsrep_provider_options};
+   }
+
+   return;
 }
 
 sub _parse_config_output {
@@ -166,7 +191,7 @@ sub _parse_config_output {
          vars   => $vars,
       );
    }
-
+   
    return (
       format         => $format,
       vars           => $vars,
