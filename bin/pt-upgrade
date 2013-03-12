@@ -10661,6 +10661,12 @@ default: yes
 
 Create the L<"--upgrade-table"> database and table.
 
+=item --database
+
+short form: -D; type: string
+
+Connect to this database.
+
 =item --daemonize
 
 Fork to the background and detach from the shell.  POSIX
