@@ -103,15 +103,14 @@ collect() {
 
    # Get a sample of these right away, so we can get these without interaction
    # with the other commands we're about to run.
-   local innostat="SHOW /*!40100 ENGINE*/ INNODB STATUS\G"
    if [ "${mysql_version}" '>' "5.1" ]; then
       local mutex="SHOW ENGINE INNODB MUTEX"
    else
       local mutex="SHOW MUTEX STATUS"
    fi
-   $CMD_MYSQL $EXT_ARGV -e "$innostat" >> "$d/$p-innodbstatus1" &
-   $CMD_MYSQL $EXT_ARGV -e "$mutex"    >> "$d/$p-mutex-status1" &
-   open_tables                         >> "$d/$p-opentables1"   &
+   innodb_status 1
+   $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status1" &
+   open_tables                      >> "$d/$p-opentables1"   &
 
    # If TCP dumping is specified, start that on the server's port.
    local tcpdump_pid=""
@@ -272,9 +271,9 @@ collect() {
       [ "$mysqld_pid" ] && kill -s 18 $mysqld_pid
    fi
 
-   $CMD_MYSQL $EXT_ARGV -e "$innostat" >> "$d/$p-innodbstatus2" &
-   $CMD_MYSQL $EXT_ARGV -e "$mutex"    >> "$d/$p-mutex-status2" &
-   open_tables                         >> "$d/$p-opentables2"   &
+   innodb_status 2
+   $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status2" &
+   open_tables                      >> "$d/$p-opentables2"   &
 
    # Kill backgrounded tasks.
    kill $mysqladmin_pid
@@ -347,6 +346,27 @@ transactions() {
    $CMD_MYSQL $EXT_ARGV -e "SELECT * FROM INFORMATION_SCHEMA.INNODB_TRX\G"
    $CMD_MYSQL $EXT_ARGV -e "SELECT * FROM INFORMATION_SCHEMA.INNODB_LOCKS\G"
    $CMD_MYSQL $EXT_ARGV -e "SELECT * FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS\G"
+}
+
+innodb_status() {
+   local n=$1
+
+   local innostat=""
+
+   $CMD_MYSQL $EXT_ARGV -e "SHOW /*!40100 ENGINE*/ INNODB STATUS\G" \
+      >> "$d/$p-innodbstatus$n"
+   grep "END OF INNODB" "$d/$p-innodbstatus$n" >/dev/null || {
+      if [ -d /proc -a -d /proc/$mysqld_pid ]; then
+         for fd in /proc/$mysqld_pid/fd/*; do
+            file $fd | grep deleted >/dev/null && {
+               grep 'INNODB' $fd >/dev/null && {
+                  cat $fd > "$d/$p-innodbstatus$n"
+                  break
+               }
+            }
+         done
+      fi
+   }
 }
 
 # ###########################################################################
