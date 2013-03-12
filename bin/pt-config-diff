@@ -5347,6 +5347,12 @@ Read this comma-separated list of config files; if specified, this must be the
 first option on the command line.  (This option does not specify a CONFIG;
 it's equivalent to C<--defaults-file>.)
 
+=item --database
+
+short form: -D; type: string
+
+Connect to this database.
+
 =item --defaults-file
 
 short form: -F; type: string
