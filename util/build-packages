@@ -358,6 +358,7 @@ build_rpm() {
    fi
 
    mkdir -p rpm rpm/BUILD rpm/SOURCES rpm/RPMS rpm/SRPMS
+   mkdir -p RPM
    cd rpm
    local topdir=`pwd`
 
@@ -375,7 +376,7 @@ build_rpm() {
    if [ ! -f "RPMS/noarch/$PKG-1.noarch.rpm" ]; then
       die "RPMS/noarch/$PKG-1.noarch.rpm did not build"
    fi
-   mv "RPMS/noarch/$PKG-1.noarch.rpm" $RELEASE_DIR
+   mv "RPMS/noarch/$PKG-1.noarch.rpm" $RELEASE_DIR/RPM
    rm -rf $RELEASE_DIR/rpm
 
    echo "OK"
@@ -409,6 +410,9 @@ build_deb() {
    make distclean >/dev/null
    cd $RELEASE_DIR
    rm -rf *.changes >/dev/null
+
+   mkdir -p deb
+   mv percona-toolkit_* deb/
 
    echo "OK"
 }
