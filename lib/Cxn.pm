@@ -97,48 +97,43 @@ sub new {
       $dsn = $dp->copy($prev_dsn, $dsn);
    }
 
+   my $dsn_name = $dp->as_string($dsn, [qw(h P S)])
+               || $dp->as_string($dsn, [qw(F)])
+               || '';
+
    my $self = {
-      dsn             => $dsn,
-      dbh             => $args{dbh},
-      dsn_name        => $dp->as_string($dsn, [qw(h P S)]),
-      hostname        => '',
-      set             => $args{set},
-      NAME_lc         => defined($args{NAME_lc}) ? $args{NAME_lc} : 1,
-      dbh_set         => 0,
-      OptionParser    => $o,
-      DSNParser       => $dp,
+      dsn          => $dsn,
+      dbh          => $args{dbh},
+      dsn_name     => $dsn_name,
+      hostname     => '',
+      set          => $args{set},
+      NAME_lc      => defined($args{NAME_lc}) ? $args{NAME_lc} : 1,
+      dbh_set      => 0,
+      ask_pass     => $o->get('ask-pass'),
+      DSNParser    => $dp,
       is_cluster_node => undef,
-      parent          => $args{parent},
    };
 
    return bless $self, $class;
 }
 
 sub connect {
-   my ( $self, %opts ) = @_;
+   my ( $self ) = @_;
    my $dsn = $self->{dsn};
    my $dp  = $self->{DSNParser};
-   my $o   = $self->{OptionParser};
 
    my $dbh = $self->{dbh};
    if ( !$dbh || !$dbh->ping() ) {
       # Ask for password once.
-      if ( $o->get('ask-pass') && !$self->{asked_for_pass} ) {
+      if ( $self->{ask_pass} && !$self->{asked_for_pass} ) {
          $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
          $self->{asked_for_pass} = 1;
       }
-      $dbh = $dp->get_dbh(
-         $dp->get_cxn_params($dsn),
-         {
-            AutoCommit => 1,
-            %opts,
-         },
-      );
+      $dbh = $dp->get_dbh($dp->get_cxn_params($dsn),  { AutoCommit => 1 });
    }
+   PTDEBUG && _d($dbh, 'Connected dbh to', $self->{name});
 
-   $dbh = $self->set_dbh($dbh);
-   PTDEBUG && _d($dbh, 'Connected dbh to', $self->{hostname},$self->{dsn_name});
-   return $dbh;
+   return $self->set_dbh($dbh);
 }
 
 sub set_dbh {
@@ -171,11 +166,6 @@ sub set_dbh {
       $self->{hostname} = $hostname;
    }
 
-   if ( $self->{parent} ) {
-      PTDEBUG && _d($dbh, 'Setting InactiveDestroy=1 in parent');
-      $dbh->{InactiveDestroy} = 1;
-   }
-
    # Call the set callback to let the caller SET any MySQL variables.
    if ( my $set = $self->{set}) {
       $set->($dbh);
@@ -184,15 +174,6 @@ sub set_dbh {
    $self->{dbh}     = $dbh;
    $self->{dbh_set} = 1;
    return $dbh;
-}
-
-sub lost_connection {
-   my ($self, $e) = @_;
-   return 0 unless $e;
-   return $e =~ m/MySQL server has gone away/
-       || $e =~ m/Lost connection to MySQL server/;
-      # The 1st pattern means that MySQL itself died or was stopped.
-      # The 2nd pattern means that our cxn was killed (KILL <id>).
 }
 
 # Sub: dbh
@@ -219,21 +200,12 @@ sub name {
 
 sub DESTROY {
    my ($self) = @_;
-
-   PTDEBUG && _d('Destroying cxn');
-
-   if ( $self->{parent} ) {
-      PTDEBUG && _d($self->{dbh}, 'Not disconnecting dbh in parent');
-   }
-   elsif ( $self->{dbh}
-           && blessed($self->{dbh})
-           && $self->{dbh}->can("disconnect") )
-   {
-      PTDEBUG && _d($self->{dbh}, 'Disconnecting dbh on', $self->{hostname},
-         $self->{dsn_name});
+   if ( $self->{dbh}
+         && blessed($self->{dbh})
+         && $self->{dbh}->can("disconnect") ) {
+      PTDEBUG && _d('Disconnecting dbh', $self->{dbh}, $self->{name});
       $self->{dbh}->disconnect();
    }
-
    return;
 }
 

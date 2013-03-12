@@ -72,6 +72,7 @@ our @EXPORT      = qw(
    $dsn_opts
    $sandbox_version
    $can_load_data
+   $test_diff
 );
 
 our $trunk = $ENV{PERCONA_TOOLKIT_BRANCH};
@@ -83,6 +84,8 @@ eval {
 };
 
 our $can_load_data = can_load_data();
+
+our $test_diff = '';
 
 our $dsn_opts = [
    {
@@ -560,8 +563,13 @@ sub no_diff {
    die "I need a cmd argument" unless $cmd;
    die "I need an expected_output argument" unless $expected_output;
 
-   die "$expected_output does not exist" unless -f "$trunk/$expected_output";
-   $expected_output = "$trunk/$expected_output";
+   if ( $args{full_path} ) {
+      die "$expected_output does not exist" unless -f $expected_output;
+   }
+   else {
+      die "$expected_output does not exist" unless -f "$trunk/$expected_output";
+      $expected_output = "$trunk/$expected_output";
+   }
 
    my $tmp_file      = '/tmp/percona-toolkit-test-output.txt';
    my $tmp_file_orig = '/tmp/percona-toolkit-test-output-original.txt';
@@ -580,6 +588,9 @@ sub no_diff {
       open my $tmp_fh, '>', $tmp_file or die "Cannot open $tmp_file: $OS_ERROR";
       print $tmp_fh $cmd;
       close $tmp_fh;
+   }
+   elsif ( -f $cmd ) {
+      `cp $cmd $tmp_file`;
    }
    else {
       `$cmd > $tmp_file`;
@@ -624,7 +635,7 @@ sub no_diff {
    }
 
    # diff the outputs.
-   my $out = `diff $res_file $cmp_file`;
+   $test_diff = `diff $res_file $cmp_file 2>&1`;
    my $retval = $?;
 
    # diff returns 0 if there were no differences,
@@ -632,7 +643,6 @@ sub no_diff {
    $retval = $retval >> 8; 
 
    if ( $retval ) {
-      diag($out);
       if ( $ENV{UPDATE_SAMPLES} || $args{update_sample} ) {
          `cat $tmp_file > $expected_output`;
          diag("Updated $expected_output");
@@ -644,11 +654,11 @@ sub no_diff {
       unless $ENV{KEEP_OUTPUT} || $args{keep_output};
 
    if ( $res_file ne $tmp_file ) {
-      1 while unlink $res_file;
+      unlink $res_file if -f $res_file;
    }
 
    if ( $cmp_file ne $expected_output ) {
-      1 while unlink $cmp_file;
+      unlink $cmp_file if -f $cmp_file;
    }
 
    return !$retval;
