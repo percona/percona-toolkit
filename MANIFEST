@@ -22,7 +22,6 @@ bin/pt-mext
 bin/pt-mysql-summary
 bin/pt-online-schema-change
 bin/pt-pmp
-bin/pt-query-advisor
 bin/pt-query-digest
 bin/pt-show-grants
 bin/pt-sift
