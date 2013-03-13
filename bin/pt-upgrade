@@ -10599,7 +10599,7 @@ Else the tool exits non-zero with one or more of the following codes:
 =item * 1
 
 There were too many internal errors or warnings; see STDERR.
-See also L<"--continue-on-error">.
+See also L<"--[no]continue-on-error">.
 
 =item * 4
 
@@ -10661,16 +10661,16 @@ default: yes
 
 Create the L<"--upgrade-table"> database and table.
 
-=item --database
-
-short form: -D; type: string
-
-Connect to this database.
-
 =item --daemonize
 
 Fork to the background and detach from the shell.  POSIX
 operating systems only.
+
+=item --database
+
+short form: -D; type: string
+
+Default database when connecting to MySQL.
 
 =item --defaults-file
 
@@ -10679,23 +10679,17 @@ short form: -F; type: string
 Only read MySQL options from the given file.  You must give an absolute
 pathname.
 
-=item --database
+=item --[no]disable-query-cache
 
-short form: -D; type: string
+default: yes
 
-Database to use for queries that do not specify a database.
+C<SET SESSION query_cache_type = OFF> to disable the query cache.
 
 =item --dry-run
 
 Run but do not execute or compare queries.  This is useful for checking
 command line options, connections to MySQL, and log or reference results
 parsing.
-
-=item --[no]disable-query-cache
-
-default: yes
-
-C<SET SESSION query_cache_type = OFF> to disable the query cache.
 
 =item --filter
 
