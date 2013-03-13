@@ -1,9 +1,0 @@
-
-# Query ID 0x3ABB67240C860825 at byte 0
-# NOTE COL.001 SELECT *.
-select * from tbl where id=42 order by col
-
-# Profile
-# Query ID           NOTE WARN CRIT Item
-# ================== ==== ==== ==== =========================================
-# 0x3ABB67240C860825    1    0    0 select * from tbl where id=? order by col

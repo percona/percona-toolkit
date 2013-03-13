@@ -1,9 +1,0 @@
-
-# Query ID 0xD2BA209E593ABAA7 at byte 0
-# NOTE COL.002 Blind INSERT.
-insert into foo values ("bar")
-
-# Profile
-# Query ID           NOTE WARN CRIT Item
-# ================== ==== ==== ==== ==========================
-# 0xD2BA209E593ABAA7    1    0    0 insert into foo values(?+)

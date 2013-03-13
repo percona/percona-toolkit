@@ -1,9 +1,0 @@
-
-# Query ID 0xE182E0865F5BEEBB at byte 0
-# NOTE COL.001 SELECT *.
-SELECT * FROM tbl WHERE id=1
-
-# Profile
-# Query ID           NOTE WARN CRIT Item
-# ================== ==== ==== ==== ============================
-# 0xE182E0865F5BEEBB    1    0    0 select * from tbl where id=?
