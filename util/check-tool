@@ -160,15 +160,6 @@ sub check_module_usage {
    # Many tools dyanmically instantiate objs like $plugin="WatchStatus",
    # $plugin->new().  So this script can't detect that.
    my %dynamic = (
-      'pt-loadavg' => {
-         WatchStatus       => 1,
-         WatchProcesslist  => 1,
-         WatchServer       => 1, 
-      },
-      'pt-query-advisor' => {
-         SlowLogParser     => 1,
-         GeneralLogParser  => 1,
-      },
       'pt-query-digest' => {
          TcpdumpParser           => 1,
          MySQLProtocolParser     => 1,
@@ -195,7 +186,7 @@ sub check_module_usage {
    # If these base-class modules are present, they should be accompanied
    # by a subclass.
    my %base_class = (
-      'AdvisorRules' => [ qw(QueryAdvisorRules VariableAdvisorRules) ],
+      'AdvisorRules' => [ qw(VariableAdvisorRules) ],
    );
 
    # Nearly every tool has or needs these modules.
