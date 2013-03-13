@@ -1,9 +1,0 @@
-
-# Query ID 0xBA2547D924C5140D at byte 0
-# WARN CLA.007 ORDER BY clauses that sort the results in different directions prevents indexes from being used.
-select c1, c2 from t where i=1 order by c1 desc, c2 asc
-
-# Profile
-# Query ID           NOTE WARN CRIT Item
-# ================== ==== ==== ==== ==========================================
-# 0xBA2547D924C5140D    0    1    0 select c?, c? from t where i=? order by c? desc, c?
