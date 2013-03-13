@@ -1,0 +1,6 @@
+$results = {
+  query_time => '0',
+  warnings => {}
+};
+
+##
