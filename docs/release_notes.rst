@@ -18,7 +18,7 @@ originally anticipated.  Here are the highlights:
 * Official support for MySQL 5.6
 
 We started beta support for MySQL 5.6 in 2.1.8 when 5.6 was still beta.
-Now that 5.6 is GA, so our support for it.  Check out the Percona Toolkit
+Now that 5.6 is GA, so is our support for it.  Check out the Percona Toolkit
 supported platforms and versions:
 http://www.percona.com/mysql-support/policies/percona-toolkit-supported-platforms-and-versions
 
@@ -29,7 +29,7 @@ When you upgrade to MySQL 5.6, be sure to upgrade to Percona Toolkit 2.2, too.
 We also started beta support for Percona XtraDB Cluster in 2.1.8, but
 now that support is official in 2.2 because we have had many months to
 work with PXC and figure out which tools work with it and how.  There's
-still one noticeable "omission": pt-table-sync.  It's still unclear if
+still one noticeable omission: pt-table-sync.  It's still unclear if
 or how one would sync a cluster that, in theory, doesn't become out-of-sync.
 As Percona XtraDB Cluster develops, Percona Toolkit will continue to
 evolve to support it.
@@ -95,12 +95,12 @@ programs (Percona Toolkit tools, MySQL, Perl, etc.) are either out of date
 or are known bad versions.  For example, there are two versions of the
 DBD::mysql Perl module that have problems.  And there are certain versions
 of MySQL that have critical bugs.  Version check will warn you about these
-if you system is running them.
+if your system is running them.
 
 What's new in 2.2 is that, whereas this feature (specifically, the option
 in tools: --version-check) was off by default, now it's on by default.
 If the IO::Socket::SSL Perl module is installed (easily available through
-your package manager), it will use a secure (https) connection of the web,
+your package manager), it will use a secure (https) connection over the web,
 else it will use a standard (http) connection.
 
 Check out http://percona.com/version-check for more information.
@@ -108,7 +108,7 @@ Check out http://percona.com/version-check for more information.
 * pt-query-advisor, pt-tcp-model, pt-trend, and pt-log-player are gone
 
 We removed pt-query-advisor, pt-tcp-model, pt-trend, and pt-log-player.
-Granted, no tool is every really gone: if you need one of these tools,
+Granted, no tool is ever really gone: if you need one of these tools,
 get it from 2.1.  pt-log-player is now superseded by Percona Playback
 (http://www.percona.com/doc/percona-playback/).  pt-query-advisor was
 removed so that we can focus our efforts on its online counterpart instead:
@@ -138,17 +138,17 @@ pt-deadlock-logger received mini overhauls in 2.2 to make their
 run-related options (--run-time, --interval, --iterations) standard.
 If you hadn't noticed, one tool would run forever by default, while
 the other would run once and exit.  And each treated their run-related
-options a little different, and more differently still from other tools.
-This magic is gone now: both tools run forever by default, so specify
---iterations or --run-time to limit how long they run.
+options a little differently.  This magic is gone now: both tools run
+forever by default, so specify --iterations or --run-time to limit how
+long they run.
 
 ----
 
 There were other miscellaneous bug fixes, too.  See
-https://launchpad.net/percona-toolkit/+milestone/2.2.1 for a full list.
+https://launchpad.net/percona-toolkit/+milestone/2.2.1 for the full list.
 
-As the first release in a new series, 2.2 features are not yet set in stone.
-In other words, we may change things like  the pt-query-digest --output json
+As the first release in a new series, 2.2 features are not yet finalized.
+In other words, we may change things like the pt-query-digest --output json
 format in future releases after receiving real-world feedback.
 
 Percona Toolkit 2.2 is an exciting release with many helpful new
