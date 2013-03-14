@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v2.2.1 released 2013-03-14
+
   * Official support for MySQL 5.6
   * Official support for Percona XtraDB Cluster
   * Redesigned pt-query-digest

@@ -40,7 +40,7 @@ Diff MySQL configuration files and server variables.
 
 =item pt-deadlock-logger
 
-Extract and log MySQL deadlock information.
+Log MySQL deadlocks.
 
 =item pt-diskstats
 
@@ -64,7 +64,7 @@ Convert queries into fingerprints.
 
 =item pt-fk-error-logger
 
-Extract and log MySQL foreign key errors.
+Log MySQL foreign key errors.
 
 =item pt-heartbeat
 
@@ -82,10 +82,6 @@ Watch process IO and print a table of file and I/O activity.
 
 Kill MySQL queries that match certain criteria.
 
-=item pt-log-player
-
-Replay MySQL query logs.
-
 =item pt-mext
 
 Look at many samples of MySQL C<SHOW GLOBAL STATUS> side-by-side.
@@ -102,13 +98,9 @@ ALTER tables without locking them.
 
 Aggregate GDB stack traces for a selected program.
 
-=item pt-query-advisor
-
-Analyze queries and advise on possible problems.
-
 =item pt-query-digest
 
-Analyze query execution logs and generate a query report, filter, replay, or transform queries for MySQL, PostgreSQL, memcached, and more.
+Analyze MySQL queries from logs, processlist, and tcpdump.
 
 =item pt-show-grants
 
@@ -132,7 +124,7 @@ Watch and restart MySQL replication after errors.
 
 =item pt-stalk
 
-Gather forensic data about MySQL when a problem occurs.
+Collect forensic data about MySQL when problems occur.
 
 =item pt-summary
 
@@ -150,17 +142,9 @@ Synchronize MySQL table data efficiently.
 
 Analyze how queries use tables.
 
-=item pt-tcp-model
-
-Transform tcpdump into metrics that permit performance and scalability modeling.
-
-=item pt-trend
-
-(DEPRECATED) Compute statistics over a set of time-series data points.
-
 =item pt-upgrade
 
-Execute queries on multiple servers and check for differences.
+Verify that query results are identical on different servers.
 
 =item pt-variable-advisor
 
@@ -574,6 +558,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-Percona Toolkit v2.1.9 released 2013-02-14
+Percona Toolkit v2.2.1 released 2013-03-14
 
 =cut
