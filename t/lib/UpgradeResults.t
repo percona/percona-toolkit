@@ -28,7 +28,6 @@ my $r = new UpgradeResults(
 
 $output = UpgradeResults::_format_query_times(
    [
-      'INSERT INTO t (id, username) VALUES (NULL, \'long_username\')',
       '0.000812',
       '0.039595',
       '48.8'
