@@ -1,3 +1,18 @@
+percona-toolkit (2.1.9) unstable; urgency=low
+
+  * Fixed bug 1103221: pt-heartbeat 2.1.8 doesn't use precision/sub-second timestamps
+  * Fixed bug 1099665: pt-heartbeat 2.1.8 reports big time drift with UTC_TIMESTAMP
+  * Fixed bug 1099836: pt-online-schema-change fails with "Duplicate entry" on MariaDB
+  * Fixed bug 1103672: pt-online-schema-change makes bad DELETE trigger if PK is re-created with new columns
+  * Fixed bug 1115333: pt-pmp doesn't list the origin lib for each function
+  * Fixed bug  823411: pt-query-digest shouldn't print "Error: none" for tcpdump
+  * Fixed bug 1103045: pt-query-digest fails to parse non-SQL errors
+  * Fixed bug 1105077: pt-table-checksum: Confusing error message with binlog_format ROW or MIXED on slave
+  * Fixed bug  918056: pt-table-sync false-positive error "Cannot nibble table because MySQL chose no index instead of the PRIMARY index"
+  * Fixed bug 1099933: pt-stalk is too verbose, fills up log
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Thu, 14 Feb 2013 17:25:44 +0000
+
 percona-toolkit (2.1.8) unstable; urgency=low
 
   * Beta support for MySQL 5.6

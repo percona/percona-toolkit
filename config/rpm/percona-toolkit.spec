@@ -4,7 +4,7 @@ Version:   %{version}
 Release:   %{release}
 Group:     Applications/Databases
 License:   GPL
-Vendor:    Percona Inc.
+Vendor:    Percona
 URL:       http://www.percona.com/software/percona-toolkit/
 Source:    percona-toolkit-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -22,7 +22,7 @@ they are professionally developed, formally tested, and fully documented.
 They are also fully self-contained, so installation is quick and easy and
 no libraries are installed. 
 
-Percona Toolkit is developed and supported by Percona Inc.  For more
+Percona Toolkit is developed and supported by Percona.  For more
 information and other free, open-source software developed by Percona,
 visit http://www.percona.com/software/.
 
