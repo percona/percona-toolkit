@@ -1,6 +1,199 @@
 Release Notes
 *************
 
+v2.2.1 released 2013-03-14
+==========================
+
+Percona Toolkit 2.2.1 has been released.  This is the first release in
+the new 2.2 series which supersedes the 2.1 series and renders the 2.0
+series obsolete.  We plan to do one more bug fix release for 2.1 (2.1.10),
+but otherwise all new development and fixes and will now focus on 2.2.
+
+Percona Toolkit 2.2 has been several months in the making, and it turned
+out very well, with many more new features, changes, and improvements than
+originally anticipated.  Here are the highlights:
+
+----
+
+* Official support for MySQL 5.6
+
+We started beta support for MySQL 5.6 in 2.1.8 when 5.6 was still beta.
+Now that 5.6 is GA, so our support for it.  Check out the Percona Toolkit
+supported platforms and versions:
+http://www.percona.com/mysql-support/policies/percona-toolkit-supported-platforms-and-versions
+
+When you upgrade to MySQL 5.6, be sure to upgrade to Percona Toolkit 2.2, too.
+
+* Official support for Percona XtraDB Cluster (PXC)
+
+We also started beta support for Percona XtraDB Cluster in 2.1.8, but
+now that support is official in 2.2 because we have had many months to
+work with PXC and figure out which tools work with it and how.  There's
+still one noticeable "omission": pt-table-sync.  It's still unclear if
+or how one would sync a cluster that, in theory, doesn't become out-of-sync.
+As Percona XtraDB Cluster develops, Percona Toolkit will continue to
+evolve to support it.
+
+* pt-online-schema-change (pt-osc) is much more resilient
+
+pt-online-schema-change 2.1 has been a great success, and people have been
+using it for evermore difficult and challenging tasks.  Consequently, we
+needed to make it "try harder", even though it already tried pretty hard
+to keep working despite recoverable errors and such.  Whereas pt-osc 2.1
+only retries certain operations, pt-osc 2.2 retries every critical operation,
+and its tries and wait time between tries for all operations are configurable.
+Also, we removed --lock-wait-timeout which set innodb_lock_wait_timeout
+because that now conflicts, or is at least confused with, lock_wait_timeout
+(introduced in MySQL 5.5) for metadata locks.  Now --set-vars is used to
+set both of these (or any) system variables.  For a quick intro to metadata
+locks and how they may affect you, see Ovais's article:
+http://www.mysqlperformanceblog.com/2013/02/01/implications-of-metadata-locking-changes-in-mysql-5-5/
+
+What does this all mean?  In short: pt-online-schema-change 2.2 is far more
+resilient out of the box.  It's also aware of metadata locks now, whereas
+2.1 was not really aware of them.  And it's highly configurable, so you can
+make the tool try _very_ hard to keep working.
+
+* pt-upgrade is brand-new
+
+pt-upgrade was written once long ago, thrown into the world, and then never
+heard from again... until now.  Now that we have four base versions of
+MySQL (5.0, 5.1, 5.5, and 5.6), plus at least four major forks (Percona
+Server, MariaDB, Percona XtraDB Cluster, and MariaDB Galera Cluster),
+upgrades are fashionable, so to speak.  Problem is: "original" pt-upgrade
+was too noisy and too complex.  pt-upgrade 2.2 is far simpler and far
+easier to use.  It's basically what you expect from such a tool.
+
+Moreover, it has a really helpful new feature: "reference results", i.e.
+saved results from running queries on a server.  Granted, this can take
+_a lot_ of disk space, but it allows you to "run now, compare later."
+
+If you're thinking about upgrading, give pt-upgrade a try.  It also reads
+every type of log now (slow, general, binary, and tcpdump), so you shouldn't
+have a problem finding queries to run and compare.
+
+* pt-query-digest is simpler
+
+pt-query-digest 2.2 has fewer options now.  Basically, we re-focused it
+on its primary objective: analyzing MySQL query logs.  So the ability
+to parse memcached, Postgres, Apache, and other logs was removed.  We
+also removed several options that probably nobody ever used, and
+changed/renamed other options to be more logical.  The result is a simpler,
+more focused tool, i.e. less overwhelming.
+
+Also, pt-query-digest 2.2 can save results in JSON format (--output=json).
+This feature is still in development while we determine the optimal
+JSON structure.
+
+* Version check is on by default
+
+Way back in 2.1.4, released September/October 2012, we introduced a feature
+called "version check" into most tools: http://percona.com/version-check
+It's like a lot of software that automatically checks for updates, but
+it's also more: it's a free service from Percona that advises when certain
+programs (Percona Toolkit tools, MySQL, Perl, etc.) are either out of date
+or are known bad versions.  For example, there are two versions of the
+DBD::mysql Perl module that have problems.  And there are certain versions
+of MySQL that have critical bugs.  Version check will warn you about these
+if you system is running them.
+
+What's new in 2.2 is that, whereas this feature (specifically, the option
+in tools: --version-check) was off by default, now it's on by default.
+If the IO::Socket::SSL Perl module is installed (easily available through
+your package manager), it will use a secure (https) connection of the web,
+else it will use a standard (http) connection.
+
+Check out http://percona.com/version-check for more information.
+
+* pt-query-advisor, pt-tcp-model, pt-trend, and pt-log-player are gone
+
+We removed pt-query-advisor, pt-tcp-model, pt-trend, and pt-log-player.
+Granted, no tool is every really gone: if you need one of these tools,
+get it from 2.1.  pt-log-player is now superseded by Percona Playback
+(http://www.percona.com/doc/percona-playback/).  pt-query-advisor was
+removed so that we can focus our efforts on its online counterpart instead:
+https://tools.percona.com/query-advisor.  The other tools were special
+projects that were not widely used.
+
+* pt-stalk and pt-mysql-summary have built-in MySQL options
+
+No more "pt-stalk -- -h db1 -u me".  pt-stalk 2.2 and pt-mysql-summary 2.2
+have all the standard MySQL options built-in, like other tools: --user,
+--host, --port, --password, --socket, --defaults-file.  So now the command
+line is what you expect: pt-stalk -h dhb1 -u me.
+
+* pt-stalk --no-stalk is no longer magical
+
+Originally, pt-stalk --no-stalk was meant to simulate pt-collect, i.e.
+collect once and exit.  To do that, the tool magically set some options
+and clobbered others, resulting in no way to do repeated collections
+at intervals.  Now --no-stalk means only that: don't stalk, just collect,
+respecting --interval and --iterations as usual.  So to collect once
+and exit: pt-stalk --no-stalk --iterations 1.
+
+* pt-fk-error-logger and pt-deadlock-logger are standardized
+
+Similar to the pt-stalk --no-stalk changes, pt-fk-error-logger and
+pt-deadlock-logger received mini overhauls in 2.2 to make their
+run-related options (--run-time, --interval, --iterations) standard.
+If you hadn't noticed, one tool would run forever by default, while
+the other would run once and exit.  And each treated their run-related
+options a little different, and more differently still from other tools.
+This magic is gone now: both tools run forever by default, so specify
+--iterations or --run-time to limit how long they run.
+
+----
+
+There were other miscellaneous bug fixes, too.  See
+https://launchpad.net/percona-toolkit/+milestone/2.2.1 for a full list.
+
+As the first release in a new series, 2.2 features are not yet set in stone.
+In other words, we may change things like  the pt-query-digest --output json
+format in future releases after receiving real-world feedback.
+
+Percona Toolkit 2.2 is an exciting release with many helpful new
+features.  Users are encouraged to begin upgrading, particularly given
+that, except for the forthcoming 2.1.10 release, no more work will be
+done on 2.1 (unless you're a Percona customer with a support contract or
+other agreement).
+
+If you upgrade from 2.1 to 2.2, be sure to re-read tools' documentation
+to see what has changed because much as changed for certain tools.
+
+Percona Toolkit packages can be downloaded from
+http://www.percona.com/downloads/percona-toolkit/ or the Percona Software
+Repositories (http://www.percona.com/software/repositories/).
+
+Changelog
+---------
+
+* Official support for MySQL 5.6
+* Official support for Percona XtraDB Cluster
+* Redesigned pt-query-digest
+* Redesigned pt-upgrade
+* Redesigned pt-fk-error-logger
+* Redesigned pt-deadlock-logger
+* Changed --set-vars in all tools
+* Renamed --retries to --tries in pt-online-schema-change
+* Added MySQL options to pt-mysql-summary
+* Added MySQL options to pt-stalk
+* Removed --lock-wait-timeout from pt-online-schema-change (use --set-vars)
+* Removed --lock-wait-timeout from pt-table-checksum (use --set-vars)
+* Removed pt-query-advisor
+* Removed pt-tcp-model
+* Removed pt-trend
+* Removed pt-log-player
+* Enabled --version-check by default in all tools
+* Fixed bug 1008796: Several tools don't have --database
+* Fixed bug 1087319: Quoter::serialize_list() doesn't handle multiple NULL values
+* Fixed bug 1086018: pt-config-diff needs to parse wsrep_provider_options
+* Fixed bug 1056838: pt-fk-error-logger --run-time works differently than pt-deadlock-logger --run-time
+* Fixed bug 1093016: pt-online-schema-change doesn't retry RENAME TABLE
+* Fixed bug 1113301: pt-online-schema-change blocks on metadata locks
+* Fixed bug 1125665: pt-stalk --no-stalk silently clobbers other options, acts magically
+* Fixed bug 1019648: pt-stalk truncates InnoDB status if there are too many transactions
+* Fixed bug 1087804: pt-table-checksum doesn't warn if no slaves are found
+
 v2.1.9 released 2013-02-14
 ==========================
 
