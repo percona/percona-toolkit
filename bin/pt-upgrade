@@ -5934,10 +5934,12 @@ sub _print_diffs {
 
    my $diffno = 1;
    foreach my $diff ( @$diffs ) {
+      my $query     = $diff->[0];
+      my $diff_vals = $diff->[1];
       print "\n-- $diffno.\n";
-      my $formatted_diff = $formatter->($diff->[1]);
-      print $formatted_diff || '?';
-      print "\n" . ($diff->[0] || '?') . "\n";
+      my $formatted_diff_vals = $formatter->($diff_vals);
+      print $formatted_diff_vals || '?';
+      print "\n" . ($query || '?') . "\n";
       $diffno++;
    }
 
@@ -6012,11 +6014,11 @@ sub _format_rows {
 sub _format_query_times {
    my ($query_times) = @_;
    return unless $query_times;
-   my $fmt = "\n%s vs. %s seconds (%s%% increase)\n";
+   my $fmt = "\n%s vs. %s seconds (%sx increase)\n";
    my $diff = sprintf $fmt,
+      ($query_times->[0] || '?'),
       ($query_times->[1] || '?'),
-      ($query_times->[2] || '?'),
-      ($query_times->[3] || '?');
+      ($query_times->[2] || '?');
    return $diff;
 }
 
