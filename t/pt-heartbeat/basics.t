@@ -239,6 +239,41 @@ is(
 );
 
 # #############################################################################
+# --check-read-only
+# #############################################################################
+
+diag(`/tmp/12345/use -u root -e "GRANT ALL ON *.* TO 'bob'\@'%' IDENTIFIED BY 'msandbox'"`);
+diag(`/tmp/12345/use -u root -e "REVOKE SUPER ON *.* FROM 'bob'\@'%'"`);
+
+$output = output(
+   sub { pt_heartbeat::main("u=bob,F=/tmp/12346/my.sandbox.cnf",
+      qw(-D test --update --replace --run-time 1))
+   },
+   stderr => 1
+);
+
+like(
+   $output,
+   qr/--read-only/,
+   "By default, fails if the server is read_only=1"
+);
+
+$output = output(
+   sub { pt_heartbeat::main("u=bob,F=/tmp/12346/my.sandbox.cnf",
+      qw(-D test --update --replace --run-time 1 --check-read-only))
+   },
+   stderr => 1
+);
+
+unlike(
+   $output,
+   qr/--read-only/,
+   "...but just skips doing any work and waits if --check-read-only was specified"
+);
+
+diag(`/tmp/12345/use -u root -e "DROP USER 'bob'\@'%'"`);
+
+# #############################################################################
 # Done.
 # #############################################################################
 diag(`rm $pid_file $sent_file 2>/dev/null`);
