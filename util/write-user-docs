@@ -91,7 +91,7 @@ write_rst() {
       return
    fi
 
-   $BRANCH/util/pod2rst-fixed $file > $RST_DIR/$tool.rst
+   $BRANCH/util/pod2rst-fixed.packed $file > $RST_DIR/$tool.rst
    if [ $? -eq 0 ]; then
       echo "Wrote $RST_DIR/$tool.rst"
    else
@@ -121,7 +121,7 @@ write_sections() {
       $BRANCH/util/extract-text $DOCS_DIR/percona-toolkit.pod "^=head1 $header" "^=head1|=cut" > /tmp/$filename.pod
 
       # Convert POD to RST and remove all the Perl highlight blocks.
-      cat /tmp/$filename.pod | pod2rst | sed -e 's/.. highlight:: perl//g' > /tmp/$filename.tmp
+      $BRANCH/util/pod2rst-fixed.packed /tmp/$filename.pod | sed -e 's/.. highlight:: perl//g' > /tmp/$filename.tmp
 
       # Remove extra blank lines.
       cat -s /tmp/$filename.tmp > $RST_DIR/$filename.rst
