@@ -68,18 +68,20 @@ RST_DIR=$DOCS_DIR/user
 
 fix_html () {
    local name="$1"
-   perl -MFile::Basename=basename -MFile::Slurp=read_file,write_file -le '
+   perl -MFile::Basename=basename -le '
       my $f    = shift;
       my $tool = basename($f);
       $tool    =~ s/\.html//;
-      my $out = read_file($f);
+      my $out = do { open my $fh, '<', $f or die $!; local $/; <$fh> };
       $out =~ s{
 \Q<dt id="\E(cmdoption-$tool--)\Q">\E\s*
 \Q<tt class="descname">--</tt><tt class="descclassname">\E([^<]+)
 \Q</tt><a class="headerlink" href="\E[^"]+"
 }{<dt id="$1$2">
 <tt class="descname">--$2</tt><tt class="descclassname"></tt><a class="headerlink" href="#$1$2"}xg;
-      write_file($f, $out);
+      open my $fh, '>', $f or die "Cannot open $f for writing: $!";
+      print { $f } $out;
+      close $fh or die "Cannot close $f: $!";
    ' $RST_DIR/html/$name.html
 }
 
