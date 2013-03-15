@@ -175,6 +175,7 @@ Changelog
 * Redesigned pt-deadlock-logger
 * Changed --set-vars in all tools
 * Renamed --retries to --tries in pt-online-schema-change
+* Added --check-read-only to pt-heartbeat
 * Added MySQL options to pt-mysql-summary
 * Added MySQL options to pt-stalk
 * Removed --lock-wait-timeout from pt-online-schema-change (use --set-vars)
