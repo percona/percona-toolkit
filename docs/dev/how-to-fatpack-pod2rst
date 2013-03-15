@@ -6,7 +6,7 @@ $ mkdir lib
 $ fatpack trace pod2rst-fixed 
 $ fatpack packlists-for `cat fatpacker.trace` >packlists
 $ fatpack tree `cat packlists`
-$ (fatpack file; cat pod2rst-fixed) > pod2rst-fixed.packed
+$ (echo "#!/usr/bin/env perl"; fatpack file; cat pod2rst-fixed) > pod2rst-fixed.packed
 $ cp pod2rst-fixed.packed ~/percona-toolkit/util/
 $ cd ~/
 $ rm -rf /tmp/pod2rst
