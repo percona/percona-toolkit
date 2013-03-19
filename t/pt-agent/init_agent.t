@@ -44,7 +44,7 @@ is(
 # #############################################################################
 
 my $return_agent = {
-   id       => '123',
+   uuid     => '123',
    hostname => `hostname`,
    versions => {
       'Percona::WebAPI::Client' => "$Percona::WebAPI::Client::VERSION",
@@ -114,7 +114,7 @@ ok(
 $output = `cat $tmpdir/agent 2>/dev/null`;
 like(
    $output,
-   qr/"id":"123"/,
+   qr/"uuid":"123"/,
    "Saved new Agent"
 ) or diag($output);
 
@@ -218,8 +218,18 @@ my $saved_agent = Percona::WebAPI::Resource::Agent->new(%$hashref);
 
 $ua->{responses}->{put} = [
    {
-      code => 200,
+      code    => 200,
+      headers => {
+         Location => '/agents/123',
+      },
    },
+];
+$ua->{responses}->{get} = [
+   {
+      code    => 200,
+      headers => { 'X-Percona-Resource-Type' => 'Agent' },
+      content => $return_agent,
+   }
 ];
 
 @wait = ();
@@ -258,9 +268,10 @@ is(
 is_deeply(
    $ua->{requests},
    [
-      'PUT /agents',
+      'PUT /agents/123',
+      'GET /agents/123',
    ],
-   "PUT saved Agent"
+   "PUT then GET saved Agent"
 ) or diag(Dumper($ua->{requests}));
 
 # #############################################################################
