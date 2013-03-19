@@ -46,7 +46,8 @@ sub test_make_new_crontab {
    ) or diag($new_crontab);
 } 
 
-my $run0 = Percona::WebAPI::Resource::Run->new(
+my $run0 = Percona::WebAPI::Resource::Task->new(
+   name    => 'query-history',
    number  => '0',
    program => 'pt-query-digest',
    options => '--output json',
@@ -57,7 +58,7 @@ my $svc0 = Percona::WebAPI::Resource::Service->new(
    name           => 'query-monitor',
    run_schedule   => '* 8 * * 1,2,3,4,5',
    spool_schedule => '* 9 * * 1,2,3,4,5',
-   runs           => [ $run0 ],
+   tasks          => [ $run0 ],
 );
 
 # Empty crontab, add the service.

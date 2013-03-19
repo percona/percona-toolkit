@@ -86,7 +86,7 @@ my $interval = sub {
 # same config.
 
 my $config = Percona::WebAPI::Resource::Config->new(
-   id      => '1',
+   ts      => 1363720060,
    name    => 'Default',
    options => {
       'check-interval' => "60",
@@ -97,7 +97,8 @@ my $config = Percona::WebAPI::Resource::Config->new(
    },
 );
 
-my $run0 = Percona::WebAPI::Resource::Run->new(
+my $run0 = Percona::WebAPI::Resource::Task->new(
+   name    => 'query-history',
    number  => '0',
    program => 'pt-query-digest',
    options => '--output json',
@@ -108,7 +109,7 @@ my $svc0 = Percona::WebAPI::Resource::Service->new(
    name           => 'query-monitor',
    run_schedule   => '1 * * * *',
    spool_schedule => '2 * * * *',
-   runs           => [ $run0 ],
+   tasks          => [ $run0 ],
    links          => {
       send_data => '/query-monitor',
    },

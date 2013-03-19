@@ -53,7 +53,8 @@ sub write_svc_files {
 # Simple single run service
 # #############################################################################
 
-my $run0 = Percona::WebAPI::Resource::Run->new(
+my $run0 = Percona::WebAPI::Resource::Task->new(
+   name    => 'query-history',
    number  => '0',
    program => "$trunk/bin/pt-query-digest",
    options => "--report-format profile $trunk/t/lib/samples/slowlogs/slow008.txt",
@@ -64,7 +65,7 @@ my $svc0 = Percona::WebAPI::Resource::Service->new(
    name           => 'query-monitor',
    run_schedule   => '1 * * * *',
    spool_schedule => '2 * * * *',
-   runs           => [ $run0 ],
+   tasks          => [ $run0 ],
 );
 
 write_svc_files(
@@ -115,14 +116,16 @@ diag(`rm -rf $tmpdir/spool/* $tmpdir/services/*`);
 # log to a tmp file which pt-agent should auto-create.  Then pqd in run1
 # references this tmp file.
 
-$run0 = Percona::WebAPI::Resource::Run->new(
+$run0 = Percona::WebAPI::Resource::Task->new(
+   name    => 'cat-slow-log',
    number  => '0',
    program => "cat",
    options => "$trunk/t/lib/samples/slowlogs/slow008.txt",
    output  => 'tmp',
 );
 
-my $run1 = Percona::WebAPI::Resource::Run->new(
+my $run1 = Percona::WebAPI::Resource::Task->new(
+   name    => 'query-history',
    number  => '1',
    program => "$trunk/bin/pt-query-digest",
    options => "--report-format profile __RUN_0_OUTPUT__",
@@ -133,7 +136,7 @@ $svc0 = Percona::WebAPI::Resource::Service->new(
    name           => 'query-monitor',
    run_schedule   => '3 * * * *',
    spool_schedule => '4 * * * *',
-   runs           => [ $run0, $run1 ],
+   tasks          => [ $run0, $run1 ],
 );
 
 write_svc_files(

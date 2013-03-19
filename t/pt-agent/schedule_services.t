@@ -30,7 +30,8 @@ my $tmpdir = tempdir("/tmp/pt-agent.$PID.XXXXXX", CLEANUP => 1);
 # Schedule a good crontab.
 # #############################################################################
 
-my $run0 = Percona::WebAPI::Resource::Run->new(
+my $run0 = Percona::WebAPI::Resource::Task->new(
+   name    => 'query-history',
    number  => '0',
    program => 'pt-query-digest',
    options => '--output json',
@@ -41,7 +42,7 @@ my $svc0 = Percona::WebAPI::Resource::Service->new(
    name           => 'query-monitor',
    run_schedule   => '* 8 * * 1,2,3,4,5',
    spool_schedule => '* 9 * * 1,2,3,4,5',
-   runs           => [ $run0 ],
+   tasks          => [ $run0 ],
 );
 
 # First add a fake line so we can know that the real, existing
@@ -122,7 +123,7 @@ $svc0 = Percona::WebAPI::Resource::Service->new(
    name           => 'query-monitor',
    run_schedule   => '* * * * Foo',  # "foo":0: bad day-of-week
    spool_schedule => '* 8 * * Mon',
-   runs           => [ $run0 ],
+   tasks          => [ $run0 ],
 );
 
 eval {
