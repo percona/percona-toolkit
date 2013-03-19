@@ -1,8 +1,0 @@
-2010-02-08 15:31:48.685 EST c=4b7074b4.985,u=[unknown],D=[unknown] LOG:  connection received: host=[local]
-2010-02-08 15:31:48.687 EST c=4b7074b4.985,u=fred,D=fred LOG:  connection authorized: user=fred database=fred
-2010-02-08 15:31:50.872 EST c=4b7074b4.985,u=fred,D=fred LOG:  statement: select 1;
-2010-02-08 15:31:50.881 EST c=4b7074b4.985,u=fred,D=fred LOG:  duration: 10.870 ms
-2010-02-08 15:31:58.515 EST c=4b7074b4.985,u=fred,D=fred LOG:  statement: select
-	1;
-2010-02-08 15:31:58.529 EST c=4b7074b4.985,u=fred,D=fred LOG:  duration: 13.918 ms
-2010-02-08 15:32:06.988 EST c=4b7074b4.985,u=fred,D=fred LOG:  disconnection: session time: 0:00:18.304 user=fred database=fred host=[local]

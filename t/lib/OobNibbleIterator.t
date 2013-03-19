@@ -49,14 +49,15 @@ my $tp  = new TableParser(Quoter=>$q);
 my $nb  = new TableNibbler(TableParser=>$tp, Quoter=>$q);
 my $o   = new OptionParser(description => 'OobNibbleIterator');
 my $rc  = new RowChecksum(OptionParser => $o, Quoter=>$q);
+
+$o->get_specs("$trunk/bin/pt-table-checksum");
+
 my $cxn = new Cxn(
    dbh          => $dbh,
    dsn          => { h=>'127.1', P=>'12345', n=>'h=127.1,P=12345' },
    DSNParser    => $dp,
    OptionParser => $o,
 );
-
-$o->get_specs("$trunk/bin/pt-table-checksum");
 
 my %common_modules = (
    Quoter       => $q,

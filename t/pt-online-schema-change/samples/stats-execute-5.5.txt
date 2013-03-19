@@ -1,6 +1,16 @@
+Operation, tries, wait:
+  copy_rows, 10, 0.25
+  create_triggers, 10, 1
+  drop_triggers, 10, 1
+  swap_tables, 10, 1
+  update_foreign_keys, 10, 1
 Altering `bug_1045317`.`bits`...
 Dropping triggers...
 Dropped triggers OK.
+# Event              Count
+# ================== =====
+# INSERT                 1
+# mysql_warning_1592     1
 Successfully altered `bug_1045317`.`bits`.
 Creating new table...
 Created new table bug_1045317._bits_new OK.
@@ -14,7 +24,3 @@ Swapping tables...
 Swapped original and new tables OK.
 Dropping old table...
 Dropped old table `bug_1045317`.`_bits_old` OK.
-# Event              Count
-# ================== =====
-# INSERT                 1
-# mysql_warning_1592     1

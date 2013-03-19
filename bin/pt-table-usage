@@ -298,21 +298,9 @@ sub get_dbh {
          die "Error getting the current SQL_MODE: $EVAL_ERROR";
       }
 
-      $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
-            . '/*!40101, @@SQL_MODE=\'NO_AUTO_VALUE_ON_ZERO'
-            . ($sql_mode ? ",$sql_mode" : '')
-            . '\'*/';
-      PTDEBUG && _d($dbh, $sql);
-      eval { $dbh->do($sql) };
-      if ( $EVAL_ERROR ) {
-         die "Error setting SQL_QUOTE_SHOW_CREATE, SQL_MODE"
-           . ($sql_mode ? " and $sql_mode" : '')
-           . ": $EVAL_ERROR";
-      }
-
       if ( my ($charset) = $cxn_string =~ m/charset=([\w]+)/ ) {
          $sql = qq{/*!40101 SET NAMES "$charset"*/};
-         PTDEBUG && _d($dbh, ':', $sql);
+         PTDEBUG && _d($dbh, $sql);
          eval { $dbh->do($sql) };
          if ( $EVAL_ERROR ) {
             die "Error setting NAMES to $charset: $EVAL_ERROR";
@@ -327,13 +315,20 @@ sub get_dbh {
          }
       }
 
-      if ( my $var = $self->prop('set-vars') ) {
-         $sql = "SET $var";
-         PTDEBUG && _d($dbh, ':', $sql);
-         eval { $dbh->do($sql) };
-         if ( $EVAL_ERROR ) {
-            die "Error setting $var: $EVAL_ERROR";
-         }
+      if ( my $vars = $self->prop('set-vars') ) {
+         $self->set_vars($dbh, $vars);
+      }
+
+      $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
+            . '/*!40101, @@SQL_MODE=\'NO_AUTO_VALUE_ON_ZERO'
+            . ($sql_mode ? ",$sql_mode" : '')
+            . '\'*/';
+      PTDEBUG && _d($dbh, $sql);
+      eval { $dbh->do($sql) };
+      if ( $EVAL_ERROR ) {
+         die "Error setting SQL_QUOTE_SHOW_CREATE, SQL_MODE"
+           . ($sql_mode ? " and $sql_mode" : '')
+           . ": $EVAL_ERROR";
       }
    }
 
@@ -396,6 +391,57 @@ sub copy {
    return \%new_dsn;
 }
 
+sub set_vars {
+   my ($self, $dbh, $vars) = @_;
+
+   return unless $vars;
+
+   foreach my $var ( sort keys %$vars ) {
+      my $val = $vars->{$var}->{val};
+
+      (my $quoted_var = $var) =~ s/_/\\_/;
+      my ($var_exists, $current_val);
+      eval {
+         ($var_exists, $current_val) = $dbh->selectrow_array(
+            "SHOW VARIABLES LIKE '$quoted_var'");
+      };
+      my $e = $EVAL_ERROR;
+      if ( $e ) {
+         PTDEBUG && _d($e);
+      }
+
+      if ( $vars->{$var}->{default} && !$var_exists ) {
+         PTDEBUG && _d('Not setting default var', $var,
+            'because it does not exist');
+         next;
+      }
+
+      if ( $current_val && $current_val eq $val ) {
+         PTDEBUG && _d('Not setting var', $var, 'because its value',
+            'is already', $val);
+         next;
+      }
+
+      my $sql = "SET SESSION $var=$val";
+      PTDEBUG && _d($dbh, $sql);
+      eval { $dbh->do($sql) };
+      if ( my $set_error = $EVAL_ERROR ) {
+         chomp($set_error);
+         $set_error =~ s/ at \S+ line \d+//;
+         my $msg = "Error setting $var: $set_error";
+         if ( $current_val ) {
+            $msg .= "  The current value for $var is $current_val.  "
+                  . "If the variable is read only (not dynamic), specify "
+                  . "--set-vars $var=$current_val to avoid this warning, "
+                  . "else manually set the variable and restart MySQL.";
+         }
+         warn $msg . "\n\n";
+      }
+   }
+
+   return; 
+}
+
 sub _d {
    my ($package, undef, $line) = caller 0;
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
@@ -428,6 +474,7 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use List::Util qw(max);
 use Getopt::Long;
+use Data::Dumper;
 
 my $POD_link_re = '[LC]<"?([^">]+)"?>';
 
@@ -449,7 +496,6 @@ sub new {
       'default'    => 1,
       'cumulative' => 1,
       'negatable'  => 1,
-      'value_is_optional' => 1,
    );
 
    my $self = {
@@ -691,10 +737,9 @@ sub _parse_specs {
             $opt->{short} = undef;
          }
 
-         $opt->{is_negatable}   = $opt->{spec} =~ m/!/        ? 1 : 0;
-         $opt->{is_cumulative}  = $opt->{spec} =~ m/\+/       ? 1 : 0;
-         $opt->{optional_value} = $opt->{spec} =~ m/:/        ? 1 : 0;
-         $opt->{is_required}    = $opt->{desc} =~ m/required/ ? 1 : 0;
+         $opt->{is_negatable}  = $opt->{spec} =~ m/!/        ? 1 : 0;
+         $opt->{is_cumulative} = $opt->{spec} =~ m/\+/       ? 1 : 0;
+         $opt->{is_required}   = $opt->{desc} =~ m/required/ ? 1 : 0;
 
          $opt->{group} ||= 'default';
          $self->{groups}->{ $opt->{group} }->{$long} = 1;
@@ -830,7 +875,7 @@ sub _set_option {
    if ( $opt->{is_cumulative} ) {
       $opt->{value}++;
    }
-   elsif ( !($opt->{optional_value} && !$val) ) {
+   else {
       $opt->{value} = $val;
    }
    $opt->{got} = 1;
@@ -1210,7 +1255,7 @@ sub print_usage {
             $desc .= ".  Optional suffix s=seconds, m=minutes, h=hours, "
                    . "d=days; if no suffix, $s is used.";
          }
-         $desc = join("\n$rpad", grep { $_ } $desc =~ m/(.{0,$rcol})(?:\s+|$)/g);
+         $desc = join("\n$rpad", grep { $_ } $desc =~ m/(.{0,$rcol}(?!\W))(?:\s+|(?<=\W)|$)/g);
          $desc =~ s/ +$//mg;
          if ( $short ) {
             $usage .= sprintf("  --%-${maxs}s -%s  %s\n", $long, $short, $desc);
@@ -1371,12 +1416,11 @@ sub _parse_size {
 sub _parse_attribs {
    my ( $self, $option, $attribs ) = @_;
    my $types = $self->{types};
-   my $eq    = $attribs->{'value_is_optional'} ? ':' : '=';
    return $option
       . ($attribs->{'short form'} ? '|' . $attribs->{'short form'}   : '' )
       . ($attribs->{'negatable'}  ? '!'                              : '' )
       . ($attribs->{'cumulative'} ? '+'                              : '' )
-      . ($attribs->{'type'}       ? $eq . $types->{$attribs->{type}} : '' );
+      . ($attribs->{'type'}       ? '=' . $types->{$attribs->{type}} : '' );
 }
 
 sub _parse_synopsis {
@@ -1413,6 +1457,45 @@ sub _parse_synopsis {
       usage       => $usage,
    );
 };
+
+sub set_vars {
+   my ($self, $file) = @_;
+   $file ||= $self->{file} || __FILE__;
+
+   my %user_vars;
+   my $user_vars = $self->has('set-vars') ? $self->get('set-vars') : undef;
+   if ( $user_vars ) {
+      foreach my $var_val ( @$user_vars ) {
+         my ($var, $val) = $var_val =~ m/([^\s=]+)=(\S+)/;
+         die "Invalid --set-vars value: $var_val\n" unless $var && $val;
+         $user_vars{$var} = {
+            val     => $val,
+            default => 0,
+         };
+      }
+   }
+
+   my %default_vars;
+   my $default_vars = $self->read_para_after($file, qr/MAGIC_set_vars/);
+   if ( $default_vars ) {
+      %default_vars = map {
+         my $var_val = $_;
+         my ($var, $val) = $var_val =~ m/([^\s=]+)=(\S+)/;
+         die "Invalid --set-vars value: $var_val\n" unless $var && $val;
+         $var => {
+            val     => $val,
+            default => 1,
+         };
+      } split("\n", $default_vars);
+   }
+
+   my %vars = (
+      %default_vars, # first the tool's defaults
+      %user_vars,    # then the user's which overwrite the defaults
+   );
+   PTDEBUG && _d('--set-vars:', Dumper(\%vars));
+   return \%vars;
+}
 
 sub _d {
    my ($package, undef, $line) = caller 0;
@@ -5059,15 +5142,20 @@ sub new {
    my ( $class, %args ) = @_;
    my @required_args = qw(now);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
+      die "I need a $arg argument" unless exists $args{$arg};
    }
 
-   if ( ($args{runtime} || 0) < 0 ) {
-      die "runtime argument must be greater than zero"
+   my $run_time = $args{run_time};
+   if ( defined $run_time ) {
+      die "run_time must be > 0" if $run_time <= 0;
    }
+
+   my $now = $args{now};
+   die "now must be a callback" unless ref $now eq 'CODE';
 
    my $self = {
-      %args,
+      run_time   => $run_time,
+      now        => $now,
       start_time => undef,
       end_time   => undef,
       time_left  => undef,
@@ -5094,11 +5182,11 @@ sub time_left {
 
    return unless defined $now;
 
-   my $runtime = $self->{runtime};
-   return unless defined $runtime;
+   my $run_time = $self->{run_time};
+   return unless defined $run_time;
 
    if ( !$self->{end_time} ) {
-      $self->{end_time} = $now + $runtime;
+      $self->{end_time} = $now + $run_time;
       PTDEBUG && _d("End time:", $self->{end_time});
    }
 
@@ -5111,7 +5199,7 @@ sub have_time {
    my ( $self, %args ) = @_;
    my $time_left = $self->time_left(%args);
    return 1 if !defined $time_left;  # run forever
-   return $time_left <= 0 ? 0 : 1;   # <=0s means runtime has elapsed
+   return $time_left <= 0 ? 0 : 1;   # <=0s means run time has elapsed
 }
 
 sub time_elapsed {
@@ -5137,7 +5225,7 @@ sub reset {
    $self->{end_time}   = undef;
    $self->{time_left}  = undef;
    $self->{stop}       = 0;
-   PTDEBUG && _d("Reset runtime");
+   PTDEBUG && _d("Reset run time");
    return;
 }
 
@@ -5515,6 +5603,11 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
+use Data::Dumper;
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Sortkeys  = 1;
+$Data::Dumper::Quotekeys = 0;
+
 sub new {
    my ( $class, %args ) = @_;
    return bless {}, $class;
@@ -5542,12 +5635,18 @@ sub quote_val {
 
 sub split_unquote {
    my ( $self, $db_tbl, $default_db ) = @_;
-   $db_tbl =~ s/`//g;
    my ( $db, $tbl ) = split(/[.]/, $db_tbl);
    if ( !$tbl ) {
       $tbl = $db;
       $db  = $default_db;
    }
+   for ($db, $tbl) {
+      next unless $_;
+      s/\A`//;
+      s/`\z//;
+      s/``/`/g;
+   }
+   
    return ($db, $tbl);
 }
 
@@ -5573,44 +5672,64 @@ sub join_quote {
 
 sub serialize_list {
    my ( $self, @args ) = @_;
+   PTDEBUG && _d('Serializing', Dumper(\@args));
    return unless @args;
 
-   return $args[0] if @args == 1 && !defined $args[0];
+   my @parts;
+   foreach my $arg  ( @args ) {
+      if ( defined $arg ) {
+         $arg =~ s/,/\\,/g;      # escape commas
+         $arg =~ s/\\N/\\\\N/g;  # escape literal \N
+         push @parts, $arg;
+      }
+      else {
+         push @parts, '\N';
+      }
+   }
 
-   die "Cannot serialize multiple values with undef/NULL"
-      if grep { !defined $_ } @args;
-
-   return join ',', map { quotemeta } @args;
+   my $string = join(',', @parts);
+   PTDEBUG && _d('Serialized: <', $string, '>');
+   return $string;
 }
 
 sub deserialize_list {
    my ( $self, $string ) = @_;
-   return $string unless defined $string;
-   my @escaped_parts = $string =~ /
-         \G             # Start of string, or end of previous match.
-         (              # Each of these is an element in the original list.
-            [^\\,]*     # Anything not a backslash or a comma
-            (?:         # When we get here, we found one of the above.
-               \\.      # A backslash followed by something so we can continue
-               [^\\,]*  # Same as above.
-            )*          # Repeat zero of more times.
-         )
-         ,              # Comma dividing elements
-      /sxgc;
+   PTDEBUG && _d('Deserializing <', $string, '>');
+   die "Cannot deserialize an undefined string" unless defined $string;
 
-   push @escaped_parts, pos($string) ? substr( $string, pos($string) ) : $string;
+   my @parts;
+   foreach my $arg ( split(/(?<!\\),/, $string) ) {
+      if ( $arg eq '\N' ) {
+         $arg = undef;
+      }
+      else {
+         $arg =~ s/\\,/,/g;
+         $arg =~ s/\\\\N/\\N/g;
+      }
+      push @parts, $arg;
+   }
 
-   my @unescaped_parts = map {
-      my $part = $_;
+   if ( !@parts ) {
+      my $n_empty_strings = $string =~ tr/,//;
+      $n_empty_strings++;
+      PTDEBUG && _d($n_empty_strings, 'empty strings');
+      map { push @parts, '' } 1..$n_empty_strings;
+   }
+   elsif ( $string =~ m/(?<!\\),$/ ) {
+      PTDEBUG && _d('Last value is an empty string');
+      push @parts, '';
+   }
 
-      my $char_class = utf8::is_utf8($part)  # If it's a UTF-8 string,
-                     ? qr/(?=\p{ASCII})\W/   # We only care about non-word
-                     : qr/(?=\p{ASCII})\W|[\x{80}-\x{FF}]/; # Otherwise,
-      $part =~ s/\\($char_class)/$1/g;
-      $part;
-   } @escaped_parts;
+   PTDEBUG && _d('Deserialized', Dumper(\@parts));
+   return @parts;
+}
 
-   return @unescaped_parts;
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
 1;
@@ -6362,7 +6481,7 @@ sub main {
    $o->get_opts();
 
    my $dp = $o->DSNParser();
-   $dp->prop('set-vars', $o->get('set-vars'));
+   $dp->prop('set-vars', $o->set_vars());
 
    $o->usage_or_errors();
 
@@ -6536,9 +6655,6 @@ sub main {
          # just tweak the code below to be like pt-query-digest.
          my %alias_for = (
             slowlog   => ['SlowLogParser'],
-            # binlog    => ['BinaryLogParser'],
-            # genlog    => ['GeneralLogParser'],
-            # tcpdump   => ['TcpdumpParser','MySQLProtocolParser'],
          );
          my $type = ['slowlog'];
          $type    = $alias_for{$type->[0]} if $alias_for{$type->[0]};
@@ -6582,8 +6698,8 @@ sub main {
 
    { # terminator
       my $runtime = new Runtime(
-         now     => sub { return time },
-         runtime => $o->get('run-time'),
+         now      => sub { return time },
+         run_time => $o->get('run-time'),
       );
 
       $pipeline->add(
@@ -6856,18 +6972,21 @@ FILE is specified, it reads STDIN.  It prints a report for each query.
 
 =head1 RISKS
 
-pt-table-use is very low risk. By default, it simply reads queries from a log.
-It executes C<EXPLAIN EXTENDED> if you specify the L<"--explain-extended">
-option.
+Percona Toolkit is mature, proven in the real world, and well tested,
+but all database tools can pose a risk to the system and the database
+server.  Before using this tool, please:
 
-At the time of this release, we know of no bugs that could harm users.
+=over
 
-The authoritative source for updated information is always the online issue
-tracking system.  Issues that affect this tool will be marked as such.  You can
-see a list of such issues at the following URL:
-L<http://www.percona.com/bugs/pt-table-usage>.
+=item * Read the tool's documentation
 
-See also L<"BUGS"> for more information on filing bugs and getting help.
+=item * Review the tool's known L<"BUGS">
+
+=item * Test the tool on a non-production server
+
+=item * Backup your production server and verify the backups
+
+=back
 
 =head1 DESCRIPTION
 
@@ -7161,11 +7280,11 @@ Password to use when connecting.
 
 type: string
 
-Create the given PID file when running.  The file contains the process
-ID of the daemonized instance.  The PID file is removed when the
-daemonized instance exits.  The program checks for the existence of the
-PID file when starting; if it exists and the process with the matching PID
-exists, the program exits.
+Create the given PID file.  The tool won't start if the PID file already
+exists and the PID it contains is different than the current PID.  However,
+if the PID file exists and the PID it contains is no longer running, the
+tool will overwrite the PID file with the current PID.  The PID file is
+removed automatically when the tool exits.
 
 =item --port
 
@@ -7209,10 +7328,21 @@ interrupt with CTRL-C).
 
 =item --set-vars
 
-type: string; default: wait_timeout=10000
+type: Array
 
-Set these MySQL variables.  Immediately after connecting to MySQL, this
-string will be appended to SET and executed.
+Set the MySQL variables in this comma-separated list of C<variable=value> pairs.
+
+By default, the tool sets:
+
+=for comment ignore-pt-internal-value
+MAGIC_set_vars
+
+   wait_timeout=10000
+
+Variables specified on the command line override these defaults.  For
+example, specifying C<--set-vars wait_timeout=500> overrides the defaultvalue of C<10000>.
+
+The tool prints a warning and continues if a variable cannot be set.
 
 =item --socket
 
@@ -7356,11 +7486,11 @@ Daniel Nichter
 =head1 ABOUT PERCONA TOOLKIT
 
 This tool is part of Percona Toolkit, a collection of advanced command-line
-tools developed by Percona for MySQL support and consulting.  Percona Toolkit
-was forked from two projects in June, 2011: Maatkit and Aspersa.  Those
-projects were created by Baron Schwartz and developed primarily by him and
-Daniel Nichter, both of whom are employed by Percona.  Visit
-L<http://www.percona.com/software/> for more software developed by Percona.
+tools for MySQL developed by Percona.  Percona Toolkit was forked from two
+projects in June, 2011: Maatkit and Aspersa.  Those projects were created by
+Baron Schwartz and primarily developed by him and Daniel Nichter.  Visit
+L<http://www.percona.com/software/> to learn about other free, open-source
+software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 

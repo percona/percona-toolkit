@@ -12,7 +12,7 @@ use English qw(-no_match_vars);
 use Test::More tests => 5;
 
 use PerconaTest;
-use QueryAdvisorRules;
+use VariableAdvisorRules;
 use Advisor;
 use PodParser;
 
@@ -20,7 +20,7 @@ use PodParser;
 # triggered rules.  It should be very simple.  (But we don't want to put the two
 # modules together.  Their purposes are distinct.)
 my $p   = new PodParser();
-my $qar = new QueryAdvisorRules(PodParser => $p);
+my $qar = new VariableAdvisorRules(PodParser => $p);
 my $adv = new Advisor(match_type=>"pos");
 
 # This should make $qa internally call get_rules() on $qar and save the rules
@@ -41,7 +41,7 @@ throws_ok (
 # POD is loaded.
 $qar->load_rule_info(
    rules   => [ $qar->get_rules() ],
-   file    => "$trunk/bin/pt-query-advisor",
+   file    => "$trunk/bin/pt-variable-advisor",
    section => 'RULES',
 );
 
@@ -63,11 +63,11 @@ throws_ok (
 );
 
 is_deeply(
-   $adv->get_rule_info('ALI.001'),
+   $adv->get_rule_info('max_binlog_size'),
    {
-      id          => 'ALI.001',
-      severity    => 'note',
-      description => 'Aliasing without the AS keyword.  Explicitly using the AS keyword in column or table aliases, such as "tbl AS alias," is more readable than implicit aliases such as "tbl alias".',
+      description => 'The max_binlog_size is smaller than the default of 1GB.',
+      id => 'max_binlog_size',
+      severity => 'note',
    },
    'get_rule_info()'
 );
@@ -78,12 +78,12 @@ is_deeply(
 # #############################################################################
 $adv = new Advisor(
    match_type   => "pos",
-   ignore_rules => { 'LIT.002' => 1 },
+   ignore_rules => { 'max_binlog_size' => 1 },
 );
 $adv->load_rules($qar);
 $adv->load_rule_info($qar);
 is(
-   $adv->get_rule_info('LIT.002'),
+   $adv->get_rule_info('max_binlog_size'),
    undef,
    "Didn't load ignored rule"
 );

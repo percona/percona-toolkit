@@ -35,6 +35,8 @@ use constant PTDEVDEBUG => $ENV{PTDEVDEBUG} || 0;
 
 use Percona::Toolkit;
 
+use Carp qw(croak);
+
 use Test::More;
 use Time::HiRes qw(sleep time);
 use File::Temp qw(tempfile);
@@ -54,7 +56,6 @@ our @EXPORT      = qw(
    wait_until
    wait_for
    wait_until_slave_running
-   wait_until_no_lag
    test_log_parser
    test_protocol_parser
    test_packet_parser
@@ -67,6 +68,7 @@ our @EXPORT      = qw(
    $dsn_opts
    $sandbox_version
    $can_load_data
+   $test_diff
 );
 
 our $trunk = $ENV{PERCONA_TOOLKIT_BRANCH};
@@ -78,6 +80,8 @@ eval {
 };
 
 our $can_load_data = can_load_data();
+
+our $test_diff = '';
 
 our $dsn_opts = [
    {
@@ -189,7 +193,7 @@ sub output {
 sub load_data {
    my ( $file ) = @_;
    $file = "$trunk/$file";
-   open my $fh, '<', $file or die "Cannot open $file: $OS_ERROR";
+   open my $fh, '<', $file or croak "Cannot open $file: $OS_ERROR";
    my $contents = do { local $/ = undef; <$fh> };
    close $fh;
    (my $data = join('', $contents =~ m/(.*)/g)) =~ s/\s+//g;
@@ -207,7 +211,7 @@ sub load_file {
 
 sub slurp_file {
    my ($file) = @_;
-   open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
+   open my $fh, "<", $file or croak "Cannot open $file: $OS_ERROR";
    my $contents = do { local $/ = undef; <$fh> };
    close $fh;
    return $contents;
@@ -321,6 +325,39 @@ sub wait_for_sh {
    );
 };
 
+sub kill_program {
+   my (%args) = @_;
+
+   my $pid_file = $args{pid_file};
+   my $pid      = $args{pid};
+
+   if ( $pid_file ) {
+      chomp($pid = `cat $pid_file 2>/dev/null`);
+   }
+
+   if ( $pid ) {
+      PTDEVDEBUG && _d('Killing PID', $pid);
+      kill(15, $pid);
+      wait_until(
+         sub { my $is_alive = kill(0, $pid);  return !$is_alive; },
+         1.5,  # sleep between tries
+         15,   # max time to try
+      );
+      if ( kill(0, $pid) ) {
+         warn "PID $pid did not die; using kill -9\n";
+         kill(9, $pid);
+      }
+   }
+   else {
+      PTDEVDEBUG && _d('No PID to kill');
+   }
+
+   if ( $pid_file && -f $pid_file ) {
+      PTDEVDEBUG && _d('Removing PID file', $pid_file);
+      unlink $pid_file;
+   }
+}
+
 sub not_running {
    my ($cmd) = @_;
    PTDEVDEBUG && _d('Wait until not running:', $cmd);
@@ -412,6 +449,7 @@ sub test_protocol_parser {
    keys %args;
 
    my $file = "$trunk/$args{file}";
+   my ($base_file_name) = $args{file} =~ m/([^\/]+)$/;
    my @e;
    eval {
       open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
@@ -427,11 +465,10 @@ sub test_protocol_parser {
       close $fh;
    };
 
-   my ($base_file_name) = $args{file} =~ m/([^\/]+)$/;
    is(
       $EVAL_ERROR,
       '',
-      "$base_file_name: no errors"
+      "$base_file_name: no perl errors"
    );
 
    if ( defined $args{result} ) {
@@ -522,8 +559,13 @@ sub no_diff {
    die "I need a cmd argument" unless $cmd;
    die "I need an expected_output argument" unless $expected_output;
 
-   die "$expected_output does not exist" unless -f "$trunk/$expected_output";
-   $expected_output = "$trunk/$expected_output";
+   if ( $args{full_path} ) {
+      die "$expected_output does not exist" unless -f $expected_output;
+   }
+   else {
+      die "$expected_output does not exist" unless -f "$trunk/$expected_output";
+      $expected_output = "$trunk/$expected_output";
+   }
 
    my $tmp_file      = '/tmp/percona-toolkit-test-output.txt';
    my $tmp_file_orig = '/tmp/percona-toolkit-test-output-original.txt';
@@ -542,6 +584,9 @@ sub no_diff {
       open my $tmp_fh, '>', $tmp_file or die "Cannot open $tmp_file: $OS_ERROR";
       print $tmp_fh $cmd;
       close $tmp_fh;
+   }
+   elsif ( -f $cmd ) {
+      `cp $cmd $tmp_file`;
    }
    else {
       `$cmd > $tmp_file`;
@@ -586,7 +631,7 @@ sub no_diff {
    }
 
    # diff the outputs.
-   my $out = `diff $res_file $cmp_file`;
+   $test_diff = `diff $res_file $cmp_file 2>&1`;
    my $retval = $?;
 
    # diff returns 0 if there were no differences,
@@ -594,7 +639,6 @@ sub no_diff {
    $retval = $retval >> 8; 
 
    if ( $retval ) {
-      diag($out);
       if ( $ENV{UPDATE_SAMPLES} || $args{update_sample} ) {
          `cat $tmp_file > $expected_output`;
          diag("Updated $expected_output");
@@ -606,11 +650,11 @@ sub no_diff {
       unless $ENV{KEEP_OUTPUT} || $args{keep_output};
 
    if ( $res_file ne $tmp_file ) {
-      1 while unlink $res_file;
+      unlink $res_file if -f $res_file;
    }
 
    if ( $cmp_file ne $expected_output ) {
-      1 while unlink $cmp_file;
+      unlink $cmp_file if -f $cmp_file;
    }
 
    return !$retval;

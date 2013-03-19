@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 10;
+use Test::More;
 
 use PerconaTest;
 require "$trunk/bin/pt-fk-error-logger";
@@ -70,4 +70,4 @@ test_get_fk_error(
 # #############################################################################
 # Done.
 # #############################################################################
-exit;
+done_testing;

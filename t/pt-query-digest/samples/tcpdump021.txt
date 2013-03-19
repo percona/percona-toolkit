@@ -11,7 +11,6 @@
 # Query size    35      35      35      35      35      35       0      35
 # Warning coun   0       0       0       0       0       0       0       0
 # String:
-# Errors       none
 # Hosts        127.0.0.1
 # Statement id 2
 # Query_time distribution
@@ -45,7 +44,6 @@ SELECT i FROM d.t WHERE i=?\G
 # Boolean:
 # No index use 100% yes,   0% no
 # String:
-# Errors       none
 # Hosts        127.0.0.1
 # Statement id 2
 # Query_time distribution
@@ -77,7 +75,6 @@ SELECT i FROM d.t WHERE i="3"\G
 # Query size    27      27      27      27      27      27       0      27
 # Warning coun   0       0       0       0       0       0       0       0
 # String:
-# Errors       none
 # Hosts        127.0.0.1
 # Query_time distribution
 #   1us

@@ -33,4 +33,8 @@ if [ ! -d "$PERCONA_TOOLKIT_BRANCH" ]; then
 fi
 
 /tmp/$PORT/use < $PERCONA_TOOLKIT_BRANCH/sandbox/sakila.sql
-exit $?
+exit_status=$?
+
+/tmp/$PORT/use sakila -e "ANALYZE TABLE actor, address, category, city, country, customer, film, film_actor, film_category, film_text, inventory, language, payment, rental, staff, store" >/dev/null
+
+exit $exit_status

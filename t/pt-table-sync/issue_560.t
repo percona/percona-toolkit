@@ -40,7 +40,7 @@ $sb->load_file("master", "t/pt-table-sync/samples/issue_560.sql");
 $slave_dbh->do('UPDATE issue_560.buddy_list SET buddy_id=0 WHERE player_id IN (333,334)');
 $slave_dbh->do('UPDATE issue_560.buddy_list SET buddy_id=0 WHERE player_id=486');
 
-$output = `$trunk/bin/pt-table-checksum --replicate issue_560.checksum h=127.1,P=12345,u=msandbox,p=msandbox  -d issue_560 --chunk-size 50 --lock-wait-time 3`;
+$output = `$trunk/bin/pt-table-checksum --replicate issue_560.checksum h=127.1,P=12345,u=msandbox,p=msandbox  -d issue_560 --chunk-size 50 --set-vars innodb_lock_wait_timeout=3`;
 
 is(
    PerconaTest::count_checksum_results($output, 'diffs'),

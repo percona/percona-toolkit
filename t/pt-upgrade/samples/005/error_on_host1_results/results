@@ -1,0 +1,5 @@
+$results = {
+  error => 'DBD::mysql::st execute failed: Unknown column \'host2_col\' in \'field list\' [for Statement "select host2_col from test.t"]'
+};
+
+##

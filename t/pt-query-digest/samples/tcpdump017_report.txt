@@ -20,7 +20,6 @@
 # Query size   100     128      32      32      32      32       0      32
 # Warning coun   0       0       0       0       0       0       0       0
 # String:
-# Errors       none
 # Hosts        127.0.0.1
 # Query_time distribution
 #   1us

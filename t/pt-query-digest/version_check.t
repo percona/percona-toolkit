@@ -10,31 +10,35 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
-
-use File::Spec::Functions;
+use Time::HiRes qw(time);
+use Data::Dumper;
 
 use PerconaTest;
 use Sandbox;
-use Data::Dumper;
-use File::Spec;
-use Time::HiRes qw(time);
 require "$trunk/bin/pt-query-digest";
 
 my $output;
-my $cmd  = catfile($trunk, "bin", "pt-query-digest");
-my @args = (qw(--limit 1), catfile($trunk, qw(t lib samples slowlogs slow001.txt)));
+my $cmd = "$trunk/bin/pt-query-digest --limit 1 $trunk/t/lib/samples/slowlogs/slow001.txt";
 
-# Pingback.pm does this too.
-my $dir = File::Spec->tmpdir();
-my $check_time_file = File::Spec->catfile($dir,'percona-toolkit-version-check');
-unlink $check_time_file if -f $check_time_file;
+my $vc_file = VersionCheck::version_check_file();
+unlink $vc_file if -f $vc_file;
 
-$output = `PTVCDEBUG=1 $cmd @args --version-check http 2>&1`;
+# Normally --version-check is on by default, but in dev/testing envs,
+# there's going to be a .bzr dir that auto-disables --version-check so
+# our dev/test boxes don't flood the v-c database.  Consequently,
+# have have to explicitly give --version-check to force the check.
+
+$output = `PTDEBUG=1 $cmd --version-check 2>&1`;
 
 like(
    $output,
-   qr/(?:VersionCheck|Pingback|Percona suggests)/,
+   qr/VersionCheck:\d+ \d+ Server response/,
    "Looks like the version-check happened"
+) or diag($output);
+
+ok(
+   -f $vc_file,
+   "Version check file was created"
 ) or diag($output);
 
 like(
@@ -43,24 +47,29 @@ like(
    "Tool ran after version-check"
 ) or diag(Dumper($output));
 
-ok(
-   -f $check_time_file,
-   "Created percona-toolkit-version-check file"
-);
-
 # ###########################################################################
 # v-c file should limit checks to 1 per 24 hours
 # ###########################################################################
 
-$output = `PTVCDEBUG=1 $cmd @args --version-check http 2>&1`;
+my $orig_vc_file = `cat $vc_file 2>/dev/null`;
+
+$output = `PTDEBUG=1 $cmd --version-check 2>&1`;
 
 like(
    $output,
-   qr/It is not time to --version-check again/,
-   "Doesn't always check because of time limit"
+   qr/0 instances to check/,
+   "No instances to check because of time limit"
 );
 
-unlink $check_time_file if -f $check_time_file;
+my $new_vc_file = `cat $vc_file 2>/dev/null`;
+
+is(
+   $new_vc_file,
+   $orig_vc_file,
+   "Version check file not changed"
+) or diag($output);
+
+unlink $vc_file if -f $vc_file;
 
 # ###########################################################################
 # Fake v.percona.com not responding by using a different, non-existent URL.
@@ -68,17 +77,17 @@ unlink $check_time_file if -f $check_time_file;
 
 my $t0 = time;
 
-$output = `PTVCDEBUG=1 PERCONA_VERSION_CHECK_URL='http://x.percona.com' $cmd @args --version-check http 2>&1`;
+$output = `PTDEBUG=1 PERCONA_VERSION_CHECK_URL='http://x.percona.com' $cmd --version-check 2>&1`;
 
 my $t = time - $t0;
 
 like(
    $output,
-   qr/Error.+?(?:GET on http:\/\/x\.percona\.com.+?HTTP status 5\d+|Failed to get any program versions; should have at least gotten Perl)/,
+   qr/Version check failed: GET on \S+x.percona.com returned HTTP status 5../,
    "The Percona server didn't respond"
 );
 
-# In actuality it should only wait 2s, but on slow boxes all the other
+# In actuality it should only wait 3s, but on slow boxes all the other
 # stuff the tool does may cause the time to be much greater than 2.
 # If nothing else, this tests that the timeout isn't something crazy
 # like 30s.
@@ -90,51 +99,75 @@ cmp_ok(
 );
 
 # ###########################################################################
-# Disable the v-c (for now it's disabled by default, so by "disable" here
-# we just mean "don't pass --version-check").
+# Disable --version-check.
 # ###########################################################################
 
-unlink $check_time_file if -f $check_time_file;
+unlink $vc_file if -f $vc_file;
 
-$output = `PTVCDEBUG=1 $cmd @args 2>&1`;
-
-unlike(
-   $output,
-   qr/(?:VersionCheck|Pingback|Percona suggests)/,
-   "Looks like --no-version-check disabled the version-check"
-) or diag($output);
-
-ok(
-   !-f $check_time_file,
-   "percona-toolkit-version-check file not created with --no-version-check"
-);
-
-$output = `PTVCDEBUG=1 $cmd --version-check off @args 2>&1`;
+$output = `PTDEBUG=1 $cmd --no-version-check 2>&1`;
 
 unlike(
    $output,
-   qr/(?:VersionCheck|Pingback|Percona suggests)/,
-   "Looks like --version-check off disabled the version-check"
+   qr/VersionCheck/,
+   "Looks like --no-version-check disabled the check"
 ) or diag($output);
 
 ok(
-   !-f $check_time_file,
-   "percona-toolkit-version-check file not created with --version-check off"
-);
+   !-f $vc_file,
+   "... version check file was not created"
+) or diag(`cat $vc_file`);
 
-# PERCONA_VERSION_CHECK=0 is handled in Pingback, so it will print a line
-# for PTVCDEBUG saying why it didn't run.  So we just check that it doesn't
-# create the file which also signifies that it didn't run.
-$output = `PTVCDEBUG=1 PERCONA_VERSION_CHECK=0 $cmd @args --version-check http 2>&1`;
+# Since this is a test, VersionCheck should detect the .bzr dir
+# and disble itself even without --no-version-check.
+
+$output = `PTDEBUG=1 $cmd 2>&1`;
+
+like(
+   $output,
+   qr/\.bzr disables --version-check/,
+   "Looks like .bzr disabled the check"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/Updating last check time/,
+   "... version check file was not updated"
+) or diag($output);
 
 ok(
-   !-f $check_time_file,
-   "Looks like PERCONA_VERSION_CHECK=0 disabled the version-check"
-);
+   !-f $vc_file,
+   "... version check file was not created"
+) or diag($output, `cat $vc_file`);
+
+
+# #############################################################################
+# Test --version-check as if tool isn't in a dev/test env by copying
+# to another dir so VersionCheck won't see a ../.bzr/.
+# #############################################################################
+
+unlink $vc_file if -f $vc_file;
+
+diag(`cp $trunk/bin/pt-query-digest /tmp/pt-query-digest.$PID`);
+
+# Notice: --version-check is NOT on the command line, because
+# it should be enabled by default.
+$output = `PTDEBUG=1 /tmp/pt-query-digest.$PID --limit 1 $trunk/t/lib/samples/slowlogs/slow001.txt 2>&1`;
+
+like(
+   $output,
+   qr/VersionCheck:\d+ \d+ Server response/,
+   "Looks like the version-check happened by default"
+) or diag($output);
+
+ok(
+   -f $vc_file,
+   "Version check file was created by default"
+) or diag($output);
+
+unlink "/tmp/pt-query-digest.$PID" if "/tmp/pt-query-digest.$PID";
 
 # #############################################################################
 # Done.
 # #############################################################################
-unlink $check_time_file if -f $check_time_file;
+unlink $vc_file if -f $vc_file;
 done_testing;
-exit;

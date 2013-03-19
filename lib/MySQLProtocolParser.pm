@@ -51,19 +51,7 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-require Exporter;
-our @ISA         = qw(Exporter);
-our %EXPORT_TAGS = ();
-our @EXPORT      = ();
-our @EXPORT_OK   = qw(
-   parse_error_packet
-   parse_ok_packet
-   parse_ok_prepared_statement_packet
-   parse_server_handshake_packet
-   parse_client_handshake_packet
-   parse_com_packet
-   parse_flags
-);
+BEGIN { our @ISA = 'ProtocolParser'; }
 
 use constant {
    COM_SLEEP               => '00',
@@ -237,6 +225,7 @@ sub new {
       sessions       => {},
       o              => $args{o},
       fake_thread_id => 2**32,   # see _make_event()
+      null_event     => $args{null_event},
    };
    PTDEBUG && $self->{server} && _d('Watching only server', $self->{server});
    return bless $self, $class;
@@ -259,7 +248,7 @@ sub parse_event {
       $server .= ":$self->{port}";
       if ( $src_host ne $server && $dst_host ne $server ) {
          PTDEBUG && _d('Packet is not to or from', $server);
-         return;
+         return $self->{null_event};
       }
    }
 
@@ -277,7 +266,7 @@ sub parse_event {
    }
    else {
       PTDEBUG && _d('Packet is not to or from a MySQL server');
-      return;
+      return $self->{null_event};
    }
    PTDEBUG && _d('Client', $client);
 
@@ -302,7 +291,7 @@ sub parse_event {
       else {
          PTDEBUG && _d('Ignoring mid-stream', $packet_from, 'data,',
             'packetno', $packetno);
-         return;
+         return $self->{null_event};
       }
 
       $self->{sessions}->{$client} = {
@@ -340,7 +329,20 @@ sub parse_event {
    if ( $packet->{data_len} == 0 ) {
       PTDEBUG && _d('TCP control:',
          map { uc $_ } grep { $packet->{$_} } qw(syn ack fin rst));
-      return;
+      if ( $packet->{'fin'}
+           && ($session->{state} || '') eq 'server_handshake' ) {
+         PTDEBUG && _d('Client aborted connection');
+         my $event = {
+            cmd => 'Admin',
+            arg => 'administrator command: Connect',
+            ts  => $packet->{ts},
+         };
+         $session->{attribs}->{Error_msg} = 'Client closed connection during handshake';
+         $event = $self->_make_event($event, $packet, $session);
+         delete $self->{sessions}->{$session->{client}};
+         return $event;
+      }
+      return $self->{null_event};
    }
 
    # Return unless the compressed packet can be uncompressed.
@@ -379,7 +381,7 @@ sub parse_event {
          PTDEBUG && _d('remove_mysql_header() failed; failing session');
          $session->{EVAL_ERROR} = $EVAL_ERROR;
          $self->fail_session($session, 'remove_mysql_header() failed');
-         return;
+         return $self->{null_event};
       }
    }
 
@@ -396,7 +398,7 @@ sub parse_event {
             $self->_delete_buff($session);
          }
          else {
-            return;  # waiting for more data; buff_left was reported earlier
+            return $self->{null_event};  # waiting for more data; buff_left was reported earlier
          }
       }
       elsif ( $packet->{mysql_data_len} > ($packet->{data_len} - 4) ) {
@@ -424,7 +426,7 @@ sub parse_event {
 
          PTDEBUG && _d('Data not complete; expecting',
             $session->{buff_left}, 'more bytes');
-         return;
+         return $self->{null_event};
       }
 
       if ( $session->{cmd} && ($session->{state} || '') eq 'awaiting_reply' ) {
@@ -455,7 +457,7 @@ sub parse_event {
    }
 
    $args{stats}->{events_parsed}++ if $args{stats};
-   return $event;
+   return $event || $self->{null_event};
 }
 
 # Handles a packet from the server given the state of the session.
@@ -612,7 +614,8 @@ sub _packet_from_server {
          }
          my $event;
 
-         if ( $session->{state} eq 'client_auth' ) {
+         if (   $session->{state} eq 'client_auth'
+             || $session->{state} eq 'server_handshake' ) {
             PTDEBUG && _d('Connection failed');
             $event = {
                cmd      => 'Admin',
@@ -641,11 +644,14 @@ sub _packet_from_server {
             }
 
             $event = {
-               cmd       => $com,
-               arg       => $arg,
-               ts        => $packet->{ts},
-               Error_no  => $error->{errno} ? "#$error->{errno}" : 'none',
+               cmd => $com,
+               arg => $arg,
+               ts  => $packet->{ts},
             };
+            if ( $error->{errno} ) {
+               # https://bugs.launchpad.net/percona-toolkit/+bug/823411
+               $event->{Error_no} = $error->{errno};
+            }
             $session->{attribs}->{Error_msg} = $error->{message};
             return $self->_make_event($event, $packet, $session);
          }
@@ -902,13 +908,18 @@ sub _make_event {
       Thread_id  => $session->{thread_id},
       pos_in_log => $session->{pos_in_log},
       Query_time => timestamp_diff($session->{ts}, $packet->{ts}),
-      Error_no   => $event->{Error_no} || 'none',
       Rows_affected      => ($event->{Rows_affected} || 0),
       Warning_count      => ($event->{Warning_count} || 0),
       No_good_index_used => ($event->{No_good_index_used} ? 'Yes' : 'No'),
       No_index_used      => ($event->{No_index_used}      ? 'Yes' : 'No'),
    };
    @{$new_event}{keys %{$session->{attribs}}} = values %{$session->{attribs}};
+   # https://bugs.launchpad.net/percona-toolkit/+bug/823411
+   foreach my $opt_attrib ( qw(Error_no) ) {
+      if ( defined $event->{$opt_attrib} ) {
+         $new_event->{$opt_attrib} = $event->{$opt_attrib};
+      }
+   }
    PTDEBUG && _d('Properties of event:', Dumper($new_event));
 
    # Delete cmd to prevent re-making the same event if the
@@ -1070,9 +1081,17 @@ sub parse_error_packet {
    }
    my $errno    = to_num(substr($data, 0, 4));
    my $marker   = to_string(substr($data, 4, 2));
-   return unless $marker eq '#';
-   my $sqlstate = to_string(substr($data, 6, 10));
-   my $message  = to_string(substr($data, 16));
+   my $sqlstate = '';
+   my $message  = '';
+   if ( $marker eq '#' ) {
+      $sqlstate = to_string(substr($data, 6, 10));
+      $message  = to_string(substr($data, 16));
+   }
+   else {
+      $marker  = '';
+      $message = to_string(substr($data, 4));
+   }
+   return unless $message;
    my $pkt = {
       errno    => $errno,
       sqlstate => $marker . $sqlstate,
@@ -1493,46 +1512,6 @@ sub remove_mysql_header {
    $packet->{mysql_data_len} = $mysql_data_len;
    $packet->{number}         = $pkt_num;
 
-   return;
-}
-
-sub _get_errors_fh {
-   my ( $self ) = @_;
-   my $errors_fh = $self->{errors_fh};
-   return $errors_fh if $errors_fh;
-
-   # Errors file isn't open yet; try to open it.
-   my $o = $self->{o};
-   if ( $o && $o->has('tcpdump-errors') && $o->got('tcpdump-errors') ) {
-      my $errors_file = $o->get('tcpdump-errors');
-      PTDEBUG && _d('tcpdump-errors file:', $errors_file);
-      open $errors_fh, '>>', $errors_file
-         or die "Cannot open tcpdump-errors file $errors_file: $OS_ERROR";
-   }
-
-   $self->{errors_fh} = $errors_fh;
-   return $errors_fh;
-}
-
-sub fail_session {
-   my ( $self, $session, $reason ) = @_;
-   PTDEBUG && _d('Client', $session->{client}, 'failed because', $reason);
-   my $errors_fh = $self->_get_errors_fh();
-   if ( $errors_fh ) {
-      my $raw_packets = $session->{raw_packets};
-      delete $session->{raw_packets};  # Don't dump, it's printed below.
-      $session->{reason_for_failure} = $reason;
-      my $session_dump = '# ' . Dumper($session);
-      chomp $session_dump;
-      $session_dump =~ s/\n/\n# /g;
-      print $errors_fh "$session_dump\n";
-      {
-         local $LIST_SEPARATOR = "\n";
-         print $errors_fh "@$raw_packets";
-         print $errors_fh "\n";
-      }
-   }
-   delete $self->{sessions}->{$session->{client}};
    return;
 }
 
