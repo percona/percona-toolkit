@@ -23,7 +23,7 @@ package Percona::WebAPI::Resource::Agent;
 use Lmo;
 
 has 'uuid' => (
-   is       => 'r0',
+   is       => 'ro',
    isa      => 'Str',
    required => 0,
 );

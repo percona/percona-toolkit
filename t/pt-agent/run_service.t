@@ -13,6 +13,8 @@ use Test::More;
 use JSON;
 use File::Temp qw(tempdir);
 
+$ENV{PTTEST_PRETTY_JSON} = 1;
+
 use Percona::Test;
 use Percona::Test::Mock::UserAgent;
 require "$trunk/bin/pt-agent";
@@ -57,12 +59,12 @@ my $run0 = Percona::WebAPI::Resource::Task->new(
    name    => 'query-history',
    number  => '0',
    program => "$trunk/bin/pt-query-digest",
-   options => "--report-format profile $trunk/t/lib/samples/slowlogs/slow008.txt",
+   options => "--output json $trunk/t/lib/samples/slowlogs/slow008.txt",
    output  => 'spool',
 );
 
 my $svc0 = Percona::WebAPI::Resource::Service->new(
-   name           => 'query-monitor',
+   name           => 'query-history',
    run_schedule   => '1 * * * *',
    spool_schedule => '2 * * * *',
    tasks          => [ $run0 ],
@@ -76,7 +78,7 @@ my $exit_status;
 my $output = output(
    sub {
       $exit_status = pt_agent::run_service(
-         service   => 'query-monitor',
+         service   => 'query-history',
          spool_dir => $spool_dir,
          lib_dir   => $tmpdir,
       );
@@ -86,17 +88,17 @@ my $output = output(
 
 ok(
    no_diff(
-      "cat $tmpdir/spool/query-monitor",
-      "$sample/spool001.txt",
+      "cat $tmpdir/spool/query-history",
+      "$sample/query-history/data001.json",
    ),
-   "1 run: spool data (spool001.txt)"
+   "1 run: spool data (query-history/data001.json)"
 );
 
 chomp(my $n_files = `ls -1 $spool_dir | wc -l | awk '{print \$1}'`);
 is(
    $n_files,
    1,
-   "1 run: only wrote spool data (spool001.txt)"
+   "1 run: only wrote spool data (query-history/data001.json)"
 ) or diag(`ls -l $spool_dir`);
 
 is(
@@ -128,12 +130,12 @@ my $run1 = Percona::WebAPI::Resource::Task->new(
    name    => 'query-history',
    number  => '1',
    program => "$trunk/bin/pt-query-digest",
-   options => "--report-format profile __RUN_0_OUTPUT__",
+   options => "--output json __RUN_0_OUTPUT__",
    output  => 'spool',
 );
 
 $svc0 = Percona::WebAPI::Resource::Service->new(
-   name           => 'query-monitor',
+   name           => 'query-history',
    run_schedule   => '3 * * * *',
    spool_schedule => '4 * * * *',
    tasks          => [ $run0, $run1 ],
@@ -146,7 +148,7 @@ write_svc_files(
 $output = output(
    sub {
       $exit_status = pt_agent::run_service(
-         service   => 'query-monitor',
+         service   => 'query-history',
          spool_dir => $spool_dir,
          lib_dir   => $tmpdir,
       );
@@ -156,8 +158,8 @@ $output = output(
 
 ok(
    no_diff(
-      "cat $tmpdir/spool/query-monitor",
-      "$sample/spool001.txt",
+      "cat $tmpdir/spool/query-history",
+      "$sample/query-history/data001.json",
    ),
    "2 runs: spool data"
 );

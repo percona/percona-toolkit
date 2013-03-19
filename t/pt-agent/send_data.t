@@ -42,7 +42,7 @@ my $links = {
    agents          => '/agents',
    config          => '/agents/1/config',
    services        => '/agents/1/services',
-   'query-monitor' => '/query-monitor',
+   'query-history' => '/query-history',
 };
 
 $ua->{responses}->{get} = [
@@ -64,14 +64,14 @@ is(
 ) or die;
 
 my $agent = Percona::WebAPI::Resource::Agent->new(
-   id       => '123',
+   uuid     => '123',
    hostname => 'prod1', 
 );
 
 is_deeply(
    as_hashref($agent),
    {
-      id       => '123',
+      uuid     => '123',
       hostname => 'prod1',
    },
    'Create mock Agent'
@@ -82,13 +82,13 @@ is_deeply(
 # #############################################################################
 
 my $tmpdir = tempdir("/tmp/pt-agent.$PID.XXXXXX", CLEANUP => 1);
-mkdir "$tmpdir/query-monitor"
-   or die "Cannot mkdir $tmpdir/query-monitor: $OS_ERROR";
+mkdir "$tmpdir/query-history"
+   or die "Cannot mkdir $tmpdir/query-history: $OS_ERROR";
 mkdir "$tmpdir/services"
    or die "Cannot mkdir $tmpdir/services: $OS_ERROR";
 
-`cp $trunk/$sample/query-monitor/data001 $tmpdir/query-monitor/`;
-`cp $trunk/$sample/service001 $tmpdir/services/query-monitor`;
+`cp $trunk/$sample/query-history/data001.json $tmpdir/query-history/`;
+`cp $trunk/$sample/service001 $tmpdir/services/query-history`;
 
 $ua->{responses}->{post} = [
    {
@@ -101,7 +101,7 @@ my $output = output(
       pt_agent::send_data(
          client    => $client,
          agent     => $agent,
-         service   => 'query-monitor',
+         service   => 'query-history',
          lib_dir   => $tmpdir,
          spool_dir => $tmpdir,
          json      => $json,  # optional, for testing
@@ -119,22 +119,22 @@ is(
 is_deeply(
    $ua->{requests},
    [
-      'POST /query-monitor',
+      'POST /query-history/data',
    ],
-   "POST to Service.links.send_data"
+   "POST to Service.links.data"
 );
 
 ok(
    no_diff(
       $client->ua->{content}->{post}->[0] || '',
-      "$sample/query-monitor/data001.send",
+      "$sample/query-history/data001.send",
       cmd_output => 1,
    ),
-   "Sent data file as multi-part resource (query-monitor/data001)"
+   "Sent data file as multi-part resource (query-history/data001)"
 ) or diag(Dumper($client->ua->{content}->{post}));
 
 ok(
-   !-f "$tmpdir/query-monitor/data001",
+   !-f "$tmpdir/query-history/data001.json",
    "Removed data file after sending successfully"
 );
 
