@@ -108,7 +108,7 @@ sub new {
          keys %$attributes
       },
       worst          => $args{worst},
-      unroll_limit   => $args{unroll_limit} || 1000,
+      unroll_limit   => $ENV{PT_QUERY_DIGEST_CHECK_ATTRIB_LIMIT} || 1000,
       attrib_limit   => $args{attrib_limit},
       result_classes => {},
       result_globals => {},

@@ -38,7 +38,7 @@ $sb->create_dbs($dbh, [qw(test percona_schema)]);
 
 # Run pt-query-digest in the background for 2s,
 # saving queries to test.query_review.
-diag(`$trunk/bin/pt-query-digest --processlist h=127.1,P=12345,u=msandbox,p=msandbox --interval 0.01 --create-review-table --review h=127.1,P=12345,u=msandbox,p=msandbox --review-table test.query_review --daemonize --pid $pid_file --log /dev/null --run-time 2`);
+diag(`$trunk/bin/pt-query-digest --processlist h=127.1,P=12345,u=msandbox,p=msandbox --interval 0.01 --create-review-table --review h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=query_review --daemonize --pid $pid_file --log /dev/null --run-time 2`);
 
 # Wait until its running.
 PerconaTest::wait_for_files($pid_file);

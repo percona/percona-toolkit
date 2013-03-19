@@ -11,9 +11,30 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 
 use PerconaTest;
+use Test::More;
 
-my ($tool) = $PROGRAM_NAME =~ m/([\w-]+)\.t$/;
-push @ARGV, "$trunk/t/$tool/*.sh" unless @ARGV;
-system("$trunk/util/test-bash-functions $trunk/bin/$tool @ARGV");
+my $sample = "$trunk/t/pt-pmp/samples";
 
-exit;
+opendir my $dh, $sample or die "Error opening $sample: $OS_ERROR";
+while ( my $file = readdir $dh ) {
+   next unless -f "$sample/$file" && "$sample/$file" =~ m/\.in$/;
+   (my $outfile = $file) =~ s/\.in/.out/;
+   ok(
+      no_diff(
+         "$trunk/bin/pt-pmp $sample/$file",
+         "t/pt-pmp/samples/$outfile",
+      ),
+      "$file"
+   );
+}
+closedir $dh;
+
+ok(
+   no_diff(
+      "$trunk/bin/pt-pmp -l 2 $sample/stacktrace003.in",
+      "t/pt-pmp/samples/stacktrace003-limit2.out",
+   ),
+   "Limit 2 (stacktrace003-limit2.out)"
+);
+
+done_testing;

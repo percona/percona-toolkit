@@ -20,7 +20,7 @@ use Runtime;
 
 my $runtime = new Runtime(
    now     => sub { return time; },
-   runtime => 3,
+   run_time => 3,
 );
 
 is(
@@ -91,7 +91,7 @@ is(
 
 $runtime = new Runtime(
    now     => sub { return time; },
-   # runtime => undef,  # forever
+   # run_time => undef,  # forever
 );
 
 is(
@@ -125,7 +125,7 @@ is(
 
 $runtime = new Runtime(
    now     => sub { return time; },
-   runtime => 3,
+   run_time => 3,
 );
 
 is(
@@ -149,7 +149,7 @@ is(
 my @time = qw(0 3 7 9);
 $runtime = new Runtime(
    now     => sub { return shift @time; },
-   runtime => 8,
+   run_time => 8,
 );
 
 is(

@@ -1,0 +1,3 @@
+use `test`;
+INSERT INTO t (id, username) VALUES (NULL, 'long_username')
+##

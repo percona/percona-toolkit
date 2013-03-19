@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 19;
+use Test::More;
 
 use Sandbox;
 use OptionParser;
@@ -29,10 +29,22 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 
-my $o  = new OptionParser(description => 'Cxn');
+my $o = new OptionParser(
+   description => 'Cxn',
+   file        => "$trunk/bin/pt-table-checksum",
+);
 $o->get_specs("$trunk/bin/pt-table-checksum");
 $o->get_opts();
-$dp->prop('set-vars', $o->get('set-vars'));
+
+# In 2.1, these tests did not set innodb_lock_wait_timeout because
+# it was not a --set-vars default but rather its own option handled
+# by/in the tool.  In 2.2, the var is a --set-vars default, which
+# means it will cause a warning on 5.0 and 5.1, so we remoe the var
+# to remove the warning.
+my $set_vars = $o->set_vars();
+delete $set_vars->{innodb_lock_wait_timeout};
+delete $set_vars->{lock_wait_timeout};
+$dp->prop('set-vars', $set_vars);
 
 sub make_cxn {
    my (%args) = @_;
@@ -252,8 +264,64 @@ is_deeply(
 $o->get_opts();
 
 # #############################################################################
+# The parent of a forked Cxn should not disconnect the dbh in DESTORY
+# because the child still has access to it.
+# #############################################################################
+
+my $sync_file = "/tmp/pt-cxn-sync.$PID";
+my $outfile   = "/tmp/pt-cxn-outfile.$PID";
+
+my $pid;
+{
+   my $parent_cxn = make_cxn(
+      dsn_string => 'h=127.1,P=12345,u=msandbox,p=msandbox',
+      parent     => 1,
+   );
+   $parent_cxn->connect();
+
+   $pid = fork();
+   if ( defined($pid) && $pid == 0 ) {
+      # I am the child.
+      # Wait for the parent to leave this code block which will cause
+      # the $parent_cxn to be destroyed.
+      PerconaTest::wait_for_files($sync_file);
+      $parent_cxn->{parent} = 0;
+      eval {
+         $parent_cxn->dbh->do("SELECT 123 INTO OUTFILE '$outfile'");
+         $parent_cxn->dbh->disconnect();
+      };
+      warn $EVAL_ERROR if $EVAL_ERROR;
+      exit;
+   }
+}
+
+# Let the child know that we (the parent) have left that ^ code block,
+# so our copy of $parent_cxn has been destroyed, but hopefully the child's
+# copy is still alive, i.e. has an active/not-disconnected dbh.
+diag(`touch $sync_file`);
+
+# Wait for the child.
+waitpid($pid, 0);
+
+ok(
+   -f $outfile,
+   "Child created outfile"
+);
+
+my $output = `cat $outfile 2>/dev/null`;
+
+is(
+   $output,
+   "123\n",
+   "Child executed query"
+);
+
+unlink $sync_file if -f $sync_file;
+unlink $outfile if -f $outfile;
+
+# #############################################################################
 # Done.
 # #############################################################################
 $master_dbh->disconnect() if $master_dbh;
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+done_testing;

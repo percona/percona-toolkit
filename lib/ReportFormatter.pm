@@ -56,7 +56,7 @@
 # calculated widths.
 package ReportFormatter;
 
-use Mo;
+use Lmo;
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
@@ -506,6 +506,7 @@ sub _d {
    print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
+no Lmo;
 1;
 }
 # ###########################################################################

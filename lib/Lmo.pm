@@ -1,4 +1,4 @@
-# This program is copyright 2012-2013 Percona Inc.
+# This program is copyright 2007-2011 Baron Schwartz, 2012 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -17,73 +17,58 @@
 # ###########################################################################
 # Lmo package
 # ###########################################################################
-{
 # Package: Lmo
-# Lmo provides a little meta object system like Moose and Moo.
-# This code was derived from Mo 0.30.
+# Lmo provides a miniature object system in the style of Moose and Moo.
+BEGIN {
+$INC{"Lmo.pm"} = __FILE__;
 package Lmo;
+our $VERSION = '0.30_Percona'; # Forked from 0.30 of Mo.
 
-our $VERSION = '0.01'; 
 
 use strict;
 use warnings qw( FATAL all );
 
 use Carp ();
-use Scalar::Util qw(blessed);
+use Scalar::Util qw(looks_like_number blessed);
 
-eval {
-   require Lmo::Meta;
-   require Lmo::Object;
-   require Lmo::Types;
-};
+use Lmo::Meta;
+use Lmo::Object;
+use Lmo::Types;
 
-{
-   # Gets the glob from a given string.
-   no strict 'refs';
-   sub _glob_for {
-      return \*{shift()}
-   }
-
-   # Gets the stash from a given string.
-   # A stash is a symbol table hash; rough explanation on
-   # http://perldoc.perl.org/perlguts.html#Stashes-and-Globs
-   # But the gist of it is that we can use a hash-like thing to
-   # refer to a class and modify it.
-   sub _stash_for {
-      return \%{ shift() . "::" };
-   }
-}
+use Lmo::Utils;
 
 my %export_for;
 sub import {
-    # Set warnings and strict for the caller.
-    warnings->import(qw(FATAL all));
-    strict->import();
-    
-    my $caller     = scalar caller(); # Caller's package
-    my $caller_pkg = $caller . "::"; # Caller's package with :: at the end
-    my %exports = (
-        extends => \&extends,
-        has     => \&has,
-    );
+   # Set warnings and strict for the caller.
+   warnings->import(qw(FATAL all));
+   strict->import();
 
-    # We keep this so code doing 'no Mo;' actually does a cleanup.
-    $export_for{$caller} = [ keys %exports ];
+   my $caller     = scalar caller(); # Caller's package
+   my %exports = (
+      extends  => \&extends,
+      has      => \&has,
+      with     => \&with,
+      override => \&override,
+      confess  => \&Carp::confess,
+   );
 
-    # Export has, extends and sosuch.
-    for my $keyword ( keys %exports ) {
-      *{ _glob_for "${caller}::$keyword" } = $exports{$keyword}
-    }
+   # We keep this so code doing 'no Mo;' actually does a cleanup.
+   $export_for{$caller} = \%exports;
 
-    # Set up our caller's ISA, unless they already set it manually themselves,
-    # in which case we assume they know what they are doing.
-    # XXX weird syntax here because we want to call the classes' extends at
-    # least once, to avoid warnings.
-    if ( !@{ *{ _glob_for "${caller}::ISA" }{ARRAY} || [] } ) {
+   # Export has, extends and sosuch.
+   for my $keyword ( keys %exports ) {
+      _install_coderef "${caller}::$keyword" => $exports{$keyword};
+   }
+
+   # Set up our caller's ISA, unless they already set it manually themselves,
+   # in which case we assume they know what they are doing.
+   # XXX weird syntax here because we want to call the classes' extends at
+   # least once, to avoid warnings.
+   if ( !@{ *{ _glob_for "${caller}::ISA" }{ARRAY} || [] } ) {
       @_ = "Lmo::Object";
       goto *{ _glob_for "${caller}::extends" }{CODE};
-    }
-};
+   }
+}
 
 sub extends {
    my $caller = scalar caller();
@@ -102,6 +87,27 @@ sub _load_module {
    $file .= '.pm';
    { local $@; eval { require "$file" } } # or warn $@;
    return;
+}
+
+sub with {
+   my $package = scalar caller();
+   require Role::Tiny;
+   for my $role ( @_ ) {
+      _load_module($role);
+      _role_attribute_metadata($package, $role);
+   }
+   Role::Tiny->apply_roles_to_package($package, @_);
+}
+
+sub _role_attribute_metadata {
+   my ($package, $role) = @_;
+
+   my $package_meta = Lmo::Meta->metadata_for($package);
+   my $role_meta    = Lmo::Meta->metadata_for($role);
+
+   # The role metadata always comes first, since it shouldn't redefine
+   # metadata defined in the class itself.
+   %$package_meta = (%$role_meta, %$package_meta);
 }
 
 sub has {
@@ -199,20 +205,20 @@ sub has {
       }
 
       # Actually put the attribute's accessor in the class
-      *{ _glob_for "${caller}::$attribute" } = $method;
+      _install_coderef "${caller}::$attribute" => $method;
 
       if ( $args{required} ) {
          $class_metadata->{$attribute}{required} = 1;
       }
 
       if ($args{clearer}) {
-         *{ _glob_for "${caller}::$args{clearer}" }
-            = sub { delete shift->{$attribute} }
+         _install_coderef "${caller}::$args{clearer}"
+            => sub { delete shift->{$attribute} }
       }
 
       if ($args{predicate}) {
-         *{ _glob_for "${caller}::$args{predicate}" }
-            = sub { exists shift->{$attribute} }
+         _install_coderef "${caller}::$args{predicate}"
+            => sub { exists shift->{$attribute} }
       }
 
       if ($args{handles}) {
@@ -249,7 +255,7 @@ sub _has_handles {
             map   { $_, $_     }
             grep  { $_ =~ $handles }
             grep  { !exists $Lmo::Object::{$_} && $target_class->can($_) }
-            grep  { $_ ne 'has' && $_ ne 'extends' }
+            grep  { !$export_for{$target_class}->{$_} }
             keys %{ _stash_for $target_class }
          };
    }
@@ -308,9 +314,18 @@ sub _set_inherited_metadata {
 
 sub unimport {
    my $caller = scalar caller();
-   my $stash  = _stash_for( $caller );
+   my $target = caller;
+  _unimport_coderefs($target, keys %{$export_for{$caller}});
+}
 
-   delete $stash->{$_} for @{$export_for{$caller}};
+sub Dumper {
+   require Data::Dumper;
+   local $Data::Dumper::Indent    = 0;
+   local $Data::Dumper::Sortkeys  = 0;
+   local $Data::Dumper::Quotekeys = 0;
+   local $Data::Dumper::Terse     = 1;
+
+   Data::Dumper::Dumper(@_)
 }
 
 BEGIN {
@@ -347,8 +362,18 @@ BEGIN {
    }
 }
 
-1;
+sub override {
+   my ($methods, $code) = @_;
+   my $caller          = scalar caller;
+
+   for my $method ( ref($methods) ? @$methods : $methods ) {
+      my $full_method     = "${caller}::${method}";
+      *{_glob_for $full_method} = $code;
+   }
 }
+
+}
+1;
 # ###########################################################################
 # End Lmo package
 # ###########################################################################

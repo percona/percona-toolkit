@@ -47,11 +47,11 @@ is( "$fh", '*main::STDIN', 'Got STDIN for "-"' );
 # #############################################################################
 # Real filenames.
 # #############################################################################
-$next_fh = $fi->get_file_itr("$sample/memcached/memc_tcpdump009.txt", "$sample/empty");
+$next_fh = $fi->get_file_itr("$sample/slowlogs/slow002.txt", "$sample/empty");
 ( $fh, $name, $size ) = $next_fh->();
 is( ref $fh, 'GLOB', 'Open filehandle' );
-is( $name, "$sample/memcached/memc_tcpdump009.txt", "Got filename for $name");
-is( $size, 587, "Got size for $name");
+is( $name, "$sample/slowlogs/slow002.txt", "Got filename for $name");
+is( $size, 3841, "Got size for $name");
 ( $fh, $name, $size ) = $next_fh->();
 is( $name, "$sample/empty", "Got filename for $name");
 is( $size, 0, "Got size for $name");

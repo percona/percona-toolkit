@@ -1980,7 +1980,7 @@ my %synop  = $o->_parse_synopsis();
 is_deeply(
    \%synop,
    {
-      usage       => "pt-archiver [OPTION...] --source DSN --where WHERE",
+      usage       => "pt-archiver [OPTIONS] --source DSN --where WHERE",
       description => "pt-archiver nibbles records from a MySQL table.  The --source and --dest arguments use DSN syntax; if COPY is yes, --dest defaults to the key's value from --source.",
    },
    "_parse_synopsis() gets usage and description"

@@ -1,0 +1,3 @@
+use `test`;
+SELECT city, city FROM t LIMIT 1
+##

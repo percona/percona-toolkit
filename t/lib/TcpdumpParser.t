@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 7;
+use Test::More;
 
 use TcpdumpParser;
 use PerconaTest;
@@ -150,40 +150,6 @@ is(
 );
 
 # #############################################################################
-# Issue 544: memcached parse error: Use of uninitialized value in pattern match 
-# #############################################################################
-
-# This issue is caused by having extra info in the tcpdump output.
-test_packet_parser(
-   parser => $p,
-   file   => "t/lib/samples/memcached/memc_tcpdump013.txt",
-   desc   => 'verbose tcpdump output with ascii dump',
-   result =>
-   [
-      {  ts          => '2009-08-03 19:56:37.683157',
-         ack         => '1391934401',
-         seq         => '1393769400',
-         src_host    => '75.126.27.210',
-         src_port    => '42819',
-         dst_host    => '75.126.27.210',
-         dst_port    => '11211',
-         complete    => 1,
-         pos_in_log  => 0,
-         ip_hlen     => 5,
-         tcp_hlen    => 5,
-         dgram_len   => 66,
-         data_len    => 26,
-         syn         => 0,
-         fin         => 0,
-         rst         => 0,
-         data        => join('', qw(
-            6765 7420 323a 6f70 7469 6f6e 733a 616c 6c6f 7074 696f 6e73 0d0a
-         )),
-      },
-   ],
-);
-
-# #############################################################################
 # Issue 564: mk-query-digest --type tcpdump|memcached crashes on empty input
 # #############################################################################
 test_packet_parser(
@@ -242,3 +208,4 @@ like(
    '_d() works'
 );
 
+done_testing;

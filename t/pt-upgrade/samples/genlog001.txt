@@ -1,0 +1,7 @@
+051007 21:55:24	     42 Connect     root@localhost on db1
+		                 42 Query       SELECT * FROM test.t WHERE id > 5
+		                 42 Quit
+061226 15:42:36	     11 Connect     root@localhost on  
+		                 11 Init DB     test
+		                 11 Query       INSERT INTO t VALUES (null, 'zzz')
+061226 16:44:48	     11 Quit       

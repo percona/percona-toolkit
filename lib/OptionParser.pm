@@ -18,45 +18,6 @@
 # OptionParser package
 # ###########################################################################
 {
-# Package: OptionParser
-# OptionParser parses command line options from a tool's POD.  By default
-# it parses a description and usage from the POD's SYNOPSIS section and
-# command line options from the OPTIONS section.
-#
-# The SYNOPSIS section should look like,
-# (start code)
-#   =head1 SYNOPSIS
-#
-#   Usage: mk-archiver [OPTION...] --source DSN --where WHERE
-#
-#   mk-archiver nibbles records from a MySQL table.  The --source and --dest
-#   arguments use DSN syntax; if COPY is yes, --dest defaults to the key's value
-#   from --source.
-#
-#   Examples:
-#   ...
-# (end code)
-# The key, required parts are the "Usage:" line and the following description
-# paragraph.
-#
-# The OPTIONS section shoud look like,
-# (start code)
-#   =head1 OPTIONS
-#
-#   Optional rules, one per line.
-#
-#   =over
-#
-#   =item --analyze
-#
-#   type: string
-#
-#   Run ANALYZE TABLE afterwards on L<"--source"> and/or L<"--dest">.
-#   ect.
-# (end code)
-# The option's full name is given as the "=item".  The next, optional para
-# is the option's attributes.  And the next, required para is the option's
-# description (the first period-terminated sentence).
 package OptionParser;
 
 use strict;
@@ -66,6 +27,7 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use List::Util qw(max);
 use Getopt::Long;
+use Data::Dumper;
 
 my $POD_link_re = '[LC]<"?([^">]+)"?>';
 
@@ -1317,6 +1279,45 @@ sub _parse_synopsis {
       usage       => $usage,
    );
 };
+
+sub set_vars {
+   my ($self, $file) = @_;
+   $file ||= $self->{file} || __FILE__;
+
+   my %user_vars;
+   my $user_vars = $self->has('set-vars') ? $self->get('set-vars') : undef;
+   if ( $user_vars ) {
+      foreach my $var_val ( @$user_vars ) {
+         my ($var, $val) = $var_val =~ m/([^\s=]+)=(\S+)/;
+         die "Invalid --set-vars value: $var_val\n" unless $var && $val;
+         $user_vars{$var} = {
+            val     => $val,
+            default => 0,
+         };
+      }
+   }
+
+   my %default_vars;
+   my $default_vars = $self->read_para_after($file, qr/MAGIC_set_vars/);
+   if ( $default_vars ) {
+      %default_vars = map {
+         my $var_val = $_;
+         my ($var, $val) = $var_val =~ m/([^\s=]+)=(\S+)/;
+         die "Invalid --set-vars value: $var_val\n" unless $var && $val;
+         $var => {
+            val     => $val,
+            default => 1,
+         };
+      } split("\n", $default_vars);
+   }
+
+   my %vars = (
+      %default_vars, # first the tool's defaults
+      %user_vars,    # then the user's which overwrite the defaults
+   );
+   PTDEBUG && _d('--set-vars:', Dumper(\%vars));
+   return \%vars;
+}
 
 sub _d {
    my ($package, undef, $line) = caller 0;

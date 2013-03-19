@@ -41,11 +41,13 @@ else
    ARCH="32"
 fi
 
+APP="${FORK:-"mysql"}"
+
 MYSQL_BIN_DIR="$HOME/mysql-bin"
 [ -d "$MYSQL_BIN_DIR" ] || mkdir "$MYSQL_BIN_DIR"
 
 find_mysql_base_dir() {
-   find "$MYSQL_BIN_DIR" -name "mysql-$1*" -type d | tail -n 1
+   find "$MYSQL_BIN_DIR" -name "$APP-$1*" -type d | tail -n 1
 }
 
 MYSQL_BASE_DIR="$(find_mysql_base_dir $MYSQL)"
@@ -59,14 +61,25 @@ fi
 if [ -z "$MYSQL_BASE_DIR" ]; then
    (
       cd $MYSQL_BIN_DIR
-      wget -q -O mysql.tar.gz http://hackmysql.com/barebones/mysql/$MYSQL/$ARCH
+      wget -q -O mysql.tar.gz http://hackmysql.com/barebones/$APP/$MYSQL/$ARCH \
+         || exit 1
 	   tar xvfz mysql.tar.gz
       rm mysql.tar.gz
    )
    MYSQL_BASE_DIR="$(find_mysql_base_dir $MYSQL)"
 fi
 
-if [ -z "$("$MYSQL_BASE_DIR/bin/mysqld" -V)" ]; then
+if [ $APP = "mysql" ]; then
+   mysqld_check="$("$MYSQL_BASE_DIR/bin/mysqld" -V)"
+elif [ $APP = "pxc" ]; then
+   ip="$(perl -MNet::Address::IP::Local -le 'print Net::Address::IP::Local->public')"
+   mysqld_check="$("$MYSQL_BASE_DIR/bin/mysqld" -V --bind-address $ip)"
+else
+   echo "Invalid FORK=$APP" >&2
+   exit 1
+fi
+
+if [ -z "$mysqld_check" ]; then
    echo "$MYSQL_BASE_DIR/bin/mysqld does not execute" >&2
    exit 1
 fi
@@ -95,7 +108,14 @@ rm ~/.my*            || true
 sandbox/test-env checkconfig || exit 1
 sandbox/test-env stop        || exit 1
 sandbox/test-env kill        || exit 1
-sandbox/test-env start       || exit 1
+if [ $APP = "mysql" ]; then
+   sandbox/test-env start || exit 1
+elif [ $APP = "pxc" ]; then
+   sandbox/test-env start cluster || exit 1
+else
+   echo "Invalid FORK=$app" >&2
+   exit 1
+fi
 
 #######################
 # Set debug env vars. #
@@ -122,8 +142,6 @@ EXIT_STATUS=$(($? | 0))
 #############
 # Clean up. #
 #############
-set +x
 sandbox/test-env stop
-set -x
 
 exit $EXIT_STATUS

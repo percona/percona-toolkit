@@ -1,0 +1,23 @@
+#!/bin/bash
+
+if [ ! -d "$HOME/mysql-bin" ]; then
+   echo "$HOME/mysql-bin does not exist." >&2
+   exit 1
+fi
+
+VER=$1
+if [ "$VER" ]; then
+   if [ "$VER" != "4.1" -a "$VER" != "5.0" -a "$VER" != "5.1" -a "$VER" != "5.5" -a "$VER" != "5.6" ]; then
+      echo "VERSION must be 4.1, 5.0, 5.1, 5.5, or 5.6.  Or, do not specify a version to select all available versions." >&2
+      exit 1
+   fi
+else
+   VER='';
+fi
+
+select choice in $(ls -d $HOME/mysql-bin/mysql-$VER* | sort -r); do
+   echo "export PERCONA_TOOLKIT_SANDBOX=$choice"
+   break
+done
+
+exit

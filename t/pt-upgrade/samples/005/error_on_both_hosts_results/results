@@ -1,0 +1,5 @@
+$results = {
+  error => 'DBD::mysql::st execute failed: Unknown column \'nonexistent_col\' in \'field list\' [for Statement "select nonexistent_col from test.t"]'
+};
+
+##

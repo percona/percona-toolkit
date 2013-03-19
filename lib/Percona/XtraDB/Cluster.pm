@@ -27,7 +27,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-use Mo;
+use Lmo;
 use Data::Dumper;
 
 sub get_cluster_name {

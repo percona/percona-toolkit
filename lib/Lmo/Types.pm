@@ -1,26 +1,3 @@
-# This program is copyright 2012-2013 Percona Inc.
-# Feedback and improvements are welcome.
-#
-# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
-# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
-# MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
-#
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
-# systems, you can issue `man perlgpl' or `man perlartistic' to read these
-# licenses.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
-# ###########################################################################
-# Lmo::Types package
-# ###########################################################################
-{
-# Package: Lmo::Types
-# Basic types for isa. If you want a new type, either add it here,
-# or give isa a coderef.
 package Lmo::Types;
 
 use strict;
@@ -28,6 +5,9 @@ use warnings qw( FATAL all );
 
 use Carp ();
 use Scalar::Util qw(looks_like_number blessed);
+
+# Basic types for isa. If you want a new type, either add it here,
+# or give isa a coderef.
 
 our %TYPES = (
    Bool   => sub { !$_[0] || (defined $_[0] && looks_like_number($_[0]) && $_[0] == 1) },
@@ -54,7 +34,7 @@ sub check_type_constaints {
    || Carp::confess(
         qq<Attribute ($attribute) does not pass the type constraint because: >
       . qq<Validation failed for '$check_name' with value >
-      . (defined $val ? Percona::Toolkit::Dumper($val) : 'undef') )
+      . (defined $val ? Lmo::Dumper($val) : 'undef') )
 }
 
 # Nested (or parametized) constraints look like this: ArrayRef[CONSTRAINT] or
@@ -116,7 +96,3 @@ sub _nested_constraints {
 }
 
 1;
-}
-# ###########################################################################
-# End Lmo::Types package
-# ###########################################################################
