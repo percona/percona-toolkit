@@ -234,21 +234,21 @@ $ua->{responses}->{get} = [
    # 2nd check, init with latest Config and Services
    {
       headers => { 'X-Percona-Resource-Type' => 'Config' },
-      content => as_hashref($config),
+      content => as_hashref($config, with_links => 1),
    },
    {
       headers => { 'X-Percona-Resource-Type' => 'Service' },
-      content => [ as_hashref($svc0) ],
+      content => [ as_hashref($svc0, with_links => 1) ],
    },
    # interval
    # 3rd check, same Config and Services so nothing to do
    {
       headers => { 'X-Percona-Resource-Type' => 'Config' },
-      content => as_hashref($config),
+      content => as_hashref($config, with_links => 1),
    },
    {
       headers => { 'X-Percona-Resource-Type' => 'Service' },
-      content => [ as_hashref($svc0) ],
+      content => [ as_hashref($svc0, with_links => 1) ],
    },
    # interval, oktorun=0
 ];
