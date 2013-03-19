@@ -4941,16 +4941,17 @@ sub run_service {
    my @output_files;
    my $final_exit_status = 0;
    my $spool_file        = "$spool_dir/" . $service->name;
-   my $runs              = $service->runs;
-   my $runno             = 0;
-   foreach my $run ( @$runs ) {
+   my $tasks             = $service->tasks;
+   my $taskno            = 0;
+   foreach my $task ( @$tasks ) {
+      PTDEBUG && _d("Task $taskno:", $task->name);
 
       # Set up the output file, i.e. where this run puts its results.
       # Runs can access each other's output files.  E.g. run0 may
-      # write to fileX, then subsequent runs can access that file
+      # write to fileX, then subsequent tasks can access that file
       # with the special var __RUN_N_OUTPUT__ where N=0.
       my $output_file;
-      my $output = $run->output;
+      my $output = $task->output || '';
       if ( $output eq 'spool' ) {
          $output_file = $spool_file; 
          push @output_files, $spool_file;
@@ -4962,19 +4963,18 @@ sub run_service {
          $output_file = $file;
          push @output_files, $file;
       }
-      elsif ( $output eq 'none' ) {
+      else {
          $output_file = '/dev/null';
          push @output_files, undef;
       }
-      else {
-         die "Invalid output: $output\n";
-      }
+      PTDEBUG && _d("Task $taskno output:", Dumper(\@output_files));
 
       # Create the full command line to execute, replacing any
       # special vars like __RUN_N_OUTPUT__, __TMPDIR__, etc.
+      # TODO: handle query tasks
       my $cmd = join(' ',
-         $run->program,
-         $run->options,
+         $task->program,
+         $task->options,
          '>',
          $output_file,
       );
@@ -4983,15 +4983,15 @@ sub run_service {
          service      => $service,
          output_files => \@output_files,
       );
-      _info("Run $runno: $cmd");
+      _info("Task $taskno command: $cmd");
 
       # Execute this run.
       system($cmd);
       my $exit_status = $CHILD_ERROR >> 8;
-      _info("Run $runno: exit $exit_status");
+      _info("Run $taskno: exit $exit_status");
 
       $final_exit_status |= $exit_status;
-      $runno++;
+      $taskno++;
    }
 
    # Remove temp output files.

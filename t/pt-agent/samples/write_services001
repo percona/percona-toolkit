@@ -4,13 +4,14 @@
    },
    "name" : "query-monitor",
    "run_schedule" : "1 * * * *",
-   "runs" : [
+   "spool_schedule" : "2 * * * *",
+   "tasks" : [
       {
+         "name" : "query-history",
          "number" : "0",
          "options" : "--report-format profile slow008.txt",
          "output" : "spool",
          "program" : "pt-query-digest"
       }
-   ],
-   "spool_schedule" : "2 * * * *"
+   ]
 }
