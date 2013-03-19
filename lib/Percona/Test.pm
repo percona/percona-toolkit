@@ -150,6 +150,12 @@ sub output {
    die "I need a code argument" unless $code;
    my ($file, $stderr, $die, $trf) = @args{qw(file stderr die trf)};
 
+   if ( $args{debug} ) {
+      my $retval = eval { $code->() };
+      warn $EVAL_ERROR if $EVAL_ERROR;
+      return $retval;
+   }
+
    my $output = '';
    {
       if ( $file ) { 
