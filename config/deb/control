@@ -23,6 +23,6 @@ Description: Advanced MySQL and system command-line tools
  They are also fully self-contained, so installation is quick and easy and
  no libraries are installed. 
  .
- Percona Toolkit is developed and supported by Percona Inc.  For more
+ Percona Toolkit is developed and supported by Percona.  For more
  information and other free, open-source software developed by Percona,
  visit http://www.percona.com/software/.

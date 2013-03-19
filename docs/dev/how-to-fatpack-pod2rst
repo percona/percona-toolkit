@@ -1,0 +1,21 @@
+$ cpanm App::FatPacker
+$ mkdir /tmp/pod2rst
+$ cp util/pod2rst-fixed /tmp/pod2rst/
+$ cd /tmp/pod2rst
+$ mkdir lib
+$ fatpack trace pod2rst-fixed 
+$ fatpack packlists-for `cat fatpacker.trace` >packlists
+$ fatpack tree `cat packlists`
+$ (echo "#!/usr/bin/env perl"; fatpack file; cat pod2rst-fixed) > pod2rst-fixed.packed
+$ cp pod2rst-fixed.packed ~/percona-toolkit/util/
+$ cd ~/
+$ rm -rf /tmp/pod2rst
+
+
+Notes:
+1. Don't do this from the root of the bzr repo. fatpack tries to be clever
+   and inlines everything under lib/
+2. mkdir lib/ is to get around a bug(?) in fatpack
+3. these two lines are safe to ignore:
+File /tmp/pod2rst/fatlib/darwin-thread-multi-2level/auto/HTML/Parser/Parser.bs isn't a .pm file - can't pack this and if you hoped we were going to things may not be what you expected later
+File /tmp/pod2rst/fatlib/darwin-thread-multi-2level/auto/HTML/Parser/Parser.bundle isn't a .pm file - can't pack this and if you hoped we were going to things may not be what you expected later
