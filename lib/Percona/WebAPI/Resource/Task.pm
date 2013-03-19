@@ -37,7 +37,7 @@ has 'number' => (
 has 'program' => (
    is       => 'ro',
    isa      => 'Maybe[Str]',
-   required => 1,
+   required => 0,
 );
 
 has 'options' => (
@@ -55,7 +55,7 @@ has 'query' => (
 has 'output' => (
    is       => 'ro',
    isa      => 'Maybe[Str]',
-   required => 1,
+   required => 0,
 );
 
 sub TO_JSON { return { %{ shift() } }; }
