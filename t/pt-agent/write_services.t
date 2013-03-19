@@ -72,11 +72,14 @@ my $run0 = Percona::WebAPI::Resource::Task->new(
 );
 
 my $svc0 = Percona::WebAPI::Resource::Service->new(
-   name           => 'query-monitor',
+   name           => 'query-history',
    run_schedule   => '1 * * * *',
    spool_schedule => '2 * * * *',
    tasks          => [ $run0 ],
-   links          => { send_data => '/query-monitor' },
+   links          => {
+      self => '/query-history',
+      data => '/query-history/data',
+   },
 );
 
 # Key thing here is that the links are written because

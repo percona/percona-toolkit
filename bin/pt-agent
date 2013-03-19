@@ -14,6 +14,7 @@ use warnings FATAL => 'all';
 BEGIN {
    $INC{$_} = __FILE__ for map { (my $pkg = "$_.pm") =~ s!::!/!g; $pkg } (qw(
       Percona::Toolkit
+      Lmo::Utils
       Lmo::Meta
       Lmo::Object
       Lmo::Types
@@ -103,7 +104,13 @@ sub _d {
 
 # ###########################################################################
 # Lmo::Utils package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Lmo/Utils.pm
+#   t/lib/Lmo/Utils.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package Lmo::Utils;
 
 use strict;
@@ -122,17 +129,11 @@ BEGIN {
 }
 
 {
-   # Gets the glob from a given string.
    no strict 'refs';
    sub _glob_for {
       return \*{shift()}
    }
 
-   # Gets the stash from a given string.
-   # A stash is a symbol table hash; rough explanation on
-   # http://perldoc.perl.org/perlguts.html#Stashes-and-Globs
-   # But the gist of it is that we can use a hash-like thing to
-   # refer to a class and modify it.
    sub _stash_for {
       return \%{ shift() . "::" };
    }
@@ -156,6 +157,7 @@ sub _unimport_coderefs {
 }
 
 1;
+}
 # ###########################################################################
 # End Lmo::Utils package
 # ###########################################################################
@@ -170,15 +172,14 @@ sub _unimport_coderefs {
 # ###########################################################################
 {
 package Lmo::Meta;
-
 use strict;
-use warnings FATAL => 'all';
+use warnings qw( FATAL all );
 
 my %metadata_for;
 
 sub new {
-   shift;
-   return Lmo::Meta::Class->new(@_);
+   my $class = shift;
+   return bless { @_ }, $class
 }
 
 sub metadata_for {
@@ -188,37 +189,28 @@ sub metadata_for {
    return $metadata_for{$class} ||= {};
 }
 
-{
-   package Lmo::Meta::Class;
+sub class { shift->{class} }
 
-   sub new {
-      my $class = shift;
-      return bless { @_ }, $class
-   }
+sub attributes {
+   my $self = shift;
+   return keys %{$self->metadata_for($self->class)}
+}
 
-   sub class { shift->{class} }
+sub attributes_for_new {
+   my $self = shift;
+   my @attributes;
 
-   sub attributes {
-      my $self = shift;
-      return keys %{Lmo::Meta->metadata_for($self->class)}
-   }
-
-   sub attributes_for_new {
-      my $self = shift;
-      my @attributes;
-
-      my $class_metadata = Lmo::Meta->metadata_for($self->class);
-      while ( my ($attr, $meta) = each %$class_metadata ) {
-         if ( exists $meta->{init_arg} ) {
-            push @attributes, $meta->{init_arg}
-                  if defined $meta->{init_arg};
-         }
-         else {
-            push @attributes, $attr;
-         }
+   my $class_metadata = $self->metadata_for($self->class);
+   while ( my ($attr, $meta) = each %$class_metadata ) {
+      if ( exists $meta->{init_arg} ) {
+         push @attributes, $meta->{init_arg}
+               if defined $meta->{init_arg};
       }
-      return @attributes;
+      else {
+         push @attributes, $attr;
+      }
    }
+   return @attributes;
 }
 
 1;
@@ -244,16 +236,8 @@ use warnings qw( FATAL all );
 use Carp ();
 use Scalar::Util qw(blessed);
 
-eval {
-   require Lmo::Meta;
-};
-
-{
-   no strict 'refs';
-   sub _glob_for {
-      return \*{shift()}
-   }
-}
+use Lmo::Meta;
+use Lmo::Utils qw(_glob_for);
 
 sub new {
    my $class = shift;
@@ -321,7 +305,7 @@ sub BUILDARGS {
 
 sub meta {
    my $class = shift;
-   $class = Scalar::Util::blessed($class) || $class;
+   $class    = Scalar::Util::blessed($class) || $class;
    return Lmo::Meta->new(class => $class);
 }
 
@@ -348,6 +332,7 @@ use warnings qw( FATAL all );
 use Carp ();
 use Scalar::Util qw(looks_like_number blessed);
 
+
 our %TYPES = (
    Bool   => sub { !$_[0] || (defined $_[0] && looks_like_number($_[0]) && $_[0] == 1) },
    Num    => sub { defined $_[0] && looks_like_number($_[0]) },
@@ -373,7 +358,7 @@ sub check_type_constaints {
    || Carp::confess(
         qq<Attribute ($attribute) does not pass the type constraint because: >
       . qq<Validation failed for '$check_name' with value >
-      . (defined $val ? Percona::Toolkit::Dumper($val) : 'undef') )
+      . (defined $val ? Lmo::Dumper($val) : 'undef') )
 }
 
 sub _nested_constraints {
@@ -440,56 +425,49 @@ sub _nested_constraints {
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 {
+BEGIN {
+$INC{"Lmo.pm"} = __FILE__;
 package Lmo;
+our $VERSION = '0.30_Percona'; # Forked from 0.30 of Mo.
 
-our $VERSION = '0.01'; 
 
 use strict;
 use warnings qw( FATAL all );
 
 use Carp ();
-use Scalar::Util qw(blessed);
+use Scalar::Util qw(looks_like_number blessed);
 
-eval {
-   require Lmo::Meta;
-   require Lmo::Object;
-   require Lmo::Types;
-};
+use Lmo::Meta;
+use Lmo::Object;
+use Lmo::Types;
 
-{
-   no strict 'refs';
-   sub _glob_for {
-      return \*{shift()}
-   }
-
-   sub _stash_for {
-      return \%{ shift() . "::" };
-   }
-}
+use Lmo::Utils;
 
 my %export_for;
 sub import {
-    warnings->import(qw(FATAL all));
-    strict->import();
-    
-    my $caller     = scalar caller(); # Caller's package
-    my $caller_pkg = $caller . "::"; # Caller's package with :: at the end
-    my %exports = (
-        extends => \&extends,
-        has     => \&has,
-    );
+   warnings->import(qw(FATAL all));
+   strict->import();
 
-    $export_for{$caller} = [ keys %exports ];
+   my $caller     = scalar caller(); # Caller's package
+   my %exports = (
+      extends  => \&extends,
+      has      => \&has,
+      with     => \&with,
+      override => \&override,
+      confess  => \&Carp::confess,
+   );
 
-    for my $keyword ( keys %exports ) {
-      *{ _glob_for "${caller}::$keyword" } = $exports{$keyword}
-    }
+   $export_for{$caller} = \%exports;
 
-    if ( !@{ *{ _glob_for "${caller}::ISA" }{ARRAY} || [] } ) {
+   for my $keyword ( keys %exports ) {
+      _install_coderef "${caller}::$keyword" => $exports{$keyword};
+   }
+
+   if ( !@{ *{ _glob_for "${caller}::ISA" }{ARRAY} || [] } ) {
       @_ = "Lmo::Object";
       goto *{ _glob_for "${caller}::extends" }{CODE};
-    }
-};
+   }
+}
 
 sub extends {
    my $caller = scalar caller();
@@ -507,6 +485,25 @@ sub _load_module {
    $file .= '.pm';
    { local $@; eval { require "$file" } } # or warn $@;
    return;
+}
+
+sub with {
+   my $package = scalar caller();
+   require Role::Tiny;
+   for my $role ( @_ ) {
+      _load_module($role);
+      _role_attribute_metadata($package, $role);
+   }
+   Role::Tiny->apply_roles_to_package($package, @_);
+}
+
+sub _role_attribute_metadata {
+   my ($package, $role) = @_;
+
+   my $package_meta = Lmo::Meta->metadata_for($package);
+   my $role_meta    = Lmo::Meta->metadata_for($role);
+
+   %$package_meta = (%$role_meta, %$package_meta);
 }
 
 sub has {
@@ -597,20 +594,20 @@ sub has {
          }
       }
 
-      *{ _glob_for "${caller}::$attribute" } = $method;
+      _install_coderef "${caller}::$attribute" => $method;
 
       if ( $args{required} ) {
          $class_metadata->{$attribute}{required} = 1;
       }
 
       if ($args{clearer}) {
-         *{ _glob_for "${caller}::$args{clearer}" }
-            = sub { delete shift->{$attribute} }
+         _install_coderef "${caller}::$args{clearer}"
+            => sub { delete shift->{$attribute} }
       }
 
       if ($args{predicate}) {
-         *{ _glob_for "${caller}::$args{predicate}" }
-            = sub { exists shift->{$attribute} }
+         _install_coderef "${caller}::$args{predicate}"
+            => sub { exists shift->{$attribute} }
       }
 
       if ($args{handles}) {
@@ -643,7 +640,7 @@ sub _has_handles {
             map   { $_, $_     }
             grep  { $_ =~ $handles }
             grep  { !exists $Lmo::Object::{$_} && $target_class->can($_) }
-            grep  { $_ ne 'has' && $_ ne 'extends' }
+            grep  { !$export_for{$target_class}->{$_} }
             keys %{ _stash_for $target_class }
          };
    }
@@ -693,9 +690,18 @@ sub _set_inherited_metadata {
 
 sub unimport {
    my $caller = scalar caller();
-   my $stash  = _stash_for( $caller );
+   my $target = caller;
+  _unimport_coderefs($target, keys %{$export_for{$caller}});
+}
 
-   delete $stash->{$_} for @{$export_for{$caller}};
+sub Dumper {
+   require Data::Dumper;
+   local $Data::Dumper::Indent    = 0;
+   local $Data::Dumper::Sortkeys  = 0;
+   local $Data::Dumper::Quotekeys = 0;
+   local $Data::Dumper::Terse     = 1;
+
+   Data::Dumper::Dumper(@_)
 }
 
 BEGIN {
@@ -728,6 +734,17 @@ BEGIN {
    }
 }
 
+sub override {
+   my ($methods, $code) = @_;
+   my $caller          = scalar caller;
+
+   for my $method ( ref($methods) ? @$methods : $methods ) {
+      my $full_method     = "${caller}::${method}";
+      *{_glob_for $full_method} = $code;
+   }
+}
+
+}
 1;
 }
 # ###########################################################################
@@ -1225,7 +1242,7 @@ package Percona::WebAPI::Resource::Agent;
 use Lmo;
 
 has 'uuid' => (
-   is       => 'r0',
+   is       => 'ro',
    isa      => 'Str',
    required => 0,
 );
@@ -1478,40 +1495,326 @@ sub resource_diff {
 {
 package VersionCheck;
 
+
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-use File::Basename ();
-use Data::Dumper ();
+use Data::Dumper;
+local $Data::Dumper::Indent    = 1;
+local $Data::Dumper::Sortkeys  = 1;
+local $Data::Dumper::Quotekeys = 0;
 
-sub Dumper {
-   local $Data::Dumper::Indent    = 1;
-   local $Data::Dumper::Sortkeys  = 1;
-   local $Data::Dumper::Quotekeys = 0;
+use Digest::MD5 qw(md5_hex);
+use Sys::Hostname qw(hostname);
+use File::Basename qw();
+use File::Spec;
+use FindBin qw();
 
-   Data::Dumper::Dumper(@_);
+eval {
+   require Percona::Toolkit;
+   require HTTPMicro;
+};
+
+{
+   my $file    = 'percona-version-check';
+   my $home    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
+   my @vc_dirs = (
+      '/etc/percona',
+      '/etc/percona-toolkit',
+      '/tmp',
+      "$home",
+   );
+
+   sub version_check_file {
+      foreach my $dir ( @vc_dirs ) {
+         if ( -d $dir && -w $dir ) {
+            PTDEBUG && _d('Version check file', $file, 'in', $dir);
+            return $dir . '/' . $file;
+         }
+      }
+      PTDEBUG && _d('Version check file', $file, 'in', $ENV{PWD});
+      return $file;  # in the CWD
+   } 
 }
 
-sub new {
-   my ($class, %args) = @_;
-   my $self = {
-      valid_types => qr/
-         ^(?:
-             os_version
-            |perl_version
-            |perl_module_version
-            |mysql_variable
-            |bin_version
-         )$/x,
+sub version_check_time_limit {
+   return 60 * 60 * 24;  # one day
+}
+
+
+sub version_check {
+   my (%args) = @_;
+
+   my $instances = $args{instances} || [];
+   my $instances_to_check;
+
+   PTDEBUG && _d('FindBin::Bin:', $FindBin::Bin);
+   if ( !$args{force} ) {
+      if ( $FindBin::Bin
+           && (-d "$FindBin::Bin/../.bzr" || -d "$FindBin::Bin/../../.bzr") ) {
+         PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
+         return;
+      }
+   }
+
+   eval {
+      foreach my $instance ( @$instances ) {
+         my ($name, $id) = get_instance_id($instance);
+         $instance->{name} = $name;
+         $instance->{id}   = $id;
+      }
+
+      push @$instances, { name => 'system', id => 0 };
+
+      $instances_to_check = get_instances_to_check(
+         instances => $instances,
+         vc_file   => $args{vc_file},  # testing
+         now       => $args{now},      # testing
+      );
+      PTDEBUG && _d(scalar @$instances_to_check, 'instances to check');
+      return unless @$instances_to_check;
+
+      my $protocol = 'https';  # optimistic, but...
+      eval { require IO::Socket::SSL; };
+      if ( $EVAL_ERROR ) {
+         PTDEBUG && _d($EVAL_ERROR);
+         $protocol = 'http';
+      }
+      PTDEBUG && _d('Using', $protocol);
+
+      my $advice = pingback(
+         instances => $instances_to_check,
+         protocol  => $protocol,
+         url       => $args{url}                       # testing
+                   || $ENV{PERCONA_VERSION_CHECK_URL}  # testing
+                   || "$protocol://v.percona.com",
+      );
+      if ( $advice ) {
+         PTDEBUG && _d('Advice:', Dumper($advice));
+         if ( scalar @$advice > 1) {
+            print "\n# " . scalar @$advice . " software updates are "
+               . "available:\n";
+         }
+         else {
+            print "\n# A software update is available:\n";
+         }
+         print join("\n", map { "#   * $_" } @$advice), "\n\n";
+      }
    };
-   return bless $self, $class;
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d('Version check failed:', $EVAL_ERROR);
+   }
+
+   if ( @$instances_to_check ) {
+      eval {
+         update_check_times(
+            instances => $instances_to_check,
+            vc_file   => $args{vc_file},  # testing
+            now       => $args{now},      # testing
+         );
+      };
+      if ( $EVAL_ERROR ) {
+         PTDEBUG && _d('Error updating version check file:', $EVAL_ERROR);
+      }
+   }
+
+   if ( $ENV{PTDEBUG_VERSION_CHECK} ) {
+      warn "Exiting because the PTDEBUG_VERSION_CHECK "
+         . "environment variable is defined.\n";
+      exit 255;
+   }
+
+   return;
+}
+
+sub get_instances_to_check {
+   my (%args) = @_;
+
+   my $instances = $args{instances};
+   my $now       = $args{now}     || int(time);
+   my $vc_file   = $args{vc_file} || version_check_file();
+
+   if ( !-f $vc_file ) {
+      PTDEBUG && _d('Version check file', $vc_file, 'does not exist;',
+         'version checking all instances');
+      return $instances;
+   }
+
+   open my $fh, '<', $vc_file or die "Cannot open $vc_file: $OS_ERROR";
+   chomp(my $file_contents = do { local $/ = undef; <$fh> });
+   PTDEBUG && _d('Version check file', $vc_file, 'contents:', $file_contents);
+   close $fh;
+   my %last_check_time_for = $file_contents =~ /^([^,]+),(.+)$/mg;
+
+   my $check_time_limit = version_check_time_limit();
+   my @instances_to_check;
+   foreach my $instance ( @$instances ) {
+      my $last_check_time = $last_check_time_for{ $instance->{id} };
+      PTDEBUG && _d('Intsance', $instance->{id}, 'last checked',
+         $last_check_time, 'now', $now, 'diff', $now - ($last_check_time || 0),
+         'hours until next check',
+         sprintf '%.2f',
+            ($check_time_limit - ($now - ($last_check_time || 0))) / 3600);
+      if ( !defined $last_check_time
+           || ($now - $last_check_time) >= $check_time_limit ) {
+         PTDEBUG && _d('Time to check', Dumper($instance));
+         push @instances_to_check, $instance;
+      }
+   }
+
+   return \@instances_to_check;
+}
+
+sub update_check_times {
+   my (%args) = @_;
+
+   my $instances = $args{instances};
+   my $now       = $args{now}     || int(time);
+   my $vc_file   = $args{vc_file} || version_check_file();
+   PTDEBUG && _d('Updating last check time:', $now);
+
+   open my $fh, '>', $vc_file or die "Cannot write to $vc_file: $OS_ERROR";
+   foreach my $instance ( sort { $a->{id} cmp $b->{id} } @$instances ) {
+      PTDEBUG && _d('Updated:', Dumper($instance));
+      print { $fh } $instance->{id} . ',' . $now . "\n";
+   }
+   close $fh;
+
+   return;
+}
+
+sub get_instance_id {
+   my ($instance) = @_;
+
+   my $dbh = $instance->{dbh};
+   my $dsn = $instance->{dsn};
+
+   my $sql = q{SELECT CONCAT(@@hostname, @@port)};
+   PTDEBUG && _d($sql);
+   my ($name) = eval { $dbh->selectrow_array($sql) };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d($EVAL_ERROR);
+      $sql = q{SELECT @@hostname};
+      PTDEBUG && _d($sql);
+      ($name) = eval { $dbh->selectrow_array($sql) };
+      if ( $EVAL_ERROR ) {
+         PTDEBUG && _d($EVAL_ERROR);
+         $name = ($dsn->{h} || 'localhost') . ($dsn->{P} || 3306);
+      }
+      else {
+         $sql = q{SHOW VARIABLES LIKE 'port'};
+         PTDEBUG && _d($sql);
+         my (undef, $port) = eval { $dbh->selectrow_array($sql) };
+         PTDEBUG && _d('port:', $port);
+         $name .= $port || '';
+      }
+   }
+   my $id = md5_hex($name);
+
+   PTDEBUG && _d('MySQL instance:', $id, $name, $dsn);
+
+   return $name, $id;
+}
+
+
+sub pingback {
+   my (%args) = @_;
+   my @required_args = qw(url instances);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg arugment" unless $args{$arg};
+   }
+   my $url       = $args{url};
+   my $instances = $args{instances};
+
+   my $ua = $args{ua} || HTTPMicro->new( timeout => 3 );
+
+   my $response = $ua->request('GET', $url);
+   PTDEBUG && _d('Server response:', Dumper($response));
+   die "No response from GET $url"
+      if !$response;
+   die("GET on $url returned HTTP status $response->{status}; expected 200\n",
+       ($response->{content} || '')) if $response->{status} != 200;
+   die("GET on $url did not return any programs to check")
+      if !$response->{content};
+
+   my $items = parse_server_response(
+      response => $response->{content}
+   );
+   die "Failed to parse server requested programs: $response->{content}"
+      if !scalar keys %$items;
+      
+   my $versions = get_versions(
+      items     => $items,
+      instances => $instances,
+   );
+   die "Failed to get any program versions; should have at least gotten Perl"
+      if !scalar keys %$versions;
+
+   my $client_content = encode_client_response(
+      items      => $items,
+      versions   => $versions,
+      general_id => md5_hex( hostname() ),
+   );
+
+   my $client_response = {
+      headers => { "X-Percona-Toolkit-Tool" => File::Basename::basename($0) },
+      content => $client_content,
+   };
+   PTDEBUG && _d('Client response:', Dumper($client_response));
+
+   $response = $ua->request('POST', $url, $client_response);
+   PTDEBUG && _d('Server suggestions:', Dumper($response));
+   die "No response from POST $url $client_response"
+      if !$response;
+   die "POST $url returned HTTP status $response->{status}; expected 200"
+      if $response->{status} != 200;
+
+   return unless $response->{content};
+
+   $items = parse_server_response(
+      response   => $response->{content},
+      split_vars => 0,
+   );
+   die "Failed to parse server suggestions: $response->{content}"
+      if !scalar keys %$items;
+   my @suggestions = map { $_->{vars} }
+                     sort { $a->{item} cmp $b->{item} }
+                     values %$items;
+
+   return \@suggestions;
+}
+
+sub encode_client_response {
+   my (%args) = @_;
+   my @required_args = qw(items versions general_id);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg arugment" unless $args{$arg};
+   }
+   my ($items, $versions, $general_id) = @args{@required_args};
+
+   my @lines;
+   foreach my $item ( sort keys %$items ) {
+      next unless exists $versions->{$item};
+      if ( ref($versions->{$item}) eq 'HASH' ) {
+         my $mysql_versions = $versions->{$item};
+         for my $id ( sort keys %$mysql_versions ) {
+            push @lines, join(';', $id, $item, $mysql_versions->{$id});
+         }
+      }
+      else {
+         push @lines, join(';', $general_id, $item, $versions->{$item});
+      }
+   }
+
+   my $client_response = join("\n", @lines) . "\n";
+   return $client_response;
 }
 
 sub parse_server_response {
-   my ($self, %args) = @_;
+   my (%args) = @_;
    my @required_args = qw(response);
    foreach my $arg ( @required_args ) {
       die "I need a $arg arugment" unless $args{$arg};
@@ -1535,8 +1838,26 @@ sub parse_server_response {
    return \%items;
 }
 
+my %sub_for_type = (
+   os_version          => \&get_os_version,
+   perl_version        => \&get_perl_version,
+   perl_module_version => \&get_perl_module_version,
+   mysql_variable      => \&get_mysql_variable,
+   bin_version         => \&get_bin_version,
+);
+
+sub valid_item {
+   my ($item) = @_;
+   return unless $item;
+   if ( !exists $sub_for_type{ $item->{type} } ) {
+      PTDEBUG && _d('Invalid type:', $item->{type});
+      return 0;
+   }
+   return 1;
+}
+
 sub get_versions {
-   my ($self, %args) = @_;
+   my (%args) = @_;
    my @required_args = qw(items);
    foreach my $arg ( @required_args ) {
       die "I need a $arg arugment" unless $args{$arg};
@@ -1545,11 +1866,9 @@ sub get_versions {
 
    my %versions;
    foreach my $item ( values %$items ) {
-      next unless $self->valid_item($item);
-
+      next unless valid_item($item);
       eval {
-         my $func    = 'get_' . $item->{type};
-         my $version = $self->$func(
+         my $version = $sub_for_type{ $item->{type} }->(
             item      => $item,
             instances => $args{instances},
          );
@@ -1566,21 +1885,8 @@ sub get_versions {
    return \%versions;
 }
 
-sub valid_item {
-   my ($self, $item) = @_;
-   return unless $item;
-
-   if ( ($item->{type} || '') !~ m/$self->{valid_types}/ ) {
-      PTDEBUG && _d('Invalid type:', $item->{type});
-      return;
-   }
-
-   return 1;
-}
 
 sub get_os_version {
-   my ($self) = @_;
-
    if ( $OSNAME eq 'MSWin32' ) {
       require Win32;
       return Win32::GetOSDisplayName();
@@ -1656,7 +1962,7 @@ sub get_os_version {
 }
 
 sub get_perl_version {
-   my ($self, %args) = @_;
+   my (%args) = @_;
    my $item = $args{item};
    return unless $item;
 
@@ -1666,47 +1972,40 @@ sub get_perl_version {
 }
 
 sub get_perl_module_version {
-   my ($self, %args) = @_;
+   my (%args) = @_;
    my $item = $args{item};
    return unless $item;
-   
-   my $var          = $item->{item} . '::VERSION';
-   my $version      = _get_scalar($var);
-   PTDEBUG && _d('Perl version for', $var, '=', "$version");
 
-   return $version ? "$version" : $version;
-}
-
-sub _get_scalar {
-   no strict;
-   return ${*{shift()}};
+   my $var     = '$' . $item->{item} . '::VERSION';
+   my $version = eval "use $item->{item}; $var;";
+   PTDEBUG && _d('Perl version for', $var, '=', $version);
+   return $version;
 }
 
 sub get_mysql_variable {
-   my $self = shift;
-   return $self->_get_from_mysql(
+   return get_from_mysql(
       show => 'VARIABLES',
       @_,
    );
 }
 
-sub _get_from_mysql {
-   my ($self, %args) = @_;
+sub get_from_mysql {
+   my (%args) = @_;
    my $show      = $args{show};
    my $item      = $args{item};
    my $instances = $args{instances};
    return unless $show && $item;
 
    if ( !$instances || !@$instances ) {
-      if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-         _d('Cannot check', $item, 'because there are no MySQL instances');
-      }
+      PTDEBUG && _d('Cannot check', $item,
+         'because there are no MySQL instances');
       return;
    }
 
    my @versions;
    my %version_for;
    foreach my $instance ( @$instances ) {
+      next unless $instance->{id};  # special system instance has id=0
       my $dbh = $instance->{dbh};
       local $dbh->{FetchHashKeyName} = 'NAME_lc';
       my $sql = qq/SHOW $show/;
@@ -1721,7 +2020,6 @@ sub _get_from_mysql {
             'on', $instance->{name});
          push @versions, $version;
       }
-
       $version_for{ $instance->{id} } = join(' ', @versions);
    }
 
@@ -1729,7 +2027,7 @@ sub _get_from_mysql {
 }
 
 sub get_bin_version {
-   my ($self, %args) = @_;
+   my (%args) = @_;
    my $item = $args{item};
    my $cmd  = $item->{item};
    return unless $cmd;
@@ -2028,7 +2326,7 @@ sub get_dbh {
 
       if ( my ($charset) = $cxn_string =~ m/charset=([\w]+)/ ) {
          $sql = qq{/*!40101 SET NAMES "$charset"*/};
-         PTDEBUG && _d($dbh, ':', $sql);
+         PTDEBUG && _d($dbh, $sql);
          eval { $dbh->do($sql) };
          if ( $EVAL_ERROR ) {
             die "Error setting NAMES to $charset: $EVAL_ERROR";
@@ -2043,13 +2341,8 @@ sub get_dbh {
          }
       }
 
-      if ( my $var = $self->prop('set-vars') ) {
-         $sql = "SET $var";
-         PTDEBUG && _d($dbh, ':', $sql);
-         eval { $dbh->do($sql) };
-         if ( $EVAL_ERROR ) {
-            die "Error setting $var: $EVAL_ERROR";
-         }
+      if ( my $vars = $self->prop('set-vars') ) {
+         $self->set_vars($dbh, $vars);
       }
 
       $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
@@ -2124,6 +2417,57 @@ sub copy {
    return \%new_dsn;
 }
 
+sub set_vars {
+   my ($self, $dbh, $vars) = @_;
+
+   return unless $vars;
+
+   foreach my $var ( sort keys %$vars ) {
+      my $val = $vars->{$var}->{val};
+
+      (my $quoted_var = $var) =~ s/_/\\_/;
+      my ($var_exists, $current_val);
+      eval {
+         ($var_exists, $current_val) = $dbh->selectrow_array(
+            "SHOW VARIABLES LIKE '$quoted_var'");
+      };
+      my $e = $EVAL_ERROR;
+      if ( $e ) {
+         PTDEBUG && _d($e);
+      }
+
+      if ( $vars->{$var}->{default} && !$var_exists ) {
+         PTDEBUG && _d('Not setting default var', $var,
+            'because it does not exist');
+         next;
+      }
+
+      if ( $current_val && $current_val eq $val ) {
+         PTDEBUG && _d('Not setting var', $var, 'because its value',
+            'is already', $val);
+         next;
+      }
+
+      my $sql = "SET SESSION $var=$val";
+      PTDEBUG && _d($dbh, $sql);
+      eval { $dbh->do($sql) };
+      if ( my $set_error = $EVAL_ERROR ) {
+         chomp($set_error);
+         $set_error =~ s/ at \S+ line \d+//;
+         my $msg = "Error setting $var: $set_error";
+         if ( $current_val ) {
+            $msg .= "  The current value for $var is $current_val.  "
+                  . "If the variable is read only (not dynamic), specify "
+                  . "--set-vars $var=$current_val to avoid this warning, "
+                  . "else manually set the variable and restart MySQL.";
+         }
+         warn $msg . "\n\n";
+      }
+   }
+
+   return; 
+}
+
 sub _d {
    my ($package, undef, $line) = caller 0;
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
@@ -2156,6 +2500,7 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use List::Util qw(max);
 use Getopt::Long;
+use Data::Dumper;
 
 my $POD_link_re = '[LC]<"?([^">]+)"?>';
 
@@ -3139,6 +3484,45 @@ sub _parse_synopsis {
    );
 };
 
+sub set_vars {
+   my ($self, $file) = @_;
+   $file ||= $self->{file} || __FILE__;
+
+   my %user_vars;
+   my $user_vars = $self->has('set-vars') ? $self->get('set-vars') : undef;
+   if ( $user_vars ) {
+      foreach my $var_val ( @$user_vars ) {
+         my ($var, $val) = $var_val =~ m/([^\s=]+)=(\S+)/;
+         die "Invalid --set-vars value: $var_val\n" unless $var && $val;
+         $user_vars{$var} = {
+            val     => $val,
+            default => 0,
+         };
+      }
+   }
+
+   my %default_vars;
+   my $default_vars = $self->read_para_after($file, qr/MAGIC_set_vars/);
+   if ( $default_vars ) {
+      %default_vars = map {
+         my $var_val = $_;
+         my ($var, $val) = $var_val =~ m/([^\s=]+)=(\S+)/;
+         die "Invalid --set-vars value: $var_val\n" unless $var && $val;
+         $var => {
+            val     => $val,
+            default => 1,
+         };
+      } split("\n", $default_vars);
+   }
+
+   my %vars = (
+      %default_vars, # first the tool's defaults
+      %user_vars,    # then the user's which overwrite the defaults
+   );
+   PTDEBUG && _d('--set-vars:', Dumper(\%vars));
+   return \%vars;
+}
+
 sub _d {
    my ($package, undef, $line) = caller 0;
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
@@ -3204,39 +3588,50 @@ sub new {
       $dsn = $dp->copy($prev_dsn, $dsn);
    }
 
+   my $dsn_name = $dp->as_string($dsn, [qw(h P S)])
+               || $dp->as_string($dsn, [qw(F)])
+               || '';
+
    my $self = {
-      dsn          => $dsn,
-      dbh          => $args{dbh},
-      dsn_name     => $dp->as_string($dsn, [qw(h P S)]),
-      hostname     => '',
-      set          => $args{set},
-      NAME_lc      => defined($args{NAME_lc}) ? $args{NAME_lc} : 1,
-      dbh_set      => 0,
-      OptionParser => $o,
-      DSNParser    => $dp,
+      dsn             => $dsn,
+      dbh             => $args{dbh},
+      dsn_name        => $dsn_name,
+      hostname        => '',
+      set             => $args{set},
+      NAME_lc         => defined($args{NAME_lc}) ? $args{NAME_lc} : 1,
+      dbh_set         => 0,
+      ask_pass        => $o->get('ask-pass'),
+      DSNParser       => $dp,
       is_cluster_node => undef,
+      parent          => $args{parent},
    };
 
    return bless $self, $class;
 }
 
 sub connect {
-   my ( $self ) = @_;
+   my ( $self, %opts ) = @_;
    my $dsn = $self->{dsn};
    my $dp  = $self->{DSNParser};
-   my $o   = $self->{OptionParser};
 
    my $dbh = $self->{dbh};
    if ( !$dbh || !$dbh->ping() ) {
-      if ( $o->get('ask-pass') && !$self->{asked_for_pass} ) {
+      if ( $self->{ask_pass} && !$self->{asked_for_pass} ) {
          $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
          $self->{asked_for_pass} = 1;
       }
-      $dbh = $dp->get_dbh($dp->get_cxn_params($dsn),  { AutoCommit => 1 });
+      $dbh = $dp->get_dbh(
+         $dp->get_cxn_params($dsn),
+         {
+            AutoCommit => 1,
+            %opts,
+         },
+      );
    }
-   PTDEBUG && _d($dbh, 'Connected dbh to', $self->{name});
 
-   return $self->set_dbh($dbh);
+   $dbh = $self->set_dbh($dbh);
+   PTDEBUG && _d($dbh, 'Connected dbh to', $self->{hostname},$self->{dsn_name});
+   return $dbh;
 }
 
 sub set_dbh {
@@ -3259,6 +3654,11 @@ sub set_dbh {
       $self->{hostname} = $hostname;
    }
 
+   if ( $self->{parent} ) {
+      PTDEBUG && _d($dbh, 'Setting InactiveDestroy=1 in parent');
+      $dbh->{InactiveDestroy} = 1;
+   }
+
    if ( my $set = $self->{set}) {
       $set->($dbh);
    }
@@ -3266,6 +3666,13 @@ sub set_dbh {
    $self->{dbh}     = $dbh;
    $self->{dbh_set} = 1;
    return $dbh;
+}
+
+sub lost_connection {
+   my ($self, $e) = @_;
+   return 0 unless $e;
+   return $e =~ m/MySQL server has gone away/
+       || $e =~ m/Lost connection to MySQL server/;
 }
 
 sub dbh {
@@ -3286,12 +3693,21 @@ sub name {
 
 sub DESTROY {
    my ($self) = @_;
-   if ( $self->{dbh}
-         && blessed($self->{dbh})
-         && $self->{dbh}->can("disconnect") ) {
-      PTDEBUG && _d('Disconnecting dbh', $self->{dbh}, $self->{name});
+
+   PTDEBUG && _d('Destroying cxn');
+
+   if ( $self->{parent} ) {
+      PTDEBUG && _d($self->{dbh}, 'Not disconnecting dbh in parent');
+   }
+   elsif ( $self->{dbh}
+           && blessed($self->{dbh})
+           && $self->{dbh}->can("disconnect") )
+   {
+      PTDEBUG && _d($self->{dbh}, 'Disconnecting dbh on', $self->{hostname},
+         $self->{dsn_name});
       $self->{dbh}->disconnect();
    }
+
    return;
 }
 
@@ -3324,6 +3740,11 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use Data::Dumper;
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Sortkeys  = 1;
+$Data::Dumper::Quotekeys = 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -3389,44 +3810,64 @@ sub join_quote {
 
 sub serialize_list {
    my ( $self, @args ) = @_;
+   PTDEBUG && _d('Serializing', Dumper(\@args));
    return unless @args;
 
-   return $args[0] if @args == 1 && !defined $args[0];
+   my @parts;
+   foreach my $arg  ( @args ) {
+      if ( defined $arg ) {
+         $arg =~ s/,/\\,/g;      # escape commas
+         $arg =~ s/\\N/\\\\N/g;  # escape literal \N
+         push @parts, $arg;
+      }
+      else {
+         push @parts, '\N';
+      }
+   }
 
-   die "Cannot serialize multiple values with undef/NULL"
-      if grep { !defined $_ } @args;
-
-   return join ',', map { quotemeta } @args;
+   my $string = join(',', @parts);
+   PTDEBUG && _d('Serialized: <', $string, '>');
+   return $string;
 }
 
 sub deserialize_list {
    my ( $self, $string ) = @_;
-   return $string unless defined $string;
-   my @escaped_parts = $string =~ /
-         \G             # Start of string, or end of previous match.
-         (              # Each of these is an element in the original list.
-            [^\\,]*     # Anything not a backslash or a comma
-            (?:         # When we get here, we found one of the above.
-               \\.      # A backslash followed by something so we can continue
-               [^\\,]*  # Same as above.
-            )*          # Repeat zero of more times.
-         )
-         ,              # Comma dividing elements
-      /sxgc;
+   PTDEBUG && _d('Deserializing <', $string, '>');
+   die "Cannot deserialize an undefined string" unless defined $string;
 
-   push @escaped_parts, pos($string) ? substr( $string, pos($string) ) : $string;
+   my @parts;
+   foreach my $arg ( split(/(?<!\\),/, $string) ) {
+      if ( $arg eq '\N' ) {
+         $arg = undef;
+      }
+      else {
+         $arg =~ s/\\,/,/g;
+         $arg =~ s/\\\\N/\\N/g;
+      }
+      push @parts, $arg;
+   }
 
-   my @unescaped_parts = map {
-      my $part = $_;
+   if ( !@parts ) {
+      my $n_empty_strings = $string =~ tr/,//;
+      $n_empty_strings++;
+      PTDEBUG && _d($n_empty_strings, 'empty strings');
+      map { push @parts, '' } 1..$n_empty_strings;
+   }
+   elsif ( $string =~ m/(?<!\\),$/ ) {
+      PTDEBUG && _d('Last value is an empty string');
+      push @parts, '';
+   }
 
-      my $char_class = utf8::is_utf8($part)  # If it's a UTF-8 string,
-                     ? qr/(?=\p{ASCII})\W/   # We only care about non-word
-                     : qr/(?=\p{ASCII})\W|[\x{80}-\x{FF}]/; # Otherwise,
-      $part =~ s/\\($char_class)/$1/g;
-      $part;
-   } @escaped_parts;
+   PTDEBUG && _d('Deserialized', Dumper(\@parts));
+   return @parts;
+}
 
-   return @unescaped_parts;
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
 1;
@@ -5094,7 +5535,7 @@ sub send_data {
    $service = decode_json(slurp($service_file));
    $service = Percona::WebAPI::Resource::Service->new(%$service);
 
-   # Iterate through service's spool dir and send the data file therein.
+   # Send data files in the service's spool dir.
    # TODO: if the service dir doesn't exist?
    opendir(my $service_dh, $service_dir)
       or die "Error opening $service_dir: $OS_ERROR";
@@ -5110,7 +5551,7 @@ sub send_data {
             client => $client,
             agent  => $agent,
             file   => $file,
-            link   => $service->links->{send_data},
+            link   => $service->links->{data},
             json   => $json,
          );
       };
@@ -5164,18 +5605,24 @@ sub send_file {
    _info("Sending $file ($file_size bytes) to $link");
 
    # Create a multi-part resource: first the Agent, so Percona knows
-   # from whom this data is coming, then the contents of the file as-is.
-   # We don't know or care about the file's contents, but Percona will.
+   # from whom this data is coming, then a special boundary value,
+   # then the contents of the file as-is.  We don't know or care
+   # about the file's contents, but Percona will.
    my $agent_json = as_json($agent, json => $json);
-   my $data       = slurp($file);
-   my $boundary   = '--Ym91bmRhcnk=';  # "boundary" in base64
+   chomp($agent_json);
+
+   my $boundary  = '--Ym91bmRhcnk=';  # "boundary" in base64
+
+   my $data = slurp($file);
+   $data =~ s/^\s+//;
+   $data =~ s/\s+$//;
+
+   # Put it all together:
    my $resource   = <<CONTENT;
 $agent_json
 $boundary
 $data
 CONTENT
-
-   chomp($resource);  # remove trailing newline
 
    $client->post(
       link      => $link,

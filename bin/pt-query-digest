@@ -7627,8 +7627,8 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 my $have_json = eval { require JSON };
 
-our $pretty_json = 0;
-our $sorted_json = 0;
+our $pretty_json = $ENV{PTTEST_PRETTY_JSON} ? 1 : 0;
+our $sorted_json = $ENV{PTTEST_PRETTY_JSON} ? 1 : 0;
 
 extends qw(QueryReportFormatter);
 

@@ -106,12 +106,13 @@ my $run0 = Percona::WebAPI::Resource::Task->new(
 );
 
 my $svc0 = Percona::WebAPI::Resource::Service->new(
-   name           => 'query-monitor',
+   name           => 'query-history',
    run_schedule   => '1 * * * *',
    spool_schedule => '2 * * * *',
    tasks          => [ $run0 ],
    links          => {
-      send_data => '/query-monitor',
+      self => '/query-history',
+      data => '/query-history/data',
    },
 );
 
@@ -189,35 +190,35 @@ is(
 );
 
 ok(
-   -f "$tmpdir/services/query-monitor",
-   "Created services/query-monitor"
+   -f "$tmpdir/services/query-history",
+   "Created services/query-history"
 ) or diag($output);
 
 chomp(my $n_files = `ls -1 $tmpdir/services| wc -l | awk '{print \$1}'`);
 is(
    $n_files,
    1,
-   "... only created services/query-monitor"
+   "... only created services/query-history"
 );
 
 ok(
    no_diff(
-      "cat $tmpdir/services/query-monitor",
+      "cat $tmpdir/services/query-history",
       "t/pt-agent/samples/service001",
    ),
-   "query-monitor service file"
+   "query-history service file"
 );
 
 $crontab = `crontab -l 2>/dev/null`;
 like(
    $crontab,
-   qr/pt-agent --run-service query-monitor$/m,
+   qr/pt-agent --run-service query-history$/m,
    "Scheduled --run-service with crontab"
 );
 
 like(
    $crontab,
-   qr/pt-agent --send-data query-monitor$/m,
+   qr/pt-agent --send-data query-history$/m,
    "Scheduled --send-data with crontab"
 );
 
@@ -257,14 +258,14 @@ $ua->{responses}->{get} = [
 @oktorun = (1, 1, 1, 0);
 
 # Between the 2nd and 3rd checks, remove the config file (~/.pt-agent.conf)
-# and query-monitor service  file.  When the tool re-GETs these, they'll be
+# and query-history service  file.  When the tool re-GETs these, they'll be
 # the same so it won't recreate them.  A bug here will cause these files to
 # exist again after running.
 $ok_code[2] = sub {
    unlink "$config_file";
-   unlink "$tmpdir/services/query-monitor";
+   unlink "$tmpdir/services/query-history";
    Percona::Test::wait_until(sub { ! -f "$config_file" });
-   Percona::Test::wait_until(sub { ! -f "$tmpdir/services/query-monitor" });
+   Percona::Test::wait_until(sub { ! -f "$tmpdir/services/query-history" });
 };
 
 @wait = ();
@@ -296,7 +297,7 @@ ok(
 );
 
 ok(
-   ! -f "$tmpdir/services/query-monitor",
+   ! -f "$tmpdir/services/query-history",
    "No Service diff, no service file changes"
 );
 

@@ -1,8 +1,9 @@
 {
    "links" : {
-      "send_data" : "/query-monitor"
+      "data" : "/query-history/data",
+      "self" : "/query-history"
    },
-   "name" : "query-monitor",
+   "name" : "query-history",
    "run_schedule" : "1 * * * *",
    "spool_schedule" : "2 * * * *",
    "tasks" : [

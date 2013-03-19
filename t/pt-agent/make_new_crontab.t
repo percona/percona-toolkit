@@ -55,7 +55,7 @@ my $run0 = Percona::WebAPI::Resource::Task->new(
 );
 
 my $svc0 = Percona::WebAPI::Resource::Service->new(
-   name           => 'query-monitor',
+   name           => 'query-history',
    run_schedule   => '* 8 * * 1,2,3,4,5',
    spool_schedule => '* 9 * * 1,2,3,4,5',
    tasks          => [ $run0 ],
@@ -127,8 +127,8 @@ SKIP: {
    is(
       $new_crontab,
       "* 0  *  *  *  date > /dev/null
-* 8 * * 1,2,3,4,5 pt-agent --run-service query-monitor
-* 9 * * 1,2,3,4,5 pt-agent --send-data query-monitor
+* 8 * * 1,2,3,4,5 pt-agent --run-service query-history
+* 9 * * 1,2,3,4,5 pt-agent --send-data query-history
 ",
       "Runs crontab -l by default"
    );
