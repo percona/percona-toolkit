@@ -63,7 +63,8 @@ sub test_write_services {
    diag(`rm -rf $tmpdir/*`);
 }
 
-my $run0 = Percona::WebAPI::Resource::Run->new(
+my $run0 = Percona::WebAPI::Resource::Task->new(
+   name    => 'query-history',
    number  => '0',
    program => "pt-query-digest",
    options => "--report-format profile slow008.txt",
@@ -74,7 +75,7 @@ my $svc0 = Percona::WebAPI::Resource::Service->new(
    name           => 'query-monitor',
    run_schedule   => '1 * * * *',
    spool_schedule => '2 * * * *',
-   runs           => [ $run0 ],
+   tasks          => [ $run0 ],
    links          => { send_data => '/query-monitor' },
 );
 
