@@ -11,6 +11,8 @@ use Pod::POM::View::Restructured;
 
 my $input_file = shift @ARGV or die "Need an input file";
 
+my $nofix = scalar @ARGV;
+
 my $tool = basename($input_file);
 
 open my $in_fh, q{<:encoding(UTF-8)}, $input_file
@@ -44,6 +46,11 @@ my $section       = '';
 my $fixed_output = '';
 
 while (my $para = <$in>) {
+   if ( $nofix ) {
+      $fixed_output .= $para;
+      next;
+   }
+
    next if $para =~ m/^\.\. highlight:: perl/;
 
    $in_code_block = $para =~ m/^\s{2,}/ ? 1 : 0;
@@ -77,6 +84,7 @@ while (my $para = <$in>) {
       $para =~ s/^[ ]+$//mg;
       $para =~ s/^\n\n/\n/mg;
       $para =~ s/code-block:: bash(\s+)CREATE/code-block:: sql$1CREATE/sg;
+      $para =~ s/\*\*:program/** :program/g;
       if ( ($section || '') eq 'OUTPUT' ) {
          $para =~ s/^([A-Z_]+)\n\n/$1\n/;
       }
@@ -86,7 +94,12 @@ while (my $para = <$in>) {
 
 close $in;
  
-print $header . $fixed_output;
+if ($nofix) {
+   print $fixed_output;
+}
+else {
+   print $header . $fixed_output;
+}
 
 sub format_links {
    if ( my ($label, $url) = split /\|/, $_[0] ) {
