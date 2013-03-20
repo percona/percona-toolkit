@@ -49,7 +49,6 @@ use constant {
 #
 # Required Arguments:
 #   DSNParser    - <DSNParser> object
-#   OptionParser - <OptionParser> object
 #   dsn          - DSN hashref, or...
 #   dsn_string   - ... DSN string like "h=127.1,P=12345"
 #
@@ -109,7 +108,7 @@ sub new {
       set             => $args{set},
       NAME_lc         => defined($args{NAME_lc}) ? $args{NAME_lc} : 1,
       dbh_set         => 0,
-      ask_pass        => $o->get('ask-pass'),
+      ask_pass        => $args{ask_pass},
       DSNParser       => $dp,
       is_cluster_node => undef,
       parent          => $args{parent},
