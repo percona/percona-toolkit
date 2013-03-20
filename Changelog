@@ -1,5 +1,48 @@
 Changelog for Percona Toolkit
 
+v2.2.1 released 2013-03-14
+
+  * Official support for MySQL 5.6
+  * Official support for Percona XtraDB Cluster
+  * Redesigned pt-query-digest
+  * Redesigned pt-upgrade
+  * Redesigned pt-fk-error-logger
+  * Redesigned pt-deadlock-logger
+  * Changed --set-vars in all tools
+  * Renamed --retries to --tries in pt-online-schema-change
+  * Added --check-read-only to pt-heartbeat
+  * Added MySQL options to pt-mysql-summary
+  * Added MySQL options to pt-stalk
+  * Removed --lock-wait-timeout from pt-online-schema-change (use --set-vars)
+  * Removed --lock-wait-timeout from pt-table-checksum (use --set-vars)
+  * Removed pt-query-advisor
+  * Removed pt-tcp-model
+  * Removed pt-trend
+  * Removed pt-log-player
+  * Enabled --version-check by default in all tools
+  * Fixed bug 1008796: Several tools don't have --database
+  * Fixed bug 1087319: Quoter::serialize_list() doesn't handle multiple NULL values
+  * Fixed bug 1086018: pt-config-diff needs to parse wsrep_provider_options
+  * Fixed bug 1056838: pt-fk-error-logger --run-time works differently than pt-deadlock-logger --run-time
+  * Fixed bug 1093016: pt-online-schema-change doesn't retry RENAME TABLE
+  * Fixed bug 1113301: pt-online-schema-change blocks on metadata locks
+  * Fixed bug 1125665: pt-stalk --no-stalk silently clobbers other options, acts magically
+  * Fixed bug 1019648: pt-stalk truncates InnoDB status if there are too many transactions
+  * Fixed bug 1087804: pt-table-checksum doesn't warn if no slaves are found
+
+v2.1.9 released 2013-02-14
+
+  * Fixed bug 1103221: pt-heartbeat 2.1.8 doesn't use precision/sub-second timestamps
+  * Fixed bug 1099665: pt-heartbeat 2.1.8 reports big time drift with UTC_TIMESTAMP
+  * Fixed bug 1099836: pt-online-schema-change fails with "Duplicate entry" on MariaDB
+  * Fixed bug 1103672: pt-online-schema-change makes bad DELETE trigger if PK is re-created with new columns
+  * Fixed bug 1115333: pt-pmp doesn't list the origin lib for each function
+  * Fixed bug  823411: pt-query-digest shouldn't print "Error: none" for tcpdump
+  * Fixed bug 1103045: pt-query-digest fails to parse non-SQL errors
+  * Fixed bug 1105077: pt-table-checksum: Confusing error message with binlog_format ROW or MIXED on slave
+  * Fixed bug  918056: pt-table-sync false-positive error "Cannot nibble table because MySQL chose no index instead of the PRIMARY index"
+  * Fixed bug 1099933: pt-stalk is too verbose, fills up log
+
 v2.1.8 released 2012-12-21
 
   * Beta support for MySQL 5.6
