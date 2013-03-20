@@ -14,7 +14,7 @@ no libraries are installed.
 
 Percona Toolkit is derived from Maatkit and Aspersa, two of the best-known
 toolkits for MySQL server administration.  It is developed and supported by
-Percona Inc.  For more information and other free, open-source software
+Percona.  For more information and other free, open-source software
 developed by Percona, visit `http://www.percona.com/software/ <http://www.percona.com/software/>`_.
 
 Getting Percona Toolkit

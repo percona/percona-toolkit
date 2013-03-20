@@ -6,8 +6,6 @@ use English qw(-no_match_vars);
 
 use IO::File;
 
-use HTML::Entities;
-
 use File::Basename qw(basename);
 use Pod::POM::View::Restructured;
 

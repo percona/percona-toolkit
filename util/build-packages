@@ -358,6 +358,7 @@ build_rpm() {
    fi
 
    mkdir -p rpm rpm/BUILD rpm/SOURCES rpm/RPMS rpm/SRPMS
+   mkdir -p RPM
    cd rpm
    local topdir=`pwd`
 
@@ -375,7 +376,7 @@ build_rpm() {
    if [ ! -f "RPMS/noarch/$PKG-1.noarch.rpm" ]; then
       die "RPMS/noarch/$PKG-1.noarch.rpm did not build"
    fi
-   mv "RPMS/noarch/$PKG-1.noarch.rpm" $RELEASE_DIR
+   mv "RPMS/noarch/$PKG-1.noarch.rpm" $RELEASE_DIR/RPM
    rm -rf $RELEASE_DIR/rpm
 
    echo "OK"
@@ -398,9 +399,9 @@ build_deb() {
    fi
    cp $BRANCH/config/deb/* $RELEASE_DIR/$PKG/debian/
 
-   # Build Debian "binary" package.
+   # Build Debian binary and source packages.
    cd $RELEASE_DIR/$PKG
-   dpkg-buildpackage -b -us -uc >$tmpdir/dpkg-buildpackage 2>&1
+   dpkg-buildpackage -us -uc >$tmpdir/dpkg-buildpackage 2>&1
    if [ $? -ne 0 ]; then
       warn "dpkg-buildpackage has warnings; see $tmpdir/dpkg-buildpackage"
    fi
@@ -409,6 +410,9 @@ build_deb() {
    make distclean >/dev/null
    cd $RELEASE_DIR
    rm -rf *.changes >/dev/null
+
+   mkdir -p deb
+   mv percona-toolkit_* deb/
 
    echo "OK"
 }
