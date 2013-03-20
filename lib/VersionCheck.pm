@@ -249,10 +249,33 @@ sub update_check_times {
    my $vc_file   = $args{vc_file} || version_check_file();
    PTDEBUG && _d('Updating last check time:', $now);
 
+   # We need to write back all instances to the file.  The given
+   # instances are the ones updated, so use the current ts (now).
+   my %all_instances = map {
+      $_->{id} => { name => $_->{name}, ts => $now }
+   } @$instances;
+
+   # If the file exists, read the instances in it, and if they're
+   # not one of the updated ones, save them with their original ts.
+   if ( -f $vc_file ) {
+      open my $fh, '<', $vc_file or die "Cannot read $vc_file: $OS_ERROR";
+      my $contents = do { local $/ = undef; <$fh> };
+      close $fh;
+
+      foreach my $line ( split("\n", ($contents || '')) ) {
+         my ($id, $ts) = split(',', $line);
+         if ( !exists $all_instances{$id} ) {
+            $all_instances{$id} = { ts => $ts };  # original ts, not updated
+         }
+      }
+   }
+
+   # Write back all instances, some with updated ts, others with their
+   # original ts.
    open my $fh, '>', $vc_file or die "Cannot write to $vc_file: $OS_ERROR";
-   foreach my $instance ( sort { $a->{id} cmp $b->{id} } @$instances ) {
-      PTDEBUG && _d('Updated:', Dumper($instance));
-      print { $fh } $instance->{id} . ',' . $now . "\n";
+   foreach my $id ( sort keys %all_instances ) {
+      PTDEBUG && _d('Updated:', $id, Dumper($all_instances{$id}));
+      print { $fh } $id . ',' . $all_instances{$id}->{ts} . "\n";
    }
    close $fh;
 
@@ -293,7 +316,7 @@ sub get_instance_id {
    }
    my $id = md5_hex($name);
 
-   PTDEBUG && _d('MySQL instance:', $id, $name, $dsn);
+   PTDEBUG && _d('MySQL instance:', $id, $name, Dumper($dsn));
 
    return $name, $id;
 }
