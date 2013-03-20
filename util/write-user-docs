@@ -73,6 +73,7 @@ fix_html () {
       my $tool = basename($f);
       $tool    =~ s/\.html//;
       my $out = do { open my $fh, q{<}, $f or die "$f: $!"; local $/; <$fh> };
+      warn $out;
       $out =~ s{
 \Q<dt id="\E(cmdoption-$tool--)\Q">\E\s*
 \Q<tt class="descname">--</tt><tt class="descclassname">\E([^<]+)
@@ -80,7 +81,7 @@ fix_html () {
 }{<dt id="$1$2">
 <tt class="descname">--$2</tt><tt class="descclassname"></tt><a class="headerlink" href="#$1$2"}xg;
       open my $fh, q{>}, $f or die "Cannot open $f for writing: $!";
-      print { $f } $out;
+      print { $fh } $out;
       close $fh or die "Cannot close $f: $!";
    ' "$RST_DIR/html/$name.html"
 }
