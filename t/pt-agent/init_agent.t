@@ -13,9 +13,23 @@ use Test::More;
 use JSON;
 use File::Temp qw(tempdir);
 
-use Percona::Test;
+use PerconaTest;
+use Sandbox;
 use Percona::Test::Mock::UserAgent;
 require "$trunk/bin/pt-agent";
+
+my $dp  = new DSNParser(opts=>$dsn_opts);
+my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dbh = $sb->get_dbh_for('master');
+my $dsn = $sb->dsn_for('master');
+my $o   = new OptionParser();
+$o->get_specs("$trunk/bin/pt-agent");
+$o->get_opts();
+my $cxn = Cxn->new(
+   dsn_string   => $dsn,
+   OptionParser => $o,
+   DSNParser    => $dp,
+);
 
 Percona::Toolkit->import(qw(Dumper));
 Percona::WebAPI::Representation->import(qw(as_hashref));
@@ -47,8 +61,6 @@ my $return_agent = {
    uuid     => '123',
    hostname => `hostname`,
    versions => {
-      'Percona::WebAPI::Client' => "$Percona::WebAPI::Client::VERSION",
-      'Perl'                    => sprintf('%vd', $PERL_VERSION),
    },
    links    => {
       self   => '/agents/123',
@@ -86,6 +98,7 @@ my $output = output(
          interval    => $interval,
          agents_link => "/agents",
          lib_dir     => $tmpdir,
+         Cxn         => $cxn,
       );
    },
    stderr => 1,
@@ -117,6 +130,21 @@ like(
    qr/"uuid":"123"/,
    "Saved new Agent"
 ) or diag($output);
+
+my $sent_versions = decode_json($ua->{request_objs}->[0]->content);
+my $os = VersionCheck::get_os_version();
+
+is(
+   $sent_versions->{versions}->{OS} || '',
+   $os,
+   "Sent OS version"
+) or diag(Dumper($sent_versions));
+
+like(
+   $sent_versions->{versions}->{MySQL} || '',
+   qr/$sandbox_version/,
+   "Sent MySQL version"
+) or diag(Dumper($sent_versions));
 
 # Repeat this test but this time fake an error, so the tool isn't
 # able to create the Agent first time, so it should wait (call
@@ -158,6 +186,7 @@ $output = output(
          interval    => $interval,
          agents_link => '/agents',
          lib_dir     => $tmpdir,
+         Cxn         => $cxn,
       );
    },
    stderr => 1,
@@ -242,6 +271,7 @@ $output = output(
          interval    => $interval,
          agents_link => '/agents',
          lib_dir     => $tmpdir,
+         Cxn         => $cxn,
       );
    },
    stderr => 1,
@@ -277,4 +307,5 @@ is_deeply(
 # #############################################################################
 # Done.
 # #############################################################################
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

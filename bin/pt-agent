@@ -4679,8 +4679,6 @@ sub main {
 
    if ( !$o->get('help') ) {
    }
-
-   #Pingback::validate_options($o);
  
    $o->usage_or_errors();
 
@@ -4695,15 +4693,19 @@ sub main {
    }
 
    # ########################################################################
+   # Connect to MysSQL.
+   # ########################################################################
+   my $cxn = Cxn->new(
+      dsn_string   => '',
+      OptionParser => $o,
+      DSNParser    => $dp,
+   );
+
+   # ########################################################################
    # --run-service
    # This runs locally and offline, doesn't need a web API connection.
    # ########################################################################
    if ( my $service = $o->get('run-service') ) {
-      my $cxn = Cxn->new(
-         dsn_string   => '',
-         OptionParser => $o,
-         DSNParser    => $dp,
-      );
       $exit_status = run_service(
          service   => $service,
          spool_dir => $o->get('spool'),
@@ -4714,28 +4716,15 @@ sub main {
       exit $exit_status;
    }
 
-   # ######################################################################## 
-   # Daemonize first so all output goes to the --log.
-   # ########################################################################
-   my $daemon;
-   if ( $o->get('daemonize') ) {
-      $daemon = new Daemon(o=>$o);
-      $daemon->daemonize();
-      PTDEBUG && _d('I am a daemon now');
-   }
-   elsif ( $o->get('pid') ) {
-      $daemon = new Daemon(o=>$o);
-      $daemon->make_PID_file();
-   }
-
    # ########################################################################
    # Connect to the Percona web API.
    # ########################################################################
    my ($client, $agent);
    eval {
       ($client, $agent) = connect_to_percona(
-         api_key  => $api_key,
+         api_key => $api_key,
          lib_dir => $o->get('lib'),
+         Cxn     => $cxn,
       );
    };
    if ( $EVAL_ERROR ) {
@@ -4766,6 +4755,18 @@ sub main {
    # external errors, like Percona web API not responding, should be
    # retried forever.
    # ########################################################################
+   
+   # Daemonize first so all output goes to the --log.
+   my $daemon;
+   if ( $o->get('daemonize') ) {
+      $daemon = new Daemon(o=>$o);
+      $daemon->daemonize();
+      PTDEBUG && _d('I am a daemon now');
+   }
+   elsif ( $o->get('pid') ) {
+      $daemon = new Daemon(o=>$o);
+      $daemon->make_PID_file();
+   }
 
    # Check and init the config file.
    my $config_file = get_config_file();
@@ -4837,9 +4838,11 @@ sub connect_to_percona {
    have_required_args(\%args, qw(
       api_key
       lib_dir
+      Cxn
    )) or die;
    my $api_key = $args{api_key};
    my $lib_dir = $args{lib_dir};
+   my $cxn     = $args{Cxn};
 
    # During initial connection and agent init, wait less time
    # than --check-interval between errors.
@@ -4866,6 +4869,7 @@ sub connect_to_percona {
       interval    => $init_wait,
       lib_dir     => $lib_dir,
       agents_link => $entry_links->{agents},
+      Cxn         => $cxn,
    );
 
    return $client, $agent;
@@ -4920,11 +4924,13 @@ sub init_agent {
       interval
       lib_dir
       agents_link
+      Cxn
    )) or die;
    my $client      = $args{client};
    my $interval    = $args{interval};
    my $lib_dir     = $args{lib_dir};
    my $agents_link = $args{agents_link};
+   my $cxn         = $args{Cxn};
 
    # Optional args
    my $versions = $args{versions};
@@ -4934,7 +4940,22 @@ sub init_agent {
 
    # Do a version-check every time the agent starts.  If versions
    # have changed, this can affect how services are implemented.
-   $versions ||= get_versions();
+   if ( !$versions ) {
+      TRY:
+      for ( 1..3 ) {
+         eval {
+            $cxn->connect();
+         };
+         if ( $EVAL_ERROR ) {
+            _warn("Cannot connect to MySQL: $EVAL_ERROR");
+            $interval->();
+            next TRY;
+         }
+         $versions = get_versions(dbh => $cxn->dbh, dsn => $cxn->dsn);
+         $cxn->dbh->disconnect();
+         last TRY;
+      }
+   }
 
    # If there's a saved agent, then this is an existing agent being
    # restarted.  Else this is a new agent.
@@ -5387,13 +5408,19 @@ sub run_service {
    # Take a quick look through all the tasks to see if any
    # will require a MySQL connection.  If so, connect now.
    if ( grep { $_->query } @$tasks ) {
-      eval {
-         $cxn->connect();
-      };
-      if ( $EVAL_ERROR ) {
-         _warn("Cannot connect to MySQL: $EVAL_ERROR");
-         return 1;
+      TRY:
+      for ( 1..3 ) {
+         eval {
+            $cxn->connect();
+         };
+         if ( $EVAL_ERROR ) {
+            _warn("Cannot connect to MySQL: $EVAL_ERROR");
+            sleep(5);
+            next TRY;
+         }
+         last TRY;
       }
+      return 1 unless $cxn->dbh;
    }
 
    my @output_files;
@@ -5760,12 +5787,54 @@ sub _err {
    exit $exit_status;
 }
 
-# TODO: use VersionCheck::get_versions().
 sub get_versions {
-   return {
-      'Perl'                    => sprintf('%vd', $PERL_VERSION),
-      'Percona::WebAPI::Client' => "$Percona::WebAPI::Client::VERSION",
-   };
+   my (%args) = @_;
+   my $dbh = $args{dbh};
+   my $dsn = $args{dsn};
+
+   # This is currently the actual response from GET v.percona.com
+   my $fake_response = <<EOL;
+OS;os_version
+MySQL;mysql_variable;version_comment,version
+Perl;perl_version
+DBD::mysql;perl_module_version
+Percona::Toolkit;perl_module_version
+EOL
+
+   my $items = VersionCheck::parse_server_response(
+      response => $fake_response,
+   );
+
+   my ($name, $id) = VersionCheck::get_instance_id(
+      { dbh => $dbh, dsn => $dsn },
+   );
+
+   my $instances = [
+      { name => $name,     id => $id, dbh => $dbh, dsn => $dsn },
+      { name => 'system',  id => 0,                            },
+   ];
+
+   my $versions = VersionCheck::get_versions(
+      items     => $items,
+      instances => $instances,
+   );
+
+   my %version_for;
+   foreach my $item ( sort keys %$items ) {
+      next unless exists $versions->{$item};
+      if ( ref($versions->{$item}) eq 'HASH' ) {
+         my $mysql_versions = $versions->{$item};
+         for my $id ( sort keys %$mysql_versions ) {
+            $version_for{$item} = $mysql_versions->{$id};
+         }
+      }
+      else {
+         $version_for{$item} = $versions->{$item};
+      }
+   }
+
+   PTDEBUG && _d('Versions:', Dumper(\%version_for));
+   return \%version_for;
 }
 
 # Catches signals so we can exit gracefully.

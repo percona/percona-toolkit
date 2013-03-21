@@ -23,9 +23,10 @@ package Percona::Test::Mock::UserAgent;
 sub new {
    my ($class, %args) = @_;
    my $self = {
-      encode    => $args{encode} || sub { return $_[0] },
-      decode    => $args{decode} || sub { return $_[0] },
-      requests  => [],
+      encode       => $args{encode} || sub { return $_[0] },
+      decode       => $args{decode} || sub { return $_[0] },
+      requests     => [],
+      request_objs => [],
       responses => {
          get  => [],
          post => [],
@@ -35,14 +36,16 @@ sub new {
          post => [],
          put  => [],
       },
-      last_request => undef,
    };
    return bless $self, $class;
 }
 
 sub request {
    my ($self, $req) = @_;
-   $self->{last_request} = $req; 
+   if ( scalar @{$self->{request_objs}} > 10 ) {
+      $self->{request_objs} = [];
+   }
+   push @{$self->{request_objs}}, $req;
    my $type = lc($req->method);
    push @{$self->{requests}}, uc($type) . ' ' . $req->uri;
    if ( $type eq 'post' || $type eq 'put' ) {
