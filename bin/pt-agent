@@ -969,9 +969,9 @@ sub post {
 }
 
 sub put {
-   my ($self, %args) = @_;
+   my $self = shift;
    $self->_set(
-      %args,
+      @_,
       method => 'PUT',
    );
    return $self->response->header('Location');
@@ -979,7 +979,6 @@ sub put {
 
 sub delete {
    my ($self, %args) = @_;
-
    have_required_args(\%args, qw(
       link 
    )) or die;
@@ -1006,7 +1005,6 @@ sub delete {
 
 sub _set {
    my ($self, %args) = @_;
-
    have_required_args(\%args, qw(
       method
       resources
@@ -1015,6 +1013,8 @@ sub _set {
    my $method = $args{method};
    my $res    = $args{resources};
    my $link   = $args{link};
+
+   my $headers = $args{headers};
 
    my $content = '';
    if ( ref($res) eq 'ARRAY' ) {
@@ -1047,6 +1047,7 @@ sub _set {
          method  => $method,
          link    => $link,
          content => $content,
+         headers => $headers,
       );
    };
    if ( my $e = $EVAL_ERROR ) {
@@ -1070,26 +1071,21 @@ sub _request {
    )) or die;
    my $method = $args{method};
    my $link   = $args{link};
-
-   my @optional_args = (
-      'content',
-      'headers',
-   );
-   my ($content, $headers) = @args{@optional_args};
+   
+   my $content = $args{content};
+   my $headers = $args{headers};
 
    my $req = HTTP::Request->new($method => $link);
-   $req->content($content) if $content;
-   if ( uc($method) eq 'DELETE' ) {
-      $self->ua->default_header('Content-Length' => 0);
+   if ( $content ) {
+      $req->content($content);
+   }
+   if ( $headers ) {
+      map { $req->header($_ => $headers->{$_}) } keys %$headers;
    }
    PTDEBUG && _d('Request', $method, $link, Dumper($req));
 
    my $response = $self->ua->request($req);
    PTDEBUG && _d('Response', Dumper($response));
-
-   if ( uc($method) eq 'DELETE' ) {
-      $self->ua->default_header('Content-Length' => undef);
-   }
 
    if ( !($response->code >= 200 && $response->code < 400) ) {
       die Percona::WebAPI::Exception::Request->new(
@@ -5650,7 +5646,7 @@ sub send_file {
    my $agent_json = as_json($agent, json => $json);
    chomp($agent_json);
 
-   my $boundary  = '--Ym91bmRhcnk=';  # "boundary" in base64
+   my $boundary  = 'Ym91bmRhcnk'; # "boundary" in base64, without a trailing =
 
    my $data = slurp($file);
    $data =~ s/^\s+//;
@@ -5658,14 +5654,23 @@ sub send_file {
 
    # Put it all together:
    my $resource   = <<CONTENT;
+--$boundary
+Content-Disposition: form-data; name="agent"
+
 $agent_json
-$boundary
+--$boundary
+Content-Disposition: form-data; name="data"
+
 $data
+--$boundary
 CONTENT
 
    $client->post(
       link      => $link,
       resources => $resource,
+      headers   => {
+         'Content-Type' => "multipart/form-data; boundary=$boundary",
+      }
    );
 
    return;

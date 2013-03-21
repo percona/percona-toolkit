@@ -35,12 +35,14 @@ sub new {
          post => [],
          put  => [],
       },
+      last_request => undef,
    };
    return bless $self, $class;
 }
 
 sub request {
    my ($self, $req) = @_;
+   $self->{last_request} = $req; 
    my $type = lc($req->method);
    push @{$self->{requests}}, uc($type) . ' ' . $req->uri;
    if ( $type eq 'post' || $type eq 'put' ) {
