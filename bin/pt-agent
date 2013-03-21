@@ -5796,38 +5796,135 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-pt-agent - Implement Percona Web Services
+pt-agent - Client-side agent for Percona Web Services
 
 =head1 SYNOPSIS
 
 Usage: pt-agent [OPTIONS]
 
-pt-agent implements Percona Web Services.
+pt-agent is the client-side agent for Percona Web Services.  It is not
+a general command line tool like other tools in Percona Toolkit; it requires
+a Percona Web Services account, and it runs locally but it sends all data
+to Percona.  Please vist https://pws.percona.com for more information.
 
 =head1 RISKS
 
-The following section is included to inform users about the potential risks,
-whether known or unknown, of using this tool.  The two main categories of risks
-are those created by the nature of the tool (e.g. read-only tools vs. read-write
-tools) and those created by bugs.
+Percona Toolkit is mature, proven in the real world, and well tested,
+but all database tools can pose a risk to the system and the database
+server.  Before using this tool, please:
 
-TODO
+=over
 
-The authoritative source for updated information is always the online issue
-tracking system.  Issues that affect this tool will be marked as such.  You can
-see a list of such issues at the following URL:
-L<http://www.percona.com/bugs/pt-agent>.
+=item * Read the tool's documentation
 
-See also L<"LIMITATIONS"> and L<"BUGS">.
+=item * Review the tool's known L<"BUGS">
+
+=item * Test the tool on a non-production server
+
+=item * Backup your production server and verify the backups
+
+=back
 
 =head1 DESCRIPTION
 
-pt-agent implement Percona Web Services.
-TODO
+pt-agent is the client-side agent for Percona Web Services (PWS).  It is
+controlled and configured through the PWS web app at https://pws.percona.com.
+A PWS account is required to use this tool.
+
+pt-agent, or "the agent", is a single, unique instance of the tool running
+on a server.  Two agents cannot run on the same server (see L<"--pid">), else
+they will interfere with each other.
+
+The agent is designed to be a long-running daemon, usually ran as root and
+started with L<"--daemonize">.  It connects periodically to Percona to update
+its config and services, and it schedules L<"--run-service"> and
+L<"--send-data"> instances of itself.  Other than L<"INSTALLING"> and starting
+the agent locally, all control and configuration is done through the PWS web
+app.
+
+=head1 INSTALLING
+
+=over
+
+=item 1. Create MySQL user
+
+First, create a limited MySQL account for pt-agent:
+
+   mysql> GRANT SUPER,USAGE ON *.* TO 'pt_agent'@'localhost'
+        > IDENTIFIED BY 'foo';
+
+pt-agent does not need access to any database, but it must be able
+to connect to MySQL and change global variables, which requires the
+C<SUPER> privilege.
+
+=item 2. Configure MySQL access
+
+Second, put the MySQL user and password in the user's C<$HOME/.my.cnf>:
+
+   [client]
+   user=pt_agent
+   pass=foo
+
+Or, you can use any defaults files and configure the agent later through
+the PWS web app to use it.
+
+If C<$HOME/.my.cnf> or another defaults file is not used, you will need to
+configure pt-agent through the PWS web app to use specific C<--user>,
+C<--password>, and other MySQL options, but note that this is not secure
+because pt-agent will use C<--user pt_agent --password foo> on its command
+line.
+
+=item 3. Initialize agent config
+
+Third, initialize the user's C<$HOME/.pt-agent.conf>.  If running pt-agent
+as root, the default values for L<"--lib">, L<"--spool">, L<"--log">, and
+L<"--pid"> should work, so only one line is required:
+
+   api-key=X
+
+Where C<X> if your Percona Web Services API key.
+
+If running pt-agent as a normal user, you must specify new, temporary values
+for those options because the user does not have access to the default
+directories and files:
+
+   api-key=X
+   lib=/home/pt_agent/lib
+   spool=/home/pt_agent/spool
+   log=/home/pt_agent/pt-agent.log
+   pid=/home/pt-agent/pt-agent.pid
+
+These values are temporary because C<$HOME/.pt-agent.conf> is overwritten by
+pt-agent with the config it receives from PWS.
+
+=item 4. Run pt-agent
+
+Once the previous step are complete, running pt-agent is as simple as:
+
+   $ pt-agent --daemonize
+
+The tool should detach and background itself and start logging to the
+L<"--log"> file.
+
+=back
+
+=head1 CONFIG
+
+The agent is configured through the Percona Web Services web app
+(https://pws.percona.com), and it stores its config in
+C<$HOME/.pt-agent.conf>.  As described in L<"INSTALLING">, the config must
+be initialized when the agent is installed, but then the agent automatically
+updates it whenever it is reconfigured through the PWS web app.  Therefore,
+C<$HOME/.pt-agent.conf> always contains the latest config and is always
+overwritten by the config set through the PWS web app.
+
+After initializing C<$HOME/.pt-agent.conf> when installing the agent, you
+should not modify this file because L<"--run-service"> and L<"--send-data">
+instances of the agent also use it.
 
 =head1 EXIT STATUS
 
-TODO
+pt-agent exists zero if no errors or warnings occurred, else it exits non-zero.
 
 =head1 OPTIONS
 
@@ -5841,17 +5938,11 @@ type: string
 
 The Percona Web Services API key.
 
-=item --ask-pass
-
-group: Connection
-
-Prompt for a password when connecting to MySQL.
-
 =item --check-interval
 
 type: time; default: 10m
 
-Sleep time between checks.
+How often to check for a new config.  See L<"CONFIG">.
 
 =item --config
 
@@ -5864,43 +5955,78 @@ See the L<"--help"> output for a list of default config files.
 
 =item --daemonize
 
-Fork to the background and detach from the shell.  POSIX
-operating systems only.
+Daemonize the tool.  This causes the tool to fork into the background and
+L<"--log"> all output.
+
+Fork to the background and detach from the shell.  POSIX operating systems only.
 
 =item --defaults-file
 
-short form: -F; type: string; group: Connection
+short form: -F; type: string
 
-Only read mysql options from the given file.  You must give an absolute
+Only read MySQL options from the given file.  You must give an absolute
 pathname.
 
 =item --help
 
-Show help and exit.
+Print the tool's help and exit.
 
 =item --host
 
-short form: -h; type: string; default: localhost; group: Connection
+short form: -h; type: string; default: localhost
 
-Host to connect to.
+MySQL host.
 
 =item --lib
 
 type: string; default: /var/lib/pt-agent
 
-Data dir.
+Directory in which to save local data.  pt-agent is remotely controlled and
+configured, but it also saves some data locally.  Do not edit these files;
+only use the PWS web app to configure agents.
+
+=over
+
+=item agent
+
+C<--lib/agent> is the current agent.  This file has two uses.
+First, pt-agent checks for it when initializing.  If the file does not exist,
+a new agent is created and the file is created.  The new agent must
+be configured through the PWS web app before it can start running services.
+If the file exists, pt-agent creates an existing agent using its values.
+If the existing agent has already been configured, pt-agent updates its
+L<"CONFIG"> and starts running services.
+
+Second, to keep track of the origin of all data, L<"--send-data"> reads the
+file and sends the agent's UUID with all data for all services.  Therefore,
+L<"--send-data"> requires this file.
+
+=item /services
+
+Files in C<--lib/services> are used by L<"--run-service">.  Each file is a
+service configured specifically for the local agent.  Do not copy service
+files between agents; only use the PWS web app to configure agents' services.
+
+=item crontab, crontab.err
+
+pt-agent uses the system's crontab to schedule L<"--run-service"> and
+L<"--send-data"> instances of itself.  C<--lib/crontab> is the current
+crontab file, and C<--lib/crontab.err> (if it exists) is any error caused
+by trying to use the current crontab file.
+
+=back
 
 =item --log
 
 type: string; default: /var/log/pt-agent.log
 
-Log file.
+Log all output to this file when daemonized.
 
 =item --password
 
-short form: -p; type: string; group: Connection
+short form: -p; type: string
 
-Password to use when connecting.
+MySQL password.
 
 =item --pid
 
@@ -5917,50 +6043,70 @@ contains no PID, then the script dies.
 
 =item --port
 
-short form: -P; type: int; group: Connection
+short form: -P; type: int
 
-Port number to use for connection.
+MySQL port number.
 
 =item --run-service
 
 type: string
 
-Run the given Percona Web Service.
+Run a service and L<"--spool"> its data.  Unless debugging, pt-agent should
+not be ran manually with this option.  The main pt-agent daemon schedules
+instances of itself with this option for each configured service.
 
 =item --send-data
 
 type: string
 
-Send data for the given Percona Web Service.
+Send data for a service to Percona.  Unless debugging, pt-agent should not
+be ran manually with this option.  The main pt-agent daemon schedules
+instances of itself with this option for each configured service.
 
 =item --set-vars
 
-type: string; default: wait_timeout=10000; group: Connection
+type: Array
 
-Set these MySQL variables.  Immediately after connecting to MySQL, this
-string will be appended to SET and executed.
+Set the MySQL variables in this comma-separated list of C<variable=value> pairs.
+
+By default, the tool sets:
+
+=for comment ignore-pt-internal-value
+MAGIC_set_vars
+
+   wait_timeout=10000
+
+Variables specified on the command line override these defaults.  For
+example, specifying C<--set-vars wait_timeout=500> overrides the default
+value of C<10000>.
+
+The tool prints a warning and continues if a variable cannot be set.
 
 =item --socket
 
-short form: -S; type: string; group: Connection
+short form: -S; type: string
 
-Socket file to use for connection.
+MySQL socket file.
 
 =item --spool
 
 type: string; default: /var/spool/pt-agent
 
-Spool directory.
+Directory in which to save service data before sending to Pecona.
+L<"--run-service"> saves data in this directory, and L<"--send-data">
+reads data from this directory.  Each service has its own subdirectory,
+like C<--spool/query-history> for the Query History service.  Data
+is removed by L<"--send-data"> after it is successfully sent to Percona.
 
 =item --user
 
-short form: -u; type: string; group: Connection
+short form: -u; type: string
 
-User for login if not current user.
+MySQL user, if not the current system user.
 
 =item --version
 
-Show version and exit.
+Print the tool's version and exit.
 
 =back
 
@@ -5984,7 +6130,7 @@ Default character set.
 
 copy: no
 
-DSN table database.
+Default database when connecting.
 
 =item * F
 
@@ -5996,37 +6142,31 @@ Defaults file for connection values.
 
 dsn: host; copy: yes
 
-Connect to host.
+MySQL host.
 
 =item * p
 
 dsn: password; copy: yes
 
-Password to use when connecting.
+MySQL passowrd.
 
 =item * P
 
 dsn: port; copy: yes
 
-Port number to use for connection.
+MySQL port number.
 
 =item * S
 
 dsn: mysql_socket; copy: no
 
-Socket file to use for connection.
-
-=item * t
-
-copy: no
-
-DSN table table.
+MySQL socket file.
 
 =item * u
 
 dsn: user; copy: yes
 
-User for login if not current user.
+MySQL user, if not the current system user.
 
 =back
 
@@ -6044,25 +6184,6 @@ of output.
 
 You need Perl, DBI, DBD::mysql, and some core packages that ought to be
 installed in any reasonably new version of Perl.
-
-=head1 LIMITATIONS
-
-=over
-
-=item Replicas using row-based replication
-
-pt-agent requires statement-based replication, and it sets
-C<binlog_format=STATEMENT> on the master, but due to a MySQL limitation
-replicas do not honor this change.  Therefore, checksums will not replicate
-past any replicas using row-based replication that are masters for
-further replicas.
-
-The tool automatically checks the C<binlog_format> on all servers.
-See L<"--[no]check-binlog-format"> .
-
-(L<Bug 899415|https://bugs.launchpad.net/percona-toolkit/+bug/899415>)
-
-=back
 
 =head1 BUGS
 
@@ -6108,12 +6229,7 @@ Replace C<TOOL> with the name of any tool.
 
 =head1 AUTHORS
 
-Baron Schwartz and Daniel Nichter
-
-=head1 ACKNOWLEDGMENTS
-
-Claus Jeppesen, Francois Saint-Jacques, Giuseppe Maxia, Heikki Tuuri,
-James Briggs, Martin Friebe, and Sergey Zhuravlev
+Daniel Nichter
 
 =head1 ABOUT PERCONA TOOLKIT
 
@@ -6126,8 +6242,7 @@ L<http://www.percona.com/software/> for more software developed by Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2012 Percona Inc.
-Feedback and improvements are welcome.
+This program is copyright 2013 Percona Inc.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
