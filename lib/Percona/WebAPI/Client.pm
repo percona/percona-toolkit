@@ -168,12 +168,10 @@ sub post {
    return $self->response->header('Location');
 }
 
-# For a successful PUT, the server returns nothing because the caller
-# already has the resources URI (if not, the caller should POST).
 sub put {
-   my ($self, %args) = @_;
+   my $self = shift;
    $self->_set(
-      %args,
+      @_,
       method => 'PUT',
    );
    return $self->response->header('Location');
@@ -181,7 +179,6 @@ sub put {
 
 sub delete {
    my ($self, %args) = @_;
-
    have_required_args(\%args, qw(
       link 
    )) or die;
@@ -209,7 +206,6 @@ sub delete {
 # Low-level POST and PUT handler.
 sub _set {
    my ($self, %args) = @_;
-
    have_required_args(\%args, qw(
       method
       resources
@@ -218,6 +214,9 @@ sub _set {
    my $method = $args{method};
    my $res    = $args{resources};
    my $link   = $args{link};
+
+   # Optional args
+   my $headers = $args{headers};
 
    my $content = '';
    if ( ref($res) eq 'ARRAY' ) {
@@ -250,6 +249,7 @@ sub _set {
          method  => $method,
          link    => $link,
          content => $content,
+         headers => $headers,
       );
    };
    if ( my $e = $EVAL_ERROR ) {
@@ -276,26 +276,22 @@ sub _request {
    )) or die;
    my $method = $args{method};
    my $link   = $args{link};
-
-   my @optional_args = (
-      'content',
-      'headers',
-   );
-   my ($content, $headers) = @args{@optional_args};
+   
+   # Optional args
+   my $content = $args{content};
+   my $headers = $args{headers};
 
    my $req = HTTP::Request->new($method => $link);
-   $req->content($content) if $content;
-   if ( uc($method) eq 'DELETE' ) {
-      $self->ua->default_header('Content-Length' => 0);
+   if ( $content ) {
+      $req->content($content);
+   }
+   if ( $headers ) {
+      map { $req->header($_ => $headers->{$_}) } keys %$headers;
    }
    PTDEBUG && _d('Request', $method, $link, Dumper($req));
 
    my $response = $self->ua->request($req);
    PTDEBUG && _d('Response', Dumper($response));
-
-   if ( uc($method) eq 'DELETE' ) {
-      $self->ua->default_header('Content-Length' => undef);
-   }
 
    if ( !($response->code >= 200 && $response->code < 400) ) {
       die Percona::WebAPI::Exception::Request->new(

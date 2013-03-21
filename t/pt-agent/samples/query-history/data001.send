@@ -1,8 +1,13 @@
+--Ym91bmRhcnk
+Content-Disposition: form-data; name="agent"
+
 {
    "hostname" : "prod1",
    "uuid" : "123"
 }
---Ym91bmRhcnk=
+--Ym91bmRhcnk
+Content-Disposition: form-data; name="data"
+
 [
    {
       "attributes" : {
@@ -74,3 +79,4 @@
       }
    }
 ]
+--Ym91bmRhcnk

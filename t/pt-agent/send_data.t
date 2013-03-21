@@ -138,6 +138,12 @@ ok(
    "Removed data file after sending successfully"
 );
 
+is(
+   $ua->{last_request}->header('content-type'),
+   'multipart/form-data; boundary=Ym91bmRhcnk',
+   'Content-Type=multipart/form-data; boundary=Ym91bmRhcnk'
+) or diag(Dumper($ua));
+
 # #############################################################################
 # Done.
 # #############################################################################
