@@ -139,7 +139,7 @@ ok(
 );
 
 is(
-   $ua->{last_request}->header('content-type'),
+   $ua->{request_objs}->[-1]->header('content-type'),
    'multipart/form-data; boundary=Ym91bmRhcnk',
    'Content-Type=multipart/form-data; boundary=Ym91bmRhcnk'
 ) or diag(Dumper($ua));

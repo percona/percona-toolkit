@@ -33,8 +33,6 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEVDEBUG => $ENV{PTDEVDEBUG} || 0;
 
-use Percona::Toolkit;
-
 use Carp qw(croak);
 
 use Test::More;
