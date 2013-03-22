@@ -46,6 +46,13 @@ has 'spool_schedule' => (
    required => 0,
 );
 
+has 'run_once_on_start' => (
+   is       => 'ro',
+   isa      => 'Bool',
+   required => 0,
+   default  => sub { return 0 },
+);
+
 has 'links' => (
    is       => 'rw',
    isa      => 'Maybe[HashRef]',
