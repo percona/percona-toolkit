@@ -5072,7 +5072,7 @@ sub run_agent {
    AGENT_LOOP:
    while ( $oktorun->() ) {
 
-      ($config, $success) = get_config(
+      ($config, $lib_dir, $success) = get_config(
          agent    => $agent,
          client   => $client,
          lib_dir  => $lib_dir,
@@ -5161,6 +5161,7 @@ sub get_config {
             _info('Config ' . $config->ts . ' applied successfully');
          }
          else {
+            $success = 1;
             _info('Config has not changed');
          }
       };
@@ -5171,7 +5172,7 @@ sub get_config {
       }
    }
 
-   return ($config, $success);
+   return ($config, $lib_dir, $success);
 }
 
 sub get_services {
@@ -5279,25 +5280,21 @@ sub init_lib_dir {
 
    _info("Initializing --lib $lib_dir");
 
-   eval {
-      if ( ! -d $lib_dir ) {
-         _info("$lib_dir does not exist, creating");
-         mkdir $lib_dir or die "Cannot mkdir $lib_dir: $OS_ERROR";
-      }
-      elsif ( ! -w $lib_dir ) {
-         die "--lib $lib_dir is not writable.\n";
-      }
+   if ( ! -d $lib_dir ) {
+      _info("$lib_dir does not exist, creating");
+      mkdir $lib_dir or die "Cannot mkdir $lib_dir: $OS_ERROR";
+   }
+   elsif ( ! -w $lib_dir ) {
+      die "--lib $lib_dir is not writable.\n";
+   }
 
-      my $services_dir = "$lib_dir/services";  # keep in sync with write_services()
-      if ( ! -d $services_dir ) {
-         mkdir $services_dir or die "Cannot mkdir $services_dir: $OS_ERROR";
-      }
-      elsif ( ! -w $services_dir ) {
-         die "$services_dir is not writable.\n";
-      }
-   };
-   if ( $EVAL_ERROR ) {
-      _warn("Error initializing --lib $lib_dir: $EVAL_ERROR");
+   my $services_dir = "$lib_dir/services";  # keep in sync with write_services()
+   if ( ! -d $services_dir ) {
+      _info("$services_dir does not exist, creating");
+      mkdir $services_dir or die "Cannot mkdir $services_dir: $OS_ERROR";
+   }
+   elsif ( ! -w $services_dir ) {
+      die "$services_dir is not writable.\n";
    }
 
    return;
@@ -5325,11 +5322,15 @@ sub apply_config {
       init_lib_dir(
          lib_dir => $new_lib_dir,
       );
+
+      # TODO: copy old-lib/services/* to new-lib/services/ ?
+
+      # Save agent as --lib/agent so next time the tool starts it
+      # loads the agent from the latest --lib dir.
       save_agent(
          agent   => $agent,
          lib_dir => $new_lib_dir,
       );
-      # TODO: copy old-lib/services/* to new-lib/services/ ?
    }
 
    # Save config in $HOME/.pt-agent.conf if successful.
@@ -5381,7 +5382,7 @@ sub write_services {
    while ( my $file = readdir($dh) ) {
       next if -d $file;
       if ( !$have_service{$file} ) {
-         unlink $file
+         unlink "$lib_dir/$file"
             or die "Error removing $file: $OS_ERROR";
          _info("Removed $file");
       }
