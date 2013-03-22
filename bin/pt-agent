@@ -1362,6 +1362,13 @@ has 'spool_schedule' => (
    required => 0,
 );
 
+has 'run_once_on_start' => (
+   is       => 'ro',
+   isa      => 'Bool',
+   required => 0,
+   default  => sub { return 0 },
+);
+
 has 'links' => (
    is       => 'rw',
    isa      => 'Maybe[HashRef]',
@@ -4675,7 +4682,7 @@ sub main {
    $o->get_opts();
 
    my $dp = $o->DSNParser();
-   $dp->prop('set-vars', $o->get('set-vars'));
+   $dp->prop('set-vars', $o->set_vars());
 
    if ( !$o->get('help') ) {
    }
@@ -4722,9 +4729,10 @@ sub main {
    my ($client, $agent);
    eval {
       ($client, $agent) = connect_to_percona(
-         api_key => $api_key,
-         lib_dir => $o->get('lib'),
-         Cxn     => $cxn,
+         api_key    => $api_key,
+         lib_dir    => $o->get('lib'),
+         Cxn        => $cxn,
+         agent_uuid => $o->get('agent-uuid'),  # optional
       );
    };
    if ( $EVAL_ERROR ) {
@@ -4767,6 +4775,14 @@ sub main {
       $daemon = new Daemon(o=>$o);
       $daemon->make_PID_file();
    }
+   # If we daemonized, the parent has already exited and we're the child.
+   # We shared a copy of every Cxn with the parent, and the parent's copies
+   # were destroyed but the dbhs were not disconnected because the parent
+   # attrib was true.  Now, as the child, set it false so the dbhs will be
+   # disconnected when our Cxn copies are destroyed.  If we didn't daemonize,
+   # then we're not really a parent (since we have no children), so set it
+   # false to auto-disconnect the dbhs when our Cxns are destroyed.
+   $cxn->{parent} = 0;
 
    # Check and init the config file.
    my $config_file = get_config_file();
@@ -4788,13 +4804,6 @@ sub main {
             . "\npt-agent requires write access to $config_file.");
       }
    }
-
-   # Check and init the --lib dir.  This dir is used to save
-   # the Agent resource (/agent), Service resources (/services/),
-   # and crontab for services (/conrtab, /crontab.err).
-   init_lib_dir(
-      lib_dir => $o->get('lib'),
-   );
 
    # Wait time between checking for new config and services.
    # Use the tool's built-in default until a config is gotten,
@@ -4844,6 +4853,9 @@ sub connect_to_percona {
    my $lib_dir = $args{lib_dir};
    my $cxn     = $args{Cxn};
 
+   # Optional args
+   my $agent_uuid = $args{agent_uuid};
+
    # During initial connection and agent init, wait less time
    # than --check-interval between errors.
    # TODO: make user-configurable?  --reconnect-interval?
@@ -4870,6 +4882,7 @@ sub connect_to_percona {
       lib_dir     => $lib_dir,
       agents_link => $entry_links->{agents},
       Cxn         => $cxn,
+      agent_uuid  => $agent_uuid,
    );
 
    return $client, $agent;
@@ -4933,8 +4946,9 @@ sub init_agent {
    my $cxn         = $args{Cxn};
 
    # Optional args
-   my $versions = $args{versions};
-   my $_oktorun = $args{oktorun} || sub { return $oktorun };
+   my $versions   = $args{versions};
+   my $_oktorun   = $args{oktorun} || sub { return $oktorun };
+   my $agent_uuid = $args{agent_uuid};
 
    _info('Initializing agent');
 
@@ -4963,7 +4977,18 @@ sub init_agent {
    my $agent;
    my $action;
    my $link;
-   if ( -f $agent_file ) {
+   if ( $agent_uuid ) {
+      _info("Re-creating Agent with UUID $agent_uuid");
+      chomp(my $hostname = `hostname`);
+      $agent = Percona::WebAPI::Resource::Agent->new(
+         uuid     => $agent_uuid,
+         hostname => $hostname,
+         versions => $versions,
+      );
+      $action = 'put';  # must be lc
+      $link   = $agents_link . '/' . $agent_uuid;
+   }
+   elsif ( -f $agent_file ) {
       _info("Reading saved Agent from $agent_file");
       my $agent_hashref = decode_json(slurp($agent_file));
       $agent  = Percona::WebAPI::Resource::Agent->new(%$agent_hashref);
@@ -5007,20 +5032,10 @@ sub init_agent {
    if ( !$agent_uri ) {
       _err("No URI for Agent " . $agent->name);
    }
+   # TODO: eval
    $agent = $client->get(
       link => $agent_uri,
    );
-   eval {
-      save_agent(
-         agent   => $agent,
-         lib_dir => $lib_dir,
-      );
-   };
-   if ( $EVAL_ERROR ) {
-      _warn("Error saving Agent to $agent_file: $EVAL_ERROR\n"
-         . "pt-agent will continue running and try to save "
-         . "the Agent later.");
-   }
 
    _info("Agent " . $agent->name . " initialized and ready");
    return $agent;
@@ -5051,95 +5066,32 @@ sub run_agent {
 
    _info('Running agent ' . $agent->name);
 
+   my $success;
    my $config;
    my $services;
    AGENT_LOOP:
    while ( $oktorun->() ) {
 
-      _info('Getting config');
-      my $new_config = eval {
-         $client->get(
-            link => $agent->links->{config},
+      ($config, $success) = get_config(
+         agent    => $agent,
+         client   => $client,
+         lib_dir  => $lib_dir,
+         config   => $config,
+         services => $services,
+      );
+
+      # Get services only if we successfully got the config because the services
+      # may depened on the current config, specifically the --spool dir.
+      if ( $success && $config && $config->links->{services} ) {
+         ($services, $success) = get_services(
+            agent    => $agent,
+            client   => $client,
+            lib_dir  => $lib_dir,
+            config   => $config,
+            services => $services,
+            json     => $args{json},  # optional, for testing
+
          );
-      };
-      if ( my $e = $EVAL_ERROR ) {
-         if (blessed($e)) {
-            if ($e->isa('Percona::WebAPI::Exception::Request')) {
-               if ( $e->status == 404 ) {
-                  _info('Agent ' . $agent->name. ' is not configured.');
-               }
-               else {
-                  _info("$e");  # PWS API error?
-               }
-            }
-            elsif ($e->isa('Percona::WebAPI::Exception::Resource')) {
-               _warn("$e");
-            }
-         }
-         else {
-            _err($e);  # internal error
-         }
-      }
-      else {
-         eval {
-            if ( !$config || $new_config->ts > $config->ts ) {
-               $lib_dir = apply_config(
-                  agent   => $agent,
-                  config  => $new_config,
-                  lib_dir => $lib_dir,
-               );
-               $config = $new_config;
-               _info('Config ' . $config->ts . ' applied successfully');
-            }
-            else {
-               _info('Config has not changed');
-            }
-         };
-         if ( $EVAL_ERROR ) {
-            chomp $EVAL_ERROR;
-            _warn("Failed to apply config " . $new_config->ts
-               . ": $EVAL_ERROR  Will try again.");
-         }
-      }
-
-      # Get services only if there's a current, running config.
-      # Without one, we won't know how to implement services.
-      if ( $config && $config->links->{services} ) {
-         eval {
-            _info('Getting services');
-
-            # Get services from Percona.
-            my $new_services = $client->get(
-               link => $config->links->{services},
-            );
-
-            # If the current and new services are different,
-            # write the new ones to disk, then schedule them.
-            if ( resource_diff($services, $new_services) ) {
-               _info('New services');
-
-               write_services(
-                  services => $new_services,
-                  lib_dir  => $lib_dir,
-                  json     => $args{json},  # optional, for testing
-               );
-
-               schedule_services(
-                  services => $new_services,
-                  lib_dir  => $lib_dir,
-               );
-
-               $services = $new_services;
-               _info('Services updated successfully: '
-                  . join(', ', map { $_->name } @$services));
-            }
-            else {
-               _info('Services have not changed');
-            }
-         };
-         if ( $EVAL_ERROR ) {
-            _warn($EVAL_ERROR);
-         }
       }
 
       # If no config yet, the tool's built-in default for
@@ -5151,6 +5103,133 @@ sub run_agent {
    # This shouldn't happen until the service is stopped/killed.
    _info('Agent ' . $agent->name . ' has stopped');
    return;
+}
+
+sub get_config {
+   my (%args) = @_;
+   have_required_args(\%args, qw(
+      agent
+      client
+      lib_dir
+   )) or die;
+   my $agent    = $args{agent};
+   my $client   = $args{client};
+   my $lib_dir  = $args{lib_dir};
+
+   # Optional args
+   my $config   = $args{config};   # may not be defined yet
+   my $services = $args{services}; # may not be defined yet
+
+   my $success = 0;
+
+   _info('Getting config');
+   my $new_config = eval {
+      $client->get(
+         link => $agent->links->{config},
+      );
+   };
+   if ( my $e = $EVAL_ERROR ) {
+      if (blessed($e)) {
+         if ($e->isa('Percona::WebAPI::Exception::Request')) {
+            if ( $e->status == 404 ) {
+               _info('Agent ' . $agent->name. ' is not configured.');
+            }
+            else {
+               _info("$e");  # PWS API error?
+            }
+         }
+         elsif ($e->isa('Percona::WebAPI::Exception::Resource')) {
+            _warn("$e");
+         }
+      }
+      else {
+         _err($e);  # internal error
+      }
+   }
+   else {
+      eval {
+         _info("Running config: " . ($config ? $config->ts : ''));
+         _info("Current config: " . $new_config->ts);
+         if ( !$config || $new_config->ts > $config->ts ) {
+            $lib_dir = apply_config(
+               agent   => $agent,
+               config  => $new_config,
+               lib_dir => $lib_dir,
+            );
+            $config  = $new_config;
+            $success = 1;
+            _info('Config ' . $config->ts . ' applied successfully');
+         }
+         else {
+            _info('Config has not changed');
+         }
+      };
+      if ( $EVAL_ERROR ) {
+         chomp $EVAL_ERROR;
+         _warn("Failed to apply config " . $new_config->ts
+            . ": $EVAL_ERROR  Will try again.");
+      }
+   }
+
+   return ($config, $success);
+}
+
+sub get_services {
+   my (%args) = @_;
+   have_required_args(\%args, qw(
+      agent
+      client
+      lib_dir
+   )) or die;
+   my $agent    = $args{agent};
+   my $client   = $args{client};
+   my $lib_dir  = $args{lib_dir};
+
+   # Optional args
+   my $config   = $args{config};   # may not be defined yet
+   my $services = $args{services}; # may not be defined yet
+
+   my $success = 0;
+
+   eval {
+      _info('Getting services');
+
+      # Get services from Percona.
+      my $new_services = $client->get(
+         link => $config->links->{services},
+      );
+
+      # If the current and new services are different,
+      # write the new ones to disk, then schedule them.
+      if ( resource_diff($services, $new_services) ) {
+         _info('New services');
+
+         write_services(
+            services => $new_services,
+            lib_dir  => $lib_dir,
+            json     => $args{json},  # optional, for testing
+         );
+
+         schedule_services(
+            services => $new_services,
+            lib_dir  => $lib_dir,
+         );
+
+         $services = $new_services;
+         $success  = 1;
+
+         _info('Services updated successfully: '
+            . join(', ', map { $_->name } @$services));
+      }
+      else {
+         _info('Services have not changed');
+      }
+   };
+   if ( $EVAL_ERROR ) {
+      _warn($EVAL_ERROR);
+   }
+
+   return ($services, $success);
 }
 
 # Write a Config resource to a Percona Toolkit config file,
@@ -5188,6 +5267,8 @@ sub write_config {
    return;
 }
 
+# Check and init the --lib dir.  This dir is used to save the Agent resource (/agent),
+# Service resources (/services/), and crontab for services (/conrtab, /crontab.err).
 sub init_lib_dir {
    my (%args) = @_;
 
@@ -5196,19 +5277,27 @@ sub init_lib_dir {
    )) or die;
    my $lib_dir = $args{lib_dir};
 
-   if ( ! -d $lib_dir ) {
-      mkdir $lib_dir or die "Cannot mkdir $lib_dir: $OS_ERROR";
-   }
-   elsif ( ! -w $lib_dir ) {
-      die "--lib $lib_dir is not writable.\n";
-   }
+   _info("Initializing --lib $lib_dir");
 
-   my $services_dir = "$lib_dir/services";  # keep in sync with write_services()
-   if ( ! -d $services_dir ) {
-      mkdir $services_dir or die "Cannot mkdir $services_dir: $OS_ERROR";
-   }
-   elsif ( ! -w $services_dir ) {
-      die "$services_dir is not writable.\n";
+   eval {
+      if ( ! -d $lib_dir ) {
+         _info("$lib_dir does not exist, creating");
+         mkdir $lib_dir or die "Cannot mkdir $lib_dir: $OS_ERROR";
+      }
+      elsif ( ! -w $lib_dir ) {
+         die "--lib $lib_dir is not writable.\n";
+      }
+
+      my $services_dir = "$lib_dir/services";  # keep in sync with write_services()
+      if ( ! -d $services_dir ) {
+         mkdir $services_dir or die "Cannot mkdir $services_dir: $OS_ERROR";
+      }
+      elsif ( ! -w $services_dir ) {
+         die "$services_dir is not writable.\n";
+      }
+   };
+   if ( $EVAL_ERROR ) {
+      _warn("Error initializing --lib $lib_dir: $EVAL_ERROR");
    }
 
    return;
@@ -6000,6 +6089,12 @@ pt-agent exists zero if no errors or warnings occurred, else it exits non-zero.
 L<"--run-service"> and L<"--send-data"> are mutually exclusive.
 
 =over
+
+=item --agent-uuid
+
+type: string
+
+Existing agent UUID for re-installing an agent.
 
 =item --api-key
 
