@@ -4918,10 +4918,28 @@ sub get_api_client {
       if ( $EVAL_ERROR ) {
          _warn($EVAL_ERROR);
          $interval->();
+         next;
       }
-      else {
-         _info("Connected");
+
+      if ( !$entry_links
+           || (ref($entry_links) || '') ne 'HASH'
+           || !scalar keys %$entry_links )
+      {
+         _info('Connected, but did not receive valid entry links: '
+            . Dumper($entry_links));
+         $interval->();
+         next;
       }
+
+      if ( !$entry_links->{agents} ) {
+         _info('Connected, but did not receive agents link: '
+            . Dumper($entry_links));
+         $interval->();
+         next;
+      }
+
+      _info("Connected");
+      last;
    }
 
    return $client, $entry_links;
