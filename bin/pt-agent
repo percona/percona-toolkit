@@ -4647,6 +4647,7 @@ use Time::HiRes  qw(sleep time);
 use JSON         qw(decode_json);
 use File::Temp   qw(tempfile);
 use File::Path;
+use FindBin;
 
 use Percona::Toolkit; 
 use Percona::WebAPI::Client;
@@ -5089,8 +5090,8 @@ sub run_agent {
             lib_dir  => $lib_dir,
             config   => $config,
             services => $services,
-            json     => $args{json},  # optional, for testing
-
+            json     => $args{json},    # optional, for testing
+            bin_dir  => $args{bin_dir}, # optional, for testing
          );
       }
 
@@ -5214,6 +5215,14 @@ sub get_services {
          schedule_services(
             services => $new_services,
             lib_dir  => $lib_dir,
+            bin_dir  => $args{bin_dir},  # optional, for testing
+         );
+
+         # TODO: this probably can't/won't fail, but if it does, is it
+         # worth setting success=0?
+         start_services(
+            services => $new_services,
+            bin_dir  => $args{bin_dir},  # optional, for testing
          );
 
          $services = $new_services;
@@ -5268,8 +5277,9 @@ sub write_config {
    return;
 }
 
-# Check and init the --lib dir.  This dir is used to save the Agent resource (/agent),
-# Service resources (/services/), and crontab for services (/conrtab, /crontab.err).
+# Check and init the --lib dir.  This dir is used to save the Agent resource
+# (/agent), Service resources (/services/), and crontab for services(/conrtab,
+# /crontab.err).
 sub init_lib_dir {
    my (%args) = @_;
 
@@ -5442,6 +5452,8 @@ sub make_new_crontab {
    # Optional args
    my $crontab_list = defined $args{crontab_list} ? $args{crontab_list}
                     :                               `crontab -l 2>/dev/null`;
+   my $bin_dir = defined $args{bin_dir} ? $args{bin_dir}
+               :                          "$FindBin::Bin/";
 
    my @other_lines
       = grep { $_ !~ m/pt-agent (?:--run-service|--send-data)/ }
@@ -5452,12 +5464,12 @@ sub make_new_crontab {
    foreach my $service ( @$services ) {
       push @pt_agent_lines,
          $service->run_schedule
-         . " pt-agent --run-service "
+         . " ${bin_dir}pt-agent --run-service "
          . $service->name;
       if ( $service->spool_schedule ) {
          push @pt_agent_lines,
             $service->spool_schedule
-            . " pt-agent --send-data "
+            . " ${bin_dir}pt-agent --send-data "
             . $service->name;
       }
    }
@@ -5468,9 +5480,38 @@ sub make_new_crontab {
    return $new_crontab;
 }
 
+# Start all services that have the run_once_on_start flag enabled.  This is
+# used for "setup services" so the user doesn't have to wait until the next
+# the service is actually scheduled to run.
+sub start_services {
+   my (%args) = @_;
+   have_required_args(\%args, qw(
+      services
+   )) or die;
+   my $services = $args{services};
+
+   # Optional args
+   my $bin_dir = defined $args{bin_dir} ? $args{bin_dir}
+               :                          "$FindBin::Bin/";
+
+   foreach my $service ( @$services ) {
+      next unless $service->run_once_on_start;
+      my $cmd = "${bin_dir}pt-agent --run-service " . $service->name;
+      _info('Starting ' . $service->name . ' service: ' . $cmd);
+      # TODO: need service-specific log files, else where is this output
+      # supposed to go?
+      system("$cmd </dev/null >/dev/null 2>&1 &");
+   }
+
+   return;
+}
+
 # ########################## #
 # --run-service process subs #
 # ########################## #
+
+# TODO: need service-specific PID files so two "--run-service enable-slow-log"
+# can't run at the same time.
 
 sub run_service {
    my (%args) = @_;
@@ -5560,7 +5601,7 @@ sub run_service {
          # special vars like __RUN_N_OUTPUT__, __TMPDIR__, etc.
          my $cmd = join(' ',
             $task->program,
-            $task->options,
+            ($task->options || ''),
             '>',
             $output_file,
          );

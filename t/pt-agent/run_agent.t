@@ -141,7 +141,7 @@ is(
    "init_config_file()"
 );
 
-my $tmpdir = tempdir("/tmp/pt-agent.$PID.XXXXXX", CLEANUP => 1);
+my $tmpdir = tempdir("/tmp/pt-agent.$PID.XXXXXX", CLEANUP => 0);
 mkdir "$tmpdir/services" or die "Error making $tmpdir/services: $OS_ERROR";
 
 my @ok_code = ();  # callbacks
@@ -309,6 +309,121 @@ is(
 );
 
 # #############################################################################
+# Test a run_once_on_start service
+# #############################################################################
+
+diag(`rm -f $tmpdir/* >/dev/null 2>&1`);
+diag(`rm -rf $tmpdir/services/*`);
+mkdir "$tmpdir/spool" or die $OS_ERROR;
+
+$config_file = pt_agent::get_config_file();
+unlink $config_file if -f $config_file;
+pt_agent::init_config_file(file => $config_file, api_key => '123');
+
+$config = Percona::WebAPI::Resource::Config->new(
+   ts      => 1363720060,
+   name    => 'Test run_once_on_start',
+   options => {
+      'check-interval' => "60",
+      'lib'            => $tmpdir,
+      'spool'          => "$tmpdir/spool",
+      'pid'            => "$tmpdir/pid",
+      'log'            => "$tmpdir/log"
+   },
+   links   => {
+      self     => '/agents/123/config',
+      services => '/agents/123/services',
+   },
+);
+
+$run0 = Percona::WebAPI::Resource::Task->new(
+   name    => 'run-at-start',
+   number  => '0',
+   program => 'date',
+   output  => 'spool',
+);
+
+$svc0 = Percona::WebAPI::Resource::Service->new(
+   name              => 'test-run-at-start',
+   run_schedule      => '0 0 1 1 *',
+   spool_schedule    => '0 0 1 1 *',
+   run_once_on_start => 1,  # here's the magic
+   tasks             => [ $run0 ],
+   links             => {
+      self => '/query-history',
+      data => '/query-history/data',
+   },
+);
+
+$ua->{responses}->{get} = [
+   {
+      headers => { 'X-Percona-Resource-Type' => 'Config' },
+      content => as_hashref($config, with_links => 1),
+   },
+   {
+      headers => { 'X-Percona-Resource-Type' => 'Service' },
+      content => [ as_hashref($svc0, with_links => 1) ],
+   },
+   {
+      headers => { 'X-Percona-Resource-Type' => 'Config' },
+      content => as_hashref($config, with_links => 1),
+   },
+   {
+      headers => { 'X-Percona-Resource-Type' => 'Service' },
+      content => [ as_hashref($svc0, with_links => 1) ],
+   },
+];
+
+@ok_code = ();  # callbacks
+@oktorun = (1, 1, 0);
+@wait    = ();
+
+$output = output(
+   sub {
+      pt_agent::run_agent(
+         agent       => $agent,
+         client      => $client,
+         interval    => $interval,
+         config_file => $config_file,
+         lib_dir     => $tmpdir,
+         oktorun     => $oktorun,       # optional, for testing
+         json        => $json,          # optional, for testing
+         bin_dir     => "$trunk/bin/",  # optional, for testing
+      );
+   },
+   stderr => 1,
+);
+
+Percona::Test::wait_for_files("$tmpdir/spool/test-run-at-start");
+
+like(
+   $output,
+   qr/Starting test-run-at-start service/,
+   "Ran service on start"
+);
+
+my @runs = $output =~ m/Starting test-run-at-start service/g;
+
+is(
+   scalar @runs,
+   1,
+   "... only ran it once"
+);
+
+chomp($output = `cat $tmpdir/spool/test-run-at-start 2>/dev/null`);
+ok(
+   $output,
+   "... service ran at start"
+) or diag($output);
+
+chomp($output = `crontab -l`);
+like(
+   $output,
+   qr/--run-service test-run-at-start/,
+   "... service was scheduled"
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 
@@ -320,4 +435,5 @@ if ( -f $config_file ) {
    unlink $config_file 
       or warn "Error removing $config_file: $OS_ERROR";
 }
+
 done_testing;

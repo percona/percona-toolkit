@@ -34,6 +34,7 @@ sub test_make_new_crontab {
    my $new_crontab = pt_agent::make_new_crontab(
       services     => $services,
       crontab_list => $crontab_list,
+      bin_dir      => '',
    );
 
    ok(
@@ -122,6 +123,7 @@ SKIP: {
 
    my $new_crontab = pt_agent::make_new_crontab(
       services => [ $svc0 ],
+      bin_dir  => '',
    );
 
    is(
