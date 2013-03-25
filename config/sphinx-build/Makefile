@@ -38,6 +38,13 @@ clean:
 	-rm -rf $(BUILDDIR)/*
 
 html:
+	@echo "Downloading percona-theme ..."
+	@wget -O percona-theme.tar.gz http://percona.com/docs/theme/percona-toolkit/2.2
+	@rm -rf percona-theme
+	@echo "Extracting theme."
+	@tar -zxf percona-theme.tar.gz
+	@rm percona-theme.tar.gz
+	@echo "Building html doc"
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
