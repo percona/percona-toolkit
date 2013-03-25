@@ -81,6 +81,15 @@ is(
 ) or diag($output);
 
 $crontab = `crontab -l 2>/dev/null`;
+
+# pt-agent uses $FindBin::Bin/pt-agent for the path to pt-agent,
+# which in testing will be $trunk/t/pt-agent/ because that's where
+# this file is located.  However, if $FindBin::Bin resovles sym
+# links where as $trunk does not, so to make things simple we just
+# cut out the full path. 
+if ( $crontab ) {
+   $crontab =~ s! /.+?/pt-agent --! pt-agent --!g;
+}
 is(
    $crontab,
    "* 0  *  *  *  date > /dev/null
