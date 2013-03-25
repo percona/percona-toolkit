@@ -36,7 +36,7 @@ my $sample = "t/pt-agent/samples";
 # Create fake spool and lib dirs.  Service-related subs in pt-agent
 # automatically add "/services" to the lib dir, but the spool dir is
 # used as-is.
-my $tmpdir = tempdir("/tmp/pt-agent.$PID.XXXXXX", CLEANUP => 0);
+my $tmpdir = tempdir("/tmp/pt-agent.$PID.XXXXXX", CLEANUP => 1);
 mkdir "$tmpdir/spool"    or die "Error making $tmpdir/spool: $OS_ERROR";
 mkdir "$tmpdir/services" or die "Error making $tmpdir/services: $OS_ERROR";
 my $spool_dir = "$tmpdir/spool";

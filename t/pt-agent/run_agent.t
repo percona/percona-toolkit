@@ -141,7 +141,7 @@ is(
    "init_config_file()"
 );
 
-my $tmpdir = tempdir("/tmp/pt-agent.$PID.XXXXXX", CLEANUP => 0);
+my $tmpdir = tempdir("/tmp/pt-agent.$PID.XXXXXX", CLEANUP => 1);
 mkdir "$tmpdir/services" or die "Error making $tmpdir/services: $OS_ERROR";
 
 my @ok_code = ();  # callbacks
