@@ -5820,11 +5820,8 @@ sub run_service {
    # Move the spool file from .tmp/ to the real spool data dir.
    if ( -f $abs_spool_file ) {
       my $file_size = -s $abs_spool_file;
-      if ( ! -s $file_size ) {
-         _info("$abs_spool_file is empty, no data to spool");
-      }
-      else {
-         _info("$abs_spool_file size: $file_size bytes");
+      _info("$abs_spool_file size: $file_size bytes");
+      if ( $file_size ) {
          # Use system mv instead of Perl File::Copy::move() because it's
          # unknown if the Perl version will do an optimized move, i.e.
          # simply move the inode, _not_ copy the file.  A system mv on
