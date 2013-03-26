@@ -36,6 +36,7 @@ BEGIN {
       VersionParser
       Daemon
       Transformers
+      CleanupTask
    ));
 }
 
@@ -4627,6 +4628,68 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# CleanupTask package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/CleanupTask.pm
+#   t/lib/CleanupTask.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package CleanupTask;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+sub new {
+   my ( $class, $task ) = @_;
+   die "I need a task parameter" unless $task;
+   die "The task parameter must be a coderef" unless ref $task eq 'CODE';
+   my $self = {
+      task => $task,
+   };
+   open $self->{stdout_copy}, ">&=", *STDOUT
+      or die "Cannot dup stdout: $OS_ERROR";
+   open $self->{stderr_copy}, ">&=", *STDERR
+      or die "Cannot dup stderr: $OS_ERROR";
+   PTDEBUG && _d('Created cleanup task', $task);
+   return bless $self, $class;
+}
+
+sub DESTROY {
+   my ($self) = @_;
+   my $task = $self->{task};
+   if ( ref $task ) {
+      PTDEBUG && _d('Calling cleanup task', $task);
+      open local(*STDOUT), ">&=", $self->{stdout_copy}
+         if $self->{stdout_copy};
+      open local(*STDERR), ">&=", $self->{stderr_copy}
+         if $self->{stderr_copy};
+      $task->();
+   }
+   else {
+      warn "Lost cleanup task";
+   }
+   return;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End CleanupTask package
+# ###########################################################################
+
+# ###########################################################################
 # This is a combination of modules and programs in one -- a runnable module.
 # http://www.perl.com/pub/a/2006/07/13/lightning-articles.html?page=last
 # Or, look it up in the Camel book on pages 642 and 643 in the 3rd edition.
@@ -5358,13 +5421,15 @@ sub init_lib_dir {
       die "--lib $lib_dir is not writable.\n";
    }
 
-   my $services_dir = "$lib_dir/services";  # keep in sync with write_services()
-   if ( ! -d $services_dir ) {
-      _info("$services_dir does not exist, creating");
-      mkdir $services_dir or die "Cannot mkdir $services_dir: $OS_ERROR";
-   }
-   elsif ( ! -w $services_dir ) {
-      die "$services_dir is not writable.\n";
+   foreach my $dir ( qw(services logs pids) ) {
+      my $dir = "$lib_dir/$dir";
+      if ( ! -d $dir ) {
+         _info("$dir does not exist, creating");
+         mkdir $dir or die "Cannot mkdir $dir: $OS_ERROR";
+      }
+      elsif ( ! -w $dir ) {
+         die "$dir is not writable.\n";
+      }
    }
 
    return;
@@ -5587,7 +5652,7 @@ sub run_service {
    my $lib_dir   = $args{lib_dir};
    my $cxn       = $args{Cxn};
 
-   my $log_file = "$lib_dir/$service.run.log";
+   my $log_file = "$lib_dir/logs/$service.run";
    close STDOUT;
    open  STDOUT, '>>', $log_file
       or die "Cannot open log file $log_file: $OS_ERROR";
@@ -5595,16 +5660,50 @@ sub run_service {
    open  STDERR, ">&STDOUT"
       or die "Cannot dupe STDERR to STDOUT: $OS_ERROR";
 
+   my $pid_file = "$lib_dir/pids/$service.run";
+   if ( -f $pid_file && -s $pid_file ) {
+      die "$pid_file exists, remove it if $service is not running";
+   }
+   my $remove_pid_file = CleanupTask->new(
+      sub {
+         unlink $pid_file
+            or warn "Error removing $pid_file: $OS_ERROR\n";
+      },
+   );
+
+   if ( !-d $spool_dir || !-w $spool_dir ) {
+      die "$spool_dir does not exit.  Verify that the agent successfully "
+         . "initialized the --lib directory when it applied the latest "
+         . "config.\n";
+   }
+
+   foreach my $dir ( $service, '.tmp' ) {
+      $dir = "$spool_dir/$dir";
+      if ( ! -d $dir ) {
+         _info("$dir does not exist, creating");
+         mkdir $dir or die "Cannot mkdir $dir: $OS_ERROR";
+      }
+      elsif ( !-w $dir ) {
+         die "$dir does not writeable\n";
+      }
+   }
+
+   my $spool_data = "$spool_dir/$service";
+   my $spool_tmp  = "$spool_dir/.tmp";
+
    _info("Running $service service");
 
+   # XXX
+   # Load the Service object from local service JSON file. $service changes
+   # from a string scalar to a Service object.
    $service = load_service(
       service => $service,
       lib_dir => $lib_dir,
    );
-   my $tasks = $service->tasks;
 
    # Take a quick look through all the tasks to see if any
    # will require a MySQL connection.  If so, connect now.
+   my $tasks = $service->tasks;
    if ( grep { $_->query } @$tasks ) {
       TRY:
       for ( 1..3 ) {
@@ -5622,8 +5721,10 @@ sub run_service {
    }
 
    my @output_files;
+   my $spool_file        = int(time);
+   my $abs_spool_file    = "$spool_tmp/" . $service->name . "/$spool_file";
+   my $have_spool_file   = 0;
    my $final_exit_status = 0;
-   my $spool_file        = "$spool_dir/" . $service->name . '.' . int(time);
    my $taskno            = 0;
    TASK:
    foreach my $task ( @$tasks ) {
@@ -5636,9 +5737,12 @@ sub run_service {
       my $output_file;
       my $output = $task->output || '';
       if ( $output eq 'spool' ) {
-         $output_file = $spool_file;
-         push @output_files, $spool_file;
-         # TODO: mkdir the spool dif?
+         if ( $have_spool_file++ ) {
+            die "Invalid service: two tasks have output=spool: "
+               . Dumper($service);
+         }
+         $output_file = $abs_spool_file;
+         push @output_files, $output_file;
       }
       elsif ( $output eq 'tmp' ) {
          my ($fh, $file) = tempfile();
@@ -5695,10 +5799,33 @@ sub run_service {
       $taskno++;
    }
 
+   # Move the spool file from .tmp/ to the real spool data dir.
+   if ( -f $abs_spool_file ) {
+      my $file_size = -s $abs_spool_file;
+      if ( ! -s $file_size ) {
+         _info("$abs_spool_file is empty, no data to spool");
+      }
+      else {
+         _info("$abs_spool_file size: $file_size bytes");
+         # Use system mv instead of Perl File::Copy::move() because it's
+         # unknown if the Perl version will do an optimized move, i.e.
+         # simply move the inode, _not_ copy the file.  A system mv on
+         # the same filesystem is pretty much guaranteed to do an optimized
+         # move.
+         my $cmd = "mv $abs_spool_file $spool_data/$spool_file";
+         _info($cmd);
+         system($cmd);
+         my $exit_status = $CHILD_ERROR >> 8;
+         $final_exit_status |= $exit_status;
+         if ( $exit_status ) {
+            _warn("Move failed: $cmd");
+         }
+      }
+   }
+
    # Remove temp output files.
    foreach my $file ( @output_files ) {
-      next unless defined $file;
-      next if $file eq $spool_file;
+      next unless defined $file && -f $file;
       unlink $file
          or _warn("Error removing $file: $OS_ERROR");
    }
@@ -5796,7 +5923,7 @@ sub send_data {
    my $service_dir  = $spool_dir . '/' . $service;
    my $service_file = $lib_dir . '/services/' . $service;
 
-   my $log_file = "$lib_dir/$service.send.log";
+   my $log_file = "$lib_dir/logs/$service.send";
    close STDOUT;
    open  STDOUT, '>>', $log_file
       or die "Cannot open log file $log_file: $OS_ERROR";
@@ -5804,17 +5931,34 @@ sub send_data {
    open  STDERR, ">&STDOUT"
       or die "Cannot dupe STDERR to STDOUT: $OS_ERROR";
 
-   # Re-create the Service resource object from the saved service file.   
-   # TODO: test
-   if ( !-f $service_file ) {
-      _err("Cannot send data for the $service service because "
-         . "$service_file does not exist.");
+   my $pid_file = "$lib_dir/pids/$service.send";
+   if ( -f $pid_file && -s $pid_file ) {
+      die "$pid_file exists, remove it if $service is not running";
    }
+   my $remove_pid_file = CleanupTask->new(
+      sub {
+         unlink $pid_file
+            or warn "Error removing $pid_file: $OS_ERROR\n";
+      },
+   );
+
+   if ( !-d $service_dir ) {
+      die "$service_dir does not exit.  Verify that the agent successfully "
+         . "initialized the --lib directory when it applied the latest "
+         . "config.\n";
+   }
+
+   if ( !-f $service_file ) {
+      die "$service_file does not exist.  Verify that the agent successfully "
+         . "applied the latest services.\n";
+   }
+
+   _info("Sending $service service data");
+
    $service = decode_json(slurp($service_file));
    $service = Percona::WebAPI::Resource::Service->new(%$service);
 
    # Send data files in the service's spool dir.
-   # TODO: if the service dir doesn't exist?
    opendir(my $service_dh, $service_dir)
       or die "Error opening $service_dir: $OS_ERROR";
    DATA_FILE:
