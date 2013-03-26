@@ -5077,7 +5077,7 @@ sub init_agent {
       lib_dir => $lib_dir,
    );
 
-   _info("Agent " . $agent->name . "(" . $agent->uuid . ") is ready");
+   _info("Agent " . $agent->name . " (" . $agent->uuid . ") is ready");
    return $agent;
 }
 
