@@ -5169,8 +5169,8 @@ sub run_agent {
 
    _info('Running agent ' . $agent->name);
 
-   my $first_config_interval    = 60;
-   my $waiting_for_first_config = 1;
+   my $first_config_interval = 60;
+   my $first_config          = 1;
    _info("Checking silently every $first_config_interval seconds"
       . " for the first config");
 
@@ -5181,20 +5181,21 @@ sub run_agent {
    while ( $oktorun->() ) {
 
       ($config, $lib_dir, $success) = get_config(
-         agent    => $agent,
-         client   => $client,
-         lib_dir  => $lib_dir,
-         config   => $config,
-         services => $services,
-         quiet    => $waiting_for_first_config,
+         agent        => $agent,
+         client       => $client,
+         lib_dir      => $lib_dir,
+         config       => $config,
+         services     => $services,
+         quiet        => $first_config,
+         first_config => $first_config,
       );
 
       # Get services only if we successfully got the config because the services
       # may depened on the current config, specifically the --spool dir.
       if ( $success && $config && $config->links->{services} ) {
 
-        if ( $waiting_for_first_config ) {
-            $waiting_for_first_config = 0;
+        if ( $first_config ) {
+            $first_config = 0;
             _info('Agent has been successfully configured');
          }
  
@@ -5231,15 +5232,17 @@ sub get_config {
       agent
       client
       lib_dir
+      first_config
    )) or die;
    my $agent    = $args{agent};
    my $client   = $args{client};
    my $lib_dir  = $args{lib_dir};
 
    # Optional args
-   my $config   = $args{config};   # may not be defined yet
-   my $services = $args{services}; # may not be defined yet
-   my $quiet    = $args{quiet};
+   my $config       = $args{config};   # may not be defined yet
+   my $services     = $args{services}; # may not be defined yet
+   my $quiet        = $args{quiet};
+   my $first_config = $args{first_config};
 
    my $success = 0;
 
@@ -5276,9 +5279,10 @@ sub get_config {
          }
          if ( !$config || $new_config->ts > $config->ts ) {
             $lib_dir = apply_config(
-               agent   => $agent,
-               config  => $new_config,
-               lib_dir => $lib_dir,
+               agent        => $agent,
+               config       => $new_config,
+               lib_dir      => $lib_dir,
+               first_config => $first_config,
             );
             $config  = $new_config;
             $success = 1;
@@ -5442,18 +5446,24 @@ sub apply_config {
       agent
       config
       lib_dir
+      first_config
    )) or die;
    my $agent   = $args{agent};
    my $config  = $args{config};
    my $lib_dir = $args{lib_dir};
+
+   # Optional args
+   my $first_config = $args{first_config};
 
    _info('Applying config ' . $config->ts);
 
    # If the --lib dir has changed, init the new one and re-write
    # the Agent resource in it.
    my $new_lib_dir = $config->options->{lib};
-   if ( $new_lib_dir && $new_lib_dir ne $lib_dir ) {
-      _info("New --lib direcotry: $new_lib_dir");
+   if ( ($new_lib_dir && $new_lib_dir ne $lib_dir) || $first_config ) {
+      _info($first_config ? "Applying first config"
+                          : "New --lib direcotry: $new_lib_dir");
+
       init_lib_dir(
          lib_dir => $new_lib_dir,
       );
