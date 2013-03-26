@@ -13203,7 +13203,9 @@ sub main {
                   );
                }
                else {
-                  print "\n# No events processed.\n";
+                  if ( $o->get('output') eq 'report' ) {
+                     print "\n# No events processed.\n";
+                  }
                }
 
                if ( PTDEBUG ) {

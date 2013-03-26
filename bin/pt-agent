@@ -4753,7 +4753,15 @@ sub main {
    # ########################################################################
    
    # TODO: --send-data should not use this because it calls init_agent()
+   # Check --lib.  Until the agent is configured, the default lib dir
+   # may not work.  Save stuff in /tmp so if we stop and start again
+   # we don't try to create a new agent again.
    my $lib_dir = $o->get('lib');
+   if ( !-d $lib_dir || !-w $lib_dir ) {
+      _info("--lib $lib_dir does not exist or is not writeable,"
+         . " using /tmp until the agent is configured");
+      $lib_dir = '/tmp';
+   }
 
    my ($client, $agent);
    eval {
@@ -4814,24 +4822,15 @@ sub main {
       }
    }
 
-   # Check --lib.  Until the agent is configured, the default lib dir
-   # may not work.  Save stuff in /tmp so if we stop and start again
-   # we don't try to create a new agent again.
-   if ( !-d $lib_dir || !-w $lib_dir ) {
-      _info("--lib $lib_dir does not exist or is not writeable,"
-         . " using /tmp until the agent is configured");
-      $lib_dir = '/tmp';
-   }
-
    # Wait time between checking for new config and services.
    # Use the tool's built-in default until a config is gotten,
    # then config->{check-interval} will be pass in.
    my $check_interval = $o->get('check-interval');
    my $check_wait     = sub {
-      my ($t) = @_;
+      my ($t, $quiet) = @_;
       return unless $oktorun;
       $t ||= $check_interval;
-      _info("Sleeping $t seconds");
+      _info("Sleeping $t seconds") unless $quiet;
       sleep $t;
    };
 
@@ -5107,6 +5106,11 @@ sub run_agent {
 
    _info('Running agent ' . $agent->name);
 
+   my $first_config_interval    = 60;
+   my $waiting_for_first_config = 1;
+   _info("Checking silently every $first_config_interval seconds"
+      . " for the first config");
+
    my $success;
    my $config;
    my $services;
@@ -5119,11 +5123,18 @@ sub run_agent {
          lib_dir  => $lib_dir,
          config   => $config,
          services => $services,
+         quiet    => $waiting_for_first_config,
       );
 
       # Get services only if we successfully got the config because the services
       # may depened on the current config, specifically the --spool dir.
       if ( $success && $config && $config->links->{services} ) {
+
+        if ( $waiting_for_first_config ) {
+            $waiting_for_first_config = 0;
+            _info('Agent has been successfully configured');
+         }
+ 
          ($services, $success) = get_services(
             agent    => $agent,
             client   => $client,
@@ -5135,9 +5146,14 @@ sub run_agent {
          );
       }
 
-      # If no config yet, the tool's built-in default for
-      # --check-interval is used instead.
-      $interval->($config ? $config->options->{'check-interval'} : ());
+      # If configured, wait the given interval.  Else, retry more
+      # quickly so we're ready to go soon after we're configured.
+      if ( $config ) {
+         $interval->($config->options->{'check-interval'});
+      }
+      else {
+         $interval->($first_config_interval, 1);  # 1=quiet
+      }
 
    } # AGENT_LOOP
 
@@ -5160,10 +5176,11 @@ sub get_config {
    # Optional args
    my $config   = $args{config};   # may not be defined yet
    my $services = $args{services}; # may not be defined yet
+   my $quiet    = $args{quiet};
 
    my $success = 0;
 
-   _info('Getting config');
+   _info('Getting config') unless $quiet;
    my $new_config = eval {
       $client->get(
          link => $agent->links->{config},
@@ -5173,7 +5190,8 @@ sub get_config {
       if (blessed($e)) {
          if ($e->isa('Percona::WebAPI::Exception::Request')) {
             if ( $e->status == 404 ) {
-               _info('Agent ' . $agent->name. ' is not configured.');
+               _info('Agent ' . $agent->name. ' is not configured.')
+                  unless $quiet;
             }
             else {
                _info("$e");  # PWS API error?
@@ -5189,8 +5207,10 @@ sub get_config {
    }
    else {
       eval {
-         _info("Running config: " . ($config ? $config->ts : ''));
-         _info("Current config: " . $new_config->ts);
+         if ( !$quiet ) {
+            _info("Running config: " . ($config ? $config->ts : ''));
+            _info("Current config: " . $new_config->ts);
+         }
          if ( !$config || $new_config->ts > $config->ts ) {
             $lib_dir = apply_config(
                agent   => $agent,
@@ -5203,7 +5223,7 @@ sub get_config {
          }
          else {
             $success = 1;
-            _info('Config has not changed');
+            _info('Config has not changed') unless $quiet;
          }
       };
       if ( $EVAL_ERROR ) {
@@ -5654,8 +5674,9 @@ sub run_service {
          );
          $cmd = replace_special_vars(
             cmd          => $cmd,
-            service      => $service,
             output_files => \@output_files,
+            service      => $service->name,  # __SERVICE__
+            lib_dir      => $lib_dir,        # __LIB__
          );
          _info("Task $taskno command: $cmd");
 
@@ -5714,9 +5735,13 @@ sub replace_special_vars {
    have_required_args(\%args, qw(
       cmd
       output_files
+      service
+      lib_dir
    )) or die;
    my $cmd          = $args{cmd};
    my $output_files = $args{output_files};
+   my $service      = $args{service};
+   my $lib_dir      = $args{lib_dir};
 
    my $ts_micro = sprintf('%.6f', time);
 
@@ -5732,6 +5757,8 @@ sub replace_special_vars {
             }
          }
          $word =~ s/__TS_MICRO__/$ts_micro/g;
+         $word =~ s/__LIB__/$lib_dir/g;
+         $word =~ s/__SERVICE__/$service/g;
          $word;
       }
       split(/\s+/, $cmd)
