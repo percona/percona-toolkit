@@ -5674,6 +5674,14 @@ sub run_service {
    if ( -f $pid_file && -s $pid_file ) {
       die "$pid_file exists, remove it if $service is not running";
    }
+   else {
+      open my $fh, '>', $pid_file
+         or die "Error opening $pid_file: $OS_ERROR\n";
+      print { $fh } $PID, "\n"
+         or die "Error writing to $pid_file: $OS_ERROR\n";
+      close $fh
+         or warn "Error closing $pid_file: $OS_ERROR";
+   }
    my $remove_pid_file = CleanupTask->new(
       sub {
          unlink $pid_file
@@ -5731,8 +5739,8 @@ sub run_service {
    }
 
    my @output_files;
-   my $spool_file        = int(time);
-   my $abs_spool_file    = "$spool_tmp/" . $service->name . "/$spool_file";
+   my $spool_file        = $service->name . '.' . int(time);
+   my $abs_spool_file    = "$spool_tmp/$spool_file";
    my $have_spool_file   = 0;
    my $final_exit_status = 0;
    my $taskno            = 0;
@@ -5944,6 +5952,14 @@ sub send_data {
    my $pid_file = "$lib_dir/pids/$service.send";
    if ( -f $pid_file && -s $pid_file ) {
       die "$pid_file exists, remove it if $service is not running";
+   }
+   else {
+      open my $fh, '>', $pid_file
+         or die "Error opening $pid_file: $OS_ERROR\n";
+      print { $fh } $PID, "\n"
+         or die "Error writing to $pid_file: $OS_ERROR\n";
+      close $fh
+         or warn "Error closing $pid_file: $OS_ERROR";
    }
    my $remove_pid_file = CleanupTask->new(
       sub {
