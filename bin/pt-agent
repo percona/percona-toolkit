@@ -5687,8 +5687,8 @@ sub run_service {
          . "config.\n";
    }
 
-   foreach my $dir ( $service, '.tmp' ) {
-      $dir = "$spool_dir/$dir";
+   foreach my $subdir ( $service, '.tmp' ) {
+      my $dir = "$spool_dir/$subdir";
       if ( ! -d $dir ) {
          _info("$dir does not exist, creating");
          mkdir $dir or die "Cannot mkdir $dir: $OS_ERROR";
