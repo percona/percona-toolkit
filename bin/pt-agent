@@ -4751,7 +4751,7 @@ sub main {
          client    => $client,
          agent     => $agent,
          service   => $service,
-         lib_dir   => $->get('lib'),
+         lib_dir   => $o->get('lib'),
          spool_dir => $o->get('spool'),
       );
       _info("Done sending data for the $service service, exit $exit_status");
