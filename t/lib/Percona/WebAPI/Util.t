@@ -45,7 +45,18 @@ $y->options->{spool} = '/var/lib/spool';
 is(
    resource_diff($x, $y),
    1,
-   "Diff"
+   "Big diff in 1 attrib"
+);
+
+# Restore this...
+$y->options->{spool} = '/var/spool';
+# Change this...
+$y->options->{ts} = '101';
+
+is(
+   resource_diff($x, $y),
+   1,
+   "Small diff in 1 attrib"
 );
 
 # #############################################################################

@@ -20,6 +20,7 @@
 {
 package Percona::WebAPI::Util;
 
+use JSON;
 use Digest::MD5 qw(md5_hex);
 
 use Percona::WebAPI::Representation; 
@@ -32,8 +33,12 @@ sub resource_diff {
    my ($x, $y) = @_;
    return 0 if !$x && !$y;
    return 1 if ($x && !$y) || (!$x && $y);
-   return md5_hex(Percona::WebAPI::Representation::as_json($x))
-       ne md5_hex(Percona::WebAPI::Representation::as_json($y));
+   my $json = JSON->new->canonical([1]);  # avoid hash key sort diffs
+   my $x_hex = md5_hex(
+      Percona::WebAPI::Representation::as_json($x, json => $json));
+   my $y_hex = md5_hex(
+      Percona::WebAPI::Representation::as_json($y, json => $json));
+   return $x_hex eq $y_hex ? 0 : 1;
 }
 
 1;
