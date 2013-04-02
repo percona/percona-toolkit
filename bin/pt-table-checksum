@@ -2803,6 +2803,7 @@ if ( PTDEBUG ) {
 # ###########################################################################
 {
 package Lmo::Utils;
+
 use strict;
 use warnings qw( FATAL all );
 require Exporter;
@@ -2810,7 +2811,12 @@ our (@ISA, @EXPORT, @EXPORT_OK);
 
 BEGIN {
    @ISA = qw(Exporter);
-   @EXPORT = @EXPORT_OK = qw(_install_coderef _unimport_coderefs _glob_for _stash_for);
+   @EXPORT = @EXPORT_OK = qw(
+      _install_coderef
+      _unimport_coderefs
+      _glob_for
+      _stash_for
+   );
 }
 
 {
@@ -2993,7 +2999,6 @@ sub meta {
    $class    = Scalar::Util::blessed($class) || $class;
    return Lmo::Meta->new(class => $class);
 }
-
 
 1;
 }
@@ -3658,13 +3663,25 @@ sub is_cluster_node {
 sub same_node {
    my ($self, $cxn1, $cxn2) = @_;
 
-   my $sql = "SHOW VARIABLES LIKE 'wsrep\_sst\_receive\_address'";
-   PTDEBUG && _d($cxn1->name, $sql);
-   my (undef, $val1) = $cxn1->dbh->selectrow_array($sql);
-   PTDEBUG && _d($cxn2->name, $sql);
-   my (undef, $val2) = $cxn2->dbh->selectrow_array($sql);
+   my $sub = sub {
+      my $sql = shift;
+      my @temp;
+      PTDEBUG && _d($cxn1->name, $cxn2->name, $sql);
+      for ($cxn1->dbh, $cxn2->dbh) {
+         my (undef, $v) = $_->selectrow_array($sql);
+         push @temp, $v;
+      }
+      return @temp
+   };
 
-   return ($val1 || '') eq ($val2 || '');
+   for my $val ('wsrep\_sst\_receive\_address', 'wsrep\_node\_name', 'wsrep\_node\_address') {
+      my $sql = "SHOW VARIABLES LIKE '$val'";
+      my ($val1, $val2) = $sub->($sql);
+      return unless ($val1 || '') eq ($val2 || '');
+   }
+
+   return 1;
+
 }
 
 sub same_cluster {
@@ -7402,6 +7419,8 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use Time::HiRes qw(sleep);
 
 sub new {
    my ( $class, %args ) = @_;
