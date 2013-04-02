@@ -11,6 +11,8 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
+use charnames ':full';
+
 use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-archiver";
@@ -84,6 +86,40 @@ is_deeply(
    "--bulk-insert archived 7 rows (issue 1260)"
 );
 
+# #############################################################################
+# pt-archiver wide character errors / corrupted data with UTF-8 + bulk-insert
+# https://bugs.launchpad.net/percona-toolkit/+bug/1127450
+# #############################################################################
+{
+my $utf8_dbh = $sb->get_dbh_for('master', { mysql_enable_utf8 => 1, AutoCommit => 1 });
+
+$sb->load_file('master', 't/pt-archiver/samples/bug_1127450.sql');
+my $sql = qq{INSERT INTO `bug_1127450`.`original` VALUES (1, "\N{KATAKANA LETTER NI}")};
+$utf8_dbh->do($sql);
+
+$output = output(
+   sub { pt_archiver::main(qw(--no-ascend --limit 50 --bulk-insert),
+      qw(--bulk-delete --where 1=1 --statistics --charset utf8),
+      '--source', "L=1,D=bug_1127450,t=original,F=$cnf",
+      '--dest',   "t=copy") }, stderr => 1
+);
+
+my (undef, $val) = $utf8_dbh->selectrow_array('select * from bug_1127450.copy');
+
+ok(
+   utf8::is_utf8($val),
+   "--bulk-insert preserves UTF8ness"
+);
+
+is(
+   $val,
+   "\N{KATAKANA LETTER NI}",
+   "--bulk-insert can handle utf8 characters"
+);
+
+unlike($output, qr/Wide character/, "no wide character warnings")
+
+}
 # #############################################################################
 # Done.
 # #############################################################################
