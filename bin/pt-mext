@@ -4,18 +4,53 @@
 # See "COPYRIGHT, LICENSE, AND WARRANTY" at the end of this file for legal
 # notices and disclaimers.
 
-usage() {
-   if [ "${OPT_ERR}" ]; then
-      echo "${OPT_ERR}" >&2
-   fi
-   echo "Usage: pt-mext [OPTIONS] -- COMMAND" >&2
-   echo "For more information, 'man pt-mext' or 'perldoc $0'" >&2
+# ###########################################################################
+# log_warn_die package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/log_warn_die.sh
+#   t/lib/bash/log_warn_die.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+
+set -u
+
+PTFUNCNAME=""
+PTDEBUG="${PTDEBUG:-""}"
+EXIT_STATUS=0
+
+ts() {
+   TS=$(date +%F-%T | tr ':-' '_')
+   echo "$TS $*"
+}
+
+info() {
+   [ ${OPT_VERBOSE:-3} -ge 3 ] && ts "$*"
+}
+
+log() {
+   [ ${OPT_VERBOSE:-3} -ge 2 ] && ts "$*"
+}
+
+warn() {
+   [ ${OPT_VERBOSE:-3} -ge 1 ] && ts "$*" >&2
+   EXIT_STATUS=1
+}
+
+die() {
+   ts "$*" >&2
+   EXIT_STATUS=1
    exit 1
 }
 
-if [ -z "$1" ]; then
-   usage;
-fi
+_d () {
+   [ "$PTDEBUG" ] && echo "# $PTFUNCNAME: $(ts "$*")" >&2
+}
+
+# ###########################################################################
+# End log_warn_die package
+# ###########################################################################
 
 # ###########################################################################
 # tmpdir package
@@ -58,51 +93,497 @@ rm_tmpdir() {
 # End tmpdir package
 # ###########################################################################
 
+# ###########################################################################
+# parse_options package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/parse_options.sh
+#   t/lib/bash/parse_options.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+
+
+
+
+set -u
+
+ARGV=""           # Non-option args (probably input files)
+EXT_ARGV=""       # Everything after -- (args for an external command)
+HAVE_EXT_ARGV=""  # Got --, everything else is put into EXT_ARGV
+OPT_ERRS=0        # How many command line option errors
+OPT_VERSION=""    # If --version was specified
+OPT_HELP=""       # If --help was specified
+PO_DIR=""         # Directory with program option spec files
+
+usage() {
+   local file="$1"
+
+   local usage="$(grep '^Usage: ' "$file")"
+   echo $usage
+   echo
+   echo "For more information, 'man $TOOL' or 'perldoc $file'."
+}
+
+usage_or_errors() {
+   local file="$1"
+
+   if [ "$OPT_VERSION" ]; then
+      local version=$(grep '^pt-[^ ]\+ [0-9]' "$file")
+      echo "$version"
+      return 1
+   fi
+
+   if [ "$OPT_HELP" ]; then
+      usage "$file"
+      echo
+      echo "Command line options:"
+      echo
+      perl -e '
+         use strict;
+         use warnings FATAL => qw(all);
+         my $lcol = 20;         # Allow this much space for option names.
+         my $rcol = 80 - $lcol; # The terminal is assumed to be 80 chars wide.
+         my $name;
+         while ( <> ) {
+            my $line = $_;
+            chomp $line;
+            if ( $line =~ s/^long:/  --/ ) {
+               $name = $line;
+            }
+            elsif ( $line =~ s/^desc:// ) {
+               $line =~ s/ +$//mg;
+               my @lines = grep { $_      }
+                           $line =~ m/(.{0,$rcol})(?:\s+|\Z)/g;
+               if ( length($name) >= $lcol ) {
+                  print $name, "\n", (q{ } x $lcol);
+               }
+               else {
+                  printf "%-${lcol}s", $name;
+               }
+               print join("\n" . (q{ } x $lcol), @lines);
+               print "\n";
+            }
+         }
+      ' "$PO_DIR"/*
+      echo
+      echo "Options and values after processing arguments:"
+      echo
+      (
+         cd "$PO_DIR"
+         for opt in *; do
+            local varname="OPT_$(echo "$opt" | tr a-z- A-Z_)"
+            eval local varvalue=\$$varname
+            if ! grep -q "type:" "$PO_DIR/$opt" >/dev/null; then
+               if [ "$varvalue" -a "$varvalue" = "yes" ];
+                  then varvalue="TRUE"
+               else
+                  varvalue="FALSE"
+               fi
+            fi
+            printf -- "  --%-30s %s" "$opt" "${varvalue:-(No value)}"
+            echo
+         done
+      )
+      return 1
+   fi
+
+   if [ $OPT_ERRS -gt 0 ]; then
+      echo
+      usage "$file"
+      return 1
+   fi
+
+   return 0
+}
+
+option_error() {
+   local err="$1"
+   OPT_ERRS=$(($OPT_ERRS + 1))
+   echo "$err" >&2
+}
+
+parse_options() {
+   local file="$1"
+   shift
+
+   ARGV=""
+   EXT_ARGV=""
+   HAVE_EXT_ARGV=""
+   OPT_ERRS=0
+   OPT_VERSION=""
+   OPT_HELP=""
+   PO_DIR="$PT_TMPDIR/po"
+
+   if [ ! -d "$PO_DIR" ]; then
+      mkdir "$PO_DIR"
+      if [ $? -ne 0 ]; then
+         echo "Cannot mkdir $PO_DIR" >&2
+         exit 1
+      fi
+   fi
+
+   rm -rf "$PO_DIR"/*
+   if [ $? -ne 0 ]; then
+      echo "Cannot rm -rf $PO_DIR/*" >&2
+      exit 1
+   fi
+
+   _parse_pod "$file"  # Parse POD into program option (po) spec files
+   _eval_po            # Eval po into existence with default values
+
+   if [ $# -ge 2 ] &&  [ "$1" = "--config" ]; then
+      shift  # --config
+      local user_config_files="$1"
+      shift  # that ^
+      local IFS=","
+      for user_config_file in $user_config_files; do
+         _parse_config_files "$user_config_file"
+      done
+   else
+      _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf" "/etc/percona-toolkit/$TOOL.conf" "$HOME/.percona-toolkit.conf" "$HOME/.$TOOL.conf"
+   fi
+
+   _parse_command_line "${@:-""}"
+}
+
+_parse_pod() {
+   local file="$1"
+
+   cat "$file" | PO_DIR="$PO_DIR" perl -ne '
+      BEGIN { $/ = ""; }
+      next unless $_ =~ m/^=head1 OPTIONS/;
+      while ( defined(my $para = <>) ) {
+         last if $para =~ m/^=head1/;
+         chomp;
+         if ( $para =~ m/^=item --(\S+)/ ) {
+            my $opt  = $1;
+            my $file = "$ENV{PO_DIR}/$opt";
+            open my $opt_fh, ">", $file or die "Cannot open $file: $!";
+            print $opt_fh "long:$opt\n";
+            $para = <>;
+            chomp;
+            if ( $para =~ m/^[a-z ]+:/ ) {
+               map {
+                  chomp;
+                  my ($attrib, $val) = split(/: /, $_);
+                  print $opt_fh "$attrib:$val\n";
+               } split(/; /, $para);
+               $para = <>;
+               chomp;
+            }
+            my ($desc) = $para =~ m/^([^?.]+)/;
+            print $opt_fh "desc:$desc.\n";
+            close $opt_fh;
+         }
+      }
+      last;
+   '
+}
+
+_eval_po() {
+   local IFS=":"
+   for opt_spec in "$PO_DIR"/*; do
+      local opt=""
+      local default_val=""
+      local neg=0
+      local size=0
+      while read key val; do
+         case "$key" in
+            long)
+               opt=$(echo $val | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
+               ;;
+            default)
+               default_val="$val"
+               ;;
+            "short form")
+               ;;
+            type)
+               [ "$val" = "size" ] && size=1
+               ;;
+            desc)
+               ;;
+            negatable)
+               if [ "$val" = "yes" ]; then
+                  neg=1
+               fi
+               ;;
+            *)
+               echo "Invalid attribute in $opt_spec: $line" >&2
+               exit 1
+         esac 
+      done < "$opt_spec"
+
+      if [ -z "$opt" ]; then
+         echo "No long attribute in option spec $opt_spec" >&2
+         exit 1
+      fi
+
+      if [ $neg -eq 1 ]; then
+         if [ -z "$default_val" ] || [ "$default_val" != "yes" ]; then
+            echo "Option $opt_spec is negatable but not default: yes" >&2
+            exit 1
+         fi
+      fi
+
+      if [ $size -eq 1 -a -n "$default_val" ]; then
+         default_val=$(size_to_bytes $default_val)
+      fi
+
+      eval "OPT_${opt}"="$default_val"
+   done
+}
+
+_parse_config_files() {
+
+   for config_file in "${@:-""}"; do
+      test -f "$config_file" || continue
+
+      while read config_opt; do
+
+         echo "$config_opt" | grep '^[ ]*[^#]' >/dev/null 2>&1 || continue
+
+         config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/[ ]*#.*$//')"
+
+         [ "$config_opt" = "" ] && continue
+
+         if ! [ "$HAVE_EXT_ARGV" ]; then
+            config_opt="--$config_opt"
+         fi
+
+         _parse_command_line "$config_opt"
+
+      done < "$config_file"
+
+      HAVE_EXT_ARGV=""  # reset for each file
+
+   done
+}
+
+_parse_command_line() {
+   local opt=""
+   local val=""
+   local next_opt_is_val=""
+   local opt_is_ok=""
+   local opt_is_negated=""
+   local real_opt=""
+   local required_arg=""
+   local spec=""
+
+   for opt in "${@:-""}"; do
+      if [ "$opt" = "--" -o "$opt" = "----" ]; then
+         HAVE_EXT_ARGV=1
+         continue
+      fi
+      if [ "$HAVE_EXT_ARGV" ]; then
+         if [ "$EXT_ARGV" ]; then
+            EXT_ARGV="$EXT_ARGV $opt"
+         else
+            EXT_ARGV="$opt"
+         fi
+         continue
+      fi
+
+      if [ "$next_opt_is_val" ]; then
+         next_opt_is_val=""
+         if [ $# -eq 0 ] || [ $(expr "$opt" : "\-") -eq 1 ]; then
+            option_error "$real_opt requires a $required_arg argument"
+            continue
+         fi
+         val="$opt"
+         opt_is_ok=1
+      else
+         if [ $(expr "$opt" : "\-") -eq 0 ]; then
+            if [ -z "$ARGV" ]; then
+               ARGV="$opt"
+            else
+               ARGV="$ARGV $opt"
+            fi
+            continue
+         fi
+
+         real_opt="$opt"
+
+         if $(echo $opt | grep '^--no[^-]' >/dev/null); then
+            local base_opt=$(echo $opt | sed 's/^--no//')
+            if [ -f "$PT_TMPDIR/po/$base_opt" ]; then
+               opt_is_negated=1
+               opt="$base_opt"
+            else
+               opt_is_negated=""
+               opt=$(echo $opt | sed 's/^-*//')
+            fi
+         else
+            if $(echo $opt | grep '^--no-' >/dev/null); then
+               opt_is_negated=1
+               opt=$(echo $opt | sed 's/^--no-//')
+            else
+               opt_is_negated=""
+               opt=$(echo $opt | sed 's/^-*//')
+            fi
+         fi
+
+         if $(echo $opt | grep '^[a-z-][a-z-]*=' >/dev/null 2>&1); then
+            val="$(echo $opt | awk -F= '{print $2}')"
+            opt="$(echo $opt | awk -F= '{print $1}')"
+         fi
+
+         if [ -f "$PT_TMPDIR/po/$opt" ]; then
+            spec="$PT_TMPDIR/po/$opt"
+         else
+            spec=$(grep "^short form:-$opt\$" "$PT_TMPDIR"/po/* | cut -d ':' -f 1)
+            if [ -z "$spec"  ]; then
+               option_error "Unknown option: $real_opt"
+               continue
+            fi
+         fi
+
+         required_arg=$(cat "$spec" | awk -F: '/^type:/{print $2}')
+         if [ "$required_arg" ]; then
+            if [ "$val" ]; then
+               opt_is_ok=1
+            else
+               next_opt_is_val=1
+            fi
+         else
+            if [ "$val" ]; then
+               option_error "Option $real_opt does not take a value"
+               continue
+            fi 
+            if [ "$opt_is_negated" ]; then
+               val=""
+            else
+               val="yes"
+            fi
+            opt_is_ok=1
+         fi
+      fi
+
+      if [ "$opt_is_ok" ]; then
+         opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
+
+         if grep "^type:size" "$spec" >/dev/null; then
+            val=$(size_to_bytes $val)
+         fi
+
+         eval "OPT_$opt"="'$val'"
+
+         opt=""
+         val=""
+         next_opt_is_val=""
+         opt_is_ok=""
+         opt_is_negated=""
+         real_opt=""
+         required_arg=""
+         spec=""
+      fi
+   done
+}
+
+size_to_bytes() {
+   local size="$1"
+   echo $size | perl -ne '%f=(B=>1, K=>1_024, M=>1_048_576, G=>1_073_741_824, T=>1_099_511_627_776); m/^(\d+)([kMGT])?/i; print $1 * $f{uc($2 || "B")};'
+}
+
+# ###########################################################################
+# End parse_options package
+# ###########################################################################
+
+# ###########################################################################
+# alt_cmds package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/alt_cmds.sh
+#   t/lib/bash/alt_cmds.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+
+set -u
+
+_seq() {
+   local i="$1"
+   awk "BEGIN { for(i=1; i<=$i; i++) print i; }"
+}
+
+_pidof() {
+   local cmd="$1"
+   if ! pidof "$cmd" 2>/dev/null; then
+      ps -eo pid,ucomm | awk -v comm="$cmd" '$2 == comm { print $1 }'
+   fi
+}
+
+_lsof() {
+   local pid="$1"
+   if ! lsof -p $pid 2>/dev/null; then
+      /bin/ls -l /proc/$pid/fd 2>/dev/null
+   fi
+}
+
+
+
+_which() {
+   if [ -x /usr/bin/which ]; then
+      /usr/bin/which "$1" 2>/dev/null | awk '{print $1}'
+   elif which which 1>/dev/null 2>&1; then
+      which "$1" 2>/dev/null | awk '{print $1}'
+   else
+      echo "$1"
+   fi
+}
+
+# ###########################################################################
+# End alt_cmds package
+# ###########################################################################
+
+TOOL="pt-mext"
+
+# Parse command line options.
 mk_tmpdir
+parse_options "$0" "${@:-""}"
+
+if [ -z "$OPT_HELP" -a -z "$OPT_VERSION" ]; then
+   if [ -z "$EXT_ARGV" ]; then
+      option_error "No COMMAND was given."
+   fi
+fi
+
+usage_or_errors "$0"
+po_status=$?
+
+if [ $po_status -ne 0 ]; then
+   [ $OPT_ERRS -gt 0 ] && exit 1
+   exit 0
+fi
 
 FILE="$PT_TMPDIR/mext_temp_file";
-NUM=0;
-REL=0;
-
-# Command-line parsing.
-args=`getopt -u -n mext r "$@"`;
-if [ "$?" = "1" ]; then
-   usage;
-fi
-set -- $args
-for o; do
-   case "$o" in
-      -r)   REL="1"; shift;;
-      --)   shift;   break;;
-   esac
-done
-
-if [ -z "$1" ]; then
-   usage;
-fi
+NUM=1;
 
 # Split the output on empty lines and put each into a different file; eliminate
 # lines that don't have "real" content.
-$@ | grep -v '+' | grep -v Variable_name | sed 's/|//g' \
+$EXT_ARGV | grep -v '+' | grep -v Variable_name | sed 's/|//g' \
    | while read line; do
    if [ "$line" = "" ]; then
-      NUM=`expr $NUM + 1`;
+      NUM=$(($NUM + 1))
       echo "" > "$FILE$NUM"
    fi
    echo "$line" >> "$FILE$NUM"
 done
 
-# Count how many files there are and prepare to format the output
 SPEC="%-33s %13d"
 AWKS=""
+
+# Count how many files there are and prepare to format the output, but...
 NUM=`ls "$FILE"* | wc -l`;
-# The last file will be empty...
-NUM=`expr $NUM - 3`;
+
+# ... iterate through files 1..(N-2) because the last file is empty and
+# we join N to N+1 so also don't read the last real file.
+NUM=$((NUM - 2))
 
 # Join each file with the next file, joining on the first field. Build a printf
 # spec and awk spec at the same time.
-for i in `seq 0 $NUM`; do
-   NEXTFILE=`expr $i + 1`;
+for i in `_seq $NUM`; do
+   NEXTFILE=$(($i + 1))
 
    # Sort each file and eliminate empty lines, so 'join' doesn't complain.
    sort "$FILE$i" | grep . > "$FILE$i.tmp"
@@ -119,10 +600,29 @@ for i in `seq 0 $NUM`; do
    MAXLEN=`awk '{print $2}' "$FILE${NEXTFILE}" | grep -v '[^0-9]' | awk '{print length($1)}' | sort -rn | head -n1`
    mv "$FILE" "$FILE${NEXTFILE}"
    SPEC="$SPEC %${MAXLEN}d";
-   if [ "$REL" = "1" ]; then
-      AWKS="$AWKS, \$`expr $i + 3` - \$`expr $i + 2`";
+
+   # The final file will contain lines like:
+   #
+   #   Bytes_received 100 200 50 300
+   #
+   # For each such line in awk, $1 is the var name and $2 is the first value
+   # of the var, so these are fixed when we build AWKCMD after this loop.
+   # When i=1, we're comparing file1 to file2, and the resulting value becomes
+   # awk $3.  Hence $i + 2=$3 below.  Then incr and repeat for subsequent files.
+   #
+   # With --relative, the $i and awk field numbers are the same, but we print
+   # differences $3-$2, $4-$3, $5-$4 from the input line for awk fields $3, $4,
+   # and $5 respectively.  Here's a table:
+   #
+   #    i  awk  Input line fields
+   #   ==  ===  =================
+   #    1   $3              $3-$2
+   #    2   $4              $4-$3
+   #    3   $5              $5-$4
+   if [ "$OPT_RELATIVE" ]; then
+      AWKS="$AWKS, \$`expr $i + 2` - \$`expr $i + 1`";
    else
-      AWKS="$AWKS, \$`expr $i + 3`";
+      AWKS="$AWKS, \$$(($i + 2))";
    fi
 done
 
@@ -153,7 +653,7 @@ pt-mext columnizes repeated output from a program like mysqladmin extended.
 
 Get output from C<mysqladmin>:
 
-   pt-mext -r -- mysqladmin ext -i10 -c3"
+   pt-mext -r -- mysqladmin ext -i10 -c3
 
 Get output from a file:
 
@@ -191,9 +691,19 @@ each sample from the one after it before printing results.
 
 =over
 
-=item -r
+=item --help
 
-Relative: subtract each column from the previous column.
+Show help and exit.
+
+=item --relative
+
+short form: -r
+
+Subtract each column from the previous column.
+
+=item --version
+
+Show version and exit.
 
 =back
 
