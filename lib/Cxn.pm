@@ -155,9 +155,9 @@ sub set_dbh {
 
    # Update the cxn's name.  Until we connect, the DSN parts
    # h and P are used.  Once connected, use @@hostname.
-   my $sql = 'SELECT @@hostname, @@server_id';
+   my $sql = 'SELECT @@server_id /*!50038 , @@hostname*/';
    PTDEBUG && _d($dbh, $sql);
-   my ($hostname, $server_id) = $dbh->selectrow_array($sql);
+   my ($server_id, $hostname) = $dbh->selectrow_array($sql);
    PTDEBUG && _d($dbh, 'hostname:', $hostname, $server_id);
    if ( $hostname ) {
       $self->{hostname} = $hostname;
