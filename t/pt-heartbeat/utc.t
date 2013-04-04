@@ -55,7 +55,7 @@ sub start_update_instance {
       my $cmd = "$trunk/bin/pt-heartbeat";
       exec { $cmd } $cmd, qw(-h 127.0.0.1 -u msandbox -p msandbox -P), $port,
                           qw(--database test --table heartbeat --create-table),
-                          qw(--update --interval 0.5 --pid), $pidfile;
+                          qw(--utc --update --interval 0.5 --pid), $pidfile;
       exit 1;
    }
    push @exec_pids, $pid;
@@ -129,6 +129,43 @@ like(
    $row->{ts},
    qr/\d{4}-\d\d-\d\dT\d+:\d+:\d+\.\d+/,
    "Hi-res timestamp (bug 1103221)"
+);
+
+
+# #############################################################################
+# Bug 1163372: pt-heartbeat --utc --check always returns 0
+# #############################################################################
+
+my ($sec, $min, $hour, $mday, $mon, $year) = gmtime(time);
+$mon  += 1;
+$year += 1900;
+
+# Make the ts seem like it 1 hour ago, so the output should show at least
+# 1 hour lag, i.e. 1.00, or maybe 1.02 etc. on a slow test box, but definately
+# not 0.\d+.
+$hour -= 1; 
+
+my $old_utc_ts = sprintf(
+   "%d-%02d-%02dT%02d:%02d:%02d",
+   $year, $mon, $mday, $hour, $min, $sec);
+
+$master_dbh->do("truncate table test.heartbeat");
+$master_dbh->do("insert into test.heartbeat (ts, server_id) values ('$old_utc_ts', 1)");
+$sb->wait_for_slaves;
+
+($output) = output(
+   sub {
+      pt_heartbeat::main(
+         $slave1_dsn, qw(--database test --table heartbeat),
+         qw(--utc --check --master-server-id), $master_port
+      )
+   },
+);
+
+like(
+   $output,
+   qr/^1\.\d+/,
+   "--utc --check (bug 1163372"
 );
 
 # ############################################################################
