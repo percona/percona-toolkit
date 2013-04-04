@@ -55,7 +55,7 @@ sub start_update_instance {
       my $cmd = "$trunk/bin/pt-heartbeat";
       exec { $cmd } $cmd, qw(-h 127.0.0.1 -u msandbox -p msandbox -P), $port,
                           qw(--database test --table heartbeat --create-table),
-                          qw(--update --interval 0.5 --pid), $pidfile;
+                          qw(--utc --update --interval 0.5 --pid), $pidfile;
       exit 1;
    }
    push @exec_pids, $pid;
