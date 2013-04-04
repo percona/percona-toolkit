@@ -25,7 +25,7 @@ while ( my $file = readdir $dh ) {
          "t/pt-pmp/samples/$outfile",
       ),
       "$file"
-   );
+   ) or diag($test_diff);
 }
 closedir $dh;
 
@@ -35,6 +35,6 @@ ok(
       "t/pt-pmp/samples/stacktrace003-limit2.out",
    ),
    "Limit 2 (stacktrace003-limit2.out)"
-);
+) or diag($test_diff);
 
 done_testing;
