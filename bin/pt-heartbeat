@@ -5071,6 +5071,14 @@ sub main {
          $sth->finish();
          return ($delay, $hostname, $pk_val);
       };
+
+      # https://bugs.launchpad.net/percona-toolkit/+bug/1163372
+      # "pt-heartbeat --utc --check always returns 0"
+      if ( $utc ) {
+         my $sql = "SET time_zone='+0:00'";
+         PTDEBUG && _d($sql);
+         $dbh->do($sql);
+      }
    }
 
    # Do a little check just to make sure the table is there, so there's one last
