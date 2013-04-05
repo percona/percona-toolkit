@@ -1,4 +1,4 @@
-# This program is copyright 2008-2011 Percona Ireland Ltd.
+# This program is copyright 2008-2013 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -17,59 +17,91 @@
 # ###########################################################################
 # Daemon package
 # ###########################################################################
-{
-# Package: Daemon
-# Daemon daemonizes the caller and handles daemon-related tasks like PID files.
 package Daemon;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use POSIX qw(setsid);
+use Fcntl qw(:DEFAULT);
 
-# The required o arg is an OptionParser object.
 sub new {
-   my ( $class, %args ) = @_;
-   foreach my $arg ( qw(o) ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my $o = $args{o};
+   my ($class, %args) = @_;
    my $self = {
-      o        => $o,
-      log_file => $o->has('log') ? $o->get('log') : undef,
-      PID_file => $o->has('pid') ? $o->get('pid') : undef,
+      log_file  => $args{log_file},
+      pid_file  => $args{pid_file},
+      daemonize => $args{daemonize},
    };
-
-   # undef because we can't call like $self->check_PID_file() yet.
-   check_PID_file(undef, $self->{PID_file});
-
-   PTDEBUG && _d('Daemonized child will log to', $self->{log_file});
    return bless $self, $class;
 }
 
-sub daemonize {
-   my ( $self ) = @_;
+sub run {
+   my ($self, %args) = @_;
+   my $pid      ||= $PID;
+   my $pid_file ||= $self->{pid_file};
+   my $log_file ||= $self->{log_file};
 
-   PTDEBUG && _d('About to fork and daemonize');
-   defined (my $pid = fork()) or die "Cannot fork: $OS_ERROR";
-   if ( $pid ) {
-      PTDEBUG && _d('Parent PID', $PID, 'exiting after forking child PID',$pid);
-      exit;
+   if ( $self->{daemonize} ) {
+      $self->_daemonize(
+         pid      => $pid,
+         pid_file => $pid_file,
+         log_file => $log_file,
+      );
+   }
+   elsif ( $pid_file ) {
+      $self->_make_pid_file(
+         pid      => $pid,
+         pid_file => $pid_file,
+      );
+      $self->{pid_file_owner} = $pid;
+   }
+   else {
+      PTDEBUG && _d('Neither --daemonize nor --pid was specified');
    }
 
-   # I'm daemonized now.
-   PTDEBUG && _d('Daemonizing child PID', $PID);
-   $self->{PID_owner} = $PID;
-   $self->{child}     = 1;
+   return;
+}
 
-   POSIX::setsid() or die "Cannot start a new session: $OS_ERROR";
-   chdir '/'       or die "Cannot chdir to /: $OS_ERROR";
+sub _daemonize {
+   my ($self, %args) = @_;
+   my $pid      = $args{pid};
+   my $pid_file = $args{pid_file};
+   my $log_file = $args{log_file};
 
-   $self->_make_PID_file();
+   PTDEBUG && _d('Daemonizing');
 
-   $OUTPUT_AUTOFLUSH = 1;
+   # First obtain the pid file or die trying.  NOTE: we're still the parent
+   # so the pid file will contain the parent's pid at first.  This is done
+   # to avoid a race condition between the parent checking for the pid file,
+   # forking, and the child actually obtaining the pid file.  This way, if
+   # the parent obtains the pid file, the child is guaranteed to be the only
+   # process running.
+   if ( $pid_file ) {
+      eval {
+         $self->_make_pid_file(
+            pid      => $pid,  # parent's pid
+            pid_file => $pid_file,
+         );
+      };
+      if ( $EVAL_ERROR ) {
+         die "Cannot daemonize: $EVAL_ERROR\n";
+      }
+   }
+
+   # Fork, exit parent, continue as child process.
+   defined (my $child_pid = fork())
+      or die "Cannot fork: $OS_ERROR";
+   if ( $child_pid ) {
+      # I'm the parent.
+      PTDEBUG && _d('Forked child', $child_pid);
+      exit 0;
+   }
+
+   # I'm the child.  First, open the log file, if any.  Do this first
+   # so that all daemon/child output goes there.
 
    # We used to only reopen STDIN to /dev/null if it's a tty because
    # otherwise it may be a pipe, in which case we didn't want to break
@@ -82,12 +114,11 @@ sub daemonize {
    close STDIN;
    open  STDIN, '/dev/null'
       or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
-
-   if ( $self->{log_file} ) {
-      PTDEBUG && _d('Redirecting STDOUT and STDERR to', $self->{log_file});
+   if ( $log_file ) {
+      PTDEBUG && _d('Redirecting STDOUT and STDERR to', $log_file);
       close STDOUT;
-      open  STDOUT, '>>', $self->{log_file}
-         or die "Cannot open log file $self->{log_file}: $OS_ERROR";
+      open  STDOUT, '>>', $log_file
+         or die "Cannot open log file $log_file: $OS_ERROR";
 
       # If we don't close STDERR explicitly, then prove Daemon.t fails
       # because STDERR gets written before STDOUT even though we print
@@ -114,94 +145,138 @@ sub daemonize {
       }
    }
 
+   # XXX: I don't think we need this?
+   # $OUTPUT_AUTOFLUSH = 1;
+
+   PTDEBUG && _d('I am child', $PID);
+
+   # Now update the pid file to contain the correct pid, i.e. the child's pid.
+   if ( $pid_file ) {
+      $self->_update_pid_file(
+         pid      => $PID,  # child's pid
+         pid_file => $pid_file,
+      );
+      $self->{pid_file_owner} = $PID;
+   }
+
+   # Last: other misc daemon stuff.
+   POSIX::setsid() or die "Cannot start a new session: $OS_ERROR";
+   chdir '/'       or die "Cannot chdir to /: $OS_ERROR";
+
+   # We're not fully daemonized.
+
    return;
 }
 
-# The file arg is optional.  It's used when new() calls this sub
-# because $self hasn't been created yet.
-sub check_PID_file {
-   my ( $self, $file ) = @_;
-   my $PID_file = $self ? $self->{PID_file} : $file;
-   PTDEBUG && _d('Checking PID file', $PID_file);
-   if ( $PID_file && -f $PID_file ) {
-      my $pid;
-      eval {
-         chomp($pid = (slurp_file($PID_file) || ''));
-      };
-      if ( $EVAL_ERROR ) {
-         # Be safe and die if we can't check that a process is
-         # or is not already running.
-         die "The PID file $PID_file already exists but it cannot be read: "
-            . $EVAL_ERROR;
-      }
-      PTDEBUG && _d('PID file exists; it contains PID', $pid);
-      if ( $pid ) {
-         my $pid_is_alive = kill 0, $pid;
-         if ( $pid_is_alive ) {
-            die "The PID file $PID_file already exists "
-               . " and the PID that it contains, $pid, is running";
-         }
-         else {
-            warn "Overwriting PID file $PID_file because the PID that it "
-               . "contains, $pid, is not running";
-         }
-      }
-      else {
-         # Be safe and die if we can't check that a process is
-         # or is not already running.
-         die "The PID file $PID_file already exists but it does not "
-            . "contain a PID";
-      }
-   }
-   else {
-      PTDEBUG && _d('No PID file');
-   }
-   return;
-}
 
 # Call this for non-daemonized scripts to make a PID file.
-sub make_PID_file {
-   my ( $self ) = @_;
-   if ( exists $self->{child} ) {
-      die "Do not call Daemon::make_PID_file() for daemonized scripts";
+sub _make_pid_file {
+   my ($self, %args) = @_;
+   my @required_args = qw(pid pid_file);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my $pid      = $args{pid};
+   my $pid_file = $args{pid_file};
+
+   # "If O_CREAT and O_EXCL are set, open() shall fail if the file exists.
+   #  The check for the existence of the file and the creation of the file
+   #  if it does not exist shall be atomic with respect to other threads
+   #  executing open() naming the same filename in the same directory with
+   #  O_EXCL and O_CREAT set.
+   eval {
+      sysopen(PID_FH, $pid_file, O_RDWR|O_CREAT|O_EXCL) or die $OS_ERROR;
+      print PID_FH $PID, "\n";
+      close PID_FH; 
+   };
+   if ( my $e = $EVAL_ERROR ) {
+      if ( $e =~ m/file exists/i ) {
+         # Check if the existing pid is running.  If yes, then die,
+         # else this returns and we overwrite the pid file.
+         my $old_pid = $self->_check_pid_file(
+            pid_file => $pid_file,
+         );
+         if ( $old_pid ) {
+            warn "Overwriting PID file $pid_file because PID $old_pid "
+               . "is not running.\n";
+         }
+         $self->_update_pid_file(
+            pid      => $PID,
+            pid_file => $pid_file
+         );
+      }
+      else {
+         die "Error creating PID file $pid_file: $e\n";
+      }
    }
-   $self->_make_PID_file();
-   # This causes the PID file to be auto-removed when this obj is destroyed.
-   $self->{PID_owner} = $PID;
+
    return;
 }
 
-# Do not call this sub directly.  For daemonized scripts, it's called
-# automatically from daemonize() if there's a --pid opt.  For non-daemonized
-# scripts, call make_PID_file().
-sub _make_PID_file {
-   my ( $self ) = @_;
+sub _check_pid_file {
+   my ($self, %args) = @_;
+   my @required_args = qw(pid_file);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my $pid_file = $args{pid_file};
 
-   my $PID_file = $self->{PID_file};
-   if ( !$PID_file ) {
-      PTDEBUG && _d('No PID file to create');
+   PTDEBUG && _d('Checking if PID in', $pid_file, 'is running');
+
+   if ( ! -f $pid_file ) {
+      PTDEBUG && _d('PID file', $pid_file, 'does not exist');
       return;
    }
 
-   # We checked this in new() but we'll double check here.
-   $self->check_PID_file();
+   open my $fh, '<', $pid_file
+      or die "Error opening $pid_file: $OS_ERROR";
+   my $pid = do { local $/; <$fh> };
+   chomp($pid) if $pid;
+   close $fh
+      or die "Error closing $pid_file: $OS_ERROR";
 
-   open my $PID_FH, '>', $PID_file
-      or die "Cannot open PID file $PID_file: $OS_ERROR";
-   print $PID_FH $PID
-      or die "Cannot print to PID file $PID_file: $OS_ERROR";
-   close $PID_FH
-      or die "Cannot close PID file $PID_file: $OS_ERROR";
+   if ( $pid ) {
+      PTDEBUG && _d('Checking if PID', $pid, 'is running');
+      my $pid_is_alive = kill 0, $pid;
+      if ( $pid_is_alive ) {
+         die "PID file $pid_file exists and PID $pid is running\n";
+      }
+   }
+   else {
+      # PID file but no PID: not sure what to do, so be safe and die;
+      # let the user figure it out (i.e. rm the pid file).
+      die "PID file $pid_file exists but it is empty.  Remove the file "
+         . "if the process is no longer running.\n";
+   }
 
-   PTDEBUG && _d('Created PID file:', $self->{PID_file});
+   return $pid;
+}
+
+sub _update_pid_file {
+   my ($self, %args) = @_;
+   my @required_args = qw(pid pid_file);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my $pid      = $args{pid};
+   my $pid_file = $args{pid_file};
+
+   open my $fh, '>', $pid_file
+      or die "Cannot open $pid_file: $OS_ERROR";
+   print { $fh } $pid, "\n"
+      or die "Cannot print to $pid_file: $OS_ERROR";
+   close $fh
+      or warn "Cannot close $pid_file: $OS_ERROR";
+
    return;
 }
 
-sub _remove_PID_file {
-   my ( $self ) = @_;
-   if ( $self->{PID_file} && -f $self->{PID_file} ) {
-      unlink $self->{PID_file}
-         or warn "Cannot remove PID file $self->{PID_file}: $OS_ERROR";
+sub remove_pid_file {
+   my ($self, $pid_file) = @_;
+   $pid_file ||= $self->{pid_file};
+   if ( $pid_file && -f $pid_file ) {
+      unlink $self->{pid_file}
+         or warn "Cannot remove PID file $pid_file: $OS_ERROR";
       PTDEBUG && _d('Removed PID file');
    }
    else {
@@ -211,7 +286,7 @@ sub _remove_PID_file {
 }
 
 sub DESTROY {
-   my ( $self ) = @_;
+   my ($self) = @_;
 
    # Remove the PID file only if we created it.  There's two cases where
    # it might be removed wrongly.  1) When the obj first daemonizes itself,
@@ -220,19 +295,14 @@ sub DESTROY {
    # have it.  2) When daemonized code forks its children get copies of
    # the Daemon obj which will also call this sub when they exit.  We
    # don't remove it then because the daemonized parent code won't have it.
-   # This trick works because $self->{PID_owner}=$PID is set once to the
+   # This trick works because $self->{pid_file_owner}=$PID is set once to the
    # owner's $PID then this value is copied on fork.  But the "== $PID"
    # here is the forked copy's PID which won't match the owner's PID.
-   $self->_remove_PID_file() if ($self->{PID_owner} || 0) == $PID;
+   if ( ($self->{pid_file_owner} || 0) == $PID ) {
+      $self->remove_pid_file();
+   }
 
    return;
-}
-
-sub slurp_file {
-   my ($file) = @_;
-   return unless $file;
-   open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
-   return do { local $/; <$fh> };
 }
 
 sub _d {
@@ -244,7 +314,6 @@ sub _d {
 }
 
 1;
-}
 # ###########################################################################
 # End Daemon package
 # ###########################################################################
