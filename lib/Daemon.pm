@@ -31,47 +31,24 @@ use Fcntl qw(:DEFAULT);
 sub new {
    my ($class, %args) = @_;
    my $self = {
-      log_file  => $args{log_file},
-      pid_file  => $args{pid_file},
-      daemonize => $args{daemonize},
+      log_file       => $args{log_file},
+      pid_file       => $args{pid_file},
+      daemonize      => $args{daemonize},
+      force_log_file => $args{force_log_file},
    };
    return bless $self, $class;
 }
 
 sub run {
-   my ($self, %args) = @_;
-   my $pid      ||= $PID;
-   my $pid_file ||= $self->{pid_file};
-   my $log_file ||= $self->{log_file};
+   my ($self) = @_;
 
-   if ( $self->{daemonize} ) {
-      $self->_daemonize(
-         pid      => $pid,
-         pid_file => $pid_file,
-         log_file => $log_file,
-      );
-   }
-   elsif ( $pid_file ) {
-      $self->_make_pid_file(
-         pid      => $pid,
-         pid_file => $pid_file,
-      );
-      $self->{pid_file_owner} = $pid;
-   }
-   else {
-      PTDEBUG && _d('Neither --daemonize nor --pid was specified');
-   }
+   # Just for brevity:
+   my $daemonize      = $self->{daemonize};
+   my $pid_file       = $self->{pid_file};
+   my $log_file       = $self->{log_file};
+   my $force_log_file = $self->{force_log_file};
 
-   return;
-}
-
-sub _daemonize {
-   my ($self, %args) = @_;
-   my $pid      = $args{pid};
-   my $pid_file = $args{pid_file};
-   my $log_file = $args{log_file};
-
-   PTDEBUG && _d('Daemonizing');
+   PTDEBUG && _d('Starting daemon');
 
    # First obtain the pid file or die trying.  NOTE: we're still the parent
    # so the pid file will contain the parent's pid at first.  This is done
@@ -82,92 +59,89 @@ sub _daemonize {
    if ( $pid_file ) {
       eval {
          $self->_make_pid_file(
-            pid      => $pid,  # parent's pid
+            pid      => $PID,  # parent's pid
             pid_file => $pid_file,
          );
       };
-      if ( $EVAL_ERROR ) {
-         die "Cannot daemonize: $EVAL_ERROR\n";
+      die "$EVAL_ERROR\n" if $EVAL_ERROR;
+      if ( !$daemonize ) {
+         # We're not going to daemonize, so mark the pid file as owned
+         # by the parent.  Otherwise, daemonize/fork and the child will
+         # take ownership.
+         $self->{pid_file_owner} = $PID;  # parent's pid
       }
    }
 
    # Fork, exit parent, continue as child process.
-   defined (my $child_pid = fork())
-      or die "Cannot fork: $OS_ERROR";
-   if ( $child_pid ) {
-      # I'm the parent.
-      PTDEBUG && _d('Forked child', $child_pid);
-      exit 0;
+   if ( $daemonize ) {
+      defined (my $child_pid = fork()) or die "Cannot fork: $OS_ERROR";
+      if ( $child_pid ) {
+         # I'm the parent.
+         PTDEBUG && _d('Forked child', $child_pid);
+         exit 0;
+      }
+ 
+      # I'm the child. 
+      POSIX::setsid() or die "Cannot start a new session: $OS_ERROR";
+      chdir '/'       or die "Cannot chdir to /: $OS_ERROR";
+
+      # Now update the pid file to contain the child's pid.
+      if ( $pid_file ) {
+         $self->_update_pid_file(
+            pid      => $PID,  # child's pid
+            pid_file => $pid_file,
+         );
+         $self->{pid_file_owner} = $PID;
+      }
    }
 
-   # I'm the child.  First, open the log file, if any.  Do this first
-   # so that all daemon/child output goes there.
-
-   # We used to only reopen STDIN to /dev/null if it's a tty because
-   # otherwise it may be a pipe, in which case we didn't want to break
-   # it.  However, Perl -t is not reliable.  This is true and false on
-   # various boxes even when the same code is ran, or it depends on if
-   # the code is ran via cron, Jenkins, etc.  Since there should be no
-   # sane reason to `foo | pt-tool --daemonize` for a tool that reads
-   # STDIN, we now just always close STDIN.
-   PTDEBUG && _d('Redirecting STDIN to /dev/null');
-   close STDIN;
-   open  STDIN, '/dev/null'
-      or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
-   if ( $log_file ) {
-      PTDEBUG && _d('Redirecting STDOUT and STDERR to', $log_file);
-      close STDOUT;
-      open  STDOUT, '>>', $log_file
-         or die "Cannot open log file $log_file: $OS_ERROR";
-
-      # If we don't close STDERR explicitly, then prove Daemon.t fails
-      # because STDERR gets written before STDOUT even though we print
-      # to STDOUT first in the tests.  I don't know why, but it's probably
-      # best that we just explicitly close all fds before reopening them.
-      close STDERR;
-      open  STDERR, ">&STDOUT"
-         or die "Cannot dupe STDERR to STDOUT: $OS_ERROR"; 
-   }
-   else {
-      if ( -t STDOUT ) {
-         PTDEBUG && _d('No log file and STDOUT is a terminal;',
-            'redirecting to /dev/null');
+   if ( $daemonize || $force_log_file ) {
+      # We used to only reopen STDIN to /dev/null if it's a tty because
+      # otherwise it may be a pipe, in which case we didn't want to break
+      # it.  However, Perl -t is not reliable.  This is true and false on
+      # various boxes even when the same code is ran, or it depends on if
+      # the code is ran via cron, Jenkins, etc.  Since there should be no
+      # sane reason to `foo | pt-tool --daemonize` for a tool that reads
+      # STDIN, we now just always close STDIN.
+      PTDEBUG && _d('Redirecting STDIN to /dev/null');
+      close STDIN;
+      open  STDIN, '/dev/null'
+         or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
+      if ( $log_file ) {
+         PTDEBUG && _d('Redirecting STDOUT and STDERR to', $log_file);
          close STDOUT;
-         open  STDOUT, '>', '/dev/null'
-            or die "Cannot reopen STDOUT to /dev/null: $OS_ERROR";
-      }
-      if ( -t STDERR ) {
-         PTDEBUG && _d('No log file and STDERR is a terminal;',
-            'redirecting to /dev/null');
+         open  STDOUT, '>>', $log_file
+            or die "Cannot open log file $log_file: $OS_ERROR";
+
+         # If we don't close STDERR explicitly, then prove Daemon.t fails
+         # because STDERR gets written before STDOUT even though we print
+         # to STDOUT first in the tests.  I don't know why, but it's probably
+         # best that we just explicitly close all fds before reopening them.
          close STDERR;
-         open  STDERR, '>', '/dev/null'
-            or die "Cannot reopen STDERR to /dev/null: $OS_ERROR";
+         open  STDERR, ">&STDOUT"
+            or die "Cannot dupe STDERR to STDOUT: $OS_ERROR"; 
+      }
+      else {
+         if ( -t STDOUT ) {
+            PTDEBUG && _d('No log file and STDOUT is a terminal;',
+               'redirecting to /dev/null');
+            close STDOUT;
+            open  STDOUT, '>', '/dev/null'
+               or die "Cannot reopen STDOUT to /dev/null: $OS_ERROR";
+         }
+         if ( -t STDERR ) {
+            PTDEBUG && _d('No log file and STDERR is a terminal;',
+               'redirecting to /dev/null');
+            close STDERR;
+            open  STDERR, '>', '/dev/null'
+               or die "Cannot reopen STDERR to /dev/null: $OS_ERROR";
+         }
       }
    }
 
-   # XXX: I don't think we need this?
-   # $OUTPUT_AUTOFLUSH = 1;
-
-   PTDEBUG && _d('I am child', $PID);
-
-   # Now update the pid file to contain the correct pid, i.e. the child's pid.
-   if ( $pid_file ) {
-      $self->_update_pid_file(
-         pid      => $PID,  # child's pid
-         pid_file => $pid_file,
-      );
-      $self->{pid_file_owner} = $PID;
-   }
-
-   # Last: other misc daemon stuff.
-   POSIX::setsid() or die "Cannot start a new session: $OS_ERROR";
-   chdir '/'       or die "Cannot chdir to /: $OS_ERROR";
-
-   # We're not fully daemonized.
-
+   PTDEBUG && _d('Daemon running');
    return;
 }
-
 
 # Call this for non-daemonized scripts to make a PID file.
 sub _make_pid_file {
