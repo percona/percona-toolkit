@@ -4793,6 +4793,15 @@ sub main {
    my $dp = $o->DSNParser();
    $dp->prop('set-vars', $o->set_vars());
 
+   # We're _not_ running as root, so unless --pid and --log have
+   # already been configured, the defaults won't work.  In this
+   # case, use tmp values until a new config is received.
+   if ( $EUID != 0 ) {
+      $o->set('pid', '/tmp/pt-agent.pid') unless $o->got('pid');
+      $o->set('log', '/tmp/pt-agent.log') unless $o->got('log');
+      $o->set('lib', '/tmp/pt-agent'    ) unless $o->got('lib');
+   }
+
    if ( !$o->get('help') ) {
    }
  
@@ -5086,11 +5095,12 @@ sub run_agent {
    my $agent       = $args{agent};        # for testing
 
    # Daemonize first so all output goes to the --log.
-   my $daemon = Daemon->new(
+   my %daemon_args = (
       daemonize => $daemonize,
       pid_file  => $pid_file,
       log_file  => $log_file,
    );
+   my $daemon = Daemon->new(%daemon_args);
    $daemon->run();
 
    # If we daemonized, the parent has already exited and we're the child.
@@ -5101,6 +5111,18 @@ sub run_agent {
    # then we're not really a parent (since we have no children), so set it
    # false to auto-disconnect the dbhs when our Cxns are destroyed.
    $cxn->{parent} = 0;
+
+   eval {
+      init_lib_dir(
+         lib_dir => $lib_dir,
+      );
+   };
+   if ( $EVAL_ERROR ) {
+      chomp($EVAL_ERROR);
+      _info("Error initializing --lib $lib_dir: $EVAL_ERROR.  "
+         . "Configure the agent at https://pws.percona.com "
+         . "to use a writeable --lib directory.");
+   }
 
    # Connect to https://api.pws.percona.com and get entry links.
    # Don't return until successful.
@@ -5123,7 +5145,7 @@ sub run_agent {
    }
 
    # Load and update the local (i.e. existing) agent, or create a new one.
-   my $action;
+   my ($action, $link);
    if ( !$agent ) {
       $agent = load_local_agent (
          lib_dir    => $lib_dir,
@@ -5132,23 +5154,24 @@ sub run_agent {
       if ( $agent ) {
          # Loaded (or re-created) local agent.
          $action = 'put';  # update
+         $link   = $entry_links->{agents} . '/' . $agent->uuid;
          $agent->{versions} = $versions;
       }
       else {
          # No local agent and --agent-uuid wasn't give.
-         _info("Creating new Agent");
          chomp(my $hostname = `hostname`);
          $agent = Percona::WebAPI::Resource::Agent->new(
             hostname => $hostname,
             versions => $versions,
          );
          $action = 'post';  # create
+         $link   = $entry_links->{agents};
       }
    }
    $agent = init_agent(
       agent    => $agent,
       action   => $action,
-      link     => $entry_links->{agents} . '/' . $agent->uuid,
+      link     => $link,
       client   => $client,
       interval => sub { sleep 60 },
       lib_dir  => $lib_dir,
@@ -5168,16 +5191,18 @@ sub run_agent {
       . " for the first config");
 
    my $success;
+   my $new_daemon;
    my $config;
    my $services;
    while ( $oktorun->() ) {
-      ($config, $lib_dir, $success) = get_config(
-         agent    => $agent,
-         client   => $client,
-         lib_dir  => $lib_dir,
-         config   => $config,
-         services => $services,
-         quiet    => $state->{first_config},
+      ($config, $lib_dir, $new_daemon, $success) = get_config(
+         agent       => $agent,
+         client      => $client,
+         lib_dir     => $lib_dir,
+         config      => $config,
+         services    => $services,
+         quiet       => $state->{first_config},
+         daemon_args => \%daemon_args,
       );
 
       # Get services only if we successfully got the config because the services
@@ -5186,6 +5211,9 @@ sub run_agent {
          if ( $state->{first_config} ) {
             delete $state->{first_config};
             _info('Agent has been successfully configured');
+         }
+         if ( $new_daemon ) {
+            $daemon = $new_daemon;
          }
          ($services, $success) = get_services(
             agent    => $agent,
@@ -5217,10 +5245,12 @@ sub get_config {
       agent
       client
       lib_dir
+      daemon_args
    )) or die;
-   my $agent    = $args{agent};
-   my $client   = $args{client};
-   my $lib_dir  = $args{lib_dir};
+   my $agent       = $args{agent};
+   my $client      = $args{client};
+   my $lib_dir     = $args{lib_dir};
+   my $daemon_args = $args{daemon_args};
 
    # Optional args
    my $config       = $args{config};   # may not be defined yet
@@ -5228,6 +5258,7 @@ sub get_config {
    my $quiet        = $args{quiet};
 
    my $success = 0;
+   my $new_daemon;
 
    _info('Getting config') unless $quiet;
    my $new_config = eval {
@@ -5261,10 +5292,12 @@ sub get_config {
             _info("Current config: " . $new_config->ts);
          }
          if ( !$config || $new_config->ts > $config->ts ) {
-            $lib_dir = apply_config(
-               agent   => $agent,
-               config  => $new_config,
-               lib_dir => $lib_dir,
+            ($lib_dir, $new_daemon) = apply_config(
+               agent       => $agent,
+               old_config  => $config,
+               new_config  => $new_config,
+               lib_dir     => $lib_dir,
+               daemon_args => $daemon_args,
             );
             $config  = $new_config;
             $success = 1;
@@ -5282,7 +5315,7 @@ sub get_config {
       }
    }
 
-   return ($config, $lib_dir, $success);
+   return ($config, $lib_dir, $new_daemon, $success);
 }
 
 sub get_services {
@@ -5399,7 +5432,7 @@ sub init_lib_dir {
    # Optiona args
    my $verify = $args{verify};
 
-   _info(($verify ? "Initializing" : "Verifying") . " --lib $lib_dir");
+   _info(($verify ? 'Verify' : 'Initializing') . " --lib $lib_dir");
 
    if ( ! -d $lib_dir ) {
       if ( $verify  ) {
@@ -5438,18 +5471,23 @@ sub apply_config {
 
    have_required_args(\%args, qw(
       agent
-      config
+      new_config
       lib_dir
+      daemon_args
    )) or die;
-   my $agent   = $args{agent};
-   my $config  = $args{config};
-   my $lib_dir = $args{lib_dir};
+   my $agent       = $args{agent};
+   my $new_config  = $args{new_config};
+   my $lib_dir     = $args{lib_dir};
+   my $daemon_args = $args{daemon_args};
 
-   _info('Applying config ' . $config->ts);
+   # Optional args
+   my $old_config = $args{old_config};
+
+   _info('Applying config ' . $new_config->ts);
 
    # If the --lib dir has changed, init the new one and re-write
    # the Agent resource in it.
-   my $new_lib_dir = $config->options->{lib};
+   my $new_lib_dir = $new_config->options->{lib};
    if ( ($new_lib_dir && $new_lib_dir ne $lib_dir) || $state->{first_config} ) {
       _info($state->{first_config} ? "Applying first config"
                                    : "New --lib direcotry: $new_lib_dir");
@@ -5467,12 +5505,42 @@ sub apply_config {
       );
    }
 
+   my $new_daemon;
+   my $old_pid = $daemon_args->{pid} || '';
+   my $old_log = $daemon_args->{log} || '';
+   if (   ($new_config->options->{pid} || '') ne $old_pid
+       || ($new_config->options->{log} || '') ne $old_log ) {
+      _info("--log and/or --pid is changing:\n"
+         . ' --pid: ' . ($new_config->options->{pid} || $old_pid || '') . "\n"
+         . ' --log: ' . ($new_config->options->{log} || $old_log || ''));
+
+      # We're either already daemonized or we didn't daemonize in the first
+      # place, so daemonize => 0 here.  Also, if log hasn't changed, the
+      # effect is simply closing and re-opening the same log.
+      # TODO: If log changes but pid doesn't? will probably block itself.
+      $new_daemon = Daemon->new(
+         daemonize      => 0,  
+         pid_file       => $new_config->options->{pid} || $old_pid,
+         log_file       => $new_config->options->{log} || $old_log,
+         force_log_file => $daemon_args->{daemonize},
+      );
+      eval {
+         $new_daemon->run();
+         $daemon_args->{pid} = $new_config->options->{pid} || $old_pid;
+         $daemon_args->{log} = $new_config->options->{log} || $old_log;
+         _info('New log file, previous was ' . ($old_log || 'unset'));
+      };
+      if ( $EVAL_ERROR ) {
+         die "Error changing --pid and/or --log: $EVAL_ERROR\n";
+      }
+   }
+
    # Save config in $HOME/.pt-agent.conf if successful.
    write_config(
-      config => $config,
+      config => $new_config,
    );
 
-   return $new_lib_dir || $lib_dir;
+   return ($new_lib_dir || $lib_dir), $new_daemon;
 }
 
 # Write each service to its own file in --lib/.  Remove services
