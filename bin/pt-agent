@@ -4104,6 +4104,7 @@ sub new {
       pid_file       => $args{pid_file},
       daemonize      => $args{daemonize},
       force_log_file => $args{force_log_file},
+      parent_exit    => $args{parent_exit},
    };
    return bless $self, $class;
 }
@@ -4115,6 +4116,7 @@ sub run {
    my $pid_file       = $self->{pid_file};
    my $log_file       = $self->{log_file};
    my $force_log_file = $self->{force_log_file};
+   my $parent_exit    = $self->{parent_exit};
 
    PTDEBUG && _d('Starting daemon');
 
@@ -4135,6 +4137,7 @@ sub run {
       defined (my $child_pid = fork()) or die "Cannot fork: $OS_ERROR";
       if ( $child_pid ) {
          PTDEBUG && _d('Forked child', $child_pid);
+         $parent_exit->($child_pid) if $parent_exit;
          exit 0;
       }
  
@@ -4181,6 +4184,8 @@ sub run {
                or die "Cannot reopen STDERR to /dev/null: $OS_ERROR";
          }
       }
+
+      $OUTPUT_AUTOFLUSH = 1;
    }
 
    PTDEBUG && _d('Daemon running');
@@ -4205,6 +4210,7 @@ sub _make_pid_file {
       if ( $e =~ m/file exists/i ) {
          my $old_pid = $self->_check_pid_file(
             pid_file => $pid_file,
+            pid      => $PID,
          );
          if ( $old_pid ) {
             warn "Overwriting PID file $pid_file because PID $old_pid "
@@ -4225,11 +4231,12 @@ sub _make_pid_file {
 
 sub _check_pid_file {
    my ($self, %args) = @_;
-   my @required_args = qw(pid_file);
+   my @required_args = qw(pid_file pid);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    };
    my $pid_file = $args{pid_file};
+   my $pid      = $args{pid};
 
    PTDEBUG && _d('Checking if PID in', $pid_file, 'is running');
 
@@ -4240,16 +4247,22 @@ sub _check_pid_file {
 
    open my $fh, '<', $pid_file
       or die "Error opening $pid_file: $OS_ERROR";
-   my $pid = do { local $/; <$fh> };
-   chomp($pid) if $pid;
+   my $existing_pid = do { local $/; <$fh> };
+   chomp($existing_pid) if $existing_pid;
    close $fh
       or die "Error closing $pid_file: $OS_ERROR";
 
-   if ( $pid ) {
-      PTDEBUG && _d('Checking if PID', $pid, 'is running');
-      my $pid_is_alive = kill 0, $pid;
-      if ( $pid_is_alive ) {
-         die "PID file $pid_file exists and PID $pid is running\n";
+   if ( $existing_pid ) {
+      if ( $existing_pid == $pid ) {
+         warn "The current PID $pid already holds the PID file $pid_file\n";
+         return;
+      }
+      else {
+         PTDEBUG && _d('Checking if PID', $existing_pid, 'is running');
+         my $pid_is_alive = kill 0, $existing_pid;
+         if ( $pid_is_alive ) {
+            die "PID file $pid_file exists and PID $existing_pid is running\n";
+         }
       }
    }
    else {
@@ -4257,7 +4270,7 @@ sub _check_pid_file {
          . "if the process is no longer running.\n";
    }
 
-   return $pid;
+   return $existing_pid;
 }
 
 sub _update_pid_file {
@@ -5100,7 +5113,16 @@ sub run_agent {
       pid_file  => $pid_file,
       log_file  => $log_file,
    );
-   my $daemon = Daemon->new(%daemon_args);
+   my $daemon = Daemon->new(
+      %daemon_args,
+      parent_exit => sub {
+         my $child_pid = shift;
+         print "pt-agent is running as PID $child_pid, "
+            . ($pid_file ? "PID file $pid_file, " : "no PID file, ")
+            . ($log_file ? "log file $log_file. " : "no log file. ")
+            . " Configure the agent at https://pws.percona.com.\n";
+      }
+   );
    $daemon->run();
 
    # If we daemonized, the parent has already exited and we're the child.
@@ -5141,7 +5163,10 @@ sub run_agent {
    # MySQL version isn't sent in hopes that it becomes possible to get
    # it later.
    if ( !$versions ) {
-      $versions = get_versions(Cxn => $cxn);
+      $versions = get_versions(
+         Cxn   => $cxn,
+         tries => 1,
+      );
    }
 
    # Load and update the local (i.e. existing) agent, or create a new one.
@@ -5213,6 +5238,17 @@ sub run_agent {
             _info('Agent has been successfully configured');
          }
          if ( $new_daemon ) {
+            # NOTE: Daemon objects use DESTROY to auto-remove their pid file
+            # when they lose scope (i.e. ref count goes to zero).  This
+            # assignment destroys (old) $daemon, so it auto-removes the old
+            # pid file.  $new_daemon maintains scope and the new pid file
+            # by becoming $daemon which was defined in the outer scope so
+            # it won't destroy again when we leave this block.  Fancy!
+            # About sharing_pid_file: see the comment in apply_config().
+            if ( $daemon_args{sharing_pid_file} ) {
+               $daemon->{pid_file_owner} = 0;
+               delete $daemon_args{sharing_pid_file};
+            }
             $daemon = $new_daemon;
          }
          ($services, $success) = get_services(
@@ -5505,30 +5541,57 @@ sub apply_config {
       );
    }
 
+   # If --pid or --log has changed, we need to "re-daemonize",
+   # i.e. change these files while running, but the program
+   # does _not_ actually restart.
    my $new_daemon;
-   my $old_pid = $daemon_args->{pid} || '';
-   my $old_log = $daemon_args->{log} || '';
-   if (   ($new_config->options->{pid} || '') ne $old_pid
-       || ($new_config->options->{log} || '') ne $old_log ) {
-      _info("--log and/or --pid is changing:\n"
-         . ' --pid: ' . ($new_config->options->{pid} || $old_pid || '') . "\n"
-         . ' --log: ' . ($new_config->options->{log} || $old_log || ''));
-
+   my $make_new_daemon = 0;
+   my $old_pid         = $daemon_args->{pid_file}    || '';
+   my $old_log         = $daemon_args->{log_file}    || '';
+   my $new_pid         = $new_config->options->{pid} || '';
+   my $new_log         = $new_config->options->{log} || '';
+   if ( $old_pid ne $new_pid ) {
+      _info('NOTICE: Changing --pid file from ' . ($old_pid || '(none)')
+          . ' to ' . ($new_pid || '(none)'));
+      $make_new_daemon = 1;
+   }
+   if ( $daemon_args->{daemonize} ) {
+      # --log only matters if we're daemonized
+      if ( $old_log ne $new_log ) {
+         _info('NOTICE: Changing --log file from ' . ($old_log || '(none)')
+             . ' to ' . ($new_log || '(none)'));
+         $make_new_daemon = 1;
+      }
+   }
+   if ( $make_new_daemon ) {
       # We're either already daemonized or we didn't daemonize in the first
       # place, so daemonize => 0 here.  Also, if log hasn't changed, the
       # effect is simply closing and re-opening the same log.
       # TODO: If log changes but pid doesn't? will probably block itself.
       $new_daemon = Daemon->new(
          daemonize      => 0,  
-         pid_file       => $new_config->options->{pid} || $old_pid,
-         log_file       => $new_config->options->{log} || $old_log,
+         pid_file       => $new_pid,
+         log_file       => $new_log,
          force_log_file => $daemon_args->{daemonize},
       );
       eval {
          $new_daemon->run();
-         $daemon_args->{pid} = $new_config->options->{pid} || $old_pid;
-         $daemon_args->{log} = $new_config->options->{log} || $old_log;
-         _info('New log file, previous was ' . ($old_log || 'unset'));
+         $daemon_args->{pid_file} = $new_pid;
+         $daemon_args->{log_file} = $new_log;
+
+         if ( $daemon_args->{daemonize} && $old_log ne $new_log  ) {
+            _info('New log file, previous was ' . ($old_log || 'unset'));
+         }
+         if ( $old_pid eq $new_pid ) {
+            # If the PID file has not, then the old/original daemon and
+            # the new daemon are sharing the same pid file. The old one
+            # created it, but the new one will continue to hold it when
+            # the old one goes away.  Set sharing_pid_file to signal to
+            # the caller that they need to set old daemon pid_file_owner=0
+            # so it does not auto-remove the shared pid file when it goes
+            # away.
+            $daemon_args->{sharing_pid_file} = 1;
+         }
       };
       if ( $EVAL_ERROR ) {
          die "Error changing --pid and/or --log: $EVAL_ERROR\n";
@@ -5701,9 +5764,6 @@ sub start_services {
 # ########################## #
 # --run-service process subs #
 # ########################## #
-
-# TODO: need service-specific PID files so two "--run-service enable-slow-log"
-# can't run at the same time.
 
 sub run_service {
    my (%args) = @_;
@@ -6181,7 +6241,6 @@ sub init_config_file {
    my $api_key = $args{api_key};
 
    my $config_file = get_config_file();
-   _info("Config file: $config_file");
    eval {
       die "$config_file is not writable\n"
          unless -w $config_file;
@@ -6270,11 +6329,13 @@ sub _err {
 
 sub get_versions {
    my (%args) = @_;
-   my $cxn = $args{Cxn};
+   my $cxn      = $args{Cxn};
+   my $tries    = $args{tries}    || 3;
+   my $interval = $args{interval} || sub { sleep 5 };
 
    my $have_mysql = 0;
    if ( $cxn ) {
-      for ( 1..3 ) {
+      foreach my $tryno ( 1..$tries ) {
          eval {
             $cxn->connect();
          };
@@ -6283,9 +6344,19 @@ sub get_versions {
          }
          else {
             $have_mysql = 1;
+            delete $state->{need_mysql_version};
             last;  # success
          }
-         sleep 3;  # failure, try again
+         if ( $tryno < $tries ) {
+            sleep 3;  # failure, try again
+         }
+         else {
+            $state->{need_mysql_version} = 1;
+            _info("Configure MySQL connection options for the agent "
+               . "at https://pws.percona.com.  Some services may not "
+               . "work until a MySQL connection can be established.");
+            last;  # failure
+         }
       }
    }
 
