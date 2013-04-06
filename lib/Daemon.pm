@@ -35,6 +35,8 @@ sub new {
       pid_file       => $args{pid_file},
       daemonize      => $args{daemonize},
       force_log_file => $args{force_log_file},
+      parent_exit    => $args{parent_exit},
+      pid_file_owner => 0,
    };
    return bless $self, $class;
 }
@@ -47,6 +49,7 @@ sub run {
    my $pid_file       = $self->{pid_file};
    my $log_file       = $self->{log_file};
    my $force_log_file = $self->{force_log_file};
+   my $parent_exit    = $self->{parent_exit};
 
    PTDEBUG && _d('Starting daemon');
 
@@ -78,6 +81,7 @@ sub run {
       if ( $child_pid ) {
          # I'm the parent.
          PTDEBUG && _d('Forked child', $child_pid);
+         $parent_exit->($child_pid) if $parent_exit;
          exit 0;
       }
  
@@ -137,6 +141,8 @@ sub run {
                or die "Cannot reopen STDERR to /dev/null: $OS_ERROR";
          }
       }
+
+      $OUTPUT_AUTOFLUSH = 1;
    }
 
    PTDEBUG && _d('Daemon running');
@@ -169,6 +175,7 @@ sub _make_pid_file {
          # else this returns and we overwrite the pid file.
          my $old_pid = $self->_check_pid_file(
             pid_file => $pid_file,
+            pid      => $PID,
          );
          if ( $old_pid ) {
             warn "Overwriting PID file $pid_file because PID $old_pid "
@@ -189,11 +196,12 @@ sub _make_pid_file {
 
 sub _check_pid_file {
    my ($self, %args) = @_;
-   my @required_args = qw(pid_file);
+   my @required_args = qw(pid_file pid);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    };
    my $pid_file = $args{pid_file};
+   my $pid      = $args{pid};
 
    PTDEBUG && _d('Checking if PID in', $pid_file, 'is running');
 
@@ -204,16 +212,23 @@ sub _check_pid_file {
 
    open my $fh, '<', $pid_file
       or die "Error opening $pid_file: $OS_ERROR";
-   my $pid = do { local $/; <$fh> };
-   chomp($pid) if $pid;
+   my $existing_pid = do { local $/; <$fh> };
+   chomp($existing_pid) if $existing_pid;
    close $fh
       or die "Error closing $pid_file: $OS_ERROR";
 
-   if ( $pid ) {
-      PTDEBUG && _d('Checking if PID', $pid, 'is running');
-      my $pid_is_alive = kill 0, $pid;
-      if ( $pid_is_alive ) {
-         die "PID file $pid_file exists and PID $pid is running\n";
+   if ( $existing_pid ) {
+      if ( $existing_pid == $pid ) {
+         # This happens when pt-agent "re-daemonizes".
+         warn "The current PID $pid already holds the PID file $pid_file\n";
+         return;
+      }
+      else {
+         PTDEBUG && _d('Checking if PID', $existing_pid, 'is running');
+         my $pid_is_alive = kill 0, $existing_pid;
+         if ( $pid_is_alive ) {
+            die "PID file $pid_file exists and PID $existing_pid is running\n";
+         }
       }
    }
    else {
@@ -223,7 +238,7 @@ sub _check_pid_file {
          . "if the process is no longer running.\n";
    }
 
-   return $pid;
+   return $existing_pid;
 }
 
 sub _update_pid_file {
@@ -272,7 +287,7 @@ sub DESTROY {
    # This trick works because $self->{pid_file_owner}=$PID is set once to the
    # owner's $PID then this value is copied on fork.  But the "== $PID"
    # here is the forked copy's PID which won't match the owner's PID.
-   if ( ($self->{pid_file_owner} || 0) == $PID ) {
+   if ( $self->{pid_file_owner} == $PID ) {
       $self->remove_pid_file();
    }
 
