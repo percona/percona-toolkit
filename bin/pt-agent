@@ -6493,9 +6493,9 @@ app.
 
 =over
 
-=item 1. Create MySQL user
+=item 1. Create a MySQL user
 
-First, create a limited MySQL account for pt-agent:
+First, create a limited MySQL user for pt-agent:
 
    mysql> GRANT SUPER,USAGE ON *.* TO 'pt_agent'@'localhost'
         > IDENTIFIED BY 'foo';
@@ -6506,52 +6506,47 @@ C<SUPER> privilege.
 
 =item 2. Configure MySQL access
 
-Second, put the MySQL user and password in the user's C<$HOME/.my.cnf>:
+Second, put the MySQL username and password in C<$HOME/.my.cnf> of the system
+user running pt-agent:
 
    [client]
    user=pt_agent
    pass=foo
 
-Or, you can use any defaults files and configure the agent later through
-the PWS web app to use it.
-
-If C<$HOME/.my.cnf> or another defaults file is not used, you will need to
-configure pt-agent through the PWS web app to use specific C<--user>,
-C<--password>, and other MySQL options, but note that this is not secure
+Or, you can configure the agent later at L<https://pws.percona.com> to use
+any L<"--defaults-file">.  If C<$HOME/.my.cnf> or another defaults file is
+not used, you will need to configure the agent to use specific C<--user>,
+C<--password>, and other MySQL connection options, but this is not secure
 because pt-agent will use C<--user pt_agent --password foo> on its command
 line.
 
-=item 3. Initialize agent config
+=item 3. Set your API key
 
-Third, initialize the user's C<$HOME/.pt-agent.conf>.  If running pt-agent
-as root, the default values for L<"--lib">, L<"--spool">, L<"--log">, and
-L<"--pid"> should work, so only one line is required:
-
-   api-key=X
-
-Where C<X> if your Percona Web Services API key.
-
-If running pt-agent as a normal user, you must specify new, temporary values
-for those options because the user does not have access to the default
-directories and files:
+Third, set your Percona Web Services API key in C<$HOME/.pt-agent.conf> of
+the system user running pt-agent:
 
    api-key=X
-   lib=/home/pt_agent/lib
-   spool=/home/pt_agent/spool
-   log=/home/pt_agent/pt-agent.log
-   pid=/home/pt-agent/pt-agent.pid
 
-These values are temporary because C<$HOME/.pt-agent.conf> is overwritten by
-pt-agent with the config it receives from PWS.
+Where C<X> is the API key.
 
 =item 4. Run pt-agent
 
-Once the previous step are complete, running pt-agent is as simple as:
+Once the previous step are complete, run:
 
    $ pt-agent --daemonize
 
-The tool should detach and background itself and start logging to the
-L<"--log"> file.
+The tool daemonizes and continues running in the background.
+
+=item 5. Configure the agent at L<https://pws.percona.com>
+
+Once pt-agent is running locally, it is controlled remotely through the web
+interface at L<https://pws.percona.com>.  Go there, log in with your account,
+and select the agent to set its configuration and enable services.
+
+Specifically, if the agent is running as a non-root user, you should set
+its L<"--lib"> and L<"--spool"> directories, and its L<"--pid"> and L<"--log">
+files.  You may also need to set its MySQL connection options like L<"--user">,
+L<"--host">, etc. as mentioned in step 2.
 
 =back
 
