@@ -84,6 +84,12 @@ has event_headers => (
    default => sub { [qw(pct total min max avg 95% stddev median)] },
 );
 
+has show_all => (
+   is      => 'ro',
+   isa     => 'HashRef',
+   default => sub { {} },
+);
+
 has ReportFormatter => (
    is      => 'ro',
    isa     => 'ReportFormatter',
@@ -1114,12 +1120,14 @@ sub bool_percents {
 # Does pretty-printing for lists of strings like users, hosts, db.
 sub format_string_list {
    my ( $self, $attrib, $vals, $class_cnt ) = @_;
-
+   
    # Only class result values have unq.  So if unq doesn't exist,
    # then we've been given global values.
    if ( !exists $vals->{unq} ) {
       return ($vals->{cnt});
    }
+
+   my $show_all = $self->show_all();
 
    my $cnt_for = $vals->{unq};
    if ( 1 == keys %$cnt_for ) {
@@ -1146,6 +1154,9 @@ sub format_string_list {
       }
       my $p = percentage_of($cnt_for->{$str}, $class_cnt);
       $print_str .= " ($cnt_for->{$str}/$p%)";
+      if ( !$show_all->{$attrib} ) {
+         last if (length $line) + (length $print_str)  > LINE_LENGTH - 27;
+      }
       $line .= "$print_str, ";
       $i++;
    }
