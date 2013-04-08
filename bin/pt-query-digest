@@ -81,6 +81,7 @@ our $VERSION = '2.2.1';
 # ###########################################################################
 {
 package Lmo::Utils;
+
 use strict;
 use warnings qw( FATAL all );
 require Exporter;
@@ -88,7 +89,12 @@ our (@ISA, @EXPORT, @EXPORT_OK);
 
 BEGIN {
    @ISA = qw(Exporter);
-   @EXPORT = @EXPORT_OK = qw(_install_coderef _unimport_coderefs _glob_for _stash_for);
+   @EXPORT = @EXPORT_OK = qw(
+      _install_coderef
+      _unimport_coderefs
+      _glob_for
+      _stash_for
+   );
 }
 
 {
@@ -271,7 +277,6 @@ sub meta {
    $class    = Scalar::Util::blessed($class) || $class;
    return Lmo::Meta->new(class => $class);
 }
-
 
 1;
 }
@@ -3789,6 +3794,7 @@ sub new {
       sessions       => {},
       o              => $args{o},
       fake_thread_id => 2**32,   # see _make_event()
+      null_event     => $args{null_event},
    };
    PTDEBUG && $self->{server} && _d('Watching only server', $self->{server});
    return bless $self, $class;
@@ -3809,7 +3815,7 @@ sub parse_event {
       $server .= ":$self->{port}";
       if ( $src_host ne $server && $dst_host ne $server ) {
          PTDEBUG && _d('Packet is not to or from', $server);
-         return;
+         return $self->{null_event};
       }
    }
 
@@ -3825,7 +3831,7 @@ sub parse_event {
    }
    else {
       PTDEBUG && _d('Packet is not to or from a MySQL server');
-      return;
+      return $self->{null_event};
    }
    PTDEBUG && _d('Client', $client);
 
@@ -3843,7 +3849,7 @@ sub parse_event {
       else {
          PTDEBUG && _d('Ignoring mid-stream', $packet_from, 'data,',
             'packetno', $packetno);
-         return;
+         return $self->{null_event};
       }
 
       $self->{sessions}->{$client} = {
@@ -3886,7 +3892,7 @@ sub parse_event {
          delete $self->{sessions}->{$session->{client}};
          return $event;
       }
-      return;
+      return $self->{null_event};
    }
 
    if ( $session->{compress} ) {
@@ -3912,7 +3918,7 @@ sub parse_event {
          PTDEBUG && _d('remove_mysql_header() failed; failing session');
          $session->{EVAL_ERROR} = $EVAL_ERROR;
          $self->fail_session($session, 'remove_mysql_header() failed');
-         return;
+         return $self->{null_event};
       }
    }
 
@@ -3927,7 +3933,7 @@ sub parse_event {
             $self->_delete_buff($session);
          }
          else {
-            return;  # waiting for more data; buff_left was reported earlier
+            return $self->{null_event};  # waiting for more data; buff_left was reported earlier
          }
       }
       elsif ( $packet->{mysql_data_len} > ($packet->{data_len} - 4) ) {
@@ -3948,7 +3954,7 @@ sub parse_event {
 
          PTDEBUG && _d('Data not complete; expecting',
             $session->{buff_left}, 'more bytes');
-         return;
+         return $self->{null_event};
       }
 
       if ( $session->{cmd} && ($session->{state} || '') eq 'awaiting_reply' ) {
@@ -3971,7 +3977,7 @@ sub parse_event {
    }
 
    $args{stats}->{events_parsed}++ if $args{stats};
-   return $event;
+   return $event || $self->{null_event};
 }
 
 sub _packet_from_server {
@@ -6519,6 +6525,12 @@ has event_headers => (
    default => sub { [qw(pct total min max avg 95% stddev median)] },
 );
 
+has show_all => (
+   is      => 'ro',
+   isa     => 'HashRef',
+   default => sub { {} },
+);
+
 has ReportFormatter => (
    is      => 'ro',
    isa     => 'ReportFormatter',
@@ -7398,10 +7410,12 @@ sub bool_percents {
 
 sub format_string_list {
    my ( $self, $attrib, $vals, $class_cnt ) = @_;
-
+   
    if ( !exists $vals->{unq} ) {
       return ($vals->{cnt});
    }
+
+   my $show_all = $self->show_all();
 
    my $cnt_for = $vals->{unq};
    if ( 1 == keys %$cnt_for ) {
@@ -7427,6 +7441,9 @@ sub format_string_list {
       }
       my $p = percentage_of($cnt_for->{$str}, $class_cnt);
       $print_str .= " ($cnt_for->{$str}/$p%)";
+      if ( !$show_all->{$attrib} ) {
+         last if (length $line) + (length $print_str)  > LINE_LENGTH - 27;
+      }
       $line .= "$print_str, ";
       $i++;
    }
@@ -13749,6 +13766,8 @@ sub print_reports {
    my @groupby = @{$args{groupby}};
    my @orderby = @{$args{orderby}};
 
+   my $show_all = $o->get('show-all');
+
    for my $i ( 0..$#groupby ) {
       if ( $o->get('report') || $qv || $qh ) {
          $eas->[$i]->calculate_statistical_metrics();
@@ -13799,6 +13818,7 @@ sub print_reports {
             OptionParser  => $args{OptionParser},
             QueryParser   => $args{QueryParser},
             Quoter        => $args{Quoter},
+            show_all      => $show_all,
          );
 
          $qrf->print_reports(
@@ -15501,6 +15521,18 @@ Variables specified on the command line override these defaults.  For
 example, specifying C<--set-vars wait_timeout=500> overrides the defaultvalue of C<10000>.
 
 The tool prints a warning and continues if a variable cannot be set.
+
+=item --show-all
+
+type: Hash
+
+Show all values for these attributes.
+
+By default pt-query-digest only shows as many of an attribute's value that
+fit on a single line.  This option allows you to specify attributes for which
+all values will be shown (line width is ignored).  This only works for
+attributes with string values like user, host, db, etc.  Multiple attributes
+can be specified, comma-separated.
 
 =item --since
 

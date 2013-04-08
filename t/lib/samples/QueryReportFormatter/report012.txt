@@ -7,4 +7,4 @@
 # Count        100       3
 # Exec time    100      6s      1s      3s      2s      3s   780ms      2s
 # String:
-# foo          Hi.  I'm a... (1/33%), Me too! I'... (1/33%), Number 3 l... (1/33%)
+# foo          Hi.  I'm a... (1/33%), Me too! I'... (1/33%)... 1 more
