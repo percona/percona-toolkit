@@ -1354,7 +1354,7 @@ has 'tasks' => (
 has 'run_schedule' => (
    is       => 'ro',
    isa      => 'Str',
-   required => 1,
+   required => 0,
 );
 
 has 'spool_schedule' => (
@@ -1363,7 +1363,7 @@ has 'spool_schedule' => (
    required => 0,
 );
 
-has 'run_once_on_start' => (
+has 'run_once' => (
    is       => 'ro',
    isa      => 'Bool',
    required => 0,
@@ -4105,6 +4105,7 @@ sub new {
       daemonize      => $args{daemonize},
       force_log_file => $args{force_log_file},
       parent_exit    => $args{parent_exit},
+      pid_file_owner => 0,
    };
    return bless $self, $class;
 }
@@ -4309,7 +4310,7 @@ sub remove_pid_file {
 sub DESTROY {
    my ($self) = @_;
 
-   if ( ($self->{pid_file_owner} || 0) == $PID ) {
+   if ( $self->{pid_file_owner} == $PID ) {
       $self->remove_pid_file();
    }
 
@@ -4838,6 +4839,13 @@ sub main {
       OptionParser => $o,
       DSNParser    => $dp,
    );
+
+   # ########################################################################
+   # --stop
+   # ########################################################################
+   if ( my $stop = $o->get('stop') ) {
+      exit;
+   }
 
    # ########################################################################
    # --run-service
@@ -5390,16 +5398,17 @@ sub get_services {
             json     => $args{json},  # optional, for testing
          );
 
-         schedule_services(
+         # TODO: this probably can't/won't fail, but if it does, is it
+         # worth setting success=0?
+         start_services(
             services => $new_services,
             lib_dir  => $lib_dir,
             bin_dir  => $args{bin_dir},  # optional, for testing
          );
 
-         # TODO: this probably can't/won't fail, but if it does, is it
-         # worth setting success=0?
-         start_services(
+         schedule_services(
             services => $new_services,
+            lib_dir  => $lib_dir,
             bin_dir  => $args{bin_dir},  # optional, for testing
          );
 
@@ -5672,7 +5681,14 @@ sub schedule_services {
 
    _info("Scheduling services");
 
-   my $new_crontab = make_new_crontab(%args);
+   # Only schedule "periodic" services, i.e. ones that run periodically,
+   # not just once.
+   my @periodic_services = grep { !$_->run_once; } @$services;
+
+   my $new_crontab = make_new_crontab(
+      %args,
+      services => \@periodic_services,
+   );
    _info("New crontab:\n" . $new_crontab || '');
 
    my $crontab_file = "$lib_dir/crontab";
@@ -5742,20 +5758,23 @@ sub start_services {
    my (%args) = @_;
    have_required_args(\%args, qw(
       services
+      lib_dir
    )) or die;
    my $services = $args{services};
+   my $lib_dir  = $args{lib_dir};
 
    # Optional args
    my $bin_dir = defined $args{bin_dir} ? $args{bin_dir}
                :                          "$FindBin::Bin/";
 
    foreach my $service ( @$services ) {
-      next unless $service->run_once_on_start;
-      my $cmd = "${bin_dir}pt-agent --run-service " . $service->name;
+      next unless $service->run_once;
+      my $cmd = "${bin_dir}pt-agent --run-service " . $service->name
+              . " </dev/null"
+              . " >$lib_dir/logs/" . $service->name . ".log"
+              . " 2>&1 &";
       _info('Starting ' . $service->name . ' service: ' . $cmd);
-      # TODO: need service-specific log files, else where is this output
-      # supposed to go?
-      system("$cmd </dev/null >/dev/null 2>&1 &");
+      system($cmd);
    }
 
    return;
@@ -6745,6 +6764,10 @@ L<"--run-service"> saves data in this directory, and L<"--send-data">
 reads data from this directory.  Each service has its own subdirectory,
 like C<--spool/query-history> for the Query History service.  Data
 is removed by L<"--send-data"> after it is successfully sent to Percona.
+
+=item --stop
+
+Stop pt-agent and all services.
 
 =item --user
 

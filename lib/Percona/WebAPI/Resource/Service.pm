@@ -37,7 +37,7 @@ has 'tasks' => (
 has 'run_schedule' => (
    is       => 'ro',
    isa      => 'Str',
-   required => 1,
+   required => 0,
 );
 
 has 'spool_schedule' => (
@@ -46,7 +46,7 @@ has 'spool_schedule' => (
    required => 0,
 );
 
-has 'run_once_on_start' => (
+has 'run_once' => (
    is       => 'ro',
    isa      => 'Bool',
    required => 0,
