@@ -5736,14 +5736,14 @@ sub make_new_crontab {
    my @pt_agent_lines;
    foreach my $service ( @$services ) {
       push @pt_agent_lines,
-           ($env_vars ? "$env_vars " : '')
-         . $service->run_schedule
+           $service->run_schedule
+         . ($env_vars ? " $env_vars" : '')
          . " ${bin_dir}pt-agent --run-service "
          . $service->name;
       if ( $service->spool_schedule ) {
          push @pt_agent_lines,
-              ($env_vars ? "$env_vars " : '')
-            . $service->spool_schedule
+              $service->spool_schedule
+            . ($env_vars ? " $env_vars" : '')
             . " ${bin_dir}pt-agent --send-data "
             . $service->name;
       }
