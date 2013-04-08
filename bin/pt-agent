@@ -6242,8 +6242,8 @@ sub init_config_file {
 
    my $config_file = get_config_file();
    eval {
-      die "$config_file is not writable\n"
-         unless -w $config_file;
+      die "$config_file exists but is not writable\n"
+         if -f $config_file && !-w $config_file;
       open my $fh, '>', $config_file
          or die "Error opening $config_file: $OS_ERROR";
       print { $fh } "api-key=$api_key\n"
