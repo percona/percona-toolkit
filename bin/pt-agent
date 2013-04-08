@@ -5731,15 +5731,19 @@ sub make_new_crontab {
         split("\n", $crontab_list);
    PTDEBUG && _d('Other crontab lines:', Dumper(\@other_lines));
 
+   my $env_vars = env_vars();
+
    my @pt_agent_lines;
    foreach my $service ( @$services ) {
       push @pt_agent_lines,
-         $service->run_schedule
+           ($env_vars ? "$env_vars " : '')
+         . $service->run_schedule
          . " ${bin_dir}pt-agent --run-service "
          . $service->name;
       if ( $service->spool_schedule ) {
          push @pt_agent_lines,
-            $service->spool_schedule
+              ($env_vars ? "$env_vars " : '')
+            . $service->spool_schedule
             . " ${bin_dir}pt-agent --send-data "
             . $service->name;
       }
@@ -5767,14 +5771,26 @@ sub start_services {
    my $bin_dir = defined $args{bin_dir} ? $args{bin_dir}
                :                          "$FindBin::Bin/";
 
+   my $env_vars = env_vars();
    foreach my $service ( @$services ) {
       next unless $service->run_once;
-      my $cmd = "${bin_dir}pt-agent --run-service " . $service->name
+      next if $service->name =~ m/^turn-off/;  # XXX TODO
+      my $tmp_file = "$lib_dir/logs/" . $service->name . ".start";
+      my $cmd = ($env_vars ? "$env_vars " : '')
+              . "${bin_dir}pt-agent --run-service " . $service->name
               . " </dev/null"
-              . " >$lib_dir/logs/" . $service->name . ".log"
-              . " 2>&1 &";
+              . " >$tmp_file 2>&1";
       _info('Starting ' . $service->name . ' service: ' . $cmd);
       system($cmd);
+      my $exit_status = $CHILD_ERROR >> 8;
+      if ( $exit_status != 0 ) {
+         my $err = slurp($tmp_file);
+         _warn('Error starting ' . $service->name . ': ' . ($err || ''));
+      }
+      else {
+         unlink $tmp_file
+            or _warn("Cannot remove $tmp_file: $OS_ERROR");
+      }
    }
 
    return;
@@ -6428,6 +6444,20 @@ EOL
 
    PTDEBUG && _d('Versions:', Dumper(\%version_for));
    return \%version_for;
+}
+
+sub env_vars {
+   my @vars;
+   foreach my $var ( qw(
+      PTDEBUG
+      PERCONA_TOOLKIT_TEST_USE_DSN_NAMES
+      PWS_ENTRY_LINK
+   )) {
+      if ( my $val = $ENV{$var} ) {
+         push @vars, "$var=\"$val\"";
+      }
+   }
+   return join(' ', @vars);
 }
 
 sub _state {
