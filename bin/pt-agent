@@ -6329,9 +6329,7 @@ sub send_file {
    my $agent_json = as_json($agent, json => $json);
    chomp($agent_json);
 
-   my $meta = -f $meta_file && -s $meta_file
-            ? as_json(slurp($meta_file), json => $json)
-            : '';
+   my $meta = -f $meta_file && -s $meta_file ? slurp($meta_file) : '';
    $meta =~ s/^\s+//;
    $meta =~ s/\s+$//;
 
