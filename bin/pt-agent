@@ -5772,25 +5772,58 @@ sub start_services {
                :                          "$FindBin::Bin/";
 
    my $env_vars = env_vars();
+
+   SERVICE:
    foreach my $service ( @$services ) {
       next unless $service->run_once;
       next if $service->name =~ m/^turn-off/;  # XXX TODO
-      my $tmp_file = "$lib_dir/logs/" . $service->name . ".start";
+
+      # Remove the service's previous start file.  The --run-service
+      # processes should not be scheduled/running yet, but just in case,
+      # removing the start file prevents --run-service from running while
+      # we're (re)starting the service.
+      my $start_file = "$lib_dir/" . $service->name . ".start";
+      if ( -f $start_file ) {
+         unlink $start_file
+            or _warn("Cannot remove $start_file: $OS_ERROR");
+      }
+
+      # Start the service and wait for it to exit.  Log its initial
+      # output to a special log file.  If it dies early, this log
+      # file will contain the reason.  Else, if it starts, it will
+      # switch to its default log file ending in ".run".
+      my $start_log = "$lib_dir/logs/" . $service->name . ".start";
       my $cmd = ($env_vars ? "$env_vars " : '')
               . "${bin_dir}pt-agent --run-service " . $service->name
               . " </dev/null"
-              . " >$tmp_file 2>&1";
+              . " >>$start_file 2>&1";
       _info('Starting ' . $service->name . ' service: ' . $cmd);
       system($cmd);
       my $cmd_exit_status = $CHILD_ERROR >> 8;
       if ( $cmd_exit_status != 0 ) {
-         my $err = slurp($tmp_file);
+         my $err = slurp($start_file);
          _warn('Error starting ' . $service->name . ': ' . ($err || ''));
+         next SERVICE;
       }
-      else {
-         unlink $tmp_file
-            or _warn("Cannot remove $tmp_file: $OS_ERROR");
+
+      # Remove the service's previous meta files.
+      foreach my $meta_file (glob("$lib_dir/meta/" . $service->name . "*")) {
+         if ( unlink $meta_file ) {
+            _info("Removed $meta_file");
+         }
+         else {
+            _warn("Cannot remove $meta_file: $OS_ERROR");
+         }
       }
+
+      # Service has started and is ready, now restore its start file
+      # to signal this to --run-service processes.
+      write_to_file(
+         data => ts(time, 1),  # 1=UTC
+         file => $start_file,
+      );
+
+      _info($service->name, ' has started');
    }
 
    return;
@@ -5850,10 +5883,19 @@ sub run_service {
       service   => $service->name,
    );
 
+   # Check that the service has started.
+   my $start_file = "$lib_dir/" . $service->name . ".start";
+   if ( ! -f $start_file ) {
+      _warn($service . " has not started; check $lib_dir/logs/"
+         . $service->name . ".start");
+      return;
+   }
+
    # Check for a previous run.  If there's one, continue; else, this
    # is the first run of this service, so skip running until the next
    # interval so that we can collect data for a complete interval.
-   my $meta_file = "$lib_dir/meta/" . $service->name;
+
+   my $meta_file  = "$lib_dir/meta/" . $service->name . ".interval";
    my $prev_ts;
    if ( -f $meta_file ) {
       $prev_ts = slurp($meta_file);
