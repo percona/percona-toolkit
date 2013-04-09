@@ -5492,7 +5492,7 @@ sub init_lib_dir {
       die "--lib $lib_dir is not writable.\n";
    }
 
-   foreach my $dir ( qw(services logs pids) ) {
+   foreach my $dir ( qw(services logs pids meta) ) {
       my $dir = "$lib_dir/$dir";
       if ( ! -d $dir ) {
          if ( $verify ) {
@@ -5814,6 +5814,10 @@ sub run_service {
    my $spool_dir = $args{spool_dir};
    my $cxn       = $args{Cxn};
 
+   # Optional args
+   my $json    = $args{json};
+   my $curr_ts = $args{curr_ts} || ts(time, 1);  # 1=UTC
+
    # Can't do anything with the lib dir.  Since we haven't started
    # logging yet, cron should capture this error and email the user.
    init_lib_dir(
@@ -5839,10 +5843,31 @@ sub run_service {
       lib_dir => $lib_dir,
    );
 
-   my ($spool_data, $spool_tmp) = init_spool_dir(
+   my ($data_dir, $tmp_dir) = init_spool_dir(
       spool_dir => $spool_dir,
       service   => $service->name,
    );
+
+   # Check for a previous run.  If there's one, continue; else, this
+   # is the first run of this service, so skip running until the next
+   # interval so that we can collect data for a complete interval.
+   my $meta_file = "$lib_dir/meta/" . $service->name;
+   my $prev_ts;
+   if ( -f $meta_file ) {
+      $prev_ts = slurp($meta_file);
+      chomp($prev_ts) if $prev_ts;
+      if ( !$prev_ts ) {
+         _info($meta_file, ' exists but is empty; waiting until next '
+            . 'interval to collect a complete sample');
+      }
+      else {
+         _info("Interval: $curr_ts to $prev_ts");
+      }
+   }
+   else {
+      _info('First run, waiting until next interval to collect '
+         . 'a complete sample');
+   }
 
    # Take a quick look through all the tasks to see if any
    # will require a MySQL connection.  If so, connect now.
@@ -5855,19 +5880,22 @@ sub run_service {
          };
          if ( $EVAL_ERROR ) {
             _warn("Cannot connect to MySQL: $EVAL_ERROR");
-            sleep(5);
+            sleep(3);
             next TRY;
          }
          last TRY;
       }
-      return 1 unless $cxn->dbh;
+      if ( !$cxn->dbh ) {
+         _warn("Failed to connect to MySQL, cannot run service");
+         return;
+      }
    }
 
    my @output_files;
-   my $spool_file        = $service->name . '.' . int(time);
-   my $abs_spool_file    = "$spool_tmp/$spool_file";
-   my $have_spool_file   = 0;
-   my $taskno            = 0;
+   my $data_file      = $service->name . '.' . int(time);
+   my $tmp_data_file  = "$data_dir/$data_file";
+   my $have_data_file = 0;
+   my $taskno         = 0;
    TASK:
    foreach my $task ( @$tasks ) {
       PTDEBUG && _d("Task $taskno:", $task->name);
@@ -5879,11 +5907,11 @@ sub run_service {
       my $output_file;
       my $output = $task->output || '';
       if ( $output eq 'spool' ) {
-         if ( $have_spool_file++ ) {
+         if ( $have_data_file++ ) {
             die "Invalid service: two tasks have output=spool: "
                . Dumper($service);
          }
-         $output_file = $abs_spool_file;
+         $output_file = $tmp_data_file;
          push @output_files, $output_file;
       }
       elsif ( $output eq 'tmp' ) {
@@ -5940,30 +5968,52 @@ sub run_service {
    }
 
    # Move the spool file from .tmp/ to the real spool data dir.
-   if ( -f $abs_spool_file ) {
-      my $file_size = -s $abs_spool_file;
-      _info("$abs_spool_file size: $file_size bytes");
-      if ( $file_size ) {
-         # Use system mv instead of Perl File::Copy::move() because it's
-         # unknown if the Perl version will do an optimized move, i.e.
-         # simply move the inode, _not_ copy the file.  A system mv on
-         # the same filesystem is pretty much guaranteed to do an optimized
-         # move.
-         my $cmd = "mv $abs_spool_file $spool_data/$spool_file";
-         _info($cmd);
-         system($cmd);
-         my $cmd_exit_status = $CHILD_ERROR >> 8;
-         _warn("Move failed: $cmd") if $cmd_exit_status != 0;
-         $exit_status |= $cmd_exit_status;
-      }
+   if ( -f $tmp_data_file && $prev_ts ) {
+      my $file_size = -s $tmp_data_file;
+      _info("$tmp_data_file size: $file_size bytes");
+
+      # Save metadata about this sample _first_, because --send-data looks
+      # for the data file first, then for a corresponding .meta file.  If
+      # we write the data file first, then we create a race condition: while
+      # we're writing, --send-data could see the data file but not the
+      # .meta file because we haven't written it yet.  So writing the .meta
+      # file first guarantees that if --send-data sees a data file, the
+      # .meta already exists.  (And there's no race condition on writing
+      # the data file because we use a quasi-atomic system mv.)
+      my $metadata = {
+         start_ts => $prev_ts,
+         end_ts   => $curr_ts,
+      };
+      write_to_file(
+         data => as_json($metadata, json => $json),
+         file => "$data_dir/$data_file.meta",
+      );
+
+      # Use system mv instead of Perl File::Copy::move() because it's
+      # unknown if the Perl version will do an optimized move, i.e.
+      # simply move the inode, _not_ copy the file.  A system mv on
+      # the same filesystem is pretty much guaranteed to do an optimized,
+      # i.e. quasi-atomic, move.
+      my $cmd = "mv $tmp_data_file $data_dir/$data_file";
+      _info($cmd);
+      system($cmd);
+      my $cmd_exit_status = $CHILD_ERROR >> 8;
+      _warn("Move failed: $cmd") if $cmd_exit_status != 0;
+      $exit_status |= $cmd_exit_status;
    }
 
-   # Remove temp output files.
+   # Remove tmp output files.
    foreach my $file ( @output_files ) {
       next unless defined $file && -f $file;
       unlink $file
          or _warn("Error removing $file: $OS_ERROR");
    }
+
+   # Update the meta file.
+   write_to_file(
+      data => "$curr_ts\n",
+      file => $meta_file,
+   );
 
    return;
 }
@@ -6056,10 +6106,10 @@ sub init_spool_dir {
       }
    }
 
-   my $spool_data = "$spool_dir/$service";
-   my $spool_tmp  = "$spool_dir/.tmp";
+   my $data_dir = "$spool_dir/$service";
+   my $tmp_dir  = "$spool_dir/.tmp";
 
-   return $spool_data, $spool_tmp;
+   return $data_dir, $tmp_dir;
 }
 
 # ######################## #
@@ -6084,9 +6134,9 @@ sub send_data {
    my $spool_dir = $args{spool_dir};
 
    # Optional args
-   my $agent   = $args{agent};
-   my $client  = $args{client};
-   my $json    = $args{json};  # for testing
+   my $agent   = $args{agent};  # for testing
+   my $client  = $args{client}; # for testing
+   my $json    = $args{json};   # for testing
 
    # Can't do anything with the lib dir.  Since we haven't started
    # logging yet, cron should capture this error and email the user.
@@ -6095,6 +6145,7 @@ sub send_data {
       verify  => 1,
    );
 
+   # Log all output to a file.
    my $daemon = Daemon->new(
       daemonize      => 0,  # no need: we're running from cron
       pid_file       => "$lib_dir/pids/$service.send",
@@ -6105,8 +6156,7 @@ sub send_data {
 
    _info("Sending $service service data");
 
-   # Connect to https://api.pws.percona.com and get entry links.
-   # Don't return until successful.
+   # Connect to Percona, get entry links.
    if ( !$client ) {
       ($client) = get_api_client(
          api_key  => $api_key,
@@ -6153,23 +6203,31 @@ sub send_data {
       or die "Error opening $service_dir: $OS_ERROR";
    DATA_FILE:
    while ( my $file = readdir($service_dh) ) {
-      $file = "$service_dir/$file";
-      next unless -f $file;
+      # Only iterator over data files because run_service() writes
+      # them last to avoid a race condition with us.  See the code
+      # comment about writing the .meta file first in run_service().
+      next if $file =~ m/\.meta$/;
+
+      my $data_file = "$service_dir/$file";
+      next unless -f $data_file;
+
+      my $meta_file = "$service_dir/$file.meta";
 
       eval {
          # Send the file as-is.  The --run-service process should
          # have written the data in a format that's ready to send.
          send_file(
-            client => $client,
-            agent  => $agent,
-            file   => $file,
-            link   => $service->links->{data},
-            json   => $json,
+            client    => $client,
+            agent     => $agent,
+            meta_file => $meta_file,
+            data_file => $data_file,
+            link      => $service->links->{data},
+            json      => $json,
          );
       };
       if ( $EVAL_ERROR ) {
          chomp $EVAL_ERROR;
-         _warn("Failed to send $file: $EVAL_ERROR");
+         _warn("Failed to send $data_file: $EVAL_ERROR");
          next DATA_FILE;
       }
 
@@ -6179,18 +6237,22 @@ sub send_data {
       # way to determine if a file has been sent or not other than
       # whether it exists or not.
       eval {
-         unlink $file or die $OS_ERROR;
+         unlink $data_file or die $OS_ERROR;
       };
       if ( $EVAL_ERROR ) {
          chomp $EVAL_ERROR;
-         _warn("Sent $file but failed to remove it: $EVAL_ERROR");
+         _warn("Sent $data_file but failed to remove it: $EVAL_ERROR");
          last DATA_FILE;
       }
 
-      _info("Sent and removed $file");
+      if ( -f $meta_file ) {
+         unlink $meta_file or _warn($OS_ERROR);
+      }
+
+      _info("Sent and removed $data_file");
    }
    closedir $service_dh
-      or warn "Error closing $service_dir: $OS_ERROR";
+      or _warn("Error closing $service_dir: $OS_ERROR");
 
    return;
 }
@@ -6202,30 +6264,39 @@ sub send_file {
    have_required_args(\%args, qw(
       client
       agent
-      file
+      data_file
       link
    )) or die;
-   my $client = $args{client};
-   my $agent  = $args{agent};
-   my $file   = $args{file};
-   my $link   = $args{link};
+   my $client    = $args{client};
+   my $agent     = $args{agent};
+   my $data_file = $args{data_file};
+   my $link      = $args{link};
 
    # Optional args
-   my $json = $args{json};  # for testing
+   my $meta_file = $args{meta_file};
+   my $json      = $args{json};  # for testing
 
-   my $file_size = -s $file;
-   _info("Sending $file ($file_size bytes) to $link");
+   my $data_file_size = -s $data_file;
+   _info("Sending $data_file ($data_file_size bytes) to $link");
 
    # Create a multi-part resource: first the Agent, so Percona knows
-   # from whom this data is coming, then a special boundary value,
-   # then the contents of the file as-is.  We don't know or care
-   # about the file's contents, but Percona will.
+   # from whom the sample data is coming, then metadata about the sample,
+   # then the actual sample data.  Each part is separated by a special
+   # boundary value.  The contents of the data file are sent as-is
+   # because here we don't know or care about the data; that's a job
+   # for the PWS server.
+   my $boundary = 'Ym91bmRhcnk'; # "boundary" in base64, without a trailing =
+
    my $agent_json = as_json($agent, json => $json);
    chomp($agent_json);
 
-   my $boundary  = 'Ym91bmRhcnk'; # "boundary" in base64, without a trailing =
+   my $meta = -f $meta_file && -s $meta_file
+            ? as_json(slurp($meta_file), json => $json)
+            : '';
+   $meta =~ s/^\s+//;
+   $meta =~ s/\s+$//;
 
-   my $data = slurp($file);
+   my $data = -s $data_file ? slurp($data_file) : '';
    $data =~ s/^\s+//;
    $data =~ s/\s+$//;
 
@@ -6235,6 +6306,9 @@ sub send_file {
 Content-Disposition: form-data; name="agent"
 
 $agent_json
+Content-Disposition: form-data; name="meta"
+
+$meta
 --$boundary
 Content-Disposition: form-data; name="data"
 
@@ -6242,6 +6316,8 @@ $data
 --$boundary
 CONTENT
 
+   # This will die if the server response isn't 2xx or 3xx.  The caller,
+   # send_data(), should catch this.
    $client->post(
       link      => $link,
       resources => $resource,
@@ -6331,6 +6407,18 @@ sub slurp {
    };
    close $fh;
    return $data;
+}
+
+sub write_to_file {
+   my (%args) = @_;
+   my $data = $args{data};
+   my $file = $args{file};
+   die "No file" unless $file;
+   open my $fh, '>', $file
+      or die "Error opening $file: $OS_ERROR";
+   print { $fh } $data;
+   close $fh;
+   return;
 }
 
 sub _log {
