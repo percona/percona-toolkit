@@ -4942,12 +4942,13 @@ sub get_api_client {
    my $interval = $args{interval};
 
    # Optional args
-   my $tries    = $args{tries};
-   my $_oktorun = $args{oktorun} || sub { return $oktorun };
+   my $tries      = $args{tries};
+   my $_oktorun   = $args{oktorun}    || sub { return $oktorun };
+   my $entry_link = $args{entry_link} || $ENV{PWS_ENTRY_LINK};
 
-   my $client = Percona::WebAPI::Client->new(
-      api_key    => $api_key,
-      entry_link => $args{entry_link} || $ENV{PWS_ENTRY_LINK},
+   my $client     = Percona::WebAPI::Client->new(
+      api_key => $api_key,
+      ($entry_link ? (entry_link => $entry_link) : ()),
    );
 
    my $entry_links;
