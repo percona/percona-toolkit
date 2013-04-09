@@ -5787,7 +5787,6 @@ sub start_services {
    SERVICE:
    foreach my $service ( @$services ) {
       next unless $service->run_once;
-      next if $service->name =~ m/^turn-off/;  # XXX TODO
 
       # Start the service and wait for it to exit.  Log its initial
       # output to a special log file.  If it dies early, this log
