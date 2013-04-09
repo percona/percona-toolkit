@@ -30,6 +30,8 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 use Mo;
 use Data::Dumper;
 
+{ local $EVAL_ERROR; eval { require Cxn } };
+
 sub get_cluster_name {
    my ($self, $cxn) = @_;
    my $sql = "SHOW VARIABLES LIKE 'wsrep\_cluster\_name'";
@@ -79,13 +81,13 @@ sub find_cluster_nodes {
    # TODO this fails with a strange error.
    #$dp->fill_in_dsn($dbh, $dsn);
    
-   my $sql = q{SHOW STATUS LIKE 'wsrep_incoming_addresses'};
+   my $sql = q{SHOW STATUS LIKE 'wsrep\_incoming\_addresses'};
    PTDEBUG && _d($sql);
    my (undef, $addresses) = $dbh->selectrow_array($sql);
    PTDEBUG && _d("Cluster nodes found: ", $addresses);
    return unless $addresses;
 
-   my @addresses = grep !/\Aunspecified\z/i,
+   my @addresses = grep { !/\Aunspecified\z/i }
                    split /,\s*/, $addresses;
 
    my @nodes;
@@ -117,44 +119,14 @@ sub find_cluster_nodes {
       push @nodes, $make_cxn->(dsn => $node_dsn);
    }
 
-   return @nodes;
+   return \@nodes;
 }
-
-# There's two reasons why there might be dupes:
-# If the "master" is a cluster node, then a DSN table might have been
-# used, and it may have all nodes' DSNs so the user can run the tool
-# on any node, in which case it has the "master" node, the DSN given
-# on the command line.
-# On the other hand, maybe find_cluster_nodes worked, in which case
-# we definitely have a dupe for the master cxn, but we may also have a
-# dupe for every other node if this was unsed in conjunction with a
-# DSN table.
-# So try to detect and remove those.
 
 sub remove_duplicate_cxns {
    my ($self, %args) = @_;
    my @cxns     = @{$args{cxns}};
    my $seen_ids = $args{seen_ids};
-   PTDEBUG && _d("Removing duplicates from ", join " ", map { $_->name } @cxns);
-   my @trimmed_cxns;
-
-   for my $cxn ( @cxns ) {
-      my $dbh  = $cxn->dbh();
-      my $sql  = q{SELECT @@SERVER_ID};
-      PTDEBUG && _d($sql);
-      my ($id) = $dbh->selectrow_array($sql);
-      PTDEBUG && _d('Server ID for ', $cxn->name, ': ', $id);
-
-      if ( ! $seen_ids->{$id}++ ) {
-         push @trimmed_cxns, $cxn
-      }
-      else {
-         PTDEBUG && _d("Removing ", $cxn->name,
-                       ", ID $id, because we've already seen it");
-      }
-   }
-
-   return @trimmed_cxns;
+   return Cxn->remove_duplicate_cxns(%args);
 }
 
 sub same_cluster {
@@ -177,46 +149,51 @@ sub autodetect_nodes {
    my $nodes    = $args{nodes};
    my $seen_ids = $args{seen_ids};
 
-   return unless @$nodes;
+   my $new_nodes = [];
 
-   my @new_nodes;
+   return $new_nodes unless @$nodes;
+   
    for my $node ( @$nodes ) {
-      my @nodes = $self->find_cluster_nodes(
+      my $nodes_found = $self->find_cluster_nodes(
          dbh       => $node->dbh(),
          dsn       => $node->dsn(),
          make_cxn  => $make_cxn,
          DSNParser => $dp,
       );
-      push @new_nodes, @nodes;
+      push @$new_nodes, @$nodes_found;
    }
 
-   @new_nodes = $self->remove_duplicate_cxns(
-      cxns     => \@new_nodes,
+   $new_nodes = $self->remove_duplicate_cxns(
+      cxns     => $new_nodes,
       seen_ids => $seen_ids
    );
 
-   my @new_slaves;
-   foreach my $node (@new_nodes) {
+   my $new_slaves = [];
+   foreach my $node (@$new_nodes) {
       my $node_slaves = $ms->get_slaves(
          dbh      => $node->dbh(),
          dsn      => $node->dsn(),
          make_cxn => $make_cxn,
       );
-      push @new_slaves, @$node_slaves;
+      push @$new_slaves, @$node_slaves;
    }
 
-   @new_slaves = $self->remove_duplicate_cxns(
-      cxns     => \@new_slaves,
+   $new_slaves = $self->remove_duplicate_cxns(
+      cxns     => $new_slaves,
       seen_ids => $seen_ids
    );
 
-   my @new_slave_nodes = grep { $self->is_cluster_node($_) } @new_slaves;
-
-   return @new_nodes, @new_slaves,
-          $self->autodetect_nodes(
-            %args,
-            nodes => \@new_slave_nodes,
-          );
+   # If some of the new slaves is a cluster node, autodetect new nodes
+   # from there too.
+   my @new_slave_nodes = grep { $self->is_cluster_node($_) } @$new_slaves;
+   
+   my $slaves_of_slaves = $self->autodetect_nodes(
+         %args,
+         nodes => \@new_slave_nodes,
+   );
+   
+   my @autodetected_nodes = ( @$new_nodes, @$new_slaves, @$slaves_of_slaves );
+   return \@autodetected_nodes;
 }
 
 sub _d {
