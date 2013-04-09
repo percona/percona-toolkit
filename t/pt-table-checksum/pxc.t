@@ -76,7 +76,7 @@ $node1->do(qq/INSERT INTO dsns.dsns VALUES (1, 1, '$node1_dsn')/);
 # if no other cluster nodes are detected, in which case the user
 # probably didn't specifying --recursion-method dsn.
 $output = output(
-   sub { pt_table_checksum::main(@args, qw(--no-autodetect-nodes)) },
+   sub { pt_table_checksum::main(@args) },
    stderr => 1,
 );
 
@@ -87,8 +87,8 @@ like(
 );
 
 for my $args (
-      ["using recusion-method", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
-      ["autodetecting everything"]
+      ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
+      ["using recursion-method=cluster", '--recursion-method', 'cluster']
    )
 {
    my $test = shift @$args;
@@ -150,8 +150,8 @@ is(
 );
 
 for my $args (
-      ["using recusion-method", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
-      ["autodetecting everything"]
+      ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
+      ["using recursion-method=cluster", '--recursion-method', 'cluster']
    )
 {
    my $test = shift @$args;
@@ -216,11 +216,6 @@ $node2->do("set sql_log_bin=0");
 $node2->do("update test.t set c='z' where c='zebra'");
 $node2->do("set sql_log_bin=1");
 
-# Wait for the slave to apply the binlogs from node1 (its master).
-# Then change it so it's not consistent.
-PerconaTest::wait_for_table($slave_dbh, 'test.t');
-$sb->wait_for_slaves('cslave1');
-$slave_dbh->do("update test.t set c='zebra' where c='z'");
 
 # Another quick test first: the tool should complain about the slave's
 # binlog format but only the slave's, not the cluster nodes:
@@ -228,11 +223,18 @@ $slave_dbh->do("update test.t set c='zebra' where c='z'");
 # Cluster nodes default to ROW format because that's what Galeara
 # works best with, even though it doesn't really use binlogs.
 for my $args (
-      ["using recusion-method", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
-      ["autodetecting everything"]
+      ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
+      ["using recursion-method=cluster,hosts", '--recursion-method', 'cluster,hosts']
    )
 {
    my $test = shift @$args;
+
+   # Wait for the slave to apply the binlogs from node1 (its master).
+   # Then change it so it's not consistent.
+   PerconaTest::wait_for_table($slave_dbh, 'test.t');
+   $sb->wait_for_slaves('cslave1');
+   $slave_dbh->do("update test.t set c='zebra' where c='z'");
+
    $output = output(
       sub { pt_table_checksum::main(@args,
          @$args)
@@ -298,8 +300,8 @@ is(
 );
 
 for my $args (
-      ["using recusion-method", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
-      ["autodetecting everything"]
+      ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
+      ["using recursion-method=cluster,hosts", '--recursion-method', 'cluster,hosts']
    )
 {
    my $test = shift @$args;
@@ -483,8 +485,8 @@ like(
 # Originally, these tested a dsn table with all nodes; now we hijack
 # those tests to also try the autodetection
 for my $args (
-      ["using recusion-method", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
-      ["autodetecting everything"]
+      ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
+      ["using recursion-method=cluster,hosts", '--recursion-method', 'cluster,hosts']
    )
 {
    my $test = shift @$args;

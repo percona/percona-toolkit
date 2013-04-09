@@ -3341,6 +3341,32 @@ sub name {
    return $self->{hostname} || $self->{dsn_name} || 'unknown host';
 }
 
+sub remove_duplicate_cxns {
+   my ($self, %args) = @_;
+   my @cxns     = @{$args{cxns}};
+   my $seen_ids = $args{seen_ids} || {};
+   PTDEBUG && _d("Removing duplicates from ", join(" ", map { $_->name } @cxns));
+   my @trimmed_cxns;
+
+   for my $cxn ( @cxns ) {
+      my $dbh  = $cxn->dbh();
+      my $sql  = q{SELECT @@server_id};
+      PTDEBUG && _d($sql);
+      my ($id) = $dbh->selectrow_array($sql);
+      PTDEBUG && _d('Server ID for ', $cxn->name, ': ', $id);
+
+      if ( ! $seen_ids->{$id}++ ) {
+         push @trimmed_cxns, $cxn
+      }
+      else {
+         PTDEBUG && _d("Removing ", $cxn->name,
+                       ", ID ", $id, ", because we've already seen it");
+      }
+   }
+
+   return \@trimmed_cxns;
+}
+
 sub DESTROY {
    my ($self) = @_;
    if ( $self->{dbh}
@@ -3385,6 +3411,8 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 use Mo;
 use Data::Dumper;
 
+{ local $EVAL_ERROR; eval { require Cxn } };
+
 sub get_cluster_name {
    my ($self, $cxn) = @_;
    my $sql = "SHOW VARIABLES LIKE 'wsrep\_cluster\_name'";
@@ -3427,13 +3455,13 @@ sub find_cluster_nodes {
    my $make_cxn = $args{make_cxn};
 
    
-   my $sql = q{SHOW STATUS LIKE 'wsrep_incoming_addresses'};
+   my $sql = q{SHOW STATUS LIKE 'wsrep\_incoming\_addresses'};
    PTDEBUG && _d($sql);
    my (undef, $addresses) = $dbh->selectrow_array($sql);
    PTDEBUG && _d("Cluster nodes found: ", $addresses);
    return unless $addresses;
 
-   my @addresses = grep !/\Aunspecified\z/i,
+   my @addresses = grep { !/\Aunspecified\z/i }
                    split /,\s*/, $addresses;
 
    my @nodes;
@@ -3459,34 +3487,14 @@ sub find_cluster_nodes {
       push @nodes, $make_cxn->(dsn => $node_dsn);
    }
 
-   return @nodes;
+   return \@nodes;
 }
-
 
 sub remove_duplicate_cxns {
    my ($self, %args) = @_;
    my @cxns     = @{$args{cxns}};
    my $seen_ids = $args{seen_ids};
-   PTDEBUG && _d("Removing duplicates from ", join " ", map { $_->name } @cxns);
-   my @trimmed_cxns;
-
-   for my $cxn ( @cxns ) {
-      my $dbh  = $cxn->dbh();
-      my $sql  = q{SELECT @@SERVER_ID};
-      PTDEBUG && _d($sql);
-      my ($id) = $dbh->selectrow_array($sql);
-      PTDEBUG && _d('Server ID for ', $cxn->name, ': ', $id);
-
-      if ( ! $seen_ids->{$id}++ ) {
-         push @trimmed_cxns, $cxn
-      }
-      else {
-         PTDEBUG && _d("Removing ", $cxn->name,
-                       ", ID $id, because we've already seen it");
-      }
-   }
-
-   return @trimmed_cxns;
+   return Cxn->remove_duplicate_cxns(%args);
 }
 
 sub same_cluster {
@@ -3508,46 +3516,49 @@ sub autodetect_nodes {
    my $nodes    = $args{nodes};
    my $seen_ids = $args{seen_ids};
 
-   return unless @$nodes;
+   my $new_nodes = [];
 
-   my @new_nodes;
+   return $new_nodes unless @$nodes;
+   
    for my $node ( @$nodes ) {
-      my @nodes = $self->find_cluster_nodes(
+      my $nodes_found = $self->find_cluster_nodes(
          dbh       => $node->dbh(),
          dsn       => $node->dsn(),
          make_cxn  => $make_cxn,
          DSNParser => $dp,
       );
-      push @new_nodes, @nodes;
+      push @$new_nodes, @$nodes_found;
    }
 
-   @new_nodes = $self->remove_duplicate_cxns(
-      cxns     => \@new_nodes,
+   $new_nodes = $self->remove_duplicate_cxns(
+      cxns     => $new_nodes,
       seen_ids => $seen_ids
    );
 
-   my @new_slaves;
-   foreach my $node (@new_nodes) {
+   my $new_slaves = [];
+   foreach my $node (@$new_nodes) {
       my $node_slaves = $ms->get_slaves(
          dbh      => $node->dbh(),
          dsn      => $node->dsn(),
          make_cxn => $make_cxn,
       );
-      push @new_slaves, @$node_slaves;
+      push @$new_slaves, @$node_slaves;
    }
 
-   @new_slaves = $self->remove_duplicate_cxns(
-      cxns     => \@new_slaves,
+   $new_slaves = $self->remove_duplicate_cxns(
+      cxns     => $new_slaves,
       seen_ids => $seen_ids
    );
 
-   my @new_slave_nodes = grep { $self->is_cluster_node($_) } @new_slaves;
-
-   return @new_nodes, @new_slaves,
-          $self->autodetect_nodes(
-            %args,
-            nodes => \@new_slave_nodes,
-          );
+   my @new_slave_nodes = grep { $self->is_cluster_node($_) } @$new_slaves;
+   
+   my $slaves_of_slaves = $self->autodetect_nodes(
+         %args,
+         nodes => \@new_slave_nodes,
+   );
+   
+   my @autodetected_nodes = ( @$new_nodes, @$new_slaves, @$slaves_of_slaves );
+   return \@autodetected_nodes;
 }
 
 sub _d {
@@ -4617,6 +4628,8 @@ sub get_slaves {
    my $dp      = $self->{DSNParser};
    my $methods = $self->_resolve_recursion_methods($args{dsn});
 
+   return $slaves unless @$methods;
+   
    if ( grep { m/processlist|hosts/i } @$methods ) {
       my @required_args = qw(dbh dsn);
       foreach my $arg ( @required_args ) {
@@ -8591,11 +8604,22 @@ sub main {
       }
    }
 
+   my $autodiscover_cluster;
+   my $recursion_method = [];
+   foreach my $method ( @{$o->get('recursion-method')} ) {
+      if ( $method eq 'cluster' ) {
+         $autodiscover_cluster = 1;
+      }
+      else {
+         push @$recursion_method, $method
+      }
+   }
+   $o->set('recursion-method', $recursion_method);
    eval {
       MasterSlave::check_recursion_method($o->get('recursion-method'));
    };
    if ( $EVAL_ERROR ) {
-      $o->save_error("Invalid --recursion-method: $EVAL_ERROR")
+      $o->save_error($EVAL_ERROR)
    }
 
    Pingback::validate_options($o);
@@ -8812,25 +8836,28 @@ sub main {
       my %seen_ids;
       for my $cxn ($master_cxn, @$slaves) {
          my $dbh  = $cxn->dbh();
-         my $sql  = q{SELECT @@SERVER_ID};
+         my $sql  = q{SELECT @@server_id};
          PTDEBUG && _d($cxn, $dbh, $sql);
          my ($id) = $dbh->selectrow_array($sql);
          $seen_ids{$id}++;
       }
 
-      my $dsn = grep { /^dsn/i } @{$o->get('recursion-method')};
-      if ( !$dsn && $o->get('autodetect-nodes') ) {
+      if ( $autodiscover_cluster ) {
          my @known_nodes = grep { $cluster_name_for{$_} } $master_cxn, @$slaves;
-         push @$slaves, $cluster->autodetect_nodes(
+         my $new_cxns = $cluster->autodetect_nodes(
                            nodes       => \@known_nodes,
                            MasterSlave => $ms,
                            DSNParser   => $dp,
                            make_cxn    => $make_cxn_cluster,
                            seen_ids    => \%seen_ids,
                         );
+         push @$slaves, @$new_cxns;
       }
 
-      ($master_cxn, @$slaves) = remove_duplicate_cxns( $master_cxn, @$slaves);
+      my $trimmed_nodes = Cxn->remove_duplicate_cxns(
+                                   cxns => [ $master_cxn, @$slaves ],
+                                );
+      ($master_cxn, @$slaves) = @$trimmed_nodes;
 
       PTDEBUG && _d(scalar @$slaves, 'slaves found');
 
@@ -9844,31 +9871,6 @@ sub main {
 # ############################################################################
 # Subroutines
 # ############################################################################
-sub remove_duplicate_cxns {
-   my (@cxns) = @_;
-   PTDEBUG && _d("Removing duplicates from ", join " ", map { $_->name } @cxns);
-   my @trimmed_cxns;
-   my %seen;
-
-   for my $cxn ( @cxns ) {
-      my $dbh  = $cxn->dbh();
-      my $sql  = q{SELECT @@SERVER_ID};
-      PTDEBUG && _d($sql);
-      my ($id) = $dbh->selectrow_array($sql);
-      PTDEBUG && _d('Server ID for ', $cxn->name, ': ', $id);
-
-      if ( ! $seen{$id}++ ) {
-         push @trimmed_cxns, $cxn
-      }
-      else {
-         PTDEBUG && _d("Removing ", $cxn->name,
-                       ", ID $id, because we've already seen it");
-      }
-   }
-
-   return @trimmed_cxns;
-}
-
 sub ts {
    my ($msg) = @_;
    my ($s, $m, $h, $d, $M) = localtime;
@@ -11097,12 +11099,6 @@ group: Connection
 
 Prompt for a password when connecting to MySQL.
 
-=item --[no]autodetect-nodes
-
-default: yes
-
-Try to automatically find other cluster nodes. TODO TODO.
-
 =item --[no]check-binlog-format
 
 default: yes
@@ -11584,6 +11580,7 @@ Possible methods are:
   ===========  ==================
   processlist  SHOW PROCESSLIST
   hosts        SHOW SLAVE HOSTS
+  cluster      SHOW STATUS LIKE 'wsrep\_incoming\_addresses'
   dsn=DSN      DSNs from a table
   none         Do not find slaves
 
@@ -11593,6 +11590,13 @@ the C<hosts> method becomes the default because it works better in this case.
 
 The C<hosts> method requires replicas to be configured with C<report_host>,
 C<report_port>, etc.
+
+The C<cluster> method requires a cluster based on Galera 23.7.3 or newer,
+such as Percona XtraDB Cluster versions 5.5.29 and above.  This will
+autodiscover nodes in a cluster using C<SHOW STATUS LIKE 'wsrep\_incoming\_addresses'>.
+Note that you can combine C<cluster> with C<processlist> and C<hosts> to
+have the tool autodiscover all cluster nodes and traditional slaves,
+but this is considered highly experimental.
 
 The C<dsn> method is special: rather than automatically discovering replicas,
 this method specifies a table with replica DSNs.  The tool will only connect
