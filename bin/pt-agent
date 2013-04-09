@@ -5818,6 +5818,8 @@ sub run_service {
    my $json    = $args{json};
    my $curr_ts = $args{curr_ts} || ts(time, 1);  # 1=UTC
 
+   $curr_ts =~ s/\.\d+$//;  # remove .microseconds
+
    # Can't do anything with the lib dir.  Since we haven't started
    # logging yet, cron should capture this error and email the user.
    init_lib_dir(
