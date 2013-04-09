@@ -864,7 +864,7 @@ has 'entry_link' => (
    is       => 'rw',
    isa      => 'Str',
    required => 0,
-   default  => sub { return 'https://api.tools.percona.com' },
+   default  => sub { return 'https://api-pws.percona.com' },
 );
 
 has 'ua' => (
@@ -4946,7 +4946,7 @@ sub get_api_client {
    my $_oktorun   = $args{oktorun}    || sub { return $oktorun };
    my $entry_link = $args{entry_link} || $ENV{PWS_ENTRY_LINK};
 
-   my $client     = Percona::WebAPI::Client->new(
+   my $client = Percona::WebAPI::Client->new(
       api_key => $api_key,
       ($entry_link ? (entry_link => $entry_link) : ()),
    );
@@ -4980,8 +4980,7 @@ sub get_api_client {
          delete $state->{connecting_to_api};
          last;  # success
       }
-
-      $interval->();
+      $interval->();  # failure, try again
    }
 
    return $client, $entry_links;
@@ -5164,6 +5163,7 @@ sub run_agent {
          interval => sub { sleep 60 },
       );
    }
+   return unless $oktorun->();
 
    # Do a version-check every time the agent starts.  If versions
    # have changed, this can affect how services are implemented.
@@ -5177,6 +5177,7 @@ sub run_agent {
          tries => 1,
       );
    }
+   return unless $oktorun->();
 
    # Load and update the local (i.e. existing) agent, or create a new one.
    my ($action, $link);
@@ -5214,6 +5215,8 @@ sub run_agent {
       agent   => $agent,
       lib_dir => $lib_dir,
    );
+   return unless $oktorun->();
+
    _info('Running agent ' . $agent->name);
 
    # #######################################################################
@@ -6588,14 +6591,9 @@ sub _state {
 # Catches signals so we can exit gracefully.
 sub sig_int {
    my ( $signal ) = @_;
-   if ( $oktorun ) {
-      print STDERR "# Caught SIG$signal.\n";
-      $oktorun = 0;
-   }
-   else {
-      print STDERR "# Exiting on SIG$signal.\n";
-      exit 1;
-   }
+   $oktorun = 0;
+   print STDERR "# Caught SIG$signal.  Use 'kill -ABRT $PID' if "
+      . "the tool does not exit normally in a few seconds.\n";
 }
 
 # ############################################################################

@@ -50,7 +50,7 @@ has 'entry_link' => (
    is       => 'rw',
    isa      => 'Str',
    required => 0,
-   default  => sub { return 'https://api.tools.percona.com' },
+   default  => sub { return 'https://api-pws.percona.com' },
 );
 
 has 'ua' => (
