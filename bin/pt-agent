@@ -5893,7 +5893,7 @@ sub run_service {
 
    my @output_files;
    my $data_file      = $service->name . '.' . int(time);
-   my $tmp_data_file  = "$data_dir/$data_file";
+   my $tmp_data_file  = "$tmp_dir/$data_file";
    my $have_data_file = 0;
    my $taskno         = 0;
    TASK:
