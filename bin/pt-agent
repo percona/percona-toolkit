@@ -6343,6 +6343,7 @@ sub send_file {
 Content-Disposition: form-data; name="agent"
 
 $agent_json
+--$boundary
 Content-Disposition: form-data; name="meta"
 
 $meta
