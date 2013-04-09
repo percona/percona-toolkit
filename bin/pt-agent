@@ -5773,6 +5773,17 @@ sub start_services {
 
    my $env_vars = env_vars();
 
+   # Remove old meta files.
+   my $meta_files = "$lib_dir/meta/*";
+   foreach my $meta_file ( glob $meta_files ) {
+      if ( unlink $meta_file ) {
+         _info("Removed $meta_file");
+      }
+      else {
+         _warn("Cannot remove $meta_file: $OS_ERROR");
+      }
+   }
+
    SERVICE:
    foreach my $service ( @$services ) {
       next unless $service->run_once;
@@ -5799,17 +5810,7 @@ sub start_services {
       unlink $start_log
          or _warn("Cannot remove $start_log: $OS_ERROR");
 
-      # Remove the service's previous meta files.
-      foreach my $meta_file (glob("$lib_dir/meta/" . $service->name . "*")) {
-         if ( unlink $meta_file ) {
-            _info("Removed $meta_file");
-         }
-         else {
-            _warn("Cannot remove $meta_file: $OS_ERROR");
-         }
-      }
-
-      _info($service->name, ' has started');
+      _info($service->name . ' has started');
    }
 
    return;
