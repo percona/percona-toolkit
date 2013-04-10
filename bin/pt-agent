@@ -6449,9 +6449,6 @@ sub stop_agent {
    if ( $EVAL_ERROR ) {
       _warn("Error removing services from crontab: $EVAL_ERROR");
    }
-   else {
-      _info("All services have been removed from crontab");
-   }
 
    my $env_vars = env_vars();
 
@@ -6464,20 +6461,16 @@ sub stop_agent {
               . "${bin_dir}pt-agent --run-service $service"
               . " </dev/null"
               . " >$disable_log 2>&1";
-      _info("Disabling $service service...");
       PTDEBUG && _d($cmd);
       system($cmd);
       my $cmd_exit_status = $CHILD_ERROR >> 8;
       if ( $cmd_exit_status != 0 ) {
          my $err = slurp($disable_log);
-         _warn("Error disabling $service: " . ($err || ''));
+         _warn("Error running $service: " . ($err || ''));
          next SERVICE;
       }
-
       unlink $disable_log
          or _warn("Cannot remove $disable_log: $OS_ERROR");
-
-      _info("$service has been disabled");
    }
 
    return;
