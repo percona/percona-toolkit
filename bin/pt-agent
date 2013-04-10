@@ -6015,10 +6015,9 @@ sub run_service {
    }
 
    # Move the spool file from .tmp/ to the real spool data dir.
-   if ( -f $tmp_data_file && (!$use_meta || $prev_ts) ) {
-      my $file_size = -s $tmp_data_file;
-      _info("$tmp_data_file size: $file_size bytes");
-
+   my $file_size = -s $tmp_data_file;
+   _info("$tmp_data_file size: $file_size bytes");
+   if ( $file_size && (!$use_meta || $prev_ts) ) {
       if ( $use_meta ) {
          # Save metadata about this sample _first_, because --send-data looks
          # for the data file first, then for a corresponding .meta file.  If
