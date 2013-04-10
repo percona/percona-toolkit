@@ -1244,8 +1244,15 @@ has 'uuid' => (
    required => 0,
 );
 
+has 'username' => (
+   is       => 'rw',
+   isa      => 'Str',
+   required => 1,
+   default  => $ENV{USER} || $ENV{LOGNAME},
+);
+
 has 'hostname' => (
-   is       => 'ro',
+   is       => 'rw',
    isa      => 'Str',
    required => 1,
 );
@@ -1254,12 +1261,6 @@ has 'alias' => (
    is       => 'ro',
    isa      => 'Str',
    required => 0,
-);
-
-has 'user' => (
-   is       => 'ro',
-   isa      => 'Str',
-   required => 1,
 );
 
 has 'versions' => (
@@ -5052,7 +5053,7 @@ sub init_agent {
    # Other optional attribs, like versions, are left to the caller.
    chomp(my $hostname = `hostname`);
    $agent->{hostname} = $hostname;
-   $agent->{user}     = $ENV{USER} || $ENV{LOGNAME};
+   $agent->{username} = $ENV{USER} || $ENV{LOGNAME};
 
    # Try forever to create/update the Agent.  The tool can't
    # do anything without an Agent, so we must succeed to proceed.

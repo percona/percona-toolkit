@@ -28,8 +28,15 @@ has 'uuid' => (
    required => 0,
 );
 
+has 'username' => (
+   is       => 'rw',
+   isa      => 'Str',
+   required => 1,
+   default  => $ENV{USER} || $ENV{LOGNAME},
+);
+
 has 'hostname' => (
-   is       => 'ro',
+   is       => 'rw',
    isa      => 'Str',
    required => 1,
 );
@@ -38,12 +45,6 @@ has 'alias' => (
    is       => 'ro',
    isa      => 'Str',
    required => 0,
-);
-
-has 'user' => (
-   is       => 'ro',
-   isa      => 'Str',
-   required => 1,
 );
 
 has 'versions' => (
