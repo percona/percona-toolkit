@@ -31,14 +31,18 @@ has 'uuid' => (
 has 'username' => (
    is       => 'rw',
    isa      => 'Str',
-   required => 1,
+   required => 0,
    default  => sub { return $ENV{USER} || $ENV{LOGNAME} },
 );
 
 has 'hostname' => (
    is       => 'rw',
    isa      => 'Str',
-   required => 1,
+   required => 0,
+   default  => sub {
+      chomp(my $hostname = `hostname`);
+      return $hostname;
+   },
 );
 
 has 'alias' => (
