@@ -4844,7 +4844,12 @@ sub main {
    # --stop
    # ########################################################################
    if ( my $stop = $o->get('stop') ) {
-      exit;
+      stop_agent(
+         pid_file => $o->get('pid'),
+         lib_dir  => $o->get('lib'),
+      );
+      _info("Done stopping pt-agent, exit $exit_status");
+      return $exit_status;
    }
 
    # ########################################################################
@@ -5683,7 +5688,10 @@ sub schedule_services {
    my $services = $args{services};
    my $lib_dir  = $args{lib_dir};
 
-   _info("Scheduling services");
+   # Optional args
+   my $quiet = $args{quiet};
+
+   _info("Scheduling services") unless $quiet;
 
    # Only schedule "periodic" services, i.e. ones that run periodically,
    # not just once.
@@ -6366,6 +6374,108 @@ CONTENT
          'Content-Type' => "multipart/form-data; boundary=$boundary",
       }
    );
+
+   return;
+}
+
+# ########### #
+# --stop subs #
+# ########### #
+
+sub stop_agent {
+   my (%args) = @_;
+
+   have_required_args(\%args, qw(
+      pid_file
+      lib_dir
+   )) or die;
+   my $pid_file = $args{pid_file};
+   my $lib_dir  = $args{lib_dir};
+
+   # Optional args
+   my $bin_dir = defined $args{bin_dir} ? $args{bin_dir}
+               :                          "$FindBin::Bin/";
+
+   if ( !-f $pid_file ) {
+      _warn("PID file $pid_file does not exist; you must stop "
+         . "pt-agent manually");
+   }
+   else {
+      chop(my $pid = slurp($pid_file));
+      _info("pt-agent PID: $pid");
+      my $alive = kill 0, $pid;
+      if ( !$alive ) {
+         _warn("pt-agent is running, or not responding to signals.  "
+             . "Verify that pt-agent has stopped, then remove PID file "
+             . "$pid_file.");
+      }
+      else {
+         _info("Stopping pt-agent...");
+         kill 3, $pid;
+         for (1..5) {
+            $alive = kill 0, $pid;
+            last unless $alive;
+            sleep 0.5;
+         }
+         $alive = kill 0, $pid;
+         if ( $alive ) {
+            _warn("pt-agent did not respond to the QUIT signal, using "
+               . "the KILL signal...");
+            kill 9, $pid;
+            for (1..3) {
+               $alive = kill 0, $pid;
+               last unless $alive;
+               sleep 0.5;
+            }
+            $alive = kill 0, $pid;
+            # Shouldn't happen:
+            _warn("pt-agent did not response to the KILL signal");
+         }
+         else {
+            _info("pt-agent has stopped");
+         }
+      }
+   }
+
+   _info("Removing all services from crontab...");
+   eval {
+      schedule_services(
+         services => [],
+         lib_dir  => $lib_dir,
+         quiet    => 1,
+      );
+   };
+   if ( $EVAL_ERROR ) {
+      _warn("Error removing services from crontab: $EVAL_ERROR");
+   }
+   else {
+      _info("All services have been removed from crontab");
+   }
+
+   my $env_vars = env_vars();
+
+   _info("Disabling all services (clean up)...");
+   SERVICE:
+   foreach my $service ( glob "$lib_dir/services/disable-*" ) {
+      my $disable_log = "$lib_dir/logs/" . $service->name . ".stop";
+      my $cmd = ($env_vars ? "$env_vars " : '')
+              . "${bin_dir}pt-agent --run-service $service"
+              . " </dev/null"
+              . " >$disable_log 2>&1";
+      _info("Disabling $service service...");
+      system($cmd);
+      my $cmd_exit_status = $CHILD_ERROR >> 8;
+      if ( $cmd_exit_status != 0 ) {
+         my $err = slurp($disable_log);
+         _warn("Error disabling $service: " . ($err || ''));
+         next SERVICE;
+      }
+
+      unlink $disable_log
+         or _warn("Cannot remove $disable_log: $OS_ERROR");
+
+      _info("$service has been disabled");
+   }
 
    return;
 }
