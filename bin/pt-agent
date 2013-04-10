@@ -4767,6 +4767,7 @@ use Time::HiRes  qw(sleep time);
 use JSON         qw(decode_json);
 use File::Temp   qw(tempfile);
 use File::Path;
+use File::Basename;
 use FindBin;
 
 use Percona::Toolkit; 
@@ -6456,13 +6457,15 @@ sub stop_agent {
 
    _info("Disabling all services (clean up)...");
    SERVICE:
-   foreach my $service ( glob "$lib_dir/services/disable-*" ) {
+   foreach my $file ( glob "$lib_dir/services/disable-*" ) {
+      my $service = basename($file);
       my $disable_log = "$lib_dir/logs/$service.stop";
       my $cmd = ($env_vars ? "$env_vars " : '')
               . "${bin_dir}pt-agent --run-service $service"
               . " </dev/null"
               . " >$disable_log 2>&1";
       _info("Disabling $service service...");
+      PTDEBUG && _d($cmd);
       system($cmd);
       my $cmd_exit_status = $CHILD_ERROR >> 8;
       if ( $cmd_exit_status != 0 ) {
