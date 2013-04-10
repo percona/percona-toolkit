@@ -1256,6 +1256,12 @@ has 'alias' => (
    required => 0,
 );
 
+has 'user' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 1,
+);
+
 has 'versions' => (
    is       => 'ro',
    isa      => 'Maybe[HashRef]',
@@ -5005,15 +5011,7 @@ sub load_local_agent {
 
    my $agent;
    my $agent_file = $lib_dir . "/agent";
-   if ( $agent_uuid ) {
-      _info("Re-creating Agent with UUID $agent_uuid");
-      chomp(my $hostname = `hostname`);
-      $agent = Percona::WebAPI::Resource::Agent->new(
-         uuid     => $agent_uuid,
-         hostname => $hostname,
-      );
-   }
-   elsif ( -f $agent_file ) {
+   if ( -f $agent_file ) {
       _info("Reading saved Agent from $agent_file");
       my $agent_hashref = decode_json(slurp($agent_file));
       $agent = Percona::WebAPI::Resource::Agent->new(%$agent_hashref);
@@ -5048,7 +5046,13 @@ sub init_agent {
    my $interval = $args{interval};
 
    # Optional args
-   my $_oktorun   = $args{oktorun} || sub { return $oktorun };
+   my $_oktorun = $args{oktorun} || sub { return $oktorun };
+
+   # Update these attribs every time the agent is initialized.
+   # Other optional attribs, like versions, are left to the caller.
+   chomp(my $hostname = `hostname`);
+   $agent->{hostname} = $hostname;
+   $agent->{user}     = $ENV{USER} || $ENV{LOGNAME};
 
    # Try forever to create/update the Agent.  The tool can't
    # do anything without an Agent, so we must succeed to proceed.
@@ -5188,25 +5192,32 @@ sub run_agent {
    # Load and update the local (i.e. existing) agent, or create a new one.
    my ($action, $link);
    if ( !$agent ) {
-      $agent = load_local_agent (
-         lib_dir    => $lib_dir,
-         agent_uuid => $agent_uuid,
-      );
-      if ( $agent ) {
-         # Loaded (or re-created) local agent.
-         $action = 'put';  # update
-         $link   = $entry_links->{agents} . '/' . $agent->uuid;
-         $agent->{versions} = $versions;
-      }
-      else {
-         # No local agent and --agent-uuid wasn't give.
-         chomp(my $hostname = `hostname`);
+      if ( $agent_uuid ) {
+         _info("Re-creating Agent with UUID $agent_uuid");
          $agent = Percona::WebAPI::Resource::Agent->new(
-            hostname => $hostname,
+            uuid     => $agent_uuid,
             versions => $versions,
          );
-         $action = 'post';  # create
-         $link   = $entry_links->{agents};
+      }
+      else {
+         # First try to load the local agent.
+         $agent = load_local_agent(
+            lib_dir => $lib_dir,
+         );
+         if ( $agent ) {
+            # Loaded local agent.
+            $action = 'put';  # update
+            $link   = $entry_links->{agents} . '/' . $agent->uuid;
+            $agent->{versions} = $versions;
+         }
+         else {
+            # No local agent and --agent-uuid wasn't give.
+            $agent = Percona::WebAPI::Resource::Agent->new(
+               versions => $versions,
+            );
+            $action = 'post';  # create
+            $link   = $entry_links->{agents};
+         }
       }
    }
    $agent = init_agent(
