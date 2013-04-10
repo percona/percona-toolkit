@@ -40,6 +40,12 @@ has 'alias' => (
    required => 0,
 );
 
+has 'user' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 1,
+);
+
 has 'versions' => (
    is       => 'ro',
    isa      => 'Maybe[HashRef]',
