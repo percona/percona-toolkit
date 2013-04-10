@@ -5148,7 +5148,7 @@ sub run_agent {
 
 These values can change if a different configuration is received.
 
-Configure the agent at https://pws.percona.com/agents.
+Configure the agent at https://pws.percona.com/agents
 ",
       }
    );
