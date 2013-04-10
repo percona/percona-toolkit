@@ -4900,15 +4900,15 @@ sub main {
    # retried forever.
    # ########################################################################
 
-   # Check and init the config file.  This should probably never fail
-   # because the config file is $HOME/.pt-agent.conf, so the user should
+   # Check the config file.  This should probably never fail because
+   # the config file is $HOME/.pt-agent.conf, so the user should
    # be able to write to their home dir.  --run-service and --send-data
    # don't need to do this because if there's no valid config, they should
    # fail; they'll probably die due to --lib missing, which they verify
    # but don't create.
-   init_config_file(
-      api_key => $api_key,
-   );
+   my $config_file = get_config_file();
+   _err("$config_file exists but is not writable")
+         unless -f $config_file && -w $config_file;
 
    # Wait time between checking for new config and services.
    # Use the tool's built-in default until a config is gotten,
@@ -6530,31 +6530,6 @@ sub get_config_file {
    my $home_dir    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
    my $config_file = "$home_dir/.pt-agent.conf";
    return $config_file;
-}
-
-sub init_config_file {
-   my (%args) = @_;
-   have_required_args(\%args, qw(
-      api_key
-   )) or die;
-   my $api_key = $args{api_key};
-
-   my $config_file = get_config_file();
-   eval {
-      die "$config_file exists but is not writable\n"
-         if -f $config_file && !-w $config_file;
-      open my $fh, '>', $config_file
-         or die "Error opening $config_file: $OS_ERROR";
-      print { $fh } "api-key=$api_key\n"
-         or die "Error writing to $config_file: $OS_ERROR";
-      close $fh
-         or die "Error closing $config_file: $OS_ERROR";
-   };
-   if ( $EVAL_ERROR ) {
-      die "Error initializing $config_file: $EVAL_ERROR\n";
-   }
-
-   return;
 }
 
 sub save_agent {
