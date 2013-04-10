@@ -5861,7 +5861,15 @@ sub run_service {
    my $json    = $args{json};
    my $curr_ts = $args{curr_ts} || ts(time, 1);  # 1=UTC
 
-   $curr_ts =~ s/\.\d+$//;  # remove .microseconds
+   # The seconds are :01 or :02 because cron runs commands about 1 or 2
+   # seconds after the minute mark.  Unfortunately this means that interval
+   # 00:00:01 is not the same as 00:00::02 to MySQL, but for our purposes
+   # they are the same interval.  This matters because, not only should data
+   # intervals align, but intervals across all agents should align too. So
+   # agent 1 data for :00-:05 should align with agent 2 data for the same
+   # interval, i.e. SELECT * FROM query_samples WHERE start_ts='00:00:00'
+   # should get data for that interval for all agents.
+   $curr_ts =~ s/\d\d.\d+$/00/;  # :01.123456 -> :00
 
    # Can't do anything with the lib dir.  Since we haven't started
    # logging yet, cron should capture this error and email the user.
