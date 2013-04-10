@@ -5140,10 +5140,16 @@ sub run_agent {
       %daemon_args,
       parent_exit => sub {
          my $child_pid = shift;
-         print "pt-agent is running as PID $child_pid, "
-            . ($pid_file ? "PID file $pid_file, " : "no PID file, ")
-            . ($log_file ? "log file $log_file. " : "no log file. ")
-            . " Configure the agent at https://pws.percona.com.\n";
+         print "pt-agent has daemonized and is running as PID $child_pid:
+
+  --lib " . ($lib_dir  || '') . "
+  --log " . ($log_file || '') . "
+  --pid " . ($pid_file || '') . "
+
+These values can change if a different configuration is received.
+
+Configure the agent at https://pws.percona.com/agents.
+",
       }
    );
    $daemon->run();
