@@ -6474,39 +6474,49 @@ sub stop_agent {
       }
    }
 
-   _info("Removing all services from crontab...");
-   eval {
-      schedule_services(
-         services => [],
-         lib_dir  => $lib_dir,
-         quiet    => 1,
-      );
-   };
-   if ( $EVAL_ERROR ) {
-      _warn("Error removing services from crontab: $EVAL_ERROR");
+   if ( -f "$lib_dir/crontab" ) {
+      _info("Removing all services from crontab...");
+      eval {
+         schedule_services(
+            services => [],
+            lib_dir  => $lib_dir,
+            quiet    => 1,
+         );
+      };
+      if ( $EVAL_ERROR ) {
+         _warn("Error removing services from crontab: $EVAL_ERROR");
+      }
+   }
+   else {
+      _info("$lib_dir/crontab does not exist, no services to remove from crontab");
    }
 
-   my $env_vars = env_vars();
+   if ( -d "$lib_dir/services" ) {
+      my $env_vars = env_vars();
 
-   _info("Disabling all services (clean up)...");
-   SERVICE:
-   foreach my $file ( glob "$lib_dir/services/disable-*" ) {
-      my $service = basename($file);
-      my $disable_log = "$lib_dir/logs/$service.stop";
-      my $cmd = ($env_vars ? "$env_vars " : '')
-              . "${bin_dir}pt-agent --run-service $service"
-              . " </dev/null"
-              . " >$disable_log 2>&1";
-      PTDEBUG && _d($cmd);
-      system($cmd);
-      my $cmd_exit_status = $CHILD_ERROR >> 8;
-      if ( $cmd_exit_status != 0 ) {
-         my $err = slurp($disable_log);
-         _warn("Error running $service: " . ($err || ''));
-         next SERVICE;
+      _info("Disabling all services (clean up)...");
+      SERVICE:
+      foreach my $file ( glob "$lib_dir/services/disable-*" ) {
+         my $service = basename($file);
+         my $disable_log = "$lib_dir/logs/$service.stop";
+         my $cmd = ($env_vars ? "$env_vars " : '')
+                 . "${bin_dir}pt-agent --run-service $service"
+                 . " </dev/null"
+                 . " >$disable_log 2>&1";
+         PTDEBUG && _d($cmd);
+         system($cmd);
+         my $cmd_exit_status = $CHILD_ERROR >> 8;
+         if ( $cmd_exit_status != 0 ) {
+            my $err = slurp($disable_log);
+            _warn("Error running $service: " . ($err || ''));
+            next SERVICE;
+         }
+         unlink $disable_log
+            or _warn("Cannot remove $disable_log: $OS_ERROR");
       }
-      unlink $disable_log
-         or _warn("Cannot remove $disable_log: $OS_ERROR");
+   }
+   else {
+      _info("$lib_dir/services does not exist, no services to disable")
    }
 
    return;
