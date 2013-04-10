@@ -32,7 +32,7 @@ has 'username' => (
    is       => 'rw',
    isa      => 'Str',
    required => 1,
-   default  => $ENV{USER} || $ENV{LOGNAME},
+   default  => sub { return $ENV{USER} || $ENV{LOGNAME} },
 );
 
 has 'hostname' => (
