@@ -6411,7 +6411,7 @@ sub stop_agent {
       }
       else {
          _info("Stopping pt-agent...");
-         kill 3, $pid;
+         kill 15, $pid;
          for (1..5) {
             $alive = kill 0, $pid;
             last unless $alive;
@@ -6419,7 +6419,7 @@ sub stop_agent {
          }
          $alive = kill 0, $pid;
          if ( $alive ) {
-            _warn("pt-agent did not respond to the QUIT signal, using "
+            _warn("pt-agent did not respond to the TERM signal, using "
                . "the KILL signal...");
             kill 9, $pid;
             for (1..3) {
@@ -6457,7 +6457,7 @@ sub stop_agent {
    _info("Disabling all services (clean up)...");
    SERVICE:
    foreach my $service ( glob "$lib_dir/services/disable-*" ) {
-      my $disable_log = "$lib_dir/logs/" . $service->name . ".stop";
+      my $disable_log = "$lib_dir/logs/$service.stop";
       my $cmd = ($env_vars ? "$env_vars " : '')
               . "${bin_dir}pt-agent --run-service $service"
               . " </dev/null"
