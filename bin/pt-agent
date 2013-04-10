@@ -5506,7 +5506,7 @@ sub init_lib_dir {
       }
       else {
          _info("$lib_dir does not exist, creating");
-         mkdir $lib_dir or die "Cannot mkdir $lib_dir: $OS_ERROR";
+         _safe_mkdir($lib_dir);
       }
    }
    elsif ( ! -w $lib_dir ) {
@@ -5521,7 +5521,7 @@ sub init_lib_dir {
          }
          else {
             _info("$dir does not exist, creating");
-            mkdir $dir or die "Cannot mkdir $dir: $OS_ERROR";
+            _safe_mkdir($dir);
          }
       }
       elsif ( ! -w $dir ) {
@@ -5896,21 +5896,23 @@ sub run_service {
       lib_dir => $lib_dir,
    );
 
-   my ($data_dir, $tmp_dir) = init_spool_dir(
-      spool_dir => $spool_dir,
-      service   => $service->name,
-   );
-
-   # Check if any task uses metadata or MySQL.  Any task that spools
-   # should use metadata because all data samples have at least a
-   # start_ts and end_ts.
+   # Check if any task spools data or uses MySQL.  Any task that spools
+   # should also use metadata because all data samples have at least a
+   # start_ts and end_ts as metadata.
    my $tasks     = $service->tasks;
-   my $use_meta  = 0;
+   my $use_spool = 0;
    my $use_mysql = 0;
    foreach my $task ( @$tasks ) {
-      $use_meta  = 1 if ($task->output || '') eq 'spool';
+      $use_spool = 1 if ($task->output || '') eq 'spool';
       $use_mysql = 1 if $task->query;
    }
+
+   # $data_dir will be undef if $use_spool is undef; that's ok because
+   # only $tmp_dir is always needed.
+   my ($data_dir, $tmp_dir) = init_spool_dir(
+      spool_dir => $spool_dir,
+      service   => $use_spool ? $service->name : undef,
+   );
 
    # Connect to MySQL or quit.
    if ( $use_mysql ) {
@@ -5932,13 +5934,18 @@ sub run_service {
       }
    }
 
-   # Setup the interval meta file.
+   # Setup the interval meta file which contains the UTC timestamp
+   # of the last time this service ran ($prev_ts).  If there's no
+   # previous ts, then this is the first run of this service, so
+   # since we don't know when the service started, and it probably
+   # didn't start on an interval boundary, we throw away the results
+   # have the current ts ($curr_ts) which is on an interval boundary
+   # (because services are ran via cron) and wait until the next
+   # time we're ran, then we'll have collected from one interval
+   # boundary (this one) to another (the next one).
    my $meta_file  = "$lib_dir/meta/" . $service->name . ".interval";
    my $prev_ts;
-   if ( $use_meta ) {
-      # Check for a previous run.  If there's one, continue; else, this
-      # is the first run of this service, so skip running until the next
-      # interval so that we can collect data for a complete interval.
+   if ( $use_spool ) {
       if ( -f $meta_file ) {
          $prev_ts = slurp($meta_file);
          chomp($prev_ts) if $prev_ts;
@@ -5947,7 +5954,7 @@ sub run_service {
                . 'interval to collect a complete sample');
          }
          else {
-            _info("Interval: $curr_ts to $prev_ts");
+            _info("Interval: $prev_ts to $curr_ts");
          }
       }
       else {
@@ -6033,28 +6040,28 @@ sub run_service {
       $taskno++;
    }
 
-   # Move the spool file from .tmp/ to the real spool data dir.
+   # Move the spool file from --spool/.tmp/ to --spool/<service>/
+   # if 1) the service spools data and 2) there is data and 3) this
+   # is not the first run of the service.
    my $file_size = -s $tmp_data_file;
    _info("$tmp_data_file size: $file_size bytes");
-   if ( $file_size && (!$use_meta || $prev_ts) ) {
-      if ( $use_meta ) {
-         # Save metadata about this sample _first_, because --send-data looks
-         # for the data file first, then for a corresponding .meta file.  If
-         # we write the data file first, then we create a race condition: while
-         # we're writing, --send-data could see the data file but not the
-         # .meta file because we haven't written it yet.  So writing the .meta
-         # file first guarantees that if --send-data sees a data file, the
-         # .meta already exists.  (And there's no race condition on writing
-         # the data file because we use a quasi-atomic system mv.)
-         my $metadata = {
-            start_ts => $prev_ts,
-            end_ts   => $curr_ts,
-         };
-         write_to_file(
-            data => as_json($metadata, json => $json),
-            file => "$data_dir/$data_file.meta",
-         );
-      }
+   if ( $use_spool && $file_size && $prev_ts ) {
+      # Save metadata about this sample _first_, because --send-data looks
+      # for the data file first, then for a corresponding .meta file.  If
+      # we write the data file first, then we create a race condition: while
+      # we're writing, --send-data could see the data file but not the
+      # .meta file because we haven't written it yet.  So writing the .meta
+      # file first guarantees that if --send-data sees a data file, the
+      # .meta already exists.  (And there's no race condition on writing
+      # the data file because we use a quasi-atomic system mv.)
+      my $metadata = {
+         start_ts => $prev_ts,
+         end_ts   => $curr_ts,
+      };
+      write_to_file(
+         data => as_json($metadata, json => $json),
+         file => "$data_dir/$data_file.meta",
+      );
 
       # Use system mv instead of Perl File::Copy::move() because it's
       # unknown if the Perl version will do an optimized move, i.e.
@@ -6067,6 +6074,12 @@ sub run_service {
       my $cmd_exit_status = $CHILD_ERROR >> 8;
       _warn("Move failed: $cmd") if $cmd_exit_status != 0;
       $exit_status |= $cmd_exit_status;
+   
+      # Update the meta file.
+      write_to_file(
+         data => "$curr_ts\n",
+         file => $meta_file,
+      );
    }
 
    # Remove tmp output files.
@@ -6074,14 +6087,6 @@ sub run_service {
       next unless defined $file && -f $file;
       unlink $file
          or _warn("Error removing $file: $OS_ERROR");
-   }
-
-   # Update the meta file.
-   if ( $use_meta ) {
-      write_to_file(
-         data => "$curr_ts\n",
-         file => $meta_file,
-      );
    }
 
    return;
@@ -6151,31 +6156,33 @@ sub init_spool_dir {
 
    have_required_args(\%args, qw(
       spool_dir
-      service
    )) or die;
    my $spool_dir = $args{spool_dir};
-   my $service   = $args{service};
+
+   # Optional args
+   my $service = $args{service};
 
    if ( !-d $spool_dir ) {
       _info("$spool_dir does not exist, creating");
-      mkdir $spool_dir or die "Cannot mkdir $spool_dir: $OS_ERROR";
+      _safe_mkdir($spool_dir);
    }
    elsif ( !-w $spool_dir ) {
       die "$spool_dir is not writeable\n";
    }
 
    foreach my $subdir ( $service, '.tmp' ) {
+      next unless $subdir;  # service may be undef
       my $dir = "$spool_dir/$subdir";
       if ( ! -d $dir ) {
          _info("$dir does not exist, creating");
-         mkdir $dir or die "Cannot mkdir $dir: $OS_ERROR";
+         _safe_mkdir($dir);
       }
       elsif ( !-w $dir ) {
          die "$dir does not writeable\n";
       }
    }
 
-   my $data_dir = "$spool_dir/$service";
+   my $data_dir = $service ? "$spool_dir/$service" : undef;
    my $tmp_dir  = "$spool_dir/.tmp";
 
    return $data_dir, $tmp_dir;
@@ -6706,6 +6713,28 @@ sub env_vars {
       }
    }
    return join(' ', @vars);
+}
+
+sub _safe_mkdir {
+   my $dir = shift;
+
+   # Multiple processes are running at once, all running the same code,
+   # all trying to init pt-agent's various directories if necessary, so
+   # race conditions abound.  Another process may have created the dir
+   # between -d checking for it and now, so if mkdir throws a "File exists"
+   # error and the dir does now exist, then that's ok.  Else, it's an error.
+   eval { 
+      mkdir $dir or die $OS_ERROR;
+   };
+   if ( my $e = $EVAL_ERROR ) {
+      if ( $e =~ /exists/i && -d $dir ) {
+         PTDEBUG && _d('Another process created', $dir);
+      }
+      else {
+         die "Cannot mkdir $dir: $e";
+      }
+   }
+   return;
 }
 
 sub _state {
