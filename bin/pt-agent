@@ -6055,7 +6055,7 @@ sub run_service {
    # if 1) the service spools data and 2) there is data and 3) this
    # is not the first run of the service.
    my $file_size = -s $tmp_data_file;
-   _info("$tmp_data_file size: $file_size bytes");
+   _info("$tmp_data_file size: " . ($file_size || 0) . " bytes");
    if ( $use_spool && $file_size && $prev_ts ) {
       # Save metadata about this sample _first_, because --send-data looks
       # for the data file first, then for a corresponding .meta file.  If
@@ -6085,8 +6085,12 @@ sub run_service {
       my $cmd_exit_status = $CHILD_ERROR >> 8;
       _warn("Move failed: $cmd") if $cmd_exit_status != 0;
       $exit_status |= $cmd_exit_status;
-   
-      # Update the meta file.
+   }
+
+   # Always update the meta file if spooling, even if there was no data
+   # or this is the first run of the service (in which case this is the
+   # first interval boundary for the service).
+   if ( $use_spool ) {
       write_to_file(
          data => "$curr_ts\n",
          file => $meta_file,
