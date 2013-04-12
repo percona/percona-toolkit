@@ -30,6 +30,8 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 use Lmo;
 use Data::Dumper;
 
+{ local $EVAL_ERROR; eval { require Cxn } };
+
 sub get_cluster_name {
    my ($self, $cxn) = @_;
    my $sql = "SHOW VARIABLES LIKE 'wsrep\_cluster\_name'";
@@ -63,6 +65,70 @@ sub same_node {
    return ($val1 || '') eq ($val2 || '');
 }
 
+# TODO: Check that the PXC version supports wsrep_incoming_addresses
+# Not really necessary, actually. But in case it's needed,
+# wsrep_provider_version =~ /[0-9]+\.[0-9]+\(r([0-9]+)\)/ && $1 >= 137
+sub find_cluster_nodes {
+   my ($self, %args) = @_;
+
+   my $dbh = $args{dbh};
+   my $dsn = $args{dsn};
+   my $dp  = $args{DSNParser};
+   my $make_cxn = $args{make_cxn};
+
+   # Ostensibly the caller should've done this already, but
+   # useful for safety.
+   # TODO this fails with a strange error.
+   #$dp->fill_in_dsn($dbh, $dsn);
+   
+   my $sql = q{SHOW STATUS LIKE 'wsrep\_incoming\_addresses'};
+   PTDEBUG && _d($sql);
+   my (undef, $addresses) = $dbh->selectrow_array($sql);
+   PTDEBUG && _d("Cluster nodes found: ", $addresses);
+   return unless $addresses;
+
+   my @addresses = grep { !/\Aunspecified\z/i }
+                   split /,\s*/, $addresses;
+
+   my @nodes;
+   foreach my $address ( @addresses ) {
+      my ($host, $port) = split /:/, $address;
+      my $spec = "h=$host"
+               . ($port ? ",P=$port" : "");
+      my $node_dsn = $dp->parse($spec, $dsn);
+      my $node_dbh = eval { $dp->get_dbh(
+            $dp->get_cxn_params($node_dsn), { AutoCommit => 1 }) };
+      if ( $EVAL_ERROR ) {
+         print STDERR "Cannot connect to ", $dp->as_string($node_dsn),
+                      ", discovered through $sql: $EVAL_ERROR\n";
+         # This is a bit strange, so an explanation is called for.
+         # If there wasn't a port, that means that this bug
+         # https://bugs.launchpad.net/percona-toolkit/+bug/1082406
+         # isn't fixed on this version of PXC. We tried using the
+         # master's port, but that didn't work. So try again, using
+         # the default port.
+         if ( !$port && $dsn->{P} != 3306 ) {
+            $address .= ":3306";
+            redo;
+         }
+         next;
+      }
+      PTDEBUG && _d('Connected to', $dp->as_string($node_dsn));
+      $node_dbh->disconnect();
+
+      push @nodes, $make_cxn->(dsn => $node_dsn);
+   }
+
+   return \@nodes;
+}
+
+sub remove_duplicate_cxns {
+   my ($self, %args) = @_;
+   my @cxns     = @{$args{cxns}};
+   my $seen_ids = $args{seen_ids};
+   return Cxn->remove_duplicate_cxns(%args);
+}
+
 sub same_cluster {
    my ($self, $cxn1, $cxn2) = @_;
 
@@ -73,6 +139,61 @@ sub same_cluster {
    my $cluster2 = $self->get_cluster_name($cxn2);
 
    return ($cluster1 || '') eq ($cluster2 || '');
+}
+
+sub autodetect_nodes {
+   my ($self, %args) = @_;
+   my $ms       = $args{MasterSlave};
+   my $dp       = $args{DSNParser};
+   my $make_cxn = $args{make_cxn};
+   my $nodes    = $args{nodes};
+   my $seen_ids = $args{seen_ids};
+
+   my $new_nodes = [];
+
+   return $new_nodes unless @$nodes;
+   
+   for my $node ( @$nodes ) {
+      my $nodes_found = $self->find_cluster_nodes(
+         dbh       => $node->dbh(),
+         dsn       => $node->dsn(),
+         make_cxn  => $make_cxn,
+         DSNParser => $dp,
+      );
+      push @$new_nodes, @$nodes_found;
+   }
+
+   $new_nodes = $self->remove_duplicate_cxns(
+      cxns     => $new_nodes,
+      seen_ids => $seen_ids
+   );
+
+   my $new_slaves = [];
+   foreach my $node (@$new_nodes) {
+      my $node_slaves = $ms->get_slaves(
+         dbh      => $node->dbh(),
+         dsn      => $node->dsn(),
+         make_cxn => $make_cxn,
+      );
+      push @$new_slaves, @$node_slaves;
+   }
+
+   $new_slaves = $self->remove_duplicate_cxns(
+      cxns     => $new_slaves,
+      seen_ids => $seen_ids
+   );
+
+   # If some of the new slaves is a cluster node, autodetect new nodes
+   # from there too.
+   my @new_slave_nodes = grep { $self->is_cluster_node($_) } @$new_slaves;
+   
+   my $slaves_of_slaves = $self->autodetect_nodes(
+         %args,
+         nodes => \@new_slave_nodes,
+   );
+   
+   my @autodetected_nodes = ( @$new_nodes, @$new_slaves, @$slaves_of_slaves );
+   return \@autodetected_nodes;
 }
 
 sub _d {
