@@ -54,13 +54,20 @@ sub is_cluster_node {
 sub same_node {
    my ($self, $cxn1, $cxn2) = @_;
 
-   my $sql = "SHOW VARIABLES LIKE 'wsrep\_sst\_receive\_address'";
-   PTDEBUG && _d($cxn1->name, $sql);
-   my (undef, $val1) = $cxn1->dbh->selectrow_array($sql);
-   PTDEBUG && _d($cxn2->name, $sql);
-   my (undef, $val2) = $cxn2->dbh->selectrow_array($sql);
+   # We check several variables because, if these aren't the same,
+   # we have our answer, but if they are, it doesn't necessarily
+   # mean that we have the same node; See:
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1099845
+   foreach my $val ('wsrep\_sst\_receive\_address', 'wsrep\_node\_name', 'wsrep\_node\_address') {
+      my $sql = "SHOW VARIABLES LIKE '$val'";
+      PTDEBUG && _d($cxn1->name, $cxn2->name, $sql);
+      my (undef, $val1) = $cxn1->dbh->selectrow_array($sql);
+      my (undef, $val2) = $cxn2->dbh->selectrow_array($sql);
 
-   return ($val1 || '') eq ($val2 || '');
+      return unless ($val1 || '') eq ($val2 || '');
+   }
+
+   return 1;
 }
 
 sub same_cluster {
