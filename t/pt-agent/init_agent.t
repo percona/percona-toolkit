@@ -13,31 +13,21 @@ use Test::More;
 use JSON;
 use File::Temp qw(tempdir);
 
-use PerconaTest;
-use Sandbox;
+use Percona::Test;
 use Percona::Test::Mock::UserAgent;
 require "$trunk/bin/pt-agent";
-
-my $dp  = new DSNParser(opts=>$dsn_opts);
-my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
-my $dsn = $sb->dsn_for('master');
-my $o   = new OptionParser();
-$o->get_specs("$trunk/bin/pt-agent");
-$o->get_opts();
-my $cxn = Cxn->new(
-   dsn_string   => $dsn,
-   OptionParser => $o,
-   DSNParser    => $dp,
-);
 
 Percona::Toolkit->import(qw(Dumper));
 Percona::WebAPI::Representation->import(qw(as_hashref));
 
 my $tmpdir = tempdir("/tmp/pt-agent.$PID.XXXXXX", CLEANUP => 1);
 
+my $json = JSON->new->canonical([1])->pretty;
+$json->allow_blessed([]);
+$json->convert_blessed([]);
+
 my $ua = Percona::Test::Mock::UserAgent->new(
-   encode => sub { my $c = shift; return encode_json($c || {}) },
+   encode => sub { my $c = shift; return $json->encode($c || {}) },
 );
 
 my $client = eval {
@@ -53,20 +43,44 @@ is(
    'Create Client with mock user agent'
 ) or die;
 
+my @ok;
+my $oktorun = sub {
+   return shift @ok;
+};
+
+my @wait;
+my $interval = sub {
+   my $t = shift;
+   push @wait, $t;
+};
+
 # #############################################################################
 # Init a new agent, i.e. create it.
 # #############################################################################
 
-my $return_agent = {
+my $post_agent = Percona::WebAPI::Resource::Agent->new(
    uuid     => '123',
-   hostname => `hostname`,
+   hostname => 'host1',
+   username => 'name1',
    versions => {
    },
    links    => {
       self   => '/agents/123',
       config => '/agents/123/config',
    },
-};
+);
+
+my $return_agent = Percona::WebAPI::Resource::Agent->new(
+   uuid     => '123',
+   hostname => 'host2',
+   username => 'name2',
+   versions => {
+   },
+   links    => {
+      self   => '/agents/123',
+      config => '/agents/123/config',
+   },
+);
 
 $ua->{responses}->{post} = [
    {
@@ -77,38 +91,29 @@ $ua->{responses}->{post} = [
 $ua->{responses}->{get} = [
    {
       headers => { 'X-Percona-Resource-Type' => 'Agent' },
-      content => $return_agent,
+      content => as_hashref($return_agent, with_links =>1 ),
    },
 ];
 
-# interval is a callback that subs call to sleep between failed
-# client requests.  We're not faking a client request failure,
-# so @wait should stay empty.
-my @wait;
-my $interval = sub {
-   my $t = shift;
-   push @wait, $t;
-};
-
-my $agent;
+my $got_agent;
 my $output = output(
    sub {
-      $agent = pt_agent::init_agent(
-         client      => $client,
-         interval    => $interval,
-         agents_link => "/agents",
-         lib_dir     => $tmpdir,
-         Cxn         => $cxn,
+      $got_agent = pt_agent::init_agent(
+         agent    => $post_agent,
+         action   => 'post',
+         link     => "/agents",
+         client   => $client,
+         interval => $interval,
       );
    },
    stderr => 1,
 );
 
-is_deeply(
-   as_hashref($agent, with_links => 1),
-   $return_agent,
-   'Create new Agent'
-) or diag($output, Dumper(as_hashref($agent, with_links => 1)));
+is(
+   $got_agent->hostname,
+   'host2',
+   'Got and returned Agent'
+) or diag($output, Dumper(as_hashref($got_agent, with_links => 1)));
 
 is(
    scalar @wait,
@@ -116,41 +121,11 @@ is(
    "Client did not wait (new Agent)"
 ) or diag($output);
 
-# The tool should immediately write the Agent to --lib/agent.
-ok(
-   -f "$tmpdir/agent",
-   "Wrote Agent to --lib/agent"
-) or diag($output);
-
-# From above, we return an Agent with id=123.  Check that this
-# is what the tool actually wrote.
-$output = `cat $tmpdir/agent 2>/dev/null`;
-like(
-   $output,
-   qr/"uuid":"123"/,
-   "Saved new Agent"
-) or diag($output);
-
-my $sent_versions = decode_json($ua->{request_objs}->[0]->content);
-my $os = VersionCheck::get_os_version();
-
-is(
-   $sent_versions->{versions}->{OS} || '',
-   $os,
-   "Sent OS version"
-) or diag(Dumper($sent_versions));
-
-like(
-   $sent_versions->{versions}->{MySQL} || '',
-   qr/$sandbox_version/,
-   "Sent MySQL version"
-) or diag(Dumper($sent_versions));
-
-# Repeat this test but this time fake an error, so the tool isn't
-# able to create the Agent first time, so it should wait (call
-# interval), and try again.
-
-unlink "$tmpdir/agent" if -f "$tmpdir/agent";
+# #############################################################################
+# Repeat this test but this time fake an error, so the tool isn't able
+# to create the Agent first time, so it should wait (call interval),
+# and try again.
+# #############################################################################
 
 $return_agent->{id}    = '456';
 $return_agent->{links} = {
@@ -176,32 +151,34 @@ $ua->{responses}->{get} = [
    },
 ];
 
+@ok   = qw(1 1 0);
 @wait = ();
 $ua->{requests} = [];
 
 $output = output(
    sub {
-      $agent = pt_agent::init_agent(
-         client      => $client,
-         interval    => $interval,
-         agents_link => '/agents',
-         lib_dir     => $tmpdir,
-         Cxn         => $cxn,
+      $got_agent = pt_agent::init_agent(
+         agent    => $post_agent,
+         action   => 'post',
+         link     => "/agents",
+         client   => $client,
+         interval => $interval,
+         oktorun  => $oktorun,
       );
    },
    stderr => 1,
 );
 
-is_deeply(
-   as_hashref($agent, with_links => 1),
-   $return_agent,
-   'Create new Agent after error'
-) or diag(Dumper(as_hashref($agent, with_links => 1)));
+is(
+   $got_agent->hostname,
+   'host2',
+   'Got and returned Agent after error'
+) or diag($output, Dumper(as_hashref($got_agent, with_links => 1)));
 
 is(
    scalar @wait,
    1,
-   "Client waited"
+   "Client waited after error"
 );
 
 is_deeply(
@@ -211,39 +188,30 @@ is_deeply(
       'POST /agents',     # second attemp, 200 OK
       'GET /agents/456',  # GET new Agent
    ],
-   "POST POST GET new Agent"
+   "POST POST GET new Agent after error"
 ) or diag(Dumper($ua->{requests}));
 
 like(
    $output,
    qr{WARNING Failed to POST /agents},
-   "POST /agents failure logged"
+   "POST /agents failure logged after error"
 );
-
-ok(
-   -f "$tmpdir/agent",
-   "Wrote Agent to --lib/agent again"
-);
-
-$output = `cat $tmpdir/agent 2>/dev/null`;
-like(
-   $output,
-   qr/"id":"456"/,
-   "Saved new Agent again"
-) or diag($output);
-
-# Do not remove lib/agent; the next test will use it.
 
 # #############################################################################
 # Init an existing agent, i.e. update it.
 # #############################################################################
 
-# If --lib/agent exists, the tool should create an Agent obj from it
-# then attempt to PUT it to the agents link.  The previous tests should
-# have left an Agent file with id=456.
-
-my $hashref = decode_json(pt_agent::slurp("$tmpdir/agent"));
-my $saved_agent = Percona::WebAPI::Resource::Agent->new(%$hashref);
+my $put_agent = Percona::WebAPI::Resource::Agent->new(
+   uuid     => '123',
+   hostname => 'host3',
+   username => 'name3',
+   versions => {
+   },
+   links    => {
+      self   => '/agents/123',
+      config => '/agents/123/config',
+   },
+);
 
 $ua->{responses}->{put} = [
    {
@@ -266,28 +234,22 @@ $ua->{requests} = [];
 
 $output = output(
    sub {
-      $agent = pt_agent::init_agent(
-         client      => $client,
-         interval    => $interval,
-         agents_link => '/agents',
-         lib_dir     => $tmpdir,
-         Cxn         => $cxn,
+      $got_agent = pt_agent::init_agent(
+         agent    => $put_agent,
+         action   => 'put',
+         link     => "/agents/123",
+         client   => $client,
+         interval => $interval,
       );
    },
    stderr => 1,
 );
 
-is_deeply(
-   as_hashref($agent),
-   as_hashref($saved_agent),
-   'Used saved Agent'
-) or diag($output, Dumper(as_hashref($agent)));
-
-like(
-   $output,
-   qr/Reading saved Agent from $tmpdir\/agent/,
-   "Reports reading saved Agent"
-) or diag($output);
+is(
+   $got_agent->hostname,
+   'host2',
+   'PUT Agent'
+) or diag($output, Dumper(as_hashref($got_agent, with_links => 1)));
 
 is(
    scalar @wait,
@@ -301,11 +263,10 @@ is_deeply(
       'PUT /agents/123',
       'GET /agents/123',
    ],
-   "PUT then GET saved Agent"
+   "PUT then GET Agent"
 ) or diag(Dumper($ua->{requests}));
 
 # #############################################################################
 # Done.
 # #############################################################################
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

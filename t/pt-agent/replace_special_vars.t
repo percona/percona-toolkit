@@ -32,6 +32,8 @@ sub test_replace {
    my $new_cmd = pt_agent::replace_special_vars(
       cmd          => $cmd,
       output_files => \@output_files,
+      service      => 'service-name',
+      lib_dir      => '/var/lib/pt-agent',
    );
 
    is(
