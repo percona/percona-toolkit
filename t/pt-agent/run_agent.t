@@ -87,6 +87,10 @@ my $agent = Percona::WebAPI::Resource::Agent->new(
    },
 );
 
+my $daemon = Daemon->new(
+   daemonzie => 0,
+);
+
 my @wait;
 my $interval = sub {
    my $t = shift;
@@ -138,22 +142,12 @@ my $svc0 = Percona::WebAPI::Resource::Service->new(
    },
 );
 
-$ua->{responses}->{put} = [
-   { # 1
-      headers => { 'Location' => '/agents/123' },
-   },
-];
-
 $ua->{responses}->{get} = [
-   { # 2
-      headers => { 'X-Percona-Resource-Type' => 'Agent' },
-      content => as_hashref($agent, with_links => 1),
-   },
-   { # 3
+   {
       headers => { 'X-Percona-Resource-Type' => 'Config' },
       content => as_hashref($config, with_links => 1),
    },
-   { # 4
+   {
       headers => { 'X-Percona-Resource-Type' => 'Service' },
       content => [ as_hashref($svc0, with_links => 1) ],
    },
@@ -173,10 +167,6 @@ like(
 
 my @ok_code = ();  # callbacks
 my @oktorun = (
-   1,  # after get_api_client()
-   1,  # after get_versions()
-   1,  # init_agent() loop
-   1,  # after init_agent()
    1,  # 1st main loop check
    0,  # 2nd main loop check
 );
@@ -194,21 +184,15 @@ $output = output(
    sub {
       pt_agent::run_agent(
          # Required args
-         api_key     => '123',
+         agent       => $agent,
+         client      => $client,
+         daemon      => $daemon,
          interval    => $interval,
          lib_dir     => $tmpdir,
          Cxn         => $cxn,
          # Optional args, for testing
-         client      => $client,
-         agent       => $agent,
          oktorun     => $oktorun,
          json        => $json,
-         versions    => {
-            Perl => '5.10.1',
-         },
-         entry_links => {
-            agents => '/agents',
-         },
       );
    },
    stderr => 1,
@@ -269,17 +253,7 @@ like(
 # Run run_agent again, like the agent had been stopped and restarted.
 # #############################################################################
 
-$ua->{responses}->{put} = [
-   { # 1
-      headers => { 'Location' => '/agents/123' },
-   },
-];
-
 $ua->{responses}->{get} = [
-   { # 2
-      headers => { 'X-Percona-Resource-Type' => 'Agent' },
-      content => as_hashref($agent, with_links => 1),
-   },
    # First check, fail
    {
       code    => 500,
@@ -308,10 +282,6 @@ $ua->{responses}->{get} = [
 ];
 
 @oktorun = (
-   1,  # after get_api_client()
-   1,  # after get_versions()
-   1,  # init_agent() loop
-   1,  # after init_agent()
    1,  # 1st main loop check
        # First check, error 500
    1,  # 2nd main loop check
@@ -325,7 +295,7 @@ $ua->{responses}->{get} = [
 # query-history service  file.  When the tool re-GETs these, they'll be
 # the same so it won't recreate them.  A bug here will cause these files to
 # exist again after running.
-$ok_code[6] = sub {
+$ok_code[2] = sub {
    unlink "$config_file";
    unlink "$tmpdir/services/query-history";
    Percona::Test::wait_until(sub { ! -f "$config_file" });
@@ -338,21 +308,15 @@ $output = output(
    sub {
       pt_agent::run_agent(
          # Required args
-         api_key     => '123',
+         agent       => $agent,
+         client      => $client,
+         daemon      => $daemon,
          interval    => $interval,
          lib_dir     => $tmpdir,
          Cxn         => $cxn,
          # Optional args, for testing
-         client      => $client,
-         agent       => $agent,
          oktorun     => $oktorun,
          json        => $json,
-         versions    => {
-            Perl => '5.10.1',
-         },
-         entry_links => {
-            agents => '/agents',
-         },
       );
    },
    stderr => 1,
@@ -430,17 +394,7 @@ $svc0 = Percona::WebAPI::Resource::Service->new(
    },
 );
 
-$ua->{responses}->{put} = [
-   { # 1
-      headers => { 'Location' => '/agents/123' },
-   },
-];
-
 $ua->{responses}->{get} = [
-   { # 2
-      headers => { 'X-Percona-Resource-Type' => 'Agent' },
-      content => as_hashref($agent, with_links => 1),
-   },
    {
       headers => { 'X-Percona-Resource-Type' => 'Config' },
       content => as_hashref($config, with_links => 1),
@@ -462,37 +416,27 @@ $ua->{responses}->{get} = [
 @wait    = ();
 @ok_code = ();  # callbacks
 @oktorun = (
-   1,  # after get_api_client()
-   1,  # after get_versions()
-   1,  # init_agent() loop
-   1,  # after init_agent()
    1,  # 1st main loop check
        # Run once
    1,  # 2nd main loop check
        # Don't run it again
-   0,  # 4th main loop check
+   0,  # 3d main loop check
 );
 
 $output = output(
    sub {
       pt_agent::run_agent(
          # Required args
-         api_key     => '123',
+         agent       => $agent,
+         client      => $client,
+         daemon      => $daemon,
          interval    => $interval,
          lib_dir     => $tmpdir,
          Cxn         => $cxn,
          # Optional args, for testing
-         bin_dir     => "$trunk/bin/",
-         client      => $client,
-         agent       => $agent,
          oktorun     => $oktorun,
          json        => $json,
-         versions    => {
-            Perl => '5.10.1',
-         },
-         entry_links => {
-            agents => '/agents',
-         },
+         bin_dir     => "$trunk/bin/",
       );
    },
    stderr => 1,

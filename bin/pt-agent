@@ -4908,7 +4908,18 @@ sub main {
    # but don't create.
    my $config_file = get_config_file();
    _err("$config_file exists but is not writable")
-         unless -f $config_file && -w $config_file;
+      if -f $config_file && !-w $config_file;
+
+   # Run the agent's main loop which doesn't return until the service
+   # is stopped, killed, or has an internal bug.
+   my $running = start_agent(
+      api_key   => $api_key,
+      Cxn       => $cxn,
+      lib_dir   => $o->get('lib'),
+      daemonize => $o->get('daemonize'),
+      pid_file  => $o->get('pid'),
+      log_file  => $o->get('log'),
+   );
 
    # Wait time between checking for new config and services.
    # Use the tool's built-in default until a config is gotten,
@@ -4922,16 +4933,13 @@ sub main {
       sleep $t;
    };
 
-   # Run the agent's main loop which doesn't return until the service
-   # is stopped, killed, or has an internal bug.
    run_agent(
-      api_key   => $api_key,
+      agent     => $running->{agent},
+      client    => $running->{client},
+      daemon    => $running->{daemon},
       interval  => $check_wait,
       Cxn       => $cxn,
       lib_dir   => $o->get('lib'),
-      daemonize => $o->get('daemonize'),
-      pid_file  => $o->get('pid'),
-      log_file  => $o->get('log'),
    );
 
    _info("pt-agent exit $exit_status, oktorun $oktorun");
@@ -5099,413 +5107,6 @@ sub init_agent {
    return $agent;
 }
 
-# ################################ #
-# Agent (main daemon) process subs #
-# ################################ #
-
-# Run the agent, i.e. exec the main loop to check/update the config
-# and services.  Doesn't return until the service is stopped or killed.
-sub run_agent {
-   my (%args) = @_;
-
-   have_required_args(\%args, qw(
-      api_key
-      interval
-      lib_dir
-      Cxn
-   )) or die;
-   my $api_key  = $args{api_key};
-   my $interval = $args{interval};
-   my $lib_dir  = $args{lib_dir};
-   my $cxn      = $args{Cxn};
-
-   # Optional args
-   my $agent_uuid  = $args{agent_uuid};
-   my $daemonize   = $args{daemonize};
-   my $pid_file    = $args{pid_file};
-   my $log_file    = $args{log_file};
-   my $_oktorun    = $args{oktorun} || sub { return $oktorun };
-   my $versions    = $args{versions};     # for testing
-   my $client      = $args{client};       # for testing
-   my $entry_links = $args{entry_links};  # for testing
-   my $agent       = $args{agent};        # for testing
-
-   # Daemonize first so all output goes to the --log.
-   my %daemon_args = (
-      daemonize => $daemonize,
-      pid_file  => $pid_file,
-      log_file  => $log_file,
-   );
-   my $daemon = Daemon->new(
-      %daemon_args,
-      parent_exit => sub {
-         my $child_pid = shift;
-         print "pt-agent has daemonized and is running as PID $child_pid:
-
-  --lib " . ($lib_dir  || '') . "
-  --log " . ($log_file || '') . "
-  --pid " . ($pid_file || '') . "
-
-These values can change if a different configuration is received.
-
-Configure the agent at https://pws.percona.com/agents
-",
-      }
-   );
-   $daemon->run();
-
-   # If we daemonized, the parent has already exited and we're the child.
-   # We shared a copy of every Cxn with the parent, and the parent's copies
-   # were destroyed but the dbhs were not disconnected because the parent
-   # attrib was true.  Now, as the child, set it false so the dbhs will be
-   # disconnected when our Cxn copies are destroyed.  If we didn't daemonize,
-   # then we're not really a parent (since we have no children), so set it
-   # false to auto-disconnect the dbhs when our Cxns are destroyed.
-   $cxn->{parent} = 0;
-
-   eval {
-      init_lib_dir(
-         lib_dir => $lib_dir,
-      );
-   };
-   if ( $EVAL_ERROR ) {
-      chomp($EVAL_ERROR);
-      _info("Error initializing --lib $lib_dir: $EVAL_ERROR.  "
-         . "Configure the agent at https://pws.percona.com "
-         . "to use a writeable --lib directory.");
-   }
-
-   # Connect to https://api.pws.percona.com and get entry links.
-   # Don't return until successful.
-   if ( !$client || !$entry_links ) {
-      ($client, $entry_links) = get_api_client(
-         api_key  => $api_key,
-         tries    => undef,  # forever
-         interval => sub { sleep 60 },
-      );
-   }
-   return unless $_oktorun->();
-
-   # Do a version-check every time the agent starts.  If versions
-   # have changed, this can affect how services are implemented.
-   # Since this is the only thing we use the Cxn for, get_versions()
-   # connects and disconnect it, if possible.  If not possible, the
-   # MySQL version isn't sent in hopes that it becomes possible to get
-   # it later.
-   if ( !$versions ) {
-      $versions = get_versions(
-         Cxn   => $cxn,
-         tries => 1,
-      );
-   }
-   return unless $_oktorun->();
-
-   # Load and update the local (i.e. existing) agent, or create a new one.
-   my ($action, $link);
-   if ( !$agent ) {
-      if ( $agent_uuid ) {
-         _info("Re-creating Agent with UUID $agent_uuid");
-         $agent = Percona::WebAPI::Resource::Agent->new(
-            uuid     => $agent_uuid,
-            versions => $versions,
-         );
-          $action = 'put';  # update
-          $link   = $entry_links->{agents} . '/' . $agent->uuid;
-      }
-      else {
-         # First try to load the local agent.
-         $agent = load_local_agent(
-            lib_dir => $lib_dir,
-         );
-         if ( $agent ) {
-            # Loaded local agent.
-            $action = 'put';  # update
-            $link   = $entry_links->{agents} . '/' . $agent->uuid;
-            $agent->{versions} = $versions;
-         }
-         else {
-            # No local agent and --agent-uuid wasn't give.
-            $agent = Percona::WebAPI::Resource::Agent->new(
-               versions => $versions,
-            );
-            $action = 'post';  # create
-            $link   = $entry_links->{agents};
-         }
-      }
-   }
-   else {
-      $action = 'put';
-      $link   =  $entry_links->{agents} . '/' . $agent->uuid;
-   }
-   $agent = init_agent(
-      agent    => $agent,
-      action   => $action,
-      link     => $link,
-      client   => $client,
-      interval => sub { sleep 60 },
-      lib_dir  => $lib_dir,
-      oktorun  => $_oktorun,
-   );
-   save_agent(
-      agent   => $agent,
-      lib_dir => $lib_dir,
-   );
-   return unless $_oktorun->();
-
-   _info('Running agent ' . $agent->name);
-
-   # #######################################################################
-   # Main agent loop
-   # #######################################################################
-   $state->{first_config} = 1;
-   my $first_config_interval = 60;
-   _info("Checking silently every $first_config_interval seconds"
-      . " for the first config");
-
-   my $success;
-   my $new_daemon;
-   my $config;
-   my $services;
-   while ( $_oktorun->() ) {
-      ($config, $lib_dir, $new_daemon, $success) = get_config(
-         agent       => $agent,
-         client      => $client,
-         lib_dir     => $lib_dir,
-         config      => $config,
-         services    => $services,
-         quiet       => $state->{first_config},
-         daemon_args => \%daemon_args,
-      );
-
-      # Get services only if we successfully got the config because the services
-      # may depened on the current config, specifically the --spool dir.
-      if ( $success && $config && $config->links->{services} ) {
-         if ( $state->{first_config} ) {
-            delete $state->{first_config};
-            _info('Agent has been successfully configured');
-         }
-         if ( $new_daemon ) {
-            # NOTE: Daemon objects use DESTROY to auto-remove their pid file
-            # when they lose scope (i.e. ref count goes to zero).  This
-            # assignment destroys (old) $daemon, so it auto-removes the old
-            # pid file.  $new_daemon maintains scope and the new pid file
-            # by becoming $daemon which was defined in the outer scope so
-            # it won't destroy again when we leave this block.  Fancy!
-            # About sharing_pid_file: see the comment in apply_config().
-            if ( $daemon_args{sharing_pid_file} ) {
-               $daemon->{pid_file_owner} = 0;
-               delete $daemon_args{sharing_pid_file};
-            }
-            $daemon = $new_daemon;
-         }
-         ($services, $success) = get_services(
-            agent    => $agent,
-            client   => $client,
-            lib_dir  => $lib_dir,
-            config   => $config,
-            services => $services,
-            json     => $args{json},    # optional, for testing
-            bin_dir  => $args{bin_dir}, # optional, for testing
-         );
-      }
-
-      # If configured, wait the given interval.  Else, retry more
-      # quickly so we're ready to go soon after we're configured.
-      $interval->(
-         $config ? ($config->options->{'check-interval'}, 0)
-                 : ($first_config_interval              , 1)  # 1=quiet
-      );
-   }
-
-   # This shouldn't happen until the service is stopped/killed.
-   _info('Agent ' . $agent->name . ' has stopped');
-   return;
-}
-
-sub get_config {
-   my (%args) = @_;
-   have_required_args(\%args, qw(
-      agent
-      client
-      lib_dir
-      daemon_args
-   )) or die;
-   my $agent       = $args{agent};
-   my $client      = $args{client};
-   my $lib_dir     = $args{lib_dir};
-   my $daemon_args = $args{daemon_args};
-
-   # Optional args
-   my $config       = $args{config};   # may not be defined yet
-   my $services     = $args{services}; # may not be defined yet
-   my $quiet        = $args{quiet};
-
-   my $success = 0;
-   my $new_daemon;
-
-   _info('Getting config') unless $quiet;
-   my $new_config = eval {
-      $client->get(
-         link => $agent->links->{config},
-      );
-   };
-   if ( my $e = $EVAL_ERROR ) {
-      if (blessed($e)) {
-         if ($e->isa('Percona::WebAPI::Exception::Request')) {
-            if ( $e->status == 404 ) {
-               _info('Agent ' . $agent->name. ' is not configured.')
-                  unless $quiet;
-            }
-            else {
-               _info("$e");  # PWS API error?
-            }
-         }
-         elsif ($e->isa('Percona::WebAPI::Exception::Resource')) {
-            _warn("$e");
-         }
-      }
-      else {
-         _err($e);  # internal error
-      }
-   }
-   else {
-      eval {
-         if ( !$quiet ) {
-            _info("Running config: " . ($config ? $config->ts : ''));
-            _info("Current config: " . $new_config->ts);
-         }
-         if ( !$config || $new_config->ts > $config->ts ) {
-            ($lib_dir, $new_daemon) = apply_config(
-               agent       => $agent,
-               old_config  => $config,
-               new_config  => $new_config,
-               lib_dir     => $lib_dir,
-               daemon_args => $daemon_args,
-            );
-            $config  = $new_config;
-            $success = 1;
-            _info('Config ' . $config->ts . ' applied successfully');
-         }
-         else {
-            $success = 1;
-            _info('Config has not changed') unless $quiet;
-         }
-      };
-      if ( $EVAL_ERROR ) {
-         chomp $EVAL_ERROR;
-         _warn("Failed to apply config " . $new_config->ts
-            . ": $EVAL_ERROR  Will try again.");
-      }
-   }
-
-   return ($config, $lib_dir, $new_daemon, $success);
-}
-
-sub get_services {
-   my (%args) = @_;
-   have_required_args(\%args, qw(
-      agent
-      client
-      lib_dir
-   )) or die;
-   my $agent    = $args{agent};
-   my $client   = $args{client};
-   my $lib_dir  = $args{lib_dir};
-
-   # Optional args
-   my $config   = $args{config};   # may not be defined yet
-   my $services = $args{services}; # may not be defined yet
-
-   my $success = 0;
-
-   eval {
-      _info('Getting services');
-
-      # Get services from Percona.
-      my $new_services = $client->get(
-         link => $config->links->{services},
-      );
-
-      # If the current and new services are different,
-      # write the new ones to disk, then schedule them.
-      if ( resource_diff($services, $new_services) ) {
-         _info('New services');
-
-         write_services(
-            services => $new_services,
-            lib_dir  => $lib_dir,
-            json     => $args{json},  # optional, for testing
-         );
-
-         # TODO: this probably can't/won't fail, but if it does, is it
-         # worth setting success=0?
-         start_services(
-            services => $new_services,
-            lib_dir  => $lib_dir,
-            bin_dir  => $args{bin_dir},  # optional, for testing
-         );
-
-         schedule_services(
-            services => $new_services,
-            lib_dir  => $lib_dir,
-            bin_dir  => $args{bin_dir},  # optional, for testing
-         );
-
-         $services = $new_services;
-         $success  = 1;
-
-         _info('Services updated successfully: '
-            . join(', ', map { $_->name } @$services));
-      }
-      else {
-         _info('Services have not changed');
-      }
-   };
-   if ( $EVAL_ERROR ) {
-      _warn($EVAL_ERROR);
-   }
-
-   return ($services, $success);
-}
-
-# Write a Config resource to a Percona Toolkit config file,
-# usually $HOME/pt-agent.conf.
-sub write_config {
-   my (%args) = @_;
-
-   have_required_args(\%args, qw(
-      config
-   )) or die;
-   my $config = $args{config};
-
-   my $file = get_config_file();
-   _info("Writing config to $file");
-
-   # Get the api-key line if any; we don't want to/can't clobber this.
-   my $api_key;
-   if ( -f $file ) {
-      open my $fh, "<", $file
-         or die "Error opening $file: $OS_ERROR";
-      my $contents = do { local $/ = undef; <$fh> };
-      close $fh;
-      ($api_key) = $contents =~ m/^(api-key=\S+)$/m;
-   }
-
-   # Re-write the api-key, if any, then write the config.
-   open my $fh, '>', $file
-      or die "Error opening $file: $OS_ERROR";
-   if ( $api_key ) {
-      print { $fh } $api_key, "\n"
-         or die "Error writing to $file: $OS_ERROR";
-   }
-   print { $fh } as_config($config)
-      or die "Error writing to $file: $OS_ERROR";
-   close $fh
-      or die "Error closing $file: $OS_ERROR";
-
-   return;
-}
-
 # Check and init the --lib dir.  This dir is used to save the Agent resource
 # (/agent), Service resources (/services/), and crontab for services(/conrtab,
 # /crontab.err).
@@ -5553,6 +5154,330 @@ sub init_lib_dir {
    return;
 }
 
+# ################################ #
+# Agent (main daemon) process subs #
+# ################################ #
+
+sub start_agent {
+   my (%args) = @_;
+
+   have_required_args(\%args, qw(
+      api_key
+      lib_dir
+      Cxn
+   )) or die;
+   my $api_key  = $args{api_key};
+   my $lib_dir  = $args{lib_dir};
+   my $cxn      = $args{Cxn};
+
+   # Optional args
+   my $agent_uuid  = $args{agent_uuid};
+   my $daemonize   = $args{daemonize};
+   my $pid_file    = $args{pid_file};
+   my $log_file    = $args{log_file};
+   my $_oktorun    = $args{oktorun} || sub { return $oktorun };
+   my $versions    = $args{versions};     # for testing
+   my $client      = $args{client};       # for testing
+   my $entry_links = $args{entry_links};  # for testing
+
+   # Daemonize first so all output goes to the --log.
+   my $daemon = Daemon->new(
+      daemonize   => $daemonize,
+      pid_file    => $pid_file,
+      log_file    => $log_file,
+      parent_exit => sub {
+         my $child_pid = shift;
+         print "pt-agent has daemonized and is running as PID $child_pid:
+
+  --lib " . ($lib_dir  || '') . "
+  --log " . ($log_file || '') . "
+  --pid " . ($pid_file || '') . "
+
+These values can change if a different configuration is received.
+
+Configure the agent at https://pws.percona.com/agents
+",
+      }
+   );
+   $daemon->run();
+
+   # If we daemonized, the parent has already exited and we're the child.
+   # We shared a copy of every Cxn with the parent, and the parent's copies
+   # were destroyed but the dbhs were not disconnected because the parent
+   # attrib was true.  Now, as the child, set it false so the dbhs will be
+   # disconnected when our Cxn copies are destroyed.  If we didn't daemonize,
+   # then we're not really a parent (since we have no children), so set it
+   # false to auto-disconnect the dbhs when our Cxns are destroyed.
+   $cxn->{parent} = 0;
+
+   _info('Starting agent');
+
+   eval {
+      init_lib_dir(
+         lib_dir => $lib_dir,
+      );
+   };
+   if ( $EVAL_ERROR ) {
+      chomp($EVAL_ERROR);
+      _info("Error initializing --lib $lib_dir: $EVAL_ERROR.  "
+         . "Configure the agent at https://pws.percona.com "
+         . "to use a writeable --lib directory.");
+   }
+
+   # Connect to https://api.pws.percona.com and get entry links.
+   # Don't return until successful.
+   if ( !$client || !$entry_links ) {
+      ($client, $entry_links) = get_api_client(
+         api_key  => $api_key,
+         tries    => undef,  # forever
+         interval => sub { sleep 60 },
+      );
+   }
+   return unless $_oktorun->();
+
+   # Do a version-check every time the agent starts.  If versions
+   # have changed, this can affect how services are implemented.
+   # Since this is the only thing we use the Cxn for, get_versions()
+   # connects and disconnect it, if possible.  If not possible, the
+   # MySQL version isn't sent in hopes that it becomes possible to get
+   # it later.
+   if ( !$versions ) {
+      $versions = get_versions(
+         Cxn   => $cxn,
+         tries => 1,
+      );
+   }
+   return unless $_oktorun->();
+
+   # Load and update the local (i.e. existing) agent, or create a new one.
+   my $agent;
+   my $action;
+   my $link;
+   if ( $agent_uuid ) {
+      _info("Re-creating Agent with UUID $agent_uuid");
+      $agent = Percona::WebAPI::Resource::Agent->new(
+         uuid     => $agent_uuid,
+         versions => $versions,
+      );
+       $action = 'put';  # update
+       $link   = $entry_links->{agents} . '/' . $agent->uuid;
+   }
+   else {
+      # First try to load the local agent.
+      $agent = load_local_agent(
+         lib_dir => $lib_dir,
+      );
+      if ( $agent ) {
+         # Loaded local agent.
+         $action = 'put';  # update
+         $link   = $entry_links->{agents} . '/' . $agent->uuid;
+         $agent->{versions} = $versions;
+      }
+      else {
+         # No local agent and --agent-uuid wasn't give.
+         $agent = Percona::WebAPI::Resource::Agent->new(
+            versions => $versions,
+         );
+         $action = 'post';  # create
+         $link   = $entry_links->{agents};
+      }
+   }
+
+   $agent = init_agent(
+      agent    => $agent,
+      action   => $action,
+      link     => $link,
+      client   => $client,
+      interval => sub { sleep 60 },
+      lib_dir  => $lib_dir,
+      oktorun  => $_oktorun,
+   );
+
+   save_agent(
+      agent   => $agent,
+      lib_dir => $lib_dir,
+   );
+
+   return {
+      agent  => $agent,
+      client => $client,
+      daemon => $daemon,
+   };
+}
+
+# Run the agent, i.e. exec the main loop to check/update the config
+# and services.  Doesn't return until the service is stopped or killed.
+sub run_agent {
+   my (%args) = @_;
+
+   have_required_args(\%args, qw(
+      agent
+      client
+      daemon
+      interval
+      lib_dir
+      Cxn
+   )) or die;
+   my $agent    = $args{agent};
+   my $client   = $args{client};
+   my $daemon   = $args{daemon};
+   my $interval = $args{interval};
+   my $lib_dir  = $args{lib_dir};
+   my $cxn      = $args{Cxn};
+
+   # Optional args
+   my $_oktorun = $args{oktorun} || sub { return $oktorun };
+
+   _info('Running agent ' . $agent->name);
+
+   # #######################################################################
+   # Main agent loop
+   # #######################################################################
+   $state->{first_config} = 1;
+   my $first_config_interval = 60;
+   _info("Checking silently every $first_config_interval seconds"
+      . " for the first config");
+
+   my $success;
+   my $new_daemon;
+   my $config;
+   my $services;
+   while ( $_oktorun->() ) {
+      ($config, $lib_dir, $new_daemon, $success) = get_config(
+         link    => $agent->links->{config},
+         agent   => $agent,
+         client  => $client,
+         daemon  => $daemon,
+         lib_dir => $lib_dir,
+         config  => $config,
+         quiet   => $state->{first_config},
+      );
+
+      # Get services only if we successfully got the config because the services
+      # may depened on the current config, specifically the --spool dir.
+      if ( $success && $config && $config->links->{services} ) {
+         if ( $state->{first_config} ) {
+            delete $state->{first_config};
+            _info('Agent has been successfully configured');
+         }
+         if ( $new_daemon ) {
+            # NOTE: Daemon objects use DESTROY to auto-remove their pid file
+            # when they lose scope (i.e. ref count goes to zero).  This
+            # assignment destroys (old) $daemon, so it auto-removes the old
+            # pid file.  $new_daemon maintains scope and the new pid file
+            # by becoming $daemon which was defined in the outer scope so
+            # it won't destroy again when we leave this block.  Fancy!
+            # About sharing_pid_file: see the comment in apply_config().
+            if ( $new_daemon->{sharing_pid_file} ) {
+               $daemon->{pid_file_owner} = 0;
+               delete $new_daemon->{sharing_pid_file};
+            }
+            $daemon = $new_daemon;
+         }
+         ($services, $success) = get_services(
+            link     => $config->links->{services},
+            agent    => $agent,
+            client   => $client,
+            lib_dir  => $lib_dir,
+            services => $services,
+            json     => $args{json},    # optional, for testing
+            bin_dir  => $args{bin_dir}, # optional, for testing
+         );
+      }
+
+      # If configured, wait the given interval.  Else, retry more
+      # quickly so we're ready to go soon after we're configured.
+      $interval->(
+         $config ? ($config->options->{'check-interval'}, 0)
+                 : ($first_config_interval              , 1)  # 1=quiet
+      );
+   }
+
+   # This shouldn't happen until the service is stopped/killed.
+   _info('Agent ' . $agent->name . ' has stopped');
+   return;
+}
+
+sub get_config {
+   my (%args) = @_;
+   have_required_args(\%args, qw(
+      link
+      agent
+      client
+      daemon
+      lib_dir
+   )) or die;
+   my $link    = $args{link};
+   my $agent   = $args{agent};
+   my $client  = $args{client};
+   my $daemon  = $args{daemon};
+   my $lib_dir = $args{lib_dir};
+
+   # Optional args
+   my $config = $args{config};   # may not be defined yet
+   my $quiet  = $args{quiet};
+
+   my $success = 0;
+   my $new_daemon;
+
+   _info('Getting config') unless $quiet;
+   my $new_config = eval {
+      $client->get(
+         link => $link,
+      );
+   };
+   if ( my $e = $EVAL_ERROR ) {
+      if (blessed($e)) {
+         if ($e->isa('Percona::WebAPI::Exception::Request')) {
+            if ( $e->status == 404 ) {
+               _info('Agent ' . $agent->name. ' is not configured.')
+                  unless $quiet;
+            }
+            else {
+               _info("$e");  # PWS API error?
+            }
+         }
+         elsif ($e->isa('Percona::WebAPI::Exception::Resource')) {
+            _warn("$e");
+         }
+      }
+      else {
+         _err($e);  # internal error
+      }
+   }
+   else {
+      eval {
+         if ( !$quiet ) {
+            _info("Running config: " . ($config ? $config->ts : ''));
+            _info("Current config: " . $new_config->ts);
+         }
+         if ( !$config || $new_config->ts > $config->ts ) {
+            ($lib_dir, $new_daemon) = apply_config(
+               agent       => $agent,
+               old_config  => $config,
+               new_config  => $new_config,
+               lib_dir     => $lib_dir,
+               daemon      => $daemon,
+            );
+            $config  = $new_config;
+            $success = 1;
+            _info('Config ' . $config->ts . ' applied successfully');
+         }
+         else {
+            $success = 1;
+            _info('Config has not changed') unless $quiet;
+         }
+      };
+      if ( $EVAL_ERROR ) {
+         chomp $EVAL_ERROR;
+         _warn("Failed to apply config " . $new_config->ts
+            . ": $EVAL_ERROR  Will try again.");
+      }
+   }
+
+   return ($config, $lib_dir, $new_daemon, $success);
+}
+
 sub apply_config {
    my (%args) = @_;
 
@@ -5560,12 +5485,12 @@ sub apply_config {
       agent
       new_config
       lib_dir
-      daemon_args
+      daemon
    )) or die;
-   my $agent       = $args{agent};
-   my $new_config  = $args{new_config};
-   my $lib_dir     = $args{lib_dir};
-   my $daemon_args = $args{daemon_args};
+   my $agent      = $args{agent};
+   my $new_config = $args{new_config};
+   my $lib_dir    = $args{lib_dir};
+   my $daemon     = $args{daemon};
 
    # Optional args
    my $old_config = $args{old_config};
@@ -5597,8 +5522,8 @@ sub apply_config {
    # does _not_ actually restart.
    my $new_daemon;
    my $make_new_daemon = 0;
-   my $old_pid         = $daemon_args->{pid_file}    || '';
-   my $old_log         = $daemon_args->{log_file}    || '';
+   my $old_pid         = $daemon->{pid_file}         || '';
+   my $old_log         = $daemon->{log_file}         || '';
    my $new_pid         = $new_config->options->{pid} || '';
    my $new_log         = $new_config->options->{log} || '';
    if ( $old_pid ne $new_pid ) {
@@ -5606,7 +5531,7 @@ sub apply_config {
           . ' to ' . ($new_pid || '(none)'));
       $make_new_daemon = 1;
    }
-   if ( $daemon_args->{daemonize} ) {
+   if ( $daemon->{daemonize} ) {
       # --log only matters if we're daemonized
       if ( $old_log ne $new_log ) {
          _info('NOTICE: Changing --log file from ' . ($old_log || '(none)')
@@ -5623,14 +5548,12 @@ sub apply_config {
          daemonize      => 0,  
          pid_file       => $new_pid,
          log_file       => $new_log,
-         force_log_file => $daemon_args->{daemonize},
+         force_log_file => $daemon->{daemonize},
       );
       eval {
          $new_daemon->run();
-         $daemon_args->{pid_file} = $new_pid;
-         $daemon_args->{log_file} = $new_log;
 
-         if ( $daemon_args->{daemonize} && $old_log ne $new_log  ) {
+         if ( $daemon->{daemonize} && $old_log ne $new_log  ) {
             _info('New log file, previous was ' . ($old_log || 'unset'));
          }
          if ( $old_pid eq $new_pid ) {
@@ -5641,7 +5564,7 @@ sub apply_config {
             # the caller that they need to set old daemon pid_file_owner=0
             # so it does not auto-remove the shared pid file when it goes
             # away.
-            $daemon_args->{sharing_pid_file} = 1;
+            $new_daemon->{sharing_pid_file} = 1;
          }
       };
       if ( $EVAL_ERROR ) {
@@ -5655,6 +5578,112 @@ sub apply_config {
    );
 
    return ($new_lib_dir || $lib_dir), $new_daemon;
+}
+
+# Write a Config resource to a Percona Toolkit config file,
+# usually $HOME/pt-agent.conf.
+sub write_config {
+   my (%args) = @_;
+
+   have_required_args(\%args, qw(
+      config
+   )) or die;
+   my $config = $args{config};
+
+   my $file = get_config_file();
+   _info("Writing config to $file");
+
+   # Get the api-key line if any; we don't want to/can't clobber this.
+   my $api_key;
+   if ( -f $file ) {
+      open my $fh, "<", $file
+         or die "Error opening $file: $OS_ERROR";
+      my $contents = do { local $/ = undef; <$fh> };
+      close $fh;
+      ($api_key) = $contents =~ m/^(api-key=\S+)$/m;
+   }
+
+   # Re-write the api-key, if any, then write the config.
+   open my $fh, '>', $file
+      or die "Error opening $file: $OS_ERROR";
+   if ( $api_key ) {
+      print { $fh } $api_key, "\n"
+         or die "Error writing to $file: $OS_ERROR";
+   }
+   print { $fh } as_config($config)
+      or die "Error writing to $file: $OS_ERROR";
+   close $fh
+      or die "Error closing $file: $OS_ERROR";
+
+   return;
+}
+
+sub get_services {
+   my (%args) = @_;
+   have_required_args(\%args, qw(
+      link
+      agent
+      client
+      lib_dir
+   )) or die;
+   my $link     = $args{link};
+   my $agent    = $args{agent};
+   my $client   = $args{client};
+   my $lib_dir  = $args{lib_dir};
+
+   # Optional args
+   my $services = $args{services}; # may not be defined yet
+
+   my $success = 0;
+
+   eval {
+      _info('Getting services');
+
+      # Get services from Percona.
+      my $new_services = $client->get(
+         link => $link,
+      );
+
+      # If the current and new services are different,
+      # write the new ones to disk, then schedule them.
+      if ( resource_diff($services, $new_services) ) {
+         _info('New services');
+
+         write_services(
+            services => $new_services,
+            lib_dir  => $lib_dir,
+            json     => $args{json},  # optional, for testing
+         );
+
+         # TODO: this probably can't/won't fail, but if it does, is it
+         # worth setting success=0?
+         start_services(
+            services => $new_services,
+            lib_dir  => $lib_dir,
+            bin_dir  => $args{bin_dir},  # optional, for testing
+         );
+
+         schedule_services(
+            services => $new_services,
+            lib_dir  => $lib_dir,
+            bin_dir  => $args{bin_dir},  # optional, for testing
+         );
+
+         $services = $new_services;
+         $success  = 1;
+
+         _info('Services updated successfully: '
+            . join(', ', map { $_->name } @$services));
+      }
+      else {
+         _info('Services have not changed');
+      }
+   };
+   if ( $EVAL_ERROR ) {
+      _warn($EVAL_ERROR);
+   }
+
+   return ($services, $success);
 }
 
 # Write each service to its own file in --lib/.  Remove services
