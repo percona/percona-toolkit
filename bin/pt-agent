@@ -5124,7 +5124,7 @@ sub run_agent {
    my $daemonize   = $args{daemonize};
    my $pid_file    = $args{pid_file};
    my $log_file    = $args{log_file};
-   my $oktorun     = $args{oktorun} || sub { return $oktorun };
+   my $_oktorun    = $args{oktorun} || sub { return $oktorun };
    my $versions    = $args{versions};     # for testing
    my $client      = $args{client};       # for testing
    my $entry_links = $args{entry_links};  # for testing
@@ -5184,7 +5184,7 @@ Configure the agent at https://pws.percona.com/agents
          interval => sub { sleep 60 },
       );
    }
-   return unless $oktorun->();
+   return unless $_oktorun->();
 
    # Do a version-check every time the agent starts.  If versions
    # have changed, this can affect how services are implemented.
@@ -5198,7 +5198,7 @@ Configure the agent at https://pws.percona.com/agents
          tries => 1,
       );
    }
-   return unless $oktorun->();
+   return unless $_oktorun->();
 
    # Load and update the local (i.e. existing) agent, or create a new one.
    my ($action, $link);
@@ -5209,6 +5209,8 @@ Configure the agent at https://pws.percona.com/agents
             uuid     => $agent_uuid,
             versions => $versions,
          );
+          $action = 'put';  # update
+          $link   = $entry_links->{agents} . '/' . $agent->uuid;
       }
       else {
          # First try to load the local agent.
@@ -5231,6 +5233,10 @@ Configure the agent at https://pws.percona.com/agents
          }
       }
    }
+   else {
+      $action = 'put';
+      $link   =  $entry_links->{agents} . '/' . $agent->uuid;
+   }
    $agent = init_agent(
       agent    => $agent,
       action   => $action,
@@ -5238,12 +5244,13 @@ Configure the agent at https://pws.percona.com/agents
       client   => $client,
       interval => sub { sleep 60 },
       lib_dir  => $lib_dir,
+      oktorun  => $_oktorun,
    );
    save_agent(
       agent   => $agent,
       lib_dir => $lib_dir,
    );
-   return unless $oktorun->();
+   return unless $_oktorun->();
 
    _info('Running agent ' . $agent->name);
 
@@ -5259,7 +5266,7 @@ Configure the agent at https://pws.percona.com/agents
    my $new_daemon;
    my $config;
    my $services;
-   while ( $oktorun->() ) {
+   while ( $_oktorun->() ) {
       ($config, $lib_dir, $new_daemon, $success) = get_config(
          agent       => $agent,
          client      => $client,
@@ -5475,14 +5482,17 @@ sub write_config {
    _info("Writing config to $file");
 
    # Get the api-key line if any; we don't want to/can't clobber this.
-   open my $fh, "<", $file
-      or die "Error opening $file: $OS_ERROR";
-   my $contents = do { local $/ = undef; <$fh> };
-   close $fh;
-   my ($api_key) = $contents =~ m/^(api-key=\S+)$/m;
+   my $api_key;
+   if ( -f $file ) {
+      open my $fh, "<", $file
+         or die "Error opening $file: $OS_ERROR";
+      my $contents = do { local $/ = undef; <$fh> };
+      close $fh;
+      ($api_key) = $contents =~ m/^(api-key=\S+)$/m;
+   }
 
    # Re-write the api-key, if any, then write the config.
-   open $fh, '>', $file
+   open my $fh, '>', $file
       or die "Error opening $file: $OS_ERROR";
    if ( $api_key ) {
       print { $fh } $api_key, "\n"
@@ -5565,7 +5575,7 @@ sub apply_config {
    # If the --lib dir has changed, init the new one and re-write
    # the Agent resource in it.
    my $new_lib_dir = $new_config->options->{lib};
-   if ( ($new_lib_dir && $new_lib_dir ne $lib_dir) || $state->{first_config} ) {
+   if ( ($new_lib_dir ne $lib_dir) || $state->{first_config} ) {
       _info($state->{first_config} ? "Applying first config"
                                    : "New --lib direcotry: $new_lib_dir");
       init_lib_dir(
@@ -5960,7 +5970,7 @@ sub run_service {
       end_ts   => $curr_ts,
       tasks    => [],
    };
-   if ( $use_spool ) {
+   if ( $use_spool && !$service->run_once ) {
       my $prev_ts;
       if ( -f $meta_file ) {
          $prev_ts = slurp($meta_file);
@@ -5982,7 +5992,8 @@ sub run_service {
 
    # Run the tasks, spool any data.
    my @output_files;
-   my $data_file      = $service->name . '.' . int(time);
+   my $data_file      = $service->name
+                      . ($service->run_once ? '' : '.' . int(time));
    my $tmp_data_file  = "$tmp_dir/$data_file";
    my $have_data_file = 0;
    my $taskno         = 0;
@@ -6076,7 +6087,10 @@ sub run_service {
    # is not the first run of the service.
    my $file_size = -s $tmp_data_file;
    _info("$tmp_data_file size: " . ($file_size || 0) . " bytes");
-   if ( $use_spool && $file_size && $metadata->{start_ts} ) {
+   if (    $use_spool
+        && $file_size
+        && ($metadata->{start_ts} || $service->run_once) )
+   {
       # Save metadata about this sample _first_, because --send-data looks
       # for the data file first, then for a corresponding .meta file.  If
       # we write the data file first, then we create a race condition: while
@@ -6106,7 +6120,7 @@ sub run_service {
    # Always update the meta file if spooling, even if there was no data
    # or this is the first run of the service (in which case this is the
    # first interval boundary for the service).
-   if ( $use_spool ) {
+   if ( $use_spool && !$service->run_once ) {
       write_to_file(
          data => "$curr_ts\n",
          file => $meta_file,
