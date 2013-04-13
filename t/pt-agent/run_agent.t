@@ -10,12 +10,27 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
+
 use JSON;
 use File::Temp qw(tempdir);
 
 use Percona::Test;
+use Sandbox;
 use Percona::Test::Mock::UserAgent;
 require "$trunk/bin/pt-agent";
+
+my $dp  = new DSNParser(opts=>$dsn_opts);
+my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dbh = $sb->get_dbh_for('master');
+my $dsn = $sb->dsn_for('master');
+my $o   = new OptionParser();
+$o->get_specs("$trunk/bin/pt-agent");
+$o->get_opts();
+my $cxn = Cxn->new(
+   dsn_string   => $dsn,
+   OptionParser => $o,
+   DSNParser    => $dp,
+);
 
 Percona::Toolkit->import(qw(Dumper));
 Percona::WebAPI::Representation->import(qw(as_hashref));
@@ -28,6 +43,10 @@ if ( $crontab ) {
    warn "Removing crontab: $crontab\n";
    `crontab -r`;
 }
+
+# Fake --lib and --spool dirs.
+my $tmpdir = tempdir("/tmp/pt-agent.$PID.XXXXXX", CLEANUP => 1);
+mkdir "$tmpdir/spool" or die "Error making $tmpdir/spool: $OS_ERROR";
 
 # #############################################################################
 # Create mock client and Agent
@@ -59,8 +78,9 @@ is(
 ) or die;
 
 my $agent = Percona::WebAPI::Resource::Agent->new(
-   id       => '123',
+   uuid     => '123',
    hostname => 'host',
+   username => 'user',
    links    => {
       self   => '/agents/123',
       config => '/agents/123/config',
@@ -89,7 +109,9 @@ my $config = Percona::WebAPI::Resource::Config->new(
    ts      => 1363720060,
    name    => 'Default',
    options => {
-      'check-interval' => "60",
+      'lib'            => $tmpdir,          # required
+      'spool'          => "$tmpdir/spool",  # required
+      'check-interval' => "11",
    },
    links   => {
       self     => '/agents/123/config',
@@ -116,12 +138,22 @@ my $svc0 = Percona::WebAPI::Resource::Service->new(
    },
 );
 
+$ua->{responses}->{put} = [
+   { # 1
+      headers => { 'Location' => '/agents/123' },
+   },
+];
+
 $ua->{responses}->{get} = [
-   {
+   { # 2
+      headers => { 'X-Percona-Resource-Type' => 'Agent' },
+      content => as_hashref($agent, with_links => 1),
+   },
+   { # 3
       headers => { 'X-Percona-Resource-Type' => 'Config' },
       content => as_hashref($config, with_links => 1),
    },
-   {
+   { # 4
       headers => { 'X-Percona-Resource-Type' => 'Service' },
       content => [ as_hashref($svc0, with_links => 1) ],
    },
@@ -129,23 +161,25 @@ $ua->{responses}->{get} = [
 
 # The only thing pt-agent must have is the API key in the config file,
 # everything else relies on defaults until the first Config is gotten
-# from Percona. -- The tool calls init_config_file() if the file doesn't
-# exist, so we do the same.  Might as well test it while we're here.
+# from Percona.
 my $config_file = pt_agent::get_config_file();
 unlink $config_file if -f $config_file;
-pt_agent::init_config_file(file => $config_file, api_key => '123');
 
-is(
-   `cat $config_file`,
-   "api-key=123\n",
-   "init_config_file()"
+like(
+   $config_file,
+   qr/$ENV{LOGNAME}\/\.pt-agent.conf$/,
+   "Default config file is ~/.pt-agent.config"
 );
 
-my $tmpdir = tempdir("/tmp/pt-agent.$PID.XXXXXX", CLEANUP => 1);
-mkdir "$tmpdir/services" or die "Error making $tmpdir/services: $OS_ERROR";
-
 my @ok_code = ();  # callbacks
-my @oktorun = (1, 0);
+my @oktorun = (
+   1,  # after get_api_client()
+   1,  # after get_versions()
+   1,  # init_agent() loop
+   1,  # after init_agent()
+   1,  # 1st main loop check
+   0,  # 2nd main loop check
+);
 my $oktorun = sub {
    my $ok = shift @oktorun;
    print "oktorun=" . (defined $ok ? $ok : 'undef') . "\n";
@@ -159,13 +193,22 @@ my $oktorun = sub {
 $output = output(
    sub {
       pt_agent::run_agent(
-         agent       => $agent,
-         client      => $client,
+         # Required args
+         api_key     => '123',
          interval    => $interval,
-         config_file => $config_file,
          lib_dir     => $tmpdir,
-         oktorun     => $oktorun,  # optional, for testing
-         json        => $json,     # optional, for testing
+         Cxn         => $cxn,
+         # Optional args, for testing
+         client      => $client,
+         agent       => $agent,
+         oktorun     => $oktorun,
+         json        => $json,
+         versions    => {
+            Perl => '5.10.1',
+         },
+         entry_links => {
+            agents => '/agents',
+         },
       );
    },
    stderr => 1,
@@ -173,7 +216,7 @@ $output = output(
 
 is(
    `cat $config_file`,
-   "api-key=123\ncheck-interval=60\n",
+   "check-interval=11\nlib=$tmpdir\nspool=$tmpdir/spool\n",
    "Write Config to config file"
 ); 
 
@@ -185,7 +228,7 @@ is(
 
 is(
    $wait[0],
-   60,
+   11,
    "... used Config->options->check-interval"
 );
 
@@ -226,7 +269,17 @@ like(
 # Run run_agent again, like the agent had been stopped and restarted.
 # #############################################################################
 
+$ua->{responses}->{put} = [
+   { # 1
+      headers => { 'Location' => '/agents/123' },
+   },
+];
+
 $ua->{responses}->{get} = [
+   { # 2
+      headers => { 'X-Percona-Resource-Type' => 'Agent' },
+      content => as_hashref($agent, with_links => 1),
+   },
    # First check, fail
    {
       code    => 500,
@@ -254,14 +307,25 @@ $ua->{responses}->{get} = [
    # interval, oktorun=0
 ];
 
-# 0=while check, 1=after first check, 2=after 2nd check, etc.
-@oktorun = (1, 1, 1, 0);
+@oktorun = (
+   1,  # after get_api_client()
+   1,  # after get_versions()
+   1,  # init_agent() loop
+   1,  # after init_agent()
+   1,  # 1st main loop check
+       # First check, error 500
+   1,  # 2nd main loop check
+       # Init with latest Config and Services
+   1,  # 3rd main loop check
+       # Same Config and services
+   0,  # 4th main loop check
+);
 
-# Between the 2nd and 3rd checks, remove the config file (~/.pt-agent.conf)
-# and query-history service  file.  When the tool re-GETs these, they'll be
+# Before the 3rd check, remove the config file (~/.pt-agent.conf) and
+# query-history service  file.  When the tool re-GETs these, they'll be
 # the same so it won't recreate them.  A bug here will cause these files to
 # exist again after running.
-$ok_code[2] = sub {
+$ok_code[6] = sub {
    unlink "$config_file";
    unlink "$tmpdir/services/query-history";
    Percona::Test::wait_until(sub { ! -f "$config_file" });
@@ -273,13 +337,22 @@ $ok_code[2] = sub {
 $output = output(
    sub {
       pt_agent::run_agent(
-         agent       => $agent,
-         client      => $client,
+         # Required args
+         api_key     => '123',
          interval    => $interval,
-         config_file => $config_file,
          lib_dir     => $tmpdir,
-         oktorun     => $oktorun,  # optional, for testing
-         json        => $json,     # optional, for testing
+         Cxn         => $cxn,
+         # Optional args, for testing
+         client      => $client,
+         agent       => $agent,
+         oktorun     => $oktorun,
+         json        => $json,
+         versions    => {
+            Perl => '5.10.1',
+         },
+         entry_links => {
+            agents => '/agents',
+         },
       );
    },
    stderr => 1,
@@ -287,7 +360,7 @@ $output = output(
 
 is_deeply(
    \@wait,
-   [ undef, 60, 60 ],
+   [ 60, 11, 11 ],
    "Got Config after error"
 ) or diag(Dumper(\@wait));
 
@@ -314,17 +387,20 @@ is(
 
 diag(`rm -f $tmpdir/* >/dev/null 2>&1`);
 diag(`rm -rf $tmpdir/services/*`);
-mkdir "$tmpdir/spool" or die $OS_ERROR;
+diag(`rm -rf $tmpdir/spool/*`);
 
-$config_file = pt_agent::get_config_file();
+# When pt-agent manually runs --run-service test-run-at-start, it's going
+# to need an API key because it doesn't call its own run_service(), it runs
+# another instance of itself with system().  So put the fake API key in
+# the default config file.
 unlink $config_file if -f $config_file;
-pt_agent::init_config_file(file => $config_file, api_key => '123');
+diag(`echo "api-key=123" > $config_file`);
 
 $config = Percona::WebAPI::Resource::Config->new(
    ts      => 1363720060,
    name    => 'Test run_once_on_start',
    options => {
-      'check-interval' => "60",
+      'check-interval' => "15",
       'lib'            => $tmpdir,
       'spool'          => "$tmpdir/spool",
       'pid'            => "$tmpdir/pid",
@@ -344,18 +420,27 @@ $run0 = Percona::WebAPI::Resource::Task->new(
 );
 
 $svc0 = Percona::WebAPI::Resource::Service->new(
-   name              => 'test-run-at-start',
-   run_schedule      => '0 0 1 1 *',
-   spool_schedule    => '0 0 1 1 *',
-   run_once_on_start => 1,  # here's the magic
-   tasks             => [ $run0 ],
-   links             => {
+   name         => 'test-run-at-start',
+   run_schedule => '0 0 1 1 *',
+   run_once     => 1,  # here's the magic
+   tasks        => [ $run0 ],
+   links        => {
       self => '/query-history',
       data => '/query-history/data',
    },
 );
 
+$ua->{responses}->{put} = [
+   { # 1
+      headers => { 'Location' => '/agents/123' },
+   },
+];
+
 $ua->{responses}->{get} = [
+   { # 2
+      headers => { 'X-Percona-Resource-Type' => 'Agent' },
+      content => as_hashref($agent, with_links => 1),
+   },
    {
       headers => { 'X-Percona-Resource-Type' => 'Config' },
       content => as_hashref($config, with_links => 1),
@@ -374,27 +459,46 @@ $ua->{responses}->{get} = [
    },
 ];
 
-@ok_code = ();  # callbacks
-@oktorun = (1, 1, 0);
 @wait    = ();
+@ok_code = ();  # callbacks
+@oktorun = (
+   1,  # after get_api_client()
+   1,  # after get_versions()
+   1,  # init_agent() loop
+   1,  # after init_agent()
+   1,  # 1st main loop check
+       # Run once
+   1,  # 2nd main loop check
+       # Don't run it again
+   0,  # 4th main loop check
+);
 
 $output = output(
    sub {
       pt_agent::run_agent(
-         agent       => $agent,
-         client      => $client,
+         # Required args
+         api_key     => '123',
          interval    => $interval,
-         config_file => $config_file,
          lib_dir     => $tmpdir,
-         oktorun     => $oktorun,       # optional, for testing
-         json        => $json,          # optional, for testing
-         bin_dir     => "$trunk/bin/",  # optional, for testing
+         Cxn         => $cxn,
+         # Optional args, for testing
+         bin_dir     => "$trunk/bin/",
+         client      => $client,
+         agent       => $agent,
+         oktorun     => $oktorun,
+         json        => $json,
+         versions    => {
+            Perl => '5.10.1',
+         },
+         entry_links => {
+            agents => '/agents',
+         },
       );
    },
    stderr => 1,
 );
 
-Percona::Test::wait_for_files("$tmpdir/spool/test-run-at-start");
+Percona::Test::wait_for_files("$tmpdir/spool/test-run-at-start/test-run-at-start");
 
 like(
    $output,
@@ -410,17 +514,17 @@ is(
    "... only ran it once"
 );
 
-chomp($output = `cat $tmpdir/spool/test-run-at-start 2>/dev/null`);
+chomp($output = `cat $tmpdir/spool/test-run-at-start/test-run-at-start 2>/dev/null`);
 ok(
    $output,
    "... service ran at start"
 ) or diag($output);
 
 chomp($output = `crontab -l`);
-like(
+unlike(
    $output,
    qr/--run-service test-run-at-start/,
-   "... service was scheduled"
+   "... service was not scheduled"
 );
 
 # #############################################################################
