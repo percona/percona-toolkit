@@ -5954,9 +5954,14 @@ sub run_service {
    # (because services are ran via cron) and wait until the next
    # time we're ran, then we'll have collected from one interval
    # boundary (this one) to another (the next one).
-   my $meta_file  = "$lib_dir/meta/" . $service->name . ".interval";
-   my $prev_ts;
+   my $meta_file = "$lib_dir/meta/" . $service->name . ".interval";
+   my $metadata  = {
+      start_ts => undef,
+      end_ts   => $curr_ts,
+      tasks    => [],
+   };
    if ( $use_spool ) {
+      my $prev_ts;
       if ( -f $meta_file ) {
          $prev_ts = slurp($meta_file);
          chomp($prev_ts) if $prev_ts;
@@ -5972,6 +5977,7 @@ sub run_service {
          _info('First run, waiting until next interval to collect '
             . 'a complete sample');
       }
+      $metadata->{start_ts} = $prev_ts;
    }
 
    # Run the tasks, spool any data.
@@ -5995,6 +6001,7 @@ sub run_service {
             die "Invalid service: two tasks have output=spool: "
                . Dumper($service);
          }
+         # TODO: save snapshot of meta/service.* before running spool task
          $output_file = $tmp_data_file;
          push @output_files, $output_file;
       }
@@ -6003,6 +6010,10 @@ sub run_service {
          close $fh;
          $output_file = $file;
          push @output_files, $file;
+      }
+      elsif ( $output =~ m/^meta:(\S+)/ ) {
+         $output_file = "$lib_dir/meta/" . $service->name . ".$1";
+         push @output_files, undef;
       }
       else {
          $output_file = '/dev/null';
@@ -6038,10 +6049,19 @@ sub run_service {
          _info("Task $taskno command: $cmd");
 
          # Execute this run.
+         my $t0 = time;
          system($cmd);
+         my $t1 = time;
          my $cmd_exit_status = $CHILD_ERROR >> 8;
          _info("Run $taskno: exit $cmd_exit_status");
          $exit_status |= $cmd_exit_status;
+
+         push @{$metadata->{tasks}}, {
+            start_ts    => ts($t0, 1),
+            end_ts      => ts($t1, 1),
+            run_time    => sprintf('%.6f', $t1 - $t0),
+            exit_status => $cmd_exit_status,
+         };
       }
       else {
          _warn('Invalid Task resource:', Dumper($task));
@@ -6056,7 +6076,7 @@ sub run_service {
    # is not the first run of the service.
    my $file_size = -s $tmp_data_file;
    _info("$tmp_data_file size: " . ($file_size || 0) . " bytes");
-   if ( $use_spool && $file_size && $prev_ts ) {
+   if ( $use_spool && $file_size && $metadata->{start_ts} ) {
       # Save metadata about this sample _first_, because --send-data looks
       # for the data file first, then for a corresponding .meta file.  If
       # we write the data file first, then we create a race condition: while
@@ -6065,10 +6085,6 @@ sub run_service {
       # file first guarantees that if --send-data sees a data file, the
       # .meta already exists.  (And there's no race condition on writing
       # the data file because we use a quasi-atomic system mv.)
-      my $metadata = {
-         start_ts => $prev_ts,
-         end_ts   => $curr_ts,
-      };
       write_to_file(
          data => as_json($metadata, json => $json),
          file => "$data_dir/$data_file.meta",
