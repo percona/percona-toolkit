@@ -5450,6 +5450,7 @@ sub main {
    my $archive_file = $o->get('file');
    my $txnsize      = $o->get('txn-size');
    my $quiet        = $o->get('quiet');
+   my $got_charset  = $o->get('charset');
 
    # First things first: if --stop was given, create the sentinel file.
    if ( $o->get('stop') ) {
@@ -5833,7 +5834,9 @@ sub main {
                   . ' LOCAL INFILE ?'
                   . ($o->get('replace')    ? ' REPLACE'      : '')
                   . ($o->get('ignore')     ? ' IGNORE'       : '')
-                  . " INTO TABLE $dst->{db_tbl}("
+                  . " INTO TABLE $dst->{db_tbl}"
+                  . ($got_charset ? "CHARACTER SET $got_charset" : "")
+                  . "("
                   . join(",", map { $q->quote($_) } @{$ins_stmt->{cols}} )
                   . ")";
       }
@@ -5942,28 +5945,29 @@ sub main {
       return 0;
    }
 
-   # Open the file and print the header to it. 
-   if ( $archive_file ) { 
-      my $need_hdr = $o->get('header') && !-f $archive_file; 
-      my $charset  = $o->get('charset') || '';
-      if ($charset eq 'utf8') {
-         $charset = ":$charset";
-      }
-      elsif ($charset) {
-         eval { require Encode }
+   my $charset  = $got_charset || '';
+   if ($charset eq 'utf8') {
+      $charset = ":$charset";
+   }
+   elsif ($charset) {
+      eval { require Encode }
             or (PTDEBUG &&
                _d("Couldn't load Encode: ", $EVAL_ERROR,
                   "Going to try using the charset ",
                   "passed in without checking it."));
-         # No need to punish a user if they did their
-         # homework and passed in an official charset,
-         # rather than an alias.
-         $charset = ":encoding("
-                  . (defined &Encode::resolve_alias
-                     ? Encode::resolve_alias($charset) || $charset
-                     : $charset)
-                  . ")";
-      }
+      # No need to punish a user if they did their
+      # homework and passed in an official charset,
+      # rather than an alias.
+      $charset = ":encoding("
+               . (defined &Encode::resolve_alias
+                  ? Encode::resolve_alias($charset) || $charset
+                  : $charset)
+               . ")";
+   }
+
+   # Open the file and print the header to it. 
+   if ( $archive_file ) { 
+      my $need_hdr = $o->get('header') && !-f $archive_file; 
       $archive_fh = IO::File->new($archive_file, ">>$charset") 
          or die "Cannot open $charset $archive_file: $OS_ERROR\n"; 
       $archive_fh->autoflush(1) unless $o->get('buffer'); 
@@ -5979,6 +5983,9 @@ sub main {
       require File::Temp;
       $bulkins_file = File::Temp->new( SUFFIX => 'pt-archiver' )
          or die "Cannot open temp file: $OS_ERROR\n";
+      binmode($bulkins_file, $charset)
+         or die "Cannot set $charset as an encoding for the bulk-insert "
+              . "file: $OS_ERROR";
    }
 
    # This row is the first row fetched from each 'chunk'.
@@ -6205,6 +6212,9 @@ sub main {
          if ( $o->get('bulk-insert') ) {
             $bulkins_file = File::Temp->new( SUFFIX => 'pt-archiver' )
                or die "Cannot open temp file: $OS_ERROR\n";
+            binmode($bulkins_file, $charset)
+               or die "Cannot set $charset as an encoding for the bulk-insert "
+                    . "file: $OS_ERROR";
          }
       }  # no next row (do bulk operations)
       else {
