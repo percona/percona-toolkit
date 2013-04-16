@@ -6525,6 +6525,12 @@ has event_headers => (
    default => sub { [qw(pct total min max avg 95% stddev median)] },
 );
 
+has show_all => (
+   is      => 'ro',
+   isa     => 'HashRef',
+   default => sub { {} },
+);
+
 has ReportFormatter => (
    is      => 'ro',
    isa     => 'ReportFormatter',
@@ -7404,10 +7410,12 @@ sub bool_percents {
 
 sub format_string_list {
    my ( $self, $attrib, $vals, $class_cnt ) = @_;
-
+   
    if ( !exists $vals->{unq} ) {
       return ($vals->{cnt});
    }
+
+   my $show_all = $self->show_all();
 
    my $cnt_for = $vals->{unq};
    if ( 1 == keys %$cnt_for ) {
@@ -7433,6 +7441,9 @@ sub format_string_list {
       }
       my $p = percentage_of($cnt_for->{$str}, $class_cnt);
       $print_str .= " ($cnt_for->{$str}/$p%)";
+      if ( !$show_all->{$attrib} ) {
+         last if (length $line) + (length $print_str)  > LINE_LENGTH - 27;
+      }
       $line .= "$print_str, ";
       $i++;
    }
@@ -13764,6 +13775,8 @@ sub print_reports {
    my @groupby = @{$args{groupby}};
    my @orderby = @{$args{orderby}};
 
+   my $show_all = $o->get('show-all');
+
    for my $i ( 0..$#groupby ) {
       if ( $o->get('report') || $qv || $qh ) {
          $eas->[$i]->calculate_statistical_metrics();
@@ -13814,6 +13827,7 @@ sub print_reports {
             OptionParser  => $args{OptionParser},
             QueryParser   => $args{QueryParser},
             Quoter        => $args{Quoter},
+            show_all      => $show_all,
          );
 
          $qrf->print_reports(
@@ -15516,6 +15530,18 @@ Variables specified on the command line override these defaults.  For
 example, specifying C<--set-vars wait_timeout=500> overrides the defaultvalue of C<10000>.
 
 The tool prints a warning and continues if a variable cannot be set.
+
+=item --show-all
+
+type: Hash
+
+Show all values for these attributes.
+
+By default pt-query-digest only shows as many of an attribute's value that
+fit on a single line.  This option allows you to specify attributes for which
+all values will be shown (line width is ignored).  This only works for
+attributes with string values like user, host, db, etc.  Multiple attributes
+can be specified, comma-separated.
 
 =item --since
 

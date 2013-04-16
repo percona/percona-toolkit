@@ -14,7 +14,7 @@
 # Rows read    100     690     230     230     230     230       0     230
 # Query size   100      31      10      11   10.33   10.84    0.47    9.83
 # String:
-# Hosts        123.123.123.121 (1/33%), 123.123.123.122 (1/33%), 123.123.123.123 (1/33%)
+# Hosts        123.123.123.121 (1/33%)... 2 more
 # Users        chessguest
 # Query_time distribution
 #   1us
