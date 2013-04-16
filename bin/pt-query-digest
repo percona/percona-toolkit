@@ -3215,10 +3215,24 @@ sub parse_event {
                $new_query = 1;
             }
             elsif ( $curr->[INFO] && defined $curr->[TIME]
-                    && $query_start - $etime - $prev->[START] > $fudge ) {
-               PTDEBUG && _d('Query restarted; new query',
-                  $query_start, $etime, $prev->[START], $fudge);
-               $new_query = 1;
+                    && $query_start - $etime - $prev->[START] > $fudge)
+            {
+               my $ms = $self->{MasterSlave};
+               
+               my $is_repl_thread = $ms->is_replication_thread({
+                                        Command => $curr->[COMMAND],
+                                        User    => $curr->[USER],
+                                        State   => $curr->[STATE],
+                                        Id      => $curr->[ID]});
+               if ( $is_repl_thread ) {
+                  PTDEBUG &&
+                  _d(q{Query has restarted but it's a replication thread, ignoring});
+               }
+               else {
+                  PTDEBUG && _d('Query restarted; new query',
+                     $query_start, $etime, $prev->[START], $fudge);
+                  $new_query = 1;
+               }
             }
 
             if ( $new_query ) {
