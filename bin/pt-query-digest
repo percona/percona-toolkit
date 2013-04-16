@@ -81,6 +81,7 @@ our $VERSION = '2.2.1';
 # ###########################################################################
 {
 package Lmo::Utils;
+
 use strict;
 use warnings qw( FATAL all );
 require Exporter;
@@ -88,7 +89,12 @@ our (@ISA, @EXPORT, @EXPORT_OK);
 
 BEGIN {
    @ISA = qw(Exporter);
-   @EXPORT = @EXPORT_OK = qw(_install_coderef _unimport_coderefs _glob_for _stash_for);
+   @EXPORT = @EXPORT_OK = qw(
+      _install_coderef
+      _unimport_coderefs
+      _glob_for
+      _stash_for
+   );
 }
 
 {
@@ -271,7 +277,6 @@ sub meta {
    $class    = Scalar::Util::blessed($class) || $class;
    return Lmo::Meta->new(class => $class);
 }
-
 
 1;
 }
@@ -3789,6 +3794,7 @@ sub new {
       sessions       => {},
       o              => $args{o},
       fake_thread_id => 2**32,   # see _make_event()
+      null_event     => $args{null_event},
    };
    PTDEBUG && $self->{server} && _d('Watching only server', $self->{server});
    return bless $self, $class;
@@ -3809,7 +3815,7 @@ sub parse_event {
       $server .= ":$self->{port}";
       if ( $src_host ne $server && $dst_host ne $server ) {
          PTDEBUG && _d('Packet is not to or from', $server);
-         return;
+         return $self->{null_event};
       }
    }
 
@@ -3825,7 +3831,7 @@ sub parse_event {
    }
    else {
       PTDEBUG && _d('Packet is not to or from a MySQL server');
-      return;
+      return $self->{null_event};
    }
    PTDEBUG && _d('Client', $client);
 
@@ -3843,7 +3849,7 @@ sub parse_event {
       else {
          PTDEBUG && _d('Ignoring mid-stream', $packet_from, 'data,',
             'packetno', $packetno);
-         return;
+         return $self->{null_event};
       }
 
       $self->{sessions}->{$client} = {
@@ -3886,7 +3892,7 @@ sub parse_event {
          delete $self->{sessions}->{$session->{client}};
          return $event;
       }
-      return;
+      return $self->{null_event};
    }
 
    if ( $session->{compress} ) {
@@ -3912,7 +3918,7 @@ sub parse_event {
          PTDEBUG && _d('remove_mysql_header() failed; failing session');
          $session->{EVAL_ERROR} = $EVAL_ERROR;
          $self->fail_session($session, 'remove_mysql_header() failed');
-         return;
+         return $self->{null_event};
       }
    }
 
@@ -3927,7 +3933,7 @@ sub parse_event {
             $self->_delete_buff($session);
          }
          else {
-            return;  # waiting for more data; buff_left was reported earlier
+            return $self->{null_event};  # waiting for more data; buff_left was reported earlier
          }
       }
       elsif ( $packet->{mysql_data_len} > ($packet->{data_len} - 4) ) {
@@ -3948,7 +3954,7 @@ sub parse_event {
 
          PTDEBUG && _d('Data not complete; expecting',
             $session->{buff_left}, 'more bytes');
-         return;
+         return $self->{null_event};
       }
 
       if ( $session->{cmd} && ($session->{state} || '') eq 'awaiting_reply' ) {
@@ -3971,7 +3977,7 @@ sub parse_event {
    }
 
    $args{stats}->{events_parsed}++ if $args{stats};
-   return $event;
+   return $event || $self->{null_event};
 }
 
 sub _packet_from_server {
@@ -9831,7 +9837,15 @@ sub _get_errors_fh {
    return $self->{errors_fh} if $self->{errors_fh};
 
    my $exec = basename($0);
-   my ($errors_fh, $filename) = tempfile("/tmp/$exec-errors.XXXXXXX", UNLINK => 0);
+   my ($errors_fh, $filename);
+   if ( $filename = $ENV{PERCONA_TOOLKIT_TCP_ERRORS_FILE} ) {
+      open $errors_fh, ">", $filename
+         or die "Cannot open $filename for writing (supplied from "
+              . "PERCONA_TOOLKIT_TCP_ERRORS_FILE): $OS_ERROR";
+   }
+   else {
+      ($errors_fh, $filename) = tempfile("/tmp/$exec-errors.XXXXXXX", UNLINK => 0);
+   }
 
    $self->{errors_file} = $filename;
    $self->{errors_fh}   = $errors_fh;
@@ -9847,7 +9861,8 @@ sub fail_session {
 
    my $errors_fh = $self->_get_errors_fh();
 
-   print "Session $session->{client} had errors, will save them in $self->{errors_file}\n";
+   warn "TCP session $session->{client} had errors, will save them in $self->{errors_file}\n"
+      unless $self->{_warned_for}->{$self->{errors_file}}++;
 
    my $raw_packets = delete $session->{raw_packets};
    $session->{reason_for_failure} = $reason;
