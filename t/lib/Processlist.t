@@ -335,9 +335,116 @@ is_deeply(
    "New query2_2 is active, starting at 05:08"
 );
 
+
+# ###########################################################################
+# pt-query-digest --processlist: Duplicate entries for replication thread
+# https://bugs.launchpad.net/percona-toolkit/+bug/1156901
+# ###########################################################################
+
+# This is basically the same thing as above, but we're pretending to
+# be a repl thread, so it should behave differently.
+
+$pl = Processlist->new(MasterSlave=>$ms);
+
+parse_n_times(
+   1,
+   code  => sub {
+      return [
+         [ 2, 'system user', 'localhost', 'test', 'Query', 0, 'executing', 'query2_2'],
+      ],
+   },
+   time  => Transformers::unix_timestamp('2001-01-01 00:05:03'),
+   etime => 3.14159,
+);
+
+is_deeply(
+   $pl->_get_active_cxn(),
+   {
+      2 => [
+         2, 'system user', 'localhost', 'test', 'Query', 0, 'executing', 'query2_2',
+         Transformers::unix_timestamp('2001-01-01 00:05:03'),   # START
+         3.14159,                                               # ETIME
+         Transformers::unix_timestamp('2001-01-01 00:05:03'),   # FSEEN
+         { executing => 0 },
+      ],
+   },
+   'query2_2 just started',
+);
+
+# And there is no event on cxn 2.
+is(
+   scalar @events,
+   0,
+   'query2_2 has not fired yet',
+);
+
+parse_n_times(
+   1,
+   code  => sub {
+      return [
+         [ 2, 'system user', 'localhost', 'test', 'Query', 0, 'executing', 'query2_2'],
+      ],
+   },
+   time  => Transformers::unix_timestamp('2001-01-01 00:05:05'),
+   etime => 2.718,
+);
+
+is(
+   scalar @events,
+   0,
+      'query2_2 has not fired yet, same as with normal queries',
+);
+
+is_deeply(
+   $pl->_get_active_cxn(),
+   {
+      2 => [
+         2, 'system user', 'localhost', 'test', 'Query', 0, 'executing', 'query2_2',
+         Transformers::unix_timestamp('2001-01-01 00:05:03'),
+         3.14159,
+         Transformers::unix_timestamp('2001-01-01 00:05:03'),
+         { executing => 2 },
+      ],
+   },
+   'Cxn 2 still active with query starting at 05:03',
+);
+
+# Same as above but five seconds and a half later
+parse_n_times(
+   1,
+   code  => sub {
+      return [
+         [ 2, 'system user', 'localhost', 'test', 'Query', 0, 'executing', 'query2_2'],
+      ],
+   },
+   time  => Transformers::unix_timestamp('2001-01-01 00:05:08.500'),
+   etime => 0.123,
+);
+
+is_deeply(
+   \@events,
+   [],
+   'Original query2_2 not fired because we are a repl thrad',
+);
+
+is_deeply(
+   $pl->_get_active_cxn(),
+   {
+      2 => [
+         2, 'system user', 'localhost', 'test', 'Query', 0, 'executing', 'query2_2',
+         Transformers::unix_timestamp('2001-01-01 00:05:03'),   # START
+         3.14159,                                               # ETIME
+         Transformers::unix_timestamp('2001-01-01 00:05:03'),   # FSEEN
+         { executing => 5.5 },
+      ],
+   },
+   "Old query2_2 is active because we're a repl thread, but executing has updated"
+);
+
 # ###########################################################################
 # Issue 867: Make mk-query-digest detect Lock_time from processlist
 # ###########################################################################
+$ms  = new MasterSlave(OptionParser=>1,DSNParser=>1,Quoter=>1);
 $pl = Processlist->new(MasterSlave=>$ms);
 
 # For 2/10ths of a second, the query is Locked.  First time we see this

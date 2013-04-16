@@ -245,14 +245,28 @@ sub parse_event {
                $new_query = 1;
             }
             elsif ( $curr->[INFO] && defined $curr->[TIME]
-                    && $query_start - $etime - $prev->[START] > $fudge ) {
+                    && $query_start - $etime - $prev->[START] > $fudge)
+            {
                # If the query's recalculated start time minus its previously
                # calculated start time is greater than the fudge factor, then
                # the query has restarted.  I.e. the new start time is after
                # the previous start time.
-               PTDEBUG && _d('Query restarted; new query',
-                  $query_start, $etime, $prev->[START], $fudge);
-               $new_query = 1;
+               my $ms = $self->{MasterSlave};
+               
+               my $is_repl_thread = $ms->is_replication_thread({
+                                        Command => $curr->[COMMAND],
+                                        User    => $curr->[USER],
+                                        State   => $curr->[STATE],
+                                        Id      => $curr->[ID]});
+               if ( $is_repl_thread ) {
+                  PTDEBUG &&
+                  _d(q{Query has restarted but it's a replication thread, ignoring});
+               }
+               else {
+                  PTDEBUG && _d('Query restarted; new query',
+                     $query_start, $etime, $prev->[START], $fudge);
+                  $new_query = 1;
+               }
             }
 
             if ( $new_query ) {
