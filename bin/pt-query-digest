@@ -81,6 +81,7 @@ our $VERSION = '2.2.1';
 # ###########################################################################
 {
 package Lmo::Utils;
+
 use strict;
 use warnings qw( FATAL all );
 require Exporter;
@@ -88,7 +89,12 @@ our (@ISA, @EXPORT, @EXPORT_OK);
 
 BEGIN {
    @ISA = qw(Exporter);
-   @EXPORT = @EXPORT_OK = qw(_install_coderef _unimport_coderefs _glob_for _stash_for);
+   @EXPORT = @EXPORT_OK = qw(
+      _install_coderef
+      _unimport_coderefs
+      _glob_for
+      _stash_for
+   );
 }
 
 {
@@ -271,7 +277,6 @@ sub meta {
    $class    = Scalar::Util::blessed($class) || $class;
    return Lmo::Meta->new(class => $class);
 }
-
 
 1;
 }
@@ -3210,10 +3215,25 @@ sub parse_event {
                $new_query = 1;
             }
             elsif ( $curr->[INFO] && defined $curr->[TIME]
-                    && $query_start - $etime - $prev->[START] > $fudge ) {
-               PTDEBUG && _d('Query restarted; new query',
-                  $query_start, $etime, $prev->[START], $fudge);
-               $new_query = 1;
+                    && $query_start - $etime - $prev->[START] > $fudge)
+            {
+               my $ms = $self->{MasterSlave};
+               
+               my $is_repl_thread = !$ms->is_replication_thread({
+                                        Command => $curr->[COMMAND],
+                                        User    => $curr->[USER],
+                                        State   => $curr->[STATE],
+                                        Id      => $curr->[ID]});
+               if ( !$is_repl_thread ) {
+                  PTDEBUG && _d('Query restarted; new query',
+                     $query_start, $etime, $prev->[START], $fudge);
+                  $new_query = 1;
+               }
+               elsif ( PTDEBUG ) {
+                  _d(q'Query has a start time beyond the fudge factor, ',
+                     q'but not counting it as a new query because, ',
+                     q{it's a replication thread});
+               }
             }
 
             if ( $new_query ) {
@@ -3789,6 +3809,7 @@ sub new {
       sessions       => {},
       o              => $args{o},
       fake_thread_id => 2**32,   # see _make_event()
+      null_event     => $args{null_event},
    };
    PTDEBUG && $self->{server} && _d('Watching only server', $self->{server});
    return bless $self, $class;
@@ -3809,7 +3830,7 @@ sub parse_event {
       $server .= ":$self->{port}";
       if ( $src_host ne $server && $dst_host ne $server ) {
          PTDEBUG && _d('Packet is not to or from', $server);
-         return;
+         return $self->{null_event};
       }
    }
 
@@ -3825,7 +3846,7 @@ sub parse_event {
    }
    else {
       PTDEBUG && _d('Packet is not to or from a MySQL server');
-      return;
+      return $self->{null_event};
    }
    PTDEBUG && _d('Client', $client);
 
@@ -3843,7 +3864,7 @@ sub parse_event {
       else {
          PTDEBUG && _d('Ignoring mid-stream', $packet_from, 'data,',
             'packetno', $packetno);
-         return;
+         return $self->{null_event};
       }
 
       $self->{sessions}->{$client} = {
@@ -3886,7 +3907,7 @@ sub parse_event {
          delete $self->{sessions}->{$session->{client}};
          return $event;
       }
-      return;
+      return $self->{null_event};
    }
 
    if ( $session->{compress} ) {
@@ -3912,7 +3933,7 @@ sub parse_event {
          PTDEBUG && _d('remove_mysql_header() failed; failing session');
          $session->{EVAL_ERROR} = $EVAL_ERROR;
          $self->fail_session($session, 'remove_mysql_header() failed');
-         return;
+         return $self->{null_event};
       }
    }
 
@@ -3927,7 +3948,7 @@ sub parse_event {
             $self->_delete_buff($session);
          }
          else {
-            return;  # waiting for more data; buff_left was reported earlier
+            return $self->{null_event};  # waiting for more data; buff_left was reported earlier
          }
       }
       elsif ( $packet->{mysql_data_len} > ($packet->{data_len} - 4) ) {
@@ -3948,7 +3969,7 @@ sub parse_event {
 
          PTDEBUG && _d('Data not complete; expecting',
             $session->{buff_left}, 'more bytes');
-         return;
+         return $self->{null_event};
       }
 
       if ( $session->{cmd} && ($session->{state} || '') eq 'awaiting_reply' ) {
@@ -3971,7 +3992,7 @@ sub parse_event {
    }
 
    $args{stats}->{events_parsed}++ if $args{stats};
-   return $event;
+   return $event || $self->{null_event};
 }
 
 sub _packet_from_server {
