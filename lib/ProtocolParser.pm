@@ -252,7 +252,15 @@ sub _get_errors_fh {
 
    my $exec = basename($0);
    # Errors file isn't open yet; try to open it.
-   my ($errors_fh, $filename) = tempfile("/tmp/$exec-errors.XXXXXXX", UNLINK => 0);
+   my ($errors_fh, $filename);
+   if ( $filename = $ENV{PERCONA_TOOLKIT_TCP_ERRORS_FILE} ) {
+      open $errors_fh, ">", $filename
+         or die "Cannot open $filename for writing (supplied from "
+              . "PERCONA_TOOLKIT_TCP_ERRORS_FILE): $OS_ERROR";
+   }
+   else {
+      ($errors_fh, $filename) = tempfile("/tmp/$exec-errors.XXXXXXX", UNLINK => 0);
+   }
 
    $self->{errors_file} = $filename;
    $self->{errors_fh}   = $errors_fh;
@@ -268,7 +276,8 @@ sub fail_session {
 
    my $errors_fh = $self->_get_errors_fh();
 
-   print "Session $session->{client} had errors, will save them in $self->{errors_file}\n";
+   warn "TCP session $session->{client} had errors, will save them in $self->{errors_file}\n"
+      unless $self->{_warned_for}->{$self->{errors_file}}++;
 
    my $raw_packets = delete $session->{raw_packets};
    $session->{reason_for_failure} = $reason;
