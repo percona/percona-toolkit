@@ -335,9 +335,118 @@ is_deeply(
    "New query2_2 is active, starting at 05:08"
 );
 
+#
+
+# This is basically the same thing as above, but we're pretending to
+# be a repl thread, so it should behave differently.
+
+$pl = Processlist->new(MasterSlave=>$ms);
+
+parse_n_times(
+   1,
+   code  => sub {
+      return [
+         [ 2, 'system user', 'localhost', 'test', 'Query', 0, 'executing', 'query2_2'],
+      ],
+   },
+   time  => Transformers::unix_timestamp('2001-01-01 00:05:03'),
+   etime => 3.14159,
+);
+
+is_deeply(
+   $pl->_get_active_cxn(),
+   {
+      2 => [
+         2, 'system user', 'localhost', 'test', 'Query', 0, 'executing', 'query2_2',
+         Transformers::unix_timestamp('2001-01-01 00:05:03'),   # START
+         3.14159,                                               # ETIME
+         Transformers::unix_timestamp('2001-01-01 00:05:03'),   # FSEEN
+         { executing => 0 },
+      ],
+   },
+   'query2_2 just started',
+);
+
+# And there is no event on cxn 2.
+is(
+   scalar @events,
+   0,
+   'query2_2 has not fired yet',
+);
+
+# In this sample, the "same" query is running one second later and this time it
+# seems to have a start time of 5 secs later, which is not enough to be a new
+# query.
+parse_n_times(
+   1,
+   code  => sub {
+      return [
+         [ 2, 'system user', 'localhost', 'test', 'Query', 0, 'executing', 'query2_2'],
+      ],
+   },
+   time  => Transformers::unix_timestamp('2001-01-01 00:05:05'),
+   etime => 2.718,
+);
+
+is(
+   scalar @events,
+   0,
+      'query2_2 has not fired yet',
+);
+
+# And so as a result, query2_2 has NOT fired, but the query is still active.
+is_deeply(
+   $pl->_get_active_cxn(),
+   {
+      2 => [
+         2, 'system user', 'localhost', 'test', 'Query', 0, 'executing', 'query2_2',
+         Transformers::unix_timestamp('2001-01-01 00:05:03'),
+         3.14159,
+         Transformers::unix_timestamp('2001-01-01 00:05:03'),
+         { executing => 2 },
+      ],
+   },
+   'Cxn 2 still active with query starting at 05:03',
+);
+
+# But wait!  There's another!  And this time we catch it!
+parse_n_times(
+   1,
+   code  => sub {
+      return [
+         [ 2, 'system user', 'localhost', 'test', 'Query', 0, 'executing', 'query2_2'],
+      ],
+   },
+   time  => Transformers::unix_timestamp('2001-01-01 00:05:08.500'),
+   etime => 0.123,
+);
+
+is_deeply(
+   \@events,
+   [],
+   'Original query2_2 not fired because we are a repl thrad',
+);
+
+# And so as a result, query2_2 has fired and the prev array contains the "new"
+# query2_2.
+is_deeply(
+   $pl->_get_active_cxn(),
+   {
+      2 => [
+         2, 'system user', 'localhost', 'test', 'Query', 0, 'executing', 'query2_2',
+         Transformers::unix_timestamp('2001-01-01 00:05:03'),   # START
+         3.14159,                                               # ETIME
+         Transformers::unix_timestamp('2001-01-01 00:05:03'),   # FSEEN
+         { executing => 5.5 },
+      ],
+   },
+   "Old query2_2 is active"
+);
+
 # ###########################################################################
 # Issue 867: Make mk-query-digest detect Lock_time from processlist
 # ###########################################################################
+$ms  = new MasterSlave(OptionParser=>1,DSNParser=>1,Quoter=>1);
 $pl = Processlist->new(MasterSlave=>$ms);
 
 # For 2/10ths of a second, the query is Locked.  First time we see this
