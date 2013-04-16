@@ -220,6 +220,42 @@ sub name {
    return $self->{hostname} || $self->{dsn_name} || 'unknown host';
 }
 
+# There's two reasons why there might be dupes:
+# If the "master" is a cluster node, then a DSN table might have been
+# used, and it may have all nodes' DSNs so the user can run the tool
+# on any node, in which case it has the "master" node, the DSN given
+# on the command line.
+# On the other hand, maybe find_cluster_nodes worked, in which case
+# we definitely have a dupe for the master cxn, but we may also have a
+# dupe for every other node if this was unsed in conjunction with a
+# DSN table.
+# So try to detect and remove those.
+sub remove_duplicate_cxns {
+   my ($self, %args) = @_;
+   my @cxns     = @{$args{cxns}};
+   my $seen_ids = $args{seen_ids} || {};
+   PTDEBUG && _d("Removing duplicates from ", join(" ", map { $_->name } @cxns));
+   my @trimmed_cxns;
+
+   for my $cxn ( @cxns ) {
+      my $dbh  = $cxn->dbh();
+      my $sql  = q{SELECT @@server_id};
+      PTDEBUG && _d($sql);
+      my ($id) = $dbh->selectrow_array($sql);
+      PTDEBUG && _d('Server ID for ', $cxn->name, ': ', $id);
+
+      if ( ! $seen_ids->{$id}++ ) {
+         push @trimmed_cxns, $cxn
+      }
+      else {
+         PTDEBUG && _d("Removing ", $cxn->name,
+                       ", ID ", $id, ", because we've already seen it");
+      }
+   }
+
+   return \@trimmed_cxns;
+}
+
 sub DESTROY {
    my ($self) = @_;
 

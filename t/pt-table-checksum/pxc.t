@@ -22,6 +22,8 @@ use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-table-checksum";
 
+my $ip = qr/\Q127.1\E|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/;
+
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $node1 = $sb->get_dbh_for('node1');
@@ -75,34 +77,41 @@ $output = output(
 
 like(
    $output,
-   qr/h=127.1,P=12345 is a cluster node but no other nodes/,
+   qr/h=127(?:\Q.0.0\E)?.1,P=12345 is a cluster node but no other nodes/,
    "Dies if no other nodes are found"
 );
 
-$output = output(
-   sub { pt_table_checksum::main(@args,
-      '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns")
-   },
-   stderr => 1,
-);
+for my $args (
+      ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
+      ["using recursion-method=cluster", '--recursion-method', 'cluster']
+   )
+{
+   my $test = shift @$args;
+   $output = output(
+      sub { pt_table_checksum::main(@args,
+         @$args)
+      },
+      stderr => 1,
+   );
 
-is(
-   PerconaTest::count_checksum_results($output, 'errors'),
-   0,
-   "No diffs: no errors"
-);
+   is(
+      PerconaTest::count_checksum_results($output, 'errors'),
+      0,
+      "No diffs: no errors ($test)"
+   );
 
-is(
-   PerconaTest::count_checksum_results($output, 'skipped'),
-   0,
-   "No diffs: no skips"
-);
+   is(
+      PerconaTest::count_checksum_results($output, 'skipped'),
+      0,
+      "No diffs: no skips ($test)"
+   );
 
-is(
-   PerconaTest::count_checksum_results($output, 'diffs'),
-   0,
-   "No diffs: no diffs"
-);
+   is(
+      PerconaTest::count_checksum_results($output, 'diffs'),
+      0,
+      "No diffs: no diffs ($test)"
+   );
+}
 
 # Now really test checksumming a cluster.  To create a diff we have to disable
 # the binlog.  Although PXC doesn't need or use the binlog to communicate
@@ -135,45 +144,53 @@ is(
    "Node3 not changed"
 );
 
-$output = output(
-   sub { pt_table_checksum::main(@args,
-      '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns")
-   },
-   stderr => 1,
-);
+for my $args (
+      ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
+      ["using recursion-method=cluster", '--recursion-method', 'cluster']
+   )
+{
+   my $test = shift @$args;
 
-is(
-   PerconaTest::count_checksum_results($output, 'errors'),
-   0,
-   "1 diff: no errors"
-);
+   $output = output(
+      sub { pt_table_checksum::main(@args,
+         @$args)
+      },
+      stderr => 1,
+   );
 
-is(
-   PerconaTest::count_checksum_results($output, 'skipped'),
-   0,
-   "1 diff: no skips"
-);
+   is(
+      PerconaTest::count_checksum_results($output, 'errors'),
+      0,
+      "1 diff: no errors ($test)"
+   );
 
-is(
-   PerconaTest::count_checksum_results($output, 'diffs'),
-   1,
-   "1 diff: 1 diff"
-) or diag($output);
+   is(
+      PerconaTest::count_checksum_results($output, 'skipped'),
+      0,
+      "1 diff: no skips ($test)"
+   );
 
-# 11-17T13:02:54      0      1       26       1       0   0.021 test.t
-like(
-   $output,
-   qr/^\S+\s+  # ts
-      0\s+     # errors
-      1\s+     # diffs
-      26\s+    # rows
-      \d+\s+   # chunks
-      0\s+     # skipped
-      \S+\s+   # time
-      test.t$  # table
-   /xm,
-   "1 diff: it's in test.t"
-);
+   is(
+      PerconaTest::count_checksum_results($output, 'diffs'),
+      1,
+      "1 diff: 1 diff ($test)"
+   ) or diag($output);
+
+   # 11-17T13:02:54      0      1       26       1       0   0.021 test.t
+   like(
+      $output,
+      qr/^\S+\s+  # ts
+         0\s+     # errors
+         1\s+     # diffs
+         26\s+    # rows
+         \d+\s+   # chunks
+         0\s+     # skipped
+         \S+\s+   # time
+         test.t$  # table
+      /xm,
+      "1 diff: it's in test.t ($test)"
+   );
+}
 
 # #############################################################################
 # cluster, node1 -> slave, run on node1
@@ -205,33 +222,48 @@ $slave_dbh->do("update test.t set c='zebra' where c='z'");
 # https://bugs.launchpad.net/percona-toolkit/+bug/1080385
 # Cluster nodes default to ROW format because that's what Galeara
 # works best with, even though it doesn't really use binlogs.
-$output = output(
-   sub { pt_table_checksum::main(@args,
-      '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns")
-   },
-   stderr => 1,
-);
+for my $args (
+      ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
+      ["using recursion-method=cluster,hosts", '--recursion-method', 'cluster,hosts']
+   )
+{
+   my $test = shift @$args;
 
-like(
-   $output,
-   qr/replica h=127.1,P=12348 has binlog_format ROW/i,
-   "--check-binlog-format warns about slave's binlog format"
-);
+   # Wait for the slave to apply the binlogs from node1 (its master).
+   # Then change it so it's not consistent.
+   PerconaTest::wait_for_table($slave_dbh, 'test.t');
+   $sb->wait_for_slaves('cslave1');
+   $slave_dbh->do("update test.t set c='zebra' where c='z'");
 
-# Now really test that diffs on the slave are detected.
-$output = output(
-   sub { pt_table_checksum::main(@args,
-      '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns",
-      qw(--no-check-binlog-format)),
-   },
-   stderr => 1,
-);
+   $output = output(
+      sub { pt_table_checksum::main(@args,
+         @$args)
+      },
+      stderr => 1,
+   );
 
-is(
-   PerconaTest::count_checksum_results($output, 'diffs'),
-   1,
-   "Detects diffs on slave of cluster node1"
-) or diag($output);
+   like(
+      $output,
+      qr/replica h=127(?:\Q.0.0\E)?\.1,P=12348 has binlog_format ROW/i,
+      "--check-binlog-format warns about slave's binlog format ($test)"
+   );
+   
+   # Now really test that diffs on the slave are detected.
+   $output = output(
+      sub { pt_table_checksum::main(@args,
+         @$args,
+         qw(--no-check-binlog-format)),
+      },
+      stderr => 1,
+   );
+
+   is(
+      PerconaTest::count_checksum_results($output, 'diffs'),
+      1,
+      "Detects diffs on slave of cluster node1 ($test)"
+   ) or diag($output);
+
+}
 
 $slave_dbh->disconnect;
 $sb->stop_sandbox('cslave1');
@@ -267,20 +299,28 @@ is(
    "Slave is changed"
 );
 
-$output = output(
-   sub { pt_table_checksum::main(@args,
-      '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns",
-      qw(--no-check-binlog-format -d test)),
-   },
-   stderr => 1,
-);
+for my $args (
+      ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
+      ["using recursion-method=cluster,hosts", '--recursion-method', 'cluster,hosts']
+   )
+{
+   my $test = shift @$args;
 
-is(
-   PerconaTest::count_checksum_results($output, 'diffs'),
-   0,
-   "Limitation: does not detect diffs on slave of cluster node2"
-) or diag($output);
+   $output = output(
+      sub { pt_table_checksum::main(@args,
+         @$args,
+         qw(--no-check-binlog-format -d test)),
+      },
+      stderr => 1,
+   );
 
+   is(
+      PerconaTest::count_checksum_results($output, 'diffs'),
+      0,
+      "Limitation: does not detect diffs on slave of cluster node2 ($test)"
+   ) or diag($output);
+}
+   
 $slave_dbh->disconnect;
 $sb->stop_sandbox('cslave1');
 
@@ -454,96 +494,113 @@ like(
 
 like(
    $output,
-   qr/the direct replica of h=127.1,P=12349 was not found or specified/,
+   qr/the direct replica of h=$ip,P=12349 was not found or specified/,
    "Warns that direct replica of the master isn't found or specified",
 );
 
 # Use the other DSN table with all three nodes.  Now the tool should
 # give a more specific warning than that ^.
-$output = output(
-   sub { pt_table_checksum::main($master_dsn,
-      '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns",
-      qw(-d test))
-   },
-   stderr => 1,
-);
+# Originally, these tested a dsn table with all nodes; now we hijack
+# those tests to also try the autodetection
+for my $args (
+      ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
+      ["using recursion-method=cluster,hosts", '--recursion-method', 'cluster,hosts']
+   )
+{
+   my $test = shift @$args;
 
-is(
-   PerconaTest::count_checksum_results($output, 'diffs'),
-   1,
-   "...check all nodes: 1 diff"
-) or diag($output);
+   # Make a diff on node1.  If ptc is really auto-detecting node1, then it
+   # should report this diff.
+   $node1->do("set sql_log_bin=0");
+   $node1->do("update test.t set c='zebra' where c='z'");
+   $node1->do("set sql_log_bin=1");
+   
+   $output = output(
+      sub { pt_table_checksum::main($master_dsn,
+         @$args,
+         qw(-d test))
+      },
+      stderr => 1,
+   );
 
-# 11-17T13:02:54      0      1       26       1       0   0.021 test.t
-like(
-   $output,
-   qr/^\S+\s+  # ts
-      0\s+     # errors
-      1\s+     # diffs
-      26\s+    # rows
-      \d+\s+   # chunks
-      0\s+     # skipped
-      \S+\s+   # time
-      test.t$  # table
-   /xm,
-   "...check all nodes: it's in test.t"
-);
+   is(
+      PerconaTest::count_checksum_results($output, 'diffs'),
+      1,
+      "...check all nodes: 1 diff ($test)"
+   ) or diag($output);
 
-like(
-   $output,
-   qr/Diffs will only be detected if the cluster is consistent with h=127.1,P=12345 because h=127.1,P=12349/,
-   "Warns that diffs only detected if cluster consistent with direct replica",
-);
+   # 11-17T13:02:54      0      1       26       1       0   0.021 test.t
+   like(
+      $output,
+      qr/^\S+\s+  # ts
+         0\s+     # errors
+         1\s+     # diffs
+         26\s+    # rows
+         \d+\s+   # chunks
+         0\s+     # skipped
+         \S+\s+   # time
+         test.t$  # table
+      /xm,
+      "...check all nodes: it's in test.t ($test)"
+   );
 
-# Restore node1 so the cluster is consistent, but then make node2 differ.
-# ptc should NOT detect this diff because the checksum query will replicate
-# to node1, node1 isn't different, so it broadcasts the result in ROW format
-# that all is ok, which node2 gets and thus false reports.  This is why
-# those ^ warnings exist.
-$node1->do("set sql_log_bin=0");
-$node1->do("update test.t set c='z' where c='zebra'");
-$node1->do("set sql_log_bin=1");
+   like(
+      $output,
+      qr/Diffs will only be detected if the cluster is consistent with h=$ip,P=12345 because h=$ip,P=12349/,
+      "Warns that diffs only detected if cluster consistent with direct replica ($test)",
+   );
 
-$node2->do("set sql_log_bin=0");
-$node2->do("update test.t set c='zebra' where c='z'");
-$node2->do("set sql_log_bin=1");
+   # Restore node1 so the cluster is consistent, but then make node2 differ.
+   # ptc should NOT detect this diff because the checksum query will replicate
+   # to node1, node1 isn't different, so it broadcasts the result in ROW format
+   # that all is ok, which node2 gets and thus false reports.  This is why
+   # those ^ warnings exist.
+   $node1->do("set sql_log_bin=0");
+   $node1->do("update test.t set c='z' where c='zebra'");
+   $node1->do("set sql_log_bin=1");
 
-($row) = $node2->selectrow_array("select c from test.t order by c desc limit 1");
-is(
-   $row,
-   "zebra",
-   "Node2 is changed again"
-);
+   $node2->do("set sql_log_bin=0");
+   $node2->do("update test.t set c='zebra' where c='z'");
+   $node2->do("set sql_log_bin=1");
 
-($row) = $node1->selectrow_array("select c from test.t order by c desc limit 1");
-is(
-   $row,
-   "z",
-   "Node1 not changed again"
-);
+   ($row) = $node2->selectrow_array("select c from test.t order by c desc limit 1");
+   is(
+      $row,
+      "zebra",
+      "Node2 is changed again ($test)"
+   );
 
-($row) = $node3->selectrow_array("select c from test.t order by c desc limit 1");
-is(
-   $row,
-   "z",
-   "Node3 not changed again"
-);
+   ($row) = $node1->selectrow_array("select c from test.t order by c desc limit 1");
+   is(
+      $row,
+      "z",
+      "Node1 not changed again ($test)"
+   );
 
-# the other DSN table with all three nodes, but it won't matter because
-# node1 is going to broadcast the false-positive that there are no diffs.
-$output = output(
-   sub { pt_table_checksum::main($master_dsn,
-      '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns",
-      qw(-d test))
-   },
-   stderr => 1,
-);
+   ($row) = $node3->selectrow_array("select c from test.t order by c desc limit 1");
+   is(
+      $row,
+      "z",
+      "Node3 not changed again ($test)"
+   );
 
-is(
-   PerconaTest::count_checksum_results($output, 'diffs'),
-   0,
-   "Limitation: diff not on direct replica not detected"
-) or diag($output);
+   # the other DSN table with all three nodes, but it won't matter because
+   # node1 is going to broadcast the false-positive that there are no diffs.
+   $output = output(
+      sub { pt_table_checksum::main($master_dsn,
+         @$args,
+         qw(-d test))
+      },
+      stderr => 1,
+   );
+
+   is(
+      PerconaTest::count_checksum_results($output, 'diffs'),
+      0,
+      "Limitation: diff not on direct replica not detected ($test)"
+   ) or diag($output);
+
+}
 
 # ###########################################################################
 # Be sure to stop the slave on node1, else further test will die with:
@@ -587,13 +644,13 @@ $output = output(
 
 like(
    $output,
-   qr/h=127.1,P=12345 is in cluster pt_sandbox_cluster/,
+   qr/h=127(?:\Q.0.0\E)?.1,P=12345 is in cluster pt_sandbox_cluster/,
    "Detects that node1 is in pt_sandbox_cluster"
 );
 
 like(
    $output,
-   qr/h=127.1,P=2900 is in cluster cluster2/,
+   qr/h=127(?:\Q.0.0\E)?.1,P=2900 is in cluster cluster2/,
    "Detects that node4 is in cluster2"
 );
 
@@ -602,7 +659,7 @@ unlike(
    qr/test/,
    "Different clusters, no results"
 );
-
+   
 $sb->stop_sandbox(qw(node4 node5 node6));
 
 # Restore the DSN table in case there are more tests.
