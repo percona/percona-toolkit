@@ -335,7 +335,11 @@ is_deeply(
    "New query2_2 is active, starting at 05:08"
 );
 
-#
+
+# ###########################################################################
+# pt-query-digest --processlist: Duplicate entries for replication thread
+# https://bugs.launchpad.net/percona-toolkit/+bug/1156901
+# ###########################################################################
 
 # This is basically the same thing as above, but we're pretending to
 # be a repl thread, so it should behave differently.
@@ -374,9 +378,6 @@ is(
    'query2_2 has not fired yet',
 );
 
-# In this sample, the "same" query is running one second later and this time it
-# seems to have a start time of 5 secs later, which is not enough to be a new
-# query.
 parse_n_times(
    1,
    code  => sub {
@@ -391,10 +392,9 @@ parse_n_times(
 is(
    scalar @events,
    0,
-      'query2_2 has not fired yet',
+      'query2_2 has not fired yet, same as with normal queries',
 );
 
-# And so as a result, query2_2 has NOT fired, but the query is still active.
 is_deeply(
    $pl->_get_active_cxn(),
    {
@@ -409,7 +409,7 @@ is_deeply(
    'Cxn 2 still active with query starting at 05:03',
 );
 
-# But wait!  There's another!  And this time we catch it!
+# Same as above but five seconds and a half later
 parse_n_times(
    1,
    code  => sub {
@@ -427,8 +427,6 @@ is_deeply(
    'Original query2_2 not fired because we are a repl thrad',
 );
 
-# And so as a result, query2_2 has fired and the prev array contains the "new"
-# query2_2.
 is_deeply(
    $pl->_get_active_cxn(),
    {
@@ -440,7 +438,7 @@ is_deeply(
          { executing => 5.5 },
       ],
    },
-   "Old query2_2 is active"
+   "Old query2_2 is active because we're a repl thread, but executing has updated"
 );
 
 # ###########################################################################
