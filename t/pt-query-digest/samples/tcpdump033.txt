@@ -56,7 +56,7 @@ select * from d.t where name="adam"\G
 # Warning coun   0       0       0       0       0       0       0       0
 # String:
 # Hosts        127.0.0.1
-# Statement id 2 (1/20%), 3 (1/20%), 4 (1/20%), 5 (1/20%), 6 (1/20%)
+# Statement id 2 (1/20%), 3 (1/20%), 4 (1/20%), 5 (1/20%)... 1 more
 # Query_time distribution
 #   1us
 #  10us
