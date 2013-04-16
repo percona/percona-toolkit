@@ -73,6 +73,8 @@ sub get_slaves {
    my $dp      = $self->{DSNParser};
    my $methods = $self->_resolve_recursion_methods($args{dsn});
 
+   return $slaves unless @$methods;
+   
    if ( grep { m/processlist|hosts/i } @$methods ) {
       my @required_args = qw(dbh dsn);
       foreach my $arg ( @required_args ) {
@@ -114,7 +116,6 @@ sub _resolve_recursion_methods {
    my ($self, $dsn) = @_;
    my $o = $self->{OptionParser};
    if ( $o->got('recursion-method') ) {
-      # Use whatever the user explicitly gave on the command line.
       return $o->get('recursion-method');
    }
    elsif ( $dsn && ($dsn->{P} || 3306) != 3306 ) {
