@@ -1759,14 +1759,14 @@ my $out = output(sub {
          $protocol->parse_event(%parser_args, event => $p);
       }
       close $fh;
-});
+}, stderr => 1);
 
 like(
    $out,
    qr/had errors, will save them in /,
    "Saves errors by default"
 );
-
+      
 close $protocol->{errors_fh}; # flush the handle
 
 like(
@@ -1775,6 +1775,53 @@ like(
    "The right error is saved"
 );
 
+$out = output(sub {
+      open my $fh, "<", "$sample/tcpdump032.txt" or die "Cannot open tcpdump032.txt: $OS_ERROR";
+      my %parser_args = (
+         next_event => sub { return <$fh>; },
+         tell       => sub { return tell($fh);  },
+      );
+      while ( my $p = $tcpdump->parse_event(%parser_args) ) {
+         $protocol->parse_event(%parser_args, event => $p);
+      }
+      close $fh;
+}, stderr => 1);
+
+is(
+   $out,
+   '',
+   "No warnings the second time around"
+);
+      
+{
+$protocol = new MySQLProtocolParser(server=>'127.0.0.1',port=>'3306');
+# ..but allow setting the filename through an ENV var:
+local $ENV{PERCONA_TOOLKIT_TCP_ERRORS_FILE} = '/dev/null';
+
+$out = output(sub {
+      open my $fh, "<", "$sample/tcpdump032.txt" or die "Cannot open tcpdump032.txt: $OS_ERROR";
+      my %parser_args = (
+         next_event => sub { return <$fh>; },
+         tell       => sub { return tell($fh);  },
+      );
+      while ( my $p = $tcpdump->parse_event(%parser_args) ) {
+         $protocol->parse_event(%parser_args, event => $p);
+      }
+      close $fh;
+}, stderr => 1);
+
+like(
+   $out,
+   qr/had errors, will save them in /,
+   "Still tries saving the errors with PERCONA_TOOLKIT_TCP_ERRORS_FILE"
+);
+
+is(
+   $protocol->{errors_file},
+   '/dev/null',
+   "...but uses the provided file"
+);
+}
 # #############################################################################
 # Done.
 # #############################################################################
