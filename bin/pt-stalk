@@ -1255,7 +1255,7 @@ stalk() {
             cycles_true=0
          fi
 
-         local msg="Check results: $OPT_VARIABLE=$value, matched=${matched:-no}, cycles_true=$cycles_true"
+         local msg="Check results: $OPT_FUNCTION($OPT_VARIABLE)=$value, matched=${matched:-no}, cycles_true=$cycles_true"
          if [ "$matched" ]; then
             log "$msg"
          else
