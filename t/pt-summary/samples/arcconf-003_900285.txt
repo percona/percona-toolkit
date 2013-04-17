@@ -1,0 +1,228 @@
+# arcconf getconfig 1
+Controllers found: 1
+----------------------------------------------------------------------
+Controller information
+----------------------------------------------------------------------
+   Controller Status : Optimal
+   Channel description : SAS/SATA
+   Controller Model : Adaptec 5805Z
+   Controller Serial Number : 0A11115148F
+   Physical Slot : 2
+   Temperature : 68 C/ 154 F (Normal)
+   Installed memory : 512 MB
+   Copyback : Disabled
+   Background consistency check : Disabled
+   Automatic Failover : Enabled
+   Global task priority : High
+   Performance Mode : Default/Dynamic
+   Stayawake period : Disabled
+   Spinup limit internal drives : 0
+   Spinup limit external drives : 0
+   Defunct disk drive count : 0
+   Logical devices/Failed/Degraded : 2/0/0
+   SSDs assigned to MaxIQ Cache pool : 0
+   Maximum SSDs allowed in MaxIQ Cache pool : 8
+   MaxIQ Read Cache Pool Size : 0.000 GB
+   MaxIQ cache fetch rate : 0
+   MaxIQ Cache Read, Write Balance Factor : 3,1
+   NCQ status : Enabled
+   Statistics data collection mode : Enabled
+   --------------------------------------------------------
+
+   --------------------------------------------------------
+   Controller Version Information
+   --------------------------------------------------------
+   BIOS : 5.2-0 (18252)
+   Firmware : 5.2-0 (18252)
+   Driver : 1.1-7 (28000)
+   Boot Flash : 5.2-0 (18252)
+   --------------------------------------------------------
+   Controller ZMM Information
+   --------------------------------------------------------
+   Status : ZMM Optimal
+
+----------------------------------------------------------------------
+Logical device information
+----------------------------------------------------------------------
+Logical device number 0
+   Logical device name : RAID10-A
+   RAID level : 10
+   Status of logical device : Optimal
+   Size : 121790 MB
+   Stripe-unit size : 256 KB
+   Read-cache mode : Enabled
+   MaxIQ preferred cache setting : Enabled
+   MaxIQ cache setting : Disabled
+   Write-cache mode : Enabled (write-back)
+   Write-cache setting : Enabled (write-back) when protected by battery/ZMM
+   Partitioned : Yes
+   Protected by Hot-Spare : No
+   Bootable : Yes
+   Failed stripes : No
+   Power settings : Disabled
+   --------------------------------------------------------
+   Logical device segment information
+   --------------------------------------------------------
+   Group 0, Segment 0 : Present (0,0) CVEM939500TN064KGN
+   Group 0, Segment 1 : Present (0,1) CVEM940200NT064KGN
+   Group 1, Segment 0 : Present (0,2) CVEM004300A4064KGN
+   Group 1, Segment 1 : Present (0,3) CVEM9214000F064KGN
+
+Logical device number 1
+   Logical device name : RAID1-A
+   RAID level : 1
+   Status of logical device : Optimal
+   Size : 285686 MB
+   Read-cache mode : Enabled
+   MaxIQ preferred cache setting : Enabled
+   MaxIQ cache setting : Disabled
+   Write-cache mode : Enabled (write-back)
+   Write-cache setting : Enabled (write-back) when protected by battery/ZMM
+   Partitioned : Yes
+   Protected by Hot-Spare : No
+   Bootable : No
+   Failed stripes : No
+   Power settings : Disabled
+   --------------------------------------------------------
+   Logical device segment information
+   --------------------------------------------------------
+   Segment 0 : Present (0,4) 6SJ1CG1A0000N1407G9E
+   Segment 1 : Present (0,5) 6SJ1F1XW0000N1407EXC
+
+----------------------------------------------------------------------
+Physical Device information
+----------------------------------------------------------------------
+      Device #0
+         Device is a Hard drive
+         State : Online
+         Supported : Yes
+         Transfer Speed : SATA 3.0 Gb/s
+         Reported Channel,Device(T:L) : 0,0(0:0)
+         Reported Location : Connector 0, Device 0
+         Vendor : INTEL
+         Model : SSDSA2SH064G1GC
+         Firmware : 045C8790
+         Serial number : CVEM939500TN064KGN
+         Size : 61057 MB
+         Write Cache : Enabled (write-back)
+         FRU : None
+         S.M.A.R.T. : No
+         S.M.A.R.T. warnings : 0
+         Power State : Full rpm
+         Supported Power States : Full rpm,Powered off
+         SSD : Yes
+         MaxIQ Cache Capable : No
+         MaxIQ Cache Assigned : No
+         NCQ status : Enabled
+      Device #1
+         Device is a Hard drive
+         State : Online
+         Supported : Yes
+         Transfer Speed : SATA 3.0 Gb/s
+         Reported Channel,Device(T:L) : 0,1(1:0)
+         Reported Location : Connector 0, Device 1
+         Vendor : INTEL
+         Model : SSDSA2SH064G1GC
+         Firmware : 045C8860
+         Serial number : CVEM940200NT064KGN
+         Size : 61057 MB
+         Write Cache : Enabled (write-back)
+         FRU : None
+         S.M.A.R.T. : No
+         S.M.A.R.T. warnings : 0
+         Power State : Full rpm
+         Supported Power States : Full rpm,Powered off
+         SSD : Yes
+         MaxIQ Cache Capable : No
+         MaxIQ Cache Assigned : No
+         NCQ status : Enabled
+      Device #2
+         Device is a Hard drive
+         State : Online
+         Supported : Yes
+         Transfer Speed : SATA 3.0 Gb/s
+         Reported Channel,Device(T:L) : 0,2(2:0)
+         Reported Location : Connector 0, Device 2
+         Vendor : INTEL
+         Model : SSDSA2SH064G1GC
+         Firmware : 045C8860
+         Serial number : CVEM004300A4064KGN
+         Size : 61057 MB
+         Write Cache : Enabled (write-back)
+         FRU : None
+         S.M.A.R.T. : No
+         S.M.A.R.T. warnings : 0
+         Power State : Full rpm
+         Supported Power States : Full rpm,Powered off
+         SSD : Yes
+         MaxIQ Cache Capable : No
+         MaxIQ Cache Assigned : No
+         NCQ status : Enabled
+      Device #3
+         Device is a Hard drive
+         State : Online
+         Supported : Yes
+         Transfer Speed : SATA 3.0 Gb/s
+         Reported Channel,Device(T:L) : 0,3(3:0)
+         Reported Location : Connector 0, Device 3
+         Vendor : INTEL
+         Model : SSDSA2SH064G1GC
+         Firmware : 045C8860
+         Serial number : CVEM9214000F064KGN
+         Size : 61057 MB
+         Write Cache : Enabled (write-back)
+         FRU : None
+         S.M.A.R.T. : No
+         S.M.A.R.T. warnings : 0
+         Power State : Full rpm
+         Supported Power States : Full rpm,Powered off
+         SSD : Yes
+         MaxIQ Cache Capable : No
+         MaxIQ Cache Assigned : No
+         NCQ status : Enabled
+      Device #4
+         Device is a Hard drive
+         State : Online
+         Supported : Yes
+         Transfer Speed : SAS 3.0 Gb/s
+         Reported Channel,Device(T:L) : 0,4(4:0)
+         Reported Location : Connector 1, Device 0
+         Vendor : SEAGATE
+         Model : ST3300657SS
+         Firmware : 0008
+         Serial number : 6SJ1CG1A0000N1407G9E
+         World-wide name : 5000C50039EE5900
+         Size : 286102 MB
+         Write Cache : Enabled (write-back)
+         FRU : None
+         S.M.A.R.T. : No
+         S.M.A.R.T. warnings : 0
+         Power State : Full rpm
+         Supported Power States : Full rpm,Powered off
+         SSD : No
+         MaxIQ Cache Capable : No
+         MaxIQ Cache Assigned : No
+      Device #5
+         Device is a Hard drive
+         State : Online
+         Supported : Yes
+         Transfer Speed : SAS 3.0 Gb/s
+         Reported Channel,Device(T:L) : 0,5(5:0)
+         Reported Location : Connector 1, Device 1
+         Vendor : SEAGATE
+         Model : ST3300657SS
+         Firmware : 0008
+         Serial number : 6SJ1F1XW0000N1407EXC
+         World-wide name : 5000C50039EE6A38
+         Size : 286102 MB
+         Write Cache : Enabled (write-back)
+         FRU : None
+         S.M.A.R.T. : No
+         S.M.A.R.T. warnings : 0
+         Power State : Full rpm
+         Supported Power States : Full rpm,Powered off
+         SSD : No
+         MaxIQ Cache Capable : No
+         MaxIQ Cache Assigned : No
+
+Command completed successfully.

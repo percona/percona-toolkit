@@ -1,0 +1,65 @@
+#!/usr/bin/env perl
+
+# This program is copyright 2009-2011 Percona Inc.
+# Feedback and improvements are welcome.
+#
+# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+# systems, you can issue `man perlgpl' or `man perlartistic' to read these
+# licenses.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+# Place, Suite 330, Boston, MA  02111-1307  USA.
+
+# This program is intended to be run after loading Sakila into our test
+# database, when starting the "sandbox" MySQL instances. It will store the
+# checksums of all of the mysql and sakila tables into a magical
+# percona_test.checksums table on instance 12345. Afterwards, one can verify the
+# integrity of all of these tables by running
+# lib/Sandbox.pm::verify_test_data_integrity() which will checksum the master
+# and all of the slaves, and make sure all are OK.
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use DBI;
+
+my $dbh = DBI->connect(
+   'DBI:mysql:;host=127.0.0.1;port=12345;', 'msandbox', 'msandbox',
+   {
+      AutoCommit         => 1,
+      RaiseError         => 1,
+      PrintError         => 1,
+      ShowErrorStatement => 1,
+   });
+
+$dbh->do("CREATE TABLE IF NOT EXISTS percona_test.load_data (i int)");
+
+`echo 1 > /tmp/load_data_test.$$`;
+
+eval {
+   $dbh->do("LOAD DATA LOCAL INFILE '/tmp/load_data_test.$$' INTO TABLE percona_test.load_data");
+};
+
+if ( $EVAL_ERROR ) {
+   $dbh->do("INSERT INTO percona_test.load_data (i) VALUES (0)");
+}
+
+unlink "/tmp/load_data_test.$$";
+
+my ($val) = $dbh->selectrow_array("SELECT i FROM percona_test.load_data");
+
+if ( ($val || 0) == 1 ) {
+   print "LOAD DATA LOCAL INFILE is enabled\n";
+}
+else {
+   print "LOAD DATA LOCAL INFILE is disabled\n"
+}
+
+exit;

@@ -9,8 +9,9 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 72;
+use Test::More;
 
+use ProtocolParser;
 use MySQLProtocolParser;
 use TcpdumpParser;
 use PerconaTest;
@@ -38,7 +39,6 @@ test_protocol_parser(
          pos_in_log    => 0,
          bytes         => length('select "hello world" as greeting'),
          cmd           => 'Query',
-         Error_no      => 'none',
          Rows_affected => 0,
          Warning_count      => 0,
          No_good_index_used => 'No',
@@ -66,7 +66,6 @@ test_protocol_parser(
          pos_in_log => 1470,
          bytes      => length('administrator command: Connect'),
          cmd        => 'Admin',
-         Error_no   => 'none',
          Rows_affected => 0,
          Warning_count      => 0,
          No_good_index_used => 'No',
@@ -84,7 +83,6 @@ test_protocol_parser(
          pos_in_log => 2449,
          ts         => '090412 11:00:13.118643',
          user       => 'msandbox',
-         Error_no   => 'none',
          Rows_affected => 0,
          Warning_count      => 0,
          No_good_index_used => 'No',
@@ -102,7 +100,6 @@ test_protocol_parser(
          pos_in_log => 3298,
          ts         => '090412 11:00:13.119079',
          user       => 'msandbox',
-         Error_no   => 'none',
          Rows_affected => 0,
          Warning_count      => 0,
          No_good_index_used => 'No',
@@ -120,7 +117,6 @@ test_protocol_parser(
          pos_in_log => '4186',
          ts         => '090412 11:00:13.119487',
          user       => 'msandbox',
-         Error_no   => 'none',
          Rows_affected => 0,
          Warning_count      => 0,
          No_good_index_used => 'No',
@@ -177,7 +173,7 @@ test_protocol_parser(
          pos_in_log => 0,
          bytes      => length('select 5 from foo'),
          cmd        => 'Query',
-         Error_no   => "#1046",
+         Error_no   => "1046",
          Error_msg  => 'No database selected',
          Rows_affected => 0,
          Warning_count      => 0,
@@ -194,7 +190,7 @@ test_protocol_parser(
    protocol => $protocol,
    file     => "$sample/tcpdump005.txt",
    result   => [
-      {  Error_no   => 'none',
+      {
          Rows_affected => 1,
          Query_time => '0.000435',
          Thread_id  => 4294967296,
@@ -212,7 +208,7 @@ test_protocol_parser(
          No_good_index_used => 'No',
          No_index_used      => 'No',
       },
-      {  Error_no   => 'none',
+      {
          Rows_affected => 2,
          Query_time => '0.000565',
          Thread_id  => 4294967296,
@@ -252,7 +248,6 @@ test_protocol_parser(
          pos_in_log => 0,
          bytes      => length('select * from t'),
          cmd        => 'Query',
-         Error_no   => 'none',
          Rows_affected      => 0,
          Warning_count      => 0,
          No_good_index_used => 'No',
@@ -280,7 +275,6 @@ test_protocol_parser(
          pos_in_log => 0,
          bytes      => length('insert into t values(current_date)'),
          cmd        => 'Query',
-         Error_no   => 'none',
          Rows_affected      => 1,
          Warning_count      => 1,
          No_good_index_used => 'No',
@@ -292,16 +286,9 @@ test_protocol_parser(
 # #############################################################################
 # Check the individual packet parsing subs.
 # #############################################################################
-MySQLProtocolParser->import(qw(
-   parse_error_packet
-   parse_ok_packet
-   parse_server_handshake_packet
-   parse_client_handshake_packet
-   parse_com_packet
-));
  
 is_deeply(
-   parse_error_packet(load_data("t/lib/samples/mysql_proto_001.txt")),
+   MySQLProtocolParser::parse_error_packet(load_data("t/lib/samples/mysql_proto_001.txt")),
    {
       errno    => '1046',
       sqlstate => '#3D000',
@@ -311,7 +298,7 @@ is_deeply(
 );
 
 is_deeply(
-   parse_ok_packet('010002000100'),
+   MySQLProtocolParser::parse_ok_packet('010002000100'),
    {
       affected_rows => 1,
       insert_id     => 0,
@@ -323,7 +310,7 @@ is_deeply(
 );
 
 is_deeply(
-   parse_server_handshake_packet(load_data("t/lib/samples/mysql_proto_002.txt")),
+   MySQLProtocolParser::parse_server_handshake_packet(load_data("t/lib/samples/mysql_proto_002.txt")),
    {
       thread_id      => '9',
       server_version => '5.0.67-0ubuntu6-log',
@@ -352,7 +339,7 @@ is_deeply(
 );
 
 is_deeply(
-   parse_client_handshake_packet(load_data("t/lib/samples/mysql_proto_003.txt")),
+   MySQLProtocolParser::parse_client_handshake_packet(load_data("t/lib/samples/mysql_proto_003.txt")),
    {
       db    => 'mysql',
       user  => 'msandbox',
@@ -381,7 +368,7 @@ is_deeply(
 );
 
 is_deeply(
-   parse_com_packet('0373686f77207761726e696e67738d2dacbc', 14),
+   MySQLProtocolParser::parse_com_packet('0373686f77207761726e696e67738d2dacbc', 14),
    {
       code => '03',
       com  => 'COM_QUERY',
@@ -412,7 +399,6 @@ test_protocol_parser(
          pos_in_log    => 0,
          bytes         => length('select "hello world" as greeting'),
          cmd           => 'Query',
-         Error_no      => 'none',
          Rows_affected => 0,
          Warning_count      => 0,
          No_good_index_used => 'No',
@@ -434,7 +420,7 @@ test_protocol_parser(
    file     => "$sample/tcpdump013.txt",
    desc     => 'old password and compression',
    result   => [
-      {  Error_no => 'none',
+      {
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.034355',
@@ -466,7 +452,6 @@ test_protocol_parser(
    desc     => 'in-stream compression detection',
    result   => [
       {
-         Error_no           => 'none',
          No_good_index_used => 'No',
          No_index_used      => 'No',
          Query_time         => '0.001375',
@@ -503,7 +488,6 @@ SKIP: {
       desc     => 'compressed data',
       result   => [
          {
-            Error_no => 'none',
             No_good_index_used => 'No',
             No_index_used => 'No',
             Query_time => '0.006415',
@@ -522,7 +506,6 @@ SKIP: {
             user => 'msandbox',
          },
          {
-            Error_no => 'none',
             No_good_index_used => 'No',
             No_index_used => 'Yes',
             Query_time => '0.002884',
@@ -541,7 +524,6 @@ SKIP: {
             user => 'msandbox',
          },
          {
-            Error_no => 'none',
             No_good_index_used => 'No',
             No_index_used => 'No',
             Query_time => '0.000000',
@@ -574,7 +556,6 @@ test_protocol_parser(
    desc     => 'TCP retransmission',
    result   => [
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.001000',
@@ -607,7 +588,6 @@ test_protocol_parser(
    desc     => 'Multiple servers',
    result   => [
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000206',
@@ -626,7 +606,6 @@ test_protocol_parser(
          user => undef,
       },
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000203',
@@ -656,7 +635,6 @@ test_protocol_parser(
    desc     => 'Multiple servers but watch only one',
    result   => [
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000206',
@@ -713,7 +691,6 @@ test_protocol_parser(
    desc     => 'prepared statements, simple, no NULL',
    result   => [
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000286',
@@ -733,7 +710,6 @@ test_protocol_parser(
          Statement_id => 2,
       },
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'Yes',
          Query_time => '0.000281',
@@ -753,7 +729,6 @@ test_protocol_parser(
          Statement_id => 2,
       },
       {
-         Error_no => 'none',
           No_good_index_used => 'No',
           No_index_used => 'No',
           Query_time => '0.000000',
@@ -782,7 +757,6 @@ test_protocol_parser(
    desc     => 'prepared statements, NULL value',
    result   => [
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000303',
@@ -802,7 +776,6 @@ test_protocol_parser(
          Statement_id => 2,
       },
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000186',
@@ -832,7 +805,6 @@ test_protocol_parser(
    desc     => 'prepared statements, string, char and float',
    result   => [
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000315',
@@ -852,7 +824,6 @@ test_protocol_parser(
          Statement_id => 2,
       },
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000249',
@@ -882,7 +853,6 @@ test_protocol_parser(
    desc     => 'prepared statements, all NULL',
    result   => [
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000278',
@@ -902,7 +872,6 @@ test_protocol_parser(
          Statement_id => 2,
       },
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000159',
@@ -932,7 +901,6 @@ test_protocol_parser(
    desc     => 'prepared statements, no params',
    result   => [
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000268',
@@ -952,7 +920,6 @@ test_protocol_parser(
          Statement_id => 2,
       },
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'Yes',
          Query_time => '0.000234',
@@ -982,7 +949,6 @@ test_protocol_parser(
    desc     => 'prepared statements, close statement',
    result   => [
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000000',
@@ -1011,7 +977,6 @@ test_protocol_parser(
    desc     => 'prepared statements, reset statement',
    result   => [
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000023',
@@ -1041,7 +1006,6 @@ test_protocol_parser(
    desc     => 'prepared statements, multiple exec, new param',
    result => [
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000292',
@@ -1061,7 +1025,6 @@ test_protocol_parser(
          user => undef
       },
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'Yes',
          Query_time => '0.000254',
@@ -1081,7 +1044,6 @@ test_protocol_parser(
          user => undef
       },
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'Yes',
          Query_time => '0.000190',
@@ -1101,7 +1063,6 @@ test_protocol_parser(
          user => undef
       },
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'Yes',
          Query_time => '0.000166',
@@ -1131,7 +1092,6 @@ test_protocol_parser(
    desc     => 'prepared statements, real param types',
    result => [
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000221',
@@ -1151,7 +1111,6 @@ test_protocol_parser(
          user => undef
       },
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000203',
@@ -1171,7 +1130,6 @@ test_protocol_parser(
          user => undef
       },
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000000',
@@ -1190,7 +1148,6 @@ test_protocol_parser(
          user => undef
       },
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000000',
@@ -1219,7 +1176,6 @@ test_protocol_parser(
    desc     => 'prepared statements, ok response to execute',
    result => [
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000046',
@@ -1239,7 +1195,6 @@ test_protocol_parser(
          user => undef
       },
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000024',
@@ -1269,7 +1224,6 @@ test_protocol_parser(
    desc     => 'prepared statements, NULL bitmap',
    result => [
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000288',
@@ -1289,7 +1243,6 @@ test_protocol_parser(
          user => undef
       },
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000322',
@@ -1315,6 +1268,7 @@ test_protocol_parser(
 # Issue 761: mk-query-digest --tcpdump does not handle incomplete packets
 # #############################################################################
 $protocol = new MySQLProtocolParser(server=>'127.0.0.1',port=>'3306');
+$protocol->{_no_save_error} = 1;
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -1322,7 +1276,6 @@ test_protocol_parser(
    desc     => 'issue 761',
    result => [
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000431',
@@ -1354,7 +1307,6 @@ test_protocol_parser(
    desc     => 'issue 760',
    result   => [
       {
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000430',
@@ -1397,7 +1349,6 @@ test_protocol_parser(
          pos_in_log => 1470,
          bytes      => length('administrator command: Connect'),
          cmd        => 'Admin',
-         Error_no   => 'none',
          Rows_affected => 0,
          Warning_count      => 0,
          No_good_index_used => 'No',
@@ -1415,7 +1366,6 @@ test_protocol_parser(
          pos_in_log => 2449,
          ts         => '090412 11:00:13.119079',
          user       => 'msandbox',
-         Error_no   => 'none',
          Rows_affected => 0,
          Warning_count      => 0,
          No_good_index_used => 'No',
@@ -1433,7 +1383,6 @@ test_protocol_parser(
          pos_in_log => 3337,
          ts         => '090412 11:00:13.119487',
          user       => 'msandbox',
-         Error_no   => 'none',
          Rows_affected => 0,
          Warning_count      => 0,
          No_good_index_used => 'No',
@@ -1441,7 +1390,6 @@ test_protocol_parser(
       },
       # port reused...      
       {  ts => '090412 12:00:00.800000',
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.700000',
@@ -1459,7 +1407,6 @@ test_protocol_parser(
          user => 'msandbox',
       },
       {  ts => '090412 12:00:01.000000',
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.100000',
@@ -1477,7 +1424,6 @@ test_protocol_parser(
          user => 'msandbox',
       },
       {  ts => '090412 12:00:01.100000',
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000000',
@@ -1498,6 +1444,7 @@ test_protocol_parser(
 );
 
 $protocol = new MySQLProtocolParser();
+$protocol->{_no_save_error} = 1;
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -1516,7 +1463,6 @@ test_protocol_parser(
          pos_in_log => 1470,
          bytes      => length('administrator command: Connect'),
          cmd        => 'Admin',
-         Error_no   => 'none',
          Rows_affected => 0,
          Warning_count      => 0,
          No_good_index_used => 'No',
@@ -1524,7 +1470,6 @@ test_protocol_parser(
       },
       # port reused...      
       {  ts => '090412 12:00:00.800000',
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.700000',
@@ -1542,7 +1487,6 @@ test_protocol_parser(
          user => 'msandbox',
       },
       {  ts => '090412 12:00:01.000000',
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.100000',
@@ -1560,7 +1504,6 @@ test_protocol_parser(
          user => 'msandbox',
       },
       {  ts => '090412 12:00:01.100000',
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000000',
@@ -1581,6 +1524,7 @@ test_protocol_parser(
 );
 
 $protocol = new MySQLProtocolParser();
+$protocol->{_no_save_error} = 1;
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -1588,7 +1532,6 @@ test_protocol_parser(
    desc     => 'no server ok (issue 794)',
    result   => [
       {  ts => '090412 12:00:01.000000',
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '0.000000',
@@ -1606,7 +1549,6 @@ test_protocol_parser(
          user => undef
       },
       {  ts => '090412 12:00:03.000000',
-         Error_no => 'none',
          No_good_index_used => 'No',
          No_index_used => 'No',
          Query_time => '1.000000',
@@ -1631,6 +1573,7 @@ test_protocol_parser(
 # client query
 # #############################################################################
 $protocol = new MySQLProtocolParser(server => '127.0.0.1',port=>'12345');
+$protocol->{_no_save_error} = 1;
 $e = test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -1650,6 +1593,7 @@ $protocol = new MySQLProtocolParser(
    server => '127.0.0.1',
    port   => '3306',
 );
+$protocol->{_no_save_error} = 1;
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -1659,7 +1603,7 @@ test_protocol_parser(
    [
       {
          Error_msg          => "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '' at line 1",
-         Error_no           => '#1064',
+         Error_no           => '1064',
          No_good_index_used => 'No',
          No_index_used      => 'No',
          Query_time         => '0.000316',
@@ -1679,7 +1623,7 @@ test_protocol_parser(
       },
       {
          Error_msg          => 'Unknown system variable \'nono\'',
-         Error_no           => '#1193',
+         Error_no           => '1193',
          No_good_index_used => 'No',
          No_index_used      => 'No',
          Query_time         => '0.000329',
@@ -1701,6 +1645,187 @@ test_protocol_parser(
 );
 
 # #############################################################################
+# Bug 1103045: pt-query-digest fails to parse non-SQL errors
+# https://bugs.launchpad.net/percona-toolkit/+bug/1103045
+# #############################################################################
+
+$protocol = new MySQLProtocolParser(
+   server => '127.0.0.1',
+   port   => '12345',
+);
+
+test_protocol_parser(
+   parser   => $tcpdump,
+   protocol => $protocol,
+   file     => "$sample/tcpdump043.txt",
+   desc     => 'Bad connection',
+   result =>
+   [
+      {
+         Error_msg          => 'Got packets out of order',
+         Error_no           => 1156,
+         No_good_index_used => 'No',
+         No_index_used      => 'No',
+         Query_time         => '3.536306',
+         Rows_affected      => 0,
+         Thread_id          => 27,
+         Warning_count      => 0,
+         arg                => 'administrator command: Connect',
+         bytes              => 30,
+         cmd                => 'Admin',
+         db                 => undef,
+         host               => '127.0.0.1',
+         ip                 => '127.0.0.1',
+         port               => '62160',
+         pos_in_log         => undef,
+         ts                 => '130124 13:03:28.672987',
+         user               => undef,
+      }
+   ],
+);
+
+test_protocol_parser(
+   parser   => $tcpdump,
+   protocol => $protocol,
+   file     => "$sample/tcpdump042.txt",
+   desc     => 'Client went away during handshake',
+   result   => [
+      {
+         No_good_index_used => 'No',
+         No_index_used     => 'No',
+         Query_time        => '9.998411',
+         Rows_affected     => 0,
+         Thread_id         => 24,
+         Warning_count     => 0,
+         arg               => 'administrator command: Connect',
+         bytes             => 30,
+         cmd               => 'Admin',
+         db                => undef,
+         host              => '127.0.0.1',
+         ip                => '127.0.0.1',
+         port              => '62133',
+         pos_in_log        => undef,
+         ts                => '130124 12:55:48.274417',
+         user              => undef,
+         Error_msg         => 'Client closed connection during handshake',
+      }
+   ],
+);
+
+$protocol = new MySQLProtocolParser(
+   server => '100.0.0.1',
+);
+
+test_protocol_parser(
+   parser   => $tcpdump,
+   protocol => $protocol,
+   file     => "$sample/tcpdump044.txt",
+   desc     => 'Client aborted connection (bug 1103045)',
+   result   => [
+      {
+         No_good_index_used   => 'No',
+         No_index_used        => 'No',
+         Query_time           => '3.819507',
+         Rows_affected        => 0,
+         Thread_id            => 13,
+         Warning_count        => 0,
+         arg                  => 'administrator command: Connect',
+         bytes                => 30,
+         cmd                  => 'Admin',
+         db                   => undef,
+         host                 => '100.0.0.2',
+         ip                   => '100.0.0.2',
+         port                 => '44432',
+         pos_in_log           => undef,
+         ts                   => '130122 09:55:57.793375',
+         user                 => undef,
+         Error_msg            => 'Client closed connection during handshake',
+      },
+   ],
+);
+
+# #############################################################################
+# Save errors by default
+# #############################################################################
+$protocol = new MySQLProtocolParser(server=>'127.0.0.1',port=>'3306');
+
+my $out = output(sub {
+      open my $fh, "<", "$sample/tcpdump032.txt" or die "Cannot open tcpdump032.txt: $OS_ERROR";
+      my %parser_args = (
+         next_event => sub { return <$fh>; },
+         tell       => sub { return tell($fh);  },
+      );
+      while ( my $p = $tcpdump->parse_event(%parser_args) ) {
+         $protocol->parse_event(%parser_args, event => $p);
+      }
+      close $fh;
+}, stderr => 1);
+
+like(
+   $out,
+   qr/had errors, will save them in /,
+   "Saves errors by default"
+);
+      
+close $protocol->{errors_fh}; # flush the handle
+
+like(
+   slurp_file($protocol->{errors_file}),
+   qr/got server response before full buffer/,
+   "The right error is saved"
+);
+
+$out = output(sub {
+      open my $fh, "<", "$sample/tcpdump032.txt" or die "Cannot open tcpdump032.txt: $OS_ERROR";
+      my %parser_args = (
+         next_event => sub { return <$fh>; },
+         tell       => sub { return tell($fh);  },
+      );
+      while ( my $p = $tcpdump->parse_event(%parser_args) ) {
+         $protocol->parse_event(%parser_args, event => $p);
+      }
+      close $fh;
+}, stderr => 1);
+
+is(
+   $out,
+   '',
+   "No warnings the second time around"
+);
+      
+{
+$protocol = new MySQLProtocolParser(server=>'127.0.0.1',port=>'3306');
+# ..but allow setting the filename through an ENV var:
+local $ENV{PERCONA_TOOLKIT_TCP_ERRORS_FILE} = '/dev/null';
+
+$out = output(sub {
+      open my $fh, "<", "$sample/tcpdump032.txt" or die "Cannot open tcpdump032.txt: $OS_ERROR";
+      my %parser_args = (
+         next_event => sub { return <$fh>; },
+         tell       => sub { return tell($fh);  },
+      );
+      while ( my $p = $tcpdump->parse_event(%parser_args) ) {
+         $protocol->parse_event(%parser_args, event => $p);
+      }
+      close $fh;
+}, stderr => 1);
+
+like(
+   $out,
+   qr/had errors, will save them in /,
+   "Still tries saving the errors with PERCONA_TOOLKIT_TCP_ERRORS_FILE"
+);
+
+is(
+   $protocol->{errors_file},
+   '/dev/null',
+   "...but uses the provided file"
+);
+}
+# #############################################################################
 # Done.
 # #############################################################################
-exit;
+
+# Get rid of error files
+`rm /tmp/MySQLProtocolParser.t-errors.*`;
+done_testing;

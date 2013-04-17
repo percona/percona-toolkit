@@ -1,4 +1,4 @@
-# This program is copyright 2011 Percona Inc.
+# This program is copyright 2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -143,9 +143,8 @@ sub compute_devs_in_group {
 sub compute_dev {
    my ( $self, $devs ) = @_;
    $devs ||= $self->compute_devs_in_group();
-   return $devs > 1
-     ? "{" . $devs . "}"
-     : $self->{_ordered_devs}->[0];
+   return "{" . $devs . "}" if $devs > 1;
+   return (grep { $self->_print_device_if($_) } $self->ordered_devs())[0];
 }
 
 # Terrible breach of encapsulation, but it'll have to do for the moment.

@@ -1,4 +1,4 @@
-# This program is copyright 2009-2011 Percona Inc.
+# This program is copyright 2009-2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -292,8 +292,10 @@ sub report {
    my $query_id_col = {
       name        => 'Query ID',
    };
+   my $hostno = 0;
    my @host_cols = map {
-      my $col = { name => $_->{name} };
+      $hostno++;
+      my $col = { name => "host$hostno" };
       $col;
    } @$hosts;
 
@@ -322,7 +324,7 @@ sub _report_diff_warnings {
    return unless keys %{$self->{diffs}->{warnings}};
 
    my $report = new ReportFormatter(extend_right => 1);
-   $report->set_title('New warnings');
+   $report->title('New warnings');
    $report->set_columns(
       $args{query_id_col},
       { name => 'Host', },
@@ -336,7 +338,7 @@ sub _report_diff_warnings {
          my ($hostno, $code, $message) = @{$diff_warnings->{$item}->{$_}};
          $report->add_line(
             $get_id->($item) . '-' . $_,
-            $args{hosts}->[$hostno]->{name}, $code, $message,
+            "host" . ($hostno + 1), $code, $message,
          );
       } sort { $a <=> $b } keys %{$diff_warnings->{$item}};
    }
@@ -356,14 +358,16 @@ sub _report_diff_levels {
    return unless keys %{$self->{diffs}->{levels}};
 
    my $report = new ReportFormatter(extend_right => 1);
-   $report->set_title('Warning level differences');
+   $report->title('Warning level differences');
+   my $hostno = 0;
    $report->set_columns(
       $args{query_id_col},
       { name => 'Code', right_justify => 1 },
-      map {
-         my $col = { name => $_->{name}, right_justify => 1  };
+      (map {
+         $hostno++;
+         my $col = { name => "host$hostno", right_justify => 1  };
          $col;
-      } @{$args{hosts}},
+      } @{$args{hosts}}),
       { name => 'Message' },
    );
 
@@ -392,13 +396,15 @@ sub _report_diff_warning_counts {
    return unless keys %{$self->{diffs}->{warning_counts}};
 
    my $report = new ReportFormatter();
-   $report->set_title('Warning count differences');
+   $report->title('Warning count differences');
+   my $hostno = 0;
    $report->set_columns(
       $args{query_id_col},
-      map {
-         my $col = { name => $_->{name}, right_justify => 1  };
+      (map {
+         $hostno++;
+         my $col = { name => "host$hostno", right_justify => 1  };
          $col;
-      } @{$args{hosts}},
+      } @{$args{hosts}}),
    );
 
    my $diff_warning_counts = $self->{diffs}->{warning_counts};

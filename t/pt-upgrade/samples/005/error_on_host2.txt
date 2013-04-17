@@ -1,0 +1,61 @@
+
+#-----------------------------------------------------------------------
+# Logs
+#-----------------------------------------------------------------------
+
+File: ...
+Size: 141
+
+#-----------------------------------------------------------------------
+# Hosts
+#-----------------------------------------------------------------------
+
+host1:
+
+  DSN:       h=127.1,P=12345
+  hostname:  ...
+  MySQL:     ...
+
+host2:
+
+  DSN:       h=127.1,P=12348
+  hostname:  ...
+  MySQL:     ...
+
+########################################################################
+# Query class 883A4BC43021922E
+########################################################################
+
+Reporting class because it has diffs, but hasn't been reported yet.
+
+Total queries      1
+Unique queries     1
+Discarded queries  0
+
+select host?_col from test.t
+
+##
+## Query errors diffs: 1
+##
+
+-- 1.
+
+No error
+
+vs.
+
+DBD::mysql::st execute failed: Unknown column 'host1_col' in 'field list' [for Statement "select host1_col from test.t"]
+
+select host1_col from test.t
+
+#-----------------------------------------------------------------------
+# Stats
+#-----------------------------------------------------------------------
+
+failed_queries        0
+not_select            0
+queries_filtered      0
+queries_no_diffs      0
+queries_read          1
+queries_with_diffs    0
+queries_with_errors   1

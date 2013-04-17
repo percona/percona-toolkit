@@ -32,6 +32,7 @@ cd "$cwd"
 
 BIN_DIR="$BRANCH/bin";
 LIB_DIR="$BRANCH/lib/bash";
+T_DIR="$BRANCH/t";
 T_LIB_DIR="$BRANCH/t/lib";
 SANDBOX_VERSION="$($BRANCH/sandbox/test-env version)"
 
@@ -39,10 +40,10 @@ SANDBOX_VERSION="$($BRANCH/sandbox/test-env version)"
 # Paths
 # ############################################################################
 
-# Do not use TMPDIR because the tools use it for their own secure tmpdir.
-TEST_TMPDIR="/tmp/percona-toolkit.test"
-if [ ! -d $TEST_TMPDIR ]; then
-   mkdir $TEST_TMPDIR
+# Do not use PT_TMPDIR because the tools use it for their own secure tmpdir.
+TEST_PT_TMPDIR="/tmp/percona-toolkit.test"
+if [ ! -d $TEST_PT_TMPDIR ]; then
+   mkdir $TEST_PT_TMPDIR
 fi
 
 # ############################################################################
@@ -78,7 +79,7 @@ load_tests() {
 # Source a test file to run whatever it contains (hopefully tests!).
 run_test() {
    local t=$1  # test file name, e.g. "group-by-all-01" for pt-diskstats
-   rm -rf $TEST_TMPDIR/* >/dev/null 2>&1
+   rm -rf $TEST_PT_TMPDIR/* >/dev/null 2>&1
 
    # Tests assume that they're being ran from their own dir, so they access
    # sample files like "samples/foo.txt".  So cd to the dir of the test file
@@ -99,17 +100,17 @@ run_test() {
 result() {
    local result=$1
    local test_name=${2:-""}
+   testno=$((testno + 1))
    if [ $result -eq 0 ]; then
       echo "ok $testno - $TEST_FILE $test_name"
    else
       echo "not ok $testno - $TEST_FILE $test_name"
       failed_tests=$(( failed_tests + 1))
       echo "#   Failed '$test_command'" >&2
-      if [ -f $TEST_TMPDIR/failed_result ]; then
-         cat $TEST_TMPDIR/failed_result | sed -e 's/^/#   /' -e '30q' >&2
+      if [ -f $TEST_PT_TMPDIR/failed_result ]; then
+         cat $TEST_PT_TMPDIR/failed_result | sed -e 's/^/#   /' -e '30q' >&2
       fi
    fi
-   testno=$((testno + 1))
    return $result
 }
 
@@ -120,16 +121,52 @@ plan() {
    fi
 }
 
+done_testing() {
+   echo "1..$testno"
+}
+
 #
 # The following subs are for the test files to call.
 #
+
+pass() {
+   local reason="${1:-""}"
+   result 0 "$reason"
+}
+
+fail() {
+   local reason="${1:-""}"
+   result 1 "$reason"
+}
+
+skip() {
+   local skip="$1"
+   local number_of_tests="$2"
+   local reason="${3:-""}"
+
+   if [ $skip ]; then
+      for n in $(seq $number_of_tests); do
+         result 0 "# skip $n $reason"
+      done
+   fi
+}
+
+# TODO unperlify
+like() {
+   local got="$1"
+   local regex="$2"
+   local test_name=${3:-""}
+   test_command="$got =~ m<$regex>"
+   perl -e 'exit(scalar($ARGV[0] =~ m<^$ARGV[1]>msi ? 0 : 1))' "$got" "$regex"
+   result $? "$test_name"
+}
 
 no_diff() {
    local got=$1
    local expected=$2
    local test_name=${3:-""}
    test_command="diff $got $expected"
-   eval $test_command > $TEST_TMPDIR/failed_result 2>&1
+   eval $test_command > $TEST_PT_TMPDIR/failed_result 2>&1
    result $? "$test_name"
 }
 
@@ -142,6 +179,42 @@ is() {
    result $? "$test_name"
 }
 
+file_is_empty() {
+   local file=$1
+   local test_name=${2:-""}
+   test_command="-s $file"
+   if [ ! -f "$file" ]; then
+      echo "$file does not exist" > $TEST_PT_TMPDIR/failed_result
+      result 1 "$test_name"
+   fi
+   if [ -s "$file" ]; then
+      echo "$file is not empty:" > $TEST_PT_TMPDIR/failed_result
+      cat "$file" >> $TEST_PT_TMPDIR/failed_result
+      result 1 "$test_name"
+   else
+      result 0 "$test_name"
+   fi
+}
+
+file_contains() {
+   local file="$1"
+   local pat="$2"
+   local test_name=${3:-""}
+   test_command="grep -q '$pat' '$file'"
+   if [ ! -f "$file" ]; then
+      echo "$file does not exist" > $TEST_PT_TMPDIR/failed_result
+      result 1 "$test_name"
+   fi
+   grep -q "$pat" $file
+   if [ $? -ne 0 ]; then
+      echo "$file does not contain '$pat':" > $TEST_PT_TMPDIR/failed_result
+      cat "$file" >> $TEST_PT_TMPDIR/failed_result
+      result 1 "$test_name"
+   else
+      result 0 "$test_name"
+   fi
+}
+
 cmd_ok() {
    local test_command=$1
    local test_name=${2:-""}
@@ -149,11 +222,49 @@ cmd_ok() {
    result $? "$test_name"
 }
 
+dies_ok() {
+   local test_command=$1
+   local test_name=${2:-""}
+
+   local result=1
+   (
+      eval $test_command
+   ) 2>/dev/null &
+   wait $!
+   [ $? ] && result=0
+
+   result $result "$test_name"
+}
+
+# Helper subs for slow boxes
+
+wait_for_files() {
+   for file in "$@"; do
+      local slept=0
+      while ! [ -f $file ]; do
+         sleep 0.2;
+         slept=$((slept + 1))
+         [ $slept -ge 150 ] && break  # 30s
+      done
+   done
+}
+
+diag() {
+   if [ $# -eq 1 -a -f "$1" ]; then
+      echo "# $1:"
+      awk '{print "# " $0}' "$1"
+   else
+      for line in "$@"; do
+         echo "# $line"
+      done
+   fi
+}
+
 # ############################################################################
 # Script starts here
 # ############################################################################
 
-testno=1
+testno=0
 failed_tests=0
 
 if [ $# -eq 0 ]; then
@@ -186,5 +297,5 @@ else
    done
 fi
 
-rm -rf $TEST_TMPDIR
+rm -rf $TEST_PT_TMPDIR
 exit $failed_tests

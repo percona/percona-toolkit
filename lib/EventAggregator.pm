@@ -1,4 +1,4 @@
-# This program is copyright 2008-2011 Percona Inc.
+# This program is copyright 2008-2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -108,7 +108,7 @@ sub new {
          keys %$attributes
       },
       worst          => $args{worst},
-      unroll_limit   => $args{unroll_limit} || 1000,
+      unroll_limit   => $ENV{PT_QUERY_DIGEST_CHECK_ATTRIB_LIMIT} || 1000,
       attrib_limit   => $args{attrib_limit},
       result_classes => {},
       result_globals => {},
@@ -619,16 +619,6 @@ sub calculate_statistical_metrics {
                   $classes->{$class}->{$attrib}->{all},
                   $classes->{$class}->{$attrib}
                );
-
-            # Apdex (http://code.google.com/p/maatkit/issues/detail?id=1054)
-            if ( $args{apdex_t} && $attrib eq 'Query_time' ) {
-               $class_metrics->{$class}->{$attrib}->{apdex_t} = $args{apdex_t};
-               $class_metrics->{$class}->{$attrib}->{apdex}
-                  = $self->calculate_apdex(
-                     t       => $args{apdex_t},
-                     samples => $classes->{$class}->{$attrib}->{all},
-                  );
-            }
          }
       }
    }
@@ -764,7 +754,7 @@ sub _calc_metrics {
 sub metrics {
    my ( $self, %args ) = @_;
    foreach my $arg ( qw(attrib where) ) {
-      die "I need a $arg argument" unless $args{$arg};
+      die "I need a $arg argument" unless defined $args{$arg};
    }
    my $attrib = $args{attrib};
    my $where   = $args{where};
@@ -784,9 +774,6 @@ sub metrics {
       median => $metrics->{classes}->{$where}->{$attrib}->{median} || 0,
       pct_95 => $metrics->{classes}->{$where}->{$attrib}->{pct_95} || 0,
       stddev => $metrics->{classes}->{$where}->{$attrib}->{stddev} || 0,
-
-      apdex_t => $metrics->{classes}->{$where}->{$attrib}->{apdex_t},
-      apdex   => $metrics->{classes}->{$where}->{$attrib}->{apdex},
    };
 }
 
@@ -1162,70 +1149,6 @@ sub _deep_copy_attrib_vals {
       $copy = $vals;
    }
    return $copy;
-}
-
-# Sub: calculate_apdex
-#   Calculate the Apdex score for the given T and response times.
-#   <http://www.apdex.org/documents/ApdexTechnicalSpecificationV11_000.pdf>
-#
-# Parameters:
-#   %args - Arguments
-#
-# Required Arguments:
-#   t       - Target threshold
-#   samples - Hashref with bucketized response time values,
-#             i.e. { bucket_number => n_responses, }
-#
-# Returns:
-#   Apdex score
-sub calculate_apdex {
-   my ( $self, %args ) = @_;
-   my @required_args = qw(t samples);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my ($t, $samples) = @args{@required_args};
-
-   if ( $t <= 0 ) {
-      die "Invalid target threshold (T): $t.  T must be greater than zero";
-   }
-
-   my $f = 4 * $t;
-   PTDEBUG && _d("Apdex T =", $t, "F =", $f);
-
-   my $satisfied  = 0;
-   my $tolerating = 0;
-   my $frustrated = 0;  # just for debug output
-   my $n_samples  = 0;
-   BUCKET:
-   for my $bucket ( keys %$samples ) {
-      my $n_responses   = $samples->{$bucket};
-      my $response_time = $buck_vals[$bucket];
-
-      # Response time increases from 0 to F.
-      # 0 --- T --- F
-      #    ^     ^-- tolerating zone
-      #    |
-      #    +-------- satisfied zone
-      if ( $response_time <= $t ) {
-         $satisfied += $n_responses;
-      }
-      elsif ( $response_time <= $f ) {
-         $tolerating += $n_responses;
-      }
-      else {
-         $frustrated += $n_responses;
-      }
-
-      $n_samples += $n_responses;
-   }
-
-   my $apdex = sprintf('%.2f', ($satisfied + ($tolerating / 2)) / $n_samples);
-   PTDEBUG && _d($n_samples, "samples,", $satisfied, "satisfied,",
-      $tolerating, "tolerating,", $frustrated, "frustrated, Apdex score:",
-      $apdex);
-
-   return $apdex;
 }
 
 # Sub: _get_value

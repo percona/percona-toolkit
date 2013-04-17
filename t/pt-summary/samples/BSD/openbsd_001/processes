@@ -1,0 +1,10 @@
+  PID USERNAME PRI NICE  SIZE   RES STATE     WAIT      TIME    CPU COMMAND
+22422 root      18    0  888K 1012K sleep     pause     0:00  0.93% sh
+20216 _pflogd    4    0  528K  312K sleep     bpf       0:01  0.00% pflogd
+22982 root       2    0 1372K 1956K sleep     select    0:00  0.00% sendmail
+26829 root      18    0  544K  532K sleep     pause     0:00  0.00% ksh
+17299 _syslogd   2    0  524K  752K sleep     poll      0:00  0.00% syslogd
+ 7254 root       2    0  508K  872K idle      select    0:00  0.00% cron
+    1 root      10    0  544K  324K idle      wait      0:00  0.00% init
+28237 root       2    0  500K  696K idle      netio     0:00  0.00% syslogd
+30259 root       3    0  408K  812K idle      ttyin     0:00  0.00% getty

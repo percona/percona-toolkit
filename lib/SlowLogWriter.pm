@@ -1,4 +1,4 @@
-# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Inc.
+# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -62,9 +62,9 @@ sub write {
    if ( $percona_patched ) {
       # First 2 lines of Percona-patched attribs.
       printf $fh
-         "# QC_Hit: %s  Full_scan: %s  Full_join: %s  Tmp_table: %s  Disk_tmp_table: %s\n# Filesort: %s  Disk_filesort: %s  Merge_passes: %d\n",
+         "# QC_Hit: %s  Full_scan: %s  Full_join: %s  Tmp_table: %s  Tmp_table_on_disk: %s\n# Filesort: %s  Filesort_on_disk: %s  Merge_passes: %d\n",
          map { $_ || 0 }
-            @{$event}{qw(QC_Hit Full_scan Full_join Tmp_table Disk_tmp_table Filesort Disk_filesort Merge_passes)};
+            @{$event}{qw(QC_Hit Full_scan Full_join Tmp_table Tmp_table_on_disk Filesort Filesort_on_disk Merge_passes)};
 
       if ( exists $event->{InnoDB_IO_r_ops} ) {
          # Optional 3 lines of Percona-patched InnoDB attribs.

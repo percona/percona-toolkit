@@ -1,4 +1,4 @@
-# This program is copyright 2011 Percona Inc.
+# This program is copyright 2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -61,51 +61,54 @@ sub new {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($cxn, $tbl, $chunk_size, $o, $q) = @args{@required_args};
-   
-   my $where = $o->get('where');
-   my ($row_est, $mysql_index) = get_row_estimate(%args, where => $where);
-   my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
-                  ? $row_est <= $chunk_size * $o->get('chunk-size-limit')
-                  : 0;
-   PTDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
 
-   if ( $args{resume}
-        && !defined $args{resume}->{lower_boundary}
-        && !defined $args{resume}->{upper_boundary} ) {
-      PTDEBUG && _d('Resuming from one nibble table');
-      $one_nibble = 1;
+   # Die unless table can be nibbled, else return row estimate, nibble index,
+   # and if table can be nibbled in one chunk.
+   my $nibble_params = can_nibble(%args);
+
+   # Text appended to the queries in comments so caller can identify
+   # them in processlist, binlog, etc.
+   my %comments = (
+      bite   => "bite table",
+      nibble => "nibble table",
+   );
+   if ( $args{comments} ) {
+      map  { $comments{$_} = $args{comments}->{$_} }
+      grep { defined $args{comments}->{$_}         }
+      keys %{$args{comments}};
    }
 
-   # Get an index to nibble by.  We'll order rows by the index's columns.
-   my $index = _find_best_index(%args, mysql_index => $mysql_index);
-   if ( !$index && !$one_nibble ) {
-      die "There is no good index and the table is oversized.";
-   }
-
+   my $where      = $o->has('where') ? $o->get('where') : '';
    my $tbl_struct = $tbl->{tbl_struct};
-   my $ignore_col = $o->get('ignore-columns') || {};
-   my $all_cols   = $o->get('columns') || $tbl_struct->{cols};
+   my $ignore_col = $o->has('ignore-columns')
+                  ? ($o->get('ignore-columns') || {})
+                  : {};
+   my $all_cols   = $o->has('columns')
+                  ? ($o->get('columns') || $tbl_struct->{cols})
+                  : $tbl_struct->{cols};
    my @cols       = grep { !$ignore_col->{$_} } @$all_cols;
    my $self;
-   if ( $one_nibble ) {
+   if ( $nibble_params->{one_nibble} ) {
       # If the chunk size is >= number of rows in table, then we don't
       # need to chunk; we can just select all rows, in order, at once.
       my $nibble_sql
          = ($args{dml} ? "$args{dml} " : "SELECT ")
          . ($args{select} ? $args{select}
                           : join(', ', map { $q->quote($_) } @cols))
-         . " FROM " . $q->quote(@{$tbl}{qw(db tbl)})
+         . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
-         . " /*checksum table*/";
+         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
+         . " /*$comments{bite}*/";
       PTDEBUG && _d('One nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql
          = "EXPLAIN SELECT "
          . ($args{select} ? $args{select}
                           : join(', ', map { $q->quote($_) } @cols))
-         . " FROM " . $q->quote(@{$tbl}{qw(db tbl)})
+         . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
-         . " /*explain checksum table*/";
+         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
+         . " /*explain $comments{bite}*/";
       PTDEBUG && _d('Explain one nibble statement:', $explain_nibble_sql);
 
       $self = {
@@ -117,22 +120,24 @@ sub new {
       };
    }
    else {
+      my $index      = $nibble_params->{index}; # brevity
       my $index_cols = $tbl->{tbl_struct}->{keys}->{$index}->{cols};
 
       # Figure out how to nibble the table with the index.
       my $asc = $args{TableNibbler}->generate_asc_stmt(
          %args,
-         tbl_struct => $tbl->{tbl_struct},
-         index      => $index,
-         cols       => \@cols,
-         asc_only   => 1,
+         tbl_struct   => $tbl->{tbl_struct},
+         index        => $index,
+         n_index_cols => $args{n_chunk_index_cols},
+         cols         => \@cols,
+         asc_only     => 1,
       );
       PTDEBUG && _d('Ascend params:', Dumper($asc));
 
       # Make SQL statements, prepared on first call to next().  FROM and
       # ORDER BY are the same for all statements.  FORCE IDNEX and ORDER BY
       # are needed to ensure deterministic nibbling.
-      my $from     = $q->quote(@{$tbl}{qw(db tbl)}) . " FORCE INDEX(`$index`)";
+      my $from     = "$tbl->{name} FORCE INDEX(`$index`)";
       my $order_by = join(', ', map {$q->quote($_)} @{$index_cols});
 
       # The real first row in the table.  Usually we start nibbling from
@@ -207,7 +212,8 @@ sub new {
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($where ? " AND ($where)" : '')
          . ($args{order_by} ? " ORDER BY $order_by" : "")
-         . " /*checksum chunk*/";
+         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
+         . " /*$comments{nibble}*/";
       PTDEBUG && _d('Nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql 
@@ -219,7 +225,8 @@ sub new {
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($where ? " AND ($where)" : '')
          . ($args{order_by} ? " ORDER BY $order_by" : "")
-         . " /*explain checksum chunk*/";
+         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
+         . " /*explain $comments{nibble}*/";
       PTDEBUG && _d('Explain nibble statement:', $explain_nibble_sql);
 
       my $limit = $chunk_size - 1;
@@ -227,16 +234,17 @@ sub new {
 
       $self = {
          %args,
-         index              => $index,
-         limit              => $limit,
-         first_lb_sql       => $first_lb_sql,
-         last_ub_sql        => $last_ub_sql,
-         ub_sql             => $ub_sql,
-         nibble_sql         => $nibble_sql,
-         explain_ub_sql     => "EXPLAIN $ub_sql",
-         explain_nibble_sql => $explain_nibble_sql,
-         resume_lb_sql      => $resume_lb_sql,
-         sql                => {
+         index                => $index,
+         limit                => $limit,
+         first_lb_sql         => $first_lb_sql,
+         last_ub_sql          => $last_ub_sql,
+         ub_sql               => $ub_sql,
+         nibble_sql           => $nibble_sql,
+         explain_first_lb_sql => "EXPLAIN $first_lb_sql",
+         explain_ub_sql       => "EXPLAIN $ub_sql",
+         explain_nibble_sql   => $explain_nibble_sql,
+         resume_lb_sql        => $resume_lb_sql,
+         sql                  => {
             columns    => $asc->{scols},
             from       => $from,
             where      => $where,
@@ -246,7 +254,7 @@ sub new {
       };
    }
 
-   $self->{row_est}    = $row_est;
+   $self->{row_est}    = $nibble_params->{row_est},
    $self->{nibbleno}   = 0;
    $self->{have_rows}  = 0;
    $self->{rowno}      = 0;
@@ -282,6 +290,11 @@ sub next {
             return;
          }
       }
+      if ( !$self->{one_nibble} && !$self->{first_lower} ) {
+         PTDEBUG && _d('No first lower boundary, table must be empty');
+         $self->{no_more_boundaries} = 1;
+         return;
+      }
    }
 
    # If there's another nibble, fetch the rows within it.
@@ -291,12 +304,14 @@ sub next {
       # the next nibble.
       if ( !$self->{have_rows} ) {
          $self->{nibbleno}++;
-         PTDEBUG && _d($self->{nibble_sth}->{Statement}, 'params:',
-            join(', ', (@{$self->{lower}}, @{$self->{upper}})));
+         PTDEBUG && _d('Nibble:', $self->{nibble_sth}->{Statement}, 'params:',
+            join(', ', (@{$self->{lower} || []}, @{$self->{upper} || []})));
          if ( my $callback = $self->{callbacks}->{exec_nibble} ) {
             $self->{have_rows} = $callback->(%callback_args);
          }
          else {
+            # XXX This call and others like it are relying on a Perl oddity.
+            # See https://bugs.launchpad.net/percona-toolkit/+bug/987393
             $self->{nibble_sth}->execute(@{$self->{lower}}, @{$self->{upper}});
             $self->{have_rows} = $self->{nibble_sth}->rows();
          }
@@ -353,10 +368,11 @@ sub nibble_index {
 sub statements {
    my ($self) = @_;
    return {
-      nibble                 => $self->{nibble_sth},
-      explain_nibble         => $self->{explain_nibble_sth},
-      upper_boundary         => $self->{ub_sth},
-      explain_upper_boundary => $self->{explain_ub_sth},
+      explain_first_lower_boundary => $self->{explain_first_lb_sth},
+      nibble                       => $self->{nibble_sth},
+      explain_nibble               => $self->{explain_nibble_sth},
+      upper_boundary               => $self->{ub_sth},
+      explain_upper_boundary       => $self->{explain_ub_sth},
    }
 }
 
@@ -389,9 +405,9 @@ sub one_nibble {
    return $self->{one_nibble};
 }
 
-sub chunk_size {
+sub limit {
    my ($self) = @_;
-   return $self->{limit} + 1;
+   return $self->{limit};
 }
 
 sub set_chunk_size {
@@ -416,6 +432,68 @@ sub more_boundaries {
 sub row_estimate {
    my ($self) = @_;
    return $self->{row_est};
+}
+
+sub can_nibble {
+   my (%args) = @_;
+   my @required_args = qw(Cxn tbl chunk_size OptionParser TableParser);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($cxn, $tbl, $chunk_size, $o) = @args{@required_args};
+
+   my $where = $o->has('where') ? $o->get('where') : '';
+
+   # About how many rows are there?
+   my ($row_est, $mysql_index) = get_row_estimate(
+      Cxn   => $cxn,
+      tbl   => $tbl,
+      where => $where,
+   );
+
+   # MySQL's chosen index is only something we should prefer
+   # if --where is used.  Else, we can chose our own index
+   # and disregard the MySQL index from the row estimate.
+   # If there's a --where, however, then MySQL's chosen index
+   # is used because it tells us how MySQL plans to optimize
+   # for the --where.
+   # https://bugs.launchpad.net/percona-toolkit/+bug/978432
+   if ( !$where ) {
+      $mysql_index = undef;
+   }
+
+   # Can all those rows be nibbled in one chunk?  If one_nibble is defined,
+   # then do as it says; else, look at the chunk size limit.  If the chunk
+   # size limit is disabled (=0), then use the chunk size because there
+   # always needs to be a limit to the one-chunk table.
+   my $chunk_size_limit = $o->get('chunk-size-limit') || 1;
+   my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
+                  ? $row_est <= $chunk_size * $chunk_size_limit
+                  : 0;
+   PTDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
+
+   # Special case: we're resuming and there's no boundaries, so the table
+   # being resumed was originally nibbled in one chunk, so do the same again.
+   if ( $args{resume}
+        && !defined $args{resume}->{lower_boundary}
+        && !defined $args{resume}->{upper_boundary} ) {
+      PTDEBUG && _d('Resuming from one nibble table');
+      $one_nibble = 1;
+   }
+
+   # Get an index to nibble by.  We'll order rows by the index's columns.
+   my $index = _find_best_index(%args, mysql_index => $mysql_index);
+   if ( !$index && !$one_nibble ) {
+      die "There is no good index and the table is oversized.";
+   }
+
+   # The table can be nibbled if this point is reached, else we would have
+   # died earlier.  Return some values about nibbling the table.
+   return {
+      row_est     => $row_est,      # nibble about this many rows
+      index       => $index,        # using this index
+      one_nibble  => $one_nibble,   # if the table fits in one nibble/chunk
+   };
 }
 
 sub _find_best_index {
@@ -494,14 +572,18 @@ sub _find_best_index {
 
 sub _get_index_cardinality {
    my (%args) = @_;
-   my @required_args = qw(Cxn tbl index Quoter);
-   my ($cxn, $tbl, $index, $q) = @args{@required_args};
+   my @required_args = qw(Cxn tbl index);
+   my ($cxn, $tbl, $index) = @args{@required_args};
 
-   my $sql = "SHOW INDEXES FROM " . $q->quote(@{$tbl}{qw(db tbl)})
-           . " WHERE Key_name = '$index'";
+   my $sql = "SHOW INDEXES FROM $tbl->{name} "
+           . "WHERE Key_name = '$index'";
    PTDEBUG && _d($sql);
    my $cardinality = 1;
-   my $rows = $cxn->dbh()->selectall_hashref($sql, 'key_name');
+   my $dbh         = $cxn->dbh();
+   my $key_name    = $dbh && ($dbh->{FetchHashKeyName} || '') eq 'NAME_lc'
+                   ? 'key_name'
+                   : 'Key_name';
+   my $rows = $dbh->selectall_hashref($sql, $key_name);
    foreach my $row ( values %$rows ) {
       $cardinality *= $row->{cardinality} if $row->{cardinality};
    }
@@ -511,22 +593,26 @@ sub _get_index_cardinality {
 
 sub get_row_estimate {
    my (%args) = @_;
-   my @required_args = qw(Cxn tbl OptionParser TableParser Quoter);
-   my ($cxn, $tbl, $o, $tp, $q) = @args{@required_args};
+   my @required_args = qw(Cxn tbl);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($cxn, $tbl) = @args{@required_args};
 
-   if ( $args{where} ) {
-      PTDEBUG && _d('WHERE clause, using explain plan for row estimate');
-      my $table = $q->quote(@{$tbl}{qw(db tbl)});
-      my $sql   = "EXPLAIN SELECT * FROM $table WHERE $args{where}";
-      PTDEBUG && _d($sql);
-      my $expl = $cxn->dbh()->selectrow_hashref($sql);
-      PTDEBUG && _d(Dumper($expl));
-      return ($expl->{rows} || 0), $expl->{key};
+   my $sql = "EXPLAIN SELECT * FROM $tbl->{name} "
+           . "WHERE " . ($args{where} || '1=1');
+   PTDEBUG && _d($sql);
+   my $expl = $cxn->dbh()->selectrow_hashref($sql);
+   PTDEBUG && _d(Dumper($expl));
+   # MySQL's chosen index must be lowercase because TableParser::parse()
+   # lowercases all idents (search in that module for \L) except for
+   # the PRIMARY KEY which it leaves uppercase.
+   # https://bugs.launchpad.net/percona-toolkit/+bug/995274
+   my $mysql_index = $expl->{key} || '';
+   if ( $mysql_index ne 'PRIMARY' ) {
+      $mysql_index = lc($mysql_index);
    }
-   else {
-      PTDEBUG && _d('No WHERE clause, using table status for row estimate');
-      return $tbl->{tbl_status}->{rows} || 0;
-   }
+   return ($expl->{rows} || 0), $mysql_index;
 }
 
 sub _prepare_sths {
@@ -539,8 +625,9 @@ sub _prepare_sths {
    $self->{explain_nibble_sth} = $dbh->prepare($self->{explain_nibble_sql});
 
    if ( !$self->{one_nibble} ) {
-      $self->{ub_sth} = $dbh->prepare($self->{ub_sql});
-      $self->{explain_ub_sth} = $dbh->prepare($self->{explain_ub_sql});
+      $self->{explain_first_lb_sth} = $dbh->prepare($self->{explain_first_lb_sql});
+      $self->{ub_sth}               = $dbh->prepare($self->{ub_sql});
+      $self->{explain_ub_sth}       = $dbh->prepare($self->{explain_ub_sql});
    }
 
    return;
@@ -586,12 +673,15 @@ sub _get_bounds {
       # last chunk for resuming isn't bounded.
       PTDEBUG && _d('At end of table, or no more boundaries to resume');
       $self->{no_more_boundaries} = 1;
-   }
 
-   # Get the real last upper boundary, i.e. the last row of the table
-   # at this moment.  If rows are inserted after, we won't see them.
-   $self->{last_upper} = $dbh->selectrow_arrayref($self->{last_ub_sql});
-   PTDEBUG && _d('Last upper boundary:', Dumper($self->{last_upper}));
+      # Get the real last upper boundary, i.e. the last row of the table
+      # at this moment.  If rows are inserted after, we won't see them.
+      # This is required for OobNibbleIterator because if we resume at
+      # the lower or upper oob nibble, we also need to know the last upper
+      # boundary of the table (we already have the first).
+      $self->{last_upper} = $dbh->selectrow_arrayref($self->{last_ub_sql});
+      PTDEBUG && _d('Last upper boundary:', Dumper($self->{last_upper}));
+   }
 
    return;
 }
@@ -616,12 +706,17 @@ sub _next_boundaries {
    # which will cause us to nibble further ahead and maybe get a new lower
    # boundary that isn't identical, but we can't detect this, and in any
    # case, if there's one infinite loop there will probably be others.
+
+
    if ( $self->identical_boundaries($self->{lower}, $self->{next_lower}) ) {
       PTDEBUG && _d('Infinite loop detected');
       my $tbl     = $self->{tbl};
       my $index   = $tbl->{tbl_struct}->{keys}->{$self->{index}};
       my $n_cols  = scalar @{$index->{cols}};
       my $chunkno = $self->{nibbleno};
+
+      # XXX This call and others like it are relying on a Perl oddity.
+      # See https://bugs.launchpad.net/percona-toolkit/+bug/987393
       die "Possible infinite loop detected!  "
          . "The lower boundary for chunk $chunkno is "
          . "<" . join(', ', @{$self->{lower}}) . "> and the lower "
@@ -648,25 +743,73 @@ sub _next_boundaries {
       }
    }
 
+   # Two boundaries are being fetched: the upper boundary for this nibble,
+   # i.e. the nibble the caller is trying to exec, and the next_lower boundary
+   # for the next nibble that the caller will try to exec.  For example,
+   # if chunking the alphabet, a-z, with chunk size 3, the first call will
+   # fetch:
+   #
+   #    a <- lower
+   #    b
+   #    c <- upper      ($boundary->[0])
+   #    d <- next_lower ($boundary->[1])
+   #
+   # Then the second call will fetch:
+   #
+   #    d <- lower
+   #    e
+   #    f <- upper
+   #    g <- next_lower
+   #
+   # Why fetch both upper and next_lower?  We wanted to keep nibbling simple,
+   # i.e. one nibble statment, not one for the first nibble, one for "middle"
+   # nibbles, and another for the end (this is how older code worked).  So the
+   # nibble statement is inclusive, but this requires both boundaries for
+   # reasons explained in a comment above my $ub_sql in new().
+
+   # XXX This call and others like it are relying on a Perl oddity.
+   # See https://bugs.launchpad.net/percona-toolkit/+bug/987393
    PTDEBUG && _d($self->{ub_sth}->{Statement}, 'params:',
       join(', ', @{$self->{lower}}), $self->{limit});
    $self->{ub_sth}->execute(@{$self->{lower}}, $self->{limit});
    my $boundary = $self->{ub_sth}->fetchall_arrayref();
    PTDEBUG && _d('Next boundary:', Dumper($boundary));
    if ( $boundary && @$boundary ) {
-      $self->{upper} = $boundary->[0]; # this nibble
+      # upper boundary for the current nibble.
+      $self->{upper} = $boundary->[0];
+
       if ( $boundary->[1] ) {
-         $self->{next_lower} = $boundary->[1]; # next nibble
+         # next_lower boundary for the next nibble (will become the lower
+         # boundary when that nibble becomes the current nibble).
+         $self->{next_lower} = $boundary->[1];
       }
       else {
+         # There's no next_lower boundary, so the upper boundary of
+         # the current nibble is the end of the table.  For example,
+         # if chunking a-z, then the upper boundary of the current
+         # nibble ($boundary->[0]) is z.
+         PTDEBUG && _d('End of table boundary:', Dumper($boundary->[0]));
          $self->{no_more_boundaries} = 1;  # for next call
-         PTDEBUG && _d('Last upper boundary:', Dumper($boundary->[0]));
+
+         # OobNibbleIterator needs to know the last upper boundary.
+         $self->{last_upper} = $boundary->[0];
       }
    }
    else {
-      $self->{no_more_boundaries} = 1;  # for next call
-      $self->{upper} = $self->{last_upper};
+      # This code is reached in cases like chunking a-z and the next_lower
+      # boundary ($boundary->[1]) falls on z.  When called again, no upper
+      # or next_lower is found past z so if($boundary && @$boundary) is false.
+      # But there's a problem: between the previous call that made next_lower=z
+      # and this call, rows might have been inserted, so maybe z is no longer
+      # the end of the table.  To handle this, we fetch the end of the table
+      # once and make the final nibble z-<whatever>.
+      my $dbh = $self->{Cxn}->dbh();
+      $self->{upper} = $dbh->selectrow_arrayref($self->{last_ub_sql});
       PTDEBUG && _d('Last upper boundary:', Dumper($self->{upper}));
+      $self->{no_more_boundaries} = 1;  # for next call
+      
+      # OobNibbleIterator needs to know the last upper boundary.
+      $self->{last_upper} = $self->{upper};
    }
    $self->{ub_sth}->finish();
 

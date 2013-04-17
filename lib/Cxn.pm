@@ -1,4 +1,4 @@
-# This program is copyright 2011 Percona Inc.
+# This program is copyright 2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -35,13 +35,15 @@ package Cxn;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
-
-# Hostnames make testing less accurate.  Tests need to see
-# that such-and-such happened on specific slave hosts, but
-# the sandbox servers are all on one host so all slaves have
-# the same hostname.
-use constant PERCONA_TOOLKIT_TEST_USE_DSN_NAMES => $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} || 0;
+use Scalar::Util qw(blessed);
+use constant {
+   PTDEBUG => $ENV{PTDEBUG} || 0,
+   # Hostnames make testing less accurate.  Tests need to see
+   # that such-and-such happened on specific slave hosts, but
+   # the sandbox servers are all on one host so all slaves have
+   # the same hostname.
+   PERCONA_TOOLKIT_TEST_USE_DSN_NAMES => $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} || 0,
+};
 
 # Sub: new
 #
@@ -95,38 +97,51 @@ sub new {
       $dsn = $dp->copy($prev_dsn, $dsn);
    }
 
+   my $dsn_name = $dp->as_string($dsn, [qw(h P S)])
+               || $dp->as_string($dsn, [qw(F)])
+               || '';
+
    my $self = {
-      dsn          => $dsn,
-      dbh          => $args{dbh},
-      dsn_name     => $dp->as_string($dsn, [qw(h P S)]),
-      hostname     => '',
-      set          => $args{set},
-      dbh_set      => 0,
-      OptionParser => $o,
-      DSNParser    => $dp,
+      dsn             => $dsn,
+      dbh             => $args{dbh},
+      dsn_name        => $dsn_name,
+      hostname        => '',
+      set             => $args{set},
+      NAME_lc         => defined($args{NAME_lc}) ? $args{NAME_lc} : 1,
+      dbh_set         => 0,
+      ask_pass        => $o->get('ask-pass'),
+      DSNParser       => $dp,
+      is_cluster_node => undef,
+      parent          => $args{parent},
    };
 
    return bless $self, $class;
 }
 
 sub connect {
-   my ( $self ) = @_;
+   my ( $self, %opts ) = @_;
    my $dsn = $self->{dsn};
    my $dp  = $self->{DSNParser};
-   my $o   = $self->{OptionParser};
 
    my $dbh = $self->{dbh};
    if ( !$dbh || !$dbh->ping() ) {
       # Ask for password once.
-      if ( $o->get('ask-pass') && !$self->{asked_for_pass} ) {
+      if ( $self->{ask_pass} && !$self->{asked_for_pass} ) {
          $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
          $self->{asked_for_pass} = 1;
       }
-      $dbh = $dp->get_dbh($dp->get_cxn_params($dsn),  { AutoCommit => 1 });
+      $dbh = $dp->get_dbh(
+         $dp->get_cxn_params($dsn),
+         {
+            AutoCommit => 1,
+            %opts,
+         },
+      );
    }
-   PTDEBUG && _d($dbh, 'Connected dbh to', $self->{name});
 
-   return $self->set_dbh($dbh);
+   $dbh = $self->set_dbh($dbh);
+   PTDEBUG && _d($dbh, 'Connected dbh to', $self->{hostname},$self->{dsn_name});
+   return $dbh;
 }
 
 sub set_dbh {
@@ -147,16 +162,21 @@ sub set_dbh {
    PTDEBUG && _d($dbh, 'Setting dbh');
 
    # Set stuff for this dbh (i.e. initialize it).
-   $dbh->{FetchHashKeyName} = 'NAME_lc';
-   
+   $dbh->{FetchHashKeyName} = 'NAME_lc' if $self->{NAME_lc};
+
    # Update the cxn's name.  Until we connect, the DSN parts
    # h and P are used.  Once connected, use @@hostname.
-   my $sql = 'SELECT @@hostname, @@server_id';
+   my $sql = 'SELECT @@server_id /*!50038 , @@hostname*/';
    PTDEBUG && _d($dbh, $sql);
-   my ($hostname, $server_id) = $dbh->selectrow_array($sql);
+   my ($server_id, $hostname) = $dbh->selectrow_array($sql);
    PTDEBUG && _d($dbh, 'hostname:', $hostname, $server_id);
    if ( $hostname ) {
       $self->{hostname} = $hostname;
+   }
+
+   if ( $self->{parent} ) {
+      PTDEBUG && _d($dbh, 'Setting InactiveDestroy=1 in parent');
+      $dbh->{InactiveDestroy} = 1;
    }
 
    # Call the set callback to let the caller SET any MySQL variables.
@@ -167,6 +187,15 @@ sub set_dbh {
    $self->{dbh}     = $dbh;
    $self->{dbh_set} = 1;
    return $dbh;
+}
+
+sub lost_connection {
+   my ($self, $e) = @_;
+   return 0 unless $e;
+   return $e =~ m/MySQL server has gone away/
+       || $e =~ m/Lost connection to MySQL server/;
+      # The 1st pattern means that MySQL itself died or was stopped.
+      # The 2nd pattern means that our cxn was killed (KILL <id>).
 }
 
 # Sub: dbh
@@ -191,12 +220,59 @@ sub name {
    return $self->{hostname} || $self->{dsn_name} || 'unknown host';
 }
 
+# There's two reasons why there might be dupes:
+# If the "master" is a cluster node, then a DSN table might have been
+# used, and it may have all nodes' DSNs so the user can run the tool
+# on any node, in which case it has the "master" node, the DSN given
+# on the command line.
+# On the other hand, maybe find_cluster_nodes worked, in which case
+# we definitely have a dupe for the master cxn, but we may also have a
+# dupe for every other node if this was unsed in conjunction with a
+# DSN table.
+# So try to detect and remove those.
+sub remove_duplicate_cxns {
+   my ($self, %args) = @_;
+   my @cxns     = @{$args{cxns}};
+   my $seen_ids = $args{seen_ids} || {};
+   PTDEBUG && _d("Removing duplicates from ", join(" ", map { $_->name } @cxns));
+   my @trimmed_cxns;
+
+   for my $cxn ( @cxns ) {
+      my $dbh  = $cxn->dbh();
+      my $sql  = q{SELECT @@server_id};
+      PTDEBUG && _d($sql);
+      my ($id) = $dbh->selectrow_array($sql);
+      PTDEBUG && _d('Server ID for ', $cxn->name, ': ', $id);
+
+      if ( ! $seen_ids->{$id}++ ) {
+         push @trimmed_cxns, $cxn
+      }
+      else {
+         PTDEBUG && _d("Removing ", $cxn->name,
+                       ", ID ", $id, ", because we've already seen it");
+      }
+   }
+
+   return \@trimmed_cxns;
+}
+
 sub DESTROY {
    my ($self) = @_;
-   if ( $self->{dbh} ) {
-      PTDEBUG && _d('Disconnecting dbh', $self->{dbh}, $self->{name});
+
+   PTDEBUG && _d('Destroying cxn');
+
+   if ( $self->{parent} ) {
+      PTDEBUG && _d($self->{dbh}, 'Not disconnecting dbh in parent');
+   }
+   elsif ( $self->{dbh}
+           && blessed($self->{dbh})
+           && $self->{dbh}->can("disconnect") )
+   {
+      PTDEBUG && _d($self->{dbh}, 'Disconnecting dbh on', $self->{hostname},
+         $self->{dsn_name});
       $self->{dbh}->disconnect();
    }
+
    return;
 }
 

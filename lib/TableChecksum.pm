@@ -1,4 +1,4 @@
-# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Inc.
+# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -39,7 +39,7 @@ our %ALGOS = (
 
 sub new {
    my ( $class, %args ) = @_;
-   foreach my $arg ( qw(Quoter VersionParser) ) {
+   foreach my $arg ( qw(Quoter) ) {
       die "I need a $arg argument" unless defined $args{$arg};
    }
    my $self = { %args };
@@ -107,7 +107,6 @@ sub get_crc_type {
 sub best_algorithm {
    my ( $self, %args ) = @_;
    my ( $alg, $dbh ) = @args{ qw(algorithm dbh) };
-   my $vp = $self->{VersionParser};
    my @choices = sort { $ALGOS{$a}->{pref} <=> $ALGOS{$b}->{pref} } keys %ALGOS;
    die "Invalid checksum algorithm $alg"
       if $alg && !$ALGOS{$alg};
@@ -115,18 +114,12 @@ sub best_algorithm {
    # CHECKSUM is eliminated by lots of things...
    if (
       $args{where} || $args{chunk}        # CHECKSUM does whole table
-      || $args{replicate}                 # CHECKSUM can't do INSERT.. SELECT
-      || !$vp->version_ge($dbh, '4.1.1')) # CHECKSUM doesn't exist
+      || $args{replicate})                # CHECKSUM can't do INSERT.. SELECT
    {
       PTDEBUG && _d('Cannot use CHECKSUM algorithm');
       @choices = grep { $_ ne 'CHECKSUM' } @choices;
    }
 
-   # BIT_XOR isn't available till 4.1.1 either
-   if ( !$vp->version_ge($dbh, '4.1.1') ) {
-      PTDEBUG && _d('Cannot use BIT_XOR algorithm because MySQL < 4.1.1');
-      @choices = grep { $_ ne 'BIT_XOR' } @choices;
-   }
 
    # Choose the best (fastest) among the remaining choices.
    if ( $alg && grep { $_ eq $alg } @choices ) {
@@ -204,7 +197,7 @@ sub optimize_xor {
 
    do { # Try different positions till sliced result equals non-sliced.
       PTDEBUG && _d('Trying slice', $opt_slice);
-      $dbh->do('SET @crc := "", @cnt := 0');
+      $dbh->do(q{SET @crc := '', @cnt := 0});
       my $slices = $self->make_xor_slices(
          query     => "\@crc := $func('a')",
          crc_wid   => $crc_wid,
@@ -480,10 +473,9 @@ sub find_replication_differences {
       . "FROM $table "
       . "WHERE master_cnt <> this_cnt OR master_crc <> this_crc "
       . "OR ISNULL(master_crc) <> ISNULL(this_crc)";
-
    PTDEBUG && _d($sql);
    my $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
-   return @$diffs;
+   return $diffs;
 }
 
 sub _d {

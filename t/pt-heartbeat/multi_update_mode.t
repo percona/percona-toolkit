@@ -9,14 +9,11 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Time::HiRes qw(sleep);
 use Test::More;
 
 use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-heartbeat";
-
-diag(`$trunk/sandbox/test-env reset`);
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
@@ -34,13 +31,15 @@ elsif ( !$slave2_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave2';
 }
 else {
-   plan tests => 28;
+   plan tests => 29;
 }
 
+diag(`rm -rf /tmp/pt-heartbeat-sentinel >/dev/null 2>&1`);
 $sb->create_dbs($master_dbh, ['test']);
+$sb->wait_for_slaves();
 
 my $output;
-my $pid_file = "/tmp/__mk-heartbeat-test.pid";
+my $pid_file = "/tmp/pt-heartbeat-test.$PID.pid";
 
 # Multi-update mode is the new, hi-res mode that allows a single table to
 # be updated by multiple servers: a slave's master, its master's master, etc.
@@ -54,8 +53,7 @@ my @ports = qw(12345 12346 12347);
 foreach my $port (@ports) {
    system("$trunk/bin/pt-heartbeat -h 127.1 -u msandbox -p msandbox -P $port --database test --table heartbeat --create-table --update --interval 0.5 --daemonize --pid $pid_file.$port >/dev/null");
 
-   sleep 0.2;
-
+   PerconaTest::wait_for_files("$pid_file.$port");
    ok(
       -f "$pid_file.$port",
       "--update on $port started"
@@ -154,7 +152,7 @@ ok(
 # ############################################################################
 
 # $rows already has slave2 heartbeat info.
-sleep 1.0;
+sleep 1;
 
 my $rows2 = $slave2_dbh->selectall_hashref("select * from test.heartbeat", 'server_id');
 
@@ -250,4 +248,5 @@ foreach my $port (@ports) {
 # #############################################################################
 diag(`rm -rf /tmp/pt-heartbeat-sentinel >/dev/null`);
 $sb->wipe_clean($master_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

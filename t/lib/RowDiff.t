@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 26;
+use Test::More tests => 27;
 
 use MockSync;
 use RowDiff;
@@ -444,7 +444,6 @@ SKIP: {
 
    $d = new RowDiff(dbh => $master_dbh);
 
-   diag(`$trunk/sandbox/mk-test-env reset >/dev/null 2>&1`);
    $sb->create_dbs($master_dbh, [qw(test)]);
    $sb->load_file('master', 't/lib/samples/issue_11.sql');
    PerconaTest::wait_until(
@@ -549,4 +548,5 @@ SKIP: {
    $sb->wipe_clean($slave_dbh);
 }
 
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

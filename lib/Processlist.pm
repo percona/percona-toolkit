@@ -1,4 +1,4 @@
-# This program is copyright 2008-2011 Baron Schwartz, 2011 Percona Inc.
+# This program is copyright 2008-2011 Baron Schwartz, 2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -75,6 +75,7 @@ sub new {
       last_poll   => 0,
       active_cxn  => {},  # keyed off ID
       event_cache => [],
+      _reasons_for_matching => {},
    };
    return bless $self, $class;
 }
@@ -244,14 +245,28 @@ sub parse_event {
                $new_query = 1;
             }
             elsif ( $curr->[INFO] && defined $curr->[TIME]
-                    && $query_start - $etime - $prev->[START] > $fudge ) {
+                    && $query_start - $etime - $prev->[START] > $fudge)
+            {
                # If the query's recalculated start time minus its previously
                # calculated start time is greater than the fudge factor, then
                # the query has restarted.  I.e. the new start time is after
                # the previous start time.
-               PTDEBUG && _d('Query restarted; new query',
-                  $query_start, $etime, $prev->[START], $fudge);
-               $new_query = 1;
+               my $ms = $self->{MasterSlave};
+               
+               my $is_repl_thread = $ms->is_replication_thread({
+                                        Command => $curr->[COMMAND],
+                                        User    => $curr->[USER],
+                                        State   => $curr->[STATE],
+                                        Id      => $curr->[ID]});
+               if ( $is_repl_thread ) {
+                  PTDEBUG &&
+                  _d(q{Query has restarted but it's a replication thread, ignoring});
+               }
+               else {
+                  PTDEBUG && _d('Query restarted; new query',
+                     $query_start, $etime, $prev->[START], $fudge);
+                  $new_query = 1;
+               }
             }
 
             if ( $new_query ) {
@@ -274,11 +289,11 @@ sub parse_event {
             else {
                PTDEBUG && _d('Saving new query, state', $curr->[STATE]);
                push @new_cxn, [
-                  @$curr,                   # proc info
+                  @{$curr}[0..7],           # proc info
                   int($query_start),        # START
                   $etime,                   # ETIME
                   $time,                    # FSEEN
-                  { $curr->[STATE] => 0 },  # PROFILE
+                  { ($curr->[STATE] || "") => 0 }, # PROFILE
                ];
             }
          }
@@ -289,11 +304,11 @@ sub parse_event {
             # But only save the new cxn if it's executing.
             PTDEBUG && _d('Saving query of new cxn, state', $curr->[STATE]);
             push @new_cxn, [
-               @$curr,                   # proc info
+               @{$curr}[0..7],           # proc info
                int($query_start),        # START
                $etime,                   # ETIME
                $time,                    # FSEEN
-               { $curr->[STATE] => 0 },  # PROFILE
+               { ($curr->[STATE] || "") => 0 }, # PROFILE
             ];
          }
       }
@@ -470,21 +485,33 @@ sub find {
 
       # Match special busy_time.
       if ( $find_spec{busy_time} && ($query->{Command} || '') eq 'Query' ) {
+         next QUERY unless defined($query->{Time});
          if ( $query->{Time} < $find_spec{busy_time} ) {
             PTDEBUG && _d("Query isn't running long enough");
             next QUERY;
          }
-         PTDEBUG && _d('Exceeds busy time');
+         my $reason = 'Exceeds busy time';
+         PTDEBUG && _d($reason);
+         # Saving the reasons for each query in the objct is a bit nasty,
+         # but the alternatives are worse:
+         # - Saving internal data in the query
+         # - Instead of using the stringified hashref as a key, using
+         #   a checksum of the hashes' contents. Which could occasionally
+         #   fail miserably due to timing-related issues.
+         push @{$self->{_reasons_for_matching}->{$query} ||= []}, $reason;
          $matched++;
       }
 
       # Match special idle_time.
       if ( $find_spec{idle_time} && ($query->{Command} || '') eq 'Sleep' ) {
+         next QUERY unless defined($query->{Time});
          if ( $query->{Time} < $find_spec{idle_time} ) {
             PTDEBUG && _d("Query isn't idle long enough");
             next QUERY;
          }
-         PTDEBUG && _d('Exceeds idle time');
+         my $reason = 'Exceeds idle time';
+         PTDEBUG && _d($reason);
+         push @{$self->{_reasons_for_matching}->{$query} ||= []}, $reason;
          $matched++;
       }
  
@@ -505,7 +532,9 @@ sub find {
                PTDEBUG && _d('Query does not match', $property, 'spec');
                next QUERY;
             }
-            PTDEBUG && _d('Query matches', $property, 'spec');
+            my $reason = 'Query matches ' . $property . ' spec';
+            PTDEBUG && _d($reason);
+            push @{$self->{_reasons_for_matching}->{$query} ||= []}, $reason;
             $matched++;
          }
       }

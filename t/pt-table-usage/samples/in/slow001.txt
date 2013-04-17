@@ -1,0 +1,24 @@
+# Time: 071218 11:48:27
+# Thread_id: 10  Query_id: 1
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+select * from t;
+# Time: 071218 11:48:27
+# Thread_id: 10  Query_id: 2
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+select * from t1, t2 as x, t3 y, z;
+# Time: 071218 11:48:27
+# Thread_id: 10  Query_id: 3
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+insert into t values (1, 2, 3);
+# Time: 071218 11:48:27
+# Thread_id: 10  Query_id: 4
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+delete from t where id < 1000;
+# Time: 071218 11:48:27
+# Thread_id: 10  Query_id: 5
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+select * from a as t1, b as t2 where t1.id=t2.id;
+# Time: 071218 11:48:27
+# Thread_id: 10  Query_id: 6
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+replace into t set foo='bar';

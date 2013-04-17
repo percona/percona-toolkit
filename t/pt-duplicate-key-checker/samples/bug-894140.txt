@@ -1,0 +1,29 @@
+# ########################################################################
+# test.bug_894140 
+# ########################################################################
+
+# row_id is a duplicate of PRIMARY
+# Key definitions:
+# UNIQUE KEY `row_id` (`row_id`),
+# PRIMARY KEY (`row_id`),
+# Column types:
+#	 `row_id` bigint(20) not null auto_increment
+# To remove this duplicate index, execute:
+ALTER TABLE `test`.`bug_894140` DROP INDEX `row_id`;
+
+# player_id_2 is a duplicate of player_id
+# Key definitions:
+# KEY `player_id_2` (`player_id`)
+# UNIQUE KEY `player_id` (`player_id`),
+# Column types:
+#	 `player_id` bigint(20) default null
+# To remove this duplicate index, execute:
+ALTER TABLE `test`.`bug_894140` DROP INDEX `player_id_2`;
+
+# ########################################################################
+# Summary of indexes 
+# ########################################################################
+
+# Size Duplicate Indexes 17
+# Total Duplicate Indexes 2
+# Total Indexes 4

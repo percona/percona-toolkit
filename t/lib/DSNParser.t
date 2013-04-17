@@ -9,11 +9,13 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 27;
+use Test::More;
 
 use DSNParser;
 use OptionParser;
 use PerconaTest;
+
+use Data::Dumper;
 
 my $opts = [
    {
@@ -80,6 +82,20 @@ is_deeply(
       A => undef,
    },
    'Basic DSN'
+);
+
+is_deeply(
+   $dp->parse('S=/tmp/sock'),
+   {  u => undef,
+      p => undef,
+      S => '/tmp/sock',
+      h => undef,
+      P => undef,
+      F => undef,
+      D => undef,
+      A => undef,
+   },
+   'Basic DSN with one part'
 );
 
 is_deeply(
@@ -392,6 +408,8 @@ is_deeply(
    'Copy DSN and overwrite destination'
 );
 
+pop @$opts; # Remove t part.
+
 # #############################################################################
 # Issue 93: DBI error messages can include full SQL
 # #############################################################################
@@ -421,7 +439,7 @@ SKIP: {
    $dbh->disconnect();
 
    $dp = new DSNParser(opts => $opts);
-   $dp->prop('set-vars', 'wait_timeout=1000');
+   $dp->prop('set-vars', { wait_timeout => { val => 1000, default => 1}});
    $d  = $dp->parse('h=127.0.0.1,P=12345,A=utf8,u=msandbox,p=msandbox');
    my $dbh2 = $dp->get_dbh($dp->get_cxn_params($d), {mysql_use_result=>1});
    sleep 2;
@@ -443,26 +461,177 @@ SKIP: {
 # #############################################################################
 # Issue 801: DSNParser clobbers SQL_MODE
 # #############################################################################
+diag('Setting SQL mode globally on 12345');
+my $old_mode = `/tmp/12345/use -ss -e 'select \@\@sql_mode'`;
+chomp $old_mode;
+diag("Old SQL mode: $old_mode");
+diag(`/tmp/12345/use -e 'set global sql_mode=no_zero_date'`);
+my $new_mode = `/tmp/12345/use -ss -e 'select \@\@sql_mode'`;
+chomp $new_mode;
+diag("New SQL mode: $new_mode");
+my $dsn = $dp->parse('h=127.1,P=12345,u=msandbox,p=msandbox');
+my $mdbh = $dp->get_dbh($dp->get_cxn_params($dsn), {});
+
+my $row = $mdbh->selectrow_arrayref('select @@sql_mode');
+is(
+   $row->[0],
+   'NO_AUTO_VALUE_ON_ZERO,NO_ZERO_DATE',
+   "Did not clobber server SQL mode"
+);
+diag(`/tmp/12345/use -e "set global sql_mode='$old_mode'"`);
+$mdbh->disconnect;
+
+# #############################################################################
+# Passwords with commas don't work, expose part of password
+# https://bugs.launchpad.net/percona-toolkit/+bug/886077
+# #############################################################################
+
+sub test_password_comma {
+   my ($dsn_string, $pass, $port, $name) = @_;
+   my $dsn = $dp->parse($dsn_string);
+   is_deeply(
+      $dsn,
+      {  u => 'a',
+         p => $pass,
+         S => undef,
+         h => undef,
+         P => $port,
+         F => undef,
+         D => undef,
+         A => undef,
+      },
+      "$name (bug 886077)"
+   ) or diag(Dumper($dsn));
+}
+
+my @password_commas = (
+   ['u=a,p=foo\,xxx,P=12345', 'foo,xxx', 12345, 'Pass with comma'],
+   ['u=a,p=foo\,xxx',         'foo,xxx', undef, 'Pass with comma, last part'],
+   ['u=a,p=foo\,,P=12345',    'foo,',    12345, 'Pass ends with comma'],
+   ['u=a,p=foo\,',            'foo,',    undef, 'Pass ends with comma, last part'],
+   ['u=a,p=\,,P=12345',       ',',       12345, 'Pass is a comma'],
+);
+foreach my $password_comma ( @password_commas ) {
+   test_password_comma(@$password_comma);
+}
+
+sub test_password_comma_with_auto {
+   my ($dsn_string, $pass, $port, $name) = @_;
+   my $dsn = $dp->parse($dsn_string);
+   is_deeply(
+      $dsn,
+      {  u => undef,
+         p => $pass,
+         S => undef,
+         h => 'host',
+         P => $port,
+         F => undef,
+         D => undef,
+         A => undef,
+      },
+      "$name (bug 886077)"
+   ) or diag(Dumper($dsn));
+}
+
+@password_commas = (
+   ['host,p=a\,z,P=9', 'a,z', 9, 'Comma-pass with leading bareword host'],
+   ['p=a\,z,P=9,host', 'a,z', 9, 'Comma-pass with trailing bareword host'],
+
+);
+foreach my $password_comma ( @password_commas ) {
+   test_password_comma_with_auto(@$password_comma);
+}
+
+# #############################################################################
+# Bug 984915: SQL calls after creating the dbh aren't checked
+# #############################################################################
+# Make sure to disconnect any lingering dbhs, since full_output will fork
+# and then die, which will cause rollback warnings for connected dbhs.
+$dbh->disconnect() if $dbh;
+
+$dsn = $dp->parse('h=127.1,P=12345,u=msandbox,p=msandbox');
+my @opts = $dp->get_cxn_params($dsn);
+$opts[0] .= ";charset=garbage_eh";
+my ($out, undef) = full_output(sub { $dp->get_dbh(@opts, {}) });
+
+like(
+   $out,
+   qr/\QUnknown character set/,
+   "get_dbh dies with an unknown charset"
+);
+
+$dp->prop('set-vars',  { time_zoen => { val => 'UTC' }});
+$out = output(
+   sub {
+      my $dbh = $dp->get_dbh($dp->get_cxn_params($dsn), {});
+      $dbh->disconnect();
+   },
+   stderr => 1,
+);
+
+like(
+   $out,
+   qr/\QUnknown system variable 'time_zoen'/,
+   "get_dbh dies with an unknown system variable"
+);
+$dp->prop('set-vars', undef);
+
+# #############################################################################
+# Bug 1078887: Don't clobber the sql_mode set by the script with set-vars
+# https://bugs.launchpad.net/percona-toolkit/+bug/1078887
+# #############################################################################
+
+$dp->prop('set-vars', { sql_mode => { val=>'ANSI_QUOTES' }});
+my $sql_mode_dbh = $dp->get_dbh($dp->get_cxn_params($dsn), {});
+
+my (undef, $sql_mode) = $sql_mode_dbh->selectrow_array(q{SHOW VARIABLES LIKE 'sql\_mode'});
+
+like(
+   $sql_mode,
+   qr/NO_AUTO_VALUE_ON_ZERO/,
+   "Bug 1078887: --set-vars doesn't clover the sql_mode set by DSNParser"
+);
+
+$sql_mode_dbh->disconnect();
+
+# #############################################################################
+# LOAD DATA LOCAL INFILE broken in some platforms
+# https://bugs.launchpad.net/percona-toolkit/+bug/821715
+# #############################################################################
+
 SKIP: {
-   diag(`SQL_MODE="no_zero_date" $trunk/sandbox/start-sandbox master 12348 >/dev/null`);
-   my $dsn = $dp->parse('h=127.1,P=12348,u=msandbox,p=msandbox');
-   my $dbh = $dp->get_dbh($dp->get_cxn_params($dsn), {});
+   skip "LOAD DATA LOCAL INFILE already works here", 1 if $can_load_data;
+   local $dsn->{L} = 1;
+   my $dbh = $dp->get_dbh( $dp->get_cxn_params( $dsn ) );
 
-   skip 'Cannot connect to second sandbox master', 1 unless $dbh;
+   use File::Temp qw(tempfile);
 
-   my $row = $dbh->selectrow_arrayref('select @@sql_mode');
+   my ($fh, $filename) = tempfile( 'load_data_test.XXXXXXX', TMPDIR => 1 );
+   print { $fh } "42\n";
+   close $fh or die "Cannot close $filename: $!";
+
+   $dbh->do(q{DROP DATABASE IF EXISTS bug_821715});
+   $dbh->do(q{CREATE DATABASE bug_821715});
+   $dbh->do(q{CREATE TABLE IF NOT EXISTS bug_821715.load_data (i int)});
+
+   eval {
+      $dbh->do(qq{LOAD DATA LOCAL INFILE '$filename' INTO TABLE bug_821715.load_data});
+   };
+
    is(
-      $row->[0],
-      'NO_AUTO_VALUE_ON_ZERO,NO_ZERO_DATE',
-      "Did not clobber server SQL mode"
+      $EVAL_ERROR,
+      '',
+      "Even though LOCAL INFILE is off by default, the dbhs returned by DSNParser can use it if L => 1"
    );
+   
+   unlink $filename;
 
+   $dbh->do(q{DROP DATABASE IF EXISTS bug_821715});
    $dbh->disconnect();
-   diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
-};
+}
 
 # #############################################################################
 # Done.
 # #############################################################################
-$dbh->disconnect() if $dbh;
-exit;
+done_testing;
+   

@@ -1,0 +1,6 @@
+Query_id: 0xDC115301537AEE70.1
+SELECT ca.lmp_rt_5min
+JOIN ca.interval_lmp_rt_5min
+JOIN ca.lmp_rt_5min
+WHERE ca.interval_lmp_rt_5min
+

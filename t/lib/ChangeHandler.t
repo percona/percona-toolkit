@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 32;
+use Test::More;
 
 use ChangeHandler;
 use Quoter;
@@ -19,7 +19,8 @@ use PerconaTest;
 
 my $dp  = new DSNParser(opts => $dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $master_dbh = $sb->get_dbh_for('master');
+my $slave1_dbh = $sb->get_dbh_for('slave1');
 
 throws_ok(
    sub { new ChangeHandler() },
@@ -200,9 +201,9 @@ is_deeply(\@rows,
 # Test fetch_back().
 # #############################################################################
 SKIP: {
-   skip 'Cannot connect to sandbox master', 1 unless $dbh;
+   skip 'Cannot connect to sandbox master', 1 unless $master_dbh;
 
-   $dbh->do('CREATE DATABASE IF NOT EXISTS test');
+   $master_dbh->do('CREATE DATABASE IF NOT EXISTS test');
 
    $ch = new ChangeHandler(
       Quoter    => $q,
@@ -217,7 +218,7 @@ SKIP: {
 
    @rows = ();
    $ch->{queue} = 0;
-   $ch->fetch_back($dbh);
+   $ch->fetch_back($master_dbh);
    `/tmp/12345/use < $trunk/t/lib/samples/before-TableSyncChunk.sql`;
    # This should cause it to fetch the row from test.test1 where a=1
    $ch->change('UPDATE', { a => 1, __foo => 'bar' }, [qw(a)] );
@@ -308,13 +309,13 @@ is(
 delete $row->{other_col};
 
 SKIP: {
-   skip 'Cannot connect to sandbox master', 3 unless $dbh;
+   skip 'Cannot connect to sandbox master', 3 unless $master_dbh;
 
-   $dbh->do('DROP TABLE IF EXISTS test.issue_371');
-   $dbh->do('CREATE TABLE test.issue_371 (id INT, foo varchar(16), bar char)');
-   $dbh->do('INSERT INTO test.issue_371 VALUES (1,"foo","a"),(2,"bar","b")');
+   $master_dbh->do('DROP TABLE IF EXISTS test.issue_371');
+   $master_dbh->do('CREATE TABLE test.issue_371 (id INT, foo varchar(16), bar char)');
+   $master_dbh->do("INSERT INTO test.issue_371 VALUES (1,'foo','a'),(2,'bar','b')");
 
-   $ch->fetch_back($dbh);
+   $ch->fetch_back($master_dbh);
 
    is(
       $ch->make_INSERT($row, [qw(id foo)]),
@@ -356,7 +357,7 @@ $ch = new ChangeHandler(
 
 is(
    $ch->make_fetch_back_query('1=1'),
-   "SELECT `a`, IF(`x`='', '', CONCAT('0x', HEX(`x`))) AS `x`, `b` FROM `test`.`lt` WHERE 1=1 LIMIT 1",
+   "SELECT `a`, IF(BINARY(`x`)='', '', CONCAT('0x', HEX(`x`))) AS `x`, `b` FROM `test`.`lt` WHERE 1=1 LIMIT 1",
    "Wraps BLOB column in CONCAT('0x', HEX(col)) AS col"
 );
 
@@ -385,6 +386,33 @@ is(
 # #############################################################################
 $tbl_struct = {
    cols     => [qw(t)],
+   type_for => {t=>'blob'},
+};
+$ch = new ChangeHandler(
+   Quoter     => $q,
+   left_db    => 'test',
+   left_tbl   => 't',
+   right_db   => 'test',
+   right_tbl  => 't',
+   actions    => [ sub {} ],
+   replace    => 0,
+   queue      => 0,
+   tbl_struct => $tbl_struct,
+);
+
+is(
+   $ch->make_fetch_back_query('1=1'),
+   "SELECT IF(BINARY(`t`)='', '', CONCAT('0x', HEX(`t`))) AS `t` FROM `test`.`t` WHERE 1=1 LIMIT 1",
+   "Don't prepend 0x to blank blob/text column value (issue 1052)"
+);
+
+# #############################################################################
+# An update to the above bug; It should only hexify for blob and binary, not
+# for text columns; The latter not only breaks for UTF-8 data, but also
+# breaks now that hex-looking columns aren't automatically left unquoted.
+# #############################################################################
+$tbl_struct = {
+   cols     => [qw(t)],
    type_for => {t=>'text'},
 };
 $ch = new ChangeHandler(
@@ -401,14 +429,14 @@ $ch = new ChangeHandler(
 
 is(
    $ch->make_fetch_back_query('1=1'),
-   "SELECT IF(`t`='', '', CONCAT('0x', HEX(`t`))) AS `t` FROM `test`.`t` WHERE 1=1 LIMIT 1",
+   "SELECT `t` FROM `test`.`t` WHERE 1=1 LIMIT 1",
    "Don't prepend 0x to blank blob/text column value (issue 1052)"
 );
 
 # #############################################################################
 
 SKIP: {
-   skip 'Cannot connect to sandbox master', 1 unless $dbh;
+   skip 'Cannot connect to sandbox master', 1 unless $master_dbh;
    $sb->load_file('master', "t/lib/samples/issue_641.sql");
 
    @rows = ();
@@ -428,7 +456,7 @@ SKIP: {
       queue      => 0,
       tbl_struct => $tbl_struct,
    );
-   $ch->fetch_back($dbh);
+   $ch->fetch_back($master_dbh);
 
    $ch->change('UPDATE', {id=>1}, [qw(id)] );
    $ch->change('INSERT', {id=>1}, [qw(id)] );
@@ -468,7 +496,51 @@ is_deeply(
 );
 
 # #############################################################################
+# ChangeHandler doesn't quote varchar columns with hex-looking values
+# https://bugs.launchpad.net/percona-toolkit/+bug/1038276
+# #############################################################################
+SKIP: {
+   skip 'Cannot connect to sandbox master', 1 unless $master_dbh;
+   $sb->load_file('master', "t/lib/samples/bug_1038276.sql");
+
+   @rows = ();
+   $tbl_struct = {
+      cols      => [qw(id b)],
+      col_posn  => {id=>0, b=>1},
+      type_for  => {id=>'int', b=>'varchar'},
+   };
+   $ch = new ChangeHandler(
+      Quoter     => $q,
+      left_db    => 'bug_1038276',
+      left_tbl   => 'lt',
+      right_db   => 'bug_1038276',
+      right_tbl  => 'rt',
+      actions   => [ sub { push @rows, $_[0]; } ],
+      replace    => 0,
+      queue      => 0,
+      tbl_struct => $tbl_struct,
+   );
+   $ch->fetch_back($master_dbh);
+
+   $ch->change('UPDATE', {id=>1}, [qw(id)] );
+   $ch->change('INSERT', {id=>1}, [qw(id)] );
+
+   is_deeply(
+      \@rows,
+      [
+         "UPDATE `bug_1038276`.`rt` SET `b`='0x89504E470D0A1A0A0000000D4948445200000079000000750802000000E55AD965000000097048597300000EC300000EC301C76FA8640000200049444154789C4CBB7794246779FFBBF78F7B7EBE466177677772CE3D9D667AA67BA62776CE39545557CE3974EE9EB049AB9556392210414258083' WHERE `id`='1' LIMIT 1",
+         "INSERT INTO `bug_1038276`.`rt`(`id`, `b`) VALUES ('1', '0x89504E470D0A1A0A0000000D4948445200000079000000750802000000E55AD965000000097048597300000EC300000EC301C76FA8640000200049444154789C4CBB7794246779FFBBF78F7B7EBE466177677772CE3D9D667AA67BA62776CE39545557CE3974EE9EB049AB9556392210414258083')",
+      ],
+      "UPDATE and INSERT quote data regardless of how it looks if tbl_struct->quote_val is true"
+   );
+}
+
+# #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($dbh) if $dbh;
-exit;
+$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($slave1_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+
+done_testing;
+   

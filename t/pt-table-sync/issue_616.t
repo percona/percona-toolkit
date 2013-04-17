@@ -28,19 +28,23 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 2;
+   plan tests => 3;
 }
-
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
-$sb->create_dbs($master_dbh, [qw(test)]);
 
 # #############################################################################
 # Issue 616: mk-table-sync inserts NULL values instead of correct values
 # #############################################################################
-diag(`/tmp/12345/use -D test < $trunk/t/lib/samples/issue_616.sql`);
-sleep 1;
-`$trunk/bin/pt-table-sync --sync-to-master h=127.1,P=12346,u=msandbox,p=msandbox --databases issue_616 --execute`;
+
+$sb->load_file('master', "t/lib/samples/issue_616.sql");
+
+output(
+   sub { pt_table_sync::main("h=127.1,P=12346,u=msandbox,p=msandbox",
+      qw(--sync-to-master --databases issue_616 --execute));
+   },
+);
+
+$sb->wait_for_slaves();
+
 my $ok_r = [
    [  1, 'from master' ],
    [ 11, 'from master' ],
@@ -68,5 +72,5 @@ is_deeply(
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

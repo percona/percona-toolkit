@@ -1,0 +1,23 @@
+platform    Linux
+hostname    hugmeir
+uptime    1 day, 15:14,  5 users,  load average: 0.00, 0.06, 0.07
+kernel    3.0.0-16-generic
+release    Ubuntu 11.10 (oneiric)
+CPU_ARCH    32-bit
+OS_ARCH    32-bit
+virt    No virtualization detected
+vendor    Quanta
+system    Quanta; UW3; vTBD (Other)
+servicetag    123456789
+threading    NPTL 2.13
+getenforce    No SELinux detected
+rss    1233723392
+swappiness    60
+dirtypolicy    20, 10
+raid_controller    No RAID controller detected
+internal::disks    sda sdb
+internal::sda    [cfq] 128
+internal::sdb    [cfq] 128
+dentry-state    78471 67588 45 0  0  0
+file-nr    9248  0  203574
+inode-nr    70996 10387

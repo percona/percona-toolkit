@@ -1,4 +1,4 @@
-# This program is copyright 2008-2011 Percona Inc.
+# This program is copyright 2008-2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -29,8 +29,7 @@
 # which is also in mk-query-digest.
 package QueryReportFormatter;
 
-use strict;
-use warnings FATAL => 'all';
+use Lmo;
 use English qw(-no_match_vars);
 use POSIX qw(floor);
 
@@ -42,6 +41,9 @@ Transformers->import(qw(
 use constant PTDEBUG           => $ENV{PTDEBUG} || 0;
 use constant LINE_LENGTH       => 74;
 use constant MAX_STRING_LENGTH => 10;
+
+{ local $EVAL_ERROR; eval { require Quoter } };
+{ local $EVAL_ERROR; eval { require ReportFormatter } };
 
 # Sub: new
 # 
@@ -56,31 +58,74 @@ use constant MAX_STRING_LENGTH => 10;
 # Optional arguments:
 #   QueryReview     - <QueryReview> object used in <query_report()>
 #   dbh             - dbh used in <explain_report()>
-#   ExplainAnalyzer - <ExplainAnalyzer> object used in <explain_report()>.
-#                     This causes a sparkline to be printed (issue 1141).
 #
 # Returns:
 #   QueryReportFormatter object
-sub new {
-   my ( $class, %args ) = @_;
-   foreach my $arg ( qw(OptionParser QueryRewriter Quoter) ) {
-      die "I need a $arg argument" unless $args{$arg};
+has Quoter => (
+   is      => 'ro',
+   isa     => 'Quoter',
+   default => sub { Quoter->new() },
+);
+
+has label_width => (
+   is      => 'ro',
+   isa     => 'Int',
+);
+
+has global_headers => (
+   is      => 'ro',
+   isa     => 'ArrayRef',
+   default => sub { [qw(    total min max avg 95% stddev median)] },
+);
+
+has event_headers => (
+   is      => 'ro',
+   isa     => 'ArrayRef',
+   default => sub { [qw(pct total min max avg 95% stddev median)] },
+);
+
+has show_all => (
+   is      => 'ro',
+   isa     => 'HashRef',
+   default => sub { {} },
+);
+
+has ReportFormatter => (
+   is      => 'ro',
+   isa     => 'ReportFormatter',
+   builder => '_build_report_formatter',
+);
+
+sub _build_report_formatter {
+   return ReportFormatter->new(
+      line_width       => LINE_LENGTH,
+      extend_right     => 1,
+   );
+}
+
+sub BUILDARGS {
+   my $class = shift;
+   my $args  = $class->SUPER::BUILDARGS(@_);
+
+   foreach my $arg ( qw(OptionParser QueryRewriter) ) {
+      die "I need a $arg argument" unless $args->{$arg};
    }
 
    # If ever someone wishes for a wider label width.
-   my $label_width = $args{label_width} || 12;
+   my $label_width = $args->{label_width} ||= 12;
    PTDEBUG && _d('Label width:', $label_width);
 
-   my $cheat_width = $label_width + 1;
-
+   my $o = delete $args->{OptionParser};
    my $self = {
-      %args,
-      label_width    => $label_width,
+      %$args,
+      options        => {
+         shorten          => 1024,
+         report_all       => $o->get('report-all'),
+         report_histogram => $o->get('report-histogram'),
+      },
       num_format     => "# %-${label_width}s %3s %7s %7s %7s %7s %7s %7s %7s",
       bool_format    => "# %-${label_width}s %3d%% yes, %3d%% no",
       string_format  => "# %-${label_width}s %s",
-      global_headers => [qw(    total min max avg 95% stddev median)],
-      event_headers  => [qw(pct total min max avg 95% stddev median)],
       hidden_attrib  => {   # Don't sort/print these attribs in the reports.
          arg         => 1, # They're usually handled specially, or not
          fingerprint => 1, # printed at all.
@@ -88,32 +133,7 @@ sub new {
          ts          => 1,
       },
    };
-   return bless $self, $class;
-}
-
-# Sub: set_report_formatter
-#   Set a report formatter object for a report.  By default this package will
-#   instantiate ReportFormatter objects to format columnized reports (e.g.
-#   for profile and prepared reports).  Setting a caller-created formatter
-#   object (usually a <ReportFormatter> obj) is used for tested and also by
-#   <mk-query-digest> to extend the profile report line width to 82 for
-#   the --explain sparkline.
-#
-# Parameters:
-#   %args - Arguments
-#
-# Required Arguments:
-#   report    - Report name, e.g. profile, prepared, etc.
-#   formatter - Formatter object, usually a <ReportFormatter> obj
-sub set_report_formatter {
-   my ( $self, %args ) = @_;
-   my @required_args = qw(report formatter);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless exists $args{$arg};
-   }
-   my ($report, $formatter) = @args{@required_args};
-   $self->{formatter_for}->{$report} = $formatter;
-   return;
+   return $self;
 }
 
 # Arguments:
@@ -204,13 +224,12 @@ sub files {
 #   * orderby    scalar: attrib items ordered by
 # Optional arguments:
 #   * select     arrayref: attribs to print, mostly for testing
-#   * zero_bool  bool: print zero bool values (0%)
 # Print a report about the global statistics in the EventAggregator.
 # Formerly called "global_report()."
 sub header {
    my ( $self, %args ) = @_;
    foreach my $arg ( qw(ea orderby) ) {
-      die "I need a $arg argument" unless $args{$arg};
+      die "I need a $arg argument" unless defined $args{$arg};
    }
    my $ea      = $args{ea};
    my $orderby = $args{orderby};
@@ -244,7 +263,7 @@ sub header {
       shorten(scalar keys %{$results->{classes}}, d=>1_000),
       shorten($qps  || 0, d=>1_000),
       shorten($conc || 0, d=>1_000));
-   $line .= ('_' x (LINE_LENGTH - length($line) + $self->{label_width} - 12));
+   $line .= ('_' x (LINE_LENGTH - length($line) + $self->label_width() - 12));
    push @result, $line;
 
    # Second line: time range
@@ -257,10 +276,7 @@ sub header {
    push @result, $self->make_global_header();
 
    # Sort the attributes, removing any hidden attributes.
-   my $attribs = $self->sort_attribs(
-      ($args{select} ? $args{select} : $ea->get_attributes()),
-      $ea,
-   );
+   my $attribs = $self->sort_attribs( $ea );
 
    foreach my $type ( qw(num innodb) ) {
       # Add "InnoDB:" sub-header before grouped InnoDB_* attributes.
@@ -296,7 +312,7 @@ sub header {
          next unless exists $results->{globals}->{$attrib};
 
          my $store = $results->{globals}->{$attrib};
-         if ( $store->{sum} > 0 || $args{zero_bool} ) { 
+         if ( $store->{sum} > 0 ) { 
             push @result,
                sprintf $self->{bool_format},
                   $self->make_label($attrib), $self->bool_percents($store);
@@ -309,17 +325,8 @@ sub header {
    return join("\n", map { s/\s+$//; $_ } @result) . "\n";
 }
 
-# Arguments:
-#   * ea       obj: EventAggregator
-#   * worst    arrayref: worst items
-#   * orderby  scalar: attrib worst items ordered by
-#   * groupby  scalar: attrib worst items grouped by
-# Optional arguments:
-#   * select       arrayref: attribs to print, mostly for test
-#   * explain_why  bool: print reason why item is reported
-#   * print_header  bool: "Report grouped by" header
-sub query_report {
-   my ( $self, %args ) = @_;
+sub query_report_values {
+   my ($self, %args) = @_;
    foreach my $arg ( qw(ea worst orderby groupby) ) {
       die "I need a $arg argument" unless defined $arg;
    }
@@ -327,25 +334,11 @@ sub query_report {
    my $groupby = $args{groupby};
    my $worst   = $args{worst};
 
-   my $o   = $self->{OptionParser};
-   my $q   = $self->{Quoter};
+   my $q   = $self->Quoter;
    my $qv  = $self->{QueryReview};
    my $qr  = $self->{QueryRewriter};
 
-   my $report = '';
-
-   if ( $args{print_header} ) {
-      $report .= "# " . ( '#' x 72 ) . "\n"
-               . "# Report grouped by $groupby\n"
-               . '# ' . ( '#' x 72 ) . "\n\n";
-   }
-
-   # Sort the attributes, removing any hidden attributes.
-   my $attribs = $self->sort_attribs(
-      ($args{select} ? $args{select} : $ea->get_attributes()),
-      $ea,
-   );
-
+   my @values;
    # Print each worst item: its stats/metrics (sum/min/max/95%/etc.),
    # Query_time distro chart, tables, EXPLAIN, fingerprint, etc.
    # Items are usually unique queries/fingerprints--depends on how
@@ -359,58 +352,107 @@ sub query_report {
       my $sample     = $ea->results->{samples}->{$item};
       my $samp_query = $sample->{arg} || '';
 
+      my %item_vals = (
+         item       => $item,
+         samp_query => $samp_query,
+         rank       => ($rank || 0),
+         reason     => $reason,
+      );
+
       # ###############################################################
       # Possibly skip item for --review.
       # ###############################################################
       my $review_vals;
       if ( $qv ) {
          $review_vals = $qv->get_review_info($item);
-         next ITEM if $review_vals->{reviewed_by} && !$o->get('report-all');
+         next ITEM if $review_vals->{reviewed_by} && !$self->{options}->{report_all};
+         for my $col ( $qv->review_cols() ) {
+            push @{$item_vals{review_vals}}, [$col, $review_vals->{$col}];
+         }
       }
 
-      # ###############################################################
-      # Get tables for --for-explain.
-      # ###############################################################
-      my ($default_db) = $sample->{db}       ? $sample->{db}
-                       : $stats->{db}->{unq} ? keys %{$stats->{db}->{unq}}
-                       :                       undef;
-      my @tables;
-      if ( $o->get('for-explain') ) {
-         @tables = $self->{QueryParser}->extract_tables(
+      $item_vals{default_db} = $sample->{db}       ? $sample->{db}
+                              : $stats->{db}->{unq} ? keys %{$stats->{db}->{unq}}
+                              :                       undef;
+      $item_vals{tables} = [$self->{QueryParser}->extract_tables(
             query      => $samp_query,
-            default_db => $default_db,
-            Quoter     => $self->{Quoter},
-         );
+            default_db => $item_vals{default_db},
+            Quoter     => $self->Quoter,
+         )];
+
+      if ( $samp_query && ($args{variations} && @{$args{variations}}) ) {
+         $item_vals{crc} = crc32($samp_query);
       }
 
+      push @values, \%item_vals;
+   }
+   return \@values;
+}
+
+# Arguments:
+#   * ea       obj: EventAggregator
+#   * worst    arrayref: worst items
+#   * orderby  scalar: attrib worst items ordered by
+#   * groupby  scalar: attrib worst items grouped by
+# Optional arguments:
+#   * select       arrayref: attribs to print, mostly for test
+#   * explain_why  bool: print reason why item is reported
+#   * print_header  bool: "Report grouped by" header
+sub query_report {
+   my ( $self, %args ) = @_;
+
+   my $ea      = $args{ea};
+   my $groupby = $args{groupby};
+   my $report_values = $self->query_report_values(%args);
+
+   my $qr  = $self->{QueryRewriter};
+
+   my $report = '';
+
+   if ( $args{print_header} ) {
+      $report .= "# " . ( '#' x 72 ) . "\n"
+               . "# Report grouped by $groupby\n"
+               . '# ' . ( '#' x 72 ) . "\n\n";
+   }
+
+   # Sort the attributes, removing any hidden attributes.
+   my $attribs = $self->sort_attribs( $ea );
+
+   # Print each worst item: its stats/metrics (sum/min/max/95%/etc.),
+   # Query_time distro chart, tables, EXPLAIN, fingerprint, etc.
+   # Items are usually unique queries/fingerprints--depends on how
+   # the events were grouped.
+   ITEM:
+   foreach my $vals ( @$report_values ) {
+      my $item = $vals->{item};
       # ###############################################################
       # Print the standard query analysis report.
       # ###############################################################
-      $report .= "\n" if $rank > 1;  # space between each event report
+      $report .= "\n" if $vals->{rank} > 1;  # space between each event report
       $report .= $self->event_report(
          %args,
          item    => $item,
-         sample  => $sample,
-         rank    => $rank,
-         reason  => $reason,
+         sample  => $ea->results->{samples}->{$item},
+         rank    => $vals->{rank},
+         reason  => $vals->{reason},
          attribs => $attribs,
-         db      => $default_db,
+         db      => $vals->{default_db},
       );
 
-      if ( $o->get('report-histogram') ) {
+      if ( $self->{options}->{report_histogram} ) {
          $report .= $self->chart_distro(
             %args,
-            attrib => $o->get('report-histogram'),
-            item   => $item,
+            attrib => $self->{options}->{report_histogram},
+            item   => $vals->{item},
          );
       }
 
-      if ( $qv && $review_vals ) {
+      if ( $vals->{review_vals} ) {
          # Print the review information that is already in the table
          # before putting anything new into the table.
          $report .= "# Review information\n";
-         foreach my $col ( $qv->review_cols() ) {
-            my $val = $review_vals->{$col};
+         foreach my $elem ( @{$vals->{review_vals}} ) {
+            my ($col, $val) = @$elem;
             if ( !$val || $val ne '0000-00-00 00:00:00' ) { # issue 202
                $report .= sprintf "# %13s: %-s\n", $col, ($val ? $val : '');
             }
@@ -419,31 +461,26 @@ sub query_report {
 
       if ( $groupby eq 'fingerprint' ) {
          # Shorten it if necessary (issue 216 and 292).           
-         $samp_query = $qr->shorten($samp_query, $o->get('shorten'))
-            if $o->get('shorten');
+         my $samp_query = $qr->shorten($vals->{samp_query}, $self->{options}->{shorten})
+            if $self->{options}->{shorten};
 
          # Print query fingerprint.
-         $report .= "# Fingerprint\n#    $item\n"
-            if $o->get('fingerprints');
+         PTDEBUG && _d("Fingerprint\n#    $vals->{item}\n");
 
          # Print tables used by query.
-         $report .= $self->tables_report(@tables)
-            if $o->get('for-explain');
+         $report .= $self->tables_report(@{$vals->{tables}});
 
          # Print sample (worst) query's CRC % 1_000.  We mod 1_000 because
          # that's actually the value stored in the ea, not the full checksum.
          # So the report will print something like,
          #   # arg crc      685 (2/66%), 159 (1/33%)
          # Thus we want our "CRC" line to be 685 and not 18547302820.
-         if ( $samp_query && ($args{variations} && @{$args{variations}}) ) {
-            my $crc = crc32($samp_query);
-            $report.= "# CRC " . ($crc ? $crc % 1_000 : "") . "\n";
+         if ( $vals->{crc} ) {
+            $report.= "# CRC " . ($vals->{crc} % 1_000) . "\n";
          }
 
          my $log_type = $args{log_type} || '';
-         my $mark     = $log_type eq 'memcached'
-                     || $log_type eq 'http'
-                     || $log_type eq 'pglog' ? '' : '\G';
+         my $mark     = '\G';
 
          if ( $item =~ m/^(?:[\(\s]*select|insert|replace)/ ) {
             if ( $item =~ m/^(?:insert|replace)/ ) { # No EXPLAIN
@@ -451,14 +488,13 @@ sub query_report {
             }
             else {
                $report .= "# EXPLAIN /*!50100 PARTITIONS*/\n$samp_query${mark}\n"; 
-               $report .= $self->explain_report($samp_query, $default_db);
+               $report .= $self->explain_report($samp_query, $vals->{default_db});
             }
          }
          else {
             $report .= "$samp_query${mark}\n"; 
             my $converted = $qr->convert_to_select($samp_query);
-            if ( $o->get('for-explain')
-                 && $converted
+            if ( $converted
                  && $converted =~ m/^[\(\s]*select/i ) {
                # It converted OK to a SELECT
                $report .= "# Converted for EXPLAIN\n# EXPLAIN /*!50100 PARTITIONS*/\n$converted${mark}\n";
@@ -467,7 +503,7 @@ sub query_report {
       }
       else {
          if ( $groupby eq 'tables' ) {
-            my ( $db, $tbl ) = $q->split_unquote($item);
+            my ( $db, $tbl ) = $self->Quoter->split_unquote($item);
             $report .= $self->tables_report([$db, $tbl]);
          }
          $report .= "$item\n";
@@ -485,24 +521,22 @@ sub query_report {
 #   * select      arrayref: attribs to print, mostly for testing
 #   * reason      scalar: why this item is being reported (top|outlier)
 #   * rank        scalar: item rank among the worst
-#   * zero_bool   bool: print zero bool values (0%)
 # Print a report about the statistics in the EventAggregator.
 # Called by query_report().
-sub event_report {
-   my ( $self, %args ) = @_;
-   foreach my $arg ( qw(ea item orderby) ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my $ea      = $args{ea};
-   my $item    = $args{item};
+sub event_report_values {
+   my ($self, %args) = @_;
+
+   my $ea   = $args{ea};
+   my $item = $args{item};
    my $orderby = $args{orderby};
    my $results = $ea->results();
-   my $o       = $self->{OptionParser};
-   my @result;
+
+   my %vals;
 
    # Return unless the item exists in the results (it should).
    my $store = $results->{classes}->{$item};
-   return "# No such event $item\n" unless $store;
+
+   return unless $store;
 
    # Pick the first attribute to get counts
    my $global_cnt = $results->{globals}->{$orderby}->{cnt};
@@ -523,79 +557,25 @@ sub event_report {
       };
    }
 
-   # First line like:
-   # Query 1: 9 QPS, 0x concurrency, ID 0x7F7D57ACDD8A346E at byte 5 ________
-   my $line = sprintf(
-      '# %s %d: %s QPS, %sx concurrency, ID 0x%s at byte %d ',
-      ($ea->{groupby} eq 'fingerprint' ? 'Query' : 'Item'),
-      $args{rank} || 0,
-      shorten($qps  || 0, d=>1_000),
-      shorten($conc || 0, d=>1_000),
-      make_checksum($item),
-      $results->{samples}->{$item}->{pos_in_log} || 0,
-   );
-   $line .= ('_' x (LINE_LENGTH - length($line) + $self->{label_width} - 12));
-   push @result, $line;
-
-   # Second line: reason why this class is being reported.
-   if ( $args{reason} ) {
-      push @result,
-         "# This item is included in the report because it matches "
-            . ($args{reason} eq 'top' ? '--limit.' : '--outliers.');
-   }
-
-   # Third line: Apdex and variance-to-mean (V/M) ratio, like:
-   # Scores: Apdex = 0.93 [1.0], V/M = 1.5
-   {
+   $vals{groupby}     = $ea->{groupby};
+   $vals{qps}         = $qps  || 0;
+   $vals{concurrency} = $conc || 0;
+   $vals{checksum}    = make_checksum($item);
+   $vals{pos_in_log}  = $results->{samples}->{$item}->{pos_in_log} || 0;
+   $vals{reason}      = $args{reason};
+   $vals{variance_to_mean} = do {
       my $query_time = $ea->metrics(where => $item, attrib => 'Query_time');
-      push @result,
-         sprintf("# Scores: Apdex = %s [%3.1f]%s, V/M = %.2f",
-            (defined $query_time->{apdex} ? "$query_time->{apdex}" : "NS"),
-            ($query_time->{apdex_t} || 0),
-            ($query_time->{cnt} < 100 ? "*" : ""),
-            ($query_time->{stddev}**2 / ($query_time->{avg} || 1)),
-         );
+      $query_time->{stddev}**2 / ($query_time->{avg} || 1)
+   };
+
+   $vals{counts} = {
+      class_cnt        => $class_cnt,
+      global_cnt       => $global_cnt,
+   };
+
+   if ( my $ts = $store->{ts}) {
+      $vals{time_range} = $self->format_time_range($ts) || "unknown";
    }
-
-   # Fourth line: EXPLAIN sparkline if --explain.
-   if ( $o->get('explain') && $results->{samples}->{$item}->{arg} ) {
-      eval {
-         my $sparkline = $self->explain_sparkline(
-            $results->{samples}->{$item}->{arg}, $args{db});
-         push @result, "# EXPLAIN sparkline: $sparkline\n";
-      };
-      if ( $EVAL_ERROR ) {
-         PTDEBUG && _d("Failed to get EXPLAIN sparkline:", $EVAL_ERROR);
-      }
-   }
-
-   if ( my $attrib = $o->get('report-histogram') ) {
-      my $sparkline = $self->distro_sparkline(
-         %args,
-         attrib => $attrib,
-         item   => $item,
-      );
-      if ( $sparkline ) {
-         # I find the | | bookends help make the sparkchart graph more clear.
-         # Else with just   .^-   it's difficult to tell where the chart beings
-         # or ends.
-         push @result, "# $attrib sparkline: |$sparkline|";
-      }
-   }
-
-   # Last line before column headers: time range
-   if ( my $ts = $store->{ts} ) {
-      my $time_range = $self->format_time_range($ts) || "unknown";
-      push @result, "# Time range: $time_range";
-   }
-
-   # Column header line
-   push @result, $self->make_event_header();
-
-   # Count line
-   push @result,
-      sprintf $self->{num_format}, 'Count',
-         percentage_of($class_cnt, $global_cnt), $class_cnt, map { '' } (1..8);
 
    # Sort the attributes, removing any hidden attributes, if they're not
    # already given to us.  In mk-query-digest, this sub is called from
@@ -603,17 +583,13 @@ sub event_report {
    # will sort and pass the attribs so they're not for every event.
    my $attribs = $args{attribs};
    if ( !$attribs ) {
-      $attribs = $self->sort_attribs(
-         ($args{select} ? $args{select} : $ea->get_attributes()),
-         $ea
-      );
+      $attribs = $self->sort_attribs( $ea );
    }
+
+   $vals{attributes} = { map { $_ => [] } qw(num innodb bool string) };
 
    foreach my $type ( qw(num innodb) ) {
       # Add "InnoDB:" sub-header before grouped InnoDB_* attributes.
-      if ( $type eq 'innodb' && @{$attribs->{$type}} ) {
-         push @result, "# InnoDB:";
-      };
 
       NUM_ATTRIB:
       foreach my $attrib ( @{$attribs->{$type}} ) {
@@ -633,48 +609,137 @@ sub event_report {
          $pct   = percentage_of(
             $vals->{sum}, $results->{globals}->{$attrib}->{sum});
 
-         push @result,
-            sprintf $self->{num_format},
-               $self->make_label($attrib), $pct, @values;
+         push @{$vals{attributes}{$type}},
+               [ $attrib, $pct, @values ];
       }
    }
 
    if ( @{$attribs->{bool}} ) {
-      push @result, "# Boolean:";
-      my $printed_bools = 0;
       BOOL_ATTRIB:
       foreach my $attrib ( @{$attribs->{bool}} ) {
          next BOOL_ATTRIB unless exists $store->{$attrib};
          my $vals = $store->{$attrib};
          next unless scalar %$vals;
 
-         if ( $vals->{sum} > 0 || $args{zero_bool} ) {
-            push @result,
-               sprintf $self->{bool_format},
-                  $self->make_label($attrib), $self->bool_percents($vals);
-            $printed_bools = 1;
+         if ( $vals->{sum} > 0 ) {
+            push @{$vals{attributes}{bool}},
+                  [ $attrib, $self->bool_percents($vals) ];
          }
       }
-      pop @result unless $printed_bools;
    }
 
    if ( @{$attribs->{string}} ) {
-      push @result, "# String:";
-      my $printed_strings = 0;
       STRING_ATTRIB:
       foreach my $attrib ( @{$attribs->{string}} ) {
          next STRING_ATTRIB unless exists $store->{$attrib};
          my $vals = $store->{$attrib};
          next unless scalar %$vals;
 
+         push @{$vals{attributes}{string}},
+               [ $attrib, $vals ];
+      }
+   }
+
+
+   return \%vals;
+}
+
+# TODO I maybe've broken the groupby report
+
+sub event_report {
+   my ( $self, %args ) = @_;
+   foreach my $arg ( qw(ea item orderby) ) {
+      die "I need a $arg argument" unless defined $args{$arg};
+   }
+
+   my $item = $args{item};
+   my $val  = $self->event_report_values(%args);
+   my @result;
+
+   return "# No such event $item\n" unless $val;
+
+   # First line like:
+   # Query 1: 9 QPS, 0x concurrency, ID 0x7F7D57ACDD8A346E at byte 5 ________
+   my $line = sprintf(
+      '# %s %d: %s QPS, %sx concurrency, ID 0x%s at byte %.f ',
+      ($val->{groupby} eq 'fingerprint' ? 'Query' : 'Item'),
+      $args{rank} || 0,
+      shorten($val->{qps}, d=>1_000),
+      shorten($val->{concurrency}, d=>1_000),
+      $val->{checksum},
+      $val->{pos_in_log},
+   );
+   $line .= ('_' x (LINE_LENGTH - length($line) + $self->label_width() - 12));
+   push @result, $line;
+
+   # Second line: reason why this class is being reported.
+   if ( $val->{reason} ) {
+      push @result,
+         "# This item is included in the report because it matches "
+            . ($val->{reason} eq 'top' ? '--limit.' : '--outliers.');
+   }
+
+   # Third line: Variance-to-mean (V/M) ratio, like:
+   # Scores: V/M = 1.5
+   push @result,
+      sprintf("# Scores: V/M = %.2f", $val->{variance_to_mean} );
+
+   # Last line before column headers: time range
+   if ( $val->{time_range} ) {
+      push @result, "# Time range: $val->{time_range}";
+   }
+
+   # Column header line
+   push @result, $self->make_event_header();
+
+   # Count line
+   push @result,
+      sprintf $self->{num_format}, 'Count',
+         percentage_of($val->{counts}{class_cnt}, $val->{counts}{global_cnt}),
+         $val->{counts}{class_cnt},
+         map { '' } (1..8);
+
+
+   my $attribs = $val->{attributes};
+
+   foreach my $type ( qw(num innodb) ) {
+      # Add "InnoDB:" sub-header before grouped InnoDB_* attributes.
+      if ( $type eq 'innodb' && @{$attribs->{$type}} ) {
+         push @result, "# InnoDB:";
+      };
+
+      NUM_ATTRIB:
+      foreach my $attrib ( @{$attribs->{$type}} ) {
+         my ($attrib_name, @vals) = @$attrib;
+         push @result,
+            sprintf $self->{num_format},
+               $self->make_label($attrib_name), @vals;
+      }
+   }
+
+   if ( @{$attribs->{bool}} ) {
+      push @result, "# Boolean:";
+      BOOL_ATTRIB:
+      foreach my $attrib ( @{$attribs->{bool}} ) {
+         my ($attrib_name, @vals) = @$attrib;
+         push @result,
+            sprintf $self->{bool_format},
+               $self->make_label($attrib_name), @vals;
+      }
+   }
+
+   if ( @{$attribs->{string}} ) {
+      push @result, "# String:";
+      STRING_ATTRIB:
+      foreach my $attrib ( @{$attribs->{string}} ) {
+         my ($attrib_name, $vals) = @$attrib;
          push @result,
             sprintf $self->{string_format},
-               $self->make_label($attrib),
-               $self->format_string_list($attrib, $vals, $class_cnt);
-         $printed_strings = 1;
+               $self->make_label($attrib_name),
+               $self->format_string_list($attrib_name, $vals, $val->{counts}{class_cnt});
       }
-      pop @result unless $printed_strings;
    }
+
 
    return join("\n", map { s/\s+$//; $_ } @result) . "\n";
 }
@@ -688,7 +753,7 @@ sub event_report {
 sub chart_distro {
    my ( $self, %args ) = @_;
    foreach my $arg ( qw(ea item attrib) ) {
-      die "I need a $arg argument" unless $args{$arg};
+      die "I need a $arg argument" unless defined $args{$arg};
    }
    my $ea     = $args{ea};
    my $item   = $args{item};
@@ -741,98 +806,6 @@ sub chart_distro {
    return join("\n", @results) . "\n";
 }
 
-
-# Sub: distro_sparkline
-#   Make a sparkline of the <chart_distro()> graph.  The following
-#   character codes are used: _.-^  If a bucket doesn't have a value, a
-#   space is used.  So _ buckets are the lowest lines on the full graph
-#   (<chart_distro()>), and ^ are the peaks on the full graph.  See
-#   QueryReportFormatter.t for several examples.
-#
-#   This sub isn't the most optimized.  The first half is the same code
-#   as <chart_distro()>.  Then the latter code, unique to this sub,
-#   essentially compresses the full chart further into 8 characters using
-#   the 4 char codes above.
-#
-# Parameters:
-#   %args - Arguments
-#
-# Required Arguments:
-#   ea     - <EventAggregator> object
-#   item   - Item in results to chart
-#   attrib - Attribute of item to chart
-#
-# Returns:
-#   Sparkchart string
-sub distro_sparkline {
-   my ( $self, %args ) = @_;
-   foreach my $arg ( qw(ea item attrib) ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my $ea     = $args{ea};
-   my $item   = $args{item};
-   my $attrib = $args{attrib};
-
-   my $results = $ea->results();
-   my $store   = $results->{classes}->{$item}->{$attrib};
-   my $vals    = $store->{all};
-
-   my $all_zeros_sparkline = " " x 8;
-
-   return $all_zeros_sparkline unless defined $vals && scalar %$vals;
-
-   my @buck_tens      = $ea->buckets_of(10);
-   my @distro         = map { 0 } (0 .. 7);
-   my @buckets        = map { 0 } (0..999);
-   map { $buckets[$_] = $vals->{$_} } keys %$vals;
-   $vals = \@buckets;
-   map { $distro[$buck_tens[$_]] += $vals->[$_] } (1 .. @$vals - 1);
-
-   my $vals_per_mark;
-   my $max_val        = 0;
-   my $max_disp_width = 64;
-   foreach my $n_vals ( @distro ) {
-      $max_val = $n_vals if $n_vals > $max_val;
-   }
-   $vals_per_mark = $max_val / $max_disp_width;
-
-   my ($min, $max);
-   foreach my $i ( 0 .. $#distro ) {
-      my $n_vals  = $distro[$i];
-      my $n_marks = $n_vals / ($vals_per_mark || 1);
-      $n_marks    = 1 if $n_marks < 1 && $n_vals > 0;
-
-      $min = $n_marks if $n_marks && (!$min || $n_marks < $min);
-      $max = $n_marks if !$max || $n_marks > $max;
-   }
-   return $all_zeros_sparkline unless $min && $max;
-
-   # That ^ code is mostly the same as chart_distro().  Now here's
-   # our own unique code.
-
-   # Divide the range by 4 because there are 4 char codes: _.-^
-   $min = 0 if $min == $max;
-   my @range_min;
-   my $d = floor(($max-$min) / 4);
-   for my $x ( 1..4 ) {
-      push @range_min, $min + ($d * $x);
-   }
-
-   my $sparkline = ""; 
-   foreach my $i ( 0 .. $#distro ) {
-      my $n_vals  = $distro[$i];
-      my $n_marks = $n_vals / ($vals_per_mark || 1);
-      $n_marks    = 1 if $n_marks < 1 && $n_vals > 0;
-      $sparkline .= $n_marks <= 0             ? ' '
-                  : $n_marks <= $range_min[0] ? '_'
-                  : $n_marks <= $range_min[1] ? '.'
-                  : $n_marks <= $range_min[2] ? '-'
-                  :                             '^';
-   }
-
-   return $sparkline;
-}
-
 # Profile subreport (issue 381).
 # Arguments:
 #   * ea            obj: EventAggregator
@@ -841,7 +814,6 @@ sub distro_sparkline {
 # Optional arguments:
 #   * other            arrayref: other items (that didn't make it into top worst)
 #   * distill_args     hashref: extra args for distill()
-#   * ReportFormatter  obj: passed-in ReportFormatter for testing
 sub profile {
    my ( $self, %args ) = @_;
    foreach my $arg ( qw(ea worst groupby) ) {
@@ -853,7 +825,6 @@ sub profile {
    my $groupby = $args{groupby};
 
    my $qr  = $self->{QueryRewriter};
-   my $o   = $self->{OptionParser};
 
    # Total response time of all events.
    my $results = $ea->results();
@@ -876,41 +847,20 @@ sub profile {
                     $qr->distill($samp_query, %{$args{distill_args}}) : $item,
          id     => $groupby eq 'fingerprint' ? make_checksum($item)   : '',
          vmr    => ($query_time->{stddev}**2) / ($query_time->{avg} || 1),
-         apdex  => defined $query_time->{apdex} ? $query_time->{apdex} : "NS",
       ); 
-
-      # Get EXPLAIN sparkline if --explain.
-      if ( $o->get('explain') && $samp_query ) {
-         my ($default_db) = $sample->{db}       ? $sample->{db}
-                          : $stats->{db}->{unq} ? keys %{$stats->{db}->{unq}}
-                          :                       undef;
-         eval {
-            $profile{explain_sparkline} = $self->explain_sparkline(
-               $samp_query, $default_db);
-         };
-         if ( $EVAL_ERROR ) {
-            PTDEBUG && _d("Failed to get EXPLAIN sparkline:", $EVAL_ERROR);
-         }
-      }
 
       push @profiles, \%profile;
    }
 
-   my $report = $self->{formatter_for}->{profile} || new ReportFormatter(
-      line_width       => LINE_LENGTH,
-      long_last_column => 1,
-      extend_right     => 1,
-   );
-   $report->set_title('Profile');
+   my $report = $self->ReportFormatter();
+   $report->title('Profile');
    my @cols = (
       { name => 'Rank',          right_justify => 1,             },
       { name => 'Query ID',                                      },
       { name => 'Response time', right_justify => 1,             },
       { name => 'Calls',         right_justify => 1,             },
       { name => 'R/Call',        right_justify => 1,             },
-      { name => 'Apdx',          right_justify => 1, width => 4, },
       { name => 'V/M',           right_justify => 1, width => 5, },
-      ( $o->get('explain') ? { name => 'EXPLAIN' } : () ),
       { name => 'Item',                                          },
    );
    $report->set_columns(@cols);
@@ -926,9 +876,7 @@ sub profile {
          "$rt $rtp",
          $item->{cnt},
          $rc,
-         $item->{apdex},
          $vmr,
-         ( $o->get('explain') ? $item->{explain_sparkline} || "" : () ),
          $item->{sample},
       );
       $report->add_line(@vals);
@@ -956,9 +904,7 @@ sub profile {
          "$rt $rtp",
          $misc->{cnt},
          $rc,
-         'NS',   # Apdex is not meaningful here
          '0.0',  # variance-to-mean ratio is not meaningful here
-         ( $o->get('explain') ? "MISC" : () ),
          "<".scalar @$other." ITEMS>",
       );
    }
@@ -973,7 +919,6 @@ sub profile {
 #   * groupby       scalar: attrib worst items grouped by
 # Optional arguments:
 #   * distill_args  hashref: extra args for distill()
-#   * ReportFormatter  obj: passed-in ReportFormatter for testing
 sub prepared {
    my ( $self, %args ) = @_;
    foreach my $arg ( qw(ea worst groupby) ) {
@@ -1058,12 +1003,8 @@ sub prepared {
    # Return unless there are prepared statements to report.
    return unless scalar @prepared;
 
-   my $report = $self->{formatter_for}->{prepared} || new ReportFormatter(
-      line_width       => LINE_LENGTH,
-      long_last_column => 1,
-      extend_right     => 1,     
-   );
-   $report->set_title('Prepared statements');
+   my $report = $self->ReportFormatter();
+   $report->title('Prepared statements');
    $report->set_columns(
       { name => 'Rank',          right_justify => 1, },
       { name => 'Query ID',                          },
@@ -1099,7 +1040,7 @@ sub make_global_header {
    # First line: 
    # Attribute          total     min     max     avg     95%  stddev  median
    push @lines,
-      sprintf $self->{num_format}, "Attribute", '', @{$self->{global_headers}};
+      sprintf $self->{num_format}, "Attribute", '', @{$self->global_headers()};
 
    # Underline first line:
    # =========        ======= ======= ======= ======= ======= ======= =======
@@ -1107,7 +1048,7 @@ sub make_global_header {
    # Hard-coded values aren't ideal but this code rarely changes.
    push @lines,
       sprintf $self->{num_format},
-         (map { "=" x $_ } $self->{label_width}),
+         (map { "=" x $_ } $self->label_width()),
          (map { " " x $_ } qw(3)),  # no pct column in global header
          (map { "=" x $_ } qw(7 7 7 7 7 7 7));
 
@@ -1125,13 +1066,13 @@ sub make_event_header {
 
    my @lines;
    push @lines,
-      sprintf $self->{num_format}, "Attribute", @{$self->{event_headers}};
+      sprintf $self->{num_format}, "Attribute", @{$self->event_headers()};
 
    # The numbers 6, 7, 7, etc. are the field widths from make_header().
    # Hard-coded values aren't ideal but this code rarely changes.
    push @lines,
       sprintf $self->{num_format},
-         map { "=" x $_ } ($self->{label_width}, qw(3 7 7 7 7 7 7 7));
+         map { "=" x $_ } ($self->label_width(), qw(3 7 7 7 7 7 7 7));
 
    # End result should be like:
    # Attribute    pct   total     min     max     avg     95%  stddev  median
@@ -1150,7 +1091,7 @@ sub make_label {
    if ( $val =~ m/^InnoDB/ ) {
       $val =~ s/^InnoDB //;
       $val = $val eq 'trx id' ? "InnoDB trxID"
-           : substr($val, 0, $self->{label_width});
+           : substr($val, 0, $self->label_width());
    }
 
    $val = $val eq 'user'            ? 'Users'
@@ -1161,7 +1102,7 @@ sub make_label {
         : $val eq 'bytes'           ? 'Query size'
         : $val eq 'Tmp disk tables' ? 'Tmp disk tbl'
         : $val eq 'Tmp table sizes' ? 'Tmp tbl size'
-        : substr($val, 0, $self->{label_width});
+        : substr($val, 0, $self->label_width);
 
    return $val;
 }
@@ -1179,14 +1120,14 @@ sub bool_percents {
 # Does pretty-printing for lists of strings like users, hosts, db.
 sub format_string_list {
    my ( $self, $attrib, $vals, $class_cnt ) = @_;
-   my $o        = $self->{OptionParser};
-   my $show_all = $o->get('show-all');
-
+   
    # Only class result values have unq.  So if unq doesn't exist,
    # then we've been given global values.
    if ( !exists $vals->{unq} ) {
       return ($vals->{cnt});
    }
+
+   my $show_all = $self->show_all();
 
    my $cnt_for = $vals->{unq};
    if ( 1 == keys %$cnt_for ) {
@@ -1230,7 +1171,8 @@ sub format_string_list {
 }
 
 sub sort_attribs {
-   my ( $self, $attribs, $ea ) = @_;
+   my ( $self, $ea ) = @_;
+   my $attribs = $ea->get_attributes();
    return unless $attribs && @$attribs;
    PTDEBUG && _d("Sorting attribs:", @$attribs);
 
@@ -1320,7 +1262,7 @@ sub pref_sort {
 sub tables_report {
    my ( $self, @tables ) = @_;
    return '' unless @tables;
-   my $q      = $self->{Quoter};
+   my $q      = $self->Quoter();
    my $tables = "";
    foreach my $db_tbl ( @tables ) {
       my ( $db, $tbl ) = @$db_tbl;
@@ -1339,7 +1281,7 @@ sub explain_report {
    return '' unless $query;
 
    my $dbh = $self->{dbh};
-   my $q   = $self->{Quoter};
+   my $q   = $self->Quoter();
    my $qp  = $self->{QueryParser};
    return '' unless $dbh && $q && $qp;
 
@@ -1389,34 +1331,6 @@ sub format_time_range {
    return $min && $max ? "$min to $max" : '';
 }
 
-sub explain_sparkline {
-   my ( $self, $query, $db ) = @_;
-   return unless $query;
-
-   my $q   = $self->{Quoter};
-   my $dbh = $self->{dbh};
-   my $ex  = $self->{ExplainAnalyzer};
-   return unless $dbh && $ex;
-
-   if ( $db ) {
-      PTDEBUG && _d($dbh, "USE", $db);
-      $dbh->do("USE " . $q->quote($db));
-   }
-   my $res = $ex->normalize(
-      $ex->explain_query(
-         dbh   => $dbh,
-         query => $query,
-      )
-   );
-
-   my $sparkline;
-   if ( $res ) {
-      $sparkline = $ex->sparkline(explain => $res);
-   }
-
-   return $sparkline;
-}
-
 sub _d {
    my ($package, undef, $line) = caller 0;
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
@@ -1425,6 +1339,7 @@ sub _d {
    print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
+no Lmo;
 1;
 }
 # ###########################################################################

@@ -1,4 +1,4 @@
-# This program is copyright 2009-2011 Percona Inc.
+# This program is copyright 2009-2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -254,8 +254,10 @@ sub report {
    my $query_id_col = {
       name        => 'Query ID',
    };
+   my $hostno = 0;
    my @host_cols = map {
-      my $col = { name => $_->{name} };
+      $hostno++;
+      my $col = { name => "host$hostno" };
       $col;
    } @$hosts;
 
@@ -296,13 +298,15 @@ sub _report_diff_big {
    return unless keys %{$self->{diffs}->{big}};
 
    my $report = new ReportFormatter();
-   $report->set_title('Big query time differences');
+   $report->title('Big query time differences');
+   my $hostno = 0;
    $report->set_columns(
       $args{query_id_col},
-      map {
-         my $col = { name => $_->{name}, right_justify => 1  };
+      (map {
+         $hostno++;
+         my $col = { name => "host$hostno", right_justify => 1  };
          $col;
-      } @{$args{hosts}},
+      } @{$args{hosts}}),
       { name => 'Difference', right_justify => 1 },
    );
 
@@ -343,13 +347,15 @@ sub _report_diff_in_bucket {
    return unless keys %{$self->{diffs}->{in_bucket}};
 
    my $report = new ReportFormatter();
-   $report->set_title('Significant query time differences');
+   $report->title('Significant query time differences');
+   my $hostno = 0;
    $report->set_columns(
       $args{query_id_col},
-      map {
-         my $col = { name => $_->{name}, right_justify => 1  };
+      (map {
+         $hostno++;
+         my $col = { name => "host$hostno", right_justify => 1  };
          $col;
-      } @{$args{hosts}},
+      } @{$args{hosts}}),
       { name => '%Increase',  right_justify => 1 },
       { name => '%Threshold', right_justify => 1 },
    );

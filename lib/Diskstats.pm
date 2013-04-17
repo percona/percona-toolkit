@@ -1,4 +1,4 @@
-# This program is copyright 2011 Percona Inc.
+# This program is copyright 2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -1039,9 +1039,7 @@ sub print_deltas {
       $Diskstats::printed_lines--;
    }
 
-   if ( $self->automatic_headers()
-         && $Diskstats::printed_lines <= @stats
-         && !$self->isa("DiskstatsGroupByAll") ) {
+   if ( $self->automatic_headers() && $Diskstats::printed_lines <= @stats ) {
       $self->force_print_header( $header, "#ts", "device" );
    }
    else {

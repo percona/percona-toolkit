@@ -11,4 +11,4 @@ CREATE TABLE `messages` (
   PRIMARY KEY (`MID`),
   UNIQUE KEY `ID` (`MID`),
   KEY `TID` (`TID`)
-) TYPE=MyISAM;
+) ENGINE=MyISAM;

@@ -13,7 +13,7 @@ use Test::More tests => 1;
 
 use PerconaTest;
 
-my $run_with = "$trunk/bin/pt-query-digest --report-format=query_report --limit 10 $trunk/t/lib/samples/";
+my $run_with = "$trunk/bin/pt-query-digest --report-format=query_report --limit 10 $trunk/t/lib/samples/slowlogs/";
 my $cmd;
 my $output;
 
@@ -23,7 +23,8 @@ my $output;
 # #############################################################################
 # This issue actually introduced --check-attributes-limit.
 $cmd = "${run_with}slow030.txt";
-$output = `$cmd --check-attributes-limit 100 2>&1`;
+local $ENV{PT_QUERY_DIGEST_CHECK_ATTRIB_LIMIT} = 100;
+$output = `$cmd 2>&1`;
 unlike(
    $output,
    qr/IDB IO rb/,

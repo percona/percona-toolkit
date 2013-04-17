@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 32;
+use Test::More;
 
 use Processlist;
 use PerconaTest;
@@ -23,7 +23,7 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-my $ms  = new MasterSlave();
+my $ms  = new MasterSlave(OptionParser=>1,DSNParser=>1,Quoter=>1);
 my $rsp = new TextResultSetParser();
 my $pl;
 my $procs;
@@ -335,9 +335,116 @@ is_deeply(
    "New query2_2 is active, starting at 05:08"
 );
 
+
+# ###########################################################################
+# pt-query-digest --processlist: Duplicate entries for replication thread
+# https://bugs.launchpad.net/percona-toolkit/+bug/1156901
+# ###########################################################################
+
+# This is basically the same thing as above, but we're pretending to
+# be a repl thread, so it should behave differently.
+
+$pl = Processlist->new(MasterSlave=>$ms);
+
+parse_n_times(
+   1,
+   code  => sub {
+      return [
+         [ 2, 'system user', 'localhost', 'test', 'Query', 0, 'executing', 'query2_2'],
+      ],
+   },
+   time  => Transformers::unix_timestamp('2001-01-01 00:05:03'),
+   etime => 3.14159,
+);
+
+is_deeply(
+   $pl->_get_active_cxn(),
+   {
+      2 => [
+         2, 'system user', 'localhost', 'test', 'Query', 0, 'executing', 'query2_2',
+         Transformers::unix_timestamp('2001-01-01 00:05:03'),   # START
+         3.14159,                                               # ETIME
+         Transformers::unix_timestamp('2001-01-01 00:05:03'),   # FSEEN
+         { executing => 0 },
+      ],
+   },
+   'query2_2 just started',
+);
+
+# And there is no event on cxn 2.
+is(
+   scalar @events,
+   0,
+   'query2_2 has not fired yet',
+);
+
+parse_n_times(
+   1,
+   code  => sub {
+      return [
+         [ 2, 'system user', 'localhost', 'test', 'Query', 0, 'executing', 'query2_2'],
+      ],
+   },
+   time  => Transformers::unix_timestamp('2001-01-01 00:05:05'),
+   etime => 2.718,
+);
+
+is(
+   scalar @events,
+   0,
+      'query2_2 has not fired yet, same as with normal queries',
+);
+
+is_deeply(
+   $pl->_get_active_cxn(),
+   {
+      2 => [
+         2, 'system user', 'localhost', 'test', 'Query', 0, 'executing', 'query2_2',
+         Transformers::unix_timestamp('2001-01-01 00:05:03'),
+         3.14159,
+         Transformers::unix_timestamp('2001-01-01 00:05:03'),
+         { executing => 2 },
+      ],
+   },
+   'Cxn 2 still active with query starting at 05:03',
+);
+
+# Same as above but five seconds and a half later
+parse_n_times(
+   1,
+   code  => sub {
+      return [
+         [ 2, 'system user', 'localhost', 'test', 'Query', 0, 'executing', 'query2_2'],
+      ],
+   },
+   time  => Transformers::unix_timestamp('2001-01-01 00:05:08.500'),
+   etime => 0.123,
+);
+
+is_deeply(
+   \@events,
+   [],
+   'Original query2_2 not fired because we are a repl thrad',
+);
+
+is_deeply(
+   $pl->_get_active_cxn(),
+   {
+      2 => [
+         2, 'system user', 'localhost', 'test', 'Query', 0, 'executing', 'query2_2',
+         Transformers::unix_timestamp('2001-01-01 00:05:03'),   # START
+         3.14159,                                               # ETIME
+         Transformers::unix_timestamp('2001-01-01 00:05:03'),   # FSEEN
+         { executing => 5.5 },
+      ],
+   },
+   "Old query2_2 is active because we're a repl thread, but executing has updated"
+);
+
 # ###########################################################################
 # Issue 867: Make mk-query-digest detect Lock_time from processlist
 # ###########################################################################
+$ms  = new MasterSlave(OptionParser=>1,DSNParser=>1,Quoter=>1);
 $pl = Processlist->new(MasterSlave=>$ms);
 
 # For 2/10ths of a second, the query is Locked.  First time we see this
@@ -600,6 +707,17 @@ my %find_spec = (
    },
 );
 
+my $matching_query =
+      {  'Time'    => '91',
+         'Command' => 'Query',
+         'db'      => undef,
+         'Id'      => '43',
+         'Info'    => 'select * from foo',
+         'User'    => 'msandbox',
+         'State'   => 'executing',
+         'Host'    => 'localhost'
+      };
+
 my @queries = $pl->find(
    [  {  'Time'    => '488',
          'Command' => 'Connect',
@@ -675,32 +793,23 @@ my @queries = $pl->find(
          'State'   => 'Locked',
          'Host'    => 'localhost'
       },
-      {  'Time'    => '91',
-         'Command' => 'Query',
-         'db'      => undef,
-         'Id'      => '43',
-         'Info'    => 'select * from foo',
-         'User'    => 'msandbox',
-         'State'   => 'executing',
-         'Host'    => 'localhost'
-      },
+      $matching_query,
    ],
    %find_spec,
 );
 
-my $expected = [
-      {  'Time'    => '91',
-         'Command' => 'Query',
-         'db'      => undef,
-         'Id'      => '43',
-         'Info'    => 'select * from foo',
-         'User'    => 'msandbox',
-         'State'   => 'executing',
-         'Host'    => 'localhost'
-      },
-   ];
+my $expected = [ $matching_query ];
 
 is_deeply(\@queries, $expected, 'Basic find()');
+
+{
+   # Internal, fragile test!
+   is_deeply(
+      $pl->{_reasons_for_matching}->{$matching_query},
+      [ 'Exceeds busy time', 'Query matches Command spec', 'Query matches Info spec', ],
+      "_reasons_for_matching works"
+   );
+}
 
 %find_spec = (
    busy_time    => 1,
@@ -828,6 +937,94 @@ is_deeply(
 );
 
 # #############################################################################
+# https://bugs.launchpad.net/percona-toolkit/+bug/923896
+# #############################################################################
+
+%find_spec = (
+   busy_time => 1,
+   ignore    => {},
+   match     => {},
+);
+my $proc = {  'Time'    => undef,
+         'Command' => 'Query',
+         'db'      => undef,
+         'Id'      => '7',
+         'Info'    => undef,
+         'User'    => 'msandbox',
+         'State'   => '',
+         'Host'    => 'localhost'
+      };
+
+local $@;
+eval { $pl->find([$proc], %find_spec) };
+ok !$@,
+ "Bug 923896: NULL Time in processlist doesn't fail for busy_time+Command=Query";
+
+delete $find_spec{busy_time};
+$find_spec{idle_time} = 1;
+$proc->{Command}   = 'Sleep';
+
+local $@;
+eval { $pl->find([$proc], %find_spec) };
+ok !$@,
+ "Bug 923896: NULL Time in processlist doesn't fail for idle_time+Command=Sleep";
+
+# #############################################################################
+# NULL STATE doesn't generate warnings
+# https://bugs.launchpad.net/percona-toolkit/+bug/821703
+# #############################################################################
+
+$procs = [
+   [ [1, 'unauthenticated user', 'localhost', undef, 'Connect', 7,
+    'some state', 1] ],
+   [ [1, 'unauthenticated user', 'localhost', undef, 'Connect', 8,
+    undef, 2] ],
+],
+
+eval {
+   parse_n_times(
+      2,
+      code  => sub {
+         return shift @$procs;
+      },
+      time  => Transformers::unix_timestamp('2001-01-01 00:05:00'),
+   );
+};
+
+is(
+   $EVAL_ERROR,
+   '',
+   "NULL STATE shouldn't cause warnings"
+);
+
+# #############################################################################
+# Extra processlist fields are ignored and don't cause errors
+# https://bugs.launchpad.net/percona-toolkit/+bug/883098
+# #############################################################################
+
+$procs = [
+   [ [1, 'unauthenticated user', 'localhost', undef, 'Connect', 7,
+    'some state', 1, 0, 0, 1] ],
+   [ [1, 'unauthenticated user', 'localhost', undef, 'Connect', 8,
+    undef, 2, 1, 2, 0] ],
+],
+
+eval {
+   parse_n_times(
+      2,
+      code  => sub {
+         return shift @$procs;
+      },
+      time  => Transformers::unix_timestamp('2001-01-01 00:05:00'),
+   );
+};
+
+is(
+   $EVAL_ERROR,
+   '',
+   "Extra processlist fields don't cause errors"
+);
+# #############################################################################
 # Done.
 # #############################################################################
-exit;
+done_testing;

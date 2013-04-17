@@ -1,0 +1,10 @@
+  PID USERNAME PRI NICE   SIZE   RES STATE      TIME   WCPU    CPU COMMAND
+    0 root     124    0     0K   20M syncer     0:01  0.00%  0.00% [system]
+ 3922 root      43    0  2976K  984K CPU        0:00  0.00%  0.00% top
+  277 root      85    0  5592K 2232K wait       0:00  0.00%  0.00% login
+  279 root      85    0  5592K 2164K wait       0:00  0.00%  0.00% login
+ 3501 root      85    0  2836K 1396K pause      0:00  0.00%  0.00% ksh
+  284 root      85    0  2960K 1192K wait       0:00  0.00%  0.00% sh
+ 1957 root      85    0  2960K 1164K ttyraw     0:00  0.00%  0.00% sh
+  116 root      85    0  2940K 1016K kqueue     0:00  0.00%  0.00% syslogd
+  272 root      85    0  2920K  940K ttyraw     0:00  0.00%  0.00% getty

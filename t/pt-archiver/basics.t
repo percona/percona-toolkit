@@ -10,36 +10,34 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
+use Time::HiRes qw(time);
 
 use PerconaTest;
 use Sandbox;
+use Data::Dumper;
 require "$trunk/bin/pt-archiver";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $master_dbh = $sb->get_dbh_for('master');
+my $slave1_dbh = $sb->get_dbh_for('slave1');
 
-if ( !$dbh ) {
+if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
+}
+elsif ( !$slave1_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox slave1';
 }
 
 my $output;
 my $rows;
-my $cnf = "/tmp/12345/my.sandbox.cnf";
-my $cmd = "$trunk/bin/pt-archiver";
-
-# Make sure load works.
-$sb->create_dbs($dbh, ['test']);
-$sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
-$rows = $dbh->selectrow_arrayref('select count(*) from test.table_1')->[0];
-if ( ($rows || 0) != 4 ) {
-   plan skip_all => 'Failed to load tables1-4.sql';
-}
-else {
-   plan tests => 23;
-}
-
+my $cnf  = "/tmp/12345/my.sandbox.cnf";
+my $cmd  = "$trunk/bin/pt-archiver";
 my @args = qw(--dry-run --where 1=1);
+
+$sb->create_dbs($master_dbh, ['test']);
+$sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
+$sb->wait_for_slaves();
 
 # ###########################################################################
 # These are dry-run tests of various options to test that the correct
@@ -143,8 +141,99 @@ $output = output(sub {pt_archiver::main(@args, qw(--no-delete --purge --source),
 $output = `/tmp/12345/use -N -e "select count(*) from test.table_1"`;
 is($output + 0, 4, 'All 4 rows are still there');
 
+
+# #############################################################################
+# --sleep
+# #############################################################################
+# This table, gt_n.t1, is nothing special; it just has 19 rows and a PK.
+$sb->load_file('master', 't/pt-archiver/samples/gt_n.sql');
+
+# https://bugs.launchpad.net/percona-toolkit/+bug/979092
+# This shouldn't take more than 3 seconds because it only takes 2 SELECT
+# with limit 10 to get all 19 rows.  It should --sleep 1 between each fetch,
+# not between each row, which is the bug.
+
+my $t0 = time;
+$output = output(
+   sub { pt_archiver::main(@args, '--source', "D=gt_n,t=t1,F=$cnf",
+      qw(--where 1=1 --purge --sleep 1 --no-check-charset --limit 10)) },
+);
+my $t = time - $t0;
+
+ok(
+   $t >= 2 && $t <= 3.5,
+   "--sleep between SELECT (bug 979092)"
+) or diag($output, "t=", $t);
+
+# Try again with --bulk-delete.  The tool should work the same.
+$sb->load_file('master', 't/pt-archiver/samples/gt_n.sql');
+$t0 = time;
+$output = output(
+   sub { pt_archiver::main(@args, '--source', "D=gt_n,t=t1,F=$cnf",
+      qw(--where 1=1 --purge --sleep 1 --no-check-charset --limit 10),
+      qw(--bulk-delete)) },
+);
+$t = time - $t0;
+
+ok(
+   $t >= 2 && $t <= 3.5,
+   "--sleep between SELECT --bulk-delete (bug 979092)"
+) or diag($output, "t=", $t);
+
+# #############################################################################
+# Bug 903387: pt-archiver doesn't honor b=1 flag to create SQL_LOG_BIN statement
+# #############################################################################
+SKIP: {
+   $sb->load_file('master', "t/pt-archiver/samples/bulk_regular_insert.sql");
+   $sb->wait_for_slaves();
+
+   my $original_rows  = $slave1_dbh->selectall_arrayref("SELECT * FROM bri.t ORDER BY id");
+   my $original_no_id = $slave1_dbh->selectall_arrayref("SELECT c,t FROM bri.t ORDER BY id");
+   is_deeply(
+      $original_no_id,
+      [
+         ['aa', '11:11:11'],
+         ['bb', '11:11:12'],
+         ['cc', '11:11:13'],
+         ['dd', '11:11:14'],
+         ['ee', '11:11:15'],
+         ['ff', '11:11:16'],
+         ['gg', '11:11:17'],
+         ['hh', '11:11:18'],
+         ['ii', '11:11:19'],
+         ['jj', '11:11:10'],
+      ],
+      "Bug 903387: slave has rows"
+   );
+
+   $output = output(
+      sub { pt_archiver::main(
+         '--source', "D=bri,L=1,t=t,F=$cnf,b=1",
+         '--dest',   "D=bri,t=t_arch",
+         qw(--where 1=1 --replace --commit-each --bulk-insert --bulk-delete),
+         qw(--limit 10)) },
+   );
+
+   $rows = $master_dbh->selectall_arrayref("SELECT c,t FROM bri.t ORDER BY id");
+   is_deeply(
+      $rows,
+      [
+         ['jj', '11:11:10'],
+      ],
+      "Bug 903387: rows deleted on master"
+   ) or diag(Dumper($rows));
+
+   $rows = $slave1_dbh->selectall_arrayref("SELECT * FROM bri.t ORDER BY id");
+   is_deeply(
+      $rows,
+      $original_rows,
+      "Bug 903387: slave still has rows"
+   ) or diag(Dumper($rows));
+}
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($dbh);
-exit;
+$sb->wipe_clean($master_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+
+done_testing;

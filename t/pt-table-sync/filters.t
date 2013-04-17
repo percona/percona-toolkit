@@ -10,13 +10,12 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
+use Data::Dumper;
 
 use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-table-sync";
 
-
-my $vp = new VersionParser();
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
@@ -29,84 +28,220 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 4;
+   plan tests => 18;
 }
 
-# Previous tests slave 12347 to 12346 which makes pt-table-checksum
-# complain that it cannot connect to 12347 for checking repl filters
-# and such.  12347 isn't present but SHOW SLAVE HOSTS on 12346 hasn't
-# figured that out yet, so we restart 12346 to refresh this list.
-#diag(`/tmp/12346/stop >/dev/null`);
-#diag(`/tmp/12346/start >/dev/null`);
-$slave_dbh  = $sb->get_dbh_for('slave1');
-
+my $master_dsn = $sb->dsn_for('master');
+my $slave1_dsn = $sb->dsn_for('slave1');
 my $output;
-my $cnf = "/tmp/12345/my.sandbox.cnf";
-my $cmd = "$trunk/bin/pt-table-sync -F $cnf"; 
-my $t   = qr/\d\d:\d\d:\d\d/;
 
+# See this SQL file because it has a number of simple dbs and tbls
+# that are used to checking schema object filters.
+$sb->load_file('master', "t/lib/samples/SchemaIterator.sql");
+
+sub test_filters {
+   my (%args) = @_;
+
+   $sb->clear_genlogs();
+
+   my $output = output(
+      sub { pt_table_sync::main(@{$args{cmds}},
+         qw(--print))
+      },
+   );
+
+   my $tables_used = PerconaTest::tables_used($sb->genlog('master'));
+   is_deeply(
+      $tables_used,
+      $args{res},
+      "$args{name}: tables used"
+   ) or diag(Dumper($tables_used));
+}
+
+# #############################################################################
+# Basic schema object filters: --databases, --tables, etc.
+# #############################################################################
+
+# Not really a filter, but only the specified tables should be used.
+test_filters(
+   name => "Sync d1.t1 to d1.t2",
+   cmds => ["$master_dsn,D=d1,t=t1", "t=t2"],
+   res  => [qw(d1.t1 d1.t2)],
+);
+
+# Use slave1 like it's another master, ok becuase we're not actually
+# syncing anything, so --no-check-slave is required else pt-table-sync
+# won't run (because it doesn't like to sync directly to a slave).
+test_filters(
+   name => "-t d1.t1",
+   cmds => [$master_dsn, $slave1_dsn, qw(--no-check-slave),
+            qw(-t d1.t1)],
+   res  => [qw(d1.t1)],
+);
+
+# Like the previous test, but now any table called "t1".
+test_filters(
+   name => "-t t1",
+   cmds => [$master_dsn, $slave1_dsn, qw(--no-check-slave),
+            qw(-t t1)],
+   res  => [qw(d1.t1 d2.t1)],
+);
+
+# Only the given db, all its tables: there's only 1 tbl in d2.
+test_filters(
+   name => "--databases d2",
+   cmds => [$master_dsn, $slave1_dsn, qw(--no-check-slave),
+            qw(--databases d2)],
+   res  => [qw(d2.t1)],
+);
+
+# --database with --tables.
+test_filters(
+   name => "--databases d1 --tables t2,t3",
+   cmds => [$master_dsn, $slave1_dsn, qw(--no-check-slave),
+            qw(--databases d1), "--tables", "t2,t3"],
+   res  => [qw(d1.t2 d1.t3)],
+);
+
+# #############################################################################
+# Filters with --replicate and --sync-to-master.
+# #############################################################################
+   
+# Checksum the filter tables.
+$master_dbh->do("DROP DATABASE IF EXISTS percona");
+$sb->wait_for_slaves();
+diag(`$trunk/bin/pt-table-checksum $master_dsn -d d1,d2,d3 --chunk-size 100 --quiet --set-vars innodb_lock_wait_timeout=3 --max-load ''`);
+
+my $rows = $master_dbh->selectall_arrayref("SELECT CONCAT(db, '.', tbl) FROM percona.checksums ORDER BY db, tbl");
+is_deeply(
+   $rows,
+   [
+      ["d1.t1"],
+      ["d1.t2"],
+      ["d1.t3"],
+      ["d2.t1"],
+   ],
+   "Checksummed all tables"
+) or diag(Dumper($rows));
+
+# Make all checksums on the slave different than the master
+# so that pt-table-sync would sync all the tables if there
+# were no filters.
+$slave_dbh->do("UPDATE percona.checksums SET this_cnt=999 WHERE 1=1");
+
+# Verify that that ^ is true.
+test_filters(
+   name => "All tables are different on the slave",
+   cmds => [$master_dsn, qw(--replicate percona.checksums)],
+   res  => [qw(d1.t1 d1.t2 d1.t3 d2.t1 percona.checksums)],
+);
+
+# Sync with --replicate, --sync-to-master, and some filters.
+# --replicate and --sync-to-master have different code paths,
+# but the filter results should be the same.
+foreach my $args (
+   [$master_dsn, qw(--replicate percona.checksums)],
+   [$slave1_dsn, qw(--replicate percona.checksums --sync-to-master)]
+) {
+
+   my $stm = $args->[-1] eq '--sync-to-master' ? ' --sync-to-master' : '';
+
+   test_filters(
+      name => $stm . "--replicate --tables t1",
+      cmds => [@$args,
+               qw(--tables t1)],
+      res  => [qw(d1.t1 d2.t1 percona.checksums)],
+   );
+
+   test_filters(
+      name => $stm . "--replicate --databases d2",
+      cmds => [@$args,
+               qw(--databases d2)],
+      res  => [qw(d2.t1 percona.checksums)],
+   );
+
+   test_filters(
+      name => $stm . "--replicate --databases d1 --tables t1,t3",
+      cmds => [@$args,
+               qw(--databases d1), "--tables", "t1,t3"],
+      res  => [qw(d1.t1 d1.t3 percona.checksums)],
+   );
+}
+
+# #############################################################################
+# pt-table-sync --ignore-* options don't work with --replicate 
+# https://bugs.launchpad.net/percona-toolkit/+bug/1002365
+# #############################################################################
 $sb->wipe_clean($master_dbh);
-$sb->load_file('master', 't/pt-table-sync/samples/filter_tables.sql');
+$sb->load_file("master", "t/pt-table-sync/samples/simple-tbls.sql");
 
-$output = `$cmd h=127.1,P=12345 P=12346 --no-check-slave --dry-run -t issue_806_1.t2 | tail -n 2`;
-$output =~ s/$t/00:00:00/g;
-$output =~ s/[ ]{2,}/ /g;
-is(
-   $output,
-"# DELETE REPLACE INSERT UPDATE ALGORITHM START END EXIT DATABASE.TABLE
-# 0 0 0 0 Chunk 00:00:00 00:00:00 0 issue_806_1.t2
-",
-   "db-qualified --tables (issue 806)"
+# Create a checksum diff in a table that we're going to ignore
+# when we sync.
+$slave_dbh->do("INSERT INTO test.empty_it VALUES (null,11,11,'eleven')");
+
+# Create the checksums.
+diag(`$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox -d test --quiet --quiet --set-vars innodb_lock_wait_timeout=3 --max-load ''`);
+
+# Make sure all the tables were checksummed.
+$rows = $master_dbh->selectall_arrayref("SELECT DISTINCT db, tbl FROM percona.checksums ORDER BY db, tbl");
+is_deeply(
+   $rows,
+   [ [qw(test empty_it) ],
+     [qw(test empty_mt) ],
+     [qw(test it1) ],
+     [qw(test it2) ],
+     [qw(test mt1) ],
+     [qw(test mt2) ],
+   ],
+   "Six checksum tables (bug 1002365)"
 );
 
-# #############################################################################
-# Issue 820: Make mk-table-sync honor schema filters with --replicate
-# #############################################################################
-$master_dbh->do('DROP DATABASE IF EXISTS test');
-$master_dbh->do('CREATE DATABASE test');
-
-$slave_dbh->do('insert into issue_806_1.t1 values (41)');
-$slave_dbh->do('insert into issue_806_2.t2 values (42)');
-
-my $mk_table_checksum = "$trunk/bin/pt-table-checksum --lock-wait-time 3";
-
-`$mk_table_checksum --replicate test.checksum h=127.1,P=12345,u=msandbox,p=msandbox -d issue_806_1,issue_806_2 --quiet`;
-
-$output = `$cmd h=127.1,P=12345 --replicate test.checksum --dry-run | tail -n 2`;
-$output =~ s/$t/00:00:00/g;
-$output =~ s/[ ]{2,}/ /g;
-is(
-   $output,
-"# 0 0 0 0 Chunk 00:00:00 00:00:00 0 issue_806_1.t1
-# 0 0 0 0 Chunk 00:00:00 00:00:00 0 issue_806_2.t2
-",
-   "--replicate with no filters"
+# Sync the checksummed tables, but ignore the table with the diff we created.
+$output = output(
+   sub { pt_table_sync::main("h=127.1,P=12346,u=msandbox,p=msandbox",
+      qw(--print --sync-to-master --replicate percona.checksums),
+      "--ignore-tables", "test.empty_it") },
+   stderr => 1,
 );
 
-$output = `$cmd h=127.1,P=12345 --replicate test.checksum --dry-run -t t1 | tail -n 2`;
-$output =~ s/$t/00:00:00/g;
-$output =~ s/[ ]{2,}/ /g;
 is(
    $output,
-"# DELETE REPLACE INSERT UPDATE ALGORITHM START END EXIT DATABASE.TABLE
-# 0 0 0 0 Chunk 00:00:00 00:00:00 0 issue_806_1.t1
-",
-   "--replicate with --tables"
+   "",
+   "Table ignored, nothing to sync (bug 1002365)"
 );
 
-$output = `$cmd h=127.1,P=12345 --replicate test.checksum --dry-run -d issue_806_2 | tail -n 2`;
-$output =~ s/$t/00:00:00/g;
-$output =~ s/[ ]{2,}/ /g;
+# Sync the checksummed tables, but ignore the database.
+$output = output(
+   sub { pt_table_sync::main("h=127.1,P=12346,u=msandbox,p=msandbox",
+      qw(--print --sync-to-master --replicate percona.checksums),
+      "--ignore-databases", "test") },
+   stderr => 1,
+);
+
 is(
    $output,
-"# DELETE REPLACE INSERT UPDATE ALGORITHM START END EXIT DATABASE.TABLE
-# 0 0 0 0 Chunk 00:00:00 00:00:00 0 issue_806_2.t2
-",
-   "--replicate with --databases"
+   "",
+   "Database ignored, nothing to sync (bug 1002365)"
+);
+
+# The same should work for just --sync-to-master.
+$output = output(
+   sub { pt_table_sync::main("h=127.1,P=12346,u=msandbox,p=msandbox",
+      qw(--print --sync-to-master),
+      "--ignore-tables", "test.empty_it",
+      "--ignore-databases", "percona") },
+   stderr => 1,
+);
+
+unlike(
+   $output,
+   qr/empty_it/,
+   "Table ignored, nothing to sync-to-master (bug 1002365)"
 );
 
 # #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

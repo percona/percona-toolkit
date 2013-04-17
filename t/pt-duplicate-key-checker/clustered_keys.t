@@ -22,9 +22,6 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-else {
-   plan tests => 1;
-}
 
 my $cnf    = "/tmp/12345/my.sandbox.cnf";
 my $sample = "t/pt-duplicate-key-checker/samples/";
@@ -47,7 +44,46 @@ ok(
 );
 
 # #############################################################################
+# Error if InnoDB table has no PK or unique indexes
+# https://bugs.launchpad.net/percona-toolkit/+bug/1036804
+# #############################################################################
+$sb->load_file('master', "t/pt-duplicate-key-checker/samples/idb-no-uniques-bug-894140.sql");
+
+# PTDEBUG was auto-vivifying $clustered_key:
+#
+#    PTDEBUG && _d('clustered key:', $clustered_key->{name},
+#       $clustered_key->{colnames});
+#
+#    if ( $clustered_key
+#         && $args{clustered}
+#         && $args{tbl_info}->{engine}
+#         && $args{tbl_info}->{engine} =~ m/InnoDB/i )
+#    {
+#          push @dupes, $self->remove_clustered_duplicates($clustered_key...
+#
+#    sub remove_clustered_duplicates {
+#       my ( $self, $ck, $keys, %args ) = @_;
+#       die "I need a ck argument"   unless $ck;
+#       die "I need a keys argument" unless $keys;
+#       my $ck_cols = $ck->{colnames};
+#       my @dupes;
+#       KEY:
+#       for my $i ( 0 .. @$keys - 1 ) {
+#          my $key = $keys->[$i]->{colnames};
+#          if ( $key =~ m/$ck_cols$/ ) {
+
+my $output = `PTDEBUG=1 $trunk/bin/pt-duplicate-key-checker F=$cnf -d bug_1036804 2>&1`;
+
+unlike(
+   $output,
+   qr/Use of uninitialized value/,
+   'PTDEBUG doesn\'t auto-vivify cluster key hashref (bug 1036804)'
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;

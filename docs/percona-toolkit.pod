@@ -2,7 +2,7 @@
 
 =head1 NAME
 
-Percona Toolkit - Advanced command-line tools used by Percona for MySQL support and consulting
+percona-toolkit - Advanced command-line tools for MySQL
 
 =head1 DESCRIPTION
 
@@ -17,7 +17,7 @@ no libraries are installed.
 
 Percona Toolkit is derived from Maatkit and Aspersa, two of the best-known
 toolkits for MySQL server administration.  It is developed and supported by
-Percona Inc.  For more information and other free, open-source software
+Percona.  For more information and other free, open-source software
 developed by Percona, visit L<http://www.percona.com/software/>.
 
 =head1 TOOLS
@@ -40,7 +40,7 @@ Diff MySQL configuration files and server variables.
 
 =item pt-deadlock-logger
 
-Extract and log MySQL deadlock information.
+Log MySQL deadlocks.
 
 =item pt-diskstats
 
@@ -58,9 +58,13 @@ Split files and pipe lines to a fifo without really splitting.
 
 Find MySQL tables and execute actions, like GNU find.
 
+=item pt-fingerprint
+
+Convert queries into fingerprints.
+
 =item pt-fk-error-logger
 
-Extract and log MySQL foreign key errors.
+Log MySQL foreign key errors.
 
 =item pt-heartbeat
 
@@ -78,33 +82,25 @@ Watch process IO and print a table of file and I/O activity.
 
 Kill MySQL queries that match certain criteria.
 
-=item pt-log-player
-
-Replay MySQL query logs.
-
 =item pt-mext
 
 Look at many samples of MySQL C<SHOW GLOBAL STATUS> side-by-side.
 
 =item pt-mysql-summary
 
-Summarize MySQL information in a nice way.
+Summarize MySQL information nicely.
 
 =item pt-online-schema-change
 
-Perform online, non-blocking table schema changes.
+ALTER tables without locking them.
 
 =item pt-pmp
 
 Aggregate GDB stack traces for a selected program.
 
-=item pt-query-advisor
-
-Analyze queries and advise on possible problems.
-
 =item pt-query-digest
 
-Analyze query execution logs and generate a query report, filter, replay, or transform queries for MySQL, PostgreSQL, memcached, and more.
+Analyze MySQL queries from logs, processlist, and tcpdump.
 
 =item pt-show-grants
 
@@ -112,7 +108,7 @@ Canonicalize and print MySQL grants so you can effectively replicate, compare an
 
 =item pt-sift
 
-Browses files created by pt-collect.
+Browses files created by pt-stalk.
 
 =item pt-slave-delay
 
@@ -128,11 +124,11 @@ Watch and restart MySQL replication after errors.
 
 =item pt-stalk
 
-Gather forensic data about MySQL when a problem occurs.
+Collect forensic data about MySQL when problems occur.
 
 =item pt-summary
 
-Summarize system information in a nice way.
+Summarize system information nicely.
 
 =item pt-table-checksum
 
@@ -142,17 +138,13 @@ Verify MySQL replication integrity.
 
 Synchronize MySQL table data efficiently.
 
-=item pt-tcp-model
+=item pt-table-usage
 
-Transform tcpdump into metrics that permit performance and scalability modeling.
-
-=item pt-trend
-
-Compute statistics over a set of time-series data points.
+Analyze how queries use tables.
 
 =item pt-upgrade
 
-Execute queries on multiple servers and check for differences.
+Verify that query results are identical on different servers.
 
 =item pt-variable-advisor
 
@@ -166,6 +158,37 @@ Format EXPLAIN output as a tree.
 
 For more free, open-source software developed Percona, visit
 L<http://www.percona.com/software/>.
+
+=head1 SPECIAL OPTION TYPES
+
+Tool options use standard types (C<int>, C<string>, etc.) as well as
+these special types:
+
+=over
+
+=item time
+
+Time values are seconds by default.  For example, C<--run-time 60> means
+60 seconds.  Time values support an optional suffix: s (seconds),
+m (minutes), h (hours), d (days).  C<--run-time 1m> means 1 minute
+(the same as 60 seconds).
+
+=item size
+
+Size values are bytes by default.  For example, C<--disk-space-free 1024>
+means 1 Kibibyte.  Size values support an optional suffix: k (Kibibyte),
+M (Mebibyte), G (Gibibyte).
+
+=item DSN
+
+See L<"DSN (DATA SOURCE NAME) SPECIFICATIONS">.
+
+=item Hash, hash, Array, array
+
+Hash, hash, Array, and array values are comma-separated lists of values.
+For example, C<--ignore-tables foo,bar> ignores tables C<foo> and C<bar>.
+
+=back
 
 =head1 CONFIGURATION FILES
 
@@ -305,6 +328,20 @@ provide defaults for all DSNs that do not specify the option's corresponding
 key part.  For example, if DSN C<h=host1> and option C<--port=12345> are
 specified, then the tool automatically adds C<P=12345> to DSN.
 
+=head2 ESCAPING VALUES
+
+DSNs are usually specified on the command line, so shell quoting and escaping
+must be taken into account.  Special characters, like asterisk (C<*>), need
+to be quoted and/or escaped properly to be passed as literal characters in
+DSN values.
+
+Since DSN parts are separated by commas, literal commas in DSN values must
+be escaped with a single backslash (C<\>).  And since a backslash is
+the escape character for most shells, two backslashes are required to pass
+a literal backslash.  For example, if the username is literally C<my,name>,
+it must be specified as C<my\\,name> on most shells.  This applies to DSNs
+and DSN-related options like C<--user>.
+
 =head2 KEY PARTS
 
 Many of the tools add more parts to DSNs for special purposes, and sometimes
@@ -315,12 +352,12 @@ tools support at least the following:
 
 =item A
 
-Specifies the default character set for the connection.
+Default character set for the connection (C<SET NAMES>).
 
-Enables character set settings in Perl and MySQL.  If the value is C<utf8>, sets
-Perl's binmode on STDOUT to utf8, passes the C<mysql_enable_utf8> option to
-DBD::mysql, and runs C<SET NAMES UTF8> after connecting to MySQL.  Any other
-value sets binmode on STDOUT without the utf8 layer, and runs C<SET NAMES> after
+Enables character set settings in Perl and MySQL.  If the value is C<utf8>,
+sets Perl's binmode on STDOUT to utf8, passes the C<mysql_enable_utf8> option
+to DBD::mysql, and runs C<SET NAMES 'utf8'> after connecting to MySQL.  Other
+values set binmode on STDOUT without the utf8 layer and run C<SET NAMES> after
 connecting to MySQL.
 
 Unfortunately, there is no way from within Perl itself to specify the client
@@ -331,39 +368,54 @@ description of the F part below.
 
 =item D
 
-Specifies the connection's default database.
+Default database to use when connecting.  Tools may C<USE> a different
+databases while running.
 
 =item F
 
-Specifies a defaults file the mysql client library (the C client library used by
-DBD::mysql, I<not Percona Toolkit itself>) should read.  The tools all read the
-[client] section within the defaults file.  If you omit this, the standard
+Defaults file for the MySQL client library (the C client library used by
+DBD::mysql, I<not Percona Toolkit itself>).  All tools all read the
+C<[client]> section within the defaults file.  If you omit this, the standard
 defaults files will be read in the usual order.  "Standard" varies from system
 to system, because the filenames to read are compiled into the client library.
-On Debian systems, for example, it's usually /etc/mysql/my.cnf then ~/.my.cnf.
-If you place the following into ~/.my.cnf, tools will Do The Right Thing:
+On Debian systems, for example, it's usually C</etc/mysql/my.cnf> then
+C<~/.my.cnf>.  If you place the following in C<~/.my.cnf>, you won't have
+to specify your MySQL username and password on the command line:
 
   [client]
   user=your_user_name
   pass=secret
 
 Omitting the F part is usually the right thing to do.  As long as you have
-configured your ~/.my.cnf correctly, that will result in tools connecting
+configured your C<~/.my.cnf> correctly, that will result in tools connecting
 automatically without needing a username or password.
 
 You can also specify a default character set in the defaults file.  Unlike the
 L<"A"> part described above, this will actually instruct the client library
 (DBD::mysql) to change the character set it uses internally, which cannot be
-accomplished any other way as far as I know, except for C<utf8>.
+accomplished any other way.
 
 =item h
 
-Hostname or IP address for the connection.
+MySQL hostname or IP address to connect to.
+
+=item L
+
+Explicitly enable LOAD DATA LOCAL INFILE.
+
+For some reason, some vendors compile libmysql without the
+--enable-local-infile option, which disables the statement.  This can
+lead to weird situations, like the server allowing LOCAL INFILE, but 
+the client throwing exceptions if it's used.
+
+However, as long as the server allows LOAD DATA, clients can easily
+re-enable it; see L<https://dev.mysql.com/doc/refman/5.0/en/load-data-local.html>
+and L<http://search.cpan.org/~capttofu/DBD-mysql/lib/DBD/mysql.pm>.
+This option does exactly that.
 
 =item p
 
-Password to use when connecting.
-
+MySQL password to use when connecting.
 
 =item P
 
@@ -374,11 +426,11 @@ ignores the port.
 
 =item S
 
-Socket file to use for the connection (on Unix systems).
+MySQL socket file to use for the connection (on Unix systems).
 
 =item u
 
-User for login if not current user.
+MySQL username to use when connecting, if not current system user.
 
 =back
 
@@ -433,11 +485,9 @@ Tools that connect to MySQL require:
 
 =back
 
-Percona Toolkit is only tested on UNIX systems, primarily Debian and
-Red Hat derivatives; other operating systems are not supported.
-
-Tools that connect to MySQL may work with MySQL v4.1, but this is not
-test or supported.
+Percona Toolkit officially supports and is tested on many popular Linux
+distributions and MySQL 5.0 through 5.6; see http://goo.gl/srHm7 for the
+list of supported platforms and versions.
 
 =head1 BUGS
 
@@ -463,18 +513,38 @@ see L<"ENVIRONMENT">.
 
 =head1 AUTHORS
 
-Percona Toolkit is primarily developed by Baron Schwartz and Daniel Nichter,
-both of whom are employed by Percona Inc.  See each program's documenation
-for details.
+=over
+
+=item Baron Schwartz
+
+Baron created Maatkit, from which Percona Toolkit was forked.  Many of
+the tools and modules were originally written by Baron.
+
+=item Daniel Nichter
+
+Daniel began helping Baron with Maatkit and, later, Percona Toolkit in
+June, 2008.  He is the project's lead developer, employed by Percona.
+
+=item Brian Fraser
+
+Brian started with Percona in December, 2011.  He works on Percona Toolkit
+full-time, employed by Percona.
+
+=item Others
+
+Many people have contributed code over the years.  See each tool's
+"AUTHORS" section for details.
+
+=back
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-Percona Toolkit is copyright 2011-2012 Percona Inc. and others.
+Percona Toolkit is copyright 2011-2013 Percona Ireland Ltd and others.
 See each program's documentation for complete copyright notices.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
-MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 
 This program is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software
@@ -488,6 +558,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-Percona Toolkit v2.0.4 released 2012-03-07
+Percona Toolkit v2.2.1 released 2013-03-14
 
 =cut

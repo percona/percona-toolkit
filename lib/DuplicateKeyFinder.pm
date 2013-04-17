@@ -1,4 +1,4 @@
-# This program is copyright 2009-2011 Percona Inc.
+# This program is copyright 2009-2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -148,8 +148,9 @@ sub get_duplicate_keys {
    # Remove clustered duplicates.
    my $clustered_key = $args{clustered_key} ? $keys{$args{clustered_key}}
                      : undef;
-   PTDEBUG && _d('clustered key:', $clustered_key->{name},
-      $clustered_key->{colnames});
+   PTDEBUG && _d('clustered key:',
+      $clustered_key ? ($clustered_key->{name}, $clustered_key->{colnames})
+                     : 'none');
    if ( $clustered_key
         && $args{clustered}
         && $args{tbl_info}->{engine}
@@ -359,7 +360,7 @@ sub remove_prefix_duplicates {
          }
          else {
             PTDEBUG && _d($right_name, 'not left-prefix of', $left_name);
-            next LEFT_KEY;
+            next RIGHT_KEY;
          }
       } # RIGHT_KEY
    } # LEFT_KEY

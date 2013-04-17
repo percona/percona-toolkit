@@ -26,11 +26,9 @@ if ( !$master_dbh ) {
 elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
-else {
-   plan tests => 12;
-}
 
 my $cnf = '/tmp/12345/my.sandbox.cnf';
+my $samples = "$trunk/t/pt-config-diff/samples/";
 my $output;
 my $retval;
 
@@ -163,6 +161,43 @@ like(
 );
 
 # #############################################################################
+# Case insensitivity
+# #############################################################################
+
+use File::Spec;
+
+$output = output(
+   sub { $retval = pt_config_diff::main(
+      File::Spec->catfile($samples, "case1.cnf"),
+      File::Spec->catfile($samples, "case2.cnf"),
+   ) },
+   stderr => 1,
+);
+
+is(
+   $output,
+   "",
+   "Case-insensitive by default, finds no diffs"
+);
+
+$output = output(
+   sub { $retval = pt_config_diff::main(
+      File::Spec->catfile($samples, "case1.cnf"),
+      File::Spec->catfile($samples, "case2.cnf"),
+      '--no-ignore-case',
+   ) },
+   stderr => 1,
+);
+
+like(
+   $output,
+   qr/binlog_format\s+genlog\s+GENLOG/,
+   "With case-insensitivity turned off, finds one diff"
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
-exit;
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+
+done_testing;

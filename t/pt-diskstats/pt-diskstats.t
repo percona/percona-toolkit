@@ -9,12 +9,16 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 25;
+use Test::More;
 
 use File::Temp ();
 
 use PerconaTest;
 require "$trunk/bin/pt-diskstats";
+
+# Re-open STDIN to /dev/null before the tieing magic, to avoid
+# a bug in older Perls.
+open STDIN, "<", "/dev/null";
 
 # pt-diskstats is an interactive-only tool.  It waits for user input
 # (i.e. menu commands) via STDIN.  So we cannot just run it with input,
@@ -88,6 +92,8 @@ sub test_diskstats_file {
          no_diff(
             sub {
                tie local *STDIN, TestInteractive => @commands;
+               local $PerconaTest::DONT_RESTORE_STDIN =
+                     $PerconaTest::DONT_RESTORE_STDIN = 1;
                pt_diskstats::main(
                   @options,
                   '--group-by', $groupby,
@@ -118,6 +124,16 @@ test_diskstats_file(
 test_diskstats_file(
    file     => "small.txt",
    options  => [ '--headers', '', '--columns-regex','time', ],
+);
+
+# ###########################################################################
+# --group-by sample + --devices-regex show the wrong device name
+# https://bugs.launchpad.net/percona-toolkit/+bug/1035311
+# ###########################################################################
+test_diskstats_file(
+   file     => "bug-1035311.txt",
+   commands => [ "S", "/", 'xvdb1', "q" ],
+   options  => [],
 );
 
 # ###########################################################################
@@ -155,7 +171,7 @@ ok(
 # ###########################################################################
 # Done.
 # ###########################################################################
-exit;
+done_testing;
 
 __DATA__
 Leave this here!

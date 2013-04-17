@@ -1,4 +1,4 @@
-# This program is copyright 2011 Percona Inc.
+# This program is copyright 2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -152,9 +152,9 @@ sub find_column {
       ($col, $tbl, $db) = @args{qw(col tbl db)};
    }
 
-   $db  = lc $db;
-   $tbl = lc $tbl;
-   $col = lc $col;
+   $db  = lc($db  || '');
+   $tbl = lc($tbl || '');
+   $col = lc($col || '');
 
    if ( !$col ) {
       PTDEBUG && _d('No column specified or parsed');
@@ -214,8 +214,8 @@ sub find_table {
       ($tbl, $db) = @args{qw(tbl db)};
    }
 
-   $db  = lc $db;
-   $tbl = lc $tbl;
+   $db  = lc($db  || '');
+   $tbl = lc($tbl || '');
 
    if ( !$tbl ) {
       PTDEBUG && _d('No table specified or parsed');

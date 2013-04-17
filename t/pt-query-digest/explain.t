@@ -13,24 +13,15 @@ use Test::More;
 
 use Sandbox;
 use PerconaTest;
-use VersionParser;
-# See 101_slowlog_analyses.t for why we shift.
-shift @INC;  # our unshift (above)
-shift @INC;  # PerconaTest's unshift
-shift @INC;  # Sandbox
 
 require "$trunk/bin/pt-query-digest";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
-my $vp  = new VersionParser();
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
-}
-else {
-   plan tests => 5;
 }
 
 my $sample = "t/pt-query-digest/samples/";
@@ -48,14 +39,15 @@ ok(
    no_diff(
       sub { pt_query_digest::main(@args,
          "$trunk/t/lib/samples/slowlogs/slow007.txt") },
-      ($sandbox_version ge '5.1' ? "$sample/slow007_explain_1-51.txt"
-                                 : "$sample/slow007_explain_1.txt")
+      ( $sandbox_version ge '5.5' ? "$sample/slow007_explain_1-55.txt"
+      : $sandbox_version ge '5.1' ? "$sample/slow007_explain_1-51.txt"
+      :                             "$sample/slow007_explain_1.txt")
    ),
    'Analysis for slow007 with --explain, no rows',
 );
 
 # Normalish output from EXPLAIN.
-$dbh->do('insert into trees values ("apple"),("orange"),("banana")');
+$dbh->do("insert into trees values ('apple'),('orange'),('banana')");
 
 ok(
    no_diff(
@@ -95,7 +87,6 @@ ok(
    'Analysis for slow007 with --explain, failed',
 );
 
-
 # #############################################################################
 # Issue 1196: mk-query-digest --explain is broken
 # #############################################################################
@@ -107,9 +98,9 @@ ok(
          '--report-format', 'profile,query_report',
          "$trunk/t/pt-query-digest/samples/issue_1196.log",)
       },
-      ($sandbox_version ge '5.1'
-         ? "t/pt-query-digest/samples/issue_1196-output.txt"
-         : "t/pt-query-digest/samples/issue_1196-output-5.0.txt"),
+      (  $sandbox_version eq '5.6' ? "$sample/issue_1196-output-5.6.txt"
+       : $sandbox_version ge '5.1' ? "$sample/issue_1196-output.txt"
+       :                             "$sample/issue_1196-output-5.0.txt"),
    ),
    "--explain sparkline uses event db and doesn't crash ea (issue 1196"
 );
@@ -118,4 +109,5 @@ ok(
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
-exit;
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;

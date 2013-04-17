@@ -1,58 +1,69 @@
 #!/bin/sh
 
+start_ts=$(date +%s)
+
 PIDFILE="/tmp/PORT/data/mysql_sandboxPORT.pid"
 SOCKETFILE="/tmp/PORT/mysql_sandboxPORT.sock"
 BASEDIR="PERCONA_TOOLKIT_SANDBOX"
 
 sandbox_is_alive() {
-   local pid=`cat /tmp/PORT/data/mysql_sandboxPORT.pid 2>/dev/null`
-   if [ -z "$pid" ]; then
-      return 0
-   fi
-   kill -0 $pid
-   local ps_alive=$?
+   # First, all these files must exist.
+   [ -f $PIDFILE -a  -S $SOCKETFILE ] || return 1
 
+   # And that PID file must have a PID.
+   local pid=$(cat /tmp/PORT/data/mysql_sandboxPORT.pid 2>/dev/null)
+   [ "$pid" ] || return 1
+
+   # Second, MySQL is truly alive when it respond to a ping.
+   # It's not enough that the mysqld process is running because
+   # InnoDB can take time to create ibdata1, etc.  So MySQL is
+   # only alive when it responds to queries.
    $BASEDIR/bin/mysqladmin --defaults-file="/tmp/PORT/my.sandbox.cnf" ping >/dev/null 2>&1
-   local mysql_alive=$?
+   [ $? -eq 0 ] || return 1
 
-   if [ $ps_alive -eq 0 ] && [ $mysql_alive -eq 0 ]; then
-      return 1  # sandbox is alive
-   else
-      return 0
-   fi
+   return 0
 }
 
-if [ -f "$PIDFILE" ] || [ -S "$SOCKETFILE" ]; then
-   sandbox_is_alive
-   if [ $? -eq 1 ]; then
+_seq() {
+   local i="$1"
+   awk "BEGIN { for(i=1; i<=$i; i++) print i; }"
+}
+
+# #############################################################################
+# Script starts here
+# #############################################################################
+
+# If there's a PID or socket file, MySQL may already be alive.
+if [ -f "$PIDFILE" -o -S "$SOCKETFILE" ]; then
+   if sandbox_is_alive; then
       echo "MySQL test server on port PORT is running."
       exit 0
    fi
 
    # Sandbox exists but is not running.  Clear it and then start it.
    /tmp/PORT/stop >/dev/null 2>&1
-   rm -rf $PIDFILE
-   rm -rf $SOCKETFILE
 fi
-
-PWD=`pwd`
-cd $BASEDIR
-$BASEDIR/bin/mysqld_safe --defaults-file=/tmp/PORT/my.sandbox.cnf > /dev/null 2>&1 &
-cd $PWD
 
 echo -n "Starting MySQL test server on port PORT... "
-for i in 1 2 3 4 5 6 7 8 9 10; do
-   sleep 1
-   if [ -f $PIDFILE ] && [ -S $SOCKETFILE ]; then
-      break
+
+# Start MySQL.
+cwd=$PWD
+cd $BASEDIR
+$BASEDIR/MYSQLD --defaults-file=/tmp/PORT/my.sandbox.cnf > /dev/null 2>&1 &
+cd $PWD
+
+# Wait for MySQL to actually be up, i.e. to respond to queries.
+for i in $(_seq 60); do
+   if sandbox_is_alive; then
+      end_ts=$(date +%s)
+      t=$((end_ts - start_ts))
+      echo "OK (${t}s)"
+      exit 0
    fi
+   sleep 1
 done
 
-sandbox_is_alive
-if [ $? -eq 1 ]; then
-   echo "OK"
-   exit 0
-else
-   echo "FAILED"
-   exit 1
-fi
+end_ts=$(date +%s)
+t=$((end_ts - start_ts))
+echo "FAILED (${t}s)"
+exit 1

@@ -1,4 +1,4 @@
-# This program is copyright 2010-2011 Percona Inc.
+# This program is copyright 2010-2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -26,6 +26,8 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use Time::HiRes qw(sleep);
 
 sub new {
    my ( $class, %args ) = @_;

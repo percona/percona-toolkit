@@ -24,21 +24,36 @@
 set -u
 
 # Global variables.
+PTFUNCNAME=""
+PTDEBUG="${PTDEBUG:-""}"
 EXIT_STATUS=0
 
-log() {
-   TS=$(date +%F-%T | tr :- _);
+ts() {
+   TS=$(date +%F-%T | tr ':-' '_')
    echo "$TS $*"
 }
 
+info() {
+   [ ${OPT_VERBOSE:-3} -ge 3 ] && ts "$*"
+}
+
+log() {
+   [ ${OPT_VERBOSE:-3} -ge 2 ] && ts "$*"
+}
+
 warn() {
-   log "$*" >&2
+   [ ${OPT_VERBOSE:-3} -ge 1 ] && ts "$*" >&2
    EXIT_STATUS=1
 }
 
 die() {
-   warn "$*"
+   ts "$*" >&2
+   EXIT_STATUS=1
    exit 1
+}
+
+_d () {
+   [ "$PTDEBUG" ] && echo "# $PTFUNCNAME: $(ts "$*")" >&2
 }
 
 # ###########################################################################

@@ -20,7 +20,6 @@ $Data::Dumper::Indent    = 0;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-my $vp = new VersionParser();
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $c1_dbh = $sb->get_dbh_for('master');
@@ -39,7 +38,7 @@ elsif ( !$r1_dbh ) {
 
 }
 else {
-   plan tests => 22;
+   plan tests => 23;
 }
 
 my $output;
@@ -534,6 +533,8 @@ SKIP: {
 # #############################################################################
 # Done.
 # #############################################################################
-diag(`$trunk/sandbox/stop-sandbox 2900 >/dev/null`);
 diag(`$trunk/sandbox/stop-sandbox 2901 >/dev/null`);
+diag(`$trunk/sandbox/stop-sandbox 2900 >/dev/null`);
+$sb->wipe_clean($c1_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

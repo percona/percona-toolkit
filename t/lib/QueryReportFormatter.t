@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 44;
+use Test::More;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -43,7 +43,6 @@ my $o   = new OptionParser(description=>'qrf');
 my $ex  = new ExplainAnalyzer(QueryRewriter => $qr, QueryParser => $qp);
 
 $o->get_specs("$trunk/bin/pt-query-digest");
-
 my $qrf = new QueryReportFormatter(
    OptionParser    => $o,
    QueryRewriter   => $qr,
@@ -186,6 +185,38 @@ ok(
    ),
    'Event report'
 );
+
+{
+   # pt-query-digest prints negative byte offset
+   # https://bugs.launchpad.net/percona-toolkit/+bug/887638
+
+   # printf "%d" can't really handle large values in some systems.
+   # Given a large enough log file, it will start printing
+   # negative values. The workaround is to use %.f instead. I haven't
+   # researched what the recommended solution for this is, but
+   # it's such an uncommon case and that it's not worth the time.
+   # This bug should really only affect 32-bit machines, and even then
+   # only those were the underlaying compiler's printf("%d") coerces the
+   # argument into a signed int.
+   my $item = 'select id from users where name=?';
+   local $ea->results->{samples}->{$item}->{pos_in_log} = 1e+33;
+
+   $result = $qrf->event_report(
+      ea => $ea,
+      # "users" is here to try to cause a failure
+      select => [ qw(Query_time Lock_time Rows_sent Rows_examined ts db user users) ],
+      item    => $item,
+      rank    => 1,
+      orderby => 'Query_time',
+      reason  => 'top',
+   );
+
+   unlike(
+      $result,
+      qr/at byte -/,
+      "Bug 887638: pt-query-digest prints negative byte offset"
+   );
+}
 
 $result = $qrf->chart_distro(
    ea     => $ea,
@@ -433,7 +464,7 @@ ok(
 # #############################################################################
 
 # This test uses the $ea from the Bool pretty printer test above.
-my $sorted = $qrf->sort_attribs($ea->get_attributes(), $ea);
+my $sorted = $qrf->sort_attribs($ea);
 is_deeply(
    $sorted,
    {
@@ -480,7 +511,7 @@ foreach my $event (@$events) {
 }
 $ea->calculate_statistical_metrics();
 
-$sorted = $qrf->sort_attribs($ea->get_attributes(), $ea);
+$sorted = $qrf->sort_attribs($ea);
 is_deeply(
    $sorted,
    {
@@ -536,7 +567,6 @@ $result = $qrf->header(
    ea        => $ea,
    # select    => [ $ea->get_attributes() ],
    orderby   => 'Query_time',
-   zero_bool => 0,
 );
 
 ok(
@@ -659,7 +689,7 @@ ok(
       "t/lib/samples/QueryReportFormatter/report010.txt",
       cmd_output => 1,
    ),
-   'Truncate one long string'
+   "Don't truncate one long string"
 );
 
 $ea->reset_aggregated_data();
@@ -691,7 +721,7 @@ ok(
       "t/lib/samples/QueryReportFormatter/report011.txt",
       cmd_output => 1,
    ),
-   'Truncate multiple long strings'
+   "Don't truncate multiple long strings"
 );
 
 $ea->reset_aggregated_data();
@@ -723,7 +753,7 @@ ok(
       "t/lib/samples/QueryReportFormatter/report012.txt",
       cmd_output => 1,
    ),
-   'Truncate multiple strings longer than whole line'
+   "Don't truncate multiple strings longer than whole line"
 );
 
 # #############################################################################
@@ -851,9 +881,6 @@ ok(
    "IPs not shortened with more"
 );
 
-# Test show_all.
-@ARGV = qw(--show-all host);
-$o->get_opts();
 $result = $qrf->event_report(
    ea       => $ea,
    select   => [ qw(Query_time host) ],
@@ -940,7 +967,13 @@ $ea->calculate_statistical_metrics(apdex_t=>1);
 # Reset opts in case anything above left something set.
 @ARGV = qw();
 $o->get_opts();
-
+$qrf = new QueryReportFormatter(
+   OptionParser    => $o,
+   QueryRewriter   => $qr,
+   QueryParser     => $qp,
+   Quoter          => $q, 
+   ExplainAnalyzer => $ex,
+);
 # Normally, the report subs will make their own ReportFormatter but
 # that package isn't visible to QueryReportFormatter right now so we
 # make ReportFormatters and pass them in.  Since ReporFormatters can't
@@ -949,7 +982,7 @@ $o->get_opts();
 # profile subreport.  And the line width is 82 because that's the new
 # default to accommodate the EXPLAIN sparkline (issue 1141).
 my $report = new ReportFormatter(line_width=>82);
-$qrf->set_report_formatter(report=>'profile', formatter=>$report);
+$qrf->{formatter} = $report;
 ok(
    no_diff(
       sub { $qrf->print_reports(
@@ -966,8 +999,6 @@ ok(
    "print_reports(header, query_report, profile)"
 );
 
-$report = new ReportFormatter(line_width=>82);
-$qrf->set_report_formatter(report=>'profile', formatter=>$report);
 ok(
    no_diff(
       sub { $qrf->print_reports(
@@ -1020,11 +1051,6 @@ foreach my $event ( @$events ) {
    $ea->aggregate($event);
 }
 $ea->calculate_statistical_metrics();
-$report = new ReportFormatter(
-   line_width   => 82,
-   extend_right => 1,
-);
-$qrf->set_report_formatter(report=>'prepared', formatter=>$report);
 ok(
    no_diff(
       sub {
@@ -1063,11 +1089,6 @@ foreach my $event ( @$events ) {
    $ea->aggregate($event);
 }
 $ea->calculate_statistical_metrics();
-$report = new ReportFormatter(
-   line_width   => 82,
-   extend_right => 1,
-);
-$qrf->set_report_formatter(report=>'profile', formatter=>$report);
 ok(
    no_diff(
       sub {
@@ -1099,7 +1120,13 @@ SKIP: {
 
    @ARGV = qw(--explain F=/tmp/12345/my.sandbox.cnf);
    $o->get_opts();
-
+   $qrf = new QueryReportFormatter(
+      OptionParser    => $o,
+      QueryRewriter   => $qr,
+      QueryParser     => $qp,
+      Quoter          => $q, 
+      ExplainAnalyzer => $ex,
+   );
    my $qrf = new QueryReportFormatter(
       OptionParser    => $o,
       QueryRewriter   => $qr,
@@ -1110,76 +1137,14 @@ SKIP: {
    );
 
    my $explain = load_file(
-      $sandbox_version ge '5.1'
-         ? "t/lib/samples/QueryReportFormatter/report025.txt"
-         : "t/lib/samples/QueryReportFormatter/report026.txt");
+        $sandbox_version eq '5.6' ? "t/lib/samples/QueryReportFormatter/report031.txt"
+      : $sandbox_version ge '5.1' ? "t/lib/samples/QueryReportFormatter/report025.txt"
+      :                             "t/lib/samples/QueryReportFormatter/report026.txt");
 
    is(
       $qrf->explain_report("select * from qrf.t where i=2", 'qrf'),
       $explain,
       "explain_report()"
-   );
-
-   my $arg = "select t1.i from t as t1 join t as t2 where t1.i < t2.i and t1.v is not null order by t1.i";
-   my $fingerprint = $qr->fingerprint($arg);
-
-   $events = [
-      {
-         Query_time    => '0.000286',
-         arg           => $arg,
-         fingerprint   => $fingerprint,
-         bytes         => length $arg,
-         cmd           => 'Query',
-         db            => 'qrf',
-         pos_in_log    => 0,
-         ts            => '091208 09:23:49.637394',
-      },
-   ];
-   $ea = new EventAggregator(
-      groupby => 'fingerprint',
-      worst   => 'Query_time',
-   );
-   foreach my $event ( @$events ) {
-      $ea->aggregate($event);
-   }
-   $ea->calculate_statistical_metrics();
-
-   # Make sure that explain_sparkline() does USE db like explain_report()
-   # does because by mqd defaults expalin_sparline() is called by profile()
-   # so if it doesn't USE db then the EXPLAIN will fail.  Here we reset
-   # the db to something else because we already called explain_report()
-   # above which did USE qrf.
-   $dbh->do("USE mysql");
-   my $explain_sparkline = $qrf->explain_sparkline($arg, 'qrf');
-   is(
-      $explain_sparkline,
-      "TF>aI",
-      "explain_sparkling() uses db"
-   );
-
-   $report = new ReportFormatter(
-      line_width   => 82,
-      extend_right => 1,
-   );
-   $qrf->set_report_formatter(report=>'profile', formatter=>$report);
-   $dbh->do("USE mysql");  # same reason as above ^; force use db from event
-   ok(
-      no_diff(
-         sub {
-            $qrf->print_reports(
-               reports => ['profile', 'query_report'],
-               ea      => $ea,
-               worst   => [ [$fingerprint, 'top',  1], ],
-               other   => [ [$fingerprint, 'misc', 2], ],
-               orderby => 'Query_time',
-               groupby => 'fingerprint',
-            );
-         },
-         ($sandbox_version ge '5.1' ?
-              "t/lib/samples/QueryReportFormatter/report027.txt"
-            : "t/lib/samples/QueryReportFormatter/report029.txt"),
-      ),
-      "EXPLAIN sparkline (issue 1141)"
    );
 
    $sb->wipe_clean($dbh);
@@ -1232,7 +1197,6 @@ foreach my $event ( @$events ) {
 $ea->calculate_statistical_metrics();
 @ARGV = qw();
 $o->get_opts();
-$report = new ReportFormatter(line_width=>82);
 $qrf    = new QueryReportFormatter(
    OptionParser    => $o,
    QueryRewriter   => $qr,
@@ -1240,7 +1204,6 @@ $qrf    = new QueryReportFormatter(
    Quoter          => $q, 
    ExplainAnalyzer => $ex,
 );
-$qrf->set_report_formatter(report=>'profile', formatter=>$report);
 my $output = output(
    sub { $qrf->print_reports(
       reports => [qw(rusage date files header query_report profile)],
@@ -1304,11 +1267,6 @@ foreach my $event ( @$events ) {
    $ea->aggregate($event);
 }
 $ea->calculate_statistical_metrics();
-$report = new ReportFormatter(
-   line_width   => 82,
-   extend_right => 1,
-);
-$qrf->set_report_formatter(report=>'profile', formatter=>$report);
 ok(
    no_diff(
       sub {
@@ -1325,181 +1283,6 @@ ok(
       "t/lib/samples/QueryReportFormatter/report005.txt",
    ),
    "Variance-to-mean ration (issue 1124)"
-);
-
-# #############################################################################
-# Issue 1141: Add "spark charts" to mk-query-digest profile
-# #############################################################################
-sub proc_events {
-   my ( %args ) = @_;
-   my ($arg, $attrib, $vals) = @args{qw(arg attrib vals)};
-
-   my $bytes       = length $arg;
-   my $fingerprint = $qr->fingerprint($arg);
-
-   $events = [];
-   foreach my $val ( @$vals ) {
-      push @$events, {
-         bytes       => $bytes,
-         arg         => $arg,
-         fingerprint => $fingerprint,
-         $attrib     => $val,
-      }
-   }
-
-   $ea = new EventAggregator(
-      groupby => 'fingerprint',
-      worst   => 'Query_time',
-   );
-   foreach my $event (@$events) {
-      $ea->aggregate($event);
-   }
-   $ea->calculate_statistical_metrics(apdex_t=>1);
-
-   # Seeing the full chart helps determine what the
-   # sparkline should look like.
-   if ( $args{chart} ) {
-      $result = $qrf->chart_distro(
-         ea     => $ea,
-         item   => 'select c from t',
-         attrib => 'Query_time',
-      );
-      print $result;
-   }
-
-   return;
-};
-
-# Test sparklines in isolation.
-proc_events(
-   arg    => 'select c from t',
-   attrib => 'Query_time',
-   vals   => [qw(0 0 0)],
-);
-$result = $qrf->distro_sparkline(
-   ea     => $ea,
-   item   => 'select c from t',
-   attrib => 'Query_time',
-);
-is(
-   $result,
-   "        ",
-   "Sparkchart line - all zeros"
-);
-
-#   1us
-#  10us
-# 100us  ################################################
-#   1ms  ################################
-#  10ms  ################################
-# 100ms  ################################################################
-#    1s  ################
-#  10s+
-proc_events(
-   arg    => 'select c from t',
-   attrib => 'Query_time',
-   vals   => [qw(0.100000 0.500000 0.000600 0.008000 0.990000 1.000000 0.400000 0.003000 0.000200 0.000100 0.010000 0.020000)],
-);
-$result = $qrf->distro_sparkline(
-   ea     => $ea,
-   item   => 'select c from t',
-   attrib => 'Query_time',
-);
-is(
-   $result,
-   "  -..^_ ",
-   "Sparkchart line 1"
-);
-
-#   1us
-#  10us
-# 100us
-#   1ms
-#  10ms  ################################
-# 100ms  ################################################################
-#    1s  ########
-#  10s+
-proc_events(
-   arg    => 'select c from t',
-   attrib => 'Query_time',
-   vals   => [qw(0.01 0.03 0.08 0.09 0.3 0.5 0.5 0.6 0.7 0.5 0.5 0.9 1.0)],
-);
-$result = $qrf->distro_sparkline(
-   ea     => $ea,
-   item   => 'select c from t',
-   attrib => 'Query_time',
-);
-is(
-   $result,
-   "    .^_ ",
-   "Sparkchart line 2"
-);
-
-#   1us  ################################################################
-#  10us  ################################################################
-# 100us  ################################################################
-#   1ms  ################################################################
-#  10ms  ################################################################
-# 100ms  ################################################################
-#    1s  ################################################################
-#  10s+
-proc_events(
-   arg    => 'select c from t',
-   attrib => 'Query_time',
-   vals   => [qw(0.000003 0.000030 0.000300 0.003000 0.030000 0.300000 3)],
-);
-$result = $qrf->distro_sparkline(
-   ea     => $ea,
-   item   => 'select c from t',
-   attrib => 'Query_time',
-);
-is(
-   $result,
-   "^^^^^^^ ",
-   "Sparkchart line - vals in all ranges except 10s+"
-);
-
-
-#   1us  ################################################################
-#  10us  ################################################################
-# 100us
-#   1ms
-#  10ms
-# 100ms
-#    1s  ################################################################
-#  10s+  ################################################################
-proc_events(
-   arg    => 'select c from t',
-   attrib => 'Query_time',
-   vals   => [qw(0.000003 0.000030 0.000003 0.000030 3 3 30 30)],
-);
-$result = $qrf->distro_sparkline(
-   ea     => $ea,
-   item   => 'select c from t',
-   attrib => 'Query_time',
-);
-is(
-   $result,
-   "^^    ^^",
-   "Sparkchart line - twin peaks"
-);
-
-# Test that that ^ sparkchart appears in the event header properly.
-$result = $qrf->event_report(
-   ea      => $ea,
-   select  => [ qw(Query_time) ],
-   item    => 'select c from t',
-   rank    => 1,
-   orderby => 'Query_time',
-   reason  => 'top',
-);
-ok(
-   no_diff(
-      $result,
-      "t/lib/samples/QueryReportFormatter/report028.txt",
-      cmd_output => 1,
-   ),
-   'Sparkchart in event header'
 );
 
 # ############################################################################
@@ -1532,11 +1315,6 @@ foreach my $event ( @$events ) {
    $ea->aggregate($event);
 }
 $ea->calculate_statistical_metrics();
-$report = new ReportFormatter(
-   line_width   => 82,
-   extend_right => 1,
-);
-$qrf->set_report_formatter(report=>'prepared', formatter=>$report);
 ok(
    no_diff(
       sub {
@@ -1570,4 +1348,6 @@ like(
    qr/Complete test coverage/,
    '_d() works'
 );
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;

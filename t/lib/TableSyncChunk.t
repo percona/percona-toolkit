@@ -21,7 +21,7 @@ my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
 if ( $dbh ) {
-   plan tests => 34;
+   plan tests => 35;
 }
 else {
    plan skip_all => 'Cannot connect to MySQL';
@@ -46,16 +46,14 @@ diag(`$mysql < $trunk/t/lib/samples/before-TableSyncChunk.sql`);
 
 my $q  = new Quoter();
 my $tp = new TableParser(Quoter => $q);
-my $vp = new VersionParser();
-my $ms = new MasterSlave();
+my $ms = new MasterSlave(OptionParser=>1,DSNParser=>1,Quoter=>1);
 my $rr = new Retry();
 my $chunker    = new TableChunker( Quoter => $q, TableParser => $tp );
-my $checksum   = new TableChecksum( Quoter => $q, VersionParser => $vp );
+my $checksum   = new TableChecksum( Quoter => $q );
 my $syncer     = new TableSyncer(
    MasterSlave   => $ms,
    TableChecksum => $checksum,
    Quoter        => $q,
-   VersionParser => $vp,
    Retry         => $rr,
 );
 
@@ -403,4 +401,5 @@ is(
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

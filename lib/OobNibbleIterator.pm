@@ -1,4 +1,4 @@
-# This program is copyright 2011 Percona Inc.
+# This program is copyright 2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -58,7 +58,7 @@ sub new {
 
    my $q     = $self->{Quoter};
    my $o     = $self->{OptionParser};
-   my $where = $o->get('where');
+   my $where = $o->has('where') ? $o->get('where') : undef;
 
    # If it's not a single nibble table, init our special statements.
    if ( !$self->one_nibble() ) {

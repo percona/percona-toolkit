@@ -1,0 +1,22 @@
+Operation, tries, wait:
+  copy_rows, 10, 0.25
+  create_triggers, 10, 1
+  drop_triggers, 10, 1
+  swap_tables, 10, 1
+  update_foreign_keys, 10, 1
+Starting a dry run.  `bug_1045317`.`bits` will not be altered.  Specify --execute instead of --dry-run to alter the table.
+Not dropping triggers because this is a dry run.
+Dropping new table...
+Dropped new table OK.
+# Event  Count
+# ====== =====
+# INSERT     0
+Dry run complete.  `bug_1045317`.`bits` was not altered.
+Creating new table...
+Created new table bug_1045317._bits_new OK.
+Altering new table...
+Altered `bug_1045317`.`_bits_new` OK.
+Not creating triggers because this is a dry run.
+Not copying rows because this is a dry run.
+Not swapping tables because this is a dry run.
+Not dropping old table because this is a dry run.

@@ -1,4 +1,4 @@
-# This program is copyright 2008-2011 Percona Inc.
+# This program is copyright 2008-2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -29,24 +29,28 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Time::Local qw(timegm timelocal);
 use Digest::MD5 qw(md5_hex);
+use B qw();
 
-require Exporter;
-our @ISA         = qw(Exporter);
-our %EXPORT_TAGS = ();
-our @EXPORT      = ();
-our @EXPORT_OK   = qw(
-   micro_t
-   percentage_of
-   secs_to_time
-   time_to_secs
-   shorten
-   ts
-   parse_timestamp
-   unix_timestamp
-   any_unix_timestamp
-   make_checksum
-   crc32
-);
+BEGIN {
+   require Exporter;
+   our @ISA         = qw(Exporter);
+   our %EXPORT_TAGS = ();
+   our @EXPORT      = ();
+   our @EXPORT_OK   = qw(
+      micro_t
+      percentage_of
+      secs_to_time
+      time_to_secs
+      shorten
+      ts
+      parse_timestamp
+      unix_timestamp
+      any_unix_timestamp
+      make_checksum
+      crc32
+      encode_json
+   );
+}
 
 our $mysql_ts  = qr/(\d\d)(\d\d)(\d\d) +(\d+):(\d+):(\d+)(\.\d+)?/;
 our $proper_ts = qr/(\d\d\d\d)-(\d\d)-(\d\d)[T ](\d\d):(\d\d):(\d\d)(\.\d+)?/;
@@ -191,6 +195,10 @@ sub parse_timestamp {
                      . (defined $f ? '%09.6f' : '%02d'),
                      $y + 2000, $m, $d, $h, $i, (defined $f ? $s + $f : $s);
    }
+   # MySQL 5.6+ uses "proper" timestamps
+   elsif ( $val =~ m/^$proper_ts$/ ) {
+      return $val;
+   }
    return $val;
 }
 
@@ -283,6 +291,98 @@ sub crc32 {
       $crc = (($crc >> 8) & 0x00FFFFFF) ^ $comp;
    }
    return $crc ^ 0xFFFFFFFF;
+}
+
+my $got_json = eval { require JSON };
+sub encode_json {
+   return JSON::encode_json(@_) if $got_json;
+   my ( $data ) = @_;
+   return (object_to_json($data) || '');
+}
+
+# The following is a stripped down version of JSON::PP by Makamaka Hannyaharamitu
+# https://metacpan.org/module/JSON::PP
+
+sub object_to_json {
+   my ($obj) = @_;
+   my $type  = ref($obj);
+
+   if($type eq 'HASH'){
+      return hash_to_json($obj);
+   }
+   elsif($type eq 'ARRAY'){
+      return array_to_json($obj);
+   }
+   else {
+      return value_to_json($obj);
+   }
+}
+
+sub hash_to_json {
+   my ($obj) = @_;
+   my @res;
+   for my $k ( sort { $a cmp $b } keys %$obj ) {
+      push @res, string_to_json( $k )
+         .  ":"
+         . ( object_to_json( $obj->{$k} ) || value_to_json( $obj->{$k} ) );
+   }
+   return '{' . ( @res ? join( ",", @res ) : '' )  . '}';
+}
+
+sub array_to_json {
+   my ($obj) = @_;
+   my @res;
+
+   for my $v (@$obj) {
+      push @res, object_to_json($v) || value_to_json($v);
+   }
+
+   return '[' . ( @res ? join( ",", @res ) : '' ) . ']';
+}
+
+sub value_to_json {
+   my ($value) = @_;
+
+   return 'null' if(!defined $value);
+
+   my $b_obj = B::svref_2object(\$value);  # for round trip problem
+   my $flags = $b_obj->FLAGS;
+   return $value # as is 
+      if $flags & ( B::SVp_IOK | B::SVp_NOK ) and !( $flags & B::SVp_POK ); # SvTYPE is IV or NV?
+
+   my $type = ref($value);
+
+   if( !$type ) {
+      return string_to_json($value);
+   }
+   else {
+      return 'null';
+   }
+
+}
+
+my %esc = (
+   "\n" => '\n',
+   "\r" => '\r',
+   "\t" => '\t',
+   "\f" => '\f',
+   "\b" => '\b',
+   "\"" => '\"',
+   "\\" => '\\\\',
+   "\'" => '\\\'',
+);
+
+sub string_to_json {
+   my ($arg) = @_;
+
+   $arg =~ s/([\x22\x5c\n\r\t\f\b])/$esc{$1}/g;
+   $arg =~ s/\//\\\//g;
+   $arg =~ s/([\x00-\x08\x0b\x0e-\x1f])/'\\u00' . unpack('H2', $1)/eg;
+
+   utf8::upgrade($arg);
+   utf8::encode($arg);
+
+   return '"' . $arg . '"';
 }
 
 sub _d {

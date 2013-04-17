@@ -28,7 +28,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 1;
+   plan tests => 2;
 }
 
 $sb->wipe_clean($master_dbh);
@@ -48,7 +48,7 @@ $slave_dbh->do('UPDATE issue_375.t SET foo="z" WHERE id=10');
 $slave_dbh->do('UPDATE issue_375.t SET foo="zz" WHERE id=100');
 
 # Checksum and replicate.
-diag(`$trunk/bin/pt-table-checksum --create-replicate-table --replicate issue_375.checksum h=127.1,P=12345,u=msandbox,p=msandbox -d issue_375 -t t --lock-wait-time 3 > /dev/null`);
+diag(`$trunk/bin/pt-table-checksum --create-replicate-table --replicate issue_375.checksum h=127.1,P=12345,u=msandbox,p=msandbox -d issue_375 -t t --set-vars innodb_lock_wait_timeout=3 > /dev/null`);
 
 # And now sync using the replicated checksum results/differences.
 $output = output(
@@ -71,4 +71,5 @@ REPLACE INTO `issue_375`.`t`(`id`, `updated_at`, `foo`) VALUES ('100', '2009-09-
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 $sb->wipe_clean($slave_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

@@ -1,4 +1,4 @@
-# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Inc.
+# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -22,41 +22,160 @@
 # VersionParser parses a MySQL version string.
 package VersionParser;
 
-use strict;
-use warnings FATAL => 'all';
+use Lmo;
+use Scalar::Util qw(blessed);
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-sub new {
-   my ( $class ) = @_;
-   bless {}, $class;
+use overload (
+   '""'     => "version",
+   # All the other operators are defined through these
+   '<=>'    => "cmp",
+   'cmp'    => "cmp",
+   fallback => 1,
+);
+
+use Carp ();
+
+our $VERSION = 0.01;
+
+has major => (
+    is       => 'ro',
+    isa      => 'Int',
+    required => 1,
+);
+
+has [qw( minor revision )] => (
+    is  => 'ro',
+    isa => 'Num',
+);
+
+has flavor => (
+    is      => 'ro',
+    isa     => 'Str',
+    default => sub { 'Unknown' },
+);
+
+has innodb_version => (
+    is      => 'ro',
+    isa     => 'Str',
+    default => sub { 'NO' },
+);
+
+sub series {
+   my $self = shift;
+   return $self->_join_version($self->major, $self->minor);
 }
 
-sub parse {
-   my ( $self, $str ) = @_;
-   my $result = sprintf('%03d%03d%03d', $str =~ m/(\d+)/g);
-   PTDEBUG && _d($str, 'parses to', $result);
+sub version {
+   my $self = shift;
+   return $self->_join_version($self->major, $self->minor, $self->revision);
+}
+
+sub is_in {
+   my ($self, $target) = @_;
+
+   return $self eq $target;
+}
+
+# Internal
+# The crux of these two versions is to transform a version like 5.1.01 into
+# 5, 1, and 0.1, and then reverse the process. This is so that the version
+# above and 5.1.1 are differentiated.
+sub _join_version {
+    my ($self, @parts) = @_;
+
+    return join ".", map { my $c = $_; $c =~ s/^0\./0/; $c } grep defined, @parts;
+}
+# Internal
+sub _split_version {
+   my ($self, $str) = @_;
+   my @version_parts = map { s/^0(?=\d)/0./; $_ } $str =~ m/(\d+)/g;
+   return @version_parts[0..2];
+}
+
+# Returns the version formatted as %d%02d%02d; that is, 5.1.20 would become
+# 50120, 5.1.2 would become 50102, and 5.1.02 would become 50100
+sub normalized_version {
+   my ( $self ) = @_;
+   my $result = sprintf('%d%02d%02d', map { $_ || 0 } $self->major,
+                                                      $self->minor,
+                                                      $self->revision);
+   PTDEBUG && _d($self->version, 'normalizes to', $result);
    return $result;
 }
 
-# Compares versions like 5.0.27 and 4.1.15-standard-log.  Caches version number
-# for each DBH for later use.
-sub version_ge {
-   my ( $self, $dbh, $target ) = @_;
-   if ( !$self->{$dbh} ) {
-      $self->{$dbh} = $self->parse(
-         $dbh->selectrow_array('SELECT VERSION()'));
+# Returns a comment in the form of /*!$self->normalized_version $cmd */
+sub comment {
+   my ( $self, $cmd ) = @_;
+   my $v = $self->normalized_version();
+
+   return "/*!$v $cmd */"
+}
+
+my @methods = qw(major minor revision);
+sub cmp {
+   my ($left, $right) = @_;
+   # If the first object is blessed and ->isa( self's class ), then
+   # just use that; Otherwise, contruct a new VP object from it.
+   my $right_obj = (blessed($right) && $right->isa(ref($left)))
+                   ? $right
+                   : ref($left)->new($right);
+
+   my $retval = 0;
+   for my $m ( @methods ) {
+      last unless defined($left->$m) && defined($right_obj->$m);
+      $retval = $left->$m <=> $right_obj->$m;
+      last if $retval;
    }
-   my $result = $self->{$dbh} ge $self->parse($target) ? 1 : 0;
-   PTDEBUG && _d($self->{$dbh}, 'ge', $target, ':', $result);
-   return $result;
+   return $retval;
+}
+
+sub BUILDARGS {
+   my $self = shift;
+
+   if ( @_ == 1 ) {
+      my %args;
+      if ( blessed($_[0]) && $_[0]->can("selectrow_hashref") ) {
+         PTDEBUG && _d("VersionParser got a dbh, trying to get the version");
+         my $dbh = $_[0];
+         local $dbh->{FetchHashKeyName} = 'NAME_lc';
+         my $query = eval {
+            $dbh->selectall_arrayref(q/SHOW VARIABLES LIKE 'version%'/, { Slice => {} })
+         };
+         if ( $query ) {
+            $query = { map { $_->{variable_name} => $_->{value} } @$query };
+            @args{@methods} = $self->_split_version($query->{version});
+            $args{flavor} = delete $query->{version_comment}
+                  if $query->{version_comment};
+         }
+         elsif ( eval { ($query) = $dbh->selectrow_array(q/SELECT VERSION()/) } ) {
+            @args{@methods} = $self->_split_version($query);
+         }
+         else {
+            Carp::confess("Couldn't get the version from the dbh while "
+                        . "creating a VersionParser object: $@");
+         }
+         $args{innodb_version} = eval { $self->_innodb_version($dbh) };
+      }
+      elsif ( !ref($_[0]) ) {
+         @args{@methods} = $self->_split_version($_[0]);
+      }
+
+      for my $method (@methods) {
+         delete $args{$method} unless defined $args{$method};
+      }
+      @_ = %args if %args;
+   }
+
+   return $self->SUPER::BUILDARGS(@_);
 }
 
 # Returns DISABLED if InnoDB doesn't appear as YES or DEFAULT in SHOW ENGINES,
 # BUILTIN if there is no innodb_version variable in SHOW VARIABLES, or
 # <value> if there is an innodb_version variable in SHOW VARIABLES, or
 # NO if SHOW ENGINES is broken or InnDB doesn't appear in it.
-sub innodb_version {
+sub _innodb_version {
    my ( $self, $dbh ) = @_;
    return unless $dbh;
    my $innodb_version = "NO";
@@ -94,6 +213,7 @@ sub _d {
    print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
+no Lmo;
 1;
 }
 # ###########################################################################

@@ -18,25 +18,92 @@ set -u
 
 set -u
 
+PTFUNCNAME=""
+PTDEBUG="${PTDEBUG:-""}"
 EXIT_STATUS=0
 
-log() {
-   TS=$(date +%F-%T | tr :- _);
+ts() {
+   TS=$(date +%F-%T | tr ':-' '_')
    echo "$TS $*"
 }
 
+info() {
+   [ ${OPT_VERBOSE:-3} -ge 3 ] && ts "$*"
+}
+
+log() {
+   [ ${OPT_VERBOSE:-3} -ge 2 ] && ts "$*"
+}
+
 warn() {
-   log "$*" >&2
+   [ ${OPT_VERBOSE:-3} -ge 1 ] && ts "$*" >&2
    EXIT_STATUS=1
 }
 
 die() {
-   warn "$*"
+   ts "$*" >&2
+   EXIT_STATUS=1
    exit 1
+}
+
+_d () {
+   [ "$PTDEBUG" ] && echo "# $PTFUNCNAME: $(ts "$*")" >&2
 }
 
 # ###########################################################################
 # End log_warn_die package
+# ###########################################################################
+
+# ###########################################################################
+# subshell package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/subshell.sh
+#   t/lib/bash/subshell.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+
+set -u
+
+wait_for_subshells() {
+   local max_wait=$1
+   if [ "$(jobs)" ]; then
+      log "Waiting up to $max_wait seconds for subprocesses to finish..."
+      local slept=0
+      while [ -n "$(jobs)" ]; do
+         local subprocess_still_running=""
+         for pid in $(jobs -p); do
+            if kill -0 $pid >/dev/null 2>&1; then
+               subprocess_still_running=1
+            fi
+         done
+         if [ "$subprocess_still_running" ]; then
+            sleep 1
+            slept=$((slept + 1))
+            [ $slept -ge $max_wait ] && break
+         else
+            break
+         fi
+      done
+   fi
+}
+
+kill_all_subshells() {
+   if [ "$(jobs)" ]; then
+      for pid in $(jobs -p); do
+         if kill -0 $pid >/dev/null 2>&1; then
+            log "Killing subprocess $pid"
+            kill $pid >/dev/null 2>&1
+         fi
+      done
+   else
+      log "All subprocesses have finished"
+   fi
+}
+
+# ###########################################################################
+# End subshell package
 # ###########################################################################
 
 # ###########################################################################
@@ -65,7 +132,7 @@ PO_DIR=""         # Directory with program option spec files
 usage() {
    local file="$1"
 
-   local usage=$(grep '^Usage: ' "$file")
+   local usage="$(grep '^Usage: ' "$file")"
    echo $usage
    echo
    echo "For more information, 'man $TOOL' or 'perldoc $file'."
@@ -115,12 +182,22 @@ usage_or_errors() {
       echo
       echo "Options and values after processing arguments:"
       echo
-      for opt in $(ls "$PO_DIR"); do
-         local varname="OPT_$(echo "$opt" | tr a-z- A-Z_)"
-         local varvalue="${!varname}"
-         printf -- "  --%-30s %s" "$opt" "${varvalue:-(No value)}"
-         echo
-      done
+      (
+         cd "$PO_DIR"
+         for opt in *; do
+            local varname="OPT_$(echo "$opt" | tr a-z- A-Z_)"
+            eval local varvalue=\$$varname
+            if ! grep -q "type:" "$PO_DIR/$opt" >/dev/null; then
+               if [ "$varvalue" -a "$varvalue" = "yes" ];
+                  then varvalue="TRUE"
+               else
+                  varvalue="FALSE"
+               fi
+            fi
+            printf -- "  --%-30s %s" "$opt" "${varvalue:-(No value)}"
+            echo
+         done
+      )
       return 1
    fi
 
@@ -149,7 +226,7 @@ parse_options() {
    OPT_ERRS=0
    OPT_VERSION=""
    OPT_HELP=""
-   PO_DIR="$TMPDIR/po"
+   PO_DIR="$PT_TMPDIR/po"
 
    if [ ! -d "$PO_DIR" ]; then
       mkdir "$PO_DIR"
@@ -180,7 +257,7 @@ parse_options() {
       _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf" "/etc/percona-toolkit/$TOOL.conf" "$HOME/.percona-toolkit.conf" "$HOME/.$TOOL.conf"
    fi
 
-   _parse_command_line "$@"
+   _parse_command_line "${@:-""}"
 }
 
 _parse_pod() {
@@ -227,7 +304,7 @@ _eval_po() {
       while read key val; do
          case "$key" in
             long)
-               opt=$(echo $val | sed 's/-/_/g' | tr [:lower:] [:upper:])
+               opt=$(echo $val | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
                ;;
             default)
                default_val="$val"
@@ -272,7 +349,7 @@ _eval_po() {
 
 _parse_config_files() {
 
-   for config_file in "$@"; do
+   for config_file in "${@:-""}"; do
       test -f "$config_file" || continue
 
       while read config_opt; do
@@ -306,7 +383,7 @@ _parse_command_line() {
    local required_arg=""
    local spec=""
 
-   for opt in "$@"; do
+   for opt in "${@:-""}"; do
       if [ "$opt" = "--" -o "$opt" = "----" ]; then
          HAVE_EXT_ARGV=1
          continue
@@ -322,14 +399,14 @@ _parse_command_line() {
 
       if [ "$next_opt_is_val" ]; then
          next_opt_is_val=""
-         if [ $# -eq 0 ] || [ $(expr "$opt" : "-") -eq 1 ]; then
+         if [ $# -eq 0 ] || [ $(expr "$opt" : "\-") -eq 1 ]; then
             option_error "$real_opt requires a $required_arg argument"
             continue
          fi
          val="$opt"
          opt_is_ok=1
       else
-         if [ $(expr "$opt" : "-") -eq 0 ]; then
+         if [ $(expr "$opt" : "\-") -eq 0 ]; then
             if [ -z "$ARGV" ]; then
                ARGV="$opt"
             else
@@ -340,12 +417,23 @@ _parse_command_line() {
 
          real_opt="$opt"
 
-         if $(echo $opt | grep '^--no-' >/dev/null); then
-            opt_is_negated=1
-            opt=$(echo $opt | sed 's/^--no-//')
+         if $(echo $opt | grep '^--no[^-]' >/dev/null); then
+            local base_opt=$(echo $opt | sed 's/^--no//')
+            if [ -f "$PT_TMPDIR/po/$base_opt" ]; then
+               opt_is_negated=1
+               opt="$base_opt"
+            else
+               opt_is_negated=""
+               opt=$(echo $opt | sed 's/^-*//')
+            fi
          else
-            opt_is_negated=""
-            opt=$(echo $opt | sed 's/^-*//')
+            if $(echo $opt | grep '^--no-' >/dev/null); then
+               opt_is_negated=1
+               opt=$(echo $opt | sed 's/^--no-//')
+            else
+               opt_is_negated=""
+               opt=$(echo $opt | sed 's/^-*//')
+            fi
          fi
 
          if $(echo $opt | grep '^[a-z-][a-z-]*=' >/dev/null 2>&1); then
@@ -353,10 +441,10 @@ _parse_command_line() {
             opt="$(echo $opt | awk -F= '{print $1}')"
          fi
 
-         if [ -f "$TMPDIR/po/$opt" ]; then
-            spec="$TMPDIR/po/$opt"
+         if [ -f "$PT_TMPDIR/po/$opt" ]; then
+            spec="$PT_TMPDIR/po/$opt"
          else
-            spec=$(grep "^short form:-$opt\$" "$TMPDIR"/po/* | cut -d ':' -f 1)
+            spec=$(grep "^short form:-$opt\$" "$PT_TMPDIR"/po/* | cut -d ':' -f 1)
             if [ -z "$spec"  ]; then
                option_error "Unknown option: $real_opt"
                continue
@@ -385,7 +473,7 @@ _parse_command_line() {
       fi
 
       if [ "$opt_is_ok" ]; then
-         opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr [:lower:] [:upper:])
+         opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
 
          if grep "^type:size" "$spec" >/dev/null; then
             val=$(size_to_bytes $val)
@@ -415,6 +503,61 @@ size_to_bytes() {
 # ###########################################################################
 
 # ###########################################################################
+# mysql_options package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/mysql_options.sh
+#   t/lib/bash/mysql_options.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+
+set -u
+
+mysql_options() {
+   local MYSQL_ARGS=""
+   if [ -n "$OPT_DEFAULTS_FILE" ]; then
+      MYSQL_ARGS="--defaults-file=$OPT_DEFAULTS_FILE"
+   fi
+   if [ -n "$OPT_PORT" ]; then
+      MYSQL_ARGS="$MYSQL_ARGS --port=$OPT_PORT"
+   fi
+   if [ -n "$OPT_SOCKET" ]; then
+      MYSQL_ARGS="$MYSQL_ARGS --socket=$OPT_SOCKET"
+   fi
+   if [ -n "$OPT_HOST" ]; then
+      MYSQL_ARGS="$MYSQL_ARGS --host=$OPT_HOST"
+   fi
+   if [ -n "$OPT_USER" ]; then
+      MYSQL_ARGS="$MYSQL_ARGS --user=$OPT_USER"
+   fi
+   if [ -n "$OPT_PASSWORD" ]; then
+      MYSQL_ARGS="$MYSQL_ARGS --password=$OPT_PASSWORD"
+   fi
+   
+   echo $MYSQL_ARGS
+}
+
+arrange_mysql_options() {
+   local opts="$1"
+   
+   local rearranged=""
+   for opt in $opts; do
+      if [ "$(echo $opt | awk -F= '{print $1}')" = "--defaults-file" ]; then
+          rearranged="$opt $rearranged"
+      else
+         rearranged="$rearranged $opt"
+      fi
+   done
+   
+   echo "$rearranged"
+}
+
+# ###########################################################################
+# End mysql_options package
+# ###########################################################################
+
+# ###########################################################################
 # tmpdir package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -426,7 +569,7 @@ size_to_bytes() {
 
 set -u
 
-TMPDIR=""
+PT_TMPDIR=""
 
 mk_tmpdir() {
    local dir="${1:-""}"
@@ -435,20 +578,20 @@ mk_tmpdir() {
       if [ ! -d "$dir" ]; then
          mkdir "$dir" || die "Cannot make tmpdir $dir"
       fi
-      TMPDIR="$dir"
+      PT_TMPDIR="$dir"
    else
       local tool="${0##*/}"
       local pid="$$"
-      TMPDIR=`mktemp -d /tmp/${tool}.${pid}.XXXXX` \
+      PT_TMPDIR=`mktemp -d -t "${tool}.${pid}.XXXXXX"` \
          || die "Cannot make secure tmpdir"
    fi
 }
 
 rm_tmpdir() {
-   if [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ]; then
-      rm -rf "$TMPDIR"
+   if [ -n "$PT_TMPDIR" ] && [ -d "$PT_TMPDIR" ]; then
+      rm -rf "$PT_TMPDIR"
    fi
-   TMPDIR=""
+   PT_TMPDIR=""
 }
 
 # ###########################################################################
@@ -486,8 +629,16 @@ _lsof() {
    fi
 }
 
+
+
 _which() {
-   [ -x /usr/bin/which ] && /usr/bin/which "$1" 2>/dev/null | awk '{print $1}'
+   if [ -x /usr/bin/which ]; then
+      /usr/bin/which "$1" 2>/dev/null | awk '{print $1}'
+   elif which which 1>/dev/null 2>&1; then
+      which "$1" 2>/dev/null | awk '{print $1}'
+   else
+      echo "$1"
+   fi
 }
 
 # ###########################################################################
@@ -613,18 +764,18 @@ remove_pid_file() {
 
 set -u
 
-CMD_GDB="$(_which gdb)"
-CMD_IOSTAT="$(_which iostat)"
-CMD_MPSTAT="$(_which mpstat)"
-CMD_MYSQL="$(_which mysql)"
-CMD_MYSQLADMIN="$(_which mysqladmin)"
-CMD_OPCONTROL="$(_which opcontrol)"
-CMD_OPREPORT="$(_which opreport)"
-CMD_PMAP="$(_which pmap)"
-CMD_STRACE="$(_which strace)"
-CMD_SYSCTL="$(_which sysctl)"
-CMD_TCPDUMP="$(_which tcpdump)"
-CMD_VMSTAT="$(_which vmstat)"
+CMD_GDB="${CMD_GDB:-"$(_which gdb)"}"
+CMD_IOSTAT="${CMD_IOSTAT:-"$(_which iostat)"}"
+CMD_MPSTAT="${CMD_MPSTAT:-"$(_which mpstat)"}"
+CMD_MYSQL="${CMD_MYSQL:-"$(_which mysql)"}"
+CMD_MYSQLADMIN="${CMD_MYSQLADMIN:-"$(_which mysqladmin)"}"
+CMD_OPCONTROL="${CMD_OPCONTROL:-"$(_which opcontrol)"}"
+CMD_OPREPORT="${CMD_OPREPORT:-"$(_which opreport)"}"
+CMD_PMAP="${CMD_PMAP:-"$(_which pmap)"}"
+CMD_STRACE="${CMD_STRACE:-"$(_which strace)"}"
+CMD_SYSCTL="${CMD_SYSCTL:-"$(_which sysctl)"}"
+CMD_TCPDUMP="${CMD_TCPDUMP:-"$(_which tcpdump)"}"
+CMD_VMSTAT="${CMD_VMSTAT:-"$(_which vmstat)"}"
 
 [ -z "$CMD_SYSCTL" -a -x "/sbin/sysctl" ] && CMD_SYSCTL="/sbin/sysctl"
 
@@ -671,15 +822,14 @@ collect() {
       log "Could not find the MySQL error log"
    fi
 
-   local innostat="SHOW /*!40100 ENGINE*/ INNODB STATUS\G"
    if [ "${mysql_version}" '>' "5.1" ]; then
       local mutex="SHOW ENGINE INNODB MUTEX"
    else
       local mutex="SHOW MUTEX STATUS"
    fi
-   $CMD_MYSQL $EXT_ARGV -e "$innostat" >> "$d/$p-innodbstatus1" &
-   $CMD_MYSQL $EXT_ARGV -e "$mutex"    >> "$d/$p-mutex-status1" &
-   open_tables                         >> "$d/$p-opentables1"   &
+   innodb_status 1
+   $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status1" &
+   open_tables                      >> "$d/$p-opentables1"   &
 
    local tcpdump_pid=""
    if [ "$CMD_TCPDUMP" -a  "$OPT_COLLECT_TCPDUMP" ]; then
@@ -710,16 +860,16 @@ collect() {
       $CMD_SYSCTL -a >> "$d/$p-sysctl" &
    fi
    if [ "$CMD_VMSTAT" ]; then
-      $CMD_VMSTAT 1 $OPT_INTERVAL   >> "$d/$p-vmstat"         &
-      $CMD_VMSTAT   $OPT_INTERVAL 2 >> "$d/$p-vmstat-overall" &
+      $CMD_VMSTAT 1 $OPT_RUN_TIME >> "$d/$p-vmstat"         &
+      $CMD_VMSTAT $OPT_RUN_TIME 2 >> "$d/$p-vmstat-overall" &
    fi
    if [ "$CMD_IOSTAT" ]; then
-      $CMD_IOSTAT -dx  1 $OPT_INTERVAL   >> "$d/$p-iostat"         &
-      $CMD_IOSTAT -dx    $OPT_INTERVAL 2 >> "$d/$p-iostat-overall" &
+      $CMD_IOSTAT -dx 1 $OPT_RUN_TIME >> "$d/$p-iostat"         &
+      $CMD_IOSTAT -dx $OPT_RUN_TIME 2 >> "$d/$p-iostat-overall" &
    fi
    if [ "$CMD_MPSTAT" ]; then
-      $CMD_MPSTAT -P ALL 1 $OPT_INTERVAL >> "$d/$p-mpstat"         &
-      $CMD_MPSTAT -P ALL $OPT_INTERVAL 1 >> "$d/$p-mpstat-overall" &
+      $CMD_MPSTAT -P ALL 1 $OPT_RUN_TIME >> "$d/$p-mpstat"         &
+      $CMD_MPSTAT -P ALL $OPT_RUN_TIME 1 >> "$d/$p-mpstat-overall" &
    fi
 
    $CMD_MYSQLADMIN $EXT_ARGV ext -i1 -c$OPT_RUN_TIME >>"$d/$p-mysqladmin" &
@@ -766,7 +916,7 @@ collect() {
          fi
       fi
 
-      (echo $ts; df -h) >> "$d/$p-df" &
+      (echo $ts; df -k) >> "$d/$p-df" &
 
       (echo $ts; netstat -antp) >> "$d/$p-netstat"   &
       (echo $ts; netstat -s)    >> "$d/$p-netstat_s" &
@@ -775,7 +925,8 @@ collect() {
          >> "$d/$p-processlist" &
 
       if [ "$have_lock_waits_table" ]; then
-         (echo $ts; lock_waits) >>"$d/$p-lock-waits" &
+         (echo $ts; lock_waits)   >>"$d/$p-lock-waits" &
+         (echo $ts; transactions) >>"$d/$p-transactions" &
       fi
    done
    log "Loop end: $(date +'TS %s.%N %F %T')"
@@ -816,9 +967,9 @@ collect() {
       [ "$mysqld_pid" ] && kill -s 18 $mysqld_pid
    fi
 
-   $CMD_MYSQL $EXT_ARGV -e "$innostat" >> "$d/$p-innodbstatus2" &
-   $CMD_MYSQL $EXT_ARGV -e "$mutex"    >> "$d/$p-mutex-status2" &
-   open_tables                         >> "$d/$p-opentables2"   &
+   innodb_status 2
+   $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status2" &
+   open_tables                      >> "$d/$p-opentables2"   &
 
    kill $mysqladmin_pid
    [ "$tail_error_log_pid" ] && kill $tail_error_log_pid
@@ -826,6 +977,8 @@ collect() {
 
    hostname > "$d/$p-hostname"
 
+   wait_for_subshells $OPT_RUN_TIME
+   kill_all_subshells
    for file in "$d/$p-"*; do
       if [ -z "$(grep -v '^TS ' --max-count 1 "$file")" ]; then
          log "Removing empty file $file";
@@ -876,6 +1029,33 @@ lock_waits() {
    $CMD_MYSQL $EXT_ARGV -e "$sql2"
 } 
 
+transactions() {
+   $CMD_MYSQL $EXT_ARGV -e "SELECT * FROM INFORMATION_SCHEMA.INNODB_TRX\G"
+   $CMD_MYSQL $EXT_ARGV -e "SELECT * FROM INFORMATION_SCHEMA.INNODB_LOCKS\G"
+   $CMD_MYSQL $EXT_ARGV -e "SELECT * FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS\G"
+}
+
+innodb_status() {
+   local n=$1
+
+   local innostat=""
+
+   $CMD_MYSQL $EXT_ARGV -e "SHOW /*!40100 ENGINE*/ INNODB STATUS\G" \
+      >> "$d/$p-innodbstatus$n"
+   grep "END OF INNODB" "$d/$p-innodbstatus$n" >/dev/null || {
+      if [ -d /proc -a -d /proc/$mysqld_pid ]; then
+         for fd in /proc/$mysqld_pid/fd/*; do
+            file $fd | grep deleted >/dev/null && {
+               grep 'INNODB' $fd >/dev/null && {
+                  cat $fd > "$d/$p-innodbstatus$n"
+                  break
+               }
+            }
+         done
+      fi
+   }
+}
+
 # ###########################################################################
 # End collect package
 # ###########################################################################
@@ -889,6 +1069,34 @@ EXIT_REASON=""
 TOOL="pt-stalk"
 OKTORUN=1
 ITER=1
+
+# ###########################################################################
+# Plugin hooks
+# ###########################################################################
+
+before_stalk() {
+   :
+}
+
+before_collect() {
+   :
+}
+
+after_collect() {
+   :
+}
+
+after_collect_sleep() {
+   :
+}
+
+after_interval_sleep() {
+   :
+}
+
+after_stalk() {
+   :
+}
 
 # ###########################################################################
 # Subroutines
@@ -947,7 +1155,7 @@ set_trg_func() {
       return 0  # success
    else
       # Trigger function is name of a built-in function.
-      func=$(echo "$func" | tr [:upper:] [:lower:])
+      func=$(echo "$func" | tr '[:upper:]' '[:lower:]')
       if [ "$func" = "status" -o "$func" = "processlist" ]; then
          TRIGGER_FUNCTION="trg_$func"
          return 0  # success
@@ -965,7 +1173,7 @@ trg_status() {
 
 trg_processlist() {
    local var="$1"
-   local tmpfile="$TMPDIR/processlist"
+   local tmpfile="$PT_TMPDIR/processlist"
    mysqladmin $EXT_ARGV processlist                      > "$tmpfile-1"
    grep_processlist "$tmpfile-1" "$var" "$OPT_MATCH" 0 0 > "$tmpfile-2"
    wc -l "$tmpfile-2" | awk '{print $1}'
@@ -974,12 +1182,12 @@ trg_processlist() {
 
 oktorun() {
    if [ $OKTORUN -eq 0 ]; then
-      EXIT_REASON="OKTORUN is false"
+      [ -z "$EXIT_REASON" ] && EXIT_REASON="OKTORUN is false"
       return 1  # stop running
    fi
 
    if [ -n "$OPT_ITERATIONS" ] && [ $ITER -gt $OPT_ITERATIONS ]; then
-      EXIT_REASON="no more iterations"
+      [ -z "$EXIT_REASON" ] && EXIT_REASON="no more iterations"
       return 1  # stop running
    fi
 
@@ -990,9 +1198,7 @@ sleep_ok() {
    local seconds="$1"
    local msg="${2:-""}"
    if oktorun; then
-      if [ -n "$msg" ]; then
-         log "$msg"
-      fi
+      [ "$msg" ] && log "$msg"
       sleep $seconds
    fi
 }
@@ -1002,14 +1208,14 @@ purge_samples() {
    local retention_time="$2"
 
    # Delete collect files which more than --retention-time days old.
-   find "$dir" -type f -mtime +$retention_time -exec rm -f '{}' \;
+   find "$dir" -warn -type f -mtime +$retention_time -exec rm -f '{}' \;
 
    local oprofile_dir="/var/lib/oprofile/samples"
    if [ -d "$oprofile_dir" ]; then
       # "pt_collect_" here needs to match $CMD_OPCONTROL --save=pt_collect_$p
       # in collect().  TODO: fix this
-      find "$oprofile_dir" -type d -name 'pt_collect_*' \
-         -depth -mtime +$retention_time -exec rm -rf '{}' \;
+      find "$oprofile_dir" -warn -depth -type d -name 'pt_collect_*' \
+         -mtime +$retention_time -exec rm -rf '{}' \;
    fi
 }
 
@@ -1050,7 +1256,11 @@ stalk() {
          fi
 
          local msg="Check results: $OPT_VARIABLE=$value, matched=${matched:-no}, cycles_true=$cycles_true"
-         log "$msg"
+         if [ "$matched" ]; then
+            log "$msg"
+         else
+            info "$msg"
+         fi
       elif [ "$OPT_COLLECT" ]; then
          # Make the next if condition true.
          matched=1
@@ -1064,7 +1274,7 @@ stalk() {
          # ##################################################################
          # Start collecting, maybe.
          # ##################################################################
-         log "Collect triggered"
+         log "Collect $ITER triggered"
 
          # Send email to whomever that collect has been triggered.
          if [ "$OPT_NOTIFY_BY_EMAIL" ]; then
@@ -1074,7 +1284,7 @@ stalk() {
          fi
 
          if [ "$OPT_COLLECT" ]; then
-            local prefix="${OPT_PREFIX:-$(date +%F-%T | tr :- _)}"
+            local prefix="${OPT_PREFIX:-$(date +%F-%T | tr ':-' '_')}"
 
             # Check if we'll have enough disk space to collect.  Disk space
             # is also checked every interval while collecting.
@@ -1090,9 +1300,12 @@ stalk() {
                "$margin"
             if [ $? -eq 0 ]; then
                # There should be enough disk space, so collect.
-               log "$msg"                        >> "$OPT_DEST/$prefix-trigger"
-               log "pt-stalk ran with $RAN_WITH" >> "$OPT_DEST/$prefix-trigger"
+               ts "$msg"                        >> "$OPT_DEST/$prefix-trigger"
+               ts "pt-stalk ran with $RAN_WITH" >> "$OPT_DEST/$prefix-trigger"
                last_prefix="$prefix"
+
+               # Plugin hook:
+               before_collect
 
                # Fork and background the collect subroutine which will
                # run for --run-time seconds.  We (the parent) sleep
@@ -1101,28 +1314,57 @@ stalk() {
                (
                   collect "$OPT_DEST" "$prefix"
                ) >> "$OPT_DEST/$prefix-output" 2>&1 &
-               log "Collector PID $!"
+               local collector_pid=$!
+               log "Collect $ITER PID $collector_pid"
+
+               # Plugin hook:
+               after_collect $collector_pid
             else 
                # There will not be enough disk space, so do not collect.
                warn "Collect canceled because there will not be enough disk space after collecting another $margin MB"
+            fi
+
+            # Purge old collect files.
+            if [ -d "$OPT_DEST" ]; then
+               purge_samples "$OPT_DEST" "$OPT_RETENTION_TIME"
             fi
          fi
 
          # ##################################################################
          # Done collecting.
          # ##################################################################
+         log "Collect $ITER done"
          ITER=$((ITER + 1))
+         cycles_true=0
          sleep_ok "$OPT_SLEEP" "Sleeping $OPT_SLEEP seconds after collect"
+
+         # Plugin hook:
+         after_collect_sleep
       else
          # Trigger/check/value is ok, sleep until next check.
          sleep_ok "$OPT_INTERVAL"
-      fi
 
-      # Purge old collect file between checks.
-      if [ -d "$OPT_DEST" ]; then
-         purge_samples "$OPT_DEST" "$OPT_RETENTION_TIME"
+         # Plugin hook:
+         after_interval_sleep
       fi
    done
+
+   # One final purge of old collect files, but only if in collect mode.
+   if [ "$OPT_COLLECT" -a -d "$OPT_DEST" ]; then
+      purge_samples "$OPT_DEST" "$OPT_RETENTION_TIME"
+   fi
+
+   # Before exiting, the last collector may still be running.
+   # Wait for it to finish in case the tool is part of a script,
+   # or part of a test, so the caller has access to the collected
+   # data when the tool exists.  collect() waits an additional
+   # --run-time seconds for itself to complete, which means we
+   # have to wait for 2 * run-time like it plus some overhead else
+   # we may get in sync with the collector and kill it a microsecond
+   # before it kills itself, thus 3 * run-time.
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1070434
+   wait_for_subshells $((OPT_RUN_TIME * 3))
+   kill_all_subshells
 }
 
 # ###########################################################################
@@ -1135,7 +1377,7 @@ main() {
    # Note: $$ is the parent's PID, but we're a child proc.
    # Bash 4 has $BASHPID but we can't rely on that.  Consequently,
    # we don't know our own PID.  See the usage of $! below.
-   RAN_WITH="--function=$OPT_FUNCTION --variable=$OPT_VARIABLE --threshold=$OPT_THRESHOLD --match=$OPT_MATCH --cycles=$OPT_CYCLES --interval=$OPT_INTERVAL --iterations=$OPT_ITERATIONS --run-time=$OPT_RUN_TIME --sleep=$OPT_SLEEP --dest=$OPT_DEST --prefix=$OPT_PREFIX --notify-by-email=$OPT_NOTIFY_BY_EMAIL --log=$OPT_LOG --pid=$OPT_PID"
+   RAN_WITH="--function=$OPT_FUNCTION --variable=$OPT_VARIABLE --threshold=$OPT_THRESHOLD --match=$OPT_MATCH --cycles=$OPT_CYCLES --interval=$OPT_INTERVAL --iterations=$OPT_ITERATIONS --run-time=$OPT_RUN_TIME --sleep=$OPT_SLEEP --dest=$OPT_DEST --prefix=$OPT_PREFIX --notify-by-email=$OPT_NOTIFY_BY_EMAIL --log=$OPT_LOG --pid=$OPT_PID --plugin=$OPT_PLUGIN"
 
    log "Starting $0 $RAN_WITH"
 
@@ -1147,8 +1389,14 @@ main() {
    # Make a secure tmpdir.
    mk_tmpdir
 
+   # Plugin hook:
+   before_stalk
+
    # Stalk while oktorun.
    stalk
+
+   # Plugin hook:
+   after_stalk
 
    # Clean up.
    rm_tmpdir
@@ -1162,24 +1410,31 @@ main() {
 # Execute the program if it was not included from another file.
 # This makes it possible to include without executing, and thus test.
 if    [ "${0##*/}" = "$TOOL" ] \
-   || [ "${0##*/}" = "bash" -a "$_" = "$0" ]; then
+   || [ "${0##*/}" = "bash" -a "${_:-""}" = "$0" ]; then
 
    # Parse command line options.  We must do this first so we can
    # see if --daemonize was specified.
    mk_tmpdir
-   parse_options "$0" "$@"
+   parse_options "$0" "${@:-""}"
 
    # Verify and set TRIGGER_FUNCTION based on --function.
    if ! set_trg_func "$OPT_FUNCTION"; then
       option_error "Invalid --function value: $OPT_FUNCTION"
    fi
 
+   # Verify and source the --plugin.
+   if [ "$OPT_PLUGIN" ]; then
+      if [ -f "$OPT_PLUGIN" ]; then
+         . "$OPT_PLUGIN"
+      else
+         option_error "Invalid --plugin value: $OPT_PLUGIN is not a file"
+      fi
+   fi
+
    if [ -z "$OPT_STALK" -a "$OPT_COLLECT" ]; then
       # Not stalking; do immediate collect once.
-      OPT_ITERATIONS=1
       OPT_CYCLES=0
-      OPT_SLEEP=0
-      OPT_INTERVAL=0
+      echo "[iter=$OPT_ITERATIONS] [cycle=$OPT_CYCLES] [sleep=$OPT_SLEEP] [interval=$OPT_INTERVAL]"
    fi
 
    usage_or_errors "$0"
@@ -1189,6 +1444,9 @@ if    [ "${0##*/}" = "$TOOL" ] \
       [ $OPT_ERRS -gt 0 ] && exit 1
       exit 0
    fi
+
+   MYSQL_ARGS="$(mysql_options)"
+   EXT_ARGV="$(arrange_mysql_options "$EXT_ARGV $MYSQL_ARGS")"
 
    # Check that mysql and mysqladmin are in PATH.  If not, we're
    # already dead in the water, so don't bother with cmd line opts,
@@ -1234,7 +1492,7 @@ if    [ "${0##*/}" = "$TOOL" ] \
       # the child's PID.
       make_pid_file "$OPT_PID" $$
 
-      main "$@" </dev/null 1>>"$OPT_LOG" 2>&1 &
+      main "${@:-""}" </dev/null 1>>"$OPT_LOG" 2>&1 &
 
       # Update PID file with the child's PID.
       # The child PID is $BASHPID but that special var is only
@@ -1243,7 +1501,7 @@ if    [ "${0##*/}" = "$TOOL" ] \
       echo "$!" > "$OPT_PID"
    else
       [ "$OPT_STALK" ] && make_pid_file "$OPT_PID" $$
-      main "$@"
+      main "${@:-""}"
    fi
 fi
 
@@ -1255,39 +1513,35 @@ fi
 
 =head1 NAME
 
-pt-stalk - Gather forensic data about MySQL when a problem occurs.
+pt-stalk - Collect forensic data about MySQL when problems occur.
 
 =head1 SYNOPSIS
 
-Usage: pt-stalk [OPTIONS] [-- MYSQL OPTIONS]
+Usage: pt-stalk [OPTIONS]
 
-pt-stalk watches for a trigger condition to become true, and then collects data
-to help in diagnosing problems. It is designed to run as a daemon with root
+pt-stalk waits for a trigger condition to occur, then collects data
+to help diagnose problems.  The tool is designed to run as a daemon with root
 privileges, so that you can diagnose intermittent problems that you cannot
-observe directly. You can also use it to execute a custom command, or to gather
-the data on demand without waiting for the trigger to happen.
+observe directly.  You can also use it to execute a custom command, or to
+collect data on demand without waiting for the trigger to occur.
 
 =head1 RISKS
 
-The following section is included to inform users about the potential risks,
-whether known or unknown, of using this tool.  The two main categories of risks
-are those created by the nature of the tool (e.g. read-only tools vs. read-write
-tools) and those created by bugs.
+Percona Toolkit is mature, proven in the real world, and well tested,
+but all database tools can pose a risk to the system and the database
+server.  Before using this tool, please:
 
-pt-stalk is a read-write tool; it collects data from the system and writes it
-into a series of files.  It should be very low-risk.  Some of the options
-can cause intrusive data collection to be performed, however, so if you enable
-any non-default options, you should read their documentation carefully.
+=over
 
-At the time of this release, we know of no bugs that could cause serious harm
-to users.
+=item * Read the tool's documentation
 
-The authoritative source for updated information is always the online issue
-tracking system.  Issues that affect this tool will be marked as such.  You can
-see a list of such issues at the following URL:
-L<http://www.percona.com/bugs/pt-stalk>.
+=item * Review the tool's known L<"BUGS">
 
-See also L<"BUGS"> for more information on filing bugs and getting help.
+=item * Test the tool on a non-production server
+
+=item * Backup your production server and verify the backups
+
+=back
 
 =head1 DESCRIPTION
 
@@ -1296,16 +1550,20 @@ chance to see the system when it happens. How do you solve intermittent MySQL
 problems when you can't observe them? That's why pt-stalk exists. In addition to
 using it when there's a known problem on your servers, it is a good idea to run
 pt-stalk all the time, even when you think nothing is wrong.  You will
-appreciate the data it gathers when a problem occurs, because problems such as
-MySQL lockups or spikes of activity typically leave no evidence to use in root
+appreciate the data it collects when a problem occurs, because problems such as
+MySQL lockups or spikes in activity typically leave no evidence to use in root
 cause analysis.
 
-This tool does two things: it watches a server (typically MySQL) for a trigger
-to occur, and it gathers diagnostic data.  To use it effectively, you need to
-define a good trigger condition. A good trigger is sensitive enough to fire
-reliably when a problem occurs, so that you don't miss a chance to solve
-problems. On the other hand, a good trigger isn't prone to false positives, so
-you don't gather information when the server is functioning normally.
+pt-stalk does two things: it watches a MySQL server and waits for a trigger
+condition to occur, and it collects diagnostic data when that trigger occurs.
+To avoid false-positives caused by short-lived problems, the trigger condition
+must be true at least L<"--cycles"> times before a L<"--collect"> is triggered.
+
+To use pt-stalk effectively, you need to define a good trigger.  A good trigger
+is sensitive enough to fire reliably when a problem occurs, so that you don't
+miss a chance to solve problems.  On the other hand, a good trigger isn't
+prone to false positives, so you don't gather information when the server
+is functioning normally.
 
 The most reliable triggers for MySQL tend to be the number of connections to the
 server, and the number of queries running concurrently. These are available in
@@ -1315,55 +1573,76 @@ Threads_running usually is.  Your job, as the tool's user, is to define an
 appropriate trigger condition for the tool.  Choose carefully, because the
 quality of your results will depend on the trigger you choose.
 
-You can define the trigger with the L<"--function">, L<"--variable">, and
-L<"--threshold"> options, among others.  Please read the documentation for
---function to learn how to do this.
+You define the trigger with the L<"--function">, L<"--variable">, 
+L<"--threshold">, and L<"--cycles"> options.  The default values
+for these options define a reasonable trigger, but you should adjust
+or change them to suite your particular system and needs.
 
-The pt-stalk tool, by default, simply watches MySQL repeatedly until the trigger
-becomes true. It then gathers diagnostics for a while, and sleeps afterwards for
-some time to prevent repeatedly gathering data if the condition remains true.
-In crude pseudocode, omitting some subtleties,
+By default, pt-stalk tool watches MySQL forever until the trigger occurs,
+then it collects diagnostic data for a while, and sleeps afterwards to avoid
+repeatedly collecting data if the trigger remains true.  The general order of
+operations is:
 
-  while true; do
-    if --variable from --function is greater than --threshold; then
-      observations++
-      if observations is greater than --cycles; then
-        capture diagnostics for --run-time seconds
-        exit if --iterations is exceeded
-        sleep for --sleep seconds
-      done
-    done
-    clean up data that's older than --retention-time
-    sleep for --interval seconds
-  done
+   while true; do
+      if --variable from --function > --threshold; then
+         cycles_true++
+         if cycles_true >= --cycles; then
+            --notify-by-email
+            if --collect; then
+               if --disk-bytes-free and --disk-pct-free ok; then
+                  (--collect for --run-time seconds) &
+               fi
+               rm files in --dest older than --retention-time
+            fi
+            iter++
+            cycles_true=0
+         fi
+         if iter < --iterations; then
+            sleep --sleep seconds
+         else
+            break
+         fi
+      else
+         if iter < --iterations; then
+            sleep --interval seconds
+         else
+            break
+         fi
+      fi
+   done
+   rm old --dest files older than --retention-time
+   if --collect process are still running; then
+      wait up to --run-time * 3 seconds
+      kill any remaining --collect processes 
+   fi
 
 The diagnostic data is written to files whose names begin with a timestamp, so
 you can distinguish samples from each other in case the tool collects data
-multiple times.  The pt-sift tool is designed to help you browse and analyze the
-resulting samples of data.
+multiple times.  The pt-sift tool is designed to help you browse and analyze
+the resulting data samples.
 
 Although this sounds simple enough, in practice there are a number of
 subtleties, such as detecting when the disk is beginning to fill up so that the
 tool doesn't cause the server to run out of disk space.  This tool handles these
 types of potential problems, so it's a good idea to use this tool instead of
 writing something from scratch and possibly experiencing some of the hazards
-this tool is designed to prevent.
+this tool is designed to avoid.
 
 =head1 CONFIGURING
 
-You can use standard Percona Toolkit configuration files to set commandline
+You can use standard Percona Toolkit configuration files to set command line
 options.
 
 You will probably want to run the tool as a daemon and customize at least the
-diagnostic threshold.  Here's a sample configuration file for triggering when
+L<"--threshold">.  Here's a sample configuration file for triggering when
 there are more than 20 queries running at once:
 
   daemonize
   threshold=20
 
-If you're not running the tool as it's designed (as a root user, daemonized)
-then you'll need to set several options, such as L<"--dest">, to locations that
-are writable by non-root users.
+If you don't run the tool as root, then you will need specify several options,
+such as L<"--pid">, L<"--log">, and L<"--dest">, else the tool will probably
+fail to start.
 
 =head1 OPTIONS
 
@@ -1373,8 +1652,8 @@ are writable by non-root users.
 
 default: yes; negatable: yes
 
-Collect system information.  You can negate this option to make the tool watch
-the system but not actually gather any diagnostic data.
+Collect diagnostic data when the trigger occurs.  Specify C<--no-collect>
+to make the tool watch the system but not collect data.
 
 See also L<"--stalk">.
 
@@ -1424,27 +1703,34 @@ first option on the command line.
 
 type: int; default: 5
 
-The number of times the trigger condition must be true before collecting data.
-This helps prevent false positives, and makes the trigger condition less likely
-to fire when the problem recovers quickly.
+How many times L<"--variable"> must be greater than L<"--threshold"> before triggering L<"--collect">.  This helps prevent false positives, and makes
+the trigger condition less likely to fire when the problem recovers quickly.
 
 =item --daemonize
 
 Daemonize the tool.  This causes the tool to fork into the background and log
 its output as specified in --log.
 
+=item --defaults-file
+
+short form: -F; type: string
+
+Only read mysql options from the given file.  You must give an absolute
+pathname.
+
 =item --dest
 
 type: string; default: /var/lib/pt-stalk
 
-Where to store the diagnostic data.  Each time the tool collects data, it writes
-to a new set of files, which are named with the current system timestamp.
+Where to save diagnostic data from L<"--collect">.  Each time the tool
+collects data, it writes to a new set of files, which are named with the
+current system timestamp.
 
 =item --disk-bytes-free
 
 type: size; default: 100M
 
-Don't collect data if the disk has less than this much free space.
+Do not L<"--collect"> if the disk has less than this much free space.
 This prevents the tool from filling up the disk with diagnostic data.
 
 If the L<"--dest"> directory contains a previously captured sample of data,
@@ -1461,7 +1747,7 @@ Valid size value suffixes are k, M, G, and T.
 
 type: int; default: 5
 
-Don't collect data if the disk has less than this percent free space.
+Do not L<"--collect"> if the disk has less than this percent free space.
 This prevents the tool from filling up the disk with diagnostic data.
 
 This option works similarly to L<"--disk-bytes-free"> but specifies a
@@ -1473,75 +1759,83 @@ margins are satisfied.
 
 type: string; default: status
 
-Specifies what to watch for a diagnostic trigger.  The default value watches
-SHOW GLOBAL STATUS, but you can also watch SHOW PROCESSLIST or supply a plugin
-file with your own custom code.  This function supplies the value of
+What to watch for the trigger.  The default value watches
+C<SHOW GLOBAL STATUS>, but you can also watch C<SHOW PROCESSLIST> and specify
+a file with your own custom code.  This function supplies the value of
 L<"--variable">, which is then compared against L<"--threshold"> to see if the
-trigger condition is met.  Additional options may be required as well; see
-below. Possible values:
+the trigger condition is met.  Additional options may be required as
+well; see below. Possible values are:
 
 =over
 
 =item * status
 
-This value specifies that the source of data for the diagnostic trigger is SHOW
-GLOBAL STATUS.  The value of L<"--variable"> then defines which status counter
-is the trigger.
+Watch C<SHOW GLOBAL STATUS> for the trigger.  The value of
+L<"--variable"> then defines which status counter is the trigger.
 
 =item * processlist
 
-This value specifies that the data for the diagnostic trigger comes from SHOW
-FULL PROCESSLIST.  The trigger value is the count of processes whose
-L<"--variable"> column matches the L<"--match"> option.  For example, to trigger
-when more than 10 processes are in the "statistics" state, use the following
-options:
+Watch C<SHOW FULL PROCESSLIST> for the trigger.  The trigger
+value is the count of processes whose L<"--variable"> column matches the
+L<"--match"> option.  For example, to trigger L<"--collect"> when more than
+10 processes are in the "statistics" state, specify:
 
-  --function processlist --variable State \
-    --match statistics --threshold 10
+   --function processlist \
+   --variable State       \
+   --match statistics     \
+   --threshold 10
 
 =back
 
-In addition, you can specify a file that contains your custom trigger function,
-written in Unix shell script.  This can be a wrapper that executes anything you
-wish.  If the argument to --function is a file, then it takes precedence over
-builtin functions, so if there is a file in the working directory named "status"
-or "processlist" then the tool will use that file as a plugin, even though those
-are otherwise recognized as reserved words for this option.
+In addition, you can specify a file that contains your custom trigger
+function, written in Unix shell script.  This can be a wrapper that executes
+anything you wish.  If the argument to L<"--function"> is a file, then it
+takes precedence over built-in functions, so if there is a file in the working
+directory named "status" or "processlist" then the tool will use that file
+even though are valid built-in values.
 
-The plugin file works by providing a function called C<trg_plugin>, and the tool
-simply sources the file and executes the function.  For example, the function
-might look like the following:
+The file works by providing a function called C<trg_plugin>, and the tool
+simply sources the file and executes the function.  For example, the file
+might contain:
 
    trg_plugin() {
       mysql $EXT_ARGV -e "SHOW ENGINE INNODB STATUS" \
         | grep -c "has waited at"
    }
 
-This snippet will count the number of mutex waits inside of InnoDB. It
+This snippet will count the number of mutex waits inside InnoDB.  It
 illustrates the general principle: the function must output a number, which is
-then compared to the threshold as usual.  The $EXT_ARGV variable contains the
-MySQL options mentioned in the L<"SYNOPSIS"> above.
+then compared to L<"--threshold"> as usual.  The C<$EXT_ARGV> variable
+contains the MySQL options mentioned in the L<"SYNOPSIS"> above.
 
-The plugin should not alter the tool's existing global variables.  Prefix any
-plugin-specific global variables with "PLUGIN_" or make them local.
+The file should not alter the tool's existing global variables.  Prefix any
+file-specific global variables with "PLUGIN_" or make them local.
 
 =item --help
 
 Print help and exit.
 
+=item --host
+
+short form: -h; type: string
+
+Host to connect to.
+
 =item --interval
 
 type: int; default: 1
 
-Interval between checks for the diagnostic trigger.
+How often to check the if trigger is true, in seconds.
 
 =item --iterations
 
 type: int
 
-Exit after collecting diagnostics this many times.  By default, the tool
-will continue to watch the server forever, but this is useful for scenarios
-where you want to capture once and then exit, for example.
+How many times to L<"--collect"> diagnostic data.  By default, the tool
+runs forever and collects data every time the trigger occurs.
+Specify L<"--iterations"> to collect data a limited number of times.
+This option is also useful with C<--no-stalk> to collect data once and
+exit, for example.
 
 =item --log
 
@@ -1553,28 +1847,108 @@ Print all output to this file when daemonized.
 
 type: string
 
-The pattern to use when watching SHOW PROCESSLIST. See the documentation for
-L<"--function"> for details.
+The pattern to use when watching SHOW PROCESSLIST.  See L<"--function">
+for details.
 
 =item --notify-by-email
 
 type: string
 
-Send mail to this list of addresses when data is collected.
+Send an email to these addresses for every L<"--collect">.
+
+=item --password
+
+short form: -p; type: string
+
+Password to use when connecting.
 
 =item --pid
 
 type: string; default: /var/run/pt-stalk.pid
 
-Create a PID file when daemonized.
+Create the given PID file.  The tool won't start if the PID file already
+exists and the PID it contains is different than the current PID.  However,
+if the PID file exists and the PID it contains is no longer running, the
+tool will overwrite the PID file with the current PID.  The PID file is
+removed automatically when the tool exits.
+
+=item --plugin
+
+type: string
+
+Load a plugin to hook into the tool and extend is functionality.
+The specified file does not need to be executable, nor does its first line
+need to be shebang line.  It only needs to define one or more of these
+Bash functions:
+
+=over
+
+=item before_stalk
+
+Called before stalking.
+
+=item before_collect
+
+Called when the trigger occurs, before running a L<"--collect">
+subprocesses in the background.
+
+=item after_collect
+
+Called after running a collector process.  The PID of the collector process
+is passed as the first argument.  This hook is called before
+C<after_collect_sleep>.
+
+=item after_collect_sleep
+
+Called after sleeping L<"--sleep"> seconds for the collector process to finish.
+This hook is called after C<after_collect>.
+
+=item after_interval_sleep
+
+Called after sleeping L<"--interval"> seconds after each trigger check.
+
+=item after_stalk
+
+Called after stalking.  Since pt-stalk stalks forever by default,
+this hook is only called if L<"--iterations"> is specified.
+
+=back
+
+For example, a very simple plugin that touches a file when L<"--collect">
+is triggered:
+
+   before_collect() {
+      touch /tmp/foo
+   }
+
+Since the plugin is completely sourced (imported) into the tool's namespace,
+be careful not to define other functions or global variables that already
+exist in the tool.  You should prefix all plugin-specific functions and
+global variables with C<plugin_> or C<PLUGIN_>.
+
+Plugins have access to all command line options but they should not modify
+them.  Each option is a global variable like C<$OPT_DEST> which corresponds
+to L<"--dest">.  Therefore, the global variable for each command line option
+is C<OPT_> plus the option name in all caps with hyphens replaced by
+underscores.
+
+Plugins can stop the tool by setting the global variable C<OKTORUN>
+to C<1>.  In this case, the global variable C<EXIT_REASON> should also
+be set to indicate why the tool was stopped.
+
+=item --port
+
+short form: -P; type: int
+
+Port number to use for connection.
 
 =item --prefix 
 
 type: string
 
-The filename prefix for diagnostic samples. By default, samples have a timestamp
-prefix based on the current local time, such as 2011_12_06_14_02_02, which is
-December 6, 2011 at 14:02:02.
+The filename prefix for diagnostic samples.  By default, all files created
+by the same L<"--collect"> instance have a timestamp prefix based on the current
+local time, like C<2011_12_06_14_02_02>, which is December 6, 2011 at 14:02:02.
 
 =item --retention-time
 
@@ -1587,32 +1961,54 @@ purged.
 
 type: int; default: 30
 
-How long the tool will collect data when it triggers.  This should not be longer
-than L<"--sleep">. It is usually not necessary to change this; if the default 30
-seconds hasn't gathered enough diagnostic data, running longer is not likely to
-do so. In fact, in many cases a shorter collection period is appropriate.
+How long to L<"--collect"> diagnostic data when the trigger occurs.
+The value is in seconds and should not be longer than L<"--sleep">.  It is
+usually not necessary to change this; if the default 30 seconds doesn't
+collect enough data, running longer is not likely to help because the system
+or MySQL server is probably too busy to respond.  In fact, in many cases a
+shorter collection period is appropriate.
+
+This value is used two other times.  After collecting, the collect subprocess
+will wait another L<"--run-time"> seconds for its commands to finish.  Some
+commands can take awhile if the system is running very slowly (which can
+likely be the case given that a collection was triggered).  Since empty files
+are deleted, the extra wait gives commands time to finish and write their
+data.  The value is potentially used again just before the tool exits to wait
+again for any collect subprocesses to finish.  In most cases this won't
+happen because of the aforementioned extra wait.  If it happens, the tool
+will log "Waiting up to N seconds for subprocesses to finish..." where N is
+three times L<"--run-time">.  In both cases, after waiting, the tool kills
+all of its subprocesses.
 
 =item --sleep
 
 type: int; default: 300
 
-How long to sleep after collecting data.  This prevents the tool from triggering
-continuously, which might be a problem if the collection process is intrusive.
+How long to sleep after L<"--collect">.  This prevents the tool
+from triggering continuously, which might be a problem if the collection process is intrusive.
 It also prevents filling up the disk or gathering too much data to analyze
 reasonably.
+
+=item --socket
+
+short form: -S; type: string
+
+Socket file to use for connection.
 
 =item --stalk
 
 default: yes; negatable: yes
 
-Watch the server and wait for the trigger to occur.  You can negate this option
-to make the tool immediately gather any diagnostic data once and exit.  This is
-useful if a problem is already happening, but pt-stalk is not running, so
-you only want to collect diagnostic data.
+Watch the server and wait for the trigger to occur.  Specify C<--no-stalk>
+to collect diagnostic data immediately, that is, without waiting for the
+trigger to occur.  You probably also want to specify values for
+L<"--interval">, L<"--iterations">, and L<"--sleep">.  For example, to
+immediately collect data for 1 minute then exit, specify:
 
-If this option is negate, L<"--daemonize">, L<"--log">, L<"--pid">, and other
-stalking-related options have no effect; the tool simply collects diagnostic
-data and exits.  Safeguard options, like L<"--disk-bytes-free"> and
+   --no-stalk --run-time 60 --iterations 1
+
+L<"--cycles">, L<"--daemonize">, L<"--log"> and L<"--pid"> have no effect
+with C<--no-stalk>.  Safeguard options, like L<"--disk-bytes-free"> and
 L<"--disk-pct-free">, are still respected.
 
 See also L<"--collect">.
@@ -1621,14 +2017,40 @@ See also L<"--collect">.
 
 type: int; default: 25
 
-The threshold at which the diagnostic trigger should fire.  See L<"--function">
-for details.
+The maximum acceptable value for L<"--variable">.  L<"--collect"> is
+triggered when the value of L<"--variable"> is greater than L<"--threshold">
+for L<"--cycles"> many times.  Currently, there is no way to define a lower
+threshold to check for a L<"--variable"> value that is too low.
+
+See also L<"--function">.
+
+=item --user
+
+short form: -u; type: string
+
+User for login if not current user.
 
 =item --variable
 
 type: string; default: Threads_running
 
-The variable to compare against the threshold. See L<"--function"> for details.
+The variable to compare against L<"--threshold">.  See also L<"--function">.
+
+=item --verbose
+
+type: int; default: 2
+
+Print more or less information while running.  Since the tool is designed
+to be a long-running daemon, the default verbosity level only prints the
+most important information.  If you run the tool interactively, you may
+want to use a higher verbosity level.
+
+  LEVEL PRINTS
+  ===== =====================================
+  0     Errors
+  1     Warnings
+  2     Matching triggers and collection info
+  3     Non-matching triggers
 
 =item --version
 
@@ -1638,11 +2060,65 @@ Print tool's version and exit.
 
 =head1 ENVIRONMENT
 
-This tool does not use any environment variables for configuration.
+This tool does not require any environment variables for configuration,
+although it can be influenced to work differently by through several
+variables.  Keep in mind that these are expert settings, and should not
+be used in most cases.
+
+Specifically, the variables that can be set are:
+
+=over
+
+=item CMD_GDB
+
+=item CMD_IOSTAT
+
+=item CMD_MPSTAT
+
+=item CMD_MYSQL
+
+=item CMD_MYSQLADMIN
+
+=item CMD_OPCONTROL
+
+=item CMD_OPREPORT
+
+=item CMD_PMAP
+
+=item CMD_STRACE
+
+=item CMD_SYSCTL
+
+=item CMD_TCPDUMP
+
+=item CMD_VMSTAT
+
+=back
+
+For example, during collection iostat is called with a -dx argument, but
+because you have an NFS partition, you also need the -n flag there.  Instead
+of editing the source, you can call pt-stalk as
+
+    CMD_IOSTAT="iostat -n" pt-stalk ...
+
+which will do exactly what you need.  Combined with the plugin hooks, this
+gives you a fine-grained control of what the tool does.
 
 =head1 SYSTEM REQUIREMENTS
 
-This tool requires Bash v3 or newer.
+This tool requires Bash v3 or newer.  Certain options require other programs:
+
+=over
+
+=item L<"--collect-gdb"> requires C<gdb>
+
+=item L<"--collect-oprofile"> requires C<opcontrol> and C<opreport>
+
+=item L<"--collect-strace"> requires C<strace>
+
+=item L<"--collect-tcpdump"> requires C<tcpdump>
+
+=back
 
 =head1 BUGS
 
@@ -1688,21 +2164,22 @@ Replace C<TOOL> with the name of any tool.
 
 =head1 AUTHORS
 
-Baron Schwartz, Justin Swanhart, Fernando Ipar, and Daniel Nichter
+Baron Schwartz, Justin Swanhart, Fernando Ipar, Daniel Nichter,
+and Brian Fraser
 
 =head1 ABOUT PERCONA TOOLKIT
 
 This tool is part of Percona Toolkit, a collection of advanced command-line
-tools developed by Percona for MySQL support and consulting.  Percona Toolkit
-was forked from two projects in June, 2011: Maatkit and Aspersa.  Those
-projects were created by Baron Schwartz and developed primarily by him and
-Daniel Nichter, both of whom are employed by Percona.  Visit
-L<http://www.percona.com/software/> for more software developed by Percona.
+tools for MySQL developed by Percona.  Percona Toolkit was forked from two
+projects in June, 2011: Maatkit and Aspersa.  Those projects were created by
+Baron Schwartz and primarily developed by him and Daniel Nichter.  Visit
+L<http://www.percona.com/software/> to learn about other free, open-source
+software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2010-2011 Baron Schwartz, 2011-2012 Percona Inc.
-Feedback and improvements are welcome.
+This program is copyright 2011-2013 Percona Ireland Ltd,
+2010-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
@@ -1720,7 +2197,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-stalk 2.0.4
+pt-stalk 2.2.1
 
 =cut
 

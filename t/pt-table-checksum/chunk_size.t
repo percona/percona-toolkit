@@ -13,8 +13,6 @@ use Test::More;
 
 use PerconaTest;
 use Sandbox;
-shift @INC;  # our unshift (above)
-shift @INC;  # PerconaTest's unshift
 require "$trunk/bin/pt-table-checksum";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
@@ -26,14 +24,14 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 7;
+   plan tests => 8;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
-# so we need to specify --lock-wait-timeout=3 else the tool will die.
+# so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
 my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
-my @args       = ($master_dsn, qw(--lock-wait-timeout 3), '--max-load', ''); 
+my @args       = ($master_dsn, qw(--set-vars innodb_lock_wait_timeout=3), '--max-load', ''); 
 
 my $row;
 my $output;
@@ -94,7 +92,8 @@ is_deeply(
 # ############################################################################
 # Sub-second chunk-time.
 # ############################################################################
-
+SKIP: {
+   skip "Too slow", 1;
 $output = output(
    sub { pt_table_checksum::main(@args,
       qw(--quiet --chunk-time .001 -d mysql)) },
@@ -106,17 +105,16 @@ unlike(
    qr/Cannot checksum table/,
    "Very small --chunk-time doesn't cause zero --chunk-size"
 );
-
+}
 # #############################################################################
 # Bug 921700: pt-table-checksum doesn't add --where to chunk-oversize test
 # on replicas
 # #############################################################################
 $sb->load_file('master', 't/pt-table-checksum/samples/600cities.sql');
-$master_dbh->do("LOAD DATA LOCAL INFILE '$trunk/t/pt-table-checksum/samples/600cities.data' INTO TABLE test.t");
+$master_dbh->do("LOAD DATA INFILE '$trunk/t/pt-table-checksum/samples/600cities.data' INTO TABLE test.t");
 $master_dbh->do("SET SQL_LOG_BIN=0");
 $master_dbh->do("DELETE FROM test.t WHERE id > 100");
 $master_dbh->do("SET SQL_LOG_BIN=1");
-PerconaTest::wait_for_table($slave_dbh, "test.t", "id=600");
 
 # Now there are 100 rows on the master and 600 on the slave.
 $output = output(
@@ -141,4 +139,5 @@ like(
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

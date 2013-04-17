@@ -1,5 +1,5 @@
-# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Inc.
-# Feedback and improvements are welcome.
+# This program is copyright 2007-2011 Baron Schwartz,
+# 2011-2013 Percona Ireland Ltd.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 # WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
@@ -31,6 +31,10 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 use Data::Dumper;
 $Data::Dumper::Indent    = 0;
 $Data::Dumper::Quotekeys = 0;
+
+# Passwords may contain commas.
+# https://bugs.launchpad.net/percona-toolkit/+bug/886077
+my $dsn_sep = qr/(?<!\\),/;
 
 eval {
    require DBI;
@@ -126,7 +130,8 @@ sub parse {
    my $opts = $self->{opts};
 
    # Parse given props
-   foreach my $dsn_part ( split(/,/, $dsn) ) {
+   foreach my $dsn_part ( split($dsn_sep, $dsn) ) {
+      $dsn_part =~ s/\\,/,/g;
       if ( my ($prop_key, $prop_val) = $dsn_part =~  m/^(.)=(.*)$/ ) {
          # Handle the typical DSN parts like h=host, P=3306, etc.
          $given_props{$prop_key} = $prop_val;
@@ -239,7 +244,8 @@ sub get_cxn_params {
          . join(';', map  { "$opts{$_}->{dsn}=$info->{$_}" }
                      grep { defined $info->{$_} }
                      qw(F h P S A))
-         . ';mysql_read_default_group=client';
+         . ';mysql_read_default_group=client'
+         . ($info->{L} ? ';mysql_local_infile=1' : '');
    }
    PTDEBUG && _d($dsn);
    return ($dsn, $info->{u}, $info->{p});
@@ -272,6 +278,9 @@ sub get_dbh {
       mysql_enable_utf8 => ($cxn_string =~ m/charset=utf8/i ? 1 : 0),
    };
    @{$defaults}{ keys %$opts } = values %$opts;
+   if (delete $defaults->{L}) { # L for LOAD DATA LOCAL INFILE, our own extension
+      $defaults->{mysql_local_infile} = 1;
+   }
 
    # Only add this if explicitly set because we're not sure if
    # mysql_use_result=0 would leave default mysql_store_result
@@ -286,7 +295,7 @@ sub get_dbh {
          . "that Perl searches for DBI.  If DBI is not installed, try:\n"
          . "  Debian/Ubuntu  apt-get install libdbi-perl\n"
          . "  RHEL/CentOS    yum install perl-DBI\n"
-         . "  OpenSolaris    pgk install pkg:/SUNWpmdbi\n";
+         . "  OpenSolaris    pkg install pkg:/SUNWpmdbi\n";
 
    }
 
@@ -297,57 +306,10 @@ sub get_dbh {
       PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
-      eval {
-         $dbh = DBI->connect($cxn_string, $user, $pass, $defaults);
+      $dbh = eval { DBI->connect($cxn_string, $user, $pass, $defaults) };
 
-         # If it's a MySQL connection, set some options.
-         if ( $cxn_string =~ m/mysql/i ) {
-            my $sql;
-
-            # Set SQL_MODE and options for SHOW CREATE TABLE.
-            # Get current, server SQL mode.  Don't clobber this;
-            # append our SQL mode to whatever is already set.
-            # http://code.google.com/p/maatkit/issues/detail?id=801
-            $sql = 'SELECT @@SQL_MODE';
-            PTDEBUG && _d($dbh, $sql);
-            my ($sql_mode) = $dbh->selectrow_array($sql);
-
-            $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
-                 . '/*!40101, @@SQL_MODE=\'NO_AUTO_VALUE_ON_ZERO'
-                 . ($sql_mode ? ",$sql_mode" : '')
-                 . '\'*/';
-            PTDEBUG && _d($dbh, $sql);
-            $dbh->do($sql);
-
-            # Set character set and binmode on STDOUT.
-            if ( my ($charset) = $cxn_string =~ m/charset=(\w+)/ ) {
-               $sql = "/*!40101 SET NAMES $charset*/";
-               PTDEBUG && _d($dbh, ':', $sql);
-               $dbh->do($sql);
-               PTDEBUG && _d('Enabling charset for STDOUT');
-               if ( $charset eq 'utf8' ) {
-                  binmode(STDOUT, ':utf8')
-                     or die "Can't binmode(STDOUT, ':utf8'): $OS_ERROR";
-               }
-               else {
-                  binmode(STDOUT) or die "Can't binmode(STDOUT): $OS_ERROR";
-               }
-            }
-
-            if ( $self->prop('set-vars') ) {
-               $sql = "SET " . $self->prop('set-vars');
-               PTDEBUG && _d($dbh, ':', $sql);
-               $dbh->do($sql);
-            }
-         }
-      };
       if ( !$dbh && $EVAL_ERROR ) {
-         PTDEBUG && _d($EVAL_ERROR);
-         if ( $EVAL_ERROR =~ m/not a compiled character set|character set utf8/ ) {
-            PTDEBUG && _d('Going to try again without utf8 support');
-            delete $defaults->{mysql_enable_utf8};
-         }
-         elsif ( $EVAL_ERROR =~ m/locate DBD\/mysql/i ) {
+         if ( $EVAL_ERROR =~ m/locate DBD\/mysql/i ) {
             die "Cannot connect to MySQL because the Perl DBD::mysql module is "
                . "not installed or not found.  Run 'perl -MDBD::mysql' to see "
                . "the directories that Perl searches for DBD::mysql.  If "
@@ -356,9 +318,65 @@ sub get_dbh {
                . "  RHEL/CentOS    yum install perl-DBD-MySQL\n"
                . "  OpenSolaris    pgk install pkg:/SUNWapu13dbd-mysql\n";
          }
+         elsif ( $EVAL_ERROR =~ m/not a compiled character set|character set utf8/ ) {
+            PTDEBUG && _d('Going to try again without utf8 support');
+            delete $defaults->{mysql_enable_utf8};
+         }
          if ( !$tries ) {
             die $EVAL_ERROR;
          }
+      }
+   }
+
+   # If it's a MySQL connection, set some options.
+   if ( $cxn_string =~ m/mysql/i ) {
+      my $sql;
+
+      # Set SQL_MODE and options for SHOW CREATE TABLE.
+      # Get current, server SQL mode.  Don't clobber this;
+      # append our SQL mode to whatever is already set.
+      # http://code.google.com/p/maatkit/issues/detail?id=801
+      $sql = 'SELECT @@SQL_MODE';
+      PTDEBUG && _d($dbh, $sql);
+      my ($sql_mode) = eval { $dbh->selectrow_array($sql) };
+      if ( $EVAL_ERROR ) {
+         die "Error getting the current SQL_MODE: $EVAL_ERROR";
+      }
+
+      # Set character set and binmode on STDOUT.
+      if ( my ($charset) = $cxn_string =~ m/charset=([\w]+)/ ) {
+         $sql = qq{/*!40101 SET NAMES "$charset"*/};
+         PTDEBUG && _d($dbh, $sql);
+         eval { $dbh->do($sql) };
+         if ( $EVAL_ERROR ) {
+            die "Error setting NAMES to $charset: $EVAL_ERROR";
+         }
+         PTDEBUG && _d('Enabling charset for STDOUT');
+         if ( $charset eq 'utf8' ) {
+            binmode(STDOUT, ':utf8')
+               or die "Can't binmode(STDOUT, ':utf8'): $OS_ERROR";
+         }
+         else {
+            binmode(STDOUT) or die "Can't binmode(STDOUT): $OS_ERROR";
+         }
+      }
+
+      if ( my $vars = $self->prop('set-vars') ) {
+         $self->set_vars($dbh, $vars);
+      }
+
+      # Do this after set-vars so a user-set sql_mode doesn't clobber it; See
+      # https://bugs.launchpad.net/percona-toolkit/+bug/1078887
+      $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
+            . '/*!40101, @@SQL_MODE=\'NO_AUTO_VALUE_ON_ZERO'
+            . ($sql_mode ? ",$sql_mode" : '')
+            . '\'*/';
+      PTDEBUG && _d($dbh, $sql);
+      eval { $dbh->do($sql) };
+      if ( $EVAL_ERROR ) {
+         die "Error setting SQL_QUOTE_SHOW_CREATE, SQL_MODE"
+           . ($sql_mode ? " and $sql_mode" : '')
+           . ": $EVAL_ERROR";
       }
    }
 
@@ -368,7 +386,7 @@ sub get_dbh {
          'SELECT DATABASE(), CONNECTION_ID(), VERSION()/*!50038 , @@hostname*/')),
       'Connection info:',      $dbh->{mysql_hostinfo},
       'Character set info:',   Dumper($dbh->selectall_arrayref(
-                     'SHOW VARIABLES LIKE "character_set%"', { Slice => {}})),
+                     "SHOW VARIABLES LIKE 'character_set%'", { Slice => {}})),
       '$DBD::mysql::VERSION:', $DBD::mysql::VERSION,
       '$DBI::VERSION:',        $DBI::VERSION,
    );
@@ -425,6 +443,57 @@ sub copy {
       $key => $val;
    } keys %{$self->{opts}};
    return \%new_dsn;
+}
+
+sub set_vars {
+   my ($self, $dbh, $vars) = @_;
+
+   return unless $vars;
+
+   foreach my $var ( sort keys %$vars ) {
+      my $val = $vars->{$var}->{val};
+
+      (my $quoted_var = $var) =~ s/_/\\_/;
+      my ($var_exists, $current_val);
+      eval {
+         ($var_exists, $current_val) = $dbh->selectrow_array(
+            "SHOW VARIABLES LIKE '$quoted_var'");
+      };
+      my $e = $EVAL_ERROR;
+      if ( $e ) {
+         PTDEBUG && _d($e);
+      }
+
+      if ( $vars->{$var}->{default} && !$var_exists ) {
+         PTDEBUG && _d('Not setting default var', $var,
+            'because it does not exist');
+         next;
+      }
+
+      if ( $current_val && $current_val eq $val ) {
+         PTDEBUG && _d('Not setting var', $var, 'because its value',
+            'is already', $val);
+         next;
+      }
+
+      my $sql = "SET SESSION $var=$val";
+      PTDEBUG && _d($dbh, $sql);
+      eval { $dbh->do($sql) };
+      if ( my $set_error = $EVAL_ERROR ) {
+         chomp($set_error);
+         $set_error =~ s/ at \S+ line \d+//;
+         my $msg = "Error setting $var: $set_error";
+         if ( $current_val ) {
+            $msg .= "  The current value for $var is $current_val.  "
+                  . "If the variable is read only (not dynamic), specify "
+                  . "--set-vars $var=$current_val to avoid this warning, "
+                  . "else manually set the variable and restart MySQL.";
+         }
+         warn $msg . "\n\n";
+      }
+   }
+
+   return; 
 }
 
 sub _d {

@@ -39,7 +39,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 46;
+   plan tests => 54;
 }
 
 my $q   = new Quoter();
@@ -47,14 +47,14 @@ my $tp  = new TableParser(Quoter=>$q);
 my $nb  = new TableNibbler(TableParser=>$tp, Quoter=>$q);
 my $o   = new OptionParser(description => 'NibbleIterator');
 my $rc  = new RowChecksum(OptionParser => $o, Quoter=>$q);
+$o->get_specs("$trunk/bin/pt-table-checksum");
+
 my $cxn = new Cxn(
    dbh          => $dbh,
    dsn          => { h=>'127.1', P=>'12345', n=>'h=127.1,P=12345' },
    DSNParser    => $dp,
    OptionParser => $o,
 );
-
-$o->get_specs("$trunk/bin/pt-table-checksum");
 
 my %common_modules = (
    Quoter       => $q,
@@ -86,7 +86,7 @@ sub make_nibble_iter {
 
    my $ni = new NibbleIterator(
       Cxn         => $cxn,
-      tbl         => $schema->get_table($args{db}, $args{tbl}),
+      tbl         => $schema->get_table(lc($args{db}), lc($args{tbl})),
       chunk_size  => $o->get('chunk-size'),
       chunk_index => $o->get('chunk-index'),
       callbacks   => $args{callbacks},
@@ -94,6 +94,7 @@ sub make_nibble_iter {
       one_nibble  => $args{one_nibble},
       resume      => $args{resume},
       order_by    => $args{order_by},
+      comments    => $args{comments},
       %common_modules,
    );
 
@@ -205,15 +206,15 @@ ok(
 );
 
 is(
-   $ni->chunk_size(),
-   5,
-   "chunk_size()"
+   $ni->limit(),
+   4,
+   "limit()"
 );
 
 # ############################################################################
 # a-y w/ chunk-size 5, even nibbles
 # ############################################################################
-$dbh->do('delete from test.t where c="z"');
+$dbh->do("delete from test.t where c='z'");
 my $all_rows = $dbh->selectall_arrayref('select * from test.t order by c');
 $ni = make_nibble_iter(
    db       => 'test',
@@ -248,12 +249,12 @@ is_deeply(
    \@rows,
    $all_rows,
    '1 nibble'
-) or print Dumper(\@rows);
+) or diag(Dumper(\@rows));
 
 # ############################################################################
 # single row table
 # ############################################################################
-$dbh->do('delete from test.t where c != "d"');
+$dbh->do("delete from test.t where c != 'd'");
 $ni = make_nibble_iter(
    db       => 'test',
    tbl      => 't',
@@ -273,7 +274,7 @@ is_deeply(
    \@rows,
    [['d']],
    'single row table'
-) or print Dumper(\@rows);
+) or diag(Dumper(\@rows));
 
 # ############################################################################
 # empty table
@@ -293,7 +294,7 @@ is_deeply(
    \@rows,
    [],
    'empty table'
-) or print Dumper(\@rows);
+) or diag(Dumper(\@rows));
 
 # ############################################################################
 # Callbacks
@@ -394,38 +395,37 @@ $ni = make_nibble_iter(
 my $row = $ni->next();
 is_deeply(
    $row,
-   [25, 'da79784d'],
+   [25, 'd9c52498'],
    "SELECT chunk checksum 1 FROM sakila.country"
-) or print STDERR Dumper($row); 
+) or diag(Dumper($row));
 
 $row = $ni->next();
 is_deeply(
    $row,
-   [25, 'e860c4f9'],
+   [25, 'ebdc982c'],
    "SELECT chunk checksum 2 FROM sakila.country"
-) or print STDERR Dumper($row); 
+) or diag(Dumper($row));
 
 $row = $ni->next();
 is_deeply(
    $row,
-   [25, 'eb651f58'],
+   [25, 'e8d9438d'],
    "SELECT chunk checksum 3 FROM sakila.country"
-) or print STDERR Dumper($row); 
+) or diag(Dumper($row));
 
 $row = $ni->next();
 is_deeply(
    $row,
-   [25, '2d87d588'],
+   [25, '2e3b895d'],
    "SELECT chunk checksum 4 FROM sakila.country"
-) or print STDERR Dumper($row); 
+) or diag(Dumper($row));
 
 $row = $ni->next();
 is_deeply(
    $row,
-   [9, 'beb4a180'],
+   [9, 'bd08fd55'],
    "SELECT chunk checksum 5 FROM sakila.country"
-) or print STDERR Dumper($row); 
-
+) or diag(Dumper($row));
 
 # #########################################################################
 # exec_nibble callback and explain_sth
@@ -452,36 +452,10 @@ $ni = make_nibble_iter(
 );
 $ni->next();
 $ni->next();
-is_deeply(
-   \@expl,
-   [
-      {
-         id            => '1',
-         key           => 'PRIMARY',
-         key_len       => '2',
-         possible_keys => 'PRIMARY',
-         ref           => undef,
-         rows          => '54',
-         select_type   => 'SIMPLE',
-         table         => 'country',
-         type          => 'range',
-         extra         => 'Using where',
-      },
-      {
-         id             => '1',
-         key            => 'PRIMARY',
-         key_len        => '2',
-         possible_keys  => 'PRIMARY',
-         ref            => undef,
-         rows           => '49',
-         select_type    => 'SIMPLE',
-         table          => 'country',
-         type           => 'range',
-         extra          => 'Using where',
-      },
-   ],
-'exec_nibble callbackup and explain_sth'
-) or print STDERR Dumper(\@expl);
+ok($expl[0]->{rows} > 40 && $expl[0]->{rows} < 80, 'Rows between 40-80');
+is($expl[0]->{key}, 'PRIMARY', 'Uses PRIMARY key');
+is($expl[0]->{key_len}, '2', 'Uses 2 bytes of index');
+is($expl[0]->{type} , 'range', 'Uses range type');
 
 # #########################################################################
 # film_actor, multi-column pk
@@ -527,7 +501,7 @@ $ni = make_nibble_iter(
 $ni->next();
 is(
    $ni->statements()->{nibble}->{Statement},
-   "SELECT `address_id`, `address`, `address2`, `district`, `city_id`, `postal_code` FROM `sakila`.`address` FORCE INDEX(`PRIMARY`) WHERE ((`address_id` >= ?)) AND ((`address_id` <= ?)) /*checksum chunk*/",
+   "SELECT `address_id`, `address`, `address2`, `district`, `city_id`, `postal_code` FROM `sakila`.`address` FORCE INDEX(`PRIMARY`) WHERE ((`address_id` >= ?)) AND ((`address_id` <= ?)) /*nibble table*/",
    "--ignore-columns"
 );
 
@@ -545,7 +519,7 @@ $ni->next();
 
 is(
    $ni->statements()->{nibble}->{Statement},
-   "SELECT `actor_id`, `film_id`, `last_update` FROM `sakila`.`film_actor` FORCE INDEX(`PRIMARY`) WHERE ((`actor_id` > ?) OR (`actor_id` = ? AND `film_id` >= ?)) AND ((`actor_id` < ?) OR (`actor_id` = ? AND `film_id` <= ?)) ORDER BY `actor_id`, `film_id` /*checksum chunk*/",
+   "SELECT `actor_id`, `film_id`, `last_update` FROM `sakila`.`film_actor` FORCE INDEX(`PRIMARY`) WHERE ((`actor_id` > ?) OR (`actor_id` = ? AND `film_id` >= ?)) AND ((`actor_id` < ?) OR (`actor_id` = ? AND `film_id` <= ?)) ORDER BY `actor_id`, `film_id` /*nibble table*/",
    "Add ORDER BY to nibble SQL"
 );
 
@@ -577,7 +551,7 @@ is_deeply(
       [ 'z'        ], # last nibble
    ],
    "Change chunk size while nibbling"
-) or print STDERR Dumper(\@rows);
+) or diag(Dumper(\@rows));
 
 # ############################################################################
 # Nibble one row at a time.
@@ -722,7 +696,7 @@ $ni = make_nibble_iter(
 my $sql = $ni->statements()->{nibble}->{Statement};
 is(
    $sql,
-   "SELECT `c` FROM `test`.`t` WHERE c>'m' /*checksum table*/",
+   "SELECT `c` FROM `test`.`t` WHERE c>'m' /*bite table*/",
    "One nibble SQL with where"
 );
 
@@ -739,8 +713,8 @@ cmp_ok(
 # ############################################################################
 $ni = make_nibble_iter(
    db         => 'mysql',
-   tbl        => 'host',
-   argv       => [qw(--tables mysql.host --chunk-size-limit 0)],
+   tbl        => 'columns_priv',
+   argv       => [qw(--tables mysql.columns_priv --chunk-size-limit 0)],
 );
 
 @rows = ();
@@ -796,6 +770,68 @@ is_deeply(
 );
 
 # #############################################################################
+# Customize bite and nibble statement comments.
+# #############################################################################
+$ni = make_nibble_iter(
+   db       => 'sakila',
+   tbl      => 'address',
+   argv     => [qw(--tables sakila.address --chunk-size 10)],
+   comments => {
+      bite   => "my bite",
+      nibble => "my nibble",
+   }
+);
+
+$ni->next();
+is(
+   $ni->statements()->{nibble}->{Statement},
+   "SELECT `address_id`, `address`, `address2`, `district`, `city_id`, `postal_code`, `phone`, `last_update` FROM `sakila`.`address` FORCE INDEX(`PRIMARY`) WHERE ((`address_id` >= ?)) AND ((`address_id` <= ?)) /*my nibble*/",
+   "Custom nibble comment"
+);
+
+$ni = make_nibble_iter(
+   db       => 'sakila',
+   tbl      => 'address',
+   argv     => [qw(--tables sakila.address --chunk-size 1000)],
+   comments => {
+      bite   => "my bite",
+      nibble => "my nibble",
+   }
+);
+
+$ni->next();
+is(
+   $ni->statements()->{nibble}->{Statement},
+   "SELECT `address_id`, `address`, `address2`, `district`, `city_id`, `postal_code`, `phone`, `last_update` FROM `sakila`.`address` /*my bite*/",
+   "Custom bite comment"
+);
+
+# #############################################################################
+# https://bugs.launchpad.net/percona-toolkit/+bug/995274
+# Index case-sensitivity.
+# #############################################################################
+$sb->load_file('master', "t/pt-table-checksum/samples/undef-arrayref-bug-995274.sql");
+
+eval {
+   $ni = make_nibble_iter(
+      db   => 'test',
+      tbl  => 'GroupMembers',
+      argv => [qw(--databases test --chunk-size 100)],
+   );
+};
+is(
+   $EVAL_ERROR,
+   '',
+   "Bug 995274: no error creating nibble iter"
+);
+
+is_deeply(
+   $ni->next(),
+   ['450876', '3','691360'],
+   "Bug 995274: nibble iter works"
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 {
@@ -809,4 +845,5 @@ like(
    '_d() works'
 );
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

@@ -17,92 +17,133 @@ require "$trunk/bin/pt-deadlock-logger";
 
 my $dp   = new DSNParser(opts=>$dsn_opts);
 my $sb   = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh1 = $sb->get_dbh_for('master');
+my $dbh = $sb->get_dbh_for('master');
 
-if ( !$dbh1 ) {
+if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
-}
-else {
-   plan tests => 9;
 }
 
 my $output;
-my $cnf = "/tmp/12345/my.sandbox.cnf";
-my $cmd = "$trunk/bin/pt-deadlock-logger -F $cnf h=127.1";
+my $dsn  = $sb->dsn_for('master');
+my @args = ($dsn, qw(--iterations 1));
 
-$sb->wipe_clean($dbh1);
-$sb->create_dbs($dbh1, ['test']);
+$sb->wipe_clean($dbh);
+$sb->create_dbs($dbh, ['test']);
 
 # #############################################################################
 # Issue 248: Add --user, --pass, --host, etc to all tools
 # #############################################################################
 
 # Test that source DSN inherits from --user, etc.
-$output = `$trunk/bin/pt-deadlock-logger h=127.1,D=test,u=msandbox,p=msandbox --clear-deadlocks test.make_deadlock --port 12345 2>&1`;
+$output = output(
+   sub {
+      pt_deadlock_logger::main(
+         "h=127.1,D=test,u=msandbox,p=msandbox",
+         qw(--clear-deadlocks test.make_deadlock --port 12345),
+         qw(--iterations 1)
+      )
+   }
+);
+
 unlike(
    $output,
    qr/failed/,
    'Source DSN inherits from standard connection options (issue 248)'
 );
 
-# #########################################################################
+# #############################################################################
 # Issue 391: Add --pid option to all scripts
-# #########################################################################
-`touch /tmp/mk-script.pid`;
-$output = `$cmd --clear-deadlocks test.make_deadlock --port 12345 --pid /tmp/mk-script.pid 2>&1`;
+# #############################################################################
+
+my $pid_file = "/tmp/pt-deadlock-logger-test.pid.$PID";
+diag(`touch $pid_file`);
+
+$output = output(
+   sub {
+      pt_deadlock_logger::main(@args, '--pid', $pid_file)
+   },
+   stderr => 1,
+);
+
 like(
    $output,
-   qr{PID file /tmp/mk-script.pid already exists},
+   qr{PID file $pid_file already exists},
    'Dies if PID file already exists (--pid without --daemonize) (issue 391)'
 );
-`rm -rf /tmp/mk-script.pid`;
+
+unlink $pid_file if -f $pid_file;
 
 # #############################################################################
 # Check daemonization
 # #############################################################################
-my $deadlocks_tbl = load_file('t/pt-deadlock-logger/deadlocks_tbl.sql');
-$dbh1->do('USE test');
-$dbh1->do('DROP TABLE IF EXISTS deadlocks');
-$dbh1->do("$deadlocks_tbl");
+$dbh->do('USE test');
+$dbh->do('DROP TABLE IF EXISTS deadlocks');
+$sb->load_file('master', 't/pt-deadlock-logger/samples/deadlocks_tbl.sql', 'test');
 
-`$cmd --dest D=test,t=deadlocks --daemonize --run-time 1s --interval 1s --pid /tmp/mk-deadlock-logger.pid 1>/dev/null 2>/dev/null`;
-$output = `ps -eaf | grep '$cmd \-\-dest '`;
-like($output, qr/$cmd/, 'It lives daemonized');
-ok(-f '/tmp/mk-deadlock-logger.pid', 'PID file created');
+$output = `$trunk/bin/pt-deadlock-logger $dsn --dest D=test,t=deadlocks --daemonize --run-time 10 --interval 1 --pid $pid_file 1>/dev/null 2>/dev/null`;
 
-my ($pid) = $output =~ /\s+(\d+)\s+/;
-$output = `cat /tmp/mk-deadlock-logger.pid`;
-is($output, $pid, 'PID file has correct PID');
+PerconaTest::wait_for_files($pid_file);
+
+$output = `ps x | grep 'pt-deadlock-logger $dsn' | grep -v grep`;
+like(
+   $output,
+   qr/\Qpt-deadlock-logger $dsn/,
+   'It lives daemonized'
+) or diag($output);
+
+my ($pid) = $output =~ /(\d+)/;
+
+ok(
+   -f $pid_file,
+   'PID file created'
+) or diag($output);
+
+chomp($output = slurp_file($pid_file));
+is(
+   $output,
+   $pid,
+   'PID file has correct PID'
+);
 
 # Kill it
-sleep 2;
-ok(! -f '/tmp/mk-deadlock-logger.pid', 'PID file removed');
+kill 2, $pid;
+PerconaTest::wait_until(sub { !kill 0, $pid });
+ok(! -f $pid_file, 'PID file removed');
 
 # Check that it won't run if the PID file already exists (issue 383).
-diag(`touch /tmp/mk-deadlock-logger.pid`);
+diag(`touch $pid_file`);
 ok(
-   -f '/tmp/mk-deadlock-logger.pid',
+   -f $pid_file,
    'PID file already exists'
 );
 
-$output = `$cmd --dest D=test,t=deadlocks --daemonize --run-time 1s --interval 1s --pid /tmp/mk-deadlock-logger.pid 2>&1`;
+$output = output(
+   sub {
+      pt_deadlock_logger::main(@args, '--pid', $pid_file,
+         qw(--daemonize))
+   },
+   stderr => 1,
+);
+
 like(
    $output,
-   qr/PID file .+ already exists/,
+   qr/PID file $pid_file already exists/,
    'Does not run if PID file already exists'
 );
 
-$output = `ps -eaf | grep 'mk-deadlock-logger \-\-dest '`;
-unlike(
+$output = `ps x | grep 'pt-deadlock-logger $dsn' | grep -v grep`;
+
+is(
    $output,
-   qr/$cmd/,
+   "",
    'It does not lived daemonized'
 );
 
-diag(`rm -rf /tmp/mk-deadlock-logger.pid`);
+unlink $pid_file;
 
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($dbh1);
-exit;
+$sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;

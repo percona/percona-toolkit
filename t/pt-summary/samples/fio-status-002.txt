@@ -1,0 +1,44 @@
+Found 1 ioDrive in this system
+Fusion-io driver version: 2.3.1 build 123
+
+Adapter: ioDrive
+        Fusion-io ioDrive 720GB, Product Number:FS1-003-721-CS SN:122210
+        Pseudo Low-Profile ioDIMM Adapter, PN:00119200000, Mfr:000, Date:20101222
+        External Power: NOT connected
+        Powerloss protection: available
+        PCIE Bus voltage: avg 11.90V, min 11.77V, max 11.93V
+        PCIE Bus current: avg 0.40A, max 1.60A
+        PCIE Bus power: avg 4.80W, max 18.80W
+        PCIE Power limit threshold: 24.75W
+        PCIE slot available power: unavailable
+        Sufficient power available: Unknown
+        PCIE negotiated link: 4 lanes at 2.50 Gbits/sec each, 1000 MBytes/sec total
+        Connected ioDimm module:
+          fct0: Fusion-io ioDrive 720GB, Product Number:FS1-003-721-CS SN:122210
+
+fct0 Attached as 'fioa' (block device)
+        Fusion-io ioDrive 720GB, Product Number:FS1-003-721-CS SN:122210
+        ioDrive 720GB, PN:00214102701, Mfr:004, Date:20101222
+        Located in slot 0 Upper of ioDrive SN:122210
+        Powerloss protection: protected
+        PCI:0a:00.0
+        Vendor:1aed, Device:1005, Sub vendor:1aed, Sub device:1010
+        Firmware v5.0.5, rev 43674
+        720.00 GBytes block device size, 812 GBytes physical device size
+        Format: block, v300, 1,406,251,904 sectors, 512 bytes per sector
+        Error correction: 39 bits per 960 bytes
+        FPGA ID:0 Format UID:00000001dd620132b86600330bcab400
+        PCIE slot available power: unavailable
+        Sufficient power available: Unknown
+        PCIE negotiated link: 4 lanes at 2.50 Gbits/sec each, 1000 MBytes/sec total
+        Internal temperature: 53.2 degC, max 62.5 degC
+        Board temperature: 38 degC
+        Internal voltage: avg 0.996V, max 0.999V
+        Aux voltage: avg 2.461V, max 2.464V
+        Media status: Healthy; Reserves: 100.00%, warn at 10.00%
+        Lifetime data volumes:
+           Physical bytes written: 395,271,132,925,136
+           Physical bytes read : 407,978,357,472,336
+        RAM usage:
+           Current: 244,996,096 bytes
+           Peak : 244,996,096 bytes

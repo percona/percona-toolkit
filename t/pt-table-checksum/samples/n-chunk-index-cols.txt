@@ -1,0 +1,19 @@
+--
+-- sakila.rental
+--
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `rental_id`, `rental_date`, `inventory_id`, `customer_id`, `return_date`, `staff_id`, `last_update` + 0, CONCAT(ISNULL(`return_date`)))) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `sakila`.`rental` FORCE INDEX(`rental_date`) WHERE ((`rental_date` > ?) OR (`rental_date` = ? AND `inventory_id` >= ?)) AND ((`rental_date` < ?) OR (`rental_date` = ? AND `inventory_id` <= ?)) /*checksum chunk*/
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*), '0' FROM `sakila`.`rental` FORCE INDEX(`rental_date`) WHERE ((`rental_date` < ?) OR (`rental_date` = ? AND `inventory_id` < ?)) ORDER BY `rental_date`, `inventory_id`, `customer_id` /*past lower chunk*/
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*), '0' FROM `sakila`.`rental` FORCE INDEX(`rental_date`) WHERE ((`rental_date` > ?) OR (`rental_date` = ? AND `inventory_id` > ?)) ORDER BY `rental_date`, `inventory_id`, `customer_id` /*past upper chunk*/
+
+SELECT /*!40001 SQL_NO_CACHE */ `rental_date`, `rental_date`, `inventory_id` FROM `sakila`.`rental` FORCE INDEX(`rental_date`) WHERE ((`rental_date` > ?) OR (`rental_date` = ? AND `inventory_id` >= ?)) ORDER BY `rental_date`, `inventory_id`, `customer_id` LIMIT ?, 2 /*next chunk boundary*/
+
+1 2005-05-24 22:53:30,2005-05-24 22:53:30,367 2005-07-09 01:17:08,2005-07-09 01:17:08,2388
+2 2005-07-09 01:19:03,2005-07-09 01:19:03,3438 2005-07-31 17:51:23,2005-07-31 17:51:23,2396
+3 2005-07-31 17:53:51,2005-07-31 17:53:51,928 2005-08-22 13:58:23,2005-08-22 13:58:23,2553
+4 2005-08-22 13:59:19,2005-08-22 13:59:19,3704 2006-02-14 15:16:03,2006-02-14 15:16:03,4568
+5  2005-05-24 22:53:30,2005-05-24 22:53:30,367
+6 2006-02-14 15:16:03,2006-02-14 15:16:03,4568 
+

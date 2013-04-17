@@ -26,7 +26,7 @@ if ( !$dbh ) {
    plan skip_all => "Cannot connect to sandbox master";
 }
 else {
-   plan tests => 24;
+   plan tests => 25;
 }
 
 $sb->create_dbs($dbh, ['test']);
@@ -150,9 +150,9 @@ compare(0.000100, 0.000250);
 
 $report = <<EOF;
 # Significant query time differences
-# Query ID           server1 server2 %Increase %Threshold
-# ================== ======= ======= ========= ==========
-# EDEF654FCCC4A4D8-0   100us   250us    150.00        100
+# Query ID           host1 host2 %Increase %Threshold
+# ================== ===== ===== ========= ==========
+# EDEF654FCCC4A4D8-0 100us 250us    150.00        100
 EOF
 
 is(
@@ -166,9 +166,9 @@ compare(0.000100, 1.100251);
 
 $report = <<EOF;
 # Big query time differences
-# Query ID           server1 server2 Difference
-# ================== ======= ======= ==========
-# EDEF654FCCC4A4D8-0   100us      1s         1s
+# Query ID           host1 host2 Difference
+# ================== ===== ===== ==========
+# EDEF654FCCC4A4D8-0 100us    1s         1s
 EOF
 
 is(
@@ -192,4 +192,5 @@ like(
    '_d() works'
 );
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

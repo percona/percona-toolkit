@@ -1,4 +1,4 @@
-# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Inc.
+# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -182,7 +182,7 @@ sub set_checksum_queries {
 
 sub prepare_sync_cycle {
    my ( $self, $host ) = @_;
-   my $sql = 'SET @crc := "", @cnt := 0';
+   my $sql = q{SET @crc := '', @cnt := 0};
    PTDEBUG && _d($sql);
    $host->{dbh}->do($sql);
    return;

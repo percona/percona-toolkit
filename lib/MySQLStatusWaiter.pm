@@ -1,4 +1,4 @@
-# This program is copyright 2011 Percona Inc.
+# This program is copyright 2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -39,18 +39,37 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 #   MySQLStatusWaiter object 
 sub new {
    my ( $class, %args ) = @_;
-   my @required_args = qw(spec get_status sleep oktorun);
+   my @required_args = qw(max_spec get_status sleep oktorun);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless defined $args{$arg};
    }
 
-   my $max_val_for = _parse_spec(%args);
+   PTDEBUG && _d('Parsing spec for max thresholds');
+   my $max_val_for = _parse_spec($args{max_spec});
+   if ( $max_val_for ) {
+      _check_and_set_vals(
+         vars             => $max_val_for,
+         get_status       => $args{get_status},
+         threshold_factor => 0.2, # +20%
+      );
+   }
+
+   PTDEBUG && _d('Parsing spec for critical thresholds');
+   my $critical_val_for = _parse_spec($args{critical_spec} || []);
+   if ( $critical_val_for ) {
+      _check_and_set_vals(
+         vars             => $critical_val_for,
+         get_status       => $args{get_status},
+         threshold_factor => 1.0, # double (x2; +100%)
+      );
+   }
 
    my $self = {
-      get_status  => $args{get_status},
-      sleep       => $args{sleep},
-      oktorun     => $args{oktorun},
-      max_val_for => $max_val_for,
+      get_status       => $args{get_status},
+      sleep            => $args{sleep},
+      oktorun          => $args{oktorun},
+      max_val_for      => $max_val_for,
+      critical_val_for => $critical_val_for,
    };
 
    return bless $self, $class;
@@ -66,29 +85,29 @@ sub new {
 # Returns:
 #   Hashref with each variable's maximum permitted value.
 sub _parse_spec {
-   my ( %args ) = @_;
-   my @required_args = qw(spec get_status);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless defined $args{$arg};
-   }
-   my ($spec, $get_status) = @args{@required_args};
+   my ($spec) = @_;
 
-   if ( !@$spec ) {
-      PTDEBUG && _d('No spec, disabling status var waits');
-      return;
-   }
+   return unless $spec && scalar @$spec;
 
    my %max_val_for;
    foreach my $var_val ( @$spec ) {
+      die "Empty or undefined spec\n" unless $var_val;
+      $var_val =~ s/^\s+//;
+      $var_val =~ s/\s+$//g;
+
       my ($var, $val) = split /[:=]/, $var_val;
-      die "Invalid spec: $var_val" unless $var;
+      die "$var_val does not contain a variable\n" unless $var;
+      die "$var is not a variable name\n" unless $var =~ m/^[a-zA-Z_]+$/;
+
       if ( !$val ) {
-         my $init_val = $get_status->($var);
-         PTDEBUG && _d('Initial', $var, 'value:', $init_val);
-         $val = int(($init_val * .20) + $init_val);
+         PTDEBUG && _d('Will get intial value for', $var, 'later');
+         $max_val_for{$var} = undef;
       }
-      PTDEBUG && _d('Wait if', $var, '>=', $val);
-      $max_val_for{$var} = $val;
+      else {
+         die "The value for $var must be a number\n"
+            unless $val =~ m/^[\d\.]+$/;
+         $max_val_for{$var} = $val;
+      }
    }
 
    return \%max_val_for; 
@@ -99,6 +118,11 @@ sub _parse_spec {
 sub max_values {
    my ($self) = @_;
    return $self->{max_val_for};
+}
+
+sub critical_values {
+   my ($self) = @_;
+   return $self->{critical_val_for};
 }
 
 # Sub: wait
@@ -117,7 +141,7 @@ sub wait {
    my $oktorun    = $self->{oktorun};
    my $get_status = $self->{get_status};
    my $sleep      = $self->{sleep};
-   
+
    my %vals_too_high = %{$self->{max_val_for}};
    my $pr_callback;
    if ( $pr ) {
@@ -144,6 +168,12 @@ sub wait {
       foreach my $var ( sort keys %vals_too_high ) {
          my $val = $get_status->($var);
          PTDEBUG && _d($var, '=', $val);
+         if ( $val
+              && exists $self->{critical_val_for}->{$var}
+              && $val >= $self->{critical_val_for}->{$var} ) {
+            die "$var=$val exceeds its critical threshold "
+               . "$self->{critical_val_for}->{$var}\n";
+         }
          if ( !$val || $val >= $self->{max_val_for}->{$var} ) {
             $vals_too_high{$var} = $val;
          }
@@ -168,6 +198,34 @@ sub wait {
 
    PTDEBUG && _d('All var vals are low enough');
    return;
+}
+
+sub _check_and_set_vals {
+   my (%args) = @_;
+   my @required_args = qw(vars get_status threshold_factor);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless defined $args{$arg};
+   }
+   my ($vars, $get_status, $threshold_factor) = @args{@required_args};
+
+   PTDEBUG && _d('Checking and setting values');
+   return unless $vars && scalar %$vars;
+
+   foreach my $var ( keys %$vars ) {
+      my $init_val = $get_status->($var);
+      die "Variable $var does not exist or its value is undefined\n"
+         unless defined $init_val;
+      my $val;
+      if ( defined $vars->{$var} ) {
+         $val = $vars->{$var};
+      }
+      else {
+         PTDEBUG && _d('Initial', $var, 'value:', $init_val);
+         $val = int(($init_val * $threshold_factor) + $init_val);
+         $vars->{$var} = $val;
+      }
+      PTDEBUG && _d('Wait if', $var, '>=', $val);
+   }
 }
 
 sub _d {

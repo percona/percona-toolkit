@@ -26,9 +26,6 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => "Cannot connect to sandbox master";
 }
-else {
-   plan tests => 28;
-}
 
 $sb->create_dbs($dbh, ['test']);
 
@@ -421,8 +418,69 @@ is(
    'Ignores specified columns'
 );
 
+# #############################################################################
+# crash with --columns if none match / --ignore-columns if everything is ignored
+# https://bugs.launchpad.net/percona-toolkit/+bug/1016131
+# #############################################################################
+# Re-using the $tbl from the previous test!
+local @ARGV = ('--ignore-columns', 'a,b,c');
+$o->get_opts();
+local $EVAL_ERROR;
+eval {
+   $c->make_row_checksum(
+      tbl  => $tbl,
+      func => 'CRC32',
+   );
+};
+
+like(
+   $EVAL_ERROR,
+   qr/all columns are excluded by --columns or --ignore-columns/,
+   "Dies if all columns are ignored by --ignore-columns"
+);
+
+
+$tbl = {
+   db         => 'mysql',
+   tbl        => 'user',
+   tbl_struct => $tp->parse($tp->get_create_table($dbh, 'mysql', 'user')),
+};
+local @ARGV = qw(--columns some_column_that_doesnt_exist);
+$o->get_opts();
+local $EVAL_ERROR;
+eval {
+   $c->make_row_checksum(
+      tbl  => $tbl,
+      func => 'SHA1',
+   );
+};
+
+like(
+   $EVAL_ERROR,
+   qr/all columns are excluded by --columns or --ignore-columns/,
+   'Dies if all columns are ignored by --columns'
+);
+
+# #############################################################################
+# pt-table-checksum doesn't test all hash functions
+# https://bugs.launchpad.net/percona-toolkit/+bug/1059732
+# #############################################################################
+
+@ARGV = qw(--function FALSEFUNC);
+$o->get_opts();
+
+unlike(
+   $c->_get_hash_func(
+      dbh => $dbh,
+   ),
+   qr/FALSEFUNC/,
+   "_get_hash_func doesn't return failed functions",
+);
+
 # ############################################################################
 # Done.
 # ############################################################################
 $sb->wipe_clean($dbh);
-exit;
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+
+done_testing;

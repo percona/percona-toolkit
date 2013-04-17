@@ -1,0 +1,283 @@
+Linux version 2.6.18-274.el5 (mockbuild@builder10.centos.org) (gcc version 4.1.2 20080704 (Red Hat 4.1.2-50)) #1 SMP Fri Jul 22 04:49:12 EDT 2011
+BIOS-provided physical RAM map:
+ BIOS-e820: 0000000000010000 - 000000000009f400 (usable)
+ BIOS-e820: 000000000009f400 - 00000000000a0000 (reserved)
+ BIOS-e820: 00000000000f0000 - 0000000000100000 (reserved)
+ BIOS-e820: 0000000000100000 - 000000003fffd000 (usable)
+ BIOS-e820: 000000003fffd000 - 0000000040000000 (reserved)
+ BIOS-e820: 00000000fffc0000 - 0000000100000000 (reserved)
+127MB HIGHMEM available.
+896MB LOWMEM available.
+found SMP MP-table at 000fdaf0
+Memory for crash kernel (0x0 to 0x0) notwithin permissible range
+disabling kdump
+Using x86 segment limits to approximate NX protection
+On node 0 totalpages: 262141
+  DMA zone: 4096 pages, LIFO batch:0
+  Normal zone: 225280 pages, LIFO batch:31
+  HighMem zone: 32765 pages, LIFO batch:7
+DMI 2.4 present.
+DMI: Bochs Bochs, BIOS Bochs 01/01/2007
+Using APIC driver default
+ACPI: RSDP (v000 BOCHS                                 ) @ 0x000fdaa0
+ACPI: RSDT (v001 BOCHS  BXPCRSDT 0x00000001 BXPC 0x00000001) @ 0x3fffd6a0
+ACPI: FADT (v001 BOCHS  BXPCFACP 0x00000001 BXPC 0x00000001) @ 0x3ffffe70
+ACPI: SSDT (v001 BOCHS  BXPCSSDT 0x00000001 BXPC 0x00000001) @ 0x3fffd800
+ACPI: MADT (v001 BOCHS  BXPCAPIC 0x00000001 BXPC 0x00000001) @ 0x3fffd720
+ACPI: HPET (v001 BOCHS  BXPCHPET 0x00000001 BXPC 0x00000001) @ 0x3fffd6e0
+ACPI: DSDT (v001   BXPC   BXDSDT 0x00000001 INTL 0x20100528) @ 0x00000000
+ACPI: PM-Timer IO Port: 0xb008
+ACPI: Local APIC address 0xfee00000
+ACPI: LAPIC (acpi_id[0x00] lapic_id[0x00] enabled)
+Processor #0 6:3 APIC version 17
+ACPI: IOAPIC (id[0x01] address[0xfec00000] gsi_base[0])
+IOAPIC[0]: apic_id 1, version 17, address 0xfec00000, GSI 0-23
+ACPI: INT_SRC_OVR (bus 0 bus_irq 0 global_irq 2 dfl dfl)
+ACPI: INT_SRC_OVR (bus 0 bus_irq 5 global_irq 5 high level)
+ACPI: INT_SRC_OVR (bus 0 bus_irq 9 global_irq 9 high level)
+ACPI: INT_SRC_OVR (bus 0 bus_irq 10 global_irq 10 high level)
+ACPI: INT_SRC_OVR (bus 0 bus_irq 11 global_irq 11 high level)
+ACPI: IRQ0 used by override.
+ACPI: IRQ2 used by override.
+ACPI: IRQ5 used by override.
+ACPI: IRQ9 used by override.
+ACPI: IRQ10 used by override.
+ACPI: IRQ11 used by override.
+Enabling APIC mode:  Flat.  Using 1 I/O APICs
+ACPI: HPET id: 0x8086a201 base: 0xfed00000
+Using ACPI (MADT) for SMP configuration information
+Allocating PCI resources starting at 50000000 (gap: 40000000:bffc0000)
+Detected 1662.701 MHz processor.
+Built 1 zonelists.  Total pages: 262141
+Kernel command line: ro root=/dev/VolGroup00/LogVol00
+mapped APIC to ffffd000 (fee00000)
+mapped IOAPIC to ffffc000 (fec00000)
+Enabling fast FPU save and restore... done.
+Enabling unmasked SIMD FPU exception support... done.
+Initializing CPU#0
+CPU 0 irqstacks, hard=c076f000 soft=c074f000
+PID hash table entries: 4096 (order: 12, 16384 bytes)
+Console: colour VGA+ 80x25
+Dentry cache hash table entries: 131072 (order: 7, 524288 bytes)
+Inode-cache hash table entries: 65536 (order: 6, 262144 bytes)
+Memory: 1030768k/1048564k available (2196k kernel code, 16912k reserved, 914k data, 232k init, 131060k highmem)
+Checking if this processor honours the WP bit even in supervisor mode... Ok.
+hpet0: at MMIO 0xfed00000 (virtual 0xf8800000), IRQs 2, 8, 0
+hpet0: 3 64-bit timers, 100000000 Hz
+Using HPET for base-timer
+Calibrating delay loop (skipped), value calculated using timer frequency.. 3325.40 BogoMIPS (lpj=1662701)
+Security Framework v1.0.0 initialized
+SELinux:  Initializing.
+SELinux:  Starting in permissive mode
+selinux_register_security:  Registering secondary module capability
+Capability LSM initialized as secondary
+Mount-cache hash table entries: 512
+CPU: After generic identify, caps: 0781abf9 00000000 00000000 00000000 80800001 00000000 00000000
+CPU: After vendor identify, caps: 0781abf9 00000000 00000000 00000000 80800001 00000000 00000000
+CPU: L1 I cache: 32K, L1 D cache: 32K
+CPU: L2 cache: 4096K
+CPU: After all inits, caps: 0781a3f9 00000000 00000000 00000040 80800001 00000000 00000000
+Checking 'hlt' instruction... OK.
+SMP alternatives: switching to UP code
+Freeing SMP alternatives: 14k freed
+ACPI: Core revision 20060707
+CPU0: Intel QEMU Virtual CPU version 0.14.1 stepping 03
+Total of 1 processors activated (3325.40 BogoMIPS).
+ENABLING IO-APIC IRQs
+..TIMER: vector=0x31 apic1=0 pin1=2 apic2=-1 pin2=-1
+Using local APIC timer interrupts.
+WARNING calibrate_APIC_clock: the APIC timer calibration may be wrong.
+Brought up 1 CPUs
+sizeof(vma)=84 bytes
+sizeof(page)=32 bytes
+sizeof(inode)=340 bytes
+sizeof(dentry)=136 bytes
+sizeof(ext3inode)=492 bytes
+sizeof(buffer_head)=52 bytes
+sizeof(skbuff)=176 bytes
+checking if image is initramfs... it is
+Freeing initrd memory: 3301k freed
+NET: Registered protocol family 16
+ACPI: bus type pci registered
+PCI: PCI BIOS revision 2.10 entry at 0xfc901, last bus=0
+PCI: Using configuration type 1
+Setting up standard PCI resources
+ACPI: Interpreter enabled
+ACPI: Using IOAPIC for interrupt routing
+ACPI: No dock devices found.
+ACPI: PCI Root Bridge [PCI0] (0000:00)
+PCI quirk: region b000-b03f claimed by PIIX4 ACPI
+PCI quirk: region b100-b10f claimed by PIIX4 SMB
+ACPI: PCI Interrupt Routing Table [\_SB_.PCI0._PRT]
+ACPI: PCI Interrupt Link [LNKA] (IRQs 5 *10 11)
+ACPI: PCI Interrupt Link [LNKB] (IRQs 5 *10 11)
+ACPI: PCI Interrupt Link [LNKC] (IRQs 5 10 *11)
+ACPI: PCI Interrupt Link [LNKD] (IRQs 5 10 *11)
+ACPI: PCI Interrupt Link [LNKS] (IRQs 9) *0, disabled.
+Linux Plug and Play Support v0.97 (c) Adam Belay
+pnp: PnP ACPI init
+pnp: PnP ACPI: found 6 devices
+usbcore: registered new driver usbfs
+usbcore: registered new driver hub
+PCI: Using ACPI for IRQ routing
+PCI: If a device doesn't work, try "pci=routeirq".  If it helps, post a report
+NetLabel: Initializing
+NetLabel:  domain hash size = 128
+NetLabel:  protocols = UNLABELED CIPSOv4
+NetLabel:  unlabeled traffic allowed by default
+NET: Registered protocol family 2
+IP route cache hash table entries: 32768 (order: 5, 131072 bytes)
+TCP established hash table entries: 131072 (order: 8, 1048576 bytes)
+TCP bind hash table entries: 65536 (order: 7, 524288 bytes)
+TCP: Hash tables configured (established 131072 bind 65536)
+TCP reno registered
+apm: BIOS version 1.2 Flags 0x03 (Driver version 1.16ac)
+apm: overridden by ACPI.
+audit: initializing netlink socket (disabled)
+type=2000 audit(1332831374.186:1): initialized
+highmem bounce pool size: 64 pages
+Total HugeTLB memory allocated, 0
+VFS: Disk quotas dquot_6.5.1
+Dquot-cache hash table entries: 1024 (order 0, 4096 bytes)
+SELinux:  Registering netfilter hooks
+Initializing Cryptographic API
+alg: No test for crc32c (crc32c-generic)
+ksign: Installing public key data
+Loading keyring
+- Added public key 19937CBFB67F4F76
+- User ID: CentOS (Kernel Module GPG key)
+io scheduler noop registered
+io scheduler anticipatory registered
+io scheduler deadline registered
+io scheduler cfq registered (default)
+Limiting direct PCI/PCI transfers.
+PCI: PIIX3: Enabling Passive Release on 0000:00:01.0
+Activating ISA DMA hang workarounds.
+Boot video device is 0000:00:02.0
+pci_hotplug: PCI Hot Plug PCI Core version: 0.5
+Real Time Clock Driver v1.12ac
+hpet_resources: 0xfed00000 is busy
+Non-volatile memory driver v1.2
+Linux agpgart interface v0.101 (c) Dave Jones
+Serial: 8250/16550 driver $Revision: 1.90 $ 4 ports, IRQ sharing enabled
+serial8250: ttyS0 at I/O 0x3f8 (irq = 4) is a 16550A
+brd: module loaded
+Uniform Multi-Platform E-IDE driver Revision: 7.00alpha2
+ide: Assuming 33MHz system bus speed for PIO modes; override with idebus=xx
+PIIX3: IDE controller at PCI slot 0000:00:01.1
+PIIX3: chipset revision 0
+PIIX3: not 100% native mode: will probe irqs later
+PCI: Setting latency timer of device 0000:00:01.1 to 64
+    ide0: BM-DMA at 0xc000-0xc007, BIOS settings: hda:pio, hdb:pio
+    ide1: BM-DMA at 0xc008-0xc00f, BIOS settings: hdc:pio, hdd:pio
+Probing IDE interface ide0...
+hda: QEMU HARDDISK, ATA DISK drive
+ide0 at 0x1f0-0x1f7,0x3f6 on irq 14
+Probing IDE interface ide1...
+hdc: QEMU DVD-ROM, ATAPI CD/DVD-ROM drive
+ide1 at 0x170-0x177,0x376 on irq 15
+hda: max request size: 512KiB
+hda: 16777216 sectors (8589 MB) w/256KiB Cache, CHS=16383/255/63, (U)DMA
+hda: cache flushes supported
+ hda: hda1 hda2
+ide-floppy driver 0.99.newide
+usbcore: registered new driver hiddev
+usbcore: registered new driver usbhid
+drivers/usb/input/hid-core.c: v2.6:USB HID core driver
+PNP: PS/2 Controller [PNP0303:KBD,PNP0f13:MOU] at 0x60,0x64 irq 1,12
+serio: i8042 KBD port at 0x60,0x64 irq 1
+serio: i8042 AUX port at 0x60,0x64 irq 12
+mice: PS/2 mouse device common for all mice
+md: md driver 0.90.3 MAX_MD_DEVS=256, MD_SB_DISKS=27
+md: bitmap version 4.39
+TCP bic registered
+Initializing IPsec netlink socket
+NET: Registered protocol family 1
+NET: Registered protocol family 17
+Using IPI No-Shortcut mode
+Time: tsc clocksource has been installed.
+ACPI: (supports S3 S4 S5)
+Initalizing network drop monitor service
+Freeing unused kernel memory: 232k freed
+Write protecting the kernel read-only data: 415k
+input: AT Translated Set 2 keyboard as /class/input/input0
+input: ImExPS/2 Generic Explorer Mouse as /class/input/input1
+ohci_hcd: 2005 April 22 USB 1.1 'Open' Host Controller (OHCI) Driver (PCI)
+USB Universal Host Controller Interface driver v3.0
+ACPI: PCI Interrupt Link [LNKD] enabled at IRQ 11
+ACPI: PCI Interrupt 0000:00:01.2[D] -> Link [LNKD] -> GSI 11 (level, high) -> IRQ 11
+PCI: Setting latency timer of device 0000:00:01.2 to 64
+uhci_hcd 0000:00:01.2: UHCI Host Controller
+uhci_hcd 0000:00:01.2: new USB bus registered, assigned bus number 1
+uhci_hcd 0000:00:01.2: irq 11, io base 0x0000c020
+usb usb1: configuration #1 chosen from 1 choice
+hub 1-0:1.0: USB hub found
+hub 1-0:1.0: 2 ports detected
+SCSI subsystem initialized
+libata version 3.00 loaded.
+device-mapper: uevent: version 1.0.3
+device-mapper: ioctl: 4.11.6-ioctl (2011-02-18) initialised: dm-devel@redhat.com
+device-mapper: dm-raid45: initialized v0.2594l
+EXT3-fs: INFO: recovery required on readonly filesystem.
+EXT3-fs: write access will be enabled during recovery.
+kjournald starting.  Commit interval 5 seconds
+EXT3-fs: recovery complete.
+EXT3-fs: mounted filesystem with ordered data mode.
+type=1404 audit(1332831448.312:2): enforcing=1 old_enforcing=0 auid=4294967295 ses=4294967295
+security:  3 users, 6 roles, 2005 types, 267 bools, 1 sens, 1024 cats
+security:  61 classes, 80385 rules
+SELinux:  Completing initialization.
+SELinux:  Setting up existing superblocks.
+SELinux: initialized (dev dm-0, type ext3), uses xattr
+SELinux: initialized (dev usbfs, type usbfs), uses genfs_contexts
+SELinux: initialized (dev tmpfs, type tmpfs), uses transition SIDs
+SELinux: initialized (dev debugfs, type debugfs), uses genfs_contexts
+SELinux: initialized (dev selinuxfs, type selinuxfs), uses genfs_contexts
+SELinux: initialized (dev mqueue, type mqueue), uses transition SIDs
+SELinux: initialized (dev hugetlbfs, type hugetlbfs), uses genfs_contexts
+SELinux: initialized (dev devpts, type devpts), uses transition SIDs
+SELinux: initialized (dev eventpollfs, type eventpollfs), uses task SIDs
+SELinux: initialized (dev inotifyfs, type inotifyfs), uses genfs_contexts
+SELinux: initialized (dev tmpfs, type tmpfs), uses transition SIDs
+SELinux: initialized (dev futexfs, type futexfs), uses genfs_contexts
+SELinux: initialized (dev anon_inodefs, type anon_inodefs), uses genfs_contexts
+SELinux: initialized (dev pipefs, type pipefs), uses task SIDs
+SELinux: initialized (dev sockfs, type sockfs), uses task SIDs
+SELinux: initialized (dev cpuset, type cpuset), uses genfs_contexts
+SELinux: initialized (dev proc, type proc), uses genfs_contexts
+SELinux: initialized (dev bdev, type bdev), uses genfs_contexts
+SELinux: initialized (dev rootfs, type rootfs), uses genfs_contexts
+SELinux: initialized (dev sysfs, type sysfs), uses genfs_contexts
+type=1403 audit(1332831475.505:3): policy loaded auid=4294967295 ses=4294967295
+hdc: ATAPI 4X CD-ROM drive, 512kB Cache, (U)DMA
+Uniform CD-ROM driver Revision: 3.20
+8139cp: 10/100 PCI Ethernet driver v1.2 (Mar 22, 2004)
+ACPI: PCI Interrupt Link [LNKC] enabled at IRQ 10
+ACPI: PCI Interrupt 0000:00:03.0[A] -> Link [LNKC] -> GSI 10 (level, high) -> IRQ 10
+eth0: RTL-8139C+ at 0xf8906000, 52:54:00:c2:70:1b, IRQ 10
+PCI: Setting latency timer of device 0000:00:03.0 to 64
+8139too Fast Ethernet driver 0.9.27
+ACPI: PCI Interrupt Link [LNKA] enabled at IRQ 10
+ACPI: PCI Interrupt 0000:00:05.0[A] -> Link [LNKA] -> GSI 10 (level, high) -> IRQ 10
+input: PC Speaker as /class/input/input2
+piix4_smbus 0000:00:01.3: Found 0000:00:01.3 device
+ACPI: PCI Interrupt 0000:00:04.0[A] -> Link [LNKD] -> GSI 11 (level, high) -> IRQ 11
+PCI: Setting latency timer of device 0000:00:04.0 to 64
+FDC 0 is a S82078B
+lp: driver loaded but no devices found
+ACPI: Power Button (FF) [PWRF]
+ACPI: Mapper loaded
+dell-wmi: No known WMI GUID found
+md: Autodetecting RAID arrays.
+md: autorun ...
+md: ... autorun DONE.
+device-mapper: multipath: version 1.0.6 loaded
+loop: loaded (max 8 devices)
+EXT3 FS on dm-0, internal journal
+kjournald starting.  Commit interval 5 seconds
+EXT3 FS on hda1, internal journal
+EXT3-fs: mounted filesystem with ordered data mode.
+SELinux: initialized (dev hda1, type ext3), uses xattr
+SELinux: initialized (dev tmpfs, type tmpfs), uses transition SIDs
+Adding 2097144k swap on /dev/VolGroup00/LogVol01.  Priority:-1 extents:1 across:2097144k
+SELinux: initialized (dev binfmt_misc, type binfmt_misc), uses genfs_contexts

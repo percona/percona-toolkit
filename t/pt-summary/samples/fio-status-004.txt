@@ -1,0 +1,67 @@
+Found 2 ioMemory devices in this system with 1 ioDrive Duo
+Fusion-io driver version: 3.1.5 build 126
+
+Adapter: Dual Controller Adapter
+        Fusion-io ioDrive2 Duo 2.41TB, Product Number:F01-001-2T41-CS-0001, SN:1150D0121, FIO SN:1150D0121
+        ioDrive2 Adapter Controller, PN:PA004134003
+        SMP(AVR) Versions: App Version: 1.0.15.0, Boot Version: 0.0.3.1
+        External Power: connected
+        PCIe Bus voltage: avg 11.90V
+        PCIe Bus current: avg 1.78A
+        PCIe Bus power: avg 21.19W
+        PCIe Power limit threshold: 24.75W
+        PCIe slot available power: unavailable
+        PCIe bus errors: correctable, unsupported request
+        PCIe negotiated link: 8 lanes at 5.0 Gt/sec each, 2000.00 MBytes/sec total
+        Connected ioMemory modules:
+          fct0: SN:1150D0121-1121
+          fct1: SN:1150D0121-1111
+
+fct0    Attached as 'fioa' (block device)
+        SN:1150D0121-1121
+        SMP(AVR) Versions: App Version: 1.0.17.0, Boot Version: 0.0.4.1
+        Located in slot 1 Lower of ioDrive2 Adapter Controller SN:1150D0121
+        Powerloss protection: protected
+        PCI:0f:00.0
+        Vendor:1aed, Device:2001, Sub vendor:1aed, Sub device:2001
+        Firmware v7.0.0, rev 107322 Public
+        1205.00 GBytes block device size
+        Format: v500, 2353515625 sectors of 512 bytes
+        PCIe slot available power: 25.00W
+        PCIe negotiated link: 4 lanes at 5.0 Gt/sec each, 2000.00 MBytes/sec total
+        Internal temperature: 51.68 degC, max 58.08 degC
+        Internal voltage: avg 1.01V, max 1.02V
+        Aux voltage: avg 2.49V, max 2.49V
+        Reserve space status: Healthy; Reserves: 100.00%, warn at 10.00%
+        Rated PBW: 17.00 PB, 98.41% remaining
+        Lifetime data volumes:
+           Physical bytes written: 270,530,692,575,920
+           Physical bytes read   : 229,918,969,663,096
+        RAM usage:
+           Current: 775,441,152 bytes
+           Peak   : 783,316,032 bytes
+
+
+fct1    Attached as 'fiob' (block device)
+        SN:1150D0121-1111
+        SMP(AVR) Versions: App Version: 1.0.17.0, Boot Version: 0.0.4.1
+        Located in slot 0 Upper of ioDrive2 Adapter Controller SN:1150D0121
+        Powerloss protection: protected
+        PCI:10:00.0
+        Vendor:1aed, Device:2001, Sub vendor:1aed, Sub device:2001
+        Firmware v7.0.0, rev 107322 Public
+        1205.00 GBytes block device size
+        Format: v500, 2353515625 sectors of 512 bytes
+        PCIe slot available power: 25.00W
+        PCIe negotiated link: 4 lanes at 5.0 Gt/sec each, 2000.00 MBytes/sec total
+        Internal temperature: 46.76 degC, max 51.19 degC
+        Internal voltage: avg 1.02V, max 1.03V
+        Aux voltage: avg 2.48V, max 2.49V
+        Reserve space status: Healthy; Reserves: 100.00%, warn at 10.00%
+        Rated PBW: 17.00 PB, 98.95% remaining
+        Lifetime data volumes:
+           Physical bytes written: 179,006,818,219,320
+           Physical bytes read   : 155,705,441,146,928
+        RAM usage:
+           Current: 77,667,712 bytes
+           Peak   : 77,667,712 bytes

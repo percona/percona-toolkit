@@ -1,4 +1,4 @@
-# This program is copyright 2010-2011 Percona Inc.
+# This program is copyright 2010-2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -56,6 +56,13 @@ sub get_rules {
       id   => 'concurrent_insert',
       code => sub {
          my ( %args ) = @_;
+         # MySQL 5.5 has named values.
+         # http://dev.mysql.com/doc/refman/5.5/en/server-system-variables.html
+         # https://bugs.launchpad.net/percona-toolkit/+bug/898138
+         if (    $args{variables}->{concurrent_insert}
+              && $args{variables}->{concurrent_insert} =~ m/[^\d]/ ) {
+            return $args{variables}->{concurrent_insert} eq 'ALWAYS' ? 1 : 0;
+         }
          return _var_gt($args{variables}->{concurrent_insert}, 1);
       },
    },
@@ -424,7 +431,7 @@ sub get_rules {
       code => sub {
          my ( %args ) = @_;
          return _var_eq($args{variables}->{expire_log_days}, 0)
-            && $args{variables}->{log_bin} ? 1 : 0;
+            && _var_seq($args{variables}->{log_bin}, "ON");
       },
    },
    {
@@ -457,7 +464,7 @@ sub get_rules {
       code => sub {
          my ( %args ) = @_;
          return _var_seq($args{variables}->{innodb_locks_unsafe_for_binlog},
-            "ON") && $args{variables}->{log_bin} ? 1 : 0;
+            "ON") && _var_seq($args{variables}->{log_bin}, "ON");
       },
    },
    {
@@ -465,7 +472,7 @@ sub get_rules {
       code => sub {
          my ( %args ) = @_;
          return _var_sneq($args{variables}->{innodb_support_xa}, "ON")
-            && $args{variables}->{log_bin} ? 1 : 0;
+            && _var_seq($args{variables}->{log_bin}, "ON");
       },
    },
    {
@@ -513,7 +520,7 @@ sub get_rules {
       code => sub {
          my ( %args ) = @_;
          return
-            $args{variables}->{log_bin}
+            _var_seq($args{variables}->{log_bin}, "ON")
             && (   _var_eq($args{variables}->{sync_binlog}, 0)
                 || _var_gt($args{variables}->{sync_binlog}, 1)) ? 1 : 0;
       },
@@ -532,27 +539,11 @@ sub get_rules {
          my ( %args ) = @_;
          my $mysql_version = $args{mysql_version};
          return 0 unless $mysql_version;
-         my ($major, $minor, $patch) = $mysql_version =~ m/(\d{3})/g;
-         if ( $major eq '003' ) {
-            return $mysql_version lt '003023000' ? 1 : 0;  # 3.23.x
-         }
-         elsif ( $major eq '004' ) {
-            return $mysql_version lt '004001020' ? 1 : 0;  # 4.1.20
-         }
-         elsif ( $major eq '005' ) {
-            if ( $minor eq '000' ) {
-               return $mysql_version lt '005000037' ? 1 : 0;  # 5.0.37
-            }
-            elsif ( $minor eq '001' ) {
-               return $mysql_version lt '005001030' ? 1 : 0;  # 5.1.30
-            }
-            else {
-               return 0;
-            }
-         }
-         else {
-            return 0;
-         }
+         return 1 if   ($mysql_version == '3'   && $mysql_version < '3.23'  )
+                    || ($mysql_version == '4'   && $mysql_version < '4.1.20')
+                    || ($mysql_version == '5.0' && $mysql_version < '5.0.37')
+                    || ($mysql_version == '5.1' && $mysql_version < '5.1.30');
+         return 0;
       },
    },
    {
@@ -561,7 +552,7 @@ sub get_rules {
          my ( %args ) = @_;
          my $mysql_version = $args{mysql_version};
          return 0 unless $mysql_version;
-         return $mysql_version lt '005001000' ? 1 : 0;  # 5.1.x
+         return $mysql_version < '5.1' ? 1 : 0;  # 5.1.x
       },
    },
 };

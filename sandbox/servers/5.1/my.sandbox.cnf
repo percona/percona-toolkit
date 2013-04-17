@@ -22,5 +22,6 @@ log_slave_updates
 server-id                  = PORT
 report-host                = 127.0.0.1
 report-port                = PORT
-log-error                  = mysqld.log
+log-error                  = /tmp/PORT/data/mysqld.log
 innodb_lock_wait_timeout   = 3
+log                        = genlog

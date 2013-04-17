@@ -1,49 +1,40 @@
 #!/bin/sh
 
-err() {
+die() {
    echo
    for msg; do
       echo $msg
    done
-   exit_status=1
+   exit 1
 }
 
 # ###########################################################################
 # Sanity check the cmd line options.
 # ###########################################################################
 if [ $# -lt 1 ]; then
-   err "Usage: load-sakila-db PORT"
-   exit 1
+   die "Usage: load-sakila-db PORT"
 fi
 
 PORT=$1
 
 if [ ! -d "/tmp/$PORT" ]; then
-   err "MySQL test server does not exist: /tmp/$PORT"
-   exit 1
+   die "MySQL test server does not exist: /tmp/$PORT"
 fi
 
 # ###########################################################################
 # Sanity check the environment.
 # ###########################################################################
 if [ -z "$PERCONA_TOOLKIT_BRANCH" ]; then
-   err "PERCONA_TOOLKIT_BRANCH environment variable is not set."
-   exit 1
+   die "PERCONA_TOOLKIT_BRANCH environment variable is not set."
 fi
 
 if [ ! -d "$PERCONA_TOOLKIT_BRANCH" ]; then
-   err "Invalid PERCONA_TOOLKIT_BRANCH directory: $PERCONA_TOOLKIT_BRANCH"
-   exit 1
+   die "Invalid PERCONA_TOOLKIT_BRANCH directory: $PERCONA_TOOLKIT_BRANCH"
 fi
 
-cd $PERCONA_TOOLKIT_BRANCH/sandbox
+/tmp/$PORT/use < $PERCONA_TOOLKIT_BRANCH/sandbox/sakila.sql
+exit_status=$?
 
-exit_status=0
-
-/tmp/$PORT/use < sakila-db/sakila-schema.sql
-exit_status=$((exit_status | $?))
-
-/tmp/$PORT/use < sakila-db/sakila-data.sql
-exit_status=$((exit_status | $?))
+/tmp/$PORT/use sakila -e "ANALYZE TABLE actor, address, category, city, country, customer, film, film_actor, film_category, film_text, inventory, language, payment, rental, staff, store" >/dev/null
 
 exit $exit_status

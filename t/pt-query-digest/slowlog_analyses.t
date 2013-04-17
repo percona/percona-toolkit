@@ -9,21 +9,9 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 43;
+use Test::More;
 
 use PerconaTest;
-
-# Normally we want $trunk/common in @INC so we can "use MaakitTest" and
-# other modules path-independently.  However, mk-query-digest uses
-# HTMLProtocolParser which is a subclass of ProtocolParser, so the former
-# must "use base 'ProtocolParser'" which causes Perl to load ProtocolParser
-# from @INC.  This causes errors about ProtocolParser::new() being redefined:
-# once in mk-query-digest's copy of the module and again from the actual
-# module in $trunk/common.  We remove $trunk/common from @INC so Perl won't
-# find/load it again.\n
-shift @INC;  # our unshift (above)
-shift @INC;  # PerconaTest's unshift
-
 require "$trunk/bin/pt-query-digest";
 
 # #############################################################################
@@ -73,14 +61,6 @@ ok(
       "t/pt-query-digest/samples/slow002_distilltimeline.txt"
    ),
    'Timeline for slow002 with distill'
-);
-
-ok(
-   no_diff(
-      sub { pt_query_digest::main(@args, $sample.'slow001.txt', qw(--select Query_time)) },
-      "t/pt-query-digest/samples/slow001_select_report.txt"
-   ),
-   'Analysis for slow001 --select'
 );
 
 ok(
@@ -224,14 +204,6 @@ ok(
    '--zero-admin works'
 );
 
-ok(
-   no_diff(
-      sub { pt_query_digest::main(@args, $sample.'slow019.txt', qw(--nozero-admin)) },
-      "t/pt-query-digest/samples/slow019_report_noza.txt"
-   ),
-   '--nozero-admin works'
-);
-
 # This was fixed at some point by checking the fingerprint to see if the
 # query needed to be converted to a SELECT.
 ok(
@@ -288,24 +260,6 @@ ok(
    'Distill UNLOCK and LOCK TABLES'
 );
 
-# Test --table-access.
-ok(
-   no_diff(
-      sub { pt_query_digest::main(@args, $sample.'slow020.txt', qw(--no-report --table-access)) },
-      "t/pt-query-digest/samples/slow020_table_access.txt",
-   ),
-   'Analysis for slow020 with --table-access'
-);
-
-# This one tests that the list of tables is unique.
-ok(
-   no_diff(
-      sub { pt_query_digest::main(@args, $sample.'slow030.txt', qw(--no-report --table-access)) },
-      "t/pt-query-digest/samples/slow030_table_access.txt"
-   ),
-   'Analysis for slow030 with --table-access'
-);
-
 ok(
    no_diff(
       sub { pt_query_digest::main(@args, $sample.'slow034.txt', qw(--order-by Lock_time:sum),
@@ -337,23 +291,13 @@ is(
 );
 diag(`rm -rf /tmp/mqd-warnings.txt`);
 
-# Issue 940
 ok(
    no_diff(
       sub { pt_query_digest::main(@args, $sample.'slow042.txt',
             qw(--report-format query_report)) },
-      "t/pt-query-digest/samples/slow042.txt",
-   ),
-   'Analysis for slow042'
-);
-
-ok(
-   no_diff(
-      sub { pt_query_digest::main(@args, $sample.'slow042.txt',
-            qw(--report-format query_report --show-all host)) },
       "t/pt-query-digest/samples/slow042-show-all-host.txt",
    ),
-   'Analysis for slow042 with --show-all hosts'
+   'Analysis for slow042 (previously the --show-all test)'
 );
 
 # #############################################################################
@@ -403,7 +347,6 @@ ok(
 
 # #############################################################################
 # Issue 1124: Make mk-query-digest profile include variance-to-mean ratio
-# Issue 1054: Add Apdex scores to mk-query-digest report
 # #############################################################################
 ok(
    no_diff(
@@ -413,27 +356,44 @@ ok(
    'Analysis for slow052 (Apdex and V/M)',
 );
 
-ok(
-   no_diff(
-      sub { pt_query_digest::main(@args, qw(--apdex-t 0.1), '--report-format', 'query_report,profile',  $sample.'slow052.txt') },
-      "t/pt-query-digest/samples/slow052-apdex-t-0.1.txt",
-   ),
-   'Analysis for slow052 (Apdex T = 0.1)',
-);
-
 # #############################################################################
 # Bug 821694: pt-query-digest doesn't recognize hex InnoDB txn IDs
 # #############################################################################
 ok(
    no_diff(
-      sub { pt_query_digest::main(@args, $sample.'slow054.txt',
-         qw(--check-attributes-limit 5)) },
+      sub {
+         local $ENV{PT_QUERY_DIGEST_CHECK_ATTRIB_LIMIT} = 5;
+         pt_query_digest::main(@args, $sample.'slow054.txt')
+      },
       "t/pt-query-digest/samples/slow054.txt",
    ),
    'Analysis for slow054 (InnoDB_trx_id bug 821694)'
 );
 
 # #############################################################################
+# Bug 924950: pt-query-digest --group-by db may crash profile report
+# #############################################################################
+ok(
+   no_diff(
+      sub { pt_query_digest::main(@args, $sample.'slow055.txt',
+         qw(--group-by db)) },
+      "t/pt-query-digest/samples/slow055.txt",
+   ),
+   'Analysis for slow055 (group by blank db bug 924950)'
+);
+
+# #############################################################################
+# Bug 1082599: pt-query-digest fails to parse timestamp with no query
+# #############################################################################
+ok(
+   no_diff(
+      sub { pt_query_digest::main(@args, $sample.'slow056.txt') },
+      "t/pt-query-digest/samples/slow056.txt",
+   ),
+   'Analysis for slow056 (no query bug 1082599)'
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
-exit;
+done_testing;

@@ -13,8 +13,6 @@ use Test::More;
 
 use PerconaTest;
 use Sandbox;
-shift @INC;  # our unshift (above)
-shift @INC;  # PerconaTest's unshift
 require "$trunk/bin/pt-table-checksum";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
@@ -25,14 +23,14 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 5;
+   plan tests => 6;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
-# so we need to specify --lock-wait-timeout=3 else the tool will die.
+# so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
 my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
-my @args       = ($master_dsn, qw(--lock-wait-timeout 3), '--max-load', ''); 
+my @args       = ($master_dsn, qw(--set-vars innodb_lock_wait_timeout=3), '--max-load', ''); 
 
 $sb->create_dbs($master_dbh, ['test']);
 $sb->load_file('master', "t/lib/samples/char-chunking/ascii.sql", 'test');
@@ -75,7 +73,7 @@ is_deeply(
 $row = $master_dbh->selectrow_arrayref("select lower_boundary, upper_boundary from percona.checksums where db='test' and tbl='ascii' and chunk=10");
 is_deeply(
    $row,
-   [ 'ZESUS\!\!\!', undef ],
+   [ 'ZESUS!!!', undef ],
    "Upper oob boundary"
 );
 
@@ -83,4 +81,5 @@ is_deeply(
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

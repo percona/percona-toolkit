@@ -14,11 +14,8 @@ use Test::More;
 use Data::Dumper;
 use PerconaTest;
 use Sandbox;
-shift @INC;  # our unshift (above)
-shift @INC;  # PerconaTest's unshift
 require "$trunk/bin/pt-table-checksum";
 
-my $vp  = new VersionParser();
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
@@ -27,14 +24,14 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 8;
+   plan tests => 9;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
-# so we need to specify --lock-wait-timeout=3 else the tool will die.
+# so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
 my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
-my @args       = ($master_dsn, qw(--lock-wait-timeout 3), '--max-load', ''); 
+my @args       = ($master_dsn, qw(--set-vars innodb_lock_wait_timeout=3), '--max-load', ''); 
 
 
 # ############################################################################
@@ -132,4 +129,5 @@ test_filter(
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

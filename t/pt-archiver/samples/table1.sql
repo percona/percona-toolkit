@@ -7,7 +7,7 @@ create table table_1(
    c int not null,
    d varchar(50),
    key(b)
-) type=innodb;
+) engine=innodb;
 
 insert into table_1 values
    (1, 2,    3, 4),

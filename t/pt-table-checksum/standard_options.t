@@ -13,8 +13,6 @@ use Test::More;
 
 use PerconaTest;
 use Sandbox;
-shift @INC;  # our unshift (above)
-shift @INC;  # PerconaTest's unshift
 require "$trunk/bin/pt-table-checksum";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
@@ -29,13 +27,13 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave1';
 }
 else {
-   plan tests => 5;
+   plan tests => 6;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
-# so we need to specify --lock-wait-timeout=3 else the tool will die.
+# so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
-my @args     = (qw(--lock-wait-timeout 3 --explain --tables sakila.country),
+my @args     = (qw(--set-vars innodb_lock_wait_timeout=3 --explain --tables sakila.country),
                 '--max-load', ''); 
 my $cnf      = "/tmp/12345/my.sandbox.cnf";
 my $pid_file = "/tmp/mk-table-checksum-test.pid";
@@ -132,4 +130,5 @@ diag(`rm -rf $pid_file >/dev/null 2>&1`);
 # #############################################################################
 # Done.
 # #############################################################################
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

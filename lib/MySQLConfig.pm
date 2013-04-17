@@ -1,4 +1,4 @@
-# This program is copyright 2010-2011 Percona Inc.
+# This program is copyright 2010-2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -121,7 +121,32 @@ sub _parse_config {
       die "Unknown config source";
    }
 
+   handle_special_vars(\%config_data);
+   
    return %config_data;
+}
+
+sub handle_special_vars {
+   my ($config_data) = @_;
+   
+   if ( $config_data->{vars}->{wsrep_provider_options} ) {
+      my $vars  = $config_data->{vars};
+      my $dupes = $config_data->{duplicate_vars};
+      for my $wpo ( $vars->{wsrep_provider_options}, @{$dupes->{wsrep_provider_options} || [] } ) {
+         my %opts = $wpo =~ /(\S+)\s*=\s*(\S*)(?:;|;?$)/g;
+         while ( my ($var, $val) = each %opts ) {
+            $val =~ s/;$//;
+            if ( exists $vars->{$var} ) {
+               push @{$dupes->{$var} ||= []}, $val;
+            }
+            $vars->{$var} = $val;
+         }
+      }
+      # Delete from vars, but not from dupes, since we still want that
+      delete $vars->{wsrep_provider_options};
+   }
+
+   return;
 }
 
 sub _parse_config_output {
@@ -166,7 +191,7 @@ sub _parse_config_output {
          vars   => $vars,
       );
    }
-
+   
    return (
       format         => $format,
       vars           => $vars,
@@ -259,18 +284,28 @@ sub parse_mysqld {
    #   help                              TRUE
    #   abort-slave-event-count           0
    # So we search for that line of hypens.
-   if ( $output !~ m/^-+ -+$/mg ) {
+   #
+   # It also ends with something like
+   #
+   #   wait_timeout                      28800
+   #   
+   #   To see what values a running MySQL server is using, type
+   #   'mysqladmin variables' instead of 'mysqld --verbose --help'.
+   #
+   # So try to find it by locating a double newline, and strip it away
+   if ( $output !~ m/^-+ -+$(.+?)(?:\n\n.+)?\z/sm ) {
       PTDEBUG && _d("mysqld help output doesn't list vars and vals");
       return;
    }
 
-   # Cut off everything before the list of vars and vals.
-   my $varvals = substr($output, (pos $output) + 1, length $output);
+   # Grab the varval list.
+   my $varvals = $1;
 
    # Parse the "var  val" lines.  2nd retval is duplicates but there
    # shouldn't be any with mysqld.
    my ($config, undef) = _parse_varvals(
-      $varvals =~ m/\G^(\S+)(.*)\n/mg
+      qr/^(\S+)(.*)$/,
+      $varvals,
    );
 
    return $config, \@opt_files;
@@ -288,7 +323,8 @@ sub parse_my_print_defaults {
 
    # Parse the "--var=val" lines.
    my ($config, $dupes) = _parse_varvals(
-      map { $_ =~ m/^--([^=]+)(?:=(.*))?$/ } split("\n", $output)
+      qr/^--([^=]+)(?:=(.*))?$/,
+      $output,
    );
 
    return $config, $dupes;
@@ -309,98 +345,128 @@ sub parse_option_file {
 
    # Parse the "var=val" lines.
    my ($config, $dupes) = _parse_varvals(
-      map  { $_ =~ m/^([^=]+)(?:=(.*))?$/ }
-      grep { $_ !~ m/^\s*#/ }  # no # comment lines
-      split("\n", $mysqld_section)
+      qr/^([^=]+)(?:=(.*))?$/,
+      $mysqld_section,
    );
 
    return $config, $dupes;
 }
 
-# Parses a list of variables and their values ("varvals"), returns two
+# Called by _parse_varvals(), takes two arguments: a regex, and
+# a string to match against. The string will be split in lines,
+# and each line will be matched against the regex.
+# The regex must return to captures, although the second doesn't
+# have to match anything.
+# Returns a hashref of arrayrefs ala
+# { port => [ 12345, 12346 ], key_buffer_size => [ "16M" ] }
+sub _preprocess_varvals {
+   my ($re, $to_parse) = @_;
+
+   my %vars;
+   LINE:
+   foreach my $line ( split /\n/, $to_parse ) {
+      next LINE if $line =~ m/^\s*$/;   # no empty lines
+      next LINE if $line =~ /^\s*[#;]/; # no # or ; comment lines
+
+      if ( $line !~ $re ) {
+         PTDEBUG && _d("Line <", $line, "> didn't match $re");
+         next LINE;
+      }
+
+      my ($var, $val) = ($1, $2);
+      
+      # Variable names are usually specified like "log-bin"
+      # but in SHOW VARIABLES they're all like "log_bin".
+      $var =~ tr/-/_/;
+
+      # Remove trailing comments
+      $var =~ s/\s*#.*$//;
+
+      if ( !defined $val ) {
+         $val = '';
+      }
+      
+      # Strip leading and trailing whitespace.
+      for my $item ($var, $val) {
+         $item =~ s/^\s+//;
+         $item =~ s/\s+$//;
+      }
+
+      push @{$vars{$var} ||= []}, $val
+   }
+
+   return \%vars;
+}
+
+# Parses a string of variables and their values ("varvals"), returns two
 # hashrefs: one with normalized variable=>value, the other with duplicate
-# vars.  The varvals list should start with a var at index 0 and its value
-# at index 1 then repeat for the next var-val pair.  
+# vars.
 sub _parse_varvals {
-   my ( @varvals ) = @_;
+   my ( $vars ) = _preprocess_varvals(@_);
 
    # Config built from parsing the given varvals.
    my %config;
 
    # Discover duplicate vars.  
-   my $duplicate_var = 0;
    my %duplicates;
 
-   # Keep track if item is var or val because each needs special modifications.
-   my $var;  # current variable (e.g. datadir)
-   my $val;  # value for current variable
-   ITEM:
-   foreach my $item ( @varvals ) {
-      if ( $item ) {
-         # Strip leading and trailing whitespace.
-         $item =~ s/^\s+//;
-         $item =~ s/\s+$//;
-      }
-
-      if ( !$var ) {
-         # No var means this item is (should be) the next var in the list.
-         $var = $item;
-
-         # Variable names are usually specified like "log-bin"
-         # but in SHOW VARIABLES they're all like "log_bin".
-         $var =~ s/-/_/g;
-
+   while ( my ($var, $vals) = each %$vars ) {
+      my $val = _process_val( pop @$vals );
+      # If the variable has duplicates, then @$vals will contain
+      # the rest of the values
+      if ( @$vals && !$can_be_duplicate{$var} ) {
          # The var is a duplicate (in the bad sense, i.e. where user is
          # probably unaware that there's two different values for this var
-         # but only the last is used) if we've seen it already and it cannot
-         # be duplicated.  We don't have its value yet (next loop iter),
-         # so we set a flag to indicate that we should save the duplicate value.
-         if ( exists $config{$var} && !$can_be_duplicate{$var} ) {
-            PTDEBUG && _d("Duplicate var:", $var);
-            $duplicate_var = 1;  # flag on, save all the var's values
+         # but only the last is used).
+         PTDEBUG && _d("Duplicate var:", $var);
+         foreach my $current_val ( map { _process_val($_) } @$vals ) {
+            push @{$duplicates{$var} ||= []}, $current_val;
          }
       }
-      else {
-         # $var is set so this item should be its value.
-         my $val = $item;
-         PTDEBUG && _d("Var:", $var, "val:", $val);
 
-         # Avoid crashing on undef comparison.  Also, SHOW VARIABLES uses
-         # blank strings, not NULL/undef.
-         if ( !defined $val ) {
-            $val = '';
-         }
-         else {
-            if ( my ($num, $factor) = $val =~ m/(\d+)([KMGT])b?$/i ) {
-               # value is a size like 1k, 16M, etc.
-               my %factor_for = (
-                  k => 1_024,
-                  m => 1_048_576,
-                  g => 1_073_741_824,
-                  t => 1_099_511_627_776,
-               );
-               $val = $num * $factor_for{lc $factor};
-            }
-            elsif ( $val =~ m/No default/ ) {
-               $val = '';
-            }
-         }
+      PTDEBUG && _d("Var:", $var, "val:", $val);
 
-         if ( $duplicate_var ) {
-            # Save the var's last value before we overwrite it with this
-            # current value.
-            push @{$duplicates{$var}}, $config{$var};
-            $duplicate_var = 0;  # flag off for next var
-         }
-
-         # Save this var-val.
-         $config{$var} = $val;
-
-         $var = undef;  # next item should be a var
-      }
+      # Save this var-val.
+      $config{$var} = $val;
    }
 
    return \%config, \%duplicates;
+}
+
+my $quote_re = qr/
+   \A             # Start of value
+   (['"])         # Opening quote
+   (.*)           # Value
+   \1             # Closing quote
+   \s*(?:\#.*)?   # End of line comment
+   [\n\r]*\z      # End of value
+/x;
+sub _process_val {
+   my ($val) = @_;
+
+   if ( $val =~ $quote_re ) {
+      # If it matches the quote re, then $2 holds the value
+      $val = $2;
+   }
+   else {
+      # Otherwise, remove possible trailing comments
+      $val =~ s/\s*#.*//;
+   }
+
+   if ( my ($num, $factor) = $val =~ m/(\d+)([KMGT])b?$/i ) {
+      # value is a size like 1k, 16M, etc.
+      my %factor_for = (
+         k => 1_024,
+         m => 1_048_576,
+         g => 1_073_741_824,
+         t => 1_099_511_627_776,
+      );
+      $val = $num * $factor_for{lc $factor};
+   }
+   elsif ( $val =~ m/No default/ ) {
+      $val = '';
+   }
+   return $val;
 }
 
 # Sub: _mimic_show_variables

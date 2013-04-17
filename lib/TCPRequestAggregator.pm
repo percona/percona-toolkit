@@ -1,4 +1,4 @@
-# This program is copyright 2011 Baron Schwartz, 2011 Percona Inc.
+# This program is copyright 2011 Baron Schwartz, 2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -122,7 +122,10 @@ sub parse_event {
          if ( $self->{in_prg} ) {
             die "Error: no more lines, but in_prg = $self->{in_prg}";
          }
-         if ( $self->{t_start} < $self->{current_ts} ) {
+         if ( defined $self->{t_start}
+                && defined $self->{current_ts}
+                && $self->{t_start} < $self->{current_ts} )
+         {
             PTDEBUG && _d("Returning event based on what's been seen");
             return $self->make_event($self->{t_start}, $self->{current_ts});
          }

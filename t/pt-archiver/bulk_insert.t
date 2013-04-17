@@ -11,6 +11,8 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
+use charnames ':full';
+
 use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-archiver";
@@ -21,9 +23,6 @@ my $dbh = $sb->get_dbh_for('master');
 
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
-}
-else {
-   plan tests => 9;
 }
 
 my $output;
@@ -41,7 +40,7 @@ $dbh->do('INSERT INTO `test`.`table_5_copy` SELECT * FROM `test`.`table_5`');
 $output = output(
    sub { pt_archiver::main(qw(--no-ascend --limit 50 --bulk-insert),
       qw(--bulk-delete --where 1=1 --statistics),
-      '--source', "D=test,t=table_5,F=$cnf",
+      '--source', "L=1,D=test,t=table_5,F=$cnf",
       '--dest',   "t=table_5_dest") },
 );
 like($output, qr/SELECT 105/, 'Fetched 105 rows');
@@ -58,34 +57,73 @@ $output = `/tmp/12345/use -N -e "checksum table test.table_5_dest, test.table_5_
 my ( $chks ) = $output =~ m/dest\s+(\d+)/;
 like($output, qr/copy\s+$chks/, 'copy checksum');
 
-
 # ############################################################################
 # Issue 1260: mk-archiver --bulk-insert data loss
 # ############################################################################
 $sb->load_file('master', 't/pt-archiver/samples/bulk_regular_insert.sql');
+my $orig_rows   = $dbh->selectall_arrayref('select id from bri.t order by id');
+my $lt_8 = [ grep { $_->[0] < 8 } @$orig_rows ];
+my $ge_8 = [ grep { $_->[0] >= 8 } @$orig_rows ];
+
 $output = output(
    sub { pt_archiver::main(
        '--where', "id < 8", qw(--limit 100000 --txn-size 1000),
        qw(--why-quit --statistics --bulk-insert),
-      '--source', "D=bri,t=t,F=$cnf",
+      '--source', "L=1,D=bri,t=t,F=$cnf",
       '--dest',   "t=t_arch") },
 );
 $rows = $dbh->selectall_arrayref('select id from bri.t order by id');
 is_deeply(
    $rows,
-   [[8],[9],[10]],
+   $ge_8,
    "--bulk-insert left 3 rows (issue 1260)"
 );
 
 $rows = $dbh->selectall_arrayref('select id from bri.t_arch order by id');
 is_deeply(
    $rows,
-   [[1],[2],[3],[4],[5],[6],[7]],
+   $lt_8,
    "--bulk-insert archived 7 rows (issue 1260)"
 );
 
 # #############################################################################
+# pt-archiver wide character errors / corrupted data with UTF-8 + bulk-insert
+# https://bugs.launchpad.net/percona-toolkit/+bug/1127450
+# #############################################################################
+{
+my $utf8_dbh = $sb->get_dbh_for('master', { mysql_enable_utf8 => 1, AutoCommit => 1 });
+
+$sb->load_file('master', 't/pt-archiver/samples/bug_1127450.sql');
+my $sql = qq{INSERT INTO `bug_1127450`.`original` VALUES (1, "\N{KATAKANA LETTER NI}")};
+$utf8_dbh->do($sql);
+
+$output = output(
+   sub { pt_archiver::main(qw(--no-ascend --limit 50 --bulk-insert),
+      qw(--bulk-delete --where 1=1 --statistics --charset utf8),
+      '--source', "L=1,D=bug_1127450,t=original,F=$cnf",
+      '--dest',   "t=copy") }, stderr => 1
+);
+
+my (undef, $val) = $utf8_dbh->selectrow_array('select * from bug_1127450.copy');
+
+ok(
+   utf8::is_utf8($val),
+   "--bulk-insert preserves UTF8ness"
+);
+
+is(
+   $val,
+   "\N{KATAKANA LETTER NI}",
+   "--bulk-insert can handle utf8 characters"
+);
+
+unlike($output, qr/Wide character/, "no wide character warnings")
+
+}
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;

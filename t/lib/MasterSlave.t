@@ -9,7 +9,11 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 47;
+use Test::More;
+
+if ( !$ENV{SLOW_TESTS} ) {
+   plan skip_all => "lib/MasterSlave.t is a top 5 slowest file; set SLOW_TESTS=1 to enable it.";
+}
 
 use MasterSlave;
 use DSNParser;
@@ -20,14 +24,13 @@ use Cxn;
 use Sandbox;
 use PerconaTest;
 
-my $vp = new VersionParser();
-my $ms = new MasterSlave(VersionParser => $vp);
+use Data::Dumper;
+
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 
 my $master_dbh = $sb->get_dbh_for('master');
 my $slave_dbh  = $sb->get_dbh_for('slave1');
-     
 my $master_dsn = {
    h => '127.1',
    P => '12345',
@@ -35,25 +38,29 @@ my $master_dsn = {
    p => 'msandbox',
 };
 
-# ############################################################################
-# get_slaves() wrapper around recurse_to_slaves()
-# ############################################################################
 my $q = new Quoter;
 my $o = new OptionParser(description => 'MasterSlave');
 $o->get_specs("$trunk/bin/pt-table-checksum");
 
+my $ms = new MasterSlave(
+   OptionParser => $o,
+   DSNParser    => $dp,
+   Quoter       => $q,
+);
+
+# ############################################################################
+# get_slaves() wrapper around recurse_to_slaves()
+# ############################################################################
+
 SKIP: {
    skip "Cannot connect to sandbox master", 2 unless $master_dbh;
-   @ARGV = ();
+   local @ARGV = ();
    $o->get_opts();
-
+   
    my $slaves = $ms->get_slaves(
-      dbh          => $master_dbh,
-      dsn          => $master_dsn,
-      OptionParser => $o,
-      DSNParser    => $dp,
-      Quoter       => $q,
-      make_cxn     => sub {
+      dbh      => $master_dbh,
+      dsn      => $master_dsn,
+      make_cxn => sub {
          my $cxn = new Cxn(
             @_,
             DSNParser    => $dp,
@@ -79,7 +86,7 @@ SKIP: {
          master_id => 12345,
          source    => 'hosts',
       },
-      'get_slaves() from recurse_to_slaves()'
+      'get_slaves() from recurse_to_slaves() with a default --recursion-method'
    );
 
    my ($id) = $slaves->[0]->dbh()->selectrow_array('SELECT @@SERVER_ID');
@@ -94,16 +101,13 @@ SKIP: {
    # and ignore it.  This tests nonetheless that "processlist" isn't
    # misspelled, which would cause the sub to die.
    # https://bugs.launchpad.net/percona-toolkit/+bug/921802
-   @ARGV = ('--recursion-method', 'processlist');
+   local @ARGV = ('--recursion-method', 'processlist');
    $o->get_opts();
 
    $slaves = $ms->get_slaves(
-      OptionParser => $o,
-      DSNParser    => $dp,
-      Quoter       => $q,
-      dbh          => $master_dbh,
-      dsn          => $master_dsn,
-      make_cxn     => sub {
+      dbh      => $master_dbh,
+      dsn      => $master_dsn,
+      make_cxn => sub {
          my $cxn = new Cxn(
             @_,
             DSNParser    => $dp,
@@ -119,6 +123,88 @@ SKIP: {
       [],
       "get_slaves() by processlist"
    );
+
+   # ##########################################################################
+   # --recursion-method=none
+   # https://bugs.launchpad.net/percona-toolkit/+bug/987694
+   # ##########################################################################
+
+   # Create percona.checksums to make the privs happy.
+   diag(`/tmp/12345/use -e "create database if not exists percona"`);
+   diag(`/tmp/12345/use -e "create table if not exists percona.checksums (id int)"`);
+   
+   # Create a read-only checksum user that can't SHOW SLAVES HOSTS or much else.
+   diag(`/tmp/12345/use -u root < $trunk/t/lib/samples/ro-checksum-user.sql`);
+
+   my $ro_dbh = DBI->connect(
+      "DBI:mysql:;host=127.0.0.1;port=12345", 'ro_checksum_user', 'msandbox',
+           { PrintError => 0, RaiseError => 1 });
+   my $ro_dsn = {
+      h => '127.1',
+      P => '12345',
+      u => 'ro_checksum_user',
+      p => 'ro_checksum_user',
+   };
+
+   @ARGV = ('--recursion-method', 'hosts');
+   $o->get_opts();
+   throws_ok(
+      sub {
+         $slaves = $ms->get_slaves(
+            dbh      => $ro_dbh,
+            dsn      => $ro_dsn,
+            make_cxn => sub {
+               my $cxn = new Cxn(
+                  @_,
+                  DSNParser    => $dp,
+                  OptionParser => $o,
+               );
+               $cxn->connect();
+               return $cxn;
+            },
+         );
+      },
+      qr/Access denied/,
+      "Can't SHOW SLAVE HOSTS without privs (bug 987694)"
+   );
+
+   @ARGV = ('--recursion-method', 'none');
+   $o->get_opts();
+   $slaves = $ms->get_slaves(
+      dbh      => $ro_dbh,
+      dsn      => $ro_dsn,
+      make_cxn => sub {
+         my $cxn = new Cxn(
+            @_,
+            DSNParser    => $dp,
+            OptionParser => $o,
+         );
+         $cxn->connect();
+         return $cxn;
+      },
+   );
+   is_deeply(
+      $slaves,
+      [],
+      "No privs needed for --recursion-method=none (bug 987694)"
+   );
+
+   @ARGV = ('--recursion-method', 'none', '--recurse', '2');
+   $o->get_opts();
+   my $recursed = 0;
+   $ms->recurse_to_slaves(
+      {  dbh      => $ro_dbh,
+         dsn      => $ro_dsn,
+         callback => sub { $recursed++ },
+      });
+   is(
+      $recursed,
+      0,
+      "recurse_to_slaves() doesn't recurse if method=none"
+   );
+
+   $ro_dbh->disconnect();
+   diag(`/tmp/12345/use -u root -e "drop user 'ro_checksum_user'\@'%'"`); 
 }
 
 # #############################################################################
@@ -140,13 +226,13 @@ my %port_for = (
 );
 foreach my $port ( values %port_for ) {
    if ( -d "/tmp/$port" ) {
-      diag(`$trunk/sandbox/stop-sandbox $port >/dev/null`);
+      diag(`$trunk/sandbox/stop-sandbox $port >/dev/null 2>&1`);
    }
 }
-diag(`$trunk/sandbox/start-sandbox master 2900 >/dev/null`);
-diag(`$trunk/sandbox/start-sandbox slave 2903 2900 >/dev/null`);
-diag(`$trunk/sandbox/start-sandbox slave 2901 2900 >/dev/null`);
-diag(`$trunk/sandbox/start-sandbox slave 2902 2901 >/dev/null`);
+diag(`$trunk/sandbox/start-sandbox master 2900`);
+diag(`$trunk/sandbox/start-sandbox slave 2903 2900`);
+diag(`$trunk/sandbox/start-sandbox slave 2901 2900`);
+diag(`$trunk/sandbox/start-sandbox slave 2902 2901`);
 
 # I discovered something weird while updating this test. Above, you see that
 # slave2 is started first, then the others. Before, slave2 was started last,
@@ -191,14 +277,21 @@ my $skip_callback = sub {
       . " from $dsn->{source}");
 };
 
+@ARGV = ('--recurse', '2');
+$o->get_opts();
+
 $ms->recurse_to_slaves(
-   {  dsn_parser    => $dp,
-      dbh           => $dbh,
+   {  dbh           => $dbh,
       dsn           => $dsn,
-      recurse       => 2,
       callback      => $callback,
       skip_callback => $skip_callback,
    });
+
+is(
+   scalar(@slaves),
+   3,
+   "recurse to slaves finds all three slaves"
+) or diag(Dumper(\@slaves));
 
 is_deeply(
    $ms->get_master_dsn( $slaves[0], undef, $dp ),
@@ -246,8 +339,12 @@ $res = $ms->wait_for_master(
 ok($res->{result} >= 0, 'Wait was successful');
 
 $ms->stop_slave($slaves[0]);
-$dbh->do('drop database if exists test'); # Any stmt will do
-diag(`(sleep 1; echo "start slave" | /tmp/$port_for{slave0}/use)&`);
+$dbh->do('drop database if exists test');
+$dbh->do('create database test');
+$dbh->do('create table test.t(a int)');
+$dbh->do('insert into test.t(a) values(1)');
+$dbh->do('update test.t set a=sleep(5)');
+diag(`(/tmp/$port_for{slave0}/use -e 'start slave')&`);
 eval {
    $res = $ms->wait_for_master(
       master_status => $ms->get_master_status($dbh),
@@ -513,14 +610,14 @@ SKIP: {
    $master_dbh->disconnect();
    $slave_dbh->disconnect();
 
-   diag(`/tmp/12346/stop >/dev/null`);
-   diag(`/tmp/12345/stop >/dev/null`);
+   diag(`/tmp/12346/stop >/dev/null 2>&1`);
+   diag(`/tmp/12345/stop >/dev/null 2>&1`);
    diag(`cp /tmp/12346/my.sandbox.cnf /tmp/12346/orig.cnf`);
    diag(`cp /tmp/12345/my.sandbox.cnf /tmp/12345/orig.cnf`);
    diag(`echo "replicate-ignore-db=foo" >> /tmp/12346/my.sandbox.cnf`);
    diag(`echo "binlog-ignore-db=bar" >> /tmp/12345/my.sandbox.cnf`);
-   diag(`/tmp/12345/start >/dev/null`);
-   diag(`/tmp/12346/start >/dev/null`);
+   diag(`/tmp/12345/start >/dev/null 2>&1`);
+   diag(`/tmp/12346/start >/dev/null 2>&1`);
    
    $master_dbh = $sb->get_dbh_for('master');
    $slave_dbh  = $sb->get_dbh_for('slave1');
@@ -547,6 +644,10 @@ SKIP: {
    diag(`mv /tmp/12345/orig.cnf /tmp/12345/my.sandbox.cnf`);
    diag(`/tmp/12345/start >/dev/null`);
    diag(`/tmp/12346/start >/dev/null`);
+   diag(`/tmp/12347/use -e "STOP SLAVE; START SLAVE;" >/dev/null`);
+
+   $master_dbh = $sb->get_dbh_for('master');
+   $slave_dbh  = $sb->get_dbh_for('slave1');
 };
 
 is(
@@ -605,11 +706,38 @@ is(
    'dbh created from DSN table works'
 );
 
+# ############################################################################
+# Invalid recursion methods are caught
+# ############################################################################
+local $EVAL_ERROR;
+eval {
+   MasterSlave::check_recursion_method([qw(stuff)])
+};
+
+like(
+   $EVAL_ERROR,
+   qr/Invalid recursion method: stuff/,
+   "--recursion-method stuff causes error"
+);
+
+local $EVAL_ERROR;
+eval {
+   MasterSlave::check_recursion_method([qw(processlist stuff)])
+};
+
+like(
+   $EVAL_ERROR,
+   qr/Invalid combination of recursion methods: processlist, stuff/,
+   "--recursion-method processlist,stuff causes error",
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
-diag(`$trunk/sandbox/stop-sandbox 2903 2902 2901 2900 >/dev/null`);
+$sb->wipe_clean($master_dbh);
+diag(`$trunk/sandbox/stop-sandbox 2903 2902 2901 2900`);
 diag(`/tmp/12346/use -e "set global read_only=1"`);
 diag(`/tmp/12347/use -e "set global read_only=1"`);
-diag(`$trunk/sandbox/test-env reset`);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;
