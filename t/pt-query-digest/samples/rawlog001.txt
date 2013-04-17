@@ -1,0 +1,58 @@
+
+# Overall: 2 total, 2 unique, 0 QPS, 0x concurrency ______________________
+# Attribute          total     min     max     avg     95%  stddev  median
+# ============     ======= ======= ======= ======= ======= ======= =======
+# Exec time              0       0       0       0       0       0       0
+# Query size            70      26      44      35      44   12.73      35
+
+# Query 1: 0 QPS, 0x concurrency, ID 0xCB5621E548E5497F at byte 0 ________
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         50       1
+# Exec time      0       0       0       0       0       0       0       0
+# Query size    37      26      26      26      26      26       0      26
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS LIKE 't'\G
+#    SHOW CREATE TABLE `t`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT c FROM t WHERE id=1\G
+
+# Query 2: 0 QPS, 0x concurrency, ID 0x774B2B0B59EBAC2C at byte 27 _______
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         50       1
+# Exec time      0       0       0       0       0       0       0       0
+# Query size    62      44      44      44      44      44       0      44
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS LIKE 't2'\G
+#    SHOW CREATE TABLE `t2`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+/* Hello, world! */ SELECT * FROM t2 LIMIT 1\G
+
+# Profile
+# Rank Query ID           Response time Calls R/Call V/M   Item
+# ==== ================== ============= ===== ====== ===== =========
+#    1 0xCB5621E548E5497F  0.0000  0.0%     1 0.0000  0.00 SELECT t
+#    2 0x774B2B0B59EBAC2C  0.0000  0.0%     1 0.0000  0.00 SELECT t?

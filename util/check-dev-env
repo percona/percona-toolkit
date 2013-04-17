@@ -19,6 +19,7 @@ my @required_modules = qw(
    File::Find
    File::Spec
    File::Temp
+   File::Slurp
    Getopt::Long
    IO::File
    List::Util
@@ -32,10 +33,11 @@ my @required_modules = qw(
 # CentOS doesn't seem to have this in its repo.
 my @optional_modules = qw(
    IO::Uncompress::Inflate
+   Net::Address::IP::Local
 );
 
 my $exit_status = 0;
-my $fmt         = "%-23s %8s %s\n";
+my $fmt         = "%-23s %8s\n";
 
 # Not a module but we want to know the Perl version.
 printf $fmt, "Perl", `perl -v | perl -ne '/v([\\d\\.]+)/ && print \$1'`, "";
@@ -49,7 +51,7 @@ foreach my $module (@required_modules) {
    else {
       $version = ${"${module}::VERSION"};
    }
-   printf $fmt, $module, $version, "";
+   printf $fmt, $module, $version;
 }
 
 foreach my $module (@optional_modules) {
@@ -58,7 +60,7 @@ foreach my $module (@optional_modules) {
    if ( !$EVAL_ERROR ) { 
       $version = ${"${module}::VERSION"};
    }
-   printf $fmt, $module, $version, "MySQLProtocolParser, ProtocolParser"
+   printf $fmt, $module, $version;
 }
 
 exit $exit_status;

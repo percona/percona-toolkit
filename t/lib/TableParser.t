@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 39;
+use Test::More;
 
 use TableParser;
 use Quoter;
@@ -30,15 +30,19 @@ my $sample = "t/lib/samples/tables/";
 SKIP: {
    skip "Cannot connect to sandbox master", 2 unless $dbh;
    skip 'Sandbox master does not have the sakila database', 2
-      unless @{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
+      unless @{$dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
 
-   is(
-      $tp->get_create_table($dbh, 'sakila', 'FOO'),
-      undef,
-      "get_create_table(nonexistent table)"
+   eval { $tp->get_create_table($dbh, 'sakila', 'FOO') };
+   ok(
+      $EVAL_ERROR,
+      "get_create_table(nonexistent table) dies"
    );
 
    my $ddl = $tp->get_create_table($dbh, 'sakila', 'actor');
+   if ( $ddl =~ m/TABLE "actor"/ ) { # It's ANSI quoting, compensate
+      $ddl = $tp->ansi_to_legacy($ddl);
+      $ddl = "$ddl ENGINE=InnoDB AUTO_INCREMENT=201 DEFAULT CHARSET=utf8";
+   }
    ok(
       no_diff(
          "$ddl\n",
@@ -51,11 +55,10 @@ SKIP: {
 
    # Bug 932442: column with 2 spaces
    $sb->load_file('master', "t/pt-table-checksum/samples/2-space-col.sql");
-   PerconaTest::wait_for_table($dbh, "test.t");
    $ddl = $tp->get_create_table($dbh, qw(test t));
    like(
       $ddl,
-      qr/`a  b`\s+/,
+      qr/[`"]a  b[`"]\s+/,
       "Does not compress spaces (bug 932442)"
    );
 };
@@ -64,11 +67,6 @@ eval {
    $tp->parse( load_file('t/lib/samples/noquotes.sql') );
 };
 like($EVAL_ERROR, qr/quoting/, 'No quoting');
-
-eval {
-   $tp->parse( load_file('t/lib/samples/ansi_quotes.sql') );
-};
-like($EVAL_ERROR, qr/quoting/, 'ANSI quoting');
 
 $tbl = $tp->parse( load_file('t/lib/samples/t1.sql') );
 is_deeply(
@@ -145,6 +143,21 @@ is_deeply(
       charset        => 'latin1',
    },
    'Indexes with prefixes parse OK (fixes issue 1)'
+);
+
+is(
+   $tp->ansi_to_legacy( load_file('t/lib/samples/ansi.quoting.sql') ),
+   q{CREATE TABLE `t` (
+  `a` int(11) DEFAULT NULL,
+  `b``c` int(11) DEFAULT NULL,
+  `d"e` int(11) DEFAULT NULL,
+  `f
+g` int(11) DEFAULT NULL,
+  `h\` int(11) DEFAULT NULL,
+  `i\"` int(11) DEFAULT NULL
+)
+},
+   'ANSI quotes (with all kinds of dumb things) get translated correctly'
 );
 
 $tbl = $tp->parse( load_file('t/lib/samples/sakila.film.sql') );
@@ -623,7 +636,6 @@ SKIP: {
       { PrintError => 0, RaiseError => 1 });
    $root_dbh->do("GRANT SELECT ON test.* TO 'user'\@'\%'");
    $root_dbh->do('FLUSH PRIVILEGES');
-   $root_dbh->disconnect();
 
    my $user_dbh = DBI->connect(
       "DBI:mysql:host=127.0.0.1;port=12345", 'user', undef,
@@ -660,24 +672,6 @@ SKIP: {
       ),
       "Table does not exist and user can't see it"
    );
-   ok(
-      $tp->check_table(
-         dbh       => $dbh,
-         db        => 'test',
-         tbl       => 't',
-         all_privs => 1,
-      ),
-      "Table exists and user has full privs"
-   );
-   ok(
-      !$tp->check_table(
-         dbh       => $user_dbh,
-         db        => 'test',
-         tbl       => 't',
-         all_privs => 1,
-      ),
-      "Table exists but user doesn't have full privs"
-   );
 
    ok(
       $tp->check_table(
@@ -697,11 +691,14 @@ SKIP: {
    );
 
    $user_dbh->disconnect();
+
+   $root_dbh->do("DROP USER 'user'\@'\%'");
+   $root_dbh->disconnect();
 };
 
 SKIP: {
    skip 'Sandbox master does not have the sakila database', 2
-      unless $dbh && @{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
+      unless $dbh && @{$dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
    is_deeply(
       [$tp->find_possible_keys(
          $dbh, 'sakila', 'film_actor', $q, 'film_id > 990  and actor_id > 1')],
@@ -896,7 +893,81 @@ is_deeply(
 );
 
 # #############################################################################
+# Bug 1047335: pt-duplicate-key-checker fails when it encounters a crashed table
+# https://bugs.launchpad.net/percona-toolkit/+bug/1047335
+# #############################################################################
+
+# We need to create a new server here, otherwise the whole test suite might die
+# if the crashed table can't be dropped.
+
+my $master3_port = 2900;
+my $master_basedir = "/tmp/$master3_port";
+diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
+diag(`$trunk/sandbox/start-sandbox master $master3_port >/dev/null`);
+my $dbh3 = $sb->get_dbh_for("master3");
+
+$sb->load_file('master3', "t/lib/samples/bug_1047335_crashed_table.sql");
+
+SKIP: {
+   skip "No /dev/urandom, can't corrupt the database", 1
+      unless -e q{/dev/urandom};
+
+   my $db_dir         = "$master_basedir/data/bug_1047335";
+   my $myi            = glob("$db_dir/crashed_table.[Mm][Yy][Iy]");
+   my $frm            = glob("$db_dir/crashed_table.[Ff][Rr][Mm]");
+
+   die "Cannot find .myi file for crashed_table" unless $myi && -f $myi;
+
+   # Truncate the .myi file to corrupt it
+   truncate($myi, 4096);
+
+   # Corrupt the .frm file
+   open my $urand_fh, q{<}, "/dev/urandom"
+      or die "Cannot open /dev/urandom: $OS_ERROR";
+
+   open my $tmp_fh, q{>}, $frm
+      or die "Cannot open $frm: $OS_ERROR";
+   print { $tmp_fh } scalar(<$urand_fh>), slurp_file($frm), scalar(<$urand_fh>);
+   close $tmp_fh;
+
+   close $urand_fh;
+
+   $dbh3->do("FLUSH TABLES");
+   eval { $dbh3->do("SELECT etc FROM bug_1047335.crashed_table WHERE etc LIKE '10001' ORDER BY id ASC LIMIT 1") };
+
+   eval { $tp->get_create_table($dbh3, 'bug_1047335', 'crashed_table') };
+   ok(
+      $EVAL_ERROR,
+      "get_create_table dies if SHOW CREATE TABLE failed",
+   );
+
+   # This might fail. Doesn't matter -- stop_sandbox will just rm -rf the folder
+   eval { $dbh3->do("DROP DATABASE IF EXISTS bug_1047335") };
+
+}
+
+$dbh3->do(q{DROP DATABASE IF EXISTS bug_1047335_2});
+$dbh3->do(q{CREATE DATABASE bug_1047335_2});
+
+my $broken_frm = "$trunk/t/lib/samples/broken_tbl.frm";
+my $db_dir_2   = "$master_basedir/data/bug_1047335_2";
+
+diag(`cp $broken_frm $db_dir_2 2>&1`);
+
+$dbh3->do("FLUSH TABLES");
+
+eval { $tp->get_create_table($dbh3, 'bug_1047335_2', 'broken_tbl') };
+ok(
+   $EVAL_ERROR,
+   "get_create_table dies if SHOW CREATE TABLE failed (using broken_tbl.frm)",
+);
+
+diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh) if $dbh;
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;

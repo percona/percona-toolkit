@@ -1,9 +1,10 @@
 #!/bin/sh
 
-######################################
-# Source our alt_cmds.sh for _seq(). #
-######################################
-. lib/bash/alt_cmds.sh
+# This script is used to do a test run on a Jenkins node.  Jenkins jobs
+# set env vars based on job params (like MYSQL and TEST_CMD) then execute
+# this script which does the rest.  When this script exists, the Jenkins
+# job exists, so if some commands (like check-dev-env) fail, then the
+# Jenkins job will fail too.
 
 ##############
 # Set modes. #
@@ -17,26 +18,104 @@ set -x
 ##################################
 util/check-dev-env
 
+#########################
+# Check the system env. #
+#########################
+env
+df -h
+w
+whoami
+id
+if [ "$(id -u)" = "0" ]; then
+   echo "Cannot run as root" >&2
+   exit 1
+fi
+
 #####################################
 # Install barebones MySQL binaries. #
 #####################################
-if ! [ -d "mysql-${MYSQL}-barebones" ]; then
-   wget -q http://hackmysql.com/mysql-${MYSQL}-barebones.tar.gz
-	tar xvfz mysql-${MYSQL}-barebones.tar.gz
+
+if uname -a | grep x86_64 >/dev/null 2>&1; then
+   ARCH="64"
+else
+   ARCH="32"
+fi
+
+APP="${FORK:-"mysql"}"
+
+MYSQL_BIN_DIR="$HOME/mysql-bin"
+[ -d "$MYSQL_BIN_DIR" ] || mkdir "$MYSQL_BIN_DIR"
+
+find_mysql_base_dir() {
+   find "$MYSQL_BIN_DIR" -name "$APP-$1*" -type d | tail -n 1
+}
+
+MYSQL_BASE_DIR="$(find_mysql_base_dir $MYSQL)"
+
+REFETCH_MYSQL="${REFETCH_MYSQL:-""}"
+if [ "$MYSQL_BASE_DIR" -a "$REFETCH_MYSQL" ]; then
+   rm -rf "$MYSQL_BASE_DIR"
+   MYSQL_BASE_DIR=""
+fi
+
+if [ -z "$MYSQL_BASE_DIR" ]; then
+   (
+      cd $MYSQL_BIN_DIR
+      wget -q -O mysql.tar.gz http://hackmysql.com/barebones/$APP/$MYSQL/$ARCH \
+         || exit 1
+	   tar xvfz mysql.tar.gz
+      rm mysql.tar.gz
+   )
+   MYSQL_BASE_DIR="$(find_mysql_base_dir $MYSQL)"
+fi
+
+if [ $APP = "mysql" ]; then
+   mysqld_check="$("$MYSQL_BASE_DIR/bin/mysqld" -V)"
+elif [ $APP = "pxc" ]; then
+   ip="$(perl -MNet::Address::IP::Local -le 'print Net::Address::IP::Local->public')"
+   mysqld_check="$("$MYSQL_BASE_DIR/bin/mysqld" -V --bind-address $ip)"
+else
+   echo "Invalid FORK=$APP" >&2
+   exit 1
+fi
+
+if [ -z "$mysqld_check" ]; then
+   echo "$MYSQL_BASE_DIR/bin/mysqld does not execute" >&2
+   exit 1
 fi
 
 ##########################
 # Set required env vars. #
 ##########################
 export PERCONA_TOOLKIT_BRANCH="$PWD"
-export PERCONA_TOOLKIT_SANDBOX="$PWD/mysql-${MYSQL}-barebones"
-export PATH="$PATH:/usr/sbin:$PWD/mysql-${MYSQL}-barebones/bin"
+export PERCONA_TOOLKIT_SANDBOX="$MYSQL_BASE_DIR"
+export PATH="$PATH:/usr/sbin:/usr/local/bin:$MYSQL_BASE_DIR/bin"
+export LANG="en_US.UTF-8"
+export USER="${USER:-"jenkins"}"
+
+# ######################################### #
+# Remove conf files that's shouldn't exist. #
+# ######################################### #
+rm -rf /tmp/pt-*     || true
+rm -rf /tmp/pt_*     || true
+rm -rf /tmp/percona* || true
+rm ~/.pt-*conf*      || true
+rm ~/.my*            || true
 
 #############################
 # Check and start test env. #
 #############################
 sandbox/test-env checkconfig || exit 1
-sandbox/test-env restart     || exit 1
+sandbox/test-env stop        || exit 1
+sandbox/test-env kill        || exit 1
+if [ $APP = "mysql" ]; then
+   sandbox/test-env start || exit 1
+elif [ $APP = "pxc" ]; then
+   sandbox/test-env start cluster || exit 1
+else
+   echo "Invalid FORK=$app" >&2
+   exit 1
+fi
 
 #######################
 # Set debug env vars. #
@@ -53,19 +132,16 @@ fi
 # Run the tests. #
 ##################
 EXIT_STATUS=0
-ITERATIONS="${ITERATIONS:-1}"
-for iter in $(_seq $ITERATIONS); do
-   (
-      $TEST_CMD
-   )
-   EXIT_STATUS=$(($? | 0))
-done
+TEST_CMD="${TEST_CMD:-"prove -r t/"}"
+
+(
+   eval $TEST_CMD
+)
+EXIT_STATUS=$(($? | 0))
 
 #############
 # Clean up. #
 #############
-set +x
 sandbox/test-env stop
-set -x
 
 exit $EXIT_STATUS

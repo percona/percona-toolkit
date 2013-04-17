@@ -22,9 +22,8 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-else {
-   plan tests => 20;
-}
+
+$sb->load_file('master', 't/lib/samples/stored-objs.sql');
 
 my $output;
 my $cnf = '/tmp/12345/my.sandbox.cnf';
@@ -40,14 +39,22 @@ like(
    'Prints tables without any tests'
 );
 
-# These tests are going to be senstive to your sakila db.  Hopefully,
-# it matches mine which I tend to load fresh and not modify.  For example,
-# the next insert id for sakila.film is expected to be 1001.  If this
-# becomes an issue, I may commit my copy of the sakila db to Google Code.
+$output = `$cmd --view .`;
+like(
+   $output,
+   qr/`sakila`.`sales_by_store`/,
+   'Prints views'
+);
+unlike(
+   $output,
+   qr/`sakila`.`actor`/,
+   'Does not print non-views'
+);
+
 
 SKIP: {
    skip 'Sandbox master does not have the sakila database', 17
-      unless @{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
+      unless @{$dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
 
    # ########################################################################
    # First, test actions: --exec*, print*, etc.
@@ -104,14 +111,14 @@ SKIP: {
    );
 
    # Test --procedure.
-   $output = `$cmd sakila  --procedure min_monthly_purchases  --print`;
+   $output = `$cmd pt_find --procedure param1 --print`;
    is(
       $output,
-      "`sakila`.`PROCEDURE rewards_report`\n",
+      "`pt_find`.`PROCEDURE simpleproc`\n",
       '--procedure that matches'
    );
 
-   $output = `$cmd sakila  --procedure blah  --print`;
+   $output = `$cmd pt_find --procedure blah  --print`;
    is(
       $output,
       '',
@@ -119,14 +126,14 @@ SKIP: {
    );
 
    # Test --function.
-   $output = `$cmd sakila  --function v_out --print`;
+   $output = `$cmd pt_find --function Hello --print`;
    is(
       $output,
-      "`sakila`.`FUNCTION inventory_in_stock`\n",
+      "`pt_find`.`FUNCTION hello`\n",
       '--function that matches'
    );
 
-   $output = `$cmd sakila  --function blah  --print`;
+   $output = `$cmd pt_find --function blah  --print`;
    is(
       $output,
       '',
@@ -134,14 +141,14 @@ SKIP: {
    );
 
    # Test --trigger without --trigger-table.
-   $output = `$cmd sakila  --trigger 'UPDATE film_text' --print`;
+   $output = `$cmd pt_find --trigger 'INSERT INTO t2' --print`;
    is(
       $output,
-      "`sakila`.`UPDATE TRIGGER upd_film on film`\n",
+      "`pt_find`.`INSERT TRIGGER ins_trg on t1`\n",
       '--trigger that matches without --trigger-table'
    );
 
-   $output = `$cmd sakila  --trigger blah  --print`;
+   $output = `$cmd pt_find --trigger blah  --print`;
    is(
       $output,
       '',
@@ -149,28 +156,28 @@ SKIP: {
    );
 
    # Test --trigger with --trigger-table.
-   $output = `$cmd sakila  --trigger 'UPDATE film_text' --trigger-table film --print`;
+   $output = `$cmd pt_find --trigger 'INSERT INTO t2' --trigger-table t1 --print`;
    is(
       $output,
-      "`sakila`.`UPDATE TRIGGER upd_film on film`\n",
+      "`pt_find`.`INSERT TRIGGER ins_trg on t1`\n",
       '--trigger that matches with matching --trigger-table'
    );
 
-   $output = `$cmd sakila  --trigger blah --trigger-table film  --print`;
+   $output = `$cmd pt_find --trigger blah --trigger-table t1 --print`;
    is(
       $output,
       '',
       "--trigger that doesn't match with matching --trigger-table"
    );
 
-   $output = `$cmd sakila  --trigger 'UPDATE film_text' --trigger-table foo --print`;
+   $output = `$cmd pt_find --trigger 'INSERT INTO t2' --trigger-table foo --print`;
    is(
       $output,
       '',
       '--trigger that matches with non-matching --trigger-table'
    );
 
-   $output = `$cmd sakila  --trigger blah --trigger-table foo --print`;
+   $output = `$cmd pt_find --trigger blah --trigger-table foo --print`;
    is(
       $output,
       '',
@@ -193,6 +200,84 @@ SKIP: {
    );
 };
 
+$sb->load_file('master', "t/pt-find/samples/pseudo-sakila.sql");
+
+# Test --procedure.
+$output = `$cmd sakila_test  --procedure min_monthly_purchases  --print`;
+is(
+   $output,
+   "`sakila_test`.`PROCEDURE rewards_report`\n",
+   '--procedure that matches'
+);
+
+$output = `$cmd sakila_test  --procedure blah  --print`;
+is(
+   $output,
+   '',
+   "--procedure that doesn't match"
+);
+
+# Test --function.
+$output = `$cmd sakila_test  --function v_out --print`;
+is(
+   $output,
+   "`sakila_test`.`FUNCTION inventory_in_stock`\n",
+   '--function that matches'
+);
+
+$output = `$cmd sakila_test  --function blah  --print`;
+is(
+   $output,
+   '',
+   "--function that doesn't match"
+);
+
+# Test --trigger without --trigger-table.
+$output = `$cmd sakila_test  --trigger 'UPDATE film_text' --print`;
+is(
+   $output,
+   "`sakila_test`.`UPDATE TRIGGER upd_film on film`\n",
+   '--trigger that matches without --trigger-table'
+);
+
+$output = `$cmd sakila_test  --trigger blah  --print`;
+is(
+   $output,
+   '',
+   "--trigger that doesn't match without --trigger-table"
+);
+
+# Test --trigger with --trigger-table.
+$output = `$cmd sakila_test  --trigger 'UPDATE film_text' --trigger-table film --print`;
+is(
+   $output,
+   "`sakila_test`.`UPDATE TRIGGER upd_film on film`\n",
+   '--trigger that matches with matching --trigger-table'
+);
+
+$output = `$cmd sakila_test  --trigger blah --trigger-table film  --print`;
+is(
+   $output,
+   '',
+   "--trigger that doesn't match with matching --trigger-table"
+);
+
+$output = `$cmd sakila_test  --trigger 'UPDATE film_text' --trigger-table foo --print`;
+is(
+   $output,
+   '',
+   '--trigger that matches with non-matching --trigger-table'
+);
+
+$output = `$cmd sakila_test  --trigger blah --trigger-table foo --print`;
+is(
+   $output,
+   '',
+   "--trigger that doesn't match with non-matching --trigger-table"
+);
+
+$dbh->do("DROP DATABASE sakila_test");
+
 # #########################################################################
 # Issue 391: Add --pid option to all scripts
 # #########################################################################
@@ -210,4 +295,6 @@ like(
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;

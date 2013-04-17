@@ -22,9 +22,6 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-else {
-   plan tests => 10;
-}
 
 $sb->wipe_clean($dbh);
 
@@ -95,6 +92,58 @@ like(
 );
 
 # #############################################################################
+# pt-show-grant doesn't support column-level grants
+# https://bugs.launchpad.net/percona-toolkit/+bug/866075
+# #############################################################################
+$sb->load_file('master', 't/pt-show-grants/samples/column-grants.sql');
+diag(`/tmp/12345/use -u root -e "GRANT SELECT(DateCreated, PckPrice, PaymentStat, SANumber) ON test.t TO 'sally'\@'%'"`);
+diag(`/tmp/12345/use -u root -e "GRANT SELECT(city_id), INSERT(city) ON sakila.city TO 'sally'\@'%'"`);
+
+ok(
+   no_diff(
+      sub { pt_show_grants::main('-F', $cnf, qw(--only sally --no-header)) },
+      "t/pt-show-grants/samples/column-grants.txt",
+      stderr => 1,
+   ),
+   "Column-level grants (bug 866075)"
+);
+
+ok(
+   no_diff(
+      sub { pt_show_grants::main('-F', $cnf, qw(--only sally --no-header),
+         qw(--separate)) },
+      "t/pt-show-grants/samples/column-grants-separate.txt",
+      stderr => 1,
+   ),
+   "Column-level grants --separate (bug 866075)"
+);
+
+ok(
+   no_diff(
+      sub { pt_show_grants::main('-F', $cnf, qw(--only sally --no-header),
+         qw(--separate --revoke)) },
+      "t/pt-show-grants/samples/column-grants-separate-revoke.txt",
+      stderr => 1,
+   ),
+   "Column-level grants --separate --revoke (bug 866075)"
+);
+
+diag(`/tmp/12345/use -u root -e "GRANT SELECT ON sakila.city TO 'sally'\@'%'"`);
+
+ok(
+   no_diff(
+      sub { pt_show_grants::main('-F', $cnf, qw(--only sally --no-header)) },
+      "t/pt-show-grants/samples/column-grants-combined.txt",
+      stderr => 1,   
+   ),
+   "Column-level grants combined with table-level grants on the same table (bug 866075)"
+);
+
+diag(`/tmp/12345/use -u root -e "DROP USER 'sally'\@'%'"`);
+
+# #############################################################################
 # Done.
 # #############################################################################
-exit;
+$sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;

@@ -9,9 +9,10 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 2;
+use Test::More tests => 3;
 
 use PerconaTest;
+require "$trunk/bin/pt-query-digest";
 
 my $output;
 
@@ -30,6 +31,25 @@ like(
    'Continues on error by default'
 );
 
+# #############################################################################
+# Infinite loop in pt-query-digest if a report crashe
+# https://bugs.launchpad.net/percona-toolkit/+bug/888114
+# #############################################################################
+
+# This bug is due to the fact that --continue-on-error is on by default.
+# To reproduce the problem, we must intentionally crash pt-query-digest
+# in the right place, which means we're using another bug:a
+$output = output(
+   sub { pt_query_digest::main("$trunk/t/lib/samples/slowlogs/slow002.txt",
+      "--expected-range", "'',''") },
+   stderr => 1,
+);
+
+like(
+   $output,
+   qr/Argument \S+ isn't numeric/,
+   "Report crashed, but no infinite loop (bug 888114)"
+); 
 
 # #############################################################################
 # Done.

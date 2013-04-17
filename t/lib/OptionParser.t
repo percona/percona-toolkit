@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 151;
+use Test::More;
 
 use OptionParser;
 use DSNParser;
@@ -1727,6 +1727,7 @@ is_deeply(
       p => 'foo',
       t => undef,
       u => 'bob',
+      L => undef,
    },
    'DSN opt gets missing vals from --host, --port, etc. (issue 248)',
 );
@@ -1756,6 +1757,7 @@ is_deeply(
       p => undef,
       t => undef,
       u => 'bob',
+      L => undef,
    },
    'Vals from "defaults to" DSN take precedence over defaults (issue 248)'
 );
@@ -1978,7 +1980,7 @@ my %synop  = $o->_parse_synopsis();
 is_deeply(
    \%synop,
    {
-      usage       => "pt-archiver [OPTION...] --source DSN --where WHERE",
+      usage       => "pt-archiver [OPTIONS] --source DSN --where WHERE",
       description => "pt-archiver nibbles records from a MySQL table.  The --source and --dest arguments use DSN syntax; if COPY is yes, --dest defaults to the key's value from --source.",
    },
    "_parse_synopsis() gets usage and description"
@@ -1998,6 +2000,28 @@ like(
 );
 
 # #############################################################################
+# Bug 1039074: Tools exit 0 on error parsing options, should exit non-zero
+# #############################################################################
+
+# pt-archiver requires at least one of --dest, --file or --purge, as well as
+# --where and --source.  So specifying no options should cause errors.
+@ARGV = qw();
+$o = new OptionParser(file => "$trunk/bin/pt-archiver");
+$o->get_specs();
+$o->get_opts();
+
+my $exit_status = 0;
+($output, $exit_status) = full_output(
+   sub { $o->usage_or_errors("$trunk/bin/pt-archiver"); },
+);
+
+is(
+   $exit_status,
+   1,
+   "Non-zero exit status on error parsing options (bug 1039074)"
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 {
@@ -2010,4 +2034,6 @@ like(
    qr/Complete test coverage/,
    '_d() works'
 );
+
+done_testing;
 exit;

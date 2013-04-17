@@ -1,0 +1,12 @@
+# Time: 121123 19:56:06.0000001967
+# User@Host: root[root] @  [127.0.0.1]
+# Thread_id: 558038  Schema: test_db  Last_errno: 0  Killed: 0
+# Query_time: 0.000102  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0  Rows_affected: 0  Rows_read: 0
+SET timestamp=1111111111;
+use test_db;
+# Time: 121123 19:56:06.0000002134
+# User@Host: root[root] @  [127.0.0.1]
+# Thread_id: 558032  Schema: test_db  Last_errno: 0  Killed: 0
+# Query_time: 0.002515  Lock_time: 0.000197  Rows_sent: 0  Rows_examined: 1  Rows_affected: 1  Rows_read: 0
+SET timestamp=2222222222;
+update t set b = b + 30 where user_id=1;

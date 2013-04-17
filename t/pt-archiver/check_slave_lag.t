@@ -26,12 +26,12 @@ if ( !$dbh ) {
 elsif ( !$dbh2 ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
-else {
-   plan tests => 6;
+elsif ( $sb->is_cluster_mode ) {
+   plan skip_all => 'Not for PXC',
 }
-
-$sb->wipe_clean($dbh);
-$sb->wipe_clean($dbh2);
+elsif ( $sandbox_version ge '5.6' ) {
+   plan skip_all => 'Slave trick does not work on MySQL 5.6+';
+}
 
 my $output;
 my $sql;
@@ -41,8 +41,8 @@ my $cmd = "$trunk/bin/pt-archiver";
 # #############################################################################
 # Issue 758: Make mk-archiver wait for a slave
 # #############################################################################
+
 $sb->load_file('master', 't/pt-archiver/samples/issue_758.sql');
-PerconaTest::wait_for_table($dbh2, "issue_758.t");
 
 is_deeply(
    $dbh->selectall_arrayref('select * from issue_758.t'),
@@ -52,7 +52,7 @@ is_deeply(
 
 # Once this goes through repl, the slave will sleep causing
 # seconds behind master to increase > 0.
-system('/tmp/12345/use -e "insert into issue_758.t select sleep(2)"');
+system('/tmp/12345/use -e "insert into issue_758.t select sleep(3)"');
 
 # Slave seems to be lagging now so the first row should get purged
 # immediately, then the script should wait about 2 seconds until
@@ -99,5 +99,5 @@ is_deeply(
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
-$sb->wipe_clean($dbh2);
-exit;
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;

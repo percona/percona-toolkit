@@ -1,4 +1,4 @@
-# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Inc.
+# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -67,6 +67,11 @@ sub make_row_checksum {
    my $func       = $args{func} || uc($o->get('function'));
    my $cols       = $self->get_checksum_columns(%args);
 
+   # Skip tables that have all their columns skipped; See
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1016131
+   die "all columns are excluded by --columns or --ignore-columns"
+      unless @{$cols->{select}};
+      
    # Prepend columns to query, resulting in "col1, col2, FUNC(..col1, col2...)",
    # unless caller says not to.  The only caller that says not to is
    # make_chunk_checksum() which uses this row checksum as part of a larger
@@ -269,13 +274,13 @@ sub _get_hash_func {
    }
    my ($dbh) = @args{@required_args};
    my $o     = $self->{OptionParser};
-   my @funcs = qw(CRC32 FNV1A_64 FNV_64 MD5 SHA1);
+   my @funcs = qw(CRC32 FNV1A_64 FNV_64 MURMUR_HASH MD5 SHA1);
 
    if ( my $func = $o->get('function') ) {
       unshift @funcs, $func;
    }
 
-   my ($result, $error);
+   my $error;
    foreach my $func ( @funcs ) {
       eval {
          my $sql = "SELECT $func('test-string')";
@@ -285,11 +290,12 @@ sub _get_hash_func {
       if ( $EVAL_ERROR && $EVAL_ERROR =~ m/failed: (.*?) at \S+ line/ ) {
          $error .= qq{$func cannot be used because "$1"\n};
          PTDEBUG && _d($func, 'cannot be used because', $1);
+         next;
       }
-      PTDEBUG && _d('Chosen hash func:', $result);
+      PTDEBUG && _d('Chosen hash func:', $func);
       return $func;
    }
-   die $error || 'No hash functions (CRC32, MD5, etc.) are available';
+   die($error || 'No hash functions (CRC32, MD5, etc.) are available');
 }
 
 # Returns how wide/long, in characters, a CRC function is.
@@ -364,7 +370,7 @@ sub _optimize_xor {
 
    do { # Try different positions till sliced result equals non-sliced.
       PTDEBUG && _d('Trying slice', $opt_slice);
-      $dbh->do('SET @crc := "", @cnt := 0');
+      $dbh->do(q{SET @crc := '', @cnt := 0});
       my $slices = $self->_make_xor_slices(
          row_checksum => "\@crc := $func('a')",
          crc_width    => $crc_width,

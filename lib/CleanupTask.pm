@@ -1,4 +1,4 @@
-# This program is copyright 2011 Percona Inc.
+# This program is copyright 2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -42,6 +42,10 @@ sub new {
    my $self = {
       task => $task,
    };
+   open $self->{stdout_copy}, ">&=", *STDOUT
+      or die "Cannot dup stdout: $OS_ERROR";
+   open $self->{stderr_copy}, ">&=", *STDERR
+      or die "Cannot dup stderr: $OS_ERROR";
    PTDEBUG && _d('Created cleanup task', $task);
    return bless $self, $class;
 }
@@ -49,8 +53,19 @@ sub new {
 sub DESTROY {
    my ($self) = @_;
    my $task = $self->{task};
-   PTDEBUG && _d('Calling cleanup task', $task);
-   $task->();
+   if ( ref $task ) {
+      PTDEBUG && _d('Calling cleanup task', $task);
+      # Temporarily restore STDOUT and STDERR to what they were
+      # when the object was created
+      open local(*STDOUT), ">&=", $self->{stdout_copy}
+         if $self->{stdout_copy};
+      open local(*STDERR), ">&=", $self->{stderr_copy}
+         if $self->{stderr_copy};
+      $task->();
+   }
+   else {
+      warn "Lost cleanup task";
+   }
    return;
 }
 

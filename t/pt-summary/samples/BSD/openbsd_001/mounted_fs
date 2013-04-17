@@ -1,0 +1,4 @@
+/dev/sd0i 3.8G 17.6M 3.7G 0% /mnt/usb on /mnt/usb type msdos (local, long)
+/dev/wd0a 788M 42.5M 706M 6% / on / type ffs (local)
+/dev/wd0d 893M 406M 443M 48% /usr on /usr type ffs (local, nodev)
+/dev/wd0e 252M 87.9M 151M 37% /home on /home type ffs (local, nodev, nosuid)

@@ -28,13 +28,10 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 1;
+   plan tests => 2;
 }
 
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
 $sb->load_file('master', 't/lib/samples/issue_804.sql');
-PerconaTest::wait_for_table($slave_dbh, "issue_804.t", "accountId=100");
 
 # #############################################################################
 # Issue 804: mk-table-sync: can't nibble because index name isn't lower case?
@@ -55,4 +52,5 @@ is(
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 $sb->wipe_clean($slave_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

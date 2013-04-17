@@ -1,0 +1,67 @@
+#!/usr/bin/env perl
+
+# This program is copyright 2009-2011 Percona Inc.
+# Feedback and improvements are welcome.
+#
+# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+# systems, you can issue `man perlgpl' or `man perlartistic' to read these
+# licenses.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+# Place, Suite 330, Boston, MA  02111-1307  USA.
+
+# This program is intended to be run after loading Sakila into our test
+# database, when starting the "sandbox" MySQL instances. It will store the
+# checksums of all of the mysql and sakila tables into a magical
+# percona_test.checksums table on instance 12345. Afterwards, one can verify the
+# integrity of all of these tables by running
+# lib/Sandbox.pm::verify_test_data_integrity() which will checksum the master
+# and all of the slaves, and make sure all are OK.
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use DBI;
+
+my $dbh = DBI->connect(
+   'DBI:mysql:;host=127.0.0.1;port=12345;', 'msandbox', 'msandbox',
+   {
+      AutoCommit         => 0,
+      RaiseError         => 1,
+      PrintError         => 0,
+      ShowErrorStatement => 0,
+   });
+
+# pt-online-schema-change changes sakila tables, causing MySQL to rebuild
+# the procs and update the ts.  Tests must exec this statement again else
+# Sandbox::ok() will throw "ERROR: Tables are different on master: mysql.proc"
+$dbh->do("UPDATE mysql.proc SET created='2012-06-05 00:00:00', modified='2012-06-05 00:00:00'");
+
+my @tables_in_mysql  = grep { !/^(?:innodb|slave)_/ }
+                       grep { !/_log$/ }
+                       @{$dbh->selectcol_arrayref('SHOW TABLES FROM mysql')};
+my @tables_in_sakila = qw( actor address category city country customer
+                           film film_actor film_category film_text inventory
+                           language payment rental staff store );
+$dbh->do("CREATE DATABASE IF NOT EXISTS percona_test");
+$dbh->do("DROP TABLE IF EXISTS percona_test.checksums");
+$dbh->do("CREATE TABLE percona_test.checksums(
+          db_tbl varchar(128) not null primary key,
+          checksum int unsigned not null)");
+my $sql = "CHECKSUM TABLES "
+        . join(", ", map { "mysql.$_" } @tables_in_mysql)
+        . ", "
+        . join(", ", map { "sakila.$_" } @tables_in_sakila);
+my @checksums = @{$dbh->selectall_arrayref($sql, {Slice => {} })};
+foreach my $c ( @checksums ) {
+   $dbh->do("INSERT INTO percona_test.checksums(db_tbl, checksum)
+   VALUES('$c->{Table}', $c->{Checksum})");
+}
+$dbh->commit;

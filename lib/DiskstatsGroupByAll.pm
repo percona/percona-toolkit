@@ -1,4 +1,4 @@
-# This program is copyright 2011 Percona Inc.
+# This program is copyright 2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -26,7 +26,7 @@ package DiskstatsGroupByAll;
 use warnings;
 use strict;
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use base qw( Diskstats );
 
@@ -35,19 +35,17 @@ sub group_by {
 
    $self->clear_state() unless $self->interactive();
 
-   my $header_callback = $args{header_callback}
-                         || sub {
-                                 my ($self, @args) = @_;
-                                 $self->print_header(@args);
-                                 $self->{_print_header} = 0;
-                              };
    $self->parse_from(
       filehandle      => $args{filehandle},
       filename        => $args{filename},
       data            => $args{data},
       sample_callback => sub {
             $self->print_deltas(
-               header_callback => $header_callback,
+               header_callback => $args{header_callback} || sub {
+                  my ($self, @args) = @_;
+                  $self->print_header(@args);
+                  $self->set_force_header(undef);
+               },
                rows_callback   => $args{rows_callback},
             );
          },

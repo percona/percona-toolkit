@@ -1,0 +1,60 @@
+#!/bin/sh
+
+# This script makes a barebones tarball from a full MySQL binary tarball.
+# A full tarball is > 150M, but a barebones is usually < 40M.  The barebones
+# tarballs are fetched from hackmysql.com by sandbox/jenkins-test to create
+# MySQL sandboxes for testing.
+
+set -x
+
+tarball="$1"
+full_dir=${tarball%".tar.gz"}
+
+APP="${FORK:-"mysql"}"
+if [ $APP = "mysql" ]; then
+   version=$(echo $tarball | awk -F'-' '{print $2}')
+elif [ $APP = "pxc" ]; then
+   version=$(echo $tarball | awk -F'-' '{print $4}')
+else
+   echo "Invalid FORK=$APP" >&2
+   exit 1
+fi
+
+tar xvfz "$tarball" \
+   --wildcards \
+   "$full_dir/COPYING" \
+   "$full_dir/README" \
+   "$full_dir/share/errmsg*" \
+   "$full_dir/share/charset*" \
+   "$full_dir/share/english*" \
+   "$full_dir/share/mysql/errmsg*" \
+   "$full_dir/share/mysql/charset*" \
+   "$full_dir/share/mysql/english*" \
+   "$full_dir/bin/my_print_defaults" \
+   "$full_dir/bin/mysql" \
+   "$full_dir/bin/mysqld" \
+   "$full_dir/bin/mysqladmin" \
+   "$full_dir/bin/mysqlbinlog" \
+   "$full_dir/bin/mysqldump" \
+   "$full_dir/bin/mysqld" \
+   "$full_dir/bin/mysqld_safe" \
+   "$full_dir/bin/safe_mysqld" \
+   "$full_dir/lib/libgalera_smm.so" \
+   "$full_dir/bin/clustercheck" \
+   "$full_dir/bin/wsrep*"
+
+echo "This tarball was created from $tarball.  It contains only the files necessary for creating a Percona Toolkit sandbox test server." > $full_dir/README.barebones
+
+file_info=$(file "$full_dir/bin/mysqld")
+if file "$full_dir/bin/mysqld" | grep -q "x86_64"; then
+   arch="x86_64"
+else
+   arch="i386"
+fi
+
+bare_dir="$APP-$version-$arch-barebones"
+mv $full_dir $bare_dir
+tar cvfz $bare_dir.tar.gz $bare_dir
+rm -rf $bare_dir
+
+exit

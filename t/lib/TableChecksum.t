@@ -12,7 +12,6 @@ use English qw(-no_match_vars);
 use Test::More;
 
 use TableChecksum;
-use VersionParser;
 use TableParser;
 use Quoter;
 use DSNParser;
@@ -27,15 +26,14 @@ if ( !$dbh ) {
    plan skip_all => "Cannot connect to sandbox master";
 }
 else {
-   plan tests => 51;
+   plan tests => 52;
 }
 
 $sb->create_dbs($dbh, ['test']);
 
 my $q  = new Quoter();
 my $tp = new TableParser(Quoter => $q);
-my $vp = new VersionParser();
-my $c  = new TableChecksum(Quoter=>$q, VersionParser=>$vp);
+my $c  = new TableChecksum(Quoter=>$q);
 
 my $t;
 
@@ -47,13 +45,6 @@ throws_ok (
    qr/Invalid checksum algorithm/,
    'Algorithm=foo',
 );
-
-# Inject the VersionParser with some bogus versions.  Later I'll just pass the
-# string version number instead of a real DBH, so the version parsing will
-# return the value I want.
-foreach my $ver( qw(4.0.0 4.1.1) ) {
-   $vp->{$ver} = $vp->parse($ver);
-}
 
 is (
    $c->best_algorithm(
@@ -126,8 +117,8 @@ is (
       algorithm => 'CHECKSUM',
       dbh       => '4.0.0',
    ),
-   'ACCUM',
-   'CHECKSUM and BIT_XOR eliminated by version',
+   'CHECKSUM',
+   'Ignore version, always use CHECKSUM',
 );
 
 is (
@@ -144,8 +135,8 @@ is (
       algorithm => 'BIT_XOR',
       dbh       => '4.0.0',
    ),
-   'ACCUM',
-   'BIT_XOR eliminated by version',
+   'BIT_XOR',
+   'Ignore version, always use BIT_XOR',
 );
 
 is (
@@ -665,4 +656,5 @@ is($query,
    'Ignores specified columns');
 
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

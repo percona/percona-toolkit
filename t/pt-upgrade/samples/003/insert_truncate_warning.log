@@ -1,0 +1,4 @@
+# User@Host: root[root] @ localhost []
+# Query_time: 1  Lock_time: 0  Rows_sent: 0  Rows_examined: 1
+use test;
+INSERT INTO t (id, username) VALUES (NULL, 'long_username');

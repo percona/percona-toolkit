@@ -9,11 +9,9 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 18;
+use Test::More;
 
 use PerconaTest;
-shift @INC;  # our unshift (above)
-shift @INC;  # PerconaTest's unshift
 require "$trunk/bin/pt-table-checksum";
 
 my $output;
@@ -59,11 +57,11 @@ like(
    "Default --host=localhost"
 );
 
-like(
-   $output,
-   qr/^  --lock-wait-timeout\s+1$/m,
-   "Default --lock-wait-timeout=1"
-);
+#like(
+#   $output,
+#   qr/^  --lock-wait-timeout\s+1$/m,
+#   "Default --lock-wait-timeout=1"
+#);
 
 like(
    $output,
@@ -93,6 +91,18 @@ like(
    $output,
    qr/^  --replicate-check\s+TRUE$/m,
    "Default --replicate-check=TRUE"
+);
+
+like(
+   $output,
+   qr/^\s+--recursion-method=a/m,
+   "--recursion-method is an array"
+);
+
+like(
+   $output,
+   qr/^\s+--recursion-method\s+processlist,hosts/m,
+   "Default --recursion-method is processlist,hosts"
 );
 
 # ############################################################################
@@ -157,6 +167,17 @@ like(
 );
 
 # #############################################################################
+# --max-load
+# #############################################################################
+
+$output = `$trunk/bin/pt-table-checksum h=127.1,P=12345 --max-load 100`;
+like(
+   $output,
+   qr/Invalid --max-load/,
+   "Validates --max-load"
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
-exit;
+done_testing;

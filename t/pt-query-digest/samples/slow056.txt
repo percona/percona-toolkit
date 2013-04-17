@@ -1,0 +1,66 @@
+
+# Query 1: 0 QPS, 0x concurrency, ID 0x54E0BB9E70EAA792 at byte 596 ______
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2012-11-23 19:56:06
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         50       1
+# Exec time     96     3ms     3ms     3ms     3ms     3ms       0     3ms
+# Lock time    100   197us   197us   197us   197us   197us       0   197us
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine 100       1       1       1       1       1       0       1
+# Rows affecte 100       1       1       1       1       1       0       1
+# Rows read      0       0       0       0       0       0       0       0
+# Query size   100      39      39      39      39      39       0      39
+# String:
+# Databases    test_db
+# Hosts
+# Last errno   0
+# Users        root
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms  ################################################################
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `test_db` LIKE 't'\G
+#    SHOW CREATE TABLE `test_db`.`t`\G
+update t set b = b + 30 where user_id=1\G
+# Converted for EXPLAIN
+# EXPLAIN /*!50100 PARTITIONS*/
+select  b = b + 30 from t where  user_id=1\G
+
+# Query 2: 0 QPS, 0x concurrency, ID 0xE9800998ECF8427E at byte 0 ________
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2012-11-23 19:56:06
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         50       1
+# Exec time      3   102us   102us   102us   102us   102us       0   102us
+# Lock time      0       0       0       0       0       0       0       0
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0       0       0       0       0       0       0       0
+# Rows affecte   0       0       0       0       0       0       0       0
+# Rows read      0       0       0       0       0       0       0       0
+# Query size     0       0       0       0       0       0       0       0
+# String:
+# Databases    test_db
+# Hosts
+# Last errno   0
+# Users        root
+# Query_time distribution
+#   1us
+#  10us
+# 100us  ################################################################
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+/* No query */\G

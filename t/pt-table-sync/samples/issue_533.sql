@@ -1,8 +1,12 @@
-DROP DATABASE IF EXISTS onlythisdb;
-CREATE DATABASE onlythisdb;
-USE onlythisdb;
-CREATE TABLE t (
+DROP DATABASE IF EXISTS test;
+CREATE DATABASE test;
+CREATE TABLE test.t1 (
   i INT,
   UNIQUE INDEX (i)
 );
-INSERT INTO onlythisdb.t VALUES (1), (2), (3);
+INSERT INTO test.t1 VALUES (1), (2), (3);
+CREATE TABLE test.t2 (
+  i INT,
+  UNIQUE INDEX (i)
+);
+INSERT INTO test.t2 VALUES (1), (2), (3), (4);

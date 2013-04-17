@@ -13,21 +13,39 @@
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 
+
+set -u
+
+PTFUNCNAME=""
+PTDEBUG="${PTDEBUG:-""}"
 EXIT_STATUS=0
 
-log() {
-   TS=$(date +%F-%T | tr :- _);
+ts() {
+   TS=$(date +%F-%T | tr ':-' '_')
    echo "$TS $*"
 }
 
+info() {
+   [ ${OPT_VERBOSE:-3} -ge 3 ] && ts "$*"
+}
+
+log() {
+   [ ${OPT_VERBOSE:-3} -ge 2 ] && ts "$*"
+}
+
 warn() {
-   log "$*" >&2
+   [ ${OPT_VERBOSE:-3} -ge 1 ] && ts "$*" >&2
    EXIT_STATUS=1
 }
 
 die() {
-   warn "$*"
+   ts "$*" >&2
+   EXIT_STATUS=1
    exit 1
+}
+
+_d () {
+   [ "$PTDEBUG" ] && echo "# $PTFUNCNAME: $(ts "$*")" >&2
 }
 
 # ###########################################################################
@@ -43,6 +61,12 @@ die() {
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 
+
+
+
+
+set -u
+
 ARGV=""           # Non-option args (probably input files)
 EXT_ARGV=""       # Everything after -- (args for an external command)
 HAVE_EXT_ARGV=""  # Got --, everything else is put into EXT_ARGV
@@ -54,7 +78,7 @@ PO_DIR=""         # Directory with program option spec files
 usage() {
    local file="$1"
 
-   local usage=$(grep '^Usage: ' "$file")
+   local usage="$(grep '^Usage: ' "$file")"
    echo $usage
    echo
    echo "For more information, 'man $TOOL' or 'perldoc $file'."
@@ -104,12 +128,22 @@ usage_or_errors() {
       echo
       echo "Options and values after processing arguments:"
       echo
-      for opt in $(ls "$PO_DIR"); do
-         local varname="OPT_$(echo "$opt" | tr a-z- A-Z_)"
-         local varvalue="${!varname}"
-         printf -- "  --%-30s %s" "$opt" "${varvalue:-(No value)}"
-         echo
-      done
+      (
+         cd "$PO_DIR"
+         for opt in *; do
+            local varname="OPT_$(echo "$opt" | tr a-z- A-Z_)"
+            eval local varvalue=\$$varname
+            if ! grep -q "type:" "$PO_DIR/$opt" >/dev/null; then
+               if [ "$varvalue" -a "$varvalue" = "yes" ];
+                  then varvalue="TRUE"
+               else
+                  varvalue="FALSE"
+               fi
+            fi
+            printf -- "  --%-30s %s" "$opt" "${varvalue:-(No value)}"
+            echo
+         done
+      )
       return 1
    fi
 
@@ -138,7 +172,7 @@ parse_options() {
    OPT_ERRS=0
    OPT_VERSION=""
    OPT_HELP=""
-   PO_DIR="$TMPDIR/po"
+   PO_DIR="$PT_TMPDIR/po"
 
    if [ ! -d "$PO_DIR" ]; then
       mkdir "$PO_DIR"
@@ -169,7 +203,7 @@ parse_options() {
       _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf" "/etc/percona-toolkit/$TOOL.conf" "$HOME/.percona-toolkit.conf" "$HOME/.$TOOL.conf"
    fi
 
-   _parse_command_line "$@"
+   _parse_command_line "${@:-""}"
 }
 
 _parse_pod() {
@@ -216,7 +250,7 @@ _eval_po() {
       while read key val; do
          case "$key" in
             long)
-               opt=$(echo $val | sed 's/-/_/g' | tr [:lower:] [:upper:])
+               opt=$(echo $val | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
                ;;
             default)
                default_val="$val"
@@ -261,7 +295,7 @@ _eval_po() {
 
 _parse_config_files() {
 
-   for config_file in "$@"; do
+   for config_file in "${@:-""}"; do
       test -f "$config_file" || continue
 
       while read config_opt; do
@@ -295,7 +329,7 @@ _parse_command_line() {
    local required_arg=""
    local spec=""
 
-   for opt in "$@"; do
+   for opt in "${@:-""}"; do
       if [ "$opt" = "--" -o "$opt" = "----" ]; then
          HAVE_EXT_ARGV=1
          continue
@@ -329,12 +363,23 @@ _parse_command_line() {
 
          real_opt="$opt"
 
-         if $(echo $opt | grep '^--no-' >/dev/null); then
-            opt_is_negated=1
-            opt=$(echo $opt | sed 's/^--no-//')
+         if $(echo $opt | grep '^--no[^-]' >/dev/null); then
+            local base_opt=$(echo $opt | sed 's/^--no//')
+            if [ -f "$PT_TMPDIR/po/$base_opt" ]; then
+               opt_is_negated=1
+               opt="$base_opt"
+            else
+               opt_is_negated=""
+               opt=$(echo $opt | sed 's/^-*//')
+            fi
          else
-            opt_is_negated=""
-            opt=$(echo $opt | sed 's/^-*//')
+            if $(echo $opt | grep '^--no-' >/dev/null); then
+               opt_is_negated=1
+               opt=$(echo $opt | sed 's/^--no-//')
+            else
+               opt_is_negated=""
+               opt=$(echo $opt | sed 's/^-*//')
+            fi
          fi
 
          if $(echo $opt | grep '^[a-z-][a-z-]*=' >/dev/null 2>&1); then
@@ -342,10 +387,10 @@ _parse_command_line() {
             opt="$(echo $opt | awk -F= '{print $1}')"
          fi
 
-         if [ -f "$TMPDIR/po/$opt" ]; then
-            spec="$TMPDIR/po/$opt"
+         if [ -f "$PT_TMPDIR/po/$opt" ]; then
+            spec="$PT_TMPDIR/po/$opt"
          else
-            spec=$(grep "^short form:-$opt\$" "$TMPDIR"/po/* | cut -d ':' -f 1)
+            spec=$(grep "^short form:-$opt\$" "$PT_TMPDIR"/po/* | cut -d ':' -f 1)
             if [ -z "$spec"  ]; then
                option_error "Unknown option: $real_opt"
                continue
@@ -374,7 +419,7 @@ _parse_command_line() {
       fi
 
       if [ "$opt_is_ok" ]; then
-         opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr [:lower:] [:upper:])
+         opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
 
          if grep "^type:size" "$spec" >/dev/null; then
             val=$(size_to_bytes $val)
@@ -412,7 +457,10 @@ size_to_bytes() {
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 
-TMPDIR=""
+
+set -u
+
+PT_TMPDIR=""
 
 mk_tmpdir() {
    local dir="${1:-""}"
@@ -421,20 +469,20 @@ mk_tmpdir() {
       if [ ! -d "$dir" ]; then
          mkdir "$dir" || die "Cannot make tmpdir $dir"
       fi
-      TMPDIR="$dir"
+      PT_TMPDIR="$dir"
    else
       local tool="${0##*/}"
       local pid="$$"
-      TMPDIR=`mktemp -d /tmp/${tool}.${pid}.XXXXX` \
+      PT_TMPDIR=`mktemp -d -t "${tool}.${pid}.XXXXXX"` \
          || die "Cannot make secure tmpdir"
    fi
 }
 
 rm_tmpdir() {
-   if [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ]; then
-      rm -rf "$TMPDIR"
+   if [ -n "$PT_TMPDIR" ] && [ -d "$PT_TMPDIR" ]; then
+      rm -rf "$PT_TMPDIR"
    fi
-   TMPDIR=""
+   PT_TMPDIR=""
 }
 
 # ###########################################################################
@@ -449,6 +497,9 @@ rm_tmpdir() {
 #   t/lib/bash/alt_cmds.sh
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+
+
+set -u
 
 _seq() {
    local i="$1"
@@ -469,8 +520,16 @@ _lsof() {
    fi
 }
 
+
+
 _which() {
-   [ -x /usr/bin/which ] && /usr/bin/which "$1" 2>/dev/null | awk '{print $1}'
+   if [ -x /usr/bin/which ]; then
+      /usr/bin/which "$1" 2>/dev/null | awk '{print $1}'
+   elif which which 1>/dev/null 2>&1; then
+      which "$1" 2>/dev/null | awk '{print $1}'
+   else
+      echo "$1"
+   fi
 }
 
 # ###########################################################################
@@ -490,7 +549,7 @@ TOOL="pt-ioprofile"
 # pid function fd_no size timing filename
 # The arguments are the files to summarize.
 tabulate_strace() {
-   cat > $TMPDIR/tabulate_strace.awk <<EOF
+   cat > $PT_TMPDIR/tabulate_strace.awk <<EOF
    BEGIN {
       # These are function names, or partial function names, that we care about.
       # Later we will ignore any function whose name doesn't look like these.
@@ -587,7 +646,7 @@ tabulate_strace() {
       }
    }
 EOF
-   awk -f $TMPDIR/tabulate_strace.awk "$@"
+   awk -f $PT_TMPDIR/tabulate_strace.awk "$@"
 }
 
 # Takes as input the output from tabulate_strace.  Arguments are just a subset
@@ -599,7 +658,7 @@ summarize_strace() {
    local group_by="$3"
    local file="$4"
 
-   cat > "$TMPDIR/summarize_strace.awk" <<EOF
+   cat > "$PT_TMPDIR/summarize_strace.awk" <<EOF
    BEGIN {
       # These are function names, or partial function names, that we care about.
       # Later we will ignore any function whose name doesn't look like these.
@@ -710,25 +769,32 @@ summarize_strace() {
    }
 EOF
 
-   awk -f $TMPDIR/summarize_strace.awk "$file" > $TMPDIR/summarized_samples
+   awk -f $PT_TMPDIR/summarize_strace.awk "$file" > $PT_TMPDIR/summarized_samples
    if [ "$group_by" != "all" ]; then
-      head -n1 $TMPDIR/summarized_samples
-      tail -n +2 $TMPDIR/summarized_samples | sort -rn -k1
+      head -n1 $PT_TMPDIR/summarized_samples
+      tail -n +2 $PT_TMPDIR/summarized_samples | sort -rn -k1
    else
-      grep TOTAL $TMPDIR/summarized_samples
-      grep -v TOTAL $TMPDIR/summarized_samples | sort -rn -k1
+      grep TOTAL $PT_TMPDIR/summarized_samples
+      grep -v TOTAL $PT_TMPDIR/summarized_samples | sort -rn -k1
    fi
 }
 
+sigtrap() {
+   warn "Caught signal, forcing exit"
+   rm_tmpdir
+   exit $EXIT_STATUS
+}
+
 main() {
+   trap sigtrap HUP INT TERM
    if [ $# -gt 0 ]; then
       # Summarize the files the user passed in.
-      tabulate_strace "$@" > $TMPDIR/tabulated_samples
+      tabulate_strace "$@" > $PT_TMPDIR/tabulated_samples
    else
       # There's no file to analyze, so we'll make one.
       if which strace > /dev/null 2>&1; then
 
-         local samples=${OPT_SAVE_SAMPLES:-"$TMPDIR/samples"}
+         local samples=${OPT_SAVE_SAMPLES:-"$PT_TMPDIR/samples"}
 
          # Get the PID of the process to profile, unless the user
          # gave us it explicitly with --profile-pid.
@@ -745,13 +811,15 @@ main() {
             _lsof "$proc_pid" > "$samples" 2>&1
             if [ "$?" -ne "0" ]; then
                echo "Error: could not execute lsof, error code $?"
-               exit 1
+               EXIT_STATUS=1
+               return 1
             fi
 
             strace -T -s 0 -f -p $proc_pid >> "$samples" 2>&1 &
             if [ "$?" -ne "0" ]; then
                echo "Error: could not execute strace, error code $?"
-               exit 1
+               EXIT_STATUS=1
+               return 1
             fi
             strace_pid=$!
             # sleep one second then check to make sure the strace is
@@ -761,7 +829,8 @@ main() {
             if [ "$?" -ne "0" ]; then
                echo "Cannot find strace process" >&2
                tail "$samples" >&2
-               exit 1
+               EXIT_STATUS=1
+               return 1
             fi 
             # sleep for interval -1, since we did a one second sleep
             # before checking for the PID of strace
@@ -778,14 +847,16 @@ main() {
             kill -s 18 $proc_pid
 
             # Summarize the output we just generated.
-            tabulate_strace "$samples" > $TMPDIR/tabulated_samples
+            tabulate_strace "$samples" > $PT_TMPDIR/tabulated_samples
          else
             echo "Cannot determine PID of $OPT_PROFILE_PROCESS process" >&2
-            exit 1
+            EXIT_STATUS=1
+            return 1
          fi
       else
          echo "strace is not in PATH" >&2
-         exit 1
+         EXIT_STATUS=1
+         return 1
       fi
    fi
 
@@ -793,13 +864,13 @@ main() {
       $OPT_AGGREGATE \
       $OPT_CELL      \
       $OPT_GROUP_BY  \
-      "$TMPDIR/tabulated_samples"
+      "$PT_TMPDIR/tabulated_samples"
 }
 
 # Execute the program if it was not included from another file.
 # This makes it possible to include without executing, and thus test.
 if    [ "${0##*/}" = "$TOOL" ] \
-   || [ "${0##*/}" = "bash" -a "$_" = "$0" ]; then
+   || [ "${0##*/}" = "bash" -a "${_:-""}" = "$0" ]; then
 
    # Parse command line options.  We must do this first so we can
    # see if --daemonize was specified.
@@ -807,7 +878,10 @@ if    [ "${0##*/}" = "$TOOL" ] \
    parse_options "$0" "$@"
    usage_or_errors "$0"
    po_status=$?
+   rm_tmpdir
    if [ $po_status -eq 0 ]; then
+      # Make a secure tmpdir.
+      mk_tmpdir
       # XXX
       # TODO: This should be quoted but because the way parse_options()
       # currently works, it flattens files in $@ (i.e. given on the cmd
@@ -815,10 +889,11 @@ if    [ "${0##*/}" = "$TOOL" ] \
       # functions will see 1 file named "file1 file2" instead of "file1"
       # "file2".
       main $ARGV
+      # Clean up.
+      rm_tmpdir
    else
       [ $OPT_ERRS -gt 0 ] && EXIT_STATUS=1
    fi
-   rm_tmpdir
    exit $EXIT_STATUS
 fi
 
@@ -841,29 +916,24 @@ the result. If you specify a FILE, then step 1) is not performed.
 
 =head1 RISKS
 
-The following section is included to inform users about the potential risks,
-whether known or unknown, of using this tool.  The two main categories of risks
-are those created by the nature of the tool (e.g. read-only tools vs. read-write
-tools) and those created by bugs.
+B<WARNING>: pt-ioprofile freezes the server and may crash the process, or
+make it perform badly after detaching, or leave it in a sleeping state!
+Before using this tool, please:
 
-pt-ioprofile is a read-only tool, so your data is not at risk. However, it works
-by attaching C<strace> to the process using C<ptrace()>, which will make it run
-very slowly until C<strace> detaches.  In addition to freezing the server, there
-is also some risk of the process crashing or performing badly after C<strace>
-detaches from it, or indeed of C<strace> not detaching cleanly and leaving the
-process in a sleeping state.  As a result, this should be considered an
-intrusive tool, and should not be used on production servers unless you are
-comfortable with that.
+=over
 
-At the time of this release, we know of no bugs that could cause serious harm
-to users.
+=item * Read the tool's documentation
 
-The authoritative source for updated information is always the online issue
-tracking system.  Issues that affect this tool will be marked as such.  You can
-see a list of such issues at the following URL:
-L<http://www.percona.com/bugs/pt-ioprofile>.
+=item * Review the tool's known L<"BUGS">
 
-See also L<"BUGS"> for more information on filing bugs and getting help.
+=item * Test the tool on a non-production server
+
+=item * Backup your production server and verify the backups
+
+pt-ioprofile should be considered an intrusive tool, and should not be used
+on production servers unless you understand and accept the risks.
+
+=back
 
 =head1 DESCRIPTION
 
@@ -877,6 +947,14 @@ process for 30 seconds.  The output is like:
     0.000150   0.000029   0.000068   0.000038   0.000015 /tmp/ibBE5opS
 
 You probably need to run this tool as root.
+
+pt-ioprofile works by attaching C<strace> to the process using C<ptrace()>,
+which will make it run very slowly until C<strace> detaches.  In addition to
+freezing the server, there is some risk of the process crashing or performing
+badly after C<strace> detaches from it, or of C<strace> not detaching cleanly
+and leaving the process in a sleeping state.  As a result, this should be
+considered an intrusive tool, and should not be used on production servers
+unless you are comfortable with that.
 
 =head1 OPTIONS
 
@@ -1010,16 +1088,16 @@ Baron Schwartz
 =head1 ABOUT PERCONA TOOLKIT
 
 This tool is part of Percona Toolkit, a collection of advanced command-line
-tools developed by Percona for MySQL support and consulting.  Percona Toolkit
-was forked from two projects in June, 2011: Maatkit and Aspersa.  Those
-projects were created by Baron Schwartz and developed primarily by him and
-Daniel Nichter, both of whom are employed by Percona.  Visit
-L<http://www.percona.com/software/> for more software developed by Percona.
+tools for MySQL developed by Percona.  Percona Toolkit was forked from two
+projects in June, 2011: Maatkit and Aspersa.  Those projects were created by
+Baron Schwartz and primarily developed by him and Daniel Nichter.  Visit
+L<http://www.percona.com/software/> to learn about other free, open-source
+software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2010-2011 Baron Schwartz, 2011-2012 Percona Inc.
-Feedback and improvements are welcome.
+This program is copyright 2011-2013 Percona Ireland Ltd,
+2010-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
@@ -1037,7 +1115,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-ioprofile 2.0.4
+pt-ioprofile 2.2.1
 
 =cut
 

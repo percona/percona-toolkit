@@ -1,4 +1,4 @@
-# This program is copyright 2009-2011 Percona Inc.
+# This program is copyright 2009-2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -55,12 +55,10 @@ my $tbl_name     = qr{
 #   OptionParser - <OptionParser> object.  All filters are gotten from this
 #                  obj: --databases, --tables, etc.
 #   Quoter       - <Quoter> object.
+#   TableParser  - <TableParser> object get tbl_struct.
 #
 # Optional Arguments:
 #   Schema          - <Schema> object to initialize while iterating.
-#   TableParser     - <TableParser> object get tbl_struct.
-#   keep_ddl        - Keep SHOW CREATE TABLE (default false).
-#   keep_tbl_status - Keep SHOW TABLE STATUS (default false).
 #   resume          - Skip tables so first call to <next()> returns
 #                     this "db.table".
 #
@@ -68,7 +66,7 @@ my $tbl_name     = qr{
 #   SchemaIterator object
 sub new {
    my ( $class, %args ) = @_;
-   my @required_args = qw(OptionParser Quoter);
+   my @required_args = qw(OptionParser TableParser Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
@@ -205,11 +203,16 @@ sub next {
 
    if ( !$self->{initialized} ) {
       $self->{initialized} = 1;
-      if ( $self->{resume}->{tbl}
-           && !$self->table_is_allowed(@{$self->{resume}}{qw(db tbl)}) ) {
-         PTDEBUG && _d('Will resume after',
-            join('.', @{$self->{resume}}{qw(db tbl)}));
-         $self->{resume}->{after} = 1;
+      if ( $self->{resume}->{tbl} ) {
+         if ( !$self->table_is_allowed(@{$self->{resume}}{qw(db tbl)}) ) {
+            PTDEBUG && _d('Will resume after',
+               join('.', @{$self->{resume}}{qw(db tbl)}));
+            $self->{resume}->{after}->{tbl} = 1;
+         }
+         if ( !$self->database_is_allowed($self->{resume}->{db}) ) {
+            PTDEBUG && _d('Will resume after', $self->{resume}->{db});
+            $self->{resume}->{after}->{db}  = 1;
+         }
       }
    }
 
@@ -222,18 +225,11 @@ sub next {
    }
 
    if ( $schema_obj ) {
-      if ( $schema_obj->{ddl} && $self->{TableParser} ) {
-         $schema_obj->{tbl_struct}
-            = $self->{TableParser}->parse($schema_obj->{ddl});
-      }
-
-      delete $schema_obj->{ddl} unless $self->{keep_ddl};
-      delete $schema_obj->{tbl_status} unless $self->{keep_tbl_status};
-
       if ( my $schema = $self->{Schema} ) {
          $schema->add_schema_object($schema_obj);
       }
-      PTDEBUG && _d('Next schema object:', $schema_obj->{db}, $schema_obj->{tbl});
+      PTDEBUG && _d('Next schema object:',
+         $schema_obj->{db}, $schema_obj->{tbl});
    }
 
    return $schema_obj;
@@ -295,14 +291,14 @@ sub _iterate_files {
                next CHUNK;
             }
             $ddl =~ s/ \*\/;\Z/;/;  # remove end of version comment
-
-            my ($engine) = $ddl =~ m/\).*?(?:ENGINE|TYPE)=(\w+)/;   
-
-            if ( !$engine || $self->engine_is_allowed($engine) ) {
+            my $tbl_struct = $self->{TableParser}->parse($ddl);
+            if ( $self->engine_is_allowed($tbl_struct->{engine}) ) {
                return {
-                  db  => $self->{db},
-                  tbl => $tbl,
-                  ddl => $ddl,
+                  db         => $self->{db},
+                  tbl        => $tbl,
+                  name       => $self->{Quoter}->quote($self->{db}, $tbl),
+                  ddl        => $ddl,
+                  tbl_struct => $tbl_struct,
                };
             }
          }
@@ -321,6 +317,7 @@ sub _iterate_files {
 sub _iterate_dbh {
    my ( $self ) = @_;
    my $q   = $self->{Quoter};
+   my $tp  = $self->{TableParser};
    my $dbh = $self->{dbh};
    PTDEBUG && _d('Getting next schema object from dbh', $dbh);
 
@@ -328,16 +325,17 @@ sub _iterate_dbh {
       # This happens once, the first time we're called.
       my $sql = 'SHOW DATABASES';
       PTDEBUG && _d($sql);
-      my @dbs = grep { $self->database_is_allowed($_) }
-                @{$dbh->selectcol_arrayref($sql)};
+      my @dbs = grep {
+                  $self->_resume_from_database($_)
+                  &&
+                  $self->database_is_allowed($_)
+                } @{$dbh->selectcol_arrayref($sql)};
       PTDEBUG && _d('Found', scalar @dbs, 'databases');
       $self->{dbs} = \@dbs;
    }
 
    if ( !$self->{db} ) {
-      do {
-         $self->{db} = shift @{$self->{dbs}};
-      } until $self->_resume_from_database($self->{db});
+      $self->{db} = shift @{$self->{dbs}};
       PTDEBUG && _d('Next database:', $self->{db});
       return unless $self->{db};
    }
@@ -360,33 +358,29 @@ sub _iterate_dbh {
    }
 
    while ( my $tbl = shift @{$self->{tbls}} ) {
-      # If there are engine filters, we have to get the table status.
-      # Else, get it if the user wants to keep it since they'll expect
-      # it to be available.
-      my $tbl_status;
-      if ( $self->{filters}->{'engines'}
-           || $self->{filters}->{'ignore-engines'}
-           || $self->{keep_tbl_status} )
-      {
-         my $sql = "SHOW TABLE STATUS FROM " . $q->quote($self->{db})
-                 . " LIKE \'$tbl\'";
-         PTDEBUG && _d($sql);
-         $tbl_status = $dbh->selectrow_hashref($sql);
-         PTDEBUG && _d(Dumper($tbl_status));
-      }
-
-      if ( !$tbl_status
-           || $self->engine_is_allowed($tbl_status->{engine}) ) {
-         my $ddl;
-         if ( my $tp = $self->{TableParser} ) {
-            $ddl = $tp->get_create_table($dbh, $self->{db}, $tbl);
+      my $ddl        = eval { $tp->get_create_table($dbh, $self->{db}, $tbl) };
+      if ( my $e = $EVAL_ERROR ) {
+         my $table_name = "$self->{db}.$tbl";
+         # SHOW CREATE TABLE failed. This is a bit puzzling;
+         # maybe the table got dropped, or crashed. Not much we can
+         # do about it; If the table is missing, just PTDEBUG it, but
+         # otherwise, warn with the error.
+         if ( $e =~ /\QTable '$table_name' doesn't exist/ ) {
+            PTDEBUG && _d("Skipping $table_name because it no longer exists");
          }
-
+         else {
+            warn "Skipping $table_name because SHOW CREATE TABLE failed: $e";
+         }
+         next;
+      }
+      my $tbl_struct = $tp->parse($ddl);
+      if ( $self->engine_is_allowed($tbl_struct->{engine}) ) {
          return {
             db         => $self->{db},
             tbl        => $tbl,
+            name       => $q->quote($self->{db}, $tbl),
             ddl        => $ddl,
-            tbl_status => $tbl_status,
+            tbl_struct => $tbl_struct,
          };
       }
    }
@@ -450,9 +444,15 @@ sub table_is_allowed {
    my $filter = $self->{filters};
 
    # Always auto-skip these pseudo tables.
-   if ( $db eq 'mysql' && ($tbl eq 'general_log' || $tbl eq 'slow_log') ) {
-      return 0;
-   }
+   return 0 if $db eq 'mysql' && $tbl =~ m/^(?:
+       general_log
+      |slow_log
+      |innodb_index_stats
+      |innodb_table_stats
+      |slave_master_info
+      |slave_relay_log_info
+      |slave_worker_info
+   )$/x;
 
    if ( $filter->{'ignore-tables'}->{$tbl}
         && ($filter->{'ignore-tables'}->{$tbl} eq '*'
@@ -502,7 +502,15 @@ sub table_is_allowed {
 
 sub engine_is_allowed {
    my ( $self, $engine ) = @_;
-   die "I need an engine argument" unless $engine;
+
+   if ( !$engine ) {
+      # This normally doesn't happen, but it can if the user
+      # is iterating a file of their own table dumps, i.e. that
+      # weren't created by mysqldump, so there's no ENGINE=
+      # on the CREATE TABLE.
+      PTDEBUG && _d('No engine specified; allowing the table');
+      return 1;
+   }
 
    $engine = lc $engine;
 
@@ -527,11 +535,19 @@ sub _resume_from_database {
 
    # "Resume" from any db if we're not, in fact, resuming.
    return 1 unless $self->{resume}->{db};
-
    if ( $db eq $self->{resume}->{db} ) {
-      PTDEBUG && _d('At resume db', $db);
-      delete $self->{resume}->{db};
-      return 1;
+      if ( !$self->{resume}->{after}->{db} ) {
+         PTDEBUG && _d('Resuming from db', $db);
+         delete $self->{resume}->{db};
+         return 1;
+      }
+      else {
+         PTDEBUG && _d('Resuming after db', $db);
+         # If we're not resuming from the resume db, then
+         # we aren't resuming from the resume table either.
+         delete $self->{resume}->{db};
+         delete $self->{resume}->{tbl};
+      }
    }
 
    return 0;
@@ -544,7 +560,7 @@ sub _resume_from_table {
    return 1 unless $self->{resume}->{tbl};
 
    if ( $tbl eq $self->{resume}->{tbl} ) {
-      if ( !$self->{resume}->{after} ) {
+      if ( !$self->{resume}->{after}->{tbl} ) {
          PTDEBUG && _d('Resuming from table', $tbl);
          delete $self->{resume}->{tbl};
          return 1;

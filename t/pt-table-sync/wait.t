@@ -27,7 +27,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 4;
+   plan tests => 5;
 }
 
 my $output;
@@ -61,15 +61,13 @@ if ( !$pid ) {
 }
 
 # parent
-sleep 4;  # give time slave to become lagged
-
-my $lag = $slave_dbh->selectrow_hashref("show slave status");
-
-if ( !$lag->{seconds_behind_master} ) {
+PerconaTest::wait_until(sub {
+   $slave_dbh->selectrow_hashref("show slave status")->{seconds_behind_master}
+}) or do {
    kill 15, $pid;
    waitpid ($pid, 0);
    die "Slave did not lag";
-}
+};
 
 my $start = time;
 
@@ -93,14 +91,13 @@ cmp_ok(
 );
 
 # Repeat the test with --wait 0 to test that the sync happens without delay.
-
-$lag = $slave_dbh->selectrow_hashref("show slave status");
-
-if ( !$lag->{seconds_behind_master} ) {
+PerconaTest::wait_until(sub {
+   $slave_dbh->selectrow_hashref("show slave status")->{seconds_behind_master}
+}) or do {
    kill 15, $pid;
    waitpid ($pid, 0);
-   die "Slave is not lagged";
-}
+   die "Slave did not lag";
+};
 
 $start = time;
 
@@ -129,4 +126,5 @@ cmp_ok(
 kill 15, $pid;
 waitpid ($pid, 0);
 $sb->wipe_clean($master_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

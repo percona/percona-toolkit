@@ -1,4 +1,4 @@
-# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Inc.
+# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -182,7 +182,7 @@ sub set_checksum_queries {
 
 sub prepare_sync_cycle {
    my ( $self, $host ) = @_;
-   my $sql = 'SET @crc := "", @cnt := 0';
+   my $sql = q{SET @crc := '', @cnt := 0};
    PTDEBUG && _d($sql);
    $host->{dbh}->do($sql);
    return;
@@ -286,7 +286,7 @@ sub __get_boundaries {
       # any lower boundary the table rows should be > the lower boundary.)
       my $i = 0;
       $ub   = $s->{boundaries}->{'<='};
-      $ub   =~ s/\?/$q->quote_val($row->{$s->{scols}->[$i]}, $self->{tbl_struct}->{is_numeric}->{$s->{scols}->[$i++]} || 0)/eg;
+      $ub   =~ s/\?/$q->quote_val($row->{$s->{scols}->[$i++]})/eg;
    }
    else {
       # This usually happens at the end of the table, after we've nibbled
@@ -331,7 +331,7 @@ sub __make_boundary_sql {
       my $tmp = $self->{cached_row};
       my $i   = 0;
       $lb     = $s->{boundaries}->{'>'};
-      $lb     =~ s/\?/$q->quote_val($tmp->{$s->{scols}->[$i]}, $self->{tbl_struct}->{is_numeric}->{$s->{scols}->[$i++]} || 0)/eg;
+      $lb     =~ s/\?/$q->quote_val($tmp->{$s->{scols}->[$i++]})/eg;
       $sql   .= $args{where} ? " AND $lb" : " WHERE $lb";
    }
    $sql .= " ORDER BY " . join(',', map { $q->quote($_) } @{$self->{key_cols}})

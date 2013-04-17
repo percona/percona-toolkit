@@ -1,0 +1,112 @@
+#!/usr/bin/env perl
+use 5.010; # for \K
+use strict;
+use warnings;
+use English qw(-no_match_vars);
+
+use IO::File;
+
+use File::Basename qw(basename);
+use Pod::POM::View::Restructured;
+
+my $input_file = shift @ARGV or die "Need an input file";
+
+my $nofix = scalar @ARGV;
+
+my $tool = basename($input_file);
+
+open my $in_fh, q{<:encoding(UTF-8)}, $input_file
+   or die "Cannot open $input_file: $!";
+
+open my $out_fh, q{>}, \my $out;
+
+my $conv   = Pod::POM::View::Restructured->new();
+my $output = $conv->convert_file($in_fh, undef, $out_fh, { link => \&format_links });
+
+close $in_fh;
+close $out_fh;
+
+if (!defined($output)) {
+   die "Failed to convert!";
+}
+
+my $header =
+      ".. program:: $tool\n\n" .
+      ('=' x (length($tool) + 11)) . "\n" .
+      ":program:`$tool`\n" .
+      ('=' x (length($tool) + 11)) . "\n\n";
+
+open my $in, q{<:encoding(UTF-8)}, \$out;
+
+local $INPUT_RECORD_SEPARATOR = '';
+
+my $in_code_block = 0;
+my $section       = '';
+
+my $fixed_output = '';
+
+while (my $para = <$in>) {
+   if ( $nofix ) {
+      $fixed_output .= $para;
+      next;
+   }
+
+   next if $para =~ m/^\.\. highlight:: perl/;
+
+   $in_code_block = $para =~ m/^\s{2,}/ ? 1 : 0;
+
+   if ($para =~ m/^\*{2,}\n([\w\s,-]+)\n\*{2,}$/m) {
+      $fixed_output .= "$1\n" .
+                       ('=' x length $1) .
+                       "\n\n";
+      $section = $1;
+   }
+   elsif ($para =~ m/^Usage: /) {
+      $para =~ s/^Usage: //;
+      $fixed_output .= "Usage\n"   .
+                       "-----\n\n" .
+                       "::\n\n"    .
+                       "  $para";
+   }
+   elsif ($para =~ m/^Examples:/) {
+      $fixed_output .= "Examples\n" .
+                       "--------\n\n";
+   }
+   else {
+      $para =~ s/\.\. code-block:: perl/.. code-block:: bash/mg;
+      $para =~ s/`+$tool`+/$tool/g;
+      $para =~ s/([^\/])$tool/$1:program:`$tool`/g unless $in_code_block;
+      $para =~ s/^$tool/:program:`$tool`/gm;
+      $para =~ s/^--(\S+)$/.. option:: --$1/mg;
+      $para =~ s/"--(\S+)"/:option:`--$1`/g;
+      $para =~ s/\\\*/*/g;
+      $para =~ s/\\ //g;
+      $para =~ s/^[ ]+$//mg;
+      $para =~ s/^\n\n/\n/mg;
+      $para =~ s/code-block:: bash(\s+)CREATE/code-block:: sql$1CREATE/sg;
+      $para =~ s/\*\*:program/** :program/g;
+      if ( ($section || '') eq 'OUTPUT' ) {
+         $para =~ s/^([A-Z_]+)\n\n/$1\n/;
+      }
+      $fixed_output .= $para;
+   }
+}
+
+close $in;
+ 
+if ($nofix) {
+   print $fixed_output;
+}
+else {
+   print $header . $fixed_output;
+}
+
+sub format_links {
+   if ( my ($label, $url) = split /\|/, $_[0] ) {
+      return $url, $label;
+   }
+   else {
+      local $conv->{callbacks}{link};
+      return $conv->view_seq_link(@_)
+   }
+}

@@ -1,0 +1,42 @@
+[client]
+user     = msandbox
+password = msandbox
+port     = 12345
+socket   = /tmp/12345/mysql_sandbox12345.sock
+
+[mysqld]
+port                       = 12345
+socket                     = /tmp/12345/mysql_sandbox12345.sock
+pid-file                   = /tmp/12345/data/mysql_sandbox12345.pid
+basedir                    = /home/hugmeir/mysql/Percona-XtraDB-Cluster-5.5.28-23.7.373.Linux.x86_64/
+datadir                    = /tmp/12345/data
+key_buffer_size            = 16M
+innodb_buffer_pool_size    = 16M
+innodb_data_home_dir       = /tmp/12345/data
+innodb_log_group_home_dir  = /tmp/12345/data
+innodb_data_file_path      = ibdata1:10M:autoextend
+innodb_log_file_size       = 5M
+log-bin                    = mysql-bin
+relay_log                  = mysql-relay-bin
+log_slave_updates
+server-id                  = 12345
+report-host                = 127.0.0.1
+report-port                = 12345
+log-error                  = /tmp/12345/data/mysqld.log
+innodb_lock_wait_timeout   = 3
+general_log
+general_log_file           = genlog
+
+binlog_format              = ROW
+wsrep_provider             = /home/hugmeir/mysql/Percona-XtraDB-Cluster-5.5.28-23.7.373.Linux.x86_64//lib/libgalera_smm.so
+wsrep_cluster_address      = gcomm://192.168.1.34:12356
+wsrep_sst_receive_address  = 192.168.1.34:12365
+wsrep_node_incoming_address= 192.168.1.34
+wsrep_slave_threads        = 2
+wsrep_cluster_name         = pt_sandbox_cluster
+wsrep_provider_options     = "gmcast.listen_addr=tcp://192.168.1.34:12355; pc.ignore_sb = true;"
+wsrep_sst_method           = rsync
+wsrep_node_name            = 12345
+innodb_locks_unsafe_for_binlog = 1
+innodb_autoinc_lock_mode   = 2
+wsrep-replicate-myisam

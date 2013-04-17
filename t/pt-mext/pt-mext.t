@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 1;
+use Test::More;
 
 use PerconaTest;
 
@@ -19,7 +19,27 @@ like(
    'It runs'
 );
 
+my $cmd    = "$trunk/bin/pt-mext";
+my $sample = "$trunk/t/pt-mext/samples";
+
+ok(
+   no_diff(
+      "$cmd -- cat $sample/mext-001.txt",
+      "t/pt-mext/samples/mext-001-result.txt",
+   ),
+   "mext-001"
+) or diag($test_diff);
+
+ok(
+   no_diff(
+      "$cmd -r -- cat $sample/mext-002.txt",
+      "t/pt-mext/samples/mext-002-result.txt",
+   ),
+   "mext-002 -r"
+) or diag($test_diff);
+
 # #############################################################################
 # Done.
 # #############################################################################
+done_testing;
 exit;

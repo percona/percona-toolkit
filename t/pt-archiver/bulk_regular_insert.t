@@ -22,9 +22,6 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-else {
-   plan tests => 4;
-}
 
 my $output;
 my $cnf = "/tmp/12345/my.sandbox.cnf";
@@ -39,30 +36,30 @@ $sb->load_file('master', "t/pt-archiver/samples/bulk_regular_insert.sql");
 $dbh->do('use bri');
 
 output(
-   sub { pt_archiver::main("--source", "F=$cnf,D=bri,t=t", qw(--dest t=t_arch --where 1=1 --bulk-insert --limit 3)) },
+   sub { pt_archiver::main("--source", "F=$cnf,D=bri,t=t,L=1", qw(--dest t=t_arch --where 1=1 --bulk-insert --limit 3)) },
 );
 
-my $t_rows      = $dbh->selectall_arrayref('select * from t order by id');
-my $t_arch_rows = $dbh->selectall_arrayref('select * from t_arch order by id');
+my $t_rows      = $dbh->selectall_arrayref('select c,t from t order by id');
+my $t_arch_rows = $dbh->selectall_arrayref('select c,t from t_arch order by id');
 
 is_deeply(
    $t_rows,
-   [ ['10', 'jj', '11:11:10'] ],
+   [ ['jj', '11:11:10'] ],
    "Table after normal bulk insert"
 );
 
 is_deeply(
    $t_arch_rows,
    [
-      ['1','aa','11:11:11'],
-      ['2','bb','11:11:12'],
-      ['3','cc','11:11:13'],
-      ['4','dd','11:11:14'],
-      ['5','ee','11:11:15'],
-      ['6','ff','11:11:16'],
-      ['7','gg','11:11:17'],
-      ['8','hh','11:11:18'],
-      ['9','ii','11:11:19'],
+      ['aa','11:11:11'],
+      ['bb','11:11:12'],
+      ['cc','11:11:13'],
+      ['dd','11:11:14'],
+      ['ee','11:11:15'],
+      ['ff','11:11:16'],
+      ['gg','11:11:17'],
+      ['hh','11:11:18'],
+      ['ii','11:11:19'],
    ],
    "Archive table after normal bulk insert"
 );
@@ -73,10 +70,10 @@ is_deeply(
 $sb->load_file('master', "t/pt-archiver/samples/bulk_regular_insert.sql");
 $dbh->do('use bri');
 
-`$cmd --source F=$cnf,D=bri,t=t --dest t=t_arch,m=bulk_regular_insert --where "1=1" --bulk-insert --limit 3`;
+`$cmd --source F=$cnf,D=bri,t=t,L=1 --dest t=t_arch,m=bulk_regular_insert --where "1=1" --bulk-insert --limit 3`;
 
-my $bri_t_rows      = $dbh->selectall_arrayref('select * from t order by id');
-my $bri_t_arch_rows = $dbh->selectall_arrayref('select * from t_arch order by id');
+my $bri_t_rows      = $dbh->selectall_arrayref('select c,t from t order by id');
+my $bri_t_arch_rows = $dbh->selectall_arrayref('select c,t from t_arch order by id');
 
 is_deeply(
    $bri_t_rows,
@@ -94,4 +91,6 @@ is_deeply(
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;

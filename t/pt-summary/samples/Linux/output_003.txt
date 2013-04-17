@@ -1,0 +1,79 @@
+    Hostname | localhost.localdomain
+      Uptime | 35 min,  1 user,  load average: 1.10, 0.62, 1.31
+    Platform | Linux
+     Release | CentOS release 5.7 (Final)
+      Kernel | 2.6.18-274.el5
+Architecture | CPU = 32-bit, OS = 32-bit
+   Threading | NPTL 2.5
+    Compiler | GNU CC version 4.1.2 20080704 (Red Hat 4.1.2-51).
+     SELinux | No SELinux detected
+ Virtualized | QEmu
+# Processor ##################################################
+  Processors | physical = 1, cores = 0, virtual = 1, hyperthreading = no
+      Speeds | 1x1662.701
+      Models | 1xQEMU Virtual CPU version 0.14.1
+      Caches | 1x4096 KB
+# Memory #####################################################
+       Total | 1010.5M
+        Free | 784.7M
+        Used | physical = 225.8M, swap allocated = 2.0G, swap used = 0.0, virtual = 225.8M
+     Buffers | 48.8M
+      Caches | 122.0M
+       Dirty | 80 kB
+     UsedRSS | 63.2M
+  Swappiness | 
+ DirtyPolicy | 
+# Mounted Filesystems ########################################
+  Filesystem                       Size Used Type  Opts Mountpoint
+  /dev/hda1                         99M  13% ext3  rw   /boot
+  /dev/mapper/VolGroup00-LogVol00  5.7G  20% ext3  rw   /
+  tmpfs                            506M   0% tmpfs rw   /dev/shm
+# Disk Schedulers And Queue Size #############################
+        dm-0 | UNREADABLE
+        dm-1 | UNREADABLE
+         hda | [cfq] 128
+         hdc | [cfq] 128
+         md0 | UNREADABLE
+# Disk Partioning ############################################
+Device       Type      Start        End               Size
+============ ==== ========== ========== ==================
+# Kernel Inode State #########################################
+dentry-state | 9175	7239	45	0	0	0
+     file-nr | 640	0	102187
+    inode-nr | 5259	148
+# LVM Volumes ################################################
+Unable to collect information
+# LVM Volume Groups ##########################################
+Unable to collect information
+# RAID Controller ############################################
+  Controller | No RAID controller detected
+# Network Config #############################################
+# Network Connections ########################################
+  Connections from remote IP addresses
+  Connections to local IP addresses
+  Connections to top 10 local ports
+  States of connections
+    LISTEN              4
+# Top Processes ##############################################
+  PID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAND
+ 3000 hugmeir   17   0  2288  952  728 R 24.6  0.1   0:01.57 top
+ 2309 root      17   0 29432 1392 1068 S  2.2  0.1   0:01.20 automount
+  381 root      10  -5     0    0    0 S  0.9  0.0   0:02.98 kjournald
+ 2199 root      25   0 12824 1320  596 S  0.4  0.1   0:10.88 pcscd
+    1 root      15   0  2160  668  576 S  0.0  0.1   0:39.32 init
+    2 root      RT  -5     0    0    0 S  0.0  0.0   0:00.00 migration/0
+    3 root      34  19     0    0    0 S  0.0  0.0   0:00.01 ksoftirqd/0
+    4 root      RT  -5     0    0    0 S  0.0  0.0   0:00.00 watchdog/0
+    5 root      10  -5     0    0    0 S  0.0  0.0   0:01.63 events/0
+# Notable Processes ##########################################
+  PID    OOM    COMMAND
+ 2333    +0    sshd
+# Simplified and fuzzy rounded vmstat (wait please) ##########
+  procs  ---swap-- -----io---- ---system---- --------cpu--------
+   r  b    si   so    bi    bo     ir     cs  us  sy  il  wa  st
+   1  0     0    0    90    15   1000     60  47  23  28   1   0
+   1  0     0    0     0   100   1000     60  75  25   0   0   0
+   1  0     0    0     0     0    800     35  73  27   0   0   0
+   1  0     0    0     0     0    900     35  78  22   0   0   0
+   2  0     0    0     0     0    700     20  78  22   0   0   0
+# The End ####################################################

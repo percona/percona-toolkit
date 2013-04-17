@@ -1,4 +1,4 @@
-# This program is copyright 2010-2011 Percona Inc.
+# This program is copyright 2010-2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -126,6 +126,9 @@ sub new {
       value_is_optional => \%value_is_optional,
       any_value_is_true => \%any_value_is_true,
       base_path         => \%base_path,
+      ignore_case       => exists $args{ignore_case}
+                                ? $args{ignore_case}
+                                : 1,
    };
 
    return bless $self, $class;
@@ -172,6 +175,7 @@ sub diff {
    my $config0     = $configs->[0];
    my $last_config = @$configs - 1;
    my $vars        = $self->_get_shared_vars(%args);
+   my $ignore_case = $self->{ignore_case};
 
    # Compare variables from first config (config0) to other configs (configN).
    my $diffs;
@@ -197,7 +201,9 @@ sub diff {
                next CONFIG if $val0 == $valN;
             }
             else {
-               next CONFIG if $val0 eq $valN;
+               next CONFIG if $ignore_case
+                              ? lc($val0) eq lc($valN)
+                              : $val0 eq $valN;
 
                # Special rules apply when comparing different inputs/formats,
                # e.g. when comparing an option file to SHOW VARIABLES.  This

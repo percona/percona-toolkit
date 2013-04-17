@@ -1,0 +1,163 @@
+
+[
+   {
+      "attributes" : {
+         "Filesort" : {
+            "avg" : 0,
+            "cnt" : 1,
+            "max" : 0,
+            "median" : 0,
+            "min" : 0,
+            "pct" : 0.125,
+            "pct_95" : 0,
+            "stddev" : 0,
+            "sum" : 0
+         },
+         "Filesort_on_disk" : {
+            "avg" : 0,
+            "cnt" : 1,
+            "max" : 0,
+            "median" : 0,
+            "min" : 0,
+            "pct" : 0.125,
+            "pct_95" : 0,
+            "stddev" : 0,
+            "sum" : 0
+         },
+         "Full_join" : {
+            "avg" : 0,
+            "cnt" : 1,
+            "max" : 0,
+            "median" : 0,
+            "min" : 0,
+            "pct" : 0.125,
+            "pct_95" : 0,
+            "stddev" : 0,
+            "sum" : 0
+         },
+         "Full_scan" : {
+            "avg" : 1,
+            "cnt" : 1,
+            "max" : 1,
+            "median" : 0,
+            "min" : 1,
+            "pct" : 0.125,
+            "pct_95" : 0,
+            "stddev" : 0,
+            "sum" : 1
+         },
+         "Lock_time" : {
+            "avg" : "0.000091",
+            "cnt" : "1.000000",
+            "max" : "0.000091",
+            "median" : "0.000091",
+            "min" : "0.000091",
+            "pct" : "0.12",
+            "pct_95" : "0.000091",
+            "stddev" : 0,
+            "sum" : "0.000091"
+         },
+         "Merge_passes" : {
+            "avg" : 0,
+            "cnt" : "1.000000",
+            "max" : "0",
+            "median" : 0,
+            "min" : "0",
+            "pct" : "0.12",
+            "pct_95" : 0,
+            "stddev" : 0,
+            "sum" : 0
+         },
+         "QC_Hit" : {
+            "avg" : 0,
+            "cnt" : 1,
+            "max" : 0,
+            "median" : 0,
+            "min" : 0,
+            "pct" : 0.125,
+            "pct_95" : 0,
+            "stddev" : 0,
+            "sum" : 0
+         },
+         "Query_time" : {
+            "avg" : "0.726052",
+            "cnt" : "1.000000",
+            "max" : "0.726052",
+            "median" : "0.726052",
+            "min" : "0.726052",
+            "pct" : "0.12",
+            "pct_95" : "0.726052",
+            "stddev" : 0,
+            "sum" : "0.726052"
+         },
+         "Rows_examined" : {
+            "avg" : "62951.000000",
+            "cnt" : "1.000000",
+            "max" : "62951.000000",
+            "median" : "62951.000000",
+            "min" : "62951.000000",
+            "pct" : "0.12",
+            "pct_95" : "62951.000000",
+            "stddev" : 0,
+            "sum" : "62951.000000"
+         },
+         "Rows_sent" : {
+            "avg" : 0,
+            "cnt" : "1.000000",
+            "max" : "0",
+            "median" : 0,
+            "min" : "0",
+            "pct" : "0.12",
+            "pct_95" : 0,
+            "stddev" : 0,
+            "sum" : 0
+         },
+         "Tmp_table" : {
+            "avg" : 0,
+            "cnt" : 1,
+            "max" : 0,
+            "median" : 0,
+            "min" : 0,
+            "pct" : 0.125,
+            "pct_95" : 0,
+            "stddev" : 0,
+            "sum" : 0
+         },
+         "Tmp_table_on_disk" : {
+            "avg" : 0,
+            "cnt" : 1,
+            "max" : 0,
+            "median" : 0,
+            "min" : 0,
+            "pct" : 0.125,
+            "pct_95" : 0,
+            "stddev" : 0,
+            "sum" : 0
+         },
+         "bytes" : {
+            "value" : 129
+         },
+         "db" : {
+            "value" : "db1"
+         },
+         "host" : {
+            "value" : ""
+         },
+         "pos_in_log" : {
+            "value" : 338
+         },
+         "user" : {
+            "value" : "[SQL_SLAVE]"
+         }
+      },
+      "class" : {
+         "checksum" : "66825DDC008FFA89",
+         "cnt" : 1,
+         "fingerprint" : "update d?tuningdetail_?_? n inner join d?gonzo a using(gonzo) set n.column? = a.column?, n.word? = a.word?",
+         "sample" : "update db2.tuningdetail_21_265507 n\n      inner join db1.gonzo a using(gonzo) \n      set n.column1 = a.column1, n.word3 = a.word3",
+         "ts_max" : "2007-12-18 11:48:27",
+         "ts_min" : "2007-12-18 11:48:27"
+      }
+   }
+]
+

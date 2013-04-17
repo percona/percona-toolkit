@@ -16,7 +16,6 @@ use Sandbox;
 require "$trunk/bin/pt-table-sync";
 
 my $output;
-my $vp = new VersionParser();
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
@@ -29,7 +28,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 5;
+   plan tests => 6;
 }
 
 $sb->wipe_clean($master_dbh);
@@ -78,4 +77,5 @@ EOF
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 $sb->wipe_clean($slave_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

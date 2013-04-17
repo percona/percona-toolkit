@@ -1,4 +1,4 @@
-# This program is copyright 2011 Percona Inc.
+# This program is copyright 2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -42,7 +42,7 @@ sub new {
 
    my $self = {
       # default values for optional args
-      instrument        => 0,
+      instrument        => PTDEBUG,
       continue_on_error => 0,
 
       # specified arg values override defaults
@@ -71,6 +71,7 @@ sub add {
 
    push @{$self->{procs}}, $process;
    push @{$self->{names}}, $name;
+   $self->{retries}->{$name} = $args{retry_on_error} || 100;
    if ( $self->{instrument} ) {
       $self->{instrumentation}->{$name} = { time => 0, calls => 0 };
    }
@@ -156,10 +157,29 @@ sub execute {
          }
       };
       if ( $EVAL_ERROR ) {
-         warn "Pipeline process $procno ("
-            . ($self->{names}->[$procno] || "")
-            . ") caused an error: $EVAL_ERROR";
-         die $EVAL_ERROR unless $self->{continue_on_error};
+         my $name = $self->{names}->[$procno] || "";
+         my $msg  = "Pipeline process " . ($procno + 1)
+                  . " ($name) caused an error: "
+                  . $EVAL_ERROR;
+         if ( !$self->{continue_on_error} ) {
+            die $msg . "Terminating pipeline because --continue-on-error "
+               . "is false.\n";
+         }
+         elsif ( defined $self->{retries}->{$name} ) {
+            my $n = $self->{retries}->{$name};
+            if ( $n ) {
+               warn $msg . "Will retry pipeline process $procno ($name) "
+                  . "$n more " . ($n > 1 ? "times" : "time") . ".\n";
+               $self->{retries}->{$name}--;
+            }
+            else {
+               die $msg . "Terminating pipeline because process $procno "
+                  . "($name) caused too many errors.\n";
+            }
+         }
+         else {
+            warn $msg;
+         }
       }
    }
 

@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 81;
+use Test::More;
 
 use QueryRewriter;
 use EventAggregator;
@@ -431,7 +431,7 @@ foreach my $event (@$events) {
 is_deeply( $ea->results, $result, 'user aggregation' );
 
 is($ea->type_for('Query_time'), 'num', 'Query_time is numeric');
-$ea->calculate_statistical_metrics(apdex_t => 1);
+$ea->calculate_statistical_metrics();
 is_deeply(
    $ea->metrics(
       where  => 'bob',
@@ -446,8 +446,6 @@ is_deeply(
       median  => '0.000682',
       stddev  => 0,
       pct_95  => '0.000682',
-      apdex_t => 1,
-      apdex   => '1.00',
    },
    'Got simple hash of metrics from metrics()',
 );
@@ -466,8 +464,6 @@ is_deeply(
       median  => 0,
       stddev  => 0,
       pct_95  => 0,
-      apdex_t => undef,
-      apdex   => undef,
    },
    'It does not crash on metrics()',
 );
@@ -1530,11 +1526,14 @@ ok(
    'New event class has new attrib; default unroll_limit(issue 514)'
 );
 
-$ea = new EventAggregator(
-   groupby      => 'arg',
-   worst        => 'Query_time',
-   unroll_limit => 50,
-);
+$ea = do {
+   local $ENV{PT_QUERY_DIGEST_CHECK_ATTRIB_LIMIT} = 50;
+   new EventAggregator(
+      groupby      => 'arg',
+      worst        => 'Query_time'
+   );
+};
+
 parse_file('t/lib/samples/slowlogs/slow030.txt', $p, $ea);
 ok(
    !exists $ea->{unrolled_for}->{InnoDB_rec_lock_wait},
@@ -1817,59 +1816,6 @@ is_deeply(
 );
 
 # #############################################################################
-# Apdex
-# #############################################################################
-
-my $samples = {
-   280 => 10,  # 0.81623354758492  satisfy
-   281 => 10,  # 0.85704522496417  satisfy
-   282 => 10,  # 0.89989748621238  satisfy
-   283 => 50,  # 0.94489236052300  satisfy
-   284 => 50,  # 0.99213697854915  satisfy
-   285 => 10,  # 1.04174382747661  tolerate
-   290 => 10,  # 1.32955843985657  tolerate
-   313 => 1,   # 4.08377033290049  frustrated
-};
-my $apdex = $ea->calculate_apdex(
-   t => 1,
-   samples => $samples,
-);
-
-is(
-   $apdex,
-   '0.93',
-   "Apdex score"
-);
-
-$samples = {
-   0 => 150,
-};
-$apdex = $ea->calculate_apdex(
-   t => 1,
-   samples => $samples,
-);
-
-is(
-   $apdex,
-   '1.00',
-   "Apdex score 1.00"
-);
-
-$samples = {
-   400 => 150,
-};
-$apdex = $ea->calculate_apdex(
-   t => 1,
-   samples => $samples,
-);
-
-is(
-   $apdex,
-   '0.00',
-   "Apdex score 0.00"
-);
-
-# #############################################################################
 # Special-case attribs called *_crc for mqd --variations.
 # #############################################################################
 
@@ -1925,6 +1871,21 @@ is(
 );
 
 # #############################################################################
+# Bug 924950: pt-query-digest --group-by db may crash profile report
+# #############################################################################
+$ea = new EventAggregator(
+   groupby => 'Schema',
+   worst   => 'Query_time',
+);
+parse_file('t/lib/samples/slowlogs/slow055.txt', $p, $ea);
+my $m = $ea->metrics(where => '', attrib => 'Query_time');
+is(
+   $m->{cnt},
+   3,
+   "Metrics for '' attrib (bug 924950)"
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 my $output = '';
@@ -1938,4 +1899,5 @@ like(
    qr/Complete test coverage/,
    '_d() works'
 );
+done_testing;
 exit;

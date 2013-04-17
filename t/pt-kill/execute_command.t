@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 8;
+use Test::More tests => 9;
 
 use PerconaTest;
 use Sandbox;
@@ -36,17 +36,18 @@ is(
    'No output without --print'
 );
 
-chomp($output = `cat $out`),
+chomp($output = `cat $out 2>/dev/null`),
 is(
    $output,
    'hello',
    '--execute-command'
 );
 
-diag(`rm $out`);
+diag(`rm $out 2>/dev/null`);
 
 SKIP: {
    skip 'Cannot connect to sandbox master', 2 unless $master_dbh;
+   $master_dbh->do("CREATE DATABASE IF NOT EXISTS pt_kill_zombie_test");
 
    system "/tmp/12345/use -e 'select sleep(2)' >/dev/null 2>&1 &";
 
@@ -58,7 +59,7 @@ SKIP: {
       '--print with --execute-command'
    );
 
-   chomp($output = `cat $out`);
+   chomp($output = `cat $out 2>/dev/null`);
    is(
       $output,
       'batty',
@@ -67,10 +68,10 @@ SKIP: {
 
    # Let our select sleep(2) go away before other tests are ran.
    sleep 1;
-   diag(`rm $out`);
+   diag(`rm $out 2>/dev/null`);
 
    # Don't make zombies (https://bugs.launchpad.net/percona-toolkit/+bug/919819)
-   system "/tmp/12345/use -e 'select sleep(2)' >/dev/null 2>&1 &";
+   $master_dbh->do("USE pt_kill_zombie_test");
 
    my $sentinel = "/tmp/pt-kill-test.$PID.stop";
    my $pid_file = "/tmp/pt-kill-test.$PID.pid";
@@ -79,8 +80,8 @@ SKIP: {
    diag(`rm $pid_file 2>/dev/null`);
    diag(`rm $log_file 2>/dev/null`);
 
-   `$cmd --daemonize --match-info 'select sleep' --interval 1 --print --execute-command 'echo zombie > $out' --verbose --pid $pid_file --log $log_file --sentinel $sentinel`;
-   sleep 1;
+   `$cmd --daemonize --match-db pt_kill_zombie_test --interval 1 --print --execute-command 'echo zombie > $out' --verbose --pid $pid_file --log $log_file --sentinel $sentinel`;
+   PerconaTest::wait_for_files($pid_file, $log_file, $out);
    $output = `grep Executed $log_file`;
    like(
       $output,
@@ -118,4 +119,5 @@ SKIP: {
 # #############################################################################
 diag(`rm $out 2>/dev/null`);
 $sb->wipe_clean($master_dbh) if $master_dbh;
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

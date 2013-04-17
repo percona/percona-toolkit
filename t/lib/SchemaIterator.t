@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 31;
+use Test::More;
 
 use SchemaIterator;
 use FileIterator;
@@ -32,7 +32,7 @@ my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
-my $tp;
+my $tp = new TableParser(Quoter => $q);
 my $fi = new FileIterator();
 my $o  = new OptionParser(description => 'SchemaIterator');
 $o->get_specs("$trunk/bin/pt-table-checksum");
@@ -55,7 +55,6 @@ sub test_so {
       my $file_itr = $fi->get_file_itr(@{$args{files}});
       $si = new SchemaIterator(
          file_itr     => $file_itr,
-         keep_ddl     => defined $args{keep_ddl} ? $args{keep_ddl} : 1,
          resume       => $args{resume},
          OptionParser => $o,
          Quoter       => $q,
@@ -65,7 +64,6 @@ sub test_so {
    else {
       $si = new SchemaIterator(
          dbh          => $dbh,
-         keep_ddl     => defined $args{keep_ddl} ? $args{keep_ddl} : 1,
          resume       => $args{resume},
          OptionParser => $o,
          Quoter       => $q,
@@ -79,29 +77,34 @@ sub test_so {
 
    my $res = "";
    my @objs;
-   while ( my $obj = $si->next() ) {
-      if ( $args{return_objs} ) {
-         push @objs, $obj;
-      }
-      else {
-         if ( $result_file || $args{ddl} ) {
-            $res .= "$obj->{db}.$obj->{tbl}\n";
-            $res .= "$obj->{ddl}\n\n" if $args{ddl} || $tp;
+   eval {
+      while ( my $obj = $si->next() ) {
+         if ( $args{return_objs} ) {
+            push @objs, $obj;
          }
          else {
-            $res .= "$obj->{db}.$obj->{tbl} ";
+            if ( $result_file || $args{ddl} ) {
+               $res .= "$obj->{db}.$obj->{tbl}\n";
+               $res .= "$obj->{ddl}\n\n" if $args{ddl} || $tp;
+            }
+            else {
+               $res .= "$obj->{db}.$obj->{tbl} ";
+            }
          }
       }
-   }
-
+   };
+   
    return \@objs if $args{return_objs};
 
    if ( $result_file ) {
+      my $transform = sub { print sort_query_output(slurp_file(shift)) };
       ok(
          no_diff(
             $res,
             $args{result},
-            cmd_output    => 1,
+            cmd_output => 1,
+            transform_result => $transform,
+            transform_sample => $transform,
          ),
          $args{test_name},
       );
@@ -112,6 +115,9 @@ sub test_so {
          $args{unlike},
          $args{test_name},
       );
+   }
+   elsif ( $args{lives_ok} ) {
+      is($EVAL_ERROR, '', $args{test_name});
    }
    else {
       is(
@@ -124,6 +130,17 @@ sub test_so {
    return;
 }
 
+sub sort_query_output {
+   my $queries = shift;
+   my @queries = split /\n\n/, $queries;
+   
+   my $sorted;
+   for my $query (@queries) {
+      $sorted .= join "\n", sort map { my $c = $_; $c =~ s/,$//; $c } split /\n/, $query;
+   }
+   return $sorted;
+}
+
 SKIP: {
    skip "Cannot connect to sandbox master", 22 unless $dbh;
    $sb->wipe_clean($dbh);
@@ -132,8 +149,7 @@ SKIP: {
    # Test simple, unfiltered get_db_itr().
    # ########################################################################
    test_so(
-      result    => $sandbox_version eq '5.1' ? "$out/all-dbs-tbls.txt"
-                                             : "$out/all-dbs-tbls-5.0.txt",
+      result    => "$out/all-dbs-tbls-$sandbox_version.txt",
       test_name => "Iterate all schema objects with dbh",
    );
 
@@ -170,13 +186,13 @@ SKIP: {
 
    # Ignore some dbs and tbls.
    test_so(
-      filters   => ['--ignore-databases', 'mysql,sakila,d1,d3'],
+      filters   => ['--ignore-databases', 'mysql,sakila,d1,d3,percona_test'],
       result    => "d2.t1 ",
       test_name => '--ignore-databases',
    );
 
    test_so(
-      filters   => ['--ignore-databases', 'mysql,sakila,d2,d3',
+      filters   => ['--ignore-databases', 'mysql,sakila,d2,d3,percona_test',
                     '--ignore-tables', 't1,t2'],
       result    => "d1.t3 ",
       test_name => '--ignore-databases and --ignore-tables',
@@ -192,7 +208,7 @@ SKIP: {
    # Filter by engines.  This also tests that --engines is case-insensitive
    test_so(
       filters   => ['-d', 'd1,d2,d3', '--engines', 'INNODB'],
-      result    => "d1.t2 ",
+      result    => ($sandbox_version ge '5.5' ? 'd1.t2 d2.t1 ' : "d1.t2 "),
       test_name => '--engines',
    );
 
@@ -210,7 +226,7 @@ SKIP: {
    );
 
    test_so(
-      filters   => ['--ignore-databases-regex', '(?:^d[23]|mysql|info|sakila)',
+      filters   => ['--ignore-databases-regex', '(?:^d[23]|mysql|info|sakila|percona_test)',
                     '--ignore-tables-regex', 't[^23]'],
       result    => "d1.t2 d1.t3 ",
       test_name => '--ignore-databases-regex',
@@ -221,7 +237,7 @@ SKIP: {
    # ########################################################################
    SKIP: {
       skip 'Sandbox master does not have the sakila database', 1
-         unless @{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
+         unless @{$dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
 
       test_so(
          filters   => [qw(-d sakila)],
@@ -268,7 +284,7 @@ SKIP: {
    );
 
    test_so(
-      filters   => ['--ignore-databases', 'mysql,sakila',
+      filters   => ['--ignore-databases', 'mysql,sakila,percona_test',
                     '--ignore-tables', 'd1.t1'],
       result    => "d1.t2 d1.t3 d2.t1 ",
       test_name => '--ignore-databases and --ignore-tables d1.t1 (issue 806)',
@@ -311,16 +327,11 @@ SKIP: {
    # ########################################################################
    # Getting CREATE TALBE (ddl).
    # ########################################################################
-   $tp = new TableParser(Quoter => $q);
    test_so(
       filters   => [qw(-t mysql.user)],
-      result    => $sandbox_version ge '5.1' ? "$out/mysql-user-ddl.txt"
-                                             : "$out/mysql-user-ddl-5.0.txt",
+      result    => "$out/mysql-user-ddl-$sandbox_version.txt",
       test_name => "Get CREATE TABLE with dbh",
    );
-
-   # Kill the TableParser obj in case the next tests don't want to use it.
-   $tp = undef;
 
    $sb->wipe_clean($dbh);
 };
@@ -370,47 +381,8 @@ my $n_tbl_structs = grep { exists $_->{tbl_struct} } @$objs;
 
 is(
    $n_tbl_structs,
-   0,
-   'No tbl_struct without TableParser'
-);
-
-$tp = new TableParser(Quoter => $q);
-
-$objs = test_so(
-   files     => ["$in/dump001.txt"],
-   result      => "",  # hack to let return_objs work
-   test_name   => "",  # hack to let return_objs work
-   return_objs => 1,
-);
-
-$n_tbl_structs = grep { exists $_->{tbl_struct} } @$objs;
-
-is(
-   $n_tbl_structs,
    scalar @$objs,
    'Got tbl_struct for each schema object'
-);
-
-# Kill the TableParser obj in case the next tests don't want to use it.
-$tp = undef;
-
-# ############################################################################
-# keep_ddl
-# ############################################################################
-$objs = test_so(
-   files       => ["$in/dump001.txt"],
-   result      => "",  # hack to let return_objs work
-   test_name   => "",  # hack to let return_objs work
-   return_objs => 1,
-   keep_ddl    => 0,
-);
-
-my $n_ddls = grep { exists $_->{ddl} } @$objs;
-
-is(
-   $n_ddls,
-   0,
-   'DDL deleted unless keep_ddl'
 );
 
 # ############################################################################
@@ -418,7 +390,9 @@ is(
 # ############################################################################
 test_so(
    filters   => [qw(-d sakila)],
-   result    => "$out/resume-from-sakila-payment.txt",
+   result    => $sandbox_version ge '5.1'
+                ? "$out/resume-from-sakila-payment.txt"
+                : "$out/resume-from-sakila-payment-5.0.txt",
    resume    => 'sakila.payment',
    test_name => "Resume"
 );
@@ -426,12 +400,157 @@ test_so(
 # Ignore the table being resumed from; resume from next table.
 test_so(
    filters   => [qw(-d sakila --ignore-tables sakila.payment)],
-   result    => "$out/resume-from-ignored-sakila-payment.txt",
+   result    => $sandbox_version ge '5.1'
+                ? "$out/resume-from-ignored-sakila-payment.txt"
+                : "$out/resume-from-ignored-sakila-payment-5.0.txt",
    resume    => 'sakila.payment',
    test_name => "Resume from ignored table"
 );
 
+# ############################################################################
+# pt-table-checksum v2 fails when --resume + --ignore-database is used
+# https://bugs.launchpad.net/percona-toolkit/+bug/911385
+# ############################################################################
+
+test_so(
+   filters   => ['--ignore-databases', 'sakila,mysql'],
+   result    => "",
+   lives_ok  => 1,
+   resume    => 'sakila.payment',
+   test_name => "Bug 911385: ptc works with --resume + --ignore-database"
+);
+
+$dbh->do("CREATE DATABASE zakila");
+$dbh->do("CREATE TABLE zakila.bug_911385 (i int)");
+test_so(
+   filters   => ['--ignore-databases', 'sakila,mysql'],
+   result    => "zakila.bug_911385 ",
+   resume    => 'sakila.payment',
+   test_name => "Bug 911385: ...and continues to the next db"
+);
+$dbh->do("DROP DATABASE zakila");
+
+test_so(
+   filters   => [qw(--ignore-tables-regex payment --ignore-databases mysql)],
+   result    => "",
+   lives_ok  => 1,
+   resume    => 'sakila.payment',
+   test_name => "Bug 911385: ptc works with --resume + --ignore-tables-regex"
+);
+
+test_so(
+   filters   => [qw(--ignore-tables-regex payment --ignore-databases mysql)],
+   result    => "sakila.rental sakila.staff sakila.store ",
+   resume    => 'sakila.payment',
+   test_name => "Bug 911385: ...and continues to the next table"
+);
+
+# #############################################################################
+# Bug 1047335: pt-duplicate-key-checker fails when it encounters a crashed table
+# https://bugs.launchpad.net/percona-toolkit/+bug/1047335
+# #############################################################################
+
+my $master3_port   = 2900;
+my $master_basedir = "/tmp/$master3_port";
+diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
+diag(`$trunk/sandbox/start-sandbox master $master3_port >/dev/null`);
+my $dbh3 = $sb->get_dbh_for("master3");
+
+SKIP: {
+   skip "No /dev/urandom, can't corrupt the database", 1
+      unless -e q{/dev/urandom};
+
+   $sb->load_file('master3', "t/lib/samples/bug_1047335_crashed_table.sql");
+
+   # Create the SI object before crashing the table
+   my $tmp_si = new SchemaIterator(
+            dbh          => $dbh3,
+            OptionParser => $o,
+            Quoter       => $q,
+            TableParser  => $tp,
+            # This is needed because the way we corrupt tables
+            # accidentally removes the database from SHOW DATABASES
+            db           => 'bug_1047335',
+         );
+
+   my $db_dir = "$master_basedir/data/bug_1047335";
+   my $myi    = glob("$db_dir/crashed_table.[Mm][Yy][Iy]");
+   my $frm    = glob("$db_dir/crashed_table.[Ff][Rr][Mm]");
+
+   die "Cannot find .myi file for crashed_table" unless $myi && -f $myi;
+
+   # Truncate the .myi file to corrupt it
+   truncate($myi, 4096);
+
+   use File::Slurp qw( write_file );
+
+   # Corrupt the .frm file
+   open my $urand_fh, q{<}, "/dev/urandom"
+      or die "Cannot open /dev/urandom";
+   write_file($frm, scalar(<$urand_fh>), slurp_file($frm), scalar(<$urand_fh>));
+   close $urand_fh;
+
+   $dbh3->do("FLUSH TABLES");
+   eval { $dbh3->do("SELECT etc FROM bug_1047335.crashed_table WHERE etc LIKE '10001' ORDER BY id ASC LIMIT 1") };
+
+   my $w = '';
+   {
+      local $SIG{__WARN__} = sub { $w .= shift };
+      1 while $tmp_si->next();
+   }
+
+   like(
+      $w,
+      qr/bug_1047335.crashed_table because SHOW CREATE TABLE failed:/,
+      "->next() gives a warning if ->get_create_table dies from a strange error",
+   );
+
+}
+
+$dbh3->do(q{DROP DATABASE IF EXISTS bug_1047335_2});
+$dbh3->do(q{CREATE DATABASE bug_1047335_2});
+
+my $broken_frm = "$trunk/t/lib/samples/broken_tbl.frm";
+my $db_dir_2   = "$master_basedir/data/bug_1047335_2";
+
+diag(`cp $broken_frm $db_dir_2 2>&1`);
+
+$dbh3->do("FLUSH TABLES");
+
+my $tmp_si2 = new SchemaIterator(
+         dbh          => $dbh3,
+         OptionParser => $o,
+         Quoter       => $q,
+         TableParser  => $tp,
+         # This is needed because the way we corrupt tables
+         # accidentally removes the database from SHOW DATABASES
+         db           => 'bug_1047335_2',
+      );
+
+my $w = '';
+{
+   local $SIG{__WARN__} = sub { $w .= shift };
+   1 while $tmp_si2->next();
+}
+
+like(
+   $w,
+   qr/\QSkipping bug_1047335_2.broken_tbl because SHOW CREATE TABLE failed:/,
+   "...same as above, but using t/lib/samples/broken_tbl.frm",
+);
+
+# This might fail. Doesn't matter -- stop_sandbox will just rm -rf the folder
+eval {
+   $dbh3->do("DROP DATABASE IF EXISTS bug_1047335");
+   $dbh3->do("DROP DATABASE IF EXISTS bug_1047335_2");
+};
+
+diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
+
 # #############################################################################
 # Done.
 # #############################################################################
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+
+done_testing;
 exit;

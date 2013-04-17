@@ -28,24 +28,19 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 2;
+   plan tests => 3;
 }
-
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
-$sb->create_dbs($master_dbh, [qw(test)]);
 
 # #############################################################################
 # Issue 560: mk-table-sync generates impossible WHERE
 # #############################################################################
-diag(`/tmp/12345/use < $trunk/t/pt-table-sync/samples/issue_560.sql`);
-PerconaTest::wait_for_table($slave_dbh, "issue_560.buddy_list", "player_id=353");
+$sb->load_file("master", "t/pt-table-sync/samples/issue_560.sql");
 
 # Make slave differ.
 $slave_dbh->do('UPDATE issue_560.buddy_list SET buddy_id=0 WHERE player_id IN (333,334)');
 $slave_dbh->do('UPDATE issue_560.buddy_list SET buddy_id=0 WHERE player_id=486');
 
-$output = `$trunk/bin/pt-table-checksum --replicate issue_560.checksum h=127.1,P=12345,u=msandbox,p=msandbox  -d issue_560 --chunk-size 50 --lock-wait-time 3`;
+$output = `$trunk/bin/pt-table-checksum --replicate issue_560.checksum h=127.1,P=12345,u=msandbox,p=msandbox  -d issue_560 --chunk-size 50 --set-vars innodb_lock_wait_timeout=3`;
 
 is(
    PerconaTest::count_checksum_results($output, 'diffs'),
@@ -72,4 +67,5 @@ ok(
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 $sb->wipe_clean($slave_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

@@ -1,5 +1,7 @@
 #!/usr/bin/perl
 
+# This file is encoded in UTF-8.
+
 BEGIN {
    die "The PERCONA_TOOLKIT_BRANCH environment variable is not set.\n"
       unless $ENV{PERCONA_TOOLKIT_BRANCH} && -d $ENV{PERCONA_TOOLKIT_BRANCH};
@@ -12,14 +14,14 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 49;
+use Test::More tests => 74;
 
 use Transformers;
 use PerconaTest;
 
 Transformers->import( qw(parse_timestamp micro_t shorten secs_to_time
    time_to_secs percentage_of unix_timestamp make_checksum any_unix_timestamp
-   ts crc32) );
+   ts crc32 encode_json) );
 
 # #############################################################################
 # micro_t() tests.
@@ -189,8 +191,110 @@ is(
    'any_unix_timestamp MySQL expression that looks like another type'
 );
 
+{
+   # Tests borrowed from http://api.metacpan.org/source/MAKAMAKA/JSON-2.53/t/08_pc_base.t
+   my $obj  = {};
+   my $js  = encode_json($obj);
+   is($js,'{}', '{}');
+   
+   $obj = [];
+   $js  = encode_json($obj);
+   is($js,'[]', '[]');
+   
+   $obj = {"foo" => "bar"};
+   $js  = encode_json($obj);
+   is($js,'{"foo":"bar"}', '{"foo":"bar"}');
+   
+   $js  = encode_json({"foo" => ""});
+   is($js,'{"foo":""}', '{"foo":""}');
+   
+   $js  = encode_json({"foo" => " "});
+   is($js,'{"foo":" "}' ,'{"foo":" "}');
+   
+   $js  = encode_json({"foo" => "0"});
+   is($js,'{"foo":"0"}',q|{"foo":"0"} - autoencode (default)|);
+   
+   $js  = encode_json({"foo" => "0 0"});
+   is($js,'{"foo":"0 0"}','{"foo":"0 0"}');
+   
+   $js  = encode_json([1,2,3]);
+   is($js,'[1,2,3]');
+   
+   $js  = encode_json({"foo"=>{"bar"=>"hoge"}});
+   is($js,q|{"foo":{"bar":"hoge"}}|);
+   
+   $obj = [{"foo"=>[1,2,3]},-0.12,{"a"=>"b"}];
+   $js  = encode_json($obj);
+   is($js,q|[{"foo":[1,2,3]},-0.12,{"a":"b"}]|);
+      
+   $obj = ["\x01"];
+   is(encode_json($obj),'["\\u0001"]');
+   
+   $obj = ["\e"];
+   is(encode_json($obj),'["\\u001b"]');
+
+   {
+      # http://api.metacpan.org/source/MAKAMAKA/JSON-2.53/t/07_pc_esc.t
+      use utf8;
+   
+      $obj = {test => qq|abc"def|};
+      my $str = encode_json($obj);
+      is($str,q|{"test":"abc\"def"}|);
+      
+      $obj = {qq|te"st| => qq|abc"def|};
+      $str = encode_json($obj);
+      is($str,q|{"te\"st":"abc\"def"}|);
+      
+      $obj = {test => q|abc\def|};
+      $str = encode_json($obj);
+      is($str,q|{"test":"abc\\\\def"}|);
+      
+      $obj = {test => "abc\bdef"};
+      $str = encode_json($obj);
+      is($str,q|{"test":"abc\bdef"}|);
+      
+      $obj = {test => "abc\fdef"};
+      $str = encode_json($obj);
+      is($str,q|{"test":"abc\fdef"}|);
+      
+      $obj = {test => "abc\ndef"};
+      $str = encode_json($obj);
+      is($str,q|{"test":"abc\ndef"}|);
+      
+      $obj = {test => "abc\rdef"};
+      $str = encode_json($obj);
+      is($str,q|{"test":"abc\rdef"}|);
+      
+      $obj = {test => "abc-def"};
+      $str = encode_json($obj);
+      is($str,q|{"test":"abc-def"}|);
+      
+      $obj = {test => "abc(def"};
+      $str = encode_json($obj);
+      is($str,q|{"test":"abc(def"}|);
+      
+      $obj = {test => "abc\\def"};
+      $str = encode_json($obj);
+      is($str,q|{"test":"abc\\\\def"}|);
+      
+      
+      $obj = {test => "あいうえお"};
+      $str = encode_json($obj);
+      my $expect = q|{"test":"あいうえお"}|;
+      utf8::encode($expect);
+      is($str,$expect);
+      
+      $obj = {"あいうえお" => "かきくけこ"};
+      $str = encode_json($obj);
+      $expect = q|{"あいうえお":"かきくけこ"}|;
+      utf8::encode($expect);
+      is($str,$expect);
+   }
+}
+
 
 # #############################################################################
 # Done.
 # #############################################################################
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

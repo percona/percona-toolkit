@@ -1,4 +1,4 @@
-# This program is copyright 2009-2011 Percona Inc.
+# This program is copyright 2009-2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -129,7 +129,8 @@ sub parse_event {
             else {
                # The Connect command may or may not be followed by 'on'.
                # When it is, 'on' may or may not be followed by a database.
-               my ($user, undef, $db) = $arg =~ /(\S+)/g;
+               my ($user) = $arg =~ m/(\S+)/;
+               my ($db)   = $arg =~ m/on (\S+)/;
                my $host;
                ($user, $host) = split(/@/, $user);
                PTDEBUG && _d('Connect', $user, '@', $host, 'on', $db);

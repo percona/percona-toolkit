@@ -2065,7 +2065,7 @@ my @cases = (
                   from    => 'l ',
                   where   => 'col<100'
                },
-               columns => [ { col => 'max(col)' } ],
+               columns => [ { col => 'col', func => 'MAX' } ],
                context => 'scalar',
                from    => [ { tbl => 'l' } ],
                nested  => 1,

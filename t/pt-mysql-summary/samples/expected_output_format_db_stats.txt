@@ -1,0 +1,30 @@
+
+  Database     Tables Views SPs Trigs Funcs   FKs Partn
+  mysql            21                                  
+  percona_test      2                                  
+  sakila           16     7   3     6     3    22      
+
+  Database     MyISAM InnoDB
+  mysql            20       
+  percona_test      2       
+  sakila            8     15
+
+  Database     BTREE FULLTEXT
+  mysql           29         
+  percona_test     2         
+  sakila          63        1
+
+                 c   t   s   e   l   d   i   t   s   t   b   v   b   y   d   m
+                 h   i   e   n   o   a   n   i   m   e   i   a   l   e   e   e
+                 a   m   t   u   n   t   t   n   a   x   g   r   o   a   c   d
+                 r   e       m   g   e       y   l   t   i   c   b   r   i   i
+                     s           b   t       i   l       n   h           m   u
+                     t           l   i       n   i       t   a           a   m
+                     a           o   m       t   n           r           l   i
+                     m           b   e           t                           n
+                     p                                                       t
+  Database     === === === === === === === === === === === === === === === ===
+  mysql         58   7   6  77   5   4  19   2   3   2   8   1   4            
+  percona_test                           2                   2                
+  sakila         1  15   1   3       4   2  19  26   4      45   1   1   7   2
+

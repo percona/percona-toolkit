@@ -31,9 +31,6 @@ my $dbh = $sb->get_dbh_for('master', {no_lc=>1});
 if ( !$dbh ) {
    plan skip_all => "Cannot connect to sandbox master";
 }
-else {
-   plan tests => 16;
-}
 
 $dbh->do('use sakila');
 
@@ -60,7 +57,7 @@ is_deeply(
         key_len       => 2,
         ref           => 'const',
         rows          => 1,
-        Extra         => '',
+        Extra         => $sandbox_version eq '5.6' ? undef : '',
       },
    ],
    'Got a simple EXPLAIN result',
@@ -81,7 +78,7 @@ is_deeply(
         key_len       => 2,
         ref           => 'const',
         rows          => 1,
-        Extra         => '',
+        Extra         => $sandbox_version eq '5.6' ? undef : '',
       },
    ],
    'Got EXPLAIN result for a DELETE',
@@ -429,149 +426,7 @@ is_deeply(
    'Got saved usage for 0xdeadbeef');
 
 # #############################################################################
-# Issue 1141: Add "spark charts" to mk-query-digest profile
-# #############################################################################
-is(
-   $exa->sparkline(explain =>
-      [
-         { id            => 1,
-           select_type   => 'PRIMARY',
-           table         => 'foo',
-           type          => 'eq_ref',
-           possible_keys => ['idx'],
-           key           => ['idx'],
-           key_len       => [10],
-           ref           => [],
-           rows          => 100,
-           Extra         => {
-              'Using index' => 1,
-              'Using where' => 1,
-           },
-         },
-      ],
-   ),
-   "E",
-   "sparkline: basic 1 table eq_ref"
-);
-
-is(
-   $exa->sparkline(explain =>
-      [
-         { id            => 1,
-           select_type   => 'PRIMARY',
-           table         => 'foo',
-           type          => 'eq_ref',
-           possible_keys => ['idx'],
-           key           => ['idx'],
-           key_len       => [10],
-           ref           => [],
-           rows          => 100,
-           Extra         => {
-              'Using index'    => 1,
-              'Using where'    => 1,
-              'Using filesort' => 1,
-           },
-         },
-         { id            => 2,
-           select_type   => 'PRIMARY',
-           table         => 'bar',
-           type          => 'ref',
-           possible_keys => ['idx'],
-           key           => ['idx'],
-           key_len       => [10],
-           ref           => ['foo.col'],
-           rows          => 100,
-           Extra         => {
-           },
-         },
-      ],
-   ),
-   "F>Er",
-   "sparkline: 2 table with filesort at start"
-);
-
-is(
-   $exa->sparkline(explain =>
-      [
-         { id            => 1,
-           select_type   => 'PRIMARY',
-           table         => 'foo',
-           type          => 'range',
-           possible_keys => ['idx'],
-           key           => ['idx'],
-           key_len       => [10],
-           ref           => [],
-           rows          => 100,
-           Extra         => {
-           },
-         },
-         { id            => 2,
-           select_type   => 'PRIMARY',
-           table         => 'bar',
-           type          => 'ref',
-           possible_keys => ['idx'],
-           key           => ['idx'],
-           key_len       => [10],
-           ref           => ['foo.col'],
-           rows          => 100,
-           Extra         => {
-              'Using temporary' => 1,
-              'Using filesort'  => 1,
-           },
-         },
-      ],
-   ),
-   "nr>TF",
-   "sparkline: 2 table with temp and filesort at end"
-);
-
-is(
-   $exa->sparkline(explain =>
-      [
-         { id            => 1,
-           select_type   => 'PRIMARY',
-           table         => undef,
-           type          => undef,
-           possible_keys => [],
-           key           => [],
-           key_len       => [],
-           ref           => [],
-           rows          => undef,
-           Extra         => {
-              'No tables used' => 1,
-           },
-         },
-         { id            => 1,
-           select_type   => 'UNION',
-           table         => 'a',
-           type          => 'index',
-           possible_keys => [],
-           key           => ['PRIMARY'],
-           key_len       => [2],
-           ref           => [],
-           rows          => 200,
-           Extra         => {
-            'Using index' => 1,
-           },
-         },
-         { id            => undef,
-           select_type   => 'UNION RESULT',
-           table         => '<union1,2>',
-           type          => 'ALL',
-           possible_keys => [],
-           key           => [],
-           key_len       => [],
-           ref           => [],
-           rows          => undef,
-           Extra         => {},
-         },
-      ],
-   ),
-   "-Ia",
-   "sparkline: 3 tables, using index"
-);
-
-# #############################################################################
 # Done.
 # #############################################################################
-exit;
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;

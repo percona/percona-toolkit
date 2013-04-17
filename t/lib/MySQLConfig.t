@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 29;
+use Test::More;
 
 use MySQLConfig;
 use DSNParser;
@@ -827,6 +827,69 @@ SKIP: {
    );
 }
 
+$config = new MySQLConfig(
+   file => "$trunk/t/lib/samples/configs/mycnf-kc-001.txt",
+   TextResultSetParser => $trp,
+);
+is(
+  $config->value_of('user'),
+  'mysql',
+  'end of line comment in option file'
+);
+
+is(
+  $config->value_of('password'),
+  'password # still part of it!',
+  'end of line comments respect quoted values'
+);
+
+is(
+  $config->value_of('something'),
+  'something ; or # another',
+  "..and removing comments doesn't leave trailing whitespace"
+);
+
+ok(
+   defined $config->value_of('log_bin'),
+   "bools with comments in the end are found"
+);
+
+is(
+   $config->value_of('log_bin'),
+   "ON",
+   "And the comment is correctly stripped out"
+);
+
+is_deeply(
+   [ sort keys %{$config->variables} ],
+   [ sort qw( password something user log_bin )],
+   "start of line comments with # or ; are ignored"
+);
+
+# #############################################################################
+# Use of uninitialized value in substitution (s///) at pt-config-diff line 1996
+# https://bugs.launchpad.net/percona-toolkit/+bug/917770
+# #############################################################################
+
+$config = eval {
+   new MySQLConfig(
+      file                => "$trunk/t/pt-config-diff/samples/bug_917770.cnf",
+      TextResultSetParser => $trp,
+   );
+};
+
+is(
+   $EVAL_ERROR,
+   '',
+   "Bug 917770: Lives ok on lines with just spaces"
+);
+
+is(
+   $config->format(),
+   'option_file',
+   "Detect option_file type"
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
@@ -840,4 +903,7 @@ like(
    qr/Complete test coverage/,
    '_d() works'
 );
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+
+done_testing;
 exit;

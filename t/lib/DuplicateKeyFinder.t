@@ -9,8 +9,9 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 37;
+use Test::More;
 
+use VersionParser;
 use DuplicateKeyFinder;
 use Quoter;
 use TableParser;
@@ -26,7 +27,7 @@ my $callback = sub {
    push @$dupes, $_[0];
 };
 
-my $opt = { version => '004001000' };
+my $opt = { mysql_version => VersionParser->new('4.1.0') };
 my $ddl;
 my $tbl;
 
@@ -729,6 +730,48 @@ is_deeply(
    'Issue 1192'
 );
 
+
+# #############################################################################
+# https://bugs.launchpad.net/percona-toolkit/+bug/894140
+# #############################################################################
+$ddl   = load_file('t/lib/samples/dupekeys/dupe-cluster-bug-894140.sql');
+$dupes = [];
+($keys, $ck) = $tp->get_keys($ddl, $opt);
+$dk->get_duplicate_keys(
+   $keys,
+   clustered_key => $ck,
+   clustered     => 1,
+   callback      => $callback,
+   tbl_info      => { engine => 'InnoDB', ddl => $ddl },
+);
+
+is_deeply(
+   $dupes,
+   [
+     {
+       cols              => [ 'row_id' ],
+       ddl               => 'UNIQUE KEY `row_id` (`row_id`),',
+       dupe_type         => 'exact',
+       duplicate_of      => 'PRIMARY',
+       duplicate_of_cols => [ 'row_id' ],
+       duplicate_of_ddl  => 'PRIMARY KEY (`row_id`),',
+       key               => 'row_id',
+       reason            => 'row_id is a duplicate of PRIMARY',
+     },
+     {
+       cols              => [ 'player_id' ],
+       ddl               => 'KEY `player_id_2` (`player_id`)',
+       dupe_type         => 'exact',
+       duplicate_of      => 'player_id',
+       duplicate_of_cols => [ 'player_id' ],
+       duplicate_of_ddl  => 'UNIQUE KEY `player_id` (`player_id`),',
+       key               => 'player_id_2',
+       reason            => 'player_id_2 is a duplicate of player_id',
+     },
+   ],
+   'Finds duplicates OK on uppercase columns',
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
@@ -743,4 +786,5 @@ like(
    qr/Complete test coverage/,
    '_d() works'
 );
+done_testing;
 exit;

@@ -1,4 +1,4 @@
-# This program is copyright 2009-2011 Percona Inc.
+# This program is copyright 2009-2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -363,6 +363,12 @@ sub _compare_rows {
       my $right = $event->{results_sth};
 
       $event->{row_count} = 0;
+
+      if ( !$right ) {
+         PTDEBUG && _d('No results sth on host', $i);
+         delete $event->{results_sth};
+         next EVENT;
+      }
 
       # Identical rows are ignored.  Once a difference on either side is found,
       # we gobble the remaining rows in that sth and print them to an outfile.
@@ -836,8 +842,10 @@ sub report {
    my $query_id_col = {
       name        => 'Query ID',
    };
+   my $hostno = 0;
    my @host_cols = map {
-      my $col = { name => $_->{name} };
+      $hostno++;
+      my $col = { name => "host$hostno" };
       $col;
    } @$hosts;
 
@@ -866,7 +874,7 @@ sub _report_diff_checksums {
    return unless keys %{$self->{diffs}->{checksums}};
 
    my $report = new ReportFormatter();
-   $report->set_title('Checksum differences');
+   $report->title('Checksum differences');
    $report->set_columns(
       $args{query_id_col},
       @{$args{host_cols}},
@@ -897,7 +905,7 @@ sub _report_diff_col_vals {
    return unless keys %{$self->{diffs}->{col_vals}};
 
    my $report = new ReportFormatter();
-   $report->set_title('Column value differences');
+   $report->title('Column value differences');
    $report->set_columns(
       $args{query_id_col},
       {
@@ -932,13 +940,15 @@ sub _report_diff_row_counts {
    return unless keys %{$self->{diffs}->{row_counts}};
 
    my $report = new ReportFormatter();
-   $report->set_title('Row count differences');
+   $report->title('Row count differences');
+   my $hostno = 0;
    $report->set_columns(
       $args{query_id_col},
-      map {
-         my $col = { name => $_->{name}, right_justify => 1  };
+      (map {
+         $hostno++;
+         my $col = { name => "host$hostno", right_justify => 1  };
          $col;
-      } @{$args{hosts}},
+      } @{$args{hosts}}),
    );
 
    my $diff_row_counts = $self->{diffs}->{row_counts};

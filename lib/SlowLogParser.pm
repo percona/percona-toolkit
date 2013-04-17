@@ -1,4 +1,4 @@
-# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Inc.
+# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -235,14 +235,35 @@ sub parse_event {
             # this only if we've seen the user/host line.
             if ( !$found_arg && $pos == $len ) {
                PTDEBUG && _d("Did not find arg, looking for special cases");
-               local $INPUT_RECORD_SEPARATOR = ";\n";
+               local $INPUT_RECORD_SEPARATOR = ";\n";  # get next line
                if ( defined(my $l = $next_event->()) ) {
-                  chomp $l;
-                  $l =~ s/^\s+//;
-                  PTDEBUG && _d("Found admin statement", $l);
-                  push @properties, 'cmd', 'Admin', 'arg', $l;
-                  push @properties, 'bytes', length($properties[-1]);
-                  $found_arg++;
+                  if ( $l =~ /^\s*[A-Z][a-z_]+: / ) {
+                     PTDEBUG && _d("Found NULL query before", $l);
+                     # https://bugs.launchpad.net/percona-toolkit/+bug/1082599
+                     # This is really pathological but it happens:
+                     #   header_for_query_1
+                     #   SET timestamp=123;
+                     #   use db;
+                     #   header_for_query_2
+                     # In this case, "get next line" ^ will actually fetch
+                     # header_for_query_2 and the first line of any arg data,
+                     # so to get the rest of the arg data, we switch back to
+                     # the default input rec. sep.
+                     local $INPUT_RECORD_SEPARATOR = ";\n#";
+                     my $rest_of_event = $next_event->();
+                     push @{$self->{pending}}, $l . $rest_of_event;
+                     push @properties, 'cmd', 'Query', 'arg', '/* No query */';
+                     push @properties, 'bytes', 0;
+                     $found_arg++;
+                  }
+                  else {
+                     chomp $l;
+                     $l =~ s/^\s+//;
+                     PTDEBUG && _d("Found admin statement", $l);
+                     push @properties, 'cmd', 'Admin', 'arg', $l;
+                     push @properties, 'bytes', length($properties[-1]);
+                     $found_arg++;
+                  }
                }
                else {
                   # Unrecoverable -- who knows what happened.  This is possible,

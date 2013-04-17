@@ -1,4 +1,4 @@
-# This program is copyright 2009-2011 Percona Inc.
+# This program is copyright 2009-2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -33,8 +33,13 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEVDEBUG => $ENV{PTDEVDEBUG} || 0;
 
+use Percona::Toolkit;
+
+use Carp qw(croak);
+
 use Test::More;
 use Time::HiRes qw(sleep time);
+use File::Temp qw(tempfile);
 use POSIX qw(signal_h);
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -47,11 +52,14 @@ our %EXPORT_TAGS = ();
 our @EXPORT_OK   = qw();
 our @EXPORT      = qw(
    output
+   full_output
    load_data
    load_file
+   slurp_file
    parse_file
    wait_until
    wait_for
+   wait_until_slave_running
    test_log_parser
    test_protocol_parser
    test_packet_parser
@@ -59,18 +67,25 @@ our @EXPORT      = qw(
    throws_ok
    remove_traces
    test_bash_tool
+   verify_test_data_integrity
    $trunk
    $dsn_opts
    $sandbox_version
+   $can_load_data
+   $test_diff
 );
 
 our $trunk = $ENV{PERCONA_TOOLKIT_BRANCH};
 
 our $sandbox_version = '';
 eval {
-   chomp(my $v = `$trunk/sandbox/test-env version`);
+   chomp(my $v = `$trunk/sandbox/test-env version 2>/dev/null`);
    $sandbox_version = $v if $v;
 };
+
+our $can_load_data = can_load_data();
+
+our $test_diff = '';
 
 our $dsn_opts = [
    {
@@ -141,31 +156,35 @@ sub output {
    my ($file, $stderr, $die, $trf) = @args{qw(file stderr die trf)};
 
    my $output = '';
-   if ( $file ) { 
-      open *output_fh, '>', $file
-         or die "Cannot open file $file: $OS_ERROR";
-   }
-   else {
-      open *output_fh, '>', \$output
-         or die "Cannot capture output to variable: $OS_ERROR";
-   }
-   local *STDOUT = *output_fh;
+   {
+      if ( $file ) { 
+         open *output_fh, '>', $file
+            or die "Cannot open file $file: $OS_ERROR";
+      }
+      else {
+         open *output_fh, '>', \$output
+            or die "Cannot capture output to variable: $OS_ERROR";
+      }
+      local *STDOUT = *output_fh;
 
-   # If capturing STDERR we must dynamically scope (local) STDERR
-   # in the outer scope of the sub.  If we did,
-   #   if ( $args{stderr} ) { local *STDERR; ... }
-   # then STDERR would revert to its original value outside the if
-   # block.
-   local *STDERR     if $args{stderr};  # do in outer scope of this sub
-   *STDERR = *STDOUT if $args{stderr};
+      # If capturing STDERR we must dynamically scope (local) STDERR
+      # in the outer scope of the sub.  If we did,
+      #   if ( $args{stderr} ) { local *STDERR; ... }
+      # then STDERR would revert to its original value outside the if
+      # block.
+      local *STDERR     if $args{stderr};  # do in outer scope of this sub
+      *STDERR = *STDOUT if $args{stderr};
 
-   eval { $code->() };
-   close *output_fh;
-   if ( $EVAL_ERROR ) {
-      die $EVAL_ERROR if $die;
-      warn $EVAL_ERROR unless $args{stderr};
-      return $EVAL_ERROR;
+      eval { $code->() };
+      if ( $EVAL_ERROR ) {
+         die $EVAL_ERROR if $die;
+         warn $EVAL_ERROR;
+      }
+
+      close *output_fh;
    }
+
+   select STDOUT;
 
    # Possible transform output before returning it.  This doesn't work
    # if output was captured to a file.
@@ -178,7 +197,7 @@ sub output {
 sub load_data {
    my ( $file ) = @_;
    $file = "$trunk/$file";
-   open my $fh, '<', $file or die "Cannot open $file: $OS_ERROR";
+   open my $fh, '<', $file or croak "Cannot open $file: $OS_ERROR";
    my $contents = do { local $/ = undef; <$fh> };
    close $fh;
    (my $data = join('', $contents =~ m/(.*)/g)) =~ s/\s+//g;
@@ -189,10 +208,16 @@ sub load_data {
 sub load_file {
    my ( $file, %args ) = @_;
    $file = "$trunk/$file";
-   open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
+   my $contents = slurp_file($file);
+   chomp $contents if $args{chomp_contents};
+   return $contents;
+}
+
+sub slurp_file {
+   my ($file) = @_;
+   open my $fh, "<", $file or croak "Cannot open $file: $OS_ERROR";
    my $contents = do { local $/ = undef; <$fh> };
    close $fh;
-   chomp $contents if $args{chomp_contents};
    return $contents;
 }
 
@@ -220,8 +245,8 @@ sub parse_file {
 # Wait until code returns true.
 sub wait_until {
    my ( $code, $t, $max_t ) = @_;
-   $t     ||= .25;
-   $max_t ||= 5;
+   $t     ||= .20;
+   $max_t ||= 30;
 
    my $slept = 0;
    while ( $slept <= $max_t ) {
@@ -304,6 +329,52 @@ sub wait_for_sh {
    );
 };
 
+sub kill_program {
+   my (%args) = @_;
+
+   my $pid_file = $args{pid_file};
+   my $pid      = $args{pid};
+
+   if ( $pid_file ) {
+      chomp($pid = `cat $pid_file 2>/dev/null`);
+   }
+
+   if ( $pid ) {
+      PTDEVDEBUG && _d('Killing PID', $pid);
+      kill(15, $pid);
+      wait_until(
+         sub { my $is_alive = kill(0, $pid);  return !$is_alive; },
+         1.5,  # sleep between tries
+         15,   # max time to try
+      );
+      if ( kill(0, $pid) ) {
+         warn "PID $pid did not die; using kill -9\n";
+         kill(9, $pid);
+      }
+   }
+   else {
+      PTDEVDEBUG && _d('No PID to kill');
+   }
+
+   if ( $pid_file && -f $pid_file ) {
+      PTDEVDEBUG && _d('Removing PID file', $pid_file);
+      unlink $pid_file;
+   }
+}
+
+sub not_running {
+   my ($cmd) = @_;
+   PTDEVDEBUG && _d('Wait until not running:', $cmd);
+   return wait_until(
+      sub {
+         my $output = `ps x | grep -v grep | grep "$cmd"`;
+         PTDEVDEBUG && _d($output);
+         return 1 unless $output;
+         return 0;
+      }
+   );
+}
+
 sub _read {
    my ( $fh ) = @_;
    return <$fh>;
@@ -352,7 +423,7 @@ sub test_log_parser {
          \@e,
          $args{result},
          "$base_file_name: results"
-      ) or print "Got: ", Dumper(\@e);
+      ) or diag(Dumper(\@e));
    }
 
    if ( defined $args{num_events} ) {
@@ -382,6 +453,7 @@ sub test_protocol_parser {
    keys %args;
 
    my $file = "$trunk/$args{file}";
+   my ($base_file_name) = $args{file} =~ m/([^\/]+)$/;
    my @e;
    eval {
       open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
@@ -397,11 +469,10 @@ sub test_protocol_parser {
       close $fh;
    };
 
-   my ($base_file_name) = $args{file} =~ m/([^\/]+)$/;
    is(
       $EVAL_ERROR,
       '',
-      "$base_file_name: no errors"
+      "$base_file_name: no perl errors"
    );
 
    if ( defined $args{result} ) {
@@ -409,7 +480,7 @@ sub test_protocol_parser {
          \@e,
          $args{result},
          "$base_file_name: " . ($args{desc} || "results")
-      ) or print "Got: ", Dumper(\@e);
+      ) or diag(Dumper(\@e));
    }
 
    if ( defined $args{num_events} ) {
@@ -462,7 +533,7 @@ sub test_packet_parser {
          $args{result},
          "$args{file}" . ($args{desc} ? ": $args{desc}" : '')
       ) ) {
-      print Dumper(\@packets);
+      diag(Dumper(\@packets));
    }
 
    return;
@@ -480,6 +551,11 @@ sub test_packet_parser {
 #   * args                hash: (optional) may include
 #       update_sample            overwrite expected_output with cmd/code output
 #       keep_output              keep last cmd/code output file
+#       transform_result         transform the code to be compared but do not
+#                                reflect these changes on the original file
+#                                if update_sample is passed in
+#       transform_sample         similar to the above, but with the sample
+#                                file
 #   *   trf                      transform cmd/code output before diff
 # The sub dies if cmd or code dies.  STDERR is not captured.
 sub no_diff {
@@ -487,8 +563,13 @@ sub no_diff {
    die "I need a cmd argument" unless $cmd;
    die "I need an expected_output argument" unless $expected_output;
 
-   die "$expected_output does not exist" unless -f "$trunk/$expected_output";
-   $expected_output = "$trunk/$expected_output";
+   if ( $args{full_path} ) {
+      die "$expected_output does not exist" unless -f $expected_output;
+   }
+   else {
+      die "$expected_output does not exist" unless -f "$trunk/$expected_output";
+      $expected_output = "$trunk/$expected_output";
+   }
 
    my $tmp_file      = '/tmp/percona-toolkit-test-output.txt';
    my $tmp_file_orig = '/tmp/percona-toolkit-test-output-original.txt';
@@ -507,6 +588,9 @@ sub no_diff {
       open my $tmp_fh, '>', $tmp_file or die "Cannot open $tmp_file: $OS_ERROR";
       print $tmp_fh $cmd;
       close $tmp_fh;
+   }
+   elsif ( -f $cmd ) {
+      `cp $cmd $tmp_file`;
    }
    else {
       `$cmd > $tmp_file`;
@@ -532,8 +616,27 @@ sub no_diff {
       `mv $tmp_file-2 $tmp_file`;
    }
 
+   my $res_file = $tmp_file;
+   if ( $args{transform_result} ) {
+      (undef, $res_file) = tempfile();
+      output(
+         sub { $args{transform_result}->($tmp_file) },
+         file => $res_file,
+      );
+   }
+
+   my $cmp_file = $expected_output;
+   if ( $args{transform_sample} ) {
+      (undef, $cmp_file) = tempfile();
+      output(
+         sub { $args{transform_sample}->($expected_output) },
+         file => $cmp_file,
+      );
+   }
+
    # diff the outputs.
-   my $retval = system("diff $tmp_file $expected_output");
+   $test_diff = `diff $res_file $cmp_file 2>&1`;
+   my $retval = $?;
 
    # diff returns 0 if there were no differences,
    # so !0 = 1 = no diff in our testing parlance.
@@ -542,13 +645,21 @@ sub no_diff {
    if ( $retval ) {
       if ( $ENV{UPDATE_SAMPLES} || $args{update_sample} ) {
          `cat $tmp_file > $expected_output`;
-         print STDERR "Updated $expected_output\n";
+         diag("Updated $expected_output");
       }
    }
 
    # Remove our tmp files.
    `rm -f $tmp_file $tmp_file_orig /tmp/pt-test-outfile-trf >/dev/null 2>&1`
       unless $ENV{KEEP_OUTPUT} || $args{keep_output};
+
+   if ( $res_file ne $tmp_file ) {
+      unlink $res_file if -f $res_file;
+   }
+
+   if ( $cmp_file ne $expected_output ) {
+      unlink $cmp_file if -f $cmp_file;
+   }
 
    return !$retval;
 }
@@ -636,6 +747,13 @@ sub get_master_binlog_pos {
    return $ms->{position};
 }
 
+sub get_slave_pos_relative_to_master {
+   my ($dbh) = @_;
+   my $sql = "SHOW SLAVE STATUS";
+   my $ss  = $dbh->selectrow_hashref($sql);
+   return $ss->{exec_master_log_pos};
+}
+
 sub _d {
    my ($package, undef, $line) = caller 0;
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
@@ -643,6 +761,82 @@ sub _d {
         @_;
    my $t = sprintf '%.3f', time;
    print STDERR "# $package:$line $PID $t ", join(' ', @_), "\n";
+}
+
+# Like output(), but forks a process to execute the coderef.
+# This is because otherwise, errors thrown during cleanup
+# would be skipped.
+sub full_output {
+   my ( $code, %args ) = @_;
+   die "I need a code argument" unless $code;
+
+   local (*STDOUT, *STDERR);
+   require IO::File;
+
+   my (undef, $file) = tempfile();
+   open *STDOUT, '>', $file
+         or die "Cannot open file $file: $OS_ERROR";
+   *STDOUT->autoflush(1);
+
+   my (undef, $file2) = tempfile();
+   open *STDERR, '>', $file2
+      or die "Cannot open file $file2: $OS_ERROR";
+   *STDERR->autoflush(1);
+
+   my $status;
+   if (my $pid = fork) {
+      if ( my $t = $args{wait_for} ) {
+         # Wait for t seconds then kill the child.
+         sleep $t;
+         my $tries = 3;
+         # Most tools require 2 interrupts to make them stop.
+         while ( kill(0, $pid) && $tries-- ) {
+            kill SIGTERM, $pid;
+            sleep 0.10;
+         }
+         # Child didn't respond to SIGTERM?  Then kill -9 it.
+         kill SIGKILL, $pid if kill(0, $pid);
+         sleep 0.25;
+      }
+      waitpid($pid, 0);
+      $status = $? >> 8;
+   }
+   else {
+      exit $code->();
+   }
+   close $_ or die "Cannot close $_: $OS_ERROR" for qw(STDOUT STDERR);
+   my $output = slurp_file($file) . slurp_file($file2);
+
+   unlink $file;
+   unlink $file2;
+   
+   return ($output, $status);
+}
+
+sub tables_used {
+   my ($file) = @_;
+   local $INPUT_RECORD_SEPARATOR = '';
+   open my $fh, '<', $file or die "Cannot open $file: $OS_ERROR";
+   my %tables;
+   while ( defined(my $chunk = <$fh>) ) {
+      map {
+         my $db_tbl = $_;
+         $db_tbl =~ s/^\s*`?//;  # strip leading space and `
+         $db_tbl =~ s/\s*`?$//;  # strip trailing space and `
+         $db_tbl =~ s/`\.`/./;   # strip inner `.`
+         $tables{$db_tbl} = 1;
+      }
+      grep {
+         m/(?:\w\.\w|`\.`)/  # only db.tbl, not just db
+      }
+      $chunk =~ m/(?:FROM|INTO|UPDATE)\s+(\S+)/gi;
+   }
+   return [ sort keys %tables ];
+}
+
+sub can_load_data {
+    my $output = `/tmp/12345/use -e "SELECT * FROM percona_test.load_data" 2>/dev/null`;
+    return ($output || '') =~ /1/;
 }
 
 1;

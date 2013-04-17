@@ -26,24 +26,28 @@ if ( !$master_dbh ) {
 elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
-else {
-   plan tests => 14;
-}
 
-$sb->create_dbs($master_dbh, ['test']);
+$master_dbh->do('DROP DATABASE IF EXISTS test');
+$master_dbh->do('CREATE DATABASE test');
 $master_dbh->do('CREATE TABLE test.t (a INT)');
-my $i = 0;
-PerconaTest::wait_for_table($slave_dbh, 'test.t');
+$sb->wait_for_slaves;
 
 # Bust replication
 $slave_dbh->do('DROP TABLE test.t');
 $master_dbh->do('INSERT INTO test.t SELECT 1');
-my $output = `/tmp/12346/use -e 'show slave status'`;
-like($output, qr/Table 'test.t' doesn't exist'/, 'It is busted');
+wait_until(
+   sub {
+      my $row = $slave_dbh->selectrow_hashref('show slave status');
+      return $row->{last_sql_errno};
+   }
+);
+
+my $r = $slave_dbh->selectrow_hashref('show slave status');
+like($r->{last_error}, qr/Table 'test.t' doesn't exist'/, 'It is busted');
 
 # Start an instance
 diag(`$trunk/bin/pt-slave-restart --max-sleep .25 -h 127.0.0.1 -P 12346 -u msandbox -p msandbox --daemonize --pid /tmp/pt-slave-restart.pid --log /tmp/pt-slave-restart.log`);
-$output = `ps -eaf | grep 'pt-slave-restart \-\-max\-sleep ' | grep -v grep | grep -v pt-slave-restart.t`;
+my $output = `ps x | grep 'pt-slave-restart \-\-max\-sleep ' | grep -v grep | grep -v pt-slave-restart.t`;
 like($output, qr/pt-slave-restart --max/, 'It lives');
 
 unlike($output, qr/Table 'test.t' doesn't exist'/, 'It is not busted');
@@ -51,7 +55,7 @@ unlike($output, qr/Table 'test.t' doesn't exist'/, 'It is not busted');
 ok(-f '/tmp/pt-slave-restart.pid', 'PID file created');
 ok(-f '/tmp/pt-slave-restart.log', 'Log file created');
 
-my ($pid) = $output =~ /\s+(\d+)\s+/;
+my ($pid) = $output =~ /^\s*(\d+)\s+/;
 $output = `cat /tmp/pt-slave-restart.pid`;
 is($output, $pid, 'PID file has correct PID');
 
@@ -134,4 +138,5 @@ is(
 diag(`rm -f /tmp/pt-slave-re*`);
 $sb->wipe_clean($master_dbh);
 $sb->wipe_clean($slave_dbh);
-exit;
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;

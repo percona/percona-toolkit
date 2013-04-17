@@ -83,7 +83,7 @@ half second.  Since the update happens as soon as possible after the beginning
 of the second on the master, this allows one half second of replication delay
 before reporting that the slave lags the master by one second.  If your clocks
 are not completely accurate or there is some other reason you'd like to delay
-the slave more or less, you can tweak this value.  Try setting the C<MKDEBUG>
+the slave more or less, you can tweak this value.  Try setting the C<PTDEBUG>
 environment variable to see the effect this has.
 
 =item --verbose
@@ -120,10 +120,10 @@ This item is not part of the main option list and should not be read.
 
 =head1 ENVIRONMENT
 
-The environment variable C<MKDEBUG> enables verbose debugging output in all of the
+The environment variable C<PTDEBUG> enables verbose debugging output in all of the
 Maatkit tools:
 
-   MKDEBUG=1 mk-....
+   PTDEBUG=1 mk-....
 
 =head1 SYSTEM REQUIREMENTS
 
@@ -142,7 +142,7 @@ support or report bugs: L<http://sourceforge.net/projects/maatkit/>.
 Please include the complete command-line used to reproduce the problem you are
 seeing, the version of all MySQL servers involved, the complete output of the
 tool when run with L<"--version">, and if possible, debugging output produced by
-running with the C<MKDEBUG=1> environment variable.
+running with the C<PTDEBUG=1> environment variable.
 
 =head1 COPYRIGHT, LICENSE AND WARRANTY
 

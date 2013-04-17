@@ -1,0 +1,39 @@
+
+# Overall: 1 total, 1 unique, 0 QPS, 0x concurrency ______________________
+# Time range: all events occurred at 2013-01-22 09:55:57.793375
+# Attribute          total     min     max     avg     95%  stddev  median
+# ============     ======= ======= ======= ======= ======= ======= =======
+# Exec time             4s      4s      4s      4s      4s       0      4s
+# Rows affecte           0       0       0       0       0       0       0
+# Query size            30      30      30      30      30       0      30
+# Warning coun           0       0       0       0       0       0       0
+
+# Query 1: 0 QPS, 0x concurrency, ID 0x5D51E5F01B88B79E at byte 0 ________
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2013-01-22 09:55:57.793375
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count        100       1
+# Exec time    100      4s      4s      4s      4s      4s       0      4s
+# Rows affecte   0       0       0       0       0       0       0       0
+# Query size   100      30      30      30      30      30       0      30
+# Warning coun   0       0       0       0       0       0       0       0
+# String:
+# Error msg    Client closed connection during handshake
+# Hosts        100.0.0.2
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  ################################################################
+#  10s+
+administrator command: Connect\G
+
+# Profile
+# Rank Query ID           Response time Calls R/Call V/M   Item
+# ==== ================== ============= ===== ====== ===== =============
+#    1 0x5D51E5F01B88B79E 3.8195 100.0%     1 3.8195  0.00 ADMIN CONNECT

@@ -1,4 +1,4 @@
-# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Inc.
+# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -18,45 +18,6 @@
 # OptionParser package
 # ###########################################################################
 {
-# Package: OptionParser
-# OptionParser parses command line options from a tool's POD.  By default
-# it parses a description and usage from the POD's SYNOPSIS section and
-# command line options from the OPTIONS section.
-#
-# The SYNOPSIS section should look like,
-# (start code)
-#   =head1 SYNOPSIS
-#
-#   Usage: mk-archiver [OPTION...] --source DSN --where WHERE
-#
-#   mk-archiver nibbles records from a MySQL table.  The --source and --dest
-#   arguments use DSN syntax; if COPY is yes, --dest defaults to the key's value
-#   from --source.
-#
-#   Examples:
-#   ...
-# (end code)
-# The key, required parts are the "Usage:" line and the following description
-# paragraph.
-#
-# The OPTIONS section shoud look like,
-# (start code)
-#   =head1 OPTIONS
-#
-#   Optional rules, one per line.
-#
-#   =over
-#
-#   =item --analyze
-#
-#   type: string
-#
-#   Run ANALYZE TABLE afterwards on L<"--source"> and/or L<"--dest">.
-#   ect.
-# (end code)
-# The option's full name is given as the "=item".  The next, optional para
-# is the option's attributes.  And the next, required para is the option's
-# description (the first period-terminated sentence).
 package OptionParser;
 
 use strict;
@@ -66,6 +27,7 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use List::Util qw(max);
 use Getopt::Long;
+use Data::Dumper;
 
 my $POD_link_re = '[LC]<"?([^">]+)"?>';
 
@@ -667,7 +629,7 @@ sub get_opts {
       else {
          print "Error parsing version.  See the VERSION section of the tool's documentation.\n";
       }
-      exit 0;
+      exit 1;
    }
 
    if ( @ARGV && $self->{strict} ) {
@@ -986,7 +948,7 @@ sub usage_or_errors {
    }
    elsif ( scalar @{$self->{errors}} ) {
       print $self->print_errors() or die "Cannot print errors: $OS_ERROR";
-      exit 0 unless $return;
+      exit 1 unless $return;
    }
 
    return;
@@ -1074,7 +1036,7 @@ sub print_usage {
                    . "d=days; if no suffix, $s is used.";
          }
          # Wrap long descriptions
-         $desc = join("\n$rpad", grep { $_ } $desc =~ m/(.{0,$rcol})(?:\s+|$)/g);
+         $desc = join("\n$rpad", grep { $_ } $desc =~ m/(.{0,$rcol}(?!\W))(?:\s+|(?<=\W)|$)/g);
          $desc =~ s/ +$//mg;
          if ( $short ) {
             $usage .= sprintf("  --%-${maxs}s -%s  %s\n", $long, $short, $desc);
@@ -1317,6 +1279,45 @@ sub _parse_synopsis {
       usage       => $usage,
    );
 };
+
+sub set_vars {
+   my ($self, $file) = @_;
+   $file ||= $self->{file} || __FILE__;
+
+   my %user_vars;
+   my $user_vars = $self->has('set-vars') ? $self->get('set-vars') : undef;
+   if ( $user_vars ) {
+      foreach my $var_val ( @$user_vars ) {
+         my ($var, $val) = $var_val =~ m/([^\s=]+)=(\S+)/;
+         die "Invalid --set-vars value: $var_val\n" unless $var && $val;
+         $user_vars{$var} = {
+            val     => $val,
+            default => 0,
+         };
+      }
+   }
+
+   my %default_vars;
+   my $default_vars = $self->read_para_after($file, qr/MAGIC_set_vars/);
+   if ( $default_vars ) {
+      %default_vars = map {
+         my $var_val = $_;
+         my ($var, $val) = $var_val =~ m/([^\s=]+)=(\S+)/;
+         die "Invalid --set-vars value: $var_val\n" unless $var && $val;
+         $var => {
+            val     => $val,
+            default => 1,
+         };
+      } split("\n", $default_vars);
+   }
+
+   my %vars = (
+      %default_vars, # first the tool's defaults
+      %user_vars,    # then the user's which overwrite the defaults
+   );
+   PTDEBUG && _d('--set-vars:', Dumper(\%vars));
+   return \%vars;
+}
 
 sub _d {
    my ($package, undef, $line) = caller 0;

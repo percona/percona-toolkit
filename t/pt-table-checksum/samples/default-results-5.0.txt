@@ -1,13 +1,13 @@
 ERRORS DIFFS ROWS SKIPPED TABLE
 0 0 0 0 mysql.columns_priv
-0 0 1 0 mysql.db
+0 0 0 0 mysql.db
 0 0 0 0 mysql.func
 0 0 36 0 mysql.help_category
 0 0 395 0 mysql.help_keyword
 0 0 809 0 mysql.help_relation
 0 0 422 0 mysql.help_topic
 0 0 0 0 mysql.host
-0 0 6 0 mysql.proc
+0 0 0 0 mysql.proc
 0 0 0 0 mysql.procs_priv
 0 0 0 0 mysql.tables_priv
 0 0 0 0 mysql.time_zone
@@ -15,7 +15,10 @@ ERRORS DIFFS ROWS SKIPPED TABLE
 0 0 0 0 mysql.time_zone_name
 0 0 0 0 mysql.time_zone_transition
 0 0 0 0 mysql.time_zone_transition_type
-0 0 3 0 mysql.user
+0 0 2 0 mysql.user
+0 0 33 0 percona_test.checksums
+0 0 1 0 percona_test.load_data
+0 0 1 0 percona_test.sentinel
 0 0 200 0 sakila.actor
 0 0 603 0 sakila.address
 0 0 16 0 sakila.category

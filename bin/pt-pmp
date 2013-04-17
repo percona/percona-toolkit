@@ -4,6 +4,56 @@
 # See "COPYRIGHT, LICENSE, AND WARRANTY" at the end of this file for legal
 # notices and disclaimers.
 
+TOOL="pt-pmp"
+
+# ###########################################################################
+# log_warn_die package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/log_warn_die.sh
+#   t/lib/bash/log_warn_die.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+
+set -u
+
+PTFUNCNAME=""
+PTDEBUG="${PTDEBUG:-""}"
+EXIT_STATUS=0
+
+ts() {
+   TS=$(date +%F-%T | tr ':-' '_')
+   echo "$TS $*"
+}
+
+info() {
+   [ ${OPT_VERBOSE:-3} -ge 3 ] && ts "$*"
+}
+
+log() {
+   [ ${OPT_VERBOSE:-3} -ge 2 ] && ts "$*"
+}
+
+warn() {
+   [ ${OPT_VERBOSE:-3} -ge 1 ] && ts "$*" >&2
+   EXIT_STATUS=1
+}
+
+die() {
+   ts "$*" >&2
+   EXIT_STATUS=1
+   exit 1
+}
+
+_d () {
+   [ "$PTDEBUG" ] && echo "# $PTFUNCNAME: $(ts "$*")" >&2
+}
+
+# ###########################################################################
+# End log_warn_die package
+# ###########################################################################
+
 # ###########################################################################
 # tmpdir package
 # This package is a copy without comments from the original.  The original
@@ -13,9 +63,10 @@
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 
+
 set -u
 
-TMPDIR=""
+PT_TMPDIR=""
 
 mk_tmpdir() {
    local dir="${1:-""}"
@@ -24,36 +75,470 @@ mk_tmpdir() {
       if [ ! -d "$dir" ]; then
          mkdir "$dir" || die "Cannot make tmpdir $dir"
       fi
-      TMPDIR="$dir"
+      PT_TMPDIR="$dir"
    else
       local tool="${0##*/}"
       local pid="$$"
-      TMPDIR=`mktemp -d /tmp/${tool}.${pid}.XXXXX` \
+      PT_TMPDIR=`mktemp -d -t "${tool}.${pid}.XXXXXX"` \
          || die "Cannot make secure tmpdir"
    fi
 }
 
 rm_tmpdir() {
-   if [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ]; then
-      rm -rf "$TMPDIR"
+   if [ -n "$PT_TMPDIR" ] && [ -d "$PT_TMPDIR" ]; then
+      rm -rf "$PT_TMPDIR"
    fi
-   TMPDIR=""
+   PT_TMPDIR=""
 }
 
 # ###########################################################################
 # End tmpdir package
 # ###########################################################################
 
-set +u
+# ###########################################################################
+# parse_options package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/parse_options.sh
+#   t/lib/bash/parse_options.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+
+
+
+
+set -u
+
+ARGV=""           # Non-option args (probably input files)
+EXT_ARGV=""       # Everything after -- (args for an external command)
+HAVE_EXT_ARGV=""  # Got --, everything else is put into EXT_ARGV
+OPT_ERRS=0        # How many command line option errors
+OPT_VERSION=""    # If --version was specified
+OPT_HELP=""       # If --help was specified
+PO_DIR=""         # Directory with program option spec files
 
 usage() {
-   if [ "${OPT_ERR}" ]; then
-      echo "${OPT_ERR}" >&2
-   fi
-   echo "Usage: pt-pmp [OPTIONS] [FILES]" >&2
-   echo "For more information, 'man pt-pmp' or 'perldoc $0'" >&2
-   exit 1
+   local file="$1"
+
+   local usage="$(grep '^Usage: ' "$file")"
+   echo $usage
+   echo
+   echo "For more information, 'man $TOOL' or 'perldoc $file'."
 }
+
+usage_or_errors() {
+   local file="$1"
+
+   if [ "$OPT_VERSION" ]; then
+      local version=$(grep '^pt-[^ ]\+ [0-9]' "$file")
+      echo "$version"
+      return 1
+   fi
+
+   if [ "$OPT_HELP" ]; then
+      usage "$file"
+      echo
+      echo "Command line options:"
+      echo
+      perl -e '
+         use strict;
+         use warnings FATAL => qw(all);
+         my $lcol = 20;         # Allow this much space for option names.
+         my $rcol = 80 - $lcol; # The terminal is assumed to be 80 chars wide.
+         my $name;
+         while ( <> ) {
+            my $line = $_;
+            chomp $line;
+            if ( $line =~ s/^long:/  --/ ) {
+               $name = $line;
+            }
+            elsif ( $line =~ s/^desc:// ) {
+               $line =~ s/ +$//mg;
+               my @lines = grep { $_      }
+                           $line =~ m/(.{0,$rcol})(?:\s+|\Z)/g;
+               if ( length($name) >= $lcol ) {
+                  print $name, "\n", (q{ } x $lcol);
+               }
+               else {
+                  printf "%-${lcol}s", $name;
+               }
+               print join("\n" . (q{ } x $lcol), @lines);
+               print "\n";
+            }
+         }
+      ' "$PO_DIR"/*
+      echo
+      echo "Options and values after processing arguments:"
+      echo
+      (
+         cd "$PO_DIR"
+         for opt in *; do
+            local varname="OPT_$(echo "$opt" | tr a-z- A-Z_)"
+            eval local varvalue=\$$varname
+            if ! grep -q "type:" "$PO_DIR/$opt" >/dev/null; then
+               if [ "$varvalue" -a "$varvalue" = "yes" ];
+                  then varvalue="TRUE"
+               else
+                  varvalue="FALSE"
+               fi
+            fi
+            printf -- "  --%-30s %s" "$opt" "${varvalue:-(No value)}"
+            echo
+         done
+      )
+      return 1
+   fi
+
+   if [ $OPT_ERRS -gt 0 ]; then
+      echo
+      usage "$file"
+      return 1
+   fi
+
+   return 0
+}
+
+option_error() {
+   local err="$1"
+   OPT_ERRS=$(($OPT_ERRS + 1))
+   echo "$err" >&2
+}
+
+parse_options() {
+   local file="$1"
+   shift
+
+   ARGV=""
+   EXT_ARGV=""
+   HAVE_EXT_ARGV=""
+   OPT_ERRS=0
+   OPT_VERSION=""
+   OPT_HELP=""
+   PO_DIR="$PT_TMPDIR/po"
+
+   if [ ! -d "$PO_DIR" ]; then
+      mkdir "$PO_DIR"
+      if [ $? -ne 0 ]; then
+         echo "Cannot mkdir $PO_DIR" >&2
+         exit 1
+      fi
+   fi
+
+   rm -rf "$PO_DIR"/*
+   if [ $? -ne 0 ]; then
+      echo "Cannot rm -rf $PO_DIR/*" >&2
+      exit 1
+   fi
+
+   _parse_pod "$file"  # Parse POD into program option (po) spec files
+   _eval_po            # Eval po into existence with default values
+
+   if [ $# -ge 2 ] &&  [ "$1" = "--config" ]; then
+      shift  # --config
+      local user_config_files="$1"
+      shift  # that ^
+      local IFS=","
+      for user_config_file in $user_config_files; do
+         _parse_config_files "$user_config_file"
+      done
+   else
+      _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf" "/etc/percona-toolkit/$TOOL.conf" "$HOME/.percona-toolkit.conf" "$HOME/.$TOOL.conf"
+   fi
+
+   _parse_command_line "${@:-""}"
+}
+
+_parse_pod() {
+   local file="$1"
+
+   cat "$file" | PO_DIR="$PO_DIR" perl -ne '
+      BEGIN { $/ = ""; }
+      next unless $_ =~ m/^=head1 OPTIONS/;
+      while ( defined(my $para = <>) ) {
+         last if $para =~ m/^=head1/;
+         chomp;
+         if ( $para =~ m/^=item --(\S+)/ ) {
+            my $opt  = $1;
+            my $file = "$ENV{PO_DIR}/$opt";
+            open my $opt_fh, ">", $file or die "Cannot open $file: $!";
+            print $opt_fh "long:$opt\n";
+            $para = <>;
+            chomp;
+            if ( $para =~ m/^[a-z ]+:/ ) {
+               map {
+                  chomp;
+                  my ($attrib, $val) = split(/: /, $_);
+                  print $opt_fh "$attrib:$val\n";
+               } split(/; /, $para);
+               $para = <>;
+               chomp;
+            }
+            my ($desc) = $para =~ m/^([^?.]+)/;
+            print $opt_fh "desc:$desc.\n";
+            close $opt_fh;
+         }
+      }
+      last;
+   '
+}
+
+_eval_po() {
+   local IFS=":"
+   for opt_spec in "$PO_DIR"/*; do
+      local opt=""
+      local default_val=""
+      local neg=0
+      local size=0
+      while read key val; do
+         case "$key" in
+            long)
+               opt=$(echo $val | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
+               ;;
+            default)
+               default_val="$val"
+               ;;
+            "short form")
+               ;;
+            type)
+               [ "$val" = "size" ] && size=1
+               ;;
+            desc)
+               ;;
+            negatable)
+               if [ "$val" = "yes" ]; then
+                  neg=1
+               fi
+               ;;
+            *)
+               echo "Invalid attribute in $opt_spec: $line" >&2
+               exit 1
+         esac 
+      done < "$opt_spec"
+
+      if [ -z "$opt" ]; then
+         echo "No long attribute in option spec $opt_spec" >&2
+         exit 1
+      fi
+
+      if [ $neg -eq 1 ]; then
+         if [ -z "$default_val" ] || [ "$default_val" != "yes" ]; then
+            echo "Option $opt_spec is negatable but not default: yes" >&2
+            exit 1
+         fi
+      fi
+
+      if [ $size -eq 1 -a -n "$default_val" ]; then
+         default_val=$(size_to_bytes $default_val)
+      fi
+
+      eval "OPT_${opt}"="$default_val"
+   done
+}
+
+_parse_config_files() {
+
+   for config_file in "${@:-""}"; do
+      test -f "$config_file" || continue
+
+      while read config_opt; do
+
+         echo "$config_opt" | grep '^[ ]*[^#]' >/dev/null 2>&1 || continue
+
+         config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/[ ]*#.*$//')"
+
+         [ "$config_opt" = "" ] && continue
+
+         if ! [ "$HAVE_EXT_ARGV" ]; then
+            config_opt="--$config_opt"
+         fi
+
+         _parse_command_line "$config_opt"
+
+      done < "$config_file"
+
+      HAVE_EXT_ARGV=""  # reset for each file
+
+   done
+}
+
+_parse_command_line() {
+   local opt=""
+   local val=""
+   local next_opt_is_val=""
+   local opt_is_ok=""
+   local opt_is_negated=""
+   local real_opt=""
+   local required_arg=""
+   local spec=""
+
+   for opt in "${@:-""}"; do
+      if [ "$opt" = "--" -o "$opt" = "----" ]; then
+         HAVE_EXT_ARGV=1
+         continue
+      fi
+      if [ "$HAVE_EXT_ARGV" ]; then
+         if [ "$EXT_ARGV" ]; then
+            EXT_ARGV="$EXT_ARGV $opt"
+         else
+            EXT_ARGV="$opt"
+         fi
+         continue
+      fi
+
+      if [ "$next_opt_is_val" ]; then
+         next_opt_is_val=""
+         if [ $# -eq 0 ] || [ $(expr "$opt" : "\-") -eq 1 ]; then
+            option_error "$real_opt requires a $required_arg argument"
+            continue
+         fi
+         val="$opt"
+         opt_is_ok=1
+      else
+         if [ $(expr "$opt" : "\-") -eq 0 ]; then
+            if [ -z "$ARGV" ]; then
+               ARGV="$opt"
+            else
+               ARGV="$ARGV $opt"
+            fi
+            continue
+         fi
+
+         real_opt="$opt"
+
+         if $(echo $opt | grep '^--no[^-]' >/dev/null); then
+            local base_opt=$(echo $opt | sed 's/^--no//')
+            if [ -f "$PT_TMPDIR/po/$base_opt" ]; then
+               opt_is_negated=1
+               opt="$base_opt"
+            else
+               opt_is_negated=""
+               opt=$(echo $opt | sed 's/^-*//')
+            fi
+         else
+            if $(echo $opt | grep '^--no-' >/dev/null); then
+               opt_is_negated=1
+               opt=$(echo $opt | sed 's/^--no-//')
+            else
+               opt_is_negated=""
+               opt=$(echo $opt | sed 's/^-*//')
+            fi
+         fi
+
+         if $(echo $opt | grep '^[a-z-][a-z-]*=' >/dev/null 2>&1); then
+            val="$(echo $opt | awk -F= '{print $2}')"
+            opt="$(echo $opt | awk -F= '{print $1}')"
+         fi
+
+         if [ -f "$PT_TMPDIR/po/$opt" ]; then
+            spec="$PT_TMPDIR/po/$opt"
+         else
+            spec=$(grep "^short form:-$opt\$" "$PT_TMPDIR"/po/* | cut -d ':' -f 1)
+            if [ -z "$spec"  ]; then
+               option_error "Unknown option: $real_opt"
+               continue
+            fi
+         fi
+
+         required_arg=$(cat "$spec" | awk -F: '/^type:/{print $2}')
+         if [ "$required_arg" ]; then
+            if [ "$val" ]; then
+               opt_is_ok=1
+            else
+               next_opt_is_val=1
+            fi
+         else
+            if [ "$val" ]; then
+               option_error "Option $real_opt does not take a value"
+               continue
+            fi 
+            if [ "$opt_is_negated" ]; then
+               val=""
+            else
+               val="yes"
+            fi
+            opt_is_ok=1
+         fi
+      fi
+
+      if [ "$opt_is_ok" ]; then
+         opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
+
+         if grep "^type:size" "$spec" >/dev/null; then
+            val=$(size_to_bytes $val)
+         fi
+
+         eval "OPT_$opt"="'$val'"
+
+         opt=""
+         val=""
+         next_opt_is_val=""
+         opt_is_ok=""
+         opt_is_negated=""
+         real_opt=""
+         required_arg=""
+         spec=""
+      fi
+   done
+}
+
+size_to_bytes() {
+   local size="$1"
+   echo $size | perl -ne '%f=(B=>1, K=>1_024, M=>1_048_576, G=>1_073_741_824, T=>1_099_511_627_776); m/^(\d+)([kMGT])?/i; print $1 * $f{uc($2 || "B")};'
+}
+
+# ###########################################################################
+# End parse_options package
+# ###########################################################################
+
+# ###########################################################################
+# alt_cmds package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/alt_cmds.sh
+#   t/lib/bash/alt_cmds.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+
+set -u
+
+_seq() {
+   local i="$1"
+   awk "BEGIN { for(i=1; i<=$i; i++) print i; }"
+}
+
+_pidof() {
+   local cmd="$1"
+   if ! pidof "$cmd" 2>/dev/null; then
+      ps -eo pid,ucomm | awk -v comm="$cmd" '$2 == comm { print $1 }'
+   fi
+}
+
+_lsof() {
+   local pid="$1"
+   if ! lsof -p $pid 2>/dev/null; then
+      /bin/ls -l /proc/$pid/fd 2>/dev/null
+   fi
+}
+
+
+
+_which() {
+   if [ -x /usr/bin/which ]; then
+      /usr/bin/which "$1" 2>/dev/null | awk '{print $1}'
+   elif which which 1>/dev/null 2>&1; then
+      which "$1" 2>/dev/null | awk '{print $1}'
+   else
+      echo "$1"
+   fi
+}
+
+# ###########################################################################
+# End alt_cmds package
+# ###########################################################################
+
+set +u
 
 # Actually does the aggregation.  The arguments are the max number of functions
 # to aggregate, and the files to read.  If maxlen=0, it means infinity.  We have
@@ -79,6 +564,7 @@ aggregate_stacktrace() {
             }
             else {
                targ = \$4;
+               tfile= \$NF;
             }
             if ( targ ~ /[<\\(]/ ) {
                targ = substr(\$0, index(\$0, \" in \") + 4);
@@ -123,6 +609,13 @@ aggregate_stacktrace() {
          }
          else {
             fname = targ;
+            if ( tfile ~ /^\// ) {
+               last=split(tfile,filen,/\//); 
+               fname = targ \"(\" filen[last] \")\";
+            }
+            else {
+               fname = targ
+            }
          }
          if ( ${maxlen:-0} == 0 || c < ${maxlen:-0} ) {
             if (s != \"\" ) {
@@ -142,78 +635,59 @@ aggregate_stacktrace() {
 
 # The main program to run.
 main() {
+   local output_file="${OPT_SAVE_SAMPLES:-"$PT_TMPDIR/percona-toolkit"}"
 
-   # Get command-line options
-   for o; do
-      case "${o}" in
-         --)
-            shift; break;
-            ;;
-         --help)
-            usage;
-            ;;
-         -b)
-            shift; OPT_b="${1}"; shift;
-            ;;
-         -i)
-            shift; OPT_i="${1}"; shift;
-            ;;
-         -k)
-            shift; OPT_k="${1}"; shift;
-            ;;
-         -l)
-            shift; OPT_l="${1}"; shift;
-            ;;
-         -p)
-            shift; OPT_p="${1}"; shift;
-            ;;
-         -s)
-            shift; OPT_s="${1}"; shift;
-            ;;
-         -*)
-            OPT_ERR="Unknown option ${o}."
-            usage
-            ;;
-      esac
-   done
-   export OPT_i="${OPT_i:-1}";
-   export OPT_k="${OPT_k:-}";
-   export OPT_l="${OPT_l:-0}";
-   export OPT_b="${OPT_b:-mysqld}";
-   export OPT_p="${OPT_p:-}";
-   export OPT_s="${OPT_s:-0}";
-
-   if [ -z "${1}" ]; then
-      # There's no file to analyze, so we'll make one.
-      if [ -z "${OPT_p}" ]; then
-         OPT_p=$(pidof -s "${OPT_b}" 2>/dev/null);
-         if [ -z "${OPT_p}" ]; then
-            OPT_p=$(pgrep -o -x "${OPT_b}" 2>/dev/null)
+   if [ -z "$ARGV" ]; then
+      # There are no files to analyze, so we'll make one.
+      if [ -z "$OPT_PID" ]; then
+         OPT_PID=$(pidof -s "$OPT_BINARY" 2>/dev/null);
+         if [ -z "$OPT_PID" ]; then
+            OPT_PID=$(pgrep -o -x "$OPT_BINARY" 2>/dev/null)
          fi
-         if [ -z "${OPT_p}" ]; then
-            OPT_p=$(ps -eaf | grep "${OPT_b}" | grep -v grep | awk '{print $2}' | head -n1);
+         if [ -z "$OPT_PID" ]; then
+            OPT_PID=$(ps -eaf | grep "$OPT_BINARY" | grep -v grep | awk '{print $2}' | head -n1);
          fi
       fi
-      date;
-      for x in $(seq 1 $OPT_i); do
-         gdb -ex "set pagination 0" -ex "thread apply all bt" -batch -p $OPT_p >> "${OPT_k:-$TMPDIR/percona-toolkit}"
-         date +'TS %N.%s %F %T' >> "${OPT_k:-$TMPDIR/percona-toolkit}"
-         sleep $OPT_s
+      date
+      for x in $(_seq $OPT_ITERATIONS); do
+         gdb -ex "set pagination 0"    \
+             -ex "thread apply all bt" \
+             -batch                    \
+             -p $OPT_PID               \
+             >> "$output_file"
+         date +'TS %N.%s %F %T' >> "$output_file"
+         sleep $OPT_INTERVAL
       done
    fi
 
-   if [ $# -eq 0 ]; then
-      aggregate_stacktrace "${OPT_l}" "${OPT_k:-$TMPDIR/percona-toolkit}"
+   if [ -z "$ARGV" ]; then
+      aggregate_stacktrace "$OPT_LINES" "$output_file"
    else
-      aggregate_stacktrace "${OPT_l}" "$@"
+      aggregate_stacktrace "$OPT_LINES" $ARGV
    fi
 }
 
 # Execute the program if it was not included from another file.  This makes it
 # possible to include without executing, and thus test.
-if [ "$(basename "$0")" = "pt-pmp" ] || [ "$(basename "$0")" = "bash" -a "$_" = "$0" ]; then
+if    [ "${0##*/}" = "$TOOL" ] \
+   || [ "${0##*/}" = "bash" -a "${_:-""}" = "$0" ]; then
+
    mk_tmpdir
-   main "$@"
+
+   parse_options "$0" "${@:-""}"
+   if [ -z "$OPT_HELP" -a -z "$OPT_VERSION" ]; then
+      # Validate options
+      :
+   fi
+   usage_or_errors "$0"
+   po_status=$?
+   if [ $po_status -ne 0 ]; then
+      [ $OPT_ERRS -gt 0 ] && exit 1
+      exit 0
+   fi
+
+   main $ARGV
+
    rm_tmpdir
 fi
 
@@ -238,30 +712,21 @@ a process is waiting for.
 
 =head1 RISKS
 
-The following section is included to inform users about the potential risks,
-whether known or unknown, of using this tool.  The two main categories of risks
-are those created by the nature of the tool (e.g. read-only tools vs. read-write
-tools) and those created by bugs.
+Percona Toolkit is mature, proven in the real world, and well tested,
+but all database tools can pose a risk to the system and the database
+server.  Before using this tool, please:
 
-pt-pmp is a read-only tool.  However, collecting GDB stacktraces is achieved by
-attaching GDB to the program and printing stack traces from all threads. This
-will freeze the program for some period of time, ranging from a second or so to
-much longer on very busy systems with a lot of memory and many threads in the
-program.  In the tool's default usage as a MySQL profiling tool, this means that
-MySQL will be unresponsive while the tool runs, although if you are using the
-tool to diagnose an unresponsive server, there is really no reason not to do
-this.  In addition to freezing the server, there is also some risk of the server
-crashing or performing badly after GDB detaches from it.
+=over
 
-At the time of this release, we know of no bugs that could cause serious harm
-to users.
+=item * Read the tool's documentation
 
-The authoritative source for updated information is always the online issue
-tracking system.  Issues that affect this tool will be marked as such.  You can
-see a list of such issues at the following URL:
-L<http://www.percona.com/bugs/pt-pmp>.
+=item * Review the tool's known L<"BUGS">
 
-See also L<"BUGS"> for more information on filing bugs and getting help.
+=item * Test the tool on a non-production server
+
+=item * Backup your production server and verify the backups
+
+=back
 
 =head1 DESCRIPTION
 
@@ -274,35 +739,63 @@ from each level of the stack, and combines them with commas.  It does this
 for each thread in the output.  Afterwards, it sorts similar threads together
 and counts how many of each one there are, then sorts them most-frequent first.
 
-=head1 OPTIONS
+pt-pmp is a read-only tool.  However, collecting GDB stacktraces is achieved by
+attaching GDB to the program and printing stack traces from all threads. This
+will freeze the program for some period of time, ranging from a second or so to
+much longer on very busy systems with a lot of memory and many threads in the
+program.  In the tool's default usage as a MySQL profiling tool, this means that
+MySQL will be unresponsive while the tool runs, although if you are using the
+tool to diagnose an unresponsive server, there is really no reason not to do
+this.  In addition to freezing the server, there is also some risk of the server
+crashing or performing badly after GDB detaches from it.
 
-Options must precede files on the command line.
+=head1 OPTIONS
 
 =over
 
-=item -b BINARY
+=item --binary
 
-Which binary to trace (default mysqld)
+short form: -b; type: string; default: mysqld
 
-=item -i ITERATIONS
+Which binary to trace.
 
-How many traces to gather and aggregate (default 1)
+=item --help
 
-=item -k KEEPFILE
+Show help and exit.
 
-Keep the raw traces in this file after aggregation
+=item --interval
 
-=item -l NUMBER
+short form: -s; type: int; default: 0
 
-Aggregate only first NUMBER functions; 0=infinity (default 0)
+Number of seconds to sleep between L<"--iterations">.
 
-=item -p PID
+=item --iterations
 
-Process ID of the process to trace; overrides -b
+short form: -i; type: int; default: 1
 
-=item -s SLEEPTIME
+How many traces to gather and aggregate.
 
-Number of seconds to sleep between iterations (default 0)
+=item --lines
+
+short form: -l; type: int; default: 0
+
+Aggregate only first specified number of many functions; 0=infinity.
+
+=item --pid
+
+short form: -p; type: int
+
+Process ID of the process to trace; overrides L<"--binary">.
+
+=item --save-samples
+
+short form: -k; type: string
+
+Keep the raw traces in this file after aggregation.
+
+=item --version
+
+Show version and exit.
 
 =back
 
@@ -312,7 +805,9 @@ This tool does not use any environment variables.
 
 =head1 SYSTEM REQUIREMENTS
 
-This tool requires Bash v3 or newer.
+This tool requires Bash v3 or newer.  If no backtrace files are given,
+then gdb is also required to create backtraces for the process specified
+on the command line.
 
 =head1 BUGS
 
@@ -363,16 +858,16 @@ Baron Schwartz, based on a script by Domas Mituzas (L<http://poormansprofiler.or
 =head1 ABOUT PERCONA TOOLKIT
 
 This tool is part of Percona Toolkit, a collection of advanced command-line
-tools developed by Percona for MySQL support and consulting.  Percona Toolkit
-was forked from two projects in June, 2011: Maatkit and Aspersa.  Those
-projects were created by Baron Schwartz and developed primarily by him and
-Daniel Nichter, both of whom are employed by Percona.  Visit
-L<http://www.percona.com/software/> for more software developed by Percona.
+tools for MySQL developed by Percona.  Percona Toolkit was forked from two
+projects in June, 2011: Maatkit and Aspersa.  Those projects were created by
+Baron Schwartz and primarily developed by him and Daniel Nichter.  Visit
+L<http://www.percona.com/software/> to learn about other free, open-source
+software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2010-2011 Baron Schwartz, 2011-2012 Percona Inc.
-Feedback and improvements are welcome.
+This program is copyright 2011-2013 Percona Ireland Ltd,
+2010-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
@@ -390,7 +885,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-pmp 2.0.4
+pt-pmp 2.2.1
 
 =cut
 

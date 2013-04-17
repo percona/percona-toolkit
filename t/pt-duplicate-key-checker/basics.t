@@ -23,7 +23,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 8;
+   plan tests => 13;
 }
 
 my $output;
@@ -95,8 +95,50 @@ ok(
    'No results for nonexistent db'
 );
 
+$dbh->do('create database test');
+$sb->load_file('master', 't/lib/samples/dupekeys/dupe-cluster-bug-894140.sql', 'test');
+
+ok(
+   no_diff(
+      sub { pt_duplicate_key_checker::main(@args, qw(-d test)) },
+      "$sample/bug-894140.txt",
+      sed => [ "-e 's/  */ /g'" ],
+    ),
+   "Bug 894140"
+);
+
+# #############################################################################
+# --key-types
+# https://bugs.launchpad.net/percona-toolkit/+bug/969669 
+# #############################################################################
+
+ok(
+   no_diff(
+      sub { pt_duplicate_key_checker::main(@args,
+         qw(-d sakila --key-types k)) },
+      "$sample/key-types-k.txt"),
+   '--key-types k'
+);
+
+ok(
+   no_diff(
+      sub { pt_duplicate_key_checker::main(@args,
+         qw(-d sakila --key-types f)) },
+      "$sample/key-types-f.txt"),
+   '--key-types f'
+);
+
+ok(
+   no_diff(
+      sub { pt_duplicate_key_checker::main(@args,
+         qw(-d sakila --key-types fk)) },
+      "$sample/key-types-fk.txt"),
+   '--key-types fk (explicit)'
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

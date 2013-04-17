@@ -1,0 +1,42 @@
+[client]
+user     = msandbox
+password = msandbox
+port     = PORT
+socket   = /tmp/PORT/mysql_sandboxPORT.sock
+
+[mysqld]
+port                       = PORT
+socket                     = /tmp/PORT/mysql_sandboxPORT.sock
+pid-file                   = /tmp/PORT/data/mysql_sandboxPORT.pid
+basedir                    = PERCONA_TOOLKIT_SANDBOX
+datadir                    = /tmp/PORT/data
+key_buffer_size            = 16M
+innodb_buffer_pool_size    = 16M
+innodb_data_home_dir       = /tmp/PORT/data
+innodb_log_group_home_dir  = /tmp/PORT/data
+innodb_data_file_path      = ibdata1:10M:autoextend
+innodb_log_file_size       = 5M
+log-bin                    = mysql-bin
+relay_log                  = mysql-relay-bin
+log_slave_updates
+server-id                  = PORT
+report-host                = 127.0.0.1
+report-port                = PORT
+log-error                  = /tmp/PORT/data/mysqld.log
+innodb_lock_wait_timeout   = 3
+general_log
+general_log_file           = genlog
+
+binlog_format              = ROW
+wsrep_provider             = LIBGALERA
+wsrep_cluster_address      = CLUSTER_AD
+wsrep_sst_receive_address  = ADDR:RECEIVE_PRT
+wsrep_node_incoming_address= ADDR:PORT
+wsrep_slave_threads        = 2
+wsrep_cluster_name         = CLUSTER_NAME
+wsrep_provider_options     = "gmcast.listen_addr=tcp://ADDR:LISTEN_PRT;"
+wsrep_sst_method           = rsync
+wsrep_node_name            = PORT
+innodb_locks_unsafe_for_binlog = 1
+innodb_autoinc_lock_mode   = 2
+wsrep-replicate-myisam

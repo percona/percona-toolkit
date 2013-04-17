@@ -22,9 +22,6 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-else {
-   plan tests => 5;
-}
 
 my $output;
 my $rows;
@@ -72,7 +69,57 @@ EOF
 `rm -f archive.test.table_1`;
 
 # #############################################################################
+# Bug #903379: --file & --charset could cause warnings and exceptions
+# #############################################################################
+
+sub test_charset {
+   my ($charset) = @_;
+   
+   $sb->load_file('master', 't/pt-archiver/samples/table1.sql');
+   local $@;
+   my ($out, $exit_val) = full_output( sub {
+      pt_archiver::main("-c", "b,c", qw(--where 1=1 --header),
+            "--source", "D=test,t=table_1,F=$cnf",
+            '--file', '/tmp/%Y-%m-%d-%D_%H:%i:%s.%t',
+            '--no-check-charset',
+            '--charset', $charset,
+      );
+   });
+
+   is($exit_val,
+      0,
+      "--charset $charset works"
+   ) or diag($out);
+}
+
+for my $charset (qw(latin1 utf8 UTF8 )) {
+   test_charset($charset);
+}
+
+my $warning;
+local $SIG{__WARN__} = sub { $warning .= shift };
+my ($out) = full_output( sub {
+      $sb->load_file('master', 't/pt-archiver/samples/table1.sql');
+      pt_archiver::main("-c", "b,c", qw(--where 1=1 --header),
+            "--source", "D=test,t=table_1,F=$cnf",
+            '--file', '/tmp/%Y-%m-%d-%D_%H:%i:%s.%t',
+            '--no-check-charset',
+            '--charset', "some_charset_that_doesn't_exist",
+      );
+   },
+);
+
+like(
+   $out,
+   qr/\QError setting NAMES to some_charset_that_doesn/,
+   "..but an unknown charset fails"
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
+diag(`rm -f /tmp/*.table_1`);
 $sb->wipe_clean($dbh);
-exit;
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+
+done_testing;

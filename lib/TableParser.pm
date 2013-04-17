@@ -1,4 +1,4 @@
-# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Inc.
+# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -26,9 +26,6 @@
 # $tbl is the return value from the sub below, parse().
 #
 # And some subs have an optional $opts param which is a hashref of options.
-# $opts->{mysql_version} is typically used, which is the return value from
-# VersionParser::parser() (which returns a zero-padded MySQL version,
-# e.g. 004001000 for 4.1.0).
 package TableParser;
 
 use strict;
@@ -41,15 +38,19 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
+local $EVAL_ERROR;
+eval {
+   require Quoter;
+};
+
 sub new {
    my ( $class, %args ) = @_;
-   my @required_args = qw(Quoter);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
    my $self = { %args };
+   $self->{Quoter} ||= Quoter->new();
    return bless $self, $class;
 }
+
+sub Quoter { shift->{Quoter} }
 
 sub get_create_table {
    my ( $self, $dbh, $db, $tbl ) = @_;
@@ -59,16 +60,21 @@ sub get_create_table {
    my $q = $self->{Quoter};
 
    # To ensure a consistent output, we save the current (old) SQL mode,
-   # then set it to the new SQL mode that what we need.  When done, even
-   # if an error occurs, we restore the old SQL mode.
+   # then set it to the new SQL mode that what we need, which is the
+   # default sql_mode=''.  When done, even if an error occurs, we restore
+   # the old SQL mode.  The main thing is that we do not want ANSI_QUOTES
+   # because there's code all throughout the tools that expect backtick `
+   # quoted idents, not double-quote " quoted idents.  For example:
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1058285
    my $new_sql_mode
-      = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
-      . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
-      . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
-      . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
+      = q{/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, }
+      . q{@@SQL_MODE := '', }
+      . q{@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, }
+      . q{@@SQL_QUOTE_SHOW_CREATE := 1 */};
 
-   my $old_sql_mode = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
-                     . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
+   my $old_sql_mode
+      = q{/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, }
+      . q{@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */};
 
    # Set new SQL mode.
    PTDEBUG && _d($new_sql_mode);
@@ -85,18 +91,12 @@ sub get_create_table {
    PTDEBUG && _d($show_sql);
    my $href;
    eval { $href = $dbh->selectrow_hashref($show_sql); };
-   if ( $EVAL_ERROR ) {
-      # TODO: I think we fail silently for tools which may try to call
-      # this on temp tables, or don't care if the table goes away.  We
-      # should warn $EVAL_ERROR and require callers to eval us and do
-      # what they want with the warning.
-      PTDEBUG && _d($EVAL_ERROR);
-
+   if ( my $e = $EVAL_ERROR ) {
       # Restore old SQL mode.
       PTDEBUG && _d($old_sql_mode);
       $dbh->do($old_sql_mode);
 
-      return;
+      die $e;
    }
 
    # Restore old SQL mode.
@@ -129,9 +129,15 @@ sub parse {
    my ( $self, $ddl, $opts ) = @_;
    return unless $ddl;
 
-   if ( $ddl !~ m/CREATE (?:TEMPORARY )?TABLE `/ ) {
-      die "Cannot parse table definition; is ANSI quoting "
-         . "enabled or SQL_QUOTE_SHOW_CREATE disabled?";
+   # If ANSI_QUOTES is enabled, we can't parse. But we can translate ANSI_QUOTES
+   # into legacy quoting with backticks. The rules are: an identifier is
+   # surrounded with the quote characters, and embedded quote characters are
+   # doubled.
+   if ( $ddl =~ m/CREATE (?:TEMPORARY )?TABLE "/ ) {
+      $ddl = $self->ansi_to_legacy($ddl);
+   }
+   elsif ( $ddl !~ m/CREATE (?:TEMPORARY )?TABLE `/ ) {
+      die "TableParser doesn't handle CREATE TABLE without quoting.";
    }
 
    my ($name)     = $ddl =~ m/CREATE (?:TEMPORARY )?TABLE\s+(`.+?`)/;
@@ -296,7 +302,7 @@ sub check_table {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($dbh, $db, $tbl) = @args{@required_args};
-   my $q      = $self->{Quoter};
+   my $q      = $self->{Quoter} || 'Quoter';
    my $db_tbl = $q->quote($db, $tbl);
    PTDEBUG && _d('Checking', $db_tbl);
 
@@ -316,47 +322,11 @@ sub check_table {
       return 0;
    }
 
-   # Table exists, return true unless we have privs to check.
-   PTDEBUG && _d('Table exists; no privs to check');
-   return 1 unless $args{all_privs};
-
-   # Get privs select,insert,update.
-   $sql = "SHOW FULL COLUMNS FROM $db_tbl";
-   PTDEBUG && _d($sql);
-   eval {
-      $row = $dbh->selectrow_hashref($sql);
-   };
-   if ( $EVAL_ERROR ) {
-      PTDEBUG && _d($EVAL_ERROR);
-      return 0;
-   }
-   if ( !scalar keys %$row ) {
-      # This should never happen.
-      PTDEBUG && _d('Table has no columns:', Dumper($row));
-      return 0;
-   }
-   my $privs = $row->{privileges} || $row->{Privileges};
-
-   # Get delete priv since FULL COLUMNS doesn't show it.   
-   $sql = "DELETE FROM $db_tbl LIMIT 0";
-   PTDEBUG && _d($sql);
-   eval {
-      $dbh->do($sql);
-   };
-   my $can_delete = $EVAL_ERROR ? 0 : 1;
-
-   PTDEBUG && _d('User privs on', $db_tbl, ':', $privs,
-      ($can_delete ? 'delete' : ''));
-
-   # Check that we have all privs.
-   if ( !($privs =~ m/select/ && $privs =~ m/insert/ && $privs =~ m/update/
-          && $can_delete) ) {
-      PTDEBUG && _d('User does not have all privs');
-      return 0;
-   }
-
-   PTDEBUG && _d('User has all privs');
+   PTDEBUG && _d('Table', $db, $tbl, 'exists');
    return 1;
+
+   # No more privs check:
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1036747
 }
 
 sub get_engine {
@@ -406,7 +376,8 @@ sub get_keys {
       # will report its index as USING HASH even when this is not supported.
       # The true type should be BTREE.  See
       # http://bugs.mysql.com/bug.php?id=22632
-      if ( $engine !~ m/MEMORY|HEAP/ ) {
+      # If ANSI quoting is in effect, we may not know the engine at all.
+      if ( !$engine || $engine !~ m/MEMORY|HEAP/ ) {
          $key =~ s/USING HASH/USING BTREE/;
       }
 
@@ -414,12 +385,6 @@ sub get_keys {
       my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \((.+)\)/;
       my ( $special ) = $key =~ m/(FULLTEXT|SPATIAL)/;
       $type = $type || $special || 'BTREE';
-      if ( $opts->{mysql_version} && $opts->{mysql_version} lt '004001000'
-         && $engine =~ m/HEAP|MEMORY/i )
-      {
-         $type = 'HASH'; # MySQL pre-4.1 supports only HASH indexes on HEAP
-      }
-
       my ($name) = $key =~ m/(PRIMARY|`[^`]*`)/;
       my $unique = $key =~ m/PRIMARY|UNIQUE/ ? 1 : 0;
       my @cols;
@@ -448,7 +413,7 @@ sub get_keys {
       };
 
       # Find clustered key (issue 295).
-      if ( $engine =~ m/InnoDB/i && !$clustered_key ) {
+      if ( ($engine || '') =~ m/InnoDB/i && !$clustered_key ) {
          my $this_key = $keys->{$name};
          if ( $this_key->{name} eq 'PRIMARY' ) {
             $clustered_key = 'PRIMARY';
@@ -533,6 +498,28 @@ sub get_table_status {
       \%tbl;
    } @tables;
    return @tables;
+}
+
+# Translates ANSI quoting around SHOW CREATE TABLE (specifically this query's
+# output, not an arbitrary query) into legacy backtick-quoting.
+# DOESNT WORK: my $ansi_quote_re = qr/"(?:(?!(?<!")").)*"/;
+# DOESNT WORK: my $ansi_quote_re = qr/" [^\\"]* (?: (?:\\.|"") [^\\"]* )* "/ismx;
+my $ansi_quote_re = qr/" [^"]* (?: "" [^"]* )* (?<=.) "/ismx;
+sub ansi_to_legacy {
+   my ($self, $ddl) = @_;
+   $ddl =~ s/($ansi_quote_re)/ansi_quote_replace($1)/ge;
+   return $ddl;
+}
+
+# Translates a single string from ANSI quoting into legacy quoting by
+# un-doubling embedded double-double quotes, doubling backticks, and replacing
+# the delimiters.
+sub ansi_quote_replace {
+   my ($val) = @_;
+   $val =~ s/^"|"$//g;
+   $val =~ s/`/``/g;
+   $val =~ s/""/"/g;
+   return "`$val`";
 }
 
 sub _d {

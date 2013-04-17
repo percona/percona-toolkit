@@ -9,11 +9,9 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 5;
+use Test::More;
 
 use PerconaTest;
-shift @INC;  # These two shifts are required for tools that use base and
-shift @INC;  # derived classes.  See mk-query-digest/t/101_slowlog_analyses.t
 require "$trunk/bin/pt-variable-advisor";
 
 # #############################################################################
@@ -68,7 +66,18 @@ ok(
    "--ignore-rules"
 );
 
+my ($output) = full_output(sub {
+    pt_variable_advisor::main(@args,
+        '--source-of-variables', "$sample/vars-baron-002.txt"
+)});
+
+like(
+   $output,
+   qr/\Qdual-master or ring replication configuration?\E$/sm,
+   "Sentences are delimited by . or ?"
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
-exit;
+done_testing;

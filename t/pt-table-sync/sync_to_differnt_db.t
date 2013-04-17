@@ -16,7 +16,6 @@ use Sandbox;
 require "$trunk/bin/pt-table-sync";
 
 my $output;
-my $vp = new VersionParser();
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
@@ -31,7 +30,7 @@ elsif ( !$dbh2 ) {
    plan skip_all => 'Cannot connect to second sandbox master';
 }
 else {
-   plan tests => 2;
+   plan tests => 3;
 }
 
 $sb->wipe_clean($master_dbh);
@@ -66,4 +65,5 @@ is(
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

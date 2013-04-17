@@ -1,0 +1,6 @@
+[client]
+port        = 3306
+socket      = /var/run/mysqld/mysqld.sock
+
+[mysqld]
+init-connect='SET NAMES utf8'

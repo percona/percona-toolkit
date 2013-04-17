@@ -24,7 +24,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 18;
+   plan tests => 19;
 }
 
 my $output;
@@ -36,7 +36,6 @@ my $cmd = "perl -I $trunk/t/pt-archiver/samples $trunk/bin/pt-archiver";
 # Bulk delete with limit that results in 2 chunks.
 # ###########################################################################
 $sb->load_file('master', "t/pt-archiver/samples/delete_more.sql");
-PerconaTest::wait_for_table($dbh, '`db`.`main_table-123`');
 $dbh->do('use dm');
 
 is_deeply(
@@ -122,8 +121,6 @@ SKIP: {
 
    # Run it again without DSN b so changes should be made on slave.
    $sb->load_file('master', "t/pt-archiver/samples/delete_more.sql");
-   PerconaTest::wait_for_table($slave_dbh, "`dm`.`main_table-123`", 'id=5');
-   PerconaTest::wait_for_table($slave_dbh, "`dm`.`other_table-123`", 'id=r6');
 
    is_deeply(
       $slave_dbh->selectall_arrayref('select * from `main_table-123` order by id'),
@@ -297,4 +294,5 @@ is_deeply(
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

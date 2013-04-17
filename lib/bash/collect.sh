@@ -22,24 +22,24 @@
 # collect collects system information.
 
 # XXX
-# THIS LIB REQUIRES log_warn_die.sh, safeguards.sh, and alt_cmds.sh!
+# THIS LIB REQUIRES log_warn_die, safeguards, alt_cmds, and subshell!
 # XXX
 
 set -u
 
 # Global variables.
-CMD_GDB="$(_which gdb)"
-CMD_IOSTAT="$(_which iostat)"
-CMD_MPSTAT="$(_which mpstat)"
-CMD_MYSQL="$(_which mysql)"
-CMD_MYSQLADMIN="$(_which mysqladmin)"
-CMD_OPCONTROL="$(_which opcontrol)"
-CMD_OPREPORT="$(_which opreport)"
-CMD_PMAP="$(_which pmap)"
-CMD_STRACE="$(_which strace)"
-CMD_SYSCTL="$(_which sysctl)"
-CMD_TCPDUMP="$(_which tcpdump)"
-CMD_VMSTAT="$(_which vmstat)"
+CMD_GDB="${CMD_GDB:-"$(_which gdb)"}"
+CMD_IOSTAT="${CMD_IOSTAT:-"$(_which iostat)"}"
+CMD_MPSTAT="${CMD_MPSTAT:-"$(_which mpstat)"}"
+CMD_MYSQL="${CMD_MYSQL:-"$(_which mysql)"}"
+CMD_MYSQLADMIN="${CMD_MYSQLADMIN:-"$(_which mysqladmin)"}"
+CMD_OPCONTROL="${CMD_OPCONTROL:-"$(_which opcontrol)"}"
+CMD_OPREPORT="${CMD_OPREPORT:-"$(_which opreport)"}"
+CMD_PMAP="${CMD_PMAP:-"$(_which pmap)"}"
+CMD_STRACE="${CMD_STRACE:-"$(_which strace)"}"
+CMD_SYSCTL="${CMD_SYSCTL:-"$(_which sysctl)"}"
+CMD_TCPDUMP="${CMD_TCPDUMP:-"$(_which tcpdump)"}"
+CMD_VMSTAT="${CMD_VMSTAT:-"$(_which vmstat)"}"
 
 # Try to find command manually.
 [ -z "$CMD_SYSCTL" -a -x "/sbin/sysctl" ] && CMD_SYSCTL="/sbin/sysctl"
@@ -103,15 +103,14 @@ collect() {
 
    # Get a sample of these right away, so we can get these without interaction
    # with the other commands we're about to run.
-   local innostat="SHOW /*!40100 ENGINE*/ INNODB STATUS\G"
    if [ "${mysql_version}" '>' "5.1" ]; then
       local mutex="SHOW ENGINE INNODB MUTEX"
    else
       local mutex="SHOW MUTEX STATUS"
    fi
-   $CMD_MYSQL $EXT_ARGV -e "$innostat" >> "$d/$p-innodbstatus1" &
-   $CMD_MYSQL $EXT_ARGV -e "$mutex"    >> "$d/$p-mutex-status1" &
-   open_tables                         >> "$d/$p-opentables1"   &
+   innodb_status 1
+   $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status1" &
+   open_tables                      >> "$d/$p-opentables1"   &
 
    # If TCP dumping is specified, start that on the server's port.
    local tcpdump_pid=""
@@ -148,16 +147,16 @@ collect() {
       $CMD_SYSCTL -a >> "$d/$p-sysctl" &
    fi
    if [ "$CMD_VMSTAT" ]; then
-      $CMD_VMSTAT 1 $OPT_INTERVAL   >> "$d/$p-vmstat"         &
-      $CMD_VMSTAT   $OPT_INTERVAL 2 >> "$d/$p-vmstat-overall" &
+      $CMD_VMSTAT 1 $OPT_RUN_TIME >> "$d/$p-vmstat"         &
+      $CMD_VMSTAT $OPT_RUN_TIME 2 >> "$d/$p-vmstat-overall" &
    fi
    if [ "$CMD_IOSTAT" ]; then
-      $CMD_IOSTAT -dx  1 $OPT_INTERVAL   >> "$d/$p-iostat"         &
-      $CMD_IOSTAT -dx    $OPT_INTERVAL 2 >> "$d/$p-iostat-overall" &
+      $CMD_IOSTAT -dx 1 $OPT_RUN_TIME >> "$d/$p-iostat"         &
+      $CMD_IOSTAT -dx $OPT_RUN_TIME 2 >> "$d/$p-iostat-overall" &
    fi
    if [ "$CMD_MPSTAT" ]; then
-      $CMD_MPSTAT -P ALL 1 $OPT_INTERVAL >> "$d/$p-mpstat"         &
-      $CMD_MPSTAT -P ALL $OPT_INTERVAL 1 >> "$d/$p-mpstat-overall" &
+      $CMD_MPSTAT -P ALL 1 $OPT_RUN_TIME >> "$d/$p-mpstat"         &
+      $CMD_MPSTAT -P ALL $OPT_RUN_TIME 1 >> "$d/$p-mpstat-overall" &
    fi
 
    # Collect multiple snapshots of the status variables.  We use
@@ -218,7 +217,7 @@ collect() {
          fi
       fi
 
-      (echo $ts; df -h) >> "$d/$p-df" &
+      (echo $ts; df -k) >> "$d/$p-df" &
 
       (echo $ts; netstat -antp) >> "$d/$p-netstat"   &
       (echo $ts; netstat -s)    >> "$d/$p-netstat_s" &
@@ -227,7 +226,8 @@ collect() {
          >> "$d/$p-processlist" &
 
       if [ "$have_lock_waits_table" ]; then
-         (echo $ts; lock_waits) >>"$d/$p-lock-waits" &
+         (echo $ts; lock_waits)   >>"$d/$p-lock-waits" &
+         (echo $ts; transactions) >>"$d/$p-transactions" &
       fi
    done
    log "Loop end: $(date +'TS %s.%N %F %T')"
@@ -271,9 +271,9 @@ collect() {
       [ "$mysqld_pid" ] && kill -s 18 $mysqld_pid
    fi
 
-   $CMD_MYSQL $EXT_ARGV -e "$innostat" >> "$d/$p-innodbstatus2" &
-   $CMD_MYSQL $EXT_ARGV -e "$mutex"    >> "$d/$p-mutex-status2" &
-   open_tables                         >> "$d/$p-opentables2"   &
+   innodb_status 2
+   $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status2" &
+   open_tables                      >> "$d/$p-opentables2"   &
 
    # Kill backgrounded tasks.
    kill $mysqladmin_pid
@@ -285,7 +285,11 @@ collect() {
 
    # Remove "empty" files, i.e. ones that are truly empty or
    # just contain timestamp lines.  When a command above fails,
-   # it may leave an empty file.
+   # it may leave an empty file.  But first wait another --run-time
+   # seconds for any slow process to finish:
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1047701
+   wait_for_subshells $OPT_RUN_TIME
+   kill_all_subshells
    for file in "$d/$p-"*; do
       # If there's not at least 1 line that's not a TS,
       # then the file is empty.
@@ -337,6 +341,33 @@ lock_waits() {
    ORDER BY wait_time DESC\G"
    $CMD_MYSQL $EXT_ARGV -e "$sql2"
 } 
+
+transactions() {
+   $CMD_MYSQL $EXT_ARGV -e "SELECT * FROM INFORMATION_SCHEMA.INNODB_TRX\G"
+   $CMD_MYSQL $EXT_ARGV -e "SELECT * FROM INFORMATION_SCHEMA.INNODB_LOCKS\G"
+   $CMD_MYSQL $EXT_ARGV -e "SELECT * FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS\G"
+}
+
+innodb_status() {
+   local n=$1
+
+   local innostat=""
+
+   $CMD_MYSQL $EXT_ARGV -e "SHOW /*!40100 ENGINE*/ INNODB STATUS\G" \
+      >> "$d/$p-innodbstatus$n"
+   grep "END OF INNODB" "$d/$p-innodbstatus$n" >/dev/null || {
+      if [ -d /proc -a -d /proc/$mysqld_pid ]; then
+         for fd in /proc/$mysqld_pid/fd/*; do
+            file $fd | grep deleted >/dev/null && {
+               grep 'INNODB' $fd >/dev/null && {
+                  cat $fd > "$d/$p-innodbstatus$n"
+                  break
+               }
+            }
+         done
+      fi
+   }
+}
 
 # ###########################################################################
 # End collect package
