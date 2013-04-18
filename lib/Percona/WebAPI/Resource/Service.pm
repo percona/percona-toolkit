@@ -22,6 +22,12 @@ package Percona::WebAPI::Resource::Service;
 
 use Lmo;
 
+has 'ts' => (
+   is       => 'ro',
+   isa      => 'Int',
+   required => 1,
+);
+
 has 'name' => (
    is       => 'ro',
    isa      => 'Str',
@@ -46,7 +52,7 @@ has 'spool_schedule' => (
    required => 0,
 );
 
-has 'run_once' => (
+has 'meta' => (
    is       => 'ro',
    isa      => 'Bool',
    required => 0,
