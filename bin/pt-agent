@@ -27,7 +27,6 @@ BEGIN {
       Percona::WebAPI::Resource::Config
       Percona::WebAPI::Resource::Service
       Percona::WebAPI::Resource::Task
-      Percona::WebAPI::Util
       VersionCheck
       DSNParser
       OptionParser
@@ -1350,6 +1349,12 @@ package Percona::WebAPI::Resource::Service;
 
 use Lmo;
 
+has 'ts' => (
+   is       => 'ro',
+   isa      => 'Int',
+   required => 1,
+);
+
 has 'name' => (
    is       => 'ro',
    isa      => 'Str',
@@ -1374,7 +1379,7 @@ has 'spool_schedule' => (
    required => 0,
 );
 
-has 'run_once' => (
+has 'meta' => (
    is       => 'ro',
    isa      => 'Bool',
    required => 0,
@@ -1464,44 +1469,6 @@ no Lmo;
 }
 # ###########################################################################
 # End Percona::WebAPI::Resource::Task package
-# ###########################################################################
-
-# ###########################################################################
-# Percona::WebAPI::Util package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/Percona/WebAPI/Util.pm
-#   t/lib/Percona/WebAPI/Util.t
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-{
-package Percona::WebAPI::Util;
-
-use JSON;
-use Digest::MD5 qw(md5_hex);
-
-use Percona::WebAPI::Representation; 
-
-require Exporter;
-our @ISA       = qw(Exporter);
-our @EXPORT_OK = (qw(resource_diff));
-
-sub resource_diff {
-   my ($x, $y) = @_;
-   return 0 if !$x && !$y;
-   return 1 if ($x && !$y) || (!$x && $y);
-   my $json = JSON->new->canonical([1]);  # avoid hash key sort diffs
-   my $x_hex = md5_hex(
-      Percona::WebAPI::Representation::as_json($x, json => $json));
-   my $y_hex = md5_hex(
-      Percona::WebAPI::Representation::as_json($y, json => $json));
-   return $x_hex eq $y_hex ? 0 : 1;
-}
-
-1;
-}
-# ###########################################################################
-# End Percona::WebAPI::Util package
 # ###########################################################################
 
 # ###########################################################################
@@ -4792,7 +4759,6 @@ use Percona::WebAPI::Representation;
 use Percona::WebAPI::Util;
 
 Percona::Toolkit->import(qw(_d Dumper have_required_args));
-Percona::WebAPI::Util->import(qw(resource_diff));
 Percona::WebAPI::Representation->import(qw(as_json as_config));
 Transformers->import(qw(ts));
 
@@ -5341,7 +5307,7 @@ sub run_agent {
    my $success;
    my $new_daemon;
    my $config;
-   my $services;
+   my $services = {};
    while ( $_oktorun->() ) {
       ($config, $lib_dir, $new_daemon, $success) = get_config(
          link    => $agent->links->{config},
@@ -5632,7 +5598,7 @@ sub get_services {
    my $lib_dir  = $args{lib_dir};
 
    # Optional args
-   my $services = $args{services}; # may not be defined yet
+   my $prev_services = $args{services}; # may not be defined yet
 
    my $success = 0;
 
@@ -5640,40 +5606,66 @@ sub get_services {
       _info('Getting services');
 
       # Get services from Percona.
-      my $new_services = $client->get(
+      my $curr_services = $client->get(
          link => $link,
       );
 
       # If the current and new services are different,
       # write the new ones to disk, then schedule them.
-      if ( resource_diff($services, $new_services) ) {
-         _info('New services');
+      if ( $curr_services && @$curr_services ) {
 
-         write_services(
-            services => $new_services,
-            lib_dir  => $lib_dir,
-            json     => $args{json},  # optional, for testing
+         # Determine which services are new (added), changed/updated,
+         # and removed.
+         my $sorted_services = sort_services(
+            prev_services => $prev_services,
+            curr_services => $curr_services,
          );
 
+         # First, save each service in --lib/services/.  This must
+         # be done before calling start_services() because that sub
+         # looks for --lib/services/start-service, etc.
+         write_services(
+            sorted_services => $sorted_services,
+            lib_dir         => $lib_dir,
+            json            => $args{json},  # optional, for testing
+         );
+
+         # Start and restart services.  This must be done before calling
+         # schedule_services() so that, for example, start-query-history
+         # is ran before query-history is scheduled and starts running.
+
+         # Start new services.
          # TODO: this probably can't/won't fail, but if it does, is it
          # worth setting success=0?
          start_services(
-            services => $new_services,
+            services => $sorted_services->{added},
             lib_dir  => $lib_dir,
             bin_dir  => $args{bin_dir},  # optional, for testing
          );
 
+         # Restart existing, re-configured services.
+         start_services(
+            restart  => 1,
+            services => $sorted_services->{updated},
+            lib_dir  => $lib_dir,
+            bin_dir  => $args{bin_dir},  # optional, for testing
+         );
+
+         # Schedule any services with a run_schedule or spool_schedule.
+         # This must be called last, after write_services() and
+         # start_services() because, for example, a service schedule
+         # to run at */5 may run effectively immediate if we write
+         # the new crontab at 00:04:59, so everything has to be
+         # ready to go at this point.
          schedule_services(
-            services => $new_services,
+            services => $sorted_services->{services},
             lib_dir  => $lib_dir,
             bin_dir  => $args{bin_dir},  # optional, for testing
          );
 
-         $services = $new_services;
-         $success  = 1;
-
-         _info('Services updated successfully: '
-            . join(', ', map { $_->name } @$services));
+         $prev_services = $sorted_services->{services};
+         $success       = 1;
+         _info('Services applied successfully');
       }
       else {
          _info('Services have not changed');
@@ -5683,7 +5675,47 @@ sub get_services {
       _warn($EVAL_ERROR);
    }
 
-   return ($services, $success);
+   return $prev_services, $success;
+}
+
+sub sort_services {
+   my (%args) = @_;
+
+   have_required_args(\%args, qw(
+      prev_services
+      curr_services
+   )) or die;
+   my $prev_services = $args{prev_services};  # hashref
+   my $curr_services = $args{curr_services};  # arrayref
+
+   my $services;      # curr_services as hashref keyed on service name
+   my %have_service;  # names of current services
+   my @added;
+   my @updated;
+   my @removed;
+
+   foreach my $service ( @$curr_services ) {
+      my $name = $service->name;
+      $services->{$name} = $service;
+
+      if ( !exists $prev_services->{$name} ) {
+         push @added, $service;
+      }
+      elsif ( $service->ts > $prev_services->{$name}->ts ) {
+         push @updated, $service;
+      }
+   }
+   if ( scalar keys %$prev_services ) {
+      @removed = grep { !exists $services->{$_->name} } values %$prev_services;
+   }
+
+   my $sorted_services = {
+      services => $services,
+      added    => \@added,
+      updated  => \@updated,
+      removed  => \@removed,
+   };
+   return $sorted_services;
 }
 
 # Write each service to its own file in --lib/.  Remove services
@@ -5692,11 +5724,11 @@ sub write_services {
    my (%args) = @_;
 
    have_required_args(\%args, qw(
-      services
+      sorted_services
       lib_dir
    )) or die;
-   my $services = $args{services};
-   my $lib_dir  = $args{lib_dir};
+   my $sorted_services = $args{sorted_services};
+   my $lib_dir         = $args{lib_dir};
 
    # Optional args
    my $json = $args{json};  # for testing
@@ -5705,11 +5737,12 @@ sub write_services {
 
    _info("Writing services to $lib_dir");
 
-   # Write every current service.
-   my %have_service;
-   foreach my $service ( @$services ) {
+   # Save current, active services.
+   foreach my $service (
+      @{$sorted_services->{added}}, @{$sorted_services->{updated}}
+   ) {
       my $file   = $lib_dir . '/' . $service->name;
-      my $action = -f $file ? 'Updated' : 'Created';
+      my $action = -f $file ? 'Updated' : 'Added';
       open my $fh, '>', $file
          or die "Error opening $file: $OS_ERROR";
       print { $fh } as_json($service, with_links => 1, json => $json)
@@ -5717,29 +5750,23 @@ sub write_services {
       close $fh
          or die "Error closing $file: $OS_ERROR";
       _info("$action $file");
-      $have_service{$service->name} = $service;
    }
 
-   # Remove old services: one's that still exisit but weren't
-   # writen ^, so they're no longer implemented.
-   opendir(my $dh, $lib_dir)
-      or die "Error opening $lib_dir: $OS_ERROR";
-   while ( my $file = readdir($dh) ) {
-      next if -d $file;
-      if ( !$have_service{$file} ) {
-         unlink "$lib_dir/$file"
+   # Remove old services.
+   foreach my $service ( @{$sorted_services->{removed}} ) {
+      my $file   = $lib_dir . '/' . $service->name;
+      if ( -f $file ) {
+         unlink $file
             or die "Error removing $file: $OS_ERROR";
          _info("Removed $file");
       }
    }
-   closedir $dh
-      or die "Error closing $lib_dir: $OS_ERROR";
 
    return;
 }
 
-# Write Service->run_schedule and (optionally) Service->spool_schedule
-# lines to crontab, along with any other non-pt-agent lines, and load.
+# Write Service->run_schedule and Service->spool_schedule lines to crontab,
+# along with any other non-pt-agent lines, then reload crontab.
 sub schedule_services {
    my (%args) = @_;
 
@@ -5757,7 +5784,9 @@ sub schedule_services {
 
    # Only schedule "periodic" services, i.e. ones that run periodically,
    # not just once.
-   my @periodic_services = grep { !$_->run_once; } @$services;
+   my @periodic_services = grep { $_->run_schedule || $_->spool_schedule }
+                           sort { $a->name cmp $b->name }
+                           values %$services;
 
    my $new_crontab = make_new_crontab(
       %args,
@@ -5809,11 +5838,13 @@ sub make_new_crontab {
 
    my @pt_agent_lines;
    foreach my $service ( @$services ) {
-      push @pt_agent_lines,
-           $service->run_schedule
-         . ($env_vars ? " $env_vars" : '')
-         . " ${bin_dir}pt-agent --run-service "
-         . $service->name;
+      if ( $service->run_schedule ) {
+         push @pt_agent_lines,
+              $service->run_schedule
+            . ($env_vars ? " $env_vars" : '')
+            . " ${bin_dir}pt-agent --run-service "
+            . $service->name;
+      }
       if ( $service->spool_schedule ) {
          push @pt_agent_lines,
               $service->spool_schedule
@@ -5829,9 +5860,12 @@ sub make_new_crontab {
    return $new_crontab;
 }
 
-# Start all services that have the run_once_on_start flag enabled.  This is
-# used for "setup services" so the user doesn't have to wait until the next
-# the service is actually scheduled to run.
+# Start real services, i.e. non-meta services.  A real service is like
+# "query-history", which probably has meta-services like "start-query-history"
+# and "stop-query-history".  We infer these start/stop meta-services
+# from the real service's name.  A service doesn't require meta-services;
+# there may be nothing to do to start it, in which case the real service
+# starts running due to its run_schedule and schedule_services().
 sub start_services {
    my (%args) = @_;
    have_required_args(\%args, qw(
@@ -5842,48 +5876,68 @@ sub start_services {
    my $lib_dir  = $args{lib_dir};
 
    # Optional args
-   my $bin_dir = defined $args{bin_dir} ? $args{bin_dir}
-               :                          "$FindBin::Bin/";
+   my $restart  = $args{restart};
+   my $bin_dir  = defined $args{bin_dir} ? $args{bin_dir}
+                :                          "$FindBin::Bin/";
+   my $exec_cmd = $args{exec_cmd} || sub { return system(@_) };
 
    my $env_vars = env_vars();
-
-   # Remove old meta files.
-   my $meta_files = "$lib_dir/meta/*";
-   foreach my $meta_file ( glob $meta_files ) {
-      if ( unlink $meta_file ) {
-         _info("Removed $meta_file");
-      }
-      else {
-         _warn("Cannot remove $meta_file: $OS_ERROR");
-      }
-   }
+   my $log      = "$lib_dir/logs/start.log";
+   my $cmd_fmt  = ($env_vars ? "$env_vars " : '')
+                . $bin_dir . "pt-agent --run-service %s >> $log 2>&1";
 
    SERVICE:
    foreach my $service ( @$services ) {
-      next unless $service->run_once;
+      next if $service->meta;  # only real services
 
-      # Start the service and wait for it to exit.  Log its initial
-      # output to a special log file.  If it dies early, this log
-      # file will contain the reason.  Else, if it starts, it will
-      # switch to its default log file ending in ".run".
-      my $start_log = "$lib_dir/logs/" . $service->name . ".start";
-      my $cmd = ($env_vars ? "$env_vars " : '')
-              . "${bin_dir}pt-agent --run-service " . $service->name
-              . " </dev/null"
-              . " >$start_log 2>&1";
-      _info('Starting ' . $service->name . ' service: ' . $cmd);
-      system($cmd);
-      my $cmd_exit_status = $CHILD_ERROR >> 8;
-      if ( $cmd_exit_status != 0 ) {
-         my $err = slurp($start_log);
-         _warn('Error starting ' . $service->name . ': ' . ($err || ''));
-         next SERVICE;
+      my $name = $service->name;
+
+      # To restart, one must first stop, then start afterwards.
+      if ( $restart ) {
+         if ( -f "$lib_dir/services/stop-$name" ) {
+            my $cmd = sprintf $cmd_fmt, "stop-$name";
+            _info("Stopping $name: $cmd");
+            $exec_cmd->($cmd);
+            my $cmd_exit_status = $CHILD_ERROR >> 8;
+            if ( $cmd_exit_status != 0 ) {
+               _warn("Error stopping $name, check $log and "
+                  . "$lib_dir/logs/$name.run");
+               next SERVICE;
+            }
+         }
       }
 
-      unlink $start_log
-         or _warn("Cannot remove $start_log: $OS_ERROR");
+      # Remove old meta files.  Meta files are generally temporary
+      # in any case, persisting info from one interval to the next.
+      # If the service has changed (e.g., report interval is longer),
+      # there's no easy way to tranistion from old metadata to new,
+      # so we just rm the old metadata and start anew.
+      my $meta_files = "$lib_dir/meta/$name*";
+      foreach my $meta_file ( glob $meta_files ) {
+         if ( unlink $meta_file ) {
+            _info("Removed $meta_file");
+         }
+         else {
+            _warn("Cannot remove $meta_file: $OS_ERROR");
+         }
+      }
 
-      _info($service->name . ' has started');
+      # Start the service and wait for it to exit.  If it dies
+      # really early (before it really begins), our log file will
+      # have the error; else, the service should automatically
+      # switch to its default log file ending in ".run".
+      if ( -f "$lib_dir/services/start-$name" ) {
+         my $cmd = sprintf $cmd_fmt, "start-$name";
+         _info("Starting $name: $cmd");
+         $exec_cmd->($cmd);
+         my $cmd_exit_status = $CHILD_ERROR >> 8;
+         if ( $cmd_exit_status != 0 ) {
+            _warn("Error starting $name, check $log and "
+                ."$lib_dir/logs/$name.run");
+            next SERVICE;
+         }
+         _info("Started $name successfully");
+      }
    }
 
    return;
@@ -5908,8 +5962,9 @@ sub run_service {
    my $cxn       = $args{Cxn};
 
    # Optional args
-   my $json    = $args{json};
-   my $curr_ts = $args{curr_ts} || ts(time, 1);  # 1=UTC
+   my $json    = $args{json};                        # for testing
+   my $suffix  = $args{suffix}  || '.' . int(time);  # for testing
+   my $curr_ts = $args{curr_ts} || ts(time, 1);      # 1=UTC
 
    # The seconds are :01 or :02 because cron runs commands about 1 or 2
    # seconds after the minute mark.  Unfortunately this means that interval
@@ -6021,8 +6076,7 @@ sub run_service {
 
    # Run the tasks, spool any data.
    my @output_files;
-   my $data_file      = $service->name
-                      . ($service->run_once ? '' : '.' . int(time));
+   my $data_file      = $service->name . ($service->run_once ? '' : $suffix);
    my $tmp_data_file  = "$tmp_dir/$data_file";
    my $have_data_file = 0;
    my $taskno         = 0;
@@ -6541,7 +6595,7 @@ sub stop_agent {
       _info("Removing all services from crontab...");
       eval {
          schedule_services(
-            services => [],
+            services => {},
             lib_dir  => $lib_dir,
             quiet    => 1,
          );
