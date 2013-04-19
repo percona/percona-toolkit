@@ -1,6 +1,60 @@
 Release Notes
 *************
 
+v2.2.2 released 2013-04-19
+==========================
+
+Percona Toolkit 2.2.2 has been released.  This is the second release
+of the 2.2 series, and aims to fix bugs in the previous release and
+provide usability enhacements to the toolkit.
+
+Users may note the revival of the --show-all option in
+pt-query-digest.  This had been removed in 2.2.1, but resulted in
+the tool's output bloating considerably.
+
+Meanwhile, pt-table-checksum got a usability enhancement, in the form
+of --recursion-method=cluster, which will attempt to autodiscover
+cluster nodes, alleviating the need to specify a dsns table.
+
+The following highlights some of the more interesting and "hot" bugs
+in this release:
+
+* Bug #1127450: pt-archiver --charset and --bulk-insert fail, may corrupt data
+
+pt-archiver --bulk-insert didn't work with --charset UTF-8. This
+revealed a case where the toolkit could corrupt data.  This should
+now be fixed, but like other UTF-8-related operations, remains 
+relatively dangerous if using DBD::mysql 3.0007.
+
+* Bug #1163372: pt-heartbeat --utc --check always returns 0
+
+This makes --check and --utc useful.  Older releases may be able to
+work around this issue by calling the tool with --set-vars "time_zone='+0:00'"
+
+* Bug #821502: Some tools don't have --help or --version
+
+pt-align, pt-mext, pt-pmp and pt-sift now have both options.
+
+This is another solid bug fix release, and all users are encouraged to upgrade.
+
+Percona Toolkit packages can be downloaded from http://www.percona.com/downloads/percona-toolkit/ or the Percona Software Repositories (http://www.percona.com/software/repositories/).
+
+Changelog
+---------
+
+* Restored --show-all in pt-query-digest
+* Cluster nodes can now be autodiscovered in pt-table-checksum
+* Fixed bug 1127450: pt-archiver --charset and --bulk-insert fail, may corrupt data
+* Fixed bug 1082406: An explicitly set wsrep_node_incoming_address may make SHOW STATUS LIKE 'wsrep_incoming_addresses' return a portless address
+* Fixed bug 1099845: pt-table-checksum pxc same_node function incorrectly uses wsrep_sst_receive_address
+* Fixed bug 1156901: pt-query-digest --processlist: Duplicate entries for replication thread
+* Fixed bug 1160338: pt-query-digest 2.2 prints unwanted debug info on tcpdump parsing errors
+* Fixed bug 1160918: pt-query-digest 2.2 prints too many string values
+* Fixed bug 1163372: pt-heartbeat --utc --check always returns 0
+* Fixed bug 821502: Some tools don't have --help or --version
+* Fixed bug 947893: Tools use @@hostname without /*!50038*/
+* Fixed bug 1156867: pt-stalk prints the wrong variable name in verbose mode when --function is used
+
 v2.2.1 released 2013-03-14
 ==========================
 

@@ -63,7 +63,7 @@ BEGIN {
 # ###########################################################################
 {
 package Percona::Toolkit;
-our $VERSION = '2.2.1';
+our $VERSION = '2.2.2';
 
 1;
 }
@@ -10011,6 +10011,8 @@ sub get_slaves {
    my $dp      = $self->{DSNParser};
    my $methods = $self->_resolve_recursion_methods($args{dsn});
 
+   return $slaves unless @$methods;
+   
    if ( grep { m/processlist|hosts/i } @$methods ) {
       my @required_args = qw(dbh dsn);
       foreach my $arg ( @required_args ) {
@@ -16082,6 +16084,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-query-digest 2.2.1
+pt-query-digest 2.2.2
 
 =cut

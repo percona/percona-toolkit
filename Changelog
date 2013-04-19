@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v2.2.2 released 2013-04-19
+
   * Restored --show-all in pt-query-digest
   * Cluster nodes can now be autodiscovered in pt-table-checksum
   * Fixed bug 1127450: pt-archiver --charset and --bulk-insert fail, may corrupt data
