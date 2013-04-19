@@ -1386,6 +1386,13 @@ has 'meta' => (
    default  => sub { return 0 },
 );
 
+has 'run_once' => (
+   is       => 'ro',
+   isa      => 'Bool',
+   required => 0,
+   default  => sub { return 0 },
+);
+
 has 'links' => (
    is       => 'rw',
    isa      => 'Maybe[HashRef]',
@@ -1439,12 +1446,6 @@ has 'number' => (
 );
 
 has 'program' => (
-   is       => 'ro',
-   isa      => 'Maybe[Str]',
-   required => 0,
-);
-
-has 'options' => (
    is       => 'ro',
    isa      => 'Maybe[Str]',
    required => 0,
@@ -5629,6 +5630,7 @@ sub get_services {
             services => $sorted_services->{removed},
             lib_dir  => $lib_dir,
             bin_dir  => $args{bin_dir},  # optional, for testing
+            exec_cmd => $args{exec_cmd}, # optional, for testing
          );
 
          # Second, save each service in --lib/services/.  Do this before
@@ -5654,6 +5656,7 @@ sub get_services {
             services => $sorted_services->{added},
             lib_dir  => $lib_dir,
             bin_dir  => $args{bin_dir},  # optional, for testing
+            exec_cmd => $args{exec_cmd}, # optional, for testing
          );
 
          # Restart existing updated services.
@@ -5662,6 +5665,7 @@ sub get_services {
             services => $sorted_services->{updated},
             lib_dir  => $lib_dir,
             bin_dir  => $args{bin_dir},  # optional, for testing
+            exec_cmd => $args{exec_cmd}, # optional, for testing
          );
 
          # Run services with the run_once flag.  Unlike run_services(),
@@ -5672,6 +5676,7 @@ sub get_services {
             services => $sorted_services->{services},
             lib_dir  => $lib_dir,
             bin_dir  => $args{bin_dir},  # optional, for testing
+            exec_cmd => $args{exec_cmd}, # optional, for testing
          );
 
          # Schedule any services with a run_schedule or spool_schedule.
@@ -5684,6 +5689,7 @@ sub get_services {
             services => $sorted_services->{services},
             lib_dir  => $lib_dir,
             bin_dir  => $args{bin_dir},  # optional, for testing
+            exec_cmd => $args{exec_cmd}, # optional, for testing
          );
 
          $prev_services = $sorted_services->{services};
@@ -5806,7 +5812,8 @@ sub schedule_services {
    my $lib_dir  = $args{lib_dir};
 
    # Optional args
-   my $quiet = $args{quiet};
+   my $quiet    = $args{quiet};
+   my $exec_cmd = $args{exec_cmd} || sub { return system(@_) };
 
    _info("Scheduling services") unless $quiet;
 
@@ -5831,8 +5838,8 @@ sub schedule_services {
       or die "Error closing $crontab_file: $OS_ERROR";
 
    my $err_file = "$lib_dir/crontab.err";
-   system("crontab $crontab_file > $err_file 2>&1");
-   if ( $CHILD_ERROR ) {
+   my $retval   = $exec_cmd->("crontab $crontab_file > $err_file 2>&1");
+   if ( $retval ) {
       my $error = `cat $err_file`;
       die "Error setting new crontab: $error\n";
    }
@@ -5926,8 +5933,7 @@ sub run_services {
          if ( -f "$lib_dir/services/stop-$name" ) {
             my $cmd = sprintf $cmd_fmt, "stop-$name";
             _info("Stopping $name: $cmd");
-            $exec_cmd->($cmd);
-            my $cmd_exit_status = $CHILD_ERROR >> 8;
+            my $cmd_exit_status = $exec_cmd->($cmd);
             if ( $cmd_exit_status != 0 ) {
                _warn("Error stopping $name, check $log and "
                   . "$lib_dir/logs/$name.run");
@@ -5959,8 +5965,7 @@ sub run_services {
          if ( -f "$lib_dir/services/start-$name" ) {
             my $cmd = sprintf $cmd_fmt, "start-$name";
             _info("Starting $name: $cmd");
-            $exec_cmd->($cmd);
-            my $cmd_exit_status = $CHILD_ERROR >> 8;
+            my $cmd_exit_status = $exec_cmd->($cmd);
             if ( $cmd_exit_status != 0 ) {
                _warn("Error starting $name, check $log and "
                    ."$lib_dir/logs/$name.run");
@@ -6003,8 +6008,7 @@ sub run_services_once {
 
       my $cmd = sprintf $cmd_fmt, "start-$name";
       _info("Running $name: $cmd");
-      $exec_cmd->($cmd);
-      my $cmd_exit_status = $CHILD_ERROR >> 8;
+      my $cmd_exit_status = $exec_cmd->($cmd);
       if ( $cmd_exit_status != 0 ) {
          _warn("Error starting $name, check $log and "
              ."$lib_dir/logs/$name.run");

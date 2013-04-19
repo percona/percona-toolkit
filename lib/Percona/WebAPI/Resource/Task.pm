@@ -40,12 +40,6 @@ has 'program' => (
    required => 0,
 );
 
-has 'options' => (
-   is       => 'ro',
-   isa      => 'Maybe[Str]',
-   required => 0,
-);
-
 has 'query' => (
    is       => 'ro',
    isa      => 'Maybe[Str]',

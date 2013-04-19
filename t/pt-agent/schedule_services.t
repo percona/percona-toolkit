@@ -39,6 +39,7 @@ my $run0 = Percona::WebAPI::Resource::Task->new(
 );
 
 my $svc0 = Percona::WebAPI::Resource::Service->new(
+   ts             => 100,
    name           => 'query-history',
    run_schedule   => '* 8 * * 1,2,3,4,5',
    spool_schedule => '* 9 * * 1,2,3,4,5',
@@ -129,6 +130,7 @@ is(
 # #############################################################################
 
 $svc0 = Percona::WebAPI::Resource::Service->new(
+   ts             => 100,
    name           => 'query-history',
    run_schedule   => '* * * * Foo',  # "foo":0: bad day-of-week
    spool_schedule => '* 8 * * Mon',
