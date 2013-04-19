@@ -1,5 +1,18 @@
 Changelog for Percona Toolkit
 
+  * Restored --show-all in pt-query-digest
+  * Cluster nodes can now be autodiscovered in pt-table-checksum
+  * Fixed bug 1127450: pt-archiver --charset and --bulk-insert fail, may corrupt data
+  * Fixed bug 1082406: An explicitly set wsrep_node_incoming_address may make SHOW STATUS LIKE 'wsrep_incoming_addresses' return a portless address
+  * Fixed bug 1099845: pt-table-checksum pxc same_node function incorrectly uses wsrep_sst_receive_address
+  * Fixed bug 1156901: pt-query-digest --processlist: Duplicate entries for replication thread
+  * Fixed bug 1160338: pt-query-digest 2.2 prints unwanted debug info on tcpdump parsing errors
+  * Fixed bug 1160918: pt-query-digest 2.2 prints too many string values
+  * Fixed bug 1163372: pt-heartbeat --utc --check always returns 0
+  * Fixed bug 821502: Some tools don't have --help or --version
+  * Fixed bug 947893: Tools use @@hostname without /*!50038*/
+  * Fixed bug 1156867: pt-stalk prints the wrong variable name in verbose mode when --function is used
+
 v2.2.1 released 2013-03-14
 
   * Official support for MySQL 5.6
