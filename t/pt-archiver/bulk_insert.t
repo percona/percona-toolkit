@@ -117,8 +117,7 @@ for my $char ( "\N{KATAKANA LETTER NI}", "\N{U+DF}" ) {
       "--bulk-insert inserted the data"
    );
 
-   require Encode;
-   Encode::_utf8_on($val);
+   utf8::decode($val);
 
    is(
       $val,
