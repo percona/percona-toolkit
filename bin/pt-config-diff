@@ -42,7 +42,7 @@ BEGIN {
 # ###########################################################################
 {
 package Percona::Toolkit;
-our $VERSION = '2.2.1';
+our $VERSION = '2.2.2';
 
 1;
 }
@@ -60,6 +60,7 @@ our $VERSION = '2.2.1';
 # ###########################################################################
 {
 package Lmo::Utils;
+
 use strict;
 use warnings qw( FATAL all );
 require Exporter;
@@ -67,7 +68,12 @@ our (@ISA, @EXPORT, @EXPORT_OK);
 
 BEGIN {
    @ISA = qw(Exporter);
-   @EXPORT = @EXPORT_OK = qw(_install_coderef _unimport_coderefs _glob_for _stash_for);
+   @EXPORT = @EXPORT_OK = qw(
+      _install_coderef
+      _unimport_coderefs
+      _glob_for
+      _stash_for
+   );
 }
 
 {
@@ -250,7 +256,6 @@ sub meta {
    $class    = Scalar::Util::blessed($class) || $class;
    return Lmo::Meta->new(class => $class);
 }
-
 
 1;
 }
@@ -2324,6 +2329,32 @@ sub name {
    my ($self) = @_;
    return $self->{dsn_name} if PERCONA_TOOLKIT_TEST_USE_DSN_NAMES;
    return $self->{hostname} || $self->{dsn_name} || 'unknown host';
+}
+
+sub remove_duplicate_cxns {
+   my ($self, %args) = @_;
+   my @cxns     = @{$args{cxns}};
+   my $seen_ids = $args{seen_ids} || {};
+   PTDEBUG && _d("Removing duplicates from ", join(" ", map { $_->name } @cxns));
+   my @trimmed_cxns;
+
+   for my $cxn ( @cxns ) {
+      my $dbh  = $cxn->dbh();
+      my $sql  = q{SELECT @@server_id};
+      PTDEBUG && _d($sql);
+      my ($id) = $dbh->selectrow_array($sql);
+      PTDEBUG && _d('Server ID for ', $cxn->name, ': ', $id);
+
+      if ( ! $seen_ids->{$id}++ ) {
+         push @trimmed_cxns, $cxn
+      }
+      else {
+         PTDEBUG && _d("Removing ", $cxn->name,
+                       ", ID ", $id, ", because we've already seen it");
+      }
+   }
+
+   return \@trimmed_cxns;
 }
 
 sub DESTROY {
@@ -5664,6 +5695,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-config-diff 2.2.1
+pt-config-diff 2.2.2
 
 =cut
