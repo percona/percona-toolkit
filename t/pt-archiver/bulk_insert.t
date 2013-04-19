@@ -90,35 +90,51 @@ is_deeply(
 # pt-archiver wide character errors / corrupted data with UTF-8 + bulk-insert
 # https://bugs.launchpad.net/percona-toolkit/+bug/1127450
 # #############################################################################
-{
-my $utf8_dbh = $sb->get_dbh_for('master', { mysql_enable_utf8 => 1, AutoCommit => 1 });
+if( Test::Builder->VERSION < 2 ) {
+   foreach my $method ( qw(output failure_output) ) {
+      binmode Test::More->builder->$method(), ':encoding(UTF-8)';
+   }
+}
+# >"
+for my $char ( "\N{KATAKANA LETTER NI}", "\N{U+DF}" ) {
+   my $utf8_dbh = $sb->get_dbh_for('master', { mysql_enable_utf8 => 1, AutoCommit => 1 });
 
-$sb->load_file('master', 't/pt-archiver/samples/bug_1127450.sql');
-my $sql = qq{INSERT INTO `bug_1127450`.`original` VALUES (1, "\N{KATAKANA LETTER NI}")};
-$utf8_dbh->do($sql);
+   $sb->load_file('master', 't/pt-archiver/samples/bug_1127450.sql');
+   my $sql = qq{INSERT INTO `bug_1127450`.`original` VALUES (1, ?)};
+   $utf8_dbh->prepare($sql)->execute($char);
 
-$output = output(
-   sub { pt_archiver::main(qw(--no-ascend --limit 50 --bulk-insert),
-      qw(--bulk-delete --where 1=1 --statistics --charset utf8),
-      '--source', "L=1,D=bug_1127450,t=original,F=$cnf",
-      '--dest',   "t=copy") }, stderr => 1
-);
+   $output = output(
+      sub { pt_archiver::main(qw(--no-ascend --limit 50 --bulk-insert),
+         qw(--bulk-delete --where 1=1 --statistics --charset utf8),
+         '--source', "L=1,D=bug_1127450,t=original,F=$cnf",
+         '--dest',   "t=copy") }, stderr => 1
+   );
 
-my (undef, $val) = $utf8_dbh->selectrow_array('select * from bug_1127450.copy');
+   my (undef, $val) = $utf8_dbh->selectrow_array('select * from bug_1127450.copy');
 
-ok(
-   utf8::is_utf8($val),
-   "--bulk-insert preserves UTF8ness"
-);
+   ok(
+      $val,
+      "--bulk-insert inserted the data"
+   );
 
-is(
-   $val,
-   "\N{KATAKANA LETTER NI}",
-   "--bulk-insert can handle utf8 characters"
-);
+   require Encode;
+   Encode::_utf8_on($val);
 
-unlike($output, qr/Wide character/, "no wide character warnings")
+   is(
+      $val,
+      $char,
+      "--bulk-insert can handle $char"
+   );
 
+   unlike($output, qr/Wide character/, "no wide character warnings");
+
+   my $test = $DBD::mysql::VERSION lt '4'
+            ? \&like : \&unlike;
+   $test->(
+      $output,
+      qr/Setting binmode :raw instead of :utf8 on/,
+      "Warns about the UTF-8 bug in DBD::mysql::VERSION lt '4', quiet otherwise"
+   );
 }
 # #############################################################################
 # Done.
