@@ -132,6 +132,7 @@ my $run0 = Percona::WebAPI::Resource::Task->new(
 );
 
 my $svc0 = Percona::WebAPI::Resource::Service->new(
+   ts             => 100,
    name           => 'query-history',
    run_schedule   => '1 * * * *',
    spool_schedule => '2 * * * *',
@@ -384,6 +385,7 @@ $run0 = Percona::WebAPI::Resource::Task->new(
 );
 
 $svc0 = Percona::WebAPI::Resource::Service->new(
+   ts           => 100,
    name         => 'test-run-at-start',
    run_schedule => '0 0 1 1 *',
    run_once     => 1,  # here's the magic

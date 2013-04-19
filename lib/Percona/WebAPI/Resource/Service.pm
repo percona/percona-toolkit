@@ -59,6 +59,13 @@ has 'meta' => (
    default  => sub { return 0 },
 );
 
+has 'run_once' => (
+   is       => 'ro',
+   isa      => 'Bool',
+   required => 0,
+   default  => sub { return 0 },
+);
+
 has 'links' => (
    is       => 'rw',
    isa      => 'Maybe[HashRef]',

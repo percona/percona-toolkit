@@ -72,6 +72,7 @@ my $run0 = Percona::WebAPI::Resource::Task->new(
 );
 
 my $svc0 = Percona::WebAPI::Resource::Service->new(
+   ts             => 100,
    name           => 'query-history',
    run_schedule   => '1 * * * *',
    spool_schedule => '2 * * * *',

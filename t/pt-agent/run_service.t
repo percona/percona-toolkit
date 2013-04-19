@@ -74,6 +74,7 @@ my $run0 = Percona::WebAPI::Resource::Task->new(
 );
 
 my $svc0 = Percona::WebAPI::Resource::Service->new(
+   ts             => 100,
    name           => 'query-history',
    run_schedule   => '1 * * * *',
    spool_schedule => '2 * * * *',
@@ -96,6 +97,7 @@ my $output = output(
       );
    },
    stderr => 1,
+   debug =>1,
 );
 
 ok(
@@ -147,6 +149,7 @@ my $run1 = Percona::WebAPI::Resource::Task->new(
 );
 
 $svc0 = Percona::WebAPI::Resource::Service->new(
+   ts             => 100,
    name           => 'query-history',
    run_schedule   => '3 * * * *',
    spool_schedule => '4 * * * *',
@@ -232,6 +235,7 @@ SKIP: {
       query   => "SET GLOBAL general_log=ON",
    );
    my $svc0 = Percona::WebAPI::Resource::Service->new(
+      ts             => 100,
       name           => 'enable-gen-log',
       run_schedule   => '1 * * * *',
       spool_schedule => '2 * * * *',
@@ -247,6 +251,7 @@ SKIP: {
       output  => 'spool',
    );
    my $svc1 = Percona::WebAPI::Resource::Service->new(
+      ts             => 100,
       name           => 'query-history',
       run_schedule   => '3 * * * *',
       spool_schedule => '4 * * * *',
@@ -270,6 +275,7 @@ SKIP: {
       query   => "SET GLOBAL general_log=ON",
    );
    my $svc2 = Percona::WebAPI::Resource::Service->new(
+      ts             => 100,
       name           => 'disable-gen-log',
       run_schedule   => '5 * * * *',
       spool_schedule => '6 * * * *',
