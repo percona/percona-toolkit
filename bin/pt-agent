@@ -4756,7 +4756,6 @@ use Percona::WebAPI::Resource::Agent;
 use Percona::WebAPI::Resource::Config;
 use Percona::WebAPI::Resource::Service;
 use Percona::WebAPI::Representation;
-use Percona::WebAPI::Util;
 
 Percona::Toolkit->import(qw(_d Dumper have_required_args));
 Percona::WebAPI::Representation->import(qw(as_json as_config));
@@ -5621,32 +5620,56 @@ sub get_services {
             curr_services => $curr_services,
          );
 
-         # First, save each service in --lib/services/.  This must
-         # be done before calling start_services() because that sub
-         # looks for --lib/services/start-service, etc.
+         # First, stop and remove services.  Do this before write_services()
+         # because this call looks for  --lib/services/stop-service which
+         # write_services() removes.  I.e. use the service's stop- meta
+         # counterpart (if any) before we remove the service.
+         run_services(
+            action   => 'stop',
+            services => $sorted_services->{removed},
+            lib_dir  => $lib_dir,
+            bin_dir  => $args{bin_dir},  # optional, for testing
+         );
+
+         # Second, save each service in --lib/services/.  Do this before
+         # the next calls to run_services() because those calls look for
+         # --lib/services/start-service which won't exist for new services
+         # until written by this call.
          write_services(
             sorted_services => $sorted_services,
             lib_dir         => $lib_dir,
             json            => $args{json},  # optional, for testing
          );
 
-         # Start and restart services.  This must be done before calling
-         # schedule_services() so that, for example, start-query-history
-         # is ran before query-history is scheduled and starts running.
+         # Start new services and restart existing updated services.
+         # Do this before calling schedule_services() so that, for example,
+         # start-query-history is ran before query-history is scheduled
+         # and starts running.
 
          # Start new services.
          # TODO: this probably can't/won't fail, but if it does, is it
          # worth setting success=0?
-         start_services(
+         run_services(
+            action   => 'start',
             services => $sorted_services->{added},
             lib_dir  => $lib_dir,
             bin_dir  => $args{bin_dir},  # optional, for testing
          );
 
-         # Restart existing, re-configured services.
-         start_services(
-            restart  => 1,
+         # Restart existing updated services.
+         run_services(
+            action   => 'restart',
             services => $sorted_services->{updated},
+            lib_dir  => $lib_dir,
+            bin_dir  => $args{bin_dir},  # optional, for testing
+         );
+
+         # Run services with the run_once flag.  Unlike run_services(),
+         # this call runs the service directly, whether it's meta or not,
+         # then it removes it from the services hashref so there's no
+         # chance of running it again unless it's received again.
+         run_services_once(
+            services => $sorted_services->{services},
             lib_dir  => $lib_dir,
             bin_dir  => $args{bin_dir},  # optional, for testing
          );
@@ -5697,6 +5720,11 @@ sub sort_services {
    foreach my $service ( @$curr_services ) {
       my $name = $service->name;
       $services->{$name} = $service;
+
+      # run_services() only needs real services, from which it can infer
+      # certain meta-services like "start-foo" for real service "foo",
+      # but write_services() needs meta-services too so it can know to
+      # remove their files from --lib/services/.
 
       if ( !exists $prev_services->{$name} ) {
          push @added, $service;
@@ -5866,7 +5894,87 @@ sub make_new_crontab {
 # from the real service's name.  A service doesn't require meta-services;
 # there may be nothing to do to start it, in which case the real service
 # starts running due to its run_schedule and schedule_services().
-sub start_services {
+sub run_services {
+   my (%args) = @_;
+   have_required_args(\%args, qw(
+      action
+      services
+      lib_dir
+   )) or die;
+   my $action   = $args{action};
+   my $services = $args{services};
+   my $lib_dir  = $args{lib_dir};
+
+   # Optional args
+   my $bin_dir  = defined $args{bin_dir} ? $args{bin_dir}
+                :                          "$FindBin::Bin/";
+   my $exec_cmd = $args{exec_cmd} || sub { return system(@_) };
+
+   my $env_vars = env_vars();
+   my $log      = "$lib_dir/logs/start-stop.log";
+   my $cmd_fmt  = ($env_vars ? "$env_vars " : '')
+                . $bin_dir . "pt-agent --run-service %s >> $log 2>&1";
+
+   SERVICE:
+   foreach my $service ( @$services ) {
+      next if $service->meta;  # only real services
+
+      my $name = $service->name;
+
+      # To restart, one must first stop, then start afterwards.
+      if ( $action eq 'stop' || $action eq 'restart' ) {
+         if ( -f "$lib_dir/services/stop-$name" ) {
+            my $cmd = sprintf $cmd_fmt, "stop-$name";
+            _info("Stopping $name: $cmd");
+            $exec_cmd->($cmd);
+            my $cmd_exit_status = $CHILD_ERROR >> 8;
+            if ( $cmd_exit_status != 0 ) {
+               _warn("Error stopping $name, check $log and "
+                  . "$lib_dir/logs/$name.run");
+               next SERVICE;
+            }
+         }
+      }
+
+      if ( $action eq 'start' || $action eq 'restart' ) {
+         # Remove old meta files.  Meta files are generally temporary
+         # in any case, persisting info from one interval to the next.
+         # If the service has changed (e.g., report interval is longer),
+         # there's no easy way to tranistion from old metadata to new,
+         # so we just rm the old metadata and start anew.
+         my $meta_files = "$lib_dir/meta/$name*";
+         foreach my $meta_file ( glob $meta_files ) {
+            if ( unlink $meta_file ) {
+               _info("Removed $meta_file");
+            }
+            else {
+               _warn("Cannot remove $meta_file: $OS_ERROR");
+            }
+         }
+
+         # Start the service and wait for it to exit.  If it dies
+         # really early (before it really begins), our log file will
+         # have the error; else, the service should automatically
+         # switch to its default log file ending in ".run".
+         if ( -f "$lib_dir/services/start-$name" ) {
+            my $cmd = sprintf $cmd_fmt, "start-$name";
+            _info("Starting $name: $cmd");
+            $exec_cmd->($cmd);
+            my $cmd_exit_status = $CHILD_ERROR >> 8;
+            if ( $cmd_exit_status != 0 ) {
+               _warn("Error starting $name, check $log and "
+                   ."$lib_dir/logs/$name.run");
+               next SERVICE;
+            }
+            _info("Started $name successfully");
+         }
+      }
+   }
+
+   return;
+}
+
+sub run_services_once {
    my (%args) = @_;
    have_required_args(\%args, qw(
       services
@@ -5882,62 +5990,27 @@ sub start_services {
    my $exec_cmd = $args{exec_cmd} || sub { return system(@_) };
 
    my $env_vars = env_vars();
-   my $log      = "$lib_dir/logs/start.log";
+   my $log      = "$lib_dir/logs/run-once.log";
    my $cmd_fmt  = ($env_vars ? "$env_vars " : '')
                 . $bin_dir . "pt-agent --run-service %s >> $log 2>&1";
 
    SERVICE:
-   foreach my $service ( @$services ) {
-      next if $service->meta;  # only real services
+   foreach my $name ( sort keys %$services ) {
+      my $service = $services->{$name};
+      next unless $service->run_once;
 
-      my $name = $service->name;
+      delete $services->{$name};
 
-      # To restart, one must first stop, then start afterwards.
-      if ( $restart ) {
-         if ( -f "$lib_dir/services/stop-$name" ) {
-            my $cmd = sprintf $cmd_fmt, "stop-$name";
-            _info("Stopping $name: $cmd");
-            $exec_cmd->($cmd);
-            my $cmd_exit_status = $CHILD_ERROR >> 8;
-            if ( $cmd_exit_status != 0 ) {
-               _warn("Error stopping $name, check $log and "
-                  . "$lib_dir/logs/$name.run");
-               next SERVICE;
-            }
-         }
+      my $cmd = sprintf $cmd_fmt, "start-$name";
+      _info("Running $name: $cmd");
+      $exec_cmd->($cmd);
+      my $cmd_exit_status = $CHILD_ERROR >> 8;
+      if ( $cmd_exit_status != 0 ) {
+         _warn("Error starting $name, check $log and "
+             ."$lib_dir/logs/$name.run");
+         next SERVICE;
       }
-
-      # Remove old meta files.  Meta files are generally temporary
-      # in any case, persisting info from one interval to the next.
-      # If the service has changed (e.g., report interval is longer),
-      # there's no easy way to tranistion from old metadata to new,
-      # so we just rm the old metadata and start anew.
-      my $meta_files = "$lib_dir/meta/$name*";
-      foreach my $meta_file ( glob $meta_files ) {
-         if ( unlink $meta_file ) {
-            _info("Removed $meta_file");
-         }
-         else {
-            _warn("Cannot remove $meta_file: $OS_ERROR");
-         }
-      }
-
-      # Start the service and wait for it to exit.  If it dies
-      # really early (before it really begins), our log file will
-      # have the error; else, the service should automatically
-      # switch to its default log file ending in ".run".
-      if ( -f "$lib_dir/services/start-$name" ) {
-         my $cmd = sprintf $cmd_fmt, "start-$name";
-         _info("Starting $name: $cmd");
-         $exec_cmd->($cmd);
-         my $cmd_exit_status = $CHILD_ERROR >> 8;
-         if ( $cmd_exit_status != 0 ) {
-            _warn("Error starting $name, check $log and "
-                ."$lib_dir/logs/$name.run");
-            next SERVICE;
-         }
-         _info("Started $name successfully");
-      }
+      _info("Ran $name successfully");
    }
 
    return;

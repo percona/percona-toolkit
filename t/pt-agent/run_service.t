@@ -36,9 +36,10 @@ my $sample = "t/pt-agent/samples";
 # Create fake spool and lib dirs.  Service-related subs in pt-agent
 # automatically add "/services" to the lib dir, but the spool dir is
 # used as-is.
-my $tmpdir = tempdir("/tmp/pt-agent.$PID.XXXXXX", CLEANUP => 1);
-mkdir "$tmpdir/spool"    or die "Error making $tmpdir/spool: $OS_ERROR";
-mkdir "$tmpdir/services" or die "Error making $tmpdir/services: $OS_ERROR";
+my $tmpdir = tempdir("/tmp/pt-agent.$PID.XXXXXX", CLEANUP => 0);
+output(
+   sub { pt_agent::init_lib_dir(lib_dir => $tmpdir) }
+);
 my $spool_dir = "$tmpdir/spool";
 
 sub write_svc_files {
@@ -88,9 +89,10 @@ my $output = output(
    sub {
       $exit_status = pt_agent::run_service(
          service   => 'query-history',
-         spool_dir => $spool_dir,
          lib_dir   => $tmpdir,
+         spool_dir => $spool_dir,
          Cxn       => '',
+         suffix    => '',  # optional, for testing
       );
    },
    stderr => 1,
@@ -98,11 +100,11 @@ my $output = output(
 
 ok(
    no_diff(
-      "cat $tmpdir/spool/query-history",
+      "cat $tmpdir/spool/query-history/query-history",
       "$sample/query-history/data001.json",
    ),
    "1 run: spool data (query-history/data001.json)"
-);
+) or diag(`ls -l $tmpdir/spool/`);
 
 chomp(my $n_files = `ls -1 $spool_dir | wc -l | awk '{print \$1}'`);
 is(
@@ -116,7 +118,7 @@ is(
    0,
    "1 run: exit 0"
 );
-
+exit;
 # #############################################################################
 # Service with two task, both using a program.
 # #############################################################################
@@ -162,6 +164,7 @@ $output = output(
          spool_dir => $spool_dir,
          lib_dir   => $tmpdir,
          Cxn       => '',
+         suffix    => '',  # optional, for testing
       );
    },
    stderr => 1,
@@ -291,6 +294,7 @@ SKIP: {
             spool_dir => $spool_dir,
             lib_dir   => $tmpdir,
             Cxn       => $cxn,
+            suffix    => '',  # optional, for testing
          );
       },
       stderr => 1,
@@ -318,6 +322,7 @@ SKIP: {
             spool_dir => $spool_dir,
             lib_dir   => $tmpdir,
             Cxn       => $cxn,
+            suffix    => '',  # optional, for testing
          );
       },
       stderr => 1,
@@ -341,6 +346,7 @@ SKIP: {
             spool_dir => $spool_dir,
             lib_dir   => $tmpdir,
             Cxn       => $cxn,
+            suffix    => '',  # optional, for testing
          );
       },
       stderr => 1,
