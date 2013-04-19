@@ -5965,6 +5965,26 @@ sub main {
                . ")";
    }
 
+   if ( $charset eq ':utf8' && $DBD::mysql::VERSION lt '4'
+      && ( $archive_file || $o->get('bulk-insert') ) )
+   {
+      my $plural = '';
+      my $files  = $archive_file ? '--file' : '';
+      if ( $o->get('bulk-insert') ) {
+         if ($files) {
+            $plural = 's';
+            $files .= $files ? ' and ' : '';
+         }
+         $files .= '--bulk-insert'
+      }
+      warn "Setting binmode :raw instead of :utf8 on $files file$plural "
+         . "because DBD::mysql 3.0007 has a bug with UTF-8.  "
+         . "Verify the $files file$plural, as the bug may lead to "
+         . "data being double-encoded.  Update DBD::mysql to avoid "
+         . "this warning.";
+      $charset = ":raw";
+   }
+   
    # Open the file and print the header to it. 
    if ( $archive_file ) { 
       my $need_hdr = $o->get('header') && !-f $archive_file; 
