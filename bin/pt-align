@@ -1213,6 +1213,9 @@ is easier to read.
 
 =head1 OPTIONS
 
+This tool accepts additional command-line arguments.  Refer to the
+L<"SYNOPSIS"> and usage information for details.
+
 =over
 
 =item --help
