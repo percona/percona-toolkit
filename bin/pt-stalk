@@ -1434,7 +1434,6 @@ if    [ "${0##*/}" = "$TOOL" ] \
    if [ -z "$OPT_STALK" -a "$OPT_COLLECT" ]; then
       # Not stalking; do immediate collect once.
       OPT_CYCLES=0
-      echo "[iter=$OPT_ITERATIONS] [cycle=$OPT_CYCLES] [sleep=$OPT_SLEEP] [interval=$OPT_INTERVAL]"
    fi
 
    usage_or_errors "$0"
