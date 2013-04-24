@@ -1255,7 +1255,7 @@ stalk() {
             cycles_true=0
          fi
 
-         local msg="Check results: $OPT_VARIABLE=$value, matched=${matched:-no}, cycles_true=$cycles_true"
+         local msg="Check results: $OPT_FUNCTION($OPT_VARIABLE)=$value, matched=${matched:-no}, cycles_true=$cycles_true"
          if [ "$matched" ]; then
             log "$msg"
          else
@@ -1935,6 +1935,10 @@ underscores.
 Plugins can stop the tool by setting the global variable C<OKTORUN>
 to C<1>.  In this case, the global variable C<EXIT_REASON> should also
 be set to indicate why the tool was stopped.
+
+Plugin writers should keep in mind that the file destination prefix currently
+in use should be accessed through the C<$prefix> variable, rather than
+C<$OPT_PREFIX>.
 
 =item --port
 

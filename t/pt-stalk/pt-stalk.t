@@ -120,7 +120,7 @@ PerconaTest::kill_program(pid_file => $pid_file);
 $output = `cat $log_file 2>/dev/null`;
 unlike(
    $output,
-   qr/Check results: Threads_running=\d+, matched=no, cycles_true=0/,
+   qr/Check results: status\(Threads_running\)=\d+, matched=no, cycles_true=0/,
    "Non-matching results not logged because --verbose=2"
 ) or diag(`cat $log_file 2>/dev/null`, `cat $dest/*-output 2>/dev/null`);
 
@@ -153,7 +153,7 @@ PerconaTest::kill_program(pid_file => $pid_file);
 $output = `cat $log_file 2>/dev/null`;
 like(
    $output,
-   qr/Check results: Threads_running=\d+, matched=no, cycles_true=0/,
+   qr/Check results: status\(Threads_running\)=\d+, matched=no, cycles_true=0/,
    "Matching results logged with --verbose 3"
 ) or diag(`cat $dest/*-output 2>/dev/null`);
 
@@ -201,7 +201,7 @@ PerconaTest::wait_until(sub { !-f $pid_file });
 $output = `cat $dest/*-trigger 2>/dev/null`;
 like(
    $output,
-   qr/Check results: Uptime=\d+, matched=yes, cycles_true=2/,
+   qr/Check results: status\(Uptime\)=\d+, matched=yes, cycles_true=2/,
    "Collect triggered"
 )
 or diag(
@@ -304,7 +304,7 @@ is(
 $output = `cat $log_file 2>/dev/null`;
 like(
    $output,
-   qr/Check results: Aborted_connects=|variable=Aborted_connects/,
+   qr/Check results: status\(Aborted_connects\)=|variable=Aborted_connects/,
    "Read default config file"
 );
 
