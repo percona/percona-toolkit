@@ -56,7 +56,7 @@ BEGIN {
 # ###########################################################################
 {
 package Percona::Toolkit;
-our $VERSION = '2.2.1';
+our $VERSION = '2.2.2';
 
 1;
 }
@@ -11928,7 +11928,7 @@ recursion method, or use the C<dsn> method to specify the replicas to check.
 Possible methods are:
 
   METHOD       USES
-  ===========  ==================
+  ===========  =============================================
   processlist  SHOW PROCESSLIST
   hosts        SHOW SLAVE HOSTS
   cluster      SHOW STATUS LIKE 'wsrep\_incoming\_addresses'
@@ -11944,10 +11944,10 @@ C<report_port>, etc.
 
 The C<cluster> method requires a cluster based on Galera 23.7.3 or newer,
 such as Percona XtraDB Cluster versions 5.5.29 and above.  This will
-autodiscover nodes in a cluster using C<SHOW STATUS LIKE 'wsrep\_incoming\_addresses'>.
-Note that you can combine C<cluster> with C<processlist> and C<hosts> to
-have the tool autodiscover all cluster nodes and traditional slaves,
-but this is considered highly experimental.
+auto-discover nodes in a cluster using
+C<SHOW STATUS LIKE 'wsrep\_incoming\_addresses'>.  You can combine C<cluster>
+with C<processlist> and C<hosts> to auto-discover cluster nodes and replicas,
+but this functionality is experimental.
 
 The C<dsn> method is special: rather than automatically discovering replicas,
 this method specifies a table with replica DSNs.  The tool will only connect
@@ -12385,6 +12385,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-checksum 2.2.1
+pt-table-checksum 2.2.2
 
 =cut
