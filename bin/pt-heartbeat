@@ -37,7 +37,7 @@ BEGIN {
 # ###########################################################################
 {
 package Percona::Toolkit;
-our $VERSION = '2.2.1';
+our $VERSION = '2.2.2';
 
 1;
 }
@@ -105,6 +105,8 @@ sub get_slaves {
    my $dp      = $self->{DSNParser};
    my $methods = $self->_resolve_recursion_methods($args{dsn});
 
+   return $slaves unless @$methods;
+   
    if ( grep { m/processlist|hosts/i } @$methods ) {
       my @required_args = qw(dbh dsn);
       foreach my $arg ( @required_args ) {
@@ -3047,6 +3049,8 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
+use Time::HiRes qw(sleep);
+
 sub new {
    my ( $class, %args ) = @_;
    my $self = {
@@ -5955,7 +5959,7 @@ not check or adjust for different system or MySQL time zones which can
 cause the tool to compute the lag incorrectly.  Specifying this option is
 a good idea because it ensures that the tool works correctly regardless of
 time zones, but it also makes the tool backwards-incompatible with
-pt-heartbeat 2.2.1 and older (unless the older version of pt-heartbeat
+pt-heartbeat 2.2.2 and older (unless the older version of pt-heartbeat
 is running on a system that uses UTC).
 
 =item --version
@@ -6137,6 +6141,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-heartbeat 2.2.1
+pt-heartbeat 2.2.2
 
 =cut
