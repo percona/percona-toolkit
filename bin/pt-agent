@@ -6142,7 +6142,7 @@ sub run_service {
       elsif ( $output =~ m/^meta:(\S+)/ ) {
          my $attrib = $1;
          $output_file = "$lib_dir/meta/" . $service->name . ".meta.$attrib";
-         push @output_files, undef;
+         push @output_files, $output_file;
       }
       else {
          $output_file = '/dev/null';
