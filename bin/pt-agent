@@ -5653,9 +5653,7 @@ sub get_services {
          # and starts running.
 
          # Start new services.
-         # TODO: this probably can't/won't fail, but if it does, is it
-         # worth setting success=0?
-         run_services(
+         my $started_ok = run_services(
             action   => 'start',
             services => $sorted_services->{added},
             lib_dir  => $lib_dir,
@@ -5664,7 +5662,7 @@ sub get_services {
          );
 
          # Restart existing updated services.
-         run_services(
+         my $restarted_ok = run_services(
             action   => 'restart',
             services => $sorted_services->{updated},
             lib_dir  => $lib_dir,
@@ -5676,7 +5674,7 @@ sub get_services {
          # this call runs the service directly, whether it's meta or not,
          # then it removes it from the services hashref so there's no
          # chance of running it again unless it's received again.
-         run_services_once(
+         my $ran_once_ok = run_services_once(
             services => $sorted_services->{services},
             lib_dir  => $lib_dir,
             bin_dir  => $args{bin_dir},  # optional, for testing
@@ -5685,12 +5683,16 @@ sub get_services {
 
          # Schedule any services with a run_schedule or spool_schedule.
          # This must be called last, after write_services() and
-         # start_services() because, for example, a service schedule
+         # run_services() because, for example, a service schedule
          # to run at */5 may run effectively immediate if we write
          # the new crontab at 00:04:59, so everything has to be
          # ready to go at this point.
          schedule_services(
-            services => $sorted_services->{services},
+            services => [
+               @$started_ok,
+               @$restarted_ok,
+               @$ran_once_ok,
+            ],
             lib_dir  => $lib_dir,
             bin_dir  => $args{bin_dir},  # optional, for testing
             exec_cmd => $args{exec_cmd}, # optional, for testing
@@ -5824,9 +5826,7 @@ sub schedule_services {
    # Only schedule "periodic" services, i.e. ones that run periodically,
    # not just once.
    my @periodic_services = grep { $_->run_schedule || $_->spool_schedule }
-                           sort { $a->name cmp $b->name }
-                           values %$services;
-
+                           @$services;
    my $new_crontab = make_new_crontab(
       %args,
       services => \@periodic_services,
@@ -5926,6 +5926,7 @@ sub run_services {
    my $cmd_fmt  = ($env_vars ? "$env_vars " : '')
                 . $bin_dir . "pt-agent --run-service %s >> $log 2>&1";
 
+   my @started_ok;
    SERVICE:
    foreach my $service ( @$services ) {
       next if $service->meta;  # only real services
@@ -5975,12 +5976,13 @@ sub run_services {
                    ."$lib_dir/logs/$name.run");
                next SERVICE;
             }
+            push @started_ok, $service;
             _info("Started $name successfully");
          }
       }
    }
 
-   return;
+   return \@started_ok;
 }
 
 sub run_services_once {
@@ -6003,6 +6005,7 @@ sub run_services_once {
    my $cmd_fmt  = ($env_vars ? "$env_vars " : '')
                 . $bin_dir . "pt-agent --run-service %s >> $log 2>&1";
 
+   my @started_ok;
    SERVICE:
    foreach my $name ( sort keys %$services ) {
       my $service = $services->{$name};
@@ -6018,10 +6021,11 @@ sub run_services_once {
              ."$lib_dir/logs/$name.run");
          next SERVICE;
       }
+      push @started_ok, $service;
       _info("Ran $name successfully");
    }
 
-   return;
+   return \@started_ok;
 }
 
 # ########################## #
@@ -6662,7 +6666,7 @@ sub stop_agent {
       _info("Removing all services from crontab...");
       eval {
          schedule_services(
-            services => {},
+            services => [],
             lib_dir  => $lib_dir,
             quiet    => 1,
          );
