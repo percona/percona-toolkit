@@ -82,12 +82,17 @@ is_deeply(
 # #############################################################################
 
 my $tmpdir = tempdir("/tmp/pt-agent.$PID.XXXXXX", CLEANUP => 1);
-mkdir "$tmpdir/query-history"
-   or die "Cannot mkdir $tmpdir/query-history: $OS_ERROR";
-mkdir "$tmpdir/services"
-   or die "Cannot mkdir $tmpdir/services: $OS_ERROR";
+pt_agent::init_lib_dir(
+   lib_dir => $tmpdir,
+   quiet   => 1,
+);
+pt_agent::init_spool_dir(
+   spool_dir => $tmpdir,
+   service   => 'query-history',
+   quiet     => 1,
+); 
 
-`cp $trunk/$sample/query-history/data001.json $tmpdir/query-history/`;
+`cp $trunk/$sample/query-history/data001.json $tmpdir/query-history/1.data001.data`;
 `cp $trunk/$sample/service001 $tmpdir/services/query-history`;
 
 $ua->{responses}->{post} = [
@@ -99,15 +104,16 @@ $ua->{responses}->{post} = [
 my $output = output(
    sub {
       pt_agent::send_data(
-         client    => $client,
-         agent     => $agent,
+         api_key   => '123',
          service   => 'query-history',
          lib_dir   => $tmpdir,
          spool_dir => $tmpdir,
-         json      => $json,  # optional, for testing
+         # optional, for testing:
+         client    => $client,
+         agent     => $agent,
+         json      => $json,
       ),
    },
-   stderr => 1,
 );
 
 is(
@@ -134,7 +140,7 @@ ok(
 ) or diag(Dumper($client->ua->{content}->{post}));
 
 ok(
-   !-f "$tmpdir/query-history/data001.json",
+   !-f "$tmpdir/query-history/1.data001.data",
    "Removed data file after sending successfully"
 );
 

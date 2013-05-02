@@ -5085,15 +5085,18 @@ sub init_lib_dir {
 
    # Optiona args
    my $verify = $args{verify};
+   my $quiet  = $args{quiet};
 
-   _info(($verify ? 'Verify' : 'Initializing') . " --lib $lib_dir");
+   _info(($verify ? 'Verify' : 'Initializing') . " --lib $lib_dir")
+      unless $quiet;
 
    if ( ! -d $lib_dir ) {
       if ( $verify  ) {
          die "$lib_dir does not exist\n";
       }
       else {
-         _info("$lib_dir does not exist, creating");
+         _info("$lib_dir does not exist, creating")
+            unless $quiet;
          _safe_mkdir($lib_dir);
       }
    }
@@ -5108,7 +5111,8 @@ sub init_lib_dir {
             die "$dir does not exist\n";
          }
          else {
-            _info("$dir does not exist, creating");
+            _info("$dir does not exist, creating")
+               unless $quiet;
             _safe_mkdir($dir);
          }
       }
@@ -6039,19 +6043,8 @@ sub run_service {
    my $cxn       = $args{Cxn};
 
    # Optional args
-   my $json    = $args{json};                        # for testing
-   my $suffix  = $args{suffix}  || '.' . int(time);  # for testing
-   my $curr_ts = $args{curr_ts} || ts(time, 1);      # 1=UTC
-
-   # The seconds are :01 or :02 because cron runs commands about 1 or 2
-   # seconds after the minute mark.  Unfortunately this means that interval
-   # 00:00:01 is not the same as 00:00::02 to MySQL, but for our purposes
-   # they are the same interval.  This matters because, not only should data
-   # intervals align, but intervals across all agents should align too. So
-   # agent 1 data for :00-:05 should align with agent 2 data for the same
-   # interval, i.e. SELECT * FROM query_samples WHERE start_ts='00:00:00'
-   # should get data for that interval for all agents.
-   $curr_ts =~ s/\d\d.\d+$/00/;  # :01.123456 -> :00
+   my $json   = $args{json};                 # for testing
+   my $prefix = $args{prefix} || int(time);  # for testing
 
    # Can't do anything with the lib dir.  Since we haven't started
    # logging yet, cron should capture this error and email the user.
@@ -6116,47 +6109,12 @@ sub run_service {
       }
    }
 
-   # Setup the interval meta file which contains the UTC timestamp
-   # of the last time this service ran ($prev_ts).  If there's no
-   # previous ts, then this is the first run of this service, so
-   # since we don't know when the service started, and it probably
-   # didn't start on an interval boundary, we throw away the results
-   # have the current ts ($curr_ts) which is on an interval boundary
-   # (because services are ran via cron) and wait until the next
-   # time we're ran, then we'll have collected from one interval
-   # boundary (this one) to another (the next one).
-   my $meta_file = "$lib_dir/meta/" . $service->name . ".interval";
-   my $metadata  = {
-      start_ts => undef,
-      end_ts   => $curr_ts,
-      tasks    => [],
-   };
-   if ( $use_spool && !$service->run_once ) {
-      my $prev_ts;
-      if ( -f $meta_file ) {
-         $prev_ts = slurp($meta_file);
-         chomp($prev_ts) if $prev_ts;
-         if ( !$prev_ts ) {
-            _info($meta_file, ' exists but is empty; waiting until next '
-               . 'interval to collect a complete sample');
-         }
-         else {
-            _info("Interval: $prev_ts to $curr_ts");
-         }
-      }
-      else {
-         _info('First run, waiting until next interval to collect '
-            . 'a complete sample');
-      }
-      $metadata->{start_ts} = $prev_ts;
-   }
-
    # Run the tasks, spool any data.
    my @output_files;
-   my $data_file      = $service->name . ($service->run_once ? '' : $suffix);
+   my $data_file      = $prefix . '.' . $service->name;
    my $tmp_data_file  = "$tmp_dir/$data_file";
-   my $have_data_file = 0;
    my $taskno         = 0;
+   my $metadata       = {};
    TASK:
    foreach my $task ( @$tasks ) {
       PTDEBUG && _d("Task $taskno:", $task->name);
@@ -6164,26 +6122,26 @@ sub run_service {
       # Set up the output file, i.e. where this run puts its results.
       # Runs can access each other's output files.  E.g. run0 may
       # write to fileX, then subsequent tasks can access that file
-      # with the special var __RUN_N_OUTPUT__ where N=0.
+      # with the special var __RUN_N_OUTPUT__ where N=0.  Output files
+      # have this format: (prefix.)service.type(.n), where prefix is
+      # an optional unique ID for this run (usually a Unix ts); service
+      # is the service name; type is "data", "tmp", "meta", etc.; and
+      # n is an optional ID or instance of the type.  The .data is the
+      # only file required: it's the data sent by send_data().
       my $output_file;
       my $output = $task->output || '';
       if ( $output eq 'spool' ) {
-         if ( $have_data_file++ ) {
-            die "Invalid service: two tasks have output=spool: "
-               . Dumper($service);
-         }
-         # TODO: save snapshot of meta/service.* before running spool task
          $output_file = $tmp_data_file;
          push @output_files, $output_file;
       }
       elsif ( $output eq 'tmp' ) {
-         my ($fh, $file) = tempfile();
-         close $fh;
+         my $file = "$tmp_dir/$prefix." . $service->name . ".tmp.$taskno";
          $output_file = $file;
          push @output_files, $file;
       }
       elsif ( $output =~ m/^meta:(\S+)/ ) {
-         $output_file = "$lib_dir/meta/" . $service->name . ".$1";
+         my $attrib = $1;
+         $output_file = "$lib_dir/meta/" . $service->name . ".meta.$attrib";
          push @output_files, undef;
       }
       else {
@@ -6207,7 +6165,6 @@ sub run_service {
          # special vars like __RUN_N_OUTPUT__, __TMPDIR__, etc.
          my $cmd = join(' ',
             $task->program,
-            ($task->options || ''),
             '>',
             $output_file,
          );
@@ -6216,6 +6173,8 @@ sub run_service {
             output_files => \@output_files,
             service      => $service->name,  # __SERVICE__
             lib_dir      => $lib_dir,        # __LIB__
+            meta_dir     => "$lib_dir/meta", # __META__
+            stage_dir    => $tmp_dir,        # __STAGE__
          );
          _info("Task $taskno command: $cmd");
 
@@ -6233,6 +6192,11 @@ sub run_service {
             run_time    => sprintf('%.6f', $t1 - $t0),
             exit_status => $cmd_exit_status,
          };
+
+         if ( $cmd_exit_status != 0 ) {
+            _info($task->name . ' exit status not zero, stopping');
+            last TASK;
+         }
       }
       else {
          _warn('Invalid Task resource:', Dumper($task));
@@ -6243,14 +6207,10 @@ sub run_service {
    }
 
    # Move the spool file from --spool/.tmp/ to --spool/<service>/
-   # if 1) the service spools data and 2) there is data and 3) this
-   # is not the first run of the service.
+   # if 1) the service spools data and 2) there is data.
    my $file_size = -s $tmp_data_file;
    _info("$tmp_data_file size: " . ($file_size || 0) . " bytes");
-   if (    $use_spool
-        && $file_size
-        && ($metadata->{start_ts} || $service->run_once) )
-   {
+   if ( $use_spool && $file_size ) {
       # Save metadata about this sample _first_, because --send-data looks
       # for the data file first, then for a corresponding .meta file.  If
       # we write the data file first, then we create a race condition: while
@@ -6259,6 +6219,12 @@ sub run_service {
       # file first guarantees that if --send-data sees a data file, the
       # .meta already exists.  (And there's no race condition on writing
       # the data file because we use a quasi-atomic system mv.)
+      read_metadata(
+         service   => $service->name,
+         prefix    => $prefix,
+         metadata  => $metadata,
+         stage_dir => $tmp_dir,
+      );
       write_to_file(
          data => as_json($metadata, json => $json),
          file => "$data_dir/$data_file.meta",
@@ -6269,22 +6235,12 @@ sub run_service {
       # simply move the inode, _not_ copy the file.  A system mv on
       # the same filesystem is pretty much guaranteed to do an optimized,
       # i.e. quasi-atomic, move.
-      my $cmd = "mv $tmp_data_file $data_dir/$data_file";
+      my $cmd = "mv $tmp_data_file $data_dir/$data_file.data";
       _info($cmd);
       system($cmd);
       my $cmd_exit_status = $CHILD_ERROR >> 8;
       _warn("Move failed: $cmd") if $cmd_exit_status != 0;
       $exit_status |= $cmd_exit_status;
-   }
-
-   # Always update the meta file if spooling, even if there was no data
-   # or this is the first run of the service (in which case this is the
-   # first interval boundary for the service).
-   if ( $use_spool && !$service->run_once ) {
-      write_to_file(
-         data => "$curr_ts\n",
-         file => $meta_file,
-      );
    }
 
    # Remove tmp output files.
@@ -6294,7 +6250,7 @@ sub run_service {
          or _warn("Error removing $file: $OS_ERROR");
    }
 
-   return;
+   return $exit_status;  # returning global var for testing
 }
 
 sub load_service {
@@ -6326,11 +6282,15 @@ sub replace_special_vars {
       output_files
       service
       lib_dir
+      meta_dir
+      stage_dir
    )) or die;
    my $cmd          = $args{cmd};
    my $output_files = $args{output_files};
    my $service      = $args{service};
    my $lib_dir      = $args{lib_dir};
+   my $meta_dir     = $args{meta_dir};
+   my $stage_dir    = $args{stage_dir};
 
    my $ts_micro = sprintf('%.6f', time);
 
@@ -6347,6 +6307,8 @@ sub replace_special_vars {
          }
          $word =~ s/__TS_MICRO__/$ts_micro/g;
          $word =~ s/__LIB__/$lib_dir/g;
+         $word =~ s/__META__/$meta_dir/g;
+         $word =~ s/__STAGE__/$stage_dir/g;
          $word =~ s/__SERVICE__/$service/g;
          $word;
       }
@@ -6366,9 +6328,11 @@ sub init_spool_dir {
 
    # Optional args
    my $service = $args{service};
+   my $quiet   = $args{quiet};
 
    if ( !-d $spool_dir ) {
-      _info("$spool_dir does not exist, creating");
+      _info("$spool_dir does not exist, creating")
+         unless $quiet;
       _safe_mkdir($spool_dir);
    }
    elsif ( !-w $spool_dir ) {
@@ -6379,7 +6343,8 @@ sub init_spool_dir {
       next unless $subdir;  # service may be undef
       my $dir = "$spool_dir/$subdir";
       if ( ! -d $dir ) {
-         _info("$dir does not exist, creating");
+         _info("$dir does not exist, creating")
+            unless $quiet;
          _safe_mkdir($dir);
       }
       elsif ( !-w $dir ) {
@@ -6391,6 +6356,33 @@ sub init_spool_dir {
    my $tmp_dir  = "$spool_dir/.tmp";
 
    return $data_dir, $tmp_dir;
+}
+
+sub read_metadata {
+   my (%args) = @_;
+
+   have_required_args(\%args, qw(
+      service
+      prefix
+      metadata
+      stage_dir
+   )) or die;
+   my $service   = $args{service};
+   my $prefix    = $args{prefix};
+   my $metadata  = $args{metadata};
+   my $stage_dir = $args{stage_dir};
+
+   # Example filename: 123456.query-history.meta.stop_offset
+   foreach my $file ( glob "$stage_dir/$prefix.$service.meta.*" ) {
+      PTDEBUG && _d('metadata file:', $file);
+      my ($attrib) = $file =~ m/\.meta\.(\S+)$/;
+      my $value    = slurp($file);
+      chomp($value) if $value;
+      PTDEBUG && _d('metadata', $attrib, '=', $value);
+      $metadata->{$attrib} = $value;
+   }
+
+   return;
 }
 
 # ######################## #
@@ -6487,12 +6479,10 @@ sub send_data {
       # Only iterator over data files because run_service() writes
       # them last to avoid a race condition with us.  See the code
       # comment about writing the .meta file first in run_service().
-      next if $file =~ m/\.meta$/;
+      next unless $file =~ m/\.data$/;
 
       my $data_file = "$service_dir/$file";
-      next unless -f $data_file;
-
-      my $meta_file = "$service_dir/$file.meta";
+      (my $meta_file = $data_file) =~ s/\.data/.meta/;
 
       eval {
          # Send the file as-is.  The --run-service process should

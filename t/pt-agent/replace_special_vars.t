@@ -34,6 +34,8 @@ sub test_replace {
       output_files => \@output_files,
       service      => 'service-name',
       lib_dir      => '/var/lib/pt-agent',
+      meta_dir     => '/var/lib/pt-agent/meta',
+      stage_dir    => '/var/spool/.tmp',
    );
 
    is(
