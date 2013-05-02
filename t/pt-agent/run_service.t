@@ -36,11 +36,15 @@ my $sample = "t/pt-agent/samples";
 # Create fake spool and lib dirs.  Service-related subs in pt-agent
 # automatically add "/services" to the lib dir, but the spool dir is
 # used as-is.
-my $tmpdir = tempdir("/tmp/pt-agent.$PID.XXXXXX", CLEANUP => 0);
+my $tmpdir = tempdir("/tmp/pt-agent.$PID.XXXXXX", CLEANUP => 1);
 output(
    sub { pt_agent::init_lib_dir(lib_dir => $tmpdir) }
 );
 my $spool_dir = "$tmpdir/spool";
+
+my $json = JSON->new->canonical([1])->pretty;
+$json->allow_blessed([]);
+$json->convert_blessed([]);
 
 sub write_svc_files {
    my (%args) = @_;
@@ -52,8 +56,8 @@ sub write_svc_files {
    my $output = output(
       sub {
          pt_agent::write_services(
-            services => $services,
-            lib_dir  => $tmpdir,
+            sorted_services => { added => $services },
+            lib_dir         => $tmpdir,
          );
       },
       stderr => 1,
@@ -68,8 +72,7 @@ sub write_svc_files {
 my $run0 = Percona::WebAPI::Resource::Task->new(
    name    => 'query-history',
    number  => '0',
-   program => "$trunk/bin/pt-query-digest",
-   options => "--output json $trunk/t/lib/samples/slowlogs/slow008.txt",
+   program => "$trunk/bin/pt-query-digest --output json $trunk/t/lib/samples/slowlogs/slow008.txt",
    output  => 'spool',
 );
 
@@ -93,26 +96,25 @@ my $output = output(
          lib_dir   => $tmpdir,
          spool_dir => $spool_dir,
          Cxn       => '',
-         suffix    => '',  # optional, for testing
+         prefix    => '1',    # optional, for testing
+         json      => $json,  # optional, for testing
       );
    },
-   stderr => 1,
-   debug =>1,
 );
 
 ok(
    no_diff(
-      "cat $tmpdir/spool/query-history/query-history",
+      "cat $tmpdir/spool/query-history/1.query-history.data",
       "$sample/query-history/data001.json",
    ),
    "1 run: spool data (query-history/data001.json)"
-) or diag(`ls -l $tmpdir/spool/`);
+) or diag(`ls -l $tmpdir/spool/query-history/`, `cat $tmpdir/logs/query-history.run`);
 
-chomp(my $n_files = `ls -1 $spool_dir | wc -l | awk '{print \$1}'`);
+chomp(my $n_files = `ls -1 $spool_dir/query-history/*.data | wc -l | awk '{print \$1}'`);
 is(
    $n_files,
    1,
-   "1 run: only wrote spool data (query-history/data001.json)"
+   "1 run: only wrote spool data"
 ) or diag(`ls -l $spool_dir`);
 
 is(
@@ -120,7 +122,12 @@ is(
    0,
    "1 run: exit 0"
 );
-exit;
+
+ok(
+   -f "$tmpdir/spool/query-history/1.query-history.meta",
+   "1 run: .meta file exists"
+);
+
 # #############################################################################
 # Service with two task, both using a program.
 # #############################################################################
@@ -135,16 +142,14 @@ diag(`rm -rf $tmpdir/spool/* $tmpdir/services/*`);
 $run0 = Percona::WebAPI::Resource::Task->new(
    name    => 'cat-slow-log',
    number  => '0',
-   program => "cat",
-   options => "$trunk/t/lib/samples/slowlogs/slow008.txt",
+   program => "cat $trunk/t/lib/samples/slowlogs/slow008.txt",
    output  => 'tmp',
 );
 
 my $run1 = Percona::WebAPI::Resource::Task->new(
    name    => 'query-history',
    number  => '1',
-   program => "$trunk/bin/pt-query-digest",
-   options => "--output json __RUN_0_OUTPUT__",
+   program => "$trunk/bin/pt-query-digest --output json __RUN_0_OUTPUT__",
    output  => 'spool',
 );
 
@@ -167,21 +172,21 @@ $output = output(
          spool_dir => $spool_dir,
          lib_dir   => $tmpdir,
          Cxn       => '',
-         suffix    => '',  # optional, for testing
+         json      => $json,  # optional, for testing
+         prefix    => '2',    # optional, for testing
       );
    },
-   stderr => 1,
 );
 
 ok(
    no_diff(
-      "cat $tmpdir/spool/query-history",
+      "cat $tmpdir/spool/query-history/2.query-history.data",
       "$sample/query-history/data001.json",
    ),
-   "2 runs: spool data"
+   "2 runs: spool data (query-history/data001.json)"
 );
 
-chomp($n_files = `ls -1 $spool_dir | wc -l | awk '{print \$1}'`);
+chomp($n_files = `ls -1 $spool_dir/query-history/*.data | wc -l | awk '{print \$1}'`);
 is(
    $n_files,
    1,
@@ -194,13 +199,10 @@ is(
    "2 runs: exit 0"
 );
 
-# Get the temp file created by pt-agent by matching it from
-# the output line like:
-#   2013-01-08T13:14:23.627040 INFO Run 0: cat /Users/daniel/p/pt-agent/t/lib/samples/slowlogs/slow008.txt > /var/folders/To/ToaPSttnFbqvgRqcHPY7qk+++TI/-Tmp-/q1EnzzlDoL
-my ($tmpfile) = $output =~ m/cat \S+ > (\S+)/;
-
-ok(
-   ! -f $tmpfile,
+my @tmp_files = glob "$tmpdir/spool/.tmp/*";
+is_deeply(
+   \@tmp_files,
+   [],
    "2 runs: temp file removed"
 );
 
@@ -246,8 +248,7 @@ SKIP: {
    my $task10 = Percona::WebAPI::Resource::Task->new(
       name    => 'query-history',
       number  => '1',
-      program => "$trunk/bin/pt-query-digest",
-      options => "--output json --type genlog $new_genlog",
+      program => "$trunk/bin/pt-query-digest --output json --type genlog $new_genlog",
       output  => 'spool',
    );
    my $svc1 = Percona::WebAPI::Resource::Service->new(
@@ -300,10 +301,10 @@ SKIP: {
             spool_dir => $spool_dir,
             lib_dir   => $tmpdir,
             Cxn       => $cxn,
-            suffix    => '',  # optional, for testing
+            json      => $json,  # optional, for testing
+            prefix    => '3',    # optional, for testing
          );
       },
-      stderr => 1,
    );
 
    my (undef, $genlog) = $dbh->selectrow_array("SHOW VARIABLES LIKE 'general_log_file'");
@@ -328,10 +329,10 @@ SKIP: {
             spool_dir => $spool_dir,
             lib_dir   => $tmpdir,
             Cxn       => $cxn,
-            suffix    => '',  # optional, for testing
+            json      => $json,  # optional, for testing
+            prefix    => '4',    # optional, for testing
          );
       },
-      stderr => 1,
    );
 
    `cp $new_genlog $tmpdir/genlog-after`;
@@ -352,10 +353,10 @@ SKIP: {
             spool_dir => $spool_dir,
             lib_dir   => $tmpdir,
             Cxn       => $cxn,
-            suffix    => '',  # optional, for testing
+            json      => $json,  # optional, for testing
+            prefix    => '5',    # optional, for testing
          );
       },
-      stderr => 1,
    );
    
    (undef, $genlog) = $dbh->selectrow_array("SHOW VARIABLES LIKE 'general_log_file'");
