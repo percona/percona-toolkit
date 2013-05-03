@@ -5692,6 +5692,7 @@ sub get_services {
                @$started_ok,
                @$restarted_ok,
                @$ran_once_ok,
+               @{$sorted_services->{unchanged}},
             ],
             lib_dir  => $lib_dir,
             bin_dir  => $args{bin_dir},  # optional, for testing
@@ -5728,6 +5729,7 @@ sub sort_services {
    my @added;
    my @updated;
    my @removed;
+   my @unchanged;
 
    foreach my $service ( @$curr_services ) {
       my $name = $service->name;
@@ -5744,16 +5746,20 @@ sub sort_services {
       elsif ( $service->ts > $prev_services->{$name}->ts ) {
          push @updated, $service;
       }
+      else {
+         push @unchanged, $service;
+      }
    }
    if ( scalar keys %$prev_services ) {
       @removed = grep { !exists $services->{$_->name} } values %$prev_services;
    }
 
    my $sorted_services = {
-      services => $services,
-      added    => \@added,
-      updated  => \@updated,
-      removed  => \@removed,
+      services  => $services,
+      added     => \@added,
+      updated   => \@updated,
+      removed   => \@removed,
+      unchanged => \@unchanged,
    };
    return $sorted_services;
 }
@@ -6250,6 +6256,7 @@ sub run_service {
    # Remove tmp output files.
    foreach my $file ( @output_files ) {
       next unless defined $file && -f $file;
+      next if $file =~ m!/meta/!;  # TODO: handle this better
       unlink $file
          or _warn("Error removing $file: $OS_ERROR");
    }
