@@ -6392,6 +6392,8 @@ sub read_metadata {
       chomp($value) if $value;
       PTDEBUG && _d('metadata', $attrib, '=', $value);
       $metadata->{$attrib} = $value;
+      unlink $file
+         or _warn("Cannot rm $file: $OS_ERROR");
    }
 
    return;
