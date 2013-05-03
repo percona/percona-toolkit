@@ -12940,13 +12940,16 @@ sub main {
 
             return [ grep { $_->[0] != $cxn } @{ $sth->fetchall_arrayref(); } ];
          };
-
+         
          $pipeline->add(
             name    => ref $pl,
             process => sub {
                my ( $args ) = @_;
                my $event = $pl->parse_event(code => $code);
-               $args->{event} = $event if $event;
+               if ( $event ) {
+                  sanitize_event($event);
+                  $args->{event} = $event;
+               }
                return $args;
             },
          );
@@ -13006,6 +13009,7 @@ sub main {
                         stats       => $args->{stats},
                      );
                      if ( $event ) {
+                        sanitize_event($event);
                         $args->{event} = $event;
                         return $args;
                      }
@@ -14227,6 +14231,17 @@ sub save_resume_offset {
       or die "Error close $resume_file: $OS_ERROR";
    warn "\n# Saved resume file offset $offset to $resume_file\n";
    return;
+}
+
+# Quoted and unquoted values should be treated the same
+# See https://bugs.launchpad.net/percona-toolkit/+bug/1176010
+sub sanitize_event {
+   my ($event) = @_;
+   foreach my $value ( values %$event ) {
+      if ( $value && $value =~ /\A`(.+)`\z/sm ) {
+         $value = $1
+      }
+   }
 }
 
 sub _d {
