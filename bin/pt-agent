@@ -6185,6 +6185,7 @@ sub run_service {
             lib_dir      => $lib_dir,        # __LIB__
             meta_dir     => "$lib_dir/meta", # __META__
             stage_dir    => $tmp_dir,        # __STAGE__
+            ts           => $prefix,
          );
          _info("Task $taskno command: $cmd");
 
@@ -6295,6 +6296,7 @@ sub replace_special_vars {
       lib_dir
       meta_dir
       stage_dir
+      ts
    )) or die;
    my $cmd          = $args{cmd};
    my $output_files = $args{output_files};
@@ -6302,8 +6304,7 @@ sub replace_special_vars {
    my $lib_dir      = $args{lib_dir};
    my $meta_dir     = $args{meta_dir};
    my $stage_dir    = $args{stage_dir};
-
-   my $ts_micro = sprintf('%.6f', time);
+   my $ts           = $args{ts};
 
    my $new_cmd = join(' ',
       map {
@@ -6316,7 +6317,7 @@ sub replace_special_vars {
                die "Run$runno has no output for $word to access.\n";
             }
          }
-         $word =~ s/__TS_MICRO__/$ts_micro/g;
+         $word =~ s/__TS__/$ts/g;
          $word =~ s/__LIB__/$lib_dir/g;
          $word =~ s/__META__/$meta_dir/g;
          $word =~ s/__STAGE__/$stage_dir/g;
