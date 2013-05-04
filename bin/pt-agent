@@ -6790,7 +6790,7 @@ sub write_to_file {
 sub _log {
    my ($level, $msg) = @_;
    $msg .= "\n" if $msg !~ m/\n$/;
-   my $ts = ts(time);
+   my $ts = ts(time, 1);  # 1=UTC
    print "$ts $level $msg";
    return;
 }
