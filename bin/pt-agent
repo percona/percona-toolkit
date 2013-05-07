@@ -7006,6 +7006,26 @@ app.
 
 =head1 INSTALLING
 
+=head2 Quick Start
+
+=over
+
+=item 1. Create a system user called C<ptagent>
+
+=item 2. Save C<api-key=SECRET-API-KEY> in C<~ptagent/.pt-agent.conf>
+
+=item 3. Create a MySQL user called C<ptagent> with C<GRANT SUPER,USAGE ON *.*>
+
+=item 4. Save C<user> and C<pass> in C<~ptagent/.my.cnf> under C<[client]>
+
+=item 5. Run C<pt-agent --daemonize> as C<ptagent>
+
+=item 6. Go to https://pws.percona.com to configure the agent
+
+=back
+
+=head2 Step-by-step
+
 =over
 
 =item 1. Create a MySQL user
@@ -7042,7 +7062,8 @@ the system user running pt-agent:
 
    api-key=X
 
-Where C<X> is the API key.
+Where C<X> is the API key.  Or, specify the L<"--api-key"> option when you
+run pt-agent.
 
 =item 4. Run pt-agent
 
@@ -7058,26 +7079,22 @@ Once pt-agent is running locally, it is controlled remotely through the web
 interface at L<https://pws.percona.com>.  Go there, log in with your account,
 and select the agent to set its configuration and enable services.
 
-Specifically, if the agent is running as a non-root user, you should set
-its L<"--lib"> and L<"--spool"> directories, and its L<"--pid"> and L<"--log">
-files.  You may also need to set its MySQL connection options like L<"--user">,
-L<"--host">, etc. as mentioned in step 2.
-
 =back
 
-=head1 CONFIG
+=head2 Non-root Users
 
-The agent is configured through the Percona Web Services web app
-(https://pws.percona.com), and it stores its config in
-C<$HOME/.pt-agent.conf>.  As described in L<"INSTALLING">, the config must
-be initialized when the agent is installed, but then the agent automatically
-updates it whenever it is reconfigured through the PWS web app.  Therefore,
-C<$HOME/.pt-agent.conf> always contains the latest config and is always
-overwritten by the config set through the PWS web app.
+pt-agent is designed to run as root, but it can run as a non-root user, too.
+However, this requires extra setup and configuration to ensure that pt-agent
+has access to its directories and files.
 
-After initializing C<$HOME/.pt-agent.conf> when installing the agent, you
-should not modify this file because L<"--run-service"> and L<"--send-data">
-instances of the agent also use it.
+When pt-agent starts as a non-root user and has not been configured,
+it uses C</tmp> as a base directory for L<"--lib">, L<"--spool">, L<"--pid">
+and L<"--log"> until you configure new values for these options through
+the web interface.
+
+Certain services, like Query History, may require setting additional
+permissions on files.  For example, you may need to set permissions on
+the MySQL slow log so that pt-agent can read it.
 
 =head1 EXIT STATUS
 
@@ -7099,13 +7116,13 @@ Existing agent UUID for re-installing an agent.
 
 type: string
 
-The Percona Web Services API key.
+Your secret Percona Web Services API key.
 
 =item --check-interval
 
 type: time; default: 1m
 
-How often to check for a new config.  See L<"CONFIG">.
+How often to check for a new configuration.
 
 =item --config
 
@@ -7145,39 +7162,8 @@ MySQL host.
 type: string; default: /var/lib/pt-agent
 
 Directory in which to save local data.  pt-agent is remotely controlled and
-configured, but it also saves some data locally.  Do not edit these files;
-only use the PWS web app to configure agents.
-
-=over
-
-=item agent
-
-C<--lib/agent> is the current agent.  This file has two uses.
-First, pt-agent checks for it when initializing.  If the file does not exist,
-a new agent is created and the file is created.  The new agent must
-be configured through the PWS web app before it can start running services.
-If the file exists, pt-agent creates an existing agent using its values.
-If the existing agent has already been configured, pt-agent updates its
-L<"CONFIG"> and starts running services.
-
-Second, to keep track of the origin of all data, L<"--send-data"> reads the
-file and sends the agent's UUID with all data for all services.  Therefore,
-L<"--send-data"> requires this file.
-
-=item /services
-
-Files in C<--lib/services> are used by L<"--run-service">.  Each file is a
-service configured specifically for the local agent.  Do not copy service
-files between agents; only use the PWS web app to configure agents' services.
-
-=item crontab, crontab.err
-
-pt-agent uses the system's crontab to schedule L<"--run-service"> and
-L<"--send-data"> instances of itself.  C<--lib/crontab> is the current
-crontab file, and C<--lib/crontab.err> (if it exists) is any error caused
-by trying to use the current crontab file.
-
-=back
+configured, but it also saves data locally.  Do not edit these files; use
+the PWS web app to configure agents.
 
 =item --log
 
@@ -7214,17 +7200,17 @@ MySQL port number.
 
 type: string
 
-Run a service and L<"--spool"> its data.  Unless debugging, pt-agent should
-not be ran manually with this option.  The main pt-agent daemon schedules
-instances of itself with this option for each configured service.
+Run a service and spool its data for L<"--send-data">.  You do not need
+to run pt-agent with this option.  The main pt-agent daemon schedules
+instances of itself with this option.
 
 =item --send-data
 
 type: string
 
-Send data for a service to Percona.  Unless debugging, pt-agent should not
-be ran manually with this option.  The main pt-agent daemon schedules
-instances of itself with this option for each configured service.
+Send data for a service to Percona.  You do not need to run pt-agent with
+this option.  The main pt-agent daemon schedules instances of itself with
+this option.
 
 =item --set-vars
 
