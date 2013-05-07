@@ -54,7 +54,7 @@ BEGIN {
 # ###########################################################################
 {
 package Percona::Toolkit;
-our $VERSION = '2.2.1';
+our $VERSION = '2.2.2';
 
 1;
 }
@@ -1137,6 +1137,7 @@ if ( PTDEBUG ) {
 # ###########################################################################
 {
 package Lmo::Utils;
+
 use strict;
 use warnings qw( FATAL all );
 require Exporter;
@@ -1144,7 +1145,12 @@ our (@ISA, @EXPORT, @EXPORT_OK);
 
 BEGIN {
    @ISA = qw(Exporter);
-   @EXPORT = @EXPORT_OK = qw(_install_coderef _unimport_coderefs _glob_for _stash_for);
+   @EXPORT = @EXPORT_OK = qw(
+      _install_coderef
+      _unimport_coderefs
+      _glob_for
+      _stash_for
+   );
 }
 
 {
@@ -1327,7 +1333,6 @@ sub meta {
    $class    = Scalar::Util::blessed($class) || $class;
    return Lmo::Meta->new(class => $class);
 }
-
 
 1;
 }
@@ -6526,6 +6531,8 @@ sub get_slaves {
    my $dp      = $self->{DSNParser};
    my $methods = $self->_resolve_recursion_methods($args{dsn});
 
+   return $slaves unless @$methods;
+   
    if ( grep { m/processlist|hosts/i } @$methods ) {
       my @required_args = qw(dbh dsn);
       foreach my $arg ( @required_args ) {
@@ -8236,6 +8243,8 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use Time::HiRes qw(sleep);
 
 sub new {
    my ( $class, %args ) = @_;
@@ -12616,6 +12625,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-sync 2.2.1
+pt-table-sync 2.2.2
 
 =cut
