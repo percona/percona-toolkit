@@ -6163,7 +6163,7 @@ sub run_service {
       }
       elsif ( $output =~ m/^stage:(\S+)/ ) {
          my $file_suffix = $1;
-         $output_file = "$tmp_dir/$prefix." . $service->name . ".$file_suffix";
+         $output_file = "$tmp_dir/$prefix." . $service->name . "$file_suffix";
          push @output_files, $output_file;
       }
       elsif ( $output =~ m/^meta:(\S+)/ ) {
@@ -6211,7 +6211,7 @@ sub run_service {
          system($cmd);
          my $t1 = time;
          my $cmd_exit_status = $CHILD_ERROR >> 8;
-         _info("Run $taskno: exit $cmd_exit_status");
+         _info("Task $taskno: exit $cmd_exit_status");
          $exit_status |= $cmd_exit_status;
 
          push @{$metadata->{tasks}}, {
