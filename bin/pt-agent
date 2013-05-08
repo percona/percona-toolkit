@@ -6271,9 +6271,9 @@ sub run_service {
       $exit_status |= $cmd_exit_status;
    }
 
-   # Remove tmp output files.
-   foreach my $file ( @output_files ) {
-      next unless defined $file && -f $file;
+   # Remove staged files.  Anything to save should have been moved
+   # from staging by a task.
+   foreach my $file ( glob "$tmp_dir/$prefix." . $service->name . ".*" ) {
       unlink $file
          or _warn("Error removing $file: $OS_ERROR");
    }
