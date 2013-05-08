@@ -6649,8 +6649,8 @@ sub stop_agent {
                :                          "$FindBin::Bin/";
 
    if ( !-f $pid_file ) {
-      _warn("PID file $pid_file does not exist; you must stop "
-         . "pt-agent manually");
+      _info("PID file $pid_file does not exist; if pt-agent is running, "
+         . "use kill -ABRT to force it to stop.");
    }
    else {
       chop(my $pid = slurp($pid_file));
@@ -6709,21 +6709,22 @@ sub stop_agent {
    if ( -d "$lib_dir/services" ) {
       my $env_vars = env_vars();
 
-      _info("Disabling all services (clean up)...");
+      _info("Stopping all services...");
       SERVICE:
-      foreach my $file ( glob "$lib_dir/services/disable-*" ) {
+      foreach my $file ( glob "$lib_dir/services/stop-*" ) {
          my $service = basename($file);
          my $disable_log = "$lib_dir/logs/$service.stop";
          my $cmd = ($env_vars ? "$env_vars " : '')
                  . "${bin_dir}pt-agent --run-service $service"
                  . " </dev/null"
                  . " >$disable_log 2>&1";
+         _info("Running $cmd");
          PTDEBUG && _d($cmd);
          system($cmd);
          my $cmd_exit_status = $CHILD_ERROR >> 8;
          if ( $cmd_exit_status != 0 ) {
             my $err = slurp($disable_log);
-            _warn("Error running $service: " . ($err || ''));
+            _warn("Error stopping $service: " . ($err || ''));
             next SERVICE;
          }
          unlink $disable_log
