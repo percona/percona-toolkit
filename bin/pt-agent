@@ -6274,7 +6274,6 @@ sub run_service {
    # Remove tmp output files.
    foreach my $file ( @output_files ) {
       next unless defined $file && -f $file;
-      next if $file =~ m!/meta/!;  # TODO: handle this better
       unlink $file
          or _warn("Error removing $file: $OS_ERROR");
    }
