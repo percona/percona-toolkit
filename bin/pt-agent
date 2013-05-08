@@ -6503,16 +6503,11 @@ sub send_data {
    );
 
    # Send data files in the service's spool dir.
-   opendir(my $service_dh, $service_dir)
-      or die "Error opening $service_dir: $OS_ERROR";
+   # Only iterator over data files because run_service() writes
+   # them last to avoid a race condition with us.  See the code
+   # comment about writing the .meta file first in run_service().
    DATA_FILE:
-   while ( my $file = readdir($service_dh) ) {
-      # Only iterator over data files because run_service() writes
-      # them last to avoid a race condition with us.  See the code
-      # comment about writing the .meta file first in run_service().
-      next unless $file =~ m/\.data$/;
-
-      my $data_file = "$service_dir/$file";
+   foreach my $data_file ( glob "$service_dir/*.data" ) {
       (my $meta_file = $data_file) =~ s/\.data/.meta/;
 
       eval {
@@ -6553,8 +6548,6 @@ sub send_data {
 
       _info("Sent and removed $data_file");
    }
-   closedir $service_dh
-      or _warn("Error closing $service_dir: $OS_ERROR");
 
    return;
 }
