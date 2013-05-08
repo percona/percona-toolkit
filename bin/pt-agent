@@ -6161,10 +6161,10 @@ sub run_service {
          $output_file = $tmp_data_file;
          push @output_files, $output_file;
       }
-      elsif ( $output eq 'tmp' ) {
-         my $file = "$tmp_dir/$prefix." . $service->name . ".tmp.$taskno";
-         $output_file = $file;
-         push @output_files, $file;
+      elsif ( $output =~ m/^stage:(\S+)/ ) {
+         my $file_suffix = $1;
+         $output_file = "$tmp_dir/$prefix." . $service->name . ".$file_suffix";
+         push @output_files, $output_file;
       }
       elsif ( $output =~ m/^meta:(\S+)/ ) {
          my $attrib = $1;
@@ -6326,7 +6326,7 @@ sub replace_special_vars {
    my $new_cmd = join(' ',
       map {
          my $word = $_;
-         if ( my ($runno) = $word =~ m/__RUN_(\d)_OUTPUT__/ ) {
+         if ( my ($runno) = $word =~ m/__RUN_(\d+)_OUTPUT__/ ) {
             if ( $output_files->[$runno] ) {
                $word = $output_files->[$runno];
             }
