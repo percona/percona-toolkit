@@ -6802,7 +6802,7 @@ sub install {
          . "Web API failed.  Please check the API key and try again.\n";
    }
    else {
-      print "Success: API key $api_key is valid.\n";
+      print "OK: API key $api_key is valid.\n";
    }
 
    my $running = eval {
@@ -6869,7 +6869,7 @@ pass=$random_pass
    my $hostname = `hostname`;
    chomp($hostname);
 
-   print "\n\npSuccess: pt-agent is installed and running.  "
+   print "\nOK: pt-agent is installed and running.  "
       . "Visit https://pws.percona.com to enable services.  "
       . "The agent is listed as its hostname: $hostname\n\n";
 
