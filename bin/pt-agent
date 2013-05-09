@@ -6860,6 +6860,21 @@ pass=$random_pass
          . $EVAL_ERROR;
    }
 
+   print "Starting pt-agent...\n";
+   my $env = get_env();
+   my $cmd = "$env $FindBin::Bin/pt-agent --daemonize";
+   my $ret = system($cmd);
+   if ( $ret >> 8 ) {
+      die "Sorry, an error occured while starting pt-agent.\n";
+   }
+
+   my $hostname = `hostname`;
+   chomp($hostname);
+
+   print "pt-agent has started.  Visit https://pws.percona.com to enable "
+      . "services for this agent.  The agent is listed as its hostname, "
+      . "$hostname.\n";
+
    return;
 }
 
