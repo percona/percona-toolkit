@@ -4814,10 +4814,9 @@ sub main {
    # ########################################################################
    # --install
    # ########################################################################
-   if ( my $method = $o->get('install') ) {
+   if ( $o->get('install') ) {
       $exit_on_signals = 1;
       install(
-         method       => $method,
          OptionParser => $o,
          Cxn          => $cxn,
       );
@@ -6746,21 +6745,14 @@ sub stop_agent {
 sub install {
    my (%args) = @_;
    have_required_args(\%args, qw(
-      method
       OptionParser
       Cxn
    )) or die;
-   my $method = $args{method};
-   my $o      = $args{OptionParser};
-   my $cxn    = $args{Cxn};
+   my $o   = $args{OptionParser};
+   my $cxn = $args{Cxn};
 
    if ( $EUID != 0 ) {
       die "You must run pt-agent --install as root.\n";
-   }
-
-   if ( $method ne 'auto' && $method ne 'interactive' ) {
-      die "Invalid --install: $method.  Valid values are 'auto' "
-         . "and 'interactive'.\n";
    }
 
    eval {
@@ -7322,9 +7314,7 @@ MySQL host.
 
 =item --install
 
-type: string
-
-Install pt-agent.  Valid values are C<auto> and C<interactive>.
+Install pt-agent.
 
 =item --lib
 
