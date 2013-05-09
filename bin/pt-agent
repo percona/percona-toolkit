@@ -4902,6 +4902,8 @@ sub main {
       log_file  => $o->get('log'),
    );
 
+   $cxn->dbh->disconnect() if $cxn && $cxn->dbh;
+
    # Wait time between checking for new config and services.
    # Use the tool's built-in default until a config is gotten,
    # then config->{check-interval} will be pass in.
@@ -4919,7 +4921,6 @@ sub main {
       client    => $running->{client},
       daemon    => $running->{daemon},
       interval  => $check_wait,
-      Cxn       => $cxn,
       lib_dir   => $o->get('lib'),
    );
 
@@ -5240,7 +5241,6 @@ sub start_agent {
          Cxn   => $cxn,
          tries => 1,
       );
-      $cxn->dbh->disconnect() if $cxn && $cxn->dbh;
    }
    return unless $_oktorun->();
 
@@ -5312,14 +5312,12 @@ sub run_agent {
       daemon
       interval
       lib_dir
-      Cxn
    )) or die;
    my $agent    = $args{agent};
    my $client   = $args{client};
    my $daemon   = $args{daemon};
    my $interval = $args{interval};
    my $lib_dir  = $args{lib_dir};
-   my $cxn      = $args{Cxn};
 
    # Optional args
    my $_oktorun = $args{oktorun} || sub { return $oktorun };
