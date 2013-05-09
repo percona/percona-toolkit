@@ -5240,6 +5240,7 @@ sub start_agent {
          Cxn   => $cxn,
          tries => 1,
       );
+      $cxn->dbh->disconnect() if $cxn && $cxn->dbh;
    }
    return unless $_oktorun->();
 
@@ -6838,6 +6839,7 @@ sub install {
       die "Sorry, an error occurred while creating a MySQL user for pt-agent: "
          . $EVAL_ERROR;
    }
+   $cxn->dbh->disconnect();
 
    init_spool_dir(
       spool_dir => $o->get('spool'),
@@ -7038,8 +7040,6 @@ EOL
          $version_for{$item} = $versions->{$item};
       }
    }
-
-   $cxn->dbh->disconnect() if $have_mysql;
 
    PTDEBUG && _d('Versions:', Dumper(\%version_for));
    return \%version_for;
