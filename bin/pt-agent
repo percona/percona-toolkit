@@ -5043,6 +5043,7 @@ sub init_agent {
 
    # Optional args
    my $_oktorun = $args{oktorun} || sub { return $oktorun };
+   my $tries    = $args{tries};
 
    # Update these attribs every time the agent is initialized.
    # Other optional attribs, like versions, are left to the caller.
@@ -5052,7 +5053,7 @@ sub init_agent {
 
    # Try forever to create/update the Agent.  The tool can't
    # do anything without an Agent, so we must succeed to proceed.
-   while ( $_oktorun->() ) {
+   while ( $_oktorun->() && (!defined $tries || $tries--) ) {
       _info($action eq 'put' ? "Updating agent " . $agent->name
                              : "Creating new agent");
       my $agent_uri = eval {
@@ -5083,7 +5084,9 @@ sub init_agent {
             last;  # success
          }
       }
-      $interval->();  # failure, try again
+      if ( !defined $tries || $tries ) {
+         $interval->();  # failure, try again
+      }
    }
 
    _info("Agent " . $agent->name . " (" . $agent->uuid . ") is ready");
@@ -5163,39 +5166,44 @@ sub start_agent {
    my $pid_file    = $args{pid_file};
    my $log_file    = $args{log_file};
    my $_oktorun    = $args{oktorun} || sub { return $oktorun };
+   my $tries       = $args{tries};
+   my $interval    = $args{interval} || sub { sleep 60; };
    my $versions    = $args{versions};     # for testing
    my $client      = $args{client};       # for testing
    my $entry_links = $args{entry_links};  # for testing
 
    # Daemonize first so all output goes to the --log.
-   my $daemon = Daemon->new(
-      daemonize   => $daemonize,
-      pid_file    => $pid_file,
-      log_file    => $log_file,
-      parent_exit => sub {
-         my $child_pid = shift;
-         print "pt-agent has daemonized and is running as PID $child_pid:
+   my $daemon;
+   if ( $daemonize || $pid_file || $log_file ) {
+      $daemon = Daemon->new(
+         daemonize   => $daemonize,
+         pid_file    => $pid_file,
+         log_file    => $log_file,
+         parent_exit => sub {
+            my $child_pid = shift;
+            print "pt-agent has daemonized and is running as PID $child_pid:
 
-  --lib " . ($lib_dir  || '') . "
-  --log " . ($log_file || '') . "
-  --pid " . ($pid_file || '') . "
+     --lib " . ($lib_dir  || '') . "
+     --log " . ($log_file || '') . "
+     --pid " . ($pid_file || '') . "
 
-These values can change if a different configuration is received.
+   These values can change if a different configuration is received.
 
-Configure the agent at https://pws.percona.com/agents
-",
-      }
-   );
-   $daemon->run();
+   Configure the agent at https://pws.percona.com/agents
+   ",
+         }
+      );
+      $daemon->run();
 
-   # If we daemonized, the parent has already exited and we're the child.
-   # We shared a copy of every Cxn with the parent, and the parent's copies
-   # were destroyed but the dbhs were not disconnected because the parent
-   # attrib was true.  Now, as the child, set it false so the dbhs will be
-   # disconnected when our Cxn copies are destroyed.  If we didn't daemonize,
-   # then we're not really a parent (since we have no children), so set it
-   # false to auto-disconnect the dbhs when our Cxns are destroyed.
-   $cxn->{parent} = 0;
+      # If we daemonized, the parent has already exited and we're the child.
+      # We shared a copy of every Cxn with the parent, and the parent's copies
+      # were destroyed but the dbhs were not disconnected because the parent
+      # attrib was true.  Now, as the child, set it false so the dbhs will be
+      # disconnected when our Cxn copies are destroyed.  If we didn't daemonize,
+      # then we're not really a parent (since we have no children), so set it
+      # false to auto-disconnect the dbhs when our Cxns are destroyed.
+      $cxn->{parent} = 0;
+   }
 
    _info('Starting agent');
 
@@ -5275,6 +5283,7 @@ Configure the agent at https://pws.percona.com/agents
       action   => $action,
       link     => $link,
       client   => $client,
+      tries    => $tries,
       interval => sub { sleep 60 },
       lib_dir  => $lib_dir,
       oktorun  => $_oktorun,
@@ -6746,7 +6755,7 @@ sub install {
    my $cxn    = $args{Cxn};
 
    if ( $EUID != 0 ) {
-      die "pt-agent --install must be ran as root.\n";
+      die "You must run pt-agent --install as root.\n";
    }
 
    if ( $method ne 'auto' && $method ne 'interactive' ) {
@@ -6779,16 +6788,17 @@ sub install {
       }
    }
 
-   print "Verifying the API key...\n";
-   my $links;
+   print "Verifying the API key $api_key...\n";
+   my $client;
+   my $entry_links;
    my $output;
    open my $output_fh, '>', \$output
       or die "Error opening output to variable: $OS_ERROR";
    select $output_fh;
    eval {
-      (undef, $links) = get_api_client(
+      ($client, $entry_links) = get_api_client(
          api_key  => $api_key,
-         interval => sub { sleep 1; },
+         interval => sub { sleep 2; },
          tries    => 3,
       );
    };
@@ -6798,16 +6808,74 @@ sub install {
    if ( $e ) {
       die "Sorry, an error occurred while verifying the API key: $e";
    }
-   elsif ( !$links ) {
-      die "The API key is not valid, or the connection to the "
-         . "Percona Web API failed.  Please check your API key "
-         . "and try again.\n";
+   elsif ( !$entry_links ) {
+      die "API key $api_key is not valid, or the connection to the Percona "
+         . "Web API failed.  Please check the API key and try again.\n";
    }
    else {
       print "Success: API key $api_key is valid.\n";
    }
 
+   my $running = eval {
+      start_agent(
+         api_key     => $api_key,
+         lib_dir     => $o->get('lib'),
+         Cxn         => $cxn,
+         client      => $client,
+         entry_links => $entry_links,
+         agent_uuid  => $o->get('agent-uuid'),
+         daemonize   => 0,
+         pid_file    => undef,
+         log_file    => undef,
+         interval    => sub { sleep 2; },
+         tries       => 3,
+      );
+   };
+   if ( $EVAL_ERROR ) {
+      die "Sorry, an error occurred while starting the agent: $EVAL_ERROR";
+   }
+
+   print "Creating a MySQL user for pt-agent...\n";
+   my $random_pass = pseudo_random_password();
+   my $sql         = "GRANT SUPER,USAGE ON *.* TO 'pt_agent'\@'localhost' "
+                   . "IDENTIFIED BY '$random_pass'";
+   eval {
+      $cxn->dbh->do($sql);
+   };
+   if ( $EVAL_ERROR ) {
+      die "Sorry, an error occurred while creating a MySQL user for pt-agent: "
+         . $EVAL_ERROR;
+   }
+
+   init_spool_dir(
+      spool_dir => $o->get('spool'),
+   );
+   
+   my $config_file = get_config_file();
+   print "Initializing $config_file...\n";
+   eval {
+      write_to_file(
+         data =>
+"api-key=$api_key
+user=pt_agent
+pass=$random_pass
+",
+         file => $config_file,
+      );
+   };
+   if ( $EVAL_ERROR ) {
+      die "Sorry, an error occured while initializing $config_file: "
+         . $EVAL_ERROR;
+   }
+
    return;
+}
+
+sub pseudo_random_password {
+   my @chars = ("A".."Z", "a".."z", "0".."9");
+   my $string;
+   $string .= $chars[rand @chars] for 1..8;
+   return $string;
 }
 
 # ################## #
