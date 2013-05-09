@@ -5188,9 +5188,7 @@ sub start_agent {
      --pid " . ($pid_file || '') . "
 
    These values can change if a different configuration is received.
-
-   Configure the agent at https://pws.percona.com/agents
-   ",
+",
          }
       );
       $daemon->run();
@@ -6871,9 +6869,9 @@ pass=$random_pass
    my $hostname = `hostname`;
    chomp($hostname);
 
-   print "pt-agent has started.  Visit https://pws.percona.com to enable "
-      . "services for this agent.  The agent is listed as its hostname, "
-      . "$hostname.\n";
+   print "\n\npSuccess: pt-agent is installed and running.  "
+      . "Visit https://pws.percona.com to enable services.  "
+      . "The agent is listed as its hostname: $hostname\n\n";
 
    return;
 }
