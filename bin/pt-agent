@@ -6861,7 +6861,7 @@ pass=$random_pass
    }
 
    print "Starting pt-agent...\n";
-   my $env = get_env();
+   my $env = env_vars();
    my $cmd = "$env $FindBin::Bin/pt-agent --daemonize";
    my $ret = system($cmd);
    if ( $ret >> 8 ) {
