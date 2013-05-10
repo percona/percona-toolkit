@@ -6187,7 +6187,7 @@ sub run_service {
 
    # Run the tasks, spool any data.
    my @output_files;
-   my $data_file      = $prefix . '.' . $service->name;
+   my $data_file      = $prefix . '.' . $service->name . '.data';
    my $tmp_data_file  = "$tmp_dir/$data_file";
    my $taskno         = 0;
    my $metadata       = {};
@@ -6302,9 +6302,10 @@ sub run_service {
          metadata  => $metadata,
          stage_dir => $tmp_dir,
       );
+      (my $meta_file = $data_file) =~ s/\.data/\.meta/;
       write_to_file(
          data => as_json($metadata, json => $json),
-         file => "$data_dir/$data_file.meta",
+         file => "$data_dir/$meta_file",
       );
 
       # Use system mv instead of Perl File::Copy::move() because it's
@@ -6312,7 +6313,7 @@ sub run_service {
       # simply move the inode, _not_ copy the file.  A system mv on
       # the same filesystem is pretty much guaranteed to do an optimized,
       # i.e. quasi-atomic, move.
-      my $cmd = "mv $tmp_data_file $data_dir/$data_file.data";
+      my $cmd = "mv $tmp_data_file $data_dir";
       _info($cmd);
       system($cmd);
       my $cmd_exit_status = $CHILD_ERROR >> 8;
