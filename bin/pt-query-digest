@@ -12783,8 +12783,8 @@ sub main {
                            seek $fh, $resume_offset, 0
                               or die "Error seeking to $resume_offset in "
                                  . "$resume_file: $OS_ERROR";
-                           warn "Resuming $filename from offset $resume_offset "
-                              . "(file size: $filesize)...\n";
+                           warn "# Resuming $filename from offset "
+                              . "$resume_offset (file size: $filesize)...\n";
                         }
                         else {
                            $resume->{simple} = 0;  # enhanced resume file
@@ -12815,7 +12815,7 @@ sub main {
                               seek $fh, $resume_offset, 0
                                  or die "Error seeking to $resume_offset in "
                                     . "$resume_file: $OS_ERROR";
-                              warn "Resuming $filename from offset "
+                              warn "# Resuming $filename from offset "
                                 . "$resume_offset to "
                                 . ($resume->{end_offset} ? $resume->{end_offset}
                                                          : "end of file")
@@ -12824,8 +12824,9 @@ sub main {
                         }
                      }
                      else {
-                        PTDEBUG && _d('Not resuming', $filename, 'because',
-                           $resume_file, 'does not exist');
+                        warn "# Resuming $filename from offset 0 because "
+                           . "resume file $filename does not exist "
+                           . "(file size: $filesize)...\n";
                         $resume->{simple}       = 0;
                         $resume->{start_offset} = 0;
                      }

@@ -57,6 +57,12 @@ has 'versions' => (
    required => 0,
 );
 
+has 'actions' => (
+   is       => 'ro',
+   isa      => 'Maybe[ArrayRef]',
+   requierd => 0,
+);
+
 has 'links' => (
    is       => 'rw',
    isa      => 'Maybe[HashRef]',

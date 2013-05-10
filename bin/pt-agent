@@ -1272,6 +1272,12 @@ has 'versions' => (
    required => 0,
 );
 
+has 'actions' => (
+   is       => 'ro',
+   isa      => 'Maybe[ArrayRef]',
+   requierd => 0,
+);
+
 has 'links' => (
    is       => 'rw',
    isa      => 'Maybe[HashRef]',
@@ -4891,8 +4897,10 @@ sub main {
    _err("$config_file exists but is not writable")
       if -f $config_file && !-w $config_file;
 
-   # Run the agent's main loop which doesn't return until the service
-   # is stopped, killed, or has an internal bug.
+   # Start, i.e. init/create/update, the agent.  This forks and daemonizes,
+   # so we're the child/daemon process when it returns.  To remember how
+   # this differs from run_agent(): first you start a car, then you put it
+   # in drive to "run" (drive) it.
    my $running = start_agent(
       api_key   => $api_key,
       Cxn       => $cxn,
@@ -4916,6 +4924,8 @@ sub main {
       sleep $t;
    };
 
+   # Run the agent's main loop which doesn't return until the service
+   # is stopped, killed, or has an internal bug.
    run_agent(
       agent     => $running->{agent},
       client    => $running->{client},
@@ -5044,12 +5054,20 @@ sub init_agent {
    # Optional args
    my $_oktorun = $args{oktorun} || sub { return $oktorun };
    my $tries    = $args{tries};
+   my $actions  = $args{actions};
 
    # Update these attribs every time the agent is initialized.
    # Other optional attribs, like versions, are left to the caller.
    chomp(my $hostname = `hostname`);
    $agent->{hostname} = $hostname;
    $agent->{username} = $ENV{USER} || $ENV{LOGNAME};
+
+   # Add agent actions, if any.  Used by instal() to report the
+   # MySQL user and pass created by pt-agent so PWS will add them
+   # to the agent's default config.
+   if ( $actions ) {
+      $agent->{actions} = $actions;
+   }
 
    # Try forever to create/update the Agent.  The tool can't
    # do anything without an Agent, so we must succeed to proceed.
@@ -5168,6 +5186,7 @@ sub start_agent {
    my $_oktorun    = $args{oktorun} || sub { return $oktorun };
    my $tries       = $args{tries};
    my $interval    = $args{interval} || sub { sleep 60; };
+   my $actions     = $args{actions};
    my $versions    = $args{versions};     # for testing
    my $client      = $args{client};       # for testing
    my $entry_links = $args{entry_links};  # for testing
@@ -5278,13 +5297,14 @@ sub start_agent {
 
    $agent = init_agent(
       agent    => $agent,
-      action   => $action,
+      action   => $action,  # put or post
       link     => $link,
       client   => $client,
       tries    => $tries,
       interval => sub { sleep 60 },
       lib_dir  => $lib_dir,
       oktorun  => $_oktorun,
+      actions  => $actions,  # Agent.actions
    );
 
    save_agent(
@@ -5774,6 +5794,19 @@ sub sort_services {
    }
    if ( scalar keys %$prev_services ) {
       @removed = grep { !exists $services->{$_->name} } values %$prev_services;
+   }
+
+   if ( $#added ) {
+      _info("Services added:\n"
+         . join("\n", map { "  " . $_->name } @added) . "\n");
+   }
+   if ( $#updated ) {
+      _info("Services updated:\n"
+         . join("\n", map { "  " . $_->name } @updated) . "\n");
+   }
+   if ( $#removed ) {
+      _info("Services removed:\n"
+         . join("\n", map { "  " . $_->name } @removed) . "\n");
    }
 
    my $sorted_services = {
@@ -6805,24 +6838,6 @@ sub install {
       print "OK: API key $api_key is valid.\n";
    }
 
-   my $running = eval {
-      start_agent(
-         api_key     => $api_key,
-         lib_dir     => $o->get('lib'),
-         Cxn         => $cxn,
-         client      => $client,
-         entry_links => $entry_links,
-         agent_uuid  => $o->get('agent-uuid'),
-         daemonize   => 0,
-         pid_file    => undef,
-         log_file    => undef,
-         interval    => sub { sleep 2; },
-         tries       => 3,
-      );
-   };
-   if ( $EVAL_ERROR ) {
-      die "Sorry, an error occurred while starting the agent: $EVAL_ERROR";
-   }
 
    print "Creating a MySQL user for pt-agent...\n";
    my $random_pass = pseudo_random_password();
@@ -6840,7 +6855,7 @@ sub install {
    init_spool_dir(
       spool_dir => $o->get('spool'),
    );
-   
+
    my $config_file = get_config_file();
    print "Initializing $config_file...\n";
    eval {
@@ -6856,6 +6871,35 @@ pass=$random_pass
    if ( $EVAL_ERROR ) {
       die "Sorry, an error occured while initializing $config_file: "
          . $EVAL_ERROR;
+   }
+
+   # Start, i.e. init/create the agent, but don't run it yet.  Normally
+   # this forks in anticipation of run_agent() being called next, but
+   # we don't do this during install; we run the agent manually later.
+   my $running = eval {
+      start_agent(
+         api_key     => $api_key,
+         lib_dir     => $o->get('lib'),
+         Cxn         => $cxn,
+         client      => $client,
+         entry_links => $entry_links,
+         agent_uuid  => $o->get('agent-uuid'),
+         daemonize   => 0,
+         pid_file    => undef,
+         log_file    => undef,
+         interval    => sub { sleep 2; },
+         tries       => 3,
+         #actions     => [
+         #   "install-agent",
+         #   "init-config-file: $config_file",
+         #   "init-spool-dir: " . $o->get('spool'),
+         #   "init-lib-dir: " . $o->get('lib'),
+         #   "create-mysql-user: pt_agent,$random_pass",
+         #],
+      );
+   };
+   if ( $EVAL_ERROR ) {
+      die "Sorry, an error occurred while starting the agent: $EVAL_ERROR";
    }
 
    print "Starting pt-agent...\n";
