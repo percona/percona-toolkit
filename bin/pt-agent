@@ -5729,17 +5729,22 @@ sub get_services {
          # to run at */5 may run effectively immediate if we write
          # the new crontab at 00:04:59, so everything has to be
          # ready to go at this point.
-         schedule_services(
-            services => [
-               @$started_ok,
-               @$restarted_ok,
-               @$ran_once_ok,
-               @{$sorted_services->{unchanged}},
-            ],
-            lib_dir  => $lib_dir,
-            bin_dir  => $args{bin_dir},  # optional, for testing
-            exec_cmd => $args{exec_cmd}, # optional, for testing
-         );
+         if (     scalar @$started_ok
+               || scalar @$restarted_ok
+               || scalar @$ran_once_ok )
+         {
+            schedule_services(
+               services => [
+                  @$started_ok,
+                  @$restarted_ok,
+                  @$ran_once_ok,
+                  @{$sorted_services->{unchanged}},
+               ],
+               lib_dir  => $lib_dir,
+               bin_dir  => $args{bin_dir},  # optional, for testing
+               exec_cmd => $args{exec_cmd}, # optional, for testing
+            );
+         }
 
          $prev_services = $sorted_services->{services};
          $success       = 1;
@@ -5796,15 +5801,15 @@ sub sort_services {
       @removed = grep { !exists $services->{$_->name} } values %$prev_services;
    }
 
-   if ( $#added ) {
-      _info("Services added:\n"
-         . join("\n", map { "  " . $_->name } @added) . "\n");
+   if ( scalar @added ) {
+      _info("Added services: "
+         . join(", ", map { "  " . $_->name } @added) . "\n");
    }
-   if ( $#updated ) {
+   if ( scalar @updated ) {
       _info("Services updated:\n"
          . join("\n", map { "  " . $_->name } @updated) . "\n");
    }
-   if ( $#removed ) {
+   if ( scalar @removed ) {
       _info("Services removed:\n"
          . join("\n", map { "  " . $_->name } @removed) . "\n");
    }
