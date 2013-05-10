@@ -5671,7 +5671,7 @@ sub get_services {
          # because this call looks for  --lib/services/stop-service which
          # write_services() removes.  I.e. use the service's stop- meta
          # counterpart (if any) before we remove the service.
-         run_services(
+         my $removed_ok = run_services(
             action   => 'stop',
             services => $sorted_services->{removed},
             lib_dir  => $lib_dir,
@@ -5729,7 +5729,8 @@ sub get_services {
          # to run at */5 may run effectively immediate if we write
          # the new crontab at 00:04:59, so everything has to be
          # ready to go at this point.
-         if (     scalar @$started_ok
+         if (     scalar @$removed_ok
+               || scalar @$started_ok
                || scalar @$restarted_ok
                || scalar @$ran_once_ok )
          {
@@ -5744,14 +5745,19 @@ sub get_services {
                bin_dir  => $args{bin_dir},  # optional, for testing
                exec_cmd => $args{exec_cmd}, # optional, for testing
             );
-         }
 
+            _info('Services applied successfully');
+         }
+         else {
+            _info('Services have not changed');
+         }
+         # TODO: probably shouldn't keep re-assigning this unless necessary
          $prev_services = $sorted_services->{services};
          $success       = 1;
-         _info('Services applied successfully');
       }
-      else {
-         _info('Services have not changed');
+      elsif ( $prev_services && @$prev_services ) {
+         _info('All services have been removed');
+         # TODO
       }
    };
    if ( $EVAL_ERROR ) {
