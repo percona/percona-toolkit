@@ -293,6 +293,8 @@ sub _request {
    my $response = $self->ua->request($req);
    PTDEBUG && _d('Response', Dumper($response));
 
+   $self->response($response);
+
    if ( !($response->code >= 200 && $response->code < 400) ) {
       die Percona::WebAPI::Exception::Request->new(
          method  => $method,
@@ -302,8 +304,6 @@ sub _request {
          error   => "Failed to $method $link",
       );
    }
-
-   $self->response($response);
 
    return;
 }
