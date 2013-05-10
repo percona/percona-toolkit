@@ -6190,7 +6190,8 @@ sub run_service {
    my $data_file      = $prefix . '.' . $service->name . '.data';
    my $tmp_data_file  = "$tmp_dir/$data_file";
    my $taskno         = 0;
-   my $metadata       = {};
+   my $metadata       = { ts => $prefix };
+
    TASK:
    foreach my $task ( @$tasks ) {
       PTDEBUG && _d("Task $taskno:", $task->name);
@@ -6571,9 +6572,21 @@ sub send_data {
             json      => $json,
          );
       };
-      if ( $EVAL_ERROR ) {
-         chomp $EVAL_ERROR;
-         _warn("Failed to send $data_file: $EVAL_ERROR");
+      if ( my $e = $EVAL_ERROR ) {
+         if (blessed($e) && $e->isa('Percona::WebAPI::Exception::Request')) {
+            my $error_msg;
+            my $content = $client->response->content;
+            if ( $content ) {
+               my $error_hashref = decode_json($content);
+               $error_msg = $error_hashref->{error};
+            }
+            _warn('Error ' . $e->status . " sending $data_file: "
+               . ($error_msg || '(No error error message from server)'));
+         }
+         else {
+            chomp $e;
+            _warn("Error sending $data_file: $e");
+         } 
          next DATA_FILE;
       }
 
