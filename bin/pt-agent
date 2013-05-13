@@ -6861,7 +6861,7 @@ sub agent_status {
    split("\n", $crontab_list);
 
    if ( -d "$lib_dir/services" ) {
-      _info("Sevices:");
+      _info("Services:");
       SERVICE:
       foreach my $service_file ( glob "$lib_dir/services/*" ) {
          my $service = eval {
