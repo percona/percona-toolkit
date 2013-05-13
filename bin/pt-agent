@@ -6842,7 +6842,7 @@ sub agent_status {
 
    # Get the agent's info.
    if ( -f "$lib_dir/agent" ) {
-      my $agent = json_decode(slurp("$lib_dir/agent"));
+      my $agent = decode_json(slurp("$lib_dir/agent"));
       foreach my $attrib ( qw(uuid hostname username) ) {
          _info("Agent $attrib: " . ($agent->{$attrib} || ''));
       }
@@ -6865,7 +6865,7 @@ sub agent_status {
       SERVICE:
       foreach my $service_file ( glob "$lib_dir/services/*" ) {
          my $service = eval {
-            json_decode(slurp($service_file));
+            decode_json(slurp($service_file));
          };
          if ( $EVAL_ERROR ) {
             _warn("$service_file is corrupt");
