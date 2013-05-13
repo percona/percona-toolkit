@@ -4732,6 +4732,92 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# Percona::Agent::Exception::*
+# ###########################################################################
+
+{
+   package Percona::Agent::Exception::PIDNotFound;
+
+   use Lmo;
+   use overload '""' => \&as_string;
+
+   has 'pid_file' => (
+      is       => 'ro',
+      isa      => 'Maybe[Str]',
+      required => 1,
+   );
+
+   sub as_string {
+      my $self = shift;
+      return sprintf "PID file %s does not exist and no matching "
+         . "process was found in ps", $self->pid_file;
+   }
+
+   no Lmo;
+   1;
+}
+
+{
+   package Percona::Agent::Exception::NoPID;
+
+   use Lmo;
+   use overload '""' => \&as_string;
+
+   has 'pid_file' => (
+      is       => 'ro',
+      isa      => 'Maybe[Str]',
+      required => 1,
+   );
+   
+   has 'pid_file_is_empty' => (
+      is       => 'ro',
+      isa      => 'Bool',
+      required => 1,
+   );
+
+   sub as_string {
+      my $self = shift;
+      if ( $self->pid_file_is_empty ) {
+         return sprintf "PID file %s is empty", $self->pid_file;
+      }
+      else {
+         return sprintf "PID file %s does not exist and parsing ps output "
+            . "failed", $self->pid_file;
+      }
+   }
+
+   no Lmo;
+   1;
+}
+
+{
+   package Percona::Agent::Exception::PIDNotRunning;
+
+   use Lmo;
+   use overload '""' => \&as_string;
+
+   has 'pid' => (
+      is       => 'ro',
+      isa      => 'Str',
+      required => 1,
+   );
+
+   sub as_string {
+      my $self = shift;
+      return sprintf "PID is not running", $self->pid;
+   }
+
+   no Lmo;
+   1;
+}
+
+BEGIN {
+   $INC{'Percona/Agent/Exception/PIDNotFound.pm'}   = __FILE__;
+   $INC{'Percona/Agent/Exception/NoPID.pm'}         = __FILE__;
+   $INC{'Percona/Agent/Exception/PIDNotRunning.pm'} = __FILE__;
+}
+
+# ###########################################################################
 # This is a combination of modules and programs in one -- a runnable module.
 # http://www.perl.com/pub/a/2006/07/13/lightning-articles.html?page=last
 # Or, look it up in the Camel book on pages 642 and 643 in the 3rd edition.
@@ -4763,6 +4849,9 @@ use Percona::WebAPI::Resource::Agent;
 use Percona::WebAPI::Resource::Config;
 use Percona::WebAPI::Resource::Service;
 use Percona::WebAPI::Representation;
+use Percona::Agent::Exception::PIDNotFound;
+use Percona::Agent::Exception::NoPID;
+use Percona::Agent::Exception::PIDNotRunning;
 
 Percona::Toolkit->import(qw(_d Dumper have_required_args));
 Percona::WebAPI::Representation->import(qw(as_json as_config));
@@ -4843,7 +4932,11 @@ sub main {
    # --status, --stop, and --reset
    # ########################################################################
    if ( $o->get('status') ) {
-      agent_status();
+      agent_status(
+         api_key  => $o->get('api-key'),
+         pid_file => $o->get('pid'),
+         lib_dir  => $o->get('lib'),
+      );
       return $exit_status;
    }
    elsif ( $o->get('stop') ) {
@@ -6698,6 +6791,100 @@ CONTENT
 # ################################## #
 
 sub agent_status {
+   my (%args) = @_;
+
+   have_required_args(\%args, qw(
+      pid_file
+      lib_dir
+   )) or die;
+   my $pid_file = $args{pid_file};
+   my $lib_dir  = $args{lib_dir};
+
+   # Optional args
+   my $api_key      = $args{api_key};
+   my $crontab_list = defined $args{crontab_list} ? $args{crontab_list}
+                    :                               `crontab -l 2>/dev/null`;
+   my $bin_dir = defined $args{bin_dir} ? $args{bin_dir}
+               :                          "$FindBin::Bin/";
+
+   # Check if pt-agent is running.
+   my $pid = eval {
+      get_agent_pid(
+         pid_file => $pid_file,
+      );
+   };
+   if ( my $e = $EVAL_ERROR ) {
+      if ( !blessed($e) ) {
+         _warn("Sorry, an error occured while getting the pt-agent PID: $e");
+      }
+      elsif ( $e->isa('Percona::Agent::Exception::PIDNotFound') ) {
+         _warn("$e.  If pt-agent is still running, use kill -ABRT to force "
+            . "it to stop.");
+      }
+      elsif ( $e->isa('Percona::Agent::Exception::PIDNotRunning') ) {
+         _warn("$e.  pt-agent may have stopped unexpectedly or crashed.");
+      }
+      else {  # unhandled exception
+         _warn("Sorry, an unknown exception occured while getting "
+            . "the pt-agent PID: $e");
+      }
+   }
+   else {
+      _info("pt-agent is running as PID $pid")
+   }
+
+   if ( $api_key ) {
+      _info("API key: " . ($api_key || ''));
+   }
+   else {
+      _warn("No API key is set");
+   }
+
+   # Get the agent's info.
+   if ( -f "$lib_dir/agent" ) {
+      my $agent = json_decode(slurp("$lib_dir/agent"));
+      foreach my $attrib ( qw(uuid hostname username) ) {
+         _info("Agent $attrib: " . ($agent->{$attrib} || ''));
+      }
+   }
+   else {
+      _warn("$lib_dir/agent does not exist");
+   }
+
+   # Parse pt-agent lines from crontab to see what's scheduled/running.
+   my %scheduled = map {
+      my $line = $_;
+      my ($service) = $line =~ m/pt-agent (?:--run-service|--send-data) (\S+)/;
+      $service => 1;
+   }
+   grep { $_ =~ m/pt-agent (?:--run-service|--send-data)/ }
+   split("\n", $crontab_list);
+
+   if ( -d "$lib_dir/services" ) {
+      _info("Sevices:");
+      SERVICE:
+      foreach my $service_file ( glob "$lib_dir/services/*" ) {
+         my $service = eval {
+            json_decode(slurp($service_file));
+         };
+         if ( $EVAL_ERROR ) {
+            _warn("$service_file is corrupt");
+            next SERVICE;
+         }
+         next if $service->meta;  # only real services
+         if ( $scheduled{$service->name} ) {
+            _info($service->name . " is running");
+         }
+         else {
+            _warn($service->name . " is not running, check $lib_dir/crontab.err");
+         }
+      }
+   }
+   else {
+      _warn("$lib_dir/services does not exist");
+   }
+
+   return;
 }
 
 sub stop_agent {
@@ -6714,47 +6901,70 @@ sub stop_agent {
    my $bin_dir = defined $args{bin_dir} ? $args{bin_dir}
                :                          "$FindBin::Bin/";
 
-   if ( !-f $pid_file ) {
-      _info("PID file $pid_file does not exist; if pt-agent is running, "
-         . "use kill -ABRT to force it to stop.");
+   # Get the agent's PID and kill it.  If the PID file doesn't
+   # exist for some reason, get_agent_pid() will attempt to find
+   # pt-agent --daemonize in ps.  And if pt-agent doesn't respond
+   # to the TERM signal after a short while, we kill it with
+   # the KILL signal.
+   my $pid = eval {
+      get_agent_pid(
+         pid_file => $pid_file,
+      );
+   };
+   if ( my $e = $EVAL_ERROR ) {
+      if ( !blessed($e) ) {
+         _warn("Sorry, an error occured while getting the pt-agent PID: $e");
+      }
+      elsif ( $e->isa('Percona::Agent::Exception::PIDNotFound') ) {
+         _warn("$e.  If pt-agent is still running, use kill -ABRT to force "
+            . "it to stop.");
+      }
+      elsif ( $e->isa('Percona::Agent::Exception::PIDNotRunning') ) {
+         _warn("$e.  pt-agent may have stopped unexpectedly or crashed.");
+      }
+      else {  # unhandled exception
+         _warn("Sorry, an unknown exception occured while getting "
+            . "the pt-agent PID: $e");
+      }
    }
    else {
-      chop(my $pid = slurp($pid_file));
-      _info("pt-agent PID: $pid");
-      my $alive = kill 0, $pid;
-      if ( !$alive ) {
-         _warn("pt-agent is running, or not responding to signals.  "
-             . "Verify that pt-agent has stopped, then remove PID file "
-             . "$pid_file.");
+      _info("Stopping pt-agent...");
+      kill 15, $pid;
+      my $running;
+      for (1..5) {
+         $running = kill 0, $pid;
+         last if !$running;
+         sleep 0.5;
       }
-      else {
-         _info("Stopping pt-agent...");
-         kill 15, $pid;
-         for (1..5) {
-            $alive = kill 0, $pid;
-            last unless $alive;
+      $running = kill 0, $pid;
+      if ( $running ) {
+         _warn("pt-agent did not respond to the TERM signal, using "
+            . "the KILL signal...");
+         kill 9, $pid;
+         for (1..3) {
+            $running = kill 0, $pid;
+            last if !$running;
             sleep 0.5;
          }
-         $alive = kill 0, $pid;
-         if ( $alive ) {
-            _warn("pt-agent did not respond to the TERM signal, using "
-               . "the KILL signal...");
-            kill 9, $pid;
-            for (1..3) {
-               $alive = kill 0, $pid;
-               last unless $alive;
-               sleep 0.5;
-            }
-            $alive = kill 0, $pid;
-            # Shouldn't happen:
-            _warn("pt-agent did not response to the KILL signal");
-         }
-         else {
-            _info("pt-agent has stopped");
-         }
+         $running = kill 0, $pid;
+         # Shouldn't happen:
+         _warn("pt-agent did not response to the KILL signal");
+      }
+      else {
+         _info("pt-agent has stopped");
+      }
+
+      # pt-agent should remove its own PID file, but in case it didn't,
+      # (e.g we had to kill -9 it), we remove the PID file manually.
+      if ( -f $pid_file ) {
+         unlink $pid_file
+            or _warn("Cannot remove $pid_file: $OS_ERROR.  Remove "
+               . "this file manually.");
       }
    }
 
+   # Un-schedule all services, i.e. remove them from the user's crontab,
+   # leaving the user's other tasks untouched.
    if ( -f "$lib_dir/crontab" ) {
       _info("Removing all services from crontab...");
       eval {
@@ -6772,39 +6982,82 @@ sub stop_agent {
       _info("$lib_dir/crontab does not exist, no services to remove from crontab");
    }
 
+   # Stop all real services by running their stop-<service> meta-service.
+   # If a real service doesn't have a stop-<service> meta-service, then
+   # presumably nothing needs to be done to stop it other than un-scheduling
+   # it, which we've already done.
    if ( -d "$lib_dir/services" ) {
       my $env_vars = env_vars();
 
-      _info("Stopping all services...");
       SERVICE:
       foreach my $file ( glob "$lib_dir/services/stop-*" ) {
-         my $service = basename($file);
-         my $disable_log = "$lib_dir/logs/$service.stop";
-         my $cmd = ($env_vars ? "$env_vars " : '')
-                 . "${bin_dir}pt-agent --run-service $service"
-                 . " </dev/null"
-                 . " >$disable_log 2>&1";
-         _info("Running $cmd");
+         my $service  = basename($file);
+         my $stop_log = "$lib_dir/logs/$service.stop";
+         my $cmd      = ($env_vars ? "$env_vars " : '')
+                      . "${bin_dir}pt-agent --run-service $service"
+                      . " </dev/null"
+                      . " >$stop_log 2>&1";
+         _info("Stopping $service...");
          PTDEBUG && _d($cmd);
          system($cmd);
          my $cmd_exit_status = $CHILD_ERROR >> 8;
          if ( $cmd_exit_status != 0 ) {
-            my $err = slurp($disable_log);
+            my $err = slurp($stop_log);
             _warn("Error stopping $service: " . ($err || ''));
             next SERVICE;
          }
-         unlink $disable_log
-            or _warn("Cannot remove $disable_log: $OS_ERROR");
+         unlink $stop_log
+            or _warn("Cannot remove $stop_log: $OS_ERROR");
       }
    }
    else {
-      _info("$lib_dir/services does not exist, no services to disable")
+      _info("$lib_dir/services does not exist, no services to stop")
    }
+
+   # TODO: kill --lib/pids/*
 
    return;
 }
 
 sub reset_agent {
+}
+
+sub get_agent_pid {
+   my (%args) = @_;
+   my $pid_file = $args{pid_file};
+
+   my $pid;
+   if ( -f $pid_file ) {
+      PTDEBUG && _d('Reading PID from', $pid_file);
+      chop($pid = slurp($pid_file));
+   }
+   else {
+      my $ps_output = `ps ax | grep 'pt-agent --daemonize | grep -v grep`;
+      PTDEBUG && _d('Reading PID from ps', $ps_output);
+      if ( !$ps_output ) {
+         die Percona::Agent::Exception::PIDNotFound->new(
+            pid_file  => $pid_file,
+         );
+      }
+      # Match the first digits, which should be the PID.
+      ($pid) =~ $ps_output =~ m/(\d+)/;
+   }
+
+   if ( !$pid ) {
+      die Percona::Agent::Exception::NoPID->new(
+         pid_file          => $pid_file,
+         pid_file_is_empty => -f $pid_file,
+      );
+   }
+
+   my $running = kill 0, $pid;
+   if ( !$running ) {
+      die Percona::Agent::Exception::PIDNotRunning->new(
+         pid => $pid,
+      );
+   }
+
+   return $pid;
 }
 
 # ############## #
