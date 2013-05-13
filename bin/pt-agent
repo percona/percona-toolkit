@@ -6818,8 +6818,7 @@ sub agent_status {
          _warn("Sorry, an error occured while getting the pt-agent PID: $e");
       }
       elsif ( $e->isa('Percona::Agent::Exception::PIDNotFound') ) {
-         _warn("$e.  If pt-agent is still running, use kill -ABRT to force "
-            . "it to stop.");
+         _info("pt-agent is not running");
       }
       elsif ( $e->isa('Percona::Agent::Exception::PIDNotRunning') ) {
          _warn("$e.  pt-agent may have stopped unexpectedly or crashed.");
