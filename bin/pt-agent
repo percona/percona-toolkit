@@ -7692,8 +7692,9 @@ Force pt-agent to reload its configuration immediately.
 
 =item --reset
 
-Reset pt-agent to a clean post-install state.  B<WARNING>: all L<"--spool">
-data will be deleted.
+Reset pt-agent to a clean post-install state.
+
+B<WARNING>: all L<"--spool"> data will be deleted.
 
 =item --run-service
 
