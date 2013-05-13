@@ -4840,14 +4840,22 @@ sub main {
    }
 
    # ########################################################################
-   # --stop
+   # --status, --stop, and --reset
    # ########################################################################
-   if ( my $stop = $o->get('stop') ) {
+   if ( $o->get('status') ) {
+      agent_status();
+      return $exit_status;
+   }
+   elsif ( $o->get('stop') ) {
       stop_agent(
          pid_file => $o->get('pid'),
          lib_dir  => $o->get('lib'),
       );
       _info("Done stopping pt-agent, exit $exit_status");
+      return $exit_status;
+   }
+   elsif ( $o->get('reset') ) {
+      reset_agent();
       return $exit_status;
    }
 
@@ -6685,9 +6693,12 @@ CONTENT
    return;
 }
 
-# ########### #
-# --stop subs #
-# ########### #
+# ################################## #
+# --status, --stop, and --reset subs #
+# ################################## #
+
+sub agent_status {
+}
 
 sub stop_agent {
    my (%args) = @_;
@@ -6791,6 +6802,9 @@ sub stop_agent {
    }
 
    return;
+}
+
+sub reset_agent {
 }
 
 # ############## #
@@ -7204,24 +7218,6 @@ a general command line tool like other tools in Percona Toolkit; it requires
 a Percona Web Services account, and it runs locally but it sends all data
 to Percona.  Please vist https://pws.percona.com for more information.
 
-=head1 RISKS
-
-Percona Toolkit is mature, proven in the real world, and well tested,
-but all database tools can pose a risk to the system and the database
-server.  Before using this tool, please:
-
-=over
-
-=item * Read the tool's documentation
-
-=item * Review the tool's known L<"BUGS">
-
-=item * Test the tool on a non-production server
-
-=item * Backup your production server and verify the backups
-
-=back
-
 =head1 DESCRIPTION
 
 pt-agent is the client-side agent for Percona Web Services (PWS).  It is
@@ -7339,6 +7335,8 @@ pt-agent exists zero if no errors or warnings occurred, else it exits non-zero.
 
 L<"--run-service"> and L<"--send-data"> are mutually exclusive.
 
+L<"--status">, L<"--stop">, and L<"--reset"> are mutually exclusive.
+
 =over
 
 =item --agent-uuid
@@ -7394,7 +7392,7 @@ MySQL host.
 
 =item --install
 
-Install pt-agent.
+Install pt-agent as root.
 
 =item --lib
 
@@ -7434,6 +7432,15 @@ contains no PID, then the script dies.
 short form: -P; type: int
 
 MySQL port number.
+
+=item --reload
+
+Force pt-agent to reload its configuration immediately.
+
+=item --reset
+
+Reset pt-agent to a clean post-install state.  B<WARNING>: all L<"--spool">
+data will be deleted.
 
 =item --run-service
 
@@ -7485,6 +7492,10 @@ L<"--run-service"> saves data in this directory, and L<"--send-data">
 reads data from this directory.  Each service has its own subdirectory,
 like C<--spool/query-history> for the Query History service.  Data
 is removed by L<"--send-data"> after it is successfully sent to Percona.
+
+=item --status
+
+Print the status of pt-agent.
 
 =item --stop
 
