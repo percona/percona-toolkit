@@ -6859,6 +6859,7 @@ sub agent_status {
    grep { $_ =~ m/pt-agent (?:--run-service|--send-data)/ }
    split("\n", $crontab_list);
 
+   my %have_service;
    if ( -d "$lib_dir/services" ) {
       _info("Services:");
       SERVICE:
@@ -6871,6 +6872,7 @@ sub agent_status {
             next SERVICE;
          }
          next if $service->meta;  # only real services
+         $have_service{$service->name} = 1;
          if ( $scheduled{$service->name} ) {
             _info($service->name . " is running");
          }
@@ -6881,6 +6883,16 @@ sub agent_status {
    }
    else {
       _warn("$lib_dir/services does not exist");
+   }
+
+   # Look for services that are still scheduled/running but that we'll
+   # don't/shouldn't have.  This can happen if the crontab gets messed
+   # up, --stop fails, etc.
+   foreach my $scheduled_service ( sort keys %scheduled ) {
+      if ( !$have_service{$scheduled_service} ) {
+         _warn("$scheduled_service is running but "
+            . "$lib_dir/services/$scheduled_service does not exist");
+      }
    }
 
    return;
