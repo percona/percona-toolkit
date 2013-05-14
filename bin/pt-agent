@@ -7042,7 +7042,7 @@ sub get_agent_pid {
       chop($pid = slurp($pid_file));
    }
    else {
-      my $ps_output = `ps ax | grep 'pt-agent' --daemonize | grep -v grep`;
+      my $ps_output = `ps ax | grep 'pt-agent --daemonize' | grep -v grep`;
       PTDEBUG && _d('Reading PID from ps', $ps_output);
       if ( !$ps_output ) {
          die Percona::Agent::Exception::PIDNotFound->new(
