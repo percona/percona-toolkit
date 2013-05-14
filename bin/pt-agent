@@ -5307,7 +5307,7 @@ sub start_agent {
      --log " . ($log_file || '') . "
      --pid " . ($pid_file || '') . "
 
-   These values can change if a different configuration is received.
+These values can change if a different configuration is received.
 ",
          }
       );
