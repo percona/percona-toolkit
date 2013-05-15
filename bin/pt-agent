@@ -4947,8 +4947,38 @@ sub main {
       _info("Done stopping pt-agent, exit $exit_status");
       return $exit_status;
    }
-   elsif ( $o->get('reset') ) {
-      reset_agent();
+   elsif ( my $n = $o->get('reset') ) {
+      my $api_key = $o->get('api-key');
+      if ( !$api_key && $n < 2 ) {
+         my $config_file = get_config_file();
+         if ( -f $config_file ) {
+            die "Cannot reset pt-agent because an API key is not set in "
+               . "$config_file and --api-key was not specified.  Specify "
+               . "--api-key to force the reset.  Else specify --reset "
+               . "twice to do a hard reset, after which you will need to "
+               . "re-install pt-agent.\n";
+         }
+         else {
+            die "Cannot reset pt-agent because an API key is not set in "
+               . "$config_file.  Add 'api-key=<API key>' to $config_file "
+               . "or specify it with --api-key.  Else specify --reset "
+               . "twice to do a hard reset, after which you will need to "
+               . "re-install pt-agent.\n";
+         }
+      }
+      reset_agent(
+         api_key   => $api_key,
+         lib_dir   => $o->get('lib'),
+         spool_dir => $o->get('spool'),
+         log_file  => $o->get('log'),
+      );
+      if ( $exit_status != 0 ) {
+         _warn("Failed to completely reset pt-agent.  Check the warnings "
+            . "and errors and above and try again.");
+      }
+      else {
+         _info("pt-agent has been completely reset.");
+      }
       return $exit_status;
    }
 
@@ -5115,11 +5145,12 @@ sub load_local_agent {
 
    # Optional args
    my $agent_uuid = $args{agent_uuid};
+   my $quiet      = $args{quiet};
 
    my $agent;
    my $agent_file = $lib_dir . "/agent";
    if ( -f $agent_file ) {
-      _info("Reading saved Agent from $agent_file");
+      _info("Reading saved Agent from $agent_file") unless $quiet;
       my $agent_hashref = decode_json(slurp($agent_file));
       $agent = Percona::WebAPI::Resource::Agent->new(%$agent_hashref);
       if ( !$agent->uuid ) {
@@ -5127,7 +5158,7 @@ sub load_local_agent {
       }
    }
    else {
-      _info("No local agent")
+      _info("No local agent") unless $quiet;
    }
 
    return $agent;
@@ -6004,7 +6035,7 @@ sub schedule_services {
       %args,
       services => \@periodic_services,
    );
-   _info("New crontab:\n" . $new_crontab || '');
+   _info("New crontab:\n" . $new_crontab || '') unless $quiet;
 
    my $crontab_file = "$lib_dir/crontab";
    open my $fh, '>', $crontab_file
@@ -6017,8 +6048,8 @@ sub schedule_services {
    my $err_file = "$lib_dir/crontab.err";
    my $retval   = $exec_cmd->("crontab $crontab_file > $err_file 2>&1");
    if ( $retval ) {
-      my $error = `cat $err_file`;
-      die "Error setting new crontab: $error\n";
+      my $error =  -f $err_file ? `cat $err_file` : '';
+      die "Error setting new crontab: $error";
    }
 
    return;
@@ -6911,6 +6942,8 @@ sub stop_agent {
    my $bin_dir = defined $args{bin_dir} ? $args{bin_dir}
                :                          "$FindBin::Bin/";
 
+   my $stopped = 0;
+
    # Get the agent's PID and kill it.  If the PID file doesn't
    # exist for some reason, get_agent_pid() will attempt to find
    # pt-agent --daemonize in ps.  And if pt-agent doesn't respond
@@ -6926,11 +6959,12 @@ sub stop_agent {
          _warn("Sorry, an error occured while getting the pt-agent PID: $e");
       }
       elsif ( $e->isa('Percona::Agent::Exception::PIDNotFound') ) {
-         _warn("$e.  If pt-agent is still running, use kill -ABRT to force "
-            . "it to stop.");
+         _info("pt-agent is not running");
+         $stopped = 1;
       }
       elsif ( $e->isa('Percona::Agent::Exception::PIDNotRunning') ) {
          _warn("$e.  pt-agent may have stopped unexpectedly or crashed.");
+         $stopped = 1;
       }
       else {  # unhandled exception
          _warn("Sorry, an unknown exception occured while getting "
@@ -6951,17 +6985,24 @@ sub stop_agent {
          _warn("pt-agent did not respond to the TERM signal, using "
             . "the KILL signal...");
          kill 9, $pid;
-         for (1..3) {
+         for (1..2) {
             $running = kill 0, $pid;
             last if !$running;
             sleep 0.5;
          }
          $running = kill 0, $pid;
-         # Shouldn't happen:
-         _warn("pt-agent did not response to the KILL signal");
+         if ( $running ) {
+            # Shouldn't happen:
+            _warn("pt-agent did not response to the KILL signal");
+         }
+         else {
+            _info("Killed pt-agent");
+            $stopped = 1;
+         }
       }
       else {
          _info("pt-agent has stopped");
+         $stopped = 1;
       }
 
       # pt-agent should remove its own PID file, but in case it didn't,
@@ -6975,21 +7016,16 @@ sub stop_agent {
 
    # Un-schedule all services, i.e. remove them from the user's crontab,
    # leaving the user's other tasks untouched.
-   if ( -f "$lib_dir/crontab" ) {
-      _info("Removing all services from crontab...");
-      eval {
-         schedule_services(
-            services => [],
-            lib_dir  => $lib_dir,
-            quiet    => 1,
-         );
-      };
-      if ( $EVAL_ERROR ) {
-         _warn("Error removing services from crontab: $EVAL_ERROR");
-      }
-   }
-   else {
-      _info("$lib_dir/crontab does not exist, no services to remove from crontab");
+   _info("Removing all services from crontab...");
+   eval {
+      schedule_services(
+         services => [],
+         lib_dir  => $lib_dir,
+         quiet    => 1,
+      );
+   };
+   if ( $EVAL_ERROR ) {
+      _warn("Error removing services from crontab: $EVAL_ERROR");
    }
 
    # Stop all real services by running their stop-<service> meta-service.
@@ -7026,10 +7062,89 @@ sub stop_agent {
 
    # TODO: kill --lib/pids/*
 
-   return;
+   return $stopped;
 }
 
 sub reset_agent {
+   my (%args) = @_;
+
+   have_required_args(\%args, qw(
+      pid_file
+      lib_dir
+      spool_dir
+      log_file
+   )) or die;
+   my $pid_file  = $args{pid_file};
+   my $lib_dir   = $args{lib_dir};
+   my $spool_dir = $args{spool_dir};
+   my $log_file  = $args{log_file};
+
+   # Optional args
+   my $api_key = $args{api_key};
+
+   _info('Stopping pt-agent...');
+   my $stopped = stop_agent(%args);  # set global $exit_status
+   if ( !$stopped ) {
+      _warn('Failed to stop pt-agent.  Stop the agent, or verify that '
+         . 'it is no longer running, and try again.');
+      return;
+   }
+
+   my $agent = load_local_agent(
+      lib_dir => $lib_dir,
+      quiet   => 1,
+   );
+   if ( !$agent ) {
+      _warn("$lib_dir/agent does not exist. You will need to re-install "
+         . "pt-agent after the reset.");
+   }
+
+   _info("Removing $lib_dir/...");
+   rmtree($lib_dir)
+      or _warn("Cannot remove $lib_dir/: $OS_ERROR");
+   init_lib_dir(
+      lib_dir => $lib_dir,
+   );
+
+   if ( $agent ) {
+      my $new_agent = Percona::WebAPI::Resource::Agent->new(
+         uuid => $agent->uuid,
+      );
+      save_agent(
+         lib_dir => $lib_dir,
+         agent   => $new_agent,
+      );
+   }
+
+   _info("Removing $spool_dir/...");
+   rmtree($spool_dir)
+      or _warn("Cannot remove $spool_dir/: $OS_ERROR");
+   init_spool_dir(
+      spool_dir => $spool_dir,
+   );
+
+   my $config_file = get_config_file();
+   my $config      = -f $config_file ? slurp($config_file) : '';
+   _info("Resetting $config_file...");
+   open my $fh, '>', $config_file
+      or _err("Cannot write to $config_file: $OS_ERROR");
+   if ( $api_key ) {
+      print { $fh } "api-key=$api_key\n";
+   }
+   foreach my $line ( split("\n", $config) ) {
+      next unless $line =~ m/^\s*(?:user|host|password|socket|defaults-file|port)/;
+      print { $fh } $line, "\n";
+   }
+   close $fh
+      or _warn("Cannot close $config_file: $OS_ERROR");
+
+   if ( -f $log_file ) {
+      _info("Removing $log_file...");
+      unlink $log_file
+         or _warn("Cannot remove $log_file: $OS_ERROR");
+   }
+
+   return;
 }
 
 sub get_agent_pid {
@@ -7701,6 +7816,8 @@ MySQL port number.
 Force pt-agent to reload its configuration immediately.
 
 =item --reset
+
+cumulative: yes; default: 0
 
 Reset pt-agent to a clean post-install state.
 
