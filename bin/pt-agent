@@ -4948,6 +4948,8 @@ sub main {
       return $exit_status;
    }
    elsif ( my $n = $o->get('reset') ) {
+      $exit_on_signals = 1;
+
       my $api_key = $o->get('api-key');
       if ( !$api_key && $n < 2 ) {
          my $config_file = get_config_file();
@@ -7069,18 +7071,23 @@ sub reset_agent {
    my (%args) = @_;
 
    have_required_args(\%args, qw(
-      pid_file
       lib_dir
       spool_dir
       log_file
    )) or die;
-   my $pid_file  = $args{pid_file};
    my $lib_dir   = $args{lib_dir};
    my $spool_dir = $args{spool_dir};
    my $log_file  = $args{log_file};
 
    # Optional args
    my $api_key = $args{api_key};
+
+   if ( -t STDIN ) {
+      print "\nWARNING: All services will stop and all data in $spool_dir/ "
+         ."will be deleted.  Are you sure you want to reset pt-agent?\n\n"
+         . "Press any key to continue, else Ctrl-C to abort.\n";
+      my $confirmation = <STDIN>;
+   }
 
    _info('Stopping pt-agent...');
    my $stopped = stop_agent(%args);  # set global $exit_status
