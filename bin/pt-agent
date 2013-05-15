@@ -6302,6 +6302,7 @@ sub run_service {
 
    # Connect to MySQL or quit.
    if ( $use_mysql ) {
+      _info("Connecting to MySQL");
       TRY:
       for ( 1..3 ) {
          eval {
@@ -7456,6 +7457,7 @@ sub get_versions {
 
    my $have_mysql = 0;
    if ( $cxn ) {
+      _info("Connecting to MySQL");
       foreach my $tryno ( 1..$tries ) {
          eval {
             $cxn->connect();
