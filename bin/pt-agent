@@ -4969,10 +4969,11 @@ sub main {
          }
       }
       reset_agent(
-         api_key   => $api_key,
+         pid_file  => $o->get('pid'),  # for stop_agent()
          lib_dir   => $o->get('lib'),
          spool_dir => $o->get('spool'),
          log_file  => $o->get('log'),
+         api_key   => $api_key,  # optional
       );
       if ( $exit_status != 0 ) {
          _warn("Failed to completely reset pt-agent.  Check the warnings "
@@ -7071,10 +7072,12 @@ sub reset_agent {
    my (%args) = @_;
 
    have_required_args(\%args, qw(
+      pid_file
       lib_dir
       spool_dir
       log_file
    )) or die;
+   my $pid_file  = $args{pid_file};  # for stop_agent()
    my $lib_dir   = $args{lib_dir};
    my $spool_dir = $args{spool_dir};
    my $log_file  = $args{log_file};
@@ -7090,7 +7093,10 @@ sub reset_agent {
    }
 
    _info('Stopping pt-agent...');
-   my $stopped = stop_agent(%args);  # set global $exit_status
+   my $stopped = stop_agent(
+      pid_file => $pid_file,
+      lib_dir  => $lib_dir,
+   );
    if ( !$stopped ) {
       _warn('Failed to stop pt-agent.  Stop the agent, or verify that '
          . 'it is no longer running, and try again.');
