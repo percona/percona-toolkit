@@ -5623,14 +5623,20 @@ sub run_agent {
          );
 
          if ( !$disk_space_ok ) {
-            _warn("Disk bytes free threshold: "
-               . $safeguards->{disk_bytes_free});
-            _warn("Disk percentage free threshold: "
+            _warn("Disk bytes free/percentage threshold: "
+               . $safeguards->{disk_bytes_free}
+               . '/'
                . $safeguards->{disk_pct_free});
             _warn("Disk space is low, stopping all services:\n$disk_space");
-            stop_all_services(
-               lib_dir => $lib_dir,
-            );
+            if ( !$state->{all_services_are_stopped} ) {
+               stop_all_services(
+                  lib_dir => $lib_dir,
+               );
+            }
+            else {
+               _warn('Services will restart when disk space threshold '
+                  . 'checks pass');
+            }
          }
          else {
             # Have config, safeguards are ok, now get/update the services.
