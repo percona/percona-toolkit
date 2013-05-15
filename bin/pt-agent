@@ -4858,6 +4858,7 @@ Percona::WebAPI::Representation->import(qw(as_json as_config));
 Transformers->import(qw(ts));
 
 use sigtrap 'handler', \&sig_int, 'normal-signals';
+use sigtrap 'handler', \&reload_signal, 'USR1';
 
 my $oktorun         = 1;
 my $exit_status     = 0;
@@ -4982,6 +4983,12 @@ sub main {
       else {
          _info("pt-agent has been completely reset.");
       }
+      return $exit_status;
+   }
+   elsif ( $o->get('reload') ) {
+      reload_agent(
+         pid_file => $o->get('pid'),
+      );
       return $exit_status;
    }
 
@@ -6821,9 +6828,9 @@ CONTENT
    return;
 }
 
-# ################################## #
-# --status, --stop, and --reset subs #
-# ################################## #
+# ############################################ #
+# --status, --stop, --reload, and --reset subs #
+# ############################################ #
 
 sub agent_status {
    my (%args) = @_;
@@ -7197,6 +7204,50 @@ sub get_agent_pid {
    }
 
    return $pid;
+}
+
+sub reload_signal {
+   my ( $signal ) = @_;
+   print STDERR "\n# Caught SIG$signal, reloading configuration.\n";
+   $state->{reload} = 1;
+   return;
+}
+
+sub reload_agent {
+   my (%args) = @_;
+
+   have_required_args(\%args, qw(
+      pid_file
+   )) or die;
+   my $pid_file = $args{pid_file};
+   my $lib_dir  = $args{lib_dir};
+
+   my $pid = eval {
+      get_agent_pid(
+         pid_file => $pid_file,
+      );
+   };
+   if ( my $e = $EVAL_ERROR ) {
+      if ( !blessed($e) ) {
+         _warn("Sorry, an error occured while getting the pt-agent PID: $e");
+      }
+      elsif ( $e->isa('Percona::Agent::Exception::PIDNotFound') ) {
+         _warn("pt-agent is not running");
+      }
+      elsif ( $e->isa('Percona::Agent::Exception::PIDNotRunning') ) {
+         _warn("$e.  pt-agent may have stopped unexpectedly or crashed.");
+      }
+      else {  # unhandled exception
+         _warn("Sorry, an unknown exception occured while getting "
+            . "the pt-agent PID: $e");
+      }
+   }
+   else {
+      kill 10, $pid;  # SIGUSR1, caught in reload_signal()
+      _info("Sent reload signal (SIGUSR1) to pt-agent PID $pid");
+   }
+
+   return;
 }
 
 # ############## #
