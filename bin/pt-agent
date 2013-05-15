@@ -5890,7 +5890,7 @@ sub get_services {
          $prev_services = $sorted_services->{services};
          $success       = 1;
       }
-      elsif ( $prev_services && @$prev_services ) {
+      elsif ( $prev_services && !scalar keys %$prev_services ) {
          _info('All services have been removed');
          # TODO
       }
