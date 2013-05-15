@@ -7746,7 +7746,7 @@ Once the previous step are complete, run:
 
    $ pt-agent --daemonize
 
-The tool daemonizes and continues running in the background.
+The agent daemonizes and continues running in the background.
 
 =item 5. Configure the agent at L<https://pws.percona.com>
 
@@ -7812,7 +7812,7 @@ See the L<"--help"> output for a list of default config files.
 
 =item --daemonize
 
-Daemonize the tool.  This causes the tool to fork into the background and
+Daemonize the agent.  This causes the agent to fork into the background and
 L<"--log"> all output.
 
 Fork to the background and detach from the shell.  POSIX operating systems only.
@@ -7824,9 +7824,30 @@ short form: -F; type: string
 Only read MySQL options from the given file.  You must give an absolute
 pathname.
 
+=item --disk-bytes-free
+
+type: size; default: 100M
+
+Stop all services if the disk has less than this much free space.
+This prevents the agent from filling up the disk with service data.
+
+Valid size value suffixes are k, M, G, and T.
+
+=item --disk-pct-free
+
+type: int; default: 5
+
+Stop all services if the disk has less than this percent free space.
+This prevents the agent from filling up the disk with service data.
+
+This option works similarly to L<"--disk-bytes-free"> but specifies a
+percentage margin of safety instead of a bytes margin of safety.
+The agent honors both options, and will not collect any data unless both
+margins are satisfied.
+
 =item --help
 
-Print the tool's help and exit.
+Print the agent's help and exit.
 
 =item --host
 
@@ -7911,7 +7932,7 @@ type: Array
 
 Set the MySQL variables in this comma-separated list of C<variable=value> pairs.
 
-By default, the tool sets:
+By default, the agent sets:
 
 =for comment ignore-pt-internal-value
 MAGIC_set_vars
@@ -7922,7 +7943,7 @@ Variables specified on the command line override these defaults.  For
 example, specifying C<--set-vars wait_timeout=500> overrides the default
 value of C<10000>.
 
-The tool prints a warning and continues if a variable cannot be set.
+The agent prints a warning and continues if a variable cannot be set.
 
 =item --socket
 
@@ -7956,7 +7977,7 @@ MySQL user, if not the current system user.
 
 =item --version
 
-Print the tool's version and exit.
+Print the agent's version and exit.
 
 =back
 
