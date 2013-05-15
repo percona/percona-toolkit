@@ -36,6 +36,7 @@ BEGIN {
       Daemon
       Transformers
       CleanupTask
+      Safeguards
    ));
 }
 
@@ -4732,6 +4733,82 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# Safeguards package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Safeguards.pm
+#   t/lib/Safeguards.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Safeguards;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+sub new {
+   my ($class, %args) = @_;
+   my $self = {
+      disk_bytes_free => $args{disk_bytes_free} || 104857600,  # 100 MiB
+      disk_pct_free   => $args{disk_pct_free}   || 5,
+   };
+   return bless $self, $class;
+}
+
+sub get_disk_space {
+   my ($self, %args) = @_;
+   my $filesystem = $args{filesystem} || $ENV{PWD};
+
+   my $disk_space = `df -P -k "$filesystem"`;
+   chop($disk_space) if $disk_space;
+   PTDEBUG && _d('Disk space on', $filesystem, $disk_space);
+
+   return $disk_space;
+}
+
+sub check_disk_space() {
+   my ($self, %args) = @_;
+   my $disk_space = $args{disk_space};
+   PTDEBUG && _d("Checking disk space:\n", $disk_space);
+
+   my ($partition) = $disk_space =~ m/^\s*(\/.+)/m;
+   PTDEBUG && _d('Partition:', $partition);
+   die "Failed to parse partition from disk space:\n$disk_space"
+      unless $partition;
+
+   my (undef, undef, $bytes_used, $bytes_free, $pct_used, undef)
+      = $partition =~ m/(\S+)/g;
+   PTDEBUG && _d('Bytes used:', $bytes_used, 'free:', $bytes_free,
+      'Percentage used:', $pct_used);
+
+   $bytes_used = ($bytes_used || 0) * 1024;
+   $bytes_free = ($bytes_free || 0) * 1024;
+
+   $pct_used =~ s/%//;
+   my $pct_free = 100 - ($pct_used || 0);
+
+   return $bytes_free >= $self->{disk_bytes_free}
+       && $pct_free   >= $self->{disk_pct_free};
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End Safeguards package
+# ###########################################################################
+
+# ###########################################################################
 # Percona::Agent::Exception::*
 # ###########################################################################
 
@@ -5065,14 +5142,20 @@ sub main {
       sleep $t;
    };
 
+   my $safeguards = Safeguards->new(
+      disk_bytes_free => $o->get('disk-bytes-free'),
+      disk_pct_free   => $o->get('disk-pct-free'),
+   );
+
    # Run the agent's main loop which doesn't return until the service
    # is stopped, killed, or has an internal bug.
    run_agent(
-      agent     => $running->{agent},
-      client    => $running->{client},
-      daemon    => $running->{daemon},
-      interval  => $check_wait,
-      lib_dir   => $o->get('lib'),
+      agent      => $running->{agent},
+      client     => $running->{client},
+      daemon     => $running->{daemon},
+      interval   => $check_wait,
+      lib_dir    => $o->get('lib'),
+      safeguards => $safeguards,
    );
 
    _info("pt-agent exit $exit_status, oktorun $oktorun");
@@ -5472,12 +5555,14 @@ sub run_agent {
       daemon
       interval
       lib_dir
+      safeguards
    )) or die;
-   my $agent    = $args{agent};
-   my $client   = $args{client};
-   my $daemon   = $args{daemon};
-   my $interval = $args{interval};
-   my $lib_dir  = $args{lib_dir};
+   my $agent      = $args{agent};
+   my $client     = $args{client};
+   my $daemon     = $args{daemon};
+   my $interval   = $args{interval};
+   my $lib_dir    = $args{lib_dir};
+   my $safeguards = $args{safeguards};
 
    # Optional args
    my $_oktorun = $args{oktorun} || sub { return $oktorun };
@@ -5528,15 +5613,37 @@ sub run_agent {
             }
             $daemon = $new_daemon;
          }
-         ($services, $success) = get_services(
-            link     => $config->links->{services},
-            agent    => $agent,
-            client   => $client,
-            lib_dir  => $lib_dir,
-            services => $services,
-            json     => $args{json},    # optional, for testing
-            bin_dir  => $args{bin_dir}, # optional, for testing
+
+         # Check the safeguards.      
+         my $disk_space = $safeguards->get_disk_space(
+            filesystem => $config->options->{spool},
          );
+         my $disk_space_ok = $safeguards->check_disk_space(
+            disk_space => $disk_space,
+         );
+
+         if ( !$disk_space_ok ) {
+            _warn("Disk bytes free threshold: "
+               . $safeguards->{disk_bytes_free});
+            _warn("Disk percentage free threshold: "
+               . $safeguards->{disk_pct_free});
+            _warn("Disk space is low, stopping all services:\n$disk_space");
+            stop_all_services(
+               lib_dir => $lib_dir,
+            );
+         }
+         else {
+            # Have config, safeguards are ok, now get/update the services.
+            ($services, $success) = get_services(
+               link     => $config->links->{services},
+               agent    => $agent,
+               client   => $client,
+               lib_dir  => $lib_dir,
+               services => $services,
+               json     => $args{json},    # optional, for testing
+               bin_dir  => $args{bin_dir}, # optional, for testing
+            );
+         }
       }
 
       # If configured, wait the given interval.  Else, retry more
@@ -5801,6 +5908,17 @@ sub get_services {
       # If the current and new services are different,
       # write the new ones to disk, then schedule them.
       if ( $curr_services && @$curr_services ) {
+
+         if ( $state->{all_services_are_stopped} ) {
+            _info('Restarting services after safeguard shutdown');
+            # If prev_services is empty, then it's like agent startup:
+            # get all the latest services and start them, and remove
+            # any old services.  We could just start-* the services we
+            # already have, but since they were shut down due to a safeguard,
+            # maybe (probably) they've changed.
+            $prev_services = {};
+            delete $state->{all_services_are_stopped};
+         }
 
          # Determine which services are new (added), changed/updated,
          # and removed.
@@ -6949,10 +7067,6 @@ sub stop_agent {
    my $pid_file = $args{pid_file};
    my $lib_dir  = $args{lib_dir};
 
-   # Optional args
-   my $bin_dir = defined $args{bin_dir} ? $args{bin_dir}
-               :                          "$FindBin::Bin/";
-
    my $stopped = 0;
 
    # Get the agent's PID and kill it.  If the PID file doesn't
@@ -7025,6 +7139,27 @@ sub stop_agent {
       }
    }
 
+   stop_all_services(
+      lib_dir => $lib_dir,
+   );
+
+   # TODO: kill --lib/pids/*
+
+   return $stopped;
+}
+
+sub stop_all_services {
+   my (%args) = @_;
+
+   have_required_args(\%args, qw(
+      lib_dir
+   )) or die;
+   my $lib_dir  = $args{lib_dir};
+   
+   # Optional args
+   my $bin_dir = defined $args{bin_dir} ? $args{bin_dir}
+               :                          "$FindBin::Bin/";
+
    # Un-schedule all services, i.e. remove them from the user's crontab,
    # leaving the user's other tasks untouched.
    _info("Removing all services from crontab...");
@@ -7071,9 +7206,9 @@ sub stop_agent {
       _info("$lib_dir/services does not exist, no services to stop")
    }
 
-   # TODO: kill --lib/pids/*
+   $state->{all_services_are_stopped} = 1;
 
-   return $stopped;
+   return;
 }
 
 sub reset_agent {
@@ -7666,7 +7801,7 @@ to Percona.  Please vist https://pws.percona.com for more information.
 
 pt-agent is the client-side agent for Percona Web Services (PWS).  It is
 controlled and configured through the PWS web app at https://pws.percona.com.
-A PWS account is required to use this tool.
+A PWS account is required to use pt-agent.
 
 pt-agent, or "the agent", is a single, unique instance of the tool running
 on a server.  Two agents cannot run on the same server (see L<"--pid">), else
