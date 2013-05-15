@@ -5633,10 +5633,7 @@ sub run_agent {
                   lib_dir => $lib_dir,
                );
             }
-            else {
-               _warn('Services will restart when disk space threshold '
-                  . 'checks pass');
-            }
+            _warn('Services will restart when disk space threshold checks pass');
          }
          else {
             # Have config, safeguards are ok, now get/update the services.
