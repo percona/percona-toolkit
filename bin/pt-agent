@@ -8134,7 +8134,7 @@ Log all output to this file when daemonized.
 
 =item --log-level
 
-type: string; defaut: info
+type: string; default: info
 
 L<"--log"> messages at or above this severity.  Valid log levels are:
 C<debug>, C<info>, C<warn>, C<error>, and C<fatal>.
