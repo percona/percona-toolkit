@@ -35,8 +35,8 @@ BEGIN {
       VersionParser
       Daemon
       Transformers
-      CleanupTask
       Safeguards
+      Percona::Agent::Logger
    ));
 }
 
@@ -4671,68 +4671,6 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
-# CleanupTask package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/CleanupTask.pm
-#   t/lib/CleanupTask.t
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-{
-package CleanupTask;
-
-use strict;
-use warnings FATAL => 'all';
-use English qw(-no_match_vars);
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
-
-sub new {
-   my ( $class, $task ) = @_;
-   die "I need a task parameter" unless $task;
-   die "The task parameter must be a coderef" unless ref $task eq 'CODE';
-   my $self = {
-      task => $task,
-   };
-   open $self->{stdout_copy}, ">&=", *STDOUT
-      or die "Cannot dup stdout: $OS_ERROR";
-   open $self->{stderr_copy}, ">&=", *STDERR
-      or die "Cannot dup stderr: $OS_ERROR";
-   PTDEBUG && _d('Created cleanup task', $task);
-   return bless $self, $class;
-}
-
-sub DESTROY {
-   my ($self) = @_;
-   my $task = $self->{task};
-   if ( ref $task ) {
-      PTDEBUG && _d('Calling cleanup task', $task);
-      open local(*STDOUT), ">&=", $self->{stdout_copy}
-         if $self->{stdout_copy};
-      open local(*STDERR), ">&=", $self->{stderr_copy}
-         if $self->{stderr_copy};
-      $task->();
-   }
-   else {
-      warn "Lost cleanup task";
-   }
-   return;
-}
-
-sub _d {
-   my ($package, undef, $line) = caller 0;
-   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
-        map { defined $_ ? $_ : 'undef' }
-        @_;
-   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
-}
-
-1;
-}
-# ###########################################################################
-# End CleanupTask package
-# ###########################################################################
-
-# ###########################################################################
 # Safeguards package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -4806,6 +4744,194 @@ sub _d {
 }
 # ###########################################################################
 # End Safeguards package
+# ###########################################################################
+
+# ###########################################################################
+# Percona::Agent::Logger package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Percona/Agent/Logger.pm
+#   t/lib/Percona/Agent/Logger.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Percona::Agent::Logger;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use JSON;
+use threads;
+use Thread::Queue;
+
+use Lmo;
+use Transformers;
+
+Transformers->import(qw(ts));
+
+has 'level' => (
+   is       => 'rw',
+   isa      => 'Int',
+   required => 0,
+   default  => sub { return 1; },  # info
+);
+
+has 'client' => (
+   is       => 'rw',
+   isa      => 'Object',
+   required => 0,
+);
+
+has 'status_link' => (
+   is       => 'rw',
+   isa      => 'Str',
+   required => 0,
+);
+
+has 'exit_status' => (
+   is       => 'rw',
+   isa      => 'ScalarRef',
+   required => 1,
+);
+
+has '_message_queue' => (
+   is       => 'rw',
+   isa      => 'Object',
+   required => 0,
+);
+
+has '_thread' => (
+   is       => 'rw',
+   isa      => 'Object',
+   required => 0,
+);
+
+sub BUILD {
+   my $self = shift;
+
+   if ( $self->client && $self->status_link ) {
+      $self->_message_queue(Thread::Queue->new());
+      $self->_thread(
+         threads::async {
+            EVENT:
+            while ( my $event = $self->_message_queue->dequeue() ) {
+               last unless defined $event;
+               my $status = {
+                  log_level => $event->[0],
+                  message   => $event->[1],
+               };
+               eval {
+                  $self->client->post(
+                     link      => $self->status_link,
+                     resources => encode_json($status),
+                  );
+               };
+               if ( my $e = $EVAL_ERROR ) {
+                  warn "$e";
+               }
+            }  # EVENT
+         }  # threads::async
+      );
+   }
+
+   return;
+}
+
+sub level_number {
+   my $name = shift;
+   die "No log level name given" unless $name;
+   my $number = $name eq 'DEBUG'   ? 1
+              : $name eq 'INFO'    ? 2
+              : $name eq 'WARNING' ? 3
+              : $name eq 'ERROR'   ? 4
+              : $name eq 'FATAL'   ? 5
+              : die "Invalid log level name: $name";
+}
+
+sub debug {
+   my $self = shift;
+   return unless $self->level >= 1;
+   return $self->_log('DEBUG', @_);
+}
+
+sub info {
+   my $self = shift;
+   return unless $self->level >= 2;
+   return $self->_log('INFO', @_);
+}
+
+sub warn {
+   my $self = shift;
+   $self->_set_exit_status();
+   return unless $self->level >= 3;
+   return $self->_log('WARNING', @_);
+}
+
+sub error {
+   my $self = shift;
+   $self->_set_exit_status();
+   return unless $self->level >= 4;
+   return $self->_log('ERROR', @_);
+}
+
+sub fatal {
+   my $self = shift;
+   $self->_set_exit_status();
+   $self->_log('FATAL', @_);
+   exit $self->exit_status;
+}
+
+sub _set_exit_status {
+   my $self = shift;
+   my $exit_status = $self->exit_status;  # get ref
+   $$exit_status |= 1;                    # deref to set
+   $self->exit_status($exit_status);      # save back ref
+   return;
+}
+
+sub _log {
+   my ($self, $level, $msg) = @_;
+   chomp($msg);
+   my $ts = ts(time, 1);  # 1=UTC
+   my $level_number = level_number($level);
+   if ( $level_number >= 3 ) {  # warning
+      print STDERR "$ts $level $msg\n";
+   }
+   else {
+      print "$ts $level $msg\n";
+   }
+   if ( $self->client && $self->status_link ) {
+      my @event :shared = ($level_number, $msg);
+      $self->_message_queue->enqueue(\@event);
+   }
+   return;
+}
+
+sub DESTROY {
+   my $self = shift;
+   if ( $self->_message_queue ) {
+      $self->_message_queue->enqueue(undef);  # stop thread's while loop
+      $self->_thread->join();
+   }
+   return;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+no Lmo;
+1;
+}
+# ###########################################################################
+# End Percona::Agent::Logger package
 # ###########################################################################
 
 # ###########################################################################
@@ -4941,6 +5067,7 @@ my $oktorun         = 1;
 my $exit_status     = 0;
 my $state           = {};
 my $exit_on_signals = 0;
+my $logger;
 
 sub main {
    local @ARGV   = @_;
@@ -4983,7 +5110,18 @@ sub main {
       OptionParser => $o,
       DSNParser    => $dp,
    );
-   
+
+   # ########################################################################
+   # Make a logger, not online yet.
+   # ########################################################################
+   my $log_level = Percona::Agent::Logger::level_number(
+      uc($o->get('log-level')),
+   );
+   $logger = Percona::Agent::Logger->new(
+      level       => $log_level,
+      exit_status => \$exit_status,
+   );
+
    # ########################################################################
    # --install
    # ########################################################################
@@ -5001,7 +5139,7 @@ sub main {
    # ########################################################################
    my $api_key = $o->get('api-key');
    if ( !$api_key ) {
-      _err("No API key was found or specified.  pt-agent requires a "
+      $logger->fatal("No API key was found or specified.  pt-agent requires a "
          . "Percona Web Services API key.  Put your API key "
          . "in a --config file or specify it with --api-key.");
    }
@@ -5022,7 +5160,7 @@ sub main {
          pid_file => $o->get('pid'),
          lib_dir  => $o->get('lib'),
       );
-      _info("Done stopping pt-agent, exit $exit_status");
+      $logger->info("Done stopping pt-agent, exit $exit_status");
       return $exit_status;
    }
    elsif ( my $n = $o->get('reset') ) {
@@ -5054,11 +5192,11 @@ sub main {
          api_key   => $api_key,  # optional
       );
       if ( $exit_status != 0 ) {
-         _warn("Failed to completely reset pt-agent.  Check the warnings "
+         $logger->warn("Failed to completely reset pt-agent.  Check the warnings "
             . "and errors and above and try again.");
       }
       else {
-         _info("pt-agent has been completely reset.");
+         $logger->info("pt-agent has been completely reset.");
       }
       return $exit_status;
    }
@@ -5080,7 +5218,7 @@ sub main {
          spool_dir => $o->get('spool'),
          Cxn       => $cxn,
       );
-      _info("Done running $service, exit $exit_status");
+      $logger->info("Done running $service, exit $exit_status");
       return $exit_status;
    }
 
@@ -5094,7 +5232,7 @@ sub main {
          lib_dir   => $o->get('lib'),
          spool_dir => $o->get('spool'),
       );
-      _info("Done sending data for $service, exit $exit_status");
+      $logger->info("Done sending data for $service, exit $exit_status");
       return $exit_status;
    }
 
@@ -5112,8 +5250,9 @@ sub main {
    # fail; they'll probably die due to --lib missing, which they verify
    # but don't create.
    my $config_file = get_config_file();
-   _err("$config_file exists but is not writable")
-      if -f $config_file && !-w $config_file;
+   if ( -f $config_file && !-w $config_file ) {
+      $logger->fatal("$config_file exists but is not writable")
+   }
 
    # Start, i.e. init/create/update, the agent.  This forks and daemonizes,
    # so we're the child/daemon process when it returns.  To remember how
@@ -5138,7 +5277,7 @@ sub main {
       my ($t, $quiet) = @_;
       return unless $oktorun;
       $t ||= $check_interval;
-      _info("Sleeping $t seconds") unless $quiet;
+      $logger->info("Sleeping $t seconds") unless $quiet;
       sleep $t;
    };
 
@@ -5158,7 +5297,7 @@ sub main {
       safeguards => $safeguards,
    );
 
-   _info("pt-agent exit $exit_status, oktorun $oktorun");
+   $logger->info("pt-agent exit $exit_status, oktorun $oktorun");
 
    return $exit_status;
 }
@@ -5196,29 +5335,29 @@ sub get_api_client {
    my $entry_links;
    while ( $_oktorun->() && (!defined $tries || $tries--) ) {
       if ( !$state->{connecting_to_api}++ ) {
-         _info("Connecting to Percona Web API")  # once
+         $logger->info("Connecting to Percona Web API")  # once
       }
 
       eval {
          $entry_links = $client->get(link => $client->entry_link);
       };
       if ( $EVAL_ERROR ) {
-         _warn($EVAL_ERROR);
+         $logger->warn($EVAL_ERROR);
       }
       elsif (
          !$entry_links
          || (ref($entry_links) || '') ne 'HASH'
          || !scalar keys %$entry_links
       ) {
-         _info('Connected, but did not receive valid entry links: '
+         $logger->info('Connected, but did not receive valid entry links: '
             . Dumper($entry_links));
       }
       elsif ( !$entry_links->{agents} ) {
-         _info('Connected, but did not receive agents link: '
+         $logger->info('Connected, but did not receive agents link: '
             . Dumper($entry_links));
       }
       else {
-         _info("Connected");
+         $logger->info("Connected");
          delete $state->{connecting_to_api};
          last;  # success
       }
@@ -5243,15 +5382,15 @@ sub load_local_agent {
    my $agent;
    my $agent_file = $lib_dir . "/agent";
    if ( -f $agent_file ) {
-      _info("Reading saved Agent from $agent_file") unless $quiet;
+      $logger->info("Reading saved Agent from $agent_file") unless $quiet;
       my $agent_hashref = decode_json(slurp($agent_file));
       $agent = Percona::WebAPI::Resource::Agent->new(%$agent_hashref);
       if ( !$agent->uuid ) {
-         _err("No UUID for Agent in $agent_file.");
+         $logger->fatal("No UUID for Agent in $agent_file.");
       }
    }
    else {
-      _info("No local agent") unless $quiet;
+      $logger->info("No local agent") unless $quiet;
    }
 
    return $agent;
@@ -5297,7 +5436,7 @@ sub init_agent {
    # Try forever to create/update the Agent.  The tool can't
    # do anything without an Agent, so we must succeed to proceed.
    while ( $_oktorun->() && (!defined $tries || $tries--) ) {
-      _info($action eq 'put' ? "Updating agent " . $agent->name
+      $logger->info($action eq 'put' ? "Updating agent " . $agent->name
                              : "Creating new agent");
       my $agent_uri = eval {
          $client->$action(
@@ -5306,10 +5445,10 @@ sub init_agent {
          );
       };
       if ( $EVAL_ERROR ) {
-         _warn($EVAL_ERROR);
+         $logger->warn($EVAL_ERROR);
       }
       elsif ( !$agent_uri ) {
-         _info("No URI for Agent " . $agent->name);
+         $logger->info("No URI for Agent " . $agent->name);
       }
       else {
          # The Agent URI will have been returned in the Location header
@@ -5321,7 +5460,7 @@ sub init_agent {
             );
          };
          if ( $EVAL_ERROR ) {
-            _warn($EVAL_ERROR);
+            $logger->warn($EVAL_ERROR);
          }
          else {
             last;  # success
@@ -5332,7 +5471,7 @@ sub init_agent {
       }
    }
 
-   _info("Agent " . $agent->name . " (" . $agent->uuid . ") is ready");
+   $logger->info("Agent " . $agent->name . " (" . $agent->uuid . ") is ready");
    return $agent;
 }
 
@@ -5350,7 +5489,7 @@ sub init_lib_dir {
    my $verify = $args{verify};
    my $quiet  = $args{quiet};
 
-   _info(($verify ? 'Verify' : 'Initializing') . " --lib $lib_dir")
+   $logger->info(($verify ? 'Verify' : 'Initializing') . " --lib $lib_dir")
       unless $quiet;
 
    if ( ! -d $lib_dir ) {
@@ -5358,7 +5497,7 @@ sub init_lib_dir {
          die "$lib_dir does not exist\n";
       }
       else {
-         _info("$lib_dir does not exist, creating")
+         $logger->info("$lib_dir does not exist, creating")
             unless $quiet;
          _safe_mkdir($lib_dir);
       }
@@ -5374,7 +5513,7 @@ sub init_lib_dir {
             die "$dir does not exist\n";
          }
          else {
-            _info("$dir does not exist, creating")
+            $logger->info("$dir does not exist, creating")
                unless $quiet;
             _safe_mkdir($dir);
          }
@@ -5447,7 +5586,7 @@ These values can change if a different configuration is received.
       $cxn->{parent} = 0;
    }
 
-   _info('Starting agent');
+   $logger->info('Starting agent');
 
    eval {
       init_lib_dir(
@@ -5456,7 +5595,7 @@ These values can change if a different configuration is received.
    };
    if ( $EVAL_ERROR ) {
       chomp($EVAL_ERROR);
-      _info("Error initializing --lib $lib_dir: $EVAL_ERROR.  "
+      $logger->info("Error initializing --lib $lib_dir: $EVAL_ERROR.  "
          . "Configure the agent at https://pws.percona.com "
          . "to use a writeable --lib directory.");
    }
@@ -5491,7 +5630,7 @@ These values can change if a different configuration is received.
    my $action;
    my $link;
    if ( $agent_uuid ) {
-      _info("Re-creating Agent with UUID $agent_uuid");
+      $logger->info("Re-creating Agent with UUID $agent_uuid");
       $agent = Percona::WebAPI::Resource::Agent->new(
          uuid     => $agent_uuid,
          versions => $versions,
@@ -5567,14 +5706,14 @@ sub run_agent {
    # Optional args
    my $_oktorun = $args{oktorun} || sub { return $oktorun };
 
-   _info('Running agent ' . $agent->name);
+   $logger->info('Running agent ' . $agent->name);
 
    # #######################################################################
    # Main agent loop
    # #######################################################################
    $state->{first_config} = 1;
    my $first_config_interval = 60;
-   _info("Checking silently every $first_config_interval seconds"
+   $logger->info("Checking silently every $first_config_interval seconds"
       . " for the first config");
 
    my $success;
@@ -5597,7 +5736,7 @@ sub run_agent {
       if ( $success && $config && $config->links->{services} ) {
          if ( $state->{first_config} ) {
             delete $state->{first_config};
-            _info('Agent has been successfully configured');
+            $logger->info('Agent has been successfully configured');
          }
          if ( $new_daemon ) {
             # NOTE: Daemon objects use DESTROY to auto-remove their pid file
@@ -5623,17 +5762,17 @@ sub run_agent {
          );
 
          if ( !$disk_space_ok ) {
-            _warn("Disk bytes free/percentage threshold: "
+            $logger->warn("Disk bytes free/percentage threshold: "
                . $safeguards->{disk_bytes_free}
                . '/'
                . $safeguards->{disk_pct_free});
-            _warn("Disk space is low, stopping all services:\n$disk_space");
+            $logger->warn("Disk space is low, stopping all services:\n$disk_space");
             if ( !$state->{all_services_are_stopped} ) {
                stop_all_services(
                   lib_dir => $lib_dir,
                );
             }
-            _warn('Services will restart when disk space threshold checks pass');
+            $logger->warn('Services will restart when disk space threshold checks pass');
          }
          else {
             # Have config, safeguards are ok, now get/update the services.
@@ -5658,7 +5797,7 @@ sub run_agent {
    }
 
    # This shouldn't happen until the service is stopped/killed.
-   _info('Agent ' . $agent->name . ' has stopped');
+   $logger->info('Agent ' . $agent->name . ' has stopped');
    return;
 }
 
@@ -5684,7 +5823,7 @@ sub get_config {
    my $success = 0;
    my $new_daemon;
 
-   _info('Getting config') unless $quiet;
+   $logger->info('Getting config') unless $quiet;
    my $new_config = eval {
       $client->get(
          link => $link,
@@ -5694,26 +5833,26 @@ sub get_config {
       if (blessed($e)) {
          if ($e->isa('Percona::WebAPI::Exception::Request')) {
             if ( $e->status == 404 ) {
-               _info('Agent ' . $agent->name. ' is not configured.')
+               $logger->info('Agent ' . $agent->name. ' is not configured.')
                   unless $quiet;
             }
             else {
-               _info("$e");  # PWS API error?
+               $logger->info("$e");  # PWS API error?
             }
          }
          elsif ($e->isa('Percona::WebAPI::Exception::Resource')) {
-            _warn("$e");
+            $logger->warn("$e");
          }
       }
       else {
-         _err($e);  # internal error
+         $logger->error($e);  # internal error
       }
    }
    else {
       eval {
          if ( !$quiet ) {
-            _info("Running config: " . ($config ? $config->ts : ''));
-            _info("Current config: " . $new_config->ts);
+            $logger->info("Running config: " . ($config ? $config->ts : ''));
+            $logger->info("Current config: " . $new_config->ts);
          }
          if ( !$config || $new_config->ts > $config->ts ) {
             ($lib_dir, $new_daemon) = apply_config(
@@ -5725,16 +5864,16 @@ sub get_config {
             );
             $config  = $new_config;
             $success = 1;
-            _info('Config ' . $config->ts . ' applied successfully');
+            $logger->info('Config ' . $config->ts . ' applied successfully');
          }
          else {
             $success = 1;
-            _info('Config has not changed') unless $quiet;
+            $logger->info('Config has not changed') unless $quiet;
          }
       };
       if ( $EVAL_ERROR ) {
          chomp $EVAL_ERROR;
-         _warn("Failed to apply config " . $new_config->ts
+         $logger->warn("Failed to apply config " . $new_config->ts
             . ": $EVAL_ERROR  Will try again.");
       }
    }
@@ -5759,13 +5898,13 @@ sub apply_config {
    # Optional args
    my $old_config = $args{old_config};
 
-   _info('Applying config ' . $new_config->ts);
+   $logger->info('Applying config ' . $new_config->ts);
 
    # If the --lib dir has changed, init the new one and re-write
    # the Agent resource in it.
    my $new_lib_dir = $new_config->options->{lib};
    if ( ($new_lib_dir ne $lib_dir) || $state->{first_config} ) {
-      _info($state->{first_config} ? "Applying first config"
+      $logger->info($state->{first_config} ? "Applying first config"
                                    : "New --lib direcotry: $new_lib_dir");
       init_lib_dir(
          lib_dir => $new_lib_dir,
@@ -5791,14 +5930,14 @@ sub apply_config {
    my $new_pid         = $new_config->options->{pid} || '';
    my $new_log         = $new_config->options->{log} || '';
    if ( $old_pid ne $new_pid ) {
-      _info('NOTICE: Changing --pid file from ' . ($old_pid || '(none)')
+      $logger->info('NOTICE: Changing --pid file from ' . ($old_pid || '(none)')
           . ' to ' . ($new_pid || '(none)'));
       $make_new_daemon = 1;
    }
    if ( $daemon->{daemonize} ) {
       # --log only matters if we're daemonized
       if ( $old_log ne $new_log ) {
-         _info('NOTICE: Changing --log file from ' . ($old_log || '(none)')
+         $logger->info('NOTICE: Changing --log file from ' . ($old_log || '(none)')
              . ' to ' . ($new_log || '(none)'));
          $make_new_daemon = 1;
       }
@@ -5818,7 +5957,7 @@ sub apply_config {
          $new_daemon->run();
 
          if ( $daemon->{daemonize} && $old_log ne $new_log  ) {
-            _info('New log file, previous was ' . ($old_log || 'unset'));
+            $logger->info('New log file, previous was ' . ($old_log || 'unset'));
          }
          if ( $old_pid eq $new_pid ) {
             # If the PID file has not, then the old/original daemon and
@@ -5855,7 +5994,7 @@ sub write_config {
    my $config = $args{config};
 
    my $file = get_config_file();
-   _info("Writing config to $file");
+   $logger->info("Writing config to $file");
 
    # Get the api-key line if any; we don't want to/can't clobber this.
    my $api_key;
@@ -5901,7 +6040,7 @@ sub get_services {
    my $success = 0;
 
    eval {
-      _info('Getting services');
+      $logger->info('Getting services');
 
       # Get services from Percona.
       my $curr_services = $client->get(
@@ -5913,7 +6052,7 @@ sub get_services {
       if ( $curr_services && @$curr_services ) {
 
          if ( $state->{all_services_are_stopped} ) {
-            _info('Restarting services after safeguard shutdown');
+            $logger->info('Restarting services after safeguard shutdown');
             # If prev_services is empty, then it's like agent startup:
             # get all the latest services and start them, and remove
             # any old services.  We could just start-* the services we
@@ -6009,22 +6148,22 @@ sub get_services {
                exec_cmd => $args{exec_cmd}, # optional, for testing
             );
 
-            _info('Services applied successfully');
+            $logger->info('Services applied successfully');
          }
          else {
-            _info('Services have not changed');
+            $logger->info('Services have not changed');
          }
          # TODO: probably shouldn't keep re-assigning this unless necessary
          $prev_services = $sorted_services->{services};
          $success       = 1;
       }
       elsif ( $prev_services && !scalar keys %$prev_services ) {
-         _info('All services have been removed');
+         $logger->info('All services have been removed');
          # TODO
       }
    };
    if ( $EVAL_ERROR ) {
-      _warn($EVAL_ERROR);
+      $logger->warn($EVAL_ERROR);
    }
 
    return $prev_services, $success;
@@ -6071,15 +6210,15 @@ sub sort_services {
    }
 
    if ( scalar @added ) {
-      _info("Added services: "
+      $logger->info("Added services: "
          . join(", ", map { "  " . $_->name } @added) . "\n");
    }
    if ( scalar @updated ) {
-      _info("Services updated:\n"
+      $logger->info("Services updated:\n"
          . join("\n", map { "  " . $_->name } @updated) . "\n");
    }
    if ( scalar @removed ) {
-      _info("Services removed:\n"
+      $logger->info("Services removed:\n"
          . join("\n", map { "  " . $_->name } @removed) . "\n");
    }
 
@@ -6110,7 +6249,7 @@ sub write_services {
 
    $lib_dir .= '/services';
 
-   _info("Writing services to $lib_dir");
+   $logger->info("Writing services to $lib_dir");
 
    # Save current, active services.
    foreach my $service (
@@ -6124,7 +6263,7 @@ sub write_services {
          or die "Error writing to $file: $OS_ERROR";
       close $fh
          or die "Error closing $file: $OS_ERROR";
-      _info("$action $file");
+      $logger->info("$action $file");
    }
 
    # Remove old services.
@@ -6133,7 +6272,7 @@ sub write_services {
       if ( -f $file ) {
          unlink $file
             or die "Error removing $file: $OS_ERROR";
-         _info("Removed $file");
+         $logger->info("Removed $file");
       }
    }
 
@@ -6156,7 +6295,7 @@ sub schedule_services {
    my $quiet    = $args{quiet};
    my $exec_cmd = $args{exec_cmd} || sub { return system(@_) };
 
-   _info("Scheduling services") unless $quiet;
+   $logger->info("Scheduling services") unless $quiet;
 
    # Only schedule "periodic" services, i.e. ones that run periodically,
    # not just once.
@@ -6166,7 +6305,7 @@ sub schedule_services {
       %args,
       services => \@periodic_services,
    );
-   _info("New crontab:\n" . $new_crontab || '') unless $quiet;
+   $logger->info("New crontab:\n" . $new_crontab || '') unless $quiet;
 
    my $crontab_file = "$lib_dir/crontab";
    open my $fh, '>', $crontab_file
@@ -6272,10 +6411,10 @@ sub run_services {
       if ( $action eq 'stop' || $action eq 'restart' ) {
          if ( -f "$lib_dir/services/stop-$name" ) {
             my $cmd = sprintf $cmd_fmt, "stop-$name";
-            _info("Stopping $name: $cmd");
+            $logger->info("Stopping $name: $cmd");
             my $cmd_exit_status = $exec_cmd->($cmd);
             if ( $cmd_exit_status != 0 ) {
-               _warn("Error stopping $name, check $log and "
+               $logger->warn("Error stopping $name, check $log and "
                   . "$lib_dir/logs/$name.run");
                next SERVICE;
             }
@@ -6291,10 +6430,10 @@ sub run_services {
          my $meta_files = "$lib_dir/meta/$name*";
          foreach my $meta_file ( glob $meta_files ) {
             if ( unlink $meta_file ) {
-               _info("Removed $meta_file");
+               $logger->info("Removed $meta_file");
             }
             else {
-               _warn("Cannot remove $meta_file: $OS_ERROR");
+               $logger->warn("Cannot remove $meta_file: $OS_ERROR");
             }
          }
 
@@ -6304,15 +6443,15 @@ sub run_services {
          # switch to its default log file ending in ".run".
          if ( -f "$lib_dir/services/start-$name" ) {
             my $cmd = sprintf $cmd_fmt, "start-$name";
-            _info("Starting $name: $cmd");
+            $logger->info("Starting $name: $cmd");
             my $cmd_exit_status = $exec_cmd->($cmd);
             if ( $cmd_exit_status != 0 ) {
-               _warn("Error starting $name, check $log and "
+               $logger->warn("Error starting $name, check $log and "
                    ."$lib_dir/logs/$name.run");
                next SERVICE;
             }
             push @started_ok, $service;
-            _info("Started $name successfully");
+            $logger->info("Started $name successfully");
          }
       }
    }
@@ -6349,15 +6488,15 @@ sub run_services_once {
       delete $services->{$name};
 
       my $cmd = sprintf $cmd_fmt, "start-$name";
-      _info("Running $name: $cmd");
+      $logger->info("Running $name: $cmd");
       my $cmd_exit_status = $exec_cmd->($cmd);
       if ( $cmd_exit_status != 0 ) {
-         _warn("Error starting $name, check $log and "
+         $logger->warn("Error starting $name, check $log and "
              ."$lib_dir/logs/$name.run");
          next SERVICE;
       }
       push @started_ok, $service;
-      _info("Ran $name successfully");
+      $logger->info("Ran $name successfully");
    }
 
    return \@started_ok;
@@ -6400,7 +6539,7 @@ sub run_service {
    );
    $daemon->run();
 
-   _info("Running $service service");
+   $logger->info("Running $service service");
 
    # XXX
    # Load the Service object from local service JSON file.
@@ -6430,21 +6569,21 @@ sub run_service {
 
    # Connect to MySQL or quit.
    if ( $use_mysql ) {
-      _info("Connecting to MySQL");
+      $logger->info("Connecting to MySQL");
       TRY:
       for ( 1..3 ) {
          eval {
             $cxn->connect();
          };
          if ( $EVAL_ERROR ) {
-            _warn("Cannot connect to MySQL: $EVAL_ERROR");
+            $logger->warn("Cannot connect to MySQL: $EVAL_ERROR");
             sleep(3);
             next TRY;
          }
          last TRY;
       }
       if ( !$cxn->dbh ) {
-         _warn("Failed to connect to MySQL, cannot run service");
+         $logger->warn("Failed to connect to MySQL, cannot run service");
          return;
       }
    }
@@ -6492,12 +6631,12 @@ sub run_service {
       PTDEBUG && _d("Task $taskno output:", Dumper(\@output_files));
 
       if ( my $query = $task->query ) {
-         _info("Task $taskno query: $query");
+         $logger->info("Task $taskno query: $query");
          eval {
             $cxn->dbh->do($query);
          };
          if ( $EVAL_ERROR ) {
-            _warn("Error executing $query: $EVAL_ERROR");
+            $logger->warn("Error executing $query: $EVAL_ERROR");
             last TASK;
          }
       }
@@ -6518,14 +6657,14 @@ sub run_service {
             stage_dir    => $tmp_dir,        # __STAGE__
             ts           => $prefix,
          );
-         _info("Task $taskno command: $cmd");
+         $logger->info("Task $taskno command: $cmd");
 
          # Execute this run.
          my $t0 = time;
          system($cmd);
          my $t1 = time;
          my $cmd_exit_status = $CHILD_ERROR >> 8;
-         _info("Task $taskno: exit $cmd_exit_status");
+         $logger->info("Task $taskno: exit $cmd_exit_status");
          $exit_status |= $cmd_exit_status;
 
          push @{$metadata->{tasks}}, {
@@ -6536,12 +6675,12 @@ sub run_service {
          };
 
          if ( $cmd_exit_status != 0 ) {
-            _info($task->name . ' exit status not zero, stopping');
+            $logger->info($task->name . ' exit status not zero, stopping');
             last TASK;
          }
       }
       else {
-         _warn('Invalid Task resource:', Dumper($task));
+         $logger->warn('Invalid Task resource:', Dumper($task));
          last TASK;
       }
 
@@ -6551,7 +6690,7 @@ sub run_service {
    # Move the spool file from --spool/.tmp/ to --spool/<service>/
    # if 1) the service spools data and 2) there is data.
    my $file_size = -s $tmp_data_file;
-   _info("$tmp_data_file size: " . ($file_size || 0) . " bytes");
+   $logger->info("$tmp_data_file size: " . ($file_size || 0) . " bytes");
    if ( $use_spool && $file_size ) {
       # Save metadata about this sample _first_, because --send-data looks
       # for the data file first, then for a corresponding .meta file.  If
@@ -6579,10 +6718,10 @@ sub run_service {
       # the same filesystem is pretty much guaranteed to do an optimized,
       # i.e. quasi-atomic, move.
       my $cmd = "mv $tmp_data_file $data_dir";
-      _info($cmd);
+      $logger->info($cmd);
       system($cmd);
       my $cmd_exit_status = $CHILD_ERROR >> 8;
-      _warn("Move failed: $cmd") if $cmd_exit_status != 0;
+      $logger->warn("Move failed: $cmd") if $cmd_exit_status != 0;
       $exit_status |= $cmd_exit_status;
    }
 
@@ -6590,7 +6729,7 @@ sub run_service {
    # from staging by a task.
    foreach my $file ( glob "$tmp_dir/$prefix." . $service->name . ".*" ) {
       unlink $file
-         or _warn("Error removing $file: $OS_ERROR");
+         or $logger->warn("Error removing $file: $OS_ERROR");
    }
 
    return $exit_status;  # returning global var for testing
@@ -6674,7 +6813,7 @@ sub init_spool_dir {
    my $quiet   = $args{quiet};
 
    if ( !-d $spool_dir ) {
-      _info("$spool_dir does not exist, creating")
+      $logger->info("$spool_dir does not exist, creating")
          unless $quiet;
       _safe_mkdir($spool_dir);
    }
@@ -6686,7 +6825,7 @@ sub init_spool_dir {
       next unless $subdir;  # service may be undef
       my $dir = "$spool_dir/$subdir";
       if ( ! -d $dir ) {
-         _info("$dir does not exist, creating")
+         $logger->info("$dir does not exist, creating")
             unless $quiet;
          _safe_mkdir($dir);
       }
@@ -6724,7 +6863,7 @@ sub read_metadata {
       PTDEBUG && _d('metadata', $attrib, '=', $value);
       $metadata->{$attrib} = $value;
       unlink $file
-         or _warn("Cannot rm $file: $OS_ERROR");
+         or $logger->warn("Cannot rm $file: $OS_ERROR");
    }
 
    return;
@@ -6772,7 +6911,7 @@ sub send_data {
    );
    $daemon->run();
 
-   _info("Sending $service service data");
+   $logger->info("Sending $service service data");
 
    # Connect to Percona, get entry links.
    if ( !$client ) {
@@ -6844,12 +6983,12 @@ sub send_data {
                my $error_hashref = decode_json($content);
                $error_msg = $error_hashref->{error};
             }
-            _warn('Error ' . $e->status . " sending $data_file: "
+            $logger->warn('Error ' . $e->status . " sending $data_file: "
                . ($error_msg || '(No error message from server)'));
          }
          else {
             chomp $e;
-            _warn("Error sending $data_file: $e");
+            $logger->warn("Error sending $data_file: $e");
          } 
          next DATA_FILE;
       }
@@ -6864,15 +7003,15 @@ sub send_data {
       };
       if ( $EVAL_ERROR ) {
          chomp $EVAL_ERROR;
-         _warn("Sent $data_file but failed to remove it: $EVAL_ERROR");
+         $logger->warn("Sent $data_file but failed to remove it: $EVAL_ERROR");
          last DATA_FILE;
       }
 
       if ( -f $meta_file ) {
-         unlink $meta_file or _warn($OS_ERROR);
+         unlink $meta_file or $logger->warn($OS_ERROR);
       }
 
-      _info("Sent and removed $data_file");
+      $logger->info("Sent and removed $data_file");
    }
 
    return;
@@ -6898,7 +7037,7 @@ sub send_file {
    my $json      = $args{json};  # for testing
 
    my $data_file_size = -s $data_file;
-   _info("Sending $data_file ($data_file_size bytes) to $link");
+   $logger->info("Sending $data_file ($data_file_size bytes) to $link");
 
    # Create a multi-part resource: first the Agent, so Percona knows
    # from whom the sample data is coming, then metadata about the sample,
@@ -6978,39 +7117,39 @@ sub agent_status {
    };
    if ( my $e = $EVAL_ERROR ) {
       if ( !blessed($e) ) {
-         _warn("Sorry, an error occured while getting the pt-agent PID: $e");
+         $logger->warn("Sorry, an error occured while getting the pt-agent PID: $e");
       }
       elsif ( $e->isa('Percona::Agent::Exception::PIDNotFound') ) {
-         _info("pt-agent is not running");
+         $logger->info("pt-agent is not running");
       }
       elsif ( $e->isa('Percona::Agent::Exception::PIDNotRunning') ) {
-         _warn("$e.  pt-agent may have stopped unexpectedly or crashed.");
+         $logger->warn("$e.  pt-agent may have stopped unexpectedly or crashed.");
       }
       else {  # unhandled exception
-         _warn("Sorry, an unknown exception occured while getting "
+         $logger->warn("Sorry, an unknown exception occured while getting "
             . "the pt-agent PID: $e");
       }
    }
    else {
-      _info("pt-agent is running as PID $pid")
+      $logger->info("pt-agent is running as PID $pid")
    }
 
    if ( $api_key ) {
-      _info("API key: " . ($api_key || ''));
+      $logger->info("API key: " . ($api_key || ''));
    }
    else {
-      _warn("No API key is set");
+      $logger->warn("No API key is set");
    }
 
    # Get the agent's info.
    if ( -f "$lib_dir/agent" ) {
       my $agent = decode_json(slurp("$lib_dir/agent"));
       foreach my $attrib ( qw(uuid hostname username) ) {
-         _info("Agent $attrib: " . ($agent->{$attrib} || ''));
+         $logger->info("Agent $attrib: " . ($agent->{$attrib} || ''));
       }
    }
    else {
-      _warn("$lib_dir/agent does not exist");
+      $logger->warn("$lib_dir/agent does not exist");
    }
 
    # Parse pt-agent lines from crontab to see what's scheduled/running.
@@ -7030,21 +7169,21 @@ sub agent_status {
             decode_json(slurp($service_file));
          };
          if ( $EVAL_ERROR ) {
-            _warn("$service_file is corrupt");
+            $logger->warn("$service_file is corrupt");
             next SERVICE;
          }
          next if $service->meta;  # only real services
          $have_service{$service->name} = 1;
          if ( $scheduled{$service->name} ) {
-            _info($service->name . " is running");
+            $logger->info($service->name . " is running");
          }
          else {
-            _warn($service->name . " is not running, check $lib_dir/crontab.err");
+            $logger->warn($service->name . " is not running, check $lib_dir/crontab.err");
          }
       }
    }
    else {
-      _warn("$lib_dir/services does not exist");
+      $logger->warn("$lib_dir/services does not exist");
    }
 
    # Look for services that are still scheduled/running but that we'll
@@ -7052,7 +7191,7 @@ sub agent_status {
    # up, --stop fails, etc.
    foreach my $scheduled_service ( sort keys %scheduled ) {
       if ( !$have_service{$scheduled_service} ) {
-         _warn("$scheduled_service is running but "
+         $logger->warn("$scheduled_service is running but "
             . "$lib_dir/services/$scheduled_service does not exist");
       }
    }
@@ -7084,23 +7223,23 @@ sub stop_agent {
    };
    if ( my $e = $EVAL_ERROR ) {
       if ( !blessed($e) ) {
-         _warn("Sorry, an error occured while getting the pt-agent PID: $e");
+         $logger->warn("Sorry, an error occured while getting the pt-agent PID: $e");
       }
       elsif ( $e->isa('Percona::Agent::Exception::PIDNotFound') ) {
-         _info("pt-agent is not running");
+         $logger->info("pt-agent is not running");
          $stopped = 1;
       }
       elsif ( $e->isa('Percona::Agent::Exception::PIDNotRunning') ) {
-         _warn("$e.  pt-agent may have stopped unexpectedly or crashed.");
+         $logger->warn("$e.  pt-agent may have stopped unexpectedly or crashed.");
          $stopped = 1;
       }
       else {  # unhandled exception
-         _warn("Sorry, an unknown exception occured while getting "
+         $logger->warn("Sorry, an unknown exception occured while getting "
             . "the pt-agent PID: $e");
       }
    }
    else {
-      _info("Stopping pt-agent...");
+      $logger->info("Stopping pt-agent...");
       kill 15, $pid;
       my $running;
       for (1..5) {
@@ -7110,7 +7249,7 @@ sub stop_agent {
       }
       $running = kill 0, $pid;
       if ( $running ) {
-         _warn("pt-agent did not respond to the TERM signal, using "
+         $logger->warn("pt-agent did not respond to the TERM signal, using "
             . "the KILL signal...");
          kill 9, $pid;
          for (1..2) {
@@ -7121,15 +7260,15 @@ sub stop_agent {
          $running = kill 0, $pid;
          if ( $running ) {
             # Shouldn't happen:
-            _warn("pt-agent did not response to the KILL signal");
+            $logger->warn("pt-agent did not response to the KILL signal");
          }
          else {
-            _info("Killed pt-agent");
+            $logger->info("Killed pt-agent");
             $stopped = 1;
          }
       }
       else {
-         _info("pt-agent has stopped");
+         $logger->info("pt-agent has stopped");
          $stopped = 1;
       }
 
@@ -7137,7 +7276,7 @@ sub stop_agent {
       # (e.g we had to kill -9 it), we remove the PID file manually.
       if ( -f $pid_file ) {
          unlink $pid_file
-            or _warn("Cannot remove $pid_file: $OS_ERROR.  Remove "
+            or $logger->warn("Cannot remove $pid_file: $OS_ERROR.  Remove "
                . "this file manually.");
       }
    }
@@ -7165,7 +7304,7 @@ sub stop_all_services {
 
    # Un-schedule all services, i.e. remove them from the user's crontab,
    # leaving the user's other tasks untouched.
-   _info("Removing all services from crontab...");
+   $logger->info("Removing all services from crontab...");
    eval {
       schedule_services(
          services => [],
@@ -7174,7 +7313,7 @@ sub stop_all_services {
       );
    };
    if ( $EVAL_ERROR ) {
-      _warn("Error removing services from crontab: $EVAL_ERROR");
+      $logger->warn("Error removing services from crontab: $EVAL_ERROR");
    }
 
    # Stop all real services by running their stop-<service> meta-service.
@@ -7192,21 +7331,21 @@ sub stop_all_services {
                       . "${bin_dir}pt-agent --run-service $service"
                       . " </dev/null"
                       . " >$stop_log 2>&1";
-         _info("Stopping $service...");
+         $logger->info("Stopping $service...");
          PTDEBUG && _d($cmd);
          system($cmd);
          my $cmd_exit_status = $CHILD_ERROR >> 8;
          if ( $cmd_exit_status != 0 ) {
             my $err = slurp($stop_log);
-            _warn("Error stopping $service: " . ($err || ''));
+            $logger->warn("Error stopping $service: " . ($err || ''));
             next SERVICE;
          }
          unlink $stop_log
-            or _warn("Cannot remove $stop_log: $OS_ERROR");
+            or $logger->warn("Cannot remove $stop_log: $OS_ERROR");
       }
    }
    else {
-      _info("$lib_dir/services does not exist, no services to stop")
+      $logger->info("$lib_dir/services does not exist, no services to stop")
    }
 
    $state->{all_services_are_stopped} = 1;
@@ -7238,13 +7377,13 @@ sub reset_agent {
       my $confirmation = <STDIN>;
    }
 
-   _info('Stopping pt-agent...');
+   $logger->info('Stopping pt-agent...');
    my $stopped = stop_agent(
       pid_file => $pid_file,
       lib_dir  => $lib_dir,
    );
    if ( !$stopped ) {
-      _warn('Failed to stop pt-agent.  Stop the agent, or verify that '
+      $logger->warn('Failed to stop pt-agent.  Stop the agent, or verify that '
          . 'it is no longer running, and try again.');
       return;
    }
@@ -7254,13 +7393,13 @@ sub reset_agent {
       quiet   => 1,
    );
    if ( !$agent ) {
-      _warn("$lib_dir/agent does not exist. You will need to re-install "
+      $logger->warn("$lib_dir/agent does not exist. You will need to re-install "
          . "pt-agent after the reset.");
    }
 
-   _info("Removing $lib_dir/...");
+   $logger->info("Removing $lib_dir/...");
    rmtree($lib_dir)
-      or _warn("Cannot remove $lib_dir/: $OS_ERROR");
+      or $logger->warn("Cannot remove $lib_dir/: $OS_ERROR");
    init_lib_dir(
       lib_dir => $lib_dir,
    );
@@ -7275,18 +7414,18 @@ sub reset_agent {
       );
    }
 
-   _info("Removing $spool_dir/...");
+   $logger->info("Removing $spool_dir/...");
    rmtree($spool_dir)
-      or _warn("Cannot remove $spool_dir/: $OS_ERROR");
+      or $logger->warn("Cannot remove $spool_dir/: $OS_ERROR");
    init_spool_dir(
       spool_dir => $spool_dir,
    );
 
    my $config_file = get_config_file();
    my $config      = -f $config_file ? slurp($config_file) : '';
-   _info("Resetting $config_file...");
+   $logger->info("Resetting $config_file...");
    open my $fh, '>', $config_file
-      or _err("Cannot write to $config_file: $OS_ERROR");
+      or $logger->error("Cannot write to $config_file: $OS_ERROR");
    if ( $api_key ) {
       print { $fh } "api-key=$api_key\n";
    }
@@ -7295,12 +7434,12 @@ sub reset_agent {
       print { $fh } $line, "\n";
    }
    close $fh
-      or _warn("Cannot close $config_file: $OS_ERROR");
+      or $logger->warn("Cannot close $config_file: $OS_ERROR");
 
    if ( -f $log_file ) {
-      _info("Removing $log_file...");
+      $logger->info("Removing $log_file...");
       unlink $log_file
-         or _warn("Cannot remove $log_file: $OS_ERROR");
+         or $logger->warn("Cannot remove $log_file: $OS_ERROR");
    }
 
    return;
@@ -7367,22 +7506,22 @@ sub reload_agent {
    };
    if ( my $e = $EVAL_ERROR ) {
       if ( !blessed($e) ) {
-         _warn("Sorry, an error occured while getting the pt-agent PID: $e");
+         $logger->warn("Sorry, an error occured while getting the pt-agent PID: $e");
       }
       elsif ( $e->isa('Percona::Agent::Exception::PIDNotFound') ) {
-         _warn("pt-agent is not running");
+         $logger->warn("pt-agent is not running");
       }
       elsif ( $e->isa('Percona::Agent::Exception::PIDNotRunning') ) {
-         _warn("$e.  pt-agent may have stopped unexpectedly or crashed.");
+         $logger->warn("$e.  pt-agent may have stopped unexpectedly or crashed.");
       }
       else {  # unhandled exception
-         _warn("Sorry, an unknown exception occured while getting "
+         $logger->warn("Sorry, an unknown exception occured while getting "
             . "the pt-agent PID: $e");
       }
    }
    else {
       kill 10, $pid;  # SIGUSR1, caught in reload_signal()
-      _info("Sent reload signal (SIGUSR1) to pt-agent PID $pid");
+      $logger->info("Sent reload signal (SIGUSR1) to pt-agent PID $pid");
    }
 
    return;
@@ -7566,7 +7705,7 @@ sub save_agent {
    my $agent   = $args{agent};
    my $lib_dir = $args{lib_dir};
    my $file    = $lib_dir . '/agent';
-   _info("Saving Agent to $file");
+   $logger->info("Saving Agent to $file");
    eval {
       open my $fh, '>', $file
          or die "Error opening $file: $OS_ERROR";
@@ -7578,7 +7717,7 @@ sub save_agent {
    if ( $EVAL_ERROR ) {
       if ( !$state->{save_agent_error}++ ) {
          chomp($EVAL_ERROR);
-         _info("Cannot save agent to $lib_dir: $EVAL_ERROR.  "
+         $logger->info("Cannot save agent to $lib_dir: $EVAL_ERROR.  "
             . "Configure the agent at https://pws.percona.com "
             . "to use a writeable --lib directory.  No more "
             . "messages will be logged about this problem until "
@@ -7614,28 +7753,10 @@ sub write_to_file {
    return;
 }
 
-sub _log {
-   my ($level, $msg) = @_;
-   $msg .= "\n" if $msg !~ m/\n$/;
-   my $ts = ts(time, 1);  # 1=UTC
-   print "$ts $level $msg";
+sub _set_logger {
+   my $new_logger = shift;
+   $logger = $new_logger;
    return;
-}
-
-sub _info {
-   return _log('INFO', @_);
-}
-
-sub _warn {
-   $exit_status |= 1;
-   return _log('WARNING', @_);
-}
-
-sub _err {
-   my $msg = shift;
-   _log('ERROR', $msg . '  Please contact Percona if you need help.');
-   $exit_status |= 1;
-   exit $exit_status;
 }
 
 sub get_versions {
@@ -7646,13 +7767,13 @@ sub get_versions {
 
    my $have_mysql = 0;
    if ( $cxn ) {
-      _info("Connecting to MySQL");
+      $logger->info("Connecting to MySQL");
       foreach my $tryno ( 1..$tries ) {
          eval {
             $cxn->connect();
          };
          if ( $EVAL_ERROR ) {
-            _warn("Cannot connect to MySQL: $EVAL_ERROR");
+            $logger->warn("Cannot connect to MySQL: $EVAL_ERROR");
          }
          else {
             $have_mysql = 1;
@@ -7664,7 +7785,7 @@ sub get_versions {
          }
          else {
             $state->{need_mysql_version} = 1;
-            _info("Configure MySQL connection options for the agent "
+            $logger->info("Configure MySQL connection options for the agent "
                . "at https://pws.percona.com.  Some services may not "
                . "work until a MySQL connection can be established.");
             last;  # failure
@@ -8010,6 +8131,13 @@ the PWS web app to configure agents.
 type: string; default: /var/log/pt-agent.log
 
 Log all output to this file when daemonized.
+
+=item --log-level
+
+type: string; defaut: info
+
+L<"--log"> messages at or above this severity.  Valid log levels are:
+C<debug>, C<info>, C<warn>, C<error>, and C<fatal>.
 
 =item --password
 
