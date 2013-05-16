@@ -25,6 +25,7 @@ use English qw(-no_match_vars);
 
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
+use JSON;
 use threads;
 use Thread::Queue;
 
@@ -77,12 +78,26 @@ sub BUILD {
       $self->_message_queue(Thread::Queue->new());
       $self->_thread(
          threads::async {
-            # $event = [ level, "message" ]
+            EVENT:
             while ( my $event = $self->_message_queue->dequeue() ) {
                last unless defined $event;
-               # TODO: POST @$event
-            }
-         }
+               # $event = [ level, "message" ]
+               my $status = {
+                  log_level => $event->[0],
+                  message   => $event->[1],
+               };
+               eval {
+                  $self->client->post(
+                     link      => $self->status_link,
+                     resources => encode_json($status),
+                  );
+               };
+               if ( my $e = $EVAL_ERROR ) {
+                  warn "$e";
+                  # TODO: a queue for failed messages?
+               }
+            }  # EVENT
+         }  # threads::async
       );
    }
 
@@ -129,8 +144,8 @@ sub error {
 sub fatal {
    my $self = shift;
    $self->_set_exit_status();
-   return unless $self->level >= 5;
-   return $self->_log('FATAL', @_);
+   $self->_log('FATAL', @_);
+   exit $self->exit_status;
 }
 
 sub _set_exit_status {
