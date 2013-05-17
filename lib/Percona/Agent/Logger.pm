@@ -72,8 +72,17 @@ has '_thread' => (
    required => 0,
 );
 
-sub BUILD {
-   my $self = shift;
+has 'online_logging' => (
+   is       => 'rw',
+   isa      => 'Bool',
+   required => 0,
+   default  => sub { return 0 },
+);
+
+sub enable_online_logging {
+   my ($self, %args) = @_;
+   my $client   = $args{client};
+   my $log_link = $args{log_link};
 
    $self->_message_queue(Thread::Queue->new());
 
@@ -98,8 +107,8 @@ sub BUILD {
             }
             if ( scalar @log_entries ) { 
                eval {
-                  $self->client->post(
-                     link      => $self->log_link,
+                  $client->post(
+                     link      => $log_link,
                      resources => \@log_entries,
                   );
                };
@@ -114,6 +123,8 @@ sub BUILD {
          }  # QUEUE
       }  # threads::async
    );
+
+   $self->online_logging(1);
 
    return;
 }
@@ -182,7 +193,7 @@ sub _log {
    else {
       print "$ts $level $msg\n";
    }
-   if ( $self->client && $self->log_link ) {
+   if ( $self->online_logging ) {
       my @event :shared = ($level_number, $msg);
       $self->_message_queue->enqueue(\@event);
    }
