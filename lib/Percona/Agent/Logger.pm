@@ -31,6 +31,7 @@ use Thread::Queue;
 
 use Lmo;
 use Transformers;
+use Percona::WebAPI::Resource::LogEntry;
 
 Transformers->import(qw(ts));
 
@@ -47,7 +48,7 @@ has 'client' => (
    required => 0,
 );
 
-has 'status_link' => (
+has 'log_link' => (
    is       => 'rw',
    isa      => 'Str',
    required => 0,
@@ -74,29 +75,41 @@ has '_thread' => (
 sub BUILD {
    my $self = shift;
 
-   if ( $self->client && $self->status_link ) {
+   if ( $self->client && $self->log_link ) {
       $self->_message_queue(Thread::Queue->new());
       $self->_thread(
          threads::async {
-            EVENT:
-            while ( my $event = $self->_message_queue->dequeue() ) {
-               last unless defined $event;
-               # $event = [ level, "message" ]
-               my $status = {
-                  log_level => $event->[0],
-                  message   => $event->[1],
-               };
-               eval {
-                  $self->client->post(
-                     link      => $self->status_link,
-                     resources => encode_json($status),
+            my @log_entries;
+            my $oktorun = 1;
+            QUEUE:
+            while ( $oktorun ) {
+               my $max_log_entries = 1_000;  # for each POST + backlog
+               while (    $self->message_queue->pending()
+                       && $max_log_entries--
+                       && (my $entry = $self->message_queue->dequeue()) )
+               {
+                  $oktorun = 0 if !defined $entry;
+                  # $event = [ level, "message" ]
+                  push @log_entries, Percona::WebAPI::Resource::LogEntry->new(
+                     log_level => $entry->[0],
+                     message   => $entry->[1],
                   );
-               };
-               if ( my $e = $EVAL_ERROR ) {
-                  warn "$e";
-                  # TODO: a queue for failed messages?
                }
-            }  # EVENT
+               if ( scalar @log_entries ) { 
+                  eval {
+                     $self->client->post(
+                        link      => $self->log_link,
+                        resources => \@log_entries,
+                     );
+                  };
+                  if ( my $e = $EVAL_ERROR ) {
+                     warn "$e";
+                  }
+                  else {
+                     @log_entries = ();
+                  }
+               }  # have log entries
+            }  # QUEUE
          }  # threads::async
       );
    }
@@ -168,7 +181,7 @@ sub _log {
    else {
       print "$ts $level $msg\n";
    }
-   if ( $self->client && $self->status_link ) {
+   if ( $self->client && $self->log_link ) {
       my @event :shared = ($level_number, $msg);
       $self->_message_queue->enqueue(\@event);
    }
