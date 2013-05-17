@@ -4858,7 +4858,7 @@ sub BUILD {
             while (    $self->_message_queue
                     && $self->_message_queue->pending()
                     && $max_log_entries--
-                    && (my $entry = $self->message_queue->dequeue()) )
+                    && (my $entry = $self->_message_queue->dequeue()) )
             {
                $oktorun = 0 if !defined $entry;
                push @log_entries, Percona::WebAPI::Resource::LogEntry->new(
