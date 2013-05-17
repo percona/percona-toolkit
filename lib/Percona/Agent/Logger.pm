@@ -75,45 +75,45 @@ has '_thread' => (
 sub BUILD {
    my $self = shift;
 
-   if ( $self->client && $self->log_link ) {
-      $self->_message_queue(Thread::Queue->new());
-      $self->_thread(
-         threads::async {
-            my @log_entries;
-            my $oktorun = 1;
-            QUEUE:
-            while ( $oktorun ) {
-               my $max_log_entries = 1_000;  # for each POST + backlog
-               while (    $self->message_queue->pending()
-                       && $max_log_entries--
-                       && (my $entry = $self->message_queue->dequeue()) )
-               {
-                  $oktorun = 0 if !defined $entry;
-                  # $event = [ level, "message" ]
-                  push @log_entries, Percona::WebAPI::Resource::LogEntry->new(
-                     log_level => $entry->[0],
-                     message   => $entry->[1],
+   $self->_message_queue(Thread::Queue->new());
+
+   $self->_thread(
+      threads::async {
+         my @log_entries;
+         my $oktorun = 1;
+         QUEUE:
+         while ( $oktorun ) {
+            my $max_log_entries = 1_000;  # for each POST + backlog
+            while (    $self->_message_queue
+                    && $self->_message_queue->pending()
+                    && $max_log_entries--
+                    && (my $entry = $self->message_queue->dequeue()) )
+            {
+               $oktorun = 0 if !defined $entry;
+               # $event = [ level, "message" ]
+               push @log_entries, Percona::WebAPI::Resource::LogEntry->new(
+                  log_level => $entry->[0],
+                  message   => $entry->[1],
+               );
+            }
+            if ( scalar @log_entries ) { 
+               eval {
+                  $self->client->post(
+                     link      => $self->log_link,
+                     resources => \@log_entries,
                   );
+               };
+               if ( my $e = $EVAL_ERROR ) {
+                  warn "$e";
                }
-               if ( scalar @log_entries ) { 
-                  eval {
-                     $self->client->post(
-                        link      => $self->log_link,
-                        resources => \@log_entries,
-                     );
-                  };
-                  if ( my $e = $EVAL_ERROR ) {
-                     warn "$e";
-                  }
-                  else {
-                     @log_entries = ();
-                  }
-               }  # have log entries
-               sleep 3;
-            }  # QUEUE
-         }  # threads::async
-      );
-   }
+               else {
+                  @log_entries = ();
+               }
+            }  # have log entries
+            sleep ($self->_message_queue ? 3 : 5);
+         }  # QUEUE
+      }  # threads::async
+   );
 
    return;
 }
