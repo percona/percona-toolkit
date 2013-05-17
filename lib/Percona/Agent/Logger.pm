@@ -109,6 +109,7 @@ sub BUILD {
                      @log_entries = ();
                   }
                }  # have log entries
+               sleep 3;
             }  # QUEUE
          }  # threads::async
       );
