@@ -7626,10 +7626,16 @@ sub install {
    my $o   = $args{OptionParser};
    my $cxn = $args{Cxn};
 
+   # ########################################################################
+   # Pre-install checklist
+   # ######################################################################## 
+
+   # Must be root for --install.
    if ( $EUID != 0 ) {
       die "You must run pt-agent --install as root.\n";
    }
 
+   # Must be able to connect to MySQL to create pt_agent user.
    eval {
       $cxn->connect();
    };
@@ -7641,6 +7647,7 @@ sub install {
          . "with sufficient privileges to create MySQL users.\n";
    }
 
+   # Must have a valid API key.
    my $api_key = $o->get('api-key');
    if ( !$api_key ) {
       if (-t STDIN) {
@@ -7654,7 +7661,6 @@ sub install {
          die "Please specify your --api-key.\n";
       }
    }
-
    print "Verifying the API key $api_key...\n";
    my $client;
    my $entry_links;
@@ -7683,7 +7689,13 @@ sub install {
       print "OK: API key $api_key is valid.\n";
    }
 
+   # ########################################################################
+   # Do the install
+   # ########################################################################
+   my @actions;
 
+   # 1. Create/update the pt_agent MySQL user.  pt-agent does not and should
+   # not run as a privileged MySQL user.
    print "Creating a MySQL user for pt-agent...\n";
    my $random_pass = pseudo_random_password();
    my $sql         = "GRANT SUPER,USAGE ON *.* TO 'pt_agent'\@'localhost' "
@@ -7696,19 +7708,57 @@ sub install {
          . $EVAL_ERROR;
    }
    $cxn->dbh->disconnect();
+   push @actions, "create-mysql-user: pt_agent,$random_pass";
 
-   init_spool_dir(
-      spool_dir => $o->get('spool'),
-   );
+   # 2. Save the pt_agent MySQL user info in /etc/percona/agent/my.cnf.
+   # We could set user= and pass= in ~/.pt-agent.conf, but each new agent
+   # has a different MySQL password but shares the same default agent
+   # config, so if we set pass=foo, the next agent would set it to
+   # pass=bar, etc.  Instead, every agent sets/uses
+   # defaults-file=/etc/percona/agent/my.cnf in the default config, but
+   # the contents of that file is different for each agent.
+   if ( !-d '/etc/percona' ) {
+      _safe_mkdir('/etc/percona');
+   }
+   if ( !-d '/etc/percona/agent' ) {
+      _safe_mkdir('/etc/percona/agent');
+   }
+   my $agent_my_cnf = '/etc/percona/agent/my.cnf';
+   print "Initializing $agent_my_cnf...\n";
+   my $my_cnf = "[client]
+user=pt_agent
+pass=$random_pass
+";
+   my $dsn = $cxn->dsn;
+   if ( $dsn->{h} ) {
+      $my_cnf .= "host=$dsn->{h}\n";
+   }
+   if ( $dsn->{P} ) {
+      $my_cnf .= "port=$dsn->{P}\n";
+   }
+   if ( $dsn->{S} ) {
+      $my_cnf .= "socket=$dsn->{S}\n";
+   }
+   eval {
+      write_to_file(
+         data => $my_cnf,
+         file => $agent_my_cnf,
+      );
+   };
+   if ( $EVAL_ERROR ) {
+      die "Sorry, an error occured while initializing $agent_my_cnf: "
+         . $EVAL_ERROR;
+   }
+   push @actions, "init-agent-my-cnf: $agent_my_cnf";
 
+   # 3. Save the API key and defaults file in ~/.pt-agent.conf.
    my $config_file = get_config_file();
    print "Initializing $config_file...\n";
    eval {
       write_to_file(
          data =>
 "api-key=$api_key
-user=pt_agent
-pass=$random_pass
+defaults-file=$agent_my_cnf
 ",
          file => $config_file,
       );
@@ -7717,10 +7767,25 @@ pass=$random_pass
       die "Sorry, an error occured while initializing $config_file: "
          . $EVAL_ERROR;
    }
+   push @actions, "init-config-file: $config_file";
 
-   # Start, i.e. init/create the agent, but don't run it yet.  Normally
-   # this forks in anticipation of run_agent() being called next, but
-   # we don't do this during install; we run the agent manually later.
+   # 4. Init the --lib dir.  pt-agent would do this itself, but we'll
+   # do it now in case there are problems. 
+   init_lib_dir(
+      lib_dir => $o->get('lib'),
+   );
+   push @actions, "init-lib-dir: " . $o->get('lib');
+
+   # 5. Init the --spool dir.  pt-agent would also do this itself, but
+   # we'll do it now in case there are problems.
+   init_spool_dir(
+      spool_dir => $o->get('spool'),
+   );
+   push @actions, "init-spool-dir: " . $o->get('spool');
+
+   # 6. Start the agent, don't run it yet.  Normally this forks in
+   # anticipation of run_agent() being called next, but we don't do
+   # this during install; we run the agent manually later.
    my $running = eval {
       start_agent(
          api_key     => $api_key,
@@ -7734,19 +7799,17 @@ pass=$random_pass
          log_file    => undef,
          interval    => sub { sleep 2; },
          tries       => 3,
-         #actions     => [
-         #   "install-agent",
-         #   "init-config-file: $config_file",
-         #   "init-spool-dir: " . $o->get('spool'),
-         #   "init-lib-dir: " . $o->get('lib'),
-         #   "create-mysql-user: pt_agent,$random_pass",
-         #],
+         #actions     => \@actions,
       );
    };
    if ( $EVAL_ERROR ) {
       die "Sorry, an error occurred while starting the agent: $EVAL_ERROR";
    }
 
+   # 7. Run the agent daemon.  If all the previous worked, the agent
+   # should be able to start without problems.  It will get and apply
+   # the default config, then get and apply any services (probably won't
+   # have any yet).
    print "Starting pt-agent...\n";
    my $env = env_vars();
    my $cmd = "$env $FindBin::Bin/pt-agent --daemonize";
@@ -7755,6 +7818,9 @@ pass=$random_pass
       die "Sorry, an error occured while starting pt-agent.\n";
    }
 
+   # ########################################################################
+   # Done installing
+   # ########################################################################
    my $hostname = `hostname`;
    chomp($hostname);
 
@@ -7768,7 +7834,7 @@ pass=$random_pass
 sub pseudo_random_password {
    my @chars = ("A".."Z", "a".."z", "0".."9");
    my $string;
-   $string .= $chars[rand @chars] for 1..8;
+   $string .= $chars[rand @chars] for 1..9;
    return $string;
 }
 
