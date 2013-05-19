@@ -98,12 +98,17 @@ sub enable_online_logging {
                     && $max_log_entries--
                     && (my $entry = $self->_message_queue->dequeue()) )
             {
-               $oktorun = 0 if !defined $entry;
-               # $event = [ level, "message" ]
-               push @log_entries, Percona::WebAPI::Resource::LogEntry->new(
-                  log_level => $entry->[0],
-                  message   => $entry->[1],
-               );
+               # $entry = [ level, "message" ]
+               if ( scalar @$entry ) {
+                  push @log_entries, Percona::WebAPI::Resource::LogEntry->new(
+                     log_level => $entry->[0],
+                     message   => $entry->[1],
+                  );
+               }
+               else {
+                  # empty entry = stop
+                  $oktorun = 0;
+               }
             }
             if ( scalar @log_entries ) { 
                eval {
@@ -119,7 +124,9 @@ sub enable_online_logging {
                   @log_entries = ();
                }
             }  # have log entries
-            sleep ($self->_message_queue ? 3 : 5);
+            if ( $oktorun ) {
+               sleep ($self->_message_queue ? 3 : 5);
+            }
          }  # QUEUE
       }  # threads::async
    );
@@ -202,8 +209,8 @@ sub _log {
 
 sub DESTROY {
    my $self = shift;
-   if ( $self->_message_queue ) {
-      $self->_message_queue->enqueue(undef);  # stop thread's while loop
+   if ( $self->online_logging ) {
+      $self->_message_queue->enqueue( () );  # stop thread's while loop
       $self->_thread->join();
    }
    return;
