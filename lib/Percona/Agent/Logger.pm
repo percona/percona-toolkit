@@ -99,14 +99,14 @@ sub enable_online_logging {
                     && (my $entry = $self->_message_queue->dequeue()) )
             {
                # $entry = [ level, "message" ]
-               if ( scalar @$entry ) {
+               if ( defined $entry->[0] ) {
                   push @log_entries, Percona::WebAPI::Resource::LogEntry->new(
                      log_level => $entry->[0],
                      message   => $entry->[1],
                   );
                }
                else {
-                  # empty entry = stop
+                  # Got "stop" entry: [ undef, undef ]
                   $oktorun = 0;
                }
             }
@@ -210,7 +210,8 @@ sub _log {
 sub DESTROY {
    my $self = shift;
    if ( $self->online_logging ) {
-      $self->_message_queue->enqueue( () );  # stop thread's while loop
+      my @stop :shared = (undef, undef);
+      $self->_message_queue->enqueue(\@stop);  # stop the thread
       $self->_thread->join();
    }
    return;
