@@ -5372,8 +5372,9 @@ sub main {
 
    $logger->info("pt-agent exit $exit_status, oktorun $oktorun");
 
-   $logger->stop_online_logging();
+   $logger->online_logging(0);
    $logger->info('Waiting for logging thread to stop...');
+   $logger->stop_online_logging();
 
    return $exit_status;
 }
