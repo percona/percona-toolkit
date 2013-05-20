@@ -28,7 +28,7 @@ ok(
       "$results/empty_report.txt",
    ),
    'json output for empty log'
-);
+) or diag($test_diff);
 
 ok(
    no_diff(
