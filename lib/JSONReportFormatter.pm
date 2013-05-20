@@ -33,6 +33,24 @@ our $sorted_json = 0;
 
 extends qw(QueryReportFormatter);
 
+has 'QueryRewriter' => (
+   is       => 'ro',
+   isa      => 'Object',
+   required => 1,
+);
+
+has 'QueryParser' => (
+   is       => 'ro',
+   isa      => 'Object',
+   required => 1,
+);
+
+has 'Quoter' => (
+   is       => 'ro',
+   isa      => 'Object',
+   required => 1,
+);
+
 has _json => (
    is       => 'ro',
    init_arg => undef,
@@ -70,11 +88,12 @@ override query_report => sub {
    foreach my $arg ( qw(ea worst orderby groupby) ) {
       die "I need a $arg argument" unless defined $arg;
    }
-
-   my $ea    = $args{ea};
-   my $worst = $args{worst};
+   my $groupby = $args{groupby};
+   my $ea      = $args{ea};
+   my $worst   = $args{worst};
 
    my @attribs = @{$ea->get_attributes()};
+   my $q       = $self->Quoter;
 
    my @queries;
    foreach my $worst_info ( @$worst ) {
@@ -84,14 +103,14 @@ override query_report => sub {
 
       my $all_log_pos = $ea->{result_classes}->{$item}->{pos_in_log}->{all};
       my $times_seen  = sum values %$all_log_pos;
-      
+ 
       my %class = (
          sample      => $sample->{arg},
          fingerprint => $item,
          checksum    => make_checksum($item),
          cnt         => $times_seen,
       );
-      
+
       my %metrics;
       foreach my $attrib ( @attribs ) {
          $metrics{$attrib} = $ea->metrics(
@@ -115,7 +134,7 @@ override query_report => sub {
             $class{ts_min} = $ts->{min};
             $class{ts_max} = $ts->{max};
          }
-         elsif ( ($ea->{type_for}->{$attrib} || '') eq 'str' ) {
+         elsif ( ($ea->{type_for}->{$attrib} || '') eq 'string' ) {
             $metrics{$attrib} = { value => $metrics{$attrib}{max} }; 
          }
          elsif ( ($ea->{type_for}->{$attrib} || '') eq 'num' ) {
@@ -131,9 +150,91 @@ override query_report => sub {
             }
          }
       }
+
+      # Add "copy-paste" info, i.e. this stuff from the regular report:
+      # 
+      # Tables
+      #    SHOW TABLE STATUS FROM `db2` LIKE 'tuningdetail_21_265507'\G
+      #    SHOW CREATE TABLE `db2`.`tuningdetail_21_265507`\G
+      #    SHOW TABLE STATUS FROM `db1` LIKE 'gonzo'\G
+      #    SHOW CREATE TABLE `db1`.`gonzo`\G
+      #     update db2.tuningdetail_21_265507 n
+      #           inner join db1.gonzo a using(gonzo) 
+      #                 set n.column1 = a.column1, n.word3 = a.word3\G
+      # Converted for EXPLAIN
+      # EXPLAIN /*!50100 PARTITIONS*/
+      #    select  n.column1 = a.column1, n.word3 = a.word3
+      #    from db2.tuningdetail_21_265507 n
+      #    inner join db1.gonzo a using(gonzo) \G
+      #
+      # The formatting isn't included, just the useful data, like:
+      #
+      # $copy_paste = {
+      #    tables => {
+      #      create => "SHOW CREATE TABLE db.foo",
+      #      status => "SHOW TABLE STATUS FROM db LIKE foo",
+      #    },
+      #    explain => "select ..."
+      # }
+      #
+      # This is called "copy-paste" because users can copy-paste these
+      # ready-made lines into MySQL.
+      my $copy_paste;
+      if ( $groupby eq 'fingerprint' ) {
+         # Get SHOW CREATE TABLE and SHOW TABLE STATUS.
+         my $default_db = $sample->{db}       ? $sample->{db}
+                        : $stats->{db}->{unq} ? keys %{$stats->{db}->{unq}}
+                        :                       undef;
+         my @table_names = $self->QueryParser->extract_tables(
+            query      => $sample->{arg} || '',
+            default_db => $default_db,
+            Quoter     => $self->Quoter,
+         );
+         my @tables;
+         foreach my $db_tbl ( @table_names ) {
+            my ( $db, $tbl ) = @$db_tbl;
+            my $status
+               = 'SHOW TABLE STATUS'
+               . ($db ? " FROM `$db`" : '')
+               . " LIKE '$tbl'\\G";
+            my $create
+               = "SHOW CREATE TABLE "
+               . $q->quote(grep { $_ } @$db_tbl)
+               . "\\G";
+            push @tables, { status => $status, create => $create };
+         }
+         if ( @tables ) {
+            $copy_paste->{tables} = \@tables;
+         }
+
+         # Convert possible non-SELECTs for EXPLAIN.
+         if ( $item =~ m/^(?:[\(\s]*select|insert|replace)/ ) {
+            if ( $item =~ m/^(?:insert|replace)/ ) {
+               # Cannot convert or EXPLAIN INSERT or REPLACE queries.
+            }
+            else {
+               # SELECT queries don't need to converted for EXPLAIN.
+
+               # TODO: return the actual EXPLAIN plan
+               # $self->explain_report($query, $vals->{default_db});
+            }
+         }
+         else {
+            # Query is not SELECT, INSERT, or REPLACE, so we can convert
+            # it for EXPLAIN.
+            my $converted = $self->QueryRewriter->convert_to_select(
+               $sample->{arg} || '',
+            );
+            if ( $converted && $converted =~ m/^[\(\s]*select/i ) {
+               $copy_paste->{explain} = $converted;
+            }
+         }
+      }
+
       push @queries, {
          class       => \%class,
          attributes  => \%metrics,
+         ($copy_paste ? (copy_paste  => $copy_paste) : ()),
       };
    }
 

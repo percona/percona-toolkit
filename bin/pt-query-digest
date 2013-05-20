@@ -7635,10 +7635,28 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 my $have_json = eval { require JSON };
 
-our $pretty_json = $ENV{PTTEST_PRETTY_JSON} ? 1 : 0;
-our $sorted_json = $ENV{PTTEST_PRETTY_JSON} ? 1 : 0;
+our $pretty_json = 0;
+our $sorted_json = 0;
 
 extends qw(QueryReportFormatter);
+
+has 'QueryRewriter' => (
+   is       => 'ro',
+   isa      => 'Object',
+   required => 1,
+);
+
+has 'QueryParser' => (
+   is       => 'ro',
+   isa      => 'Object',
+   required => 1,
+);
+
+has 'Quoter' => (
+   is       => 'ro',
+   isa      => 'Object',
+   required => 1,
+);
 
 has _json => (
    is       => 'ro',
@@ -7677,14 +7695,13 @@ override query_report => sub {
    foreach my $arg ( qw(ea worst orderby groupby) ) {
       die "I need a $arg argument" unless defined $arg;
    }
-
-   my $ea    = $args{ea};
-   my $worst = $args{worst};
+   my $groupby = $args{groupby};
+   my $ea      = $args{ea};
+   my $worst   = $args{worst};
 
    my @attribs = @{$ea->get_attributes()};
+   my $q       = $self->Quoter;
 
-   my %string_args = map { $_ => 1 } qw( db host arg user bytes pos_in_log );
-   
    my @queries;
    foreach my $worst_info ( @$worst ) {
       my $item   = $worst_info->[0];
@@ -7693,14 +7710,14 @@ override query_report => sub {
 
       my $all_log_pos = $ea->{result_classes}->{$item}->{pos_in_log}->{all};
       my $times_seen  = sum values %$all_log_pos;
-      
+ 
       my %class = (
          sample      => $sample->{arg},
          fingerprint => $item,
          checksum    => make_checksum($item),
          cnt         => $times_seen,
       );
-      
+
       my %metrics;
       foreach my $attrib ( @attribs ) {
          $metrics{$attrib} = $ea->metrics(
@@ -7724,7 +7741,7 @@ override query_report => sub {
             $class{ts_min} = $ts->{min};
             $class{ts_max} = $ts->{max};
          }
-         elsif ( $string_args{$attrib} ) {
+         elsif ( ($ea->{type_for}->{$attrib} || '') eq 'string' ) {
             $metrics{$attrib} = { value => $metrics{$attrib}{max} }; 
          }
          elsif ( ($ea->{type_for}->{$attrib} || '') eq 'num' ) {
@@ -7737,9 +7754,55 @@ override query_report => sub {
             }
          }
       }
+
+      my $copy_paste;
+      if ( $groupby eq 'fingerprint' ) {
+         my $default_db = $sample->{db}       ? $sample->{db}
+                        : $stats->{db}->{unq} ? keys %{$stats->{db}->{unq}}
+                        :                       undef;
+         my @table_names = $self->QueryParser->extract_tables(
+            query      => $sample->{arg} || '',
+            default_db => $default_db,
+            Quoter     => $self->Quoter,
+         );
+         my @tables;
+         foreach my $db_tbl ( @table_names ) {
+            my ( $db, $tbl ) = @$db_tbl;
+            my $status
+               = 'SHOW TABLE STATUS'
+               . ($db ? " FROM `$db`" : '')
+               . " LIKE '$tbl'\\G";
+            my $create
+               = "SHOW CREATE TABLE "
+               . $q->quote(grep { $_ } @$db_tbl)
+               . "\\G";
+            push @tables, { status => $status, create => $create };
+         }
+         if ( @tables ) {
+            $copy_paste->{tables} = \@tables;
+         }
+
+         if ( $item =~ m/^(?:[\(\s]*select|insert|replace)/ ) {
+            if ( $item =~ m/^(?:insert|replace)/ ) {
+            }
+            else {
+
+            }
+         }
+         else {
+            my $converted = $self->QueryRewriter->convert_to_select(
+               $sample->{arg} || '',
+            );
+            if ( $converted && $converted =~ m/^[\(\s]*select/i ) {
+               $copy_paste->{explain} = $converted;
+            }
+         }
+      }
+
       push @queries, {
          class       => \%class,
          attributes  => \%metrics,
+         ($copy_paste ? (copy_paste  => $copy_paste) : ()),
       };
    }
 
@@ -13604,6 +13667,9 @@ open my $events_fh, '>', $events_file or die "Cannot open $events_file: $OS_ERRO
          Last_errno    => 'string',
          Thread_id     => 'string',
          InnoDB_trx_id => 'string',
+         host          => 'string',
+         ip            => 'string',
+         port          => 'string',
          Killed        => 'bool',
       };
 

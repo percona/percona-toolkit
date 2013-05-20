@@ -47,15 +47,7 @@
             "sum" : 0
          },
          "Statement_id" : {
-            "avg" : 0,
-            "cnt" : 1,
-            "max" : 2,
-            "median" : 0,
-            "min" : 2,
-            "pct" : 0.5,
-            "pct_95" : 0,
-            "stddev" : 0,
-            "sum" : null
+            "value" : 2
          },
          "Warning_count" : {
             "avg" : 0,
@@ -69,13 +61,29 @@
             "sum" : 0
          },
          "bytes" : {
-            "value" : 35
+            "avg" : "35.000000",
+            "cnt" : "1.000000",
+            "max" : "35.000000",
+            "median" : "35.000000",
+            "min" : "35.000000",
+            "pct" : "0.33",
+            "pct_95" : "35.000000",
+            "stddev" : 0,
+            "sum" : "35.000000"
          },
          "host" : {
             "value" : "127.0.0.1"
          },
          "pos_in_log" : {
-            "value" : 0
+            "avg" : 0,
+            "cnt" : "1.000000",
+            "max" : 0,
+            "median" : 0,
+            "min" : 0,
+            "pct" : "0.33",
+            "pct_95" : 0,
+            "stddev" : 0,
+            "sum" : 0
          }
       },
       "class" : {
@@ -85,6 +93,15 @@
          "sample" : "PREPARE SELECT i FROM d.t WHERE i=?",
          "ts_max" : "2009-12-08 09:23:49.637394",
          "ts_min" : "2009-12-08 09:23:49.637394"
+      },
+      "copy_paste" : {
+         "explain" : "SELECT i FROM d.t WHERE i=?",
+         "tables" : [
+            {
+               "create" : "SHOW CREATE TABLE `d`.`t`\\G",
+               "status" : "SHOW TABLE STATUS FROM `d` LIKE 't'\\G"
+            }
+         ]
       }
    },
    {
@@ -134,15 +151,7 @@
             "sum" : 0
          },
          "Statement_id" : {
-            "avg" : 0,
-            "cnt" : 1,
-            "max" : "2",
-            "median" : 0,
-            "min" : "2",
-            "pct" : 0.5,
-            "pct_95" : 0,
-            "stddev" : 0,
-            "sum" : null
+            "value" : "2"
          },
          "Warning_count" : {
             "avg" : 0,
@@ -156,13 +165,29 @@
             "sum" : 0
          },
          "bytes" : {
-            "value" : 37
+            "avg" : "37.000000",
+            "cnt" : "1.000000",
+            "max" : "37.000000",
+            "median" : "37.000000",
+            "min" : "37.000000",
+            "pct" : "0.33",
+            "pct_95" : "37.000000",
+            "stddev" : 0,
+            "sum" : "37.000000"
          },
          "host" : {
             "value" : "127.0.0.1"
          },
          "pos_in_log" : {
-            "value" : 1106
+            "avg" : "1106.000000",
+            "cnt" : "1.000000",
+            "max" : "1106.000000",
+            "median" : "1106.000000",
+            "min" : "1106.000000",
+            "pct" : "0.33",
+            "pct_95" : "1106.000000",
+            "stddev" : 0,
+            "sum" : "1106.000000"
          }
       },
       "class" : {
@@ -172,6 +197,15 @@
          "sample" : "EXECUTE SELECT i FROM d.t WHERE i=\"3\"",
          "ts_max" : "2009-12-08 09:23:49.637892",
          "ts_min" : "2009-12-08 09:23:49.637892"
+      },
+      "copy_paste" : {
+         "explain" : "SELECT i FROM d.t WHERE i=\"3\"",
+         "tables" : [
+            {
+               "create" : "SHOW CREATE TABLE `d`.`t`\\G",
+               "status" : "SHOW TABLE STATUS FROM `d` LIKE 't'\\G"
+            }
+         ]
       }
    },
    {
@@ -232,13 +266,29 @@
             "sum" : 0
          },
          "bytes" : {
-            "value" : 27
+            "avg" : "27.000000",
+            "cnt" : "1.000000",
+            "max" : "27.000000",
+            "median" : "27.000000",
+            "min" : "27.000000",
+            "pct" : "0.33",
+            "pct_95" : "27.000000",
+            "stddev" : 0,
+            "sum" : "27.000000"
          },
          "host" : {
             "value" : "127.0.0.1"
          },
          "pos_in_log" : {
-            "value" : 1850
+            "avg" : "1850.000000",
+            "cnt" : "1.000000",
+            "max" : "1850.000000",
+            "median" : "1850.000000",
+            "min" : "1850.000000",
+            "pct" : "0.33",
+            "pct_95" : "1850.000000",
+            "stddev" : 0,
+            "sum" : "1850.000000"
          }
       },
       "class" : {
