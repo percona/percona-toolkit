@@ -207,13 +207,20 @@ sub _log {
    return;
 }
 
-sub DESTROY {
+sub stop_online_logging {
    my $self = shift;
-   if ( $self->online_logging ) {
+   if ( $self->_thread && $self->_thread->is_running() ) {
       my @stop :shared = (undef, undef);
       $self->_message_queue->enqueue(\@stop);  # stop the thread
       $self->_thread->join();
    }
+   $self->online_logging(0);
+   return;
+}
+
+sub DESTROY {
+   my $self = shift;
+   $self->stop_online_logging();
    return;
 }
 
