@@ -135,7 +135,15 @@
             "sum" : 0
          },
          "bytes" : {
-            "value" : 129
+            "avg" : "129.000000",
+            "cnt" : "1.000000",
+            "max" : "129.000000",
+            "median" : "129.000000",
+            "min" : "129.000000",
+            "pct" : "0.12",
+            "pct_95" : "129.000000",
+            "stddev" : 0,
+            "sum" : "129.000000"
          },
          "db" : {
             "value" : "db1"
@@ -144,7 +152,15 @@
             "value" : ""
          },
          "pos_in_log" : {
-            "value" : 338
+            "avg" : "338.000000",
+            "cnt" : "1.000000",
+            "max" : "338.000000",
+            "median" : "338.000000",
+            "min" : "338.000000",
+            "pct" : "0.12",
+            "pct_95" : "338.000000",
+            "stddev" : 0,
+            "sum" : "338.000000"
          },
          "user" : {
             "value" : "[SQL_SLAVE]"
@@ -157,6 +173,19 @@
          "sample" : "update db2.tuningdetail_21_265507 n\n      inner join db1.gonzo a using(gonzo) \n      set n.column1 = a.column1, n.word3 = a.word3",
          "ts_max" : "2007-12-18 11:48:27",
          "ts_min" : "2007-12-18 11:48:27"
+      },
+      "copy_paste" : {
+         "explain" : "select  n.column1 = a.column1, n.word3 = a.word3 from db2.tuningdetail_21_265507 n\n      inner join db1.gonzo a using(gonzo) ",
+         "tables" : [
+            {
+               "create" : "SHOW CREATE TABLE `db2`.`tuningdetail_21_265507`\\G",
+               "status" : "SHOW TABLE STATUS FROM `db2` LIKE 'tuningdetail_21_265507'\\G"
+            },
+            {
+               "create" : "SHOW CREATE TABLE `db1`.`gonzo`\\G",
+               "status" : "SHOW TABLE STATUS FROM `db1` LIKE 'gonzo'\\G"
+            }
+         ]
       }
    }
 ]
