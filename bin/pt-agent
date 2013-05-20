@@ -5365,6 +5365,9 @@ sub main {
 
    $logger->info("pt-agent exit $exit_status, oktorun $oktorun");
 
+   # Cause Logger::DESTORY to be called.
+   $logger = undef;
+
    return $exit_status;
 }
 
