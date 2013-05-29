@@ -22,6 +22,24 @@ package Percona::WebAPI::Resource::LogEntry;
 
 use Lmo;
 
+has 'service' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 0,
+);
+
+has 'data_ts' => (
+   is       => 'ro',
+   isa      => 'Int',
+   required => 0,
+);
+
+has 'entry_ts' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 1,
+);
+
 has 'log_level' => (
    is       => 'ro',
    isa      => 'Int',
