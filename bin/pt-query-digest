@@ -7911,10 +7911,12 @@ override query_report => sub {
       };
    }
 
-   my $data = {
-      global  => $global_data,
-      classes => \@queries,
-   };
+# XXX
+#   my $data = {
+#      global  => $global_data,
+#      classes => \@queries,
+#   };
+   my $data = \@queries;
    my $json = $self->encode_json($data);
    $json .= "\n" unless $json =~ /\n\Z/;
    return $json;
