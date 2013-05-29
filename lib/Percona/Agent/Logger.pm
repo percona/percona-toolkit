@@ -60,6 +60,25 @@ has 'exit_status' => (
    required => 1,
 );
 
+has 'queue_wait' => (
+   is       => 'rw',
+   isa      => 'Int',
+   required => 0,
+   default  => sub { return 3; },
+);
+
+has 'service' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 0,
+);
+
+has 'data_ts' => (
+   is       => 'ro',
+   isa      => 'Int',
+   required => 0,
+);
+
 has '_message_queue' => (
    is       => 'rw',
    isa      => 'Object',
@@ -101,8 +120,11 @@ sub enable_online_logging {
                # $entry = [ level, "message" ]
                if ( defined $entry->[0] ) {
                   push @log_entries, Percona::WebAPI::Resource::LogEntry->new(
-                     log_level => $entry->[0],
-                     message   => $entry->[1],
+                     entry_ts  => $entry->[0],
+                     log_level => $entry->[1],
+                     message   => $entry->[2],
+                     ($self->service ? (service => $self->service) : ()),
+                     ($self->data_ts ? (data_ts => $self->data_ts) : ()),
                   );
                }
                else {
@@ -125,7 +147,7 @@ sub enable_online_logging {
                }
             }  # have log entries
             if ( $oktorun ) {
-               sleep ($self->_message_queue ? 3 : 5);
+               sleep $self->queue_wait;
             }
          }  # QUEUE
       }  # threads::async
@@ -201,7 +223,7 @@ sub _log {
       print "$ts $level $msg\n";
    }
    if ( $self->online_logging ) {
-      my @event :shared = ($level_number, $msg);
+      my @event :shared = ($ts, $level_number, $msg);
       $self->_message_queue->enqueue(\@event);
    }
    return;
