@@ -95,7 +95,7 @@ override query_report => sub {
 
    my $results = $ea->results();
    my @attribs = @{$ea->get_attributes()};
-   
+
    my $q  = $self->Quoter;
    my $qr = $self->QueryRewriter;
 
@@ -104,6 +104,8 @@ override query_report => sub {
    # ########################################################################
    my $global_data = {
       metrics => {},
+      files   => $args{files},
+      ($args{resume} && scalar keys %{$args{resume}} ? (resume  => $args{resume}) : ()),
    };
 
    # Get global count
@@ -137,6 +139,7 @@ override query_report => sub {
       ts          => 1,
       bytes       => 1,
    );
+
    foreach my $attrib ( grep { !$hidden_attrib{$_} } @attribs ) {
       my $type = $ea->type_for($attrib) || 'string';
       next if $type eq 'string';
@@ -149,36 +152,36 @@ override query_report => sub {
       if ( $type eq 'num' ) {
          foreach my $m ( qw(sum min max) ) { 
             if ( $int ) {
-               $global_data->{metrics}->{$attrib . "_$m"}
+               $global_data->{metrics}->{$attrib}->{$m}
                   = sprintf('%d', $store->{$m} || 0);
             }
             else {  # microsecond
-               $global_data->{metrics}->{$attrib . "_$m"}
+               $global_data->{metrics}->{$attrib}->{$m}
                   = sprintf('%.6f',  $store->{$m} || 0);
             }
          }
          foreach my $m ( qw(pct_95 stddev median) ) {
             if ( $int ) {
-               $global_data->{metrics}->{$attrib . "_$m"}
+               $global_data->{metrics}->{$attrib}->{$m}
                   = sprintf('%d', $metrics->{$m} || 0);
             }
             else {  # microsecond
-               $global_data->{metrics}->{$attrib . "_$m"}
+               $global_data->{metrics}->{$attrib}->{$m}
                   = sprintf('%.6f',  $metrics->{$m} || 0);
             }
          }
          if ( $int ) {
-            $global_data->{metrics}->{$attrib . "_avg"}
+            $global_data->{metrics}->{$attrib}->{avg}
                = sprintf('%d', $store->{sum} / $store->{cnt});
          }
          else {
-            $global_data->{metrics}->{$attrib . "_avg"}
+            $global_data->{metrics}->{$attrib}->{avg}
                = sprintf('%.6f', $store->{sum} / $store->{cnt});
          }  
       }
       elsif ( $type eq 'bool' ) {
          my $store = $results->{globals}->{$attrib};
-         $global_data->{metrics}->{$attrib . "_cnt"}
+         $global_data->{metrics}->{$attrib}->{cnt}
             = sprintf('%d', $store->{sum});
       }
    }
@@ -187,8 +190,7 @@ override query_report => sub {
    # Query class data
    # ########################################################################
 
-   my @queries;
-
+   my @classes;
    foreach my $worst_info ( @$worst ) {
       my $item   = $worst_info->[0];
       my $stats  = $ea->results->{classes}->{$item};
@@ -201,17 +203,18 @@ override query_report => sub {
       my $distill = $groupby eq 'fingerprint' ? $qr->distill($sample->{arg})
                   :                             undef;
 
-      my %class = (
-         attribute   => $groupby,
+      my $checksum = make_checksum($item);
+      my $class    = {
+         checksum    => $checksum,
          fingerprint => $item,
-         checksum    => make_checksum($item),
          distillate  => $distill,
+         attribute   => $groupby,
          query_count => $times_seen,
          example     => {
             query => $sample->{arg},
             ts    => $sample->{ts} ? parse_timestamp($sample->{ts}) : undef,
          },
-      );
+      };
 
       my %metrics;
       foreach my $attrib ( @attribs ) {
@@ -235,8 +238,8 @@ override query_report => sub {
                next unless defined $ts && defined $ts->{$thing};
                $ts->{$thing} = parse_timestamp($ts->{$thing});
             }
-            $class{ts_min} = $ts->{min};
-            $class{ts_max} = $ts->{max};
+            $class->{ts_min} = $ts->{min};
+            $class->{ts_max} = $ts->{max};
          }
          else {
             my $type = $ea->type_for($attrib) || 'string';
@@ -282,17 +285,17 @@ override query_report => sub {
       #
       # The formatting isn't included, just the useful data, like:
       #
-      # $copy_paste = {
-      #    tables => {
+      # $tables = [
+      #    {
       #      create => "SHOW CREATE TABLE db.foo",
       #      status => "SHOW TABLE STATUS FROM db LIKE foo",
       #    },
       #    explain => "select ..."
-      # }
+      # ]
       #
       # This is called "copy-paste" because users can copy-paste these
       # ready-made lines into MySQL.
-      my $copy_paste;
+      my @tables;
       if ( $groupby eq 'fingerprint' ) {
          # Get SHOW CREATE TABLE and SHOW TABLE STATUS.
          my $default_db = $sample->{db}       ? $sample->{db}
@@ -303,7 +306,6 @@ override query_report => sub {
             default_db => $default_db,
             Quoter     => $q,
          );
-         my @tables;
          foreach my $db_tbl ( @table_names ) {
             my ( $db, $tbl ) = @$db_tbl;
             my $status
@@ -315,9 +317,6 @@ override query_report => sub {
                . $q->quote(grep { $_ } @$db_tbl)
                . "\\G";
             push @tables, { status => $status, create => $create };
-         }
-         if ( @tables ) {
-            $copy_paste->{tables} = \@tables;
          }
 
          # Convert possible non-SELECTs for EXPLAIN.
@@ -339,16 +338,16 @@ override query_report => sub {
                $sample->{arg} || '',
             );
             if ( $converted && $converted =~ m/^[\(\s]*select/i ) {
-               $copy_paste->{explain} = $converted;
+               $class->{example}->{as_select} = $converted;
             }
          }
       }
 
-      push @queries, {
-         class       => \%class,
-         attributes  => \%metrics,
-         ($copy_paste ? (copy_paste  => $copy_paste) : ()),
-      };
+      $class->{metrics} = \%metrics;
+      if ( @tables ) {
+         $class->{tables} = \@tables;
+      }
+      push @classes, $class;
    }
 
    # ########################################################################
@@ -356,7 +355,7 @@ override query_report => sub {
    # ########################################################################
    my $data = {
       global  => $global_data,
-      classes => \@queries,
+      classes => \@classes,
    };
    my $json = $self->encode_json($data);
    $json .= "\n" unless $json =~ /\n\Z/;

@@ -7702,12 +7702,14 @@ override query_report => sub {
 
    my $results = $ea->results();
    my @attribs = @{$ea->get_attributes()};
-   
+
    my $q  = $self->Quoter;
    my $qr = $self->QueryRewriter;
 
    my $global_data = {
       metrics => {},
+      files   => $args{files},
+      ($args{resume} && scalar keys %{$args{resume}} ? (resume  => $args{resume}) : ()),
    };
 
    my $global_cnt = $results->{globals}->{$orderby}->{cnt} || 0;
@@ -7739,6 +7741,7 @@ override query_report => sub {
       ts          => 1,
       bytes       => 1,
    );
+
    foreach my $attrib ( grep { !$hidden_attrib{$_} } @attribs ) {
       my $type = $ea->type_for($attrib) || 'string';
       next if $type eq 'string';
@@ -7751,43 +7754,42 @@ override query_report => sub {
       if ( $type eq 'num' ) {
          foreach my $m ( qw(sum min max) ) { 
             if ( $int ) {
-               $global_data->{metrics}->{$attrib . "_$m"}
+               $global_data->{metrics}->{$attrib}->{$m}
                   = sprintf('%d', $store->{$m} || 0);
             }
             else {  # microsecond
-               $global_data->{metrics}->{$attrib . "_$m"}
+               $global_data->{metrics}->{$attrib}->{$m}
                   = sprintf('%.6f',  $store->{$m} || 0);
             }
          }
          foreach my $m ( qw(pct_95 stddev median) ) {
             if ( $int ) {
-               $global_data->{metrics}->{$attrib . "_$m"}
+               $global_data->{metrics}->{$attrib}->{$m}
                   = sprintf('%d', $metrics->{$m} || 0);
             }
             else {  # microsecond
-               $global_data->{metrics}->{$attrib . "_$m"}
+               $global_data->{metrics}->{$attrib}->{$m}
                   = sprintf('%.6f',  $metrics->{$m} || 0);
             }
          }
          if ( $int ) {
-            $global_data->{metrics}->{$attrib . "_avg"}
+            $global_data->{metrics}->{$attrib}->{avg}
                = sprintf('%d', $store->{sum} / $store->{cnt});
          }
          else {
-            $global_data->{metrics}->{$attrib . "_avg"}
+            $global_data->{metrics}->{$attrib}->{avg}
                = sprintf('%.6f', $store->{sum} / $store->{cnt});
          }  
       }
       elsif ( $type eq 'bool' ) {
          my $store = $results->{globals}->{$attrib};
-         $global_data->{metrics}->{$attrib . "_cnt"}
+         $global_data->{metrics}->{$attrib}->{cnt}
             = sprintf('%d', $store->{sum});
       }
    }
 
 
-   my @queries;
-
+   my @classes;
    foreach my $worst_info ( @$worst ) {
       my $item   = $worst_info->[0];
       my $stats  = $ea->results->{classes}->{$item};
@@ -7799,17 +7801,18 @@ override query_report => sub {
       my $distill = $groupby eq 'fingerprint' ? $qr->distill($sample->{arg})
                   :                             undef;
 
-      my %class = (
-         attribute   => $groupby,
+      my $checksum = make_checksum($item);
+      my $class    = {
+         checksum    => $checksum,
          fingerprint => $item,
-         checksum    => make_checksum($item),
          distillate  => $distill,
+         attribute   => $groupby,
          query_count => $times_seen,
          example     => {
             query => $sample->{arg},
             ts    => $sample->{ts} ? parse_timestamp($sample->{ts}) : undef,
          },
-      );
+      };
 
       my %metrics;
       foreach my $attrib ( @attribs ) {
@@ -7833,8 +7836,8 @@ override query_report => sub {
                next unless defined $ts && defined $ts->{$thing};
                $ts->{$thing} = parse_timestamp($ts->{$thing});
             }
-            $class{ts_min} = $ts->{min};
-            $class{ts_max} = $ts->{max};
+            $class->{ts_min} = $ts->{min};
+            $class->{ts_max} = $ts->{max};
          }
          else {
             my $type = $ea->type_for($attrib) || 'string';
@@ -7860,7 +7863,7 @@ override query_report => sub {
          }
       }
 
-      my $copy_paste;
+      my @tables;
       if ( $groupby eq 'fingerprint' ) {
          my $default_db = $sample->{db}       ? $sample->{db}
                         : $stats->{db}->{unq} ? keys %{$stats->{db}->{unq}}
@@ -7870,7 +7873,6 @@ override query_report => sub {
             default_db => $default_db,
             Quoter     => $q,
          );
-         my @tables;
          foreach my $db_tbl ( @table_names ) {
             my ( $db, $tbl ) = @$db_tbl;
             my $status
@@ -7882,9 +7884,6 @@ override query_report => sub {
                . $q->quote(grep { $_ } @$db_tbl)
                . "\\G";
             push @tables, { status => $status, create => $create };
-         }
-         if ( @tables ) {
-            $copy_paste->{tables} = \@tables;
          }
 
          if ( $item =~ m/^(?:[\(\s]*select|insert|replace)/ ) {
@@ -7899,24 +7898,22 @@ override query_report => sub {
                $sample->{arg} || '',
             );
             if ( $converted && $converted =~ m/^[\(\s]*select/i ) {
-               $copy_paste->{explain} = $converted;
+               $class->{example}->{as_select} = $converted;
             }
          }
       }
 
-      push @queries, {
-         class       => \%class,
-         attributes  => \%metrics,
-         ($copy_paste ? (copy_paste  => $copy_paste) : ()),
-      };
+      $class->{metrics} = \%metrics;
+      if ( @tables ) {
+         $class->{tables} = \@tables;
+      }
+      push @classes, $class;
    }
 
-# XXX
-#   my $data = {
-#      global  => $global_data,
-#      classes => \@queries,
-#   };
-   my $data = \@queries;
+   my $data = {
+      global  => $global_data,
+      classes => \@classes,
+   };
    my $json = $self->encode_json($data);
    $json .= "\n" unless $json =~ /\n\Z/;
    return $json;
@@ -12940,7 +12937,7 @@ sub main {
                if ( $fh ) {
                   PTDEBUG && _d('Reading', $filename);
                   PTDEBUG && _d('File size:', $filesize);
-                  push @read_files, $filename || "STDIN";
+                  push @read_files, { name => ($filename || "STDIN"), size => $filesize };
 
                   # Read the file offset for --resume.
                   if ( ($resume_file = $o->get('resume')) && $filename ) {
@@ -13418,6 +13415,10 @@ sub main {
 
             if ( $report ) {
                PTDEBUG && _d("Iteration", $args->{iter}, "stopped at",ts(time));
+
+               save_resume_offset(
+                  last_event_offset => $parsers[0]->{last_event_offset},
+               );
 
                # Get this before calling print_reports() because that sub
                # resets each ea and we may need this later for stats.
@@ -14042,7 +14043,8 @@ sub print_reports {
             files        => $args{files},
             log_type     => $o->get('type')->[0],
             variations   => $o->get('variations'),
-            group        => { map { $_=>1 } qw(rusage date hostname files header) }
+            group        => { map { $_=>1 } qw(rusage date hostname files header) },
+            resume       => $resume,
          );
       }
 
