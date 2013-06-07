@@ -7710,16 +7710,18 @@ use sigtrap 'handler', \&sig_int, 'normal-signals';
 my $exit_status = 0;
 my $oktorun     = 1;
 my @drop_trigger_sqls;
+my @triggers_not_dropped;
 
 $OUTPUT_AUTOFLUSH = 1;
 
 sub main {
-   local @ARGV        = @_;
+   local @ARGV = @_;
 
    # Reset global vars else tests will fail.
-   $exit_status       = 0;
-   $oktorun           = 1;
-   @drop_trigger_sqls = ();
+   $exit_status          = 0;
+   $oktorun              = 1;
+   @drop_trigger_sqls    = ();
+   @triggers_not_dropped = ();
 
    my %stats = (
       INSERT => 0,
@@ -8418,6 +8420,16 @@ sub main {
          print "Not dropping the new table $new_tbl->{name} because "
              . "--no-drop-new-table was specified.  To drop the new table, "
              . "execute:\n$sql\n";
+      }
+      elsif ( @triggers_not_dropped ) {
+         # https://bugs.launchpad.net/percona-toolkit/+bug/1188002
+         print "Not dropping the new table $new_tbl->{name} because "
+            . "dropping these triggers failed:\n"
+            . join("\n", map { "  $_" } @triggers_not_dropped)
+            . "\nThese triggers must be dropped before dropping "
+            . "$new_tbl->{name}, else writing to $orig_tbl->{name} will "
+            . "cause MySQL error 1146 (42S02): \"Table $new_tbl->{name} "
+            . " doesn't exist\".\n";
       }
       else {
          print "Dropping new table...\n";
@@ -10025,8 +10037,7 @@ sub drop_triggers {
    else {
       print "Dropping triggers...\n";
    }
-
-   my @not_dropped;
+ 
    foreach my $sql ( @drop_trigger_sqls ) {
       print $sql, "\n" if $o->get('print');
       if ( $o->get('execute') ) {
@@ -10044,19 +10055,19 @@ sub drop_triggers {
          };
          if ( $EVAL_ERROR ) {
             warn "Error dropping trigger: $EVAL_ERROR\n";
-            push @not_dropped, $sql;
+            push @triggers_not_dropped, $sql;
             $exit_status = 1;
          }
       }
    }
 
    if ( $o->get('execute') ) {
-      if ( !@not_dropped ) {
+      if ( !@triggers_not_dropped ) {
          print "Dropped triggers OK.\n";
       }
       else {
          warn "To try dropping the triggers again, execute:\n"
-            . join("\n", @not_dropped) . "\n";
+            . join("\n", @triggers_not_dropped) . "\n";
       }
    }
 
