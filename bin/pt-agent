@@ -5897,14 +5897,20 @@ sub run_agent {
             $daemon = $new_daemon;
          }
 
-         # Check the safeguards.      
-         my $disk_space = $safeguards->get_disk_space(
-            filesystem => $config->options->{spool},
-         );
-         my $disk_space_ok = $safeguards->check_disk_space(
-            disk_space => $disk_space,
-         );
-
+         # Check the safeguards.
+         my ($disk_space, $disk_space_ok);
+         eval {
+            $disk_space = $safeguards->get_disk_space(
+               filesystem => $config->options->{spool},
+            );
+            $disk_space_ok = $safeguards->check_disk_space(
+               disk_space => $disk_space,
+            );
+         };
+         if ( $EVAL_ERROR ) {
+            $logger->warn("Error checking disk space: $EVAL_ERROR");
+            $disk_space_ok = 1;
+         }
          if ( !$disk_space_ok ) {
             $logger->warn("Disk bytes free/percentage threshold: "
                . $safeguards->{disk_bytes_free}
