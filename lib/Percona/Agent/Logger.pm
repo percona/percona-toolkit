@@ -35,13 +35,6 @@ use Percona::WebAPI::Resource::LogEntry;
 
 Transformers->import(qw(ts));
 
-has 'level' => (
-   is       => 'rw',
-   isa      => 'Int',
-   required => 0,
-   default  => sub { return 1; },  # info
-);
-
 has 'client' => (
    is       => 'rw',
    isa      => 'Object',
@@ -117,7 +110,7 @@ sub enable_online_logging {
                     && $max_log_entries--
                     && (my $entry = $self->_message_queue->dequeue()) )
             {
-               # $entry = [ level, "message" ]
+               # $entry = [ ts, level, "message" ]
                if ( defined $entry->[0] ) {
                   push @log_entries, Percona::WebAPI::Resource::LogEntry->new(
                      entry_ts  => $entry->[0],
@@ -128,10 +121,11 @@ sub enable_online_logging {
                   );
                }
                else {
-                  # Got "stop" entry: [ undef, undef ]
+                  # Got "stop" entry: [ undef, undef, undef ]
                   $oktorun = 0;
                }
-            }
+            }  # read log entries from queue
+
             if ( scalar @log_entries ) { 
                eval {
                   $client->post(
@@ -146,10 +140,20 @@ sub enable_online_logging {
                   @log_entries = ();
                }
             }  # have log entries
+
             if ( $oktorun ) {
                sleep $self->queue_wait;
             }
-         }  # QUEUE
+         }  # QUEUE oktorun
+
+         if ( scalar @log_entries ) {
+            my $ts = ts(time, 0);  # 0=local time
+            warn "$ts WARNING Failed to send these log entries (timestamps are UTC):\n";
+            foreach my $entry ( @log_entries ) {
+               warn sprintf("%s %s %s\n", $entry->[0], level_name($entry->[1]), $entry->[2]);
+            }
+         }
+
       }  # threads::async
    );
 
@@ -169,29 +173,36 @@ sub level_number {
               : die "Invalid log level name: $name";
 }
 
+sub level_name {
+   my $number = shift;
+   die "No log level name given" unless $number;
+   my $name = $number == 1 ? 'DEBUG'
+            : $number == 2 ? 'INFO'
+            : $number == 3 ? 'WARNING'
+            : $number == 4 ? 'ERROR'
+            : $number == 5 ? 'FATAL'
+            : die "Invalid log level number: $number";
+}
+
 sub debug {
    my $self = shift;
-   return unless $self->level >= 1;
    return $self->_log('DEBUG', @_);
 }
 
 sub info {
    my $self = shift;
-   return unless $self->level >= 2;
    return $self->_log('INFO', @_);
 }
 
-sub warn {
+sub warning {
    my $self = shift;
    $self->_set_exit_status();
-   return unless $self->level >= 3;
    return $self->_log('WARNING', @_);
 }
 
 sub error {
    my $self = shift;
    $self->_set_exit_status();
-   return unless $self->level >= 4;
    return $self->_log('ERROR', @_);
 }
 
@@ -213,36 +224,34 @@ sub _set_exit_status {
 
 sub _log {
    my ($self, $level, $msg) = @_;
+
    chomp($msg);
    my $ts = ts(time, 1);  # 1=UTC
    my $level_number = level_number($level);
-   if ( $level_number >= 3 ) {  # warning
-      print STDERR "$ts $level $msg\n";
+   
+   my @event :shared = ($ts, $level_number, $msg);
+   $self->_message_queue->enqueue(\@event);
+
+   if ( !$self->online_logging ) {
+      my $ts = ts(time, 0);  # 0=local time
+      if ( $level_number >= 3 ) {  # warning
+         print STDERR "$ts $level $msg\n";
+      }
+      else {
+         print "$ts $level $msg\n";
+      }
    }
-   else {
-      print "$ts $level $msg\n";
-   }
-   if ( $self->online_logging ) {
-      my @event :shared = ($ts, $level_number, $msg);
-      $self->_message_queue->enqueue(\@event);
-   }
+
    return;
 }
 
-sub stop_online_logging {
+sub DESTROY {
    my $self = shift;
    if ( $self->_thread && $self->_thread->is_running() ) {
       my @stop :shared = (undef, undef);
       $self->_message_queue->enqueue(\@stop);  # stop the thread
       $self->_thread->join();
    }
-   $self->online_logging(0);
-   return;
-}
-
-sub DESTROY {
-   my $self = shift;
-   $self->stop_online_logging();
    return;
 }
 
