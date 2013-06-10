@@ -6759,6 +6759,8 @@ sub run_service {
    my $log_link = $agent->links->{log};
    $logger->info("Starting online logging.  No more log entries will be printed here.  "
       . "Agent logs are accessible through the web interface.");
+   $logger->service($service);
+   $logger->data_ts($prefix);
    $logger->start_online_logging(
       client   => $logger_client,
       log_link => $log_link,
@@ -7179,6 +7181,7 @@ sub send_data {
    my $log_link = $agent->links->{log};
    $logger->info("Starting online logging.  No more log entries will be printed here.  "
       . "Agent logs are accessible through the web interface.");
+   $logger->service($service);
    $logger->start_online_logging(
       client   => $logger_client,
       log_link => $log_link,
@@ -7204,7 +7207,10 @@ sub send_data {
    DATA_FILE:
    foreach my $data_file ( glob "$service_dir/*.data" ) {
       (my $meta_file = $data_file) =~ s/\.data/.meta/;
-
+      my ($data_ts) = $data_file =~ m/\/(\d+)\.\w+/;
+      if ( $data_ts ) {
+         $logger->data_ts($data_ts);
+      }
       eval {
          # Send the file as-is.  The --run-service process should
          # have written the data in a format that's ready to send.
