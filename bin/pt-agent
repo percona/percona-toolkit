@@ -1493,6 +1493,12 @@ package Percona::WebAPI::Resource::LogEntry;
 
 use Lmo;
 
+has 'pid' => (
+   is       => 'ro',
+   isa      => 'Int',
+   required => 1,
+);
+
 has 'service' => (
    is       => 'ro',
    isa      => 'Str',
@@ -4835,15 +4841,17 @@ has 'pid' => (
 );
 
 has 'service' => (
-   is       => 'ro',
-   isa      => 'Str',
+   is       => 'rw',
+   isa      => 'Maybe[Str]',
    required => 0,
+   default  => sub { return; },
 );
 
 has 'data_ts' => (
-   is       => 'ro',
-   isa      => 'Int',
+   is       => 'rw',
+   isa      => 'Maybe[Int]',
    required => 0,
+   default  => sub { return; },
 );
 
 has 'online_logging' => (

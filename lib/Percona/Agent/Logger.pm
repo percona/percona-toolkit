@@ -46,15 +46,17 @@ has 'pid' => (
 );
 
 has 'service' => (
-   is       => 'ro',
-   isa      => 'Str',
+   is       => 'rw',
+   isa      => 'Maybe[Str]',
    required => 0,
+   default  => sub { return; },
 );
 
 has 'data_ts' => (
-   is       => 'ro',
-   isa      => 'Int',
+   is       => 'rw',
+   isa      => 'Maybe[Int]',
    required => 0,
+   default  => sub { return; },
 );
 
 has 'online_logging' => (
