@@ -5345,6 +5345,7 @@ sub main {
    # ########################################################################
    if ( my $service = $o->get('run-service') ) {
       run_service(
+         api_key   => $api_key,
          service   => $service,
          lib_dir   => $o->get('lib'),
          spool_dir => $o->get('spool'),
@@ -6549,14 +6550,17 @@ sub make_new_crontab {
 sub run_services {
    my (%args) = @_;
    have_required_args(\%args, qw(
+      api_key
       action
       services
       lib_dir
    )) or die;
+   my $api_key  = $args{api_key};
    my $action   = $args{action};
    my $services = $args{services};
    my $lib_dir  = $args{lib_dir};
 
+   # Optional args
    # Optional args
    my $bin_dir  = defined $args{bin_dir} ? $args{bin_dir}
                 :                          "$FindBin::Bin/";
@@ -6677,17 +6681,21 @@ sub run_service {
    my (%args) = @_;
 
    have_required_args(\%args, qw(
+      api_key
       service
       lib_dir
       spool_dir
       Cxn
    )) or die;
+   my $api_key   = $args{api_key};
    my $service   = $args{service};
    my $lib_dir   = $args{lib_dir};
    my $spool_dir = $args{spool_dir};
    my $cxn       = $args{Cxn};
 
    # Optional args
+   my $agent  = $args{agent};                # for testing
+   my $client = $args{client};               # for testing
    my $json   = $args{json};                 # for testing
    my $prefix = $args{prefix} || int(time);  # for testing
 
@@ -6707,6 +6715,54 @@ sub run_service {
    $daemon->run();
 
    $logger->info("Running $service service");
+
+   # Connect to Percona, get entry links.
+   my $entry_links;
+   my $logger_client;
+   if ( !$client || !$entry_links ) {
+      ($client, $entry_links, $logger_client) = get_api_client(
+         api_key  => $api_key,
+         tries    => 1,
+         interval => sub { return; },
+      );
+      if ( !$client || !$entry_links ) {
+         $logger->warning("Failed to connect to Percona Web API");
+      }
+   }
+
+   # Load and update the local (i.e. existing) agent, or create a new one.
+   if ( !$agent ) {
+      # If this fails, there's no local agent, but that shouldn't happen
+      # because a local agent originally scheduled this --send-data process.
+      # Maybe that agent was deleted from the system but the crontab entry
+      # was not and was left running.
+      $agent = load_local_agent (
+         lib_dir => $lib_dir,
+      );
+      if ( !$agent ) {
+         die "No agent exists ($lib_dir/agent) and --agent-uuid was not "
+            . "specified.  This error may be caused by an old or invalid "
+            . "crontab entry for 'pt-agent --run-service $service'.  Try "
+            . "reconfiguring the agent at https://pws.percona.com to "
+            . "reinitialize the crontab entries for all services.\n";
+      }
+   }
+
+   $agent = eval {
+      $client->get(
+         link => $entry_links->{agents} . '/' . $agent->uuid,
+      );
+   };
+   if ( $EVAL_ERROR ) {
+      $logger->fatal("Failed to get the agent: $EVAL_ERROR");
+   }
+   my $log_link = $agent->links->{log};
+   $logger->info("Starting online logging.  No more log entries will be printed here.  "
+      . "Agent logs are accessible through the web interface.");
+   $logger->start_online_logging(
+      client   => $logger_client,
+      log_link => $log_link,
+   );
 
    # XXX
    # Load the Service object from local service JSON file.
@@ -7083,14 +7139,15 @@ sub send_data {
    # Connect to Percona, get entry links.
    my $entry_links;
    my $logger_client;
-   if ( !$client ) {
+   if ( !$client || !$entry_links ) {
       ($client, $entry_links, $logger_client) = get_api_client(
          api_key  => $api_key,
          tries    => 3,
          interval => sub { sleep 10 },
       );
-      die "Failed to connect to Percona Web API\n"
-         unless $client;
+      if ( !$client || !$entry_links ) {
+         $logger->fatal("Failed to connect to Percona Web API")
+      }
    }
 
    # Load and update the local (i.e. existing) agent, or create a new one.
