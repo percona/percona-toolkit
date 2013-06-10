@@ -22,6 +22,12 @@ package Percona::WebAPI::Resource::LogEntry;
 
 use Lmo;
 
+has 'pid' => (
+   is       => 'ro',
+   isa      => 'Int',
+   required => 1,
+);
+
 has 'service' => (
    is       => 'ro',
    isa      => 'Str',
