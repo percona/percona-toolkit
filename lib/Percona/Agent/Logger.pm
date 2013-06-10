@@ -33,29 +33,16 @@ use Percona::WebAPI::Resource::LogEntry;
 
 Transformers->import(qw(ts));
 
-has 'client' => (
-   is       => 'rw',
-   isa      => 'Object',
-   required => 0,
-);
-
-has 'log_link' => (
-   is       => 'rw',
-   isa      => 'Str',
-   required => 0,
-);
-
 has 'exit_status' => (
    is       => 'rw',
    isa      => 'ScalarRef',
    required => 1,
 );
 
-has 'queue_wait' => (
-   is       => 'rw',
+has 'pid' => (
+   is       => 'ro',
    isa      => 'Int',
-   required => 0,
-   default  => sub { return 3; },
+   required => 1,
 );
 
 has 'service' => (
@@ -70,18 +57,18 @@ has 'data_ts' => (
    required => 0,
 );
 
-has '_local_q' => (
-   is       => 'rw',
-   isa      => 'ArrayRef',
-   required => 0,
-   default  => sub { return []; },
-);
-
 has 'online_logging' => (
    is       => 'rw',
    isa      => 'Bool',
    required => 0,
    default  => sub { return 0 },
+);
+
+has '_buffer' => (
+   is       => 'rw',
+   isa      => 'ArrayRef',
+   required => 0,
+   default  => sub { return []; },
 );
 
 has '_pipe_write' => (
@@ -90,7 +77,7 @@ has '_pipe_write' => (
    required => 0,
 );
 
-sub read_timeout {
+sub read_stdin {
    my ( $t ) = @_;
 
    # Set the SIGALRM handler.
@@ -103,7 +90,6 @@ sub read_timeout {
    eval {
       alarm $t;
       while(defined(my $line = <STDIN>)) {
-         chomp $line;
          push @lines, $line;
       }
       push @lines, undef;  # stop
@@ -117,15 +103,16 @@ sub read_timeout {
    return \@lines;
 }
 
-
-sub enable_online_logging {
+sub start_online_logging {
    my ($self, %args) = @_;
-   my $client   = $args{client};
-   my $log_link = $args{log_link};
+   my $client       = $args{client};
+   my $log_link     = $args{log_link};
+   my $read_timeout = $args{read_timeout} || 3;
 
    my $pid = open(my $pipe_write, "|-");
 
    if ($pid) {
+      # parent
       select $pipe_write;
       $OUTPUT_AUTOFLUSH = 1;
       $self->_pipe_write($pipe_write);
@@ -137,7 +124,7 @@ sub enable_online_logging {
       my $oktorun = 1;
       QUEUE:
       while ($oktorun) {
-         my $lines = read_timeout($self->queue_wait);
+         my $lines = read_stdin($read_timeout);
          LINE:
          foreach my $line ( @$lines ) {
             if ( !defined $line ) {
@@ -147,8 +134,10 @@ sub enable_online_logging {
 
             # $line = ts,level,message
             my ($ts, $level, $msg) = $line =~ m/^([^,]+),([^,]+),(.+)/s;
+            chomp $msg;
 
             push @log_entries, Percona::WebAPI::Resource::LogEntry->new(
+               pid       => $self->pid,
                entry_ts  => $ts,
                log_level => $level,
                message   => $msg,
@@ -171,10 +160,6 @@ sub enable_online_logging {
                @log_entries = ();
             }
          }  # have log entries
-
-         if ( $oktorun ) {
-            sleep $self->queue_wait;
-         }
       }  # QUEUE oktorun
 
       if ( scalar @log_entries ) {
@@ -258,14 +243,14 @@ sub _log {
    my $level_number = level_number($level);
 
    if ( $self->online_logging ) {
-      foreach my $log_entry ( shift @{$self->_local_q} ) {
+      foreach my $log_entry ( shift @{$self->_buffer} ) {
          last unless defined $log_entry;
          $self->_queue_log_entry(@$log_entry);
       }
       $self->_queue_log_entry($ts, $level_number, $msg);
    }
    else {
-      push @{$self->_local_q}, [$ts, $level_number, $msg];
+      push @{$self->_buffer}, [$ts, $level_number, $msg];
 
       my $ts = ts(time, 0);  # 0=local time
       if ( $level_number >= 3 ) {  # warning
@@ -295,11 +280,11 @@ sub stop_online_logging {
    return;
 }
 
-#sub DESTROY {
-#   my $self = shift;
-#   $self->stop_online_logging();
-#   return;
-#}
+sub DESTROY {
+   my $self = shift;
+   $self->stop_online_logging();
+   return;
+}
 
 sub _d {
    my ($package, undef, $line) = caller 0;
