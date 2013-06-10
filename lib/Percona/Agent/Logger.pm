@@ -282,6 +282,10 @@ sub stop_online_logging {
 
 sub DESTROY {
    my $self = shift;
+   foreach my $log_entry ( shift @{$self->_buffer} ) {
+      last unless defined $log_entry;
+      $self->_queue_log_entry(@$log_entry);
+   }
    $self->stop_online_logging();
    return;
 }
