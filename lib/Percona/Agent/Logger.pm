@@ -86,20 +86,21 @@ sub read_stdin {
       POSIX::SigAction->new(sub { die 'read timeout'; }),
    ) or die "Error setting SIGALRM handler: $OS_ERROR";
 
+   my $timeout = 0;
    my @lines;
    eval {
       alarm $t;
       while(defined(my $line = <STDIN>)) {
          push @lines, $line;
       }
-      push @lines, undef;  # stop
       alarm 0;
    };
    if ( $EVAL_ERROR ) {
       PTDEBUG && _d('Read error:', $EVAL_ERROR);
       die $EVAL_ERROR unless $EVAL_ERROR =~ m/read timeout/;
+      $timeout = 1;
    }
-
+   return unless scalar @lines || $timeout;
    return \@lines;
 }
 
@@ -125,13 +126,9 @@ sub start_online_logging {
       QUEUE:
       while ($oktorun) {
          my $lines = read_stdin($read_timeout);
+         last QUEUE unless $lines;
          LINE:
          foreach my $line ( @$lines ) {
-            if ( !defined $line ) {
-               $oktorun = 0;
-               last LINE;
-            }
-
             # $line = ts,level,message
             my ($ts, $level, $msg) = $line =~ m/^([^,]+),([^,]+),(.+)/s;
             chomp $msg;
@@ -243,8 +240,7 @@ sub _log {
    my $level_number = level_number($level);
 
    if ( $self->online_logging ) {
-      foreach my $log_entry ( shift @{$self->_buffer} ) {
-         last unless defined $log_entry;
+      while ( defined(my $log_entry = shift @{$self->_buffer}) ) {
          $self->_queue_log_entry(@$log_entry);
       }
       $self->_queue_log_entry($ts, $level_number, $msg);
@@ -268,25 +264,6 @@ sub _queue_log_entry {
    my ($self, $ts, $log_level, $msg) = @_;
    $msg .= "\n" unless $msg =~ m/\n\Z/;
    print "$ts,$log_level,$msg";
-   return;
-}
-
-sub stop_online_logging {
-   my $self = shift;
-   if ( $self->_pipe_write ) {
-      close $self->_pipe_write;
-   }
-   $self->online_logging(0);
-   return;
-}
-
-sub DESTROY {
-   my $self = shift;
-   foreach my $log_entry ( shift @{$self->_buffer} ) {
-      last unless defined $log_entry;
-      $self->_queue_log_entry(@$log_entry);
-   }
-   $self->stop_online_logging();
    return;
 }
 
