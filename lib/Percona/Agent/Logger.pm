@@ -276,8 +276,8 @@ sub _log {
 }
 
 sub _queue_log_entry {
-   my ($self, $ts, $log_level, $msg) = @_;
-   print "$ts,$log_level,$msg\n";
+   my ($self, $ts, $log_level, $n_lines, $msg) = @_;
+   print "$ts,$log_level,$n_lines,$msg\n";
    return;
 }
 
