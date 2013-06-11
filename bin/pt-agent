@@ -4914,6 +4914,9 @@ sub start_online_logging {
    my $read_timeout = $args{read_timeout} || 3;
 
    return unless $self->online_logging;
+   
+   $self->info("Starting online logging.  No more log entries will be printed here.  "
+      . "Agent logs are accessible through the web interface.");
 
    my $pid = open(my $pipe_write, "|-");
 
@@ -5372,14 +5375,19 @@ sub main {
    # This runs locally and offline, doesn't need a web API connection.
    # ########################################################################
    if ( my $service = $o->get('run-service') ) {
-      run_service(
-         api_key   => $api_key,
-         service   => $service,
-         lib_dir   => $o->get('lib'),
-         spool_dir => $o->get('spool'),
-         Cxn       => $cxn,
-      );
-      $logger->info("Done running $service, exit $exit_status");
+      eval {
+         run_service(
+            api_key   => $api_key,
+            service   => $service,
+            lib_dir   => $o->get('lib'),
+            spool_dir => $o->get('spool'),
+            Cxn       => $cxn,
+         );
+         $logger->info("Done running $service, exit $exit_status");
+      };
+      if ( $EVAL_ERROR ) {
+         $logger->error("Error running pt-agent --service $service: $EVAL_ERROR");
+      }
       return $exit_status;
    }
 
@@ -5387,13 +5395,19 @@ sub main {
    # --send-data
    # ########################################################################
    if ( my $service = $o->get('send-data') ) {
-      send_data(
-         api_key   => $api_key,
-         service   => $service,
-         lib_dir   => $o->get('lib'),
-         spool_dir => $o->get('spool'),
-      );
-      $logger->info("Done sending data for $service, exit $exit_status");
+      eval {
+         send_data(
+            api_key     => $api_key,
+            service     => $service,
+            lib_dir     => $o->get('lib'),
+            spool_dir   => $o->get('spool'),
+            interactive => $o->get('interactive'),
+         );
+         $logger->info("Done sending data for $service, exit $exit_status");
+      };
+      if ( $EVAL_ERROR ) {
+         $logger->error("Error running pt-agent --send-data $service: $EVAL_ERROR");
+      }
       return $exit_status;
    }
 
@@ -5852,8 +5866,6 @@ These values can change if a different configuration is received.
    # simple info("Hello world!") to STDOUT won't block if the API isn't
    # responding. -- Both client and log_link are required to enable this.
    if ( $agent->links->{log} && $logger_client ) {
-      $logger->info("Starting online logging.  No more log entries will be printed here.  "
-         . "Agent logs are accessible through the web interface.");
       $logger->start_online_logging(
          client   => $logger_client,
          log_link => $agent->links->{log},
@@ -6783,9 +6795,7 @@ sub run_service {
       $logger->fatal("Failed to get the agent: $EVAL_ERROR");
    }
    my $log_link = $agent->links->{log};
-   $logger->info("Starting online logging.  No more log entries will be printed here.  "
-      . "Agent logs are accessible through the web interface.");
-   $logger->service($service);
+   $logger->service("$service running");
    $logger->data_ts($prefix);
    $logger->start_online_logging(
       client   => $logger_client,
@@ -6796,7 +6806,7 @@ sub run_service {
    # Load the Service object from local service JSON file.
    # $service changes from a string scalar to a Service object.
    $service = load_service(
-      service => "$service running",
+      service => $service,
       lib_dir => $lib_dir,
    );
 
@@ -6998,11 +7008,17 @@ sub load_service {
 
    my $service_file = "$lib_dir/services/$service";
    if ( ! -f $service_file ) {
-      die "$service_file does not exist.\n";
+      $logger->fatal("Cannot load $service: $service_file does not exist.");
    }
 
-   my $service_hash = decode_json(slurp($service_file));
-   my $service_obj  = Percona::WebAPI::Resource::Service->new(%$service_hash);
+   my $service_obj;
+   eval {
+      my $service_hash = decode_json(slurp($service_file));
+      $service_obj  = Percona::WebAPI::Resource::Service->new(%$service_hash);
+   };
+   if ( $EVAL_ERROR ) {
+      $logger->fatal("Cannot load $service: $EVAL_ERROR");
+   }
 
    return $service_obj;
 }
@@ -7142,9 +7158,12 @@ sub send_data {
    my $spool_dir = $args{spool_dir};
 
    # Optional args
-   my $agent   = $args{agent};  # for testing
-   my $client  = $args{client}; # for testing
-   my $json    = $args{json};   # for testing
+   my $interactive = $args{interactive};
+   my $agent       = $args{agent};  # for testing
+   my $client      = $args{client}; # for testing
+   my $json        = $args{json};   # for testing
+
+   $OUTPUT_AUTOFLUSH = 1 if $interactive;
 
    # Can't do anything with the lib dir.  Since we haven't started
    # logging yet, cron should capture this error and email the user.
@@ -7158,7 +7177,7 @@ sub send_data {
       daemonize      => 0,  # no need: we're running from cron
       pid_file       => "$lib_dir/pids/$service.send",
       log_file       => "$lib_dir/logs/$service.send",
-      force_log_file => 1,
+      force_log_file => $interactive ? 0 : 1,
    );
    $daemon->run();
 
@@ -7205,9 +7224,7 @@ sub send_data {
       $logger->fatal("Failed to get the agent: $EVAL_ERROR");
    }
    my $log_link = $agent->links->{log};
-   $logger->info("Starting online logging.  No more log entries will be printed here.  "
-      . "Agent logs are accessible through the web interface.");
-   $logger->service($service);
+   $logger->service("$service sending");
    $logger->start_online_logging(
       client   => $logger_client,
       log_link => $log_link,
@@ -7217,7 +7234,7 @@ sub send_data {
    # Load the Service object from local service JSON file.
    # $service changes from a string scalar to a Service object.
    $service = load_service(
-      service => "$service sending",
+      service => $service,
       lib_dir => $lib_dir,
    );
 
@@ -7230,12 +7247,30 @@ sub send_data {
    # Only iterator over data files because run_service() writes
    # them last to avoid a race condition with us.  See the code
    # comment about writing the .meta file first in run_service().
+   my @data_files = glob "$service_dir/*.data";
+   $logger->info('Sending ' . scalar @data_files . ' data files');
    DATA_FILE:
-   foreach my $data_file ( glob "$service_dir/*.data" ) {
+   foreach my $data_file ( @data_files ) {
+      if ( $interactive ) {
+         my $key;
+         PROMPT:
+         while ( !$key ) {
+            print "Send $data_file [Ynq]: ";
+            $key = <STDIN>;
+            last DATA_FILE if $key =~ m/q/i;
+            next DATA_FILE if $key =~ m/n/i;
+            last PROMPT if $key =~ m/y/i;
+            warn "Invalid response: $key\n";
+         }
+      }
+
       (my $meta_file = $data_file) =~ s/\.data/.meta/;
       my ($data_ts) = $data_file =~ m/\/(\d+)\.\w+/;
       if ( $data_ts ) {
          $logger->data_ts($data_ts);
+      }
+      else {
+         $logger->data_ts(undef);
       }
       eval {
          # Send the file as-is.  The --run-service process should
@@ -8457,6 +8492,10 @@ MySQL host.
 =item --install
 
 Install pt-agent as root.
+
+=item --interactive
+
+Run in interactive mode.
 
 =item --lib
 
