@@ -134,7 +134,7 @@ sub start_online_logging {
             # $line = ts,level,n_lines,message
             my ($ts, $level, $n_lines, $msg) = $line =~ m/^([^,]+),([^,]+),([^,]+),(.+)/s;
             if ( !$ts || !$level || !$n_lines || !$msg ) {
-               warn "Invalid log entry: $line\n";
+               warn "$line\n";
                next LINE;
             }
             if ( $n_lines > 1 ) {

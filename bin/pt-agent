@@ -4925,7 +4925,7 @@ sub start_online_logging {
          while ( defined(my $line = shift @$lines) ) {
             my ($ts, $level, $n_lines, $msg) = $line =~ m/^([^,]+),([^,]+),([^,]+),(.+)/s;
             if ( !$ts || !$level || !$n_lines || !$msg ) {
-               warn "Invalid log entry: $line\n";
+               warn "$line\n";
                next LINE;
             }
             if ( $n_lines > 1 ) {
@@ -6570,12 +6570,10 @@ sub make_new_crontab {
 sub run_services {
    my (%args) = @_;
    have_required_args(\%args, qw(
-      api_key
       action
       services
       lib_dir
    )) or die;
-   my $api_key  = $args{api_key};
    my $action   = $args{action};
    my $services = $args{services};
    my $lib_dir  = $args{lib_dir};
