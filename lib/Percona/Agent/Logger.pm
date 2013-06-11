@@ -132,7 +132,7 @@ sub start_online_logging {
          LINE:
          while ( defined(my $line = shift @$lines) ) {
             # $line = ts,level,n_lines,message
-            my ($ts, $level, $n_lines, $msg) = $line =~ m/^([^,]+),([^,]+),(.+)/s;
+            my ($ts, $level, $n_lines, $msg) = $line =~ m/^([^,]+),([^,]+),([^,]+),(.+)/s;
             if ( !$ts || !$level || !$n_lines || !$msg ) {
                warn "Invalid log entry: $line\n";
                next LINE;
