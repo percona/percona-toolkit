@@ -60,6 +60,13 @@ has 'data_ts' => (
 );
 
 has 'online_logging' => (
+   is       => 'ro',
+   isa      => 'Bool',
+   required => 0,
+   default  => sub { return 1 },
+);
+
+has 'online_logging_enabled' => (
    is       => 'rw',
    isa      => 'Bool',
    required => 0,
@@ -112,6 +119,8 @@ sub start_online_logging {
    my $log_link     = $args{log_link};
    my $read_timeout = $args{read_timeout} || 3;
 
+   return unless $self->online_logging;
+
    my $pid = open(my $pipe_write, "|-");
 
    if ($pid) {
@@ -119,7 +128,7 @@ sub start_online_logging {
       select $pipe_write;
       $OUTPUT_AUTOFLUSH = 1;
       $self->_pipe_write($pipe_write);
-      $self->online_logging(1);
+      $self->online_logging_enabled(1);
    }
    else {
       # child
@@ -254,16 +263,17 @@ sub _log {
    my $n_lines = 1;
    $n_lines++ while $msg =~ m/\n/g;
 
-   if ( $self->online_logging ) {
+   if ( $self->online_logging_enabled ) {
       while ( defined(my $log_entry = shift @{$self->_buffer}) ) {
          $self->_queue_log_entry(@$log_entry);
       }
       $self->_queue_log_entry($ts, $level_number, $n_lines, $msg);
    }
    else {
-      push @{$self->_buffer}, [$ts, $level_number, $n_lines, $msg];
+      if ( $self->online_logging ) {
+         push @{$self->_buffer}, [$ts, $level_number, $n_lines, $msg];
+      }
 
-      my $ts = ts(time, 0);  # 0=local time
       if ( $level_number >= 3 ) {  # warning
          print STDERR "$ts $level $msg\n";
       }
