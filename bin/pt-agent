@@ -6788,7 +6788,7 @@ sub run_service {
    # Load the Service object from local service JSON file.
    # $service changes from a string scalar to a Service object.
    $service = load_service(
-      service => $service,
+      service => "$service running",
       lib_dir => $lib_dir,
    );
 
@@ -7209,7 +7209,7 @@ sub send_data {
    # Load the Service object from local service JSON file.
    # $service changes from a string scalar to a Service object.
    $service = load_service(
-      service => $service,
+      service => "$service sending",
       lib_dir => $lib_dir,
    );
 
@@ -7246,8 +7246,8 @@ sub send_data {
             my $error_msg;
             my $content = $client->response->content;
             if ( $content ) {
-               my $error_hashref = decode_json($content);
-               $error_msg = $error_hashref->{error};
+               my $errors = decode_json($content);
+               $error_msg = join("\n", @$errors);
             }
             $logger->warning('Error ' . $e->status . " sending $data_file: "
                . ($error_msg || '(No error message from server)'));
