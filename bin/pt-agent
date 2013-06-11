@@ -5282,7 +5282,7 @@ sub main {
    $logger = Percona::Agent::Logger->new(
       exit_status    => \$exit_status,
       pid            => $PID,
-      online_logging => $o->get('log-api'),
+      online_logging => $o->get('log-api') ? 1 : 0,
    );
 
    # ########################################################################
