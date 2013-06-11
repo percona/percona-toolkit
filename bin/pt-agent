@@ -5276,12 +5276,10 @@ sub main {
    # ########################################################################
    # Make a logger, not online yet.
    # ########################################################################
-   my $log_level = Percona::Agent::Logger::level_number(
-      uc($o->get('log-level')),
-   );
    $logger = Percona::Agent::Logger->new(
-      exit_status => \$exit_status,
-      pid         => $PID,
+      exit_status    => \$exit_status,
+      pid            => $PID,
+      online_logging => $o->get('log-api'),
    );
 
    # ########################################################################
@@ -8474,12 +8472,11 @@ type: string; default: /var/log/pt-agent.log
 
 Log all output to this file when daemonized.
 
-=item --log-level
+=item --[no]log-api
 
-type: string; default: info
+default: yes
 
-L<"--log"> messages at or above this severity.  Valid log levels are:
-C<debug>, C<info>, C<warn>, C<error>, and C<fatal>.
+Log everything through the Percona Web API.
 
 =item --password
 
