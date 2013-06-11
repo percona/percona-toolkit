@@ -130,10 +130,19 @@ sub start_online_logging {
          my $lines = read_stdin($read_timeout);
          last QUEUE unless $lines;
          LINE:
-         foreach my $line ( @$lines ) {
-            # $line = ts,level,message
-            my ($ts, $level, $msg) = $line =~ m/^([^,]+),([^,]+),(.+)/s;
-            chomp $msg;
+         while ( defined(my $line = shift @$lines) ) {
+            # $line = ts,level,n_lines,message
+            my ($ts, $level, $n_lines, $msg) = $line =~ m/^([^,]+),([^,]+),(.+)/s;
+            if ( !$ts || !$level || !$n_lines || !$msg ) {
+               warn "Invalid log entry: $line\n";
+               next LINE;
+            }
+            if ( $n_lines > 1 ) {
+               $n_lines--;  # first line
+               for ( 1..$n_lines ) {
+                  $msg .= shift @$lines;
+               }
+            }
 
             push @log_entries, Percona::WebAPI::Resource::LogEntry->new(
                pid       => $self->pid,
@@ -159,7 +168,7 @@ sub start_online_logging {
                @log_entries = ();
             }
          }  # have log entries
-      }  # QUEUE oktorun
+      }  # LINE
 
       if ( scalar @log_entries ) {
          my $ts = ts(time, 0);  # 0=local time
@@ -241,14 +250,18 @@ sub _log {
    my $ts = ts(time, 1);  # 1=UTC
    my $level_number = level_number($level);
 
+   chomp($msg);
+   my $n_lines = 1;
+   $n_lines++ while $msg =~ m/\n/g;
+
    if ( $self->online_logging ) {
       while ( defined(my $log_entry = shift @{$self->_buffer}) ) {
          $self->_queue_log_entry(@$log_entry);
       }
-      $self->_queue_log_entry($ts, $level_number, $msg);
+      $self->_queue_log_entry($ts, $level_number, $n_lines, $msg);
    }
    else {
-      push @{$self->_buffer}, [$ts, $level_number, $msg];
+      push @{$self->_buffer}, [$ts, $level_number, $n_lines, $msg];
 
       my $ts = ts(time, 0);  # 0=local time
       if ( $level_number >= 3 ) {  # warning
@@ -264,8 +277,7 @@ sub _log {
 
 sub _queue_log_entry {
    my ($self, $ts, $log_level, $msg) = @_;
-   $msg .= "\n" unless $msg =~ m/\n\Z/;
-   print "$ts,$log_level,$msg";
+   print "$ts,$log_level,$msg\n";
    return;
 }
 
