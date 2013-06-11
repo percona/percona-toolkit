@@ -6737,6 +6737,8 @@ sub run_service {
    my $json   = $args{json};                 # for testing
    my $prefix = $args{prefix} || int(time);  # for testing
 
+   my $start_time = time;
+
    # Can't do anything with the lib dir.  Since we haven't started
    # logging yet, cron should capture this error and email the user.
    init_lib_dir(
@@ -6967,6 +6969,7 @@ sub run_service {
          metadata  => $metadata,
          stage_dir => $tmp_dir,
       );
+      $metadata->{run_time} = sprintf('%.6f', time - $start_time);
       (my $meta_file = $data_file) =~ s/\.data/\.meta/;
       write_to_file(
          data => as_json($metadata, json => $json),
