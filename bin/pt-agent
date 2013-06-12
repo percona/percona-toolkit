@@ -8192,9 +8192,8 @@ EOL
       my ($name, $id) = VersionCheck::get_instance_id(
          { dbh => $cxn->dbh, dsn => $cxn->dsn },
       );
-      push @$instances, [
-         { name => $name, id => $id, dbh => $cxn->dbh, dsn => $cxn->dsn },
-      ];
+      push @$instances,
+         { name => $name, id => $id, dbh => $cxn->dbh, dsn => $cxn->dsn };
    }
 
    my $versions = VersionCheck::get_versions(
