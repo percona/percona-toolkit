@@ -13739,12 +13739,7 @@ sub main {
       }
    } # sample
 
-# XXX
-#   if ( $o->get('output') =~ /slowlog/i ) {
-my $utc_ts = ts(time, 1);
-$utc_ts =~ s/:/_/g;
-my $events_file = "/tmp/slow.log-$utc_ts";
-open my $events_fh, '>', $events_file or die "Cannot open $events_file: $OS_ERROR";
+   if ( $o->get('output') =~ /slowlog/i ) {
       my $w = new SlowLogWriter();
       $pipeline->add(
          name    => '--output slowlog',
@@ -13752,11 +13747,11 @@ open my $events_fh, '>', $events_file or die "Cannot open $events_file: $OS_ERRO
             my ( $args ) = @_;
             my $event = $args->{event};
             PTDEBUG && _d('callback: --output slowlog');
-            $w->write($events_fh, $event);
+            $w->write(*STDOUT, $event);
             return $args;
          },
       );
-#   } # print
+   } # print
 
    # Finally, add aggregator obj for each groupby attrib to the callbacks.
    # These aggregating objs should be the last pipeline processes.
