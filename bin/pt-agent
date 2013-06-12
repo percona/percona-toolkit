@@ -7258,8 +7258,8 @@ sub send_data {
          my $key;
          PROMPT:
          while ( !$key ) {
-            print `ls -l $data_file`;
-            print "Send $data_file [Ynaq]: ";
+            print "\n", `ls -l $data_file`;
+            print "Send [Ynaq]: ";
             $key = <STDIN>;
             chomp($key);
             $key = lc($key);
