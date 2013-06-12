@@ -7294,17 +7294,7 @@ sub send_data {
       };
       if ( my $e = $EVAL_ERROR ) {
          if (blessed($e) && $e->isa('Percona::WebAPI::Exception::Request')) {
-            my $error_msg;
-            my $content = $client->response->content;
-            if ( $content ) {
-               my $errors = eval { decode_json($content); };
-               if ( $EVAL_ERROR ) {
-                  $error_msg = $content;
-               }
-               else {
-                  $error_msg = join("\n", ref($errors) eq 'ARRAY' ? @$errors : [$errors]);
-               }
-            }
+            my $error_msg = $client->response->content;
             $logger->warning('Error ' . $e->status . " sending $data_file: "
                . ($error_msg || '(No error message from server)'));
          }
