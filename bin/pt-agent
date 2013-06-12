@@ -7292,8 +7292,13 @@ sub send_data {
             my $error_msg;
             my $content = $client->response->content;
             if ( $content ) {
-               my $errors = decode_json($content);
-               $error_msg = join("\n", @$errors);
+               my $errors = eval { decode_json($content); };
+               if ( $EVAL_ERROR ) {
+                  $error_msg = $content;
+               }
+               else {
+                  $error_msg = join("\n", ref($errors) eq 'ARRAY' ? @$errors : [$errors]);
+               }
             }
             $logger->warning('Error ' . $e->status . " sending $data_file: "
                . ($error_msg || '(No error message from server)'));
