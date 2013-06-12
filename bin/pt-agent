@@ -7258,11 +7258,16 @@ sub send_data {
          my $key;
          PROMPT:
          while ( !$key ) {
-            print "Send $data_file [Ynq]: ";
-            $key = <STDIN>;
-            last DATA_FILE if $key =~ m/q/i;
-            next DATA_FILE if $key =~ m/n/i;
-            last PROMPT if $key =~ m/y/i;
+            print "Send $data_file [Ynaq]: ";
+            $key = lc(<STDIN>);
+            last DATA_FILE if $key eq 'q'; 
+            next DATA_FILE if $key eq 'n';
+            last PROMPT    if $key eq 'y';
+            if ( $key eq 'a' ) {
+               print "Sending all remaining files...\n";
+               $interactive = 0;
+               last PROMPT;
+            }
             warn "Invalid response: $key\n";
          }
       }
