@@ -8502,7 +8502,7 @@ Install pt-agent as root.
 
 =item --interactive
 
-Run in interactive mode.
+Run in interactive mode (disables L<"--[no]log-api">).
 
 =item --lib
 
