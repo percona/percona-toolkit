@@ -7258,6 +7258,7 @@ sub send_data {
          my $key;
          PROMPT:
          while ( !$key ) {
+            print `ls -l $data_file`;
             print "Send $data_file [Ynaq]: ";
             $key = lc(<STDIN>);
             last DATA_FILE if $key eq 'q'; 
