@@ -7261,7 +7261,7 @@ sub send_data {
             print `ls -l $data_file`;
             print "Send $data_file [Ynaq]: ";
             $key = <STDIN>;
-            $key = lc(chomp($$key));
+            $key = lc(chomp($key));
             last DATA_FILE if $key eq 'q'; 
             next DATA_FILE if $key eq 'n';
             last PROMPT    if $key eq 'y';
