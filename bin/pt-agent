@@ -6281,7 +6281,7 @@ sub get_services {
          # because this call looks for  --lib/services/stop-service which
          # write_services() removes.  I.e. use the service's stop- meta
          # counterpart (if any) before we remove the service.
-         my $removed_ok = run_services(
+         my $removed_ok = apply_services(
             action   => 'stop',
             services => $sorted_services->{removed},
             lib_dir  => $lib_dir,
@@ -6290,7 +6290,7 @@ sub get_services {
          );
 
          # Second, save each service in --lib/services/.  Do this before
-         # the next calls to run_services() because those calls look for
+         # the next calls to apply_services() because those calls look for
          # --lib/services/start-service which won't exist for new services
          # until written by this call.
          write_services(
@@ -6304,11 +6304,11 @@ sub get_services {
          # start-query-history is ran before query-history is scheduled
          # and starts running.
 
-         # Run services with the run_once flag.  Unlike run_services(),
+         # Run services with the run_once flag.  Unlike apply_services(),
          # this call runs the service directly, whether it's meta or not,
          # then it removes it from the services hashref so there's no
          # chance of running it again unless it's received again.
-         run_services_once(
+         apply_services_once(
             services => $sorted_services->{services},
             lib_dir  => $lib_dir,
             bin_dir  => $args{bin_dir},  # optional, for testing
@@ -6316,7 +6316,7 @@ sub get_services {
          );
 
          # Start new services.
-         my $started_ok = run_services(
+         my $started_ok = apply_services(
             action   => 'start',
             services => $sorted_services->{added},
             lib_dir  => $lib_dir,
@@ -6325,7 +6325,7 @@ sub get_services {
          );
 
          # Restart existing updated services.
-         my $restarted_ok = run_services(
+         my $restarted_ok = apply_services(
             action   => 'restart',
             services => $sorted_services->{updated},
             lib_dir  => $lib_dir,
@@ -6335,7 +6335,7 @@ sub get_services {
 
          # Schedule any services with a run_schedule or spool_schedule.
          # This must be called last, after write_services() and
-         # run_services() because, for example, a service schedule
+         # apply_services() because, for example, a service schedule
          # to run at */5 may run effectively immediate if we write
          # the new crontab at 00:04:59, so everything has to be
          # ready to go at this point.
@@ -6396,7 +6396,7 @@ sub sort_services {
       my $name = $service->name;
       $services->{$name} = $service;
 
-      # run_services() only needs real services, from which it can infer
+      # apply_services() only needs real services, from which it can infer
       # certain meta-services like "start-foo" for real service "foo",
       # but write_services() needs meta-services too so it can know to
       # remove their files from --lib/services/.
@@ -6585,7 +6585,7 @@ sub make_new_crontab {
 # from the real service's name.  A service doesn't require meta-services;
 # there may be nothing to do to start it, in which case the real service
 # starts running due to its run_schedule and schedule_services().
-sub run_services {
+sub apply_services {
    my (%args) = @_;
    have_required_args(\%args, qw(
       action
@@ -6596,7 +6596,6 @@ sub run_services {
    my $services = $args{services};
    my $lib_dir  = $args{lib_dir};
 
-   # Optional args
    # Optional args
    my $bin_dir  = defined $args{bin_dir} ? $args{bin_dir}
                 :                          "$FindBin::Bin/";
@@ -6666,7 +6665,7 @@ sub run_services {
    return \@started_ok;
 }
 
-sub run_services_once {
+sub apply_services_once {
    my (%args) = @_;
    have_required_args(\%args, qw(
       services
@@ -6759,8 +6758,8 @@ sub run_service {
    if ( !$client || !$entry_links ) {
       ($client, $entry_links, $logger_client) = get_api_client(
          api_key  => $api_key,
-         tries    => 1,
-         interval => sub { return; },
+         tries    => 2,
+         interval => sub { return 1; },
       );
       if ( !$client || !$entry_links ) {
          $logger->warning("Failed to connect to Percona Web API");
@@ -6777,6 +6776,7 @@ sub run_service {
          lib_dir => $lib_dir,
       );
       if ( !$agent ) {
+         # TODO Update this error message.
          die "No agent exists ($lib_dir/agent) and --agent-uuid was not "
             . "specified.  This error may be caused by an old or invalid "
             . "crontab entry for 'pt-agent --run-service $service'.  Try "
@@ -6795,7 +6795,7 @@ sub run_service {
    }
    my $log_link = $agent->links->{log};
    $logger->service("$service running");
-   $logger->data_ts($prefix);
+   $logger->data_ts($prefix);  # TODO Not needed unless $use_spool
    $logger->start_online_logging(
       client   => $logger_client,
       log_link => $log_link,
