@@ -31,6 +31,7 @@ my $have_json = eval { require JSON };
 our $pretty_json = $ENV{PTTEST_PRETTY_JSON} || 0;
 our $sorted_json = $ENV{PTTEST_PRETTY_JSON} || 0;
 
+
 extends qw(QueryReportFormatter);
 
 has 'QueryRewriter' => (
@@ -55,6 +56,20 @@ has _json => (
    is       => 'ro',
    init_arg => undef,
    builder  => '_build_json',
+);
+
+has 'max_query_length' => (  
+   is       => 'rw',
+   isa      => 'Int',
+   required => 0,
+   default  => sub { return 10_000; }, # characters, not bytes
+);
+
+has 'max_fingerprint_length' => ( 
+   is       => 'rw',
+   isa      => 'Int',
+   required => 0,
+   default  => sub { return 5_000; }, # characters, not bytes
 );
 
 sub _build_json {
@@ -137,7 +152,6 @@ override query_report => sub {
       fingerprint => 1,
       pos_in_log  => 1,
       ts          => 1,
-      bytes       => 1,
    );
 
    foreach my $attrib ( grep { !$hidden_attrib{$_} } @attribs ) {
@@ -149,39 +163,43 @@ override query_report => sub {
       my $metrics = $ea->stats()->{globals}->{$attrib};
       my $int     = $attrib =~ m/(?:time|wait)$/ ? 0 : 1;
 
+      # Be careful of Perl references: changing $attrib really changes it;
+      # it's not a local copy or copy-on-write.
+      my $real_attrib = $attrib eq 'bytes' ? 'Query_length' : $attrib;
+
       if ( $type eq 'num' ) {
          foreach my $m ( qw(sum min max) ) { 
             if ( $int ) {
-               $global_data->{metrics}->{$attrib}->{$m}
+               $global_data->{metrics}->{$real_attrib}->{$m}
                   = sprintf('%d', $store->{$m} || 0);
             }
             else {  # microsecond
-               $global_data->{metrics}->{$attrib}->{$m}
+               $global_data->{metrics}->{$real_attrib}->{$m}
                   = sprintf('%.6f',  $store->{$m} || 0);
             }
          }
          foreach my $m ( qw(pct_95 stddev median) ) {
             if ( $int ) {
-               $global_data->{metrics}->{$attrib}->{$m}
+               $global_data->{metrics}->{$real_attrib}->{$m}
                   = sprintf('%d', $metrics->{$m} || 0);
             }
             else {  # microsecond
-               $global_data->{metrics}->{$attrib}->{$m}
+               $global_data->{metrics}->{$real_attrib}->{$m}
                   = sprintf('%.6f',  $metrics->{$m} || 0);
             }
          }
          if ( $int ) {
-            $global_data->{metrics}->{$attrib}->{avg}
+            $global_data->{metrics}->{$real_attrib}->{avg}
                = sprintf('%d', $store->{sum} / $store->{cnt});
          }
          else {
-            $global_data->{metrics}->{$attrib}->{avg}
+            $global_data->{metrics}->{$real_attrib}->{avg}
                = sprintf('%.6f', $store->{sum} / $store->{cnt});
          }  
       }
       elsif ( $type eq 'bool' ) {
-         my $store = $results->{globals}->{$attrib};
-         $global_data->{metrics}->{$attrib}->{cnt}
+         my $store = $results->{globals}->{$real_attrib};
+         $global_data->{metrics}->{$real_attrib}->{cnt}
             = sprintf('%d', $store->{sum});
       }
    }
@@ -206,19 +224,20 @@ override query_report => sub {
       my $checksum = make_checksum($item);
       my $class    = {
          checksum    => $checksum,
-         fingerprint => $item,
+         fingerprint => substr($item, 0, $self->max_fingerprint_length),
          distillate  => $distill,
          attribute   => $groupby,
          query_count => $times_seen,
          example     => {
-            query => $sample->{arg},
+            query => substr($sample->{arg}, 0, $self->max_query_length),
             ts    => $sample->{ts} ? parse_timestamp($sample->{ts}) : undef,
          },
       };
 
       my %metrics;
       foreach my $attrib ( @attribs ) {
-         $metrics{$attrib} = $ea->metrics(
+         my $real_attrib = $attrib eq 'bytes' ? 'Query_length' : $attrib;
+         $metrics{$real_attrib} = $ea->metrics(
             attrib => $attrib,
             where  => $item,
          );
@@ -242,7 +261,7 @@ override query_report => sub {
             $class->{ts_max} = $ts->{max};
          }
          else {
-            my $type = $ea->type_for($attrib) || 'string';
+            my $type = $attrib eq 'Query_length' ? 'num' : $ea->type_for($attrib) || 'string';
             if ( $type eq 'string' ) {
                $metrics{$attrib} = { value => $metrics{$attrib}{max} }; 
             }
