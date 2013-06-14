@@ -4868,6 +4868,13 @@ has 'online_logging_enabled' => (
    default  => sub { return 0 },
 );
 
+has 'quiet' => (
+   is       => 'rw',
+   isa      => 'Int',
+   required => 0,
+   default  => sub { return 0 },
+);
+
 has '_buffer' => (
    is       => 'rw',
    isa      => 'ArrayRef',
@@ -5051,6 +5058,8 @@ sub _log {
 
    my $ts = ts(time, 1);  # 1=UTC
    my $level_number = level_number($level);
+
+   return if $self->quiet && $level_number < $self->quiet;
 
    chomp($msg);
    my $n_lines = 1;
