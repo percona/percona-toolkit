@@ -7983,7 +7983,7 @@ sub install {
    # Optional args
    my $interactive = $args{interactive};
 
-   $logger->quiet(Percona::Agent::Logger::leve_number('ERROR'));
+   $logger->quiet(Percona::Agent::Logger::level_number('ERROR'));
 
    my $agent_my_cnf = '/etc/percona/agent/my.cnf';
    my $config_file  = get_config_file();
