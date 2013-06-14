@@ -5267,6 +5267,8 @@ sub main {
  
    $o->usage_or_errors();
 
+   $OUTPUT_AUTOFLUSH = 1 if $o->get('interactive');
+
    # ########################################################################
    # Connect to MysSQL later, maybe.
    # ########################################################################
@@ -7270,8 +7272,6 @@ sub send_data {
    my $client      = $args{client}; # for testing
    my $json        = $args{json};   # for testing
 
-   $OUTPUT_AUTOFLUSH = 1 if $interactive;
-
    # Can't do anything with the lib dir.  Since we haven't started
    # logging yet, cron should capture this error and email the user.
    init_lib_dir(
@@ -7974,16 +7974,50 @@ sub install {
    # Optional args
    my $interactive = $args{interactive};
 
+   $logger->quiet(Percona::Agent::Logger::leve_number('ERROR'));
+
+   my $agent_my_cnf = '/etc/percona/agent/my.cnf';
+   my $config_file  = get_config_file();
+
+   my $stepno = 0;
+   my @steps  = (
+      "Verify the user is root",
+      "Connect to MySQL",
+      "Verify the API key",
+      "Create a MySQL user for the agent",
+      "Initialize $agent_my_cnf",
+      "Initialize $config_file",
+      "Initialize directories",
+      "Initialize the agent",
+      "Run the agent",
+   );
+   my $n_steps = scalar @steps;
+   my $next_step = sub {
+      my (%args) = @_;
+      my $repeat = $args{repeat};
+      my $done   = $args{done};
+      print "OK\n" if $stepno && !$repeat;
+      print "\n" if $repeat;
+      return if $done;
+      printf "Step %d of %d: %s: ",
+         $stepno + 1,
+         $n_steps,
+         $steps[$stepno];
+      $stepno++ unless $repeat;
+   };
+
    # ########################################################################
    # Pre-install checklist
    # ######################################################################## 
 
-   # Must be root for --install.
+   # 1. Must be root for --install.
+   $next_step->();
    if ( $EUID != 0 ) {
       die "You must run pt-agent --install as root.\n";
    }
 
-   # Must be able to connect to MySQL to create pt_agent user.
+   # 2. Must be able to connect to MySQL to create pt_agent user.
+   $next_step->();
    eval {
       $cxn->connect();
    };
@@ -7995,9 +8029,11 @@ sub install {
          . "with sufficient privileges to create MySQL users.\n";
    }
 
-   # Must have a valid API key.
+   # 3. Must have a valid API key.
+   $next_step->();
    my $api_key = $o->get('api-key');
    if ( !$api_key ) {
+      print "\n";
       if ( $interactive || -t STDIN ) {
          while ( !$api_key ) {
             print "Enter your API key: ";
@@ -8008,37 +8044,31 @@ sub install {
                $api_key = '';
             }
          }
+         $next_step->(repeat => 1);  # repeat
       }
       else {
          die "Please specify your --api-key.\n";
       }
    }
-   print "Verifying the API key $api_key...\n";
    my $client;
    my $entry_links;
-   my $output;
-   open my $output_fh, '>', \$output
-      or die "Error opening output to variable: $OS_ERROR";
-   select $output_fh;
    eval {
       ($client, $entry_links) = get_api_client(
          api_key  => $api_key,
-         interval => sub { sleep 2; },
-         tries    => 3,
+         interval => sub { return; },
+         tries    => 1,
       );
    };
-   my $e = $EVAL_ERROR;
-   select STDOUT;
-   close $output_fh;
-   if ( $e ) {
+   if ( my $e = $EVAL_ERROR ) {
       die "Sorry, an error occurred while verifying the API key: $e";
    }
    elsif ( !$entry_links ) {
-      die "The API key $api_key is not valid, or the connection to the Percona "
-         . "Web API failed.  Please check the API key and try again.\n";
-   }
-   else {
-      print "OK: API key $api_key is valid.\n";
+      if ( $client->response && $client->response == 403 ) {
+         die "Sorry, the API key $api_key is not valid.  Please check the API key and try again.\n";
+      }
+      else {
+         die "Sorry, there was a problem connecting to the API.  Please try again.\n";
+      }
    }
 
    # ########################################################################
@@ -8046,9 +8076,9 @@ sub install {
    # ########################################################################
    my @actions;
 
-   # 1. Create/update the pt_agent MySQL user.  pt-agent does not and should
+   # 4. Create/update the pt_agent MySQL user.  pt-agent does not and should
    # not run as a privileged MySQL user.
-   print "Creating a MySQL user for pt-agent...\n";
+   $next_step->();
    my $random_pass = pseudo_random_password();
    my $sql         = "GRANT SUPER,USAGE ON *.* TO 'pt_agent'\@'localhost' "
                    . "IDENTIFIED BY '$random_pass'";
@@ -8061,22 +8091,22 @@ sub install {
    }
    $cxn->dbh->disconnect();
    push @actions, "create-mysql-user: pt_agent,$random_pass";
+   print "OK\n";
 
-   # 2. Save the pt_agent MySQL user info in /etc/percona/agent/my.cnf.
+   # 5. Save the pt_agent MySQL user info in /etc/percona/agent/my.cnf.
    # We could set user= and pass= in ~/.pt-agent.conf, but each new agent
    # has a different MySQL password but shares the same default agent
    # config, so if we set pass=foo, the next agent would set it to
    # pass=bar, etc.  Instead, every agent sets/uses
    # defaults-file=/etc/percona/agent/my.cnf in the default config, but
    # the contents of that file is different for each agent.
+   $next_step->();
    if ( !-d '/etc/percona' ) {
       _safe_mkdir('/etc/percona');
    }
    if ( !-d '/etc/percona/agent' ) {
       _safe_mkdir('/etc/percona/agent');
    }
-   my $agent_my_cnf = '/etc/percona/agent/my.cnf';
-   print "Initializing $agent_my_cnf...\n";
    my $my_cnf = "[client]
 user=pt_agent
 pass=$random_pass
@@ -8103,9 +8133,8 @@ pass=$random_pass
    }
    push @actions, "init-agent-my-cnf: $agent_my_cnf";
 
-   # 3. Save the API key and defaults file in ~/.pt-agent.conf.
-   my $config_file = get_config_file();
-   print "Initializing $config_file...\n";
+   # 6. Save the API key and defaults file in ~/.pt-agent.conf.
+   $next_step->();
    eval {
       write_to_file(
          data =>
@@ -8121,23 +8150,22 @@ defaults-file=$agent_my_cnf
    }
    push @actions, "init-config-file: $config_file";
 
-   # 4. Init the --lib dir.  pt-agent would do this itself, but we'll
+   # 7. Init --lib and --spool.  pt-agent would do this itself, but we'll
    # do it now in case there are problems. 
+   $next_step->();
    init_lib_dir(
       lib_dir => $o->get('lib'),
    );
    push @actions, "init-lib-dir: " . $o->get('lib');
-
-   # 5. Init the --spool dir.  pt-agent would also do this itself, but
-   # we'll do it now in case there are problems.
    init_spool_dir(
       spool_dir => $o->get('spool'),
    );
    push @actions, "init-spool-dir: " . $o->get('spool');
 
-   # 6. Start the agent, don't run it yet.  Normally this forks in
+   # 8. Start the agent, don't run it yet.  Normally this forks in
    # anticipation of run_agent() being called next, but we don't do
    # this during install; we run the agent manually later.
+   $next_step->();
    my $running = eval {
       start_agent(
          api_key     => $api_key,
@@ -8150,7 +8178,7 @@ defaults-file=$agent_my_cnf
          pid_file    => undef,
          log_file    => undef,
          interval    => sub { sleep 2; },
-         tries       => 3,
+         tries       => 2,
          #actions     => \@actions,
       );
    };
@@ -8158,11 +8186,11 @@ defaults-file=$agent_my_cnf
       die "Sorry, an error occurred while starting the agent: $EVAL_ERROR";
    }
 
-   # 7. Run the agent daemon.  If all the previous worked, the agent
+   # 9. Run the agent daemon.  If all the previous worked, the agent
    # should be able to start without problems.  It will get and apply
    # the default config, then get and apply any services (probably won't
    # have any yet).
-   print "Starting pt-agent...\n";
+   $next_step->();
    my $env = env_vars();
    my $cmd = "$env $FindBin::Bin/pt-agent --daemonize";
    my $ret = system($cmd);
@@ -8173,6 +8201,8 @@ defaults-file=$agent_my_cnf
    # ########################################################################
    # Done installing
    # ########################################################################
+   $next_step->(done => 1);
+
    my $hostname = `hostname`;
    chomp($hostname);
 
