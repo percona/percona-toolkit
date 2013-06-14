@@ -5942,7 +5942,7 @@ sub run_agent {
    my $new_daemon;
    my $config;
    my $services = {};
-   my $last_uptime = 0;
+   my $slept = 0;
    while ( $_oktorun->() ) {
       ($config, $lib_dir, $new_daemon, $success) = get_config(
          link    => $agent->links->{config},
@@ -5952,6 +5952,11 @@ sub run_agent {
          lib_dir => $lib_dir,
          config  => $config,
          quiet   => $state->{first_config},
+      );
+
+      check_if_mysql_restarted(
+         Cxn   => $cxn,
+         slept => $slept,
       );
 
       # Get services only if we successfully got the config because the services
@@ -6004,22 +6009,15 @@ sub run_agent {
             $logger->warning('Services will restart when disk space threshold checks pass');
          }
          else {
-            my $mysql_restarted = check_if_mysql_restarted(
-               Cxn         => $cxn,
-               last_uptime => \$last_uptime,  # passing reference
-               interval    => $config ? $config->options->{'check-interval'} : $first_config_interval,
-            );
-
             # Have config, safeguards are ok, now get/update the services.
             ($services, $success) = get_services(
-               link            => $config->links->{services},
-               agent           => $agent,
-               client          => $client,
-               lib_dir         => $lib_dir,
-               services        => $services,
-               mysql_restarted => $mysql_restarted,
-               json            => $args{json},    # optional, for testing
-               bin_dir         => $args{bin_dir}, # optional, for testing
+               link      => $config->links->{services},
+               agent     => $agent,
+               client    => $client,
+               lib_dir   => $lib_dir,
+               services  => $services,
+               json      => $args{json},    # optional, for testing
+               bin_dir   => $args{bin_dir}, # optional, for testing
             );
          }
       }
@@ -6030,6 +6028,7 @@ sub run_agent {
          $config ? ($config->options->{'check-interval'}, 0)
                  : ($first_config_interval              , 1)  # 1=quiet
       );
+      $slept += $config ? $config->options->{'check-interval'} : $first_config_interval;
    }
 
    # This shouldn't happen until the service is stopped/killed.
@@ -6271,8 +6270,7 @@ sub get_services {
    my $lib_dir  = $args{lib_dir};
 
    # Optional args
-   my $prev_services   = $args{services}; # may not be defined yet
-   my $mysql_restarted = $args{mysql_restarted};
+   my $prev_services = $args{services}; # may not be defined yet
 
    my $success = 0;
 
@@ -6298,9 +6296,10 @@ sub get_services {
             $prev_services = {};
             delete $state->{all_services_are_stopped};
          }
-         elsif ( $mysql_restarted ) {
+         elsif ( $state->{mysql_restarted} ) {
             $logger->info('Restarting services after MySQL restart');
             $prev_services = {};
+            delete $state->{mysql_restarted};
          }
 
          # Determine which services are new (added), changed/updated,
@@ -8423,12 +8422,10 @@ sub check_if_mysql_restarted {
    my (%args) = @_;
    have_required_args(\%args, qw(
       Cxn
-      last_uptime
-      interval
+      slept
    )) or die;
-   my $cxn         = $args{Cxn};
-   my $last_uptime = $args{last_uptime};  # reference
-   my $interval    = $args{interval};
+   my $cxn   = $args{Cxn};
+   my $slept = $args{slept};
 
    # Optional args
    my $uptime = $args{uptime};  # for testing
@@ -8469,16 +8466,21 @@ sub check_if_mysql_restarted {
       }
    }
 
-   if ( !$$last_uptime ) {
-      $$last_uptime = $uptime;
-      return 0;
+   if ( !$state->{last_uptime} ) {
+      $state->{last_uptime} = $uptime;
+      delete $state->{mysql_restarted};
+   }
+   else {
+      my $uptime_should_be = $state->{last_uptime} + $slept;
+      my $mysql_restarted  = $uptime > ($uptime_should_be - 3) && $uptime < ($uptime_should_be + 3) ? 0 : 1;
+      $logger->info("Last uptime: $state->{last_uptime} Interval: $slept Uptime should be: $uptime_should_be "
+         . "Uptime: $uptime MySQL restarted: $mysql_restarted");
+      if ( $mysql_restarted ) {
+         $state->{mysql_restarted} = 1;
+      }
    }
 
-   my $uptime_should_be = $$last_uptime + $interval;
-   my $mysql_restarted = $uptime > ($uptime_should_be - 3) && $uptime < ($uptime_should_be + 3) ? 0 : 1;
-   $logger->info("Last uptime: $$last_uptime Interval: $interval Uptime should be: $uptime_should_be "
-      . "Uptime: $uptime MySQL restarted: $mysql_restarted");
-   return $mysql_restarted;
+   return;
 }
 
 sub _state {
