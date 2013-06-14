@@ -7561,13 +7561,19 @@ sub agent_status {
             $logger->warning("$service_file is corrupt");
             next SERVICE;
          }
+         $service = Percona::WebAPI::Resource::Service->new(%$service);
          next if $service->meta;  # only real services
          $have_service{$service->name} = 1;
          if ( $scheduled{$service->name} ) {
-            $logger->info($service->name . " is running");
+            if ( $pid ) {
+               $logger->info($service->name . " is running");
+            }
+            else {
+               $logger->warning($service->name . " is running but pt-agent is not");
+            }
          }
          else {
-            $logger->warning($service->name . " is not running, check $lib_dir/crontab.err");
+            $logger->warning($service->name . " is not scheduled, check $lib_dir/crontab.err");
          }
       }
    }
