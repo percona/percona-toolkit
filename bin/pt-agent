@@ -5942,12 +5942,13 @@ sub run_agent {
    my $new_daemon;
    my $config;
    my $services = {};
-   my $slept = 0;
    while ( $_oktorun->() ) {
       check_if_mysql_restarted(
          Cxn   => $cxn,
-         slept => $slept,
+         slept => $state->{slept} || 0,
       );
+
+      my $t0 = time;
 
       ($config, $lib_dir, $new_daemon, $success) = get_config(
          link    => $agent->links->{config},
@@ -6028,7 +6029,8 @@ sub run_agent {
          $config ? ($config->options->{'check-interval'}, 0)
                  : ($first_config_interval              , 1)  # 1=quiet
       );
-      $slept += $config ? $config->options->{'check-interval'} : $first_config_interval;
+
+      $state->{slept} += int(time - $t0);
    }
 
    # This shouldn't happen until the service is stopped/killed.
@@ -6298,7 +6300,8 @@ sub get_services {
          }
          elsif ( $state->{mysql_restarted} ) {
             $logger->info('Restarting services after MySQL restart');
-            $prev_services = {};
+            $prev_services  = {};
+            $state->{slept} = 0;
             delete $state->{mysql_restarted};
          }
 
@@ -8431,8 +8434,10 @@ sub check_if_mysql_restarted {
    my $uptime = $args{uptime};  # for testing
    my $margin = $args{margin} || 5;
 
+   my $slept_here = 0;
    if ( !$uptime ) {
       $logger->info("Connecting to MySQL");
+      my $t0 = time;
       my $e;
       my $tries      = 2;
       my $have_mysql = 0;
@@ -8465,18 +8470,21 @@ sub check_if_mysql_restarted {
             . "connection to MySQL failed: $e");
          return;
       }
+      $slept_here = int(time - $t0);
    }
 
-   if ( !$state->{last_uptime} ) {
-      $state->{last_uptime} = $uptime;
+   if ( !$state->{initial_uptime} || !$slept ) {
+      $logger->info("MySQL uptime: $uptime");
+      $state->{initial_uptime} = $uptime;
       delete $state->{mysql_restarted};
    }
    else {
-      my $uptime_should_be = $state->{last_uptime} + $slept;
-      my $mysql_restarted  = $uptime > ($uptime_should_be - $margin) && $uptime < ($uptime_should_be + $margin) ? 0 : 1;
-      $logger->info("Last uptime: $state->{last_uptime} Interval: $slept Uptime should be: $uptime_should_be "
-         . "+/- ${margin}s Uptime: $uptime MySQL restarted: $mysql_restarted");
+      my $exepected_uptime = $state->{initial_uptime} + $slept + $slept_here;
+      my $mysql_restarted  = $uptime > ($exepected_uptime - $margin) && $uptime < ($exepected_uptime + $margin) ? 0 : 1;
+      $logger->info("MySQL uptime check: initial=$state->{initial_uptime} slept=$slept expected=$exepected_uptime "
+         . "+/- ${margin}s actual=$uptime");
       if ( $mysql_restarted ) {
+         $logger->warning("MySQL restarted");
          $state->{mysql_restarted} = 1;
       }
    }
