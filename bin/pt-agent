@@ -7573,7 +7573,12 @@ sub agent_status {
             }
          }
          else {
-            $logger->warning($service->name . " is not scheduled, check $lib_dir/crontab.err");
+            if ( $pid ) {
+               $logger->warning($service->name . " is not running");
+            }
+            else {
+               $logger->info($service->name . " has stopped");
+            }
          }
       }
    }
