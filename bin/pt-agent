@@ -6265,29 +6265,29 @@ sub get_services {
       agent
       client
       lib_dir
+      services
    )) or die;
-   my $link     = $args{link};
-   my $agent    = $args{agent};
-   my $client   = $args{client};
-   my $lib_dir  = $args{lib_dir};
-
-   # Optional args
-   my $prev_services = $args{services}; # may not be defined yet
+   my $link          = $args{link};
+   my $agent         = $args{agent};
+   my $client        = $args{client};
+   my $lib_dir       = $args{lib_dir};
+   my $prev_services = $args{services};
 
    my $success = 0;
 
    eval {
       $logger->info('Getting services');
-
-      # Get services from Percona.
       my $curr_services = $client->get(
          link => $link,
       );
 
-      # If the current and new services are different,
-      # write the new ones to disk, then schedule them.
-      if ( $curr_services && @$curr_services ) {
-
+      if ( !$curr_services ) {
+         $logger->error("GET $link did not return anything, expected a list of services");
+      }
+      elsif ( !scalar @$curr_services && !scalar keys %$prev_services ) {
+         $logger->warning("No services are enabled for this agent");
+      }
+      else {
          if ( $state->{all_services_are_stopped} ) {
             $logger->info('Restarting services after safeguard shutdown');
             # If prev_services is empty, then it's like agent startup:
@@ -6389,7 +6389,7 @@ sub get_services {
                exec_cmd => $args{exec_cmd}, # optional, for testing
             );
 
-            $logger->info('Services applied successfully');
+            $logger->info('Service changes applied successfully');
          }
          else {
             $logger->info('Services have not changed');
@@ -6397,10 +6397,6 @@ sub get_services {
          # TODO: probably shouldn't keep re-assigning this unless necessary
          $prev_services = $sorted_services->{services};
          $success       = 1;
-      }
-      elsif ( $prev_services && !scalar keys %$prev_services ) {
-         $logger->info('All services have been removed');
-         # TODO
       }
    };
    if ( $EVAL_ERROR ) {
