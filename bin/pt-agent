@@ -5944,6 +5944,11 @@ sub run_agent {
    my $services = {};
    my $slept = 0;
    while ( $_oktorun->() ) {
+      check_if_mysql_restarted(
+         Cxn   => $cxn,
+         slept => $slept,
+      );
+
       ($config, $lib_dir, $new_daemon, $success) = get_config(
          link    => $agent->links->{config},
          agent   => $agent,
@@ -5952,11 +5957,6 @@ sub run_agent {
          lib_dir => $lib_dir,
          config  => $config,
          quiet   => $state->{first_config},
-      );
-
-      check_if_mysql_restarted(
-         Cxn   => $cxn,
-         slept => $slept,
       );
 
       # Get services only if we successfully got the config because the services
@@ -8429,6 +8429,7 @@ sub check_if_mysql_restarted {
 
    # Optional args
    my $uptime = $args{uptime};  # for testing
+   my $margin = $args{margin} || 5;
 
    if ( !$uptime ) {
       $logger->info("Connecting to MySQL");
@@ -8472,9 +8473,9 @@ sub check_if_mysql_restarted {
    }
    else {
       my $uptime_should_be = $state->{last_uptime} + $slept;
-      my $mysql_restarted  = $uptime > ($uptime_should_be - 3) && $uptime < ($uptime_should_be + 3) ? 0 : 1;
+      my $mysql_restarted  = $uptime > ($uptime_should_be - $margin) && $uptime < ($uptime_should_be + $margin) ? 0 : 1;
       $logger->info("Last uptime: $state->{last_uptime} Interval: $slept Uptime should be: $uptime_should_be "
-         . "Uptime: $uptime MySQL restarted: $mysql_restarted");
+         . "+/- ${margin}s Uptime: $uptime MySQL restarted: $mysql_restarted");
       if ( $mysql_restarted ) {
          $state->{mysql_restarted} = 1;
       }
