@@ -5463,14 +5463,20 @@ sub main {
 
    # Run the agent's main loop which doesn't return until the service
    # is stopped, killed, or has an internal bug.
-   run_agent(
-      agent      => $running->{agent},
-      client     => $running->{client},
-      daemon     => $running->{daemon},
-      interval   => $check_wait,
-      lib_dir    => $o->get('lib'),
-      safeguards => $safeguards,
-   );
+   eval {
+      run_agent(
+         agent      => $running->{agent},
+         client     => $running->{client},
+         daemon     => $running->{daemon},
+         interval   => $check_wait,
+         lib_dir    => $o->get('lib'),
+         safeguards => $safeguards,
+         Cxn        => $cxn,
+      );
+   };
+   if ( $EVAL_ERROR ) {
+      $logger->fatal("pt-agent crashed: $EVAL_ERROR");
+   }
 
    $logger->info("pt-agent exit $exit_status, oktorun $oktorun");
 
@@ -5897,6 +5903,7 @@ sub run_agent {
       interval
       lib_dir
       safeguards
+      Cxn
    )) or die;
    my $agent      = $args{agent};
    my $client     = $args{client};
@@ -5904,6 +5911,7 @@ sub run_agent {
    my $interval   = $args{interval};
    my $lib_dir    = $args{lib_dir};
    my $safeguards = $args{safeguards};
+   my $cxn        = $args{Cxn};
 
    # Optional args
    my $_oktorun = $args{oktorun} || sub { return $oktorun };
@@ -5922,6 +5930,7 @@ sub run_agent {
    my $new_daemon;
    my $config;
    my $services = {};
+   my $last_uptime = 0;
    while ( $_oktorun->() ) {
       ($config, $lib_dir, $new_daemon, $success) = get_config(
          link    => $agent->links->{config},
@@ -5983,15 +5992,22 @@ sub run_agent {
             $logger->warning('Services will restart when disk space threshold checks pass');
          }
          else {
+            my $mysql_restarted = check_if_mysql_restarted(
+               Cxn         => $cxn,
+               last_uptime => \$last_uptime,  # passing reference
+               interval    => $config ? $config->options->{'check-interval'} : $first_config_interval,
+            );
+
             # Have config, safeguards are ok, now get/update the services.
             ($services, $success) = get_services(
-               link     => $config->links->{services},
-               agent    => $agent,
-               client   => $client,
-               lib_dir  => $lib_dir,
-               services => $services,
-               json     => $args{json},    # optional, for testing
-               bin_dir  => $args{bin_dir}, # optional, for testing
+               link            => $config->links->{services},
+               agent           => $agent,
+               client          => $client,
+               lib_dir         => $lib_dir,
+               services        => $services,
+               mysql_restarted => $mysql_restarted,
+               json            => $args{json},    # optional, for testing
+               bin_dir         => $args{bin_dir}, # optional, for testing
             );
          }
       }
@@ -6243,7 +6259,8 @@ sub get_services {
    my $lib_dir  = $args{lib_dir};
 
    # Optional args
-   my $prev_services = $args{services}; # may not be defined yet
+   my $prev_services   = $args{services}; # may not be defined yet
+   my $mysql_restarted = $args{mysql_restarted};
 
    my $success = 0;
 
@@ -6268,6 +6285,10 @@ sub get_services {
             # maybe (probably) they've changed.
             $prev_services = {};
             delete $state->{all_services_are_stopped};
+         }
+         elsif ( $mysql_restarted ) {
+            $logger->info('Restarting services after MySQL restart');
+            $prev_services = {};
          }
 
          # Determine which services are new (added), changed/updated,
@@ -6873,44 +6894,47 @@ sub run_service {
       my $output_file;
       my $join_char;
       my $store = {};
-      my ($store_output, $store_key_value_tuple);
+      my ($store_key, $store_key_value_tuple);
       my $output = $task->output || '';
       if ( $output eq 'spool' ) {
          $output_file = $tmp_data_file;
-         push @output_files, $output_file;
       }
       elsif ( $output =~ m/^stage:(\S+)/ ) {
          my $file_suffix = $1;
          $output_file = "$tmp_dir/$prefix." . $service->name . "$file_suffix";
-         push @output_files, $output_file;
       }
       elsif ( $output =~ m/^meta:(\S+)/ ) {
          my $attrib = $1;
          $output_file = "$lib_dir/meta/" . $service->name . ".meta.$attrib";
-         push @output_files, $output_file;
       }
       elsif ( $output =~ m/^join:(.)$/ ) {
-         # TODO
          $join_char = $1;
          $output_file = $task_output_file;
-         push @output_files, $output_file;
+      }
+      elsif ( $output =~ m/store:key:([\w-]+)/ ) {
+         $store_key = $1;
+         $output_file = $task_output_file;
+      }
+      elsif ( $output eq 'store:output' ) {
+         $store_key = $taskno;
+         $output_file = $task_output_file;
       }
       elsif ( $output eq 'store:key_value_tuple' ) {
          $store_key_value_tuple = 1;
-         $output_file = '/dev/null';
-         push @output_files, undef;
       }
       elsif ( $output eq 'store:output' ) {
-         # TODO
-         $store_output = 1;
+         $store_key = $taskno;
          $output_file = $task_output_file;
-         push @output_files, $output_file;
+      }
 
+      if ( !$output_file ) {
+         $output_file = '/dev/null';
+         push @output_files, undef,
       }
       else {
-         $output_file = '/dev/null';
-         push @output_files, undef;
+         push @output_files, $output_file;
       }
+
       PTDEBUG && _d("Task $taskno output:", Dumper(\@output_files));
 
       if ( my $query = $task->query ) {
@@ -6992,8 +7016,10 @@ sub run_service {
          # Execute this run.
          my $t0 = time;
          system($cmd);
-         if ( $store_output ) {
-            $store->{$taskno} = slurp($output_file);
+         if ( $store_key ) {
+            my $value = slurp($output_file);
+            chomp($value) if $value;
+            $store->{$store_key} = $value;
          }
          my $t1 = time;
          my $cmd_exit_status = $CHILD_ERROR >> 8;
@@ -7129,7 +7155,7 @@ sub replace_special_vars {
                die "Run$runno has no output for $word to access.\n";
             }
          }
-         if ( my ($key) = $word =~ m/__STORE_([\w.-]+)__/ ) {
+         if ( my ($key) = $word =~ m/__STORE_([\w-]+)__/ ) {
             $word = $store->{$key};
          }
          $word =~ s/__TS__/$ts/g;
@@ -7137,6 +7163,8 @@ sub replace_special_vars {
          $word =~ s/__META__/$meta_dir/g;
          $word =~ s/__STAGE__/$stage_dir/g;
          $word =~ s/__SERVICE__/$service/g;
+         $word =~ s/__STAGE_FILE_/$stage_dir\/$ts.$service/g;
+         $word =~ s/__META__FILE__/$meta_dir\/$service/g;
          $word;
       }
       split(/\s+/, $cmd)
@@ -8343,6 +8371,68 @@ sub _safe_mkdir {
       }
    }
    return;
+}
+
+sub check_if_mysql_restarted {
+   my (%args) = @_;
+   have_required_args(\%args, qw(
+      Cxn
+      last_uptime
+      interval
+   )) or die;
+   my $cxn         = $args{Cxn};
+   my $last_uptime = $args{last_uptime};  # reference
+   my $interval    = $args{interval};
+
+   # Optional args
+   my $uptime = $args{uptime};  # for testing
+
+   if ( !$uptime ) {
+      $logger->info("Connecting to MySQL");
+      my $e;
+      my $tries      = 2;
+      my $have_mysql = 0;
+      TRY:
+      foreach my $tryno ( 1..$tries ) {
+         eval {
+            $cxn->connect();
+         };
+         my $e = $EVAL_ERROR;
+         if ( $e ) {
+            sleep 3 if $tryno < $tries;  # failure, try again
+         }
+         else {
+            $have_mysql = 1;
+            last TRY;  # success
+         }
+      }
+      if ( $have_mysql ) {
+         eval {
+            (undef, $uptime) = $cxn->dbh->selectrow_array("SHOW STATUS LIKE 'uptime'");
+         };
+         if ( $EVAL_ERROR ) {
+            $logger->warning("Cannot check if MySQL restarted because "
+               . "SHOW STATUS query failed: $EVAL_ERROR");
+            return;
+         }
+      }
+      else {
+         $logger->warning("Cannot check if MySQL restarted because "
+            . "connection to MySQL failed: $e");
+         return;
+      }
+   }
+
+   if ( !$$last_uptime ) {
+      $$last_uptime = $uptime;
+      return 0;
+   }
+
+   my $uptime_should_be = $$last_uptime + $interval;
+   my $mysql_restarted = $uptime > ($uptime_should_be - 3) && $uptime < ($uptime_should_be + 3) ? 0 : 1;
+   $logger->info("Last uptime: $$last_uptime Interval: $interval Uptime should be: $uptime_should_be "
+      . "Uptime: $uptime MySQL restarted: $mysql_restarted");
+   return $mysql_restarted;
 }
 
 sub _state {
