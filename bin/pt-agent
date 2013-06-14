@@ -6298,8 +6298,8 @@ sub get_services {
             $prev_services = {};
             delete $state->{all_services_are_stopped};
          }
-         elsif ( $state->{mysql_restarted} ) {
-            $logger->info('Restarting services after MySQL restart');
+         elsif ( my $ts = $state->{mysql_restarted} ) {
+            $logger->info("Restarting services after MySQL restart at $ts");
             $prev_services  = {};
             $state->{slept} = 0;
             delete $state->{mysql_restarted};
@@ -8478,14 +8478,14 @@ sub check_if_mysql_restarted {
       $state->{initial_uptime} = $uptime;
       delete $state->{mysql_restarted};
    }
-   else {
+   elsif ( !$state->{mysql_restarted} ) {
       my $exepected_uptime = $state->{initial_uptime} + $slept + $slept_here;
       my $mysql_restarted  = $uptime > ($exepected_uptime - $margin) && $uptime < ($exepected_uptime + $margin) ? 0 : 1;
       $logger->info("MySQL uptime check: initial=$state->{initial_uptime} slept=$slept expected=$exepected_uptime "
          . "+/- ${margin}s actual=$uptime");
       if ( $mysql_restarted ) {
          $logger->warning("MySQL restarted");
-         $state->{mysql_restarted} = 1;
+         $state->{mysql_restarted} = ts(time, 1);  # 1=UTC
       }
    }
 
