@@ -7985,6 +7985,8 @@ sub install {
 
    $logger->quiet(Percona::Agent::Logger::level_number('ERROR'));
 
+   $OUTPUT_AUTOFLUSH=1;
+
    my $agent_my_cnf = '/etc/percona/agent/my.cnf';
    my $config_file  = get_config_file();
 
@@ -8032,7 +8034,7 @@ sub install {
    };
    if ( $EVAL_ERROR ) {
       chomp $EVAL_ERROR;
-      die "Cannot connect to MySQL: $EVAL_ERROR\n\n"
+      die "Cannot connect to MySQL: $EVAL_ERROR\n"
          . "Please re-run pt-agent --install and specify MySQL connection "
          . "options like --user and --host to connect to MySQL as a user "
          . "with sufficient privileges to create MySQL users.\n";
