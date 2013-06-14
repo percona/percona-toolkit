@@ -5293,6 +5293,7 @@ sub main {
       install(
          OptionParser => $o,
          Cxn          => $cxn,
+         interactive  => $o->get('interactive'),
       );
       return $exit_status;
    }
@@ -7970,6 +7971,9 @@ sub install {
    my $o   = $args{OptionParser};
    my $cxn = $args{Cxn};
 
+   # Optional args
+   my $interactive = $args{interactive};
+
    # ########################################################################
    # Pre-install checklist
    # ######################################################################## 
@@ -7994,11 +7998,15 @@ sub install {
    # Must have a valid API key.
    my $api_key = $o->get('api-key');
    if ( !$api_key ) {
-      if (-t STDIN) {
+      if ( $interactive || -t STDIN ) {
          while ( !$api_key ) {
             print "Enter your API key: ";
             $api_key = <STDIN>;
             chomp($api_key) if $api_key;
+            if ( !$api_key || length($api_key) < 32 ) {
+               warn "Invalid API key; it should be at least 32 characters long.  Please try again.\n";
+               $api_key = '';
+            }
          }
       }
       else {
@@ -8026,7 +8034,7 @@ sub install {
       die "Sorry, an error occurred while verifying the API key: $e";
    }
    elsif ( !$entry_links ) {
-      die "API key $api_key is not valid, or the connection to the Percona "
+      die "The API key $api_key is not valid, or the connection to the Percona "
          . "Web API failed.  Please check the API key and try again.\n";
    }
    else {
