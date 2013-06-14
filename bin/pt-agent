@@ -5682,7 +5682,7 @@ sub init_lib_dir {
       unless $quiet;
 
    if ( ! -d $lib_dir ) {
-      if ( $verify  ) {
+      if ( $verify ) {
          die "$lib_dir does not exist\n";
       }
       else {
@@ -6740,6 +6740,7 @@ sub run_service {
    init_lib_dir(
       lib_dir => $lib_dir,
       verify  => 1,  # die unless ok, don't create
+      quiet   => 1,
    );
 
    my $daemon = Daemon->new(
@@ -7247,6 +7248,7 @@ sub send_data {
    init_lib_dir(
       lib_dir => $lib_dir,
       verify  => 1,
+      quiet   => 1,
    );
 
    # Log all output to a file.
