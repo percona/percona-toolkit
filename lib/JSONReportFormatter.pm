@@ -218,13 +218,13 @@ override query_report => sub {
       my $times_seen  = sum values %$all_log_pos;
 
       # Distill the query.
-      my $distill = $groupby eq 'fingerprint' ? $qr->distill($sample->{arg})
-                  :                             undef;
-
-      my $checksum = make_checksum($item);
-      my $class    = {
+      my $distill     = $groupby eq 'fingerprint' ? $qr->distill($sample->{arg})
+                      :                             undef;
+      my $fingerprint = substr($item, 0, $self->max_fingerprint_length);
+      my $checksum    = make_checksum($item);
+      my $class       = {
          checksum    => $checksum,
-         fingerprint => substr($item, 0, $self->max_fingerprint_length),
+         fingerprint => $fingerprint,
          distillate  => $distill,
          attribute   => $groupby,
          query_count => $times_seen,
@@ -237,6 +237,8 @@ override query_report => sub {
       my %metrics;
       foreach my $attrib ( @attribs ) {
          my $real_attrib = $attrib eq 'bytes' ? 'Query_length' : $attrib;
+         next if $real_attrib eq 'Rows_affected'
+            && $distill && $distill =~ m/^(?:SELECT|SHOW|SET|ADMIN)/;
          $metrics{$real_attrib} = $ea->metrics(
             attrib => $attrib,
             where  => $item,
