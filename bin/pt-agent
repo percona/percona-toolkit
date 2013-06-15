@@ -920,7 +920,7 @@ sub get {
    }
 
    my $resource = eval {
-      decode_json($self->response->content);
+      JSON::decode_json($self->response->content);
    };
    if ( $EVAL_ERROR ) {
       warn sprintf "Error decoding resource: %s: %s",
@@ -5251,7 +5251,6 @@ my %deps = (
 # Will check this later.
 eval {
    require JSON;
-   JSON->import(qw(decode_json));
 };
 
 sub main {
@@ -5605,7 +5604,7 @@ sub load_local_agent {
    my $agent_file = $lib_dir . "/agent";
    if ( -f $agent_file ) {
       $logger->info("Reading saved Agent from $agent_file") unless $quiet;
-      my $agent_hashref = decode_json(slurp($agent_file));
+      my $agent_hashref = JSON::decode_json(slurp($agent_file));
       $agent = Percona::WebAPI::Resource::Agent->new(%$agent_hashref);
       if ( !$agent->uuid ) {
          $logger->fatal("No UUID for Agent in $agent_file.");
@@ -7183,7 +7182,7 @@ sub load_service {
 
    my $service_obj;
    eval {
-      my $service_hash = decode_json(slurp($service_file));
+      my $service_hash = JSON::decode_json(slurp($service_file));
       $service_obj  = Percona::WebAPI::Resource::Service->new(%$service_hash);
    };
    if ( $EVAL_ERROR ) {
@@ -7636,7 +7635,7 @@ sub agent_status {
 
    # Get the agent's info.
    if ( -f "$lib_dir/agent" ) {
-      my $agent = decode_json(slurp("$lib_dir/agent"));
+      my $agent = JSON::decode_json(slurp("$lib_dir/agent"));
       foreach my $attrib ( qw(uuid hostname username) ) {
          $logger->info("Agent $attrib: " . ($agent->{$attrib} || ''));
       }
@@ -7659,7 +7658,7 @@ sub agent_status {
       SERVICE:
       foreach my $service_file ( glob "$lib_dir/services/*" ) {
          my $service = eval {
-            decode_json(slurp($service_file));
+            JSON::decode_json(slurp($service_file));
          };
          if ( $EVAL_ERROR ) {
             $logger->warning("$service_file is corrupt");
