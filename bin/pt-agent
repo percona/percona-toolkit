@@ -6285,6 +6285,16 @@ sub get_services {
       }
       elsif ( !scalar @$curr_services && !scalar keys %$prev_services ) {
          $logger->warning("No services are enabled for this agent");
+
+         # Remove these state that no longer matter if there are no services.
+         if ( $state->{mysql_restarted} ) {
+            $state->{last_uptime}       = 0;
+            $state->{last_uptime_check} = 0;
+            delete $state->{mysql_restarted};
+         }
+         if ( $state->{all_services_are_stopped} ) {
+            delete $state->{all_services_are_stopped};
+         }
       }
       else {
          if ( $state->{all_services_are_stopped} ) {
