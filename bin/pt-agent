@@ -5872,7 +5872,6 @@ These values can change if a different configuration is received.
          client   => $logger_client,
          log_link => $agent->links->{log},
       );
-      $logger->info("Online logging enabled");
    }
 
    save_agent(
