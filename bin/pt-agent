@@ -7195,35 +7195,42 @@ sub replace_special_vars {
    # Optional args
    my $env = $args{env} || '';
 
-   my $new_cmd = join(' ',
-      map {
-         my $word = $_;
-         if ( my ($runno) = $word =~ m/__RUN_(\d+)_OUTPUT__/ ) {
-            if ( $output_files->[$runno] ) {
-               $word = $output_files->[$runno];
+   my $word;
+   my $new_cmd;
+   eval {
+      $new_cmd = join(' ',
+         map {
+            $word = $_;
+            if ( my ($runno) = $word =~ m/__RUN_(\d+)_OUTPUT__/ ) {
+               if ( $output_files->[$runno] ) {
+                  $word = $output_files->[$runno];
+               }
+               else {
+                  die "Run$runno has no output for $word to access.\n";
+               }
             }
-            else {
-               die "Run$runno has no output for $word to access.\n";
+            if ( my ($key) = $word =~ m/__STORE_([\w-]+)__/ ) {
+               $word = $store->{$key};
             }
-         }
-         if ( my ($key) = $word =~ m/__STORE_([\w-]+)__/ ) {
-            $word = $store->{$key};
-         }
-         $word =~ s/__TS__/$ts/g;
-         $word =~ s/__LIB__/$lib_dir/g;
-         $word =~ s/__META__/$meta_dir/g;
-         $word =~ s/__STAGE__/$stage_dir/g;
-         $word =~ s/__SERVICE__/$service/g;
-         $word =~ s/__STAGE_FILE_/$stage_dir\/$ts.$service/g;
-         $word =~ s/__META__FILE__/$meta_dir\/$service/g;
-         $word =~ s/__BIN_DIR__/$bin_dir/g;
-         $word =~ s/__TRASH_FILE__/$spool_dir\/.trash\/$service/g;
-         $word =~ s/__ENV__/$env/g;
+            $word =~ s/__TS__/$ts/g;
+            $word =~ s/__LIB__/$lib_dir/g;
+            $word =~ s/__META__/$meta_dir/g;
+            $word =~ s/__STAGE__/$stage_dir/g;
+            $word =~ s/__SERVICE__/$service/g;
+            $word =~ s/__STAGE_FILE_/$stage_dir\/$ts.$service/g;
+            $word =~ s/__META__FILE__/$meta_dir\/$service/g;
+            $word =~ s/__BIN_DIR__/$bin_dir/g;
+            $word =~ s/__TRASH_FILE__/$spool_dir\/.trash\/$service/g;
+            $word =~ s/__ENV__/$env/g;
 
-         $word;
-      }
-      split(/\s+/, $cmd)
-   );
+            $word;
+         }
+         split(/\s+/, $cmd)
+      );
+   };
+   if ( $EVAL_ERROR ) {
+      $logger->fatal("Error replacing " . ($word || '') . " in $cmd: $EVAL_ERROR");
+   }
 
    return $new_cmd;
 }
