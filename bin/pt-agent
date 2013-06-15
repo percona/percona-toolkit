@@ -7215,7 +7215,7 @@ sub replace_special_vars {
             $word =~ s/__STAGE__/$stage_dir/g;
             $word =~ s/__SERVICE__/$service/g;
             $word =~ s/__STAGE_FILE_/$stage_dir\/$ts.$service/g;
-            $word =~ s/__META__FILE__/$meta_dir\/$service/g;
+            $word =~ s/__META_FILE__/$meta_dir\/$service/g;
             $word =~ s/__BIN_DIR__/$bin_dir/g;
             $word =~ s/__TRASH_FILE__/$spool_dir\/.trash\/$service/g;
             $word =~ s/__ENV__/$env/g;
