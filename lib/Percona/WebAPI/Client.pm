@@ -27,8 +27,8 @@ use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 eval {
-   use LWP;
-   use JSON;
+   require LWP;
+   require JSON;
 };
 
 use Scalar::Util qw(blessed); 

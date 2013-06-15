@@ -765,7 +765,7 @@ sub override {
 package Percona::WebAPI::Representation;
 
 eval {
-   use JSON;
+   require JSON;
 };
 
 require Exporter;
@@ -844,8 +844,8 @@ use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 eval {
-   use LWP;
-   use JSON;
+   require LWP;
+   require JSON;
 };
 
 use Scalar::Util qw(blessed); 
@@ -5239,17 +5239,18 @@ my $exit_status     = 0;
 my $state           = {};
 my $exit_on_signals = 0;
 my $logger;
-   
+
 my %deps = (
-   'DBD::mysql'     => [qw(DBD::mysql       libdbd-mysql-perl    ...)],
-   'JSON'           => [qw(JSON             libjson-perl         ...)],
-   'LWP'            => [qw(LWP              libwww-perl          ...)],
-   'IO::Socket::SSL'=> [qw(IO::Socket::SSL  libio-socket-ssl     ...)],
+   'DBD::mysql'     => [qw(DBD::mysql       libdbd-mysql-perl    perl-DBD-MySQL)],
+   'JSON'           => [qw(JSON             libjson-perl         perl-JSON)],
+   'LWP'            => [qw(LWP              libwww-perl          perl-libwww-perl)],
+   'IO::Socket::SSL'=> [qw(IO::Socket::SSL  libio-socket-ssl     perl-IO-Socket-SSL)],
 );
 
 # Will check this later.
 eval {
-   use JSON qw(decode_json);
+   require JSON;
+   JSON->import(qw(decode_json));
 };
 
 sub main {

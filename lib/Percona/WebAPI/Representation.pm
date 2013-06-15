@@ -21,7 +21,7 @@
 package Percona::WebAPI::Representation;
 
 eval {
-   use JSON;
+   require JSON;
 };
 
 require Exporter;
