@@ -7810,6 +7810,7 @@ sub stop_all_services {
       foreach my $file ( glob "$lib_dir/services/stop-*" ) {
          my $service  = basename($file);
          my $stop_log = "$lib_dir/logs/$service.stop";
+         my $run_log  = "$lib_dir/logs/$service.run";
          my $cmd      = ($env_vars ? "$env_vars " : '')
                       . "${bin_dir}pt-agent --run-service $service"
                       . " </dev/null"
@@ -7819,8 +7820,8 @@ sub stop_all_services {
          system($cmd);
          my $cmd_exit_status = $CHILD_ERROR >> 8;
          if ( $cmd_exit_status != 0 ) {
-            my $err = slurp($stop_log);
-            $logger->warning("Error stopping $service: " . ($err || ''));
+            my $err = -f $run_log ? slurp($run_log) : '';
+            $logger->error("Error stopping $service: " . ($err || '(No error logged)'));
             next SERVICE;
          }
          unlink $stop_log
