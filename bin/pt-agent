@@ -8037,6 +8037,7 @@ sub install {
 
    my $stepno = 0;
    my @steps  = (
+      "Check Perl module dependencies",
       "Verify the user is root",
       "Connect to MySQL",
       "Verify the API key",
@@ -8064,6 +8065,29 @@ sub install {
    # ########################################################################
    # Pre-install checklist
    # ######################################################################## 
+
+   # Check Perl module dependencies
+   $next_step->();
+   my $deps = [
+      [qw(DBD::mysql       libdbd-mysql-perl    ...)],
+      [qw(JSON             libjson-perl         ...)],
+      [qw(LWP              libwww-perl          ...)],
+      [qw(IO::Socket::SSL  libio-socket-ssl     ...)],
+   ];
+   my @missing_deps;
+   foreach my $dep ( @$deps ) {
+      eval "require $dep->[0]";
+      if ( $EVAL_ERROR ) {
+         push @missing_deps, $dep;
+      }
+   }
+   if ( @missing_deps ) {
+      warn "These required Perl modules need to be installed:\n\n";
+      foreach my $dep ( @missing_deps ) {
+         warn "$dep->[0]\n  apt-get install $dep->[1]\n  yum install $dep->[2]\n\n";
+      }
+      exit 1;
+   }
 
    # 1. Must be root for --install.
    $next_step->();
