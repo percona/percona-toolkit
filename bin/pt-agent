@@ -8087,7 +8087,7 @@ sub install {
 
    # Check Perl module dependencies
    $next_step->();
-   check_deps();
+   exit 1 unless check_deps();
 
    # 1. Must be root for --install.
    $next_step->();
