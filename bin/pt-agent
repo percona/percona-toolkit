@@ -6844,21 +6844,26 @@ sub run_service {
       }
    }
 
-   $agent = eval {
-      $client->get(
-         link => $entry_links->{agents} . '/' . $agent->uuid,
+   if ( $entry_links && $entry_links->{agents} ) {
+      $agent = eval {
+         $client->get(
+            link => $entry_links->{agents} . '/' . $agent->uuid,
+         );
+      };
+      if ( $EVAL_ERROR ) {
+         $logger->error("Failed to get the agent: $EVAL_ERROR");
+      }
+      my $log_link = $agent->links->{log};
+      $logger->service("$service running");
+      $logger->data_ts($prefix);  # TODO Not needed unless $use_spool
+      $logger->start_online_logging(
+         client   => $logger_client,
+         log_link => $log_link,
       );
-   };
-   if ( $EVAL_ERROR ) {
-      $logger->fatal("Failed to get the agent: $EVAL_ERROR");
    }
-   my $log_link = $agent->links->{log};
-   $logger->service("$service running");
-   $logger->data_ts($prefix);  # TODO Not needed unless $use_spool
-   $logger->start_online_logging(
-      client   => $logger_client,
-      log_link => $log_link,
-   );
+   else {
+      $logger->warning("File logging only");
+   }
 
    # XXX
    # Load the Service object from local service JSON file.
