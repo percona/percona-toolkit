@@ -1274,12 +1274,6 @@ has 'versions' => (
    required => 0,
 );
 
-has 'actions' => (
-   is       => 'ro',
-   isa      => 'Maybe[ArrayRef]',
-   requierd => 0,
-);
-
 has 'links' => (
    is       => 'rw',
    isa      => 'Maybe[HashRef]',
@@ -5630,18 +5624,11 @@ sub init_agent {
    # Update these attribs every time the agent is initialized.
    # Other optional attribs, like versions, are left to the caller.
    chomp(my $hostname = `hostname`);
-   $agent->{hostname} = $hostname;
-   $agent->{username} = $ENV{USER} || $ENV{LOGNAME};
+   $agent->hostname($hostname);
+   $agent->username($ENV{USER} || $ENV{LOGNAME});
 
-   # Add agent actions, if any.  Used by instal() to report the
-   # MySQL user and pass created by pt-agent so PWS will add them
-   # to the agent's default config.
-   if ( $actions ) {
-      $agent->{actions} = $actions;
-   }
-
-   # Try forever to create/update the Agent.  The tool can't
-   # do anything without an Agent, so we must succeed to proceed.
+   # Try to create/update the Agent.
+   my $success = 0;
    while ( $_oktorun->() && (!defined $tries || $tries--) ) {
       $logger->info($action eq 'put' ? "Updating agent " . $agent->name
                              : "Creating new agent");
@@ -5670,6 +5657,7 @@ sub init_agent {
             $logger->warning($EVAL_ERROR);
          }
          else {
+            $success = 1;
             last;  # success
          }
       }
@@ -5679,7 +5667,7 @@ sub init_agent {
    }
 
    $logger->info("Agent " . $agent->name . " (" . $agent->uuid . ") is ready");
-   return $agent;
+   return $agent, $success;
 }
 
 # Check and init the --lib dir.  This dir is used to save the Agent resource
@@ -5757,7 +5745,6 @@ sub start_agent {
    my $_oktorun      = $args{oktorun} || sub { return $oktorun };
    my $tries         = $args{tries};
    my $interval      = $args{interval} || sub { sleep 60; };
-   my $actions       = $args{actions};
    my $versions      = $args{versions};       # for testing
    my $client        = $args{client};         # for testing
    my $entry_links   = $args{entry_links};    # for testing
@@ -5828,7 +5815,6 @@ These values can change if a different configuration is received.
    if ( !$versions ) {
       $versions = get_versions(
          Cxn   => $cxn,
-         tries => 1,
       );
    }
    return unless $_oktorun->();
@@ -5867,16 +5853,14 @@ These values can change if a different configuration is received.
       }
    }
 
-   $agent = init_agent(
+   ($agent) = init_agent(
       agent    => $agent,
-      action   => $action,  # put or post
+      action   => $action,      # put or post
       link     => $link,
       client   => $client,
-      tries    => $tries,
       interval => sub { sleep 60 },
-      lib_dir  => $lib_dir,
-      oktorun  => $_oktorun,
-      actions  => $actions,  # Agent.actions
+      tries    => $tries,       # optional
+      oktorun  => $_oktorun,    # optional
    );
 
    # Give the logger its client so that it will also POST every log entry
@@ -5946,6 +5930,34 @@ sub run_agent {
       check_if_mysql_restarted(
          Cxn => $cxn,
       );
+
+      if ( $state->{need_mysql_version} ) {
+         my $versions = get_versions(
+            Cxn => $cxn,
+         );
+         if ( $versions->{MySQL} ) {
+            $agent->versions($versions);
+            my $updated_agent;
+            ($agent, $updated_agent) = init_agent(
+               agent    => $agent,
+               action   => 'put',
+               link     => $agent->links->{self},
+               client   => $client,
+               interval => sub { return; },
+               tries    => 1,   # optional
+            );
+            if ( $updated_agent ) {
+               $logger->info("Got MySQL versions");
+               save_agent(
+                  agent   => $agent,
+                  lib_dir => $lib_dir,
+               );
+            }
+            else {
+               $state->{need_mysql_version} = 1;
+            }
+         }
+      }
 
       ($config, $lib_dir, $new_daemon, $success) = get_config(
          link    => $agent->links->{config},
@@ -8115,7 +8127,6 @@ sub install {
    # ########################################################################
    # Do the install
    # ########################################################################
-   my @actions;
 
    # 4. Create/update the pt_agent MySQL user.  pt-agent does not and should
    # not run as a privileged MySQL user.
@@ -8131,7 +8142,6 @@ sub install {
          . $EVAL_ERROR;
    }
    $cxn->dbh->disconnect();
-   push @actions, "create-mysql-user: pt_agent,$random_pass";
 
    # 5. Save the pt_agent MySQL user info in /etc/percona/agent/my.cnf.
    # We could set user= and pass= in ~/.pt-agent.conf, but each new agent
@@ -8171,7 +8181,6 @@ pass=$random_pass
       die "Sorry, an error occured while initializing $agent_my_cnf: "
          . $EVAL_ERROR;
    }
-   push @actions, "init-agent-my-cnf: $agent_my_cnf";
 
    # 6. Save the API key and defaults file in ~/.pt-agent.conf.
    $next_step->();
@@ -8188,7 +8197,6 @@ defaults-file=$agent_my_cnf
       die "Sorry, an error occured while initializing $config_file: "
          . $EVAL_ERROR;
    }
-   push @actions, "init-config-file: $config_file";
 
    # 7. Init --lib and --spool.  pt-agent would do this itself, but we'll
    # do it now in case there are problems. 
@@ -8196,11 +8204,9 @@ defaults-file=$agent_my_cnf
    init_lib_dir(
       lib_dir => $o->get('lib'),
    );
-   push @actions, "init-lib-dir: " . $o->get('lib');
    init_spool_dir(
       spool_dir => $o->get('spool'),
    );
-   push @actions, "init-spool-dir: " . $o->get('spool');
 
    # 8. Start the agent, don't run it yet.  Normally this forks in
    # anticipation of run_agent() being called next, but we don't do
@@ -8219,7 +8225,6 @@ defaults-file=$agent_my_cnf
          log_file    => undef,
          interval    => sub { sleep 2; },
          tries       => 2,
-         #actions     => \@actions,
       );
    };
    if ( $EVAL_ERROR ) {
@@ -8335,8 +8340,8 @@ sub _set_logger {
 sub get_versions {
    my (%args) = @_;
    my $cxn      = $args{Cxn};
-   my $tries    = $args{tries}    || 3;
-   my $interval = $args{interval} || sub { sleep 5 };
+   my $tries    = $args{tries}    || 1;
+   my $interval = $args{interval} || sub { sleep 3; };
 
    my $have_mysql = 0;
    if ( $cxn ) {
@@ -8354,13 +8359,11 @@ sub get_versions {
             last;  # success
          }
          if ( $tryno < $tries ) {
-            sleep 3;  # failure, try again
+            sleep $interval;  # failure, try again
          }
          else {
             $state->{need_mysql_version} = 1;
-            $logger->info("Configure MySQL connection options for the agent "
-               . "at https://pws.percona.com.  Some services may not "
-               . "work until a MySQL connection can be established.");
+            $logger->warning("Cannot get MySQL version, will try again later");
             last;  # failure
          }
       }
