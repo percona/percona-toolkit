@@ -5289,11 +5289,6 @@ sub main {
 
    $OUTPUT_AUTOFLUSH = 1 if $o->get('interactive') || $o->get('install');
 
-   if ( !$o->get('install') ) {
-      check_deps();
-      exit 1;
-   }
-
    # ########################################################################
    # Connect to MysSQL later, maybe.
    # ########################################################################
@@ -5323,6 +5318,10 @@ sub main {
          interactive  => $o->get('interactive'),
       );
       return $exit_status;
+   }
+   else {
+      $logger->fatal("Missing required Perl modules")
+         if check_deps();
    }
 
    # ########################################################################
