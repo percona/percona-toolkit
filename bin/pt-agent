@@ -6915,7 +6915,7 @@ sub run_service {
    if ( $use_mysql ) {
       $logger->info("Connecting to MySQL");
       TRY:
-      for ( 1..3 ) {
+      for ( 1..2 ) {
          eval {
             $cxn->connect();
          };
@@ -6927,7 +6927,8 @@ sub run_service {
          last TRY;
       }
       if ( !$cxn->dbh ) {
-         $logger->warning("Failed to connect to MySQL, cannot run service");
+         $logger->error("Cannot run " . $service->name . " because it requires "
+             . "MySQL but failed to connect to MySQL");
          return;
       }
    }
