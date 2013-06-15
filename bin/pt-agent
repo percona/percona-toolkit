@@ -6447,15 +6447,15 @@ sub sort_services {
 
    if ( scalar @added ) {
       $logger->info("Added services: "
-         . join(", ", map { "  " . $_->name } @added) . "\n");
+         . join(', ', map { $_->name } @added));
    }
    if ( scalar @updated ) {
       $logger->info("Services updated:\n"
-         . join("\n", map { "  " . $_->name } @updated) . "\n");
+         . join(', ', map { $_->name } @updated));
    }
    if ( scalar @removed ) {
       $logger->info("Services removed:\n"
-         . join("\n", map { "  " . $_->name } @removed) . "\n");
+         . join(', ', map { $_->name } @removed));
    }
 
    my $sorted_services = {
