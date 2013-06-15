@@ -5241,11 +5241,11 @@ my $exit_on_signals = 0;
 my $logger;
 
 my %deps = (
-   'DBI'            => [qw(DBI              libdbi-perl          perl-DBI)],
-   'DBD::mysql'     => [qw(DBD::mysql       libdbd-mysql-perl    perl-DBD-MySQL)],
-   'JSON'           => [qw(JSON             libjson-perl         perl-JSON)],
-   'LWP'            => [qw(LWP              libwww-perl          perl-libwww-perl)],
-   'IO::Socket::SSL'=> [qw(IO::Socket::SSL  libio-socket-ssl     perl-IO-Socket-SSL)],
+   'DBI'            => [qw(DBI              libdbi-perl           perl-DBI)],
+   'DBD::mysql'     => [qw(DBD::mysql       libdbd-mysql-perl     perl-DBD-MySQL)],
+   'JSON'           => [qw(JSON             libjson-perl          perl-JSON)],
+   'LWP'            => [qw(LWP              libwww-perl           perl-libwww-perl)],
+   'IO::Socket::SSL'=> [qw(IO::Socket::SSL  libio-socket-ssl-perl perl-IO-Socket-SSL)],
 );
 
 # Will check this later.
