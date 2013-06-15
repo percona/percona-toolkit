@@ -105,7 +105,7 @@ sub get {
 
    # The resource should be represented as JSON, decode it.
    my $resource = eval {
-      decode_json($self->response->content);
+      JSON::decode_json($self->response->content);
    };
    if ( $EVAL_ERROR ) {
       warn sprintf "Error decoding resource: %s: %s",
