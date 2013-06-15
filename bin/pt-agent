@@ -6028,6 +6028,10 @@ sub run_agent {
       );
    }
 
+   stop_all_services(
+      lib_dir => $lib_dir,
+   );
+
    # This shouldn't happen until the service is stopped/killed.
    $logger->info('Agent ' . $agent->name . ' has stopped');
    return;
@@ -7746,7 +7750,7 @@ sub stop_all_services {
       );
    };
    if ( $EVAL_ERROR ) {
-      $logger->warning("Error removing services from crontab: $EVAL_ERROR");
+      $logger->error("Error removing services from crontab: $EVAL_ERROR");
    }
 
    # Stop all real services by running their stop-<service> meta-service.
