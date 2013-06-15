@@ -6450,11 +6450,11 @@ sub sort_services {
          . join(', ', map { $_->name } @added));
    }
    if ( scalar @updated ) {
-      $logger->info("Services updated:\n"
+      $logger->info("Services updated: "
          . join(', ', map { $_->name } @updated));
    }
    if ( scalar @removed ) {
-      $logger->info("Services removed:\n"
+      $logger->info("Services removed: "
          . join(', ', map { $_->name } @removed));
    }
 
@@ -6636,7 +6636,7 @@ sub apply_services {
    my $cmd_fmt  = ($env_vars ? "$env_vars " : '')
                 . $bin_dir . "pt-agent --run-service %s >> $log 2>&1";
 
-   my @started_ok;
+   my @applied_ok;
    SERVICE:
    foreach my $service ( @$services ) {
       next if $service->meta;  # only real services
@@ -6646,12 +6646,23 @@ sub apply_services {
       # To restart, one must first stop, then start afterwards.
       if ( $action eq 'stop' || $action eq 'restart' ) {
          if ( -f "$lib_dir/services/stop-$name" ) {
+            if ( $action eq 'stop' ) {
+               # If all we're doing is stopping services, then always
+               # returned them as "applied OK" even if they fail to run
+               # because the caller uses returns values to know to
+               # update crontab.  So if stop-foo fails, at least we'll
+               # still remove --run-service foo from crontab.
+               push @applied_ok, $service;
+            }
             my $cmd = sprintf $cmd_fmt, "stop-$name";
             $logger->info("Stopping $name: $cmd");
             my $cmd_exit_status = $exec_cmd->($cmd);
             if ( $cmd_exit_status != 0 ) {
                $logger->warning("Error stopping $name, check $log and "
                   . "$lib_dir/logs/$name.run");
+               # This doesn't matter for stop, but for restart a failure
+               # to first stop means we shouldn't continue and try to start
+               # the service (since it hasn't been stopped yet).
                next SERVICE;
             }
          }
@@ -6686,13 +6697,13 @@ sub apply_services {
                    ."$lib_dir/logs/$name.run");
                next SERVICE;
             }
-            push @started_ok, $service;
+            push @applied_ok, $service;
             $logger->info("Started $name successfully");
          }
       }
    }
 
-   return \@started_ok;
+   return \@applied_ok;
 }
 
 sub apply_services_once {
