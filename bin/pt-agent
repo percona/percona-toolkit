@@ -6913,6 +6913,7 @@ sub run_service {
    my $tmp_data_file  = "$tmp_dir/$data_file";
    my $taskno         = 0;
    my $metadata       = { data_ts => $prefix };
+   my $store          = {};
    my $env_vars       = env_vars();
 
    TASK:
@@ -6931,7 +6932,7 @@ sub run_service {
       my $task_output_file = "$tmp_dir/$prefix." . $service->name . ".$taskno.output";
       my $output_file;
       my $join_char;
-      my $store = {};
+
       my ($store_key, $store_key_value_tuple);
       my $output = $task->output || '';
       if ( $output eq 'spool' ) {
