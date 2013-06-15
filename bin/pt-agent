@@ -865,7 +865,7 @@ has 'entry_link' => (
    is       => 'rw',
    isa      => 'Str',
    required => 0,
-   default  => sub { return 'https://api-pws.percona.com' },
+   default  => sub { return 'https://cloud-api.percona.com' },
 );
 
 has 'ua' => (
@@ -5309,7 +5309,7 @@ sub main {
    my $api_key = $o->get('api-key');
    if ( !$api_key ) {
       $logger->fatal("No API key was found or specified.  pt-agent requires a "
-         . "Percona Web Services API key.  Put your API key "
+         . "Percona Cloud Tools API key.  Put your API key "
          . "in a --config file or specify it with --api-key.");
    }
 
@@ -5511,7 +5511,7 @@ sub get_api_client {
    # Optional args
    my $tries      = $args{tries};
    my $_oktorun   = $args{oktorun}    || sub { return $oktorun };
-   my $entry_link = $args{entry_link} || $ENV{PWS_ENTRY_LINK};
+   my $entry_link = $args{entry_link} || $ENV{PCT_ENTRY_LINK};
    my $quiet      = $args{quiet};
 
    my $client = Percona::WebAPI::Client->new(
@@ -5791,8 +5791,7 @@ These values can change if a different configuration is received.
    if ( $EVAL_ERROR ) {
       chomp($EVAL_ERROR);
       $logger->info("Error initializing --lib $lib_dir: $EVAL_ERROR.  "
-         . "Configure the agent at https://pws.percona.com "
-         . "to use a writeable --lib directory.");
+         . "Configure the agent to use a writeable --lib directory.");
    }
 
    # Connect to the Percona Web API and get entry links.
@@ -6084,7 +6083,7 @@ sub get_config {
                   unless $quiet;
             }
             else {
-               $logger->info("$e");  # PWS API error?
+               $logger->info("$e");  # API error?
             }
          }
          elsif ($e->isa('Percona::WebAPI::Exception::Resource')) {
@@ -6840,12 +6839,8 @@ sub run_service {
          lib_dir => $lib_dir,
       );
       if ( !$agent ) {
-         # TODO Update this error message.
          die "No agent exists ($lib_dir/agent) and --agent-uuid was not "
-            . "specified.  This error may be caused by an old or invalid "
-            . "crontab entry for 'pt-agent --run-service $service'.  Try "
-            . "reconfiguring the agent at https://pws.percona.com to "
-            . "reinitialize the crontab entries for all services.\n";
+            . "specified.  Check that the agent is still properly installed.\n";
       }
    }
 
@@ -7366,10 +7361,7 @@ sub send_data {
       );
       if ( !$agent ) {
          die "No agent exists ($lib_dir/agent) and --agent-uuid was not "
-            . "specified.  This error may be caused by an old or invalid "
-            . "crontab entry for 'pt-agent --send-data $service'.  Try "
-            . "reconfiguring the agent at https://pws.percona.com to "
-            . "reinitialize the crontab entries for all services.\n";
+            . "specified.  Check that the agent is still properly installed.\n";
       }
    }
 
@@ -8294,11 +8286,9 @@ sub save_agent {
    if ( $EVAL_ERROR ) {
       if ( !$state->{save_agent_error}++ ) {
          chomp($EVAL_ERROR);
-         $logger->info("Cannot save agent to $lib_dir: $EVAL_ERROR.  "
-            . "Configure the agent at https://pws.percona.com "
-            . "to use a writeable --lib directory.  No more "
-            . "messages will be logged about this problem until "
-            . "the save can be saved successfully.");
+         $logger->warning("Cannot save agent to $lib_dir: $EVAL_ERROR.  "
+            . "Configure the agent to use a writeable --lib directory.  "
+            . "This warning will not be printed again.");
       }
    }
    delete $state->{save_agent_error};
@@ -8421,7 +8411,7 @@ sub env_vars {
    foreach my $var ( qw(
       PTDEBUG
       PERCONA_TOOLKIT_TEST_USE_DSN_NAMES
-      PWS_ENTRY_LINK
+      PCT_ENTRY_LINK
    )) {
       if ( my $val = $ENV{$var} ) {
          push @vars, "$var=\"$val\"";
@@ -8556,125 +8546,50 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-pt-agent - Client-side agent for Percona Web Services
+pt-agent - Agent for Percona Cloud Tools
 
 =head1 SYNOPSIS
 
 Usage: pt-agent [OPTIONS]
 
-pt-agent is the client-side agent for Percona Web Services.  It is not
-a general command line tool like other tools in Percona Toolkit; it requires
-a Percona Web Services account, and it runs locally but it sends all data
-to Percona.  Please vist https://pws.percona.com for more information.
+pt-agent is the client-side agent for Percona Cloud Tools.  It is not
+a general command line tool like other tools in Percona Toolkit, it is
+configured and controlled through the web at https://cloud.percona.com.
+Please contact Percona or vist https://cloud.percona.com for more information.
 
 =head1 DESCRIPTION
 
-pt-agent is the client-side agent for Percona Web Services (PWS).  It is
-controlled and configured through the PWS web app at https://pws.percona.com.
-A PWS account is required to use pt-agent.
+pt-agent is the client-side agent for Percona Cloud Tools (PCT).  It is
+controlled and configured through the web app at https://clodu.percona.com.
+An account with Percona is required to use pt-agent.  Please contact Percona
+or vist https://cloud.percona.com for more information.
 
 pt-agent, or "the agent", is a single, unique instance of the tool running
-on a server.  Two agents cannot run on the same server (see L<"--pid">), else
-they will interfere with each other.
+on a server.  Two agents cannot run on the same server (see L<"--pid">).
 
-The agent is designed to be a long-running daemon, usually ran as root and
-started with L<"--daemonize">.  It connects periodically to Percona to update
-its config and services, and it schedules L<"--run-service"> and
+The agent is a daemon that runs as root.  It should be started with
+L<"--daemonize">.  It connects periodically to Percona to update
+its configuration and services, and it schedules L<"--run-service"> and
 L<"--send-data"> instances of itself.  Other than L<"INSTALLING"> and starting
-the agent locally, all control and configuration is done through the PWS web
-app.
+the agent locally, all control and configuration is done through the web
+at https://cloud.percona.com.
 
 =head1 INSTALLING
 
-=head2 Quick Start
+pt-agent must be installed and ran as root.  It is possible to run as
+a non-root user, but this requires a more complicated and manual installation.
+Please contact Percona for help if you need to run pt-agent as a non-root user.
 
-=over
+Installing the agent as root is very simple:
 
-=item 1. Create a system user called C<ptagent>
+  # pt-agent --install
 
-=item 2. Save C<api-key=SECRET-API-KEY> in C<~ptagent/.pt-agent.conf>
+The agent will prompt you for your Percona Cloud Tools API key.  Then it
+will verify the API key, create a MySQL user for the agent, and run the agent.
+When the install process is complete, go to https://cloud.percona.com to enable
+services for agent.
 
-=item 3. Create a MySQL user called C<ptagent> with C<GRANT SUPER,USAGE ON *.*>
-
-=item 4. Save C<user> and C<pass> in C<~ptagent/.my.cnf> under C<[client]>
-
-=item 5. Run C<pt-agent --daemonize> as C<ptagent>
-
-=item 6. Go to https://pws.percona.com to configure the agent
-
-=back
-
-=head2 Step-by-step
-
-=over
-
-=item 1. Create a MySQL user
-
-First, create a limited MySQL user for pt-agent:
-
-   mysql> GRANT SUPER,USAGE ON *.* TO 'pt_agent'@'localhost'
-        > IDENTIFIED BY 'foo';
-
-pt-agent does not need access to any database, but it must be able
-to connect to MySQL and change global variables, which requires the
-C<SUPER> privilege.
-
-=item 2. Configure MySQL access
-
-Second, put the MySQL username and password in C<$HOME/.my.cnf> of the system
-user running pt-agent:
-
-   [client]
-   user=pt_agent
-   pass=foo
-
-Or, you can configure the agent later at L<https://pws.percona.com> to use
-any L<"--defaults-file">.  If C<$HOME/.my.cnf> or another defaults file is
-not used, you will need to configure the agent to use specific C<--user>,
-C<--password>, and other MySQL connection options, but this is not secure
-because pt-agent will use C<--user pt_agent --password foo> on its command
-line.
-
-=item 3. Set your API key
-
-Third, set your Percona Web Services API key in C<$HOME/.pt-agent.conf> of
-the system user running pt-agent:
-
-   api-key=X
-
-Where C<X> is the API key.  Or, specify the L<"--api-key"> option when you
-run pt-agent.
-
-=item 4. Run pt-agent
-
-Once the previous step are complete, run:
-
-   $ pt-agent --daemonize
-
-The agent daemonizes and continues running in the background.
-
-=item 5. Configure the agent at L<https://pws.percona.com>
-
-Once pt-agent is running locally, it is controlled remotely through the web
-interface at L<https://pws.percona.com>.  Go there, log in with your account,
-and select the agent to set its configuration and enable services.
-
-=back
-
-=head2 Non-root Users
-
-pt-agent is designed to run as root, but it can run as a non-root user, too.
-However, this requires extra setup and configuration to ensure that pt-agent
-has access to its directories and files.
-
-When pt-agent starts as a non-root user and has not been configured,
-it uses C</tmp> as a base directory for L<"--lib">, L<"--spool">, L<"--pid">
-and L<"--log"> until you configure new values for these options through
-the web interface.
-
-Certain services, like Query History, may require setting additional
-permissions on files.  For example, you may need to set permissions on
-the MySQL slow log so that pt-agent can read it.
+Please contact Percona if you need help installing the agent.
 
 =head1 EXIT STATUS
 
@@ -8698,13 +8613,13 @@ Existing agent UUID for re-installing an agent.
 
 type: string
 
-Your secret Percona Web Services API key.
+Your secret Percona Cloud Tools API key.
 
 =item --check-interval
 
 type: time; default: 1m
 
-How often to check for a new configuration.
+How often to check for a new configuration and services.
 
 =item --config
 
@@ -8773,8 +8688,8 @@ Run in interactive mode (disables L<"--[no]log-api">).
 type: string; default: /var/lib/pt-agent
 
 Directory in which to save local data.  pt-agent is remotely controlled and
-configured, but it also saves data locally.  Do not edit these files; use
-the PWS web app to configure agents.
+configured, but it also saves data locally.  These files should not be edited
+manually.
 
 =item --log
 
@@ -8786,7 +8701,7 @@ Log all output to this file when daemonized.
 
 default: yes
 
-Log everything through the Percona Web API.
+Log everything through the Percona Cloud Tools API.
 
 =item --password
 
@@ -8829,16 +8744,16 @@ B<WARNING>: all L<"--spool"> data will be deleted.
 
 type: string
 
-Run a service and spool its data for L<"--send-data">.  You do not need
-to run pt-agent with this option.  The main pt-agent daemon schedules
+Run a service and spool its data for L<"--send-data">.  I<You do not need
+to run pt-agent with this option.>  The main pt-agent daemon schedules
 instances of itself with this option.
 
 =item --send-data
 
 type: string
 
-Send data for a service to Percona.  You do not need to run pt-agent with
-this option.  The main pt-agent daemon schedules instances of itself with
+Send data for a service to Percona.  I<You do not need to run pt-agent with
+this option.>  The main pt-agent daemon schedules instances of itself with
 this option.
 
 =item --set-vars
@@ -8968,8 +8883,31 @@ of output.
 
 =head1 SYSTEM REQUIREMENTS
 
-You need Perl, DBI, DBD::mysql, and some core packages that ought to be
-installed in any reasonably new version of Perl.
+pt-agent requires:
+
+=over
+
+=item * An account with Percona
+
+=item * Access to https://cloud-api.percona.com
+
+=item * Perl 5.8 or newer
+
+=item * Standard Linux bin tools (grep, awk, stat, etc.)
+
+=item * A Bash shell
+
+=item * Core Perl modules
+
+=item * DBD::mysql Perl module
+
+=item * JSON Perl module
+
+=item * LWP Perl module
+
+=item * IO::Socket::SSL Perl module
+
+=back
 
 =head1 BUGS
 
