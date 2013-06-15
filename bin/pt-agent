@@ -7821,7 +7821,8 @@ sub stop_all_services {
          my $cmd_exit_status = $CHILD_ERROR >> 8;
          if ( $cmd_exit_status != 0 ) {
             my $err = -f $run_log ? slurp($run_log) : '';
-            $logger->error("Error stopping $service: " . ($err || '(No error logged)'));
+            $logger->error("Error stopping $service.  Check $stop_log and the "
+               . "online logs for details.  The service may still be running.");
             next SERVICE;
          }
          unlink $stop_log
