@@ -20,7 +20,9 @@
 {
 package Percona::WebAPI::Representation;
 
-use JSON;
+eval {
+   use JSON;
+};
 
 require Exporter;
 our @ISA       = qw(Exporter);
