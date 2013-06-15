@@ -6416,8 +6416,7 @@ sub sort_services {
    my $prev_services = $args{prev_services};  # hashref
    my $curr_services = $args{curr_services};  # arrayref
 
-   my $services;      # curr_services as hashref keyed on service name
-   my %have_service;  # names of current services
+   my $services = {}; # curr_services as hashref keyed on service name
    my @added;
    my @updated;
    my @removed;
