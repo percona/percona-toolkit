@@ -12980,6 +12980,9 @@ sub main {
                               my $line = $_;
                               chomp $line;
                               my ($key, $value) = split('=', $line);
+                              if ( !$key || !defined $value || $value < 0 ) {
+                                 die "Invalid line in --resume $resume_file: $line";
+                              }
                               $resume->{$key} = $value;
                            } split("\n", $resume_offset);
                            if ( $resume->{end_offset} &&
