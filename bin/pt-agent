@@ -6913,6 +6913,7 @@ sub run_service {
    my $tmp_data_file  = "$tmp_dir/$data_file";
    my $taskno         = 0;
    my $metadata       = { data_ts => $prefix };
+   my $env_vars       = env_vars();
 
    TASK:
    foreach my $task ( @$tasks ) {
@@ -6986,6 +6987,7 @@ sub run_service {
             store        => $store,          # __STORE_key__
             ts           => $prefix,         # __TS__
             bin_dir      => $bin_dir,        # __BIN_DIR__
+            env          => $env_vars,       # __ENV__
          );
          $logger->info("Task $taskno query: $query");
          my $rows;
@@ -7051,6 +7053,7 @@ sub run_service {
             store        => $store,          # __STORE_key__
             ts           => $prefix,         # __TS__
             bin_dir      => $bin_dir,        # __BIN_DIR__
+            env          => $env_vars,       # __ENV__
          );
          $logger->info("Task $taskno command: $cmd");
 
@@ -7189,6 +7192,9 @@ sub replace_special_vars {
    my $ts           = $args{ts};
    my $bin_dir      = $args{bin_dir};
 
+   # Optional args
+   my $env = $args{env} || '';
+
    my $new_cmd = join(' ',
       map {
          my $word = $_;
@@ -7212,6 +7218,7 @@ sub replace_special_vars {
          $word =~ s/__META__FILE__/$meta_dir\/$service/g;
          $word =~ s/__BIN_DIR__/$bin_dir/g;
          $word =~ s/__TRASH_FILE__/$spool_dir\/.trash\/$service/g;
+         $word =~ s/__ENV__/$env/g;
 
          $word;
       }
