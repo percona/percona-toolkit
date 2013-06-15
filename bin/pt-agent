@@ -8107,7 +8107,8 @@ sub install {
          die "Sorry, the API key $api_key is not valid.  Please check the API key and try again.\n";
       }
       else {
-         die "Sorry, there was a problem connecting to the API.  Please try again.\n";
+         my $err = $client->response->message || 'Unknown error';
+         die "Sorry, an error occured while verifying the API key: $err\n";
       }
    }
 
