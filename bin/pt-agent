@@ -764,7 +764,9 @@ sub override {
 {
 package Percona::WebAPI::Representation;
 
-use JSON;
+eval {
+   use JSON;
+};
 
 require Exporter;
 our @ISA       = qw(Exporter);
@@ -841,10 +843,12 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-use LWP;
-use JSON;
+eval {
+   use LWP;
+   use JSON;
+};
+
 use Scalar::Util qw(blessed); 
-use English qw(-no_match_vars);
 
 use Lmo;
 use Percona::Toolkit;
@@ -5206,7 +5210,6 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 use Scalar::Util qw(blessed);
 use POSIX        qw(signal_h);
 use Time::HiRes  qw(sleep time);
-use JSON         qw(decode_json);
 use File::Temp   qw(tempfile);
 use File::Path;
 use File::Basename;
@@ -5236,6 +5239,18 @@ my $exit_status     = 0;
 my $state           = {};
 my $exit_on_signals = 0;
 my $logger;
+   
+my %deps = (
+   'DBD::mysql'     => [qw(DBD::mysql       libdbd-mysql-perl    ...)],
+   'JSON'           => [qw(JSON             libjson-perl         ...)],
+   'LWP'            => [qw(LWP              libwww-perl          ...)],
+   'IO::Socket::SSL'=> [qw(IO::Socket::SSL  libio-socket-ssl     ...)],
+);
+
+# Will check this later.
+eval {
+   use JSON qw(decode_json);
+};
 
 sub main {
    local @ARGV   = @_;
@@ -5270,7 +5285,12 @@ sub main {
  
    $o->usage_or_errors();
 
-   $OUTPUT_AUTOFLUSH = 1 if $o->get('interactive');
+   $OUTPUT_AUTOFLUSH = 1 if $o->get('interactive') || $o->get('install');
+
+   if ( !$o->get('install') ) {
+      check_deps();
+      exit 1;
+   }
 
    # ########################################################################
    # Connect to MysSQL later, maybe.
@@ -8030,8 +8050,6 @@ sub install {
 
    $logger->quiet(Percona::Agent::Logger::level_number('ERROR'));
 
-   $OUTPUT_AUTOFLUSH=1;
-
    my $agent_my_cnf = '/etc/percona/agent/my.cnf';
    my $config_file  = get_config_file();
 
@@ -8068,26 +8086,7 @@ sub install {
 
    # Check Perl module dependencies
    $next_step->();
-   my $deps = [
-      [qw(DBD::mysql       libdbd-mysql-perl    ...)],
-      [qw(JSON             libjson-perl         ...)],
-      [qw(LWP              libwww-perl          ...)],
-      [qw(IO::Socket::SSL  libio-socket-ssl     ...)],
-   ];
-   my @missing_deps;
-   foreach my $dep ( @$deps ) {
-      eval "require $dep->[0]";
-      if ( $EVAL_ERROR ) {
-         push @missing_deps, $dep;
-      }
-   }
-   if ( @missing_deps ) {
-      warn "These required Perl modules need to be installed:\n\n";
-      foreach my $dep ( @missing_deps ) {
-         warn "$dep->[0]\n  apt-get install $dep->[1]\n  yum install $dep->[2]\n\n";
-      }
-      exit 1;
-   }
+   check_deps();
 
    # 1. Must be root for --install.
    $next_step->();
@@ -8289,6 +8288,24 @@ sub pseudo_random_password {
    my $string;
    $string .= $chars[rand @chars] for 1..9;
    return $string;
+}
+
+sub check_deps {
+   my @missing_deps;
+   foreach my $pm ( sort keys %deps ) {
+      my $dep = $deps{$pm};
+      eval "require $dep->[0]";
+      if ( $EVAL_ERROR ) {
+         push @missing_deps, $dep;
+      }
+   }
+   if ( @missing_deps ) {
+      warn "These required Perl modules need to be installed:\n\n";
+      foreach my $dep ( @missing_deps ) {
+         warn "$dep->[0]\n  apt-get install $dep->[1]\n  yum install $dep->[2]\n\n";
+      }
+   }
+   return scalar @missing_deps;
 }
 
 # ################## #

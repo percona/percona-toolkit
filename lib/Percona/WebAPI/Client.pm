@@ -26,10 +26,12 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-use LWP;
-use JSON;
+eval {
+   use LWP;
+   use JSON;
+};
+
 use Scalar::Util qw(blessed); 
-use English qw(-no_match_vars);
 
 use Lmo;
 use Percona::Toolkit;
