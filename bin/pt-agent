@@ -8055,8 +8055,8 @@ sub install {
 
    my $stepno = 0;
    my @steps  = (
-      "Check Perl module dependencies",
       "Verify the user is root",
+      "Check Perl module dependencies",
       "Connect to MySQL",
       "Verify the API key",
       "Create a MySQL user for the agent",
@@ -8083,16 +8083,16 @@ sub install {
    # ########################################################################
    # Pre-install checklist
    # ######################################################################## 
-
-   # Check Perl module dependencies
-   $next_step->();
-   exit 1 if check_deps();
-
-   # 1. Must be root for --install.
+   
+   # Must be root for --install.
    $next_step->();
    if ( $EUID != 0 ) {
       die "You must run pt-agent --install as root.\n";
    }
+
+   # Check Perl module dependencies
+   $next_step->();
+   exit 1 if check_deps();
 
    # 2. Must be able to connect to MySQL to create pt_agent user.
    $next_step->();
