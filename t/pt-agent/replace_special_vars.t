@@ -19,6 +19,7 @@ require "$trunk/bin/pt-agent";
 Percona::Toolkit->import(qw(have_required_args Dumper));
 
 my @output_files = ();
+my $store        = {};
 
 sub test_replace {
    my (%args) = @_;
@@ -36,6 +37,10 @@ sub test_replace {
       lib_dir      => '/var/lib/pt-agent',
       meta_dir     => '/var/lib/pt-agent/meta',
       stage_dir    => '/var/spool/.tmp',
+      spool_dir    => '/var/spool',
+      bin_dir      => $trunk,
+      ts           => '123',
+      store        => $store,
    );
 
    is(
@@ -49,6 +54,12 @@ sub test_replace {
 test_replace(
    cmd    => "pt-query-digest __RUN_0_OUTPUT__",
    expect => "pt-query-digest zero",
+);
+
+$store->{slow_query_log_file} = 'slow.log';
+test_replace(
+   cmd    => "echo '__STORE_slow_query_log_file__' > /var/spool/pt-agent/.tmp/1371269644.rotate-slow-query-log-all-5.1.slow_query_log_file",
+   expect => "echo 'slow.log' > /var/spool/pt-agent/.tmp/1371269644.rotate-slow-query-log-all-5.1.slow_query_log_file",
 );
 
 # #############################################################################
