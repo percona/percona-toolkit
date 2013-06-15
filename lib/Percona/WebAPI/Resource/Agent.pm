@@ -46,13 +46,13 @@ has 'hostname' => (
 );
 
 has 'alias' => (
-   is       => 'ro',
+   is       => 'rw',
    isa      => 'Str',
    required => 0,
 );
 
 has 'versions' => (
-   is       => 'ro',
+   is       => 'rw',
    isa      => 'Maybe[HashRef]',
    required => 0,
 );
