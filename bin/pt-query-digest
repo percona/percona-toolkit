@@ -12980,8 +12980,12 @@ sub main {
                               my $line = $_;
                               chomp $line;
                               my ($key, $value) = split('=', $line);
-                              if ( !$key || !defined $value || $value < 0 ) {
-                                 die "Invalid line in --resume $resume_file: $line";
+                              if ( !$key
+                                   || !defined $value
+                                   || !looks_like_number($value)
+                                   || $value < 0 )
+                              {
+                                 die "Invalid line in --resume $resume_file: $line\n";
                               }
                               $resume->{$key} = $value;
                            } split("\n", $resume_offset);
