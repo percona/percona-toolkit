@@ -5241,6 +5241,7 @@ my $exit_on_signals = 0;
 my $logger;
 
 my %deps = (
+   'DBI'            => [qw(DBI              libdbi-perl          perl-DBI)],
    'DBD::mysql'     => [qw(DBD::mysql       libdbd-mysql-perl    perl-DBD-MySQL)],
    'JSON'           => [qw(JSON             libjson-perl         perl-JSON)],
    'LWP'            => [qw(LWP              libwww-perl          perl-libwww-perl)],
@@ -8301,7 +8302,7 @@ sub check_deps {
       }
    }
    if ( @missing_deps ) {
-      warn "These required Perl modules need to be installed:\n\n";
+      warn "These Perl modules need to be installed:\n\n";
       foreach my $dep ( @missing_deps ) {
          warn "$dep->[0]\n  apt-get install $dep->[1]\n  yum install $dep->[2]\n\n";
       }
