@@ -5398,7 +5398,7 @@ sub main {
          $logger->info("Done running $service, exit $exit_status");
       };
       if ( $EVAL_ERROR ) {
-         $logger->error("Error running pt-agent --service $service: $EVAL_ERROR");
+         $logger->fatal("Error running service $service: $EVAL_ERROR");
       }
       return $exit_status;
    }
@@ -5418,7 +5418,7 @@ sub main {
          $logger->info("Done sending data for $service, exit $exit_status");
       };
       if ( $EVAL_ERROR ) {
-         $logger->error("Error running pt-agent --send-data $service: $EVAL_ERROR");
+         $logger->fatal("Error running sending $service data: $EVAL_ERROR");
       }
       return $exit_status;
    }
@@ -5487,7 +5487,7 @@ sub main {
       );
    };
    if ( $EVAL_ERROR ) {
-      $logger->fatal("pt-agent crashed: $EVAL_ERROR");
+      $logger->fatal("Error running agent: $EVAL_ERROR");
    }
 
    $logger->info("pt-agent exit $exit_status, oktorun $oktorun");
@@ -6779,10 +6779,11 @@ sub run_service {
    my $cxn       = $args{Cxn};
 
    # Optional args
-   my $agent  = $args{agent};                # for testing
-   my $client = $args{client};               # for testing
-   my $json   = $args{json};                 # for testing
-   my $prefix = $args{prefix} || int(time);  # for testing
+   my $bin_dir = defined $args{bin_dir} ? $args{bin_dir} : "$FindBin::Bin/";
+   my $agent   = $args{agent};                # for testing
+   my $client  = $args{client};               # for testing
+   my $json    = $args{json};                 # for testing
+   my $prefix  = $args{prefix} || int(time);  # for testing
 
    my $start_time = time;
 
@@ -6970,13 +6971,15 @@ sub run_service {
       if ( my $query = $task->query ) {
          $query = replace_special_vars(
             cmd          => $query,
+            spool_dir    => $spool_dir,
             output_files => \@output_files,  # __RUN_n_OUTPUT__
             service      => $service->name,  # __SERVICE__
             lib_dir      => $lib_dir,        # __LIB__
             meta_dir     => "$lib_dir/meta", # __META__
             stage_dir    => $tmp_dir,        # __STAGE__
             store        => $store,          # __STORE_key__
-            ts           => $prefix,
+            ts           => $prefix,         # __TS__
+            bin_dir      => $bin_dir,        # __BIN_DIR__
          );
          $logger->info("Task $taskno query: $query");
          my $rows;
@@ -7033,13 +7036,15 @@ sub run_service {
          );
          $cmd = replace_special_vars(
             cmd          => $cmd,
+            spool_dir    => $spool_dir,
             output_files => \@output_files,  # __RUN_n_OUTPUT__
             service      => $service->name,  # __SERVICE__
             lib_dir      => $lib_dir,        # __LIB__
             meta_dir     => "$lib_dir/meta", # __META__
             stage_dir    => $tmp_dir,        # __STAGE__
             store        => $store,          # __STORE_key__
-            ts           => $prefix,
+            ts           => $prefix,         # __TS__
+            bin_dir      => $bin_dir,        # __BIN_DIR__
          );
          $logger->info("Task $taskno command: $cmd");
 
@@ -7157,6 +7162,7 @@ sub replace_special_vars {
 
    have_required_args(\%args, qw(
       cmd
+      spool_dir
       output_files
       service
       lib_dir
@@ -7164,8 +7170,10 @@ sub replace_special_vars {
       stage_dir
       store
       ts
+      bin_dir
    )) or die;
    my $cmd          = $args{cmd};
+   my $spool_dir    = $args{spool_dir};
    my $output_files = $args{output_files};
    my $service      = $args{service};
    my $lib_dir      = $args{lib_dir};
@@ -7173,6 +7181,7 @@ sub replace_special_vars {
    my $stage_dir    = $args{stage_dir};
    my $store        = $args{store};
    my $ts           = $args{ts};
+   my $bin_dir      = $args{bin_dir};
 
    my $new_cmd = join(' ',
       map {
@@ -7195,6 +7204,9 @@ sub replace_special_vars {
          $word =~ s/__SERVICE__/$service/g;
          $word =~ s/__STAGE_FILE_/$stage_dir\/$ts.$service/g;
          $word =~ s/__META__FILE__/$meta_dir\/$service/g;
+         $word =~ s/__BIN_DIR__/$bin_dir/g;
+         $word =~ s/__TRASH_FILE__/$spool_dir\/.trash\/$service/g;
+
          $word;
       }
       split(/\s+/, $cmd)
@@ -7224,7 +7236,7 @@ sub init_spool_dir {
       die "$spool_dir is not writeable\n";
    }
 
-   foreach my $subdir ( $service, '.tmp' ) {
+   foreach my $subdir ( $service, '.tmp', '.trash' ) {
       next unless $subdir;  # service may be undef
       my $dir = "$spool_dir/$subdir";
       if ( ! -d $dir ) {
@@ -7316,7 +7328,7 @@ sub send_data {
    );
    $daemon->run();
 
-   $logger->info("Sending $service service data");
+   $logger->info("Sending $service data");
 
    # Connect to Percona, get entry links.
    my $entry_links;
