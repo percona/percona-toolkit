@@ -12662,6 +12662,7 @@ my $aux_dbh; # For --aux-dsn (--since/--until "MySQL expression")
 my $resume_file;
 my $resume = {};
 my $offset;
+my $exit_status = 0;
 
 (my $tool = __PACKAGE__) =~ tr/_/-/;
 
@@ -12671,6 +12672,7 @@ sub main {
    $oktorun     = 1;
    $resume      = {};
    $offset      = undef;
+   $exit_status = 0;
 
    # ##########################################################################
    # Get configuration information.
@@ -12985,7 +12987,10 @@ sub main {
                                    || !looks_like_number($value)
                                    || $value < 0 )
                               {
-                                 die "Invalid line in --resume $resume_file: $line\n";
+                                 $exit_status = 1;
+                                 warn "Invalid line in --resume $resume_file: $line\n";
+                                 $oktorun = 0;
+                                 return;
                               }
                               $resume->{$key} = $value;
                            } split("\n", $resume_offset);
@@ -13903,7 +13908,7 @@ sub main {
    grep { $_ }
    ($qv_dbh, $qh_dbh, $ps_dbh, $ep_dbh, $aux_dbh);
 
-   return 0;
+   return $exit_status;
 } # End main()
 
 # ############################################################################
