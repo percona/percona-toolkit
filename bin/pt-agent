@@ -7111,7 +7111,7 @@ sub run_service {
             exit_status => $cmd_exit_status,
          };
 
-         if ( $cmd_exit_status == 200 ) {
+         if ( $cmd_exit_status == 253 ) {
             $logger->error($task->name . ' exit status not zero, '
                . 'stopping ' . $service->name . ' service');
             stop_service(
