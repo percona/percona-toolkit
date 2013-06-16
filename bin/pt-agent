@@ -5287,6 +5287,23 @@ sub main {
    $o->usage_or_errors();
 
    $OUTPUT_AUTOFLUSH = 1 if $o->get('interactive') || $o->get('install');
+  
+   # ######################################################################## 
+   # Fail-safe: if the agent somehow runs away, i.e. starts to fork-bomb,
+   # stop everything.
+   # ########################################################################
+   my $lib_dir = $o->get('lib-dir');
+   if ( too_many_agents(lib_dir => $lib_dir) ) {
+      schedule_services(
+         services => [],
+         lib_dir  => $lib_dir,
+      );
+      die "Too many agents are running.  Remove the PID files in "
+         . "$lib_dir/pids/ if the agents are no longer running.  Else, "
+         . "check the log files in $lib_dir/logs/ and online to see "
+         . "if the agent is stuck in a loop.  Please contact Percona "
+         . "if you need urgent help.\n";
+   }
 
    # ########################################################################
    # Connect to MysSQL later, maybe.
@@ -6834,7 +6851,7 @@ sub run_service {
 
    my $daemon = Daemon->new(
       daemonize      => 0,  # no need: we're running from cron
-      # no pid_file because --run-service X must handle concurrent runs of X
+      pid_file       => "$lib_dir/pids/$service.$PID",
       log_file       => "$lib_dir/logs/$service.run",
       force_log_file => 1,
    );
@@ -7915,7 +7932,7 @@ sub stop_service {
          my $stop_log = "$lib_dir/logs/$service.stop";
          my $run_log  = "$lib_dir/logs/$service.run";
          my $cmd      = ($env_vars ? "$env_vars " : '')
-                      . "${bin_dir}pt-agent --run-service $service"
+                      . "${bin_dir}pt-agent --run-service $stop_service"
                       . " </dev/null"
                       . " >$stop_log 2>&1";
          $logger->info("Stopping $service...");
@@ -8727,6 +8744,17 @@ sub check_if_mysql_restarted {
    $state->{last_uptime_check} = $now;
 
    return;
+}
+
+sub too_many_agents {
+   my (%args) = @_;
+   have_required_args(\%args, qw(
+      lib_dir
+   )) or die;
+   my $lib_dir = $args{lib_dir};
+   return unless -d "$lib_dir/pids";
+   my @pids = glob "$lib_dir/pids/*";
+   return scalar @pids > 10 ? 1 : 0;
 }
 
 sub _state {
