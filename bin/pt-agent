@@ -6265,12 +6265,14 @@ sub write_config {
 
    # Get the api-key line if any; we don't want to/can't clobber this.
    my $api_key;
+   my $no_log_api;
    if ( -f $file ) {
       open my $fh, "<", $file
          or die "Error opening $file: $OS_ERROR";
       my $contents = do { local $/ = undef; <$fh> };
       close $fh;
-      ($api_key) = $contents =~ m/^(api-key=\S+)$/m;
+      ($api_key)    = $contents =~ m/^(api-key=\S+)$/m;
+      ($no_log_api) = $contents =~ m/^(no-log-api)$/m;
    }
 
    # Re-write the api-key, if any, then write the config.
@@ -6278,6 +6280,10 @@ sub write_config {
       or die "Error opening $file: $OS_ERROR";
    if ( $api_key ) {
       print { $fh } $api_key, "\n"
+         or die "Error writing to $file: $OS_ERROR";
+   }
+   if ( $no_log_api ) {
+      print { $fh } $no_log_api, "\n"
          or die "Error writing to $file: $OS_ERROR";
    }
    print { $fh } as_config($config)
