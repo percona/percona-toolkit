@@ -7134,7 +7134,7 @@ sub run_service {
             exit_status => $cmd_exit_status,
          };
 
-         if ( $cmd_exit_status == 252 && !$service->meta ) {
+         if ( $cmd_exit_status == 200 && !$service->meta ) {
             # Equivalent to 0 for meta-services that need to stop early
             # but let the non-meta, i.e. real, parent service continue.
          }
