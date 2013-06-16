@@ -5240,12 +5240,19 @@ my $state           = {};
 my $exit_on_signals = 0;
 my $logger;
 
+use constant MAX_DATA_FILE_SIZE => 15_728_640;  # 15M
+
 my %deps = (
-   'DBI'            => [qw(DBI              libdbi-perl           perl-DBI)],
-   'DBD::mysql'     => [qw(DBD::mysql       libdbd-mysql-perl     perl-DBD-MySQL)],
-   'JSON'           => [qw(JSON             libjson-perl          perl-JSON)],
-   'LWP'            => [qw(LWP              libwww-perl           perl-libwww-perl)],
-   'IO::Socket::SSL'=> [qw(IO::Socket::SSL  libio-socket-ssl-perl perl-IO-Socket-SSL)],
+   'DBI'
+      => [qw(DBI              libdbi-perl           perl-DBI)],
+   'DBD::mysql'
+      => [qw(DBD::mysql       libdbd-mysql-perl     perl-DBD-MySQL)],
+   'JSON'
+      => [qw(JSON             libjson-perl          perl-JSON)],
+   'LWP'
+      => [qw(LWP              libwww-perl           perl-libwww-perl)],
+   'IO::Socket::SSL'
+      => [qw(IO::Socket::SSL  libio-socket-ssl-perl perl-IO-Socket-SSL)],
 );
 
 # Will check this later.
@@ -5286,8 +5293,10 @@ sub main {
  
    $o->usage_or_errors();
 
-   $OUTPUT_AUTOFLUSH = 1 if $o->get('interactive') || $o->get('install');
-  
+   if ( $o->get('interactive') || $o->get('install') ) {
+      $OUTPUT_AUTOFLUSH = 1 
+   }
+
    # ######################################################################## 
    # Fail-safe: if the agent somehow runs away, i.e. starts to fork-bomb,
    # stop everything.
@@ -5324,7 +5333,7 @@ sub main {
    );
 
    # ########################################################################
-   # --install
+   # --install and exit.
    # ########################################################################
    if ( $o->get('install') ) {
       $exit_on_signals = 1;
@@ -5336,9 +5345,12 @@ sub main {
       );
       return $exit_status;
    }
-   else {
-      $logger->fatal("Missing required Perl modules")
-         if check_deps();
+
+   # ########################################################################
+   # Nothing works without required Perl modules.
+   # ########################################################################
+   if ( missing_perl_module_deps() ) {
+      $logger->fatal("Missing required Perl modules");
    }
 
    # ########################################################################
@@ -5399,8 +5411,8 @@ sub main {
          api_key   => $api_key,  # optional
       );
       if ( $exit_status != 0 ) {
-         $logger->warning("Failed to completely reset pt-agent.  Check the warnings "
-            . "and errors and above and try again.");
+         $logger->error("Failed to completely reset pt-agent.  "
+            . "Check the warnings and errors and above and try again.");
       }
       else {
          $logger->info("pt-agent has been completely reset.");
@@ -5415,8 +5427,7 @@ sub main {
    }
 
    # ########################################################################
-   # --run-service
-   # This runs locally and offline, doesn't need a web API connection.
+   # --run-service and exit.
    # ########################################################################
    if ( my $service = $o->get('run-service') ) {
       eval {
@@ -5436,7 +5447,7 @@ sub main {
    }
 
    # ########################################################################
-   # --send-data
+   # --send-data and exit.
    # ########################################################################
    if ( my $service = $o->get('send-data') ) {
       eval {
@@ -5486,13 +5497,11 @@ sub main {
       log_file  => $o->get('log'),
    );
 
-   $cxn->dbh->disconnect() if $cxn && $cxn->dbh;
-
    # Wait time between checking for new config and services.
    # Use the tool's built-in default until a config is gotten,
    # then config->{check-interval} will be pass in.
    my $check_interval = $o->get('check-interval');
-   my $check_wait     = sub {
+   my $interval = sub {
       my ($t, $quiet) = @_;
       return unless $oktorun;
       $t ||= $check_interval;
@@ -5512,10 +5521,10 @@ sub main {
          agent      => $running->{agent},
          client     => $running->{client},
          daemon     => $running->{daemon},
-         interval   => $check_wait,
-         lib_dir    => $o->get('lib'),
+         interval   => $interval,
          safeguards => $safeguards,
          Cxn        => $cxn,
+         lib_dir    => $o->get('lib'),
       );
    };
    if ( $EVAL_ERROR ) {
@@ -5788,9 +5797,11 @@ sub start_agent {
    my $entry_links   = $args{entry_links};    # for testing
    my $logger_client = $args{logger_client};  # for testing
 
+   $logger->info('Starting agent');
+
    # Daemonize first so all output goes to the --log.
    my $daemon;
-   if ( $daemonize || $pid_file || $log_file ) {
+   if ( $daemonize ) {
       $daemon = Daemon->new(
          daemonize   => $daemonize,
          pid_file    => $pid_file,
@@ -5819,8 +5830,7 @@ These values can change if a different configuration is received.
       $cxn->{parent} = 0;
    }
 
-   $logger->info('Starting agent');
-
+   # Make --lib and its subdirectories.
    eval {
       init_lib_dir(
          lib_dir => $lib_dir,
@@ -5832,8 +5842,8 @@ These values can change if a different configuration is received.
          . "Configure the agent to use a writeable --lib directory.");
    }
 
-   # Connect to the Percona Web API and get entry links.
-   # Don't return until successful.
+   # Connect to the API and get entry links.  Since we're in start_agent(),
+   # try forever because the agent needs an API connection to start.
    if ( !$client || !$entry_links ) {
       ($client, $entry_links, $logger_client) = get_api_client(
          api_key  => $api_key,
@@ -5849,7 +5859,7 @@ These values can change if a different configuration is received.
    # connects and disconnect it, if possible.  If not possible, the
    # MySQL version isn't sent in hopes that it becomes possible to get
    # it later.
-   if ( !$versions ) {
+   if ( !$versions || !$versions->{MySQL} ) {
       $versions = get_versions(
          Cxn   => $cxn,
       );
@@ -6046,13 +6056,15 @@ sub run_agent {
                . $safeguards->{disk_bytes_free}
                . '/'
                . $safeguards->{disk_pct_free});
-            $logger->warning("Disk space is low, stopping all services:\n$disk_space");
+            $logger->warning("Disk space is low, stopping all services:\n"
+               . $disk_space);
             if ( !$state->{all_services_are_stopped} ) {
                stop_all_services(
                   lib_dir => $lib_dir,
                );
             }
-            $logger->warning('Services will restart when disk space threshold checks pass');
+            $logger->warning('Services will restart when disk space "
+               . "threshold checks pass');
          }
          else {
             # Have config, safeguards are ok, now get/update the services.
@@ -6221,8 +6233,8 @@ sub apply_config {
    if ( $daemon->{daemonize} ) {
       # --log only matters if we're daemonized
       if ( $old_log ne $new_log ) {
-         $logger->info('NOTICE: Changing --log file from ' . ($old_log || '(none)')
-             . ' to ' . ($new_log || '(none)'));
+         $logger->info('NOTICE: Changing --log file from '
+            . ($old_log || '(none)') . ' to ' . ($new_log || '(none)'));
          $make_new_daemon = 1;
       }
    }
@@ -6241,7 +6253,8 @@ sub apply_config {
          $new_daemon->run();
 
          if ( $daemon->{daemonize} && $old_log ne $new_log  ) {
-            $logger->info('New log file, previous was ' . ($old_log || 'unset'));
+            $logger->info('New log file, previous was '
+               . ($old_log || 'unset'));
          }
          if ( $old_pid eq $new_pid ) {
             # If the PID file has not, then the old/original daemon and
@@ -6833,11 +6846,12 @@ sub run_service {
    my $cxn       = $args{Cxn};
 
    # Optional args
-   my $bin_dir = defined $args{bin_dir} ? $args{bin_dir} : "$FindBin::Bin/";
-   my $agent   = $args{agent};                # for testing
-   my $client  = $args{client};               # for testing
-   my $json    = $args{json};                 # for testing
-   my $prefix  = $args{prefix} || int(time);  # for testing
+   my $bin_dir  = defined $args{bin_dir} ? $args{bin_dir} : "$FindBin::Bin/";
+   my $agent    = $args{agent};                # for testing
+   my $client   = $args{client};               # for testing
+   my $json     = $args{json};                 # for testing
+   my $prefix   = $args{prefix} || int(time);  # for testing
+   my $max_data = $args{max_data} || MAX_DATA_FILE_SIZE;
 
    my $start_time = time;
 
@@ -6883,8 +6897,8 @@ sub run_service {
          lib_dir => $lib_dir,
       );
       if ( !$agent ) {
-         die "No agent exists ($lib_dir/agent) and --agent-uuid was not "
-            . "specified.  Check that the agent is still properly installed.\n";
+         $logger->fatal("No agent exists ($lib_dir/agent) and --agent-uuid was "
+            . "not specified.  Check that the agent is properly installed.");
       }
    }
 
@@ -6909,7 +6923,6 @@ sub run_service {
       $logger->warning("File logging only");
    }
 
-   # XXX
    # Load the Service object from local service JSON file.
    # $service changes from a string scalar to a Service object.
    $service = load_service(
@@ -6980,11 +6993,13 @@ sub run_service {
       # is the service name; type is "data", "tmp", "meta", etc.; and
       # n is an optional ID or instance of the type.  The .data is the
       # only file required: it's the data sent by send_data().
-      my $task_output_file = "$tmp_dir/$prefix." . $service->name . ".$taskno.output";
+      my $task_output_file = "$tmp_dir/$prefix."
+                           . $service->name
+                           . ".output.$taskno";
       my $output_file;
       my $join_char;
-
       my ($store_key, $store_key_value_tuple);
+
       my $output = $task->output || '';
       if ( $output eq 'spool' ) {
          $output_file = $tmp_data_file;
@@ -7024,7 +7039,6 @@ sub run_service {
       else {
          push @output_files, $output_file;
       }
-
       PTDEBUG && _d("Task $taskno output:", Dumper(\@output_files));
 
       if ( my $query = $task->query ) {
@@ -7066,7 +7080,8 @@ sub run_service {
                   last TASK;
                }
                foreach my $row ( @$rows ) {
-                  print { $fh } join($join_char, map { defined $_  ? $_ : 'NULL' } @$row), "\n"
+                  print { $fh } join($join_char,
+                        map { defined $_  ? $_ : 'NULL' } @$row), "\n"
                      or $logger->error("Cannot write to $output_file: $OS_ERROR");
                }
                close $fh
@@ -7162,7 +7177,7 @@ sub run_service {
          }
       }
       else {
-         $logger->warning('Invalid Task resource:', Dumper($task));
+         $logger->error('Invalid Task resource:', Dumper($task));
          last TASK;
       }
 
@@ -7171,9 +7186,17 @@ sub run_service {
 
    # Move the spool file from --spool/.tmp/ to --spool/<service>/
    # if 1) the service spools data and 2) there is data.
-   my $file_size = -s $tmp_data_file;
+   my $file_size = (-s $tmp_data_file) || 0;
    $logger->info("$tmp_data_file size: " . ($file_size || 0) . " bytes");
-   if ( $use_spool && $file_size ) {
+   if ( $file_size > $max_data ) {
+      $logger->error("Data file is larger than $max_data, the service "
+         . "may be malfunctioning, stopping service");
+      stop_service(
+         service => $service->name,
+         lib_dir => $lib_dir,
+      );
+   }
+   elsif ( $use_spool && $file_size ) {
       # Save metadata about this sample _first_, because --send-data looks
       # for the data file first, then for a corresponding .meta file.  If
       # we write the data file first, then we create a race condition: while
@@ -7204,7 +7227,9 @@ sub run_service {
       $logger->info($cmd);
       system($cmd);
       my $cmd_exit_status = $CHILD_ERROR >> 8;
-      $logger->warning("Move failed: $cmd") if $cmd_exit_status != 0;
+      if ( $cmd_exit_status != 0 ) {
+         $logger->error("Move failed: $cmd") 
+      }
       $exit_status |= $cmd_exit_status;
    }
 
@@ -7290,7 +7315,7 @@ sub replace_special_vars {
             $word =~ s/__STAGE_FILE__/$stage_dir\/$ts.$service/g;
             $word =~ s/__META_FILE__/$meta_dir\/$service.meta/g;
             $word =~ s/__BIN_DIR__/$bin_dir/g;
-            $word =~ s/__TRASH_FILE__/$spool_dir\/.trash\/$service/g;
+            $word =~ s/__TRASH__/$spool_dir\/.trash/g;
             $word =~ s/__ENV__/$env/g;
             $word;
          }
@@ -7298,7 +7323,8 @@ sub replace_special_vars {
       );
    };
    if ( $EVAL_ERROR ) {
-      $logger->fatal("Error replacing " . ($word || '') . " in $cmd: $EVAL_ERROR");
+      $logger->fatal("Error replacing " . ($word || '')
+         . " in $cmd: $EVAL_ERROR");
    }
 
    return $new_cmd;
@@ -7399,6 +7425,7 @@ sub send_data {
    my $agent       = $args{agent};  # for testing
    my $client      = $args{client}; # for testing
    my $json        = $args{json};   # for testing
+   my $max_data    = $args{max_data} || MAX_DATA_FILE_SIZE;
 
    # Can't do anything with the lib dir.  Since we haven't started
    # logging yet, cron should capture this error and email the user.
@@ -7443,8 +7470,8 @@ sub send_data {
          lib_dir => $lib_dir,
       );
       if ( !$agent ) {
-         die "No agent exists ($lib_dir/agent) and --agent-uuid was not "
-            . "specified.  Check that the agent is still properly installed.\n";
+         $logger->fatal("No agent exists ($lib_dir/agent) and --agent-uuid was "
+            . "not specified.  Check that the agent is properly installed.");
       }
    }
 
@@ -7463,7 +7490,6 @@ sub send_data {
       log_link => $log_link,
    );
 
-   # XXX
    # Load the Service object from local service JSON file.
    # $service changes from a string scalar to a Service object.
    $service = load_service(
@@ -7484,6 +7510,8 @@ sub send_data {
    $logger->info('Sending ' . scalar @data_files . ' data files');
    DATA_FILE:
    foreach my $data_file ( @data_files ) {
+      (my $meta_file = $data_file) =~ s/\.data/.meta/;
+
       if ( $interactive ) {
          my $key;
          PROMPT:
@@ -7505,14 +7533,15 @@ sub send_data {
          }
       }
 
-      (my $meta_file = $data_file) =~ s/\.data/.meta/;
-      my ($data_ts) = $data_file =~ m/\/(\d+)\.\w+/;
-      if ( $data_ts ) {
-         $logger->data_ts($data_ts);
+      my $data_file_size = (-s $data_file) || 0;
+      if ( $data_file_size > $max_data ) {
+         $logger->error("Not sending $data_file because it is too large: "
+            . "$data_file_size > $max_data.  This should not happen; "
+            . "please contact Percona or file a bug, and verify that "
+            . "all services are running properly.");
+         next DATA_FILE;
       }
-      else {
-         $logger->data_ts(undef);
-      }
+
       eval {
          # Send the file as-is.  The --run-service process should
          # have written the data in a format that's ready to send.
@@ -7548,7 +7577,8 @@ sub send_data {
       };
       if ( $EVAL_ERROR ) {
          chomp $EVAL_ERROR;
-         $logger->warning("Sent $data_file but failed to remove it: $EVAL_ERROR");
+         $logger->warning("Sent $data_file but failed to remove it: "
+            . $EVAL_ERROR);
          last DATA_FILE;
       }
 
@@ -8219,7 +8249,7 @@ sub install {
 
    # Check Perl module dependencies
    $next_step->();
-   exit 1 if check_deps();
+   exit 1 if missing_perl_module_deps();
 
    # Check for crontab
    $next_step->();
@@ -8472,7 +8502,7 @@ sub pseudo_random_password {
    return $string;
 }
 
-sub check_deps {
+sub missing_perl_module_deps {
    my @missing_deps;
    foreach my $pm ( sort keys %deps ) {
       my $dep = $deps{$pm};
