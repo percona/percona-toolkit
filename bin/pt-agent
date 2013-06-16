@@ -5292,7 +5292,7 @@ sub main {
    # Fail-safe: if the agent somehow runs away, i.e. starts to fork-bomb,
    # stop everything.
    # ########################################################################
-   my $lib_dir = $o->get('lib-dir');
+   my $lib_dir = $o->get('lib');
    if ( too_many_agents(lib_dir => $lib_dir) ) {
       schedule_services(
          services => [],
