@@ -7118,6 +7118,7 @@ sub run_service {
                service => $service->name,
                lib_dir => $lib_dir,
             );
+            last TASK;
          }
          elsif ( $cmd_exit_status == 254 ) {
             $logger->error($task->name . ' exit status not zero, '
@@ -7125,6 +7126,7 @@ sub run_service {
             stop_all_services(
                lib_dir => $lib_dir
             );
+            last TASK;
          }
          elsif ( $cmd_exit_status != 0 ) {
             $logger->info($task->name . ' exit status not zero, '
