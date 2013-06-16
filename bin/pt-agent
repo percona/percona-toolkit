@@ -6996,6 +6996,7 @@ sub run_service {
       my $task_output_file = "$tmp_dir/$prefix."
                            . $service->name
                            . ".output.$taskno";
+      my $append           = 0;
       my $output_file;
       my $join_char;
       my ($store_key, $store_key_value_tuple);
@@ -7030,6 +7031,10 @@ sub run_service {
       elsif ( $output eq 'store:output' ) {
          $store_key = $taskno;
          $output_file = $task_output_file;
+      }
+      elsif ( $output =~ m/append:(\S+)/ ) {
+         $output_file = $1;
+         $append = 1;
       }
 
       if ( !$output_file ) {
@@ -7106,7 +7111,7 @@ sub run_service {
          # special vars like __RUN_N_OUTPUT__, __TMPDIR__, etc.
          my $cmd = join(' ',
             $task->program,
-            '>',
+            ($append ? '>>' : '>'),
             $output_file,
          );
          $cmd = replace_special_vars(
@@ -8219,7 +8224,6 @@ sub install {
          $step_result = undef;
       }
       print "$result\n" if $stepno && !$repeat;
-      return if $done;
       while ( $skip ) {
          printf $step_fmt,
             $stepno + ($repeat ? 0 : 1),
@@ -8228,6 +8232,10 @@ sub install {
          $stepno++;
          print "SKIP\n";
          $skip--;
+      }
+      if ( $done ) {
+         print "INSTALLATION COMPLETE\n";
+         return;
       }
       # This step
       printf $step_fmt,
@@ -8257,10 +8265,27 @@ sub install {
    if ( !$crontab ) {
       die "cron is not installed, or crontab is not in your PATH.\n";
    }
-   $next_step->();
 
    # Must have a valid API key.
    my $api_key = $o->get('api-key');
+   if ( !$api_key ) {
+      print "\n";
+      if ( $interactive || -t STDIN ) {
+         while ( !$api_key ) {
+            print "Enter your API key: ";
+            $api_key = <STDIN>;
+            chomp($api_key) if $api_key;
+            if ( !$api_key || length($api_key) < 32 ) {
+               warn "Invalid API key; it should be at least 32 characters long.  Please try again.\n";
+               $api_key = '';
+            }
+         }
+         $next_step->(repeat => 1);  # repeat
+      }
+      else {
+         die "Please specify your --api-key.\n";
+      }
+   }
    my $client;
    my $entry_links;
    if ( $flags->{offline} ) {
@@ -8268,24 +8293,6 @@ sub install {
    }
    else {
       $next_step->();
-      if ( !$api_key ) {
-         print "\n";
-         if ( $interactive || -t STDIN ) {
-            while ( !$api_key ) {
-               print "Enter your API key: ";
-               $api_key = <STDIN>;
-               chomp($api_key) if $api_key;
-               if ( !$api_key || length($api_key) < 32 ) {
-                  warn "Invalid API key; it should be at least 32 characters long.  Please try again.\n";
-                  $api_key = '';
-               }
-            }
-            $next_step->(repeat => 1);  # repeat
-         }
-         else {
-            die "Please specify your --api-key.\n";
-         }
-      }
       eval {
          ($client, $entry_links) = get_api_client(
             api_key  => $api_key,
@@ -8428,14 +8435,20 @@ sub install {
    # ########################################################################
    $next_step->(done => 1);
 
+   my $hostname = `hostname`;
+   chomp($hostname);
+
    if ( $flags->{offline} ) {
+      print "The agent has been installed, but it was not started.  "
+         . "Run pt-agent --daemonize to start the agent, then go to "
+         . "https://cloud.percona.com/agents#$hostname to enable services "
+         . "for the agent.\n";
    }
    else {
-      my $hostname = `hostname`;
-      chomp($hostname);
-
-      print "\nThe agent has been installed and started, but it is not running any services yet.  "
-         . "Go to https://cloud.percona.com/agents#$hostname to enable services for this agent.\n\n";
+      print "The agent has been installed and started, but it is not "
+         . "running any services yet.  Go to "
+         . "https://cloud.percona.com/agents#$hostname to enable services"
+         . "for the agent.\n";
    }
 
    return;
@@ -8451,7 +8464,7 @@ sub create_mysql_user {
       $cxn->dbh->do($sql);
    };
    if ( $EVAL_ERROR ) {
-      die "Sorry, an error occurred while creating a MySQL user for pt-agent: "
+      die "Sorry, an error occurred while creating a MySQL user for the agent: "
          . $EVAL_ERROR;
    }
    $cxn->dbh->disconnect();
