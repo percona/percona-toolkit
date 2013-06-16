@@ -8146,6 +8146,7 @@ sub install {
    my @steps  = (
       "Verify the user is root",
       "Check Perl module dependencies",
+      "Check for crontab",
       "Verify the API key",
       "Connect to MySQL",
       "Check if MySQL is a slave",
@@ -8199,6 +8200,14 @@ sub install {
    # Check Perl module dependencies
    $next_step->();
    exit 1 if check_deps();
+
+   # Check for crontab
+   $next_step->();
+   my $crontab = `which crontab 2>/dev/null`;
+   if ( !$crontab ) {
+      die "cron is not installed, or crontab is not in your PATH.\n";
+   }
+   $next_step->();
 
    # Must have a valid API key.
    my $api_key = $o->get('api-key');
@@ -9126,6 +9135,8 @@ pt-agent requires:
 =item * Perl 5.8 or newer
 
 =item * Standard Linux bin tools (grep, awk, stat, etc.)
+
+=item * cron
 
 =item * A Bash shell
 
