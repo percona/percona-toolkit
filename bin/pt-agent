@@ -7926,30 +7926,33 @@ sub stop_service {
                :                          "$FindBin::Bin/";
 
    if ( -d "$lib_dir/services" ) {
-      my $stop_service = "$lib_dir/services/stop-$service";
-      if ( -f $stop_service ) {
-         my $env_vars = env_vars();
-         my $stop_log = "$lib_dir/logs/$service.stop";
-         my $run_log  = "$lib_dir/logs/$service.run";
-         my $cmd      = ($env_vars ? "$env_vars " : '')
-                      . "${bin_dir}pt-agent --run-service $stop_service"
-                      . " </dev/null"
-                      . " >$stop_log 2>&1";
+      my $stop_service_file = "$lib_dir/services/stop-$service";
+      if ( -f $stop_service_file ) {
+         my $stop_service = basename($stop_service_file);
+         my $env_vars     = env_vars();
+         my $stop_log     = "$lib_dir/logs/$service.stop";
+         my $run_log      = "$lib_dir/logs/$service.run";
+         my $cmd          = ($env_vars ? "$env_vars " : '')
+                          . "${bin_dir}pt-agent --run-service $stop_service"
+                          . " </dev/null"
+                          . " >$stop_log 2>&1";
          $logger->info("Stopping $service...");
          PTDEBUG && _d($cmd);
          system($cmd);
          my $cmd_exit_status = $CHILD_ERROR >> 8;
          if ( $cmd_exit_status != 0 ) {
             my $err = -f $run_log ? slurp($run_log) : '';
-            $logger->error("Error stopping $service.  Check $stop_log and the "
-               . "online logs for details.  The service may still be running.");
-            next SERVICE;
+            $logger->error("Error stopping $service.  Check $stop_log, "
+               . "$run_log, and the online online logs for details.  "
+               . "$service may still be running.");
          }
-         unlink $stop_log
-            or $logger->warning("Cannot remove $stop_log: $OS_ERROR");
+         else {
+            unlink $stop_log
+               or $logger->warning("Cannot remove $stop_log: $OS_ERROR");
+         }
       }
       else {
-         $logger->warning("$stop_service does not exist, cannot stop $service");
+         $logger->warning("$stop_service_file does not exist, cannot stop $service");
       }
    }
    else {
