@@ -8,9 +8,8 @@ BEGIN {
 
 use strict;
 use warnings FATAL => 'all';
+use English qw(-no_match_vars);
 use Test::More;
-
-use IPC::Cmd qw(run can_run);
 
 use PerconaTest;
 use Percona::Toolkit;

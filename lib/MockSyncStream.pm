@@ -1,4 +1,4 @@
-# This program is copyright 2009-2011 Percona Ireland Ltd.
+# This program is copyright 2009-2011 Percona Inc.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED

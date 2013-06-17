@@ -9,31 +9,28 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+
 use Test::More;
 use Time::HiRes qw(sleep);
-use File::Temp qw( tempfile );
+use File::Temp qw(tempfile);
+
 use Daemon;
-use OptionParser;
 use PerconaTest;
-#plan skip_all => "Hm";
+
 use constant PTDEVDEBUG => $ENV{PTDEVDEBUG} || 0;
 
-my $o = new OptionParser(file => "$trunk/t/lib/samples/daemonizes.pl");
-my $d = new Daemon(o=>$o);
-
-my $pid_file = '/tmp/daemonizes.pl.pid';
-my $log_file = '/tmp/daemonizes.output'; 
+my $cmd      = "$trunk/t/lib/samples/daemonizes.pl";
+my $pid_file = "/tmp/pt-daemon-test.pid.$PID";
+my $log_file = "/tmp/pt-daemon-test.log.$PID";
 sub rm_tmp_files() {
-   -e $pid_file && (unlink $pid_file || die "Error removing $pid_file");
-   -e $log_file && (unlink $log_file || die "Error removing $log_file");
+   -f $pid_file && (unlink $pid_file || die "Error removing $pid_file");
+   -f $log_file && (unlink $log_file || die "Error removing $log_file");
 }
 
 # ############################################################################
 # Test that it daemonizes, creates a PID file, and removes that PID file.
 # ############################################################################
-rm_tmp_files();
 
-my $cmd     = "$trunk/t/lib/samples/daemonizes.pl";
 my $ret_val = system("$cmd 5 --daemonize --pid $pid_file >/dev/null 2>&1");
 die 'Cannot test Daemon.pm because t/daemonizes.pl is not working'
    unless $ret_val == 0;
@@ -41,16 +38,34 @@ die 'Cannot test Daemon.pm because t/daemonizes.pl is not working'
 PerconaTest::wait_for_files($pid_file);
 
 my $output = `ps wx | grep '$cmd 5' | grep -v grep`;
-like($output, qr/$cmd/, 'Daemonizes');
-ok(-f $pid_file, 'Creates PID file');
 
-my ($pid) = $output =~ /\s*(\d+)\s+/;
+like(
+   $output,
+   qr/$cmd/,
+   'Daemonizes'
+);
+
+ok(
+   -f $pid_file,
+   'Creates PID file'
+);
+
+my ($pid) = $output =~ /^\s*(\d+)\s+/;
 $output = slurp_file($pid_file);
-is($output, $pid, 'PID file has correct PID');
+chomp($output) if $output;
+
+is(
+   $output,
+   $pid,
+   'PID file has correct PID'
+);
 
 # Wait until the process goes away
 PerconaTest::wait_until(sub { !kill(0, $pid) });
-ok(! -f $pid_file, 'Removes PID file upon exit');
+ok(
+   ! -f $pid_file,
+   'Removes PID file upon exit'
+);
 
 # ############################################################################
 # Check that STDOUT can be redirected
@@ -59,10 +74,19 @@ rm_tmp_files();
 
 system("$cmd 0 --daemonize --log $log_file");
 PerconaTest::wait_for_files($log_file);
-ok(-f $log_file, 'Log file exists');
+
+ok(
+   -f $log_file,
+   'Log file exists'
+);
 
 $output = slurp_file($log_file);
-like($output, qr/STDOUT\nSTDERR\n/, 'STDOUT and STDERR went to log file');
+
+like(
+   $output,
+   qr/STDOUT\nSTDERR\n/,
+   'STDOUT and STDERR went to log file'
+);
 
 my $log_size = -s $log_file;
 PTDEVDEBUG && PerconaTest::_d('log size', $log_size);
@@ -71,6 +95,7 @@ PTDEVDEBUG && PerconaTest::_d('log size', $log_size);
 system("$cmd 0 --daemonize --log $log_file");
 PerconaTest::wait_until(sub { -s $log_file > $log_size });
 $output = slurp_file($log_file);
+
 like(
    $output,
    qr/STDOUT\nSTDERR\nSTDOUT\nSTDERR\n/,
@@ -82,6 +107,7 @@ like(
 # ##########################################################################
 rm_tmp_files();
 diag(`touch $pid_file`);
+
 ok(
    -f  $pid_file,
    'PID file already exists'
@@ -90,7 +116,7 @@ ok(
 $output = `$cmd 2 --daemonize --pid $pid_file 2>&1`;
 like(
    $output,
-   qr{The PID file $pid_file already exists},
+   qr{PID file $pid_file exists},
    'Dies if PID file already exists'
 );
 
@@ -182,7 +208,7 @@ like(
 
 like(
    slurp_file($tempfile),
-   qr/$pid, is not running/,
+   qr/Overwriting PID file $pid_file because PID $pid is not running/,
    'Says that old PID is not running (issue 419)'
 );
 
@@ -209,54 +235,55 @@ chomp($pid = slurp_file($pid_file));
 $output = `$cmd 0 --daemonize --pid $pid_file 2>&1`;
 like(
    $output,
-   qr/$pid, is running/,
+   qr/PID file $pid_file exists and PID $pid is running/,
    'Says that PID is running (issue 419)'
 );
 
-kill SIGKILL => $pid
-   if $pid;
+if ( $pid ) {
+   kill 9, $pid;
+}
 
-sleep 1;
+sleep 0.25;
 rm_tmp_files();
 
 # #############################################################################
 # Test auto-PID file removal without having to daemonize (for issue 391).
 # #############################################################################
+my $pid_file2 = "/tmp/pt-daemon-test.pid2.$PID";
 {
-   @ARGV = qw(--pid /tmp/d2.pid);
-   $o->get_specs("$trunk/t/lib/samples/daemonizes.pl");
-   $o->get_opts();
-   my $d2 = new Daemon(o=>$o);
-   $d2->make_PID_file();
+   my $d2 = Daemon->new(
+      pid_file => $pid_file2,
+   );
+   $d2->run();
    ok(
-      -f '/tmp/d2.pid',
+      -f $pid_file2,
       'PID file for non-daemon exists'
    );
 }
 # Since $d2 was locally scoped, it should have been destoryed by now.
 # This should have caused the PID file to be automatically removed.
 ok(
-   !-f '/tmpo/d2.pid',
+   !-f $pid_file2,
    'PID file auto-removed for non-daemon'
 );
 
 # We should still die if the PID file already exists,
 # even if we're not a daemon.
 {
-   `touch /tmp/d2.pid`;
-   @ARGV = qw(--pid /tmp/d2.pid);
-   $o->get_opts();
+   diag(`touch $pid_file2`);
    eval {
-      my $d2 = new Daemon(o=>$o);  # should die here actually
-      $d2->make_PID_file();
+      my $d2 = Daemon->new(
+         pid_file => $pid_file2,
+      );
+      $d2->run();
    };
    like(
       $EVAL_ERROR,
-      qr{PID file /tmp/d2.pid already exists},
+      qr/PID file $pid_file2 exists/,
       'Dies if PID file already exists for non-daemon'
    );
 
-   diag(`rm -rf /tmp/d2.pid >/dev/null`);
+   unlink $pid_file2 if -f $pid_file2;
 }
 
 # #############################################################################
