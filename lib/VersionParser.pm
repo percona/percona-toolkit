@@ -37,8 +37,6 @@ use overload (
 
 use Carp ();
 
-our $VERSION = 0.01;
-
 has major => (
     is       => 'ro',
     isa      => 'Int',

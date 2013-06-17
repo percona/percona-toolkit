@@ -36,6 +36,7 @@ sub new {
    my ( $class ) = @_;
    my $self = {
       pending => [],
+      last_event_offset => undef,
    };
    return bless $self, $class;
 }
@@ -103,6 +104,7 @@ sub parse_event {
       or defined($stmt = $next_event->())
    ) {
       my @properties = ('cmd', 'Query', 'pos_in_log', $pos_in_log);
+      $self->{last_event_offset} = $pos_in_log;
       $pos_in_log = $tell->();
 
       # If there were such lines in the file, we may have slurped > 1 event.
@@ -299,9 +301,15 @@ sub parse_event {
       # it's been cast into a hash, duplicated keys will be gone.
       PTDEBUG && _d('Properties of event:', Dumper(\@properties));
       my $event = { @properties };
-      if ( $args{stats} ) {
-         $args{stats}->{events_read}++;
-         $args{stats}->{events_parsed}++;
+      if ( !$event->{arg} ) {
+         PTDEBUG && _d('Partial event, no arg');
+      }
+      else {
+         $self->{last_event_offset} = undef;
+         if ( $args{stats} ) {
+            $args{stats}->{events_read}++;
+            $args{stats}->{events_parsed}++;
+         }
       }
       return $event;
    } # EVENT

@@ -12,7 +12,9 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant PTDEVDEBUG => $ENV{PTDEVDEBUG};
+
+use constant PTDEBUG    => $ENV{PTDEBUG}    || 0;
+use constant PTDEVDEBUG => $ENV{PTDEVDEBUG} || 0;
 
 use Time::HiRes qw(sleep);
 
@@ -31,22 +33,20 @@ if ( !defined $sleep_time ) {
 
 $o->usage_or_errors();
 
-my $daemon;
-if ( $o->get('daemonize') ) {
-   PTDEVDEBUG && PerconaTest::_d('daemonizing');
+my $daemon = Daemon->new(
+   daemonize => $o->get('daemonize'),
+   pid_file  => $o->get('pid'),
+   log_file  => $o->get('log'),
+);
 
-   $OUTPUT_AUTOFLUSH = 1;
+$daemon->run();
+PTDEVDEBUG && PerconaTest::_d('daemonized');
 
-   $daemon = new Daemon(o=>$o);
-   $daemon->daemonize();
-   PTDEVDEBUG && PerconaTest::_d('daemonized');
+print "STDOUT\n";
+print STDERR "STDERR\n";
 
-   print "STDOUT\n";
-   print STDERR "STDERR\n";
-
-   PTDEVDEBUG && PerconaTest::_d('daemon sleep', $sleep_time);
-   sleep $sleep_time;
-}
+PTDEVDEBUG && PerconaTest::_d('daemon sleep', $sleep_time);
+sleep $sleep_time;
 
 PTDEVDEBUG && PerconaTest::_d('daemon done');
 exit;
