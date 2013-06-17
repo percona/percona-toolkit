@@ -15,6 +15,7 @@ use File::Temp qw(tempdir);
 
 use Percona::Test;
 use Percona::Test::Mock::UserAgent;
+use Percona::Test::Mock::AgentLogger;
 require "$trunk/bin/pt-agent";
 
 Percona::Toolkit->import(qw(Dumper have_required_args));
@@ -25,6 +26,10 @@ my $sample = "t/pt-agent/samples";
 my $tmpdir = tempdir("/tmp/pt-agent.$PID.XXXXXX", CLEANUP => 1);
 
 mkdir "$tmpdir/services" or die "Error mkdir $tmpdir/services: $OS_ERROR";
+
+my @log;
+my $logger = Percona::Test::Mock::AgentLogger->new(log => \@log);
+pt_agent::_logger($logger);
 
 sub test_write_services {
    my (%args) = @_;
@@ -41,15 +46,15 @@ sub test_write_services {
    my $output = output(
       sub {
          pt_agent::write_services(
-            services => $services,
-            lib_dir  => $tmpdir,
-            json     => $json,
+            sorted_services => $services,
+            lib_dir         => $tmpdir,
+            json            => $json,
          );
       },
       stderr => 1,
    );
 
-   foreach my $service ( @$services ) {
+   foreach my $service ( @{$services->{added}} ) {
       my $name = $service->name;
       ok(
          no_diff(
@@ -85,8 +90,15 @@ my $svc0 = Percona::WebAPI::Resource::Service->new(
 
 # Key thing here is that the links are written because
 # --send-data <service> requires them.
+
+my $sorted_services = {
+   added   => [ $svc0 ],
+   updated => [],
+   removed => [],
+};
+
 test_write_services(
-   services => [ $svc0 ],
+   services => $sorted_services,
    file     => "write_services001",
 );
 

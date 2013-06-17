@@ -14,6 +14,7 @@ use JSON;
 use File::Temp qw(tempfile tempdir);
 
 use Percona::Test;
+use Percona::Test::Mock::AgentLogger;
 require "$trunk/bin/pt-agent";
 
 my $crontab = `crontab -l 2>/dev/null`;
@@ -25,6 +26,10 @@ Percona::Toolkit->import(qw(have_required_args Dumper));
 
 my $sample = "t/pt-agent/samples";
 my $tmpdir = tempdir("/tmp/pt-agent.$PID.XXXXXX", CLEANUP => 1);
+
+my @log;
+my $logger = Percona::Test::Mock::AgentLogger->new(log => \@log);
+pt_agent::_logger($logger);
 
 # #############################################################################
 # Schedule a good crontab.

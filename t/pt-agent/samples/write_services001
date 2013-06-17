@@ -14,5 +14,6 @@
          "output" : "spool",
          "program" : "pt-query-digest"
       }
-   ]
+   ],
+   "ts" : 100
 }

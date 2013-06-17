@@ -18,6 +18,7 @@ $ENV{PTTEST_PRETTY_JSON} = 1;
 use Percona::Test;
 use Sandbox;
 use Percona::Test::Mock::UserAgent;
+use Percona::Test::Mock::AgentLogger;
 require "$trunk/bin/pt-agent";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
@@ -31,6 +32,10 @@ $o->get_opts();
 Percona::Toolkit->import(qw(Dumper have_required_args));
 Percona::WebAPI::Representation->import(qw(as_hashref));
 
+my @log;
+my $logger = Percona::Test::Mock::AgentLogger->new(log => \@log);
+pt_agent::_logger($logger);
+
 my $sample = "t/pt-agent/samples";
 
 # Create fake spool and lib dirs.  Service-related subs in pt-agent
@@ -41,10 +46,6 @@ output(
    sub { pt_agent::init_lib_dir(lib_dir => $tmpdir) }
 );
 my $spool_dir = "$tmpdir/spool";
-
-my $json = JSON->new->canonical([1])->pretty;
-$json->allow_blessed([]);
-$json->convert_blessed([]);
 
 sub write_svc_files {
    my (%args) = @_;
@@ -66,13 +67,66 @@ sub write_svc_files {
 }
 
 # #############################################################################
+# Create mock client and Agent
+# #############################################################################
+
+my $json = JSON->new->canonical([1])->pretty;
+$json->allow_blessed([]);
+$json->convert_blessed([]);
+
+my $ua = Percona::Test::Mock::UserAgent->new(
+   encode => sub { my $c = shift; return $json->encode($c || {}) },
+);
+
+# Create cilent, get entry links
+my $links = {
+   agents          => '/agents',
+   config          => '/agents/1/config',
+   services        => '/agents/1/services',
+   'query-history' => '/query-history',
+};
+
+$ua->{responses}->{get} = [
+   {
+      content => $links,
+   },
+];
+
+my $client = eval {
+   Percona::WebAPI::Client->new(
+      api_key => '123',
+      ua      => $ua,
+   );
+};
+is(
+   $EVAL_ERROR,
+   '',
+   'Create mock client'
+) or die;
+
+my $agent = Percona::WebAPI::Resource::Agent->new(
+   uuid     => '123',
+   hostname => 'prod1', 
+   links    => $links,
+);
+
+is_deeply(
+   as_hashref($agent),
+   {
+      uuid     => '123',
+      hostname => 'prod1',
+   },
+   'Create mock Agent'
+) or die;
+
+# #############################################################################
 # Simple single task service using a program.
 # #############################################################################
 
 my $run0 = Percona::WebAPI::Resource::Task->new(
    name    => 'query-history',
    number  => '0',
-   program => "$trunk/bin/pt-query-digest --output json $trunk/t/lib/samples/slowlogs/slow008.txt",
+   program => "__BIN_DIR__/pt-query-digest --output json $trunk/t/lib/samples/slowlogs/slow008.txt",
    output  => 'spool',
 );
 
@@ -88,16 +142,29 @@ write_svc_files(
    services => [ $svc0 ],
 );
 
+$ua->{responses}->{get} = [
+   {
+      headers => { 'X-Percona-Resource-Type' => 'Agent' },
+      content => as_hashref($agent, with_links => 1),
+   },
+];
+
 my $exit_status;
 my $output = output(
    sub {
       $exit_status = pt_agent::run_service(
-         service   => 'query-history',
-         lib_dir   => $tmpdir,
-         spool_dir => $spool_dir,
-         Cxn       => '',
-         prefix    => '1',    # optional, for testing
-         json      => $json,  # optional, for testing
+         api_key     => '123',
+         service     => 'query-history',
+         lib_dir     => $tmpdir,
+         spool_dir   => $spool_dir,
+         Cxn         => '',
+         # for testing:
+         client      => $client,
+         agent       => $agent,
+         entry_links => $links,
+         prefix      => '1',
+         json        => $json,
+         bin_dir     => "$trunk/bin",
       );
    },
 );
@@ -106,9 +173,14 @@ ok(
    no_diff(
       "cat $tmpdir/spool/query-history/1.query-history.data",
       "$sample/query-history/data001.json",
+      post_pipe => 'grep -v \'"name" :\'',
    ),
    "1 run: spool data (query-history/data001.json)"
-) or diag(`ls -l $tmpdir/spool/query-history/`, `cat $tmpdir/logs/query-history.run`);
+) or diag(
+   `ls -l $tmpdir/spool/query-history/`,
+   `cat $tmpdir/logs/query-history.run`,
+   Dumper(\@log)
+);
 
 chomp(my $n_files = `ls -1 $spool_dir/query-history/*.data | wc -l | awk '{print \$1}'`);
 is(
@@ -133,6 +205,7 @@ ok(
 # #############################################################################
 
 diag(`rm -rf $tmpdir/spool/* $tmpdir/services/*`);
+@log = ();
 
 # The result is the same as the previous single-run test, but instead of
 # having pqd read the slowlog directly, we have the first run cat the
@@ -149,7 +222,7 @@ $run0 = Percona::WebAPI::Resource::Task->new(
 my $run1 = Percona::WebAPI::Resource::Task->new(
    name    => 'query-history',
    number  => '1',
-   program => "$trunk/bin/pt-query-digest --output json __RUN_0_OUTPUT__",
+   program => "__BIN_DIR__/pt-query-digest --output json __RUN_0_OUTPUT__",
    output  => 'spool',
 );
 
@@ -165,15 +238,28 @@ write_svc_files(
    services => [ $svc0 ],
 );
 
+$ua->{responses}->{get} = [
+   {
+      headers => { 'X-Percona-Resource-Type' => 'Agent' },
+      content => as_hashref($agent, with_links => 1),
+   },
+];
+
 $output = output(
    sub {
       $exit_status = pt_agent::run_service(
+         api_key   => '123',
          service   => 'query-history',
          spool_dir => $spool_dir,
          lib_dir   => $tmpdir,
          Cxn       => '',
-         json      => $json,  # optional, for testing
-         prefix    => '2',    # optional, for testing
+         # for testing:
+         client      => $client,
+         agent       => $agent,
+         entry_links => $links,
+         prefix      => '2',
+         json        => $json,
+         bin_dir     => "$trunk/bin",
       );
    },
 );
@@ -182,8 +268,13 @@ ok(
    no_diff(
       "cat $tmpdir/spool/query-history/2.query-history.data",
       "$sample/query-history/data001.json",
+      post_pipe => 'grep -v \'"name" :\'',
    ),
    "2 runs: spool data (query-history/data001.json)"
+) or diag(
+   `ls -l $tmpdir/spool/query-history/`,
+   `cat $tmpdir/logs/query-history.run`,
+   Dumper(\@log)
 );
 
 chomp($n_files = `ls -1 $spool_dir/query-history/*.data | wc -l | awk '{print \$1}'`);
@@ -215,6 +306,7 @@ SKIP: {
    skip 'No HOME environment variable', 5 unless $ENV{HOME};
 
    diag(`rm -rf $tmpdir/spool/* $tmpdir/services/*`);
+   @log = ();
 
    my (undef, $old_genlog) = $dbh->selectrow_array("SHOW VARIABLES LIKE 'general_log_file'");
 
@@ -287,6 +379,21 @@ SKIP: {
       services => [ $svc0, $svc1, $svc2 ],
    );
 
+   $ua->{responses}->{get} = [
+      {
+         headers => { 'X-Percona-Resource-Type' => 'Agent' },
+         content => as_hashref($agent, with_links => 1),
+      },
+      {
+         headers => { 'X-Percona-Resource-Type' => 'Agent' },
+         content => as_hashref($agent, with_links => 1),
+      },
+      {
+         headers => { 'X-Percona-Resource-Type' => 'Agent' },
+         content => as_hashref($agent, with_links => 1),
+      },
+   ];
+
    my $cxn = Cxn->new(
       dsn_string   => $dsn,
       OptionParser => $o,
@@ -297,17 +404,24 @@ SKIP: {
    $output = output(
       sub {
          $exit_status = pt_agent::run_service(
+            api_key   => '123',
             service   => 'enable-gen-log',
             spool_dir => $spool_dir,
             lib_dir   => $tmpdir,
             Cxn       => $cxn,
-            json      => $json,  # optional, for testing
-            prefix    => '3',    # optional, for testing
+            # for testing:
+            client      => $client,
+            agent       => $agent,
+            entry_links => $links,
+            prefix      => '3',
+            json        => $json,
+            bin_dir     => "$trunk/bin",
          );
       },
    );
 
-   my (undef, $genlog) = $dbh->selectrow_array("SHOW VARIABLES LIKE 'general_log_file'");
+   my (undef, $genlog) = $dbh->selectrow_array(
+      "SHOW VARIABLES LIKE 'general_log_file'");
    is(
       $genlog,
       $new_genlog,
@@ -325,12 +439,18 @@ SKIP: {
    $output = output(
       sub {
          $exit_status = pt_agent::run_service(
+            api_key   => '123',
             service   => 'query-history',
             spool_dir => $spool_dir,
             lib_dir   => $tmpdir,
             Cxn       => $cxn,
-            json      => $json,  # optional, for testing
-            prefix    => '4',    # optional, for testing
+            # for testing:
+            client      => $client,
+            agent       => $agent,
+            entry_links => $links,
+            prefix      => '4',
+            json        => $json,
+            bin_dir     => "$trunk/bin",
          );
       },
    );
@@ -349,17 +469,24 @@ SKIP: {
    $output = output(
       sub {
          $exit_status = pt_agent::run_service(
+            api_key   => '123',
             service   => 'disable-gen-log',
             spool_dir => $spool_dir,
             lib_dir   => $tmpdir,
             Cxn       => $cxn,
-            json      => $json,  # optional, for testing
-            prefix    => '5',    # optional, for testing
+            # for testing:
+            client      => $client,
+            agent       => $agent,
+            entry_links => $links,
+            prefix      => '5',
+            json        => $json,
+            bin_dir     => "$trunk/bin",
          );
       },
    );
    
-   (undef, $genlog) = $dbh->selectrow_array("SHOW VARIABLES LIKE 'general_log_file'");
+   (undef, $genlog) = $dbh->selectrow_array(
+      "SHOW VARIABLES LIKE 'general_log_file'");
    is(
       $genlog,
       $old_genlog,
