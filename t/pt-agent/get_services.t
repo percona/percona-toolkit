@@ -16,10 +16,15 @@ use File::Temp qw(tempdir);
 
 use Percona::Test;
 use Percona::Test::Mock::UserAgent;
+use Percona::Test::Mock::AgentLogger;
 require "$trunk/bin/pt-agent";
 
 Percona::Toolkit->import(qw(Dumper));
 Percona::WebAPI::Representation->import(qw(as_hashref));
+
+my @log;
+my $logger = Percona::Test::Mock::AgentLogger->new(log => \@log);
+pt_agent::_logger($logger);
 
 # Fake --lib and --spool dirs.
 my $tmpdir = tempdir("/tmp/pt-agent.$PID.XXXXXX", CLEANUP => 1);
@@ -98,10 +103,31 @@ my $qh = Percona::WebAPI::Resource::Service->new(
    },
 );
 
+my $run1  = Percona::WebAPI::Resource::Task->new(
+   name    => 'start-query-history',
+   number  => '0',
+   program => 'echo "start-qh"',
+   output  => 'spool',
+);
+
+my $start_qh = Percona::WebAPI::Resource::Service->new(
+   ts             => '100',
+   name           => 'start-query-history',
+   meta           => 1,
+   tasks          => [ $run1 ],
+   links          => {
+      self => '/query-history',
+      data => '/query-history/data',
+   },
+);
+
 $ua->{responses}->{get} = [
    {
       headers => { 'X-Percona-Resource-Type' => 'Service' },
-      content => [ as_hashref($qh, with_links => 1) ],
+      content => [
+         as_hashref($qh, with_links => 1),
+         as_hashref($start_qh, with_links => 1),
+      ],
    },
 ];
 
@@ -140,8 +166,8 @@ is(
 
 is(
    scalar keys %$services,
-   1,
-   'Only 1 service'
+   2,
+   'Only 2 services'
 ) or diag(Dumper($services));
 
 ok(
@@ -155,22 +181,23 @@ isa_ok(
    'services->{query-history}'
 );
 
-my $crontab = slurp_file("$tmpdir/crontab");
+my $crontab = -f "$tmpdir/crontab" ? slurp_file("$tmpdir/crontab") : '';
 is(
    $crontab,
    "1 * * * * $trunk/bin/pt-agent --run-service query-history
 2 * * * * $trunk/bin/pt-agent --send-data query-history
 ",
    "crontab file"
-) or diag($output);
+) or diag($output, `ls -l $tmpdir/*`, Dumper(\@log));
 
 is_deeply(
    \@cmds,
    [
+      "$trunk/bin/pt-agent --run-service start-query-history >> $tmpdir/logs/start-stop.log 2>&1",
       "crontab $tmpdir/crontab > $tmpdir/crontab.err 2>&1",
    ],
-   "Only ran crontab"
-) or diag(Dumper(\@cmds));
+   "Ran start-service and crontab"
+) or diag(Dumper(\@cmds), Dumper(\@log));
 
 ok(
    -f "$tmpdir/services/query-history",
@@ -217,7 +244,7 @@ my $task4 = Percona::WebAPI::Resource::Task->new(
    query   => "SET GLOBAL slow_query_log=1",
 );
 
-my $start_qh = Percona::WebAPI::Resource::Service->new(
+$start_qh = Percona::WebAPI::Resource::Service->new(
    ts             => '100',
    name           => 'start-query-history',
    tasks          => [ $task1, $task2, $task3, $task4 ],
@@ -260,6 +287,7 @@ $ua->{responses}->{get} = [
    },
 ];
 
+@log      = ();
 @cmds     = ();
 $services = {};
 $success  = 0;
@@ -352,6 +380,7 @@ $ua->{responses}->{get} = [
    },
 ];
 
+@log      = ();
 @cmds     = ();
 $success  = 0;
 

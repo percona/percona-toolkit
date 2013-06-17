@@ -11,12 +11,15 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
+plan skip_all => "Need to make start-service testable";
+
 use JSON;
 use File::Temp qw(tempdir);
 
 use Percona::Test;
 use Sandbox;
 use Percona::Test::Mock::UserAgent;
+use Percona::Test::Mock::AgentLogger;
 require "$trunk/bin/pt-agent";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
@@ -45,8 +48,12 @@ if ( $crontab ) {
 }
 
 # Fake --lib and --spool dirs.
-my $tmpdir = tempdir("/tmp/pt-agent.$PID.XXXXXX", CLEANUP => 1);
+my $tmpdir = tempdir("/tmp/pt-agent.$PID.XXXXXX"); #, CLEANUP => 1);
 mkdir "$tmpdir/spool" or die "Error making $tmpdir/spool: $OS_ERROR";
+
+my @log;
+my $logger = Percona::Test::Mock::AgentLogger->new(log => \@log);
+pt_agent::_logger($logger);
 
 # #############################################################################
 # Create mock client and Agent
@@ -102,13 +109,6 @@ my $interval = sub {
 # Test run_agent
 # #############################################################################
 
-# The agent does just basically 2 things: check for new config, and
-# check for new services.  It doesn't do the latter until it has a
-# config, because services require info from a config.  Config are
-# written to $HOME/.pt-agent.conf; this can't be changed because the
-# other processes (service runner and spool checker) must share the
-# same config.
-
 my $config = Percona::WebAPI::Resource::Config->new(
    ts      => 1363720060,
    name    => 'Default',
@@ -143,6 +143,23 @@ my $svc0 = Percona::WebAPI::Resource::Service->new(
    },
 );
 
+my $run1  = Percona::WebAPI::Resource::Task->new(
+   name    => 'start-query-history',
+   number  => '0',
+   program => 'echo "start-qh"',
+);
+
+my $start_qh = Percona::WebAPI::Resource::Service->new(
+   ts             => '100',
+   name           => 'start-query-history',
+   meta           => 1,
+   tasks          => [ $run1 ],
+   links          => {
+      self => '/query-history',
+      data => '/query-history/data',
+   },
+);
+
 $ua->{responses}->{get} = [
    {
       headers => { 'X-Percona-Resource-Type' => 'Config' },
@@ -150,9 +167,17 @@ $ua->{responses}->{get} = [
    },
    {
       headers => { 'X-Percona-Resource-Type' => 'Service' },
-      content => [ as_hashref($svc0, with_links => 1) ],
+      content => [
+         as_hashref($start_qh, with_links => 1),
+         as_hashref($svc0, with_links => 1),
+      ],
    },
 ];
+
+my $safeguards = Safeguards->new(
+   disk_bytes_free => 1024,
+   disk_pct_free   => 1,
+);
 
 # The only thing pt-agent must have is the API key in the config file,
 # everything else relies on defaults until the first Config is gotten
@@ -164,6 +189,23 @@ like(
    $config_file,
    qr/$ENV{LOGNAME}\/\.pt-agent.conf$/,
    "Default config file is ~/.pt-agent.config"
+);
+
+pt_agent::write_config(
+   config => $config
+);
+
+diag(`echo 'api-key=123' >> $config_file`);
+
+is(
+   `cat $config_file`,
+   "check-interval=11\nlib=$tmpdir\nspool=$tmpdir/spool\napi-key=123\n",
+   "Write Config to config file"
+); 
+
+pt_agent::save_agent(
+   agent   => $agent,
+   lib_dir => $tmpdir,
 );
 
 my @ok_code = ();  # callbacks
@@ -190,20 +232,16 @@ $output = output(
          daemon      => $daemon,
          interval    => $interval,
          lib_dir     => $tmpdir,
+         safeguards  => $safeguards,
          Cxn         => $cxn,
          # Optional args, for testing
          oktorun     => $oktorun,
          json        => $json,
+         bin_dir     => "$trunk/bin",
       );
    },
    stderr => 1,
 );
-
-is(
-   `cat $config_file`,
-   "check-interval=11\nlib=$tmpdir\nspool=$tmpdir/spool\n",
-   "Write Config to config file"
-); 
 
 is(
    scalar @wait,
@@ -225,8 +263,8 @@ ok(
 chomp(my $n_files = `ls -1 $tmpdir/services| wc -l | awk '{print \$1}'`);
 is(
    $n_files,
-   1,
-   "... only created services/query-history"
+   2,
+   "... created services/query-history and services/start-query-history"
 );
 
 ok(
@@ -242,14 +280,14 @@ like(
    $crontab,
    qr/pt-agent --run-service query-history$/m,
    "Scheduled --run-service with crontab"
-);
+) or diag(Dumper(\@log));
 
 like(
    $crontab,
    qr/pt-agent --send-data query-history$/m,
    "Scheduled --send-data with crontab"
-);
-
+) or diag(Dumper(\@log));
+exit;
 # #############################################################################
 # Run run_agent again, like the agent had been stopped and restarted.
 # #############################################################################
