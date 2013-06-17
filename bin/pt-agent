@@ -52,7 +52,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.2';
+our $VERSION = '2.2.3';
 
 use strict;
 use warnings FATAL => 'all';
@@ -1726,10 +1726,27 @@ sub update_check_times {
    my $vc_file   = $args{vc_file} || version_check_file();
    PTDEBUG && _d('Updating last check time:', $now);
 
+   my %all_instances = map {
+      $_->{id} => { name => $_->{name}, ts => $now }
+   } @$instances;
+
+   if ( -f $vc_file ) {
+      open my $fh, '<', $vc_file or die "Cannot read $vc_file: $OS_ERROR";
+      my $contents = do { local $/ = undef; <$fh> };
+      close $fh;
+
+      foreach my $line ( split("\n", ($contents || '')) ) {
+         my ($id, $ts) = split(',', $line);
+         if ( !exists $all_instances{$id} ) {
+            $all_instances{$id} = { ts => $ts };  # original ts, not updated
+         }
+      }
+   }
+
    open my $fh, '>', $vc_file or die "Cannot write to $vc_file: $OS_ERROR";
-   foreach my $instance ( sort { $a->{id} cmp $b->{id} } @$instances ) {
-      PTDEBUG && _d('Updated:', Dumper($instance));
-      print { $fh } $instance->{id} . ',' . $now . "\n";
+   foreach my $id ( sort keys %all_instances ) {
+      PTDEBUG && _d('Updated:', $id, Dumper($all_instances{$id}));
+      print { $fh } $id . ',' . $all_instances{$id}->{ts} . "\n";
    }
    close $fh;
 
@@ -1764,7 +1781,7 @@ sub get_instance_id {
    }
    my $id = md5_hex($name);
 
-   PTDEBUG && _d('MySQL instance:', $id, $name, $dsn);
+   PTDEBUG && _d('MySQL instance:', $id, $name, Dumper($dsn));
 
    return $name, $id;
 }
@@ -3696,9 +3713,9 @@ sub set_dbh {
 
    $dbh->{FetchHashKeyName} = 'NAME_lc' if $self->{NAME_lc};
 
-   my $sql = 'SELECT @@hostname, @@server_id';
+   my $sql = 'SELECT @@server_id /*!50038 , @@hostname*/';
    PTDEBUG && _d($dbh, $sql);
-   my ($hostname, $server_id) = $dbh->selectrow_array($sql);
+   my ($server_id, $hostname) = $dbh->selectrow_array($sql);
    PTDEBUG && _d($dbh, 'hostname:', $hostname, $server_id);
    if ( $hostname ) {
       $self->{hostname} = $hostname;
@@ -3739,6 +3756,32 @@ sub name {
    my ($self) = @_;
    return $self->{dsn_name} if PERCONA_TOOLKIT_TEST_USE_DSN_NAMES;
    return $self->{hostname} || $self->{dsn_name} || 'unknown host';
+}
+
+sub remove_duplicate_cxns {
+   my ($self, %args) = @_;
+   my @cxns     = @{$args{cxns}};
+   my $seen_ids = $args{seen_ids} || {};
+   PTDEBUG && _d("Removing duplicates from ", join(" ", map { $_->name } @cxns));
+   my @trimmed_cxns;
+
+   for my $cxn ( @cxns ) {
+      my $dbh  = $cxn->dbh();
+      my $sql  = q{SELECT @@server_id};
+      PTDEBUG && _d($sql);
+      my ($id) = $dbh->selectrow_array($sql);
+      PTDEBUG && _d('Server ID for ', $cxn->name, ': ', $id);
+
+      if ( ! $seen_ids->{$id}++ ) {
+         push @trimmed_cxns, $cxn
+      }
+      else {
+         PTDEBUG && _d("Removing ", $cxn->name,
+                       ", ID ", $id, ", because we've already seen it");
+      }
+   }
+
+   return \@trimmed_cxns;
 }
 
 sub DESTROY {
