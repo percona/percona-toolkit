@@ -15,10 +15,15 @@ use File::Temp qw(tempdir);
 
 use Percona::Test;
 use Percona::Test::Mock::UserAgent;
+use Percona::Test::Mock::AgentLogger;
 require "$trunk/bin/pt-agent";
 
 Percona::Toolkit->import(qw(Dumper have_required_args));
 Percona::WebAPI::Representation->import(qw(as_hashref));
+
+my @log;
+my $logger = Percona::Test::Mock::AgentLogger->new(log => \@log);
+pt_agent::_logger($logger);
 
 my $sample = "t/pt-agent/samples";
 
@@ -66,6 +71,7 @@ is(
 my $agent = Percona::WebAPI::Resource::Agent->new(
    uuid     => '123',
    hostname => 'prod1', 
+   links    => $links,
 );
 
 is_deeply(
@@ -95,6 +101,13 @@ pt_agent::init_spool_dir(
 `cp $trunk/$sample/query-history/data001.json $tmpdir/query-history/1.data001.data`;
 `cp $trunk/$sample/service001 $tmpdir/services/query-history`;
 
+$ua->{responses}->{get} = [
+   {
+      headers => { 'X-Percona-Resource-Type' => 'Agent' },
+      content => as_hashref($agent, with_links => 1),
+   },
+];
+
 $ua->{responses}->{post} = [
    {
       content => $links,
@@ -109,9 +122,11 @@ my $output = output(
          lib_dir   => $tmpdir,
          spool_dir => $tmpdir,
          # optional, for testing:
-         client    => $client,
-         agent     => $agent,
-         json      => $json,
+         client      => $client,
+         entry_links => $links,
+         agent       => $agent,
+         log_file    => "$tmpdir/log",
+         json        => $json,
       ),
    },
 );
@@ -120,11 +135,16 @@ is(
    scalar @{$client->ua->{content}->{post}},
    1,
    "Only sent 1 resource"
-) or diag($output, Dumper($client->ua->{content}->{post}));
+) or diag(
+   $output,
+   Dumper($client->ua->{content}->{post}),
+   `cat $tmpdir/logs/query-history.send`
+);
 
 is_deeply(
    $ua->{requests},
    [
+      'GET /agents/123',
       'POST /query-history/data',
    ],
    "POST to Service.links.data"

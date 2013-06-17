@@ -14,9 +14,14 @@ use JSON;
 use File::Temp qw(tempfile);
 
 use Percona::Test;
+use Percona::Test::Mock::AgentLogger;
 require "$trunk/bin/pt-agent";
 
 Percona::Toolkit->import(qw(have_required_args Dumper));
+
+my @log;
+my $logger = Percona::Test::Mock::AgentLogger->new(log => \@log);
+pt_agent::_logger($logger);
 
 my @output_files = ();
 my $store        = {};

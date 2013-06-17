@@ -6846,12 +6846,13 @@ sub run_service {
    my $cxn       = $args{Cxn};
 
    # Optional args
-   my $bin_dir  = defined $args{bin_dir} ? $args{bin_dir} : "$FindBin::Bin/";
-   my $agent    = $args{agent};                # for testing
-   my $client   = $args{client};               # for testing
-   my $json     = $args{json};                 # for testing
-   my $prefix   = $args{prefix} || int(time);  # for testing
-   my $max_data = $args{max_data} || MAX_DATA_FILE_SIZE;
+   my $bin_dir     = defined $args{bin_dir} ? $args{bin_dir} : "$FindBin::Bin/";
+   my $client      = $args{client};               # for testing
+   my $agent       = $args{agent};                # for testing
+   my $entry_links = $args{entry_links};          # for testing
+   my $json        = $args{json};                 # for testing
+   my $prefix      = $args{prefix} || int(time);  # for testing
+   my $max_data    = $args{max_data} || MAX_DATA_FILE_SIZE;
 
    my $start_time = time;
 
@@ -6874,7 +6875,6 @@ sub run_service {
    $logger->info("Running $service service");
 
    # Connect to Percona, get entry links.
-   my $entry_links;
    my $logger_client;
    if ( !$client || !$entry_links ) {
       ($client, $entry_links, $logger_client) = get_api_client(
@@ -7035,6 +7035,9 @@ sub run_service {
       elsif ( $output =~ m/append:(\S+)/ ) {
          $output_file = $1;
          $append = 1;
+      }
+      elsif ( $output eq 'tmp' ) {
+         $output_file = $task_output_file;
       }
 
       if ( !$output_file ) {
@@ -7427,10 +7430,11 @@ sub send_data {
 
    # Optional args
    my $interactive = $args{interactive};
-   my $agent       = $args{agent};  # for testing
-   my $client      = $args{client}; # for testing
-   my $json        = $args{json};   # for testing
    my $max_data    = $args{max_data} || MAX_DATA_FILE_SIZE;
+   my $agent       = $args{agent};        # for testing
+   my $client      = $args{client};       # for testing
+   my $entry_links = $args{entry_links};  # for testing
+   my $json        = $args{json};         # for testing
 
    # Can't do anything with the lib dir.  Since we haven't started
    # logging yet, cron should capture this error and email the user.
@@ -7452,7 +7456,6 @@ sub send_data {
    $logger->info("Sending $service data");
 
    # Connect to Percona, get entry links.
-   my $entry_links;
    my $logger_client;
    if ( !$client || !$entry_links ) {
       ($client, $entry_links, $logger_client) = get_api_client(
@@ -7485,6 +7488,7 @@ sub send_data {
          link => $entry_links->{agents} . '/' . $agent->uuid,
       );
    };
+
    if ( $EVAL_ERROR ) {
       $logger->fatal("Failed to get the agent: $EVAL_ERROR");
    }
@@ -8803,7 +8807,15 @@ sub too_many_agents {
    return scalar @pids > 10 ? 1 : 0;
 }
 
+sub _logger {
+   my $_logger = shift;
+   $logger = $_logger if $_logger;
+   return $logger;
+}
+
 sub _state {
+   my $_state = shift;
+   $state = $_state if $_state;
    return $state;
 }
 
