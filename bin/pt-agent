@@ -4971,13 +4971,15 @@ sub start_online_logging {
                );
             };
             if ( my $e = $EVAL_ERROR ) {
-               if ( ++$n_errors > 10 ) {
-                  warn "$n_errors consecutive errors, no more error "
-                     . "messages will be printed until log entries "
+               if ( $n_errors > 10 ) {
+                  my $ts = ts(time, 1);  # 1=UTC
+                  warn "$ts WARNING $n_errors consecutive errors, no more "
+                     . "error messages will be printed until log entries "
                      . "are sent successfully again.\n";
                }
                else {
                   warn "Error sending log entry to API: $e";
+                  $n_errors++;
                }
             }
             else {
