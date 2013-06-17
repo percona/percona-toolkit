@@ -6348,7 +6348,8 @@ sub get_services {
       );
 
       if ( !$curr_services ) {
-         $logger->error("GET $link did not return anything, expected a list of services");
+         $logger->error("GET $link did not return anything, "
+            . "expected a list of services");
       }
       elsif ( !scalar @$curr_services && !scalar keys %$prev_services ) {
          $logger->warning("No services are enabled for this agent");
@@ -6704,9 +6705,11 @@ sub apply_services {
    my $lib_dir  = $args{lib_dir};
 
    # Optional args
-   my $bin_dir  = defined $args{bin_dir} ? $args{bin_dir}
+   my $bin_dir  = defined $args{bin_dir} ? "$args{bin_dir}"
                 :                          "$FindBin::Bin/";
    my $exec_cmd = $args{exec_cmd} || sub { return system(@_) };
+
+   $bin_dir .= '/' unless $bin_dir =~ m/\/$/;
 
    my $env_vars = env_vars();
    my $log      = "$lib_dir/logs/start-stop.log";
