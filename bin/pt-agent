@@ -4933,7 +4933,8 @@ sub start_online_logging {
    }
    else {
       my @log_entries;
-      my $oktorun = 1;
+      my $n_errors = 0;
+      my $oktorun  = 1;
       QUEUE:
       while ($oktorun) {
          my $lines = read_stdin($read_timeout);
@@ -4970,19 +4971,39 @@ sub start_online_logging {
                );
             };
             if ( my $e = $EVAL_ERROR ) {
-               warn "$e";
+               if ( ++$n_errors > 100 ) {
+                  warn "$n_errors consecutive errors, no more error "
+                     . "messages will be printed until log entries "
+                     . "are sent successfully again.\n";
+               }
+               else {
+                  warn "Error sending log entry to API: $e";
+               }
             }
             else {
                @log_entries = ();
+               $n_errors    = 0;
             }
          }  # have log entries
-      }  # LINE
+
+         my $n_log_entries = scalar @log_entries;
+         if ( $n_log_entries > 1_000 ) {
+            warn "$n_log_entries log entries in send buffer, "
+               . "removing first 100 to avoid excessive usage.\n";
+            @log_entries = @log_entries[100..($n_log_entries-1)];
+         }
+      }  # QUEUE
 
       if ( scalar @log_entries ) {
-         my $ts = ts(time, 0);  # 0=local time
-         warn "$ts WARNING Failed to send these log entries (timestamps are UTC):\n";
-         foreach my $entry ( @log_entries ) {
-            warn sprintf("%s %s %s\n", $entry->[0], level_name($entry->[1]), $entry->[2]);
+         my $ts = ts(time, 1);  # 1=UTC
+         warn "$ts WARNING Failed to send these log entries "
+            . "(timestamps are UTC):\n";
+         foreach my $log ( @log_entries ) {
+            warn sprintf("%s %s %s\n",
+               $log->entry_ts,
+               level_name($log->log_level),
+               $log->message,
+            );
          }
       }
 
