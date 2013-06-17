@@ -183,15 +183,14 @@ sub start_online_logging {
             };
             if ( my $e = $EVAL_ERROR ) {
                # Safegaurd: don't spam the agent log file with errors.
-               if ( $n_errors > 10 ) {
-                  my $ts = ts(time, 1);  # 1=UTC
-                  warn "$ts WARNING $n_errors consecutive errors, no more "
-                     . "error messages will be printed until log entries "
-                     . "are sent successfully again.\n";
-               }
-               else {
+               if ( ++$n_errors < 10 ) {
                   warn "Error sending log entry to API: $e";
-                  $n_errors++;
+                  if ( $n_errors >= 10 ) {
+                     my $ts = ts(time, 1);  # 1=UTC
+                     warn "$ts WARNING $n_errors consecutive errors, no more "
+                        . "error messages will be printed until log entries "
+                        . "are sent successfully again.\n";
+                  }
                }
             }
             else {
