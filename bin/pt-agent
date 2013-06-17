@@ -8454,7 +8454,7 @@ sub install {
    else {
       print "The agent has been installed and started, but it is not "
          . "running any services yet.  Go to "
-         . "https://cloud.percona.com/agents#$hostname to enable services"
+         . "https://cloud.percona.com/agents#$hostname to enable services "
          . "for the agent.\n";
    }
 
