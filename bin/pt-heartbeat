@@ -6004,7 +6004,7 @@ not check or adjust for different system or MySQL time zones which can
 cause the tool to compute the lag incorrectly.  Specifying this option is
 a good idea because it ensures that the tool works correctly regardless of
 time zones, but it also makes the tool backwards-incompatible with
-pt-heartbeat 2.2.2 and older (unless the older version of pt-heartbeat
+pt-heartbeat 2.2.3 and older (unless the older version of pt-heartbeat
 is running on a system that uses UTC).
 
 =item --version
@@ -6186,6 +6186,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-heartbeat 2.2.2
+pt-heartbeat 2.2.3
 
 =cut
