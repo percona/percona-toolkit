@@ -183,7 +183,7 @@ sub start_online_logging {
             };
             if ( my $e = $EVAL_ERROR ) {
                # Safegaurd: don't spam the agent log file with errors.
-               if ( ++$n_errors > 100 ) {
+               if ( ++$n_errors > 10 ) {
                   warn "$n_errors consecutive errors, no more error "
                      . "messages will be printed until log entries "
                      . "are sent successfully again.\n";
