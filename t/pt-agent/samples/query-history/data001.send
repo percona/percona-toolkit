@@ -12,75 +12,142 @@ Content-Disposition: form-data; name="meta"
 --Ym91bmRhcnk
 Content-Disposition: form-data; name="data"
 
-[
-   {
-      "attributes" : {
+{
+   "classes" : [
+      {
+         "attribute" : "fingerprint",
+         "checksum" : "C72BF45D68E35A6E",
+         "distillate" : "SELECT tbl",
+         "example" : {
+            "query" : "SELECT MIN(id),MAX(id) FROM tbl",
+            "ts" : null
+         },
+         "fingerprint" : "select min(id),max(id) from tbl",
+         "metrics" : {
+            "Lock_time" : {
+               "avg" : "0.009453",
+               "max" : "0.009453",
+               "median" : "0.009453",
+               "min" : "0.009453",
+               "pct" : "0.333333",
+               "pct_95" : "0.009453",
+               "stddev" : "0.000000",
+               "sum" : "0.009453"
+            },
+            "Query_length" : {
+               "avg" : "31",
+               "max" : "31",
+               "median" : "31",
+               "min" : "31",
+               "pct" : "0",
+               "pct_95" : "31",
+               "stddev" : "0",
+               "sum" : "31"
+            },
+            "Query_time" : {
+               "avg" : "0.018799",
+               "max" : "0.018799",
+               "median" : "0.018799",
+               "min" : "0.018799",
+               "pct" : "0.333333",
+               "pct_95" : "0.018799",
+               "stddev" : "0.000000",
+               "sum" : "0.018799"
+            },
+            "Rows_examined" : {
+               "avg" : "0",
+               "max" : "0",
+               "median" : "0",
+               "min" : "0",
+               "pct" : "0",
+               "pct_95" : "0",
+               "stddev" : "0",
+               "sum" : "0"
+            },
+            "Rows_sent" : {
+               "avg" : "0",
+               "max" : "0",
+               "median" : "0",
+               "min" : "0",
+               "pct" : "0",
+               "pct_95" : "0",
+               "stddev" : "0",
+               "sum" : "0"
+            },
+            "db" : {
+               "value" : "db2"
+            },
+            "host" : {
+               "value" : ""
+            },
+            "user" : {
+               "value" : "meow"
+            }
+         },
+         "query_count" : 1,
+         "tables" : [
+            {
+               "create" : "SHOW CREATE TABLE `db2`.`tbl`\\G",
+               "status" : "SHOW TABLE STATUS FROM `db2` LIKE 'tbl'\\G"
+            }
+         ]
+      }
+   ],
+   "global" : {
+      "files" : [
+         {
+            "size" : 656
+         }
+      ],
+      "metrics" : {
          "Lock_time" : {
-            "avg" : "0.009453",
-            "cnt" : "1.000000",
+            "avg" : "0.003151",
             "max" : "0.009453",
-            "median" : "0.009453",
-            "min" : "0.009453",
-            "pct" : "0.33",
-            "pct_95" : "0.009453",
-            "stddev" : 0,
+            "median" : "0.000000",
+            "min" : "0.000000",
+            "pct_95" : "0.009171",
+            "stddev" : "0.004323",
             "sum" : "0.009453"
          },
+         "Query_length" : {
+            "avg" : "24",
+            "max" : "31",
+            "median" : "26",
+            "min" : "14",
+            "pct_95" : "30",
+            "stddev" : "6",
+            "sum" : "72"
+         },
          "Query_time" : {
-            "avg" : "0.018799",
-            "cnt" : "1.000000",
+            "avg" : "0.006567",
             "max" : "0.018799",
-            "median" : "0.018799",
-            "min" : "0.018799",
-            "pct" : "0.33",
-            "pct_95" : "0.018799",
-            "stddev" : 0,
-            "sum" : "0.018799"
+            "median" : "0.000882",
+            "min" : "0.000002",
+            "pct_95" : "0.018157",
+            "stddev" : "0.008359",
+            "sum" : "0.019700"
          },
          "Rows_examined" : {
-            "avg" : 0,
-            "cnt" : "1.000000",
+            "avg" : "0",
             "max" : "0",
-            "median" : 0,
+            "median" : "0",
             "min" : "0",
-            "pct" : "0.33",
-            "pct_95" : 0,
-            "stddev" : 0,
-            "sum" : 0
+            "pct_95" : "0",
+            "stddev" : "0",
+            "sum" : "0"
          },
          "Rows_sent" : {
-            "avg" : 0,
-            "cnt" : "1.000000",
+            "avg" : "0",
             "max" : "0",
-            "median" : 0,
+            "median" : "0",
             "min" : "0",
-            "pct" : "0.33",
-            "pct_95" : 0,
-            "stddev" : 0,
-            "sum" : 0
-         },
-         "bytes" : {
-            "value" : 31
-         },
-         "db" : {
-            "value" : "db2"
-         },
-         "host" : {
-            "value" : ""
-         },
-         "pos_in_log" : {
-            "value" : 435
-         },
-         "user" : {
-            "value" : "meow"
+            "pct_95" : "0",
+            "stddev" : "0",
+            "sum" : "0"
          }
       },
-      "class" : {
-         "checksum" : "C72BF45D68E35A6E",
-         "cnt" : 1,
-         "fingerprint" : "select min(id),max(id) from tbl",
-         "sample" : "SELECT MIN(id),MAX(id) FROM tbl"
-      }
+      "query_count" : 3,
+      "unique_query_count" : 3
    }
-]
+}
 --Ym91bmRhcnk
