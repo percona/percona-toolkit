@@ -214,7 +214,7 @@ sub hostname {
 sub files {
    my ( $self, %args ) = @_;
    if ( $args{files} ) {
-      return "# Files: " . join(', ', @{$args{files}}) . "\n";
+      return "# Files: " . join(', ', map { $_->{name} } @{$args{files}}) . "\n";
    }
    return;
 }

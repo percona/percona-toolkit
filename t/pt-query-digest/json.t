@@ -28,7 +28,7 @@ ok(
       "$results/empty_report.txt",
    ),
    'json output for empty log'
-);
+) or diag($test_diff);
 
 ok(
    no_diff(
@@ -36,7 +36,7 @@ ok(
       "$results/output_json_slow002.txt"
    ),
    'json output for slow002'
-);
+) or diag($test_diff);
 
 # --type tcpdump
 
@@ -47,7 +47,7 @@ ok(
       "$results/output_json_tcpdump021.txt",
    ),
    'json output for for tcpdump021',
-);
+) or diag($test_diff);
 
 # #############################################################################
 # Done.

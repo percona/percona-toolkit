@@ -1,5 +1,10 @@
 Changelog for Percona Toolkit
 
+v2.2.3 released 2013-06-17
+
+  * Added new tool: pt-agent
+  * Fixed bug 1188002: pt-online-schema-change causes "ERROR 1146 (42S02): Table 'db._t_new' doesn't exist"
+
 v2.2.2 released 2013-04-24
 
   * Added --show-all to pt-query-digest

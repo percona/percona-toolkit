@@ -26,6 +26,10 @@ This release of Percona Toolkit includes the following tools:
 
 =over
 
+=item pt-agent
+
+Agent for Percona Cloud Tools
+
 =item pt-align
 
 Align output from other tools to columns.
@@ -558,6 +562,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-Percona Toolkit v2.2.2 released 2013-04-19
+Percona Toolkit v2.2.3 released 2013-06-17
 
 =cut
