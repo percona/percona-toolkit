@@ -33,18 +33,12 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEVDEBUG => $ENV{PTDEVDEBUG} || 0;
 
-use Percona::Toolkit;
-
 use Carp qw(croak);
 
 use Test::More;
 use Time::HiRes qw(sleep time);
 use File::Temp qw(tempfile);
 use POSIX qw(signal_h);
-use Data::Dumper;
-$Data::Dumper::Indent    = 1;
-$Data::Dumper::Sortkeys  = 1;
-$Data::Dumper::Quotekeys = 0;
 
 require Exporter;
 our @ISA         = qw(Exporter);
@@ -752,15 +746,6 @@ sub get_slave_pos_relative_to_master {
    my $sql = "SHOW SLAVE STATUS";
    my $ss  = $dbh->selectrow_hashref($sql);
    return $ss->{exec_master_log_pos};
-}
-
-sub _d {
-   my ($package, undef, $line) = caller 0;
-   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
-        map { defined $_ ? $_ : 'undef' }
-        @_;
-   my $t = sprintf '%.3f', time;
-   print STDERR "# $package:$line $PID $t ", join(' ', @_), "\n";
 }
 
 # Like output(), but forks a process to execute the coderef.

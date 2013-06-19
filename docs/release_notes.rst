@@ -1,6 +1,27 @@
 Release Notes
 *************
 
+v2.2.3 released 2013-06-17
+==========================
+
+Percona Toolkit 2.2.3 has been released which has only two changes: pt-agent
+and a bug fix for pt-online-schema-change.  pt-agent is not a command line
+tool but a client-side agent for Percona Cloud Tools.  Visit
+https://cloud.percona.com for more information.  The pt-online-schema-change
+bug fix is bug 1188002: pt-online-schema-change causes "ERROR 1146 (42S02):
+"Table 'db._t_new' doesn't exist".  This happens when the tool's triggers
+cannot be dropped.
+
+Percona Toolkit packages can be downloaded from
+http://www.percona.com/downloads/percona-toolkit/ or the Percona Software
+Repositories (http://www.percona.com/software/repositories/).
+
+Changelog
+---------
+
+* Added new tool: pt-agent
+* Fixed bug 1188002: pt-online-schema-change causes "ERROR 1146 (42S02): Table 'db._t_new' doesn't exist"
+
 v2.2.2 released 2013-04-24
 ==========================
 

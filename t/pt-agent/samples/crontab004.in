@@ -1,0 +1,2 @@
+1 * * * * pt-agent --run-service foo
+2 * * * * pt-agent --send-data foo

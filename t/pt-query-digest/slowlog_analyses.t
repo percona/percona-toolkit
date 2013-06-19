@@ -28,7 +28,7 @@ ok(
       "t/pt-query-digest/samples/empty_report.txt",
    ),
    'Analysis for empty log'
-);
+) or diag($test_diff);
 
 ok(
    no_diff(
