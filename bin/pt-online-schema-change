@@ -8477,17 +8477,17 @@ sub main {
             . " doesn't exist\".\n";
       }
       else {
-         print "Dropping new table...\n";
+         print ts("Dropping new table...\n");
          print $sql, "\n" if $o->get('print');
          PTDEBUG && _d($sql);
          eval {
             $cxn->dbh()->do($sql);
          };
          if ( $EVAL_ERROR ) {
-            warn "Error dropping new table $new_tbl->{name}: $EVAL_ERROR\n"
-               . "To try dropping the new table again, execute:\n$sql\n";
+            warn ts("Error dropping new table $new_tbl->{name}: $EVAL_ERROR\n"
+               . "To try dropping the new table again, execute:\n$sql\n");
          }
-         print "Dropped new table OK.\n";
+         print ts("Dropped new table OK.\n");
       }
    };
 
@@ -8737,8 +8737,8 @@ sub main {
                return;
             }
             else {
-               print "Copying approximately ", $nibble_iter->row_estimate(),
-                  " rows...\n";
+               print ts("Copying approximately "
+                  . $nibble_iter->row_estimate() . " rows...\n");
             }
          }
 
@@ -8784,7 +8784,7 @@ sub main {
                      . ($tbl->{chunk_size} * $limit)
                      . " rows (chunk size=$tbl->{chunk_size}"
                      . " * chunk size limit=$limit).\n";
-               die $msg;
+               die ts($msg);
             }
          }
          else { # chunking the table
@@ -8797,20 +8797,20 @@ sub main {
                   n_index_cols => $o->get('chunk-index-columns'),
                );
                if ( !$key || lc($key) ne lc($nibble_iter->nibble_index()) ) {
-                  die "Cannot determine the key_len of the chunk index "
+                  die ts("Cannot determine the key_len of the chunk index "
                      . "because MySQL chose "
                      . ($key ? "the $key" : "no") . " index "
                      . "instead of the " . $nibble_iter->nibble_index()
                      . " index for the first lower boundary statement.  "
                      . "See --[no]check-plan in the documentation for more "
-                     . "information.";
+                     . "information.");
                }
                elsif ( !$key_len ) {
-                  die "The key_len of the $key index is "
+                  die ts("The key_len of the $key index is "
                      . (defined $key_len ? "zero" : "NULL")
                      . ", but this should not be possible.  " 
                      . "See --[no]check-plan in the documentation for more "
-                     . "information.";
+                     . "information.");
                }
                $tbl->{key_len} = $key_len;
             }
@@ -8852,7 +8852,7 @@ sub main {
                . join(", ", map { defined $_ ? $_ : "NULL" }
                       (@{$boundary->{lower}}, $nibble_iter->limit()))
                . "\n";
-            die $msg;
+            die ts($msg);
          } 
 
          # Once nibbling begins for a table, control does not return to this
@@ -8926,13 +8926,13 @@ sub main {
 
                   # This warning is printed once per table.
                   if ( !$tbl->{warned_slow} ) {
-                     warn "Rows are copying very slowly.  "
+                     warn ts("Rows are copying very slowly.  "
                         . "--chunk-size has been automatically reduced to 1.  "
                         . "Check that the server is not being overloaded, "
                         . "or increase --chunk-time.  The last chunk "
                         . "selected $cnt rows and took "
                         . sprintf('%.3f', $tbl->{nibble_time})
-                        . " seconds to execute.\n";
+                        . " seconds to execute.\n");
                      $tbl->{warned_slow} = 1;
                   }
                }
@@ -8960,7 +8960,7 @@ sub main {
       },
       done => sub {
          if ( $o->get('execute') ) {
-            print "Copied rows OK.\n";
+            print ts("Copied rows OK.\n");
          }
       },
    };
@@ -9027,8 +9027,8 @@ sub main {
       1 while $nibble_iter->next();
    };
    if ( $EVAL_ERROR ) {
-      die "Error copying rows from $orig_tbl->{name} to "
-        . "$new_tbl->{name}: $EVAL_ERROR\n";
+      die ts("Error copying rows from $orig_tbl->{name} to "
+        . "$new_tbl->{name}: $EVAL_ERROR\n");
    }
    $orig_tbl->{copied} = 1;  # flag for cleanup tasks
 
@@ -9097,10 +9097,10 @@ sub main {
       };
       if ( $EVAL_ERROR ) {
          # TODO: one of these values can be undefined
-         die "Error swapping tables: $EVAL_ERROR\n"
+         die ts("Error swapping tables: $EVAL_ERROR\n"
            . "To clean up, first verify that the original table "
            . "$orig_tbl->{name} has not been modified or renamed, "
-           . "then drop the new table $new_tbl->{name} if it exists.\n";
+           . "then drop the new table $new_tbl->{name} if it exists.\n");
       }
    }
    $orig_tbl->{swapped} = 1;  # flag for cleanup tasks
@@ -9192,7 +9192,7 @@ sub main {
             $plugin->before_drop_old_table();
          }
 
-         print "Dropping old table...\n";
+         print ts("Dropping old table...\n");
 
          if ( $alter_fk_method eq 'none' ) {
             # Child tables still reference the old table, but the user
@@ -9211,9 +9211,9 @@ sub main {
             $cxn->dbh()->do($sql);
          };
          if ( $EVAL_ERROR ) {
-            die "Error dropping the old table: $EVAL_ERROR\n";
+            die ts("Error dropping the old table: $EVAL_ERROR\n");
          }
-         print "Dropped old table $old_tbl->{name} OK.\n";
+         print ts("Dropped old table $old_tbl->{name} OK.\n");
 
          # --plugin hook
          if ( $plugin && $plugin->can('after_drop_old_table') ) {
@@ -9453,10 +9453,10 @@ sub nibble_is_safe {
    if ( !$nibble_iter->one_nibble()
         && lc($expl->{key} || '') ne lc($nibble_iter->nibble_index() || '') )
    {
-      die "Error copying rows at chunk " . $nibble_iter->nibble_number()
+      die ts("Error copying rows at chunk " . $nibble_iter->nibble_number()
          . " of $tbl->{db}.$tbl->{tbl} because MySQL chose "
          . ($expl->{key} ? "the $expl->{key}" : "no") . " index "
-         . " instead of the " . $nibble_iter->nibble_index() . "index.\n";
+         . " instead of the " . $nibble_iter->nibble_index() . "index.\n");
    }
 
    # Ensure that the chunk isn't too large if there's a --chunk-size-limit.
@@ -9471,14 +9471,14 @@ sub nibble_is_safe {
            && $nibble_iter->identical_boundaries($boundary->{upper},
                                                  $boundary->{next_lower}) )
       {
-         die "Error copying rows at chunk " . $nibble_iter->nibble_number()
+         die ts("Error copying rows at chunk " . $nibble_iter->nibble_number()
             . " of $tbl->{db}.$tbl->{tbl} because it is oversized.  "
             . "The current chunk size limit is "
             . ($tbl->{chunk_size} * $limit)
             . " rows (chunk size=$tbl->{chunk_size}"
             . " * chunk size limit=$limit), but MySQL estimates "
             . "that there are " . ($expl->{rows} || 0)
-            . " rows in the chunk.\n";
+            . " rows in the chunk.\n");
       }
    }
 
@@ -9488,12 +9488,12 @@ sub nibble_is_safe {
         && $tbl->{key_len}
         && ($expl->{key_len} || 0) < $tbl->{key_len} )
    {
-      die "Error copying rows at chunk " . $nibble_iter->nibble_number()
+      die ts("Error copying rows at chunk " . $nibble_iter->nibble_number()
          . " of $tbl->{db}.$tbl->{tbl} because MySQL used "
          . "only " . ($expl->{key_len} || 0) . " bytes "
          . "of the " . ($expl->{key} || '?') . " index instead of "
          . $tbl->{key_len} . ".  See the --[no]check-plan documentation "
-         . "for more information.\n";
+         . "for more information.\n");
    }
 
    return 1; # safe
@@ -9613,22 +9613,20 @@ sub swap_tables {
       return $orig_tbl;
    }
    elsif ( $o->get('execute') ) {
-      print "Swapping tables...\n";
+      print ts("Swapping tables...\n");
 
       while ( $name_tries-- ) {
          $table_name = $prefix . $table_name;
 
          if ( length($table_name) > 64 ) {
             my $truncated_table_name = substr($table_name, 0, 64);
-            PTDEBUG && _d($table_name, 'is over 64 characters long, truncating to',
+            PTDEBUG && _d($table_name, 'is > 64 chars, truncating to',
                           $truncated_table_name);
             $table_name = $truncated_table_name;
          }
-         
-         my $sql     = "RENAME TABLE $orig_tbl->{name} "
-                     . "TO " . $q->quote($orig_tbl->{db}, $table_name)
-                     . ", $new_tbl->{name} TO $orig_tbl->{name}"; 
-
+         my $sql = "RENAME TABLE $orig_tbl->{name} "
+                 . "TO " . $q->quote($orig_tbl->{db}, $table_name)
+                 . ", $new_tbl->{name} TO $orig_tbl->{name}"; 
          eval {
             osc_retry(
                Cxn     => $cxn,
@@ -9655,11 +9653,12 @@ sub swap_tables {
                PTDEBUG && _d($e);
                next;
             }
-            die $e;
+            die ts($e);
          }
 
          print $sql, "\n" if $o->get('print');
-         print "Swapped original and new tables OK.\n";
+         print ts("Swapped original and new tables OK.\n");
+
          return { # success
             db   => $orig_tbl->{db},
             tbl  => $table_name,
@@ -9670,7 +9669,8 @@ sub swap_tables {
       # This shouldn't happen.
       # Here and in the attempt to find a new table name we probably ought to
       # use --tries (and maybe a Retry object?)
-      die "Failed to find a unique old table name after serveral attempts.\n";
+      die ts("Failed to find a unique old table name after "
+         . "serveral attempts.\n");
    }
 }
 
@@ -9794,10 +9794,10 @@ sub determine_alter_fk_method {
    # and doesn't cause the orig table to go missing for a moment.
    my $method = 'rebuild_constraints';
    
-   print "Max rows for the rebuild_constraints method: $max_rows\n",
-         "Determining the method to update foreign keys...\n";
+   print ts("Max rows for the rebuild_constraints method: $max_rows\n"
+      . "Determining the method to update foreign keys...\n");
    foreach my $child_tbl ( @$child_tables ) {
-      print "  $child_tbl->{name}: ";
+      print ts("  $child_tbl->{name}: ");
       my ($n_rows) = NibbleIterator::get_row_estimate(
          Cxn   => $cxn,
          tbl   => $child_tbl,
@@ -9846,7 +9846,7 @@ sub rebuild_constraints {
       print "Not rebuilding foreign key constraints because this is a dry run.\n";
    }
    else {
-      print "Rebuilding foreign key constraints...\n";
+      print ts("Rebuilding foreign key constraints...\n");
    }
 
    CHILD_TABLE:
@@ -9858,8 +9858,8 @@ sub rebuild_constraints {
       );
       my @constraints = $table_def =~ m/$constraint/g;
       if ( !@constraints ) {
-         warn "$child_tbl->{name} has no foreign key "
-            . "constraints referencing $old_tbl->{name}.\n";
+         warn ts("$child_tbl->{name} has no foreign key "
+            . "constraints referencing $old_tbl->{name}.\n");
          next CHILD_TABLE;
       }
 
@@ -9913,7 +9913,7 @@ sub rebuild_constraints {
    }
 
    if ( $o->get('execute') ) {
-      print "Rebuilt foreign key constraints OK.\n";
+      print ts("Rebuilt foreign key constraints OK.\n");
    }
 
    return;
@@ -9931,7 +9931,7 @@ sub drop_swap {
       print "Not drop-swapping tables because this is a dry run.\n";
    }
    else {
-      print "Drop-swapping tables...\n";
+      print ts("Drop-swapping tables...\n");
    }
 
    my @sqls = (
@@ -9958,7 +9958,7 @@ sub drop_swap {
    }
 
    if ( $o->get('execute') ) {
-      print "Dropped and swapped tables OK.\n";
+      print ts("Dropped and swapped tables OK.\n");
    }
 
    return;
@@ -9979,7 +9979,7 @@ sub create_triggers {
       print "Not creating triggers because this is a dry run.\n";
    }
    else {
-      print "Creating triggers...\n";
+      print ts("Creating triggers...\n");
    }
 
    # Create a unique trigger name prefix based on the orig table name
@@ -10059,7 +10059,7 @@ sub create_triggers {
    }
 
    if ( $o->get('execute') ) {
-      print "Created triggers OK.\n";
+      print ts("Created triggers OK.\n");
    }
 
    return @trigger_names;
@@ -10080,7 +10080,7 @@ sub drop_triggers {
       print "Not dropping triggers because this is a dry run.\n";
    }
    else {
-      print "Dropping triggers...\n";
+      print ts("Dropping triggers...\n");
    }
  
    foreach my $sql ( @drop_trigger_sqls ) {
@@ -10099,7 +10099,7 @@ sub drop_triggers {
             );
          };
          if ( $EVAL_ERROR ) {
-            warn "Error dropping trigger: $EVAL_ERROR\n";
+            warn ts("Error dropping trigger: $EVAL_ERROR\n");
             push @triggers_not_dropped, $sql;
             $exit_status = 1;
          }
@@ -10108,11 +10108,11 @@ sub drop_triggers {
 
    if ( $o->get('execute') ) {
       if ( !@triggers_not_dropped ) {
-         print "Dropped triggers OK.\n";
+         print ts("Dropped triggers OK.\n");
       }
       else {
-         warn "To try dropping the triggers again, execute:\n"
-            . join("\n", @triggers_not_dropped) . "\n";
+         warn ts("To try dropping the triggers again, execute:\n"
+            . join("\n", @triggers_not_dropped) . "\n");
       }
    }
 
@@ -10192,7 +10192,7 @@ sub osc_retry {
          # the tool will stop, which is probably good because by this
          # point the error or warning indicates that something is wrong.
          $stats->{ error_event($error) }++;
-         die $error;
+         die ts($error);
       }
    );
 }
@@ -10352,6 +10352,12 @@ sub explain_statement {
    }
    PTDEBUG && _d('EXPLAIN plan:', Dumper($expl));
    return $expl;
+}
+
+sub ts {
+   my ($msg) = @_;
+   my $ts = $ENV{PTTEST_FAKE_TS} ? 'TS' : Transformers::ts(int(time));
+   return $msg ? "$ts $msg" : $ts;
 }
 
 # Catches signals so we can exit gracefully.
