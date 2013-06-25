@@ -6,8 +6,8 @@ Operation, tries, wait:
   update_foreign_keys, 10, 1
 Starting a dry run.  `bug_1045317`.`bits` will not be altered.  Specify --execute instead of --dry-run to alter the table.
 Not dropping triggers because this is a dry run.
-Dropping new table...
-Dropped new table OK.
+TS Dropping new table...
+TS Dropped new table OK.
 # Event  Count
 # ====== =====
 # INSERT     0
