@@ -1117,7 +1117,7 @@ sub set_vars {
    if ( $user_vars ) {
       foreach my $var_val ( @$user_vars ) {
          my ($var, $val) = $var_val =~ m/([^\s=]+)=(\S+)/;
-         die "Invalid --set-vars value: $var_val\n" unless $var && $val;
+         die "Invalid --set-vars value: $var_val\n" unless $var && defined $val;
          $user_vars{$var} = {
             val     => $val,
             default => 0,
@@ -1131,7 +1131,7 @@ sub set_vars {
       %default_vars = map {
          my $var_val = $_;
          my ($var, $val) = $var_val =~ m/([^\s=]+)=(\S+)/;
-         die "Invalid --set-vars value: $var_val\n" unless $var && $val;
+         die "Invalid --set-vars value: $var_val\n" unless $var && defined $val;
          $var => {
             val     => $val,
             default => 1,

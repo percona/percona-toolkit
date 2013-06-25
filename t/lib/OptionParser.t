@@ -2021,6 +2021,48 @@ is(
    "Non-zero exit status on error parsing options (bug 1039074)"
 );
 
+
+# #############################################################################
+# --set-vars/set_vars()
+# #############################################################################
+
+@ARGV = qw();
+$o = new OptionParser(file => "$trunk/bin/pt-archiver");
+$o->get_specs();
+$o->get_opts();
+
+my $vars = $o->set_vars("$trunk/bin/pt-archiver");
+is_deeply(
+   $vars,
+   {
+      wait_timeout => {
+         default => 1,
+         val     => '10000',
+      },
+   }, 
+   "set_vars(): 1 default from docs"
+) or diag(Dumper($vars));
+
+# Bug 1182856: Zero values causes "Invalid --set-vars value: var=0"
+@ARGV = qw(--set-vars SQL_LOG_BIN=0);
+$o->get_opts();
+
+$vars = $o->set_vars("$trunk/bin/pt-archiver");
+is_deeply(
+   $vars,
+   {
+      wait_timeout => {
+         default => 1,
+         val     => '10000',
+      },
+      SQL_LOG_BIN => {
+         default  => 0,
+         val      => '0',
+      },
+   }, 
+   "set_vars(): var=0 (bug 1182856)"
+) or diag(Dumper($vars));
+
 # #############################################################################
 # Done.
 # #############################################################################
