@@ -3142,58 +3142,63 @@ sub _iterate_dbh {
       $self->{dbs} = \@dbs;
    }
 
-   if ( !$self->{db} ) {
-      $self->{db} = shift @{$self->{dbs}};
-      PTDEBUG && _d('Next database:', $self->{db});
-      return unless $self->{db};
-   }
-
-   if ( !defined $self->{tbls} ) {
-      my $sql = 'SHOW /*!50002 FULL*/ TABLES FROM ' . $q->quote($self->{db});
-      PTDEBUG && _d($sql);
-      my @tbls = map {
-         $_->[0];  # (tbl, type)
+   DATABASE:
+   while ( $self->{db} || defined(my $db = shift @{$self->{dbs}}) ) {
+      if ( !$self->{db} ) {
+         PTDEBUG && _d('Next database:', $db);
+         $self->{db} = $db;
       }
-      grep {
-         my ($tbl, $type) = @$_;
-         (!$type || ($type ne 'VIEW'))
-         && $self->_resume_from_table($tbl)
-         && $self->table_is_allowed($self->{db}, $tbl);
-      }
-      @{$dbh->selectall_arrayref($sql)};
-      PTDEBUG && _d('Found', scalar @tbls, 'tables in database', $self->{db});
-      $self->{tbls} = \@tbls;
-   }
 
-   while ( my $tbl = shift @{$self->{tbls}} ) {
-      my $ddl        = eval { $tp->get_create_table($dbh, $self->{db}, $tbl) };
-      if ( my $e = $EVAL_ERROR ) {
-         my $table_name = "$self->{db}.$tbl";
-         if ( $e =~ /\QTable '$table_name' doesn't exist/ ) {
-            PTDEBUG && _d("Skipping $table_name because it no longer exists");
+      if ( !$self->{tbls} ) {
+         my $sql = 'SHOW /*!50002 FULL*/ TABLES FROM ' . $q->quote($self->{db});
+         PTDEBUG && _d($sql);
+         my @tbls = map {
+            $_->[0];  # (tbl, type)
          }
-         else {
-            warn "Skipping $table_name because SHOW CREATE TABLE failed: $e";
+         grep {
+            my ($tbl, $type) = @$_;
+            (!$type || ($type ne 'VIEW'))
+            && $self->_resume_from_table($tbl)
+            && $self->table_is_allowed($self->{db}, $tbl);
          }
-         next;
+         @{$dbh->selectall_arrayref($sql)};
+         PTDEBUG && _d('Found', scalar @tbls, 'tables in database',$self->{db});
+         $self->{tbls} = \@tbls;
       }
-      my $tbl_struct = $tp->parse($ddl);
-      if ( $self->engine_is_allowed($tbl_struct->{engine}) ) {
-         return {
-            db         => $self->{db},
-            tbl        => $tbl,
-            name       => $q->quote($self->{db}, $tbl),
-            ddl        => $ddl,
-            tbl_struct => $tbl_struct,
-         };
+
+      TABLE:
+      while ( my $tbl = shift @{$self->{tbls}} ) {
+         my $ddl = eval { $tp->get_create_table($dbh, $self->{db}, $tbl) };
+         if ( my $e = $EVAL_ERROR ) {
+            my $table_name = "$self->{db}.$tbl";
+            if ( $e =~ /\QTable '$table_name' doesn't exist/ ) {
+               PTDEBUG && _d("$table_name no longer exists");
+            }
+            else {
+               warn "Skipping $table_name because SHOW CREATE TABLE failed: $e";
+            }
+            next TABLE;
+         }
+
+         my $tbl_struct = $tp->parse($ddl);
+         if ( $self->engine_is_allowed($tbl_struct->{engine}) ) {
+            return {
+               db         => $self->{db},
+               tbl        => $tbl,
+               name       => $q->quote($self->{db}, $tbl),
+               ddl        => $ddl,
+               tbl_struct => $tbl_struct,
+            };
+         }
       }
-   }
 
-   PTDEBUG && _d('No more tables in database', $self->{db});
-   $self->{db}   = undef;
-   $self->{tbls} = undef;
+      PTDEBUG && _d('No more tables in database', $self->{db});
+      $self->{db}   = undef;
+      $self->{tbls} = undef;
+   } # DATABASE
 
-   return $self->_iterate_dbh();
+   PTDEBUG && _d('No more databases');
+   return;
 }
 
 sub database_is_allowed {
