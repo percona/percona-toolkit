@@ -548,9 +548,23 @@ eval {
 diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
 
 # #############################################################################
+# Bug 1136559: Deep recursion on subroutine "SchemaIterator::_iterate_dbh"
+# #############################################################################
+
+$sb->wipe_clean($dbh);
+diag(`/tmp/12345/use < $trunk/t/lib/samples/100-dbs.sql`);
+
+test_so(
+   filters   => [],
+   result    => "foo001.bar001 ",
+   lives_ok  => 1,
+   test_name => "Bug 1136559: Deep recursion on subroutine SchemaIterator::_iterate_dbh",
+);
+
+diag(`/tmp/12345/use < $trunk/t/lib/samples/100-dbs-drop.sql`);
+
+# #############################################################################
 # Done.
 # #############################################################################
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-
 done_testing;
-exit;
