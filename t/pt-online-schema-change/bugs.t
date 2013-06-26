@@ -363,6 +363,12 @@ unlike(
    "Bug 1188264: no undefined subroutine"
 );
 
+like(
+   $output,
+   qr/error 1265/,  # Data truncated for column 'c' at row 21
+   "Bug 1188264: warning about expected MySQL error 1265"
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
