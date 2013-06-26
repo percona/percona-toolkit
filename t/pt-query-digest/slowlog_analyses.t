@@ -394,6 +394,18 @@ ok(
 );
 
 # #############################################################################
+# Bug 1176010: pt-query-digest should know how to group quoted and unquoted database names
+# https://bugs.launchpad.net/percona-toolkit/+bug/1176010
+#############################################################################
+ok(
+   no_diff(
+      sub { pt_query_digest::main(@args, $sample.'slow057.txt') },
+      "t/pt-query-digest/samples/slow057.txt",
+   ),
+   'Analysis for slow057 (no grouping bug 1176010)'
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 done_testing;
