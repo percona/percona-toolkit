@@ -13252,7 +13252,10 @@ sub main {
             process => sub {
                my ( $args ) = @_;
                my $event = $pl->parse_event(code => $code);
-               $args->{event} = $event if $event;
+               if ( $event ) {
+                  sanitize_event($event);
+                  $args->{event} = $event;
+               }
                return $args;
             },
          );
@@ -13313,6 +13316,7 @@ sub main {
                         stats       => $args->{stats},
                      );
                      if ( $event ) {
+                        sanitize_event($event);
                         $args->{event} = $event;
                         return $args;
                      }
@@ -14563,6 +14567,23 @@ sub save_resume_offset {
 
    close $resume_fh
       or die "Error close $resume_file: $OS_ERROR";
+
+   return;
+}
+
+sub sanitize_event {
+   my ($event) = @_;
+
+   # Quoted and unquoted values should be treated the same
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1176010
+   if ( $event->{db} ) {
+      $event->{db} =~ s/^`//;
+      $event->{db} =~ s/`$//;
+   }
+   if ( $event->{Schema} ) {
+      $event->{Schema} =~ s/^`//;
+      $event->{Schema} =~ s/`$//;
+   }
 
    return;
 }
