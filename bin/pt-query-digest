@@ -12940,7 +12940,7 @@ sub main {
 
             return [ grep { $_->[0] != $cxn } @{ $sth->fetchall_arrayref(); } ];
          };
-         
+
          $pipeline->add(
             name    => ref $pl,
             process => sub {
@@ -14233,15 +14233,21 @@ sub save_resume_offset {
    return;
 }
 
-# Quoted and unquoted values should be treated the same
-# See https://bugs.launchpad.net/percona-toolkit/+bug/1176010
 sub sanitize_event {
    my ($event) = @_;
-   foreach my $value ( values %$event ) {
-      if ( $value && $value =~ /\A`(.+)`\z/sm ) {
-         $value = $1
-      }
+
+   # Quoted and unquoted values should be treated the same
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1176010
+   if ( $event->{db} ) {
+      $event->{db} =~ s/^`//;
+      $event->{db} =~ s/`$//;
    }
+   if ( $event->{Schema} ) {
+      $event->{Schema} =~ s/^`//;
+      $event->{Schema} =~ s/`$//;
+   }
+
+   return;
 }
 
 sub _d {
