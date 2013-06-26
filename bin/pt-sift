@@ -545,7 +545,7 @@ main() {
       if [ -d "$1" ]; then
          BASEDIR="$1"
          PREFIX=""
-      elif [ -f "$1" -o -f "$1-df" -o -f "$1df" ]; then
+      elif [ -f "$1" -o -f "$1-output" -o -f "$1output" ]; then
          BASEDIR="$(dirname "$1")"
          PREFIX="$(echo "$1" | perl -ne '$_ =~ m/([\d_]+)/; print $1;')"
       else
@@ -578,10 +578,10 @@ main() {
    done
 
    # We need to generate a list of timestamps, and ask the user to choose one if
-   # there is no PREFIX yet.  NOTE: we rely on the "-df" files here.
+   # there is no PREFIX yet.  NOTE: we rely on the "-output" files here.
    (
       cd "$BASEDIR"
-      ls *-df 2>/dev/null | cut -d- -f1 | sort > "$PT_TMPDIR/pt-sift.prefixes" 
+      ls *-output 2>/dev/null | cut -d- -f1 | sort > "$PT_TMPDIR/pt-sift.prefixes" 
    )
    if [ ! -s "$PT_TMPDIR/pt-sift.prefixes" ]; then
       echo "Error: There are no pt-stalk files in $BASEDIR" >&2
