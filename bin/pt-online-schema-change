@@ -10285,22 +10285,14 @@ sub exec_nibble {
                         || $message =~ m/$warn_code{$code}->{pattern}/) )
             {
                if ( !$stats->{"mysql_warning_$code"}++ ) {  # warn once
-                  my $err
-                     = "Copying rows caused a MySQL error $code: "
+                  warn "Copying rows caused a MySQL error $code: "
                      . ($warn_code{$code}->{message}
                         ? $warn_code{$code}->{message}
                         : $message)
-                     . "\nThis MySQL error is being ignored ";
-                  if ( get('statistics') ) {
-                     $err .= "but further occurrences will be reported "
-                           . "by --statistics when the tool finishes.\n";
-                  }
-                  else {
-                     $err .= "and further occurrences will not be reported.  "
-                           . "Specify --statistics to see a count of all "
-                           . "suppressed warnings and errors.\n";
-                  }
-                  warn $err;
+                     . "\nNo more warnings about this MySQL error will be "
+                     . "reported.  If --statistics was specified, "
+                     . "mysql_warning_$code will list the total count of "
+                     . "this MySQL error.\n";
                }
             }
             else {
