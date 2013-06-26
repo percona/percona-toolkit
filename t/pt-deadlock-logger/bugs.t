@@ -15,6 +15,8 @@ use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-deadlock-logger";
 
+use Data::Dumper;
+
 # #############################################################################
 # https://bugs.launchpad.net/percona-toolkit/+bug/903443
 # pt-deadlock-logger crashes on MySQL 5.5
@@ -118,6 +120,21 @@ is_deeply(
    },
    "Bug 1082104: pt-deadlock-logger shows host as user when the username has a dash in the name",
 );
+
+# #############################################################################
+# https://bugs.launchpad.net/percona-toolkit/+bug/1195034
+# pt-deadlock-logger error: Use of uninitialized value $ts in pattern match
+# #############################################################################
+
+$innodb_status_sample = load_file("t/pt-deadlock-logger/samples/bug_1195034.txt");
+my $deadlocks = pt_deadlock_logger::parse_deadlocks($innodb_status_sample);
+
+is_deeply(
+   $deadlocks,
+   {
+   },
+   "Bug 1195034: TOO DEEP OR LONG SEARCH IN THE LOCK TABLE WAITS-FOR GRAPH"
+) or diag(Dumper($deadlocks));
 
 # #############################################################################
 # Done.
