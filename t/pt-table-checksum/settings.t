@@ -46,11 +46,8 @@ unlike(
    "explicit_defaults_for_timestamp (bug 1163735): no error"
 );
 
-is(
-   $retval,
-   0,
-   "explicit_defaults_for_timestamp (bug 1163735): 0 exit"
-);
+# Exit will be non-zero because of "Diffs cannot be detected because
+# no slaves were found."
 
 # #############################################################################
 # Done.
