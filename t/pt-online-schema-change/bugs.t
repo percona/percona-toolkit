@@ -326,6 +326,50 @@ like(
 );
 
 # #############################################################################
+# https://bugs.launchpad.net/percona-toolkit/+bug/1188264
+# pt-online-schema-change error copying rows: Undefined subroutine
+# &pt_online_schema_change::get
+# #############################################################################
+
+# In exec_nibble() we had:
+#    if ( get('statistics') ) {
+#       $err .= "but further occurrences will be reported "
+#             . "by --statistics when the tool finishes.\n";
+#    }
+# which is called when copying rows causes a MySQL warning
+# for the first time.  So to test this code path, we need to
+# cause a MySQL warning while copying rows.
+
+$sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
+$master_dbh->do("INSERT INTO pt_osc.t VALUES (null, 'This string will be too long after we modify the table so it will cause a warning about the value being truncated in the new table.  The other column values are a single character.', NOW())");
+
+($output, $exit_status) = full_output(
+    sub { pt_online_schema_change::main(@args,
+      "$master_dsn,D=pt_osc,t=t",
+      "--alter", "modify c varchar(8)",
+      qw(--execute --print))
+   },
+);
+
+is(
+   $exit_status,
+   0,
+   "Bug 1188264: 0 exit"
+);
+
+unlike(
+   $output,
+   qr/Undefined subroutine/i,
+   "Bug 1188264: no undefined subroutine"
+);
+
+like(
+   $output,
+   qr/error 1265/,  # Data truncated for column 'c' at row 21
+   "Bug 1188264: warning about expected MySQL error 1265"
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
