@@ -80,7 +80,7 @@ my $create_repl_table =
   this_cnt       int          NOT NULL,
   master_crc     char(40)         NULL,
   master_cnt     int              NULL,
-  ts             timestamp    NOT NULL,
+  ts             timestamp    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (db, tbl, chunk)
 ) ENGINE=InnoDB;";
 
