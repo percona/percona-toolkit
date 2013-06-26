@@ -113,6 +113,10 @@ make_sandbox() {
       echo "query_cache_size=$QUERY_CACHE_SIZE" >> /tmp/$port/my.sandbox.cnf
    fi
 
+   if [ -n "$EXTRA_DEFAULTS_FILE" ]; then
+      cat "$EXTRA_DEFAULTS_FILE" >> /tmp/$port/my.sandbox.cnf
+   fi
+
    # If the sandbox is a slave, set it read_only.
    if [ "$type" = "slave" ]; then
       echo "read_only" >> /tmp/$port/my.sandbox.cnf
