@@ -4140,6 +4140,11 @@ sub parse_deadlocks {
 
    # Extract some miscellaneous data from the deadlock.
    my ( $ts ) = $dl_text =~ m/^$s$/m;
+   if ( !$ts ) {
+      # https://bugs.launchpad.net/percona-toolkit/+bug/1195034
+      # 130624 17:39:24TOO DEEP OR LONG SEARCH IN THE LOCK TABLE ...
+      ($ts) = $dl_text =~ m/^${s}TOO DEEP/m;
+   }
    my ( $year, $mon, $day, $hour, $min, $sec ) = $ts =~ m/^((?:\d\d)?\d\d)-?(\d\d)-?(\d\d) +(\d+):(\d+):(\d+)$/;
    if ( length($year) == 2 ) {
       $year += 2000;
