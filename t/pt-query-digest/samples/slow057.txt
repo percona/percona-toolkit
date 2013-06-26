@@ -1,52 +1,29 @@
 
-# Query 1: 0 QPS, 0x concurrency, ID 0xAA353644DE4C4CB4 at byte 434 ______
-# This item is included in the report because it matches --limit.
-# Scores: V/M = 0.02
-# Attribute    pct   total     min     max     avg     95%  stddev  median
-# ============ === ======= ======= ======= ======= ======= ======= =======
-# Count         50       2
-# Exec time     91    19ms     2us    19ms     9ms    19ms    13ms     9ms
-# Lock time    100     9ms       0     9ms     5ms     9ms     7ms     5ms
-# Rows sent      0       0       0       0       0       0       0       0
-# Rows examine   0       0       0       0       0       0       0       0
-# Query size    65      54      27      27      27      27       0      27
-# String:
-# Databases    db
-# Hosts
-# Users        meow
-# Query_time distribution
-#   1us  ################################################################
-#  10us
-# 100us
-#   1ms
-#  10ms  ################################################################
-# 100ms
-#    1s
-#  10s+
-administrator command: Quit\G
+# ########################################################################
+# Report grouped by db
+# ########################################################################
 
-# Query 2: 0 QPS, 0x concurrency, ID 0xCC47B42511EA22DD at byte 662 ______
+# Item 1: 0 QPS, 0x concurrency, ID 0x585AC494268B351B at byte 434 _______
 # This item is included in the report because it matches --limit.
-# Scores: V/M = 0.00
+# Scores: V/M = 0.01
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
-# Count         50       2
-# Exec time      8     2ms   899us   899us   899us   899us       0   899us
-# Lock time      0       0       0       0       0       0       0       0
+# Count        100       4
+# Exec time    100    21ms     2us    19ms     5ms    18ms     8ms   881us
+# Lock time    100     9ms       0     9ms     2ms     9ms     4ms       0
 # Rows sent      0       0       0       0       0       0       0       0
 # Rows examine   0       0       0       0       0       0       0       0
-# Query size    34      28      14      14      14      14       0      14
+# Query size   100      82      14      27   20.50   26.08    6.12   26.08
 # String:
-# Databases    db
 # Hosts
 # Users        meow
 # Query_time distribution
-#   1us
+#   1us  ################################
 #  10us
 # 100us  ################################################################
 #   1ms
-#  10ms
+#  10ms  ################################
 # 100ms
 #    1s
 #  10s+
-SET NAMES utf8\G
+db
