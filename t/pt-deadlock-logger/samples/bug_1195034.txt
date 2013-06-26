@@ -1,0 +1,14 @@
+
+------------------------
+LATEST DETECTED DEADLOCK
+------------------------
+130624 17:39:24TOO DEEP OR LONG SEARCH IN THE LOCK TABLE WAITS-FOR GRAPH, WE WILL ROLL BACK FOLLOWING TRANSACTION 
+
+*** TRANSACTION:
+TRANSACTION 3BF88F886, ACTIVE 0 sec setting auto-inc lock
+mysql tables in use 1, locked 1
+1 lock struct(s), heap size 376, 0 row lock(s)
+MySQL thread id 23512694, OS thread handle 0x5055b940, query id 734303798 10.10.10.1 host update
+INSERT INTO gr_v3_response_log (query_key, time_received, time_to_respond, status, raw_response, api_host, api_path, api_client) VALUES ('...
+*** WAITING FOR THIS LOCK TO BE GRANTED:
+TABLE LOCK table `db`.`gr_v3_response_log` trx id 3BF88F886 lock mode AUTO-INC waiting
