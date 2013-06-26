@@ -399,11 +399,12 @@ ok(
 #############################################################################
 ok(
    no_diff(
-      sub { pt_query_digest::main(@args, $sample.'slow057.txt') },
+      sub { pt_query_digest::main(@args, $sample.'slow057.txt',
+         qw(--group-by db)) },
       "t/pt-query-digest/samples/slow057.txt",
    ),
    'Analysis for slow057 (no grouping bug 1176010)'
-);
+) or diag($test_diff);
 
 # #############################################################################
 # Done.
