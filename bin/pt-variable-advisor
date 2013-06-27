@@ -5519,9 +5519,9 @@ flush_time seconds.
 
 severity: warn 
 
-The key buffer size is unconfigured.  In a production
-environment it should always be configured explicitly, and the default
-8MB size is not good.
+The key buffer size is set to its default value, which is not good 
+for most production systems.  In a production environment, key_buffer_size
+should be larger than the default 8MB size.
 
 =item large_pages
 
