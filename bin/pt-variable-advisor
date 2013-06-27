@@ -3376,7 +3376,9 @@ sub get_rules {
       id   => 'innodb_max_dirty_pages_pct',
       code => sub {
          my ( %args ) = @_;
-         return _var_lt($args{variables}->{innodb_max_dirty_pages_pct}, 90);
+         my $mysql_version = $args{mysql_version};
+         return _var_lt($args{variables}->{innodb_max_dirty_pages_pct},
+            ($mysql_version < '5.5' ? 90 : 75));
       },
    },
    {
