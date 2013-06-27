@@ -62,8 +62,8 @@ sub new {
 sub strip_comments {
    my ( $self, $query ) = @_;
    return unless $query;
-   $query =~ s/$olc_re//go;
    $query =~ s/$mlc_re//go;
+   $query =~ s/$olc_re//go;
    if ( $query =~ m/$vlc_rf/i ) { # contains show + version
       $query =~ s/$vlc_re//go;
    }
