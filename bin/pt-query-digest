@@ -17001,6 +17001,23 @@ instead of MySQL packets.  For example:
 
 memcached uses port 11211 by default.
 
+=item rawlog
+
+Raw logs are not MySQL logs but simple text files with one SQL statement
+per line, like:
+
+  SELECT c FROM t WHERE id=1
+  /* Hello, world! */ SELECT * FROM t2 LIMIT 1
+  INSERT INTO t (a, b) VALUES ('foo', 'bar')
+  INSERT INTO t SELECT * FROM monkeys
+
+Since raw logs do not have any metrics, many options and features of
+pt-query-digest do not work with them.
+
+One use case for raw logs is ranking queries by count when the only
+information available is a list of queries, from polling C<SHOW PROCESSLIST>
+for example.
+
 =back
 
 =item --until
