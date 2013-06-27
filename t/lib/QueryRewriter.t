@@ -10,7 +10,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 271;
+use Test::More;
 
 use QueryRewriter;
 use QueryParser;
@@ -405,6 +405,15 @@ is(
    ),
    "select * from prices.rt_5min where id=?",
    "Fingerprint db.tbl<number>name (preserve number)"
+);
+
+
+is(
+   $qr->fingerprint(
+      "/* -- S++ SU ABORTABLE -- spd_user: rspadim */SELECT SQL_SMALL_RESULT SQL_CACHE DISTINCT centro_atividade FROM est_dia WHERE unidade_id=1001 AND item_id=67 AND item_id_red=573"
+   ),
+   "select sql_small_result sql_cache distinct centro_atividade from est_dia where unidade_id=? and item_id=? and item_id_red=?",
+   "Fingerprint /* -- comment */ SELECT (bug 1174956)"
 );
 
 # #############################################################################
@@ -1406,4 +1415,4 @@ is(
 # #############################################################################
 # Done.
 # #############################################################################
-exit;
+done_testing;
