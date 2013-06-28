@@ -5576,6 +5576,10 @@ be created with the following MAGIC_create_heartbeat table definition:
 The heartbeat table requires at least one row.  If you manually create the
 heartbeat table, then you must insert a row by doing:
 
+  INSERT INTO heartbeat (ts, server_id) VALUES (NOW(), N);
+
+or if using L<"--utc">:
+
   INSERT INTO heartbeat (ts, server_id) VALUES (UTC_TIMESTAMP(), N);
 
 where C<N> is the server's ID; do not use @@server_id because it will replicate
@@ -5593,6 +5597,10 @@ A legacy version of the heartbeat table is still supported:
 Legacy tables do not support L<"--update"> instances on each slave
 of a multi-slave hierarchy like "master -> slave1 -> slave2".
 To manually insert the one required row into a legacy table:
+
+  INSERT INTO heartbeat (id, ts) VALUES (1, NOW());
+
+or if using L<"--utc">:
 
   INSERT INTO heartbeat (id, ts) VALUES (1, UTC_TIMESTAMP());
 
@@ -5879,9 +5887,14 @@ Ignore system time zones and use only UTC.  By default pt-heartbeat does
 not check or adjust for different system or MySQL time zones which can
 cause the tool to compute the lag incorrectly.  Specifying this option is
 a good idea because it ensures that the tool works correctly regardless of
-time zones, but it also makes the tool backwards-incompatible with
-pt-heartbeat 2.1.9 and older (unless the older version of pt-heartbeat
-is running on a system that uses UTC).
+time zones.
+
+If used, this option must be used for all pt-heartbeat instances:
+L<"--update">, L<"--monitor">, L<"--check">, etc.  You should probably
+set the option in a L<"--config"> file.  Mixing this option with pt-heartbeat
+instances not using this option will cause false-positive lag readings
+due to different time zones (unless all your systems are set to use UTC,
+in which case this option isn't required).
 
 =item --version
 
