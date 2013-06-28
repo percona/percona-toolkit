@@ -15221,7 +15221,7 @@ pt-query-digest - Analyze query execution logs and generate a query report, filt
 Usage: pt-query-digest [OPTION...] [FILE]
 
 pt-query-digest parses and analyzes MySQL log files.  With no FILE, or when
-FILE is -, it read standard input.
+FILE is -, it reads standard input.
 
 Analyze, aggregate, and report on a slow query log:
 
