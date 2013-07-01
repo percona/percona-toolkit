@@ -342,26 +342,28 @@ override query_report => sub {
             push @tables, { status => $status, create => $create };
          }
 
-         # Convert possible non-SELECTs for EXPLAIN.
-         if ( $item =~ m/^(?:[\(\s]*select|insert|replace)/ ) {
-            if ( $item =~ m/^(?:insert|replace)/ ) {
-               # Cannot convert or EXPLAIN INSERT or REPLACE queries.
+         if ( !$args{anon} ) {
+            # Convert possible non-SELECTs for EXPLAIN.
+            if ( $item =~ m/^(?:[\(\s]*select|insert|replace)/ ) {
+               if ( $item =~ m/^(?:insert|replace)/ ) {
+                  # Cannot convert or EXPLAIN INSERT or REPLACE queries.
+               }
+               else {
+                  # SELECT queries don't need to converted for EXPLAIN.
+
+                  # TODO: return the actual EXPLAIN plan
+                  # $self->explain_report($query, $vals->{default_db});
+               }
             }
             else {
-               # SELECT queries don't need to converted for EXPLAIN.
-
-               # TODO: return the actual EXPLAIN plan
-               # $self->explain_report($query, $vals->{default_db});
-            }
-         }
-         else {
-            # Query is not SELECT, INSERT, or REPLACE, so we can convert
-            # it for EXPLAIN.
-            my $converted = $qr->convert_to_select(
-               $sample->{arg} || '',
-            );
-            if ( $converted && $converted =~ m/^[\(\s]*select/i ) {
-               $class->{example}->{as_select} = $converted;
+               # Query is not SELECT, INSERT, or REPLACE, so we can convert
+               # it for EXPLAIN.
+               my $converted = $qr->convert_to_select(
+                  $sample->{arg} || '',
+               );
+               if ( $converted && $converted =~ m/^[\(\s]*select/i ) {
+                  $class->{example}->{as_select} = $converted;
+               }
             }
          }
       }

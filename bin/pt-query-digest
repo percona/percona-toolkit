@@ -7983,19 +7983,21 @@ override query_report => sub {
             push @tables, { status => $status, create => $create };
          }
 
-         if ( $item =~ m/^(?:[\(\s]*select|insert|replace)/ ) {
-            if ( $item =~ m/^(?:insert|replace)/ ) {
+         if ( !$args{anon} ) {
+            if ( $item =~ m/^(?:[\(\s]*select|insert|replace)/ ) {
+               if ( $item =~ m/^(?:insert|replace)/ ) {
+               }
+               else {
+
+               }
             }
             else {
-
-            }
-         }
-         else {
-            my $converted = $qr->convert_to_select(
-               $sample->{arg} || '',
-            );
-            if ( $converted && $converted =~ m/^[\(\s]*select/i ) {
-               $class->{example}->{as_select} = $converted;
+               my $converted = $qr->convert_to_select(
+                  $sample->{arg} || '',
+               );
+               if ( $converted && $converted =~ m/^[\(\s]*select/i ) {
+                  $class->{example}->{as_select} = $converted;
+               }
             }
          }
       }
@@ -14184,7 +14186,7 @@ sub print_reports {
             variations   => $o->get('variations'),
             group        => { map { $_=>1 } qw(rusage date hostname files header) },
             resume       => $resume,
-            anon         => $report_class eq 'json-anon',
+            anon         => $o->get('output') eq 'json-anon',
          );
       }
 

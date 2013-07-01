@@ -39,6 +39,16 @@ ok(
    'json output for slow002'
 ) or diag($test_diff);
 
+ok(
+   no_diff(
+      sub { pt_query_digest::main(qw(--output json-anon),
+         "$sample/slowlogs/slow002.txt") },
+      "$results/slow002-anon.txt",
+      sed => [ qq/'s!$trunk!TRUNK!'/ ],
+   ),
+   'json-anon output for slow002'
+) or diag($test_diff);
+
 # --type tcpdump
 
 ok(
