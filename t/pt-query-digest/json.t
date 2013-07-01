@@ -33,7 +33,8 @@ ok(
 ok(
    no_diff(
       sub { pt_query_digest::main(@args, "$sample/slowlogs/slow002.txt") },
-      "$results/output_json_slow002.txt"
+      "$results/output_json_slow002.txt",
+      sed => [ qq/'s!$trunk!TRUNK!'/ ],
    ),
    'json output for slow002'
 ) or diag($test_diff);
@@ -45,6 +46,7 @@ ok(
       sub { pt_query_digest::main(qw(--type tcpdump --limit 10 --watch-server 127.0.0.1:12345),
                                   @args, "$sample/tcpdump/tcpdump021.txt") },
       "$results/output_json_tcpdump021.txt",
+      sed => [ qq/'s!$trunk!TRUNK!'/ ],
    ),
    'json output for for tcpdump021',
 ) or diag($test_diff);
