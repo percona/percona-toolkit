@@ -121,7 +121,7 @@
    "global" : {
       "files" : [
          {
-            "name" : "/Users/daniel/p/release-2.2.3/t/lib/samples/slowlogs/slow002.txt",
+            "name" : "TRUNK/t/lib/samples/slowlogs/slow002.txt",
             "size" : 3841
          }
       ],

@@ -228,10 +228,12 @@ override query_report => sub {
          distillate  => $distill,
          attribute   => $groupby,
          query_count => $times_seen,
-         example     => {
-            query => substr($sample->{arg}, 0, $self->max_query_length),
-            ts    => $sample->{ts} ? parse_timestamp($sample->{ts}) : undef,
-         },
+         $args{anon} ? () : (
+            example     => {
+               query => substr($sample->{arg}, 0, $self->max_query_length),
+               ts    => $sample->{ts} ? parse_timestamp($sample->{ts}) : undef,
+            },
+         ),
       };
 
       my %metrics;
