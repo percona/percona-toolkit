@@ -554,7 +554,7 @@ sub _find_best_index {
       @possible_indexes = sort {
          # Prefer the index with the highest cardinality.
          my $cmp
-            = $indexes->{$b}->{cardinality} <=> $indexes->{$b}->{cardinality};
+            = $indexes->{$b}->{cardinality} <=> $indexes->{$a}->{cardinality};
          if ( $cmp == 0 ) {
             # Indexes have the same cardinality; prefer the one with
             # more columns.
