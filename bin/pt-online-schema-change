@@ -5429,7 +5429,7 @@ sub _find_best_index {
       }
       @possible_indexes = sort {
          my $cmp
-            = $indexes->{$b}->{cardinality} <=> $indexes->{$b}->{cardinality};
+            = $indexes->{$b}->{cardinality} <=> $indexes->{$a}->{cardinality};
          if ( $cmp == 0 ) {
             $cmp = scalar @{$indexes->{$b}->{cols}}
                <=> scalar @{$indexes->{$a}->{cols}};

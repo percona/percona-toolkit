@@ -38,9 +38,6 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-else {
-   plan tests => 54;
-}
 
 my $q   = new Quoter();
 my $tp  = new TableParser(Quoter=>$q);
@@ -831,6 +828,26 @@ is_deeply(
    "Bug 995274: nibble iter works"
 );
 
+
+# #############################################################################
+# pt-table-checksum doesn't use non-unique index with highest cardinality
+# https://bugs.launchpad.net/percona-toolkit/+bug/1199591
+# #############################################################################
+
+diag(`/tmp/12345/use < $trunk/t/lib/samples/cardinality.sql >/dev/null`);
+
+$ni = make_nibble_iter(
+   db   => 'cardb',
+   tbl  => 't',
+   argv => [qw(--databases cardb --chunk-size 2)],
+);
+
+is(
+   $ni->{index},
+   'b',
+   "Use non-unique index with highest cardinality (bug 1199591)"
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
@@ -846,4 +863,4 @@ like(
 );
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+done_testing;
