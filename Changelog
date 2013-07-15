@@ -1,5 +1,22 @@
 Changelog for Percona Toolkit
 
+  * Implemented pt-query-digest anonymous JSON output
+  * Implemented pt-online-schema-change timestamp output
+  * Fixed bug 1182856: Zero values causes "Invalid --set-vars value: var=0"
+  * Fixed bug 1195034: pt-deadlock-logger error: Use of uninitialized value $ts in pattern match (m//)
+  * Fixed bug 1137556: pt-heartbeat docs don't account for --utc
+  * Fixed bug 1188264: pt-online-schema-change error copying rows: Undefined subroutine &pt_online_schema_change::get
+  * Fixed bug 1171968: pt-query-digest docs don't mention --type=rawlog
+  * Fixed bug 1176010: pt-query-digest doesn't group db and `db` together
+  * Fixed bug 1174956: pt-query-digest and pt-fingerprint don't strip some multi-line comments
+  * Fixed bug 1172317: pt-sift does not work if pt-stalk did not collect due to a full disk
+  * Fixed bug 1136559: pt-table-checksum: Deep recursion on subroutine "SchemaIterator::_iterate_dbh"
+  * Fixed bug 1199591: pt-table-checksum doesn't use non-unique index with highest cardinality
+  * Fixed bug 1163735: pt-table-checksum fails if explicit_defaults_for_timestamp is enabled in 5.6
+  * Fixed bug 1168434: pt-upgrade reports differences on NULL
+  * Fixed bug 1168106: pt-variable-advisor has the wrong default value for innodb_max_dirty_pages_pct in 5.5 and 5.6
+  * Fixed bug 1168110: pt-variable-advisor shows key_buffer_size in 5.6 as unconfigured (even though it is)
+
 v2.2.3 released 2013-06-17
 
   * Added new tool: pt-agent
