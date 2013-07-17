@@ -1,6 +1,52 @@
 Release Notes
 *************
 
+v2.2.4 released 2013-07-17
+==========================
+
+Percona Toolkit 2.2.4 has been released. This release two new features and number of bugfixes. 
+
+pt-query-digest --output json includes query examples as of v2.2.3. Some people might not want this because it exposes real data. New option, --output json-anon, has been implemented. This option will provide the same data without query examples. It's "anonymous" in the sense that there's no identifying data; nothing more than schema and table structs can be inferred from fingerprints. 
+
+When using drop swap with pt-online-schema-change there is some production impact. This impact can be measured because tool outputs the current timestamp on lines for operations that may take awhile.
+
+* Fixed bug #1163735: pt-table-checksum fails if explicit_defaults_for_timestamp is enabled in 5.6
+pt-table-checksum would fail if variable explicit_defaults_for_timestamp was enabled in MySQL 5.6.
+
+* Fixed bug #1182856: Zero values causes "Invalid --set-vars value: var=0"
+Trying to assign 0 to any variable by using --set-vars option would cause “Invalid --set-vars value” message. 
+
+* Fixed bug #1188264: pt-online-schema-change error copying rows: Undefined subroutine &pt_online_schema_change::get
+Fixed the typo in the pt-online-schema-change code that could lead to a tool crash when copying the rows.
+
+* Fixed bug #1199591: pt-table-checksum doesn't use non-unique index with highest cardinality
+pt-table-checksum was using the first non-unique index instead of the one with the highest cardinality due to a sorting bug.
+
+Percona Toolkit packages can be downloaded from
+http://www.percona.com/downloads/percona-toolkit/ or the Percona Software
+Repositories (http://www.percona.com/software/repositories
+
+Changelog
+---------
+
+* Added pt-query-digest anonymous JSON output
+* Added pt-online-schema-change timestamp output
+* Fixed bug #1136559: pt-table-checksum: Deep recursion on subroutine "SchemaIterator::_iterate_dbh"
+* Fixed bug #1163735: pt-table-checksum fails if explicit_defaults_for_timestamp is enabled in 5.6
+* Fixed bug #1182856: Zero values causes "Invalid --set-vars value: var=0"
+* Fixed bug #1188264: pt-online-schema-change error copying rows: Undefined subroutine &pt_online_schema_change::get
+* Fixed bug #1195034: pt-deadlock-logger error: Use of uninitialized value $ts in pattern match (m//)
+* Fixed bug #1199591: pt-table-checksum doesn't use non-unique index with highest cardinality
+* Fixed bug #1168434: pt-upgrade reports differences on NULL
+* Fixed bug #1172317: pt-sift does not work if pt-stalk did not collect due to a full disk
+* Fixed bug #1176010: pt-query-digest doesn't group db and `db` together
+* Fixed bug #1137556: pt-heartbeat docs don't account for --utc
+* Fixed bug #1168106: pt-variable-advisor has the wrong default value for innodb_max_dirty_pages_pct in 5.5 and 5.6
+* Fixed bug #1168110: pt-variable-advisor shows key_buffer_size in 5.6 as unconfigured (even though it is)
+* Fixed bug #1171968: pt-query-digest docs don't mention --type=rawlog
+* Fixed bug #1174956: pt-query-digest and pt-fingerprint don't strip some multi-line comments
+
+
 v2.2.3 released 2013-06-17
 ==========================
 
