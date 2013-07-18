@@ -1,6 +1,45 @@
 Release Notes
 *************
 
+v2.1.10 released 2013-07-18
+===========================
+
+Percona Toolkit 2.1.10 has been released. This release includes eight bug fixes.
+
+* Fixed bug #1163372: pt-heartbeat --utc --check always returns 0
+
+Unfortunately, the relatively new --utc option for pt-heart was still
+broken because "[MySQL] interprets date as a value in the current time zone
+and converts it to an internal value in UTC."  Now the tool works correctly
+with --utc by specifying "SET time_zone='+0:00'", and older versions of
+the tool can be made to work by specifying --set-vars "time_zone='+0:00'".
+
+* Fixed bug #1195034: pt-deadlock-logger error: Use of uninitialized value $ts in pattern match (m//)
+
+Improved the pattern matching that caused the pt-deadlock-logger error when 
+different timestamp format was used.
+
+* Fixed bug #1199591: pt-table-checksum doesn't use non-unique index with highest cardinality
+
+pt-table-checksum was using the first non-unique index instead of the one 
+with the highest cardinality due to a sorting bug.
+
+Percona Toolkit packages can be downloaded from
+http://www.percona.com/downloads/percona-toolkit/ or the Percona Software
+Repositories (http://www.percona.com/software/repositories/).
+
+Changelog
+---------
+
+* Fixed bug #1136559: pt-table-checksum: Deep recursion on subroutine "SchemaIterator::_iterate_dbh"
+* Fixed bug #1195034: pt-deadlock-logger error: Use of uninitialized value $ts in pattern match (m//)
+* Fixed bug #1163372: pt-heartbeat --utc --check always returns 0
+* Fixed bug #1199591: pt-table-checksum doesn't use non-unique index with highest cardinality
+* Fixed bug #947893: Some tools use @@hostname without /*!50038*/
+* Fixed bug #1137556: pt-heartbeat docs don't account for --utc
+* Fixed bug #1146324: pt-query-digest 2.1 typo in docs
+* Fixed bug #1171968: pt-query-digest docs don't mention --type=rawlog
+
 v2.1.9 released 2013-02-14
 ==========================
 
