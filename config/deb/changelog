@@ -1,3 +1,16 @@
+percona-toolkit (2.1.10) unstable; urgency=low
+
+  * Fixed bug  947893: Some tools use @@hostname without /*!50038*/
+  * Fixed bug 1195034: pt-deadlock-logger error: Use of uninitialized value $ts in pattern match (m//)
+  * Fixed bug 1163372: pt-heartbeat --utc --check always returns 0
+  * Fixed bug 1137556: pt-heartbeat docs don't account for --utc
+  * Fixed bug 1146324: pt-query-digest 2.1 typo in docs
+  * Fixed bug 1171968: pt-query-digest docs don't mention --type=rawlog
+  * Fixed bug 1199591: pt-table-checksum doesn't use non-unique index with highest cardinality
+  * Fixed bug 1136559: pt-table-checksum: Deep recursion on subroutine "SchemaIterator::_iterate_dbh"
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Thu, 18 Jul 2013 17:29:48 +0000
+
 percona-toolkit (2.1.9) unstable; urgency=low
 
   * Fixed bug 1103221: pt-heartbeat 2.1.8 doesn't use precision/sub-second timestamps

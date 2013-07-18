@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v2.1.10 released 2013-07-18
+
   * Fixed bug  947893: Some tools use @@hostname without /*!50038*/
   * Fixed bug 1195034: pt-deadlock-logger error: Use of uninitialized value $ts in pattern match (m//)
   * Fixed bug 1163372: pt-heartbeat --utc --check always returns 0
