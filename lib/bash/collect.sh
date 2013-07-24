@@ -146,16 +146,17 @@ collect() {
    if [ "$CMD_SYSCTL" ]; then
       $CMD_SYSCTL -a >> "$d/$p-sysctl" &
    fi
+   local cnt=$(($OPT_RUN_TIME / $OPT_SLEEP_COLLECT))
    if [ "$CMD_VMSTAT" ]; then
-      $CMD_VMSTAT $OPT_SLEEP_COLLECT $OPT_RUN_TIME >> "$d/$p-vmstat" &
+      $CMD_VMSTAT $OPT_SLEEP_COLLECT $cnt >> "$d/$p-vmstat" &
       $CMD_VMSTAT $OPT_RUN_TIME 2 >> "$d/$p-vmstat-overall" &
    fi
    if [ "$CMD_IOSTAT" ]; then
-      $CMD_IOSTAT -dx $OPT_SLEEP_COLLECT $OPT_RUN_TIME >> "$d/$p-iostat" &
+      $CMD_IOSTAT -dx $OPT_SLEEP_COLLECT $cnt >> "$d/$p-iostat" &
       $CMD_IOSTAT -dx $OPT_RUN_TIME 2 >> "$d/$p-iostat-overall" &
    fi
    if [ "$CMD_MPSTAT" ]; then
-      $CMD_MPSTAT -P ALL $OPT_SLEEP_COLLECT $OPT_RUN_TIME >> "$d/$p-mpstat" &
+      $CMD_MPSTAT -P ALL $OPT_SLEEP_COLLECT $cnt >> "$d/$p-mpstat" &
       $CMD_MPSTAT -P ALL $OPT_RUN_TIME 1 >> "$d/$p-mpstat-overall" &
    fi
 
@@ -165,7 +166,7 @@ collect() {
    # get and keep a connection to the database; in troubled times
    # the database tends to exceed max_connections, so reconnecting
    # in the loop tends not to work very well.
-   $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$OPT_RUN_TIME >>"$d/$p-mysqladmin" &
+   $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
    local mysqladmin_pid=$!
 
    local have_lock_waits_table=""
