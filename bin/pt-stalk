@@ -891,7 +891,7 @@ collect() {
          "$OPT_DISK_PCT_FREE"   \
          || break
 
-      sleep $(date +%s.%N | awk '{print $OPT_SLEEP_COLLECT - ($1 % $OPT_SLEEP_COLLECT)}')
+      sleep $(date +'%s.%N' | awk "{print $OPT_SLEEP_COLLECT - (\$1 % $OPT_SLEEP_COLLECT)}")
       local ts="$(date +"TS %s.%N %F %T")"
 
 
