@@ -883,17 +883,17 @@ collect() {
    fi
 
    log "Loop start: $(date +'TS %s.%N %F %T')"
-   for loopno in $(_seq $OPT_RUN_TIME); do
+   local start_time=$(date +'%s')
+   local curr_time=$start_time
+   while [ $((curr_time - start_time)) -lt $OPT_RUN_TIME ]; do
+      local ts="$(date +"TS %s.%N %F %T")"
+
       disk_space $d > $d/$p-disk-space
       check_disk_space          \
          $d/$p-disk-space       \
          "$OPT_DISK_BYTES_FREE" \
          "$OPT_DISK_PCT_FREE"   \
          || break
-
-      sleep $(date +'%s.%N' | awk "{print $OPT_SLEEP_COLLECT - (\$1 % $OPT_SLEEP_COLLECT)}")
-      local ts="$(date +"TS %s.%N %F %T")"
-
 
       if [ -d "/proc" ]; then
          if [ -f "/proc/diskstats" ]; then
@@ -915,19 +915,18 @@ collect() {
             (echo $ts; cat /proc/interrupts) >> "$d/$p-interrupts" &
          fi
       fi
-
       (echo $ts; df -k) >> "$d/$p-df" &
-
       (echo $ts; netstat -antp) >> "$d/$p-netstat"   &
       (echo $ts; netstat -s)    >> "$d/$p-netstat_s" &
-
       (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
          >> "$d/$p-processlist" &
-
       if [ "$have_lock_waits_table" ]; then
          (echo $ts; lock_waits)   >>"$d/$p-lock-waits" &
          (echo $ts; transactions) >>"$d/$p-transactions" &
       fi
+
+      sleep $OPT_SLEEP_COLLECT
+      curr_time=$(date +'%s')
    done
    log "Loop end: $(date +'TS %s.%N %F %T')"
 
