@@ -178,7 +178,11 @@ collect() {
    # This loop gathers data for the rest of the duration, and defines the time
    # of the whole job.
    log "Loop start: $(date +'TS %s.%N %F %T')"
-   for loopno in $(_seq $OPT_RUN_TIME); do
+   local start_time=$(date +'%s')
+   local curr_time=$start_time
+   while [ $((curr_time - start_time)) -lt $OPT_RUN_TIME ]; do
+      local ts="$(date +"TS %s.%N %F %T")"
+
       # We check the disk, but don't exit, because we need to stop jobs if we
       # need to exit.
       disk_space $d > $d/$p-disk-space
@@ -188,14 +192,9 @@ collect() {
          "$OPT_DISK_PCT_FREE"   \
          || break
 
-      # Synchronize ourselves onto the clock tick, so the sleeps are 1-second
-      sleep $(date +'%s.%N' | awk "{print $OPT_SLEEP_COLLECT - (\$1 % $OPT_SLEEP_COLLECT)}")
-      local ts="$(date +"TS %s.%N %F %T")"
-
       # #####################################################################
       # Collect data for this cycle.
       # #####################################################################
-
       if [ -d "/proc" ]; then
          if [ -f "/proc/diskstats" ]; then
             (echo $ts; cat /proc/diskstats) >> "$d/$p-diskstats" &
@@ -216,19 +215,19 @@ collect() {
             (echo $ts; cat /proc/interrupts) >> "$d/$p-interrupts" &
          fi
       fi
-
       (echo $ts; df -k) >> "$d/$p-df" &
-
       (echo $ts; netstat -antp) >> "$d/$p-netstat"   &
       (echo $ts; netstat -s)    >> "$d/$p-netstat_s" &
-
       (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
          >> "$d/$p-processlist" &
-
       if [ "$have_lock_waits_table" ]; then
          (echo $ts; lock_waits)   >>"$d/$p-lock-waits" &
          (echo $ts; transactions) >>"$d/$p-transactions" &
       fi
+
+      # Sleep between collect cycles.
+      sleep $OPT_SLEEP_COLLECT
+      curr_time=$(date +'%s')
    done
    log "Loop end: $(date +'TS %s.%N %F %T')"
 
