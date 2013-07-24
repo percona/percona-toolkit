@@ -1992,6 +1992,12 @@ from triggering continuously, which might be a problem if the collection process
 It also prevents filling up the disk or gathering too much data to analyze
 reasonably.
 
+=item --sleep-collect
+
+type: int; default: 1
+
+How long to sleep between collection loop cycles.
+
 =item --socket
 
 short form: -S; type: string
