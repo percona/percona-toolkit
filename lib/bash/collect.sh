@@ -147,15 +147,15 @@ collect() {
       $CMD_SYSCTL -a >> "$d/$p-sysctl" &
    fi
    if [ "$CMD_VMSTAT" ]; then
-      $CMD_VMSTAT 1 $OPT_RUN_TIME >> "$d/$p-vmstat"         &
+      $CMD_VMSTAT $OPT_SLEEP_COLLECT $OPT_RUN_TIME >> "$d/$p-vmstat" &
       $CMD_VMSTAT $OPT_RUN_TIME 2 >> "$d/$p-vmstat-overall" &
    fi
    if [ "$CMD_IOSTAT" ]; then
-      $CMD_IOSTAT -dx 1 $OPT_RUN_TIME >> "$d/$p-iostat"         &
+      $CMD_IOSTAT -dx $OPT_SLEEP_COLLECT $OPT_RUN_TIME >> "$d/$p-iostat" &
       $CMD_IOSTAT -dx $OPT_RUN_TIME 2 >> "$d/$p-iostat-overall" &
    fi
    if [ "$CMD_MPSTAT" ]; then
-      $CMD_MPSTAT -P ALL 1 $OPT_RUN_TIME >> "$d/$p-mpstat"         &
+      $CMD_MPSTAT -P ALL $OPT_SLEEP_COLLECT $OPT_RUN_TIME >> "$d/$p-mpstat" &
       $CMD_MPSTAT -P ALL $OPT_RUN_TIME 1 >> "$d/$p-mpstat-overall" &
    fi
 
@@ -165,7 +165,7 @@ collect() {
    # get and keep a connection to the database; in troubled times
    # the database tends to exceed max_connections, so reconnecting
    # in the loop tends not to work very well.
-   $CMD_MYSQLADMIN $EXT_ARGV ext -i1 -c$OPT_RUN_TIME >>"$d/$p-mysqladmin" &
+   $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$OPT_RUN_TIME >>"$d/$p-mysqladmin" &
    local mysqladmin_pid=$!
 
    local have_lock_waits_table=""
@@ -189,7 +189,7 @@ collect() {
          || break
 
       # Synchronize ourselves onto the clock tick, so the sleeps are 1-second
-      sleep $(date +%s.%N | awk '{print 1 - ($1 % 1)}')
+      sleep $(date +%s.%N | awk '{print $OPT_SLEEP_COLLECT - ($1 % $OPT_SLEEP_COLLECT)}')
       local ts="$(date +"TS %s.%N %F %T")"
 
       # #####################################################################
