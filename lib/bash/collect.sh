@@ -189,7 +189,7 @@ collect() {
          || break
 
       # Synchronize ourselves onto the clock tick, so the sleeps are 1-second
-      sleep $(date +%s.%N | awk '{print $OPT_SLEEP_COLLECT - ($1 % $OPT_SLEEP_COLLECT)}')
+      sleep $(date +'%s.%N' | awk "{print $OPT_SLEEP_COLLECT - (\$1 % $OPT_SLEEP_COLLECT)}")
       local ts="$(date +"TS %s.%N %F %T")"
 
       # #####################################################################
