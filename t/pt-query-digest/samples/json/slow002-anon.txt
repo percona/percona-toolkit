@@ -5,11 +5,6 @@
          "attribute" : "fingerprint",
          "checksum" : "66825DDC008FFA89",
          "distillate" : "UPDATE db?.tuningdetail_?_? db?.gonzo",
-         "example" : {
-            "as_select" : "select  n.column1 = a.column1, n.word3 = a.word3 from db2.tuningdetail_21_265507 n\n      inner join db1.gonzo a using(gonzo) ",
-            "query" : "update db2.tuningdetail_21_265507 n\n      inner join db1.gonzo a using(gonzo) \n      set n.column1 = a.column1, n.word3 = a.word3",
-            "ts" : "2007-12-18 11:48:27"
-         },
          "fingerprint" : "update d?tuningdetail_?_? n inner join d?gonzo a using(gonzo) set n.column? = a.column?, n.word? = a.word?",
          "metrics" : {
             "Filesort" : {
@@ -121,7 +116,7 @@
    "global" : {
       "files" : [
          {
-            "name" : "/Users/daniel/p/release-2.2.3/t/lib/samples/slowlogs/slow002.txt",
+            "name" : "TRUNK/t/lib/samples/slowlogs/slow002.txt",
             "size" : 3841
          }
       ],

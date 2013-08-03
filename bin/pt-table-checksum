@@ -57,7 +57,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.3';
+our $VERSION = '2.2.4';
 
 use strict;
 use warnings FATAL => 'all';
@@ -2784,7 +2784,7 @@ sub set_vars {
    if ( $user_vars ) {
       foreach my $var_val ( @$user_vars ) {
          my ($var, $val) = $var_val =~ m/([^\s=]+)=(\S+)/;
-         die "Invalid --set-vars value: $var_val\n" unless $var && $val;
+         die "Invalid --set-vars value: $var_val\n" unless $var && defined $val;
          $user_vars{$var} = {
             val     => $val,
             default => 0,
@@ -2798,7 +2798,7 @@ sub set_vars {
       %default_vars = map {
          my $var_val = $_;
          my ($var, $val) = $var_val =~ m/([^\s=]+)=(\S+)/;
-         die "Invalid --set-vars value: $var_val\n" unless $var && $val;
+         die "Invalid --set-vars value: $var_val\n" unless $var && defined $val;
          $var => {
             val     => $val,
             default => 1,
@@ -6479,7 +6479,7 @@ sub _find_best_index {
       }
       @possible_indexes = sort {
          my $cmp
-            = $indexes->{$b}->{cardinality} <=> $indexes->{$b}->{cardinality};
+            = $indexes->{$b}->{cardinality} <=> $indexes->{$a}->{cardinality};
          if ( $cmp == 0 ) {
             $cmp = scalar @{$indexes->{$b}->{cols}}
                <=> scalar @{$indexes->{$a}->{cols}};
@@ -7344,58 +7344,63 @@ sub _iterate_dbh {
       $self->{dbs} = \@dbs;
    }
 
-   if ( !$self->{db} ) {
-      $self->{db} = shift @{$self->{dbs}};
-      PTDEBUG && _d('Next database:', $self->{db});
-      return unless $self->{db};
-   }
-
-   if ( !defined $self->{tbls} ) {
-      my $sql = 'SHOW /*!50002 FULL*/ TABLES FROM ' . $q->quote($self->{db});
-      PTDEBUG && _d($sql);
-      my @tbls = map {
-         $_->[0];  # (tbl, type)
+   DATABASE:
+   while ( $self->{db} || defined(my $db = shift @{$self->{dbs}}) ) {
+      if ( !$self->{db} ) {
+         PTDEBUG && _d('Next database:', $db);
+         $self->{db} = $db;
       }
-      grep {
-         my ($tbl, $type) = @$_;
-         (!$type || ($type ne 'VIEW'))
-         && $self->_resume_from_table($tbl)
-         && $self->table_is_allowed($self->{db}, $tbl);
-      }
-      @{$dbh->selectall_arrayref($sql)};
-      PTDEBUG && _d('Found', scalar @tbls, 'tables in database', $self->{db});
-      $self->{tbls} = \@tbls;
-   }
 
-   while ( my $tbl = shift @{$self->{tbls}} ) {
-      my $ddl        = eval { $tp->get_create_table($dbh, $self->{db}, $tbl) };
-      if ( my $e = $EVAL_ERROR ) {
-         my $table_name = "$self->{db}.$tbl";
-         if ( $e =~ /\QTable '$table_name' doesn't exist/ ) {
-            PTDEBUG && _d("Skipping $table_name because it no longer exists");
+      if ( !$self->{tbls} ) {
+         my $sql = 'SHOW /*!50002 FULL*/ TABLES FROM ' . $q->quote($self->{db});
+         PTDEBUG && _d($sql);
+         my @tbls = map {
+            $_->[0];  # (tbl, type)
          }
-         else {
-            warn "Skipping $table_name because SHOW CREATE TABLE failed: $e";
+         grep {
+            my ($tbl, $type) = @$_;
+            (!$type || ($type ne 'VIEW'))
+            && $self->_resume_from_table($tbl)
+            && $self->table_is_allowed($self->{db}, $tbl);
          }
-         next;
+         @{$dbh->selectall_arrayref($sql)};
+         PTDEBUG && _d('Found', scalar @tbls, 'tables in database',$self->{db});
+         $self->{tbls} = \@tbls;
       }
-      my $tbl_struct = $tp->parse($ddl);
-      if ( $self->engine_is_allowed($tbl_struct->{engine}) ) {
-         return {
-            db         => $self->{db},
-            tbl        => $tbl,
-            name       => $q->quote($self->{db}, $tbl),
-            ddl        => $ddl,
-            tbl_struct => $tbl_struct,
-         };
+
+      TABLE:
+      while ( my $tbl = shift @{$self->{tbls}} ) {
+         my $ddl = eval { $tp->get_create_table($dbh, $self->{db}, $tbl) };
+         if ( my $e = $EVAL_ERROR ) {
+            my $table_name = "$self->{db}.$tbl";
+            if ( $e =~ /\QTable '$table_name' doesn't exist/ ) {
+               PTDEBUG && _d("$table_name no longer exists");
+            }
+            else {
+               warn "Skipping $table_name because SHOW CREATE TABLE failed: $e";
+            }
+            next TABLE;
+         }
+
+         my $tbl_struct = $tp->parse($ddl);
+         if ( $self->engine_is_allowed($tbl_struct->{engine}) ) {
+            return {
+               db         => $self->{db},
+               tbl        => $tbl,
+               name       => $q->quote($self->{db}, $tbl),
+               ddl        => $ddl,
+               tbl_struct => $tbl_struct,
+            };
+         }
       }
-   }
 
-   PTDEBUG && _d('No more tables in database', $self->{db});
-   $self->{db}   = undef;
-   $self->{tbls} = undef;
+      PTDEBUG && _d('No more tables in database', $self->{db});
+      $self->{db}   = undef;
+      $self->{tbls} = undef;
+   } # DATABASE
 
-   return $self->_iterate_dbh();
+   PTDEBUG && _d('No more databases');
+   return;
 }
 
 sub database_is_allowed {
@@ -12037,7 +12042,7 @@ structure (MAGIC_create_replicate):
      this_cnt       int          NOT NULL,
      master_crc     char(40)         NULL,
      master_cnt     int              NULL,
-     ts             timestamp    NOT NULL,
+     ts             timestamp    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
      PRIMARY KEY (db, tbl, chunk),
      INDEX ts_db_tbl (ts, db, tbl)
   ) ENGINE=InnoDB;

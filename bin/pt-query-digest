@@ -64,7 +64,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.3';
+our $VERSION = '2.2.4';
 
 use strict;
 use warnings FATAL => 'all';
@@ -2350,7 +2350,7 @@ sub set_vars {
    if ( $user_vars ) {
       foreach my $var_val ( @$user_vars ) {
          my ($var, $val) = $var_val =~ m/([^\s=]+)=(\S+)/;
-         die "Invalid --set-vars value: $var_val\n" unless $var && $val;
+         die "Invalid --set-vars value: $var_val\n" unless $var && defined $val;
          $user_vars{$var} = {
             val     => $val,
             default => 0,
@@ -2364,7 +2364,7 @@ sub set_vars {
       %default_vars = map {
          my $var_val = $_;
          my ($var, $val) = $var_val =~ m/([^\s=]+)=(\S+)/;
-         die "Invalid --set-vars value: $var_val\n" unless $var && $val;
+         die "Invalid --set-vars value: $var_val\n" unless $var && defined $val;
          $var => {
             val     => $val,
             default => 1,
@@ -2802,8 +2802,8 @@ sub new {
 sub strip_comments {
    my ( $self, $query ) = @_;
    return unless $query;
-   $query =~ s/$olc_re//go;
    $query =~ s/$mlc_re//go;
+   $query =~ s/$olc_re//go;
    if ( $query =~ m/$vlc_rf/i ) { # contains show + version
       $query =~ s/$vlc_re//go;
    }
@@ -2870,9 +2870,9 @@ sub fingerprint {
    if ( my ($beginning) = $query =~ m/\A((?:INSERT|REPLACE)(?: IGNORE)?\s+INTO.+?VALUES\s*\(.*?\))\s*,\s*\(/is ) {
       $query = $beginning; # Shorten multi-value INSERT statements ASAP
    }
-  
-   $query =~ s/$olc_re//go;
+
    $query =~ s/$mlc_re//go;
+   $query =~ s/$olc_re//go;
    $query =~ s/\Ause \S+\Z/use ?/i       # Abstract the DB in USE
       && return $query;
 
@@ -7900,10 +7900,12 @@ override query_report => sub {
          distillate  => $distill,
          attribute   => $groupby,
          query_count => $times_seen,
-         example     => {
-            query => substr($sample->{arg}, 0, $self->max_query_length),
-            ts    => $sample->{ts} ? parse_timestamp($sample->{ts}) : undef,
-         },
+         $args{anon} ? () : (
+            example     => {
+               query => substr($sample->{arg}, 0, $self->max_query_length),
+               ts    => $sample->{ts} ? parse_timestamp($sample->{ts}) : undef,
+            },
+         ),
       };
 
       my %metrics;
@@ -7981,19 +7983,21 @@ override query_report => sub {
             push @tables, { status => $status, create => $create };
          }
 
-         if ( $item =~ m/^(?:[\(\s]*select|insert|replace)/ ) {
-            if ( $item =~ m/^(?:insert|replace)/ ) {
+         if ( !$args{anon} ) {
+            if ( $item =~ m/^(?:[\(\s]*select|insert|replace)/ ) {
+               if ( $item =~ m/^(?:insert|replace)/ ) {
+               }
+               else {
+
+               }
             }
             else {
-
-            }
-         }
-         else {
-            my $converted = $qr->convert_to_select(
-               $sample->{arg} || '',
-            );
-            if ( $converted && $converted =~ m/^[\(\s]*select/i ) {
-               $class->{example}->{as_select} = $converted;
+               my $converted = $qr->convert_to_select(
+                  $sample->{arg} || '',
+               );
+               if ( $converted && $converted =~ m/^[\(\s]*select/i ) {
+                  $class->{example}->{as_select} = $converted;
+               }
             }
          }
       }
@@ -13252,7 +13256,10 @@ sub main {
             process => sub {
                my ( $args ) = @_;
                my $event = $pl->parse_event(code => $code);
-               $args->{event} = $event if $event;
+               if ( $event ) {
+                  sanitize_event($event);
+                  $args->{event} = $event;
+               }
                return $args;
             },
          );
@@ -13313,6 +13320,7 @@ sub main {
                         stats       => $args->{stats},
                      );
                      if ( $event ) {
+                        sanitize_event($event);
                         $args->{event} = $event;
                         return $args;
                      }
@@ -14151,7 +14159,7 @@ sub print_reports {
             $print_header = 1;
          }
 
-         my $report_class = $o->get('output') =~ m/\Ajson\z/i
+         my $report_class = $o->get('output') =~ m/^json/i
                           ? 'JSONReportFormatter'
                           : 'QueryReportFormatter';
          my $qrf = $report_class->new(
@@ -14178,6 +14186,7 @@ sub print_reports {
             variations   => $o->get('variations'),
             group        => { map { $_=>1 } qw(rusage date hostname files header) },
             resume       => $resume,
+            anon         => $o->get('output') eq 'json-anon',
          );
       }
 
@@ -14563,6 +14572,23 @@ sub save_resume_offset {
 
    close $resume_fh
       or die "Error close $resume_file: $OS_ERROR";
+
+   return;
+}
+
+sub sanitize_event {
+   my ($event) = @_;
+
+   # Quoted and unquoted values should be treated the same
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1176010
+   if ( $event->{db} ) {
+      $event->{db} =~ s/^`//;
+      $event->{db} =~ s/`$//;
+   }
+   if ( $event->{Schema} ) {
+      $event->{Schema} =~ s/^`//;
+      $event->{Schema} =~ s/`$//;
+   }
 
    return;
 }
@@ -15590,11 +15616,12 @@ type: string; default: report
 
 How to format and print the query analysis results.  Accepted values are:
 
-   VALUE    FORMAT
-   =======  ==============================
-   report   Standard query analysis report
-   slowlog  MySQL slow log
-   json     JSON, on array per query class
+   VALUE      FORMAT
+   =======    ==============================
+   report     Standard query analysis report
+   slowlog    MySQL slow log
+   json       JSON, on array per query class
+   json-anon  JSON without example queries
 
 The entire C<report> output can be disabled by specifying C<--no-report>
 (see L<"--[no]report">), and its sections can be disabled or rearranged
@@ -16050,6 +16077,23 @@ database.
 
 Server-side prepared statements are supported.  SSL-encrypted traffic cannot be
 inspected and decoded.
+
+=item rawlog
+
+Raw logs are not MySQL logs but simple text files with one SQL statement
+per line, like:
+
+  SELECT c FROM t WHERE id=1
+  /* Hello, world! */ SELECT * FROM t2 LIMIT 1
+  INSERT INTO t (a, b) VALUES ('foo', 'bar')
+  INSERT INTO t SELECT * FROM monkeys
+
+Since raw logs do not have any metrics, many options and features of
+pt-query-digest do not work with them.
+
+One use case for raw logs is ranking queries by count when the only
+information available is a list of queries, from polling C<SHOW PROCESSLIST>
+for example.
 
 =back
 

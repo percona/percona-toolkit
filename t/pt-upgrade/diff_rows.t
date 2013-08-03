@@ -112,6 +112,20 @@ test_diff (
 );
 
 # #############################################################################
+# https://bugs.launchpad.net/percona-toolkit/+bug/1168434
+# pt-upgrade reports differences on NULL
+# #############################################################################
+
+$sb->load_file('master', "t/pt-upgrade/samples/007/tables.sql");
+
+test_diff(
+   name   => 'Bug 1168434: no diff with NULL',
+   query1 => 'select * from test.t order by id',
+   query2 => 'select * from test.t order by id',
+   expect => [],
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);

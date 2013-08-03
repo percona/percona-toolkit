@@ -44,7 +44,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.3';
+our $VERSION = '2.2.4';
 
 use strict;
 use warnings FATAL => 'all';
@@ -1107,7 +1107,7 @@ sub set_vars {
    if ( $user_vars ) {
       foreach my $var_val ( @$user_vars ) {
          my ($var, $val) = $var_val =~ m/([^\s=]+)=(\S+)/;
-         die "Invalid --set-vars value: $var_val\n" unless $var && $val;
+         die "Invalid --set-vars value: $var_val\n" unless $var && defined $val;
          $user_vars{$var} = {
             val     => $val,
             default => 0,
@@ -1121,7 +1121,7 @@ sub set_vars {
       %default_vars = map {
          my $var_val = $_;
          my ($var, $val) = $var_val =~ m/([^\s=]+)=(\S+)/;
-         die "Invalid --set-vars value: $var_val\n" unless $var && $val;
+         die "Invalid --set-vars value: $var_val\n" unless $var && defined $val;
          $var => {
             val     => $val,
             default => 1,
@@ -3376,7 +3376,9 @@ sub get_rules {
       id   => 'innodb_max_dirty_pages_pct',
       code => sub {
          my ( %args ) = @_;
-         return _var_lt($args{variables}->{innodb_max_dirty_pages_pct}, 90);
+         my $mysql_version = $args{mysql_version};
+         return _var_lt($args{variables}->{innodb_max_dirty_pages_pct},
+            ($mysql_version < '5.5' ? 90 : 75));
       },
    },
    {
@@ -5519,9 +5521,9 @@ flush_time seconds.
 
 severity: warn 
 
-The key buffer size is unconfigured.  In a production
-environment it should always be configured explicitly, and the default
-8MB size is not good.
+The key buffer size is set to its default value, which is not good 
+for most production systems.  In a production environment, key_buffer_size
+should be larger than the default 8MB size.
 
 =item large_pages
 

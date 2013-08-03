@@ -12,6 +12,8 @@ use English qw(-no_match_vars);
 use Test::More;
 use Time::HiRes qw(sleep);
 
+$ENV{PTTEST_FAKE_TS} = 1;
+
 use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-online-schema-change";
@@ -696,7 +698,7 @@ ok(
       "$sample/stats-dry-run.txt",
    ),
    "--statistics --dry-run"
-);
+) or diag($test_diff);
 
 ok(
    no_diff(
@@ -709,7 +711,7 @@ ok(
          : "$sample/stats-execute.txt"),
    ),
    "--statistics --execute"
-);
+) or diag($test_diff);
 
 # #############################################################################
 # --default-engine

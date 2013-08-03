@@ -1,0 +1,29 @@
+
+# ########################################################################
+# Report grouped by db
+# ########################################################################
+
+# Item 1: 0 QPS, 0x concurrency, ID 0x585AC494268B351B at byte 434 _______
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.01
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count        100       4
+# Exec time    100    21ms     2us    19ms     5ms    18ms     8ms   881us
+# Lock time    100     9ms       0     9ms     2ms     9ms     4ms       0
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0       0       0       0       0       0       0       0
+# Query size   100      82      14      27   20.50   26.08    6.12   26.08
+# String:
+# Hosts
+# Users        meow
+# Query_time distribution
+#   1us  ################################
+#  10us
+# 100us  ################################################################
+#   1ms
+#  10ms  ################################
+# 100ms
+#    1s
+#  10s+
+db
