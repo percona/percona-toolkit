@@ -12232,7 +12232,7 @@ use FindBin qw();
 
 eval {
    require Percona::Toolkit;
-   require HTTPMicro;
+   require HTTP::Micro;
 };
 
 {
@@ -12463,7 +12463,7 @@ sub pingback {
    my $url       = $args{url};
    my $instances = $args{instances};
 
-   my $ua = $args{ua} || HTTPMicro->new( timeout => 3 );
+   my $ua = $args{ua} || HTTP::Micro->new( timeout => 3 );
 
    my $response = $ua->request('GET', $url);
    PTDEBUG && _d('Server response:', Dumper($response));
