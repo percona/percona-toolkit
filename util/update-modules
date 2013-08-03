@@ -91,7 +91,7 @@ replace_pkg_in_tool() {
 
    $BRANCH/util/extract-package $pkg $pkg_file | grep -v '^ *#' >> $tmp_file
 
-   if [ "$tool_lang" = "perl" ]; then
+   if [ "$tool_lang" = "perl" -a $pkg != "HTTP::Micro" ]; then
       echo "}" >> $tmp_file
    fi
 
