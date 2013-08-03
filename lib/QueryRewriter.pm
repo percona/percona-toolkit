@@ -248,6 +248,8 @@ sub distill_verbs {
 
    if ( $query =~ m/\A\s*LOAD/i ) {
       my ($tbl) = $query =~ m/INTO TABLE\s+(\S+)/i;
+      $tbl ||= '';
+      $tbl =~ s/`//g;
       return "LOAD DATA $tbl";
    }
 
