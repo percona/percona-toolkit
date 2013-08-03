@@ -8269,7 +8269,7 @@ sub get_tables {
       return ($tbl);
    }
 
-   $query =~ s/ (?:LOW_PRIORITY|IGNORE|STRAIGHT_JOIN|DELAYED) / /ig;
+   $query =~ s/(?:LOW_PRIORITY|IGNORE|STRAIGHT_JOIN|DELAYED)\s+/ /ig;
 
    if ( $query =~ s/^\s*LOCK TABLES\s+//i ) {
       PTDEBUG && _d('Special table type: LOCK TABLES');
@@ -8282,8 +8282,13 @@ sub get_tables {
    $query =~ s/".*?"/?/sg;  # quoted strings
    $query =~ s/'.*?'/?/sg;  # quoted strings
 
-   if ( $query =~ m/\A\s*(?:INSERT|REPLACE)\s+(?!INTO)/i ) {
+   if ( $query =~ m/\A\s*(?:INSERT|REPLACE)(?!\s+INTO)/i ) {
       $query =~ s/\A\s*((?:INSERT|REPLACE))\s+/$1 INTO /i;
+   }
+
+   if ( $query =~ m/\A\s*LOAD DATA/i ) {
+      my ($tbl) = $query =~ m/INTO TABLE\s+(\S+)/i;
+      return $tbl;
    }
 
    my @tables;
