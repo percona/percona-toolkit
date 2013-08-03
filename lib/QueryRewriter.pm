@@ -298,6 +298,8 @@ sub distill_verbs {
    eval $QueryParser::tbl_ident;
    my ( $dds ) = $query =~ /^\s*($QueryParser::data_def_stmts)\b/i;
    if ( $dds) {
+      # https://bugs.launchpad.net/percona-toolkit/+bug/821690
+      $query =~ s/\s+IF(?:\s+NOT)?\s+EXISTS/ /i;
       my ( $obj ) = $query =~ m/$dds.+(DATABASE|TABLE)\b/i;
       $obj = uc $obj if $obj;
       PTDEBUG && _d('Data def statment:', $dds, 'obj:', $obj);
