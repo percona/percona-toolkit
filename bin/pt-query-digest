@@ -14039,17 +14039,12 @@ sub main {
    # ########################################################################
    # Daemonize now that everything is setup and ready to work.
    # ########################################################################
-   my $daemon;
-   if ( $o->get('daemonize') ) {
-      $daemon = new Daemon(o=>$o);
-      $daemon->daemonize();
-      PTDEBUG && _d('I am a daemon now');
-   }
-   elsif ( $o->get('pid') ) {
-      # We're not daemoninzing, it just handles PID stuff.
-      $daemon = new Daemon(o=>$o);
-      $daemon->make_PID_file();
-   }
+   my $daemon = Daemon->new(
+      daemonize => $o->get('daemonize'),
+      pid_file  => $o->get('pid'),
+      log_file  => $o->get('log'),
+   );
+   $daemon->run();
 
    # ########################################################################
    # Do the version-check
