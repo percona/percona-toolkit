@@ -187,7 +187,7 @@
    "global" : {
       "files" : [
          {
-            "name" : "/Users/daniel/p/release-2.2.3/t/lib/samples/tcpdump/tcpdump021.txt",
+            "name" : "TRUNK/t/lib/samples/tcpdump/tcpdump021.txt",
             "size" : 2827
          }
       ],

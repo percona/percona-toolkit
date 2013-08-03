@@ -77,9 +77,11 @@ $sb->load_file('master', "$sample/bug-1002448.sql");
 );
 
 
-unlike $output,
-    qr/\QThe new table `test1002448`.`_table_name_new` does not have a PRIMARY KEY or a unique index which is required for the DELETE trigger/,
-    "Bug 1002448: mistakenly uses indexes instead of keys";
+unlike(
+   $output,
+   qr/\QThe new table `test1002448`.`_table_name_new` does not have a PRIMARY KEY or a unique index which is required for the DELETE trigger/,
+   "Bug 1002448: mistakenly uses indexes instead of keys"
+);
 
 # ############################################################################
 # https://bugs.launchpad.net/percona-toolkit/+bug/1003315
@@ -95,19 +97,26 @@ $sb->load_file('master', "$sample/bug-1003315.sql");
             "--alter-foreign-keys-method", "auto",
             "--dry-run",
             qw(--chunk-size 2 --dry-run --print))
-        
     },
 );
 
-is $exit_status, 0, "Bug 1003315: Correct exit value for a dry run";
+is(
+   $exit_status,
+   0,
+   "Bug 1003315: Correct exit value for a dry run"
+);
 
-unlike $output,
+unlike(
+   $output,
     qr/\QError updating foreign key constraints: Invalid --alter-foreign-keys-method:/,
-    "Bug 1003315: No error when combining --alter-foreign-keys-method auto and --dry-run";
+    "Bug 1003315: No error when combining --alter-foreign-keys-method auto and --dry-run"
+);
 
-like $output,
-    qr/\QNot updating foreign key constraints because this is a dry run./,
-    "Bug 1003315: But now we do get an explanation from --dry-run";
+like(
+   $output,
+   qr/\QNot updating foreign key constraints because this is a dry run./,
+   "Bug 1003315: But now we do get an explanation from --dry-run"
+);
 
 # ############################################################################
 # This fakes the conditions to trigger the chunk index error
@@ -174,9 +183,11 @@ for my $i ( 0..4 ) {
    $master_dbh->do(qq{create table `bug_1041372`.$tbl (a INT NOT NULL AUTO_INCREMENT PRIMARY KEY )});
    $master_dbh->do(qq{insert into `bug_1041372`.$tbl values (1), (2), (3), (4), (5)});
 
-   ($output) = full_output(sub { pt_online_schema_change::main(@args,
-                                 '--alter', "ADD COLUMN ptosc INT",
-                                 '--execute', "$master_dsn,D=bug_1041372,t=$tbl")});
+   ($output) = full_output(sub {
+      pt_online_schema_change::main(@args,
+          '--alter', "ADD COLUMN ptosc INT",
+          '--execute', "$master_dsn,D=bug_1041372,t=$tbl")
+   });
 
    like(
       $output,
@@ -261,7 +272,6 @@ $sb->load_file('master', "$sample/del-trg-bug-1062324.sql");
       undef,
       "Delete trigger works after altering PK (bug 1103672)"
    );
-
 }
 
 # #############################################################################
@@ -292,6 +302,72 @@ else {
       "LOCK IN SHARE MODE for MySQL $sandbox_version",
    );
 }
+
+# ############################################################################
+# https://bugs.launchpad.net/percona-toolkit/+bug/1171653
+# 
+# ############################################################################
+$sb->load_file('master', "$sample/utf8_charset_tbl.sql");
+
+($output, $exit_status) = full_output(
+    sub { pt_online_schema_change::main(@args,
+      "$master_dsn,D=test1171653,t=t",
+      "--alter", "drop column foo",
+      qw(--execute --print))
+   },
+);
+
+my $row = $master_dbh->selectrow_arrayref("SHOW CREATE TABLE test1171653.t");
+
+like(
+   $row->[1],
+   qr/DEFAULT CHARSET=utf8/,
+   "Bug 1171653: table charset is not preserved"
+);
+
+# #############################################################################
+# https://bugs.launchpad.net/percona-toolkit/+bug/1188264
+# pt-online-schema-change error copying rows: Undefined subroutine
+# &pt_online_schema_change::get
+# #############################################################################
+
+# In exec_nibble() we had:
+#    if ( get('statistics') ) {
+#       $err .= "but further occurrences will be reported "
+#             . "by --statistics when the tool finishes.\n";
+#    }
+# which is called when copying rows causes a MySQL warning
+# for the first time.  So to test this code path, we need to
+# cause a MySQL warning while copying rows.
+
+$sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
+$master_dbh->do("INSERT INTO pt_osc.t VALUES (null, 'This string will be too long after we modify the table so it will cause a warning about the value being truncated in the new table.  The other column values are a single character.', NOW())");
+
+($output, $exit_status) = full_output(
+    sub { pt_online_schema_change::main(@args,
+      "$master_dsn,D=pt_osc,t=t",
+      "--alter", "modify c varchar(8)",
+      qw(--execute --print))
+   },
+);
+
+is(
+   $exit_status,
+   0,
+   "Bug 1188264: 0 exit"
+);
+
+unlike(
+   $output,
+   qr/Undefined subroutine/i,
+   "Bug 1188264: no undefined subroutine"
+);
+
+like(
+   $output,
+   qr/error 1265/,  # Data truncated for column 'c' at row 21
+   "Bug 1188264: warning about expected MySQL error 1265"
+);
 
 # #############################################################################
 # Done.

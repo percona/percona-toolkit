@@ -42,7 +42,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.3';
+our $VERSION = '2.2.4';
 
 use strict;
 use warnings FATAL => 'all';
@@ -1105,7 +1105,7 @@ sub set_vars {
    if ( $user_vars ) {
       foreach my $var_val ( @$user_vars ) {
          my ($var, $val) = $var_val =~ m/([^\s=]+)=(\S+)/;
-         die "Invalid --set-vars value: $var_val\n" unless $var && $val;
+         die "Invalid --set-vars value: $var_val\n" unless $var && defined $val;
          $user_vars{$var} = {
             val     => $val,
             default => 0,
@@ -1119,7 +1119,7 @@ sub set_vars {
       %default_vars = map {
          my $var_val = $_;
          my ($var, $val) = $var_val =~ m/([^\s=]+)=(\S+)/;
-         die "Invalid --set-vars value: $var_val\n" unless $var && $val;
+         die "Invalid --set-vars value: $var_val\n" unless $var && defined $val;
          $var => {
             val     => $val,
             default => 1,
@@ -4804,6 +4804,11 @@ sub parse_deadlocks {
 
    # Extract some miscellaneous data from the deadlock.
    my ( $ts ) = $dl_text =~ m/^$s$/m;
+   if ( !$ts ) {
+      # https://bugs.launchpad.net/percona-toolkit/+bug/1195034
+      # 130624 17:39:24TOO DEEP OR LONG SEARCH IN THE LOCK TABLE ...
+      ($ts) = $dl_text =~ m/^${s}TOO DEEP/m;
+   }
    my ( $year, $mon, $day, $hour, $min, $sec ) = $ts =~ m/^((?:\d\d)?\d\d)-?(\d\d)-?(\d\d) +(\d+):(\d+):(\d+)$/;
    if ( length($year) == 2 ) {
       $year += 2000;

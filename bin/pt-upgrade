@@ -61,7 +61,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.3';
+our $VERSION = '2.2.4';
 
 use strict;
 use warnings FATAL => 'all';
@@ -2347,7 +2347,7 @@ sub set_vars {
    if ( $user_vars ) {
       foreach my $var_val ( @$user_vars ) {
          my ($var, $val) = $var_val =~ m/([^\s=]+)=(\S+)/;
-         die "Invalid --set-vars value: $var_val\n" unless $var && $val;
+         die "Invalid --set-vars value: $var_val\n" unless $var && defined $val;
          $user_vars{$var} = {
             val     => $val,
             default => 0,
@@ -2361,7 +2361,7 @@ sub set_vars {
       %default_vars = map {
          my $var_val = $_;
          my ($var, $val) = $var_val =~ m/([^\s=]+)=(\S+)/;
-         die "Invalid --set-vars value: $var_val\n" unless $var && $val;
+         die "Invalid --set-vars value: $var_val\n" unless $var && defined $val;
          $var => {
             val     => $val,
             default => 1,
@@ -4579,8 +4579,8 @@ sub new {
 sub strip_comments {
    my ( $self, $query ) = @_;
    return unless $query;
-   $query =~ s/$olc_re//go;
    $query =~ s/$mlc_re//go;
+   $query =~ s/$olc_re//go;
    if ( $query =~ m/$vlc_rf/i ) { # contains show + version
       $query =~ s/$vlc_re//go;
    }
@@ -4647,9 +4647,9 @@ sub fingerprint {
    if ( my ($beginning) = $query =~ m/\A((?:INSERT|REPLACE)(?: IGNORE)?\s+INTO.+?VALUES\s*\(.*?\))\s*,\s*\(/is ) {
       $query = $beginning; # Shorten multi-value INSERT statements ASAP
    }
-  
-   $query =~ s/$olc_re//go;
+
    $query =~ s/$mlc_re//go;
+   $query =~ s/$olc_re//go;
    $query =~ s/\Ause \S+\Z/use ?/i       # Abstract the DB in USE
       && return $query;
 
@@ -10255,6 +10255,10 @@ sub identical_rows {
 
    my $n_vals = $size_array1 - 1;  # arrays are zero-indexed
    for my $i ( 0..$n_vals ) {
+      # NULL == NULL
+      # https://bugs.launchpad.net/percona-toolkit/+bug/1168434
+      next if !defined $array1->[$i] && !defined $array2->[$i];
+
       if ( defined $array1->[$i] && defined $array2->[$i] ) {
          return 0 unless $array1->[$i] eq $array2->[$i];
       }
