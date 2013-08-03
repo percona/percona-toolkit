@@ -8924,14 +8924,14 @@ Usage: pt-agent [OPTIONS]
 pt-agent is the client-side agent for Percona Cloud Tools.  It is not
 a general command line tool like other tools in Percona Toolkit, it is
 configured and controlled through the web at https://cloud.percona.com.
-Please contact Percona or vist https://cloud.percona.com for more information.
+Please contact Percona or visit https://cloud.percona.com for more information.
 
 =head1 DESCRIPTION
 
 pt-agent is the client-side agent for Percona Cloud Tools (PCT).  It is
-controlled and configured through the web app at https://clodu.percona.com.
+controlled and configured through the web app at https://cloud.percona.com.
 An account with Percona is required to use pt-agent.  Please contact Percona
-or vist https://cloud.percona.com for more information.
+or visit https://cloud.percona.com for more information.
 
 pt-agent, or "the agent", is a single, unique instance of the tool running
 on a server.  Two agents cannot run on the same server (see L<"--pid">).
@@ -9180,7 +9180,7 @@ MySQL socket file.
 
 type: string; default: /var/spool/pt-agent
 
-Directory in which to save service data before sending to Pecona.
+Directory in which to save service data before sending to Percona.
 L<"--run-service"> saves data in this directory, and L<"--send-data">
 reads data from this directory.  Each service has its own subdirectory,
 like C<--spool/query-history> for the Query History service.  Data
@@ -9244,7 +9244,7 @@ MySQL host.
 
 dsn: password; copy: yes
 
-MySQL passowrd.
+MySQL password.
 
 =item * P
 
