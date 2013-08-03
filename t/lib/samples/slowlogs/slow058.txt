@@ -1,0 +1,24 @@
+# User@Host: meow[meow] @  [1.2.3.8]
+# Thread_id: 5  Schema: db
+# Query_time: 0.000002  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+LOAD DATA LOCAL INFILE '/tmp/foo.txt' INTO TABLE `foo`;
+# User@Host: meow[meow] @  [1.2.3.8]
+# Thread_id: 7  Schema: db
+# Query_time: 0.018799  Lock_time: 0.009453  Rows_sent: 0  Rows_examined: 0
+INSERT `foo` VALUES("bar");
+# User@Host: meow[meow] @  [1.2.3.8]
+# Thread_id: 7  Schema: db
+# Query_time: 0.018799  Lock_time: 0.009453  Rows_sent: 0  Rows_examined: 0
+REPLACE `foo` VALUES("bar");
+# User@Host: meow[meow] @  [1.2.3.8]
+# Thread_id: 5  Schema: db
+# Query_time: 0.000002  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+load data local infile '/tmp/foo.txt' into table `foo`;
+# User@Host: meow[meow] @  [1.2.3.8]
+# Thread_id: 7  Schema: db
+# Query_time: 0.018799  Lock_time: 0.009453  Rows_sent: 0  Rows_examined: 0
+insert `foo` values("bar");
+# User@Host: meow[meow] @  [1.2.3.8]
+# Thread_id: 7  Schema: db
+# Query_time: 0.018799  Lock_time: 0.009453  Rows_sent: 0  Rows_examined: 0
+replace `foo` values("bar");

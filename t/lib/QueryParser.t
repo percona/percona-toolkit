@@ -828,6 +828,12 @@ is_deeply(
    [qw(t1 t2)], 'get_tables works for lowercased LOCK TABLES',
 );
 
+is_deeply(
+   [ $qp->get_tables("LOAD DATA INFILE '/tmp/foo.txt' INTO TABLE db.tbl") ],
+   [qw(db.tbl)],
+   "LOAD DATA db.tbl"
+);
+
 # #############################################################################
 # Done.
 # #############################################################################

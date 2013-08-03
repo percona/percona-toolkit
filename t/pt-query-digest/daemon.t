@@ -32,8 +32,8 @@ my $pid_file = '/tmp/pt-query-digest.test.pid';
 $output = `$trunk/bin/pt-query-digest $trunk/commont/t/samples/slow002.txt --pid $pid_file 2>&1`;
 like(
    $output,
-   qr{PID file $pid_file already exists},
-   'Dies if PID file already exists (--pid without --daemonize) (issue 391)'
+   qr{PID file $pid_file exists},
+   'Dies if PID file exists (--pid without --daemonize) (issue 391)'
 );
 `rm $pid_file >/dev/null 2>&1`;
 

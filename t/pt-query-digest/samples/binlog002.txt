@@ -89,6 +89,9 @@ create table foo (i int)\G
 # 100ms
 #    1s
 #  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `d` LIKE 'foo'\G
+#    SHOW CREATE TABLE `d`.`foo`\G
 insert foo values (1) /*... omitted ...*/\G
 
 # Profile
@@ -96,4 +99,4 @@ insert foo values (1) /*... omitted ...*/\G
 # ==== ================== ============= ===== ====== ===== ===============
 #    1 0xF25D6D5AC7C18FF3  0.0000  0.0%     1 0.0000  0.00 CREATE DATABASE d
 #    2 0x03409022EB8A4AE7  0.0000  0.0%     1 0.0000  0.00 CREATE TABLE foo
-#    3 0xF579EC4A9633EEA0  0.0000  0.0%     1 0.0000  0.00 INSERT
+#    3 0xF579EC4A9633EEA0  0.0000  0.0%     1 0.0000  0.00 INSERT foo
