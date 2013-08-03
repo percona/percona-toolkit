@@ -9,6 +9,7 @@ Ver
 Distrib
 Nichter
 Percona
+percona
 binmode
 config
 PID
@@ -91,3 +92,9 @@ online
 Aspersa
 XtraDB
 PXC
+SSL
+API
+subdirectory
+JSON
+LWP
+awk
