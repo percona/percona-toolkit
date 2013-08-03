@@ -82,8 +82,8 @@ replace `foo` values("bar")\G
 #    1s
 #  10s+
 # Tables
-#    SHOW TABLE STATUS FROM `db` LIKE 'table'\G
-#    SHOW CREATE TABLE `db`.`table`\G
+#    SHOW TABLE STATUS FROM `db` LIKE 'foo'\G
+#    SHOW CREATE TABLE `db`.`foo`\G
 load data local infile '/tmp/foo.txt' into table `foo`\G
 
 # Profile
