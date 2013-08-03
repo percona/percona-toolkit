@@ -98,7 +98,7 @@ sub get_tables {
 
    # These keywords may appear between UPDATE or SELECT and the table refs.
    # They need to be removed so that they are not mistaken for tables.
-   $query =~ s/ (?:LOW_PRIORITY|IGNORE|STRAIGHT_JOIN|DELAYED) / /ig;
+   $query =~ s/(?:LOW_PRIORITY|IGNORE|STRAIGHT_JOIN|DELAYED)\s+/ /ig;
 
    # Another special case: LOCK TABLES tbl [[AS] alias] READ|WRITE, etc.
    # We strip the LOCK TABLES stuff and append "FROM" to fake a SELECT
@@ -116,9 +116,14 @@ sub get_tables {
 
    # INSERT and REPLACE without INTO
    # https://bugs.launchpad.net/percona-toolkit/+bug/984053
-   if ( $query =~ m/\A\s*(?:INSERT|REPLACE)\s+(?!INTO)/i ) {
+   if ( $query =~ m/\A\s*(?:INSERT|REPLACE)(?!\s+INTO)/i ) {
       # Add INTO so the reset of the code work as usual.
       $query =~ s/\A\s*((?:INSERT|REPLACE))\s+/$1 INTO /i;
+   }
+
+   if ( $query =~ m/\A\s*LOAD DATA/i ) {
+      my ($tbl) = $query =~ m/INTO TABLE\s+(\S+)/i;
+      return $tbl;
    }
 
    my @tables;
