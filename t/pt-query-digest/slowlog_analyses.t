@@ -343,7 +343,7 @@ ok(
       "t/pt-query-digest/samples/slow051.txt",
    ),
    'Analysis for slow051 (issue 918)',
-);
+) or diag($test_diff);
 
 # #############################################################################
 # Issue 1124: Make mk-query-digest profile include variance-to-mean ratio
