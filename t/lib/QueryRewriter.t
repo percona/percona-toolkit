@@ -1440,6 +1440,20 @@ is(
    "distill REPLACE without INTO (bug 984053)"
 );
 
+# IF EXISTS
+# https://bugs.launchpad.net/percona-toolkit/+bug/821690
+is(
+   $qr->distill("DROP TABLE IF EXISTS foo"),
+   "DROP TABLE foo",
+   "distill DROP TABLE IF EXISTS foo (bug 821690)"
+);
+
+is(
+   $qr->distill("CREATE TABLE IF NOT EXISTS foo"),
+   "CREATE TABLE foo",
+   "distill CREATE TABLE IF NOT EXISTS foo",
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
