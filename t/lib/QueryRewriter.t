@@ -1412,6 +1412,34 @@ is(
    'distills SELECT with REPLACE function (issue 1176)'
 );
 
+# LOAD DATA
+# https://bugs.launchpad.net/percona-toolkit/+bug/821692
+# INSERT and REPLACE without INTO
+# https://bugs.launchpad.net/percona-toolkit/+bug/984053
+is(
+   $qr->distill("LOAD DATA LOW_PRIORITY LOCAL INFILE 'file' INTO TABLE tbl"),
+   "LOAD DATA tbl",
+   "distill LOAD DATA (bug 821692)"
+);
+
+is(
+   $qr->distill("LOAD DATA LOW_PRIORITY LOCAL INFILE 'file' INTO TABLE `tbl`"),
+   "LOAD DATA tbl",
+   "distill LOAD DATA (bug 821692)"
+);
+
+is(
+   $qr->distill("insert ignore_bar (id) values (4029731)"),
+   "INSERT ignore_bar",
+   "distill INSERT without INTO (bug 984053)"
+);
+
+is(
+   $qr->distill("replace ignore_bar (id) values (4029731)"),
+   "REPLACE ignore_bar",
+   "distill REPLACE without INTO (bug 984053)"
+);
+
 # #############################################################################
 # Done.
 # #############################################################################

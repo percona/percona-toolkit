@@ -28,7 +28,7 @@ ok(
       "t/pt-query-digest/samples/binlog001.txt"
    ),
    'Analysis for binlog001',
-);
+) or diag($test_diff);
 
 ok(
    no_diff(
@@ -36,7 +36,7 @@ ok(
       "t/pt-query-digest/samples/binlog002.txt"
    ),
    'Analysis for binlog002',
-);
+) or diag($test_diff);
 
 # #############################################################################
 # Done.

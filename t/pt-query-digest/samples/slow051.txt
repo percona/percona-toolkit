@@ -1,5 +1,5 @@
 
-# Query 1: 0.20 QPS, 0.00x concurrency, ID 0xD989521B246E945B at byte 146
+# Query 1: 0.20 QPS, 0.00x concurrency, ID 0x14354E1D979884B4 at byte 152
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: 2007-12-18 11:48:27 to 11:48:37
@@ -10,7 +10,7 @@
 # Lock time      0       0       0       0       0       0       0       0
 # Rows sent      0       0       0       0       0       0       0       0
 # Rows examine   0       0       0       0       0       0       0       0
-# Query size   100      86      43      43      43      43       0      43
+# Query size   100      98      49      49      49      49       0      49
 # Query_time distribution
 #   1us
 #  10us  ################################################################
@@ -23,9 +23,9 @@
 # Tables
 #    SHOW TABLE STATUS FROM `db` LIKE 'tbl'\G
 #    SHOW CREATE TABLE `db`.`tbl`\G
-LOAD DATA INFILE '/tmp/bar.txt' INTO db.tbl\G
+LOAD DATA INFILE '/tmp/bar.txt' INTO TABLE db.tbl\G
 
 # Profile
 # Rank Query ID           Response time Calls R/Call V/M   Item
-# ==== ================== ============= ===== ====== ===== ======
-#    1 0xD989521B246E945B 0.0000 100.0%     2 0.0000  0.00 db.tbl
+# ==== ================== ============= ===== ====== ===== ===============
+#    1 0x14354E1D979884B4 0.0000 100.0%     2 0.0000  0.00 LOAD DATA db.tbl

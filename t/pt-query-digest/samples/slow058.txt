@@ -1,0 +1,94 @@
+
+# Query 1: 0 QPS, 0x concurrency, ID 0x471A0C4BD7A4EE34 at byte 730 ______
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         33       2
+# Exec time     49    38ms    19ms    19ms    19ms    19ms       0    19ms
+# Lock time     50    19ms     9ms     9ms     9ms     9ms       0     9ms
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0       0       0       0       0       0       0       0
+# Query size    24      52      26      26      26      26       0      26
+# String:
+# Databases    db
+# Hosts
+# Users        meow
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms  ################################################################
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `db` LIKE 'foo'\G
+#    SHOW CREATE TABLE `db`.`foo`\G
+insert `foo` values("bar")\G
+
+# Query 2: 0 QPS, 0x concurrency, ID 0xF33473286088142B at byte 898 ______
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         33       2
+# Exec time     49    38ms    19ms    19ms    19ms    19ms       0    19ms
+# Lock time     50    19ms     9ms     9ms     9ms     9ms       0     9ms
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0       0       0       0       0       0       0       0
+# Query size    25      54      27      27      27      27       0      27
+# String:
+# Databases    db
+# Hosts
+# Users        meow
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms  ################################################################
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `db` LIKE 'foo'\G
+#    SHOW CREATE TABLE `db`.`foo`\G
+replace `foo` values("bar")\G
+
+# Query 3: 0 QPS, 0x concurrency, ID 0xEBAC9C76529E62CE at byte 534 ______
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         33       2
+# Exec time      0     4us     2us     2us     2us     2us       0     2us
+# Lock time      0       0       0       0       0       0       0       0
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0       0       0       0       0       0       0       0
+# Query size    50     108      54      54      54      54       0      54
+# String:
+# Databases    db
+# Hosts
+# Users        meow
+# Query_time distribution
+#   1us  ################################################################
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `db` LIKE 'foo'\G
+#    SHOW CREATE TABLE `db`.`foo`\G
+load data local infile '/tmp/foo.txt' into table `foo`\G
+
+# Profile
+# Rank Query ID           Response time Calls R/Call V/M   Item
+# ==== ================== ============= ===== ====== ===== =============
+#    1 0x471A0C4BD7A4EE34  0.0376 50.0%     2 0.0188  0.00 INSERT foo
+#    2 0xF33473286088142B  0.0376 50.0%     2 0.0188  0.00 REPLACE foo
+#    3 0xEBAC9C76529E62CE  0.0000  0.0%     2 0.0000  0.00 LOAD DATA foo

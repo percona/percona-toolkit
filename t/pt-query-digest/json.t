@@ -25,7 +25,7 @@ my $results = "t/pt-query-digest/samples/json";
 ok(
    no_diff(
       sub { pt_query_digest::main(@args, "$sample/slowlogs/empty") },
-      "t/pt-query-digest/samples/empty_report.txt",
+      "t/pt-query-digest/samples/empty_json_report.txt",
    ),
    'json output for empty log'
 ) or diag($test_diff);

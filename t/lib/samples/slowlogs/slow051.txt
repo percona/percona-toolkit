@@ -1,6 +1,6 @@
 # Time: 071218 11:48:27
 # Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
-LOAD DATA INFILE '/tmp/foo.txt' INTO db.tbl;
+LOAD DATA INFILE '/tmp/foo.txt' INTO TABLE db.tbl;
 # Time: 071218 11:48:37
 # Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
-LOAD DATA INFILE '/tmp/bar.txt' INTO db.tbl;
+LOAD DATA INFILE '/tmp/bar.txt' INTO TABLE db.tbl;
