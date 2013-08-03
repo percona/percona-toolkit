@@ -1423,6 +1423,12 @@ is(
 );
 
 is(
+   $qr->distill("LOAD DATA LOW_PRIORITY LOCAL INFILE 'file' INTO TABLE `tbl`"),
+   "LOAD DATA tbl",
+   "distill LOAD DATA (bug 821692)"
+);
+
+is(
    $qr->distill("insert ignore_bar (id) values (4029731)"),
    "INSERT ignore_bar",
    "distill INSERT without INTO (bug 984053)"
