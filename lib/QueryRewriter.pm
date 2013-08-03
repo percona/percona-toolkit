@@ -246,6 +246,11 @@ sub distill_verbs {
    $query =~ m/\A\s*UNLOCK TABLES/i  && return "UNLOCK";
    $query =~ m/\A\s*xa\s+(\S+)/i     && return "XA_$1";
 
+   if ( $query =~ m/\A\s*LOAD/i ) {
+      my ($tbl) = $query =~ m/INTO TABLE\s+(\S+)/i;
+      return "LOAD DATA $tbl";
+   }
+
    if ( $query =~ m/\Aadministrator command:/ ) {
       $query =~ s/administrator command:/ADMIN/;
       $query = uc $query;
@@ -385,6 +390,9 @@ sub distill {
          );
          map { $verbs =~ s/$_/$alias_for{$_}/ } keys %alias_for;
          $query = $verbs;
+      }
+      elsif ( $verbs && $verbs =~ m/^LOAD DATA/ ) {
+         return $verbs;
       }
       else {
          # For everything else, distill the tables.
