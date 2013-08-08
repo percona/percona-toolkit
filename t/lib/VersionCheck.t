@@ -700,6 +700,7 @@ my @vc_tools = grep { chomp; basename($_) =~ /\A[a-z-]+\z/ }
 
 foreach my $tool ( @vc_tools ) {
    my $tool_name = basename($tool);
+   next if $tool_name eq 'pt-agent';
    my $output = `$tool --help`;
    like(
       $output,
