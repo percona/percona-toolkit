@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v2.2.4 released 2013-07-18
+
   * Implemented pt-query-digest anonymous JSON output
   * Implemented pt-online-schema-change timestamp output
   * Fixed bug 1182856: Zero values causes "Invalid --set-vars value: var=0"
