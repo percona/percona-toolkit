@@ -10,6 +10,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
+use IPC::Cmd qw(can_run run);
 
 use PerconaTest;
 use Percona::Toolkit;
