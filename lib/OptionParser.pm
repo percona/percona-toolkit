@@ -554,11 +554,22 @@ sub _set_option {
    my $long = exists $self->{opts}->{$opt}       ? $opt
             : exists $self->{short_opts}->{$opt} ? $self->{short_opts}->{$opt}
             : die "Getopt::Long gave a nonexistent option: $opt";
-
    # Reassign $opt.
    $opt = $self->{opts}->{$long};
    if ( $opt->{is_cumulative} ) {
       $opt->{value}++;
+   }
+   elsif ( ($opt->{type} || '') eq 's' && $val =~ m/^--?(.+)/ ) {
+      # https://bugs.launchpad.net/percona-toolkit/+bug/1199589
+      my $next_opt = $1;
+      if (    exists $self->{opts}->{$next_opt}
+           || exists $self->{short_opts}->{$next_opt} ) {
+         $self->save_error("--$long requires a string value");
+         return;
+      }
+      else {
+         $opt->{value} = $val;
+      }
    }
    else {
       $opt->{value} = $val;
