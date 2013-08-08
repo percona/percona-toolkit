@@ -2063,6 +2063,60 @@ is_deeply(
    "set_vars(): var=0 (bug 1182856)"
 ) or diag(Dumper($vars));
 
+
+# #############################################################################
+# https://bugs.launchpad.net/percona-toolkit/+bug/1199589
+# pt-archiver deletes data despite --dry-run
+# #############################################################################
+
+# From the issue: "One problem is that --optimize is not being used correctly:
+# the option takes an argument: d, s, or ds (see --analyze). The real problem
+# is that --optimize is consuming the next option, which is --dry-run in this
+# case. This shouldn't happen; it means the option parser is failing to notice
+# that --dry-run is not the string val to --optimize but rather an option;
+# it should catch this and the tool should fail to start with an error like
+# "--optimize requires a value".
+
+@ARGV = qw(--optimize --dry-run --ascend-first --where 1=1 --purge --source localhost);
+$o = new OptionParser(file => "$trunk/bin/pt-archiver");
+$o->get_specs();
+$o->get_opts();
+
+$output = output(
+   sub { $o->usage_or_errors(undef, 1); },
+);
+
+like(
+   $output,
+   qr/--optimize requires a string value/,
+   "String opts don't consume the next opt (bug 1199589)"
+);
+
+is(
+   $o->get('optimize'),
+   undef,
+   "--optimize didn't consume --dry-run (bug 1199589)"
+);
+
+@ARGV = qw(--optimize ds --dry-run --ascend-first --where 1=1 --purge --source localhost);
+$o->get_opts();
+
+$output = output(
+   sub { $o->usage_or_errors(undef, 1); },
+);
+
+is(
+   $output,
+   '',
+   "String opts still work (bug 1199589)"
+);
+
+is(
+   $o->get('optimize'),
+   'ds',
+   "--optimize got its value (bug 1199589)"
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
