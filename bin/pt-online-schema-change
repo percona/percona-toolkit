@@ -11461,6 +11461,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-online-schema-change 2.2.3
+pt-online-schema-change 2.2.4
 
 =cut
