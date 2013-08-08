@@ -159,6 +159,7 @@ my @cases = (
    },
    {  name   => "innodb_max_dirty_pages_pct",
       vars   => [qw(innodb_max_dirty_pages_pct 89)],
+      mysql_version => VersionParser->new('5.1.59'),
       advice => [qw(innodb_max_dirty_pages_pct)],
    },
    {  name   => "key_buffer_size",
