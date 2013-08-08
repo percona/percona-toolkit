@@ -76,7 +76,7 @@ is_deeply(
 is_deeply(
    $ua->{requests},
    [
-      'GET https://api.tools.percona.com',
+      'GET https://cloud-api.percona.com',
    ],
    "1 request, 1 GET"
 ) or diag(Dumper($ua->{requests}));
@@ -195,6 +195,7 @@ my $run0 = Percona::WebAPI::Resource::Task->new(
 );
 
 my $svc0 = Percona::WebAPI::Resource::Service->new(
+   ts             => '123',
    name           => 'query-monitor',
    run_schedule   => '1 * * * *',
    spool_schedule => '2 * * * *',

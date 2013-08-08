@@ -71,7 +71,7 @@ my $bzr = can_run('bzr');
 SKIP: {
    skip "Can't run bzr, skipping tag checking", 1 unless $bzr;
    chomp(my $root = `$bzr root 2>/dev/null`);
-   skip '$trunk and bzr root differ, skipping tag checking'
+   skip '$trunk and bzr root differ, skipping tag checking', 1
       unless $root eq $trunk;
    
    my @tags          = split /\n/, `$bzr tags`;
