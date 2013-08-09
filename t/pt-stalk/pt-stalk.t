@@ -143,6 +143,8 @@ like(
 # #############################################################################
 
 cleanup();
+done_testing;
+exit;
 
 $retval = system("$trunk/bin/pt-stalk --daemonize --pid $pid_file --log $log_file --variable Threads_running --dest $dest --verbose 3 -- --defaults-file=$cnf");
 
