@@ -819,6 +819,20 @@ sub tables_used {
    return [ sort keys %tables ];
 }
 
+sub get_cmd_pid {
+   my $cmd = shift;
+   $cmd =~ s/\./\\./g;
+   $cmd =~ s/-/\\-/g;
+   my $output = `ps wx | grep -v grep | grep '$cmd'`;
+   my @cmds = $output =~ m/\n/g;
+   if ( @cmds > 1 ) {
+      die "Found " . scalar @cmds . " commands matching '$cmd': @cmds";
+   }
+   my ($pid) = $output =~ m/^\s*(\d+)/;
+   return wantarray ? ($pid, $output) : $pid;
+}
+
+
 sub can_load_data {
     my $output = `/tmp/12345/use -e "SELECT * FROM percona_test.load_data" 2>/dev/null`;
     return ($output || '') =~ /1/;
