@@ -146,7 +146,9 @@ SKIP: {
    die "$pid_file is empty" unless $pid;
    my $proc_fd_0 = -l "/proc/$pid/0"    ? "/proc/$pid/0"
                  : -l "/proc/$pid/fd/0" ? "/proc/$pid/fd/0"
-                 : die "Cannot find fd 0 symlink in /proc/$pid";
+                 : die "Cannot find fd 0 symlink in /proc/$pid: "
+                      . `ls -l /proc/$pid/`
+                      . `ps wx | grep 'daemonizes.pl'`;
    PTDEVDEBUG && PerconaTest::_d('pid_file', $pid_file,
       'pid', $pid, 'proc_fd_0', $proc_fd_0, `ls -l $proc_fd_0`);
    my $stdin = readlink $proc_fd_0;
