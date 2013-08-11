@@ -134,8 +134,9 @@ fi
 EXIT_STATUS=0
 TEST_CMD="${TEST_CMD:-"prove -r t/"}"
 
-for x in 1 2 3; do (eval $TEST_CMD); done
-
+(
+   eval $TEST_CMD
+)
 EXIT_STATUS=$(($? | 0))
 
 #############
