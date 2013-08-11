@@ -184,12 +184,13 @@ SKIP: {
 # pid-file is still running
 # ##########################################################################
 rm_tmp_files();
-system("$cmd 5 --daemonize --pid $pid_file >/dev/null 2>&1");
+system("$cmd 7 --daemonize --pid $pid_file >/dev/null 2>&1");
 PerconaTest::wait_for_files($pid_file);
-chomp($pid = slurp_file($pid_file));
+$pid = PerconaTest::get_cmd_pid("$cmd 7")
+   or die "Cannot get PID of $cmd 7";
 kill 9, $pid;
 sleep 0.25;
-(undef, $output) = PerconaTest::get_cmd_pid("$cmd 5");
+(undef, $output) = PerconaTest::get_cmd_pid("$cmd 7");
 unlike(
    $output,
    qr/daemonize/,
@@ -202,10 +203,10 @@ ok(
 
 my (undef, $tempfile) = tempfile();
 
-system("$cmd 5 --daemonize --log $log_file --pid $pid_file > $tempfile 2>&1");
+system("$cmd 6 --daemonize --log $log_file --pid $pid_file > $tempfile 2>&1");
 PerconaTest::wait_for_files($log_file, $pid_file, $tempfile);
 my $new_pid;
-($new_pid, $output) = PerconaTest::get_cmd_pid("$cmd 5");
+($new_pid, $output) = PerconaTest::get_cmd_pid("$cmd 6");
 
 like(
    $output,
@@ -219,8 +220,10 @@ like(
    'Says that old PID is not running (issue 419)'
 );
 
-ok(
-   $pid != $new_pid,
+cmp_ok(
+   $pid,
+  '!=',
+   $new_pid,
    'Overwrites PID file with new PID (issue 419)'
 );
 
