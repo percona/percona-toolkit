@@ -79,9 +79,9 @@ cleanup();
 # As of v2.1.9 when --verbose was added, non-matching checks are not
 # printed by default.  So we use the --plugin to tell us when the tool
 # has completed a cycle.
-
-$retval = system("$trunk/bin/pt-stalk --daemonize --pid $pid_file --log $log_file --dest $dest --plugin $trunk/t/pt-stalk/samples/plugin002.sh -- --defaults-file=$cnf");
-
+warn "1 before cmd";
+$retval = system("/bin/bash -x $trunk/bin/pt-stalk --daemonize --pid $pid_file --log $log_file --dest $dest --plugin $trunk/t/pt-stalk/samples/plugin002.sh -- --defaults-file=$cnf");
+warn "2 after cmd";
 is(
    $retval >> 8,
    0,
@@ -143,6 +143,8 @@ like(
 # #############################################################################
 
 cleanup();
+done_testing;
+exit;
 
 $retval = system("$trunk/bin/pt-stalk --daemonize --pid $pid_file --log $log_file --variable Threads_running --dest $dest --verbose 3 -- --defaults-file=$cnf");
 
