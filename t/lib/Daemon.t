@@ -139,16 +139,14 @@ SKIP: {
    skip 'No /proc', 1 unless -d '/proc';
    skip 'No fd in /proc', 1 unless -l "/proc/$PID/0" || -l "/proc/$PID/fd/0";
 
-   system("$cmd 10 --daemonize --pid $pid_file --log $log_file");
+   system("$cmd 5 --daemonize --pid $pid_file --log $log_file");
    PerconaTest::wait_for_files($pid_file)
       or die "$cmd did not create $pid_file";
-   chomp($pid = slurp_file($pid_file));
-   die "$pid_file is empty" unless $pid;
+   my $pid = PerconaTest::get_cmd_pid("$cmd 5")
+      or die "Cannot get PID of $cmd 5";
    my $proc_fd_0 = -l "/proc/$pid/0"    ? "/proc/$pid/0"
                  : -l "/proc/$pid/fd/0" ? "/proc/$pid/fd/0"
-                 : die "Cannot find fd 0 symlink in /proc/$pid: "
-                      . `ls -l /proc/$pid/`
-                      . `ps wx | grep 'daemonizes.pl'`;
+                 : die "Cannot find fd 0 symlink in /proc/$pid";
    PTDEVDEBUG && PerconaTest::_d('pid_file', $pid_file,
       'pid', $pid, 'proc_fd_0', $proc_fd_0, `ls -l $proc_fd_0`);
    my $stdin = readlink $proc_fd_0;
@@ -238,10 +236,10 @@ diag(`rm $tempfile >/dev/null`);
 # Check that it actually checks the running process.
 # ############################################################################
 rm_tmp_files();
-system("$cmd 20 --daemonize --log $log_file --pid $pid_file");
+system("$cmd 10 --daemonize --log $log_file --pid $pid_file");
 PerconaTest::wait_for_files($pid_file, $log_file);
 chomp($pid = slurp_file($pid_file));
-$output = `$cmd 0 --daemonize --pid $pid_file 2>&1`;
+$output = `$cmd 1 --daemonize --pid $pid_file 2>&1`;
 like(
    $output,
    qr/PID file $pid_file exists and PID $pid is running/,
