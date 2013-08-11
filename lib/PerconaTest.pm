@@ -823,7 +823,7 @@ sub get_cmd_pid {
    my $cmd = shift;
    $cmd =~ s/\./\\./g;
    $cmd =~ s/-/\\-/g;
-   my $output = `ps wx | grep -v grep | grep '$cmd'`;
+   my $output = `ps xww | grep -v grep | grep '$cmd'`;
    my @cmds = $output =~ m/\n/g;
    if ( @cmds > 1 ) {
       die "Found " . scalar @cmds . " commands matching '$cmd': @cmds";

@@ -143,7 +143,7 @@ SKIP: {
    PerconaTest::wait_for_files($pid_file, $log_file)
       or die "$cmd did not create $pid_file and $log_file";
    my $pid = PerconaTest::get_cmd_pid("$cmd 15")
-      or die "Cannot get PID of $cmd 15\n" . `ps xw`;
+      or die "Cannot get PID of $cmd 15\n" . `ps xww`;
    my $proc_fd_0 = -l "/proc/$pid/0"    ? "/proc/$pid/0"
                  : -l "/proc/$pid/fd/0" ? "/proc/$pid/fd/0"
                  : die "Cannot find fd 0 symlink in /proc/$pid";
