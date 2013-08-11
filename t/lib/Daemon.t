@@ -139,10 +139,10 @@ SKIP: {
    skip 'No /proc', 1 unless -d '/proc';
    skip 'No fd in /proc', 1 unless -l "/proc/$PID/0" || -l "/proc/$PID/fd/0";
 
-   system("$cmd 5 --daemonize --pid $pid_file --log $log_file");
+   system("$cmd 15 --daemonize --pid $pid_file --log $log_file");
    PerconaTest::wait_for_files($pid_file)
       or die "$cmd did not create $pid_file";
-   my $pid = PerconaTest::get_cmd_pid("$cmd 5")
+   my $pid = PerconaTest::get_cmd_pid("$cmd 15")
       or die "Cannot get PID of $cmd 5";
    my $proc_fd_0 = -l "/proc/$pid/0"    ? "/proc/$pid/0"
                  : -l "/proc/$pid/fd/0" ? "/proc/$pid/fd/0"
