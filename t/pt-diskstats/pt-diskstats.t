@@ -131,7 +131,7 @@ test_diskstats_file(
 test_diskstats_file(
    file     => "bug-1035311.txt",
    commands => [ "S", "/", 'xvdb1', "q" ],
-   options  => [],
+   options  => [ '--headers', ''],
 );
 
 # ###########################################################################
