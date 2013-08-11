@@ -31,12 +31,12 @@ sub rm_tmp_files() {
 # Test that it daemonizes, creates a PID file, and removes that PID file.
 # ############################################################################
 
-my $ret_val = system("$cmd 3 --daemonize --pid $pid_file >/dev/null 2>&1");
+my $ret_val = system("$cmd 3 --daemonize --pid $pid_file --log $log_file");
 die 'Cannot test Daemon.pm because t/daemonizes.pl is not working'
    unless $ret_val == 0;
 
-PerconaTest::wait_for_files($pid_file)
-   or die "$cmd did not create $pid_file";
+PerconaTest::wait_for_files($pid_file, $log_file)
+   or die "$cmd did not create $pid_file and $log_file";
 
 my ($pid, $output) = PerconaTest::get_cmd_pid("$cmd 3");
 
@@ -140,10 +140,10 @@ SKIP: {
    skip 'No fd in /proc', 1 unless -l "/proc/$PID/0" || -l "/proc/$PID/fd/0";
 
    system("$cmd 15 --daemonize --pid $pid_file --log $log_file");
-   PerconaTest::wait_for_files($pid_file)
-      or die "$cmd did not create $pid_file";
+   PerconaTest::wait_for_files($pid_file, $log_file)
+      or die "$cmd did not create $pid_file and $log_file";
    my $pid = PerconaTest::get_cmd_pid("$cmd 15")
-      or die "Cannot get PID of $cmd 5";
+      or die "Cannot get PID of $cmd 15";
    my $proc_fd_0 = -l "/proc/$pid/0"    ? "/proc/$pid/0"
                  : -l "/proc/$pid/fd/0" ? "/proc/$pid/fd/0"
                  : die "Cannot find fd 0 symlink in /proc/$pid";
