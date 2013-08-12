@@ -313,6 +313,7 @@ diag(`rm -f $pid_file $log_file $cnf_file >/dev/null 2>&1`);
 
 open my $fh, '>', $cnf_file or die "Error opening $cnf_file: $OS_ERROR";
 print { $fh } <<EOF;
+defaults-file=$master_cnf
 log-dsn=$slave_dsn,$log_dsn
 daemonize
 run-time=1
@@ -321,8 +322,6 @@ interval=1
 match-db=$target_db
 pid=$pid_file
 log=$log_file
---
-$master_dsn
 EOF
 close $fh;
 
