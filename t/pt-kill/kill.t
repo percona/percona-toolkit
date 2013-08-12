@@ -30,7 +30,8 @@ if ( !$dbh ) {
 }
 
 my $output;
-my $cnf='/tmp/12345/my.sandbox.cnf';
+my $dsn = $sb->dsn_for('master');
+my $cnf = '/tmp/12345/my.sandbox.cnf';
 
 # TODO:  These tests need something to match, so we background
 # a SLEEP(4) query and match that, but this isn't ideal because
@@ -318,6 +319,34 @@ is(
    "Different --log-dsn runs reuse the same table."
 );
 
+
+# --log-dsn and --daemonize
+
+$dbh->do("DELETE FROM kill_test.log_table");
+$sb->wait_for_slaves();
+
+my $pid_file = "/tmp/pt-kill-test.$PID";
+my $log_file = "/tmp/pt-kill-test-log.$PID";
+diag(`rm -f $pid_file $log_file >/dev/null 2>&1`);
+
+my $slave2_dbh = $sb->get_dbh_for('slave2');
+my $slave2_dsn = $sb->dsn_for('slave2');
+
+system($sys_cmd);
+sleep 0.5;
+
+system("$trunk/bin/pt-kill $dsn --daemonize --run-time 1 --kill-query --interval 1 --match-info 'select sleep' --log-dsn $slave2_dsn,D=kill_test,t=log_table --pid $pid_file --log $log_file");
+PerconaTest::wait_for_files($pid_file);         # start
+# ...                                           # run
+PerconaTest::wait_until(sub { !-f $pid_file});  # stop
+
+$results = $slave2_dbh->selectall_arrayref("SELECT * FROM kill_test.log_table");
+
+ok(
+   scalar @$results,
+   "--log-dsn --daemonize (bug 1209436)"
+) or diag(Dumper($results));
+
 $dbh->do("DROP DATABASE IF EXISTS kill_test");
 
 PerconaTest::wait_until(
@@ -333,4 +362,3 @@ PerconaTest::wait_until(
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
-exit;
