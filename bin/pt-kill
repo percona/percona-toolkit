@@ -6772,25 +6772,27 @@ sub main {
    }
 
    # Set up --log-dsn if specified.
-   my ($log, $log_sql, $log_sth, $log_cxn);
+   my ($log, $log_dsn, $log_sql, $log_sth, $log_cxn);
    my @processlist_columns = qw(
       Id User Host db Command
       Time State Info Time_ms
    );
-   if ( my $log_dsn = $o->get('log-dsn') ) {
+   if ( $log_dsn = $o->get('log-dsn') ) {
       my $db    = $log_dsn->{D};
       my $table = $log_dsn->{t};
       die "--log-dsn does not specify a database (D) "
         . "or a database-qualified table (t)"
          unless defined $table && defined $db;
+      PTDEBUG && _d('Connecting --log-dsn:', Dumper($log_dsn));
       $log_cxn = Cxn->new(
-         dsn_string   => ($dp->get_cxn_params($log_dsn))[0],
+         dsn          => $log_dsn,
          NAME_lc      => 0,
          DSNParser    => $dp,
          OptionParser => $o,
       );
       my $log_dbh   = $log_cxn->connect();
       my $log_table = Quoter->quote($db, $table);
+      PTDEBUG && _d('Connected --log-dsn:', Dumper($log_cxn->dsn));
 
       # Create the log-table table if it doesn't exist and --create-log-table
       # was passed in
