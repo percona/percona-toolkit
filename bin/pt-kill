@@ -6772,7 +6772,7 @@ sub main {
    }
 
    # Set up --log-dsn if specified.
-   my ($log, $log_sth);
+   my ($log, $log_sql, $log_sth, $log_cxn);
    my @processlist_columns = qw(
       Id User Host db Command
       Time State Info Time_ms
@@ -6783,7 +6783,7 @@ sub main {
       die "--log-dsn does not specify a database (D) "
         . "or a database-qualified table (t)"
          unless defined $table && defined $db;
-      my $log_cxn   = Cxn->new(
+      $log_cxn = Cxn->new(
          dsn_string   => ($dp->get_cxn_params($log_dsn))[0],
          NAME_lc      => 0,
          DSNParser    => $dp,
@@ -6817,13 +6817,13 @@ sub main {
       PTDEBUG && _d($sql);
       my ($server_id) = $dbh->selectrow_array($sql);
 
-      $sql = "INSERT INTO $log_table ("
+      $log_sql = "INSERT INTO $log_table ("
            . join(", ", @all_log_columns)
            . ") VALUES("
            . join(", ", $server_id, ("?") x (@all_log_columns-1))
            . ")";
       PTDEBUG && _d($sql);
-      $log_sth = $log_dbh->prepare($sql); 
+      $log_sth = $log_dbh->prepare($log_sql); 
 
       my $retry = Retry->new();
 
@@ -6831,7 +6831,7 @@ sub main {
          my (@params) = @_;
          PTDEBUG && _d('Logging values:', @params);
          return $retry->retry(
-            tries => 20,
+            tries => 3,
             wait  => sub { sleep 3; },
             try   => sub { return $log_sth->execute(@params); },
             fail  => sub {
@@ -6843,10 +6843,13 @@ sub main {
                     || $error =~ m/Lost connection to MySQL server/ ) {
                   eval {
                      $log_dbh = $log_cxn->connect();
-                     $log_sth = $log_dbh->prepare( $sql );
+                     $log_sth = $log_dbh->prepare($log_sql);
                      msg('Reconnected to ' . $cxn->name());
                   };
-                  return 1 unless $EVAL_ERROR; # try again
+                  if ( $EVAL_ERROR ) {
+                     warn "Fail code failed: $EVAL_ERROR";
+                  }
+                  return 1; # retry
                }
                return 0; # call final_fail
             },
