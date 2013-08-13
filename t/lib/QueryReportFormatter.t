@@ -1161,7 +1161,7 @@ like(
 );
 
 is(
-   $qrf->files(files=>[qw(foo bar)]),
+   $qrf->files(files=>[{name=>"foo"},{name=>"bar"}]),
    "# Files: foo, bar\n",
    "files report"
 );
@@ -1211,7 +1211,7 @@ my $output = output(
       worst   => [['select col from tbl where id=?','top',1]],
       orderby => 'Query_time',
       groupby => 'fingerprint',
-      files   => [qw(foo bar)],
+      files   => [{name=>"foo"},{name=>"bar"}],
       group   => {map {$_=>1} qw(rusage date files header)},
    ); }
 );

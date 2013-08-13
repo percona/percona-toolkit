@@ -1,7 +1,7 @@
 Release Notes
 *************
 
-v2.2.4 released 2013-07-17
+v2.2.4 released 2013-07-18
 ==========================
 
 Percona Toolkit 2.2.4 has been released. This release two new features and number of bugfixes. 
