@@ -10,8 +10,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
-
-use File::Temp ();
+use File::Temp qw();
 
 use PerconaTest;
 require "$trunk/bin/pt-diskstats";
@@ -28,46 +27,45 @@ open STDIN, "<", "/dev/null";
 # of this file about *DATA. Please don't close it.
 my $called_seek_on_handle = 0;
 {
-$TestInteractive::first = 1;
-sub TestInteractive::TIEHANDLE {
-   my ($class, @cmds) = @_;
-   push @cmds, "q";
-   return bless \@cmds, $class;
-}
-
-sub TestInteractive::FILENO {
-   return fileno(*DATA);
-}
-
-sub TestInteractive::READLINE {
-   my ($self) = @_;
-   my $cmd = shift @$self;
-   return unless $cmd;
-   print $cmd if $cmd =~ /\n/ && !-t STDOUT;
-   if ($cmd =~ /^TS/) {
-      if ( $TestInteractive::first ) {
-         $TestInteractive::first = 0;
-      }
-      else {
-         splice @$self, 1, 0, (undef) x 50;
-      }
+   $TestInteractive::first = 1;
+   sub TestInteractive::TIEHANDLE {
+      my ($class, @cmds) = @_;
+      push @cmds, "q";
+      return bless \@cmds, $class;
    }
-   return $cmd;
-}
 
-sub TestInteractive::EOF {
-   my ($self) = @_;
-   return @$self ? undef : 1;
-}
+   sub TestInteractive::FILENO {
+      return fileno(*DATA);
+   }
 
-sub TestInteractive::CLOSE { 1 }
+   sub TestInteractive::READLINE {
+      my ($self) = @_;
+      my $cmd = shift @$self;
+      return unless $cmd;
+      print $cmd if $cmd =~ /\n/ && !-t STDOUT;
+      if ($cmd =~ /^TS/) {
+         if ( $TestInteractive::first ) {
+            $TestInteractive::first = 0;
+         }
+         else {
+            splice @$self, 1, 0, (undef) x 50;
+         }
+      }
+      return $cmd;
+   }
 
-sub TestInteractive::TELL {}
+   sub TestInteractive::EOF {
+      my ($self) = @_;
+      return @$self ? undef : 1;
+   }
 
-sub TestInteractive::SEEK {
-   $called_seek_on_handle++;
-}
+   sub TestInteractive::CLOSE { 1 }
 
+   sub TestInteractive::TELL {}
+
+   sub TestInteractive::SEEK {
+      $called_seek_on_handle++;
+   }
 }
 
 sub test_diskstats_file {
@@ -88,6 +86,7 @@ sub test_diskstats_file {
                     );
    die "$file does not exist" unless -f $file;
    foreach my $groupby ( qw(all disk sample) ) {
+      my $expect_file = "${groupby}_int_$args{file}";
       ok(
          no_diff(
             sub {
@@ -99,11 +98,10 @@ sub test_diskstats_file {
                   '--group-by', $groupby,
                   $file);
             },
-            "t/pt-diskstats/expected/${groupby}_int_$args{file}",
-            keep_output=>1,
+            "t/pt-diskstats/expected/$expect_file",
          ),
          "$args{file} --group-by $groupby, commands: [$print_cmds]"
-      );
+      ) or diag($expect_file, $test_diff);
    }
 }
 
@@ -133,14 +131,17 @@ test_diskstats_file(
 test_diskstats_file(
    file     => "bug-1035311.txt",
    commands => [ "S", "/", 'xvdb1', "q" ],
-   options  => [],
+   options  => [ '--headers', ''],
 );
 
 # ###########################################################################
 # --save-samples and --iterations
 # ###########################################################################
 
-my ($fh, $tempfile) = File::Temp::tempfile( "pt-diskstats.test.$PID.XXXXXX", OPEN => 0);
+my (undef, $tempfile) = File::Temp::tempfile(
+   "/tmp/pt-diskstats.test.XXXXXX",
+   OPEN => 0,
+);
 
 my $iterations = 2;
 my $out = output( sub {
@@ -155,18 +156,16 @@ my $out = output( sub {
 
 open my $samples_fh, "<", $tempfile
    or die "Cannot open $tempfile: $OS_ERROR";
-
 my $count;
 while (my $line = <$samples_fh>) {
    $count++ if $line =~ /^TS/;
 }
-
+close $samples_fh or diag($EVAL_ERROR);
+unlink $tempfile or diag($EVAL_ERROR);
 ok(
    ($count == $iterations) || ($count == $iterations+1),
    "--save-samples and --iterations work"
 );
-
-1 while unlink $tempfile;
 
 # ###########################################################################
 # Done.

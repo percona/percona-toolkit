@@ -31,13 +31,14 @@ sub rm_tmp_files() {
 # Test that it daemonizes, creates a PID file, and removes that PID file.
 # ############################################################################
 
-my $ret_val = system("$cmd 5 --daemonize --pid $pid_file >/dev/null 2>&1");
+my $ret_val = system("$cmd 3 --daemonize --pid $pid_file --log $log_file");
 die 'Cannot test Daemon.pm because t/daemonizes.pl is not working'
    unless $ret_val == 0;
 
-PerconaTest::wait_for_files($pid_file);
+PerconaTest::wait_for_files($pid_file, $log_file)
+   or die "$cmd did not create $pid_file and $log_file";
 
-my $output = `ps wx | grep '$cmd 5' | grep -v grep`;
+my ($pid, $output) = PerconaTest::get_cmd_pid("$cmd 3");
 
 like(
    $output,
@@ -50,7 +51,6 @@ ok(
    'Creates PID file'
 );
 
-my ($pid) = $output =~ /^\s*(\d+)\s+/;
 $output = slurp_file($pid_file);
 chomp($output) if $output;
 
@@ -60,12 +60,16 @@ is(
    'PID file has correct PID'
 );
 
-# Wait until the process goes away
-PerconaTest::wait_until(sub { !kill(0, $pid) });
-ok(
-   ! -f $pid_file,
-   'Removes PID file upon exit'
-);
+SKIP: {
+   skip "Previous tests failed", 1 unless $pid;
+
+   # Wait until the process goes away
+   PerconaTest::wait_until(sub { !kill(0, $pid) });
+   ok(
+      ! -f $pid_file,
+      'Removes PID file upon exit'
+   );
+}
 
 # ############################################################################
 # Check that STDOUT can be redirected
@@ -132,12 +136,14 @@ unlike(
 # ##########################################################################
 rm_tmp_files();
 SKIP: {
-   skip 'No /proc', 2 unless -d '/proc';
-   skip 'No fd in /proc', 2 unless -l "/proc/$PID/0" || -l "/proc/$PID/fd/0";
+   skip 'No /proc', 1 unless -d '/proc';
+   skip 'No fd in /proc', 1 unless -l "/proc/$PID/0" || -l "/proc/$PID/fd/0";
 
-   system("$cmd 5 --daemonize --pid $pid_file --log $log_file");
-   PerconaTest::wait_for_files($pid_file);
-   chomp($pid = slurp_file($pid_file));
+   system("$cmd 15 --daemonize --pid $pid_file --log $log_file");
+   PerconaTest::wait_for_files($pid_file, $log_file)
+      or die "$cmd did not create $pid_file and $log_file";
+   my $pid = PerconaTest::get_cmd_pid("$cmd 15")
+      or die "Cannot get PID of $cmd 15\n" . `ps xww`;
    my $proc_fd_0 = -l "/proc/$pid/0"    ? "/proc/$pid/0"
                  : -l "/proc/$pid/fd/0" ? "/proc/$pid/fd/0"
                  : die "Cannot find fd 0 symlink in /proc/$pid";
@@ -150,38 +156,41 @@ SKIP: {
       'Reopens STDIN to /dev/null'
    );
 
-   SKIP: {
-      skip "-t is not reliable", 1;
-      rm_tmp_files();
-      system("echo foo | $cmd 5 --daemonize --pid $pid_file --log $log_file");
-      PerconaTest::wait_for_files($pid_file, $log_file);
-      chomp($pid = slurp_file($pid_file));
-      $proc_fd_0 = -l "/proc/$pid/0"    ? "/proc/$pid/0"
-               : -l "/proc/$pid/fd/0" ? "/proc/$pid/fd/0"
-               : die "Cannot find fd 0 symlink in /proc/$pid";
-      PTDEVDEBUG && PerconaTest::_d('pid_file', $pid_file,
-         'pid', $pid, 'proc_fd_0', $proc_fd_0, `ls -l $proc_fd_0`);
-      $stdin = readlink $proc_fd_0;
-      like(
-         $stdin,
-         qr/pipe/,
-         'Does not reopen STDIN to /dev/null when piped',
-      );
-      rm_tmp_files();
-   }
-};
+   PerconaTest::kill_program(pid => $pid);
+
+#   SKIP: {
+#      skip "-t is not reliable", 1;
+#      rm_tmp_files();
+#      system("echo foo | $cmd 5 --daemonize --pid $pid_file --log $log_file");
+#      PerconaTest::wait_for_files($pid_file, $log_file);
+#      chomp($pid = slurp_file($pid_file));
+#      $proc_fd_0 = -l "/proc/$pid/0"    ? "/proc/$pid/0"
+#               : -l "/proc/$pid/fd/0" ? "/proc/$pid/fd/0"
+#               : die "Cannot find fd 0 symlink in /proc/$pid";
+#      PTDEVDEBUG && PerconaTest::_d('pid_file', $pid_file,
+#         'pid', $pid, 'proc_fd_0', $proc_fd_0, `ls -l $proc_fd_0`);
+#      $stdin = readlink $proc_fd_0;
+#      like(
+#         $stdin,
+#         qr/pipe/,
+#         'Does not reopen STDIN to /dev/null when piped',
+#      );
+#      rm_tmp_files();
+#   }
+}
 
 # ##########################################################################
 # Issue 419: Daemon should check wether process with pid obtained from
 # pid-file is still running
 # ##########################################################################
 rm_tmp_files();
-system("$cmd 5 --daemonize --pid $pid_file >/dev/null 2>&1");
+system("$cmd 7 --daemonize --pid $pid_file >/dev/null 2>&1");
 PerconaTest::wait_for_files($pid_file);
-chomp($pid = slurp_file($pid_file));
+$pid = PerconaTest::get_cmd_pid("$cmd 7")
+   or die "Cannot get PID of $cmd 7";
 kill 9, $pid;
 sleep 0.25;
-$output = `ps wx | grep '^[ ]*$pid' | grep -v grep`;
+(undef, $output) = PerconaTest::get_cmd_pid("$cmd 7");
 unlike(
    $output,
    qr/daemonize/,
@@ -194,11 +203,10 @@ ok(
 
 my (undef, $tempfile) = tempfile();
 
-system("$cmd 5 --daemonize --log $log_file --pid $pid_file > $tempfile 2>&1");
+system("$cmd 6 --daemonize --log $log_file --pid $pid_file > $tempfile 2>&1");
 PerconaTest::wait_for_files($log_file, $pid_file, $tempfile);
-
-$output = `ps wx | grep '$cmd 5' | grep -v grep`;
-chomp(my $new_pid = slurp_file($pid_file));
+my $new_pid;
+($new_pid, $output) = PerconaTest::get_cmd_pid("$cmd 6");
 
 like(
    $output,
@@ -212,12 +220,14 @@ like(
    'Says that old PID is not running (issue 419)'
 );
 
-ok(
-   $pid != $new_pid,
+cmp_ok(
+   $pid,
+  '!=',
+   $new_pid,
    'Overwrites PID file with new PID (issue 419)'
 );
 
-PerconaTest::wait_until(sub { !-e $pid_file });
+PerconaTest::wait_until(sub { !-f $pid_file });
 ok(
    !-f $pid_file,
    'Re-used PID file still removed (issue 419)'
@@ -229,21 +239,17 @@ diag(`rm $tempfile >/dev/null`);
 # Check that it actually checks the running process.
 # ############################################################################
 rm_tmp_files();
-system("$cmd 20 --daemonize --log $log_file --pid $pid_file");
+system("$cmd 10 --daemonize --log $log_file --pid $pid_file");
 PerconaTest::wait_for_files($pid_file, $log_file);
 chomp($pid = slurp_file($pid_file));
-$output = `$cmd 0 --daemonize --pid $pid_file 2>&1`;
+$output = `$cmd 1 --daemonize --pid $pid_file 2>&1`;
 like(
    $output,
    qr/PID file $pid_file exists and PID $pid is running/,
    'Says that PID is running (issue 419)'
 );
 
-if ( $pid ) {
-   kill 9, $pid;
-}
-
-sleep 0.25;
+PerconaTest::kill_program(pid => $pid);
 rm_tmp_files();
 
 # #############################################################################

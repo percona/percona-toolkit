@@ -10,6 +10,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
+use IPC::Cmd qw(can_run run);
 
 use PerconaTest;
 use Percona::Toolkit;
@@ -70,7 +71,7 @@ my $bzr = can_run('bzr');
 SKIP: {
    skip "Can't run bzr, skipping tag checking", 1 unless $bzr;
    chomp(my $root = `$bzr root 2>/dev/null`);
-   skip '$trunk and bzr root differ, skipping tag checking'
+   skip '$trunk and bzr root differ, skipping tag checking', 1
       unless $root eq $trunk;
    
    my @tags          = split /\n/, `$bzr tags`;

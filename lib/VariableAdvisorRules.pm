@@ -215,6 +215,7 @@ sub get_rules {
       code => sub {
          my ( %args ) = @_;
          my $mysql_version = $args{mysql_version};
+         return 0 unless $mysql_version;
          return _var_lt($args{variables}->{innodb_max_dirty_pages_pct},
             ($mysql_version < '5.5' ? 90 : 75));
       },
