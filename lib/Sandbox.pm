@@ -397,6 +397,12 @@ sub dsn_for {
    return "h=127.1,P=$port_for{$host},u=msandbox,p=msandbox";
 }
 
+sub cnf_for {
+   my ($self, $host) = @_;
+   _check_server($host);
+   return "/tmp/" . $port_for{$host} . "/my.sandbox.cnf";
+}
+
 sub genlog {
    my ($self, $host) = @_;
    _check_server($host);
