@@ -11,6 +11,18 @@
             "ts" : "2007-12-18 11:48:27"
          },
          "fingerprint" : "update d?tuningdetail_?_? n inner join d?gonzo a using(gonzo) set n.column? = a.column?, n.word? = a.word?",
+         "histograms" : {
+            "Query_time" : [
+               0,
+               0,
+               0,
+               0,
+               0,
+               1,
+               0,
+               0
+            ]
+         },
          "metrics" : {
             "Filesort" : {
                "yes" : "0"
