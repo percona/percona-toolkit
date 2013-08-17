@@ -6,6 +6,18 @@
          "checksum" : "66825DDC008FFA89",
          "distillate" : "UPDATE db?.tuningdetail_?_? db?.gonzo",
          "fingerprint" : "update d?tuningdetail_?_? n inner join d?gonzo a using(gonzo) set n.column? = a.column?, n.word? = a.word?",
+         "histograms" : {
+            "Query_time" : [
+               0,
+               0,
+               0,
+               0,
+               0,
+               1,
+               0,
+               0
+            ]
+         },
          "metrics" : {
             "Filesort" : {
                "yes" : "0"
