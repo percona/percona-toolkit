@@ -5368,7 +5368,9 @@ sub main {
  
    $o->usage_or_errors();
 
-   if ( $o->get('interactive') || $o->get('install') ) {
+   if (    $o->get('interactive')
+        || $o->get('install')
+        || $o->get('uninstall') ) {
       $OUTPUT_AUTOFLUSH = 1 
    }
 
@@ -5408,7 +5410,7 @@ sub main {
    );
 
    # ########################################################################
-   # --install and exit.
+   # --(un)install and exit.
    # ########################################################################
    if ( $o->get('install') ) {
       $exit_on_signals = 1;
@@ -5417,6 +5419,14 @@ sub main {
          Cxn          => $cxn,
          interactive  => $o->get('interactive'),
          flags        => $o->get('install-options'),
+      );
+      return $exit_status;
+   }
+   elsif ( $o->get('uninstall') ) {
+      $exit_on_signals = 1;
+      uninstall(
+         OptionParser => $o,
+         Cxn          => $cxn,
       );
       return $exit_status;
    }
@@ -8627,6 +8637,151 @@ sub missing_perl_module_deps {
    return scalar @missing_deps;
 }
 
+# ################ #
+# --uninstall subs #
+# ################ #
+
+sub uninstall {
+   my (%args) = @_;
+   have_required_args(\%args, qw(
+      OptionParser
+      Cxn
+   )) or die;
+   my $o     = $args{OptionParser};
+   my $cxn   = $args{Cxn};
+   my $flags = $args{flags};
+   
+   if ( $EUID != 0 ) {
+      die "You must run pt-agent --uninstall as root.\n";
+   }
+
+   my $config_file = get_config_file();
+   my $lib_dir     = $o->get('lib');
+   my $spool_dir   = $o->get('spool');
+   
+   print "Uninstalling pt-agent...\n";
+
+   # Stop the agent.  This must succeed else it's not safe to remove its
+   # files and dirs while it's running.
+   my $stopped = stop_agent(
+      pid_file => $o->get('pid'),
+      lib_dir  => $o->get('lib'),
+   );
+   if ( !$stopped ) {
+      $logger->fatal("Failed to stop pt-agent.");
+   }
+
+   # Agent is stopped so now it's safe to remove all our files and dirs.
+   my @shell_cmds;
+   if ( -d $lib_dir ) {
+      push @shell_cmds, "rm -rf $lib_dir";
+   }
+   if ( -d $spool_dir ) {
+      push @shell_cmds, "rm -rf $spool_dir"
+   }
+   if ( -d "/etc/percona/agent" ) {
+      push @shell_cmds, "rm -rf /etc/percona/agent/";
+   }
+   if ( -f $config_file ) {
+      push @shell_cmds, "rm -f $config_file"
+   }
+
+   my $rm_files_ok;
+   if ( scalar @shell_cmds ) {
+      print "Are you sure you want to run these command " 
+         . "to uninstall pt-agent?\n"
+         . join("\n", map { "  $_" } @shell_cmds) . "\n";
+      while ( !$rm_files_ok ) {
+         print "Enter 'yes' to run these commands, or CTRL-C to abort: ";
+         $rm_files_ok = <STDIN>;
+         chomp($rm_files_ok) if $rm_files_ok;
+         if ( $rm_files_ok && $rm_files_ok eq 'yes' ) {
+            last;
+         }
+         else {
+            $rm_files_ok = 0;
+         }
+      }
+      # CTRL-C should prevent us from getting here, but just in case:
+      return if @shell_cmds && !$rm_files_ok;
+      foreach my $cmd ( @shell_cmds ) {
+         print "$cmd\n";
+         system($cmd);
+         if ( $CHILD_ERROR ) {
+            warn "Command failed: $cmd\n";
+            $rm_files_ok = 0;
+         }
+      }
+   }
+   else {
+      warn "ERROR: No pt-agent files or directories found.  You can ignore this "
+         . "error if the agent is not installed, or if it has already been "
+         . "removed.  Else, verify that the values in $config_file are "
+         . "correct and try again.\n";
+   }
+
+   eval {
+      $cxn->connect();
+   };
+   if ( $EVAL_ERROR ) {
+      chomp $EVAL_ERROR;
+      die "ERROR: Cannot connect to MySQL: $EVAL_ERROR\n"
+         . "Please re-run pt-agent --uninstall and specify MySQL connection "
+         . "options like --user and --host to connect to MySQL as a user "
+         . "with sufficient privileges to drop MySQL users.\n";
+   }
+
+   my $drop_mysql_user_ok;
+   eval {
+      $cxn->dbh->selectall_arrayref("SHOW GRANTS FOR 'pt_agent'\@'localhost'");
+   };
+   if ( !$EVAL_ERROR ) {
+      my $sql = "DROP USER 'pt_agent'\@'localhost'";
+      print "Are you sure you want to execute this statement " 
+         . "to remove the pt-agent MySQL user?\n$sql\n";
+      while ( !$drop_mysql_user_ok ) {
+         print "Enter 'yes' to execute this statment, or CTRL-C to abort: ";
+         $drop_mysql_user_ok = <STDIN>;
+         chomp($drop_mysql_user_ok) if $drop_mysql_user_ok;
+         if ( $drop_mysql_user_ok && $drop_mysql_user_ok eq 'yes' ) {
+            last;
+         }
+         else {
+            $drop_mysql_user_ok = 0;
+         }
+      }
+      # CTRL-C should prevent us from getting here, but just in case:
+      return unless $drop_mysql_user_ok;
+      eval {
+         $cxn->dbh->do($sql);
+      };
+      if ( $EVAL_ERROR ) {
+         warn "Error dropping the pt-agent MySQL user: $EVAL_ERROR";
+         $drop_mysql_user_ok = 0;
+      }
+   }
+   else {
+      warn "ERROR: No pt-agent MySQL user found.  You can ignore this "
+         . "error if the agent is not installed, or if it has already been "
+         . "removed.  Else, verify that the values in $config_file are "
+         . "correct and try again.\n";
+   }
+
+   print "\n";
+   if ( $rm_files_ok && $drop_mysql_user_ok ) {
+      print "pt-agent and all its data has been removed from this server, "
+      . "but the agent and any data it sent has not been deleted from "
+      . "Percona Cloud Tools.  Go to https://cloud.percona.com/agents "
+      . "to delete the agent.\n";
+   }
+   else {
+      warn "Uninstalling pt-agent failed.  See previous output for errors "
+         . "and try again.  Contact Percona if you need help.\n";
+   }
+
+   return
+}
+
 # ################## #
 # Misc and util subs #
 # ################## #
@@ -9215,6 +9370,11 @@ Print the status of pt-agent.
 =item --stop
 
 Stop pt-agent and all services.
+
+=item --uninstall
+
+Completely remove pt-agent and all its data from the server.  This does not
+delete the agent from https://cloud.percona.com.
 
 =item --user
 
