@@ -5428,6 +5428,12 @@ sub main {
       $logger->fatal("Missing required Perl modules");
    }
 
+   # Check that LWP is new enough
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1226721
+   if ( $LWP::VERSION < '5.813' ) {
+      die "Perl module LWP v5.813 or newer is required; v$LWP::VERSION is installed.  Please upgrade LWP on this server.\n"
+   }
+
    # ########################################################################
    # Nothing works without an API key.
    # ########################################################################
@@ -8341,6 +8347,12 @@ sub install {
    $next_step->();
    exit 1 if missing_perl_module_deps();
 
+   # Check that LWP is new enough
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1226721
+   if ( $LWP::VERSION < '5.813' ) {
+      die "LWP v5.813 or newer is required; v$LWP::VERSION is installed.  Please upgrade LWP on this server and try again.\n"
+   }
+
    # Check for crontab
    $next_step->();
    my $crontab = `which crontab 2>/dev/null`;
@@ -9310,7 +9322,7 @@ pt-agent requires:
 
 =item * JSON Perl module
 
-=item * LWP Perl module
+=item * LWP (>= v5.813) Perl module
 
 =item * IO::Socket::SSL Perl module
 
