@@ -10,6 +10,18 @@
             "ts" : null
          },
          "fingerprint" : "select min(id),max(id) from tbl",
+         "histograms" : {
+            "Query_time" : [
+               0,
+               0,
+               0,
+               0,
+               1,
+               0,
+               0,
+               0
+            ]
+         },
          "metrics" : {
             "Lock_time" : {
                "avg" : "0.009453",
