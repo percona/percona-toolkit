@@ -7028,7 +7028,7 @@ sub run_service {
       );
    }
    else {
-      $logger->warning("File logging only");
+      $logger->info("File logging only");
    }
 
    # Load the Service object from local service JSON file.
