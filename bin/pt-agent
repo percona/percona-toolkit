@@ -5777,7 +5777,16 @@ sub init_agent {
          );
       };
       if ( $EVAL_ERROR ) {
-         $logger->warning($EVAL_ERROR);
+         my $code = $client->response->code;
+         if ( $code && $code == 404 ) {
+            $logger->fatal("API reports agent not found: the agent has been "
+               . "deleted, or its UUID (" . ($agent->uuid || '?')
+               . "is wrong.  Check https://cloud.percona.com/agents for a "
+               . "list of active agents.");
+         }
+         else {
+            $logger->warning($EVAL_ERROR);
+         }
       }
       elsif ( !$agent_uri ) {
          $logger->info("No URI for Agent " . $agent->name);
