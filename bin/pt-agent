@@ -5523,6 +5523,7 @@ sub main {
    if ( my $service = $o->get('run-service') ) {
       eval {
          run_service(
+            agent_api => $o->get('agent-api'),
             api_key   => $api_key,
             service   => $service,
             lib_dir   => $o->get('lib'),
@@ -6227,8 +6228,13 @@ sub get_config {
       if (blessed($e)) {
          if ($e->isa('Percona::WebAPI::Exception::Request')) {
             if ( $e->status == 404 ) {
-               $logger->info('Agent ' . $agent->name. ' is not configured.')
-                  unless $quiet;
+               stop_all_services(
+                  lib_dir => $lib_dir,
+               );
+               $logger->fatal("API reports agent not found: the agent has been "
+                  . "deleted, or its UUID (" . ($agent->uuid || '?') . ") "
+                  . "is wrong.  Check https://cloud.percona.com/agents for a "
+                  . "list of active agents.");
             }
             else {
                $logger->info("$e");  # API error?
@@ -6948,6 +6954,7 @@ sub run_service {
 
    # Optional args
    my $bin_dir     = defined $args{bin_dir} ? $args{bin_dir} : "$FindBin::Bin/";
+   my $agent_api   = $args{agent_api};
    my $client      = $args{client};               # for testing
    my $agent       = $args{agent};                # for testing
    my $entry_links = $args{entry_links};          # for testing
@@ -6977,7 +6984,7 @@ sub run_service {
 
    # Connect to Percona, get entry links.
    my $logger_client;
-   if ( !$client || !$entry_links ) {
+   if ( $agent_api && (!$client || !$entry_links) ) {
       ($client, $entry_links, $logger_client) = get_api_client(
          api_key  => $api_key,
          tries    => 2,
@@ -7003,7 +7010,7 @@ sub run_service {
       }
    }
 
-   if ( $entry_links && $entry_links->{agents} ) {
+   if ( $agent_api && $entry_links && $entry_links->{agents} ) {
       $agent = eval {
          $client->get(
             link => $entry_links->{agents} . '/' . $agent->uuid,
@@ -8025,7 +8032,7 @@ sub stop_all_services {
          my $stop_log = "$lib_dir/logs/$service.stop";
          my $run_log  = "$lib_dir/logs/$service.run";
          my $cmd      = ($env_vars ? "$env_vars " : '')
-                      . "${bin_dir}pt-agent --run-service $service"
+                      . "${bin_dir}pt-agent --run-service $service --no-agent-api"
                       . " </dev/null"
                       . " >$stop_log 2>&1";
          $logger->info("Stopping $service...");
@@ -9155,6 +9162,13 @@ L<"--run-service"> and L<"--send-data"> are mutually exclusive.
 L<"--status">, L<"--stop">, and L<"--reset"> are mutually exclusive.
 
 =over
+
+=item --[no]agent-api
+
+default: yes
+
+Enable the agent API; do not use this option manually.  This option is used
+internally to allow the agent to stop itself and shutdown quickly.
 
 =item --agent-uuid
 
