@@ -5780,7 +5780,7 @@ sub init_agent {
          my $code = $client->response->code;
          if ( $code && $code == 404 ) {
             $logger->fatal("API reports agent not found: the agent has been "
-               . "deleted, or its UUID (" . ($agent->uuid || '?')
+               . "deleted, or its UUID (" . ($agent->uuid || '?') . ") "
                . "is wrong.  Check https://cloud.percona.com/agents for a "
                . "list of active agents.");
          }
