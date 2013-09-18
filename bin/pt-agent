@@ -5891,26 +5891,24 @@ sub start_agent {
    $logger->info('Starting agent');
 
    # Daemonize first so all output goes to the --log.
-   my $daemon;
-   if ( $daemonize ) {
-      $daemon = Daemon->new(
-         daemonize   => $daemonize,
-         pid_file    => $pid_file,
-         log_file    => $log_file,
-         parent_exit => sub {
-            my $child_pid = shift;
-            print "pt-agent has daemonized and is running as PID $child_pid:
+   my $daemon = Daemon->new(
+      daemonize   => $daemonize,
+      pid_file    => $pid_file,
+      log_file    => $log_file,
+      parent_exit => sub {
+         my $child_pid = shift;
+         print "pt-agent has daemonized and is running as PID $child_pid:
 
-     --lib " . ($lib_dir  || '') . "
-     --log " . ($log_file || '') . "
-     --pid " . ($pid_file || '') . "
+  --lib " . ($lib_dir  || '') . "
+  --log " . ($log_file || '') . "
+  --pid " . ($pid_file || '') . "
 
 These values can change if a different configuration is received.
 ",
-         }
-      );
-      $daemon->run();
-
+      }
+   );
+   $daemon->run();
+   if ( $daemonize ) {
       # If we daemonized, the parent has already exited and we're the child.
       # We shared a copy of every Cxn with the parent, and the parent's copies
       # were destroyed but the dbhs were not disconnected because the parent
