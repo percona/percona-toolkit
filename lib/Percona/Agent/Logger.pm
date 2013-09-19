@@ -127,9 +127,6 @@ sub start_online_logging {
    my $read_timeout = $args{read_timeout} || 3;
 
    return unless $self->online_logging;
-   
-   $self->info("Starting online logging.  No more log entries will be printed here.  "
-      . "Agent logs are accessible through the web interface.");
 
    my $pid = open(my $pipe_write, "|-");
 
