@@ -965,6 +965,23 @@ sub get {
    return $resource_objects;
 }
 
+sub head {
+   my ($self, %args) = @_;
+
+   have_required_args(\%args, qw(
+      link
+   )) or die;
+   my ($link) = $args{link};
+
+   eval {
+      $self->_request(
+         method => 'HEAD',
+         link   => $link,
+      );
+   };
+   return $EVAL_ERROR;
+}
+
 sub post {
    my $self = shift;
    $self->_set(
@@ -1565,7 +1582,7 @@ use FindBin qw();
 
 eval {
    require Percona::Toolkit;
-   require HTTPMicro;
+   require HTTP::Micro;
 };
 
 {
@@ -1796,7 +1813,7 @@ sub pingback {
    my $url       = $args{url};
    my $instances = $args{instances};
 
-   my $ua = $args{ua} || HTTPMicro->new( timeout => 3 );
+   my $ua = $args{ua} || HTTP::Micro->new( timeout => 3 );
 
    my $response = $ua->request('GET', $url);
    PTDEBUG && _d('Server response:', Dumper($response));
@@ -5781,10 +5798,22 @@ sub init_agent {
       if ( $EVAL_ERROR ) {
          my $code = $client->response->code;
          if ( $code && $code == 404 ) {
-            $logger->fatal("API reports agent not found: the agent has been "
-               . "deleted, or its UUID (" . ($agent->uuid || '?') . ") "
-               . "is wrong.  Check https://cloud.percona.com/agents for a "
-               . "list of active agents.");
+            my $agents_link = $client->entry_link . '/agents';
+            $agents_link =~ s!/{2,}!/!g;  # //agents doesn't work
+            my $api_ok = eval {
+               $client->head(
+                  link => $agents_link,
+               );
+            };
+            if ( $api_ok ) {
+               $logger->fatal("API reports agent not found: the agent has been "
+                  . "deleted, or its UUID (" . ($agent->uuid || '?') . ") "
+                  . "is wrong.  Check https://cloud.percona.com/agents for a "
+                  . "list of active agents.");
+            }
+            else {
+               $logger->warning("API is down.");
+            }
          }
          else {
             $logger->warning($EVAL_ERROR);
@@ -6238,13 +6267,25 @@ sub get_config {
       if (blessed($e)) {
          if ($e->isa('Percona::WebAPI::Exception::Request')) {
             if ( $e->status == 404 ) {
-               stop_all_services(
-                  lib_dir => $lib_dir,
-               );
-               $logger->fatal("API reports agent not found: the agent has been "
-                  . "deleted, or its UUID (" . ($agent->uuid || '?') . ") "
-                  . "is wrong.  Check https://cloud.percona.com/agents for a "
-                  . "list of active agents.");
+               my $agents_link = $client->entry_link . '/agents';
+               $agents_link =~ s!/{2,}!/!g;  # //agents doesn't work
+               my $api_ok = eval {
+                  $client->head(
+                     link => $agents_link,
+                  );
+               };
+               if ( $api_ok ) {
+                  stop_all_services(
+                     lib_dir => $lib_dir,
+                  );
+                  $logger->fatal("API reports agent not found: the agent has been "
+                     . "deleted, or its UUID (" . ($agent->uuid || '?') . ") "
+                     . "is wrong.  Check https://cloud.percona.com/agents for a "
+                     . "list of active agents.");
+               }
+               else {
+                  $logger->warning("API is down.  Will try again later.");
+               }
             }
             else {
                $logger->info("$e");  # API error?
