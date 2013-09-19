@@ -5094,30 +5094,31 @@ sub level_name {
 
 sub debug {
    my $self = shift;
-   return $self->_log('DEBUG', @_);
+   return if $self->online_logging;
+   return $self->_log(0, 'DEBUG', 1, @_);
 }
 
 sub info {
    my $self = shift;
-   return $self->_log('INFO', @_);
+   return $self->_log(1, 'INFO', @_);
 }
 
 sub warning {
    my $self = shift;
    $self->_set_exit_status();
-   return $self->_log('WARNING', @_);
+   return $self->_log(1, 'WARNING', @_);
 }
 
 sub error {
    my $self = shift;
    $self->_set_exit_status();
-   return $self->_log('ERROR', @_);
+   return $self->_log(1, 'ERROR', @_);
 }
 
 sub fatal {
    my $self = shift;
    $self->_set_exit_status();
-   $self->_log('FATAL', @_);
+   $self->_log(1, 'FATAL', @_);
    exit $self->exit_status;
 }
 
@@ -5130,7 +5131,7 @@ sub _set_exit_status {
 }
 
 sub _log {
-   my ($self, $level, $msg) = @_;
+   my ($self, $online, $level, $msg, $offline) = @_;
 
    my $ts = ts(time, 1);  # 1=UTC
    my $level_number = level_number($level);
@@ -5141,14 +5142,14 @@ sub _log {
    my $n_lines = 1;
    $n_lines++ while $msg =~ m/\n/g;
 
-   if ( $self->online_logging_enabled ) {
+   if ( $online && $self->online_logging_enabled ) {
       while ( defined(my $log_entry = shift @{$self->_buffer}) ) {
          $self->_queue_log_entry(@$log_entry);
       }
       $self->_queue_log_entry($ts, $level_number, $n_lines, $msg);
    }
    else {
-      if ( $self->online_logging ) {
+      if ( $online && $self->online_logging ) {
          push @{$self->_buffer}, [$ts, $level_number, $n_lines, $msg];
       }
 
@@ -6239,7 +6240,7 @@ sub get_config {
    my $success = 0;
    my $new_daemon;
 
-   $logger->info('Getting config') unless $quiet;
+   $logger->debug('Getting agent config') unless $quiet;
    my $new_config = eval {
       $client->get(
          link => $link,
@@ -6262,26 +6263,30 @@ sub get_config {
                      . "list of active agents.");
                }
                else {
-                  $logger->warning("API is down.  Will try again later.");
+                  # offline warning
+                  $logger->_log(0, 'WARNING', "Cannot get agent config: API is down.  "
+                        . "Will try again.");
                }
             }
             else {
-               $logger->info("$e");  # API error?
+               # offline warning
+               $logger->_log(0, 'WARNING', "Cannot get agent config: API error: $e.  "
+                  . "Will try again.")
             }
          }
          elsif ($e->isa('Percona::WebAPI::Exception::Resource')) {
-            $logger->warning("$e");
+            $logger->error("Invalid agent config: $e");
          }
       }
       else {
-         $logger->error($e);  # internal error
+         $logger->error("Internal error getting agent config: $e");
       }
    }
    else {
       eval {
          if ( !$quiet ) {
-            $logger->info("Running config: " . ($config ? $config->ts : ''));
-            $logger->info("Current config: " . $new_config->ts);
+            $logger->debug("Running config: " . ($config ? $config->ts : ''));
+            $logger->debug("Current config: " . $new_config->ts);
          }
          if ( !$config || $new_config->ts > $config->ts ) {
             ($lib_dir, $new_daemon) = apply_config(
@@ -6297,7 +6302,7 @@ sub get_config {
          }
          else {
             $success = 1;
-            $logger->info('Config has not changed') unless $quiet;
+            $logger->debug('Config has not changed') unless $quiet;
          }
       };
       if ( $EVAL_ERROR ) {
@@ -6327,7 +6332,7 @@ sub apply_config {
    # Optional args
    my $old_config = $args{old_config};
 
-   $logger->info('Applying config ' . $new_config->ts);
+   $logger->debug('Applying config ' . $new_config->ts);
 
    # If the --lib dir has changed, init the new one and re-write
    # the Agent resource in it.
@@ -6475,7 +6480,7 @@ sub get_services {
    my $success = 0;
 
    eval {
-      $logger->info('Getting services');
+      $logger->debug('Getting services');
       my $curr_services = $client->get(
          link => $link,
       );
@@ -6485,7 +6490,7 @@ sub get_services {
             . "expected a list of services");
       }
       elsif ( !scalar @$curr_services && !scalar keys %$prev_services ) {
-         $logger->warning("No services are enabled for this agent");
+         $logger->debug("No services are enabled for this agent");
 
          # Remove these state that no longer matter if there are no services.
          if ( $state->{mysql_restarted} ) {
@@ -6603,7 +6608,7 @@ sub get_services {
             $logger->info('Service changes applied successfully');
          }
          else {
-            $logger->info('Services have not changed');
+            $logger->debug('Services have not changed');
          }
          # TODO: probably shouldn't keep re-assigning this unless necessary
          $prev_services = $sorted_services->{services};
@@ -7020,7 +7025,8 @@ sub run_service {
          interval => sub { return 2; },
       );
       if ( !$client || !$entry_links ) {
-         $logger->info("Failed to connect to Percona Web API");
+         # offline warning
+         $logger->_log(0, 'WARNING', "Failed to connect to Percona Web API");
       }
    }
 
@@ -7060,7 +7066,7 @@ sub run_service {
       }
    }
    else {
-      $logger->info("File logging only");
+      $logger->_log(0, 'INFO', "File logging only");
    }
 
    # Load the Service object from local service JSON file.
@@ -7089,15 +7095,17 @@ sub run_service {
    );
 
    # Connect to MySQL or quit.
+   my $last_error;
    if ( $use_mysql ) {
-      $logger->info("Connecting to MySQL");
+      $logger->debug("Connecting to MySQL");
       TRY:
       for ( 1..2 ) {
          eval {
             $cxn->connect();
          };
-         if ( $EVAL_ERROR ) {
-            $logger->info("Cannot connect to MySQL: $EVAL_ERROR");
+         if ( my $e = $EVAL_ERROR ) {
+            $logger->debug("Cannot connect to MySQL: $e");
+            $last_error = $e;
             sleep(3);
             next TRY;
          }
@@ -7105,7 +7113,7 @@ sub run_service {
       }
       if ( !$cxn->dbh ) {
          $logger->error("Cannot run " . $service->name . " because it requires "
-             . "MySQL but failed to connect to MySQL");
+             . "MySQL but failed to connect to MySQL: " . ($last_error || '(no error)'));
          return;
       }
    }
@@ -7122,8 +7130,6 @@ sub run_service {
 
    TASK:
    foreach my $task ( @$tasks ) {
-      PTDEBUG && _d("Task $taskno:", $task->name);
-
       # Set up the output file, i.e. where this run puts its results.
       # Runs can access each other's output files.  E.g. run0 may
       # write to fileX, then subsequent tasks can access that file
@@ -7203,7 +7209,7 @@ sub run_service {
             bin_dir      => $bin_dir,        # __BIN_DIR__
             env          => $env_vars,       # __ENV__
          );
-         $logger->info("Task $taskno query: $query");
+         $logger->info("Task: " . $task->name . " query: $query");
          my $rows;
          my $t0 = time;
          eval {
@@ -7220,7 +7226,7 @@ sub run_service {
          }
 
          if ( $rows ) {
-            $logger->info('Query returned ' . scalar @$rows . ' rows');
+            $logger->debug('Query returned ' . scalar @$rows . ' rows');
             if ( $join_char ) {
                my $fh;
                if ( !open($fh, '>', $output_file) ) {
@@ -7270,7 +7276,7 @@ sub run_service {
             bin_dir      => $bin_dir,        # __BIN_DIR__
             env          => $env_vars,       # __ENV__
          );
-         $logger->info("Task $taskno command: $cmd");
+         $logger->debug("Task $taskno command: $cmd");
 
          if ( $cmd =~ m/$recursive_service/ ) {
             $logger->fatal("Recursive service detected: $cmd");
@@ -7286,14 +7292,15 @@ sub run_service {
             $store->{$store_key} = $value;
          }
          my $t1 = time;
+         my $run_time = sprintf('%.6f', $t1 - $t0);
          my $cmd_exit_status = $CHILD_ERROR >> 8;
-         $logger->info("Task $taskno: exit $cmd_exit_status");
+         $logger->info("Task: " . $task->name . " command: $cmd runtime: $run_time exit: $cmd_exit_status");
          $exit_status |= $cmd_exit_status;
 
          push @{$metadata->{tasks}}, {
             start_ts    => ts($t0, 1),
             end_ts      => ts($t1, 1),
-            run_time    => sprintf('%.6f', $t1 - $t0),
+            run_time    => $run_time,
             exit_status => $cmd_exit_status,
          };
 
@@ -7335,7 +7342,7 @@ sub run_service {
    # Move the spool file from --spool/.tmp/ to --spool/<service>/
    # if 1) the service spools data and 2) there is data.
    my $file_size = (-s $tmp_data_file) || 0;
-   $logger->info("$tmp_data_file size: " . ($file_size || 0) . " bytes");
+   $logger->debug("$tmp_data_file size: " . ($file_size || 0) . " bytes");
    if ( $file_size > $max_data ) {
       $logger->error("Data file is larger than $max_data, the service "
          . "may be malfunctioning, stopping service");
@@ -7372,7 +7379,7 @@ sub run_service {
       # the same filesystem is pretty much guaranteed to do an optimized,
       # i.e. quasi-atomic, move.
       my $cmd = "mv $tmp_data_file $data_dir";
-      $logger->info($cmd);
+      $logger->debug($cmd);
       system($cmd);
       my $cmd_exit_status = $CHILD_ERROR >> 8;
       if ( $cmd_exit_status != 0 ) {
@@ -7593,7 +7600,25 @@ sub send_data {
    );
    $daemon->run();
 
-   $logger->info("Sending $service data");
+   $logger->service("$service sending");
+
+   # Load the Service object from local service JSON file.
+   # $service changes from a string scalar to a Service object.
+   $service = load_service(
+      service => $service,
+      lib_dir => $lib_dir,
+   );
+
+   my ($service_dir) = init_spool_dir(
+      spool_dir => $spool_dir,
+      service   => $service->name,
+   );
+
+   my @data_files = glob "$service_dir/*.data";
+   if ( scalar @data_files == 0 ) {
+      $logger->debug("No $service data files to send");
+      return;
+   }
 
    # Connect to Percona, get entry links.
    my $logger_client;
@@ -7632,30 +7657,19 @@ sub send_data {
       $logger->fatal("Failed to get the agent: $EVAL_ERROR");
    }
    my $log_link = $agent->links->{log};
-   $logger->service("$service sending");
-   $logger->start_online_logging(
-      client   => $logger_client,
-      log_link => $log_link,
-   );
-
-   # Load the Service object from local service JSON file.
-   # $service changes from a string scalar to a Service object.
-   $service = load_service(
-      service => $service,
-      lib_dir => $lib_dir,
-   );
-
-   my ($service_dir) = init_spool_dir(
-      spool_dir => $spool_dir,
-      service   => $service->name,
-   );
+   if ( $log_link ) {
+      $logger->start_online_logging(
+         client   => $logger_client,
+         log_link => $log_link,
+      );
+   }
 
    # Send data files in the service's spool dir.
    # Only iterator over data files because run_service() writes
    # them last to avoid a race condition with us.  See the code
    # comment about writing the .meta file first in run_service().
-   my @data_files = glob "$service_dir/*.data";
-   $logger->info('Sending ' . scalar @data_files . ' data files');
+   my $data_link  = $service->links->{data};
+   $logger->debug('Sending ' . scalar @data_files . " $service data files to $data_link");
    DATA_FILE:
    foreach my $data_file ( @data_files ) {
       (my $meta_file = $data_file) =~ s/\.data/.meta/;
@@ -7698,7 +7712,7 @@ sub send_data {
             agent     => $agent,
             meta_file => $meta_file,
             data_file => $data_file,
-            link      => $service->links->{data},
+            link      => $data_link,
             json      => $json,
          );
       };
@@ -7734,7 +7748,7 @@ sub send_data {
          unlink $meta_file or $logger->warning($OS_ERROR);
       }
 
-      $logger->info("Sent and removed $data_file");
+      $logger->info("Sent and removed $data_file ($data_file_size bytes)");
    }
 
    return;
@@ -7758,9 +7772,6 @@ sub send_file {
    # Optional args
    my $meta_file = $args{meta_file};
    my $json      = $args{json};  # for testing
-
-   my $data_file_size = -s $data_file;
-   $logger->info("Sending $data_file ($data_file_size bytes) to $link");
 
    # Create a multi-part resource: first the Agent, so Percona knows
    # from whom the sample data is coming, then metadata about the sample,
@@ -8846,7 +8857,7 @@ sub save_agent {
    my $agent   = $args{agent};
    my $lib_dir = $args{lib_dir};
    my $file    = $lib_dir . '/agent';
-   $logger->info("Saving Agent to $file");
+   $logger->debug("Saving Agent to $file");
    eval {
       open my $fh, '>', $file
          or die "Error opening $file: $OS_ERROR";
@@ -8906,13 +8917,13 @@ sub get_versions {
 
    my $have_mysql = 0;
    if ( $cxn ) {
-      $logger->info("Connecting to MySQL");
+      $logger->debug("Connecting to MySQL");
       foreach my $tryno ( 1..$tries ) {
          eval {
             $cxn->connect();
          };
          if ( $EVAL_ERROR ) {
-            $logger->warning("Cannot connect to MySQL: $EVAL_ERROR");
+            $logger->debug("Cannot connect to MySQL: $EVAL_ERROR");
          }
          else {
             $have_mysql = 1;
@@ -9026,7 +9037,7 @@ sub check_if_mysql_restarted {
    my $margin = $args{margin} || 5;
 
    if ( !$uptime ) {
-      $logger->info("Connecting to MySQL");
+      $logger->debug("Connecting to MySQL");
       my $t0 = time;
       my $e;
       my $tries      = 2;
@@ -9065,17 +9076,19 @@ sub check_if_mysql_restarted {
    my $now = int(time);
 
    if ( !$state->{last_uptime} || !$state->{last_uptime_check} ) {
-      $logger->info("MySQL uptime: $uptime");
+      $logger->debug("MySQL uptime: $uptime");
       delete $state->{mysql_restarted};
    }
    elsif ( !$state->{mysql_restarted} ) {
       my $elapsed_time     = $now - $state->{last_uptime_check};
       my $exepected_uptime = $state->{last_uptime} + $elapsed_time;
       my $mysql_restarted  = $uptime > ($exepected_uptime - $margin) && $uptime < ($exepected_uptime + $margin) ? 0 : 1;
-      $logger->info("MySQL uptime check: last=$state->{last_uptime} elapsed=$elapsed_time expected=$exepected_uptime "
+      $logger->debug("MySQL uptime check: last=$state->{last_uptime} elapsed=$elapsed_time expected=$exepected_uptime "
          . "+/- ${margin}s actual=$uptime");
       if ( $mysql_restarted ) {
-         $logger->warning("MySQL restarted");
+         $logger->warning("MySQL restarted: last=$state->{last_uptime} "
+            . "elapsed=$elapsed_time expected=$exepected_uptime "
+            . "+/- ${margin}s actual=$uptime");
          $state->{mysql_restarted} = ts(time, 1);  # 1=UTC
       }
    }
