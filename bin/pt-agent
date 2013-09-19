@@ -965,23 +965,6 @@ sub get {
    return $resource_objects;
 }
 
-sub head {
-   my ($self, %args) = @_;
-
-   have_required_args(\%args, qw(
-      link
-   )) or die;
-   my ($link) = $args{link};
-
-   eval {
-      $self->_request(
-         method => 'HEAD',
-         link   => $link,
-      );
-   };
-   return $EVAL_ERROR;
-}
-
 sub post {
    my $self = shift;
    $self->_set(
@@ -5798,13 +5781,9 @@ sub init_agent {
       if ( $EVAL_ERROR ) {
          my $code = $client->response->code;
          if ( $code && $code == 404 ) {
-            my $agents_link = $client->entry_link . '/agents';
-            $agents_link =~ s!/{2,}!/!g;  # //agents doesn't work
-            my $api_ok = eval {
-               $client->head(
-                  link => $agents_link,
-               );
-            };
+            my $api_ok = ping_api(
+               client => $client,
+            );
             if ( $api_ok ) {
                $logger->fatal("API reports agent not found: the agent has been "
                   . "deleted, or its UUID (" . ($agent->uuid || '?') . ") "
@@ -6267,13 +6246,9 @@ sub get_config {
       if (blessed($e)) {
          if ($e->isa('Percona::WebAPI::Exception::Request')) {
             if ( $e->status == 404 ) {
-               my $agents_link = $client->entry_link . '/agents';
-               $agents_link =~ s!/{2,}!/!g;  # //agents doesn't work
-               my $api_ok = eval {
-                  $client->head(
-                     link => $agents_link,
-                  );
-               };
+               my $api_ok = ping_api(
+                  client => $client,
+               );
                if ( $api_ok ) {
                   stop_all_services(
                      lib_dir => $lib_dir,
@@ -9115,6 +9090,22 @@ sub too_many_agents {
    return unless -d "$lib_dir/pids";
    my @pids = glob "$lib_dir/pids/*";
    return scalar @pids > 10 ? 1 : 0;
+}
+
+sub ping_api {
+   my (%args) = @_;
+   have_required_args(\%args, qw(
+      client
+   )) or die;
+   my $client = $args{client};
+   my $ping_link = $client->entry_link . '/ping';
+   $ping_link =~ s!/{2,}!/!g;  # //agents doesn't work
+   eval {
+      $client->get(
+         link => $ping_link,
+      );
+   };
+   return $EVAL_ERROR ? 0 : 1;
 }
 
 sub _logger {
