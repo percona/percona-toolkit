@@ -159,6 +159,23 @@ sub get {
    return $resource_objects;
 }
 
+sub head {
+   my ($self, %args) = @_;
+
+   have_required_args(\%args, qw(
+      link
+   )) or die;
+   my ($link) = $args{link};
+
+   eval {
+      $self->_request(
+         method => 'HEAD',
+         link   => $link,
+      );
+   };
+   return $EVAL_ERROR;
+}
+
 # For a successful POST, the server sets the Location header with
 # the URI of the newly created resource.
 sub post {
