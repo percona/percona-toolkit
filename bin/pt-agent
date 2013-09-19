@@ -5814,7 +5814,13 @@ sub init_agent {
       }
    }
 
-   $logger->info("Agent " . $agent->name . " (" . $agent->uuid . ") is ready");
+   if ( $agent && $success ) {
+      $logger->info("Agent " . $agent->name . " (" . $agent->uuid . ") is ready");
+   }
+   else {
+      $logger->warning("Failed to initialize the agent.  The API may be down.  Please try again.");
+   }
+
    return $agent, $success;
 }
 
