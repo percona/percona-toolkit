@@ -4975,9 +4975,6 @@ sub start_online_logging {
    my $read_timeout = $args{read_timeout} || 3;
 
    return unless $self->online_logging;
-   
-   $self->info("Starting online logging.  No more log entries will be printed here.  "
-      . "Agent logs are accessible through the web interface.");
 
    my $pid = open(my $pipe_write, "|-");
 
@@ -5534,10 +5531,10 @@ sub main {
             spool_dir => $o->get('spool'),
             Cxn       => $cxn,
          );
-         $logger->info("Service: $service exit: $exit_status");
+         $logger->info("Run: $service exit: $exit_status");
       };
       if ( $EVAL_ERROR ) {
-         $logger->fatal("Error running service $service: $EVAL_ERROR");
+         $logger->fatal("--run-service $service error: $EVAL_ERROR");
       }
       return $exit_status;
    }
@@ -5554,10 +5551,10 @@ sub main {
             spool_dir   => $o->get('spool'),
             interactive => $o->get('interactive'),
          );
-         $logger->info("Done sending data for $service, exit $exit_status");
+         $logger->info("Send: $service exit: $exit_status");
       };
       if ( $EVAL_ERROR ) {
-         $logger->fatal("Error running sending $service data: $EVAL_ERROR");
+         $logger->fatal("--send-data $service error: $EVAL_ERROR");
       }
       return $exit_status;
    }
@@ -5666,25 +5663,24 @@ sub get_api_client {
    my $entry_links;
    while ( $_oktorun->() && (!defined $tries || $tries--) ) {
       if ( !$state->{connecting_to_api}++ ) {
-         $logger->info("Connecting to Percona Web API")  # once
+         $logger->debug("Connecting to Percona Web API")  # once
       }
-
       eval {
          $entry_links = $client->get(link => $client->entry_link);
       };
       if ( $EVAL_ERROR ) {
-         $logger->info($EVAL_ERROR);
+         $logger->warning("API error: $EVAL_ERROR");
       }
       elsif (
          !$entry_links
          || (ref($entry_links) || '') ne 'HASH'
          || !scalar keys %$entry_links
       ) {
-         $logger->info('Connected, but did not receive valid entry links: '
+         $logger->warning('API returned invalid entry links: '
             . Dumper($entry_links));
       }
       elsif ( !$entry_links->{agents} ) {
-         $logger->info('Connected, but did not receive agents link: '
+         $logger->warning('API did not return agents link: '
             . Dumper($entry_links));
       }
       else {
@@ -6040,6 +6036,7 @@ These values can change if a different configuration is received.
          client   => $logger_client,
          log_link => $agent->links->{log},
       );
+      $logger->debug("Log API enabled");
    }
 
    save_agent(
@@ -6701,7 +6698,7 @@ sub write_services {
 
    $lib_dir .= '/services';
 
-   $logger->info("Writing services to $lib_dir");
+   $logger->debug("Writing services to $lib_dir");
 
    # Save current, active services.
    foreach my $service (
@@ -7063,6 +7060,7 @@ sub run_service {
             client   => $logger_client,
             log_link => $log_link,
          );
+         $logger->debug("Log API enabled");
       }
    }
    else {
@@ -7662,6 +7660,7 @@ sub send_data {
          client   => $logger_client,
          log_link => $log_link,
       );
+      $logger->debug("Log API enabled");
    }
 
    # Send data files in the service's spool dir.
@@ -7669,7 +7668,7 @@ sub send_data {
    # them last to avoid a race condition with us.  See the code
    # comment about writing the .meta file first in run_service().
    my $data_link  = $service->links->{data};
-   $logger->debug('Sending ' . scalar @data_files . " $service data files to $data_link");
+   $logger->info('Sending ' . scalar @data_files . " $service data files to $data_link");
    DATA_FILE:
    foreach my $data_file ( @data_files ) {
       (my $meta_file = $data_file) =~ s/\.data/.meta/;
@@ -7748,7 +7747,7 @@ sub send_data {
          unlink $meta_file or $logger->warning($OS_ERROR);
       }
 
-      $logger->info("Sent and removed $data_file ($data_file_size bytes)");
+      $logger->info("Sent: $data_file ($data_file_size bytes)");
    }
 
    return;
