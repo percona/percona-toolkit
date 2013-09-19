@@ -9099,7 +9099,7 @@ sub ping_api {
    )) or die;
    my $client = $args{client};
    my $ping_link = $client->entry_link . '/ping';
-   $ping_link =~ s!/{2,}!/!g;  # //agents doesn't work
+   $ping_link =~ s!//ping!/ping!g;  # //ping doesn't work
    eval {
       $client->get(
          link => $ping_link,
