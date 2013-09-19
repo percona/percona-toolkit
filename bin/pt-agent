@@ -5748,17 +5748,18 @@ sub init_agent {
       action
       link
       client
+      tries
       interval
    )) or die;
    my $agent    = $args{agent};
    my $action   = $args{action};
    my $link     = $args{link};
    my $client   = $args{client};
+   my $tries    = $args{tries};
    my $interval = $args{interval};
 
    # Optional args
    my $_oktorun = $args{oktorun} || sub { return $oktorun };
-   my $tries    = $args{tries};
    my $actions  = $args{actions};
 
    # Update these attribs every time the agent is initialized.
@@ -5769,7 +5770,7 @@ sub init_agent {
 
    # Try to create/update the Agent.
    my $success = 0;
-   while ( $_oktorun->() && (!defined $tries || $tries--) ) {
+   while ( $_oktorun->() && $tries-- ) {
       $logger->info($action eq 'put' ? "Updating agent " . $agent->name
                              : "Creating new agent");
       my $agent_uri = eval {
@@ -5818,7 +5819,7 @@ sub init_agent {
             last;  # success
          }
       }
-      if ( !defined $tries || $tries ) {
+      if ( $tries > 0 ) {
          $interval->();  # failure, try again
       }
    }
@@ -6019,8 +6020,8 @@ These values can change if a different configuration is received.
       action   => $action,      # put or post
       link     => $link,
       client   => $client,
-      tries    => $tries,       # optional
-      interval => $interval,    # optional
+      tries    => $tries,
+      interval => $interval,
       oktorun  => $_oktorun,    # optional
    );
    if ( !$success ) {
@@ -7003,16 +7004,29 @@ sub run_service {
       quiet   => 1,
    );
 
+   # Load the Service object from local service JSON file.
+   # $service changes from a string scalar to a Service object.
+   $service = load_service(
+      service => $service,
+      lib_dir => $lib_dir,
+   );
+   my $service_name = $service->name;
+
    my $daemon = Daemon->new(
       daemonize      => 0,  # no need: we're running from cron
-      pid_file       => "$lib_dir/pids/$service.$PID",
-      log_file       => "$lib_dir/logs/$service.run",
+      pid_file       => "$lib_dir/pids/$service_name.$PID",
+      log_file       => "$lib_dir/logs/$service_name.run",
       force_log_file => 1,
    );
    $daemon->run();
 
-   $logger->info("Running $service");
-   $logger->service("$service run");
+   if ( $service->meta ) {
+      $logger->service($service_name);
+   }
+   else {
+      $logger->service("$service_name run");
+   }
+   $logger->info("Running $service_name");
 
    # Connect to Percona, get entry links.
    my $logger_client;
@@ -7055,7 +7069,7 @@ sub run_service {
       }
       else {
          my $log_link = $agent->links->{log};
-         $logger->data_ts($prefix);  # TODO Not needed unless $use_spool
+         $logger->data_ts($prefix) unless $service->meta;
          $logger->start_online_logging(
             client   => $logger_client,
             log_link => $log_link,
@@ -7066,13 +7080,6 @@ sub run_service {
    else {
       $logger->_log(0, 'INFO', "File logging only");
    }
-
-   # Load the Service object from local service JSON file.
-   # $service changes from a string scalar to a Service object.
-   $service = load_service(
-      service => $service,
-      lib_dir => $lib_dir,
-   );
 
    # Check if any task spools data or uses MySQL.  Any task that spools
    # should also use metadata because all data samples have at least a
@@ -7513,7 +7520,7 @@ sub init_spool_dir {
          _safe_mkdir($dir);
       }
       elsif ( !-w $dir ) {
-         die "$dir does not writeable\n";
+         die "$dir is not writeable\n";
       }
    }
 
@@ -7589,23 +7596,13 @@ sub send_data {
       quiet   => 1,
    );
 
-   # Log all output to a file.
-   my $daemon = Daemon->new(
-      daemonize      => 0,  # no need: we're running from cron
-      pid_file       => "$lib_dir/pids/$service.send",
-      log_file       => "$lib_dir/logs/$service.send",
-      force_log_file => $interactive ? 0 : 1,
-   );
-   $daemon->run();
-
-   $logger->service("$service send");
-
    # Load the Service object from local service JSON file.
    # $service changes from a string scalar to a Service object.
    $service = load_service(
       service => $service,
       lib_dir => $lib_dir,
    );
+   my $service_name = $service->name;
 
    my ($service_dir) = init_spool_dir(
       spool_dir => $spool_dir,
@@ -7614,9 +7611,22 @@ sub send_data {
 
    my @data_files = glob "$service_dir/*.data";
    if ( scalar @data_files == 0 ) {
-      $logger->debug("No $service data files to send");
+      $logger->debug("No $service_name data files to send");
       return;
    }
+
+   # Log all output to a file.
+   my $daemon = Daemon->new(
+      daemonize      => 0,  # no need: we're running from cron
+      pid_file       => "$lib_dir/pids/$service_name.send",
+      log_file       => "$lib_dir/logs/$service_name.send",
+      force_log_file => $interactive ? 0 : 1,
+   );
+   $daemon->run();
+
+   $logger->service("$service send");
+   my $data_link  = $service->links->{data};
+   $logger->info("Sending " . scalar @data_files . " data files ($data_link)");
 
    # Connect to Percona, get entry links.
    my $logger_client;
@@ -7667,8 +7677,6 @@ sub send_data {
    # Only iterator over data files because run_service() writes
    # them last to avoid a race condition with us.  See the code
    # comment about writing the .meta file first in run_service().
-   my $data_link  = $service->links->{data};
-   $logger->info("Sending " . scalar @data_files . " data files ($data_link)");
    DATA_FILE:
    foreach my $data_file ( @data_files ) {
       (my $meta_file = $data_file) =~ s/\.data/.meta/;
