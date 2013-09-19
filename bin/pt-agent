@@ -5534,7 +5534,7 @@ sub main {
             spool_dir => $o->get('spool'),
             Cxn       => $cxn,
          );
-         $logger->info("Done running $service, exit $exit_status");
+         $logger->info("Service: $service exit: $exit_status");
       };
       if ( $EVAL_ERROR ) {
          $logger->fatal("Error running service $service: $EVAL_ERROR");
@@ -5602,7 +5602,7 @@ sub main {
       my ($t, $quiet) = @_;
       return unless $oktorun;
       $t ||= $check_interval;
-      $logger->info("Sleeping $t seconds") unless $quiet;
+      $logger->debug("Sleeping $t seconds") unless $quiet;
       sleep $t;
    };
 
@@ -5688,7 +5688,7 @@ sub get_api_client {
             . Dumper($entry_links));
       }
       else {
-         $logger->info("Connected");
+         $logger->debug("Connected");
          delete $state->{connecting_to_api};
          last;  # success
       }
@@ -5727,7 +5727,7 @@ sub load_local_agent {
    my $agent;
    my $agent_file = $lib_dir . "/agent";
    if ( -f $agent_file ) {
-      $logger->info("Reading saved Agent from $agent_file") unless $quiet;
+      $logger->debug("Reading saved Agent from $agent_file") unless $quiet;
       my $agent_hashref = JSON::decode_json(slurp($agent_file));
       $agent = Percona::WebAPI::Resource::Agent->new(%$agent_hashref);
       if ( !$agent->uuid ) {
@@ -5735,7 +5735,7 @@ sub load_local_agent {
       }
    }
    else {
-      $logger->info("No local agent") unless $quiet;
+      $logger->debug("No local agent") unless $quiet;
    }
 
    return $agent;
