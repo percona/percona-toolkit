@@ -5672,7 +5672,7 @@ sub get_api_client {
          $entry_links = $client->get(link => $client->entry_link);
       };
       if ( $EVAL_ERROR ) {
-         $logger->warning($EVAL_ERROR);
+         $logger->info($EVAL_ERROR);
       }
       elsif (
          !$entry_links
