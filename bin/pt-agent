@@ -5531,7 +5531,7 @@ sub main {
             spool_dir => $o->get('spool'),
             Cxn       => $cxn,
          );
-         $logger->info("Run: $service exit: $exit_status");
+         $logger->info("Exit: $exit_status");
       };
       if ( $EVAL_ERROR ) {
          $logger->fatal("--run-service $service error: $EVAL_ERROR");
@@ -5551,7 +5551,7 @@ sub main {
             spool_dir   => $o->get('spool'),
             interactive => $o->get('interactive'),
          );
-         $logger->info("Send: $service exit: $exit_status");
+         $logger->info("Exit: $exit_status");
       };
       if ( $EVAL_ERROR ) {
          $logger->fatal("--send-data $service error: $EVAL_ERROR");
@@ -6138,7 +6138,7 @@ sub run_agent {
       if ( $success && $config && $config->links->{services} ) {
          if ( $state->{first_config} ) {
             delete $state->{first_config};
-            $logger->info('Agent has been successfully configured');
+            $logger->info('Agent has been configured');
          }
          if ( $new_daemon ) {
             # NOTE: Daemon objects use DESTROY to auto-remove their pid file
@@ -6295,7 +6295,7 @@ sub get_config {
             );
             $config  = $new_config;
             $success = 1;
-            $logger->info('Config ' . $config->ts . ' applied successfully');
+            $logger->info('Config ' . $config->ts . ' applied');
          }
          else {
             $success = 1;
@@ -6602,7 +6602,7 @@ sub get_services {
                exec_cmd => $args{exec_cmd}, # optional, for testing
             );
 
-            $logger->info('Service changes applied successfully');
+            $logger->info('Service changes applied');
          }
          else {
             $logger->debug('Services have not changed');
@@ -6913,7 +6913,7 @@ sub apply_services {
                next SERVICE;
             }
             push @applied_ok, $service;
-            $logger->info("Started $name successfully");
+            $logger->info("Started $name");
          }
       }
    }
@@ -6957,7 +6957,7 @@ sub apply_services_once {
          next SERVICE;
       }
       push @ran_ok, $service;
-      $logger->info("Ran $name successfully");
+      $logger->info("Ran $name");
    }
 
    return \@ran_ok;
@@ -7011,7 +7011,8 @@ sub run_service {
    );
    $daemon->run();
 
-   $logger->info("Running $service service");
+   $logger->info("Running $service");
+   $logger->service("$service run");
 
    # Connect to Percona, get entry links.
    my $logger_client;
@@ -7054,7 +7055,6 @@ sub run_service {
       }
       else {
          my $log_link = $agent->links->{log};
-         $logger->service("$service running");
          $logger->data_ts($prefix);  # TODO Not needed unless $use_spool
          $logger->start_online_logging(
             client   => $logger_client,
@@ -7207,7 +7207,7 @@ sub run_service {
             bin_dir      => $bin_dir,        # __BIN_DIR__
             env          => $env_vars,       # __ENV__
          );
-         $logger->info("Task: " . $task->name . " query: $query");
+         $logger->info($task->name . ": $query");
          my $rows;
          my $t0 = time;
          eval {
@@ -7292,7 +7292,7 @@ sub run_service {
          my $t1 = time;
          my $run_time = sprintf('%.6f', $t1 - $t0);
          my $cmd_exit_status = $CHILD_ERROR >> 8;
-         $logger->info("Task: " . $task->name . " command: $cmd runtime: $run_time exit: $cmd_exit_status");
+         $logger->info($task->name . ": $cmd (runtime: $run_time exit: $cmd_exit_status)");
          $exit_status |= $cmd_exit_status;
 
          push @{$metadata->{tasks}}, {
@@ -7598,7 +7598,7 @@ sub send_data {
    );
    $daemon->run();
 
-   $logger->service("$service sending");
+   $logger->service("$service send");
 
    # Load the Service object from local service JSON file.
    # $service changes from a string scalar to a Service object.
@@ -7668,7 +7668,7 @@ sub send_data {
    # them last to avoid a race condition with us.  See the code
    # comment about writing the .meta file first in run_service().
    my $data_link  = $service->links->{data};
-   $logger->info('Sending ' . scalar @data_files . " $service data files to $data_link");
+   $logger->info("Sending " . scalar @data_files . " data files ($data_link)");
    DATA_FILE:
    foreach my $data_file ( @data_files ) {
       (my $meta_file = $data_file) =~ s/\.data/.meta/;
