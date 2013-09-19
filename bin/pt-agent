@@ -7017,10 +7017,10 @@ sub run_service {
       ($client, $entry_links, $logger_client) = get_api_client(
          api_key  => $api_key,
          tries    => 2,
-         interval => sub { return 1; },
+         interval => sub { return 2; },
       );
       if ( !$client || !$entry_links ) {
-         $logger->warning("Failed to connect to Percona Web API");
+         $logger->info("Failed to connect to Percona Web API");
       }
    }
 
@@ -7039,22 +7039,25 @@ sub run_service {
       }
    }
 
-   if ( $agent_api && $entry_links && $entry_links->{agents} ) {
+   # Start online logging, if possible.
+   if ( $agent_api && $client && $entry_links && $entry_links->{agents} ) {
       $agent = eval {
          $client->get(
             link => $entry_links->{agents} . '/' . $agent->uuid,
          );
       };
       if ( $EVAL_ERROR ) {
-         $logger->error("Failed to get the agent: $EVAL_ERROR");
+         $logger->info("Failed to get agent for online logging: $EVAL_ERROR");
       }
-      my $log_link = $agent->links->{log};
-      $logger->service("$service running");
-      $logger->data_ts($prefix);  # TODO Not needed unless $use_spool
-      $logger->start_online_logging(
-         client   => $logger_client,
-         log_link => $log_link,
-      );
+      else {
+         my $log_link = $agent->links->{log};
+         $logger->service("$service running");
+         $logger->data_ts($prefix);  # TODO Not needed unless $use_spool
+         $logger->start_online_logging(
+            client   => $logger_client,
+            log_link => $log_link,
+         );
+      }
    }
    else {
       $logger->info("File logging only");
@@ -7094,7 +7097,7 @@ sub run_service {
             $cxn->connect();
          };
          if ( $EVAL_ERROR ) {
-            $logger->warning("Cannot connect to MySQL: $EVAL_ERROR");
+            $logger->info("Cannot connect to MySQL: $EVAL_ERROR");
             sleep(3);
             next TRY;
          }
@@ -7625,7 +7628,6 @@ sub send_data {
          link => $entry_links->{agents} . '/' . $agent->uuid,
       );
    };
-
    if ( $EVAL_ERROR ) {
       $logger->fatal("Failed to get the agent: $EVAL_ERROR");
    }
