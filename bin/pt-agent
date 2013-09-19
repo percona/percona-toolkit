@@ -7624,7 +7624,7 @@ sub send_data {
    );
    $daemon->run();
 
-   $logger->service("$service send");
+   $logger->service("$service_name send");
    my $data_link  = $service->links->{data};
    $logger->info("Sending " . scalar @data_files . " data files ($data_link)");
 
