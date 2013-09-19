@@ -5587,6 +5587,7 @@ sub main {
       daemonize => $o->get('daemonize'),
       pid_file  => $o->get('pid'),
       log_file  => $o->get('log'),
+      # Use default tries and interval: 1440 * 60 = 1 day
    );
 
    # Wait time between checking for new config and services.
@@ -5817,9 +5818,6 @@ sub init_agent {
    if ( $agent && $success ) {
       $logger->info("Agent " . $agent->name . " (" . $agent->uuid . ") is ready");
    }
-   else {
-      $logger->warning("Failed to initialize the agent.  The API may be down.  Please try again.");
-   }
 
    return $agent, $success;
 }
@@ -5896,8 +5894,8 @@ sub start_agent {
    my $daemonize     = $args{daemonize};
    my $pid_file      = $args{pid_file};
    my $log_file      = $args{log_file};
-   my $_oktorun      = $args{oktorun} || sub { return $oktorun };
-   my $tries         = $args{tries};
+   my $_oktorun      = $args{oktorun}  || sub { return $oktorun };
+   my $tries         = $args{tries}    || 1440;  # 1440 * 60 = 1 day
    my $interval      = $args{interval} || sub { sleep 60; };
    my $versions      = $args{versions};       # for testing
    my $client        = $args{client};         # for testing
@@ -5947,14 +5945,16 @@ These values can change if a different configuration is received.
          . "Configure the agent to use a writeable --lib directory.");
    }
 
-   # Connect to the API and get entry links.  Since we're in start_agent(),
-   # try forever because the agent needs an API connection to start.
+   # Connect to the API and get entry links.
    if ( !$client || !$entry_links ) {
       ($client, $entry_links, $logger_client) = get_api_client(
          api_key  => $api_key,
-         tries    => undef,  # forever
-         interval => sub { sleep 60 },
+         tries    => $tries,
+         interval => $interval,
       );
+   }
+   if ( !$client || !$entry_links ) {
+      die "Failed to initialize the API client.  The API may be down.  Please try again.\n";
    }
    return unless $_oktorun->();
 
@@ -6005,15 +6005,19 @@ These values can change if a different configuration is received.
       }
    }
 
-   ($agent) = init_agent(
+   my $success;
+   ($agent, $success) = init_agent(
       agent    => $agent,
       action   => $action,      # put or post
       link     => $link,
       client   => $client,
-      interval => sub { sleep 60 },
       tries    => $tries,       # optional
+      interval => $interval,    # optional
       oktorun  => $_oktorun,    # optional
    );
+   if ( !$success ) {
+      die "Failed to initialize the agent.  The API may be down.  Please try again.\n";
+   }
 
    # Give the logger its client so that it will also POST every log entry
    # to /agent/{uuid}/log.  This is done asynchronously by a thread so a
@@ -8533,8 +8537,8 @@ sub install {
             daemonize   => 0,
             pid_file    => undef,
             log_file    => undef,
-            interval    => sub { sleep 2; },
             tries       => 2,
+            interval    => sub { sleep 2; },
          );
       };
       if ( $EVAL_ERROR ) {
