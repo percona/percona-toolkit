@@ -958,6 +958,9 @@ sub get {
    elsif ( exists $resource->{links} ) {
       $resource_objects = $resource->{links};
    }
+   elsif ( exists $resource->{pong} ) {
+      PTDEBUG && _d("Ping pong!");
+   }
    else {
       warn "Did not get X-Percona-Resource-Type or links from $link\n";
    }
