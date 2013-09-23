@@ -7600,6 +7600,7 @@ sub send_data {
    my $client      = $args{client};       # for testing
    my $entry_links = $args{entry_links};  # for testing
    my $json        = $args{json};         # for testing
+   my $delay       = defined $args{delay} ? $args{delay} : rand(30);  # for testing
 
    # Can't do anything with the lib dir.  Since we haven't started
    # logging yet, cron should capture this error and email the user.
@@ -7637,8 +7638,13 @@ sub send_data {
    );
    $daemon->run();
 
+   # Spool time is +/- [0, 1] minute from API, we randomize that further
+   # by a few seconds to prevent all agents from sending at exactly
+   # 00:01:00, 00:00:00, or 00:02:00.
+   sleep $delay if $delay;
+
    $logger->service("$service_name send");
-   my $data_link  = $service->links->{data};
+   my $data_link = $service->links->{data};
    $logger->info("Sending " . scalar @data_files . " data files ($data_link)");
 
    # Connect to Percona, get entry links.

@@ -127,6 +127,7 @@ my $output = output(
          agent       => $agent,
          log_file    => "$tmpdir/log",
          json        => $json,
+         delay       => 0,
       ),
    },
 );
