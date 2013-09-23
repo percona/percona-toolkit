@@ -5771,8 +5771,10 @@ sub init_agent {
    # Try to create/update the Agent.
    my $success = 0;
    while ( $_oktorun->() && $tries-- ) {
-      $logger->info($action eq 'put' ? "Updating agent " . $agent->name
-                             : "Creating new agent");
+      if ( !$state->{init_action}++ ) {
+         $logger->info($action eq 'put' ? "Updating agent " . $agent->name
+                                        : "Creating new agent");
+      }
       my $agent_uri = eval {
          $client->$action(
             link      => $link,
@@ -5796,10 +5798,12 @@ sub init_agent {
             }
          }
          elsif ( $code && $code == 403 ) {
-            $logger->error("API reports too many agents.  Check "
-               . "https://cloud.percona.com/agents for the list of "
-               . "installed agents, delete unused agents, and try again.");
-            last;
+            if ( !$state->{too_many_agents}++ ) {
+               $logger->warning("API reports too many agents.  Check "
+                  . "https://cloud.percona.com/agents for the list of "
+                  . "installed agents.  Will try again $tries times, "
+                  . "but this warning will not be printed again.");
+            }
          }
          else {
             $logger->warning($EVAL_ERROR);
@@ -5829,6 +5833,9 @@ sub init_agent {
          $interval->();  # failure, try again
       }
    }
+
+   delete $state->{init_action};
+   delete $state->{too_many_agents};
 
    if ( $agent && $success ) {
       $logger->info("Agent " . $agent->name . " (" . $agent->uuid . ") is ready");

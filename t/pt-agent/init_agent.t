@@ -199,7 +199,7 @@ is_deeply(
 ) or diag(Dumper($ua->{requests}));
 
 like(
-   $log[3],
+   $log[2],
    qr{WARNING Failed to POST /agents},
    "POST /agents failure logged after error"
 ) or diag(Dumper($ua->{requests}), Dumper(\@log));
@@ -306,17 +306,25 @@ $output = output(
 
 is(
    scalar @wait,
-   0,
-   "Too many agents (403): no wait"
+   2,
+   "Too many agents (403): waits"
 );
 
 is_deeply(
    $ua->{requests},
    [
       'POST /agents',
+      'POST /agents',
    ],
-   "Too many agents (403): no further requests"
+   "Too many agents (403): tries"
 ) or diag(Dumper($ua->{requests}));
+
+my $n = grep { $_ =~ m/too many agents/ } @log;
+is(
+   $n,
+   1,
+   "Too many agents (403): does not repeat warning"
+) or diag(Dumper(\@log));
 
 # #############################################################################
 # Done.
