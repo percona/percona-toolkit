@@ -159,6 +159,7 @@ $ua->{responses}->{get} = [
 
 @ok   = qw(1 1 0);
 @wait = ();
+@log  = ();                     
 $ua->{requests} = [];
 
 $output = output(
@@ -199,7 +200,7 @@ is_deeply(
 ) or diag(Dumper($ua->{requests}));
 
 like(
-   $log[2],
+   $log[1],
    qr{WARNING Failed to POST /agents},
    "POST /agents failure logged after error"
 ) or diag(Dumper($ua->{requests}), Dumper(\@log));
