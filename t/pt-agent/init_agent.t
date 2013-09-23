@@ -275,6 +275,50 @@ is_deeply(
 ) or diag(Dumper($ua->{requests}));
 
 # #############################################################################
+# Status 403 (too many agents) should abort further attempts.
+# #############################################################################
+
+$ua->{responses}->{post} = [
+   {  # 1, the fake error
+      code => 403,  
+   },
+];
+
+@ok   = qw(1 1 0);
+@wait = ();
+@log  = ();
+$ua->{requests} = [];
+
+$output = output(
+   sub {
+      ($got_agent) = pt_agent::init_agent(
+         agent    => $post_agent,
+         action   => 'post',
+         link     => "/agents",
+         client   => $client,
+         interval => $interval,
+         tries    => 3,
+         oktorun  => $oktorun,
+      );
+   },
+   stderr => 1,
+);
+
+is(
+   scalar @wait,
+   0,
+   "Too many agents (403): no wait"
+);
+
+is_deeply(
+   $ua->{requests},
+   [
+      'POST /agents',
+   ],
+   "Too many agents (403): no further requests"
+) or diag(Dumper($ua->{requests}));
+
+# #############################################################################
 # Done.
 # #############################################################################
 done_testing;
