@@ -5788,12 +5788,18 @@ sub init_agent {
             if ( $api_ok ) {
                $logger->fatal("API reports agent not found: the agent has been "
                   . "deleted, or its UUID (" . ($agent->uuid || '?') . ") "
-                  . "is wrong.  Check https://cloud.percona.com/agents for a "
+                  . "is wrong.  Check https://cloud.percona.com/agents for the "
                   . "list of active agents.");
             }
             else {
                $logger->warning("API is down.");
             }
+         }
+         elsif ( $code && $code == 403 ) {
+            $logger->error("API reports too many agents.  Check "
+               . "https://cloud.percona.com/agents for the list of "
+               . "installed agents, delete unused agents, and try again.");
+            last;
          }
          else {
             $logger->warning($EVAL_ERROR);
