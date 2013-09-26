@@ -5399,6 +5399,7 @@ sub main {
       dsn_string   => '',
       OptionParser => $o,
       DSNParser    => $dp,
+      ask_pass     => $o->get('ask-pass'),
    );
 
    # ########################################################################
@@ -9267,6 +9268,10 @@ Existing agent UUID for re-installing an agent.
 type: string
 
 Your secret Percona Cloud Tools API key.
+
+=item --ask-pass
+
+Prompt for MySQL password.
 
 =item --check-interval
 
