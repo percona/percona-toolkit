@@ -8389,8 +8389,7 @@ sub install {
       "Create a MySQL user for the agent",
       "Initialize $agent_my_cnf",
       "Initialize $config_file",
-      "Initialize directories",
-      "Initialize the agent",
+      "Create the agent",
       "Run the agent",
    );
    my $n_steps = scalar @steps;
@@ -8491,7 +8490,7 @@ sub install {
          die "Sorry, an error occurred while verifying the API key: $e";
       }
       elsif ( !$entry_links ) {
-         if ( $client->response->code && $client->response->code == 403 ) {
+         if ( $client->response->code && $client->response->code == 401 ) {
             die "Sorry, the API key $api_key is not valid.  Please check the API key and try again.\n";
          }
          else {
@@ -8541,12 +8540,28 @@ sub install {
          if ( $flags->{force_dangerous_slave_install} ) {
             create_mysql_user($cxn, $agent_my_cnf);
          }
+         elsif ( $interactive || -t STDIN ) {
+            print "\nMySQL is a slave and $agent_my_cnf does not exist.  "
+               . "To install the agent, please enter the MySQL username and "
+               . "password to use.  The MySQL user must have SUPER and USAGE "
+               . "privileges on all databases, for example: "
+               . "GRANT SUPER,USAGE ON *.* TO pt_agent'\@'localhost'.  "
+               . "If the agent has been installed on the master, you can use "
+               . "the MySQL username and password in $agent_my_cnf on the "
+               . "master.  CTRL-C to abort install.\n";
+               print "MySQL username: ";
+               my $user = <STDIN>;
+               chomp($user) if $user;
+               my $pass = OptionParser::prompt_noecho("MySQL password: ");
+               create_mysql_user($cxn, $agent_my_cnf, $user, $pass);
+               $next_step->(repeat => 1);  # repeat
+         }
          else {
             die "Sorry, cannot install the agent because MySQL is a slave "
                . "and $agent_my_cnf does not exist.  It is not safe to "
                . "write to a slave, so a MySQL user for the agent cannot "
                . "be created.  First install the agent on the master, then "
-               . "copy $agent_my_cnf from the master server to this server.  "
+               . "copy $agent_my_cnf from the master to this server.  "
                . "See --install-options for how to force a dangerous slave "
                . "install.\n";
          }
@@ -8601,7 +8616,14 @@ sub install {
          );
       };
       if ( $EVAL_ERROR ) {
-         die "Sorry, an error occurred while starting the agent: $EVAL_ERROR";
+         if ( $client->response->code && $client->response->code == 403 ) {
+            die "The maximum number of agents for this organization has been reached; "
+               . "no more agents can be created.  Delete unused agents from "
+               . "https://cloud.percona.com/agents and try again.\n";
+         }
+         else {
+            die "Sorry, an error occurred while starting the agent: $EVAL_ERROR";
+         }
       }
 
       # 9. Run the agent daemon.  If all the previous worked, the agent
@@ -8642,19 +8664,23 @@ sub install {
 }
 
 sub create_mysql_user {
-   my ($cxn, $agent_my_cnf) = @_;
+   my ($cxn, $agent_my_cnf, $user, $pass) = @_;
 
-   my $random_pass = pseudo_random_password();
-   my $sql         = "GRANT SUPER,USAGE ON *.* TO 'pt_agent'\@'localhost' "
-                   . "IDENTIFIED BY '$random_pass'";
-   eval {
-      $cxn->dbh->do($sql);
-   };
-   if ( $EVAL_ERROR ) {
-      die "Sorry, an error occurred while creating a MySQL user for the agent: "
-         . $EVAL_ERROR;
+   if ( !$user || !$pass ) {
+      $user = 'pt_agent';
+      $pass = pseudo_random_password();
+
+      my $sql = "GRANT SUPER,USAGE ON *.* TO 'pt_agent'\@'localhost' "
+              . "IDENTIFIED BY '$pass'";
+      eval {
+         $cxn->dbh->do($sql);
+      };
+      if ( $EVAL_ERROR ) {
+         die "Sorry, an error occurred while creating a MySQL user for the agent: "
+            . $EVAL_ERROR;
+      }
+      $cxn->dbh->disconnect();
    }
-   $cxn->dbh->disconnect();
 
    # Init $agent_my_cnf
    # We could set user= and pass= in ~/.pt-agent.conf, but each new agent
@@ -8670,7 +8696,7 @@ sub create_mysql_user {
    if ( !-d '/etc/percona/agent' ) {
       _safe_mkdir('/etc/percona/agent');
    }
-   my $my_cnf = "[client]\nuser=pt_agent\npass=$random_pass\n";
+   my $my_cnf = "[client]\nuser=$user\npass=$pass\n";
    my $dsn = $cxn->dsn;
    if ( $dsn->{h} ) {
       $my_cnf .= "host=$dsn->{h}\n";
