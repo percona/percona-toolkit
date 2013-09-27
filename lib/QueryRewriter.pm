@@ -48,8 +48,8 @@ $bal         = qr/
 # performance.  The multi-line pattern does not match version-comments.
 my $olc_re = qr/(?:--|#)[^'"\r\n]*(?=[\r\n]|\Z)/;  # One-line comments
 my $mlc_re = qr#/\*[^!].*?\*/#sm;                  # But not /*!version */
-my $vlc_re = qr#/\*.*?[0-9+].*?\*/#sm;             # For SHOW + /*!version */
-my $vlc_rf = qr#^(SHOW).*?/\*![0-9+].*?\*/#sm;     # Variation for SHOW
+my $vlc_re = qr#/\*.*?[0-9]+.*?\*/#sm;             # For SHOW + /*!version */
+my $vlc_rf = qr#^(?:SHOW).*?/\*![0-9]+(.*?)\*/#sm;     # Variation for SHOW
 
 
 sub new {
@@ -65,7 +65,8 @@ sub strip_comments {
    $query =~ s/$mlc_re//go;
    $query =~ s/$olc_re//go;
    if ( $query =~ m/$vlc_rf/i ) { # contains show + version
-      $query =~ s/$vlc_re//go;
+      my $qualifier = $1 || '';
+      $query =~ s/$vlc_re/$qualifier/go;
    }
    return $query;
 }
@@ -273,7 +274,7 @@ sub distill_verbs {
 
       # Remove common keywords.
       $query = uc $query;
-      $query =~ s/\s+(?:GLOBAL|SESSION|FULL|STORAGE|ENGINE)\b/ /g;
+      $query =~ s/\s+(?:SESSION|FULL|STORAGE|ENGINE)\b/ /g;
       # This should be in the regex above but Perl doesn't seem to match
       # COUNT\(.+\) properly when it's grouped.
       $query =~ s/\s+COUNT[^)]+\)//g;
