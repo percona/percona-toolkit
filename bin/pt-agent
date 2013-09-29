@@ -5532,7 +5532,6 @@ sub main {
             spool_dir => $o->get('spool'),
             Cxn       => $cxn,
          );
-         $logger->info("Exit: $exit_status");
       };
       if ( $EVAL_ERROR ) {
          $logger->fatal("--run-service $service error: $EVAL_ERROR");
@@ -5552,7 +5551,6 @@ sub main {
             spool_dir   => $o->get('spool'),
             interactive => $o->get('interactive'),
          );
-         $logger->info("Exit: $exit_status");
       };
       if ( $EVAL_ERROR ) {
          $logger->fatal("--send-data $service error: $EVAL_ERROR");
@@ -7414,6 +7412,7 @@ sub run_service {
          or $logger->warning("Error removing $file: $OS_ERROR");
    }
 
+   $logger->info("Exit: $exit_status");
    return $exit_status;  # returning global var for testing
 }
 
@@ -7778,7 +7777,8 @@ sub send_data {
       $logger->info("Sent: $data_file ($data_file_size bytes)");
    }
 
-   return;
+   $logger->info("Exit: $exit_status");
+   return $exit_status;  # returning global var for testing
 }
 
 # Send the Agent and file's contents as-is as a multi-part POST.
