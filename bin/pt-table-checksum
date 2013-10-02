@@ -9208,15 +9208,24 @@ sub main {
       }
 
       my $trimmed_nodes = Cxn->remove_duplicate_cxns(
-                                   cxns => [ $master_cxn, @$slaves ],
-                                );
+         cxns => [ $master_cxn, @$slaves ],
+      );
       ($master_cxn, @$slaves) = @$trimmed_nodes;
 
+      # If no slaves or nodes were found, and a recursion method was given
+      # (implicitly or explicitly), and that method is not none, then warn
+      # and continue but exit non-zero because there won't be any diffs but
+      # this could be a false-positive from having no slaves/nodes to check.
+      # https://bugs.launchpad.net/percona-toolkit/+bug/1210537
       PTDEBUG && _d(scalar @$slaves, 'slaves found');
-      if ( !@$slaves && $o->get('recursion-method')->[0] ne 'none' ) {
+      if ( !@$slaves
+           && (($o->get('recursion-method')->[0] || '') ne 'none'
+               || $autodiscover_cluster))
+      {
          $exit_status |= 1;
          if ( $o->get('quiet') < 2 ) {
-            warn "Diffs cannot be detected because no slaves were found.  "
+            my $type = $autodiscover_cluster ? 'cluster nodes' : 'slaves';
+            warn "Diffs cannot be detected because no $type were found.  "
                . "Please read the --recursion-method documentation for "
                . "information.\n";
          }
