@@ -9219,11 +9219,12 @@ sub main {
       # https://bugs.launchpad.net/percona-toolkit/+bug/1210537
       PTDEBUG && _d(scalar @$slaves, 'slaves found');
       if ( !@$slaves
-           && $o->get('recursion-method')->[0]
-           && $o->get('recursion-method')->[0] ne 'none' ) {
+           && (($o->get('recursion-method')->[0] || '') ne 'none'
+               || $autodiscover_cluster))
+      {
          $exit_status |= 1;
          if ( $o->get('quiet') < 2 ) {
-            my $type = $autodiscover_cluster ? 'nodes' : 'slaves';
+            my $type = $autodiscover_cluster ? 'cluster nodes' : 'slaves';
             warn "Diffs cannot be detected because no $type were found.  "
                . "Please read the --recursion-method documentation for "
                . "information.\n";
