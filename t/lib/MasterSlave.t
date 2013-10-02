@@ -11,10 +11,6 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
-if ( !$ENV{SLOW_TESTS} ) {
-   plan skip_all => "lib/MasterSlave.t is a top 5 slowest file; set SLOW_TESTS=1 to enable it.";
-}
-
 use MasterSlave;
 use DSNParser;
 use VersionParser;
@@ -709,26 +705,49 @@ is(
 # ############################################################################
 # Invalid recursion methods are caught
 # ############################################################################
-local $EVAL_ERROR;
 eval {
    MasterSlave::check_recursion_method([qw(stuff)])
 };
-
 like(
    $EVAL_ERROR,
    qr/Invalid recursion method: stuff/,
    "--recursion-method stuff causes error"
 );
 
-local $EVAL_ERROR;
 eval {
    MasterSlave::check_recursion_method([qw(processlist stuff)])
 };
-
 like(
    $EVAL_ERROR,
-   qr/Invalid combination of recursion methods: processlist, stuff/,
+   qr/Invalid recursion method: stuff/,
    "--recursion-method processlist,stuff causes error",
+);
+
+eval {
+   MasterSlave::check_recursion_method([qw(none hosts)])
+};
+like(
+   $EVAL_ERROR,
+   qr/none cannot be combined with other methods/,
+   "--recursion-method none,hosts"
+);
+
+eval {
+   MasterSlave::check_recursion_method([qw(cluster none)])
+};
+like(
+   $EVAL_ERROR,
+   qr/none cannot be combined with other methods/,
+   "--recursion-method cluster,none"
+);
+
+eval {
+   MasterSlave::check_recursion_method([qw(none none)])
+};
+like(
+   $EVAL_ERROR,
+   qr/Invalid combination of recursion methods: none, none/,
+   "--recursion-method none,none"
 );
 
 # #############################################################################
