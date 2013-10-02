@@ -273,6 +273,22 @@ SKIP: {
 }
 
 # #############################################################################
+# pt-table-checksum --recursion-method cluster crashes
+# https://bugs.launchpad.net/percona-toolkit/+bug/1210537
+# #############################################################################
+
+eval {
+   pt_table_checksum::main($master_dsn,
+      qw(--recursion-method cluster)
+   ),
+};
+is(
+   $EVAL_ERROR,
+   "",
+   "Bug 1210537: no crash with --recursion-method cluster"
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
