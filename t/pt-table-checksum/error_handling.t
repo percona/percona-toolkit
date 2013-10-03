@@ -153,7 +153,7 @@ like(
 
 is(
    $exit_status,
-   1,
+   2048,  # https://bugs.launchpad.net/percona-toolkit/+bug/944051
    "Non-zero exit status (bug 1009510)"
 );
 

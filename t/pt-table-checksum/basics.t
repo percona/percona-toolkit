@@ -123,7 +123,7 @@ $exit_status = pt_table_checksum::main(@args,
 
 is(
    $exit_status,
-   1,
+   512,  # = TABLE_DIFF but nothing else; https://bugs.launchpad.net/percona-toolkit/+bug/944051
    "--replicate-check on by default, detects diff"
 );
 
@@ -297,7 +297,7 @@ is_deeply(
 
 is(
    $exit_status,
-   1,
+   2048,
    "Non-zero exit status"
 );
 
@@ -386,8 +386,8 @@ like(
 
 is(
    $exit_status,
-   1,
-   "Exit status 1 when no slaves are found (bug 1087804)"
+   8,  # https://bugs.launchpad.net/percona-toolkit/+bug/944051
+   "Exit status 8 when no slaves are found (bug 1087804)"
 ) or diag($output);
 
 # #############################################################################
