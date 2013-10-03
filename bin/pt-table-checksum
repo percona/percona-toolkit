@@ -11618,7 +11618,7 @@ with these flags:
    SKIP_TABLE             2048  At least one table was skipped
 
 If any flag is set, the exit status will be non-zero.  Use the bitwise C<AND>
-operation to check for a particular flag.  For example, if C<$exit_status & 4>
+operation to check for a particular flag.  For example, if C<$exit_status & 512>
 is true, then at least one diff was found.
 
 =head1 OPTIONS
