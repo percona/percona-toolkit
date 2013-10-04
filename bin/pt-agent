@@ -5667,19 +5667,25 @@ sub get_api_client {
       eval {
          $entry_links = $client->get(link => $client->entry_link);
       };
-      if ( $EVAL_ERROR ) {
-         $logger->warning("API error: $EVAL_ERROR");
+      if ( my $e = $EVAL_ERROR ) {
+         my $code = $client->response->code;
+         if ( $code && $code == 503 ) {
+            $logger->info("API is down for maintenance (503)");
+         }
+         else {
+            $logger->info("API error: $e");
+         }
       }
       elsif (
          !$entry_links
          || (ref($entry_links) || '') ne 'HASH'
          || !scalar keys %$entry_links
       ) {
-         $logger->warning('API returned invalid entry links: '
+         $logger->info('API returned invalid entry links: '
             . Dumper($entry_links));
       }
       elsif ( !$entry_links->{agents} ) {
-         $logger->warning('API did not return agents link: '
+         $logger->info('API did not return agents link: '
             . Dumper($entry_links));
       }
       else {
