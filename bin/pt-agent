@@ -7751,12 +7751,12 @@ sub send_data {
       if ( my $e = $EVAL_ERROR ) {
          if (blessed($e) && $e->isa('Percona::WebAPI::Exception::Request')) {
             my $error_msg = $client->response->content;
-            $logger->warning('Error ' . $e->status . " sending $data_file: "
+            $logger->warning('Error ' . $e->status . " sending $data_file ($data_file_size bytes): "
                . ($error_msg || '(No error message from server)'));
          }
          else {
             chomp $e;
-            $logger->warning("Error sending $data_file: $e");
+            $logger->warning("Error sending $data_file ($data_file_size bytes): $e");
          } 
          next DATA_FILE;
       }

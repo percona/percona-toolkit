@@ -172,6 +172,63 @@ is(
 ) or diag(Dumper($ua));
 
 # #############################################################################
+# Error 400 on send
+# #############################################################################
+
+@log = ();
+$client->ua->{content}->{post} = [];
+$ua->{requests} = [];
+
+`cp $trunk/$sample/query-history/data001.json $tmpdir/query-history/1.data001.data`;
+
+$ua->{responses}->{get} = [
+   {
+      headers => { 'X-Percona-Resource-Type' => 'Agent' },
+      content => as_hashref($agent, with_links => 1),
+   },
+];
+
+$ua->{responses}->{post} = [
+   {
+      code    => 400,
+      content => '',
+   },
+];
+
+$output = output(
+   sub {
+      pt_agent::send_data(
+         api_key   => '123',
+         service   => 'query-history',
+         lib_dir   => $tmpdir,
+         spool_dir => $tmpdir,
+         # optional, for testing:
+         client      => $client,
+         entry_links => $links,
+         agent       => $agent,
+         log_file    => "$tmpdir/log",
+         json        => $json,
+         delay       => 0,
+      ),
+   },
+);
+
+is(
+   scalar @{$client->ua->{content}->{post}},
+   1,
+   "400: sent resource"
+) or diag(
+   $output,
+   Dumper($client->ua->{content}->{post}),
+   `cat $tmpdir/logs/query-history.send`
+);
+
+ok(
+   -f "$tmpdir/query-history/1.data001.data",
+   "400: file not removed"
+) or diag($output);
+
+# #############################################################################
 # Done.
 # #############################################################################
 done_testing;
