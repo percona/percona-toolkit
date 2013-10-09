@@ -576,7 +576,7 @@ SKIP: {
 }
 
 # #############################################################################
-# --alther-foreign-keys-method=none.  This intentionally breaks fks because
+# --alter-foreign-keys-method=none.  This intentionally breaks fks because
 # they're not updated so they'll point to the old table that is dropped.
 # #############################################################################
 

@@ -7845,6 +7845,10 @@ sub main {
       $o->save_error($EVAL_ERROR);
    }
 
+   if ( !$o->get('drop-triggers') ) {
+      $o->set('drop-old-table', 0);
+   }
+
    if ( !$o->get('help') ) {
       if ( @ARGV ) {
          $o->save_error('Specify only one DSN on the command line');
@@ -8659,17 +8663,29 @@ sub main {
    # Drop the triggers.  We can save this cleanup task before
    # adding the triggers because if adding them fails, this will be
    # called which will drop whichever triggers were created.
+   my $drop_triggers = $o->get('drop-triggers');
    push @cleanup_tasks, sub {
       PTDEBUG && _d('Clean up triggers');
       # --plugin hook
       if ( $plugin && $plugin->can('before_drop_triggers') ) {
          $plugin->before_drop_triggers(
             oktorun           => $oktorun,
+            drop_triggers     => $drop_triggers,
             drop_trigger_sqls => \@drop_trigger_sqls,
          );
       }
 
-      if ( $oktorun ) {
+      if ( !$oktorun ) {
+         print "Not dropping triggers because the tool was interrupted.  "
+             . "To drop the triggers, execute:\n"
+             . join("\n", @drop_trigger_sqls) . "\n";
+      }
+      elsif ( !$drop_triggers ) {
+         print "Not dropping triggers because --no-drop-triggers was "
+         . "specified.  To drop the triggers, execute:\n"
+         . join("\n", @drop_trigger_sqls) . "\n";
+      }
+      else {
          drop_triggers(
             tbl          => $orig_tbl,
             Cxn          => $cxn,
@@ -8679,11 +8695,6 @@ sub main {
             tries        => $tries,
             stats        => \%stats,
          );
-      }
-      else {
-         print "Not dropping triggers because the tool was interrupted.  "
-             . "To drop the triggers, execute:\n"
-             . join("\n", @drop_trigger_sqls) . "\n";
       }
    };
 
@@ -9230,6 +9241,12 @@ sub main {
             $plugin->after_drop_old_table();
          }
       }
+   }
+   elsif ( !$drop_triggers ) {
+      print "Not dropping old table because --no-drop-triggers was specified.\n";
+   }
+   else {
+      print "Not dropping old table because --no-drop-old-table was specified.\n";
    }
 
    # ########################################################################
@@ -10942,6 +10959,13 @@ errors, the tool drops the original table by default. If there are any errors,
 the tool leaves the original table in place.
 
 If C<--no-swap-tables> is specified, then there is no old table to drop.
+
+=item --[no]drop-triggers
+
+default: yes
+
+Drop triggers on the old table.  C<--no-drop-triggers> forces
+C<--no-drop-old-table>.
 
 =item --dry-run
 
