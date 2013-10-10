@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 4;
+use Test::More;
 
 use PerconaTest;
 
@@ -18,12 +18,14 @@ my $output;
 # #############################################################################
 # Sanity tests.
 # #############################################################################
-$output = `$trunk/bin/pt-deadlock-logger --dest D=test,t=deadlocks 2>&1`;
-like(
-   $output,
-   qr/No DSN was specified/,
-   'Requires source host'
-);
+
+# Wrong design: https://bugs.launchpad.net/percona-toolkit/+bug/1206728
+#$output = `$trunk/bin/pt-deadlock-logger --dest D=test,t=deadlocks 2>&1`;
+#like(
+#   $output,
+#   qr/No DSN was specified/,
+#   'Requires source host'
+#);
 
 $output = `$trunk/bin/pt-deadlock-logger h=127.1 --dest t=deadlocks 2>&1`;
 like(
@@ -55,4 +57,4 @@ is(
 # #############################################################################
 # Done.
 # #############################################################################
-exit;
+done_testing;
