@@ -9536,12 +9536,12 @@ sub nibble_is_safe {
 
 sub create_new_table {
    my (%args) = @_;
-   my @required_args = qw(new_table_name new_table_prefix orig_tbl Cxn Quoter OptionParser TableParser);
+   my @required_args = qw(new_table_name orig_tbl Cxn Quoter OptionParser TableParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($new_table_name, $new_table_prefix, $orig_tbl, $cxn, $q, $o, $tp)
-      = @args{@required_args};
+   my ($new_table_name, $orig_tbl, $cxn, $q, $o, $tp) = @args{@required_args};
+   my $new_table_prefix = $args{new_table_prefix};
 
    # Get the original table struct.
    my $ddl = $tp->get_create_table(
