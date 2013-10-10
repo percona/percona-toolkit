@@ -4448,15 +4448,12 @@ sub main {
    my $dp = $o->DSNParser();
    $dp->prop('set-vars', $o->set_vars());
 
-   my $src;
-   if ( my $src_dsn_string = shift @ARGV ) {
-      $src = Cxn->new(
-         dsn_string   => $src_dsn_string,
-         parent       => $o->get('daemonize'),
-         DSNParser    => $dp,
-         OptionParser => $o,
-      );
-   }
+   my $src = Cxn->new(
+      dsn_string   => shift @ARGV,
+      parent       => $o->get('daemonize'),
+      DSNParser    => $dp,
+      OptionParser => $o,
+   );
 
    my $dst;
    if ( my $dst_dsn = $o->get('dest') ) {
