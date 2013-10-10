@@ -10541,9 +10541,15 @@ sub exec_nibble {
          ) {
             # These errors/warnings are not fatal but only cause this
             # nibble to be skipped.
-            if ( $o->get('quiet') < 2 ) {
-               warn "$error\n";
+            my $err = $error =~ /Lock wait timeout exceeded/
+                    ? 'lock_wait_timeout'
+                    : 'query_interrupted';
+            if ( !$tbl->{warned}->{$err}++ && $o->get('quiet') < 2 ) {
+               my $msg = "Skipping chunk " . ($nibble_iter->nibble_number() || '?')
+                       . " of $tbl->{db}.$tbl->{tbl} because $error.\n";
+               warn ts($msg);
             }
+            $exit_status |= $PTC_EXIT_STATUS{SKIP_CHUNK};
             return;  # skip this nibble
          }
 
@@ -11528,8 +11534,15 @@ The number of chunks into which the table was divided.
 
 =item SKIPPED
 
-The number of chunks that were skipped due to errors or warnings, or because
-they were oversized.
+The number of chunks that were skipped due one or more of these problems:
+
+   * MySQL not using the L<"--chunk-index">
+   * MySQL not using the full chunk index (L<"--[no]check-plan">)
+   * Chunk size is greater than L<"--chunk-size"> * L<"--chunk-size-limit">
+   * Lock wait timeout exceeded (L<"--retries")
+   * Checksum query killed (L<"--retries">)
+
+As of pt-table-checksum 2.2.5, skipped chunks cause a non-zero L<"EXIT STATUS">.
 
 =item TIME
 
@@ -11620,6 +11633,10 @@ with these flags:
 If any flag is set, the exit status will be non-zero.  Use the bitwise C<AND>
 operation to check for a particular flag.  For example, if C<$exit_status & 16>
 is true, then at least one diff was found.
+
+As of pt-table-checksum 2.2.5, skipped chunks cause a non-zero exit status.
+An exit status of zero or 32 is equivalent to a zero exit status with skipped
+chunks in previous versions of the tool.
 
 =head1 OPTIONS
 

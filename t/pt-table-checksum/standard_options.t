@@ -125,8 +125,8 @@ like(
 
 is(
    $exit_status,
-   4,
-   "Exit status 4 if if PID file already exist (bug 944051)"
+   2,
+   "Exit status 2 if if PID file already exist (bug 944051)"
 );
 
 diag(`rm -rf $pid_file >/dev/null 2>&1`);

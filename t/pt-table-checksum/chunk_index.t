@@ -171,7 +171,7 @@ $output = output(sub {
 
 is(
    $exit_status,
-   1024,
+   32,  # SKIP_CHUNK
    "Bad key_len chunks are not errors"
 ) or diag($output);
 

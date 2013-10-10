@@ -123,7 +123,7 @@ $exit_status = pt_table_checksum::main(@args,
 
 is(
    $exit_status,
-   512,  # = TABLE_DIFF but nothing else; https://bugs.launchpad.net/percona-toolkit/+bug/944051
+   16,  # = TABLE_DIFF but nothing else; https://bugs.launchpad.net/percona-toolkit/+bug/944051
    "--replicate-check on by default, detects diff"
 );
 
@@ -297,7 +297,7 @@ is_deeply(
 
 is(
    $exit_status,
-   2048,
+   64,  # SKIP_TABLE
    "Non-zero exit status"
 );
 
