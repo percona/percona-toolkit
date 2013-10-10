@@ -9540,9 +9540,8 @@ sub create_new_table {
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my $new_table_name   = $args{new_table_name};
-   my $new_table_prefix = $args{new_table_prefix};
-   my ($orig_tbl, $cxn, $q, $o, $tp) = @args{@required_args};
+   my ($new_table_name, $new_table_prefix, $orig_tbl, $cxn, $q, $o, $tp)
+      = @args{@required_args};
 
    # Get the original table struct.
    my $ddl = $tp->get_create_table(
