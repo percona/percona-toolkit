@@ -730,6 +730,10 @@ sub normalize_checksum_results {
    printf $fh $output;
    close $fh;
    my $normal_output = `cat $tmp_file | awk '/^[0-9 ]/ {print \$2 " " \$3 " " \$4 " " \$5 " " \$6 " " \$8} /^[A-Z]/ {print \$0}'`;
+   if ( wantarray ) {
+      my $original_output = `cat $tmp_file`;
+      return $normal_output, $original_output;
+   }
    `rm $tmp_file >/dev/null`;
    return $normal_output;
 }
