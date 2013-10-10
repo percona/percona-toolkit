@@ -230,8 +230,9 @@ override query_report => sub {
          query_count => $times_seen,
          $args{anon} ? () : (
             example     => {
-               query => substr($sample->{arg}, 0, $self->max_query_length),
-               ts    => $sample->{ts} ? parse_timestamp($sample->{ts}) : undef,
+               query      => substr($sample->{arg}, 0, $self->max_query_length),
+               ts         => $sample->{ts} ? parse_timestamp($sample->{ts}) : undef,
+               Query_time => $sample->{Query_time},
             },
          ),
       };
