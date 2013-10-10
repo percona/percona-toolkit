@@ -48,7 +48,7 @@ $output = `$trunk/bin/pt-table-sync --sync-to-master h=127.1,P=12346,u=msandbox,
 $output = remove_traces($output);
 is(
    $output,
-   "REPLACE INTO `test`.`fl`(`id`, `f`, `d`) VALUES ('1', '1.0000011921', '2.0000012');
+   "REPLACE INTO `test`.`fl`(`id`, `f`, `d`) VALUES ('1', 1.0000011921, 2.0000012);
 ",
    'No --float-precision so double col diff at high precision (issue 410)'
 );
