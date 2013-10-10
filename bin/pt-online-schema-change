@@ -9557,6 +9557,10 @@ sub create_new_table {
    my $tryno = 1;
    my @old_tables;
    while ( $tryno++ <= $tries ) {
+      if ( $new_table_prefix ) {
+         $new_table_name = $new_table_prefix . $new_table_name;
+      }
+
       if ( length($new_table_name) > 64 ) {
          my $truncated_table_name = substr($new_table_name, 0, 64);
          PTDEBUG && _d($new_table_name, 'is over 64 characters long, '
@@ -9595,9 +9599,6 @@ sub create_new_table {
          # purposes.
          if ( $EVAL_ERROR =~ m/table.+?already exists/i ) {
             push @old_tables, $q->quote($orig_tbl->{db}, $new_table_name);
-            if ( $new_table_prefix ) {
-               $new_table_name = $new_table_prefix . $new_table_name;
-            }
             next;
          }
 
