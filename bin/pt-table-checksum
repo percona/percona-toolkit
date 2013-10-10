@@ -8941,14 +8941,14 @@ my $exit_status  = 0;
 # http://www.tldp.org/LDP/abs/html/exitcodes.html
 our %PTC_EXIT_STATUS = (
    # General flags:
-   ALREADY_RUNNING => 4,
+   ERROR           => 1,
+   ALREADY_RUNNING => 2,
+   CAUGHT_SIGNAL   => 4,
    NO_SLAVES_FOUND => 8,
-   CAUGHT_SIGNAL   => 16,
-   ERROR           => 32,
    # Tool-specific flags:
-   TABLE_DIFF      => 512,
-   SKIP_CHUNK      => 1024,
-   SKIP_TABLE      => 2048,
+   TABLE_DIFF      => 16,
+   SKIP_CHUNK      => 32,
+   SKIP_TABLE      => 64,
 );
 
 # The following two hashes are used in exec_nibble().
@@ -11609,16 +11609,16 @@ with these flags:
 
    FLAG              BIT VALUE  MEANING
    ================  =========  ==========================================
-   ALREADY_RUNNING           4  --pid file exists and the PID is running
+   ERROR                     1  A non-fatal error occurred
+   ALREADY_RUNNING           2  --pid file exists and the PID is running
+   CAUGHT_SIGNAL             4  Caught SIGHUP, SIGINT, SIGPIPE, or SIGTERM
    NO_SLAVES_FOUND           8  No replicas or cluster nodes were found
-   CAUGHT_SIGNAL            16  Caught SIGHUP, SIGINT, SIGPIPE, or SIGTERM
-   ERROR                    32  A non-fatal error occurred
-   TABLE_DIFF              512  At least one diff was found
-   SKIP_CHUNK             1024  At least one chunk was skipped
-   SKIP_TABLE             2048  At least one table was skipped
+   TABLE_DIFF               16  At least one diff was found
+   SKIP_CHUNK               32  At least one chunk was skipped
+   SKIP_TABLE               64  At least one table was skipped
 
 If any flag is set, the exit status will be non-zero.  Use the bitwise C<AND>
-operation to check for a particular flag.  For example, if C<$exit_status & 512>
+operation to check for a particular flag.  For example, if C<$exit_status & 16>
 is true, then at least one diff was found.
 
 =head1 OPTIONS
