@@ -326,10 +326,15 @@ sub make_UPDATE {
    my $types = $self->{tbl_struct}->{type_for};
    return "UPDATE $self->{dst_db_tbl} SET "
       . join(', ', map {
-            my $is_char = ($types->{$_} || '') =~ m/char|text/i;
+            my $is_char  = ($types->{$_} || '') =~ m/char|text/i;
+            my $is_float = ($types->{$_} || '') =~ m/float|double/i;
             $self->{Quoter}->quote($_)
-            . '=' .  $self->{Quoter}->quote_val($row->{$_},
-                                              is_char => $is_char);
+            . '='
+            .  $self->{Quoter}->quote_val(
+                  $row->{$_},
+                  is_char  => $is_char,
+                  is_float => $is_float,
+            );
          } grep { !$in_where{$_} } @cols)
       . " WHERE $where LIMIT 1";
 }
@@ -399,10 +404,16 @@ sub make_row {
    return "$verb INTO $self->{dst_db_tbl}("
       . join(', ', map { $q->quote($_) } @cols)
       . ') VALUES ('
-      . join(', ', map {
-               my $is_char = ($type_for->{$_} || '') =~ m/char|text/i;
-               $q->quote_val($row->{$_},
-                           is_char => $is_char) } @cols )
+      . join(', ',
+            map {
+               my $is_char  = ($type_for->{$_} || '') =~ m/char|text/i;
+               my $is_float = ($type_for->{$_} || '') =~ m/float|double/i;
+               $q->quote_val(
+                     $row->{$_},
+                     is_char  => $is_char,
+                     is_float => $is_float,
+               )
+            } @cols)
       . ')';
 }
 
@@ -420,9 +431,11 @@ sub make_where_clause {
    my @clauses = map {
       my $val = $row->{$_};
       my $sep = defined $val ? '=' : ' IS ';
-      my $is_char = ($self->{tbl_struct}->{type_for}->{$_} || '') =~ m/char|text/i;
+      my $is_char  = ($self->{tbl_struct}->{type_for}->{$_} || '') =~ m/char|text/i;
+      my $is_float = ($self->{tbl_struct}->{type_for}->{$_} || '') =~ m/float|double/i;
       $self->{Quoter}->quote($_) . $sep . $self->{Quoter}->quote_val($val,
-                                              is_char => $is_char);
+                                              is_char  => $is_char,
+                                              is_float => $is_float);
    } @$cols;
    return join(' AND ', @clauses);
 }

@@ -77,6 +77,9 @@ sub quote_val {
    return $val if $val =~ m/^0x[0-9a-fA-F]+$/  # quote hex data
                   && !$args{is_char};          # unless is_char is true
 
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1229861
+   return $val if $args{is_float};
+
    # Quote and return non-numeric vals.
    $val =~ s/(['\\])/\\$1/g;
    return "'$val'";
