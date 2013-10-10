@@ -10,6 +10,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
+use Data::Dumper;
 
 use PerconaTest;
 use Sandbox;
@@ -27,21 +28,18 @@ if ( !$master_dbh ) {
 elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
-else {
-   plan tests => 3;
-}
 
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
-$sb->create_dbs($master_dbh, ['test']);
+my $master_dsn = $sb->dsn_for('master');
+my $slave1_dsn = $sb->dsn_for('slave1');
 
 # #############################################################################
 # Issue 410: mk-table-sync doesn't have --float-precision
 # #############################################################################
 
+$sb->create_dbs($master_dbh, ['test']);
 $master_dbh->do('create table test.fl (id int not null primary key, f float(12,10), d double)');
 $master_dbh->do('insert into test.fl values (1, 1.0000012, 2.0000012)');
-sleep 1;
+$sb->wait_for_slaves();
 $slave_dbh->do('update test.fl set d = 2.0000013 where id = 1');
 
 # The columns really are different at this point so we should
@@ -50,7 +48,7 @@ $output = `$trunk/bin/pt-table-sync --sync-to-master h=127.1,P=12346,u=msandbox,
 $output = remove_traces($output);
 is(
    $output,
-   "REPLACE INTO `test`.`fl`(`id`, `f`, `d`) VALUES ('1', '1.0000011921', '2.0000012');
+   "REPLACE INTO `test`.`fl`(`id`, `f`, `d`) VALUES ('1', 1.0000011921, 2.0000012);
 ",
    'No --float-precision so double col diff at high precision (issue 410)'
 );
@@ -66,9 +64,33 @@ is(
 );
 
 # #############################################################################
+# pt-table-sync quotes floats, prevents syncing
+# https://bugs.launchpad.net/percona-toolkit/+bug/1229861
+# #############################################################################
+
+$sb->load_file('master', "t/pt-table-sync/samples/sync-float.sql");
+$slave_dbh->do("INSERT INTO sync_float_1229861.t (`c1`, `c2`, `c3`, `snrmin`, `snrmax`, `snravg`) VALUES (1,1,1,29.5,33.5,31.6)");
+
+$output = output(sub {
+      pt_table_sync::main(
+         "$master_dsn,D=sync_float_1229861,t=t",
+         "$slave1_dsn",
+         qw(--no-check-slave --print --execute))
+   },
+   stderr => 1,
+);
+
+my $rows = $slave_dbh->selectall_arrayref("SELECT * FROM sync_float_1229861.t");
+is_deeply(
+   $rows,
+   [],
+   "Sync rows with float values (bug 1229861)"
+) or diag(Dumper($rows), $output);
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 $sb->wipe_clean($slave_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+done_testing;
