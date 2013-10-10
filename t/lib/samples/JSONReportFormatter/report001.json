@@ -5,6 +5,7 @@
          "checksum" : "82860EDA9A88FCC5",
          "distillate" : "SELECT users",
          "example" : {
+            "Query_time" : "8.000652",
             "query" : "SELECT id FROM users WHERE name='foo'",
             "ts" : "2007-10-15 21:43:52"
          },
@@ -84,6 +85,7 @@
          "checksum" : "1087A32FED3B7EBB",
          "distillate" : "INSERT articles",
          "example" : {
+            "Query_time" : "1.001943",
             "query" : "INSERT IGNORE INTO articles (id, body,)VALUES(3558268,'sample text')",
             "ts" : "2007-10-15 21:43:52"
          },

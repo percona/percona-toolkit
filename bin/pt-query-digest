@@ -7924,8 +7924,9 @@ override query_report => sub {
          query_count => $times_seen,
          $args{anon} ? () : (
             example     => {
-               query => substr($sample->{arg}, 0, $self->max_query_length),
-               ts    => $sample->{ts} ? parse_timestamp($sample->{ts}) : undef,
+               query      => substr($sample->{arg}, 0, $self->max_query_length),
+               ts         => $sample->{ts} ? parse_timestamp($sample->{ts}) : undef,
+               Query_time => $sample->{Query_time},
             },
          ),
       };
@@ -10311,8 +10312,16 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 sub check_recursion_method {
    my ($methods) = @_;
 
-   if ( @$methods != 1 ) {
-      if ( grep({ !m/processlist|hosts/i } @$methods)
+   foreach my $method ( @$methods ) {
+      die "Invalid recursion method: " . ($method || 'undef') . "\n"
+         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster|dsn=)/i;
+   }
+
+   if ( @$methods > 1 ) {
+      if ( grep( { m/none/ } @$methods) && grep( {! m/none/ } @$methods) ) {
+            die "--recursion-method=none cannot be combined with other methods\n";
+      }
+      elsif ( grep({ !m/processlist|hosts/i } @$methods)
             && $methods->[0] !~ /^dsn=/i )
       {
          die  "Invalid combination of recursion methods: "
@@ -10320,11 +10329,8 @@ sub check_recursion_method {
             . "Only hosts and processlist may be combined.\n"
       }
    }
-   else {
-      my ($method) = @$methods;
-      die "Invalid recursion method: " . ( $method || 'undef' )
-         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|dsn=)/i;
-   }
+
+   return;
 }
 
 sub new {
