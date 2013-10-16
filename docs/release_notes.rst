@@ -1,10 +1,55 @@
 Release Notes
 *************
 
+v2.2.5 released 2013-10-16
+==========================
+
+Percona Toolkit 2.2.5 has been released. This release has four new features and a number of bugfixes.
+
+Query_time histogram has been added to the pt-query-digest JSON output, not the actual chart but the values necessary to render the chart later, so the values for each bucket.
+
+As of pt-table-checksum 2.2.5, skipped chunks cause a non-zero exit status. An exit status of zero or 32 is equivalent to a zero exit status with skipped chunks in previous versions of the tool.
+
+New --no-drop-triggers option has been implemented for pt-online-schema-change in case users want to rename the tables manually, when the load is low.
+
+New --new-table-name option has been added to pt-online-schema-change which can be used to specify the temporary table name.
+
+* Fixed bug #1199589: pt-archiver would delete the data even with the --dry-run option.
+
+* Fixed bug #821692: pt-query-digest didn't distill LOAD DATA correctly.
+
+* Fixed bug #984053: pt-query-digest didn't distill INSERT/REPLACE without INTO correctly.
+
+* Fixed bug #1206677: pt-agent docs were referencing wrong web address.
+
+* Fixed bug #1210537: pt-table-checksum --recursion-method=cluster would crash if no nodes were found.
+
+Percona Toolkit packages can be downloaded from
+http://www.percona.com/downloads/percona-toolkit/ or the Percona Software
+Repositories (http://www.percona.com/software/repositories
+
+Changelog
+---------
+
+* Added Query_time histogram bucket counts to pt-query-digest JSON output
+* Added pt-online-schema-change --[no]drop-triggers option
+* Fixed bug #1199589: pt-archiver deletes data despite --dry-run
+* Fixed bug #944051: pt-table-checksum has ambiguous exit status
+* Fixed bug #1209436: pt-kill --log-dsn may not work on Perl 5.8
+* Fixed bug #1210537: pt-table-checksum --recursion-method=cluster crashes if no nodes are found
+* Fixed bug #1215608: pt-online-schema-change new table suffix is hard-coded
+* Fixed bug #1229861: pt-table-sync quotes float values, can't sync
+* Fixed bug #821692: pt-query-digest doesn't distill LOAD DATA correctly
+* Fixed bug #984053: pt-query-digest doesn't distill INSERT/REPLACE without INTO correctly
+* Fixed bug #1206728: pt-deadlock-logger 2.2 requires DSN on command line
+* Fixed bug #1226721: pt-agent on CentOS 5 fails to send data
+* Fixed bug #821690: pt-query-digest doesn't distill IF EXISTS correctly
+* Fixed bug #1206677: pt-agent docs reference clodu.percona.com
+
 v2.2.4 released 2013-07-18
 ==========================
 
-Percona Toolkit 2.2.4 has been released. This release two new features and number of bugfixes. 
+Percona Toolkit 2.2.4 has been released. This release two new features and a number of bugfixes. 
 
 pt-query-digest --output json includes query examples as of v2.2.3. Some people might not want this because it exposes real data. New option, --output json-anon, has been implemented. This option will provide the same data without query examples. It's "anonymous" in the sense that there's no identifying data; nothing more than schema and table structs can be inferred from fingerprints. 
 
