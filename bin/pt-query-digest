@@ -15212,16 +15212,16 @@ Create the L<"--review"> table if it does not exist.
 This option causes the table specified by L<"--review"> to be created
 with the default structure shown in the documentation for L<"--review">.
 
+=item --daemonize
+
+Fork to the background and detach from the shell.  POSIX
+operating systems only.
+
 =item --database
 
 short form: -D; type: string
 
 Connect to this database.
-
-=item --daemonize
-
-Fork to the background and detach from the shell.  POSIX
-operating systems only.
 
 =item --defaults-file
 

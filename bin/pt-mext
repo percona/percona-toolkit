@@ -684,7 +684,7 @@ line at a time.  It places each line into a temporary file.  When it finds a
 blank line, it assumes that a new sample of SHOW GLOBAL STATUS is starting,
 and it creates a new temporary file.  At the end of this process, it has a
 number of temporary files.  It joins the temporary files together side-by-side
-and prints the result.  If the L<"-r"> option is given, it first subtracts
+and prints the result.  If L<"--relative"> option is given, it first subtracts
 each sample from the one after it before printing results.
 
 =head1 OPTIONS

@@ -11536,11 +11536,11 @@ The number of chunks into which the table was divided.
 
 The number of chunks that were skipped due one or more of these problems:
 
-   * MySQL not using the L<"--chunk-index">
-   * MySQL not using the full chunk index (L<"--[no]check-plan">)
-   * Chunk size is greater than L<"--chunk-size"> * L<"--chunk-size-limit">
-   * Lock wait timeout exceeded (L<"--retries")
-   * Checksum query killed (L<"--retries">)
+   * MySQL not using the --chunk-index
+   * MySQL not using the full chunk index (--[no]check-plan)
+   * Chunk size is greater than --chunk-size * --chunk-size-limit
+   * Lock wait timeout exceeded (--retries)
+   * Checksum query killed (--retries)
 
 As of pt-table-checksum 2.2.5, skipped chunks cause a non-zero L<"EXIT STATUS">.
 

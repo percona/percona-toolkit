@@ -5453,12 +5453,6 @@ L<"SYNOPSIS"> and usage information for details.
 
 Prompt for a password when connecting to MySQL.
 
-=item --[no]ignore-case
-
-default: yes
-
-Compare the variables case-insensitively.
-
 =item --charset
 
 short form: -A; type: string
@@ -5499,6 +5493,12 @@ Show help and exit.
 short form: -h; type: string
 
 Connect to host.
+
+=item --[no]ignore-case
+
+default: yes
+
+Compare the variables case-insensitively.
 
 =item --ignore-variables
 

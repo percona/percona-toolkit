@@ -7404,12 +7404,6 @@ type: Array
 Read this comma-separated list of config files; if specified, this must be the
 first option on the command line.
 
-=item --database
-
-short form: -D; type: string
-
-The database to use for the connection.
-
 =item --create-log-table
 
 Create the L<"--log-dsn"> table if it does not exist.
@@ -7421,6 +7415,12 @@ default structure shown in the documentation for that option.
 
 Fork to the background and detach from the shell.  POSIX operating systems
 only.
+
+=item --database
+
+short form: -D; type: string
+
+The database to use for the connection.
 
 =item --defaults-file
 
