@@ -2564,17 +2564,23 @@ first option on the command line.
 
 Print help and exit.
 
+=item --read-samples
+
+type: string
+
+Create a report from the files in this directory.
+
 =item --save-samples
 
 type: string
 
 Save the collected data in this directory.
 
-=item --read-samples
+=item --sleep
 
-type: string
+type: int; default: 5
 
-Create a report from the files in this directory.
+How long to sleep when gathering samples from vmstat.
 
 =item --summarize-mounts
 
@@ -2594,17 +2600,15 @@ default: yes; negatable: yes
 
 Report on top processes and C<vmstat> output.
 
-=item --sleep
-
-type: int; default: 5
-
-How long to sleep when gathering samples from vmstat.
-
 =item --version
 
 Print tool's version and exit.
 
 =back
+
+=head1 ENVIRONMENT
+
+This tool does not use any environment variables.
 
 =head1 SYSTEM REQUIREMENTS
 

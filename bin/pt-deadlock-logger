@@ -5181,15 +5181,15 @@ Normally the L<"--dest"> table is expected to exist already.  This option
 causes pt-deadlock-logger to create the table automatically using the suggested
 table structure.
 
+=item --daemonize
+
+Fork to the background and detach from the shell.  POSIX operating systems only.
+
 =item --database
 
 short form: -D; type: string
 
 Connect to this database.
-
-=item --daemonize
-
-Fork to the background and detach from the shell.  POSIX operating systems only.
 
 =item --defaults-file
 
