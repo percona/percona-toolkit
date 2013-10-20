@@ -1,3 +1,8 @@
+percona-toolkit (2.2.5) unstable; urgency=low
+
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Thu, 17 Oct 2013 05:00:27 +0000
+
 percona-toolkit (2.2.3) unstable; urgency=low
 
   * Added new tool: pt-agent
