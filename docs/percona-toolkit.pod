@@ -30,7 +30,23 @@ This release of Percona Toolkit includes the following tools:
 
 Agent for Percona Cloud Tools
 
+=item pt-agent.~1~
+
+Agent for Percona Cloud Tools
+
+=item pt-agent.~2~
+
+Agent for Percona Cloud Tools
+
 =item pt-align
+
+Align output from other tools to columns.
+
+=item pt-align.~1~
+
+Align output from other tools to columns.
+
+=item pt-align.~2~
 
 Align output from other tools to columns.
 
@@ -38,7 +54,23 @@ Align output from other tools to columns.
 
 Archive rows from a MySQL table into another table or a file.
 
+=item pt-archiver.~1~
+
+Archive rows from a MySQL table into another table or a file.
+
+=item pt-archiver.~2~
+
+Archive rows from a MySQL table into another table or a file.
+
 =item pt-config-diff
+
+Diff MySQL configuration files and server variables.
+
+=item pt-config-diff.~1~
+
+Diff MySQL configuration files and server variables.
+
+=item pt-config-diff.~2~
 
 Diff MySQL configuration files and server variables.
 
@@ -46,7 +78,23 @@ Diff MySQL configuration files and server variables.
 
 Log MySQL deadlocks.
 
+=item pt-deadlock-logger.~1~
+
+Log MySQL deadlocks.
+
+=item pt-deadlock-logger.~2~
+
+Log MySQL deadlocks.
+
 =item pt-diskstats
+
+An interactive I/O monitoring tool for GNU/Linux.
+
+=item pt-diskstats.~1~
+
+An interactive I/O monitoring tool for GNU/Linux.
+
+=item pt-diskstats.~2~
 
 An interactive I/O monitoring tool for GNU/Linux.
 
@@ -54,7 +102,23 @@ An interactive I/O monitoring tool for GNU/Linux.
 
 Find duplicate indexes and foreign keys on MySQL tables.
 
+=item pt-duplicate-key-checker.~1~
+
+Find duplicate indexes and foreign keys on MySQL tables.
+
+=item pt-duplicate-key-checker.~2~
+
+Find duplicate indexes and foreign keys on MySQL tables.
+
 =item pt-fifo-split
+
+Split files and pipe lines to a fifo without really splitting.
+
+=item pt-fifo-split.~1~
+
+Split files and pipe lines to a fifo without really splitting.
+
+=item pt-fifo-split.~2~
 
 Split files and pipe lines to a fifo without really splitting.
 
@@ -62,7 +126,23 @@ Split files and pipe lines to a fifo without really splitting.
 
 Find MySQL tables and execute actions, like GNU find.
 
+=item pt-find.~1~
+
+Find MySQL tables and execute actions, like GNU find.
+
+=item pt-find.~2~
+
+Find MySQL tables and execute actions, like GNU find.
+
 =item pt-fingerprint
+
+Convert queries into fingerprints.
+
+=item pt-fingerprint.~1~
+
+Convert queries into fingerprints.
+
+=item pt-fingerprint.~2~
 
 Convert queries into fingerprints.
 
@@ -70,7 +150,23 @@ Convert queries into fingerprints.
 
 Log MySQL foreign key errors.
 
+=item pt-fk-error-logger.~1~
+
+Log MySQL foreign key errors.
+
+=item pt-fk-error-logger.~2~
+
+Log MySQL foreign key errors.
+
 =item pt-heartbeat
+
+Monitor MySQL replication delay.
+
+=item pt-heartbeat.~1~
+
+Monitor MySQL replication delay.
+
+=item pt-heartbeat.~2~
 
 Monitor MySQL replication delay.
 
@@ -78,7 +174,23 @@ Monitor MySQL replication delay.
 
 Read queries from a log and analyze how they use indexes.
 
+=item pt-index-usage.~1~
+
+Read queries from a log and analyze how they use indexes.
+
+=item pt-index-usage.~2~
+
+Read queries from a log and analyze how they use indexes.
+
 =item pt-ioprofile
+
+Watch process IO and print a table of file and I/O activity.
+
+=item pt-ioprofile.~1~
+
+Watch process IO and print a table of file and I/O activity.
+
+=item pt-ioprofile.~2~
 
 Watch process IO and print a table of file and I/O activity.
 
@@ -86,7 +198,23 @@ Watch process IO and print a table of file and I/O activity.
 
 Kill MySQL queries that match certain criteria.
 
+=item pt-kill.~1~
+
+Kill MySQL queries that match certain criteria.
+
+=item pt-kill.~2~
+
+Kill MySQL queries that match certain criteria.
+
 =item pt-mext
+
+Look at many samples of MySQL C<SHOW GLOBAL STATUS> side-by-side.
+
+=item pt-mext.~1~
+
+Look at many samples of MySQL C<SHOW GLOBAL STATUS> side-by-side.
+
+=item pt-mext.~2~
 
 Look at many samples of MySQL C<SHOW GLOBAL STATUS> side-by-side.
 
@@ -94,7 +222,23 @@ Look at many samples of MySQL C<SHOW GLOBAL STATUS> side-by-side.
 
 Summarize MySQL information nicely.
 
+=item pt-mysql-summary.~1~
+
+Summarize MySQL information nicely.
+
+=item pt-mysql-summary.~2~
+
+Summarize MySQL information nicely.
+
 =item pt-online-schema-change
+
+ALTER tables without locking them.
+
+=item pt-online-schema-change.~1~
+
+ALTER tables without locking them.
+
+=item pt-online-schema-change.~2~
 
 ALTER tables without locking them.
 
@@ -102,7 +246,23 @@ ALTER tables without locking them.
 
 Aggregate GDB stack traces for a selected program.
 
+=item pt-pmp.~1~
+
+Aggregate GDB stack traces for a selected program.
+
+=item pt-pmp.~2~
+
+Aggregate GDB stack traces for a selected program.
+
 =item pt-query-digest
+
+Analyze MySQL queries from logs, processlist, and tcpdump.
+
+=item pt-query-digest.~1~
+
+Analyze MySQL queries from logs, processlist, and tcpdump.
+
+=item pt-query-digest.~2~
 
 Analyze MySQL queries from logs, processlist, and tcpdump.
 
@@ -110,7 +270,23 @@ Analyze MySQL queries from logs, processlist, and tcpdump.
 
 Canonicalize and print MySQL grants so you can effectively replicate, compare and version-control them.
 
+=item pt-show-grants.~1~
+
+Canonicalize and print MySQL grants so you can effectively replicate, compare and version-control them.
+
+=item pt-show-grants.~2~
+
+Canonicalize and print MySQL grants so you can effectively replicate, compare and version-control them.
+
 =item pt-sift
+
+Browses files created by pt-stalk.
+
+=item pt-sift.~1~
+
+Browses files created by pt-stalk.
+
+=item pt-sift.~2~
 
 Browses files created by pt-stalk.
 
@@ -118,7 +294,23 @@ Browses files created by pt-stalk.
 
 Make a MySQL slave server lag behind its master.
 
+=item pt-slave-delay.~1~
+
+Make a MySQL slave server lag behind its master.
+
+=item pt-slave-delay.~2~
+
+Make a MySQL slave server lag behind its master.
+
 =item pt-slave-find
+
+Find and print replication hierarchy tree of MySQL slaves.
+
+=item pt-slave-find.~1~
+
+Find and print replication hierarchy tree of MySQL slaves.
+
+=item pt-slave-find.~2~
 
 Find and print replication hierarchy tree of MySQL slaves.
 
@@ -126,7 +318,23 @@ Find and print replication hierarchy tree of MySQL slaves.
 
 Watch and restart MySQL replication after errors.
 
+=item pt-slave-restart.~1~
+
+Watch and restart MySQL replication after errors.
+
+=item pt-slave-restart.~2~
+
+Watch and restart MySQL replication after errors.
+
 =item pt-stalk
+
+Collect forensic data about MySQL when problems occur.
+
+=item pt-stalk.~1~
+
+Collect forensic data about MySQL when problems occur.
+
+=item pt-stalk.~2~
 
 Collect forensic data about MySQL when problems occur.
 
@@ -134,7 +342,23 @@ Collect forensic data about MySQL when problems occur.
 
 Summarize system information nicely.
 
+=item pt-summary.~1~
+
+Summarize system information nicely.
+
+=item pt-summary.~2~
+
+Summarize system information nicely.
+
 =item pt-table-checksum
+
+Verify MySQL replication integrity.
+
+=item pt-table-checksum.~1~
+
+Verify MySQL replication integrity.
+
+=item pt-table-checksum.~2~
 
 Verify MySQL replication integrity.
 
@@ -142,7 +366,23 @@ Verify MySQL replication integrity.
 
 Synchronize MySQL table data efficiently.
 
+=item pt-table-sync.~1~
+
+Synchronize MySQL table data efficiently.
+
+=item pt-table-sync.~2~
+
+Synchronize MySQL table data efficiently.
+
 =item pt-table-usage
+
+Analyze how queries use tables.
+
+=item pt-table-usage.~1~
+
+Analyze how queries use tables.
+
+=item pt-table-usage.~2~
 
 Analyze how queries use tables.
 
@@ -150,11 +390,35 @@ Analyze how queries use tables.
 
 Verify that query results are identical on different servers.
 
+=item pt-upgrade.~1~
+
+Verify that query results are identical on different servers.
+
+=item pt-upgrade.~2~
+
+Verify that query results are identical on different servers.
+
 =item pt-variable-advisor
 
 Analyze MySQL variables and advise on possible problems.
 
+=item pt-variable-advisor.~1~
+
+Analyze MySQL variables and advise on possible problems.
+
+=item pt-variable-advisor.~2~
+
+Analyze MySQL variables and advise on possible problems.
+
 =item pt-visual-explain
+
+Format EXPLAIN output as a tree.
+
+=item pt-visual-explain.~1~
+
+Format EXPLAIN output as a tree.
+
+=item pt-visual-explain.~2~
 
 Format EXPLAIN output as a tree.
 
@@ -562,6 +826,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-Percona Toolkit v2.2.4 released 2013-07-17
+Percona Toolkit v2.2.5 released 2013-10-17
 
 =cut
