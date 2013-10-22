@@ -1,6 +1,20 @@
 percona-toolkit (2.2.5) unstable; urgency=low
 
-
+  * Added Query_time histogram bucket counts to pt-query-digest JSON output
+  * Added pt-online-schema-change --[no]drop-triggers option
+  * Fixed bug #1199589: pt-archiver deletes data despite --dry-run
+  * Fixed bug #944051: pt-table-checksum has ambiguous exit status
+  * Fixed bug #1209436: pt-kill --log-dsn may not work on Perl 5.8
+  * Fixed bug #1210537: pt-table-checksum --recursion-method=cluster crashes if no nodes are found
+  * Fixed bug #1215608: pt-online-schema-change new table suffix is hard-coded
+  * Fixed bug #1229861: pt-table-sync quotes float values, can't sync
+  * Fixed bug #821692: pt-query-digest doesn't distill LOAD DATA correctly
+  * Fixed bug #984053: pt-query-digest doesn't distill INSERT/REPLACE without INTO correctly
+  * Fixed bug #1206728: pt-deadlock-logger 2.2 requires DSN on command line
+  * Fixed bug #1226721: pt-agent on CentOS 5 fails to send data
+  * Fixed bug #821690: pt-query-digest doesn't distill IF EXISTS correctly
+  * Fixed bug #1206677: pt-agent docs reference clodu.percona.com
+  
  -- Percona Toolkit Developers <toolkit-dev@percona.com>  Thu, 17 Oct 2013 05:00:27 +0000
 
 percona-toolkit (2.2.3) unstable; urgency=low
