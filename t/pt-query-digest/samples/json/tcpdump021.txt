@@ -6,11 +6,24 @@
          "checksum" : "AA8E9FA785927259",
          "distillate" : "SELECT d.t",
          "example" : {
+            "Query_time" : "0.000286",
             "as_select" : "SELECT i FROM d.t WHERE i=?",
             "query" : "PREPARE SELECT i FROM d.t WHERE i=?",
             "ts" : "2009-12-08 09:23:49.637394"
          },
          "fingerprint" : "prepare select i from d.t where i=?",
+         "histograms" : {
+            "Query_time" : [
+               0,
+               0,
+               1,
+               0,
+               0,
+               0,
+               0,
+               0
+            ]
+         },
          "metrics" : {
             "No_good_index_used" : {
                "yes" : "0"
@@ -70,11 +83,24 @@
          "checksum" : "3F79759E7FA2F117",
          "distillate" : "SELECT d.t",
          "example" : {
+            "Query_time" : "0.000281",
             "as_select" : "SELECT i FROM d.t WHERE i=\"3\"",
             "query" : "EXECUTE SELECT i FROM d.t WHERE i=\"3\"",
             "ts" : "2009-12-08 09:23:49.637892"
          },
          "fingerprint" : "execute select i from d.t where i=?",
+         "histograms" : {
+            "Query_time" : [
+               0,
+               0,
+               1,
+               0,
+               0,
+               0,
+               0,
+               0
+            ]
+         },
          "metrics" : {
             "No_good_index_used" : {
                "yes" : "0"
@@ -134,10 +160,23 @@
          "checksum" : "AA353644DE4C4CB4",
          "distillate" : "ADMIN QUIT",
          "example" : {
+            "Query_time" : "0.000000",
             "query" : "administrator command: Quit",
             "ts" : "2009-12-08 09:23:49.638381"
          },
          "fingerprint" : "administrator command: Quit",
+         "histograms" : {
+            "Query_time" : [
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0
+            ]
+         },
          "metrics" : {
             "No_good_index_used" : {
                "yes" : "0"

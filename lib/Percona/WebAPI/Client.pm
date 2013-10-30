@@ -152,6 +152,9 @@ sub get {
       # dynamic attribs anyway, so no use having a real Links obj.
       $resource_objects = $resource->{links};
    }
+   elsif ( exists $resource->{pong} ) {
+      PTDEBUG && _d("Ping pong!");
+   }
    else {
       warn "Did not get X-Percona-Resource-Type or links from $link\n";
    }

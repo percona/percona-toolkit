@@ -127,9 +127,6 @@ sub start_online_logging {
    my $read_timeout = $args{read_timeout} || 3;
 
    return unless $self->online_logging;
-   
-   $self->info("Starting online logging.  No more log entries will be printed here.  "
-      . "Agent logs are accessible through the web interface.");
 
    my $pid = open(my $pipe_write, "|-");
 
@@ -252,30 +249,31 @@ sub level_name {
 
 sub debug {
    my $self = shift;
-   return $self->_log('DEBUG', @_);
+   return if $self->online_logging;
+   return $self->_log(0, 'DEBUG', 1, @_);
 }
 
 sub info {
    my $self = shift;
-   return $self->_log('INFO', @_);
+   return $self->_log(1, 'INFO', @_);
 }
 
 sub warning {
    my $self = shift;
    $self->_set_exit_status();
-   return $self->_log('WARNING', @_);
+   return $self->_log(1, 'WARNING', @_);
 }
 
 sub error {
    my $self = shift;
    $self->_set_exit_status();
-   return $self->_log('ERROR', @_);
+   return $self->_log(1, 'ERROR', @_);
 }
 
 sub fatal {
    my $self = shift;
    $self->_set_exit_status();
-   $self->_log('FATAL', @_);
+   $self->_log(1, 'FATAL', @_);
    exit $self->exit_status;
 }
 
@@ -289,7 +287,7 @@ sub _set_exit_status {
 }
 
 sub _log {
-   my ($self, $level, $msg) = @_;
+   my ($self, $online, $level, $msg, $offline) = @_;
 
    my $ts = ts(time, 1);  # 1=UTC
    my $level_number = level_number($level);
@@ -300,14 +298,14 @@ sub _log {
    my $n_lines = 1;
    $n_lines++ while $msg =~ m/\n/g;
 
-   if ( $self->online_logging_enabled ) {
+   if ( $online && $self->online_logging_enabled ) {
       while ( defined(my $log_entry = shift @{$self->_buffer}) ) {
          $self->_queue_log_entry(@$log_entry);
       }
       $self->_queue_log_entry($ts, $level_number, $n_lines, $msg);
    }
    else {
-      if ( $self->online_logging ) {
+      if ( $online && $self->online_logging ) {
          push @{$self->_buffer}, [$ts, $level_number, $n_lines, $msg];
       }
 

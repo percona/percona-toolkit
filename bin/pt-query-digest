@@ -64,7 +64,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.4';
+our $VERSION = '2.2.5';
 
 use strict;
 use warnings FATAL => 'all';
@@ -2799,8 +2799,8 @@ $bal         = qr/
 
 my $olc_re = qr/(?:--|#)[^'"\r\n]*(?=[\r\n]|\Z)/;  # One-line comments
 my $mlc_re = qr#/\*[^!].*?\*/#sm;                  # But not /*!version */
-my $vlc_re = qr#/\*.*?[0-9+].*?\*/#sm;             # For SHOW + /*!version */
-my $vlc_rf = qr#^(SHOW).*?/\*![0-9+].*?\*/#sm;     # Variation for SHOW
+my $vlc_re = qr#/\*.*?[0-9]+.*?\*/#sm;             # For SHOW + /*!version */
+my $vlc_rf = qr#^(?:SHOW).*?/\*![0-9]+(.*?)\*/#sm;     # Variation for SHOW
 
 
 sub new {
@@ -2815,7 +2815,8 @@ sub strip_comments {
    $query =~ s/$mlc_re//go;
    $query =~ s/$olc_re//go;
    if ( $query =~ m/$vlc_rf/i ) { # contains show + version
-      $query =~ s/$vlc_re//go;
+      my $qualifier = $1 || '';
+      $query =~ s/$vlc_re/$qualifier/go;
    }
    return $query;
 }
@@ -2957,7 +2958,7 @@ sub distill_verbs {
       PTDEBUG && _d($query);
 
       $query = uc $query;
-      $query =~ s/\s+(?:GLOBAL|SESSION|FULL|STORAGE|ENGINE)\b/ /g;
+      $query =~ s/\s+(?:SESSION|FULL|STORAGE|ENGINE)\b/ /g;
       $query =~ s/\s+COUNT[^)]+\)//g;
 
       $query =~ s/\s+(?:FOR|FROM|LIKE|WHERE|LIMIT|IN)\b.+//ms;
@@ -7923,8 +7924,9 @@ override query_report => sub {
          query_count => $times_seen,
          $args{anon} ? () : (
             example     => {
-               query => substr($sample->{arg}, 0, $self->max_query_length),
-               ts    => $sample->{ts} ? parse_timestamp($sample->{ts}) : undef,
+               query      => substr($sample->{arg}, 0, $self->max_query_length),
+               ts         => $sample->{ts} ? parse_timestamp($sample->{ts}) : undef,
+               Query_time => $sample->{Query_time},
             },
          ),
       };
@@ -8022,6 +8024,17 @@ override query_report => sub {
             }
          }
       }
+
+      my $vals = $stats->{Query_time}->{all};
+      if ( defined $vals && scalar %$vals ) {
+         my @buck_tens = $ea->buckets_of(10);
+         my @distro = map { 0 } (0 .. 7);
+         my @buckets = map { 0 } (0..999);
+         map { $buckets[$_] = $vals->{$_} } keys %$vals;
+         $vals = \@buckets;  # repoint vals from given hashref to our array
+         map { $distro[$buck_tens[$_]] += $vals->[$_] } (1 .. @$vals - 1);
+         $class->{histograms}->{Query_time} = \@distro;
+      } # histogram
 
       $class->{metrics} = \%metrics;
       if ( @tables ) {
@@ -10299,8 +10312,16 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 sub check_recursion_method {
    my ($methods) = @_;
 
-   if ( @$methods != 1 ) {
-      if ( grep({ !m/processlist|hosts/i } @$methods)
+   foreach my $method ( @$methods ) {
+      die "Invalid recursion method: " . ($method || 'undef') . "\n"
+         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster|dsn=)/i;
+   }
+
+   if ( @$methods > 1 ) {
+      if ( grep( { m/none/ } @$methods) && grep( {! m/none/ } @$methods) ) {
+            die "--recursion-method=none cannot be combined with other methods\n";
+      }
+      elsif ( grep({ !m/processlist|hosts/i } @$methods)
             && $methods->[0] !~ /^dsn=/i )
       {
          die  "Invalid combination of recursion methods: "
@@ -10308,11 +10329,8 @@ sub check_recursion_method {
             . "Only hosts and processlist may be combined.\n"
       }
    }
-   else {
-      my ($method) = @$methods;
-      die "Invalid recursion method: " . ( $method || 'undef' )
-         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|dsn=)/i;
-   }
+
+   return;
 }
 
 sub new {
@@ -15194,16 +15212,16 @@ Create the L<"--review"> table if it does not exist.
 This option causes the table specified by L<"--review"> to be created
 with the default structure shown in the documentation for L<"--review">.
 
+=item --daemonize
+
+Fork to the background and detach from the shell.  POSIX
+operating systems only.
+
 =item --database
 
 short form: -D; type: string
 
 Connect to this database.
-
-=item --daemonize
-
-Fork to the background and detach from the shell.  POSIX
-operating systems only.
 
 =item --defaults-file
 
@@ -16546,6 +16564,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-query-digest 2.2.4
+pt-query-digest 2.2.5
 
 =cut

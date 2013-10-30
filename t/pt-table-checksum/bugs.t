@@ -273,6 +273,28 @@ SKIP: {
 }
 
 # #############################################################################
+# pt-table-checksum --recursion-method cluster crashes
+# https://bugs.launchpad.net/percona-toolkit/+bug/1210537
+# #############################################################################
+
+$output = output(sub {
+   pt_table_checksum::main($master_dsn,
+      qw(--recursion-method cluster -t mysql.user)
+   )},
+   stderr => 1,
+);
+unlike(
+   $output,
+   qr/uninitialized value/,
+   "Bug 1210537: no crash with --recursion-method cluster"
+);
+like(
+   $output,
+   qr/mysql.user/,
+   "Bug 1210537: tool ran"
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);

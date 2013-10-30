@@ -109,6 +109,7 @@ my $output = output(
          link     => "/agents",
          client   => $client,
          interval => $interval,
+         tries    => 4,
       );
    },
    stderr => 1,
@@ -152,22 +153,24 @@ $ua->{responses}->{post} = [
 $ua->{responses}->{get} = [
    {
       headers => { 'X-Percona-Resource-Type' => 'Agent' },
-      content => $return_agent,
+      content => as_hashref($return_agent, with_links =>1 ),
    },
 ];
 
 @ok   = qw(1 1 0);
 @wait = ();
+@log  = ();                     
 $ua->{requests} = [];
 
 $output = output(
    sub {
-      $got_agent = pt_agent::init_agent(
+      ($got_agent) = pt_agent::init_agent(
          agent    => $post_agent,
          action   => 'post',
          link     => "/agents",
          client   => $client,
          interval => $interval,
+         tries    => 5,
          oktorun  => $oktorun,
       );
    },
@@ -175,10 +178,10 @@ $output = output(
 );
 
 is(
-   $got_agent->hostname,
+   ($got_agent ? $got_agent->hostname : ''),
    'host2',
    'Got and returned Agent after error'
-) or diag($output, Dumper(as_hashref($got_agent, with_links => 1)));
+) or diag($output, Dumper($got_agent));
 
 is(
    scalar @wait,
@@ -196,14 +199,11 @@ is_deeply(
    "POST POST GET new Agent after error"
 ) or diag(Dumper($ua->{requests}));
 
-TODO: {
-   local $TODO = "False-positive";
-   like(
-      $output,
-      qr{WARNING Failed to POST /agents},
-      "POST /agents failure logged after error"
-   ) or diag(Dumper($ua->{requests}));
-}
+like(
+   $log[1],
+   qr{WARNING Failed to POST /agents},
+   "POST /agents failure logged after error"
+) or diag(Dumper($ua->{requests}), Dumper(\@log));
 
 # #############################################################################
 # Init an existing agent, i.e. update it.
@@ -233,7 +233,7 @@ $ua->{responses}->{get} = [
    {
       code    => 200,
       headers => { 'X-Percona-Resource-Type' => 'Agent' },
-      content => $return_agent,
+      content => as_hashref($return_agent, with_links =>1 ),
    }
 ];
 
@@ -242,12 +242,13 @@ $ua->{requests} = [];
 
 $output = output(
    sub {
-      $got_agent = pt_agent::init_agent(
+      ($got_agent) = pt_agent::init_agent(
          agent    => $put_agent,
          action   => 'put',
          link     => "/agents/123",
          client   => $client,
          interval => $interval,
+         tries    => 4,
       );
    },
    stderr => 1,
@@ -273,6 +274,58 @@ is_deeply(
    ],
    "PUT then GET Agent"
 ) or diag(Dumper($ua->{requests}));
+
+# #############################################################################
+# Status 403 (too many agents) should abort further attempts.
+# #############################################################################
+
+$ua->{responses}->{post} = [
+   {  # 1, the fake error
+      code => 403,  
+   },
+];
+
+@ok   = qw(1 1 0);
+@wait = ();
+@log  = ();
+$ua->{requests} = [];
+
+$output = output(
+   sub {
+      ($got_agent) = pt_agent::init_agent(
+         agent    => $post_agent,
+         action   => 'post',
+         link     => "/agents",
+         client   => $client,
+         interval => $interval,
+         tries    => 3,
+         oktorun  => $oktorun,
+      );
+   },
+   stderr => 1,
+);
+
+is(
+   scalar @wait,
+   2,
+   "Too many agents (403): waits"
+);
+
+is_deeply(
+   $ua->{requests},
+   [
+      'POST /agents',
+      'POST /agents',
+   ],
+   "Too many agents (403): tries"
+) or diag(Dumper($ua->{requests}));
+
+my $n = grep { $_ =~ m/too many agents/ } @log;
+is(
+   $n,
+   1,
+   "Too many agents (403): does not repeat warning"
+) or diag(Dumper(\@log));
 
 # #############################################################################
 # Done.

@@ -137,7 +137,24 @@ is_deeply(
 ) or diag(Dumper($deadlocks));
 
 # #############################################################################
+# pt-deadlock-logger 2.2 requires a DSN
+# https://bugs.launchpad.net/percona-toolkit/+bug/1206728
+# #############################################################################
+
+my $config = "/tmp/pt-deadlock-logger-test.conf.$PID";
+`cp $trunk/t/pt-deadlock-logger/samples/pt-deadlock-logger-test.conf $config`;
+
+my $output = `$trunk/bin/pt-deadlock-logger --config $config --iteration 1 2>&1`;
+
+is(
+   $CHILD_ERROR,
+   0,
+   "Does not require explicit DSN (bug 1206728)"
+) or diag($output);
+
+diag(`rm -rf $config`);
+
+# #############################################################################
 # Done.
 # #############################################################################
 done_testing;
-exit;

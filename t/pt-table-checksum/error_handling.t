@@ -72,21 +72,29 @@ $master_dbh->do('begin');
 $master_dbh->do('select * from city for update');
 
 $output = output(
-   sub { pt_table_checksum::main(@args, qw(-t sakila.city)) },
+   sub { $exit_status = pt_table_checksum::main(@args, qw(-t sakila.city)) },
    stderr => 1,
-   trf    => sub { return PerconaTest::normalize_checksum_results(@_) },
 );
 
+my $original_output;
+($output, $original_output) = PerconaTest::normalize_checksum_results($output);
+
 like(
-   $output,
+   $original_output,
    qr/Lock wait timeout exceeded/,
-   "Catches lock wait timeout"
+   "Warns about lock wait timeout"
 );
 
 like(
    $output,
    qr/^0 0 0 1 1 sakila.city/m,
    "Skips chunk that times out"
+);
+
+is(
+   $exit_status,
+   32,
+   "Exit 32 (SKIP_CHUNK)"
 );
 
 # Lock wait timeout for sandbox servers is 3s, so sleep 4 then commit
@@ -153,7 +161,7 @@ like(
 
 is(
    $exit_status,
-   1,
+   64,  # SKIP_TABLE
    "Non-zero exit status (bug 1009510)"
 );
 

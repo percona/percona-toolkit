@@ -47,7 +47,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.4';
+our $VERSION = '2.2.5';
 
 use strict;
 use warnings FATAL => 'all';
@@ -6782,25 +6782,27 @@ sub main {
    }
 
    # Set up --log-dsn if specified.
-   my ($log, $log_sth);
+   my ($log, $log_dsn, $log_sql, $log_sth, $log_cxn);
    my @processlist_columns = qw(
       Id User Host db Command
       Time State Info Time_ms
    );
-   if ( my $log_dsn = $o->get('log-dsn') ) {
+   if ( $log_dsn = $o->get('log-dsn') ) {
       my $db    = $log_dsn->{D};
       my $table = $log_dsn->{t};
       die "--log-dsn does not specify a database (D) "
         . "or a database-qualified table (t)"
          unless defined $table && defined $db;
-      my $log_cxn   = Cxn->new(
-         dsn_string   => ($dp->get_cxn_params($log_dsn))[0],
+      PTDEBUG && _d('Connecting --log-dsn:', Dumper($log_dsn));
+      $log_cxn = Cxn->new(
+         dsn          => $log_dsn,
          NAME_lc      => 0,
          DSNParser    => $dp,
          OptionParser => $o,
       );
       my $log_dbh   = $log_cxn->connect();
       my $log_table = Quoter->quote($db, $table);
+      PTDEBUG && _d('Connected --log-dsn:', Dumper($log_cxn->dsn));
 
       # Create the log-table table if it doesn't exist and --create-log-table
       # was passed in
@@ -6827,13 +6829,13 @@ sub main {
       PTDEBUG && _d($sql);
       my ($server_id) = $dbh->selectrow_array($sql);
 
-      $sql = "INSERT INTO $log_table ("
+      $log_sql = "INSERT INTO $log_table ("
            . join(", ", @all_log_columns)
            . ") VALUES("
            . join(", ", $server_id, ("?") x (@all_log_columns-1))
            . ")";
       PTDEBUG && _d($sql);
-      $log_sth = $log_dbh->prepare($sql); 
+      $log_sth = $log_dbh->prepare($log_sql); 
 
       my $retry = Retry->new();
 
@@ -6841,7 +6843,7 @@ sub main {
          my (@params) = @_;
          PTDEBUG && _d('Logging values:', @params);
          return $retry->retry(
-            tries => 20,
+            tries => 3,
             wait  => sub { sleep 3; },
             try   => sub { return $log_sth->execute(@params); },
             fail  => sub {
@@ -6853,10 +6855,13 @@ sub main {
                     || $error =~ m/Lost connection to MySQL server/ ) {
                   eval {
                      $log_dbh = $log_cxn->connect();
-                     $log_sth = $log_dbh->prepare( $sql );
+                     $log_sth = $log_dbh->prepare($log_sql);
                      msg('Reconnected to ' . $cxn->name());
                   };
-                  return 1 unless $EVAL_ERROR; # try again
+                  if ( $EVAL_ERROR ) {
+                     warn "Fail code failed: $EVAL_ERROR";
+                  }
+                  return 1; # retry
                }
                return 0; # call final_fail
             },
@@ -7399,12 +7404,6 @@ type: Array
 Read this comma-separated list of config files; if specified, this must be the
 first option on the command line.
 
-=item --database
-
-short form: -D; type: string
-
-The database to use for the connection.
-
 =item --create-log-table
 
 Create the L<"--log-dsn"> table if it does not exist.
@@ -7416,6 +7415,12 @@ default structure shown in the documentation for that option.
 
 Fork to the background and detach from the shell.  POSIX operating systems
 only.
+
+=item --database
+
+short form: -D; type: string
+
+The database to use for the connection.
 
 =item --defaults-file
 
@@ -8181,6 +8186,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-kill 2.2.4
+pt-kill 2.2.5
 
 =cut
