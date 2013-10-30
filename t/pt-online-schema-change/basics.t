@@ -134,7 +134,7 @@ sub test_alter_table {
    # should still exist, but not yet, so add it to the list so
    # is_deeply() against $new_tbls passes.  This only works for
    # single-table tests.
-   my $new_tbl = "_${tbl}_new";
+   my $new_tbl = $args{new_table} || "_${tbl}_new";
    if ( grep { $_ eq '--no-drop-new-table' } @$cmds ) {
       unshift @$orig_tbls, [$new_tbl];
    }
@@ -576,7 +576,7 @@ SKIP: {
 }
 
 # #############################################################################
-# --alther-foreign-keys-method=none.  This intentionally breaks fks because
+# --alter-foreign-keys-method=none.  This intentionally breaks fks because
 # they're not updated so they'll point to the old table that is dropped.
 # #############################################################################
 
@@ -737,6 +737,34 @@ SKIP: {
       ],
    );
 }
+
+# #############################################################################
+# --new-table-name
+# #############################################################################
+
+test_alter_table(
+   name       => "--new-table-name %T_foo",
+   table      => "pt_osc.t",
+   file       => "basic_no_fks_innodb.sql",
+   max_id     => 20,
+   test_type  => "add_col",
+   new_col    => "foo",
+   cmds       => [
+      qw(--execute --new-table-name %T_foo), '--alter', 'ADD COLUMN foo INT'
+   ],
+);
+
+test_alter_table(
+   name       => "--new-table-name static_new",
+   table      => "pt_osc.t",
+   max_id     => 20,
+   test_type  => "drop_col",
+   drop_col   => "foo",
+   new_table  => 'static_new',
+   cmds       => [
+      qw(--execute --new-table-name static_new), '--alter', 'DROP COLUMN foo'
+   ],
+);
 
 # #############################################################################
 # Done.

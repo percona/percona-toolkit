@@ -1248,7 +1248,7 @@ my %status_tests = (
    'SHOW SLAVE HOSTS'                           => 'SHOW SLAVE HOSTS',
    'SHOW SLAVE STATUS'                          => 'SHOW SLAVE STATUS',
    'SHOW STATUS'                                => 'SHOW STATUS',
-   'SHOW GLOBAL STATUS'                         => 'SHOW STATUS',
+   'SHOW GLOBAL STATUS'                         => 'SHOW GLOBAL STATUS',
    'SHOW SESSION STATUS'                        => 'SHOW STATUS',
    'SHOW STATUS LIKE "pattern"'                 => 'SHOW STATUS',
    'SHOW STATUS WHERE foo=bar'                  => 'SHOW STATUS',
@@ -1270,7 +1270,7 @@ my %status_tests = (
    'SHOW TRIGGERS LIKE "pattern"'               => 'SHOW TRIGGERS',
    'SHOW TRIGGERS WHERE foo=bar'                => 'SHOW TRIGGERS',
    'SHOW VARIABLES'                             => 'SHOW VARIABLES',
-   'SHOW GLOBAL VARIABLES'                      => 'SHOW VARIABLES',
+   'SHOW GLOBAL VARIABLES'                      => 'SHOW GLOBAL VARIABLES',
    'SHOW SESSION VARIABLES'                     => 'SHOW VARIABLES',
    'SHOW VARIABLES LIKE "pattern"'              => 'SHOW VARIABLES',
    'SHOW VARIABLES WHERE foo=bar'               => 'SHOW VARIABLES',
@@ -1312,8 +1312,8 @@ foreach my $show ( @show ) {
 #  Issue 735: mk-query-digest doesn't distill query correctly
 is( 
 	$qr->distill('SHOW /*!50002 GLOBAL */ STATUS'),
-	'SHOW STATUS',
-	"distills SHOW STATUS"
+	'SHOW GLOBAL STATUS',
+	"distills SHOW /*!50002 GLOBAL */ STATUS"
 );
 
 is( 
@@ -1330,14 +1330,14 @@ is(
 
 is( 
 	$qr->distill('SHOW GLOBAL STATUS'),
-	'SHOW STATUS',
+	'SHOW GLOBAL STATUS',
 	"distills SHOW GLOBAL STATUS"
 );
 
 is( 
 	$qr->distill('SHOW GLOBAL VARIABLES'),
-	'SHOW VARIABLES',
-	"distills SHOW VARIABLES"
+	'SHOW GLOBAL VARIABLES',
+	"distills SHOW GLOBAL VARIABLES"
 );
 
 is( 

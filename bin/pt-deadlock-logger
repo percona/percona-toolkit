@@ -42,7 +42,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.4';
+our $VERSION = '2.2.5';
 
 use strict;
 use warnings FATAL => 'all';
@@ -4448,15 +4448,12 @@ sub main {
    my $dp = $o->DSNParser();
    $dp->prop('set-vars', $o->set_vars());
 
-   my $src;
-   if ( my $src_dsn_string = shift @ARGV ) {
-      $src = Cxn->new(
-         dsn_string   => $src_dsn_string,
-         parent       => $o->get('daemonize'),
-         DSNParser    => $dp,
-         OptionParser => $o,
-      );
-   }
+   my $src = Cxn->new(
+      dsn_string   => shift @ARGV,
+      parent       => $o->get('daemonize'),
+      DSNParser    => $dp,
+      OptionParser => $o,
+   );
 
    my $dst;
    if ( my $dst_dsn = $o->get('dest') ) {
@@ -5184,15 +5181,15 @@ Normally the L<"--dest"> table is expected to exist already.  This option
 causes pt-deadlock-logger to create the table automatically using the suggested
 table structure.
 
+=item --daemonize
+
+Fork to the background and detach from the shell.  POSIX operating systems only.
+
 =item --database
 
 short form: -D; type: string
 
 Connect to this database.
-
-=item --daemonize
-
-Fork to the background and detach from the shell.  POSIX operating systems only.
 
 =item --defaults-file
 
@@ -5309,9 +5306,8 @@ Do not deadlocks; only print errors and warnings to C<STDERR>.
 
 type: time
 
-How long to run before exiting.  By default pt-deadlock-logger runs once,
-checks for deadlocks, and exits.  If L<"--run-time"> is specified but
-no L<"--interval"> is specified, a default 1 second interval will be used.
+How long to run before exiting.  By default pt-deadlock-logger runs forever,
+checking for deadlocks every L<"--interval"> seconds.
 
 =item --set-vars
 
@@ -5528,6 +5524,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-deadlock-logger 2.2.4
+pt-deadlock-logger 2.2.5
 
 =cut

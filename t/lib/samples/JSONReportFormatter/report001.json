@@ -1,0 +1,207 @@
+{
+   "classes" : [
+      {
+         "attribute" : "fingerprint",
+         "checksum" : "82860EDA9A88FCC5",
+         "distillate" : "SELECT users",
+         "example" : {
+            "Query_time" : "8.000652",
+            "query" : "SELECT id FROM users WHERE name='foo'",
+            "ts" : "2007-10-15 21:43:52"
+         },
+         "fingerprint" : "select id from users where name=?",
+         "histograms" : {
+            "Query_time" : [
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               2,
+               0
+            ]
+         },
+         "metrics" : {
+            "Lock_time" : {
+               "avg" : "0.000155",
+               "max" : "0.000201",
+               "median" : "0.000155",
+               "min" : "0.000109",
+               "pct" : "0.666667",
+               "pct_95" : "0.000201",
+               "stddev" : "0.000065",
+               "sum" : "0.000310"
+            },
+            "Query_time" : {
+               "avg" : "4.500667",
+               "max" : "8.000652",
+               "median" : "4.500667",
+               "min" : "1.000682",
+               "pct" : "0.666667",
+               "pct_95" : "8.000652",
+               "stddev" : "4.949726",
+               "sum" : "9.001334"
+            },
+            "Rows_examined" : {
+               "avg" : "1",
+               "max" : "2",
+               "median" : "1",
+               "min" : "1",
+               "pct" : "0",
+               "pct_95" : "2",
+               "stddev" : "0",
+               "sum" : "3"
+            },
+            "Rows_sent" : {
+               "avg" : "1",
+               "max" : "1",
+               "median" : "1",
+               "min" : "1",
+               "pct" : "0",
+               "pct_95" : "1",
+               "stddev" : "0",
+               "sum" : "2"
+            },
+            "db" : {
+               "value" : "test3"
+            },
+            "user" : {
+               "value" : "root"
+            }
+         },
+         "query_count" : null,
+         "tables" : [
+            {
+               "create" : "SHOW CREATE TABLE `test3`.`users`\\G",
+               "status" : "SHOW TABLE STATUS FROM `test3` LIKE 'users'\\G"
+            }
+         ],
+         "ts_max" : "2007-10-15 21:43:53",
+         "ts_min" : "2007-10-15 21:43:52"
+      },
+      {
+         "attribute" : "fingerprint",
+         "checksum" : "1087A32FED3B7EBB",
+         "distillate" : "INSERT articles",
+         "example" : {
+            "Query_time" : "1.001943",
+            "query" : "INSERT IGNORE INTO articles (id, body,)VALUES(3558268,'sample text')",
+            "ts" : "2007-10-15 21:43:52"
+         },
+         "fingerprint" : "insert ignore into articles (id, body,)values(?+)",
+         "histograms" : {
+            "Query_time" : [
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               1,
+               0
+            ]
+         },
+         "metrics" : {
+            "Lock_time" : {
+               "avg" : "0.000145",
+               "max" : "0.000145",
+               "median" : "0.000145",
+               "min" : "0.000145",
+               "pct" : "0.333333",
+               "pct_95" : "0.000145",
+               "stddev" : "0.000000",
+               "sum" : "0.000145"
+            },
+            "Query_time" : {
+               "avg" : "1.001943",
+               "max" : "1.001943",
+               "median" : "1.001943",
+               "min" : "1.001943",
+               "pct" : "0.333333",
+               "pct_95" : "1.001943",
+               "stddev" : "0.000000",
+               "sum" : "1.001943"
+            },
+            "Rows_examined" : {
+               "avg" : "0",
+               "max" : "0",
+               "median" : "0",
+               "min" : "0",
+               "pct" : "0",
+               "pct_95" : "0",
+               "stddev" : "0",
+               "sum" : "0"
+            },
+            "Rows_sent" : {
+               "avg" : "0",
+               "max" : "0",
+               "median" : "0",
+               "min" : "0",
+               "pct" : "0",
+               "pct_95" : "0",
+               "stddev" : "0",
+               "sum" : "0"
+            },
+            "db" : {
+               "value" : "test1"
+            },
+            "user" : {
+               "value" : "root"
+            }
+         },
+         "query_count" : null,
+         "tables" : [
+            {
+               "create" : "SHOW CREATE TABLE `test1`.`articles`\\G",
+               "status" : "SHOW TABLE STATUS FROM `test1` LIKE 'articles'\\G"
+            }
+         ],
+         "ts_max" : "2007-10-15 21:43:52",
+         "ts_min" : "2007-10-15 21:43:52"
+      }
+   ],
+   "global" : {
+      "files" : null,
+      "metrics" : {
+         "Lock_time" : {
+            "avg" : "0.000152",
+            "max" : "0.000201",
+            "median" : "0.000145",
+            "min" : "0.000109",
+            "pct_95" : "0.000194",
+            "stddev" : "0.000035",
+            "sum" : "0.000455"
+         },
+         "Query_time" : {
+            "avg" : "3.334426",
+            "max" : "8.000652",
+            "median" : "0.992137",
+            "min" : "1.000682",
+            "pct_95" : "7.700558",
+            "stddev" : "3.162380",
+            "sum" : "10.003277"
+         },
+         "Rows_examined" : {
+            "avg" : "1",
+            "max" : "2",
+            "median" : "0",
+            "min" : "0",
+            "pct_95" : "1",
+            "stddev" : "0",
+            "sum" : "3"
+         },
+         "Rows_sent" : {
+            "avg" : "0",
+            "max" : "1",
+            "median" : "0",
+            "min" : "0",
+            "pct_95" : "0",
+            "stddev" : "0",
+            "sum" : "2"
+         }
+      },
+      "query_count" : 3,
+      "unique_query_count" : 2
+   }
+}

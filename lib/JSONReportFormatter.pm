@@ -230,8 +230,9 @@ override query_report => sub {
          query_count => $times_seen,
          $args{anon} ? () : (
             example     => {
-               query => substr($sample->{arg}, 0, $self->max_query_length),
-               ts    => $sample->{ts} ? parse_timestamp($sample->{ts}) : undef,
+               query      => substr($sample->{arg}, 0, $self->max_query_length),
+               ts         => $sample->{ts} ? parse_timestamp($sample->{ts}) : undef,
+               Query_time => $sample->{Query_time},
             },
          ),
       };
@@ -367,6 +368,20 @@ override query_report => sub {
             }
          }
       }
+
+      # Add reponse time histogram for Query_time
+      my $vals = $stats->{Query_time}->{all};
+      if ( defined $vals && scalar %$vals ) {
+         # TODO: this is broken.
+         my @buck_tens = $ea->buckets_of(10);
+         my @distro = map { 0 } (0 .. 7);
+         my @buckets = map { 0 } (0..999);
+         map { $buckets[$_] = $vals->{$_} } keys %$vals;
+         $vals = \@buckets;  # repoint vals from given hashref to our array
+         map { $distro[$buck_tens[$_]] += $vals->[$_] } (1 .. @$vals - 1);
+         # @distro = qw(1us 10us 100us 1ms 10ms 100ms 1s 10s+)
+         $class->{histograms}->{Query_time} = \@distro;
+      } # histogram
 
       $class->{metrics} = \%metrics;
       if ( @tables ) {

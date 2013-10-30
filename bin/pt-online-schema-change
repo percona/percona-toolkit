@@ -54,7 +54,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.4';
+our $VERSION = '2.2.5';
 
 use strict;
 use warnings FATAL => 'all';
@@ -7845,6 +7845,10 @@ sub main {
       $o->save_error($EVAL_ERROR);
    }
 
+   if ( !$o->get('drop-triggers') ) {
+      $o->set('drop-old-table', 0);
+   }
+
    if ( !$o->get('help') ) {
       if ( @ARGV ) {
          $o->save_error('Specify only one DSN on the command line');
@@ -8426,19 +8430,27 @@ sub main {
    # Step 1: Create the new table.
    # #####################################################################
 
+   my $new_table_name   = $o->get('new-table-name');
+   my $new_table_prefix = $o->got('new-table-name') ? undef : '_';
+
    # --plugin hook
-   if ( $plugin && $plugin->can('before_create_new_table') ) {
-      $plugin->before_create_new_table();
+  if ( $plugin && $plugin->can('before_create_new_table') ) {
+      $plugin->before_create_new_table(
+            new_table_name   => $new_table_name,
+            new_table_prefix => $new_table_prefix,
+      );
    }
 
    my $new_tbl;
    eval {
       $new_tbl = create_new_table(
-         orig_tbl     => $orig_tbl,
-         Cxn          => $cxn,
-         Quoter       => $q,
-         OptionParser => $o,
-         TableParser  => $tp,
+         new_table_name   => $new_table_name,
+         new_table_prefix => $new_table_prefix,
+         orig_tbl         => $orig_tbl,
+         Cxn              => $cxn,
+         Quoter           => $q,
+         OptionParser     => $o,
+         TableParser      => $tp,
       );
    };
    if ( $EVAL_ERROR ) {
@@ -8659,17 +8671,29 @@ sub main {
    # Drop the triggers.  We can save this cleanup task before
    # adding the triggers because if adding them fails, this will be
    # called which will drop whichever triggers were created.
+   my $drop_triggers = $o->get('drop-triggers');
    push @cleanup_tasks, sub {
       PTDEBUG && _d('Clean up triggers');
       # --plugin hook
       if ( $plugin && $plugin->can('before_drop_triggers') ) {
          $plugin->before_drop_triggers(
             oktorun           => $oktorun,
+            drop_triggers     => $drop_triggers,
             drop_trigger_sqls => \@drop_trigger_sqls,
          );
       }
 
-      if ( $oktorun ) {
+      if ( !$oktorun ) {
+         print "Not dropping triggers because the tool was interrupted.  "
+             . "To drop the triggers, execute:\n"
+             . join("\n", @drop_trigger_sqls) . "\n";
+      }
+      elsif ( !$drop_triggers ) {
+         print "Not dropping triggers because --no-drop-triggers was "
+         . "specified.  To drop the triggers, execute:\n"
+         . join("\n", @drop_trigger_sqls) . "\n";
+      }
+      else {
          drop_triggers(
             tbl          => $orig_tbl,
             Cxn          => $cxn,
@@ -8679,11 +8703,6 @@ sub main {
             tries        => $tries,
             stats        => \%stats,
          );
-      }
-      else {
-         print "Not dropping triggers because the tool was interrupted.  "
-             . "To drop the triggers, execute:\n"
-             . join("\n", @drop_trigger_sqls) . "\n";
       }
    };
 
@@ -9231,6 +9250,12 @@ sub main {
          }
       }
    }
+   elsif ( !$drop_triggers ) {
+      print "Not dropping old table because --no-drop-triggers was specified.\n";
+   }
+   else {
+      print "Not dropping old table because --no-drop-old-table was specified.\n";
+   }
 
    # ########################################################################
    # Done.
@@ -9511,11 +9536,12 @@ sub nibble_is_safe {
 
 sub create_new_table {
    my (%args) = @_;
-   my @required_args = qw(orig_tbl Cxn Quoter OptionParser TableParser);
+   my @required_args = qw(new_table_name orig_tbl Cxn Quoter OptionParser TableParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($orig_tbl, $cxn, $q, $o, $tp) = @args{@required_args};
+   my ($new_table_name, $orig_tbl, $cxn, $q, $o, $tp) = @args{@required_args};
+   my $new_table_prefix = $args{new_table_prefix};
 
    # Get the original table struct.
    my $ddl = $tp->get_create_table(
@@ -9524,25 +9550,23 @@ sub create_new_table {
       $orig_tbl->{tbl},
    );
 
-   my $tries      = $args{tries}  || 10;  # don't try forever
-   my $prefix     = $args{prefix} || '_';
-   my $suffix     = '_new';
-   my $table_name = $orig_tbl->{tbl} . $suffix;
+   $new_table_name =~ s/%T/$orig_tbl->{tbl}/;
 
    print "Creating new table...\n";
+   my $tries = $new_table_prefix ? 10 : 1;
    my $tryno = 1;
    my @old_tables;
-   while ( $tryno++ < $tries ) {
-      $table_name = $prefix . $table_name;
-
-      if ( length($table_name) > 64 ) {
-         my $truncated_table_name = substr($table_name, 0, 60) . $suffix;
-         PTDEBUG && _d($table_name, 'is over 64 characters long, truncating to',
-                       $truncated_table_name);
-         $table_name = $truncated_table_name;
+   while ( $tryno++ <= $tries ) {
+      if ( $new_table_prefix ) {
+         $new_table_name = $new_table_prefix . $new_table_name;
       }
-      
-      my $quoted  = $q->quote($orig_tbl->{db}, $table_name);
+
+      if ( length($new_table_name) > 64 ) {
+         my $truncated_table_name = substr($new_table_name, 0, 64);
+         PTDEBUG && _d($new_table_name, 'is over 64 characters long, '
+            . 'truncating to', $truncated_table_name);
+         $new_table_name = $truncated_table_name;
+      }
 
       # Generate SQL to create the new table.  We do not use CREATE TABLE LIKE
       # because it doesn't preserve foreign key constraints. Here we need to
@@ -9555,6 +9579,7 @@ sub create_new_table {
       # or another table, we can still have a collision. But if there are
       # multiple FKs on this table, it's hard to know which one is causing the
       # trouble. Should we generate random/UUID FK names or something instead?
+      my $quoted = $q->quote($orig_tbl->{db}, $new_table_name);
       my $sql    = $ddl;
       $sql       =~ s/\ACREATE TABLE .*?\($/CREATE TABLE $quoted (/m;
       $sql       =~ s/^  CONSTRAINT `/  CONSTRAINT `_/gm;
@@ -9573,7 +9598,7 @@ sub create_new_table {
          # to have a similarly named table created by the user for other
          # purposes.
          if ( $EVAL_ERROR =~ m/table.+?already exists/i ) {
-            push @old_tables, $q->quote($orig_tbl->{db}, $table_name);
+            push @old_tables, $q->quote($orig_tbl->{db}, $new_table_name);
             next;
          }
 
@@ -9581,11 +9606,11 @@ sub create_new_table {
          die $EVAL_ERROR;
       }
       print $sql, "\n" if $o->get('print');  # the sql that work
-      print "Created new table $orig_tbl->{db}.$table_name OK.\n";
+      print "Created new table $orig_tbl->{db}.$new_table_name OK.\n";
       return { # success
          db   => $orig_tbl->{db},
-         tbl  => $table_name,
-         name => $q->quote($orig_tbl->{db}, $table_name),
+         tbl  => $new_table_name,
+         name => $q->quote($orig_tbl->{db}, $new_table_name),
       };
    }
 
@@ -10926,8 +10951,8 @@ default: yes
 Drop the new table if copying the original table fails.
 
 Specifying C<--no-drop-new-table> and C<--no-swap-tables> leaves the new,
-altered copy of the table without modifying the original table.  The new
-table name is like C<_TBL_new> where C<TBL> is the table name.
+altered copy of the table without modifying the original table.  See
+L<"--new-table-name">.
 
 L<--no-drop-new-table> does not work with
 C<alter-foreign-keys-method drop_swap>.
@@ -10942,6 +10967,13 @@ errors, the tool drops the original table by default. If there are any errors,
 the tool leaves the original table in place.
 
 If C<--no-swap-tables> is specified, then there is no old table to drop.
+
+=item --[no]drop-triggers
+
+default: yes
+
+Drop triggers on the old table.  C<--no-drop-triggers> forces
+C<--no-drop-old-table>.
 
 =item --dry-run
 
@@ -11013,6 +11045,16 @@ specify a threshold for this variable, then you can instruct the tool to wait
 until queries are running normally again.  This will not prevent queueing,
 however; it will only give the server a chance to recover from the queueing.  If
 you notice queueing, it is best to decrease the chunk time.
+
+=item --new-table-name
+
+type: string; default: %T_new
+
+New table name before it is swapped.  C<%T> is replaced with the original
+table name.  When the default is used, the tool prefixes the name with up
+to 10 C<_> (underscore) to find a unique table name.  If a table name is
+specified, the tool does not prefix it with C<_>, so the table must not
+exist.
 
 =item --password
 
@@ -11461,6 +11503,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-online-schema-change 2.2.4
+pt-online-schema-change 2.2.5
 
 =cut

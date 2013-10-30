@@ -37,7 +37,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.4';
+our $VERSION = '2.2.5';
 
 use strict;
 use warnings FATAL => 'all';
@@ -4213,15 +4213,15 @@ type: Array
 Read this comma-separated list of config files; if specified, this must be the
 first option on the command line.
 
+=item --daemonize
+
+Fork to the background and detach from the shell.  POSIX operating systems only.
+
 =item --database
 
 short form: -D; type: string
 
 Connect to this database.
-
-=item --daemonize
-
-Fork to the background and detach from the shell.  POSIX operating systems only.
 
 =item --defaults-file
 
@@ -4526,6 +4526,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-fk-error-logger 2.2.4
+pt-fk-error-logger 2.2.5
 
 =cut

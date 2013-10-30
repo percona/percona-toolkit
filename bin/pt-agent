@@ -52,7 +52,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.4';
+our $VERSION = '2.2.5';
 
 use strict;
 use warnings FATAL => 'all';
@@ -958,6 +958,9 @@ sub get {
    elsif ( exists $resource->{links} ) {
       $resource_objects = $resource->{links};
    }
+   elsif ( exists $resource->{pong} ) {
+      PTDEBUG && _d("Ping pong!");
+   }
    else {
       warn "Did not get X-Percona-Resource-Type or links from $link\n";
    }
@@ -1565,7 +1568,7 @@ use FindBin qw();
 
 eval {
    require Percona::Toolkit;
-   require HTTPMicro;
+   require HTTP::Micro;
 };
 
 {
@@ -1796,7 +1799,7 @@ sub pingback {
    my $url       = $args{url};
    my $instances = $args{instances};
 
-   my $ua = $args{ua} || HTTPMicro->new( timeout => 3 );
+   my $ua = $args{ua} || HTTP::Micro->new( timeout => 3 );
 
    my $response = $ua->request('GET', $url);
    PTDEBUG && _d('Server response:', Dumper($response));
@@ -4972,9 +4975,6 @@ sub start_online_logging {
    my $read_timeout = $args{read_timeout} || 3;
 
    return unless $self->online_logging;
-   
-   $self->info("Starting online logging.  No more log entries will be printed here.  "
-      . "Agent logs are accessible through the web interface.");
 
    my $pid = open(my $pipe_write, "|-");
 
@@ -5091,30 +5091,31 @@ sub level_name {
 
 sub debug {
    my $self = shift;
-   return $self->_log('DEBUG', @_);
+   return if $self->online_logging;
+   return $self->_log(0, 'DEBUG', 1, @_);
 }
 
 sub info {
    my $self = shift;
-   return $self->_log('INFO', @_);
+   return $self->_log(1, 'INFO', @_);
 }
 
 sub warning {
    my $self = shift;
    $self->_set_exit_status();
-   return $self->_log('WARNING', @_);
+   return $self->_log(1, 'WARNING', @_);
 }
 
 sub error {
    my $self = shift;
    $self->_set_exit_status();
-   return $self->_log('ERROR', @_);
+   return $self->_log(1, 'ERROR', @_);
 }
 
 sub fatal {
    my $self = shift;
    $self->_set_exit_status();
-   $self->_log('FATAL', @_);
+   $self->_log(1, 'FATAL', @_);
    exit $self->exit_status;
 }
 
@@ -5127,7 +5128,7 @@ sub _set_exit_status {
 }
 
 sub _log {
-   my ($self, $level, $msg) = @_;
+   my ($self, $online, $level, $msg, $offline) = @_;
 
    my $ts = ts(time, 1);  # 1=UTC
    my $level_number = level_number($level);
@@ -5138,14 +5139,14 @@ sub _log {
    my $n_lines = 1;
    $n_lines++ while $msg =~ m/\n/g;
 
-   if ( $self->online_logging_enabled ) {
+   if ( $online && $self->online_logging_enabled ) {
       while ( defined(my $log_entry = shift @{$self->_buffer}) ) {
          $self->_queue_log_entry(@$log_entry);
       }
       $self->_queue_log_entry($ts, $level_number, $n_lines, $msg);
    }
    else {
-      if ( $self->online_logging ) {
+      if ( $online && $self->online_logging ) {
          push @{$self->_buffer}, [$ts, $level_number, $n_lines, $msg];
       }
 
@@ -5368,7 +5369,9 @@ sub main {
  
    $o->usage_or_errors();
 
-   if ( $o->get('interactive') || $o->get('install') ) {
+   if (    $o->get('interactive')
+        || $o->get('install')
+        || $o->get('uninstall') ) {
       $OUTPUT_AUTOFLUSH = 1 
    }
 
@@ -5396,6 +5399,7 @@ sub main {
       dsn_string   => '',
       OptionParser => $o,
       DSNParser    => $dp,
+      ask_pass     => $o->get('ask-pass'),
    );
 
    # ########################################################################
@@ -5408,7 +5412,7 @@ sub main {
    );
 
    # ########################################################################
-   # --install and exit.
+   # --(un)install and exit.
    # ########################################################################
    if ( $o->get('install') ) {
       $exit_on_signals = 1;
@@ -5417,6 +5421,14 @@ sub main {
          Cxn          => $cxn,
          interactive  => $o->get('interactive'),
          flags        => $o->get('install-options'),
+      );
+      return $exit_status;
+   }
+   elsif ( $o->get('uninstall') ) {
+      $exit_on_signals = 1;
+      uninstall(
+         OptionParser => $o,
+         Cxn          => $cxn,
       );
       return $exit_status;
    }
@@ -5513,16 +5525,16 @@ sub main {
    if ( my $service = $o->get('run-service') ) {
       eval {
          run_service(
+            agent_api => $o->get('agent-api'),
             api_key   => $api_key,
             service   => $service,
             lib_dir   => $o->get('lib'),
             spool_dir => $o->get('spool'),
             Cxn       => $cxn,
          );
-         $logger->info("Done running $service, exit $exit_status");
       };
       if ( $EVAL_ERROR ) {
-         $logger->fatal("Error running service $service: $EVAL_ERROR");
+         $logger->fatal("--run-service $service error: $EVAL_ERROR");
       }
       return $exit_status;
    }
@@ -5539,10 +5551,9 @@ sub main {
             spool_dir   => $o->get('spool'),
             interactive => $o->get('interactive'),
          );
-         $logger->info("Done sending data for $service, exit $exit_status");
       };
       if ( $EVAL_ERROR ) {
-         $logger->fatal("Error running sending $service data: $EVAL_ERROR");
+         $logger->fatal("--send-data $service error: $EVAL_ERROR");
       }
       return $exit_status;
    }
@@ -5576,6 +5587,7 @@ sub main {
       daemonize => $o->get('daemonize'),
       pid_file  => $o->get('pid'),
       log_file  => $o->get('log'),
+      # Use default tries and interval: 1440 * 60 = 1 day
    );
 
    # Wait time between checking for new config and services.
@@ -5586,7 +5598,7 @@ sub main {
       my ($t, $quiet) = @_;
       return unless $oktorun;
       $t ||= $check_interval;
-      $logger->info("Sleeping $t seconds") unless $quiet;
+      $logger->debug("Sleeping $t seconds") unless $quiet;
       sleep $t;
    };
 
@@ -5650,29 +5662,34 @@ sub get_api_client {
    my $entry_links;
    while ( $_oktorun->() && (!defined $tries || $tries--) ) {
       if ( !$state->{connecting_to_api}++ ) {
-         $logger->info("Connecting to Percona Web API")  # once
+         $logger->debug("Connecting to Percona Web API")  # once
       }
-
       eval {
          $entry_links = $client->get(link => $client->entry_link);
       };
-      if ( $EVAL_ERROR ) {
-         $logger->warning($EVAL_ERROR);
+      if ( my $e = $EVAL_ERROR ) {
+         my $code = $client->response->code;
+         if ( $code && $code == 503 ) {
+            $logger->info("API is down for maintenance (503)");
+         }
+         else {
+            $logger->info("API error: $e");
+         }
       }
       elsif (
          !$entry_links
          || (ref($entry_links) || '') ne 'HASH'
          || !scalar keys %$entry_links
       ) {
-         $logger->info('Connected, but did not receive valid entry links: '
+         $logger->info('API returned invalid entry links: '
             . Dumper($entry_links));
       }
       elsif ( !$entry_links->{agents} ) {
-         $logger->info('Connected, but did not receive agents link: '
+         $logger->info('API did not return agents link: '
             . Dumper($entry_links));
       }
       else {
-         $logger->info("Connected");
+         $logger->debug("Connected");
          delete $state->{connecting_to_api};
          last;  # success
       }
@@ -5711,7 +5728,7 @@ sub load_local_agent {
    my $agent;
    my $agent_file = $lib_dir . "/agent";
    if ( -f $agent_file ) {
-      $logger->info("Reading saved Agent from $agent_file") unless $quiet;
+      $logger->debug("Reading saved Agent from $agent_file") unless $quiet;
       my $agent_hashref = JSON::decode_json(slurp($agent_file));
       $agent = Percona::WebAPI::Resource::Agent->new(%$agent_hashref);
       if ( !$agent->uuid ) {
@@ -5719,7 +5736,7 @@ sub load_local_agent {
       }
    }
    else {
-      $logger->info("No local agent") unless $quiet;
+      $logger->debug("No local agent") unless $quiet;
    }
 
    return $agent;
@@ -5736,17 +5753,18 @@ sub init_agent {
       action
       link
       client
+      tries
       interval
    )) or die;
    my $agent    = $args{agent};
    my $action   = $args{action};
    my $link     = $args{link};
    my $client   = $args{client};
+   my $tries    = $args{tries};
    my $interval = $args{interval};
 
    # Optional args
    my $_oktorun = $args{oktorun} || sub { return $oktorun };
-   my $tries    = $args{tries};
    my $actions  = $args{actions};
 
    # Update these attribs every time the agent is initialized.
@@ -5757,9 +5775,11 @@ sub init_agent {
 
    # Try to create/update the Agent.
    my $success = 0;
-   while ( $_oktorun->() && (!defined $tries || $tries--) ) {
-      $logger->info($action eq 'put' ? "Updating agent " . $agent->name
-                             : "Creating new agent");
+   while ( $_oktorun->() && $tries-- ) {
+      if ( !$state->{init_action}++ ) {
+         $logger->info($action eq 'put' ? "Updating agent " . $agent->name
+                                        : "Creating new agent");
+      }
       my $agent_uri = eval {
          $client->$action(
             link      => $link,
@@ -5767,7 +5787,32 @@ sub init_agent {
          );
       };
       if ( $EVAL_ERROR ) {
-         $logger->warning($EVAL_ERROR);
+         my $code = $client->response->code;
+         if ( $code && $code == 404 ) {
+            my $api_ok = ping_api(
+               client => $client,
+            );
+            if ( $api_ok ) {
+               $logger->fatal("API reports agent not found: the agent has been "
+                  . "deleted, or its UUID (" . ($agent->uuid || '?') . ") "
+                  . "is wrong.  Check https://cloud.percona.com/agents for the "
+                  . "list of active agents.");
+            }
+            else {
+               $logger->warning("API is down.");
+            }
+         }
+         elsif ( $code && $code == 403 ) {
+            if ( !$state->{too_many_agents}++ ) {
+               $logger->warning("API reports too many agents.  Check "
+                  . "https://cloud.percona.com/agents for the list of "
+                  . "installed agents.  Will try again $tries times, "
+                  . "but this warning will not be printed again.");
+            }
+         }
+         else {
+            $logger->warning($EVAL_ERROR);
+         }
       }
       elsif ( !$agent_uri ) {
          $logger->info("No URI for Agent " . $agent->name);
@@ -5789,12 +5834,18 @@ sub init_agent {
             last;  # success
          }
       }
-      if ( !defined $tries || $tries ) {
+      if ( $tries > 0 ) {
          $interval->();  # failure, try again
       }
    }
 
-   $logger->info("Agent " . $agent->name . " (" . $agent->uuid . ") is ready");
+   delete $state->{init_action};
+   delete $state->{too_many_agents};
+
+   if ( $agent && $success ) {
+      $logger->info("Agent " . $agent->name . " (" . $agent->uuid . ") is ready");
+   }
+
    return $agent, $success;
 }
 
@@ -5870,8 +5921,8 @@ sub start_agent {
    my $daemonize     = $args{daemonize};
    my $pid_file      = $args{pid_file};
    my $log_file      = $args{log_file};
-   my $_oktorun      = $args{oktorun} || sub { return $oktorun };
-   my $tries         = $args{tries};
+   my $_oktorun      = $args{oktorun}  || sub { return $oktorun };
+   my $tries         = $args{tries}    || 1440;  # 1440 * 60 = 1 day
    my $interval      = $args{interval} || sub { sleep 60; };
    my $versions      = $args{versions};       # for testing
    my $client        = $args{client};         # for testing
@@ -5881,26 +5932,24 @@ sub start_agent {
    $logger->info('Starting agent');
 
    # Daemonize first so all output goes to the --log.
-   my $daemon;
-   if ( $daemonize ) {
-      $daemon = Daemon->new(
-         daemonize   => $daemonize,
-         pid_file    => $pid_file,
-         log_file    => $log_file,
-         parent_exit => sub {
-            my $child_pid = shift;
-            print "pt-agent has daemonized and is running as PID $child_pid:
+   my $daemon = Daemon->new(
+      daemonize   => $daemonize,
+      pid_file    => $pid_file,
+      log_file    => $log_file,
+      parent_exit => sub {
+         my $child_pid = shift;
+         print "pt-agent has daemonized and is running as PID $child_pid:
 
-     --lib " . ($lib_dir  || '') . "
-     --log " . ($log_file || '') . "
-     --pid " . ($pid_file || '') . "
+  --lib " . ($lib_dir  || '') . "
+  --log " . ($log_file || '') . "
+  --pid " . ($pid_file || '') . "
 
 These values can change if a different configuration is received.
 ",
-         }
-      );
-      $daemon->run();
-
+      }
+   );
+   $daemon->run();
+   if ( $daemonize ) {
       # If we daemonized, the parent has already exited and we're the child.
       # We shared a copy of every Cxn with the parent, and the parent's copies
       # were destroyed but the dbhs were not disconnected because the parent
@@ -5923,14 +5972,16 @@ These values can change if a different configuration is received.
          . "Configure the agent to use a writeable --lib directory.");
    }
 
-   # Connect to the API and get entry links.  Since we're in start_agent(),
-   # try forever because the agent needs an API connection to start.
+   # Connect to the API and get entry links.
    if ( !$client || !$entry_links ) {
       ($client, $entry_links, $logger_client) = get_api_client(
          api_key  => $api_key,
-         tries    => undef,  # forever
-         interval => sub { sleep 60 },
+         tries    => $tries,
+         interval => $interval,
       );
+   }
+   if ( !$client || !$entry_links ) {
+      die "Failed to initialize the API client.  The API may be down.  Please try again.\n";
    }
    return unless $_oktorun->();
 
@@ -5981,15 +6032,19 @@ These values can change if a different configuration is received.
       }
    }
 
-   ($agent) = init_agent(
+   my $success;
+   ($agent, $success) = init_agent(
       agent    => $agent,
       action   => $action,      # put or post
       link     => $link,
       client   => $client,
-      interval => sub { sleep 60 },
-      tries    => $tries,       # optional
+      tries    => $tries,
+      interval => $interval,
       oktorun  => $_oktorun,    # optional
    );
+   if ( !$success ) {
+      die "Failed to initialize the agent.  The API may be down.  Please try again.\n";
+   }
 
    # Give the logger its client so that it will also POST every log entry
    # to /agent/{uuid}/log.  This is done asynchronously by a thread so a
@@ -6000,6 +6055,7 @@ These values can change if a different configuration is received.
          client   => $logger_client,
          log_link => $agent->links->{log},
       );
+      $logger->debug("Log API enabled");
    }
 
    save_agent(
@@ -6101,7 +6157,7 @@ sub run_agent {
       if ( $success && $config && $config->links->{services} ) {
          if ( $state->{first_config} ) {
             delete $state->{first_config};
-            $logger->info('Agent has been successfully configured');
+            $logger->info('Agent has been configured');
          }
          if ( $new_daemon ) {
             # NOTE: Daemon objects use DESTROY to auto-remove their pid file
@@ -6200,7 +6256,7 @@ sub get_config {
    my $success = 0;
    my $new_daemon;
 
-   $logger->info('Getting config') unless $quiet;
+   $logger->debug('Getting agent config') unless $quiet;
    my $new_config = eval {
       $client->get(
          link => $link,
@@ -6210,26 +6266,43 @@ sub get_config {
       if (blessed($e)) {
          if ($e->isa('Percona::WebAPI::Exception::Request')) {
             if ( $e->status == 404 ) {
-               $logger->info('Agent ' . $agent->name. ' is not configured.')
-                  unless $quiet;
+               my $api_ok = ping_api(
+                  client => $client,
+               );
+               if ( $api_ok ) {
+                  stop_all_services(
+                     lib_dir => $lib_dir,
+                  );
+                  $logger->fatal("API reports agent not found: the agent has been "
+                     . "deleted, or its UUID (" . ($agent->uuid || '?') . ") "
+                     . "is wrong.  Check https://cloud.percona.com/agents for a "
+                     . "list of active agents.");
+               }
+               else {
+                  # offline warning
+                  $logger->_log(0, 'WARNING', "Cannot get agent config: API is down.  "
+                        . "Will try again.");
+               }
             }
             else {
-               $logger->info("$e");  # API error?
+               # offline warning
+               $logger->_log(0, 'WARNING', "Cannot get agent config: API error: $e.  "
+                  . "Will try again.")
             }
          }
          elsif ($e->isa('Percona::WebAPI::Exception::Resource')) {
-            $logger->warning("$e");
+            $logger->error("Invalid agent config: $e");
          }
       }
       else {
-         $logger->error($e);  # internal error
+         $logger->error("Internal error getting agent config: $e");
       }
    }
    else {
       eval {
          if ( !$quiet ) {
-            $logger->info("Running config: " . ($config ? $config->ts : ''));
-            $logger->info("Current config: " . $new_config->ts);
+            $logger->debug("Running config: " . ($config ? $config->ts : ''));
+            $logger->debug("Current config: " . $new_config->ts);
          }
          if ( !$config || $new_config->ts > $config->ts ) {
             ($lib_dir, $new_daemon) = apply_config(
@@ -6241,11 +6314,11 @@ sub get_config {
             );
             $config  = $new_config;
             $success = 1;
-            $logger->info('Config ' . $config->ts . ' applied successfully');
+            $logger->info('Config ' . $config->ts . ' applied');
          }
          else {
             $success = 1;
-            $logger->info('Config has not changed') unless $quiet;
+            $logger->debug('Config has not changed') unless $quiet;
          }
       };
       if ( $EVAL_ERROR ) {
@@ -6275,7 +6348,7 @@ sub apply_config {
    # Optional args
    my $old_config = $args{old_config};
 
-   $logger->info('Applying config ' . $new_config->ts);
+   $logger->debug('Applying config ' . $new_config->ts);
 
    # If the --lib dir has changed, init the new one and re-write
    # the Agent resource in it.
@@ -6423,7 +6496,7 @@ sub get_services {
    my $success = 0;
 
    eval {
-      $logger->info('Getting services');
+      $logger->debug('Getting services');
       my $curr_services = $client->get(
          link => $link,
       );
@@ -6433,7 +6506,7 @@ sub get_services {
             . "expected a list of services");
       }
       elsif ( !scalar @$curr_services && !scalar keys %$prev_services ) {
-         $logger->warning("No services are enabled for this agent");
+         $logger->debug("No services are enabled for this agent");
 
          # Remove these state that no longer matter if there are no services.
          if ( $state->{mysql_restarted} ) {
@@ -6548,10 +6621,10 @@ sub get_services {
                exec_cmd => $args{exec_cmd}, # optional, for testing
             );
 
-            $logger->info('Service changes applied successfully');
+            $logger->info('Service changes applied');
          }
          else {
-            $logger->info('Services have not changed');
+            $logger->debug('Services have not changed');
          }
          # TODO: probably shouldn't keep re-assigning this unless necessary
          $prev_services = $sorted_services->{services};
@@ -6644,7 +6717,7 @@ sub write_services {
 
    $lib_dir .= '/services';
 
-   $logger->info("Writing services to $lib_dir");
+   $logger->debug("Writing services to $lib_dir");
 
    # Save current, active services.
    foreach my $service (
@@ -6859,7 +6932,7 @@ sub apply_services {
                next SERVICE;
             }
             push @applied_ok, $service;
-            $logger->info("Started $name successfully");
+            $logger->info("Started $name");
          }
       }
    }
@@ -6903,7 +6976,7 @@ sub apply_services_once {
          next SERVICE;
       }
       push @ran_ok, $service;
-      $logger->info("Ran $name successfully");
+      $logger->info("Ran $name");
    }
 
    return \@ran_ok;
@@ -6931,6 +7004,7 @@ sub run_service {
 
    # Optional args
    my $bin_dir     = defined $args{bin_dir} ? $args{bin_dir} : "$FindBin::Bin/";
+   my $agent_api   = $args{agent_api};
    my $client      = $args{client};               # for testing
    my $agent       = $args{agent};                # for testing
    my $entry_links = $args{entry_links};          # for testing
@@ -6948,26 +7022,41 @@ sub run_service {
       quiet   => 1,
    );
 
+   # Load the Service object from local service JSON file.
+   # $service changes from a string scalar to a Service object.
+   $service = load_service(
+      service => $service,
+      lib_dir => $lib_dir,
+   );
+   my $service_name = $service->name;
+
    my $daemon = Daemon->new(
       daemonize      => 0,  # no need: we're running from cron
-      pid_file       => "$lib_dir/pids/$service.$PID",
-      log_file       => "$lib_dir/logs/$service.run",
+      pid_file       => "$lib_dir/pids/$service_name.$PID",
+      log_file       => "$lib_dir/logs/$service_name.run",
       force_log_file => 1,
    );
    $daemon->run();
 
-   $logger->info("Running $service service");
+   if ( $service->meta ) {
+      $logger->service($service_name);
+   }
+   else {
+      $logger->service("$service_name run");
+   }
+   $logger->info("Running $service_name");
 
    # Connect to Percona, get entry links.
    my $logger_client;
-   if ( !$client || !$entry_links ) {
+   if ( $agent_api && (!$client || !$entry_links) ) {
       ($client, $entry_links, $logger_client) = get_api_client(
          api_key  => $api_key,
          tries    => 2,
-         interval => sub { return 1; },
+         interval => sub { return 2; },
       );
       if ( !$client || !$entry_links ) {
-         $logger->warning("Failed to connect to Percona Web API");
+         # offline warning
+         $logger->_log(0, 'WARNING', "Failed to connect to Percona Web API");
       }
    }
 
@@ -6986,33 +7075,29 @@ sub run_service {
       }
    }
 
-   if ( $entry_links && $entry_links->{agents} ) {
+   # Start online logging, if possible.
+   if ( $agent_api && $client && $entry_links && $entry_links->{agents} ) {
       $agent = eval {
          $client->get(
             link => $entry_links->{agents} . '/' . $agent->uuid,
          );
       };
       if ( $EVAL_ERROR ) {
-         $logger->error("Failed to get the agent: $EVAL_ERROR");
+         $logger->info("Failed to get agent for online logging: $EVAL_ERROR");
       }
-      my $log_link = $agent->links->{log};
-      $logger->service("$service running");
-      $logger->data_ts($prefix);  # TODO Not needed unless $use_spool
-      $logger->start_online_logging(
-         client   => $logger_client,
-         log_link => $log_link,
-      );
+      else {
+         my $log_link = $agent->links->{log};
+         $logger->data_ts($prefix) unless $service->meta;
+         $logger->start_online_logging(
+            client   => $logger_client,
+            log_link => $log_link,
+         );
+         $logger->debug("Log API enabled");
+      }
    }
    else {
-      $logger->warning("File logging only");
+      $logger->_log(0, 'INFO', "File logging only");
    }
-
-   # Load the Service object from local service JSON file.
-   # $service changes from a string scalar to a Service object.
-   $service = load_service(
-      service => $service,
-      lib_dir => $lib_dir,
-   );
 
    # Check if any task spools data or uses MySQL.  Any task that spools
    # should also use metadata because all data samples have at least a
@@ -7033,15 +7118,17 @@ sub run_service {
    );
 
    # Connect to MySQL or quit.
+   my $last_error;
    if ( $use_mysql ) {
-      $logger->info("Connecting to MySQL");
+      $logger->debug("Connecting to MySQL");
       TRY:
       for ( 1..2 ) {
          eval {
             $cxn->connect();
          };
-         if ( $EVAL_ERROR ) {
-            $logger->warning("Cannot connect to MySQL: $EVAL_ERROR");
+         if ( my $e = $EVAL_ERROR ) {
+            $logger->debug("Cannot connect to MySQL: $e");
+            $last_error = $e;
             sleep(3);
             next TRY;
          }
@@ -7049,7 +7136,7 @@ sub run_service {
       }
       if ( !$cxn->dbh ) {
          $logger->error("Cannot run " . $service->name . " because it requires "
-             . "MySQL but failed to connect to MySQL");
+             . "MySQL but failed to connect to MySQL: " . ($last_error || '(no error)'));
          return;
       }
    }
@@ -7066,8 +7153,6 @@ sub run_service {
 
    TASK:
    foreach my $task ( @$tasks ) {
-      PTDEBUG && _d("Task $taskno:", $task->name);
-
       # Set up the output file, i.e. where this run puts its results.
       # Runs can access each other's output files.  E.g. run0 may
       # write to fileX, then subsequent tasks can access that file
@@ -7147,7 +7232,7 @@ sub run_service {
             bin_dir      => $bin_dir,        # __BIN_DIR__
             env          => $env_vars,       # __ENV__
          );
-         $logger->info("Task $taskno query: $query");
+         $logger->info($task->name . ": $query");
          my $rows;
          my $t0 = time;
          eval {
@@ -7164,7 +7249,7 @@ sub run_service {
          }
 
          if ( $rows ) {
-            $logger->info('Query returned ' . scalar @$rows . ' rows');
+            $logger->debug('Query returned ' . scalar @$rows . ' rows');
             if ( $join_char ) {
                my $fh;
                if ( !open($fh, '>', $output_file) ) {
@@ -7214,7 +7299,7 @@ sub run_service {
             bin_dir      => $bin_dir,        # __BIN_DIR__
             env          => $env_vars,       # __ENV__
          );
-         $logger->info("Task $taskno command: $cmd");
+         $logger->debug("Task $taskno command: $cmd");
 
          if ( $cmd =~ m/$recursive_service/ ) {
             $logger->fatal("Recursive service detected: $cmd");
@@ -7230,14 +7315,15 @@ sub run_service {
             $store->{$store_key} = $value;
          }
          my $t1 = time;
+         my $run_time = sprintf('%.6f', $t1 - $t0);
          my $cmd_exit_status = $CHILD_ERROR >> 8;
-         $logger->info("Task $taskno: exit $cmd_exit_status");
+         $logger->info($task->name . ": $cmd (runtime: $run_time exit: $cmd_exit_status)");
          $exit_status |= $cmd_exit_status;
 
          push @{$metadata->{tasks}}, {
             start_ts    => ts($t0, 1),
             end_ts      => ts($t1, 1),
-            run_time    => sprintf('%.6f', $t1 - $t0),
+            run_time    => $run_time,
             exit_status => $cmd_exit_status,
          };
 
@@ -7279,7 +7365,7 @@ sub run_service {
    # Move the spool file from --spool/.tmp/ to --spool/<service>/
    # if 1) the service spools data and 2) there is data.
    my $file_size = (-s $tmp_data_file) || 0;
-   $logger->info("$tmp_data_file size: " . ($file_size || 0) . " bytes");
+   $logger->debug("$tmp_data_file size: " . ($file_size || 0) . " bytes");
    if ( $file_size > $max_data ) {
       $logger->error("Data file is larger than $max_data, the service "
          . "may be malfunctioning, stopping service");
@@ -7316,7 +7402,7 @@ sub run_service {
       # the same filesystem is pretty much guaranteed to do an optimized,
       # i.e. quasi-atomic, move.
       my $cmd = "mv $tmp_data_file $data_dir";
-      $logger->info($cmd);
+      $logger->debug($cmd);
       system($cmd);
       my $cmd_exit_status = $CHILD_ERROR >> 8;
       if ( $cmd_exit_status != 0 ) {
@@ -7332,6 +7418,7 @@ sub run_service {
          or $logger->warning("Error removing $file: $OS_ERROR");
    }
 
+   $logger->info("Exit: $exit_status");
    return $exit_status;  # returning global var for testing
 }
 
@@ -7452,7 +7539,7 @@ sub init_spool_dir {
          _safe_mkdir($dir);
       }
       elsif ( !-w $dir ) {
-         die "$dir does not writeable\n";
+         die "$dir is not writeable\n";
       }
    }
 
@@ -7519,6 +7606,7 @@ sub send_data {
    my $client      = $args{client};       # for testing
    my $entry_links = $args{entry_links};  # for testing
    my $json        = $args{json};         # for testing
+   my $delay       = defined $args{delay} ? $args{delay} : rand(30);  # for testing
 
    # Can't do anything with the lib dir.  Since we haven't started
    # logging yet, cron should capture this error and email the user.
@@ -7528,16 +7616,42 @@ sub send_data {
       quiet   => 1,
    );
 
+   # Load the Service object from local service JSON file.
+   # $service changes from a string scalar to a Service object.
+   $service = load_service(
+      service => $service,
+      lib_dir => $lib_dir,
+   );
+   my $service_name = $service->name;
+
+   my ($service_dir) = init_spool_dir(
+      spool_dir => $spool_dir,
+      service   => $service->name,
+   );
+
+   my @data_files = glob "$service_dir/*.data";
+   if ( scalar @data_files == 0 ) {
+      $logger->debug("No $service_name data files to send");
+      return;
+   }
+
    # Log all output to a file.
    my $daemon = Daemon->new(
       daemonize      => 0,  # no need: we're running from cron
-      pid_file       => "$lib_dir/pids/$service.send",
-      log_file       => "$lib_dir/logs/$service.send",
+      pid_file       => "$lib_dir/pids/$service_name.send",
+      log_file       => "$lib_dir/logs/$service_name.send",
       force_log_file => $interactive ? 0 : 1,
    );
    $daemon->run();
 
-   $logger->info("Sending $service data");
+   # Spool time is +/- [0, 1] minute from API, we randomize that further
+   # by a few seconds to prevent all agents from sending at exactly
+   # 00:01:00, 00:00:00, or 00:02:00.
+   sleep $delay if $delay;
+
+   $logger->service("$service_name send");
+   my $data_link = $service->links->{data};
+   $logger->info("Sending " . scalar @data_files . " data files ($data_link)");
 
    # Connect to Percona, get entry links.
    my $logger_client;
@@ -7572,35 +7686,22 @@ sub send_data {
          link => $entry_links->{agents} . '/' . $agent->uuid,
       );
    };
-
    if ( $EVAL_ERROR ) {
       $logger->fatal("Failed to get the agent: $EVAL_ERROR");
    }
    my $log_link = $agent->links->{log};
-   $logger->service("$service sending");
-   $logger->start_online_logging(
-      client   => $logger_client,
-      log_link => $log_link,
-   );
-
-   # Load the Service object from local service JSON file.
-   # $service changes from a string scalar to a Service object.
-   $service = load_service(
-      service => $service,
-      lib_dir => $lib_dir,
-   );
-
-   my ($service_dir) = init_spool_dir(
-      spool_dir => $spool_dir,
-      service   => $service->name,
-   );
+   if ( $log_link ) {
+      $logger->start_online_logging(
+         client   => $logger_client,
+         log_link => $log_link,
+      );
+      $logger->debug("Log API enabled");
+   }
 
    # Send data files in the service's spool dir.
    # Only iterator over data files because run_service() writes
    # them last to avoid a race condition with us.  See the code
    # comment about writing the .meta file first in run_service().
-   my @data_files = glob "$service_dir/*.data";
-   $logger->info('Sending ' . scalar @data_files . ' data files');
    DATA_FILE:
    foreach my $data_file ( @data_files ) {
       (my $meta_file = $data_file) =~ s/\.data/.meta/;
@@ -7643,19 +7744,19 @@ sub send_data {
             agent     => $agent,
             meta_file => $meta_file,
             data_file => $data_file,
-            link      => $service->links->{data},
+            link      => $data_link,
             json      => $json,
          );
       };
       if ( my $e = $EVAL_ERROR ) {
          if (blessed($e) && $e->isa('Percona::WebAPI::Exception::Request')) {
             my $error_msg = $client->response->content;
-            $logger->warning('Error ' . $e->status . " sending $data_file: "
+            $logger->warning('Error ' . $e->status . " sending $data_file ($data_file_size bytes): "
                . ($error_msg || '(No error message from server)'));
          }
          else {
             chomp $e;
-            $logger->warning("Error sending $data_file: $e");
+            $logger->warning("Error sending $data_file ($data_file_size bytes): $e");
          } 
          next DATA_FILE;
       }
@@ -7679,10 +7780,11 @@ sub send_data {
          unlink $meta_file or $logger->warning($OS_ERROR);
       }
 
-      $logger->info("Sent and removed $data_file");
+      $logger->info("Sent: $data_file ($data_file_size bytes)");
    }
 
-   return;
+   $logger->info("Exit: $exit_status");
+   return $exit_status;  # returning global var for testing
 }
 
 # Send the Agent and file's contents as-is as a multi-part POST.
@@ -7703,9 +7805,6 @@ sub send_file {
    # Optional args
    my $meta_file = $args{meta_file};
    my $json      = $args{json};  # for testing
-
-   my $data_file_size = -s $data_file;
-   $logger->info("Sending $data_file ($data_file_size bytes) to $link");
 
    # Create a multi-part resource: first the Agent, so Percona knows
    # from whom the sample data is coming, then metadata about the sample,
@@ -8008,7 +8107,7 @@ sub stop_all_services {
          my $stop_log = "$lib_dir/logs/$service.stop";
          my $run_log  = "$lib_dir/logs/$service.run";
          my $cmd      = ($env_vars ? "$env_vars " : '')
-                      . "${bin_dir}pt-agent --run-service $service"
+                      . "${bin_dir}pt-agent --run-service $service --no-agent-api"
                       . " </dev/null"
                       . " >$stop_log 2>&1";
          $logger->info("Stopping $service...");
@@ -8296,8 +8395,7 @@ sub install {
       "Create a MySQL user for the agent",
       "Initialize $agent_my_cnf",
       "Initialize $config_file",
-      "Initialize directories",
-      "Initialize the agent",
+      "Create the agent",
       "Run the agent",
    );
    my $n_steps = scalar @steps;
@@ -8398,7 +8496,7 @@ sub install {
          die "Sorry, an error occurred while verifying the API key: $e";
       }
       elsif ( !$entry_links ) {
-         if ( $client->response->code && $client->response->code == 403 ) {
+         if ( $client->response->code && $client->response->code == 401 ) {
             die "Sorry, the API key $api_key is not valid.  Please check the API key and try again.\n";
          }
          else {
@@ -8448,12 +8546,28 @@ sub install {
          if ( $flags->{force_dangerous_slave_install} ) {
             create_mysql_user($cxn, $agent_my_cnf);
          }
+         elsif ( $interactive || -t STDIN ) {
+            print "\nMySQL is a slave and $agent_my_cnf does not exist.  "
+               . "To install the agent, please enter the MySQL username and "
+               . "password to use.  The MySQL user must have SUPER and USAGE "
+               . "privileges on all databases, for example: "
+               . "GRANT SUPER,USAGE ON *.* TO pt_agent'\@'localhost'.  "
+               . "If the agent has been installed on the master, you can use "
+               . "the MySQL username and password in $agent_my_cnf on the "
+               . "master.  CTRL-C to abort install.\n";
+               print "MySQL username: ";
+               my $user = <STDIN>;
+               chomp($user) if $user;
+               my $pass = OptionParser::prompt_noecho("MySQL password: ");
+               create_mysql_user($cxn, $agent_my_cnf, $user, $pass);
+               $next_step->(repeat => 1);  # repeat
+         }
          else {
             die "Sorry, cannot install the agent because MySQL is a slave "
                . "and $agent_my_cnf does not exist.  It is not safe to "
                . "write to a slave, so a MySQL user for the agent cannot "
                . "be created.  First install the agent on the master, then "
-               . "copy $agent_my_cnf from the master server to this server.  "
+               . "copy $agent_my_cnf from the master to this server.  "
                . "See --install-options for how to force a dangerous slave "
                . "install.\n";
          }
@@ -8503,12 +8617,19 @@ sub install {
             daemonize   => 0,
             pid_file    => undef,
             log_file    => undef,
-            interval    => sub { sleep 2; },
             tries       => 2,
+            interval    => sub { sleep 2; },
          );
       };
       if ( $EVAL_ERROR ) {
-         die "Sorry, an error occurred while starting the agent: $EVAL_ERROR";
+         if ( $client->response->code && $client->response->code == 403 ) {
+            die "The maximum number of agents for this organization has been reached; "
+               . "no more agents can be created.  Delete unused agents from "
+               . "https://cloud.percona.com/agents and try again.\n";
+         }
+         else {
+            die "Sorry, an error occurred while starting the agent: $EVAL_ERROR";
+         }
       }
 
       # 9. Run the agent daemon.  If all the previous worked, the agent
@@ -8549,19 +8670,23 @@ sub install {
 }
 
 sub create_mysql_user {
-   my ($cxn, $agent_my_cnf) = @_;
+   my ($cxn, $agent_my_cnf, $user, $pass) = @_;
 
-   my $random_pass = pseudo_random_password();
-   my $sql         = "GRANT SUPER,USAGE ON *.* TO 'pt_agent'\@'localhost' "
-                   . "IDENTIFIED BY '$random_pass'";
-   eval {
-      $cxn->dbh->do($sql);
-   };
-   if ( $EVAL_ERROR ) {
-      die "Sorry, an error occurred while creating a MySQL user for the agent: "
-         . $EVAL_ERROR;
+   if ( !$user || !$pass ) {
+      $user = 'pt_agent';
+      $pass = pseudo_random_password();
+
+      my $sql = "GRANT SUPER,USAGE ON *.* TO 'pt_agent'\@'localhost' "
+              . "IDENTIFIED BY '$pass'";
+      eval {
+         $cxn->dbh->do($sql);
+      };
+      if ( $EVAL_ERROR ) {
+         die "Sorry, an error occurred while creating a MySQL user for the agent: "
+            . $EVAL_ERROR;
+      }
+      $cxn->dbh->disconnect();
    }
-   $cxn->dbh->disconnect();
 
    # Init $agent_my_cnf
    # We could set user= and pass= in ~/.pt-agent.conf, but each new agent
@@ -8577,7 +8702,7 @@ sub create_mysql_user {
    if ( !-d '/etc/percona/agent' ) {
       _safe_mkdir('/etc/percona/agent');
    }
-   my $my_cnf = "[client]\nuser=pt_agent\npass=$random_pass\n";
+   my $my_cnf = "[client]\nuser=$user\npass=$pass\n";
    my $dsn = $cxn->dsn;
    if ( $dsn->{h} ) {
       $my_cnf .= "host=$dsn->{h}\n";
@@ -8627,6 +8752,151 @@ sub missing_perl_module_deps {
    return scalar @missing_deps;
 }
 
+# ################ #
+# --uninstall subs #
+# ################ #
+
+sub uninstall {
+   my (%args) = @_;
+   have_required_args(\%args, qw(
+      OptionParser
+      Cxn
+   )) or die;
+   my $o     = $args{OptionParser};
+   my $cxn   = $args{Cxn};
+   my $flags = $args{flags};
+   
+   if ( $EUID != 0 ) {
+      die "You must run pt-agent --uninstall as root.\n";
+   }
+
+   my $config_file = get_config_file();
+   my $lib_dir     = $o->get('lib');
+   my $spool_dir   = $o->get('spool');
+   
+   print "Uninstalling pt-agent...\n";
+
+   # Stop the agent.  This must succeed else it's not safe to remove its
+   # files and dirs while it's running.
+   my $stopped = stop_agent(
+      pid_file => $o->get('pid'),
+      lib_dir  => $o->get('lib'),
+   );
+   if ( !$stopped ) {
+      $logger->fatal("Failed to stop pt-agent.");
+   }
+
+   # Agent is stopped so now it's safe to remove all our files and dirs.
+   my @shell_cmds;
+   if ( -d $lib_dir ) {
+      push @shell_cmds, "rm -rf $lib_dir";
+   }
+   if ( -d $spool_dir ) {
+      push @shell_cmds, "rm -rf $spool_dir"
+   }
+   if ( -d "/etc/percona/agent" ) {
+      push @shell_cmds, "rm -rf /etc/percona/agent/";
+   }
+   if ( -f $config_file ) {
+      push @shell_cmds, "rm -f $config_file"
+   }
+
+   my $rm_files_ok;
+   if ( scalar @shell_cmds ) {
+      print "Are you sure you want to run these command " 
+         . "to uninstall pt-agent?\n"
+         . join("\n", map { "  $_" } @shell_cmds) . "\n";
+      while ( !$rm_files_ok ) {
+         print "Enter 'yes' to run these commands, or CTRL-C to abort: ";
+         $rm_files_ok = <STDIN>;
+         chomp($rm_files_ok) if $rm_files_ok;
+         if ( $rm_files_ok && $rm_files_ok eq 'yes' ) {
+            last;
+         }
+         else {
+            $rm_files_ok = 0;
+         }
+      }
+      # CTRL-C should prevent us from getting here, but just in case:
+      return if @shell_cmds && !$rm_files_ok;
+      foreach my $cmd ( @shell_cmds ) {
+         print "$cmd\n";
+         system($cmd);
+         if ( $CHILD_ERROR ) {
+            warn "Command failed: $cmd\n";
+            $rm_files_ok = 0;
+         }
+      }
+   }
+   else {
+      warn "ERROR: No pt-agent files or directories found.  You can ignore this "
+         . "error if the agent is not installed, or if it has already been "
+         . "removed.  Else, verify that the values in $config_file are "
+         . "correct and try again.\n";
+   }
+
+   eval {
+      $cxn->connect();
+   };
+   if ( $EVAL_ERROR ) {
+      chomp $EVAL_ERROR;
+      die "ERROR: Cannot connect to MySQL: $EVAL_ERROR\n"
+         . "Please re-run pt-agent --uninstall and specify MySQL connection "
+         . "options like --user and --host to connect to MySQL as a user "
+         . "with sufficient privileges to drop MySQL users.\n";
+   }
+
+   my $drop_mysql_user_ok;
+   eval {
+      $cxn->dbh->selectall_arrayref("SHOW GRANTS FOR 'pt_agent'\@'localhost'");
+   };
+   if ( !$EVAL_ERROR ) {
+      my $sql = "DROP USER 'pt_agent'\@'localhost'";
+      print "Are you sure you want to execute this statement " 
+         . "to remove the pt-agent MySQL user?\n$sql\n";
+      while ( !$drop_mysql_user_ok ) {
+         print "Enter 'yes' to execute this statment, or CTRL-C to abort: ";
+         $drop_mysql_user_ok = <STDIN>;
+         chomp($drop_mysql_user_ok) if $drop_mysql_user_ok;
+         if ( $drop_mysql_user_ok && $drop_mysql_user_ok eq 'yes' ) {
+            last;
+         }
+         else {
+            $drop_mysql_user_ok = 0;
+         }
+      }
+      # CTRL-C should prevent us from getting here, but just in case:
+      return unless $drop_mysql_user_ok;
+      eval {
+         $cxn->dbh->do($sql);
+      };
+      if ( $EVAL_ERROR ) {
+         warn "Error dropping the pt-agent MySQL user: $EVAL_ERROR";
+         $drop_mysql_user_ok = 0;
+      }
+   }
+   else {
+      warn "ERROR: No pt-agent MySQL user found.  You can ignore this "
+         . "error if the agent is not installed, or if it has already been "
+         . "removed.  Else, verify that the values in $config_file are "
+         . "correct and try again.\n";
+   }
+
+   print "\n";
+   if ( $rm_files_ok && $drop_mysql_user_ok ) {
+      print "pt-agent and all its data has been removed from this server, "
+      . "but the agent and any data it sent has not been deleted from "
+      . "Percona Cloud Tools.  Go to https://cloud.percona.com/agents "
+      . "to delete the agent.\n";
+   }
+   else {
+      warn "Uninstalling pt-agent failed.  See previous output for errors "
+         . "and try again.  Contact Percona if you need help.\n";
+   }
+
+   return
+}
+
 # ################## #
 # Misc and util subs #
 # ################## #
@@ -8646,7 +8916,7 @@ sub save_agent {
    my $agent   = $args{agent};
    my $lib_dir = $args{lib_dir};
    my $file    = $lib_dir . '/agent';
-   $logger->info("Saving Agent to $file");
+   $logger->debug("Saving Agent to $file");
    eval {
       open my $fh, '>', $file
          or die "Error opening $file: $OS_ERROR";
@@ -8706,13 +8976,13 @@ sub get_versions {
 
    my $have_mysql = 0;
    if ( $cxn ) {
-      $logger->info("Connecting to MySQL");
+      $logger->debug("Connecting to MySQL");
       foreach my $tryno ( 1..$tries ) {
          eval {
             $cxn->connect();
          };
          if ( $EVAL_ERROR ) {
-            $logger->warning("Cannot connect to MySQL: $EVAL_ERROR");
+            $logger->debug("Cannot connect to MySQL: $EVAL_ERROR");
          }
          else {
             $have_mysql = 1;
@@ -8826,7 +9096,7 @@ sub check_if_mysql_restarted {
    my $margin = $args{margin} || 5;
 
    if ( !$uptime ) {
-      $logger->info("Connecting to MySQL");
+      $logger->debug("Connecting to MySQL");
       my $t0 = time;
       my $e;
       my $tries      = 2;
@@ -8865,17 +9135,19 @@ sub check_if_mysql_restarted {
    my $now = int(time);
 
    if ( !$state->{last_uptime} || !$state->{last_uptime_check} ) {
-      $logger->info("MySQL uptime: $uptime");
+      $logger->debug("MySQL uptime: $uptime");
       delete $state->{mysql_restarted};
    }
    elsif ( !$state->{mysql_restarted} ) {
       my $elapsed_time     = $now - $state->{last_uptime_check};
       my $exepected_uptime = $state->{last_uptime} + $elapsed_time;
       my $mysql_restarted  = $uptime > ($exepected_uptime - $margin) && $uptime < ($exepected_uptime + $margin) ? 0 : 1;
-      $logger->info("MySQL uptime check: last=$state->{last_uptime} elapsed=$elapsed_time expected=$exepected_uptime "
+      $logger->debug("MySQL uptime check: last=$state->{last_uptime} elapsed=$elapsed_time expected=$exepected_uptime "
          . "+/- ${margin}s actual=$uptime");
       if ( $mysql_restarted ) {
-         $logger->warning("MySQL restarted");
+         $logger->warning("MySQL restarted: last=$state->{last_uptime} "
+            . "elapsed=$elapsed_time expected=$exepected_uptime "
+            . "+/- ${margin}s actual=$uptime");
          $state->{mysql_restarted} = ts(time, 1);  # 1=UTC
       }
    }
@@ -8895,6 +9167,22 @@ sub too_many_agents {
    return unless -d "$lib_dir/pids";
    my @pids = glob "$lib_dir/pids/*";
    return scalar @pids > 10 ? 1 : 0;
+}
+
+sub ping_api {
+   my (%args) = @_;
+   have_required_args(\%args, qw(
+      client
+   )) or die;
+   my $client = $args{client};
+   my $ping_link = $client->entry_link . '/ping';
+   $ping_link =~ s!//ping!/ping!g;  # //ping doesn't work
+   eval {
+      $client->get(
+         link => $ping_link,
+      );
+   };
+   return $EVAL_ERROR ? 0 : 1;
 }
 
 sub _logger {
@@ -8994,6 +9282,13 @@ L<"--status">, L<"--stop">, and L<"--reset"> are mutually exclusive.
 
 =over
 
+=item --[no]agent-api
+
+default: yes
+
+Enable the agent API; do not use this option manually.  This option is used
+internally to allow the agent to stop itself and shutdown quickly.
+
 =item --agent-uuid
 
 type: string
@@ -9005,6 +9300,10 @@ Existing agent UUID for re-installing an agent.
 type: string
 
 Your secret Percona Cloud Tools API key.
+
+=item --ask-pass
+
+Prompt for MySQL password.
 
 =item --check-interval
 
@@ -9216,6 +9515,11 @@ Print the status of pt-agent.
 
 Stop pt-agent and all services.
 
+=item --uninstall
+
+Completely remove pt-agent and all its data from the server.  This does not
+delete the agent from https://cloud.percona.com.
+
 =item --user
 
 short form: -u; type: string
@@ -9403,6 +9707,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-agent 2.2.4
+pt-agent 2.2.5
 
 =cut

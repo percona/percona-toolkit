@@ -44,7 +44,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.4';
+our $VERSION = '2.2.5';
 
 use strict;
 use warnings FATAL => 'all';
@@ -5867,12 +5867,6 @@ runs SET NAMES UTF8 after connecting to MySQL.  Any other value sets
 binmode on STDOUT without the utf8 layer, and runs SET NAMES after
 connecting to MySQL.
 
-=item --database
-
-short form: -D; type: string
-
-Connect to this database.
-
 =item --config
 
 type: Array
@@ -5884,6 +5878,12 @@ first option on the command line.
 
 Fork to the background and detach from the shell.  POSIX
 operating systems only.
+
+=item --database
+
+short form: -D; type: string
+
+Connect to this database.
 
 =item --defaults-file
 
@@ -6156,6 +6156,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-variable-advisor 2.2.4
+pt-variable-advisor 2.2.5
 
 =cut
