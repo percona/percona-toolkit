@@ -13730,10 +13730,10 @@ sub main {
                         );
                         $stats{$stat} = 0;  # Reset for next iteration.
                      }
-                     print "\n" . $report->get_report();
+                     print STDERR "\n" . $report->get_report();
                   }
                   else {
-                     print "\n# No statistics values.\n";
+                     print STDERR "\n# No statistics values.\n";
                   }
                }
 
