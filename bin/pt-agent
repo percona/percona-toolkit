@@ -5520,6 +5520,30 @@ sub main {
    }
 
    # ########################################################################
+   # --ping and exit.
+   # ########################################################################
+   if ( $o->get('ping') ) {
+      my ($client, $entry_links, $logger_client) = get_api_client(
+         api_key  => $api_key,
+         tries    => 1,
+         interval => sub { return },
+      );
+      if ( !$client || !$entry_links ) {
+         die "Failed to initialize the API client.  The API may be down.  Please try again.\n";
+      }
+      my $api_ok = ping_api(
+         client => $client,
+      );
+      if ( $api_ok ) {
+         print $client->{entry_link} . " is up.\n"
+      }
+      else {
+         print $client->{entry_link} . " is down or not reachable.\n";
+      }
+      exit;
+   }
+
+   # ########################################################################
    # --run-service and exit.
    # ########################################################################
    if ( my $service = $o->get('run-service') ) {
@@ -5693,7 +5717,9 @@ sub get_api_client {
          delete $state->{connecting_to_api};
          last;  # success
       }
-      $interval->();  # failure, try again
+      if (!defined $tries || $tries > 0) {
+         $interval->();  # failure, try again
+      }
    }
 
    # Create another client for Percona::Agent::Logger.  If the primary
@@ -9436,6 +9462,10 @@ if the file contains a PID and a process is running with that PID, then
 the script dies; or, if there is no process running with that PID, then the
 script overwrites the file with its own PID and starts; else, if the file
 contains no PID, then the script dies.
+
+=item --ping
+
+Ping the Percona Cloud Tools API and exit.
 
 =item --port
 
