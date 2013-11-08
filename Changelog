@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+  * Added pt-agent --ping
+
 v2.2.5 released 2013-10-16
 
   * Added Query_time histogram bucket counts to pt-query-digest JSON output
