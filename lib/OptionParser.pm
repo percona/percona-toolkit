@@ -1342,12 +1342,12 @@ sub _d {
 # certainly include in all tools, but otherwise there's no real reason to put
 # it here.
 if ( PTDEBUG ) {
-   print '# ', $^X, ' ', $], "\n";
+   print STDERR '# ', $^X, ' ', $], "\n";
    if ( my $uname = `uname -a` ) {
       $uname =~ s/\s+/ /g;
-      print "# $uname\n";
+      print STDERR "# $uname\n";
    }
-   print '# Arguments: ',
+   print STDERR '# Arguments: ',
       join(' ', map { my $a = "_[$_]_"; $a =~ s/\n/\n# /g; $a; } @ARGV), "\n";
 }
 
