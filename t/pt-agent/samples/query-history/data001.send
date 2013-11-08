@@ -19,6 +19,7 @@ Content-Disposition: form-data; name="data"
          "checksum" : "C72BF45D68E35A6E",
          "distillate" : "SELECT tbl",
          "example" : {
+            "Query_time" : "0.018799",
             "query" : "SELECT MIN(id),MAX(id) FROM tbl",
             "ts" : null
          },
