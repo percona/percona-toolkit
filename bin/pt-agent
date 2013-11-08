@@ -7366,15 +7366,7 @@ sub run_service {
    # if 1) the service spools data and 2) there is data.
    my $file_size = (-s $tmp_data_file) || 0;
    $logger->debug("$tmp_data_file size: " . ($file_size || 0) . " bytes");
-   if ( $file_size > $max_data ) {
-      $logger->error("Data file is larger than $max_data, the service "
-         . "may be malfunctioning, stopping service");
-      stop_service(
-         service => $service->name,
-         lib_dir => $lib_dir,
-      );
-   }
-   elsif ( $use_spool && $file_size ) {
+   if ( $use_spool && $file_size ) {
       # Save metadata about this sample _first_, because --send-data looks
       # for the data file first, then for a corresponding .meta file.  If
       # we write the data file first, then we create a race condition: while
@@ -7391,24 +7383,31 @@ sub run_service {
       );
       $metadata->{run_time} = sprintf('%.6f', time - $start_time);
       (my $meta_file = $data_file) =~ s/\.data/\.meta/;
+      my $json_metadata = as_json($metadata, json => $json);
       write_to_file(
-         data => as_json($metadata, json => $json),
+         data => $json_metadata,
          file => "$data_dir/$meta_file",
       );
 
-      # Use system mv instead of Perl File::Copy::move() because it's
-      # unknown if the Perl version will do an optimized move, i.e.
-      # simply move the inode, _not_ copy the file.  A system mv on
-      # the same filesystem is pretty much guaranteed to do an optimized,
-      # i.e. quasi-atomic, move.
-      my $cmd = "mv $tmp_data_file $data_dir";
-      $logger->debug($cmd);
-      system($cmd);
-      my $cmd_exit_status = $CHILD_ERROR >> 8;
-      if ( $cmd_exit_status != 0 ) {
-         $logger->error("Move failed: $cmd") 
+      if ( $file_size <= $max_data ) {
+         # Use system mv instead of Perl File::Copy::move() because it's
+         # unknown if the Perl version will do an optimized move, i.e.
+         # simply move the inode, _not_ copy the file.  A system mv on
+         # the same filesystem is pretty much guaranteed to do an optimized,
+         # i.e. quasi-atomic, move.
+         my $cmd = "mv $tmp_data_file $data_dir";
+         $logger->debug($cmd);
+         system($cmd);
+         my $cmd_exit_status = $CHILD_ERROR >> 8;
+         if ( $cmd_exit_status != 0 ) {
+            $logger->error("Move failed: $cmd") 
+         }
+         $exit_status |= $cmd_exit_status;
       }
-      $exit_status |= $cmd_exit_status;
+      else {
+         $logger->error("Data file is larger than $max_data, skipping: "
+            . ($json_metadata || ''));
+      }
    }
 
    # Remove staged files.  Anything to save should have been moved
