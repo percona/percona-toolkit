@@ -61,7 +61,7 @@ is(
    $exit_status,
    0,
    "--dry-run exit 0 (bug 1058285)"
-);
+) or diag($output);
 
 unlike(
    $output,
