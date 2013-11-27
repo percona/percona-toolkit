@@ -13,6 +13,7 @@ use Test::More;
 use Time::HiRes qw(sleep);
 
 $ENV{PTTEST_FAKE_TS} = 1;
+$ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} = 1;
 
 use PerconaTest;
 use Sandbox;
