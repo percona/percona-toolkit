@@ -705,7 +705,8 @@ ok(
    no_diff(
       sub { pt_online_schema_change::main(@args, "$dsn,D=bug_1045317,t=bits",
          '--execute', '--statistics',
-         '--alter', "modify column val ENUM('M','E','H') NOT NULL")
+         '--alter', "modify column val ENUM('M','E','H') NOT NULL",
+         '--recursion-method', 'none')
       },
       ($sandbox_version ge '5.5' && $db_flavor !~ m/XtraDB Cluster/
          ? "$sample/stats-execute-5.5.txt"
