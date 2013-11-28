@@ -7850,6 +7850,25 @@ override query_report => sub {
    $global_data->{queries_per_second} = $qps  if $qps;
    $global_data->{concurrency}        = $conc if $conc;
 
+   if ( exists $results->{globals}->{rate_limit} ) {
+      my $rate_limit = $results->{globals}->{rate_limit}->{min} || '';
+      my ($type, $limit) = $rate_limit =~ m/^(\w+):(\d+)$/;
+      if ( $type && $limit ) {
+         $global_data->{rate_limit} = {
+            type  => $type,
+            limit => int($limit),
+         };
+      }
+      else {
+         $global_data->{rate_limit}->{error} = "Invalid rate limit: $rate_limit";
+      }
+
+      if (    ($results->{globals}->{rate_limit}->{min} || '')
+           ne ($results->{globals}->{rate_limit}->{max} || '') ) {
+         $global_data->{rate_limit}->{diff} = 1;
+      }
+   }
+
    my %hidden_attrib = (
       arg         => 1,
       fingerprint => 1,
