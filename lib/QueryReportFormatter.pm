@@ -272,6 +272,11 @@ sub header {
       push @result, "# Time range: $time_range";
    }
 
+   # Third line: rate limiting, if any
+   if ( $results->{globals}->{rate_limit} ) {
+      print "# Rate limits apply\n";
+   }
+
    # Global column headers
    push @result, $self->make_global_header();
 
@@ -287,7 +292,6 @@ sub header {
       NUM_ATTRIB:
       foreach my $attrib ( @{$attribs->{$type}} ) {
          next unless exists $results->{globals}->{$attrib};
-         
          my $store   = $results->{globals}->{$attrib};
          my $metrics = $ea->stats()->{globals}->{$attrib};
          my $func    = $attrib =~ m/time|wait$/ ? \&micro_t : \&shorten;
@@ -684,7 +688,7 @@ sub event_report {
    push @result,
       sprintf("# Scores: V/M = %.2f", $val->{variance_to_mean} );
 
-   # Last line before column headers: time range
+   # Time range
    if ( $val->{time_range} ) {
       push @result, "# Time range: $val->{time_range}";
    }
