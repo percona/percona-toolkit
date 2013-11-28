@@ -39,6 +39,7 @@ use Test::More;
 use Time::HiRes qw(sleep time);
 use File::Temp qw(tempfile);
 use POSIX qw(signal_h);
+use Data::Dumper;
 
 require Exporter;
 our @ISA         = qw(Exporter);

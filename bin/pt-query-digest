@@ -6776,6 +6776,10 @@ sub header {
       push @result, "# Time range: $time_range";
    }
 
+   if ( $results->{globals}->{rate_limit} ) {
+      print "# Rate limits apply\n";
+   }
+
    push @result, $self->make_global_header();
 
    my $attribs = $self->sort_attribs( $ea );
@@ -6788,7 +6792,6 @@ sub header {
       NUM_ATTRIB:
       foreach my $attrib ( @{$attribs->{$type}} ) {
          next unless exists $results->{globals}->{$attrib};
-         
          my $store   = $results->{globals}->{$attrib};
          my $metrics = $ea->stats()->{globals}->{$attrib};
          my $func    = $attrib =~ m/time|wait$/ ? \&micro_t : \&shorten;
@@ -7846,6 +7849,25 @@ override query_report => sub {
    $global_data->{unique_query_count} = $global_unq;
    $global_data->{queries_per_second} = $qps  if $qps;
    $global_data->{concurrency}        = $conc if $conc;
+
+   if ( exists $results->{globals}->{rate_limit} ) {
+      my $rate_limit = $results->{globals}->{rate_limit}->{min} || '';
+      my ($type, $limit) = $rate_limit =~ m/^(\w+):(\d+)$/;
+      if ( $type && $limit ) {
+         $global_data->{rate_limit} = {
+            type  => $type,
+            limit => int($limit),
+         };
+      }
+      else {
+         $global_data->{rate_limit}->{error} = "Invalid rate limit: $rate_limit";
+      }
+
+      if (    ($results->{globals}->{rate_limit}->{min} || '')
+           ne ($results->{globals}->{rate_limit}->{max} || '') ) {
+         $global_data->{rate_limit}->{diff} = 1;
+      }
+   }
 
    my %hidden_attrib = (
       arg         => 1,
@@ -13999,6 +14021,24 @@ sub main {
       );
    } # print
 
+   # Combine "# Log_slow_rate_type: query  Log_slow_rate_limit: 2"
+   # as rate_limit=>'query:2'.
+   $pipeline->add(
+      name    => 'rate limit',
+      process => sub {
+         my ( $args ) = @_;
+         my $event = $args->{event};
+         PTDEBUG && _d('callback: rate limit');
+         if ( my $limit = $event->{Log_slow_rate_limit} ) {
+            $event->{rate_limit} = ($event->{Log_slow_rate_type} || 'session') . ":$limit";
+            delete $event->{Log_slow_rate_limit};
+            delete $event->{Log_slow_rate_type};
+         }
+         return $args;
+      },
+   );
+
+
    # Finally, add aggregator obj for each groupby attrib to the callbacks.
    # These aggregating objs should be the last pipeline processes.
    foreach my $i ( 0..$#groupby  ) {
@@ -14024,6 +14064,7 @@ sub main {
          ip            => 'string',
          port          => 'string',
          Killed        => 'bool',
+         rate_limit    => 'string',
       };
 
       my $ea = new EventAggregator(
