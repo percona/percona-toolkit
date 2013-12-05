@@ -3691,7 +3691,7 @@ sub new {
 
 sub connect {
    my ( $self, %opts ) = @_;
-   my $dsn = $self->{dsn};
+   my $dsn = $opts{dsn} || $self->{dsn};
    my $dp  = $self->{DSNParser};
 
    my $dbh = $self->{dbh};
@@ -3710,6 +3710,13 @@ sub connect {
    }
 
    $dbh = $self->set_dbh($dbh);
+   if ( $opts{dsn} ) {
+      $self->{dsn}      = $dsn;
+      $self->{dsn_name} = $dp->as_string($dsn, [qw(h P S)])
+                       || $dp->as_string($dsn, [qw(F)])
+                       || '';
+
+   }
    PTDEBUG && _d($dbh, 'Connected dbh to', $self->{hostname},$self->{dsn_name});
    return $dbh;
 }
@@ -3872,6 +3879,8 @@ sub quote_val {
    return "''" if $val eq '';                  # blank string = ''
    return $val if $val =~ m/^0x[0-9a-fA-F]+$/  # quote hex data
                   && !$args{is_char};          # unless is_char is true
+
+   return $val if $args{is_float};
 
    $val =~ s/(['\\])/\\$1/g;
    return "'$val'";
