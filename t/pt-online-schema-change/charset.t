@@ -56,10 +56,10 @@ $sb->load_file('master', "$sample/basic_no_fks.sql");
 my @create = split("\n\n", $output);
 
 like(
-   $create[1],
+   $create[1] || '',
    qr/DEFAULT CHARSET=utf8/,
    "Can alter charset of new table"
-);
+) or diag($output);
 
 # #############################################################################
 # Done.
