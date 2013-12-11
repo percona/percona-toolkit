@@ -3691,7 +3691,7 @@ sub new {
 
 sub connect {
    my ( $self, %opts ) = @_;
-   my $dsn = $self->{dsn};
+   my $dsn = $opts{dsn} || $self->{dsn};
    my $dp  = $self->{DSNParser};
 
    my $dbh = $self->{dbh};
@@ -3710,6 +3710,13 @@ sub connect {
    }
 
    $dbh = $self->set_dbh($dbh);
+   if ( $opts{dsn} ) {
+      $self->{dsn}      = $dsn;
+      $self->{dsn_name} = $dp->as_string($dsn, [qw(h P S)])
+                       || $dp->as_string($dsn, [qw(F)])
+                       || '';
+
+   }
    PTDEBUG && _d($dbh, 'Connected dbh to', $self->{hostname},$self->{dsn_name});
    return $dbh;
 }
@@ -3872,6 +3879,8 @@ sub quote_val {
    return "''" if $val eq '';                  # blank string = ''
    return $val if $val =~ m/^0x[0-9a-fA-F]+$/  # quote hex data
                   && !$args{is_char};          # unless is_char is true
+
+   return $val if $args{is_float};
 
    $val =~ s/(['\\])/\\$1/g;
    return "'$val'";
@@ -5092,7 +5101,7 @@ sub level_name {
 sub debug {
    my $self = shift;
    return if $self->online_logging;
-   return $self->_log(0, 'DEBUG', 1, @_);
+   return $self->_log(0, 'DEBUG', @_);
 }
 
 sub info {
@@ -5128,7 +5137,7 @@ sub _set_exit_status {
 }
 
 sub _log {
-   my ($self, $online, $level, $msg, $offline) = @_;
+   my ($self, $online, $level, $msg) = @_;
 
    my $ts = ts(time, 1);  # 1=UTC
    my $level_number = level_number($level);
@@ -5792,6 +5801,7 @@ sub init_agent {
    # Optional args
    my $_oktorun = $args{oktorun} || sub { return $oktorun };
    my $actions  = $args{actions};
+   my $quiet    = $args{quiet};
 
    # Update these attribs every time the agent is initialized.
    # Other optional attribs, like versions, are left to the caller.
@@ -5802,7 +5812,7 @@ sub init_agent {
    # Try to create/update the Agent.
    my $success = 0;
    while ( $_oktorun->() && $tries-- ) {
-      if ( !$state->{init_action}++ ) {
+      if ( !$state->{init_action}++ && !$quiet ) {
          $logger->info($action eq 'put' ? "Updating agent " . $agent->name
                                         : "Creating new agent");
       }
@@ -5841,7 +5851,7 @@ sub init_agent {
          }
       }
       elsif ( !$agent_uri ) {
-         $logger->info("No URI for Agent " . $agent->name);
+         $logger->warning("No URI for Agent " . $agent->name);
       }
       else {
          # The Agent URI will have been returned in the Location header
@@ -5868,7 +5878,7 @@ sub init_agent {
    delete $state->{init_action};
    delete $state->{too_many_agents};
 
-   if ( $agent && $success ) {
+   if ( $agent && $success && !$quiet ) {
       $logger->info("Agent " . $agent->name . " (" . $agent->uuid . ") is ready");
    }
 
@@ -5955,7 +5965,7 @@ sub start_agent {
    my $entry_links   = $args{entry_links};    # for testing
    my $logger_client = $args{logger_client};  # for testing
 
-   $logger->info('Starting agent');
+   # $logger->info('Starting agent');
 
    # Daemonize first so all output goes to the --log.
    my $daemon = Daemon->new(
@@ -6126,8 +6136,9 @@ sub run_agent {
    # #######################################################################
    # Main agent loop
    # #######################################################################
+   $state->{need_mysql_version} = 1;
    $state->{first_config} = 1;
-   my $first_config_interval = 60;
+   my $first_config_interval = 20;
    $logger->info("Checking silently every $first_config_interval seconds"
       . " for the first config");
 
@@ -6136,38 +6147,6 @@ sub run_agent {
    my $config;
    my $services = {};
    while ( $_oktorun->() ) {
-      check_if_mysql_restarted(
-         Cxn => $cxn,
-      );
-
-      if ( $state->{need_mysql_version} ) {
-         my $versions = get_versions(
-            Cxn => $cxn,
-         );
-         if ( $versions->{MySQL} ) {
-            $agent->versions($versions);
-            my $updated_agent;
-            ($agent, $updated_agent) = init_agent(
-               agent    => $agent,
-               action   => 'put',
-               link     => $agent->links->{self},
-               client   => $client,
-               interval => sub { return; },
-               tries    => 1,   # optional
-            );
-            if ( $updated_agent ) {
-               $logger->info("Got MySQL versions");
-               save_agent(
-                  agent   => $agent,
-                  lib_dir => $lib_dir,
-               );
-            }
-            else {
-               $state->{need_mysql_version} = 1;
-            }
-         }
-      }
-
       ($config, $lib_dir, $new_daemon, $success) = get_config(
          link    => $agent->links->{config},
          agent   => $agent,
@@ -6185,6 +6164,7 @@ sub run_agent {
             delete $state->{first_config};
             $logger->info('Agent has been configured');
          }
+
          if ( $new_daemon ) {
             # NOTE: Daemon objects use DESTROY to auto-remove their pid file
             # when they lose scope (i.e. ref count goes to zero).  This
@@ -6198,6 +6178,60 @@ sub run_agent {
                delete $new_daemon->{sharing_pid_file};
             }
             $daemon = $new_daemon;
+         }
+
+         # Connect to MySQL, then check stuff.
+         my $o = new OptionParser();
+         $o->get_specs();
+         $o->get_opts();
+         my $dp = $o->DSNParser();
+         $dp->prop('set-vars', $o->set_vars());
+         my $dsn = $dp->parse_options($o);   
+         eval {
+            $cxn->connect(dsn => $dsn);
+         };
+         if ( $EVAL_ERROR ) {
+            $logger->warning("MySQL connection failure: $EVAL_ERROR");
+            $state->{have_mysql} = 0;
+            $state->{need_mysql_version} = 1;
+         }
+         else {
+            if ( !$state->{have_mysql} ) {
+               $logger->info("MySQL connection OK");
+            }
+            $state->{have_mysql} = 1;
+            check_if_mysql_restarted(
+               dbh => $cxn->dbh,
+            );
+            if ( $state->{need_mysql_version} ) {
+               $logger->debug("Need MySQL version");
+               my $versions = get_versions(Cxn => $cxn);
+               if ( $versions->{MySQL} ) {
+                  $agent->versions($versions);
+                  my $updated_agent;
+                  ($agent, $updated_agent) = init_agent(
+                     agent    => $agent,
+                     action   => 'put',
+                     link     => $agent->links->{self},
+                     client   => $client,
+                     tries    => 1,
+                     interval => sub { return; },
+                     quiet    => 1,
+                  );
+                  if ( $updated_agent ) {
+                     $logger->debug("Got MySQL version");
+                     save_agent(
+                        agent   => $agent,
+                        lib_dir => $lib_dir,
+                     );
+                     delete $state->{need_mysql_version};
+                  }
+               }
+               else {
+                  $logger->debug("Failed to get MySQL version");
+               }
+            }
+            $cxn->dbh->disconnect();
          }
 
          # Check the safeguards.
@@ -6341,6 +6375,8 @@ sub get_config {
             $config  = $new_config;
             $success = 1;
             $logger->info('Config ' . $config->ts . ' applied');
+
+            $state->{need_mysql_version} = 1;
          }
          else {
             $success = 1;
@@ -8319,7 +8355,7 @@ sub get_agent_pid {
          );
       }
       # Match the first digits, which should be the PID.
-      ($pid) =~ $ps_output =~ m/(\d+)/;
+      ($pid) = $ps_output =~ m/(\d+)/;
    }
 
    if ( !$pid ) {
@@ -8405,6 +8441,7 @@ sub install {
 
    my $agent_my_cnf = '/etc/percona/agent/my.cnf';
    my $config_file  = get_config_file();
+   my $lib_dir      = $o->get('lib');
 
    my $step_result;
    my $stepno   = 0;
@@ -8414,6 +8451,7 @@ sub install {
       "Verify the user is root",
       "Check Perl module dependencies",
       "Check for crontab",
+      "Verify pt-agent is not installed",
       "Verify the API key",
       "Connect to MySQL",
       "Check if MySQL is a slave",
@@ -8483,7 +8521,25 @@ sub install {
       die "cron is not installed, or crontab is not in your PATH.\n";
    }
 
+   # Verify pt-agent is not installed
+   $next_step->();
+   my @install_files = ($agent_my_cnf, $config_file, "$lib_dir/agent");
+   my @have_files;
+   foreach my $file (@install_files) {
+      push @have_files, $file if -f $file;
+   }
+   if ( scalar @have_files ) {
+      print "FAIL\n";
+      die "It looks like pt-agent is already installed because these files exist:\n"
+         . join("\n", map { "  $_" } @have_files)
+         . "\nRun pt-agent --uninstall to remove these files.  To upgrade pt-agent, "
+         . "install the new version, run pt-agent --stop, then pt-agent --daemonize "
+         . "to restart pt-agent with the new version.\n";
+   }
+
    # Must have a valid API key.
+   $next_step->();
+   my $got_api_key = 0;
    my $api_key = $o->get('api-key');
    if ( !$api_key ) {
       print "\n";
@@ -8497,19 +8553,22 @@ sub install {
                $api_key = '';
             }
          }
-         $next_step->(repeat => 1);  # repeat
       }
       else {
          die "Please specify your --api-key.\n";
       }
+      $got_api_key = 1;
    }
+
    my $client;
    my $entry_links;
    if ( $flags->{offline} ) {
       $skip++;
    }
    else {
-      $next_step->();
+      if ($got_api_key) {
+         $next_step->(repeat => 1);
+      }
       eval {
          ($client, $entry_links) = get_api_client(
             api_key  => $api_key,
@@ -8571,30 +8630,13 @@ sub install {
          if ( $flags->{force_dangerous_slave_install} ) {
             create_mysql_user($cxn, $agent_my_cnf);
          }
-         elsif ( $interactive || -t STDIN ) {
-            print "\nMySQL is a slave and $agent_my_cnf does not exist.  "
-               . "To install the agent, please enter the MySQL username and "
-               . "password to use.  The MySQL user must have SUPER and USAGE "
-               . "privileges on all databases, for example: "
-               . "GRANT SUPER,USAGE ON *.* TO pt_agent'\@'localhost'.  "
-               . "If the agent has been installed on the master, you can use "
-               . "the MySQL username and password in $agent_my_cnf on the "
-               . "master.  CTRL-C to abort install.\n";
-               print "MySQL username: ";
-               my $user = <STDIN>;
-               chomp($user) if $user;
-               my $pass = OptionParser::prompt_noecho("MySQL password: ");
-               create_mysql_user($cxn, $agent_my_cnf, $user, $pass);
-               $next_step->(repeat => 1);  # repeat
-         }
          else {
             die "Sorry, cannot install the agent because MySQL is a slave "
                . "and $agent_my_cnf does not exist.  It is not safe to "
                . "write to a slave, so a MySQL user for the agent cannot "
                . "be created.  First install the agent on the master, then "
                . "copy $agent_my_cnf from the master to this server.  "
-               . "See --install-options for how to force a dangerous slave "
-               . "install.\n";
+               . "See SLAVE INSTALL in the docs for more information.\n";
          }
       }
    }
@@ -8616,7 +8658,7 @@ sub install {
    # do it now in case there are problems. 
    $next_step->();
    init_lib_dir(
-      lib_dir => $o->get('lib'),
+      lib_dir => $lib_dir,
    );
    init_spool_dir(
       spool_dir => $o->get('spool'),
@@ -8997,33 +9039,7 @@ sub get_versions {
    my (%args) = @_;
    my $cxn      = $args{Cxn};
    my $tries    = $args{tries}    || 1;
-   my $interval = $args{interval} || sub { sleep 3; };
-
-   my $have_mysql = 0;
-   if ( $cxn ) {
-      $logger->debug("Connecting to MySQL");
-      foreach my $tryno ( 1..$tries ) {
-         eval {
-            $cxn->connect();
-         };
-         if ( $EVAL_ERROR ) {
-            $logger->debug("Cannot connect to MySQL: $EVAL_ERROR");
-         }
-         else {
-            $have_mysql = 1;
-            delete $state->{need_mysql_version};
-            last;  # success
-         }
-         if ( $tryno < $tries ) {
-            sleep $interval;  # failure, try again
-         }
-         else {
-            $state->{need_mysql_version} = 1;
-            $logger->warning("Cannot get MySQL version, will try again later");
-            last;  # failure
-         }
-      }
-   }
+   my $interval = $args{interval} || sub { return; };
 
    # This is currently the actual response from GET v.percona.com
    my $fake_response = <<EOL;
@@ -9032,6 +9048,10 @@ MySQL;mysql_variable;version_comment,version
 Perl;perl_version
 DBD::mysql;perl_module_version
 Percona::Toolkit;perl_module_version
+JSON;perl_module_version
+LWP;perl_module_version
+IO::Socket::SSL;perl_module_version
+DBD::mysql;perl_module_version
 EOL
 
    my $items = VersionCheck::parse_server_response(
@@ -9042,12 +9062,39 @@ EOL
       { name => 'system', id => 0, },
    ];
 
+   my $have_mysql = -1;
+   if ( !$cxn->dbh || !$cxn->dbh->ping() ) {
+      $logger->debug("Connecting to MySQL");
+      eval {
+         $cxn->connect();
+      };
+      if ( $EVAL_ERROR ) {
+         $logger->debug("Cannot connect to MySQL: $EVAL_ERROR");
+         $have_mysql = 0;
+      }
+      else {
+         $have_mysql = 1;
+      }
+   }
+
    if ( $have_mysql ) {
+      $logger->debug("Have MySQL connection");
       my ($name, $id) = VersionCheck::get_instance_id(
          { dbh => $cxn->dbh, dsn => $cxn->dsn },
       );
       push @$instances,
          { name => $name, id => $id, dbh => $cxn->dbh, dsn => $cxn->dsn };
+
+      # Disconnect MySQL if we connected it.
+      if ( $have_mysql == 1 ) {
+         $logger->debug("Disconnecting MySQL");
+         eval {
+            $cxn->dbh->disconnect();
+         };
+         if ( $EVAL_ERROR ) {
+            $logger->debug($EVAL_ERROR);
+         }
+      }
    }
 
    my $versions = VersionCheck::get_versions(
@@ -9112,47 +9159,21 @@ sub _safe_mkdir {
 sub check_if_mysql_restarted {
    my (%args) = @_;
    have_required_args(\%args, qw(
-      Cxn
+      dbh
    )) or die;
-   my $cxn = $args{Cxn};
+   my $dbh = $args{dbh};
 
    # Optional args
    my $uptime = $args{uptime};  # for testing
    my $margin = $args{margin} || 5;
 
    if ( !$uptime ) {
-      $logger->debug("Connecting to MySQL");
-      my $t0 = time;
-      my $e;
-      my $tries      = 2;
-      my $have_mysql = 0;
-      TRY:
-      foreach my $tryno ( 1..$tries ) {
-         eval {
-            $cxn->connect();
-         };
-         $e = $EVAL_ERROR;
-         if ( $e ) {
-            sleep 3 if $tryno < $tries;  # failure, try again
-         }
-         else {
-            $have_mysql = 1;
-            last TRY;  # success
-         }
-      }
-      if ( $have_mysql ) {
-         eval {
-            (undef, $uptime) = $cxn->dbh->selectrow_array("SHOW STATUS LIKE 'uptime'");
-         };
-         if ( $EVAL_ERROR ) {
-            $logger->warning("Cannot check if MySQL restarted because "
-               . "SHOW STATUS query failed: $EVAL_ERROR");
-            return;
-         }
-      }
-      else {
-         $logger->warning("Cannot check if MySQL restarted because "
-            . "connection to MySQL failed: $e");
+      my $sql = "SHOW STATUS LIKE 'uptime'";
+      eval {
+         (undef, $uptime) = $dbh->selectrow_array($sql);
+      };
+      if ( $EVAL_ERROR ) {
+         $logger->error("$sql: $EVAL_ERROR");
          return;
       }
    }
@@ -9174,6 +9195,7 @@ sub check_if_mysql_restarted {
             . "elapsed=$elapsed_time expected=$exepected_uptime "
             . "+/- ${margin}s actual=$uptime");
          $state->{mysql_restarted} = ts(time, 1);  # 1=UTC
+         $state->{need_mysql_version} = 1;
       }
    }
 
@@ -9259,14 +9281,13 @@ Usage: pt-agent [OPTIONS]
 pt-agent is the client-side agent for Percona Cloud Tools.  It is not
 a general command line tool like other tools in Percona Toolkit, it is
 configured and controlled through the web at https://cloud.percona.com.
-Please contact Percona or visit https://cloud.percona.com for more information.
+Visit https://cloud.percona.com for more information and to sign up.
 
 =head1 DESCRIPTION
 
 pt-agent is the client-side agent for Percona Cloud Tools (PCT).  It is
 controlled and configured through the web app at https://cloud.percona.com.
-An account with Percona is required to use pt-agent.  Please contact Percona
-or visit https://cloud.percona.com for more information.
+Visit https://cloud.percona.com for more information and to sign up.
 
 pt-agent, or "the agent", is a single, unique instance of the tool running
 on a server.  Two agents cannot run on the same server (see L<"--pid">).
@@ -9274,9 +9295,9 @@ on a server.  Two agents cannot run on the same server (see L<"--pid">).
 The agent is a daemon that runs as root.  It should be started with
 L<"--daemonize">.  It connects periodically to Percona to update
 its configuration and services, and it schedules L<"--run-service"> and
-L<"--send-data"> instances of itself.  Other than L<"INSTALLING"> and starting
-the agent locally, all control and configuration is done through the web
-at https://cloud.percona.com.
+L<"--send-data"> instances of itself using cron.  Other than L<"INSTALLING">
+and starting the agent locally, all control and configuration is done through
+the web at https://cloud.percona.com.
 
 =head1 INSTALLING
 
@@ -9294,6 +9315,44 @@ When the install process is complete, go to https://cloud.percona.com to enable
 services for agent.
 
 Please contact Percona if you need help installing the agent.
+
+=head2 SLAVE INSTALL
+
+There are two ways to install pt-agent on a slave.  The first and best way
+is to install the agent on the master so that the L<"MYSQL USER"> is created
+on the master and replicates to slaves.  This is best because it avoids
+writing to the slave.  Then create the C</etc/percona/agent/> directory on
+the slave and copy in to it C</etc/percona/agent/my.cnf> from the master.
+Run L<"--install"> on the slave and pt-agent will automatically detect and
+use the MySQL user and password in C</etc/percona/agent/my.cnf>.  Repeat the
+process for other slaves.
+
+The second way to install pt-agent on a slave is not safe because it writes
+directly to the slave: specify L<"--install-options">
+C<force_dangerous_slave_install> in addition to L<"--install">.  As the
+install option name implies, this is dangerous, but it forces pt-agent
+to ignore that MySQL is a slave.
+
+=head2 Percona XtraDB Cluster (PXC) INSTALL
+
+Installing pt-agent on Percona XtraDB Cluster (PXC) nodes is the same as
+installing it safely on slaves.  First install the agent on any node.  This
+will create the L<"MYSQL USER"> that will replicate to all other nodes.
+Then create the C</etc/percona/agent/> directory on another node and copy in
+to it C</etc/percona/agent/my.cnf> from the first node where pt-agent was
+installed.  Run L<"--install"> on the node and pt-agent will automatically
+detect and use the MySQL user and password in C</etc/percona/agent/my.cnf>.
+Repeat the process for other nodes.
+
+=head1 MYSQL USER
+
+During L<"--install">, pt-agent creates the following MySQL user:
+
+  GRANT SUPER, USAGE ON *.* TO 'pt_agent'@'localhost' IDENTIFIED BY 'pass'
+
+C<pass> is a random string.  MySQL options for the agent are stored in
+C</etc/percona/agent/my.cnf>.  The C<SUPER> privilege is required so that
+the agent can set global MySQL variables like C<long_query_time>.
 
 =head1 EXIT STATUS
 
@@ -9637,7 +9696,7 @@ pt-agent requires:
 
 =over
 
-=item * An account with Percona
+=item * A Percona Cloud Tools account (https://cloud.percona.com)
 
 =item * Access to https://cloud-api.percona.com
 
@@ -9688,20 +9747,7 @@ see L<"ENVIRONMENT">.
 =head1 DOWNLOADING
 
 Visit L<http://www.percona.com/software/percona-toolkit/> to download the
-latest release of Percona Toolkit.  Or, get the latest release from the
-command line:
-
-   wget percona.com/get/percona-toolkit.tar.gz
-
-   wget percona.com/get/percona-toolkit.rpm
-
-   wget percona.com/get/percona-toolkit.deb
-
-You can also get individual tools from the latest release:
-
-   wget percona.com/get/TOOL
-
-Replace C<TOOL> with the name of any tool.
+latest release of Percona Toolkit.
 
 =head1 AUTHORS
 
