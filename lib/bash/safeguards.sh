@@ -50,10 +50,9 @@ check_disk_space() {
    local bytes_margin="${4:-0}"
 
    # Real/actual bytes used and bytes free.
-   
-   local used_bytes=$(perl -ane 'm!^/! && print $F[2] * 1024' "$file")
-   local free_bytes=$(perl -ane 'm!^/! && print $F[3] * 1024' "$file")
-   local pct_used=$(perl -ane 'm!^/! && print ($F[4] =~ m/(\d+)/)' "$file")
+   local used_bytes=$(tail -n 1 "$file" | perl -ane 'print $F[2] * 1024')
+   local free_bytes=$(tail -n 1 "$file" | perl -ane 'print $F[3] * 1024')
+   local pct_used=$(tail -n 1 "$file" | perl -ane 'print ($F[4] =~ m/(\d+)/)')
    local pct_free=$((100 - $pct_used))
 
    # Report the real values to the user.
