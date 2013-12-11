@@ -8355,7 +8355,7 @@ sub get_agent_pid {
          );
       }
       # Match the first digits, which should be the PID.
-      ($pid) =~ $ps_output =~ m/(\d+)/;
+      ($pid) = $ps_output =~ m/(\d+)/;
    }
 
    if ( !$pid ) {
