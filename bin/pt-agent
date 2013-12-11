@@ -5101,7 +5101,7 @@ sub level_name {
 sub debug {
    my $self = shift;
    return if $self->online_logging;
-   return $self->_log(0, 'DEBUG', 1, @_);
+   return $self->_log(0, 'DEBUG', @_);
 }
 
 sub info {
@@ -5137,7 +5137,7 @@ sub _set_exit_status {
 }
 
 sub _log {
-   my ($self, $online, $level, $msg, $offline) = @_;
+   my ($self, $online, $level, $msg) = @_;
 
    my $ts = ts(time, 1);  # 1=UTC
    my $level_number = level_number($level);
@@ -5801,6 +5801,7 @@ sub init_agent {
    # Optional args
    my $_oktorun = $args{oktorun} || sub { return $oktorun };
    my $actions  = $args{actions};
+   my $quiet    = $args{quiet};
 
    # Update these attribs every time the agent is initialized.
    # Other optional attribs, like versions, are left to the caller.
@@ -5811,7 +5812,7 @@ sub init_agent {
    # Try to create/update the Agent.
    my $success = 0;
    while ( $_oktorun->() && $tries-- ) {
-      if ( !$state->{init_action}++ ) {
+      if ( !$state->{init_action}++ && !$quiet ) {
          $logger->info($action eq 'put' ? "Updating agent " . $agent->name
                                         : "Creating new agent");
       }
@@ -5850,7 +5851,7 @@ sub init_agent {
          }
       }
       elsif ( !$agent_uri ) {
-         $logger->info("No URI for Agent " . $agent->name);
+         $logger->warning("No URI for Agent " . $agent->name);
       }
       else {
          # The Agent URI will have been returned in the Location header
@@ -5877,7 +5878,7 @@ sub init_agent {
    delete $state->{init_action};
    delete $state->{too_many_agents};
 
-   if ( $agent && $success ) {
+   if ( $agent && $success && !$quiet ) {
       $logger->info("Agent " . $agent->name . " (" . $agent->uuid . ") is ready");
    }
 
@@ -6135,8 +6136,9 @@ sub run_agent {
    # #######################################################################
    # Main agent loop
    # #######################################################################
+   $state->{need_mysql_version} = 1;
    $state->{first_config} = 1;
-   my $first_config_interval = 60;
+   my $first_config_interval = 20;
    $logger->info("Checking silently every $first_config_interval seconds"
       . " for the first config");
 
@@ -6145,38 +6147,6 @@ sub run_agent {
    my $config;
    my $services = {};
    while ( $_oktorun->() ) {
-      check_if_mysql_restarted(
-         Cxn => $cxn,
-      );
-
-      if ( $state->{need_mysql_version} ) {
-         my $versions = get_versions(
-            Cxn => $cxn,
-         );
-         if ( $versions->{MySQL} ) {
-            $agent->versions($versions);
-            my $updated_agent;
-            ($agent, $updated_agent) = init_agent(
-               agent    => $agent,
-               action   => 'put',
-               link     => $agent->links->{self},
-               client   => $client,
-               interval => sub { return; },
-               tries    => 1,   # optional
-            );
-            if ( $updated_agent ) {
-               $logger->info("Got MySQL versions");
-               save_agent(
-                  agent   => $agent,
-                  lib_dir => $lib_dir,
-               );
-            }
-            else {
-               $state->{need_mysql_version} = 1;
-            }
-         }
-      }
-
       ($config, $lib_dir, $new_daemon, $success) = get_config(
          link    => $agent->links->{config},
          agent   => $agent,
@@ -6194,6 +6164,7 @@ sub run_agent {
             delete $state->{first_config};
             $logger->info('Agent has been configured');
          }
+
          if ( $new_daemon ) {
             # NOTE: Daemon objects use DESTROY to auto-remove their pid file
             # when they lose scope (i.e. ref count goes to zero).  This
@@ -6207,6 +6178,60 @@ sub run_agent {
                delete $new_daemon->{sharing_pid_file};
             }
             $daemon = $new_daemon;
+         }
+
+         # Connect to MySQL, then check stuff.
+         my $o = new OptionParser();
+         $o->get_specs();
+         $o->get_opts();
+         my $dp = $o->DSNParser();
+         $dp->prop('set-vars', $o->set_vars());
+         my $dsn = $dp->parse_options($o);   
+         eval {
+            $cxn->connect(dsn => $dsn);
+         };
+         if ( $EVAL_ERROR ) {
+            $logger->warning("MySQL connection failure: $EVAL_ERROR");
+            $state->{have_mysql} = 0;
+            $state->{need_mysql_version} = 1;
+         }
+         else {
+            if ( !$state->{have_mysql} ) {
+               $logger->info("MySQL connection OK");
+            }
+            $state->{have_mysql} = 1;
+            check_if_mysql_restarted(
+               dbh => $cxn->dbh,
+            );
+            if ( $state->{need_mysql_version} ) {
+               $logger->debug("Need MySQL version");
+               my $versions = get_versions(Cxn => $cxn);
+               if ( $versions->{MySQL} ) {
+                  $agent->versions($versions);
+                  my $updated_agent;
+                  ($agent, $updated_agent) = init_agent(
+                     agent    => $agent,
+                     action   => 'put',
+                     link     => $agent->links->{self},
+                     client   => $client,
+                     tries    => 1,
+                     interval => sub { return; },
+                     quiet    => 1,
+                  );
+                  if ( $updated_agent ) {
+                     $logger->debug("Got MySQL version");
+                     save_agent(
+                        agent   => $agent,
+                        lib_dir => $lib_dir,
+                     );
+                     delete $state->{need_mysql_version};
+                  }
+               }
+               else {
+                  $logger->debug("Failed to get MySQL version");
+               }
+            }
+            $cxn->dbh->disconnect();
          }
 
          # Check the safeguards.
@@ -6350,6 +6375,8 @@ sub get_config {
             $config  = $new_config;
             $success = 1;
             $logger->info('Config ' . $config->ts . ' applied');
+
+            $state->{need_mysql_version} = 1;
          }
          else {
             $success = 1;
@@ -9006,33 +9033,7 @@ sub get_versions {
    my (%args) = @_;
    my $cxn      = $args{Cxn};
    my $tries    = $args{tries}    || 1;
-   my $interval = $args{interval} || sub { sleep 3; };
-
-   my $have_mysql = 0;
-   if ( $cxn ) {
-      $logger->debug("Connecting to MySQL");
-      foreach my $tryno ( 1..$tries ) {
-         eval {
-            $cxn->connect();
-         };
-         if ( $EVAL_ERROR ) {
-            $logger->debug("Cannot connect to MySQL: $EVAL_ERROR");
-         }
-         else {
-            $have_mysql = 1;
-            delete $state->{need_mysql_version};
-            last;  # success
-         }
-         if ( $tryno < $tries ) {
-            sleep $interval;  # failure, try again
-         }
-         else {
-            $state->{need_mysql_version} = 1;
-            $logger->warning("Cannot get MySQL version, will try again later");
-            last;  # failure
-         }
-      }
-   }
+   my $interval = $args{interval} || sub { return; };
 
    # This is currently the actual response from GET v.percona.com
    my $fake_response = <<EOL;
@@ -9041,6 +9042,10 @@ MySQL;mysql_variable;version_comment,version
 Perl;perl_version
 DBD::mysql;perl_module_version
 Percona::Toolkit;perl_module_version
+JSON;perl_module_version
+LWP;perl_module_version
+IO::Socket::SSL;perl_module_version
+DBD::mysql;perl_module_version
 EOL
 
    my $items = VersionCheck::parse_server_response(
@@ -9051,12 +9056,39 @@ EOL
       { name => 'system', id => 0, },
    ];
 
+   my $have_mysql = -1;
+   if ( !$cxn->dbh || !$cxn->dbh->ping() ) {
+      $logger->debug("Connecting to MySQL");
+      eval {
+         $cxn->connect();
+      };
+      if ( $EVAL_ERROR ) {
+         $logger->debug("Cannot connect to MySQL: $EVAL_ERROR");
+         $have_mysql = 0;
+      }
+      else {
+         $have_mysql = 1;
+      }
+   }
+
    if ( $have_mysql ) {
+      $logger->debug("Have MySQL connection");
       my ($name, $id) = VersionCheck::get_instance_id(
          { dbh => $cxn->dbh, dsn => $cxn->dsn },
       );
       push @$instances,
          { name => $name, id => $id, dbh => $cxn->dbh, dsn => $cxn->dsn };
+
+      # Disconnect MySQL if we connected it.
+      if ( $have_mysql == 1 ) {
+         $logger->debug("Disconnecting MySQL");
+         eval {
+            $cxn->dbh->disconnect();
+         };
+         if ( $EVAL_ERROR ) {
+            $logger->debug($EVAL_ERROR);
+         }
+      }
    }
 
    my $versions = VersionCheck::get_versions(
@@ -9121,47 +9153,21 @@ sub _safe_mkdir {
 sub check_if_mysql_restarted {
    my (%args) = @_;
    have_required_args(\%args, qw(
-      Cxn
+      dbh
    )) or die;
-   my $cxn = $args{Cxn};
+   my $dbh = $args{dbh};
 
    # Optional args
    my $uptime = $args{uptime};  # for testing
    my $margin = $args{margin} || 5;
 
    if ( !$uptime ) {
-      $logger->debug("Connecting to MySQL");
-      my $t0 = time;
-      my $e;
-      my $tries      = 2;
-      my $have_mysql = 0;
-      TRY:
-      foreach my $tryno ( 1..$tries ) {
-         eval {
-            $cxn->connect();
-         };
-         $e = $EVAL_ERROR;
-         if ( $e ) {
-            sleep 3 if $tryno < $tries;  # failure, try again
-         }
-         else {
-            $have_mysql = 1;
-            last TRY;  # success
-         }
-      }
-      if ( $have_mysql ) {
-         eval {
-            (undef, $uptime) = $cxn->dbh->selectrow_array("SHOW STATUS LIKE 'uptime'");
-         };
-         if ( $EVAL_ERROR ) {
-            $logger->warning("Cannot check if MySQL restarted because "
-               . "SHOW STATUS query failed: $EVAL_ERROR");
-            return;
-         }
-      }
-      else {
-         $logger->warning("Cannot check if MySQL restarted because "
-            . "connection to MySQL failed: $e");
+      my $sql = "SHOW STATUS LIKE 'uptime'";
+      eval {
+         (undef, $uptime) = $dbh->selectrow_array($sql);
+      };
+      if ( $EVAL_ERROR ) {
+         $logger->error("$sql: $EVAL_ERROR");
          return;
       }
    }
@@ -9183,6 +9189,7 @@ sub check_if_mysql_restarted {
             . "elapsed=$elapsed_time expected=$exepected_uptime "
             . "+/- ${margin}s actual=$uptime");
          $state->{mysql_restarted} = ts(time, 1);  # 1=UTC
+         $state->{need_mysql_version} = 1;
       }
    }
 
