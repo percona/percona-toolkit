@@ -5965,7 +5965,7 @@ sub start_agent {
    my $entry_links   = $args{entry_links};    # for testing
    my $logger_client = $args{logger_client};  # for testing
 
-   $logger->info('Starting agent');
+   # $logger->info('Starting agent');
 
    # Daemonize first so all output goes to the --log.
    my $daemon = Daemon->new(
@@ -8441,6 +8441,7 @@ sub install {
 
    my $agent_my_cnf = '/etc/percona/agent/my.cnf';
    my $config_file  = get_config_file();
+   my $lib_dir      = $o->get('lib');
 
    my $step_result;
    my $stepno   = 0;
@@ -8450,6 +8451,7 @@ sub install {
       "Verify the user is root",
       "Check Perl module dependencies",
       "Check for crontab",
+      "Verify pt-agent is not installed",
       "Verify the API key",
       "Connect to MySQL",
       "Check if MySQL is a slave",
@@ -8519,7 +8521,25 @@ sub install {
       die "cron is not installed, or crontab is not in your PATH.\n";
    }
 
+   # Verify pt-agent is not installed
+   $next_step->();
+   my @install_files = ($agent_my_cnf, $config_file, "$lib_dir/agent");
+   my @have_files;
+   foreach my $file (@install_files) {
+      push @have_files, $file if -f $file;
+   }
+   if ( scalar @have_files ) {
+      print "FAIL\n";
+      die "It looks like pt-agent is already installed because these files exist:\n"
+         . join("\n", map { "  $_" } @have_files)
+         . "\nRun pt-agent --uninstall to remove these files.  To upgrade pt-agent, "
+         . "install the new version, run pt-agent --stop, then pt-agent --daemonize "
+         . "to restart pt-agent with the new version.\n";
+   }
+
    # Must have a valid API key.
+   $next_step->();
+   my $got_api_key = 0;
    my $api_key = $o->get('api-key');
    if ( !$api_key ) {
       print "\n";
@@ -8533,19 +8553,22 @@ sub install {
                $api_key = '';
             }
          }
-         $next_step->(repeat => 1);  # repeat
       }
       else {
          die "Please specify your --api-key.\n";
       }
+      $got_api_key = 1;
    }
+
    my $client;
    my $entry_links;
    if ( $flags->{offline} ) {
       $skip++;
    }
    else {
-      $next_step->();
+      if ($got_api_key) {
+         $next_step->(repeat => 1);
+      }
       eval {
          ($client, $entry_links) = get_api_client(
             api_key  => $api_key,
@@ -8607,30 +8630,13 @@ sub install {
          if ( $flags->{force_dangerous_slave_install} ) {
             create_mysql_user($cxn, $agent_my_cnf);
          }
-         elsif ( $interactive || -t STDIN ) {
-            print "\nMySQL is a slave and $agent_my_cnf does not exist.  "
-               . "To install the agent, please enter the MySQL username and "
-               . "password to use.  The MySQL user must have SUPER and USAGE "
-               . "privileges on all databases, for example: "
-               . "GRANT SUPER,USAGE ON *.* TO pt_agent'\@'localhost'.  "
-               . "If the agent has been installed on the master, you can use "
-               . "the MySQL username and password in $agent_my_cnf on the "
-               . "master.  CTRL-C to abort install.\n";
-               print "MySQL username: ";
-               my $user = <STDIN>;
-               chomp($user) if $user;
-               my $pass = OptionParser::prompt_noecho("MySQL password: ");
-               create_mysql_user($cxn, $agent_my_cnf, $user, $pass);
-               $next_step->(repeat => 1);  # repeat
-         }
          else {
             die "Sorry, cannot install the agent because MySQL is a slave "
                . "and $agent_my_cnf does not exist.  It is not safe to "
                . "write to a slave, so a MySQL user for the agent cannot "
                . "be created.  First install the agent on the master, then "
                . "copy $agent_my_cnf from the master to this server.  "
-               . "See --install-options for how to force a dangerous slave "
-               . "install.\n";
+               . "See SLAVE INSTALL in the docs for more information.\n";
          }
       }
    }
@@ -8652,7 +8658,7 @@ sub install {
    # do it now in case there are problems. 
    $next_step->();
    init_lib_dir(
-      lib_dir => $o->get('lib'),
+      lib_dir => $lib_dir,
    );
    init_spool_dir(
       spool_dir => $o->get('spool'),
@@ -9275,14 +9281,13 @@ Usage: pt-agent [OPTIONS]
 pt-agent is the client-side agent for Percona Cloud Tools.  It is not
 a general command line tool like other tools in Percona Toolkit, it is
 configured and controlled through the web at https://cloud.percona.com.
-Please contact Percona or visit https://cloud.percona.com for more information.
+Visit https://cloud.percona.com for more information and to sign up.
 
 =head1 DESCRIPTION
 
 pt-agent is the client-side agent for Percona Cloud Tools (PCT).  It is
 controlled and configured through the web app at https://cloud.percona.com.
-An account with Percona is required to use pt-agent.  Please contact Percona
-or visit https://cloud.percona.com for more information.
+Visit https://cloud.percona.com for more information and to sign up.
 
 pt-agent, or "the agent", is a single, unique instance of the tool running
 on a server.  Two agents cannot run on the same server (see L<"--pid">).
@@ -9290,9 +9295,9 @@ on a server.  Two agents cannot run on the same server (see L<"--pid">).
 The agent is a daemon that runs as root.  It should be started with
 L<"--daemonize">.  It connects periodically to Percona to update
 its configuration and services, and it schedules L<"--run-service"> and
-L<"--send-data"> instances of itself.  Other than L<"INSTALLING"> and starting
-the agent locally, all control and configuration is done through the web
-at https://cloud.percona.com.
+L<"--send-data"> instances of itself using cron.  Other than L<"INSTALLING">
+and starting the agent locally, all control and configuration is done through
+the web at https://cloud.percona.com.
 
 =head1 INSTALLING
 
@@ -9310,6 +9315,44 @@ When the install process is complete, go to https://cloud.percona.com to enable
 services for agent.
 
 Please contact Percona if you need help installing the agent.
+
+=head2 SLAVE INSTALL
+
+There are two ways to install pt-agent on a slave.  The first and best way
+is to install the agent on the master so that the L<"MYSQL USER"> is created
+on the master and replicates to slaves.  This is best because it avoids
+writing to the slave.  Then create the C</etc/percona/agent/> directory on
+the slave and copy in to it C</etc/percona/agent/my.cnf> from the master.
+Run L<"--install"> on the slave and pt-agent will automatically detect and
+use the MySQL user and password in C</etc/percona/agent/my.cnf>.  Repeat the
+process for other slaves.
+
+The second way to install pt-agent on a slave is not safe because it writes
+directly to the slave: specify L<"--install-options">
+C<force_dangerous_slave_install> in addition to L<"--install">.  As the
+install option name implies, this is dangerous, but it forces pt-agent
+to ignore that MySQL is a slave.
+
+=head2 Percona XtraDB Cluster (PXC) INSTALL
+
+Installing pt-agent on Percona XtraDB Cluster (PXC) nodes is the same as
+installing it safely on slaves.  First install the agent on any node.  This
+will create the L<"MYSQL USER"> that will replicate to all other nodes.
+Then create the C</etc/percona/agent/> directory on another node and copy in
+to it C</etc/percona/agent/my.cnf> from the first node where pt-agent was
+installed.  Run L<"--install"> on the node and pt-agent will automatically
+detect and use the MySQL user and password in C</etc/percona/agent/my.cnf>.
+Repeat the process for other nodes.
+
+=head1 MYSQL USER
+
+During L<"--install">, pt-agent creates the following MySQL user:
+
+  GRANT SUPER, USAGE ON *.* TO 'pt_agent'@'localhost' IDENTIFIED BY 'pass'
+
+C<pass> is a random string.  MySQL options for the agent are stored in
+C</etc/percona/agent/my.cnf>.  The C<SUPER> privilege is required so that
+the agent can set global MySQL variables like C<long_query_time>.
 
 =head1 EXIT STATUS
 
@@ -9653,7 +9696,7 @@ pt-agent requires:
 
 =over
 
-=item * An account with Percona
+=item * A Percona Cloud Tools account (https://cloud.percona.com)
 
 =item * Access to https://cloud-api.percona.com
 
@@ -9704,20 +9747,7 @@ see L<"ENVIRONMENT">.
 =head1 DOWNLOADING
 
 Visit L<http://www.percona.com/software/percona-toolkit/> to download the
-latest release of Percona Toolkit.  Or, get the latest release from the
-command line:
-
-   wget percona.com/get/percona-toolkit.tar.gz
-
-   wget percona.com/get/percona-toolkit.rpm
-
-   wget percona.com/get/percona-toolkit.deb
-
-You can also get individual tools from the latest release:
-
-   wget percona.com/get/TOOL
-
-Replace C<TOOL> with the name of any tool.
+latest release of Percona Toolkit.
 
 =head1 AUTHORS
 
