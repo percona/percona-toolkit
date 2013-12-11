@@ -250,7 +250,7 @@ sub level_name {
 sub debug {
    my $self = shift;
    return if $self->online_logging;
-   return $self->_log(0, 'DEBUG', 1, @_);
+   return $self->_log(0, 'DEBUG', @_);
 }
 
 sub info {
@@ -287,7 +287,7 @@ sub _set_exit_status {
 }
 
 sub _log {
-   my ($self, $online, $level, $msg, $offline) = @_;
+   my ($self, $online, $level, $msg) = @_;
 
    my $ts = ts(time, 1);  # 1=UTC
    my $level_number = level_number($level);
