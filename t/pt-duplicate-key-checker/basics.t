@@ -22,9 +22,6 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-else {
-   plan tests => 13;
-}
 
 my $output;
 my $sample = "t/pt-duplicate-key-checker/samples/";
@@ -137,8 +134,22 @@ ok(
 );
 
 # #############################################################################
+# Exact unique dupes
+# https://bugs.launchpad.net/percona-toolkit/+bug/1217013
+# #############################################################################
+
+$sb->load_file('master', 't/lib/samples/dupekeys/simple_dupe_bug_1217013.sql', 'test');
+
+ok(
+   no_diff(
+      sub { pt_duplicate_key_checker::main(@args, qw(-t test.domains)) },
+      "$sample/simple_dupe_bug_1217013.txt"),
+   'Exact unique dupes (bug 1217013)'
+) or diag($test_diff);
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+done_testing;

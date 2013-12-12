@@ -18,20 +18,25 @@ require "$trunk/bin/pt-duplicate-key-checker";
 my $output;
 my $cnf = "/tmp/12345/my.sandbox.cnf";
 my $cmd = "$trunk/bin/pt-duplicate-key-checker -F $cnf -h 127.1";
+my $pid_file = "/tmp/pt-dupe-key-test.pid";
+
+diag(`rm -f $pid_file >/dev/null`);
 
 # #########################################################################
 # Issue 391: Add --pid option to all scripts
 # #########################################################################
-`touch /tmp/mk-script.pid`;
-$output = `$cmd -d issue_295 --pid /tmp/mk-script.pid 2>&1`;
+
+diag(`touch $pid_file`);
+
+$output = `$cmd -d issue_295 --pid $pid_file 2>&1`;
 like(
    $output,
-   qr{PID file /tmp/mk-script.pid already exists},
+   qr{PID file $pid_file exists},
    'Dies if PID file already exists (issue 391)'
 );
-`rm -rf /tmp/mk-script.pid`;
 
 # #############################################################################
 # Done.
 # #############################################################################
+diag(`rm -f $pid_file >/dev/null`);
 exit;

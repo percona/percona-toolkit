@@ -23,7 +23,7 @@ BEGIN {
       Daemon
       Schema
       SchemaIterator
-      HTTPMicro
+      HTTP::Micro
       VersionCheck
    ));
 }
@@ -132,6 +132,8 @@ sub quote_val {
    return "''" if $val eq '';                  # blank string = ''
    return $val if $val =~ m/^0x[0-9a-fA-F]+$/  # quote hex data
                   && !$args{is_char};          # unless is_char is true
+
+   return $val if $args{is_float};
 
    $val =~ s/(['\\])/\\$1/g;
    return "'$val'";
@@ -2203,7 +2205,7 @@ sub get_key_size {
    foreach my $col ( @cols ) {
       push @where_cols, "$col=1";
    }
-   if ( scalar @cols == 1 ) {
+   if ( scalar(@cols) == 1 && !$args{only_eq} ) {
       push @where_cols, "$cols[0]<>1";
    }
    $sql .= join(' OR ', @where_cols);
@@ -2226,6 +2228,21 @@ sub get_key_size {
    my $chosen_key   = $explain->{key};  # May differ from $name
    PTDEBUG && _d('MySQL chose key:', $chosen_key, 'len:', $key_len,
       'rows:', $rows);
+
+   if ( $chosen_key && $key_len eq '0' ) {
+      if ( $args{recurse} ) {
+         $self->{error} = "key_len = 0 in EXPLAIN:\n"
+                        . _explain_to_text($explain);
+         return;
+      }
+      else {
+         return $self->get_key_size(
+            %args,
+            only_eq => 1,
+            recurse => 1,
+         );
+      }
+   }
 
    my $key_size = 0;
    if ( $key_len && $rows ) {
@@ -2370,7 +2387,6 @@ sub get_duplicate_keys {
    push @dupes,
       $self->remove_prefix_duplicates(\@fulltext_keys, \@fulltext_keys, %args, exact_duplicates => 1);
 
-
    my $clustered_key = $args{clustered_key} ? $keys{$args{clustered_key}}
                      : undef;
    PTDEBUG && _d('clustered key:',
@@ -2505,10 +2521,10 @@ sub remove_prefix_duplicates {
 
             PTDEBUG && _d('Remove', $right_name);
             my $reason;
-            if ( $right_keys->[$right_index]->{unconstrained} ) {
+            if ( my $type = $right_keys->[$right_index]->{unconstrained} ) {
                $reason .= "Uniqueness of $right_name ignored because "
                   . $right_keys->[$right_index]->{constraining_key}->{name}
-                  . " is a stronger constraint\n"; 
+                  . " is a $type constraint\n"; 
             }
             my $exact_dupe = $right_len_cols < $left_len_cols ? 0 : 1;
             $reason .= $right_name
@@ -2608,10 +2624,17 @@ sub unconstrain_keys {
       next unless $unique_key; # primary key may be undefined
       my $cols = $unique_key->{cols};
       if ( @$cols == 1 ) {
-         PTDEBUG && _d($unique_key->{name},'defines unique column:',$cols->[0]);
          if ( !exists $unique_cols{$cols->[0]} ) {
+            PTDEBUG && _d($unique_key->{name}, 'defines unique column:',
+               $cols->[0]);
             $unique_cols{$cols->[0]}  = $unique_key;
             $unique_key->{unique_col} = 1;
+         }
+         else {
+            PTDEBUG && _d($unique_key->{name},
+               'redundantly constrains unique column:', $cols->[0]);
+            $unique_key->{exact_dupe} = 1;
+            $unique_key->{constraining_key} = $unique_cols{$cols->[0]};
          }
       }
       else {
@@ -2646,10 +2669,16 @@ sub unconstrain_keys {
 
    for my $i ( 0..(scalar @$unique_keys-1) ) {
       if ( exists $unconstrain{$unique_keys->[$i]->{name}} ) {
-         PTDEBUG && _d('Unconstraining', $unique_keys->[$i]->{name});
-         $unique_keys->[$i]->{unconstrained} = 1;
+         PTDEBUG && _d('Unconstraining weak', $unique_keys->[$i]->{name});
+         $unique_keys->[$i]->{unconstrained} = 'stronger';
          $unique_keys->[$i]->{constraining_key}
             = $unconstrain{$unique_keys->[$i]->{name}};
+         push @unconstrained_keys, $unique_keys->[$i];
+         delete $unique_keys->[$i];
+      }
+      elsif ( $unique_keys->[$i]->{exact_dupe} ) {
+         PTDEBUG && _d('Unconstraining dupe', $unique_keys->[$i]->{name});
+         $unique_keys->[$i]->{unconstrained} = 'duplicate';
          push @unconstrained_keys, $unique_keys->[$i];
          delete $unique_keys->[$i];
       }
@@ -2687,157 +2716,214 @@ package Daemon;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use POSIX qw(setsid);
+use Fcntl qw(:DEFAULT);
 
 sub new {
-   my ( $class, %args ) = @_;
-   foreach my $arg ( qw(o) ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my $o = $args{o};
+   my ($class, %args) = @_;
    my $self = {
-      o        => $o,
-      log_file => $o->has('log') ? $o->get('log') : undef,
-      PID_file => $o->has('pid') ? $o->get('pid') : undef,
+      log_file       => $args{log_file},
+      pid_file       => $args{pid_file},
+      daemonize      => $args{daemonize},
+      force_log_file => $args{force_log_file},
+      parent_exit    => $args{parent_exit},
+      pid_file_owner => 0,
    };
-
-   check_PID_file(undef, $self->{PID_file});
-
-   PTDEBUG && _d('Daemonized child will log to', $self->{log_file});
    return bless $self, $class;
 }
 
-sub daemonize {
-   my ( $self ) = @_;
+sub run {
+   my ($self) = @_;
 
-   PTDEBUG && _d('About to fork and daemonize');
-   defined (my $pid = fork()) or die "Cannot fork: $OS_ERROR";
-   if ( $pid ) {
-      PTDEBUG && _d('Parent PID', $PID, 'exiting after forking child PID',$pid);
-      exit;
-   }
+   my $daemonize      = $self->{daemonize};
+   my $pid_file       = $self->{pid_file};
+   my $log_file       = $self->{log_file};
+   my $force_log_file = $self->{force_log_file};
+   my $parent_exit    = $self->{parent_exit};
 
-   PTDEBUG && _d('Daemonizing child PID', $PID);
-   $self->{PID_owner} = $PID;
-   $self->{child}     = 1;
+   PTDEBUG && _d('Starting daemon');
 
-   POSIX::setsid() or die "Cannot start a new session: $OS_ERROR";
-   chdir '/'       or die "Cannot chdir to /: $OS_ERROR";
-
-   $self->_make_PID_file();
-
-   $OUTPUT_AUTOFLUSH = 1;
-
-   PTDEBUG && _d('Redirecting STDIN to /dev/null');
-   close STDIN;
-   open  STDIN, '/dev/null'
-      or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
-
-   if ( $self->{log_file} ) {
-      PTDEBUG && _d('Redirecting STDOUT and STDERR to', $self->{log_file});
-      close STDOUT;
-      open  STDOUT, '>>', $self->{log_file}
-         or die "Cannot open log file $self->{log_file}: $OS_ERROR";
-
-      close STDERR;
-      open  STDERR, ">&STDOUT"
-         or die "Cannot dupe STDERR to STDOUT: $OS_ERROR"; 
-   }
-   else {
-      if ( -t STDOUT ) {
-         PTDEBUG && _d('No log file and STDOUT is a terminal;',
-            'redirecting to /dev/null');
-         close STDOUT;
-         open  STDOUT, '>', '/dev/null'
-            or die "Cannot reopen STDOUT to /dev/null: $OS_ERROR";
-      }
-      if ( -t STDERR ) {
-         PTDEBUG && _d('No log file and STDERR is a terminal;',
-            'redirecting to /dev/null');
-         close STDERR;
-         open  STDERR, '>', '/dev/null'
-            or die "Cannot reopen STDERR to /dev/null: $OS_ERROR";
-      }
-   }
-
-   return;
-}
-
-sub check_PID_file {
-   my ( $self, $file ) = @_;
-   my $PID_file = $self ? $self->{PID_file} : $file;
-   PTDEBUG && _d('Checking PID file', $PID_file);
-   if ( $PID_file && -f $PID_file ) {
-      my $pid;
+   if ( $pid_file ) {
       eval {
-         chomp($pid = (slurp_file($PID_file) || ''));
+         $self->_make_pid_file(
+            pid      => $PID,  # parent's pid
+            pid_file => $pid_file,
+         );
       };
-      if ( $EVAL_ERROR ) {
-         die "The PID file $PID_file already exists but it cannot be read: "
-            . $EVAL_ERROR;
+      die "$EVAL_ERROR\n" if $EVAL_ERROR;
+      if ( !$daemonize ) {
+         $self->{pid_file_owner} = $PID;  # parent's pid
       }
-      PTDEBUG && _d('PID file exists; it contains PID', $pid);
-      if ( $pid ) {
-         my $pid_is_alive = kill 0, $pid;
-         if ( $pid_is_alive ) {
-            die "The PID file $PID_file already exists "
-               . " and the PID that it contains, $pid, is running";
-         }
-         else {
-            warn "Overwriting PID file $PID_file because the PID that it "
-               . "contains, $pid, is not running";
-         }
+   }
+
+   if ( $daemonize ) {
+      defined (my $child_pid = fork()) or die "Cannot fork: $OS_ERROR";
+      if ( $child_pid ) {
+         PTDEBUG && _d('Forked child', $child_pid);
+         $parent_exit->($child_pid) if $parent_exit;
+         exit 0;
+      }
+ 
+      POSIX::setsid() or die "Cannot start a new session: $OS_ERROR";
+      chdir '/'       or die "Cannot chdir to /: $OS_ERROR";
+
+      if ( $pid_file ) {
+         $self->_update_pid_file(
+            pid      => $PID,  # child's pid
+            pid_file => $pid_file,
+         );
+         $self->{pid_file_owner} = $PID;
+      }
+   }
+
+   if ( $daemonize || $force_log_file ) {
+      PTDEBUG && _d('Redirecting STDIN to /dev/null');
+      close STDIN;
+      open  STDIN, '/dev/null'
+         or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
+      if ( $log_file ) {
+         PTDEBUG && _d('Redirecting STDOUT and STDERR to', $log_file);
+         close STDOUT;
+         open  STDOUT, '>>', $log_file
+            or die "Cannot open log file $log_file: $OS_ERROR";
+
+         close STDERR;
+         open  STDERR, ">&STDOUT"
+            or die "Cannot dupe STDERR to STDOUT: $OS_ERROR"; 
       }
       else {
-         die "The PID file $PID_file already exists but it does not "
-            . "contain a PID";
+         if ( -t STDOUT ) {
+            PTDEBUG && _d('No log file and STDOUT is a terminal;',
+               'redirecting to /dev/null');
+            close STDOUT;
+            open  STDOUT, '>', '/dev/null'
+               or die "Cannot reopen STDOUT to /dev/null: $OS_ERROR";
+         }
+         if ( -t STDERR ) {
+            PTDEBUG && _d('No log file and STDERR is a terminal;',
+               'redirecting to /dev/null');
+            close STDERR;
+            open  STDERR, '>', '/dev/null'
+               or die "Cannot reopen STDERR to /dev/null: $OS_ERROR";
+         }
+      }
+
+      $OUTPUT_AUTOFLUSH = 1;
+   }
+
+   PTDEBUG && _d('Daemon running');
+   return;
+}
+
+sub _make_pid_file {
+   my ($self, %args) = @_;
+   my @required_args = qw(pid pid_file);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my $pid      = $args{pid};
+   my $pid_file = $args{pid_file};
+
+   eval {
+      sysopen(PID_FH, $pid_file, O_RDWR|O_CREAT|O_EXCL) or die $OS_ERROR;
+      print PID_FH $PID, "\n";
+      close PID_FH; 
+   };
+   if ( my $e = $EVAL_ERROR ) {
+      if ( $e =~ m/file exists/i ) {
+         my $old_pid = $self->_check_pid_file(
+            pid_file => $pid_file,
+            pid      => $PID,
+         );
+         if ( $old_pid ) {
+            warn "Overwriting PID file $pid_file because PID $old_pid "
+               . "is not running.\n";
+         }
+         $self->_update_pid_file(
+            pid      => $PID,
+            pid_file => $pid_file
+         );
+      }
+      else {
+         die "Error creating PID file $pid_file: $e\n";
       }
    }
-   else {
-      PTDEBUG && _d('No PID file');
-   }
+
    return;
 }
 
-sub make_PID_file {
-   my ( $self ) = @_;
-   if ( exists $self->{child} ) {
-      die "Do not call Daemon::make_PID_file() for daemonized scripts";
-   }
-   $self->_make_PID_file();
-   $self->{PID_owner} = $PID;
-   return;
-}
+sub _check_pid_file {
+   my ($self, %args) = @_;
+   my @required_args = qw(pid_file pid);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my $pid_file = $args{pid_file};
+   my $pid      = $args{pid};
 
-sub _make_PID_file {
-   my ( $self ) = @_;
+   PTDEBUG && _d('Checking if PID in', $pid_file, 'is running');
 
-   my $PID_file = $self->{PID_file};
-   if ( !$PID_file ) {
-      PTDEBUG && _d('No PID file to create');
+   if ( ! -f $pid_file ) {
+      PTDEBUG && _d('PID file', $pid_file, 'does not exist');
       return;
    }
 
-   $self->check_PID_file();
+   open my $fh, '<', $pid_file
+      or die "Error opening $pid_file: $OS_ERROR";
+   my $existing_pid = do { local $/; <$fh> };
+   chomp($existing_pid) if $existing_pid;
+   close $fh
+      or die "Error closing $pid_file: $OS_ERROR";
 
-   open my $PID_FH, '>', $PID_file
-      or die "Cannot open PID file $PID_file: $OS_ERROR";
-   print $PID_FH $PID
-      or die "Cannot print to PID file $PID_file: $OS_ERROR";
-   close $PID_FH
-      or die "Cannot close PID file $PID_file: $OS_ERROR";
+   if ( $existing_pid ) {
+      if ( $existing_pid == $pid ) {
+         warn "The current PID $pid already holds the PID file $pid_file\n";
+         return;
+      }
+      else {
+         PTDEBUG && _d('Checking if PID', $existing_pid, 'is running');
+         my $pid_is_alive = kill 0, $existing_pid;
+         if ( $pid_is_alive ) {
+            die "PID file $pid_file exists and PID $existing_pid is running\n";
+         }
+      }
+   }
+   else {
+      die "PID file $pid_file exists but it is empty.  Remove the file "
+         . "if the process is no longer running.\n";
+   }
 
-   PTDEBUG && _d('Created PID file:', $self->{PID_file});
+   return $existing_pid;
+}
+
+sub _update_pid_file {
+   my ($self, %args) = @_;
+   my @required_args = qw(pid pid_file);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my $pid      = $args{pid};
+   my $pid_file = $args{pid_file};
+
+   open my $fh, '>', $pid_file
+      or die "Cannot open $pid_file: $OS_ERROR";
+   print { $fh } $pid, "\n"
+      or die "Cannot print to $pid_file: $OS_ERROR";
+   close $fh
+      or warn "Cannot close $pid_file: $OS_ERROR";
+
    return;
 }
 
-sub _remove_PID_file {
-   my ( $self ) = @_;
-   if ( $self->{PID_file} && -f $self->{PID_file} ) {
-      unlink $self->{PID_file}
-         or warn "Cannot remove PID file $self->{PID_file}: $OS_ERROR";
+sub remove_pid_file {
+   my ($self, $pid_file) = @_;
+   $pid_file ||= $self->{pid_file};
+   if ( $pid_file && -f $pid_file ) {
+      unlink $self->{pid_file}
+         or warn "Cannot remove PID file $pid_file: $OS_ERROR";
       PTDEBUG && _d('Removed PID file');
    }
    else {
@@ -2847,18 +2933,13 @@ sub _remove_PID_file {
 }
 
 sub DESTROY {
-   my ( $self ) = @_;
+   my ($self) = @_;
 
-   $self->_remove_PID_file() if ($self->{PID_owner} || 0) == $PID;
+   if ( $self->{pid_file_owner} == $PID ) {
+      $self->remove_pid_file();
+   }
 
    return;
-}
-
-sub slurp_file {
-   my ($file) = @_;
-   return unless $file;
-   open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
-   return do { local $/; <$fh> };
 }
 
 sub _d {
@@ -3543,24 +3624,22 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
-# HTTPMicro package
+# HTTP::Micro package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
-#   lib/HTTPMicro.pm
-#   t/lib/HTTPMicro.t
+#   lib/HTTP/Micro.pm
+#   t/lib/HTTP/Micro.t
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 {
+package HTTP::Micro;
 
-package HTTPMicro;
-BEGIN {
-  $HTTPMicro::VERSION = '0.001';
-}
+our $VERSION = '0.01';
+
 use strict;
-use warnings;
-
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
 use Carp ();
-
 
 my @attributes;
 BEGIN {
@@ -3632,7 +3711,7 @@ sub _request {
         headers   => {},
     };
 
-    my $handle  = HTTPMicro::Handle->new(timeout => $self->{timeout});
+    my $handle  = HTTP::Micro::Handle->new(timeout => $self->{timeout});
 
     $handle->connect($scheme, $host, $port);
 
@@ -3697,320 +3776,325 @@ sub _split_url {
     return ($scheme, $host, $port, $path_query);
 }
 
-package
-    HTTPMicro::Handle; # hide from PAUSE/indexers
-use strict;
-use warnings;
+} # HTTP::Micro
 
-use Carp       qw[croak];
-use Errno      qw[EINTR EPIPE];
-use IO::Socket qw[SOCK_STREAM];
+{
+   package HTTP::Micro::Handle;
 
-sub BUFSIZE () { 32768 }
+   use strict;
+   use warnings FATAL => 'all';
+   use English qw(-no_match_vars);
 
-my $Printable = sub {
-    local $_ = shift;
-    s/\r/\\r/g;
-    s/\n/\\n/g;
-    s/\t/\\t/g;
-    s/([^\x20-\x7E])/sprintf('\\x%.2X', ord($1))/ge;
-    $_;
-};
+   use Carp       qw(croak);
+   use Errno      qw(EINTR EPIPE);
+   use IO::Socket qw(SOCK_STREAM);
 
-sub new {
-    my ($class, %args) = @_;
-    return bless {
-        rbuf             => '',
-        timeout          => 60,
-        max_line_size    => 16384,
-        %args
-    }, $class;
-}
+   sub BUFSIZE () { 32768 }
 
-my $ssl_verify_args = {
-    check_cn => "when_only",
-    wildcards_in_alt => "anywhere",
-    wildcards_in_cn => "anywhere"
-};
+   my $Printable = sub {
+       local $_ = shift;
+       s/\r/\\r/g;
+       s/\n/\\n/g;
+       s/\t/\\t/g;
+       s/([^\x20-\x7E])/sprintf('\\x%.2X', ord($1))/ge;
+       $_;
+   };
 
-sub connect {
-    @_ == 4 || croak(q/Usage: $handle->connect(scheme, host, port)/);
-    my ($self, $scheme, $host, $port) = @_;
+   sub new {
+       my ($class, %args) = @_;
+       return bless {
+           rbuf          => '',
+           timeout       => 60,
+           max_line_size => 16384,
+           %args
+       }, $class;
+   }
 
-    if ( $scheme eq 'https' ) {
-        eval "require IO::Socket::SSL"
-            unless exists $INC{'IO/Socket/SSL.pm'};
-        croak(qq/IO::Socket::SSL must be installed for https support\n/)
-            unless $INC{'IO/Socket/SSL.pm'};
-    }
-    elsif ( $scheme ne 'http' ) {
-      croak(qq/Unsupported URL scheme '$scheme'\n/);
-    }
+   my $ssl_verify_args = {
+       check_cn         => "when_only",
+       wildcards_in_alt => "anywhere",
+       wildcards_in_cn  => "anywhere"
+   };
 
-    $self->{fh} = 'IO::Socket::INET'->new(
-        PeerHost  => $host,
-        PeerPort  => $port,
-        Proto     => 'tcp',
-        Type      => SOCK_STREAM,
-        Timeout   => $self->{timeout}
-    ) or croak(qq/Could not connect to '$host:$port': $@/);
+   sub connect {
+       @_ == 4 || croak(q/Usage: $handle->connect(scheme, host, port)/);
+       my ($self, $scheme, $host, $port) = @_;
 
-    binmode($self->{fh})
-      or croak(qq/Could not binmode() socket: '$!'/);
+       if ( $scheme eq 'https' ) {
+           eval "require IO::Socket::SSL"
+               unless exists $INC{'IO/Socket/SSL.pm'};
+           croak(qq/IO::Socket::SSL must be installed for https support\n/)
+               unless $INC{'IO/Socket/SSL.pm'};
+       }
+       elsif ( $scheme ne 'http' ) {
+         croak(qq/Unsupported URL scheme '$scheme'\n/);
+       }
 
-    if ( $scheme eq 'https') {
-        IO::Socket::SSL->start_SSL($self->{fh});
-        ref($self->{fh}) eq 'IO::Socket::SSL'
-            or die(qq/SSL connection failed for $host\n/);
-        if ( $self->{fh}->can("verify_hostname") ) {
-            $self->{fh}->verify_hostname( $host, $ssl_verify_args );
-        }
-        else {
-         my $fh = $self->{fh};
-         _verify_hostname_of_cert($host, _peer_certificate($fh), $ssl_verify_args)
-               or die(qq/SSL certificate not valid for $host\n/);
-         }
-    }
-      
-    $self->{host} = $host;
-    $self->{port} = $port;
+       $self->{fh} = IO::Socket::INET->new(
+           PeerHost  => $host,
+           PeerPort  => $port,
+           Proto     => 'tcp',
+           Type      => SOCK_STREAM,
+           Timeout   => $self->{timeout}
+       ) or croak(qq/Could not connect to '$host:$port': $@/);
 
-    return $self;
-}
+       binmode($self->{fh})
+         or croak(qq/Could not binmode() socket: '$!'/);
 
-sub close {
-    @_ == 1 || croak(q/Usage: $handle->close()/);
-    my ($self) = @_;
-    CORE::close($self->{fh})
-      or croak(qq/Could not close socket: '$!'/);
-}
+       if ( $scheme eq 'https') {
+           IO::Socket::SSL->start_SSL($self->{fh});
+           ref($self->{fh}) eq 'IO::Socket::SSL'
+               or die(qq/SSL connection failed for $host\n/);
+           if ( $self->{fh}->can("verify_hostname") ) {
+               $self->{fh}->verify_hostname( $host, $ssl_verify_args );
+           }
+           else {
+            my $fh = $self->{fh};
+            _verify_hostname_of_cert($host, _peer_certificate($fh), $ssl_verify_args)
+                  or die(qq/SSL certificate not valid for $host\n/);
+            }
+       }
+         
+       $self->{host} = $host;
+       $self->{port} = $port;
 
-sub write {
-    @_ == 2 || croak(q/Usage: $handle->write(buf)/);
-    my ($self, $buf) = @_;
+       return $self;
+   }
 
-    my $len = length $buf;
-    my $off = 0;
+   sub close {
+       @_ == 1 || croak(q/Usage: $handle->close()/);
+       my ($self) = @_;
+       CORE::close($self->{fh})
+         or croak(qq/Could not close socket: '$!'/);
+   }
 
-    local $SIG{PIPE} = 'IGNORE';
+   sub write {
+       @_ == 2 || croak(q/Usage: $handle->write(buf)/);
+       my ($self, $buf) = @_;
 
-    while () {
-        $self->can_write
-          or croak(q/Timed out while waiting for socket to become ready for writing/);
-        my $r = syswrite($self->{fh}, $buf, $len, $off);
-        if (defined $r) {
-            $len -= $r;
-            $off += $r;
-            last unless $len > 0;
-        }
-        elsif ($! == EPIPE) {
-            croak(qq/Socket closed by remote server: $!/);
-        }
-        elsif ($! != EINTR) {
-            croak(qq/Could not write to socket: '$!'/);
-        }
-    }
-    return $off;
-}
+       my $len = length $buf;
+       my $off = 0;
 
-sub read {
-    @_ == 2 || @_ == 3 || croak(q/Usage: $handle->read(len)/);
-    my ($self, $len) = @_;
+       local $SIG{PIPE} = 'IGNORE';
 
-    my $buf  = '';
-    my $got = length $self->{rbuf};
+       while () {
+           $self->can_write
+             or croak(q/Timed out while waiting for socket to become ready for writing/);
+           my $r = syswrite($self->{fh}, $buf, $len, $off);
+           if (defined $r) {
+               $len -= $r;
+               $off += $r;
+               last unless $len > 0;
+           }
+           elsif ($! == EPIPE) {
+               croak(qq/Socket closed by remote server: $!/);
+           }
+           elsif ($! != EINTR) {
+               croak(qq/Could not write to socket: '$!'/);
+           }
+       }
+       return $off;
+   }
 
-    if ($got) {
-        my $take = ($got < $len) ? $got : $len;
-        $buf  = substr($self->{rbuf}, 0, $take, '');
-        $len -= $take;
-    }
+   sub read {
+       @_ == 2 || @_ == 3 || croak(q/Usage: $handle->read(len)/);
+       my ($self, $len) = @_;
 
-    while ($len > 0) {
-        $self->can_read
-          or croak(q/Timed out while waiting for socket to become ready for reading/);
-        my $r = sysread($self->{fh}, $buf, $len, length $buf);
-        if (defined $r) {
-            last unless $r;
-            $len -= $r;
-        }
-        elsif ($! != EINTR) {
-            croak(qq/Could not read from socket: '$!'/);
-        }
-    }
-    if ($len) {
-        croak(q/Unexpected end of stream/);
-    }
-    return $buf;
-}
+       my $buf  = '';
+       my $got = length $self->{rbuf};
 
-sub readline {
-    @_ == 1 || croak(q/Usage: $handle->readline()/);
-    my ($self) = @_;
+       if ($got) {
+           my $take = ($got < $len) ? $got : $len;
+           $buf  = substr($self->{rbuf}, 0, $take, '');
+           $len -= $take;
+       }
 
-    while () {
-        if ($self->{rbuf} =~ s/\A ([^\x0D\x0A]* \x0D?\x0A)//x) {
-            return $1;
-        }
-        $self->can_read
-          or croak(q/Timed out while waiting for socket to become ready for reading/);
-        my $r = sysread($self->{fh}, $self->{rbuf}, BUFSIZE, length $self->{rbuf});
-        if (defined $r) {
-            last unless $r;
-        }
-        elsif ($! != EINTR) {
-            croak(qq/Could not read from socket: '$!'/);
-        }
-    }
-    croak(q/Unexpected end of stream while looking for line/);
-}
+       while ($len > 0) {
+           $self->can_read
+             or croak(q/Timed out while waiting for socket to become ready for reading/);
+           my $r = sysread($self->{fh}, $buf, $len, length $buf);
+           if (defined $r) {
+               last unless $r;
+               $len -= $r;
+           }
+           elsif ($! != EINTR) {
+               croak(qq/Could not read from socket: '$!'/);
+           }
+       }
+       if ($len) {
+           croak(q/Unexpected end of stream/);
+       }
+       return $buf;
+   }
 
-sub read_header_lines {
-    @_ == 1 || @_ == 2 || croak(q/Usage: $handle->read_header_lines([headers])/);
-    my ($self, $headers) = @_;
-    $headers ||= {};
-    my $lines   = 0;
-    my $val;
+   sub readline {
+       @_ == 1 || croak(q/Usage: $handle->readline()/);
+       my ($self) = @_;
 
-    while () {
-         my $line = $self->readline;
+       while () {
+           if ($self->{rbuf} =~ s/\A ([^\x0D\x0A]* \x0D?\x0A)//x) {
+               return $1;
+           }
+           $self->can_read
+             or croak(q/Timed out while waiting for socket to become ready for reading/);
+           my $r = sysread($self->{fh}, $self->{rbuf}, BUFSIZE, length $self->{rbuf});
+           if (defined $r) {
+               last unless $r;
+           }
+           elsif ($! != EINTR) {
+               croak(qq/Could not read from socket: '$!'/);
+           }
+       }
+       croak(q/Unexpected end of stream while looking for line/);
+   }
 
-         if ($line =~ /\A ([^\x00-\x1F\x7F:]+) : [\x09\x20]* ([^\x0D\x0A]*)/x) {
-             my ($field_name) = lc $1;
-             $val = \($headers->{$field_name} = $2);
-         }
-         elsif ($line =~ /\A [\x09\x20]+ ([^\x0D\x0A]*)/x) {
-             $val
-               or croak(q/Unexpected header continuation line/);
-             next unless length $1;
-             $$val .= ' ' if length $$val;
-             $$val .= $1;
-         }
-         elsif ($line =~ /\A \x0D?\x0A \z/x) {
-            last;
-         }
-         else {
-            croak(q/Malformed header line: / . $Printable->($line));
-         }
-    }
-    return $headers;
-}
+   sub read_header_lines {
+       @_ == 1 || @_ == 2 || croak(q/Usage: $handle->read_header_lines([headers])/);
+       my ($self, $headers) = @_;
+       $headers ||= {};
+       my $lines   = 0;
+       my $val;
 
-sub write_header_lines {
-    (@_ == 2 && ref $_[1] eq 'HASH') || croak(q/Usage: $handle->write_header_lines(headers)/);
-    my($self, $headers) = @_;
+       while () {
+            my $line = $self->readline;
 
-    my $buf = '';
-    while (my ($k, $v) = each %$headers) {
-        my $field_name = lc $k;
-         $field_name =~ /\A [\x21\x23-\x27\x2A\x2B\x2D\x2E\x30-\x39\x41-\x5A\x5E-\x7A\x7C\x7E]+ \z/x
-            or croak(q/Invalid HTTP header field name: / . $Printable->($field_name));
-         $field_name =~ s/\b(\w)/\u$1/g;
-         $buf .= "$field_name: $v\x0D\x0A";
-    }
-    $buf .= "\x0D\x0A";
-    return $self->write($buf);
-}
+            if ($line =~ /\A ([^\x00-\x1F\x7F:]+) : [\x09\x20]* ([^\x0D\x0A]*)/x) {
+                my ($field_name) = lc $1;
+                $val = \($headers->{$field_name} = $2);
+            }
+            elsif ($line =~ /\A [\x09\x20]+ ([^\x0D\x0A]*)/x) {
+                $val
+                  or croak(q/Unexpected header continuation line/);
+                next unless length $1;
+                $$val .= ' ' if length $$val;
+                $$val .= $1;
+            }
+            elsif ($line =~ /\A \x0D?\x0A \z/x) {
+               last;
+            }
+            else {
+               croak(q/Malformed header line: / . $Printable->($line));
+            }
+       }
+       return $headers;
+   }
 
-sub read_content_body {
-    @_ == 3 || @_ == 4 || croak(q/Usage: $handle->read_content_body(callback, response, [read_length])/);
-    my ($self, $cb, $response, $len) = @_;
-    $len ||= $response->{headers}{'content-length'};
+   sub write_header_lines {
+       (@_ == 2 && ref $_[1] eq 'HASH') || croak(q/Usage: $handle->write_header_lines(headers)/);
+       my($self, $headers) = @_;
 
-    croak("No content-length in the returned response, and this "
-        . "UA doesn't implement chunking") unless defined $len;
+       my $buf = '';
+       while (my ($k, $v) = each %$headers) {
+           my $field_name = lc $k;
+            $field_name =~ /\A [\x21\x23-\x27\x2A\x2B\x2D\x2E\x30-\x39\x41-\x5A\x5E-\x7A\x7C\x7E]+ \z/x
+               or croak(q/Invalid HTTP header field name: / . $Printable->($field_name));
+            $field_name =~ s/\b(\w)/\u$1/g;
+            $buf .= "$field_name: $v\x0D\x0A";
+       }
+       $buf .= "\x0D\x0A";
+       return $self->write($buf);
+   }
 
-    while ($len > 0) {
-        my $read = ($len > BUFSIZE) ? BUFSIZE : $len;
-        $cb->($self->read($read), $response);
-        $len -= $read;
-    }
+   sub read_content_body {
+       @_ == 3 || @_ == 4 || croak(q/Usage: $handle->read_content_body(callback, response, [read_length])/);
+       my ($self, $cb, $response, $len) = @_;
+       $len ||= $response->{headers}{'content-length'};
 
-    return;
-}
+       croak("No content-length in the returned response, and this "
+           . "UA doesn't implement chunking") unless defined $len;
 
-sub write_content_body {
-    @_ == 2 || croak(q/Usage: $handle->write_content_body(request)/);
-    my ($self, $request) = @_;
-    my ($len, $content_length) = (0, $request->{headers}{'content-length'});
+       while ($len > 0) {
+           my $read = ($len > BUFSIZE) ? BUFSIZE : $len;
+           $cb->($self->read($read), $response);
+           $len -= $read;
+       }
 
-    $len += $self->write($request->{content});
+       return;
+   }
 
-    $len == $content_length
-      or croak(qq/Content-Length missmatch (got: $len expected: $content_length)/);
+   sub write_content_body {
+       @_ == 2 || croak(q/Usage: $handle->write_content_body(request)/);
+       my ($self, $request) = @_;
+       my ($len, $content_length) = (0, $request->{headers}{'content-length'});
 
-    return $len;
-}
+       $len += $self->write($request->{content});
 
-sub read_response_header {
-    @_ == 1 || croak(q/Usage: $handle->read_response_header()/);
-    my ($self) = @_;
+       $len == $content_length
+         or croak(qq/Content-Length missmatch (got: $len expected: $content_length)/);
 
-    my $line = $self->readline;
+       return $len;
+   }
 
-    $line =~ /\A (HTTP\/(0*\d+\.0*\d+)) [\x09\x20]+ ([0-9]{3}) [\x09\x20]+ ([^\x0D\x0A]*) \x0D?\x0A/x
-      or croak(q/Malformed Status-Line: / . $Printable->($line));
+   sub read_response_header {
+       @_ == 1 || croak(q/Usage: $handle->read_response_header()/);
+       my ($self) = @_;
 
-    my ($protocol, $version, $status, $reason) = ($1, $2, $3, $4);
+       my $line = $self->readline;
 
-    return {
-        status   => $status,
-        reason   => $reason,
-        headers  => $self->read_header_lines,
-        protocol => $protocol,
-    };
-}
+       $line =~ /\A (HTTP\/(0*\d+\.0*\d+)) [\x09\x20]+ ([0-9]{3}) [\x09\x20]+ ([^\x0D\x0A]*) \x0D?\x0A/x
+         or croak(q/Malformed Status-Line: / . $Printable->($line));
 
-sub write_request_header {
-    @_ == 4 || croak(q/Usage: $handle->write_request_header(method, request_uri, headers)/);
-    my ($self, $method, $request_uri, $headers) = @_;
+       my ($protocol, $version, $status, $reason) = ($1, $2, $3, $4);
 
-    return $self->write("$method $request_uri HTTP/1.1\x0D\x0A")
-         + $self->write_header_lines($headers);
-}
+       return {
+           status   => $status,
+           reason   => $reason,
+           headers  => $self->read_header_lines,
+           protocol => $protocol,
+       };
+   }
 
-sub _do_timeout {
-    my ($self, $type, $timeout) = @_;
-    $timeout = $self->{timeout}
-        unless defined $timeout && $timeout >= 0;
+   sub write_request_header {
+       @_ == 4 || croak(q/Usage: $handle->write_request_header(method, request_uri, headers)/);
+       my ($self, $method, $request_uri, $headers) = @_;
 
-    my $fd = fileno $self->{fh};
-    defined $fd && $fd >= 0
-      or croak(q/select(2): 'Bad file descriptor'/);
+       return $self->write("$method $request_uri HTTP/1.1\x0D\x0A")
+            + $self->write_header_lines($headers);
+   }
 
-    my $initial = time;
-    my $pending = $timeout;
-    my $nfound;
+   sub _do_timeout {
+       my ($self, $type, $timeout) = @_;
+       $timeout = $self->{timeout}
+           unless defined $timeout && $timeout >= 0;
 
-    vec(my $fdset = '', $fd, 1) = 1;
+       my $fd = fileno $self->{fh};
+       defined $fd && $fd >= 0
+         or croak(q/select(2): 'Bad file descriptor'/);
 
-    while () {
-        $nfound = ($type eq 'read')
-            ? select($fdset, undef, undef, $pending)
-            : select(undef, $fdset, undef, $pending) ;
-        if ($nfound == -1) {
-            $! == EINTR
-              or croak(qq/select(2): '$!'/);
-            redo if !$timeout || ($pending = $timeout - (time - $initial)) > 0;
-            $nfound = 0;
-        }
-        last;
-    }
-    $! = 0;
-    return $nfound;
-}
+       my $initial = time;
+       my $pending = $timeout;
+       my $nfound;
 
-sub can_read {
-    @_ == 1 || @_ == 2 || croak(q/Usage: $handle->can_read([timeout])/);
-    my $self = shift;
-    return $self->_do_timeout('read', @_)
-}
+       vec(my $fdset = '', $fd, 1) = 1;
 
-sub can_write {
-    @_ == 1 || @_ == 2 || croak(q/Usage: $handle->can_write([timeout])/);
-    my $self = shift;
-    return $self->_do_timeout('write', @_)
-}
+       while () {
+           $nfound = ($type eq 'read')
+               ? select($fdset, undef, undef, $pending)
+               : select(undef, $fdset, undef, $pending) ;
+           if ($nfound == -1) {
+               $! == EINTR
+                 or croak(qq/select(2): '$!'/);
+               redo if !$timeout || ($pending = $timeout - (time - $initial)) > 0;
+               $nfound = 0;
+           }
+           last;
+       }
+       $! = 0;
+       return $nfound;
+   }
+
+   sub can_read {
+       @_ == 1 || @_ == 2 || croak(q/Usage: $handle->can_read([timeout])/);
+       my $self = shift;
+       return $self->_do_timeout('read', @_)
+   }
+
+   sub can_write {
+       @_ == 1 || @_ == 2 || croak(q/Usage: $handle->can_write([timeout])/);
+       my $self = shift;
+       return $self->_do_timeout('write', @_)
+   }
+}  # HTTP::Micro::Handle
 
 my $prog = <<'EOP';
 BEGIN {
@@ -4031,6 +4115,7 @@ BEGIN {
    }
 }
 {
+   use Carp qw(croak);
    my %dispatcher = (
       issuer =>  sub { Net::SSLeay::X509_NAME_oneline( Net::SSLeay::X509_get_issuer_name( shift )) },
       subject => sub { Net::SSLeay::X509_NAME_oneline( Net::SSLeay::X509_get_subject_name( shift )) },
@@ -4186,9 +4271,8 @@ if ( $INC{"IO/Socket/SSL.pm"} ) {
 }
 
 1;
-}
 # ###########################################################################
-# End HTTPMicro package
+# End HTTP::Micro package
 # ###########################################################################
 
 # ###########################################################################
@@ -4222,7 +4306,7 @@ use FindBin qw();
 
 eval {
    require Percona::Toolkit;
-   require HTTPMicro;
+   require HTTP::Micro;
 };
 
 {
@@ -4453,7 +4537,7 @@ sub pingback {
    my $url       = $args{url};
    my $instances = $args{instances};
 
-   my $ua = $args{ua} || HTTPMicro->new( timeout => 3 );
+   my $ua = $args{ua} || HTTP::Micro->new( timeout => 3 );
 
    my $response = $ua->request('GET', $url);
    PTDEBUG && _d('Server response:', Dumper($response));
@@ -4832,14 +4916,11 @@ sub main {
    # ########################################################################
    # If --pid, check it first since we'll die if it already exits.
    # ########################################################################
-   my $daemon;
-   if ( $o->get('pid') ) {
-      # We're not daemoninzing, it just handles PID stuff.  Keep $daemon
-      # in the the scope of main() because when it's destroyed it automatically
-      # removes the PID file.
-      $daemon = new Daemon(o=>$o);
-      $daemon->make_PID_file();
-   }
+   my $daemon = Daemon->new(
+      daemonize => 0,
+      pid_file  => $o->get('pid'),
+   );
+   $daemon->run();
 
    # #######################################################################
    # Connect to MySQL.
