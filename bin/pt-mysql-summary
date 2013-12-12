@@ -2929,7 +2929,7 @@ All options after -- are passed to C<mysql>.
 
 =item --all-databases
 
-C<mysqldump> and summarize all L<"--databases">.
+mysqldump and summarize all databases.  See L<"--databases">.
 
 =item --config
 
@@ -2942,7 +2942,7 @@ first option on the command line.
 
 type: string
 
-C<mysqldump> and summarize this comma-separated list of databases.  Specify
+mysqldump and summarize this comma-separated list of databases.  Specify
 L<"--all-databases"> instead if you want to dump and summary all databases.
 
 =item --defaults-file
