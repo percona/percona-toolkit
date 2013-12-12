@@ -1036,9 +1036,10 @@ collect_mysql_info () {
    echo "pt-summary-internal-Config_File_path    $cnf_file" >> "$dir/mysql-variables"
    collect_internal_vars "$dir/mysqld-executables" >> "$dir/mysql-variables"
 
-   if [ -n "${OPT_DATABASES}" ]; then
-      local trg_arg="$( get_mysqldump_args "$dir/mysql-variables" )"
-      get_mysqldump_for "${trg_arg}" "${OPT_DATABASES}" > "$dir/mysqldump"
+   if [ "$OPT_DATABASES" -o "$OPT_ALL_DATABASES" ]; then
+      local trg_arg="$(get_mysqldump_args "$dir/mysql-variables")"
+      local dbs="${OPT_DATABASES:-""}"
+      get_mysqldump_for "${trg_arg}" "$dbs" > "$dir/mysqldump"
    fi
 
    (
@@ -2243,27 +2244,16 @@ report_mysql_summary () {
    fi
 
    section "Schema"
-   if    [ "${OPT_DATABASES}" ] \
-      || [ "${OPT_ALL_DATABASES}" ] \
-      || [ "${OPT_READ_SAMPLES}" ]; then
-
-      if [ -z "$OPT_READ_SAMPLES" ]; then 
-         local trg_arg="$(get_mysqldump_args "$dir/mysql-variables")"
-         local dbstodump="${OPT_DATABASES:-""}"
-         get_mysqldump_for "${trg_arg}" "${OPT_DATABASES}" > "$dir/mysqldump"
-      fi
-
-      if [ -e "$dir/mysqldump" -a -s "$dir/mysqldump" ] \
-         && grep 'CREATE TABLE' "$dir/mysqldump" >/dev/null 2>&1; then
-            format_overall_db_stats "$dir/mysqldump"
-      elif [ ! -e "$dir/mysqldump" -a "$OPT_READ_SAMPLES" ]; then
-         echo "Skipping schema analysis as the directory passed in" \
-              "doesn't have a dump file"
-      else
-         echo "Skipping schema analysis due to apparent error in dump file"
-      fi
-   else
+   if [ -s "$dir/mysqldump" ] \
+      && grep 'CREATE TABLE' "$dir/mysqldump" >/dev/null 2>&1; then
+         format_overall_db_stats "$dir/mysqldump"
+   elif [ ! -e "$dir/mysqldump" -a "$OPT_READ_SAMPLES" ]; then
+      echo "Skipping schema analysis because --read-samples $dir/mysqldump " \
+         "does not exist"
+   elif [ -z "$OPT_DATABASES" -a -z "$OPT_ALL_DATABASES" ]; then
       echo "Specify --databases or --all-databases to dump and summarize schemas"
+   else
+      echo "Skipping schema analysis due to apparent error in dump file"
    fi
 
    section "Noteworthy Technologies"

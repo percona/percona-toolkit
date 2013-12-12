@@ -1318,31 +1318,19 @@ report_mysql_summary () {
    # Schema, databases, data type, other analysis.
    # ########################################################################
    section "Schema"
-   if    [ "${OPT_DATABASES:-""}" ] \
-      || [ "${OPT_ALL_DATABASES:-""}" ] \
-      || [ "${OPT_READ_SAMPLES:-""}" ]; then
-
-      if [ -z "$OPT_READ_SAMPLES" ]; then 
-         # --databases or --all-databases was specified
-         local trg_arg="$(get_mysqldump_args "$dir/mysql-variables")"
-         local dbstodump="${OPT_DATABASES:-""}"
-         get_mysqldump_for "${trg_arg}" "${OPT_DATABASES}" > "$dir/mysqldump"
-      fi
-
-      # Test the result by checking the file, not by the exit status, because we
-      # might get partway through and then die, and the info is worth analyzing
-      # anyway.
-      if [ -e "$dir/mysqldump" -a -s "$dir/mysqldump" ] \
-         && grep 'CREATE TABLE' "$dir/mysqldump" >/dev/null 2>&1; then
-            format_overall_db_stats "$dir/mysqldump"
-      elif [ ! -e "$dir/mysqldump" -a "$OPT_READ_SAMPLES" ]; then
-         echo "Skipping schema analysis as the directory passed in" \
-              "doesn't have a dump file"
-      else
-         echo "Skipping schema analysis due to apparent error in dump file"
-      fi
-   else
+   # Test the result by checking the file, not by the exit status, because we
+   # might get partway through and then die, and the info is worth analyzing
+   # anyway.
+   if [ -s "$dir/mysqldump" ] \
+      && grep 'CREATE TABLE' "$dir/mysqldump" >/dev/null 2>&1; then
+         format_overall_db_stats "$dir/mysqldump"
+   elif [ ! -e "$dir/mysqldump" -a "$OPT_READ_SAMPLES" ]; then
+      echo "Skipping schema analysis because --read-samples $dir/mysqldump " \
+         "does not exist"
+   elif [ -z "$OPT_DATABASES" -a -z "$OPT_ALL_DATABASES" ]; then
       echo "Specify --databases or --all-databases to dump and summarize schemas"
+   else
+      echo "Skipping schema analysis due to apparent error in dump file"
    fi
 
    # ########################################################################
