@@ -10,6 +10,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
+use Data::Dumper;
 
 use VersionParser;
 use DuplicateKeyFinder;
@@ -773,6 +774,36 @@ is_deeply(
 );
 
 # #############################################################################
+# https://bugs.launchpad.net/percona-toolkit/+bug/1214114
+# #############################################################################
+#$ddl   = load_file('t/lib/samples/dupekeys/prefix_bug_1214114.sql');
+#$dupes = [];
+#($keys, $ck) = $tp->get_keys($ddl, $opt);
+#$dk->get_duplicate_keys(
+#   $keys,
+#   clustered_key => $ck,
+#   clustered     => 1,
+#   callback      => $callback,
+#   tbl_info      => { engine => 'InnoDB', ddl => $ddl },
+#);
+#
+#is_deeply(
+#   $dupes,
+#   [{
+#      cols => ['b', 'id'],
+#      ddl => 'KEY `b` (`b`,`id`)',
+#      dupe_type => 'clustered',
+#      duplicate_of => 'PRIMARY',
+#      duplicate_of_cols => ['id'],
+#      duplicate_of_ddl => 'PRIMARY KEY (`id`),',
+#      key => 'b',
+#      reason => 'Key b ends with a prefix of the clustered index',
+#      short_key => '`b`',
+#   }],
+#   "Prefix bug 1214114"
+#) or diag(Dumper($dupes));
+
+# #############################################################################
 # Done.
 # #############################################################################
 my $output = '';
@@ -787,4 +818,3 @@ like(
    '_d() works'
 );
 done_testing;
-exit;
