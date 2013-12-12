@@ -2,6 +2,7 @@
 # test.bug_894140 
 # ########################################################################
 
+# Uniqueness of row_id ignored because PRIMARY is a duplicate constraint
 # row_id is a duplicate of PRIMARY
 # Key definitions:
 # UNIQUE KEY `row_id` (`row_id`),
