@@ -66,12 +66,12 @@ for my $i (2..7) {
       no_diff(
          sub {
             local $ENV{_NO_FALSE_NEGATIVES} = 1;
-            print `$env $trunk/bin/$tool --read-samples $trunk/t/pt-mysql-summary/samples/temp00$i  -- --defaults-file=/tmp/12345/my.sandbox.cnf | tail -n+3 | perl -wlnpe 's/Skipping schema analysis.*/Skipping schema analysis/'`
+            print `$env $trunk/bin/$tool --read-samples $trunk/t/pt-mysql-summary/samples/temp00$i  -- --defaults-file=/tmp/12345/my.sandbox.cnf | tail -n+3 | perl -wlnpe 's/Skipping schema analysis.*/Specify --databases or --all-databases to dump and summarize schemas/'`
          },
          "t/pt-mysql-summary/samples/expected_output_temp00$i.txt",
       ),
       "--read-samples works for t/pt-mysql-summary/temp00$i",
-   );
+   ) or diag($test_diff);
 }
 
 # Test that --help works under sh

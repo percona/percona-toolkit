@@ -715,6 +715,7 @@ no_diff \
 OPT_SLEEP=1
 OPT_DATABASES=""
 OPT_READ_SAMPLES=""
+OPT_ALL_DATABASES=""
 NAME_VAL_LEN=25
 report_mysql_summary "$samples/tempdir" | tail -n+3 > "$PT_TMPDIR/got"
 no_diff "$PT_TMPDIR/got" "$samples/expected_result_report_summary.txt"
