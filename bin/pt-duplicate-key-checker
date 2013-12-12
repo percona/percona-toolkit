@@ -2387,7 +2387,6 @@ sub get_duplicate_keys {
    push @dupes,
       $self->remove_prefix_duplicates(\@fulltext_keys, \@fulltext_keys, %args, exact_duplicates => 1);
 
-
    my $clustered_key = $args{clustered_key} ? $keys{$args{clustered_key}}
                      : undef;
    PTDEBUG && _d('clustered key:',
@@ -2522,10 +2521,10 @@ sub remove_prefix_duplicates {
 
             PTDEBUG && _d('Remove', $right_name);
             my $reason;
-            if ( $right_keys->[$right_index]->{unconstrained} ) {
+            if ( my $type = $right_keys->[$right_index]->{unconstrained} ) {
                $reason .= "Uniqueness of $right_name ignored because "
                   . $right_keys->[$right_index]->{constraining_key}->{name}
-                  . " is a stronger constraint\n"; 
+                  . " is a $type constraint\n"; 
             }
             my $exact_dupe = $right_len_cols < $left_len_cols ? 0 : 1;
             $reason .= $right_name
@@ -2625,10 +2624,17 @@ sub unconstrain_keys {
       next unless $unique_key; # primary key may be undefined
       my $cols = $unique_key->{cols};
       if ( @$cols == 1 ) {
-         PTDEBUG && _d($unique_key->{name},'defines unique column:',$cols->[0]);
          if ( !exists $unique_cols{$cols->[0]} ) {
+            PTDEBUG && _d($unique_key->{name}, 'defines unique column:',
+               $cols->[0]);
             $unique_cols{$cols->[0]}  = $unique_key;
             $unique_key->{unique_col} = 1;
+         }
+         else {
+            PTDEBUG && _d($unique_key->{name},
+               'redundantly constrains unique column:', $cols->[0]);
+            $unique_key->{exact_dupe} = 1;
+            $unique_key->{constraining_key} = $unique_cols{$cols->[0]};
          }
       }
       else {
@@ -2663,10 +2669,16 @@ sub unconstrain_keys {
 
    for my $i ( 0..(scalar @$unique_keys-1) ) {
       if ( exists $unconstrain{$unique_keys->[$i]->{name}} ) {
-         PTDEBUG && _d('Unconstraining', $unique_keys->[$i]->{name});
-         $unique_keys->[$i]->{unconstrained} = 1;
+         PTDEBUG && _d('Unconstraining weak', $unique_keys->[$i]->{name});
+         $unique_keys->[$i]->{unconstrained} = 'stronger';
          $unique_keys->[$i]->{constraining_key}
             = $unconstrain{$unique_keys->[$i]->{name}};
+         push @unconstrained_keys, $unique_keys->[$i];
+         delete $unique_keys->[$i];
+      }
+      elsif ( $unique_keys->[$i]->{exact_dupe} ) {
+         PTDEBUG && _d('Unconstraining dupe', $unique_keys->[$i]->{name});
+         $unique_keys->[$i]->{unconstrained} = 'duplicate';
          push @unconstrained_keys, $unique_keys->[$i];
          delete $unique_keys->[$i];
       }
