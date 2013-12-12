@@ -168,7 +168,7 @@ get_mysqldump_for () {
    $CMD_MYSQLDUMP $EXT_ARGV --no-data --skip-comments \
       --skip-add-locks --skip-add-drop-table --compact \
       --skip-lock-all-tables --skip-lock-tables --skip-set-charset \
-      ${args} --databases $( local IFS=,; echo ${dbtodump})
+      ${args} --databases $(local IFS=,; echo ${dbtodump})
 }
 
 # Returns a string with arguments to pass to mysqldump.
