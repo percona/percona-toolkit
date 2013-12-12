@@ -1568,7 +1568,6 @@ format_overall_db_stats () {
 
    [ -e "$file" ] || return
 
-   echo
    awk '
       BEGIN {
          db      = "{chosen}";
@@ -1839,7 +1838,6 @@ format_overall_db_stats () {
    local hdr=$(grep -n Database "$tmpfile" | cut -d: -f1);
    head -n${hdr} "$tmpfile"
    tail -n +$((${hdr} + 1)) "$tmpfile" | sort
-   echo
 }
 
 section_percona_server_features () {

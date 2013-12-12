@@ -575,7 +575,6 @@ format_overall_db_stats () {
 
    [ -e "$file" ] || return
 
-   echo
    # We keep counts of everything in an associative array keyed by db name, and
    # what it is.  The num_dbs counter is to ensure sort order is consistent when
    # we run the awk commands following this one.
@@ -861,7 +860,6 @@ format_overall_db_stats () {
    local hdr=$(grep -n Database "$tmpfile" | cut -d: -f1);
    head -n${hdr} "$tmpfile"
    tail -n +$((${hdr} + 1)) "$tmpfile" | sort
-   echo
 }
 
 section_percona_server_features () {
