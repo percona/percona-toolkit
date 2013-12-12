@@ -1568,6 +1568,7 @@ format_overall_db_stats () {
 
    [ -e "$file" ] || return
 
+   echo
    awk '
       BEGIN {
          db      = "{chosen}";
@@ -1838,6 +1839,7 @@ format_overall_db_stats () {
    local hdr=$(grep -n Database "$tmpfile" | cut -d: -f1);
    head -n${hdr} "$tmpfile"
    tail -n +$((${hdr} + 1)) "$tmpfile" | sort
+   echo
 }
 
 section_percona_server_features () {
@@ -2719,6 +2721,7 @@ the percentage of the cache in use and the hit-to-insert ratio. The latter two
 are fuzzy-rounded.
 
   # Schema #####################################################
+
     Database           Tables Views SPs Trigs Funcs   FKs Partn
     mysql                  24                                  
     performance_schema     17                                  

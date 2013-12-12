@@ -575,6 +575,7 @@ format_overall_db_stats () {
 
    [ -e "$file" ] || return
 
+   echo
    # We keep counts of everything in an associative array keyed by db name, and
    # what it is.  The num_dbs counter is to ensure sort order is consistent when
    # we run the awk commands following this one.
@@ -860,6 +861,7 @@ format_overall_db_stats () {
    local hdr=$(grep -n Database "$tmpfile" | cut -d: -f1);
    head -n${hdr} "$tmpfile"
    tail -n +$((${hdr} + 1)) "$tmpfile" | sort
+   echo
 }
 
 section_percona_server_features () {
@@ -1316,9 +1318,9 @@ report_mysql_summary () {
    # Schema, databases, data type, other analysis.
    # ########################################################################
    section "Schema"
-   if    [ "${OPT_DATABASES}" ] \
-      || [ "${OPT_ALL_DATABASES}" ] \
-      || [ "${OPT_READ_SAMPLES}" ]; then
+   if    [ "${OPT_DATABASES:-""}" ] \
+      || [ "${OPT_ALL_DATABASES:-""}" ] \
+      || [ "${OPT_READ_SAMPLES:-""}" ]; then
 
       if [ -z "$OPT_READ_SAMPLES" ]; then 
          # --databases or --all-databases was specified
