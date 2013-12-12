@@ -757,7 +757,7 @@ is_deeply(
        duplicate_of_cols => [ 'row_id' ],
        duplicate_of_ddl  => 'PRIMARY KEY (`row_id`),',
        key               => 'row_id',
-       reason            => 'row_id is a duplicate of PRIMARY',
+       reason            => "Uniqueness of row_id ignored because PRIMARY is a duplicate constraint\nrow_id is a duplicate of PRIMARY",
      },
      {
        cols              => [ 'player_id' ],
@@ -802,6 +802,35 @@ is_deeply(
 #   }],
 #   "Prefix bug 1214114"
 #) or diag(Dumper($dupes));
+
+# #############################################################################
+# https://bugs.launchpad.net/percona-toolkit/+bug/1217013
+ #############################################################################
+$ddl   = load_file('t/lib/samples/dupekeys/simple_dupe_bug_1217013.sql');
+$dupes = [];
+($keys, $ck) = $tp->get_keys($ddl, $opt);
+$dk->get_duplicate_keys(
+   $keys,
+   clustered_key => $ck,
+   clustered     => 1,
+   callback      => $callback,
+   tbl_info      => { engine => 'InnoDB', ddl => $ddl },
+);
+
+is_deeply(
+   $dupes,
+   [{
+      cols              => ['domain'],
+      ddl               => 'UNIQUE KEY `domain` (`domain`),',
+      dupe_type         => 'exact',
+      duplicate_of      => 'unique_key_domain',
+      duplicate_of_cols => ['domain'],
+      duplicate_of_ddl  => 'UNIQUE KEY `unique_key_domain` (`domain`)',
+      key               => 'domain',
+      reason            => "Uniqueness of domain ignored because unique_key_domain is a duplicate constraint\ndomain is a duplicate of unique_key_domain",
+   }],
+   "Exact dupe uniques (bug 1217013)"
+) or diag(Dumper($dupes));
 
 # #############################################################################
 # Done.
