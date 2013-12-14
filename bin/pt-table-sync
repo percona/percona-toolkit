@@ -10943,6 +10943,27 @@ sub ok_to_sync {
       }
    }
 
+   my $replace = $o->get('replace')
+              || $o->get('replicate')
+              || $o->get('sync-to-master');
+   if ( $replace && $o->get('execute') && $o->get('check-child-tables') ) {
+      my $child_tables = find_child_tables(
+         tbl    => $src,
+         dbh    => $src->{dbh},
+         Quoter => $q,
+      );
+      if ( $child_tables ) {
+         foreach my $tbl ( @$child_tables ) {
+            my $ddl = $tp->get_create_table(
+               $src->{dbh}, $tbl->{db}, $tbl->{tbl});
+            if ( $ddl && $ddl =~ m/(ON (?:DELETE|UPDATE) (?:SET|CASCADE))/ ) {
+               my $fk = $1;
+               die "REPLACE statements on $src->{db}.$src->{tbl} can adversely affect child table $tbl->{name} because it has an $fk foreign key constraint.  See --[no]check-child-tables in the documentation for more information.  --check-child-tables error\n"
+            }
+         }
+      }
+   }
+
    return;
 }
 
@@ -11363,6 +11384,46 @@ sub diff_where {
 }
 }
 
+sub find_child_tables {
+   my ( %args ) = @_;
+   my @required_args = qw(tbl dbh Quoter);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($tbl, $dbh, $q) = @args{@required_args};
+
+   if ( lc($tbl->{tbl_struct}->{engine} || '') eq 'myisam' ) {
+      PTDEBUG && _d(q{MyISAM table, not looking for child tables});
+      return;
+   }
+
+   PTDEBUG && _d('Finding child tables');
+
+   my $sql = "SELECT table_schema, table_name "
+           . "FROM information_schema.key_column_usage "
+           . "WHERE constraint_schema='$tbl->{db}' "
+           . "AND referenced_table_name='$tbl->{tbl}'";
+   PTDEBUG && _d($sql);
+   my $rows = $dbh->selectall_arrayref($sql);
+   if ( !$rows || !@$rows ) {
+      PTDEBUG && _d('No child tables found');
+      return;
+   }
+
+   my @child_tables;
+   foreach my $row ( @$rows ) {
+      my $tbl = {
+         db   => $row->[0],
+         tbl  => $row->[1],
+         name => $q->quote(@$row),
+      };
+      push @child_tables, $tbl;
+   }
+
+   PTDEBUG && _d('Child tables:', Dumper(\@child_tables));
+   return \@child_tables;
+}
+
 sub _d {
    my ($package, undef, $line) = caller 0;
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
@@ -11589,7 +11650,7 @@ L<"SYNOPSIS"> for the overview of the correct usage.
 
 Also be careful with tables that have foreign key constraints with C<ON DELETE>
 or C<ON UPDATE> definitions because these might cause unintended changes on the
-child tables.
+child tables.  See L<"--[no]check-child-tables">.
 
 In general, this tool is best suited when your tables have a primary key or
 unique index.  Although it can synchronize data in tables lacking a primary key
@@ -11874,6 +11935,31 @@ STDOUT to utf8, passes the mysql_enable_utf8 option to DBD::mysql, and
 runs SET NAMES UTF8 after connecting to MySQL.  Any other value sets
 binmode on STDOUT without the utf8 layer, and runs SET NAMES after
 connecting to MySQL.
+
+=item --[no]check-child-tables
+
+default: yes
+
+Check if L<"--execute"> will adversely affect child tables.  When
+L<"--replace">, L<"--replicate">, or L<"--sync-to-master"> is specified,
+the tool may sync tables using C<REPLACE> statements.  If a table being
+synced has child tables with C<ON DELETE CASCADE>, C<ON UPDATE CASCADE>,
+or C<ON UPDATE SET NULL>, the tool prints an error and skips the table because
+C<REPLACE> becomes C<DELETE> then C<INSERT>, so the C<DELETE> will cascade
+to the child table and delete its rows.  In the worst case, this can delete
+all rows in child tables!
+
+Specify C<--no-check-child-tables> to disable this check.  To completely
+avoid affecting child tables, also specify C<--no-foreign-key-checks>
+so MySQL will not cascade any operations from the parent to child tables.
+
+This check is only preformed if L<"--execute"> and one of L<"--replace">,
+L<"--replicate">, or L<"--sync-to-master"> is specified.  L<"--print">
+does not check child tables.
+
+The error message only prints the first child table found with an
+C<ON DELETE CASCADE>, C<ON UPDATE CASCADE>, or C<ON UPDATE SET NULL>
+foreign key constraint.  There could be other affected child tables.
 
 =item --[no]check-master
 
