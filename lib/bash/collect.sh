@@ -182,7 +182,6 @@ collect() {
    local start_time=$(date +'%s')
    local curr_time=$start_time
    while [ $((curr_time - start_time)) -lt $OPT_RUN_TIME ]; do
-      local ts="$(date +"TS %s.%N %F %T")"
 
       # We check the disk, but don't exit, because we need to stop jobs if we
       # need to exit.
@@ -192,6 +191,11 @@ collect() {
          "$OPT_DISK_BYTES_FREE" \
          "$OPT_DISK_PCT_FREE"   \
          || break
+
+      # Sleep between collect cycles.
+      # Synchronize ourselves onto the clock tick, so the sleeps are 1-second
+      sleep $(date +'%s.%N' | awk "{print $OPT_SLEEP_COLLECT - (\$1 % $OPT_SLEEP_COLLECT)}")
+      local ts="$(date +"TS %s.%N %F %T")"
 
       # #####################################################################
       # Collect data for this cycle.
@@ -226,8 +230,6 @@ collect() {
          (echo $ts; transactions) >>"$d/$p-transactions" &
       fi
 
-      # Sleep between collect cycles.
-      sleep $OPT_SLEEP_COLLECT
       curr_time=$(date +'%s')
    done
    log "Loop end: $(date +'TS %s.%N %F %T')"
