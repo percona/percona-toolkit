@@ -11957,6 +11957,10 @@ This check is only preformed if L<"--execute"> and one of L<"--replace">,
 L<"--replicate">, or L<"--sync-to-master"> is specified.  L<"--print">
 does not check child tables.
 
+The error message only prints the first child table found with an
+C<ON DELETE CASCADE>, C<ON UPDATE CASCADE>, or C<ON UPDATE SET NULL>
+foreign key constraint.  There could be other affected child tables.
+
 =item --[no]check-master
 
 default: yes
