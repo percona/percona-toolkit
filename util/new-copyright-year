@@ -6,7 +6,7 @@ use English qw(-no_match_vars);
 
 eval {
    my ($year, $copyright)       = @ARGV;
-   my ($years) = $copyright     =~ m/(\S+) Percona Ireland Ltd/;
+   my ($years) = $copyright     =~ m/(\S+) Percona LLC and\/or its affiliates/;
    my ($first_year, $last_year) = split /-/, $years;
 
    my $new_copyright;
