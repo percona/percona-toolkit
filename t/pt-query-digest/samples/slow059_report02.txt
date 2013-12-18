@@ -487,7 +487,7 @@
    "global" : {
       "files" : [
          {
-            "name" : "/Users/daniel/p/pqd-ps-rate/t/lib/samples/slowlogs/slow059.txt",
+            "name" : "slow059.txt"
             "size" : 2152
          }
       ],
