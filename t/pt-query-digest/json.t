@@ -71,7 +71,8 @@ ok(
                "$trunk/t/lib/samples/slowlogs/slow059.txt",
                qw(--output json))
       },
-      "t/pt-query-digest/samples/slow059_report02.txt"
+      "t/pt-query-digest/samples/slow059_report02.txt",
+      "sed" => [q{-e 's/"name" : ".*/"name" : "slow059.txt"/'}],
    ),
    'json output for slow059'
 ) or diag($test_diff);
