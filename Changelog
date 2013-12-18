@@ -1,23 +1,41 @@
 Changelog for Percona Toolkit
 
+  * Added pt-query-digest support for Percona Server slow log rate limiting
+  * Added pt-stalk --sleep-collect
   * Added pt-agent --ping
+  * Fixed bug 1249150: PTDEBUG prints some info to STDOUT
+  * Fixed bug 1248363: pt-agent requires restart after changing MySQL options
+  * Fixed bug 1248778: pt-agent --install on PXC is not documented
+  * Fixed bug 1250973: pt-agent --install doesn't check for previous install
+  * Fixed bug 1250968: pt-agent --install suggest MySQL user isn't quoted
+  * Fixed bug 1251004: pt-agent --install error about slave is confusing
+  * Fixed bug 1251726: pt-agent --uninstall fails if agent is running
+  * Fixed bug 1248785: pt-agent docs don't list privs required for its MySQL user
+  * Fixed bug 1215016: pt-deadlock-logger docs use pt-fk-error-logger
+  * Fixed bug 1201443: pt-duplicate-key-checker error when EXPLAIN key_len=0
+  * Fixed bug 1217013: pt-duplicate-key-checker misses exact duplicate unique indexes
+  * Fixed bug 1214685: pt-mysql-summary schema dump prompt can't be disabled
+  * Fixed bug 1195628: pt-online-schema-change gets stuck looking for its own _new table
+  * Fixed bug 1249149: pt-query-digest stats prints to STDOUT instead of STDERR
+  * Fixed bug 1071979: pt-stak error parsing df with NFS
+  * Fixed bug 1223458: pt-table-sync deletes child table rows
 
 v2.2.5 released 2013-10-16
 
   * Added Query_time histogram bucket counts to pt-query-digest JSON output
   * Added pt-online-schema-change --[no]drop-triggers option
-  * Fixed bug #1199589: pt-archiver deletes data despite --dry-run
-  * Fixed bug #944051: pt-table-checksum has ambiguous exit status
-  * Fixed bug #1209436: pt-kill --log-dsn may not work on Perl 5.8
-  * Fixed bug #1210537: pt-table-checksum --recursion-method=cluster crashes if no nodes are found
-  * Fixed bug #1215608: pt-online-schema-change new table suffix is hard-coded
-  * Fixed bug #1229861: pt-table-sync quotes float values, can't sync
-  * Fixed bug #821692: pt-query-digest doesn't distill LOAD DATA correctly
-  * Fixed bug #984053: pt-query-digest doesn't distill INSERT/REPLACE without INTO correctly
-  * Fixed bug #1206728: pt-deadlock-logger 2.2 requires DSN on command line
-  * Fixed bug #1226721: pt-agent on CentOS 5 fails to send data
-  * Fixed bug #821690: pt-query-digest doesn't distill IF EXISTS correctly
-  * Fixed bug #1206677: pt-agent docs reference clodu.percona.com
+  * Fixed bug 1206677: pt-agent docs reference clodu.percona.com
+  * Fixed bug 1226721: pt-agent on CentOS 5 fails to send data
+  * Fixed bug 1199589: pt-archiver deletes data despite --dry-run
+  * Fixed bug 1206728: pt-deadlock-logger 2.2 requires DSN on command line
+  * Fixed bug 1209436: pt-kill --log-dsn may not work on Perl 5.8
+  * Fixed bug 1215608: pt-online-schema-change new table suffix is hard-coded
+  * Fixed bug  821692: pt-query-digest doesn't distill LOAD DATA correctly
+  * Fixed bug  984053: pt-query-digest doesn't distill INSERT/REPLACE without INTO correctly
+  * Fixed bug  821690: pt-query-digest doesn't distill IF EXISTS correctly
+  * Fixed bug 1210537: pt-table-checksum --recursion-method=cluster crashes if no nodes are found
+  * Fixed bug  944051: pt-table-checksum has ambiguous exit status
+  * Fixed bug 1229861: pt-table-sync quotes float values, can't sync
 
 v2.2.4 released 2013-07-18
 
