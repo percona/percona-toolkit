@@ -181,7 +181,7 @@ update_copyright_year() {
    echo -n "Updating copyright year in tools... "
    cd $BRANCH/bin
    for tool_file in *; do
-      local copyright="$(grep "[0-9] Percona Ireland Ltd" $tool_file)"
+      local copyright="$(grep "[0-9] Percona LLC and/or its affiliates" $tool_file)"
       local new_copyright="$(../util/new-copyright-year "$YEAR" "$copyright")"
       if [ $? -ne 0 ]; then
          die "Error parsing copyright year in $tool_file"
@@ -196,7 +196,7 @@ update_copyright_year() {
 
    echo -n "Updating copyright year in percona-toolkit.pod... "
    local pod=$DOCS_DIR/percona-toolkit.pod
-   local copyright="$(grep "[0-9] Percona Ireland Ltd" $pod)"
+   local copyright="$(grep "[0-9] Percona LLC and/or its affiliates" $pod)"
    local new_copyright="$(../util/new-copyright-year "$YEAR" "$copyright")"
    if [ $? -ne 0 ]; then
       die "Error parsing copyright year in percona-toolkit.pod"
