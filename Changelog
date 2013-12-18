@@ -1,8 +1,10 @@
 Changelog for Percona Toolkit
 
   * Added pt-query-digest support for Percona Server slow log rate limiting
-  * Added pt-stalk --sleep-collect
   * Added pt-agent --ping
+  * Added pt-mysql-summary --all-databases
+  * Added pt-stalk --sleep-collect
+  * Added pt-table-sync --[no]check-child-tables
   * Fixed bug 1249150: PTDEBUG prints some info to STDOUT
   * Fixed bug 1248363: pt-agent requires restart after changing MySQL options
   * Fixed bug 1248778: pt-agent --install on PXC is not documented
