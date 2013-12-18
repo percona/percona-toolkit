@@ -549,7 +549,7 @@ Many people have contributed code over the years.  See each tool's
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-Percona Toolkit is copyright 2011-2013 Percona Ireland Ltd and others.
+Percona Toolkit is copyright 2011-2013 Percona LLC and/or its affiliates, et al.
 See each program's documentation for complete copyright notices.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
