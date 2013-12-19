@@ -5805,9 +5805,10 @@ sub init_agent {
 
    # Update these attribs every time the agent is initialized.
    # Other optional attribs, like versions, are left to the caller.
+   chomp(my $who      = `whoami 2>/dev/null`);
    chomp(my $hostname = `hostname`);
    $agent->hostname($hostname);
-   $agent->username($ENV{USER} || $ENV{LOGNAME});
+   $agent->username($ENV{USER} || $ENV{LOGNAME} || $who);
 
    # Try to create/update the Agent.
    my $success = 0;
@@ -5877,10 +5878,6 @@ sub init_agent {
 
    delete $state->{init_action};
    delete $state->{too_many_agents};
-
-   if ( $agent && $success && !$quiet ) {
-      $logger->info("Agent " . $agent->name . " (" . $agent->uuid . ") is ready");
-   }
 
    return $agent, $success;
 }
@@ -6086,7 +6083,7 @@ These values can change if a different configuration is received.
    # to /agent/{uuid}/log.  This is done asynchronously by a thread so a
    # simple info("Hello world!") to STDOUT won't block if the API isn't
    # responding. -- Both client and log_link are required to enable this.
-   if ( $agent->links->{log} && $logger_client ) {
+   if ( $logger->online_logging && $agent->links->{log} && $logger_client ) {
       $logger->start_online_logging(
          client   => $logger_client,
          log_link => $agent->links->{log},
@@ -6098,6 +6095,28 @@ These values can change if a different configuration is received.
       agent   => $agent,
       lib_dir => $lib_dir,
    );
+
+   # Remove old service files.  New instance of agent shouldn't inherit
+   # anything from previous runs, in case previous runs were bad.
+   my $service_files = "$lib_dir/services/*";
+   foreach my $service_file ( glob $service_files ) {
+      if ( unlink $service_file ) {
+         $logger->debug("Removed $service_file");
+      }
+      else {
+         $logger->warning("Cannot remove $service_file: $OS_ERROR");
+      }
+   }
+   eval {
+      schedule_services(
+         services => [],
+         lib_dir  => $lib_dir,
+         quiet    => 1,
+      );
+   };
+   if ( $EVAL_ERROR ) {
+      $logger->error("Error removing services from crontab: $EVAL_ERROR");
+   }
 
    return {
       agent  => $agent,
@@ -6138,6 +6157,7 @@ sub run_agent {
    # #######################################################################
    $state->{need_mysql_version} = 1;
    $state->{first_config} = 1;
+   $state->{ready} = 0;
    my $first_config_interval = 20;
    $logger->info("Checking silently every $first_config_interval seconds"
       . " for the first config");
@@ -6162,7 +6182,6 @@ sub run_agent {
       if ( $success && $config && $config->links->{services} ) {
          if ( $state->{first_config} ) {
             delete $state->{first_config};
-            $logger->info('Agent has been configured');
          }
 
          if ( $new_daemon ) {
@@ -6191,13 +6210,18 @@ sub run_agent {
             $cxn->connect(dsn => $dsn);
          };
          if ( $EVAL_ERROR ) {
-            $logger->warning("MySQL connection failure: $EVAL_ERROR");
+            if ( !$state->{mysql_error}++ ) {
+               $logger->warning("MySQL connection failure: $EVAL_ERROR");
+            }
+            else {
+               $logger->debug("MySQL connection failure: $EVAL_ERROR");
+            }
             $state->{have_mysql} = 0;
             $state->{need_mysql_version} = 1;
          }
          else {
             if ( !$state->{have_mysql} ) {
-               $logger->info("MySQL connection OK");
+               $logger->info("MySQL OK");
             }
             $state->{have_mysql} = 1;
             check_if_mysql_restarted(
@@ -6224,11 +6248,21 @@ sub run_agent {
                         agent   => $agent,
                         lib_dir => $lib_dir,
                      );
+                     if ( !$state->{ready} || $state->{mysql_error} ) {
+                        $logger->info('Agent OK');
+                     }
                      delete $state->{need_mysql_version};
+                     delete $state->{mysql_error};
+                     $state->{ready} = 1;
                   }
                }
                else {
-                  $logger->debug("Failed to get MySQL version");
+                  if ( !$state->{mysql_error}++ ) {
+                     $logger->warning("Failed to get MySQL version");
+                  }
+                  else {
+                     $logger->debug("Failed to get MySQL version");
+                  }
                }
             }
             $cxn->dbh->disconnect();
@@ -6245,7 +6279,7 @@ sub run_agent {
             );
          };
          if ( $EVAL_ERROR ) {
-            $logger->warning("Error checking disk space: $EVAL_ERROR");
+            $logger->error("Error checking disk space: $EVAL_ERROR");
             $disk_space_ok = 1;
          }
          if ( !$disk_space_ok ) {
@@ -6263,8 +6297,7 @@ sub run_agent {
             $logger->warning('Services will restart when disk space "
                . "threshold checks pass');
          }
-         else {
-            # Have config, safeguards are ok, now get/update the services.
+         elsif ( $state->{ready} ) {
             ($services, $success) = get_services(
                link      => $config->links->{services},
                agent     => $agent,
@@ -6280,8 +6313,9 @@ sub run_agent {
       # If configured, wait the given interval.  Else, retry more
       # quickly so we're ready to go soon after we're configured.
       $interval->(
-         $config ? ($config->options->{'check-interval'}, 0)
-                 : ($first_config_interval              , 1)  # 1=quiet
+          !$state->{ready} ? (20, 1)
+         : $config         ? ($config->options->{'check-interval'}, 0)
+         :                   ($first_config_interval , 1)  # 1=quiet
       );
    }
 
@@ -6683,7 +6717,7 @@ sub get_services {
                exec_cmd => $args{exec_cmd}, # optional, for testing
             );
 
-            $logger->info('Service changes applied');
+            $logger->info('Services OK');
          }
          else {
             $logger->debug('Services have not changed');
@@ -6899,6 +6933,7 @@ sub make_new_crontab {
    PTDEBUG && _d('pt-agent crontab lines:', Dumper(\@pt_agent_lines));
 
    my $new_crontab = join("\n", @other_lines, @pt_agent_lines) . "\n";
+   $logger->debug("New crontab: " . ($new_crontab || ''));
 
    return $new_crontab;
 }
@@ -7138,7 +7173,7 @@ sub run_service {
    }
 
    # Start online logging, if possible.
-   if ( $agent_api && $client && $entry_links && $entry_links->{agents} ) {
+   if ( $logger->online_logging && $agent_api && $client && $entry_links && $entry_links->{agents} ) {
       $agent = eval {
          $client->get(
             link => $entry_links->{agents} . '/' . $agent->uuid,
