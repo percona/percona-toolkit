@@ -44,7 +44,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.5';
+our $VERSION = '2.2.6';
 
 use strict;
 use warnings FATAL => 'all';
@@ -6122,7 +6122,6 @@ You can also get individual tools from the latest release:
 
 Replace C<TOOL> with the name of any tool.
 
-
 =head1 AUTHORS
 
 Baron Schwartz and Daniel Nichter
@@ -6138,7 +6137,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2010-2013 Percona Ireland Ltd.
+This program is copyright 2010-2013 Percona LLC and/or its affiliates.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
@@ -6156,6 +6155,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-variable-advisor 2.2.5
+pt-variable-advisor 2.2.6
 
 =cut

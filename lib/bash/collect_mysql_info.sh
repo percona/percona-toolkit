@@ -168,7 +168,7 @@ get_mysqldump_for () {
    $CMD_MYSQLDUMP $EXT_ARGV --no-data --skip-comments \
       --skip-add-locks --skip-add-drop-table --compact \
       --skip-lock-all-tables --skip-lock-tables --skip-set-charset \
-      ${args} --databases $( local IFS=,; echo ${dbtodump})
+      ${args} --databases $(local IFS=,; echo ${dbtodump})
 }
 
 # Returns a string with arguments to pass to mysqldump.
@@ -250,10 +250,11 @@ collect_mysql_info () {
    echo "pt-summary-internal-Config_File_path    $cnf_file" >> "$dir/mysql-variables"
    collect_internal_vars "$dir/mysqld-executables" >> "$dir/mysql-variables"
 
-   if [ -n "${OPT_DATABASES}" ]; then
-      # "--dump-schemas passed in, dumping early"
-      local trg_arg="$( get_mysqldump_args "$dir/mysql-variables" )"
-      get_mysqldump_for "${trg_arg}" "${OPT_DATABASES}" > "$dir/mysqldump"
+   # mysqldump schemas
+   if [ "$OPT_DATABASES" -o "$OPT_ALL_DATABASES" ]; then
+      local trg_arg="$(get_mysqldump_args "$dir/mysql-variables")"
+      local dbs="${OPT_DATABASES:-""}"
+      get_mysqldump_for "${trg_arg}" "$dbs" > "$dir/mysqldump"
    fi
 
    # TODO: gather this data in the same format as normal: TS line, stats

@@ -182,7 +182,7 @@ $output = output(
    sub {
       pt_table_sync::main('h=127.1,P=12345,u=msandbox,p=msandbox',
          qw(--print --execute --replicate percona.checksums),
-         qw(--no-foreign-key-checks))
+         qw(--no-foreign-key-checks --no-check-child-tables))
    }
 );
 

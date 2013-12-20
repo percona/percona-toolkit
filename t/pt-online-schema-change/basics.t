@@ -13,6 +13,7 @@ use Test::More;
 use Time::HiRes qw(sleep);
 
 $ENV{PTTEST_FAKE_TS} = 1;
+$ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} = 1;
 
 use PerconaTest;
 use Sandbox;
@@ -704,7 +705,8 @@ ok(
    no_diff(
       sub { pt_online_schema_change::main(@args, "$dsn,D=bug_1045317,t=bits",
          '--execute', '--statistics',
-         '--alter', "modify column val ENUM('M','E','H') NOT NULL")
+         '--alter', "modify column val ENUM('M','E','H') NOT NULL",
+         '--recursion-method', 'none')
       },
       ($sandbox_version ge '5.5' && $db_flavor !~ m/XtraDB Cluster/
          ? "$sample/stats-execute-5.5.txt"

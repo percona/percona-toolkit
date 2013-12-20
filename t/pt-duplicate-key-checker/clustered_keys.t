@@ -41,7 +41,7 @@ ok(
                                  : "$sample/issue_295.txt")
    ),
    "Shorten, not remove, clustered dupes"
-);
+) or diag($test_diff);
 
 # #############################################################################
 # Error if InnoDB table has no PK or unique indexes
@@ -81,9 +81,22 @@ unlike(
 );
 
 # #############################################################################
+# 
+# https://bugs.launchpad.net/percona-toolkit/+bug/1201443
+# #############################################################################
+$sb->load_file('master', "t/pt-duplicate-key-checker/samples/fk_chosen_index_bug_1201443.sql");
+
+$output = `$trunk/bin/pt-duplicate-key-checker F=$cnf -d fk_chosen_index_bug_1201443 2>&1`;
+
+unlike(
+   $output,
+   qr/Use of uninitialized value/,
+   'fk_chosen_index_bug_1201443'
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
-exit;

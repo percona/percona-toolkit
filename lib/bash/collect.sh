@@ -146,16 +146,17 @@ collect() {
    if [ "$CMD_SYSCTL" ]; then
       $CMD_SYSCTL -a >> "$d/$p-sysctl" &
    fi
+   local cnt=$(($OPT_RUN_TIME / $OPT_SLEEP_COLLECT))
    if [ "$CMD_VMSTAT" ]; then
-      $CMD_VMSTAT 1 $OPT_RUN_TIME >> "$d/$p-vmstat"         &
+      $CMD_VMSTAT $OPT_SLEEP_COLLECT $cnt >> "$d/$p-vmstat" &
       $CMD_VMSTAT $OPT_RUN_TIME 2 >> "$d/$p-vmstat-overall" &
    fi
    if [ "$CMD_IOSTAT" ]; then
-      $CMD_IOSTAT -dx 1 $OPT_RUN_TIME >> "$d/$p-iostat"         &
+      $CMD_IOSTAT -dx $OPT_SLEEP_COLLECT $cnt >> "$d/$p-iostat" &
       $CMD_IOSTAT -dx $OPT_RUN_TIME 2 >> "$d/$p-iostat-overall" &
    fi
    if [ "$CMD_MPSTAT" ]; then
-      $CMD_MPSTAT -P ALL 1 $OPT_RUN_TIME >> "$d/$p-mpstat"         &
+      $CMD_MPSTAT -P ALL $OPT_SLEEP_COLLECT $cnt >> "$d/$p-mpstat" &
       $CMD_MPSTAT -P ALL $OPT_RUN_TIME 1 >> "$d/$p-mpstat-overall" &
    fi
 
@@ -165,7 +166,7 @@ collect() {
    # get and keep a connection to the database; in troubled times
    # the database tends to exceed max_connections, so reconnecting
    # in the loop tends not to work very well.
-   $CMD_MYSQLADMIN $EXT_ARGV ext -i1 -c$OPT_RUN_TIME >>"$d/$p-mysqladmin" &
+   $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
    local mysqladmin_pid=$!
 
    local have_lock_waits_table=""
@@ -178,7 +179,10 @@ collect() {
    # This loop gathers data for the rest of the duration, and defines the time
    # of the whole job.
    log "Loop start: $(date +'TS %s.%N %F %T')"
-   for loopno in $(_seq $OPT_RUN_TIME); do
+   local start_time=$(date +'%s')
+   local curr_time=$start_time
+   while [ $((curr_time - start_time)) -lt $OPT_RUN_TIME ]; do
+
       # We check the disk, but don't exit, because we need to stop jobs if we
       # need to exit.
       disk_space $d > $d/$p-disk-space
@@ -188,14 +192,14 @@ collect() {
          "$OPT_DISK_PCT_FREE"   \
          || break
 
+      # Sleep between collect cycles.
       # Synchronize ourselves onto the clock tick, so the sleeps are 1-second
-      sleep $(date +%s.%N | awk '{print 1 - ($1 % 1)}')
+      sleep $(date +'%s.%N' | awk "{print $OPT_SLEEP_COLLECT - (\$1 % $OPT_SLEEP_COLLECT)}")
       local ts="$(date +"TS %s.%N %F %T")"
 
       # #####################################################################
       # Collect data for this cycle.
       # #####################################################################
-
       if [ -d "/proc" ]; then
          if [ -f "/proc/diskstats" ]; then
             (echo $ts; cat /proc/diskstats) >> "$d/$p-diskstats" &
@@ -216,19 +220,17 @@ collect() {
             (echo $ts; cat /proc/interrupts) >> "$d/$p-interrupts" &
          fi
       fi
-
       (echo $ts; df -k) >> "$d/$p-df" &
-
       (echo $ts; netstat -antp) >> "$d/$p-netstat"   &
       (echo $ts; netstat -s)    >> "$d/$p-netstat_s" &
-
       (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
          >> "$d/$p-processlist" &
-
       if [ "$have_lock_waits_table" ]; then
          (echo $ts; lock_waits)   >>"$d/$p-lock-waits" &
          (echo $ts; transactions) >>"$d/$p-transactions" &
       fi
+
+      curr_time=$(date +'%s')
    done
    log "Loop end: $(date +'TS %s.%N %F %T')"
 
