@@ -143,8 +143,6 @@ sub get_duplicate_keys {
    push @dupes,
       $self->remove_prefix_duplicates(\@fulltext_keys, \@fulltext_keys, %args, exact_duplicates => 1);
 
-   # TODO: other structs
-
    # Remove clustered duplicates.
    my $clustered_key = $args{clustered_key} ? $keys{$args{clustered_key}}
                      : undef;
@@ -314,7 +312,7 @@ sub remove_prefix_duplicates {
          if (    substr($left_cols,  0, $right_len_cols)
               eq substr($right_cols, 0, $right_len_cols) ) {
 
-            # FULLTEXT keys, for example, are only duplicates if they
+            # UNIQUE and FULLTEXT indexes are only duplicates if they
             # are exact duplicates.
             if ( $args{exact_duplicates} && ($right_len_cols<$left_len_cols) ) {
                PTDEBUG && _d($right_name, 'not exact duplicate of', $left_name);
@@ -333,10 +331,10 @@ sub remove_prefix_duplicates {
 
             PTDEBUG && _d('Remove', $right_name);
             my $reason;
-            if ( $right_keys->[$right_index]->{unconstrained} ) {
+            if ( my $type = $right_keys->[$right_index]->{unconstrained} ) {
                $reason .= "Uniqueness of $right_name ignored because "
                   . $right_keys->[$right_index]->{constraining_key}->{name}
-                  . " is a stronger constraint\n"; 
+                  . " is a $type constraint\n"; 
             }
             my $exact_dupe = $right_len_cols < $left_len_cols ? 0 : 1;
             $reason .= $right_name
@@ -454,13 +452,22 @@ sub unconstrain_keys {
       next unless $unique_key; # primary key may be undefined
       my $cols = $unique_key->{cols};
       if ( @$cols == 1 ) {
-         PTDEBUG && _d($unique_key->{name},'defines unique column:',$cols->[0]);
-         # Save only the first unique key for the unique col. If there
-         # are others, then they are exact duplicates and will be removed
-         # later when unique keys are compared to unique keys.
          if ( !exists $unique_cols{$cols->[0]} ) {
+            PTDEBUG && _d($unique_key->{name}, 'defines unique column:',
+               $cols->[0]);
             $unique_cols{$cols->[0]}  = $unique_key;
             $unique_key->{unique_col} = 1;
+         }
+         else {
+            # https://bugs.launchpad.net/percona-toolkit/+bug/1217013
+            # If two unique indexes are not exact, then they must be enforcing
+            # different uniqueness constraints.  Else they're exact dupes
+            # so one can be treated as a non-unique and removed later
+            # when comparing unique to non-unique.
+            PTDEBUG && _d($unique_key->{name},
+               'redundantly constrains unique column:', $cols->[0]);
+            $unique_key->{exact_dupe} = 1;
+            $unique_key->{constraining_key} = $unique_cols{$cols->[0]};
          }
       }
       else {
@@ -496,15 +503,22 @@ sub unconstrain_keys {
       }
    }
 
-   # And finally, unconstrain the redudantly unique sets found above by
+   # And finally, unconstrain the redundantly unique sets found above by
    # removing them from the list of unique keys and adding them to the
    # list of normal keys.
    for my $i ( 0..(scalar @$unique_keys-1) ) {
       if ( exists $unconstrain{$unique_keys->[$i]->{name}} ) {
-         PTDEBUG && _d('Unconstraining', $unique_keys->[$i]->{name});
-         $unique_keys->[$i]->{unconstrained} = 1;
+         PTDEBUG && _d('Unconstraining weak', $unique_keys->[$i]->{name});
+         $unique_keys->[$i]->{unconstrained} = 'stronger';
          $unique_keys->[$i]->{constraining_key}
             = $unconstrain{$unique_keys->[$i]->{name}};
+         push @unconstrained_keys, $unique_keys->[$i];
+         delete $unique_keys->[$i];
+      }
+      elsif ( $unique_keys->[$i]->{exact_dupe} ) {
+         # https://bugs.launchpad.net/percona-toolkit/+bug/1217013
+         PTDEBUG && _d('Unconstraining dupe', $unique_keys->[$i]->{name});
+         $unique_keys->[$i]->{unconstrained} = 'duplicate';
          push @unconstrained_keys, $unique_keys->[$i];
          delete $unique_keys->[$i];
       }

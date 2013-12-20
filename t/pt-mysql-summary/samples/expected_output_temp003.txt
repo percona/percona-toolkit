@@ -108,7 +108,7 @@ Uptime                                    90000           1           1
                     Usage | 0%
          HitToInsertRatio | 0%
 # Schema #####################################################
-Skipping schema analysis
+Specify --databases or --all-databases to dump and summarize schemas
 # Noteworthy Technologies ####################################
                       SSL | No
      Explicit LOCK TABLES | No

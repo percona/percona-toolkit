@@ -54,7 +54,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.5';
+our $VERSION = '2.2.6';
 
 use strict;
 use warnings FATAL => 'all';
@@ -8031,8 +8031,22 @@ sub main {
          },
       );
       PTDEBUG && _d(scalar @$slaves, 'slaves found');
+      if ( scalar @$slaves ) {
+         print "Found " . scalar(@$slaves) . " slaves:\n";
+         foreach my $cxn ( @$slaves ) {
+            print "  " . $cxn->name() . "\n";
+         }
+      }
+      elsif ( ($o->get('recursion-method') || '') ne 'none') {
+         print "No slaves found.  See --recursion-method if host "
+               . $cxn->name() . " has slaves.\n";
+      }
+      else {
+         print "Ignoring all slaves because --recursion-method=none "
+            . "was specified\n";
+      }
 
-      if ( $o->get('check-slave-lag') ) {
+      if ( my $dsn = $o->get('check-slave-lag') ) {
          PTDEBUG && _d('Will use --check-slave-lag to check for slave lag');
          my $cxn = $make_cxn->(
             dsn_string => $o->get('check-slave-lag'),
@@ -8043,6 +8057,16 @@ sub main {
       else {
          PTDEBUG && _d('Will check slave lag on all slaves');
          $slave_lag_cxns = $slaves;
+      }
+      if ( $slave_lag_cxns && scalar @$slave_lag_cxns ) {
+         print "Will check slave lag on:\n";
+         foreach my $cxn ( @$slave_lag_cxns ) {
+            print "  " . $cxn->name() . "\n";
+         }
+      }
+      else {
+         print "Not checking slave lag because no slaves were found "
+               . "and --check-slave-lag was not specified.\n";
       }
 
       # #####################################################################
@@ -8513,14 +8537,36 @@ sub main {
       }
    };
 
-   for my $slave (@$slaves) {
-      PTDEBUG && _d('Waiting until', $slave->name(),
-                     'replicates the table');
-      sleep 0.5 while ! $tp->check_table(
-                           dbh => $slave->dbh(),
-                           db  => $new_tbl->{db},
-                           tbl => $new_tbl->{tbl}
-                      );
+   if ( $slaves && scalar @$slaves ) {
+      foreach my $slave (@$slaves) {
+         my ($pr, $pr_first_report);
+         if ( $o->get('progress') ) {
+            $pr = new Progress(
+               jobsize => scalar @$slaves,
+               spec    => $o->get('progress'),
+               name    => "Waiting for " . $slave->name(),
+            );
+            $pr_first_report = sub {
+               print "Waiting forever for new table $new_tbl->{name} to replicate "
+                  . "to " . $slave->name() . "...\n";
+            };
+         }
+         $pr->start() if $pr;
+         my $has_table = 0;
+         while ( !$has_table ) {
+            $has_table = $tp->check_table(
+               dbh => $slave->dbh(),
+               db  => $new_tbl->{db},
+               tbl => $new_tbl->{tbl}
+            );
+            last if $has_table;
+            $pr->update(
+               sub { return 0; },
+               first_report => $pr_first_report,
+            ) if $pr;
+            sleep 1;
+         }
+      }
    }
 
    # --plugin hook
@@ -11485,7 +11531,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2013 Percona Ireland Ltd.
+This program is copyright 2011-2013 Percona LLC and/or its affiliates.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
@@ -11503,6 +11549,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-online-schema-change 2.2.5
+pt-online-schema-change 2.2.6
 
 =cut

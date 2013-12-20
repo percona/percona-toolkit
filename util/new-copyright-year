@@ -6,21 +6,21 @@ use English qw(-no_match_vars);
 
 eval {
    my ($year, $copyright)       = @ARGV;
-   my ($years) = $copyright     =~ m/(\S+) Percona Ireland Ltd/;
+   my ($years) = $copyright     =~ m/(\S+) Percona LLC and\/or its affiliates/;
    my ($first_year, $last_year) = split /-/, $years;
 
    my $new_copyright;
    if ( $first_year && $last_year ) {
-      $new_copyright = "$first_year-$year Percona Ireland Ltd"
+      $new_copyright = "$first_year-$year Percona LLC and/or its affiliates"
    }
    elsif ( $first_year < $year ) {
-      $new_copyright = "$first_year-$year Percona Ireland Ltd"
+      $new_copyright = "$first_year-$year Percona LLC and/or its affiliates"
    }
    else {
-      $new_copyright = "$first_year Percona Ireland Ltd"
+      $new_copyright = "$first_year Percona LLC and/or its affiliates"
    }
 
-   $copyright =~ s/\S+ Percona Ireland Ltd/$new_copyright/;
+   $copyright =~ s/\S+ Percona LLC and\/or its affiliates/$new_copyright/;
    print $copyright;
 };
 die $EVAL_ERROR if $EVAL_ERROR;

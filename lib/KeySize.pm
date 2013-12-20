@@ -89,7 +89,7 @@ sub get_key_size {
    # EXPLAIN rows will report only the rows that satisfy the query
    # using the key, but this is not what we want. We want total table rows.
    # In other words, we need an EXPLAIN type index, not ref or range.
-   if ( scalar @cols == 1 ) {
+   if ( scalar(@cols) == 1 && !$args{only_eq} ) {
       push @where_cols, "$cols[0]<>1";
    }
    $sql .= join(' OR ', @where_cols);
@@ -112,6 +112,22 @@ sub get_key_size {
    my $chosen_key   = $explain->{key};  # May differ from $name
    PTDEBUG && _d('MySQL chose key:', $chosen_key, 'len:', $key_len,
       'rows:', $rows);
+
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1201443
+   if ( $chosen_key && $key_len eq '0' ) {
+      if ( $args{recurse} ) {
+         $self->{error} = "key_len = 0 in EXPLAIN:\n"
+                        . _explain_to_text($explain);
+         return;
+      }
+      else {
+         return $self->get_key_size(
+            %args,
+            only_eq => 1,
+            recurse => 1,
+         );
+      }
+   }
 
    my $key_size = 0;
    if ( $key_len && $rows ) {

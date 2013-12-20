@@ -24,6 +24,8 @@ my $q   = new Quoter();
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
+my $slave1_dbh = $sb->get_dbh_for('slave1');
+my $slave1_dsn = $sb->dsn_for('slave1');
 
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
@@ -318,6 +320,58 @@ is(
 
 unlink $sync_file if -f $sync_file;
 unlink $outfile if -f $outfile;
+
+# #############################################################################
+# Re-connect with new DSN.
+# #############################################################################
+
+SKIP: {
+   skip "Cannot connect to slave1", 4 unless $slave1_dbh;
+
+   $cxn = make_cxn(
+      dsn_string => 'h=127.1,P=12345,u=msandbox,p=msandbox',
+   );
+
+   $cxn->connect();
+   ok(
+      $cxn->dbh()->ping(),
+      "First connect()"
+   );
+
+   ($row) = $cxn->dbh()->selectrow_hashref('SHOW SLAVE STATUS');
+   ok(
+      !defined $row,
+      "First connect() to master"
+   ) or diag(Dumper($row));
+
+   $cxn->dbh->disconnect();
+   $cxn->connect(dsn => $dp->parse($slave1_dsn));
+
+   ok(
+      $cxn->dbh()->ping(),
+      "Re-connect connect()"
+   );
+
+   ($row) = $cxn->dbh()->selectrow_hashref('SHOW SLAVE STATUS');
+   ok(
+      $row,
+      "Re-connect connect(slave_dsn) to slave"
+   ) or diag(Dumper($row));
+
+   $cxn->dbh->disconnect();
+   $cxn->connect();
+
+   ok(
+      $cxn->dbh()->ping(),
+      "Re-re-connect connect()"
+   );
+
+   ($row) = $cxn->dbh()->selectrow_hashref('SHOW SLAVE STATUS');
+   ok(
+      $row,
+      "Re-re-connect connect() to slave"
+   ) or diag(Dumper($row));
+}
 
 # #############################################################################
 # Done.

@@ -1,6 +1,64 @@
 Release Notes
 *************
 
+v2.2.6 released 2013-12-18
+==========================
+
+Percona Toolkit 2.2.6 has been released. This release has 16 bug fixes and a few new features.  One bug fix is very important, so 2.2 users are strongly encouraged to upgrade:
+
+* Fixed bug 1223458: pt-table-sync deletes child table rows
+
+Buried in the pt-table-sync docs is this warning:
+
+  Also be careful with tables that have foreign key constraints with C<ON DELETE>
+  or C<ON UPDATE> definitions because these might cause unintended changes on the
+  child tables.
+
+Until recently, either no one had this problem, or no one reported it, or no one realized that pt-table-sync caused it.  In the worst case, pt-table-sync could delete all rows in child tables, which is quite surprising and bad.  As of 2.2.6, pt-table-sync has option --[no]check-child-tables which is on by default.  In cases were this "bug" can happen, pt-table-sync prints a warning and skips the table.  Read the option's docs to learn more.
+
+Another good bug fix is:
+
+* Fixed bug 1217013: pt-duplicate-key-checker misses exact duplicate unique indexes
+
+After saying "pt-duplicate-key-checker hasn't had a bug in years" at enough conferences, users proved us wrong--thanks!  The tool is better now.
+
+* Fixed bug 1195628: pt-online-schema-change gets stuck looking for its own _new table
+
+This was poor feedback from the tool more than a bug.  There was a point in the tool where it waited forever for slaves to catch up, but it did this silently.  Now the tool reports --progress while it's waiting and it reports which slaves, if any, it found and intends to check.  In short: its feedback delivers a better user experience.
+
+Finally, this bug (more like a feature request/change) might be a backwards-incompatible change:
+
+* Fixed bug 1214685: pt-mysql-summary schema dump prompt can't be disabled
+
+The change is that pt-mysql-summary no longer prompts to dump and summarize schemas.  To do this, you must specify --databases or, a new option, --all-databases.  Several users said this behavior was better, so we made the change even though some might consider it a backwards-incompatible change.
+
+Percona Toolkit packages can be downloaded from http://www.percona.com/downloads/percona-toolkit/ or the Percona Software Repositories (http://www.percona.com/software/repositories/).
+
+Changelog
+---------
+
+* Added pt-query-digest support for Percona Server slow log rate limiting
+* Added pt-agent --ping
+* Added pt-mysql-summary --all-databases
+* Added pt-stalk --sleep-collect
+* Added pt-table-sync --[no]check-child-tables
+* Fixed bug 1249150: PTDEBUG prints some info to STDOUT
+* Fixed bug 1248363: pt-agent requires restart after changing MySQL options
+* Fixed bug 1248778: pt-agent --install on PXC is not documented
+* Fixed bug 1250973: pt-agent --install doesn't check for previous install
+* Fixed bug 1250968: pt-agent --install suggest MySQL user isn't quoted
+* Fixed bug 1251004: pt-agent --install error about slave is confusing
+* Fixed bug 1251726: pt-agent --uninstall fails if agent is running
+* Fixed bug 1248785: pt-agent docs don't list privs required for its MySQL user
+* Fixed bug 1215016: pt-deadlock-logger docs use pt-fk-error-logger
+* Fixed bug 1201443: pt-duplicate-key-checker error when EXPLAIN key_len=0
+* Fixed bug 1217013: pt-duplicate-key-checker misses exact duplicate unique indexes
+* Fixed bug 1214685: pt-mysql-summary schema dump prompt can't be disabled
+* Fixed bug 1195628: pt-online-schema-change gets stuck looking for its own _new table
+* Fixed bug 1249149: pt-query-digest stats prints to STDOUT instead of STDERR
+* Fixed bug 1071979: pt-stak error parsing df with NFS
+* Fixed bug 1223458: pt-table-sync deletes child table rows
+
 v2.2.5 released 2013-10-16
 ==========================
 

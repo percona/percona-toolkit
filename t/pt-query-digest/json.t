@@ -62,6 +62,22 @@ ok(
 ) or diag($test_diff);
 
 # #############################################################################
+# pt-query-digest support for Percona Server slow log rate limiting
+# https://blueprints.launchpad.net/percona-toolkit/+spec/pt-query-digest-rate-limit
+# #############################################################################
+ok(
+   no_diff(
+      sub { pt_query_digest::main(@args,
+               "$trunk/t/lib/samples/slowlogs/slow059.txt",
+               qw(--output json))
+      },
+      "t/pt-query-digest/samples/slow059_report02.txt",
+      "sed" => [q{-e 's/"name" : ".*/"name" : "slow059.txt"/'}],
+   ),
+   'json output for slow059'
+) or diag($test_diff);
+
+# #############################################################################
 # Done.
 # #############################################################################
 done_testing;

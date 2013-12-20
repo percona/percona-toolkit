@@ -119,7 +119,7 @@ sub new {
 
 sub connect {
    my ( $self, %opts ) = @_;
-   my $dsn = $self->{dsn};
+   my $dsn = $opts{dsn} || $self->{dsn};
    my $dp  = $self->{DSNParser};
 
    my $dbh = $self->{dbh};
@@ -139,6 +139,13 @@ sub connect {
    }
 
    $dbh = $self->set_dbh($dbh);
+   if ( $opts{dsn} ) {
+      $self->{dsn}      = $dsn;
+      $self->{dsn_name} = $dp->as_string($dsn, [qw(h P S)])
+                       || $dp->as_string($dsn, [qw(F)])
+                       || '';
+
+   }
    PTDEBUG && _d($dbh, 'Connected dbh to', $self->{hostname},$self->{dsn_name});
    return $dbh;
 }

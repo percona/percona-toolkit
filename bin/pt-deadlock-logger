@@ -42,7 +42,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.5';
+our $VERSION = '2.2.6';
 
 use strict;
 use warnings FATAL => 'all';
@@ -4975,15 +4975,15 @@ L<"--run-time"> or L<"--iterations"> is specified.
 
 Print deadlocks on host1:
 
-   pt-fk-error-logger h=host1
+   pt-deadlock-logger h=host1
 
 Print deadlocks on host1 once then exit:
 
-   pt-fk-error-logger h=host1 --iterations 1
+   pt-deadlock-logger h=host1 --iterations 1
 
-Save deadlocks on host1 to percona_schema.fke on host2:
+Save deadlocks on host1 to percona_schema.deadlocks on host2:
 
-  pt-fk-error-logger h=host1 --dest h=host2,D=percona_schema,t=deadlocks
+  pt-deadlock-logger h=host1 --dest h=host2,D=percona_schema,t=deadlocks
 
 =head1 RISKS
 
@@ -5020,7 +5020,7 @@ deadlocks, so every deadlock is saved for every L<"--iterations">.
 =head1 OUTPUT
 
 New deadlocks are printed to C<STDOUT>, unless L<"--quiet"> is specified.
-Errors and warnings  are printed to C<STDERR>.
+Errors and warnings are printed to C<STDERR>.
 
 See also L<"--columns"> and L<"--tab">.
 
@@ -5029,7 +5029,7 @@ See also L<"--columns"> and L<"--tab">.
 InnoDB's output is hard to parse and sometimes there's no way to do it right.
 
 Sometimes not all information (for example, username or IP address) is included
-in the deadlock information.  In this case there's nothing for the script to put
+in the deadlock information.  In this case there's nothing for the tool to put
 in those columns.  It may also be the case that the deadlock output is so long
 (because there were a lot of locks) that the whole thing is truncated.
 
@@ -5505,7 +5505,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2013 Percona Ireland Ltd,
+This program is copyright 2011-2013 Percona LLC and/or its affiliates,
 2007-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -5524,6 +5524,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-deadlock-logger 2.2.5
+pt-deadlock-logger 2.2.6
 
 =cut

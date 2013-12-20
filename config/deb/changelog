@@ -1,3 +1,29 @@
+percona-toolkit (2.2.6) unstable; urgency=low
+
+  * Added pt-query-digest support for Percona Server slow log rate limiting
+  * Added pt-agent --ping
+  * Added pt-mysql-summary --all-databases
+  * Added pt-stalk --sleep-collect
+  * Added pt-table-sync --[no]check-child-tables
+  * Fixed bug 1249150: PTDEBUG prints some info to STDOUT
+  * Fixed bug 1248363: pt-agent requires restart after changing MySQL options
+  * Fixed bug 1248778: pt-agent --install on PXC is not documented
+  * Fixed bug 1250973: pt-agent --install doesn't check for previous install
+  * Fixed bug 1250968: pt-agent --install suggest MySQL user isn't quoted
+  * Fixed bug 1251004: pt-agent --install error about slave is confusing
+  * Fixed bug 1251726: pt-agent --uninstall fails if agent is running
+  * Fixed bug 1248785: pt-agent docs don't list privs required for its MySQL user
+  * Fixed bug 1215016: pt-deadlock-logger docs use pt-fk-error-logger
+  * Fixed bug 1201443: pt-duplicate-key-checker error when EXPLAIN key_len=0
+  * Fixed bug 1217013: pt-duplicate-key-checker misses exact duplicate unique indexes
+  * Fixed bug 1214685: pt-mysql-summary schema dump prompt can't be disabled
+  * Fixed bug 1195628: pt-online-schema-change gets stuck looking for its own _new table
+  * Fixed bug 1249149: pt-query-digest stats prints to STDOUT instead of STDERR
+  * Fixed bug 1071979: pt-stak error parsing df with NFS
+  * Fixed bug 1223458: pt-table-sync deletes child table rows
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Wed, 18 Dec 2013 23:50:43 +0000
+
 percona-toolkit (2.2.5) unstable; urgency=low
 
   * Added Query_time histogram bucket counts to pt-query-digest JSON output

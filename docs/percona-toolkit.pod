@@ -54,11 +54,7 @@ An interactive I/O monitoring tool for GNU/Linux.
 
 Find duplicate indexes and foreign keys on MySQL tables.
 
-Find duplicate indexes and foreign keys on MySQL tables.
-
 =item pt-fifo-split
-
-Split files and pipe lines to a fifo without really splitting.
 
 Split files and pipe lines to a fifo without really splitting.
 
@@ -115,8 +111,6 @@ Analyze MySQL queries from logs, processlist, and tcpdump.
 Canonicalize and print MySQL grants so you can effectively replicate, compare and version-control them.
 
 =item pt-sift
-
-Browses files created by pt-stalk.
 
 Browses files created by pt-stalk.
 
@@ -549,7 +543,7 @@ Many people have contributed code over the years.  See each tool's
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-Percona Toolkit is copyright 2011-2013 Percona Ireland Ltd and others.
+Percona Toolkit is copyright 2011-2013 Percona LLC and/or its affiliates, et al.
 See each program's documentation for complete copyright notices.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -568,6 +562,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-Percona Toolkit v2.2.5 released 2013-10-17
+Percona Toolkit v2.2.6 released 2013-12-18
 
 =cut

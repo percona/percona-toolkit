@@ -1,0 +1,127 @@
+# Rate limits apply
+
+# Overall: 3 total, 2 unique, 0 QPS, 0x concurrency ______________________
+# Time range: all events occurred at 2013-11-28 01:05:31
+# Attribute          total     min     max     avg     95%  stddev  median
+# ============     ======= ======= ======= ======= ======= ======= =======
+# Exec time          630us   165us   237us   210us   236us    33us   224us
+# Lock time          284us    48us   122us    94us   119us    32us   113us
+# Rows sent              7       1       5    2.33    4.96    1.87    0.99
+# Rows examine          12       1      10       4    9.83    4.17    0.99
+# Rows affecte           0       0       0       0       0       0       0
+# Bytes sent         1.53k     481     545  523.67  537.02      32  537.02
+# Merge passes           0       0       0       0       0       0       0
+# Tmp tables             0       0       0       0       0       0       0
+# Tmp disk tbl           0       0       0       0       0       0       0
+# Tmp tbl size           0       0       0       0       0       0       0
+# Query size            92      30      32   30.67   31.70       1   28.75
+# InnoDB:
+# IO r bytes             0       0       0       0       0       0       0
+# IO r ops               0       0       0       0       0       0       0
+# IO r wait              0       0       0       0       0       0       0
+# pages distin           7       2       3    2.33    2.90    0.44    1.96
+# queue wait             0       0       0       0       0       0       0
+# rec lock wai           0       0       0       0       0       0       0
+# Boolean:
+# Filesort      33% yes,  66% no
+
+# Query 1: 0 QPS, 0x concurrency, ID 0x9EA505F4786E7F15 at byte 733 ______
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2013-11-28 01:05:31
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         66       2
+# Exec time     73   465us   228us   237us   232us   237us     6us   232us
+# Lock time     83   236us   114us   122us   118us   122us     5us   118us
+# Rows sent     28       2       1       1       1       1       0       1
+# Rows examine  16       2       1       1       1       1       0       1
+# Rows affecte   0       0       0       0       0       0       0       0
+# Bytes sent    69   1.06k     545     545     545     545       0     545
+# Merge passes   0       0       0       0       0       0       0       0
+# Tmp tables     0       0       0       0       0       0       0       0
+# Tmp disk tbl   0       0       0       0       0       0       0       0
+# Tmp tbl size   0       0       0       0       0       0       0       0
+# Query size    65      60      30      30      30      30       0      30
+# InnoDB:
+# IO r bytes     0       0       0       0       0       0       0       0
+# IO r ops       0       0       0       0       0       0       0       0
+# IO r wait      0       0       0       0       0       0       0       0
+# pages distin  57       4       2       2       2       2       0       2
+# queue wait     0       0       0       0       0       0       0       0
+# rec lock wai   0       0       0       0       0       0       0       0
+# String:
+# Databases    maindb
+# Hosts        localhost
+# InnoDB trxID 1A88583F (1/50%), 1A885840 (1/50%)
+# Last errno   0
+# rate limit   query:2
+# Users        user1
+# Query_time distribution
+#   1us
+#  10us
+# 100us  ################################################################
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `maindb` LIKE 'bar'\G
+#    SHOW CREATE TABLE `maindb`.`bar`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT foo FROM bar WHERE id=2\G
+
+# Query 2: 0 QPS, 0x concurrency, ID 0xD2BA209E593ABAA7 at byte 1441 _____
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2013-11-28 01:05:31
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         33       1
+# Exec time     26   165us   165us   165us   165us   165us       0   165us
+# Lock time     16    48us    48us    48us    48us    48us       0    48us
+# Rows sent     71       5       5       5       5       5       0       5
+# Rows examine  83      10      10      10      10      10       0      10
+# Rows affecte   0       0       0       0       0       0       0       0
+# Bytes sent    30     481     481     481     481     481       0     481
+# Merge passes   0       0       0       0       0       0       0       0
+# Tmp tables     0       0       0       0       0       0       0       0
+# Tmp disk tbl   0       0       0       0       0       0       0       0
+# Tmp tbl size   0       0       0       0       0       0       0       0
+# Query size    34      32      32      32      32      32       0      32
+# InnoDB:
+# IO r bytes     0       0       0       0       0       0       0       0
+# IO r ops       0       0       0       0       0       0       0       0
+# IO r wait      0       0       0       0       0       0       0       0
+# pages distin  42       3       3       3       3       3       0       3
+# queue wait     0       0       0       0       0       0       0       0
+# rec lock wai   0       0       0       0       0       0       0       0
+# Boolean:
+# Filesort     100% yes,   0% no
+# String:
+# Databases    maindb
+# Hosts        localhost
+# InnoDB trxID 1A885842
+# Last errno   0
+# rate limit   query:2
+# Users        user1
+# Query_time distribution
+#   1us
+#  10us
+# 100us  ################################################################
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `maindb` LIKE 'foo'\G
+#    SHOW CREATE TABLE `maindb`.`foo`\G
+INSERT INTO foo VALUES (NULL, 3)\G
+
+# Profile
+# Rank Query ID           Response time Calls R/Call V/M   Item
+# ==== ================== ============= ===== ====== ===== ==========
+#    1 0x9EA505F4786E7F15  0.0005 73.8%     2 0.0002  0.00 SELECT bar
+#    2 0xD2BA209E593ABAA7  0.0002 26.2%     1 0.0002  0.00 INSERT foo
