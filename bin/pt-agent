@@ -8558,7 +8558,7 @@ sub install {
 
    # Verify pt-agent is not installed
    $next_step->();
-   my @install_files = ($agent_my_cnf, $config_file, "$lib_dir/agent");
+   my @install_files = ($config_file, "$lib_dir/agent");
    my @have_files;
    foreach my $file (@install_files) {
       push @have_files, $file if -f $file;
