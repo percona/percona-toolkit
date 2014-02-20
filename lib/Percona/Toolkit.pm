@@ -1,5 +1,4 @@
-# This program is copyright 2012-2013 Percona Ireland Ltd.
-# Feedback and improvements are welcome.
+# This program is copyright 2012-2014 Percona LLC and/or its affiliates.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 # WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
@@ -19,7 +18,7 @@
 # ###########################################################################
 package Percona::Toolkit;
 
-our $VERSION = '2.2.6';
+our $VERSION = '2.2.7';
 
 use strict;
 use warnings FATAL => 'all';

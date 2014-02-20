@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+  * Fixed bug 1279502: --version-check behaves like spyware
+
 v2.2.6 released 2013-12-18
 
   * Added pt-query-digest support for Percona Server slow log rate limiting
