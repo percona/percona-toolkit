@@ -1,6 +1,17 @@
 Release Notes
 *************
 
+v2.2.7 released 2013-02-20
+==========================
+
+Percona Toolkit 2.2.7 has been released. This release has only one bug fixed. 
+
+* Fixed bug 1279502: --version-check behaves like spyware
+
+  The configuration for what information PT tools should collect was not hardcoded in the scripts. Instead, every time it's downloaded from http://v.percona.com/. One of the possible parameters was a binary file name to be executed. This was fixed by removing the remote execution.
+
+Percona Toolkit packages can be downloaded from http://www.percona.com/downloads/percona-toolkit/ or the Percona Software Repositories (http://www.percona.com/software/repositories/).
+
 v2.2.6 released 2013-12-18
 ==========================
 
