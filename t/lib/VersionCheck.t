@@ -104,39 +104,6 @@ test_v(
    },
 );
 
-test_v(
-   name     => "bin_version",
-   response => "perl;bin_version\n",
-   items    => {
-      'perl' => {
-         item => 'perl',
-         type => 'bin_version',
-         vars => [],
-      },
-   },
-   versions => {
-      'perl' => sprintf('%vd', $PERL_VERSION),
-   },
-);
-
-{
-   local $ENV{PATH} = "$ENV{PATH}:$trunk/bin";
-   test_v(
-      name     => "bin_version",
-      response => "pt-archiver;bin_version\n",
-      items    => {
-         'pt-archiver' => {
-            item => 'pt-archiver',
-            type => 'bin_version',
-            vars => [],
-         },
-      },
-      versions => {
-         'pt-archiver' => $Percona::Toolkit::VERSION,
-      },
-   );
-}
-
 SKIP: {
    skip "Cannot cannot to sandbox master", 2 unless $master_dbh;
 
