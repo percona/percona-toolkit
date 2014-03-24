@@ -8120,6 +8120,12 @@ sub main {
          return $ms->get_slave_lag($dbh);
       };
 
+      # The plugin is able to override the slavelag check so tools like pt-heartbeat
+      # or other replicators (Tungsten...) can be used to measure replication lag
+      if ( $plugin && $plugin->can('override_slavelag_check') ) {
+         $get_lag = $plugin->override_slavelag_check();
+      }
+      
       $replica_lag = new ReplicaLagWaiter(
          slaves   => $slave_lag_cxns,
          max_lag  => $o->get('max-lag'),
@@ -11345,6 +11351,7 @@ These hooks, in this order, are called if defined:
    after_drop_old_table
    before_drop_triggers
    before_exit
+   override_slavelag_check
 
 Each hook is passed different arguments.  To see which arguments are passed
 to a hook, search for the hook's name in the tool's source code, like:
