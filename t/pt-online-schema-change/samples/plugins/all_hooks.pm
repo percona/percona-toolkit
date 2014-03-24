@@ -96,4 +96,11 @@ sub before_exit {
    print "PLUGIN before_exit\n";
 }
 
+sub override_slavelag_check {
+   my ($self, %args) = @_;
+   print "PLUGIN override_slavelag_check\n";
+
+   return sub { return 0; };
+}
+
 1;

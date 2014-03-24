@@ -56,6 +56,7 @@ my @called = $output =~ m/^PLUGIN \S+$/gm;
 is_deeply(
    \@called,
    [
+      'PLUGIN override_slavelag_check',
       'PLUGIN init',
       'PLUGIN before_create_new_table',
       'PLUGIN after_create_new_table',
@@ -70,7 +71,7 @@ is_deeply(
       'PLUGIN before_drop_old_table',
       'PLUGIN after_drop_old_table',
       'PLUGIN before_drop_triggers',
-      'PLUGIN before_exit'
+      'PLUGIN before_exit',
    ],
    "Called all plugins on basic run"
 ) or diag(Dumper(\@called));
