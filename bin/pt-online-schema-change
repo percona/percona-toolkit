@@ -8123,7 +8123,7 @@ sub main {
       # The plugin is able to override the slavelag check so tools like pt-heartbeat
       # or other replicators (Tungsten...) can be used to measure replication lag
       if ( $plugin && $plugin->can('override_slavelag_check') ) {
-         $get_lag = $plugin->override_slavelag_check();
+         $get_lag = $plugin->override_slavelag_check(oktorun => \$oktorun);
       }
       
       $replica_lag = new ReplicaLagWaiter(
