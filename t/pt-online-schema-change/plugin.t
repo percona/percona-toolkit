@@ -71,7 +71,7 @@ is_deeply(
       'PLUGIN before_drop_old_table',
       'PLUGIN after_drop_old_table',
       'PLUGIN before_drop_triggers',
-      'PLUGIN before_exit',
+      'PLUGIN before_exit'
    ],
    "Called all plugins on basic run"
 ) or diag(Dumper(\@called));
