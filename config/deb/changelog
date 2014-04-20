@@ -1,3 +1,9 @@
+percona-toolkit (2.2.7) unstable; urgency=low
+
+  * Fixed bug 1279502: --version-check behaves like spyware
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Thu, 20 Feb 2014 08:09:53 +0000
+
 percona-toolkit (2.2.6) unstable; urgency=low
 
   * Added pt-query-digest support for Percona Server slow log rate limiting
