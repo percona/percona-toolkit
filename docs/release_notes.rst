@@ -4,17 +4,11 @@ Release Notes
 v2.2.7 released 2014-02-20
 ==========================
 
-Release Notes
-*************
-
-v2.2.7 released 2014-02-20
-==========================
-
-Percona Toolkit 2.2.7 has been released. This release has only one bug fixed. 
+Percona Toolkit 2.2.7 has been released. This release has only one bug fix. 
 
 * Fixed bug 1279502: --version-check behaves like spyware
 
-  The configuration for what information PT tools should collect was not hardcoded in the scripts. Instead, every time it's downloaded from http://v.percona.com/. One of the possible parameters was a binary file name to be executed. This was fixed by removing the remote execution.
+Although never used, --version-check had the ability to get any local program's version.  This fix removed that ability.
 
 Percona Toolkit packages can be downloaded from http://www.percona.com/downloads/percona-toolkit/ or the Percona Software Repositories (http://www.percona.com/software/repositories/).
 
@@ -1191,6 +1185,8 @@ Changelog
 
 * Fixed bug 1279502: --version-check behaves like spyware
 
+=======
+>>>>>>> MERGE-SOURCE
 v2.2.6 released 2013-12-18
 ==========================
 
