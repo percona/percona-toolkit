@@ -6171,7 +6171,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2007-2013 Percona LLC and/or its affiliates,
+This program is copyright 2007-2014 Percona LLC and/or its affiliates,
 2006 Proven Scaling LLC and Six Apart Ltd.
 
 Feedback and improvements are welcome.
@@ -6192,6 +6192,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-heartbeat 2.2.6
+pt-heartbeat 2.2.7
 
 =cut
