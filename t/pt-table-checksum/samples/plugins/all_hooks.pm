@@ -26,9 +26,9 @@ sub after_replicate_check {
    print "PLUGIN after_replicate_check\n";
 }
  
-sub override_slavelag_check {
+sub get_slave_lag {
    my ($self, %args) = @_;
-   print "PLUGIN override_slavelag_check\n";
+   print "PLUGIN get_slave_lag\n";
    return sub { return 0; };
 }
  

@@ -59,7 +59,7 @@ my @called = $output =~ m/^PLUGIN \S+$/gm;
 is_deeply(
    \@called,
    [
-      'PLUGIN override_slavelag_check',
+      'PLUGIN get_slave_lag',
       'PLUGIN init',
       'PLUGIN before_checksum_table',
       'PLUGIN after_checksum_table',
