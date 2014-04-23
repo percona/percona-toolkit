@@ -9579,27 +9579,29 @@ sub main {
          return;
       };
 
-      my $get_lag = sub {
-         my ($cxn) = @_;
-         my $dbh = $cxn->dbh();
-         if ( !$dbh || !$dbh->ping() ) {
-            PTDEBUG && _d('Lost connection to slave', $cxn->name(),
-               'while waiting for slave lag');
-            eval { $dbh = $cxn->connect() };  # connect or die trying
-            if ( $EVAL_ERROR ) {
-               $oktorun = 0;  # Fatal error
-               chomp $EVAL_ERROR;
-               die "Lost connection to replica " . $cxn->name()
-                  . " while attempting to get its lag ($EVAL_ERROR)";
+      my $get_lag;
+      # The plugin is able to override the slavelag check so tools like 
+      # pt-heartbeat or other replicators (Tungsten...) can be used to 
+      # measure replication lag
+      if ( $plugin && $plugin->can('get_slave_lag') ) {
+         $get_lag = $plugin->get_slave_lag(oktorun => \$oktorun);
+      } else {
+         $get_lag = sub {
+            my ($cxn) = @_;
+            my $dbh = $cxn->dbh();
+            if ( !$dbh || !$dbh->ping() ) {
+               PTDEBUG && _d('Lost connection to slave', $cxn->name(),
+                  'while waiting for slave lag');
+               eval { $dbh = $cxn->connect() };  # connect or die trying
+               if ( $EVAL_ERROR ) {
+                  $oktorun = 0;  # Fatal error
+                  chomp $EVAL_ERROR;
+                  die "Lost connection to replica " . $cxn->name()
+                     . " while attempting to get its lag ($EVAL_ERROR)";
+               }
             }
-         }
-         return $ms->get_slave_lag($dbh);
-      };
-
-      # The plugin is able to override the slavelag check so tools like pt-heartbeat
-      # or other replicators (Tungsten...) can be used to measure replication lag
-      if ( $plugin && $plugin->can('override_slavelag_check') ) {
-         $get_lag = $plugin->override_slavelag_check(oktorun => \$oktorun);
+            return $ms->get_slave_lag($dbh);
+         };
       }
       
       $replica_lag = new ReplicaLagWaiter(
@@ -12492,7 +12494,7 @@ These hooks, in this order, are called if defined:
    init
    before_replicate_check
    after_replicate_check
-   override_slavelag_check
+   get_slave_lag
    before_checksum_table
    after_checksum_table
 
