@@ -10230,7 +10230,6 @@ sub main {
    TABLE:
    while ( $oktorun && $have_time->() && (my $tbl = $schema_iter->next()) ) {
       eval {
-
          # Results, stats, and info related to checksuming this table can
          # be saved here.  print_checksum_results() uses this info.
          $tbl->{checksum_results} = {};
