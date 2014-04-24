@@ -13,7 +13,7 @@ use Test::More;
 
 use PerconaTest;
 use Sandbox;
-require "$trunk/bin/pt-online-schema-change";
+require "$trunk/bin/pt-table-checksum";
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -22,31 +22,34 @@ $Data::Dumper::Quotekeys = 0;
 
 my $dp         = new DSNParser(opts=>$dsn_opts);
 my $sb         = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $master_dbh = $sb->get_dbh_for('master');
 
-if ( !$dbh ) {
+if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 
 my $output;
 my $master_dsn = $sb->dsn_for('master');
-my $sample     = "t/pt-online-schema-change/samples";
+my $sample     = "t/pt-table-checksum/samples";
 my $plugin     = "$trunk/$sample/plugins";
 my $exit;
 my $rows;
 
-# Loads pt_osc.t with cols id (pk), c (unique index),, d.
-$sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
+$master_dbh->prepare("drop database if exists percona")->execute();
+$master_dbh->prepare("create database percona")->execute();
+$master_dbh->prepare("create table if not exists percona.t ( a int primary key);")->execute();
+$master_dbh->prepare("insert into percona.t values (0),(1),(2),(3),(4),(5),(6),(7),(8),(9)")->execute();
+$master_dbh->prepare("analyze table percona.t;")->execute();
 
 # #############################################################################
 # all_hooks.pm
 # #############################################################################
 
 ($output) = full_output(
-   sub { pt_online_schema_change::main(
-      "$master_dsn,D=pt_osc,t=t",
+   sub { pt_table_checksum::main(
+      "$master_dsn",
+      '--databases', 'percona',
       '--plugin', "$plugin/all_hooks.pm",
-      qw(--statistics --execute),
    )},
    stderr => 1,
 );
@@ -58,27 +61,38 @@ is_deeply(
    [
       'PLUGIN get_slave_lag',
       'PLUGIN init',
-      'PLUGIN before_create_new_table',
-      'PLUGIN after_create_new_table',
-      'PLUGIN before_alter_new_table',
-      'PLUGIN after_alter_new_table',
-      'PLUGIN before_create_triggers',
-      'PLUGIN after_create_triggers',
-      'PLUGIN before_copy_rows',
-      'PLUGIN after_copy_rows',
-      'PLUGIN before_swap_tables',
-      'PLUGIN after_swap_tables',
-      'PLUGIN before_drop_old_table',
-      'PLUGIN after_drop_old_table',
-      'PLUGIN before_drop_triggers',
-      'PLUGIN before_exit'
+      'PLUGIN before_checksum_table',
+      'PLUGIN after_checksum_table',
    ],
    "Called all plugins on basic run"
-) or diag(Dumper(\@called));
+) or diag(Dumper($output));
+
+
+($output) = full_output(
+   sub { pt_table_checksum::main(
+      "$master_dsn",
+      '--replicate-check', '--replicate-check-only',
+      '--databases', 'percona',
+      '--plugin', "$plugin/all_hooks.pm",
+   )},
+   stderr => 1,
+);
+
+@called = $output =~ m/^PLUGIN \S+$/gm;
+
+is_deeply(
+   \@called,
+   [
+      'PLUGIN before_replicate_check',
+      'PLUGIN after_replicate_check',
+   ],
+   "Called all plugins on replicate-check run"
+) or diag(Dumper($output));
+
 
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($dbh);
+$sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
