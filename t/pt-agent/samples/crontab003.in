@@ -1,3 +1,0 @@
-17 3 * * 1 cmd
-* * * * 1 pt-agent --run-service old-service
-
