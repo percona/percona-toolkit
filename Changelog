@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+  * Removed pt-agent
+
 v2.2.7 released 2014-02-20
 
   * Fixed bug 1279502: --version-check behaves like spyware
