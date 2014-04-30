@@ -115,7 +115,6 @@ $output = `ps -eaf | grep pt-slave-restart | grep -v grep`;
 unlike($output, qr/pt-slave-restart --max/, 'slaveofslave: stopped pt-slave-restart successfully');
 diag(`rm -f /tmp/pt-slave-re*`);
 
-
 # #############################################################################
 # test skipping 2 events in a row.
 # #############################################################################
@@ -160,8 +159,8 @@ diag(`rm -f /tmp/pt-slave-re*`);
 # Done.
 # #############################################################################
 diag(`rm -f /tmp/pt-slave-re*`);
-# diag(`$trunk/sandbox/test-env stop >/dev/null`);
-# diag(`$trunk/sandbox/test-env start >/dev/null`);
+diag(`$trunk/sandbox/test-env stop >/dev/null`);
+diag(`$trunk/sandbox/test-env start >/dev/null`);
 
-#ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
