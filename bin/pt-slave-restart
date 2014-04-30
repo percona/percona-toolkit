@@ -5063,19 +5063,29 @@ sub watch_server {
          # get the highest id by sorting the array, removing the undef value
          my @gtid_exec_sorted = sort { $a <=> $b } 
                                 grep { defined($_) } @gtid_exec_ranges;
-         my $gtid_next        = $gtid_exec_sorted[-1] + $o->get('skip-count');
+         my $gtid_exec_last   = $gtid_exec_sorted[-1];
 
          PTDEBUG && _d("GTID: master_uuid:$gtid_masteruuid,\n"
                      . "GTID: executed_gtid_set:$gtid_exec,\n"
                      . "GTID: gtid max for master_uuid:" . $gtid_exec_sorted[-1] . "\n"
-                     . "GTID: next gtid:'$gtid_masteruuid:$gtid_next'");
+                     . "GTID: last executed gtid:'$gtid_masteruuid:$gtid_exec_last'");
 
          # Set the sessions next gtid, write an empty transaction
-         my $gtid_set_next = $dbh->prepare("SET GTID_NEXT='" 
-                           . $gtid_masteruuid . ":" . $gtid_next . "'");
-         $gtid_set_next->execute();
-         $dbh->begin_work();
-         $dbh->commit();
+         my $skipped=0;
+         until ( $skipped == $o->get('skip-count') ) {
+            $skipped++;
+
+            my $gtid_next=$gtid_exec_last + $skipped;
+
+            PTDEBUG && _d("GTID: Skipping " . $gtid_masteruuid . ":" . $gtid_next);
+            
+            my $gtid_set_next = $dbh->prepare("SET GTID_NEXT='" 
+                              . $gtid_masteruuid . ":" . $gtid_next . "'");
+            $gtid_set_next->execute();
+            $dbh->begin_work();
+            $dbh->commit();
+
+         }
 
          # Set the session back to the automatically generated GTID_NEXT.
          my $gtid_automatic = $dbh->prepare("SET GTID_NEXT='AUTOMATIC'");
