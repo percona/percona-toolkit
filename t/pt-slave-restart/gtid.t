@@ -76,9 +76,9 @@ my $output = `ps -eaf | grep pt-slave-restart | grep -v grep`;
 unlike($output, qr/pt-slave-restart --max/, 'slave: stopped pt-slave-restart successfully');
 diag(`rm -f /tmp/pt-slave-re*`);
 
-# # #############################################################################
-# # test the slave of the master
-# # #############################################################################
+# #############################################################################
+# test the slave of the master
+# #############################################################################
 $master_dbh->do('DROP DATABASE IF EXISTS test');
 $master_dbh->do('CREATE DATABASE test');
 $master_dbh->do('CREATE TABLE test.t (a INT)');
@@ -94,11 +94,15 @@ wait_until(
    }
 );
 
+# fetch the master uuid, which is the machine we need to skip an event from
+$r = $master_dbh->selectrow_hashref('select @@GLOBAL.server_uuid as uuid');
+my $uuid = $r->{uuid};
+
 $r = $slave2_dbh->selectrow_hashref('show slave status');
 like($r->{last_error}, qr/Table 'test.t' doesn't exist'/, 'slaveofslave: Replication broke');
 
 # Start an instance
-diag(`$trunk/bin/pt-slave-restart --max-sleep .25 -h 127.0.0.1 -P 12347 -u msandbox -p msandbox --daemonize --pid /tmp/pt-slave-restart.pid --log /tmp/pt-slave-restart.log`);
+diag(`$trunk/bin/pt-slave-restart --skip-gtid-uuid=$uuid --max-sleep .25 -h 127.0.0.1 -P 12347 -u msandbox -p msandbox --daemonize --pid /tmp/pt-slave-restart.pid --log /tmp/pt-slave-restart.log`);
 sleep 1;
 
 $r = $slave2_dbh->selectrow_hashref('show slave status');
@@ -110,6 +114,48 @@ sleep 1;
 $output = `ps -eaf | grep pt-slave-restart | grep -v grep`;
 unlike($output, qr/pt-slave-restart --max/, 'slaveofslave: stopped pt-slave-restart successfully');
 diag(`rm -f /tmp/pt-slave-re*`);
+
+
+# #############################################################################
+# test skipping 2 events in a row.
+# #############################################################################
+$master_dbh->do('DROP DATABASE IF EXISTS test');
+$master_dbh->do('CREATE DATABASE test');
+$master_dbh->do('CREATE TABLE test.t (a INT)');
+$sb->wait_for_slaves;
+
+# Bust replication
+$slave2_dbh->do('DROP TABLE test.t');
+$master_dbh->do('INSERT INTO test.t SELECT 1');
+$master_dbh->do('INSERT INTO test.t SELECT 1');
+wait_until(
+   sub {
+      my $row = $slave2_dbh->selectrow_hashref('show slave status');
+      return $row->{last_sql_errno};
+   }
+);
+
+# fetch the master uuid, which is the machine we need to skip an event from
+$r = $master_dbh->selectrow_hashref('select @@GLOBAL.server_uuid as uuid');
+$uuid = $r->{uuid};
+
+$r = $slave2_dbh->selectrow_hashref('show slave status');
+like($r->{last_error}, qr/Table 'test.t' doesn't exist'/, 'slaveofslaveskip2: Replication broke');
+
+# Start an instance
+diag(`$trunk/bin/pt-slave-restart --skip-count=2 --skip-gtid-uuid=$uuid --max-sleep .25 -h 127.0.0.1 -P 12347 -u msandbox -p msandbox --daemonize --pid /tmp/pt-slave-restart.pid --log /tmp/pt-slave-restart.log`);
+sleep 1;
+
+$r = $slave2_dbh->selectrow_hashref('show slave status');
+like($r->{last_errno}, qr/^0$/, 'slaveofslaveskip2: event is not skipped successfully');
+
+
+diag(`$trunk/bin/pt-slave-restart --stop -q`);
+sleep 1;
+$output = `ps -eaf | grep pt-slave-restart | grep -v grep`;
+unlike($output, qr/pt-slave-restart --max/, 'slaveofslaveskip2: stopped pt-slave-restart successfully');
+diag(`rm -f /tmp/pt-slave-re*`);
+
 # #############################################################################
 # Done.
 # #############################################################################
