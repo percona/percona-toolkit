@@ -16,7 +16,8 @@ use Sandbox;
 require "$trunk/bin/pt-slave-restart";
 
 if ( $sandbox_version lt '5.6' ) {
-   plan skip_all => 'MySQL Version < 5.6, GTID is not available, skipping tests';
+   plan skip_all => 'MySQL Version ' . $sandbox_version 
+                     . ' < 5.6, GTID is not available, skipping tests';
 }
 
 diag("Stopping/reconfiguring/restarting sandboxes 12345, 12346 and 12347");
@@ -40,6 +41,9 @@ elsif ( !$slave2_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave2';
 }
 
+# #############################################################################
+# basic test to see if restart works
+# #############################################################################
 $master_dbh->do('DROP DATABASE IF EXISTS test');
 $master_dbh->do('CREATE DATABASE test');
 $master_dbh->do('CREATE TABLE test.t (a INT)');
@@ -56,64 +60,62 @@ wait_until(
 );
 
 my $r = $slave_dbh->selectrow_hashref('show slave status');
-like($r->{last_error}, qr/Table 'test.t' doesn't exist'/, 'It is busted');
+like($r->{last_error}, qr/Table 'test.t' doesn't exist'/, 'slave: Replication broke');
 
 # Start an instance
 diag(`$trunk/bin/pt-slave-restart --max-sleep .25 -h 127.0.0.1 -P 12346 -u msandbox -p msandbox --daemonize --pid /tmp/pt-slave-restart.pid --log /tmp/pt-slave-restart.log`);
-my $output = `ps x | grep 'pt-slave-restart \-\-max\-sleep ' | grep -v grep | grep -v pt-slave-restart.t`;
-like($output, qr/pt-slave-restart --max/, 'It lives');
+sleep 1;
 
-unlike($output, qr/Table 'test.t' doesn't exist'/, 'It is not busted');
+$r = $slave_dbh->selectrow_hashref('show slave status');
+like($r->{last_errno}, qr/^0$/, 'slave: event is not skipped successfully');
 
-ok(-f '/tmp/pt-slave-restart.pid', 'PID file created');
-ok(-f '/tmp/pt-slave-restart.log', 'Log file created');
 
-my ($pid) = $output =~ /^\s*(\d+)\s+/;
-$output = `cat /tmp/pt-slave-restart.pid`;
-is($output, $pid, 'PID file has correct PID');
+diag(`$trunk/bin/pt-slave-restart --stop -q`);
+sleep 1;
+my $output = `ps -eaf | grep pt-slave-restart | grep -v grep`;
+unlike($output, qr/pt-slave-restart --max/, 'slave: stopped pt-slave-restart successfully');
+diag(`rm -f /tmp/pt-slave-re*`);
+
+# # #############################################################################
+# # test the slave of the master
+# # #############################################################################
+$master_dbh->do('DROP DATABASE IF EXISTS test');
+$master_dbh->do('CREATE DATABASE test');
+$master_dbh->do('CREATE TABLE test.t (a INT)');
+$sb->wait_for_slaves;
+
+# Bust replication
+$slave2_dbh->do('DROP TABLE test.t');
+$master_dbh->do('INSERT INTO test.t SELECT 1');
+wait_until(
+   sub {
+      my $row = $slave2_dbh->selectrow_hashref('show slave status');
+      return $row->{last_sql_errno};
+   }
+);
+
+$r = $slave2_dbh->selectrow_hashref('show slave status');
+like($r->{last_error}, qr/Table 'test.t' doesn't exist'/, 'slaveofslave: Replication broke');
+
+# Start an instance
+diag(`$trunk/bin/pt-slave-restart --max-sleep .25 -h 127.0.0.1 -P 12347 -u msandbox -p msandbox --daemonize --pid /tmp/pt-slave-restart.pid --log /tmp/pt-slave-restart.log`);
+sleep 1;
+
+$r = $slave2_dbh->selectrow_hashref('show slave status');
+like($r->{last_errno}, qr/^0$/, 'slaveofslave: event is not skipped successfully');
+
 
 diag(`$trunk/bin/pt-slave-restart --stop -q`);
 sleep 1;
 $output = `ps -eaf | grep pt-slave-restart | grep -v grep`;
-unlike($output, qr/pt-slave-restart --max/, 'It is dead');
-
+unlike($output, qr/pt-slave-restart --max/, 'slaveofslave: stopped pt-slave-restart successfully');
 diag(`rm -f /tmp/pt-slave-re*`);
-ok(! -f '/tmp/pt-slave-restart.pid', 'PID file removed');
-
-# #############################################################################
-# Issue 459: mk-slave-restart --error-text is broken
-# #############################################################################
-# Bust replication again.  At this point, the master has test.t but
-# the slave does not.
-$master_dbh->do('DROP TABLE IF EXISTS test.t');
-$master_dbh->do('CREATE TABLE test.t (a INT)');
-sleep 1;
-$slave_dbh->do('DROP TABLE test.t');
-$master_dbh->do('INSERT INTO test.t SELECT 1');
-$output = `/tmp/12346/use -e 'show slave status'`;
-like(
-   $output,
-   qr/Table 'test.t' doesn't exist'/,
-   'It is busted again'
-);
-
-# Start an instance
-$output = `$trunk/bin/pt-slave-restart --max-sleep .25 -h 127.0.0.1 -P 12346 -u msandbox -p msandbox --error-text "doesn't exist" --run-time 1s 2>&1`;
-unlike(
-   $output,
-   qr/Error does not match/,
-   '--error-text works (issue 459)'
-);
-
-
 # #############################################################################
 # Done.
 # #############################################################################
 diag(`rm -f /tmp/pt-slave-re*`);
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
-diag(`$trunk/sandbox/test-env stop >/dev/null`);
-diag(`$trunk/sandbox/test-env start >/dev/null`);
+# diag(`$trunk/sandbox/test-env stop >/dev/null`);
+# diag(`$trunk/sandbox/test-env start >/dev/null`);
 
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+#ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
