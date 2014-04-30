@@ -118,7 +118,7 @@ make_sandbox() {
       echo "enforce_gtid_consistency" >> /tmp/$port/my.sandbox.cnf
    fi
    if [ -n "$REPLICATION_THREADS" ]; then
-      echo "slave-parallel-workers=$REPLICATION_THREADS" >> /tmp/$port/my.sandbox.cnf
+      echo "slave_parallel_workers=$REPLICATION_THREADS" >> /tmp/$port/my.sandbox.cnf
    fi
 
    if [ -n "$EXTRA_DEFAULTS_FILE" ]; then

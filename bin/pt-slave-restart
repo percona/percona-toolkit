@@ -5003,6 +5003,18 @@ sub watch_server {
                                  ? 'enabled' 
                                  : 'disabled'));
 
+   # If GTID is enabled, slave_parallel_workers should be == 0. 
+   # it's currently not possible to know what GTID event the failed trx is
+   if ( $gtid_mode eq 'ON') {
+      my $threads = $dbh->selectrow_hashref('SELECT 
+                                 @@GLOBAL.slave_parallel_workers AS threads');
+      if ( $threads->{threads} > 0 ) {
+         die("Error: GTID is enabled, and slave_parallel_workers=" 
+            . $threads->{threads} 
+            . ". It is impossible to skip transactions properly.\n");
+      }
+   }
+
    # ########################################################################
    # Lookup tables of things to do when a problem is detected.
    # ########################################################################
