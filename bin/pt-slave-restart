@@ -4766,6 +4766,12 @@ use sigtrap qw(handler finish untrapped normal-signals);
 use Percona::Toolkit;
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
+use Data::Dumper;
+
+local $Data::Dumper::Indent    = 1;
+local $Data::Dumper::Sortkeys  = 1;
+local $Data::Dumper::Quotekeys = 0;
+
 $OUTPUT_AUTOFLUSH = 1;
 
 my $o;
@@ -4976,10 +4982,26 @@ sub watch_server {
       $start_sql .= " UNTIL RELAY_LOG_FILE = '$file', RELAY_LOG_POS = $pos";
    }
 
-   my $set_skip   = $dbh->prepare("SET GLOBAL SQL_SLAVE_SKIP_COUNTER = "
-                    . $o->get('skip-count'));
    my $start      = $dbh->prepare($start_sql);
    my $stop       = $dbh->prepare('STOP SLAVE');
+
+   # ########################################################################
+   # Detect if GTID is enabled. Skipping an event is done differently.
+   # ########################################################################
+   # When MySQL 5.6.5 or higher is used and gtid is enabled, skipping a
+   # transaction is not possible with SQL_SLAVE_SKIP_COUNTER
+   my $skip_event;
+   my $gtid_mode;
+
+   if ( VersionParser->new($dbh) >= '5.6.5' ) {
+      my $row    = $dbh->selectrow_arrayref('SELECT @@GLOBAL.gtid_mode');
+      $gtid_mode = $row->[0];
+   } else {
+      $gtid_mode="N/A";
+   }
+   PTDEBUG && _d('GTID is ' . ($gtid_mode eq 'ON' 
+                                 ? 'enabled' 
+                                 : 'disabled'));
 
    # ########################################################################
    # Lookup tables of things to do when a problem is detected.
@@ -4989,7 +5011,9 @@ sub watch_server {
       [ qr/Could not parse relay log event entry/ => 'refetch_relay_log' ],
       [ qr/Incorrect key file for table/          => 'repair_table'      ],
       # This must be the last one.  It's a catch-all rule: skip and restart.
-      [ qr/./                                     => 'skip'              ],
+      [ qr/./                                     => ($gtid_mode eq 'ON' 
+                                                      ? 'skip_gtid'
+                                                      : 'skip')          ],
    );
 
    # ########################################################################
@@ -5012,8 +5036,50 @@ sub watch_server {
       },
       skip => sub {
          my ( $stat, $dbh ) = @_;
-         PTDEBUG && _d('Found non-relay-log error');
+         my $set_skip = $dbh->prepare("SET GLOBAL SQL_SLAVE_SKIP_COUNTER = "   
+                          . $o->get('skip-count'));
          $set_skip->execute();
+      },
+      skip_gtid => sub {
+         my ( $stat, $dbh ) = @_;
+
+         # We need the highest transaction in the executed_gtid_set.
+         # and then we need to increase it by 1 (the one we want to skip)
+         # Notes:
+         #  - does not work with parallel replication
+         #  - it skips the next transaction from the master_uuid
+         #    (when a slaveB is replicating from slaveA, 
+         #     the master_uuid is it's own master, slaveA)
+         my $gtid_exec        = $stat->{executed_gtid_set};
+         my $gtid_masteruuid  = $stat->{master_uuid};
+
+            $gtid_exec        =~ /$gtid_masteruuid([0-9-:]*)/;
+         my $gtid_exec_ids    =  $1;
+            $gtid_exec_ids    =~ s/:[0-9]-/:/g;
+
+         my @gtid_exec_ranges = split(/:/, $gtid_exec_ids);
+         delete $gtid_exec_ranges[0]; # undef the first value,it's always empty
+
+         # get the highest id by sorting the array, removing the undef value
+         my @gtid_exec_sorted = sort { $a <=> $b } 
+                                grep { defined($_) } @gtid_exec_ranges;
+         my $gtid_next        = $gtid_exec_sorted[-1] + $o->get('skip-count');
+
+         PTDEBUG && _d("GTID: master_uuid:$gtid_masteruuid,\n"
+                     . "GTID: executed_gtid_set:$gtid_exec,\n"
+                     . "GTID: gtid max for master_uuid:" . $gtid_exec_sorted[-1] . "\n"
+                     . "GTID: next gtid:'$gtid_masteruuid:$gtid_next'");
+
+         # Set the sessions next gtid, write an empty transaction
+         my $gtid_set_next = $dbh->prepare("SET GTID_NEXT='" 
+                           . $gtid_masteruuid . ":" . $gtid_next . "'");
+         $gtid_set_next->execute();
+         $dbh->begin_work();
+         $dbh->commit();
+
+         # Set the session back to the automatically generated GTID_NEXT.
+         my $gtid_automatic = $dbh->prepare("SET GTID_NEXT='AUTOMATIC'");
+         $gtid_automatic->execute();
       },
       repair_table => sub {
          my ( $stat, $dbh ) = @_;
