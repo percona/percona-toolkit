@@ -5050,12 +5050,20 @@ sub watch_server {
          #  - it skips the next transaction from the master_uuid
          #    (when a slaveB is replicating from slaveA, 
          #     the master_uuid is it's own master, slaveA)
-         my $gtid_exec        = $stat->{executed_gtid_set};
-         my $gtid_masteruuid  = $stat->{master_uuid};
+         my $gtid_exec = $stat->{executed_gtid_set};
 
-            $gtid_exec        =~ /$gtid_masteruuid([0-9-:]*)/;
-         my $gtid_exec_ids    =  $1;
-            $gtid_exec_ids    =~ s/:[0-9]-/:/g;
+         # default behavior is to take the master_uuid from SHOW SLAVE STATUS
+         # or use --skip-gtid-uuid specified uuid.
+         my $gtid_uuid;
+         if ( $o->get('skip-gtid-uuid') eq 'master' ) {
+            $gtid_uuid = $stat->{master_uuid};
+         } else {
+            $gtid_uuid = $o->get('skip-gtid-uuid');
+         }
+
+            $gtid_exec     =~ /$gtid_uuid([0-9-:]*)/;
+         my $gtid_exec_ids =  $1;
+            $gtid_exec_ids =~ s/:[0-9]-/:/g;
 
          my @gtid_exec_ranges = split(/:/, $gtid_exec_ids);
          delete $gtid_exec_ranges[0]; # undef the first value,it's always empty
@@ -5065,10 +5073,10 @@ sub watch_server {
                                 grep { defined($_) } @gtid_exec_ranges;
          my $gtid_exec_last   = $gtid_exec_sorted[-1];
 
-         PTDEBUG && _d("GTID: master_uuid:$gtid_masteruuid,\n"
+         PTDEBUG && _d("GTID: master_uuid:$gtid_uuid,\n"
                      . "GTID: executed_gtid_set:$gtid_exec,\n"
                      . "GTID: gtid max for master_uuid:" . $gtid_exec_sorted[-1] . "\n"
-                     . "GTID: last executed gtid:'$gtid_masteruuid:$gtid_exec_last'");
+                     . "GTID: last executed gtid:'$gtid_uuid:$gtid_exec_last'");
 
          # Set the sessions next gtid, write an empty transaction
          my $skipped=0;
@@ -5077,10 +5085,10 @@ sub watch_server {
 
             my $gtid_next=$gtid_exec_last + $skipped;
 
-            PTDEBUG && _d("GTID: Skipping " . $gtid_masteruuid . ":" . $gtid_next);
+            PTDEBUG && _d("GTID: Skipping " . $gtid_uuid . ":" . $gtid_next);
             
             my $gtid_set_next = $dbh->prepare("SET GTID_NEXT='" 
-                              . $gtid_masteruuid . ":" . $gtid_next . "'");
+                              . $gtid_uuid . ":" . $gtid_next . "'");
             $gtid_set_next->execute();
             $dbh->begin_work();
             $dbh->commit();
@@ -5377,6 +5385,30 @@ sleep time, whichever is less.
 
 =back
 
+=head1 GLOBAL TRANSACTION IDS
+
+pt-slave-restart supports Global Transaction IDs, which has been introduced in
+MySQL in 5.6.5.
+
+It's important to keep in mind that:
+
+=over
+
+=item *
+
+pt-slave-restart will not skip transactions when multiple replication threads
+are being used (slave_parallel_workers>0). pt-slave-restart does not know what
+the GTID event is of the failed transaction of a specific slave thread.
+
+=item *
+
+The default behavior is to skip the next transaction from the slave's master.
+Writes can originate on different servers, each with their own unique UUID.
+
+See L<"--skip-gtid-uuid">.
+
+=back
+
 =head1 EXIT STATUS
 
 An exit status of 0 (sometimes also called a return value or return code)
@@ -5630,6 +5662,23 @@ The tool prints a warning and continues if a variable cannot be set.
 type: int; default: 1
 
 Number of statements to skip when restarting the slave.
+
+=item --skip-gtid-uuid
+
+type: string; default: master
+
+When using GTID, an empty transaction should be created in order to skip it.
+If writes are coming from different nodes in the replication tree above, it is
+not possible to know which event from which UUID to skip.
+
+By default, the UUID from the slave's master is being used to skip. 
+(C<SHOW GLOBAL STATUS Master_UUID> column).
+
+Example: Master -> Slave1 -> Slave2. When skipping events from 'Slave2', and 
+writes originated from 'Master', --skip-gtid-uuid should be specified with the
+'Master' it's UUID.
+
+See L<"GLOBAL TRANSACTION IDS">.
 
 =item --sleep
 
