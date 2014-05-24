@@ -2117,6 +2117,32 @@ is(
    "--optimize got its value (bug 1199589)"
 );
 
+
+# #############################################################################
+# Issue 1290911 : prompt_noecho should send prompt to STDERR so user can 
+# direct STDOUT to a file and still see the prompt
+# #############################################################################
+
+$o = new OptionParser();
+
+$output = output(  
+      sub { 
+         my $input = "thepassword";
+         local *STDIN;
+         open STDIN, '<', \$input;
+         $o->prompt_noecho('Test Prompt:'); },
+
+      stderr=>1,
+   );
+
+is (
+   $output,
+   "Test Prompt:\n",
+   'prompt_no_echo outputs prompt to STDERR'
+);
+
+
+
 # #############################################################################
 # Done.
 # #############################################################################
@@ -2133,3 +2159,6 @@ like(
 
 done_testing;
 exit;
+
+
+

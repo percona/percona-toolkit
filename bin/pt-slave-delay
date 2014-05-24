@@ -941,7 +941,7 @@ sub prompt_noecho {
    shift @_ if ref $_[0] eq __PACKAGE__;
    my ( $prompt ) = @_;
    local $OUTPUT_AUTOFLUSH = 1;
-   print $prompt
+   print STDERR $prompt
       or die "Cannot print: $OS_ERROR";
    my $response;
    eval {
