@@ -177,6 +177,8 @@ sub fingerprint {
    $query =~ s/".*?"/?/sg;               # quoted strings
    $query =~ s/'.*?'/?/sg;               # quoted strings
 
+   $query =~ s/\bfalse\b|\btrue\b/?/isg; # boolean values 
+
    # MD5 checksums which are always 32 hex chars 
    if ( $self->{match_md5_checksums} ) { 
       $query =~ s/([._-])[a-f0-9]{32}/$1?/g;
