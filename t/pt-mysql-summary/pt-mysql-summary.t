@@ -60,6 +60,13 @@ like(
    "--databases works"
 );
 
+like(
+   $out,
+   qr/# InnoDB #.*Version.*# MyISAM #/s,
+   "InnoDB section present"
+);
+
+
 # --read-samples
 for my $i (2..7) {
    ok(
