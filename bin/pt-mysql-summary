@@ -2328,9 +2328,9 @@ report_mysql_summary () {
 
    section "InnoDB"
    local have_innodb="$(get_var "have_innodb" "$dir/mysql-variables")"
-   if [ "${have_innodb}" = "YES" ]; then
+   local innodb_version="$(get_var "innodb_version" "$dir/mysql-variables")"
+   if [ "${have_innodb}" = "YES" ] || [ -n "${innodb_version}" ]; then
       section_innodb "$dir/mysql-variables" "$dir/mysql-status"
-
       if [ -s "$dir/innodb-status" ]; then
          format_innodb_status "$dir/innodb-status"
       fi
