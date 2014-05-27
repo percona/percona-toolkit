@@ -526,13 +526,12 @@ the tools and modules were originally written by Baron.
 
 =item Daniel Nichter
 
-Daniel began helping Baron with Maatkit and, later, Percona Toolkit in
-June, 2008.  He is the project's lead developer, employed by Percona.
+Daniel has been the project's lead developer since 2008.  He is  employed
+by Percona.
 
-=item Brian Fraser
+=item Frank Cizmich
 
-Brian started with Percona in December, 2011.  He works on Percona Toolkit
-full-time, employed by Percona.
+Frank is a full-time Percona Toolkit developer employed by Percona.
 
 =item Others
 
