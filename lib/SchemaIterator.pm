@@ -151,7 +151,7 @@ sub _make_filters {
                # See table_is_allowed().
                $db ||= '*';
                PTDEBUG && _d('Filter', $filter, 'value:', $db, $tbl);
-               $filters{$filter}->{$tbl} = $db;
+               $filters{$filter}->{$db}->{$tbl} = 1;
             }
             else { # database
                PTDEBUG && _d('Filter', $filter, 'value:', $obj);
@@ -457,9 +457,8 @@ sub table_is_allowed {
       |slave_worker_info
    )$/x;
 
-   if ( $filter->{'ignore-tables'}->{$tbl}
-        && ($filter->{'ignore-tables'}->{$tbl} eq '*'
-            || $filter->{'ignore-tables'}->{$tbl} eq $db) ) {
+   if ( $filter->{'ignore-tables'}->{'*'}->{$tbl} 
+         || $filter->{'ignore-tables'}->{$db}->{$tbl}) {
       PTDEBUG && _d('Table', $tbl, 'is in --ignore-tables list');
       return 0;
    }
@@ -471,7 +470,7 @@ sub table_is_allowed {
    }
 
    if ( $filter->{'tables'}
-        && !$filter->{'tables'}->{$tbl} ) { 
+        && (!$filter->{'tables'}->{'*'}->{$tbl} && !$filter->{'tables'}->{$db}->{$tbl}) ) { 
       PTDEBUG && _d('Table', $tbl, 'is not in --tables list, ignoring');
       return 0;
    }
