@@ -379,6 +379,7 @@ sub verify_test_data {
    # Diff the two sets of checksums: host to master (ref).
    my @diffs;
    foreach my $c ( @checksums ) {
+      next unless $c->{checksum};
       if ( $c->{checksum} ne $ref->{$c->{table}}->{checksum} ) {
          push @diffs, $c->{table};
       }

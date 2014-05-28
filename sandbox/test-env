@@ -315,13 +315,16 @@ case $opt in
          fi
 
          if [ $? -eq 0 -a "$MYSQL_VERSION" '>' "4.1" ]; then
-            echo -n "Loading sakila database... "
-            ./load-sakila-db 12345 "${2:-""}"
-            exit_status=$((exit_status | $?)) 
-            if [ $exit_status -ne 0 ]; then
-               echo "FAILED"
-            else
-               echo "OK"
+            SAKILA=${SAKILA:-1}
+            if [ $SAKILA -eq 1 ]; then
+               echo -n "Loading sakila database... "
+               ./load-sakila-db 12345 "${2:-""}"
+               exit_status=$((exit_status | $?)) 
+               if [ $exit_status -ne 0 ]; then
+                  echo "FAILED"
+               else
+                  echo "OK"
+               fi
             fi
 
             # Create percona_test db and checksum all the tables.
