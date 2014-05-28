@@ -2891,6 +2891,8 @@ sub fingerprint {
    $query =~ s/".*?"/?/sg;               # quoted strings
    $query =~ s/'.*?'/?/sg;               # quoted strings
 
+   $query =~ s/\bfalse\b|\btrue\b/?/isg; # boolean values 
+
    if ( $self->{match_md5_checksums} ) { 
       $query =~ s/([._-])[a-f0-9]{32}/$1?/g;
    }
@@ -5797,7 +5799,7 @@ sub top_events {
          <=> $classes->{$b}->{$args{attrib}}->{$args{orderby}}
       } grep {
          defined $classes->{$_}->{$args{attrib}}->{$args{orderby}}
-      } keys %$classes;
+      } keys %$classes;  # this should first be sorted for test consistency, but many tests already in place would fail 
    my @chosen;  # top events
    my @other;   # other events (< top)
    my ($total, $count) = (0, 0);
