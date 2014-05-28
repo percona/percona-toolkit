@@ -113,6 +113,14 @@ make_sandbox() {
       echo "query_cache_size=$QUERY_CACHE_SIZE" >> /tmp/$port/my.sandbox.cnf
    fi
 
+   if [ -n "$GTID" ]; then
+      echo "gtid_mode=on" >> /tmp/$port/my.sandbox.cnf
+      echo "enforce_gtid_consistency" >> /tmp/$port/my.sandbox.cnf
+   fi
+   if [ -n "$REPLICATION_THREADS" ]; then
+      echo "slave_parallel_workers=$REPLICATION_THREADS" >> /tmp/$port/my.sandbox.cnf
+   fi
+
    if [ -n "$EXTRA_DEFAULTS_FILE" ]; then
       cat "$EXTRA_DEFAULTS_FILE" >> /tmp/$port/my.sandbox.cnf
    fi
