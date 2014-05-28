@@ -4766,6 +4766,12 @@ use sigtrap qw(handler finish untrapped normal-signals);
 use Percona::Toolkit;
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
+use Data::Dumper;
+
+local $Data::Dumper::Indent    = 1;
+local $Data::Dumper::Sortkeys  = 1;
+local $Data::Dumper::Quotekeys = 0;
+
 $OUTPUT_AUTOFLUSH = 1;
 
 my $o;
@@ -4976,10 +4982,36 @@ sub watch_server {
       $start_sql .= " UNTIL RELAY_LOG_FILE = '$file', RELAY_LOG_POS = $pos";
    }
 
-   my $set_skip   = $dbh->prepare("SET GLOBAL SQL_SLAVE_SKIP_COUNTER = "
-                    . $o->get('skip-count'));
-   my $start      = $dbh->prepare($start_sql);
-   my $stop       = $dbh->prepare('STOP SLAVE');
+   my $start = $dbh->prepare($start_sql);
+   my $stop  = $dbh->prepare('STOP SLAVE');
+
+   # ########################################################################
+   # Detect if GTID is enabled. Skipping an event is done differently.
+   # ########################################################################
+   # When MySQL 5.6.5 or higher is used and gtid is enabled, skipping a
+   # transaction is not possible with SQL_SLAVE_SKIP_COUNTER
+   my $skip_event;
+   my $have_gtid = 0;
+   if ( VersionParser->new($dbh) >= '5.6.5' ) {
+      my $row = $dbh->selectrow_arrayref('SELECT @@GLOBAL.gtid_mode');
+      PTDEBUG && _d('@@GLOBAL.gtid_mode:', $row->[0]);
+      if ( $row && $row->[0] eq 'ON' ) {
+         $have_gtid = 1;
+      }
+   }
+   PTDEBUG && _d('Have GTID:', $have_gtid);
+
+   # If GTID is enabled, slave_parallel_workers should be == 0. 
+   # It's currently not possible to know what GTID event the failed trx is.
+   if ( $have_gtid ) {
+      my $threads = $dbh->selectrow_hashref(
+         'SELECT @@GLOBAL.slave_parallel_workers AS threads');
+      if ( $threads->{threads} > 0 ) {
+         die "Cannot skip transactions properly because GTID is enabled "
+            . "and slave_parallel_workers > 0.  See 'GLOBAL TRANSACTION IDS' "
+            . "in the tool's documentation.\n";
+      }
+   }
 
    # ########################################################################
    # Lookup tables of things to do when a problem is detected.
@@ -4989,7 +5021,7 @@ sub watch_server {
       [ qr/Could not parse relay log event entry/ => 'refetch_relay_log' ],
       [ qr/Incorrect key file for table/          => 'repair_table'      ],
       # This must be the last one.  It's a catch-all rule: skip and restart.
-      [ qr/./                                     => 'skip'              ],
+      [ qr/./ => ($have_gtid ? 'skip_gtid' : 'skip')                     ],
    );
 
    # ########################################################################
@@ -5012,8 +5044,60 @@ sub watch_server {
       },
       skip => sub {
          my ( $stat, $dbh ) = @_;
-         PTDEBUG && _d('Found non-relay-log error');
+         my $set_skip = $dbh->prepare("SET GLOBAL SQL_SLAVE_SKIP_COUNTER = "   
+                          . $o->get('skip-count'));
          $set_skip->execute();
+      },
+      skip_gtid => sub {
+         my ( $stat, $dbh ) = @_;
+         
+         # Get master_uuid from SHOW SLAVE STATUS if a UUID is not specified
+         # with --master-uuid.
+         my $gtid_uuid = $o->get('master-uuid');
+         if ( !$gtid_uuid ) {
+            $gtid_uuid = $stat->{master_uuid};
+            die "No master_uuid" unless $gtid_uuid;  # shouldn't happen
+         }
+
+         # We need the highest transaction in the executed_gtid_set.
+         # and then we need to increase it by 1 (the one we want to skip)
+         # Notes:
+         #  - does not work with parallel replication
+         #  - it skips the next transaction from the master_uuid
+         #    (when a slaveB is replicating from slaveA, 
+         #     the master_uuid is it's own master, slaveA)
+         my ($gtid_exec_ids) = ($stat->{executed_gtid_set} || '') =~ m/$gtid_uuid([0-9-:]*)/;
+         $gtid_exec_ids =~ s/:[0-9]-/:/g;
+         die "No executed GTIDs" unless $gtid_exec_ids;
+
+         my @gtid_exec_ranges = split(/:/, $gtid_exec_ids);
+         delete $gtid_exec_ranges[0]; # undef the first value, it's always empty
+
+         # Get the highest id by sorting the array, removing the undef value.
+         my @gtid_exec_sorted = sort { $a <=> $b } 
+                                grep { defined($_) } @gtid_exec_ranges;
+         my $gtid_exec_last   = $gtid_exec_sorted[-1];
+
+         PTDEBUG && _d("\n",
+            "GTID: master_uuid:",         $gtid_uuid, "\n",
+            "GTID: executed_gtid_set:",   $gtid_exec_ids, "\n",
+            "GTID: max for master_uuid:", $gtid_exec_sorted[-1], "\n",
+            "GTID: last executed gtid:",  $gtid_uuid, ":", $gtid_exec_last);
+
+         # Set the sessions next gtid, write an empty transaction
+         my $skipped = 0;
+         while ( $skipped++ < $o->get('skip-count') ) {
+            my $gtid_next = $gtid_exec_last + $skipped;
+            my $sql       = "SET GTID_NEXT='$gtid_uuid:$gtid_next'";
+            PTDEBUG && _d($sql);
+            my $sth = $dbh->prepare($sql);
+            $sth->execute();
+            $dbh->begin_work();
+            $dbh->commit();
+         }
+
+         # Set the session back to the automatically generated GTID_NEXT.
+         $dbh->do("SET GTID_NEXT='AUTOMATIC'");
       },
       repair_table => sub {
          my ( $stat, $dbh ) = @_;
@@ -5301,6 +5385,28 @@ sleep time, whichever is less.
 
 =back
 
+=head1 GLOBAL TRANSACTION IDS
+
+As of Percona Toolkit 2.2.8, pt-slave-restart supports Global Transaction IDs
+introduced in MySQL 5.6.5.  It's important to keep in mind that:
+
+=over
+
+=item *
+
+pt-slave-restart will not skip transactions when multiple replication threads
+are being used (slave_parallel_workers > 0).  pt-slave-restart does not know
+what the GTID event is of the failed transaction of a specific slave thread.
+
+=item *
+
+The default behavior is to skip the next transaction from the slave's master.
+Writes can originate on different servers, each with their own UUID.
+
+See L<"--master-uuid">.
+
+=back
+
 =head1 EXIT STATUS
 
 An exit status of 0 (sometimes also called a return value or return code)
@@ -5554,6 +5660,26 @@ The tool prints a warning and continues if a variable cannot be set.
 type: int; default: 1
 
 Number of statements to skip when restarting the slave.
+
+=item --master-uuid
+
+type: string
+
+When using GTID, an empty transaction should be created in order to skip it.
+If writes are coming from different nodes in the replication tree above, it is
+not possible to know which event from which UUID to skip.
+
+By default, transactions from the slave's master (C<'Master_UUID'> from
+C<SHOW SLAVE STATUS>) are skipped.
+
+For example, with
+
+  master1 -> slave1 -> slave2
+
+When skipping events on slave2 that were written to master1, you must specify
+the UUID of master1, else the tool will use the UUID of slave1 by default.
+
+See L<"GLOBAL TRANSACTION IDS">.
 
 =item --sleep
 
