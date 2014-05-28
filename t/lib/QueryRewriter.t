@@ -416,6 +416,16 @@ is(
    "Fingerprint /* -- comment */ SELECT (bug 1174956)"
 );
 
+
+# issue 965553
+
+is(
+   $qr->fingerprint('SELECT * FROM tbl WHERE id=1 AND flag=true AND trueflag=FALSE'),
+   'select * from tbl where id=? and flag=? and trueflag=?',
+   'boolean values abstracted correctly',
+);
+
+
 # #############################################################################
 # convert_to_select()
 # #############################################################################
@@ -1453,6 +1463,8 @@ is(
    "CREATE TABLE foo",
    "distill CREATE TABLE IF NOT EXISTS foo",
 );
+
+
 
 # #############################################################################
 # Done.
