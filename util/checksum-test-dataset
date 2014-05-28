@@ -61,6 +61,7 @@ my $sql = "CHECKSUM TABLES "
         . join(", ", map { "sakila.$_" } @tables_in_sakila);
 my @checksums = @{$dbh->selectall_arrayref($sql, {Slice => {} })};
 foreach my $c ( @checksums ) {
+   next unless $c->{Checksum};
    $dbh->do("INSERT INTO percona_test.checksums(db_tbl, checksum)
    VALUES('$c->{Table}', $c->{Checksum})");
 }
