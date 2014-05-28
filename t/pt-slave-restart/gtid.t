@@ -16,69 +16,119 @@ use Sandbox;
 require "$trunk/bin/pt-slave-restart";
 
 if ( $sandbox_version lt '5.6' ) {
-   plan skip_all => 'MySQL Version ' . $sandbox_version 
-                     . ' < 5.6, GTID is not available, skipping tests';
+   plan skip_all => "Requires MySQL 5.6";
 }
 
-diag("Stopping/reconfiguring/restarting sandboxes 12345, 12346 and 12347");
-
-diag(`$trunk/sandbox/test-env stop >/dev/null`);
-diag(`GTID=1 $trunk/sandbox/test-env start >/dev/null`);
+diag(`SAKILA=0 GTID=1 $trunk/sandbox/test-env restart`);
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh  = $sb->get_dbh_for('master');
-my $slave_dbh   = $sb->get_dbh_for('slave1');
-my $slave2_dbh  = $sb->get_dbh_for('slave2');
+my $master_dbh = $sb->get_dbh_for('master');
+my $slave1_dbh = $sb->get_dbh_for('slave1');
+my $slave2_dbh = $sb->get_dbh_for('slave2');
 
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-elsif ( !$slave_dbh ) {
+elsif ( !$slave1_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave1';
 }
 elsif ( !$slave2_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave2';
 }
 
+my $slave1_dsn = $sb->dsn_for("slave1");
+my $slave2_dsn = $sb->dsn_for("slave2");
+
+my $pid_file = "/tmp/pt-slave-restart-test-$PID.pid";
+my $log_file = "/tmp/pt-slave-restart-test-$PID.log";
+my $cmd      = "$trunk/bin/pt-slave-restart --daemonize --run-time 5 --max-sleep .25 --pid $pid_file --log $log_file";
+
+sub start {
+   my ( $extra ) = @_;
+   stop() or return;
+   system "$cmd $extra";
+   PerconaTest::wait_for_files($pid_file);
+}
+
+sub stop() {
+   return 1 if !is_running();
+   diag(`$trunk/bin/pt-slave-restart --stop -q >/dev/null 2>&1 &`);
+   wait_until(sub { !-f $pid_file }, 0.3, 2);
+   diag(`rm -f /tmp/pt-slave-restart-sentinel`);
+   return is_running() ? 0 : 1;
+}
+
+sub is_running {
+   chomp(my $running = `ps -eaf | grep -v grep | grep '$cmd'`);
+   if (!-f $pid_file && !$running) {
+      return 0;
+   } elsif (-f $pid_file && !$running) {
+      diag(`rm -f $pid_file`);
+      return 0;
+   }
+   return 1;
+}
+
+sub wait_repl_broke {
+   my $dbh = shift;
+   return wait_until(
+      sub {
+         my $row = $dbh->selectrow_hashref('show slave status');
+         return $row->{last_sql_errno};
+      }
+   );
+}
+
+sub wait_repl_ok {
+   my $dbh = shift;
+   wait_until(
+      sub {
+         my $row = $dbh->selectrow_hashref('show slave status');
+         return $row->{last_sql_errno} == 0;
+      },
+      0.30,
+      5,
+   );
+}
+
 # #############################################################################
-# basic test to see if restart works
+# Basic test to see if restart works with GTID.
 # #############################################################################
+
 $master_dbh->do('DROP DATABASE IF EXISTS test');
 $master_dbh->do('CREATE DATABASE test');
 $master_dbh->do('CREATE TABLE test.t (a INT)');
 $sb->wait_for_slaves;
 
 # Bust replication
-$slave_dbh->do('DROP TABLE test.t');
+$slave1_dbh->do('DROP TABLE test.t');
 $master_dbh->do('INSERT INTO test.t SELECT 1');
-wait_until(
-   sub {
-      my $row = $slave_dbh->selectrow_hashref('show slave status');
-      return $row->{last_sql_errno};
-   }
-);
+wait_repl_broke($slave1_dbh) or die "Failed to break replication";
 
-my $r = $slave_dbh->selectrow_hashref('show slave status');
+my $r = $slave1_dbh->selectrow_hashref('show slave status');
 like($r->{last_error}, qr/Table 'test.t' doesn't exist'/, 'slave: Replication broke');
 
-# Start an instance
-diag(`$trunk/bin/pt-slave-restart --max-sleep .25 -h 127.0.0.1 -P 12346 -u msandbox -p msandbox --daemonize --pid /tmp/pt-slave-restart.pid --log /tmp/pt-slave-restart.log`);
-sleep 1;
+# Start pt-slave-restart and wait up to 5s for it to fix replication
+# (it should take < 1s but tests can be really slow sometimes).
+start("$slave1_dsn") or die "Failed to start pt-slave-restart";
+wait_repl_ok($slave1_dbh);
 
-$r = $slave_dbh->selectrow_hashref('show slave status');
-like($r->{last_errno}, qr/^0$/, 'slave: event is not skipped successfully');
+# Check if replication is fixed.
+$r = $slave1_dbh->selectrow_hashref('show slave status');
+like(
+   $r->{last_errno},
+   qr/^0$/,
+   'Event is skipped',
+) or BAIL_OUT("Replication is broken");
 
-
-diag(`$trunk/bin/pt-slave-restart --stop -q`);
-sleep 1;
-my $output = `ps -eaf | grep pt-slave-restart | grep -v grep`;
-unlike($output, qr/pt-slave-restart --max/, 'slave: stopped pt-slave-restart successfully');
-diag(`rm -f /tmp/pt-slave-re*`);
+# Stop pt-slave-restart.
+stop() or die "Failed to stop pt-slave-restart";
 
 # #############################################################################
-# test the slave of the master
+# Test the slave of the master.
 # #############################################################################
+
 $master_dbh->do('DROP DATABASE IF EXISTS test');
 $master_dbh->do('CREATE DATABASE test');
 $master_dbh->do('CREATE TABLE test.t (a INT)');
@@ -87,12 +137,7 @@ $sb->wait_for_slaves;
 # Bust replication
 $slave2_dbh->do('DROP TABLE test.t');
 $master_dbh->do('INSERT INTO test.t SELECT 1');
-wait_until(
-   sub {
-      my $row = $slave2_dbh->selectrow_hashref('show slave status');
-      return $row->{last_sql_errno};
-   }
-);
+wait_repl_broke($slave2_dbh) or die "Failed to break replication";
 
 # fetch the master uuid, which is the machine we need to skip an event from
 $r = $master_dbh->selectrow_hashref('select @@GLOBAL.server_uuid as uuid');
@@ -102,22 +147,22 @@ $r = $slave2_dbh->selectrow_hashref('show slave status');
 like($r->{last_error}, qr/Table 'test.t' doesn't exist'/, 'slaveofslave: Replication broke');
 
 # Start an instance
-diag(`$trunk/bin/pt-slave-restart --skip-gtid-uuid=$uuid --max-sleep .25 -h 127.0.0.1 -P 12347 -u msandbox -p msandbox --daemonize --pid /tmp/pt-slave-restart.pid --log /tmp/pt-slave-restart.log`);
-sleep 1;
+start("--master-uuid=$uuid $slave2_dsn") or die;
+wait_repl_ok($slave2_dbh);
 
 $r = $slave2_dbh->selectrow_hashref('show slave status');
-like($r->{last_errno}, qr/^0$/, 'slaveofslave: event is not skipped successfully');
+like(
+   $r->{last_errno},
+   qr/^0$/,
+   'Skips event from master on slave2'
+) or BAIL_OUT("Replication is broken");
 
-
-diag(`$trunk/bin/pt-slave-restart --stop -q`);
-sleep 1;
-$output = `ps -eaf | grep pt-slave-restart | grep -v grep`;
-unlike($output, qr/pt-slave-restart --max/, 'slaveofslave: stopped pt-slave-restart successfully');
-diag(`rm -f /tmp/pt-slave-re*`);
+stop() or die "Failed to stop pt-slave-restart";
 
 # #############################################################################
-# test skipping 2 events in a row.
+# Test skipping 2 events in a row.
 # #############################################################################
+
 $master_dbh->do('DROP DATABASE IF EXISTS test');
 $master_dbh->do('CREATE DATABASE test');
 $master_dbh->do('CREATE TABLE test.t (a INT)');
@@ -127,12 +172,7 @@ $sb->wait_for_slaves;
 $slave2_dbh->do('DROP TABLE test.t');
 $master_dbh->do('INSERT INTO test.t SELECT 1');
 $master_dbh->do('INSERT INTO test.t SELECT 1');
-wait_until(
-   sub {
-      my $row = $slave2_dbh->selectrow_hashref('show slave status');
-      return $row->{last_sql_errno};
-   }
-);
+wait_repl_broke($slave2_dbh) or die "Failed to break replication";
 
 # fetch the master uuid, which is the machine we need to skip an event from
 $r = $master_dbh->selectrow_hashref('select @@GLOBAL.server_uuid as uuid');
@@ -142,25 +182,22 @@ $r = $slave2_dbh->selectrow_hashref('show slave status');
 like($r->{last_error}, qr/Table 'test.t' doesn't exist'/, 'slaveofslaveskip2: Replication broke');
 
 # Start an instance
-diag(`$trunk/bin/pt-slave-restart --skip-count=2 --skip-gtid-uuid=$uuid --max-sleep .25 -h 127.0.0.1 -P 12347 -u msandbox -p msandbox --daemonize --pid /tmp/pt-slave-restart.pid --log /tmp/pt-slave-restart.log`);
-sleep 1;
+start("--skip-count=2 --master-uuid=$uuid $slave2_dsn") or die;
+wait_repl_ok($slave2_dbh);
 
 $r = $slave2_dbh->selectrow_hashref('show slave status');
-like($r->{last_errno}, qr/^0$/, 'slaveofslaveskip2: event is not skipped successfully');
+like(
+   $r->{last_errno},
+   qr/^0$/,
+   'Skips multiple events'
+) or BAIL_OUT("Replication is broken");
 
-
-diag(`$trunk/bin/pt-slave-restart --stop -q`);
-sleep 1;
-$output = `ps -eaf | grep pt-slave-restart | grep -v grep`;
-unlike($output, qr/pt-slave-restart --max/, 'slaveofslaveskip2: stopped pt-slave-restart successfully');
-diag(`rm -f /tmp/pt-slave-re*`);
+stop() or die "Failed to stop pt-slave-restart";
 
 # #############################################################################
 # Done.
 # #############################################################################
-diag(`rm -f /tmp/pt-slave-re*`);
-diag(`$trunk/sandbox/test-env stop >/dev/null`);
-diag(`$trunk/sandbox/test-env start >/dev/null`);
-
+diag(`rm -f $pid_file $log_file >/dev/null`);
+diag(`$trunk/sandbox/test-env restart`);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
