@@ -3771,7 +3771,7 @@ sub connect {
 
    my $dbh = $self->{dbh};
    if ( !$dbh || !$dbh->ping() ) {
-      if ( $self->{ask_pass} && !$self->{asked_for_pass} ) {
+      if ( $self->{ask_pass} && !$self->{asked_for_pass} && !defined $dsn->{p}) {
          $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
          $self->{asked_for_pass} = 1;
       }
