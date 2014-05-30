@@ -5214,7 +5214,7 @@ MAGIC_dest_table
 
  CREATE TABLE deadlocks (
    server char(20) NOT NULL,
-   ts timestamp NOT NULL,
+   ts timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
    thread int unsigned NOT NULL,
    txn_id bigint unsigned NOT NULL,
    txn_time smallint unsigned NOT NULL,
