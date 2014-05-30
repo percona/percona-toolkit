@@ -1,6 +1,14 @@
 Changelog for Percona Toolkit
 
   * Removed pt-agent
+  * Added pt-slave-restart GTID support
+  * Added pt-table-checksum --plugin
+  * Fixed bug 1304062: --ignore-tables does not work correctly
+  * Fixed bug 1295667: pt-deadlock-logger logs incorrect ts
+  * Fixed bug 1254233: pt-mysql-summary blank InnoDB section for 5.6
+  * Fixed bug 1286250: pt-online-schema-change requests password twice
+  * Fixed bug  965553: pt-query-digest dosn't fingerprint true/false literals correctly
+  * Fixed bug  290911: pt-show-grant --ask-pass prints "Enter password" to STDOUT
 
 v2.2.7 released 2014-02-20
 
