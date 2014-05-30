@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v2.2.8 released 2014-05-30
+
   * Removed pt-agent
   * Added pt-slave-restart GTID support
   * Added pt-table-checksum --plugin
