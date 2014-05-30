@@ -57,7 +57,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.7';
+our $VERSION = '2.2.8';
 
 use strict;
 use warnings FATAL => 'all';
@@ -9222,6 +9222,30 @@ sub main {
    my $slaves = [];    # all slaves (that we can find)
    my $slave_lag_cxns; # slaves whose lag we'll check
 
+   # ########################################################################
+   # Create --plugin.
+   # ########################################################################   
+   my $plugin;
+   if ( my $file = $o->get('plugin') ) {
+      die "--plugin file $file does not exist\n" unless -f $file;
+      eval {
+         require $file;
+      };
+      die "Error loading --plugin $file: $EVAL_ERROR" if $EVAL_ERROR;
+      eval {
+         $plugin = pt_table_checksum_plugin->new(
+            master_cxn  => $master_cxn,
+            explain     => $o->get('explain'),
+            quiet       => $o->get('quiet'),
+            resume      => $o->get('resume'),
+            Quoter      => $q,
+            TableParser => $tp,
+         );
+      };
+      die "Error creating --plugin: $EVAL_ERROR" if $EVAL_ERROR;
+      print "Created plugin from $file.\n";
+   }
+
    my $replica_lag;    # ReplicaLagWaiter object
    my $replica_lag_pr; # Progress for ReplicaLagWaiter
    my $sys_load;       # MySQLStatusWaiter object
@@ -9446,6 +9470,11 @@ sub main {
       # #####################################################################
       if ( $o->get('replicate-check') && $o->get('replicate-check-only') ) {
          PTDEBUG && _d('Will --replicate-check and exit');
+      
+         # --plugin hook
+         if ( $plugin && $plugin->can('before_replicate_check') ) {
+            $plugin->before_replicate_check();
+         }
 
          foreach my $slave ( @$slaves ) {
             my $diffs = $rc->find_replication_differences(
@@ -9464,6 +9493,11 @@ sub main {
                   );
                }
             }
+         }
+
+         # --plugin hook
+         if ( $plugin && $plugin->can('after_replicate_check') ) {
+            $plugin->after_replicate_check();
          }
 
          PTDEBUG && _d('Exit status', $exit_status, 'oktorun', $oktorun);
@@ -9544,23 +9578,31 @@ sub main {
          return;
       };
 
-      my $get_lag = sub {
-         my ($cxn) = @_;
-         my $dbh = $cxn->dbh();
-         if ( !$dbh || !$dbh->ping() ) {
-            PTDEBUG && _d('Lost connection to slave', $cxn->name(),
-               'while waiting for slave lag');
-            eval { $dbh = $cxn->connect() };  # connect or die trying
-            if ( $EVAL_ERROR ) {
-               $oktorun = 0;  # Fatal error
-               chomp $EVAL_ERROR;
-               die "Lost connection to replica " . $cxn->name()
-                  . " while attempting to get its lag ($EVAL_ERROR)";
+      my $get_lag;
+      # The plugin is able to override the slavelag check so tools like 
+      # pt-heartbeat or other replicators (Tungsten...) can be used to 
+      # measure replication lag
+      if ( $plugin && $plugin->can('get_slave_lag') ) {
+         $get_lag = $plugin->get_slave_lag(oktorun => \$oktorun);
+      } else {
+         $get_lag = sub {
+            my ($cxn) = @_;
+            my $dbh = $cxn->dbh();
+            if ( !$dbh || !$dbh->ping() ) {
+               PTDEBUG && _d('Lost connection to slave', $cxn->name(),
+                  'while waiting for slave lag');
+               eval { $dbh = $cxn->connect() };  # connect or die trying
+               if ( $EVAL_ERROR ) {
+                  $oktorun = 0;  # Fatal error
+                  chomp $EVAL_ERROR;
+                  die "Lost connection to replica " . $cxn->name()
+                     . " while attempting to get its lag ($EVAL_ERROR)";
+               }
             }
-         }
-         return $ms->get_slave_lag($dbh);
-      };
-
+            return $ms->get_slave_lag($dbh);
+         };
+      }
+      
       $replica_lag = new ReplicaLagWaiter(
          slaves   => $slave_lag_cxns,
          max_lag  => $o->get('max-lag'),
@@ -10168,6 +10210,19 @@ sub main {
    };
 
    # ########################################################################
+   # Init the --plugin.
+   # ########################################################################   
+
+   # --plugin hook
+   if ( $plugin && $plugin->can('init') ) {
+      $plugin->init(
+         slaves         => $slaves,
+         slave_lag_cxns => $slave_lag_cxns,
+         repl_table     => $repl_table,
+      );
+   }
+
+   # ########################################################################
    # Checksum each table.
    # ########################################################################
 
@@ -10271,6 +10326,12 @@ sub main {
                              @$all_cols;
             $tbl->{checksum_cols} = \@cols;
 
+            # --plugin hook
+            if ( $plugin && $plugin->can('before_checksum_table') ) {
+               $plugin->before_checksum_table(
+                  tbl   => $tbl);
+            }
+
             # Finally, checksum the table.
             # The "1 while" loop is necessary because we're executing REPLACE
             # statements which don't return rows and NibbleIterator only
@@ -10279,6 +10340,11 @@ sub main {
             # from the done callback, uses this start time.
             $tbl->{checksum_results}->{start_time} = time;
             1 while $nibble_iter->next();
+            
+            # --plugin hook
+            if ( $plugin && $plugin->can('after_checksum_table') ) {
+               $plugin->after_checksum_table();
+            }
          }
       };
       if ( $EVAL_ERROR ) {
@@ -12053,6 +12119,18 @@ if the PID file exists and the PID it contains is no longer running, the
 tool will overwrite the PID file with the current PID.  The PID file is
 removed automatically when the tool exits.
 
+=item --plugin
+
+type: string
+
+Perl module file that defines a C<pt_table_checksum_plugin> class.
+A plugin allows you to write a Perl module that can hook into many parts
+of pt-table-checksum.  This requires a good knowledge of Perl and
+Percona Toolkit conventions, which are beyond this scope of this
+documentation.  Please contact Percona if you have questions or need help.
+
+See L<"PLUGIN"> for more information.
+
 =item --port
 
 short form: -P; type: int; group: Connection
@@ -12400,6 +12478,39 @@ of the tool with L<"--replicate-check-only"> to find and print checksum
 differences.
 
 =back
+
+=head1 PLUGIN
+
+The file specified by L<"--plugin"> must define a class (i.e. a package)
+called C<pt_table_checksum_plugin> with a C<new()> subroutine.
+The tool will create an instance of this class and call any hooks that
+it defines.  No hooks are required, but a plugin isn't very useful without
+them.
+
+These hooks, in this order, are called if defined:
+
+   init
+   before_replicate_check
+   after_replicate_check
+   get_slave_lag
+   before_checksum_table
+   after_checksum_table
+
+Each hook is passed different arguments.  To see which arguments are passed
+to a hook, search for the hook's name in the tool's source code, like:
+
+   # --plugin hook
+   if ( $plugin && $plugin->can('init') ) {
+      $plugin->init(
+         slaves         => $slaves,
+         slave_lag_cxns => $slave_lag_cxns,
+         repl_table     => $repl_table,
+      );
+   }
+
+The comment C<# --plugin hook> precedes every hook call.
+
+Please contact Percona if you have questions or need help.
 
 =head1 DSN OPTIONS
 

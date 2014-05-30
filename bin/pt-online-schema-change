@@ -54,7 +54,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.7';
+our $VERSION = '2.2.8';
 
 use strict;
 use warnings FATAL => 'all';
@@ -3771,7 +3771,7 @@ sub connect {
 
    my $dbh = $self->{dbh};
    if ( !$dbh || !$dbh->ping() ) {
-      if ( $self->{ask_pass} && !$self->{asked_for_pass} ) {
+      if ( $self->{ask_pass} && !$self->{asked_for_pass} && !defined $dsn->{p}) {
          $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
          $self->{asked_for_pass} = 1;
       }
@@ -8105,21 +8105,29 @@ sub main {
          return;
       };
 
-      my $get_lag = sub {
-         my ($cxn) = @_;
-         my $dbh = $cxn->dbh();
-         if ( !$dbh || !$dbh->ping() ) {
-            eval { $dbh = $cxn->connect() };  # connect or die trying
-            if ( $EVAL_ERROR ) {
-               $oktorun = 0;  # flag for cleanup tasks
-               chomp $EVAL_ERROR;
-               die "Lost connection to replica " . $cxn->name()
-                  . " while attempting to get its lag ($EVAL_ERROR)\n";
+      my $get_lag;
+      # The plugin is able to override the slavelag check so tools like 
+      # pt-heartbeat or other replicators (Tungsten...) can be used to 
+      # measure replication lag
+      if ( $plugin && $plugin->can('get_slave_lag') ) {
+         $get_lag = $plugin->get_slave_lag(oktorun => \$oktorun);
+      } else {      
+         $get_lag = sub {
+            my ($cxn) = @_;
+            my $dbh = $cxn->dbh();
+            if ( !$dbh || !$dbh->ping() ) {
+               eval { $dbh = $cxn->connect() };  # connect or die trying
+               if ( $EVAL_ERROR ) {
+                  $oktorun = 0;  # flag for cleanup tasks
+                  chomp $EVAL_ERROR;
+                  die "Lost connection to replica " . $cxn->name()
+                     . " while attempting to get its lag ($EVAL_ERROR)\n";
+               }
             }
-         }
-         return $ms->get_slave_lag($dbh);
-      };
-
+            return $ms->get_slave_lag($dbh);
+         };
+      }
+      
       $replica_lag = new ReplicaLagWaiter(
          slaves   => $slave_lag_cxns,
          max_lag  => $o->get('max-lag'),
@@ -11345,6 +11353,7 @@ These hooks, in this order, are called if defined:
    after_drop_old_table
    before_drop_triggers
    before_exit
+   get_slave_lag
 
 Each hook is passed different arguments.  To see which arguments are passed
 to a hook, search for the hook's name in the tool's source code, like:

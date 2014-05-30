@@ -96,4 +96,11 @@ sub before_exit {
    print "PLUGIN before_exit\n";
 }
 
+sub get_slave_lag {
+   my ($self, %args) = @_;
+   print "PLUGIN get_slave_lag\n";
+
+   return sub { return 0; };
+}
+
 1;
