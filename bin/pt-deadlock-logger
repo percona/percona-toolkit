@@ -4440,12 +4440,27 @@ sub main {
 
    my $dst;
    if ( my $dst_dsn = $o->get('dest') ) {
+
+      # set time_zone = SYSTEM , addresses https://bugs.launchpad.net/percona-toolkit/+bug/1295667
+      my $set_tz  = sub {
+         my ($dbh) = @_;
+         my $sql = "SET time_zone=SYSTEM /* pt-deadlock-logger */";
+         eval {
+            PTDEBUG && _d($dbh, $sql);
+            $dbh->do($sql);
+         };
+         if ( $EVAL_ERROR ) {
+            die "Failed to $sql: $EVAL_ERROR\n";   
+         }
+      };
+      
       $dst = Cxn->new(
          dsn          => $dst_dsn,
          prev_dsn     => ($src ? $src->dsn : undef),
          parent       => $o->get('daemonize'),
          DSNParser    => $dp,
          OptionParser => $o,
+         set          => $set_tz,
       );
    }
 
@@ -5199,7 +5214,7 @@ MAGIC_dest_table
 
  CREATE TABLE deadlocks (
    server char(20) NOT NULL,
-   ts datetime NOT NULL,
+   ts timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
    thread int unsigned NOT NULL,
    txn_id bigint unsigned NOT NULL,
    txn_time smallint unsigned NOT NULL,
