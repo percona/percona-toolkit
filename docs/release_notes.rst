@@ -1,6 +1,34 @@
 Release Notes
 *************
 
+v2.2.8 released 2014-06-04
+==========================
+
+Percona Toolkit 2.2.8 has been released. This release has two new features and six bug fixes.
+
+New Features:
+
+* pt-agent has been replaced by percona-agent. More information on percona-agent can be found in the `Introducing the 3-Minute MySQL Monitor <http://www.mysqlperformanceblog.com/2014/05/23/3-minute-mysql-monitor/>`_ blogpost.
+* pt-slave-restart now supports MySQL 5.6 global transaction IDs.
+
+* pt-table-checkum now has new --plugin option which is similar to pt-online-schema-change --plugin
+
+Bugs Fixed:
+
+* Fixed bug 1254233: pt-mysql-summary was showing blank InnoDB section for 5.6 because it was using ``have_innodb`` variable which was removed in MySQL 5.6.
+
+* Fixed bug 965553: pt-query-digest didn't fingerprint true/false literals correctly.
+
+* Fixed bug 1286250: pt-online-schema-change was requesting password twice.
+
+* Fixed bug 1295667: pt-deadlock-logger was logging incorrect timestamp because tool wasn't aware of the time-zones. 
+
+* Fixed bug 1304062: when multiple tables were specified with pt-table-checksum --ignore-tables, only one of them would be ignored.
+
+* Fixed bug : pt-show-grant --ask-pass option was asking for password in ``STDOUT`` instead of ``STDERR`` where it could be seen.
+
+Percona Toolkit packages can be downloaded from http://www.percona.com/downloads/percona-toolkit/ or the Percona Software Repositories (http://www.percona.com/software/repositories/).
+
 v2.2.7 released 2014-02-20
 ==========================
 
