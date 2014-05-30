@@ -4460,7 +4460,7 @@ sub main {
          parent       => $o->get('daemonize'),
          DSNParser    => $dp,
          OptionParser => $o,
-         set          => $set_tz
+         set          => $set_tz,
       );
    }
 
