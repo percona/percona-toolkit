@@ -4,7 +4,6 @@ INSTALL
 Makefile.PL
 MANIFEST
 README
-bin/pt-agent
 bin/pt-align
 bin/pt-archiver
 bin/pt-config-diff

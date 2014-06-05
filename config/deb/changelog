@@ -1,3 +1,17 @@
+percona-toolkit (2.2.8) unstable; urgency=low
+
+  * Removed pt-agent
+  * Added pt-slave-restart GTID support
+  * Added pt-table-checksum --plugin
+  * Fixed bug 1304062: --ignore-tables does not work correctly
+  * Fixed bug 1295667: pt-deadlock-logger logs incorrect ts
+  * Fixed bug 1254233: pt-mysql-summary blank InnoDB section for 5.6
+  * Fixed bug 1286250: pt-online-schema-change requests password twice
+  * Fixed bug  965553: pt-query-digest dosn't fingerprint true/false literals correctly
+  * Fixed bug  290911: pt-show-grant --ask-pass prints "Enter password" to STDOUT
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Thu, 05 Jun 2014 07:07:52 +0000
+
 percona-toolkit (2.2.7) unstable; urgency=low
 
   * Fixed bug 1279502: --version-check behaves like spyware
