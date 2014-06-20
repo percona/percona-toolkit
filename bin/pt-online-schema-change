@@ -9815,7 +9815,7 @@ sub find_child_tables {
    
    my $sql = "SELECT table_schema, table_name "
            . "FROM information_schema.key_column_usage "
-           . "WHERE constraint_schema='$tbl->{db}' "
+           . "WHERE referenced_table_schema='$tbl->{db}' "
            . "AND referenced_table_name='$tbl->{tbl}'";
    PTDEBUG && _d($sql);
    my $rows = $cxn->dbh()->selectall_arrayref($sql);
