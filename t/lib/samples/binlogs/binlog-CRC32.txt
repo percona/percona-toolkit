@@ -1,0 +1,43 @@
+/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!40019 SET @@session.max_insert_delayed_threads=0*/;
+/*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
+DELIMITER /*!*/;
+# at 4
+#140702 15:12:21 server id 12345  end_log_pos 120 CRC32 0xdb20dc67 	Start: binlog v 4, server v 5.6.17-log created 140702 15:12:21
+# Warning: this binlog is either in use or was not closed properly.
+BINLOG '
+hUu0Uw85MAAAdAAAAHgAAAABAAQANS42LjE3LWxvZwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAEzgNAAgAEgAEBAQEEgAAXAAEGggAAAAICAgCAAAACgoKGRkAAWfc
+INs=
+'/*!*/;
+# at 120
+#140702 15:33:31 server id 12345  end_log_pos 204 CRC32 0x28610af9 	Query	thread_id=14	exec_time=0	error_code=0
+SET TIMESTAMP=1404326011/*!*/;
+SET @@session.pseudo_thread_id=14/*!*/;
+SET @@session.foreign_key_checks=1, @@session.sql_auto_is_null=0, @@session.unique_checks=1, @@session.autocommit=1/*!*/;
+SET @@session.sql_mode=1073741824/*!*/;
+SET @@session.auto_increment_increment=1, @@session.auto_increment_offset=1/*!*/;
+/*!\C utf8 *//*!*/;
+SET @@session.character_set_client=33,@@session.collation_connection=33,@@session.collation_server=8/*!*/;
+SET @@session.time_zone='SYSTEM'/*!*/;
+SET @@session.lc_time_names=0/*!*/;
+SET @@session.collation_database=DEFAULT/*!*/;
+BEGIN
+/*!*/;
+# at 204
+# at 236
+#140702 15:33:31 server id 12345  end_log_pos 236 CRC32 0x051774a7 	Intvar
+SET INSERT_ID=1001/*!*/;
+#140702 15:33:31 server id 12345  end_log_pos 437 CRC32 0x7f23afd0 	Query	thread_id=14	exec_time=0	error_code=0
+use `sakila`/*!*/;
+SET TIMESTAMP=1404326011/*!*/;
+insert into film values (NULL,"Contact","Extraterrestrials contact earth", 2005, 1,1,24,5.55,120,25,'PG','Trailers',now())
+/*!*/;
+# at 437
+#140702 15:33:31 server id 12345  end_log_pos 468 CRC32 0x51d773f4 	Xid = 285
+COMMIT/*!*/;
+DELIMITER ;
+# End of log file
+ROLLBACK /* added by mysqlbinlog */;
+/*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
+/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
