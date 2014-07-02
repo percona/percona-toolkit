@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 2;
+use Test::More tests => 3;
 
 use PerconaTest;
 require "$trunk/bin/pt-query-digest";
@@ -36,6 +36,14 @@ ok(
       "t/pt-query-digest/samples/binlog002.txt"
    ),
    'Analysis for binlog002',
+) or diag($test_diff);
+
+ok(
+   no_diff(
+      sub { pt_query_digest::main(@args, $sample.'binlog011.txt') },
+      "t/pt-query-digest/samples/binlog011.txt"
+   ),
+   'Analysis for binlog011 - Handles 5.6 binlog with checksum CRC32',
 ) or diag($test_diff);
 
 # #############################################################################
