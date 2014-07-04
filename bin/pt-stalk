@@ -1245,13 +1245,12 @@ stalk() {
       if [ "$OPT_STALK" ]; then
          local value=$($TRIGGER_FUNCTION $OPT_VARIABLE)
          local trg_exit_status=$?
-
          if [ -z "$value" ]; then
             # No value.  Maybe we failed to connect to MySQL?
             warn "Detected value is empty; something failed?  Trigger exit status: $trg_exit_status"
             matched=""
             cycles_true=0
-         elif [ $value -gt $OPT_THRESHOLD ]; then
+         elif (( $(echo "$value $OPT_THRESHOLD" | awk '{print ($1 > $2)}') )); then
             matched="yes"
             cycles_true=$(($cycles_true + 1))
          else
