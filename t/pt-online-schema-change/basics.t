@@ -591,7 +591,7 @@ test_alter_table(
    test_type    => "new_engine",
    new_engine   => "innodb",
    cmds         => [
-      qw(--execute --alter-foreign-keys-method none --alter ENGINE=INNODB)
+      qw(--execute --alter-foreign-keys-method none --force --alter ENGINE=INNODB)
    ],
 );
 
