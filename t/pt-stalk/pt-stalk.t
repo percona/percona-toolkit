@@ -402,6 +402,27 @@ unlike(
    "Bug 942114: no bad find usage"
 );
 
+
+# ###########################################################################
+# Test that it handles floating point values 
+# ###########################################################################
+
+cleanup();
+
+system("$trunk/bin/pt-stalk --daemonize  --variable=PI --dest $dest  --no-collect --log $log_file --iterations=1  --run-time=2  --cycles=2  --sleep=1 --function $trunk/t/pt-stalk/samples/plugin003.sh --threshold 3.1415  --pid $pid_file --defaults-file=$cnf >$log_file 2>&1");
+
+
+sleep 5;
+PerconaTest::kill_program(pid_file => $pid_file);
+
+$output = `cat $log_file 2>/dev/null`;
+like(
+   $output,
+   qr/matched=yes/,
+   "Accepts floating point values as treshold variable"
+);
+
+
 # #############################################################################
 # Done.
 # #############################################################################
