@@ -1,0 +1,727 @@
+
+# Overall: 138 total, 95 unique, 2.56 QPS, 1.06x concurrency _____________
+# Time range: 2014-07-02 13:09:27 to 13:10:21
+# Attribute          total     min     max     avg     95%  stddev  median
+# ============     ======= ======= ======= ======= ======= ======= =======
+# Exec time            57s       0      7s   413ms   992ms      1s       0
+# Query size         3.22M       5 1009.90k  20.59k  62.55k 114.19k   76.37
+# @@session.au           1       1       1       1       1       0       1
+# @@session.au           1       1       1       1       1       0       1
+# @@session.au           1       1       1       1       1       0       1
+# @@session.ch         197       8      33   21.89   31.70   11.92   31.70
+# @@session.co         197       8      33   21.89   31.70   11.92   31.70
+# @@session.co          72       8       8       8       8       0       8
+# @@session.fo           2       0       1    0.67    0.99    0.47    0.99
+# @@session.lc           0       0       0       0       0       0       0
+# @@session.ps           3       3       3       3       3       0       3
+# @@session.sq           0       0       0       0       0       0       0
+# @@session.sq       4.00G       0   1.00G 585.14M 1006.04M 497.86M 1006.04M
+# @@session.un           2       0       1    0.67    0.99    0.47    0.99
+# error code             0       0       0       0       0       0       0
+
+# Query 1: 0.58 QPS, 0.50x concurrency, ID 0x85FFF5AA78E5FF6A at byte 1999638
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 3.67
+# Time range: 2014-07-02 13:09:43 to 13:10:21
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         15      22
+# Exec time     33     19s       0      7s   864ms      3s      2s       0
+# Query size     0     110       5       5       5       5       0       5
+# @@session.ch  20      41       8      33   20.50      33   17.68   20.50
+# @@session.co  20      41       8      33   20.50      33   17.68   20.50
+# @@session.co  22      16       8       8       8       8       0       8
+# error code     0       0       0       0       0       0       0       0
+# String:
+# @@session.ti 'system'
+# Databases    sakila
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  ################################################################
+#  10s+
+BEGIN\G
+
+# Query 2: 0.29 QPS, 1x concurrency, ID 0x693F5F4CA1A936BA at byte 1999810
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 7.00
+# Time range: 2014-07-02 13:10:07 to 13:10:14
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          1       2
+# Exec time     12      7s       0      7s      4s      7s      5s      4s
+# Query size    39   1.28M 301.45k 1009.90k 655.67k 1009.90k 500.94k 655.67k
+# error code     0       0       0       0       0       0       0       0
+# String:
+# Databases    sakila
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  ################################################################
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `sakila` LIKE 'rental'\G
+#    SHOW CREATE TABLE `sakila`.`rental`\G
+INSERT INTO `rental` VALUES (1,'2005-05-24 22:53:30',367,130,'2005-05-26 22:04:30',1,'2006-02-16 04:30:53') /*... omitted ...*/\G
+
+# Query 3: 0.40 QPS, 1x concurrency, ID 0x4677E4CEDF8EA4E2 at byte 882234
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 5.00
+# Time range: 2014-07-02 13:10:01 to 13:10:06
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          1       2
+# Exec time      8      5s       0      5s      2s      5s      4s      2s
+# Query size    33   1.06M  80.92k 1007.46k 544.19k 1007.46k 655.16k 544.19k
+# error code     0       0       0       0       0       0       0       0
+# String:
+# Databases    sakila
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  ################################################################
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `sakila` LIKE 'payment'\G
+#    SHOW CREATE TABLE `sakila`.`payment`\G
+INSERT INTO `payment` VALUES (1,1,1,76,'2.99','2005-05-25 11:30:37','2006-02-16 05:12:30') /*... omitted ...*/\G
+
+# Query 4: 0 QPS, 0x concurrency, ID 0xAAECC8184D17D799 at byte 180631 ___
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2014-07-02 13:09:50
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       1
+# Exec time      5      3s      3s      3s      3s      3s       0      3s
+# Query size     6 206.59k 206.59k 206.59k 206.59k 206.59k       0 206.59k
+# error code     0       0       0       0       0       0       0       0
+# String:
+# Databases    sakila
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  ################################################################
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `sakila` LIKE 'film'\G
+#    SHOW CREATE TABLE `sakila`.`film`\G
+INSERT INTO `film` VALUES (1,'ACADEMY DINOSAUR','A Epic Drama of a Feminist And a Mad Scientist who must Battle a Teacher in The Canadian Rockies',2006,1,NULL,6,'0.99',86,'20.99','PG','Deleted Scenes,Behind the Scenes','2006-02-15 12:03:42') /*... omitted ...*/\G
+
+# Query 5: 0 QPS, 0x concurrency, ID 0x1A3BF395BD4C2AC5 at byte 3383720 __
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2014-07-02 13:10:15
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       1
+# Exec time      3      2s      2s      2s      2s      2s       0      2s
+# Query size     0     674     674     674     674     674       0     674
+# error code     0       0       0       0       0       0       0       0
+# String:
+# Databases    sakila
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  ################################################################
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `sakila` LIKE 'store'\G
+#    SHOW CREATE TABLE `sakila`.`store`\G
+CREATE TABLE `store` (
+  `store_id` tinyint(3) unsigned NOT NULL AUTO_INCREMENT,
+  `manager_staff_id` tinyint(3) unsigned NOT NULL,
+  `address_id` smallint(5) unsigned NOT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`store_id`),
+  UNIQUE KEY `idx_unique_manager` (`manager_staff_id`),
+  KEY `idx_fk_address_id` (`address_id`),
+  CONSTRAINT `fk_store_staff` FOREIGN KEY (`manager_staff_id`) REFERENCES `staff` (`staff_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_store_address` FOREIGN KEY (`address_id`) REFERENCES `address` (`address_id`) ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8\G
+
+# Query 6: 0 QPS, 0x concurrency, ID 0xE5109B9F2BF996BE at byte 111637 ___
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2014-07-02 13:09:48
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       1
+# Exec time      1      1s      1s      1s      1s      1s       0      1s
+# Query size     1  64.61k  64.61k  64.61k  64.61k  64.61k       0  64.61k
+# error code     0       0       0       0       0       0       0       0
+# String:
+# Databases    sakila
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  ################################################################
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `sakila` LIKE 'customer'\G
+#    SHOW CREATE TABLE `sakila`.`customer`\G
+INSERT INTO `customer` VALUES (1,1,'MARY','SMITH','MARY.SMITH@sakilacustomer.org',5,1,'2006-02-14 22:04:36','2006-02-15 11:57:20') /*... omitted ...*/\G
+
+# Query 7: 0 QPS, 0x concurrency, ID 0xC1D332032F48BCE1 at byte 110219 ___
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2014-07-02 13:09:47
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       1
+# Exec time      1      1s      1s      1s      1s      1s       0      1s
+# Query size     0     883     883     883     883     883       0     883
+# error code     0       0       0       0       0       0       0       0
+# String:
+# Databases    sakila
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  ################################################################
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `sakila` LIKE 'customer'\G
+#    SHOW CREATE TABLE `sakila`.`customer`\G
+CREATE TABLE `customer` (
+  `customer_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
+  `store_id` tinyint(3) unsigned NOT NULL,
+  `first_name` varchar(45) NOT NULL,
+  `last_name` varchar(45) NOT NULL,
+  `email` varchar(50) DEFAULT NULL,
+  `address_id` smallint(5) unsigned NOT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT '1',
+  `create_date` datetime NOT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`customer_id`),
+  KEY `idx_fk_store_id` (`store_id`),
+  KEY `idx_fk_address_id` (`address_id`),
+  KEY `idx_last_name` (`last_name`),
+  CONSTRAINT `fk_customer_address` FOREIGN KEY (`address_id`) REFERENCES `address` (`address_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_customer_store` FOREIGN KEY (`store_id`) REFERENCES `store` (`store_id`) ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=600 DEFAULT CHARSET=utf8\G
+
+# Query 8: 0 QPS, 0x concurrency, ID 0xC5F99E5B57D2D6DB at byte 3391234 __
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2014-07-02 13:10:18
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       1
+# Exec time      1      1s      1s      1s      1s      1s       0      1s
+# Query size     0     159     159     159     159     159       0     159
+# @@session.fo  50       1       1       1       1       1       0       1
+# @@session.un  50       1       1       1       1       1       0       1
+# error code     0       0       0       0       0       0       0       0
+# String:
+# Databases    sakila
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  ################################################################
+#  10s+
+ANALYZE TABLE actor, address, category, city, country, customer, film, film_actor, film_category, film_text, inventory, language, payment, rental, staff, store\G
+
+# Query 9: 0 QPS, 0x concurrency, ID 0x3E8F75B2422F47B7 at byte 104650 ___
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2014-07-02 13:09:46
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       1
+# Exec time      1      1s      1s      1s      1s      1s       0      1s
+# Query size     0     294     294     294     294     294       0     294
+# error code     0       0       0       0       0       0       0       0
+# String:
+# Databases    sakila
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  ################################################################
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `sakila` LIKE 'country'\G
+#    SHOW CREATE TABLE `sakila`.`country`\G
+CREATE TABLE `country` (
+  `country_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
+  `country` varchar(50) NOT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`country_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=110 DEFAULT CHARSET=utf8\G
+
+# Query 10: 0 QPS, 0x concurrency, ID 0xD62F1A6D5A67AFA8 at byte 20196 ___
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2014-07-02 13:09:43
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       1
+# Exec time      1      1s      1s      1s      1s      1s       0      1s
+# Query size     1  53.96k  53.96k  53.96k  53.96k  53.96k       0  53.96k
+# error code     0       0       0       0       0       0       0       0
+# String:
+# Databases    sakila
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  ################################################################
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `sakila` LIKE 'address'\G
+#    SHOW CREATE TABLE `sakila`.`address`\G
+INSERT INTO `address` VALUES (1,'47 MySakila Drive',NULL,'Alberta',300,'','','2006-02-15 11:45:30') /*... omitted ...*/\G
+
+# Query 11: 0 QPS, 0x concurrency, ID 0xD8657A03D0724524 at byte 880760 __
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2014-07-02 13:10:00
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       1
+# Exec time      1      1s      1s      1s      1s      1s       0      1s
+# Query size     0     940     940     940     940     940       0     940
+# error code     0       0       0       0       0       0       0       0
+# String:
+# Databases    sakila
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  ################################################################
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `sakila` LIKE 'payment'\G
+#    SHOW CREATE TABLE `sakila`.`payment`\G
+CREATE TABLE `payment` (
+  `payment_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
+  `customer_id` smallint(5) unsigned NOT NULL,
+  `staff_id` tinyint(3) unsigned NOT NULL,
+  `rental_id` int(11) DEFAULT NULL,
+  `amount` decimal(5,2) NOT NULL,
+  `payment_date` datetime NOT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`payment_id`),
+  KEY `idx_fk_staff_id` (`staff_id`),
+  KEY `idx_fk_customer_id` (`customer_id`),
+  KEY `fk_payment_rental` (`rental_id`),
+  CONSTRAINT `fk_payment_rental` FOREIGN KEY (`rental_id`) REFERENCES `rental` (`rental_id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_payment_customer` FOREIGN KEY (`customer_id`) REFERENCES `customer` (`customer_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_payment_staff` FOREIGN KEY (`staff_id`) REFERENCES `staff` (`staff_id`) ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=16050 DEFAULT CHARSET=utf8\G
+# Converted for EXPLAIN
+# EXPLAIN /*!50100 PARTITIONS*/
+select  NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_payment_customer` FOREIGN KEY (`customer_id`) REFERENCES `customer` (`customer_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_payment_staff` FOREIGN KEY (`staff_id`) REFERENCES `staff` (`staff_id`) ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=16050 DEFAULT CHARSET=utf8 from CURRENT_TIMESTAMP,
+  PRIMARY KEY (`payment_id`),
+  KEY `idx_fk_staff_id` (`staff_id`),
+  KEY `idx_fk_customer_id` (`customer_id`),
+  KEY `fk_payment_rental` (`rental_id`),
+  CONSTRAINT `fk_payment_rental` FOREIGN KEY (`rental_id`) REFERENCES `rental` (`rental_id`) ON DELETE \G
+
+# Query 12: 0 QPS, 0x concurrency, ID 0x09482CA2620152A7 at byte 77796 ___
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2014-07-02 13:09:45
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       1
+# Exec time      1      1s      1s      1s      1s      1s       0      1s
+# Query size     0     483     483     483     483     483       0     483
+# error code     0       0       0       0       0       0       0       0
+# String:
+# Databases    sakila
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  ################################################################
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `sakila` LIKE 'city'\G
+#    SHOW CREATE TABLE `sakila`.`city`\G
+CREATE TABLE `city` (
+  `city_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
+  `city` varchar(50) NOT NULL,
+  `country_id` smallint(5) unsigned NOT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`city_id`),
+  KEY `idx_fk_country_id` (`country_id`),
+  CONSTRAINT `fk_city_country` FOREIGN KEY (`country_id`) REFERENCES `country` (`country_id`) ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=601 DEFAULT CHARSET=utf8\G
+
+# Query 13: 0 QPS, 0x concurrency, ID 0xE771A1D1EAD499BA at byte 718785 __
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2014-07-02 13:09:57
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       1
+# Exec time      1      1s      1s      1s      1s      1s       0      1s
+# Query size     0     659     659     659     659     659       0     659
+# error code     0       0       0       0       0       0       0       0
+# String:
+# Databases    sakila
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  ################################################################
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `sakila` LIKE 'inventory'\G
+#    SHOW CREATE TABLE `sakila`.`inventory`\G
+CREATE TABLE `inventory` (
+  `inventory_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
+  `film_id` smallint(5) unsigned NOT NULL,
+  `store_id` tinyint(3) unsigned NOT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`inventory_id`),
+  KEY `idx_fk_film_id` (`film_id`),
+  KEY `idx_store_id_film_id` (`store_id`,`film_id`),
+  CONSTRAINT `fk_inventory_store` FOREIGN KEY (`store_id`) REFERENCES `store` (`store_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_inventory_film` FOREIGN KEY (`film_id`) REFERENCES `film` (`film_id`) ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=4582 DEFAULT CHARSET=utf8\G
+
+# Query 14: 0 QPS, 0x concurrency, ID 0x80F6ECA81D5F0D25 at byte 75909 ___
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2014-07-02 13:09:44
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       1
+# Exec time      1      1s      1s      1s      1s      1s       0      1s
+# Query size     0     292     292     292     292     292       0     292
+# error code     0       0       0       0       0       0       0       0
+# String:
+# Databases    sakila
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  ################################################################
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `sakila` LIKE 'category'\G
+#    SHOW CREATE TABLE `sakila`.`category`\G
+CREATE TABLE `category` (
+  `category_id` tinyint(3) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(25) NOT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`category_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8\G
+
+# Query 15: 0 QPS, 0x concurrency, ID 0xEE462EEBC76A46F2 at byte 3392804 _
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2014-07-02 13:10:19
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       1
+# Exec time      1      1s      1s      1s      1s      1s       0      1s
+# Query size     0     130     130     130     130     130       0     130
+# error code     0       0       0       0       0       0       0       0
+# String:
+# Databases    sakila
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  ################################################################
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `percona_test` LIKE 'checksums'\G
+#    SHOW CREATE TABLE `percona_test`.`checksums`\G
+CREATE TABLE percona_test.checksums(
+          db_tbl varchar(128) not null primary key,
+          checksum int unsigned not null)\G
+
+# Query 16: 0 QPS, 0x concurrency, ID 0x1405E69931A1FC8D at byte 879222 __
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2014-07-02 13:09:59
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       1
+# Exec time      1      1s      1s      1s      1s      1s       0      1s
+# Query size     0     288     288     288     288     288       0     288
+# error code     0       0       0       0       0       0       0       0
+# String:
+# Databases    sakila
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  ################################################################
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `sakila` LIKE 'language'\G
+#    SHOW CREATE TABLE `sakila`.`language`\G
+CREATE TABLE `language` (
+  `language_id` tinyint(3) unsigned NOT NULL AUTO_INCREMENT,
+  `name` char(20) NOT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`language_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8\G
+
+# Query 17: 0 QPS, 0x concurrency, ID 0x7677746C22CD9F16 at byte 392649 __
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2014-07-02 13:09:53
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       1
+# Exec time      1      1s      1s      1s      1s      1s       0      1s
+# Query size     0     532     532     532     532     532       0     532
+# error code     0       0       0       0       0       0       0       0
+# String:
+# Databases    sakila
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  ################################################################
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `sakila` LIKE 'film_actor'\G
+#    SHOW CREATE TABLE `sakila`.`film_actor`\G
+CREATE TABLE `film_actor` (
+  `actor_id` smallint(5) unsigned NOT NULL,
+  `film_id` smallint(5) unsigned NOT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`actor_id`,`film_id`),
+  KEY `idx_fk_film_id` (`film_id`),
+  CONSTRAINT `fk_film_actor_actor` FOREIGN KEY (`actor_id`) REFERENCES `actor` (`actor_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_film_actor_film` FOREIGN KEY (`film_id`) REFERENCES `film` (`film_id`) ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8\G
+
+# Query 18: 0 QPS, 0x concurrency, ID 0x93E5C17055D970BE at byte 393718 __
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2014-07-02 13:09:54
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       1
+# Exec time      1      1s      1s      1s      1s      1s       0      1s
+# Query size     5 167.33k 167.33k 167.33k 167.33k 167.33k       0 167.33k
+# error code     0       0       0       0       0       0       0       0
+# String:
+# Databases    sakila
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  ################################################################
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `sakila` LIKE 'film_actor'\G
+#    SHOW CREATE TABLE `sakila`.`film_actor`\G
+INSERT INTO `film_actor` VALUES (1,1,'2006-02-15 12:05:03') /*... omitted ...*/\G
+
+# Query 19: 0 QPS, 0x concurrency, ID 0x5C6D8C73D42AE624 at byte 3388620 _
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2014-07-02 13:10:17
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       1
+# Exec time      1      1s      1s      1s      1s      1s       0      1s
+# Query size     0     679     679     679     679     679       0     679
+# error code     0       0       0       0       0       0       0       0
+# String:
+# Databases    sakila
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  ################################################################
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `sakila` LIKE 'payment'\G
+#    SHOW CREATE TABLE `sakila`.`payment`\G
+#    SHOW TABLE STATUS FROM `sakila` LIKE 'rental'\G
+#    SHOW CREATE TABLE `sakila`.`rental`\G
+#    SHOW TABLE STATUS FROM `sakila` LIKE 'inventory'\G
+#    SHOW CREATE TABLE `sakila`.`inventory`\G
+#    SHOW TABLE STATUS FROM `sakila` LIKE 'store'\G
+#    SHOW CREATE TABLE `sakila`.`store`\G
+#    SHOW TABLE STATUS FROM `sakila` LIKE 'address'\G
+#    SHOW CREATE TABLE `sakila`.`address`\G
+#    SHOW TABLE STATUS FROM `sakila` LIKE 'city'\G
+#    SHOW CREATE TABLE `sakila`.`city`\G
+#    SHOW TABLE STATUS FROM `sakila` LIKE 'country'\G
+#    SHOW CREATE TABLE `sakila`.`country`\G
+#    SHOW TABLE STATUS FROM `sakila` LIKE 'staff'\G
+#    SHOW CREATE TABLE `sakila`.`staff`\G
+CREATE ALGORITHM=UNDEFINED DEFINER=`msandbox`@`%` SQL SECURITY DEFINER VIEW `sales_by_store` AS SELECT
+CONCAT(c.city, _utf8',', cy.country) AS store
+, CONCAT(m.first_name, _utf8' ', m.last_name) AS manager
+, SUM(p.amount) AS total_sales
+FROM payment AS p
+INNER JOIN rental AS r ON p.rental_id = r.rental_id
+INNER JOIN inventory AS i ON r.inventory_id = i.inventory_id
+INNER JOIN store AS s ON i.store_id = s.store_id
+INNER JOIN address AS a ON s.address_id = a.address_id
+INNER JOIN city AS c ON a.city_id = c.city_id
+INNER JOIN country AS cy ON c.country_id = cy.country_id
+INNER JOIN staff AS m ON s.manager_staff_id = m.staff_id
+GROUP BY s.store_id
+ORDER BY cy.country, c.city\G
+# Converted for EXPLAIN
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT
+CONCAT(c.city, _utf8',', cy.country) AS store
+, CONCAT(m.first_name, _utf8' ', m.last_name) AS manager
+, SUM(p.amount) AS total_sales
+FROM payment AS p
+INNER JOIN rental AS r ON p.rental_id = r.rental_id
+INNER JOIN inventory AS i ON r.inventory_id = i.inventory_id
+INNER JOIN store AS s ON i.store_id = s.store_id
+INNER JOIN address AS a ON s.address_id = a.address_id
+INNER JOIN city AS c ON a.city_id = c.city_id
+INNER JOIN country AS cy ON c.country_id = cy.country_id
+INNER JOIN staff AS m ON s.manager_staff_id = m.staff_id
+GROUP BY s.store_id
+ORDER BY cy.country, c.city\G
+
+# Query 20: 0 QPS, 0x concurrency, ID 0x4E763A2FA103490D at byte 178711 __
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2014-07-02 13:09:49
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       1
+# Exec time      1      1s      1s      1s      1s      1s       0      1s
+# Query size     0   1.19k   1.19k   1.19k   1.19k   1.19k       0   1.19k
+# @@session.ch  16      33      33      33      33      33       0      33
+# @@session.co  16      33      33      33      33      33       0      33
+# @@session.co  11       8       8       8       8       8       0       8
+# @@session.sq  25   1.00G   1.00G   1.00G   1.00G   1.00G       0   1.00G
+# error code     0       0       0       0       0       0       0       0
+# String:
+# Databases    sakila
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  ################################################################
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `sakila` LIKE 'film'\G
+#    SHOW CREATE TABLE `sakila`.`film`\G
+CREATE TABLE `film` (
+  `film_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
+  `title` varchar(255) NOT NULL,
+  `description` text,
+  `release_year` year(4) DEFAULT NULL,
+  `language_id` tinyint(3) unsigned NOT NULL,
+  `original_language_id` tinyint(3) unsigned DEFAULT NULL,
+  `rental_duration` tinyint(3) unsigned NOT NULL DEFAULT '3',
+  `rental_rate` decimal(4,2) NOT NULL DEFAULT '4.99',
+  `length` smallint(5) unsigned DEFAULT NULL,
+  `replacement_cost` decimal(5,2) NOT NULL DEFAULT '19.99',
+  `rating` enum('G','PG','PG-13','R','NC-17') DEFAULT 'G',
+  `special_features` set('Trailers','Commentaries','Deleted Scenes','Behind the Scenes') DEFAULT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`film_id`),
+  KEY `idx_title` (`title`),
+  KEY `idx_fk_language_id` (`language_id`),
+  KEY `idx_fk_original_language_id` (`original_language_id`),
+  CONSTRAINT `fk_film_language` FOREIGN KEY (`language_id`) REFERENCES `language` (`language_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_film_language_original` FOREIGN KEY (`original_language_id`) REFERENCES `language` (`language_id`) ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=1001 DEFAULT CHARSET=utf8\G
+
+# Profile
+# Rank Query ID           Response time Calls R/Call V/M   Item
+# ==== ================== ============= ===== ====== ===== ===============
+#    1 0x85FFF5AA78E5FF6A 19.0000 33.3%    22 0.8636  3.67 BEGIN
+#    2 0x693F5F4CA1A936BA  7.0000 12.3%     2 3.5000  7.00 INSERT rental
+#    3 0x4677E4CEDF8EA4E2  5.0000  8.8%     2 2.5000  5.00 INSERT payment
+#    4 0xAAECC8184D17D799  3.0000  5.3%     1 3.0000  0.00 INSERT film
+#    5 0x1A3BF395BD4C2AC5  2.0000  3.5%     1 2.0000  0.00 CREATE TABLE store `store`
+#    6 0xE5109B9F2BF996BE  1.0000  1.8%     1 1.0000  0.00 INSERT customer
+#    7 0xC1D332032F48BCE1  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE customer `customer`
+#    8 0xC5F99E5B57D2D6DB  1.0000  1.8%     1 1.0000  0.00 
+#    9 0x3E8F75B2422F47B7  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE country `country`
+#   10 0xD62F1A6D5A67AFA8  1.0000  1.8%     1 1.0000  0.00 INSERT address
+#   11 0xD8657A03D0724524  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE payment `payment`
+#   12 0x09482CA2620152A7  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE city `city`
+#   13 0xE771A1D1EAD499BA  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE inventory `inventory`
+#   14 0x80F6ECA81D5F0D25  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE category `category`
+#   15 0xEE462EEBC76A46F2  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE percona_test.checksums
+#   16 0x1405E69931A1FC8D  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE language `language`
+#   17 0x7677746C22CD9F16  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE film_actor `film_actor`
+#   18 0x93E5C17055D970BE  1.0000  1.8%     1 1.0000  0.00 INSERT film_actor
+#   19 0x5C6D8C73D42AE624  1.0000  1.8%     1 1.0000  0.00 CREATE payment rental inventory store address city country staff
+#   20 0x4E763A2FA103490D  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE film `film`
+# MISC 0xMISC              6.0000 10.5%    95 0.0632   0.0 <72 ITEMS>

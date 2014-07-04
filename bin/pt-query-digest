@@ -9582,7 +9582,7 @@ $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
 my $binlog_line_1 = qr/at (\d+)$/m;
-my $binlog_line_2 = qr/^#(\d{6}\s+\d{1,2}:\d\d:\d\d)\s+server\s+id\s+(\d+)\s+end_log_pos\s+(\d+)\s+(\S+)\s*([^\n]*)$/m;
+my $binlog_line_2 = qr/^#(\d{6}\s+\d{1,2}:\d\d:\d\d)\s+server\s+id\s+(\d+)\s+end_log_pos\s+(\d+)\s+(?:CRC32\s+0x[a-f0-9]{8}\s+)?(\S+)\s*([^\n]*)$/m;
 my $binlog_line_2_rest = qr/thread_id=(\d+)\s+exec_time=(\d+)\s+error_code=(\d+)/m;
 
 sub new {

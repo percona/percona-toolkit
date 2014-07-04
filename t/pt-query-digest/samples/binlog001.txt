@@ -151,7 +151,37 @@ select  o.tbl2 = e.tbl2,
 #  10s+  ################################################################
 BEGIN\G
 
-# Query 5: 0 QPS, 0x concurrency, ID 0xED69B13F3D0161D0 at byte 2479 _____
+# Query 5: 0 QPS, 0x concurrency, ID 0x79BFEA84D0CED05F at byte 1889 _____
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2007-12-07 12:02:53
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         16       1
+# Exec time     16  20661s  20661s  20661s  20661s  20661s       0  20661s
+# Query size    24     341     341     341     341     341       0     341
+# error code     0       0       0       0       0       0       0       0
+# String:
+# Databases    test1
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+  ################################################################
+# Tables
+#    SHOW TABLE STATUS FROM `test1` LIKE 'tbl6'\G
+#    SHOW CREATE TABLE `test1`.`tbl6`\G
+insert into test1.tbl6
+      (day, tbl5, misccol9type, misccol9, metric11, metric12, secs)
+      values
+      (convert_tz(current_timestamp,'EST5EDT','PST8PDT'), '239', 'foo', 'bar', 1, '1', '16.3574378490448')
+      on duplicate key update metric11 = metric11 + 1,
+         metric12 = metric12 + values(metric12), secs = secs + values(secs)\G
+
+# Query 6: 0 QPS, 0x concurrency, ID 0xED69B13F3D0161D0 at byte 2479 _____
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2007-12-07 12:02:53
 # Attribute    pct   total     min     max     avg     95%  stddev  median
@@ -185,36 +215,6 @@ select  last2metric1 = last1metric1, last2time = last1time,
          last1metric1 = last0metric1, last1time = last0time,
          last0metric1 = ondeckmetric1, last0time = now() from test2.tbl8 where  tbl8 in (10800712)\G
 
-# Query 6: 0 QPS, 0x concurrency, ID 0x79BFEA84D0CED05F at byte 1889 _____
-# Scores: V/M = 0.00
-# Time range: all events occurred at 2007-12-07 12:02:53
-# Attribute    pct   total     min     max     avg     95%  stddev  median
-# ============ === ======= ======= ======= ======= ======= ======= =======
-# Count         16       1
-# Exec time     16  20661s  20661s  20661s  20661s  20661s       0  20661s
-# Query size    24     341     341     341     341     341       0     341
-# error code     0       0       0       0       0       0       0       0
-# String:
-# Databases    test1
-# Query_time distribution
-#   1us
-#  10us
-# 100us
-#   1ms
-#  10ms
-# 100ms
-#    1s
-#  10s+  ################################################################
-# Tables
-#    SHOW TABLE STATUS FROM `test1` LIKE 'tbl6'\G
-#    SHOW CREATE TABLE `test1`.`tbl6`\G
-insert into test1.tbl6
-      (day, tbl5, misccol9type, misccol9, metric11, metric12, secs)
-      values
-      (convert_tz(current_timestamp,'EST5EDT','PST8PDT'), '239', 'foo', 'bar', 1, '1', '16.3574378490448')
-      on duplicate key update metric11 = metric11 + 1,
-         metric12 = metric12 + values(metric12), secs = secs + values(secs)\G
-
 # Profile
 # Rank Query ID           Response time    Calls R/Call     V/M   Item
 # ==== ================== ================ ===== ========== ===== ========
@@ -222,5 +222,5 @@ insert into test1.tbl6
 #    2 0xC356FD9EFD7D799E 20675.0000 16.7%     1 20675.0000  0.00 UPDATE test?.tblo test?.tbl?
 #    3 0xB5E55291C7DE1096 20664.0000 16.7%     1 20664.0000  0.00 UPDATE test?.tblo test?.tbl?
 #    4 0x85FFF5AA78E5FF6A 20664.0000 16.7%     1 20664.0000  0.00 BEGIN
-#    5 0xED69B13F3D0161D0 20661.0000 16.7%     1 20661.0000  0.00 UPDATE test?.tbl?
-#    6 0x79BFEA84D0CED05F 20661.0000 16.7%     1 20661.0000  0.00 INSERT UPDATE test?.tbl?
+#    5 0x79BFEA84D0CED05F 20661.0000 16.7%     1 20661.0000  0.00 INSERT UPDATE test?.tbl?
+#    6 0xED69B13F3D0161D0 20661.0000 16.7%     1 20661.0000  0.00 UPDATE test?.tbl?
