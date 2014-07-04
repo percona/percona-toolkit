@@ -1,5 +1,12 @@
 Changelog for Percona Toolkit
 
+
+  * Fixed bug 1258135: pt-deadlock-logger introduces a noise to MySQL
+  * Fixed bug 1329422: pt-online-schema-change foreign-keys-method=none breaks constraints 
+  * Fixed bug 1315130: pt-online-schema-change not properly detecting foreign keys 
+  * Fixed bug 1335960: pt-query-digest cannot parse binlogs from 5.6
+  * Fixed bug 1335322: pt-stalk fails when variable or threshold is non-integer 
+
 v2.2.8 released 2014-06-04
 
   * Removed pt-agent
