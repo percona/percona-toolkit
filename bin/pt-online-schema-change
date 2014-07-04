@@ -7860,6 +7860,16 @@ sub main {
          $o->save_error("Invalid --alter-foreign-keys-method value: $alter_fk_method");
       }
 
+      # Issue a strong warning if alter-foreign-keys-method = none
+      if ( $alter_fk_method eq 'none' && !$o->get('force') ) {
+         print STDERR "WARNING! Using alter-foreign-keys-method = \"none\". This will typically cause foreign key violations!\nThis method of handling foreign key constraints is only provided so that the database administrator can disable the tool’s built-in functionality if desired.\n\nContinue anyway? (y/N)";
+         my $response;
+         chomp($response = <STDIN>);
+         if ($response !~ /y|(yes)/i) { 
+            exit 1;
+         }
+      }
+
       if ( $alter_fk_method eq 'drop_swap' && !$o->get('drop-new-table') ) {
          $o->save_error("--alter-foreign-keys-method=drop_swap does not work with --no-drop-new-table.");
       }
@@ -11024,6 +11034,10 @@ must specify this option to alter the table. If you do not, then the tool will
 only perform some safety checks and exit.  This helps ensure that you have read the
 documentation and understand how to use this tool.  If you have not read the
 documentation, then do not specify this option.
+
+=item --force
+
+This options bypasses confirmation in case of using alter-foreign-keys-method = none , which might break foreign key constraints.
 
 =item --help
 
