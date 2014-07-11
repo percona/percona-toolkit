@@ -8513,7 +8513,7 @@ sub _check_and_set_vals {
       else {
          PTDEBUG && _d('Initial', $var, 'value:', $init_val);
          $val = int(($init_val * $threshold_factor) + $init_val);
-         $vars->{$var} = $val;
+         $vars->{$var} = $args{'ceiling'} ? ceil($val) : $val; 
       }
       PTDEBUG && _d('Wait if', $var, '>=', $val);
    }
