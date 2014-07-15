@@ -4972,7 +4972,7 @@ sub new {
 }
 
 my $slow_log_ts_line = qr/^# Time: ([0-9: ]{15})/;
-my $slow_log_uh_line = qr/# User\@Host: ([^\[]+|\[[^[]+\]).*?@ (\S*) \[(.*)\]/;
+my $slow_log_uh_line = qr/# User\@Host: ([^\[]+|\[[^[]+\]).*?@ (\S*) \[(.*)\]\s*(?:Id:\s*(\d+))?/;
 my $slow_log_hd_line = qr{
       ^(?:
       T[cC][pP]\s[pP]ort:\s+\d+ # case differs on windows/unix
@@ -5036,19 +5036,29 @@ sub parse_event {
                push @properties, 'ts', $time;
                ++$got_ts;
                if ( !$got_uh
-                  && ( my ( $user, $host, $ip ) = $line =~ m/$slow_log_uh_line/o )
+                  && ( my ( $user, $host, $ip, $thread_id ) = $line =~ m/$slow_log_uh_line/o )
                ) {
-                  PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
-                  push @properties, 'user', $user, 'host', $host, 'ip', $ip;
+                  if ($thread_id) {  # 5.6 has the thread id on the User@Host line
+                     PTDEBUG && _d("Got user, host, ip, Thread_id", $user, $host, $thread_id);
+                     push @properties, 'user', $user, 'host', $host, 'ip', $ip, 'Thread_id', $thread_id;
+                  }else{
+                     PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
+                     push @properties, 'user', $user, 'host', $host, 'ip', $ip;
+                  }
                   ++$got_uh;
                }
             }
 
             elsif ( !$got_uh
-                  && ( my ( $user, $host, $ip ) = $line =~ m/$slow_log_uh_line/o )
+                  && ( my ( $user, $host, $ip, $thread_id ) = $line =~ m/$slow_log_uh_line/o )
             ) {
-               PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
-               push @properties, 'user', $user, 'host', $host, 'ip', $ip;
+                  if ($thread_id) {  # 5.6 has the thread id on the User@Host line
+                     PTDEBUG && _d("Got user, host, ip, Thread_id", $user, $host, $thread_id);
+                     push @properties, 'user', $user, 'host', $host, 'ip', $ip, 'Thread_id', $thread_id;
+                  }else{
+                     PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
+                     push @properties, 'user', $user, 'host', $host, 'ip', $ip;
+                  }
                ++$got_uh;
             }
 

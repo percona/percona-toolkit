@@ -1556,12 +1556,13 @@ sub new {
    my ( $class ) = @_;
    my $self = {
       pending => [],
+      last_event_offset => undef,
    };
    return bless $self, $class;
 }
 
 my $slow_log_ts_line = qr/^# Time: ([0-9: ]{15})/;
-my $slow_log_uh_line = qr/# User\@Host: ([^\[]+|\[[^[]+\]).*?@ (\S*) \[(.*)\]/;
+my $slow_log_uh_line = qr/# User\@Host: ([^\[]+|\[[^[]+\]).*?@ (\S*) \[(.*)\]\s*(?:Id:\s*(\d+))?/;
 my $slow_log_hd_line = qr{
       ^(?:
       T[cC][pP]\s[pP]ort:\s+\d+ # case differs on windows/unix
@@ -1592,6 +1593,7 @@ sub parse_event {
       or defined($stmt = $next_event->())
    ) {
       my @properties = ('cmd', 'Query', 'pos_in_log', $pos_in_log);
+      $self->{last_event_offset} = $pos_in_log;
       $pos_in_log = $tell->();
 
       if ( $stmt =~ s/$slow_log_hd_line//go ){ # Throw away header lines in log
@@ -1624,19 +1626,29 @@ sub parse_event {
                push @properties, 'ts', $time;
                ++$got_ts;
                if ( !$got_uh
-                  && ( my ( $user, $host, $ip ) = $line =~ m/$slow_log_uh_line/o )
+                  && ( my ( $user, $host, $ip, $thread_id ) = $line =~ m/$slow_log_uh_line/o )
                ) {
-                  PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
-                  push @properties, 'user', $user, 'host', $host, 'ip', $ip;
+                  if ($thread_id) {  # 5.6 has the thread id on the User@Host line
+                     PTDEBUG && _d("Got user, host, ip, Thread_id", $user, $host, $thread_id);
+                     push @properties, 'user', $user, 'host', $host, 'ip', $ip, 'Thread_id', $thread_id;
+                  }else{
+                     PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
+                     push @properties, 'user', $user, 'host', $host, 'ip', $ip;
+                  }
                   ++$got_uh;
                }
             }
 
             elsif ( !$got_uh
-                  && ( my ( $user, $host, $ip ) = $line =~ m/$slow_log_uh_line/o )
+                  && ( my ( $user, $host, $ip, $thread_id ) = $line =~ m/$slow_log_uh_line/o )
             ) {
-               PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
-               push @properties, 'user', $user, 'host', $host, 'ip', $ip;
+                  if ($thread_id) {  # 5.6 has the thread id on the User@Host line
+                     PTDEBUG && _d("Got user, host, ip, Thread_id", $user, $host, $thread_id);
+                     push @properties, 'user', $user, 'host', $host, 'ip', $ip, 'Thread_id', $thread_id;
+                  }else{
+                     PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
+                     push @properties, 'user', $user, 'host', $host, 'ip', $ip;
+                  }
                ++$got_uh;
             }
 
@@ -1676,14 +1688,25 @@ sub parse_event {
 
             if ( !$found_arg && $pos == $len ) {
                PTDEBUG && _d("Did not find arg, looking for special cases");
-               local $INPUT_RECORD_SEPARATOR = ";\n";
+               local $INPUT_RECORD_SEPARATOR = ";\n";  # get next line
                if ( defined(my $l = $next_event->()) ) {
-                  chomp $l;
-                  $l =~ s/^\s+//;
-                  PTDEBUG && _d("Found admin statement", $l);
-                  push @properties, 'cmd', 'Admin', 'arg', $l;
-                  push @properties, 'bytes', length($properties[-1]);
-                  $found_arg++;
+                  if ( $l =~ /^\s*[A-Z][a-z_]+: / ) {
+                     PTDEBUG && _d("Found NULL query before", $l);
+                     local $INPUT_RECORD_SEPARATOR = ";\n#";
+                     my $rest_of_event = $next_event->();
+                     push @{$self->{pending}}, $l . $rest_of_event;
+                     push @properties, 'cmd', 'Query', 'arg', '/* No query */';
+                     push @properties, 'bytes', 0;
+                     $found_arg++;
+                  }
+                  else {
+                     chomp $l;
+                     $l =~ s/^\s+//;
+                     PTDEBUG && _d("Found admin statement", $l);
+                     push @properties, 'cmd', 'Admin', 'arg', $l;
+                     push @properties, 'bytes', length($properties[-1]);
+                     $found_arg++;
+                  }
                }
                else {
                   PTDEBUG && _d("I can't figure out what to do with this line");
@@ -1706,9 +1729,15 @@ sub parse_event {
 
       PTDEBUG && _d('Properties of event:', Dumper(\@properties));
       my $event = { @properties };
-      if ( $args{stats} ) {
-         $args{stats}->{events_read}++;
-         $args{stats}->{events_parsed}++;
+      if ( !$event->{arg} ) {
+         PTDEBUG && _d('Partial event, no arg');
+      }
+      else {
+         $self->{last_event_offset} = undef;
+         if ( $args{stats} ) {
+            $args{stats}->{events_read}++;
+            $args{stats}->{events_parsed}++;
+         }
       }
       return $event;
    } # EVENT
