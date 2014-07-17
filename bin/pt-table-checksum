@@ -5977,19 +5977,32 @@ sub find_replication_differences {
    }
    my ($dbh, $repl_table) = @args{@required_args};
 
-   my $sql
-      = "SELECT CONCAT(db, '.', tbl) AS `table`, "
-      . "chunk, chunk_index, lower_boundary, upper_boundary, "
-      . "COALESCE(this_cnt-master_cnt, 0) AS cnt_diff, "
-      . "COALESCE("
-      .   "this_crc <> master_crc OR ISNULL(master_crc) <> ISNULL(this_crc), 0"
-      . ") AS crc_diff, this_cnt, master_cnt, this_crc, master_crc "
-      . "FROM $repl_table "
-      . "WHERE (master_cnt <> this_cnt OR master_crc <> this_crc "
-      .        "OR ISNULL(master_crc) <> ISNULL(this_crc))"
-      . ($args{where} ? " AND ($args{where})" : "");
-   PTDEBUG && _d($sql);
-   my $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
+   my $ts_clause = $self->{start_ts} ? " AND ts >= '$self->{start_ts}' " : ''; # issue 1311654
+   my $ok_to_leave = 0;
+   my $tries = 5;  # number of times to try again if replication checksum don't agree. 
+   my $diffs;
+   do {
+      my $sql
+         = "SELECT CONCAT(db, '.', tbl) AS `table`, "
+         . "chunk, chunk_index, lower_boundary, upper_boundary, "
+         . "COALESCE(this_cnt-master_cnt, 0) AS cnt_diff, "
+         . "COALESCE("
+         .   "this_crc <> master_crc OR ISNULL(master_crc) <> ISNULL(this_crc), 0"
+         . ") AS crc_diff, this_cnt, master_cnt, this_crc, master_crc "
+         . "FROM $repl_table "
+         . "WHERE (master_cnt <> this_cnt OR master_crc <> this_crc "
+         .        "OR ISNULL(master_crc) <> ISNULL(this_crc)) $ts_clause"
+         . ($args{where} ? " AND ($args{where})" : "");
+         PTDEBUG && _d($sql);
+         $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
+         $tries--;
+         if (@$diffs) { 
+            sleep 1;
+         } else {
+            $ok_to_leave = 1;
+         }
+
+      } until ($ok_to_leave || !$tries);
    return $diffs;
 }
 
@@ -8917,6 +8930,7 @@ use sigtrap 'handler', \&sig_int, 'normal-signals';
 my $oktorun      = 1;
 my $print_header = 1;
 my $exit_status  = 0;
+my $start_ts     = 0;   # issue 1311654
 
 # "exit codes 1 - 2, 126 - 165, and 255 [1] have special meanings,
 # and should therefore be avoided for user-specified exit parameters"
@@ -8963,6 +8977,9 @@ sub main {
    $oktorun      = 1;  
    $print_header = 1;
    $exit_status  = 0;
+
+   $start_ts = full_ts(); # issue 1311654
+   PTDEBUG && _d("initial start_ts: [$start_ts]");
 
    # ########################################################################
    # Get configuration information.
@@ -10072,6 +10089,7 @@ sub main {
          # Should be done automatically, but I like to be explicit.
          $fetch_sth->finish();
          $update_sth->finish();
+         $delete_sth->finish();
 
          # Update rate, chunk size, and progress if the nibble actually
          # selected some rows.
@@ -10379,6 +10397,14 @@ sub ts {
    my ($msg) = @_;
    my ($s, $m, $h, $d, $M) = localtime;
    my $ts = sprintf('%02d-%02dT%02d:%02d:%02d', $M+1, $d, $h, $m, $s);
+   return $msg ? "$ts $msg" : $ts;
+}
+
+sub full_ts {
+   my ($msg) = @_;
+   my ($s, $m, $h, $d, $M, $Y) = localtime;
+   $Y += 1900;
+   my $ts = sprintf('%04d-%02d-%02dT%02d:%02d:%02d', $Y, $M+1, $d, $h, $m, $s);
    return $msg ? "$ts $msg" : $ts;
 }
 

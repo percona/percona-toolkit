@@ -20,7 +20,7 @@ ERRORS DIFFS ROWS SKIPPED TABLE
 0 0 0 0 mysql.time_zone_transition
 0 0 0 0 mysql.time_zone_transition_type
 0 0 2 0 mysql.user
-0 0 37 0 percona_test.checksums
+0 0 22 0 percona_test.checksums
 0 0 1 0 percona_test.load_data
 0 0 1 0 percona_test.sentinel
 0 0 200 0 sakila.actor
