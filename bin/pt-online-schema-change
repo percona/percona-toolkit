@@ -8913,7 +8913,7 @@ sub main {
             sth  => $sth->{explain_upper_boundary},
             vals => [ @{$boundary->{lower}}, $nibble_iter->limit() ],
          );
-         if (lc($expl->{key} || '') ne lc($nibble_iter->nibble_index() || '')) {
+         if (lc($expl->{key} || '') ne lc($nibble_iter->nibble_index() || '') and $o->get('check-plan')) {
             my $msg
                = "Aborting copying table $tbl->{name} at chunk "
                . ($nibble_iter->nibble_number() + 1)
@@ -9533,7 +9533,7 @@ sub nibble_is_safe {
 
    # Ensure that MySQL is using the chunk index if the table is being chunked.
    if ( !$nibble_iter->one_nibble()
-        && lc($expl->{key} || '') ne lc($nibble_iter->nibble_index() || '') )
+        && lc($expl->{key} || '') ne lc($nibble_iter->nibble_index() || '') and $o->get('check-plan'))
    {
       die ts("Error copying rows at chunk " . $nibble_iter->nibble_number()
          . " of $tbl->{db}.$tbl->{tbl} because MySQL chose "
