@@ -1,6 +1,32 @@
 Release Notes
 *************
 
+v2.2.9 released 2014-07-08
+==========================
+
+Percona Toolkit 2.2.9 has been released. This release contains five bug fixes.
+
+Bugs Fixed:
+
+* Fixed bug 1335960: pt-query-digest could not parse the binlogs from MySQL 5.6 because the binlog format was changed.
+
+* Fixed bug 1315130: pt-online-schema-change did not find child tables as expected. It could incorrectly locate tables which reference a table with the same name in a different schema and could miss tables referencing the altered table if they were in a different schema.
+
+* Fixed bug 1335322: pt-stalk would fail when variable or threshold was non-integer.
+
+* Fixed bug 1258135: pt-deadlock-logger was inserting older deadlocks into the ``deadlock`` table even if it was already there creating unnecessary noise. For example, if the deadlock happened 1 year ago, and MySQL keeps it in the memory and pt-deadlock-logger would ``INSERT`` it into ``percona.deadlocks`` table every minute all the time until server was restarted. This was fixed by comparing with the last deadlock fingerprint before issuing the ``INSERT`` query.
+
+* Fixed bug 1329422: pt-online-schema-change foreign-keys-method=none can break FK constraints in a way that is hard to recover from. Allthough this method of handling foreign key constraints is provided so that the database administrator can disable the tool's built-in functionality if desired, a warning and confirmation request when using alter-foreign-keys-method "none" has been added to warn users when using this option.
+
+Changelog
+---------
+
+* Fixed bug 1258135: pt-deadlock-logger introduces a noise to MySQL
+* Fixed bug 1329422: pt-online-schema-change foreign-keys-method=none breaks constraints 
+* Fixed bug 1315130: pt-online-schema-change not properly detecting foreign keys 
+* Fixed bug 1335960: pt-query-digest cannot parse binlogs from 5.6
+* Fixed bug 1335322: pt-stalk fails when variable or threshold is non-integer 
+
 v2.2.8 released 2014-06-04
 ==========================
 
