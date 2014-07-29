@@ -35,7 +35,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.8';
+our $VERSION = '2.2.9';
 
 use strict;
 use warnings FATAL => 'all';
@@ -4984,6 +4984,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-find 2.2.8
+pt-find 2.2.9
 
 =cut

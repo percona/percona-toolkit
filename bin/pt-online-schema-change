@@ -54,7 +54,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.8';
+our $VERSION = '2.2.9';
 
 use strict;
 use warnings FATAL => 'all';
@@ -7860,6 +7860,16 @@ sub main {
          $o->save_error("Invalid --alter-foreign-keys-method value: $alter_fk_method");
       }
 
+      # Issue a strong warning if alter-foreign-keys-method = none
+      if ( $alter_fk_method eq 'none' && !$o->get('force') ) {
+         print STDERR "WARNING! Using alter-foreign-keys-method = \"none\". This will typically cause foreign key violations!\nThis method of handling foreign key constraints is only provided so that the database administrator can disable the tool’s built-in functionality if desired.\n\nContinue anyway? (y/N)";
+         my $response;
+         chomp($response = <STDIN>);
+         if ($response !~ /y|(yes)/i) { 
+            exit 1;
+         }
+      }
+
       if ( $alter_fk_method eq 'drop_swap' && !$o->get('drop-new-table') ) {
          $o->save_error("--alter-foreign-keys-method=drop_swap does not work with --no-drop-new-table.");
       }
@@ -9815,7 +9825,7 @@ sub find_child_tables {
    
    my $sql = "SELECT table_schema, table_name "
            . "FROM information_schema.key_column_usage "
-           . "WHERE constraint_schema='$tbl->{db}' "
+           . "WHERE referenced_table_schema='$tbl->{db}' "
            . "AND referenced_table_name='$tbl->{tbl}'";
    PTDEBUG && _d($sql);
    my $rows = $cxn->dbh()->selectall_arrayref($sql);
@@ -11025,6 +11035,10 @@ only perform some safety checks and exit.  This helps ensure that you have read 
 documentation and understand how to use this tool.  If you have not read the
 documentation, then do not specify this option.
 
+=item --force
+
+This options bypasses confirmation in case of using alter-foreign-keys-method = none , which might break foreign key constraints.
+
 =item --help
 
 Show help and exit.
@@ -11541,6 +11555,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-online-schema-change 2.2.8
+pt-online-schema-change 2.2.9
 
 =cut

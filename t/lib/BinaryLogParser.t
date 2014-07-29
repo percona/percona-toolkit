@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 7;
+use Test::More tests => 9;
 
 use PerconaTest;
 use BinaryLogParser;
@@ -265,6 +265,97 @@ test_log_parser(
   }
    ]
 );
+
+# #############################################################################
+# Issue 1335960  - Cannot parse MySQL 5.6 Binary Logs 
+#                  because CRC32 checksum was introduced
+# #############################################################################
+
+test_log_parser(
+   parser  => $p,
+   file    => $sample."binlog-CRC32.txt",
+   oktorun => sub { $oktorun = $_[0]; },
+   result  => [
+   {
+     arg => q[BINLOG '
+hUu0Uw85MAAAdAAAAHgAAAABAAQANS42LjE3LWxvZwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAEzgNAAgAEgAEBAQEEgAAXAAEGggAAAAICAgCAAAACgoKGRkAAWfc
+INs=
+'],
+     bytes => 169,
+     cmd => 'Query',
+     end_log_pos => '120',
+     offset => '4',
+     pos_in_log => 192,
+     server_id => '12345',
+     ts => '140702 15:12:21'
+   },
+   {
+     '@@session.auto_increment_increment' => '1',
+     '@@session.auto_increment_offset' => '1',
+     '@@session.autocommit' => '1',
+     '@@session.character_set_client' => '33',
+     '@@session.collation_connection' => '33',
+     '@@session.collation_database' => 'default',
+     '@@session.collation_server' => '8',
+     '@@session.foreign_key_checks' => '1',
+     '@@session.lc_time_names' => '0',
+     '@@session.pseudo_thread_id' => '14',
+     '@@session.sql_auto_is_null' => '0',
+     '@@session.sql_mode' => '1073741824',
+     '@@session.time_zone' => '\'system\'',
+     '@@session.unique_checks' => '1',
+     Query_time => '0',
+     Thread_id => '14',
+     arg => 'BEGIN',
+     bytes => 5,
+     cmd => 'Query',
+     end_log_pos => '204',
+     error_code => '0',
+     offset => '120',
+     pos_in_log => 574,
+     server_id => '12345',
+     timestamp => '1404326011',
+     ts => '140702 15:33:31'
+   },
+   {
+     arg => '140702 15:33:31 server id 12345  end_log_pos 437 CRC32 0x7f23afd0 	Query	thread_id=14	exec_time=0	error_code=0
+use `sakila`
+SET TIMESTAMP=1404326011/*!*/
+insert into film values (NULL,"Contact","Extraterrestrials contact earth", 2005, 1,1,24,5.55,120,25,\'PG\',\'Trailers\',now())
+/*!*/'
+,
+     bytes => 282,
+     cmd => 'Query',
+     pos_in_log => 1390,
+     ts => undef
+   },
+   {
+     Xid => '285',
+     arg => 'T',
+     bytes => 1,
+     cmd => 'Query',
+     end_log_pos => '468',
+     offset => '437',
+     pos_in_log => 1682,
+     server_id => '12345',
+     ts => '140702 15:33:31'
+   },
+   {
+     arg => 'ROLLBACK /* added by mysqlbinlog */
+/*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/
+/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/',
+     bytes => 132,
+     cmd => 'Query',
+     pos_in_log => 1794,
+     ts => undef
+   }
+
+]
+);
+
+
+
 
 # #############################################################################
 # Issue 606: Unknown event type Rotate at ./mk-slave-prefetch
