@@ -77,7 +77,7 @@ ok(
 # On fast machines, the chunk size will probably be be auto-adjusted so
 # large that all tables will be done in a single chunk without an index.
 # Since this varies by default, there's no use checking the checksums
-# other than to ensure that there's at one for each table.
+# other than to ensure that there's at least one for each table.
 $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 ok(
    $row->[0] > 30 && $row->[0] < 50,

@@ -42,7 +42,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.8';
+our $VERSION = '2.2.9';
 
 use strict;
 use warnings FATAL => 'all';
@@ -4616,43 +4616,44 @@ sub main {
          }
       }
       else {
-         if ( $ins_sth ) {
-            eval {
-               PTDEBUG && _d('Saving deadlock to --dest');
-               foreach my $txn (
-                  sort { $a->{thread} <=> $b->{thread} } values %txns
-               ) {
-                  $ins_sth->execute(@{$txn}{@cols});
-               }
-               $dst->dbh->commit();
-            };
-            if ( my $e = $EVAL_ERROR ) {
-               PTDEBUG && _d('Error saving to --dest:', $e);
-               if ( $dst->lost_connection($e) ) {
-                  eval {
-                     $ins_sth->finish() if $ins_sth;
-                     $dst->dbh->disconnect() if $dst->dbh;
-                     $dst->connect(AutoCommit => 0);
-                     $ins_sth = $dst->dbh->prepare($ins_sql);
-                  }; 
-                  if ( $EVAL_ERROR ) {
-                     warn "Lost connection to " . $dst->name . ".  Will try "
-                        . "to reconnect in the next iteration.\n";
-                  }
-                  else {
-                     PTDEBUG && _d('Reconnected to MySQL (--dest)');
-                     redo ITERATION;
-                  }
-               }
-               else {
-                  warn "Error saving to --dest: $EVAL_ERROR";
-                  $exit_status |= 1;
-               }
-            }
-         }
-
          if ( $fingerprint ne $last_fingerprint ) {
             PTDEBUG && _d('New deadlock');
+
+            if ( $ins_sth ) {
+               eval {
+                  PTDEBUG && _d('Saving deadlock to --dest');
+                  foreach my $txn (
+                     sort { $a->{thread} <=> $b->{thread} } values %txns
+                  ) {
+                     $ins_sth->execute(@{$txn}{@cols});
+                  }
+                  $dst->dbh->commit();
+               };
+               if ( my $e = $EVAL_ERROR ) {
+                  PTDEBUG && _d('Error saving to --dest:', $e);
+                  if ( $dst->lost_connection($e) ) {
+                     eval {
+                        $ins_sth->finish() if $ins_sth;
+                        $dst->dbh->disconnect() if $dst->dbh;
+                        $dst->connect(AutoCommit => 0);
+                        $ins_sth = $dst->dbh->prepare($ins_sql);
+                     }; 
+                     if ( $EVAL_ERROR ) {
+                        warn "Lost connection to " . $dst->name . ".  Will try "
+                           . "to reconnect in the next iteration.\n";
+                     }
+                     else {
+                        PTDEBUG && _d('Reconnected to MySQL (--dest)');
+                        redo ITERATION;
+                     }
+                  }
+                  else {
+                     warn "Error saving to --dest: $EVAL_ERROR";
+                     $exit_status |= 1;
+                  }
+               }
+            }
+
             if ( !$o->get('quiet') ) {
                print join($sep, @cols), "\n";
                foreach my $txn (
@@ -5522,6 +5523,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-deadlock-logger 2.2.8
+pt-deadlock-logger 2.2.9
 
 =cut

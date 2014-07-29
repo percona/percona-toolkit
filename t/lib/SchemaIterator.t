@@ -109,6 +109,13 @@ sub test_so {
          $args{test_name},
       );
    }
+   elsif ( $args{like} ) {
+      like(
+         $res,
+         $args{like},
+         $args{test_name},
+      );
+   }
    elsif ( $args{unlike} ) {
       unlike(
          $res,
@@ -573,7 +580,8 @@ $dbh->do("CREATE TABLE d3.t1 (id int auto_increment primary key, c  char(8))");
 
 test_so(
    filters   => ['--ignore-tables', 'd1.t1,d2.t1'],
-   result    => "d1.t2 d1.t3 d3.t1 mysql.columns_priv mysql.db mysql.event mysql.func mysql.help_category mysql.help_keyword mysql.help_relation mysql.help_topic mysql.ndb_binlog_index mysql.plugin mysql.proc mysql.procs_priv mysql.proxies_priv mysql.servers mysql.tables_priv mysql.time_zone mysql.time_zone_leap_second mysql.time_zone_name mysql.time_zone_transition mysql.time_zone_transition_type mysql.user percona_test.checksums percona_test.load_data percona_test.sentinel sakila.actor sakila.address sakila.category sakila.city sakila.country sakila.customer sakila.film sakila.film_actor sakila.film_category sakila.film_text sakila.inventory sakila.language sakila.payment sakila.rental sakila.staff sakila.store ",
+   like    => qr/^d1.t2 d1.t3 d3.t1 mysql/,
+   result => "",
    test_name => '--ignore-tables (bug 1304062)',
 );
 
