@@ -161,14 +161,13 @@ sub parse_event {
                if ( !$got_uh
                   && ( my ( $user, $host, $ip, $thread_id ) = $line =~ m/$slow_log_uh_line/o )
                ) {
-                  if ($thread_id) {  # 5.6 has the thread id on the User@Host line
-                     PTDEBUG && _d("Got user, host, ip, Thread_id", $user, $host, $thread_id);
-                     push @properties, 'user', $user, 'host', $host, 'ip', $ip, 'Thread_id', $thread_id;
-                  }else{
-                     PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
-                     push @properties, 'user', $user, 'host', $host, 'ip', $ip;
-                  }
-                  ++$got_uh;
+                  PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
+                  push @properties, 'user', $user, 'host', $host, 'ip', $ip;
+                  # 5.6 has the thread id on the User@Host line
+                  if ( $thread_id ) {  
+                     push @properties, 'Thread_id', $thread_id;
+                 }
+                 ++$got_uh;
                }
             }
 
@@ -177,13 +176,12 @@ sub parse_event {
             elsif ( !$got_uh
                   && ( my ( $user, $host, $ip, $thread_id ) = $line =~ m/$slow_log_uh_line/o )
             ) {
-                  if ($thread_id) {  # 5.6 has the thread id on the User@Host line
-                     PTDEBUG && _d("Got user, host, ip, Thread_id", $user, $host, $thread_id);
-                     push @properties, 'user', $user, 'host', $host, 'ip', $ip, 'Thread_id', $thread_id;
-                  }else{
-                     PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
-                     push @properties, 'user', $user, 'host', $host, 'ip', $ip;
-                  }
+                  PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
+                  push @properties, 'user', $user, 'host', $host, 'ip', $ip;
+                  # 5.6 has the thread id on the User@Host line
+                  if ( $thread_id ) {       
+                     push @properties, 'Thread_id', $thread_id;
+                 }
                ++$got_uh;
             }
 
