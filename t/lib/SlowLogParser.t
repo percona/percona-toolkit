@@ -1359,7 +1359,7 @@ test_log_parser(
 # (MySQL 5.5 doesn't include thread id)
 test_log_parser(
    parser => $p,
-   file   => "$sample/p55-slow.log",
+   file   => "$sample/slow060.txt",
    result => [
       {  
         Thread_id     => '1',     # here's our item
@@ -1389,7 +1389,7 @@ test_log_parser(
 # (this is in line with MySQL 5.6)
 test_log_parser(
    parser => $p,
-   file   => "$sample/p56-slow.log",
+   file   => "$sample/slow061.txt",
    result => [
       {  
          Thread_id     => 1,           # here's our item
