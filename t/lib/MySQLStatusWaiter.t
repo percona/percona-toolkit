@@ -10,7 +10,7 @@ use strict;
 use warnings FATAL => 'all';
 use POSIX qw( ceil floor );
 use English qw(-no_match_vars);
-use Test::More tests => 22;
+use Test::More tests => 17;
 
 use MySQLStatusWaiter;
 use PerconaTest;
@@ -78,33 +78,35 @@ throws_ok(
    "Catch non-existent variable"
 );
 
+
 # ############################################################################
-# Use initial vals + 20%.
+# Initial vals + 20% 
 # ############################################################################
+
 @vals = (
    # initial check for existence
-   { Threads_connected => 10, },
-   { Threads_running   => 5,  },
+   { Threads_connected => 9, },
+   { Threads_running   => 4,  },
 
    # first check, no wait
    { Threads_connected => 1, },
    { Threads_running   => 1, },
 
    # second check, wait
-   { Threads_connected => 12, }, # too high
-   { Threads_running   => 6,  }, # too high
+   { Threads_connected => 11, }, # too high
+   { Threads_running   => 5,  }, # too high
 
    # third check, wait
-   { Threads_connected => 12, }, # too high
-   { Threads_running   => 5,  },
+   { Threads_connected => 11, }, # too high
+   { Threads_running   => 4,  }, 
 
    # fourth check, wait
    { Threads_connected => 10, },
-   { Threads_running   => 6,  }, # too high
+   { Threads_running   => 5,  }, # too high
    
    # fifth check, no wait
    { Threads_connected => 10, },
-   { Threads_running   => 5,  },
+   { Threads_running   => 4,  },
 );
 
 $oktorun = 1;
@@ -119,10 +121,10 @@ my $sw = new MySQLStatusWaiter(
 is_deeply(
    $sw->max_values(),
    {
-      Threads_connected => int(10 + (10 * 0.20)),
-      Threads_running   => int(5  + (5  * 0.20)),
+      Threads_connected => ceil(9 + (9 * 0.20)),
+      Threads_running   => ceil(4  + (4  * 0.20)),
    },
-   "Initial values +20%"
+   "Threshold = ceil(InitialValue * 1.2)"
 );
 
 # first check
@@ -162,94 +164,6 @@ is(
    $slept,
    3,
    "Slept until values low enough"
-);
-
-# ############################################################################
-# Initial vals + 20% plus ceiling option
-# ############################################################################
-
-@vals = (
-   # initial check for existence
-   { Threads_connected => 9, },
-   { Threads_running   => 4,  },
-
-   # first check, no wait
-   { Threads_connected => 1, },
-   { Threads_running   => 1, },
-
-   # second check, wait
-   { Threads_connected => 11, }, # too high
-   { Threads_running   => 5,  }, # too high
-
-   # third check, wait
-   { Threads_connected => 11, }, # too high
-   { Threads_running   => 4,  }, 
-
-   # fourth check, wait
-   { Threads_connected => 10, },
-   { Threads_running   => 5,  }, # too high
-   
-   # fifth check, no wait
-   { Threads_connected => 10, },
-   { Threads_running   => 4,  },
-);
-
-$oktorun = 1;
-
-$sw = new MySQLStatusWaiter(
-   oktorun    => \&oktorun,
-   get_status => \&get_status,
-   sleep      => \&sleep,
-   ceiling    => 'true',
-   max_spec   => [qw(Threads_connected Threads_running)],
-);
-
-is_deeply(
-   $sw->max_values(),
-   {
-      Threads_connected => ceil(9 + (9 * 0.20)),
-      Threads_running   => ceil(4  + (4  * 0.20)),
-   },
-   "Using Ceiling: Initial values = ceil(val+20%)"
-);
-
-# first check
-@checked = ();
-$slept   = 0;
-$sw->wait();
-
-is_deeply(
-   \@checked,
-   [qw(Threads_connected Threads_running)],
-   "Using Ceiling: Checked both vars"
-);
-
-is(
-   $slept,
-   0,
-   "Using Ceiling: Vals not too high, did not sleep"
-);
-
-# second through fifth checks
-@checked = ();
-$slept   = 0;
-$sw->wait();
-
-is_deeply(
-   \@checked,
-   [qw(
-      Threads_connected Threads_running
-      Threads_connected Threads_running
-      Threads_connected Threads_running
-      Threads_connected Threads_running
-   )],
-   "Using Ceiling: Rechecked all variables"
-);
-
-is(
-   $slept,
-   3,
-   "Using Ceiling: Slept until values low enough"
 );
 
 # ############################################################################
