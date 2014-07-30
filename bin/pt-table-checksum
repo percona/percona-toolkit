@@ -8347,6 +8347,7 @@ package MySQLStatusWaiter;
 
 use strict;
 use warnings FATAL => 'all';
+use POSIX qw( ceil );
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
@@ -8512,8 +8513,8 @@ sub _check_and_set_vals {
       }
       else {
          PTDEBUG && _d('Initial', $var, 'value:', $init_val);
-         $val = int(($init_val * $threshold_factor) + $init_val);
-         $vars->{$var} = $args{'ceiling'} ? ceil($val) : $val; 
+         $val = ($init_val * $threshold_factor) + $init_val;
+         $vars->{$var} = int(ceil($val));
       }
       PTDEBUG && _d('Wait if', $var, '>=', $val);
    }
