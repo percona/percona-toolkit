@@ -8908,28 +8908,31 @@ sub main {
          # boundary sql.  This check applies to the next nibble.  So if
          # the current nibble number is 5, then nibble 5 is already done
          # and we're checking nibble number 6.
-         my $expl = explain_statement(
-            tbl  => $tbl,
-            sth  => $sth->{explain_upper_boundary},
-            vals => [ @{$boundary->{lower}}, $nibble_iter->limit() ],
-         );
-         if (lc($expl->{key} || '') ne lc($nibble_iter->nibble_index() || '') and $o->get('check-plan')) {
-            my $msg
-               = "Aborting copying table $tbl->{name} at chunk "
-               . ($nibble_iter->nibble_number() + 1)
-               . " because it is not safe to ascend.  Chunking should "
-               . "use the "
-               . ($nibble_iter->nibble_index() || '?')
-               . " index, but MySQL EXPLAIN reports that "
-               . ($expl->{key} ? "the $expl->{key}" : "no")
-               . " index will be used for "
-               . $sth->{upper_boundary}->{Statement}
-               . " with values "
-               . join(", ", map { defined $_ ? $_ : "NULL" }
-                      (@{$boundary->{lower}}, $nibble_iter->limit()))
-               . "\n";
-            die ts($msg);
-         } 
+         # Skip if --nocheck-plan   See: https://bugs.launchpad.net/percona-toolkit/+bug/1340728
+         if ( $o->get('check-plan') ) {
+            my $expl = explain_statement(
+               tbl  => $tbl,
+               sth  => $sth->{explain_upper_boundary},
+               vals => [ @{$boundary->{lower}}, $nibble_iter->limit() ],
+            );
+            if ( lc($expl->{key} || '') ne lc($nibble_iter->nibble_index() || '') ) {
+               my $msg
+                  = "Aborting copying table $tbl->{name} at chunk "
+                  . ($nibble_iter->nibble_number() + 1)
+                  . " because it is not safe to ascend.  Chunking should "
+                  . "use the "
+                  . ($nibble_iter->nibble_index() || '?')
+                  . " index, but MySQL EXPLAIN reports that "
+                  . ($expl->{key} ? "the $expl->{key}" : "no")
+                  . " index will be used for "
+                  . $sth->{upper_boundary}->{Statement}
+                  . " with values "
+                  . join(", ", map { defined $_ ? $_ : "NULL" }
+                         (@{$boundary->{lower}}, $nibble_iter->limit()))
+                  . "\n";
+               die ts($msg);
+            } 
+         }
 
          # Once nibbling begins for a table, control does not return to this
          # tool until nibbling is done because, as noted above, all work is
@@ -9531,15 +9534,17 @@ sub nibble_is_safe {
       vals => [ @{$boundary->{lower}}, @{$boundary->{upper}} ],
    );
 
-   # Ensure that MySQL is using the chunk index if the table is being chunked.
-   if ( !$nibble_iter->one_nibble()
-        && lc($expl->{key} || '') ne lc($nibble_iter->nibble_index() || '') and $o->get('check-plan'))
-   {
-      die ts("Error copying rows at chunk " . $nibble_iter->nibble_number()
-         . " of $tbl->{db}.$tbl->{tbl} because MySQL chose "
-         . ($expl->{key} ? "the $expl->{key}" : "no") . " index "
-         . " instead of the " . $nibble_iter->nibble_index() . "index.\n");
-   }
+   # Ensure that MySQL is using the chunk index if the table is being chunked. 
+   # Skip if --nocheck-plan   See: https://bugs.launchpad.net/percona-toolkit/+bug/1340728
+      if ( !$nibble_iter->one_nibble()
+           && lc($expl->{key} || '') ne lc($nibble_iter->nibble_index() || '') 
+           && $o->get('check-plan') )
+      {
+         die ts("Error copying rows at chunk " . $nibble_iter->nibble_number()
+            . " of $tbl->{db}.$tbl->{tbl} because MySQL chose "
+            . ($expl->{key} ? "the $expl->{key}" : "no") . " index "
+            . " instead of the " . $nibble_iter->nibble_index() . "index.\n");
+      }
 
    # Ensure that the chunk isn't too large if there's a --chunk-size-limit.
    # If single-chunking the table, this has already been checked, so it
@@ -9564,11 +9569,13 @@ sub nibble_is_safe {
       }
    }
 
-   # Ensure that MySQL is still using the entire index.
+   # Ensure that MySQL is still using the entire index. 
    # https://bugs.launchpad.net/percona-toolkit/+bug/1010232
+   # Skip if --nocheck-plan   See: https://bugs.launchpad.net/percona-toolkit/+bug/1340728
    if ( !$nibble_iter->one_nibble()
         && $tbl->{key_len}
-        && ($expl->{key_len} || 0) < $tbl->{key_len} )
+        && ($expl->{key_len} || 0) < $tbl->{key_len} 
+        && $o->get('check-plan') )
    {
       die ts("Error copying rows at chunk " . $nibble_iter->nibble_number()
          . " of $tbl->{db}.$tbl->{tbl} because MySQL used "

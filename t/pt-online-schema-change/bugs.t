@@ -124,7 +124,11 @@ like(
 {
    my $o = new OptionParser(file => "$trunk/bin/pt-table-checksum");
    $o->get_specs();
+
+   $o->set('check-plan', 1);  #  check-plan is true by default
+
    no warnings;
+
    local *pt_online_schema_change::explain_statement = sub {
       return { key => 'some_key' }
    };
