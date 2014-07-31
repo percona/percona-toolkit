@@ -5977,9 +5977,10 @@ sub find_replication_differences {
    }
    my ($dbh, $repl_table) = @args{@required_args};
 
-   my $ts_clause = $self->{start_ts} ? " AND ts >= '$self->{start_ts}' " : ''; # issue 1311654
+  
+   my $ts_clause = $self->{start_ts} ? " AND ts >= '$self->{start_ts}' " : ''; # only check rows created in this run 
+   my $tries = 5;  # try again up to five times if replication checksum don't agree. 
    my $ok_to_leave = 0;
-   my $tries = 5;  # number of times to try again if replication checksum don't agree. 
    my $diffs;
    do {
       my $sql
@@ -5993,16 +5994,15 @@ sub find_replication_differences {
          . "WHERE (master_cnt <> this_cnt OR master_crc <> this_crc "
          .        "OR ISNULL(master_crc) <> ISNULL(this_crc)) $ts_clause"
          . ($args{where} ? " AND ($args{where})" : "");
-         PTDEBUG && _d($sql);
-         $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
-         $tries--;
-         if (@$diffs) { 
-            sleep 1;
-         } else {
-            $ok_to_leave = 1;
-         }
-
-      } until ($ok_to_leave || !$tries);
+      PTDEBUG && _d($sql);
+      $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
+      $tries--;
+      if (@$diffs) { 
+         sleep 1;
+      } else {
+         $ok_to_leave = 1;
+      }
+   } until ($ok_to_leave || !$tries);
    return $diffs;
 }
 
@@ -8978,8 +8978,9 @@ sub main {
    $print_header = 1;
    $exit_status  = 0;
 
-   $start_ts = full_ts(); # issue 1311654
-   PTDEBUG && _d("initial start_ts: [$start_ts]");
+   # get start time
+   $start_ts = full_ts(); 
+   PTDEBUG && _d("initial start_ts: $start_ts");
 
    # ########################################################################
    # Get configuration information.

@@ -459,19 +459,32 @@ sub find_replication_differences {
    }
    my ($dbh, $repl_table) = @args{@required_args};
 
-   my $sql
-      = "SELECT CONCAT(db, '.', tbl) AS `table`, "
-      . "chunk, chunk_index, lower_boundary, upper_boundary, "
-      . "COALESCE(this_cnt-master_cnt, 0) AS cnt_diff, "
-      . "COALESCE("
-      .   "this_crc <> master_crc OR ISNULL(master_crc) <> ISNULL(this_crc), 0"
-      . ") AS crc_diff, this_cnt, master_cnt, this_crc, master_crc "
-      . "FROM $repl_table "
-      . "WHERE (master_cnt <> this_cnt OR master_crc <> this_crc "
-      .        "OR ISNULL(master_crc) <> ISNULL(this_crc))"
-      . ($args{where} ? " AND ($args{where})" : "");
-   PTDEBUG && _d($sql);
-   my $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
+  
+   my $ts_clause = $self->{start_ts} ? " AND ts >= '$self->{start_ts}' " : ''; # only check rows created in this run 
+   my $tries = 5;  # try again up to five times if replication checksum don't agree. 
+   my $ok_to_leave = 0;
+   my $diffs;
+   do {
+      my $sql
+         = "SELECT CONCAT(db, '.', tbl) AS `table`, "
+         . "chunk, chunk_index, lower_boundary, upper_boundary, "
+         . "COALESCE(this_cnt-master_cnt, 0) AS cnt_diff, "
+         . "COALESCE("
+         .   "this_crc <> master_crc OR ISNULL(master_crc) <> ISNULL(this_crc), 0"
+         . ") AS crc_diff, this_cnt, master_cnt, this_crc, master_crc "
+         . "FROM $repl_table "
+         . "WHERE (master_cnt <> this_cnt OR master_crc <> this_crc "
+         .        "OR ISNULL(master_crc) <> ISNULL(this_crc)) $ts_clause"
+         . ($args{where} ? " AND ($args{where})" : "");
+      PTDEBUG && _d($sql);
+      $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
+      $tries--;
+      if (@$diffs) { 
+         sleep 1;
+      } else {
+         $ok_to_leave = 1;
+      }
+   } until ($ok_to_leave || !$tries);
    return $diffs;
 }
 
