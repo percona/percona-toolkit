@@ -1,7 +1,13 @@
 Changelog for Percona Toolkit
 
-v2.2.9 released 2014-07-08
+  * Fixed bug 1287253: pt-table-checksum deadlock 
+  * Fixed bug 1299387: 5.6 slow query log Thead_id becomes Id
+  * Fixed bug 1311654: pt-table-checksum + PXC inconsistent results upon --resume
+  * Fixed bug 1340728: pt-online-schema-change doesn't work with HASH indexes
+  * Fixed bug 1253872: pt-table-checksum max load 20% rounds down
+  * Fixed bug 1340364: some shell tools output error when queried for --version 
 
+v2.2.9 released 2014-07-08
 
   * Fixed bug 1258135: pt-deadlock-logger introduces a noise to MySQL
   * Fixed bug 1329422: pt-online-schema-change foreign-keys-method=none breaks constraints 

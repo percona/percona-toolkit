@@ -54,7 +54,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.9';
+our $VERSION = '2.2.10';
 
 use strict;
 use warnings FATAL => 'all';
@@ -11563,6 +11563,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-online-schema-change 2.2.9
+pt-online-schema-change 2.2.10
 
 =cut
