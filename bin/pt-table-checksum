@@ -5977,19 +5977,28 @@ sub find_replication_differences {
    }
    my ($dbh, $repl_table) = @args{@required_args};
 
-   my $sql
-      = "SELECT CONCAT(db, '.', tbl) AS `table`, "
-      . "chunk, chunk_index, lower_boundary, upper_boundary, "
-      . "COALESCE(this_cnt-master_cnt, 0) AS cnt_diff, "
-      . "COALESCE("
-      .   "this_crc <> master_crc OR ISNULL(master_crc) <> ISNULL(this_crc), 0"
-      . ") AS crc_diff, this_cnt, master_cnt, this_crc, master_crc "
-      . "FROM $repl_table "
-      . "WHERE (master_cnt <> this_cnt OR master_crc <> this_crc "
-      .        "OR ISNULL(master_crc) <> ISNULL(this_crc))"
-      . ($args{where} ? " AND ($args{where})" : "");
-   PTDEBUG && _d($sql);
-   my $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
+    
+   my $tries = $self->{'OptionParser'}->get('replicate-check-retries') || 1; 
+   my $diffs;
+   while ($tries--) {
+      my $sql
+         = "SELECT CONCAT(db, '.', tbl) AS `table`, "
+         . "chunk, chunk_index, lower_boundary, upper_boundary, "
+         . "COALESCE(this_cnt-master_cnt, 0) AS cnt_diff, "
+         . "COALESCE("
+         .   "this_crc <> master_crc OR ISNULL(master_crc) <> ISNULL(this_crc), 0"
+         . ") AS crc_diff, this_cnt, master_cnt, this_crc, master_crc "
+         . "FROM $repl_table "
+         . "WHERE (master_cnt <> this_cnt OR master_crc <> this_crc "
+         .        "OR ISNULL(master_crc) <> ISNULL(this_crc)) "
+         . ($args{where} ? " AND ($args{where})" : "");
+      PTDEBUG && _d($sql);
+      $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
+      if (!@$diffs || !$tries) { # if no differences are found OR we are out of tries left...
+         last;                   # get out now
+      }
+      sleep 1;            
+   }
    return $diffs;
 }
 
@@ -8965,6 +8974,7 @@ sub main {
    $print_header = 1;
    $exit_status  = 0;
 
+
    # ########################################################################
    # Get configuration information.
    # ########################################################################
@@ -10073,6 +10083,7 @@ sub main {
          # Should be done automatically, but I like to be explicit.
          $fetch_sth->finish();
          $update_sth->finish();
+         $delete_sth->finish();
 
          # Update rate, chunk size, and progress if the nibble actually
          # selected some rows.
@@ -10382,6 +10393,7 @@ sub ts {
    my $ts = sprintf('%02d-%02dT%02d:%02d:%02d', $M+1, $d, $h, $m, $s);
    return $msg ? "$ts $msg" : $ts;
 }
+
 
 sub nibble_is_safe {
    my (%args) = @_;
@@ -12289,6 +12301,15 @@ pt-table-checksum doesn't checksum any tables.  It checks replicas for
 differences found by previous checksumming, and then exits.  It might be useful
 if you run pt-table-checksum quietly in a cron job, for example, and later want
 a report on the results of the cron job, perhaps to implement a Nagios check.
+
+=item --replicate-check-retries
+
+type: int; default: 1
+
+Retry checksum comparison this many times when a difference is encountered.
+Only when a difference persists after this number of checks is it considered valid.
+Using this option with a value of 2 or more alleviates spurious differences that 
+arise when using the --resume option.
 
 =item --replicate-database
 
