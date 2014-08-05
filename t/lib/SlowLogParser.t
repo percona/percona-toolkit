@@ -1349,6 +1349,70 @@ test_log_parser(
    ],
 );
 
+
+# #############################################################################
+# pt-query-digest fails to parse Thread_id on 5.6 
+# https://bugs.launchpad.net/percona-toolkit/+bug/1299387
+# #############################################################################
+
+# first test with a Percona 5.5 slow log (includes an explicit Thread_id line)
+# (MySQL 5.5 doesn't include thread id)
+test_log_parser(
+   parser => $p,
+   file   => "$sample/slow060.txt",
+   result => [
+      {  
+        Thread_id     => '1',     # here's our item
+        Bytes_sent    => '64',
+        Killed        => '0',
+        Last_errno    => '0',
+        Lock_time     => '0.000000',
+        Query_time    => '10.000373',
+        Rows_affected => '0',
+        Rows_examined => '0',
+        Rows_read     => '0',
+        Rows_sent     => '1',
+        arg           => 'select sleep(10)',
+        bytes         => 16,
+        cmd           => 'Query',
+        host          => 'localhost',
+        ip            => '127.0.0.1',
+        pos_in_log    => 0,
+        timestamp     => '1405358212',
+        ts            => '140714 14:16:52',
+        user          => 'root'
+      },
+   ],
+);
+
+# now test with a Percona 5.6 slow log. Thread_id is now on the user@host line, and is called 'Id'.
+# (this is in line with MySQL 5.6)
+test_log_parser(
+   parser => $p,
+   file   => "$sample/slow061.txt",
+   result => [
+      {  
+         Thread_id     => 1,           # here's our item
+         Bytes_sent    => '64',
+         Lock_time     => '0.000000',
+         Query_time    => '11.013723',
+         Rows_affected => '0',
+         Rows_examined => '0',
+         Rows_sent     => '1',
+         arg           => 'select sleep(11)',
+         bytes         => 16,
+         cmd           => 'Query',
+         host          => 'localhost',
+         ip            => '127.0.0.1',
+         pos_in_log    => 0,
+         timestamp     => '1405360304',
+         ts            => '140714 14:51:44',
+         user          => 'root',
+      },
+   ],
+);
+
+
 # #############################################################################
 # Done.
 # #############################################################################
