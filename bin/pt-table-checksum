@@ -10561,6 +10561,7 @@ sub exec_nibble {
 
          if (   $error =~ m/Lock wait timeout exceeded/
              || $error =~ m/Query execution was interrupted/
+             || $error =~ m/Deadlock found/
          ) {
             # These errors/warnings can be retried, so don't print
             # a warning yet; do that in final_fail.
@@ -10584,8 +10585,9 @@ sub exec_nibble {
          my (%args) = @_;
          my $error = $args{error};
 
-         if (   $error =~ /Lock wait timeout exceeded/
-             || $error =~ /Query execution was interrupted/
+         if (   $error =~ m/Lock wait timeout exceeded/
+             || $error =~ m/Query execution was interrupted/
+             || $error =~ m/Deadlock found/
          ) {
             # These errors/warnings are not fatal but only cause this
             # nibble to be skipped.
