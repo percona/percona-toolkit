@@ -459,12 +459,10 @@ sub find_replication_differences {
    }
    my ($dbh, $repl_table) = @args{@required_args};
 
-  
-   my $ts_clause = $self->{start_ts} ? " AND ts >= '$self->{start_ts}' " : ''; # only check rows created in this run 
-   my $tries = 5;  # try again up to five times if replication checksum don't agree. 
-   my $ok_to_leave = 0;
+    
+   my $tries = $self->{'OptionParser'}->get('replicate-check-retries') || 1; 
    my $diffs;
-   do {
+   while ($tries--) {
       my $sql
          = "SELECT CONCAT(db, '.', tbl) AS `table`, "
          . "chunk, chunk_index, lower_boundary, upper_boundary, "
@@ -474,17 +472,15 @@ sub find_replication_differences {
          . ") AS crc_diff, this_cnt, master_cnt, this_crc, master_crc "
          . "FROM $repl_table "
          . "WHERE (master_cnt <> this_cnt OR master_crc <> this_crc "
-         .        "OR ISNULL(master_crc) <> ISNULL(this_crc)) $ts_clause"
+         .        "OR ISNULL(master_crc) <> ISNULL(this_crc)) "
          . ($args{where} ? " AND ($args{where})" : "");
       PTDEBUG && _d($sql);
       $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
-      $tries--;
-      if (@$diffs) { 
-         sleep 1;
-      } else {
-         $ok_to_leave = 1;
+      if (!@$diffs || !$tries) { # if no differences are found OR we are out of tries left...
+         last;                   # get out now
       }
-   } until ($ok_to_leave || !$tries);
+      sleep 1;            
+   }
    return $diffs;
 }
 

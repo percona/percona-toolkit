@@ -5977,12 +5977,10 @@ sub find_replication_differences {
    }
    my ($dbh, $repl_table) = @args{@required_args};
 
-  
-   my $ts_clause = $self->{start_ts} ? " AND ts >= '$self->{start_ts}' " : ''; # only check rows created in this run 
-   my $tries = 5;  # try again up to five times if replication checksum don't agree. 
-   my $ok_to_leave = 0;
+    
+   my $tries = $self->{'OptionParser'}->get('replicate-check-retries') || 1; 
    my $diffs;
-   do {
+   while ($tries--) {
       my $sql
          = "SELECT CONCAT(db, '.', tbl) AS `table`, "
          . "chunk, chunk_index, lower_boundary, upper_boundary, "
@@ -5992,17 +5990,15 @@ sub find_replication_differences {
          . ") AS crc_diff, this_cnt, master_cnt, this_crc, master_crc "
          . "FROM $repl_table "
          . "WHERE (master_cnt <> this_cnt OR master_crc <> this_crc "
-         .        "OR ISNULL(master_crc) <> ISNULL(this_crc)) $ts_clause"
+         .        "OR ISNULL(master_crc) <> ISNULL(this_crc)) "
          . ($args{where} ? " AND ($args{where})" : "");
       PTDEBUG && _d($sql);
       $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
-      $tries--;
-      if (@$diffs) { 
-         sleep 1;
-      } else {
-         $ok_to_leave = 1;
+      if (!@$diffs || !$tries) { # if no differences are found OR we are out of tries left...
+         last;                   # get out now
       }
-   } until ($ok_to_leave || !$tries);
+      sleep 1;            
+   }
    return $diffs;
 }
 
@@ -8930,7 +8926,6 @@ use sigtrap 'handler', \&sig_int, 'normal-signals';
 my $oktorun      = 1;
 my $print_header = 1;
 my $exit_status  = 0;
-my $start_ts     = 0;   # issue 1311654
 
 # "exit codes 1 - 2, 126 - 165, and 255 [1] have special meanings,
 # and should therefore be avoided for user-specified exit parameters"
@@ -8978,9 +8973,6 @@ sub main {
    $print_header = 1;
    $exit_status  = 0;
 
-   # get start time
-   $start_ts = full_ts(); 
-   PTDEBUG && _d("initial start_ts: $start_ts");
 
    # ########################################################################
    # Get configuration information.
@@ -10401,13 +10393,6 @@ sub ts {
    return $msg ? "$ts $msg" : $ts;
 }
 
-sub full_ts {
-   my ($msg) = @_;
-   my ($s, $m, $h, $d, $M, $Y) = localtime;
-   $Y += 1900;
-   my $ts = sprintf('%04d-%02d-%02dT%02d:%02d:%02d', $Y, $M+1, $d, $h, $m, $s);
-   return $msg ? "$ts $msg" : $ts;
-}
 
 sub nibble_is_safe {
    my (%args) = @_;
@@ -12313,6 +12298,15 @@ pt-table-checksum doesn't checksum any tables.  It checks replicas for
 differences found by previous checksumming, and then exits.  It might be useful
 if you run pt-table-checksum quietly in a cron job, for example, and later want
 a report on the results of the cron job, perhaps to implement a Nagios check.
+
+=item --replicate-check-retries
+
+type: int; default: 1
+
+Retry checksum comparison this many times when a difference is encountered.
+Only when a difference persists after this number of checks is it considered valid.
+Using this option with a value of 2 or more alleviates spurious differences that 
+arise when using the --resume option.
 
 =item --replicate-database
 
