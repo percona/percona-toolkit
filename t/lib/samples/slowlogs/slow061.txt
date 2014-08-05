@@ -1,0 +1,10 @@
+bin/mysqld, Version: 5.6.19-67.0-log (Percona Server (GPL), Release 67.0, Revision 618). started with:
+Tcp port: 3306  Unix socket: (null)
+Time                 Id Command    Argument
+# Time: 140714 14:51:44
+# User@Host: root[root] @ localhost [127.0.0.1]  Id:     1
+# Schema:   Last_errno: 0  Killed: 0
+# Query_time: 11.013723  Lock_time: 0.000000  Rows_sent: 1  Rows_examined: 0  Rows_affected: 0
+# Bytes_sent: 64
+SET timestamp=1405360304;
+select sleep(11);

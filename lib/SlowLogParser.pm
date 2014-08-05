@@ -42,7 +42,7 @@ sub new {
 }
 
 my $slow_log_ts_line = qr/^# Time: ([0-9: ]{15})/;
-my $slow_log_uh_line = qr/# User\@Host: ([^\[]+|\[[^[]+\]).*?@ (\S*) \[(.*)\]/;
+my $slow_log_uh_line = qr/# User\@Host: ([^\[]+|\[[^[]+\]).*?@ (\S*) \[(.*)\]\s*(?:Id:\s*(\d+))?/;
 # These can appear in the log file when it's opened -- for example, when someone
 # runs FLUSH LOGS or the server starts.
 # /usr/sbin/mysqld, Version: 5.0.67-0ubuntu6-log ((Ubuntu)). started with:
@@ -159,21 +159,29 @@ sub parse_event {
                ++$got_ts;
                # The User@Host might be concatenated onto the end of the Time.
                if ( !$got_uh
-                  && ( my ( $user, $host, $ip ) = $line =~ m/$slow_log_uh_line/o )
+                  && ( my ( $user, $host, $ip, $thread_id ) = $line =~ m/$slow_log_uh_line/o )
                ) {
                   PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
                   push @properties, 'user', $user, 'host', $host, 'ip', $ip;
-                  ++$got_uh;
+                  # 5.6 has the thread id on the User@Host line
+                  if ( $thread_id ) {  
+                     push @properties, 'Thread_id', $thread_id;
+                 }
+                 ++$got_uh;
                }
             }
 
             # Maybe it's the user/host line of a slow query log
             # # User@Host: root[root] @ localhost []
             elsif ( !$got_uh
-                  && ( my ( $user, $host, $ip ) = $line =~ m/$slow_log_uh_line/o )
+                  && ( my ( $user, $host, $ip, $thread_id ) = $line =~ m/$slow_log_uh_line/o )
             ) {
-               PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
-               push @properties, 'user', $user, 'host', $host, 'ip', $ip;
+                  PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
+                  push @properties, 'user', $user, 'host', $host, 'ip', $ip;
+                  # 5.6 has the thread id on the User@Host line
+                  if ( $thread_id ) {       
+                     push @properties, 'Thread_id', $thread_id;
+                 }
                ++$got_uh;
             }
 
