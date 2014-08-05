@@ -97,6 +97,7 @@ ok(
    "Static chunk size (--chunk-time 0)"
 );
 
+
 $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 ok(
    $row->[0] >= 85 && $row->[0] <= 90,
