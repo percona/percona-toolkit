@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v2.2.10 released 2014-08-06
+
   * Fixed bug 1287253: pt-table-checksum deadlock 
   * Fixed bug 1299387: 5.6 slow query log Thead_id becomes Id
   * Fixed bug 1311654: pt-table-checksum + PXC inconsistent results upon --resume
