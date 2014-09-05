@@ -1001,7 +1001,7 @@ open_tables() {
 }
 
 lock_waits() {
-   local sql1="SELECT
+   local sql1="SELECT SQL_NO_CACHE
       CONCAT('thread ', b.trx_mysql_thread_id, ' from ', p.host) AS who_blocks,
       IF(p.command = \"Sleep\", p.time, 0) AS idle_in_trx,
       MAX(TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP)) AS max_wait_time,
@@ -1013,7 +1013,7 @@ lock_waits() {
    GROUP BY who_blocks ORDER BY num_waiters DESC\G"
    $CMD_MYSQL $EXT_ARGV -e "$sql1"
 
-   local sql2="SELECT
+   local sql2="SELECT SQL_NO_CACHE
       r.trx_id AS waiting_trx_id,
       r.trx_mysql_thread_id AS waiting_thread,
       TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP) AS wait_time,
@@ -1034,9 +1034,9 @@ lock_waits() {
 } 
 
 transactions() {
-   $CMD_MYSQL $EXT_ARGV -e "SELECT * FROM INFORMATION_SCHEMA.INNODB_TRX\G"
-   $CMD_MYSQL $EXT_ARGV -e "SELECT * FROM INFORMATION_SCHEMA.INNODB_LOCKS\G"
-   $CMD_MYSQL $EXT_ARGV -e "SELECT * FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS\G"
+   $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_TRX\G"
+   $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_LOCKS\G"
+   $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS\G"
 }
 
 innodb_status() {
