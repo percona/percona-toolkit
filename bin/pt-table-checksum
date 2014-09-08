@@ -57,7 +57,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.9';
+our $VERSION = '2.2.10';
 
 use strict;
 use warnings FATAL => 'all';
@@ -5977,19 +5977,28 @@ sub find_replication_differences {
    }
    my ($dbh, $repl_table) = @args{@required_args};
 
-   my $sql
-      = "SELECT CONCAT(db, '.', tbl) AS `table`, "
-      . "chunk, chunk_index, lower_boundary, upper_boundary, "
-      . "COALESCE(this_cnt-master_cnt, 0) AS cnt_diff, "
-      . "COALESCE("
-      .   "this_crc <> master_crc OR ISNULL(master_crc) <> ISNULL(this_crc), 0"
-      . ") AS crc_diff, this_cnt, master_cnt, this_crc, master_crc "
-      . "FROM $repl_table "
-      . "WHERE (master_cnt <> this_cnt OR master_crc <> this_crc "
-      .        "OR ISNULL(master_crc) <> ISNULL(this_crc))"
-      . ($args{where} ? " AND ($args{where})" : "");
-   PTDEBUG && _d($sql);
-   my $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
+    
+   my $tries = $self->{'OptionParser'}->get('replicate-check-retries') || 1; 
+   my $diffs;
+   while ($tries--) {
+      my $sql
+         = "SELECT CONCAT(db, '.', tbl) AS `table`, "
+         . "chunk, chunk_index, lower_boundary, upper_boundary, "
+         . "COALESCE(this_cnt-master_cnt, 0) AS cnt_diff, "
+         . "COALESCE("
+         .   "this_crc <> master_crc OR ISNULL(master_crc) <> ISNULL(this_crc), 0"
+         . ") AS crc_diff, this_cnt, master_cnt, this_crc, master_crc "
+         . "FROM $repl_table "
+         . "WHERE (master_cnt <> this_cnt OR master_crc <> this_crc "
+         .        "OR ISNULL(master_crc) <> ISNULL(this_crc)) "
+         . ($args{where} ? " AND ($args{where})" : "");
+      PTDEBUG && _d($sql);
+      $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
+      if (!@$diffs || !$tries) { # if no differences are found OR we are out of tries left...
+         last;                   # get out now
+      }
+      sleep 1;            
+   }
    return $diffs;
 }
 
@@ -8347,6 +8356,7 @@ package MySQLStatusWaiter;
 
 use strict;
 use warnings FATAL => 'all';
+use POSIX qw( ceil );
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
@@ -8512,8 +8522,8 @@ sub _check_and_set_vals {
       }
       else {
          PTDEBUG && _d('Initial', $var, 'value:', $init_val);
-         $val = int(($init_val * $threshold_factor) + $init_val);
-         $vars->{$var} = $val;
+         $val = ($init_val * $threshold_factor) + $init_val;
+         $vars->{$var} = int(ceil($val));
       }
       PTDEBUG && _d('Wait if', $var, '>=', $val);
    }
@@ -8963,6 +8973,7 @@ sub main {
    $oktorun      = 1;  
    $print_header = 1;
    $exit_status  = 0;
+
 
    # ########################################################################
    # Get configuration information.
@@ -10072,6 +10083,7 @@ sub main {
          # Should be done automatically, but I like to be explicit.
          $fetch_sth->finish();
          $update_sth->finish();
+         $delete_sth->finish();
 
          # Update rate, chunk size, and progress if the nibble actually
          # selected some rows.
@@ -10382,6 +10394,7 @@ sub ts {
    return $msg ? "$ts $msg" : $ts;
 }
 
+
 sub nibble_is_safe {
    my (%args) = @_;
    my @required_args = qw(Cxn tbl NibbleIterator OptionParser);
@@ -10561,6 +10574,7 @@ sub exec_nibble {
 
          if (   $error =~ m/Lock wait timeout exceeded/
              || $error =~ m/Query execution was interrupted/
+             || $error =~ m/Deadlock found/
          ) {
             # These errors/warnings can be retried, so don't print
             # a warning yet; do that in final_fail.
@@ -10584,8 +10598,9 @@ sub exec_nibble {
          my (%args) = @_;
          my $error = $args{error};
 
-         if (   $error =~ /Lock wait timeout exceeded/
-             || $error =~ /Query execution was interrupted/
+         if (   $error =~ m/Lock wait timeout exceeded/
+             || $error =~ m/Query execution was interrupted/
+             || $error =~ m/Deadlock found/
          ) {
             # These errors/warnings are not fatal but only cause this
             # nibble to be skipped.
@@ -12287,6 +12302,15 @@ differences found by previous checksumming, and then exits.  It might be useful
 if you run pt-table-checksum quietly in a cron job, for example, and later want
 a report on the results of the cron job, perhaps to implement a Nagios check.
 
+=item --replicate-check-retries
+
+type: int; default: 1
+
+Retry checksum comparison this many times when a difference is encountered.
+Only when a difference persists after this number of checks is it considered valid.
+Using this option with a value of 2 or more alleviates spurious differences that 
+arise when using the --resume option.
+
 =item --replicate-database
 
 type: string
@@ -12674,6 +12698,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-checksum 2.2.9
+pt-table-checksum 2.2.10
 
 =cut

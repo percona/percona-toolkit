@@ -61,7 +61,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.9';
+our $VERSION = '2.2.10';
 
 use strict;
 use warnings FATAL => 'all';
@@ -6537,12 +6537,13 @@ sub new {
    my ( $class ) = @_;
    my $self = {
       pending => [],
+      last_event_offset => undef,
    };
    return bless $self, $class;
 }
 
 my $slow_log_ts_line = qr/^# Time: ([0-9: ]{15})/;
-my $slow_log_uh_line = qr/# User\@Host: ([^\[]+|\[[^[]+\]).*?@ (\S*) \[(.*)\]/;
+my $slow_log_uh_line = qr/# User\@Host: ([^\[]+|\[[^[]+\]).*?@ (\S*) \[(.*)\]\s*(?:Id:\s*(\d+))?/;
 my $slow_log_hd_line = qr{
       ^(?:
       T[cC][pP]\s[pP]ort:\s+\d+ # case differs on windows/unix
@@ -6573,6 +6574,7 @@ sub parse_event {
       or defined($stmt = $next_event->())
    ) {
       my @properties = ('cmd', 'Query', 'pos_in_log', $pos_in_log);
+      $self->{last_event_offset} = $pos_in_log;
       $pos_in_log = $tell->();
 
       if ( $stmt =~ s/$slow_log_hd_line//go ){ # Throw away header lines in log
@@ -6605,19 +6607,25 @@ sub parse_event {
                push @properties, 'ts', $time;
                ++$got_ts;
                if ( !$got_uh
-                  && ( my ( $user, $host, $ip ) = $line =~ m/$slow_log_uh_line/o )
+                  && ( my ( $user, $host, $ip, $thread_id ) = $line =~ m/$slow_log_uh_line/o )
                ) {
                   PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
                   push @properties, 'user', $user, 'host', $host, 'ip', $ip;
-                  ++$got_uh;
+                  if ( $thread_id ) {  
+                     push @properties, 'Thread_id', $thread_id;
+                 }
+                 ++$got_uh;
                }
             }
 
             elsif ( !$got_uh
-                  && ( my ( $user, $host, $ip ) = $line =~ m/$slow_log_uh_line/o )
+                  && ( my ( $user, $host, $ip, $thread_id ) = $line =~ m/$slow_log_uh_line/o )
             ) {
-               PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
-               push @properties, 'user', $user, 'host', $host, 'ip', $ip;
+                  PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
+                  push @properties, 'user', $user, 'host', $host, 'ip', $ip;
+                  if ( $thread_id ) {       
+                     push @properties, 'Thread_id', $thread_id;
+                 }
                ++$got_uh;
             }
 
@@ -6698,9 +6706,15 @@ sub parse_event {
 
       PTDEBUG && _d('Properties of event:', Dumper(\@properties));
       my $event = { @properties };
-      if ( $args{stats} ) {
-         $args{stats}->{events_read}++;
-         $args{stats}->{events_parsed}++;
+      if ( !$event->{arg} ) {
+         PTDEBUG && _d('Partial event, no arg');
+      }
+      else {
+         $self->{last_event_offset} = undef;
+         if ( $args{stats} ) {
+            $args{stats}->{events_read}++;
+            $args{stats}->{events_parsed}++;
+         }
       }
       return $event;
    } # EVENT
@@ -11224,6 +11238,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-upgrade 2.2.9
+pt-upgrade 2.2.10
 
 =cut

@@ -1,6 +1,35 @@
 Release Notes
 *************
 
+v2.2.10 released 2014-08-06
+===========================
+
+Percona Toolkit 2.2.10 has been released. This release contains six bug fixes.
+
+Bugs Fixed:
+
+* Fixed bug 1287253: pt-table-checksum would exit with error if it would encounter deadlock when doing checksum. This was fixed by retrying the command in case of deadlock error.
+
+* Fixed bug 1311654: When used with Percona XtraDB Cluster, pt-table-checksum could show incorrect result if --resume option was used. This was fixed by adding a new ``--replicate-check-retries`` command line parameter. If you are having resume problems you can now set ``--replicate-check-retries`` N , where N is the number of times to retry a discrepant checksum (default = 1 , no retries). Setting a value of ``3`` is enough to completely eliminate spurious differences.
+
+* Fixed bug 1299387: pt-query-digest didn't work correctly do to a changed logging format when field ``Thread_id`` has been renamed to ``Id``. Fixed by implementing support for the new format.
+
+* Fixed bug 1340728: in some cases, where the index was of type "hash" , pt-online-schema-change would refuse to run because MySQL reported it would not use an index for the select. This check should have been able to be skipped using --nocheck-plan option, but it wasn't. ``--nocheck-plan`` now ignores the chosen index correctly.
+
+* Fixed bug 1253872: When running pt-table-checksum or pt-online-schema on a server that is unused, setting the 20% max load would fail due to tools rounding the value down. This has been fixed by rounding the value up.
+
+* Fixed bug 1340364: Due to incompatibility of dash and bash syntax some shell tools were showing error when queried for version.
+
+Changelog
+---------
+
+* Fixed bug 1287253: pt-table-checksum deadlock 
+* Fixed bug 1299387: 5.6 slow query log Thead_id becomes Id
+* Fixed bug 1311654: pt-table-checksum + PXC inconsistent results upon --resume
+* Fixed bug 1340728: pt-online-schema-change doesn't work with HASH indexes
+* Fixed bug 1253872: pt-table-checksum max load 20% rounds down
+* Fixed bug 1340364: some shell tools output error when queried for --version 
+
 v2.2.9 released 2014-07-08
 ==========================
 
