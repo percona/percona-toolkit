@@ -27,7 +27,7 @@
 # Query size    14      11      11      11      11      11       0      11
 # String:
 # Databases    test
-# Hosts
+# Hosts        10.1.12.201
 # Users        mytopuser
 # Query_time distribution
 #   1us
@@ -58,7 +58,7 @@ SHOW STATUS\G
 # Query size    50      38      11      27      19      27   11.31      19
 # String:
 # Databases    test
-# Hosts
+# Hosts        10.1.12.201
 # Query_time distribution
 #   1us  ################################################################
 #  10us

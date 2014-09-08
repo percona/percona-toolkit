@@ -162,6 +162,7 @@ sub parse_event {
                   && ( my ( $user, $host, $ip, $thread_id ) = $line =~ m/$slow_log_uh_line/o )
                ) {
                   PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
+                  $host ||= $ip;  # sometimes host is missing when using skip-name-resolve (LP #issue 1262456)
                   push @properties, 'user', $user, 'host', $host, 'ip', $ip;
                   # 5.6 has the thread id on the User@Host line
                   if ( $thread_id ) {  
@@ -177,6 +178,7 @@ sub parse_event {
                   && ( my ( $user, $host, $ip, $thread_id ) = $line =~ m/$slow_log_uh_line/o )
             ) {
                   PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
+                  $host ||= $ip;  # sometimes host is missing when using skip-name-resolve (LP #issue 1262456)
                   push @properties, 'user', $user, 'host', $host, 'ip', $ip;
                   # 5.6 has the thread id on the User@Host line
                   if ( $thread_id ) {       
