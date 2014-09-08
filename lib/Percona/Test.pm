@@ -541,7 +541,7 @@ sub no_diff {
       `cat $expected_output | sed $sed_args > /tmp/pt-test-outfile-trf`;
       $expected_output = "/tmp/pt-test-outfile-trf";
    }
-
+   die("entre");
    # Determine cmd type and run it.
    if ( ref $cmd eq 'CODE' ) {
       output($cmd, file => $tmp_file);

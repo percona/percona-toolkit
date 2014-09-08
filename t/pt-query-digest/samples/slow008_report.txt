@@ -12,7 +12,7 @@
 # Query size    43      31      31      31      31      31       0      31
 # String:
 # Databases    db2
-# Hosts
+# Hosts        1.2.3.8
 # Users        meow
 # Query_time distribution
 #   1us
@@ -42,7 +42,7 @@ SELECT MIN(id),MAX(id) FROM tbl\G
 # Query size    19      14      14      14      14      14       0      14
 # String:
 # Databases    db
-# Hosts
+# Hosts        1.2.3.8
 # Users        meow
 # Query_time distribution
 #   1us
@@ -68,7 +68,7 @@ SET NAMES utf8\G
 # Query size    37      27      27      27      27      27       0      27
 # String:
 # Databases    db1
-# Hosts
+# Hosts        1.2.3.8
 # Users        meow
 # Query_time distribution
 #   1us  ################################################################

@@ -15,7 +15,7 @@
 # Rows examine   0       0       0       0       0       0       0       0
 # Query size   100      82      14      27   20.50   26.08    6.12   26.08
 # String:
-# Hosts
+# Hosts        1.2.3.8
 # Users        meow
 # Query_time distribution
 #   1us  ################################
