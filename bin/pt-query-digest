@@ -64,7 +64,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.9';
+our $VERSION = '2.2.10';
 
 use strict;
 use warnings FATAL => 'all';
@@ -4972,7 +4972,7 @@ sub new {
 }
 
 my $slow_log_ts_line = qr/^# Time: ([0-9: ]{15})/;
-my $slow_log_uh_line = qr/# User\@Host: ([^\[]+|\[[^[]+\]).*?@ (\S*) \[(.*)\]/;
+my $slow_log_uh_line = qr/# User\@Host: ([^\[]+|\[[^[]+\]).*?@ (\S*) \[(.*)\]\s*(?:Id:\s*(\d+))?/;
 my $slow_log_hd_line = qr{
       ^(?:
       T[cC][pP]\s[pP]ort:\s+\d+ # case differs on windows/unix
@@ -5036,19 +5036,25 @@ sub parse_event {
                push @properties, 'ts', $time;
                ++$got_ts;
                if ( !$got_uh
-                  && ( my ( $user, $host, $ip ) = $line =~ m/$slow_log_uh_line/o )
+                  && ( my ( $user, $host, $ip, $thread_id ) = $line =~ m/$slow_log_uh_line/o )
                ) {
                   PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
                   push @properties, 'user', $user, 'host', $host, 'ip', $ip;
-                  ++$got_uh;
+                  if ( $thread_id ) {  
+                     push @properties, 'Thread_id', $thread_id;
+                 }
+                 ++$got_uh;
                }
             }
 
             elsif ( !$got_uh
-                  && ( my ( $user, $host, $ip ) = $line =~ m/$slow_log_uh_line/o )
+                  && ( my ( $user, $host, $ip, $thread_id ) = $line =~ m/$slow_log_uh_line/o )
             ) {
-               PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
-               push @properties, 'user', $user, 'host', $host, 'ip', $ip;
+                  PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
+                  push @properties, 'user', $user, 'host', $host, 'ip', $ip;
+                  if ( $thread_id ) {       
+                     push @properties, 'Thread_id', $thread_id;
+                 }
                ++$got_uh;
             }
 
@@ -16587,6 +16593,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-query-digest 2.2.9
+pt-query-digest 2.2.10
 
 =cut

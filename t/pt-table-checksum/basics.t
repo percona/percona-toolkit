@@ -80,8 +80,8 @@ ok(
 # other than to ensure that there's at least one for each table.
 $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 ok(
-   $row->[0] > 30 && $row->[0] < 50,
-   'Between 30 and 50 chunks'
+   $row->[0] > 30 && $row->[0] < 60,
+   'Between 30 and 60 chunks'
 ) or diag($row->[0]);
 
 # ############################################################################
@@ -96,6 +96,7 @@ ok(
    ),
    "Static chunk size (--chunk-time 0)"
 );
+
 
 $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 ok(

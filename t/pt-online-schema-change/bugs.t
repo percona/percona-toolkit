@@ -124,7 +124,11 @@ like(
 {
    my $o = new OptionParser(file => "$trunk/bin/pt-table-checksum");
    $o->get_specs();
+
+   $o->set('check-plan', 1);  #  check-plan is true by default
+
    no warnings;
+
    local *pt_online_schema_change::explain_statement = sub {
       return { key => 'some_key' }
    };
@@ -368,6 +372,66 @@ like(
    qr/error 1265/,  # Data truncated for column 'c' at row 21
    "Bug 1188264: warning about expected MySQL error 1265"
 );
+
+
+# #############################################################################
+# Issue 1315130
+# Failed to detect child tables in other schema, and falsely identified
+# child tables in own schema
+# #############################################################################
+
+$sb->load_file('master', "$sample/bug-1315130_cleanup.sql");
+$sb->load_file('master', "$sample/bug-1315130.sql");
+
+$output = output(
+   sub { pt_online_schema_change::main(@args, "$master_dsn,D=bug_1315130_a,t=parent_table",
+         '--dry-run', 
+         '--alter', "add column c varchar(16)",
+         '--alter-foreign-keys-method', 'auto'),
+      },
+);
+
+   like(
+         $output,
+         qr/Child tables:\s*`bug_1315130_a`\.`child_table_in_same_schema` \(approx\. 1 rows\)\s*`bug_1315130_b`\.`child_table_in_second_schema` \(approx\. 1 rows\)[^`]*?Will/s,
+         "Correctly identify child tables from other schemas and ignores tables from same schema referencig same named parent in other schema.",
+   );
+# clear databases with their foreign keys
+$sb->load_file('master', "$sample/bug-1315130_cleanup.sql");  
+
+
+# #############################################################################
+# Issue 1340728
+# fails when no index is returned in EXPLAIN,  even though --nocheck-plan is set
+# (happens on HASH indexes)
+# #############################################################################
+
+$sb->load_file('master', "$sample/bug-1340728_cleanup.sql");
+$sb->load_file('master', "$sample/bug-1340728.sql");
+
+# insert a few thousand rows (else test isn't valid)
+my $rows = 5000;
+for (my $i = 0; $i < $rows; $i++) {
+   $master_dbh->do("INSERT INTO bug_1340728.test VALUES (NULL, 'xx')");
+}
+
+
+$output = output(
+   sub { pt_online_schema_change::main(@args, "$master_dsn,D=bug_1340728,t=test",
+         '--execute', 
+         '--alter', "ADD COLUMN c INT",
+         '--nocheck-plan',
+         ),
+      },
+);
+
+   like(
+         $output,
+         qr/Successfully altered/s,
+         "--nocheck-plan ignores plans without index",
+   );
+# clear databases 
+$sb->load_file('master', "$sample/bug-1340728_cleanup.sql");  
 
 # #############################################################################
 # Done.

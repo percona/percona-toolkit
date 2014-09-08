@@ -8,6 +8,7 @@ BEGIN {
 
 use strict;
 use warnings FATAL => 'all';
+use POSIX qw( ceil floor );
 use English qw(-no_match_vars);
 use Test::More tests => 17;
 
@@ -18,6 +19,7 @@ my $oktorun = 1;
 my @checked = ();
 my $slept   = 0;
 my @vals    = ();
+
 
 sub oktorun {
    return $oktorun;
@@ -76,33 +78,35 @@ throws_ok(
    "Catch non-existent variable"
 );
 
+
 # ############################################################################
-# Use initial vals + 20%.
+# Initial vals + 20% 
 # ############################################################################
+
 @vals = (
    # initial check for existence
-   { Threads_connected => 10, },
-   { Threads_running   => 5,  },
+   { Threads_connected => 9, },
+   { Threads_running   => 4,  },
 
    # first check, no wait
    { Threads_connected => 1, },
    { Threads_running   => 1, },
 
    # second check, wait
-   { Threads_connected => 12, }, # too high
-   { Threads_running   => 6,  }, # too high
+   { Threads_connected => 11, }, # too high
+   { Threads_running   => 5,  }, # too high
 
    # third check, wait
-   { Threads_connected => 12, }, # too high
-   { Threads_running   => 5,  },
+   { Threads_connected => 11, }, # too high
+   { Threads_running   => 4,  }, 
 
    # fourth check, wait
    { Threads_connected => 10, },
-   { Threads_running   => 6,  }, # too high
+   { Threads_running   => 5,  }, # too high
    
    # fifth check, no wait
    { Threads_connected => 10, },
-   { Threads_running   => 5,  },
+   { Threads_running   => 4,  },
 );
 
 $oktorun = 1;
@@ -117,10 +121,10 @@ my $sw = new MySQLStatusWaiter(
 is_deeply(
    $sw->max_values(),
    {
-      Threads_connected => int(10 + (10 * 0.20)),
-      Threads_running   => int(5  + (5  * 0.20)),
+      Threads_connected => ceil(9 + (9 * 0.20)),
+      Threads_running   => ceil(4  + (4  * 0.20)),
    },
-   "Initial values +20%"
+   "Threshold = ceil(InitialValue * 1.2)"
 );
 
 # first check
