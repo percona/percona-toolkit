@@ -1447,8 +1447,18 @@ if    [ "${0##*/}" = "$TOOL" ] \
       exit 0
    fi
 
+   # if ASK-PASS , request password on terminal without echoing. This will override --password
+   if [ -n "$OPT_ASK_PASS" ]; then 
+      stty_orig=`stty -g`           # save original terminal setting.
+      echo -n "enter password: ";
+      stty -echo                    # turn-off echoing.
+      read OPT_PASSWORD             # read the password
+      stty $stty_orig               # restore terminal setting.
+   fi
+
    MYSQL_ARGS="$(mysql_options)"
    EXT_ARGV="$(arrange_mysql_options "$EXT_ARGV $MYSQL_ARGS")"
+
 
    # Check that mysql and mysqladmin are in PATH.  If not, we're
    # already dead in the water, so don't bother with cmd line opts,
@@ -1649,6 +1659,12 @@ fail to start.
 =head1 OPTIONS
 
 =over
+
+=item --ask-pass
+
+This option will prompt user for MySQL password once. Password is not echoed
+on terminal.
+This options overrides C<--password>
 
 =item --collect
 
