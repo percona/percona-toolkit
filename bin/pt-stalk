@@ -1450,7 +1450,7 @@ if    [ "${0##*/}" = "$TOOL" ] \
    # if ASK-PASS , request password on terminal without echoing. This will override --password
    if [ -n "$OPT_ASK_PASS" ]; then 
       stty_orig=`stty -g`           # save original terminal setting.
-      echo -n "enter password: ";
+      echo -n "Enter MySQL password: ";
       stty -echo                    # turn-off echoing.
       read OPT_PASSWORD             # read the password
       stty $stty_orig               # restore terminal setting.
@@ -1662,9 +1662,7 @@ fail to start.
 
 =item --ask-pass
 
-This option will prompt user for MySQL password once. Password is not echoed
-on terminal.
-This options overrides C<--password>
+Prompt for a password when connecting to MySQL.
 
 =item --collect
 
