@@ -15,7 +15,7 @@
 # Query size   100      39      39      39      39      39       0      39
 # String:
 # Databases    test_db
-# Hosts
+# Hosts        127.0.0.1
 # Last errno   0
 # Users        root
 # Query_time distribution
@@ -51,7 +51,7 @@ select  b = b + 30 from t where  user_id=1\G
 # Query size     0       0       0       0       0       0       0       0
 # String:
 # Databases    test_db
-# Hosts
+# Hosts        127.0.0.1
 # Last errno   0
 # Users        root
 # Query_time distribution

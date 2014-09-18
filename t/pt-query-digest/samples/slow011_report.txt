@@ -12,7 +12,7 @@
 # Query size    65      54      27      27      27      27       0      27
 # String:
 # Databases    db1 (1/50%), db2 (1/50%)
-# Hosts
+# Hosts        1.2.3.8
 # Users        meow
 # Query_time distribution
 #   1us  ################################################################
@@ -38,7 +38,7 @@ administrator command: Quit\G
 # Query size    34      28      14      14      14      14       0      14
 # String:
 # Databases    db
-# Hosts
+# Hosts        1.2.3.8
 # Users        meow
 # Query_time distribution
 #   1us

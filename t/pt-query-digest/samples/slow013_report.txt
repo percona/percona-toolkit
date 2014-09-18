@@ -13,7 +13,7 @@
 # Query size    14      11      11      11      11      11       0      11
 # String:
 # Databases    test
-# Hosts
+# Hosts        10.1.12.201
 # Users        mytopuser
 # Query_time distribution
 #   1us
@@ -40,7 +40,7 @@ SHOW STATUS\G
 # Query size    42      32      16      16      16      16       0      16
 # String:
 # Databases    abc
-# Hosts
+# Hosts        10.1.250.19
 # Users        foo_app
 # Query_time distribution
 #   1us
@@ -67,7 +67,7 @@ SET autocommit=0\G
 # Query size     7       6       6       6       6       6       0       6
 # String:
 # Databases    abc
-# Hosts
+# Hosts        10.1.250.19
 # Users        foo_app
 # Query_time distribution
 #   1us
@@ -94,7 +94,7 @@ commit\G
 # Query size    35      27      27      27      27      27       0      27
 # String:
 # Databases    test
-# Hosts
+# Hosts        10.1.12.201
 # Users        mytopuser
 # Query_time distribution
 #   1us  ################################################################

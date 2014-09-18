@@ -13,7 +13,7 @@
 # Query size    14      11      11      11      11      11       0      11
 # String:
 # Databases    test
-# Hosts
+# Hosts        10.1.12.201
 # Users        mytopuser
 # Query_time distribution
 #   1us
