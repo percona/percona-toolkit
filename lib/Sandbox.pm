@@ -374,6 +374,10 @@ sub verify_test_data {
            . join(", ", map { "mysql.$_" } @tables_in_mysql)
            . ", "
            . join(", ", map { "sakila.$_" } @tables_in_sakila);
+
+   # remove leading "," if any
+   $sql =~ s/CHECKSUM TABLES\s+,/CHECKSUM TABLES /;
+
    my @checksums = @{$dbh->selectall_arrayref($sql, {Slice => {} })};
 
    # Diff the two sets of checksums: host to master (ref).
