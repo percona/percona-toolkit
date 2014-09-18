@@ -172,6 +172,7 @@ innodb_file_per_table               = 1
 ssl                                 = 1
 server-id                           = 1
 log-bin                             = sl1-bin
+wsrep_provider_options              = "gcache.size=64M;base_host=10.1.2.102; base_port=4567; cert.log_conflicts=no;etc=etc;"
 
 [mysql.server]
 user                                = mysql
