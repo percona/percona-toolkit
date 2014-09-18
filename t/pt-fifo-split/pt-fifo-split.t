@@ -47,6 +47,12 @@ sub read_fifo {
    my ($n_reads) = @_;
    my $last_inode = 0;
    my @data;
+
+   # This test still freezes on some centos systems, 
+   # so we're going to bluntly sleep for a few secs to avoid deadlock 
+   # TODO: figure out if there is a proper way to do this. 
+   sleep(3);
+
    for (1..$n_reads) {
       PerconaTest::wait_until(sub {
          my $inode;
