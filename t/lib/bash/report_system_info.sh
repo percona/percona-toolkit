@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 53
+plan 54
 
 . "$LIB_DIR/alt_cmds.sh"
 . "$LIB_DIR/log_warn_die.sh"
@@ -1039,6 +1039,16 @@ cat <<EOF > "$PT_TMPDIR/expected"
 EOF
 parse_dmidecode_mem_devices "$samples/dmidecode-005.txt" > "$PT_TMPDIR/got"
 no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "dmidecode-005.txt"
+
+cat <<EOF > "$PT_TMPDIR/expected"
+  Locator   Size     Speed             Form Factor   Type          Type Detail
+  ========= ======== ================= ============= ============= ===========
+  DIMM 1    8192 MB  1600 MHz          SODIMM        DDR3          Synchronous
+  DIMM 2    8192 MB  1600 MHz          SODIMM        DDR3          Synchronous
+EOF
+parse_dmidecode_mem_devices "$samples/dmidecode-006.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "dmidecode-006.txt"
+
 
 # parse_arcconf
 
