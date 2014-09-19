@@ -276,12 +276,12 @@ my @cases = (
    },
 
 
-   {  name   => "expire_log_days",
-      vars   => [qw(expire_log_days 0 log_bin ON)],
-      advice => [qw(expire_log_days)],
+   {  name   => "expire_logs_days",
+      vars   => [qw(expire_logs_days 0 log_bin ON)],
+      advice => [qw(expire_logs_days)],
    },
-   {  name   => "expire_log_days, log_bin OFF, only warns about log_bin",
-      vars   => [qw(expire_log_days 0 log_bin OFF)],
+   {  name   => "expire_logs_days, log_bin OFF, only warns about log_bin",
+      vars   => [qw(expire_logs_days 0 log_bin OFF)],
       advice => [qw(log_bin)],
    },
    {  name   => "innodb_file_io_threads",
