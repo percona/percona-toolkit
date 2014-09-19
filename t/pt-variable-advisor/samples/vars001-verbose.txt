@@ -10,6 +10,8 @@
 
 # WARN slave_net_timeout: This variable is set too high. This is too long to wait before noticing that the connection to the master has failed and retrying.
 
+# WARN expire_logs_days: Binary logs are enabled, but automatic purging is not enabled. If you do not purge binary logs, your disk will fill up.
+
 # NOTE innodb_data_file_path: Auto-extending InnoDB files can consume a lot of disk space that is very difficult to reclaim later. Some people prefer to set innodb_file_per_table and allocate a fixed-size file for ibdata1.
 
 # NOTE innodb_flush_method: Most production database servers that use InnoDB should set innodb_flush_method to O_DIRECT to avoid double-buffering, unless the I/O system is very low performance. 
