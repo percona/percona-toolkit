@@ -1,6 +1,34 @@
 Release Notes
 *************
 
+v2.2.11 released 2014-09-26
+===========================
+
+Percona Toolkit 2.2.11 has been released. This release contains seven bug fixes.
+
+Bugs Fixed:
+
+* Fixed bug 1262456: pt-query-digest didn't report host details when host was using skip-name-resolve option. Fixed by using the IP of the host instead of it's name, when the hostname is missing.
+
+* Fixed bug 1264580: pt-mysql-summary was incorrectly parsing key/value pairs in the wsrep_provider_options option, which resulted in incomplete my.cnf information.
+
+* Fixed bug 1318985: pt-stalk is now using ``SQL_NO_CACHE`` when executing queries for locks and transactions. Previously this could lead to situations where most of the queries that were ``waiting on query cache mutex`` were the pt-stalk queries (INNODB_TRX).
+
+* Fixed bug 1348679: When using ``-- -p`` option to enter the password for pt-stalk it would ask user to re-enter the password every time tool connects to the server to retrieve the information. New option ``--ask-pass`` has been introduced that can be used to specify the password only once.
+
+* Fixed bug 1368379: A parsing error caused pt-summary ( specifically the ``report_system_info`` module) to choke on the "Memory Device" parameter named "Configured Clock Speed" when using dmidecode to report memory slot information.
+
+Changelog
+---------
+
+* Fixed bug 1262456: pt-query-digest doesn't report host details
+* Fixed bug 1264580: pt-mysql-summary incorrectly tries to parse key/value pairs in wsrep_provider_options resulting in incomplete my.cnf information
+* Fixed bug 1318985: pt-stalk should use SQL_NO_CACHE
+* Fixed bug 1348679: pt-stalk handles mysql user password in awkward way
+* Fixed bug 1365085: Various issues with tests
+* Fixed bug 1368379: pt-summary problem parsing dmidecode output on some machines
+* Fixed bug 1303388: Typo in pt-variable-advisor
+
 v2.2.10 released 2014-08-06
 ===========================
 
