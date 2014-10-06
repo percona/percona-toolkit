@@ -2141,6 +2141,29 @@ is (
    'prompt_no_echo outputs prompt to STDERR'
 );
 
+# #############################################################################
+#  Issue 1361293: Global config file with no-version-check option makes tools
+#  that don't recognize the option fail.
+# #############################################################################
+diag(`echo "no-version-check" > ~/.OptionParser.t.conf`);
+$o = new OptionParser(
+   description  => 'OptionParser.t parses command line options.',
+   usage        => "$PROGRAM_NAME <options>"
+);
+$o->get_specs("$trunk/bin/pt-slave-find"),   # doesn't have version-check option
+$output = output(  
+         sub {
+            $o->get_opts();
+         },
+         stderr=>1
+      );
+unlike(
+   $output,
+   qr/Unknown option: no-version-check/,
+   'no-version-check ignored if unsupported and in config file. issue 1361293'
+);
+diag(`rm -rf ~/.OptionParser.t.conf`);
+
 
 
 # #############################################################################
