@@ -1132,6 +1132,16 @@ sub _read_config_file {
          $parse  = 0;
          next LINE;
       }
+
+      # Silently ignore option [no]-version-check if it is unsupported and it comes from a config file
+      # TODO: Ideally , this should be generalized for all unsupported options that come from global files
+      if (  $parse 
+            && !$self->has('version-check') 
+            && $line =~ /version-check/ 
+      ) {
+         next LINE;
+      }
+
       if ( $parse
          && (my($opt, $arg) = $line =~ m/^\s*([^=\s]+?)(?:\s*=\s*(.*?)\s*)?$/)
       ) {
