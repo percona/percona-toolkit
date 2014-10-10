@@ -97,7 +97,7 @@ is($output, '', "No output when --no-ascend");
 
 # Check ascending only first column
 $output = `$cmd --where 1=1 --dry-run --ascend-first --source D=test,t=table_5,F=$cnf --purge --limit 50 2>&1`;
-like ( $output, qr/WHERE \(1=1\) AND \(\(`a` >= \?\)\) LIMIT/, 'Can ascend just first column');
+like ( $output, qr/WHERE \(1=1\) AND \(\(`a` >= \?\)\) ORDER BY `a`,`b`,`c`,`d`  LIMIT/, 'Can ascend just first column');
 
 # #############################################################################
 # Done.
