@@ -81,6 +81,17 @@ like(
    "Dies if no other nodes are found"
 );
 
+
+($output, $exit_status) = full_output(
+   sub { pt_table_checksum::main(@args, '--recursion-method', 'none') },
+   stderr => 1,
+);
+
+ok (
+      $output =~ qr/WARNING/i && !$exit_status,
+      "Warns but doesn't die if --recursion-method=none - issue #1373937"
+);
+
 for my $args (
       ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
       ["using recursion-method=cluster", '--recursion-method', 'cluster']
@@ -232,7 +243,7 @@ for my $args (
    # Wait for the slave to apply the binlogs from node1 (its master).
    # Then change it so it's not consistent.
    PerconaTest::wait_for_table($slave_dbh, 'test.t');
-   $sb->wait_for_slaves('cslave1');
+   $sb->wait_for_slaves(master => 'node1', slave => 'cslave1');
    $slave_dbh->do("update test.t set c='zebra' where c='z'");
 
    $output = output(
