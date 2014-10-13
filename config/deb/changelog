@@ -1,3 +1,15 @@
+percona-toolkit (2.2.11) unstable; urgency=low
+
+  * Fixed bug 1262456: pt-query-digest doesn't report host details
+  * Fixed bug 1264580: pt-mysql-summary incorrectly tries to parse key/value pairs in wsrep_provider_options resulting in incomplete my.cnf information
+  * Fixed bug 1318985: pt-stalk should use SQL_NO_CACHE
+  * Fixed bug 1348679: pt-stalk handles mysql user password in awkward way
+  * Fixed bug 1365085: Various issues with tests
+  * Fixed bug 1368379: pt-summary problem parsing dmidecode output on some machines
+  * Fixed bug 1303388: Typo in pt-variable-advisor
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Thu, 25 Sep 2014 13:43:24 +0000
+
 percona-toolkit (2.2.10) unstable; urgency=low
 
   * Fixed bug 1287253: pt-table-checksum deadlock 

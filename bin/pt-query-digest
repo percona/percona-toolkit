@@ -64,7 +64,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.10';
+our $VERSION = '2.2.11';
 
 use strict;
 use warnings FATAL => 'all';
@@ -5039,6 +5039,7 @@ sub parse_event {
                   && ( my ( $user, $host, $ip, $thread_id ) = $line =~ m/$slow_log_uh_line/o )
                ) {
                   PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
+                  $host ||= $ip;  # sometimes host is missing when using skip-name-resolve (LP #issue 1262456)
                   push @properties, 'user', $user, 'host', $host, 'ip', $ip;
                   if ( $thread_id ) {  
                      push @properties, 'Thread_id', $thread_id;
@@ -5051,6 +5052,7 @@ sub parse_event {
                   && ( my ( $user, $host, $ip, $thread_id ) = $line =~ m/$slow_log_uh_line/o )
             ) {
                   PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
+                  $host ||= $ip;  # sometimes host is missing when using skip-name-resolve (LP #issue 1262456)
                   push @properties, 'user', $user, 'host', $host, 'ip', $ip;
                   if ( $thread_id ) {       
                      push @properties, 'Thread_id', $thread_id;
@@ -16593,6 +16595,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-query-digest 2.2.10
+pt-query-digest 2.2.11
 
 =cut

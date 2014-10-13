@@ -75,6 +75,8 @@ SKIP: {
       unless $root eq $trunk;
    
    my @tags          = split /\n/, `$bzr tags`;
+   # sort the version numbers (some bzr versions do not sort them)
+   @tags = sort { calc_value($a) <=> calc_value($b) } @tags; 
    my ($current_tag) = $tags[-1] =~ /^(\S+)/;
 
    is(
@@ -83,5 +85,19 @@ SKIP: {
       "bzr tags and Percona::Toolkit::VERSION agree"
    );
 }
+
+# we use this function to help sort version numbers
+sub calc_value {
+   my $version = shift;
+   $version =~ s/ +[^ ]*$//;
+   my $value = 0;
+   my $exp = 0;
+   foreach my $num (reverse split /\./, $version) {
+      $value += $num * 10 ** $exp++;
+   }
+   print "$version = $value\n";
+   return $value;
+}
+
 
 done_testing;

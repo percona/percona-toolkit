@@ -44,7 +44,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.10';
+our $VERSION = '2.2.11';
 
 use strict;
 use warnings FATAL => 'all';
@@ -3601,10 +3601,10 @@ sub get_rules {
       },
    },
    {
-      id   => 'expire_log_days',
+      id   => 'expire_logs_days',
       code => sub {
          my ( %args ) = @_;
-         return _var_eq($args{variables}->{expire_log_days}, 0)
+         return _var_eq($args{variables}->{expire_logs_days}, 0)
             && _var_seq($args{variables}->{log_bin}, "ON");
       },
    },
@@ -5720,7 +5720,7 @@ severity: warn
 Most applications should use the default REPEATABLE-READ transaction
 isolation level, or in a few cases READ-COMMITTED.
 
-=item expire_log_days
+=item expire_logs_days
 
 severity: warn
 
@@ -6138,6 +6138,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-variable-advisor 2.2.10
+pt-variable-advisor 2.2.11
 
 =cut

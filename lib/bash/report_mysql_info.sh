@@ -345,36 +345,27 @@ summarize_processlist () {
    echo
 }
 
-# Pretty-prints the my.cnf file.  It's super annoying, but some *modern*
-# versions of awk don't support POSIX character sets in regular
-# expressions, like [[:space:]] (looking at you, Debian).  So
-# the below patterns contain [<space><tab>] and must remain that way.
+# Pretty-prints the my.cnf file.
 pretty_print_cnf_file () {
    local file="$1"
 
    [ -e "$file" ] || return
 
-   awk '
-   BEGIN {
-      FS="="
-   }
-   /^[ \t]*[a-zA-Z[]/ {
-      if (length($2)) {
-         gsub(/^[ \t]*/, "", $1);
-         gsub(/^[ \t]*/, "", $2);
-         gsub(/[ \t]*$/, "", $1);
-         gsub(/[ \t]*$/, "", $2);
-         printf("%-35s = %s\n", $1, $2);
-      }
-      else if ( $0 ~ /\[/ ) {
-         print "";
-         print $1;
-      }
-      else {
-         print $1;
-      }
-   }' "$file"
+   perl -n -l -e '
+      my $line = $_;
+      if ( $line =~ /^\s*[a-zA-Z[]/ ) { 
+         if ( $line=~/\s*(.*?)\s*=\s*(.*)\s*$/ ) { 
+            printf("%-35s = %s\n", $1, $2)  
+         } 
+         elsif ( $line =~ /\s*\[/ ) { 
+            print "\n$line" 
+         } else {
+            print $line
+         } 
+      }' "$file"
+
 }
+
 
 find_checkpoint_age() {
    local file="$1"

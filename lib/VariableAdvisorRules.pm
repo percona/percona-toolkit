@@ -430,10 +430,10 @@ sub get_rules {
       },
    },
    {
-      id   => 'expire_log_days',
+      id   => 'expire_logs_days',
       code => sub {
          my ( %args ) = @_;
-         return _var_eq($args{variables}->{expire_log_days}, 0)
+         return _var_eq($args{variables}->{expire_logs_days}, 0)
             && _var_seq($args{variables}->{log_bin}, "ON");
       },
    },
