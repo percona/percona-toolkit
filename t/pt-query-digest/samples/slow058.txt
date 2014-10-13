@@ -12,7 +12,7 @@
 # Query size    24      52      26      26      26      26       0      26
 # String:
 # Databases    db
-# Hosts
+# Hosts        1.2.3.8
 # Users        meow
 # Query_time distribution
 #   1us
@@ -41,7 +41,7 @@ insert `foo` values("bar")\G
 # Query size    25      54      27      27      27      27       0      27
 # String:
 # Databases    db
-# Hosts
+# Hosts        1.2.3.8
 # Users        meow
 # Query_time distribution
 #   1us
@@ -70,7 +70,7 @@ replace `foo` values("bar")\G
 # Query size    50     108      54      54      54      54       0      54
 # String:
 # Databases    db
-# Hosts
+# Hosts        1.2.3.8
 # Users        meow
 # Query_time distribution
 #   1us  ################################################################
