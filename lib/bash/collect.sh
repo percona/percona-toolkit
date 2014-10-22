@@ -40,6 +40,7 @@ CMD_STRACE="${CMD_STRACE:-"$(_which strace)"}"
 CMD_SYSCTL="${CMD_SYSCTL:-"$(_which sysctl)"}"
 CMD_TCPDUMP="${CMD_TCPDUMP:-"$(_which tcpdump)"}"
 CMD_VMSTAT="${CMD_VMSTAT:-"$(_which vmstat)"}"
+CMD_DMESG="${CMD_DMESG:-"$(_which dmesg)"}"
 
 # Try to find command manually.
 [ -z "$CMD_SYSCTL" -a -x "/sbin/sysctl" ] && CMD_SYSCTL="/sbin/sysctl"
@@ -146,6 +147,14 @@ collect() {
    if [ "$CMD_SYSCTL" ]; then
       $CMD_SYSCTL -a >> "$d/$p-sysctl" &
    fi
+
+   # collect dmesg events from 60 seconds ago until present
+   if [ "$CMD_DMESG" ]; then
+      local UPTIME=`cat /proc/uptime | awk '{ print $1 }'`
+      local START_TIME=$(echo "$UPTIME 60" | awk '{print ($1 - $2)}')
+      $CMD_DMESG  | perl -ne 'm/\[\s*(\d+)\./; if ($1 > '${START_TIME}') { print }' >> "$d/$p-dmesg" & 
+   fi
+
    local cnt=$(($OPT_RUN_TIME / $OPT_SLEEP_COLLECT))
    if [ "$CMD_VMSTAT" ]; then
       $CMD_VMSTAT $OPT_SLEEP_COLLECT $cnt >> "$d/$p-vmstat" &
