@@ -10556,6 +10556,12 @@ safety checks:
 
 =item *
 
+In most cases the tool will refuse to operate unless a PRIMARY KEY or UNIQUE INDEX is 
+present in the table. See L<"--alter"> for details.
+
+
+=item *
+
 The tool refuses to operate if it detects replication filters. See
 L<"--[no]check-replication-filters"> for details.
 
@@ -10631,6 +10637,16 @@ The following limitations apply which, if attempted, will cause the tool
 to fail in unpredictable ways:
 
 =over
+
+=item *
+
+In almost all cases a PRIMARY KEY or UNIQUE INDEX needs to be present in the table. 
+This is necessary because the tool creates a DELETE trigger to keep the new table 
+updated while the process is running.
+
+A notable exception is when a PRIMARY KEY or UNIQUE INDEX is being created from 
+B<existing columns> as part of the ALTER clause; in that case it will use these 
+column(s) for the DELETE trigger.
 
 =item *
 
