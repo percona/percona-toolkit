@@ -4892,6 +4892,27 @@ sub main {
    $dbh->do("USE `$db`");
 
    # ########################################################################
+   # If --check-read-only option was given and we are in --update mode 
+   # we wait until server is writable , or run-time is over
+   # We also do this check after daemon is up and running, but it is necessary 
+   # to check this before attempting to create the table and inserting rows
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1328686
+   # #######################################################################
+   if ( $o->get('check-read-only') && $o->get('update') ) {
+      PTDEBUG && _d('--check-read-only option was set and we are in --update mode. Checking if server is read_only');
+      server_is_readonly($dbh) &&  PTDEBUG &&  _d('Server is read_only ... can\'t do anything yet... waiting');
+      my $start_time = time;
+      my $run_time   = $o->get('run-time');
+      my $interval   = $o->get('interval') || 5;
+      while (server_is_readonly($dbh)) {
+         sleep($interval); 
+         if ($run_time && $run_time < time - $start_time) {
+            return 0;
+         }
+      }
+   }
+
+   # ########################################################################
    # Create the heartbeat table if --create-table was given.
    # ########################################################################
    my $utc       = $o->get('utc');
