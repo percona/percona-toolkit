@@ -9368,11 +9368,6 @@ sub main {
                   . "or regular replicas were found.  Use --recursion-method=dsn "
                   . "to specify the other nodes in the cluster.\n";
             } 
-            else {
-               warn "WARNING !!! Using --recursion-method=none. "
-                  . "No diffs will be found because no other nodes will be checksummed. "
-                  . "Use method 'cluster' or 'dsn' (see docs) if you want to find diffs.";
-            }
          }
 
          # Make sure the master and all node are in the same cluster.
@@ -12247,10 +12242,13 @@ DSNs are ordered by C<id>, but C<id> and C<parent_id> are otherwise ignored.
 The C<dsn> column contains a replica DSN like it would be given on the command
 line, for example: C<"h=replica_host,u=repl_user,p=repl_pass">.
 
-The C<none> method prevents the tool from connecting to any replicas or nodes.
-This effectively disables all the L<"REPLICA CHECKS"> because there will
-not be any replicas to check.  Therefore, this method is not recommended unless
-it's for a specialized purpose where you only need to obtain checksums for one server.
+The C<none> method makes the tool ignore all slaves and cluster nodes. This 
+method is not recommended because it effectively disables the 
+L<"REPLICA CHECKS"> and no differences can be found. It is useful, however, if 
+you only need to write checksums on the master or a single cluster node. The 
+safer alternative is C<--no-replicate-check>: the tool finds replicas and 
+cluster nodes, performs the L<"REPLICA CHECKS">, but does not check for 
+differences. See L<"--[no]replicate-check">.
 
 =item --replicate
 
