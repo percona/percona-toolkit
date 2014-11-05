@@ -52,11 +52,18 @@ ok(
 # Issue 1377888: refuse to parse raw binary log 
 # #############################################################################
 
-my $output =  `$trunk/bin/pt-query-digest --type binlog '$trunk/t/pt-query-digest/samples/raw_binlog.log' 2>&1`;
-ok(
-   $output =~ /mysqlbinlog/i ,
-   'Refuses to parse raw binlog file.'
-  );
+my $output = output(
+    sub { pt_query_digest::main(@args, "$trunk/t/lib/samples/binlogs/raw_binlog.log") },
+   stderr => 1
+);
+
+like( 
+   $output,
+   qr/mysqlbinlog/i,
+   'Refuses to parse raw binlog file'
+);
+    
+
 
 
 # #############################################################################

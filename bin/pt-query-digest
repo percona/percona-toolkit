@@ -13185,7 +13185,7 @@ sub main {
                   if ( $filename &&  $o->get('type')->[0] eq 'binlog') {
                      if (is_raw_binlog($filename)) {
                         warn "Binlog file $filename must first be converted to text format using mysqlbinlog";
-                        exit 1;
+                        return 1;
                      }
                   }
                   push @read_files, { name => ($filename || "STDIN"), size => $filesize };
@@ -14730,21 +14730,11 @@ sub sanitize_event {
 }
 
 # make an effort to check if file is a raw binlog
-# ( i.e was not converted to text using mysqlbinlog )
+# (i.e. was not converted to text using mysqlbinlog)
 sub is_raw_binlog {
    my $filename = shift;
-
-   my $output;
-   eval {
-      $output = `file $filename`;
-   };
-
-   # if we can't determine file type, let's assume it's ok
-   if ($EVAL_ERROR || !$output) { 
-      return 0;
-   }
-
-   return $output =~ /MySQL\s*replication/i;
+   
+   return -B $filename; 
 }
 
 sub _d {
@@ -14823,7 +14813,7 @@ server.  Before using this tool, please:
 
 pt-query-digest is a sophisticated but easy to use tool for analyzing
 MySQL queries.  It can analyze queries from MySQL slow, general, and binary
-logs. ( Binary logs must first be converted to text, see L<"--type"> ).
+logs. (Binary logs must first be converted to text, see L<"--type">).
 It can also use C<SHOW PROCESSLIST> and MySQL protocol data from tcpdump.
 By default, the tool reports which queries are the slowest, and therefore
 the most important to optimize.  More complex and custom-tailored reports
@@ -16160,7 +16150,13 @@ The type of input to parse.  The permitted types are
 
 =item binlog
 
-Parse a binary log file that has been converted to text using mysqlbinlog.
+Parse a binary log file that has first been converted to text using mysqlbinlog.
+
+For example: 
+
+   mysqlbinlog mysql-bin.000441 > mysql-bin.000441.txt
+
+   pt-query-digest --type binlog mysql-bin.000441.txt
 
 =item genlog
 
