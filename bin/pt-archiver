@@ -5822,7 +5822,7 @@ sub main {
    }
 
    foreach my $thing ( $first_sql, $next_sql ) {
-      $thing .= " ORDER BY $index_cols " if $index_cols; 
+      $thing .= " ORDER BY $index_cols" if $index_cols; 
       $thing .= " LIMIT $limit";
       if ( $o->get('for-update') ) {
          $thing .= ' FOR UPDATE';
