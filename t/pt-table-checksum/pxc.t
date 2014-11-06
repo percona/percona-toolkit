@@ -155,53 +155,88 @@ is(
    "Node3 not changed"
 );
 
-for my $args (
-      ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
-      ["using recursion-method=cluster", '--recursion-method', 'cluster']
-   )
-{
-   my $test = shift @$args;
+sub test_recursion_methods {
+   my $same_ids = shift;
 
-   $output = output(
-      sub { pt_table_checksum::main(@args,
-         @$args)
-      },
-      stderr => 1,
-   );
+   my ($orig_id_1, $orig_id_2, $orig_id_3);
 
-   is(
-      PerconaTest::count_checksum_results($output, 'errors'),
-      0,
-      "1 diff: no errors ($test)"
-   );
+   if ($same_ids) {
+      # save original values
+      my $sql = 'SELECT @@server_id';
+      ($orig_id_1) = $node1->selectrow_array($sql);
+      ($orig_id_2) = $node2->selectrow_array($sql);
+      ($orig_id_3) = $node3->selectrow_array($sql);
+      # set server_id  value to 1 on all nodes
+      $sql = 'SET GLOBAL server_id = 1';
+      $node1->do($sql);
+      $node2->do($sql);
+      $node3->do($sql);
+   }
 
-   is(
-      PerconaTest::count_checksum_results($output, 'skipped'),
-      0,
-      "1 diff: no skips ($test)"
-   );
+   for my $args (
+         ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
+         ["using recursion-method=cluster", '--recursion-method', 'cluster']
+      )
+   {
+      my $test = shift @$args;
+      $test = $same_ids ? $test.' - Nodes with different ids' : $test.' - Nodes with same ids';
 
-   is(
-      PerconaTest::count_checksum_results($output, 'diffs'),
-      1,
-      "1 diff: 1 diff ($test)"
-   ) or diag($output);
+      $output = output(
+         sub { pt_table_checksum::main(@args,
+            @$args)
+         },
+         stderr => 1,
+      );
 
-   # 11-17T13:02:54      0      1       26       1       0   0.021 test.t
-   like(
-      $output,
-      qr/^\S+\s+  # ts
-         0\s+     # errors
-         1\s+     # diffs
-         26\s+    # rows
-         \d+\s+   # chunks
-         0\s+     # skipped
-         \S+\s+   # time
-         test.t$  # table
-      /xm,
-      "1 diff: it's in test.t ($test)"
-   );
+      is(
+         PerconaTest::count_checksum_results($output, 'errors'),
+         0,
+         "1 diff: no errors ($test)"
+      );
+
+      is(
+         PerconaTest::count_checksum_results($output, 'skipped'),
+         0,
+         "1 diff: no skips ($test)"
+      );
+
+      is(
+         PerconaTest::count_checksum_results($output, 'diffs'),
+         1,
+         "1 diff: 1 diff ($test)"
+      ) or diag($output);
+
+      # 11-17T13:02:54      0      1       26       1       0   0.021 test.t
+      like(
+         $output,
+         qr/^\S+\s+  # ts
+            0\s+     # errors
+            1\s+     # diffs
+            26\s+    # rows
+            \d+\s+   # chunks
+            0\s+     # skipped
+            \S+\s+   # time
+            test.t$  # table
+         /xm,
+         "1 diff: it's in test.t ($test)"
+      );
+   }
+
+   if ($same_ids) {
+      # reset server_id's to original values
+      $node1->do("SET GLOBAL server_id = $orig_id_1");
+      $node2->do("SET GLOBAL server_id = $orig_id_2");
+      $node3->do("SET GLOBAL server_id = $orig_id_3");
+   }
+
 }
+
+# test recursion methods
+test_recursion_methods(0);
+
+# test recursion methods when all nodes have the same id
+test_recursion_methods(1);
+
 
 # #############################################################################
 # cluster, node1 -> slave, run on node1
@@ -243,7 +278,11 @@ for my $args (
    # Wait for the slave to apply the binlogs from node1 (its master).
    # Then change it so it's not consistent.
    PerconaTest::wait_for_table($slave_dbh, 'test.t');
+<<<<<<< TREE
    $sb->wait_for_slaves(master => 'node1', slave => 'cslave1');
+=======
+   $sb->wait_for_slaves(master=> 'node1', slave => 'cslave1');
+>>>>>>> MERGE-SOURCE
    $slave_dbh->do("update test.t set c='zebra' where c='z'");
 
    $output = output(

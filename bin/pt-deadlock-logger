@@ -2639,7 +2639,7 @@ sub new {
       set             => $args{set},
       NAME_lc         => defined($args{NAME_lc}) ? $args{NAME_lc} : 1,
       dbh_set         => 0,
-      ask_pass        => $o->get('ask-pass'),
+      ask_pass        => $args{ask_pass},
       DSNParser       => $dp,
       is_cluster_node => undef,
       parent          => $args{parent},
@@ -2650,7 +2650,7 @@ sub new {
 
 sub connect {
    my ( $self, %opts ) = @_;
-   my $dsn = $self->{dsn};
+   my $dsn = $opts{dsn} || $self->{dsn};
    my $dp  = $self->{DSNParser};
 
    my $dbh = $self->{dbh};
@@ -2669,6 +2669,13 @@ sub connect {
    }
 
    $dbh = $self->set_dbh($dbh);
+   if ( $opts{dsn} ) {
+      $self->{dsn}      = $dsn;
+      $self->{dsn_name} = $dp->as_string($dsn, [qw(h P S)])
+                       || $dp->as_string($dsn, [qw(F)])
+                       || '';
+
+   }
    PTDEBUG && _d($dbh, 'Connected dbh to', $self->{hostname},$self->{dsn_name});
    return $dbh;
 }
@@ -2730,6 +2737,17 @@ sub name {
    return $self->{hostname} || $self->{dsn_name} || 'unknown host';
 }
 
+sub is_cluster_node {
+   my ($self, $cxn) = @_;
+
+   my $sql = "SHOW VARIABLES LIKE 'wsrep\_on'";
+   PTDEBUG && _d($cxn->name, $sql);
+   my $row = $cxn->dbh->selectrow_arrayref($sql);
+   PTDEBUG && _d(Dumper($row));
+   return $row && $row->[1] && ($row->[1] eq 'ON' || $row->[1] eq '1') ? 1 : 0;
+
+}
+
 sub remove_duplicate_cxns {
    my ($self, %args) = @_;
    my @cxns     = @{$args{cxns}};
@@ -2739,7 +2757,8 @@ sub remove_duplicate_cxns {
 
    for my $cxn ( @cxns ) {
       my $dbh  = $cxn->dbh();
-      my $sql  = q{SELECT @@server_id};
+
+      my $sql  = $self->is_cluster_node($cxn) ? q{SELECT @@wsrep_node_incoming_address} : q{SELECT @@server_id};
       PTDEBUG && _d($sql);
       my ($id) = $dbh->selectrow_array($sql);
       PTDEBUG && _d('Server ID for ', $cxn->name, ': ', $id);

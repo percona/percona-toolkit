@@ -226,6 +226,19 @@ sub name {
    return $self->{hostname} || $self->{dsn_name} || 'unknown host';
 }
 
+# This is used to help remove_duplicate_cxns detect cluster nodes
+# (which often have unreliable server_id's)
+sub is_cluster_node {
+   my ($self, $cxn) = @_;
+
+   my $sql = "SHOW VARIABLES LIKE 'wsrep\_on'";
+   PTDEBUG && _d($cxn->name, $sql);
+   my $row = $cxn->dbh->selectrow_arrayref($sql);
+   PTDEBUG && _d(Dumper($row));
+   return $row && $row->[1] && ($row->[1] eq 'ON' || $row->[1] eq '1') ? 1 : 0;
+
+}
+
 # There's two reasons why there might be dupes:
 # If the "master" is a cluster node, then a DSN table might have been
 # used, and it may have all nodes' DSNs so the user can run the tool
@@ -233,7 +246,7 @@ sub name {
 # on the command line.
 # On the other hand, maybe find_cluster_nodes worked, in which case
 # we definitely have a dupe for the master cxn, but we may also have a
-# dupe for every other node if this was unsed in conjunction with a
+# dupe for every other node if this was used in conjunction with a
 # DSN table.
 # So try to detect and remove those.
 sub remove_duplicate_cxns {
@@ -245,7 +258,11 @@ sub remove_duplicate_cxns {
 
    for my $cxn ( @cxns ) {
       my $dbh  = $cxn->dbh();
-      my $sql  = q{SELECT @@server_id};
+
+      # Very often cluster nodes are configured with matching server_id's 
+      # So in that case we'll use its incoming address as its unique identifier
+      # Note: this relies on "seen_ids" being populated using the same strategy  
+      my $sql  = $self->is_cluster_node($cxn) ? q{SELECT @@wsrep_node_incoming_address} : q{SELECT @@server_id};
       PTDEBUG && _d($sql);
       my ($id) = $dbh->selectrow_array($sql);
       PTDEBUG && _d('Server ID for ', $cxn->name, ': ', $id);
