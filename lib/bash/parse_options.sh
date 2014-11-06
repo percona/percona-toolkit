@@ -347,6 +347,9 @@ _parse_config_files() {
          # Skip blank lines.
          [ "$config_opt" = "" ] && continue
 
+         # Skip global option [no]version-check which don't apply
+         echo "$config_opt" | grep -v 'version-check' >/dev/null 2>&1 || continue
+
          # Options in a config file are not prefixed with --,
          # but command line options are, so one or the other has
          # to add or remove the -- prefix.  We add it for config
