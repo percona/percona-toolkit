@@ -251,34 +251,38 @@ parse_options() {
 _parse_pod() {
    local file="$1"
 
-   cat "$file" | PO_DIR="$PO_DIR" perl -ne '
-      BEGIN { $/ = ""; }
-      next unless $_ =~ m/^=head1 OPTIONS/;
-      while ( defined(my $para = <>) ) {
-         last if $para =~ m/^=head1/;
-         chomp;
-         if ( $para =~ m/^=item --(\S+)/ ) {
-            my $opt  = $1;
-            my $file = "$ENV{PO_DIR}/$opt";
-            open my $opt_fh, ">", $file or die "Cannot open $file: $!";
-            print $opt_fh "long:$opt\n";
-            $para = <>;
+   PO_FILE="$file" PO_DIR="$PO_DIR" perl -e '
+      $/ = "";
+      my $file = $ENV{PO_FILE};
+      open my $fh, "<", $file or die "Cannot open $file: $!";
+      while ( defined(my $para = <$fh>) ) {
+         next unless $para =~ m/^=head1 OPTIONS/;
+         while ( defined(my $para = <$fh>) ) {
+            last if $para =~ m/^=head1/;
             chomp;
-            if ( $para =~ m/^[a-z ]+:/ ) {
-               map {
-                  chomp;
-                  my ($attrib, $val) = split(/: /, $_);
-                  print $opt_fh "$attrib:$val\n";
-               } split(/; /, $para);
-               $para = <>;
+            if ( $para =~ m/^=item --(\S+)/ ) {
+               my $opt  = $1;
+               my $file = "$ENV{PO_DIR}/$opt";
+               open my $opt_fh, ">", $file or die "Cannot open $file: $!";
+               print $opt_fh "long:$opt\n";
+               $para = <$fh>;
                chomp;
+               if ( $para =~ m/^[a-z ]+:/ ) {
+                  map {
+                     chomp;
+                     my ($attrib, $val) = split(/: /, $_);
+                     print $opt_fh "$attrib:$val\n";
+                  } split(/; /, $para);
+                  $para = <$fh>;
+                  chomp;
+               }
+               my ($desc) = $para =~ m/^([^?.]+)/;
+               print $opt_fh "desc:$desc.\n";
+               close $opt_fh;
             }
-            my ($desc) = $para =~ m/^([^?.]+)/;
-            print $opt_fh "desc:$desc.\n";
-            close $opt_fh;
          }
+         last;
       }
-      last;
    '
 }
 
@@ -347,6 +351,8 @@ _parse_config_files() {
          config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/[ ]*#.*$//')"
 
          [ "$config_opt" = "" ] && continue
+
+         echo "$config_opt" | grep -v 'version-check' >/dev/null 2>&1 || continue
 
          if ! [ "$HAVE_EXT_ARGV" ]; then
             config_opt="--$config_opt"
