@@ -132,8 +132,29 @@ sub find_cluster_nodes {
 sub remove_duplicate_cxns {
    my ($self, %args) = @_;
    my @cxns     = @{$args{cxns}};
-   my $seen_ids = $args{seen_ids};
-   return Cxn->remove_duplicate_cxns(%args);
+   my $seen_ids = $args{seen_ids} || {};
+   PTDEBUG && _d("Removing duplicates nodes from ", join(" ", map { $_->name } @cxns));
+   my @trimmed_cxns;
+
+   for my $cxn ( @cxns ) {
+      my $dbh  = $cxn->dbh();
+      # Very often cluster nodes are configured with matching server_id's
+      # So in that case we'll use its incoming address as its unique identifier
+      # Note: This relies on "seen_ids" being populated using the same strategy  
+      my $sql  = $self->is_cluster_node($cxn) ? q{SELECT @@wsrep_node_incoming_address} : q{SELECT @@server_id};
+      PTDEBUG && _d($sql);
+      my ($id) = $dbh->selectrow_array($sql);
+      PTDEBUG && _d('Server ID for ', $cxn->name, ': ', $id);
+
+      if ( ! $seen_ids->{$id}++ ) {
+         push @trimmed_cxns, $cxn
+      }
+      else {
+         PTDEBUG && _d("Removing ", $cxn->name,
+                       ", ID ", $id, ", because we've already seen it");
+      }
+   }
+   return \@trimmed_cxns;
 }
 
 sub same_cluster {
