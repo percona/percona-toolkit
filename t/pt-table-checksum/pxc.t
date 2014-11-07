@@ -278,11 +278,7 @@ for my $args (
    # Wait for the slave to apply the binlogs from node1 (its master).
    # Then change it so it's not consistent.
    PerconaTest::wait_for_table($slave_dbh, 'test.t');
-<<<<<<< TREE
    $sb->wait_for_slaves(master => 'node1', slave => 'cslave1');
-=======
-   $sb->wait_for_slaves(master=> 'node1', slave => 'cslave1');
->>>>>>> MERGE-SOURCE
    $slave_dbh->do("update test.t set c='zebra' where c='z'");
 
    $output = output(
