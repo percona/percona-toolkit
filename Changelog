@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v2.2.12 released 2014-11-14
+
 
   * Fixed bug 1376561:	pt-archiver is not able to archive all the rows when a table has a hash partition
   * Fixed bug 1328686:	pt-heartbeat check-read-only option does not prevent creates or inserts
