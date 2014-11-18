@@ -1,3 +1,16 @@
+percona-toolkit (2.2.12) unstable; urgency=low
+
+  * Fixed bug 1376561:	pt-archiver is not able to archive all the rows when a table has a hash partition
+  * Fixed bug 1328686:	pt-heartbeat check-read-only option does not prevent creates or inserts
+  * Fixed bug 1269695:	pt-online-schema-change does not allow ALTER for a table without a non-unique, while manual does not explain this
+  * Fixed bug 1217466:	pt-table-checksum refuses to run on PXC if server_id is the same on all nodes
+  * Fixed bug 1373937:	pt-table-checksum requires recursion when working with and XtraDB Cluster node
+  * Fixed bug 1377888:	pt-query-digest manual for --type binlog is ambiguous
+  * Fixed bug 1349086:	pt-stalk should also gather dmesg output 
+  * Fixed bug 1361293:	Some scripts fail when no-version-check option is put in global config file
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Tue, 11 Nov 2014 13:02:51 +0000
+
 percona-toolkit (2.2.11) unstable; urgency=low
 
   * Fixed bug 1262456: pt-query-digest doesn't report host details

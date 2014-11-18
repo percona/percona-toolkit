@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 3;
+use Test::More tests => 4;
 
 use PerconaTest;
 require "$trunk/bin/pt-query-digest";
@@ -45,6 +45,26 @@ ok(
    ),
    'Analysis for binlog011 - Handles 5.6 binlog with checksum CRC32',
 ) or diag($test_diff);
+
+
+
+# #############################################################################
+# Issue 1377888: refuse to parse raw binary log 
+# #############################################################################
+
+my $output = output(
+    sub { pt_query_digest::main(@args, "$trunk/t/lib/samples/binlogs/raw_binlog.log") },
+   stderr => 1
+);
+
+like( 
+   $output,
+   qr/mysqlbinlog/i,
+   'Refuses to parse raw binlog file'
+);
+    
+
+
 
 # #############################################################################
 # Done.

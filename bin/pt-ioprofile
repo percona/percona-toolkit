@@ -86,9 +86,10 @@ usage() {
 
 usage_or_errors() {
    local file="$1"
+   local version=""
 
    if [ "$OPT_VERSION" ]; then
-      local version=$(grep '^pt-[^ ]\+ [0-9]' "$file")
+      version=$(grep '^pt-[^ ]\+ [0-9]' "$file")
       echo "$version"
       return 1
    fi
@@ -309,6 +310,8 @@ _parse_config_files() {
          config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/[ ]*#.*$//')"
 
          [ "$config_opt" = "" ] && continue
+
+         echo "$config_opt" | grep -v 'version-check' >/dev/null 2>&1 || continue
 
          if ! [ "$HAVE_EXT_ARGV" ]; then
             config_opt="--$config_opt"
@@ -1119,7 +1122,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-ioprofile 2.2.11
+pt-ioprofile 2.2.12
 
 =cut
 

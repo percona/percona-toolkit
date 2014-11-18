@@ -140,9 +140,10 @@ usage() {
 
 usage_or_errors() {
    local file="$1"
+   local version=""
 
    if [ "$OPT_VERSION" ]; then
-      local version=$(grep '^pt-[^ ]\+ [0-9]' "$file")
+      version=$(grep '^pt-[^ ]\+ [0-9]' "$file")
       echo "$version"
       return 1
    fi
@@ -363,6 +364,8 @@ _parse_config_files() {
          config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/[ ]*#.*$//')"
 
          [ "$config_opt" = "" ] && continue
+
+         echo "$config_opt" | grep -v 'version-check' >/dev/null 2>&1 || continue
 
          if ! [ "$HAVE_EXT_ARGV" ]; then
             config_opt="--$config_opt"
@@ -779,6 +782,7 @@ CMD_STRACE="${CMD_STRACE:-"$(_which strace)"}"
 CMD_SYSCTL="${CMD_SYSCTL:-"$(_which sysctl)"}"
 CMD_TCPDUMP="${CMD_TCPDUMP:-"$(_which tcpdump)"}"
 CMD_VMSTAT="${CMD_VMSTAT:-"$(_which vmstat)"}"
+CMD_DMESG="${CMD_DMESG:-"$(_which dmesg)"}"
 
 [ -z "$CMD_SYSCTL" -a -x "/sbin/sysctl" ] && CMD_SYSCTL="/sbin/sysctl"
 
@@ -862,6 +866,14 @@ collect() {
    if [ "$CMD_SYSCTL" ]; then
       $CMD_SYSCTL -a >> "$d/$p-sysctl" &
    fi
+
+   # collect dmesg events from 60 seconds ago until present
+   if [ "$CMD_DMESG" ]; then
+      local UPTIME=`cat /proc/uptime | awk '{ print $1 }'`
+      local START_TIME=$(echo "$UPTIME 60" | awk '{print ($1 - $2)}')
+      $CMD_DMESG  | perl -ne 'm/\[\s*(\d+)\./; if ($1 > '${START_TIME}') { print }' >> "$d/$p-dmesg" & 
+   fi
+
    local cnt=$(($OPT_RUN_TIME / $OPT_SLEEP_COLLECT))
    if [ "$CMD_VMSTAT" ]; then
       $CMD_VMSTAT $OPT_SLEEP_COLLECT $cnt >> "$d/$p-vmstat" &
@@ -875,6 +887,7 @@ collect() {
       $CMD_MPSTAT -P ALL $OPT_SLEEP_COLLECT $cnt >> "$d/$p-mpstat" &
       $CMD_MPSTAT -P ALL $OPT_RUN_TIME 1 >> "$d/$p-mpstat-overall" &
    fi
+
 
    $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
    local mysqladmin_pid=$!
@@ -2225,7 +2238,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-stalk 2.2.11
+pt-stalk 2.2.12
 
 =cut
 
