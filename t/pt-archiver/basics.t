@@ -161,7 +161,7 @@ $output = output(
 my $t = time - $t0;
 
 ok(
-   $t >= 2 && $t <= 3.5,
+   $t >= 2 && $t <= ($ENV{PERCONA_SLOW_BOX} ? 5 : 3),
    "--sleep between SELECT (bug 979092)"
 ) or diag($output, "t=", $t);
 

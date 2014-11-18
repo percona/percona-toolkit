@@ -43,7 +43,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.11';
+our $VERSION = '2.2.12';
 
 use strict;
 use warnings FATAL => 'all';
@@ -5811,7 +5811,18 @@ sub main {
       $next_sql .= " AND $sel_stmt->{where}";
    }
 
+   # Obtain index cols so we can order them when ascending 
+   # this ensures returned sets are disjoint when ran on partitioned tables
+   # issue 1376561
+   my $index_cols;
+   if (  $sel_stmt->{index} 
+         && $src->{info}->{keys}->{$sel_stmt->{index}}->{cols} 
+   ) {
+      $index_cols = $src->{info}->{keys}->{$sel_stmt->{index}}->{colnames};
+   }
+
    foreach my $thing ( $first_sql, $next_sql ) {
+      $thing .= " ORDER BY $index_cols" if $index_cols; 
       $thing .= " LIMIT $limit";
       if ( $o->get('for-update') ) {
          $thing .= ' FOR UPDATE';
@@ -7892,6 +7903,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-archiver 2.2.11
+pt-archiver 2.2.12
 
 =cut

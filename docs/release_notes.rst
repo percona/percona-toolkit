@@ -1,6 +1,41 @@
 Release Notes
 *************
 
+v2.2.12 released 2014-11-14
+===========================
+
+Percona Toolkit 2.2.12 has been released. This release contains one new feature and seven bug fixes.
+
+New Features:
+
+* pt-stalk now gathers ``dmesg`` output from up to 60 seconds before the triggering event. 
+
+Bugs Fixed:
+
+* Fixed bug 1376561: pt-archiver was not able to archive all the rows when a table had a hash partition. Fixed by implementing support for tables which have primary or unique indexes.
+
+* Fixed bug 1217466: pt-table-checksum would refuses to run on Percona XtraDB Cluster if ``server_id`` was the same on all nodes. Fixed by using the ``wsrep_node_incoming_address`` as a unique identifier for cluster nodes, instead of relying on ``server_id``.
+
+* Fixed bug 1269695: pt-online-schema-change documentation now contains more information about limitations on why it isn't running ``ALTER TABLE`` for a table which has only a non-unique index.
+
+* Fixed bug 1328686: Running pt-hearbeat with --check-read-only option would cause an error when running on server with ``read_only`` option. Tool now waits for server ``read_only`` status to be disabled before starting to run.
+
+* Fixed bug 1373937: pt-table-checksum now supports ``none`` as valid ``--recursion-method`` when using with Percona XtraDB Cluster. 
+
+* Fixed bug 1377888: Documentation was stating that pt-query-digest is able to parse a raw binary log file, while it can only parse a file which was decoded with ``mysqlbinlog`` tool before. Fixed by improving the documentation and adding a check for binary file and providing a relevant error message.
+
+Changelog
+---------
+
+* Fixed bug 1376561:	pt-archiver is not able to archive all the rows when a table has a hash partition
+* Fixed bug 1328686:	pt-heartbeat check-read-only option does not prevent creates or inserts
+* Fixed bug 1269695:	pt-online-schema-change does not allow ALTER for a table without a non-unique, while manual does not explain this
+* Fixed bug 1217466:	pt-table-checksum refuses to run on PXC if server_id is the same on all nodes
+* Fixed bug 1373937:	pt-table-checksum requires recursion when working with and XtraDB Cluster node
+* Fixed bug 1377888:	pt-query-digest manual for --type binlog is ambiguous
+* Fixed bug 1349086:	pt-stalk should also gather dmesg output 
+* Fixed bug 1361293:	Some scripts fail when no-version-check option is put in global config file
+
 v2.2.11 released 2014-09-26
 ===========================
 

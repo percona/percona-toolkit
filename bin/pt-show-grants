@@ -903,6 +903,14 @@ sub _read_config_file {
          $parse  = 0;
          next LINE;
       }
+
+      if (  $parse 
+            && !$self->has('version-check') 
+            && $line =~ /version-check/ 
+      ) {
+         next LINE;
+      }
+
       if ( $parse
          && (my($opt, $arg) = $line =~ m/^\s*([^=\s]+?)(?:\s*=\s*(.*?)\s*)?$/)
       ) {
@@ -2406,6 +2414,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-show-grants 2.2.11
+pt-show-grants 2.2.12
 
 =cut
