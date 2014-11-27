@@ -3859,7 +3859,6 @@ sub is_cluster_node {
    my $sql = "SHOW VARIABLES LIKE 'wsrep\_on'";
    PTDEBUG && _d($cxn->name, $sql);
    my $row = $cxn->dbh->selectrow_arrayref($sql);
-   PTDEBUG && _d(Dumper($row));
    return $row && $row->[1] && ($row->[1] eq 'ON' || $row->[1] eq '1') ? 1 : 0;
 
 }
