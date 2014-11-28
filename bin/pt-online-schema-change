@@ -10485,6 +10485,10 @@ sub sig_int {
    my ( $signal ) = @_;
    $oktorun = 0;  # flag for cleanup tasks
    print STDERR "# Exiting on SIG$signal.\n";
+   # restore terminal to normal state in case CTL-C issued while asking for password
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1396870
+   use Term::ReadKey;
+   ReadMode 0;
    exit 1;
 }
 
