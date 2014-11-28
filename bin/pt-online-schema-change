@@ -3755,7 +3755,7 @@ sub new {
       set             => $args{set},
       NAME_lc         => defined($args{NAME_lc}) ? $args{NAME_lc} : 1,
       dbh_set         => 0,
-      ask_pass        => $args{ask_pass},
+      ask_pass        => $o->get('ask-pass') || $args{ask_pass},
       DSNParser       => $dp,
       is_cluster_node => undef,
       parent          => $args{parent},
@@ -7963,6 +7963,7 @@ sub main {
    };
 
    my $cxn     = $make_cxn->(dsn => $dsn);
+   $o->set('ask-pass', 0); # so we don't ask twice (password is already stored in dsn)
    my $aux_cxn = $make_cxn->(dsn => $dsn, prev_dsn => $dsn);
 
    my $cluster = Percona::XtraDB::Cluster->new;
