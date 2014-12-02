@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 15;
+use Test::More tests => 16;
 
 use PerconaTest;
 use Sandbox;
@@ -135,6 +135,16 @@ like(
    $output,
    qr/(?:(?:KILL 1.+KILL 2)|(?:KILL 2.+KILL 1))/s,
    "--match-all"
+);
+
+# --fingerprint option 
+$output = output(
+   sub { pt_kill::main(@args, "$trunk/t/lib/samples/pl/recset011.txt", qw(--match-all --print --fingerprint)); }
+);
+like(
+   $output,
+   qr/0x69962191E64980E6/,
+   '--fingerprint'
 );
 
 # #############################################################################
