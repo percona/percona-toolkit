@@ -4007,7 +4007,7 @@ sub get_connected_slaves {
       die "You do not have the PROCESS privilege";
    }
 
-   $sql = 'SHOW PROCESSLIST';
+   $sql = 'SHOW FULL PROCESSLIST';
    PTDEBUG && _d($dbh, $sql);
    grep { $_->{command} =~ m/Binlog Dump/i }
    map  { # Lowercase the column names
@@ -6567,6 +6567,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use POSIX qw(setsid);
 use List::Util qw(max);
+use Digest::MD5 qw(md5_hex);
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -7101,6 +7102,11 @@ sub main {
                   $query->{Id}, ($query->{Command} || 'NULL'), $query->{Time},
                   ($query->{Info} || 'NULL');
             }
+            if ( $o->get('fingerprint') ) {
+                  my $fp = $qr->fingerprint($query->{'Info'});
+                  my $chksm = uc substr(md5_hex($fp), -16);
+                  print "Fingerprint: 0x$chksm\n";
+            }
             if ( $o->get('execute-command') ) {
                exec_cmd($o->get('execute-command'));
                msg('Executed ' . $o->get('execute-command'));
@@ -7486,6 +7492,12 @@ code tries to do something wrong (like pattern match an undefined value).
 pt-kill does not provide any safeguards so code carefully!
 
 It is permissible for the code to have side effects (to alter C<$event>).
+
+=item --fingerprint
+
+Prints a fingerprint (checksum) of the query that was just killed. This is 
+equivalent to the fingerprint output of pt-query-digest. This allows 
+cross-referencing the output of both tools.
 
 =item --group-by
 
