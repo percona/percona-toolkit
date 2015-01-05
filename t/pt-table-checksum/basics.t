@@ -56,6 +56,7 @@ sub reset_repl_db {
    $master_dbh->do("use $repl_db");
 }
 
+
 # ############################################################################
 # Default checksum and results.  The tool does not technically require any
 # options on well-configured systems (which the test env cannot be).  With
@@ -507,6 +508,24 @@ is(
    0,
    "Bug 821675 (dot): 0 errors"
 );
+
+# #############################################################################
+# Bug 1019479: does not work with sql_mode ONLY_FULL_GROUP_BY
+# #############################################################################
+
+# add a couple more modes to test that commas don't affect setting
+$master_dbh->do("SET sql_mode = 'NO_ZERO_DATE,ONLY_FULL_GROUP_BY,STRICT_ALL_TABLES'");
+
+# force chunk-size because bug doesn't show up if table done in one chunk 
+$exit_status = pt_table_checksum::main(@args,
+   qw(--quiet --quiet -t sakila.actor --chunk-size=50));
+
+is(
+   $exit_status,
+   0,
+   "sql_mode ONLY_FULL_GROUP_BY is overidden"
+);
+
 
 # #############################################################################
 # Done.
