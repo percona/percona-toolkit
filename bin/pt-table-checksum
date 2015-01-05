@@ -9131,6 +9131,26 @@ sub main {
       return if $o->get('explain');
       my $sql;
 
+      # https://bugs.launchpad.net/percona-toolkit/+bug/1019479
+      # sql_mode ONLY_FULL_GROUP_BY often raises error even when query is
+      # safe and deterministic. It's best to turn it off for the session
+      # at this point.
+      $sql = 'SELECT @@SQL_MODE';
+      PTDEBUG && _d($dbh, $sql);
+      my ($sql_mode) = eval { $dbh->selectrow_array($sql) };
+      if ( $EVAL_ERROR ) {
+         die "Error getting the current SQL_MODE: $EVAL_ERROR";
+      }
+      $sql_mode =~ s/ONLY_FULL_GROUP_BY//i;
+      $sql = qq[SET SQL_MODE='$sql_mode'];
+      PTDEBUG && _d($dbh, $sql);
+      eval { $dbh->do($sql) };
+      if ( $EVAL_ERROR ) {
+         die "Error setting SQL_MODE"
+           . ": $EVAL_ERROR";
+      }
+ 
+
       # https://bugs.launchpad.net/percona-toolkit/+bug/919352
       # The tool shouldn't blindly attempt to change binlog_format;
       # instead, it should check if it's already set to STATEMENT.
