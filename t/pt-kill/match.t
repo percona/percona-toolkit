@@ -137,14 +137,14 @@ like(
    "--match-all"
 );
 
-# --fingerprint option 
+# --query-id option 
 $output = output(
-   sub { pt_kill::main(@args, "$trunk/t/lib/samples/pl/recset011.txt", qw(--match-all --print --fingerprint)); }
+   sub { pt_kill::main(@args, "$trunk/t/lib/samples/pl/recset011.txt", qw(--match-all --print --query-id)); }
 );
 like(
    $output,
    qr/0x69962191E64980E6/,
-   '--fingerprint'
+   '--query-id'
 );
 
 # #############################################################################
