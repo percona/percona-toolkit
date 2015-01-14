@@ -137,13 +137,7 @@ sub remove_duplicate_cxns {
    my @trimmed_cxns;
 
    for my $cxn ( @cxns ) {
-      my $dbh  = $cxn->dbh();
-      # Very often cluster nodes are configured with matching server_id's
-      # So in that case we'll use its incoming address as its unique identifier
-      # Note: This relies on "seen_ids" being populated using the same strategy  
-      my $sql  = $self->is_cluster_node($cxn) ? q{SELECT @@wsrep_node_incoming_address} : q{SELECT @@server_id};
-      PTDEBUG && _d($sql);
-      my ($id) = $dbh->selectrow_array($sql);
+      my $id = $cxn->get_id();
       PTDEBUG && _d('Server ID for ', $cxn->name, ': ', $id);
 
       if ( ! $seen_ids->{$id}++ ) {

@@ -88,8 +88,8 @@ like(
 );
 
 ok (
-      $output =~ qr/WARNING/i && !$exit_status,
-      "Warns but doesn't die if --recursion-method=none - issue #1373937"
+      $output !~ qr/no other nodes or regular replicas were found/i && !$exit_status,
+      "checksums even if --recursion-method=none - issue 1373937"
 );
 
 for my $args (
@@ -159,6 +159,7 @@ sub test_recursion_methods {
    my $same_ids = shift;
 
    my ($orig_id_1, $orig_id_2, $orig_id_3);
+   my ($orig_ia_1, $orig_ia_2, $orig_ia_3);
 
    if ($same_ids) {
       # save original values
@@ -171,6 +172,19 @@ sub test_recursion_methods {
       $node1->do($sql);
       $node2->do($sql);
       $node3->do($sql);
+
+      # since we're testing server id issues, set wsrep_node_incoming_address=AUTO ( https://bugs.launchpad.net/percona-toolkit/+bug/1399789 )  
+      # save original values
+      $sql = 'SELECT @@wsrep_node_incoming_address';
+      ($orig_ia_1) = $node1->selectrow_array($sql);
+      ($orig_ia_2) = $node2->selectrow_array($sql);
+      ($orig_ia_3) = $node3->selectrow_array($sql);
+      # set wsrep_node_incoming_address  value to AUTO on all nodes
+      $sql = 'SET GLOBAL wsrep_node_incoming_address = AUTO';
+      $node1->do($sql);
+      $node2->do($sql);
+      $node3->do($sql);
+      
    }
 
    for my $args (
@@ -227,6 +241,10 @@ sub test_recursion_methods {
       $node1->do("SET GLOBAL server_id = $orig_id_1");
       $node2->do("SET GLOBAL server_id = $orig_id_2");
       $node3->do("SET GLOBAL server_id = $orig_id_3");
+      # reset node wsrep_node_incoming_address to original values
+      $node1->do("SET GLOBAL wsrep_node_incoming_address = $orig_ia_1");
+      $node2->do("SET GLOBAL wsrep_node_incoming_address = $orig_ia_2");
+      $node3->do("SET GLOBAL wsrep_node_incoming_address = $orig_ia_3");
    }
 
 }

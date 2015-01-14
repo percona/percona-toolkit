@@ -226,11 +226,42 @@ sub name {
    return $self->{hostname} || $self->{dsn_name} || 'unknown host';
 }
 
+# This returns the server_id. 
+# For cluster nodes, since server_id is unreliable, we use a combination of 
+# variables to create an id string that is unique.
+sub get_id {
+   my ($self, $cxn) = @_;
+
+   $cxn ||= $self;
+
+   my $unique_id;
+   if ($cxn->is_cluster_node()) {  # for cluster we concatenate various variables to maximize id 'uniqueness' across versions
+      my $sql  = q{SHOW STATUS LIKE 'wsrep\_local\_index'};
+      my (undef, $wsrep_local_index) = $cxn->dbh->selectrow_array($sql);
+      PTDEBUG && _d("Got cluster wsrep_local_index: ",$wsrep_local_index);
+      $unique_id = $wsrep_local_index."|"; 
+      foreach my $val ('server\_id', 'wsrep\_sst\_receive\_address', 'wsrep\_node\_name', 'wsrep\_node\_address') {
+         my $sql = "SHOW VARIABLES LIKE '$val'";
+         PTDEBUG && _d($cxn->name, $sql);
+         my (undef, $val) = $cxn->dbh->selectrow_array($sql);
+         $unique_id .= "|$val";
+      }
+   } else {
+      my $sql  = 'SELECT @@SERVER_ID';
+      PTDEBUG && _d($sql);
+      $unique_id = $cxn->dbh->selectrow_array($sql);
+   }
+   PTDEBUG && _d("Generated unique id for cluster:", $unique_id);
+   return $unique_id;
+}
+
+
 # This is used to help remove_duplicate_cxns detect cluster nodes
 # (which often have unreliable server_id's)
 sub is_cluster_node {
    my ($self, $cxn) = @_;
 
+   $cxn ||= $self;
    my $sql = "SHOW VARIABLES LIKE 'wsrep\_on'";
    PTDEBUG && _d($cxn->name, $sql);
    my $row = $cxn->dbh->selectrow_arrayref($sql);
@@ -257,14 +288,8 @@ sub remove_duplicate_cxns {
    my @trimmed_cxns;
 
    for my $cxn ( @cxns ) {
-      my $dbh  = $cxn->dbh();
 
-      # Very often cluster nodes are configured with matching server_id's 
-      # So in that case we'll use its incoming address as its unique identifier
-      # Note: this relies on "seen_ids" being populated using the same strategy  
-      my $sql  = $self->is_cluster_node($cxn) ? q{SELECT @@wsrep_node_incoming_address} : q{SELECT @@server_id};
-      PTDEBUG && _d($sql);
-      my ($id) = $dbh->selectrow_array($sql);
+      my $id = $cxn->get_id();
       PTDEBUG && _d('Server ID for ', $cxn->name, ': ', $id);
 
       if ( ! $seen_ids->{$id}++ ) {
