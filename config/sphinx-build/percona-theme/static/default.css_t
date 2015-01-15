@@ -31,7 +31,7 @@ div.document {
     margin: 0 auto;
     overflow: hidden;
     padding: 30px 0;
-    width: 960px;
+    width: 1000px;
 }
 
 div.documentwrapper {
@@ -42,7 +42,8 @@ div.documentwrapper {
 
 div.bodywrapper {
    margin: 10 0 0 0px;
-   width: 660px;
+   padding-right: 12px;
+   width: 700px;
    float:right;
 }
 
@@ -50,6 +51,7 @@ div.body {
     background-color: #fff;
     color: #333333;
     padding: 0 0 20px;
+    width: 712px;
 }
 
 {%- if theme_rightsidebar|tobool %}
@@ -64,9 +66,9 @@ div.footer {
     /* padding: 9px 0 9px 0; */
     /* text-align: center; */
     /* font-size: 75%; */
-    font: 80% "Lucida Grande",Verdana,Lucida,Helvetica,Arial,sans-serif;   
-    background: none repeat scroll 0 0 #333333;
-    border-top: 2px solid #D95200;
+    /*font: 80% "Lucida Grande",Verdana,Lucida,Helvetica,Arial,sans-serif;   */
+    /*background: none repeat scroll 0 0 #333333;*/
+    /*border-top: 2px solid #D95200;*/
     overflow: hidden;
 }
 
@@ -83,7 +85,7 @@ div.related {
    border: 1px solid #E0E0E0;
    clear: both;
    padding: 10px;
-   width: 635px;
+   width: 690px;
    margin-bottom: 5px;
 }
 
@@ -93,10 +95,10 @@ div.related a {
 
 div.sphinxsidebar {
     margin-left: 0px;
-    margin-right: 30px;
+    margin-right: 20px;
     color: #333333;
     font-family: Arial,Helvetica,sans-serif;
-    width: 260px;
+    width: 250px;
     {%- if theme_stickysidebar|tobool %}
     top: 30px;
     bottom: 0;
