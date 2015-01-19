@@ -215,7 +215,7 @@ parse_options() {
    else
       _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf" "/etc/percona-toolkit/$TOOL.conf"
       # conditional in case $HOME isn't set;  e.g. tool launched from init
-      if [ ! -z "${HOME-}"  ]; then
+      if [ "${HOME:-}" ]; then
          _parse_config_files "$HOME/.percona-toolkit.conf" "$HOME/.$TOOL.conf"
       fi
    fi
