@@ -4007,7 +4007,7 @@ sub get_connected_slaves {
       die "You do not have the PROCESS privilege";
    }
 
-   $sql = 'SHOW PROCESSLIST';
+   $sql = 'SHOW FULL PROCESSLIST';
    PTDEBUG && _d($dbh, $sql);
    grep { $_->{command} =~ m/Binlog Dump/i }
    map  { # Lowercase the column names
@@ -6566,6 +6566,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use POSIX qw(setsid);
 use List::Util qw(max);
+use Digest::MD5 qw(md5_hex);
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -7100,6 +7101,11 @@ sub main {
                   $query->{Id}, ($query->{Command} || 'NULL'), $query->{Time},
                   ($query->{Info} || 'NULL');
             }
+            if ( $o->get('query-id') ) {
+                  my $fp = $qr->fingerprint($query->{'Info'});
+                  my $chksm = Transformers::make_checksum($fp);
+                  print "Query ID: 0x$chksm\n";
+            }
             if ( $o->get('execute-command') ) {
                exec_cmd($o->get('execute-command'));
                msg('Executed ' . $o->get('execute-command'));
@@ -7486,6 +7492,7 @@ pt-kill does not provide any safeguards so code carefully!
 
 It is permissible for the code to have side effects (to alter C<$event>).
 
+
 =item --group-by
 
 type: string
@@ -7588,6 +7595,20 @@ removed automatically when the tool exits.
 short form: -P; type: int
 
 Port number to use for connection.
+
+=item --query-id
+
+Prints an ID of the query that was just killed. This is 
+equivalent to the "ID" output of pt-query-digest. This allows 
+cross-referencing the output of both tools.
+
+Example:
+
+   Query ID 0xE9800998ECF8427E
+
+Note that this is a digest (or hash) of the query's "fingerprint", 
+so queries of the same form but with different values will have the same ID.
+See pt-query-digest for more information.
 
 =item --run-time
 
