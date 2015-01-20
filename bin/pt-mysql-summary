@@ -2400,7 +2400,7 @@ check_mysql () {
 
    # Now that we have the cmd line opts, check that we can actually
    # connect to MySQL.
-   [ -n "$(mysql $EXT_ARGV -e 'SELECT 1')" ] \
+   [ -n "$(mysql $EXT_ARGV -e 'SHOW STATUS')" ] \
       || die "Cannot connect to MySQL.  Check that MySQL is running and that the options after -- are correct."
 
 }
