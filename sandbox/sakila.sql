@@ -6,6 +6,7 @@ SET NAMES utf8;
 SET UNIQUE_CHECKS=0;
 SET FOREIGN_KEY_CHECKS=0;
 
+
 CREATE TABLE `actor` (
   `actor_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
   `first_name` varchar(45) NOT NULL,
@@ -370,7 +371,7 @@ SELECT film.film_id AS FID, film.title AS title, film.description AS description
 FROM category LEFT JOIN film_category ON category.category_id = film_category.category_id LEFT JOIN film ON film_category.film_id = film.film_id
         JOIN film_actor ON film.film_id = film_actor.film_id
 	JOIN actor ON film_actor.actor_id = actor.actor_id
-GROUP BY film.film_id;
+GROUP BY film.film_id, category.name;
 
 CREATE VIEW nicer_but_slower_film_list
 AS
@@ -381,7 +382,7 @@ SELECT film.film_id AS FID, film.title AS title, film.description AS description
 FROM category LEFT JOIN film_category ON category.category_id = film_category.category_id LEFT JOIN film ON film_category.film_id = film.film_id
         JOIN film_actor ON film.film_id = film_actor.film_id
 	JOIN actor ON film_actor.actor_id = actor.actor_id
-GROUP BY film.film_id;
+GROUP BY film.film_id, category.name;
 
 CREATE VIEW staff_list
 AS
