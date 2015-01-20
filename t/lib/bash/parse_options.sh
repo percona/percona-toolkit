@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 83
+plan 84
 
 TMPFILE="$TEST_PT_TMPDIR/parse-opts-output"
 TOOL="pt-stalk"
@@ -257,6 +257,19 @@ is "$OPT_NOTIFY_BY_EMAIL" "" "Bug 1038995: --notify-by-email is empty by default
 
 parse_options "$T_LIB_DIR/samples/bash/po005.sh" --notify-by-email foo@bar.com
 is "$OPT_NOTIFY_BY_EMAIL" "foo@bar.com" "Bug 1038995: ...but gets set without errors if specified"
+
+# ############################################################################
+# Bug 1266869: fails when $HOME unset
+# https://bugs.launchpad.net/percona-toolkit/+bug/1266869
+# ############################################################################
+
+TMP_HOME="$HOME"
+unset HOME 
+OUTPUT=`parse_options $T_LIB_DIR/samples/bash/po001.sh 2>&1` 
+echo "$OUTPUT" > "$TMPFILE"
+cmd_ok "grep -q -v unbound $TMPFILE" "No error when \$HOME is not set"
+HOME="$TMP_HOME"  # just in case further tests below need it
+
 
 # ############################################################################
 # Done
