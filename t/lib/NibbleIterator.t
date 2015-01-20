@@ -392,35 +392,35 @@ $ni = make_nibble_iter(
 my $row = $ni->next();
 is_deeply(
    $row,
-   [25, 'd9c52498'],
+   [25, '303d7b91'],
    "SELECT chunk checksum 1 FROM sakila.country"
 ) or diag(Dumper($row));
 
 $row = $ni->next();
 is_deeply(
    $row,
-   [25, 'ebdc982c'],
+   [25, '5a5d203a'],
    "SELECT chunk checksum 2 FROM sakila.country"
 ) or diag(Dumper($row));
 
 $row = $ni->next();
 is_deeply(
    $row,
-   [25, 'e8d9438d'],
+   [25, '7328e41c'],
    "SELECT chunk checksum 3 FROM sakila.country"
 ) or diag(Dumper($row));
 
 $row = $ni->next();
 is_deeply(
    $row,
-   [25, '2e3b895d'],
+   [25, '7ef0c3e0'],
    "SELECT chunk checksum 4 FROM sakila.country"
 ) or diag(Dumper($row));
 
 $row = $ni->next();
 is_deeply(
    $row,
-   [9, 'bd08fd55'],
+   [9, '40067b8e'],
    "SELECT chunk checksum 5 FROM sakila.country"
 ) or diag(Dumper($row));
 
