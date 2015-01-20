@@ -644,10 +644,10 @@ sub get_from_mysql {
       return;
    }
 
-   # hardcode the variables we report 
-   # so in case of MITM attack, we don't report sensitive data
+   # Only allow version variables to be reported 
+   # So in case of MITM attack, we don't report sensitive data
    if ($item->{item} eq 'MySQL' && $item->{type} eq 'mysql_variable') {
-      $item->{vars} = ['version_comment', 'version'];
+      @{$item->{vars}} = grep { $_ eq 'version' || $_ eq 'version_comment' } @{$item->{vars}};
    }
  
 
