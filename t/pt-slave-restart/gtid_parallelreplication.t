@@ -49,7 +49,7 @@ my $output=`$trunk/bin/pt-slave-restart --run-time=1s -h 127.0.0.1 -P 12346 -u m
 
 like(
    $output,
-   qr/It is impossible to skip transactions properly./,
+   qr/Cannot skip transactions properly.*slave_parallel_workers/,
    "pt-slave-restart exits with multiple replication threads"
 );
 
