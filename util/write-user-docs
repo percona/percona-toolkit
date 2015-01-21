@@ -168,7 +168,7 @@ fi
 BUILD=${BUILD:-1}
 if [ $BUILD -eq 1 ]; then
    cd $BRANCH/config/sphinx-build
-   make html
+   make html && make latexpdf
    exit_status=$(( exit_status | $? ))
 fi
 
