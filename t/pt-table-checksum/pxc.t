@@ -242,9 +242,9 @@ sub test_recursion_methods {
       $node2->do("SET GLOBAL server_id = $orig_id_2");
       $node3->do("SET GLOBAL server_id = $orig_id_3");
       # reset node wsrep_node_incoming_address to original values
-      $node1->do("SET GLOBAL wsrep_node_incoming_address = $orig_ia_1");
-      $node2->do("SET GLOBAL wsrep_node_incoming_address = $orig_ia_2");
-      $node3->do("SET GLOBAL wsrep_node_incoming_address = $orig_ia_3");
+      $node1->do("SET GLOBAL wsrep_node_incoming_address = '$orig_ia_1'");
+      $node2->do("SET GLOBAL wsrep_node_incoming_address = '$orig_ia_2'");
+      $node3->do("SET GLOBAL wsrep_node_incoming_address = '$orig_ia_3'");
    }
 
 }
