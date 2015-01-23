@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v2.2.13 released 2015-01-26
+
 
   * Feature   1391240:  pt-kill added query fingerprint hash to output 
   * Fixed bug 1402668:  pt-mysql-summary fails on cluster in Donor/Desynced status 
