@@ -295,6 +295,31 @@ like(
 );
 
 # #############################################################################
+# pt-table-checksum has errors when slaves have different system_time_zone 
+# https://bugs.launchpad.net/percona-toolkit/+bug/1388870 
+# #############################################################################
+
+# make slave set diferent system_time_zone by changing env var TZ. 
+diag(`/tmp/12346/stop >/dev/null`); 
+diag(`export TZ='HST';/tmp/12346/start >/dev/null`); 
+
+$output = output(
+   sub { pt_table_checksum::main(@args, qw(-t sakila.payment)) },
+);
+
+
+is(
+   PerconaTest::count_checksum_results($output, 'diffs'),
+   0,
+   "Bug 1388870 - No false positive reported when system_tz differ on slave"
+);
+
+# restore slave to original system_tz 
+diag(`/tmp/12346/stop >/dev/null`); 
+diag(`/tmp/12346/start >/dev/null`); 
+
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);

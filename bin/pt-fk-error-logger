@@ -37,7 +37,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.12';
+our $VERSION = '2.2.13';
 
 use strict;
 use warnings FATAL => 'all';
@@ -1791,7 +1791,7 @@ sub new {
       set             => $args{set},
       NAME_lc         => defined($args{NAME_lc}) ? $args{NAME_lc} : 1,
       dbh_set         => 0,
-      ask_pass        => $args{ask_pass},
+      ask_pass        => $o->get('ask-pass'),
       DSNParser       => $dp,
       is_cluster_node => undef,
       parent          => $args{parent},
@@ -1807,7 +1807,7 @@ sub connect {
 
    my $dbh = $self->{dbh};
    if ( !$dbh || !$dbh->ping() ) {
-      if ( $self->{ask_pass} && !$self->{asked_for_pass} ) {
+      if ( $self->{ask_pass} && !$self->{asked_for_pass} && !defined $dsn->{p} ) {
          $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
          $self->{asked_for_pass} = 1;
       }
@@ -1889,13 +1889,40 @@ sub name {
    return $self->{hostname} || $self->{dsn_name} || 'unknown host';
 }
 
+sub get_id {
+   my ($self, $cxn) = @_;
+
+   $cxn ||= $self;
+
+   my $unique_id;
+   if ($cxn->is_cluster_node()) {  # for cluster we concatenate various variables to maximize id 'uniqueness' across versions
+      my $sql  = q{SHOW STATUS LIKE 'wsrep\_local\_index'};
+      my (undef, $wsrep_local_index) = $cxn->dbh->selectrow_array($sql);
+      PTDEBUG && _d("Got cluster wsrep_local_index: ",$wsrep_local_index);
+      $unique_id = $wsrep_local_index."|"; 
+      foreach my $val ('server\_id', 'wsrep\_sst\_receive\_address', 'wsrep\_node\_name', 'wsrep\_node\_address') {
+         my $sql = "SHOW VARIABLES LIKE '$val'";
+         PTDEBUG && _d($cxn->name, $sql);
+         my (undef, $val) = $cxn->dbh->selectrow_array($sql);
+         $unique_id .= "|$val";
+      }
+   } else {
+      my $sql  = 'SELECT @@SERVER_ID';
+      PTDEBUG && _d($sql);
+      $unique_id = $cxn->dbh->selectrow_array($sql);
+   }
+   PTDEBUG && _d("Generated unique id for cluster:", $unique_id);
+   return $unique_id;
+}
+
+
 sub is_cluster_node {
    my ($self, $cxn) = @_;
 
+   $cxn ||= $self;
    my $sql = "SHOW VARIABLES LIKE 'wsrep\_on'";
    PTDEBUG && _d($cxn->name, $sql);
    my $row = $cxn->dbh->selectrow_arrayref($sql);
-   PTDEBUG && _d(Dumper($row));
    return $row && $row->[1] && ($row->[1] eq 'ON' || $row->[1] eq '1') ? 1 : 0;
 
 }
@@ -1908,11 +1935,8 @@ sub remove_duplicate_cxns {
    my @trimmed_cxns;
 
    for my $cxn ( @cxns ) {
-      my $dbh  = $cxn->dbh();
 
-      my $sql  = $self->is_cluster_node($cxn) ? q{SELECT @@wsrep_node_incoming_address} : q{SELECT @@server_id};
-      PTDEBUG && _d($sql);
-      my ($id) = $dbh->selectrow_array($sql);
+      my $id = $cxn->get_id();
       PTDEBUG && _d('Server ID for ', $cxn->name, ': ', $id);
 
       if ( ! $seen_ids->{$id}++ ) {
@@ -2739,7 +2763,8 @@ sub _split_url {
            ref($self->{fh}) eq 'IO::Socket::SSL'
                or die(qq/SSL connection failed for $host\n/);
            if ( $self->{fh}->can("verify_hostname") ) {
-               $self->{fh}->verify_hostname( $host, $ssl_verify_args );
+               $self->{fh}->verify_hostname( $host, $ssl_verify_args )
+                  or die(qq/SSL certificate not valid for $host\n/);
            }
            else {
             my $fh = $self->{fh};
@@ -3261,11 +3286,12 @@ sub version_check {
       PTDEBUG && _d(scalar @$instances_to_check, 'instances to check');
       return unless @$instances_to_check;
 
-      my $protocol = 'https';  # optimistic, but...
+      my $protocol = 'https';  
       eval { require IO::Socket::SSL; };
       if ( $EVAL_ERROR ) {
          PTDEBUG && _d($EVAL_ERROR);
-         $protocol = 'http';
+         PTDEBUG && _d("SSL not available, won't run version_check");
+         return;
       }
       PTDEBUG && _d('Using', $protocol);
 
@@ -3701,6 +3727,11 @@ sub get_from_mysql {
          'because there are no MySQL instances');
       return;
    }
+
+   if ($item->{item} eq 'MySQL' && $item->{type} eq 'mysql_variable') {
+      $item->{vars} = ['version_comment', 'version'];
+   }
+ 
 
    my @versions;
    my %version_for;
@@ -4510,7 +4541,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2014 Percona LLC and/or its affiliates.
+This program is copyright 2011-2015 Percona LLC and/or its affiliates.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
@@ -4528,6 +4559,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-fk-error-logger 2.2.12
+pt-fk-error-logger 2.2.13
 
 =cut

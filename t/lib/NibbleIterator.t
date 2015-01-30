@@ -389,40 +389,58 @@ $ni = make_nibble_iter(
    select => $chunk_checksum,
 );
 
+# The following tests need a trick to make the timestamp column consistent
+# across different test servers.
+# Sakila uses '2006-02-15 11:44:00' for this column, which is converted to
+# a different epoch vaule in different timezones, resulting in different
+# checksum values according to the tz of the server where sakila was created.
+
+# save original value, just in case
+my ($orig_datetime)  = $dbh->selectrow_array("SELECT last_update FROM sakila.country LIMIT 1");
+# get locat datetime for UTC 2006-02-15 11:44:00
+my ($local_datetime_for_fixed_timestamp) = $dbh->selectrow_array("SELECT FROM_UNIXTIME(1140003840)");
+$dbh->do("UPDATE sakila.country SET last_update = '$local_datetime_for_fixed_timestamp'");
+
+# now the following checksums are fixed, no matter the test server timezone
+# where the sakila database was created
 my $row = $ni->next();
 is_deeply(
    $row,
-   [25, 'd9c52498'],
+   [25, 'a947cb12'],
    "SELECT chunk checksum 1 FROM sakila.country"
 ) or diag(Dumper($row));
 
 $row = $ni->next();
 is_deeply(
    $row,
-   [25, 'ebdc982c'],
+   [25, 'c32790b9'],
    "SELECT chunk checksum 2 FROM sakila.country"
 ) or diag(Dumper($row));
 
 $row = $ni->next();
 is_deeply(
    $row,
-   [25, 'e8d9438d'],
+   [25, 'ea52549f'],
    "SELECT chunk checksum 3 FROM sakila.country"
 ) or diag(Dumper($row));
 
 $row = $ni->next();
 is_deeply(
    $row,
-   [25, '2e3b895d'],
+   [25, 'e78a7363'],
    "SELECT chunk checksum 4 FROM sakila.country"
 ) or diag(Dumper($row));
 
 $row = $ni->next();
 is_deeply(
    $row,
-   [9, 'bd08fd55'],
+   [9, 'd97ccb0d'],
    "SELECT chunk checksum 5 FROM sakila.country"
 ) or diag(Dumper($row));
+
+# revert timestamp to original value, in case other tests use it
+$dbh->do("UPDATE sakila.country SET last_update = '$orig_datetime'");
+
 
 # #########################################################################
 # exec_nibble callback and explain_sth
