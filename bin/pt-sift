@@ -242,7 +242,10 @@ parse_options() {
          _parse_config_files "$user_config_file"
       done
    else
-      _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf" "/etc/percona-toolkit/$TOOL.conf" "$HOME/.percona-toolkit.conf" "$HOME/.$TOOL.conf"
+      _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf" "/etc/percona-toolkit/$TOOL.conf"
+      if [ "${HOME:-}" ]; then
+         _parse_config_files "$HOME/.percona-toolkit.conf" "$HOME/.$TOOL.conf"
+      fi
    fi
 
    _parse_command_line "${@:-""}"
@@ -1221,7 +1224,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2014 Percona LLC and/or its affiliates,
+This program is copyright 2011-2015 Percona LLC and/or its affiliates,
 2010-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -1240,7 +1243,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-sift 2.2.12
+pt-sift 2.2.13
 
 =cut
 

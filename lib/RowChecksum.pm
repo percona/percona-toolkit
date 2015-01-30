@@ -82,10 +82,10 @@ sub make_row_checksum {
       $query = join(', ',
                   map { 
                      my $col = $_;
-                     if ( $col =~ m/\+ 0/ ) {
+                     if ( $col =~ m/UNIX_TIMESTAMP/ ) {
                         # Alias col name back to itself else its name becomes
                         # "col + 0" instead of just "col".
-                        my ($real_col) = /^(\S+)/;
+                        my ($real_col) = /^UNIX_TIMESTAMP\((.+?)\)/;
                         $col .= " AS $real_col";
                      }
                      elsif ( $col =~ m/TRIM/ ) {
@@ -216,7 +216,7 @@ sub get_checksum_columns {
          my $type   = $tbl_struct->{type_for}->{$_};
          my $result = $q->quote($_);
          if ( $type eq 'timestamp' ) {
-            $result .= ' + 0';
+            $result = "UNIX_TIMESTAMP($result)";
          }
          elsif ( $float_precision && $type =~ m/float|double/ ) {
             $result = "ROUND($result, $float_precision)";

@@ -138,17 +138,17 @@ sub version_check {
       PTDEBUG && _d(scalar @$instances_to_check, 'instances to check');
       return unless @$instances_to_check;
 
-      # Get the list of program to check from Percona.  Try using
-      # https first; fallback to http if that fails (probably because
-      # IO::Socket::SSL isn't installed).
-      my $protocol = 'https';  # optimistic, but...
+      # Skip Version Check altogether if SSL not available
+      my $protocol = 'https';  
       eval { require IO::Socket::SSL; };
       if ( $EVAL_ERROR ) {
          PTDEBUG && _d($EVAL_ERROR);
-         $protocol = 'http';
+         PTDEBUG && _d("SSL not available, won't run version_check");
+         return;
       }
       PTDEBUG && _d('Using', $protocol);
 
+      # Get list of programs to check from Percona.
       my $advice = pingback(
          instances => $instances_to_check,
          protocol  => $protocol,
@@ -643,6 +643,13 @@ sub get_from_mysql {
          'because there are no MySQL instances');
       return;
    }
+
+   # Only allow version variables to be reported 
+   # So in case of MITM attack, we don't report sensitive data
+   if ($item->{item} eq 'MySQL' && $item->{type} eq 'mysql_variable') {
+      @{$item->{vars}} = grep { $_ eq 'version' || $_ eq 'version_comment' } @{$item->{vars}};
+   }
+ 
 
    my @versions;
    my %version_for;

@@ -1,6 +1,52 @@
 Release Notes
 *************
 
+v2.2.13 released 2015-01-26
+===========================
+
+Percona Toolkit 2.2.13 has been released. This release contains one new feature and twelve bug fixes.
+
+New Features:
+
+* pt-kill now supports new ``--query-id`` option. This option can be used to print a query fingerprint hash after killing a query to enable the cross-referencing with the pt-query-digest output. This option can be used along with ``--print`` option as well.  
+
+Bugs Fixed:
+
+* Fixed bug 1019479: pt-table-checksum now works with ``ONLY_FULL_GROUP_BY`` sql_mode. 
+
+* Fixed bug 1394934: running pt-table-checksum in debug mode would cause an error.
+
+* Fixed bug 1396868: regression introduced in Percona Toolkit 2.2.12 caused pt-online-schema-change not to honor ``--ask-pass`` option.
+
+* Fixed bug 1399789: pt-table-checksum would fail to find Percona XtraDB Cluster nodes when variable ``wsrep_node_incoming_address`` was set to ``AUTO``.
+
+* Fixed bug 1408375: Percona Toolkit was vulnerable to MITM attack which could allow exfiltration of MySQL configuration information via ``--version-check`` option. This vulnerability was logged as `CVE 2015-1027 <http://www.cve.mitre.org/cgi-bin/cvename.cgi?name=2015-1027>_`
+
+* Fixed bug 1321297: pt-table-checksum was reporting differences on timestamp columns with replication from 5.5 to 5.6 server version, although the data was identical. 
+
+* Fixed bug 1388870: pt-table-checksum was showing differences if the master and slave were in different time zone.  
+
+* Fixed bug 1402668: pt-mysql-summary would exit if Percona XtraDB Cluster was in ``Donor/Desynced`` state.
+
+* Fixed bug 1266869: pt-stalk would fail to start if ``$HOME`` environment variable was not set.
+
+Changelog
+---------
+
+* Feature   1391240:  pt-kill added query fingerprint hash to output 
+* Fixed bug 1402668:  pt-mysql-summary fails on cluster in Donor/Desynced status 
+* Fixed bug 1396870:  pt-online-schema-change CTRL+C leaves terminal in inconsistent state 
+* Fixed bug 1396868:	pt-online-schema-change --ask-pass option error
+* Fixed bug 1266869:  pt-stalk fails to start if $HOME environment variable is not set 
+* Fixed bug 1019479:	pt-table-checksum does not work with sql_mode ONLY_FULL_GROUP_BY
+* Fixed bug 1394934:  pt-table-checksum error in debug mode
+* Fixed bug 1321297:  pt-table-checksum reports diffs on timestamp columns in 5.5 vs 5.6 
+* Fixed bug 1399789:	pt-table-checksum fails to find pxc nodes when wsrep_node_incoming_address is set to AUTO
+* Fixed bug 1388870:  pt-table-checksum has some errors with different time zones
+* Fixed bug 1408375:  vulnerable to MITM attack which would allow exfiltration of MySQL configuration information via --version-check
+* Fixed bug 1404298:  missing MySQL5.7 test files for pt-table-checksum 
+* Fixed bug 1403900:  added sandbox and fixed sakila test db for 5.7 
+
 v2.2.12 released 2014-11-14
 ===========================
 
