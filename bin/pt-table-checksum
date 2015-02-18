@@ -10866,6 +10866,7 @@ sub check_repl_table {
          }
       }
    }
+
    
    # USE the correct db (probably the repl db, but maybe --replicate-database).
    use_repl_db(%args);
@@ -10887,6 +10888,7 @@ sub check_repl_table {
         . "--no-create-replicate-table was specified.  "
         . "You need to create the table.\n";
    }
+
 
    # We used to check the table privs here, but:
    # https://bugs.launchpad.net/percona-toolkit/+bug/916168
@@ -10971,6 +10973,21 @@ sub check_repl_table {
                tbl => $tbl,
             );
          }
+      }
+   }
+
+   if ( $o->get('binary-key') ) {
+      PTDEBUG && _d('--binary-key : checking if replicate table has binary type columns');
+      my $create_table = $tp->get_create_table( $dbh, $db, $tbl );
+      if (  $create_table !~ /lower_boundary`?\s+blob/si 
+         || $create_table !~ /upper_boundary`?\s+blob/si ) 
+      {
+         die "--binary-key was specified but current replicate table "
+        . "has text datatype boundary columns.\n"
+        . "You need to drop the current table and recreate it using "
+        . "both --create-replicate-table and --binary-key\n"
+        . "Alternatively you can manually create the replicate table "
+        . "as specified in the docs. See --binary-key usage\n";
       }
    }
 
@@ -11132,6 +11149,10 @@ sub create_repl_table {
    my $sql = $o->read_para_after(__FILE__, qr/MAGIC_create_replicate/);
    $sql =~ s/CREATE TABLE checksums/CREATE TABLE IF NOT EXISTS $repl_table/;
    $sql =~ s/;$//;
+   if ( $o->get('binary-key') ) {
+      $sql =~ s/`?lower_boundary`?\s+text/`lower_boundary` blob/s;
+      $sql =~ s/`?upper_boundary`?\s+text/`upper_boundary` blob/s;
+   }
    PTDEBUG && _d($dbh, $sql);
    eval {
       $dbh->do($sql);
@@ -11808,6 +11829,15 @@ Check that the C<binlog_format> is the same on all servers.
 
 See "Replicas using row-based replication" under L<"LIMITATIONS">.
 
+=item --binary-key
+
+This option modifies the behavior of L<"--create-replicate-table"> such that the
+replicate table's upper and lower boundary columns are created with binary (blob) 
+datatype.
+This is useful in cases where you have trouble checksuming tables with keys that 
+include a binary datatype or that have non-standard character sets.
+See L<"--replicate">.
+
 =item --check-interval
 
 type: time; default: 1; group: Throttle
@@ -12357,6 +12387,9 @@ structure (MAGIC_create_replicate):
      PRIMARY KEY (db, tbl, chunk),
      INDEX ts_db_tbl (ts, db, tbl)
   ) ENGINE=InnoDB;
+
+Note: lower_boundary and upper_boundary datatype can also be set to blob.
+ See L<"--binary-key">
 
 By default, L<"--[no]create-replicate-table"> is true, so the database and
 the table specified by this option are created automatically if they do not
