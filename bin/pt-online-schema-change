@@ -11525,7 +11525,7 @@ To change the defaults, specify the new values like:
 
    --tries create_triggers:5:0.5,drop_triggers:5:0.5
 
-That makes the tool try C<create_triggers> and C<drop_triggers> 2 times
+That makes the tool try C<create_triggers> and C<drop_triggers> 5 times
 with a 0.5 second wait between tries.  So the format is:
 
    operation:tries:wait[,operation:tries:wait]
