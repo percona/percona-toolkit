@@ -13186,6 +13186,10 @@ sub main {
                # Open the next file.
                my ($fh, $filename, $filesize) = $next_file->();
                if ( $fh ) {
+                  my $fileno = fileno $fh;
+                  if ($fileno == 0) {
+                     print "Reading from STDIN ...\n";
+                  }
                   PTDEBUG && _d('Reading', $filename);
                   PTDEBUG && _d('File size:', $filesize);
                   # catch if user is trying to use an uncoverted (raw) binlog  # issue 1377888
