@@ -5220,6 +5220,10 @@ It also looks for duplicate foreign keys.  A duplicate foreign key covers the
 same columns as another in the same table, and references the same parent
 table.
 
+The output ends with a short summary that includes the total size in bytes 
+that the duplicate indexes ara using. This is calculated by multiplying the 
+index length in bytes times the number of rows in their respective tables.
+
 =head1 OPTIONS
 
 This tool accepts additional command-line arguments.  Refer to the
