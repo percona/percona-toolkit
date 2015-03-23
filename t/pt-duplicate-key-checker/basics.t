@@ -136,14 +136,16 @@ ok(
 # #############################################################################
 # Exact unique dupes
 # https://bugs.launchpad.net/percona-toolkit/+bug/1217013
+# Also added --verbose option (-v) to test for:
+# https://bugs.launchpad.net/percona-toolkit/+bug/1402730
 # #############################################################################
 
 $sb->load_file('master', 't/lib/samples/dupekeys/simple_dupe_bug_1217013.sql', 'test');
 
 ok(
    no_diff(
-      sub { pt_duplicate_key_checker::main(@args, qw(-t test.domains)) },
-      "$sample/simple_dupe_bug_1217013.txt"),
+      sub { pt_duplicate_key_checker::main(@args, qw(-t test.domains -v)) },
+      "$sample/simple_dupe_bug_1217013.txt", keep_output=>1),
    'Exact unique dupes (bug 1217013)'
 ) or diag($test_diff);
 

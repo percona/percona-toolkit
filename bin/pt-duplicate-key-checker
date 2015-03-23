@@ -4972,46 +4972,44 @@ sub main {
                print_all_keys($keys, $tbl, \%seen_tbl) if $keys;
                print_all_keys($fks,  $tbl, \%seen_tbl) if $fks;
             }
-            else {
-               PTDEBUG && _d('Getting duplicate keys on',
-                  $tbl->{db}, $tbl->{tbl});
-               if ( $keys ) {
-                  $dk->get_duplicate_keys(
-                     $keys,
-                     clustered_key => $clustered_key,
-                     tbl_info      => $tbl,
-                     callback      => \&print_duplicate_key,
-                     %tp_opts,
-                     # get_duplicate_keys() ignores these args but passes them
-                     # to the callback:
-                        dbh      => $dbh,
-                        is_fk    => 0,
-                        o        => $o,
-                        ks       => $ks,
-                        tp       => $tp,
-                        q        => $q,
-                        seen_tbl => \%seen_tbl,
-                        summary  => \%summary,
-                  );
-               }
-               if ( $fks ) {
-                  $dk->get_duplicate_fks(
-                     $fks,
-                     tbl_info => $tbl,
-                     callback => \&print_duplicate_key,
-                     %tp_opts,
-                     # get_duplicate_fks() ignores these args but passes them
-                     # to the callback:
-                        dbh   => $dbh,
-                        is_fk => 1,
-                        o     => $o,
-                        ks    => $ks,
-                        tp       => $tp,
-                        q        => $q,
-                        seen_tbl => \%seen_tbl,
-                        summary  => \%summary,
-                  );
-               }
+            PTDEBUG && _d('Getting duplicate keys on',
+               $tbl->{db}, $tbl->{tbl});
+            if ( $keys ) {
+               $dk->get_duplicate_keys(
+                  $keys,
+                  clustered_key => $clustered_key,
+                  tbl_info      => $tbl,
+                  callback      => \&print_duplicate_key,
+                  %tp_opts,
+                  # get_duplicate_keys() ignores these args but passes them
+                  # to the callback:
+                     dbh      => $dbh,
+                     is_fk    => 0,
+                     o        => $o,
+                     ks       => $ks,
+                     tp       => $tp,
+                     q        => $q,
+                     seen_tbl => \%seen_tbl,
+                     summary  => \%summary,
+               );
+            }
+            if ( $fks ) {
+               $dk->get_duplicate_fks(
+                  $fks,
+                  tbl_info => $tbl,
+                  callback => \&print_duplicate_key,
+                  %tp_opts,
+                  # get_duplicate_fks() ignores these args but passes them
+                  # to the callback:
+                     dbh   => $dbh,
+                     is_fk => 1,
+                     o     => $o,
+                     ks    => $ks,
+                     tp       => $tp,
+                     q        => $q,
+                     seen_tbl => \%seen_tbl,
+                     summary  => \%summary,
+               );
             }
 
             # Always count Total Keys so print_key_summary won't die

@@ -2,6 +2,10 @@
 # test.domains                                                            
 # ########################################################################
 
+# unique_key_domain (`domain`)
+# domain (`domain`)
+# PRIMARY (`id`)
+
 # Uniqueness of domain ignored because unique_key_domain is a duplicate constraint
 # domain is a duplicate of unique_key_domain
 # Key definitions:
