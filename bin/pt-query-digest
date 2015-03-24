@@ -3613,9 +3613,16 @@ sub _parse_packet {
    my ( $self, $packet ) = @_;
    die "I need a packet" unless $packet;
 
-   my ( $ts, $source, $dest )  = $packet =~ m/\A(\S+ \S+).*? IP .*?(\S+) > (\S+):/;
-   my ( $src_host, $src_port ) = $source =~ m/((?:\d+\.){3}\d+)\.(\w+)/;
-   my ( $dst_host, $dst_port ) = $dest   =~ m/((?:\d+\.){3}\d+)\.(\w+)/;
+   my ( $ts, $ipv6, $source, $dest ) = $packet =~ m/\A(\S+ \S+).*? IP(?:(6?)) .*?(\S+) > (\S+):/;
+   my ( $src_host, $src_port );
+   my ( $dst_host, $dst_port );
+   if ( $ipv6 ) {
+      ( $src_host, $src_port ) = $source =~ m/((?:\w+\:){7}\w+)\.(\w+)/;
+      ( $dst_host, $dst_port ) = $dest   =~ m/((?:\w+\:){7}\w+)\.(\w+)/;
+   } else {
+      ( $src_host, $src_port ) = $source =~ m/((?:\d+\.){3}\d+)\.(\w+)/;
+      ( $dst_host, $dst_port ) = $dest   =~ m/((?:\d+\.){3}\d+)\.(\w+)/;
+   }
 
    $src_port = $self->port_number($src_port);
    $dst_port = $self->port_number($dst_port);
@@ -3623,8 +3630,14 @@ sub _parse_packet {
    my $hex = qr/[0-9a-f]/;
    (my $data = join('', $packet =~ m/\s+0x$hex+:\s((?:\s$hex{2,4})+)/go)) =~ s/\s+//g; 
 
-   my $ip_hlen = hex(substr($data, 1, 1)); # Num of 32-bit words in header.
-   my $ip_plen = hex(substr($data, 4, 4)); # Num of BYTES in IPv4 datagram.
+   my ( $ip_hlen, $ip_plen );
+   if ( $ipv6 ) {
+      $ip_hlen = 10; # Num of 32-bit words in header.
+      $ip_plen = hex(substr($data, 8, 4)) + 40; # Num of BYTES in IPv6 datagram.
+   } else {
+      $ip_hlen = hex(substr($data, 1, 1)); # Num of 32-bit words in header.
+      $ip_plen = hex(substr($data, 4, 4)); # Num of BYTES in IPv4 datagram.
+   }
    my $complete = length($data) == 2 * $ip_plen ? 1 : 0;
 
    my $tcp_hlen = hex(substr($data, ($ip_hlen + 3) * 8, 1));
