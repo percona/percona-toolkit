@@ -4881,7 +4881,7 @@ my $hdr_fmt   = "# %-${hdr_width}s\n";
 sub main {
    local @ARGV = @_;  # set global ARGV for this package
 
-   my %summary = ( 'Total Indexes' => 0 );
+   my %summary = ( 'items' => {'Total Indexes' => 0} );
    my %seen_tbl;
 
    my $q  = new Quoter();
@@ -5014,7 +5014,7 @@ sub main {
 
             # Always count Total Keys so print_key_summary won't die
             # because %summary is empty.
-            $summary{'Total Indexes'} += (scalar keys %$keys)
+            $summary{items}->{'Total Indexes'} += (scalar keys %$keys)
                                        + (scalar keys %$fks)
          }
       };
@@ -5042,7 +5042,8 @@ sub print_all_keys {
       printf $hdr_fmt, "$db.$tbl";
       printf $hdr_fmt, ('#' x $hdr_width);
    }
-   foreach my $key ( values %$keys ) {
+   # Print keys sorted by name (easier to test)
+   foreach my $key (  sort {$a->{name} cmp $b->{name}} values %$keys ) {
       print "\n# $key->{name} ($key->{colnames})";
    }
    print "\n";
@@ -5066,6 +5067,10 @@ sub print_duplicate_key {
    my $tp       = $args{tp};
    my $summary  = $args{summary};
    my $struct   = $tp->parse($args{tbl_info}->{ddl});
+
+   if ($dupe->{ddl} =~ /FULLTEXT/) {
+      $summary->{has_fulltext_dupe}++;
+   }
 
    if ( !$seen_tbl->{"$db$tbl"}++ ) {
       printf $hdr_fmt, ('#' x $hdr_width);
@@ -5109,7 +5114,7 @@ sub print_duplicate_key {
    print "\n";
 
    if ( $o->get('summary') && $summary ) {
-      $summary->{'Total Duplicate Indexes'} += 1;
+      $summary->{'items'}->{'Total Duplicate Indexes'} += 1;
       my ($size, $chosen_key) = $ks->get_key_size(
          name        => $dupe->{key},
          cols        => $dupe->{cols},
@@ -5126,7 +5131,7 @@ sub print_duplicate_key {
          $size ||= 0;
 
          # Create Size Duplicate Keys summary even if there's no valid keys.
-         $summary->{'Size Duplicate Indexes'} += $size;
+         $summary->{'items'}->{'Size Duplicate Indexes'} += $size;
 
          if ( $size ) {
             if ( $chosen_key && $chosen_key ne $dupe->{key} ) {
@@ -5141,14 +5146,19 @@ sub print_duplicate_key {
 
 sub print_key_summary {
    my ( %summary ) = @_;
+   my $items = $summary{items};
    printf $hdr_fmt, ('#' x $hdr_width);
    printf $hdr_fmt, 'Summary of indexes';
    printf $hdr_fmt, ('#' x $hdr_width);
    print "\n";
-   my $max_item = max(map { length($_) } keys %summary);
-   my $line_fmt = "# %-${max_item}s  %-s\n";
-   foreach my $item ( sort keys %summary ) {
-      printf $line_fmt, $item, $summary{$item};
+   my $max_item = max(map { length($_) } keys %$items);
+   my $line_fmt = "# %-${max_item}s  %-s";
+   foreach my $item ( sort keys %$items ) {
+      printf $line_fmt, $item, $items->{$item};
+      if ( $item eq 'Size Duplicate Indexes' && $summary{has_fulltext_dupe} ) {
+         print ' (not including FULLTEXT indexes)';
+      }
+      print "\n";
    }
    return;
 }
