@@ -41,10 +41,10 @@ $sb->load_file('master', 't/pt-duplicate-key-checker/samples/issue_331.sql', 'te
 ok(
    no_diff(
       sub { pt_duplicate_key_checker::main(@args, qw(-d issue_331)) },
-      't/pt-duplicate-key-checker/samples/issue_331.txt',
+      't/pt-duplicate-key-checker/samples/issue_331.txt'
    ),
    'Issue 331 crash on fks'
-);
+) or diag($test_diff);
 
 # #############################################################################
 # Done.

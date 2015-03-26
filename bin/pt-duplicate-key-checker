@@ -2336,7 +2336,8 @@ sub get_duplicate_keys {
    my @dupes;
 
    KEY:
-   foreach my $key ( values %keys ) {
+   # sort by key name for consistent testing
+   foreach my $key ( sort {$a->{name} cmp $b->{name}} values %keys ) {
       $key->{real_cols} = [ @{$key->{cols}} ];
 
       $key->{len_cols}  = length $key->{colnames};
@@ -2412,7 +2413,8 @@ sub get_duplicate_keys {
 sub get_duplicate_fks {
    my ( $self, $fks, %args ) = @_;
    die "I need a fks argument" unless $fks;
-   my @fks = values %$fks;
+   # sort by name for consistent testing
+   my @fks = sort {$a->{name} cmp $b->{name}} values %$fks;
    my @dupes;
 
    foreach my $i ( 0..$#fks - 1 ) {
