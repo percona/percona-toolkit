@@ -6304,7 +6304,11 @@ sub save {
    else {
       my $rows;
       if ( my $sth = $results->{sth} ) {
-         if ( $event->{arg} =~ m/(?:^\s*SELECT|(?:\*\/\s*SELECT))/i ) {
+         # Only fetch rows of select statements
+         # *except* when they are directed INTO 
+         # a file or a variable. (issue lp:1421781)
+         if ( $event->{arg} =~ m/(?:^\s*SELECT|(?:\*\/\s*SELECT))/i 
+            &&  $event->{arg} !~ /INTO\s*(?:OUTFILE|DUMPFILE|@)/ ) {
             $rows = $sth->fetchall_arrayref();
          }
          eval {
@@ -10120,9 +10124,11 @@ sub save_and_report_results {
          ignore_warnings => $ignore_warnings,
       );
 
-      # Only SELECT statements return rows.
+      # Only SELECT statements return rows, *except* when they are directed 
+      # INTO a file or a variable.
       my $row_diffs;
-      if ( $event->{arg} =~ m/(?:^\s*SELECT|(?:\*\/\s*SELECT))/i ) {
+      if ( $event->{arg} =~ m/(?:^\s*SELECT|(?:\*\/\s*SELECT))/i 
+         &&  $event->{arg} !~ m/INTO\s*(?:OUTFILE|DUMPFILE|@)/i ) {
          $row_diffs = diff_rows(
             sth1 => $results1->{sth},
             sth2 => $results2->{sth},
