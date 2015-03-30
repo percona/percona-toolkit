@@ -5286,13 +5286,14 @@ sub main {
    ) {
       eval {
          my $next_interval = $get_next_interval->();
-         if ( time >= $next_interval ) {
+         my $time = time;
+         if ( $time >= $next_interval ) {
             do { $next_interval = $get_next_interval->() }
-               until $next_interval > time;
+               until $next_interval > $time;
             PTDEBUG && _d("Missed last interval; next interval:",
                ts($next_interval));
          }
-         sleep $next_interval - time;
+         sleep $next_interval - $time;
          PTDEBUG && _d('Woke up at', ts(time));
 
          # Connect or reconnect if necessary.
@@ -5419,13 +5420,14 @@ sub check_delay {
       PTDEBUG && _d('Checking slave', $dp->as_string($dsn));
 
       my $next_interval = $get_next_interval->();
-      if ( time >= $next_interval ) {
+      my $time = time;
+      if ( $time >= $next_interval ) {
          do { $next_interval = $get_next_interval->() }
-            until $next_interval > time;
+            until $next_interval > $time;
          PTDEBUG && _d("Missed last interval; next interval:",
             ts($next_interval));
       }
-      sleep $next_interval - time;
+      sleep $next_interval - $time;
       PTDEBUG && _d('Woke up at', ts(time));
       my ($delay, $hostname, $master_server_id) = $get_delay->($sth);
 
