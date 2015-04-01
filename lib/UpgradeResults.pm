@@ -220,7 +220,7 @@ sub report_unreported_classes {
             class   => $class,
             reasons => ["$reason, but hasn't been reported yet"],
          );
-         $class = { reported => 1 };
+         $class->{reported} = 1; 
       };
       if ( $EVAL_ERROR ) {
          $success = 1;
@@ -234,11 +234,11 @@ sub report_unreported_classes {
 sub report_if_ready {
    my ($self, %args) = @_;
    my $class = $args{class};
-
-   my $max_examples = $self->max_class_size;
+   my $max_examples   = $self->max_examples;
+   my $max_class_size = $self->max_class_size;
    my @report_reasons;
 
-   if ( scalar keys %{$class->{unique_queries}} >= $self->max_class_size ) {
+   if ( scalar keys %{$class->{unique_queries}} >= $max_class_size ) {
       push @report_reasons, "it's full (--max-class-size)";
    }
 
@@ -250,15 +250,15 @@ sub report_if_ready {
       push @report_reasons, "there are $max_examples warning diffs";
    }
 
-   if ( scalar @{$class->{row_diffs}} >= $self->max_examples ) {
+   if ( scalar @{$class->{row_diffs}} >= $max_examples ) {
       push @report_reasons, "there are $max_examples row diffs";
    }
 
-   if ( scalar @{$class->{errors}} >= $self->max_examples ) {
+   if ( scalar @{$class->{errors}} >= $max_examples ) {
       push @report_reasons, "there are $max_examples query errors";
    }
 
-   if ( scalar @{$class->{failures}} >= $self->max_examples ) {
+   if ( scalar @{$class->{failures}} >= $max_examples ) {
       push @report_reasons, "there are $max_examples failed queries";
    }
 
@@ -268,7 +268,7 @@ sub report_if_ready {
          class   => $class,
          reasons => \@report_reasons,
       );
-      $class = { reported => 1 };
+      $class->{reported} = 1; 
    }
 
    return;
@@ -278,6 +278,11 @@ sub report_class {
    my ($self, %args) = @_;
    my $class   = $args{class};
    my $reasons = $args{reasons};
+
+   if ( $class->{reported} ) {
+      PTDEBUG && _d('Class already reported');
+      return;
+   }
 
    PTDEBUG && _d('Reporting class', $class->{id}, $class->{fingerprint});
 
