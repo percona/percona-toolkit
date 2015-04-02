@@ -12239,6 +12239,12 @@ Ignore this comma-separated list of tables.
 
 Table names may be qualified with the database name.
 
+=item --ignore-tables-regex
+
+type: string; group: Filter
+
+Ignore tables whose names match the Perl regex.
+
 =item --[no]index-hint
 
 default: yes
