@@ -5286,6 +5286,8 @@ sub main {
    ) {
       eval {
          my $next_interval = $get_next_interval->();
+         # save current time in variable to avoid race condition
+         # https://bugs.launchpad.net/percona-toolkit/+bug/1406390
          my $time = time;
          if ( $time >= $next_interval ) {
             do { $next_interval = $get_next_interval->() }
@@ -5420,6 +5422,8 @@ sub check_delay {
       PTDEBUG && _d('Checking slave', $dp->as_string($dsn));
 
       my $next_interval = $get_next_interval->();
+      # save current time in variable to avoid race condition
+      # https://bugs.launchpad.net/percona-toolkit/+bug/1406390
       my $time = time;
       if ( $time >= $next_interval ) {
          do { $next_interval = $get_next_interval->() }
