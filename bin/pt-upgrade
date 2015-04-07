@@ -10615,7 +10615,7 @@ C<0.5> is worse than C<0.1>, and so the query will be reported.
 
 By default, pt-upgrade only executes C<SELECT> and C<SET> statements.
 (This does not include 'SELECT...INTO' statements, which do not return
-rows but dump output to a file or variable)
+rows but dump output to a file or variable.)
 If you're using recreatable test or development servers and wish to
 compare write statements too (e.g. C<INSERT>, C<UPDATE>, C<DELETE>),
 then specify C<--no-read-only>.  If using a binary log, you must
