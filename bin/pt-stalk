@@ -857,7 +857,7 @@ collect() {
          have_oprofile="yes"
       fi
    elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" -a "$mysqld_pid" ]; then
-      $CMD_STRACE -T -s 0 -f -p $mysqld_pid > "${DEST}/$d-strace" &
+      $CMD_STRACE -T -s 0 -f -p $mysqld_pid -o "$d/$p-strace" &
       local strace_pid=$!
    fi
 
