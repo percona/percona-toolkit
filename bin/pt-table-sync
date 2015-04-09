@@ -11039,6 +11039,12 @@ sub disconnect {
          my $dbh = $host->{$thing};
          next unless $dbh;
          delete $dsn_for{$dbh};
+         # The following is for when misc_dbh loses
+         # connection due to timeout. Since it has nothing 
+         # to commit we avoid reporting an error.
+         if ( $thing eq 'misc_dbh' &&  !$dbh->ping() ) {
+           next; 
+         }
          $dbh->commit() unless $dbh->{AutoCommit};
          $dbh->disconnect();
          PTDEBUG && _d('Disconnected dbh', $dbh);
