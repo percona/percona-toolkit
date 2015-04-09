@@ -1,0 +1,4 @@
+SELECT 1 INTO @foo;
+SELECT * FROM sakila.actor INTO OUTFILE '/tmp/test_select_into_1.log'; 
+SELECT actor_id,first_name FROM sakila.actor LIMIT 1 INTO DUMPFILE '/tmp/test_select_into_2.log'; 
+

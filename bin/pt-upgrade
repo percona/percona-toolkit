@@ -6304,7 +6304,11 @@ sub save {
    else {
       my $rows;
       if ( my $sth = $results->{sth} ) {
-         if ( $event->{arg} =~ m/(?:^\s*SELECT|(?:\*\/\s*SELECT))/i ) {
+         # Only fetch rows of select statements
+         # *except* when they are directed INTO 
+         # a file or a variable. (issue lp:1421781)
+         if ( $event->{arg} =~ m/(?:^\s*SELECT|(?:\*\/\s*SELECT))/i 
+            &&  $event->{arg} !~ /INTO\s*(?:OUTFILE|DUMPFILE|@)/ ) {
             $rows = $sth->fetchall_arrayref();
          }
          eval {
@@ -10120,9 +10124,11 @@ sub save_and_report_results {
          ignore_warnings => $ignore_warnings,
       );
 
-      # Only SELECT statements return rows.
+      # Only SELECT statements return rows, *except* when they are directed 
+      # INTO a file or a variable.
       my $row_diffs;
-      if ( $event->{arg} =~ m/(?:^\s*SELECT|(?:\*\/\s*SELECT))/i ) {
+      if ( $event->{arg} =~ m/(?:^\s*SELECT|(?:\*\/\s*SELECT))/i 
+         &&  $event->{arg} !~ m/INTO\s*(?:OUTFILE|DUMPFILE|@)/i ) {
          $row_diffs = diff_rows(
             sth1 => $results1->{sth},
             sth2 => $results2->{sth},
@@ -10608,6 +10614,8 @@ C<0.5> is worse than C<0.1>, and so the query will be reported.
 =head2 READ-ONLY
 
 By default, pt-upgrade only executes C<SELECT> and C<SET> statements.
+(This does not include 'SELECT...INTO' statements, which do not return
+rows but dump output to a file or variable.)
 If you're using recreatable test or development servers and wish to
 compare write statements too (e.g. C<INSERT>, C<UPDATE>, C<DELETE>),
 then specify C<--no-read-only>.  If using a binary log, you must
