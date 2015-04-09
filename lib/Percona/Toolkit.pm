@@ -18,7 +18,7 @@
 # ###########################################################################
 package Percona::Toolkit;
 
-our $VERSION = '2.2.13';
+our $VERSION = '2.2.14';
 
 use strict;
 use warnings FATAL => 'all';
