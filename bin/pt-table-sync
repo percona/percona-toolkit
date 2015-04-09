@@ -12225,6 +12225,8 @@ type: Hash
 
 Ignore this comma-separated list of databases.
 
+(system databases such as B<information_schema> and B<performance_schema> are ignored by default)
+
 =item --ignore-engines
 
 type: Hash; default: FEDERATED,MRG_MyISAM
