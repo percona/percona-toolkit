@@ -1000,7 +1000,7 @@ collect() {
    wait_for_subshells $OPT_RUN_TIME
    kill_all_subshells
    for file in "$d/$p-"*; do
-      if [ -z "$(grep -v '^TS ' --max-count 1 "$file")" ]; then
+      if [ -z "$(grep -v '^TS ' --max-count 10 "$file")" ]; then
          log "Removing empty file $file";
          rm "$file"
       fi
