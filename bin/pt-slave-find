@@ -3778,6 +3778,7 @@ sub main {
       node          => $root,
       print_node    => $print_node,
       MasterSlave   => $ms,
+	   resolve_address => $o->get('resolve-address'),
    );
 
    return 0;
@@ -3823,7 +3824,7 @@ sub print_slaves {
 
 sub print_node_hostname {
    my ( %args ) = @_;
-   my ($ms, $node, $level) = @args{qw(MasterSlave node level)};
+   my ($ms, $node, $level, $resolve_address) = @args{qw(MasterSlave node level resolve_address)};
    die "I need a node" unless $node;
    $level ||= 0;
 
@@ -3833,15 +3834,16 @@ sub print_node_hostname {
    my $prefix = $level ? (' ' x (($level-1)*3) . '+- ') : '';
 
    PTDEBUG && _d('level', $level, 'host', $host);
-   print "$prefix$host\n";
+  
+   print_host($prefix, $host, $resolve_address);
 
    return;
 }
 
 sub print_node_summary {
    my ( %args ) = @_;
-   my ($ms, $node, $level)
-      = @args{qw(MasterSlave node level)};
+   my ($ms, $node, $level, $resolve_address)
+      = @args{qw(MasterSlave node level resolve_address)};
    die "I need a node" unless $node;
    $level ||= 0;
 
@@ -3851,7 +3853,7 @@ sub print_node_summary {
 
    PTDEBUG && _d('level', $level, 'host', $host);
 
-   print "$prefix$host\n";
+   print_host($prefix, $host, $resolve_address);
 
    my $dbh = $node->{dbh};
    if ( !$dbh ) {
@@ -3921,6 +3923,28 @@ sub print_node_summary {
       "\n";
 
    return;
+}
+
+sub print_host {
+   my ($prefix, $host, $resolve_address) = @_;
+
+   my $hostname;
+   # resolve address to hostname if user requested it
+   if($resolve_address) {
+      use Socket;
+      my $without_port = $host;  
+      $without_port =~ s/:\d*$//;  # strip port from ip address
+      my $packed = inet_aton($without_port);
+      if ($packed) {
+	      $hostname = gethostbyaddr($packed, AF_INET);
+      }
+   }
+   if ($hostname) {
+	   print "$prefix$host ($hostname)\n";
+   } 
+   else {
+	   print "$prefix$host\n";
+   }
 }
 
 sub _d {
@@ -4154,6 +4178,16 @@ about each slave, like:
      Auto-increment  increment 1, offset 1
 
 =back
+
+=item --resolve-address
+
+Resolve ip-address to hostname. Report will print both IP and hostname.
+
+Example:
+
+   10.10.7.14 (dbase1.sample.net)
+
+Might delay runtime a few seconds.
 
 =item --set-vars
 
