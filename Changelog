@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v2.2.14 released 2015-04-14
+
 
   * Fixed bug 1402730  pt-duplicate-key-checker seems useless with MySQL 5.6
   * Fixed bug 1415646  pt-duplicate-key-checker documentation does not explain how Size Duplicate Indexes is calculated
