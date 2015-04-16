@@ -68,7 +68,7 @@ $sb->wait_for_slaves();
 # then starts it again.
 # TEST_WISHLIST PLUGIN_WISHLIST: do this with a plugin to the tool itself,
 # not in this unreliable fashion.
-system("$trunk/util/wait-to-exec '$scripts/wait-for-chunk.sh 12345 sakila city 1' '$scripts/exec-wait-exec.sh 12347 \"stop slave sql_thread\" 2 \"start slave sql_thread\"' 3 >/dev/null &");
+system("$trunk/util/wait-to-exec '$scripts/wait-for-chunk.sh 12345 sakila city 1' '$scripts/exec-wait-exec.sh 12347 \"stop slave sql_thread\" 2 \"start slave sql_thread\"' 4 >/dev/null &");
 
 $output = output(
    sub { pt_table_checksum::main(@args, qw(-d sakila)); },

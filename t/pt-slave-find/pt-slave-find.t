@@ -43,7 +43,7 @@ elsif ( !$slave2_dbh ) {
    plan skip_all => 'Cannot connect to second sandbox slave';
 }
 else {
-   plan tests => 9;
+   plan tests => 10;
 }
 
 my @args = ('h=127.0.0.1,P=12345,u=msandbox,p=msandbox');
@@ -66,6 +66,17 @@ my $expected = <<EOF;
    +- 127.0.0.1:12347
 EOF
 is($output, $expected, 'Master with slave and slave of slave');
+
+###############################################################################
+# Test --resolve-hostname option (we don't know the hostname of the test
+# machine so we settle for any non null string)
+###############################################################################
+$output = `$trunk/bin/pt-slave-find -h 127.0.0.1 -P 12345 -u msandbox -p msandbox --report-format hostname --resolve-address`;
+like (   
+   $output,
+   qr/127\.0\.0\.1:12345\s+\(\w+\)/s,
+   "--resolve-address option"
+) or diag($output);
 
 # #############################################################################
 # Until MasterSlave::find_slave_hosts() is improved to overcome the problems
@@ -145,6 +156,7 @@ ok(
       : "t/pt-slave-find/samples/summary001-5.0.txt"), cmd_output => 1),
    "Summary report format",
 );
+
 
 # #############################################################################
 # Done.

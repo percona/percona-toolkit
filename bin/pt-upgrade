@@ -61,7 +61,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.13';
+our $VERSION = '2.2.14';
 
 use strict;
 use warnings FATAL => 'all';
@@ -5858,7 +5858,7 @@ sub report_unreported_classes {
             class   => $class,
             reasons => ["$reason, but hasn't been reported yet"],
          );
-         $class = { reported => 1 };
+         $class->{reported} = 1; 
       };
       if ( $EVAL_ERROR ) {
          $success = 1;
@@ -5872,11 +5872,11 @@ sub report_unreported_classes {
 sub report_if_ready {
    my ($self, %args) = @_;
    my $class = $args{class};
-
-   my $max_examples = $self->max_class_size;
+   my $max_examples   = $self->max_examples;
+   my $max_class_size = $self->max_class_size;
    my @report_reasons;
 
-   if ( scalar keys %{$class->{unique_queries}} >= $self->max_class_size ) {
+   if ( scalar keys %{$class->{unique_queries}} >= $max_class_size ) {
       push @report_reasons, "it's full (--max-class-size)";
    }
 
@@ -5888,15 +5888,15 @@ sub report_if_ready {
       push @report_reasons, "there are $max_examples warning diffs";
    }
 
-   if ( scalar @{$class->{row_diffs}} >= $self->max_examples ) {
+   if ( scalar @{$class->{row_diffs}} >= $max_examples ) {
       push @report_reasons, "there are $max_examples row diffs";
    }
 
-   if ( scalar @{$class->{errors}} >= $self->max_examples ) {
+   if ( scalar @{$class->{errors}} >= $max_examples ) {
       push @report_reasons, "there are $max_examples query errors";
    }
 
-   if ( scalar @{$class->{failures}} >= $self->max_examples ) {
+   if ( scalar @{$class->{failures}} >= $max_examples ) {
       push @report_reasons, "there are $max_examples failed queries";
    }
 
@@ -5906,7 +5906,7 @@ sub report_if_ready {
          class   => $class,
          reasons => \@report_reasons,
       );
-      $class = { reported => 1 };
+      $class->{reported} = 1; 
    }
 
    return;
@@ -5916,6 +5916,11 @@ sub report_class {
    my ($self, %args) = @_;
    my $class   = $args{class};
    my $reasons = $args{reasons};
+
+   if ( $class->{reported} ) {
+      PTDEBUG && _d('Class already reported');
+      return;
+   }
 
    PTDEBUG && _d('Reporting class', $class->{id}, $class->{fingerprint});
 
@@ -6304,7 +6309,11 @@ sub save {
    else {
       my $rows;
       if ( my $sth = $results->{sth} ) {
-         if ( $event->{arg} =~ m/(?:^\s*SELECT|(?:\*\/\s*SELECT))/i ) {
+         # Only fetch rows of select statements
+         # *except* when they are directed INTO 
+         # a file or a variable. (issue lp:1421781)
+         if ( $event->{arg} =~ m/(?:^\s*SELECT|(?:\*\/\s*SELECT))/i 
+            &&  $event->{arg} !~ /INTO\s*(?:OUTFILE|DUMPFILE|@)/ ) {
             $rows = $sth->fetchall_arrayref();
          }
          eval {
@@ -10120,9 +10129,11 @@ sub save_and_report_results {
          ignore_warnings => $ignore_warnings,
       );
 
-      # Only SELECT statements return rows.
+      # Only SELECT statements return rows, *except* when they are directed 
+      # INTO a file or a variable.
       my $row_diffs;
-      if ( $event->{arg} =~ m/(?:^\s*SELECT|(?:\*\/\s*SELECT))/i ) {
+      if ( $event->{arg} =~ m/(?:^\s*SELECT|(?:\*\/\s*SELECT))/i 
+         &&  $event->{arg} !~ m/INTO\s*(?:OUTFILE|DUMPFILE|@)/i ) {
          $row_diffs = diff_rows(
             sth1 => $results1->{sth},
             sth2 => $results2->{sth},
@@ -10608,6 +10619,8 @@ C<0.5> is worse than C<0.1>, and so the query will be reported.
 =head2 READ-ONLY
 
 By default, pt-upgrade only executes C<SELECT> and C<SET> statements.
+(This does not include 'SELECT...INTO' statements, which do not return
+rows but dump output to a file or variable.)
 If you're using recreatable test or development servers and wish to
 compare write statements too (e.g. C<INSERT>, C<UPDATE>, C<DELETE>),
 then specify C<--no-read-only>.  If using a binary log, you must
@@ -11290,6 +11303,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-upgrade 2.2.13
+pt-upgrade 2.2.14
 
 =cut

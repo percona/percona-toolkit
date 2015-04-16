@@ -39,7 +39,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.13';
+our $VERSION = '2.2.14';
 
 use strict;
 use warnings FATAL => 'all';
@@ -2336,7 +2336,8 @@ sub get_duplicate_keys {
    my @dupes;
 
    KEY:
-   foreach my $key ( values %keys ) {
+   # sort by key name for consistent testing
+   foreach my $key ( sort {$a->{name} cmp $b->{name}} values %keys ) {
       $key->{real_cols} = [ @{$key->{cols}} ];
 
       $key->{len_cols}  = length $key->{colnames};
@@ -2412,7 +2413,8 @@ sub get_duplicate_keys {
 sub get_duplicate_fks {
    my ( $self, $fks, %args ) = @_;
    die "I need a fks argument" unless $fks;
-   my @fks = values %$fks;
+   # sort by name for consistent testing
+   my @fks = sort {$a->{name} cmp $b->{name}} values %$fks;
    my @dupes;
 
    foreach my $i ( 0..$#fks - 1 ) {
@@ -4881,7 +4883,7 @@ my $hdr_fmt   = "# %-${hdr_width}s\n";
 sub main {
    local @ARGV = @_;  # set global ARGV for this package
 
-   my %summary = ( 'Total Indexes' => 0 );
+   my %summary = ( 'items' => {'Total Indexes' => 0} );
    my %seen_tbl;
 
    my $q  = new Quoter();
@@ -4972,51 +4974,49 @@ sub main {
                print_all_keys($keys, $tbl, \%seen_tbl) if $keys;
                print_all_keys($fks,  $tbl, \%seen_tbl) if $fks;
             }
-            else {
-               PTDEBUG && _d('Getting duplicate keys on',
-                  $tbl->{db}, $tbl->{tbl});
-               if ( $keys ) {
-                  $dk->get_duplicate_keys(
-                     $keys,
-                     clustered_key => $clustered_key,
-                     tbl_info      => $tbl,
-                     callback      => \&print_duplicate_key,
-                     %tp_opts,
-                     # get_duplicate_keys() ignores these args but passes them
-                     # to the callback:
-                        dbh      => $dbh,
-                        is_fk    => 0,
-                        o        => $o,
-                        ks       => $ks,
-                        tp       => $tp,
-                        q        => $q,
-                        seen_tbl => \%seen_tbl,
-                        summary  => \%summary,
-                  );
-               }
-               if ( $fks ) {
-                  $dk->get_duplicate_fks(
-                     $fks,
-                     tbl_info => $tbl,
-                     callback => \&print_duplicate_key,
-                     %tp_opts,
-                     # get_duplicate_fks() ignores these args but passes them
-                     # to the callback:
-                        dbh   => $dbh,
-                        is_fk => 1,
-                        o     => $o,
-                        ks    => $ks,
-                        tp       => $tp,
-                        q        => $q,
-                        seen_tbl => \%seen_tbl,
-                        summary  => \%summary,
-                  );
-               }
+            PTDEBUG && _d('Getting duplicate keys on',
+               $tbl->{db}, $tbl->{tbl});
+            if ( $keys ) {
+               $dk->get_duplicate_keys(
+                  $keys,
+                  clustered_key => $clustered_key,
+                  tbl_info      => $tbl,
+                  callback      => \&print_duplicate_key,
+                  %tp_opts,
+                  # get_duplicate_keys() ignores these args but passes them
+                  # to the callback:
+                     dbh      => $dbh,
+                     is_fk    => 0,
+                     o        => $o,
+                     ks       => $ks,
+                     tp       => $tp,
+                     q        => $q,
+                     seen_tbl => \%seen_tbl,
+                     summary  => \%summary,
+               );
+            }
+            if ( $fks ) {
+               $dk->get_duplicate_fks(
+                  $fks,
+                  tbl_info => $tbl,
+                  callback => \&print_duplicate_key,
+                  %tp_opts,
+                  # get_duplicate_fks() ignores these args but passes them
+                  # to the callback:
+                     dbh   => $dbh,
+                     is_fk => 1,
+                     o     => $o,
+                     ks    => $ks,
+                     tp       => $tp,
+                     q        => $q,
+                     seen_tbl => \%seen_tbl,
+                     summary  => \%summary,
+               );
             }
 
             # Always count Total Keys so print_key_summary won't die
             # because %summary is empty.
-            $summary{'Total Indexes'} += (scalar keys %$keys)
+            $summary{items}->{'Total Indexes'} += (scalar keys %$keys)
                                        + (scalar keys %$fks)
          }
       };
@@ -5044,7 +5044,8 @@ sub print_all_keys {
       printf $hdr_fmt, "$db.$tbl";
       printf $hdr_fmt, ('#' x $hdr_width);
    }
-   foreach my $key ( values %$keys ) {
+   # Print keys sorted by name (easier to test)
+   foreach my $key (  sort {$a->{name} cmp $b->{name}} values %$keys ) {
       print "\n# $key->{name} ($key->{colnames})";
    }
    print "\n";
@@ -5068,6 +5069,10 @@ sub print_duplicate_key {
    my $tp       = $args{tp};
    my $summary  = $args{summary};
    my $struct   = $tp->parse($args{tbl_info}->{ddl});
+
+   if ($dupe->{ddl} =~ /FULLTEXT/) {
+      $summary->{has_fulltext_dupe}++;
+   }
 
    if ( !$seen_tbl->{"$db$tbl"}++ ) {
       printf $hdr_fmt, ('#' x $hdr_width);
@@ -5111,7 +5116,7 @@ sub print_duplicate_key {
    print "\n";
 
    if ( $o->get('summary') && $summary ) {
-      $summary->{'Total Duplicate Indexes'} += 1;
+      $summary->{'items'}->{'Total Duplicate Indexes'} += 1;
       my ($size, $chosen_key) = $ks->get_key_size(
          name        => $dupe->{key},
          cols        => $dupe->{cols},
@@ -5128,7 +5133,7 @@ sub print_duplicate_key {
          $size ||= 0;
 
          # Create Size Duplicate Keys summary even if there's no valid keys.
-         $summary->{'Size Duplicate Indexes'} += $size;
+         $summary->{'items'}->{'Size Duplicate Indexes'} += $size;
 
          if ( $size ) {
             if ( $chosen_key && $chosen_key ne $dupe->{key} ) {
@@ -5143,14 +5148,19 @@ sub print_duplicate_key {
 
 sub print_key_summary {
    my ( %summary ) = @_;
+   my $items = $summary{items};
    printf $hdr_fmt, ('#' x $hdr_width);
    printf $hdr_fmt, 'Summary of indexes';
    printf $hdr_fmt, ('#' x $hdr_width);
    print "\n";
-   my $max_item = max(map { length($_) } keys %summary);
-   my $line_fmt = "# %-${max_item}s  %-s\n";
-   foreach my $item ( sort keys %summary ) {
-      printf $line_fmt, $item, $summary{$item};
+   my $max_item = max(map { length($_) } keys %$items);
+   my $line_fmt = "# %-${max_item}s  %-s";
+   foreach my $item ( sort keys %$items ) {
+      printf $line_fmt, $item, $items->{$item};
+      if ( $item eq 'Size Duplicate Indexes' && $summary{has_fulltext_dupe} ) {
+         print ' (not including FULLTEXT indexes)';
+      }
+      print "\n";
    }
    return;
 }
@@ -5219,6 +5229,10 @@ columns.  You can override this.
 It also looks for duplicate foreign keys.  A duplicate foreign key covers the
 same columns as another in the same table, and references the same parent
 table.
+
+The output ends with a short summary that includes an estimate of the total 
+size, in bytes, that the duplicate indexes are using. This is calculated by 
+multiplying the index length by the number of rows in their respective tables.
 
 =head1 OPTIONS
 
@@ -5607,6 +5621,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-duplicate-key-checker 2.2.13
+pt-duplicate-key-checker 2.2.14
 
 =cut

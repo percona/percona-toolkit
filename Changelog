@@ -1,5 +1,28 @@
 Changelog for Percona Toolkit
 
+v2.2.14 released 2015-04-14
+
+
+  * Fixed bug 1402730  pt-duplicate-key-checker seems useless with MySQL 5.6
+  * Fixed bug 1415646  pt-duplicate-key-checker documentation does not explain how Size Duplicate Indexes is calculated
+  * Fixed bug 1406390  pt-heartbeat crashes with sleep argument error
+  * Fixed bug 1368244  pt-online-schema-change --alter-foreign-keys-method=drop-swap is not atomic
+  * FIxed bug 1417864  pt-online-schema-change documentation, the interpretation of --tries create_triggers:5:0.5,drop_triggers:5:0.5 is wrong
+  * Fixed bug 1404313  pt-query-digest: specifying a file that doesn't exist as log causes the tool to wait for STDIN instead of giving an error
+  * Feature   1418446  pt-slave-find resolve IP addresses option
+  * Fixed bug 1417558  pt-stalk with --collect-strace output doesn't go to an YYYY_MM_DD_HH_mm_ss-strace file
+  * Fixed bug 1425478  pt-stalk removes non-empty files that start with empty line
+  * Fixed bug 925781   pt-table-checksum checksum error when default-character-set = utf8
+  * Fixed bug 1381280  pt-table-checksum fails on BINARY field in PK
+  * Feature   1439842  pt-table-sync lacks --ignore-tables-regex option
+  * Fixed bug 1401399  pt-table-sync fails to close one db handle
+  * Fixed bug 1442277  pt-table-sync-ignores system databases but doc doesn't clarify this
+  * Fixed bug 1421781  pt-upgrade fails on SELECT ... INTO queries
+  * Fixed bug 1421405  pt-upgrade fails to aggregate queries based on fingerprint
+  * Fixed bug 1439348  pt-upgrade erroneously reports number of diffs
+  * Fixed bug 1421025  rpm missing dependency on perl-TermReadKey for --ask-pass
+
+
 v2.2.13 released 2015-01-26
 
 

@@ -55,7 +55,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.13';
+our $VERSION = '2.2.14';
 
 use strict;
 use warnings FATAL => 'all';
@@ -11039,6 +11039,12 @@ sub disconnect {
          my $dbh = $host->{$thing};
          next unless $dbh;
          delete $dsn_for{$dbh};
+         # The following is for when misc_dbh loses
+         # connection due to timeout. Since it has nothing 
+         # to commit we avoid reporting an error.
+         if ( $thing eq 'misc_dbh' &&  !$dbh->ping() ) {
+           next; 
+         }
          $dbh->commit() unless $dbh->{AutoCommit};
          $dbh->disconnect();
          PTDEBUG && _d('Disconnected dbh', $dbh);
@@ -12225,6 +12231,8 @@ type: Hash
 
 Ignore this comma-separated list of databases.
 
+(system databases such as B<information_schema> and B<performance_schema> are ignored by default)
+
 =item --ignore-engines
 
 type: Hash; default: FEDERATED,MRG_MyISAM
@@ -12238,6 +12246,12 @@ type: Hash
 Ignore this comma-separated list of tables.
 
 Table names may be qualified with the database name.
+
+=item --ignore-tables-regex
+
+type: string; group: Filter
+
+Ignore tables whose names match the Perl regex.
 
 =item --[no]index-hint
 
@@ -12775,6 +12789,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-sync 2.2.13
+pt-table-sync 2.2.14
 
 =cut

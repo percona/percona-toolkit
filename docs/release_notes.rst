@@ -1,6 +1,63 @@
 Release Notes
 *************
 
+v2.2.14 released 2015-04-14
+===========================
+
+Percona Toolkit 2.2.14 has been released. This release contains two new features and seventeen bug fixes.
+
+New Features:
+
+* pt-slave-find can now resolve the IP address and show the slave's hostname. This can be done with the new ``--resolve-address`` option.  
+
+* pt-table-sync can now ignore the tables whose names match specific Perl regex with the ``--ignore-tables-regex`` option.
+
+Bugs Fixed:
+
+* Fixed bug 925781: Inserting non-BMP characters into a column with utf8 charset would cause the ``Incorrect string value`` error when running the pt-table-checksum.
+
+* Fixed bug 1368244: pt-online-schema-change ``--alter-foreign-keys-method=drop-swap`` was not atomic and thus it could be interrupted. Fixed by disabling common interrupt signals during the critical drop-rename phase.
+
+* Fixed bug 1381280: pt-table-checksum was failing on ``BINARY`` field in Primary Key. Fixed by implementing new ``--binary-index`` flag to optionally create checksum table using BLOB data type.
+
+* Fixed bug 1421405: Running pt-upgrade against a log with many identical (or similar) queries was producing repeated sections with the same fingerprint.
+
+* Fixed bug 1402730: pt-duplicate-key-checker was not checking for duplicate keys when ``--verbose`` option was set.
+
+* Fixed bug 1406390: A race condition was causing pt-heartbeat to crash with sleep argument error.
+
+* Fixed bug 1417558: pt-stalk when used along with ``--collect-strace`` didn't write the strace output to the expected destination file.
+
+* Fixed bug 1421025: Missing dependency for ``perl-TermReadKey`` RPM package was causing toolkit commands to fail when they were run with ``--ask-pass`` option. 
+
+* Fixed bug 1421781: pt-upgrade would fail when log contained ``SELECT...INTO`` queries. Fixed by ignoring/skipping those queries.
+
+* Fixed bug 1425478: pt-stalk was removing non-empty files that were starting with an empty line.
+
+* Fixed bug 1419098: Fixed bad formatting in the pt-table-checksum documentation.
+
+Changelog
+---------
+
+* Fixed bug 1402730  pt-duplicate-key-checker seems useless with MySQL 5.6
+* Fixed bug 1415646  pt-duplicate-key-checker documentation does not explain how Size Duplicate Indexes is calculated
+* Fixed bug 1406390  pt-heartbeat crashes with sleep argument error
+* Fixed bug 1368244  pt-online-schema-change --alter-foreign-keys-method=drop-swap is not atomic
+* FIxed bug 1417864  pt-online-schema-change documentation, the interpretation of --tries create_triggers:5:0.5,drop_triggers:5:0.5 is wrong
+* Fixed bug 1404313  pt-query-digest: specifying a file that doesn't exist as log causes the tool to wait for STDIN instead of giving an error
+* Feature   1418446  pt-slave-find resolve IP addresses option
+* Fixed bug 1417558  pt-stalk with --collect-strace output doesn't go to an YYYY_MM_DD_HH_mm_ss-strace file
+* Fixed bug 1425478  pt-stalk removes non-empty files that start with empty line
+* Fixed bug 925781   pt-table-checksum checksum error when default-character-set = utf8
+* Fixed bug 1381280  pt-table-checksum fails on BINARY field in PK
+* Feature   1439842  pt-table-sync lacks --ignore-tables-regex option
+* Fixed bug 1401399  pt-table-sync fails to close one db handle
+* Fixed bug 1442277  pt-table-sync-ignores system databases but doc doesn't clarify this
+* Fixed bug 1421781  pt-upgrade fails on SELECT ... INTO queries
+* Fixed bug 1421405  pt-upgrade fails to aggregate queries based on fingerprint
+* Fixed bug 1439348  pt-upgrade erroneously reports number of diffs
+* Fixed bug 1421025  rpm missing dependency on perl-TermReadKey for --ask-pass
+
 v2.2.13 released 2015-01-26
 ===========================
 

@@ -64,7 +64,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.13';
+our $VERSION = '2.2.14';
 
 use strict;
 use warnings FATAL => 'all';
@@ -13186,6 +13186,10 @@ sub main {
                # Open the next file.
                my ($fh, $filename, $filesize) = $next_file->();
                if ( $fh ) {
+                  my $fileno = fileno $fh;
+                  if ($fileno == 0) {
+                     print "Reading from STDIN ...\n";
+                  }
                   PTDEBUG && _d('Reading', $filename);
                   PTDEBUG && _d('File size:', $filesize);
                   # catch if user is trying to use an uncoverted (raw) binlog  # issue 1377888
@@ -16624,6 +16628,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-query-digest 2.2.13
+pt-query-digest 2.2.14
 
 =cut

@@ -55,7 +55,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.13';
+our $VERSION = '2.2.14';
 
 use strict;
 use warnings FATAL => 'all';
@@ -7970,6 +7970,7 @@ use sigtrap 'handler', \&sig_int, 'normal-signals';
 
 my $exit_status = 0;
 my $oktorun     = 1;
+my $dont_interrupt_now = 0;
 my @drop_trigger_sqls;
 my @triggers_not_dropped;
 
@@ -7983,6 +7984,7 @@ sub main {
    $oktorun              = 1;
    @drop_trigger_sqls    = ();
    @triggers_not_dropped = ();
+   $dont_interrupt_now   = 0;
 
    my %stats = (
       INSERT => 0,
@@ -10251,6 +10253,11 @@ sub drop_swap {
       "DROP TABLE IF EXISTS $orig_tbl->{name}",
       "RENAME TABLE $new_tbl->{name} TO $orig_tbl->{name}",
    );
+  
+   # we don't want to be interrupted during the swap!
+   # since it might leave original table dropped
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1368244
+   $dont_interrupt_now = 1; 
 
    foreach my $sql ( @sqls ) {
       PTDEBUG && _d($sql);
@@ -10268,6 +10275,8 @@ sub drop_swap {
          );
       }
    }
+
+   $dont_interrupt_now = 0; 
 
    if ( $o->get('execute') ) {
       print ts("Dropped and swapped tables OK.\n");
@@ -10667,6 +10676,11 @@ sub ts {
 # Catches signals so we can exit gracefully.
 sub sig_int {
    my ( $signal ) = @_;
+   if ( $dont_interrupt_now ) {
+      # we're in the middle of something that shouldn't be interrupted 
+      PTDEBUG && _d("Received Signal: \"$signal\" in middle of critical operation. Continuing anyway.");
+      return;
+   }
    $oktorun = 0;  # flag for cleanup tasks
    print STDERR "# Exiting on SIG$signal.\n";
    # restore terminal to normal state in case CTL+C issued while 
@@ -11525,7 +11539,7 @@ To change the defaults, specify the new values like:
 
    --tries create_triggers:5:0.5,drop_triggers:5:0.5
 
-That makes the tool try C<create_triggers> and C<drop_triggers> 2 times
+That makes the tool try C<create_triggers> and C<drop_triggers> 5 times
 with a 0.5 second wait between tries.  So the format is:
 
    operation:tries:wait[,operation:tries:wait]
@@ -11807,6 +11821,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-online-schema-change 2.2.13
+pt-online-schema-change 2.2.14
 
 =cut

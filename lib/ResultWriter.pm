@@ -128,9 +128,11 @@ sub save {
    }
    else {
       # Save rows, if any (i.e. if it's a SELECT statement).
+      # *except* if it's a SELECT...INTO (issue lp:1421781) 
       my $rows;
       if ( my $sth = $results->{sth} ) {
-         if ( $event->{arg} =~ m/(?:^\s*SELECT|(?:\*\/\s*SELECT))/i ) {
+         if ( $event->{arg} =~ m/(?:^\s*SELECT|(?:\*\/\s*SELECT))/i 
+            &&  $event->{arg} !~ /INTO\s*(?:OUTFILE|DUMPFILE|@)/ ) {
             $rows = $sth->fetchall_arrayref();
          }
          eval {

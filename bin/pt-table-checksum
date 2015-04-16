@@ -57,7 +57,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.13';
+our $VERSION = '2.2.14';
 
 use strict;
 use warnings FATAL => 'all';
@@ -10866,6 +10866,7 @@ sub check_repl_table {
          }
       }
    }
+
    
    # USE the correct db (probably the repl db, but maybe --replicate-database).
    use_repl_db(%args);
@@ -10887,6 +10888,7 @@ sub check_repl_table {
         . "--no-create-replicate-table was specified.  "
         . "You need to create the table.\n";
    }
+
 
    # We used to check the table privs here, but:
    # https://bugs.launchpad.net/percona-toolkit/+bug/916168
@@ -10971,6 +10973,18 @@ sub check_repl_table {
                tbl => $tbl,
             );
          }
+      }
+   }
+
+   if ( $o->get('binary-index') ) {
+      PTDEBUG && _d('--binary-index : checking if replicate table has binary type columns');
+      my $create_table = $tp->get_create_table( $dbh, $db, $tbl );
+      if (  $create_table !~ /lower_boundary`?\s+BLOB/si 
+         || $create_table !~ /upper_boundary`?\s+BLOB/si ) 
+      {
+         die "--binary-index was specified but the current checksum table ($db.$tbl) uses" 
+         ." TEXT columns. To use BLOB columns, drop the current checksum table, then recreate" 
+         ." it by specifying --create-replicate-table --binary-index.";
       }
    }
 
@@ -11132,6 +11146,10 @@ sub create_repl_table {
    my $sql = $o->read_para_after(__FILE__, qr/MAGIC_create_replicate/);
    $sql =~ s/CREATE TABLE checksums/CREATE TABLE IF NOT EXISTS $repl_table/;
    $sql =~ s/;$//;
+   if ( $o->get('binary-index') ) {
+      $sql =~ s/`?lower_boundary`?\s+TEXT/`lower_boundary` BLOB/is;
+      $sql =~ s/`?upper_boundary`?\s+TEXT/`upper_boundary` BLOB/is;
+   }
    PTDEBUG && _d($dbh, $sql);
    eval {
       $dbh->do($sql);
@@ -11808,6 +11826,15 @@ Check that the C<binlog_format> is the same on all servers.
 
 See "Replicas using row-based replication" under L<"LIMITATIONS">.
 
+=item --binary-index
+
+This option modifies the behavior of L<"--create-replicate-table"> such that the
+replicate table's upper and lower boundary columns are created with the BLOB 
+data type.
+This is useful in cases where you have trouble checksuming tables with keys that 
+include a binary data type or that have non-standard character sets.
+See L<"--replicate">.
+
 =item --check-interval
 
 type: time; default: 1; group: Throttle
@@ -12342,21 +12369,23 @@ Write checksum results to this table.  The replicate table must have this
 structure (MAGIC_create_replicate):
 
   CREATE TABLE checksums (
-     db             char(64)     NOT NULL,
-     tbl            char(64)     NOT NULL,
-     chunk          int          NOT NULL,
-     chunk_time     float            NULL,
-     chunk_index    varchar(200)     NULL,
-     lower_boundary text             NULL,
-     upper_boundary text             NULL,
-     this_crc       char(40)     NOT NULL,
-     this_cnt       int          NOT NULL,
-     master_crc     char(40)         NULL,
-     master_cnt     int              NULL,
-     ts             timestamp    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+     db             CHAR(64)     NOT NULL,
+     tbl            CHAR(64)     NOT NULL,
+     chunk          INT          NOT NULL,
+     chunk_time     FLOAT            NULL,
+     chunk_index    VARCHAR(200)     NULL,
+     lower_boundary TEXT             NULL,
+     upper_boundary TEXT             NULL,
+     this_crc       CHAR(40)     NOT NULL,
+     this_cnt       INT          NOT NULL,
+     master_crc     CHAR(40)         NULL,
+     master_cnt     INT              NULL,
+     ts             TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
      PRIMARY KEY (db, tbl, chunk),
      INDEX ts_db_tbl (ts, db, tbl)
   ) ENGINE=InnoDB;
+
+Note: lower_boundary and upper_boundary data type can be BLOB. See L<"--binary-index">.
 
 By default, L<"--[no]create-replicate-table"> is true, so the database and
 the table specified by this option are created automatically if they do not
@@ -12788,6 +12817,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-checksum 2.2.13
+pt-table-checksum 2.2.14
 
 =cut
