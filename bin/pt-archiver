@@ -6074,6 +6074,7 @@ sub main {
    # This row is the first row fetched from each 'chunk'.
    my $first_row = [ @$row ];
    my $csv_row;
+   my $lag_count = 0;
 
    ROW:
    while (                                 # Quit if:
@@ -6305,7 +6306,8 @@ sub main {
       }
 
       # Check slave lag and wait if slave is too far behind.
-      if ( $lag_dbh ) {
+      # Do this check every 100 rows
+      if ( $lag_dbh && $lag_count++ % 100 == 0 ) {
          my $lag = $ms->get_slave_lag($lag_dbh);
          while ( !defined $lag || $lag > $o->get('max-lag') ) {
             PTDEBUG && _d('Sleeping: slave lag is', $lag);
