@@ -6879,7 +6879,8 @@ To disable this check, specify --no-check-columns.
 
 type: time; default: 1s
 
-How often to check for slave lag if L<"--check-slave-lag"> is given.
+If L<"--check-slave-lag"> is given, this defines how long the tool waits after 
+discovering slave is lagging.
 
 =item --check-slave-lag
 
