@@ -1070,7 +1070,7 @@ innodb_status() {
    local innostat=""
 
    $CMD_MYSQL $EXT_ARGV -e "SHOW /*!40100 ENGINE*/ INNODB STATUS\G" \
-      >> "$d/$p-innodbstatus$n" || rm -f $d/$p-tokudbstatus$n
+      >> "$d/$p-innodbstatus$n"
    grep "END OF INNODB" "$d/$p-innodbstatus$n" >/dev/null || {
       if [ -d /proc -a -d /proc/$mysqld_pid ]; then
          for fd in /proc/$mysqld_pid/fd/*; do
