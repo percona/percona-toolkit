@@ -5559,6 +5559,9 @@ sub main {
       if ( $bulk_del && $limit < 2 ) {
          $o->save_error("--bulk-delete is meaningless with --limit 1");
       }
+      if ( $o->got('purge') && $o->got('no-delete') ) {
+         $o->save_error("--purge and --no-delete are mutually exclusive");
+      }
    }
 
    if ( $bulk_del || $o->get('bulk-insert') ) {
