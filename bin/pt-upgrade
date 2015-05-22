@@ -11191,6 +11191,7 @@ on by default.
 dsn: password; copy: yes
 
 Password to use when connecting.
+If password contains commas they must be escaped with a backslash: "exam\,ple"
 
 =item * P
 
