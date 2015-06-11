@@ -1197,6 +1197,11 @@ set_trg_func() {
       TRIGGER_FUNCTION="trg_plugin"
       return 0  # success
    else
+      # If --mongo is used, we only have one built-in function
+      if [ "$OPT_MONGO" == "yes" ]; then
+	  TRIGGER_FUNCTION="trg_mongo_default"
+	  return 0 # success
+      fi
       # Trigger function is name of a built-in function.
       func=$(echo "$func" | tr '[:upper:]' '[:lower:]')
       if [ "$func" = "status" -o "$func" = "processlist" ]; then
@@ -1205,6 +1210,10 @@ set_trg_func() {
       fi
    fi
    return 1  # error
+}
+
+trg_mongo_default() {
+    $CMD_MONGO --quiet --eval "db.currentOp()['inprog'].length"
 }
 
 trg_status() {
