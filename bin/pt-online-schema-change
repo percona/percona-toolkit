@@ -8562,10 +8562,12 @@ sub main {
          #   at /Users/daniel/p/pt-osc-2.1.1/lib/PerconaTest.pm line 559.
          #                   ''
          #   doesn't match '(?-xism:Failed to find a unique new table name)'
-         #my $original_error = $EVAL_ERROR;
-         #
-         # (*) commented them for now because it caused infinite loop (frank)
+         
+         # (*) Frank:  commented them out because it caused infinite loop
          # and the mentioned test error doesn't arise
+         
+         #my $original_error = $EVAL_ERROR;
+
          foreach my $task ( reverse @cleanup_tasks ) {
             eval {
                $task->();

@@ -435,12 +435,28 @@ $sb->load_file('master', "$sample/bug-1340728_cleanup.sql");
 
 
 # #############################################################################
-# Issue p
-#
-# fails when no index is returned in EXPLAIN,  even though --nocheck-plan is set
-# (happens on HASH indexes)
+# Issue LP 1446928
+# Avoids an error trapping loop when --alter option contains an invalid
+# statement.
+# If this test fails it might lead to "segmentation fault" or "out of memory"
 # #############################################################################
 
+$output = output(
+   sub { pt_online_schema_change::main(@args, "$master_dsn,D=sakila,t=actor",
+         '--execute', 
+         '--alter-foreign-keys-method=drop_swap',
+         '--alter', "GIBBERISH",
+         '--nocheck-plan',
+         ),
+      },
+      stderr => 1,
+);
+
+like(
+      $output,
+      qr/Error altering new table/s,
+      "Bug 1446928: Avoid error trapping loop when --alter is invalid",
+);
 
 # #############################################################################
 # Done.
