@@ -796,6 +796,8 @@ collect_mongo() {
     $CMD_MONGO $EXT_ARGV --eval 'printjson(db.isMaster())' >> "$d/$p-isMaster$n"
     $CMD_MONGO $EXT_ARGV --eval 'printjson(sh.status())' >> "$d/$p-shStatus$n"
     $CMD_MONGO $EXT_ARGV --eval 'printjson(rs.status())' >> "$d/$p-rsStatus$n"
+    $CMD_MONGO $EXT_ARGV --eval 'printjson(db.serverStatus())' >> "$d/$p-serverStatus$n"
+    [ $n -eq 2 ] && $CMD_MONGO $EXT_ARGV --eval 'db.adminCommand({getLog:"*"})["names"].forEach(function (e,a,i){ db.adminCommand({getLog:e})["log"].forEach(function (e,a,i){print(e)})})' >> "$d/$p-logs"  # We don't need to run this twice since it will be mostly duplicate lines, so we only run it the second time, which gives us the most log content
 }
 
 collect() {
@@ -915,7 +917,7 @@ collect() {
     fi
    fi
    
-   [ "$OPT_MONGO" == "yes" ] && collect_mongo 1
+   [ "$OPT_MONGO" == "yes" ] && collect_mongo 1 &
    log "Loop start: $(date +'TS %s.%N %F %T')"
    local start_time=$(date +'%s')
    local curr_time=$start_time
@@ -1011,7 +1013,7 @@ collect() {
     kill $mysqladmin_pid
     [ "$tail_error_log_pid" ] && kill $tail_error_log_pid
    else
-       collect_mongo 2
+       collect_mongo 2 &
    fi
    [ "$tcpdump_pid" ]        && kill $tcpdump_pid
 
