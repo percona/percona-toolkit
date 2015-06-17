@@ -6709,7 +6709,13 @@ sub main {
    my $proc_sth;
    my $kill;          # callback to KILL
    my $kill_sth;
-   my $kill_sql = $o->get('kill-query') ? 'KILL QUERY ?' : 'KILL ?';
+   my $kill_sql;
+   if ( $o->get('rds') ){
+       $kill_sql = $o->get('kill-query') ? 'CALL mysql.rds_kill_query(?)' : 'CALL mysql.rds_kill(?)';
+   }
+   else{
+       $kill_sql = $o->get('kill-query') ? 'KILL QUERY ?' : 'KILL ?';
+   }
    my $files;
    if ( $files = $o->get('test-matching') ) {
       PTDEBUG && _d('Getting processlist from files:', @$files);
