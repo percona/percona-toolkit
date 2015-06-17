@@ -7642,6 +7642,13 @@ Note that this is a digest (or hash) of the query's "fingerprint",
 so queries of the same form but with different values will have the same ID.
 See pt-query-digest for more information.
 
+=item --rds
+Denotes the instance in question is on Amazon RDS. By default pt-kill runs
+the MySQL command "kill" for L<"--kill"> and "kill query" L<"--kill-query">.
+On RDS these two commands are not available and are replaced by function calls.
+This option modifies L<"--kill"> to use "CALL mysql.rds_kill(thread-id)" instead
+and L<"--kill-query"> to use "CALL mysql.rds_kill_query(thread-id)"
+
 =item --run-time
 
 type: time
