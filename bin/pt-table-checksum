@@ -9932,25 +9932,53 @@ sub main {
          }
          else {
             if ( $nibble_iter->one_nibble() ) {
-               PTDEBUG && _d('Getting table row estimate on replicas');
-
                my @too_large;
+               SLAVE:
                foreach my $slave ( @$slaves ) {
-                  # TODO: This duplicates NibbleIterator::can_nibble();
-                  # probably best to have 1 code path to determine if
-                  # a given table is oversized on a given host.
-                  my ($n_rows) = NibbleIterator::get_row_estimate(
-                     Cxn   => $slave,
-                     tbl   => $tbl,
-                     where => $o->get('where'),
-                  );
-                  PTDEBUG && _d('Table on', $slave->name(),
-                     'has', $n_rows, 'rows');
-                  if ( $n_rows
-                       && $n_rows > ($tbl->{chunk_size} * $chunk_size_limit) )
-                  {
-                     PTDEBUG && _d('Table too large on', $slave->name());
-                     push @too_large, [$slave->name(), $n_rows || 0];
+                  PTDEBUG && _d('Getting table row estimate on', $slave->name());
+                  my $have_warned = 0;
+                  while ( $oktorun && $have_time->() )  {
+                     my $n_rows;
+                     eval {
+                        # TODO: This duplicates NibbleIterator::can_nibble();
+                        # probably best to have 1 code path to determine if
+                        # a given table is oversized on a given host.
+                        ($n_rows) = NibbleIterator::get_row_estimate(
+                           Cxn   => $slave,
+                           tbl   => $tbl,
+                           where => $o->get('where'),
+                        );
+                     };
+                     if ( my $e = $EVAL_ERROR ) {
+                        if ( $slave->lost_connection($e) ) {
+                           PTDEBUG && _d($e);
+                           eval { $slave->connect() };
+                           if ( $EVAL_ERROR ) {
+                              PTDEBUG && _d('Failed to connect to slave', $slave->name(),
+                                 ':', $EVAL_ERROR);
+                              if ( !$have_warned && $o->get('quiet') < 2 ) {
+                                 my $msg = "Trying to connect to replica "
+                                    . $slave->name() . " to get row count of"
+                                    . " table $tbl->{db}.$tbl->{tbl}...\n";
+                                 warn ts($msg);
+                                 $have_warned = 1;
+                              }
+                              sleep 2;
+                           }
+                           next; # try again
+                        }
+                        die "Error getting row count estimate of table"
+                           . " $tbl->{db}.$tbl->{tbl} on replica "
+                           . $slave->name() . ": $e";
+                     }
+                     PTDEBUG && _d('Table on', $slave->name(), 'has', $n_rows, 'rows');
+                     if ( $n_rows
+                          && $n_rows > ($tbl->{chunk_size} * $chunk_size_limit) )
+                     {
+                        PTDEBUG && _d('Table too large on', $slave->name());
+                        push @too_large, [$slave->name(), $n_rows || 0];
+                     }
+                     next SLAVE;
                   }
                }
                if ( @too_large ) {
