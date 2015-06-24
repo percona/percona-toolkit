@@ -9688,15 +9688,23 @@ sub main {
             if ( !$dbh || !$dbh->ping() ) {
                PTDEBUG && _d('Lost connection to slave', $cxn->name(),
                   'while waiting for slave lag');
-               eval { $dbh = $cxn->connect() };  # connect or die trying
+               eval { $dbh = $cxn->connect() };
                if ( $EVAL_ERROR ) {
-                  $oktorun = 0;  # Fatal error
-                  chomp $EVAL_ERROR;
-                  die "Lost connection to replica " . $cxn->name()
-                     . " while attempting to get its lag ($EVAL_ERROR)";
+                  PTDEBUG && _d('Failed to connect to slave', $cxn->name(),
+                     ':', $EVAL_ERROR);
+                  return; # keep waiting and trying to reconnect
                }
             }
-            return $ms->get_slave_lag($dbh);
+            my $slave_lag;
+            eval {
+               $slave_lag = $ms->get_slave_lag($dbh);
+            };
+            if ( $EVAL_ERROR ) {
+               PTDEBUG && _d('Error getting slave lag', $cxn->name(),
+                  ':', $EVAL_ERROR);
+               return; # keep waiting and trying to reconnect
+            }
+            return $slave_lag;
          };
       }
       
