@@ -3619,7 +3619,8 @@ sub lost_connection {
    my ($self, $e) = @_;
    return 0 unless $e;
    return $e =~ m/MySQL server has gone away/
-       || $e =~ m/Lost connection to MySQL server/;
+       || $e =~ m/Lost connection to MySQL server/
+       || $e =~ m/Server shutdown in progress/;
 }
 
 sub dbh {
@@ -10299,6 +10300,7 @@ sub main {
                slaves       => $slaves,
                max_chunk    => $max_chunk,
                check_pr     => $check_pr,
+               have_time    => $have_time,
                OptionParser => $o,
             );
 
@@ -11102,7 +11104,7 @@ sub check_slave_tables {
                   warn ts($msg);
                   $have_warned = 1;
                }
-               sleep 2; # wait between failed reconnects attempts
+               sleep 2; # wait between failed reconnect attempts
             }
             next; # try again
          } # eval error
@@ -11334,11 +11336,11 @@ sub have_more_chunks {
 
 sub wait_for_last_checksum {
    my (%args) = @_;
-   my @required_args = qw(tbl repl_table slaves max_chunk OptionParser);
+   my @required_args = qw(tbl repl_table slaves max_chunk have_time OptionParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless defined $args{$arg};
    }
-   my ($tbl, $repl_table, $slaves, $max_chunk, $o) = @args{@required_args};
+   my ($tbl, $repl_table, $slaves, $max_chunk, $have_time, $o) = @args{@required_args};
    my $check_pr = $args{check_pr};
 
    # Requiring "AND master_crc IS NOT NULL" avoids a race condition
@@ -11354,8 +11356,11 @@ sub wait_for_last_checksum {
    my $n_slaves   = scalar @$slaves - 1;
    my @chunks;
    my %skip_slave;
-   while ( $oktorun && ($chunks[0] || 0) < $max_chunk ) {
-      @chunks = ();
+   my %have_warned;
+   my $checked_all;
+   while ( $oktorun && $have_time->() && (!$checked_all || (($chunks[0] || 0) < $max_chunk)) ) {
+      @chunks      = ();
+      $checked_all = 1;
       for my $i ( 0..$n_slaves ) {
          my $slave = $slaves->[$i];
          if ( $skip_slave{$i} ) {
@@ -11363,26 +11368,47 @@ sub wait_for_last_checksum {
                'due to previous error it caused');
             next;
          }
+         PTDEBUG && _d('Getting last checksum on', $slave->name());
          eval {
             my ($chunk) = $slave->dbh()->selectrow_array($sql);
             PTDEBUG && _d($slave->name(), 'max chunk:', $chunk);
             push @chunks, $chunk || 0;
          };
-         if ($EVAL_ERROR) {
-            if ( $o->get('quiet') < 2 ) {
-               warn ts("Error waiting for the last checksum of table "
-                  . "$tbl->{db}.$tbl->{tbl} to replicate to "
-                  . "replica " . $slave->name() . ": $EVAL_ERROR\n"
-                  . "Check that the replica is running and has the "
-                  . "replicate table $repl_table.  Checking the replica "
-                  . "for checksum differences will probably cause "
-                  . "another error.\n");
+         if (my $e = $EVAL_ERROR) {
+            PTDEBUG && _d($e);
+            if ( $slave->lost_connection($e) ) {
+               if ( !$have_warned{$i} && $o->get('quiet') < 2 ) {
+                  warn ts("Lost connection to " .  $slave->name() . " while "
+                     . "waiting for the last checksum of table "
+                     . "$tbl->{db}.$tbl->{tbl} to replicate. Will reconnect "
+                     . "and try again. No more warnings for this replica will "
+                     . "be printed.\n");
+                  $have_warned{$i}++;
+               }
+               eval { $slave->connect() };
+               if ( $EVAL_ERROR ) {
+                  PTDEBUG && _d($EVAL_ERROR);
+                  sleep 1; # wait between failed reconnect attempts
+               }
+               $checked_all = 0;
             }
-            $tbl->{checksum_results}->{errors}++;
-            $skip_slave{$i} = 1;
+            else {
+               if ( $o->get('quiet') < 2 ) {
+                  warn ts("Error waiting for the last checksum of table "
+                        . "$tbl->{db}.$tbl->{tbl} to replicate to "
+                        . "replica " . $slave->name() . ": $e\n"
+                        . "Check that the replica is running and has the "
+                        . "replicate table $repl_table.  Checking the replica "
+                        . "for checksum differences will probably cause "
+                        . "another error.\n");
+               }
+               $tbl->{checksum_results}->{errors}++;
+               $skip_slave{$i} = 1;
+            }
             next;
          }
       }
+
       # If we have no chunks, which can happen if the slaves
       # were skipped due to errors, then @chunks will be empty
       # and nothing of the following applies. In fact, it
