@@ -5818,15 +5818,19 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
+local $EVAL_ERROR;
+eval {
+   require Quoter;
+};
+
 sub new {
    my ( $class, %args ) = @_;
-   my @required_args = qw(Quoter);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
    my $self = { %args };
+   $self->{Quoter} ||= Quoter->new();
    return bless $self, $class;
 }
+
+sub Quoter { shift->{Quoter} }
 
 sub get_create_table {
    my ( $self, $dbh, $db, $tbl ) = @_;
@@ -5857,13 +5861,11 @@ sub get_create_table {
    PTDEBUG && _d($show_sql);
    my $href;
    eval { $href = $dbh->selectrow_hashref($show_sql); };
-   if ( $EVAL_ERROR ) {
-      PTDEBUG && _d($EVAL_ERROR);
-
+   if ( my $e = $EVAL_ERROR ) {
       PTDEBUG && _d($old_sql_mode);
       $dbh->do($old_sql_mode);
 
-      return;
+      die $e;
    }
 
    PTDEBUG && _d($old_sql_mode);
@@ -5907,6 +5909,9 @@ sub parse {
    my (%type_for, %is_nullable, %is_numeric, %is_autoinc);
    foreach my $col ( @cols ) {
       my $def = $def_for{$col};
+
+      $def =~ s/``//g;
+
       my ( $type ) = $def =~ m/`[^`]+`\s([a-z]+)/;
       die "Can't determine column type for $def" unless $type;
       $type_for{$col} = $type;
@@ -6016,7 +6021,7 @@ sub check_table {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($dbh, $db, $tbl) = @args{@required_args};
-   my $q      = $self->{Quoter};
+   my $q      = $self->{Quoter} || 'Quoter';
    my $db_tbl = $q->quote($db, $tbl);
    PTDEBUG && _d('Checking', $db_tbl);
 
