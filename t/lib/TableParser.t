@@ -965,6 +965,40 @@ ok(
 diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
 
 # #############################################################################
+# pt-duplicate-key-checker doesn't support triple quote in column name
+# https://bugs.launchpad.net/percona-toolkit/+bug/1462904
+# #############################################################################
+
+$tbl = $tp->parse(load_file('t/lib/samples/triple-quoted-col.sql'));
+is_deeply(
+   $tbl,
+   {
+      clustered_key  => undef,
+      col_posn       => { 'foo' => 0, bar => 1  },
+      cols           => [ 'foo', 'bar' ],
+      defs           => {
+         'foo' => '  `foo` int(11) DEFAULT NULL',
+         'bar' => '  ```bar``` int(11) DEFAULT NULL',
+      },
+      engine         => 'InnoDB',
+      is_autoinc     => { foo => 0, bar => 0 },
+      is_col         => { foo => 1, bar  => 1 },
+      is_nullable    => { foo => 1, bar => 1 },
+      is_numeric     => { foo => 1, bar => 1 },
+      name           => 't',
+      null_cols      => [ 'foo', 'bar' ],
+      numeric_cols   => [ 'foo', 'bar' ],
+      type_for       => {
+         foo => 'int',
+         bar => 'int',
+      },
+      keys    => {},
+      charset => undef,
+   },
+   'Literal backticks (bug 1462904)'
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh) if $dbh;
