@@ -4505,6 +4505,8 @@ sub check_table {
    my $db_tbl = $q->quote($db, $tbl);
    PTDEBUG && _d('Checking', $db_tbl);
 
+   $self->{check_table_error} = undef;
+
    my $sql = "SHOW TABLES FROM " . $q->quote($db)
            . ' LIKE ' . $q->literal_like($tbl);
    PTDEBUG && _d($sql);
@@ -4512,8 +4514,9 @@ sub check_table {
    eval {
       $row = $dbh->selectrow_arrayref($sql);
    };
-   if ( $EVAL_ERROR ) {
-      PTDEBUG && _d($EVAL_ERROR);
+   if ( my $e = $EVAL_ERROR ) {
+      PTDEBUG && _d($e);
+      $self->{check_table_error} = $e;
       return 0;
    }
    if ( !$row->[0] || $row->[0] ne $tbl ) {
@@ -9641,6 +9644,7 @@ sub main {
             dbh          => $master_dbh,
             repl_table   => $repl_table,
             slaves       => $slaves,
+            have_time    => $have_time,
             OptionParser => $o,
             TableParser  => $tp,
             Quoter       => $q,
@@ -9896,7 +9900,9 @@ sub main {
                   db            => $tbl->{db},
                   tbl           => $tbl->{tbl},
                   checksum_cols => $tbl->{checksum_cols},
+                  have_time     => $have_time,
                   TableParser   => $tp,
+                  OptionParser  => $o,
                );
             };
             if ( $EVAL_ERROR ) {
@@ -10829,12 +10835,12 @@ sub filter_tables_replicate_check_only {
 
 sub check_repl_table {
    my ( %args ) = @_;
-   my @required_args = qw(dbh repl_table slaves
+   my @required_args = qw(dbh repl_table slaves have_time
                           OptionParser TableParser Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($dbh, $repl_table, $slaves, $o, $tp, $q) = @args{@required_args};
+   my ($dbh, $repl_table, $slaves, $have_time, $o, $tp, $q) = @args{@required_args};
 
    PTDEBUG && _d('Checking --replicate table', $repl_table);
 
@@ -10954,7 +10960,9 @@ sub check_repl_table {
                   db            => $db,
                   tbl           => $tbl,
                   checksum_cols => $tbl_struct->{cols},
+                  have_time     => $have_time,
                   TableParser   => $tp,
+                  OptionParser  => $o,
                );
             };
             if ( $EVAL_ERROR ) {
@@ -11032,49 +11040,78 @@ sub check_repl_table {
 # a nonexistent column.
 sub check_slave_tables {
    my (%args) = @_;
-   my @required_args = qw(slaves db tbl checksum_cols TableParser);
+   my @required_args = qw(slaves db tbl checksum_cols have_time TableParser OptionParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($slaves, $db, $tbl, $checksum_cols, $tp) = @args{@required_args};
+   my ($slaves, $db, $tbl, $checksum_cols, $have_time, $tp, $o) = @args{@required_args};
 
    my @problems;
    SLAVE:
    foreach my $slave ( @$slaves ) {
-      my $slave_has_table = $tp->check_table(
-            dbh => $slave->dbh,
-            db  => $db,
-            tbl => $tbl,
-      );
-      if ( !$slave_has_table ) {
-         push @problems, "Table $db.$tbl does not exist on replica "
-            . $slave->name;
-         next SLAVE;
-      }
+      my $slave_has_table = 0;
+      my $have_warned     = 0;
+      while ( $oktorun && $have_time->() )  {
+         eval {
+            # TableParser::check_table() does not die on error, it sets
+            # check_table_error and return 0.
+            $slave_has_table = $tp->check_table(
+                  dbh => $slave->dbh,
+                  db  => $db,
+                  tbl => $tbl,
+            );
+            die $tp->{check_table_error} if defined $tp->{check_table_error};
+            if ( !$slave_has_table ) {
+               push @problems, "Table $db.$tbl does not exist on replica "
+                  . $slave->name;
+            }
+            else {
+               # TableParser::get_create_table() will die on error.
+               my $slave_tbl_struct = $tp->parse(
+                  $tp->get_create_table($slave->dbh, $db, $tbl)
+               );
+               my @slave_missing_cols;
+               foreach my $col ( @$checksum_cols ) {
+                  if ( !$slave_tbl_struct->{is_col}->{$col} ) {
+                     push @slave_missing_cols, $col;
+                  }
+               }
+               if ( @slave_missing_cols ) {
+                  push @problems, "Table $db.$tbl on replica " . $slave->name
+                     . " is missing these columns: "
+                     . join(", ", @slave_missing_cols);
+               }
+            }
+         };
+         if ( my $e = $EVAL_ERROR ) {
+            PTDEBUG && _d($e);
+            if ( !$slave->lost_connection($e) ) {
+               push @problems, "Error checking table $db.$tbl on replica "
+                  . $slave->name . ": $e";
+               next SLAVE;
+            }
 
-      my $slave_tbl_struct = eval {
-         $tp->parse(
-            $tp->get_create_table($slave->dbh, $db, $tbl)
-         );
-      };
-      if ( $EVAL_ERROR ) {
-         push @problems, "Error parsing table $db.$tbl on replica "
-            . $slave->name . ": $EVAL_ERROR";
-         next SLAVE;
-      }
+            # Lost connection to slave. Reconnect and try again.
+            eval { $slave->connect() };
+            if ( $EVAL_ERROR ) {
+               PTDEBUG && _d('Failed to connect to slave', $slave->name(),
+                  ':', $EVAL_ERROR);
+               if ( !$have_warned && $o->get('quiet') < 2 ) {
+                  my $msg = "Trying to connect to replica "
+                     . $slave->name() . " to check $db.$tbl...\n";
+                  warn ts($msg);
+                  $have_warned = 1;
+               }
+               sleep 2; # wait between failed reconnects attempts
+            }
+            next; # try again
+         } # eval error
 
-      my @slave_missing_cols;
-      foreach my $col ( @$checksum_cols ) {
-         if ( !$slave_tbl_struct->{is_col}->{$col} ) {
-            push @slave_missing_cols, $col;
-         }
-      }
-      if ( @slave_missing_cols ) {
-         push @problems, "Table $db.$tbl on replica " . $slave->name
-            . " is missing these columns: "
-            . join(", ", @slave_missing_cols);
-      }
-   }
+         # No error, so we successfully queried this slave.
+         next SLAVE;
+
+      } # while oktorun && have_time
+   } # foreach slave
 
    die join("\n", @problems) . "\n" if @problems;
 
@@ -12625,7 +12662,7 @@ disabled by specifying C<--no-check-replication-filters>.
 pt-table-checksum checks that the L<"--replicate"> table exists on all
 replicas, else checksumming can break replication when updates to the table
 on the master replicate to a replica that doesn't have the table.  This
-check cannot be disabled, and the tool wait forever until the table
+check cannot be disabled, and the tool waits forever until the table
 exists on all replicas, printing L<"--progress"> messages while it waits.
 
 =item 3. Single chunk size
