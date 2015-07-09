@@ -37,7 +37,6 @@ ok(
    ),
    'Analysis for slow001 with --expected-range'
 );
-
 ok(
    no_diff(
       sub { pt_query_digest::main(@args, $sample.'slow001.txt', qw(--group-by tables)) },

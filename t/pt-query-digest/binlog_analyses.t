@@ -29,7 +29,6 @@ ok(
    ),
    'Analysis for binlog001',
 ) or diag($test_diff);
-
 ok(
    no_diff(
       sub { pt_query_digest::main(@args, $sample.'binlog002.txt') },
@@ -37,7 +36,6 @@ ok(
    ),
    'Analysis for binlog002',
 ) or diag($test_diff);
-
 ok(
    no_diff(
       sub { pt_query_digest::main(@args, $sample.'binlog011.txt') },
