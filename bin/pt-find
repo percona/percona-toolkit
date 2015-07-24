@@ -4386,6 +4386,7 @@ complicated expressions with parentheses and mixtures of OR and AND.
 short form: -p; type: string
 
 Password to use when connecting.
+If password contains commas they must be escaped with a backslash: "exam\,ple"
 
 =item --pid
 
@@ -4879,6 +4880,7 @@ Connect to host.
 dsn: password; copy: yes
 
 Password to use when connecting.
+If password contains commas they must be escaped with a backslash: "exam\,ple"
 
 =item * P
 
