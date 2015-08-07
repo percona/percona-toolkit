@@ -9068,7 +9068,7 @@ sub main {
                   tbl   => $tbl,
                );
                PTDEBUG && _d('Table on',$slave->name(),'has', $n_rows, 'rows');
-               if ( $n_rows && $n_rows > ($tbl->{chunk_size} * $limit) ) {
+               if ( $limit && $n_rows && $n_rows > ($tbl->{chunk_size} * $limit) ) {
                   PTDEBUG && _d('Table too large on', $slave->name());
                   push @too_large, [$slave->name(), $n_rows || 0];
                }
