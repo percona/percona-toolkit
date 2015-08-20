@@ -8415,14 +8415,19 @@ sub main {
    my $cleanup = new CleanupTask(
       sub {
          # XXX We shouldn't copy $EVAL_ERROR here, but I found that
-         # errors are not re-thrown in tests.  If you comment out this
+         # errors are not re-thrown in tests.  If you comment (*) out this
          # line and the die below, an error fails:
          # not ok 5 - Doesn't try forever to find a new table name
          #   Failed test 'Doesn't try forever to find a new table name'
          #   at /Users/daniel/p/pt-osc-2.1.1/lib/PerconaTest.pm line 559.
          #                   ''
          #   doesn't match '(?-xism:Failed to find a unique new table name)'
-         my $original_error = $EVAL_ERROR;
+         
+         # (*) Frank:  commented them out because it caused infinite loop
+         # and the mentioned test error doesn't arise
+         
+         #my $original_error = $EVAL_ERROR;
+
          foreach my $task ( reverse @cleanup_tasks ) {
             eval {
                $task->();
@@ -8431,7 +8436,7 @@ sub main {
                warn "Error cleaning up: $EVAL_ERROR\n";
             }
          }
-         die $original_error if $original_error;  # rethrow original error
+         #die $original_error if $original_error;  # rethrow original error
          return;
       }
    );
