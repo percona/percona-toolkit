@@ -838,6 +838,7 @@ collect() {
       local mutex="SHOW MUTEX STATUS"
    fi
    innodb_status 1
+   tokudb_status 1
    $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status1" &
    open_tables                      >> "$d/$p-opentables1"   &
 
@@ -988,6 +989,7 @@ collect() {
    fi
 
    innodb_status 2
+   tokudb_status 2
    $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status2" &
    open_tables                      >> "$d/$p-opentables2"   &
 
@@ -1053,6 +1055,13 @@ transactions() {
    $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_TRX\G"
    $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_LOCKS\G"
    $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS\G"
+}
+
+tokudb_status() {
+    local n=$1
+
+    $CMD_MYSQL $EXT_ARGV -e "SHOW ENGINE TOKUDB STATUS\G" \
+      >> "$d/$p-tokudbstatus$n" || rm -f "$d/$p-tokudbstatus$n"
 }
 
 innodb_status() {

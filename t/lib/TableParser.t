@@ -634,8 +634,8 @@ SKIP: {
    my $root_dbh = DBI->connect(
       "DBI:mysql:host=127.0.0.1;port=12345", 'root', 'msandbox',
       { PrintError => 0, RaiseError => 1 });
-   $root_dbh->do("GRANT SELECT ON test.* TO 'user'\@'\%'");
-   $root_dbh->do('FLUSH PRIVILEGES');
+
+   $root_dbh->do(q[GRANT SELECT ON test.* TO 'user'@'%'] ) || die($root_dbh->errstr);
 
    my $user_dbh = DBI->connect(
       "DBI:mysql:host=127.0.0.1;port=12345", 'user', undef,

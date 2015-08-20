@@ -579,7 +579,7 @@ main() {
          eval "PR_$prog_base"="${BASEDIR}/$prog"
       elif which "curl" >/dev/null 2>&1; then
          echo "Fetching $prog" >&2
-         curl "http://www.percona.com/get/$prog" > "$prog" && chmod +x "$prog"
+         curl -L "https://www.percona.com/get/$prog" > "$prog" && chmod +x "$prog"
          eval "PR_$prog_base"="./$prog"
       else
          echo "Cannot find or fetch required program: $prog" >&2

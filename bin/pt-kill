@@ -6075,7 +6075,12 @@ sub version_check {
    PTDEBUG && _d('FindBin::Bin:', $FindBin::Bin);
    if ( !$args{force} ) {
       if ( $FindBin::Bin
-           && (-d "$FindBin::Bin/../.bzr" || -d "$FindBin::Bin/../../.bzr") ) {
+           && (-d "$FindBin::Bin/../.bzr"    || 
+               -d "$FindBin::Bin/../../.bzr" ||
+               -d "$FindBin::Bin/../.git"    || 
+               -d "$FindBin::Bin/../../.git" 
+              ) 
+         ) {
          PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
          return;
       }
@@ -6541,7 +6546,7 @@ sub get_from_mysql {
    }
 
    if ($item->{item} eq 'MySQL' && $item->{type} eq 'mysql_variable') {
-      $item->{vars} = ['version_comment', 'version'];
+      @{$item->{vars}} = grep { $_ eq 'version' || $_ eq 'version_comment' } @{$item->{vars}};
    }
  
 
@@ -6709,7 +6714,13 @@ sub main {
    my $proc_sth;
    my $kill;          # callback to KILL
    my $kill_sth;
-   my $kill_sql = $o->get('kill-query') ? 'KILL QUERY ?' : 'KILL ?';
+   my $kill_sql;
+   if ( $o->get('rds') ){
+       $kill_sql = $o->get('kill-query') ? 'CALL mysql.rds_kill_query(?)' : 'CALL mysql.rds_kill(?)';
+   }
+   else{
+       $kill_sql = $o->get('kill-query') ? 'KILL QUERY ?' : 'KILL ?';
+   }
    my $files;
    if ( $files = $o->get('test-matching') ) {
       PTDEBUG && _d('Getting processlist from files:', @$files);
@@ -7641,6 +7652,14 @@ Example:
 Note that this is a digest (or hash) of the query's "fingerprint", 
 so queries of the same form but with different values will have the same ID.
 See pt-query-digest for more information.
+
+=item --rds
+
+Denotes the instance in question is on Amazon RDS. By default pt-kill runs
+the MySQL command "kill" for L<"--kill"> and "kill query" L<"--kill-query">.
+On RDS these two commands are not available and are replaced by function calls.
+This option modifies L<"--kill"> to use "CALL mysql.rds_kill(thread-id)" instead
+and L<"--kill-query"> to use "CALL mysql.rds_kill_query(thread-id)"
 
 =item --run-time
 

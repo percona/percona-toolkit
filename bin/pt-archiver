@@ -4942,7 +4942,12 @@ sub version_check {
    PTDEBUG && _d('FindBin::Bin:', $FindBin::Bin);
    if ( !$args{force} ) {
       if ( $FindBin::Bin
-           && (-d "$FindBin::Bin/../.bzr" || -d "$FindBin::Bin/../../.bzr") ) {
+           && (-d "$FindBin::Bin/../.bzr"    || 
+               -d "$FindBin::Bin/../../.bzr" ||
+               -d "$FindBin::Bin/../.git"    || 
+               -d "$FindBin::Bin/../../.git" 
+              ) 
+         ) {
          PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
          return;
       }
@@ -5408,7 +5413,7 @@ sub get_from_mysql {
    }
 
    if ($item->{item} eq 'MySQL' && $item->{type} eq 'mysql_variable') {
-      $item->{vars} = ['version_comment', 'version'];
+      @{$item->{vars}} = grep { $_ eq 'version' || $_ eq 'version_comment' } @{$item->{vars}};
    }
  
 
@@ -5579,6 +5584,9 @@ sub main {
       }
       if ( $bulk_del && $limit < 2 ) {
          $o->save_error("--bulk-delete is meaningless with --limit 1");
+      }
+      if ( $o->got('purge') && $o->got('no-delete') ) {
+         $o->save_error("--purge and --no-delete are mutually exclusive");
       }
    }
 
@@ -6101,6 +6109,7 @@ sub main {
    # This row is the first row fetched from each 'chunk'.
    my $first_row = [ @$row ];
    my $csv_row;
+   my $lag_count = 0;
 
    ROW:
    while (                                 # Quit if:
@@ -6332,18 +6341,21 @@ sub main {
       }
 
       # Check slave lag and wait if slave is too far behind.
-      foreach my $lag_server (@lag_dbh) {
-         my $lag_dbh = $lag_server->{'dbh'};
-         my $id      = $lag_server->{'id'};
-         if ( $lag_dbh ) {
-            my $lag = $ms->get_slave_lag($lag_dbh);
-            while ( !defined $lag || $lag > $o->get('max-lag') ) {
-               PTDEBUG && _d("Sleeping: slave lag for server '$id' is", $lag);
-               if ($o->got('progress')) {
-                  _d("Sleeping: slave lag for server '$id' is", $lag);
-               }  
-               sleep($o->get('check-interval'));
-               $lag = $ms->get_slave_lag($lag_dbh);
+      # Do this check every 100 rows
+      if (@lag_dbh && $lag_count++ % 100 == 0 ) {
+         foreach my $lag_server (@lag_dbh) {
+            my $lag_dbh = $lag_server->{'dbh'};
+            my $id      = $lag_server->{'id'};
+            if ( $lag_dbh ) {
+               my $lag = $ms->get_slave_lag($lag_dbh);
+               while ( !defined $lag || $lag > $o->get('max-lag') ) {
+                  PTDEBUG && _d("Sleeping: slave lag for server '$id' is", $lag);
+                  if ($o->got('progress')) {
+                     _d("Sleeping: slave lag for server '$id' is", $lag);
+                  }  
+                  sleep($o->get('check-interval'));
+                  $lag = $ms->get_slave_lag($lag_dbh);
+               }
             }
          }
       }
@@ -6913,7 +6925,9 @@ To disable this check, specify --no-check-columns.
 
 type: time; default: 1s
 
-How often to check for slave lag if L<"--check-slave-lag"> is given.
+If L<"--check-slave-lag"> is given, this defines how long the tool pauses each 
+ time it discovers that a slave is lagging.
+ This check is performed every 100 rows.
 
 =item --check-slave-lag
 
