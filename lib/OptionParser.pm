@@ -69,6 +69,7 @@ sub new {
       'default'    => 1,
       'cumulative' => 1,
       'negatable'  => 1,
+      'repeatable' => 1,  # means it can be specified more than once
    );
 
    my $self = {
@@ -308,6 +309,7 @@ sub _pod_to_specs {
             desc  => $para
                . (defined $attribs{default} ? " (default $attribs{default})" : ''),
             group => ($attribs{'group'} ? $attribs{'group'} : 'default'),
+            attributes => \%attribs
          };
       }
       while ( $para = <$fh> ) {
@@ -377,6 +379,7 @@ sub _parse_specs {
 
          $opt->{is_negatable}  = $opt->{spec} =~ m/!/        ? 1 : 0;
          $opt->{is_cumulative} = $opt->{spec} =~ m/\+/       ? 1 : 0;
+         $opt->{is_repeatable} = $opt->{attributes}->{repeatable} ? 1 : 0;
          $opt->{is_required}   = $opt->{desc} =~ m/required/ ? 1 : 0;
 
          $opt->{group} ||= 'default';
@@ -568,11 +571,23 @@ sub _set_option {
          return;
       }
       else {
-         $opt->{value} = $val;
+         # have to make value an array if it is 'repeatable'
+         if ($opt->{is_repeatable}) {
+            push @{$opt->{value}} , $val;
+         }
+         else {
+            $opt->{value} = $val;
+         }
       }
    }
    else {
-      $opt->{value} = $val;
+      # have to make value an array if it is 'repeatable'
+      if ($opt->{is_repeatable}) {
+         push @{$opt->{value}} , $val;
+      }
+      else {
+         $opt->{value} = $val;
+      }
    }
    $opt->{got} = 1;
    PTDEBUG && _d('Got option', $long, '=', $val);
@@ -1135,9 +1150,9 @@ sub _read_config_file {
 
       # Silently ignore option [no]-version-check if it is unsupported and it comes from a config file
       # TODO: Ideally , this should be generalized for all unsupported options that come from global files
-      if (  $parse 
-            && !$self->has('version-check') 
-            && $line =~ /version-check/ 
+      if (  $parse
+            && !$self->has('version-check')
+            && $line =~ /version-check/
       ) {
          next LINE;
       }

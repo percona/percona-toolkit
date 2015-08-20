@@ -28,6 +28,7 @@ elsif ( !$slave1_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave1';
 }
 
+
 $sb->create_dbs($master_dbh, ['test']);
 
 my $output;
@@ -222,6 +223,7 @@ $output = output(
    }
 );
 
+
 $row = $master_dbh->selectrow_arrayref('SELECT server_id FROM test.heartbeat');
 is(
    $row->[0],
@@ -247,7 +249,7 @@ diag(`/tmp/12345/use -u root -e "REVOKE SUPER ON *.* FROM 'bob'\@'%'"`);
 
 $output = output(
    sub { pt_heartbeat::main("u=bob,F=/tmp/12346/my.sandbox.cnf",
-      qw(-D test --update --replace --run-time 1))
+      qw(-D test --interval 0.8 --update --replace --run-time 1))
    },
    stderr => 1
 );
@@ -279,5 +281,6 @@ diag(`/tmp/12345/use -u root -e "DROP USER 'bob'\@'%'"`);
 diag(`rm $pid_file $sent_file 2>/dev/null`);
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+
 done_testing;
 exit;

@@ -2123,6 +2123,10 @@ is(
 # direct STDOUT to a file and still see the prompt
 # #############################################################################
 
+SKIP: {
+   eval {require Term::ReadKey};
+   skip ('\'prompt_no_echo outputs to STDERR\' because Term::ReadKey not available', 1) if $EVAL_ERROR;
+
 $o = new OptionParser();
 
 $output = output(  
@@ -2140,6 +2144,8 @@ is (
    "Test Prompt:\n",
    'prompt_no_echo outputs prompt to STDERR'
 );
+
+} # end skip
 
 # #############################################################################
 #  Issue 1361293: Global config file with no-version-check option makes tools
