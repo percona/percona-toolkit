@@ -9727,7 +9727,17 @@ sub create_new_table {
       my $quoted = $q->quote($orig_tbl->{db}, $new_table_name);
       my $sql    = $ddl;
       $sql       =~ s/\ACREATE TABLE .*?\($/CREATE TABLE $quoted (/m;
-      $sql       =~ s/^  CONSTRAINT `/  CONSTRAINT `_/gm;
+
+
+      # If it has a leading underscore, we remove one, otherwise we add one
+      # This is in contrast to previous behavior were we added underscores
+      # indefinitely, sometimes exceeding the allowed name limit
+      # https://bugs.launchpad.net/percona-toolkit/+bug/1215587 
+      if ( $sql =~ /CONSTRAINT `_/ ) {
+         $sql =~ s/^  CONSTRAINT `_/  CONSTRAINT `/gm;
+      } else {
+         $sql =~ s/^  CONSTRAINT `/  CONSTRAINT `_/gm;
+      }
       if ( $o->get('default-engine') ) {
          $sql =~ s/\s+ENGINE=\S+//;
       }
@@ -10066,8 +10076,23 @@ sub rebuild_constraints {
          #   `actor` (`actor_id`) ON UPDATE CASCADE
          # Reference the correct table name...
          $constraint =~ s/REFERENCES[^\(]+/REFERENCES $orig_tbl->{name} /;
+
          # And rename the constraint to avoid conflict
-         $constraint =~ s/CONSTRAINT `$fk`/CONSTRAINT `_$fk`/;
+         # If it has a leading underscore, we remove one, otherwise we add one
+         # This is in contrast to previous behavior were we added underscores
+         # indefinitely, sometimes exceeding the allowed name limit
+         # https://bugs.launchpad.net/percona-toolkit/+bug/1215587 
+         my $new_fk; 
+         if ($fk =~ /^_/) {
+            ($new_fk = $fk) =~ s/^_//;
+         }else {
+            $new_fk = '_'.$fk;     
+         }
+
+        
+         PTDEBUG && _d("Old FK name: $fk New FK name: $new_fk");
+
+         $constraint =~ s/CONSTRAINT `$fk`/CONSTRAINT `$new_fk`/;
 
          my $sql = "DROP FOREIGN KEY `$fk`, "
                  . "ADD $constraint";
