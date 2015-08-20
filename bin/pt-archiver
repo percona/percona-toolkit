@@ -6355,6 +6355,8 @@ sub main {
                   }  
                   sleep($o->get('check-interval'));
                   $lag = $ms->get_slave_lag($lag_dbh);
+                  $src->{dbh}->do("SELECT 'pt-archiver keepalive'") if $src;
+                  $dst->{dbh}->do("SELECT 'pt-archiver keepalive'") if $dst;
                }
             }
          }
