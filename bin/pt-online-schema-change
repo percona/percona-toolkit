@@ -9265,6 +9265,12 @@ sub main {
          $sys_load_pr->start() if $sys_load_pr;
          $sys_load->wait(Progress => $sys_load_pr);
 
+         # sleep between chunks to avoid overloading PXC nodes
+         my $sleep = $args{NibbleIterator}->{OptionParser}->get('sleep');
+         if ( $sleep ) {
+            sleep $sleep;
+         }
+
          return;
       },
       done => sub {
@@ -11499,6 +11505,15 @@ example, specifying C<--set-vars wait_timeout=500> overrides the default
 value of C<10000>.
 
 The tool prints a warning and continues if a variable cannot be set.
+
+=item --sleep
+
+type: float; default: 0
+
+How long to sleep (in seconds) after copying each chunk. This option is useful 
+when throttling by L<"--max-lag"> and L<"--max-load"> are not possible. 
+A small, sub-second value should be used, like 0.1, else the tool could take 
+a very long time to copy large tables.
 
 =item --socket
 
