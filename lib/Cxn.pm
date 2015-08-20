@@ -262,9 +262,22 @@ sub is_cluster_node {
    my ($self, $cxn) = @_;
 
    $cxn ||= $self;
+
    my $sql = "SHOW VARIABLES LIKE 'wsrep\_on'";
-   PTDEBUG && _d($cxn->name, $sql);
-   my $row = $cxn->dbh->selectrow_arrayref($sql);
+
+   # here we check if a DBI object was passed instead if a Cxn
+   # just a convenience for tools that don't use a proper Cxn
+   my $dbh;
+   if ($cxn->isa('DBI::db')) {
+      $dbh = $cxn;
+      PTDEBUG && _d($sql); #don't invoke name() if it's not a Cxn!
+   }
+   else {
+      $dbh = $cxn->dbh();      
+      PTDEBUG && _d($cxn->name, $sql);
+   }
+
+   my $row = $dbh->selectrow_arrayref($sql);
    return $row && $row->[1] && ($row->[1] eq 'ON' || $row->[1] eq '1') ? 1 : 0;
 
 }

@@ -113,6 +113,9 @@ sub wait {
             $pr->update(sub { return 0; });
          } 
          PTDEBUG && _d('Calling sleep callback');
+         if ( $self->{simple_progress} ) {
+            print STDERR "Waiting for Flow Control to abate\n";
+         }
          $sleep->();
       } else {
          $too_much_fc = 0;
