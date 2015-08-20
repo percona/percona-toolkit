@@ -40,7 +40,6 @@ BEGIN {
       HTTP::Micro
       VersionCheck
       Percona::XtraDB::Cluster
-      ReadKeyMini
    ));
 }
 
@@ -7791,161 +7790,6 @@ sub _d {
 # End Percona::XtraDB::Cluster package
 # ###########################################################################
 
-# ###########################################################################
-# ReadKeyMini package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/ReadKeyMini.pm
-#   t/lib/ReadKeyMini.t
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-{
-
-BEGIN {
-
-package ReadKeyMini;
-BEGIN { $INC{"ReadKeyMini.pm"} ||= 1 }
-
-use warnings;
-use strict;
-use English qw(-no_match_vars);
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
-
-use POSIX qw( :termios_h );
-use Fcntl qw( F_SETFL F_GETFL );
-
-use base  qw( Exporter );
-
-BEGIN {
-   our @EXPORT_OK = qw( GetTerminalSize ReadMode );
-   *ReadMode        = *Term::ReadKey::ReadMode        = \&_ReadMode;
-   *GetTerminalSize = *Term::ReadKey::GetTerminalSize = \&_GetTerminalSize;
-}
-
-my %modes = (
-   original    => 0,
-   restore     => 0,
-   normal      => 1,
-   noecho      => 2,
-   cbreak      => 3,
-   raw         => 4,
-   'ultra-raw' => 5,
-);
-
-{
-   my $fd_stdin = fileno(STDIN);
-   my $flags;
-   unless ( $PerconaTest::DONT_RESTORE_STDIN ) {
-      $flags = fcntl(STDIN, F_GETFL, 0)
-         or warn "Error getting STDIN flags with fcntl: $OS_ERROR";
-   }
-   my $term     = POSIX::Termios->new();
-   $term->getattr($fd_stdin);
-   my $oterm    = $term->getlflag();
-   my $echo     = ECHO | ECHOK | ICANON;
-   my $noecho   = $oterm & ~$echo;
-
-   sub _ReadMode {
-      my $mode = $modes{ $_[0] };
-      if ( $mode == $modes{normal} ) {
-         cooked();
-      }
-      elsif ( $mode == $modes{cbreak} || $mode == $modes{noecho} ) {
-         cbreak( $mode == $modes{noecho} ? $noecho : $oterm );
-      }
-      else {
-         die("ReadMore('$_[0]') not supported");
-      }
-   }
-
-   sub cbreak {
-      my ($lflag) = $_[0] || $noecho; 
-      $term->setlflag($lflag);
-      $term->setcc( VTIME, 1 );
-      $term->setattr( $fd_stdin, TCSANOW );
-   }
-
-   sub cooked {
-      $term->setlflag($oterm);
-      $term->setcc( VTIME, 0 );
-      $term->setattr( $fd_stdin, TCSANOW );
-      if ( !$PerconaTest::DONT_RESTORE_STDIN ) {
-         fcntl(STDIN, F_SETFL, int($flags))
-            or warn "Error restoring STDIN flags with fcntl: $OS_ERROR";
-      }
-   }
-
-   END { cooked() }
-}
-
-sub readkey {
-   my $key = '';
-   cbreak();
-   sysread(STDIN, $key, 1);
-   my $timeout = 0.1;
-   if ( $key eq "\033" ) {
-      my $x = '';
-      STDIN->blocking(0);
-      sysread(STDIN, $x, 2);
-      STDIN->blocking(1);
-      $key .= $x;
-      redo if $key =~ /\[[0-2](?:[0-9];)?$/
-   }
-   cooked();
-   return $key;
-}
-
-
-BEGIN {
-   eval { no warnings; local $^W; require 'sys/ioctl.ph' };
-   if ( !defined &TIOCGWINSZ ) {
-      *TIOCGWINSZ = sub () {
-              $^O eq 'linux'   ? 0x005413
-            : $^O eq 'solaris' ? 0x005468
-            :                    0x40087468;
-      };
-   }
-}
-
-sub _GetTerminalSize {
-   if ( @_ ) {
-      die "My::Term::ReadKey doesn't implement GetTerminalSize with arguments";
-   }
-
-   my $cols = $ENV{COLUMNS} || 80;
-   my $rows = $ENV{LINES}   || 24;
-
-   if ( open( TTY, "+<", "/dev/tty" ) ) { # Got a tty
-      my $winsize = '';
-      if ( ioctl( TTY, &TIOCGWINSZ, $winsize ) ) {
-         ( $rows, $cols, my ( $xpixel, $ypixel ) ) = unpack( 'S4', $winsize );
-         return ( $cols, $rows, $xpixel, $ypixel );
-      }
-   }
-
-   if ( $rows = `tput lines 2>/dev/null` ) {
-      chomp($rows);
-      chomp($cols = `tput cols`);
-   }
-   elsif ( my $stty = `stty -a 2>/dev/null` ) {
-      ($rows, $cols) = $stty =~ /([0-9]+) rows; ([0-9]+) columns;/;
-   }
-   else {
-      ($cols, $rows) = @ENV{qw( COLUMNS LINES )};
-      $cols ||= 80;
-      $rows ||= 24;
-   }
-
-   return ( $cols, $rows );
-}
-
-}
-
-1;
-}
-# ###########################################################################
-# End ReadKeyMini package
-# ###########################################################################
 
 # ###########################################################################
 # This is a combination of modules and programs in one -- a runnable module.
@@ -7971,7 +7815,18 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
+# Import Term::Readkey if available
+# Not critical so don't fail if it's not
+my $term_readkey = eval {
+  require Term::ReadKey;
+  Term::ReadKey->import();
+  1;
+};
+
 use sigtrap 'handler', \&sig_int, 'normal-signals';
+
+
+
 
 my $exit_status = 0;
 my $oktorun     = 1;
@@ -10694,12 +10549,10 @@ sub sig_int {
    }
    $oktorun = 0;  # flag for cleanup tasks
    print STDERR "# Exiting on SIG$signal.\n";
-   # restore terminal to normal state in case CTL+C issued while 
-   # asking for password
-   # https://bugs.launchpad.net/percona-toolkit/+bug/1396870
-   # note: just including ReadKeyMini seems to solve the bug, 
-   # but lets use it explicitly  so we don't forget why we need it
-   ReadKeyMini::ReadMode 0;
+   # This is to restore terminal to "normal". lp #1396870
+   if ($term_readkey) { 
+      ReadMode(0);
+   }
    exit 1;
 }
 
