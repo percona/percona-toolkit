@@ -40,7 +40,15 @@ mysql_options() {
    if [ -n "$OPT_USER" ]; then
       MYSQL_ARGS="$MYSQL_ARGS --user=$OPT_USER"
    fi
-   if [ -n "$OPT_PASSWORD" ]; then
+   # handle ask-pass option  (issue lp#1455486)
+   if [ -n "$OPT_ASK_PASS" ]; then
+      stty -echo
+      >&2 printf "Enter MySQL password: "
+      read GIVEN_PASS 
+      stty echo
+      printf "\n"
+      MYSQL_ARGS="$MYSQL_ARGS --password=$GIVEN_PASS"
+   elif [ -n "$OPT_PASSWORD" ]; then
       MYSQL_ARGS="$MYSQL_ARGS --password=$OPT_PASSWORD"
    fi
    

@@ -86,8 +86,8 @@ TAR=${TAR:-tar}
 
 check_branch() {
    echo -n "Checking branch... "
-   local clean_branch=$(bzr version-info --check-clean | grep -i 'clean: True')
-   if [ -z "$clean_branch" ]; then
+   local clean_branch=$(git status --porcelain|wc -l)
+   if [ "$clean_branch" -gt 0 ]; then
       die "The branch has uncommitted changes or unknown files"
    fi
    echo "OK"
@@ -491,9 +491,9 @@ if [ $BUILD -eq 1 ]; then
 Branch verified and updated; ready to build $PKG,
 but first you must:
 
-  1. bzr diff and review the changes (Changelog, percon-toolkit.pod, etc.)
-  2. bzr commit -m "Build $PKG"
-  3. bzr push
+  1. git diff and review the changes (Changelog, percon-toolkit.pod, etc.)
+  2. git commit -m "Build $PKG"
+  3. git push
 
 Press any key to continue... (or Ctrl-C to abort)
 MSG

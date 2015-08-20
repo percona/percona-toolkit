@@ -784,6 +784,7 @@ sub new {
       'default'    => 1,
       'cumulative' => 1,
       'negatable'  => 1,
+      'repeatable' => 1,  # means it can be specified more than once
    );
 
    my $self = {
@@ -974,6 +975,7 @@ sub _pod_to_specs {
             desc  => $para
                . (defined $attribs{default} ? " (default $attribs{default})" : ''),
             group => ($attribs{'group'} ? $attribs{'group'} : 'default'),
+            attributes => \%attribs
          };
       }
       while ( $para = <$fh> ) {
@@ -1027,6 +1029,7 @@ sub _parse_specs {
 
          $opt->{is_negatable}  = $opt->{spec} =~ m/!/        ? 1 : 0;
          $opt->{is_cumulative} = $opt->{spec} =~ m/\+/       ? 1 : 0;
+         $opt->{is_repeatable} = $opt->{attributes}->{repeatable} ? 1 : 0;
          $opt->{is_required}   = $opt->{desc} =~ m/required/ ? 1 : 0;
 
          $opt->{group} ||= 'default';
@@ -1170,11 +1173,21 @@ sub _set_option {
          return;
       }
       else {
-         $opt->{value} = $val;
+         if ($opt->{is_repeatable}) {
+            push @{$opt->{value}} , $val;
+         }
+         else {
+            $opt->{value} = $val;
+         }
       }
    }
    else {
-      $opt->{value} = $val;
+      if ($opt->{is_repeatable}) {
+         push @{$opt->{value}} , $val;
+      }
+      else {
+         $opt->{value} = $val;
+      }
    }
    $opt->{got} = 1;
    PTDEBUG && _d('Got option', $long, '=', $val);
@@ -1628,6 +1641,14 @@ sub _read_config_file {
          $parse  = 0;
          next LINE;
       }
+
+      if (  $parse
+            && !$self->has('version-check')
+            && $line =~ /version-check/
+      ) {
+         next LINE;
+      }
+
       if ( $parse
          && (my($opt, $arg) = $line =~ m/^\s*([^=\s]+?)(?:\s*=\s*(.*?)\s*)?$/)
       ) {
@@ -4921,7 +4942,12 @@ sub version_check {
    PTDEBUG && _d('FindBin::Bin:', $FindBin::Bin);
    if ( !$args{force} ) {
       if ( $FindBin::Bin
-           && (-d "$FindBin::Bin/../.bzr" || -d "$FindBin::Bin/../../.bzr") ) {
+           && (-d "$FindBin::Bin/../.bzr"    || 
+               -d "$FindBin::Bin/../../.bzr" ||
+               -d "$FindBin::Bin/../.git"    || 
+               -d "$FindBin::Bin/../../.git" 
+              ) 
+         ) {
          PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
          return;
       }
@@ -5387,7 +5413,7 @@ sub get_from_mysql {
    }
 
    if ($item->{item} eq 'MySQL' && $item->{type} eq 'mysql_variable') {
-      $item->{vars} = ['version_comment', 'version'];
+      @{$item->{vars}} = grep { $_ eq 'version' || $_ eq 'version_comment' } @{$item->{vars}};
    }
  
 
@@ -5559,6 +5585,9 @@ sub main {
       if ( $bulk_del && $limit < 2 ) {
          $o->save_error("--bulk-delete is meaningless with --limit 1");
       }
+      if ( $o->got('purge') && $o->got('no-delete') ) {
+         $o->save_error("--purge and --no-delete are mutually exclusive");
+      }
    }
 
    if ( $bulk_del || $o->get('bulk-insert') ) {
@@ -5713,17 +5742,23 @@ sub main {
    # ########################################################################
    # Get lag dbh.
    # ########################################################################
-   my $lag_dbh;
+   my @lag_dbh;
    my $ms;
    if ( $o->get('check-slave-lag') ) {
       my $dsn_defaults = $dp->parse_options($o);
-      my $dsn  = $dp->parse($o->get('check-slave-lag'), $dsn_defaults);
-      $lag_dbh = $dp->get_dbh($dp->get_cxn_params($dsn), { AutoCommit => 1 });
-      $ms      = new MasterSlave(
+      my $lag_slaves_dsn = $o->get('check-slave-lag');
+      $ms = new MasterSlave(
          OptionParser => $o,
          DSNParser    => $dp,
          Quoter       => $q,
       );
+      # we get each slave's connection handler (and its id, for debug and reporting)
+      for my $slave (@$lag_slaves_dsn) {
+         my $dsn                 = $dp->parse($slave, $dsn_defaults);
+         my $lag_dbh             = $dp->get_dbh($dp->get_cxn_params($dsn), { AutoCommit => 1 });
+         my $lag_id              = $ms->short_host($dsn);
+         push @lag_dbh , {'dbh' => $lag_dbh, 'id' => $lag_id}
+      }
    }
 
    # ########################################################################
@@ -6074,6 +6109,7 @@ sub main {
    # This row is the first row fetched from each 'chunk'.
    my $first_row = [ @$row ];
    my $csv_row;
+   my $lag_count = 0;
 
    ROW:
    while (                                 # Quit if:
@@ -6305,12 +6341,24 @@ sub main {
       }
 
       # Check slave lag and wait if slave is too far behind.
-      if ( $lag_dbh ) {
-         my $lag = $ms->get_slave_lag($lag_dbh);
-         while ( !defined $lag || $lag > $o->get('max-lag') ) {
-            PTDEBUG && _d('Sleeping: slave lag is', $lag);
-            sleep($o->get('check-interval'));
-            $lag = $ms->get_slave_lag($lag_dbh);
+      # Do this check every 100 rows
+      if (@lag_dbh && $lag_count++ % 100 == 0 ) {
+         foreach my $lag_server (@lag_dbh) {
+            my $lag_dbh = $lag_server->{'dbh'};
+            my $id      = $lag_server->{'id'};
+            if ( $lag_dbh ) {
+               my $lag = $ms->get_slave_lag($lag_dbh);
+               while ( !defined $lag || $lag > $o->get('max-lag') ) {
+                  PTDEBUG && _d("Sleeping: slave lag for server '$id' is", $lag);
+                  if ($o->got('progress')) {
+                     _d("Sleeping: slave lag for server '$id' is", $lag);
+                  }  
+                  sleep($o->get('check-interval'));
+                  $lag = $ms->get_slave_lag($lag_dbh);
+                  $src->{dbh}->do("SELECT 'pt-archiver keepalive'") if $src;
+                  $dst->{dbh}->do("SELECT 'pt-archiver keepalive'") if $dst;
+               }
+            }
          }
       }
    }  # ROW 
@@ -6879,13 +6927,16 @@ To disable this check, specify --no-check-columns.
 
 type: time; default: 1s
 
-How often to check for slave lag if L<"--check-slave-lag"> is given.
+If L<"--check-slave-lag"> is given, this defines how long the tool pauses each 
+ time it discovers that a slave is lagging.
+ This check is performed every 100 rows.
 
 =item --check-slave-lag
 
-type: string
+type: string; repeatable: yes
 
 Pause archiving until the specified DSN's slave lag is less than L<"--max-lag">.
+This option can be specified multiple times for checking more than one slave.
 
 =item --columns
 
@@ -7147,6 +7198,7 @@ TABLE.
 short form: -p; type: string
 
 Password to use when connecting.
+If password contains commas they must be escaped with a backslash: "exam\,ple"
 
 =item --pid
 
@@ -7616,6 +7668,7 @@ Plugin module name.
 dsn: password; copy: yes
 
 Password to use when connecting.
+If password contains commas they must be escaped with a backslash: "exam\,ple"
 
 =item * P
 

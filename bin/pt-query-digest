@@ -5278,6 +5278,8 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
+use Digest::MD5 qw(md5);
+
 use constant BUCK_SIZE   => 1.05;
 use constant BASE_LOG    => log(BUCK_SIZE);
 use constant BASE_OFFSET => abs(1 - log(0.000001) / BASE_LOG); # 284.1617969
@@ -5805,6 +5807,7 @@ sub top_events {
    my @sorted = reverse sort { # Sorted list of $groupby values
       $classes->{$a}->{$args{attrib}}->{$args{orderby}}
          <=> $classes->{$b}->{$args{attrib}}->{$args{orderby}}
+         || tiebreaker($classes->{$a}, $classes->{$b});
       } grep {
          defined $classes->{$_}->{$args{attrib}}->{$args{orderby}}
       } keys %$classes;  # this should first be sorted for test consistency, but many tests already in place would fail 
@@ -5839,6 +5842,15 @@ sub top_events {
       $count++;
    }
    return \@chosen, \@other;
+}
+
+sub tiebreaker {
+    my ($a, $b) = @_;
+   if (defined $a->{pos_in_log}) {
+      return $a->{pos_in_log}->{max} cmp $b->{pos_in_log}->{max};
+   }
+   return 0;
+     
 }
 
 sub add_new_attributes {
@@ -12333,7 +12345,12 @@ sub version_check {
    PTDEBUG && _d('FindBin::Bin:', $FindBin::Bin);
    if ( !$args{force} ) {
       if ( $FindBin::Bin
-           && (-d "$FindBin::Bin/../.bzr" || -d "$FindBin::Bin/../../.bzr") ) {
+           && (-d "$FindBin::Bin/../.bzr"    || 
+               -d "$FindBin::Bin/../../.bzr" ||
+               -d "$FindBin::Bin/../.git"    || 
+               -d "$FindBin::Bin/../../.git" 
+              ) 
+         ) {
          PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
          return;
       }
@@ -12799,7 +12816,7 @@ sub get_from_mysql {
    }
 
    if ($item->{item} eq 'MySQL' && $item->{type} eq 'mysql_variable') {
-      $item->{vars} = ['version_comment', 'version'];
+      @{$item->{vars}} = grep { $_ eq 'version' || $_ eq 'version_comment' } @{$item->{vars}};
    }
  
 
@@ -15791,6 +15808,7 @@ so the data structure may change in future versions.
 short form: -p; type: string
 
 Password to use when connecting.
+If password contains commas they must be escaped with a backslash: "exam\,ple"
 
 =item --pid
 
@@ -16384,6 +16402,7 @@ Connect to host.
 dsn: password; copy: yes
 
 Password to use when connecting.
+If password contains commas they must be escaped with a backslash: "exam\,ple"
 
 =item * P
 
