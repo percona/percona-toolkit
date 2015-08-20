@@ -6,8 +6,8 @@ Build-Depends: debhelper (>= 4.2)
 Build-Depends-Indep: perl (>= 5.6.0-16)
 Standards-Version: 3.7.2
 Homepage: http://www.percona.com/software/percona-toolkit/
-Vcs-Browser: http://bazaar.launchpad.net/~percona-toolkit-dev/percona-toolkit/0.9/files
-Vcs-Bzr: bzr+ssh://bazaar.launchpad.net/~percona-toolkit-ddev/percona-toolkit/0.9/
+Vcs-Browser: https://github.com/percona/percona-toolkit
+Vcs-Git: git://github.com/percona/percona-toolkit.git
 
 Package: percona-toolkit
 Architecture: all

@@ -31,6 +31,7 @@ BEGIN {
       Cxn
       MasterSlave
       ReplicaLagWaiter
+      FlowControlWaiter
       MySQLStatusWaiter
       WeightedAvgRate
       NibbleIterator
@@ -40,7 +41,6 @@ BEGIN {
       HTTP::Micro
       VersionCheck
       Percona::XtraDB::Cluster
-      ReadKeyMini
    ));
 }
 
@@ -4816,6 +4816,109 @@ sub _d {
 # End ReplicaLagWaiter package
 # ###########################################################################
 
+
+# ###########################################################################
+# FlowControlWaiter package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/FlowControlWaiter.pm
+#   t/lib/FlowControlWaiter.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package FlowControlWaiter;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use Time::HiRes qw(sleep time);
+use Data::Dumper;
+
+sub new {
+   my ( $class, %args ) = @_;
+   my @required_args = qw(oktorun node sleep max_flow_ctl);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless defined $args{$arg};
+   }
+
+   my $self = {
+      %args
+   };
+   
+   $self->{last_time} = time();   
+   
+   my (undef, $last_fc_ns) = $self->{node}->selectrow_array('SHOW STATUS LIKE "wsrep_flow_control_paused_ns"');
+
+   $self->{last_fc_secs} = $last_fc_ns/1000_000_000;
+
+   return bless $self, $class;
+}
+
+sub wait {
+   my ( $self, %args ) = @_;
+   my @required_args = qw();
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my $pr = $args{Progress};
+
+   my $oktorun       = $self->{oktorun};
+   my $sleep         = $self->{sleep};
+   my $node          = $self->{node};
+   my $max_avg       = $self->{max_flow_ctl}/100;
+
+   my $too_much_fc = 1;
+
+   my $pr_callback;
+   if ( $pr ) {
+      $pr_callback = sub {
+         print STDERR "Pausing because PXC Flow Control is active\n";
+         return;
+      };
+      $pr->set_callback($pr_callback);
+   }
+
+   while ( $oktorun->() && $too_much_fc ) {
+      my $current_time = time();
+      my (undef, $current_fc_ns) = $node->selectrow_array('SHOW STATUS LIKE "wsrep_flow_control_paused_ns"');
+      my $current_fc_secs = $current_fc_ns/1000_000_000;
+      my $current_avg = ($current_fc_secs - $self->{last_fc_secs}) / ($current_time - $self->{last_time});  
+      if ( $current_avg > $max_avg ) { 
+         if ( $pr ) {
+            $pr->update(sub { return 0; });
+         } 
+         PTDEBUG && _d('Calling sleep callback');
+         $sleep->();
+      } else {
+         $too_much_fc = 0;
+      }
+      $self->{last_time} = $current_time;
+      $self->{last_fc_secs} = $current_fc_secs;
+
+
+   }
+
+   PTDEBUG && _d('Flow Control is Ok');
+   return;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End FlowControlWaiter package
+# ###########################################################################
+
+
 # ###########################################################################
 # MySQLStatusWaiter package
 # This package is a copy without comments from the original.  The original
@@ -7077,7 +7180,12 @@ sub version_check {
    PTDEBUG && _d('FindBin::Bin:', $FindBin::Bin);
    if ( !$args{force} ) {
       if ( $FindBin::Bin
-           && (-d "$FindBin::Bin/../.bzr" || -d "$FindBin::Bin/../../.bzr") ) {
+           && (-d "$FindBin::Bin/../.bzr"    || 
+               -d "$FindBin::Bin/../../.bzr" ||
+               -d "$FindBin::Bin/../.git"    || 
+               -d "$FindBin::Bin/../../.git" 
+              ) 
+         ) {
          PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
          return;
       }
@@ -7543,7 +7651,7 @@ sub get_from_mysql {
    }
 
    if ($item->{item} eq 'MySQL' && $item->{type} eq 'mysql_variable') {
-      $item->{vars} = ['version_comment', 'version'];
+      @{$item->{vars}} = grep { $_ eq 'version' || $_ eq 'version_comment' } @{$item->{vars}};
    }
  
 
@@ -7786,161 +7894,6 @@ sub _d {
 # End Percona::XtraDB::Cluster package
 # ###########################################################################
 
-# ###########################################################################
-# ReadKeyMini package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/ReadKeyMini.pm
-#   t/lib/ReadKeyMini.t
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-{
-
-BEGIN {
-
-package ReadKeyMini;
-BEGIN { $INC{"ReadKeyMini.pm"} ||= 1 }
-
-use warnings;
-use strict;
-use English qw(-no_match_vars);
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
-
-use POSIX qw( :termios_h );
-use Fcntl qw( F_SETFL F_GETFL );
-
-use base  qw( Exporter );
-
-BEGIN {
-   our @EXPORT_OK = qw( GetTerminalSize ReadMode );
-   *ReadMode        = *Term::ReadKey::ReadMode        = \&_ReadMode;
-   *GetTerminalSize = *Term::ReadKey::GetTerminalSize = \&_GetTerminalSize;
-}
-
-my %modes = (
-   original    => 0,
-   restore     => 0,
-   normal      => 1,
-   noecho      => 2,
-   cbreak      => 3,
-   raw         => 4,
-   'ultra-raw' => 5,
-);
-
-{
-   my $fd_stdin = fileno(STDIN);
-   my $flags;
-   unless ( $PerconaTest::DONT_RESTORE_STDIN ) {
-      $flags = fcntl(STDIN, F_GETFL, 0)
-         or warn "Error getting STDIN flags with fcntl: $OS_ERROR";
-   }
-   my $term     = POSIX::Termios->new();
-   $term->getattr($fd_stdin);
-   my $oterm    = $term->getlflag();
-   my $echo     = ECHO | ECHOK | ICANON;
-   my $noecho   = $oterm & ~$echo;
-
-   sub _ReadMode {
-      my $mode = $modes{ $_[0] };
-      if ( $mode == $modes{normal} ) {
-         cooked();
-      }
-      elsif ( $mode == $modes{cbreak} || $mode == $modes{noecho} ) {
-         cbreak( $mode == $modes{noecho} ? $noecho : $oterm );
-      }
-      else {
-         die("ReadMore('$_[0]') not supported");
-      }
-   }
-
-   sub cbreak {
-      my ($lflag) = $_[0] || $noecho; 
-      $term->setlflag($lflag);
-      $term->setcc( VTIME, 1 );
-      $term->setattr( $fd_stdin, TCSANOW );
-   }
-
-   sub cooked {
-      $term->setlflag($oterm);
-      $term->setcc( VTIME, 0 );
-      $term->setattr( $fd_stdin, TCSANOW );
-      if ( !$PerconaTest::DONT_RESTORE_STDIN ) {
-         fcntl(STDIN, F_SETFL, int($flags))
-            or warn "Error restoring STDIN flags with fcntl: $OS_ERROR";
-      }
-   }
-
-   END { cooked() }
-}
-
-sub readkey {
-   my $key = '';
-   cbreak();
-   sysread(STDIN, $key, 1);
-   my $timeout = 0.1;
-   if ( $key eq "\033" ) {
-      my $x = '';
-      STDIN->blocking(0);
-      sysread(STDIN, $x, 2);
-      STDIN->blocking(1);
-      $key .= $x;
-      redo if $key =~ /\[[0-2](?:[0-9];)?$/
-   }
-   cooked();
-   return $key;
-}
-
-
-BEGIN {
-   eval { no warnings; local $^W; require 'sys/ioctl.ph' };
-   if ( !defined &TIOCGWINSZ ) {
-      *TIOCGWINSZ = sub () {
-              $^O eq 'linux'   ? 0x005413
-            : $^O eq 'solaris' ? 0x005468
-            :                    0x40087468;
-      };
-   }
-}
-
-sub _GetTerminalSize {
-   if ( @_ ) {
-      die "My::Term::ReadKey doesn't implement GetTerminalSize with arguments";
-   }
-
-   my $cols = $ENV{COLUMNS} || 80;
-   my $rows = $ENV{LINES}   || 24;
-
-   if ( open( TTY, "+<", "/dev/tty" ) ) { # Got a tty
-      my $winsize = '';
-      if ( ioctl( TTY, &TIOCGWINSZ, $winsize ) ) {
-         ( $rows, $cols, my ( $xpixel, $ypixel ) ) = unpack( 'S4', $winsize );
-         return ( $cols, $rows, $xpixel, $ypixel );
-      }
-   }
-
-   if ( $rows = `tput lines 2>/dev/null` ) {
-      chomp($rows);
-      chomp($cols = `tput cols`);
-   }
-   elsif ( my $stty = `stty -a 2>/dev/null` ) {
-      ($rows, $cols) = $stty =~ /([0-9]+) rows; ([0-9]+) columns;/;
-   }
-   else {
-      ($cols, $rows) = @ENV{qw( COLUMNS LINES )};
-      $cols ||= 80;
-      $rows ||= 24;
-   }
-
-   return ( $cols, $rows );
-}
-
-}
-
-1;
-}
-# ###########################################################################
-# End ReadKeyMini package
-# ###########################################################################
 
 # ###########################################################################
 # This is a combination of modules and programs in one -- a runnable module.
@@ -7966,13 +7919,25 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
+# Import Term::Readkey if available
+# Not critical so don't fail if it's not
+my $term_readkey = eval {
+  require Term::ReadKey;
+  Term::ReadKey->import();
+  1;
+};
+
 use sigtrap 'handler', \&sig_int, 'normal-signals';
+
+
+
 
 my $exit_status = 0;
 my $oktorun     = 1;
 my $dont_interrupt_now = 0;
 my @drop_trigger_sqls;
 my @triggers_not_dropped;
+my $pxc_version = '0';
 
 $OUTPUT_AUTOFLUSH = 1;
 
@@ -8158,13 +8123,17 @@ sub main {
       # ptc and pt-osc check Threads_running by default for --max-load.
       # Strictly speaking, they can run on 5.5.27 as long as that bug doesn't
       # manifest itself.  If it does, however, then the tools will wait forever.
-      my $pxc_version = VersionParser->new($cxn->dbh);
+      $pxc_version = VersionParser->new($cxn->dbh);
       if ( $pxc_version < '5.5.28' ) {
          die "Percona XtraDB Cluster 5.5.28 or newer is required to run "
             . "this tool on a cluster, but node " . $cxn->name
             . " is running version " . $pxc_version->version
             . ".  Please upgrade the node, or run the tool on a newer node, "
             . "or contact Percona for support.\n";
+      }
+      if ( $pxc_version < '5.6' && $o->got('max-flow-ctl') ) {
+        die "Option '--max-flow-ctl is only available for PXC version 5.6 "
+            . "or higher."
       }
 
       # If wsrep_OSU_method=RSU the "DDL will be only processed locally at
@@ -8179,6 +8148,10 @@ sub main {
             . "currently set to " . ($wsrep_osu_method || '') . ".  "
             . "Set it to TOI, or contact Percona for support.\n";
       }
+   } elsif ( $o->got('max-flow-ctl') ) {
+      die "Option '--max-flow-ctl' is meant to be used on PXC clusters. "
+         ."For normal async replication use '--max-lag' and '--check-interval' "
+         ."instead.\n"
    }
 
    # ########################################################################
@@ -8228,6 +8201,8 @@ sub main {
    my $slave_lag_cxns; # slaves whose lag we'll check
    my $replica_lag;    # ReplicaLagWaiter object
    my $replica_lag_pr; # Progress for ReplicaLagWaiter
+   my $flow_ctl;       # FlowControlWaiter object
+   my $flow_ctl_pr;    # Progress for FlowControlWaiter
    my $sys_load;       # MySQLStatusWaiter object
    my $sys_load_pr;    # Progress for MySQLStatusWaiter object
 
@@ -8321,6 +8296,8 @@ sub main {
 
       # #####################################################################
       # Make a ReplicaLagWaiter to help wait for slaves after each chunk.
+      # Note: the "sleep" function is also used by MySQLStatusWaiter and
+      #       FlowControlWaiter 
       # #####################################################################
       my $sleep = sub {
          # Don't let the master dbh die while waiting for slaves because we
@@ -8363,6 +8340,7 @@ sub main {
          };
       }
       
+
       $replica_lag = new ReplicaLagWaiter(
          slaves   => $slave_lag_cxns,
          max_lag  => $o->get('max-lag'),
@@ -8404,6 +8382,15 @@ sub main {
             . "  --critial-load "  . (join(',', @{$o->get('critical-load')}))
             . "\n";
       }
+
+      if ( $pxc_version >= '5.6' && $o->got('max-flow-ctl') ) {
+            $flow_ctl = new FlowControlWaiter(
+               node          => $cxn->dbh(),
+               max_flow_ctl  => $o->get('max-flow-ctl'),
+               oktorun       => sub { return $oktorun },
+               sleep         => $sleep,
+            );
+      }
       
       if ( $o->get('progress') ) {
          $replica_lag_pr = new Progress(
@@ -8417,6 +8404,14 @@ sub main {
             spec    => $o->get('progress'),
             name    => "Waiting for --max-load", # not used
          );
+        
+         if ( $pxc_version >= '5.6' && $o->got('max-flow-ctl') ) {
+            $flow_ctl_pr = new Progress(
+               jobsize => $o->get('max-flow-ctl'),
+               spec    => $o->get('progress'),
+               name    => "Waiting for flow control to abate", # not used
+            );
+         }
       }
    }
 
@@ -8555,14 +8550,19 @@ sub main {
    my $cleanup = new CleanupTask(
       sub {
          # XXX We shouldn't copy $EVAL_ERROR here, but I found that
-         # errors are not re-thrown in tests.  If you comment out this
+         # errors are not re-thrown in tests.  If you comment (*) out this
          # line and the die below, an error fails:
          # not ok 5 - Doesn't try forever to find a new table name
          #   Failed test 'Doesn't try forever to find a new table name'
          #   at /Users/daniel/p/pt-osc-2.1.1/lib/PerconaTest.pm line 559.
          #                   ''
          #   doesn't match '(?-xism:Failed to find a unique new table name)'
-         my $original_error = $EVAL_ERROR;
+         
+         # (*) Frank:  commented them out because it caused infinite loop
+         # and the mentioned test error doesn't arise
+         
+         #my $original_error = $EVAL_ERROR;
+
          foreach my $task ( reverse @cleanup_tasks ) {
             eval {
                $task->();
@@ -8571,7 +8571,7 @@ sub main {
                warn "Error cleaning up: $EVAL_ERROR\n";
             }
          }
-         die $original_error if $original_error;  # rethrow original error
+         #die $original_error if $original_error;  # rethrow original error
          return;
       }
    );
@@ -9068,7 +9068,7 @@ sub main {
                   tbl   => $tbl,
                );
                PTDEBUG && _d('Table on',$slave->name(),'has', $n_rows, 'rows');
-               if ( $n_rows && $n_rows > ($tbl->{chunk_size} * $limit) ) {
+               if ( $limit && $n_rows && $n_rows > ($tbl->{chunk_size} * $limit) ) {
                   PTDEBUG && _d('Table too large on', $slave->name());
                   push @too_large, [$slave->name(), $n_rows || 0];
                }
@@ -9259,6 +9259,16 @@ sub main {
          # --critical load is reached.
          $sys_load_pr->start() if $sys_load_pr;
          $sys_load->wait(Progress => $sys_load_pr);
+
+         # Wait forever for flow control to abate.
+         $flow_ctl_pr->start() if $flow_ctl_pr;
+         $flow_ctl->wait(Progress => $flow_ctl_pr) if $flow_ctl;
+
+         # sleep between chunks to avoid overloading PXC nodes
+         my $sleep = $args{NibbleIterator}->{OptionParser}->get('sleep');
+         if ( $sleep ) {
+            sleep $sleep;
+         }
 
          return;
       },
@@ -9861,7 +9871,17 @@ sub create_new_table {
       my $quoted = $q->quote($orig_tbl->{db}, $new_table_name);
       my $sql    = $ddl;
       $sql       =~ s/\ACREATE TABLE .*?\($/CREATE TABLE $quoted (/m;
-      $sql       =~ s/^  CONSTRAINT `/  CONSTRAINT `_/gm;
+
+
+      # If it has a leading underscore, we remove one, otherwise we add one
+      # This is in contrast to previous behavior were we added underscores
+      # indefinitely, sometimes exceeding the allowed name limit
+      # https://bugs.launchpad.net/percona-toolkit/+bug/1215587 
+      if ( $sql =~ /CONSTRAINT `_/ ) {
+         $sql =~ s/^  CONSTRAINT `_/  CONSTRAINT `/gm;
+      } else {
+         $sql =~ s/^  CONSTRAINT `/  CONSTRAINT `_/gm;
+      }
       if ( $o->get('default-engine') ) {
          $sql =~ s/\s+ENGINE=\S+//;
       }
@@ -10200,8 +10220,23 @@ sub rebuild_constraints {
          #   `actor` (`actor_id`) ON UPDATE CASCADE
          # Reference the correct table name...
          $constraint =~ s/REFERENCES[^\(]+/REFERENCES $orig_tbl->{name} /;
+
          # And rename the constraint to avoid conflict
-         $constraint =~ s/CONSTRAINT `$fk`/CONSTRAINT `_$fk`/;
+         # If it has a leading underscore, we remove one, otherwise we add one
+         # This is in contrast to previous behavior were we added underscores
+         # indefinitely, sometimes exceeding the allowed name limit
+         # https://bugs.launchpad.net/percona-toolkit/+bug/1215587 
+         my $new_fk; 
+         if ($fk =~ /^_/) {
+            ($new_fk = $fk) =~ s/^_//;
+         }else {
+            $new_fk = '_'.$fk;     
+         }
+
+        
+         PTDEBUG && _d("Old FK name: $fk New FK name: $new_fk");
+
+         $constraint =~ s/CONSTRAINT `$fk`/CONSTRAINT `$new_fk`/;
 
          my $sql = "DROP FOREIGN KEY `$fk`, "
                  . "ADD $constraint";
@@ -10683,12 +10718,10 @@ sub sig_int {
    }
    $oktorun = 0;  # flag for cleanup tasks
    print STDERR "# Exiting on SIG$signal.\n";
-   # restore terminal to normal state in case CTL+C issued while 
-   # asking for password
-   # https://bugs.launchpad.net/percona-toolkit/+bug/1396870
-   # note: just including ReadKeyMini seems to solve the bug, 
-   # but lets use it explicitly  so we don't forget why we need it
-   ReadKeyMini::ReadMode 0;
+   # This is to restore terminal to "normal". lp #1396870
+   if ($term_readkey) { 
+      ReadMode(0);
+   }
    exit 1;
 }
 
@@ -11315,6 +11348,18 @@ short form: -h; type: string
 
 Connect to host.
 
+=item --max-flow-ctl
+
+type: float
+
+Somewhat similar to --max-lag but for PXC clusters.
+Check average time cluster spent pausing for Flow Control and make tool pause if 
+it goes over the percentage indicated in the option.
+A value of 0 would make the tool pause when *any* Flow Control activity is 
+detected.
+Default is no Flow Control checking.
+This option is available for PXC versions 5.6 or higher.
+
 =item --max-lag
 
 type: time; default: 1s
@@ -11378,6 +11423,7 @@ exist.
 short form: -p; type: string
 
 Password to use when connecting.
+If password contains commas they must be escaped with a backslash: "exam\,ple"
 
 =item --pid
 
@@ -11494,6 +11540,15 @@ example, specifying C<--set-vars wait_timeout=500> overrides the default
 value of C<10000>.
 
 The tool prints a warning and continues if a variable cannot be set.
+
+=item --sleep
+
+type: float; default: 0
+
+How long to sleep (in seconds) after copying each chunk. This option is useful 
+when throttling by L<"--max-lag"> and L<"--max-load"> are not possible. 
+A small, sub-second value should be used, like 0.1, else the tool could take 
+a very long time to copy large tables.
 
 =item --socket
 
@@ -11692,6 +11747,7 @@ Connect to host.
 dsn: password; copy: yes
 
 Password to use when connecting.
+If password contains commas they must be escaped with a backslash: "exam\,ple"
 
 =item * P
 

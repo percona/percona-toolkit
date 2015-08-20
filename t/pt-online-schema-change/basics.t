@@ -716,6 +716,25 @@ ok(
 ) or diag($test_diff);
 
 # #############################################################################
+#  --chunk-size-limit=0  must not skip tables that would be chunked 
+#  in one nibble
+#  https://bugs.launchpad.net/percona-toolkit/+bug/1441928
+# #############################################################################
+
+($output, $exit) = full_output(
+   sub { pt_online_schema_change::main(@args,
+      "$dsn,D=sakila,t=actor", qw(--chunk-size-limit 0 --alter-foreign-keys-method drop_swap --execute --alter ENGINE=InnoDB)) },
+   stderr => 1,
+);
+
+like(
+      $output,
+      qr/Successfully altered/i,
+      "--chunk-size-limit=0  doesn't skip tables - lp1441928"
+);
+
+
+# #############################################################################
 # --default-engine
 # #############################################################################
 
