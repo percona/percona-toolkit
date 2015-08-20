@@ -2972,6 +2972,7 @@ Host to connect to.
 short form: -p; type: string
 
 Password to use when connecting.
+If password contains commas they must be escaped with a backslash: "exam\,ple"
 
 =item --port
 
