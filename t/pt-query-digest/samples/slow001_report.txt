@@ -1,35 +1,5 @@
 
-# Query 1: 0 QPS, 0x concurrency, ID 0x7F7D57ACDD8A346E at byte 0 ________
-# Scores: V/M = 0.00
-# Time range: all events occurred at 2007-10-15 21:43:52
-# Attribute    pct   total     min     max     avg     95%  stddev  median
-# ============ === ======= ======= ======= ======= ======= ======= =======
-# Count         50       1
-# Exec time     50      2s      2s      2s      2s      2s       0      2s
-# Lock time      0       0       0       0       0       0       0       0
-# Rows sent     50       1       1       1       1       1       0       1
-# Rows examine   0       0       0       0       0       0       0       0
-# Query size    44      22      22      22      22      22       0      22
-# String:
-# Databases    test
-# Hosts        localhost
-# Users        root
-# Query_time distribution
-#   1us
-#  10us
-# 100us
-#   1ms
-#  10ms
-# 100ms
-#    1s  ################################################################
-#  10s+
-# Tables
-#    SHOW TABLE STATUS FROM `test` LIKE 'n'\G
-#    SHOW CREATE TABLE `test`.`n`\G
-# EXPLAIN /*!50100 PARTITIONS*/
-select sleep(2) from n\G
-
-# Query 2: 0 QPS, 0x concurrency, ID 0x3A99CC42AEDCCFCD at byte 359 ______
+# Query 1: 0 QPS, 0x concurrency, ID 0x3A99CC42AEDCCFCD at byte 359 ______
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2007-10-15 21:45:10
 # Attribute    pct   total     min     max     avg     95%  stddev  median
@@ -58,3 +28,33 @@ select sleep(2) from n\G
 #    SHOW CREATE TABLE `test`.`n`\G
 # EXPLAIN /*!50100 PARTITIONS*/
 select sleep(2) from test.n\G
+
+# Query 2: 0 QPS, 0x concurrency, ID 0x7F7D57ACDD8A346E at byte 0 ________
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2007-10-15 21:43:52
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         50       1
+# Exec time     50      2s      2s      2s      2s      2s       0      2s
+# Lock time      0       0       0       0       0       0       0       0
+# Rows sent     50       1       1       1       1       1       0       1
+# Rows examine   0       0       0       0       0       0       0       0
+# Query size    44      22      22      22      22      22       0      22
+# String:
+# Databases    test
+# Hosts        localhost
+# Users        root
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  ################################################################
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `test` LIKE 'n'\G
+#    SHOW CREATE TABLE `test`.`n`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+select sleep(2) from n\G

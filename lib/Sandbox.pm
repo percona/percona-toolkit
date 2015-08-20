@@ -72,7 +72,7 @@ my %server_type = (
    node   => 1,
 );
 
-my $test_dbs = qr/^(?:mysql|information_schema|sakila|performance_schema|percona_test)$/;
+my $test_dbs = qr/^(?:mysql|information_schema|sakila|performance_schema|percona_test|sys)$/;
 
 sub new {
    my ( $class, %args ) = @_;
