@@ -53,16 +53,16 @@ ok(
 );
 
 
-# This test will fail come July 2015.
+# This test will fail come July 2016.
 ok(
    no_diff(
       sub { pt_query_digest::main(@args,
-         "$sample_in/slow033.txt", qw(--since 2190d),
+         "$sample_in/slow033.txt", qw(--since 2555d),
       )},
       "t/pt-query-digest/samples/slow033-since-Nd.txt",
       stderr => 1,
    ),
-   '--since 2190d (6 years ago)'
+   '--since 2555d (6 years ago)'
 );
 
 # --until
