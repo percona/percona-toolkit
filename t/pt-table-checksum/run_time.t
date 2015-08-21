@@ -44,7 +44,7 @@ $exit_status = pt_table_checksum::main(@args,
 my $t  = time - $t0;
 
 ok(
-   $t >= 1.0 && $t <= 2.5 + $ENV{'PERCONA_SLOW_BOX'} ,
+   $t >= 1.0 && $t <= 2.5 + ($ENV{'PERCONA_SLOW_BOX'} || 0) ,
    "Ran in roughly --run-time 1 second"
 ) or diag("Actual run time: $t");
 
