@@ -1784,7 +1784,6 @@ is_deeply(
 );
 $o->get_opts();
 $dest_dsn = $o->get('dest');
-print Dumper($dest_dsn);
 is_deeply(
    $dest_dsn,
    {
