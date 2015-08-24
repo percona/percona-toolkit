@@ -108,6 +108,12 @@ $o  = new OptionParser(
 );
 ok(!$o->has('time'), 'There is no --time yet');
 @opt_specs = $o->_pod_to_specs("$trunk/t/lib/samples/pod/pod_sample_01.txt");
+
+# hacky workaround for the next test:
+# since now opt_specs includes the attributes hash, but it's a pain to
+# check for all of those, we simply remove it.
+@opt_specs = map {delete $_->{'attributes'}; $_ } @opt_specs;
+
 is_deeply(
    \@opt_specs,
    [
@@ -130,6 +136,7 @@ is_deeply(
 $o->_parse_specs(@opt_specs);
 ok($o->has('time'), 'There is a --time now');
 %opts = $o->opts();
+
 is_deeply(
    \%opts,
    {
@@ -142,9 +149,11 @@ is_deeply(
          is_cumulative  => 0,
          is_negatable   => 0,
          is_required    => 0,
+         is_repeatable  => 0,
          type           => 's',
          got            => 0,
          value          => undef,
+         attributes     => {},
       },
       'port'       => {
          spec           => 'port|p=i',
@@ -155,9 +164,11 @@ is_deeply(
          is_cumulative  => 0,
          is_negatable   => 0,
          is_required    => 0,
+         is_repeatable  => 0,
          type           => 'i',
          got            => 0,
          value          => undef,
+         attributes     => {},
       },
       'price'      => {
          spec           => 'price=f',
@@ -168,9 +179,11 @@ is_deeply(
          is_cumulative  => 0,
          is_negatable   => 0,
          is_required    => 0,
+         is_repeatable  => 0,
          type           => 'f',
          got            => 0,
          value          => undef,
+         attributes     => {},
       },
       'hash-req'   => {
          spec           => 'hash-req=s',
@@ -181,9 +194,11 @@ is_deeply(
          is_cumulative  => 0,
          is_negatable   => 0,
          is_required    => 0,
+         is_repeatable  => 0,
          type           => 'H',
          got            => 0,
          value          => undef,
+         attributes     => {},
       },
       'hash-opt'   => {
          spec           => 'hash-opt=s',
@@ -194,9 +209,11 @@ is_deeply(
          is_cumulative  => 0,
          is_negatable   => 0,
          is_required    => 0,
+         is_repeatable  => 0,
          type           => 'h',
          got            => 0,
          value          => undef,
+         attributes     => {},
       },
       'array-req'  => {
          spec           => 'array-req=s',
@@ -207,9 +224,11 @@ is_deeply(
          is_cumulative  => 0,
          is_negatable   => 0,
          is_required    => 0,
+         is_repeatable  => 0,
          type           => 'A',
          got            => 0,
          value          => undef,
+         attributes     => {},
       },
       'array-opt'  => {
          spec           => 'array-opt=s',
@@ -220,9 +239,11 @@ is_deeply(
          is_cumulative  => 0,
          is_negatable   => 0,
          is_required    => 0,
+         is_repeatable  => 0,
          type           => 'a',
          got            => 0,
          value          => undef,
+         attributes     => {},
       },
       'host'       => {
          spec           => 'host=s',
@@ -233,9 +254,11 @@ is_deeply(
          is_cumulative  => 0,
          is_negatable   => 0,
          is_required    => 0,
+         is_repeatable  => 0,
          type           => 'd',
          got            => 0,
          value          => undef,
+         attributes     => {},
       },
       'chunk-size' => {
          spec           => 'chunk-size=s',
@@ -246,9 +269,11 @@ is_deeply(
          is_cumulative  => 0,
          is_negatable   => 0,
          is_required    => 0,
+         is_repeatable  => 0,
          type           => 'z',
          got            => 0,
          value          => undef,
+         attributes     => {},
       },
       'time'       => {
          spec           => 'time=s',
@@ -259,9 +284,11 @@ is_deeply(
          is_cumulative  => 0,
          is_negatable   => 0,
          is_required    => 0,
+         is_repeatable  => 0,
          type           => 'm',
          got            => 0,
          value          => undef,
+         attributes     => {},
       },
       'help'       => {
          spec           => 'help+',
@@ -272,9 +299,11 @@ is_deeply(
          is_cumulative  => 1,
          is_negatable   => 0,
          is_required    => 0,
+         is_repeatable  => 0,
          type           => undef,
          got            => 0,
          value          => undef,
+         attributes     => {},
       },
       'other'      => {
          spec           => 'other!',
@@ -285,9 +314,11 @@ is_deeply(
          is_cumulative  => 0,
          is_negatable   => 1,
          is_required    => 0,
+         is_repeatable  => 0,
          type           => undef,
          got            => 0,
          value          => undef,
+         attributes     => {},
       }
    },
    'Parse opt specs'
@@ -505,9 +536,11 @@ is_deeply(
          is_cumulative  => 0,
          is_negatable   => 1,
          is_required    => 0,
+         is_repeatable  => 0,
          type           => undef,
          got            => 0,
          value          => undef,
+         attributes     => {},
       },
       'defaultset'    => {
          spec           => 'defaultset!',
@@ -520,9 +553,11 @@ is_deeply(
          is_cumulative  => 0,
          is_negatable   => 1,
          is_required    => 0,
+         is_repeatable  => 0,
          type           => undef,
          got            => 0,
          value          => undef,
+         attributes     => {},
       },
       'defaults-file' => {
          spec           => 'defaults-file|F=s',
@@ -533,9 +568,11 @@ is_deeply(
          is_cumulative  => 0,
          is_negatable   => 0,
          is_required    => 0,
+         is_repeatable  => 0,
          type           => 's',
          got            => 0,
          value          => undef,
+         attributes     => {},
       },
       'dog'           => {
          spec           => 'dog|D=s',
@@ -546,9 +583,11 @@ is_deeply(
          is_cumulative  => 0,
          is_negatable   => 0,
          is_required    => 0,
+         is_repeatable  => 0,
          type           => 's',
          got            => 0,
          value          => undef,
+         attributes     => {},
       },
       'love'          => {
          spec           => 'love|l+',
@@ -559,9 +598,11 @@ is_deeply(
          is_cumulative  => 1,
          is_negatable   => 0,
          is_required    => 0,
+         is_repeatable  => 0,
          type           => undef,
          got            => 0,
          value          => undef,
+         attributes     => {},
       },
    },
    'Parse dog specs'
@@ -957,10 +998,12 @@ is_deeply(
       group         => 'default',
       got           => 0,
       is_negatable  => 0,
+      is_repeatable => 0,
       desc          => 'Bar (default 1)',
       long          => 'bar',
       type          => undef,
       parsed        => 1,
+      attributes    => {},
    },
    'Disabled opt is not destroyed'
 );
@@ -1460,8 +1503,8 @@ is(
 is_deeply(
    \@opt_specs,
    [
-      { spec => 'foo',   desc => 'Basic foo',         group => 'default' },
-      { spec => 'bar!',  desc => 'New negatable bar', group => 'default' },
+      { spec => 'foo',   desc => 'Basic foo',         group => 'default', attributes => {} },
+      { spec => 'bar!',  desc => 'New negatable bar', group => 'default', attributes => { negatable => 1 } },
    ],
    'New =item --[no]foo style for negatables'
 );
@@ -1741,6 +1784,7 @@ is_deeply(
 );
 $o->get_opts();
 $dest_dsn = $o->get('dest');
+print Dumper($dest_dsn);
 is_deeply(
    $dest_dsn,
    {
