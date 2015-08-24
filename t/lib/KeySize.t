@@ -124,7 +124,9 @@ like(
    'Query uses index_merge (issue 364)'
 );
 
-
+# lets help get_key_size get an accurate figure by ANALYZING the table first
+# otherwise we get spurious false positives that are off by just a bit
+$dbh->do('ANALYZE TABLE test.issue_364');
 ($size, $chosen_key) = $ks->get_key_size(%key);
 is(
    $size,
