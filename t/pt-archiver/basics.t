@@ -134,10 +134,10 @@ like($output, qr/commit *10/, 'Stats print OK');
 
 # Test --no-delete.
 $sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
-$output = output(sub {pt_archiver::main(@args, qw(--no-delete --purge --source), "D=test,t=table_1,F=$cnf", qw(--dry-run)) });
+$output = output(sub {pt_archiver::main(@args, qw(--no-delete --source), "D=test,t=table_1,F=$cnf", qw(--dry-run --file /tmp/pt-archiver-test-no-delete-1)) });
 like($output, qr/> /, '--no-delete implies strict ascending');
 unlike($output, qr/>=/, '--no-delete implies strict ascending');
-$output = output(sub {pt_archiver::main(@args, qw(--no-delete --purge --source), "D=test,t=table_1,F=$cnf") });
+$output = output(sub {pt_archiver::main(@args, qw(--no-delete --source), "D=test,t=table_1,F=$cnf", qw(--file /tmp/pt-archiver-test-no-delete-2)) });
 $output = `/tmp/12345/use -N -e "select count(*) from test.table_1"`;
 is($output + 0, 4, 'All 4 rows are still there');
 
