@@ -1447,8 +1447,6 @@ Changelog
 
 * Fixed bug 1279502: --version-check behaves like spyware
 
-=======
->>>>>>> MERGE-SOURCE
 v2.2.6 released 2013-12-18
 ==========================
 
