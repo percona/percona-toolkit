@@ -199,9 +199,11 @@ sub lost_connection {
    my ($self, $e) = @_;
    return 0 unless $e;
    return $e =~ m/MySQL server has gone away/
-       || $e =~ m/Lost connection to MySQL server/;
+       || $e =~ m/Lost connection to MySQL server/
+       || $e =~ m/Server shutdown in progress/;
       # The 1st pattern means that MySQL itself died or was stopped.
       # The 2nd pattern means that our cxn was killed (KILL <id>).
+      # The 3rd pattern means MySQL is about to shut down.
 }
 
 # Sub: dbh
