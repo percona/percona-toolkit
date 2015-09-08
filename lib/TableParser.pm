@@ -163,6 +163,12 @@ sub parse {
    my (%type_for, %is_nullable, %is_numeric, %is_autoinc);
    foreach my $col ( @cols ) {
       my $def = $def_for{$col};
+
+      # Remove literal backticks (``) because they're superfluous for parsing
+      # the col.
+      # https://bugs.launchpad.net/percona-toolkit/+bug/1462904
+      $def =~ s/``//g;
+
       my ( $type ) = $def =~ m/`[^`]+`\s([a-z]+)/;
       die "Can't determine column type for $def" unless $type;
       $type_for{$col} = $type;
