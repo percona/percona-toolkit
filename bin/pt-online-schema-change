@@ -3972,8 +3972,16 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 sub check_recursion_method {
    my ($methods) = @_;
 
-   if ( @$methods != 1 ) {
-      if ( grep({ !m/processlist|hosts/i } @$methods)
+   foreach my $method ( @$methods ) {
+      die "Invalid recursion method: " . ($method || 'undef') . "\n"
+         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster|dsn=)/i;
+   }
+
+   if ( @$methods > 1 ) {
+      if ( grep( { m/none/ } @$methods) && grep( {! m/none/ } @$methods) ) {
+            die "--recursion-method=none cannot be combined with other methods\n";
+      }
+      elsif ( grep({ !m/processlist|hosts/i } @$methods)
             && $methods->[0] !~ /^dsn=/i )
       {
          die  "Invalid combination of recursion methods: "
@@ -3981,11 +3989,8 @@ sub check_recursion_method {
             . "Only hosts and processlist may be combined.\n"
       }
    }
-   else {
-      my ($method) = @$methods;
-      die "Invalid recursion method: " . ( $method || 'undef' )
-         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|dsn=)/i;
-   }
+
+   return;
 }
 
 sub new {
@@ -4289,9 +4294,21 @@ sub get_slave_status {
       my $sth = $self->{sths}->{$dbh}->{SLAVE_STATUS}
             ||= $dbh->prepare('SHOW SLAVE STATUS');
       PTDEBUG && _d($dbh, 'SHOW SLAVE STATUS');
-      $sth->execute();
-      my ($ss) = @{$sth->fetchall_arrayref({})};
 
+      eval {
+         $sth->execute();
+      };
+      if ( $@ ) {
+         if ( !$self->{ignore_slave_disconnect} ) {
+            die $@;
+         } else {
+            PTDEBUG && _d('This server is currently offline');
+            return;
+         }
+      }
+
+      my $ss;
+      ($ss) = @{$sth->fetchall_arrayref({})};
       if ( $ss && %$ss ) {
          $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
          return $ss;
@@ -8217,6 +8234,7 @@ sub main {
          OptionParser => $o,
          DSNParser    => $dp,
          Quoter       => $q,
+         ignore_slave_disconnect => $o->get('ignore-slave-disconnect'),
       );
 
       $slaves = $ms->get_slaves(
@@ -8333,6 +8351,9 @@ sub main {
             if ( !$dbh || !$dbh->ping() ) {
                eval { $dbh = $cxn->connect() };  # connect or die trying
                if ( $EVAL_ERROR ) {
+                  if ( $o->get('ignore-slave-disconnect') ) {
+                     return 0;
+                  }
                   $oktorun = 0;  # flag for cleanup tasks
                   chomp $EVAL_ERROR;
                   die "Lost connection to replica " . $cxn->name()
@@ -11350,6 +11371,15 @@ Show help and exit.
 short form: -h; type: string
 
 Connect to host.
+
+=item --[no]ignore-slave-disconnect
+
+default: yes
+
+Don't abort if a slave becomes unreachable when checking for lag. 
+The tool will continue operation (i.e: copying data) and will not pause.
+If slave becomes available again during operation, the tool will once again
+check for lag on that server.
 
 =item --max-flow-ctl
 
