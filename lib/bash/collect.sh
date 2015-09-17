@@ -41,77 +41,91 @@ CMD_SYSCTL="${CMD_SYSCTL:-"$(_which sysctl)"}"
 CMD_TCPDUMP="${CMD_TCPDUMP:-"$(_which tcpdump)"}"
 CMD_VMSTAT="${CMD_VMSTAT:-"$(_which vmstat)"}"
 CMD_DMESG="${CMD_DMESG:-"$(_which dmesg)"}"
+CMD_MONGO="${CMD_MONGO:-"$(_which mongo)"}"
 
 # Try to find command manually.
 [ -z "$CMD_SYSCTL" -a -x "/sbin/sysctl" ] && CMD_SYSCTL="/sbin/sysctl"
+
+collect_mongo() {
+    local n=$1
+    $CMD_MONGO $EXT_ARGV --eval 'printjson(db.currentOp(true))' >> "$d/$p-currentOp$n"
+    $CMD_MONGO $EXT_ARGV --eval 'printjson(db.isMaster())' >> "$d/$p-isMaster$n"
+    $CMD_MONGO $EXT_ARGV --eval 'printjson(sh.status())' >> "$d/$p-shStatus$n"
+    $CMD_MONGO $EXT_ARGV --eval 'printjson(rs.status())' >> "$d/$p-rsStatus$n"
+    $CMD_MONGO $EXT_ARGV --eval 'printjson(db.serverStatus())' >> "$d/$p-serverStatus$n"
+    [ $n -eq 2 ] && $CMD_MONGO $EXT_ARGV --eval 'db.adminCommand({getLog:"*"})["names"].forEach(function (e,a,i){ db.adminCommand({getLog:e})["log"].forEach(function (e,a,i){print(e)})})' >> "$d/$p-logs"  # We don't need to run this twice since it will be mostly duplicate lines, so we only run it the second time, which gives us the most log content
+}
 
 collect() {
    local d="$1"  # directory to save results in
    local p="$2"  # prefix for each result file
 
+   local mysqld_pid=""
    # Get pidof mysqld.
-   local mysqld_pid=$(_pidof mysqld | awk '{print $1; exit;}')
-
+   [ "$OPT_MONGO" == "yes" ] || local mysqld_pid=$(_pidof mysqld | awk '{print $1; exit;}')
+   
+   if [ "$OPT_MONGO" != "yes" ]; then
    # Get memory allocation info before anything else.
-   if [ "$CMD_PMAP" -a "$mysqld_pid" ]; then
-      if $CMD_PMAP --help 2>&1 | grep -- -x >/dev/null 2>&1 ; then
-         $CMD_PMAP -x $mysqld_pid > "$d/$p-pmap"
-      else
-         # Some pmap's apparently don't support -x (issue 116).
-         $CMD_PMAP $mysqld_pid > "$d/$p-pmap"
-      fi
+    if [ "$CMD_PMAP" -a "$mysqld_pid" ]; then
+       if $CMD_PMAP --help 2>&1 | grep -- -x >/dev/null 2>&1 ; then
+	  $CMD_PMAP -x $mysqld_pid > "$d/$p-pmap"
+       else
+	  # Some pmap's apparently don't support -x (issue 116).
+	  $CMD_PMAP $mysqld_pid > "$d/$p-pmap"
+       fi
+    fi
+
+    # Getting a GDB stacktrace can be an intensive operation,
+    # so do this only if necessary (and possible).
+    if [ "$CMD_GDB" -a "$OPT_COLLECT_GDB" -a "$mysqld_pid" ]; then
+       $CMD_GDB                     \
+	  -ex "set pagination 0"    \
+	  -ex "thread apply all bt" \
+	  --batch -p $mysqld_pid    \
+	  >> "$d/$p-stacktrace"
+    fi
+
+    # Get MySQL's variables if possible.  Then sleep long enough that we probably
+    # complete SHOW VARIABLES if all's well.  (We don't want to run mysql in the
+    # foreground, because it could hang.)
+    $CMD_MYSQL $EXT_ARGV -e 'SHOW GLOBAL VARIABLES' >> "$d/$p-variables" &
+    sleep .2
+
+    # Get the major.minor version number.  Version 3.23 doesn't matter for our
+    # purposes, and other releases have x.x.x* version conventions so far.
+    local mysql_version="$(awk '/^version[^_]/{print substr($2,1,3)}' "$d/$p-variables")"
+
+    # Is MySQL logging its errors to a file?  If so, tail that file.
+    local mysql_error_log="$(awk '/log_error/{print $2}' "$d/$p-variables")"
+    if [ -z "$mysql_error_log" -a "$mysqld_pid" ]; then
+       # Try getting it from the open filehandle...
+       mysql_error_log="$(ls -l /proc/$mysqld_pid/fd | awk '/ 2 ->/{print $NF}')"
+    fi
+
+    local tail_error_log_pid=""
+    if [ "$mysql_error_log" ]; then
+       log "The MySQL error log seems to be $mysql_error_log"
+       tail -f "$mysql_error_log" >"$d/$p-log_error" &
+       tail_error_log_pid=$!
+
+       # Send a mysqladmin debug to the server so we can potentially learn about
+       # locking etc.
+       $CMD_MYSQLADMIN $EXT_ARGV debug
+    else
+       log "Could not find the MySQL error log"
+    fi
+
+    # Get a sample of these right away, so we can get these without interaction
+    # with the other commands we're about to run.
+    if [ "${mysql_version}" '>' "5.1" ]; then
+       local mutex="SHOW ENGINE INNODB MUTEX"
+    else
+       local mutex="SHOW MUTEX STATUS"
+    fi
+    innodb_status 1
+    $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status1" &
+    open_tables                      >> "$d/$p-opentables1"   &
    fi
-
-   # Getting a GDB stacktrace can be an intensive operation,
-   # so do this only if necessary (and possible).
-   if [ "$CMD_GDB" -a "$OPT_COLLECT_GDB" -a "$mysqld_pid" ]; then
-      $CMD_GDB                     \
-         -ex "set pagination 0"    \
-         -ex "thread apply all bt" \
-         --batch -p $mysqld_pid    \
-         >> "$d/$p-stacktrace"
-   fi
-
-   # Get MySQL's variables if possible.  Then sleep long enough that we probably
-   # complete SHOW VARIABLES if all's well.  (We don't want to run mysql in the
-   # foreground, because it could hang.)
-   $CMD_MYSQL $EXT_ARGV -e 'SHOW GLOBAL VARIABLES' >> "$d/$p-variables" &
-   sleep .2
-
-   # Get the major.minor version number.  Version 3.23 doesn't matter for our
-   # purposes, and other releases have x.x.x* version conventions so far.
-   local mysql_version="$(awk '/^version[^_]/{print substr($2,1,3)}' "$d/$p-variables")"
-
-   # Is MySQL logging its errors to a file?  If so, tail that file.
-   local mysql_error_log="$(awk '/log_error/{print $2}' "$d/$p-variables")"
-   if [ -z "$mysql_error_log" -a "$mysqld_pid" ]; then
-      # Try getting it from the open filehandle...
-      mysql_error_log="$(ls -l /proc/$mysqld_pid/fd | awk '/ 2 ->/{print $NF}')"
-   fi
-
-   local tail_error_log_pid=""
-   if [ "$mysql_error_log" ]; then
-      log "The MySQL error log seems to be $mysql_error_log"
-      tail -f "$mysql_error_log" >"$d/$p-log_error" &
-      tail_error_log_pid=$!
-
-      # Send a mysqladmin debug to the server so we can potentially learn about
-      # locking etc.
-      $CMD_MYSQLADMIN $EXT_ARGV debug
-   else
-      log "Could not find the MySQL error log"
-   fi
-
-   # Get a sample of these right away, so we can get these without interaction
-   # with the other commands we're about to run.
-   if [ "${mysql_version}" '>' "5.1" ]; then
-      local mutex="SHOW ENGINE INNODB MUTEX"
-   else
-      local mutex="SHOW MUTEX STATUS"
-   fi
-   innodb_status 1
-   $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status1" &
-   open_tables                      >> "$d/$p-opentables1"   &
 
    # If TCP dumping is specified, start that on the server's port.
    local tcpdump_pid=""
@@ -169,22 +183,25 @@ collect() {
       $CMD_MPSTAT -P ALL $OPT_RUN_TIME 1 >> "$d/$p-mpstat-overall" &
    fi
 
-   # Collect multiple snapshots of the status variables.  We use
-   # mysqladmin -c even though it is buggy and won't stop on its
-   # own in 5.1 and newer, because there is a chance that we will
-   # get and keep a connection to the database; in troubled times
-   # the database tends to exceed max_connections, so reconnecting
-   # in the loop tends not to work very well.
-   $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
-   local mysqladmin_pid=$!
+   if [ "$OPT_MONGO" != "yes" ]; then
+    # Collect multiple snapshots of the status variables.  We use
+    # mysqladmin -c even though it is buggy and won't stop on its
+    # own in 5.1 and newer, because there is a chance that we will
+    # get and keep a connection to the database; in troubled times
+    # the database tends to exceed max_connections, so reconnecting
+    # in the loop tends not to work very well.
+    $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
+    local mysqladmin_pid=$!
 
-   local have_lock_waits_table=""
-   $CMD_MYSQL $EXT_ARGV -e "SHOW TABLES FROM INFORMATION_SCHEMA" \
-      | grep -i "INNODB_LOCK_WAITS" >/dev/null 2>&1
-   if [ $? -eq 0 ]; then
-      have_lock_waits_table="yes"
+    local have_lock_waits_table=""
+    $CMD_MYSQL $EXT_ARGV -e "SHOW TABLES FROM INFORMATION_SCHEMA" \
+       | grep -i "INNODB_LOCK_WAITS" >/dev/null 2>&1
+    if [ $? -eq 0 ]; then
+       have_lock_waits_table="yes"
+    fi
    fi
-
+   
+   [ "$OPT_MONGO" == "yes" ] && collect_mongo 1 &
    # This loop gathers data for the rest of the duration, and defines the time
    # of the whole job.
    log "Loop start: $(date +'TS %s.%N %F %T')"
@@ -232,11 +249,13 @@ collect() {
       (echo $ts; df -k) >> "$d/$p-df" &
       (echo $ts; netstat -antp) >> "$d/$p-netstat"   &
       (echo $ts; netstat -s)    >> "$d/$p-netstat_s" &
-      (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
-         >> "$d/$p-processlist" &
-      if [ "$have_lock_waits_table" ]; then
-         (echo $ts; lock_waits)   >>"$d/$p-lock-waits" &
-         (echo $ts; transactions) >>"$d/$p-transactions" &
+      if [ "$OPT_MONGO" != "yes" ]; then
+	(echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
+	   >> "$d/$p-processlist" &
+	if [ "$have_lock_waits_table" ]; then
+	   (echo $ts; lock_waits)   >>"$d/$p-lock-waits" &
+	   (echo $ts; transactions) >>"$d/$p-transactions" &
+	fi
       fi
 
       curr_time=$(date +'%s')
@@ -281,14 +300,18 @@ collect() {
       # Sometimes strace leaves threads/processes in T status.
       [ "$mysqld_pid" ] && kill -s 18 $mysqld_pid
    fi
+   
+   if [ "$OPT_MONGO" != "yes" ]; then
+    innodb_status 2
+    $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status2" &
+    open_tables                      >> "$d/$p-opentables2"   &
 
-   innodb_status 2
-   $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status2" &
-   open_tables                      >> "$d/$p-opentables2"   &
-
-   # Kill backgrounded tasks.
-   kill $mysqladmin_pid
-   [ "$tail_error_log_pid" ] && kill $tail_error_log_pid
+    # Kill backgrounded tasks.
+    kill $mysqladmin_pid
+    [ "$tail_error_log_pid" ] && kill $tail_error_log_pid
+   else
+       collect_mongo 2 &
+   fi
    [ "$tcpdump_pid" ]        && kill $tcpdump_pid
 
    # Finally, record what system we collected this data from.

@@ -786,61 +786,75 @@ CMD_SYSCTL="${CMD_SYSCTL:-"$(_which sysctl)"}"
 CMD_TCPDUMP="${CMD_TCPDUMP:-"$(_which tcpdump)"}"
 CMD_VMSTAT="${CMD_VMSTAT:-"$(_which vmstat)"}"
 CMD_DMESG="${CMD_DMESG:-"$(_which dmesg)"}"
+CMD_MONGO="${CMD_MONGO:-"$(_which mongo)"}"
 
 [ -z "$CMD_SYSCTL" -a -x "/sbin/sysctl" ] && CMD_SYSCTL="/sbin/sysctl"
+
+collect_mongo() {
+    local n=$1
+    $CMD_MONGO $EXT_ARGV --eval 'printjson(db.currentOp(true))' >> "$d/$p-currentOp$n"
+    $CMD_MONGO $EXT_ARGV --eval 'printjson(db.isMaster())' >> "$d/$p-isMaster$n"
+    $CMD_MONGO $EXT_ARGV --eval 'printjson(sh.status())' >> "$d/$p-shStatus$n"
+    $CMD_MONGO $EXT_ARGV --eval 'printjson(rs.status())' >> "$d/$p-rsStatus$n"
+    $CMD_MONGO $EXT_ARGV --eval 'printjson(db.serverStatus())' >> "$d/$p-serverStatus$n"
+    [ $n -eq 2 ] && $CMD_MONGO $EXT_ARGV --eval 'db.adminCommand({getLog:"*"})["names"].forEach(function (e,a,i){ db.adminCommand({getLog:e})["log"].forEach(function (e,a,i){print(e)})})' >> "$d/$p-logs"  # We don't need to run this twice since it will be mostly duplicate lines, so we only run it the second time, which gives us the most log content
+}
 
 collect() {
    local d="$1"  # directory to save results in
    local p="$2"  # prefix for each result file
 
-   local mysqld_pid=$(_pidof mysqld | awk '{print $1; exit;}')
+   local mysqld_pid=""
+   [ "$OPT_MONGO" == "yes" ] || local mysqld_pid=$(_pidof mysqld | awk '{print $1; exit;}')
+   
+   if [ "$OPT_MONGO" != "yes" ]; then
+    if [ "$CMD_PMAP" -a "$mysqld_pid" ]; then
+       if $CMD_PMAP --help 2>&1 | grep -- -x >/dev/null 2>&1 ; then
+	  $CMD_PMAP -x $mysqld_pid > "$d/$p-pmap"
+       else
+	  # Some pmap's apparently don't support -x (issue 116).
+	  $CMD_PMAP $mysqld_pid > "$d/$p-pmap"
+       fi
+    fi
 
-   if [ "$CMD_PMAP" -a "$mysqld_pid" ]; then
-      if $CMD_PMAP --help 2>&1 | grep -- -x >/dev/null 2>&1 ; then
-         $CMD_PMAP -x $mysqld_pid > "$d/$p-pmap"
-      else
-         $CMD_PMAP $mysqld_pid > "$d/$p-pmap"
-      fi
+    if [ "$CMD_GDB" -a "$OPT_COLLECT_GDB" -a "$mysqld_pid" ]; then
+       $CMD_GDB                     \
+	  -ex "set pagination 0"    \
+	  -ex "thread apply all bt" \
+	  --batch -p $mysqld_pid    \
+	  >> "$d/$p-stacktrace"
+    fi
+
+    $CMD_MYSQL $EXT_ARGV -e 'SHOW GLOBAL VARIABLES' >> "$d/$p-variables" &
+    sleep .2
+
+    local mysql_version="$(awk '/^version[^_]/{print substr($2,1,3)}' "$d/$p-variables")"
+
+    local mysql_error_log="$(awk '/log_error/{print $2}' "$d/$p-variables")"
+    if [ -z "$mysql_error_log" -a "$mysqld_pid" ]; then
+       mysql_error_log="$(ls -l /proc/$mysqld_pid/fd | awk '/ 2 ->/{print $NF}')"
+    fi
+
+    local tail_error_log_pid=""
+    if [ "$mysql_error_log" ]; then
+       log "The MySQL error log seems to be $mysql_error_log"
+       tail -f "$mysql_error_log" >"$d/$p-log_error" &
+       tail_error_log_pid=$!
+
+       $CMD_MYSQLADMIN $EXT_ARGV debug
+    else
+       log "Could not find the MySQL error log"
+    fi
+
+    if [ "${mysql_version}" '>' "5.1" ]; then
+       local mutex="SHOW ENGINE INNODB MUTEX"
+    else
+       local mutex="SHOW MUTEX STATUS"
+    fi
+    innodb_status 1
+    $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status1" &
+    open_tables                      >> "$d/$p-opentables1"   &
    fi
-
-   if [ "$CMD_GDB" -a "$OPT_COLLECT_GDB" -a "$mysqld_pid" ]; then
-      $CMD_GDB                     \
-         -ex "set pagination 0"    \
-         -ex "thread apply all bt" \
-         --batch -p $mysqld_pid    \
-         >> "$d/$p-stacktrace"
-   fi
-
-   $CMD_MYSQL $EXT_ARGV -e 'SHOW GLOBAL VARIABLES' >> "$d/$p-variables" &
-   sleep .2
-
-   local mysql_version="$(awk '/^version[^_]/{print substr($2,1,3)}' "$d/$p-variables")"
-
-   local mysql_error_log="$(awk '/log_error/{print $2}' "$d/$p-variables")"
-   if [ -z "$mysql_error_log" -a "$mysqld_pid" ]; then
-      mysql_error_log="$(ls -l /proc/$mysqld_pid/fd | awk '/ 2 ->/{print $NF}')"
-   fi
-
-   local tail_error_log_pid=""
-   if [ "$mysql_error_log" ]; then
-      log "The MySQL error log seems to be $mysql_error_log"
-      tail -f "$mysql_error_log" >"$d/$p-log_error" &
-      tail_error_log_pid=$!
-
-      $CMD_MYSQLADMIN $EXT_ARGV debug
-   else
-      log "Could not find the MySQL error log"
-   fi
-
-   if [ "${mysql_version}" '>' "5.1" ]; then
-      local mutex="SHOW ENGINE INNODB MUTEX"
-   else
-      local mutex="SHOW MUTEX STATUS"
-   fi
-   innodb_status 1
-   tokudb_status 1
-   $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status1" &
-   open_tables                      >> "$d/$p-opentables1"   &
 
    local tcpdump_pid=""
    if [ "$CMD_TCPDUMP" -a  "$OPT_COLLECT_TCPDUMP" ]; then
@@ -858,7 +872,7 @@ collect() {
          have_oprofile="yes"
       fi
    elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" -a "$mysqld_pid" ]; then
-      $CMD_STRACE -T -s 0 -f -p $mysqld_pid -o "$d/$p-strace" &
+      $CMD_STRACE -T -s 0 -f -p $mysqld_pid > "${DEST}/$d-strace" &
       local strace_pid=$!
    fi
 
@@ -871,7 +885,6 @@ collect() {
       $CMD_SYSCTL -a >> "$d/$p-sysctl" &
    fi
 
-   # collect dmesg events from 60 seconds ago until present
    if [ "$CMD_DMESG" ]; then
       local UPTIME=`cat /proc/uptime | awk '{ print $1 }'`
       local START_TIME=$(echo "$UPTIME 60" | awk '{print ($1 - $2)}')
@@ -892,17 +905,19 @@ collect() {
       $CMD_MPSTAT -P ALL $OPT_RUN_TIME 1 >> "$d/$p-mpstat-overall" &
    fi
 
+   if [ "$OPT_MONGO" != "yes" ]; then
+    $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
+    local mysqladmin_pid=$!
 
-   $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
-   local mysqladmin_pid=$!
-
-   local have_lock_waits_table=""
-   $CMD_MYSQL $EXT_ARGV -e "SHOW TABLES FROM INFORMATION_SCHEMA" \
-      | grep -i "INNODB_LOCK_WAITS" >/dev/null 2>&1
-   if [ $? -eq 0 ]; then
-      have_lock_waits_table="yes"
+    local have_lock_waits_table=""
+    $CMD_MYSQL $EXT_ARGV -e "SHOW TABLES FROM INFORMATION_SCHEMA" \
+       | grep -i "INNODB_LOCK_WAITS" >/dev/null 2>&1
+    if [ $? -eq 0 ]; then
+       have_lock_waits_table="yes"
+    fi
    fi
-
+   
+   [ "$OPT_MONGO" == "yes" ] && collect_mongo 1 &
    log "Loop start: $(date +'TS %s.%N %F %T')"
    local start_time=$(date +'%s')
    local curr_time=$start_time
@@ -941,11 +956,13 @@ collect() {
       (echo $ts; df -k) >> "$d/$p-df" &
       (echo $ts; netstat -antp) >> "$d/$p-netstat"   &
       (echo $ts; netstat -s)    >> "$d/$p-netstat_s" &
-      (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
-         >> "$d/$p-processlist" &
-      if [ "$have_lock_waits_table" ]; then
-         (echo $ts; lock_waits)   >>"$d/$p-lock-waits" &
-         (echo $ts; transactions) >>"$d/$p-transactions" &
+      if [ "$OPT_MONGO" != "yes" ]; then
+	(echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
+	   >> "$d/$p-processlist" &
+	if [ "$have_lock_waits_table" ]; then
+	   (echo $ts; lock_waits)   >>"$d/$p-lock-waits" &
+	   (echo $ts; transactions) >>"$d/$p-transactions" &
+	fi
       fi
 
       curr_time=$(date +'%s')
@@ -987,14 +1004,17 @@ collect() {
       kill -s 15 $strace_pid
       [ "$mysqld_pid" ] && kill -s 18 $mysqld_pid
    fi
+   
+   if [ "$OPT_MONGO" != "yes" ]; then
+    innodb_status 2
+    $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status2" &
+    open_tables                      >> "$d/$p-opentables2"   &
 
-   innodb_status 2
-   tokudb_status 2
-   $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status2" &
-   open_tables                      >> "$d/$p-opentables2"   &
-
-   kill $mysqladmin_pid
-   [ "$tail_error_log_pid" ] && kill $tail_error_log_pid
+    kill $mysqladmin_pid
+    [ "$tail_error_log_pid" ] && kill $tail_error_log_pid
+   else
+       collect_mongo 2 &
+   fi
    [ "$tcpdump_pid" ]        && kill $tcpdump_pid
 
    hostname > "$d/$p-hostname"
@@ -1002,7 +1022,7 @@ collect() {
    wait_for_subshells $OPT_RUN_TIME
    kill_all_subshells
    for file in "$d/$p-"*; do
-      if [ -z "$(grep -v '^TS ' --max-count 10 "$file")" ]; then
+      if [ -z "$(grep -v '^TS ' --max-count 1 "$file")" ]; then
          log "Removing empty file $file";
          rm "$file"
       fi
@@ -1019,7 +1039,7 @@ open_tables() {
 }
 
 lock_waits() {
-   local sql1="SELECT SQL_NO_CACHE
+   local sql1="SELECT
       CONCAT('thread ', b.trx_mysql_thread_id, ' from ', p.host) AS who_blocks,
       IF(p.command = \"Sleep\", p.time, 0) AS idle_in_trx,
       MAX(TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP)) AS max_wait_time,
@@ -1031,7 +1051,7 @@ lock_waits() {
    GROUP BY who_blocks ORDER BY num_waiters DESC\G"
    $CMD_MYSQL $EXT_ARGV -e "$sql1"
 
-   local sql2="SELECT SQL_NO_CACHE
+   local sql2="SELECT
       r.trx_id AS waiting_trx_id,
       r.trx_mysql_thread_id AS waiting_thread,
       TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP) AS wait_time,
@@ -1052,16 +1072,9 @@ lock_waits() {
 } 
 
 transactions() {
-   $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_TRX\G"
-   $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_LOCKS\G"
-   $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS\G"
-}
-
-tokudb_status() {
-    local n=$1
-
-    $CMD_MYSQL $EXT_ARGV -e "SHOW ENGINE TOKUDB STATUS\G" \
-      >> "$d/$p-tokudbstatus$n" || rm -f "$d/$p-tokudbstatus$n"
+   $CMD_MYSQL $EXT_ARGV -e "SELECT * FROM INFORMATION_SCHEMA.INNODB_TRX\G"
+   $CMD_MYSQL $EXT_ARGV -e "SELECT * FROM INFORMATION_SCHEMA.INNODB_LOCKS\G"
+   $CMD_MYSQL $EXT_ARGV -e "SELECT * FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS\G"
 }
 
 innodb_status() {
@@ -1098,6 +1111,9 @@ EXIT_REASON=""
 TOOL="pt-stalk"
 OKTORUN=1
 ITER=1
+DARWIN=
+
+[ "$(uname)" == "Darwin" ] && DARWIN=yes
 
 # ###########################################################################
 # Plugin hooks
@@ -1183,6 +1199,11 @@ set_trg_func() {
       TRIGGER_FUNCTION="trg_plugin"
       return 0  # success
    else
+      # If --mongo is used, we only have one built-in function
+      if [ "$OPT_MONGO" == "yes" ]; then
+	  TRIGGER_FUNCTION="trg_mongo_default"
+	  return 0 # success
+      fi
       # Trigger function is name of a built-in function.
       func=$(echo "$func" | tr '[:upper:]' '[:lower:]')
       if [ "$func" = "status" -o "$func" = "processlist" ]; then
@@ -1191,6 +1212,10 @@ set_trg_func() {
       fi
    fi
    return 1  # error
+}
+
+trg_mongo_default() {
+    $CMD_MONGO --quiet --eval "db.currentOp()['inprog'].length"
 }
 
 trg_status() {
@@ -1237,13 +1262,15 @@ purge_samples() {
    local retention_time="$2"
 
    # Delete collect files which more than --retention-time days old.
-   find "$dir" -warn -type f -mtime +$retention_time -exec rm -f '{}' \;
+   warn="-warn"
+   [ -n "$DARWIN" ] && warn=""
+   find "$dir" $warn -type f -mtime +$retention_time -exec rm -f '{}' \;
 
    local oprofile_dir="/var/lib/oprofile/samples"
    if [ -d "$oprofile_dir" ]; then
       # "pt_collect_" here needs to match $CMD_OPCONTROL --save=pt_collect_$p
       # in collect().  TODO: fix this
-      find "$oprofile_dir" -warn -depth -type d -name 'pt_collect_*' \
+      find "$oprofile_dir" $warn -depth -type d -name 'pt_collect_*' \
          -mtime +$retention_time -exec rm -rf '{}' \;
    fi
 }
@@ -1890,6 +1917,10 @@ type: string
 
 The pattern to use when watching SHOW PROCESSLIST.  See L<"--function">
 for details.
+
+=item --mongo
+
+Connect to a MongoDB/TokuMX instance instead of a MySQL one. Disables all the MySQL-related captures.  
 
 =item --notify-by-email
 
