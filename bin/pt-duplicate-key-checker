@@ -356,6 +356,9 @@ sub parse {
    my (%type_for, %is_nullable, %is_numeric, %is_autoinc);
    foreach my $col ( @cols ) {
       my $def = $def_for{$col};
+
+      $def =~ s/``//g;
+
       my ( $type ) = $def =~ m/`[^`]+`\s([a-z]+)/;
       die "Can't determine column type for $def" unless $type;
       $type_for{$col} = $type;

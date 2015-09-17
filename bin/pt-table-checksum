@@ -3624,7 +3624,8 @@ sub lost_connection {
    my ($self, $e) = @_;
    return 0 unless $e;
    return $e =~ m/MySQL server has gone away/
-       || $e =~ m/Lost connection to MySQL server/;
+       || $e =~ m/Lost connection to MySQL server/
+       || $e =~ m/Server shutdown in progress/;
 }
 
 sub dbh {
@@ -4397,6 +4398,9 @@ sub parse {
    my (%type_for, %is_nullable, %is_numeric, %is_autoinc);
    foreach my $col ( @cols ) {
       my $def = $def_for{$col};
+
+      $def =~ s/``//g;
+
       my ( $type ) = $def =~ m/`[^`]+`\s([a-z]+)/;
       die "Can't determine column type for $def" unless $type;
       $type_for{$col} = $type;
@@ -4510,6 +4514,8 @@ sub check_table {
    my $db_tbl = $q->quote($db, $tbl);
    PTDEBUG && _d('Checking', $db_tbl);
 
+   $self->{check_table_error} = undef;
+
    my $sql = "SHOW TABLES FROM " . $q->quote($db)
            . ' LIKE ' . $q->literal_like($tbl);
    PTDEBUG && _d($sql);
@@ -4517,8 +4523,9 @@ sub check_table {
    eval {
       $row = $dbh->selectrow_arrayref($sql);
    };
-   if ( $EVAL_ERROR ) {
-      PTDEBUG && _d($EVAL_ERROR);
+   if ( my $e = $EVAL_ERROR ) {
+      PTDEBUG && _d($e);
+      $self->{check_table_error} = $e;
       return 0;
    }
    if ( !$row->[0] || $row->[0] ne $tbl ) {
@@ -9646,6 +9653,7 @@ sub main {
             dbh          => $master_dbh,
             repl_table   => $repl_table,
             slaves       => $slaves,
+            have_time    => $have_time,
             OptionParser => $o,
             TableParser  => $tp,
             Quoter       => $q,
@@ -9693,15 +9701,23 @@ sub main {
             if ( !$dbh || !$dbh->ping() ) {
                PTDEBUG && _d('Lost connection to slave', $cxn->name(),
                   'while waiting for slave lag');
-               eval { $dbh = $cxn->connect() };  # connect or die trying
+               eval { $dbh = $cxn->connect() };
                if ( $EVAL_ERROR ) {
-                  $oktorun = 0;  # Fatal error
-                  chomp $EVAL_ERROR;
-                  die "Lost connection to replica " . $cxn->name()
-                     . " while attempting to get its lag ($EVAL_ERROR)";
+                  PTDEBUG && _d('Failed to connect to slave', $cxn->name(),
+                     ':', $EVAL_ERROR);
+                  return; # keep waiting and trying to reconnect
                }
             }
-            return $ms->get_slave_lag($dbh);
+            my $slave_lag;
+            eval {
+               $slave_lag = $ms->get_slave_lag($dbh);
+            };
+            if ( $EVAL_ERROR ) {
+               PTDEBUG && _d('Error getting slave lag', $cxn->name(),
+                  ':', $EVAL_ERROR);
+               return; # keep waiting and trying to reconnect
+            }
+            return $slave_lag;
          };
       }
       
@@ -9893,7 +9909,9 @@ sub main {
                   db            => $tbl->{db},
                   tbl           => $tbl->{tbl},
                   checksum_cols => $tbl->{checksum_cols},
+                  have_time     => $have_time,
                   TableParser   => $tp,
+                  OptionParser  => $o,
                );
             };
             if ( $EVAL_ERROR ) {
@@ -9929,25 +9947,53 @@ sub main {
          }
          else {
             if ( $nibble_iter->one_nibble() ) {
-               PTDEBUG && _d('Getting table row estimate on replicas');
-
                my @too_large;
+               SLAVE:
                foreach my $slave ( @$slaves ) {
-                  # TODO: This duplicates NibbleIterator::can_nibble();
-                  # probably best to have 1 code path to determine if
-                  # a given table is oversized on a given host.
-                  my ($n_rows) = NibbleIterator::get_row_estimate(
-                     Cxn   => $slave,
-                     tbl   => $tbl,
-                     where => $o->get('where'),
-                  );
-                  PTDEBUG && _d('Table on', $slave->name(),
-                     'has', $n_rows, 'rows');
-                  if ( $n_rows
-                       && $n_rows > ($tbl->{chunk_size} * $chunk_size_limit) )
-                  {
-                     PTDEBUG && _d('Table too large on', $slave->name());
-                     push @too_large, [$slave->name(), $n_rows || 0];
+                  PTDEBUG && _d('Getting table row estimate on', $slave->name());
+                  my $have_warned = 0;
+                  while ( $oktorun && $have_time->() )  {
+                     my $n_rows;
+                     eval {
+                        # TODO: This duplicates NibbleIterator::can_nibble();
+                        # probably best to have 1 code path to determine if
+                        # a given table is oversized on a given host.
+                        ($n_rows) = NibbleIterator::get_row_estimate(
+                           Cxn   => $slave,
+                           tbl   => $tbl,
+                           where => $o->get('where'),
+                        );
+                     };
+                     if ( my $e = $EVAL_ERROR ) {
+                        if ( $slave->lost_connection($e) ) {
+                           PTDEBUG && _d($e);
+                           eval { $slave->connect() };
+                           if ( $EVAL_ERROR ) {
+                              PTDEBUG && _d('Failed to connect to slave', $slave->name(),
+                                 ':', $EVAL_ERROR);
+                              if ( !$have_warned && $o->get('quiet') < 2 ) {
+                                 my $msg = "Trying to connect to replica "
+                                    . $slave->name() . " to get row count of"
+                                    . " table $tbl->{db}.$tbl->{tbl}...\n";
+                                 warn ts($msg);
+                                 $have_warned = 1;
+                              }
+                              sleep 2;
+                           }
+                           next; # try again
+                        }
+                        die "Error getting row count estimate of table"
+                           . " $tbl->{db}.$tbl->{tbl} on replica "
+                           . $slave->name() . ": $e";
+                     }
+                     PTDEBUG && _d('Table on', $slave->name(), 'has', $n_rows, 'rows');
+                     if ( $n_rows
+                          && $n_rows > ($tbl->{chunk_size} * $chunk_size_limit) )
+                     {
+                        PTDEBUG && _d('Table too large on', $slave->name());
+                        push @too_large, [$slave->name(), $n_rows || 0];
+                     }
+                     next SLAVE;
                   }
                }
                if ( @too_large ) {
@@ -10262,6 +10308,7 @@ sub main {
                slaves       => $slaves,
                max_chunk    => $max_chunk,
                check_pr     => $check_pr,
+               have_time    => $have_time,
                OptionParser => $o,
             );
 
@@ -10798,12 +10845,12 @@ sub filter_tables_replicate_check_only {
 
 sub check_repl_table {
    my ( %args ) = @_;
-   my @required_args = qw(dbh repl_table slaves
+   my @required_args = qw(dbh repl_table slaves have_time
                           OptionParser TableParser Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($dbh, $repl_table, $slaves, $o, $tp, $q) = @args{@required_args};
+   my ($dbh, $repl_table, $slaves, $have_time, $o, $tp, $q) = @args{@required_args};
 
    PTDEBUG && _d('Checking --replicate table', $repl_table);
 
@@ -10923,7 +10970,9 @@ sub check_repl_table {
                   db            => $db,
                   tbl           => $tbl,
                   checksum_cols => $tbl_struct->{cols},
+                  have_time     => $have_time,
                   TableParser   => $tp,
+                  OptionParser  => $o,
                );
             };
             if ( $EVAL_ERROR ) {
@@ -11001,49 +11050,78 @@ sub check_repl_table {
 # a nonexistent column.
 sub check_slave_tables {
    my (%args) = @_;
-   my @required_args = qw(slaves db tbl checksum_cols TableParser);
+   my @required_args = qw(slaves db tbl checksum_cols have_time TableParser OptionParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($slaves, $db, $tbl, $checksum_cols, $tp) = @args{@required_args};
+   my ($slaves, $db, $tbl, $checksum_cols, $have_time, $tp, $o) = @args{@required_args};
 
    my @problems;
    SLAVE:
    foreach my $slave ( @$slaves ) {
-      my $slave_has_table = $tp->check_table(
-            dbh => $slave->dbh,
-            db  => $db,
-            tbl => $tbl,
-      );
-      if ( !$slave_has_table ) {
-         push @problems, "Table $db.$tbl does not exist on replica "
-            . $slave->name;
-         next SLAVE;
-      }
+      my $slave_has_table = 0;
+      my $have_warned     = 0;
+      while ( $oktorun && $have_time->() )  {
+         eval {
+            # TableParser::check_table() does not die on error, it sets
+            # check_table_error and return 0.
+            $slave_has_table = $tp->check_table(
+                  dbh => $slave->dbh,
+                  db  => $db,
+                  tbl => $tbl,
+            );
+            die $tp->{check_table_error} if defined $tp->{check_table_error};
+            if ( !$slave_has_table ) {
+               push @problems, "Table $db.$tbl does not exist on replica "
+                  . $slave->name;
+            }
+            else {
+               # TableParser::get_create_table() will die on error.
+               my $slave_tbl_struct = $tp->parse(
+                  $tp->get_create_table($slave->dbh, $db, $tbl)
+               );
+               my @slave_missing_cols;
+               foreach my $col ( @$checksum_cols ) {
+                  if ( !$slave_tbl_struct->{is_col}->{$col} ) {
+                     push @slave_missing_cols, $col;
+                  }
+               }
+               if ( @slave_missing_cols ) {
+                  push @problems, "Table $db.$tbl on replica " . $slave->name
+                     . " is missing these columns: "
+                     . join(", ", @slave_missing_cols);
+               }
+            }
+         };
+         if ( my $e = $EVAL_ERROR ) {
+            PTDEBUG && _d($e);
+            if ( !$slave->lost_connection($e) ) {
+               push @problems, "Error checking table $db.$tbl on replica "
+                  . $slave->name . ": $e";
+               next SLAVE;
+            }
 
-      my $slave_tbl_struct = eval {
-         $tp->parse(
-            $tp->get_create_table($slave->dbh, $db, $tbl)
-         );
-      };
-      if ( $EVAL_ERROR ) {
-         push @problems, "Error parsing table $db.$tbl on replica "
-            . $slave->name . ": $EVAL_ERROR";
-         next SLAVE;
-      }
+            # Lost connection to slave. Reconnect and try again.
+            eval { $slave->connect() };
+            if ( $EVAL_ERROR ) {
+               PTDEBUG && _d('Failed to connect to slave', $slave->name(),
+                  ':', $EVAL_ERROR);
+               if ( !$have_warned && $o->get('quiet') < 2 ) {
+                  my $msg = "Trying to connect to replica "
+                     . $slave->name() . " to check $db.$tbl...\n";
+                  warn ts($msg);
+                  $have_warned = 1;
+               }
+               sleep 2; # wait between failed reconnect attempts
+            }
+            next; # try again
+         } # eval error
 
-      my @slave_missing_cols;
-      foreach my $col ( @$checksum_cols ) {
-         if ( !$slave_tbl_struct->{is_col}->{$col} ) {
-            push @slave_missing_cols, $col;
-         }
-      }
-      if ( @slave_missing_cols ) {
-         push @problems, "Table $db.$tbl on replica " . $slave->name
-            . " is missing these columns: "
-            . join(", ", @slave_missing_cols);
-      }
-   }
+         # No error, so we successfully queried this slave.
+         next SLAVE;
+
+      } # while oktorun && have_time
+   } # foreach slave
 
    die join("\n", @problems) . "\n" if @problems;
 
@@ -11266,11 +11344,11 @@ sub have_more_chunks {
 
 sub wait_for_last_checksum {
    my (%args) = @_;
-   my @required_args = qw(tbl repl_table slaves max_chunk OptionParser);
+   my @required_args = qw(tbl repl_table slaves max_chunk have_time OptionParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless defined $args{$arg};
    }
-   my ($tbl, $repl_table, $slaves, $max_chunk, $o) = @args{@required_args};
+   my ($tbl, $repl_table, $slaves, $max_chunk, $have_time, $o) = @args{@required_args};
    my $check_pr = $args{check_pr};
 
    # Requiring "AND master_crc IS NOT NULL" avoids a race condition
@@ -11286,8 +11364,11 @@ sub wait_for_last_checksum {
    my $n_slaves   = scalar @$slaves - 1;
    my @chunks;
    my %skip_slave;
-   while ( $oktorun && ($chunks[0] || 0) < $max_chunk ) {
-      @chunks = ();
+   my %have_warned;
+   my $checked_all;
+   while ( $oktorun && $have_time->() && (!$checked_all || (($chunks[0] || 0) < $max_chunk)) ) {
+      @chunks      = ();
+      $checked_all = 1;
       for my $i ( 0..$n_slaves ) {
          my $slave = $slaves->[$i];
          if ( $skip_slave{$i} ) {
@@ -11295,26 +11376,47 @@ sub wait_for_last_checksum {
                'due to previous error it caused');
             next;
          }
+         PTDEBUG && _d('Getting last checksum on', $slave->name());
          eval {
             my ($chunk) = $slave->dbh()->selectrow_array($sql);
             PTDEBUG && _d($slave->name(), 'max chunk:', $chunk);
             push @chunks, $chunk || 0;
          };
-         if ($EVAL_ERROR) {
-            if ( $o->get('quiet') < 2 ) {
-               warn ts("Error waiting for the last checksum of table "
-                  . "$tbl->{db}.$tbl->{tbl} to replicate to "
-                  . "replica " . $slave->name() . ": $EVAL_ERROR\n"
-                  . "Check that the replica is running and has the "
-                  . "replicate table $repl_table.  Checking the replica "
-                  . "for checksum differences will probably cause "
-                  . "another error.\n");
+         if (my $e = $EVAL_ERROR) {
+            PTDEBUG && _d($e);
+            if ( $slave->lost_connection($e) ) {
+               if ( !$have_warned{$i} && $o->get('quiet') < 2 ) {
+                  warn ts("Lost connection to " .  $slave->name() . " while "
+                     . "waiting for the last checksum of table "
+                     . "$tbl->{db}.$tbl->{tbl} to replicate. Will reconnect "
+                     . "and try again. No more warnings for this replica will "
+                     . "be printed.\n");
+                  $have_warned{$i}++;
+               }
+               eval { $slave->connect() };
+               if ( $EVAL_ERROR ) {
+                  PTDEBUG && _d($EVAL_ERROR);
+                  sleep 1; # wait between failed reconnect attempts
+               }
+               $checked_all = 0;
             }
-            $tbl->{checksum_results}->{errors}++;
-            $skip_slave{$i} = 1;
+            else {
+               if ( $o->get('quiet') < 2 ) {
+                  warn ts("Error waiting for the last checksum of table "
+                        . "$tbl->{db}.$tbl->{tbl} to replicate to "
+                        . "replica " . $slave->name() . ": $e\n"
+                        . "Check that the replica is running and has the "
+                        . "replicate table $repl_table.  Checking the replica "
+                        . "for checksum differences will probably cause "
+                        . "another error.\n");
+               }
+               $tbl->{checksum_results}->{errors}++;
+               $skip_slave{$i} = 1;
+            }
             next;
          }
       }
+
       # If we have no chunks, which can happen if the slaves
       # were skipped due to errors, then @chunks will be empty
       # and nothing of the following applies. In fact, it
@@ -12595,7 +12697,7 @@ disabled by specifying C<--no-check-replication-filters>.
 pt-table-checksum checks that the L<"--replicate"> table exists on all
 replicas, else checksumming can break replication when updates to the table
 on the master replicate to a replica that doesn't have the table.  This
-check cannot be disabled, and the tool wait forever until the table
+check cannot be disabled, and the tool waits forever until the table
 exists on all replicas, printing L<"--progress"> messages while it waits.
 
 =item 3. Single chunk size

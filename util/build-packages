@@ -272,7 +272,7 @@ update_changelog() {
 
    echo -n "Updating Debian changelog... "
    cd $DEB_CONFIG_DIR
-   echo "percona-toolkit ($VERSION) unstable; urgency=low
+   echo "percona-toolkit ($VERSION-1) unstable; urgency=low
 " > /tmp/changelog.tmp
 
    cat $BRANCH/Changelog | $BRANCH/util/log-entries $VERSION >> /tmp/changelog.tmp
@@ -492,8 +492,9 @@ Branch verified and updated; ready to build $PKG,
 but first you must:
 
   1. git diff and review the changes (Changelog, percon-toolkit.pod, etc.)
-  2. git commit -m "Build $PKG"
-  3. git push
+  2. git add . (from root dir of project)
+  3. git commit -m "Build $PKG"
+  4. git push origin <release-branch>
 
 Press any key to continue... (or Ctrl-C to abort)
 MSG

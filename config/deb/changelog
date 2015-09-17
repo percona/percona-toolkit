@@ -1,3 +1,30 @@
+percona-toolkit (2.2.15-2) unstable; urgency=low
+
+  * Fixed bug 1056507: pt-archiver checked lag too frequently
+  * Fixed bug 1443763: pt-archiver clarified function of --check-interval [DOC]
+  * Feature   1452911: pt-archiver now accepts checking lag on multiple slaves
+  * Feature   1413137: pt-archiver now checks for PXC flow control via --max-flow-ctl option
+  * Fixed bug 1452914: pt-archiver options --no-delete and --purge were not mutually exclusive
+  * Fixed bug 1449226: pt-archiver mysql timed out when innodb_kill_idle_transaction set to low value and check-slave-lag used
+  * Fixed bug 1462904: pt-duplicate-key-checker doesn't support triple quote in column name
+  * Feature   1470127: pt-kill enable support for RDS
+  * Fixed bug 1455486: pt-mysql-summary lacked an --ask-pass option
+  * Feature   1413140: pt-online-schema-change added --sleep option
+  * Fixed bug 1446928: pt-online-schema-change core dump on erroneous alter directive
+  * Feature   1413101: pt-online-schema-change now checks for PXC flow control via --max-flow-ctl option
+  * Fixed bug 1450499: pt-online-schema-change unstable signal handling
+  * Feature   1215587: pt-online-schema-change now controls constraint name length
+  * Fixed bug 1441928: pt-online-schema-change --chunk-size-limit=0 inhibited checksumming of single nibble tables
+  * Fixed bug 1457573: pt-sift failed when fetching missing tools
+  * Feature   1488600: pt-stalk monitors tokudb status
+  * Fixed bug 1042727: pt-table-checksum doesn't reconnect to slaves when timed out on very long lags
+  * Fixed bug 1277049: passsword parameter must escape commas - all tools [DOC]
+  * Fixed bug BLD-271: changes needed to build packages from git tree
+  * Fixed bug PT-21  : write-user-docs script stopped working after switching to github
+  * Fixed bug 1488611: testing bugs related to newer perl versions
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Fri, 28 Aug 2015 08:38:24 +0000
+
 percona-toolkit (2.2.14) unstable; urgency=low
 
   * Fixed bug 1402730  pt-duplicate-key-checker seems useless with MySQL 5.6

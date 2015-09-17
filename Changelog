@@ -1,80 +1,77 @@
 Changelog for Percona Toolkit
 
-  * Fixed bug 1056507    pt-archiver checked lag too frequently
-  * Fixed bug 1443763    pt-archiver clarified function of --check-interval [DOC]
-  * Feature   1452911    pt-archiver now accepts checking lag on multiple slaves                
-  * Feature   1413137    pt-archiver now checks for PXC flow control via --max-flow-ctl option
-  * Fixed bug 1452914    pt-archiver options --no-delete and --purge were not mutually exclusive
-  * Fixed bug 1449226    pt-archiver mysql timed out when innodb_kill_idle_transaction set to low value and check-slave-lag used
-  * Fixed bug 1462904    pt-duplicate-key-checker doesn't support triple quote in column name
-  * Feature   1470127    pt-kill enable support for RDS
-  * Fixed bug 1455486    pt-mysql-summary lacked an --ask-pass option
-  * Feature   1413140    pt-online-schema-change added --sleep option
-  * Fixed bug 1446928    pt-online-schema-change core dump on erroneous alter directive
-  * Feature   1413101    pt-online-schema-change now checks for PXC flow control via --max-flow-ctl option
-  * Fixed bug 1450499    pt-online-schema-change unstable signal handling                       
-  * Feature   1215587    pt-online-schema-change now controls constraint name length
-  * Fixed bug 1441928    pt-online-schema-change --chunk-size-limit=0 inhibited checksumming of single nibble tables
-  * Fixed bug 1457573    pt-sift failed when fetching missing tools                             
-  * Feature   1488600    pt-stalk monitors tokudb status
-  * Fixed bug 1042727    pt-table-checksum doesn't reconnect to slaves when timed out on very long lags
-  * Fixed bug 1277049    passsword parameter must escape commas - all tools [DOC]
-  * Fixed bug BLD-271    changes needed to build packages from git tree
-  * Fixed bug PT-21      write-user-docs script stopped working after switching to github
-  * Fixed bug 1488611    testing bugs related to newer perl versions
+v2.2.15 released 2015-08-28
+
+  * Fixed bug 1056507: pt-archiver checked lag too frequently
+  * Fixed bug 1443763: pt-archiver clarified function of --check-interval [DOC]
+  * Feature   1452911: pt-archiver now accepts checking lag on multiple slaves
+  * Feature   1413137: pt-archiver now checks for PXC flow control via --max-flow-ctl option
+  * Fixed bug 1452914: pt-archiver options --no-delete and --purge were not mutually exclusive
+  * Fixed bug 1449226: pt-archiver mysql timed out when innodb_kill_idle_transaction set to low value and check-slave-lag used
+  * Fixed bug 1462904: pt-duplicate-key-checker doesn't support triple quote in column name
+  * Feature   1470127: pt-kill enable support for RDS
+  * Fixed bug 1455486: pt-mysql-summary lacked an --ask-pass option
+  * Feature   1413140: pt-online-schema-change added --sleep option
+  * Fixed bug 1446928: pt-online-schema-change core dump on erroneous alter directive
+  * Feature   1413101: pt-online-schema-change now checks for PXC flow control via --max-flow-ctl option
+  * Fixed bug 1450499: pt-online-schema-change unstable signal handling
+  * Feature   1215587: pt-online-schema-change now controls constraint name length
+  * Fixed bug 1441928: pt-online-schema-change --chunk-size-limit=0 inhibited checksumming of single nibble tables
+  * Fixed bug 1457573: pt-sift failed when fetching missing tools
+  * Feature   1488600: pt-stalk monitors tokudb status
+  * Fixed bug 1042727: pt-table-checksum doesn't reconnect to slaves when timed out on very long lags
+  * Fixed bug 1277049: passsword parameter must escape commas - all tools [DOC]
+  * Fixed bug BLD-271: changes needed to build packages from git tree
+  * Fixed bug PT-21  : write-user-docs script stopped working after switching to github
+  * Fixed bug 1488611: testing bugs related to newer perl versions
 
 v2.2.14 released 2015-04-14
 
-
-  * Fixed bug 1402730  pt-duplicate-key-checker seems useless with MySQL 5.6
-  * Fixed bug 1415646  pt-duplicate-key-checker documentation does not explain how Size Duplicate Indexes is calculated
-  * Fixed bug 1406390  pt-heartbeat crashes with sleep argument error
-  * Fixed bug 1368244  pt-online-schema-change --alter-foreign-keys-method=drop-swap is not atomic
-  * FIxed bug 1417864  pt-online-schema-change documentation, the interpretation of --tries create_triggers:5:0.5,drop_triggers:5:0.5 is wrong
-  * Fixed bug 1404313  pt-query-digest: specifying a file that doesn't exist as log causes the tool to wait for STDIN instead of giving an error
-  * Feature   1418446  pt-slave-find resolve IP addresses option
-  * Fixed bug 1417558  pt-stalk with --collect-strace output doesn't go to an YYYY_MM_DD_HH_mm_ss-strace file
-  * Fixed bug 1425478  pt-stalk removes non-empty files that start with empty line
-  * Fixed bug 925781   pt-table-checksum checksum error when default-character-set = utf8
-  * Fixed bug 1381280  pt-table-checksum fails on BINARY field in PK
-  * Feature   1439842  pt-table-sync lacks --ignore-tables-regex option
-  * Fixed bug 1401399  pt-table-sync fails to close one db handle
-  * Fixed bug 1442277  pt-table-sync-ignores system databases but doc doesn't clarify this
-  * Fixed bug 1421781  pt-upgrade fails on SELECT ... INTO queries
-  * Fixed bug 1421405  pt-upgrade fails to aggregate queries based on fingerprint
-  * Fixed bug 1439348  pt-upgrade erroneously reports number of diffs
-  * Fixed bug 1421025  rpm missing dependency on perl-TermReadKey for --ask-pass
-
+  * Fixed bug 1402730: pt-duplicate-key-checker seems useless with MySQL 5.6
+  * Fixed bug 1415646: pt-duplicate-key-checker documentation does not explain how Size Duplicate Indexes is calculated
+  * Fixed bug 1406390: pt-heartbeat crashes with sleep argument error
+  * Fixed bug 1368244: pt-online-schema-change --alter-foreign-keys-method=drop-swap is not atomic
+  * FIxed bug 1417864: pt-online-schema-change documentation, the interpretation of --tries create_triggers:5:0.5,drop_triggers:5:0.5 is wrong
+  * Fixed bug 1404313: pt-query-digest: specifying a file that doesn't exist as log causes the tool to wait for STDIN instead of giving an error
+  * Feature   1418446: pt-slave-find resolve IP addresses option
+  * Fixed bug 1417558: pt-stalk with --collect-strace output doesn't go to an YYYY_MM_DD_HH_mm_ss-strace file
+  * Fixed bug 1425478: pt-stalk removes non-empty files that start with empty line
+  * Fixed bug  925781: pt-table-checksum checksum error when default-character-set = utf8
+  * Fixed bug 1381280: pt-table-checksum fails on BINARY field in PK
+  * Feature   1439842: pt-table-sync lacks --ignore-tables-regex option
+  * Fixed bug 1401399: pt-table-sync fails to close one db handle
+  * Fixed bug 1442277: pt-table-sync-ignores system databases but doc doesn't clarify this
+  * Fixed bug 1421781: pt-upgrade fails on SELECT ... INTO queries
+  * Fixed bug 1421405: pt-upgrade fails to aggregate queries based on fingerprint
+  * Fixed bug 1439348: pt-upgrade erroneously reports number of diffs
+  * Fixed bug 1421025: rpm missing dependency on perl-TermReadKey for --ask-pass
 
 v2.2.13 released 2015-01-26
 
-
-  * Feature   1391240:  pt-kill added query fingerprint hash to output 
-  * Fixed bug 1402668:  pt-mysql-summary fails on cluster in Donor/Desynced status 
-  * Fixed bug 1396870:  pt-online-schema-change CTRL+C leaves terminal in inconsistent state 
-  * Fixed bug 1396868:	pt-online-schema-change --ask-pass option error
-  * Fixed bug 1266869:  pt-stalk fails to start if $HOME environment variable is not set 
-  * Fixed bug 1019479:	pt-table-checksum does not work with sql_mode ONLY_FULL_GROUP_BY
-  * Fixed bug 1394934:  pt-table-checksum error in debug mode
-  * Fixed bug 1321297:  pt-table-checksum reports diffs on timestamp columns in 5.5 vs 5.6 
-  * Fixed bug 1399789:	pt-table-checksum fails to find pxc nodes when wsrep_node_incoming_address is set to AUTO
-  * Fixed bug 1388870:  pt-table-checksum has some errors with different time zones
-  * Fixed bug 1408375:  vulnerable to MITM attack which would allow exfiltration of MySQL configuration information via --version-check
-  * Fixed bug 1404298:  missing MySQL5.7 test files for pt-table-checksum 
-  * Fixed bug 1403900:  added sandbox and fixed sakila test db for 5.7 
-
+  * Feature   1391240: pt-kill added query fingerprint hash to output 
+  * Fixed bug 1402668: pt-mysql-summary fails on cluster in Donor/Desynced status 
+  * Fixed bug 1396870: pt-online-schema-change CTRL+C leaves terminal in inconsistent state 
+  * Fixed bug 1396868: pt-online-schema-change --ask-pass option error
+  * Fixed bug 1266869: pt-stalk fails to start if $HOME environment variable is not set 
+  * Fixed bug 1019479: pt-table-checksum does not work with sql_mode ONLY_FULL_GROUP_BY
+  * Fixed bug 1394934: pt-table-checksum error in debug mode
+  * Fixed bug 1321297: pt-table-checksum reports diffs on timestamp columns in 5.5 vs 5.6 
+  * Fixed bug 1399789: pt-table-checksum fails to find pxc nodes when wsrep_node_incoming_address is set to AUTO
+  * Fixed bug 1388870: pt-table-checksum has some errors with different time zones
+  * Fixed bug 1408375: vulnerable to MITM attack which would allow exfiltration of MySQL configuration information via --version-check
+  * Fixed bug 1404298: missing MySQL5.7 test files for pt-table-checksum 
+  * Fixed bug 1403900: added sandbox and fixed sakila test db for 5.7 
 
 v2.2.12 released 2014-11-14
 
-
-  * Fixed bug 1376561:	pt-archiver is not able to archive all the rows when a table has a hash partition
-  * Fixed bug 1328686:	pt-heartbeat check-read-only option does not prevent creates or inserts
-  * Fixed bug 1269695:	pt-online-schema-change does not allow ALTER for a table without a non-unique, while manual does not explain this
-  * Fixed bug 1217466:	pt-table-checksum refuses to run on PXC if server_id is the same on all nodes
-  * Fixed bug 1373937:	pt-table-checksum requires recursion when working with and XtraDB Cluster node
-  * Fixed bug 1377888:	pt-query-digest manual for --type binlog is ambiguous
-  * Fixed bug 1349086:	pt-stalk should also gather dmesg output 
-  * Fixed bug 1361293:	Some scripts fail when no-version-check option is put in global config file
+  * Fixed bug 1376561: pt-archiver is not able to archive all the rows when a table has a hash partition
+  * Fixed bug 1328686: pt-heartbeat check-read-only option does not prevent creates or inserts
+  * Fixed bug 1269695: pt-online-schema-change does not allow ALTER for a table without a non-unique, while manual does not explain this
+  * Fixed bug 1217466: pt-table-checksum refuses to run on PXC if server_id is the same on all nodes
+  * Fixed bug 1373937: pt-table-checksum requires recursion when working with and XtraDB Cluster node
+  * Fixed bug 1377888: pt-query-digest manual for --type binlog is ambiguous
+  * Fixed bug 1349086: pt-stalk should also gather dmesg output 
+  * Fixed bug 1361293: Some scripts fail when no-version-check option is put in global config file
 
 v2.2.11 released 2014-09-26
 

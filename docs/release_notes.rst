@@ -1,6 +1,95 @@
 Release Notes
 *************
 
+v2.2.15 released 2015-08-28
+===========================
+
+**New Features**
+
+* Added ``--max-flow-ctl`` option with a value set in percent. When a Percona XtraDB Cluster node is very loaded, it sends flow control signals to the other nodes to stop sending transactions in order to catch up. When the average value of time spent in this state (in percent) exceeds the maximum provided in the option, the tool pauses until it falls below again.
+
+  Default is no flow control checking.
+
+  This feature was requested in the following bugs: 1413101 and 1413137.
+
+* Added the ``--sleep`` option for ``pt-online-schema-change`` to avoid performance problems. The option accepts float values in seconds.
+  
+  This feature was requested in the following bug: 1413140.
+
+* Implemented ability to specify ``--check-slave-lag`` multiple times. The following example enables lag checks for two slaves:
+
+  .. code-block:: console
+
+   pt-archiver --no-delete --where '1=1' --source h=oltp_server,D=test,t=tbl --dest h=olap_server --check-slave-lag h=slave1 --check-slave-lag h=slave2 --limit 1000 --commit-each
+
+  This feature was requested in the following bug: 14452911.
+
+* Added the ``--rds`` option to ``pt-kill``, which makes the tool use Amazon RDS procedure calls instead of the standard MySQL ``kill`` command.
+  
+  This feature was requested in the following bug: 1470127.
+
+**Bugs Fixed**
+
+* 1042727: ``pt-table-checksum`` doesn't reconnect the slave $dbh
+  
+  Before, the tool would die if any slave connection was lost. Now the tool waits forever for slaves.
+
+* 1056507: ``pt-archiver --check-slave-lag`` agressiveness
+  
+  The tool now checks replication lag every 100 rows instead of every row, which significantly improves efficiency.
+
+* 1215587: Adding underscores to constraints when using ``pt-online-schema-change`` can create issues with constraint name length
+  
+  Before, multiple schema changes lead to underscores stacking up on the name of the constraint until it reached the 64 character limit. Now there is a limit of two underscores in the prefix, then the tool alternately removes or adds one underscore, attempting to make the name unique.
+
+* 1277049: ``pt-online-schema-change`` can't connect with comma in password
+  
+  For all tools, documented that commas in passwords provided on the command line must be escaped.
+
+* 1441928: Unlimited chunk size when using ``pt-online-schema-change`` with ``--chunk-size-limit=0`` inhibits checksumming of single-nibble tables
+  
+  When comparing table size with the slave table, the tool now ignores ``--chunk-size-limit`` if it is set to zero to avoid multiplying by zero.
+
+* 1443763: Update documentation and/or implentation of ``pt-archiver --check-interval``
+  
+  Fixed the documentation for ``--check-interval`` to reflect its correct behavior.
+
+* 1449226: ``pt-archiver`` dies with "MySQL server has gone away" when ``--innodb_kill_idle_transaction`` is set to a low value and ``--check-slave-lag`` is enabled
+  
+  The tool now sends a dummy SQL query to avoid timing out. 
+
+* 1446928: ``pt-online-schema-change`` not reporting meaningful errors
+  
+  The tool now produces meaningful errors based on text from MySQL errors.
+
+* 1450499: ReadKeyMini causes ``pt-online-schema-change`` session to lock under some circumstances
+  
+  Removed ReadKeyMini, because it is no longer necessary.
+
+* 1452914: ``--purge`` and ``--no-delete`` are mutually exclusive, but still allowed to be specified together by ``pt-archiver``
+  
+  The tool now issues an error when ``--purge`` and ``--no-delete`` are specified together
+
+* 1455486: ``pt-mysql-summary`` is missing the ``--ask-pass`` option
+  
+  Added the ``--ask-pass`` option to the tool
+
+* 1457573: ``pt-sift`` fails to download ``pt-diskstats`` ``pt-pmp`` ``pt-mext`` ``pt-align``
+  
+  Added the ``-L`` option to ``curl`` and changed download address to use HTTPS.
+
+* 1462904: ``pt-duplicate-key-checker`` doesn't support triple quote in column name
+  
+  Updated TableParser module to handle literal backticks.
+
+* 1488600: ``pt-stalk`` doesn't check TokuDB status
+  
+  Implemented status collection similar to how it is performed for InnoDB.
+
+* 1488611: various testing bugs related to newer perl versions
+  
+  Fixed test failures related to new Perl versions.
+
 v2.2.14 released 2015-04-14
 ===========================
 
