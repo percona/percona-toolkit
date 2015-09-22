@@ -416,7 +416,7 @@ _parse_command_line() {
          val="$opt"
          opt_is_ok=1
       else
-         if [ $(expr "$opt" : "\-") -eq 0 ]; then
+         if [ $(expr -- "$opt" : "\-") -eq 0 ]; then
             if [ -z "$ARGV" ]; then
                ARGV="$opt"
             else
