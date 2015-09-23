@@ -9880,11 +9880,8 @@ sub create_new_table {
       # This is in contrast to previous behavior were we added underscores
       # indefinitely, sometimes exceeding the allowed name limit
       # https://bugs.launchpad.net/percona-toolkit/+bug/1215587 
-      if ( $sql =~ /CONSTRAINT `_/ ) {
-         $sql =~ s/^  CONSTRAINT `_/  CONSTRAINT `/gm;
-      } else {
-         $sql =~ s/^  CONSTRAINT `/  CONSTRAINT `_/gm;
-      }
+      $sql =~ s/^  CONSTRAINT `(_?)/'  CONSTRAINT `'.($1 eq '' ? '_' : '')/gme;
+
       if ( $o->get('default-engine') ) {
          $sql =~ s/\s+ENGINE=\S+//;
       }
