@@ -1237,13 +1237,13 @@ purge_samples() {
    local retention_time="$2"
 
    # Delete collect files which more than --retention-time days old.
-   find "$dir" -warn -type f -mtime +$retention_time -exec rm -f '{}' \;
+   find "$dir" -type f -mtime +$retention_time -exec rm -f '{}' \;
 
    local oprofile_dir="/var/lib/oprofile/samples"
    if [ -d "$oprofile_dir" ]; then
       # "pt_collect_" here needs to match $CMD_OPCONTROL --save=pt_collect_$p
       # in collect().  TODO: fix this
-      find "$oprofile_dir" -warn -depth -type d -name 'pt_collect_*' \
+      find "$oprofile_dir" -depth -type d -name 'pt_collect_*' \
          -mtime +$retention_time -exec rm -rf '{}' \;
    fi
 }
