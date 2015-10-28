@@ -8172,6 +8172,26 @@ sub main {
    my $lock_in_share_mode = $server_version < '5.1' ? 0 : 1;
 
    # ########################################################################
+   # Check if analyze-before-rename is necessary
+   # Set it on if so, unless user explicitly negated the option (value = 0)
+   # issue: https://bugs.launchpad.net/percona-toolkit/+bug/1491261
+   # ########################################################################
+   if ( !$o->got('analyze-before-rename') || $o->get('analyze-before-rename') ne '0' ) { 
+      if ( $server_version >= '5.6' ) {
+         my (undef, $innodb_stats_persistent) = $cxn->dbh->selectrow_array("SHOW VARIABLES LIKE 'innodb_stats_persistent'");
+         if ($innodb_stats_persistent eq 'ON') {
+            # server is vulnerable to bad query plans for a while
+            # after table rename or drop_swap. Automatically setting 
+            # analyze-before-rename ON
+            PTDEBUG && _d('innodb_stats_peristent is ON. Turning on --analyze-before-rename');
+            $o->set('analyze-before-rename', 1); 
+         }
+      }
+   }
+   # set it to zero if it's 'no' , so we can test it easier later on  
+   $o->get('analyze-before-rename') eq 'no' && $o->set('analyze-before-rename', 0);
+
+   # ########################################################################
    # Create --plugin.
    # ########################################################################   
    my $plugin;
@@ -9573,6 +9593,7 @@ sub validate_tries {
       copy_rows
       swap_tables 
       update_foreign_keys
+      analyze_table
    );
    my %user_tries;
    my $user_tries = $o->get('tries');
@@ -9961,6 +9982,24 @@ sub swap_tables {
                           $truncated_table_name);
             $table_name = $truncated_table_name;
          }
+
+         # if requested, perform ANALYZE TABLE before renaming
+         # to update table statistics.
+         if ( $o->get('analyze-before-rename') ) {
+            print ts("Analyzing new table...\n");
+            my $sql_analyze = "ANALYZE TABLE $new_tbl->{name} /* run by pt-online-schema-change */";
+            osc_retry(
+               Cxn     => $cxn,
+               Retry   => $retry,
+               tries   => $tries->{analyze_table},
+               stats   => $stats,
+               code    => sub {
+                  PTDEBUG && _d($sql_analyze);
+                  $cxn->dbh()->do($sql_analyze);
+               },
+            );
+         }
+
          my $sql = "RENAME TABLE $orig_tbl->{name} "
                  . "TO " . $q->quote($orig_tbl->{db}, $table_name)
                  . ", $new_tbl->{name} TO $orig_tbl->{name}"; 
@@ -10286,6 +10325,21 @@ sub drop_swap {
       print ts("Drop-swapping tables...\n");
    }
 
+   if ( $o->get('analyze-before-rename') ) {
+      print ts("Analyzing new table...\n");
+      my $sql_analyze = "ANALYZE TABLE $new_tbl->{name} /* run by pt-online-schema-change */";
+      osc_retry(
+         Cxn     => $cxn,
+         Retry   => $retry,
+         tries   => $tries->{analyze_table},
+         stats   => $stats,
+         code    => sub {
+            PTDEBUG && _d($sql_analyze);
+            $cxn->dbh()->do($sql_analyze);
+         },
+      );
+   }
+
    my @sqls = (
       "SET foreign_key_checks=0",
       "DROP TABLE IF EXISTS $orig_tbl->{name}",
@@ -10497,6 +10551,7 @@ sub osc_retry {
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
+
    my $cxn           = $args{Cxn};
    my $retry         = $args{Retry};
    my $tries         = $args{tries};
@@ -11053,6 +11108,18 @@ tool's built-in functionality if desired.
 
 =back
 
+=item --[no]analyze-before-rename
+
+default: no
+
+Execute ANALYZE TABLE on new table before swaping with the old one.
+This is to circunvent a 5.6 design issue where if C<innodb_stats_persistent> 
+is enabled (default is yes) then the new table will have no statistics for a 
+while. On a busy server this can result in many queries executed with poor plans 
+(i.e FULL TABLE SCANS) possibly bogging down the server.  
+This option will be turned on automatically if the conditions described above 
+are met, unless it is explicitly negated (i.e --no-analyze-before-rename).
+
 =item --ask-pass
 
 Prompt for a password when connecting to MySQL.
@@ -11592,6 +11659,7 @@ MAGIC_tries
    copy_rows               10   0.25
    swap_tables             10      1
    update_foreign_keys     10      1
+   analyze_table           10      1
 
 To change the defaults, specify the new values like:
 
