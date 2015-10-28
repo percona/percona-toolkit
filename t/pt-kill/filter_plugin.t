@@ -24,18 +24,12 @@ my $output;
 # Basic filter 
 # #############################################################################
 
-
-
 $output = output(
    sub { pt_kill::main(@args, "$sample/recset010.txt",
       '--filter', "$filter/filter002.txt",  
       qw(--match-all),
       qw(--victims all --print)); }
 );
-
-print "sample [$sample/recset010.txt]\n";
-print "filter [$filter/filter002.txt]\n";
-print "[$output]\n";
 
 ok(
    $output =~ /foo/m && $output !~ /bar/s,
