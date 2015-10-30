@@ -12491,7 +12491,7 @@ structure (MAGIC_create_replicate):
      ts             TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
      PRIMARY KEY (db, tbl, chunk),
      INDEX ts_db_tbl (ts, db, tbl)
-  ) ENGINE=InnoDB;
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 Note: lower_boundary and upper_boundary data type can be BLOB. See L<"--binary-index">.
 
