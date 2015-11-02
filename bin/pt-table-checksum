@@ -12703,11 +12703,22 @@ exists on all replicas, printing L<"--progress"> messages while it waits.
 =item 3. Single chunk size
 
 If a table can be checksummed in a single chunk on the master,
-pt-table-checksum will check that the table size on all replicas is
-approximately the same.  This prevents a rare problem where the table
-on the master is empty or small, but on a replica it is much larger.
-In this case, the single chunk checksum on the master would overload
-the replica.  This check cannot be disabled.
+pt-table-checksum will check that the table size on all replicas is less than
+L<"--chunk-size"> * L<"--chunk-size-limit">. This prevents a rare problem
+where the table on the master is empty or small, but on a replica it is much
+larger. In this case, the single chunk checksum on the master would overload
+the replica.
+
+Another rare problem occurs when the table size on a replica is close to
+L<"--chunk-size"> * L<"--chunk-size-limit">. In such cases, the table is more
+likely to be skipped even though it's safe to checksum in a single chunk.
+This happens because table sizes are estimates. When those estimates and
+L<"--chunk-size"> * L<"--chunk-size-limit"> are almost equal, this check
+becomes more sensitive to the estimates' margin of error rather than actual
+significant differences in table sizes. Specifying a larger value for
+L<"--chunk-size-limit"> helps avoid this problem.
+
+This check cannot be disabled.
 
 =item 4. Lag
 
