@@ -8462,13 +8462,25 @@ sub main {
             if ( !$dbh || !$dbh->ping() ) {
                eval { $dbh = $cxn->connect() };  # connect or die trying
                if ( $EVAL_ERROR ) {
-                  $oktorun = 0;  # flag for cleanup tasks
-                  chomp $EVAL_ERROR;
-                  die "Lost connection to replica " . $cxn->name()
-                     . " while attempting to get its lag ($EVAL_ERROR)\n";
+                  # As the docs say: "The tool waits forever for replicas
+                  # to stop lagging.  If any replica is stopped, the tool
+                  # waits forever until the replica is started."
+                  # https://bugs.launchpad.net/percona-toolkit/+bug/1402051
+                  PTDEBUG && _d('Cannot connect to', $cxn->name(), ':',
+                     $EVAL_ERROR);
+                  # Make ReplicaLagWaiter::wait() report slave is stopped.
+                  return undef; 
                }
             }
-            return $ms->get_slave_lag($dbh);
+            my $lag;
+            eval {
+               $lag = $ms->get_slave_lag($dbh);
+            };
+            if ( $EVAL_ERROR ) {
+               PTDEBUG && _d('Cannot get lag for', $cxn->name(), ':',
+                  $EVAL_ERROR);
+            }
+            return $lag; # undef if error
          };
       }
 
