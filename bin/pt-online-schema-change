@@ -8797,12 +8797,11 @@ sub main {
    # ########################################################################
    # Check and create PID file if user specified --pid.
    # ########################################################################
-   my $daemon;
-   if ( $o->get('execute') && $o->get('pid') ) {
-      # We're not daemoninzing, it just handles PID stuff.
-      $daemon = new Daemon(o=>$o);
-      $daemon->make_PID_file();
-   }
+   my $daemon = Daemon->new(
+      daemonize => 0,  # not daemoninzing, just PID file
+      pid_file  => $o->get('pid'),
+   );
+   $daemon->run();
 
    # ########################################################################
    # Init the --plugin.
