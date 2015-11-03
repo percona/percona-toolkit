@@ -6510,6 +6510,7 @@ sub main {
    my $csv_row;
    my $flow_ctl_count = 0;
    my $lag_count = 0;
+   my $bulk_count = 0;
 
    ROW:
    while (                                 # Quit if:
@@ -6664,6 +6665,7 @@ sub main {
             $ins_sth ||= $ins_row; # Default to the sth decided before.
             my $success = do_with_retries($o, 'bulk_inserting', sub {
                $ins_sth->execute($bulkins_file->filename());
+               $src->{dbh}->do("SELECT 'pt-archiver keepalive'") if $src; 
                PTDEBUG && _d('Bulk inserted', $del_row->rows, 'rows');
                $statistics{INSERT} += $ins_sth->rows;
             });
@@ -6737,6 +6739,11 @@ sub main {
          }
       }  # no next row (do bulk operations)
       else {
+         # keep alive every 100 rows saved to file 
+         # https://bugs.launchpad.net/percona-toolkit/+bug/1452895
+         if ( $bulk_count++ % 100 == 0 ) {
+            $src->{dbh}->do("SELECT 'pt-archiver keepalive'") if $src;
+         }
          PTDEBUG && _d('Got another row in this chunk');
       }
 

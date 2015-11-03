@@ -7055,6 +7055,8 @@ sub main {
          $filtered_proclist = $proclist;
       }
 
+      $proclist = $filtered_proclist;
+
       my @queries;
       if ( $proclist ) {
          # ##################################################################
