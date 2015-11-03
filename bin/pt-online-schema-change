@@ -8177,11 +8177,9 @@ sub main {
    # ########################################################################
    my $analyze_table = $o->get('analyze-before-swap');
    if ( $o->got('analyze-before-swap') ) {
-      # User specified 
-      # so respect their wish. If --analyze-before-swap, do it regardless of
-      # MySQL version and innodb_stats_peristent. If --no-analyze-before-swap,
-      # don't do it.
-      $analyze_table = $o->get('analyze-before-swap');
+      # User specified so respect their wish. If --analyze-before-swap, do it
+      # regardless of MySQL version and innodb_stats_peristent.
+      # If --no-analyze-before-swap, don't do it.
       PTDEBUG && _d('User specified explicit --analyze-before-swap:',
          ($analyze_table ? 'on' : 'off'));
    }
@@ -8199,6 +8197,9 @@ sub main {
             PTDEBUG && _d('innodb_stats_peristent is OFF, disabling --analyze-before-swap');
             $analyze_table = 0;
          }
+      } else {
+         PTDEBUG && _d('MySQL < 5.6, disabling --analyze-before-swap');
+         $analyze_table = 0;
       }
    }
 
