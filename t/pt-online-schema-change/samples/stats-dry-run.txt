@@ -1,4 +1,5 @@
 Operation, tries, wait:
+  analyze_table, 10, 1
   copy_rows, 10, 0.25
   create_triggers, 10, 1
   drop_triggers, 10, 1
