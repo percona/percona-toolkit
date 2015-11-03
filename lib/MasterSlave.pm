@@ -428,9 +428,21 @@ sub get_slave_status {
       my $sth = $self->{sths}->{$dbh}->{SLAVE_STATUS}
             ||= $dbh->prepare('SHOW SLAVE STATUS');
       PTDEBUG && _d($dbh, 'SHOW SLAVE STATUS');
-      $sth->execute();
-      my ($ss) = @{$sth->fetchall_arrayref({})};
 
+      eval {
+         $sth->execute();
+      };
+      if ( $@ ) {
+         if ( !$self->{ignore_slave_disconnect} ) {
+            die $@;
+         } else {
+            PTDEBUG && _d('This server is currently offline');
+            return;
+         }
+      }
+
+      my $ss;
+      ($ss) = @{$sth->fetchall_arrayref({})};
       if ( $ss && %$ss ) {
          $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
          return $ss;
