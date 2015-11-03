@@ -8172,24 +8172,35 @@ sub main {
    my $lock_in_share_mode = $server_version < '5.1' ? 0 : 1;
 
    # ########################################################################
-   # Check if analyze-before-rename is necessary
-   # Set it on if so, unless user explicitly negated the option (value = 0)
-   # issue: https://bugs.launchpad.net/percona-toolkit/+bug/1491261
+   # Check if analyze-before-swap is necessary.
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1491261
    # ########################################################################
-   if ( !$o->got('analyze-before-rename') || $o->get('analyze-before-rename') ne '0' ) { 
+   my $analyze_table = $o->get('analyze-before-swap');
+   if ( $o->got('analyze-before-swap') ) {
+      # User specified 
+      # so respect their wish. If --analyze-before-swap, do it regardless of
+      # MySQL version and innodb_stats_peristent. If --no-analyze-before-swap,
+      # don't do it.
+      $analyze_table = $o->get('analyze-before-swap');
+      PTDEBUG && _d('User specified explicit --analyze-before-swap:',
+         ($analyze_table ? 'on' : 'off'));
+   }
+   elsif ( $analyze_table ) {
+      # User did not specify --analyze-before-swap on command line, and it
+      # defaults to "yes", so auto-check for the conditions it's affected by
+      # and enable only if those conditions are true.
       if ( $server_version >= '5.6' ) {
-         my (undef, $innodb_stats_persistent) = $cxn->dbh->selectrow_array("SHOW VARIABLES LIKE 'innodb_stats_persistent'");
-         if ($innodb_stats_persistent eq 'ON') {
-            # server is vulnerable to bad query plans for a while
-            # after table rename or drop_swap. Automatically setting 
-            # analyze-before-rename ON
-            PTDEBUG && _d('innodb_stats_peristent is ON. Turning on --analyze-before-rename');
-            $o->set('analyze-before-rename', 1); 
+         my (undef, $innodb_stats_persistent) = $cxn->dbh->selectrow_array(
+            "SHOW VARIABLES LIKE 'innodb_stats_persistent'");
+         if ($innodb_stats_persistent eq 'ON' || $innodb_stats_persistent eq '1') {
+            PTDEBUG && _d('innodb_stats_peristent is ON, enabling --analyze-before-swap');
+            $analyze_table = 1;
+         } else {
+            PTDEBUG && _d('innodb_stats_peristent is OFF, disabling --analyze-before-swap');
+            $analyze_table = 0;
          }
       }
    }
-   # set it to zero if it's 'no' , so we can test it easier later on  
-   $o->get('analyze-before-rename') eq 'no' && $o->set('analyze-before-rename', 0);
 
    # ########################################################################
    # Create --plugin.
@@ -9421,15 +9432,16 @@ sub main {
    if ( $o->get('swap-tables') ) {
       eval {
          $old_tbl = swap_tables(
-            orig_tbl     => $orig_tbl,
-            new_tbl      => $new_tbl,
-            suffix       => '_old',
-            Cxn          => $cxn,
-            Quoter       => $q,
-            OptionParser => $o,
-            Retry        => $retry,
-            tries        => $tries,
-            stats        => \%stats,
+            orig_tbl      => $orig_tbl,
+            new_tbl       => $new_tbl,
+            suffix        => '_old',
+            Cxn           => $cxn,
+            Quoter        => $q,
+            OptionParser  => $o,
+            Retry         => $retry,
+            tries         => $tries,
+            stats         => \%stats,
+            analyze_table => $analyze_table,
          );
       };
       if ( $EVAL_ERROR ) {
@@ -9481,13 +9493,14 @@ sub main {
          }
          elsif ( $alter_fk_method eq 'drop_swap' ) {
             drop_swap(
-               orig_tbl     => $orig_tbl,
-               new_tbl      => $new_tbl,
-               Cxn          => $cxn,
-               OptionParser => $o,
-               stats        => \%stats,
-               Retry        => $retry,
-               tries        => $tries,
+               orig_tbl      => $orig_tbl,
+               new_tbl       => $new_tbl,
+               Cxn           => $cxn,
+               OptionParser  => $o,
+               stats         => \%stats,
+               Retry         => $retry,
+               tries         => $tries,
+               analyze_table => $analyze_table,
             );
          }
          elsif ( !$alter_fk_method
@@ -9971,8 +9984,24 @@ sub swap_tables {
       return $orig_tbl;
    }
    elsif ( $o->get('execute') ) {
-      print ts("Swapping tables...\n");
+      # ANALYZE TABLE before renaming to update InnoDB optimizer statistics.
+      # https://bugs.launchpad.net/percona-toolkit/+bug/1491261
+      if ( $args{analyze_table} ) {
+         print ts("Analyzing new table...\n");
+         my $sql_analyze = "ANALYZE TABLE $new_tbl->{name} /* pt-online-schema-change */";
+         osc_retry(
+            Cxn     => $cxn,
+            Retry   => $retry,
+            tries   => $tries->{analyze_table},
+            stats   => $stats,
+            code    => sub {
+               PTDEBUG && _d($sql_analyze);
+               $cxn->dbh()->do($sql_analyze);
+            },
+         );
+      }
 
+      print ts("Swapping tables...\n");
       while ( $name_tries-- ) {
          $table_name = $prefix . $table_name;
 
@@ -9981,23 +10010,6 @@ sub swap_tables {
             PTDEBUG && _d($table_name, 'is > 64 chars, truncating to',
                           $truncated_table_name);
             $table_name = $truncated_table_name;
-         }
-
-         # if requested, perform ANALYZE TABLE before renaming
-         # to update table statistics.
-         if ( $o->get('analyze-before-rename') ) {
-            print ts("Analyzing new table...\n");
-            my $sql_analyze = "ANALYZE TABLE $new_tbl->{name} /* run by pt-online-schema-change */";
-            osc_retry(
-               Cxn     => $cxn,
-               Retry   => $retry,
-               tries   => $tries->{analyze_table},
-               stats   => $stats,
-               code    => sub {
-                  PTDEBUG && _d($sql_analyze);
-                  $cxn->dbh()->do($sql_analyze);
-               },
-            );
          }
 
          my $sql = "RENAME TABLE $orig_tbl->{name} "
@@ -10325,9 +10337,11 @@ sub drop_swap {
       print ts("Drop-swapping tables...\n");
    }
 
-   if ( $o->get('analyze-before-rename') ) {
+   # ANALYZE TABLE before renaming to update InnoDB optimizer statistics.
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1491261
+   if ( $args{analyze_table} ) {
       print ts("Analyzing new table...\n");
-      my $sql_analyze = "ANALYZE TABLE $new_tbl->{name} /* run by pt-online-schema-change */";
+      my $sql_analyze = "ANALYZE TABLE $new_tbl->{name} /* pt-online-schema-change */";
       osc_retry(
          Cxn     => $cxn,
          Retry   => $retry,
@@ -11108,17 +11122,21 @@ tool's built-in functionality if desired.
 
 =back
 
-=item --[no]analyze-before-rename
+=item --[no]analyze-before-swap
 
-default: no
+default: yes
 
-Execute ANALYZE TABLE on new table before swaping with the old one.
-This is to circunvent a 5.6 design issue where if C<innodb_stats_persistent> 
-is enabled (default is yes) then the new table will have no statistics for a 
-while. On a busy server this can result in many queries executed with poor plans 
-(i.e FULL TABLE SCANS) possibly bogging down the server.  
-This option will be turned on automatically if the conditions described above 
-are met, unless it is explicitly negated (i.e --no-analyze-before-rename).
+Execute ANALYZE TABLE on the new table before swaping with the old one.
+By default, this happens only when running MySQL 5.6 and newer, and
+C<innodb_stats_persistent> is enabled. Specify the option explicitly to enable
+or disable it regardless of MySQL version and C<innodb_stats_persistent>.
+
+This circumvents a potentially serious issue related to InnoDB optimizer
+statistics. If the table being alerted is busy and the tool completes quickly,
+the new table will not have optimizer statistics after being swapped. This can
+cause fast, index-using queries to do full table scans until optimizer
+statistics are updated (usually after 10 seconds). If the table is large and
+the server very busy, this can cause an outage.
 
 =item --ask-pass
 
