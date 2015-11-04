@@ -9592,6 +9592,8 @@ sub main {
             );
             PTDEBUG && _d(scalar @$diffs, 'checksum diffs on',
                $slave->name());
+            $o->get('report-no-diff') && _d(scalar @$diffs, 'checksum diffs on',
+               $slave->name());
             $diffs = filter_tables_replicate_check_only($diffs, $o);
             if ( @$diffs ) {
                $exit_status |= $PTC_EXIT_STATUS{TABLE_DIFF};
@@ -12550,6 +12552,10 @@ where there simply is no one right way to do things.  Some statements might not
 be replicated, and others might cause replication to fail.  In such cases, you
 can use this option to specify a default database that pt-table-checksum selects
 with USE, and never changes.  See also L<"--[no]check-replication-filters">.
+
+=item --report-no-diff
+
+Report about slaves with no differences.
 
 =item --resume
 
