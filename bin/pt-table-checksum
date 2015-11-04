@@ -12165,7 +12165,9 @@ Only checksum this comma-separated list of databases.
 
 type: string; group: Filter
 
-Only checksum databases whose names match this Perl regex.
+Only checksum databases whose names match this Perl regex. This is matched
+against the lowercase table name. This is the bare regex; it should not be
+enclosed in slashes.
 
 =item --defaults-file
 
@@ -12287,7 +12289,9 @@ the database name.  The L<"--replicate"> table is always automatically ignored.
 
 type: string; group: Filter
 
-Ignore tables whose names match the Perl regex.
+Ignore tables whose names match the Perl regex. This is matched
+against the lowercase table name. This is the bare regex; it should not be
+enclosed in slashes.
 
 =item --max-lag
 
