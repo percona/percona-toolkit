@@ -1,3 +1,14 @@
+percona-toolkit (2.2.16-1) unstable; urgency=low
+
+  * Fixed bug 1452895: pt-archiver dies with "MySQL server has gone away" when innodb_kill_idle_transaction set to low value and bulk insert/delete process takes too long time
+  * Fixed bug 1488685: pt-kill option --filter does not work
+  * Feature   1402051: pt-online-schema-change should reconnect to slaves
+  * Fixed bug 1491261: pt-online-schema-change, MySQL 5.6, and InnoDB optimizer stats can cause downtime
+  * Fixed bug 1494082: pt-stalk find -warn option is not portable
+  * Feature   1389041: Document that pt-table-checksum has high likelihood to skip a table when row count is around chunk-size * chunk-size-limit
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Fri, 06 Nov 2015 19:47:42 +0000
+
 percona-toolkit (2.2.15-2) unstable; urgency=low
 
   * Fixed bug 1056507: pt-archiver checked lag too frequently

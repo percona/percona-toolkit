@@ -1,6 +1,35 @@
 Release Notes
 *************
 
+v2.2.16 released 2015-11-09
+===========================
+
+Percona Toolkit 2.2.16 has been released. This release contains 3 new features and 2 bug fixes.
+
+New Features:
+
+* 1491261: When using MySQL 5.6 or later, and ``innodb_stats_persistent`` option is enabled (by default, it is enabled), then ``pt-online-schema-change`` will now run with the ``--analyze-before-swap`` option. This ensures that queries continue to use correct execution path, instead of switching to full table scan, which could cause possible downtime. If you do not want ``pt-online-schema-change`` to run ``ANALYZE`` on new tables before the swap, you can disable this behavior using the ``--no-analyze-before-swap`` option.
+
+* 1402051: ``pt-online-schema-change`` will now wait forever for slaves to be available and not be lagging. This ensures that the tool does not abort during faults and connection problems on slaves.
+
+* 1452895: ``pt-archiver`` now issues ‘keepalive’ queries during and after bulk insert/delete process that takes a long time. This keeps the connection alive even if the ``innodb_kill_idle_transaction`` variable is set to a low value.
+
+Bug Fixes:
+
+* 1488685: The ``--filter`` option for ``pt-kill`` now works correctly.
+
+* 1494082: The ``pt-stalk`` tool no longer uses the ``-warn`` option when running ``find``, because the option is not supported on FreeBSD.
+
+Changelog
+---------
+
+* Fixed bug 1452895: pt-archiver dies with "MySQL server has gone away" when innodb_kill_idle_transaction set to low value and bulk insert/delete process takes too long time
+* Fixed bug 1488685: pt-kill option --filter does not work
+* Feature   1402051: pt-online-schema-change should reconnect to slaves
+* Fixed bug 1491261: pt-online-schema-change, MySQL 5.6, and InnoDB optimizer stats can cause downtime
+* Fixed bug 1494082: pt-stalk find -warn option is not portable
+* Feature   1389041: Document that pt-table-checksum has high likelihood to skip a table when row count is around chunk-size * chunk-size-limit
+
 v2.2.15 released 2015-08-28
 ===========================
 
