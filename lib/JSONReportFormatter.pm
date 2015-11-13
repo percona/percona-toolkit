@@ -350,6 +350,7 @@ override query_report => sub {
             Quoter     => $q,
          );
          my $mark = $args{no_v_format} ? '' : '\G';
+
          foreach my $db_tbl ( @table_names ) {
             my ( $db, $tbl ) = @$db_tbl;
             my $status
