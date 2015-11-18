@@ -5351,6 +5351,7 @@ sub main {
          my ( $err ) = $EVAL_ERROR =~ m/^(?:DBI|DBD).*failed: (.*?)\s*at \S+ line .*/;
          if ( $err ) {
             warn "$err\n";
+            die $err;
          }
          else {
             die $EVAL_ERROR;
