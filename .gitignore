@@ -1,1 +1,10 @@
 *.swp
+config/NaturalDocs/Data
+docs/dev/*
+docs/user/*
+docs/test-coverage/db
+docs/test-coverage/html
+release
+snapshot
+.DS_Store
+build

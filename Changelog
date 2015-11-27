@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v2.2.16 released 2015-11-09
+
   * Fixed bug 1452895: pt-archiver dies with "MySQL server has gone away" when innodb_kill_idle_transaction set to low value and bulk insert/delete process takes too long time
   * Fixed bug 1488685: pt-kill option --filter does not work
   * Feature   1402051: pt-online-schema-change should reconnect to slaves
