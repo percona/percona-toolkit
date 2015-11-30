@@ -44,6 +44,14 @@ ok(
    ),
    'Analysis for slow001 with --group-by tables'
 );
+ok(
+   no_diff(
+      sub { pt_query_digest::main(@args, $sample.'slow001.txt',
+            qw(--group-by tables --no-vertical-format)) },
+      "t/pt-query-digest/samples/slow001_tablesreport_no_vertical.txt"
+   ),
+   'Analysis for slow001 with --group-by tables and --no-vertical-format'
+);
 
 ok(
    no_diff(
@@ -68,6 +76,13 @@ ok(
       "t/pt-query-digest/samples/slow002_report.txt"
    ),
    'Analysis for slow002'
+);
+ok(
+   no_diff(
+      sub { pt_query_digest::main(@args, $sample.'slow002.txt', qw(--no-vertical-format)) },
+      "t/pt-query-digest/samples/slow002_report_no_vertical.txt"
+   ),
+   'Analysis for slow002 with --no-vertical-format'
 );
 
 ok(

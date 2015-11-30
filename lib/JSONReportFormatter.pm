@@ -349,16 +349,18 @@ override query_report => sub {
             default_db => $default_db,
             Quoter     => $q,
          );
+         my $mark = $args{no_v_format} ? '' : '\G';
+
          foreach my $db_tbl ( @table_names ) {
             my ( $db, $tbl ) = @$db_tbl;
             my $status
                = 'SHOW TABLE STATUS'
                . ($db ? " FROM `$db`" : '')
-               . " LIKE '$tbl'\\G";
+               . " LIKE '$tbl'${mark}";
             my $create
                = "SHOW CREATE TABLE "
                . $q->quote(grep { $_ } @$db_tbl)
-               . "\\G";
+               . ${mark};
             push @tables, { status => $status, create => $create };
          }
 
