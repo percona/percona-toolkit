@@ -6965,14 +6965,14 @@ sub query_report {
 
          PTDEBUG && _d("Fingerprint\n#    $vals->{item}\n");
 
-         $report .= $self->tables_report(@{$vals->{tables}});
+         $report .= $self->tables_report($vals->{tables}, \%args);
 
          if ( $vals->{crc} ) {
             $report.= "# CRC " . ($vals->{crc} % 1_000) . "\n";
          }
 
          my $log_type = $args{log_type} || '';
-         my $mark     = '\G';
+         my $mark     = $args{no_v_format} ? '' : '\G';
 
          if ( $item =~ m/^(?:[\(\s]*select|insert|replace)/ ) {
             if ( $item =~ m/^(?:insert|replace)/ ) { # No EXPLAIN
@@ -6995,7 +6995,7 @@ sub query_report {
       else {
          if ( $groupby eq 'tables' ) {
             my ( $db, $tbl ) = $self->Quoter->split_unquote($item);
-            $report .= $self->tables_report([$db, $tbl]);
+            $report .= $self->tables_report([ [$db, $tbl] ], \%args);
          }
          $report .= "$item\n";
       }
@@ -7654,18 +7654,19 @@ sub pref_sort {
 }
 
 sub tables_report {
-   my ( $self, @tables ) = @_;
-   return '' unless @tables;
+   my ( $self, $tables_ref, $args_ref ) = @_;
+   return '' unless @$tables_ref;
    my $q      = $self->Quoter();
    my $tables = "";
-   foreach my $db_tbl ( @tables ) {
+   my $mark   = $args_ref->{no_v_format} ? '' : '\G';
+   foreach my $db_tbl ( @$tables_ref ) {
       my ( $db, $tbl ) = @$db_tbl;
       $tables .= '#    SHOW TABLE STATUS'
                . ($db ? " FROM `$db`" : '')
-               . " LIKE '$tbl'\\G\n";
+               . " LIKE '$tbl'${mark}\n";
       $tables .= "#    SHOW CREATE TABLE "
                . $q->quote(grep { $_ } @$db_tbl)
-               . "\\G\n";
+               . "${mark}\n";
    }
    return $tables ? "# Tables\n$tables" : "# No tables\n";
 }
@@ -8037,16 +8038,18 @@ override query_report => sub {
             default_db => $default_db,
             Quoter     => $q,
          );
+         my $mark = $args{no_v_format} ? '' : '\G';
+
          foreach my $db_tbl ( @table_names ) {
             my ( $db, $tbl ) = @$db_tbl;
             my $status
                = 'SHOW TABLE STATUS'
                . ($db ? " FROM `$db`" : '')
-               . " LIKE '$tbl'\\G";
+               . " LIKE '$tbl'${mark}";
             my $create
                = "SHOW CREATE TABLE "
                . $q->quote(grep { $_ } @$db_tbl)
-               . "\\G";
+               . ${mark};
             push @tables, { status => $status, create => $create };
          }
 
@@ -14350,6 +14353,7 @@ sub print_reports {
             explain_why  => $explain_why,
             files        => $args{files},
             log_type     => $o->get('type')->[0],
+            no_v_format  => !$o->get('vertical-format'),
             variations   => $o->get('variations'),
             group        => { map { $_=>1 } qw(rusage date hostname files header) },
             resume       => $resume,
@@ -16346,6 +16350,15 @@ output.  This feature should never interfere with the normal operation of the
 tool.  
 
 For more information, visit L<https://www.percona.com/version-check>.
+
+=item --[no]vertical-format
+
+default: yes
+
+Output a trailing "\G" in the reported SQL queries.
+
+This makes the mysql client display the result using vertical format.
+Non-native MySQL clients like phpMyAdmin do not support this.
 
 =item --watch-server
 
