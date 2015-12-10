@@ -61,7 +61,7 @@ fi
 if [ -z "$MYSQL_BASE_DIR" ]; then
    (
       cd $MYSQL_BIN_DIR
-      wget -q -O mysql.tar.gz http://hackmysql.com/barebones/$APP/$MYSQL/$ARCH \
+      wget -q -O mysql.tar.gz http://10.10.7.145:8000/barebones/$APP/$MYSQL/$ARCH \
          || exit 1
 	   tar xvfz mysql.tar.gz
       rm mysql.tar.gz
