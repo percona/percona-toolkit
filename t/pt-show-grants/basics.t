@@ -108,6 +108,7 @@ ok(
    "Column-level grants (bug 866075)"
 );
 
+
 ok(
    no_diff(
       sub { pt_show_grants::main('-F', $cnf, qw(--only sally --no-header),

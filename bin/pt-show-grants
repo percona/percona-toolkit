@@ -1998,6 +1998,11 @@ sub split_grants {
             )
             (?:,\s)?    # Separted from the next grant, if any, by a comma
       /xg;
+      # sort columns in column-level permissions (bug lp-1523730)
+      @grants = map {
+        $_ =~ s/(INSERT|SELECT|UPDATE)\s\((.+?)\)/"$1 (" . join(', ',sort(split(', ',$2))) . ')'/me;
+        $_;
+      } @grants;
    }
    else {
       PTDEBUG && _d('Splitting grants on comma:', $grants);
