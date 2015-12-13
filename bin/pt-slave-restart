@@ -5004,7 +5004,7 @@ sub watch_server {
    # transaction is not possible with SQL_SLAVE_SKIP_COUNTER
    my $skip_event;
    my $have_gtid = 0;
-   if ( VersionParser->new($dbh) >= '5.6.5' ) {
+   if ( VersionParser->new($dbh) >= '5.6.5' && VersionParser->new($dbh) <= '10.0.0' ) {
       my $row = $dbh->selectrow_arrayref('SELECT @@GLOBAL.gtid_mode');
       PTDEBUG && _d('@@GLOBAL.gtid_mode:', $row->[0]);
       if ( $row && $row->[0] eq 'ON' ) {
