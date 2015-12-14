@@ -29,30 +29,22 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # Sub: check_recursion_method
 #   Check that the arrayref of recursion methods passed in is valid
-sub check_recursion_method {
+sub check_recursion_method {                                                       
    my ($methods) = @_;
-
-   # Check that each method is valid.
-   foreach my $method ( @$methods ) {
-      die "Invalid recursion method: " . ($method || 'undef') . "\n"
-         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster|dsn=)/i;
-   }
-
-   # Check for invalid combination of methods.
-   if ( @$methods > 1 ) {
-      if ( grep( { m/none/ } @$methods) && grep( {! m/none/ } @$methods) ) {
-            die "--recursion-method=none cannot be combined with other methods\n";
-      }
-      elsif ( grep({ !m/processlist|hosts/i } @$methods)
-            && $methods->[0] !~ /^dsn=/i )
-      {
-         die  "Invalid combination of recursion methods: "
-            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "
-            . "Only hosts and processlist may be combined.\n"
-      }
-   }
-
-   return;
+   if ( @$methods != 1 ) {                                                         
+      if ( grep({ !m/processlist|hosts/i } @$methods)                              
+            && $methods->[0] !~ /^dsn=/i ) 
+      {     
+         die  "Invalid combination of recursion methods: "                         
+            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "      
+            . "Only hosts and processlist may be combined.\n"                      
+      }                                                                            
+   }     
+   else {   
+      my ($method) = @$methods;
+      die "Invalid recursion method: " . ( $method || 'undef' )                    
+         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster$|dsn=)/i;     
+   }                                                                               
 }
 
 sub new {
