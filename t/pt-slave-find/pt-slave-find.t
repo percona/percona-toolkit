@@ -123,6 +123,7 @@ my $result = do { local $/; <$fh> }; #"
 $result =~ s/Version.*/Version/g;
 $result =~ s/Uptime.*/Uptime/g;
 $result =~ s/[0-9]* seconds/0 seconds/g;
+$result =~ s/Binary logging.*/Binary logging/g;
 
 my $innodb_re = qr/InnoDB version\s+(.*)/;
 my (@innodb_versions) = $result =~ /$innodb_re/g;
@@ -150,10 +151,12 @@ is(
    "...and for the first slave"
 );
 
+
+
 ok(
    no_diff($result, ($sandbox_version ge '5.1'
       ? "t/pt-slave-find/samples/summary001.txt"
-      : "t/pt-slave-find/samples/summary001-5.0.txt"), cmd_output => 1),
+      : "t/pt-slave-find/samples/summary001-5.0.txt"), cmd_output => 1, keep_output => 1),
    "Summary report format",
 );
 

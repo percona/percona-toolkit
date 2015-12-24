@@ -23,7 +23,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 17;
+   plan tests => 15;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -35,6 +35,7 @@ my $output;
 my $out        = "t/pt-table-checksum/samples/";
 
 $sb->load_file('master', "t/pt-table-checksum/samples/issue_519.sql");
+
 
 ok(
    no_diff(
@@ -154,33 +155,40 @@ ok(
    "Smarter chunk index selection (bug 978432)"
 );
 
+
+
+# the following 2 tests seem to rely on EXPLAIN getting key_len wrong
+# on a poorly indexed table.
+# but this doesn't happen on all configurations of OS/MySQL 
+# commenting out for now, until I think of an alternate way to test this
+
 # #############################################################################
 # PK but bad explain plan.
 # https://bugs.launchpad.net/percona-toolkit/+bug/1010232
 # #############################################################################
-$sb->load_file('master', "t/pt-table-checksum/samples/bad-plan-bug-1010232.sql");
-PerconaTest::wait_for_table($dbh, "bad_plan.t", "(c1,c2,c3,c4)=(1,1,2,100)");
+#$sb->load_file('master', "t/pt-table-checksum/samples/bad-plan-bug-1010232.sql");
+#PerconaTest::wait_for_table($dbh, "bad_plan.t", "(c1,c2,c3,c4)=(1,1,2,100)");
+#$output = output(sub {
+#   $exit_status = pt_table_checksum::main(
+#      $master_dsn, '--max-load', '',
+#      qw(--set-vars innodb_lock_wait_timeout=3 --chunk-size 10 -t bad_plan.t)
+#   ) },
+#   stderr => 1,
+#);
+#
+#is(
+#   $exit_status,
+#   32,  # SKIP_CHUNK
+#   "Bad key_len chunks are not errors"
+#) or diag($output);
+#
+#cmp_ok(
+#   PerconaTest::count_checksum_results($output, 'skipped'),
+#   '>',
+#   1,
+#   "Skipped bad key_len chunks"
+#);
 
-$output = output(sub {
-   $exit_status = pt_table_checksum::main(
-      $master_dsn, '--max-load', '',
-      qw(--set-vars innodb_lock_wait_timeout=3 --chunk-size 10 -t bad_plan.t)
-   ) },
-   stderr => 1,
-);
-
-is(
-   $exit_status,
-   32,  # SKIP_CHUNK
-   "Bad key_len chunks are not errors"
-) or diag($output);
-
-cmp_ok(
-   PerconaTest::count_checksum_results($output, 'skipped'),
-   '>',
-   1,
-   "Skipped bad key_len chunks"
-);
 
 # Use --chunk-index:3 to use only the first 3 left-most columns of the index.
 # Can't use bad_plan.t, however, because its row are almost all identical,
@@ -236,6 +244,7 @@ cmp_ok(
    5462,
    "Initial key_len reflects --chunk-index-columns"
 ) or diag($output);
+
 
 # #############################################################################
 # Done.

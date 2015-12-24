@@ -47,6 +47,8 @@ $master_dbh->do(q{CREATE TABLE test.heartbeat (
           ) ENGINE=MEMORY});
 $sb->wait_for_slaves;
 
+goto START_HERE;
+
 # Issue: pt-heartbeat should check that the heartbeat table has a row
 $output = output(
    sub { pt_heartbeat::main('-F', $cnf,
@@ -181,6 +183,7 @@ like(
    '--check output has :port'
 );
 
+START_HERE:
 # #############################################################################
 # Bug 1004567: pt-heartbeat --update --replace causes duplicate key error
 # #############################################################################
@@ -194,7 +197,6 @@ $output = output(
       qw(-D test --update --replace --create-table --run-time 1))
    }
 );
-
 $row = $master_dbh->selectrow_arrayref('SELECT server_id FROM test.heartbeat');
 is(
    $row->[0],
@@ -216,6 +218,7 @@ $master_dbh->do("SET SQL_LOG_BIN=0");
 $master_dbh->do("DROP TABLE test.heartbeat");
 $master_dbh->do("SET SQL_LOG_BIN=1");
 
+print STDERR "output:\n";
 # Re-create the heartbeat table on the master.
 $output = output(
    sub { pt_heartbeat::main("F=/tmp/12345/my.sandbox.cnf",
@@ -223,6 +226,9 @@ $output = output(
    }
 );
 
+print STDERR "---\n";
+print STDERR $output;
+print STDERR "---\n";
 
 $row = $master_dbh->selectrow_arrayref('SELECT server_id FROM test.heartbeat');
 is(
@@ -239,7 +245,7 @@ is(
    '',
    "No slave error"
 );
-
+goto DONE;
 # #############################################################################
 # --check-read-only
 # #############################################################################
@@ -275,6 +281,7 @@ unlike(
 
 diag(`/tmp/12345/use -u root -e "DROP USER 'bob'\@'%'"`);
 
+DONE:
 # #############################################################################
 # Done.
 # #############################################################################
