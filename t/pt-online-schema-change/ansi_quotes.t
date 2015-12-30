@@ -44,10 +44,10 @@ my $sample  = "t/pt-online-schema-change/samples/";
 $sb->load_file('master1', "$sample/sql-mode-bug-1058285.sql");
 
 my ($orig_sql_mode) = $dbh->selectrow_array(q{SELECT @@SQL_MODE});
-is(
-   $orig_sql_mode,
-   "REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,IGNORE_SPACE,ANSI,NO_AUTO_VALUE_ON_ZERO",
-   "SQL_MODE set"
+# check that ANSI_QUOTES and ANSI is there
+ok(
+   $orig_sql_mode =~ /ANSI_QUOTES.*ANSI/,
+   "ANSI modes set"
 );
 
 ($output, $exit_status) = full_output(
