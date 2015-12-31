@@ -50,6 +50,7 @@ my $rows;
 # Tool shouldn't run without --execute (bug 933232).
 # #############################################################################
 
+
 $sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
 
 ($output, $exit) = full_output(
@@ -684,6 +685,7 @@ test_alter_table(
    ],
 );
 
+
 # #############################################################################
 # --statistics
 # #############################################################################
@@ -701,16 +703,25 @@ ok(
    "--statistics --dry-run"
 ) or diag($test_diff);
 
+# 5.5, 5.6 and 5.7 have different outputs 
+my $res_file = "$sample/stats-execute.txt";
+if ($sandbox_version eq '5.5' && $db_flavor !~ m/XtraDB Cluster/) {
+   $res_file =  "$sample/stats-execute-5.5.txt";
+} elsif ($sandbox_version eq '5.6' && $db_flavor !~ m/XtraDB Cluster/) {
+   $res_file =  "$sample/stats-execute.txt";
+} elsif ($sandbox_version eq '5.7' && $db_flavor !~ m/XtraDB Cluster/) {
+   $res_file =  "$sample/stats-execute-5.7.txt";
+}
+ 
+
 ok(
    no_diff(
       sub { pt_online_schema_change::main(@args, "$dsn,D=bug_1045317,t=bits",
          '--execute', '--statistics',
          '--alter', "modify column val ENUM('M','E','H') NOT NULL",
-         '--recursion-method', 'none')
+         '--recursion-method', 'none'),
       },
-      ($sandbox_version ge '5.5' && $db_flavor !~ m/XtraDB Cluster/
-         ? "$sample/stats-execute-5.5.txt"
-         : "$sample/stats-execute.txt"),
+      $res_file,
    ),
    "--statistics --execute"
 ) or diag($test_diff);
