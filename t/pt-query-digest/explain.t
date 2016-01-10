@@ -39,13 +39,13 @@ ok(
    no_diff(
       sub { pt_query_digest::main(@args,
          "$trunk/t/lib/samples/slowlogs/slow007.txt") },
-      ( $sandbox_version ge '5.5' ? "$sample/slow007_explain_1-55.txt"
+      ( $sandbox_version ge '5.7' ? "$sample/slow007_explain_1-57.txt"
+      : $sandbox_version ge '5.5' ? "$sample/slow007_explain_1-55.txt"
       : $sandbox_version ge '5.1' ? "$sample/slow007_explain_1-51.txt"
-      :                             "$sample/slow007_explain_1.txt")
+      :                             "$sample/slow007_explain_1.txt"),
    ),
    'Analysis for slow007 with --explain, no rows',
 );
-
 # Normalish output from EXPLAIN.
 $dbh->do("insert into trees values ('apple'),('orange'),('banana')");
 
@@ -53,8 +53,9 @@ ok(
    no_diff(
       sub { pt_query_digest::main(@args,
          "$trunk/t/lib/samples/slowlogs/slow007.txt") },
-      ($sandbox_version ge '5.1' ? "$sample/slow007_explain_2-51.txt"
-                                 : "$sample/slow007_explain_2.txt")
+      ( $sandbox_version ge '5.7' ? "$sample/slow007_explain_2-57.txt"
+      : $sandbox_version ge '5.1' ? "$sample/slow007_explain_2-51.txt"
+                                  : "$sample/slow007_explain_2.txt"),
    ),
    'Analysis for slow007 with --explain',
 );
@@ -98,11 +99,12 @@ ok(
          '--report-format', 'profile,query_report',
          "$trunk/t/pt-query-digest/samples/issue_1196.log",)
       },
-      (  $sandbox_version eq '5.6' ? "$sample/issue_1196-output-5.6.txt"
+      (  $sandbox_version ge '5.7' ? "$sample/issue_1196-output-5.7.txt"
+       : $sandbox_version ge '5.6' ? "$sample/issue_1196-output-5.6.txt"
        : $sandbox_version ge '5.1' ? "$sample/issue_1196-output.txt"
        :                             "$sample/issue_1196-output-5.0.txt"),
    ),
-   "--explain sparkline uses event db and doesn't crash ea (issue 1196"
+   "--explain sparkline uses event db and doesn't crash ea (issue 1196)"
 );
 
 # #############################################################################

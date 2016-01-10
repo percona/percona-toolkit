@@ -13,6 +13,7 @@ use Test::More;
 
 use PerconaTest;
 use Sandbox;
+use SqlModes;
 require "$trunk/bin/pt-show-grants";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
@@ -34,7 +35,13 @@ my $cnf = '/tmp/12345/my.sandbox.cnf';
 # #############################################################################
 # Issue 445: mk-show-grants --revoke crashes 
 # #############################################################################
+
+# allow auto create user for a moment
+my $modes = new SqlModes($dbh, global=>1);
+$modes->del('NO_AUTO_CREATE_USER');
 diag(`/tmp/12345/use -u root -e "GRANT USAGE ON *.* TO ''\@''"`);
+$modes->restore_original_modes();
+
 $output = `/tmp/12345/use -e "SELECT user FROM mysql.user WHERE user = ''"`;
 like(
    $output,

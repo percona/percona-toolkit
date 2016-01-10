@@ -39,14 +39,21 @@ use Data::Dumper;
 #   SqlModes object 
 
 sub new {
-   my ( $class, $dbh ) = @_;
+   my ( $class, $dbh, %args ) = @_;
    die "I need a database handle" unless $dbh;
+
+   my $global = $args{'global'} ? 'GLOBAL' : '';
 
    my $self = {
       dbh => $dbh, 
+      global => $global,
+      original_modes_string => '',
    };
 
-   return bless $self, $class;
+   bless $self, $class;
+
+   $self->{original_modes_string} = $self->get_modes_string();
+   return $self;
 }
 
 # Sub: add
@@ -71,7 +78,7 @@ sub add {
 
    my $sql_mode_string = join ",", keys %$curr_modes; 
 
-   $self->{dbh}->do("set sql_mode = '$sql_mode_string'") || return 0;
+   $self->{dbh}->do("set $self->{global} sql_mode = '$sql_mode_string'") || return 0;
 
    PTDEBUG && _d('sql_mode changed to: ', $sql_mode_string);
    return $curr_modes;
@@ -99,7 +106,7 @@ sub del {
 
    my $sql_mode_string = join ",", keys %$curr_modes; 
 
-   $self->{dbh}->do("set sql_mode = '$sql_mode_string'") || return 0;
+   $self->{dbh}->do("SET $self->{global} sql_mode = '$sql_mode_string'") || return 0;
 
    PTDEBUG && _d('sql_mode changed to: ', $sql_mode_string);
    return $curr_modes || 1;
@@ -148,6 +155,40 @@ sub get_modes {
 
    return \%modes;
 }
+
+# Sub: get_modes_string
+#   get current set of sql modes as string 
+#
+#   Required Arguments:
+#     none
+#
+# Returns:
+#   sql_modes as a string (coma separated values) 
+sub get_modes_string {
+   my ( $self ) = @_;
+
+   my (undef, $sql_mode_string) = $self->{dbh}->selectrow_array("show variables like 'sql_mode'");
+
+   return $sql_mode_string;
+}
+
+# Sub: restore_original_modes 
+#   resets sql_mode to the state it was when object was created 
+#
+#   Required Arguments:
+#     none
+#
+# Returns:
+#   original sql_mode as a string
+sub restore_original_modes {
+   my ( $self ) = @_;
+
+   $self->{dbh}->do("SET $self->{global} sql_mode = '$self->{original_modes_string}'");
+
+   return $self->{original_modes_string};
+}
+
+
 
 sub _d {
    my ($package, undef, $line) = caller 0;
