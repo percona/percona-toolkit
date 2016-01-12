@@ -73,7 +73,6 @@ system("$trunk/util/wait-to-exec '$scripts/wait-for-chunk.sh 12345 sakila city 1
 $output = output(
    sub { pt_table_checksum::main(@args, qw(-d sakila)); },
    stderr => 1,
-   keep_output => 1,
 );
 
 like(

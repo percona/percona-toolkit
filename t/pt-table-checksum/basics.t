@@ -72,7 +72,6 @@ ok(
       sub { pt_table_checksum::main(@args) },
       "$sample/default-results-$sandbox_version.txt",
       post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $6 " " $8}\'',
-      keep_output => 1,
    ),
    "Default checksum"
 );
