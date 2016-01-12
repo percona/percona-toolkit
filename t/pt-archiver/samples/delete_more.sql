@@ -4,7 +4,7 @@ use dm;
 
 CREATE TABLE `main_table-123` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-  `pub_date` date NOT NULL DEFAULT '0000-00-00',
+  `pub_date` date DEFAULT NULL,
   `c` varchar(255) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   KEY `pub_date` (`pub_date`)

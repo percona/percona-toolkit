@@ -345,7 +345,8 @@ like(
 # cause a MySQL warning while copying rows.
 
 $sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
-$master_dbh->do("INSERT INTO pt_osc.t VALUES (null, 'This string will be too long after we modify the table so it will cause a warning about the value being truncated in the new table.  The other column values are a single character.', NOW())");
+#This string will be too long after we modify the table so it will cause a warning about the value being truncated in the new table.  The other column values are a single character. Note: if STRICT_TRANS or STRICT_ALL is set , an error is raised instead of a warning. STRICT_TRANS is default in 5.7+
+$master_dbh->do("INSERT INTO pt_osc.t VALUES (null, 'This string will be too long.', NOW())");
 
 ($output, $exit_status) = full_output(
     sub { pt_online_schema_change::main(@args,
@@ -394,7 +395,7 @@ $output = output(
    like(
          $output,
          qr/Child tables:\s*`bug_1315130_a`\.`child_table_in_same_schema` \(approx\. 1 rows\)\s*`bug_1315130_b`\.`child_table_in_second_schema` \(approx\. 1 rows\)[^`]*?Will/s,
-         "Correctly identify child tables from other schemas and ignores tables from same schema referencig same named parent in other schema.",
+         "Identify child tables in other schemas and ignore child tables from same schema referencing same named parent in other schema.",
    );
 # clear databases with their foreign keys
 $sb->load_file('master', "$sample/bug-1315130_cleanup.sql");  
@@ -410,10 +411,16 @@ $sb->load_file('master', "$sample/bug-1340728_cleanup.sql");
 $sb->load_file('master', "$sample/bug-1340728.sql");
 
 # insert a few thousand rows (else test isn't valid)
-my $rows = 5000;
+# will make a big string to do an extended insert because it's much faster
+
+my $big_insert = 'INSERT INTO bug_1340728.test VALUES ';
+my $rows = 4999;
 for (my $i = 0; $i < $rows; $i++) {
-   $master_dbh->do("INSERT INTO bug_1340728.test VALUES (NULL, 'xx')");
+ $big_insert .= "(NULL, 'xx'),";
 }
+$big_insert .= "(NULL, 'xx')";
+
+$master_dbh->do($big_insert);
 
 
 $output = output(

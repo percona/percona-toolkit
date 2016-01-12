@@ -1,5 +1,122 @@
 USE `mysql`;
 
+/* -- new innodb system tables -- */ 
+CREATE TABLE IF NOT EXISTS  `help_category` (
+  `help_category_id` smallint(5) unsigned NOT NULL,
+  `name` char(64) NOT NULL,
+  `parent_category_id` smallint(5) unsigned DEFAULT NULL,
+  `url` text NOT NULL,
+  PRIMARY KEY (`help_category_id`),
+  UNIQUE KEY `name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 STATS_PERSISTENT=0 COMMENT='help categories';
+
+CREATE TABLE IF NOT EXISTS  `help_keyword` (
+  `help_keyword_id` int(10) unsigned NOT NULL,
+  `name` char(64) NOT NULL,
+  PRIMARY KEY (`help_keyword_id`),
+  UNIQUE KEY `name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 STATS_PERSISTENT=0 COMMENT='help keywords';
+
+
+CREATE TABLE IF NOT EXISTS `plugin` (
+  `name` varchar(64) NOT NULL DEFAULT '',
+  `dl` varchar(128) NOT NULL DEFAULT '',
+  PRIMARY KEY (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 STATS_PERSISTENT=0 COMMENT='MySQL plugins';
+
+CREATE TABLE IF NOT EXISTS `engine_cost` (
+  `engine_name` varchar(64) NOT NULL,
+  `device_type` int(11) NOT NULL,
+  `cost_name` varchar(64) NOT NULL,
+  `cost_value` float DEFAULT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `comment` varchar(1024) DEFAULT NULL,
+  PRIMARY KEY (`cost_name`,`engine_name`,`device_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 STATS_PERSISTENT=0;
+
+CREATE TABLE IF NOT EXISTS `gtid_executed` (
+  `source_uuid` char(36) NOT NULL COMMENT 'uuid of the source where the transaction was originally executed.',
+  `interval_start` bigint(20) NOT NULL COMMENT 'First number of interval.',
+  `interval_end` bigint(20) NOT NULL COMMENT 'Last number of interval.',
+  PRIMARY KEY (`source_uuid`,`interval_start`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+
+CREATE TABLE IF NOT EXISTS  `help_relation` (
+  `help_topic_id` int(10) unsigned NOT NULL,
+  `help_keyword_id` int(10) unsigned NOT NULL,
+  PRIMARY KEY (`help_keyword_id`,`help_topic_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 STATS_PERSISTENT=0 COMMENT='keyword-topic relation';
+
+CREATE TABLE IF NOT EXISTS `help_topic` (
+  `help_topic_id` int(10) unsigned NOT NULL,
+  `name` char(64) NOT NULL,
+  `help_category_id` smallint(5) unsigned NOT NULL,
+  `description` text NOT NULL,
+  `example` text NOT NULL,
+  `url` text NOT NULL,
+  PRIMARY KEY (`help_topic_id`),
+  UNIQUE KEY `name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 STATS_PERSISTENT=0 COMMENT='help topics';
+
+CREATE TABLE IF NOT EXISTS `server_cost` (
+  `cost_name` varchar(64) NOT NULL,
+  `cost_value` float DEFAULT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `comment` varchar(1024) DEFAULT NULL,
+  PRIMARY KEY (`cost_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 STATS_PERSISTENT=0;
+
+CREATE TABLE IF NOT EXISTS `servers` (
+  `Server_name` char(64) NOT NULL DEFAULT '',
+  `Host` char(64) NOT NULL DEFAULT '',
+  `Db` char(64) NOT NULL DEFAULT '',
+  `Username` char(64) NOT NULL DEFAULT '',
+  `Password` char(64) NOT NULL DEFAULT '',
+  `Port` int(4) NOT NULL DEFAULT '0',
+  `Socket` char(64) NOT NULL DEFAULT '',
+  `Wrapper` char(64) NOT NULL DEFAULT '',
+  `Owner` char(64) NOT NULL DEFAULT '',
+  PRIMARY KEY (`Server_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 STATS_PERSISTENT=0 COMMENT='MySQL Foreign Servers table';
+
+CREATE TABLE IF NOT EXISTS `time_zone` (
+  `Time_zone_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `Use_leap_seconds` enum('Y','N') NOT NULL DEFAULT 'N',
+  PRIMARY KEY (`Time_zone_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 STATS_PERSISTENT=0 COMMENT='Time zones';
+
+CREATE TABLE IF NOT EXISTS `time_zone_leap_second` (
+  `Transition_time` bigint(20) NOT NULL,
+  `Correction` int(11) NOT NULL,
+  PRIMARY KEY (`Transition_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 STATS_PERSISTENT=0 COMMENT='Leap seconds information for time zones';
+
+
+CREATE TABLE IF NOT EXISTS `time_zone_name` (
+  `Name` char(64) NOT NULL,
+  `Time_zone_id` int(10) unsigned NOT NULL,
+  PRIMARY KEY (`Name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 STATS_PERSISTENT=0 COMMENT='Time zone names';
+
+CREATE TABLE IF NOT EXISTS `time_zone_transition` (
+  `Time_zone_id` int(10) unsigned NOT NULL,
+  `Transition_time` bigint(20) NOT NULL,
+  `Transition_type_id` int(10) unsigned NOT NULL,
+  PRIMARY KEY (`Time_zone_id`,`Transition_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 STATS_PERSISTENT=0 COMMENT='Time zone transitions';
+
+CREATE TABLE IF NOT EXISTS `time_zone_transition_type` (
+     `Time_zone_id` int(10) unsigned NOT NULL,
+     `Transition_type_id` int(10) unsigned NOT NULL,
+     `Offset` int(11) NOT NULL DEFAULT '0',
+     `Is_DST` tinyint(3) unsigned NOT NULL DEFAULT '0',
+     `Abbreviation` char(8) NOT NULL DEFAULT '',
+     PRIMARY KEY (`Time_zone_id`,`Transition_type_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 STATS_PERSISTENT=0 COMMENT='Time zone transition types';
+
+/* ----------- */
+
 CREATE TABLE IF NOT EXISTS `innodb_index_stats` (
   `database_name` varchar(64) COLLATE utf8_bin NOT NULL,
   `table_name` varchar(64) COLLATE utf8_bin NOT NULL,

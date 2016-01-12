@@ -42,6 +42,7 @@ elsif ( !@{$master_dbh->selectall_arrayref("show databases like 'sakila'")} ) {
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my $slave2_dsn = 'h=127.1,P=12347,u=msandbox,p=msandbox';
 my @args       = ($master_dsn, qw(--set-vars innodb_lock_wait_timeout=3));
 my $row;
 my $output;
@@ -71,6 +72,7 @@ ok(
       sub { pt_table_checksum::main(@args) },
       "$sample/default-results-$sandbox_version.txt",
       post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $6 " " $8}\'',
+      keep_output => 1,
    ),
    "Default checksum"
 );
@@ -111,6 +113,7 @@ is(
    $row->[0],
    '... same number of chunks on slave'
 ) or diag($row->[0], ' ', $row2->[0]);
+
 
 # ############################################################################
 # --[no]replicate-check and, implicitly, the tool's exit status.
@@ -353,7 +356,7 @@ like(
 $output = output(
    sub { $exit_status =  pt_table_checksum::main(
    qw(--user msandbox --pass msandbox),
-   qw(-S /tmp/12345/mysql_sandbox12345.sock --set-vars innodb_lock_wait_timeout=3)) },
+   qw(-S /tmp/12345/mysql_sandbox12345.sock --set-vars innodb_lock_wait_timeout=3 --run-time 5)) },
    stderr => 1,
 );
 
@@ -367,19 +370,44 @@ $output = output(
 #) or diag($output);
 
 # ... and use this one instead:
+
+# Aaaaand this one also no longer works because of
+# https://bugs.launchpad.net/percona-toolkit/+bug/1042727
+# pt-table-checksum will keep trying to find a slave ... forever.
+# (notice the --runtime in the original command otherwise it loops forever)
+# So we comment out these other 2 tests
+
+#like(
+#   $output,
+#   qr/sakila.store/,
+#   "No host in DSN, checksums happened"
+#) or diag($output);
+
+#is(
+#   PerconaTest::count_checksum_results($output, 'errors'),
+#   0,
+#   "No host in DSN, 0 errors"
+#) or diag($output);
+
+
+# and instead check if it waits for slaves
+
 like(
    $output,
-   qr/sakila.store/,
-   "No host in DSN, checksums happened"
+   qr/replica.*stopped.*waiting/i,
+   "Warns when waiting for replicas."
 ) or diag($output);
 
-is(
-   PerconaTest::count_checksum_results($output, 'errors'),
-   0,
-   "No host in DSN, 0 errors"
-) or diag($output);
 
-# While we're at it, we might as well test bug 1087804:
+# Check if no slaves were found. Bug 1087804:
+# Notice we simply execute the command but on 12347, the slaveless slave.
+$output = output(
+   sub { $exit_status =  pt_table_checksum::main(
+   qw(--user msandbox --pass msandbox),
+   ('--set-vars', 'innodb_lock_wait_timeout=3', '--run-time', '5', $slave2_dsn )) },
+   stderr => 1,
+);
+
 like(
    $output,
    qr/no slaves were found/,
@@ -525,7 +553,6 @@ is(
    0,
    "sql_mode ONLY_FULL_GROUP_BY is overidden"
 );
-
 
 # #############################################################################
 # Done.

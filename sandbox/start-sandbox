@@ -29,7 +29,7 @@ debug_sandbox() {
 
 mysql_upgrade_on() {
    local cnf_file="$1"
-   local upgrade="$(which mysql_upgrade)"
+   local upgrade="$PERCONA_TOOLKIT_SANDBOX/bin/mysql_upgrade"
 
    $upgrade --defaults-file=$cnf_file --skip-write-binlog
 }
