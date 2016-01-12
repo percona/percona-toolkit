@@ -13,6 +13,7 @@ use Test::More;
 
 use PerconaTest;
 use Sandbox;
+use SqlModes;
 require "$trunk/bin/pt-show-grants";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
@@ -90,15 +91,17 @@ like(
    qr/\d\d:\d\d:\d\d\n\z/,
    'No output when all users skipped'
 );
-
 # #############################################################################
 # pt-show-grant doesn't support column-level grants
 # https://bugs.launchpad.net/percona-toolkit/+bug/866075
 # #############################################################################
 $sb->load_file('master', 't/pt-show-grants/samples/column-grants.sql');
+# momentarily disable NO_AUTO_CREATE_USER
+my $modes = new SqlModes($dbh, global=>1);
+$modes->del('NO_AUTO_CREATE_USER');
 diag(`/tmp/12345/use -u root -e "GRANT SELECT(DateCreated, PckPrice, PaymentStat, SANumber) ON test.t TO 'sally'\@'%'"`);
 diag(`/tmp/12345/use -u root -e "GRANT SELECT(city_id), INSERT(city) ON sakila.city TO 'sally'\@'%'"`);
-
+$modes->restore_original_modes();
 ok(
    no_diff(
       sub { pt_show_grants::main('-F', $cnf, qw(--only sally --no-header)) },
@@ -141,6 +144,7 @@ ok(
 
 diag(`/tmp/12345/use -u root -e "DROP USER 'sally'\@'%'"`);
 
+DONE:
 # #############################################################################
 # Done.
 # #############################################################################

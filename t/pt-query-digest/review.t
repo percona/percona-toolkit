@@ -13,6 +13,7 @@ use Test::More;
 
 use PerconaTest;
 use Sandbox;
+use SqlModes;
 require "$trunk/bin/pt-query-digest";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
@@ -136,6 +137,14 @@ ok(
 
 # Make sure that when we run with all-0 timestamps they don't show up in the
 # output because they are useless of course (issue 202).
+
+# Since some sql_modes don't allow '0000-00-00' dates, to keep this test valid
+# we simply remove them for a moment and then restore.
+my $modes = new SqlModes($dbh);
+$modes->del(qw(STRICT_TRANS_TABLES STRICT_ALL_TABLES NO_ZERO_IN_DATE NO_ZERO_DATE));
+
+my $currmodes = $modes->get_modes_string();
+
 $dbh->do("update test.query_review set first_seen='0000-00-00 00:00:00', "
    . " last_seen='0000-00-00 00:00:00'");
 $output = run_with("slow022.txt",
@@ -143,6 +152,8 @@ $output = run_with("slow022.txt",
 unlike($output, qr/last_seen/, 'no last_seen when 0000 timestamp');
 unlike($output, qr/first_seen/, 'no first_seen when 0000 timestamp');
 unlike($output, qr/0000-00-00 00:00:00/, 'no 0000-00-00 00:00:00 timestamp');
+
+$modes->restore_original_modes();
 
 # ##########################################################################
 # XXX The following tests will cause non-deterministic data, so run them

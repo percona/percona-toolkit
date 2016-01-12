@@ -13,6 +13,8 @@ use Test::More;
 
 use PerconaTest;
 use Sandbox;
+use SqlModes;
+
 require "$trunk/bin/pt-show-grants";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
@@ -35,9 +37,14 @@ my $cnf = '/tmp/12345/my.sandbox.cnf';
 # Issue 551: mk-show-grants does not support listing all grants for a single
 # user (over multiple hosts)
 # #############################################################################
+
+# to make creating users easier we remove NO_AUTO_CREATE_USER mode
+my $modes = new SqlModes($dbh, global=>1);
+$modes->del('NO_AUTO_CREATE_USER');
 diag(`/tmp/12345/use -u root -e "GRANT USAGE ON *.* TO 'bob'\@'%'"`);
 diag(`/tmp/12345/use -u root -e "GRANT USAGE ON *.* TO 'bob'\@'localhost'"`);
 diag(`/tmp/12345/use -u root -e "GRANT USAGE ON *.* TO 'bob'\@'192.168.1.1'"`);
+$modes->restore_original_modes;
 
 $output = output(
    sub { pt_show_grants::main('-F', $cnf, qw(--only bob --no-header)); }
