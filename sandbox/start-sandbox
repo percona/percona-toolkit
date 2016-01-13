@@ -146,6 +146,13 @@ make_sandbox() {
             [ -f "$sql" ] && /tmp/$port/use < $sql
          done
       fi
+
+      # create sys schema (if exists and is desired)
+      if [ -n "$SYS_SCHEMA" ]; then
+         local sys_dir="$PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version/sys"
+         cd "$sys_dir"
+         [ -f "$sys_dir/sys.sql" ] && /tmp/$port/use < "$sys_dir/sys.sql"
+      fi
    else
       echo "Sandbox $type $port failed to start." >&2
       debug_sandbox $port
