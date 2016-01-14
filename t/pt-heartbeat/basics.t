@@ -47,7 +47,6 @@ $master_dbh->do(q{CREATE TABLE test.heartbeat (
           ) ENGINE=MEMORY});
 $sb->wait_for_slaves;
 
-goto START_HERE;
 
 # Issue: pt-heartbeat should check that the heartbeat table has a row
 $output = output(
@@ -183,7 +182,6 @@ like(
    '--check output has :port'
 );
 
-START_HERE:
 # #############################################################################
 # Bug 1004567: pt-heartbeat --update --replace causes duplicate key error
 # #############################################################################
@@ -218,17 +216,12 @@ $master_dbh->do("SET SQL_LOG_BIN=0");
 $master_dbh->do("DROP TABLE test.heartbeat");
 $master_dbh->do("SET SQL_LOG_BIN=1");
 
-print STDERR "output:\n";
 # Re-create the heartbeat table on the master.
 $output = output(
    sub { pt_heartbeat::main("F=/tmp/12345/my.sandbox.cnf",
       qw(-D test --update --replace --create-table --run-time 1))
    }
 );
-
-print STDERR "---\n";
-print STDERR $output;
-print STDERR "---\n";
 
 $row = $master_dbh->selectrow_arrayref('SELECT server_id FROM test.heartbeat');
 is(
@@ -245,7 +238,7 @@ is(
    '',
    "No slave error"
 );
-goto DONE;
+
 # #############################################################################
 # --check-read-only
 # #############################################################################
@@ -253,12 +246,26 @@ goto DONE;
 diag(`/tmp/12345/use -u root -e "GRANT ALL ON *.* TO 'bob'\@'%' IDENTIFIED BY 'msandbox'"`);
 diag(`/tmp/12345/use -u root -e "REVOKE SUPER ON *.* FROM 'bob'\@'%'"`);
 
+# Some subtlety here. 'bob' doesn't have enough privileges to change binlog_format
+# to STATEMENT if it's set to ROW, so the tool will fail with a different error 
+# message earlier in the code. (This should be tested separately)
+# So we set binlog_format = STATEMENT globaly before these tests and then revert.
+# Notice these tests are run on slave1 so we change it there.
+
+# get original binlog_format, so we can revert later
+my (undef, $orig_binlog_format) = $slave1_dbh->selectrow_array('SHOW VARIABLES LIKE "binlog_format"'); 
+diag(`/tmp/12346/use -u root -e "set global binlog_format=STATEMENT"`);
+
 $output = output(
    sub { pt_heartbeat::main("u=bob,F=/tmp/12346/my.sandbox.cnf",
       qw(-D test --interval 0.8 --update --replace --run-time 1))
    },
    stderr => 1
 );
+
+my $b = $ENV{PERCONA_TOOLKIT_BRANCH};
+$output = `perl $b/bin/pt-heartbeat -D test --interval 0.8 --update --replace --run-time 1 u=bob,F=/tmp/12346/my.sandbox.cnf 2>&1`;
+
 
 like(
    $output,
@@ -268,7 +275,7 @@ like(
 
 $output = output(
    sub { pt_heartbeat::main("u=bob,F=/tmp/12346/my.sandbox.cnf",
-      qw(-D test --update --replace --run-time 1 --check-read-only))
+      qw(-D test --update --replace --run-time 5 --check-read-only))
    },
    stderr => 1
 );
@@ -280,13 +287,17 @@ unlike(
 );
 
 diag(`/tmp/12345/use -u root -e "DROP USER 'bob'\@'%'"`);
+#revert to original binlog_format
+diag(`/tmp/12346/use -u root -e "set global binlog_format=$orig_binlog_format"`);
+diag(`/tmp/12345/use -u root -e "DROP DATABASE test"`);
 
-DONE:
+
 # #############################################################################
 # Done.
 # #############################################################################
 diag(`rm $pid_file $sent_file 2>/dev/null`);
 $sb->wipe_clean($master_dbh);
+$sb->wipe_clean($slave1_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 
 done_testing;
