@@ -59,7 +59,7 @@ foreach my $port (@ports) {
       "--update on $port started"
    );
 }
-
+sleep 5;
 # Check heartbeat on master.
 my $rows = $master_dbh->selectall_hashref("select * from test.heartbeat", 'server_id');
 
@@ -152,7 +152,7 @@ ok(
 # ############################################################################
 
 # $rows already has slave2 heartbeat info.
-sleep 1;
+sleep 4;
 
 my $rows2 = $slave2_dbh->selectall_hashref("select * from test.heartbeat", 'server_id');
 
@@ -211,6 +211,7 @@ $output = output(
       qw(-D test --check --print-master-server-id --master-server-id 12345)) },
 );
 
+sleep 3;
 like(
    $output,
    qr/0\.\d\d\s+12345\n/,
