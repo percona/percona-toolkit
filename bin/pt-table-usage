@@ -14,6 +14,11 @@ use warnings FATAL => 'all';
 BEGIN {
    $INC{$_} = __FILE__ for map { (my $pkg = "$_.pm") =~ s!::!/!g; $pkg } (qw(
       DSNParser
+      Lmo::Utils
+      Lmo::Meta
+      Lmo::Object
+      Lmo::Types
+      Lmo
       OptionParser
       SlowLogParser
       Transformers
@@ -22,6 +27,7 @@ BEGIN {
       FileIterator
       SQLParser
       TableUsage
+      VersionParser
       Daemon
       Runtime
       Progress
@@ -455,6 +461,656 @@ sub _d {
 # ###########################################################################
 # End DSNParser package
 # ###########################################################################
+
+# ###########################################################################
+# Lmo::Utils package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Lmo/Utils.pm
+#   t/lib/Lmo/Utils.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Lmo::Utils;
+
+use strict;
+use warnings qw( FATAL all );
+require Exporter;
+our (@ISA, @EXPORT, @EXPORT_OK);
+
+BEGIN {
+   @ISA = qw(Exporter);
+   @EXPORT = @EXPORT_OK = qw(
+      _install_coderef
+      _unimport_coderefs
+      _glob_for
+      _stash_for
+   );
+}
+
+{
+   no strict 'refs';
+   sub _glob_for {
+      return \*{shift()}
+   }
+
+   sub _stash_for {
+      return \%{ shift() . "::" };
+   }
+}
+
+sub _install_coderef {
+   my ($to, $code) = @_;
+
+   return *{ _glob_for $to } = $code;
+}
+
+sub _unimport_coderefs {
+   my ($target, @names) = @_;
+   return unless @names;
+   my $stash = _stash_for($target);
+   foreach my $name (@names) {
+      if ($stash->{$name} and defined(&{$stash->{$name}})) {
+         delete $stash->{$name};
+      }
+   }
+}
+
+1;
+}
+# ###########################################################################
+# End Lmo::Utils package
+# ###########################################################################
+
+# ###########################################################################
+# Lmo::Meta package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Lmo/Meta.pm
+#   t/lib/Lmo/Meta.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Lmo::Meta;
+use strict;
+use warnings qw( FATAL all );
+
+my %metadata_for;
+
+sub new {
+   my $class = shift;
+   return bless { @_ }, $class
+}
+
+sub metadata_for {
+   my $self    = shift;
+   my ($class) = @_;
+
+   return $metadata_for{$class} ||= {};
+}
+
+sub class { shift->{class} }
+
+sub attributes {
+   my $self = shift;
+   return keys %{$self->metadata_for($self->class)}
+}
+
+sub attributes_for_new {
+   my $self = shift;
+   my @attributes;
+
+   my $class_metadata = $self->metadata_for($self->class);
+   while ( my ($attr, $meta) = each %$class_metadata ) {
+      if ( exists $meta->{init_arg} ) {
+         push @attributes, $meta->{init_arg}
+               if defined $meta->{init_arg};
+      }
+      else {
+         push @attributes, $attr;
+      }
+   }
+   return @attributes;
+}
+
+1;
+}
+# ###########################################################################
+# End Lmo::Meta package
+# ###########################################################################
+
+# ###########################################################################
+# Lmo::Object package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Lmo/Object.pm
+#   t/lib/Lmo/Object.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Lmo::Object;
+
+use strict;
+use warnings qw( FATAL all );
+
+use Carp ();
+use Scalar::Util qw(blessed);
+
+use Lmo::Meta;
+use Lmo::Utils qw(_glob_for);
+
+sub new {
+   my $class = shift;
+   my $args  = $class->BUILDARGS(@_);
+
+   my $class_metadata = Lmo::Meta->metadata_for($class);
+
+   my @args_to_delete;
+   while ( my ($attr, $meta) = each %$class_metadata ) {
+      next unless exists $meta->{init_arg};
+      my $init_arg = $meta->{init_arg};
+
+      if ( defined $init_arg ) {
+         $args->{$attr} = delete $args->{$init_arg};
+      }
+      else {
+         push @args_to_delete, $attr;
+      }
+   }
+
+   delete $args->{$_} for @args_to_delete;
+
+   for my $attribute ( keys %$args ) {
+      if ( my $coerce = $class_metadata->{$attribute}{coerce} ) {
+         $args->{$attribute} = $coerce->($args->{$attribute});
+      }
+      if ( my $isa_check = $class_metadata->{$attribute}{isa} ) {
+         my ($check_name, $check_sub) = @$isa_check;
+         $check_sub->($args->{$attribute});
+      }
+   }
+
+   while ( my ($attribute, $meta) = each %$class_metadata ) {
+      next unless $meta->{required};
+      Carp::confess("Attribute ($attribute) is required for $class")
+         if ! exists $args->{$attribute}
+   }
+
+   my $self = bless $args, $class;
+
+   my @build_subs;
+   my $linearized_isa = mro::get_linear_isa($class);
+
+   for my $isa_class ( @$linearized_isa ) {
+      unshift @build_subs, *{ _glob_for "${isa_class}::BUILD" }{CODE};
+   }
+   my @args = %$args;
+   for my $sub (grep { defined($_) && exists &$_ } @build_subs) {
+      $sub->( $self, @args);
+   }
+   return $self;
+}
+
+sub BUILDARGS {
+   shift; # No need for the classname
+   if ( @_ == 1 && ref($_[0]) ) {
+      Carp::confess("Single parameters to new() must be a HASH ref, not $_[0]")
+         unless ref($_[0]) eq ref({});
+      return {%{$_[0]}} # We want a new reference, always
+   }
+   else {
+      return { @_ };
+   }
+}
+
+sub meta {
+   my $class = shift;
+   $class    = Scalar::Util::blessed($class) || $class;
+   return Lmo::Meta->new(class => $class);
+}
+
+1;
+}
+# ###########################################################################
+# End Lmo::Object package
+# ###########################################################################
+
+# ###########################################################################
+# Lmo::Types package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Lmo/Types.pm
+#   t/lib/Lmo/Types.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Lmo::Types;
+
+use strict;
+use warnings qw( FATAL all );
+
+use Carp ();
+use Scalar::Util qw(looks_like_number blessed);
+
+
+our %TYPES = (
+   Bool   => sub { !$_[0] || (defined $_[0] && looks_like_number($_[0]) && $_[0] == 1) },
+   Num    => sub { defined $_[0] && looks_like_number($_[0]) },
+   Int    => sub { defined $_[0] && looks_like_number($_[0]) && $_[0] == int($_[0]) },
+   Str    => sub { defined $_[0] },
+   Object => sub { defined $_[0] && blessed($_[0]) },
+   FileHandle => sub { local $@; require IO::Handle; fileno($_[0]) && $_[0]->opened },
+
+   map {
+      my $type = /R/ ? $_ : uc $_;
+      $_ . "Ref" => sub { ref $_[0] eq $type }
+   } qw(Array Code Hash Regexp Glob Scalar)
+);
+
+sub check_type_constaints {
+   my ($attribute, $type_check, $check_name, $val) = @_;
+   ( ref($type_check) eq 'CODE'
+      ? $type_check->($val)
+      : (ref $val eq $type_check
+         || ($val && $val eq $type_check)
+         || (exists $TYPES{$type_check} && $TYPES{$type_check}->($val)))
+   )
+   || Carp::confess(
+        qq<Attribute ($attribute) does not pass the type constraint because: >
+      . qq<Validation failed for '$check_name' with value >
+      . (defined $val ? Lmo::Dumper($val) : 'undef') )
+}
+
+sub _nested_constraints {
+   my ($attribute, $aggregate_type, $type) = @_;
+
+   my $inner_types;
+   if ( $type =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
+      $inner_types = _nested_constraints($1, $2);
+   }
+   else {
+      $inner_types = $TYPES{$type};
+   }
+
+   if ( $aggregate_type eq 'ArrayRef' ) {
+      return sub {
+         my ($val) = @_;
+         return unless ref($val) eq ref([]);
+
+         if ($inner_types) {
+            for my $value ( @{$val} ) {
+               return unless $inner_types->($value)
+            }
+         }
+         else {
+            for my $value ( @{$val} ) {
+               return unless $value && ($value eq $type
+                        || (Scalar::Util::blessed($value) && $value->isa($type)));
+            }
+         }
+         return 1;
+      };
+   }
+   elsif ( $aggregate_type eq 'Maybe' ) {
+      return sub {
+         my ($value) = @_;
+         return 1 if ! defined($value);
+         if ($inner_types) {
+            return unless $inner_types->($value)
+         }
+         else {
+            return unless $value eq $type
+                        || (Scalar::Util::blessed($value) && $value->isa($type));
+         }
+         return 1;
+      }
+   }
+   else {
+      Carp::confess("Nested aggregate types are only implemented for ArrayRefs and Maybe");
+   }
+}
+
+1;
+}
+# ###########################################################################
+# End Lmo::Types package
+# ###########################################################################
+
+# ###########################################################################
+# Lmo package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Lmo.pm
+#   t/lib/Lmo.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+BEGIN {
+$INC{"Lmo.pm"} = __FILE__;
+package Lmo;
+our $VERSION = '0.30_Percona'; # Forked from 0.30 of Mo.
+
+
+use strict;
+use warnings qw( FATAL all );
+
+use Carp ();
+use Scalar::Util qw(looks_like_number blessed);
+
+use Lmo::Meta;
+use Lmo::Object;
+use Lmo::Types;
+
+use Lmo::Utils;
+
+my %export_for;
+sub import {
+   warnings->import(qw(FATAL all));
+   strict->import();
+
+   my $caller     = scalar caller(); # Caller's package
+   my %exports = (
+      extends  => \&extends,
+      has      => \&has,
+      with     => \&with,
+      override => \&override,
+      confess  => \&Carp::confess,
+   );
+
+   $export_for{$caller} = \%exports;
+
+   for my $keyword ( keys %exports ) {
+      _install_coderef "${caller}::$keyword" => $exports{$keyword};
+   }
+
+   if ( !@{ *{ _glob_for "${caller}::ISA" }{ARRAY} || [] } ) {
+      @_ = "Lmo::Object";
+      goto *{ _glob_for "${caller}::extends" }{CODE};
+   }
+}
+
+sub extends {
+   my $caller = scalar caller();
+   for my $class ( @_ ) {
+      _load_module($class);
+   }
+   _set_package_isa($caller, @_);
+   _set_inherited_metadata($caller);
+}
+
+sub _load_module {
+   my ($class) = @_;
+   
+   (my $file = $class) =~ s{::|'}{/}g;
+   $file .= '.pm';
+   { local $@; eval { require "$file" } } # or warn $@;
+   return;
+}
+
+sub with {
+   my $package = scalar caller();
+   require Role::Tiny;
+   for my $role ( @_ ) {
+      _load_module($role);
+      _role_attribute_metadata($package, $role);
+   }
+   Role::Tiny->apply_roles_to_package($package, @_);
+}
+
+sub _role_attribute_metadata {
+   my ($package, $role) = @_;
+
+   my $package_meta = Lmo::Meta->metadata_for($package);
+   my $role_meta    = Lmo::Meta->metadata_for($role);
+
+   %$package_meta = (%$role_meta, %$package_meta);
+}
+
+sub has {
+   my $names  = shift;
+   my $caller = scalar caller();
+
+   my $class_metadata = Lmo::Meta->metadata_for($caller);
+   
+   for my $attribute ( ref $names ? @$names : $names ) {
+      my %args   = @_;
+      my $method = ($args{is} || '') eq 'ro'
+         ? sub {
+            Carp::confess("Cannot assign a value to a read-only accessor at reader ${caller}::${attribute}")
+               if $#_;
+            return $_[0]{$attribute};
+         }
+         : sub {
+            return $#_
+                  ? $_[0]{$attribute} = $_[1]
+                  : $_[0]{$attribute};
+         };
+
+      $class_metadata->{$attribute} = ();
+
+      if ( my $type_check = $args{isa} ) {
+         my $check_name = $type_check;
+         
+         if ( my ($aggregate_type, $inner_type) = $type_check =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
+            $type_check = Lmo::Types::_nested_constraints($attribute, $aggregate_type, $inner_type);
+         }
+         
+         my $check_sub = sub {
+            my ($new_val) = @_;
+            Lmo::Types::check_type_constaints($attribute, $type_check, $check_name, $new_val);
+         };
+         
+         $class_metadata->{$attribute}{isa} = [$check_name, $check_sub];
+         my $orig_method = $method;
+         $method = sub {
+            $check_sub->($_[1]) if $#_;
+            goto &$orig_method;
+         };
+      }
+
+      if ( my $builder = $args{builder} ) {
+         my $original_method = $method;
+         $method = sub {
+               $#_
+                  ? goto &$original_method
+                  : ! exists $_[0]{$attribute}
+                     ? $_[0]{$attribute} = $_[0]->$builder
+                     : goto &$original_method
+         };
+      }
+
+      if ( my $code = $args{default} ) {
+         Carp::confess("${caller}::${attribute}'s default is $code, but should be a coderef")
+               unless ref($code) eq 'CODE';
+         my $original_method = $method;
+         $method = sub {
+               $#_
+                  ? goto &$original_method
+                  : ! exists $_[0]{$attribute}
+                     ? $_[0]{$attribute} = $_[0]->$code
+                     : goto &$original_method
+         };
+      }
+
+      if ( my $role = $args{does} ) {
+         my $original_method = $method;
+         $method = sub {
+            if ( $#_ ) {
+               Carp::confess(qq<Attribute ($attribute) doesn't consume a '$role' role">)
+                  unless Scalar::Util::blessed($_[1]) && eval { $_[1]->does($role) }
+            }
+            goto &$original_method
+         };
+      }
+
+      if ( my $coercion = $args{coerce} ) {
+         $class_metadata->{$attribute}{coerce} = $coercion;
+         my $original_method = $method;
+         $method = sub {
+            if ( $#_ ) {
+               return $original_method->($_[0], $coercion->($_[1]))
+            }
+            goto &$original_method;
+         }
+      }
+
+      _install_coderef "${caller}::$attribute" => $method;
+
+      if ( $args{required} ) {
+         $class_metadata->{$attribute}{required} = 1;
+      }
+
+      if ($args{clearer}) {
+         _install_coderef "${caller}::$args{clearer}"
+            => sub { delete shift->{$attribute} }
+      }
+
+      if ($args{predicate}) {
+         _install_coderef "${caller}::$args{predicate}"
+            => sub { exists shift->{$attribute} }
+      }
+
+      if ($args{handles}) {
+         _has_handles($caller, $attribute, \%args);
+      }
+
+      if (exists $args{init_arg}) {
+         $class_metadata->{$attribute}{init_arg} = $args{init_arg};
+      }
+   }
+}
+
+sub _has_handles {
+   my ($caller, $attribute, $args) = @_;
+   my $handles = $args->{handles};
+
+   my $ref = ref $handles;
+   my $kv;
+   if ( $ref eq ref [] ) {
+         $kv = { map { $_,$_ } @{$handles} };
+   }
+   elsif ( $ref eq ref {} ) {
+         $kv = $handles;
+   }
+   elsif ( $ref eq ref qr// ) {
+         Carp::confess("Cannot delegate methods based on a Regexp without a type constraint (isa)")
+            unless $args->{isa};
+         my $target_class = $args->{isa};
+         $kv = {
+            map   { $_, $_     }
+            grep  { $_ =~ $handles }
+            grep  { !exists $Lmo::Object::{$_} && $target_class->can($_) }
+            grep  { !$export_for{$target_class}->{$_} }
+            keys %{ _stash_for $target_class }
+         };
+   }
+   else {
+         Carp::confess("handles for $ref not yet implemented");
+   }
+
+   while ( my ($method, $target) = each %{$kv} ) {
+         my $name = _glob_for "${caller}::$method";
+         Carp::confess("You cannot overwrite a locally defined method ($method) with a delegation")
+            if defined &$name;
+
+         my ($target, @curried_args) = ref($target) ? @$target : $target;
+         *$name = sub {
+            my $self        = shift;
+            my $delegate_to = $self->$attribute();
+            my $error = "Cannot delegate $method to $target because the value of $attribute";
+            Carp::confess("$error is not defined") unless $delegate_to;
+            Carp::confess("$error is not an object (got '$delegate_to')")
+               unless Scalar::Util::blessed($delegate_to) || (!ref($delegate_to) && $delegate_to->can($target));
+            return $delegate_to->$target(@curried_args, @_);
+         }
+   }
+}
+
+sub _set_package_isa {
+   my ($package, @new_isa) = @_;
+   my $package_isa  = \*{ _glob_for "${package}::ISA" };
+   @{*$package_isa} = @new_isa;
+}
+
+sub _set_inherited_metadata {
+   my $class = shift;
+   my $class_metadata = Lmo::Meta->metadata_for($class);
+   my $linearized_isa = mro::get_linear_isa($class);
+   my %new_metadata;
+
+   for my $isa_class (reverse @$linearized_isa) {
+      my $isa_metadata = Lmo::Meta->metadata_for($isa_class);
+      %new_metadata = (
+         %new_metadata,
+         %$isa_metadata,
+      );
+   }
+   %$class_metadata = %new_metadata;
+}
+
+sub unimport {
+   my $caller = scalar caller();
+   my $target = caller;
+  _unimport_coderefs($target, keys %{$export_for{$caller}});
+}
+
+sub Dumper {
+   require Data::Dumper;
+   local $Data::Dumper::Indent    = 0;
+   local $Data::Dumper::Sortkeys  = 0;
+   local $Data::Dumper::Quotekeys = 0;
+   local $Data::Dumper::Terse     = 1;
+
+   Data::Dumper::Dumper(@_)
+}
+
+BEGIN {
+   if ($] >= 5.010) {
+      { local $@; require mro; }
+   }
+   else {
+      local $@;
+      eval {
+         require MRO::Compat;
+      } or do {
+         *mro::get_linear_isa = *mro::get_linear_isa_dfs = sub {
+            no strict 'refs';
+
+            my $classname = shift;
+
+            my @lin = ($classname);
+            my %stored;
+            foreach my $parent (@{"$classname\::ISA"}) {
+               my $plin = mro::get_linear_isa_dfs($parent);
+               foreach (@$plin) {
+                     next if exists $stored{$_};
+                     push(@lin, $_);
+                     $stored{$_} = 1;
+               }
+            }
+            return \@lin;
+         };
+      }
+   }
+}
+
+sub override {
+   my ($methods, $code) = @_;
+   my $caller          = scalar caller;
+
+   for my $method ( ref($methods) ? @$methods : $methods ) {
+      my $full_method     = "${caller}::${method}";
+      *{_glob_for $full_method} = $code;
+   }
+}
+
+}
+1;
+}
+# ###########################################################################
+# End Lmo package
+# ###########################################################################
+
 
 # ###########################################################################
 # OptionParser package
@@ -2924,6 +3580,201 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# VersionParser package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/VersionParser.pm
+#   t/lib/VersionParser.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package VersionParser;
+
+use Lmo;
+use Scalar::Util qw(blessed);
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use overload (
+   '""'     => "version",
+   '<=>'    => "cmp",
+   'cmp'    => "cmp",
+   fallback => 1,
+);
+
+use Carp ();
+
+our $VERSION = 0.01;
+
+has major => (
+    is       => 'ro',
+    isa      => 'Int',
+    required => 1,
+);
+
+has [qw( minor revision )] => (
+    is  => 'ro',
+    isa => 'Num',
+);
+
+has flavor => (
+    is      => 'ro',
+    isa     => 'Str',
+    default => sub { 'Unknown' },
+);
+
+has innodb_version => (
+    is      => 'ro',
+    isa     => 'Str',
+    default => sub { 'NO' },
+);
+
+sub series {
+   my $self = shift;
+   return $self->_join_version($self->major, $self->minor);
+}
+
+sub version {
+   my $self = shift;
+   return $self->_join_version($self->major, $self->minor, $self->revision);
+}
+
+sub is_in {
+   my ($self, $target) = @_;
+
+   return $self eq $target;
+}
+
+sub _join_version {
+    my ($self, @parts) = @_;
+
+    return join ".", map { my $c = $_; $c =~ s/^0\./0/; $c } grep defined, @parts;
+}
+sub _split_version {
+   my ($self, $str) = @_;
+   my @version_parts = map { s/^0(?=\d)/0./; $_ } $str =~ m/(\d+)/g;
+   return @version_parts[0..2];
+}
+
+sub normalized_version {
+   my ( $self ) = @_;
+   my $result = sprintf('%d%02d%02d', map { $_ || 0 } $self->major,
+                                                      $self->minor,
+                                                      $self->revision);
+   PTDEBUG && _d($self->version, 'normalizes to', $result);
+   return $result;
+}
+
+sub comment {
+   my ( $self, $cmd ) = @_;
+   my $v = $self->normalized_version();
+
+   return "/*!$v $cmd */"
+}
+
+my @methods = qw(major minor revision);
+sub cmp {
+   my ($left, $right) = @_;
+   my $right_obj = (blessed($right) && $right->isa(ref($left)))
+                   ? $right
+                   : ref($left)->new($right);
+
+   my $retval = 0;
+   for my $m ( @methods ) {
+      last unless defined($left->$m) && defined($right_obj->$m);
+      $retval = $left->$m <=> $right_obj->$m;
+      last if $retval;
+   }
+   return $retval;
+}
+
+sub BUILDARGS {
+   my $self = shift;
+
+   if ( @_ == 1 ) {
+      my %args;
+      if ( blessed($_[0]) && $_[0]->can("selectrow_hashref") ) {
+         PTDEBUG && _d("VersionParser got a dbh, trying to get the version");
+         my $dbh = $_[0];
+         local $dbh->{FetchHashKeyName} = 'NAME_lc';
+         my $query = eval {
+            $dbh->selectall_arrayref(q/SHOW VARIABLES LIKE 'version%'/, { Slice => {} })
+         };
+         if ( $query ) {
+            $query = { map { $_->{variable_name} => $_->{value} } @$query };
+            @args{@methods} = $self->_split_version($query->{version});
+            $args{flavor} = delete $query->{version_comment}
+                  if $query->{version_comment};
+         }
+         elsif ( eval { ($query) = $dbh->selectrow_array(q/SELECT VERSION()/) } ) {
+            @args{@methods} = $self->_split_version($query);
+         }
+         else {
+            Carp::confess("Couldn't get the version from the dbh while "
+                        . "creating a VersionParser object: $@");
+         }
+         $args{innodb_version} = eval { $self->_innodb_version($dbh) };
+      }
+      elsif ( !ref($_[0]) ) {
+         @args{@methods} = $self->_split_version($_[0]);
+      }
+
+      for my $method (@methods) {
+         delete $args{$method} unless defined $args{$method};
+      }
+      @_ = %args if %args;
+   }
+
+   return $self->SUPER::BUILDARGS(@_);
+}
+
+sub _innodb_version {
+   my ( $self, $dbh ) = @_;
+   return unless $dbh;
+   my $innodb_version = "NO";
+
+   my ($innodb) =
+      grep { $_->{engine} =~ m/InnoDB/i }
+      map  {
+         my %hash;
+         @hash{ map { lc $_ } keys %$_ } = values %$_;
+         \%hash;
+      }
+      @{ $dbh->selectall_arrayref("SHOW ENGINES", {Slice=>{}}) };
+   if ( $innodb ) {
+      PTDEBUG && _d("InnoDB support:", $innodb->{support});
+      if ( $innodb->{support} =~ m/YES|DEFAULT/i ) {
+         my $vars = $dbh->selectrow_hashref(
+            "SHOW VARIABLES LIKE 'innodb_version'");
+         $innodb_version = !$vars ? "BUILTIN"
+                         :          ($vars->{Value} || $vars->{value});
+      }
+      else {
+         $innodb_version = $innodb->{support};  # probably DISABLED or NO
+      }
+   }
+
+   PTDEBUG && _d("InnoDB version:", $innodb_version);
+   return $innodb_version;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+no Lmo;
+1;
+}
+# ###########################################################################
+# End VersionParser package
+# ###########################################################################
+
+
+# ###########################################################################
 # FileIterator package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -4758,8 +5609,15 @@ sub _explain_query {
       PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
    }
+  
+   $self->{db_version} ||= VersionParser->new($dbh);
+   if ( $self->{db_version} < '5.7.3' ) { 
+      $sql = "EXPLAIN EXTENDED $query";
+   }
+   else {
+      $sql = "EXPLAIN $query"; # EXTENDED is implicit as of 5.7.3
+   }
 
-   $sql = "EXPLAIN EXTENDED $query";
    PTDEBUG && _d($dbh, $sql);
    eval {
       $dbh->do($sql);  # don't need the result
@@ -6526,6 +7384,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+use version;
 
 use Data::Dumper;
 use sigtrap 'handler', \&sig_int, 'normal-signals';
@@ -6548,6 +7407,7 @@ sub main {
    $dp->prop('set-vars', $o->set_vars());
 
    $o->usage_or_errors();
+
 
    # ########################################################################
    # Connect to MySQl for --explain-extended.
