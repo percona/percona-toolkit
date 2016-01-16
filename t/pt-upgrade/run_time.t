@@ -59,7 +59,7 @@ $output = output(
 my $t = time - $t0;
 
 ok(
-   $t >= 3 && $t <= 6,
+   $t >= 3 && $t <= ($ENV{PERCONA_SLOW_BOX} ? 8 : 6),
    "Exec queries: ran for roughly --run-time seconds"
 ) or diag($output, 'Actual run time:', $t);
 

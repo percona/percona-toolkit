@@ -59,6 +59,16 @@ sub load_sample_sql_files {
    }
 }
 
+# default 5.7 mode "STRICT_TRANS_TABLES" converts truncation warnings to errors
+# as this is simply a change in category of difference, we disable it for
+# test to work.
+
+use SqlModes;
+my $modes_host1 = new SqlModes($dbh1, global=>1);
+my $modes_host2 = new SqlModes($dbh2, global=>1);
+$modes_host1->del('STRICT_TRANS_TABLES');
+$modes_host2->del('STRICT_TRANS_TABLES');
+
 while ( my $sampleno = readdir $dh ) {
    next unless $sampleno =~ m/^\d+$/;
 
@@ -122,6 +132,9 @@ while ( my $sampleno = readdir $dh ) {
 }
 
 close $dh;
+
+$modes_host1->restore_original_modes();
+$modes_host2->restore_original_modes();
 
 # #############################################################################
 # Done.
