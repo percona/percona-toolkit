@@ -3,7 +3,7 @@ Summary:   Advanced MySQL and system command-line tools
 Version:   %{version}
 Release:   %{release}
 Group:     Applications/Databases
-License:   GPL
+License:   GPLv2
 Vendor:    Percona
 URL:       http://www.percona.com/software/percona-toolkit/
 Source:    percona-toolkit-%{version}.tar.gz
