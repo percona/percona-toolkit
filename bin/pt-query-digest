@@ -16115,7 +16115,7 @@ several types:
     s=seconds, h=hours, m=minutes, d=days (default s if no suffix
     given); this is like saying "since N[shmd] ago"
   * Full date with optional hours:minutes:seconds:
-    YYYY-MM-DD [HH:MM::SS]
+    YYYY-MM-DD [HH:MM:SS]
   * Short, MySQL-style date:
     YYMMDD [HH:MM:SS]
   * Any time expression evaluated by MySQL:
