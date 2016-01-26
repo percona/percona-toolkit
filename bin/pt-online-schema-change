@@ -8029,14 +8029,24 @@ my $term_readkey = eval {
 use sigtrap 'handler', \&sig_int, 'normal-signals';
 
 
-
-
 my $exit_status = 0;
 my $oktorun     = 1;
 my $dont_interrupt_now = 0;
 my @drop_trigger_sqls;
 my @triggers_not_dropped;
 my $pxc_version = '0';
+# Completely ignore these error codes.
+my %ignore_code = (
+   # Error: 1592 SQLSTATE: HY000  (ER_BINLOG_UNSAFE_STATEMENT)
+   # Message: Statement may not be safe to log in statement format. 
+   # Ignore this warning because we have purposely set statement-based
+   # replication.
+   1592 => 1,
+   # Error: 1062 SQLSTATE: 23000 ( ER_DUP_ENTRY )
+   # Message: Duplicate entry '%ld' for key '%s'
+   # MariaDB 5.5.28+ has this as a warning; See https://bugs.launchpad.net/percona-toolkit/+bug/1099836
+   1062 => 1,
+);
 
 $OUTPUT_AUTOFLUSH = 1;
 
@@ -8049,6 +8059,7 @@ sub main {
    @drop_trigger_sqls    = ();
    @triggers_not_dropped = ();
    $dont_interrupt_now   = 0;
+   %ignore_code = (1592 => 1, 1062 => 1);
 
    my %stats = (
       INSERT => 0,
@@ -8061,6 +8072,10 @@ sub main {
    my $o = new OptionParser();
    $o->get_specs();
    $o->get_opts();
+
+   if ( $o->get('null-to-not-null') ) {
+      $ignore_code{1048} = 1;
+   } 
 
    my $dp = $o->DSNParser();
    $dp->prop('set-vars', $o->set_vars());
@@ -10749,18 +10764,6 @@ sub exec_nibble {
    my $chunk       = $nibble_iter->nibble_number();
    my $chunk_index = $nibble_iter->nibble_index();
          
-   # Completely ignore these error codes.
-   my %ignore_code = (
-      # Error: 1592 SQLSTATE: HY000  (ER_BINLOG_UNSAFE_STATEMENT)
-      # Message: Statement may not be safe to log in statement format. 
-      # Ignore this warning because we have purposely set statement-based
-      # replication.
-      1592 => 1,
-      # Error: 1062 SQLSTATE: 23000 ( ER_DUP_ENTRY )
-      # Message: Duplicate entry '%ld' for key '%s'
-      # MariaDB 5.5.28+ has this as a warning; See https://bugs.launchpad.net/percona-toolkit/+bug/1099836
-      1062 => 1,
-   );
          
    # Warn once per-table for these error codes if the error message
    # matches the pattern.
@@ -11613,6 +11616,13 @@ table name.  When the default is used, the tool prefixes the name with up
 to 10 C<_> (underscore) to find a unique table name.  If a table name is
 specified, the tool does not prefix it with C<_>, so the table must not
 exist.
+
+=item --null-to-not-null
+
+Allows MODIFYing a column that allows NULL values to one that doesn't allow
+them. The rows which contain NULL values will be converted to the defined
+default value. If no explicit DEFAULT value is given MySQL will assign a default
+value based on datatype, e.g. 0 for number datatypes, '' for string datatypes.
 
 =item --password
 
