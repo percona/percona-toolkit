@@ -39,6 +39,51 @@ my $exit_status;
 my $sample  = "t/pt-online-schema-change/samples/";
 
 # ############################################################################
+# https://bugs.launchpad.net/percona-toolkit/+bug/1336734
+# pt-online-schema-change 2.2.17 adds --null-to-not-null feature
+# ############################################################################
+$sb->load_file('master', "$sample/bug-1336734.sql");
+
+($output, $exit_status) = full_output(
+   sub { pt_online_schema_change::main(@args, 
+      "$master_dsn,D=test,t=lp1336734",
+      "--execute",
+      "--null-to-not-null",
+      # notice we are not using a DEFAULT value, to also
+      # test if the "default default" value for datatype
+      # is used         
+      "--alter", "MODIFY COLUMN name VARCHAR(20) NOT NULL",
+      qw(--chunk-size 2 --print)) },
+);
+
+my $test_rows = $master_dbh->selectall_arrayref("SELECT id, name FROM test.lp1336734 ORDER BY id");
+ok (!$exit_status,
+    "--null-to-not-null exit status = 0"
+);
+is_deeply(
+   $test_rows,
+  [
+     [
+       '1',
+       'curly'
+     ],
+     [
+       '2',
+       'larry'
+     ],
+     [
+       '3',
+       ''
+     ],
+     [
+       '4',
+       'moe'
+     ]
+  ],
+   "--null-to-not-null default value good"
+);
+
+# ############################################################################
 # https://bugs.launchpad.net/percona-toolkit/+bug/994002
 # pt-online-schema-change 2.1.1 doesn't choose the PRIMARY KEY
 # ############################################################################
