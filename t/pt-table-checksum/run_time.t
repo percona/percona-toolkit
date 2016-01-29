@@ -44,11 +44,11 @@ $exit_status = pt_table_checksum::main(@args,
 my $t  = time - $t0;
 
 ok(
-   $t >= 1.0 && $t <= 2.5 + ($ENV{'PERCONA_SLOW_BOX'} || 0) ,
+   $t >= 1.0 && $t <= 2.5 + $ENV{'PERCONA_SLOW_BOX'}*3,
    "Ran in roughly --run-time 1 second"
 ) or diag("Actual run time: $t");
 
-my $rows = $master_dbh->selectall_arrayref("SELECT DISTINCT CONCAT(db, '.', tbl) FROM percona.checksums ORDER by db, tbl");
+my $rows = $master_dbh->selectall_arrayref("SELECT DISTINCT CONCAT(db, '.', tbl) FROM percona.checksums ORDER by CONCAT(db, '.', tbl)");
 my $sakila_finished = grep { $_->[0] eq 'sakila.store' } @$rows;
 ok(
    !$sakila_finished,
@@ -57,9 +57,9 @@ ok(
 
 # Add --resume to complete the run.
 $exit_status = pt_table_checksum::main(@args,
-   qw(--quiet --quiet -d sakila --chunk-size 100));
+   qw(--resume --quiet --quiet -d sakila --chunk-size 100));
 
-$rows = $master_dbh->selectall_arrayref("SELECT DISTINCT CONCAT(db, '.', tbl) FROM percona.checksums ORDER by db, tbl");
+$rows = $master_dbh->selectall_arrayref("SELECT DISTINCT CONCAT(db, '.', tbl) FROM percona.checksums ORDER by CONCAT(db, '.', tbl)");
 $sakila_finished = grep { $_->[0] eq 'sakila.store' } @$rows;
 ok(
    $sakila_finished,

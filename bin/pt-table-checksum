@@ -9042,6 +9042,10 @@ my %warn_code = (
       # any pattern
       # use MySQL's message for this warning
    },
+   1406 => {
+      # any pattern
+      # use MySQL's message for this warning
+   },
 );
 
 sub main {

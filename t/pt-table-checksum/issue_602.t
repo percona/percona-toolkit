@@ -13,6 +13,7 @@ use Test::More;
 
 use PerconaTest;
 use Sandbox;
+use SqlModes;
 require "$trunk/bin/pt-table-checksum";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
@@ -33,8 +34,11 @@ my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
 my @args       = ($master_dsn, qw(--set-vars innodb_lock_wait_timeout=3), '--max-load', ''); 
 my $output;
 
+# We test that checksum works with invalid dates, 
+# but for that we need to turn off MySQL's NO_ZERO_IN_DATE mode 
+my $modes = new SqlModes($dbh, global=>1);
+$modes->del('NO_ZERO_IN_DATE');
 $sb->load_file('master', 't/pt-table-checksum/samples/issue_602.sql');
-
 # #############################################################################
 # Issue 602: mk-table-checksum issue with invalid dates
 # #############################################################################
@@ -50,6 +54,7 @@ is(
    "Checksums table despite invalid datetime"
 );
 
+$modes->restore_original_modes();
 # #############################################################################
 # Done.
 # #############################################################################
