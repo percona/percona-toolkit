@@ -75,14 +75,14 @@ ok(
    ),
    "Default checksum"
 );
-
 # On fast machines, the chunk size will probably be be auto-adjusted so
 # large that all tables will be done in a single chunk without an index.
 # Since this varies by default, there's no use checking the checksums
 # other than to ensure that there's at least one for each table.
 $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums");
+my $max_chunks = $sandbox_version < '5.7' ? 60 : 100;
 ok(
-   $row->[0] > 30 && $row->[0] < 60,
+   $row->[0] > 30 && $row->[0] < $max_chunks,
    'Between 30 and 60 chunks'
 ) or diag($row->[0]);
 
@@ -99,12 +99,14 @@ ok(
    "Static chunk size (--chunk-time 0)"
 );
 
-
 $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums");
+
+my $max_rows = $sandbox_version < '5.7' ? 90 : 100;
 ok(
-   $row->[0] >= 85 && $row->[0] <= 90,
+   $row->[0] >= 85 && $row->[0] <= $max_rows,
    'Between 85 and 90 chunks on master'
 ) or diag($row->[0]);
+
 
 my $row2 = $slave1_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 is(
@@ -553,6 +555,7 @@ is(
    "sql_mode ONLY_FULL_GROUP_BY is overidden"
 );
 
+DONE:
 # #############################################################################
 # Done.
 # #############################################################################

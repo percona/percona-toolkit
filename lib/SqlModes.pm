@@ -56,6 +56,26 @@ sub new {
    return $self;
 }
 
+
+# Sub: set_mode_string 
+#   sets sql_mode in traditional csv format 
+#
+#   Required Arguments:
+#     string of valid formats in csv formta (or null string)      
+#
+# Returns:
+#   1 if successful, 0 if error.
+sub set_mode_string {
+   my ( $self, $sql_mode_string ) = @_;
+
+   die "I need a string" unless defined $sql_mode_string;
+
+   $self->{dbh}->do("set $self->{global} sql_mode = '$sql_mode_string'") || return 0;
+
+   PTDEBUG && _d('sql_mode changed to: ', $sql_mode_string);
+   return 1;
+}
+
 # Sub: add
 #   adds one or more modes 
 #

@@ -15,6 +15,7 @@ $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} = 1;
 
 use PerconaTest;
 use Sandbox;
+use SqlModes;
 require "$trunk/bin/pt-table-checksum";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
@@ -42,6 +43,16 @@ $sb->create_dbs($master_dbh, [qw(test)]);
 # #############################################################################
 # Issue 81: put some data that's too big into the boundaries table
 # #############################################################################
+
+# Frank : not sure what this test is trying to do.
+# Inserting a truncated value in the boundary column should be fatal...no?
+# It actually IS fatal with STRICT tables mode (mysql 5.7+)
+# Since the idea is probably to test warning handling, we'll turn off STRICT
+# for the next two tests.
+
+my $modes = new SqlModes($master_dbh, global=>1);
+$modes->del('STRICT_TRANS_TABLES','STRICT_ALL_TABLES');
+
 $sb->load_file('master', 't/pt-table-checksum/samples/checksum_tbl_truncated.sql');
 
 $output = output(
@@ -63,6 +74,8 @@ is(
    1,
    "Only one warning for MySQL error 1265"
 );
+
+$modes->restore_original_modes();
 
 # ############################################################################
 # Lock wait timeout
