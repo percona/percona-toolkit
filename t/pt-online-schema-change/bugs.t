@@ -14,7 +14,7 @@ use Test::More;
 use Data::Dumper;
 use PerconaTest;
 use Sandbox;
-
+use SqlModes;
 require "$trunk/bin/pt-online-schema-change";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
@@ -37,6 +37,7 @@ my @args       = (qw(--set-vars innodb_lock_wait_timeout=3));
 my $output;
 my $exit_status;
 my $sample  = "t/pt-online-schema-change/samples/";
+
 
 # ############################################################################
 # https://bugs.launchpad.net/percona-toolkit/+bug/1336734
@@ -509,6 +510,39 @@ like(
       qr/Error altering new table/s,
       "Bug 1446928: Avoid error trapping loop when --alter is invalid",
 );
+
+# ############################################################################
+# https://bugs.launchpad.net/percona-toolkit/+bug/1506748
+# test that setting sql_mode via --set-vars works 
+# ############################################################################
+
+# first we create a table with a valid default date
+$sb->load_file('master', "$sample/sql_mode_issue_lp1506748.sql");
+
+my $modes = new SqlModes($master_dbh, global =>1);
+
+# We clear all modes. In this state, setting an invalid default date generates
+# an error.
+$modes->set_mode_string('');
+
+# Now we run the command, but set sql_mode to allow invalid dates for 
+# the session.
+# While we're at it, test that we can set more than one mode by double escaping
+# the commas. (must be explained in docs)
+($output, $exit_status) = full_output(
+   sub { pt_online_schema_change::main(@args, 
+      "$master_dsn,D=test,t=lp1506748",
+      "--execute",
+      "--set-vars", "sql_mode=\'STRICT_ALL_TABLES\\,ALLOW_INVALID_DATES\'",
+      "--alter", "MODIFY COLUMN birthday DATE DEFAULT '1970-02-31'",
+      ) },
+);
+
+ok ((!$exit_status && $output =~ /success/i) , "--set-vars sql_mode=\\'a\\\\,b\\' works" ) 
+   or diag("[$output][$exit_status]");
+
+$master_dbh->do("drop database test");
+$modes->restore_original_modes();
 
 # #############################################################################
 # Done.
