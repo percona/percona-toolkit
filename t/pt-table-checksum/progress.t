@@ -48,7 +48,7 @@ else {
 # worse. This is a random stab in the dark. There is a problem either way.)
 my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
 my @args       = ($master_dsn, qw(--set-vars innodb_lock_wait_timeout=3),
-                  '--progress', 'time,1', '--max-load', '', '--chunk-size', '500'); 
+                  '--progress', 'time,2', '--max-load', '', '--chunk-size', '500'); 
 my $output;
 my $row;
 my $scripts = "$trunk/t/pt-table-checksum/scripts/";

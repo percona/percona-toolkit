@@ -332,17 +332,6 @@ sub get_dbh {
    if ( $cxn_string =~ m/mysql/i ) {
       my $sql;
 
-      # Set SQL_MODE and options for SHOW CREATE TABLE.
-      # Get current, server SQL mode.  Don't clobber this;
-      # append our SQL mode to whatever is already set.
-      # http://code.google.com/p/maatkit/issues/detail?id=801
-      $sql = 'SELECT @@SQL_MODE';
-      PTDEBUG && _d($dbh, $sql);
-      my ($sql_mode) = eval { $dbh->selectrow_array($sql) };
-      if ( $EVAL_ERROR ) {
-         die "Error getting the current SQL_MODE: $EVAL_ERROR";
-      }
-
       # Set character set and binmode on STDOUT.
       if ( my ($charset) = $cxn_string =~ m/charset=([\w]+)/ ) {
          $sql = qq{/*!40101 SET NAMES "$charset"*/};
@@ -363,6 +352,17 @@ sub get_dbh {
 
       if ( my $vars = $self->prop('set-vars') ) {
          $self->set_vars($dbh, $vars);
+      }
+
+      # Set SQL_MODE and options for SHOW CREATE TABLE.
+      # Get current, server SQL mode.  Don't clobber this;
+      # append our SQL mode to whatever is already set.
+      # http://code.google.com/p/maatkit/issues/detail?id=801
+      $sql = 'SELECT @@SQL_MODE';
+      PTDEBUG && _d($dbh, $sql);
+      my ($sql_mode) = eval { $dbh->selectrow_array($sql) };
+      if ( $EVAL_ERROR ) {
+         die "Error getting the current SQL_MODE: $EVAL_ERROR";
       }
 
       # Do this after set-vars so a user-set sql_mode doesn't clobber it; See

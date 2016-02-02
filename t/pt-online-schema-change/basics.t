@@ -46,7 +46,6 @@ my $exit   = 0;
 my $sample = "t/pt-online-schema-change/samples";
 my $rows;
 
-
 # #############################################################################
 # Tool shouldn't run without --execute (bug 933232).
 # #############################################################################
@@ -686,7 +685,6 @@ test_alter_table(
    ],
 );
 
-
 # #############################################################################
 # --statistics
 # #############################################################################
@@ -709,7 +707,7 @@ my $res_file = "$sample/stats-execute.txt";
 if ($sandbox_version eq '5.5' && $db_flavor !~ m/XtraDB Cluster/) {
    $res_file =  "$sample/stats-execute-5.5.txt";
 } elsif ($sandbox_version eq '5.6' && $db_flavor !~ m/XtraDB Cluster/) {
-   $res_file =  "$sample/stats-execute.txt";
+   $res_file =  "$sample/stats-execute-5.6.txt";
 } elsif ($sandbox_version eq '5.7' && $db_flavor !~ m/XtraDB Cluster/) {
    $res_file =  "$sample/stats-execute-5.7.txt";
 }
@@ -723,9 +721,11 @@ ok(
          '--recursion-method', 'none'),
       },
       $res_file,
+      keep_output=>1,
    ),
    "--statistics --execute"
 ) or diag($test_diff);
+
 
 # #############################################################################
 #  --chunk-size-limit=0  must not skip tables that would be chunked 

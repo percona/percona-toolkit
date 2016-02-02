@@ -2077,13 +2077,6 @@ sub get_dbh {
    if ( $cxn_string =~ m/mysql/i ) {
       my $sql;
 
-      $sql = 'SELECT @@SQL_MODE';
-      PTDEBUG && _d($dbh, $sql);
-      my ($sql_mode) = eval { $dbh->selectrow_array($sql) };
-      if ( $EVAL_ERROR ) {
-         die "Error getting the current SQL_MODE: $EVAL_ERROR";
-      }
-
       if ( my ($charset) = $cxn_string =~ m/charset=([\w]+)/ ) {
          $sql = qq{/*!40101 SET NAMES "$charset"*/};
          PTDEBUG && _d($dbh, $sql);
@@ -2103,6 +2096,13 @@ sub get_dbh {
 
       if ( my $vars = $self->prop('set-vars') ) {
          $self->set_vars($dbh, $vars);
+      }
+
+      $sql = 'SELECT @@SQL_MODE';
+      PTDEBUG && _d($dbh, $sql);
+      my ($sql_mode) = eval { $dbh->selectrow_array($sql) };
+      if ( $EVAL_ERROR ) {
+         die "Error getting the current SQL_MODE: $EVAL_ERROR";
       }
 
       $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'

@@ -2303,13 +2303,6 @@ sub get_dbh {
    if ( $cxn_string =~ m/mysql/i ) {
       my $sql;
 
-      $sql = 'SELECT @@SQL_MODE';
-      PTDEBUG && _d($dbh, $sql);
-      my ($sql_mode) = eval { $dbh->selectrow_array($sql) };
-      if ( $EVAL_ERROR ) {
-         die "Error getting the current SQL_MODE: $EVAL_ERROR";
-      }
-
       if ( my ($charset) = $cxn_string =~ m/charset=([\w]+)/ ) {
          $sql = qq{/*!40101 SET NAMES "$charset"*/};
          PTDEBUG && _d($dbh, $sql);
@@ -2329,6 +2322,13 @@ sub get_dbh {
 
       if ( my $vars = $self->prop('set-vars') ) {
          $self->set_vars($dbh, $vars);
+      }
+
+      $sql = 'SELECT @@SQL_MODE';
+      PTDEBUG && _d($dbh, $sql);
+      my ($sql_mode) = eval { $dbh->selectrow_array($sql) };
+      if ( $EVAL_ERROR ) {
+         die "Error getting the current SQL_MODE: $EVAL_ERROR";
       }
 
       $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
@@ -11740,6 +11740,15 @@ example, specifying C<--set-vars wait_timeout=500> overrides the default
 value of C<10000>.
 
 The tool prints a warning and continues if a variable cannot be set.
+
+Note that setting the C<sql_mode> variable requires some tricky escapes
+to be able to parse the quotes and commas.
+
+Example: 
+
+   --set-vars sql_mode=\'STRICT_ALL_TABLES\\,ALLOW_INVALID_DATES\'
+
+Note the single backslash for the quotes and double backslash for the comma.
 
 =item --sleep
 
