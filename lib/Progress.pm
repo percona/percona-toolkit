@@ -71,11 +71,10 @@ sub new {
       last_reported => $args{start},
       fraction      => 0,       # How complete the job is
       callback      => sub {
-         my ($fraction, $elapsed, $remaining, $eta) = @_;
+         my ($fraction, $elapsed, $remaining) = @_;
          printf STDERR "$name: %3d%% %s remain\n",
             $fraction * 100,
-            Transformers::secs_to_time($remaining),
-            Transformers::ts($eta);
+            Transformers::secs_to_time($remaining);
       },
       %args,
    };

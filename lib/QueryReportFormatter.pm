@@ -123,9 +123,9 @@ sub BUILDARGS {
          report_all       => $o->get('report-all'),
          report_histogram => $o->get('report-histogram'),
       },
-      num_format     => "# %-${label_width}s %3s %7s %7s %7s %7s %7s %7s %7s",
-      bool_format    => "# %-${label_width}s %3d%% yes, %3d%% no",
-      string_format  => "# %-${label_width}s %s",
+      num_format     => '# %1$-'.$label_width.'s %2$3s %3$7s %4$7s %5$7s %6$7s %7$7s %8$7s %9$7s',
+      bool_format    => '# %1$-'.$label_width.'s %2$3d%% yes, %3$3d%% no',
+      string_format  => '# %1$-'.$label_width.'s %2$s',
       hidden_attrib  => {   # Don't sort/print these attribs in the reports.
          arg         => 1, # They're usually handled specially, or not
          fingerprint => 1, # printed at all.
@@ -673,7 +673,11 @@ sub event_report {
       $val->{checksum},
       $val->{pos_in_log},
    );
-   $line .= ('_' x (LINE_LENGTH - length($line) + $self->label_width() - 12));
+   my $underscores = LINE_LENGTH - length($line) + $self->label_width() - 12;
+   if ( $underscores < 0 ) {
+      $underscores = 0;
+   }
+   $line .= ('_' x $underscores);
    push @result, $line;
 
    # Second line: reason why this class is being reported.

@@ -1306,8 +1306,8 @@ sub shorten {
    }
    return sprintf(
       $num =~ m/\./ || $n
-         ? "%.${p}f%s"
-         : '%d',
+         ? '%1$.'.$p.'f%2$s'
+         : '%1$d',
       $num, $units[$n]);
 }
 
