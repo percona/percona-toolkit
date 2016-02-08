@@ -30,7 +30,7 @@ else {
 # Issue 1186: mk-query-digest --processlist --interval --filter ignores interval
 # #############################################################################
 
-my $output = `PTDEBUG=1 $trunk/bin/pt-query-digest --processlist h=127.1,P=12345,u=msandbox,p=msandbox --run-time 2 --port 12345 --interval .5 2>&1`;
+my $output = `PTDEBUG=1 $trunk/bin/pt-query-digest --processlist h=127.1,P=12345,u=msandbox,p=msandbox --run-time 2 --port 12345 --interval 0.5 2>&1`;
 
 my @times = $output =~ m/Current time: \S+/g;
 ok(
@@ -38,7 +38,7 @@ ok(
    "--interval limits number of processlist polls (issue 1186)"
 );
 
-$output = `PTDEBUG=1 $trunk/bin/pt-query-digest --processlist h=127.1,P=12345,u=msandbox,p=msandbox --run-time 2 --port 12345 --interval .5 --filter '(\$event->{arg} =~ /NEVER HAPPEN/)' 2>&1`;
+$output = `PTDEBUG=1 $trunk/bin/pt-query-digest --processlist h=127.1,P=12345,u=msandbox,p=msandbox --run-time 2 --port 12345 --interval 0.5 --filter '(\$event->{arg} =~ /NEVER HAPPEN/)' 2>&1`;
 
 @times = $output =~ m/Current time: \S+/g;
 ok(
