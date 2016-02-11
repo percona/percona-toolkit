@@ -69,10 +69,10 @@ $sb->wait_for_slaves();
 # TEST_WISHLIST PLUGIN_WISHLIST: do this with a plugin to the tool itself,
 # not in this unreliable fashion.
 
-# Frank: this command makes my head hurt. :-)  
-# notice there are 3 *different* wait type commands involved
-# notice final number in the line is the run-time allowed for the "outermost" wait (wait-to-exec). If it is absent it defaults to 1, which may not be enough for sakila.city chunk to appear (at least on my system and for MySQL 5.7
-system("$trunk/util/wait-to-exec '$scripts/wait-for-chunk.sh 12345 sakila city 1' '$scripts/exec-wait-exec.sh 12347 \"stop slave sql_thread\" 6 \"start slave sql_thread\"' 8 >/dev/null &");
+# Notice there are 3 *different* wait type commands involved
+# Final integer in the line is the run-time allowed for the "outermost" wait (wait-to-exec). If it is absent it defaults to 1, which may not be enough for sakila.city# chunk to appear (at least on slow systems)
+
+system("$trunk/util/wait-to-exec '$scripts/wait-for-chunk.sh 12345 sakila city 1' '$scripts/exec-wait-exec.sh 12347 \"stop slave sql_thread\" 8 \"start slave sql_thread\"' 6 >/dev/null &");
 
 $output = output(
    sub { pt_table_checksum::main(@args, qw(-d sakila)); },
