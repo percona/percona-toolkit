@@ -2443,24 +2443,26 @@ use Time::Local qw(timegm timelocal);
 use Digest::MD5 qw(md5_hex);
 use B qw();
 
-require Exporter;
-our @ISA         = qw(Exporter);
-our %EXPORT_TAGS = ();
-our @EXPORT      = ();
-our @EXPORT_OK   = qw(
-   micro_t
-   percentage_of
-   secs_to_time
-   time_to_secs
-   shorten
-   ts
-   parse_timestamp
-   unix_timestamp
-   any_unix_timestamp
-   make_checksum
-   crc32
-   encode_json
-);
+BEGIN {
+   require Exporter;
+   our @ISA         = qw(Exporter);
+   our %EXPORT_TAGS = ();
+   our @EXPORT      = ();
+   our @EXPORT_OK   = qw(
+      micro_t
+      percentage_of
+      secs_to_time
+      time_to_secs
+      shorten
+      ts
+      parse_timestamp
+      unix_timestamp
+      any_unix_timestamp
+      make_checksum
+      crc32
+      encode_json
+   );
+}
 
 our $mysql_ts  = qr/(\d\d)(\d\d)(\d\d) +(\d+):(\d+):(\d+)(\.\d+)?/;
 our $proper_ts = qr/(\d\d\d\d)-(\d\d)-(\d\d)[T ](\d\d):(\d\d):(\d\d)(\.\d+)?/;
@@ -2562,8 +2564,8 @@ sub shorten {
    }
    return sprintf(
       $num =~ m/\./ || $n
-         ? "%.${p}f%s"
-         : '%d',
+         ? '%1$.'.$p.'f%2$s'
+         : '%1$d',
       $num, $units[$n]);
 }
 
@@ -2591,6 +2593,9 @@ sub parse_timestamp {
       return sprintf "%d-%02d-%02d %02d:%02d:"
                      . (defined $f ? '%09.6f' : '%02d'),
                      $y + 2000, $m, $d, $h, $i, (defined $f ? $s + $f : $s);
+   }
+   elsif ( $val =~ m/^$proper_ts$/ ) {
+      return $val;
    }
    return $val;
 }
@@ -6209,11 +6214,10 @@ sub new {
       last_reported => $args{start},
       fraction      => 0,       # How complete the job is
       callback      => sub {
-         my ($fraction, $elapsed, $remaining, $eta) = @_;
+         my ($fraction, $elapsed, $remaining) = @_;
          printf STDERR "$name: %3d%% %s remain\n",
             $fraction * 100,
-            Transformers::secs_to_time($remaining),
-            Transformers::ts($eta);
+            Transformers::secs_to_time($remaining);
       },
       %args,
    };

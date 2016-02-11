@@ -159,10 +159,12 @@ sub shorten {
       $num /= $d;
       ++$n;
    }
+   # Added indexes 1$, 2$ to sprintf format to avoid 'redundant' warning
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1480719
    return sprintf(
       $num =~ m/\./ || $n
-         ? "%.${p}f%s"
-         : '%d',
+         ? '%1$.'.$p.'f%2$s'
+         : '%1$d',
       $num, $units[$n]);
 }
 

@@ -3967,8 +3967,8 @@ sub shorten {
    }
    return sprintf(
       $num =~ m/\./ || $n
-         ? "%.${p}f%s"
-         : '%d',
+         ? '%1$.'.$p.'f%2$s'
+         : '%1$d',
       $num, $units[$n]);
 }
 
@@ -6140,10 +6140,16 @@ sub main {
    my $limit  = max(@$frames);
 
    # 2.00s [  0.05s,  0.01s,  0.00s ]
-   my $format = ($hires_ts ? '%.2f' : '%4d') . "s "
-              . "[ " . join(", ", map { "%5.2fs" } @$frames) . " ]"
-              . ($o->get('print-master-server-id') ? " %d" : '')
-              . "\n";
+   my $format = ($hires_ts ? '%1$.2f' : '%1$4d') . "s [ ";
+   my $findex = 2;
+   foreach (@$frames) {
+      $format .= $findex > 2 ? ', ' : '';
+      $format .= '%'.$findex.'$5.2fs';
+      $findex++;
+   }
+   $format .= " ]";
+   $format .= ($o->get('print-master-server-id') ? ' %'.$findex.'$d' : '')
+            . "\n";
 
    # ########################################################################
    # Monitor or update the heartbeat table.
@@ -6278,10 +6284,12 @@ sub check_delay {
       push @sths, [ $dsn, $sth ];
    }
 
-   my $format_delay = ($args{hires_ts} ? '%.2f' : '%d')
-                    . ($o->get('print-master-server-id') ? " %d" : "")
+   my $format_delay = ($args{hires_ts} ? '%1$.2f' : '%1$d')
+                    . ($o->get('print-master-server-id') ? ' %2$d' : "")
                     . "\n";
-   my $format_host  = "%-20s $format_delay";
+   my $format_host  = '%1$-20s '.($args{hires_ts} ? '%2$.2f' : '%2$d')
+                    . ($o->get('print-master-server-id') ? ' %3$d' : "")
+                    . "\n";
 
    # Before hi-res ts, we could check all slaves at one interval, assuming
    # the checks were fast, i.e. able to be done within one interval.  But

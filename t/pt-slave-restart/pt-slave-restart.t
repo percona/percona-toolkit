@@ -46,7 +46,7 @@ my $r = $slave_dbh->selectrow_hashref('show slave status');
 like($r->{last_error}, qr/Table 'test.t' doesn't exist'/, 'It is busted');
 
 # Start an instance
-diag(`$trunk/bin/pt-slave-restart --max-sleep .25 -h 127.0.0.1 -P 12346 -u msandbox -p msandbox --daemonize --pid /tmp/pt-slave-restart.pid --log /tmp/pt-slave-restart.log`);
+diag(`$trunk/bin/pt-slave-restart --max-sleep 0.25 -h 127.0.0.1 -P 12346 -u msandbox -p msandbox --daemonize --pid /tmp/pt-slave-restart.pid --log /tmp/pt-slave-restart.log`);
 my $output = `ps x | grep 'pt-slave-restart \-\-max\-sleep ' | grep -v grep | grep -v pt-slave-restart.t`;
 like($output, qr/pt-slave-restart --max/, 'It lives');
 
@@ -93,7 +93,7 @@ like(
 );
 
 # Start an instance
-$output = `$trunk/bin/pt-slave-restart --max-sleep .25 -h 127.0.0.1 -P 12346 -u msandbox -p msandbox --error-text "doesn't exist" --run-time 1s 2>&1`;
+$output = `$trunk/bin/pt-slave-restart --max-sleep 0.25 -h 127.0.0.1 -P 12346 -u msandbox -p msandbox --error-text "doesn't exist" --run-time 1s 2>&1`;
 unlike(
    $output,
    qr/Error does not match/,
@@ -104,7 +104,7 @@ unlike(
 # Issue 391: Add --pid option to all scripts
 # ###########################################################################
 `touch /tmp/pt-script.pid`;
-$output = `$trunk/bin/pt-slave-restart --max-sleep .25 -h 127.0.0.1 -P 12346 -u msandbox -p msandbox --pid /tmp/pt-script.pid 2>&1`;
+$output = `$trunk/bin/pt-slave-restart --max-sleep 0.25 -h 127.0.0.1 -P 12346 -u msandbox -p msandbox --pid /tmp/pt-script.pid 2>&1`;
 like(
    $output,
    qr{PID file /tmp/pt-script.pid already exists},

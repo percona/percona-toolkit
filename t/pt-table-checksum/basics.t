@@ -357,7 +357,7 @@ like(
 $output = output(
    sub { $exit_status =  pt_table_checksum::main(
    qw(--user msandbox --pass msandbox),
-   qw(-S /tmp/12345/mysql_sandbox12345.sock --set-vars innodb_lock_wait_timeout=3 --run-time 5)) },
+   qw(-S /tmp/12345/mysql_sandbox12345.sock --set-vars innodb_lock_wait_timeout=3 --run-time 8)) },
    stderr => 1,
 );
 
