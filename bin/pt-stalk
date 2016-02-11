@@ -816,7 +816,7 @@ collect() {
 
    local mysql_version="$(awk '/^version[^_]/{print substr($2,1,3)}' "$d/$p-variables")"
 
-   local mysql_error_log="$(awk '/log_error/{print $2}' "$d/$p-variables")"
+   local mysql_error_log="$(awk '/^log_error/{print $2}' "$d/$p-variables")"
    if [ -z "$mysql_error_log" -a "$mysqld_pid" ]; then
       mysql_error_log="$(ls -l /proc/$mysqld_pid/fd | awk '/ 2 ->/{print $NF}')"
    fi
@@ -871,7 +871,6 @@ collect() {
       $CMD_SYSCTL -a >> "$d/$p-sysctl" &
    fi
 
-   # collect dmesg events from 60 seconds ago until present
    if [ "$CMD_DMESG" ]; then
       local UPTIME=`cat /proc/uptime | awk '{ print $1 }'`
       local START_TIME=$(echo "$UPTIME 60" | awk '{print ($1 - $2)}')
@@ -891,7 +890,6 @@ collect() {
       $CMD_MPSTAT -P ALL $OPT_SLEEP_COLLECT $cnt >> "$d/$p-mpstat" &
       $CMD_MPSTAT -P ALL $OPT_RUN_TIME 1 >> "$d/$p-mpstat-overall" &
    fi
-
 
    $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
    local mysqladmin_pid=$!
