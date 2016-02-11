@@ -719,7 +719,7 @@ eval {
 };
 like(
    $EVAL_ERROR,
-   qr/Invalid recursion method: stuff/,
+   qr/Only hosts and processlist may be combined/,
    "--recursion-method processlist,stuff causes error",
 );
 
@@ -728,7 +728,7 @@ eval {
 };
 like(
    $EVAL_ERROR,
-   qr/none cannot be combined with other methods/,
+   qr/Only hosts and processlist may be combined/,
    "--recursion-method none,hosts"
 );
 
@@ -737,7 +737,7 @@ eval {
 };
 like(
    $EVAL_ERROR,
-   qr/none cannot be combined with other methods/,
+   qr/Only hosts and processlist may be combined/,
    "--recursion-method cluster,none"
 );
 
@@ -746,7 +746,7 @@ eval {
 };
 like(
    $EVAL_ERROR,
-   qr/Invalid combination of recursion methods: none, none/,
+   qr/Only hosts and processlist may be combined/,
    "--recursion-method none,none"
 );
 
