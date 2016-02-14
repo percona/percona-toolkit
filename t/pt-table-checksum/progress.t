@@ -48,7 +48,7 @@ else {
 # worse. This is a random stab in the dark. There is a problem either way.)
 my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
 my @args       = ($master_dsn, qw(--set-vars innodb_lock_wait_timeout=3),
-                  '--progress', 'time,2', '--max-load', '', '--chunk-size', '500'); 
+                   '--chunk-size', '200'); 
 my $output;
 my $row;
 my $scripts = "$trunk/t/pt-table-checksum/scripts/";
@@ -72,7 +72,7 @@ $sb->wait_for_slaves();
 # Notice there are 3 *different* wait type commands involved
 # Final integer in the line is the run-time allowed for the "outermost" wait (wait-to-exec). If it is absent it defaults to 1, which may not be enough for sakila.city# chunk to appear (at least on slow systems)
 
-system("$trunk/util/wait-to-exec '$scripts/wait-for-chunk.sh 12345 sakila city 1' '$scripts/exec-wait-exec.sh 12347 \"stop slave sql_thread\" 8 \"start slave sql_thread\"' 6 >/dev/null &");
+system("$trunk/util/wait-to-exec '$scripts/wait-for-chunk.sh 12345 sakila city 1' '$scripts/exec-wait-exec.sh 12347 \"stop slave\" 5 \"start slave\"' 12 >/dev/null &");
 
 $output = output(
    sub { pt_table_checksum::main(@args, qw(-d sakila)); },
@@ -118,6 +118,10 @@ wait_until(sub {
    return $ss->{slave_io_running} eq 'Yes';
 });
 
+
+@args       = ($master_dsn, qw(--set-vars innodb_lock_wait_timeout=3),
+                  '--progress', 'time,2', '--max-load', '', '--chunk-size', '500');
+
 ($output) = PerconaTest::full_output(
    sub { pt_table_checksum::main(@args, qw(-t sakila.country),
       "--recursion-method", "dsn=F=/tmp/12345/my.sandbox.cnf,t=dsns.dsns");
@@ -132,6 +136,7 @@ like(
 );
 
 $slave2_dbh->do("START SLAVE");
+
 $sb->wait_for_slaves();
 
 # #############################################################################
