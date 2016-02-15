@@ -6,15 +6,15 @@
 # domain (`domain`)
 # unique_key_domain (`domain`)
 
-# Uniqueness of unique_key_domain ignored because domain is a duplicate constraint
-# unique_key_domain is a duplicate of domain
+# Uniqueness of domain ignored because unique_key_domain is a duplicate constraint
+# domain is a duplicate of unique_key_domain
 # Key definitions:
-#   UNIQUE KEY `unique_key_domain` (`domain`)
 #   UNIQUE KEY `domain` (`domain`),
+#   UNIQUE KEY `unique_key_domain` (`domain`)
 # Column types:
 #	  `domain` varchar(175) collate utf8_bin not null
 # To remove this duplicate index, execute:
-ALTER TABLE `test`.`domains` DROP INDEX `unique_key_domain`;
+ALTER TABLE `test`.`domains` DROP INDEX `domain`;
 
 # ########################################################################
 # Summary of indexes                                                      
