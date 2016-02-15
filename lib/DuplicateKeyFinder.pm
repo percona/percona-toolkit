@@ -64,7 +64,9 @@ sub get_duplicate_keys {
    my @dupes;
 
    KEY:
-   foreach my $key ( values %keys ) {
+   foreach my $keyname ( reverse sort keys %keys ) {
+      my $key = $keys{$keyname};
+
       # Save real columns before we potentially re-order them.  These are
       # columns we want to print if the key is a duplicate.
       $key->{real_cols} = [ @{$key->{cols}} ];
@@ -169,7 +171,10 @@ sub get_duplicate_keys {
 sub get_duplicate_fks {
    my ( $self, $fks, %args ) = @_;
    die "I need a fks argument" unless $fks;
-   my @fks = values %$fks;
+   my @fks = ();
+   foreach my $key ( sort keys %$fks ) {
+      push @fks, $fks->{$key};
+   }
    my @dupes;
 
    foreach my $i ( 0..$#fks - 1 ) {
