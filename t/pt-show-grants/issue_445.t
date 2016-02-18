@@ -63,7 +63,7 @@ like(
    $output,
    qr/REVOKE USAGE ON \*\.\* FROM ''\@'';/,
    'Prints revoke for anonymous user (issue 445)'
-);
+) or diag($output);
 
 diag(`/tmp/12345/use -u root -e "DROP USER ''\@''"`);
 $output = `/tmp/12345/use -e "SELECT user FROM mysql.user WHERE user = ''"`;
