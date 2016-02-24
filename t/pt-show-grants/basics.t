@@ -102,49 +102,56 @@ $modes->del('NO_AUTO_CREATE_USER');
 diag(`/tmp/12345/use -u root -e "GRANT SELECT(DateCreated, PckPrice, PaymentStat, SANumber) ON test.t TO 'sally'\@'%'"`);
 diag(`/tmp/12345/use -u root -e "GRANT SELECT(city_id), INSERT(city) ON sakila.city TO 'sally'\@'%'"`);
 $modes->restore_original_modes();
+
+my $postfix = $sandbox_version < '5.7' ? '' : '-57';
+
 ok(
    no_diff(
       sub { pt_show_grants::main('-F', $cnf, qw(--only sally --no-header)) },
-      "t/pt-show-grants/samples/column-grants.txt",
+      "t/pt-show-grants/samples/column-grants$postfix.txt",
       stderr => 1,
    ),
    "Column-level grants (bug 866075)"
 );
 
+
 ok(
    no_diff(
       sub { pt_show_grants::main('-F', $cnf, qw(--only sally --no-header),
          qw(--separate)) },
-      "t/pt-show-grants/samples/column-grants-separate.txt",
+         "t/pt-show-grants/samples/column-grants-separate$postfix.txt",
       stderr => 1,
-   ),
+  ),
    "Column-level grants --separate (bug 866075)"
 );
+
 
 ok(
    no_diff(
       sub { pt_show_grants::main('-F', $cnf, qw(--only sally --no-header),
          qw(--separate --revoke)) },
-      "t/pt-show-grants/samples/column-grants-separate-revoke.txt",
+      "t/pt-show-grants/samples/column-grants-separate-revoke$postfix.txt",
       stderr => 1,
    ),
    "Column-level grants --separate --revoke (bug 866075)"
 );
+
 
 diag(`/tmp/12345/use -u root -e "GRANT SELECT ON sakila.city TO 'sally'\@'%'"`);
 
 ok(
    no_diff(
       sub { pt_show_grants::main('-F', $cnf, qw(--only sally --no-header)) },
-      "t/pt-show-grants/samples/column-grants-combined.txt",
+      "t/pt-show-grants/samples/column-grants-combined$postfix.txt",
       stderr => 1,   
+      keep_output => 1,
    ),
    "Column-level grants combined with table-level grants on the same table (bug 866075)"
 );
 
+
 diag(`/tmp/12345/use -u root -e "DROP USER 'sally'\@'%'"`);
 
-DONE:
 # #############################################################################
 # Done.
 # #############################################################################
