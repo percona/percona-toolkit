@@ -9546,6 +9546,7 @@ sub main {
 
    my $old_tbl;
    if ( $o->get('swap-tables') ) {
+
       eval {
          $old_tbl = swap_tables(
             orig_tbl      => $orig_tbl,
@@ -10084,7 +10085,7 @@ sub swap_tables {
 
    my $prefix       = '_';
    my $table_name   = $orig_tbl->{tbl} . ($args{suffix} || '');
-   my $name_tries   = 10;  # don't try forever
+   my $name_tries   = 20;  # don't try forever
    my $table_exists = qr/table.+?already exists/i;
 
    # This sub only works for --execute.  Since the options are
@@ -10119,6 +10120,16 @@ sub swap_tables {
 
       print ts("Swapping tables...\n");
       while ( $name_tries-- ) {
+       
+         # https://bugs.launchpad.net/percona-toolkit/+bug/1526105
+         if ( $name_tries <= 10 ) { # we've already added 10 underscores?
+            # time to try a small random string
+            my @chars = ("A".."Z", "0".."9");
+            $prefix = '';
+            $prefix .= $chars[rand @chars] for 1..6;
+            $prefix .= "_";  
+         }
+
          $table_name = $prefix . $table_name;
 
          if ( length($table_name) > 64 ) {
@@ -10131,6 +10142,7 @@ sub swap_tables {
          my $sql = "RENAME TABLE $orig_tbl->{name} "
                  . "TO " . $q->quote($orig_tbl->{db}, $table_name)
                  . ", $new_tbl->{name} TO $orig_tbl->{name}"; 
+
          eval {
             osc_retry(
                Cxn     => $cxn,
@@ -10150,6 +10162,7 @@ sub swap_tables {
                   # other purposes.
                   $table_exists,
                ],
+               operation => "swap_tables",
             );
          };
          if ( my $e = $EVAL_ERROR ) {
@@ -10169,10 +10182,8 @@ sub swap_tables {
             name => $q->quote($orig_tbl->{db}, $table_name),
          };
       }
-
+     
       # This shouldn't happen.
-      # Here and in the attempt to find a new table name we probably ought to
-      # use --tries (and maybe a Retry object?)
       die ts("Failed to find a unique old table name after "
          . "serveral attempts.\n");
    }
@@ -10699,6 +10710,9 @@ sub osc_retry {
          PTDEBUG && _d('Retry fail:', $error);
 
          if ( $ignore_errors ) {
+            if ($error =~ /table.+?already exists/i) {
+               PTDEBUG && _d('Aborting retries because of table name conflict. Trying with different name');
+            }
             return 0 if grep { $error =~ $_ } @$ignore_errors;
          }
 
@@ -10900,6 +10914,7 @@ sub sig_int {
    }
    exit 1;
 }
+
 
 sub _d {
    my ($package, undef, $line) = caller 0;
