@@ -38,7 +38,6 @@ my $output;
 my $exit_status;
 my $sample  = "t/pt-online-schema-change/samples/";
 
-
 # ############################################################################
 # https://bugs.launchpad.net/percona-toolkit/+bug/1336734
 # pt-online-schema-change 2.2.17 adds --null-to-not-null feature
@@ -543,6 +542,40 @@ ok ((!$exit_status && $output =~ /success/i) , "--set-vars sql_mode=\\'a\\\\,b\\
 
 $master_dbh->do("drop database test");
 $modes->restore_original_modes();
+
+# ############################################################################
+# https://bugs.launchpad.net/percona-toolkit/+bug/1526105 
+# Not necessarily a bug, but more of an enhancement.
+# ############################################################################
+
+# We will run pt-osc more than 10 times using --no-drop-old-table and expect 
+# no errors.
+
+$sb->load_file('master', "$sample/simple_test_table.sql");
+
+my $errors    = 0;
+my $successes = 0;
+for (1..12) {
+   ($output, $exit_status) = full_output(
+      sub { pt_online_schema_change::main(@args, 
+         "$master_dsn,D=test,t=test",
+         "--execute",
+         "--no-drop-old-table",
+         "--alter", "ENGINE=InnoDB",
+         ) },
+   );
+   if ($exit_status) {
+      $errors++;
+   }
+   if ( $output =~ /Successfully/i ) {
+      $successes++;
+   }
+}
+
+ok ( (!$errors && $successes == 12), "Issue #1526105 - no-drop-old-table fails after 10 tries" );
+
+$master_dbh->do("DROP DATABASE IF EXISTS test");
+
 
 # #############################################################################
 # Done.
