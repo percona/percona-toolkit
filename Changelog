@@ -1,5 +1,22 @@
 Changelog for Percona Toolkit
 
+ * Feature          :  General compatibility with MySQL 5.7 tools, docs and test suite
+ * Fixed bug 1529411:  pt-mysql-summary displays incorrect info about Fast Server Restarts for Percona Server 5.6
+ * Fixed bug 1506748:  pt-online-schema-change cannot set sql_mode using --set-vars
+ * Fixed bug 1336734:  pt-online-schema-change added --null-to-non-null option to allow NULLable columns to be converted to NOT NULL
+ * Fixed bug 1336734:  pt-online-schema-change doesn't apply underscores to foreign keys individually
+ * Fixed bug 1523685:  pt-online-schema Invalid recursion method: t=dsns
+ * Fixed bug 1526105:  pt-online-schema-change fails when using --no-drop-old-table after 10 times
+ * Fixed bug 1536305:  pt-query-digest : Redundant argument in sprintf
+ * Fixed bug PT-27  :  pt-query-digest doc bug with --since and too many colons
+ * Fixed bug PT-28  :  pt-query-digest: Make documentation of --attribute-value-limit option more clear
+ * Fixed bug 1435370:  pt-show-grants fails against MySQL-5.7.6
+ * Fixed bug 1523730:  pt-show-grants doesn't sort column-level privileges
+ * Fixed bug 1362942:  pt-slave-restart fails on MariaDB 10.0.13 (gtid_mode confusion)
+ * Fixed bug PT-30:    pt-stalk: new var binlog_error_action causes bug in collect module
+ * Fixed bug 1389041:  pt-table-checksum has high likelyhood to skip a table when row count is around chunk-size * chunk-size-limit
+ * Fixed bug 1480719:  pt-table-checksum redundant argument in printf
+
 v2.2.16 released 2015-11-09
 
   * Fixed bug 1452895: pt-archiver dies with "MySQL server has gone away" when innodb_kill_idle_transaction set to low value and bulk insert/delete process takes too long time
