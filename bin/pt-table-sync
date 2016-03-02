@@ -11605,6 +11605,20 @@ the host2 DSN inherits the C<u> and C<p> DSN parts from the host1 DSN.
 Use the L<"--explain-hosts"> option to see how pt-table-sync will interpret
 the DSNs given on the command line.
 
+=head1 LIMITATIONS
+
+=over
+
+=item Replicas using row-based replication
+
+pt-table-sync requires statement-based replication when used with
+the L<"--sync-to-master"> or L<"--replicate"> option. 
+Therefore it will set C<binlog_format=STATEMENT> on the master
+for its session if required.
+To do this user must have C<SUPER> privilege.
+
+=back
+
 =head1 OUTPUT
 
 If you specify the L<"--verbose"> option, you'll see information about the 
