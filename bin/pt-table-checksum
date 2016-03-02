@@ -9990,8 +9990,9 @@ sub main {
                            . $slave->name() . ": $e";
                      }
                      PTDEBUG && _d('Table on', $slave->name(), 'has', $n_rows, 'rows');
+                     my $slave_skip_tolerance = $o->get('slave-skip-tolerance') || 1;
                      if ( $n_rows
-                          && $n_rows > ($tbl->{chunk_size} * $chunk_size_limit) )
+                          && $n_rows > ($tbl->{chunk_size} * $chunk_size_limit) * $slave_skip_tolerance )
                      {
                         PTDEBUG && _d('Table too large on', $slave->name());
                         push @too_large, [$slave->name(), $n_rows || 0];
@@ -12609,6 +12610,17 @@ The tool prints a warning and continues if a variable cannot be set.
 short form: -S; type: string; group: Connection
 
 Socket file to use for connection.
+
+=item --slave-skip-tolerance
+
+type: float; default: 1.0
+
+When a master table is marked to be checksumed in only one chunk but a slave 
+table exceeds the maximum accepted size for this, the table is skipped by default. 
+Since number of rows are often rough estimates, many times tables are skipped
+needlessly for very small differences. 
+This option provides a max row excess tolerance to prevent this.
+Example: A value of 1.2 will tolerate slave tables with up to 20% excess rows. 
 
 =item --tables
 
