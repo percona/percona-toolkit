@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v2.2.17 released 2016-03-07
+
  * Feature          :  General compatibility with MySQL 5.7 tools, docs and test suite
  * Fixed bug 1529411:  pt-mysql-summary displays incorrect info about Fast Server Restarts for Percona Server 5.6
  * Fixed bug 1506748:  pt-online-schema-change cannot set sql_mode using --set-vars
@@ -13,7 +15,7 @@ Changelog for Percona Toolkit
  * Fixed bug 1435370:  pt-show-grants fails against MySQL-5.7.6
  * Fixed bug 1523730:  pt-show-grants doesn't sort column-level privileges
  * Fixed bug 1362942:  pt-slave-restart fails on MariaDB 10.0.13 (gtid_mode confusion)
- * Fixed bug PT-30:    pt-stalk: new var binlog_error_action causes bug in collect module
+ * Fixed bug PT-30  :  pt-stalk: new var binlog_error_action causes bug in collect module
  * Fixed bug 1389041:  pt-table-checksum has high likelyhood to skip a table when row count is around chunk-size * chunk-size-limit
  * Fixed bug 1480719:  pt-table-checksum redundant argument in printf
 
