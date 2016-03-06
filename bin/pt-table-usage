@@ -7388,7 +7388,6 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
-use version;
 
 use Data::Dumper;
 use sigtrap 'handler', \&sig_int, 'normal-signals';
