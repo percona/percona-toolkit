@@ -1,6 +1,59 @@
 Release Notes
 *************
 
+v2.2.17 released 2016-03-07
+===========================
+
+Percona Toolkit 2.2.17 has been released. This release contains 1 new feature and 15 bug fixes.
+
+New Features:
+
+* Percona Toolkit 2.2.17 has implemented general compatibility with MySQL 5.7 tools, documentation and test suite
+
+Bug Fixes:
+
+* Bug 1523685: ``pt-online-schema-change`` invalid recursion method where comma was interpreted as the separation of two DSN methods has been fixed.
+
+* Bugs 1480719 and 1536305: The current version of Perl on supported distributions has implemented stricter checks for arguments provided to ``sprintf``. This could cause warnings when ``pt-query-digest`` and ``pt-table-checksum`` were being run.
+
+* Bug 1498128: ``pt-online-schema-change`` would fail with an error if the table being altered has foreign key constraints where some start with an underscore and some don't.
+
+* Bug 1336734: ``pt-online-schema-change`` has implemented new ``--null-to-non-null`` flag which can be used to convert ``NULL`` columns to ``NOT NULL``.
+
+* Bug 1362942: ``pt-slave-restart`` would fail to run on |MariaDB| 10.0.13 due to a different implementation of ``GTID``.
+
+* Bug 1389041: ``pt-table-checksum`` had a high likelihood to skip a table when row count was around ``chunk-size`` * ``chunk-size-limit``. To address this issue a new ``--slave-skip-tolerance`` option has been implemented.
+
+* Bug 1506748: ``pt-online-schema-change`` could not set the ``SQL_MODE`` by using the ``--set-vars`` option, preventing some use case schema changes that require it.
+
+* Bug 1523730: ``pt-show-grants`` didn't sort the column-level privileges.
+
+* Bug 1526105: ``pt-online-schema-change`` would fail if used with ``--no-drop-old-table`` option after ten times. The issue would arise because there was an accumulation of tables that have already have had their names extended, the code would retry ten times to append an underscore, each time finding an old table with that number of underscores appended.
+
+* Bug 1529411: ``pt-mysql-summary`` was displaying incorrect information about Fast Server Restarts for Percona Server 5.6.
+
+* PT-30: ``pt-stalk`` shell ``collect`` module was confusing the new mysql variable ``binlog_error_action`` with the ``log_error`` variable.
+
+Changelog
+---------
+
+* Feature          :  General compatibility with MySQL 5.7 tools, docs and test suite
+* Fixed bug 1529411:  pt-mysql-summary displays incorrect info about Fast Server Restarts for Percona Server 5.6
+* Fixed bug 1506748:  pt-online-schema-change cannot set sql_mode using --set-vars
+* Fixed bug 1336734:  pt-online-schema-change added --null-to-non-null option to allow NULLable columns to be converted to NOT NULL
+* Fixed bug 1498128:  pt-online-schema-change doesn't apply underscores to foreign keys individually
+* Fixed bug 1523685:  pt-online-schema Invalid recursion method: t=dsns
+* Fixed bug 1526105:  pt-online-schema-change fails when using --no-drop-old-table after 10 times
+* Fixed bug 1536305:  pt-query-digest : Redundant argument in sprintf
+* Fixed bug PT-27  :  pt-query-digest doc bug with --since and too many colons
+* Fixed bug PT-28  :  pt-query-digest: Make documentation of --attribute-value-limit option more clear
+* Fixed bug 1435370:  pt-show-grants fails against MySQL-5.7.6
+* Fixed bug 1523730:  pt-show-grants doesn't sort column-level privileges
+* Fixed bug 1362942:  pt-slave-restart fails on MariaDB 10.0.13 (gtid_mode confusion)
+* Fixed bug PT-30  :  pt-stalk: new var binlog_error_action causes bug in collect module
+* Fixed bug 1389041:  pt-table-checksum has high likelyhood to skip a table when row count is around chunk-size * chunk-size-limit
+* Fixed bug 1480719:  pt-table-checksum redundant argument in printf
+
 v2.2.16 released 2015-11-09
 ===========================
 
