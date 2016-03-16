@@ -472,7 +472,7 @@ sub query_report {
          PTDEBUG && _d("Fingerprint\n#    $vals->{item}\n");
 
          # Print tables used by query.
-         $report .= $self->tables_report(@{$vals->{tables}});
+         $report .= $self->tables_report($vals->{tables}, \%args);
 
          # Print sample (worst) query's CRC % 1_000.  We mod 1_000 because
          # that's actually the value stored in the ea, not the full checksum.
@@ -484,7 +484,7 @@ sub query_report {
          }
 
          my $log_type = $args{log_type} || '';
-         my $mark     = '\G';
+         my $mark     = $args{no_v_format} ? '' : '\G';
 
          if ( $item =~ m/^(?:[\(\s]*select|insert|replace)/ ) {
             if ( $item =~ m/^(?:insert|replace)/ ) { # No EXPLAIN
@@ -508,7 +508,7 @@ sub query_report {
       else {
          if ( $groupby eq 'tables' ) {
             my ( $db, $tbl ) = $self->Quoter->split_unquote($item);
-            $report .= $self->tables_report([$db, $tbl]);
+            $report .= $self->tables_report([ [$db, $tbl] ], \%args);
          }
          $report .= "$item\n";
       }
@@ -1266,20 +1266,21 @@ sub pref_sort {
    }
 }
 
-# Gets a default database and a list of arrayrefs of [db, tbl] to print out
+# Gets an arrayref of [db, tbl] arrayrefs pairs to print out
 sub tables_report {
-   my ( $self, @tables ) = @_;
-   return '' unless @tables;
+   my ( $self, $tables_ref, $args_ref ) = @_;
+   return '' unless @$tables_ref;
    my $q      = $self->Quoter();
    my $tables = "";
-   foreach my $db_tbl ( @tables ) {
+   my $mark   = $args_ref->{no_v_format} ? '' : '\G';
+   foreach my $db_tbl ( @$tables_ref ) {
       my ( $db, $tbl ) = @$db_tbl;
       $tables .= '#    SHOW TABLE STATUS'
                . ($db ? " FROM `$db`" : '')
-               . " LIKE '$tbl'\\G\n";
+               . " LIKE '$tbl'${mark}\n";
       $tables .= "#    SHOW CREATE TABLE "
                . $q->quote(grep { $_ } @$db_tbl)
-               . "\\G\n";
+               . "${mark}\n";
    }
    return $tables ? "# Tables\n$tables" : "# No tables\n";
 }

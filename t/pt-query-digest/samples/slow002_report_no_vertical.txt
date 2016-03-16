@@ -1,0 +1,267 @@
+
+# Query 1: 0 QPS, 0x concurrency, ID 0x66825DDC008FFA89 at byte 338 ______
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2007-12-18 11:48:27
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         12       1
+# Exec time     95   726ms   726ms   726ms   726ms   726ms       0   726ms
+# Lock time     29    91us    91us    91us    91us    91us       0    91us
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine 100  61.48k  61.48k  61.48k  61.48k  61.48k       0  61.48k
+# Merge passes   0       0       0       0       0       0       0       0
+# Query size    25     129     129     129     129     129       0     129
+# Boolean:
+# Full scan    100% yes,   0% no
+# String:
+# Databases    db1
+# Hosts
+# Users        [SQL_SLAVE]
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms  ################################################################
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `db2` LIKE 'tuningdetail_21_265507'
+#    SHOW CREATE TABLE `db2`.`tuningdetail_21_265507`
+#    SHOW TABLE STATUS FROM `db1` LIKE 'gonzo'
+#    SHOW CREATE TABLE `db1`.`gonzo`
+update db2.tuningdetail_21_265507 n
+      inner join db1.gonzo a using(gonzo) 
+      set n.column1 = a.column1, n.word3 = a.word3
+# Converted for EXPLAIN
+# EXPLAIN /*!50100 PARTITIONS*/
+select  n.column1 = a.column1, n.word3 = a.word3 from db2.tuningdetail_21_265507 n
+      inner join db1.gonzo a using(gonzo) 
+
+# Query 2: 0 QPS, 0x concurrency, ID 0x0FFE94ABA6A2A9E8 at byte 1334 _____
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2007-12-18 11:48:27
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         12       1
+# Exec time      4    33ms    33ms    33ms    33ms    33ms       0    33ms
+# Lock time      9    28us    28us    28us    28us    28us       0    28us
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0       0       0       0       0       0       0       0
+# Merge passes   0       0       0       0       0       0       0       0
+# Query size    20     103     103     103     103     103       0     103
+# InnoDB:
+# IO r bytes     0       0       0       0       0       0       0       0
+# IO r ops       0       0       0       0       0       0       0       0
+# IO r wait      0       0       0       0       0       0       0       0
+# pages distin  10      11      11      11      11      11       0      11
+# queue wait     0       0       0       0       0       0       0       0
+# rec lock wai   0       0       0       0       0       0       0       0
+# String:
+# Databases    db1
+# Hosts
+# Users        [SQL_SLAVE]
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms  ################################################################
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `db4` LIKE 'vab3concept1upload'
+#    SHOW CREATE TABLE `db4`.`vab3concept1upload`
+UPDATE db4.vab3concept1upload
+SET    vab3concept1id = '91848182522'
+WHERE  vab3concept1upload='6994465'
+# Converted for EXPLAIN
+# EXPLAIN /*!50100 PARTITIONS*/
+select     vab3concept1id = '91848182522' from db4.vab3concept1upload where   vab3concept1upload='6994465'
+
+# Query 3: 0 QPS, 0x concurrency, ID 0xB211BA2B8D6D065C at byte 3374 _____
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2007-12-18 11:48:27
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         25       2
+# Exec time      0     1ms   530us   530us   530us   530us       0   530us
+# Lock time     17    54us    27us    27us    27us    27us       0    27us
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0       0       0       0       0       0       0       0
+# Merge passes   0       0       0       0       0       0       0       0
+# Query size    16      82      41      41      41      41       0      41
+# InnoDB:
+# IO r bytes     0       0       0       0       0       0       0       0
+# IO r ops       0       0       0       0       0       0       0       0
+# IO r wait      0       0       0       0       0       0       0       0
+# pages distin  33      36      18      18      18      18       0      18
+# queue wait     0       0       0       0       0       0       0       0
+# rec lock wai   0       0       0       0       0       0       0       0
+# String:
+# Databases    db1
+# Hosts
+# Users        [SQL_SLAVE]
+# Query_time distribution
+#   1us
+#  10us
+# 100us  ################################################################
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `foo` LIKE 'bar'
+#    SHOW CREATE TABLE `foo`.`bar`
+UPDATE foo.bar
+SET    biz = '91848182522'
+# Converted for EXPLAIN
+# EXPLAIN /*!50100 PARTITIONS*/
+select     biz = '91848182522' from foo.bar 
+
+# Query 4: 0 QPS, 0x concurrency, ID 0x6969975466519B81 at byte 2861 _____
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2007-12-18 11:48:27
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         12       1
+# Exec time      0   530us   530us   530us   530us   530us       0   530us
+# Lock time      8    27us    27us    27us    27us    27us       0    27us
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0       0       0       0       0       0       0       0
+# Merge passes   0       0       0       0       0       0       0       0
+# Query size    11      60      60      60      60      60       0      60
+# InnoDB:
+# IO r bytes     0       0       0       0       0       0       0       0
+# IO r ops       0       0       0       0       0       0       0       0
+# IO r wait      0       0       0       0       0       0       0       0
+# pages distin  16      18      18      18      18      18       0      18
+# queue wait     0       0       0       0       0       0       0       0
+# rec lock wai   0       0       0       0       0       0       0       0
+# String:
+# Databases    db1
+# Hosts
+# Users        [SQL_SLAVE]
+# Query_time distribution
+#   1us
+#  10us
+# 100us  ################################################################
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `bizzle` LIKE 'bat'
+#    SHOW CREATE TABLE `bizzle`.`bat`
+UPDATE bizzle.bat
+SET    boop='bop: 899'
+WHERE  fillze='899'
+# Converted for EXPLAIN
+# EXPLAIN /*!50100 PARTITIONS*/
+select     boop='bop: 899' from bizzle.bat where   fillze='899'
+
+# Query 5: 0 QPS, 0x concurrency, ID 0xC22D235B07D1D774 at byte 1864 _____
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2007-12-18 11:48:27
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         12       1
+# Exec time      0   530us   530us   530us   530us   530us       0   530us
+# Lock time      8    27us    27us    27us    27us    27us       0    27us
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0       0       0       0       0       0       0       0
+# Merge passes   0       0       0       0       0       0       0       0
+# Query size    11      57      57      57      57      57       0      57
+# InnoDB:
+# IO r bytes     0       0       0       0       0       0       0       0
+# IO r ops       0       0       0       0       0       0       0       0
+# IO r wait      0       0       0       0       0       0       0       0
+# pages distin  16      18      18      18      18      18       0      18
+# queue wait     0       0       0       0       0       0       0       0
+# rec lock wai   0       0       0       0       0       0       0       0
+# String:
+# Databases    db1
+# Hosts
+# Users        [SQL_SLAVE]
+# Query_time distribution
+#   1us
+#  10us
+# 100us  ################################################################
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `db1` LIKE 'conch'
+#    SHOW CREATE TABLE `db1`.`conch`
+INSERT INTO db1.conch (word3, vid83)
+VALUES ('211', '18')
+
+# Query 6: 0 QPS, 0x concurrency, ID 0x7546F89214254F2F at byte 815 ______
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2007-12-18 11:48:27
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         12       1
+# Exec time      0   512us   512us   512us   512us   512us       0   512us
+# Lock time     25    77us    77us    77us    77us    77us       0    77us
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0       0       0       0       0       0       0       0
+# Merge passes   0       0       0       0       0       0       0       0
+# Query size    13      66      66      66      66      66       0      66
+# InnoDB:
+# IO r bytes     0       0       0       0       0       0       0       0
+# IO r ops       0       0       0       0       0       0       0       0
+# IO r wait      0       0       0       0       0       0       0       0
+# pages distin  22      24      24      24      24      24       0      24
+# queue wait     0       0       0       0       0       0       0       0
+# rec lock wai   0       0       0       0       0       0       0       0
+# String:
+# Databases    db1
+# Hosts
+# Users        [SQL_SLAVE]
+# Query_time distribution
+#   1us
+#  10us
+# 100us  ################################################################
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `db3` LIKE 'vendor11gonzo'
+#    SHOW CREATE TABLE `db3`.`vendor11gonzo`
+INSERT INTO db3.vendor11gonzo (makef, bizzle)
+VALUES ('', 'Exact')
+
+# Query 7: 0 QPS, 0x concurrency, ID 0x85FFF5AA78E5FF6A at byte 0 ________
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2007-12-18 11:48:27
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         12       1
+# Exec time      0    12us    12us    12us    12us    12us       0    12us
+# Lock time      0       0       0       0       0       0       0       0
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0       0       0       0       0       0       0       0
+# Merge passes   0       0       0       0       0       0       0       0
+# Query size     0       5       5       5       5       5       0       5
+# String:
+# Hosts
+# Users        [SQL_SLAVE]
+# Query_time distribution
+#   1us
+#  10us  ################################################################
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+BEGIN

@@ -1,0 +1,34 @@
+
+# ########################################################################
+# Report grouped by tables
+# ########################################################################
+
+# Item 1: 0.03 QPS, 0.05x concurrency, ID 0x1161D7068EB79526 at byte 0 ___
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: 2007-10-15 21:43:52 to 21:45:10
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count        100       2
+# Exec time    100      4s      2s      2s      2s      2s       0      2s
+# Lock time      0       0       0       0       0       0       0       0
+# Rows sent    100       2       1       1       1       1       0       1
+# Rows examine   0       0       0       0       0       0       0       0
+# Query size   100      49      22      27   24.50      27    3.54   24.50
+# String:
+# Databases    sakila (1/50%), test (1/50%)
+# Hosts        localhost
+# Users        root
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  ################################################################
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `test` LIKE 'n'
+#    SHOW CREATE TABLE `test`.`n`
+test.n
