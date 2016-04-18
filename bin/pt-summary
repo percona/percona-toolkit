@@ -1443,6 +1443,7 @@ parse_free_minus_b () { local PTFUNCNAME=parse_free_minus_b;
    name_val "Total"   $(shorten $(awk '/Mem:/{print $2}' "${file}") 1)
    name_val "Free"    $(shorten $(awk '/Mem:/{print $4}' "${file}") 1)
    name_val "Used"    "physical = $(shorten ${physical} 1), swap allocated = $(shorten ${swap_alloc} 1), swap used = $(shorten ${swap_used} 1), virtual = ${virtual}"
+   name_val "Shared"  $(shorten $(awk '/Mem:/{print $5}' "${file}") 1)
    name_val "Buffers" $(shorten $(awk '/Mem:/{print $6}' "${file}") 1)
    name_val "Caches"  $(shorten $(awk '/Mem:/{print $7}' "${file}") 1)
    name_val "Dirty"  "$(awk '/Dirty:/ {print $2, $3}' "${file}")"

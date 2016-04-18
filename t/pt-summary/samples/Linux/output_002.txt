@@ -17,6 +17,7 @@ Architecture | CPU = 32-bit, OS = 32-bit
        Total | 1010.5M
         Free | 784.4M
         Used | physical = 226.1M, swap allocated = 2.0G, swap used = 0.0, virtual = 226.1M
+      Shared | 0.0
      Buffers | 48.8M
       Caches | 122.2M
        Dirty | 152 kB
