@@ -541,6 +541,7 @@ sub _find_best_index {
    }
    
    # still no best index? select amongst all candidates.
+    
    if (!$best_index) {
       PTDEBUG && _d('Auto-selecting best index');
       foreach my $index ( $tp->sort_indexes($tbl_struct) ) {
