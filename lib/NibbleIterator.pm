@@ -540,7 +540,8 @@ sub _find_best_index {
       }
    }
    
-   # still no best index? select amongst all candidates.
+   # still no best index?
+   # prefer unique index. otherwise put in candidates array. 
    if (!$best_index) {
       PTDEBUG && _d('Auto-selecting best index');
       foreach my $index ( $tp->sort_indexes($tbl_struct) ) {
@@ -554,6 +555,7 @@ sub _find_best_index {
       }
    }
 
+   # choose the one with best cardinality 
    if ( !$best_index && @possible_indexes ) {
       PTDEBUG && _d('No PRIMARY or unique indexes;',
          'will use index with highest cardinality');

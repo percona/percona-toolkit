@@ -6560,7 +6560,7 @@ sub _find_best_index {
       }
    }
    
-   if (!$best_index && !$want_index) {
+   if (!$best_index) {
       PTDEBUG && _d('Auto-selecting best index');
       foreach my $index ( $tp->sort_indexes($tbl_struct) ) {
          if ( $index eq 'PRIMARY' || $indexes->{$index}->{is_unique} ) {
