@@ -41,7 +41,7 @@ sub new {
    return bless $self, $class;
 }
 
-my $slow_log_ts_line = qr/^# Time: ([0-9: ]{15})/;
+my $slow_log_ts_line = qr/^# Time: ((?:[0-9: ]{15})|(?:[-0-9: T]{19}))/;
 my $slow_log_uh_line = qr/# User\@Host: ([^\[]+|\[[^[]+\]).*?@ (\S*) \[(.*)\]\s*(?:Id:\s*(\d+))?/;
 # These can appear in the log file when it's opened -- for example, when someone
 # runs FLUSH LOGS or the server starts.
