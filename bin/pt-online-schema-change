@@ -10564,22 +10564,40 @@ sub create_triggers {
       "$new_tbl->{name}.$new_qcol <=> OLD.$old_qcol"
    } @{$tbl_struct->{keys}->{$del_index}->{cols}} );
 
-   my $delete_trigger
-      = "CREATE TRIGGER `${prefix}_del` AFTER DELETE ON $orig_tbl->{name} "
-      . "FOR EACH ROW "
-      . "DELETE IGNORE FROM $new_tbl->{name} "
-      . "WHERE $del_index_cols";
+   my $delete_trigger;
+   my $insert_trigger;
+   my $update_trigger;
 
    my $qcols    = join(', ', map { $q->quote($_->{new}) }        @$cols);
    my $new_vals = join(', ', map { "NEW.".$q->quote($_->{old}) } @$cols);
-   my $insert_trigger
-      = "CREATE TRIGGER `${prefix}_ins` AFTER INSERT ON $orig_tbl->{name} "
-      . "FOR EACH ROW "
-      . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
-   my $update_trigger
-      = "CREATE TRIGGER `${prefix}_upd` AFTER UPDATE ON $orig_tbl->{name} "
-      . "FOR EACH ROW "
-      . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
+
+   if ( $o->get('preserve-triggers') ) {
+            my $dbh = $self->{cxn}->dbh;
+use Data::Dumper;
+print Dumper( $dbh );
+            my $orig_delete_trigger = $dbh->select("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='DELETE' AND ACTION_TIMING='AFTER' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{name}';");
+            my $orig_insert_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='INSERT' AND ACTION_TIMING='AFTER' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{name}';");
+            my $orig_update_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='UPDATE' AND ACTION_TIMING='AFTER' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{name}';");
+            
+            print Dumper( $orig_delete_trigger );
+            #warn "after_create_new_table: $row->[1]\n\n";
+   }
+   else {
+      $delete_trigger
+         = "CREATE TRIGGER `${prefix}_del` AFTER DELETE ON $orig_tbl->{name} "
+         . "FOR EACH ROW "
+         . "DELETE IGNORE FROM $new_tbl->{name} "
+         . "WHERE $del_index_cols";
+
+      $insert_trigger
+         = "CREATE TRIGGER `${prefix}_ins` AFTER INSERT ON $orig_tbl->{name} "
+         . "FOR EACH ROW "
+         . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
+      $update_trigger
+         = "CREATE TRIGGER `${prefix}_upd` AFTER UPDATE ON $orig_tbl->{name} "
+         . "FOR EACH ROW "
+         . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
+   }
 
    my @triggers = (
       ['del', $delete_trigger],
@@ -11615,6 +11633,10 @@ specify a threshold for this variable, then you can instruct the tool to wait
 until queries are running normally again.  This will not prevent queueing,
 however; it will only give the server a chance to recover from the queueing.  If
 you notice queueing, it is best to decrease the chunk time.
+
+=item --preserve-triggers
+
+Preserves old triggers when specified.
 
 =item --new-table-name
 
