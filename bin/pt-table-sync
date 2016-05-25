@@ -4862,6 +4862,9 @@ sub make_row_checksum {
          elsif ( $args{trim} && $type =~ m/varchar/ ) {
             $result = "TRIM($result)";
          }
+         elsif ( $type =~ m/binary|text|blob/ ) {
+            $result = "CRC32($result)";
+         }
          $result;
       }
       grep {
