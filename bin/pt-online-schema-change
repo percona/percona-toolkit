@@ -10572,10 +10572,10 @@ sub create_triggers {
    my $new_vals = join(', ', map { "NEW.".$q->quote($_->{old}) } @$cols);
 
    if ( $o->get('preserve-triggers') ) {
-            my $dbh = $self->{cxn}->dbh;
+            my $dbh = $cxn->dbh;
 use Data::Dumper;
 print Dumper( $dbh );
-            my $orig_delete_trigger = $dbh->select("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='DELETE' AND ACTION_TIMING='AFTER' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{name}';");
+            my $orig_delete_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='DELETE' AND ACTION_TIMING='AFTER' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{name}';");
             my $orig_insert_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='INSERT' AND ACTION_TIMING='AFTER' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{name}';");
             my $orig_update_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='UPDATE' AND ACTION_TIMING='AFTER' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{name}';");
             
