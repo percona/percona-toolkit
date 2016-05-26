@@ -10210,7 +10210,7 @@ sub check_orig_table {
            . ' LIKE ' . $q->literal_like($orig_tbl->{tbl});
    PTDEBUG && _d($sql);
    my $triggers = $dbh->selectall_arrayref($sql);
-   if ( $triggers && @$triggers ) {
+   if ( $triggers && @$triggers && !$o->get('preserve-triggers')) {
       die "The table $orig_tbl->{name} has triggers.  This tool "
          . "needs to create its own triggers, so the table cannot "
          . "already have triggers.\n";
@@ -10571,16 +10571,61 @@ sub create_triggers {
    my $qcols    = join(', ', map { $q->quote($_->{new}) }        @$cols);
    my $new_vals = join(', ', map { "NEW.".$q->quote($_->{old}) } @$cols);
 
+
+   my $orig_delete_trigger;
+   my $orig_insert_trigger;
+   my $orig_update_trigger;
+
    if ( $o->get('preserve-triggers') ) {
-            my $dbh = $cxn->dbh;
-use Data::Dumper;
-print Dumper( $dbh );
-            my $orig_delete_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='DELETE' AND ACTION_TIMING='AFTER' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{name}';");
-            my $orig_insert_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='INSERT' AND ACTION_TIMING='AFTER' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{name}';");
-            my $orig_update_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='UPDATE' AND ACTION_TIMING='AFTER' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{name}';");
-            
-            print Dumper( $orig_delete_trigger );
-            #warn "after_create_new_table: $row->[1]\n\n";
+      $cxn->connect();
+
+      my $dbh = $cxn->dbh();
+
+      $orig_delete_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='DELETE' AND ACTION_TIMING='AFTER' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{tbl}';");
+      $orig_insert_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='INSERT' AND ACTION_TIMING='AFTER' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{tbl}';");
+      $orig_update_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='UPDATE' AND ACTION_TIMING='AFTER' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{tbl}';");
+   }
+
+   if ( $o->get('preserve-triggers') && $orig_delete_trigger) {
+     
+      # find if trigger has begin/end - supply insertion point
+      my $delete_trigger_ins_point = trigger_ins_point(trigger => $orig_delete_trigger->[3]);
+      my $insert_trigger_ins_point = trigger_ins_point(trigger => $orig_insert_trigger->[3]);
+      my $update_trigger_ins_point = trigger_ins_point(trigger => $orig_update_trigger->[3]);
+
+      $delete_trigger
+         = "CREATE TRIGGER `${prefix}_del` AFTER DELETE ON $orig_tbl->{name} "
+         . "FOR EACH ROW";
+
+      my $delete_trigger_action
+         = "DELETE IGNORE FROM $new_tbl->{name} "
+         . "WHERE $del_index_cols";
+
+      if($delete_trigger_ins_point) {
+         $delete_trigger
+         = "LOCK TABLES $orig_tbl->{name};\n"
+         . "DROP TRIGGER `$orig_tbl->{db}`.`$orig_delete_trigger->[1]`;\n"
+         . "DELIMITER //\n"
+         . $delete_trigger . "\n"
+         . substr($orig_delete_trigger->[3], 0, $delete_trigger_ins_point)
+         . $delete_trigger_action . ";\n"
+         . substr($orig_delete_trigger->[3], $delete_trigger_ins_point) . "//\n"
+         . "DELIMITER ;\n"
+         . "UNLOCK TABLES;";
+      }
+      else {
+         $delete_trigger
+         = "LOCK TABLES $orig_tbl->{name};\n"
+         . "DROP TRIGGER `$orig_tbl->{db}`.`$orig_delete_trigger->[1]`;\n"
+         . "DELIMITER //\n"
+         . $delete_trigger . "\n"
+         . "BEGIN\n"
+         . $orig_delete_trigger->[3] . "\n"
+         . $delete_trigger_action . ";\n"
+         . "END; //\n"
+         . "DELIMITER ;\n"
+         . "UNLOCK TABLES;";
+      }
    }
    else {
       $delete_trigger
@@ -10588,6 +10633,22 @@ print Dumper( $dbh );
          . "FOR EACH ROW "
          . "DELETE IGNORE FROM $new_tbl->{name} "
          . "WHERE $del_index_cols";
+   }
+
+   if ( $o->get('preserve-triggers') && $orig_insert_trigger) {
+     
+      $insert_trigger
+         = "CREATE TRIGGER `${prefix}_ins` AFTER INSERT ON $orig_tbl->{name} "
+         . "FOR EACH ROW "
+         . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
+      $update_trigger
+         = "CREATE TRIGGER `${prefix}_upd` AFTER UPDATE ON $orig_tbl->{name} "
+         . "FOR EACH ROW "
+         . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
+
+
+   }
+   else {
 
       $insert_trigger
          = "CREATE TRIGGER `${prefix}_ins` AFTER INSERT ON $orig_tbl->{name} "
@@ -10915,6 +10976,23 @@ sub ts {
    my ($msg) = @_;
    my $ts = $ENV{PTTEST_FAKE_TS} ? 'TS' : Transformers::ts(int(time));
    return $msg ? "$ts $msg" : $ts;
+}
+
+sub trigger_ins_point {
+   my ( %args ) = @_;
+   my @required_args = qw(trigger);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless defined $args{$arg};
+   }
+   my ($trigger) = @args{@required_args};
+
+   my $ins_point;
+   if ($trigger =~ /begin(.*?)end(?!.*end)/igms) {
+         $ins_point = $+[0] - 3;
+      }
+   else { $ins_point = 0;}
+
+   return $ins_point;
 }
 
 # Catches signals so we can exit gracefully.
