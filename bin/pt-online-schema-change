@@ -2253,6 +2253,7 @@ sub get_dbh {
       PrintError         => 0,
       ShowErrorStatement => 1,
       mysql_enable_utf8 => ($cxn_string =~ m/charset=utf8/i ? 1 : 0),
+      mysql_multi_statements => 1,
    };
    @{$defaults}{ keys %$opts } = values %$opts;
    if (delete $defaults->{L}) { # L for LOAD DATA LOCAL INFILE, our own extension
@@ -10607,40 +10608,33 @@ sub create_triggers {
 
       if($delete_trigger_ins_point) {
          $delete_trigger
-         = "LOCK TABLES $orig_tbl->{name};\n"
+         = "LOCK TABLES $orig_tbl->{name} WRITE;\n"
          . "DROP TRIGGER IF EXISTS `$orig_tbl->{db}`.`$orig_delete_trigger->[1]`;\n"
-         . "DELIMITER //\n"
          . $delete_trigger . "\n"
          . substr($orig_delete_trigger->[3], 0, $delete_trigger_ins_point)
          . $delete_trigger_action . ";\n"
-         . substr($orig_delete_trigger->[3], $delete_trigger_ins_point) . "; //\n"
-         . "DELIMITER ;\n"
+         . substr($orig_delete_trigger->[3], $delete_trigger_ins_point) . ";\n"
          . "UNLOCK TABLES;";
       }
       else {
          $delete_trigger
-         = "LOCK TABLES $orig_tbl->{name};\n"
+         = "LOCK TABLES $orig_tbl->{name} WRITE;\n"
          . "DROP TRIGGER IF EXISTS `$orig_tbl->{db}`.`$orig_delete_trigger->[1]`;\n"
-         . "DELIMITER //\n"
          . $delete_trigger . "\n"
          . "BEGIN\n"
          . $orig_delete_trigger->[3] . "\n"
          . $delete_trigger_action . ";\n"
-         . "END; //\n"
-         . "DELIMITER ;\n"
+         . "END;\n"
          . "UNLOCK TABLES;";
       }
-      print $delete_trigger;
+
       $orig_triggers{del}
-         = "LOCK TABLES $orig_tbl->{name};\n"
+         = "LOCK TABLES $orig_tbl->{name} WRITE;\n"
          . "DROP TRIGGER IF EXISTS `${prefix}_del`;\n"
-         . "DELIMITER //\n"
          . "CREATE DEFINER=$orig_delete_trigger->[2] TRIGGER `$orig_delete_trigger->[0]`.`$orig_delete_trigger->[1]` "
          . "AFTER DELETE ON $orig_tbl->{name}\n"
          . "FOR EACH ROW\n"
-         . $orig_delete_trigger->[3] . "\n"
-         . "//\n"
-         . "DELIMITER ;\n"
+         . $orig_delete_trigger->[3] . ";\n"
          . "UNLOCK TABLES;";
    }
    else {
@@ -10666,40 +10660,33 @@ sub create_triggers {
 
       if($insert_trigger_ins_point) {
          $insert_trigger
-         = "LOCK TABLES $orig_tbl->{name};\n"
+         = "LOCK TABLES $orig_tbl->{name} WRITE;\n"
          . "DROP TRIGGER IF EXISTS `$orig_tbl->{db}`.`$orig_insert_trigger->[1]`;\n"
-         . "DELIMITER //\n"
          . $insert_trigger . "\n"
          . substr($orig_insert_trigger->[3], 0, $insert_trigger_ins_point)
          . $insert_trigger_action . ";\n"
-         . substr($orig_insert_trigger->[3], $insert_trigger_ins_point) . "//\n"
-         . "DELIMITER ;\n"
+         . substr($orig_insert_trigger->[3], $insert_trigger_ins_point) . ";\n"
          . "UNLOCK TABLES;";
       }
       else {
          $insert_trigger
-         = "LOCK TABLES $orig_tbl->{name};\n"
+         = "LOCK TABLES $orig_tbl->{name} WRITE;\n"
          . "DROP TRIGGER IF EXISTS `$orig_tbl->{db}`.`$orig_insert_trigger->[1]`;\n"
-         . "DELIMITER //\n"
          . $insert_trigger . "\n"
          . "BEGIN\n"
          . $orig_insert_trigger->[3] . "\n"
          . $insert_trigger_action . ";\n"
-         . "END; //\n"
-         . "DELIMITER ;\n"
+         . "END; \n"
          . "UNLOCK TABLES;";
       }
 
       $orig_triggers{del}
-         = "LOCK TABLES $orig_tbl->{name};\n"
+         = "LOCK TABLES $orig_tbl->{name} WRITE;\n"
          . "DROP TRIGGER IF EXISTS `${prefix}_del`;\n"
-         . "DELIMITER //\n"
          . "CREATE DEFINER=$orig_insert_trigger->[2] TRIGGER `$orig_insert_trigger->[0]`.`$orig_insert_trigger->[1]` "
          . "AFTER DELETE ON $orig_tbl->{name}\n"
          . "FOR EACH ROW\n"
-         . $orig_insert_trigger->[3] . "\n"
-         . "//\n"
-         . "DELIMITER ;\n"
+         . $orig_insert_trigger->[3] . ";\n"
          . "UNLOCK TABLES;";
    }
    else {
@@ -10725,40 +10712,33 @@ sub create_triggers {
 
       if($update_trigger_ins_point) {
          $update_trigger
-         = "LOCK TABLES $orig_tbl->{name};\n"
+         = "LOCK TABLES $orig_tbl->{name} WRITE;\n"
          . "DROP TRIGGER IF EXISTS `$orig_tbl->{db}`.`$orig_update_trigger->[1]`;\n"
-         . "DELIMITER //\n"
          . $update_trigger . "\n"
          . substr($orig_update_trigger->[3], 0, $update_trigger_ins_point)
          . $update_trigger_action . ";\n"
-         . substr($orig_update_trigger->[3], $update_trigger_ins_point) . "//\n"
-         . "DELIMITER ;\n"
+         . substr($orig_update_trigger->[3], $update_trigger_ins_point) . ";\n"
          . "UNLOCK TABLES;";
       }
       else {
          $update_trigger
-         = "LOCK TABLES $orig_tbl->{name};\n"
+         = "LOCK TABLES $orig_tbl->{name} WRITE;\n"
          . "DROP TRIGGER IF EXISTS `$orig_tbl->{db}`.`$orig_update_trigger->[1]`;\n"
-         . "DELIMITER //\n"
          . $update_trigger . "\n"
          . "BEGIN\n"
          . $orig_update_trigger->[3] . "\n"
          . $update_trigger_action . ";\n"
-         . "END; //\n"
-         . "DELIMITER ;\n"
+         . "END;\n"
          . "UNLOCK TABLES;";
       }
 
       $orig_triggers{del}
-         = "LOCK TABLES $orig_tbl->{name};\n"
+         = "LOCK TABLES $orig_tbl->{name} WRITE;\n"
          . "DROP TRIGGER IF EXISTS `${prefix}_del`;\n"
-         . "DELIMITER //\n"
          . "CREATE DEFINER=$orig_update_trigger->[2] TRIGGER `$orig_update_trigger->[0]`.`$orig_update_trigger->[1]` "
          . "AFTER DELETE ON $orig_tbl->{name}\n"
          . "FOR EACH ROW\n"
-         . $orig_update_trigger->[3] . "\n"
-         . "//\n"
-         . "DELIMITER ;\n"
+         . $orig_update_trigger->[3] . ";\n"
          . "UNLOCK TABLES;";
    }
    else {
