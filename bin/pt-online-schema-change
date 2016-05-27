@@ -9551,9 +9551,11 @@ sub main {
       print "Adding original triggers to new table.\n";
 
       foreach my $orig_trigger (@orig_triggers) {
-         PTDEBUG && _d($orig_trigger);
-         print $orig_trigger, "\n" if $o->get('print');
-         $cxn->dbh()->do($orig_trigger);
+         if ($orig_trigger ne '') {
+            PTDEBUG && _d($orig_trigger);
+            print $orig_trigger, "\n" if $o->get('print');
+            $cxn->dbh()->do($orig_trigger);
+         }
       }
    }
 
