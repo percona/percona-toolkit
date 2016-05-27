@@ -8030,6 +8030,7 @@ my $dont_interrupt_now = 0;
 my @drop_trigger_sqls;
 my @triggers_not_dropped;
 my $pxc_version = '0';
+my @orig_triggers = ('','','');
 # Completely ignore these error codes.
 my %ignore_code = (
    # Error: 1592 SQLSTATE: HY000  (ER_BINLOG_UNSAFE_STATEMENT)
@@ -9546,6 +9547,16 @@ sub main {
       $plugin->before_swap_tables();
    }
 
+   if ( $o->get('preserve-triggers') ) {
+      print "Adding original triggers to new table.\n";
+
+      foreach my $orig_trigger (@orig_triggers) {
+         PTDEBUG && _d($orig_trigger);
+         print $orig_trigger, "\n" if $o->get('print');
+         $cxn->dbh()->do($orig_trigger);
+      }
+   }
+
    my $old_tbl;
    if ( $o->get('swap-tables') ) {
 
@@ -10577,11 +10588,6 @@ sub create_triggers {
    my $orig_insert_trigger;
    my $orig_update_trigger;
 
-   my %orig_triggers = (
-      del => '',
-      ins => '',
-      upd => ''
-   );
 
    if ( $o->get('preserve-triggers') ) {
       $cxn->connect();
@@ -10628,14 +10634,15 @@ sub create_triggers {
          . "UNLOCK TABLES;";
       }
 
-      $orig_triggers{del}
-         = "LOCK TABLES $orig_tbl->{name} WRITE;\n"
-         . "DROP TRIGGER IF EXISTS `${prefix}_del`;\n"
-         . "CREATE DEFINER=$orig_delete_trigger->[2] TRIGGER `$orig_delete_trigger->[0]`.`$orig_delete_trigger->[1]` "
-         . "AFTER DELETE ON $orig_tbl->{name}\n"
+      my $definer = $orig_delete_trigger->[2];
+      $definer =~ s/@/`@`/;
+      $definer = "`".$definer."`";
+
+      $orig_triggers[0]
+         = "CREATE DEFINER=$definer TRIGGER `$orig_delete_trigger->[0]`.`$orig_delete_trigger->[1]` "
+         . "AFTER DELETE ON $new_tbl->{name}\n"
          . "FOR EACH ROW\n"
-         . $orig_delete_trigger->[3] . ";\n"
-         . "UNLOCK TABLES;";
+         . $orig_delete_trigger->[3] . ";\n";
    }
    else {
       $delete_trigger
@@ -10680,14 +10687,15 @@ sub create_triggers {
          . "UNLOCK TABLES;";
       }
 
-      $orig_triggers{del}
-         = "LOCK TABLES $orig_tbl->{name} WRITE;\n"
-         . "DROP TRIGGER IF EXISTS `${prefix}_del`;\n"
-         . "CREATE DEFINER=$orig_insert_trigger->[2] TRIGGER `$orig_insert_trigger->[0]`.`$orig_insert_trigger->[1]` "
-         . "AFTER DELETE ON $orig_tbl->{name}\n"
+      my $definer = $orig_insert_trigger->[2];
+      $definer =~ s/@/`@`/;
+      $definer = "`".$definer."`";
+
+      $orig_triggers[1]
+         = "CREATE DEFINER=$definer TRIGGER `$orig_insert_trigger->[0]`.`$orig_insert_trigger->[1]` "
+         . "AFTER INSERT ON $new_tbl->{name}\n"
          . "FOR EACH ROW\n"
-         . $orig_insert_trigger->[3] . ";\n"
-         . "UNLOCK TABLES;";
+         . $orig_insert_trigger->[3] . ";\n";
    }
    else {
       $insert_trigger
@@ -10732,14 +10740,15 @@ sub create_triggers {
          . "UNLOCK TABLES;";
       }
 
-      $orig_triggers{del}
-         = "LOCK TABLES $orig_tbl->{name} WRITE;\n"
-         . "DROP TRIGGER IF EXISTS `${prefix}_del`;\n"
-         . "CREATE DEFINER=$orig_update_trigger->[2] TRIGGER `$orig_update_trigger->[0]`.`$orig_update_trigger->[1]` "
-         . "AFTER DELETE ON $orig_tbl->{name}\n"
+      my $definer = $orig_update_trigger->[2];
+      $definer =~ s/@/`@`/;
+      $definer = "`".$definer."`";
+
+      $orig_triggers[2]
+         = "CREATE DEFINER=$definer TRIGGER `$orig_update_trigger->[0]`.`$orig_update_trigger->[1]` "
+         . "AFTER UPDATE ON $new_tbl->{name}\n"
          . "FOR EACH ROW\n"
-         . $orig_update_trigger->[3] . ";\n"
-         . "UNLOCK TABLES;";
+         . $orig_update_trigger->[3] . ";\n";
    }
    else {
 
@@ -10776,9 +10785,6 @@ sub create_triggers {
       # (or faked to be created) so if the 2nd trigger
       # fails to create, we know to only drop the 1st.
       push @trigger_names, "${prefix}_$name";
-      if ( $o->get('preserve-triggers') ) {
-         push @drop_trigger_sqls, $orig_triggers{$name};
-      }
       push @drop_trigger_sqls,
          "DROP TRIGGER IF EXISTS "
          . $q->quote($orig_tbl->{db}, "${prefix}_$name") . ";";
@@ -11806,7 +11812,8 @@ you notice queueing, it is best to decrease the chunk time.
 
 =item --preserve-triggers
 
-Preserves old triggers when specified.
+Preserves old triggers when specified. This mode will briefly hold up to 3 
+locks when it rewrites original triggers to include the tool code.
 
 =item --new-table-name
 
