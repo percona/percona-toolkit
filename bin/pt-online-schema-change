@@ -10615,13 +10615,14 @@ sub create_triggers {
          . "WHERE $del_index_cols";
 
       if($delete_trigger_ins_point) {
+
          $delete_trigger
          = "LOCK TABLES $orig_tbl->{name} WRITE;\n"
          . "DROP TRIGGER IF EXISTS `$orig_tbl->{db}`.`$orig_delete_trigger->[1]`;\n"
          . $delete_trigger . "\n"
-         . substr($orig_delete_trigger->[3], 0, $delete_trigger_ins_point)
+         . terminate_sql(substr($orig_delete_trigger->[3], 0, $delete_trigger_ins_point))."\n"
          . $delete_trigger_action . ";\n"
-         . substr($orig_delete_trigger->[3], $delete_trigger_ins_point) . ";\n"
+         . "END;\n"
          . "UNLOCK TABLES;";
       }
       else {
@@ -10630,7 +10631,7 @@ sub create_triggers {
          . "DROP TRIGGER IF EXISTS `$orig_tbl->{db}`.`$orig_delete_trigger->[1]`;\n"
          . $delete_trigger . "\n"
          . "BEGIN\n"
-         . $orig_delete_trigger->[3] . "\n"
+         . terminate_sql($orig_delete_trigger->[3]) . "\n"
          . $delete_trigger_action . ";\n"
          . "END;\n"
          . "UNLOCK TABLES;";
@@ -10644,7 +10645,7 @@ sub create_triggers {
          = "CREATE DEFINER=$definer TRIGGER `$orig_delete_trigger->[0]`.`$orig_delete_trigger->[1]` "
          . "AFTER DELETE ON $new_tbl->{name}\n"
          . "FOR EACH ROW\n"
-         . $orig_delete_trigger->[3] . ";\n";
+         . terminate_sql($orig_delete_trigger->[3]) . "\n";
    }
    else {
       $delete_trigger
@@ -10658,7 +10659,6 @@ sub create_triggers {
       
       # find if trigger has begin/end - supply insertion point
       my $insert_trigger_ins_point = trigger_ins_point(trigger => $orig_insert_trigger->[3]);
-      my $update_trigger_ins_point = trigger_ins_point(trigger => $orig_update_trigger->[3]);
 
       $insert_trigger
          = "CREATE TRIGGER `${prefix}_ins` AFTER INSERT ON $orig_tbl->{name} "
@@ -10672,9 +10672,9 @@ sub create_triggers {
          = "LOCK TABLES $orig_tbl->{name} WRITE;\n"
          . "DROP TRIGGER IF EXISTS `$orig_tbl->{db}`.`$orig_insert_trigger->[1]`;\n"
          . $insert_trigger . "\n"
-         . substr($orig_insert_trigger->[3], 0, $insert_trigger_ins_point)
+         . terminate_sql(substr($orig_insert_trigger->[3], 0, $insert_trigger_ins_point)) . "\n"
          . $insert_trigger_action . ";\n"
-         . substr($orig_insert_trigger->[3], $insert_trigger_ins_point) . ";\n"
+         . "END;\n"
          . "UNLOCK TABLES;";
       }
       else {
@@ -10683,7 +10683,7 @@ sub create_triggers {
          . "DROP TRIGGER IF EXISTS `$orig_tbl->{db}`.`$orig_insert_trigger->[1]`;\n"
          . $insert_trigger . "\n"
          . "BEGIN\n"
-         . $orig_insert_trigger->[3] . "\n"
+         . terminate_sql($orig_insert_trigger->[3]) . "\n"
          . $insert_trigger_action . ";\n"
          . "END; \n"
          . "UNLOCK TABLES;";
@@ -10697,7 +10697,7 @@ sub create_triggers {
          = "CREATE DEFINER=$definer TRIGGER `$orig_insert_trigger->[0]`.`$orig_insert_trigger->[1]` "
          . "AFTER INSERT ON $new_tbl->{name}\n"
          . "FOR EACH ROW\n"
-         . $orig_insert_trigger->[3] . ";\n";
+         . terminate_sql($orig_insert_trigger->[3]) . "\n";
    }
    else {
       $insert_trigger
@@ -10725,9 +10725,9 @@ sub create_triggers {
          = "LOCK TABLES $orig_tbl->{name} WRITE;\n"
          . "DROP TRIGGER IF EXISTS `$orig_tbl->{db}`.`$orig_update_trigger->[1]`;\n"
          . $update_trigger . "\n"
-         . substr($orig_update_trigger->[3], 0, $update_trigger_ins_point)
+         . terminate_sql(substr($orig_update_trigger->[3], 0, $update_trigger_ins_point)) . "\n"
          . $update_trigger_action . ";\n"
-         . substr($orig_update_trigger->[3], $update_trigger_ins_point) . ";\n"
+         . "END;\n"
          . "UNLOCK TABLES;";
       }
       else {
@@ -10736,7 +10736,7 @@ sub create_triggers {
          . "DROP TRIGGER IF EXISTS `$orig_tbl->{db}`.`$orig_update_trigger->[1]`;\n"
          . $update_trigger . "\n"
          . "BEGIN\n"
-         . $orig_update_trigger->[3] . "\n"
+         . terminate_sql($orig_update_trigger->[3]) . "\n"
          . $update_trigger_action . ";\n"
          . "END;\n"
          . "UNLOCK TABLES;";
@@ -10750,7 +10750,7 @@ sub create_triggers {
          = "CREATE DEFINER=$definer TRIGGER `$orig_update_trigger->[0]`.`$orig_update_trigger->[1]` "
          . "AFTER UPDATE ON $new_tbl->{name}\n"
          . "FOR EACH ROW\n"
-         . $orig_update_trigger->[3] . ";\n";
+         . terminate_sql($orig_update_trigger->[3]) . "\n";
    }
    else {
 
@@ -11078,6 +11078,7 @@ sub ts {
    return $msg ? "$ts $msg" : $ts;
 }
 
+# find point in trigger we can insert pt-osc code for --preserve-triggers
 sub trigger_ins_point {
    my ( %args ) = @_;
    my @required_args = qw(trigger);
@@ -11093,6 +11094,22 @@ sub trigger_ins_point {
    else { $ins_point = 0;}
 
    return $ins_point;
+}
+
+# sub to add ; if line doesn't end in ;
+sub terminate_sql {
+   my ( $text ) = @_;
+   die "I need a text argument" unless defined $text;
+   $text = trim($text);
+   if(substr($text, -1) ne ';') { $text .= ';'; }
+   return $text;
+}
+
+sub trim {
+   my ( $text ) = @_;
+   die "I need a text argument" unless defined $text;
+   $text =~ s/^\s+|\s+$//gm;
+   return $text;
 }
 
 # Catches signals so we can exit gracefully.
