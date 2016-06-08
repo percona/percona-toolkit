@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 4;
+use Test::More tests => 5;
 
 use PerconaTest;
 
@@ -54,6 +54,13 @@ ok(
    'Analysis for genlog003',
 );
 
+ok(
+   no_diff(
+      sub { pt_query_digest::main(@args, $sample.'genlog005.txt') },
+      "t/pt-query-digest/samples/genlog005.txt"
+   ),
+   'Analysis for genlog005',
+);
 # #############################################################################
 # Done.
 # #############################################################################
