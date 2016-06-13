@@ -1,0 +1,125 @@
+
+# Overall: 5 total, 4 unique, 11.25 QPS, 0.01x concurrency _______________
+# Time range: 2016-06-08 13:40:54.263747 to 13:40:54.708017
+# Attribute          total     min     max     avg     95%  stddev  median
+# ============     ======= ======= ======= ======= ======= ======= =======
+# Exec time            3ms       0     1ms   561us     1ms   477us   445us
+# Rows affecte           0       0       0       0       0       0       0
+# Query size           120      11      30      24   28.75    6.72   26.08
+# Warning coun           0       0       0       0       0       0       0
+# Boolean:
+# No index use  20% yes,  80% no
+
+# Query 1: 4.50 QPS, 0.01x concurrency, ID 0x5D51E5F01B88B79E at byte 14320
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: 2016-06-08 13:40:54.263747 to 13:40:54.708017
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         40       2
+# Exec time     79     2ms     1ms     1ms     1ms     1ms   104us     1ms
+# Rows affecte   0       0       0       0       0       0       0       0
+# Query size    50      60      30      30      30      30       0      30
+# Warning coun   0       0       0       0       0       0       0       0
+# String:
+# Databases    test
+# Hosts        127.0.0.1
+# Users        root
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms  ################################################################
+#  10ms
+# 100ms
+#    1s
+#  10s+
+administrator command: Connect\G
+
+# Query 2: 0 QPS, 0x concurrency, ID 0x132628303F99240D at byte 4058 _____
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2016-06-08 13:40:54.264360
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         20       1
+# Exec time     16   465us   465us   465us   465us   465us       0   465us
+# Rows affecte   0       0       0       0       0       0       0       0
+# Query size     9      11      11      11      11      11       0      11
+# Warning coun   0       0       0       0       0       0       0       0
+# Boolean:
+# No index use 100% yes,   0% no
+# String:
+# Databases    test
+# Hosts        127.0.0.1
+# Users        root
+# Query_time distribution
+#   1us
+#  10us
+# 100us  ################################################################
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+SHOW TABLES\G
+
+# Query 3: 0 QPS, 0x concurrency, ID 0x6C099B0B73EA7633 at byte 3304 _____
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2016-06-08 13:40:54.263876
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         20       1
+# Exec time      3   100us   100us   100us   100us   100us       0   100us
+# Rows affecte   0       0       0       0       0       0       0       0
+# Query size    18      22      22      22      22      22       0      22
+# Warning coun   0       0       0       0       0       0       0       0
+# String:
+# Databases    test
+# Hosts        127.0.0.1
+# Users        root
+# Query_time distribution
+#   1us
+#  10us
+# 100us  ################################################################
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+USE information_schema\G
+
+# Query 4: 0 QPS, 0x concurrency, ID 0xAA353644DE4C4CB4 at byte 10971 ____
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2016-06-08 13:40:54.264406
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         20       1
+# Exec time      0       0       0       0       0       0       0       0
+# Rows affecte   0       0       0       0       0       0       0       0
+# Query size    22      27      27      27      27      27       0      27
+# Warning coun   0       0       0       0       0       0       0       0
+# String:
+# Databases    test
+# Hosts        127.0.0.1
+# Users        root
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+administrator command: Quit\G
+
+# Profile
+# Rank Query ID           Response time Calls R/Call V/M   Item
+# ==== ================== ============= ===== ====== ===== =============
+#    1 0x5D51E5F01B88B79E  0.0022 79.9%     2 0.0011  0.00 ADMIN CONNECT
+#    2 0x132628303F99240D  0.0005 16.6%     1 0.0005  0.00 SHOW TABLES
+#    3 0x6C099B0B73EA7633  0.0001  3.6%     1 0.0001  0.00 
+#    4 0xAA353644DE4C4CB4  0.0000  0.0%     1 0.0000  0.00 ADMIN QUIT

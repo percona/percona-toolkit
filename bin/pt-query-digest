@@ -4710,7 +4710,7 @@ sub parse_client_handshake_packet {
    my ( $db ) = $data =~ m!
       ^.{64}${user}00..   # Everything matched before
       (?:..){$code_len}   # The scramble buffer
-      (.*)00\Z            # The database name
+      (.*)00.*\Z          # The database name
    !x;
    my $pkt = {
       user  => to_string($user),
