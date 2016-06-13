@@ -1,0 +1,16 @@
+/usr/sbin/mysqld, Version: 5.7.12-0ubuntu1-log ((Ubuntu)). started with:
+Tcp port: 3306  Unix socket: /var/run/mysqld/mysqld.sock
+Time                 Id Command    Argument
+2016-06-07T19:07:02.558338Z    3 Connect	phpmyadmin@localhost on  using Socket
+2016-06-07T19:07:02.558581Z    4 Connect	root@localhost on  using Socket
+2016-06-07T19:07:02.558713Z    4 Query	SET CHARACTER SET 'utf8mb4'
+2016-06-07T19:07:02.558791Z    4 Query	SET collation_connection = 'utf8mb4_unicode_ci'
+2016-06-07T19:07:02.563721Z    6 Query	SELECT 1 FROM mysql.user LIMIT 1
+2016-06-07T19:07:02.565845Z    6 Query	SELECT CURRENT_USER()
+2016-06-07T19:07:02.565999Z    6 Query	SELECT 1 FROM (SELECT `GRANTEE`, `IS_GRANTABLE` FROM `INFORMATION_SCHEMA`.`COLUMN_PRIVILEGES` UNION SELECT `GRANTEE`, `IS_GRANTABLE` FROM `INFORMATION_SCHEMA`.`TABLE_PRIVILEGES` UNION SELECT `GRANTEE`, `IS_GRANTABLE` FROM `INFORMATION_SCHEMA`.`SCHEMA_PRIVILEGES` UNION SELECT `GRANTEE`, `IS_GRANTABLE` FROM `INFORMATION_SCHEMA`.`USER_PRIVILEGES`) t WHERE `IS_GRANTABLE` = 'YES' AND '''root''@''localhost''' LIKE `GRANTEE` LIMIT 1
+2016-06-07T19:07:02.567097Z    6 Query	SELECT USER()
+2016-06-07T19:07:02.569194Z    6 Query	SELECT `SCHEMA_NAME` FROM `INFORMATION_SCHEMA`.`SCHEMATA`, (SELECT DB_first_level FROM ( SELECT DISTINCT SUBSTRING_INDEX(SCHEMA_NAME, '_', 1) DB_first_level FROM INFORMATION_SCHEMA.SCHEMATA WHERE TRUE ) t ORDER BY DB_first_level ASC LIMIT 0, 100) t2 WHERE TRUE AND 1 = LOCATE(CONCAT(DB_first_level, '_'), CONCAT(SCHEMA_NAME, '_')) ORDER BY SCHEMA_NAME ASC
+2016-06-07T19:07:02.569779Z    5 Query	SELECT `db_name`, COUNT(*) AS `count` FROM `phpmyadmin`.`pma__navigationhiding` WHERE `username`='root' GROUP BY `db_name`
+2016-06-07T19:07:02.572396Z    6 Query	SELECT COUNT(*) FROM ( SELECT DISTINCT SUBSTRING_INDEX(SCHEMA_NAME, '_', 1) DB_first_level FROM INFORMATION_SCHEMA.SCHEMATA WHERE TRUE ) t
+2016-06-07T19:07:02.575723Z    5 Query	SELECT `label`, `id`, `query`, `dbase` AS `db`, IF (`user` = '', true, false) AS `shared` FROM `phpmyadmin`.`pma__bookmark` WHERE `user` = '' OR `user` = 'root'
+2016-06-07T19:07:02.576333Z    5 Query	SELECT `tab` FROM `phpmyadmin`.`pma__usergroups` WHERE `allowed` = 'N' AND `tab` LIKE 'server%' AND `usergroup` = (SELECT usergroup FROM `phpmyadmin`.`pma__users` WHERE `username` = 'root')
