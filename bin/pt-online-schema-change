@@ -10642,6 +10642,13 @@ sub create_triggers {
       print ts("Creating triggers...\n");
    }
 
+   my $definer;
+   if ( $o->get('definer') ) {
+      $definer = ' DEFINER = ' . $q->quote($o->get('definer'));
+   } else {
+      $definer = '';
+   }
+
    # Create a unique trigger name prefix based on the orig table name
    # so multiple instances of the tool can run on different tables.
    my $prefix = 'pt_osc_' . $orig_tbl->{db} . '_' . $orig_tbl->{tbl};
@@ -10670,7 +10677,7 @@ sub create_triggers {
    } @{$tbl_struct->{keys}->{$del_index}->{cols}} );
 
    my $delete_trigger
-      = "CREATE TRIGGER `${prefix}_del` AFTER DELETE ON $orig_tbl->{name} "
+      = "CREATE${definer} TRIGGER `${prefix}_del` AFTER DELETE ON $orig_tbl->{name} "
       . "FOR EACH ROW "
       . "DELETE IGNORE FROM $new_tbl->{name} "
       . "WHERE $del_index_cols";
@@ -10678,11 +10685,11 @@ sub create_triggers {
    my $qcols    = join(', ', map { $q->quote($_->{new}) }        @$cols);
    my $new_vals = join(', ', map { "NEW.".$q->quote($_->{old}) } @$cols);
    my $insert_trigger
-      = "CREATE TRIGGER `${prefix}_ins` AFTER INSERT ON $orig_tbl->{name} "
+      = "CREATE${definer} TRIGGER `${prefix}_ins` AFTER INSERT ON $orig_tbl->{name} "
       . "FOR EACH ROW "
       . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
    my $update_trigger
-      = "CREATE TRIGGER `${prefix}_upd` AFTER UPDATE ON $orig_tbl->{name} "
+      = "CREATE${definer} TRIGGER `${prefix}_upd` AFTER UPDATE ON $orig_tbl->{name} "
       . "FOR EACH ROW "
       . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
 
@@ -11648,6 +11655,15 @@ default: yes
 
 Drop triggers on the old table.  C<--no-drop-triggers> forces
 C<--no-drop-old-table>.
+
+=item --definer
+
+short form: -d; type: string
+
+The user which is used as definer for the triggers. You can set this only if
+you have SUPER privileges. You can use this if your user on a master should
+not be used on the slave(s) for the triggers, for example when it does not
+have INSERT, DELETE or TRIGGER privileges on the slave(s).
 
 =item --dry-run
 
