@@ -15262,14 +15262,14 @@ be report lines for both db and Schema.
 
 =item --attribute-value-limit
 
-type: int; default: 4294967296
+type: int; default: 0 
 
 A sanity limit for attribute values.
 
 This option deals with bugs in slow logging functionality that causes large
 values for attributes.  If the attribute's value is bigger than this, the
 last-seen value for that class of query is used instead.
-The default is 4G (2^32). To disable (set no upper limit) set value to 0.
+Disabled by default.
 
 =item --charset
 
