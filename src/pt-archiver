@@ -1,0 +1,2620 @@
+#!/usr/bin/env perl
+
+# This program is part of Percona Toolkit: http://www.percona.com/software/
+# See "COPYRIGHT, LICENSE, AND WARRANTY" at the end of this file for legal
+# notices and disclaimers.
+
+use strict;
+use warnings FATAL => 'all';
+
+# This tool is "fat-packed": most of its dependent modules are embedded
+# in this file.  Setting %INC to this file for each module makes Perl aware
+# of this so it will not try to load the module from @INC.  See the tool's
+# documentation for a full list of dependencies.
+BEGIN {
+   $INC{$_} = __FILE__ for map { (my $pkg = "$_.pm") =~ s!::!/!g; $pkg } (qw(
+      Percona::Toolkit
+      Lmo::Utils
+      Lmo::Meta
+      Lmo::Object
+      Lmo::Types
+      Lmo
+      OptionParser
+      TableParser
+      DSNParser
+      VersionParser
+      Quoter
+      TableNibbler
+      Daemon
+      MasterSlave
+      FlowControlWaiter
+      Cxn
+      HTTP::Micro
+      VersionCheck
+   ));
+}
+
+use Percona::Toolkit;
+use Lmo;
+use Lmo::Meta;
+use Lmo::Object;
+use Lmo::Types;
+use OptionParser;
+use TableParser;
+use DSNParser;
+use VersionParser;
+use Quoter;
+use TableNibbler;
+use Daemon;
+use MasterSlave;
+use FlowControlWaiter;
+use Cxn;
+use HTTP::Micro;
+use VersionCheck;
+
+# ###########################################################################
+# This is a combination of modules and programs in one -- a runnable module.
+# http://www.perl.com/pub/a/2006/07/13/lightning-articles.html?page=last
+# Or, look it up in the Camel book on pages 642 and 643 in the 3rd edition.
+#
+# Check at the end of this package for the call to main() which actually runs
+# the program.
+# ###########################################################################
+package pt_archiver;
+
+use English qw(-no_match_vars);
+use List::Util qw(max);
+use IO::File;
+use sigtrap qw(handler finish untrapped normal-signals);
+use Time::HiRes qw(gettimeofday sleep time);
+use Data::Dumper;
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Quotekeys = 0;
+
+use Percona::Toolkit;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+# Global variables; as few as possible.
+my $oktorun   = 1;
+my $txn_cnt   = 0;
+my $cnt       = 0;
+my $can_retry = 1;
+my $archive_fh;
+my $get_sth;
+my ( $OUT_OF_RETRIES, $ROLLED_BACK, $ALL_IS_WELL ) = ( 0, -1, 1 );
+my ( $src, $dst );
+my $pxc_version = '0';
+
+# Holds the arguments for the $sth's bind variables, so it can be re-tried
+# easily.
+my @beginning_of_txn;
+my $q  = new Quoter;
+
+sub main {
+   local @ARGV = @_;  # set global ARGV for this package
+
+   # Reset global vars else tests, which run this tool as a module,
+   # may encounter weird results.
+   $oktorun          = 1;
+   $txn_cnt          = 0;
+   $cnt              = 0;
+   $can_retry        = 1;
+   $archive_fh       = undef;
+   $get_sth          = undef;
+   ($src, $dst)      = (undef, undef);
+   @beginning_of_txn = ();
+   undef *trace;
+   ($OUT_OF_RETRIES, $ROLLED_BACK, $ALL_IS_WELL ) = (0, -1, 1);
+
+
+   # ########################################################################
+   # Get configuration information.
+   # ########################################################################
+   my $o = new OptionParser();
+   $o->get_specs();
+   $o->get_opts();
+
+   my $dp = $o->DSNParser();
+   $dp->prop('set-vars', $o->set_vars());
+
+   # Frequently used options.
+   $src             = $o->get('source');
+   $dst             = $o->get('dest');
+   my $sentinel     = $o->get('sentinel');
+   my $bulk_del     = $o->get('bulk-delete');
+   my $commit_each  = $o->get('commit-each');
+   my $limit        = $o->get('limit');
+   my $archive_file = $o->get('file');
+   my $txnsize      = $o->get('txn-size');
+   my $quiet        = $o->get('quiet');
+   my $got_charset  = $o->get('charset');
+
+   # First things first: if --stop was given, create the sentinel file.
+   if ( $o->get('stop') ) {
+      my $sentinel_fh = IO::File->new($sentinel, ">>")
+         or die "Cannot open $sentinel: $OS_ERROR\n";
+      print $sentinel_fh "Remove this file to permit pt-archiver to run\n"
+         or die "Cannot write to $sentinel: $OS_ERROR\n";
+      close $sentinel_fh
+         or die "Cannot close $sentinel: $OS_ERROR\n";
+      print STDOUT "Successfully created file $sentinel\n"
+         unless $quiet;
+      return 0;
+   }
+
+   # Generate a filename with sprintf-like formatting codes.
+   if ( $archive_file ) {
+      my @time = localtime();
+      my %fmt = (
+         d => sprintf('%02d', $time[3]),
+         H => sprintf('%02d', $time[2]),
+         i => sprintf('%02d', $time[1]),
+         m => sprintf('%02d', $time[4] + 1),
+         s => sprintf('%02d', $time[0]),
+         Y => $time[5] + 1900,
+         D => $src && $src->{D} ? $src->{D} : '',
+         t => $src && $src->{t} ? $src->{t} : '',
+      );
+      $archive_file =~ s/%([dHimsYDt])/$fmt{$1}/g;
+   }
+
+   if ( !$o->got('help') ) {
+      $o->save_error("--source DSN requires a 't' (table) part")
+         unless $src->{t};
+
+      if ( $dst ) {
+         # Ensure --source and --dest don't point to the same place
+         my $same = 1;
+         foreach my $arg ( qw(h P D t S) ) {
+            if ( defined $src->{$arg} && defined $dst->{$arg}
+                 && $src->{$arg} ne $dst->{$arg} ) {
+               $same = 0;
+               last;
+            }
+         }
+         if ( $same ) {
+            $o->save_error("--source and --dest refer to the same table");
+         }
+      }
+      if ( $o->get('bulk-insert') ) {
+         $o->save_error("--bulk-insert is meaningless without a destination")
+            unless $dst;
+         $bulk_del = 1; # VERY IMPORTANT for safety.
+      }
+      if ( $bulk_del && $limit < 2 ) {
+         $o->save_error("--bulk-delete is meaningless with --limit 1");
+      }
+      if ( $o->got('purge') && $o->got('no-delete') ) {
+         $o->save_error("--purge and --no-delete are mutually exclusive");
+      }
+   }
+
+   if ( $bulk_del || $o->get('bulk-insert') ) {
+      $o->set('commit-each', 1);
+   }
+
+   $o->usage_or_errors();
+
+   # ########################################################################
+   # If --pid, check it first since we'll die if it already exits.
+   # ########################################################################
+   my $daemon;
+   if ( $o->get('pid') ) {
+      # We're not daemoninzing, it just handles PID stuff.  Keep $daemon
+      # in the the scope of main() because when it's destroyed it automatically
+      # removes the PID file.
+      $daemon = new Daemon(o=>$o);
+      $daemon->make_PID_file();
+   }
+      
+   # ########################################################################
+   # Set up statistics.
+   # ########################################################################
+   my %statistics = ();
+   my $stat_start;
+
+   if ( $o->get('statistics') ) {
+      my $start    = gettimeofday();
+      my $obs_cost = gettimeofday() - $start; # cost of observation
+
+      *trace = sub {
+         my ( $thing, $sub ) = @_;
+         my $start = gettimeofday();
+         $sub->();
+         $statistics{$thing . '_time'}
+            += (gettimeofday() - $start - $obs_cost);
+         ++$statistics{$thing . '_count'};
+         $stat_start ||= $start;
+      }
+   }
+   else { # Generate a version that doesn't do any timing
+      *trace = sub {
+         my ( $thing, $sub ) = @_;
+         $sub->();
+      }
+   }
+
+   # ########################################################################
+   # Inspect DB servers and tables.
+   # ########################################################################
+
+   my $tp = new TableParser(Quoter => $q);
+   foreach my $table ( grep { $_ } ($src, $dst) ) {
+      my $ac = !$txnsize && !$commit_each;
+      if ( !defined $table->{p} && $o->get('ask-pass') ) {
+         $table->{p} = OptionParser::prompt_noecho("Enter password: ");
+      }
+      my $dbh = $dp->get_dbh(
+         $dp->get_cxn_params($table), { AutoCommit => $ac });
+      PTDEBUG && _d('Inspecting table on', $dp->as_string($table));
+
+      # Set options that can enable removing data on the master
+      # and archiving it on the slaves.
+      if ( $table->{a} ) {
+         $dbh->do("USE $table->{a}");
+      }
+      if ( $table->{b} ) {
+         $dbh->do("SET SQL_LOG_BIN=0");
+      }
+
+      $table->{dbh}  = $dbh;
+      $table->{irot} = get_irot($dbh);
+
+      $can_retry = $can_retry && !$table->{irot};
+
+      $table->{db_tbl} = $q->quote(
+         map  { $_ =~ s/(^`|`$)//g; $_; }
+         grep { $_ }
+         ( $table->{D}, $table->{t} )
+      );
+
+      # Create objects for archivable and dependency handling, BEFORE getting
+      # the tbl structure (because the object might do some setup, including
+      # creating the table to be archived).
+      if ( $table->{m} ) {
+         eval "require $table->{m}";
+         die $EVAL_ERROR if $EVAL_ERROR;
+
+         trace('plugin_start', sub {
+            $table->{plugin} = $table->{m}->new(
+               dbh          => $table->{dbh},
+               db           => $table->{D},
+               tbl          => $table->{t},
+               OptionParser => $o,
+               DSNParser    => $dp,
+               Quoter       => $q,
+            );
+         });
+      }
+
+      $table->{info} = $tp->parse(
+         $tp->get_create_table( $dbh, $table->{D}, $table->{t} ));
+
+      if ( $o->get('check-charset') ) {
+         my $sql = 'SELECT CONCAT(/*!40100 @@session.character_set_connection, */ "")';
+         PTDEBUG && _d($sql);
+         my ($dbh_charset) =  $table->{dbh}->selectrow_array($sql);
+         if ( ($dbh_charset || "") ne ($table->{info}->{charset} || "") ) {
+            $src->{dbh}->disconnect() if $src && $src->{dbh};
+            $dst->{dbh}->disconnect() if $dst && $dst->{dbh};
+            die "Character set mismatch: "
+               . ($src && $table eq $src ? "--source " : "--dest ")
+               . "DSN uses "     . ($dbh_charset || "")
+               . ", table uses " . ($table->{info}->{charset} || "")
+               . ".  You can disable this check by specifying "
+               . "--no-check-charset.\n";
+         }
+      }
+   }
+
+   if ( $o->get('primary-key-only')
+        && !exists $src->{info}->{keys}->{PRIMARY} ) {
+      $src->{dbh}->disconnect();
+      $dst->{dbh}->disconnect() if $dst && $dst->{dbh};
+      die "--primary-key-only was specified by the --source table "
+         . "$src->{db_tbl} does not have a PRIMARY KEY";
+   }
+
+   if ( $dst && $o->get('check-columns') ) {
+      my @not_in_src = grep {
+         !$src->{info}->{is_col}->{$_}
+      } @{$dst->{info}->{cols}};
+      if ( @not_in_src ) {
+         $src->{dbh}->disconnect();
+         $dst->{dbh}->disconnect() if $dst && $dst->{dbh};
+         die "The following columns exist in --dest but not --source: "
+            . join(', ', @not_in_src)
+            . "\n";
+      }
+      my @not_in_dst = grep {
+         !$dst->{info}->{is_col}->{$_}
+      } @{$src->{info}->{cols}};
+      if ( @not_in_dst ) {
+         $src->{dbh}->disconnect();
+         $dst->{dbh}->disconnect() if $dst && $dst->{dbh};
+         die "The following columns exist in --source but not --dest: "
+            . join(', ', @not_in_dst)
+            . "\n";
+      }
+   }
+
+   # ########################################################################
+   # Get lag dbh.
+   # ########################################################################
+   my @lag_dbh;
+   my $ms;
+   if ( $o->get('check-slave-lag') ) {
+      my $dsn_defaults = $dp->parse_options($o);
+      my $lag_slaves_dsn = $o->get('check-slave-lag');
+      $ms = new MasterSlave(
+         OptionParser => $o,
+         DSNParser    => $dp,
+         Quoter       => $q,
+      );
+      # we get each slave's connection handler (and its id, for debug and reporting)
+      for my $slave (@$lag_slaves_dsn) {
+         my $dsn                 = $dp->parse($slave, $dsn_defaults);
+         my $lag_dbh             = $dp->get_dbh($dp->get_cxn_params($dsn), { AutoCommit => 1 });
+         my $lag_id              = $ms->short_host($dsn);
+         push @lag_dbh , {'dbh' => $lag_dbh, 'id' => $lag_id}
+      }
+   }
+
+   # #######################################################################
+   # Check if it's a cluster and if so get version 
+   # Create FlowControlWaiter object if max-flow-ctl was specified and
+   # PXC version supports it
+   # #######################################################################
+
+   my $flow_ctl;
+   if ( $src && $src->{dbh} && Cxn::is_cluster_node($src->{dbh}) ) {
+         $pxc_version = VersionParser->new($src->{'dbh'});
+         if ( $o->got('max-flow-ctl') ) {
+            if ( $pxc_version < '5.6' ) {
+               die "Option '--max-flow-ctl' is only available for PXC version 5.6 "
+                  . "or higher."
+            } else {
+               $flow_ctl = new FlowControlWaiter(
+                  node          => $src->{'dbh'},
+                  max_flow_ctl  => $o->get('max-flow-ctl'),
+                  oktorun       => sub { return $oktorun },
+                  sleep         => sub { sleep($o->get('check-interval')) },
+                  simple_progress => $o->got('progress') ? 1 : 0,
+               );
+           }
+        }
+    }
+
+   if ( $src && $src->{dbh} && !Cxn::is_cluster_node($src->{dbh}) && $o->got('max-flow-ctl') ) {
+         die "Option '--max-flow-ctl' is for use with PXC clusters."
+    }
+
+   # ########################################################################
+   # Set up general plugin.
+   # ########################################################################
+   my $plugin;
+   if ( $o->get('plugin') ) {
+      eval "require " . $o->get('plugin');
+      die $EVAL_ERROR if $EVAL_ERROR;
+      $plugin = $o->get('plugin')->new(
+         src  => $src,
+         dst  => $dst,
+         opts => $o,
+      );
+   }
+
+   # ########################################################################
+   # Design SQL statements.
+   # ########################################################################
+   my $dbh = $src->{dbh};
+   my $nibbler = new TableNibbler(
+      TableParser => $tp,
+      Quoter      => $q,
+   );
+   my ($first_sql, $next_sql, $del_sql, $ins_sql);
+   my ($sel_stmt, $ins_stmt, $del_stmt);
+   my (@asc_slice, @sel_slice, @del_slice, @bulkdel_slice, @ins_slice);
+   my @sel_cols = $o->get('columns')          ? @{$o->get('columns')}    # Explicit
+                : $o->get('primary-key-only') ? @{$src->{info}->{keys}->{PRIMARY}->{cols}} 
+                :                               @{$src->{info}->{cols}}; # All
+   PTDEBUG && _d("sel cols: ", @sel_cols);
+
+   $del_stmt = $nibbler->generate_del_stmt(
+      tbl_struct => $src->{info},
+      cols       => \@sel_cols,
+      index      => $src->{i},
+   );
+   @del_slice = @{$del_stmt->{slice}};
+
+   # Generate statement for ascending index, if desired
+   if ( !$o->get('no-ascend') ) {
+      $sel_stmt = $nibbler->generate_asc_stmt(
+         tbl_struct => $src->{info},
+         cols       => $del_stmt->{cols},
+         index      => $del_stmt->{index},
+         asc_first  => $o->get('ascend-first'),
+         # A plugin might prevent rows in the source from being deleted
+         # when doing single delete, but it cannot prevent rows from
+         # being deleted when doing a bulk delete.
+         asc_only   => $o->get('no-delete') ?  1
+                    : $src->{m}             ? ($o->get('bulk-delete') ? 0 : 1)
+                    :                          0,
+      )
+   }
+   else {
+      $sel_stmt = {
+         cols  => $del_stmt->{cols},
+         index => undef,
+         where => '1=1',
+         slice => [], # No-ascend = no bind variables in the WHERE clause.
+         scols => [], # No-ascend = no bind variables in the WHERE clause.
+      };
+   }
+   @asc_slice = @{$sel_stmt->{slice}};
+   @sel_slice = 0..$#sel_cols;
+
+   $first_sql
+      = 'SELECT' . ( $o->get('high-priority-select') ? ' HIGH_PRIORITY' : '' )
+      . ' /*!40001 SQL_NO_CACHE */ '
+      . join(',', map { $q->quote($_) } @{$sel_stmt->{cols}} )
+      . " FROM $src->{db_tbl}"
+      . ( $sel_stmt->{index}
+         ? ((VersionParser->new($dbh) >= '4.0.9' ? " FORCE" : " USE")
+            . " INDEX(`$sel_stmt->{index}`)")
+         : '')
+      . " WHERE (".$o->get('where').")";
+
+   if ( $o->get('safe-auto-increment')
+         && $sel_stmt->{index}
+         && scalar(@{$src->{info}->{keys}->{$sel_stmt->{index}}->{cols}}) == 1
+         && $src->{info}->{is_autoinc}->{
+            $src->{info}->{keys}->{$sel_stmt->{index}}->{cols}->[0]
+         }
+   ) {
+      my $col = $q->quote($sel_stmt->{scols}->[0]);
+      my ($val) = $dbh->selectrow_array("SELECT MAX($col) FROM $src->{db_tbl}");
+      $first_sql .= " AND ($col < " . $q->quote_val($val) . ")";
+   }
+
+   $next_sql = $first_sql;
+   if ( !$o->get('no-ascend') ) {
+      $next_sql .= " AND $sel_stmt->{where}";
+   }
+
+   # Obtain index cols so we can order them when ascending 
+   # this ensures returned sets are disjoint when ran on partitioned tables
+   # issue 1376561
+   my $index_cols;
+   if (  $sel_stmt->{index} 
+         && $src->{info}->{keys}->{$sel_stmt->{index}}->{cols} 
+   ) {
+      $index_cols = $src->{info}->{keys}->{$sel_stmt->{index}}->{colnames};
+   }
+
+   foreach my $thing ( $first_sql, $next_sql ) {
+      $thing .= " ORDER BY $index_cols" if $index_cols; 
+      $thing .= " LIMIT $limit";
+      if ( $o->get('for-update') ) {
+         $thing .= ' FOR UPDATE';
+      }
+      elsif ( $o->get('share-lock') ) {
+         $thing .= ' LOCK IN SHARE MODE';
+      }
+   }
+
+   PTDEBUG && _d("Index for DELETE:", $del_stmt->{index});
+   if ( !$bulk_del ) {
+      # The LIMIT might be 1 here, because even though a SELECT can return
+      # many rows, an INSERT only does one at a time.  It would not be safe to
+      # iterate over a SELECT that was LIMIT-ed to 500 rows, read and INSERT
+      # one, and then delete with a LIMIT of 500.  Only one row would be written
+      # to the file; only one would be INSERT-ed at the destination.  But
+      # LIMIT 1 is actually only needed when the index is not unique
+      # (http://code.google.com/p/maatkit/issues/detail?id=1166).
+      $del_sql = 'DELETE'
+         . ($o->get('low-priority-delete') ? ' LOW_PRIORITY' : '')
+         . ($o->get('quick-delete')        ? ' QUICK'        : '')
+         . " FROM $src->{db_tbl} WHERE $del_stmt->{where}";
+
+         if ( $src->{info}->{keys}->{$del_stmt->{index}}->{is_unique} ) {
+            PTDEBUG && _d("DELETE index is unique; LIMIT 1 is not needed");
+         }
+         else {
+            PTDEBUG && _d("Adding LIMIT 1 to DELETE because DELETE index "
+               . "is not unique");
+            $del_sql .= " LIMIT 1";
+         }
+   }
+   else {
+      # Unless, of course, it's a bulk DELETE, in which case the 500 rows have
+      # already been INSERT-ed.
+      my $asc_stmt = $nibbler->generate_asc_stmt(
+         tbl_struct => $src->{info},
+         cols       => $del_stmt->{cols},
+         index      => $del_stmt->{index},
+         asc_first  => 0,
+      );
+      $del_sql = 'DELETE'
+         . ($o->get('low-priority-delete') ? ' LOW_PRIORITY' : '')
+         . ($o->get('quick-delete')        ? ' QUICK'        : '')
+         . " FROM $src->{db_tbl} WHERE ("
+         . $asc_stmt->{boundaries}->{'>='}
+         . ') AND (' . $asc_stmt->{boundaries}->{'<='}
+         # Unlike the row-at-a-time DELETE, this one must include the user's
+         # specified WHERE clause and an appropriate LIMIT clause.
+         . ") AND (".$o->get('where').")"
+         . ($o->get('bulk-delete-limit') ? " LIMIT $limit" : "");
+      @bulkdel_slice = @{$asc_stmt->{slice}};
+   }
+
+   if ( $dst ) {
+      $ins_stmt = $nibbler->generate_ins_stmt(
+         ins_tbl  => $dst->{info},
+         sel_cols => \@sel_cols,
+      );
+      PTDEBUG && _d("inst stmt: ", Dumper($ins_stmt));
+      @ins_slice = @{$ins_stmt->{slice}};
+      if ( $o->get('bulk-insert') ) {
+         $ins_sql = 'LOAD DATA'
+                  . ($o->get('low-priority-insert') ? ' LOW_PRIORITY' : '')
+                  . ' LOCAL INFILE ?'
+                  . ($o->get('replace')    ? ' REPLACE'      : '')
+                  . ($o->get('ignore')     ? ' IGNORE'       : '')
+                  . " INTO TABLE $dst->{db_tbl}"
+                  . ($got_charset ? "CHARACTER SET $got_charset" : "")
+                  . "("
+                  . join(",", map { $q->quote($_) } @{$ins_stmt->{cols}} )
+                  . ")";
+      }
+      else {
+         $ins_sql = ($o->get('replace')             ? 'REPLACE'      : 'INSERT')
+                  . ($o->get('low-priority-insert') ? ' LOW_PRIORITY' : '')
+                  . ($o->get('delayed-insert')      ? ' DELAYED'      : '')
+                  . ($o->get('ignore')              ? ' IGNORE'       : '')
+                  . " INTO $dst->{db_tbl}("
+                  . join(",", map { $q->quote($_) } @{$ins_stmt->{cols}} )
+                  . ") VALUES ("
+                  . join(",", map { "?" } @{$ins_stmt->{cols}} ) . ")";
+      }
+   }
+   else {
+      $ins_sql = '';
+   }
+
+   if ( PTDEBUG ) {
+      _d("get first sql:", $first_sql);
+      _d("get next sql:", $next_sql);
+      _d("del row sql:", $del_sql);
+      _d("ins row sql:", $ins_sql);
+   }
+   
+   if ( $o->get('dry-run') ) {
+      if ( !$quiet ) {
+         print join("\n", grep { $_ } ($archive_file || ''),
+                  $first_sql, $next_sql,
+                  ($o->get('no-delete') ? '' : $del_sql), $ins_sql)
+            , "\n";
+      }
+      $src->{dbh}->disconnect();
+      $dst->{dbh}->disconnect() if $dst && $dst->{dbh};
+      return 0;
+   }
+
+   my $get_first = $dbh->prepare($first_sql);
+   my $get_next  = $dbh->prepare($next_sql);
+   my $del_row   = $dbh->prepare($del_sql);
+   my $ins_row   = $dst->{dbh}->prepare($ins_sql) if $dst; # Different $dbh!
+
+   # ########################################################################
+   # Set MySQL options.
+   # ########################################################################
+
+   if ( $o->get('skip-foreign-key-checks') ) {
+      $src->{dbh}->do("/*!40014 SET FOREIGN_KEY_CHECKS=0 */");
+      if ( $dst ) {
+         $dst->{dbh}->do("/*!40014 SET FOREIGN_KEY_CHECKS=0 */");
+      }
+   }
+
+   # ########################################################################
+   # Set up the plugins
+   # ########################################################################
+   foreach my $table ( $dst, $src ) {
+      next unless $table && $table->{plugin};
+      trace ('before_begin', sub {
+         $table->{plugin}->before_begin(
+            cols    => \@sel_cols,
+            allcols => $sel_stmt->{cols},
+         );
+      });
+   }
+
+   # ########################################################################
+   # Do the version-check
+   # ########################################################################
+   if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
+      VersionCheck::version_check(
+         force     => $o->got('version-check'),
+         instances => [
+            { dbh => $src->{dbh}, dsn => $src->{dsn} },
+            ( $dst ? { dbh => $dst->{dbh}, dsn => $dst->{dsn} } : () ),
+         ],
+      );
+   }
+
+   # ########################################################################
+   # Start archiving.
+   # ########################################################################
+   my $start   = time();
+   my $end     = $start + ($o->get('run-time') || 0); # When to exit
+   my $now     = $start;
+   my $last_select_time;  # for --sleep-coef
+   my $retries = $o->get('retries');
+   printf("%-19s %7s %7s\n", 'TIME', 'ELAPSED', 'COUNT')
+      if $o->get('progress') && !$quiet;
+   printf("%19s %7d %7d\n", ts($now), $now - $start, $cnt)
+      if $o->get('progress') && !$quiet;
+
+   $get_sth = $get_first; # Later it may be assigned $get_next
+   trace('select', sub {
+      my $select_start = time;
+      $get_sth->execute;
+      $last_select_time = time - $select_start;
+      $statistics{SELECT} += $get_sth->rows;
+   });
+   my $row = $get_sth->fetchrow_arrayref();
+   PTDEBUG && _d("First row: ", Dumper($row), 'rows:', $get_sth->rows);
+   if ( !$row ) {
+      $get_sth->finish;
+      $src->{dbh}->disconnect();
+      $dst->{dbh}->disconnect() if $dst && $dst->{dbh};
+      return 0;
+   }
+
+   my $charset  = $got_charset || '';
+   if ($charset eq 'utf8') {
+      $charset = ":$charset";
+   }
+   elsif ($charset) {
+      eval { require Encode }
+            or (PTDEBUG &&
+               _d("Couldn't load Encode: ", $EVAL_ERROR,
+                  "Going to try using the charset ",
+                  "passed in without checking it."));
+      # No need to punish a user if they did their
+      # homework and passed in an official charset,
+      # rather than an alias.
+      $charset = ":encoding("
+               . (defined &Encode::resolve_alias
+                  ? Encode::resolve_alias($charset) || $charset
+                  : $charset)
+               . ")";
+   }
+
+   if ( $charset eq ':utf8' && $DBD::mysql::VERSION lt '4'
+      && ( $archive_file || $o->get('bulk-insert') ) )
+   {
+      my $plural = '';
+      my $files  = $archive_file ? '--file' : '';
+      if ( $o->get('bulk-insert') ) {
+         if ($files) {
+            $plural = 's';
+            $files .= $files ? ' and ' : '';
+         }
+         $files .= '--bulk-insert'
+      }
+      warn "Setting binmode :raw instead of :utf8 on $files file$plural "
+         . "because DBD::mysql 3.0007 has a bug with UTF-8.  "
+         . "Verify the $files file$plural, as the bug may lead to "
+         . "data being double-encoded.  Update DBD::mysql to avoid "
+         . "this warning.";
+      $charset = ":raw";
+   }
+   
+   # Open the file and print the header to it. 
+   if ( $archive_file ) { 
+      my $need_hdr = $o->get('header') && !-f $archive_file; 
+      $archive_fh = IO::File->new($archive_file, ">>$charset") 
+         or die "Cannot open $charset $archive_file: $OS_ERROR\n"; 
+      $archive_fh->autoflush(1) unless $o->get('buffer'); 
+      if ( $need_hdr ) { 
+         print { $archive_fh } '', escape(\@sel_cols), "\n" 
+            or die "Cannot write to $archive_file: $OS_ERROR\n"; 
+      } 
+   } 
+
+   # Open the bulk insert file, which doesn't get any header info.
+   my $bulkins_file;
+   if ( $o->get('bulk-insert') ) {
+      require File::Temp;
+      $bulkins_file = File::Temp->new( SUFFIX => 'pt-archiver' )
+         or die "Cannot open temp file: $OS_ERROR\n";
+      binmode($bulkins_file, $charset)
+         or die "Cannot set $charset as an encoding for the bulk-insert "
+              . "file: $OS_ERROR";
+   }
+
+   # This row is the first row fetched from each 'chunk'.
+   my $first_row = [ @$row ];
+   my $csv_row;
+   my $flow_ctl_count = 0;
+   my $lag_count = 0;
+   my $bulk_count = 0;
+
+   ROW:
+   while (                                 # Quit if:
+      $row                                 # There is no data
+      && $retries >= 0                     # or retries are exceeded
+      && (!$o->get('run-time') || $now < $end) # or time is exceeded
+      && !-f $sentinel                     # or the sentinel is set
+      && $oktorun                          # or instructed to quit
+      )
+   {
+      my $lastrow = $row;
+
+      if ( !$src->{plugin}
+         || trace('is_archivable', sub {
+            $src->{plugin}->is_archivable(row => $row)
+         })
+      ) {
+
+         # Do the archiving.  Write to the file first since, like the file,
+         # MyISAM and other tables cannot be rolled back etc.  If there is a
+         # problem, hopefully the data has at least made it to the file.
+         my $escaped_row;
+         if ( $archive_fh || $bulkins_file ) {
+            $escaped_row = escape([@{$row}[@sel_slice]]);
+         }
+         if ( $archive_fh ) {
+            trace('print_file', sub {
+               print $archive_fh $escaped_row, "\n"
+                  or die "Cannot write to $archive_file: $OS_ERROR\n";
+            });
+         }
+
+         # ###################################################################
+         # This code is for the row-at-a-time archiving functionality.
+         # ###################################################################
+         # INSERT must come first, to be as safe as possible.
+         if ( $dst && !$bulkins_file ) {
+            my $ins_sth; # Let plugin change which sth is used for the INSERT.
+            if ( $dst->{plugin} ) {
+               trace('before_insert', sub {
+                  $dst->{plugin}->before_insert(row => $row);
+               });
+               trace('custom_sth', sub {
+                  $ins_sth = $dst->{plugin}->custom_sth(
+                     row => $row, sql => $ins_sql);
+               });
+            }
+            $ins_sth ||= $ins_row; # Default to the sth decided before.
+            my $success = do_with_retries($o, 'inserting', sub {
+               my $ins_cnt = $ins_sth->execute(@{$row}[@ins_slice]);
+               PTDEBUG && _d('Inserted', $ins_cnt, 'rows');
+               $statistics{INSERT} += $ins_sth->rows;
+            });
+            if ( $success == $OUT_OF_RETRIES ) {
+               $retries = -1;
+               last ROW;
+            }
+            elsif ( $success == $ROLLED_BACK ) {
+               --$retries;
+               next ROW;
+            }
+         }
+
+         if ( !$bulk_del ) {
+            # DELETE comes after INSERT for safety.
+            if ( $src->{plugin} ) {
+               trace('before_delete', sub {
+                  $src->{plugin}->before_delete(row => $row);
+               });
+            }
+            if ( !$o->get('no-delete') ) {
+               my $success = do_with_retries($o, 'deleting', sub {
+                  $del_row->execute(@{$row}[@del_slice]);
+                  PTDEBUG && _d('Deleted', $del_row->rows, 'rows');
+                  $statistics{DELETE} += $del_row->rows;
+               });
+               if ( $success == $OUT_OF_RETRIES ) {
+                  $retries = -1;
+                  last ROW;
+               }
+               elsif ( $success == $ROLLED_BACK ) {
+                  --$retries;
+                  next ROW;
+               }
+            }
+         }
+
+         # ###################################################################
+         # This code is for the bulk archiving functionality.
+         # ###################################################################
+         if ( $bulkins_file ) {
+            trace('print_bulkfile', sub {
+               print $bulkins_file $escaped_row, "\n"
+                  or die "Cannot write to bulk file: $OS_ERROR\n";
+            });
+         }
+
+      }  # row is archivable
+
+      $now = time();
+      ++$cnt;
+      ++$txn_cnt;
+      $retries = $o->get('retries');
+
+      # Possibly flush the file and commit the insert and delete.
+      commit($o) unless $commit_each;
+
+      # Report on progress.
+      if ( !$quiet && $o->get('progress') && $cnt % $o->get('progress') == 0 ) {
+         printf("%19s %7d %7d\n", ts($now), $now - $start, $cnt);
+      }
+
+      # Get the next row in this chunk.
+      # First time through this loop $get_sth is set to $get_first.
+      # For non-bulk operations this means that rows ($row) are archived
+      # one-by-one in in the code block above ("row is archivable").  For
+      # bulk operations, the 2nd to 2nd-to-last rows are ignored and
+      # only the first row ($first_row) and the last row ($last_row) of
+      # this chunk are used to do bulk INSERT or DELETE on the range of
+      # rows between first and last.  After the bulk ops, $first_row and
+      # $last_row are reset to the next chunk.
+      if ( $get_sth->{Active} ) { # Fetch until exhausted
+         $row = $get_sth->fetchrow_arrayref();
+      }
+      if ( !$row ) {
+         PTDEBUG && _d('No more rows in this chunk; doing bulk operations');
+
+         # ###################################################################
+         # This code is for the bulk archiving functionality.
+         # ###################################################################
+         if ( $bulkins_file ) {
+            $bulkins_file->close()
+               or die "Cannot close bulk insert file: $OS_ERROR\n";
+            my $ins_sth; # Let plugin change which sth is used for the INSERT.
+            if ( $dst->{plugin} ) {
+               trace('before_bulk_insert', sub {
+                  $dst->{plugin}->before_bulk_insert(
+                     first_row => $first_row,
+                     last_row  => $lastrow,
+                     filename  => $bulkins_file->filename(),
+                  );
+               });
+               trace('custom_sth', sub {
+                  $ins_sth = $dst->{plugin}->custom_sth_bulk(
+                     first_row => $first_row,
+                     last_row  => $lastrow,
+                     filename  => $bulkins_file->filename(),
+                     sql       => $ins_sql,
+                  );
+               });
+            }
+            $ins_sth ||= $ins_row; # Default to the sth decided before.
+            my $success = do_with_retries($o, 'bulk_inserting', sub {
+               $ins_sth->execute($bulkins_file->filename());
+               $src->{dbh}->do("SELECT 'pt-archiver keepalive'") if $src; 
+               PTDEBUG && _d('Bulk inserted', $del_row->rows, 'rows');
+               $statistics{INSERT} += $ins_sth->rows;
+            });
+            if ( $success != $ALL_IS_WELL ) {
+               $retries = -1;
+               last ROW; # unlike other places, don't do 'next'
+            }
+         }
+
+         if ( $bulk_del ) {
+            if ( $src->{plugin} ) {
+               trace('before_bulk_delete', sub {
+                  $src->{plugin}->before_bulk_delete(
+                     first_row => $first_row,
+                     last_row  => $lastrow,
+                  );
+               });
+            }
+            if ( !$o->get('no-delete') ) {
+               my $success = do_with_retries($o, 'bulk_deleting', sub {
+                  $del_row->execute(
+                     @{$first_row}[@bulkdel_slice],
+                     @{$lastrow}[@bulkdel_slice],
+                  );
+                  PTDEBUG && _d('Bulk deleted', $del_row->rows, 'rows');
+                  $statistics{DELETE} += $del_row->rows;
+               });
+               if ( $success != $ALL_IS_WELL ) {
+                  $retries = -1;
+                  last ROW; # unlike other places, don't do 'next'
+               }
+            }
+         }
+
+         # ###################################################################
+         # This code is for normal operation AND bulk operation.
+         # ###################################################################
+         commit($o, 1) if $commit_each;
+         $get_sth = $get_next;
+
+         # Sleep between fetching the next chunk of rows.
+         if( my $sleep_time = $o->get('sleep') ) {
+            $sleep_time = $last_select_time * $o->get('sleep-coef')
+               if $o->get('sleep-coef');
+            PTDEBUG && _d('Sleeping', $sleep_time);
+            trace('sleep', sub {
+               sleep($sleep_time);
+            });
+         }
+
+         PTDEBUG && _d('Fetching rows in next chunk');
+         trace('select', sub {
+            my $select_start = time;
+            $get_sth->execute(@{$lastrow}[@asc_slice]);
+            $last_select_time = time - $select_start;
+            PTDEBUG && _d('Fetched', $get_sth->rows, 'rows');
+            $statistics{SELECT} += $get_sth->rows;
+         });
+
+         # Reset $first_row to the first row of this new chunk.
+         @beginning_of_txn = @{$lastrow}[@asc_slice] unless $txn_cnt;
+         $row              = $get_sth->fetchrow_arrayref();
+         $first_row        = $row ? [ @$row ] : undef;
+
+         if ( $o->get('bulk-insert') ) {
+            $bulkins_file = File::Temp->new( SUFFIX => 'pt-archiver' )
+               or die "Cannot open temp file: $OS_ERROR\n";
+            binmode($bulkins_file, $charset)
+               or die "Cannot set $charset as an encoding for the bulk-insert "
+                    . "file: $OS_ERROR";
+         }
+      }  # no next row (do bulk operations)
+      else {
+         # keep alive every 100 rows saved to file 
+         # https://bugs.launchpad.net/percona-toolkit/+bug/1452895
+         if ( $bulk_count++ % 100 == 0 ) {
+            $src->{dbh}->do("SELECT 'pt-archiver keepalive'") if $src;
+         }
+         PTDEBUG && _d('Got another row in this chunk');
+      }
+
+      # Check slave lag and wait if slave is too far behind.
+      # Do this check every 100 rows
+      if (@lag_dbh && $lag_count++ % 100 == 0 ) {
+         foreach my $lag_server (@lag_dbh) {
+            my $lag_dbh = $lag_server->{'dbh'};
+            my $id      = $lag_server->{'id'};
+            if ( $lag_dbh ) {
+               my $lag = $ms->get_slave_lag($lag_dbh);
+               while ( !defined $lag || $lag > $o->get('max-lag') ) {
+                  PTDEBUG && _d("Sleeping: slave lag for server '$id' is", $lag);
+                  if ($o->got('progress')) {
+                     _d("Sleeping: slave lag for server '$id' is", $lag);
+                  }  
+                  sleep($o->get('check-interval'));
+                  $lag = $ms->get_slave_lag($lag_dbh);
+                  $src->{dbh}->do("SELECT 'pt-archiver keepalive'") if $src;
+                  $dst->{dbh}->do("SELECT 'pt-archiver keepalive'") if $dst;
+               }
+            }
+         }
+      }
+
+      # if it's a cluster, check for flow control every 100 rows
+      if ( $flow_ctl && $flow_ctl_count++ % 100 == 0) {
+         $flow_ctl->wait();
+      }
+
+   }  # ROW 
+   PTDEBUG && _d('Done fetching rows');
+
+   # Transactions might still be open, etc
+   commit($o, $txnsize || $commit_each);
+   if ( $archive_file && $archive_fh ) {
+      close $archive_fh
+         or die "Cannot close $archive_file: $OS_ERROR\n";
+   }
+
+   if ( !$quiet && $o->get('progress') ) {
+      printf("%19s %7d %7d\n", ts($now), $now - $start, $cnt);
+   }
+
+   # Tear down the plugins.
+   foreach my $table ( $dst, $src ) {
+      next unless $table && $table->{plugin};
+      trace('after_finish', sub {
+         $table->{plugin}->after_finish();
+      });
+   }
+
+   # Run ANALYZE or OPTIMIZE.
+   if ( $oktorun && ($o->get('analyze') || $o->get('optimize')) ) {
+      my $action = $o->get('analyze') || $o->get('optimize');
+      my $maint  = ($o->get('analyze') ? 'ANALYZE' : 'OPTIMIZE')
+                 . ($o->get('local') ? ' /*!40101 NO_WRITE_TO_BINLOG*/' : '');
+      if ( $action =~ m/s/i ) {
+         trace($maint, sub {
+            $src->{dbh}->do("$maint TABLE $src->{db_tbl}");
+         });
+      }
+      if ( $action =~ m/d/i && $dst ) {
+         trace($maint, sub {
+            $dst->{dbh}->do("$maint TABLE $dst->{db_tbl}");
+         });
+      }
+   } 
+
+   # ########################################################################
+   # Print statistics
+   # ########################################################################
+   if ( $plugin ) {
+      $plugin->statistics(\%statistics, $stat_start);
+   }
+
+   if ( !$quiet && $o->get('statistics') ) {
+      my $stat_stop  = gettimeofday();
+      my $stat_total = $stat_stop - $stat_start;
+
+      my $total2 = 0;
+      my $maxlen = 0;
+      my %summary;
+
+      printf("Started at %s, ended at %s\n", ts($stat_start), ts($stat_stop));
+      print("Source: ", $dp->as_string($src), "\n");
+      print("Dest:   ", $dp->as_string($dst), "\n") if $dst;
+      print(join("\n", map { "$_ " . ($statistics{$_} || 0) }
+            qw(SELECT INSERT DELETE)), "\n");
+
+      foreach my $thing ( grep { m/_(count|time)/ } keys %statistics ) {
+         my ( $action, $type ) = $thing =~ m/^(.*?)_(count|time)$/;
+         $summary{$action}->{$type}  = $statistics{$thing};
+         $summary{$action}->{action} = $action;
+         $maxlen                     = max($maxlen, length($action));
+         # Just in case I get only one type of statistic for a given action (in
+         # case there was a crash or CTRL-C or something).
+         $summary{$action}->{time}  ||= 0;
+         $summary{$action}->{count} ||= 0;
+      }
+      printf("%-${maxlen}s \%10s %10s %10s\n", qw(Action Count Time Pct));
+      my $fmt = "%-${maxlen}s \%10d %10.4f %10.2f\n";
+
+      foreach my $stat (
+         reverse sort { $a->{time} <=> $b->{time} } values %summary )
+      {
+         my $pct = $stat->{time} / $stat_total * 100;
+         printf($fmt, @{$stat}{qw(action count time)}, $pct);
+         $total2 += $stat->{time};
+      }
+      printf($fmt, 'other', 0, $stat_total - $total2,
+         ($stat_total - $total2) / $stat_total * 100);
+   }
+
+   # Optionally print the reason for exiting.  Do this even if --quiet is
+   # specified.
+   if ( $o->get('why-quit') ) {
+      if ( $retries < 0 ) {
+         print "Exiting because retries exceeded.\n";
+      }
+      elsif ( $o->get('run-time') && $now >= $end ) {
+         print "Exiting because time exceeded.\n";
+      }
+      elsif ( -f $sentinel ) {
+         print "Exiting because sentinel file $sentinel exists.\n";
+      }
+      elsif ( $o->get('statistics') ) {
+         print "Exiting because there are no more rows.\n";
+      }
+   }
+
+   $get_sth->finish() if $get_sth;
+   $src->{dbh}->disconnect();
+   $dst->{dbh}->disconnect() if $dst && $dst->{dbh};
+
+   return 0;
+}
+
+# ############################################################################
+# Subroutines.
+# ############################################################################
+
+# Catches signals so pt-archiver can exit gracefully.
+sub finish {
+   my ($signal) = @_;
+   print STDERR "Exiting on SIG$signal.\n";
+   $oktorun = 0;
+}
+
+# Accesses globals, but I wanted the code in one place.
+sub commit {
+   my ( $o, $force ) = @_;
+   my $txnsize = $o->get('txn-size');
+   if ( $force || ($txnsize && $txn_cnt && $cnt % $txnsize == 0) ) {
+      if ( $o->get('buffer') && $archive_fh ) {
+         my $archive_file = $o->get('file');
+         trace('flush', sub {
+            $archive_fh->flush or die "Cannot flush $archive_file: $OS_ERROR\n";
+         });
+      }
+      if ( $dst ) {
+         trace('commit', sub {
+            $dst->{dbh}->commit;
+         });
+      }
+      trace('commit', sub {
+         $src->{dbh}->commit;
+      });
+      $txn_cnt = 0;
+   }
+}
+
+# Repeatedly retries the code until retries runs out, a really bad error
+# happens, or it succeeds.  This sub uses lots of global variables; I only wrote
+# it to factor out some repeated code.
+sub do_with_retries {
+   my ( $o, $doing, $code ) = @_;
+   my $retries = $o->get('retries');
+   my $txnsize = $o->get('txn-size');
+   my $success = $OUT_OF_RETRIES;
+
+   RETRY:
+   while ( !$success && $retries >= 0 ) {
+      eval {
+         trace($doing, $code);
+         $success = $ALL_IS_WELL;
+      };
+      if ( $EVAL_ERROR ) {
+         if ( $EVAL_ERROR =~ m/Lock wait timeout exceeded|Deadlock found/ ) {
+            if (
+               # More than one row per txn
+               (
+                  ($txnsize && $txnsize > 1)
+                  || ($o->get('commit-each') && $o->get('limit') > 1)
+               )
+               # Not first row
+               && $txn_cnt
+               # And it's not retry-able
+               && (!$can_retry || $EVAL_ERROR =~ m/Deadlock/)
+            ) {
+               # The txn, which is more than 1 statement, was rolled back.
+               last RETRY;
+            }
+            else {
+               # Only one statement had trouble, and the rest of the txn was
+               # not rolled back.  The statement can be retried.
+               --$retries;
+            }
+         }
+         else {
+            die $EVAL_ERROR;
+         }
+      }
+   }
+
+   if ( $success != $ALL_IS_WELL ) {
+      # Must throw away everything and start the transaction over.
+      if ( $retries >= 0 ) {
+         warn "Deadlock or non-retryable lock wait while $doing; "
+            . "rolling back $txn_cnt rows.\n";
+         $success = $ROLLED_BACK;
+      }
+      else {
+         warn "Exhausted retries while $doing; rolling back $txn_cnt rows.\n";
+         $success = $OUT_OF_RETRIES;
+      }
+      $get_sth->finish;
+      trace('rollback', sub {
+         $dst->{dbh}->rollback;
+      });
+      trace('rollback', sub {
+         $src->{dbh}->rollback;
+      });
+      # I wish: $archive_fh->rollback
+      trace('select', sub {
+         $get_sth->execute(@beginning_of_txn);
+      });
+      $cnt -= $txn_cnt;
+      $txn_cnt = 0;
+   }
+   return $success;
+}
+
+# Formats a row the same way SELECT INTO OUTFILE does by default.  This is
+# described in the LOAD DATA INFILE section of the MySQL manual,
+# http://dev.mysql.com/doc/refman/5.0/en/load-data.html
+sub escape {
+   my ($row) = @_;
+   return join("\t", map {
+      s/([\t\n\\])/\\$1/g if defined $_;  # Escape tabs etc
+      defined $_ ? $_ : '\N';             # NULL = \N
+   } @$row);
+}
+
+sub ts {
+   my ( $time ) = @_;
+   my ( $sec, $min, $hour, $mday, $mon, $year )
+      = localtime($time);
+   $mon  += 1;
+   $year += 1900;
+   return sprintf("%d-%02d-%02dT%02d:%02d:%02d",
+      $year, $mon, $mday, $hour, $min, $sec);
+}
+
+sub get_irot {
+   my ( $dbh ) = @_;
+   return 1 unless VersionParser->new($dbh) >= '5.0.13';
+   my $rows = $dbh->selectall_arrayref(
+      "show variables like 'innodb_rollback_on_timeout'",
+      { Slice => {} });
+   return 0 unless $rows;
+   return @$rows && $rows->[0]->{Value} ne 'OFF';
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+# ############################################################################
+# Run the program.
+# ############################################################################
+if ( !caller ) { exit main(@ARGV); }
+
+1; # Because this is a module as well as a script.
+
+# ############################################################################
+# Documentation.
+# ############################################################################
+
+=pod
+
+=head1 NAME
+
+pt-archiver - Archive rows from a MySQL table into another table or a file.
+
+=head1 SYNOPSIS
+
+Usage: pt-archiver [OPTIONS] --source DSN --where WHERE
+
+pt-archiver nibbles records from a MySQL table.  The --source and --dest
+arguments use DSN syntax; if COPY is yes, --dest defaults to the key's value
+from --source.
+
+Examples:
+
+Archive all rows from oltp_server to olap_server and to a file:
+
+  pt-archiver --source h=oltp_server,D=test,t=tbl --dest h=olap_server \
+    --file '/var/log/archive/%Y-%m-%d-%D.%t'                           \
+    --where "1=1" --limit 1000 --commit-each
+
+Purge (delete) orphan rows from child table:
+
+  pt-archiver --source h=host,D=db,t=child --purge \
+    --where 'NOT EXISTS(SELECT * FROM parent WHERE col=child.col)'
+
+=head1 RISKS
+
+Percona Toolkit is mature, proven in the real world, and well tested,
+but all database tools can pose a risk to the system and the database
+server.  Before using this tool, please:
+
+=over
+
+=item * Read the tool's documentation
+
+=item * Review the tool's known L<"BUGS">
+
+=item * Test the tool on a non-production server
+
+=item * Backup your production server and verify the backups
+
+=back
+
+=head1 DESCRIPTION
+
+pt-archiver is the tool I use to archive tables as described in
+L<http://tinyurl.com/mysql-archiving>.  The goal is a low-impact, forward-only
+job to nibble old data out of the table without impacting OLTP queries much.
+You can insert the data into another table, which need not be on the same
+server.  You can also write it to a file in a format suitable for LOAD DATA
+INFILE.  Or you can do neither, in which case it's just an incremental DELETE.
+
+pt-archiver is extensible via a plugin mechanism.  You can inject your own
+code to add advanced archiving logic that could be useful for archiving
+dependent data, applying complex business rules, or building a data warehouse
+during the archiving process.
+
+You need to choose values carefully for some options.  The most important are
+L<"--limit">, L<"--retries">, and L<"--txn-size">.
+
+The strategy is to find the first row(s), then scan some index forward-only to
+find more rows efficiently.  Each subsequent query should not scan the entire
+table; it should seek into the index, then scan until it finds more archivable
+rows.  Specifying the index with the 'i' part of the L<"--source"> argument can
+be crucial for this; use L<"--dry-run"> to examine the generated queries and be
+sure to EXPLAIN them to see if they are efficient (most of the time you probably
+want to scan the PRIMARY key, which is the default).  Even better, examine the
+difference in the Handler status counters before and after running the query,
+and make sure it is not scanning the whole table every query.
+
+You can disable the seek-then-scan optimizations partially or wholly with
+L<"--no-ascend"> and L<"--ascend-first">.  Sometimes this may be more efficient
+for multi-column keys.  Be aware that pt-archiver is built to start at the
+beginning of the index it chooses and scan it forward-only.  This might result
+in long table scans if you're trying to nibble from the end of the table by an
+index other than the one it prefers.  See L<"--source"> and read the
+documentation on the C<i> part if this applies to you.
+
+=head1 Percona XtraDB Cluster
+
+pt-archiver works with Percona XtraDB Cluster (PXC) 5.5.28-23.7 and newer,
+but there are three limitations you should consider before archiving on
+a cluster:
+
+=over
+
+=item Error on commit
+
+pt-archiver does not check for error when it commits transactions.
+Commits on PXC can fail, but the tool does not yet check for or retry the
+transaction when this happens.  If it happens, the tool will die.
+
+=item MyISAM tables
+
+Archiving MyISAM tables works, but MyISAM support in PXC is still
+experimental at the time of this release.  There are several known bugs with
+PXC, MyISAM tables, and C<AUTO_INCREMENT> columns.  Therefore, you must ensure
+that archiving will not directly or indirectly result in the use of default
+C<AUTO_INCREMENT> values for a MyISAM table.  For example, this happens with
+L<"--dest"> if L<"--columns"> is used and the C<AUTO_INCREMENT> column is not
+included.  The tool does not check for this!
+
+=item Non-cluster options
+
+Certain options may or may not work.  For example, if a cluster node
+is not also a slave, then L<"--check-slave-lag"> does not work.  And since PXC
+tables are usually InnoDB, but InnoDB doesn't support C<INSERT DELAYED>, then
+L<"--delayed-insert"> does not work.  Other options may also not work, but
+the tool does not check them, therefore you should test archiving on a test
+cluster before archiving on your real cluster.
+
+=back
+
+=head1 OUTPUT
+
+If you specify L<"--progress">, the output is a header row, plus status output
+at intervals.  Each row in the status output lists the current date and time,
+how many seconds pt-archiver has been running, and how many rows it has
+archived.
+
+If you specify L<"--statistics">, C<pt-archiver> outputs timing and other
+information to help you identify which part of your archiving process takes the
+most time.
+
+=head1 ERROR-HANDLING
+
+pt-archiver tries to catch signals and exit gracefully; for example, if you
+send it SIGTERM (Ctrl-C on UNIX-ish systems), it will catch the signal, print a
+message about the signal, and exit fairly normally.  It will not execute
+L<"--analyze"> or L<"--optimize">, because these may take a long time to finish.
+It will run all other code normally, including calling after_finish() on any
+plugins (see L<"EXTENDING">).
+
+In other words, a signal, if caught, will break out of the main archiving
+loop and skip optimize/analyze.
+
+=head1 OPTIONS
+
+Specify at least one of L<"--dest">, L<"--file">, or L<"--purge">.
+
+L<"--ignore"> and L<"--replace"> are mutually exclusive.
+
+L<"--txn-size"> and L<"--commit-each"> are mutually exclusive.
+
+L<"--low-priority-insert"> and L<"--delayed-insert"> are mutually exclusive.
+
+L<"--share-lock"> and L<"--for-update"> are mutually exclusive.
+
+L<"--analyze"> and L<"--optimize"> are mutually exclusive.
+
+L<"--no-ascend"> and L<"--no-delete"> are mutually exclusive.
+
+DSN values in L<"--dest"> default to values from L<"--source"> if COPY is yes.
+
+=over
+
+=item --analyze
+
+type: string
+
+Run ANALYZE TABLE afterwards on L<"--source"> and/or L<"--dest">.
+
+Runs ANALYZE TABLE after finishing.  The argument is an arbitrary string.  If it
+contains the letter 's', the source will be analyzed.  If it contains 'd', the
+destination will be analyzed.  You can specify either or both.  For example, the
+following will analyze both:
+
+  --analyze=ds
+
+See L<http://dev.mysql.com/doc/en/analyze-table.html> for details on ANALYZE
+TABLE.
+
+=item --ascend-first
+
+Ascend only first column of index.
+
+If you do want to use the ascending index optimization (see L<"--no-ascend">),
+but do not want to incur the overhead of ascending a large multi-column index,
+you can use this option to tell pt-archiver to ascend only the leftmost column
+of the index.  This can provide a significant performance boost over not
+ascending the index at all, while avoiding the cost of ascending the whole
+index.
+
+See L<"EXTENDING"> for a discussion of how this interacts with plugins.
+
+=item --ask-pass
+
+Prompt for a password when connecting to MySQL.
+
+=item --buffer
+
+Buffer output to L<"--file"> and flush at commit.
+
+Disables autoflushing to L<"--file"> and flushes L<"--file"> to disk only when a
+transaction commits.  This typically means the file is block-flushed by the
+operating system, so there may be some implicit flushes to disk between
+commits as well.  The default is to flush L<"--file"> to disk after every row.
+
+The danger is that a crash might cause lost data.
+
+The performance increase I have seen from using L<"--buffer"> is around 5 to 15
+percent.  Your mileage may vary.
+
+=item --bulk-delete
+
+Delete each chunk with a single statement (implies L<"--commit-each">).
+
+Delete each chunk of rows in bulk with a single C<DELETE> statement.  The
+statement deletes every row between the first and last row of the chunk,
+inclusive.  It implies L<"--commit-each">, since it would be a bad idea to
+C<INSERT> rows one at a time and commit them before the bulk C<DELETE>.
+
+The normal method is to delete every row by its primary key.  Bulk deletes might
+be a lot faster.  B<They also might not be faster> if you have a complex
+C<WHERE> clause.
+
+This option completely defers all C<DELETE> processing until the chunk of rows
+is finished.  If you have a plugin on the source, its C<before_delete> method
+will not be called.  Instead, its C<before_bulk_delete> method is called later.
+
+B<WARNING>: if you have a plugin on the source that sometimes doesn't return
+true from C<is_archivable()>, you should use this option only if you understand
+what it does.  If the plugin instructs C<pt-archiver> not to archive a row,
+it will still be deleted by the bulk delete!
+
+=item --[no]bulk-delete-limit
+
+default: yes
+
+Add L<"--limit"> to L<"--bulk-delete"> statement.
+
+This is an advanced option and you should not disable it unless you know what
+you are doing and why!  By default, L<"--bulk-delete"> appends a L<"--limit">
+clause to the bulk delete SQL statement.  In certain cases, this clause can be
+omitted by specifying C<--no-bulk-delete-limit>.  L<"--limit"> must still be
+specified.
+
+=item --bulk-insert
+
+Insert each chunk with LOAD DATA INFILE (implies L<"--bulk-delete"> L<"--commit-each">).
+
+Insert each chunk of rows with C<LOAD DATA LOCAL INFILE>.  This may be much
+faster than inserting a row at a time with C<INSERT> statements.  It is
+implemented by creating a temporary file for each chunk of rows, and writing the
+rows to this file instead of inserting them.  When the chunk is finished, it
+uploads the rows.
+
+To protect the safety of your data, this option forces bulk deletes to be used.
+It would be unsafe to delete each row as it is found, before inserting the rows
+into the destination first.  Forcing bulk deletes guarantees that the deletion
+waits until the insertion is successful.
+
+The L<"--low-priority-insert">, L<"--replace">, and L<"--ignore"> options work
+with this option, but L<"--delayed-insert"> does not.
+
+If C<LOAD DATA LOCAL INFILE> throws an error in the lines of C<The used
+command is not allowed with this MySQL version>, refer to the documentation
+for the C<L> DSN option.
+
+=item --charset
+
+short form: -A; type: string
+
+Default character set.  If the value is utf8, sets Perl's binmode on
+STDOUT to utf8, passes the mysql_enable_utf8 option to DBD::mysql, and runs SET
+NAMES UTF8 after connecting to MySQL.  Any other value sets binmode on STDOUT
+without the utf8 layer, and runs SET NAMES after connecting to MySQL.
+
+Note that only charsets as known by MySQL are recognized; So for example,
+"UTF8" will work, but "UTF-8" will not.
+
+See also L<"--[no]check-charset">.
+
+=item --[no]check-charset
+
+default: yes
+
+Ensure connection and table character sets are the same.  Disabling this check
+may cause text to be erroneously converted from one character set to another
+(usually from utf8 to latin1) which may cause data loss or mojibake.  Disabling
+this check may be useful or necessary when character set conversions are
+intended.
+
+=item --[no]check-columns
+
+default: yes
+
+Ensure L<"--source"> and L<"--dest"> have same columns.
+
+Enabled by default; causes pt-archiver to check that the source and destination
+tables have the same columns.  It does not check column order, data type, etc.
+It just checks that all columns in the source exist in the destination and
+vice versa.  If there are any differences, pt-archiver will exit with an
+error.
+
+To disable this check, specify --no-check-columns.
+
+=item --check-interval
+
+type: time; default: 1s
+
+If L<"--check-slave-lag"> is given, this defines how long the tool pauses each 
+ time it discovers that a slave is lagging.
+ This check is performed every 100 rows.
+
+=item --check-slave-lag
+
+type: string; repeatable: yes
+
+Pause archiving until the specified DSN's slave lag is less than L<"--max-lag">.
+This option can be specified multiple times for checking more than one slave.
+
+=item --columns
+
+short form: -c; type: array
+
+Comma-separated list of columns to archive.
+
+Specify a comma-separated list of columns to fetch, write to the file, and
+insert into the destination table.  If specified, pt-archiver ignores other
+columns unless it needs to add them to the C<SELECT> statement for ascending an
+index or deleting rows.  It fetches and uses these extra columns internally, but
+does not write them to the file or to the destination table.  It I<does> pass
+them to plugins.
+
+See also L<"--primary-key-only">.
+
+=item --commit-each
+
+Commit each set of fetched and archived rows (disables L<"--txn-size">).
+
+Commits transactions and flushes L<"--file"> after each set of rows has been
+archived, before fetching the next set of rows, and before sleeping if
+L<"--sleep"> is specified.  Disables L<"--txn-size">; use L<"--limit"> to
+control the transaction size with L<"--commit-each">.
+
+This option is useful as a shortcut to make L<"--limit"> and L<"--txn-size"> the
+same value, but more importantly it avoids transactions being held open while
+searching for more rows.  For example, imagine you are archiving old rows from
+the beginning of a very large table, with L<"--limit"> 1000 and L<"--txn-size">
+1000.  After some period of finding and archiving 1000 rows at a time,
+pt-archiver finds the last 999 rows and archives them, then executes the next
+SELECT to find more rows.  This scans the rest of the table, but never finds any
+more rows.  It has held open a transaction for a very long time, only to
+determine it is finished anyway.  You can use L<"--commit-each"> to avoid this.
+
+=item --config
+
+type: Array
+
+Read this comma-separated list of config files; if specified, this must be the
+first option on the command line.
+
+=item --database
+
+short form: -D; type: string
+
+Connect to this database.
+
+=item --delayed-insert
+
+Add the DELAYED modifier to INSERT statements.
+
+Adds the DELAYED modifier to INSERT or REPLACE statements.  See
+L<http://dev.mysql.com/doc/en/insert.html> for details.
+
+=item --dest
+
+type: DSN
+
+DSN specifying the table to archive to.
+
+This item specifies a table into which pt-archiver will insert rows
+archived from L<"--source">.  It uses the same key=val argument format as
+L<"--source">.  Most missing values default to the same values as
+L<"--source">, so you don't have to repeat options that are the same in
+L<"--source"> and L<"--dest">.  Use the L<"--help"> option to see which values
+are copied from L<"--source">.
+
+B<WARNING>: Using a default options file (F) DSN option that defines a
+socket for L<"--source"> causes pt-archiver to connect to L<"--dest"> using
+that socket unless another socket for L<"--dest"> is specified.  This
+means that pt-archiver may incorrectly connect to L<"--source"> when it
+connects to L<"--dest">.  For example:
+
+  --source F=host1.cnf,D=db,t=tbl --dest h=host2
+
+When pt-archiver connects to L<"--dest">, host2, it will connect via the
+L<"--source">, host1, socket defined in host1.cnf.
+
+=item --dry-run
+
+Print queries and exit without doing anything.
+
+Causes pt-archiver to exit after printing the filename and SQL statements
+it will use.
+
+=item --file
+
+type: string
+
+File to archive to, with DATE_FORMAT()-like formatting.
+
+Filename to write archived rows to.  A subset of MySQL's DATE_FORMAT()
+formatting codes are allowed in the filename, as follows:
+
+   %d    Day of the month, numeric (01..31)
+   %H    Hour (00..23)
+   %i    Minutes, numeric (00..59)
+   %m    Month, numeric (01..12)
+   %s    Seconds (00..59)
+   %Y    Year, numeric, four digits
+
+You can use the following extra format codes too:
+
+   %D    Database name
+   %t    Table name
+
+Example:
+
+   --file '/var/log/archive/%Y-%m-%d-%D.%t'
+
+The file's contents are in the same format used by SELECT INTO OUTFILE, as
+documented in the MySQL manual: rows terminated by newlines, columns
+terminated by tabs, NULL characters are represented by \N, and special
+characters are escaped by \.  This lets you reload a file with LOAD DATA
+INFILE's default settings.
+
+If you want a column header at the top of the file, see L<"--header">.  The file
+is auto-flushed by default; see L<"--buffer">.
+
+=item --for-update
+
+Adds the FOR UPDATE modifier to SELECT statements.
+
+For details, see L<http://dev.mysql.com/doc/en/innodb-locking-reads.html>.
+
+=item --header
+
+Print column header at top of L<"--file">.
+
+Writes column names as the first line in the file given by L<"--file">.  If the
+file exists, does not write headers; this keeps the file loadable with LOAD
+DATA INFILE in case you append more output to it.
+
+=item --help
+
+Show help and exit.
+
+=item --high-priority-select
+
+Adds the HIGH_PRIORITY modifier to SELECT statements.
+
+See L<http://dev.mysql.com/doc/en/select.html> for details.
+
+=item --host
+
+short form: -h; type: string
+
+Connect to host.
+
+=item --ignore
+
+Use IGNORE for INSERT statements.
+
+Causes INSERTs into L<"--dest"> to be INSERT IGNORE.
+
+=item --limit
+
+type: int; default: 1
+
+Number of rows to fetch and archive per statement.
+
+Limits the number of rows returned by the SELECT statements that retrieve rows
+to archive.  Default is one row.  It may be more efficient to increase the
+limit, but be careful if you are archiving sparsely, skipping over many rows;
+this can potentially cause more contention with other queries, depending on the
+storage engine, transaction isolation level, and options such as
+L<"--for-update">.
+
+=item --local
+
+Do not write OPTIMIZE or ANALYZE queries to binlog.
+
+Adds the NO_WRITE_TO_BINLOG modifier to ANALYZE and OPTIMIZE queries.  See
+L<"--analyze"> for details.
+
+=item --low-priority-delete
+
+Adds the LOW_PRIORITY modifier to DELETE statements.
+
+See L<http://dev.mysql.com/doc/en/delete.html> for details.
+
+=item --low-priority-insert
+
+Adds the LOW_PRIORITY modifier to INSERT or REPLACE statements.
+
+See L<http://dev.mysql.com/doc/en/insert.html> for details.
+
+=item --max-flow-ctl
+
+type: float
+
+Somewhat similar to --max-lag but for PXC clusters.
+Check average time cluster spent pausing for Flow Control and make tool pause if 
+it goes over the percentage indicated in the option.
+Default is no Flow Control checking.
+This option is available for PXC versions 5.6 or higher.
+
+=item --max-lag
+
+type: time; default: 1s
+
+Pause archiving if the slave given by L<"--check-slave-lag"> lags.
+
+This option causes pt-archiver to look at the slave every time it's about
+to fetch another row.  If the slave's lag is greater than the option's value,
+or if the slave isn't running (so its lag is NULL), pt-table-checksum sleeps
+for L<"--check-interval"> seconds and then looks at the lag again.  It repeats
+until the slave is caught up, then proceeds to fetch and archive the row.
+
+This option may eliminate the need for L<"--sleep"> or L<"--sleep-coef">.
+
+=item --no-ascend
+
+Do not use ascending index optimization.
+
+The default ascending-index optimization causes C<pt-archiver> to optimize
+repeated C<SELECT> queries so they seek into the index where the previous query
+ended, then scan along it, rather than scanning from the beginning of the table
+every time.  This is enabled by default because it is generally a good strategy
+for repeated accesses.
+
+Large, multiple-column indexes may cause the WHERE clause to be complex enough
+that this could actually be less efficient.  Consider for example a four-column
+PRIMARY KEY on (a, b, c, d).  The WHERE clause to start where the last query
+ended is as follows:
+
+   WHERE (a > ?)
+      OR (a = ? AND b > ?)
+      OR (a = ? AND b = ? AND c > ?)
+      OR (a = ? AND b = ? AND c = ? AND d >= ?)
+
+Populating the placeholders with values uses memory and CPU, adds network
+traffic and parsing overhead, and may make the query harder for MySQL to
+optimize.  A four-column key isn't a big deal, but a ten-column key in which
+every column allows C<NULL> might be.
+
+Ascending the index might not be necessary if you know you are simply removing
+rows from the beginning of the table in chunks, but not leaving any holes, so
+starting at the beginning of the table is actually the most efficient thing to
+do.
+
+See also L<"--ascend-first">.  See L<"EXTENDING"> for a discussion of how this
+interacts with plugins.
+
+=item --no-delete
+
+Do not delete archived rows.
+
+Causes C<pt-archiver> not to delete rows after processing them.  This disallows
+L<"--no-ascend">, because enabling them both would cause an infinite loop.
+
+If there is a plugin on the source DSN, its C<before_delete> method is called
+anyway, even though C<pt-archiver> will not execute the delete.  See
+L<"EXTENDING"> for more on plugins.
+
+=item --optimize
+
+type: string
+
+Run OPTIMIZE TABLE afterwards on L<"--source"> and/or L<"--dest">.
+
+Runs OPTIMIZE TABLE after finishing.  See L<"--analyze"> for the option syntax
+and L<http://dev.mysql.com/doc/en/optimize-table.html> for details on OPTIMIZE
+TABLE.
+
+=item --password
+
+short form: -p; type: string
+
+Password to use when connecting.
+If password contains commas they must be escaped with a backslash: "exam\,ple"
+
+=item --pid
+
+type: string
+
+Create the given PID file.  The tool won't start if the PID file already
+exists and the PID it contains is different than the current PID.  However,
+if the PID file exists and the PID it contains is no longer running, the
+tool will overwrite the PID file with the current PID.  The PID file is
+removed automatically when the tool exits.
+
+=item --plugin
+
+type: string
+
+Perl module name to use as a generic plugin.
+
+Specify the Perl module name of a general-purpose plugin.  It is currently used
+only for statistics (see L<"--statistics">) and must have C<new()> and a
+C<statistics()> method.
+
+The C<new( src => $src, dst => $dst, opts => $o )> method gets the source
+and destination DSNs, and their database connections, just like the
+connection-specific plugins do.  It also gets an OptionParser object (C<$o>) for
+accessing command-line options (example: C<$o->get('purge');>).
+
+The C<statistics(\%stats, $time)> method gets a hashref of the statistics
+collected by the archiving job, and the time the whole job started.
+
+=item --port
+
+short form: -P; type: int
+
+Port number to use for connection.
+
+=item --primary-key-only
+
+Primary key columns only.
+
+A shortcut for specifying L<"--columns"> with the primary key columns.  This is
+an efficiency if you just want to purge rows; it avoids fetching the entire row,
+when only the primary key columns are needed for C<DELETE> statements.  See also
+L<"--purge">.
+
+=item --progress
+
+type: int
+
+Print progress information every X rows.
+
+Prints current time, elapsed time, and rows archived every X rows.
+
+=item --purge
+
+Purge instead of archiving; allows omitting L<"--file"> and L<"--dest">.
+
+Allows archiving without a L<"--file"> or L<"--dest"> argument, which is
+effectively a purge since the rows are just deleted.
+
+If you just want to purge rows, consider specifying the table's primary key
+columns with L<"--primary-key-only">.  This will prevent fetching all columns
+from the server for no reason.
+
+=item --quick-delete
+
+Adds the QUICK modifier to DELETE statements.
+
+See L<http://dev.mysql.com/doc/en/delete.html> for details.  As stated in the
+documentation, in some cases it may be faster to use DELETE QUICK followed by
+OPTIMIZE TABLE.  You can use L<"--optimize"> for this.
+
+=item --quiet
+
+short form: -q
+
+Do not print any output, such as for L<"--statistics">.
+
+Suppresses normal output, including the output of L<"--statistics">, but doesn't
+suppress the output from L<"--why-quit">.
+
+=item --replace
+
+Causes INSERTs into L<"--dest"> to be written as REPLACE.
+
+=item --retries
+
+type: int; default: 1
+
+Number of retries per timeout or deadlock.
+
+Specifies the number of times pt-archiver should retry when there is an
+InnoDB lock wait timeout or deadlock.  When retries are exhausted,
+pt-archiver will exit with an error.
+
+Consider carefully what you want to happen when you are archiving between a
+mixture of transactional and non-transactional storage engines.  The INSERT to
+L<"--dest"> and DELETE from L<"--source"> are on separate connections, so they
+do not actually participate in the same transaction even if they're on the same
+server.  However, pt-archiver implements simple distributed transactions in
+code, so commits and rollbacks should happen as desired across the two
+connections.
+
+At this time I have not written any code to handle errors with transactional
+storage engines other than InnoDB.  Request that feature if you need it.
+
+=item --run-time
+
+type: time
+
+Time to run before exiting.
+
+Optional suffix s=seconds, m=minutes, h=hours, d=days; if no suffix, s is used.
+
+=item --[no]safe-auto-increment
+
+default: yes
+
+Do not archive row with max AUTO_INCREMENT.
+
+Adds an extra WHERE clause to prevent pt-archiver from removing the newest
+row when ascending a single-column AUTO_INCREMENT key.  This guards against
+re-using AUTO_INCREMENT values if the server restarts, and is enabled by
+default.
+
+The extra WHERE clause contains the maximum value of the auto-increment column
+as of the beginning of the archive or purge job.  If new rows are inserted while
+pt-archiver is running, it will not see them.
+
+=item --sentinel
+
+type: string; default: /tmp/pt-archiver-sentinel
+
+Exit if this file exists.
+
+The presence of the file specified by L<"--sentinel"> will cause pt-archiver to
+stop archiving and exit.  The default is /tmp/pt-archiver-sentinel.  You
+might find this handy to stop cron jobs gracefully if necessary.  See also
+L<"--stop">.
+
+=item --set-vars
+
+type: Array
+
+Set the MySQL variables in this comma-separated list of C<variable=value> pairs.
+
+By default, the tool sets:
+
+=for comment ignore-pt-internal-value
+MAGIC_set_vars
+
+   wait_timeout=10000
+
+Variables specified on the command line override these defaults.  For
+example, specifying C<--set-vars wait_timeout=500> overrides the default
+value of C<10000>.
+
+The tool prints a warning and continues if a variable cannot be set.
+
+=item --share-lock
+
+Adds the LOCK IN SHARE MODE modifier to SELECT statements.
+
+See L<http://dev.mysql.com/doc/en/innodb-locking-reads.html>.
+
+=item --skip-foreign-key-checks
+
+Disables foreign key checks with SET FOREIGN_KEY_CHECKS=0.
+
+=item --sleep
+
+type: int
+
+Sleep time between fetches.
+
+Specifies how long to sleep between SELECT statements.  Default is not to
+sleep at all.  Transactions are NOT committed, and the L<"--file"> file is NOT
+flushed, before sleeping.  See L<"--txn-size"> to control that.
+
+If L<"--commit-each"> is specified, committing and flushing happens before
+sleeping.
+
+=item --sleep-coef
+
+type: float
+
+Calculate L<"--sleep"> as a multiple of the last SELECT time.
+
+If this option is specified, pt-archiver will sleep for the query time of the
+last SELECT multiplied by the specified coefficient.
+
+This is a slightly more sophisticated way to throttle the SELECTs: sleep a
+varying amount of time between each SELECT, depending on how long the SELECTs
+are taking.
+
+=item --socket
+
+short form: -S; type: string
+
+Socket file to use for connection.
+
+=item --source
+
+type: DSN
+
+DSN specifying the table to archive from (required).  This argument is a DSN.
+See L<DSN OPTIONS> for the syntax.  Most options control how pt-archiver
+connects to MySQL, but there are some extended DSN options in this tool's
+syntax.  The D, t, and i options select a table to archive:
+
+  --source h=my_server,D=my_database,t=my_tbl
+
+The a option specifies the database to set as the connection's default with USE.
+If the b option is true, it disables binary logging with SQL_LOG_BIN.  The m
+option specifies pluggable actions, which an external Perl module can provide.
+The only required part is the table; other parts may be read from various
+places in the environment (such as options files).
+
+The 'i' part deserves special mention.  This tells pt-archiver which index
+it should scan to archive.  This appears in a FORCE INDEX or USE INDEX hint in
+the SELECT statements used to fetch archivable rows.  If you don't specify
+anything, pt-archiver will auto-discover a good index, preferring a C<PRIMARY
+KEY> if one exists.  In my experience this usually works well, so most of the
+time you can probably just omit the 'i' part.
+
+The index is used to optimize repeated accesses to the table; pt-archiver
+remembers the last row it retrieves from each SELECT statement, and uses it to
+construct a WHERE clause, using the columns in the specified index, that should
+allow MySQL to start the next SELECT where the last one ended, rather than
+potentially scanning from the beginning of the table with each successive
+SELECT.  If you are using external plugins, please see L<"EXTENDING"> for a
+discussion of how they interact with ascending indexes.
+
+The 'a' and 'b' options allow you to control how statements flow through the
+binary log.  If you specify the 'b' option, binary logging will be disabled on
+the specified connection.  If you specify the 'a' option, the connection will
+C<USE> the specified database, which you can use to prevent slaves from
+executing the binary log events with C<--replicate-ignore-db> options.  These
+two options can be used as different methods to achieve the same goal: archive
+data off the master, but leave it on the slave.  For example, you can run a
+purge job on the master and prevent it from happening on the slave using your
+method of choice.
+
+B<WARNING>: Using a default options file (F) DSN option that defines a
+socket for L<"--source"> causes pt-archiver to connect to L<"--dest"> using
+that socket unless another socket for L<"--dest"> is specified.  This
+means that pt-archiver may incorrectly connect to L<"--source"> when it
+is meant to connect to L<"--dest">.  For example:
+
+  --source F=host1.cnf,D=db,t=tbl --dest h=host2
+
+When pt-archiver connects to L<"--dest">, host2, it will connect via the
+L<"--source">, host1, socket defined in host1.cnf.
+
+=item --statistics
+
+Collect and print timing statistics.
+
+Causes pt-archiver to collect timing statistics about what it does.  These
+statistics are available to the plugin specified by L<"--plugin">
+
+Unless you specify L<"--quiet">, C<pt-archiver> prints the statistics when it
+exits.  The statistics look like this:
+
+ Started at 2008-07-18T07:18:53, ended at 2008-07-18T07:18:53
+ Source: D=db,t=table
+ SELECT 4
+ INSERT 4
+ DELETE 4
+ Action         Count       Time        Pct
+ commit            10     0.1079      88.27
+ select             5     0.0047       3.87
+ deleting           4     0.0028       2.29
+ inserting          4     0.0028       2.28
+ other              0     0.0040       3.29
+
+The first two (or three) lines show times and the source and destination tables.
+The next three lines show how many rows were fetched, inserted, and deleted.
+
+The remaining lines show counts and timing.  The columns are the action, the
+total number of times that action was timed, the total time it took, and the
+percent of the program's total runtime.  The rows are sorted in order of
+descending total time.  The last row is the rest of the time not explicitly
+attributed to anything.  Actions will vary depending on command-line options.
+
+If L<"--why-quit"> is given, its behavior is changed slightly.  This option
+causes it to print the reason for exiting even when it's just because there are
+no more rows.
+
+This option requires the standard Time::HiRes module, which is part of core Perl
+on reasonably new Perl releases.
+
+=item --stop
+
+Stop running instances by creating the sentinel file.
+
+Causes pt-archiver to create the sentinel file specified by L<"--sentinel"> and
+exit.  This should have the effect of stopping all running instances which are
+watching the same sentinel file.
+
+=item --txn-size
+
+type: int; default: 1
+
+Number of rows per transaction.
+
+Specifies the size, in number of rows, of each transaction. Zero disables
+transactions altogether.  After pt-archiver processes this many rows, it
+commits both the L<"--source"> and the L<"--dest"> if given, and flushes the
+file given by L<"--file">.
+
+This parameter is critical to performance.  If you are archiving from a live
+server, which for example is doing heavy OLTP work, you need to choose a good
+balance between transaction size and commit overhead.  Larger transactions
+create the possibility of more lock contention and deadlocks, but smaller
+transactions cause more frequent commit overhead, which can be significant.  To
+give an idea, on a small test set I worked with while writing pt-archiver, a
+value of 500 caused archiving to take about 2 seconds per 1000 rows on an
+otherwise quiet MySQL instance on my desktop machine, archiving to disk and to
+another table.  Disabling transactions with a value of zero, which turns on
+autocommit, dropped performance to 38 seconds per thousand rows.
+
+If you are not archiving from or to a transactional storage engine, you may
+want to disable transactions so pt-archiver doesn't try to commit.
+
+=item --user
+
+short form: -u; type: string
+
+User for login if not current user.
+
+=item --version
+
+Show version and exit.
+
+=item --[no]version-check
+
+default: yes
+
+Check for the latest version of Percona Toolkit, MySQL, and other programs.
+
+This is a standard "check for updates automatically" feature, with two
+additional features.  First, the tool checks the version of other programs
+on the local system in addition to its own version.  For example, it checks
+the version of every MySQL server it connects to, Perl, and the Perl module
+DBD::mysql.  Second, it checks for and warns about versions with known
+problems.  For example, MySQL 5.5.25 had a critical bug and was re-released
+as 5.5.25a.
+
+Any updates or known problems are printed to STDOUT before the tool's normal
+output.  This feature should never interfere with the normal operation of the
+tool.  
+
+For more information, visit L<https://www.percona.com/version-check>.
+
+=item --where
+
+type: string
+
+WHERE clause to limit which rows to archive (required).
+
+Specifies a WHERE clause to limit which rows are archived.  Do not include the
+word WHERE.  You may need to quote the argument to prevent your shell from
+interpreting it.  For example:
+
+   --where 'ts < current_date - interval 90 day'
+
+For safety, L<"--where"> is required.  If you do not require a WHERE clause, use
+L<"--where"> 1=1.
+
+=item --why-quit
+
+Print reason for exiting unless rows exhausted.
+
+Causes pt-archiver to print a message if it exits for any reason other than
+running out of rows to archive.  This can be useful if you have a cron job with
+L<"--run-time"> specified, for example, and you want to be sure pt-archiver is
+finishing before running out of time.
+
+If L<"--statistics"> is given, the behavior is changed slightly.  It will print
+the reason for exiting even when it's just because there are no more rows.
+
+This output prints even if L<"--quiet"> is given.  That's so you can put
+C<pt-archiver> in a C<cron> job and get an email if there's an abnormal exit.
+
+=back
+
+=head1 DSN OPTIONS
+
+These DSN options are used to create a DSN.  Each option is given like
+C<option=value>.  The options are case-sensitive, so P and p are not the
+same option.  There cannot be whitespace before or after the C<=> and
+if the value contains whitespace it must be quoted.  DSN options are
+comma-separated.  See the L<percona-toolkit> manpage for full details.
+
+=over
+
+=item * a
+
+copy: no
+
+Database to USE when executing queries.
+
+=item * A
+
+dsn: charset; copy: yes
+
+Default character set.
+
+=item * b
+
+copy: no
+
+If true, disable binlog with SQL_LOG_BIN.
+
+=item * D
+
+dsn: database; copy: yes
+
+Database that contains the table.
+
+=item * F
+
+dsn: mysql_read_default_file; copy: yes
+
+Only read default options from the given file
+
+=item * h
+
+dsn: host; copy: yes
+
+Connect to host.
+
+=item * i
+
+copy: yes
+
+Index to use.
+
+=item * L
+
+copy: yes
+
+Explicitly enable LOAD DATA LOCAL INFILE.
+
+For some reason, some vendors compile libmysql without the
+--enable-local-infile option, which disables the statement.  This can
+lead to weird situations, like the server allowing LOCAL INFILE, but 
+the client throwing exceptions if it's used.
+
+However, as long as the server allows LOAD DATA, clients can easily
+reenable it; See L<https://dev.mysql.com/doc/refman/5.0/en/load-data-local.html>
+and L<http://search.cpan.org/~capttofu/DBD-mysql/lib/DBD/mysql.pm>.
+This option does exactly that.
+
+Although we've not found a case where turning this option leads to errors or
+differing behavior, to be on the safe side, this option is not
+on by default.
+
+=item * m
+
+copy: no
+
+Plugin module name.
+
+=item * p
+
+dsn: password; copy: yes
+
+Password to use when connecting.
+If password contains commas they must be escaped with a backslash: "exam\,ple"
+
+=item * P
+
+dsn: port; copy: yes
+
+Port number to use for connection.
+
+=item * S
+
+dsn: mysql_socket; copy: yes
+
+Socket file to use for connection.
+
+=item * t
+
+copy: yes
+
+Table to archive from/to.
+
+=item * u
+
+dsn: user; copy: yes
+
+User for login if not current user.
+
+=back
+
+=head1 EXTENDING
+
+pt-archiver is extensible by plugging in external Perl modules to handle some
+logic and/or actions.  You can specify a module for both the L<"--source"> and
+the L<"--dest">, with the 'm' part of the specification.  For example:
+
+   --source D=test,t=test1,m=My::Module1 --dest m=My::Module2,t=test2
+
+This will cause pt-archiver to load the My::Module1 and My::Module2 packages,
+create instances of them, and then make calls to them during the archiving
+process.
+
+You can also specify a plugin with L<"--plugin">.
+
+The module must provide this interface:
+
+=over
+
+=item new(dbh => $dbh, db => $db_name, tbl => $tbl_name)
+
+The plugin's constructor is passed a reference to the database handle, the
+database name, and table name.  The plugin is created just after pt-archiver
+opens the connection, and before it examines the table given in the arguments.
+This gives the plugin a chance to create and populate temporary tables, or do
+other setup work.
+
+=item before_begin(cols => \@cols, allcols => \@allcols)
+
+This method is called just before pt-archiver begins iterating through rows
+and archiving them, but after it does all other setup work (examining table
+structures, designing SQL queries, and so on).  This is the only time
+pt-archiver tells the plugin column names for the rows it will pass the
+plugin while archiving.
+
+The C<cols> argument is the column names the user requested to be archived,
+either by default or by the L<"--columns"> option.  The C<allcols> argument is
+the list of column names for every row pt-archiver will fetch from the source
+table.  It may fetch more columns than the user requested, because it needs some
+columns for its own use.  When subsequent plugin functions receive a row, it is
+the full row containing all the extra columns, if any, added to the end.
+
+=item is_archivable(row => \@row)
+
+This method is called for each row to determine whether it is archivable.  This
+applies only to L<"--source">.  The argument is the row itself, as an arrayref.
+If the method returns true, the row will be archived; otherwise it will be
+skipped.
+
+Skipping a row adds complications for non-unique indexes.  Normally
+pt-archiver uses a WHERE clause designed to target the last processed row as
+the place to start the scan for the next SELECT statement.  If you have skipped
+the row by returning false from is_archivable(), pt-archiver could get into
+an infinite loop because the row still exists.  Therefore, when you specify a
+plugin for the L<"--source"> argument, pt-archiver will change its WHERE clause
+slightly.  Instead of starting at "greater than or equal to" the last processed
+row, it will start "strictly greater than."  This will work fine on unique
+indexes such as primary keys, but it may skip rows (leave holes) on non-unique
+indexes or when ascending only the first column of an index.
+
+C<pt-archiver> will change the clause in the same way if you specify
+L<"--no-delete">, because again an infinite loop is possible.
+
+If you specify the L<"--bulk-delete"> option and return false from this method,
+C<pt-archiver> may not do what you want.  The row won't be archived, but it will
+be deleted, since bulk deletes operate on ranges of rows and don't know which
+rows the plugin selected to keep.
+
+If you specify the L<"--bulk-insert"> option, this method's return value will
+influence whether the row is written to the temporary file for the bulk insert,
+so bulk inserts will work as expected.  However, bulk inserts require bulk
+deletes.
+
+=item before_delete(row => \@row)
+
+This method is called for each row just before it is deleted.  This applies only
+to L<"--source">.  This is a good place for you to handle dependencies, such as
+deleting things that are foreign-keyed to the row you are about to delete.  You
+could also use this to recursively archive all dependent tables.
+
+This plugin method is called even if L<"--no-delete"> is given, but not if
+L<"--bulk-delete"> is given.
+
+=item before_bulk_delete(first_row => \@row, last_row => \@row)
+
+This method is called just before a bulk delete is executed.  It is similar to
+the C<before_delete> method, except its arguments are the first and last row of
+the range to be deleted.  It is called even if L<"--no-delete"> is given.
+
+=item before_insert(row => \@row)
+
+This method is called for each row just before it is inserted.  This applies
+only to L<"--dest">.  You could use this to insert the row into multiple tables,
+perhaps with an ON DUPLICATE KEY UPDATE clause to build summary tables in a data
+warehouse.
+
+This method is not called if L<"--bulk-insert"> is given.
+
+=item before_bulk_insert(first_row => \@row, last_row => \@row, filename => bulk_insert_filename)
+
+This method is called just before a bulk insert is executed.  It is similar to
+the C<before_insert> method, except its arguments are the first and last row of
+the range to be deleted.
+
+=item custom_sth(row => \@row, sql => $sql)
+
+This method is called just before inserting the row, but after
+L<"before_insert()">.  It allows the plugin to specify different C<INSERT>
+statement if desired.  The return value (if any) should be a DBI statement
+handle.  The C<sql> parameter is the SQL text used to prepare the default
+C<INSERT> statement.  This method is not called if you specify
+L<"--bulk-insert">.
+
+If no value is returned, the default C<INSERT> statement handle is used.
+
+This method applies only to the plugin specified for L<"--dest">, so if your
+plugin isn't doing what you expect, check that you've specified it for the
+destination and not the source.
+
+=item custom_sth_bulk(first_row => \@row, last_row => \@row, sql => $sql, filename => $bulk_insert_filename)
+
+If you've specified L<"--bulk-insert">, this method is called just before the
+bulk insert, but after L<"before_bulk_insert()">, and the arguments are
+different.
+
+This method's return value etc is similar to the L<"custom_sth()"> method.
+
+=item after_finish()
+
+This method is called after pt-archiver exits the archiving loop, commits all
+database handles, closes L<"--file">, and prints the final statistics, but
+before pt-archiver runs ANALYZE or OPTIMIZE (see L<"--analyze"> and
+L<"--optimize">).
+
+=back
+
+If you specify a plugin for both L<"--source"> and L<"--dest">, pt-archiver
+constructs, calls before_begin(), and calls after_finish() on the two plugins in
+the order L<"--source">, L<"--dest">.
+
+pt-archiver assumes it controls transactions, and that the plugin will NOT
+commit or roll back the database handle.  The database handle passed to the
+plugin's constructor is the same handle pt-archiver uses itself.  Remember
+that L<"--source"> and L<"--dest"> are separate handles.
+
+A sample module might look like this:
+
+   package My::Module;
+
+   sub new {
+      my ( $class, %args ) = @_;
+      return bless(\%args, $class);
+   }
+
+   sub before_begin {
+      my ( $self, %args ) = @_;
+      # Save column names for later
+      $self->{cols} = $args{cols};
+   }
+
+   sub is_archivable {
+      my ( $self, %args ) = @_;
+      # Do some advanced logic with $args{row}
+      return 1;
+   }
+
+   sub before_delete {} # Take no action
+   sub before_insert {} # Take no action
+   sub custom_sth    {} # Take no action
+   sub after_finish  {} # Take no action
+
+   1;
+
+=head1 ENVIRONMENT
+
+The environment variable C<PTDEBUG> enables verbose debugging output to STDERR.
+To enable debugging and capture all output to a file, run the tool like:
+
+   PTDEBUG=1 pt-archiver ... > FILE 2>&1
+
+Be careful: debugging output is voluminous and can generate several megabytes
+of output.
+
+=head1 SYSTEM REQUIREMENTS
+
+You need Perl, DBI, DBD::mysql, and some core packages that ought to be
+installed in any reasonably new version of Perl.
+
+=head1 BUGS
+
+For a list of known bugs, see L<http://www.percona.com/bugs/pt-archiver>.
+
+Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
+Include the following information in your bug report:
+
+=over
+
+=item * Complete command-line used to run the tool
+
+=item * Tool L<"--version">
+
+=item * MySQL version of all servers involved
+
+=item * Output from the tool including STDERR
+
+=item * Input files (log/dump/config files, etc.)
+
+=back
+
+If possible, include debugging output by running the tool with C<PTDEBUG>;
+see L<"ENVIRONMENT">.
+
+=head1 DOWNLOADING
+
+Visit L<http://www.percona.com/software/percona-toolkit/> to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+   wget percona.com/get/percona-toolkit.tar.gz
+
+   wget percona.com/get/percona-toolkit.rpm
+
+   wget percona.com/get/percona-toolkit.deb
+
+You can also get individual tools from the latest release:
+
+   wget percona.com/get/TOOL
+
+Replace C<TOOL> with the name of any tool.
+
+=head1 AUTHORS
+
+Baron Schwartz
+
+=head1 ACKNOWLEDGMENTS
+
+Andrew O'Brien
+
+=head1 ABOUT PERCONA TOOLKIT
+
+This tool is part of Percona Toolkit, a collection of advanced command-line
+tools for MySQL developed by Percona.  Percona Toolkit was forked from two
+projects in June, 2011: Maatkit and Aspersa.  Those projects were created by
+Baron Schwartz and primarily developed by him and Daniel Nichter.  Visit
+L<http://www.percona.com/software/> to learn about other free, open-source
+software from Percona.
+
+=head1 COPYRIGHT, LICENSE, AND WARRANTY
+
+This program is copyright 2011-2016 Percona LLC and/or its affiliates,
+2007-2011 Baron Schwartz.
+
+THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+systems, you can issue `man perlgpl' or `man perlartistic' to read these
+licenses.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+Place, Suite 330, Boston, MA  02111-1307  USA.
+
+=head1 VERSION
+
+pt-archiver 2.2.17
+
+=cut
