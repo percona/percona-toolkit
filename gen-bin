@@ -49,7 +49,8 @@ for my $line(@lines) {
 
 sub write_module {
     my ($filename, $ofh, $module_name) = @_;
-    my $rel_path = File::Spec->abs2rel($filename);
+    my $rel_path = my $test_file = File::Spec->abs2rel($filename);
+    $test_file =~ s/\.pm$/.t/;
 
     open (my $in_module, "<", $filename);
     my @module_lines = <$in_module>;
@@ -73,14 +74,23 @@ sub write_module {
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
 #   $rel_path
-#   t/$rel_path
+#   t/$test_file
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 __ENDSTR
 
     # Write the rest of the module
-    print $ofh @module_lines;
-    print $ofh "\n";
+    for my $line(@module_lines) {
+        next if ($line =~ m/^\s*#/);
+        print $ofh $line;
+    }
+
+    # Write footer
+    print $ofh <<__ENDSTR;
+# ###########################################################################
+# End $module_name package
+# ###########################################################################
+__ENDSTR
 
 }
 

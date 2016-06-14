@@ -32,21 +32,21 @@ BEGIN {
    ));
 }
 
-use Cxn;
-use DSNParser;
-use Daemon;
-use HTTP::Micro;
-use Lmo;
+use Percona::Toolkit;
+use Lmo::Utils;
 use Lmo::Meta;
 use Lmo::Object;
 use Lmo::Types;
-use Lmo::Utils;
+use Lmo;
+use OptionParser;
+use DSNParser;
+use Cxn;
+use Daemon;
+use TextResultSetParser;
 use MySQLConfig;
 use MySQLConfigComparer;
-use OptionParser;
-use Percona::Toolkit;
 use ReportFormatter;
-use TextResultSetParser;
+use HTTP::Micro;
 use VersionCheck;
 
 # ###########################################################################
