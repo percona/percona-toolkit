@@ -4710,7 +4710,7 @@ sub parse_client_handshake_packet {
    my ( $db ) = $data =~ m!
       ^.{64}${user}00..   # Everything matched before
       (?:..){$code_len}   # The scramble buffer
-      (.*)00\Z            # The database name
+      (.*?)00.*\Z         # The database name
    !x;
    my $pkt = {
       user  => to_string($user),
@@ -9847,7 +9847,7 @@ sub new {
 
 my $genlog_line_1= qr{
    \A
-   (?:(\d{6}\s+\d{1,2}:\d\d:\d\d))? # Timestamp
+   (?:(\d{6}\s+\d{1,2}:\d\d:\d\d|\d{4}-\d{1,2}-\d{1,2}T\d\d:\d\d:\d\d\.\d+Z))? # Timestamp
    \s+
    (?:\s*(\d+))                     # Thread ID
    \s
@@ -15262,14 +15262,14 @@ be report lines for both db and Schema.
 
 =item --attribute-value-limit
 
-type: int; default: 4294967296
+type: int; default: 0 
 
 A sanity limit for attribute values.
 
 This option deals with bugs in slow logging functionality that causes large
 values for attributes.  If the attribute's value is bigger than this, the
 last-seen value for that class of query is used instead.
-The default is 4G (2^32). To disable (set no upper limit) set value to 0.
+Disabled by default.
 
 =item --charset
 

@@ -1217,10 +1217,13 @@ sub parse_client_handshake_packet {
    # This length-coded binary doesn't seem to be a normal one, it
    # seems more like a length-coded string actually.
    my $code_len = hex($buff_len);
+   # The (.*?)00.?\Z part in the regex, is to remove an erroneous 
+   # null char + mysql_native_password after the db name
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1402776
    my ( $db ) = $data =~ m!
       ^.{64}${user}00..   # Everything matched before
       (?:..){$code_len}   # The scramble buffer
-      (.*)00\Z            # The database name
+      (.*?)00.*\Z         # The database name
    !x;
    my $pkt = {
       user  => to_string($user),

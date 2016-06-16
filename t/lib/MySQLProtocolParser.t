@@ -430,7 +430,7 @@ test_protocol_parser(
          arg => 'administrator command: Connect',
          bytes => 30,
          cmd => 'Admin',
-         db => '',
+         db => 'nepool_ftr',
          host => '10.54.212.171',
          ip => '10.54.212.171',
          port => '49663',
