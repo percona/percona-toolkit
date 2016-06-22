@@ -3052,7 +3052,7 @@ sub generate_del_stmt {
    my $index = $tp->find_best_index($tbl, $args{index});
    die "Cannot find an ascendable index in table" unless $index;
 
-   if ( $index ) {
+   if ( $index && $tbl->{keys}->{$index}->{is_unique}) {
       @del_cols = @{$tbl->{keys}->{$index}->{cols}};
    }
    else {
