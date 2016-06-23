@@ -15,7 +15,7 @@ innodb_buffer_pool_size    = 16M
 innodb_data_home_dir       = /tmp/PORT/data
 innodb_log_group_home_dir  = /tmp/PORT/data
 innodb_data_file_path      = ibdata1:10M:autoextend
-innodb_log_file_size       = 5M
+innodb_log_file_size       = 64M
 log-bin                    = mysql-bin
 relay_log                  = mysql-relay-bin
 log_slave_updates
