@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v2.2.18 released 2016-06-24
+
  * Feature 1537416  :  pt-stalk now sorts the output of transactions by id
  * Feature 1553340  :  Added "Shared" memory info to pt-summary
  * Feature PT-24    :  Added the --no-vertical-format option for pt-query-digest, allowing compatibility with non-standard MySQL clients that don't support the \G directive at the end of a statement
