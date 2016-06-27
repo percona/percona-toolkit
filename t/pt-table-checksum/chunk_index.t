@@ -14,7 +14,6 @@ use Test::More;
 use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-table-checksum";
-use Data::Dumper;
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
