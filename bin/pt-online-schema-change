@@ -9554,7 +9554,9 @@ sub main {
          if ($orig_trigger ne '') {
             PTDEBUG && _d($orig_trigger);
             print $orig_trigger, "\n" if $o->get('print');
-            $cxn->dbh()->do($orig_trigger);
+            if ( $o->get('execute') ) {
+               $cxn->dbh()->do($orig_trigger);
+            }
          }
       }
    }
@@ -11108,7 +11110,7 @@ sub terminate_sql {
 sub trim {
    my ( $text ) = @_;
    die "I need a text argument" unless defined $text;
-   $text =~ s/^\s+|\s+$//gm;
+   $text =~ s/^\s+|\s+$//g;
    return $text;
 }
 
