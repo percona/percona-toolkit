@@ -56,7 +56,7 @@ $output = output(
 );
 like(
    $output,
-   qr/DELETE FROM `test`\.`issue_1166` WHERE \(`id` = \?\) LIMIT 1$/m,
+   qr/LIMIT 1$/m,
    "LIMIT 1 with non-unique index (issue 1166)"
 );
 
