@@ -36,7 +36,6 @@ my $out        = "t/pt-table-checksum/samples/";
 
 $sb->load_file('master', "t/pt-table-checksum/samples/issue_519.sql");
 
-
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args, qw(-t issue_519.t --explain)) },
@@ -58,7 +57,7 @@ ok(
    no_diff(
       sub { pt_table_checksum::main(@args, qw(--chunk-index myidx),
          qw(-t issue_519.t --explain)) },
-      "$out/chunkidx002.txt",
+      "$out/chunkidx002.txt", 
    ),
    "Use --chunk-index"
 );
@@ -118,6 +117,7 @@ ok(
 # #############################################################################
 $sb->load_file('master', "t/pt-table-checksum/samples/all-uc-table.sql");
 my $exit_status = 0;
+
 $output = output(sub {
    $exit_status = pt_table_checksum::main(
       $master_dsn, '--max-load', '',
@@ -260,4 +260,5 @@ cmp_ok(
 # #############################################################################
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+
 exit;
