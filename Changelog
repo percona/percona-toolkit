@@ -1,5 +1,9 @@
 Changelog for Percona Toolkit
 
+v2.2.19
+
+ * Fixed bug 1592166:  pt-kill leaks memory
+
 v2.2.18 released 2016-06-24
 
  * Feature 1537416  :  pt-stalk now sorts the output of transactions by id

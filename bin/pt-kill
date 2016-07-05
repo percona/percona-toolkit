@@ -3494,6 +3494,7 @@ sub find {
    my $ms  = $self->{MasterSlave};
 
    my @matches;
+   $self->{_reasons_for_matching} = undef;
    QUERY:
    foreach my $query ( @$proclist ) {
       PTDEBUG && _d('Checking query', Dumper($query));
