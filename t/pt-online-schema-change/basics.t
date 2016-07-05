@@ -819,9 +819,51 @@ like(
 
 $master_dbh->do("DROP DATABASE test_recursion_method");
 
+
+# #############################################################################
+# Tests for --preserve-triggers option
+# #############################################################################
+
+test_alter_table(
+   name       => "Basic --preserve-triggers",
+   table      => "pt_osc.account",
+   pk_col     => "id",
+   file       => "triggers.sql",
+   test_type  => "add_col",
+   new_col    => "foo",
+   cmds       => [
+      qw(--execute --preserve-triggers), '--alter', 'ADD COLUMN foo INT',
+   ],
+);
+
+test_alter_table(
+   name       => "--preserve-triggers --no-swap-table",
+   table      => "pt_osc.account",
+   pk_col     => "id",
+   test_type  => "add_col",
+   new_col    => "foo",
+   cmds       => [
+      qw(--execute --preserve-triggers --no-swap-table), '--alter', 'ADD COLUMN foo2 INT',
+   ],
+);
+
+test_alter_table(
+   name       => "FK rebuild_constraints --preserve-triggers",
+   table      => "sakila.film",
+   pk_col     => "film_id",
+   test_type  => "add_col",
+   file       => "sakila_triggers.sql",
+   new_col    => "foo",
+   check_fks  => "rebuild_constraints",
+   cmds       => [
+      qw(--execute --preserve-triggers --alter-foreign-keys-method rebuild_constraints), '--alter', 'ADD COLUMN foo INT',
+   ],
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+ #
 done_testing;
