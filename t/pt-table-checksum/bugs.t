@@ -105,7 +105,7 @@ is_deeply(
    $rows,
    [
       ['test', 'test_empty', '1', '0',        '0'],  # empty
-      ['test', 'test_full',  '1', 'ac967054', '1'],  # row
+      ['test', 'test_full',  '1', '4d284606', '1'],  # row
    ],
    "Bug 987393 (empty table): checksums"
 ) or print STDERR Dumper($rows);

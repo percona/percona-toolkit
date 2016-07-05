@@ -224,6 +224,9 @@ sub get_checksum_columns {
          elsif ( $trim && $type =~ m/varchar/ ) {
             $result = "TRIM($result)";
          }
+         elsif ( $type =~ m/blob|text|binary/ ) {
+            $result = "CRC32($result)";
+         }
          $result;
       }
       grep {
