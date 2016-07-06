@@ -352,7 +352,7 @@ sub get_connected_slaves {
       die "You do not have the PROCESS privilege";
    }
 
-   $sql = 'SHOW PROCESSLIST';
+   $sql = 'SHOW FULL PROCESSLIST';
    PTDEBUG && _d($dbh, $sql);
    # It's probably a slave if it's doing a binlog dump.
    grep { $_->{command} =~ m/Binlog Dump/i }

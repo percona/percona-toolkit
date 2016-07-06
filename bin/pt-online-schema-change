@@ -4111,7 +4111,7 @@ sub get_slaves {
       }
       my ($dbh, $dsn) = @args{@required_args};
       my $o = $self->{OptionParser};
-      
+
       $self->recurse_to_slaves(
          {  dbh       => $dbh,
             dsn       => $dsn,
@@ -4326,7 +4326,7 @@ sub get_connected_slaves {
       die "You do not have the PROCESS privilege";
    }
 
-   $sql = 'SHOW PROCESSLIST';
+   $sql = 'SHOW FULL PROCESSLIST';
    PTDEBUG && _d($dbh, $sql);
    grep { $_->{command} =~ m/Binlog Dump/i }
    map  { # Lowercase the column names
