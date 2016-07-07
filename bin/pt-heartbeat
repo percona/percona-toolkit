@@ -5821,7 +5821,16 @@ sub main {
       my $sql = $o->read_para_after(__FILE__, qr/MAGIC_create_heartbeat/);
       $sql =~ s/heartbeat/IF NOT EXISTS $db_tbl/;
       PTDEBUG && _d($sql);
-      $dbh->do($sql);
+      if ($o->get('create-table-engine')) {
+          my $engine = $o->get('create-table-engine');
+          $sql =~ s/;$/ ENGINE=$engine;/;
+          PTDEBUG && _d("Using engine $engine");
+          PTDEBUG && _d($sql);
+      }
+      eval { $dbh->do($sql); };
+      if ( $EVAL_ERROR ) {
+          die "Error creating heartbeat table:". $EVAL_ERROR;
+      }
      
       # Now we insert first row.
       # Some caveats:
@@ -6663,6 +6672,13 @@ or if using L<"--utc">:
 The tool automatically detects if the heartbeat table is legacy.
 
 See also L<"MULTI-SLAVE HIERARCHY">.
+
+=item --create-table-engine
+
+type: string
+
+Sets the engine to be used for the heartbeat table.
+The default storage engine is InnoDB as of MySQL 5.5.5.
 
 =item --daemonize
 
