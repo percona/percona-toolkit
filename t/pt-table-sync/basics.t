@@ -110,6 +110,25 @@ is_deeply(
    'Synced OK with Chunk'
 );
 
+# Create a new user that is going to be replicated on slaves.
+# After that, stop replication, delete the user from the master just to ensure that
+# on the master we are using the sandbox user, and start relication again to run
+# the tests
+$sb->do_as_root("master", q/GRANT REPLICATION SLAVE ON *.* TO 'slave_user'@'%' IDENTIFIED BY 'slave_password'/);
+$sb->do_as_root("master", q/set sql_log_bin=0/);
+$sb->do_as_root("master", q/DROP USER 'slave_user'/);
+$sb->do_as_root("master", q/set sql_log_bin=1/);
+
+$sb->load_file('master', 't/pt-table-sync/samples/before.sql');
+$output = run('test1', 'test2', '--algorithms Chunk,GroupBy --no-bin-log --slave-user slave_user --slave-password slave_password');
+is($output, "INSERT INTO `test`.`test2`(`a`, `b`) VALUES ('1', 'en');
+INSERT INTO `test`.`test2`(`a`, `b`) VALUES ('2', 'ca');", 'Basic Chunk sync');
+is_deeply(
+   query_slave('select * from test.test2'),
+   [ {   a => 1, b => 'en' }, { a => 2, b => 'ca' } ],
+   'Synced OK with --slave-user'
+);
+
 $sb->load_file('master', 't/pt-table-sync/samples/before.sql');
 $output = run('test1', 'test2', '--algorithms Nibble --no-bin-log');
 is($output, "INSERT INTO `test`.`test2`(`a`, `b`) VALUES ('1', 'en');

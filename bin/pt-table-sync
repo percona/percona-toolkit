@@ -12463,6 +12463,22 @@ The tool will examine server B's copy of the table.  If it looks like server B's
 data in table C<test.tbl1> is different from server A's copy, the tool will not
 sync that table on servers C and D.
 
+=item --slave-user
+
+type: string
+
+Sets the user to be used to connect to the slaves.
+This parameter allows you to have a different user with less privileges on the 
+slaves but that user must exist on all slaves.
+
+=item --slave-password
+
+type: string
+
+Sets the password to be used to connect to the slaves.
+It can be used with --slave-user and the password for the user must be the same
+on all slaves.
+
 =item --set-vars
 
 type: Array
