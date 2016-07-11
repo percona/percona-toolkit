@@ -1,0 +1,306 @@
+
+# Overall: 13 total, 12 unique, 0 QPS, 0x concurrency ____________________
+# Time range: 2016-06-07T19:07:02.558338Z to 2016-06-07T19:07:02.576333Z
+# Attribute          total     min     max     avg     95%  stddev  median
+# ============     ======= ======= ======= ======= ======= ======= =======
+# Exec time              0       0       0       0       0       0       0
+# Query size         1.56k      13     429  122.54  346.17  126.35   82.58
+
+# Query 1: 0 QPS, 0x concurrency, ID 0x5D51E5F01B88B79E at byte 253 ______
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: 2016-06-07T19:07:02.558338Z to 2016-06-07T19:07:02.558581Z
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         15       2
+# Exec time      0       0       0       0       0       0       0       0
+# Query size     3      60      30      30      30      30       0      30
+# String:
+# Hosts        localhost
+# Users        phpmyadmin (1/50%), root (1/50%)
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+administrator command: Connect\G
+
+# Query 2: 0 QPS, 0x concurrency, ID 0xE2F7D83651089289 at byte 613 ______
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2016-06-07T19:07:02.565845Z
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          7       1
+# Exec time      0       0       0       0       0       0       0       0
+# Query size     1      21      21      21      21      21       0      21
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT CURRENT_USER()\G
+
+# Query 3: 0 QPS, 0x concurrency, ID 0x5A2F00AA08F7A560 at byte 552 ______
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2016-06-07T19:07:02.563721Z
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          7       1
+# Exec time      0       0       0       0       0       0       0       0
+# Query size     2      32      32      32      32      32       0      32
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `mysql` LIKE 'user'\G
+#    SHOW CREATE TABLE `mysql`.`user`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT 1 FROM mysql.user LIMIT 1\G
+
+# Query 4: 0 QPS, 0x concurrency, ID 0xF2E9C9BDE150321B at byte 480 ______
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2016-06-07T19:07:02.558791Z
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          7       1
+# Exec time      0       0       0       0       0       0       0       0
+# Query size     2      47      47      47      47      47       0      47
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+SET collation_connection = 'utf8mb4_unicode_ci'\G
+
+# Query 5: 0 QPS, 0x concurrency, ID 0x3B9AD583C3AFC61D at byte 326 ______
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2016-06-07T19:07:02.558713Z
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          7       1
+# Exec time      0       0       0       0       0       0       0       0
+# Query size     1      27      27      27      27      27       0      27
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+SET CHARACTER SET 'utf8mb4'\G
+
+# Query 6: 0 QPS, 0x concurrency, ID 0x08E4BF21400A779E at byte 2299 _____
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2016-06-07T19:07:02.576333Z
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          7       1
+# Exec time      0       0       0       0       0       0       0       0
+# Query size    11     189     189     189     189     189       0     189
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `phpmyadmin` LIKE 'pma__usergroups'\G
+#    SHOW CREATE TABLE `phpmyadmin`.`pma__usergroups`\G
+#    SHOW TABLE STATUS FROM `phpmyadmin` LIKE 'pma__users'\G
+#    SHOW CREATE TABLE `phpmyadmin`.`pma__users`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT `tab` FROM `phpmyadmin`.`pma__usergroups` WHERE `allowed` = 'N' AND `tab` LIKE 'server%' AND `usergroup` = (SELECT usergroup FROM `phpmyadmin`.`pma__users` WHERE `username` = 'root')\G
+
+# Query 7: 0 QPS, 0x concurrency, ID 0x62642FD655801FC1 at byte 2070 _____
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2016-06-07T19:07:02.575723Z
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          7       1
+# Exec time      0       0       0       0       0       0       0       0
+# Query size    10     160     160     160     160     160       0     160
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `phpmyadmin` LIKE 'pma__bookmark'\G
+#    SHOW CREATE TABLE `phpmyadmin`.`pma__bookmark`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT `label`, `id`, `query`, `dbase` AS `db`, IF (`user` = '', true, false) AS `shared` FROM `phpmyadmin`.`pma__bookmark` WHERE `user` = '' OR `user` = 'root'\G
+
+# Query 8: 0 QPS, 0x concurrency, ID 0x289CE0B9F6EA151D at byte 1870 _____
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2016-06-07T19:07:02.572396Z
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          7       1
+# Exec time      0       0       0       0       0       0       0       0
+# Query size     8     138     138     138     138     138       0     138
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `INFORMATION_SCHEMA` LIKE 'SCHEMATA'\G
+#    SHOW CREATE TABLE `INFORMATION_SCHEMA`.`SCHEMATA`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT COUNT(*) FROM ( SELECT DISTINCT SUBSTRING_INDEX(SCHEMA_NAME, '_', 1) DB_first_level FROM INFORMATION_SCHEMA.SCHEMATA WHERE TRUE ) t\G
+
+# Query 9: 0 QPS, 0x concurrency, ID 0xED549F59FFFA541B at byte 1692 _____
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2016-06-07T19:07:02.569779Z
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          7       1
+# Exec time      0       0       0       0       0       0       0       0
+# Query size     7     122     122     122     122     122       0     122
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `phpmyadmin` LIKE 'pma__navigationhiding'\G
+#    SHOW CREATE TABLE `phpmyadmin`.`pma__navigationhiding`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT `db_name`, COUNT(*) AS `count` FROM `phpmyadmin`.`pma__navigationhiding` WHERE `username`='root' GROUP BY `db_name`\G
+
+# Query 10: 0 QPS, 0x concurrency, ID 0xA46100310F18DEB9 at byte 1530 ____
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2016-06-07T19:07:02.569194Z
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          7       1
+# Exec time      0       0       0       0       0       0       0       0
+# Query size    22     355     355     355     355     355       0     355
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `INFORMATION_SCHEMA` LIKE 'SCHEMATA'\G
+#    SHOW CREATE TABLE `INFORMATION_SCHEMA`.`SCHEMATA`\G
+#    SHOW TABLE STATUS FROM `INFORMATION_SCHEMA` LIKE 'SCHEMATA'\G
+#    SHOW CREATE TABLE `INFORMATION_SCHEMA`.`SCHEMATA`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT `SCHEMA_NAME` FROM `INFORMATION_SCHEMA`.`SCHEMATA`, (SELECT DB_first_level FROM ( SELECT DISTINCT SUBSTRING_INDEX(SCHEMA_NAME, '_', 1) DB_first_level FROM INFORMATION_SCHEMA.SCHEMATA WHERE TRUE ) t ORDER BY DB_first_level ASC LIMIT 0, 100) t2 WHERE TRUE AND 1 = LOCATE(CONCAT(DB_first_level, '_'), CONCAT(SCHEMA_NAME, '_')) ORDER BY SCHEMA_NAME ASC\G
+
+# Query 11: 0 QPS, 0x concurrency, ID 0x389FF9DA2DF3DF62 at byte 1135 ____
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2016-06-07T19:07:02.567097Z
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          7       1
+# Exec time      0       0       0       0       0       0       0       0
+# Query size     0      13      13      13      13      13       0      13
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT USER()\G
+
+# Query 12: 0 QPS, 0x concurrency, ID 0x754B91A2F3BD1E20 at byte 1082 ____
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2016-06-07T19:07:02.565999Z
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          7       1
+# Exec time      0       0       0       0       0       0       0       0
+# Query size    26     429     429     429     429     429       0     429
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `INFORMATION_SCHEMA` LIKE 'COLUMN_PRIVILEGES'\G
+#    SHOW CREATE TABLE `INFORMATION_SCHEMA`.`COLUMN_PRIVILEGES`\G
+#    SHOW TABLE STATUS FROM `INFORMATION_SCHEMA` LIKE 'TABLE_PRIVILEGES'\G
+#    SHOW CREATE TABLE `INFORMATION_SCHEMA`.`TABLE_PRIVILEGES`\G
+#    SHOW TABLE STATUS FROM `INFORMATION_SCHEMA` LIKE 'SCHEMA_PRIVILEGES'\G
+#    SHOW CREATE TABLE `INFORMATION_SCHEMA`.`SCHEMA_PRIVILEGES`\G
+#    SHOW TABLE STATUS FROM `INFORMATION_SCHEMA` LIKE 'USER_PRIVILEGES'\G
+#    SHOW CREATE TABLE `INFORMATION_SCHEMA`.`USER_PRIVILEGES`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT 1 FROM (SELECT `GRANTEE`, `IS_GRANTABLE` FROM `INFORMATION_SCHEMA`.`COLUMN_PRIVILEGES` UNION SELECT `GRANTEE`, `IS_GRANTABLE` FROM `INFORMATION_SCHEMA`.`TABLE_PRIVILEGES` UNION SELECT `GRANTEE`, `IS_GRANTABLE` FROM `INFORMATION_SCHEMA`.`SCHEMA_PRIVILEGES` UNION SELECT `GRANTEE`, `IS_GRANTABLE` FROM `INFORMATION_SCHEMA`.`USER_PRIVILEGES`) t WHERE `IS_GRANTABLE` = 'YES' AND '''root''@''localhost''' LIKE `GRANTEE` LIMIT 1\G
+
+# Profile
+# Rank Query ID           Response time Calls R/Call V/M   Item
+# ==== ================== ============= ===== ====== ===== ===============
+#    1 0x5D51E5F01B88B79E  0.0000  0.0%     2 0.0000  0.00 ADMIN CONNECT
+#    2 0xE2F7D83651089289  0.0000  0.0%     1 0.0000  0.00 SELECT
+#    3 0x5A2F00AA08F7A560  0.0000  0.0%     1 0.0000  0.00 SELECT mysql.user
+#    4 0xF2E9C9BDE150321B  0.0000  0.0%     1 0.0000  0.00 SET
+#    5 0x3B9AD583C3AFC61D  0.0000  0.0%     1 0.0000  0.00 SET
+#    6 0x08E4BF21400A779E  0.0000  0.0%     1 0.0000  0.00 SELECT phpmyadmin.pma__usergroups phpmyadmin.pma__users
+#    7 0x62642FD655801FC1  0.0000  0.0%     1 0.0000  0.00 SELECT phpmyadmin.pma__bookmark
+#    8 0x289CE0B9F6EA151D  0.0000  0.0%     1 0.0000  0.00 SELECT INFORMATION_SCHEMA.SCHEMATA
+#    9 0xED549F59FFFA541B  0.0000  0.0%     1 0.0000  0.00 SELECT phpmyadmin.pma__navigationhiding
+#   10 0xA46100310F18DEB9  0.0000  0.0%     1 0.0000  0.00 SELECT INFORMATION_SCHEMA.SCHEMATA
+#   11 0x389FF9DA2DF3DF62  0.0000  0.0%     1 0.0000  0.00 SELECT
+#   12 0x754B91A2F3BD1E20  0.0000  0.0%     1 0.0000  0.00 SELECT UNION INFORMATION_SCHEMA.COLUMN_PRIVILEGES INFORMATION_SCHEMA.TABLE_PRIVILEGES INFORMATION_SCHEMA.SCHEMA_PRIVILEGES INFORMATION_SCHEMA.USER_PRIVILEGES

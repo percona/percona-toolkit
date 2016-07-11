@@ -602,11 +602,12 @@ sub get_opts {
    if ( exists $self->{opts}->{version} && $self->{opts}->{version}->{got} ) {
       if ( $self->{version} ) {
          print $self->{version}, "\n";
+         exit 0;
       }
       else {
          print "Error parsing version.  See the VERSION section of the tool's documentation.\n";
+         exit 1;
       }
-      exit 1;
    }
 
    if ( @ARGV && $self->{strict} ) {
@@ -2252,6 +2253,7 @@ sub get_dbh {
       PrintError         => 0,
       ShowErrorStatement => 1,
       mysql_enable_utf8 => ($cxn_string =~ m/charset=utf8/i ? 1 : 0),
+      mysql_multi_statements => 1,
    };
    @{$defaults}{ keys %$opts } = values %$opts;
    if (delete $defaults->{L}) { # L for LOAD DATA LOCAL INFILE, our own extension
@@ -3051,7 +3053,7 @@ sub generate_del_stmt {
    my $index = $tp->find_best_index($tbl, $args{index});
    die "Cannot find an ascendable index in table" unless $index;
 
-   if ( $index ) {
+   if ( $index && $tbl->{keys}->{$index}->{is_unique}) {
       @del_cols = @{$tbl->{keys}->{$index}->{cols}};
    }
    else {
@@ -3379,6 +3381,7 @@ sub check_table {
       $self->{check_table_error} = $e;
       return 0;
    }
+
    if ( !$row->[0] || $row->[0] ne $tbl ) {
       PTDEBUG && _d('Table does not exist');
       return 0;
@@ -4107,7 +4110,8 @@ sub get_slaves {
          die "I need a $arg argument" unless $args{$arg};
       }
       my ($dbh, $dsn) = @args{@required_args};
-      
+      my $o = $self->{OptionParser};
+
       $self->recurse_to_slaves(
          {  dbh       => $dbh,
             dsn       => $dsn,
@@ -4115,7 +4119,16 @@ sub get_slaves {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
                PTDEBUG && _d('Found slave:', $dp->as_string($dsn));
-               push @$slaves, $make_cxn->(dsn => $dsn, dbh => $dbh);
+               my $slave_dsn = $dsn;
+               if ($o->got('slave-user')) {
+                  $slave_dsn->{u} = $o->get('slave-user');
+                  PTDEBUG && _d("Using slave user ".$o->get('slave-user')." on ".$slave_dsn->{h}.":".$slave_dsn->{P});
+               }
+               if ($o->got('slave-password')) {
+                  $slave_dsn->{p} = $o->get('slave-password');
+                  PTDEBUG && _d("Slave password set");
+               }
+               push @$slaves, $make_cxn->(dsn => $slave_dsn, dbh => $dbh);
                return;
             },
          }
@@ -4313,7 +4326,7 @@ sub get_connected_slaves {
       die "You do not have the PROCESS privilege";
    }
 
-   $sql = 'SHOW PROCESSLIST';
+   $sql = 'SHOW FULL PROCESSLIST';
    PTDEBUG && _d($dbh, $sql);
    grep { $_->{command} =~ m/Binlog Dump/i }
    map  { # Lowercase the column names
@@ -8028,6 +8041,7 @@ my $dont_interrupt_now = 0;
 my @drop_trigger_sqls;
 my @triggers_not_dropped;
 my $pxc_version = '0';
+my @orig_triggers = ('','','');
 # Completely ignore these error codes.
 my %ignore_code = (
    # Error: 1592 SQLSTATE: HY000  (ER_BINLOG_UNSAFE_STATEMENT)
@@ -8920,11 +8934,11 @@ sub main {
             $pr = new Progress(
                jobsize => scalar @$slaves,
                spec    => $o->get('progress'),
-               name    => "Waiting for " . $slave->name(),
+               name    => "Waiting for slave at " . $slave->{dsn_name},
             );
             $pr_first_report = sub {
                print "Waiting forever for new table $new_tbl->{name} to replicate "
-                  . "to " . $slave->name() . "...\n";
+                  . "to " . $slave->{dsn_name} . "...\n";
             };
          }
          $pr->start() if $pr;
@@ -9542,6 +9556,20 @@ sub main {
    # --plugin hook
    if ( $plugin && $plugin->can('before_swap_tables') ) {
       $plugin->before_swap_tables();
+   }
+
+   if ( $o->get('preserve-triggers') ) {
+      print "Adding original triggers to new table.\n";
+
+      foreach my $orig_trigger (@orig_triggers) {
+         if ($orig_trigger ne '') {
+            PTDEBUG && _d($orig_trigger);
+            print $orig_trigger, "\n" if $o->get('print');
+            if ( $o->get('execute') ) {
+               $cxn->dbh()->do($orig_trigger);
+            }
+         }
+      }
    }
 
    my $old_tbl;
@@ -10209,7 +10237,7 @@ sub check_orig_table {
            . ' LIKE ' . $q->literal_like($orig_tbl->{tbl});
    PTDEBUG && _d($sql);
    my $triggers = $dbh->selectall_arrayref($sql);
-   if ( $triggers && @$triggers ) {
+   if ( $triggers && @$triggers && !$o->get('preserve-triggers')) {
       die "The table $orig_tbl->{name} has triggers.  This tool "
          . "needs to create its own triggers, so the table cannot "
          . "already have triggers.\n";
@@ -10563,22 +10591,187 @@ sub create_triggers {
       "$new_tbl->{name}.$new_qcol <=> OLD.$old_qcol"
    } @{$tbl_struct->{keys}->{$del_index}->{cols}} );
 
-   my $delete_trigger
-      = "CREATE TRIGGER `${prefix}_del` AFTER DELETE ON $orig_tbl->{name} "
-      . "FOR EACH ROW "
-      . "DELETE IGNORE FROM $new_tbl->{name} "
-      . "WHERE $del_index_cols";
+   my $delete_trigger;
+   my $insert_trigger;
+   my $update_trigger;
 
    my $qcols    = join(', ', map { $q->quote($_->{new}) }        @$cols);
    my $new_vals = join(', ', map { "NEW.".$q->quote($_->{old}) } @$cols);
-   my $insert_trigger
-      = "CREATE TRIGGER `${prefix}_ins` AFTER INSERT ON $orig_tbl->{name} "
-      . "FOR EACH ROW "
-      . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
-   my $update_trigger
-      = "CREATE TRIGGER `${prefix}_upd` AFTER UPDATE ON $orig_tbl->{name} "
-      . "FOR EACH ROW "
-      . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
+
+
+   my $orig_delete_trigger;
+   my $orig_insert_trigger;
+   my $orig_update_trigger;
+
+
+   if ( $o->get('preserve-triggers') ) {
+      $cxn->connect();
+
+      my $dbh = $cxn->dbh();
+
+      $orig_delete_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='DELETE' AND ACTION_TIMING='AFTER' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{tbl}';");
+      $orig_insert_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='INSERT' AND ACTION_TIMING='AFTER' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{tbl}';");
+      $orig_update_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='UPDATE' AND ACTION_TIMING='AFTER' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{tbl}';");
+   }
+
+   if ( $o->get('preserve-triggers') && $orig_delete_trigger) {
+     
+      # find if trigger has begin/end - supply insertion point
+      my $delete_trigger_ins_point = trigger_ins_point(trigger => $orig_delete_trigger->[3]);
+
+      $delete_trigger
+         = "CREATE TRIGGER `${prefix}_del` AFTER DELETE ON $orig_tbl->{name} "
+         . "FOR EACH ROW";
+
+      my $delete_trigger_action
+         = "DELETE IGNORE FROM $new_tbl->{name} "
+         . "WHERE $del_index_cols";
+
+      if($delete_trigger_ins_point) {
+
+         $delete_trigger
+         = "LOCK TABLES $orig_tbl->{name} WRITE;\n"
+         . "DROP TRIGGER IF EXISTS `$orig_tbl->{db}`.`$orig_delete_trigger->[1]`;\n"
+         . $delete_trigger . "\n"
+         . terminate_sql(substr($orig_delete_trigger->[3], 0, $delete_trigger_ins_point))."\n"
+         . $delete_trigger_action . ";\n"
+         . "END;\n"
+         . "UNLOCK TABLES;";
+      }
+      else {
+         $delete_trigger
+         = "LOCK TABLES $orig_tbl->{name} WRITE;\n"
+         . "DROP TRIGGER IF EXISTS `$orig_tbl->{db}`.`$orig_delete_trigger->[1]`;\n"
+         . $delete_trigger . "\n"
+         . "BEGIN\n"
+         . terminate_sql($orig_delete_trigger->[3]) . "\n"
+         . $delete_trigger_action . ";\n"
+         . "END;\n"
+         . "UNLOCK TABLES;";
+      }
+
+      my $definer = $orig_delete_trigger->[2];
+      $definer =~ s/@/`@`/;
+      $definer = "`".$definer."`";
+
+      $orig_triggers[0]
+         = "CREATE DEFINER=$definer TRIGGER `$orig_delete_trigger->[0]`.`$orig_delete_trigger->[1]` "
+         . "AFTER DELETE ON $new_tbl->{name}\n"
+         . "FOR EACH ROW\n"
+         . terminate_sql($orig_delete_trigger->[3]) . "\n";
+   }
+   else {
+      $delete_trigger
+         = "CREATE TRIGGER `${prefix}_del` AFTER DELETE ON $orig_tbl->{name} "
+         . "FOR EACH ROW "
+         . "DELETE IGNORE FROM $new_tbl->{name} "
+         . "WHERE $del_index_cols";
+   }
+
+   if ( $o->get('preserve-triggers') && $orig_insert_trigger) {
+      
+      # find if trigger has begin/end - supply insertion point
+      my $insert_trigger_ins_point = trigger_ins_point(trigger => $orig_insert_trigger->[3]);
+
+      $insert_trigger
+         = "CREATE TRIGGER `${prefix}_ins` AFTER INSERT ON $orig_tbl->{name} "
+         . "FOR EACH ROW";
+
+      my $insert_trigger_action
+         = "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
+
+      if($insert_trigger_ins_point) {
+         $insert_trigger
+         = "LOCK TABLES $orig_tbl->{name} WRITE;\n"
+         . "DROP TRIGGER IF EXISTS `$orig_tbl->{db}`.`$orig_insert_trigger->[1]`;\n"
+         . $insert_trigger . "\n"
+         . terminate_sql(substr($orig_insert_trigger->[3], 0, $insert_trigger_ins_point)) . "\n"
+         . $insert_trigger_action . ";\n"
+         . "END;\n"
+         . "UNLOCK TABLES;";
+      }
+      else {
+         $insert_trigger
+         = "LOCK TABLES $orig_tbl->{name} WRITE;\n"
+         . "DROP TRIGGER IF EXISTS `$orig_tbl->{db}`.`$orig_insert_trigger->[1]`;\n"
+         . $insert_trigger . "\n"
+         . "BEGIN\n"
+         . terminate_sql($orig_insert_trigger->[3]) . "\n"
+         . $insert_trigger_action . ";\n"
+         . "END; \n"
+         . "UNLOCK TABLES;";
+      }
+
+      my $definer = $orig_insert_trigger->[2];
+      $definer =~ s/@/`@`/;
+      $definer = "`".$definer."`";
+
+      $orig_triggers[1]
+         = "CREATE DEFINER=$definer TRIGGER `$orig_insert_trigger->[0]`.`$orig_insert_trigger->[1]` "
+         . "AFTER INSERT ON $new_tbl->{name}\n"
+         . "FOR EACH ROW\n"
+         . terminate_sql($orig_insert_trigger->[3]) . "\n";
+   }
+   else {
+      $insert_trigger
+         = "CREATE TRIGGER `${prefix}_ins` AFTER INSERT ON $orig_tbl->{name} "
+         . "FOR EACH ROW "
+         . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
+
+
+   }
+
+   if ( $o->get('preserve-triggers') && $orig_update_trigger) {
+      
+      # find if trigger has begin/end - supply insertion point
+      my $update_trigger_ins_point = trigger_ins_point(trigger => $orig_update_trigger->[3]);
+
+      $update_trigger
+         = "CREATE TRIGGER `${prefix}_upd` AFTER UPDATE ON $orig_tbl->{name} "
+         . "FOR EACH ROW";
+
+      my $update_trigger_action
+         = "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
+
+      if($update_trigger_ins_point) {
+         $update_trigger
+         = "LOCK TABLES $orig_tbl->{name} WRITE;\n"
+         . "DROP TRIGGER IF EXISTS `$orig_tbl->{db}`.`$orig_update_trigger->[1]`;\n"
+         . $update_trigger . "\n"
+         . terminate_sql(substr($orig_update_trigger->[3], 0, $update_trigger_ins_point)) . "\n"
+         . $update_trigger_action . ";\n"
+         . "END;\n"
+         . "UNLOCK TABLES;";
+      }
+      else {
+         $update_trigger
+         = "LOCK TABLES $orig_tbl->{name} WRITE;\n"
+         . "DROP TRIGGER IF EXISTS `$orig_tbl->{db}`.`$orig_update_trigger->[1]`;\n"
+         . $update_trigger . "\n"
+         . "BEGIN\n"
+         . terminate_sql($orig_update_trigger->[3]) . "\n"
+         . $update_trigger_action . ";\n"
+         . "END;\n"
+         . "UNLOCK TABLES;";
+      }
+
+      my $definer = $orig_update_trigger->[2];
+      $definer =~ s/@/`@`/;
+      $definer = "`".$definer."`";
+
+      $orig_triggers[2]
+         = "CREATE DEFINER=$definer TRIGGER `$orig_update_trigger->[0]`.`$orig_update_trigger->[1]` "
+         . "AFTER UPDATE ON $new_tbl->{name}\n"
+         . "FOR EACH ROW\n"
+         . terminate_sql($orig_update_trigger->[3]) . "\n";
+   }
+   else {
+
+      $update_trigger
+         = "CREATE TRIGGER `${prefix}_upd` AFTER UPDATE ON $orig_tbl->{name} "
+         . "FOR EACH ROW "
+         . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
+   }
 
    my @triggers = (
       ['del', $delete_trigger],
@@ -10896,6 +11089,40 @@ sub ts {
    my ($msg) = @_;
    my $ts = $ENV{PTTEST_FAKE_TS} ? 'TS' : Transformers::ts(int(time));
    return $msg ? "$ts $msg" : $ts;
+}
+
+# find point in trigger we can insert pt-osc code for --preserve-triggers
+sub trigger_ins_point {
+   my ( %args ) = @_;
+   my @required_args = qw(trigger);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless defined $args{$arg};
+   }
+   my ($trigger) = @args{@required_args};
+
+   my $ins_point;
+   if ($trigger =~ /begin(.*?)end(?!.*end)/igms) {
+         $ins_point = $+[0] - 3;
+      }
+   else { $ins_point = 0;}
+
+   return $ins_point;
+}
+
+# sub to add ; if line doesn't end in ;
+sub terminate_sql {
+   my ( $text ) = @_;
+   die "I need a text argument" unless defined $text;
+   $text = trim($text);
+   if(substr($text, -1) ne ';') { $text .= ';'; }
+   return $text;
+}
+
+sub trim {
+   my ( $text ) = @_;
+   die "I need a text argument" unless defined $text;
+   $text =~ s/^\s+|\s+$//g;
+   return $text;
 }
 
 # Catches signals so we can exit gracefully.
@@ -11615,6 +11842,11 @@ until queries are running normally again.  This will not prevent queueing,
 however; it will only give the server a chance to recover from the queueing.  If
 you notice queueing, it is best to decrease the chunk time.
 
+=item --preserve-triggers
+
+Preserves old triggers when specified. This mode will briefly hold up to 3 
+locks when it rewrites original triggers to include the tool code.
+
 =item --new-table-name
 
 type: string; default: %T_new
@@ -11733,6 +11965,22 @@ To make the tool monitor only the hosts 10.10.1.16 and 10.10.1.17 for
 replication lag, insert the values C<h=10.10.1.16> and C<h=10.10.1.17> into the
 table. Currently, the DSNs are ordered by id, but id and parent_id are otherwise
 ignored.  
+
+=item --slave-user
+
+type: string
+
+Sets the user to be used to connect to the slaves.
+This parameter allows you to have a different user with less privileges on the 
+slaves but that user must exist on all slaves.
+
+=item --slave-password
+
+type: string
+
+Sets the password to be used to connect to the slaves.
+It can be used with --slave-user and the password for the user must be the same
+on all slaves.
 
 =item --set-vars
 
@@ -12242,6 +12490,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-online-schema-change 2.2.17
+pt-online-schema-change 2.2.18
 
 =cut

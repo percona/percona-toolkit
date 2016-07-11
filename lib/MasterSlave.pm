@@ -80,7 +80,8 @@ sub get_slaves {
          die "I need a $arg argument" unless $args{$arg};
       }
       my ($dbh, $dsn) = @args{@required_args};
-      
+      my $o = $self->{OptionParser};
+
       $self->recurse_to_slaves(
          {  dbh       => $dbh,
             dsn       => $dsn,
@@ -88,7 +89,16 @@ sub get_slaves {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
                PTDEBUG && _d('Found slave:', $dp->as_string($dsn));
-               push @$slaves, $make_cxn->(dsn => $dsn, dbh => $dbh);
+               my $slave_dsn = $dsn;
+               if ($o->got('slave-user')) {
+                  $slave_dsn->{u} = $o->get('slave-user');
+                  PTDEBUG && _d("Using slave user ".$o->get('slave-user')." on ".$slave_dsn->{h}.":".$slave_dsn->{P});
+               }
+               if ($o->got('slave-password')) {
+                  $slave_dsn->{p} = $o->get('slave-password');
+                  PTDEBUG && _d("Slave password set");
+               }
+               push @$slaves, $make_cxn->(dsn => $slave_dsn, dbh => $dbh);
                return;
             },
          }
@@ -342,7 +352,7 @@ sub get_connected_slaves {
       die "You do not have the PROCESS privilege";
    }
 
-   $sql = 'SHOW PROCESSLIST';
+   $sql = 'SHOW FULL PROCESSLIST';
    PTDEBUG && _d($dbh, $sql);
    # It's probably a slave if it's doing a binlog dump.
    grep { $_->{command} =~ m/Binlog Dump/i }

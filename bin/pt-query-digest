@@ -1379,6 +1379,7 @@ sub new {
       'default'    => 1,
       'cumulative' => 1,
       'negatable'  => 1,
+      'repeatable' => 1,  # means it can be specified more than once
    );
 
    my $self = {
@@ -1569,6 +1570,7 @@ sub _pod_to_specs {
             desc  => $para
                . (defined $attribs{default} ? " (default $attribs{default})" : ''),
             group => ($attribs{'group'} ? $attribs{'group'} : 'default'),
+            attributes => \%attribs
          };
       }
       while ( $para = <$fh> ) {
@@ -1622,6 +1624,7 @@ sub _parse_specs {
 
          $opt->{is_negatable}  = $opt->{spec} =~ m/!/        ? 1 : 0;
          $opt->{is_cumulative} = $opt->{spec} =~ m/\+/       ? 1 : 0;
+         $opt->{is_repeatable} = $opt->{attributes}->{repeatable} ? 1 : 0;
          $opt->{is_required}   = $opt->{desc} =~ m/required/ ? 1 : 0;
 
          $opt->{group} ||= 'default';
@@ -1765,11 +1768,21 @@ sub _set_option {
          return;
       }
       else {
-         $opt->{value} = $val;
+         if ($opt->{is_repeatable}) {
+            push @{$opt->{value}} , $val;
+         }
+         else {
+            $opt->{value} = $val;
+         }
       }
    }
    else {
-      $opt->{value} = $val;
+      if ($opt->{is_repeatable}) {
+         push @{$opt->{value}} , $val;
+      }
+      else {
+         $opt->{value} = $val;
+      }
    }
    $opt->{got} = 1;
    PTDEBUG && _d('Got option', $long, '=', $val);
@@ -1821,11 +1834,12 @@ sub get_opts {
    if ( exists $self->{opts}->{version} && $self->{opts}->{version}->{got} ) {
       if ( $self->{version} ) {
          print $self->{version}, "\n";
+         exit 0;
       }
       else {
          print "Error parsing version.  See the VERSION section of the tool's documentation.\n";
+         exit 1;
       }
-      exit 1;
    }
 
    if ( @ARGV && $self->{strict} ) {
@@ -2223,6 +2237,14 @@ sub _read_config_file {
          $parse  = 0;
          next LINE;
       }
+
+      if (  $parse
+            && !$self->has('version-check')
+            && $line =~ /version-check/
+      ) {
+         next LINE;
+      }
+
       if ( $parse
          && (my($opt, $arg) = $line =~ m/^\s*([^=\s]+?)(?:\s*=\s*(.*?)\s*)?$/)
       ) {
@@ -4688,7 +4710,7 @@ sub parse_client_handshake_packet {
    my ( $db ) = $data =~ m!
       ^.{64}${user}00..   # Everything matched before
       (?:..){$code_len}   # The scramble buffer
-      (.*)00\Z            # The database name
+      (.*?)00.*\Z         # The database name
    !x;
    my $pkt = {
       user  => to_string($user),
@@ -9825,7 +9847,7 @@ sub new {
 
 my $genlog_line_1= qr{
    \A
-   (?:(\d{6}\s+\d{1,2}:\d\d:\d\d))? # Timestamp
+   (?:(\d{6}\s+\d{1,2}:\d\d:\d\d|\d{4}-\d{1,2}-\d{1,2}T\d\d:\d\d:\d\d\.\d+Z))? # Timestamp
    \s+
    (?:\s*(\d+))                     # Thread ID
    \s
@@ -10414,7 +10436,8 @@ sub get_slaves {
          die "I need a $arg argument" unless $args{$arg};
       }
       my ($dbh, $dsn) = @args{@required_args};
-      
+      my $o = $self->{OptionParser};
+
       $self->recurse_to_slaves(
          {  dbh       => $dbh,
             dsn       => $dsn,
@@ -10422,7 +10445,16 @@ sub get_slaves {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
                PTDEBUG && _d('Found slave:', $dp->as_string($dsn));
-               push @$slaves, $make_cxn->(dsn => $dsn, dbh => $dbh);
+               my $slave_dsn = $dsn;
+               if ($o->got('slave-user')) {
+                  $slave_dsn->{u} = $o->get('slave-user');
+                  PTDEBUG && _d("Using slave user ".$o->get('slave-user')." on ".$slave_dsn->{h}.":".$slave_dsn->{P});
+               }
+               if ($o->got('slave-password')) {
+                  $slave_dsn->{p} = $o->get('slave-password');
+                  PTDEBUG && _d("Slave password set");
+               }
+               push @$slaves, $make_cxn->(dsn => $slave_dsn, dbh => $dbh);
                return;
             },
          }
@@ -10620,7 +10652,7 @@ sub get_connected_slaves {
       die "You do not have the PROCESS privilege";
    }
 
-   $sql = 'SHOW PROCESSLIST';
+   $sql = 'SHOW FULL PROCESSLIST';
    PTDEBUG && _d($dbh, $sql);
    grep { $_->{command} =~ m/Binlog Dump/i }
    map  { # Lowercase the column names
@@ -15240,14 +15272,14 @@ be report lines for both db and Schema.
 
 =item --attribute-value-limit
 
-type: int; default: 4294967296
+type: int; default: 0 
 
 A sanity limit for attribute values.
 
 This option deals with bugs in slow logging functionality that causes large
 values for attributes.  If the attribute's value is bigger than this, the
 last-seen value for that class of query is used instead.
-The default is 4G (2^32). To disable (set no upper limit) set value to 0.
+Disabled by default.
 
 =item --charset
 
@@ -16661,6 +16693,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-query-digest 2.2.17
+pt-query-digest 2.2.18
 
 =cut

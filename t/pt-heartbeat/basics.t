@@ -166,6 +166,23 @@ is(
    '--create-table creates heartbeat table'
 ) or diag($output, Dumper($row));
 
+$master_dbh->do('drop table if exists test.heartbeat');
+$sb->wait_for_slaves;
+
+$output = output(
+   sub { pt_heartbeat::main('-F', $cnf,
+      qw(--update --run-time 1s --database test --table heartbeat),
+      qw(--create-table --create-table-engine MEMORY)) },
+   stderr => 1,
+);
+$master_dbh->do('use test');
+$row = $master_dbh->selectrow_hashref("SHOW TABLE STATUS LIKE 'heartbeat'");
+is(
+   uc($row->{engine}),
+   'MEMORY', 
+   '--create-table-engine creates heartbeat table using a non-default engine'
+) or diag($output, Dumper($row));
+
 # #############################################################################
 # Issue 352: Add port to mk-heartbeat --check output
 # #############################################################################

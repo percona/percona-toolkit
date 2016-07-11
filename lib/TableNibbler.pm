@@ -247,7 +247,7 @@ sub generate_del_stmt {
    die "Cannot find an ascendable index in table" unless $index;
 
    # These are the columns needed for the DELETE statement's WHERE clause.
-   if ( $index ) {
+   if ( $index && $tbl->{keys}->{$index}->{is_unique}) {
       @del_cols = @{$tbl->{keys}->{$index}->{cols}};
    }
    else {

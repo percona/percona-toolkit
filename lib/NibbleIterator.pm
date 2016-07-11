@@ -503,23 +503,33 @@ sub _find_best_index {
    my $tbl_struct = $tbl->{tbl_struct};
    my $indexes    = $tbl_struct->{keys};
 
+   my $best_index;
    my $want_index = $args{chunk_index};
+   # check if the user defined index exists
+   # and declare it best_index if so
    if ( $want_index ) {
       PTDEBUG && _d('User wants to use index', $want_index);
       if ( !exists $indexes->{$want_index} ) {
          PTDEBUG && _d('Cannot use user index because it does not exist');
          $want_index = undef;
+      } else {
+         $best_index = $want_index;
       }
    }
 
-   if ( !$want_index && $args{mysql_index} ) {
+   # if no user definded index or user defined index not valid
+   # consider mysql's preferred index a candidate
+   if ( !$best_index && !$want_index && $args{mysql_index} ) {
       PTDEBUG && _d('MySQL wants to use index', $args{mysql_index});
       $want_index = $args{mysql_index};
    }
 
-   my $best_index;
+
    my @possible_indexes;
-   if ( $want_index ) {
+   # if haven't got a valid user chosen index
+   # check if mysql's preferred index is unique, and if so
+   # consider it the best, otherwise include it with other candidates
+   if ( !$best_index && $want_index ) {
       if ( $indexes->{$want_index}->{is_unique} ) {
          PTDEBUG && _d('Will use wanted index');
          $best_index = $want_index;
@@ -529,7 +539,10 @@ sub _find_best_index {
          push @possible_indexes, $want_index;
       }
    }
-   else {
+   
+   # still no best index?
+   # prefer unique index. otherwise put in candidates array. 
+   if (!$best_index) {
       PTDEBUG && _d('Auto-selecting best index');
       foreach my $index ( $tp->sort_indexes($tbl_struct) ) {
          if ( $index eq 'PRIMARY' || $indexes->{$index}->{is_unique} ) {
@@ -542,6 +555,7 @@ sub _find_best_index {
       }
    }
 
+   # choose the one with best cardinality 
    if ( !$best_index && @possible_indexes ) {
       PTDEBUG && _d('No PRIMARY or unique indexes;',
          'will use index with highest cardinality');

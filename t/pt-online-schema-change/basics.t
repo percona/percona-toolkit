@@ -819,9 +819,73 @@ like(
 
 $master_dbh->do("DROP DATABASE test_recursion_method");
 
+
+# #############################################################################
+# Tests for --preserve-triggers option
+# #############################################################################
+
+test_alter_table(
+   name       => "Basic --preserve-triggers",
+   table      => "pt_osc.account",
+   pk_col     => "id",
+   file       => "triggers.sql",
+   test_type  => "add_col",
+   new_col    => "foo",
+   cmds       => [
+      qw(--execute --preserve-triggers), '--alter', 'ADD COLUMN foo INT',
+   ],
+);
+
+test_alter_table(
+   name       => "--preserve-triggers --no-swap-tables",
+   table      => "pt_osc.t",
+   file       => "basic_no_fks_innodb.sql",
+   max_id     => 20,
+   test_type  => "add_col",
+   new_col    => "foo",
+   no_change  => 1,
+   cmds       => [
+      qw(--execute --no-swap-tables --preserve-triggers), '--alter', 'ADD COLUMN foo INT'
+   ],
+);
+
+test_alter_table(
+   name        => "Basic FK auto --execute",
+   table       => "pt_osc.country",
+   pk_col      => "country_id",
+   file        => "basic_with_fks.sql",
+   test_type   => "drop_col",
+   drop_col    => "last_update",
+   check_fks   => "rebuild_constraints",
+   cmds        => [
+   qw(
+      --execute
+      --alter-foreign-keys-method rebuild_constraints
+      --preserve-triggers
+   ),
+      '--alter', 'DROP COLUMN last_update',
+   ],
+);
+
+$sb->do_as_root("master", q/GRANT REPLICATION SLAVE ON *.* TO 'slave_user'@'%' IDENTIFIED BY 'slave_password'/);
+$sb->do_as_root("master", q/set sql_log_bin=0/);
+$sb->do_as_root("master", q/DROP USER 'slave_user'/);
+$sb->do_as_root("master", q/set sql_log_bin=1/);
+
+test_alter_table(
+   name       => "--slave-user --slave-password",
+   file       => "basic_no_fks_innodb.sql",
+   table      => "pt_osc.t",
+   test_type  => "add_col",
+   new_col    => "bar",
+   cmds       => [
+         qw(--execute --slave-user slave_user --slave-password slave_password), '--alter', 'ADD COLUMN bar INT',
+   ],
+);
 # #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+#
 done_testing;

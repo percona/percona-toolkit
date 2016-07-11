@@ -23,7 +23,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 15;
+   plan tests => 14;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -35,7 +35,6 @@ my $output;
 my $out        = "t/pt-table-checksum/samples/";
 
 $sb->load_file('master', "t/pt-table-checksum/samples/issue_519.sql");
-
 
 ok(
    no_diff(
@@ -58,7 +57,7 @@ ok(
    no_diff(
       sub { pt_table_checksum::main(@args, qw(--chunk-index myidx),
          qw(-t issue_519.t --explain)) },
-      "$out/chunkidx002.txt",
+      "$out/chunkidx002.txt", 
    ),
    "Use --chunk-index"
 );
@@ -83,14 +82,24 @@ ok(
 # when --where is given but no explicit --chunk-index|column is given.
 # Given the --where clause, MySQL will prefer the idx_fk_country_id index.
 
-ok(
-   no_diff(
-      sub { pt_table_checksum::main(@args, "--where", "country_id > 100",
-         qw(-t sakila.city)) },
-      "$out/chunkidx004.txt",
-   ),
-   "Auto-chosen --chunk-index for --where (issue 378)"
-);
+# UPDATE: I think the order of preference for the tool should be:
+# (user chosen idx) > (mysql chosen idx IF it's unique) >
+# (any unique idx) > (non unique idx with highest cardinality)
+
+# Test below assumes tool should choose mysql chosen idx even if unique idx
+# is available, so I'm commenting it out.
+# TODO: A test that checks that tool prefers non unique mysql chosen idx
+# from other non unique idx. 
+
+#ok(
+#   no_diff(
+#      sub { pt_table_checksum::main(@args, "--where", "country_id > 100",
+#         qw(-t sakila.city)) },
+#      "$out/chunkidx004.txt",
+#      keep_output => 1
+#   ),
+#   "Auto-chosen --chunk-index for --where (issue 378)"
+#);
 
 # If user specifies --chunk-index, then ignore the index MySQL wants to
 # use (idx_fk_country_id in this case) and use the user's index.
@@ -108,6 +117,7 @@ ok(
 # #############################################################################
 $sb->load_file('master', "t/pt-table-checksum/samples/all-uc-table.sql");
 my $exit_status = 0;
+
 $output = output(sub {
    $exit_status = pt_table_checksum::main(
       $master_dsn, '--max-load', '',
@@ -245,10 +255,10 @@ cmp_ok(
    "Initial key_len reflects --chunk-index-columns"
 ) or diag($output);
 
-
 # #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+
 exit;

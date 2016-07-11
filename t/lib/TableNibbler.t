@@ -134,11 +134,13 @@ is_deeply(
       cols   => [qw(film_id)],
    ),
    {
-      cols  => [qw(film_id title)],
+      cols  => [qw(film_id title description release_year language_id original_language_id rental_duration rental_rate length replacement_cost rating special_features last_update)],
       index => 'idx_title',
-      where => '(`title` = ?)',
-      slice => [1],
-      scols => [qw(title)],
+      where => '(`film_id` = ? AND `title` = ? AND ((? IS NULL AND `description` IS NULL) OR (`description` = ?)) AND ((? IS NULL AND `release_year` IS NULL) OR (`release_year` = ?)) AND `language_id` = ? AND ((? IS NULL AND `original_language_id` IS NULL) OR (`original_language_id` = ?)) AND `rental_duration` = ? AND `rental_rate` = ? AND ((? IS NULL AND `length` IS NULL) OR (`length` = ?)) AND `replacement_cost` = ? AND ((? IS NULL AND `rating` IS NULL) OR (`rating` = ?)) AND ((? IS NULL AND `special_features` IS NULL) OR (`special_features` = ?)) AND `last_update` = ?)',
+      slice => [ 0, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 10, 11, 11, 12 ],
+      scols  => [qw( film_id title description description release_year release_year language_id original_language_id original_language_id
+                     rental_duration rental_rate length length replacement_cost rating rating special_features special_features last_update)],
+
    },
    'del stmt on sakila.film with different index and extra column',
 );

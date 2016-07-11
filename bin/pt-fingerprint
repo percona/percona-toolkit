@@ -59,6 +59,7 @@ sub new {
       'default'    => 1,
       'cumulative' => 1,
       'negatable'  => 1,
+      'repeatable' => 1,  # means it can be specified more than once
    );
 
    my $self = {
@@ -249,6 +250,7 @@ sub _pod_to_specs {
             desc  => $para
                . (defined $attribs{default} ? " (default $attribs{default})" : ''),
             group => ($attribs{'group'} ? $attribs{'group'} : 'default'),
+            attributes => \%attribs
          };
       }
       while ( $para = <$fh> ) {
@@ -302,6 +304,7 @@ sub _parse_specs {
 
          $opt->{is_negatable}  = $opt->{spec} =~ m/!/        ? 1 : 0;
          $opt->{is_cumulative} = $opt->{spec} =~ m/\+/       ? 1 : 0;
+         $opt->{is_repeatable} = $opt->{attributes}->{repeatable} ? 1 : 0;
          $opt->{is_required}   = $opt->{desc} =~ m/required/ ? 1 : 0;
 
          $opt->{group} ||= 'default';
@@ -445,11 +448,21 @@ sub _set_option {
          return;
       }
       else {
-         $opt->{value} = $val;
+         if ($opt->{is_repeatable}) {
+            push @{$opt->{value}} , $val;
+         }
+         else {
+            $opt->{value} = $val;
+         }
       }
    }
    else {
-      $opt->{value} = $val;
+      if ($opt->{is_repeatable}) {
+         push @{$opt->{value}} , $val;
+      }
+      else {
+         $opt->{value} = $val;
+      }
    }
    $opt->{got} = 1;
    PTDEBUG && _d('Got option', $long, '=', $val);
@@ -501,11 +514,12 @@ sub get_opts {
    if ( exists $self->{opts}->{version} && $self->{opts}->{version}->{got} ) {
       if ( $self->{version} ) {
          print $self->{version}, "\n";
+         exit 0;
       }
       else {
          print "Error parsing version.  See the VERSION section of the tool's documentation.\n";
+         exit 1;
       }
-      exit 1;
    }
 
    if ( @ARGV && $self->{strict} ) {
@@ -904,9 +918,9 @@ sub _read_config_file {
          next LINE;
       }
 
-      if (  $parse 
-            && !$self->has('version-check') 
-            && $line =~ /version-check/ 
+      if (  $parse
+            && !$self->has('version-check')
+            && $line =~ /version-check/
       ) {
          next LINE;
       }
@@ -2211,6 +2225,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-fingerprint 2.2.17
+pt-fingerprint 2.2.18
 
 =cut
