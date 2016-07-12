@@ -7718,6 +7718,22 @@ The presence of the file specified by L<"--sentinel"> will cause all
 running instances of pt-kill to exit.  You might find this handy to stop cron
 jobs gracefully if necessary.  See also L<"--stop">.
 
+=item --slave-user
+
+type: string
+
+Sets the user to be used to connect to the slaves.
+This parameter allows you to have a different user with less privileges on the
+slaves but that user must exist on all slaves.
+
+=item --slave-password
+
+type: string
+
+Sets the password to be used to connect to the slaves.
+It can be used with --slave-user and the password for the user must be the same
+on all slaves.
+
 =item --set-vars
 
 type: Array
