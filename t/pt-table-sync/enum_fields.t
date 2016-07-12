@@ -40,9 +40,10 @@ $master_dbh->do('set sql_log_bin=0');
 $master_dbh->do(q/INSERT INTO enum_fields_db.rgb (name, hex_code) VALUES ('blue','0x0000FF')/);
 $output = `$trunk/bin/pt-table-sync --sync-to-master h=127.1,P=12346,u=msandbox,p=msandbox -d enum_fields_db --print`;
 $output = remove_traces($output);
+chomp($output);
 is(
    $output,
-   "REPLACE INTO `enum_fields_db`.`rgb`(`name`, `hex_code`) VALUES ('blue', '0x0000FF');",
+   q/REPLACE INTO `enum_fields_db`.`rgb`(`name`, `hex_code`) VALUES ('blue', '0x0000FF');/,
    'Quote Enum fields'
 );
 
