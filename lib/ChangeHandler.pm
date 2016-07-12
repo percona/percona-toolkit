@@ -326,7 +326,7 @@ sub make_UPDATE {
    my $types = $self->{tbl_struct}->{type_for};
    return "UPDATE $self->{dst_db_tbl} SET "
       . join(', ', map {
-            my $is_char  = ($types->{$_} || '') =~ m/char|text/i;
+            my $is_char  = ($types->{$_} || '') =~ m/char|text|enum/i;
             my $is_float = ($types->{$_} || '') =~ m/float|double/i;
             $self->{Quoter}->quote($_)
             . '='
