@@ -1,0 +1,16 @@
+/usr/sbin/mysqld, Version: 5.7.12-0ubuntu1.1-log ((Ubuntu)). started with:
+Tcp port: 3306  Unix socket: /var/run/mysqld/mysqld.sock
+Time                 Id Command    Argument
+/usr/sbin/mysqld, Version: 5.7.12-0ubuntu1.1-log ((Ubuntu)). started with:
+Tcp port: 3306  Unix socket: /var/run/mysqld/mysqld.sock
+Time                 Id Command    Argument
+# Time: 2016-07-20T18:13:25.698433Z
+# User@Host: root[root] @ localhost [127.0.0.1]  Id:     3
+# Query_time: 0.003464  Lock_time: 0.000324 Rows_sent: 1000  Rows_examined: 2000
+SET timestamp=1469038405;
+SELECT * FROM db_facturacion.facturas LIMIT 0, 1000;
+# Time: 2016-07-20T18:13:25.699880Z
+# User@Host: root[root] @ localhost [127.0.0.1]  Id:     4
+# Query_time: 0.000241  Lock_time: 0.000055 Rows_sent: 0  Rows_examined: 0
+SET timestamp=1469038405;
+SHOW INDEX FROM `db_facturacion`.`facturas`;
