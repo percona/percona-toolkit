@@ -17,6 +17,46 @@ use PerconaTest;
 my $p      = new SlowLogParser;
 my $sample = "t/lib/samples/slowlogs";
 
+# Check that we can parse MySQL 5.7+ slow log with dates in RFC3339 format.
+test_log_parser(
+   parser => $p,
+   file   => "$sample/mysql5.7.log",
+   result => [
+   {
+     Lock_time => '0.000324',
+     Query_time => '0.003464',
+     Rows_examined => '2000',
+     Rows_sent => '1000',
+     Thread_id => '3',
+     arg => 'SELECT * FROM db_facturacion.facturas LIMIT 0, 1000',
+     bytes => 51,
+     cmd => 'Query',
+     host => 'localhost',
+     ip => '127.0.0.1',
+     pos_in_log => 0,
+     timestamp => '1469038405',
+     ts => '2016-07-20T18:13:25',
+     user => 'root'
+   },
+   {
+     Lock_time => '0.000055',
+     Query_time => '0.000241',
+     Rows_examined => '0',
+     Rows_sent => '0',
+     Thread_id => '4',
+     arg => 'SHOW INDEX FROM `db_facturacion`.`facturas`',
+     bytes => 43,
+     cmd => 'Query',
+     host => 'localhost',
+     ip => '127.0.0.1',
+     pos_in_log => 608,
+     timestamp => '1469038405',
+     ts => '2016-07-20T18:13:25',
+     user => 'root'
+   }
+
+   ],
+);
 # Check that I can parse a slow log in the default slow log format.
 test_log_parser(
    parser => $p,
