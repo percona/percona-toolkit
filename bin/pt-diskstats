@@ -5500,9 +5500,9 @@ aggregated into one line, the first timestamp is shown.
 
 Show version and exit.
 
-=item --[no]version-check
+=item --version-check
 
-default: yes
+default: no
 
 Check for the latest version of Percona Toolkit, MySQL, and other programs.
 
