@@ -5110,7 +5110,7 @@ sub watch_server {
          #    (when a slaveB is replicating from slaveA, 
          #     the master_uuid is it's own master, slaveA)
          my ($gtid_exec_ids) = ($stat->{executed_gtid_set} || '') =~ m/$gtid_uuid([0-9-:]*)/;
-         $gtid_exec_ids =~ s/:[0-9]-/:/g;
+         $gtid_exec_ids =~ s/:[0-9]+-/:/g;
          die "No executed GTIDs" unless $gtid_exec_ids;
 
          my @gtid_exec_ranges = split(/:/, $gtid_exec_ids);
