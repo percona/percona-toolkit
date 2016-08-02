@@ -42,7 +42,7 @@ my $slave2_dsn = $sb->dsn_for("slave2");
 
 my $pid_file = "/tmp/pt-slave-restart-test-$PID.pid";
 my $log_file = "/tmp/pt-slave-restart-test-$PID.log";
-my $cmd      = "$trunk/bin/pt-slave-restart --daemonize --run-time 5 --max-sleep .25 --pid $pid_file --log $log_file";
+my $cmd      = "$trunk/bin/pt-slave-restart --daemonize --run-time 5 --max-sleep 0.25 --pid $pid_file --log $log_file";
 
 sub start {
    my ( $extra ) = @_;
