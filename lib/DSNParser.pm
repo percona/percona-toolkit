@@ -276,7 +276,6 @@ sub get_dbh {
       PrintError         => 0,
       ShowErrorStatement => 1,
       mysql_enable_utf8 => ($cxn_string =~ m/charset=utf8/i ? 1 : 0),
-      mysql_multi_statements => 1,
    };
    @{$defaults}{ keys %$opts } = values %$opts;
    if (delete $defaults->{L}) { # L for LOAD DATA LOCAL INFILE, our own extension
