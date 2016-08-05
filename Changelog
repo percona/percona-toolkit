@@ -1,8 +1,20 @@
 Changelog for Percona Toolkit
 
-v2.2.19
+v2.2.19 released
 
- * Fixed bug 1592166:  pt-kill leaks memory
+ * Feature   1610385: Recheck the list of slaves while OSC runs (Thanks Daniël van Eeden & Mikhail Izioumtchenko)
+ * Fixed bug 1221372: pt-osc should error if server is a slave in row based replication
+ * Fixed bug 1485195: pt-table-checksum should force replica table charset to utf8 Edit (Thanks Jaime Crespo)
+ * Fixed bug 1517155: Added --create-table-engine param to pt-heartbeat
+ * Fixed bug 1581752: SlowLogParser is able to handle dates in RFC339 format for MySQL 5.7 (Thanks Nickolay Ihalainen)
+ * Fixed bug 1592166: pt-kill leaks memory
+ * Fixed bug 1592166: pt-kill leaks memory each time it kills a query
+ * Fixed bug 1592608: Large BLOB/TEXT/BINARY Produces NULL Checksum (Thanks Jervin Real)
+ * Fixed bug 1593265: Fixed pt-archiver deletes wrong rows #103 (Thanks Tibor Korocz & David Ducos)
+ * Fixed bug 1595678: Added --slave-user and --slave-password to pt-online-schema-change & pt-table-sync
+ * Fixed bug 1610386: Handle GTID ranges where the left-side integer is larger than 9 (Thanks @sodabrew)
+ * Fixed bug 1610387: Remove extra word 'default' from the --verbose help (Thanks @sodabrew)
+ * Fixed bug 1610388: add enum column type to is_char check so that values are properly quoted (Thanks Daniel Kinon)
 
 v2.2.18 released 2016-06-24
 
