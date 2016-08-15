@@ -1,6 +1,46 @@
 Release Notes
 *************
 
+v2.2.19 released 2016-08-15
+===========================
+
+Percona Toolkit 2.2.19 includes the following changes:
+
+New Features
+
+* 1221372: ``pt-online-schema-change`` now aborts with an error if the server is a slave, because this can break data consistency in case of row-based replication. If you are sure that the slave will not use row-based replication, you can disable this check using the ``--force-slave-run`` option.
+
+* 1485195: ``pt-table-checksum`` now forces replica table character set to UTF-8.
+
+* 1517155: Added ``--create-table-engine`` option to ``pt-heartbeat``, which can be used to set a storage engine for the ``heartbeat`` table different from the database default engine.
+
+* 1595678: Added ``--slave-user`` and ``--slave-password`` options to ``pt-online-schema-change``
+
+* 1595912: Added ``--slave-user`` and ``--slave-password`` options to ``pt-table-sync`` and ``pt-table-checksum``
+
+* 1610385: ``pt-online-schema-change`` now re-checks the list of slaves in the DSN table. This enables changing the contents of the table while the tool is running.
+
+
+Bug fixes
+
+* 1581752: Fixed ``pt-query-digest`` date and time parsing from MySQL 5.7 slow query log.
+
+* 1592166: Fixed memory leak when ``pt-kill`` kills a query
+
+* 1592608: Fixed overflow of ``CONCAT_WS`` when ``pt-table-checksum`` or ``pt-table-sync`` checksums large BLOB, TEXT, or BINARY columns.
+
+* 1593265: Fixed ``pt-archiver`` deleting rows that were not archived.
+
+* 1610386: Fixed ``pt-slave-restart`` handling of GTID ranges where the left-side integer is larger than 9
+
+* 1610387: Removed extra word 'default' from the ``--verbose`` help for ``pt-slave-restart``
+
+* 1610388: Fixed ``pt-table-sync`` not quoting enum values properly. They are now recognized as CHAR fields.
+
+Changelog
+---------
+
+
 v2.2.18 released 2016-06-24
 ===========================
 

@@ -1,3 +1,8 @@
+percona-toolkit (2.2.19-1) unstable; urgency=low
+
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Mon, 15 Aug 2016 06:01:02 +0000
+
 percona-toolkit (2.2.18-1) unstable; urgency=low
 
  * Feature 1537416  :  pt-stalk now sorts the output of transactions by id
