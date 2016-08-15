@@ -4886,8 +4886,8 @@ sub wait {
       my $watched = 0;
       @lagged_slaves = grep {
          my $slave_name = $_->{cxn}->name();
-         grep {$slave_name eq $_->name()} @{$slaves // []}
-                            } @lagged_slaves;
+         grep {$slave_name eq $_->name()} @{$slaves || []}
+                             } @lagged_slaves;
 
       for my $i ( 0..$#lagged_slaves ) {
          my $lag = $get_lag->($lagged_slaves[$i]->{cxn});
@@ -4930,6 +4930,9 @@ sub wait {
 
 sub _d {
    my ($package, undef, $line) = caller 0;
+   #   Backslash found where operator expected at ./pt-online-schema-change line 4933, near "@_ = map { (my $temp = $_) =~ s/\"
+   # (Might be a runaway multi-line // string starting on line 4889)
+
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
         map { defined $_ ? $_ : 'undef' }
         @_;
