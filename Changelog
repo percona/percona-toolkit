@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v2.2.19 released 2016-08-15
+
 v2.2.19 released
 
  * Feature   1610385: Recheck the list of slaves while OSC runs (Thanks Daniël van Eeden & Mikhail Izioumtchenko)

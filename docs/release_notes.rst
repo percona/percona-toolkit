@@ -1,6 +1,59 @@
 Release Notes
 *************
 
+v2.2.19 released 2016-08-16
+===========================
+
+Percona Toolkit 2.2.19 includes the following changes:
+
+New Features
+
+* 1221372: ``pt-online-schema-change`` now aborts with an error if the server is a slave, because this can break data consistency in case of row-based replication. If you are sure that the slave will not use row-based replication, you can disable this check using the ``--force-slave-run`` option.
+
+* 1485195: ``pt-table-checksum`` now forces replica table character set to UTF-8.
+
+* 1517155: Added ``--create-table-engine`` option to ``pt-heartbeat``, which can be used to set a storage engine for the ``heartbeat`` table different from the database default engine.
+
+* 1595678: Added ``--slave-user`` and ``--slave-password`` options to ``pt-online-schema-change``
+
+* 1595912: Added ``--slave-user`` and ``--slave-password`` options to ``pt-table-sync`` and ``pt-table-checksum``
+
+* 1610385: ``pt-online-schema-change`` now re-checks the list of slaves in the DSN table. This enables changing the contents of the table while the tool is running.
+
+
+Bug fixes
+
+* 1581752: Fixed ``pt-query-digest`` date and time parsing from MySQL 5.7 slow query log.
+
+* 1592166: Fixed memory leak when ``pt-kill`` kills a query
+
+* 1592608: Fixed overflow of ``CONCAT_WS`` when ``pt-table-checksum`` or ``pt-table-sync`` checksums large BLOB, TEXT, or BINARY columns.
+
+* 1593265: Fixed ``pt-archiver`` deleting rows that were not archived.
+
+* 1610386: Fixed ``pt-slave-restart`` handling of GTID ranges where the left-side integer is larger than 9
+
+* 1610387: Removed extra word 'default' from the ``--verbose`` help for ``pt-slave-restart``
+
+* 1610388: Fixed ``pt-table-sync`` not quoting enum values properly. They are now recognized as CHAR fields.
+
+Changelog
+---------
+
+* Feature 1610385: Recheck the list of slaves while OSC runs (Thanks Daniël van Eeden & Mikhail Izioumtchenko)
+* Fixed bug 1221372: pt-osc should error if server is a slave in row based replication
+* Fixed bug 1485195: pt-table-checksum should force replica table charset to utf8 Edit (Thanks Jaime Crespo)
+* Fixed bug 1517155: Added --create-table-engine param to pt-heartbeat
+* Fixed bug 1581752: SlowLogParser is able to handle dates in RFC339 format for MySQL 5.7 (Thanks Nickolay Ihalainen)
+* Fixed bug 1592166: pt-kill leaks memory
+* Fixed bug 1592166: pt-kill leaks memory each time it kills a query
+* Fixed bug 1592608: Large BLOB/TEXT/BINARY Produces NULL Checksum (Thanks Jervin Real)
+* Fixed bug 1593265: Fixed pt-archiver deletes wrong rows #103 (Thanks Tibor Korocz & David Ducos)
+* Fixed bug 1595678: Added --slave-user and --slave-password to pt-online-schema-change & pt-table-sync
+* Fixed bug 1610386: Handle GTID ranges where the left-side integer is larger than 9 (Thanks @sodabrew)
+* Fixed bug 1610387: Remove extra word 'default' from the --verbose help (Thanks @sodabrew)
+* Fixed bug 1610388: add enum column type to is_char check so that values are properly quoted (Thanks Daniel Kinon)
+
 v2.2.18 released 2016-06-24
 ===========================
 
