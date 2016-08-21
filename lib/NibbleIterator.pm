@@ -138,7 +138,11 @@ sub new {
       # ORDER BY are the same for all statements.  FORCE IDNEX and ORDER BY
       # are needed to ensure deterministic nibbling.
       my $from     = "$tbl->{name} FORCE INDEX(`$index`)";
-      my $order_by = join(', ', map {$q->quote($_)} @{$index_cols});
+      my $order_by = join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' 
+                                        ? "CONCAT(".$q->quote($_).")" : $q->quote($_)} @{$index_cols});
+
+      my $order_by_dec = join(' DESC,', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' 
+                                        ? "CONCAT(".$q->quote($_).")" : $q->quote($_)} @{$index_cols});
 
       # The real first row in the table.  Usually we start nibbling from
       # this row.  Called once in _get_bounds().
@@ -177,7 +181,7 @@ sub new {
          . " FROM $from"
          . ($where ? " WHERE $where" : '')
          . " ORDER BY "
-         . join(' DESC, ', map {$q->quote($_)} @{$index_cols}) . ' DESC'
+         . $order_by_dec . ' DESC'
          . " LIMIT 1"
          . " /*last upper boundary*/";
       PTDEBUG && _d('Last upper boundary statement:', $last_ub_sql);
