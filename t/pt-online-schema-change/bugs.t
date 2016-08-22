@@ -576,6 +576,32 @@ ok ( (!$errors && $successes == 12), "Issue #1526105 - no-drop-old-table fails a
 
 $master_dbh->do("DROP DATABASE IF EXISTS test");
 
+$sb->load_file('master', "$sample/bug-1613915.sql");
+$output = output(
+   sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=o1",
+         '--execute', 
+         '--alter', "ADD COLUMN c INT",
+         '--chunk-size', '10',
+         ),
+      },
+);
+
+like(
+      $output,
+      qr/Successfully altered/s,
+      "bug-1613915 enum field in primary key",
+);
+
+$rows = $master_dbh->selectrow_arrayref(
+   "SELECT COUNT(*) FROM test.o1");
+is(
+   $rows->[0],
+   100,
+   "bug-1613915 correct rows count"
+) or diag(Dumper($rows));
+
+$master_dbh->do("DROP DATABASE IF EXISTS test");
+
 
 # #############################################################################
 # Done.
