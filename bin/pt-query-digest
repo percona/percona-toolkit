@@ -13045,7 +13045,7 @@ sub main {
    # #######################################################################
    my $q  = new Quoter();
    my $qp = new QueryParser();
-   my $qr = new QueryRewriter(QueryParser=>$qp);
+   my $qr = new QueryRewriter(QueryParser=>$qp, match_embedded_numbers => $o->get('preserve-embedded-numbers') ? 1 : 0);
    my %common_modules = (
       OptionParser  => $o,
       DSNParser     => $dp,
@@ -15862,6 +15862,14 @@ removed automatically when the tool exits.
 short form: -P; type: int
 
 Port number to use for connection.
+
+=item --preserve-embedded-numbers
+
+Preserve numbers in database/table names when fingerprinting queries.
+The standar fingeprint method replaces numbers in db/tables names, making
+a query like 'SELECT * FROM db1.table2' to be figerprinted as 'SELECT * FROM db?.table?'.
+This option changes that behaviour and the fingerprint will become 
+'SELECT * FROM db1.table2'.
 
 =item --processlist
 

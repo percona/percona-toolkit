@@ -107,6 +107,23 @@ ok(
    "--explain sparkline uses event db and doesn't crash ea (issue 1196)"
 );
 
+$sb->load_file('master', "t/pt-query-digest/samples/issue_1604834.sql");
+#
+warn "$trunk/t/pt-query-digest/samples/issue_1196.log";
+ok(
+   no_diff(
+      sub { pt_query_digest::main(@args,
+         '--report-format', 'profile,query_report', "--preserve-embedded-numbers",
+         "$trunk/t/pt-query-digest/samples/issue_1196.log",)
+      },
+      (  $sandbox_version ge '5.7' ? "$sample/issue_1196-output-5.7.txt"
+       : $sandbox_version ge '5.6' ? "$sample/issue_1196-output-5.6.txt"
+       : $sandbox_version ge '5.1' ? "$sample/issue_1196-output.txt"
+       :                             "$sample/issue_1196-output-5.0.txt"),
+   ),
+   "--preserve-embedded-numbers"
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
