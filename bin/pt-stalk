@@ -1515,6 +1515,10 @@ if    [ "${0##*/}" = "$TOOL" ] \
       fi
    fi
 
+   if [ $OPT_SLEEP -lt $OPT_RUN_TIME ]; then
+      die "--sleep (${OPT_SLEEP}) must be greater-than or equal-to --run-time (${OPT_RUN_TIME})"
+   fi
+
    if [ "$OPT_STALK" -a "$OPT_DAEMONIZE" ]; then
       # Check access to the --log file.
       touch "$OPT_LOG" || die "Cannot write to --log $OPT_LOG"
@@ -2006,8 +2010,9 @@ purged.
 type: int; default: 30
 
 How long to L<"--collect"> diagnostic data when the trigger occurs.
-The value is in seconds and should not be longer than L<"--sleep">.  It is
-usually not necessary to change this; if the default 30 seconds doesn't
+The value is in seconds and cannot be longer than L<"--sleep">.
+
+It is usually not necessary to change this; if the default 30 seconds doesn't
 collect enough data, running longer is not likely to help because the system
 or MySQL server is probably too busy to respond.  In fact, in many cases a
 shorter collection period is appropriate.
