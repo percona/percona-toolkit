@@ -2350,7 +2350,7 @@ sub parse_event {
                push @properties, @temp;
             }
 
-            elsif ( !$got_db && (my ( $db ) = $line =~ m/^use ([^;]+)/ ) ) {
+            elsif ( !$got_db && (my ( $db ) = $line =~ m/^use ([^;\000]+)/ ) ) {
                PTDEBUG && _d("Got a default database:", $db);
                push @properties, 'db', $db;
                ++$got_db;
