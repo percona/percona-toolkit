@@ -1,0 +1,5 @@
+
+# Profile
+# Rank Query ID           Response time Calls R/Call V/M   Item
+# ==== ================== ============= ===== ====== ===== ========
+#    1 0x3D120517D93D7104 0.4296 100.0%     2 0.2148  0.00 SELECT t
