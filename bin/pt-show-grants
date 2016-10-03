@@ -1921,7 +1921,8 @@ sub main {
 
       # If MySQL 5.7.6+ then we need to use SHOW CREATE USER
       my @create_user;
-      if ( VersionCompare::cmp($version, '5.7.6') >= 0 ) {
+      if (( VersionCompare::cmp($version, '5.7.6') >= 0 ) &&
+          ( VersionCompare::cmp($version, '10.0.0') <= 0 )) {
          eval {
             @create_user = @{ $dbh->selectcol_arrayref("SHOW CREATE USER $user_host") };
          };
