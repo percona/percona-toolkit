@@ -10103,12 +10103,12 @@ sub create_new_table {
       # Has no _, we add one to make 1
       # This gives on more salt where the FK names have been previously been altered
       # https://bugs.launchpad.net/percona-toolkit/+bug/1632522
-      my %search = (
+      my %search_dict = (
         'CONSTRAINT `__' => 'CONSTRAINT `',
         'CONSTRAINT `_' => 'CONSTRAINT `__',
         'CONSTRAINT `' => 'CONSTRAINT `_'
       );
-      $sql =~ s/((?^:CONSTRAINT `__|CONSTRAINT `_|CONSTRAINT `))/$search{$1}/gm;
+      $sql =~ s/((?^:CONSTRAINT `__|CONSTRAINT `_|CONSTRAINT `))/$search_dict{$1}/gm;
 
       if ( $o->get('default-engine') ) {
          $sql =~ s/\s+ENGINE=\S+//;
@@ -10485,9 +10485,7 @@ sub rebuild_constraints {
          # This will add 2 _ to a self referencing FK thus avoiding a duplicate key constraint
          # https://bugs.launchpad.net/percona-toolkit/+bug/1632522
          my $new_fk;
-         if ($fk =~ /^_/) {
-           ($new_fk = $fk) =~ s/^_/__/;
-         } elsif ($fk =~ /^__/) {
+         if ($fk =~ /^__/) {
            ($new_fk = $fk) =~ s/^__//;
          } else {
            $new_fk = '_'.$fk;
