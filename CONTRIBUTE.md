@@ -44,7 +44,7 @@ Once you’ve opened a pull request, a discussion will start around your propose
 Along with the pull request, include a message indicating that the submited code is your own creation and it can be distributed under the BSD licence. 
   
   
-##Setting up the development environment
+#Setting up the development environment
 
 ####Setting up the source code
 To start, fork the Percona Toolkit repo to be able to submit pull requests and clone it locally:
