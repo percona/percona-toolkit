@@ -42,3 +42,57 @@ Once you’ve opened a pull request, a discussion will start around your propose
 
 #Licensing
 Along with the pull request, include a message indicating that the submited code is your own creation and it can be distributed under the BSD licence. 
+  
+  
+##Setting up the development environment
+
+####Setting up the source code
+To start, fork the Percona Toolkit repo to be able to submit pull requests and clone it locally:
+```
+mkdir ${HOME}/perldev
+git clone https://github.com/<your-username>/percona-toolkit.git ${HOME}/perldev/percona-toolkit
+```
+
+For testing, we are going to need to have MySQL with slaves. For that, we already have scripts in the sandbox directory but first we need to download MySQL binaries. Please download the Linux Generic tar file for your distrubution from [https://www.percona.com/downloads/Percona-Server-5.6/](https://www.percona.com/downloads/Percona-Server-5.6/).    
+
+###Set up MySQL sandbox
+In this example, we are going to download Percona Server 5.6.32. Since I am using Ubuntu, according to the documentation [here](https://www.percona.com/doc/percona-server/5.6/installation.html#installing-percona-server-from-a-binary-tarball), I am going to need this tar file: [Percona-Server-5.6.32-rel78.1-Linux.x86_64.ssl100.tar.gz](https://www.percona.com/downloads/Percona-Server-5.6/Percona-Server-5.6.32-78.1/binary/tarball/Percona-Server-5.6.32-rel78.1-Linux.x86_64.ssl100.tar.gz).  
+
+```
+mkdir -p ${HOME}/mysql/percona-server-5.6.32
+```
+```
+wget https://www.percona.com/downloads/Percona-Server-5.6/Percona-Server-5.6.32-78.1/binary/tarball/Percona-Server-5.6.32-rel78.1-Linux.x86_64.ssl100.tar.gz 
+```
+```
+tar xvzf Percona-Server-5.6.32-rel78.1-Linux.x86_64.ssl100.tar.gz --strip 1 -C ${HOME}/mysql/percona-server-6.6.32
+```
+###Set up environment variables:
+We need these environment variables to start the MySQL sandbox and to run the tests. Probably it is a good idea to add them to your `.bashrc` file.
+```
+export PERL5LIB=${HOME}/perldev/percona-toolkit/lib
+export PERCONA_TOOLKIT_SANDBOX=${HOME}/mysql/percona-server-5.6.32
+```
+
+###Starting the sandbox
+```
+cd ${HOME}/perldev/percona-toolkit
+```
+```
+sandbox/test-env start
+```
+To stop the MySQL sandbox: `sandbox/test-env stop`  
+
+###Running tests
+```
+cd ${HOME}/perldev/percona-toolkit
+```
+Run all tests for a particular program (pt-stalk in this example):
+```
+prove -v t/pt-stalk/
+```
+or run a specific test:
+```
+prove -v t/pt-stalk/option_sanity.t
+```
+
