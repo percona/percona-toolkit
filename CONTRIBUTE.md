@@ -1,7 +1,7 @@
 #Contributing guide
 ##How Can I Contribute?
 ##Reporting Bugs
-Before creating bug reports, please check this list as you might find out that you don't need to create one. When you are creating a bug report, please include as many details as possible. You can use this template to structure the information.  
+Before creating bug reports, please check this list as you might find out that you don't need to create one. When you create a bug report, please include as many details as possible. You can use this template to structure the information.  
 
 ###Before Submitting A Bug Report
 - Ensure you have carefully read the documentation. Percona Toolkit is a mature project with many settings that covers a wide range options.
@@ -67,7 +67,7 @@ wget https://www.percona.com/downloads/Percona-Server-5.6/Percona-Server-5.6.32-
 ```
 tar xvzf Percona-Server-5.6.32-rel78.1-Linux.x86_64.ssl100.tar.gz --strip 1 -C ${HOME}/mysql/percona-server-6.6.32
 ```
-###Set up environment variables:
+###Set up environment variables: [:link:](#set-up-environment-variables)
 We need these environment variables to start the MySQL sandbox and to run the tests. Probably it is a good idea to add them to your `.bashrc` file.
 ```
 export PERL5LIB=${HOME}/perldev/percona-toolkit/lib
