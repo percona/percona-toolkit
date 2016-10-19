@@ -6340,7 +6340,7 @@ sub save {
          # *except* when they are directed INTO 
          # a file or a variable. (issue lp:1421781)
          if ( $event->{arg} =~ m/(?:^\s*SELECT|(?:\*\/\s*SELECT))/i 
-            &&  $event->{arg} !~ /INTO\s*(?:OUTFILE|DUMPFILE|@)/ ) {
+            &&  $event->{arg} !~ /INTO\s*(?:OUTFILE|DUMPFILE|@)/i ) {
             $rows = $sth->fetchall_arrayref();
          }
          eval {
