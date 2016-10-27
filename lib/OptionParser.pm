@@ -618,7 +618,7 @@ sub get_opts {
    if ( @ARGV && $ARGV[0] =~/^--config=/ ) {
       $ARGV[0] = substr($ARGV[0],9);
       # Clean '" independently because we need to match start/end with the same char ' or "
-      $ARGV[0] =~ s/^'(.*)'$/$1/
+      $ARGV[0] =~ s/^'(.*)'$/$1/;
       $ARGV[0] =~ s/^"(.*)"$/$1/;
       $self->_set_option('config', shift @ARGV);
    }

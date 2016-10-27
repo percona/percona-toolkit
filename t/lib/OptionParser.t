@@ -1595,6 +1595,10 @@ ok(
    'Parses special --config option first',
 );
 
+@ARGV = ("--config=$trunk/t/lib/samples/empty",'--cat');
+$o->get_opts();
+ok($o->got('config'), 'Got --config=');
+
 $o = new OptionParser(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
