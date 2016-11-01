@@ -572,7 +572,7 @@ sub get_opts {
 
    if ( @ARGV && $ARGV[0] =~/^--config=/ ) {
       $ARGV[0] = substr($ARGV[0],9);
-      $ARGV[0] =~ s/^'(.*)'$/$1/
+      $ARGV[0] =~ s/^'(.*)'$/$1/;
       $ARGV[0] =~ s/^"(.*)"$/$1/;
       $self->_set_option('config', shift @ARGV);
    }
@@ -10108,9 +10108,13 @@ sub create_new_table {
       if ( $o->get('default-engine') ) {
          $sql =~ s/\s+ENGINE=\S+//;
       }
-      if ( $o->get('new-partition') ) {
-         my $ady = " DATA DIRECTORY = '". $o->get('new-partition')."'";
-         $sql =  $sql.${ady};
+      if ( $o->get('data-dir') ) {
+          if ( (-d $o->get('data-dir')) && (-w $o->get('data-dir')) ){
+             $sql =~ s/DATA DIRECTORY='.*?'//; 
+             $sql .= sprintf(" DATA DIRECTORY='%s' ",$o->get('data-dir'));
+          } else {
+              die $o->get('data-dir') . " is not a directory or it is not writable";
+          }
       }
       PTDEBUG && _d($sql);
       eval {
@@ -11563,7 +11567,7 @@ cause unintended changes on replicas which use a different engine for
 the same table.  Specifying this option causes the new table to be
 created with the system's default engine.
 
- =item --new-partition
+=item --data-dir
 
 type: string
 
