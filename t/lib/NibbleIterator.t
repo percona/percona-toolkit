@@ -23,6 +23,7 @@ use RowChecksum;
 use NibbleIterator;
 use Cxn;
 use PerconaTest;
+use File::Temp qw/ tempfile /;
 
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
@@ -92,6 +93,8 @@ sub make_nibble_iter {
       resume      => $args{resume},
       order_by    => $args{order_by},
       comments    => $args{comments},
+      pause_file  => $o->get('pause-file'),
+      sleep       => $args{sleep} || 60,
       %common_modules,
    );
 
@@ -354,6 +357,29 @@ is(
 ",
    "init callbacks can stop nibbling"
 );
+
+my ($fh, $filename) = tempfile();
+system ("sleep 3 && rm $filename &");
+
+$ni = make_nibble_iter(
+   db       => 'sakila',
+   tbl      => 'payment',
+   sleep    => 3,
+   argv     => [qw(--databases sakila --tables payment --chunk-size 100 --pause-file ), $filename],
+);
+
+$output = output(
+   sub {
+      for (1..8) { $ni->next() }
+   },
+);
+
+like(
+   $output,
+   qr/Sleeping 3 seconds because/,
+   "nibbles paused"
+);
+
 
 # ############################################################################
 # Nibble a larger table by numeric pk id
