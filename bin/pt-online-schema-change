@@ -10108,6 +10108,10 @@ sub create_new_table {
       if ( $o->get('default-engine') ) {
          $sql =~ s/\s+ENGINE=\S+//;
       }
+      if ( $o->get('new-partition') ) {
+         my $ady = " DATA DIRECTORY = '". $o->get('new-partition')."'";
+         $sql =  $sql.${ady};
+      }
       PTDEBUG && _d($sql);
       eval {
          $cxn->dbh()->do($sql);
@@ -11558,6 +11562,13 @@ table will use InnoDB.  In certain cases involving replication, this may
 cause unintended changes on replicas which use a different engine for
 the same table.  Specifying this option causes the new table to be
 created with the system's default engine.
+
+ =item --new-partition
+
+type: string
+
+Create the new table on a different partition using the DATA DIRECTORY feature.
+Only available on 5.6+
 
 =item --defaults-file
 
