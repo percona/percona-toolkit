@@ -2233,7 +2233,7 @@ sub get_opts {
 
    if ( @ARGV && $ARGV[0] =~/^--config=/ ) {
       $ARGV[0] = substr($ARGV[0],9);
-      $ARGV[0] =~ s/^'(.*)'$/$1/
+      $ARGV[0] =~ s/^'(.*)'$/$1/;
       $ARGV[0] =~ s/^"(.*)"$/$1/;
       $self->_set_option('config', shift @ARGV);
    }
@@ -7590,7 +7590,7 @@ sub database_is_allowed {
 
    my $filter = $self->{filters};
 
-   if ( $db =~ m/information_schema|performance_schema|lost\+found/ ) {
+   if ( $db =~ m/information_schema|performance_schema|lost\+found|percona|percona_schema/ ) {
       PTDEBUG && _d('Database', $db, 'is a system database, ignoring');
       return 0;
    }
