@@ -263,6 +263,8 @@ sub new {
    $self->{have_rows}  = 0;
    $self->{rowno}      = 0;
    $self->{oktonibble} = 1;
+   $self->{pause_file} = $nibble_params->{pause_file};
+   $self->{sleep}      = $args{sleep} || 60;
 
    return bless $self, $class;
 }
@@ -304,6 +306,24 @@ sub next {
    # If there's another nibble, fetch the rows within it.
    NIBBLE:
    while ( $self->{have_rows} || $self->_next_boundaries() ) {
+
+      if ($self->{pause_file}) {
+         while(-f $self->{pause_file}) {
+            print "Sleeping $self->{sleep} seconds because $self->{pause_file} exists\n";
+            my $dbh = $self->{Cxn}->dbh();
+            if ( !$dbh || !$dbh->ping() ) {
+               eval { $dbh = $self->{Cxn}->connect() }; # connect or die trying
+               if ( $EVAL_ERROR ) {
+                  chomp $EVAL_ERROR;
+                  die "Lost connection to " . $self->{Cxn}->name() . " while waiting for "
+                  . "replica lag ($EVAL_ERROR)\n";
+               }
+            }
+            $dbh->do("SELECT 'nibble iterator keepalive'");
+            sleep($self->{sleep});
+         }
+      }
+  
       # If no rows, then we just got the next boundaries, which start
       # the next nibble.
       if ( !$self->{have_rows} ) {
@@ -341,6 +361,7 @@ sub next {
       }
       $self->{rowno}     = 0;
       $self->{have_rows} = 0;
+      
    }
 
    PTDEBUG && _d('Done nibbling');
@@ -493,10 +514,13 @@ sub can_nibble {
 
    # The table can be nibbled if this point is reached, else we would have
    # died earlier.  Return some values about nibbling the table.
+   my $pause_file = ($o->has('pause-file') && $o->get('pause-file')) || undef;
+   
    return {
       row_est     => $row_est,      # nibble about this many rows
       index       => $index,        # using this index
       one_nibble  => $one_nibble,   # if the table fits in one nibble/chunk
+      pause_file  => $pause_file,
    };
 }
 
