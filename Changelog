@@ -10,7 +10,7 @@ v2.2.20
  * Fixed bug 1634900: pt-upgrade fails with SELECT INTO 
  * Fixed bug 1635734: pt-slave-restart --config does not recognize = as separator	
  * Feature   1636068: Added pause to NibbleIterator
- * Feature   1638293: --new-partition parameter in order to create the table on a different partition
+ * Feature   1638293: --data-dir parameter in order to create the table on a different partition
  * Feature   1639052: with pt-table-checksum automatically exclude checking schemas named percona, percona_schema	 
  * Feature   1642364: pt-online-schema-change Added --remove-data-dir feature
 
