@@ -405,7 +405,7 @@ sub database_is_allowed {
 
    my $filter = $self->{filters};
 
-   if ( $db =~ m/information_schema|performance_schema|lost\+found/ ) {
+   if ( $db =~ m/information_schema|performance_schema|lost\+found|percona|percona_schema|test/ ) {
       PTDEBUG && _d('Database', $db, 'is a system database, ignoring');
       return 0;
    }
@@ -449,12 +449,20 @@ sub table_is_allowed {
    # Always auto-skip these pseudo tables.
    return 0 if $db eq 'mysql' && $tbl =~ m/^(?:
        general_log
-      |slow_log
+      |gtid_execution
       |innodb_index_stats
       |innodb_table_stats
+      |inventory
+      |plugin
+      |proc
       |slave_master_info
       |slave_relay_log_info
       |slave_worker_info
+      |slow_log    
+   )$/x;
+
+   return 0 if $db eq 'sys' && $tbl =~ m/^(?:
+       sys_config
    )$/x;
 
    if ( $filter->{'ignore-tables'}->{'*'}->{$tbl} 
