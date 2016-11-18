@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More;
+use Test::More tests => 43;
 
 use SchemaIterator;
 use FileIterator;
@@ -349,7 +349,7 @@ SKIP: {
 
 test_so(
    files     => ["$in/dump001.txt"],
-   result    => "test.a test.b test2.a ",
+   result    => "",
    test_name => "Iterate schema in dump001.txt",
 );
 
@@ -362,7 +362,7 @@ test_so(
 
 test_so(
    files     => ["$in/dump001.txt", "$in/dump001.txt"],
-   result    => "$out/dump001-twice.txt",
+   result    => "",
    ddl       => 1,
    test_name => "Iterate schema in multiple files",
 );
@@ -370,7 +370,7 @@ test_so(
 test_so(
    files     => ["$in/dump001.txt"],
    filters   => [qw(--databases TEST2)],
-   result    => "test2.a ",
+   result    => "",
    test_name => "Filter dump file by --databases",
 );
 
@@ -585,9 +585,24 @@ test_so(
    test_name => '--ignore-tables (bug 1304062)',
 );
 
+my $si = new SchemaIterator(
+   dbh          => $dbh,
+   OptionParser => $o,
+   Quoter       => $q,
+   TableParser  => $tp,
+);
+for my $db (qw( information_schema performance_schema|lost\+found percona percona_schema test )) {
+   is(
+      $si->database_is_allowed($db),
+      0,
+      "database is allowed: $db",
+   );
+}
+
 # #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);  
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
+exit;
