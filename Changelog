@@ -1,15 +1,26 @@
 Changelog for Percona Toolkit
 
-v2.2.19 released 2016-08-15
+v2.2.20 
 
-v2.2.19 released
+ * Fixed bug 1362942: pt-slave-restart fails on MariaDB 10.0.13 (gtid_mode confusion)
+ * Fixed bug 1566556: pt-show-grants fails against MariaDB10+	
+ * Fature    1604834: pt-query-digest numbers in table or column names converted to question marks (--preserve-embedded-numbers)
+ * Fixed bug 1613915: pt-online-schema-change misses data.  Fixed sort order for ENUM fields 
+ * Fixed bug 1625005: pt-online-schema-change doesn't apply underscores to foreign keys individually
+ * Fixed bug 1634900: pt-upgrade fails with SELECT INTO 
+ * Fixed bug 1635734: pt-slave-restart --config does not recognize = as separator	
+ * Feature   1636068: Added pause to NibbleIterator
+ * Feature   1638293: --new-partition parameter in order to create the table on a different partition
+ * Feature   1639052: with pt-table-checksum automatically exclude checking schemas named percona, percona_schema	 
+ * Feature   1642364: pt-online-schema-change Added --remove-data-dir feature
+
+v2.2.19 released 2016-08-15
 
  * Feature   1610385: Recheck the list of slaves while OSC runs (Thanks Daniël van Eeden & Mikhail Izioumtchenko)
  * Fixed bug 1221372: pt-osc should error if server is a slave in row based replication
  * Fixed bug 1485195: pt-table-checksum should force replica table charset to utf8 Edit (Thanks Jaime Crespo)
  * Fixed bug 1517155: Added --create-table-engine param to pt-heartbeat
  * Fixed bug 1581752: SlowLogParser is able to handle dates in RFC339 format for MySQL 5.7 (Thanks Nickolay Ihalainen)
- * Fixed bug 1592166: pt-kill leaks memory
  * Fixed bug 1592166: pt-kill leaks memory each time it kills a query
  * Fixed bug 1592608: Large BLOB/TEXT/BINARY Produces NULL Checksum (Thanks Jervin Real)
  * Fixed bug 1593265: Fixed pt-archiver deletes wrong rows #103 (Thanks Tibor Korocz & David Ducos)
