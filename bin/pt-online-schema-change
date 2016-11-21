@@ -10132,16 +10132,18 @@ sub create_new_table {
       if ( $o->get('default-engine') ) {
          $sql =~ s/\s+ENGINE=\S+//;
       }
-      if ( $o->get('data-dir') && !$o->get('remove-data-dir') ) {
+      if ( $o->get('data-dir') && !$o->got('remove-data-dir') ) {
           if ( (-d $o->get('data-dir')) && (-w $o->get('data-dir')) ){
              $sql =~ s/DATA DIRECTORY='.*?'//; 
              $sql .= sprintf(" DATA DIRECTORY='%s' ",$o->get('data-dir'));
+             PTDEBUG && _d("adding data dir ".$o->get('data-dir'));
           } else {
               die $o->get('data-dir') . " is not a directory or it is not writable";
           }
       }
-      if ( $o->get('remove-data-dir') ) {
+      if ( $o->got('remove-data-dir') ) {
          $sql =~ s/DATA DIRECTORY='.*?'//; 
+         PTDEBUG && _d("removing data dir");
       }
       PTDEBUG && _d($sql);
       eval {
@@ -11603,6 +11605,8 @@ Only available on 5.6+. This parameter is ignored if it is used at the same time
 than remove-data-dir.
 
 =item --remove-data-dir
+
+default: no
 
 If the original table was created using the DATA DIRECTORY feature, remove it and create 
 the new table in MySQL default directory without creating a new isl file.
