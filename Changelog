@@ -13,6 +13,7 @@ v2.2.20
  * Feature   1638293: --data-dir parameter in order to create the table on a different partition
  * Feature   1639052: with pt-table-checksum automatically exclude checking schemas named percona, percona_schema	 
  * Feature   1642364: pt-online-schema-change Added --remove-data-dir feature
+ * Feature   1643914: Fixed several typos in the doc (Thanks Dario Minnucci)
 
 v2.2.19 released 2016-08-15
 
