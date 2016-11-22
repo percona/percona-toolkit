@@ -11351,7 +11351,7 @@ tool's built-in functionality if desired.
 
 default: yes
 
-Execute ANALYZE TABLE on the new table before swaping with the old one.
+Execute ANALYZE TABLE on the new table before swapping with the old one.
 By default, this happens only when running MySQL 5.6 and newer, and
 C<innodb_stats_persistent> is enabled. Specify the option explicitly to enable
 or disable it regardless of MySQL version and C<innodb_stats_persistent>.

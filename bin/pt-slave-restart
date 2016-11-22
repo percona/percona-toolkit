@@ -5405,7 +5405,7 @@ pt-slave-restart prints a line every time it sees the slave has an error.
 By default this line is: a timestamp, connection information, relay_log_file, 
 relay_log_pos, and last_errno.
 You can add more information using the L<"--verbose"> option.
-You can supress all output using the L<"--quiet"> option.
+You can suppress all output using the L<"--quiet"> option.
 
 =head1 SLEEP
 
@@ -5830,7 +5830,7 @@ By default (no verbose flag) the tool outputs connection information, a timestam
 relay_log_file, relay_log_pos, and last_errno.
 One flag (-v) adds last_error.  See also L<"--error-length">.  
 Two flags (-vv) prints the current sleep time each time pt-slave-restart sleeps.
-To supress all output use the L<"--quiet"> option. 
+To suppress all output use the L<"--quiet"> option.
 
 =item --version
 

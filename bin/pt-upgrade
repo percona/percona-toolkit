@@ -11210,7 +11210,7 @@ lead to weird situations, like the server allowing LOCAL INFILE, but
 the client throwing exceptions if it's used.
 
 However, as long as the server allows LOAD DATA, clients can easily
-reenable it; See L<https://dev.mysql.com/doc/refman/5.0/en/load-data-local.html>
+re-enable it; See L<https://dev.mysql.com/doc/refman/5.0/en/load-data-local.html>
 and L<http://search.cpan.org/~capttofu/DBD-mysql/lib/DBD/mysql.pm>.
 This option does exactly that.
 
