@@ -14,6 +14,8 @@ v2.2.20
  * Feature   1639052: with pt-table-checksum automatically exclude checking schemas named percona, percona_schema	 
  * Feature   1642364: pt-online-schema-change Added --remove-data-dir feature
  * Feature   1643914: Fixed several typos in the doc (Thanks Dario Minnucci)
+ * Feature   1643940: Add Transparent huge pages info to pt-summary
+ * Feature   1643941: Add Memory management library to pt-mysql-summary 
 
 v2.2.19 released 2016-08-15
 
