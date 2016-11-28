@@ -126,38 +126,6 @@ CREATE TABLE `ndb_binlog_index` (
   PRIMARY KEY (`epoch`,`orig_server_id`,`orig_epoch`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1
 
-mysql.plugin
-CREATE TABLE `plugin` (
-  `name` varchar(64) NOT NULL DEFAULT '',
-  `dl` varchar(128) NOT NULL DEFAULT '',
-  PRIMARY KEY (`name`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8 COMMENT='MySQL plugins'
-
-mysql.proc
-CREATE TABLE `proc` (
-  `db` char(64) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '',
-  `name` char(64) NOT NULL DEFAULT '',
-  `type` enum('FUNCTION','PROCEDURE') NOT NULL,
-  `specific_name` char(64) NOT NULL DEFAULT '',
-  `language` enum('SQL') NOT NULL DEFAULT 'SQL',
-  `sql_data_access` enum('CONTAINS_SQL','NO_SQL','READS_SQL_DATA','MODIFIES_SQL_DATA') NOT NULL DEFAULT 'CONTAINS_SQL',
-  `is_deterministic` enum('YES','NO') NOT NULL DEFAULT 'NO',
-  `security_type` enum('INVOKER','DEFINER') NOT NULL DEFAULT 'DEFINER',
-  `param_list` blob NOT NULL,
-  `returns` longblob NOT NULL,
-  `body` longblob NOT NULL,
-  `definer` char(77) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '',
-  `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `modified` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
-  `sql_mode` set('REAL_AS_FLOAT','PIPES_AS_CONCAT','ANSI_QUOTES','IGNORE_SPACE','NOT_USED','ONLY_FULL_GROUP_BY','NO_UNSIGNED_SUBTRACTION','NO_DIR_IN_CREATE','POSTGRESQL','ORACLE','MSSQL','DB2','MAXDB','NO_KEY_OPTIONS','NO_TABLE_OPTIONS','NO_FIELD_OPTIONS','MYSQL323','MYSQL40','ANSI','NO_AUTO_VALUE_ON_ZERO','NO_BACKSLASH_ESCAPES','STRICT_TRANS_TABLES','STRICT_ALL_TABLES','NO_ZERO_IN_DATE','NO_ZERO_DATE','INVALID_DATES','ERROR_FOR_DIVISION_BY_ZERO','TRADITIONAL','NO_AUTO_CREATE_USER','HIGH_NOT_PRECEDENCE','NO_ENGINE_SUBSTITUTION','PAD_CHAR_TO_FULL_LENGTH') NOT NULL DEFAULT '',
-  `comment` text CHARACTER SET utf8 COLLATE utf8_bin NOT NULL,
-  `character_set_client` char(32) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL,
-  `collation_connection` char(32) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL,
-  `db_collation` char(32) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL,
-  `body_utf8` longblob,
-  PRIMARY KEY (`db`,`name`,`type`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8 COMMENT='Stored Procedures'
-
 mysql.procs_priv
 CREATE TABLE `procs_priv` (
   `Host` char(60) COLLATE utf8_bin NOT NULL DEFAULT '',
@@ -300,25 +268,6 @@ CREATE TABLE `user` (
   PRIMARY KEY (`Host`,`User`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='Users and global privileges'
 
-percona_test.checksums
-CREATE TABLE `checksums` (
-  `db_tbl` varchar(128) NOT NULL,
-  `checksum` int(10) unsigned NOT NULL,
-  PRIMARY KEY (`db_tbl`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1
-
-percona_test.load_data
-CREATE TABLE `load_data` (
-  `i` int(11) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1
-
-percona_test.sentinel
-CREATE TABLE `sentinel` (
-  `id` int(11) NOT NULL,
-  `ping` varchar(64) NOT NULL DEFAULT '',
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1
-
 sakila.actor
 CREATE TABLE `actor` (
   `actor_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
@@ -431,8 +380,8 @@ CREATE TABLE `film_category` (
   `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`film_id`,`category_id`),
   KEY `fk_film_category_category` (`category_id`),
-  CONSTRAINT `fk_film_category_film` FOREIGN KEY (`film_id`) REFERENCES `film` (`film_id`) ON UPDATE CASCADE,
-  CONSTRAINT `fk_film_category_category` FOREIGN KEY (`category_id`) REFERENCES `category` (`category_id`) ON UPDATE CASCADE
+  CONSTRAINT `fk_film_category_category` FOREIGN KEY (`category_id`) REFERENCES `category` (`category_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_film_category_film` FOREIGN KEY (`film_id`) REFERENCES `film` (`film_id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8
 
 sakila.film_text
@@ -453,8 +402,8 @@ CREATE TABLE `inventory` (
   PRIMARY KEY (`inventory_id`),
   KEY `idx_fk_film_id` (`film_id`),
   KEY `idx_store_id_film_id` (`store_id`,`film_id`),
-  CONSTRAINT `fk_inventory_store` FOREIGN KEY (`store_id`) REFERENCES `store` (`store_id`) ON UPDATE CASCADE,
-  CONSTRAINT `fk_inventory_film` FOREIGN KEY (`film_id`) REFERENCES `film` (`film_id`) ON UPDATE CASCADE
+  CONSTRAINT `fk_inventory_film` FOREIGN KEY (`film_id`) REFERENCES `film` (`film_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_inventory_store` FOREIGN KEY (`store_id`) REFERENCES `store` (`store_id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=4582 DEFAULT CHARSET=utf8
 
 sakila.language
@@ -478,8 +427,8 @@ CREATE TABLE `payment` (
   KEY `idx_fk_staff_id` (`staff_id`),
   KEY `idx_fk_customer_id` (`customer_id`),
   KEY `fk_payment_rental` (`rental_id`),
-  CONSTRAINT `fk_payment_rental` FOREIGN KEY (`rental_id`) REFERENCES `rental` (`rental_id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_payment_customer` FOREIGN KEY (`customer_id`) REFERENCES `customer` (`customer_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_payment_rental` FOREIGN KEY (`rental_id`) REFERENCES `rental` (`rental_id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_payment_staff` FOREIGN KEY (`staff_id`) REFERENCES `staff` (`staff_id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=16050 DEFAULT CHARSET=utf8
 
@@ -497,9 +446,9 @@ CREATE TABLE `rental` (
   KEY `idx_fk_inventory_id` (`inventory_id`),
   KEY `idx_fk_customer_id` (`customer_id`),
   KEY `idx_fk_staff_id` (`staff_id`),
-  CONSTRAINT `fk_rental_staff` FOREIGN KEY (`staff_id`) REFERENCES `staff` (`staff_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_rental_customer` FOREIGN KEY (`customer_id`) REFERENCES `customer` (`customer_id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_rental_inventory` FOREIGN KEY (`inventory_id`) REFERENCES `inventory` (`inventory_id`) ON UPDATE CASCADE,
-  CONSTRAINT `fk_rental_customer` FOREIGN KEY (`customer_id`) REFERENCES `customer` (`customer_id`) ON UPDATE CASCADE
+  CONSTRAINT `fk_rental_staff` FOREIGN KEY (`staff_id`) REFERENCES `staff` (`staff_id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=16050 DEFAULT CHARSET=utf8
 
 sakila.staff
@@ -518,8 +467,8 @@ CREATE TABLE `staff` (
   PRIMARY KEY (`staff_id`),
   KEY `idx_fk_store_id` (`store_id`),
   KEY `idx_fk_address_id` (`address_id`),
-  CONSTRAINT `fk_staff_store` FOREIGN KEY (`store_id`) REFERENCES `store` (`store_id`) ON UPDATE CASCADE,
-  CONSTRAINT `fk_staff_address` FOREIGN KEY (`address_id`) REFERENCES `address` (`address_id`) ON UPDATE CASCADE
+  CONSTRAINT `fk_staff_address` FOREIGN KEY (`address_id`) REFERENCES `address` (`address_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_staff_store` FOREIGN KEY (`store_id`) REFERENCES `store` (`store_id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8
 
 sakila.store
@@ -531,7 +480,7 @@ CREATE TABLE `store` (
   PRIMARY KEY (`store_id`),
   UNIQUE KEY `idx_unique_manager` (`manager_staff_id`),
   KEY `idx_fk_address_id` (`address_id`),
-  CONSTRAINT `fk_store_staff` FOREIGN KEY (`manager_staff_id`) REFERENCES `staff` (`staff_id`) ON UPDATE CASCADE,
-  CONSTRAINT `fk_store_address` FOREIGN KEY (`address_id`) REFERENCES `address` (`address_id`) ON UPDATE CASCADE
+  CONSTRAINT `fk_store_address` FOREIGN KEY (`address_id`) REFERENCES `address` (`address_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_store_staff` FOREIGN KEY (`manager_staff_id`) REFERENCES `staff` (`staff_id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8
 

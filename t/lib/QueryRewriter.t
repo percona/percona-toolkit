@@ -1465,6 +1465,18 @@ is(
 );
 
 
+$qr = new QueryRewriter(
+   QueryParser => $qp,
+   match_embedded_numbers => 1,
+);
+
+is(
+   $qr->fingerprint(
+      "SELECT * FROM prices2.t1 where id=1"
+   ),
+   "select * from prices2.t1 where id=?",
+   "Fingerprint db.tbl<number>name (preserve number)"
+);
 
 # #############################################################################
 # Done.

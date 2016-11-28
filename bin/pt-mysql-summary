@@ -2144,6 +2144,41 @@ parse_wsrep_provider_options () {
    ' "$looking_for"
 }
 
+report_jemalloc_enabled() {
+
+  local JEMALLOC_STATUS=''
+  local GENERAL_JEMALLOC_STATUS=0
+  local JEMALLOC_LOCATION=''
+
+  for PID in $(pidof mysqld); do
+     grep -qc jemalloc /proc/${PID}/environ || ldd $(which mysqld) | grep -qc jemalloc
+     JEMALLOC_STATUS=$?
+     if [ $JEMALLOC_STATUS = 1 ]; then
+       echo "jemalloc is not enabled in MySQL config for process with ID ${PID}" 
+     else
+       echo "jemalloc enabled in MySQL config for process with ID ${PID}"
+       GENERAL_JEMALLOC_STATUS=1
+     fi
+  done
+
+  if [ $GENERAL_JEMALLOC_STATUS = 1 ]; then
+     # Check location for libjemalloc.so.1
+     #for libjemall in "${SCRIPT_PWD}/lib/mysql" "/usr/lib64" "/usr/lib/x86_64-linux-gnu" "/usr/lib"; do
+     for libjemall in "/usr/lib64" "/usr/lib/x86_64-linux-gnu" "/usr/lib"; do
+       if [ -r "$libjemall/libjemalloc.so.1" ]; then
+         JEMALLOC_LOCATION="$libjemall/libjemalloc.so.1"
+         break
+       fi
+     done
+     if [ -z $JEMALLOC_LOCATION ]; then
+       echo "Jemalloc library not found"
+     else
+       echo "Using jemalloc from $JEMALLOC_LOCATION"
+     fi
+  fi
+ 
+}
+
 report_mysql_summary () {
    local dir="$1"
 
@@ -2379,6 +2414,8 @@ report_mysql_summary () {
       name_val "Config File" "Cannot autodetect or find, giving up"
    fi
 
+   section "Memory management library"
+   report_jemalloc_enabled
    section "The End"
 }
 

@@ -147,7 +147,7 @@ sub parse {
    foreach my $key ( keys %$opts ) {
       PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
-      if (   !defined $final_props{$key}
+      if ( !defined $final_props{$key}  
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};

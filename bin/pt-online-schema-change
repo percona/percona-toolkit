@@ -570,6 +570,12 @@ sub get_opts {
 
    $self->{errors} = [];
 
+   if ( @ARGV && $ARGV[0] =~/^--config=/ ) {
+      $ARGV[0] = substr($ARGV[0],9);
+      $ARGV[0] =~ s/^'(.*)'$/$1/;
+      $ARGV[0] =~ s/^"(.*)"$/$1/;
+      $self->_set_option('config', shift @ARGV);
+   }
    if ( @ARGV && $ARGV[0] eq "--config" ) {
       shift @ARGV;
       $self->_set_option('config', shift @ARGV);
@@ -5523,6 +5529,8 @@ sub new {
    $self->{have_rows}  = 0;
    $self->{rowno}      = 0;
    $self->{oktonibble} = 1;
+   $self->{pause_file} = $nibble_params->{pause_file};
+   $self->{sleep}      = $args{sleep} || 60;
 
    return bless $self, $class;
 }
@@ -5561,6 +5569,24 @@ sub next {
 
    NIBBLE:
    while ( $self->{have_rows} || $self->_next_boundaries() ) {
+
+      if ($self->{pause_file}) {
+         while(-f $self->{pause_file}) {
+            print "Sleeping $self->{sleep} seconds because $self->{pause_file} exists\n";
+            my $dbh = $self->{Cxn}->dbh();
+            if ( !$dbh || !$dbh->ping() ) {
+               eval { $dbh = $self->{Cxn}->connect() }; # connect or die trying
+               if ( $EVAL_ERROR ) {
+                  chomp $EVAL_ERROR;
+                  die "Lost connection to " . $self->{Cxn}->name() . " while waiting for "
+                  . "replica lag ($EVAL_ERROR)\n";
+               }
+            }
+            $dbh->do("SELECT 'nibble iterator keepalive'");
+            sleep($self->{sleep});
+         }
+      }
+  
       if ( !$self->{have_rows} ) {
          $self->{nibbleno}++;
          PTDEBUG && _d('Nibble:', $self->{nibble_sth}->{Statement}, 'params:',
@@ -5590,6 +5616,7 @@ sub next {
       }
       $self->{rowno}     = 0;
       $self->{have_rows} = 0;
+      
    }
 
    PTDEBUG && _d('Done nibbling');
@@ -5725,10 +5752,13 @@ sub can_nibble {
       die "There is no good index and the table is oversized.";
    }
 
+   my $pause_file = ($o->has('pause-file') && $o->get('pause-file')) || undef;
+   
    return {
       row_est     => $row_est,      # nibble about this many rows
       index       => $index,        # using this index
       one_nibble  => $one_nibble,   # if the table fits in one nibble/chunk
+      pause_file  => $pause_file,
    };
 }
 
@@ -10097,13 +10127,23 @@ sub create_new_table {
       # This is in contrast to previous behavior were we added underscores
       # indefinitely, sometimes exceeding the allowed name limit
       # https://bugs.launchpad.net/percona-toolkit/+bug/1215587 
-      if ( $sql =~ /CONSTRAINT `_/ ) {
-         $sql =~ s/^  CONSTRAINT `_/  CONSTRAINT `/gm;
-      } else {
-         $sql =~ s/^  CONSTRAINT `/  CONSTRAINT `_/gm;
-      }
+      $sql =~ s/^  CONSTRAINT `(_?)/'  CONSTRAINT `'.($1 eq '' ? '_' : '')/gme;
+
       if ( $o->get('default-engine') ) {
          $sql =~ s/\s+ENGINE=\S+//;
+      }
+      if ( $o->get('data-dir') && !$o->got('remove-data-dir') ) {
+          if ( (-d $o->get('data-dir')) && (-w $o->get('data-dir')) ){
+             $sql =~ s/DATA DIRECTORY='.*?'//; 
+             $sql .= sprintf(" DATA DIRECTORY='%s' ",$o->get('data-dir'));
+             PTDEBUG && _d("adding data dir ".$o->get('data-dir'));
+          } else {
+              die $o->get('data-dir') . " is not a directory or it is not writable";
+          }
+      }
+      if ( $o->got('remove-data-dir') ) {
+         $sql =~ s/DATA DIRECTORY='.*?'//; 
+         PTDEBUG && _d("removing data dir");
       }
       PTDEBUG && _d($sql);
       eval {
@@ -11311,7 +11351,7 @@ tool's built-in functionality if desired.
 
 default: yes
 
-Execute ANALYZE TABLE on the new table before swaping with the old one.
+Execute ANALYZE TABLE on the new table before swapping with the old one.
 By default, this happens only when running MySQL 5.6 and newer, and
 C<innodb_stats_persistent> is enabled. Specify the option explicitly to enable
 or disable it regardless of MySQL version and C<innodb_stats_persistent>.
@@ -11556,6 +11596,21 @@ cause unintended changes on replicas which use a different engine for
 the same table.  Specifying this option causes the new table to be
 created with the system's default engine.
 
+=item --data-dir
+
+type: string
+
+Create the new table on a different partition using the DATA DIRECTORY feature.
+Only available on 5.6+. This parameter is ignored if it is used at the same time
+than remove-data-dir.
+
+=item --remove-data-dir
+
+default: no
+
+If the original table was created using the DATA DIRECTORY feature, remove it and create 
+the new table in MySQL default directory without creating a new isl file.
+
 =item --defaults-file
 
 short form: -F; type: string
@@ -11704,6 +11759,12 @@ short form: -p; type: string
 
 Password to use when connecting.
 If password contains commas they must be escaped with a backslash: "exam\,ple"
+
+=item --pause-file
+
+type: string 
+
+Execution will be paused while the file specified by this param exists.
 
 =item --pid
 

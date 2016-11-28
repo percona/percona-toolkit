@@ -2248,8 +2248,25 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
                                        "$data_dir/vmstat"        \
                                        "$platform"
 
+   section "Memory mamagement"
+   report_transparent_huge_pages
    section "The End"
 }
+
+report_transparent_huge_pages () {
+
+  if [ -f /sys/kernel/mm/transparent_hugepage/enabled ]; then
+    CONTENT_TRANSHP=$(</sys/kernel/mm/transparent_hugepage/enabled)
+    STATUS_THP_SYSTEM=$(echo $CONTENT_TRANSHP | grep -cv '\[never\]')
+  fi
+  if [ $STATUS_THP_SYSTEM = 0 ]; then
+    echo "Transparent huge pages are currently disabled on the system."
+  else
+    echo "Transparent huge pages are enabled."
+  fi
+
+}
+
 
 # ###########################################################################
 # End report_system_info package

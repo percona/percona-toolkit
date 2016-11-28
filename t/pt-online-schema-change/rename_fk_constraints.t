@@ -42,8 +42,7 @@ my $sample  = "t/pt-online-schema-change/samples/";
 $sb->load_file('master', "$sample/bug-1215587.sql");
 
 # run once: we expect constraint names to be prefixed with one underscore
-# note: We're running just a neutral no-op alter. We are only interested in constraint name
-# changes.
+# if they havre't one, and to remove one if they already do.
 ($output, $exit_status) = full_output(
    sub { pt_online_schema_change::main(@args,
       "$master_dsn,D=bug1215587,t=Table1",
@@ -52,24 +51,24 @@ $sb->load_file('master', "$sample/bug-1215587.sql");
 );
 
 
-my $constraints = $master_dbh->selectall_hashref("SELECT CONSTRAINT_NAME, TABLE_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE table_schema='bug1215587' and (TABLE_NAME='Table1' OR TABLE_NAME='Table2') and CONSTRAINT_NAME LIKE '%fkey%'", 'table_name'); 
+my $constraints = $master_dbh->selectall_arrayref("SELECT TABLE_NAME, CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE table_schema='bug1215587' and (TABLE_NAME='Table1' OR TABLE_NAME='Table2') and CONSTRAINT_NAME LIKE '%fkey%' ORDER BY TABLE_NAME, CONSTRAINT_NAME"); 
 
 
-is(
-   $constraints->{Table1}->{constraint_name},
-   '_fkey1',
-   "Altered table: constraint name prefixed one underscore after 1st run"
+is_deeply(
+   $constraints,
+   [
+      ['Table1', 'fkey1a'],
+      ['Table1', '_fkey1b'],
+      ['Table2', 'fkey2b'],
+      ['Table2', '_fkey2a'],
+   ],
+   "First run adds or removes underscore from constraint names, accordingly"
 );
 
-is(
-   $constraints->{Table2}->{constraint_name}, 
-   '_fkey2',
-   "Child table  : constraint name prefixed one underscore after 1st run"
-);
 
 
 # run second time 
-# we expect underscores to be removed
+# we expect constraints to be the same as we started (toggled back)
 ($output, $exit_status) = full_output(
    sub { pt_online_schema_change::main(@args,
       "$master_dsn,D=bug1215587,t=Table1",
@@ -77,19 +76,18 @@ is(
       qw(--execute)) },
 );
 
-$constraints = $master_dbh->selectall_hashref("SELECT CONSTRAINT_NAME, TABLE_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE table_schema='bug1215587' and (TABLE_NAME='Table1' OR TABLE_NAME='Table2') and CONSTRAINT_NAME LIKE '%fkey%'", 'table_name'); 
+$constraints = $master_dbh->selectall_arrayref("SELECT TABLE_NAME, CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE table_schema='bug1215587' and (TABLE_NAME='Table1' OR TABLE_NAME='Table2') and CONSTRAINT_NAME LIKE '%fkey%' ORDER BY TABLE_NAME, CONSTRAINT_NAME"); 
 
 
-is(
-   $constraints->{'Table1'}->{constraint_name},  
-   'fkey1',
-   "Altered table: constraint name removed underscore after 2nd run"
-);
-
-is(
-   $constraints->{'Table2'}->{constraint_name}, 
-   'fkey2',
-   "Child table  : constraint name removed underscore after 2nd run"
+is_deeply(
+   $constraints,
+   [
+      ['Table1', 'fkey1b'],
+      ['Table1', '_fkey1a'],
+      ['Table2', 'fkey2a'],
+      ['Table2', '_fkey2b'],
+   ],
+   "Second run toggles constraint names back to how they were"
 );
 
 
