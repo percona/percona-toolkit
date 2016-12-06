@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v2.2.20 released 2016-12-06
+
 v2.2.20  released 2016-12-09
 
  * Fixed bug 1362942: pt-slave-restart fails on MariaDB 10.0.13 (gtid_mode confusion)
