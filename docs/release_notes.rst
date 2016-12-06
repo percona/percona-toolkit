@@ -1,6 +1,57 @@
 Release Notes
 *************
 
+v2.2.20 released 2016-12-09
+===========================
+
+Percona Toolkit 2.2.20 includes the following changes:
+
+New Features
+
+* 1636068: New ``--pause-file`` option has been implemented for ``pt-online-schema-change``. When used ``pt-online-schema-change`` will pause while the specified file exists.
+
+* 1638293 and 1642364: ``pt-online-schema-change`` now supports adding and removing the ``DATA DIRECTORY`` to a new table with the ``--data-dir`` and ``--remove-data-dir`` options.
+
+* 1642994: Following schemas/tables have been added to the default ignore list: ``mysql.gtid_execution``, ``sys.sys_config``, ``mysql.proc``, ``mysql.inventory``, ``mysql.plugin``, ``percona.*`` (including checksums, dsns table), ``test.*``, and ``percona_schema.*``.
+
+* 1643940: ``pt-summary`` now provides information about Transparent huge pages. 
+
+* 1604834: New ``--preserve-embedded-numbers`` option has been implemented for ``pt-query-digest`` which can be used to preserve numbers in database/table names when fingerprinting queries.
+
+Bug Fixes
+
+* 1613915: ``pt-online-schema-change`` could miss the data due to the way ENUM values are sorted.
+
+* 1625005: ``pt-online-schema-change`` didn't apply underscores to foreign keys individually.
+  
+* 1566556: ``pt-show-grants`` didn't work correctly with *MariaDB* 10 (*Daniël van Eeden*).
+
+* 1634900: ``pt-upgrade`` would fail when log contained ``SELECT...INTO`` queries.
+
+* 1639052: ``pt-table-checksum`` now automatically excludes checking schemas named ``percona`` and ``percona_schema`` which aren't consistent across the replication hierarchy.
+
+* 1635734: ``pt-slave-restart --config`` did not recognize ``=`` as a separator.
+
+* 1362942: ``pt-slave-restart`` would fail on *MariaDB* 10.0.13.
+
+Changelog
+---------
+
+* Fixed bug 1362942: pt-slave-restart fails on MariaDB 10.0.13 (gtid_mode confusion)
+* Fixed bug 1566556: pt-show-grants fails against MariaDB10+    
+* Feature    1604834: pt-query-digest numbers in table or column names converted to question marks (--preserve-embedded-numbers)
+* Fixed bug 1613915: pt-online-schema-change misses data.  Fixed sort order for ENUM fields 
+* Fixed bug 1625005: pt-online-schema-change doesn't apply underscores to foreign keys individually
+* Fixed bug 1634900: pt-upgrade fails with SELECT INTO 
+* Fixed bug 1635734: pt-slave-restart --config does not recognize = as separator 
+* Feature   1636068: Added pause to NibbleIterator
+* Feature   1638293: --data-dir parameter in order to create the table on a different partition
+* Feature   1639052: with pt-table-checksum automatically exclude checking schemas named percona, percona_schema     
+* Feature   1642364: pt-online-schema-change Added --remove-data-dir feature
+* Feature   1643914: Fixed several typos in the doc (Thanks Dario Minnucci)
+* Feature   1643940: Add Transparent huge pages info to pt-summary
+* Feature   1643941: Add Memory management library to pt-mysql-summary 
+
 v2.2.19 released 2016-08-16
 ===========================
 
