@@ -4838,6 +4838,7 @@ sub wait {
    my $sleep   = $self->{sleep};
    my $slaves  = $self->{slaves};
    my $max_lag = $self->{max_lag};
+   my $allow_slaves_with_lag_percent = $self->{allow_slaves_with_lag_percent};
 
    my $worst;  # most lagging slave
    my $pr_callback;
@@ -4884,8 +4885,9 @@ sub wait {
       };
    }
 
+   my $num_allow_slaves_with_lag = int( (scalar @$slaves) * $self->{allow_slaves_with_lag_percent} / 100 );
    my @lagged_slaves = map { {cxn=>$_, lag=>undef} } @$slaves;  
-   while ( $oktorun->() && @lagged_slaves ) {
+   while ( $oktorun->() && @lagged_slaves && $#lagged_slaves >= $num_allow_slaves_with_lag ) {
       PTDEBUG && _d('Checking slave lag');
 
       $slaves = $pr_refresh_slave_list->($self);
@@ -4930,7 +4932,11 @@ sub wait {
       }
    }
 
-   PTDEBUG && _d('All slaves caught up');
+   if ( $num_allow_slaves_with_lag && $#lagged_slaves ) {
+      PTDEBUG && _d('Less than', $num_allow_slaves_with_lag, 'slaves lagging behind');
+   } else {
+      PTDEBUG && _d('All slaves caught up');
+   }
    return;
 }
 
@@ -8591,6 +8597,7 @@ sub main {
          slaves          => $slave_lag_cxns,
          get_slaves_cb   => $get_slaves_cb,
          max_lag         => $o->get('max-lag'),
+         allow_slaves_with_lag_percent => $o->get('allow-slaves-with-lag'),
          oktorun         => sub { return $oktorun },
          get_lag         => $get_lag,
          sleep           => $sleep,
@@ -11722,6 +11729,16 @@ continues when all replicas are running and not lagging too much.
 The tool prints progress reports while waiting.  If a replica is stopped, it
 prints a progress report immediately, then again at every progress report
 interval.
+
+=item --allow-slaves-with-lag
+
+type: int; default: 0; group: Throttle
+
+Do not pause checksumming if less than this percentace of the configured slave
+servers are lagging behind.
+
+For example, if you have 8 slaves and this value is set to 25, 2 of your slaves
+are allowed to lag behind.
 
 =item --max-load
 
