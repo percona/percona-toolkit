@@ -4,7 +4,7 @@ COPYING
 INSTALL
 Makefile.PL
 MANIFEST
-README
+README.md
 bin/pt-align
 bin/pt-archiver
 bin/pt-config-diff
