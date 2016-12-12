@@ -10,9 +10,9 @@ import (
 
 	"github.com/howeyc/gopass"
 	"github.com/pborman/getopt"
+	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
+	"github.com/percona/percona-toolkit/src/go/pt-mongodb-summary/templates"
 	"github.com/percona/pmgo"
-	"github.com/percona/toolkit-go/mongolib/proto"
-	"github.com/percona/toolkit-go/pt-mongodb-summary/templates"
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/process"
 	"gopkg.in/mgo.v2"

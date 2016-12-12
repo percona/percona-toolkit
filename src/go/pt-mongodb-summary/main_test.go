@@ -10,9 +10,9 @@ import (
 	"gopkg.in/mgo.v2/bson"
 
 	"github.com/golang/mock/gomock"
+	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/pmgo/pmgomock"
-	"github.com/percona/toolkit-go/mongolib/proto"
-	"github.com/percona/toolkit-go/pt-mongodb-summary/test"
+	"github.com/percona/toolkit-go-old/pt-mongodb-summary/test"
 )
 
 func TestGetOpCounterStats(t *testing.T) {

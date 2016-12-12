@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/percona/toolkit-go/mongolib/proto"
+	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 
-	"gopkg.in/mgo.v2/dbtest" // mock
+	"gopkg.in/mgo.v2/dbtest"
 )
 
 var Server dbtest.DBServer

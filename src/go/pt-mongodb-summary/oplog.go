@@ -5,7 +5,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/percona/toolkit-go/mongolib/proto"
+	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"

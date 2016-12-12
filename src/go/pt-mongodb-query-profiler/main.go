@@ -13,7 +13,7 @@ import (
 	"github.com/howeyc/gopass"
 	"github.com/montanaflynn/stats"
 	"github.com/pborman/getopt"
-	"github.com/percona/toolkit-go/mongolib/proto"
+	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
