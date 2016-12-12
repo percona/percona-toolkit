@@ -1,0 +1,12 @@
+pt-mongodb-summary
+pt-mongodb-summary_darwin_amd64
+pt-mongodb-summary_freebsd_386
+pt-mongodb-summary_freebsd_amd64
+pt-mongodb-summary_linux_386
+pt-mongodb-summary_linux_amd64
+pt-mongodb-summary_linux_arm
+pt-mongodb-summary_windows_386.exe
+pt-mongodb-summary_windows_amd64.exe
+coverage.out
+vendor/*
+!vendor/vendor.json

@@ -1,0 +1,139 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "9NR0rrcAT5J76C5xMS4AVksS9o0=",
+			"path": "github.com/StackExchange/wmi",
+			"revision": "e54cbda6595d7293a7a468ccf9525f6bc8887f99",
+			"revisionTime": "2016-08-11T21:45:55Z"
+		},
+		{
+			"checksumSHA1": "wDZdTaY9JiqqqnF4c3pHP71nWmk=",
+			"path": "github.com/go-ole/go-ole",
+			"revision": "7dfdcf409020452e29b4babcbb22f984d2aa308a",
+			"revisionTime": "2016-07-29T03:38:29Z"
+		},
+		{
+			"checksumSHA1": "qLYVTQDhgrVIeZ2KI9eZV51mmug=",
+			"path": "github.com/go-ole/go-ole/oleutil",
+			"revision": "7dfdcf409020452e29b4babcbb22f984d2aa308a",
+			"revisionTime": "2016-07-29T03:38:29Z"
+		},
+		{
+			"checksumSHA1": "JSHl8b3nI8EWvzm+uyrIqj2Hiu4=",
+			"path": "github.com/golang/mock/gomock",
+			"revision": "bd3c8e81be01eef76d4b503f5e687d2d1354d2d9",
+			"revisionTime": "2016-01-21T18:51:14Z"
+		},
+		{
+			"checksumSHA1": "lJDwzzEBuS9sjxVOSsq7+rvw+cA=",
+			"path": "github.com/howeyc/gopass",
+			"revision": "f5387c492211eb133053880d23dfae62aa14123d",
+			"revisionTime": "2016-10-03T13:09:00Z"
+		},
+		{
+			"checksumSHA1": "nBmwoMSG67LapH7e79RepVUFS/I=",
+			"path": "github.com/pborman/getopt",
+			"revision": "e5fda1850301b0c7c7c38959116cbc7913bb00f3",
+			"revisionTime": "2016-08-19T15:59:08Z"
+		},
+		{
+			"checksumSHA1": "eBc6L91Na66Z5Avo4qloBpPcJFo=",
+			"path": "github.com/percona/toolkit-go/mongolib/proto",
+			"revision": "3cd401c8852ad074dbeac7efbef68422c16bfff7",
+			"revisionTime": "2016-10-30T21:11:33Z"
+		},
+		{
+			"checksumSHA1": "Hky3u+8Rqum+wB5BHMj0A8ZmT4g=",
+			"path": "github.com/pkg/errors",
+			"revision": "17b591df37844cde689f4d5813e5cea0927d8dd2",
+			"revisionTime": "2016-08-22T09:00:10Z"
+		},
+		{
+			"checksumSHA1": "G1oy2AGv5pCnNL0hRfg+mlX4Uq4=",
+			"path": "github.com/shirou/gopsutil/cpu",
+			"revision": "4d0c402af66c78735c5ccf820dc2ca7de5e4ff08",
+			"revisionTime": "2016-07-25T08:59:33Z"
+		},
+		{
+			"checksumSHA1": "/Pngfnhd3BiUzWRjrVOfsWpORRA=",
+			"path": "github.com/shirou/gopsutil/host",
+			"revision": "4d0c402af66c78735c5ccf820dc2ca7de5e4ff08",
+			"revisionTime": "2016-07-25T08:59:33Z"
+		},
+		{
+			"checksumSHA1": "jc2EYr0yhTJIdYJafcNs1ZEXk/o=",
+			"path": "github.com/shirou/gopsutil/internal/common",
+			"revision": "4d0c402af66c78735c5ccf820dc2ca7de5e4ff08",
+			"revisionTime": "2016-07-25T08:59:33Z"
+		},
+		{
+			"checksumSHA1": "LUipApIqOLcKbZfwXknNCifGles=",
+			"path": "github.com/shirou/gopsutil/mem",
+			"revision": "4d0c402af66c78735c5ccf820dc2ca7de5e4ff08",
+			"revisionTime": "2016-07-25T08:59:33Z"
+		},
+		{
+			"checksumSHA1": "k57srhFXKSysrFdEh3b6oiO48hw=",
+			"path": "github.com/shirou/gopsutil/net",
+			"revision": "4d0c402af66c78735c5ccf820dc2ca7de5e4ff08",
+			"revisionTime": "2016-07-25T08:59:33Z"
+		},
+		{
+			"checksumSHA1": "QBFpNvR0Z1r1ojPBgn6b8/PTbm0=",
+			"path": "github.com/shirou/gopsutil/process",
+			"revision": "4d0c402af66c78735c5ccf820dc2ca7de5e4ff08",
+			"revisionTime": "2016-07-25T08:59:33Z"
+		},
+		{
+			"checksumSHA1": "Nve7SpDmjsv6+rhkXAkfg/UQx94=",
+			"path": "github.com/shirou/w32",
+			"revision": "bb4de0191aa41b5507caa14b0650cdbddcd9280b",
+			"revisionTime": "2016-09-30T03:27:40Z"
+		},
+		{
+			"checksumSHA1": "9C4Av3ypK5pi173F76ogJT/d8x4=",
+			"path": "golang.org/x/crypto/ssh/terminal",
+			"revision": "b2fa06b6af4b7c9bfeb8569ab7b17f04550717bf",
+			"revisionTime": "2016-10-28T17:07:08Z"
+		},
+		{
+			"checksumSHA1": "u4rtURsE9Cn7TK4OPwH8axBMK6M=",
+			"path": "golang.org/x/sys/unix",
+			"revision": "8d1157a435470616f975ff9bb013bea8d0962067",
+			"revisionTime": "2016-10-06T02:47:49Z"
+		},
+		{
+			"checksumSHA1": "1D8GzeoFGUs5FZOoyC2DpQg8c5Y=",
+			"path": "gopkg.in/mgo.v2",
+			"revision": "3f83fa5005286a7fe593b055f0d7771a7dce4655",
+			"revisionTime": "2016-08-18T02:01:20Z"
+		},
+		{
+			"checksumSHA1": "YsB2DChSV9HxdzHaKATllAUKWSI=",
+			"path": "gopkg.in/mgo.v2/bson",
+			"revision": "3f83fa5005286a7fe593b055f0d7771a7dce4655",
+			"revisionTime": "2016-08-18T02:01:20Z"
+		},
+		{
+			"checksumSHA1": "XQsrqoNT1U0KzLxOFcAZVvqhLfk=",
+			"path": "gopkg.in/mgo.v2/internal/json",
+			"revision": "3f83fa5005286a7fe593b055f0d7771a7dce4655",
+			"revisionTime": "2016-08-18T02:01:20Z"
+		},
+		{
+			"checksumSHA1": "LEvMCnprte47qdAxWvQ/zRxVF1U=",
+			"path": "gopkg.in/mgo.v2/internal/sasl",
+			"revision": "3f83fa5005286a7fe593b055f0d7771a7dce4655",
+			"revisionTime": "2016-08-18T02:01:20Z"
+		},
+		{
+			"checksumSHA1": "+1WDRPaOphSCmRMxVPIPBV4aubc=",
+			"path": "gopkg.in/mgo.v2/internal/scram",
+			"revision": "3f83fa5005286a7fe593b055f0d7771a7dce4655",
+			"revisionTime": "2016-08-18T02:01:20Z"
+		}
+	],
+	"rootPath": "github.com/percona/toolkit-go/pt-mongodb-summary"
+}
