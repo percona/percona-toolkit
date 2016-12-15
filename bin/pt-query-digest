@@ -4713,11 +4713,18 @@ sub parse_client_handshake_packet {
    }
 
    my $code_len = hex($buff_len);
-   my ( $db ) = $data =~ m!
-      ^.{64}${user}00..   # Everything matched before
-      (?:..){$code_len}   # The scramble buffer
-      (.*?)00.*\Z         # The database name
-   !x;
+   my $db;
+   
+   my $capability_flags = to_num($flags); # $flags is stored as little endian.
+
+   if ($capability_flags & $flag_for{CLIENT_CONNECT_WITH_DB}) {
+      ( $db ) = $data =~ m!
+         ^.{64}${user}00..   # Everything matched before
+         (?:..){$code_len}   # The scramble buffer
+         (.*?)00.*\Z         # The database name
+      !x;
+   }
+
    my $pkt = {
       user  => to_string($user),
       db    => $db ? to_string($db) : '',

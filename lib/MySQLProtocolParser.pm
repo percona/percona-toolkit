@@ -1022,7 +1022,8 @@ sub decode_len {
 }
 
 # All numbers are stored with the least significant byte first in the MySQL
-# protocol.
+# protocol (little endian).
+# This function converts from little endian to big endian
 sub to_num {
    my ( $str, $len ) = @_;
    if ( $len ) {
@@ -1206,25 +1207,29 @@ sub parse_client_handshake_packet {
       (..)           # Length-coding byte for scramble buff
    }x;
 
-   # This packet is easy to detect because it's the only case where
-   # the server sends the client a packet first (its handshake) and
-   # then the client only and ever sends back its handshake.
+   # This packet is easy to detect because it's the only case where    
+   # the server sends the client a packet first (its handshake) and 
+   # then the client only and ever sends back its handshake.       
    if ( !$buff_len ) {
       PTDEBUG && _d('Did not match client handshake packet');
       return;
    }
 
-   # This length-coded binary doesn't seem to be a normal one, it
-   # seems more like a length-coded string actually.
    my $code_len = hex($buff_len);
-   # The (.*?)00.?\Z part in the regex, is to remove an erroneous 
-   # null char + mysql_native_password after the db name
-   # https://bugs.launchpad.net/percona-toolkit/+bug/1402776
-   my ( $db ) = $data =~ m!
-      ^.{64}${user}00..   # Everything matched before
-      (?:..){$code_len}   # The scramble buffer
-      (.*?)00.*\Z         # The database name
-   !x;
+   my $db;
+   
+   #  Only try to get the db if CLIENT_CONNECT_WITH_DB flag is set
+   #  https://dev.mysql.com/doc/internals/en/connection-phase-packets.html#packet-Protocol::HandshakeResponse41
+   my $capability_flags = to_num($flags); # $flags is stored as little endian.
+
+   if ($capability_flags & $flag_for{CLIENT_CONNECT_WITH_DB}) {
+      ( $db ) = $data =~ m!
+         ^.{64}${user}00..   # Everything matched before
+         (?:..){$code_len}   # The scramble buffer
+         (.*?)00.*\Z         # The database name
+      !x;
+   }
+
    my $pkt = {
       user  => to_string($user),
       db    => $db ? to_string($db) : '',
