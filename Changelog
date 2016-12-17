@@ -1,6 +1,8 @@
 Changelog for Percona Toolkit
 
-v2.2.20 released 2016-12-06
+v2.2.21
+
+ * Fixed bug 1402776:  Improved fix (protocol parser fix): error when parsing tcpdump capture with pt-query-digest
 
 v2.2.20  released 2016-12-09
 
