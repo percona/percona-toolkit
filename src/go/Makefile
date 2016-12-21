@@ -28,22 +28,18 @@ vet:
 
 build-all: 
 	@echo ">> building all binaries in $(BIN_DIR). OS & platform will be appended to the file name"
-	@gox build -ldflags $(LDFLAGS) -osarch="linux/amd64 linux/386 darwin/amd64 darwin/386" -output=$(BIN_DIR)"/{{.Dir}}_{{.OS}}_{{.Arch}}" $(pkgs)
+	@gox -ldflags ${LDFLAGS} -osarch="linux/amd64 linux/386 darwin/amd64" -output=${BIN_DIR}"/{{.Dir}}_{{.OS}}_{{.Arch}}" $(pkgs)
 
 linux-amd64: 
 	@echo ">> building linux/amd64 binaries in $(BIN_DIR)"
-	gox -ldflags $(LDFLAGS) -osarch="linux/amd64" -output=$(BIN_DIR)"/{{.Dir}}" $(pkgs)
+	gox -ldflags ${LDFLAGS} -osarch="linux/amd64" -output=${BIN_DIR}"/{{.Dir}}" $(pkgs)
 
 linux-386: 
 	@echo ">> building linux/386 binaries in $(BIN_DIR)"
-	gox -ldflags $(LDFLAGS) -osarch="linux/amd64" -output=$(BIN_DIR)"/{{.Dir}}" $(pkgs)
+	gox -ldflags ${LDFLAGS} -osarch="linux/amd64" -output=${BIN_DIR}"/{{.Dir}}" $(pkgs)
 
 darwin-amd64: 
 	@echo ">> building darwin/amd64 binaries in $(BIN_DIR)"
-	gox -ldflags $(LDFLAGS) -osarch="darwin/amd64" -output=$(BIN_DIR)"/{{.Dir}}" $(pkgs)
-
-darwin-386: 
-	@echo ">> building darwin/386 binaries in $(BIN_DIR)"
-	gox -ldflags $(LDFLAGS) -osarch="darwin/386" -output=$(BIN_DIR)"/{{.Dir}}" $(pkgs)
+	gox -ldflags ${LDFLAGS} -osarch="darwin/amd64" -output=${BIN_DIR}"/{{.Dir}}" $(pkgs)
 
 .PHONY: all style format build test vet tarball 
