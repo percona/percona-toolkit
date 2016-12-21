@@ -34,12 +34,12 @@
         "NumRequests": 522
     },
     "Opcounters": {
-        "Insert": 0,
-        "Query": 22,
-        "Update": 0,
-        "Delete": 0,
-        "GetMore": 0,
-        "Command": 473
+        "Insert": 1,
+        "Query": 2,
+        "Update": 3,
+        "Delete": 4,
+        "GetMore": 5,
+        "Command": 6
     },
     "OpcountersRepl": null,
     "RecordStats": null,

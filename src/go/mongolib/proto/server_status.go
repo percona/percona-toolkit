@@ -159,12 +159,12 @@ type NetworkStats struct {
 
 // OpcountStats stores information related to comamnds and basic CRUD operations.
 type OpcountStats struct {
+	Command int64 `bson:"command"`
+	Delete  int64 `bson:"delete"`
+	GetMore int64 `bson:"getmore"`
 	Insert  int64 `bson:"insert"`
 	Query   int64 `bson:"query"`
 	Update  int64 `bson:"update"`
-	Delete  int64 `bson:"delete"`
-	GetMore int64 `bson:"getmore"`
-	Command int64 `bson:"command"`
 }
 
 // ReadWriteLockTimes stores time spent holding read/write locks.

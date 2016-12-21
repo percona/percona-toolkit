@@ -476,20 +476,51 @@ func getNodeType(session pmgo.SessionManager) (string, error) {
 
 func GetOpCountersStats(session pmgo.SessionManager, count int64, sleep time.Duration) (*opCounters, error) {
 	oc := &opCounters{}
+	previousoc := &opCounters{}
 	ss := proto.ServerStatus{}
 
-	err := session.DB("admin").Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, &ss)
-	if err != nil {
-		return nil, errors.Wrap(err, "GetOpCountersStats.ServerStatus")
-	}
-
 	ticker := time.NewTicker(sleep)
-	for i := int64(0); i < count-1; i++ {
+	for i := int64(0); i < count; i++ {
 		<-ticker.C
 		err := session.DB("admin").Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, &ss)
 		if err != nil {
+			panic(err)
+		}
+
+		if i == 0 {
+			previousoc.Command.Total = ss.Opcounters.Command
+			previousoc.Delete.Total = ss.Opcounters.Delete
+			previousoc.GetMore.Total = ss.Opcounters.GetMore
+			previousoc.Insert.Total = ss.Opcounters.Insert
+			previousoc.Query.Total = ss.Opcounters.Query
+			previousoc.Update.Total = ss.Opcounters.Update
 			continue
 		}
+
+		ss.Opcounters.Command -= previousoc.Command.Total
+		ss.Opcounters.Delete -= previousoc.Delete.Total
+		ss.Opcounters.GetMore -= previousoc.GetMore.Total
+		ss.Opcounters.Insert -= previousoc.Insert.Total
+		ss.Opcounters.Query -= previousoc.Query.Total
+		ss.Opcounters.Update -= previousoc.Update.Total
+
+		// Be careful. This cannot be item[0] because we need value - prev_value
+		// and at pos 0 there is no prev value
+		if i == 1 {
+			oc.Command.Max = ss.Opcounters.Command
+			oc.Command.Min = ss.Opcounters.Command
+			oc.Delete.Max = ss.Opcounters.Delete
+			oc.Delete.Min = ss.Opcounters.Delete
+			oc.GetMore.Max = ss.Opcounters.GetMore
+			oc.GetMore.Min = ss.Opcounters.GetMore
+			oc.Insert.Max = ss.Opcounters.Insert
+			oc.Insert.Min = ss.Opcounters.Insert
+			oc.Query.Max = ss.Opcounters.Query
+			oc.Query.Min = ss.Opcounters.Query
+			oc.Update.Max = ss.Opcounters.Update
+			oc.Update.Min = ss.Opcounters.Update
+		}
+
 		// Insert
 		if ss.Opcounters.Insert > oc.Insert.Max {
 			oc.Insert.Max = ss.Opcounters.Insert
@@ -543,6 +574,14 @@ func GetOpCountersStats(session pmgo.SessionManager, count int64, sleep time.Dur
 			oc.GetMore.Min = ss.Opcounters.GetMore
 		}
 		oc.GetMore.Total += ss.Opcounters.GetMore
+
+		previousoc.Insert.Total = ss.Opcounters.Insert
+		previousoc.Query.Total = ss.Opcounters.Query
+		previousoc.Command.Total = ss.Opcounters.Command
+		previousoc.Update.Total = ss.Opcounters.Update
+		previousoc.Delete.Total = ss.Opcounters.Delete
+		previousoc.GetMore.Total = ss.Opcounters.GetMore
+
 	}
 	ticker.Stop()
 
