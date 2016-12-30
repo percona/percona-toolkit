@@ -65,11 +65,12 @@ mkdir -p ${HOME}/mysql/percona-server-5.6.32
 wget https://www.percona.com/downloads/Percona-Server-5.6/Percona-Server-5.6.32-78.1/binary/tarball/Percona-Server-5.6.32-rel78.1-Linux.x86_64.ssl100.tar.gz 
 ```
 ```
-tar xvzf Percona-Server-5.6.32-rel78.1-Linux.x86_64.ssl100.tar.gz --strip 1 -C ${HOME}/mysql/percona-server-6.6.32
+tar xvzf Percona-Server-5.6.32-rel78.1-Linux.x86_64.ssl100.tar.gz --strip 1 -C ${HOME}/mysql/percona-server-5.6.32
 ```
 ###Set up environment variables:
 We need these environment variables to start the MySQL sandbox and to run the tests. Probably it is a good idea to add them to your `.bashrc` file.
 ```
+export PERCONA_TOOLKIT_BRANCH=${HOME}/perldev/percona-toolkit
 export PERL5LIB=${HOME}/perldev/percona-toolkit/lib
 export PERCONA_TOOLKIT_SANDBOX=${HOME}/mysql/percona-server-5.6.32
 ```
