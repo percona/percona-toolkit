@@ -2262,8 +2262,9 @@ report_transparent_huge_pages () {
     CONTENT_TRANSHP=$(</sys/kernel/mm/redhat_transparent_hugepage/enabled)
     STATUS_THP_SYSTEM=$(echo $CONTENT_TRANSHP | grep -cv '\[never\]')
   fi
+
   if [ -z $STATUS_THP_SYSTEM ]; then
-    echo "Unable to get Transparent huge pages status"
+    echo "Unable to get Transparent huge pages status."
   elif [ $STATUS_THP_SYSTEM = 0 ]; then
     echo "Transparent huge pages are currently disabled on the system."
   else
