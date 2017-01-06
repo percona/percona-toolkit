@@ -184,7 +184,7 @@ func main() {
 	}
 
 	var sampleCount int64 = 5
-	var sampleRate time.Duration = 1 // in seconds
+	var sampleRate time.Duration = 1 * time.Second // in seconds
 	if rops, err := GetOpCountersStats(session, sampleCount, sampleRate); err != nil {
 		log.Printf("[Error] cannot get Opcounters stats: %v\n", err)
 	} else {
@@ -364,21 +364,29 @@ func GetClusterwideInfo(session pmgo.SessionManager) (*clusterwideInfo, error) {
 		TotalDBsCount: len(databases.Databases),
 	}
 
-	configDB := session.DB("config")
-
 	for _, db := range databases.Databases {
 		collections, err := session.DB(db.Name).CollectionNames()
 		if err != nil {
 			continue
 		}
 		cwi.TotalCollectionsCount += len(collections)
-		if len(db.Shards) == 1 {
-			cwi.UnshardedDataSize += db.SizeOnDisk
-			continue
+		for _, collName := range collections {
+			var collStats proto.CollStats
+			err := session.DB(db.Name).Run(bson.M{"collStats": collName}, &collStats)
+			if err != nil {
+				continue
+			}
+
+			if collStats.Sharded {
+				cwi.ShardedDataSize += collStats.Size
+				cwi.ShardedColsCount++
+				continue
+			}
+
+			cwi.UnshardedDataSize += collStats.Size
+			cwi.UnshardedColsCount++
 		}
-		cwi.ShardedDataSize += db.SizeOnDisk
-		colsCount, _ := configDB.C("collections").Find(bson.M{"_id": bson.RegEx{"^" + db.Name, ""}}).Count()
-		cwi.ShardedColsCount += colsCount
+
 	}
 
 	cwi.UnshardedColsCount = cwi.TotalCollectionsCount - cwi.ShardedColsCount
@@ -389,14 +397,14 @@ func GetClusterwideInfo(session pmgo.SessionManager) (*clusterwideInfo, error) {
 }
 
 func sizeAndUnit(size int64) (float64, string) {
-	unit := []string{"KB", "MB", "GB", "TB"}
+	unit := []string{"bytes", "KB", "MB", "GB", "TB"}
 	idx := 0
 	newSize := float64(size)
 	for newSize > 1024 {
 		newSize /= 1024
 		idx++
 	}
-	newSize = float64(int64(newSize*100) / 1000)
+	newSize = float64(int64(newSize*100)) / 100
 	return newSize, unit[idx]
 }
 
@@ -476,11 +484,14 @@ func getNodeType(session pmgo.SessionManager) (string, error) {
 
 func GetOpCountersStats(session pmgo.SessionManager, count int64, sleep time.Duration) (*opCounters, error) {
 	oc := &opCounters{}
-	previousoc := &opCounters{}
+	prevOpCount := &opCounters{}
 	ss := proto.ServerStatus{}
+	delta := proto.ServerStatus{
+		Opcounters: &proto.OpcountStats{},
+	}
 
 	ticker := time.NewTicker(sleep)
-	for i := int64(0); i < count; i++ {
+	for i := int64(0); i < count+1; i++ {
 		<-ticker.C
 		err := session.DB("admin").Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, &ss)
 		if err != nil {
@@ -488,111 +499,116 @@ func GetOpCountersStats(session pmgo.SessionManager, count int64, sleep time.Dur
 		}
 
 		if i == 0 {
-			previousoc.Command.Total = ss.Opcounters.Command
-			previousoc.Delete.Total = ss.Opcounters.Delete
-			previousoc.GetMore.Total = ss.Opcounters.GetMore
-			previousoc.Insert.Total = ss.Opcounters.Insert
-			previousoc.Query.Total = ss.Opcounters.Query
-			previousoc.Update.Total = ss.Opcounters.Update
+			prevOpCount.Command.Total = ss.Opcounters.Command
+			prevOpCount.Delete.Total = ss.Opcounters.Delete
+			prevOpCount.GetMore.Total = ss.Opcounters.GetMore
+			prevOpCount.Insert.Total = ss.Opcounters.Insert
+			prevOpCount.Query.Total = ss.Opcounters.Query
+			prevOpCount.Update.Total = ss.Opcounters.Update
 			continue
 		}
 
-		ss.Opcounters.Command -= previousoc.Command.Total
-		ss.Opcounters.Delete -= previousoc.Delete.Total
-		ss.Opcounters.GetMore -= previousoc.GetMore.Total
-		ss.Opcounters.Insert -= previousoc.Insert.Total
-		ss.Opcounters.Query -= previousoc.Query.Total
-		ss.Opcounters.Update -= previousoc.Update.Total
+		delta.Opcounters.Command = ss.Opcounters.Command - prevOpCount.Command.Total
+		delta.Opcounters.Delete = ss.Opcounters.Delete - prevOpCount.Delete.Total
+		delta.Opcounters.GetMore = ss.Opcounters.GetMore - prevOpCount.GetMore.Total
+		delta.Opcounters.Insert = ss.Opcounters.Insert - prevOpCount.Insert.Total
+		delta.Opcounters.Query = ss.Opcounters.Query - prevOpCount.Query.Total
+		delta.Opcounters.Update = ss.Opcounters.Update - prevOpCount.Update.Total
 
-		// Be careful. This cannot be item[0] because we need value - prev_value
+		// Be careful. This cannot be item[0] because we need: value - prev_value
 		// and at pos 0 there is no prev value
 		if i == 1 {
-			oc.Command.Max = ss.Opcounters.Command
-			oc.Command.Min = ss.Opcounters.Command
-			oc.Delete.Max = ss.Opcounters.Delete
-			oc.Delete.Min = ss.Opcounters.Delete
-			oc.GetMore.Max = ss.Opcounters.GetMore
-			oc.GetMore.Min = ss.Opcounters.GetMore
-			oc.Insert.Max = ss.Opcounters.Insert
-			oc.Insert.Min = ss.Opcounters.Insert
-			oc.Query.Max = ss.Opcounters.Query
-			oc.Query.Min = ss.Opcounters.Query
-			oc.Update.Max = ss.Opcounters.Update
-			oc.Update.Min = ss.Opcounters.Update
+			oc.Command.Max = delta.Opcounters.Command
+			oc.Command.Min = delta.Opcounters.Command
+
+			oc.Delete.Max = delta.Opcounters.Delete
+			oc.Delete.Min = delta.Opcounters.Delete
+
+			oc.GetMore.Max = delta.Opcounters.GetMore
+			oc.GetMore.Min = delta.Opcounters.GetMore
+
+			oc.Insert.Max = delta.Opcounters.Insert
+			oc.Insert.Min = delta.Opcounters.Insert
+
+			oc.Query.Max = delta.Opcounters.Query
+			oc.Query.Min = delta.Opcounters.Query
+
+			oc.Update.Max = delta.Opcounters.Update
+			oc.Update.Min = delta.Opcounters.Update
 		}
 
-		// Insert
-		if ss.Opcounters.Insert > oc.Insert.Max {
-			oc.Insert.Max = ss.Opcounters.Insert
+		// Insert --------------------------------------
+		if delta.Opcounters.Insert > oc.Insert.Max {
+			oc.Insert.Max = delta.Opcounters.Insert
 		}
-		if ss.Opcounters.Insert < oc.Insert.Min {
-			oc.Insert.Min = ss.Opcounters.Insert
+		if delta.Opcounters.Insert < oc.Insert.Min {
+			oc.Insert.Min = delta.Opcounters.Insert
 		}
-		oc.Insert.Total += ss.Opcounters.Insert
+		oc.Insert.Total += delta.Opcounters.Insert
 
 		// Query ---------------------------------------
-		if ss.Opcounters.Query > oc.Query.Max {
-			oc.Query.Max = ss.Opcounters.Query
+		if delta.Opcounters.Query > oc.Query.Max {
+			oc.Query.Max = delta.Opcounters.Query
 		}
-		if ss.Opcounters.Query < oc.Query.Min {
-			oc.Query.Min = ss.Opcounters.Query
+		if delta.Opcounters.Query < oc.Query.Min {
+			oc.Query.Min = delta.Opcounters.Query
 		}
-		oc.Query.Total += ss.Opcounters.Query
+		oc.Query.Total += delta.Opcounters.Query
 
 		// Command -------------------------------------
-		if ss.Opcounters.Command > oc.Command.Max {
-			oc.Command.Max = ss.Opcounters.Command
+		if delta.Opcounters.Command > oc.Command.Max {
+			oc.Command.Max = delta.Opcounters.Command
 		}
-		if ss.Opcounters.Command < oc.Command.Min {
-			oc.Command.Min = ss.Opcounters.Command
+		if delta.Opcounters.Command < oc.Command.Min {
+			oc.Command.Min = delta.Opcounters.Command
 		}
-		oc.Command.Total += ss.Opcounters.Command
+		oc.Command.Total += delta.Opcounters.Command
 
 		// Update --------------------------------------
-		if ss.Opcounters.Update > oc.Update.Max {
-			oc.Update.Max = ss.Opcounters.Update
+		if delta.Opcounters.Update > oc.Update.Max {
+			oc.Update.Max = delta.Opcounters.Update
 		}
-		if ss.Opcounters.Update < oc.Update.Min {
-			oc.Update.Min = ss.Opcounters.Update
+		if delta.Opcounters.Update < oc.Update.Min {
+			oc.Update.Min = delta.Opcounters.Update
 		}
-		oc.Update.Total += ss.Opcounters.Update
+		oc.Update.Total += delta.Opcounters.Update
 
 		// Delete --------------------------------------
-		if ss.Opcounters.Delete > oc.Delete.Max {
-			oc.Delete.Max = ss.Opcounters.Delete
+		if delta.Opcounters.Delete > oc.Delete.Max {
+			oc.Delete.Max = delta.Opcounters.Delete
 		}
-		if ss.Opcounters.Delete < oc.Delete.Min {
-			oc.Delete.Min = ss.Opcounters.Delete
+		if delta.Opcounters.Delete < oc.Delete.Min {
+			oc.Delete.Min = delta.Opcounters.Delete
 		}
-		oc.Delete.Total += ss.Opcounters.Delete
+		oc.Delete.Total += delta.Opcounters.Delete
 
 		// GetMore -------------------------------------
-		if ss.Opcounters.GetMore > oc.GetMore.Max {
-			oc.GetMore.Max = ss.Opcounters.GetMore
+		if delta.Opcounters.GetMore > oc.GetMore.Max {
+			oc.GetMore.Max = delta.Opcounters.GetMore
 		}
-		if ss.Opcounters.GetMore < oc.GetMore.Min {
-			oc.GetMore.Min = ss.Opcounters.GetMore
+		if delta.Opcounters.GetMore < oc.GetMore.Min {
+			oc.GetMore.Min = delta.Opcounters.GetMore
 		}
-		oc.GetMore.Total += ss.Opcounters.GetMore
+		oc.GetMore.Total += delta.Opcounters.GetMore
 
-		previousoc.Insert.Total = ss.Opcounters.Insert
-		previousoc.Query.Total = ss.Opcounters.Query
-		previousoc.Command.Total = ss.Opcounters.Command
-		previousoc.Update.Total = ss.Opcounters.Update
-		previousoc.Delete.Total = ss.Opcounters.Delete
-		previousoc.GetMore.Total = ss.Opcounters.GetMore
+		prevOpCount.Insert.Total = ss.Opcounters.Insert
+		prevOpCount.Query.Total = ss.Opcounters.Query
+		prevOpCount.Command.Total = ss.Opcounters.Command
+		prevOpCount.Update.Total = ss.Opcounters.Update
+		prevOpCount.Delete.Total = ss.Opcounters.Delete
+		prevOpCount.GetMore.Total = ss.Opcounters.GetMore
 
 	}
 	ticker.Stop()
 
-	oc.Insert.Avg = oc.Insert.Total / count
-	oc.Query.Avg = oc.Query.Total / count
-	oc.Update.Avg = oc.Update.Total / count
-	oc.Delete.Avg = oc.Delete.Total / count
-	oc.GetMore.Avg = oc.GetMore.Total / count
-	oc.Command.Avg = oc.Command.Total / count
+	oc.Insert.Avg = oc.Insert.Total
+	oc.Query.Avg = oc.Query.Total
+	oc.Update.Avg = oc.Update.Total
+	oc.Delete.Avg = oc.Delete.Total
+	oc.GetMore.Avg = oc.GetMore.Total
+	oc.Command.Avg = oc.Command.Total
 	//
-	oc.SampleRate = time.Duration(count) * time.Second * sleep
+	oc.SampleRate = time.Duration(count) * sleep
 
 	return oc, nil
 }

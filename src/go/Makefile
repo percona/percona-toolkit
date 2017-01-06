@@ -1,12 +1,17 @@
 GO := go
 pkgs   = $(shell $(GO) list ./... | grep -v /vendor/)
-VERSION=$(git describe --tags)                                                   
-BUILD=$(date +%FT%T%z)
+VERSION=$(shell git describe --tags)                                                   
+BUILD=$(shell date +%FT%T%z)
 
 PREFIX=$(shell pwd)
 BIN_DIR=$(shell git rev-parse --show-toplevel)/bin
-LDFLAGS="-w -s -X main.Version=${VERSION} -X main.Build=${BUILD}"
+LDFLAGS="-X main.Version=${VERSION} -X main.Build=${BUILD}"
 
+
+build-all: 
+	@echo ">> building all binaries in ${BIN_DIR}. OS & platform will be appended to the file name"
+	@echo "LDFLAGS: ${LDFLAGS}"
+	@gox -ldflags=${LDFLAGS} -osarch="linux/amd64 linux/386 darwin/amd64" -output=${BIN_DIR}"/{{.Dir}}_{{.OS}}_{{.Arch}}" $(pkgs)
 
 all: format gox test
 
@@ -25,10 +30,6 @@ format:
 vet:
 	@echo ">> vetting code"
 	@$(GO) vet $(pkgs)
-
-build-all: 
-	@echo ">> building all binaries in $(BIN_DIR). OS & platform will be appended to the file name"
-	@gox -ldflags ${LDFLAGS} -osarch="linux/amd64 linux/386 darwin/amd64" -output=${BIN_DIR}"/{{.Dir}}_{{.OS}}_{{.Arch}}" $(pkgs)
 
 linux-amd64: 
 	@echo ">> building linux/amd64 binaries in $(BIN_DIR)"

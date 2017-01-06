@@ -6,5 +6,4 @@ Users {{.Users}}
 Roles {{.Roles}}
 Auth  {{.Auth}}
 SSL   {{.SSL}}
-
 `
