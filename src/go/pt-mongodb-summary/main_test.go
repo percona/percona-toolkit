@@ -16,6 +16,7 @@ import (
 )
 
 func TestGetOpCounterStats(t *testing.T) {
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -37,13 +38,16 @@ func TestGetOpCounterStats(t *testing.T) {
 	session.EXPECT().DB("admin").Return(database)
 	database.EXPECT().Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, gomock.Any()).SetArg(1, ss)
 
+	session.EXPECT().DB("admin").Return(database)
+	database.EXPECT().Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, gomock.Any()).SetArg(1, ss)
+
 	ss = addToCounters(ss, 1)
 	session.EXPECT().DB("admin").Return(database)
 	database.EXPECT().Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, gomock.Any()).SetArg(1, ss)
 
 	var sampleCount int64 = 5
 	var sampleRate time.Duration = 10 * time.Millisecond // in seconds
-	expect := timedStats{Min: 7, Max: 7, Total: 7, Avg: 1}
+	expect := TimedStats{Min: 0, Max: 0, Total: 0, Avg: 0}
 
 	os, err := GetOpCountersStats(session, sampleCount, sampleRate)
 	if err != nil {
@@ -53,16 +57,6 @@ func TestGetOpCounterStats(t *testing.T) {
 		t.Errorf("getOpCountersStats. got: %+v\nexpect: %+v\n", os.Command, expect)
 	}
 
-}
-
-func addToCounters(ss proto.ServerStatus, increment int64) proto.ServerStatus {
-	ss.Opcounters.Command += increment
-	ss.Opcounters.Delete += increment
-	ss.Opcounters.GetMore += increment
-	ss.Opcounters.Insert += increment
-	ss.Opcounters.Query += increment
-	ss.Opcounters.Update += increment
-	return ss
 }
 
 func TestSecurityOpts(t *testing.T) {
@@ -380,4 +374,14 @@ func TestGetHostnames(t *testing.T) {
 	if !reflect.DeepEqual(rss, expect) {
 		t.Errorf("getHostnames: got %+v, expected: %+v\n", rss, expect)
 	}
+}
+
+func addToCounters(ss proto.ServerStatus, increment int64) proto.ServerStatus {
+	ss.Opcounters.Command += increment
+	ss.Opcounters.Delete += increment
+	ss.Opcounters.GetMore += increment
+	ss.Opcounters.Insert += increment
+	ss.Opcounters.Query += increment
+	ss.Opcounters.Update += increment
+	return ss
 }

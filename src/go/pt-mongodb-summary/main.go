@@ -3,27 +3,52 @@ package main
 import (
 	"fmt"
 	"html/template"
-	"log"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/howeyc/gopass"
 	"github.com/pborman/getopt"
+	"github.com/percona/percona-toolkit/src/go/lib/config"
+	"github.com/percona/percona-toolkit/src/go/lib/util"
+	"github.com/percona/percona-toolkit/src/go/lib/versioncheck"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
+	"github.com/percona/percona-toolkit/src/go/pt-mongodb-summary/oplog"
 	"github.com/percona/percona-toolkit/src/go/pt-mongodb-summary/templates"
 	"github.com/percona/pmgo"
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/process"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
-var (
-	Version string
-	Build   string
+const (
+	TOOLNAME = "pt-mongodb-summary"
 )
 
+var (
+	Version   string = "2.2.19"
+	Build     string = "01-01-1980"
+	GoVersion string = "1.8"
+)
+
+type TimedStats struct {
+	Min   int64
+	Max   int64
+	Total int64
+	Avg   int64
+}
+
+type opCounters struct {
+	Insert     TimedStats
+	Query      TimedStats
+	Update     TimedStats
+	Delete     TimedStats
+	GetMore    TimedStats
+	Command    TimedStats
+	SampleRate time.Duration
+}
 type hostInfo struct {
 	ThisHostID        int
 	Hostname          string
@@ -59,23 +84,6 @@ type security struct {
 	SSL   string
 }
 
-type timedStats struct {
-	Min   int64
-	Max   int64
-	Total int64
-	Avg   int64
-}
-
-type opCounters struct {
-	Insert     timedStats
-	Query      timedStats
-	Update     timedStats
-	Delete     timedStats
-	GetMore    timedStats
-	Command    timedStats
-	SampleRate time.Duration
-}
-
 type databases struct {
 	Databases []struct {
 		Name       string           `bson:"name"`
@@ -102,23 +110,26 @@ type clusterwideInfo struct {
 }
 
 type options struct {
-	Host     string
-	User     string
-	Password string
-	AuthDB   string
-	Debug    bool
-	Version  bool
+	Host           string
+	User           string
+	Password       string
+	AuthDB         string
+	LogLevel       string
+	Version        bool
+	NoVersionCheck bool
 }
 
 func main() {
 
-	opts := options{Host: "localhost:27017"}
+	opts := options{Host: "localhost:27017", LogLevel: "error"}
 	help := getopt.BoolLong("help", '?', "Show help")
-	getopt.BoolVarLong(&opts.Version, "version", 'v', "", "show version & exit")
+	getopt.BoolVarLong(&opts.Version, "version", 'v', "", "Show version & exit")
+	getopt.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "", "Don't check for updates")
 
-	getopt.StringVarLong(&opts.User, "user", 'u', "", "username")
-	getopt.StringVarLong(&opts.Password, "password", 'p', "", "password").SetOptional()
-	getopt.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin", "database used to establish credentials and privileges with a MongoDB server")
+	getopt.StringVarLong(&opts.User, "user", 'u', "", "User name")
+	getopt.StringVarLong(&opts.Password, "password", 'p', "", "Password").SetOptional()
+	getopt.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin", "Database used to establish credentials and privileges with a MongoDB server")
+	getopt.StringVarLong(&opts.LogLevel, "log-level", 'l', "error", "Log level:, panic, fatal, error, warn, info, debug")
 	getopt.SetParameters("host[:port]")
 
 	getopt.Parse()
@@ -126,6 +137,13 @@ func main() {
 		getopt.Usage()
 		return
 	}
+
+	logLevel, err := log.ParseLevel(opts.LogLevel)
+	if err != nil {
+		fmt.Printf("cannot set log level: %s", err.Error())
+	}
+
+	log.SetLevel(logLevel)
 
 	args := getopt.Args() // positional arg
 	if len(args) > 0 {
@@ -135,8 +153,20 @@ func main() {
 	if opts.Version {
 		fmt.Println("pt-mongodb-summary")
 		fmt.Printf("Version %s\n", Version)
-		fmt.Printf("Build: %s\n", Build)
+		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
 		return
+	}
+
+	conf := config.DefaultConfig(TOOLNAME)
+	if !conf.GetBool("no-version-check") && !opts.NoVersionCheck {
+		advice, err := versioncheck.CheckUpdates(TOOLNAME, Version)
+		if err != nil {
+			log.Infof("cannot check version updates: %s", err.Error())
+		} else {
+			if advice != "" {
+				log.Infof(advice)
+			}
+		}
 	}
 
 	if getopt.IsSet("password") && opts.Password == "" {
@@ -157,13 +187,14 @@ func main() {
 		Source:   opts.AuthDB,
 	}
 
+	log.Debugf("Connecting to the db using:\n%+v", di)
 	dialer := pmgo.NewDialer()
 
 	hostnames, err := getHostnames(dialer, di)
 
 	session, err := dialer.DialWithInfo(di)
 	if err != nil {
-		log.Printf("cannot connect to the db: %s", err)
+		log.Errorf("cannot connect to the db: %s", err)
 		os.Exit(1)
 	}
 	defer session.Close()
@@ -199,7 +230,7 @@ func main() {
 		t.Execute(os.Stdout, security)
 	}
 
-	if oplogInfo, err := GetOplogInfo(hostnames, di); err != nil {
+	if oplogInfo, err := oplog.GetOplogInfo(hostnames, di); err != nil {
 		log.Printf("[Error] cannot get Oplog info: %v\n", err)
 	} else {
 		if len(oplogInfo) > 0 {
@@ -224,57 +255,6 @@ func main() {
 
 }
 
-func GetHostinfo2(session pmgo.SessionManager) (*hostInfo, error) {
-
-	hi := proto.HostInfo{}
-	if err := session.Run(bson.M{"hostInfo": 1}, &hi); err != nil {
-		return nil, errors.Wrap(err, "GetHostInfo.hostInfo")
-	}
-
-	cmdOpts := proto.CommandLineOptions{}
-	err := session.DB("admin").Run(bson.D{{"getCmdLineOpts", 1}, {"recordStats", 1}}, &cmdOpts)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot get command line options")
-	}
-
-	ss := proto.ServerStatus{}
-	if err := session.DB("admin").Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, &ss); err != nil {
-		return nil, errors.Wrap(err, "GetHostInfo.serverStatus")
-	}
-
-	pi := procInfo{}
-	if err := getProcInfo(int32(ss.Pid), &pi); err != nil {
-		pi.Error = err
-	}
-
-	nodeType, _ := getNodeType(session)
-
-	i := &hostInfo{
-		Hostname:          hi.System.Hostname,
-		HostOsType:        hi.Os.Type,
-		HostSystemCPUArch: hi.System.CpuArch,
-		HostDatabases:     hi.DatabasesCount,
-		HostCollections:   hi.CollectionsCount,
-		DBPath:            "", // Sets default. It will be overriden later if necessary
-
-		ProcessName: ss.Process,
-		Version:     ss.Version,
-		NodeType:    nodeType,
-
-		ProcPath:       pi.Path,
-		ProcUserName:   pi.UserName,
-		ProcCreateTime: pi.CreateTime,
-	}
-	if ss.Repl != nil {
-		i.ReplicasetName = ss.Repl.SetName
-	}
-
-	if cmdOpts.Parsed.Storage.DbPath != "" {
-		i.DBPath = cmdOpts.Parsed.Storage.DbPath
-	}
-
-	return i, nil
-}
 func GetHostinfo(session pmgo.SessionManager) (*hostInfo, error) {
 
 	hi := proto.HostInfo{}
@@ -336,10 +316,13 @@ func getHostnames(dialer pmgo.Dialer, di *mgo.DialInfo) ([]string, error) {
 	defer session.Close()
 
 	shardsInfo := &proto.ShardsInfo{}
+	log.Debugf("Running 'listShards' command")
 	err = session.Run("listShards", shardsInfo)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot list shards")
 	}
+
+	log.Debugf("listShards raw response: %+v", util.Pretty(shardsInfo))
 
 	hostnames := []string{di.Addrs[0]}
 	if shardsInfo != nil {

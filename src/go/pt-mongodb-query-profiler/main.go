@@ -4,7 +4,6 @@ import (
 	"crypto/md5"
 	"fmt"
 	"html/template"
-	"log"
 	"os"
 	"sort"
 	"strings"
@@ -13,14 +12,23 @@ import (
 	"github.com/howeyc/gopass"
 	"github.com/montanaflynn/stats"
 	"github.com/pborman/getopt"
+	"github.com/percona/percona-toolkit/src/go/lib/config"
+	"github.com/percona/percona-toolkit/src/go/lib/versioncheck"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
+const (
+	TOOLNAME        = "pt-mongodb-query-digest"
+	MAX_DEPTH_LEVEL = 10
+)
+
 var (
-	Version string
-	Build   string
+	Version   string
+	Build     string
+	GoVersion string
 )
 
 type iter interface {
@@ -33,21 +41,19 @@ type iter interface {
 }
 
 type options struct {
-	AuthDB   string
-	Database string
-	Debug    bool
-	Help     bool
-	Host     string
-	Limit    int
-	OrderBy  []string
-	Password string
-	User     string
-	Version  bool
+	AuthDB         string
+	Database       string
+	Debug          bool
+	Help           bool
+	Host           string
+	Limit          int
+	LogLevel       string
+	NoVersionCheck bool
+	OrderBy        []string
+	Password       string
+	User           string
+	Version        bool
 }
-
-const (
-	MAX_DEPTH_LEVEL = 10
-)
 
 type statsArray []stat
 
@@ -95,19 +101,20 @@ type statistics struct {
 }
 
 type queryInfo struct {
-	Rank           int
-	ID             string
 	Count          int
-	Ratio          float64
-	QPS            float64
 	Fingerprint    string
-	Namespace      string
-	Scanned        statistics
-	Returned       statistics
-	QueryTime      statistics
-	ResponseLength statistics
 	FirstSeen      time.Time
+	ID             string
 	LastSeen       time.Time
+	Namespace      string
+	NoVersionCheck bool
+	QPS            float64
+	QueryTime      statistics
+	Rank           int
+	Ratio          float64
+	ResponseLength statistics
+	Returned       statistics
+	Scanned        statistics
 }
 
 func main() {
@@ -122,11 +129,29 @@ func main() {
 		return
 	}
 
+	logLevel, err := log.ParseLevel(opts.LogLevel)
+	if err != nil {
+		fmt.Printf("cannot set log level: %s", err.Error())
+	}
+	log.SetLevel(logLevel)
+
 	if opts.Version {
 		fmt.Println("pt-mongodb-summary")
 		fmt.Printf("Version %s\n", Version)
-		fmt.Printf("Build: %s\n", Build)
+		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
 		return
+	}
+
+	conf := config.DefaultConfig(TOOLNAME)
+	if !conf.GetBool("no-version-check") && !opts.NoVersionCheck {
+		advice, err := versioncheck.CheckUpdates(TOOLNAME, Version)
+		if err != nil {
+			log.Infof("cannot check version updates: %s", err.Error())
+		} else {
+			if advice != "" {
+				log.Infof(advice)
+			}
+		}
 	}
 
 	di := getDialInfo(opts)
@@ -379,18 +404,20 @@ func getData(i iter) []stat {
 }
 
 func getOptions() (*options, error) {
-	opts := &options{Host: "localhost:27017"}
+	opts := &options{Host: "localhost:27017", LogLevel: "error", OrderBy: []string{"count"}}
 	getopt.BoolVarLong(&opts.Help, "help", '?', "Show help")
-	getopt.BoolVarLong(&opts.Version, "version", 'v', "", "show version & exit")
+	getopt.BoolVarLong(&opts.Version, "version", 'v', "show version & exit")
+	getopt.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "Don't check for updates")
 
-	getopt.IntVarLong(&opts.Limit, "limit", 'l', "show the first n queries")
+	getopt.IntVarLong(&opts.Limit, "limit", 'n', "show the first n queries")
 
 	getopt.ListVarLong(&opts.OrderBy, "order-by", 'o', "comma separated list of order by fields (max values): count,ratio,query-time,docs-scanned,docs-returned. - in front of the field name denotes reverse order.")
 
 	getopt.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin", "database used to establish credentials and privileges with a MongoDB server")
 	getopt.StringVarLong(&opts.Database, "database", 'd', "", "database to profile")
+	getopt.StringVarLong(&opts.LogLevel, "log-level", 'l', "error", "Log level:, panic, fatal, error, warn, info, debug")
 	getopt.StringVarLong(&opts.Password, "password", 'p', "", "password").SetOptional()
-	getopt.StringVarLong(&opts.User, "user", 'u', "", "username")
+	getopt.StringVarLong(&opts.User, "user", 'u', "username")
 
 	getopt.SetParameters("host[:port][/database]")
 

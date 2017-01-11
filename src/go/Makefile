@@ -2,10 +2,11 @@ GO := go
 pkgs   = $(shell $(GO) list ./... | grep -v /vendor/)
 VERSION=$(shell git describe --tags)                                                   
 BUILD=$(shell date +%FT%T%z)
+GOVERSION=$(shell go version | cut --delimiter=" " -f3)
 
 PREFIX=$(shell pwd)
 BIN_DIR=$(shell git rev-parse --show-toplevel)/bin
-LDFLAGS="-X main.Version=${VERSION} -X main.Build=${BUILD}"
+LDFLAGS="-X main.Version=${VERSION} -X main.Build=${BUILD} -X main.GoVersion=${GOVERSION}"
 
 
 build-all: 
