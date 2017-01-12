@@ -9063,6 +9063,11 @@ sub main {
    if ( my $alter = $o->get('alter') ) {
       print "Altering new table...\n";
       my $sql = "ALTER TABLE $new_tbl->{name} $alter";
+      # issue-1393961. New foreign keys must be applied to the new table to prevent
+      # self referencing fk to be applied to the wrong (old) table.
+      if ($alter=~ m/^\s*ADD CONSTRAINT.*?\bFOREIGN KEY\b/i) {
+          $sql=~ s/\b$orig_tbl->{tbl}\b/$new_tbl->{tbl}/g;
+      }
       print $sql, "\n" if $o->get('print');
       PTDEBUG && _d($sql);
       eval {

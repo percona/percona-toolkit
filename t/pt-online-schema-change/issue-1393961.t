@@ -32,23 +32,20 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 
-# The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
-# so we need to specify --set-vars innodb_lock_wait_timeout=3 else the
-# tool will die.
-my @args       = (qw(--set-vars innodb_lock_wait_timeout=3));
 my $output;
+my @args=();
 my $exit_status;
 my $sample  = "t/pt-online-schema-change/samples/";
 
 # This is the same test we have for bug-1613915 but using DATA-DIR
-$sb->load_file('cmaster', "$sample/bug-1613915.sql");
+$sb->load_file('cmaster', "$sample/issue-1393961.sql");
 my $dir = tempdir( CLEANUP => 1 );
+
 $output = output(
-   sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=o1",
+   sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=ConfigData",
          '--execute', 
-         '--alter', "ADD COLUMN c INT",
-         '--chunk-size', '10',
-         '--data-dir', $dir,
+         '--alter', 
+         'ADD CONSTRAINT parentEntityFK FOREIGN KEY (parentEntity_primaryKey) REFERENCES ConfigData (primaryKey)',
          ),
       },
 );
@@ -56,16 +53,8 @@ $output = output(
 like(
       $output,
       qr/Successfully altered/s,
-      "bug-1613915 enum field in primary key",
+      "bug-1393961 self reference fk",
 );
-
-my $rows = $master_dbh->selectrow_arrayref(
-   "SELECT COUNT(*) FROM test.o1");
-is(
-   $rows->[0],
-   100,
-   "bug-1613915 correct rows count"
-) or diag(Dumper($rows));
 
 $master_dbh->do("DROP DATABASE IF EXISTS test");
 
