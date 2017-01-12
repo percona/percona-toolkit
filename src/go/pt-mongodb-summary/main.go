@@ -308,10 +308,10 @@ func GetHostinfo(session pmgo.SessionManager) (*hostInfo, error) {
 }
 
 func getHostnames(dialer pmgo.Dialer, di *mgo.DialInfo) ([]string, error) {
-
+	hostnames := []string{di.Addrs[0]}
 	session, err := dialer.DialWithInfo(di)
 	if err != nil {
-		return nil, err
+		return hostnames, err
 	}
 	defer session.Close()
 
@@ -319,12 +319,11 @@ func getHostnames(dialer pmgo.Dialer, di *mgo.DialInfo) ([]string, error) {
 	log.Debugf("Running 'listShards' command")
 	err = session.Run("listShards", shardsInfo)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot list shards")
+		return hostnames, errors.Wrap(err, "cannot list shards")
 	}
 
 	log.Debugf("listShards raw response: %+v", util.Pretty(shardsInfo))
 
-	hostnames := []string{di.Addrs[0]}
 	if shardsInfo != nil {
 		for _, shardInfo := range shardsInfo.Shards {
 			m := strings.Split(shardInfo.Host, "/")
@@ -393,11 +392,13 @@ func sizeAndUnit(size int64) (float64, string) {
 
 func GetReplicasetMembers(dialer pmgo.Dialer, hostnames []string, di *mgo.DialInfo) ([]proto.Members, error) {
 	replicaMembers := []proto.Members{}
+	log.Debugf("hostnames: %+v", hostnames)
 
 	for _, hostname := range hostnames {
 		di.Addrs = []string{hostname}
 		session, err := dialer.DialWithInfo(di)
 		if err != nil {
+			log.Debugf("getReplicasetMembers. cannot connect to %s: %s", hostname, err.Error())
 			return nil, errors.Wrapf(err, "getReplicasetMembers. cannot connect to %s", hostname)
 		}
 		defer session.Close()
@@ -405,8 +406,10 @@ func GetReplicasetMembers(dialer pmgo.Dialer, hostnames []string, di *mgo.DialIn
 		rss := proto.ReplicaSetStatus{}
 		err = session.Run(bson.M{"replSetGetStatus": 1}, &rss)
 		if err != nil {
+			log.Debugf("error in replSetGetStatus on host %s: %s", hostname, err.Error())
 			continue // If a host is a mongos we cannot get info but is not a real error
 		}
+		log.Debugf("replSetGetStatus result:\n%#v", rss)
 		for _, m := range rss.Members {
 			m.Set = rss.Set
 			replicaMembers = append(replicaMembers, m)
