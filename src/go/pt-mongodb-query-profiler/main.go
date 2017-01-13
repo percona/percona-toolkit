@@ -3,13 +3,14 @@ package main
 import (
 	"crypto/md5"
 	"fmt"
-	"html/template"
 	"os"
 	"sort"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/howeyc/gopass"
+	"github.com/kylelemons/godebug/pretty"
 	"github.com/montanaflynn/stats"
 	"github.com/pborman/getopt"
 	"github.com/percona/percona-toolkit/src/go/lib/config"
@@ -351,7 +352,11 @@ func getData(i iter) []stat {
 	var doc proto.SystemProfile
 	stats := make(map[groupKey]*stat)
 
+	log.Debug(`Documents returned by db.getSiblinfDB("<dbnamehere>").system.profile.Find({"op": {"$nin": []string{"getmore", "delete"}}).Sort("-$natural")`)
+
 	for i.Next(&doc) && i.Err() == nil {
+		log.Debugln("----------------------------------------------------------------------------")
+		log.Debug(pretty.Sprint(doc))
 		if len(doc.Query) > 0 {
 			query := doc.Query
 			if squery, ok := doc.Query["$query"]; ok {

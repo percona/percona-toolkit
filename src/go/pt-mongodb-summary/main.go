@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"html/template"
 	"os"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/howeyc/gopass"
@@ -191,6 +191,7 @@ func main() {
 	dialer := pmgo.NewDialer()
 
 	hostnames, err := getHostnames(dialer, di)
+	log.Debugf("hostnames: %v", hostnames)
 
 	session, err := dialer.DialWithInfo(di)
 	if err != nil {
@@ -202,6 +203,7 @@ func main() {
 	if replicaMembers, err := GetReplicasetMembers(dialer, hostnames, di); err != nil {
 		log.Printf("[Error] cannot get replicaset members: %v\n", err)
 	} else {
+		log.Debugf("replicaMembers:\n%+v\n", replicaMembers)
 		t := template.Must(template.New("replicas").Parse(templates.Replicas))
 		t.Execute(os.Stdout, replicaMembers)
 	}
@@ -210,6 +212,7 @@ func main() {
 	if hostInfo, err := GetHostinfo(session); err != nil {
 		log.Printf("[Error] cannot get host info: %v\n", err)
 	} else {
+		log.Debugf("hostInfo:\n%+v\n", hostInfo)
 		t := template.Must(template.New("hosttemplateData").Parse(templates.HostInfo))
 		t.Execute(os.Stdout, hostInfo)
 	}

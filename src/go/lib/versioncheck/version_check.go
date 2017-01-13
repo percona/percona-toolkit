@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kylelemons/godebug/pretty"
 	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
 )
@@ -69,7 +68,7 @@ func checkUpdates(url string, timeout time.Duration, toolName, version string) (
 		return "", err
 	}
 
-	log.Debug(pretty.Sprint(resp))
+	log.Debug(resp.Status)
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
