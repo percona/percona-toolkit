@@ -73,4 +73,6 @@ $master_dbh->do("DROP DATABASE IF EXISTS test");
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
+$sb->stop_sandbox(qw(cmaster)); 
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
