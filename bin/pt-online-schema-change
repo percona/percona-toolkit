@@ -10108,7 +10108,8 @@ sub create_new_table {
         'CONSTRAINT `_' => 'CONSTRAINT `__',
         'CONSTRAINT `' => 'CONSTRAINT `_'
       );
-      $sql =~ s/((?^:CONSTRAINT `__|CONSTRAINT `_|CONSTRAINT `))/$search_dict{$1}/gm;
+      my $constraint_pattern = qr((CONSTRAINT `__|CONSTRAINT `_|CONSTRAINT `));
+      $sql =~ s/$constraint_pattern/$search_dict{$1}/gm;
 
       if ( $o->get('default-engine') ) {
          $sql =~ s/\s+ENGINE=\S+//;
