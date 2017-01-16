@@ -10123,11 +10123,23 @@ sub create_new_table {
       $sql       =~ s/\ACREATE TABLE .*?\($/CREATE TABLE $quoted (/m;
 
 
-      # If it has a leading underscore, we remove one, otherwise we add one
+      # When the new temp table is created, we need to avoid collisions on constraint names
       # This is in contrast to previous behavior were we added underscores
       # indefinitely, sometimes exceeding the allowed name limit
       # https://bugs.launchpad.net/percona-toolkit/+bug/1215587 
-      $sql =~ s/^  CONSTRAINT `(_?)/'  CONSTRAINT `'.($1 eq '' ? '_' : '')/gme;
+      # So we do replacements when constraint names:
+      # Has 2 _, we remove them
+      # Has 1 _, we add one to make 2
+      # Has no _, we add one to make 1
+      # This gives on more salt where the FK names have been previously been altered
+      # https://bugs.launchpad.net/percona-toolkit/+bug/1632522
+      my %search_dict = (
+        'CONSTRAINT `__' => 'CONSTRAINT `',
+        'CONSTRAINT `_' => 'CONSTRAINT `__',
+        'CONSTRAINT `' => 'CONSTRAINT `_'
+      );
+      my $constraint_pattern = qr((CONSTRAINT `__|CONSTRAINT `_|CONSTRAINT `));
+      $sql =~ s/$constraint_pattern/$search_dict{$1}/gm;
 
       if ( $o->get('default-engine') ) {
          $sql =~ s/\s+ENGINE=\S+//;
@@ -10513,13 +10525,15 @@ sub rebuild_constraints {
          # This is in contrast to previous behavior were we added underscores
          # indefinitely, sometimes exceeding the allowed name limit
          # https://bugs.launchpad.net/percona-toolkit/+bug/1215587 
-         my $new_fk; 
-         if ($fk =~ /^_/) {
-            ($new_fk = $fk) =~ s/^_//;
-         }else {
-            $new_fk = '_'.$fk;     
+         # Add one more salt to renaming FK constraint names
+         # This will add 2 _ to a self referencing FK thus avoiding a duplicate key constraint
+         # https://bugs.launchpad.net/percona-toolkit/+bug/1632522
+         my $new_fk;
+         if ($fk =~ /^__/) {
+           ($new_fk = $fk) =~ s/^__//;
+         } else {
+           $new_fk = '_'.$fk;
          }
-
         
          PTDEBUG && _d("Old FK name: $fk New FK name: $new_fk");
 

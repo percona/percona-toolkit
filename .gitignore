@@ -8,3 +8,4 @@ release
 snapshot
 .DS_Store
 build
+Makefile.old
