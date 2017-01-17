@@ -7614,7 +7614,7 @@ sub database_is_allowed {
 
    my $filter = $self->{filters};
 
-   if ( $db =~ m/information_schema|performance_schema|lost\+found|percona|percona_schema|test/ ) {
+   if ( $db =~ m/information_schema|performance_schema|lost\+found|percona|percona_schema/ ) {
       PTDEBUG && _d('Database', $db, 'is a system database, ignoring');
       return 0;
    }
@@ -7672,6 +7672,7 @@ sub table_is_allowed {
    return 0 if $db eq 'sys' && $tbl =~ m/^(?:
        sys_config
    )$/x;
+
    if ( $filter->{'ignore-tables'}->{'*'}->{$tbl} 
          || $filter->{'ignore-tables'}->{$db}->{$tbl}) {
       PTDEBUG && _d('Table', $tbl, 'is in --ignore-tables list');
