@@ -4,7 +4,7 @@
 # packages are created in the release/ directory (which is created if it
 # does not exist).
 #
-# There's only one command line option: VERISON.  It must be newer than
+# There's only one command line option: VERSION.  It must be newer than
 # the last version in the Changelog; see check_version().  Do not include
 # a leading 'v', just `build-packages 1.0.8' for example.
 #
