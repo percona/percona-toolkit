@@ -293,8 +293,4 @@ log_queries_not_using_indexes | OFF
 # Configuration File #########################################
               Config File | Cannot autodetect or find, giving up
 # Memory management library ##################################
-jemalloc is not enabled in MySQL config for process with ID 20983
-jemalloc is not enabled in MySQL config for process with ID 20874
-jemalloc is not enabled in MySQL config for process with ID 20800
-jemalloc is not enabled in MySQL config for process with ID 2495
 # The End ####################################################

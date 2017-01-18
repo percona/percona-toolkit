@@ -218,8 +218,4 @@ report-port                         = 12345
 log-error                           = mysqld.log
 innodb_lock_wait_timeout            = 3
 # Memory management library ##################################
-jemalloc is not enabled in MySQL config for process with ID 20983
-jemalloc is not enabled in MySQL config for process with ID 20874
-jemalloc is not enabled in MySQL config for process with ID 20800
-jemalloc is not enabled in MySQL config for process with ID 2495
 # The End ####################################################
