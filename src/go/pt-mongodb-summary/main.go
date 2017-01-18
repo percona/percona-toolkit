@@ -287,8 +287,6 @@ func GetHostinfo(session pmgo.SessionManager) (*hostInfo, error) {
 		Hostname:          hi.System.Hostname,
 		HostOsType:        hi.Os.Type,
 		HostSystemCPUArch: hi.System.CpuArch,
-		HostDatabases:     hi.DatabasesCount,
-		HostCollections:   hi.CollectionsCount,
 		DBPath:            "", // Sets default. It will be overriden later if necessary
 
 		ProcessName: ss.Process,

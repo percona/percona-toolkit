@@ -3,7 +3,6 @@ package templates
 const HostInfo = `# This host
 # Mongo Executable #############################################################################
        Path to executable | {{.ProcPath}}
-              Has symbols | No
 # Report On {{.ThisHostID}} ########################################
                      User | {{.ProcUserName}}
                 PID Owner | {{.ProcessName}}
@@ -12,8 +11,6 @@ const HostInfo = `# This host
                   Version | {{.Version}}
                  Built On | {{.HostOsType}} {{.HostSystemCPUArch}}
                   Started | {{.ProcCreateTime}}
-                Databases | {{.HostDatabases}}
-              Collections | {{.HostCollections}}
 {{- if .DBPath }}
                   Datadir | {{.DBPath}}
 {{- end }}

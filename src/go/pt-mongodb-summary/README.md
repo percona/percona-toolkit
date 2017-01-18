@@ -26,7 +26,7 @@ It can be also used as `-p` without specifying a password; in that case, the pro
 ###Output example
 ```
 # Instances ####################################################################################
-ID    Host                         Type                                 ReplSet  Engine Status 
+ID    Host                         Type                                 ReplSet  
   0 localhost:17001                PRIMARY                                r1 
   1 localhost:17002                SECONDARY                              r1 
   2 localhost:17003                SECONDARY                              r1 
@@ -37,7 +37,6 @@ ID    Host                         Type                                 ReplSet 
 # This host
 # Mongo Executable #############################################################################
        Path to executable | /home/karl/tmp/MongoDB32Labs/3.0/bin/mongos
-              Has symbols | No
 # Report On 0 ########################################
                      User | karl
                 PID Owner | mongos
@@ -46,10 +45,7 @@ ID    Host                         Type                                 ReplSet 
                   Version | 3.0.11
                  Built On | Linux x86_64
                   Started | 2016-10-30 00:18:49 -0300 ART
-                Databases | 0
-              Collections | 0
                   Datadir | /data/db
-                Processes | 0
              Process Type | mongos
 
 # Running Ops ##################################################################################

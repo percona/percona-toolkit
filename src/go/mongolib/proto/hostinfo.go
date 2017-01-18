@@ -32,10 +32,8 @@ type System struct {
 // fields like Database/Collections count. We are setting those fields into
 // a separated function
 type HostInfo struct {
-	Extra            *Extra  `bson:"extra"`
-	Os               *Os     `bson:"os"`
-	System           *System `bson:"system"`
-	DatabasesCount   int
-	CollectionsCount int
-	ID               int
+	Extra  *Extra  `bson:"extra"`
+	Os     *Os     `bson:"os"`
+	System *System `bson:"system"`
+	ID     int
 }
