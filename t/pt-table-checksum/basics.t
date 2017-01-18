@@ -37,6 +37,8 @@ elsif ( !$slave1_dbh ) {
 }
 elsif ( !@{$master_dbh->selectall_arrayref("show databases like 'sakila'")} ) {
    plan skip_all => 'sakila database is not loaded';
+} else {
+   plan tests => 41;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
