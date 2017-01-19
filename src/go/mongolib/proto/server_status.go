@@ -25,8 +25,15 @@ type ServerStatus struct {
 	Mem                *MemStats              `bson:"mem"`
 	Repl               *ReplStatus            `bson:"repl"`
 	ShardCursorType    map[string]interface{} `bson:"shardCursorType"`
-	StorageEngine      map[string]string      `bson:"storageEngine"`
+	StorageEngine      StorageEngine          `bson:"storageEngine"`
 	WiredTiger         *WiredTiger            `bson:"wiredTiger"`
+}
+
+type StorageEngine struct {
+	Name                  string `bson:"name"`
+	SupportCommittedREads bool   `bson:supportsCommittedReads"`
+	ReadOnly              bool   `bson:"readOnly"`
+	Persistent            bool   `bson:"persistent"`
 }
 
 // WiredTiger stores information related to the WiredTiger storage engine.

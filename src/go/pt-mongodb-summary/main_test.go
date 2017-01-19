@@ -122,31 +122,42 @@ func TestSecurityOpts(t *testing.T) {
 	expect := []*security{
 		// 1
 		&security{
-			Users: 1,
-			Roles: 2,
-			Auth:  "disabled",
-			SSL:   "disabled",
+			Users:       1,
+			Roles:       2,
+			Auth:        "disabled",
+			SSL:         "disabled",
+			BindIP:      "",
+			Port:        0,
+			WarningMsgs: nil,
 		},
 		// 2
 		&security{
-			Users: 1,
-			Roles: 2,
-			Auth:  "enabled",
-			SSL:   "disabled",
+			Users:  1,
+			Roles:  2,
+			Auth:   "enabled",
+			SSL:    "disabled",
+			BindIP: "", Port: 0,
+			WarningMsgs: nil,
 		},
 		// 3
 		&security{
-			Users: 1,
-			Roles: 2,
-			Auth:  "enabled",
-			SSL:   "disabled",
+			Users:       1,
+			Roles:       2,
+			Auth:        "enabled",
+			SSL:         "disabled",
+			BindIP:      "",
+			Port:        0,
+			WarningMsgs: nil,
 		},
 		// 4
 		&security{
-			Users: 1,
-			Roles: 2,
-			Auth:  "disabled",
-			SSL:   "super secure",
+			Users:       1,
+			Roles:       2,
+			Auth:        "disabled",
+			SSL:         "super secure",
+			BindIP:      "",
+			Port:        0,
+			WarningMsgs: nil,
 		},
 	}
 
@@ -171,13 +182,13 @@ func TestSecurityOpts(t *testing.T) {
 		database.EXPECT().C("system.roles").Return(rolesCol)
 		rolesCol.EXPECT().Count().Return(2, nil)
 
-		got, err := GetSecuritySettings(session)
+		got, err := GetSecuritySettings(session, "3.2")
 
 		if err != nil {
 			t.Errorf("cannot get sec settings: %v", err)
 		}
 		if !reflect.DeepEqual(got, expect[i]) {
-			t.Errorf("got: %+v, expect: %+v\n", got, expect[i])
+			t.Errorf("got: %#v\nwant: %#v\n", got, expect[i])
 		}
 	}
 }
@@ -325,8 +336,28 @@ func TestGetReplicasetMembers(t *testing.T) {
 			Set:           "r1",
 		}}
 
+	database := pmgomock.NewMockDatabaseManager(ctrl)
+	ss := proto.ServerStatus{}
+	test.LoadJson("test/sample/serverstatus.json", &ss)
+
 	dialer.EXPECT().DialWithInfo(gomock.Any()).Return(session, nil)
 	session.EXPECT().Run(bson.M{"replSetGetStatus": 1}, gomock.Any()).SetArg(1, mockrss)
+
+	dialer.EXPECT().DialWithInfo(gomock.Any()).Return(session, nil)
+	session.EXPECT().DB("admin").Return(database)
+	database.EXPECT().Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, gomock.Any()).SetArg(1, ss)
+	session.EXPECT().Close()
+
+	dialer.EXPECT().DialWithInfo(gomock.Any()).Return(session, nil)
+	session.EXPECT().DB("admin").Return(database)
+	database.EXPECT().Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, gomock.Any()).SetArg(1, ss)
+	session.EXPECT().Close()
+
+	dialer.EXPECT().DialWithInfo(gomock.Any()).Return(session, nil)
+	session.EXPECT().DB("admin").Return(database)
+	database.EXPECT().Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, gomock.Any()).SetArg(1, ss)
+	session.EXPECT().Close()
+
 	session.EXPECT().Close()
 
 	di := &mgo.DialInfo{Addrs: []string{"localhost"}}
@@ -335,7 +366,7 @@ func TestGetReplicasetMembers(t *testing.T) {
 		t.Errorf("getReplicasetMembers: %v", err)
 	}
 	if !reflect.DeepEqual(rss, expect) {
-		t.Errorf("getReplicasetMembers: got %+v, expected: %+v\n", rss, expect)
+		t.Errorf("getReplicasetMembers:\ngot %#v\nwant: %#v\n", rss, expect)
 	}
 
 }
@@ -374,6 +405,58 @@ func TestGetHostnames(t *testing.T) {
 	if !reflect.DeepEqual(rss, expect) {
 		t.Errorf("getHostnames: got %+v, expected: %+v\n", rss, expect)
 	}
+}
+
+func TestIsPrivateNetwork(t *testing.T) {
+	//privateCIDRs := []string{"10.0.0.0/24", "172.16.0.0/20", "192.168.0.0/16"}
+	testdata :=
+		[]struct {
+			ip   string
+			want bool
+			err  error
+		}{
+			{
+				ip:   "127.0.0.1",
+				want: true,
+				err:  nil,
+			},
+			{
+				ip:   "10.0.0.1",
+				want: true,
+				err:  nil,
+			},
+			{
+				ip:   "10.0.1.1",
+				want: false,
+				err:  nil,
+			},
+			{
+				ip:   "172.16.1.2",
+				want: true,
+				err:  nil,
+			},
+			{
+				ip:   "192.168.1.2",
+				want: true,
+				err:  nil,
+			},
+			{
+				ip:   "8.8.8.8",
+				want: false,
+				err:  nil,
+			},
+		}
+
+	for _, in := range testdata {
+		got, err := isPrivateNetwork(in.ip)
+		if err != in.err {
+			t.Errorf("ip %s. got err: %s, want err: %v", in.ip, err, in.err)
+		}
+		if got != in.want {
+			t.Errorf("ip %s. got:  %v, want : %v", in.ip, got, in.want)
+		}
+	}
+
 }
 
 func addToCounters(ss proto.ServerStatus, increment int64) proto.ServerStatus {

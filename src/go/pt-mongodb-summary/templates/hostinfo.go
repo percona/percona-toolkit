@@ -1,7 +1,7 @@
 package templates
 
 const HostInfo = `# This host
-# Mongo Executable #############################################################################
+# Mongo Executable #######################################################################################
        Path to executable | {{.ProcPath}}
 # Report On {{.ThisHostID}} ########################################
                      User | {{.ProcUserName}}

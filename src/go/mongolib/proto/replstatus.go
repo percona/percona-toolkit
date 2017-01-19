@@ -20,6 +20,7 @@ type Members struct {
 	ElectionTime  int64   `bson:"electionTime"`  // For the current primary, information regarding the election Timestamp from the operation log.
 	ElectionDate  string  `bson:"electionDate"`  // For the current primary, an ISODate formatted date string that reflects the election date
 	Set           string  `bson:"-"`
+	StorageEngine StorageEngine
 }
 
 // Struct for replSetGetStatus

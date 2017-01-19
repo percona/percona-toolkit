@@ -58,8 +58,18 @@ type Security struct {
 
 // NET config options. See https://docs.mongodb.com/manual/reference/configuration-options/#net-options
 type Net struct {
-	HTTP HTTP `bson:"http"`
-	SSL  SSL  `bson:"ssl"`
+	HTTP                   HTTP   `bson:"http"`
+	SSL                    SSL    `bson:"ssl"`
+	Port                   int64  `bson:"port"`
+	BindIP                 string `bson:"bindIp"`
+	MaxIncomingConnections int    `bson:"maxIncomingConnections"`
+	WireObjectCheck        bool   `bson:"wireObjectCheck"`
+	IPv6                   bool   `bson:"ipv6"`
+	UnixDomainSocket       struct {
+		Enabled         bool   `bson:"enabled"`
+		PathPrefix      string `bson:"pathPrefix"`
+		FilePermissions int64  `bson:"filePermissions"`
+	} `bson:"unixDomainSocket"`
 }
 
 type HTTP struct {

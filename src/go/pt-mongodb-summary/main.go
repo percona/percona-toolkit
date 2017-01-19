@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"strings"
 	"text/template"
 	"time"
 
+	version "github.com/hashicorp/go-version"
 	"github.com/howeyc/gopass"
 	"github.com/pborman/getopt"
 	"github.com/percona/percona-toolkit/src/go/lib/config"
@@ -78,10 +80,13 @@ type procInfo struct {
 }
 
 type security struct {
-	Users int
-	Roles int
-	Auth  string
-	SSL   string
+	Users       int
+	Roles       int
+	Auth        string
+	SSL         string
+	BindIP      string
+	Port        int64
+	WarningMsgs []string
 }
 
 type databases struct {
@@ -209,7 +214,9 @@ func main() {
 	}
 
 	//
-	if hostInfo, err := GetHostinfo(session); err != nil {
+
+	hostInfo, err := GetHostinfo(session)
+	if err != nil {
 		log.Printf("[Error] cannot get host info: %v\n", err)
 	} else {
 		log.Debugf("hostInfo:\n%+v\n", hostInfo)
@@ -226,7 +233,7 @@ func main() {
 		t.Execute(os.Stdout, rops)
 	}
 
-	if security, err := GetSecuritySettings(session); err != nil {
+	if security, err := GetSecuritySettings(session, hostInfo.Version); err != nil {
 		log.Printf("[Error] cannot get security settings: %v\n", err)
 	} else {
 		t := template.Must(template.New("ssl").Parse(templates.Security))
@@ -396,13 +403,14 @@ func GetReplicasetMembers(dialer pmgo.Dialer, hostnames []string, di *mgo.DialIn
 	log.Debugf("hostnames: %+v", hostnames)
 
 	for _, hostname := range hostnames {
-		di.Addrs = []string{hostname}
-		session, err := dialer.DialWithInfo(di)
+		tmpdi := *di
+		tmpdi.Addrs = []string{hostname}
+		log.Debugf("GetReplicasetMembers connecting to %s", hostname)
+		session, err := dialer.DialWithInfo(&tmpdi)
 		if err != nil {
 			log.Debugf("getReplicasetMembers. cannot connect to %s: %s", hostname, err.Error())
 			return nil, errors.Wrapf(err, "getReplicasetMembers. cannot connect to %s", hostname)
 		}
-		defer session.Close()
 
 		rss := proto.ReplicaSetStatus{}
 		err = session.Run(bson.M{"replSetGetStatus": 1}, &rss)
@@ -413,21 +421,55 @@ func GetReplicasetMembers(dialer pmgo.Dialer, hostnames []string, di *mgo.DialIn
 		log.Debugf("replSetGetStatus result:\n%#v", rss)
 		for _, m := range rss.Members {
 			m.Set = rss.Set
+			if serverStatus, err := getServerStatus(dialer, di, m.Name); err == nil {
+				m.StorageEngine = serverStatus.StorageEngine
+			} else {
+				log.Warnf("getReplicasetMembers. cannot get server status: %v", err.Error())
+			}
 			replicaMembers = append(replicaMembers, m)
 		}
+
+		session.Close()
 	}
 
 	return replicaMembers, nil
 }
 
-func GetSecuritySettings(session pmgo.SessionManager) (*security, error) {
+func getServerStatus(dialer pmgo.Dialer, di *mgo.DialInfo, hostname string) (proto.ServerStatus, error) {
+	ss := proto.ServerStatus{}
+
+	tmpdi := *di
+	tmpdi.Addrs = []string{hostname}
+	log.Debugf("GetReplicasetMembers connecting to %s", hostname)
+
+	session, err := dialer.DialWithInfo(&tmpdi)
+	if err != nil {
+		return ss, errors.Wrapf(err, "getReplicasetMembers. cannot connect to %s", hostname)
+	}
+	defer session.Close()
+
+	if err := session.DB("admin").Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, &ss); err != nil {
+		return ss, errors.Wrap(err, "GetHostInfo.serverStatus")
+	}
+
+	return ss, nil
+}
+
+func GetSecuritySettings(session pmgo.SessionManager, ver string) (*security, error) {
 	s := security{
 		Auth: "disabled",
 		SSL:  "disabled",
 	}
 
+	v26, _ := version.NewVersion("2.6")
+	mongoVersion, err := version.NewVersion(ver)
+	prior26 := false
+	if err == nil && mongoVersion.LessThan(v26) {
+		prior26 = true
+	}
+
 	cmdOpts := proto.CommandLineOptions{}
-	err := session.DB("admin").Run(bson.D{{"getCmdLineOpts", 1}, {"recordStats", 1}}, &cmdOpts)
+	err = session.DB("admin").Run(bson.D{{"getCmdLineOpts", 1}, {"recordStats", 1}}, &cmdOpts)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot get command line options")
 	}
@@ -435,8 +477,35 @@ func GetSecuritySettings(session pmgo.SessionManager) (*security, error) {
 	if cmdOpts.Security.Authorization != "" || cmdOpts.Security.KeyFile != "" {
 		s.Auth = "enabled"
 	}
+
 	if cmdOpts.Parsed.Net.SSL.Mode != "" && cmdOpts.Parsed.Net.SSL.Mode != "disabled" {
 		s.SSL = cmdOpts.Parsed.Net.SSL.Mode
+	}
+
+	s.BindIP = cmdOpts.Parsed.Net.BindIP
+	s.Port = cmdOpts.Parsed.Net.Port
+
+	if cmdOpts.Parsed.Net.BindIP == "" {
+		if prior26 {
+			s.WarningMsgs = append(s.WarningMsgs, "WARNING: You might be insecure. There is no IP binding")
+		}
+	} else {
+		ips := strings.Split(cmdOpts.Parsed.Net.BindIP, ",")
+		extIP, _ := externalIP()
+		for _, ip := range ips {
+			isPrivate, err := isPrivateNetwork(strings.TrimSpace(ip))
+			if !isPrivate && err == nil {
+				if s.Auth == "enabled" {
+					s.WarningMsgs = append(s.WarningMsgs, fmt.Sprintf("Warning: You might be insecure (bind ip %s is public)", ip))
+				} else {
+					s.WarningMsgs = append(s.WarningMsgs, fmt.Sprintf("Error. You are insecure: bind ip %s is public and auth is disabled", ip))
+				}
+			} else {
+				if ip != "127.0.0.1" && ip != extIP {
+					s.WarningMsgs = append(s.WarningMsgs, fmt.Sprintf("WARNING: You might be insecure. IP binding %s is not localhost"))
+				}
+			}
+		}
 	}
 
 	s.Users, err = session.DB("admin").C("system.users").Count()
@@ -697,4 +766,63 @@ func GetShardingChangelogStatus(session pmgo.SessionManager) (*proto.ShardingCha
 	return &proto.ShardingChangelogStats{
 		Items: &qresults,
 	}, nil
+}
+
+func isPrivateNetwork(ip string) (bool, error) {
+	privateCIDRs := []string{"10.0.0.0/24", "172.16.0.0/20", "192.168.0.0/16"}
+
+	if net.ParseIP(ip).String() == "127.0.0.1" {
+		return true, nil
+	}
+
+	for _, cidr := range privateCIDRs {
+		_, cidrnet, err := net.ParseCIDR(cidr)
+		if err != nil {
+			return false, err
+		}
+		addr := net.ParseIP(ip)
+		if cidrnet.Contains(addr) {
+			return true, nil
+		}
+	}
+
+	return false, nil
+
+}
+
+func externalIP() (string, error) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return "", err
+	}
+	for _, iface := range ifaces {
+		if iface.Flags&net.FlagUp == 0 {
+			continue // interface down
+		}
+		if iface.Flags&net.FlagLoopback != 0 {
+			continue // loopback interface
+		}
+		addrs, err := iface.Addrs()
+		if err != nil {
+			return "", err
+		}
+		for _, addr := range addrs {
+			var ip net.IP
+			switch v := addr.(type) {
+			case *net.IPNet:
+				ip = v.IP
+			case *net.IPAddr:
+				ip = v.IP
+			}
+			if ip == nil || ip.IsLoopback() {
+				continue
+			}
+			ip = ip.To4()
+			if ip == nil {
+				continue // not an ipv4 address
+			}
+			return ip.String(), nil
+		}
+	}
+	return "", errors.New("are you connected to the network?")
 }

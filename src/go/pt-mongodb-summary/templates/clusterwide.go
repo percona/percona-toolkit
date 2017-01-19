@@ -1,7 +1,7 @@
 package templates
 
 const Clusterwide = `
-# Cluster wide #################################################################################
+# Cluster wide ###########################################################################################
             Databases: {{.TotalDBsCount}}
           Collections: {{.TotalCollectionsCount}}
   Sharded Collections: {{.ShardedColsCount}}
