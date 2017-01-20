@@ -6,7 +6,6 @@ const HostInfo = `# This host
 # Report On {{.ThisHostID}} ########################################
                      User | {{.ProcUserName}}
                 PID Owner | {{.ProcessName}}
-                     Time | {{.ProcCreateTime}}
                  Hostname | {{.Hostname}}
                   Version | {{.Version}}
                  Built On | {{.HostOsType}} {{.HostSystemCPUArch}}

@@ -117,6 +117,23 @@ func TestSecurityOpts(t *testing.T) {
 				Authorization: "",
 			},
 		},
+		// 5
+		proto.CommandLineOptions{
+			Parsed: proto.Parsed{
+				Net: proto.Net{
+					SSL: proto.SSL{
+						Mode: "",
+					},
+				},
+				Security: proto.Security{
+					KeyFile: "/home/plavi/psmdb/percona-server-mongodb-3.4.0-1.0-beta-6320ac4/data/keyfile",
+				},
+			},
+			Security: proto.Security{
+				KeyFile:       "",
+				Authorization: "",
+			},
+		},
 	}
 
 	expect := []*security{
@@ -159,6 +176,16 @@ func TestSecurityOpts(t *testing.T) {
 			Port:        0,
 			WarningMsgs: nil,
 		},
+		// 5
+		&security{
+			Users:       1,
+			Roles:       2,
+			Auth:        "enabled",
+			SSL:         "disabled",
+			BindIP:      "",
+			Port:        0,
+			WarningMsgs: nil,
+		},
 	}
 
 	ctrl := gomock.NewController(t)
@@ -188,7 +215,7 @@ func TestSecurityOpts(t *testing.T) {
 			t.Errorf("cannot get sec settings: %v", err)
 		}
 		if !reflect.DeepEqual(got, expect[i]) {
-			t.Errorf("got: %#v\nwant: %#v\n", got, expect[i])
+			t.Errorf("Test # %d,\ngot: %#v\nwant: %#v\n", i+1, got, expect[i])
 		}
 	}
 }

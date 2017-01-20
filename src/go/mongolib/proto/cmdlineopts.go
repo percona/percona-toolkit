@@ -29,6 +29,7 @@ type Parsed struct {
 	Net               Net               `bson:"net"`
 	ProcessManagement ProcessManagement `bson:"processManagement"`
 	Replication       Replication       `bson:"replication"`
+	Security          Security          `bson:"security"`
 }
 
 // Security is a struct to hold security related configs

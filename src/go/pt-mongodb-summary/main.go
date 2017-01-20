@@ -289,6 +289,7 @@ func GetHostinfo(session pmgo.SessionManager) (*hostInfo, error) {
 	}
 
 	nodeType, _ := getNodeType(session)
+	procCount, _ := countMongodProcesses()
 
 	i := &hostInfo{
 		Hostname:          hi.System.Hostname,
@@ -296,9 +297,10 @@ func GetHostinfo(session pmgo.SessionManager) (*hostInfo, error) {
 		HostSystemCPUArch: hi.System.CpuArch,
 		DBPath:            "", // Sets default. It will be overriden later if necessary
 
-		ProcessName: ss.Process,
-		Version:     ss.Version,
-		NodeType:    nodeType,
+		ProcessName:      ss.Process,
+		ProcProcessCount: procCount,
+		Version:          ss.Version,
+		NodeType:         nodeType,
 
 		ProcPath:       pi.Path,
 		ProcUserName:   pi.UserName,
@@ -313,6 +315,24 @@ func GetHostinfo(session pmgo.SessionManager) (*hostInfo, error) {
 	}
 
 	return i, nil
+}
+
+func countMongodProcesses() (int, error) {
+	pids, err := process.Pids()
+	if err != nil {
+		return 0, err
+	}
+	count := 0
+	for _, pid := range pids {
+		p, err := process.NewProcess(pid)
+		if err != nil {
+			continue
+		}
+		if name, _ := p.Name(); name == "mongod" || name == "mongos" {
+			count++
+		}
+	}
+	return count, nil
 }
 
 func getHostnames(dialer pmgo.Dialer, di *mgo.DialInfo) ([]string, error) {
@@ -474,7 +494,8 @@ func GetSecuritySettings(session pmgo.SessionManager, ver string) (*security, er
 		return nil, errors.Wrap(err, "cannot get command line options")
 	}
 
-	if cmdOpts.Security.Authorization != "" || cmdOpts.Security.KeyFile != "" {
+	if cmdOpts.Security.Authorization != "" || cmdOpts.Security.KeyFile != "" ||
+		cmdOpts.Parsed.Security.Authorization != "" || cmdOpts.Parsed.Security.KeyFile != "" {
 		s.Auth = "enabled"
 	}
 
