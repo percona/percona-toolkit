@@ -157,7 +157,7 @@ func main() {
 
 	di := getDialInfo(opts)
 	if di.Database == "" {
-		log.Printf("must indicate a database")
+		log.Errorln("must indicate a database as host:[port]/database")
 		getopt.PrintUsage(os.Stderr)
 		os.Exit(2)
 	}
@@ -165,6 +165,17 @@ func main() {
 	session, err := mgo.DialWithInfo(di)
 	if err != nil {
 		log.Printf("error connecting to the db %s", err)
+		os.Exit(3)
+	}
+
+	var ps proto.ProfilerStatus
+	if err := session.DB(di.Database).Run(bson.M{"profile": -1}, &ps); err != nil {
+		log.Errorf("Cannot get profiler status: %s", err.Error())
+		os.Exit(2)
+	}
+
+	if ps.Was == 0 {
+		log.Errorf("Profiler is not enabled for the %s database", di.Database)
 		os.Exit(3)
 	}
 
@@ -424,7 +435,7 @@ func getOptions() (*options, error) {
 	getopt.StringVarLong(&opts.Password, "password", 'p', "", "password").SetOptional()
 	getopt.StringVarLong(&opts.User, "user", 'u', "username")
 
-	getopt.SetParameters("host[:port][/database]")
+	getopt.SetParameters("host[:port]/database")
 
 	getopt.Parse()
 	if opts.Help {
@@ -434,6 +445,7 @@ func getOptions() (*options, error) {
 	args := getopt.Args() // host is a positional arg
 	if len(args) > 0 {
 		opts.Host = args[0]
+
 	}
 
 	if getopt.IsSet("order-by") {
