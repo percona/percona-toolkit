@@ -34,6 +34,7 @@ CMD_MPSTAT="${CMD_MPSTAT:-"$(_which mpstat)"}"
 CMD_MYSQL="${CMD_MYSQL:-"$(_which mysql)"}"
 CMD_MYSQLADMIN="${CMD_MYSQLADMIN:-"$(_which mysqladmin)"}"
 CMD_OPCONTROL="${CMD_OPCONTROL:-"$(_which opcontrol)"}"
+[ -z "$CMD_OPCONTROL" ] && CMD_OPCONTROL=$(_which operf)
 CMD_OPREPORT="${CMD_OPREPORT:-"$(_which opreport)"}"
 CMD_PMAP="${CMD_PMAP:-"$(_which pmap)"}"
 CMD_STRACE="${CMD_STRACE:-"$(_which strace)"}"
@@ -128,9 +129,16 @@ collect() {
    # The --init should be a no-op if it has already been init-ed.
    local have_oprofile=""
    if [ "$CMD_OPCONTROL" -a "$OPT_COLLECT_OPROFILE" ]; then
-      if $CMD_OPCONTROL --init; then
-         $CMD_OPCONTROL --start --no-vmlinux
-         have_oprofile="yes"
+      if [ $(echo $CMD_OPCONTROL|grep -c opcontrol) -gt 0 ]; then 
+	# use legacy opcontrol
+	if $CMD_OPCONTROL --init; then
+	    $CMD_OPCONTROL --start --no-vmlinux
+	    have_oprofile="yes"
+	fi
+      else
+        # use operf, may fail under VirtualBox or old processor models (see http://oprofile.sourceforge.net/doc/perf_events.html)
+	  $CMD_OPCONTROL -p `pidof mysqld` &
+	  OPERF_PID=$!
       fi
    elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" -a "$mysqld_pid" ]; then
       # Don't run oprofile and strace at the same time.
@@ -245,6 +253,7 @@ collect() {
    log "Loop end: $(date +'TS %s.%N %F %T')"
 
    if [ "$have_oprofile" ]; then
+      if [ $(echo $CMD_OPCONTROL|grep -c opcontrol) -gt 0 ]; then
       $CMD_OPCONTROL --stop
       $CMD_OPCONTROL --dump
 
@@ -257,6 +266,9 @@ collect() {
 
       $CMD_OPCONTROL --save=pt_collect_$p
 
+      else
+	  kill -SIGINT $OPERF_PID
+      fi
       # Attempt to generate a report; if this fails, then just tell the user
       # how to generate the report.
       local mysqld_path=$(_which mysqld);
@@ -282,7 +294,7 @@ collect() {
       # Sometimes strace leaves threads/processes in T status.
       [ "$mysqld_pid" ] && kill -s 18 $mysqld_pid
    fi
-
+   
    innodb_status 2
    tokudb_status 2
    $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status2" &
