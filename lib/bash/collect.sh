@@ -137,7 +137,7 @@ collect() {
 	fi
       else
         # use operf, may fail under VirtualBox or old processor models (see http://oprofile.sourceforge.net/doc/perf_events.html)
-	  $CMD_OPCONTROL -p `pidof mysqld` &
+	  $CMD_OPCONTROL -s &
 	  OPERF_PID=$!
       fi
    elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" -a "$mysqld_pid" ]; then
