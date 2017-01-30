@@ -522,12 +522,15 @@ the tools and modules were originally written by Baron.
 
 =item Daniel Nichter
 
-Daniel has been the project's lead developer since 2008.  He is  employed
-by Percona.
+Daniel has been the project's lead developer since 2008 until 2016.
 
 =item Frank Cizmich
 
-Frank is a full-time Percona Toolkit developer employed by Percona.
+Frank was a full-time Percona Toolkit developer employed by Percona until 2016.
+
+=item Carlos Salguero
+
+Carlos has been the project's lead developer since 2016. He is hired by Percona.
 
 =item Others
 
