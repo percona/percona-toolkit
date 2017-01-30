@@ -1,0 +1,58 @@
+{
+    "Date": "",
+    "MyState": 1,
+    "Term": 0,
+    "HeartbeatIntervalMillis": 0,
+    "Members": [
+        {
+            "Optime": null,
+            "OptimeDate": "",
+            "InfoMessage": "",
+            "Id": 0,
+            "Name": "localhost:18001",
+            "Health": 1,
+            "StateStr": "PRIMARY",
+            "Uptime": 15955,
+            "ConfigVersion": 1,
+            "Self": true,
+            "State": 1,
+            "ElectionTime": 6341767496013447169,
+            "ElectionDate": "",
+            "Set": ""
+        },
+        {
+            "Optime": null,
+            "OptimeDate": "",
+            "InfoMessage": "",
+            "Id": 1,
+            "Name": "localhost:18002",
+            "Health": 1,
+            "StateStr": "SECONDARY",
+            "Uptime": 15952,
+            "ConfigVersion": 1,
+            "Self": false,
+            "State": 2,
+            "ElectionTime": 0,
+            "ElectionDate": "",
+            "Set": ""
+        },
+        {
+            "Optime": null,
+            "OptimeDate": "",
+            "InfoMessage": "",
+            "Id": 2,
+            "Name": "localhost:18003",
+            "Health": 1,
+            "StateStr": "SECONDARY",
+            "Uptime": 15950,
+            "ConfigVersion": 1,
+            "Self": false,
+            "State": 2,
+            "ElectionTime": 0,
+            "ElectionDate": "",
+            "Set": ""
+        }
+    ],
+    "Ok": 1,
+    "Set": "r2"
+}

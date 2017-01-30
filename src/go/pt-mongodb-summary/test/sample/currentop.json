@@ -1,0 +1,219 @@
+{
+    "Info": "",
+    "Inprog": [
+        {
+            "Desc": "conn49",
+            "ConnectionId": 49,
+            "Opid": 1481,
+            "Msg": "",
+            "NumYields": 93,
+            "Locks": {
+                "Global": "",
+                "MMAPV1Journal": "",
+                "Database": "",
+                "Collection": "",
+                "Metadata": "",
+                "Oplog": ""
+            },
+            "WaitingForLock": 0,
+            "ThreadId": "0x2e60220",
+            "Active": 1,
+            "MicrosecsRunning": 857422,
+            "SecsRunning": 0,
+            "Op": "getmore",
+            "Ns": "samples.col1",
+            "Insert": null,
+            "PlanSummary": "",
+            "Client": "127.0.0.1:46290",
+            "Query": {
+                "CurrentOp": 0
+            },
+            "Progress": {
+                "Done": 0,
+                "Total": 0
+            },
+            "KillPending": 0,
+            "LockStats": {
+                "Global": {
+                    "DeadlockCount": {
+                        "Rr": 0,
+                        "Ww": 0,
+                        "R": 0,
+                        "W": 0
+                    },
+                    "AcquireCount": {
+                        "Rr": 186,
+                        "Ww": 0,
+                        "R": 0,
+                        "W": 0
+                    },
+                    "AcquireWaitCount": {
+                        "Rr": 0,
+                        "Ww": 0,
+                        "R": 0,
+                        "W": 0
+                    },
+                    "TimeAcquiringMicros": {
+                        "Rr": 0,
+                        "Ww": 0,
+                        "R": 0,
+                        "W": 0
+                    }
+                },
+                "MMAPV1Journal": {
+                    "acquireCount": {
+                        "r": 93
+                    }
+                },
+                "Database": {
+                    "acquireCount": {
+                        "r": 93
+                    }
+                }
+            }
+        },
+        {
+            "Desc": "conn53",
+            "ConnectionId": 53,
+            "Opid": 1442,
+            "Msg": "",
+            "NumYields": 0,
+            "Locks": {
+                "Global": "",
+                "MMAPV1Journal": "",
+                "Database": "",
+                "Collection": "",
+                "Metadata": "",
+                "Oplog": ""
+            },
+            "WaitingForLock": 0,
+            "ThreadId": "0x2e618e0",
+            "Active": 1,
+            "MicrosecsRunning": 4.668058e+06,
+            "SecsRunning": 4,
+            "Op": "getmore",
+            "Ns": "local.oplog.rs",
+            "Insert": null,
+            "PlanSummary": "",
+            "Client": "127.0.0.1:46300",
+            "Query": {
+                "CurrentOp": 0
+            },
+            "Progress": {
+                "Done": 0,
+                "Total": 0
+            },
+            "KillPending": 0,
+            "LockStats": {
+                "Global": {
+                    "DeadlockCount": {
+                        "Rr": 0,
+                        "Ww": 0,
+                        "R": 0,
+                        "W": 0
+                    },
+                    "AcquireCount": {
+                        "Rr": 10,
+                        "Ww": 0,
+                        "R": 0,
+                        "W": 0
+                    },
+                    "AcquireWaitCount": {
+                        "Rr": 0,
+                        "Ww": 0,
+                        "R": 0,
+                        "W": 0
+                    },
+                    "TimeAcquiringMicros": {
+                        "Rr": 0,
+                        "Ww": 0,
+                        "R": 0,
+                        "W": 0
+                    }
+                },
+                "MMAPV1Journal": {
+                    "acquireCount": {
+                        "r": 5
+                    }
+                },
+                "Database": {
+                    "acquireCount": {
+                        "r": 5
+                    }
+                }
+            }
+        },
+        {
+            "Desc": "conn51",
+            "ConnectionId": 51,
+            "Opid": 1433,
+            "Msg": "",
+            "NumYields": 0,
+            "Locks": {
+                "Global": "",
+                "MMAPV1Journal": "",
+                "Database": "",
+                "Collection": "",
+                "Metadata": "",
+                "Oplog": ""
+            },
+            "WaitingForLock": 0,
+            "ThreadId": "0x2e603c0",
+            "Active": 1,
+            "MicrosecsRunning": 4.689207e+06,
+            "SecsRunning": 4,
+            "Op": "getmore",
+            "Ns": "local.oplog.rs",
+            "Insert": null,
+            "PlanSummary": "",
+            "Client": "127.0.0.1:46296",
+            "Query": {
+                "CurrentOp": 0
+            },
+            "Progress": {
+                "Done": 0,
+                "Total": 0
+            },
+            "KillPending": 0,
+            "LockStats": {
+                "Global": {
+                    "DeadlockCount": {
+                        "Rr": 0,
+                        "Ww": 0,
+                        "R": 0,
+                        "W": 0
+                    },
+                    "AcquireCount": {
+                        "Rr": 10,
+                        "Ww": 0,
+                        "R": 0,
+                        "W": 0
+                    },
+                    "AcquireWaitCount": {
+                        "Rr": 0,
+                        "Ww": 0,
+                        "R": 0,
+                        "W": 0
+                    },
+                    "TimeAcquiringMicros": {
+                        "Rr": 0,
+                        "Ww": 0,
+                        "R": 0,
+                        "W": 0
+                    }
+                },
+                "MMAPV1Journal": {
+                    "acquireCount": {
+                        "r": 5
+                    }
+                },
+                "Database": {
+                    "acquireCount": {
+                        "r": 5
+                    }
+                }
+            }
+        }
+    ],
+    "FsyncLock": 0
+}

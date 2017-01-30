@@ -9,3 +9,4 @@ snapshot
 .DS_Store
 build
 Makefile.old
+bin/pt-mongodb-*
