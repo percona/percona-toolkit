@@ -1,7 +1,5 @@
 Changelog for Percona Toolkit
 
-v2.2.21
-
  * Fixed bug 1402776: Improved fix (protocol parser fix): error when parsing tcpdump capture with pt-query-digest
  * Fixed bug 1632522: pt-osc: Fails with duplicate key in table for self-referencing (Thanks Amiel Marqeta)
  * Fixed bug 1654668: pt-summary exists with an error (Thanks Marcelo Altmann)
