@@ -16,6 +16,8 @@ import (
 	"github.com/percona/percona-toolkit/src/go/lib/config"
 	"github.com/percona/percona-toolkit/src/go/lib/versioncheck"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
+	"github.com/percona/percona-toolkit/src/go/mongolib/util"
+	"github.com/percona/pmgo"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -162,29 +164,31 @@ func main() {
 		os.Exit(2)
 	}
 
-	session, err := mgo.DialWithInfo(di)
+	dialer := pmgo.NewDialer()
+	session, err := dialer.DialWithInfo(di)
 	if err != nil {
 		log.Printf("error connecting to the db %s", err)
 		os.Exit(3)
 	}
 
-	var ps proto.ProfilerStatus
-	if err := session.DB(di.Database).Run(bson.M{"profile": -1}, &ps); err != nil {
+	isProfilerEnabled, err := isProfilerEnabled(dialer, di)
+	if err != nil {
 		log.Errorf("Cannot get profiler status: %s", err.Error())
-		os.Exit(2)
+		os.Exit(4)
 	}
 
-	if ps.Was == 0 {
-		log.Errorf("Profiler is not enabled for the %s database", di.Database)
-		os.Exit(3)
+	if isProfilerEnabled == false {
+		log.Errorf("Cannot get profiler status: %s", err.Error())
+		os.Exit(5)
 	}
 
 	i := session.DB(di.Database).C("system.profile").Find(bson.M{"op": bson.M{"$nin": []string{"getmore", "delete"}}}).Sort("-$natural").Iter()
 	queries := sortQueries(getData(i), opts.OrderBy)
+	pretty.Print(queries)
 
 	uptime := uptime(session)
 
-	queryTotals := aggregateQueryStats(queries, uptime)
+	queryTotals := calcTotalQueryStats(queries, uptime)
 	tt, _ := template.New("query").Funcs(template.FuncMap{
 		"Format": format,
 	}).Parse(getTotalsTemplate())
@@ -228,7 +232,7 @@ func format(val float64, size float64) string {
 	return fmt.Sprintf("%s%s", fval, unit)
 }
 
-func uptime(session *mgo.Session) int64 {
+func uptime(session pmgo.SessionManager) int64 {
 	ss := proto.ServerStatus{}
 	if err := session.Ping(); err != nil {
 		return 0
@@ -240,7 +244,7 @@ func uptime(session *mgo.Session) int64 {
 	return ss.Uptime
 }
 
-func aggregateQueryStats(queries []stat, uptime int64) queryInfo {
+func calcTotalQueryStats(queries []stat, uptime int64) queryInfo {
 	qi := queryInfo{}
 	qs := stat{}
 	_, totalScanned, totalReturned, totalQueryTime, totalBytes := calcTotals(queries)
@@ -251,11 +255,11 @@ func aggregateQueryStats(queries []stat, uptime int64) queryInfo {
 		qs.ResponseLength = append(qs.ResponseLength, query.ResponseLength...)
 		qi.Count += query.Count
 	}
+
 	qi.Scanned = calcStats(qs.NScanned)
 	qi.Returned = calcStats(qs.NReturned)
 	qi.QueryTime = calcStats(qs.QueryTime)
 	qi.ResponseLength = calcStats(qs.ResponseLength)
-	qi.QPS = float64(int64(qs.Count) / uptime)
 
 	if totalScanned > 0 {
 		qi.Scanned.Pct = qi.Scanned.Total * 100 / totalScanned
@@ -292,8 +296,9 @@ func calcQueryStats(queries []stat, uptime int64) []queryInfo {
 			FirstSeen:      query.FirstSeen,
 			LastSeen:       query.LastSeen,
 			Namespace:      query.Namespace,
-			QPS:            float64(int64(query.Count) / uptime),
+			QPS:            float64(query.Count) / float64(uptime),
 		}
+		fmt.Printf("QPS>> query.Count: %v, uptime: %v, QPS: %v\n", query.Count, uptime, qi.QPS)
 		if totalScanned > 0 {
 			qi.Scanned.Pct = qi.Scanned.Total * 100 / totalScanned
 		}
@@ -697,4 +702,27 @@ func sortQueries(queries []stat, orderby []string) []stat {
 	OrderedBy(sortFuncs...).Sort(queries)
 	return queries
 
+}
+
+func isProfilerEnabled(dialer pmgo.Dialer, di *mgo.DialInfo) (bool, error) {
+	session, err := dialer.DialWithInfo(di)
+	if err != nil {
+		return false, fmt.Errorf("error connecting to the db %s", err)
+	}
+
+	var ps proto.ProfilerStatus
+	replicaMembers, err := util.GetReplicasetMembers(dialer, di)
+	if err != nil {
+		return false, err
+	}
+	for _, member := range replicaMembers {
+		if member.State == proto.REPLICA_SET_MEMBER_PRIMARY {
+			if err := session.DB(di.Database).Run(bson.M{"profile": -1}, &ps); err == nil {
+				if ps.Was == 0 {
+					return false, nil
+				}
+			}
+		}
+	}
+	return true, nil
 }

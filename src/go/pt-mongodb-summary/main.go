@@ -12,9 +12,9 @@ import (
 	"github.com/howeyc/gopass"
 	"github.com/pborman/getopt"
 	"github.com/percona/percona-toolkit/src/go/lib/config"
-	"github.com/percona/percona-toolkit/src/go/lib/util"
 	"github.com/percona/percona-toolkit/src/go/lib/versioncheck"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
+	"github.com/percona/percona-toolkit/src/go/mongolib/util"
 	"github.com/percona/percona-toolkit/src/go/pt-mongodb-summary/oplog"
 	"github.com/percona/percona-toolkit/src/go/pt-mongodb-summary/templates"
 	"github.com/percona/pmgo"
@@ -115,26 +115,42 @@ type clusterwideInfo struct {
 }
 
 type options struct {
-	Host           string
-	User           string
-	Password       string
-	AuthDB         string
-	LogLevel       string
-	Version        bool
-	NoVersionCheck bool
+	Host               string
+	User               string
+	Password           string
+	AuthDB             string
+	LogLevel           string
+	Version            bool
+	NoVersionCheck     bool
+	NoRunningOps       bool
+	RunningOpsSamples  int
+	RunningOpsInterval int
 }
 
 func main() {
 
-	opts := options{Host: "localhost:27017", LogLevel: "error"}
+	opts := options{
+		Host:               "localhost:27017",
+		LogLevel:           "error",
+		RunningOpsSamples:  5,
+		RunningOpsInterval: 1000, // milliseconds
+	}
 	help := getopt.BoolLong("help", '?', "Show help")
 	getopt.BoolVarLong(&opts.Version, "version", 'v', "", "Show version & exit")
 	getopt.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "", "Don't check for updates")
 
 	getopt.StringVarLong(&opts.User, "user", 'u', "", "User name")
 	getopt.StringVarLong(&opts.Password, "password", 'p', "", "Password").SetOptional()
-	getopt.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin", "Database used to establish credentials and privileges with a MongoDB server")
+	getopt.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin",
+		"Database used to establish credentials and privileges with a MongoDB server")
 	getopt.StringVarLong(&opts.LogLevel, "log-level", 'l', "error", "Log level:, panic, fatal, error, warn, info, debug")
+
+	getopt.IntVarLong(&opts.RunningOpsSamples, "running-ops-samples", 's',
+		fmt.Sprintf("Number of samples to collect for running ops. Default: %d", opts.RunningOpsSamples))
+
+	getopt.IntVarLong(&opts.RunningOpsInterval, "running-ops-interval", 'i',
+		fmt.Sprintf("Interval to wait betwwen running ops samples in milliseconds. Default %d milliseconds", opts.RunningOpsInterval))
+
 	getopt.SetParameters("host[:port]")
 
 	getopt.Parse()
@@ -195,7 +211,7 @@ func main() {
 	log.Debugf("Connecting to the db using:\n%+v", di)
 	dialer := pmgo.NewDialer()
 
-	hostnames, err := getHostnames(dialer, di)
+	hostnames, err := util.GetHostnames(dialer, di)
 	log.Debugf("hostnames: %v", hostnames)
 
 	session, err := dialer.DialWithInfo(di)
@@ -205,7 +221,7 @@ func main() {
 	}
 	defer session.Close()
 
-	if replicaMembers, err := GetReplicasetMembers(dialer, hostnames, di); err != nil {
+	if replicaMembers, err := util.GetReplicasetMembers(dialer, di); err != nil {
 		log.Printf("[Error] cannot get replicaset members: %v\n", err)
 	} else {
 		log.Debugf("replicaMembers:\n%+v\n", replicaMembers)
@@ -224,13 +240,13 @@ func main() {
 		t.Execute(os.Stdout, hostInfo)
 	}
 
-	var sampleCount int64 = 5
-	var sampleRate time.Duration = 1 * time.Second // in seconds
-	if rops, err := GetOpCountersStats(session, sampleCount, sampleRate); err != nil {
-		log.Printf("[Error] cannot get Opcounters stats: %v\n", err)
-	} else {
-		t := template.Must(template.New("runningOps").Parse(templates.RunningOps))
-		t.Execute(os.Stdout, rops)
+	if opts.RunningOpsSamples > 0 {
+		if rops, err := GetOpCountersStats(session, opts.RunningOpsSamples, time.Duration(opts.RunningOpsInterval)*time.Millisecond); err != nil {
+			log.Printf("[Error] cannot get Opcounters stats: %v\n", err)
+		} else {
+			t := template.Must(template.New("runningOps").Parse(templates.RunningOps))
+			t.Execute(os.Stdout, rops)
+		}
 	}
 
 	if security, err := GetSecuritySettings(session, hostInfo.Version); err != nil {
@@ -335,33 +351,6 @@ func countMongodProcesses() (int, error) {
 	return count, nil
 }
 
-func getHostnames(dialer pmgo.Dialer, di *mgo.DialInfo) ([]string, error) {
-	hostnames := []string{di.Addrs[0]}
-	session, err := dialer.DialWithInfo(di)
-	if err != nil {
-		return hostnames, err
-	}
-	defer session.Close()
-
-	shardsInfo := &proto.ShardsInfo{}
-	log.Debugf("Running 'listShards' command")
-	err = session.Run("listShards", shardsInfo)
-	if err != nil {
-		return hostnames, errors.Wrap(err, "cannot list shards")
-	}
-
-	log.Debugf("listShards raw response: %+v", util.Pretty(shardsInfo))
-
-	if shardsInfo != nil {
-		for _, shardInfo := range shardsInfo.Shards {
-			m := strings.Split(shardInfo.Host, "/")
-			h := strings.Split(m[1], ",")
-			hostnames = append(hostnames, h[0])
-		}
-	}
-	return hostnames, nil
-}
-
 func GetClusterwideInfo(session pmgo.SessionManager) (*clusterwideInfo, error) {
 	var databases databases
 
@@ -416,63 +405,6 @@ func sizeAndUnit(size int64) (float64, string) {
 	}
 	newSize = float64(int64(newSize*100)) / 100
 	return newSize, unit[idx]
-}
-
-func GetReplicasetMembers(dialer pmgo.Dialer, hostnames []string, di *mgo.DialInfo) ([]proto.Members, error) {
-	replicaMembers := []proto.Members{}
-	log.Debugf("hostnames: %+v", hostnames)
-
-	for _, hostname := range hostnames {
-		tmpdi := *di
-		tmpdi.Addrs = []string{hostname}
-		log.Debugf("GetReplicasetMembers connecting to %s", hostname)
-		session, err := dialer.DialWithInfo(&tmpdi)
-		if err != nil {
-			log.Debugf("getReplicasetMembers. cannot connect to %s: %s", hostname, err.Error())
-			return nil, errors.Wrapf(err, "getReplicasetMembers. cannot connect to %s", hostname)
-		}
-
-		rss := proto.ReplicaSetStatus{}
-		err = session.Run(bson.M{"replSetGetStatus": 1}, &rss)
-		if err != nil {
-			log.Debugf("error in replSetGetStatus on host %s: %s", hostname, err.Error())
-			continue // If a host is a mongos we cannot get info but is not a real error
-		}
-		log.Debugf("replSetGetStatus result:\n%#v", rss)
-		for _, m := range rss.Members {
-			m.Set = rss.Set
-			if serverStatus, err := getServerStatus(dialer, di, m.Name); err == nil {
-				m.StorageEngine = serverStatus.StorageEngine
-			} else {
-				log.Warnf("getReplicasetMembers. cannot get server status: %v", err.Error())
-			}
-			replicaMembers = append(replicaMembers, m)
-		}
-
-		session.Close()
-	}
-
-	return replicaMembers, nil
-}
-
-func getServerStatus(dialer pmgo.Dialer, di *mgo.DialInfo, hostname string) (proto.ServerStatus, error) {
-	ss := proto.ServerStatus{}
-
-	tmpdi := *di
-	tmpdi.Addrs = []string{hostname}
-	log.Debugf("GetReplicasetMembers connecting to %s", hostname)
-
-	session, err := dialer.DialWithInfo(&tmpdi)
-	if err != nil {
-		return ss, errors.Wrapf(err, "getReplicasetMembers. cannot connect to %s", hostname)
-	}
-	defer session.Close()
-
-	if err := session.DB("admin").Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, &ss); err != nil {
-		return ss, errors.Wrap(err, "GetHostInfo.serverStatus")
-	}
-
-	return ss, nil
 }
 
 func GetSecuritySettings(session pmgo.SessionManager, ver string) (*security, error) {
@@ -559,7 +491,7 @@ func getNodeType(session pmgo.SessionManager) (string, error) {
 	return "mongod", nil
 }
 
-func GetOpCountersStats(session pmgo.SessionManager, count int64, sleep time.Duration) (*opCounters, error) {
+func GetOpCountersStats(session pmgo.SessionManager, count int, sleep time.Duration) (*opCounters, error) {
 	oc := &opCounters{}
 	prevOpCount := &opCounters{}
 	ss := proto.ServerStatus{}
@@ -568,7 +500,8 @@ func GetOpCountersStats(session pmgo.SessionManager, count int64, sleep time.Dur
 	}
 
 	ticker := time.NewTicker(sleep)
-	for i := int64(0); i < count+1; i++ {
+	// count + 1 because we need 1st reading to stablish a base to measure variation
+	for i := 0; i < count+1; i++ {
 		<-ticker.C
 		err := session.DB("admin").Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, &ss)
 		if err != nil {
