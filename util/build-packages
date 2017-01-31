@@ -15,6 +15,7 @@
 #   BUILD_TAR=0|1   - Do (not) build the .tar.gz package
 #   BUILD_RPM=0|1   - Do (not) build the .rpm package
 #   BUILD_DEB=0|1   - Do (not) build the .deb package
+#   BUILD_GO=0|1    - Do (not) build Go binaries
 # All of these env vars are true by default.  If, for example, you just want
 # to build the branch as-is: CHECK=0 UPDATE=0 build-packages VERSION
 # Otherwise, this script is pretty strict and tries to ensure a good build.
@@ -418,6 +419,15 @@ build_deb() {
    echo "OK"
 }
 
+build_go_binaries() {
+   CWD=$(pwd)
+   cd $GO_SRC_DIR
+   echo "Building Go tools for $OS_ARCH ..."
+   make $OS_ARCH 
+   cd $CWD
+   echo "OK"
+}
+
 # ############################################################################
 # Script starts here
 # ############################################################################
@@ -474,6 +484,11 @@ if [ $CHECK -eq 1 ]; then
    check_rel_notes
 fi
 
+BUILD_GO=${BUILD_GO:-1}
+if [ $BUILD_GO -eq 1 ]; then
+    build_go_binaries
+fi
+
 # These items need to be updated automatically for each release.
 UPDATE=${UPDATE:-1}
 if [ $UPDATE -eq 1 ]; then
@@ -490,13 +505,6 @@ if [ $UPDATE -eq 1 ]; then
    fi
 fi
 
-# Build Go binaries
-echo "---------------------------------------------------------------------"
-CWD=$(pwd)
-cd $GO_SRC_DIR
-echo "Building Go tools for $OS_ARCH"
-make $OS_ARCH 
-cd $CWD
 
 # Now that those ^ items are updated, you need to commit and push one more
 # time before the release packages are built.  This script can't do that
