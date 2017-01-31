@@ -73,12 +73,13 @@ SPHINX_CONFIG_DIR=$BRANCH/config/sphinx-build
 DEB_CONFIG_DIR=$BRANCH/config/deb
 RPM_CONFIG_DIR=$BRANCH/config/rpm
 RELEASE_DIR=$BRANCH/release
+GO_SRC_DIR=$(git rev-parse --show-toplevel)/src/go
 
 # ############################################################################
 # Programs and their options
 # ############################################################################
 
-TAR=${TAR:-tar}
+TAR=${TAR:-tar}                                  
 
 # ############################################################################
 # Subroutines
@@ -422,10 +423,18 @@ build_deb() {
 # ############################################################################
 
 if [ $# -lt 2 ]; then
-   die "Usage: $0 VERSION RELEASE_NOTES"
+   echo "Usage: $0 VERSION RELEASE_NOTES OS-ARCH"
+   echo "Example: $0 3.1 docs/release_notes.rst linux-amd64"
+   echo "Valid OS-ARCH combinations are: linux-amd64, linux-386, darwin-amd64"
+   die "Please try again with different parameters"
 fi
 VERSION=$1
 REL_NOTES=$2
+OS_ARCH=${3:-linux-amd64}
+
+if [ $OS_ARCH != "linux-amd64" && $OS_ARCH != "linux-386" && $OS_ARCH != "darwin-amd64" ]; then
+   die "Valid OS-ARCH combinations are: linux-amd64, linux-386, darwin-amd64"
+fi
 
 if [ ! -f $REL_NOTES ]; then
    die "$REL_NOTES does not exist"

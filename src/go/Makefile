@@ -1,5 +1,5 @@
 GO := go
-pkgs   = $(shell $(GO) list ./... | grep -v /vendor/)
+pkgs   = $(shell find . -type d -name "pt-mongodb*" -exec basename {} \;)
 VERSION=$(shell git describe --tags)                                                   
 BUILD=$(shell date +%FT%T%z)
 GOVERSION=$(shell go version | cut --delimiter=" " -f3)
@@ -8,13 +8,22 @@ PREFIX=$(shell pwd)
 BIN_DIR=$(shell git rev-parse --show-toplevel)/bin
 LDFLAGS="-X main.Version=${VERSION} -X main.Build=${BUILD} -X main.GoVersion=${GOVERSION}"
 
+.PHONY: all style format build test vet tarball linux-amd64
 
-build-all: 
-	@echo ">> building all binaries in ${BIN_DIR}. OS & platform will be appended to the file name"
-	@echo "LDFLAGS: ${LDFLAGS}"
-	@gox -ldflags=${LDFLAGS} -osarch="linux/amd64 linux/386 darwin/amd64" -output=${BIN_DIR}"/{{.Dir}}_{{.OS}}_{{.Arch}}" $(pkgs)
+linux-amd64: 
+	@echo "Building linux/amd64 binaries in ${BIN_DIR}"
+	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
+	@$(foreach pkg,$(pkgs),GOOS=linux GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
 
-all: format gox test
+linux-386: 
+	@echo "Building linux/386 binaries in ${BIN_DIR}"
+	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
+	@$(foreach pkg,$(pkgs),GOOS=linux GOARCH=386 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
+
+darwin-amd64: 
+	@echo "Building darwin/amd64 binaries in ${BIN_DIR}"
+	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
+	@$(foreach pkg,$(pkgs),GOOS=darwin GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
 
 style:
 	@echo ">> checking code style"
@@ -32,16 +41,3 @@ vet:
 	@echo ">> vetting code"
 	@$(GO) vet $(pkgs)
 
-linux-amd64: 
-	@echo ">> building linux/amd64 binaries in $(BIN_DIR)"
-	gox -ldflags ${LDFLAGS} -osarch="linux/amd64" -output=${BIN_DIR}"/{{.Dir}}" $(pkgs)
-
-linux-386: 
-	@echo ">> building linux/386 binaries in $(BIN_DIR)"
-	gox -ldflags ${LDFLAGS} -osarch="linux/amd64" -output=${BIN_DIR}"/{{.Dir}}" $(pkgs)
-
-darwin-amd64: 
-	@echo ">> building darwin/amd64 binaries in $(BIN_DIR)"
-	gox -ldflags ${LDFLAGS} -osarch="darwin/amd64" -output=${BIN_DIR}"/{{.Dir}}" $(pkgs)
-
-.PHONY: all style format build test vet tarball 
