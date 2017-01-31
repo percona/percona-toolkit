@@ -491,6 +491,7 @@ if [ $UPDATE -eq 1 ]; then
 fi
 
 # Build Go binaries
+echo "---------------------------------------------------------------------"
 CWD=$(pwd)
 cd $GO_SRC_DIR
 echo "Building Go tools for $OS_ARCH"
