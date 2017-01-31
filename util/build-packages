@@ -432,7 +432,7 @@ VERSION=$1
 REL_NOTES=$2
 OS_ARCH=${3:-linux-amd64}
 
-if [ $OS_ARCH != "linux-amd64" && $OS_ARCH != "linux-386" && $OS_ARCH != "darwin-amd64" ]; then
+if [ $OS_ARCH != "linux-amd64" ] && [ $OS_ARCH != "linux-386" ] && [ $OS_ARCH != "darwin-amd64" ]; then
    die "Valid OS-ARCH combinations are: linux-amd64, linux-386, darwin-amd64"
 fi
 
@@ -489,6 +489,13 @@ if [ $UPDATE -eq 1 ]; then
       update_user_docs 
    fi
 fi
+
+# Build Go binaries
+CWD=$(pwd)
+cd $GO_SRC_DIR
+echo "Building Go tools for $OS_ARCH"
+make $OS_ARCH 
+cd $CWD
 
 # Now that those ^ items are updated, you need to commit and push one more
 # time before the release packages are built.  This script can't do that
