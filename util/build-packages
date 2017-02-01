@@ -426,7 +426,8 @@ build_go_binaries() {
    TOOLKIT_DIR="${PERCONA_DIR}/percona-toolkit"
    GO_TOOLS_DIR="${TOOLKIT_DIR}/src/go"
    CUR_DIR=$(pwd)
-   UNLINK=0
+   UNLINK=0               
+   export PATH=${GOPATH}/bin:${PATH}
    
    echo "GOPATH: ${GOPATH}"
    echo "Github directory: ${GITHUB_DIR}"

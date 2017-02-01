@@ -138,7 +138,7 @@ func main() {
 	log.SetLevel(logLevel)
 
 	if opts.Version {
-		fmt.Println("pt-mongodb-summary")
+		fmt.Println(TOOLNAME)
 		fmt.Printf("Version %s\n", Version)
 		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
 		return
