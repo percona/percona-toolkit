@@ -353,7 +353,7 @@ build_tar() {
 }
 
 build_rpm() {
-   echo -n "Building $PKG-1.noarch.rpm... "
+   echo -n "Building $PKG-1.$ARCH.rpm... "
    cd $RELEASE_DIR
    if [ ! -f "$PKG.tar.gz" ]; then
       die "Cannot build RPM because $PKG.tar.gz does not exist"
@@ -375,10 +375,10 @@ build_rpm() {
       warn "rpmbuild has warnings; see $tmpdir/rpmbuild"
    fi
 
-   if [ ! -f "RPMS/noarch/$PKG-1.noarch.rpm" ]; then
-      die "RPMS/noarch/$PKG-1.noarch.rpm did not build"
+   if [ ! -f "RPMS/$ARCH/$PKG-1.$ARCH.rpm" ]; then
+      die "RPMS/$ARCH/$PKG-1.$ARCH.rpm did not build"
    fi
-   mv "RPMS/noarch/$PKG-1.noarch.rpm" $RELEASE_DIR/RPM
+   mv "RPMS/$ARCH/$PKG-1.$ARCH.rpm" $RELEASE_DIR/RPM
    rm -rf $RELEASE_DIR/rpm
 
    echo "OK"
@@ -477,6 +477,17 @@ OS_ARCH=${3:-linux-amd64}
 if [ $OS_ARCH != "linux-amd64" ] && [ $OS_ARCH != "linux-386" ] && [ $OS_ARCH != "darwin-amd64" ]; then
    die "Valid OS-ARCH combinations are: linux-amd64, linux-386, darwin-amd64"
 fi
+
+if [ $OS_ARCH == "linux-amd64" ]; then
+   ARCH="x86_64"
+elif [ $OS_ARCH == "linux-386" ]; then
+   ARCH="i386"
+else
+   ARCH="noarch"
+fi
+
+sed -i'.bak' -e "s/@@ARHITECTURE@@/$ARCH/" $RPM_CONFIG_DIR/percona-toolkit.spec
+sed -i'.bak' -e "s/@@ARHITECTURE@@/$ARCH/" $DEB_CONFIG_DIR/control
 
 if [ ! -f $REL_NOTES ]; then
    die "$REL_NOTES does not exist"
