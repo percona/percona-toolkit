@@ -449,7 +449,6 @@ build_go_binaries() {
    echo "Building Go tools for $OS_ARCH ..."
    go get -u github.com/kardianos/govendor
    cd $GO_TOOLS_DIR
-   govendor fetch +external
    make $OS_ARCH
    cd $CUR_DIR
 
