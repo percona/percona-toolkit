@@ -49,7 +49,7 @@ warn() {
 }
 
 cwd=$PWD
-PERCONA_TOOLKIT_BRANCH=${PERCONA_TOOLKIT_BRANCH:-""}
+PERCONA_TOOLKIT_BRANCH=$(git rev-parse --show-toplevel)
 if [ -n "$PERCONA_TOOLKIT_BRANCH" ]; then
    BRANCH=$PERCONA_TOOLKIT_BRANCH
    cd $BRANCH
@@ -438,7 +438,8 @@ build_go_binaries() {
    then
        echo "not in gopath"
        if [ -e ${TOOLKIT_DIR} ]; then
-           die "Cannot link current directory into GOPATH. Already exists"
+           echo "Cannot link current directory into GOPATH. Already exists" >&2
+           die "Please check/remove the ${TOOLKIT_DIR} directory"
        else
            mkdir -p ${PERCONA_DIR}
            ln -s ${BASE_DIR} ${PERCONA_DIR}
@@ -448,7 +449,7 @@ build_go_binaries() {
    echo "Building Go tools for $OS_ARCH ..."
    go get -u github.com/kardianos/govendor
    cd $GO_TOOLS_DIR
-   govendor fetch
+   govendor fetch +external
    make $OS_ARCH
    cd $CUR_DIR
 
