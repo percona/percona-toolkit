@@ -2,9 +2,9 @@ package util
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
+	"github.com/bradfitz/slice"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/pmgo"
 	"github.com/pkg/errors"
@@ -95,7 +95,7 @@ func GetReplicasetMembers(dialer pmgo.Dialer, di *mgo.DialInfo) ([]proto.Members
 		members = append(members, member)
 	}
 
-	sort.Slice(members, func(i, j int) bool { return members[i].Name < members[j].Name })
+	slice.Sort(members, func(i, j int) bool { return members[i].Name < members[j].Name })
 	return members, nil
 }
 

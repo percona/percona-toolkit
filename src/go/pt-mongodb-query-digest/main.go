@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/howeyc/gopass"
-	"github.com/kylelemons/godebug/pretty"
 	"github.com/montanaflynn/stats"
 	"github.com/pborman/getopt"
 	"github.com/percona/percona-toolkit/src/go/lib/config"
@@ -184,7 +183,6 @@ func main() {
 
 	i := session.DB(di.Database).C("system.profile").Find(bson.M{"op": bson.M{"$nin": []string{"getmore", "delete"}}}).Sort("-$natural").Iter()
 	queries := sortQueries(getData(i), opts.OrderBy)
-	pretty.Print(queries)
 
 	uptime := uptime(session)
 
@@ -371,8 +369,6 @@ func getData(i iter) []stat {
 	log.Debug(`Documents returned by db.getSiblinfDB("<dbnamehere>").system.profile.Find({"op": {"$nin": []string{"getmore", "delete"}}).Sort("-$natural")`)
 
 	for i.Next(&doc) && i.Err() == nil {
-		log.Debugln("----------------------------------------------------------------------------")
-		log.Debug(pretty.Sprint(doc))
 		if len(doc.Query) > 0 {
 			query := doc.Query
 			if squery, ok := doc.Query["$query"]; ok {
