@@ -63,16 +63,16 @@
 			"revisionTime": "2017-01-12T20:04:14Z"
 		},
 		{
-			"checksumSHA1": "axnMKgQSC3quhKN7hhnJzmUucGw=",
+			"checksumSHA1": "hbVBehxpieRKCCXrrO3greA8eow=",
 			"path": "github.com/percona/pmgo",
-			"revision": "42879d6c2113a7df48dcfa8b2e37651e639810e2",
-			"revisionTime": "2016-12-06T18:44:57Z"
+			"revision": "20a7d7de024f754b59b6d51e8e3c21cf830299aa",
+			"revisionTime": "2017-02-01T04:03:13Z"
 		},
 		{
 			"checksumSHA1": "kTY8RZr5j26RNIR+F2SnMLeB7G8=",
 			"path": "github.com/percona/pmgo/pmgomock",
-			"revision": "42879d6c2113a7df48dcfa8b2e37651e639810e2",
-			"revisionTime": "2016-12-06T18:44:57Z"
+			"revision": "20a7d7de024f754b59b6d51e8e3c21cf830299aa",
+			"revisionTime": "2017-02-01T04:03:13Z"
 		},
 		{
 			"path": "github.com/percona/toolkit-go-old/pt-mongodb-summary/test",
