@@ -420,11 +420,41 @@ build_deb() {
 }
 
 build_go_binaries() {
-   CWD=$(pwd)
-   cd $GO_SRC_DIR
+   BASE_DIR=$(git rev-parse --show-toplevel)
+   GITHUB_DIR="${GOPATH}/src/github.com"
+   PERCONA_DIR="${GITHUB_DIR}/percona"
+   TOOLKIT_DIR="${PERCONA_DIR}/percona-toolkit"
+   GO_TOOLS_DIR="${TOOLKIT_DIR}/src/go"
+   CUR_DIR=$(pwd)
+   UNLINK=0
+   
+   echo "GOPATH: ${GOPATH}"
+   echo "Github directory: ${GITHUB_DIR}"
+   echo "Percona directory: ${PERCONA_DIR}"
+   echo "Toolkit directory: ${TOOLKIT_DIR}"
+   echo "Current directory: ${CUR_DIR}"
+   
+   if [[ ${BASE_DIR} != ${TOOLKIT_DIR} ]]
+   then
+       echo "not in gopath"
+       if [ -e ${TOOLKIT_DIR} ]; then
+           die "Cannot link current directory into GOPATH. Already exists"
+       else
+           mkdir -p ${PERCONA_DIR}
+           ln -s ${BASE_DIR} ${PERCONA_DIR}
+           UNLINK=1
+       fi
+   fi
    echo "Building Go tools for $OS_ARCH ..."
-   make $OS_ARCH 
-   cd $CWD
+   go get -u github.com/kardianos/govendor
+   cd $GO_TOOLS_DIR
+   make $OS_ARCH
+   cd $CUR_DIR
+
+   if [ $UNLINK -eq 1 ]; then
+       rm ${TOOLKIT_DIR}
+   fi
+
    echo "OK"
 }
 
