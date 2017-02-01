@@ -21,7 +21,7 @@ linux-386:
 	@echo "Building linux/386 binaries in ${BIN_DIR}"
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
 	@$(foreach pkg,$(pkgs),cd ${SRC_DIR}/${pkg} && govendor sync;)
-	@$(foreach pkg,$(pkgs),govendor sync && GOOS=linux GOARCH=386 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
+	@$(foreach pkg,$(pkgs),GOOS=linux GOARCH=386 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
 
 darwin-amd64: 
 	@echo "Building darwin/amd64 binaries in ${BIN_DIR}"
