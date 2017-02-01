@@ -10,3 +10,5 @@ snapshot
 build
 Makefile.old
 bin/pt-mongodb-*
+src/go/vendor
+!src/go/vendor/vendor.json
