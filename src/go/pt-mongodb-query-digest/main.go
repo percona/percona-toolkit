@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/md5"
+	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/howeyc/gopass"
+	"github.com/kr/pretty"
 	"github.com/montanaflynn/stats"
 	"github.com/pborman/getopt"
 	"github.com/percona/percona-toolkit/src/go/lib/config"
@@ -71,6 +73,7 @@ func (a times) Less(i, j int) bool { return a[i].Before(a[j]) }
 
 type stat struct {
 	ID             string
+	Operation      string
 	Fingerprint    string
 	Namespace      string
 	Query          map[string]interface{}
@@ -87,6 +90,7 @@ type stat struct {
 }
 
 type groupKey struct {
+	Operation   string
 	Fingerprint string
 	Namespace   string
 }
@@ -104,6 +108,8 @@ type statistics struct {
 
 type queryInfo struct {
 	Count          int
+	Operation      string
+	Query          string
 	Fingerprint    string
 	FirstSeen      time.Time
 	ID             string
@@ -151,7 +157,7 @@ func main() {
 			log.Infof("cannot check version updates: %s", err.Error())
 		} else {
 			if advice != "" {
-				log.Infof(advice)
+				log.Warn(advice)
 			}
 		}
 	}
@@ -166,7 +172,7 @@ func main() {
 	dialer := pmgo.NewDialer()
 	session, err := dialer.DialWithInfo(di)
 	if err != nil {
-		log.Printf("error connecting to the db %s", err)
+		log.Errorf("Error connecting to the db: %s while trying to connect to %s", err, di.Addrs[0])
 		os.Exit(3)
 	}
 
@@ -177,7 +183,7 @@ func main() {
 	}
 
 	if isProfilerEnabled == false {
-		log.Errorf("Cannot get profiler status: %s", err.Error())
+		log.Error("Profiler is not enabled")
 		os.Exit(5)
 	}
 
@@ -185,6 +191,8 @@ func main() {
 	queries := sortQueries(getData(i), opts.OrderBy)
 
 	uptime := uptime(session)
+
+	printHeader(opts)
 
 	queryTotals := calcTotalQueryStats(queries, uptime)
 	tt, _ := template.New("query").Funcs(template.FuncMap{
@@ -282,10 +290,13 @@ func calcQueryStats(queries []stat, uptime int64) []queryInfo {
 	queryStats := []queryInfo{}
 	_, totalScanned, totalReturned, totalQueryTime, totalBytes := calcTotals(queries)
 	for rank, query := range queries {
+		buf, _ := json.Marshal(query.Query)
 		qi := queryInfo{
 			Rank:           rank,
 			Count:          query.Count,
 			ID:             query.ID,
+			Operation:      query.Operation,
+			Query:          string(buf),
 			Fingerprint:    query.Fingerprint,
 			Scanned:        calcStats(query.NScanned),
 			Returned:       calcStats(query.NReturned),
@@ -296,7 +307,6 @@ func calcQueryStats(queries []stat, uptime int64) []queryInfo {
 			Namespace:      query.Namespace,
 			QPS:            float64(query.Count) / float64(uptime),
 		}
-		fmt.Printf("QPS>> query.Count: %v, uptime: %v, QPS: %v\n", query.Count, uptime, qi.QPS)
 		if totalScanned > 0 {
 			qi.Scanned.Pct = qi.Scanned.Total * 100 / totalScanned
 		}
@@ -369,6 +379,8 @@ func getData(i iter) []stat {
 	log.Debug(`Documents returned by db.getSiblinfDB("<dbnamehere>").system.profile.Find({"op": {"$nin": []string{"getmore", "delete"}}).Sort("-$natural")`)
 
 	for i.Next(&doc) && i.Err() == nil {
+		log.Debugln("====================================================================================================")
+		log.Debug(pretty.Sprint(doc))
 		if len(doc.Query) > 0 {
 			query := doc.Query
 			if squery, ok := doc.Query["$query"]; ok {
@@ -380,12 +392,14 @@ func getData(i iter) []stat {
 			var s *stat
 			var ok bool
 			key := groupKey{
+				Operation:   doc.Op,
 				Fingerprint: fp,
 				Namespace:   doc.Ns,
 			}
 			if s, ok = stats[key]; !ok {
 				s = &stat{
 					ID:          fmt.Sprintf("%x", md5.Sum([]byte(fp+doc.Ns))),
+					Operation:   doc.Op,
 					Fingerprint: fp,
 					Namespace:   doc.Ns,
 					TableScan:   false,
@@ -421,7 +435,7 @@ func getData(i iter) []stat {
 }
 
 func getOptions() (*options, error) {
-	opts := &options{Host: "localhost:27017", LogLevel: "error", OrderBy: []string{"count"}}
+	opts := &options{Host: "localhost:27017", LogLevel: "warn", OrderBy: []string{"count"}}
 	getopt.BoolVarLong(&opts.Help, "help", '?', "Show help")
 	getopt.BoolVarLong(&opts.Version, "version", 'v', "show version & exit")
 	getopt.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "Don't check for updates")
@@ -518,6 +532,12 @@ func keys(query map[string]interface{}, level int) []string {
 	return ks
 }
 
+func printHeader(opts *options) {
+	fmt.Printf("%s - %s\n", TOOLNAME, time.Now().Format(time.RFC1123Z))
+	fmt.Printf("Host: %s", opts.Host)
+	fmt.Println("")
+}
+
 func getQueryTemplate() string {
 
 	t := `
@@ -533,15 +553,15 @@ func getQueryTemplate() string {
 # Bytes recv          {{printf "% 4.0f" .ResponseLength.Pct}}   {{Format .ResponseLength.Total 7.2}}    {{Format .ResponseLength.Min 7.2}}    {{Format .ResponseLength.Max 7.2}}    {{Format .ResponseLength.Avg 7.2}}    {{Format .ResponseLength.Pct95 7.2}}    {{Format .ResponseLength.StdDev 7.2}}    {{Format .ResponseLength.Median 7.2}}
 # String:
 # Namespaces          {{.Namespace}}
+# Operation           {{.Operation}}
 # Fingerprint         {{.Fingerprint}}
+# Query               {{.Query}}
 `
 	return t
 }
 
 func getTotalsTemplate() string {
 	t := `
-pt-query profile
-
 # Totals
 # Ratio {{Format .Ratio 7.2}} (docs scanned/returned)
 # Attribute            pct     total        min         max        avg         95%        stddev      median
@@ -701,11 +721,6 @@ func sortQueries(queries []stat, orderby []string) []stat {
 }
 
 func isProfilerEnabled(dialer pmgo.Dialer, di *mgo.DialInfo) (bool, error) {
-	session, err := dialer.DialWithInfo(di)
-	if err != nil {
-		return false, fmt.Errorf("error connecting to the db %s", err)
-	}
-
 	var ps proto.ProfilerStatus
 	replicaMembers, err := util.GetReplicasetMembers(dialer, di)
 	if err != nil {
@@ -713,10 +728,18 @@ func isProfilerEnabled(dialer pmgo.Dialer, di *mgo.DialInfo) (bool, error) {
 	}
 	for _, member := range replicaMembers {
 		if member.State == proto.REPLICA_SET_MEMBER_PRIMARY {
-			if err := session.DB(di.Database).Run(bson.M{"profile": -1}, &ps); err == nil {
-				if ps.Was == 0 {
-					return false, nil
-				}
+			di.Addrs = []string{member.Name}
+			session, err := dialer.DialWithInfo(di)
+			if err != nil {
+				continue
+			}
+			defer session.Close()
+
+			if err := session.DB(di.Database).Run(bson.M{"profile": -1}, &ps); err != nil {
+				continue
+			}
+			if ps.Was == 0 {
+				return false, nil
 			}
 		}
 	}
