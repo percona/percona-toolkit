@@ -385,7 +385,7 @@ build_rpm() {
 }
 
 build_deb() {
-   local deb_pkg="percona-toolkit_$VERSION-1_all.deb"
+   local deb_pkg="percona-toolkit_$VERSION-1_$DEB_ARCH.deb"
    echo -n "Building $deb_pkg... "
 
    cd $RELEASE_DIR
@@ -480,14 +480,17 @@ fi
 
 if [ $OS_ARCH == "linux-amd64" ]; then
    ARCH="x86_64"
+   DEB_ARCH="amd64"
 elif [ $OS_ARCH == "linux-386" ]; then
    ARCH="i386"
+   DEB_ARCH="i386"
 else
    ARCH="noarch"
+   ARCH="all"
 fi
 
 sed -i'.bak' -e "s/@@ARHITECTURE@@/$ARCH/" $RPM_CONFIG_DIR/percona-toolkit.spec
-sed -i'.bak' -e "s/@@ARHITECTURE@@/$ARCH/" $DEB_CONFIG_DIR/control
+sed -i'.bak' -e "s/@@ARHITECTURE@@/$DEB_ARCH/" $DEB_CONFIG_DIR/control
 
 if [ ! -f $REL_NOTES ]; then
    die "$REL_NOTES does not exist"
