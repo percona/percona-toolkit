@@ -12,19 +12,22 @@ The last step is sorting the results. The default sort order is by ascending que
 
 ##Sample output
 ```
-# Query 2:  0.00 QPS, ID 1a6443c2db9661f3aad8edb6b877e45d
+# Query 3:  0.06 QPS, ID 0b906bd86148def663d11b402f3e41fa
 # Ratio    1.00  (docs scanned/returned)
-# Time range: 2017-01-11 12:58:26.519 -0300 ART to 2017-01-11 12:58:26.686 -0300 ART
+# Time range: 2017-02-03 16:01:37.484 -0300 ART to 2017-02-03 16:02:08.43 -0300 ART
 # Attribute            pct     total        min         max        avg         95%        stddev      median
 # ==================   ===   ========    ========    ========    ========    ========     =======    ========
-# Count (docs)                    36 
-# Exec Time ms           0         0           0           0           0           0           0           0 
-# Docs Scanned           0    148.00        0.00       74.00        4.11       74.00       16.95        0.00 
-# Docs Returned          2    148.00        0.00       74.00        4.11       74.00       16.95        0.00 
-# Bytes recv             0      2.11M     215.00        1.05M      58.48K       1.05M     240.22K     215.00 
+# Count (docs)                   100
+# Exec Time ms           2         3           0           1           0           0           0           0
+# Docs Scanned           5      7.50K      75.00       75.00       75.00       75.00        0.00       75.00
+# Docs Returned         92      7.50K      75.00       75.00       75.00       75.00        0.00       75.00
+# Bytes recv             1    106.12M       1.06M       1.06M       1.06M       1.06M       0.00        1.06M
 # String:
 # Namespaces          samples.col1
-# Fingerprint         $gte,$lt,$meta,$sortKey,filter,find,projection,shardVersion,sort,user_id,user_id
+# Operation           query
+# Fingerprint         find,shardVersion
+# Query               {"find":"col1","shardVersion":[0,"000000000000000000000000"]}
+
 ```
   
 ##Command line parameters  
@@ -39,7 +42,7 @@ The last step is sorting the results. The default sort order is by ascending que
 |-n|--limit|show the first n queries|
 |-o|--order-by|comma separated list of order by fields (max values): `count`, `ratio`, `query-time`, `docs-scanned`, `docs-returned`.<br> A `-` in front of the field name denotes reverse order.<br> Example:`--order-by="count,-ratio"`).|
 |-p|--password[=password]|Password (optional). If it is not specified it will be asked|
-|-s|--skip-collections|Comma separated list of collections to skip. Default: `system.profile`|
+|-s|--skip-collections|Comma separated list of collections to skip. Default: `system.profile`. It is possible to use an empty list by setting `--skip-collections=""`|
 |-u|--user|Username|
 |-v|--version|Show version & exit|
 
