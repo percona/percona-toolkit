@@ -201,5 +201,5 @@
 			"revisionTime": "2016-12-08T15:16:19Z"
 		}
 	],
-	"rootPath": "github.com/percona/percona-toolkit/src/go/pt-mongodb-summary"
+	"rootPath": "go/pt-mongodb-summary"
 }
