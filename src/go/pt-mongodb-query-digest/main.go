@@ -45,19 +45,25 @@ type iter interface {
 }
 
 type options struct {
-	AuthDB         string
-	Database       string
-	Debug          bool
-	Help           bool
-	Host           string
-	Limit          int
-	LogLevel       string
-	NoVersionCheck bool
-	OrderBy        []string
-	Password       string
-	User           string
-	Version        bool
+	AuthDB          string
+	Database        string
+	Debug           bool
+	Help            bool
+	Host            string
+	Limit           int
+	LogLevel        string
+	NoVersionCheck  bool
+	OrderBy         []string
+	Password        string
+	SkipCollections []string
+	User            string
+	Version         bool
 }
+
+// This func receives a doc from the profiler and returns:
+// true : the document must be considered
+// false: the document must be skipped
+type docsFilter func(proto.SystemProfile) bool
 
 type statsArray []stat
 
@@ -129,7 +135,7 @@ func main() {
 
 	opts, err := getOptions()
 	if err != nil {
-		log.Printf("error processing commad line arguments: %s", err)
+		log.Errorf("error processing commad line arguments: %s", err)
 		os.Exit(1)
 	}
 	if opts.Help {
@@ -139,7 +145,7 @@ func main() {
 
 	logLevel, err := log.ParseLevel(opts.LogLevel)
 	if err != nil {
-		fmt.Printf("cannot set log level: %s", err.Error())
+		fmt.Errorf("cannot set log level: %s", err.Error())
 	}
 	log.SetLevel(logLevel)
 
@@ -187,8 +193,36 @@ func main() {
 		os.Exit(5)
 	}
 
-	i := session.DB(di.Database).C("system.profile").Find(bson.M{"op": bson.M{"$nin": []string{"getmore", "delete"}}}).Sort("-$natural").Iter()
-	queries := sortQueries(getData(i), opts.OrderBy)
+	filters := []docsFilter{}
+
+	if len(opts.SkipCollections) > 0 {
+		// Sanitize the param. using --skip-collections="" will produce an 1 element array but
+		// that element will be empty. The same would be using --skip-collections=a,,d
+		cols := []string{}
+		for _, c := range opts.SkipCollections {
+			if strings.TrimSpace(c) != "" {
+				cols = append(cols, c)
+			}
+		}
+		if len(cols) > 0 {
+			// This func receives a doc from the profiler and returns:
+			// true : the document must be considered
+			// false: the document must be skipped
+			filterSystemProfile := func(doc proto.SystemProfile) bool {
+				for _, collection := range cols {
+					if strings.HasSuffix(doc.Ns, collection) {
+						return false
+					}
+				}
+				return true
+			}
+			filters = append(filters, filterSystemProfile)
+		}
+	}
+
+	query := bson.M{"op": bson.M{"$nin": []string{"getmore", "delete"}}}
+	i := session.DB(di.Database).C("system.profile").Find(query).Sort("-$natural").Iter()
+	queries := sortQueries(getData(i, filters), opts.OrderBy)
 
 	uptime := uptime(session)
 
@@ -372,13 +406,24 @@ func calcStats(samples []float64) statistics {
 	return s
 }
 
-func getData(i iter) []stat {
+func getData(i iter, filters []docsFilter) []stat {
 	var doc proto.SystemProfile
 	stats := make(map[groupKey]*stat)
 
 	log.Debug(`Documents returned by db.getSiblinfDB("<dbnamehere>").system.profile.Find({"op": {"$nin": []string{"getmore", "delete"}}).Sort("-$natural")`)
 
 	for i.Next(&doc) && i.Err() == nil {
+		valid := true
+		for _, filter := range filters {
+			if filter(doc) == false {
+				valid = false
+				break
+			}
+		}
+		if !valid {
+			continue
+		}
+
 		log.Debugln("====================================================================================================")
 		log.Debug(pretty.Sprint(doc))
 		if len(doc.Query) > 0 {
@@ -424,7 +469,6 @@ func getData(i iter) []stat {
 
 	// We need to sort the data but a hash cannot be sorted so, convert the hash having
 	// the results to a slice
-
 	sa := statsArray{}
 	for _, s := range stats {
 		sa = append(sa, *s)
@@ -435,7 +479,13 @@ func getData(i iter) []stat {
 }
 
 func getOptions() (*options, error) {
-	opts := &options{Host: "localhost:27017", LogLevel: "warn", OrderBy: []string{"count"}}
+	opts := &options{
+		Host:            "localhost:27017",
+		LogLevel:        "warn",
+		OrderBy:         []string{"count"},
+		SkipCollections: []string{"system.profile"},
+	}
+
 	getopt.BoolVarLong(&opts.Help, "help", '?', "Show help")
 	getopt.BoolVarLong(&opts.Version, "version", 'v', "show version & exit")
 	getopt.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "Don't check for updates")
@@ -443,6 +493,7 @@ func getOptions() (*options, error) {
 	getopt.IntVarLong(&opts.Limit, "limit", 'n', "show the first n queries")
 
 	getopt.ListVarLong(&opts.OrderBy, "order-by", 'o', "comma separated list of order by fields (max values): count,ratio,query-time,docs-scanned,docs-returned. - in front of the field name denotes reverse order.")
+	getopt.ListVarLong(&opts.SkipCollections, "skip-collections", 's', "comma separated list of collections (namespaces) to skip. Default: system.profile")
 
 	getopt.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin", "database used to establish credentials and privileges with a MongoDB server")
 	getopt.StringVarLong(&opts.Database, "database", 'd', "", "database to profile")
@@ -534,7 +585,8 @@ func keys(query map[string]interface{}, level int) []string {
 
 func printHeader(opts *options) {
 	fmt.Printf("%s - %s\n", TOOLNAME, time.Now().Format(time.RFC1123Z))
-	fmt.Printf("Host: %s", opts.Host)
+	fmt.Printf("Host: %s\n", opts.Host)
+	fmt.Printf("Skipping docs in these collections: %v\n", opts.SkipCollections)
 	fmt.Println("")
 }
 

@@ -39,6 +39,7 @@ The last step is sorting the results. The default sort order is by ascending que
 |-n|--limit|show the first n queries|
 |-o|--order-by|comma separated list of order by fields (max values): `count`, `ratio`, `query-time`, `docs-scanned`, `docs-returned`.<br> A `-` in front of the field name denotes reverse order.<br> Example:`--order-by="count,-ratio"`).|
 |-p|--password[=password]|Password (optional). If it is not specified it will be asked|
+|-s|--skip-collections|Comma separated list of collections to skip. Default: `system.profile`|
 |-u|--user|Username|
 |-v|--version|Show version & exit|
 
