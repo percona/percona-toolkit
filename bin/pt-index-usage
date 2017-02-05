@@ -7581,7 +7581,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2016 Percona LLC and/or its affiliates,
+This program is copyright 2011-2017 Percona LLC and/or its affiliates,
 2010-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -7600,6 +7600,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-index-usage 2.2.20
+pt-index-usage 3.0
 
 =cut

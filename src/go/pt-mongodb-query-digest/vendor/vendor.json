@@ -147,5 +147,5 @@
 			"revisionTime": "2016-12-08T15:16:19Z"
 		}
 	],
-	"rootPath": "github.com/percona/percona-toolkit/src/go/pt-mongodb-query-digest"
+	"rootPath": "go/pt-mongodb-query-digest"
 }
