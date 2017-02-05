@@ -21,6 +21,12 @@
 			"revisionTime": "2016-08-23T17:07:15Z"
 		},
 		{
+			"checksumSHA1": "uulQHQ7IsRKqDudBC8Go9J0gtAc=",
+			"path": "github.com/kr/text",
+			"revision": "7cafcd837844e784b526369c9bce262804aebc60",
+			"revisionTime": "2016-05-04T02:26:26Z"
+		},
+		{
 			"checksumSHA1": "eW4R3odVrsAfyKbibRdUgGETfxc=",
 			"path": "github.com/montanaflynn/stats",
 			"revision": "f8cd06f93c6c1b06028caafb88b540fc820f77c1",
@@ -147,5 +153,5 @@
 			"revisionTime": "2016-12-08T15:16:19Z"
 		}
 	],
-	"rootPath": "go/pt-mongodb-query-digest"
+	"rootPath": "github.com/percona/percona-toolkit/src/go/pt-mongodb-query-digest"
 }
