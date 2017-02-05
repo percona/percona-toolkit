@@ -15,6 +15,12 @@
 			"revisionTime": "2016-10-03T13:09:00Z"
 		},
 		{
+			"checksumSHA1": "eOXF2PEvYLMeD8DSzLZJWbjYzco=",
+			"path": "github.com/kr/pretty",
+			"revision": "cfb55aafdaf3ec08f0db22699ab822c50091b1c4",
+			"revisionTime": "2016-08-23T17:07:15Z"
+		},
+		{
 			"checksumSHA1": "eW4R3odVrsAfyKbibRdUgGETfxc=",
 			"path": "github.com/montanaflynn/stats",
 			"revision": "f8cd06f93c6c1b06028caafb88b540fc820f77c1",
