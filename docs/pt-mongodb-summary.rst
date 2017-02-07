@@ -23,21 +23,26 @@ by running administration commands and formatting the output.
 Options
 -------
 
--a, --auth-db    Specifies the database used to establish credentials
-                 and privileges with a MongoDB server.
-                 By default, the ``admin`` database is used.
+-a, --auth-db
 
--p, --password	 Specifies the password to use when connecting
-                 to a server with authentication enabled.
+ Specifies the database used to establish credentials and privileges
+ with a MongoDB server.
+ By default, the ``admin`` database is used.
 
-                 Do not add a space between the option and its value:
-                 ``-p<password>``.
+-p, --password
 
-                 If you specify the option without any value,
-                 ``pt-mongodb-summary`` will ask for password interactively.
+ Specifies the password to use when connecting to a server
+ with authentication enabled.
 
--u, --user       Specifies the user name for connecting
-                 to a server with authentication enabled.
+ Do not add a space between the option and its value: ``-p<password>``.
+
+ If you specify the option without any value,
+ ``pt-mongodb-summary`` will ask for password interactively.
+
+-u, --user
+
+ Specifies the user name for connecting to a server
+ with authentication enabled.
 
 Output Example
 ==============
@@ -105,7 +110,7 @@ Output Example
                    Drops: 0
 
 Sections
-========
+--------
 
 Output is separated into the following sections:
 
