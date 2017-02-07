@@ -2,36 +2,39 @@
  Installation
 =======================================
 
-You can either download Percona Toolkit manually from the website
-or use the official Percona software repositories for your system.
+.. You can either download Percona Toolkit manually from the website
+ or use the official Percona software repositories for your system.
+
+You can install Percona Toolkit 3.0.0 release candidate
+from the official Percona software repositories for your system.
 
 .. contents::
    :local:
-
-Downloading Percona Toolkit
-===========================
-
-Visit http://www.percona.com/software/percona-toolkit/
-to download the latest release of Percona Toolkit.
-Alternatively, you can get the latest release using the command line:
-
-.. code-block:: bash
-
-    wget percona.com/get/percona-toolkit.tar.gz
+..
+ Downloading Percona Toolkit
+ ===========================
  
-    wget percona.com/get/percona-toolkit.rpm
+ Visit http://www.percona.com/software/percona-toolkit/
+ to download the latest release of Percona Toolkit.
+ Alternatively, you can get the latest release using the command line:
  
-    wget percona.com/get/percona-toolkit.deb
-
-You can also get individual tools from the latest release:
-
-.. code-block:: bash
-
-    wget percona.com/get/TOOL
-
-Replace ``TOOL`` with the name of any tool, for example::
-
-  wget percona.com/get/pt-summary
+ .. code-block:: bash
+ 
+     wget percona.com/get/percona-toolkit.tar.gz
+  
+     wget percona.com/get/percona-toolkit.rpm
+  
+     wget percona.com/get/percona-toolkit.deb
+ 
+ You can also get individual tools from the latest release:
+ 
+ .. code-block:: bash
+ 
+     wget percona.com/get/TOOL
+ 
+ Replace ``TOOL`` with the name of any tool, for example::
+ 
+   wget percona.com/get/pt-summary
 
 Installing Percona Toolkit on Debian or Ubuntu
 ==============================================
