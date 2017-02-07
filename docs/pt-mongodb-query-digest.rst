@@ -28,34 +28,27 @@ Options
 -------
 
 -?, --help
-
  Show help and exit
 
 -a, --authenticationDatabase
-
  Specifies the database	used to establish credentials and privileges
  with a MongoDB server.
  By default, the ``admin`` database is used.
 
 -c, --no-version-check
-
  Don't check for updates
 
 -d, --database
-
  Specifies which database to profile
 
 -l, --log-level
-
  Specifies the log level:
  ``panic``, ``fatal``, ``error``, ``warn``, ``info``, ``debug error``
 
 -n, --limit
-
  Limits the number of queries to show
 
 -o, --order-by
-
  Specifies the sorting order using fields:
  ``count``, ``ratio``, ``query-time``, ``docs-scanned``, ``docs-returned``.
 
@@ -63,7 +56,6 @@ Options
  For example: ``--order-by="count,-ratio"``.
 
 -p, --password
-
  Specifies the password to use when connecting to a server
  with authentication enabled.
 
@@ -73,12 +65,10 @@ Options
  you will be prompted for the password.
 
 -u, --user
-
  Specifies the user name for connecting	to a server
  with authentication enabled.
 
 -v, --version
-
  Show version and exit
 
 Output Example

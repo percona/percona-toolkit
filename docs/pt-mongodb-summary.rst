@@ -24,13 +24,11 @@ Options
 -------
 
 -a, --auth-db
-
  Specifies the database used to establish credentials and privileges
  with a MongoDB server.
  By default, the ``admin`` database is used.
 
 -p, --password
-
  Specifies the password to use when connecting to a server
  with authentication enabled.
 
@@ -40,7 +38,6 @@ Options
  ``pt-mongodb-summary`` will ask for password interactively.
 
 -u, --user
-
  Specifies the user name for connecting to a server
  with authentication enabled.
 
