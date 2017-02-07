@@ -27,49 +27,49 @@ By default, the results are sorted by ascending query count.
 Options
 -------
 
--?, --help
- Show help and exit
+``-?``, ``--help``
+  Show help and exit
 
--a, --authenticationDatabase
- Specifies the database	used to establish credentials and privileges
- with a MongoDB server.
- By default, the ``admin`` database is used.
+``-a``, ``--authenticationDatabase``
+  Specifies the database used to establish credentials and privileges
+  with a MongoDB server.
+  By default, the ``admin`` database is used.
 
--c, --no-version-check
- Don't check for updates
+``-c``, ``--no-version-check``
+  Don't check for updates
 
--d, --database
- Specifies which database to profile
+``-d``, ``--database``
+  Specifies which database to profile
 
--l, --log-level
- Specifies the log level:
- ``panic``, ``fatal``, ``error``, ``warn``, ``info``, ``debug error``
+``-l``, ``--log-level``
+  Specifies the log level:
+  ``panic``, ``fatal``, ``error``, ``warn``, ``info``, ``debug error``
 
--n, --limit
- Limits the number of queries to show
+``-n``, ``--limit``
+  Limits the number of queries to show
 
--o, --order-by
- Specifies the sorting order using fields:
- ``count``, ``ratio``, ``query-time``, ``docs-scanned``, ``docs-returned``.
+``-o``, ``--order-by``
+  Specifies the sorting order using fields:
+  ``count``, ``ratio``, ``query-time``, ``docs-scanned``, ``docs-returned``.
 
- Adding a hypen (``-``) in front of a field denotes reverse order.
- For example: ``--order-by="count,-ratio"``.
+  Adding a hypen (``-``) in front of a field denotes reverse order.
+  For example: ``--order-by="count,-ratio"``.
 
--p, --password
- Specifies the password to use when connecting to a server
- with authentication enabled.
+``-p``, ``--password``
+  Specifies the password to use when connecting to a server
+  with authentication enabled.
 
- Do not add a space between the option and its value: ``-p<password>``.
+  Do not add a space between the option and its value: ``-p<password>``.
 
- If you specify the option without any value,
- you will be prompted for the password.
+  If you specify the option without any value,
+  you will be prompted for the password.
 
--u, --user
- Specifies the user name for connecting	to a server
- with authentication enabled.
+``-u``, ``--user``
+  Specifies the user name for connecting to a server
+  with authentication enabled.
 
--v, --version
- Show version and exit
+``-v``, ``--version``
+  Show version and exit
 
 Output Example
 ==============
