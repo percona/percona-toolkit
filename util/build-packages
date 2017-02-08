@@ -486,7 +486,7 @@ elif [ $OS_ARCH == "linux-386" ]; then
    DEB_ARCH="i386"
 else
    ARCH="noarch"
-   ARCH="all"
+   DEB_ARCH="all"
 fi
 
 sed -i'.bak' -e "s/@@ARHITECTURE@@/$ARCH/" $RPM_CONFIG_DIR/percona-toolkit.spec
