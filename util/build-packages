@@ -132,11 +132,13 @@ update_version() {
    echo -n "Updating version in tools... "
    cd $BRANCH/bin
    for tool_file in *; do
-      sed -i'.bak' -e "s/^$tool_file [0-9]\.[0-9][^ ]\+/$tool_file $VERSION/" $tool_file
-      if [ $? -ne 0 ]; then
-         die "Error updating version in $tool_file"
+      if [ $tool_file != "govendor" ]; then
+         sed -i'.bak' -e "s/^$tool_file [0-9]\.[0-9]\+/$tool_file $VERSION/" $tool_file
+         if [ $? -ne 0 ]; then
+            die "Error updating version in $tool_file"
+         fi
+         rm "$tool_file.bak"
       fi
-      rm "$tool_file.bak"
    done
 
    local new_versions=$(grep --no-filename '^pt-[^ ]\+ [0-9]\.' * | cut -d' ' -f2 | sort -u)
