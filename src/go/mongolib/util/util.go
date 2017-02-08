@@ -151,7 +151,9 @@ func GetHostnames(dialer pmgo.Dialer, di *mgo.DialInfo) ([]string, error) {
 	return hostnames, nil
 }
 
-func GetHostnamesOld(dialer pmgo.Dialer, di *mgo.DialInfo) ([]string, error) {
+// This function is like GetHostnames but it uses listShards instead of getShardMap
+// so it won't include config servers in the returned list
+func GetShardsHosts(dialer pmgo.Dialer, di *mgo.DialInfo) ([]string, error) {
 	hostnames := []string{di.Addrs[0]}
 	session, err := dialer.DialWithInfo(di)
 	if err != nil {

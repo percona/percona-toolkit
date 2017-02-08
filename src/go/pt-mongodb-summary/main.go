@@ -505,7 +505,7 @@ func GetOpCountersStats(session pmgo.SessionManager, count int, sleep time.Durat
 		<-ticker.C
 		err := session.DB("admin").Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, &ss)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 
 		if i == 0 {
