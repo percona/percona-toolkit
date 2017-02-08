@@ -23,6 +23,7 @@
 # These environment variables are for special builds:
 #   UPDATE_DOCS=0|1 - Do (not) update docs
 #   BETA=1          - UPDATE_DOCS=0 BUILD_RPM=0 BUILD_DEB=0
+#   QUIET=1         - Do (not) ask questions
 #
 # A few more things you should know:
 #  * You'll need rpmbuild and dpkg-buildpackage to build the rpm and deb pkgs
@@ -556,8 +557,10 @@ fi
 # time before the release packages are built.  This script can't do that
 # because your branch could non-standard.
 BUILD=${BUILD:-1}
+QUIET=${QUIET:-0}
 if [ $BUILD -eq 1 ]; then
-   cat <<MSG
+   if [ $QUIET -eq 0 ]; then
+      cat <<MSG
 
 Branch verified and updated; ready to build $PKG,
 but first you must:
@@ -570,7 +573,8 @@ but first you must:
 Press any key to continue... (or Ctrl-C to abort)
 MSG
 
-   read
+      read
+   fi
 
    prep_release_dir
 
