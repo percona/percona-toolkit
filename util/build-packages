@@ -23,6 +23,7 @@
 # These environment variables are for special builds:
 #   UPDATE_DOCS=0|1 - Do (not) update docs
 #   BETA=1          - UPDATE_DOCS=0 BUILD_RPM=0 BUILD_DEB=0
+#   QUIET=1         - Do (not) ask questions
 #
 # A few more things you should know:
 #  * You'll need rpmbuild and dpkg-buildpackage to build the rpm and deb pkgs
@@ -131,11 +132,13 @@ update_version() {
    echo -n "Updating version in tools... "
    cd $BRANCH/bin
    for tool_file in *; do
-      sed -i'.bak' -e "s/^$tool_file [0-9]\.[0-9][^ ]\+/$tool_file $VERSION/" $tool_file
-      if [ $? -ne 0 ]; then
-         die "Error updating version in $tool_file"
+      if [ $tool_file != "govendor" ]; then
+         sed -i'.bak' -e "s/^$tool_file [0-9]\.[0-9]\+/$tool_file $VERSION/" $tool_file
+         if [ $? -ne 0 ]; then
+            die "Error updating version in $tool_file"
+         fi
+         rm "$tool_file.bak"
       fi
-      rm "$tool_file.bak"
    done
 
    local new_versions=$(grep --no-filename '^pt-[^ ]\+ [0-9]\.' * | cut -d' ' -f2 | sort -u)
@@ -486,7 +489,7 @@ elif [ $OS_ARCH == "linux-386" ]; then
    DEB_ARCH="i386"
 else
    ARCH="noarch"
-   ARCH="all"
+   DEB_ARCH="all"
 fi
 
 sed -i'.bak' -e "s/@@ARHITECTURE@@/$ARCH/" $RPM_CONFIG_DIR/percona-toolkit.spec
@@ -556,8 +559,10 @@ fi
 # time before the release packages are built.  This script can't do that
 # because your branch could non-standard.
 BUILD=${BUILD:-1}
+QUIET=${QUIET:-0}
 if [ $BUILD -eq 1 ]; then
-   cat <<MSG
+   if [ $QUIET -eq 0 ]; then
+      cat <<MSG
 
 Branch verified and updated; ready to build $PKG,
 but first you must:
@@ -570,7 +575,8 @@ but first you must:
 Press any key to continue... (or Ctrl-C to abort)
 MSG
 
-   read
+      read
+   fi
 
    prep_release_dir
 
