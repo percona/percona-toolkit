@@ -22,7 +22,7 @@ func GetOplogInfo(hostnames []string, di *mgo.DialInfo) ([]proto.OplogInfo, erro
 		di.Addrs = []string{hostname}
 		session, err := mgo.DialWithInfo(di)
 		if err != nil {
-			return nil, errors.Wrapf(err, "cannot connect to %s", hostname)
+			continue
 		}
 		defer session.Close()
 
@@ -74,7 +74,7 @@ func GetOplogInfo(hostnames []string, di *mgo.DialInfo) ([]proto.OplogInfo, erro
 		replSetStatus := proto.ReplicaSetStatus{}
 		err = session.Run(bson.M{"replSetGetStatus": 1}, &replSetStatus)
 		if err != nil {
-			return nil, errors.Wrap(err, "cannot get ReplicaSetStatus")
+			continue
 		}
 
 		for _, member := range replSetStatus.Members {

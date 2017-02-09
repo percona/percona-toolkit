@@ -1,10 +1,14 @@
 package templates
 
 const HostInfo = `# This host
+{{ if .ProcPath -}}
 # Mongo Executable #######################################################################################
-       Path to executable | {{.ProcPath}}
-# Report On {{.ThisHostID}} ########################################
-                     User | {{.ProcUserName}}
+       Path to executable | {{.ProcPath }}
+{{ end -}}
+# Report On {{.Hostname}} ########################################
+{{- if .ProcUserName }}
+                     User | {{.ProcUserName }}
+{{- end }}
                 PID Owner | {{.ProcessName}}
                  Hostname | {{.Hostname}}
                   Version | {{.Version}}

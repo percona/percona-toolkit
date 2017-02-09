@@ -3,6 +3,7 @@ package util
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/bradfitz/slice"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
@@ -12,50 +13,22 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-func GetReplicasetMembersNew(dialer pmgo.Dialer, di *mgo.DialInfo) ([]proto.Members, error) {
-	hostnames, err := GetHostnames(dialer, di)
-	if err != nil {
-		return nil, err
-	}
-	replicaMembers := []proto.Members{}
-	for _, hostname := range hostnames {
-		if serverStatus, err := GetServerStatus(dialer, di, hostname); err == nil {
-
-			m := proto.Members{
-				ID:            serverStatus.Pid,
-				Name:          hostname,
-				StorageEngine: serverStatus.StorageEngine,
-				Set:           serverStatus.Repl.SetName,
-			}
-			if serverStatus.Repl.IsMaster != nil && serverStatus.Repl.IsMaster.(bool) {
-				m.StateStr = "PRIMARY"
-			}
-			if serverStatus.Repl.Secondary != nil && serverStatus.Repl.Secondary.(bool) {
-				m.StateStr = "SECONDARY"
-			}
-			replicaMembers = append(replicaMembers, m)
-		}
-
-	}
-
-	return replicaMembers, nil
-}
-
 func GetReplicasetMembers(dialer pmgo.Dialer, di *mgo.DialInfo) ([]proto.Members, error) {
 	hostnames, err := GetHostnames(dialer, di)
 	if err != nil {
+		fmt.Println("PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP")
 		return nil, err
 	}
 	membersMap := make(map[string]proto.Members)
 	members := []proto.Members{}
 
 	for _, hostname := range hostnames {
-		tmpdi := *di
-		tmpdi.Addrs = []string{hostname}
-		session, err := dialer.DialWithInfo(&tmpdi)
+		session, err := dialer.DialWithInfo(getTmpDI(di, hostname))
 		if err != nil {
-			return nil, errors.Wrapf(err, "getReplicasetMembers. cannot connect to %s", hostname)
+			continue
 		}
+		defer session.Close()
+		session.SetMode(mgo.Monotonic, true)
 
 		cmdOpts := proto.CommandLineOptions{}
 		session.DB("admin").Run(bson.D{{"getCmdLineOpts", 1}, {"recordStats", 1}}, &cmdOpts)
@@ -101,18 +74,65 @@ func GetReplicasetMembers(dialer pmgo.Dialer, di *mgo.DialInfo) ([]proto.Members
 
 func GetHostnames(dialer pmgo.Dialer, di *mgo.DialInfo) ([]string, error) {
 	hostnames := []string{di.Addrs[0]}
+	di.Direct = true
+	di.Timeout = 2 * time.Second
+
 	session, err := dialer.DialWithInfo(di)
 	if err != nil {
 		return hostnames, err
 	}
 	defer session.Close()
+	session.SetMode(mgo.Monotonic, true)
 
+	// Try getShardMap first. If we are connected to a mongos it will return
+	// all hosts, including config hosts
 	var shardsMap proto.ShardsMap
 	err = session.Run("getShardMap", &shardsMap)
-	if err != nil {
-		return hostnames, errors.Wrap(err, "cannot list shards")
+	if err == nil && len(shardsMap.Map) > 0 {
+		// if the only element getShardMap returns is the list of config servers,
+		// it means we are connected to a replicaSet member and getShardMap is not
+		// the answer we want.
+		_, ok := shardsMap.Map["config"]
+		if ok && len(shardsMap.Map) > 1 {
+			return buildHostsListFromShardMap(shardsMap), nil
+		}
 	}
 
+	// Probably we are connected to an individual member of a replica set
+	rss := proto.ReplicaSetStatus{}
+	if err := session.Run(bson.M{"replSetGetStatus": 1}, &rss); err == nil {
+		return buildHostsListFromReplStatus(rss), nil
+	}
+	return hostnames, nil
+}
+
+func buildHostsListFromReplStatus(replStatus proto.ReplicaSetStatus) []string {
+	/*
+	   "members" : [
+	            {
+	                    "_id" : 0,
+	                    "name" : "localhost:17001",
+	                    "health" : 1,
+	                    "state" : 1,
+	                    "stateStr" : "PRIMARY",
+	                    "uptime" : 4700,
+	                    "optime" : Timestamp(1486554836, 1),
+	                    "optimeDate" : ISODate("2017-02-08T11:53:56Z"),
+	                    "electionTime" : Timestamp(1486651810, 1),
+	                    "electionDate" : ISODate("2017-02-09T14:50:10Z"),
+	                    "configVersion" : 1,
+	                    "self" : true
+	            },
+	*/
+
+	hostnames := []string{}
+	for _, member := range replStatus.Members {
+		hostnames = append(hostnames, member.Name)
+	}
+	return hostnames
+}
+
+func buildHostsListFromShardMap(shardsMap proto.ShardsMap) []string {
 	/* Example
 	mongos> db.getSiblingDB('admin').runCommand('getShardMap')
 	{
@@ -126,7 +146,12 @@ func GetHostnames(dialer pmgo.Dialer, di *mgo.DialInfo) ([]string, error) {
 	}
 	*/
 
+	hostnames := []string{}
 	hm := make(map[string]bool)
+
+	// Since shardMap can return repeated hosts in different rows, we need a Set
+	// but there is no Set in Go so, we are going to create a map and the loop
+	// through the keys to get a list of unique host names
 	if shardsMap.Map != nil {
 		for _, val := range shardsMap.Map {
 			m := strings.Split(val, "/")
@@ -143,17 +168,16 @@ func GetHostnames(dialer pmgo.Dialer, di *mgo.DialInfo) ([]string, error) {
 				hm[host] = false
 			}
 		}
-		hostnames = []string{} // re-init because it has di.Addr[0]
 		for host := range hm {
 			hostnames = append(hostnames, host)
 		}
 	}
-	return hostnames, nil
+	return hostnames
 }
 
 // This function is like GetHostnames but it uses listShards instead of getShardMap
 // so it won't include config servers in the returned list
-func GetShardsHosts(dialer pmgo.Dialer, di *mgo.DialInfo) ([]string, error) {
+func GetShardedHosts(dialer pmgo.Dialer, di *mgo.DialInfo) ([]string, error) {
 	hostnames := []string{di.Addrs[0]}
 	session, err := dialer.DialWithInfo(di)
 	if err != nil {
@@ -177,24 +201,27 @@ func GetShardsHosts(dialer pmgo.Dialer, di *mgo.DialInfo) ([]string, error) {
 	return hostnames, nil
 }
 
+func getTmpDI(di *mgo.DialInfo, hostname string) *mgo.DialInfo {
+	tmpdi := *di
+	tmpdi.Addrs = []string{hostname}
+	tmpdi.Direct = true
+	tmpdi.Timeout = 2 * time.Second
+
+	return &tmpdi
+}
+
 func GetServerStatus(dialer pmgo.Dialer, di *mgo.DialInfo, hostname string) (proto.ServerStatus, error) {
 	ss := proto.ServerStatus{}
 
-	tmpdi := *di
-	tmpdi.Addrs = []string{hostname}
-	// tmpdi.Direct = true
-	// tmpdi.Timeout = 5 * time.Second
-	// tmpdi.FailFast = false
-
-	session, err := dialer.DialWithInfo(&tmpdi)
+	tmpdi := getTmpDI(di, hostname)
+	session, err := dialer.DialWithInfo(tmpdi)
 	if err != nil {
-		fmt.Printf("error %s\n", err.Error())
 		return ss, errors.Wrapf(err, "getReplicasetMembers. cannot connect to %s", hostname)
 	}
 	defer session.Close()
+	session.SetMode(mgo.Monotonic, true)
 
 	if err := session.DB("admin").Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, &ss); err != nil {
-		fmt.Printf("error 2%s\n", err.Error())
 		return ss, errors.Wrap(err, "GetHostInfo.serverStatus")
 	}
 

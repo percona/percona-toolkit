@@ -52,7 +52,6 @@ type opCounters struct {
 	SampleRate time.Duration
 }
 type hostInfo struct {
-	ThisHostID        int
 	Hostname          string
 	HostOsType        string
 	HostSystemCPUArch string
@@ -115,6 +114,7 @@ type clusterwideInfo struct {
 }
 
 type options struct {
+	Help               bool
 	Host               string
 	User               string
 	Password           string
@@ -129,32 +129,9 @@ type options struct {
 
 func main() {
 
-	opts := options{
-		Host:               "localhost:27017",
-		LogLevel:           "error",
-		RunningOpsSamples:  5,
-		RunningOpsInterval: 1000, // milliseconds
-	}
-	help := getopt.BoolLong("help", '?', "Show help")
-	getopt.BoolVarLong(&opts.Version, "version", 'v', "", "Show version & exit")
-	getopt.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "", "Don't check for updates")
+	opts := parseFlags()
 
-	getopt.StringVarLong(&opts.User, "user", 'u', "", "User name")
-	getopt.StringVarLong(&opts.Password, "password", 'p', "", "Password").SetOptional()
-	getopt.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin",
-		"Database used to establish credentials and privileges with a MongoDB server")
-	getopt.StringVarLong(&opts.LogLevel, "log-level", 'l', "error", "Log level:, panic, fatal, error, warn, info, debug")
-
-	getopt.IntVarLong(&opts.RunningOpsSamples, "running-ops-samples", 's',
-		fmt.Sprintf("Number of samples to collect for running ops. Default: %d", opts.RunningOpsSamples))
-
-	getopt.IntVarLong(&opts.RunningOpsInterval, "running-ops-interval", 'i',
-		fmt.Sprintf("Interval to wait betwwen running ops samples in milliseconds. Default %d milliseconds", opts.RunningOpsInterval))
-
-	getopt.SetParameters("host[:port]")
-
-	getopt.Parse()
-	if *help {
+	if opts.Help {
 		getopt.Usage()
 		return
 	}
@@ -165,11 +142,6 @@ func main() {
 	}
 
 	log.SetLevel(logLevel)
-
-	args := getopt.Args() // positional arg
-	if len(args) > 0 {
-		opts.Host = args[0]
-	}
 
 	if opts.Version {
 		fmt.Println(TOOLNAME)
@@ -216,26 +188,29 @@ func main() {
 
 	session, err := dialer.DialWithInfo(di)
 	if err != nil {
-		log.Errorf("cannot connect to the db: %s", err)
+		message := fmt.Sprintf("Cannot connect to %q", di.Addrs[0])
+		if di.Username != "" || di.Password != "" {
+			message += fmt.Sprintf(" using user: %q, password: %q", di.Username, di.Password)
+		}
+		message += fmt.Sprintf(". %s", err.Error())
+		log.Errorf(message)
 		os.Exit(1)
 	}
 	defer session.Close()
 
 	if replicaMembers, err := util.GetReplicasetMembers(dialer, di); err != nil {
-		log.Printf("[Error] cannot get replicaset members: %v\n", err)
+		log.Warnf("[Error] cannot get replicaset members: %v\n", err)
+		os.Exit(2)
 	} else {
 		log.Debugf("replicaMembers:\n%+v\n", replicaMembers)
 		t := template.Must(template.New("replicas").Parse(templates.Replicas))
 		t.Execute(os.Stdout, replicaMembers)
 	}
 
-	//
-
 	hostInfo, err := GetHostinfo(session)
 	if err != nil {
-		log.Printf("[Error] cannot get host info: %v\n", err)
+		log.Warnf("[Error] cannot get host info: %v\n", err)
 	} else {
-		log.Debugf("hostInfo:\n%+v\n", hostInfo)
 		t := template.Must(template.New("hosttemplateData").Parse(templates.HostInfo))
 		t.Execute(os.Stdout, hostInfo)
 	}
@@ -249,19 +224,26 @@ func main() {
 		}
 	}
 
-	if security, err := GetSecuritySettings(session, hostInfo.Version); err != nil {
-		log.Printf("[Error] cannot get security settings: %v\n", err)
+	if hostInfo != nil {
+		if security, err := GetSecuritySettings(session, hostInfo.Version); err != nil {
+			log.Printf("[Error] cannot get security settings: %v\n", err)
+		} else {
+			t := template.Must(template.New("ssl").Parse(templates.Security))
+			t.Execute(os.Stdout, security)
+		}
 	} else {
-		t := template.Must(template.New("ssl").Parse(templates.Security))
-		t.Execute(os.Stdout, security)
+		log.Warn("Cannot check security settings since host info is not available (permissions?)")
 	}
 
 	if oplogInfo, err := oplog.GetOplogInfo(hostnames, di); err != nil {
-		log.Printf("[Error] cannot get Oplog info: %v\n", err)
+		log.Info("Cannot get Oplog info: %v\n", err)
 	} else {
 		if len(oplogInfo) > 0 {
 			t := template.Must(template.New("oplogInfo").Parse(templates.Oplog))
 			t.Execute(os.Stdout, oplogInfo[0])
+		} else {
+
+			log.Info("oplog info is empty. Skipping")
 		}
 	}
 
@@ -285,6 +267,7 @@ func GetHostinfo(session pmgo.SessionManager) (*hostInfo, error) {
 
 	hi := proto.HostInfo{}
 	if err := session.Run(bson.M{"hostInfo": 1}, &hi); err != nil {
+		log.Debugf("run('hostInfo') error: %s", err.Error())
 		return nil, errors.Wrap(err, "GetHostInfo.hostInfo")
 	}
 
@@ -779,4 +762,39 @@ func externalIP() (string, error) {
 		}
 	}
 	return "", errors.New("are you connected to the network?")
+}
+
+func parseFlags() options {
+	opts := options{
+		Host:               "localhost:27017",
+		LogLevel:           "warn",
+		RunningOpsSamples:  5,
+		RunningOpsInterval: 1000, // milliseconds
+	}
+
+	getopt.BoolVarLong(&opts.Help, "help", 'h', "Show help")
+	getopt.BoolVarLong(&opts.Version, "version", 'v', "", "Show version & exit")
+	getopt.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "", "Don't check for updates")
+
+	getopt.StringVarLong(&opts.User, "user", 'u', "", "User name")
+	getopt.StringVarLong(&opts.Password, "password", 'p', "", "Password").SetOptional()
+	getopt.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin",
+		"Database used to establish credentials and privileges with a MongoDB server")
+	getopt.StringVarLong(&opts.LogLevel, "log-level", 'l', "error", "Log level:, panic, fatal, error, warn, info, debug")
+
+	getopt.IntVarLong(&opts.RunningOpsSamples, "running-ops-samples", 's',
+		fmt.Sprintf("Number of samples to collect for running ops. Default: %d", opts.RunningOpsSamples))
+
+	getopt.IntVarLong(&opts.RunningOpsInterval, "running-ops-interval", 'i',
+		fmt.Sprintf("Interval to wait betwwen running ops samples in milliseconds. Default %d milliseconds", opts.RunningOpsInterval))
+
+	getopt.SetParameters("host[:port]")
+
+	var gop = getopt.CommandLine
+	gop.Parse(os.Args)
+	if gop.NArgs() > 0 {
+		opts.Host = gop.Arg(0)
+		gop.Parse(gop.Args())
+	}
+	return opts
 }
