@@ -786,8 +786,19 @@ CMD_SYSCTL="${CMD_SYSCTL:-"$(_which sysctl)"}"
 CMD_TCPDUMP="${CMD_TCPDUMP:-"$(_which tcpdump)"}"
 CMD_VMSTAT="${CMD_VMSTAT:-"$(_which vmstat)"}"
 CMD_DMESG="${CMD_DMESG:-"$(_which dmesg)"}"
+CMD_MONGO="${CMD_MONGO:-"$(_which mongo)"}"
 
 [ -z "$CMD_SYSCTL" -a -x "/sbin/sysctl" ] && CMD_SYSCTL="/sbin/sysctl"
+
+collect_mongo() {
+    local n=$1
+    $CMD_MONGO $EXT_ARGV --eval 'printjson(db.currentOp(true))' >> "$d/$p-currentOp$n"
+    $CMD_MONGO $EXT_ARGV --eval 'printjson(db.isMaster())' >> "$d/$p-isMaster$n"
+    $CMD_MONGO $EXT_ARGV --eval 'printjson(sh.status())' >> "$d/$p-shStatus$n"
+    $CMD_MONGO $EXT_ARGV --eval 'printjson(rs.status())' >> "$d/$p-rsStatus$n"
+    $CMD_MONGO $EXT_ARGV --eval 'printjson(db.serverStatus())' >> "$d/$p-serverStatus$n"
+    [ $n -eq 2 ] && $CMD_MONGO $EXT_ARGV --eval 'db.adminCommand({getLog:"*"})["names"].forEach(function (e,a,i){ db.adminCommand({getLog:e})["log"].forEach(function (e,a,i){print(e)})})' >> "$d/$p-logs"  # We don't need to run this twice since it will be mostly duplicate lines, so we only run it the second time, which gives us the most log content
+}
 
 collect() {
    local d="$1"  # directory to save results in
@@ -795,52 +806,60 @@ collect() {
 
    local mysqld_pid=$(_pidof mysqld | awk '{print $1; exit;}')
 
-   if [ "$CMD_PMAP" -a "$mysqld_pid" ]; then
-      if $CMD_PMAP --help 2>&1 | grep -- -x >/dev/null 2>&1 ; then
-         $CMD_PMAP -x $mysqld_pid > "$d/$p-pmap"
-      else
-         $CMD_PMAP $mysqld_pid > "$d/$p-pmap"
-      fi
-   fi
+   if [ "$OPT_MONGO" != "yes" ]; then
+    if [ "$CMD_PMAP" -a "$mysqld_pid" ]; then
+	if $CMD_PMAP --help 2>&1 | grep -- -x >/dev/null 2>&1 ; then
+	    $CMD_PMAP -x $mysqld_pid > "$d/$p-pmap"
+	else
+	    # Some pmap's apparently don't support -x (issue 116).
+	    $CMD_PMAP $mysqld_pid > "$d/$p-pmap"
+	fi
+    fi
 
-   if [ "$CMD_GDB" -a "$OPT_COLLECT_GDB" -a "$mysqld_pid" ]; then
-      $CMD_GDB                     \
-         -ex "set pagination 0"    \
-         -ex "thread apply all bt" \
-         --batch -p $mysqld_pid    \
-         >> "$d/$p-stacktrace"
-   fi
+    if [ "$CMD_GDB" -a "$OPT_COLLECT_GDB" -a "$mysqld_pid" ]; then
+	$CMD_GDB                     \
+	    -ex "set pagination 0"    \
+	    -ex "thread apply all bt" \
+	    --batch -p $mysqld_pid    \
+	    >> "$d/$p-stacktrace"
+    fi
 
-   $CMD_MYSQL $EXT_ARGV -e 'SHOW GLOBAL VARIABLES' >> "$d/$p-variables" &
-   sleep .2
+    $CMD_MYSQL $EXT_ARGV -e 'SHOW GLOBAL VARIABLES' >> "$d/$p-variables" &
+    sleep .2
 
-   local mysql_version="$(awk '/^version[^_]/{print substr($2,1,3)}' "$d/$p-variables")"
+    local mysql_version="$(awk '/^version[^_]/{print substr($2,1,3)}' "$d/$p-variables")"
 
-   local mysql_error_log="$(awk '/^log_error/{print $2}' "$d/$p-variables")"
-   if [ -z "$mysql_error_log" -a "$mysqld_pid" ]; then
-      mysql_error_log="$(ls -l /proc/$mysqld_pid/fd | awk '/ 2 ->/{print $NF}')"
-   fi
+    local mysql_error_log="$(awk '/^log_error/{print $2}' "$d/$p-variables")"
+    if [ -z "$mysql_error_log" -a "$mysqld_pid" ]; then
+	# Try getting it from the open filehandle...
+	mysql_error_log="$(ls -l /proc/$mysqld_pid/fd | awk '/ 2 ->/{print $NF}')"
+    fi
 
-   local tail_error_log_pid=""
-   if [ "$mysql_error_log" ]; then
-      log "The MySQL error log seems to be $mysql_error_log"
-      tail -f "$mysql_error_log" >"$d/$p-log_error" &
-      tail_error_log_pid=$!
+    local tail_error_log_pid=""
+    if [ "$mysql_error_log" ]; then
+	log "The MySQL error log seems to be $mysql_error_log"
+	tail -f "$mysql_error_log" >"$d/$p-log_error" &
+	tail_error_log_pid=$!
 
-      $CMD_MYSQLADMIN $EXT_ARGV debug
+	# Send a mysqladmin debug to the server so we can potentially learn about
+	# locking etc.
+	$CMD_MYSQLADMIN $EXT_ARGV debug
+    else
+	log "Could not find the MySQL error log"
+    fi
+
+    if [ "${mysql_version}" '>' "5.1" ]; then
+	local mutex="SHOW ENGINE INNODB MUTEX"
+    else
+	local mutex="SHOW MUTEX STATUS"
+    fi
+    innodb_status 1
+    tokudb_status 1
+    $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status1" &
+    open_tables                      >> "$d/$p-opentables1"   &
    else
-      log "Could not find the MySQL error log"
+    local mysqld_pid=$(_pidof mongod | awk '{print $1; exit;}')
    fi
-
-   if [ "${mysql_version}" '>' "5.1" ]; then
-      local mutex="SHOW ENGINE INNODB MUTEX"
-   else
-      local mutex="SHOW MUTEX STATUS"
-   fi
-   innodb_status 1
-   tokudb_status 1
-   $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status1" &
-   open_tables                      >> "$d/$p-opentables1"   &
 
    local tcpdump_pid=""
    if [ "$CMD_TCPDUMP" -a  "$OPT_COLLECT_TCPDUMP" ]; then
@@ -891,16 +910,19 @@ collect() {
       $CMD_MPSTAT -P ALL $OPT_RUN_TIME 1 >> "$d/$p-mpstat-overall" &
    fi
 
-   $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
-   local mysqladmin_pid=$!
+   if [ "$OPT_MONGO" != "yes" ]; then 
+    $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
+    local mysqladmin_pid=$!
 
-   local have_lock_waits_table=""
-   $CMD_MYSQL $EXT_ARGV -e "SHOW TABLES FROM INFORMATION_SCHEMA" \
-      | grep -i "INNODB_LOCK_WAITS" >/dev/null 2>&1
-   if [ $? -eq 0 ]; then
-      have_lock_waits_table="yes"
+    local have_lock_waits_table=""
+    $CMD_MYSQL $EXT_ARGV -e "SHOW TABLES FROM INFORMATION_SCHEMA" \
+	| grep -i "INNODB_LOCK_WAITS" >/dev/null 2>&1
+    if [ $? -eq 0 ]; then
+	have_lock_waits_table="yes"
+    fi
    fi
 
+   [ "$OPT_MONGO" == "yes" ] && collect_mongo 1 &
    log "Loop start: $(date +'TS %s.%N %F %T')"
    local start_time=$(date +'%s')
    local curr_time=$start_time
@@ -939,11 +961,13 @@ collect() {
       (echo $ts; df -k) >> "$d/$p-df" &
       (echo $ts; netstat -antp) >> "$d/$p-netstat"   &
       (echo $ts; netstat -s)    >> "$d/$p-netstat_s" &
-      (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
-         >> "$d/$p-processlist" &
-      if [ "$have_lock_waits_table" ]; then
-         (echo $ts; lock_waits)   >>"$d/$p-lock-waits" &
-         (echo $ts; transactions) >>"$d/$p-transactions" &
+      if [ "$OPT_MONGO" != "yes" ]; then
+	(echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
+	    >> "$d/$p-processlist" &
+	if [ "$have_lock_waits_table" ]; then
+	    (echo $ts; lock_waits)   >>"$d/$p-lock-waits" &
+	    (echo $ts; transactions) >>"$d/$p-transactions" &
+	fi
       fi
 
       curr_time=$(date +'%s')
@@ -986,13 +1010,17 @@ collect() {
       [ "$mysqld_pid" ] && kill -s 18 $mysqld_pid
    fi
 
-   innodb_status 2
-   tokudb_status 2
-   $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status2" &
-   open_tables                      >> "$d/$p-opentables2"   &
+   if [ "$OPT_MONGO" != "yes" ]; then
+    innodb_status 2
+    tokudb_status 2
+    $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status2" &
+    open_tables                      >> "$d/$p-opentables2"   &
 
-   kill $mysqladmin_pid
-   [ "$tail_error_log_pid" ] && kill $tail_error_log_pid
+    kill $mysqladmin_pid
+    [ "$tail_error_log_pid" ] && kill $tail_error_log_pid
+   else
+    collect_mongo 2 &
+   fi
    [ "$tcpdump_pid" ]        && kill $tcpdump_pid
 
    hostname > "$d/$p-hostname"
@@ -1181,6 +1209,11 @@ set_trg_func() {
       TRIGGER_FUNCTION="trg_plugin"
       return 0  # success
    else
+      # If --mongo is used, we only have one built-in function
+      if [ "$OPT_MONGO" == "yes" ]; then
+	TRIGGER_FUNCTION="trg_mongo_default"
+	return 0 # success
+      fi
       # Trigger function is name of a built-in function.
       func=$(echo "$func" | tr '[:upper:]' '[:lower:]')
       if [ "$func" = "status" -o "$func" = "processlist" ]; then
@@ -1189,6 +1222,10 @@ set_trg_func() {
       fi
    fi
    return 1  # error
+}
+
+trg_mongo_default() {
+    $CMD_MONGO --quiet --eval "db.currentOp()['inprog'].length"
 }
 
 trg_status() {
@@ -1888,6 +1925,10 @@ type: string
 
 The pattern to use when watching SHOW PROCESSLIST.  See L<"--function">
 for details.
+
+=item --mongo
+
+Connect to a MongoDB/TokuMX instance instead of a MySQL one. Disables all the MySQL-related captures.
 
 =item --notify-by-email
 
