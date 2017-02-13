@@ -90,9 +90,9 @@ TAR=${TAR:-tar}
 check_branch() {
    echo -n "Checking branch... "
    local clean_branch=$(git status --porcelain|wc -l)
-#   if [ "$clean_branch" -gt 0 ]; then
-#      die "The branch has uncommitted changes or unknown files"
-#   fi
+   if [ "$clean_branch" -gt 0 ]; then
+      die "The branch has uncommitted changes or unknown files"
+   fi
    echo "OK"
 }
 
@@ -110,21 +110,21 @@ check_changelog() {
    echo -n "Checking Changelog... "
    cd $BRANCH
    first_line=$(head -n 3 Changelog | tail -n 1)
-#   if [ $(expr "$first_line" : "v[0-9]") -gt 0 ]; then
-#      die "No changes since $first_line"
-#   fi
-#   if [ -n "$(grep "^v$VERSION" Changelog)" ]; then
-#      die "Entries for v$VERSION already exist"
-#   fi
+   if [ $(expr "$first_line" : "v[0-9]") -gt 0 ]; then
+      die "No changes since $first_line"
+   fi
+   if [ -n "$(grep "^v$VERSION" Changelog)" ]; then
+      die "Entries for v$VERSION already exist"
+   fi
    echo "OK"
 }
 
 check_rel_notes() {
    echo -n "Checking release_notes.rst... "
    cd $DOCS_DIR
-#   if [ -n "$(grep "^v$VERSION" release_notes.rst)" ]; then
-#      die "Entries for v$VERSION already exist"
-#   fi
+   if [ -n "$(grep "^v$VERSION" release_notes.rst)" ]; then
+      die "Entries for v$VERSION already exist"
+   fi
    echo "OK"
 }
 
@@ -366,13 +366,13 @@ build_rpm() {
    mkdir -p RPM
    cd rpm
    local topdir=`pwd`
-
    # Build RPM package from the tarball.
    rpmbuild -bb --clean $RPM_CONFIG_DIR/percona-toolkit.spec \
       --quiet                            \
       --define "_topdir $PWD"            \
       --define "_sourcedir $RELEASE_DIR" \
       --define "version $VERSION"        \
+      --target=$ARCH \
       --define "release 1" > $tmpdir/rpmbuild 2>&1
    if [ $? -ne 0 ]; then
       warn "rpmbuild has warnings; see $tmpdir/rpmbuild"
@@ -406,7 +406,7 @@ build_deb() {
 
    # Build Debian binary and source packages.
    cd $RELEASE_DIR/$PKG
-   dpkg-buildpackage -us -uc >$tmpdir/dpkg-buildpackage 2>&1
+   dpkg-buildpackage -us -uc -a$DEB_ARCH >$tmpdir/dpkg-buildpackage 2>&1
    if [ $? -ne 0 ]; then
       warn "dpkg-buildpackage has warnings; see $tmpdir/dpkg-buildpackage"
    fi
