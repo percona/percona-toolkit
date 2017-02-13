@@ -111,6 +111,7 @@ type clusterwideInfo struct {
 	UnshardedDataSize       int64 // bytes
 	UnshardedDataSizeScaled float64
 	UnshardedDataSizeScale  string
+	Chunks                  []proto.ChunksByCollection
 }
 
 type options struct {
@@ -221,7 +222,7 @@ func main() {
 	t := template.Must(template.New("hosttemplateData").Parse(templates.HostInfo))
 	t.Execute(os.Stdout, hostInfo)
 
-	if opts.RunningOpsSamples > 0 {
+	if opts.RunningOpsSamples > 0 && opts.RunningOpsInterval > 0 {
 		if rops, err := GetOpCountersStats(session, opts.RunningOpsSamples, time.Duration(opts.RunningOpsInterval)*time.Millisecond); err != nil {
 			log.Printf("[Error] cannot get Opcounters stats: %v\n", err)
 		} else {
@@ -384,6 +385,8 @@ func GetClusterwideInfo(session pmgo.SessionManager) (*clusterwideInfo, error) {
 	cwi.UnshardedColsCount = cwi.TotalCollectionsCount - cwi.ShardedColsCount
 	cwi.ShardedDataSizeScaled, cwi.ShardedDataSizeScale = sizeAndUnit(cwi.ShardedDataSize)
 	cwi.UnshardedDataSizeScaled, cwi.UnshardedDataSizeScale = sizeAndUnit(cwi.UnshardedDataSize)
+
+	cwi.Chunks, _ = getChunksCount(session)
 
 	return cwi, nil
 }
@@ -807,4 +810,18 @@ func parseFlags() options {
 		gop.Parse(gop.Args())
 	}
 	return opts
+}
+
+func getChunksCount(session pmgo.SessionManager) ([]proto.ChunksByCollection, error) {
+	var result []proto.ChunksByCollection
+
+	c := session.DB("config").C("chunks")
+	query := bson.M{"$group": bson.M{"_id": "$ns", "count": bson.M{"$sum": 1}}}
+
+	// db.getSiblingDB('config').chunks.aggregate({$group:{_id:"$ns",count:{$sum:1}}})
+	err := c.Pipe([]bson.M{query}).All(&result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }

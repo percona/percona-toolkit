@@ -9,7 +9,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 
 	"github.com/golang/mock/gomock"
-	lutil "github.com/percona/percona-toolkit/src/go/lib/util"
+	"github.com/percona/percona-toolkit/src/go/lib/tutil"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/pmgo/pmgomock"
 )
@@ -23,7 +23,7 @@ func TestGetOpCounterStats(t *testing.T) {
 	database := pmgomock.NewMockDatabaseManager(ctrl)
 
 	ss := proto.ServerStatus{}
-	lutil.LoadJson("test/sample/serverstatus.json", &ss)
+	tutil.LoadJson("test/sample/serverstatus.json", &ss)
 
 	session.EXPECT().DB("admin").Return(database)
 	database.EXPECT().Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, gomock.Any()).SetArg(1, ss)
@@ -304,6 +304,39 @@ func TestIsPrivateNetwork(t *testing.T) {
 		}
 	}
 
+}
+
+func TestGetChunks(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	session := pmgomock.NewMockSessionManager(ctrl)
+	database := pmgomock.NewMockDatabaseManager(ctrl)
+	pipe := pmgomock.NewMockPipeManager(ctrl)
+	col := pmgomock.NewMockCollectionManager(ctrl)
+
+	var res []proto.ChunksByCollection
+	tutil.LoadJson("test/sample/chunks.json", &res)
+
+	pipe.EXPECT().All(gomock.Any()).SetArg(0, res)
+
+	col.EXPECT().Pipe(gomock.Any()).Return(pipe)
+
+	database.EXPECT().C("chunks").Return(col)
+
+	session.EXPECT().DB("config").Return(database)
+
+	want := []proto.ChunksByCollection{
+		{ID: "samples.col2", Count: 5},
+	}
+
+	got, err := getChunksCount(session)
+	if err != nil {
+		t.Errorf("Cannot get chunks: %s", err.Error())
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Invalid getChunksCount response.\ngot: %+v\nwant: %+v\n", got, want)
+	}
 }
 
 func addToCounters(ss proto.ServerStatus, increment int64) proto.ServerStatus {

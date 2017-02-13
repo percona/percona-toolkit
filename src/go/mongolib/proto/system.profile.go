@@ -3,10 +3,10 @@ package proto
 import "time"
 
 type SystemProfile struct {
-	//AllUsers        []interface{} `bson:"allUsers"`
-	Client          string `bson:"client"`
-	CursorExhausted bool   `bson:"cursorExhausted"`
-	DocsExamined    int    `bson:"docsExamined"`
+	AllUsers        []interface{} `bson:"allUsers"`
+	Client          string        `bson:"client"`
+	CursorExhausted bool          `bson:"cursorExhausted"`
+	DocsExamined    int           `bson:"docsExamined"`
 	ExecStats       struct {
 		Advanced                    int `bson:"advanced"`
 		ExecutionTimeMillisEstimate int `bson:"executionTimeMillisEstimate"`
