@@ -1,7 +1,6 @@
 package util
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -16,7 +15,6 @@ import (
 func GetReplicasetMembers(dialer pmgo.Dialer, di *mgo.DialInfo) ([]proto.Members, error) {
 	hostnames, err := GetHostnames(dialer, di)
 	if err != nil {
-		fmt.Println("PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP")
 		return nil, err
 	}
 	membersMap := make(map[string]proto.Members)
@@ -84,6 +82,12 @@ func GetHostnames(dialer pmgo.Dialer, di *mgo.DialInfo) ([]string, error) {
 	defer session.Close()
 	session.SetMode(mgo.Monotonic, true)
 
+	// Probably we are connected to an individual member of a replica set
+	rss := proto.ReplicaSetStatus{}
+	if err := session.Run(bson.M{"replSetGetStatus": 1}, &rss); err == nil {
+		return buildHostsListFromReplStatus(rss), nil
+	}
+
 	// Try getShardMap first. If we are connected to a mongos it will return
 	// all hosts, including config hosts
 	var shardsMap proto.ShardsMap
@@ -98,11 +102,6 @@ func GetHostnames(dialer pmgo.Dialer, di *mgo.DialInfo) ([]string, error) {
 		}
 	}
 
-	// Probably we are connected to an individual member of a replica set
-	rss := proto.ReplicaSetStatus{}
-	if err := session.Run(bson.M{"replSetGetStatus": 1}, &rss); err == nil {
-		return buildHostsListFromReplStatus(rss), nil
-	}
 	return hostnames, nil
 }
 

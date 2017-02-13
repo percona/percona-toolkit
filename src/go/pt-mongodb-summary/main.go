@@ -190,13 +190,23 @@ func main() {
 	if err != nil {
 		message := fmt.Sprintf("Cannot connect to %q", di.Addrs[0])
 		if di.Username != "" || di.Password != "" {
-			message += fmt.Sprintf(" using user: %q, password: %q", di.Username, di.Password)
+			message += fmt.Sprintf(" using user: %q", di.Username)
+			if strings.HasPrefix(di.Password, "=") {
+				message += " (probably you are using = with -p or -u instead of a blank space)"
+			}
 		}
 		message += fmt.Sprintf(". %s", err.Error())
 		log.Errorf(message)
 		os.Exit(1)
 	}
 	defer session.Close()
+
+	hostInfo, err := GetHostinfo(session)
+	if err != nil {
+		message := fmt.Sprintf("Cannot connect to %q: %s", di.Addrs[0], err.Error())
+		log.Errorf(message)
+		os.Exit(2)
+	}
 
 	if replicaMembers, err := util.GetReplicasetMembers(dialer, di); err != nil {
 		log.Warnf("[Error] cannot get replicaset members: %v\n", err)
@@ -207,13 +217,9 @@ func main() {
 		t.Execute(os.Stdout, replicaMembers)
 	}
 
-	hostInfo, err := GetHostinfo(session)
-	if err != nil {
-		log.Warnf("[Error] cannot get host info: %v\n", err)
-	} else {
-		t := template.Must(template.New("hosttemplateData").Parse(templates.HostInfo))
-		t.Execute(os.Stdout, hostInfo)
-	}
+	// Host Info
+	t := template.Must(template.New("hosttemplateData").Parse(templates.HostInfo))
+	t.Execute(os.Stdout, hostInfo)
 
 	if opts.RunningOpsSamples > 0 {
 		if rops, err := GetOpCountersStats(session, opts.RunningOpsSamples, time.Duration(opts.RunningOpsInterval)*time.Millisecond); err != nil {
@@ -247,11 +253,14 @@ func main() {
 		}
 	}
 
-	if cwi, err := GetClusterwideInfo(session); err != nil {
-		log.Printf("[Error] cannot get cluster wide info: %v\n", err)
-	} else {
-		t := template.Must(template.New("clusterwide").Parse(templates.Clusterwide))
-		t.Execute(os.Stdout, cwi)
+	// individual servers won't know about this info
+	if hostInfo.NodeType == "mongos" {
+		if cwi, err := GetClusterwideInfo(session); err != nil {
+			log.Printf("[Error] cannot get cluster wide info: %v\n", err)
+		} else {
+			t := template.Must(template.New("clusterwide").Parse(templates.Clusterwide))
+			t.Execute(os.Stdout, cwi)
+		}
 	}
 
 	if bs, err := GetBalancerStats(session); err != nil {
@@ -351,6 +360,7 @@ func GetClusterwideInfo(session pmgo.SessionManager) (*clusterwideInfo, error) {
 		if err != nil {
 			continue
 		}
+
 		cwi.TotalCollectionsCount += len(collections)
 		for _, collName := range collections {
 			var collStats proto.CollStats

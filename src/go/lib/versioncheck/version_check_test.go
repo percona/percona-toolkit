@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 )
@@ -29,8 +30,9 @@ func TestCheckUpdates(t *testing.T) {
 		fmt.Fprint(w, string(buf))
 	}))
 	defer ts.Close()
+	os.Setenv("PERCONA_VERSION_CHECK_URL", ts.URL)
 
-	msg, err := CheckUpdates(ts.URL, "pt-test", "2.2.18")
+	msg, err := CheckUpdates("pt-test", "2.2.18")
 	if err != nil {
 		t.Errorf("error while checking %s", err)
 	}
@@ -46,8 +48,9 @@ func TestEmptyResponse(t *testing.T) {
 		fmt.Fprint(w, "")
 	}))
 	defer ts.Close()
+	os.Setenv("PERCONA_VERSION_CHECK_URL", ts.URL)
 
-	msg, err := CheckUpdates(ts.URL, "pt-test", "2.2.18")
+	msg, err := CheckUpdates("pt-test", "2.2.18")
 	if err == nil {
 		t.Error("response should return error due to empty body")
 	}

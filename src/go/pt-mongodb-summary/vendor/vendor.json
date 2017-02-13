@@ -63,10 +63,10 @@
 			"revisionTime": "2017-02-01T15:06:01Z"
 		},
 		{
-			"checksumSHA1": "hbVBehxpieRKCCXrrO3greA8eow=",
+			"checksumSHA1": "NviDzeLQRdyp9Ux2vMvu4zQvyYo=",
 			"path": "github.com/percona/pmgo",
-			"revision": "20a7d7de024f754b59b6d51e8e3c21cf830299aa",
-			"revisionTime": "2017-02-01T04:03:13Z"
+			"revision": "2650f7f1545746eddae964e7308440900684c21a",
+			"revisionTime": "2017-02-10T14:26:46Z"
 		},
 		{
 			"checksumSHA1": "kTY8RZr5j26RNIR+F2SnMLeB7G8=",
@@ -201,5 +201,5 @@
 			"revisionTime": "2016-12-08T15:16:19Z"
 		}
 	],
-	"rootPath": "go/pt-mongodb-summary"
+	"rootPath": "github.com/percona/percona-toolkit/src/go/pt-mongodb-summary"
 }

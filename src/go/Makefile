@@ -7,7 +7,7 @@ GOVERSION=$(shell go version | cut --delimiter=" " -f3)
 PREFIX=$(shell pwd)
 BIN_DIR=$(shell git rev-parse --show-toplevel)/bin
 SRC_DIR=$(shell git rev-parse --show-toplevel)/src/go
-LDFLAGS="-X main.Version=${VERSION} -X main.Build=${BUILD} -X main.GoVersion=${GOVERSION}"
+LDFLAGS="-X main.Version=${VERSION} -X main.Build=${BUILD} -X main.GoVersion=${GOVERSION} -s -w"
 
 .PHONY: all style format build test vet tarball linux-amd64
 
