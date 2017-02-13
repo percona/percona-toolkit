@@ -1,0 +1,157 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "NHQfiS8m+veKimFRVXgomeNq5vo=",
+			"path": "github.com/bradfitz/slice",
+			"revision": "d9036e2120b5ddfa53f3ebccd618c4af275f47da",
+			"revisionTime": "2016-08-23T17:19:49Z"
+		},
+		{
+			"checksumSHA1": "lJDwzzEBuS9sjxVOSsq7+rvw+cA=",
+			"path": "github.com/howeyc/gopass",
+			"revision": "f5387c492211eb133053880d23dfae62aa14123d",
+			"revisionTime": "2016-10-03T13:09:00Z"
+		},
+		{
+			"checksumSHA1": "eOXF2PEvYLMeD8DSzLZJWbjYzco=",
+			"path": "github.com/kr/pretty",
+			"revision": "cfb55aafdaf3ec08f0db22699ab822c50091b1c4",
+			"revisionTime": "2016-08-23T17:07:15Z"
+		},
+		{
+			"checksumSHA1": "uulQHQ7IsRKqDudBC8Go9J0gtAc=",
+			"path": "github.com/kr/text",
+			"revision": "7cafcd837844e784b526369c9bce262804aebc60",
+			"revisionTime": "2016-05-04T02:26:26Z"
+		},
+		{
+			"checksumSHA1": "eW4R3odVrsAfyKbibRdUgGETfxc=",
+			"path": "github.com/montanaflynn/stats",
+			"revision": "f8cd06f93c6c1b06028caafb88b540fc820f77c1",
+			"revisionTime": "2016-11-02T19:40:25Z"
+		},
+		{
+			"checksumSHA1": "nBmwoMSG67LapH7e79RepVUFS/I=",
+			"path": "github.com/pborman/getopt",
+			"revision": "e5fda1850301b0c7c7c38959116cbc7913bb00f3",
+			"revisionTime": "2016-08-19T15:59:08Z"
+		},
+		{
+			"checksumSHA1": "npfARRlvutZpx0CtAGm9+bVW60w=",
+			"path": "github.com/percona/percona-toolkit/src/go/lib/config",
+			"revision": "f462ae8e76d460727ff898186e2151fac0f07ecb",
+			"revisionTime": "2017-02-01T15:06:01Z"
+		},
+		{
+			"checksumSHA1": "Wodwm0YHVpaquMzrZTzBGKugqhc=",
+			"path": "github.com/percona/percona-toolkit/src/go/lib/versioncheck",
+			"revision": "f462ae8e76d460727ff898186e2151fac0f07ecb",
+			"revisionTime": "2017-02-01T15:06:01Z"
+		},
+		{
+			"checksumSHA1": "pVy7ZgZ8JC+XgfGTfyD/7ApW8Sw=",
+			"path": "github.com/percona/percona-toolkit/src/go/mongolib/proto",
+			"revision": "f462ae8e76d460727ff898186e2151fac0f07ecb",
+			"revisionTime": "2017-02-01T15:06:01Z"
+		},
+		{
+			"checksumSHA1": "g0eTmxC45cMbYaU8WBzjKiP351s=",
+			"path": "github.com/percona/percona-toolkit/src/go/mongolib/util",
+			"revision": "f462ae8e76d460727ff898186e2151fac0f07ecb",
+			"revisionTime": "2017-02-01T15:06:01Z"
+		},
+		{
+			"checksumSHA1": "NviDzeLQRdyp9Ux2vMvu4zQvyYo=",
+			"path": "github.com/percona/pmgo",
+			"revision": "2650f7f1545746eddae964e7308440900684c21a",
+			"revisionTime": "2017-02-10T14:26:46Z"
+		},
+		{
+			"checksumSHA1": "ynJSWoF6v+3zMnh9R0QmmG6iGV8=",
+			"path": "github.com/pkg/errors",
+			"revision": "248dadf4e9068a0b3e79f02ed0a610d935de5302",
+			"revisionTime": "2016-10-29T09:36:37Z"
+		},
+		{
+			"checksumSHA1": "zmC8/3V4ls53DJlNTKDZwPSC/dA=",
+			"path": "github.com/satori/go.uuid",
+			"revision": "b061729afc07e77a8aa4fad0a2fd840958f1942a",
+			"revisionTime": "2016-09-27T10:08:44Z"
+		},
+		{
+			"checksumSHA1": "1IH7Jm9g5gKlTSFnpvZ3adLDmPE=",
+			"path": "github.com/sirupsen/logrus",
+			"revision": "d4158e8bbd3220596557f967617f1ff37bd93c80",
+			"revisionTime": "2017-01-10T20:37:04Z"
+		},
+		{
+			"checksumSHA1": "FygqfsRzjqsiYaLC+XSXrh1MUr8=",
+			"path": "go4.org/reflectutil",
+			"revision": "7ce08ca145dbe0e66a127c447b80ee7914f3e4f9",
+			"revisionTime": "2017-01-17T10:02:04Z"
+		},
+		{
+			"checksumSHA1": "VE+WBfxeMNC5a98uLXK2Iu80hOU=",
+			"path": "golang.org/x/crypto/ssh/terminal",
+			"revision": "9b1a210a06ea1176ec1f0a1ddf83ad7463b8ea3e",
+			"revisionTime": "2016-12-16T13:31:18Z"
+		},
+		{
+			"checksumSHA1": "9jjO5GjLa0XF/nfWihF02RoH4qc=",
+			"path": "golang.org/x/net/context",
+			"revision": "45e771701b814666a7eb299e6c7a57d0b1799e91",
+			"revisionTime": "2016-12-15T19:42:18Z"
+		},
+		{
+			"checksumSHA1": "8SH0adTcQlA+W5dzqiQ3Hft2VXg=",
+			"path": "golang.org/x/sys/unix",
+			"revision": "478fcf54317e52ab69f40bb4c7a1520288d7f7ea",
+			"revisionTime": "2016-12-05T15:46:50Z"
+		},
+		{
+			"checksumSHA1": "1D8GzeoFGUs5FZOoyC2DpQg8c5Y=",
+			"path": "gopkg.in/mgo.v2",
+			"revision": "3f83fa5005286a7fe593b055f0d7771a7dce4655",
+			"revisionTime": "2016-08-18T02:01:20Z"
+		},
+		{
+			"checksumSHA1": "YsB2DChSV9HxdzHaKATllAUKWSI=",
+			"path": "gopkg.in/mgo.v2/bson",
+			"revision": "3f83fa5005286a7fe593b055f0d7771a7dce4655",
+			"revisionTime": "2016-08-18T02:01:20Z"
+		},
+		{
+			"checksumSHA1": "58HoOoQzqGWh5E+SJfQw7/sPaZs=",
+			"path": "gopkg.in/mgo.v2/dbtest",
+			"revision": "3f83fa5005286a7fe593b055f0d7771a7dce4655",
+			"revisionTime": "2016-08-18T02:01:20Z"
+		},
+		{
+			"checksumSHA1": "XQsrqoNT1U0KzLxOFcAZVvqhLfk=",
+			"path": "gopkg.in/mgo.v2/internal/json",
+			"revision": "3f83fa5005286a7fe593b055f0d7771a7dce4655",
+			"revisionTime": "2016-08-18T02:01:20Z"
+		},
+		{
+			"checksumSHA1": "LEvMCnprte47qdAxWvQ/zRxVF1U=",
+			"path": "gopkg.in/mgo.v2/internal/sasl",
+			"revision": "3f83fa5005286a7fe593b055f0d7771a7dce4655",
+			"revisionTime": "2016-08-18T02:01:20Z"
+		},
+		{
+			"checksumSHA1": "+1WDRPaOphSCmRMxVPIPBV4aubc=",
+			"path": "gopkg.in/mgo.v2/internal/scram",
+			"revision": "3f83fa5005286a7fe593b055f0d7771a7dce4655",
+			"revisionTime": "2016-08-18T02:01:20Z"
+		},
+		{
+			"checksumSHA1": "t95/FNK2nGCx3e6IARbO7OrcCuY=",
+			"path": "gopkg.in/tomb.v2",
+			"revision": "d5d1b5820637886def9eef33e03a27a9f166942c",
+			"revisionTime": "2016-12-08T15:16:19Z"
+		}
+	],
+	"rootPath": "github.com/percona/percona-toolkit/src/go/pt-mongodb-query-digest"
+}

@@ -1,0 +1,69 @@
+{
+    "Argv": null,
+    "Ok": 0,
+    "Parsed": {
+        "Sharding": {
+            "ClusterRole": ""
+        },
+        "Storage": {
+            "DbPath": "",
+            "Engine": ""
+        },
+        "SystemLog": {
+            "Destination": "",
+            "Path": ""
+        },
+        "Net": {
+            "HTTP": {
+                "Enabled": false,
+                "Port": 0,
+                "JSONPEnabled": false,
+                "RESTInterfaceEnabled": false
+            },
+            "SSL": {
+                "SSLOnNormalPorts": false,
+                "Mode": "requireSSL",
+                "PEMKeyFile": "",
+                "PEMKeyPassword": "",
+                "ClusterFile": "",
+                "ClusterPassword": "",
+                "CAFile": "",
+                "CRLFile": "",
+                "AllowConnectionsWithoutCertificates": false,
+                "AllowInvalidCertificates": false,
+                "AllowInvalidHostnames": false,
+                "DisabledProtocols": "",
+                "FIPSMode": false
+            }
+        },
+        "ProcessManagement": {
+            "Fork": false
+        },
+        "Replication": {
+            "ReplSet": ""
+        }
+    },
+    "Security": {
+        "KeyFile": "",
+        "ClusterAuthMode": "",
+        "Authorization": "enabled",
+        "JavascriptEnabled": false,
+        "Sasl": {
+            "HostName": "",
+            "ServiceName": "",
+            "SaslauthdSocketPath": ""
+        },
+        "EnableEncryption": false,
+        "EncryptionCipherMode": "",
+        "EncryptionKeyFile": "",
+        "Kmip": {
+            "KeyIdentifier": "",
+            "RotateMasterKey": false,
+            "ServerName": "",
+            "Port": "",
+            "ClientCertificateFile": "",
+            "ClientCertificatePassword": "",
+            "ServerCAFile": ""
+        }
+    }
+}

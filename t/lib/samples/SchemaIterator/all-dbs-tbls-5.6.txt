@@ -268,6 +268,25 @@ CREATE TABLE `user` (
   PRIMARY KEY (`Host`,`User`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='Users and global privileges'
 
+percona_test.checksums
+CREATE TABLE `checksums` (
+  `db_tbl` varchar(128) NOT NULL,
+  `checksum` int(10) unsigned NOT NULL,
+  PRIMARY KEY (`db_tbl`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1
+
+percona_test.load_data
+CREATE TABLE `load_data` (
+  `i` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1
+
+percona_test.sentinel
+CREATE TABLE `sentinel` (
+  `id` int(11) NOT NULL,
+  `ping` varchar(64) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1
+
 sakila.actor
 CREATE TABLE `actor` (
   `actor_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,

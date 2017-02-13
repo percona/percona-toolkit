@@ -1,0 +1,30 @@
+{
+    "Extra": {
+        "LibcVersion": "2.24",
+        "PageSize": 4096,
+        "VersionSignature": "Ubuntu 4.8.0-22.24-generic 4.8.0",
+        "NumPages": 4.090087e+06,
+        "VersionString": "Linux version 4.8.0-22-generic (buildd@lgw01-11) (gcc version 6.2.0 20161005 (Ubuntu 6.2.0-5ubuntu12) ) #24-Ubuntu SMP Sat Oct 8 09:15:00 UTC 2016",
+        "CpuFeatures": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc aperfmperf eagerfpu pni pclmulqdq dtes64 monitor ds_cpl vmx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm epb tpr_shadow vnmi flexpriority ept vpid fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid xsaveopt dtherm ida arat pln pts",
+        "CpuFrequencyMHz": "2500.000",
+        "KernelVersion": "4.8.0-22-generic",
+        "MaxOpenFiles": 1024
+    },
+    "Os": {
+        "Type": "Linux",
+        "Version": "16.10",
+        "Name": "Ubuntu"
+    },
+    "System": {
+        "CurrentTime": "",
+        "Hostname": "karl-HP-ENVY",
+        "MemSizeMB": 15976,
+        "NumCores": 8,
+        "NumaEnabled": false,
+        "CpuAddrSize": 64,
+        "CpuArch": "x86_64"
+    },
+    "DatabasesCount": 0,
+    "CollectionsCount": 0,
+    "ID": 0
+}
