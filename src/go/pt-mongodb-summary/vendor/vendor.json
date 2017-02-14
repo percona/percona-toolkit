@@ -39,30 +39,6 @@
 			"revisionTime": "2016-08-19T15:59:08Z"
 		},
 		{
-			"checksumSHA1": "npfARRlvutZpx0CtAGm9+bVW60w=",
-			"path": "github.com/percona/percona-toolkit/src/go/lib/config",
-			"revision": "f462ae8e76d460727ff898186e2151fac0f07ecb",
-			"revisionTime": "2017-02-01T15:06:01Z"
-		},
-		{
-			"checksumSHA1": "Wodwm0YHVpaquMzrZTzBGKugqhc=",
-			"path": "github.com/percona/percona-toolkit/src/go/lib/versioncheck",
-			"revision": "f462ae8e76d460727ff898186e2151fac0f07ecb",
-			"revisionTime": "2017-02-01T15:06:01Z"
-		},
-		{
-			"checksumSHA1": "pVy7ZgZ8JC+XgfGTfyD/7ApW8Sw=",
-			"path": "github.com/percona/percona-toolkit/src/go/mongolib/proto",
-			"revision": "f462ae8e76d460727ff898186e2151fac0f07ecb",
-			"revisionTime": "2017-02-01T15:06:01Z"
-		},
-		{
-			"checksumSHA1": "g0eTmxC45cMbYaU8WBzjKiP351s=",
-			"path": "github.com/percona/percona-toolkit/src/go/mongolib/util",
-			"revision": "f462ae8e76d460727ff898186e2151fac0f07ecb",
-			"revisionTime": "2017-02-01T15:06:01Z"
-		},
-		{
 			"checksumSHA1": "rDaYK9qS/RbE7w8jiPktdA3+lc0=",
 			"path": "github.com/percona/pmgo",
 			"revision": "9eabc5fda168f8d9961a56a767d8304e1b65135b",
