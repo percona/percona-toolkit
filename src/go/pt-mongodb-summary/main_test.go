@@ -2,15 +2,19 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"reflect"
 	"testing"
 	"time"
 
 	"gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/dbtest"
 
 	"github.com/golang/mock/gomock"
 	"github.com/percona/percona-toolkit/src/go/lib/tutil"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
+	"github.com/percona/pmgo"
 	"github.com/percona/pmgo/pmgomock"
 )
 
@@ -337,6 +341,36 @@ func TestGetChunks(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("Invalid getChunksCount response.\ngot: %+v\nwant: %+v\n", got, want)
 	}
+}
+
+func TestIntegrationGetChunks(t *testing.T) {
+	var server dbtest.DBServer
+	os.Setenv("CHECK_SESSIONS", "0")
+	tempDir, _ := ioutil.TempDir("", "testing")
+	server.SetPath(tempDir)
+
+	session := pmgo.NewSessionManager(server.Session())
+	session.DB("config").C("chunks").Insert(bson.M{"ns": "samples.col1", "count": 2})
+
+	want := []proto.ChunksByCollection{
+		proto.ChunksByCollection{
+			ID:    "samples.col1",
+			Count: 1,
+		},
+	}
+	got, err := getChunksCount(session)
+	if err != nil {
+		t.Errorf("Error in integration chunks count: %s", err.Error())
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Invalid integration chunks count.\ngot: %+v\nwant: %+v", got, want)
+	}
+
+	server.Session().DB("config").DropDatabase()
+	server.Session().Close()
+	server.Stop()
+
 }
 
 func addToCounters(ss proto.ServerStatus, increment int64) proto.ServerStatus {
