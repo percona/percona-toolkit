@@ -189,8 +189,14 @@ func main() {
 	}
 
 	if isProfilerEnabled == false {
-		log.Error("Profiler is not enabled")
-		os.Exit(5)
+		count, err := systemProfileDocsCount(session, di.Database)
+		if err != nil || count == 0 {
+			log.Error("Profiler is not enabled")
+			os.Exit(5)
+		}
+		fmt.Printf("Profiler is disabled for the %q database but there are %d documents in the system.profile collection.\n",
+			di.Database, count)
+		fmt.Println("Using those documents for the stats")
 	}
 
 	filters := []docsFilter{}
@@ -487,19 +493,22 @@ func getOptions() (*options, error) {
 	}
 
 	getopt.BoolVarLong(&opts.Help, "help", '?', "Show help")
-	getopt.BoolVarLong(&opts.Version, "version", 'v', "show version & exit")
-	getopt.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "Don't check for updates")
+	getopt.BoolVarLong(&opts.Version, "version", 'v', "Show version & exit")
+	getopt.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "Default: Don't check for updates")
 
-	getopt.IntVarLong(&opts.Limit, "limit", 'n', "show the first n queries")
+	getopt.IntVarLong(&opts.Limit, "limit", 'n', "Show the first n queries")
 
-	getopt.ListVarLong(&opts.OrderBy, "order-by", 'o', "comma separated list of order by fields (max values): count,ratio,query-time,docs-scanned,docs-returned. - in front of the field name denotes reverse order.")
-	getopt.ListVarLong(&opts.SkipCollections, "skip-collections", 's', "comma separated list of collections (namespaces) to skip. Default: system.profile")
+	getopt.ListVarLong(&opts.OrderBy, "order-by", 'o', "Comma separated list of order by fields (max values): "+
+		"count,ratio,query-time,docs-scanned,docs-returned. "+
+		"- in front of the field name denotes reverse order.")
+	getopt.ListVarLong(&opts.SkipCollections, "skip-collections", 's', "A comma separated list of collections (namespaces) to skip."+
+		"  Default: system.profile")
 
-	getopt.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin", "database used to establish credentials and privileges with a MongoDB server")
-	getopt.StringVarLong(&opts.Database, "database", 'd', "", "database to profile")
-	getopt.StringVarLong(&opts.LogLevel, "log-level", 'l', "error", "Log level:, panic, fatal, error, warn, info, debug")
-	getopt.StringVarLong(&opts.Password, "password", 'p', "", "password").SetOptional()
-	getopt.StringVarLong(&opts.User, "user", 'u', "username")
+	getopt.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin", "Databaase to use for optional MongoDB authentication. Default: admin")
+	getopt.StringVarLong(&opts.Database, "database", 'd', "", "MongoDB database to profile")
+	getopt.StringVarLong(&opts.LogLevel, "log-level", 'l', "Log level: error", "panic, fatal, error, warn, info, debug. Default: error")
+	getopt.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").SetOptional()
+	getopt.StringVarLong(&opts.User, "username", 'u', "Username to use for optional MongoDB authentication")
 
 	getopt.SetParameters("host[:port]/database")
 
@@ -547,7 +556,7 @@ func getDialInfo(opts *options) *mgo.DialInfo {
 	di, _ := mgo.ParseURL(opts.Host)
 	di.FailFast = true
 
-	if getopt.IsSet("user") {
+	if getopt.IsSet("username") {
 		di.Username = opts.User
 	}
 	if getopt.IsSet("password") {
@@ -571,6 +580,9 @@ func fingerprint(query map[string]interface{}) string {
 func keys(query map[string]interface{}, level int) []string {
 	ks := []string{}
 	for key, value := range query {
+		if !shouldIncludeKey(key) {
+			continue
+		}
 		ks = append(ks, key)
 		if m, ok := value.(map[string]interface{}); ok {
 			level++
@@ -583,10 +595,20 @@ func keys(query map[string]interface{}, level int) []string {
 	return ks
 }
 
+func shouldIncludeKey(key string) bool {
+	filterOut := []string{"shardVersion"}
+	for _, val := range filterOut {
+		if val == key {
+			return false
+		}
+	}
+	return true
+}
+
 func printHeader(opts *options) {
 	fmt.Printf("%s - %s\n", TOOLNAME, time.Now().Format(time.RFC1123Z))
 	fmt.Printf("Host: %s\n", opts.Host)
-	fmt.Printf("Skipping docs in these collections: %v\n", opts.SkipCollections)
+	fmt.Printf("Skipping profiled queries on these collections: %v\n", opts.SkipCollections)
 	fmt.Println("")
 }
 
@@ -778,22 +800,44 @@ func isProfilerEnabled(dialer pmgo.Dialer, di *mgo.DialInfo) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	for _, member := range replicaMembers {
-		if member.State == proto.REPLICA_SET_MEMBER_PRIMARY {
-			di.Addrs = []string{member.Name}
-			session, err := dialer.DialWithInfo(di)
-			if err != nil {
-				continue
-			}
-			defer session.Close()
 
-			if err := session.DB(di.Database).Run(bson.M{"profile": -1}, &ps); err != nil {
-				continue
-			}
-			if ps.Was == 0 {
-				return false, nil
-			}
+	for _, member := range replicaMembers {
+		// Stand alone instances return state = REPLICA_SET_MEMBER_STARTUP
+		di.Addrs = []string{member.Name}
+		session, err := dialer.DialWithInfo(di)
+		if err != nil {
+			continue
+		}
+		defer session.Close()
+		session.SetMode(mgo.Monotonic, true)
+
+		isReplicaEnabled := isReplicasetEnabled(session)
+
+		if member.StateStr == "configsvr" {
+			continue
+		}
+
+		if isReplicaEnabled && member.State != proto.REPLICA_SET_MEMBER_PRIMARY {
+			continue
+		}
+		if err := session.DB(di.Database).Run(bson.M{"profile": -1}, &ps); err != nil {
+			continue
+		}
+		if ps.Was == 0 {
+			return false, nil
 		}
 	}
 	return true, nil
+}
+
+func systemProfileDocsCount(session pmgo.SessionManager, dbname string) (int, error) {
+	return session.DB(dbname).C("system.profile").Count()
+}
+
+func isReplicasetEnabled(session pmgo.SessionManager) bool {
+	rss := proto.ReplicaSetStatus{}
+	if err := session.Run(bson.M{"replSetGetStatus": 1}, &rss); err != nil {
+		return false
+	}
+	return true
 }

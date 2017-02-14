@@ -787,13 +787,13 @@ func parseFlags() options {
 
 	getopt.BoolVarLong(&opts.Help, "help", 'h', "Show help")
 	getopt.BoolVarLong(&opts.Version, "version", 'v', "", "Show version & exit")
-	getopt.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "", "Don't check for updates")
+	getopt.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "", "Default: Don't check for updates")
 
-	getopt.StringVarLong(&opts.User, "user", 'u', "", "User name")
-	getopt.StringVarLong(&opts.Password, "password", 'p', "", "Password").SetOptional()
+	getopt.StringVarLong(&opts.User, "username", 'u', "", "Username to use for optional MongoDB authentication")
+	getopt.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").SetOptional()
 	getopt.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin",
-		"Database used to establish credentials and privileges with a MongoDB server")
-	getopt.StringVarLong(&opts.LogLevel, "log-level", 'l', "error", "Log level:, panic, fatal, error, warn, info, debug")
+		"Databaase to use for optional MongoDB authentication. Default: admin")
+	getopt.StringVarLong(&opts.LogLevel, "log-level", 'l', "error", "Log level: panic, fatal, error, warn, info, debug. Default: error")
 
 	getopt.IntVarLong(&opts.RunningOpsSamples, "running-ops-samples", 's',
 		fmt.Sprintf("Number of samples to collect for running ops. Default: %d", opts.RunningOpsSamples))

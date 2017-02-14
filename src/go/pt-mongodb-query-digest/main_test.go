@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
+	"github.com/percona/pmgo"
 
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/dbtest"
 )
 
@@ -50,7 +52,7 @@ func TestMain(m *testing.M) {
 
 func TestCalcStats(t *testing.T) {
 	it := Server.Session().DB("samples").C("system_profile").Find(nil).Sort("Ts").Iter()
-	data := getData(it)
+	data := getData(it, []docsFilter{})
 	s := calcStats(data[0].NScanned)
 
 	want := statistics{Pct: 0, Total: 159, Min: 79, Max: 80, Avg: 79.5, Pct95: 80, StdDev: 0.5, Median: 79.5}
@@ -116,27 +118,25 @@ func TestGetData(t *testing.T) {
 			i:    it,
 			want: []stat{
 				stat{
-					ID:          "6c3fff4804febd156700a06f9a346162",
-					Fingerprint: "find,limit",
-					Namespace:   "samples.col1",
-					Query: map[string]interface{}{
-						"find":  "col1",
-						"limit": float64(2),
-					},
+					ID:             "6c3fff4804febd156700a06f9a346162",
+					Operation:      "query",
+					Fingerprint:    "find,limit",
+					Namespace:      "samples.col1",
+					Query:          map[string]interface{}{"find": "col1", "limit": float64(2)},
 					Count:          2,
 					TableScan:      false,
 					NScanned:       []float64{79, 80},
 					NReturned:      []float64{79, 80},
 					QueryTime:      []float64{27, 28},
 					ResponseLength: []float64{109, 110},
-					LockTime:       nil,
-					BlockedTime:    nil,
+					LockTime:       times(nil),
+					BlockedTime:    times(nil),
 					FirstSeen:      time.Date(2016, time.November, 8, 13, 46, 27, 0, time.UTC).Local(),
 					LastSeen:       time.Date(2016, time.November, 8, 13, 46, 27, 0, time.UTC).Local(),
 				},
-
 				stat{
 					ID:             "fdcea004122ddb225bc56de417391e25",
+					Operation:      "query",
 					Fingerprint:    "find",
 					Namespace:      "samples.col1",
 					Query:          map[string]interface{}{"find": "col1"},
@@ -146,8 +146,8 @@ func TestGetData(t *testing.T) {
 					NReturned:      []float64{71, 72, 73, 74, 75, 76, 77, 78},
 					QueryTime:      []float64{19, 20, 21, 22, 23, 24, 25, 26},
 					ResponseLength: []float64{101, 102, 103, 104, 105, 106, 107, 108},
-					LockTime:       nil,
-					BlockedTime:    nil,
+					LockTime:       times(nil),
+					BlockedTime:    times(nil),
 					FirstSeen:      time.Date(2016, time.November, 8, 13, 46, 27, 0, time.UTC).Local(),
 					LastSeen:       time.Date(2016, time.November, 8, 13, 46, 27, 0, time.UTC).Local(),
 				},
@@ -157,17 +157,17 @@ func TestGetData(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := getData(tt.i)
+			got := getData(tt.i, []docsFilter{})
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("got\n%#v\nwant\n%#v", got, tt.want)
-
 			}
 		})
 	}
 }
 
 func TestUptime(t *testing.T) {
-	session := Server.Session()
+
+	session := pmgo.NewSessionManager(Server.Session())
 	time.Sleep(1500 * time.Millisecond)
 	if uptime(session) <= 0 {
 		t.Error("uptime is 0")
@@ -287,4 +287,23 @@ func TestTimesLess(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestIsProfilerEnabled(t *testing.T) {
+	mongoDSN := os.Getenv("PT_TEST_MONGODB_DSN")
+	if mongoDSN == "" {
+		t.Skip("Skippping TestIsProfilerEnabled. It runs only in integration tests")
+	}
+
+	dialer := pmgo.NewDialer()
+	di, _ := mgo.ParseURL(mongoDSN)
+	enabled, err := isProfilerEnabled(dialer, di)
+
+	if err != nil {
+		t.Errorf("Cannot check if profiler is enabled: %s", err.Error())
+	}
+	if enabled != true {
+		t.Error("Profiler must be enabled")
+	}
+
 }

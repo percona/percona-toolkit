@@ -63,10 +63,10 @@
 			"revisionTime": "2017-02-01T15:06:01Z"
 		},
 		{
-			"checksumSHA1": "NviDzeLQRdyp9Ux2vMvu4zQvyYo=",
+			"checksumSHA1": "rDaYK9qS/RbE7w8jiPktdA3+lc0=",
 			"path": "github.com/percona/pmgo",
-			"revision": "2650f7f1545746eddae964e7308440900684c21a",
-			"revisionTime": "2017-02-10T14:26:46Z"
+			"revision": "9eabc5fda168f8d9961a56a767d8304e1b65135b",
+			"revisionTime": "2017-02-14T09:40:05Z"
 		},
 		{
 			"checksumSHA1": "ynJSWoF6v+3zMnh9R0QmmG6iGV8=",
