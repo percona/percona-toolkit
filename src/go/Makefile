@@ -5,6 +5,7 @@ BUILD=$(shell date +%FT%T%z)
 GOVERSION=$(shell go version | cut --delimiter=" " -f3)
 
 PREFIX=$(shell pwd)
+TOP_DIR=$(shell git rev-parse --show-toplevel)
 BIN_DIR=$(shell git rev-parse --show-toplevel)/bin
 SRC_DIR=$(shell git rev-parse --show-toplevel)/src/go
 LDFLAGS="-X main.Version=${VERSION} -X main.Build=${BUILD} -X main.GoVersion=${GOVERSION} -s -w"
@@ -13,20 +14,20 @@ LDFLAGS="-X main.Version=${VERSION} -X main.Build=${BUILD} -X main.GoVersion=${G
 
 linux-amd64: 
 	@echo "Building linux/amd64 binaries in ${BIN_DIR}"
+	@cd ${TOP_DIR} && glide install
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
-	@$(foreach pkg,$(pkgs),cd ${SRC_DIR}/${pkg} && go get -u ./...;)
 	@$(foreach pkg,$(pkgs),GOOS=linux GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
 
 linux-386: 
 	@echo "Building linux/386 binaries in ${BIN_DIR}"
+	@cd ${TOP_DIR} && glide install
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
-	@$(foreach pkg,$(pkgs),cd ${SRC_DIR}/${pkg} && go get -u ./...;)
 	@$(foreach pkg,$(pkgs),GOOS=linux GOARCH=386 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
 
 darwin-amd64: 
 	@echo "Building darwin/amd64 binaries in ${BIN_DIR}"
+	@cd ${TOP_DIR} && glide install
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
-	@$(foreach pkg,$(pkgs),cd ${SRC_DIR}/${pkg} && go get -u ./...;)
 	@$(foreach pkg,$(pkgs),GOOS=darwin GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
 
 style:
