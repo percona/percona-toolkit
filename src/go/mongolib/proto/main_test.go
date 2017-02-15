@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/percona/toolkit-go/mongolib/proto"
+	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"

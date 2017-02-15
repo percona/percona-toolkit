@@ -7,12 +7,12 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/percona/percona-toolkit/src/go/lib/util"
+	"github.com/percona/percona-toolkit/src/go/lib/tutil"
 )
 
 func TestReadConfig(t *testing.T) {
 
-	rootPath, err := util.RootPath()
+	rootPath, err := tutil.RootPath()
 	if err != nil {
 		t.Errorf("cannot get root path: %s", err)
 	}
@@ -70,7 +70,7 @@ func TestReadConfig(t *testing.T) {
 
 func TestOverrideConfig(t *testing.T) {
 
-	rootPath, err := util.RootPath()
+	rootPath, err := tutil.RootPath()
 	if err != nil {
 		t.Errorf("cannot get root path: %s", err)
 	}

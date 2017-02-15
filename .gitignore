@@ -14,4 +14,5 @@ bin/pt-mongodb-*
 !src/go/pt-mongodb-summary/vendor/vendor.json
 src/go/pt-mongodb-query-digest/vendor/
 src/go/pt-mongodb-summary/vendor/
-
+!vendor/vendor.json
+vendor/

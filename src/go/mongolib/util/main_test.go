@@ -8,7 +8,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 
 	"github.com/golang/mock/gomock"
-	lutil "github.com/percona/percona-toolkit/src/go/lib/util"
+	"github.com/percona/percona-toolkit/src/go/lib/tutil"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/pmgo/pmgomock"
 )
@@ -125,7 +125,7 @@ func TestGetReplicasetMembers(t *testing.T) {
 
 	database := pmgomock.NewMockDatabaseManager(ctrl)
 	ss := proto.ServerStatus{}
-	lutil.LoadJson("test/sample/serverstatus.json", &ss)
+	tutil.LoadJson("test/sample/serverstatus.json", &ss)
 
 	dialer.EXPECT().DialWithInfo(gomock.Any()).Return(session, nil)
 	session.EXPECT().Run(bson.M{"replSetGetStatus": 1}, gomock.Any()).SetArg(1, mockrss)

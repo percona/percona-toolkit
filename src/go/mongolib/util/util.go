@@ -79,7 +79,6 @@ func GetHostnames(dialer pmgo.Dialer, di *mgo.DialInfo) ([]string, error) {
 	if err != nil {
 		return hostnames, err
 	}
-	defer session.Close()
 	session.SetMode(mgo.Monotonic, true)
 
 	// Probably we are connected to an individual member of a replica set
@@ -87,6 +86,8 @@ func GetHostnames(dialer pmgo.Dialer, di *mgo.DialInfo) ([]string, error) {
 	if err := session.Run(bson.M{"replSetGetStatus": 1}, &rss); err == nil {
 		return buildHostsListFromReplStatus(rss), nil
 	}
+
+	defer session.Close()
 
 	// Try getShardMap first. If we are connected to a mongos it will return
 	// all hosts, including config hosts
