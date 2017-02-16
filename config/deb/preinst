@@ -1,9 +1,0 @@
-#!/bin/sh
-INSTALLED=`dpkg-query -l | grep percona-toolkit | awk '{print $3}' | awk -F'.' '{print $1}'`
-if [ $INSTALLED != "0" -a "x$INSTALLED" != "x3" ]; then
-    echo "** It is not possible to install percona-toolkit-3.0.0rc as it will replace already installed package"
-    echo "** Please note that percona-toolkit-3.0.0 is RC"
-    echo "** If you want to install it you need to remove already installed package"
-    exit 1
-fi
-
