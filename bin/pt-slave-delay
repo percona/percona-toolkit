@@ -4911,6 +4911,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-slave-delay 3.0
+pt-slave-delay 3.0.1
 
 =cut
