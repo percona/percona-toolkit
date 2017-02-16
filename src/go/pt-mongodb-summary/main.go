@@ -27,12 +27,18 @@ import (
 
 const (
 	TOOLNAME = "pt-mongodb-summary"
+
+	DEFAULT_AUTHDB             = "admin"
+	DEFAULT_HOST               = "localhost:27017"
+	DEFAULT_LOGLEVEL           = "warn"
+	DEFAULT_RUNNINGOPSINTERVAL = 1000 // milliseconds
+	DEFAULT_RUNNINGOPSSAMPLES  = 5
 )
 
 var (
-	Version   string = "2.2.19"
 	Build     string = "01-01-1980"
 	GoVersion string = "1.8"
+	Version   string = "3.0.1"
 )
 
 type TimedStats struct {
@@ -779,10 +785,11 @@ func externalIP() (string, error) {
 
 func parseFlags() options {
 	opts := options{
-		Host:               "localhost:27017",
-		LogLevel:           "warn",
-		RunningOpsSamples:  5,
-		RunningOpsInterval: 1000, // milliseconds
+		Host:               DEFAULT_HOST,
+		LogLevel:           DEFAULT_LOGLEVEL,
+		RunningOpsSamples:  DEFAULT_RUNNINGOPSSAMPLES,
+		RunningOpsInterval: DEFAULT_RUNNINGOPSINTERVAL, // milliseconds
+		AuthDB:             DEFAULT_AUTHDB,
 	}
 
 	getopt.BoolVarLong(&opts.Help, "help", 'h', "Show help")

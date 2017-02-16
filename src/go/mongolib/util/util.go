@@ -36,7 +36,7 @@ func GetReplicasetMembers(dialer pmgo.Dialer, di *mgo.DialInfo) ([]proto.Members
 			m := proto.Members{
 				Name: hostname,
 			}
-			m.StateStr = cmdOpts.Parsed.Sharding.ClusterRole
+			m.StateStr = strings.ToUpper(cmdOpts.Parsed.Sharding.ClusterRole)
 
 			if serverStatus, err := GetServerStatus(dialer, di, m.Name); err == nil {
 				m.ID = serverStatus.Pid
@@ -54,7 +54,12 @@ func GetReplicasetMembers(dialer pmgo.Dialer, di *mgo.DialInfo) ([]proto.Members
 			if serverStatus, err := GetServerStatus(dialer, di, m.Name); err == nil {
 				m.ID = serverStatus.Pid
 				m.StorageEngine = serverStatus.StorageEngine
-				m.StateStr = cmdOpts.Parsed.Sharding.ClusterRole + "/" + m.StateStr
+				if cmdOpts.Parsed.Sharding.ClusterRole == "" {
+					m.StateStr = m.StateStr
+				} else {
+					m.StateStr = cmdOpts.Parsed.Sharding.ClusterRole + "/" + m.StateStr
+				}
+				m.StateStr = strings.ToUpper(m.StateStr)
 			}
 			membersMap[m.Name] = m
 		}

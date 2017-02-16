@@ -10,8 +10,8 @@ Unsharded Collections: {{.UnshardedColsCount}}
   Unsharded Data Size: {{.UnshardedDataSizeScaled}} {{.UnshardedDataSizeScale}}
 {{- if .Chunks }}
           ###  Chunks: 
-	{{- range .Chunks }}
-         {{ printf "%30s" .ID}}: {{ printf "%5d" .Count }}
+	{{ range .Chunks }}
+{{- if .ID }}       {{ printf "%5d" .Count }} : {{ printf "%-30s" .ID}}{{ end -}}
 	{{- end -}}
 {{ end -}}
 `

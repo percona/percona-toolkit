@@ -188,18 +188,56 @@ func TestFingerprint(t *testing.T) {
 		},
 		{
 			query: map[string]interface{}{"find": "system.profile", "filter": map[string]interface{}{}, "sort": map[string]interface{}{"$natural": 1}},
-			want:  "$natural,filter,find,sort",
+			want:  "$natural",
 		},
 		{
 
 			query: map[string]interface{}{"collection": "system.profile", "batchSize": 0, "getMore": 18531768265},
 			want:  "batchSize,collection,getMore",
 		},
+		/*
+			  Main test case:
+			  Got Query field:
+			  {
+				  "filter": {
+				     "latestFeedbackDate":{
+				        "$gte":1427846400000,
+				        "$lte":1486511999999},
+				        "merchantId":"560bc82a498e0b791959be71",
+				        "reviewed":true,
+				        "serviceFeedback.fiveStarScore.selectedScore":{
+				            "$in":[5,4,3,2,1]
+				        }
+				  },
+				  "find": "saleUpdatedTags",
+				  "ntoreturn":10,
+				  "projection":{
+				     "$sortKey":{
+				        "$meta":"sortKey"
+				     }
+				  },
+				  "shardVersion":[571230652140,"55d1b3f1e6845ce25be7e6db"],
+				  "sort":{"latestFeedbackDate":-1}
+			  }
+
+			  Want fingerprint:
+			  latestFeedbackDate,merchantId,reviewed,serviceFeedback.fiveStarScore.selectedScore
+
+			  Why?
+			  1) It is MongoDb 3.2+ (has filter instead of $query)
+			  2) From the "filter" map, we are removing all keys starting with $
+			  3) The key 'latestFeedbackDate' exists in the "sort" map but it is not in the "filter" keys
+			     so it has been added to the final fingerprint
+		*/
+		{
+			query: map[string]interface{}{"sort": map[string]interface{}{"latestFeedbackDate": -1}, "filter": map[string]interface{}{"latestFeedbackDate": map[string]interface{}{"$gte": 1.4278464e+12, "$lte": 1.486511999999e+12}, "merchantId": "560bc82a498e0b791959be71", "reviewed": true, "serviceFeedback.fiveStarScore.selectedScore": map[string]interface{}{"$in": []interface{}{5, 4, 3, 2, 1}}}, "find": "saleUpdatedTags", "ntoreturn": 10, "projection": map[string]interface{}{"$sortKey": map[string]interface{}{"$meta": "sortKey"}}, "shardVersion": []interface{}{5.7123065214e+11, "55d1b3f1e6845ce25be7e6db"}},
+			want:  "latestFeedbackDate,merchantId,reviewed,serviceFeedback.fiveStarScore.selectedScore",
+		},
 	}
-	for _, tt := range tests {
+	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := fingerprint(tt.query); got != tt.want {
-				t.Errorf("fingerprint() = %v, want %v", got, tt.want)
+			if got, err := fingerprint(tt.query); got != tt.want || err != nil {
+				t.Errorf("fingerprint  case #%d:\n got %v,\nwant %v\nerror: %v\n", i, got, tt.want, err)
 			}
 		})
 	}

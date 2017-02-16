@@ -3,8 +3,10 @@ package main
 import (
 	"crypto/md5"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 	"text/template"
@@ -27,12 +29,25 @@ import (
 const (
 	TOOLNAME        = "pt-mongodb-query-digest"
 	MAX_DEPTH_LEVEL = 10
+
+	DEFAULT_AUTHDB          = "admin"
+	DEFAULT_HOST            = "localhost:27017"
+	DEFAULT_LOGLEVEL        = "warn"
+	DEFAULT_ORDERBY         = "count"          // comma separated list
+	DEFAULT_SKIPCOLLECTIONS = "system.profile" // comma separated list
 )
 
 var (
-	Version   string
-	Build     string
-	GoVersion string
+	Build     string = "01-01-1980"
+	GoVersion string = "1.8"
+	Version   string = "3.0.1"
+
+	CANNOT_GET_QUERY_ERROR = errors.New("cannot get query field from the profile document (it is not a map)")
+
+	// This is a regexp array to filter out the keys we don't want in the fingerprint
+	keyFilters = func() []string {
+		return []string{"^shardVersion$", "^\\$"}
+	}
 )
 
 type iter interface {
@@ -433,13 +448,12 @@ func getData(i iter, filters []docsFilter) []stat {
 		log.Debugln("====================================================================================================")
 		log.Debug(pretty.Sprint(doc))
 		if len(doc.Query) > 0 {
-			query := doc.Query
-			if squery, ok := doc.Query["$query"]; ok {
-				if ssquery, ok := squery.(map[string]interface{}); ok {
-					query = ssquery
-				}
+
+			fp, err := fingerprint(doc.Query)
+			if err != nil {
+				log.Errorf("cannot get fingerprint: %s", err.Error())
+				continue
 			}
-			fp := fingerprint(query)
 			var s *stat
 			var ok bool
 			key := groupKey{
@@ -448,13 +462,14 @@ func getData(i iter, filters []docsFilter) []stat {
 				Namespace:   doc.Ns,
 			}
 			if s, ok = stats[key]; !ok {
+				realQuery, _ := getQueryField(doc.Query)
 				s = &stat{
 					ID:          fmt.Sprintf("%x", md5.Sum([]byte(fp+doc.Ns))),
 					Operation:   doc.Op,
 					Fingerprint: fp,
 					Namespace:   doc.Ns,
 					TableScan:   false,
-					Query:       query,
+					Query:       realQuery,
 				}
 				stats[key] = s
 			}
@@ -486,10 +501,11 @@ func getData(i iter, filters []docsFilter) []stat {
 
 func getOptions() (*options, error) {
 	opts := &options{
-		Host:            "localhost:27017",
-		LogLevel:        "warn",
-		OrderBy:         []string{"count"},
-		SkipCollections: []string{"system.profile"},
+		Host:            DEFAULT_HOST,
+		LogLevel:        DEFAULT_LOGLEVEL,
+		OrderBy:         strings.Split(DEFAULT_ORDERBY, ","),
+		SkipCollections: strings.Split(DEFAULT_SKIPCOLLECTIONS, ","),
+		AuthDB:          DEFAULT_AUTHDB,
 	}
 
 	getopt.BoolVarLong(&opts.Help, "help", '?', "Show help")
@@ -573,14 +589,83 @@ func getDialInfo(opts *options) *mgo.DialInfo {
 	return di
 }
 
-func fingerprint(query map[string]interface{}) string {
-	return strings.Join(keys(query, 0), ",")
+func getQueryField(query map[string]interface{}) (map[string]interface{}, error) {
+	// MongoDB 3.0
+	if squery, ok := query["$query"]; ok {
+		// just an extra check to ensure this type assertion won't fail
+		if ssquery, ok := squery.(map[string]interface{}); ok {
+			return ssquery, nil
+		}
+		return nil, CANNOT_GET_QUERY_ERROR
+	}
+	// MongoDB 3.2+
+	if squery, ok := query["filter"]; ok {
+		if ssquery, ok := squery.(map[string]interface{}); ok {
+			return ssquery, nil
+		}
+		return nil, CANNOT_GET_QUERY_ERROR
+	}
+	return query, nil
+}
+
+// Query is the top level map query element
+// Example for MongoDB 3.2+
+//     "query" : {
+//        "find" : "col1",
+//        "filter" : {
+//            "s2" : {
+//                "$lt" : "54701",
+//                "$gte" : "73754"
+//            }
+//        },
+//        "sort" : {
+//            "user_id" : 1
+//        }
+//     }
+func fingerprint(query map[string]interface{}) (string, error) {
+
+	realQuery, err := getQueryField(query)
+	if err != nil {
+		// Try to encode doc.Query as json for prettiness
+		if buf, err := json.Marshal(realQuery); err == nil {
+			return "", fmt.Errorf("%v for query %s", err, string(buf))
+		}
+		// If we cannot encode as json, return just the error message without the query
+		return "", err
+	}
+	retKeys := keys(realQuery, 0)
+
+	sort.Strings(retKeys)
+
+	// if there is a sort clause in the query, we have to add all fields in the sort
+	// fields list that are not in the query keys list (retKeys)
+	if sortKeys, ok := query["sort"]; ok {
+		if sortKeysMap, ok := sortKeys.(map[string]interface{}); ok {
+			sortKeys := mapKeys(sortKeysMap, 0)
+			for _, sortKey := range sortKeys {
+				if !inSlice(sortKey, retKeys) {
+					retKeys = append(retKeys, sortKey)
+				}
+			}
+		}
+	}
+
+	return strings.Join(retKeys, ","), nil
+}
+
+func inSlice(str string, list []string) bool {
+	for _, v := range list {
+		if v == str {
+			return true
+		}
+	}
+	return false
 }
 
 func keys(query map[string]interface{}, level int) []string {
 	ks := []string{}
 	for key, value := range query {
-		if !shouldIncludeKey(key) {
+		if shouldSkipKey(key) {
 			continue
 		}
 		ks = append(ks, key)
@@ -595,14 +680,28 @@ func keys(query map[string]interface{}, level int) []string {
 	return ks
 }
 
-func shouldIncludeKey(key string) bool {
-	filterOut := []string{"shardVersion"}
-	for _, val := range filterOut {
-		if val == key {
-			return false
+func mapKeys(query map[string]interface{}, level int) []string {
+	ks := []string{}
+	for key, value := range query {
+		ks = append(ks, key)
+		if m, ok := value.(map[string]interface{}); ok {
+			level++
+			if level <= MAX_DEPTH_LEVEL {
+				ks = append(ks, keys(m, level)...)
+			}
 		}
 	}
-	return true
+	sort.Strings(ks)
+	return ks
+}
+
+func shouldSkipKey(key string) bool {
+	for _, filter := range keyFilters() {
+		if matched, _ := regexp.MatchString(filter, key); matched {
+			return true
+		}
+	}
+	return false
 }
 
 func printHeader(opts *options) {
