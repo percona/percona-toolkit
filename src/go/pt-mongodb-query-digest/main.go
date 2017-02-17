@@ -33,7 +33,7 @@ const (
 	DEFAULT_AUTHDB          = "admin"
 	DEFAULT_HOST            = "localhost:27017"
 	DEFAULT_LOGLEVEL        = "warn"
-	DEFAULT_ORDERBY         = "count"          // comma separated list
+	DEFAULT_ORDERBY         = "-count"         // comma separated list
 	DEFAULT_SKIPCOLLECTIONS = "system.profile" // comma separated list
 )
 
@@ -514,13 +514,14 @@ func getOptions() (*options, error) {
 
 	getopt.IntVarLong(&opts.Limit, "limit", 'n', "Show the first n queries")
 
-	getopt.ListVarLong(&opts.OrderBy, "order-by", 'o', "Comma separated list of order by fields (max values): "+
-		"count,ratio,query-time,docs-scanned,docs-returned. "+
-		"- in front of the field name denotes reverse order.")
+	getopt.ListVarLong(&opts.OrderBy, "order-by", 'o',
+		"Comma separated list of order by fields (max values): "+
+			"count,ratio,query-time,docs-scanned,docs-returned. "+
+			"- in front of the field name denotes reverse order. Default: "+DEFAULT_ORDERBY)
 	getopt.ListVarLong(&opts.SkipCollections, "skip-collections", 's', "A comma separated list of collections (namespaces) to skip."+
-		"  Default: system.profile")
+		"  Default: "+DEFAULT_SKIPCOLLECTIONS)
 
-	getopt.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin", "Databaase to use for optional MongoDB authentication. Default: admin")
+	getopt.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin", "Database to use for optional MongoDB authentication. Default: admin")
 	getopt.StringVarLong(&opts.Database, "database", 'd', "", "MongoDB database to profile")
 	getopt.StringVarLong(&opts.LogLevel, "log-level", 'l', "Log level: error", "panic, fatal, error, warn, info, debug. Default: error")
 	getopt.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").SetOptional()
@@ -528,16 +529,21 @@ func getOptions() (*options, error) {
 
 	getopt.SetParameters("host[:port]/database")
 
-	getopt.Parse()
+	var gop = getopt.CommandLine
+	gop.Parse(os.Args)
+	if gop.NArgs() > 0 {
+		opts.Host = gop.Arg(0)
+		gop.Parse(gop.Args())
+	}
 	if opts.Help {
 		return opts, nil
 	}
 
-	args := getopt.Args() // host is a positional arg
-	if len(args) > 0 {
-		opts.Host = args[0]
+	//args := getopt.Args() // host is a positional arg
+	//if len(args) > 0 {
+	//	opts.Host = args[0]
 
-	}
+	//}
 
 	if getopt.IsSet("order-by") {
 		validFields := []string{"count", "ratio", "query-time", "docs-scanned", "docs-returned"}

@@ -207,6 +207,7 @@ func main() {
 		os.Exit(1)
 	}
 	defer session.Close()
+	session.SetMode(mgo.Monotonic, true)
 
 	hostInfo, err := GetHostinfo(session)
 	if err != nil {
@@ -239,7 +240,7 @@ func main() {
 
 	if hostInfo != nil {
 		if security, err := GetSecuritySettings(session, hostInfo.Version); err != nil {
-			log.Printf("[Error] cannot get security settings: %v\n", err)
+			log.Errorf("[Error] cannot get security settings: %v\n", err)
 		} else {
 			t := template.Must(template.New("ssl").Parse(templates.Security))
 			t.Execute(os.Stdout, security)
@@ -270,11 +271,13 @@ func main() {
 		}
 	}
 
-	if bs, err := GetBalancerStats(session); err != nil {
-		log.Printf("[Error] cannot get balancer stats: %v\n", err)
-	} else {
-		t := template.Must(template.New("balancer").Parse(templates.BalancerStats))
-		t.Execute(os.Stdout, bs)
+	if hostInfo.NodeType == "mongos" {
+		if bs, err := GetBalancerStats(session); err != nil {
+			log.Printf("[Error] cannot get balancer stats: %v\n", err)
+		} else {
+			t := template.Must(template.New("balancer").Parse(templates.BalancerStats))
+			t.Execute(os.Stdout, bs)
+		}
 	}
 
 }
@@ -463,7 +466,7 @@ func GetSecuritySettings(session pmgo.SessionManager, ver string) (*security, er
 		}
 	}
 
-	s.Users, err = session.DB("admin").C("system.users").Count()
+	s.Users, _ = session.DB("admin").C("system.users").Count()
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot get users count")
 	}
@@ -799,7 +802,7 @@ func parseFlags() options {
 	getopt.StringVarLong(&opts.User, "username", 'u', "", "Username to use for optional MongoDB authentication")
 	getopt.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").SetOptional()
 	getopt.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin",
-		"Databaase to use for optional MongoDB authentication. Default: admin")
+		"Databaae to use for optional MongoDB authentication. Default: admin")
 	getopt.StringVarLong(&opts.LogLevel, "log-level", 'l', "error", "Log level: panic, fatal, error, warn, info, debug. Default: error")
 
 	getopt.IntVarLong(&opts.RunningOpsSamples, "running-ops-samples", 's',
