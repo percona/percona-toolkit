@@ -200,38 +200,38 @@ func TestFingerprint(t *testing.T) {
 			  Got Query field:
 			  {
 				  "filter": {
-				     "latestFeedbackDate":{
+				     "aSampleDate":{
 				        "$gte":1427846400000,
 				        "$lte":1486511999999},
-				        "merchantId":"560bc82a498e0b791959be71",
-				        "reviewed":true,
-				        "serviceFeedback.fiveStarScore.selectedScore":{
+				        "brotherId":"25047dd6f52711e6b3c7c454",
+				        "examined":true,
+				        "sampleResponse.sampleScore.selectedScore":{
 				            "$in":[5,4,3,2,1]
 				        }
 				  },
-				  "find": "saleUpdatedTags",
+				  "find": "transModifiedTags",
 				  "ntoreturn":10,
 				  "projection":{
 				     "$sortKey":{
 				        "$meta":"sortKey"
 				     }
 				  },
-				  "shardVersion":[571230652140,"55d1b3f1e6845ce25be7e6db"],
-				  "sort":{"latestFeedbackDate":-1}
+				  "shardVersion":[571230652140,"6f7dcd9af52711e6ad7cc454"],
+				  "sort":{"aSampleDate":-1}
 			  }
 
 			  Want fingerprint:
-			  latestFeedbackDate,merchantId,reviewed,serviceFeedback.fiveStarScore.selectedScore
+			  aSampleDate,brotherId,examined,sampleResponse.sampleScore.selectedScore
 
 			  Why?
 			  1) It is MongoDb 3.2+ (has filter instead of $query)
 			  2) From the "filter" map, we are removing all keys starting with $
-			  3) The key 'latestFeedbackDate' exists in the "sort" map but it is not in the "filter" keys
+			  3) The key 'aSampleDate' exists in the "sort" map but it is not in the "filter" keys
 			     so it has been added to the final fingerprint
 		*/
 		{
-			query: map[string]interface{}{"sort": map[string]interface{}{"latestFeedbackDate": -1}, "filter": map[string]interface{}{"latestFeedbackDate": map[string]interface{}{"$gte": 1.4278464e+12, "$lte": 1.486511999999e+12}, "merchantId": "560bc82a498e0b791959be71", "reviewed": true, "serviceFeedback.fiveStarScore.selectedScore": map[string]interface{}{"$in": []interface{}{5, 4, 3, 2, 1}}}, "find": "saleUpdatedTags", "ntoreturn": 10, "projection": map[string]interface{}{"$sortKey": map[string]interface{}{"$meta": "sortKey"}}, "shardVersion": []interface{}{5.7123065214e+11, "55d1b3f1e6845ce25be7e6db"}},
-			want:  "latestFeedbackDate,merchantId,reviewed,serviceFeedback.fiveStarScore.selectedScore",
+			query: map[string]interface{}{"sort": map[string]interface{}{"aSampleDate": -1}, "filter": map[string]interface{}{"aSampleDate": map[string]interface{}{"$gte": 1.4278464e+12, "$lte": 1.486511999999e+12}, "brotherId": "25047dd6f52711e6b3c7c454", "examined": true, "sampleResponse.sampleScore.selectedScore": map[string]interface{}{"$in": []interface{}{5, 4, 3, 2, 1}}}, "find": "transModifiedTags", "ntoreturn": 10, "projection": map[string]interface{}{"$sortKey": map[string]interface{}{"$meta": "sortKey"}}, "shardVersion": []interface{}{5.7123065214e+11, "6f7dcd9af52711e6ad7cc454"}},
+			want:  "aSampleDate,brotherId,examined,sampleResponse.sampleScore.selectedScore",
 		},
 	}
 	for i, tt := range tests {
