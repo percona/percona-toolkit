@@ -24,6 +24,10 @@ The fingerprint is calculated as a sorted list of keys in the document
 with a maximum depth level of 10.
 By default, the results are sorted by ascending query count.
 
+.. note:: ``pt-mongodb-query-digest`` cannot collect statistics
+   from MongoDB instances that require connection via SSL.
+   Support for SSL will be added in the future.
+
 Options
 -------
 

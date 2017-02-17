@@ -20,6 +20,13 @@ it will try to connect to ``localhost`` on port ``27017``.
 The program collects information about MongoDB instances
 by running administration commands and formatting the output.
 
+.. note:: ``pt-mongodb-summary`` requires to be run by user
+   with the ``clusterAdmin`` or ``root`` built-in roles.
+
+.. note:: ``pt-mongodb-summary`` cannot collect statistics
+   from MongoDB instances that require connection via SSL.
+   Support for SSL will be added in the future.
+
 Options
 -------
 
