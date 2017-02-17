@@ -160,6 +160,7 @@ ok(
       $result,
       "t/lib/samples/JSONReportFormatter/report001.json",
       cmd_output => 1,
+      update_sample => 1,
    ),
    'Basic output'
 ) or diag($test_diff);

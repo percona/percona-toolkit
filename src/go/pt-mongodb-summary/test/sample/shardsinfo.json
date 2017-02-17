@@ -1,0 +1,14 @@
+{
+    "Shards": [
+        {
+            "ID": "r1",
+            "Host": "r1/localhost:17001,localhost:17002,localhost:17003"
+        },
+        {
+            "ID": "r2",
+            "Host": "r2/localhost:18001,localhost:18002,localhost:18003"
+        }
+    ],
+    "OK": 1
+}
+

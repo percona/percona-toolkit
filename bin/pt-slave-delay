@@ -40,7 +40,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.20';
+our $VERSION = '3.0.0';
 
 use strict;
 use warnings FATAL => 'all';
@@ -4892,7 +4892,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2016 Percona LLC and/or its affiliates,
+This program is copyright 2011-2017 Percona LLC and/or its affiliates,
 2007-2011 Sergey Zhuravle and Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -4911,6 +4911,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-slave-delay 2.2.20
+pt-slave-delay 3.0.1
 
 =cut

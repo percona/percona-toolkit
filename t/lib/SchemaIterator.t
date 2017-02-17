@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 43;
+use Test::More tests => 42;
 
 use SchemaIterator;
 use FileIterator;
@@ -349,7 +349,7 @@ SKIP: {
 
 test_so(
    files     => ["$in/dump001.txt"],
-   result    => "",
+   result    => "test.a test.b test2.a ",
    test_name => "Iterate schema in dump001.txt",
 );
 
@@ -362,7 +362,7 @@ test_so(
 
 test_so(
    files     => ["$in/dump001.txt", "$in/dump001.txt"],
-   result    => "",
+   result    => "$out/multiple-files.txt",
    ddl       => 1,
    test_name => "Iterate schema in multiple files",
 );
@@ -370,7 +370,7 @@ test_so(
 test_so(
    files     => ["$in/dump001.txt"],
    filters   => [qw(--databases TEST2)],
-   result    => "",
+   result    => "$out/all-dbs-dump001.txt",
    test_name => "Filter dump file by --databases",
 );
 
@@ -591,10 +591,10 @@ my $si = new SchemaIterator(
    Quoter       => $q,
    TableParser  => $tp,
 );
-for my $db (qw( information_schema performance_schema|lost\+found percona percona_schema test )) {
+for my $db (qw( information_schema performance_schema|lost\+found percona percona_schema )) {
    is(
       $si->database_is_allowed($db),
-      0,
+      1,
       "database is allowed: $db",
    );
 }
