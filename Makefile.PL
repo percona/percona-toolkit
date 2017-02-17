@@ -8,7 +8,10 @@ WriteMakefile(
       'docs/percona-toolkit.pod' => 'blib/man1/percona-toolkit.1p',
       map {
          (my $name = $_) =~ s/^bin.//;
-         $_ => "blib/man1/$name.1p";
+         my $file_name = $_;
+         if ( $file_name !~ m/mongo/ ) {
+             $_ => "blib/man1/$name.1p";
+        }
       } <bin/*>
     },
     MAN3PODS     => {}, # man(3) pages are for C libs
