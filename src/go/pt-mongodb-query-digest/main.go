@@ -508,28 +508,28 @@ func getOptions() (*options, error) {
 		AuthDB:          DEFAULT_AUTHDB,
 	}
 
-	getopt.BoolVarLong(&opts.Help, "help", '?', "Show help")
-	getopt.BoolVarLong(&opts.Version, "version", 'v', "Show version & exit")
-	getopt.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "Default: Don't check for updates")
+	gop := getopt.New()
+	gop.BoolVarLong(&opts.Help, "help", '?', "Show help")
+	gop.BoolVarLong(&opts.Version, "version", 'v', "Show version & exit")
+	gop.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "Default: Don't check for updates")
 
-	getopt.IntVarLong(&opts.Limit, "limit", 'n', "Show the first n queries")
+	gop.IntVarLong(&opts.Limit, "limit", 'n', "Show the first n queries")
 
-	getopt.ListVarLong(&opts.OrderBy, "order-by", 'o',
+	gop.ListVarLong(&opts.OrderBy, "order-by", 'o',
 		"Comma separated list of order by fields (max values): "+
 			"count,ratio,query-time,docs-scanned,docs-returned. "+
 			"- in front of the field name denotes reverse order. Default: "+DEFAULT_ORDERBY)
-	getopt.ListVarLong(&opts.SkipCollections, "skip-collections", 's', "A comma separated list of collections (namespaces) to skip."+
+	gop.ListVarLong(&opts.SkipCollections, "skip-collections", 's', "A comma separated list of collections (namespaces) to skip."+
 		"  Default: "+DEFAULT_SKIPCOLLECTIONS)
 
-	getopt.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin", "Database to use for optional MongoDB authentication. Default: admin")
-	getopt.StringVarLong(&opts.Database, "database", 'd', "", "MongoDB database to profile")
-	getopt.StringVarLong(&opts.LogLevel, "log-level", 'l', "Log level: error", "panic, fatal, error, warn, info, debug. Default: error")
-	getopt.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").SetOptional()
-	getopt.StringVarLong(&opts.User, "username", 'u', "Username to use for optional MongoDB authentication")
+	gop.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin", "Database to use for optional MongoDB authentication. Default: admin")
+	gop.StringVarLong(&opts.Database, "database", 'd', "", "MongoDB database to profile")
+	gop.StringVarLong(&opts.LogLevel, "log-level", 'l', "Log level: error", "panic, fatal, error, warn, info, debug. Default: error")
+	gop.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").SetOptional()
+	gop.StringVarLong(&opts.User, "username", 'u', "Username to use for optional MongoDB authentication")
 
-	getopt.SetParameters("host[:port]/database")
+	gop.SetParameters("host[:port]/database")
 
-	var gop = getopt.CommandLine
 	gop.Parse(os.Args)
 	if gop.NArgs() > 0 {
 		opts.Host = gop.Arg(0)
@@ -539,13 +539,7 @@ func getOptions() (*options, error) {
 		return opts, nil
 	}
 
-	//args := getopt.Args() // host is a positional arg
-	//if len(args) > 0 {
-	//	opts.Host = args[0]
-
-	//}
-
-	if getopt.IsSet("order-by") {
+	if gop.IsSet("order-by") {
 		validFields := []string{"count", "ratio", "query-time", "docs-scanned", "docs-returned"}
 		for _, field := range opts.OrderBy {
 			valid := false
@@ -558,11 +552,9 @@ func getOptions() (*options, error) {
 				return nil, fmt.Errorf("invalid sort field '%q'", field)
 			}
 		}
-	} else {
-		opts.OrderBy = []string{"count"}
 	}
 
-	if getopt.IsSet("password") && opts.Password == "" {
+	if gop.IsSet("password") && opts.Password == "" {
 		print("Password: ")
 		pass, err := gopass.GetPasswd()
 		if err != nil {
