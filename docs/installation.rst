@@ -56,12 +56,6 @@ Installing Percona Toolkit on Debian or Ubuntu
    You can check the repository configuration
    in the :file:`/etc/apt/sources.list.d/percona-release.list` file.
 
-#. Percona Toolkit 3.0.0 is in beta,
-   so packages are in the testing repository.
-   To enable it, add ``testing`` at the end
-   of the Percona repository definition.
-   For more information, see :ref:`apt-testing-repo`.
-
 #. Update the local cache:
 
    .. code-block:: bash
@@ -129,17 +123,6 @@ Installing Percona Toolkit on Red Hat or CentOS
 
       Complete!
 
-#. Percona Toolkit 3.0.0 is in beta,
-   so packages are in the testing repository.
-   To enable it, set ``enabled=1`` for the following entries
-   in the Percona repository configuration file
-   (:file:`/etc/yum.repos.d/percona-release.repo`)::
-
-    [percona-testing-$basearch]
-    [percona-testing-noarch]
-
-   For more information, see :ref:`yum-testing-repo`.
-
 #. Check that the packages are available:
 
    .. code-block:: bash
@@ -187,4 +170,9 @@ set ``enabled=1`` for the following entries: ::
 
   [percona-experimental-$basearch]
   [percona-experimental-noarch]
+
+.. note:: As of version 3.0,
+   Percona Toolkit is not available in the ``noarch`` repo.
+   Make sure that you enable the ``basearch`` repo
+   when installing or upgrading to Percona Toolkit 3.0 or later.
 
