@@ -132,11 +132,17 @@ type options struct {
 	NoRunningOps       bool
 	RunningOpsSamples  int
 	RunningOpsInterval int
+	SSLCAFile          string
+	SSLPEMKeyFile      string
 }
 
 func main() {
 
-	opts := parseFlags()
+	opts, err := parseFlags()
+	if err != nil {
+		log.Errorf("cannot get parameters: %s", err.Error())
+		os.Exit(2)
+	}
 
 	if opts.Help {
 		getopt.Usage()
@@ -169,22 +175,14 @@ func main() {
 		}
 	}
 
-	if getopt.IsSet("password") && opts.Password == "" {
-		print("Password: ")
-		pass, err := gopass.GetPasswd()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(2)
-		}
-		opts.Password = string(pass)
-	}
-
-	di := &mgo.DialInfo{
-		Username: opts.User,
-		Password: opts.Password,
-		Addrs:    []string{opts.Host},
-		FailFast: true,
-		Source:   opts.AuthDB,
+	di := &pmgo.DialInfo{
+		Username:      opts.User,
+		Password:      opts.Password,
+		Addrs:         []string{opts.Host},
+		FailFast:      true,
+		Source:        opts.AuthDB,
+		SSLCAFile:     opts.SSLCAFile,
+		SSLPEMKeyFile: opts.SSLPEMKeyFile,
 	}
 
 	log.Debugf("Connecting to the db using:\n%+v", di)
@@ -211,7 +209,7 @@ func main() {
 
 	hostInfo, err := GetHostinfo(session)
 	if err != nil {
-		message := fmt.Sprintf("Cannot connect to %q: %s", di.Addrs[0], err.Error())
+		message := fmt.Sprintf("Cannot get host info for %q: %s", di.Addrs[0], err.Error())
 		log.Errorf(message)
 		os.Exit(2)
 	}
@@ -786,7 +784,7 @@ func externalIP() (string, error) {
 	return "", errors.New("are you connected to the network?")
 }
 
-func parseFlags() options {
+func parseFlags() (options, error) {
 	opts := options{
 		Host:               DEFAULT_HOST,
 		LogLevel:           DEFAULT_LOGLEVEL,
@@ -795,31 +793,42 @@ func parseFlags() options {
 		AuthDB:             DEFAULT_AUTHDB,
 	}
 
-	getopt.BoolVarLong(&opts.Help, "help", 'h', "Show help")
-	getopt.BoolVarLong(&opts.Version, "version", 'v', "", "Show version & exit")
-	getopt.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "", "Default: Don't check for updates")
+	gop := getopt.New()
+	gop.BoolVarLong(&opts.Help, "help", 'h', "Show help")
+	gop.BoolVarLong(&opts.Version, "version", 'v', "", "Show version & exit")
+	gop.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "", "Default: Don't check for updates")
 
-	getopt.StringVarLong(&opts.User, "username", 'u', "", "Username to use for optional MongoDB authentication")
-	getopt.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").SetOptional()
-	getopt.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin",
+	gop.StringVarLong(&opts.User, "username", 'u', "", "Username to use for optional MongoDB authentication")
+	gop.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").SetOptional()
+	gop.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin",
 		"Databaae to use for optional MongoDB authentication. Default: admin")
-	getopt.StringVarLong(&opts.LogLevel, "log-level", 'l', "error", "Log level: panic, fatal, error, warn, info, debug. Default: error")
+	gop.StringVarLong(&opts.LogLevel, "log-level", 'l', "error", "Log level: panic, fatal, error, warn, info, debug. Default: error")
 
-	getopt.IntVarLong(&opts.RunningOpsSamples, "running-ops-samples", 's',
+	gop.IntVarLong(&opts.RunningOpsSamples, "running-ops-samples", 's',
 		fmt.Sprintf("Number of samples to collect for running ops. Default: %d", opts.RunningOpsSamples))
 
-	getopt.IntVarLong(&opts.RunningOpsInterval, "running-ops-interval", 'i',
+	gop.IntVarLong(&opts.RunningOpsInterval, "running-ops-interval", 'i',
 		fmt.Sprintf("Interval to wait betwwen running ops samples in milliseconds. Default %d milliseconds", opts.RunningOpsInterval))
 
-	getopt.SetParameters("host[:port]")
+	gop.StringVarLong(&opts.SSLCAFile, "sslCAFile", 0, "SSL CA cert file used for authentication")
+	gop.StringVarLong(&opts.SSLPEMKeyFile, "sslPEMKeyFile", 0, "SSL client PEM file used for authentication")
 
-	var gop = getopt.CommandLine
+	gop.SetParameters("host[:port]")
+
 	gop.Parse(os.Args)
 	if gop.NArgs() > 0 {
 		opts.Host = gop.Arg(0)
 		gop.Parse(gop.Args())
 	}
-	return opts
+	if gop.IsSet("password") && opts.Password == "" {
+		print("Password: ")
+		pass, err := gopass.GetPasswd()
+		if err != nil {
+			return opts, err
+		}
+		opts.Password = string(pass)
+	}
+	return opts, nil
 }
 
 func getChunksCount(session pmgo.SessionManager) ([]proto.ChunksByCollection, error) {
