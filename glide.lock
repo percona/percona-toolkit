@@ -1,5 +1,5 @@
 hash: 2ff7c989fb0fde1375999fded74ae44e10be513a21416571f026390b679924e4
-updated: 2017-02-21T13:59:41.533544309-03:00
+updated: 2017-02-21T14:44:44.812460227-03:00
 imports:
 - name: github.com/bradfitz/slice
   version: d9036e2120b5ddfa53f3ebccd618c4af275f47da
@@ -26,7 +26,7 @@ imports:
   subpackages:
   - v2
 - name: github.com/percona/pmgo
-  version: 27d979df6c6885ff16abe375aead061a86da6df8
+  version: 9fce66aa289ba956854ea42a8615128982b5a85e
   subpackages:
   - pmgomock
 - name: github.com/pkg/errors
