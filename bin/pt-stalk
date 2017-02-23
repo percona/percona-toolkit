@@ -1082,7 +1082,7 @@ ps_locks_transactions() {
       echo -e "\n$status\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
   else
-      echo "Performance schema is not enabled" >> outfile
+      echo "Performance schema is not enabled" >> $outfile
    fi
 
 }
