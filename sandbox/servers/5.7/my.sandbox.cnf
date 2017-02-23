@@ -30,3 +30,5 @@ lower_case_table_names     = 0
 
 # fkc test
 binlog_format              = STATEMENT
+
+performance_schema=ON
