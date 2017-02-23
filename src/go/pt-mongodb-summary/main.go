@@ -143,6 +143,9 @@ func main() {
 		log.Errorf("cannot get parameters: %s", err.Error())
 		os.Exit(2)
 	}
+	if opts == nil && err == nil {
+		return
+	}
 
 	if opts.Help {
 		getopt.Usage()
@@ -784,8 +787,8 @@ func externalIP() (string, error) {
 	return "", errors.New("are you connected to the network?")
 }
 
-func parseFlags() (options, error) {
-	opts := options{
+func parseFlags() (*options, error) {
+	opts := &options{
 		Host:               DEFAULT_HOST,
 		LogLevel:           DEFAULT_LOGLEVEL,
 		RunningOpsSamples:  DEFAULT_RUNNINGOPSSAMPLES,
@@ -828,6 +831,11 @@ func parseFlags() (options, error) {
 		}
 		opts.Password = string(pass)
 	}
+	if opts.Help {
+		gop.PrintUsage(os.Stdout)
+		return nil, nil
+	}
+
 	return opts, nil
 }
 

@@ -155,8 +155,7 @@ func main() {
 		log.Errorf("error processing commad line arguments: %s", err)
 		os.Exit(1)
 	}
-	if opts.Help {
-		getopt.Usage()
+	if opts == nil && err == nil {
 		return
 	}
 
@@ -540,7 +539,8 @@ func getOptions() (*options, error) {
 		gop.Parse(gop.Args())
 	}
 	if opts.Help {
-		return opts, nil
+		gop.PrintUsage(os.Stdout)
+		return nil, nil
 	}
 
 	if gop.IsSet("order-by") {
