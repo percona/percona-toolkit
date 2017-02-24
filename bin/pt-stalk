@@ -1074,6 +1074,10 @@ ps_locks_transactions() {
       echo -e "\n$status\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
 
+      local status="select t.processlist_id, th.* from performance_schema.table_handles th left join performance_schema.threads t on (th.owner_thread_id=t.thread_id)\G"
+      echo -e "\n$status\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
+
       local status="select t.processlist_id, et.* from performance_schema.events_transactions_current et join performance_schema.threads t using(thread_id)\G"
       echo -e "\n$status\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
