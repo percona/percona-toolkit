@@ -1064,6 +1064,27 @@ tokudb_status() {
       >> "$d/$p-tokudbstatus$n" || rm -f "$d/$p-tokudbstatus$n"
 }
 
+innodb_status() {
+   local n=$1
+
+   local innostat=""
+
+   $CMD_MYSQL $EXT_ARGV -e "SHOW /*!40100 ENGINE*/ INNODB STATUS\G" \
+      >> "$d/$p-innodbstatus$n"
+   grep "END OF INNODB" "$d/$p-innodbstatus$n" >/dev/null || {
+      if [ -d /proc -a -d /proc/$mysqld_pid ]; then
+         for fd in /proc/$mysqld_pid/fd/*; do
+            file $fd | grep deleted >/dev/null && {
+               grep 'INNODB' $fd >/dev/null && {
+                  cat $fd > "$d/$p-innodbstatus$n"
+                  break
+               }
+            }
+         done
+      fi
+   }
+}
+
 ps_locks_transactions() {
    local outfile=$1 
    
@@ -1089,27 +1110,6 @@ ps_locks_transactions() {
       echo "Performance schema is not enabled" >> $outfile
    fi
 
-}
-
-innodb_status() {
-   local n=$1
-
-   local innostat=""
-
-   $CMD_MYSQL $EXT_ARGV -e "SHOW /*!40100 ENGINE*/ INNODB STATUS\G" \
-      >> "$d/$p-innodbstatus$n"
-   grep "END OF INNODB" "$d/$p-innodbstatus$n" >/dev/null || {
-      if [ -d /proc -a -d /proc/$mysqld_pid ]; then
-         for fd in /proc/$mysqld_pid/fd/*; do
-            file $fd | grep deleted >/dev/null && {
-               grep 'INNODB' $fd >/dev/null && {
-                  cat $fd > "$d/$p-innodbstatus$n"
-                  break
-               }
-            }
-         done
-      fi
-   }
 }
 
 # ###########################################################################
