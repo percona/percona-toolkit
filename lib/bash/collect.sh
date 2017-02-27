@@ -408,12 +408,14 @@ slave_status() {
       echo -e "\n$status\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
 
-      local status="SELECT * 
+      local status="
+      SELECT * 
         FROM replication_connection_status\G"
       echo -e "\n$status\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
 
-      local status="SELECT * 
+      local status="
+      SELECT * 
         FROM replication_applier_status 
         JOIN replication_applier_status_by_coordinator 
        USING (channel_name)\G"
