@@ -1,0 +1,97 @@
+#!/usr/bin/env perl
+use strict;
+use Module::CoreList;
+use File::Spec;
+
+if (scalar @ARGV < 1) {
+    warn "Missing file name";
+    exit 1;
+}
+
+my $in_file = $ARGV[0];
+
+open (my $ifh, "<", $in_file) or die "$in_file does not exist";
+my ($volume,$directories,$file) = File::Spec->splitpath($in_file);
+
+my $out_file = "/tmp/$file";
+open (my $ofh, ">", $out_file) or die "cannot open $out_file for writing";
+
+print "Input file: $in_file\n";
+print "Output file: $out_file\n";
+
+my @lines=<$ifh>;
+for my $line(@lines) {
+    if ($line =~ m/^\s*use (.*?)[ ;].*$/) {
+        my $module = $1;
+        if (Module::CoreList::is_core($module)) {
+            print $ofh $line;
+        } else {
+            eval "require $module"; ## no critic
+            if ($@) {
+                print $ofh $line;
+                next;
+            } 
+
+            my $package_file = $module;
+            $package_file =~ s/::/\//g;
+            $package_file .= '.pm';
+            my $module_file = $INC{$package_file};
+            if (-r $module_file) {
+                write_module($module_file, $ofh, $module);
+            } else {
+                print $ofh $line;
+            }
+        }
+    } else {
+        print $ofh $line;
+    }
+}
+
+sub write_module {
+    my ($filename, $ofh, $module_name) = @_;
+    my $rel_path = my $test_file = File::Spec->abs2rel($filename);
+    $test_file =~ s/\.pm$/.t/;
+
+    open (my $in_module, "<", $filename);
+    my @module_lines = <$in_module>;
+    close $in_module;             
+
+    # Strip copyright notice
+    my $end_line = -1;
+    for my $line(@module_lines) {
+        if ($line =~ m/^#/) {
+            $end_line++;
+            next;
+        }
+        last;
+    }
+    splice(@module_lines, 0, $end_line+1);
+
+    # Write the new header
+    print $ofh <<__ENDSTR;
+# ###########################################################################
+# $module_name package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   $rel_path
+#   t/$test_file
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+__ENDSTR
+
+    # Write the rest of the module
+    for my $line(@module_lines) {
+        next if ($line =~ m/^\s*#/);
+        print $ofh $line;
+    }
+
+    # Write footer
+    print $ofh <<__ENDSTR;
+# ###########################################################################
+# End $module_name package
+# ###########################################################################
+__ENDSTR
+
+}
+
+

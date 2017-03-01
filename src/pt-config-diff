@@ -1,0 +1,637 @@
+#!/usr/bin/env perl
+
+# This program is part of Percona Toolkit: http://www.percona.com/software/
+# See "COPYRIGHT, LICENSE, AND WARRANTY" at the end of this file for legal
+# notices and disclaimers.
+
+use strict;
+use warnings FATAL => 'all';
+
+# This tool is "fat-packed": most of its dependent modules are embedded
+# in this file.  Setting %INC to this file for each module makes Perl aware
+# of this so it will not try to load the module from @INC.  See the tool's
+# documentation for a full list of dependencies.
+BEGIN {
+   $INC{$_} = __FILE__ for map { (my $pkg = "$_.pm") =~ s!::!/!g; $pkg } (qw(
+      Percona::Toolkit
+      Lmo::Utils
+      Lmo::Meta
+      Lmo::Object
+      Lmo::Types
+      Lmo
+      OptionParser
+      DSNParser
+      Cxn
+      Daemon
+      TextResultSetParser
+      MySQLConfig
+      MySQLConfigComparer
+      ReportFormatter
+      HTTP::Micro
+      VersionCheck
+   ));
+}
+
+use Percona::Toolkit;
+use Lmo::Utils;
+use Lmo::Meta;
+use Lmo::Object;
+use Lmo::Types;
+use Lmo;
+use OptionParser;
+use DSNParser;
+use Cxn;
+use Daemon;
+use TextResultSetParser;
+use MySQLConfig;
+use MySQLConfigComparer;
+use ReportFormatter;
+use HTTP::Micro;
+use VersionCheck;
+
+# ###########################################################################
+# This is a combination of modules and programs in one -- a runnable module.
+# http://www.perl.com/pub/a/2006/07/13/lightning-articles.html?page=last
+# Or, look it up in the Camel book on pages 642 and 643 in the 3rd edition.
+#
+# Check at the end of this package for the call to main() which actually runs
+# the program.
+# ###########################################################################
+package pt_config_diff;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use Data::Dumper;
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Sortkeys  = 1;
+$Data::Dumper::Quotekeys = 0;
+
+use Percona::Toolkit;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+sub main {
+   local @ARGV = @_;  # set global ARGV for this package
+
+   # ########################################################################
+   # Get configuration information.
+   # ########################################################################
+   my $o = new OptionParser();
+   $o->get_specs();
+   $o->get_opts();
+
+   my $dp = $o->DSNParser();
+   $dp->prop('set-vars', $o->set_vars());
+
+   if ( !$o->get('help') ) {
+      if ( @ARGV < 1 ) {
+        $o->save_error("Specify at least one file or DSN on the command line");
+      }
+   }
+
+   $o->usage_or_errors();
+
+   # #########################################################################
+   # Make common modules.
+   # #########################################################################
+   my $trp         = new TextResultSetParser();
+   my $config_cmp  = new MySQLConfigComparer(
+      ignore_variables => $o->get('ignore-variables'),
+      ignore_case      => $o->get('ignore-case'),
+   );
+   my %common_modules = (
+      DSNParser           => $dp,
+      OptionParser        => $o,
+      MySQLConfigComparer => $config_cmp,
+      TextResultSetParser => $trp,
+   );
+
+   # #########################################################################
+   # Make MySQLConfig objs for each FILE|DSN.
+   # #########################################################################
+   my $dsn_defaults = $dp->parse_options($o);
+   my $last_dsn;
+   my @configs;       # MySQLConfig objects
+   my @config_names;  # Human-readable names for those ^ objs
+   my @cxn;
+   foreach my $config_src ( @ARGV ) {
+      if ( -f $config_src ) {
+         PTDEBUG && _d('Config source', $config_src, 'is a file');
+         push @configs, new MySQLConfig(
+            file => $config_src,
+            %common_modules,
+         );
+         push @config_names, $config_src;  # filename
+      }
+      else {
+         PTDEBUG && _d('Config source', $config_src, 'is a DSN');
+         my $cxn = new Cxn(
+            dsn_string   => $config_src,
+            prev_dsn     => $last_dsn,
+            DSNParser    => $dp,
+            OptionParser => $o,
+         );
+         $cxn->connect();
+         $last_dsn = $cxn->dsn();
+
+         push @configs, new MySQLConfig(
+            dbh => $cxn->dbh(),
+            dsn => $cxn->dsn(),
+            %common_modules,
+         );
+         push @config_names, $cxn->name();
+         push @cxn, $cxn;
+      }
+   }
+
+   # ########################################################################
+   # Daemonize now that everything is setup and ready to work.
+   # ########################################################################
+   my $daemon;
+   if ( $o->get('pid') ) {
+      # We're not daemoninzing, it just handles PID stuff.
+      $daemon = new Daemon(o=>$o);
+      $daemon->make_PID_file();
+   }
+
+   # ########################################################################
+   # Do the version-check
+   # ########################################################################
+   if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
+      VersionCheck::version_check(
+         force     => $o->got('version-check'),
+         instances => [ map({ +{ dbh => $_->dbh, dsn => $_->dsn } } @cxn) ],
+      );
+   }
+
+   # #########################################################################
+   # Diff the given configs.
+   # #########################################################################
+   my $report;
+   my $truncate_callback;
+   if ( $o->get('report') ) {
+      $report = new ReportFormatter(
+         line_prefix => '',
+         line_width  => $o->get('report-width'),
+      ); 
+      $report->set_columns(
+         { name => 'Variable', width=>25, },
+         map { { name => $_ } } @config_names,
+      );
+
+      # This is difficult.  Ideally, we want to know which var this
+      # val applies to (i.e. first column, same row).  But that's
+      # not how ReportFormatter works.  Plus, even if we truncate a
+      # path on the left side, that might be where the difference is.
+      # So there's no easy solution here.
+      # $truncate_callback = sub {
+      # };
+   }
+
+   PTDEBUG && _d("Comparing", scalar @configs, "configs");
+   my $diffs   = $config_cmp->diff(configs=>\@configs);
+   my $n_diffs = scalar keys %$diffs;
+   PTDEBUG && _d($n_diffs, "differences found:", Dumper($diffs));
+   if ( $n_diffs ) {
+      if ( $o->get('report') ) {
+         foreach my $var ( sort keys %$diffs ) {
+            $report->add_line($var, @{$diffs->{$var}});
+         }
+         $report->title(
+            "$n_diffs config difference" . ($n_diffs > 1 ? 's' : ''));
+         print $report->get_report();
+      }
+      return 1;
+   }
+
+   # No differences.
+   return 0;
+}
+
+# ##########################################################################
+# Subroutines
+# ##########################################################################
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+# ############################################################################
+# Run the program.
+# ############################################################################
+if ( !caller ) { exit main(@ARGV); }
+
+1; # Because this is a module as well as a script.
+
+# ############################################################################
+# Documentation
+# ############################################################################
+
+=pod
+
+=head1 NAME
+
+pt-config-diff - Diff MySQL configuration files and server variables.
+
+=head1 SYNOPSIS
+
+Usage: pt-config-diff [OPTIONS] CONFIG CONFIG [CONFIG...]
+
+pt-config-diff diffs MySQL configuration files and server variables.
+CONFIG can be a filename or a DSN.  At least two CONFIG sources must be given.
+Like standard Unix diff, there is no output if there are no differences.
+
+Diff host1 config from SHOW VARIABLES against host2:
+
+  pt-config-diff h=host1 h=host2
+
+Diff config from [mysqld] section in my.cnf against host1 config:
+
+  pt-config-diff /etc/my.cnf h=host1
+
+Diff the [mysqld] section of two option files:
+
+   pt-config-diff /etc/my-small.cnf /etc/my-large.cnf
+
+=head1 RISKS
+
+Percona Toolkit is mature, proven in the real world, and well tested,
+but all database tools can pose a risk to the system and the database
+server.  Before using this tool, please:
+
+=over
+
+=item * Read the tool's documentation
+
+=item * Review the tool's known L<"BUGS">
+
+=item * Test the tool on a non-production server
+
+=item * Backup your production server and verify the backups
+
+=back
+
+=head1 DESCRIPTION
+
+pt-config-diff diffs MySQL configurations by examining the values of server
+system variables from two or more CONFIG sources specified on the command
+line.  A CONFIG source can be a DSN or a filename containing the output of
+C<mysqld --help --verbose>, C<my_print_defaults>, C<SHOW VARIABLES>, or
+an option file (e.g. my.cnf).
+
+For each DSN CONFIG, pt-config-diff connects to MySQL and gets variables
+and values by executing C<SHOW /*!40103 GLOBAL*/ VARIABLES>.  This is
+an "active config" because it shows what server values MySQL is
+actively (currently) running with.
+
+Only variables that all CONFIG sources have are compared because if a
+variable is not present then we cannot know or safely guess its value.
+For example, if you compare an option file (e.g. my.cnf) to an active config
+(i.e. SHOW VARIABLES from a DSN CONFIG), the option file will probably
+only have a few variables, whereas the active config has every variable.
+Only values of the variables present in both configs are compared.
+
+Option file and DSN configs provide the best results.
+
+=head1 OUTPUT
+
+There is no output when there are no differences.  When there are differences,
+pt-config-diff prints a report to STDOUT that looks similar to the following:
+
+  2 config differences
+  Variable                  my.master.cnf   my.slave.cnf
+  ========================= =============== ===============
+  datadir                   /tmp/12345/data /tmp/12346/data
+  port                      12345           12346
+
+Comparing MySQL variables is difficult because there are many variations and
+subtleties across the many versions and distributions of MySQL.  When a
+comparison fails, the tool prints a warning to STDERR, such as the following:
+
+  Comparing log_error values (mysqld.log, /tmp/12345/data/mysqld.log)
+  caused an error: Argument "/tmp/12345/data/mysqld.log" isn't numeric
+  in numeric eq (==) at ./pt-config-diff line 2311.
+
+Please report these warnings so the comparison functions can be improved.
+
+=head1 EXIT STATUS
+
+pt-config-diff exits with a zero exit status when there are no differences, and
+1 if there are.
+
+=head1 OPTIONS
+
+This tool accepts additional command-line arguments.  Refer to the
+L<"SYNOPSIS"> and usage information for details.
+
+=over
+
+=item --ask-pass
+
+Prompt for a password when connecting to MySQL.
+
+=item --charset
+
+short form: -A; type: string
+
+Default character set.  If the value is utf8, sets Perl's binmode on
+STDOUT to utf8, passes the mysql_enable_utf8 option to DBD::mysql, and
+runs SET NAMES UTF8 after connecting to MySQL.  Any other value sets
+binmode on STDOUT without the utf8 layer, and runs SET NAMES after
+connecting to MySQL.
+
+=item --config
+
+type: Array
+
+Read this comma-separated list of config files; if specified, this must be the
+first option on the command line.  (This option does not specify a CONFIG;
+it's equivalent to C<--defaults-file>.)
+
+=item --database
+
+short form: -D; type: string
+
+Connect to this database.
+
+=item --defaults-file
+
+short form: -F; type: string
+
+Only read mysql options from the given file.  You must give an absolute
+pathname.
+
+=item --help
+
+Show help and exit.
+
+=item --host
+
+short form: -h; type: string
+
+Connect to host.
+
+=item --[no]ignore-case
+
+default: yes
+
+Compare the variables case-insensitively.
+
+=item --ignore-variables
+
+type: array
+
+Ignore, do not compare, these variables.
+
+=item --password
+
+short form: -p; type: string
+
+Password to use for connection.
+
+=item --pid
+
+type: string
+
+Create the given PID file.  The tool won't start if the PID file already
+exists and the PID it contains is different than the current PID.  However,
+if the PID file exists and the PID it contains is no longer running, the
+tool will overwrite the PID file with the current PID.  The PID file is
+removed automatically when the tool exits.
+
+=item --port
+
+short form: -P; type: int
+
+Port number to use for connection.
+
+=item --[no]report
+
+default: yes
+
+Print the MySQL config diff report to STDOUT.  If you just want to check
+if the given configs are different or not by examining the tool's exit
+status, then specify C<--no-report> to suppress the report.
+
+=item --report-width
+
+type: int; default: 78
+
+Truncate report lines to this many characters.  Since some variable values can
+be long, or when comparing multiple configs, it may help to increase the
+report width so values are not truncated beyond readability.
+
+=item --set-vars
+
+type: Array
+
+Set the MySQL variables in this comma-separated list of C<variable=value> pairs.
+
+By default, the tool sets:
+
+=for comment ignore-pt-internal-value
+MAGIC_set_vars
+
+   wait_timeout=10000
+
+Variables specified on the command line override these defaults.  For
+example, specifying C<--set-vars wait_timeout=500> overrides the defaultvalue of C<10000>.
+
+The tool prints a warning and continues if a variable cannot be set.
+
+=item --socket
+
+short form: -S; type: string
+
+Socket file to use for connection.
+
+=item --user
+
+short form: -u; type: string
+
+MySQL user if not current user.
+
+=item --version
+
+Show version and exit.
+
+=item --[no]version-check
+
+default: yes
+
+Check for the latest version of Percona Toolkit, MySQL, and other programs.
+
+This is a standard "check for updates automatically" feature, with two
+additional features.  First, the tool checks the version of other programs
+on the local system in addition to its own version.  For example, it checks
+the version of every MySQL server it connects to, Perl, and the Perl module
+DBD::mysql.  Second, it checks for and warns about versions with known
+problems.  For example, MySQL 5.5.25 had a critical bug and was re-released
+as 5.5.25a.
+
+Any updates or known problems are printed to STDOUT before the tool's normal
+output.  This feature should never interfere with the normal operation of the
+tool.  
+
+For more information, visit L<https://www.percona.com/version-check>.
+
+=back
+
+=head1 DSN OPTIONS
+
+These DSN options are used to create a DSN.  Each option is given like
+C<option=value>.  The options are case-sensitive, so P and p are not the
+same option.  There cannot be whitespace before or after the C<=> and
+if the value contains whitespace it must be quoted.  DSN options are
+comma-separated.  See the L<percona-toolkit> manpage for full details.
+
+=over
+
+=item * A
+
+dsn: charset; copy: yes
+
+Default character set.
+
+=item * D
+
+dsn: database; copy: yes
+
+Default database.
+
+=item * F
+
+dsn: mysql_read_default_file; copy: yes
+
+Only read default options from the given file
+
+=item * h
+
+dsn: host; copy: yes
+
+Connect to host.
+
+=item * p
+
+dsn: password; copy: yes
+
+Password to use when connecting.
+If password contains commas they must be escaped with a backslash: "exam\,ple"
+
+=item * P
+
+dsn: port; copy: yes
+
+Port number to use for connection.
+
+=item * S
+
+dsn: mysql_socket; copy: yes
+
+Socket file to use for connection.
+
+=item * u
+
+dsn: user; copy: yes
+
+User for login if not current user.
+
+=back
+
+=head1 ENVIRONMENT
+
+The environment variable C<PTDEBUG> enables verbose debugging output to STDERR.
+To enable debugging and capture all output to a file, run the tool like:
+
+   PTDEBUG=1 pt-config-diff ... > FILE 2>&1
+
+Be careful: debugging output is voluminous and can generate several megabytes
+of output.
+
+=head1 SYSTEM REQUIREMENTS
+
+You need Perl, DBI, DBD::mysql, and some core packages that ought to be
+installed in any reasonably new version of Perl.
+
+=head1 BUGS
+
+For a list of known bugs, see L<http://www.percona.com/bugs/pt-config-diff>.
+
+Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
+Include the following information in your bug report:
+
+=over
+
+=item * Complete command-line used to run the tool
+
+=item * Tool L<"--version">
+
+=item * MySQL version of all servers involved
+
+=item * Output from the tool including STDERR
+
+=item * Input files (log/dump/config files, etc.)
+
+=back
+
+If possible, include debugging output by running the tool with C<PTDEBUG>;
+see L<"ENVIRONMENT">.
+
+=head1 DOWNLOADING
+
+Visit L<http://www.percona.com/software/percona-toolkit/> to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+   wget percona.com/get/percona-toolkit.tar.gz
+
+   wget percona.com/get/percona-toolkit.rpm
+
+   wget percona.com/get/percona-toolkit.deb
+
+You can also get individual tools from the latest release:
+
+   wget percona.com/get/TOOL
+
+Replace C<TOOL> with the name of any tool.
+
+=head1 AUTHORS
+
+Baron Schwartz and Daniel Nichter
+
+=head1 ABOUT PERCONA TOOLKIT
+
+This tool is part of Percona Toolkit, a collection of advanced command-line
+tools for MySQL developed by Percona.  Percona Toolkit was forked from two
+projects in June, 2011: Maatkit and Aspersa.  Those projects were created by
+Baron Schwartz and primarily developed by him and Daniel Nichter.  Visit
+L<http://www.percona.com/software/> to learn about other free, open-source
+software from Percona.
+
+=head1 COPYRIGHT, LICENSE, AND WARRANTY
+
+This program is copyright 2011-2016 Percona LLC and/or its affiliates.
+
+THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+systems, you can issue `man perlgpl' or `man perlartistic' to read these
+licenses.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+Place, Suite 330, Boston, MA  02111-1307  USA.
+
+=head1 VERSION
+
+pt-config-diff 2.2.17
+
+=cut
