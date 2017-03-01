@@ -9018,11 +9018,11 @@ sub main {
             $pr = new Progress(
                jobsize => scalar @$slaves,
                spec    => $o->get('progress'),
-               name    => "Waiting for " . $slave->name(),
+               name    => "Waiting for slave at " . $slave->{dsn_name},
             );
             $pr_first_report = sub {
                print "Waiting forever for new table $new_tbl->{name} to replicate "
-                  . "to " . $slave->name() . "...\n";
+                  . "to " . $slave->{dsn_name} . "...\n";
             };
          }
          $pr->start() if $pr;
