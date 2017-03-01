@@ -141,7 +141,7 @@ collect() {
    # Grab a few general things first.  Background all of these so we can start
    # them all up as quickly as possible.  
    ps -eaf  >> "$d/$p-ps"  &
-   top -bn1 >> "$d/$p-top" &
+   top -bn${OPT_RUN_TIME} >> "$d/$p-top" &
 
    [ "$mysqld_pid" ] && _lsof $mysqld_pid >> "$d/$p-lsof" &
 
