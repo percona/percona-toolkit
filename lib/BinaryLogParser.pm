@@ -150,7 +150,7 @@ sub parse_event {
 
             # Include the current default database given by 'use <db>;'  Again
             # as per the code in sql/log.cc this is case-sensitive.
-            if ( my ( $db ) = $line =~ m/^use ([^;]+)/ ) {
+            if ( my ( $db ) = $line =~ m/^use ([^;\000]+)/ ) {
                PTDEBUG && _d("Got a default database:", $db);
                push @properties, 'db', $db;
             }
