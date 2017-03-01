@@ -823,6 +823,7 @@ $master_dbh->do("DROP DATABASE test_recursion_method");
 # #############################################################################
 # Tests for --preserve-triggers option
 # #############################################################################
+$sb->load_file('master', "$sample/sakila_triggers.sql");
 
 test_alter_table(
    name       => "Basic --preserve-triggers",
