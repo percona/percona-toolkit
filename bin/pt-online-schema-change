@@ -8108,6 +8108,7 @@ my @drop_trigger_sqls;
 my @triggers_not_dropped;
 my $pxc_version = '0';
 my @orig_triggers = ('','','');
+my @orig_before_triggers = ('','','');
 # Completely ignore these error codes.
 my %ignore_code = (
    # Error: 1592 SQLSTATE: HY000  (ER_BINLOG_UNSAFE_STATEMENT)
@@ -9654,6 +9655,18 @@ sub main {
             }
          }
       }
+
+      #warn "orig triggers";
+      #warn Data::Dumper::Dumper(@orig_before_triggers);
+      #foreach my $orig_trigger (@orig_before_triggers) {
+      #   if ($orig_trigger ne '') {
+      #      PTDEBUG && _d($orig_trigger);
+      #      print $orig_trigger, "\n" if $o->get('print');
+      #      if ( $o->get('execute') ) {
+      #         $cxn->dbh()->do($orig_trigger);
+      #      }
+      #   }
+      #}
    }
 
    my $old_tbl;
@@ -10711,6 +10724,8 @@ sub create_triggers {
    my $orig_insert_trigger;
    my $orig_update_trigger;
 
+   my ($delete_before_trigger, $insert_before_trigger, $update_before_trigger);
+   my ($orig_before_delete_trigger, $orig_before_insert_trigger, $orig_before_update_trigger);
 
    if ( $o->get('preserve-triggers') ) {
       $cxn->connect();
@@ -10720,6 +10735,10 @@ sub create_triggers {
       $orig_delete_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='DELETE' AND ACTION_TIMING='AFTER' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{tbl}';");
       $orig_insert_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='INSERT' AND ACTION_TIMING='AFTER' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{tbl}';");
       $orig_update_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='UPDATE' AND ACTION_TIMING='AFTER' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{tbl}';");
+      
+      $orig_before_delete_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='DELETE' AND ACTION_TIMING='BEFORE' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{tbl}';");
+      $orig_before_insert_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='INSERT' AND ACTION_TIMING='BEFORE' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{tbl}';");
+      $orig_before_update_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='UPDATE' AND ACTION_TIMING='BEFORE' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{tbl}';");
    }
 
    if ( $o->get('preserve-triggers') && $orig_delete_trigger) {
@@ -10774,6 +10793,59 @@ sub create_triggers {
          . "FOR EACH ROW "
          . "DELETE IGNORE FROM $new_tbl->{name} "
          . "WHERE $del_index_cols";
+   }
+
+   if ( $o->get('preserve-triggers') && $orig_before_insert_trigger) {
+      
+      # find if trigger has begin/end - supply insertion point
+      my $insert_before_trigger_ins_point = trigger_ins_point(trigger => $orig_before_insert_trigger->[3]);
+
+      $insert_before_trigger
+         = "CREATE TRIGGER `${prefix}_insb` BEFORE INSERT ON $orig_tbl->{name} "
+         . "FOR EACH ROW";
+
+      my $insert_before_trigger_action
+         = "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
+
+      if($insert_before_trigger_ins_point) {
+         $insert_before_trigger
+         = "LOCK TABLES $orig_tbl->{name} WRITE;\n"
+         . "DROP TRIGGER IF EXISTS `$orig_tbl->{db}`.`$orig_before_insert_trigger->[1]`;\n"
+         . $insert_trigger . "\n"
+         . terminate_sql(substr($orig_before_insert_trigger->[3], 0, $insert_before_trigger_ins_point)) . "\n"
+         . $insert_before_trigger_action . ";\n"
+         . "END;\n"
+         . "UNLOCK TABLES;";
+      }
+      else {
+         $insert_before_trigger
+         = "LOCK TABLES $orig_tbl->{name} WRITE;\n"
+         . "DROP TRIGGER IF EXISTS `$orig_tbl->{db}`.`$orig_before_insert_trigger->[1]`;\n"
+         . $insert_before_trigger . "\n"
+         . "BEGIN\n"
+         . terminate_sql($orig_before_insert_trigger->[3]) . "\n"
+         . $insert_before_trigger_action . ";\n"
+         . "END; \n"
+         . "UNLOCK TABLES;";
+      }
+
+      my $definer = $orig_before_insert_trigger->[2];
+      $definer =~ s/@/`@`/;
+      $definer = "`".$definer."`";
+
+      $orig_before_triggers[1]
+         = "CREATE DEFINER=$definer TRIGGER `$orig_before_insert_trigger->[0]`.`$orig_before_insert_trigger->[1]` "
+         . "BEFORE INSERT ON $new_tbl->{name}\n"
+         . "FOR EACH ROW\n"
+         . terminate_sql($orig_before_insert_trigger->[3]) . "\n";
+   }
+   else {
+      $insert_before_trigger
+         = "CREATE TRIGGER `${prefix}_insb` BEFORE INSERT ON $orig_tbl->{name} "
+         . "FOR EACH ROW "
+         . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
+
+
    }
 
    if ( $o->get('preserve-triggers') && $orig_insert_trigger) {
@@ -10885,6 +10957,7 @@ sub create_triggers {
       ['del', $delete_trigger],
       ['upd', $update_trigger],
       ['ins', $insert_trigger],
+      ['insb', $insert_before_trigger],
    );
 
    my @trigger_names;
