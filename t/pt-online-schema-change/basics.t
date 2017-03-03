@@ -120,6 +120,14 @@ sub test_alter_table {
    my $orig_max_id = $master_dbh->selectall_arrayref(
       "SELECT MAX(`$pk_col`) FROM `$db`.`$tbl`");
 
+   my $triggers_sql = "SELECT TRIGGER_SCHEMA, TRIGGER_NAME, DEFINER, ACTION_STATEMENT ".
+                      "  FROM INFORMATION_SCHEMA.TRIGGERS ".
+                       "WHERE EVENT_MANIPULATION = 'DELETE' ".
+                       "  AND ACTION_TIMING = 'AFTER' " .
+                       "  AND TRIGGER_SCHEMA = '$db' " .
+                       "  AND EVENT_OBJECT_TABLE = '$tbl'";
+   my $orig_triggers = $master_dbh->selectall_arrayref($triggers_sql);
+
    my ($orig_auto_inc) = $ddl =~ m/\s+AUTO_INCREMENT=(\d+)\s+/;
 
    my $fk_method = $args{check_fks};
@@ -176,6 +184,15 @@ sub test_alter_table {
       $orig_rows,
       "$name rows"
    ) or $fail = 1;
+
+   # if ( grep { $_ eq '--preserve-triggers' } @$cmds ) {
+   #    my $new_triggers = $master_dbh->selectall_arrayref($triggers_sql);
+   #    is_deeply(
+   #       $new_triggers,
+   #       $orig_triggers,
+   #       "$name triggers"
+   #    ) or $fail = 1;
+   # }
 
    if ( grep { $_ eq '--no-drop-new-table' } @$cmds ) {
       $new_rows = $master_dbh->selectall_arrayref(
