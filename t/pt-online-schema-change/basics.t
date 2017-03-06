@@ -841,8 +841,8 @@ $master_dbh->do("DROP DATABASE test_recursion_method");
 # Tests for --preserve-triggers option
 # #############################################################################
 # Restore the original fks.
-diag('Restoring sakila...');
-diag(`$trunk/sandbox/load-sakila-db 12345`);
+#diag('Restoring sakila...');
+#diag(`$trunk/sandbox/load-sakila-db 12345`);
 
 $sb->load_file('master', "$sample/sakila_triggers.sql");
 
