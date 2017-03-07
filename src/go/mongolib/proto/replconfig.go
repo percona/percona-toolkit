@@ -4,8 +4,8 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-type ReplConfigTags map[string]string
-type GetLastErrorModes map[string]*ReplConfigTags
+type ReplicaSetConfigTags map[string]string
+type GetLastErrorModes map[string]*ReplicaSetConfigTags
 
 // https://docs.mongodb.com/v3.2/reference/command/getLastError/#dbcmd.getLastError
 type GetLastErrorDefaults struct {
@@ -15,16 +15,16 @@ type GetLastErrorDefaults struct {
 }
 
 // https://docs.mongodb.com/v3.2/reference/replica-configuration/#rsconf.members
-type ReplConfigMember struct {
-	ID           int64           `bson:"_id,omitempty"`          // An integer identifier of every member in the replica set.
-	Host         string          `bson:"host,omitempty"`         // The hostname and, if specified, the port number, of the set member.
-	ArbiterOnly  bool            `bson:"arbiterOnly,omitempty"`  // A boolean that identifies an arbiter. A value of true indicates that the member is an arbiter.
-	BuildIndexes bool            `bson:"buildIndexes,omitempty"` // A boolean that indicates whether the mongod builds indexes on this member.
-	Hidden       bool            `bson:"hidden,omitempty"`       // When this value is true, the replica set hides this instance and does not include the member in the output of db.isMaster() or isMaster.
-	Priority     int64           `bson:"priority,omitempty"`     // A number that indicates the relative eligibility of a member to become a primary.
-	Tags         *ReplConfigTags `bson:"tags,omitempty"`         // A tag set document containing mappings of arbitrary keys and values.
-	SlaveDelay   int64           `bson:"slaveDelay,omitempty"`   // The number of seconds “behind” the primary that this replica set member should “lag”.
-	Votes        int64           `bson:"votes,omitempty"`        // The number of votes a server will cast in a replica set election.
+type ReplicaSetConfigMember struct {
+	ID           int64                 `bson:"_id,omitempty"`          // An integer identifier of every member in the replica set.
+	Host         string                `bson:"host,omitempty"`         // The hostname and, if specified, the port number, of the set member.
+	ArbiterOnly  bool                  `bson:"arbiterOnly,omitempty"`  // A boolean that identifies an arbiter. A value of true indicates that the member is an arbiter.
+	BuildIndexes bool                  `bson:"buildIndexes,omitempty"` // A boolean that indicates whether the mongod builds indexes on this member.
+	Hidden       bool                  `bson:"hidden,omitempty"`       // When this value is true, the replica set hides this instance and does not include the member in the output of db.isMaster() or isMaster.
+	Priority     int64                 `bson:"priority,omitempty"`     // A number that indicates the relative eligibility of a member to become a primary.
+	Tags         *ReplicaSetConfigTags `bson:"tags,omitempty"`         // A tag set document containing mappings of arbitrary keys and values.
+	SlaveDelay   int64                 `bson:"slaveDelay,omitempty"`   // The number of seconds “behind” the primary that this replica set member should “lag”.
+	Votes        int64                 `bson:"votes,omitempty"`        // The number of votes a server will cast in a replica set election.
 }
 
 // https://docs.mongodb.com/v3.2/reference/replica-configuration/#rsconf.settings
@@ -42,7 +42,7 @@ type ReplicaSetConfig struct {
 	Config struct {
 		ID       string                    `bson:"_id,omitempty"`      // The name of the replica set. Once set, you cannot change the name of a replica set.
 		Version  int64                     `bson:"version,omitempty"`  // An incrementing number used to distinguish revisions of the replica set configuration object from previous iterations.
-		Members  []*ReplConfigMember       `bson:"members,omitempty"`  // An array of member configuration documents, one for each member of the replica set.
+		Members  []*ReplicaSetConfigMember `bson:"members,omitempty"`  // An array of member configuration documents, one for each member of the replica set.
 		Settings *ReplicaSetConfigSettings `bson:"settings,omitempty"` // A document that contains configuration options that apply to the whole replica set.
 	} `bson:"config,omitempty"` // https://docs.mongodb.com/v3.2/reference/replica-configuration/#replica-set-configuration-fields
 	Ok int64 `bson:"ok,omitempty"`
