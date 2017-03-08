@@ -40,10 +40,11 @@ type ReplicaSetConfigSettings struct {
 
 type ReplicaSetConfig struct {
 	Config struct {
-		ID       string                    `bson:"_id,omitempty"`      // The name of the replica set. Once set, you cannot change the name of a replica set.
-		Version  int64                     `bson:"version,omitempty"`  // An incrementing number used to distinguish revisions of the replica set configuration object from previous iterations.
-		Members  []*ReplicaSetConfigMember `bson:"members,omitempty"`  // An array of member configuration documents, one for each member of the replica set.
-		Settings *ReplicaSetConfigSettings `bson:"settings,omitempty"` // A document that contains configuration options that apply to the whole replica set.
+		ID              string                    `bson:"_id,omitempty"`             // The name of the replica set. Once set, you cannot change the name of a replica set.
+		ProtocolVersion int64                     `bson:"protocolVersion,omitempty"` // By default, new replica sets in MongoDB 3.2 use protocolVersion: 1. Previous versions of MongoDB use version 0.
+		Version         int64                     `bson:"version,omitempty"`         // An incrementing number used to distinguish revisions of the replica set configuration object from previous iterations.
+		Members         []*ReplicaSetConfigMember `bson:"members,omitempty"`         // An array of member configuration documents, one for each member of the replica set.
+		Settings        *ReplicaSetConfigSettings `bson:"settings,omitempty"`        // A document that contains configuration options that apply to the whole replica set.
 	} `bson:"config,omitempty"` // https://docs.mongodb.com/v3.2/reference/replica-configuration/#replica-set-configuration-fields
 	Ok int64 `bson:"ok,omitempty"`
 }
