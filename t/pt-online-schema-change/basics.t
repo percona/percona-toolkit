@@ -840,10 +840,6 @@ $master_dbh->do("DROP DATABASE test_recursion_method");
 # #############################################################################
 # Tests for --preserve-triggers option
 # #############################################################################
-# Restore the original fks.
-diag('Restoring sakila...');
-diag(`$trunk/sandbox/load-sakila-db 12345`);
-
 $sb->load_file('master', "$sample/sakila_triggers.sql");
 
 test_alter_table(
@@ -907,10 +903,6 @@ test_alter_table(
 # #############################################################################
 # Done.
 # #############################################################################
-# Restore the original fks just for clean up
-diag('Restoring sakila...');
-diag(`$trunk/sandbox/load-sakila-db 12345`);
-
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 #

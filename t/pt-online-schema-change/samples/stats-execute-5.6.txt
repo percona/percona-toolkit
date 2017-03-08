@@ -9,9 +9,9 @@ Operation, tries, wait:
   update_foreign_keys, 10, 1
 Altering `bug_1045317`.`bits`...
 TS Dropping triggers...
-DROP TRIGGER IF EXISTS `bug_1045317`.`pt_osc_bug_1045317_bits_after_del`;
-DROP TRIGGER IF EXISTS `bug_1045317`.`pt_osc_bug_1045317_bits_after_ins`;
-DROP TRIGGER IF EXISTS `bug_1045317`.`pt_osc_bug_1045317_bits_after_ins`;
+DROP TRIGGER IF EXISTS `bug_1045317`.`pt_osc_bug_1045317_bits_del`;
+DROP TRIGGER IF EXISTS `bug_1045317`.`pt_osc_bug_1045317_bits_upd`;
+DROP TRIGGER IF EXISTS `bug_1045317`.`pt_osc_bug_1045317_bits_ins`;
 TS Dropped triggers OK.
 # Event              Count
 # ================== =====
