@@ -1,0 +1,166 @@
+#!/usr/bin/env perl
+
+# This program is part of Percona Toolkit: http://www.percona.com/software/
+# See "COPYRIGHT, LICENSE, AND WARRANTY" at the end of this file for legal
+# notices and disclaimers.
+
+use strict;
+use Data::Dumper;
+
+my $mmap;
+
+sub load_mapping {
+  my ($pid)= @_;
+
+  if ($pid =~ /^[0-9]+$/) {
+    open F, '<', "/proc/$pid/maps"
+        or die "Failed to open /proc/$pid/maps: $!\n";
+  } else {
+    open F, '<', $pid
+        or die "Failed to open saved map file '$pid': $!\n";
+  }
+
+  my $arr= [];
+  while (<F>) {
+    next unless m/^([a-f0-9]+)-([a-f0-9]+) ..x. ([a-f0-9]+) [a-f0-9:]+ [0-9]+ +(.*)/;
+    push @$arr, { S => hex($1), E => hex($2), B => hex($3), F => $4 };
+  }
+  close F;
+  sort { $a->{S} <=> $b->{S} } @$arr;
+  $mmap= $arr;
+}
+
+my $syms= { };
+
+sub get_image {
+  my ($addr)= @_;
+  my $e;
+  for $e (@$mmap) {
+    next if $e->{E} <= $addr;
+    last if $e->{S} > $addr;
+    # Found, look up.  
+      return $e->{F};
+  }
+  return "";
+}
+
+die "Usage: $0 <pid>" unless @ARGV == 1;
+
+my $pid= $ARGV[0];
+load_mapping($pid);
+
+#for (@$mmap) {
+#  printf "0x%x - 0x%x (0x%x): %s\n", $_->{S}, $_->{E}, $_->{B}, $_->{F};
+#}
+
+open (STACK_TRACE, "eu-stack -q -p $pid 2>/dev/null|") or die "open(): $!";
+my @lines= <STACK_TRACE>;
+close(STACK_TRACE);
+
+my $frame_no= 0;
+my %addr=();
+my %sf=();
+my $lwp;
+
+for my $line (@lines) {
+   if ($line =~ /^TID ([0-9]+):/)
+   {
+     $frame_no= 0;
+     $lwp=$1;
+   }
+   elsif ($line =~ /^#[0-9]+?\s*0x([a-f0-9]+)/) 
+   {
+     push @{$sf{$lwp}},$1;
+     $addr{$1}=[get_image(hex($1)),""];
+   } else {
+     #print $line;
+   }
+}
+
+my %inverse;
+push @{ $inverse{ $addr{$_}->[0] } }, $_ for keys %addr;
+
+foreach my $bin (keys %inverse)
+{
+   my $addrs=join(" ",@{$inverse{$bin}});
+   my @resolved=();
+   
+   @resolved=(`eu-addr2line --pretty-print -s -C -f -p $pid $addrs`);          
+   
+   my $idx=0;
+   foreach $a (@{$inverse{$bin}})
+   {
+      $addr{$a}->[1]=$resolved[$idx];
+      $addr{$a}->[1]=~ s/\n//;
+      $addr{$a}->[1]=~ s/at \?\?:0/from $addr{$a}->[0]/;
+      $idx++;
+   }
+}
+
+foreach $lwp (sort {$a<=>$b} keys %sf)
+{
+  my $idx=0;
+  print "Thread $lwp (LWP $lwp):\n";
+  foreach $frame_no (@{$sf{$lwp}})
+  {
+    print join(" ","#".$idx, "0x".$frame_no,"in", $addr{$frame_no}->[1]),"\n";
+    $idx++;
+  }
+  print "\n";
+}
+    
+    
+# ############################################################################
+# Documentation
+# ############################################################################
+=pod
+
+=head1 NAME
+
+pt-eustack-resover - Get stack traces for a selected program with eu-stack and resolve symbols 
+
+=head1 SYNOPSIS
+
+Usage: pt-eustack-resolver <pid>
+
+=head1 AUTHORS
+
+Alexey Stroganov
+
+=head1 ACKNOWLEDGMENTS
+
+Part of code for symbol resolving derived from resolve-stack-traces.pl script
+(https://github.com/knielsen/knielsen-pmp)
+
+=head1 ABOUT PERCONA TOOLKIT
+      
+This tool is part of Percona Toolkit, a collection of advanced command-line
+tools for MySQL developed by Percona.  Percona Toolkit was forked from two
+projects in June, 2011: Maatkit and Aspersa.  Those projects were created by
+Baron Schwartz and primarily developed by him and Daniel Nichter.  Visit
+L<http://www.percona.com/software/> to learn about other free, open-source
+software from Percona.
+
+=head1 COPYRIGHT, LICENSE, AND WARRANTY
+
+This program is copyright 2017 Percona LLC and/or its affiliates.
+
+THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+systems, you can issue `man perlgpl' or `man perlartistic' to read these
+licenses.
+   
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+Place, Suite 330, Boston, MA  02111-1307  USA.
+   
+=head1 VERSION
+
+pt-eustack-resolver 0.1
+
+=cut
