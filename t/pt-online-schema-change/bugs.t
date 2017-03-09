@@ -567,6 +567,9 @@ for (1..12) {
    if ($exit_status) {
       $errors++;
    }
+   warn ("exit status: $exit_status\n");
+   warn ("output: $output\n");
+
    if ( $output =~ /Successfully/i ) {
       $successes++;
    }

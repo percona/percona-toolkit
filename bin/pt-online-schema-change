@@ -10778,7 +10778,7 @@ sub create_triggers {
       );
    } else {
       $delete_before_trigger
-         = "CREATE TRIGGER `${prefix}_del` BEFORE DELETE ON $orig_tbl->{name} "
+         = "CREATE TRIGGER `${prefix}_delb` BEFORE DELETE ON $orig_tbl->{name} "
          . "FOR EACH ROW "
          . "DELETE IGNORE FROM $new_tbl->{name} "
          . "WHERE $del_index_cols";
@@ -10830,8 +10830,7 @@ sub create_triggers {
          . "FOR EACH ROW\n"
          . terminate_sql($orig_after_delete_trigger->[3]) . "\n"
       );
-   }
-   else {
+   } else {
       $after_delete_trigger
          = "CREATE TRIGGER `${prefix}_del` AFTER DELETE ON $orig_tbl->{name} "
          . "FOR EACH ROW "
@@ -11049,14 +11048,14 @@ sub create_triggers {
    }
 
    my @triggers = (
-      ['after_del', $after_delete_trigger],
-      ['after_upd', $after_update_trigger],
-      ['after_ins', $after_insert_trigger],
+      ['del', $after_delete_trigger],
+      ['upd', $after_update_trigger],
+      ['ins', $after_insert_trigger],
    );
 
-   push (@triggers, ['before_upd', $update_before_trigger]) if $orig_before_update_trigger;
-   push (@triggers, ['before_ins', $before_insert_trigger]) if $orig_before_insert_trigger;
-   push (@triggers, ['before_del', $delete_before_trigger]) if $orig_before_delete_trigger;
+   push (@triggers, ['updb', $update_before_trigger]) if $orig_before_update_trigger;
+   push (@triggers, ['insb', $before_insert_trigger]) if $orig_before_insert_trigger;
+   push (@triggers, ['delb', $delete_before_trigger]) if $orig_before_delete_trigger;
 
    my @trigger_names;
    @drop_trigger_sqls = ();
