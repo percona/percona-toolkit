@@ -402,7 +402,6 @@ sub make_row {
    my $q     = $self->{Quoter};
    my $type_for = $self->{tbl_struct}->{type_for};
 
-   # sorts here are just to make this sub testeable
    return "$verb INTO $self->{dst_db_tbl}("
       . join(', ', map { $q->quote($_) } @cols)
       . ') VALUES ('
@@ -417,6 +416,7 @@ sub make_row {
                )
             } @cols)
       . ')';
+
 }
 
 # Sub: make_where_clause
@@ -483,7 +483,7 @@ sub sort_cols {
                1;
             }
          }
-         keys %$row;
+         sort keys %$row;
       push @cols, @not_in_tbl if @not_in_tbl;
    }
    else {
