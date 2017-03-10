@@ -222,7 +222,8 @@ sub __queue {
    if ( $self->{replace} ) {
       $action = $action eq 'DELETE' ? $action : 'REPLACE';
    }
-   push @{$self->{$action}}, [ $row, $cols, $dbh ];
+   # The sort in this line is just to make it teasteable
+   push @{$self->{$action}}, [ $row, \sort(@$cols), $dbh ];
 }
 
 # Sub: process_rows
@@ -401,8 +402,10 @@ sub make_row {
    }
    my $q     = $self->{Quoter};
    my $type_for = $self->{tbl_struct}->{type_for};
+
+   # sorts here are just to make this sub testeable
    return "$verb INTO $self->{dst_db_tbl}("
-      . join(', ', map { $q->quote($_) } @cols)
+      . join(', ', map { $q->quote($_) } sort (@cols))
       . ') VALUES ('
       . join(', ',
             map {
@@ -413,7 +416,7 @@ sub make_row {
                      is_char  => $is_char,
                      is_float => $is_float,
                )
-            } @cols)
+            } sort(@cols))
       . ')';
 }
 
