@@ -222,8 +222,8 @@ sub __queue {
    if ( $self->{replace} ) {
       $action = $action eq 'DELETE' ? $action : 'REPLACE';
    }
-   # The sort in this line is just to make it teasteable
-   push @{$self->{$action}}, [ $row, \sort(@$cols), $dbh ];
+   @$cols = sort(@$cols);
+   push @{$self->{$action}}, [ $row, $cols, $dbh ];
 }
 
 # Sub: process_rows
@@ -405,7 +405,7 @@ sub make_row {
 
    # sorts here are just to make this sub testeable
    return "$verb INTO $self->{dst_db_tbl}("
-      . join(', ', map { $q->quote($_) } sort (@cols))
+      . join(', ', map { $q->quote($_) } sort(@cols))
       . ') VALUES ('
       . join(', ',
             map {
