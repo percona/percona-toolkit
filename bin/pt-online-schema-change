@@ -10721,13 +10721,20 @@ sub create_triggers {
 
       my $dbh = $cxn->dbh();
 
-      $orig_after_delete_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='DELETE' AND ACTION_TIMING='AFTER' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{tbl}';");
-      $orig_after_insert_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='INSERT' AND ACTION_TIMING='AFTER' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{tbl}';");
-      $orig_after_update_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='UPDATE' AND ACTION_TIMING='AFTER' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{tbl}';");
+      my $trigger_sql = "SELECT TRIGGER_SCHEMA, TRIGGER_NAME, DEFINER, ACTION_STATEMENT, SQL_MODE, "
+                      . "       CHARACTER_SET_CLIENT, COLLATION_CONNECTION "
+                      . "  FROM INFORMATION_SCHEMA.TRIGGERS "
+                      . " WHERE EVENT_MANIPULATION = ? "
+                      . "   AND ACTION_TIMING = ? "
+                      . "   AND TRIGGER_SCHEMA = ? "
+                      . "   AND EVENT_OBJECT_TABLE = ?";
+      $orig_after_delete_trigger = $dbh->selectrow_arrayref($trigger_sql, 'DELETE', 'AFTER', $orig_tbl->{db}, $orig_tbl->{tbl});
+      $orig_after_insert_trigger = $dbh->selectrow_arrayref($trigger_sql, 'INSERT', 'AFTER', $orig_tbl->{db}, $orig_tbl->{tbl});
+      $orig_after_update_trigger = $dbh->selectrow_arrayref($trigger_sql, 'UPDATE', 'AFTER', $orig_tbl->{db}, $orig_tbl->{tbl});
       
-      $orig_before_delete_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='DELETE' AND ACTION_TIMING='BEFORE' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{tbl}';");
-      $orig_before_insert_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='INSERT' AND ACTION_TIMING='BEFORE' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{tbl}';");
-      $orig_before_update_trigger = $dbh->selectrow_arrayref("SELECT TRIGGER_SCHEMA,TRIGGER_NAME,DEFINER,ACTION_STATEMENT FROM INFORMATION_SCHEMA.TRIGGERS WHERE EVENT_MANIPULATION='UPDATE' AND ACTION_TIMING='BEFORE' AND TRIGGER_SCHEMA='$orig_tbl->{db}' AND EVENT_OBJECT_TABLE='$orig_tbl->{tbl}';");
+      $orig_before_delete_trigger = $dbh->selectrow_arrayref($trigger_sql, 'DELETE', 'BEFORE', $orig_tbl->{db}, $orig_tbl->{tbl});
+      $orig_before_insert_trigger = $dbh->selectrow_arrayref($trigger_sql, 'INSERT', 'BEFORE', $orig_tbl->{db}, $orig_tbl->{tbl});
+      $orig_before_update_trigger = $dbh->selectrow_arrayref($trigger_sql, 'UPDATE', 'BEFORE', $orig_tbl->{db}, $orig_tbl->{tbl});
    }
 
    #
