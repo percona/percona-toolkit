@@ -10695,10 +10695,22 @@ sub create_triggers {
       = "CREATE TRIGGER `${prefix}_ins` AFTER INSERT ON $orig_tbl->{name} "
       . "FOR EACH ROW "
       . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
+
+   my $upd_index_cols = join(" AND ", map {
+      my $new_col = $_;
+      my $old_col = $old_col_for{$new_col} || $new_col;
+      my $new_qcol = $q->quote($new_col);
+      my $old_qcol = $q->quote($old_col);
+      "OLD.$old_qcol <=> NEW.$new_qcol"
+   } @{$tbl_struct->{keys}->{$del_index}->{cols}} );
+      
    my $update_trigger
       = "CREATE TRIGGER `${prefix}_upd` AFTER UPDATE ON $orig_tbl->{name} "
       . "FOR EACH ROW "
-      . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
+      . "BEGIN "
+      . "DELETE IGNORE FROM $new_tbl->{name} WHERE !($upd_index_cols) AND $del_index_cols;"
+      . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals);"
+      . "END ";      
 
    my @triggers = (
       ['del', $delete_trigger],
