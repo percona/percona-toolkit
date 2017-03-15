@@ -5156,8 +5156,6 @@ sub recurse_to_slaves {
       return;
    }
 
-      warn "slave_dsn: $slave_dsn";
-
    my $sql  = 'SELECT @@SERVER_ID';
    PTDEBUG && _d($sql);
    my ($id) = $dbh->selectrow_array($sql);
