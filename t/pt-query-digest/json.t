@@ -94,7 +94,7 @@ ok(
                qw(--output json))
       },
       "t/pt-query-digest/samples/slow059_report02.txt",
-      "sed" => [q{-e 's/"name" : ".*/"name" : "slow059.txt"/'}],
+      sed => [ qq/'s!$escaped_trunk!TRUNK!'/ ],
    ),
    'json output for slow059'
 ) or diag($test_diff);
