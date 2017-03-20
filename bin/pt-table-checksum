@@ -5063,8 +5063,10 @@ sub get_slaves {
       my $o = $self->{OptionParser};
 
       $self->recurse_to_slaves(
-         {  dbh       => $dbh,
-            dsn       => $dsn,
+         {  dbh            => $dbh,
+            dsn            => $dsn,
+            slave_user     => $o->got('slave-user') ? $o->get('slave-user') : '',
+            slave_password => $o->got('slave-password') ? $o->get('slave-password') : '', 
             callback  => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
@@ -5119,9 +5121,11 @@ sub _resolve_recursion_methods {
 sub recurse_to_slaves {
    my ( $self, $args, $level ) = @_;
    $level ||= 0;
-   my $dp      = $self->{DSNParser};
+   my $dp = $self->{DSNParser};
    my $recurse = $args->{recurse} || $self->{OptionParser}->get('recurse');
-   my $dsn     = $args->{dsn};
+   my $dsn = $args->{dsn};
+   my $slave_user = $args->{slave_user} || '';
+   my $slave_password = $args->{slave_password} || '';
 
    my $methods = $self->_resolve_recursion_methods($dsn);
    PTDEBUG && _d('Recursion methods:', @$methods);
@@ -5130,14 +5134,24 @@ sub recurse_to_slaves {
       return;
    }
 
+   my $slave_dsn = $dsn;
+   if ($slave_user) {
+      $slave_dsn->{u} = $slave_user;
+      PTDEBUG && _d("Using slave user $slave_user on ".$slave_dsn->{h}.":".$slave_dsn->{P});
+   }
+   if ($slave_password) {
+      $slave_dsn->{p} = $slave_password;
+      PTDEBUG && _d("Slave password set");
+   }
+
    my $dbh;
    eval {
       $dbh = $args->{dbh} || $dp->get_dbh(
-         $dp->get_cxn_params($dsn), { AutoCommit => 1 });
-      PTDEBUG && _d('Connected to', $dp->as_string($dsn));
+         $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 });
+      PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
    };
    if ( $EVAL_ERROR ) {
-      print STDERR "Cannot connect to ", $dp->as_string($dsn), "\n"
+      print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), "\n"
          or die "Cannot print: $OS_ERROR";
       return;
    }
@@ -5170,7 +5184,7 @@ sub recurse_to_slaves {
          PTDEBUG && _d('Recursing from',
             $dp->as_string($dsn), 'to', $dp->as_string($slave));
          $self->recurse_to_slaves(
-            { %$args, dsn => $slave, dbh => undef, parent => $dsn }, $level + 1 );
+            { %$args, dsn => $slave, dbh => undef, parent => $dsn, slave_user => $slave_user, $slave_password => $slave_password }, $level + 1 );
       }
    }
 }
@@ -7566,7 +7580,14 @@ sub _iterate_dbh {
             && $self->_resume_from_table($tbl)
             && $self->table_is_allowed($self->{db}, $tbl);
          }
-         @{$dbh->selectall_arrayref($sql)};
+
+         eval { @{$dbh->selectall_arrayref($sql)}; };
+         if ($EVAL_ERROR) {
+             warn "Skipping $self->{db}...";
+             $self->{db} = undef;
+             next;
+         }
+
          PTDEBUG && _d('Found', scalar @tbls, 'tables in database',$self->{db});
          $self->{tbls} = \@tbls;
       }

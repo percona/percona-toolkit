@@ -38,8 +38,8 @@ make_sandbox() {
    # Make the sandbox dir and extract the base files.
    rm -rf /tmp/$port || die "Failed to rm /tmp/$port"
    mkdir /tmp/$port  || die "Failed to mkdir /tmp/$port"
-   cp $PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version/my.sandbox.cnf /tmp/$port
-   tar xzf $PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version/data.tar.gz -C /tmp/$port
+   cp $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/my.sandbox.cnf /tmp/$port
+   tar xzf $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/data.tar.gz -C /tmp/$port
 
    for script in "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/"*; do
       if [ -f $script ]; then
@@ -142,14 +142,14 @@ make_sandbox() {
             exit 1
          fi
 
-         for sql in "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version/"*.sql; do
+         for sql in "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/"*.sql; do
             [ -f "$sql" ] && /tmp/$port/use < $sql
          done
       fi
 
       # create sys schema (if exists and is desired)
       if [ -n "$SYS_SCHEMA" ]; then
-         local sys_dir="$PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version/sys"
+         local sys_dir="$PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/sys"
          cd "$sys_dir"
          [ -f "$sys_dir/sys.sql" ] && /tmp/$port/use < "$sys_dir/sys.sql"
       fi
@@ -252,8 +252,8 @@ else
    version=`$PERCONA_TOOLKIT_SANDBOX/$mysqld -V 2>/dev/null | awk '{print $3}' | cut -d. -f 1,2`;
 fi
 
-if [ ! -d "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version" ]; then
-   die "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version does not exist."
+if [ ! -d "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version" ]; then
+   die "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version does not exist."
 fi
 
 # ###########################################################################

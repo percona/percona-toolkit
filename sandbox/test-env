@@ -314,7 +314,7 @@ case $opt in
             fi
          fi
 
-         if [ $? -eq 0 -a "$MYSQL_VERSION" '>' "4.1" ]; then
+         if [ $? -eq 0 ]; then
             SAKILA=${SAKILA:-1}
             if [ $SAKILA -eq 1 ]; then
                echo -n "Loading sakila database... "

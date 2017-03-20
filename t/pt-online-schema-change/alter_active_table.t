@@ -165,7 +165,7 @@ else {
 }
 $master_dbh->do("USE pt_osc");
 $master_dbh->do("TRUNCATE TABLE t");
-$master_dbh->do("LOAD DATA INFILE '$trunk/t/pt-online-schema-change/samples/basic_no_fks.data' INTO TABLE t");
+$master_dbh->do("LOAD DATA LOCAL INFILE '$trunk/t/pt-online-schema-change/samples/basic_no_fks.data' INTO TABLE t");
 $master_dbh->do("ANALYZE TABLE t");
 $sb->wait_for_slaves();
 
@@ -215,7 +215,7 @@ is(
 
 $master_dbh->do("USE pt_osc");
 $master_dbh->do("TRUNCATE TABLE t");
-$master_dbh->do("LOAD DATA INFILE '$trunk/t/pt-online-schema-change/samples/basic_no_fks.data' INTO TABLE t");
+$master_dbh->do("LOAD DATA LOCAL INFILE '$trunk/t/pt-online-schema-change/samples/basic_no_fks.data' INTO TABLE t");
 $master_dbh->do("ANALYZE TABLE t");
 $sb->wait_for_slaves();
 
