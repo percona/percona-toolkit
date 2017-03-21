@@ -866,7 +866,7 @@ collect() {
    fi
 
    ps -eaf  >> "$d/$p-ps"  &
-   top -bn1 >> "$d/$p-top" &
+   top -bn${OPT_RUN_TIME} >> "$d/$p-top" &
 
    [ "$mysqld_pid" ] && _lsof $mysqld_pid >> "$d/$p-lsof" &
 
