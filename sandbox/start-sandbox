@@ -246,7 +246,9 @@ fi
 APP="${FORK:-"mysql"}"
 
 if [ $type = "cluster" -o $APP = "pxc" ]; then
-   ip=$(perl -MNet::Address::IP::Local -le 'print Net::Address::IP::Local->public')
+# disabled for now because used perl module is not available everywhere and in some distros it returns ipv6 address
+#  ip=$(perl -MNet::Address::IP::Local -le 'print Net::Address::IP::Local->public')
+   ip=$(hostname -i)
    version=`$PERCONA_TOOLKIT_SANDBOX/$mysqld -V --query_cache_size=0 --query_cache_type=0  --bind-address $ip 2>/dev/null | awk '{print $3}' | cut -d. -f 1,2`;
 else
    version=`$PERCONA_TOOLKIT_SANDBOX/$mysqld -V 2>/dev/null | awk '{print $3}' | cut -d. -f 1,2`;
