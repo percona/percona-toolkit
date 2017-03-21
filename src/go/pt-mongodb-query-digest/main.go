@@ -71,6 +71,8 @@ type options struct {
 	OrderBy         []string
 	Password        string
 	SkipCollections []string
+	SSLCAFile       string
+	SSLPEMKeyFile   string
 	User            string
 	Version         bool
 }
@@ -153,8 +155,7 @@ func main() {
 		log.Errorf("error processing commad line arguments: %s", err)
 		os.Exit(1)
 	}
-	if opts.Help {
-		getopt.Usage()
+	if opts == nil && err == nil {
 		return
 	}
 
@@ -508,44 +509,41 @@ func getOptions() (*options, error) {
 		AuthDB:          DEFAULT_AUTHDB,
 	}
 
-	getopt.BoolVarLong(&opts.Help, "help", '?', "Show help")
-	getopt.BoolVarLong(&opts.Version, "version", 'v', "Show version & exit")
-	getopt.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "Default: Don't check for updates")
+	gop := getopt.New()
+	gop.BoolVarLong(&opts.Help, "help", '?', "Show help")
+	gop.BoolVarLong(&opts.Version, "version", 'v', "Show version & exit")
+	gop.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "Default: Don't check for updates")
 
-	getopt.IntVarLong(&opts.Limit, "limit", 'n', "Show the first n queries")
+	gop.IntVarLong(&opts.Limit, "limit", 'n', "Show the first n queries")
 
-	getopt.ListVarLong(&opts.OrderBy, "order-by", 'o',
+	gop.ListVarLong(&opts.OrderBy, "order-by", 'o',
 		"Comma separated list of order by fields (max values): "+
 			"count,ratio,query-time,docs-scanned,docs-returned. "+
 			"- in front of the field name denotes reverse order. Default: "+DEFAULT_ORDERBY)
-	getopt.ListVarLong(&opts.SkipCollections, "skip-collections", 's', "A comma separated list of collections (namespaces) to skip."+
+	gop.ListVarLong(&opts.SkipCollections, "skip-collections", 's', "A comma separated list of collections (namespaces) to skip."+
 		"  Default: "+DEFAULT_SKIPCOLLECTIONS)
 
-	getopt.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin", "Database to use for optional MongoDB authentication. Default: admin")
-	getopt.StringVarLong(&opts.Database, "database", 'd', "", "MongoDB database to profile")
-	getopt.StringVarLong(&opts.LogLevel, "log-level", 'l', "Log level: error", "panic, fatal, error, warn, info, debug. Default: error")
-	getopt.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").SetOptional()
-	getopt.StringVarLong(&opts.User, "username", 'u', "Username to use for optional MongoDB authentication")
+	gop.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin", "Database to use for optional MongoDB authentication. Default: admin")
+	gop.StringVarLong(&opts.Database, "database", 'd', "", "MongoDB database to profile")
+	gop.StringVarLong(&opts.LogLevel, "log-level", 'l', "Log level: error", "panic, fatal, error, warn, info, debug. Default: error")
+	gop.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").SetOptional()
+	gop.StringVarLong(&opts.User, "username", 'u', "Username to use for optional MongoDB authentication")
+	gop.StringVarLong(&opts.SSLCAFile, "sslCAFile", 0, "SSL CA cert file used for authentication")
+	gop.StringVarLong(&opts.SSLPEMKeyFile, "sslPEMKeyFile", 0, "SSL client PEM file used for authentication")
 
-	getopt.SetParameters("host[:port]/database")
+	gop.SetParameters("host[:port]/database")
 
-	var gop = getopt.CommandLine
 	gop.Parse(os.Args)
 	if gop.NArgs() > 0 {
 		opts.Host = gop.Arg(0)
 		gop.Parse(gop.Args())
 	}
 	if opts.Help {
-		return opts, nil
+		gop.PrintUsage(os.Stdout)
+		return nil, nil
 	}
 
-	//args := getopt.Args() // host is a positional arg
-	//if len(args) > 0 {
-	//	opts.Host = args[0]
-
-	//}
-
-	if getopt.IsSet("order-by") {
+	if gop.IsSet("order-by") {
 		validFields := []string{"count", "ratio", "query-time", "docs-scanned", "docs-returned"}
 		for _, field := range opts.OrderBy {
 			valid := false
@@ -558,11 +556,9 @@ func getOptions() (*options, error) {
 				return nil, fmt.Errorf("invalid sort field '%q'", field)
 			}
 		}
-	} else {
-		opts.OrderBy = []string{"count"}
 	}
 
-	if getopt.IsSet("password") && opts.Password == "" {
+	if gop.IsSet("password") && opts.Password == "" {
 		print("Password: ")
 		pass, err := gopass.GetPasswd()
 		if err != nil {
@@ -574,25 +570,34 @@ func getOptions() (*options, error) {
 	return opts, nil
 }
 
-func getDialInfo(opts *options) *mgo.DialInfo {
+func getDialInfo(opts *options) *pmgo.DialInfo {
 	di, _ := mgo.ParseURL(opts.Host)
 	di.FailFast = true
 
-	if getopt.IsSet("username") {
+	if di.Username != "" {
 		di.Username = opts.User
 	}
-	if getopt.IsSet("password") {
+	if di.Password != "" {
 		di.Password = opts.Password
 	}
-	if getopt.IsSet("authenticationDatabase") {
+	if opts.AuthDB != "" {
 		di.Source = opts.AuthDB
 	}
-
-	if getopt.IsSet("database") {
+	if opts.Database != "" {
 		di.Database = opts.Database
 	}
 
-	return di
+	pmgoDialInfo := pmgo.NewDialInfo(di)
+
+	if opts.SSLCAFile != "" {
+		pmgoDialInfo.SSLCAFile = opts.SSLCAFile
+	}
+
+	if opts.SSLPEMKeyFile != "" {
+		pmgoDialInfo.SSLPEMKeyFile = opts.SSLPEMKeyFile
+	}
+
+	return pmgoDialInfo
 }
 
 func getQueryField(query map[string]interface{}) (map[string]interface{}, error) {
@@ -899,7 +904,7 @@ func sortQueries(queries []stat, orderby []string) []stat {
 
 }
 
-func isProfilerEnabled(dialer pmgo.Dialer, di *mgo.DialInfo) (bool, error) {
+func isProfilerEnabled(dialer pmgo.Dialer, di *pmgo.DialInfo) (bool, error) {
 	var ps proto.ProfilerStatus
 	replicaMembers, err := util.GetReplicasetMembers(dialer, di)
 	if err != nil {
