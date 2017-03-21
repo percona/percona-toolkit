@@ -467,17 +467,34 @@ func GetSecuritySettings(session pmgo.SessionManager, ver string) (*security, er
 		}
 	}
 
-	s.Users, _ = session.DB("admin").C("system.users").Count()
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot get users count")
-	}
+	// On some servers, like a mongos with config servers, this fails if session mode is Monotonic
+	// On some other servers like a secondary in a replica set, this fails if the session mode is Strong.
+	// Lets try both
+	newSession := session.Clone()
+	defer newSession.Close()
+	newSession.SetMode(mgo.Strong, true)
 
-	s.Roles, err = session.DB("admin").C("system.roles").Count()
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot get roles count")
+	if s.Users, s.Roles, err = getUserRolesCount(newSession); err != nil {
+		newSession.SetMode(mgo.Monotonic, true)
+		if s.Users, s.Roles, err = getUserRolesCount(newSession); err != nil {
+			return nil, errors.Wrap(err, "cannot get security settings.")
+		}
 	}
 
 	return &s, nil
+}
+
+func getUserRolesCount(session pmgo.SessionManager) (int, int, error) {
+	users, err := session.DB("admin").C("system.users").Count()
+	if err != nil {
+		return 0, 0, errors.Wrap(err, "cannot get users count")
+	}
+
+	roles, err := session.DB("admin").C("system.roles").Count()
+	if err != nil {
+		return 0, 0, errors.Wrap(err, "cannot get roles count")
+	}
+	return users, roles, nil
 }
 
 func getNodeType(session pmgo.SessionManager) (string, error) {
