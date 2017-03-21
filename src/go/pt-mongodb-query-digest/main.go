@@ -71,6 +71,8 @@ type options struct {
 	OrderBy         []string
 	Password        string
 	SkipCollections []string
+	SSLCAFile       string
+	SSLPEMKeyFile   string
 	User            string
 	Version         bool
 }
@@ -153,8 +155,7 @@ func main() {
 		log.Errorf("error processing commad line arguments: %s", err)
 		os.Exit(1)
 	}
-	if opts.Help {
-		getopt.Usage()
+	if opts == nil && err == nil {
 		return
 	}
 
@@ -527,6 +528,8 @@ func getOptions() (*options, error) {
 	gop.StringVarLong(&opts.LogLevel, "log-level", 'l', "Log level: error", "panic, fatal, error, warn, info, debug. Default: error")
 	gop.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").SetOptional()
 	gop.StringVarLong(&opts.User, "username", 'u', "Username to use for optional MongoDB authentication")
+	gop.StringVarLong(&opts.SSLCAFile, "sslCAFile", 0, "SSL CA cert file used for authentication")
+	gop.StringVarLong(&opts.SSLPEMKeyFile, "sslPEMKeyFile", 0, "SSL client PEM file used for authentication")
 
 	gop.SetParameters("host[:port]/database")
 
@@ -536,7 +539,8 @@ func getOptions() (*options, error) {
 		gop.Parse(gop.Args())
 	}
 	if opts.Help {
-		return opts, nil
+		gop.PrintUsage(os.Stdout)
+		return nil, nil
 	}
 
 	if gop.IsSet("order-by") {
@@ -566,25 +570,34 @@ func getOptions() (*options, error) {
 	return opts, nil
 }
 
-func getDialInfo(opts *options) *mgo.DialInfo {
+func getDialInfo(opts *options) *pmgo.DialInfo {
 	di, _ := mgo.ParseURL(opts.Host)
 	di.FailFast = true
 
-	if getopt.IsSet("username") {
+	if di.Username != "" {
 		di.Username = opts.User
 	}
-	if getopt.IsSet("password") {
+	if di.Password != "" {
 		di.Password = opts.Password
 	}
-	if getopt.IsSet("authenticationDatabase") {
+	if opts.AuthDB != "" {
 		di.Source = opts.AuthDB
 	}
-
-	if getopt.IsSet("database") {
+	if opts.Database != "" {
 		di.Database = opts.Database
 	}
 
-	return di
+	pmgoDialInfo := pmgo.NewDialInfo(di)
+
+	if opts.SSLCAFile != "" {
+		pmgoDialInfo.SSLCAFile = opts.SSLCAFile
+	}
+
+	if opts.SSLPEMKeyFile != "" {
+		pmgoDialInfo.SSLPEMKeyFile = opts.SSLPEMKeyFile
+	}
+
+	return pmgoDialInfo
 }
 
 func getQueryField(query map[string]interface{}) (map[string]interface{}, error) {
@@ -891,7 +904,7 @@ func sortQueries(queries []stat, orderby []string) []stat {
 
 }
 
-func isProfilerEnabled(dialer pmgo.Dialer, di *mgo.DialInfo) (bool, error) {
+func isProfilerEnabled(dialer pmgo.Dialer, di *pmgo.DialInfo) (bool, error) {
 	var ps proto.ProfilerStatus
 	replicaMembers, err := util.GetReplicasetMembers(dialer, di)
 	if err != nil {

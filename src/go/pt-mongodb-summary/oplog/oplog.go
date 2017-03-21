@@ -6,12 +6,12 @@ import (
 	"time"
 
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
+	"github.com/percona/pmgo"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
-func GetOplogInfo(hostnames []string, di *mgo.DialInfo) ([]proto.OplogInfo, error) {
+func GetOplogInfo(hostnames []string, di *pmgo.DialInfo) ([]proto.OplogInfo, error) {
 
 	results := proto.OpLogs{}
 
@@ -20,7 +20,8 @@ func GetOplogInfo(hostnames []string, di *mgo.DialInfo) ([]proto.OplogInfo, erro
 			Hostname: hostname,
 		}
 		di.Addrs = []string{hostname}
-		session, err := mgo.DialWithInfo(di)
+		dialer := pmgo.NewDialer()
+		session, err := dialer.DialWithInfo(di)
 		if err != nil {
 			continue
 		}
@@ -91,7 +92,7 @@ func GetOplogInfo(hostnames []string, di *mgo.DialInfo) ([]proto.OplogInfo, erro
 
 }
 
-func getOplogCollection(session *mgo.Session) (string, error) {
+func getOplogCollection(session pmgo.SessionManager) (string, error) {
 	oplog := "oplog.rs"
 
 	db := session.DB("local")
@@ -110,7 +111,7 @@ func getOplogCollection(session *mgo.Session) (string, error) {
 	return oplog, nil
 }
 
-func getOplogEntry(session *mgo.Session, oplogCol string) (*proto.OplogEntry, error) {
+func getOplogEntry(session pmgo.SessionManager, oplogCol string) (*proto.OplogEntry, error) {
 	olEntry := &proto.OplogEntry{}
 
 	err := session.DB("local").C("system.namespaces").Find(bson.M{"name": "local." + oplogCol}).One(&olEntry)
