@@ -41,7 +41,7 @@ my $output;
 sub load_data_infile {
    my ($file, $where) = @_;
    $master_dbh->do('truncate table percona.checksums');
-   $master_dbh->do("LOAD DATA INFILE '$trunk/t/pt-table-checksum/samples/checksum_results/$file' INTO TABLE percona.checksums");
+   $master_dbh->do("LOAD DATA LOCAL INFILE '$trunk/t/pt-table-checksum/samples/checksum_results/$file' INTO TABLE percona.checksums");
    if ( $where ) {
       PerconaTest::wait_for_table($slave1_dbh, 'percona.checksums', $where);
    }

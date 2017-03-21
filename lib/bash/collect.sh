@@ -102,6 +102,7 @@ collect() {
       log "Could not find the MySQL error log"
    fi
 
+
    # Get a sample of these right away, so we can get these without interaction
    # with the other commands we're about to run.
    if [ "${mysql_version}" '>' "5.1" ]; then
@@ -191,6 +192,12 @@ collect() {
    log "Loop start: $(date +'TS %s.%N %F %T')"
    local start_time=$(date +'%s')
    local curr_time=$start_time
+   local ps_instrumentation_enabled=$($CMD_MYSQL $EXT_ARGV -e 'SELECT ENABLED FROM performance_schema.setup_instruments WHERE NAME = "transaction";' \
+                                      | sed "2q;d" | sed 'y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/')
+   if [ $ps_instrumentation_enabled != "yes" ]; then
+      log "Performance Schema instrumentation is disabled"
+   fi
+
    while [ $((curr_time - start_time)) -lt $OPT_RUN_TIME ]; do
 
       # We check the disk, but don't exit, because we need to stop jobs if we
@@ -238,6 +245,10 @@ collect() {
       if [ "$have_lock_waits_table" ]; then
          (echo $ts; lock_waits)   >>"$d/$p-lock-waits" &
          (echo $ts; transactions) >>"$d/$p-transactions" &
+      fi
+
+      if [ $ps_instrumentation_enabled == "yes" ]; then
+         ps_locks_transactions "$d/$p-ps-locks-transactions"
       fi
 
       curr_time=$(date +'%s')
@@ -387,6 +398,33 @@ innodb_status() {
          done
       fi
    }
+}
+
+ps_locks_transactions() {
+   local outfile=$1 
+   
+   mysql -e 'select @@performance_schema' | grep "1" &>/dev/null
+
+   if [ $? -eq 0 ]; then
+      local status="select t.processlist_id, ml.* from performance_schema.metadata_locks ml join performance_schema.threads t on (ml.owner_thread_id=t.thread_id)\G"
+      echo -e "\n$status\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
+
+      local status="select t.processlist_id, th.* from performance_schema.table_handles th left join performance_schema.threads t on (th.owner_thread_id=t.thread_id)\G"
+      echo -e "\n$status\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
+
+      local status="select t.processlist_id, et.* from performance_schema.events_transactions_current et join performance_schema.threads t using(thread_id)\G"
+      echo -e "\n$status\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
+
+      local status="select t.processlist_id, et.* from performance_schema.events_transactions_history_long et join performance_schema.threads t using(thread_id)\G"
+      echo -e "\n$status\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
+  else
+      echo "Performance schema is not enabled" >> $outfile
+   fi
+
 }
 
 # ###########################################################################

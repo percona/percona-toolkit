@@ -26,10 +26,18 @@ log-error                  = /tmp/PORT/data/mysqld.log
 innodb_lock_wait_timeout   = 3
 general_log
 general_log_file           = genlog
-lower_case_table_names     = 0
 
-# fkc test
-binlog_format              = STATEMENT
-performance_schema         = ON
-performance-schema-instrument='wait/lock/metadata/sql/mdl=ON'
-performance-schema-instrument='transaction=ON'
+binlog_format              = ROW
+wsrep_provider             = LIBGALERA
+wsrep_cluster_address      = CLUSTER_AD
+wsrep_sst_receive_address  = ADDR:RECEIVE_PRT
+wsrep_node_incoming_address= ADDR:PORT
+wsrep_slave_threads        = 2
+wsrep_cluster_name         = CLUSTER_NAME
+wsrep_provider_options     = "gmcast.listen_addr=tcp://ADDR:LISTEN_PRT;"
+wsrep_sst_method           = rsync
+wsrep_node_name            = PORT
+innodb_locks_unsafe_for_binlog = 1
+innodb_autoinc_lock_mode   = 2
+wsrep-replicate-myisam
+pxc_strict_mode            = DISABLED

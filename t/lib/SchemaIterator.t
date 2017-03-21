@@ -591,10 +591,10 @@ my $si = new SchemaIterator(
    Quoter       => $q,
    TableParser  => $tp,
 );
-for my $db (qw( information_schema performance_schema|lost\+found percona percona_schema )) {
+for my $db (qw( information_schema performance_schema lost+found percona_schema )) {
    is(
       $si->database_is_allowed($db),
-      1,
+      0,
       "database is allowed: $db",
    );
 }
