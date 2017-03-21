@@ -54,6 +54,7 @@ HAVE_EXT_ARGV=""  # Got --, everything else is put into EXT_ARGV
 OPT_ERRS=0        # How many command line option errors
 OPT_VERSION=""    # If --version was specified
 OPT_HELP=""       # If --help was specified
+OPT_ASK_PASS=""   # If --ask-pass was specified
 PO_DIR=""         # Directory with program option spec files
 
 # Sub: usage
@@ -182,6 +183,7 @@ parse_options() {
    OPT_ERRS=0
    OPT_VERSION=""
    OPT_HELP=""
+   OPT_ASK_PASS=""
    PO_DIR="$PT_TMPDIR/po"
 
    # Ready the directory for the program option (po) spec files.
@@ -346,7 +348,7 @@ _parse_config_files() {
 
          # Strip leading and trailing spaces, and spaces around the first =,
          # and end-of-line # comments.
-         config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/[ ]*#.*$//')"
+         config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/[ ]+#.*$//')"
 
          # Skip blank lines.
          [ "$config_opt" = "" ] && continue

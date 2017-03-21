@@ -314,7 +314,7 @@ _parse_config_files() {
 
          echo "$config_opt" | grep '^[ ]*[^#]' >/dev/null 2>&1 || continue
 
-         config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/[ ]*#.*$//')"
+         config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/[ ]+#.*$//')"
 
          [ "$config_opt" = "" ] && continue
 
