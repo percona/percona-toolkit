@@ -1,3 +1,18 @@
+percona-toolkit (3.0.1-1) unstable; urgency=low
+
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Thu, 16 Feb 2017 16:08:43 +0000
+
+percona-toolkit (3.0-1) unstable; urgency=low
+
+ * Fixed bug 1402776: Improved fix (protocol parser fix): error when parsing tcpdump capture with pt-query-digest
+ * Fixed bug 1632522: pt-osc: Fails with duplicate key in table for self-referencing (Thanks Amiel Marqeta)
+ * Fixed bug 1654668: pt-summary exists with an error (Thanks Marcelo Altmann)
+ * New tool         : pt-mongodb-summary 
+ * New tool         : pt-mongodb-query-digest
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Fri, 03 Feb 2017 23:23:31 +0000
+
 percona-toolkit (2.2.20-1) unstable; urgency=low
 
 

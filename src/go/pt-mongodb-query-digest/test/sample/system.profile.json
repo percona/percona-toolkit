@@ -1,0 +1,414 @@
+[
+    {
+        "Query": {
+            "find": "col1"
+        },
+        "Ts": "2016-11-08T13:46:27.000+00:00",
+        "Client": "127.0.0.1",
+        "ExecStats": {
+            "ExecutionTimeMillisEstimate": 0,
+            "IsEOF": 0,
+            "NReturned": 71,
+            "NeedTime": 1,
+            "RestoreState": 2,
+            "Works": 78,
+            "DocsExamined": 71,
+            "Direction": "forward",
+            "Invalidates": 0,
+            "NeedYield": 2,
+            "SaveState": 3,
+            "Stage": "COLLSCAN",
+            "Advanced": 70
+        },
+        "Ns": "samples.col1",
+        "Op": "query",
+        "WriteConflicts": 0,
+        "KeyUpdates": 0,
+        "KeysExamined": 0,
+        "Locks": {
+            "Global": "",
+            "MMAPV1Journal": "",
+            "Database": "",
+            "Collection": "",
+            "Metadata": "",
+            "Oplog": ""
+        },
+        "Nreturned": 71,
+        "ResponseLength": 101,
+        "DocsExamined": 71,
+        "Millis": 19,
+        "NumYield": 2,
+        "User": ""
+    },
+    {
+        "Query": {
+            "find": "col1"
+        },
+        "Ts": "2016-11-08T13:46:27.000+00:00",
+        "Client": "127.0.0.1",
+        "ExecStats": {
+            "ExecutionTimeMillisEstimate": 0,
+            "IsEOF": 0,
+            "NReturned": 72,
+            "NeedTime": 1,
+            "RestoreState": 2,
+            "Works": 78,
+            "DocsExamined": 72,
+            "Direction": "forward",
+            "Invalidates": 0,
+            "NeedYield": 2,
+            "SaveState": 3,
+            "Stage": "COLLSCAN",
+            "Advanced": 70
+        },
+        "Ns": "samples.col1",
+        "Op": "query",
+        "WriteConflicts": 0,
+        "KeyUpdates": 0,
+        "KeysExamined": 0,
+        "Locks": {
+            "Global": "",
+            "MMAPV1Journal": "",
+            "Database": "",
+            "Collection": "",
+            "Metadata": "",
+            "Oplog": ""
+        },
+        "Nreturned": 72,
+        "ResponseLength": 102,
+        "DocsExamined": 72,
+        "Millis": 20,
+        "NumYield": 2,
+        "User": ""
+    },
+    {
+        "Query": {
+            "find": "col1"
+        },
+        "Ts": "2016-11-08T13:46:27.000+00:00",
+        "Client": "127.0.0.1",
+        "ExecStats": {
+            "ExecutionTimeMillisEstimate": 0,
+            "IsEOF": 0,
+            "NReturned": 73,
+            "NeedTime": 1,
+            "RestoreState": 2,
+            "Works": 78,
+            "DocsExamined": 73,
+            "Direction": "forward",
+            "Invalidates": 0,
+            "NeedYield": 2,
+            "SaveState": 3,
+            "Stage": "COLLSCAN",
+            "Advanced": 70
+        },
+        "Ns": "samples.col1",
+        "Op": "query",
+        "WriteConflicts": 0,
+        "KeyUpdates": 0,
+        "KeysExamined": 0,
+        "Locks": {
+            "Global": "",
+            "MMAPV1Journal": "",
+            "Database": "",
+            "Collection": "",
+            "Metadata": "",
+            "Oplog": ""
+        },
+        "Nreturned": 73,
+        "ResponseLength": 103,
+        "DocsExamined": 73,
+        "Millis": 21,
+        "NumYield": 2,
+        "User": ""
+    },
+    {
+        "Query": {
+            "find": "col1"
+        },
+        "Ts": "2016-11-08T13:46:27.000+00:00",
+        "Client": "127.0.0.1",
+        "ExecStats": {
+            "ExecutionTimeMillisEstimate": 0,
+            "IsEOF": 0,
+            "NReturned": 74,
+            "NeedTime": 1,
+            "RestoreState": 2,
+            "Works": 78,
+            "DocsExamined": 74,
+            "Direction": "forward",
+            "Invalidates": 0,
+            "NeedYield": 2,
+            "SaveState": 3,
+            "Stage": "COLLSCAN",
+            "Advanced": 70
+        },
+        "Ns": "samples.col1",
+        "Op": "query",
+        "WriteConflicts": 0,
+        "KeyUpdates": 0,
+        "KeysExamined": 0,
+        "Locks": {
+            "Global": "",
+            "MMAPV1Journal": "",
+            "Database": "",
+            "Collection": "",
+            "Metadata": "",
+            "Oplog": ""
+        },
+        "Nreturned": 74,
+        "ResponseLength": 104,
+        "DocsExamined": 74,
+        "Millis": 22,
+        "NumYield": 2,
+        "User": ""
+    },
+    {
+        "Query": {
+            "find": "col1"
+        },
+        "Ts": "2016-11-08T13:46:27.000+00:00",
+        "Client": "127.0.0.1",
+        "ExecStats": {
+            "ExecutionTimeMillisEstimate": 0,
+            "IsEOF": 0,
+            "NReturned": 75,
+            "NeedTime": 1,
+            "RestoreState": 2,
+            "Works": 78,
+            "DocsExamined": 75,
+            "Direction": "forward",
+            "Invalidates": 0,
+            "NeedYield": 2,
+            "SaveState": 3,
+            "Stage": "COLLSCAN",
+            "Advanced": 70
+        },
+        "Ns": "samples.col1",
+        "Op": "query",
+        "WriteConflicts": 0,
+        "KeyUpdates": 0,
+        "KeysExamined": 0,
+        "Locks": {
+            "Global": "",
+            "MMAPV1Journal": "",
+            "Database": "",
+            "Collection": "",
+            "Metadata": "",
+            "Oplog": ""
+        },
+        "Nreturned": 75,
+        "ResponseLength": 105,
+        "DocsExamined": 75,
+        "Millis": 23,
+        "NumYield": 2,
+        "User": ""
+    },
+    {
+        "Query": {
+            "find": "col1"
+        },
+        "Ts": "2016-11-08T13:46:27.000+00:00",
+        "Client": "127.0.0.1",
+        "ExecStats": {
+            "ExecutionTimeMillisEstimate": 0,
+            "IsEOF": 0,
+            "NReturned": 76,
+            "NeedTime": 1,
+            "RestoreState": 2,
+            "Works": 78,
+            "DocsExamined": 76,
+            "Direction": "forward",
+            "Invalidates": 0,
+            "NeedYield": 2,
+            "SaveState": 3,
+            "Stage": "COLLSCAN",
+            "Advanced": 70
+        },
+        "Ns": "samples.col1",
+        "Op": "query",
+        "WriteConflicts": 0,
+        "KeyUpdates": 0,
+        "KeysExamined": 0,
+        "Locks": {
+            "Global": "",
+            "MMAPV1Journal": "",
+            "Database": "",
+            "Collection": "",
+            "Metadata": "",
+            "Oplog": ""
+        },
+        "Nreturned": 76,
+        "ResponseLength": 106,
+        "DocsExamined": 76,
+        "Millis": 24,
+        "NumYield": 2,
+        "User": ""
+    },
+    {
+        "Query": {
+            "find": "col1"
+        },
+        "Ts": "2016-11-08T13:46:27.000+00:00",
+        "Client": "127.0.0.1",
+        "ExecStats": {
+            "ExecutionTimeMillisEstimate": 0,
+            "IsEOF": 0,
+            "NReturned": 77,
+            "NeedTime": 1,
+            "RestoreState": 2,
+            "Works": 78,
+            "DocsExamined": 77,
+            "Direction": "forward",
+            "Invalidates": 0,
+            "NeedYield": 2,
+            "SaveState": 3,
+            "Stage": "COLLSCAN",
+            "Advanced": 70
+        },
+        "Ns": "samples.col1",
+        "Op": "query",
+        "WriteConflicts": 0,
+        "KeyUpdates": 0,
+        "KeysExamined": 0,
+        "Locks": {
+            "Global": "",
+            "MMAPV1Journal": "",
+            "Database": "",
+            "Collection": "",
+            "Metadata": "",
+            "Oplog": ""
+        },
+        "Nreturned": 77,
+        "ResponseLength": 107,
+        "DocsExamined": 77,
+        "Millis": 25,
+        "NumYield": 2,
+        "User": ""
+    },
+    {
+        "Query": {
+            "find": "col1"
+        },
+        "Ts": "2016-11-08T13:46:27.000+00:00",
+        "Client": "127.0.0.1",
+        "ExecStats": {
+            "ExecutionTimeMillisEstimate": 0,
+            "IsEOF": 0,
+            "NReturned": 78,
+            "NeedTime": 1,
+            "RestoreState": 2,
+            "Works": 78,
+            "DocsExamined": 78,
+            "Direction": "forward",
+            "Invalidates": 0,
+            "NeedYield": 2,
+            "SaveState": 3,
+            "Stage": "COLLSCAN",
+            "Advanced": 70
+        },
+        "Ns": "samples.col1",
+        "Op": "query",
+        "WriteConflicts": 0,
+        "KeyUpdates": 0,
+        "KeysExamined": 0,
+        "Locks": {
+            "Global": "",
+            "MMAPV1Journal": "",
+            "Database": "",
+            "Collection": "",
+            "Metadata": "",
+            "Oplog": ""
+        },
+        "Nreturned": 78,
+        "ResponseLength": 108,
+        "DocsExamined": 78,
+        "Millis": 26,
+        "NumYield": 2,
+        "User": ""
+    },
+    {
+        "Query": {
+            "find": "col1",
+            "limit": 2
+        },
+        "Ts": "2016-11-08T13:46:27.000+00:00",
+        "Client": "127.0.0.1",
+        "ExecStats": {
+            "ExecutionTimeMillisEstimate": 0,
+            "IsEOF": 0,
+            "NReturned": 79,
+            "NeedTime": 1,
+            "RestoreState": 2,
+            "Works": 78,
+            "DocsExamined": 79,
+            "Direction": "forward",
+            "Invalidates": 0,
+            "NeedYield": 2,
+            "SaveState": 3,
+            "Stage": "COLLSCAN",
+            "Advanced": 70
+        },
+        "Ns": "samples.col1",
+        "Op": "query",
+        "WriteConflicts": 0,
+        "KeyUpdates": 0,
+        "KeysExamined": 0,
+        "Locks": {
+            "Global": "",
+            "MMAPV1Journal": "",
+            "Database": "",
+            "Collection": "",
+            "Metadata": "",
+            "Oplog": ""
+        },
+        "Nreturned": 79,
+        "ResponseLength": 109,
+        "DocsExamined": 79,
+        "Millis": 27,
+        "NumYield": 2,
+        "User": ""
+    },
+    {
+        "Query": {
+            "find": "col1",
+            "limit": 2
+        },
+        "Ts": "2016-11-08T13:46:27.000+00:00",
+        "Client": "127.0.0.1",
+        "ExecStats": {
+            "ExecutionTimeMillisEstimate": 0,
+            "IsEOF": 0,
+            "NReturned": 80,
+            "NeedTime": 1,
+            "RestoreState": 2,
+            "Works": 78,
+            "DocsExamined": 80,
+            "Direction": "forward",
+            "Invalidates": 0,
+            "NeedYield": 2,
+            "SaveState": 3,
+            "Stage": "COLLSCAN",
+            "Advanced": 70
+        },
+        "Ns": "samples.col1",
+        "Op": "query",
+        "WriteConflicts": 0,
+        "KeyUpdates": 0,
+        "KeysExamined": 0,
+        "Locks": {
+            "Global": "",
+            "MMAPV1Journal": "",
+            "Database": "",
+            "Collection": "",
+            "Metadata": "",
+            "Oplog": ""
+        },
+        "Nreturned": 80,
+        "ResponseLength": 110,
+        "DocsExamined": 80,
+        "Millis": 28,
+        "NumYield": 2,
+        "User": ""
+    }
+]

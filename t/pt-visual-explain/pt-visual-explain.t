@@ -33,7 +33,7 @@ like(
 
 like(
    run("$trunk/t/pt-visual-explain/samples/simple_union.sql", qw(--format dump)),
-   qr/\$VAR1 = {/,
+   qr/\$VAR1 = \{/,
    '--format dump (issue 393)'
 );
 

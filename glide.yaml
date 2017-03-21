@@ -1,0 +1,27 @@
+package: github.com/percona/percona-toolkit
+import:
+- package: github.com/bradfitz/slice
+- package: github.com/hashicorp/go-version
+- package: github.com/howeyc/gopass
+- package: github.com/kr/pretty
+- package: github.com/montanaflynn/stats
+  version: ^0.2.0
+- package: github.com/pborman/getopt
+- package: github.com/percona/pmgo
+- package: github.com/pkg/errors
+  version: ^0.8.0
+- package: github.com/satori/go.uuid
+  version: ^1.1.0
+- package: github.com/shirou/gopsutil
+  version: ^2.17.1
+  subpackages:
+  - process
+- package: github.com/sirupsen/logrus
+  version: ^0.11.2
+- package: gopkg.in/mgo.v2
+  subpackages:
+  - bson
+testImport:
+- package: github.com/golang/mock
+  subpackages:
+  - gomock

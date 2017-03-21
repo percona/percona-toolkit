@@ -4,6 +4,7 @@ BEGIN {
    die "The PERCONA_TOOLKIT_BRANCH environment variable is not set.\n"
       unless $ENV{PERCONA_TOOLKIT_BRANCH} && -d $ENV{PERCONA_TOOLKIT_BRANCH};
    unshift @INC, "$ENV{PERCONA_TOOLKIT_BRANCH}/lib";
+   $ENV{PTTEST_PRETTY_JSON} = 0;
 };
 
 use strict;
@@ -16,7 +17,7 @@ require "$trunk/bin/pt-query-digest";
 
 no warnings 'once';
 local $JSONReportFormatter::sorted_json = 1;
-local $JSONReportFormatter::pretty_json = 1;
+local $JSONReportFormatter::pretty_json = 0;
 
 my @args    = qw(--output json);
 my $sample  = "$trunk/t/lib/samples";

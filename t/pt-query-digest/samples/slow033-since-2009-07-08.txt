@@ -1,0 +1,62 @@
+
+# Query 1: 0.00 QPS, 0.00x concurrency, ID 0xAC1BF726F2AB10C5 at byte 861
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: 2009-07-25 11:19:27 to 2009-07-28 18:00:00
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         66       4
+# Exec time     66    48us    12us    12us    12us    12us       0    12us
+# Lock time      0       0       0       0       0       0       0       0
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0       0       0       0       0       0       0       0
+# Query size    66      68      17      17      17      17       0      17
+# String:
+# Databases    db1
+# Hosts
+# Users        [SQL_SLAVE]
+# Query_time distribution
+#   1us
+#  10us  ################################################################
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `db1` LIKE 'foo'\G
+#    SHOW CREATE TABLE `db1`.`foo`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT * FROM foo\G
+
+# Query 2: 2 QPS, 0.00x concurrency, ID 0x07AEF8EFAB3FA3CE at byte 509 ___
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: 2009-07-27 11:19:30 to 11:19:31
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         33       2
+# Exec time     33    24us    12us    12us    12us    12us       0    12us
+# Lock time      0       0       0       0       0       0       0       0
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0       0       0       0       0       0       0       0
+# Query size    33      34      17      17      17      17       0      17
+# String:
+# Databases    db1 (1/50%), db2 (1/50%)
+# Hosts
+# Users        [SQL_SLAVE]
+# Query_time distribution
+#   1us
+#  10us  ################################################################
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `db2` LIKE 'bar'\G
+#    SHOW CREATE TABLE `db2`.`bar`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT * FROM bar\G

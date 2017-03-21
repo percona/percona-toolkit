@@ -197,7 +197,9 @@ sub find_column {
       }
    }
 
+   @tbls = sort {$b->{name} cmp $a->{name}} @tbls;
    return \@tbls;
+
 }
 
 sub find_table {
@@ -248,6 +250,7 @@ sub find_table {
       }
    }
 
+   @dbs = sort @dbs;
    return \@dbs;
 }
 

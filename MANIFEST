@@ -1,6 +1,8 @@
 Changelog
 CONTRIBUTE.md
 COPYING
+glide.lock
+glide.yaml
 INSTALL
 Makefile.PL
 MANIFEST
@@ -37,4 +39,6 @@ bin/pt-table-usage
 bin/pt-upgrade
 bin/pt-variable-advisor
 bin/pt-visual-explain
+bin/pt-mongodb-query-digest
+bin/pt-mongodb-summary
 docs/percona-toolkit.pod
