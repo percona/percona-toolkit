@@ -1,5 +1,18 @@
 Changelog for Percona Toolkit
 
+ * Fixed bug PT-73  : pt-mongodb tools add support for SSL connections
+ * Fixed bug PT-74  : pt-mongodb-summary Cannot get security settings when connected to a mongod instance
+ * Fixed bug PT-75  : pt-mongodb-query-digest Change the default sort order to -count (descending)
+ * Fixed bug PT-76  : pt-mysql-summary password doesn't support '&' and '#' symbols
+ * Fixed bug PT-77  : Update Makefile for mongodb tools
+ * Fixed bug PT-81  : Collect information about locks and transactions using P_S (Thanks Agustin Gallego)
+ * Fixed bug PT-89  : pt-stalk top CPU usage is useless
+ * Fixed bug PT-93  : Fix pt-mongodb-query-digest query ID (Thanks Kamil Dziedzic)
+ * Fixed bug PT-94  : pt-online-schema-change makes duplicate rows in _t_new for UPDATE t set pk=0 where pk=1
+ * Fixed bug PT-96  : Fixed PT tests
+ * Fixed bug PT-101 : pt-table-checksum ignores slave-user and slave-password
+ * Fixed bug PT-105 : pt-table-checksum fails if a database is dropped while the tool is running
+
 v3.0.1 released 2017-02-16
 
 v3.0 released 2017-02-03
