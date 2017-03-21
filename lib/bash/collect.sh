@@ -102,6 +102,8 @@ collect() {
       log "Could not find the MySQL error log"
    fi
 
+   slave_status "$d/$p-slave-status" $mysql_version
+
    # Get a sample of these right away, so we can get these without interaction
    # with the other commands we're about to run.
    if [ "${mysql_version}" '>' "5.1" ]; then
@@ -387,6 +389,40 @@ innodb_status() {
          done
       fi
    }
+}
+
+slave_status() {
+   local outfile=$1 
+   local mysql_version=$2
+   
+   if [ "${mysql_version}" '<' "5.7" ]; then
+      echo "MySQL < 5.7 detected"
+      local status="SHOW SLAVE STATUS\G"
+      $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
+   else                                                                                  
+      local status="
+      SELECT * 
+        FROM performance_schema.replication_connection_configuration 
+        JOIN performance_schema.replication_applier_configuration 
+       USING (channel_name)\G"
+      echo -e "\n$status\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
+
+      local status="
+      SELECT * 
+        FROM replication_connection_status\G"
+      echo -e "\n$status\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
+
+      local status="
+      SELECT * 
+        FROM replication_applier_status 
+        JOIN replication_applier_status_by_coordinator 
+       USING (channel_name)\G"
+      echo -e "\n$status\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
+   fi
+
 }
 
 # ###########################################################################
