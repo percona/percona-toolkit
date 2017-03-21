@@ -103,8 +103,8 @@ test_find_col(
 test_find_col(
    $sq->find_column(col_name => 'c1'),
    [
-      ['test',  'a'],
       ['test',  'b'],
+      ['test',  'a'],
       ['test2', 'a'],
    ],
    "Find duplicate column c1"
@@ -148,8 +148,8 @@ test_find_col(
 test_find_col(
    $sq->find_column(col => 'c1'),
    [
-      ['test',  'a'],
       ['test',  'b'],
+      ['test',  'a'],
       ['test2', 'a'],
    ],
    "Find duplicate column c1 (struct)"

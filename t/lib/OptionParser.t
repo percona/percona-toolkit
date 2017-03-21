@@ -15,6 +15,7 @@ use OptionParser;
 use DSNParser;
 use PerconaTest;
 
+use Test::More tests => 161;
 my $o  = new OptionParser(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>",
@@ -1280,6 +1281,17 @@ ok(
 );
 
 @ARGV = ('--bar', 'D=DB,u=USER,h=localhost', '--foo', 'h=otherhost');
+$o = new OptionParser(
+   description  => 'OptionParser.t parses command line options.',
+   usage        => "$PROGRAM_NAME <options>"
+);
+# Hack DSNParser into OptionParser.  This is just for testing.
+$o->{DSNParser} = $dp;
+$o->_parse_specs(
+   { spec => 'foo=d', desc => 'DSN foo' },
+   { spec => 'bar=d', desc => 'DSN bar' },
+   'DSN values in --foo default to values in --bar if COPY is yes.',
+);
 $o->get_opts();
 is_deeply(
    $o->get('bar'),
@@ -1779,6 +1791,13 @@ is_deeply(
    'DSN opt gets missing vals from --host, --port, etc. (issue 248)',
 );
 
+$o = new OptionParser(
+   description  => 'OptionParser.t parses command line options.',
+   usage        => "$PROGRAM_NAME <options>"
+);
+# Hack DSNParser into OptionParser.  This is just for testing.
+$o->{DSNParser} = $dp;
+$o->get_specs("$trunk/bin/pt-archiver");
 # Like case ii. but make sure --dest copies u from --source, not --user.
 @ARGV = (
    '--source',    'h=127.1,u=bob',

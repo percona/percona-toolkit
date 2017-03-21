@@ -430,7 +430,7 @@ is(
 # Test --where.
 # #############################################################################
 $sb->load_file('master', 't/pt-table-checksum/samples/600cities.sql');
-$master_dbh->do("LOAD DATA INFILE '$trunk/t/pt-table-checksum/samples/600cities.data' INTO TABLE test.t");
+$master_dbh->do("LOAD DATA LOCAL INFILE '$trunk/t/pt-table-checksum/samples/600cities.data' INTO TABLE test.t");
 
 $output = output(
    sub { $exit_status = pt_table_checksum::main(@args,

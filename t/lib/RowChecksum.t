@@ -126,14 +126,13 @@ is(
       tbl  => $tbl,
       func => 'SHA1',
    ),
-     q{`film_id`, `title`, `description`, `release_year`, `language_id`, `original_language_id`, `rental_duration`, `rental_rate`, `length`, `replacement_cost`, `rating`, `special_features`, UNIX_TIMESTAMP(`last_update`) AS `last_update`, }
-   . q{SHA1(CONCAT_WS('#', }
-   . q{`film_id`, `title`, `description`, `release_year`, `language_id`, }
-   . q{`original_language_id`, `rental_duration`, `rental_rate`, `length`, }
-   . q{`replacement_cost`, `rating`, `special_features`, UNIX_TIMESTAMP(`last_update`), }
-   . q{CONCAT(ISNULL(`description`), ISNULL(`release_year`), }
-   . q{ISNULL(`original_language_id`), ISNULL(`length`), }
-   . q{ISNULL(`rating`), ISNULL(`special_features`))))},
+   q{`film_id`, `title`, CRC32(`description`), `release_year`, `language_id`, `original_language_id`,}
+   .q{ `rental_duration`, `rental_rate`, `length`, `replacement_cost`, `rating`, `special_features`,}
+   .q{ UNIX_TIMESTAMP(`last_update`) AS `last_update`, SHA1(CONCAT_WS('#', `film_id`, `title`,}
+   .q{ CRC32(`description`), `release_year`, `language_id`, `original_language_id`, `rental_duration`,}
+   .q{ `rental_rate`, `length`, `replacement_cost`, `rating`, `special_features`, }
+   .q{UNIX_TIMESTAMP(`last_update`), CONCAT(ISNULL(`description`), ISNULL(`release_year`), }
+   .q{ISNULL(`original_language_id`), ISNULL(`length`), ISNULL(`rating`), ISNULL(`special_features`))))},
    'SHA1 query for sakila.film',
 );
 
@@ -142,11 +141,11 @@ is(
       tbl  => $tbl,
       func => 'FNV_64',
    ),
-     q{`film_id`, `title`, `description`, `release_year`, `language_id`, `original_language_id`, `rental_duration`, `rental_rate`, `length`, `replacement_cost`, `rating`, `special_features`, UNIX_TIMESTAMP(`last_update`) AS `last_update`, }
-   . q{FNV_64(}
-   . q{`film_id`, `title`, `description`, `release_year`, `language_id`, }
-   . q{`original_language_id`, `rental_duration`, `rental_rate`, `length`, }
-   . q{`replacement_cost`, `rating`, `special_features`, UNIX_TIMESTAMP(`last_update`))},
+    q{`film_id`, `title`, CRC32(`description`), `release_year`, `language_id`, `original_language_id`,}
+   .q{ `rental_duration`, `rental_rate`, `length`, `replacement_cost`, `rating`, `special_features`, }
+   .q{UNIX_TIMESTAMP(`last_update`) AS `last_update`, FNV_64(`film_id`, `title`, CRC32(`description`), }
+   .q{`release_year`, `language_id`, `original_language_id`, `rental_duration`, `rental_rate`, `length`, }
+   .q{`replacement_cost`, `rating`, `special_features`, UNIX_TIMESTAMP(`last_update`))},
    'FNV_64 query for sakila.film',
 );
 

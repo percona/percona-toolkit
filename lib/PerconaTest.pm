@@ -400,11 +400,14 @@ sub test_log_parser {
          misc       => $args{misc},
          oktorun    => $args{oktorun},
       );
-      while ( my $e = $p->parse_event(%parser_args) ) {
+      while ( my $e = $p->parse_event(%parser_args) ) { 
          push @e, $e;
       }
       close $fh;
    };
+
+   # sort the array just to make this testeable.
+   @e = sort { $a->{pos_in_log} <=> $b->{pos_in_log} } @e;
 
    my ($base_file_name) = $args{file} =~ m/([^\/]+)$/;
    is(
