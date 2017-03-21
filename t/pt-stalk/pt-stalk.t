@@ -8,6 +8,7 @@ BEGIN {
 
 use strict;
 use warnings FATAL => 'all';
+use threads;
 use English qw(-no_match_vars);
 use Test::More;
 use Time::HiRes qw(sleep);
@@ -421,7 +422,49 @@ like(
    qr/matched=yes/,
    "Accepts floating point values as treshold variable"
 );
+          
+# ###########################################################################
+# Test report about performance schema transactions in MySQL 5.7+
+# ###########################################################################
 
+cleanup();
+
+SKIP: {
+
+   skip "Only test on mysql 5.7" if ( $sandbox_version lt '5.7' );
+
+   sub start_thread {
+      # this must run in a thread because we need to have an uncommitted transaction
+      my ($dsn_opts) = @_;
+      my $dp = new DSNParser(opts=>$dsn_opts);
+      my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+      my $dbh = $sb->get_dbh_for('master');
+      $sb->load_file('master', "t/pt-stalk/samples/issue-1642751.sql");
+   }
+   my $thr = threads->create('start_thread', $dsn_opts);
+   $thr->detach();
+   threads->yield();
+   
+   my $cmd = "$trunk/bin/pt-stalk --no-stalk --iterations=1 --host=127.0.0.1 --port=12345 --user=msandbox "
+           . "--password=msandbox --sleep 0 --run-time=10 --dest $dest --log $log_file --iterations=1  "
+           . "--run-time=2  --pid $pid_file --defaults-file=$cnf >$log_file 2>&1";
+   system($cmd);
+   sleep 15;
+   PerconaTest::kill_program(pid_file => $pid_file);
+   
+   $output = `cat $dest/*-ps-locks-transactions 2>/dev/null`;
+   like(
+      $output,
+      qr/ STATE: ACTIVE/,
+      "MySQL 5.7 ACTIVE transactions"
+   );
+          
+   like(
+      $output,
+      qr/ STATE: COMMITTED/,
+      "MySQL 5.7 COMMITTED transactions"
+   );
+}
 
 # #############################################################################
 # Done.

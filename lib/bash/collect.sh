@@ -102,7 +102,6 @@ collect() {
       log "Could not find the MySQL error log"
    fi
 
-   ps_locks_transactions "$d/$p-ps-locks-transactions"
 
    # Get a sample of these right away, so we can get these without interaction
    # with the other commands we're about to run.
@@ -193,6 +192,12 @@ collect() {
    log "Loop start: $(date +'TS %s.%N %F %T')"
    local start_time=$(date +'%s')
    local curr_time=$start_time
+   local ps_instrumentation_enabled=$($CMD_MYSQL $EXT_ARGV -e 'SELECT ENABLED FROM performance_schema.setup_instruments WHERE NAME = "transaction";' \
+                                      | sed "2q;d" | sed 'y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/')
+   if [ $ps_instrumentation_enabled != "yes" ]; then
+      log "Performance Schema instrumentation is disabled"
+   fi
+
    while [ $((curr_time - start_time)) -lt $OPT_RUN_TIME ]; do
 
       # We check the disk, but don't exit, because we need to stop jobs if we
@@ -240,6 +245,10 @@ collect() {
       if [ "$have_lock_waits_table" ]; then
          (echo $ts; lock_waits)   >>"$d/$p-lock-waits" &
          (echo $ts; transactions) >>"$d/$p-transactions" &
+      fi
+
+      if [ $ps_instrumentation_enabled == "yes" ]; then
+         ps_locks_transactions "$d/$p-ps-locks-transactions"
       fi
 
       curr_time=$(date +'%s')
