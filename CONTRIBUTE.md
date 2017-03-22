@@ -1,6 +1,6 @@
-#Contributing guide
-##How Can I Contribute?
-##Reporting Bugs
+# Contributing guide
+## How Can I Contribute?
+## Reporting Bugs
 Before creating bug reports, please check this list as you might find out that you don't need to create one. When you create a bug report, please include as many details as possible. You can use this template to structure the information.  
 
 ###Before Submitting A Bug Report
