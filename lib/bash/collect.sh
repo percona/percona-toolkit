@@ -248,7 +248,7 @@ collect() {
          (echo $ts; transactions) >>"$d/$p-transactions" &
       fi
 
-      if [ [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes"] ]; then
+      if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes"]; then
          ps_locks_transactions "$d/$p-ps-locks-transactions"
       fi
 
