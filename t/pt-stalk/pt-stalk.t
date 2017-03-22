@@ -476,7 +476,7 @@ SKIP: {
 
    skip "Only test on mysql 5.7" if ( $sandbox_version lt '5.7' );
 
-   sub start_thread {
+   sub start_thread_1642750 {
       # this must run in a thread because we need to have an active session
       # with prepared statements
       my ($dsn_opts) = @_;
@@ -485,7 +485,7 @@ SKIP: {
       my $dbh = $sb->get_dbh_for('master');
       $sb->load_file('master', "t/pt-stalk/samples/issue-1642750.sql");
    }
-   my $thr = threads->create('start_thread', $dsn_opts);
+   my $thr = threads->create('start_thread_1642750', $dsn_opts);
    $thr->detach();
    threads->yield();
 
@@ -501,13 +501,13 @@ SKIP: {
    like(
       $output,
       qr/ STATEMENT_NAME: rand_statement/,
-      "MySQL 5.7 PREPARE rand_statement"
+      "MySQL 5.7 prepared statement: rand_statement"
    );
 
    like(
       $output,
       qr/ STATEMENT_NAME: abs_statement/,
-      "MySQL 5.7 PREPARE abs_statement"
+      "MySQL 5.7 prepared statement: abs_statement"
    );
 }
 
