@@ -1,10 +1,13 @@
 /* This enables perfomance schema without a server restart */
-UPDATE performance_schema.setup_consumers SET enabled='YES' WHERE NAME = 'events_waits_current';
+UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME = 'events_waits_current';
 
 /* Enable instrumentation */
-UPDATE performance_schema.setup_consumers SET ENABLED='YES' WHERE NAME LIKE '%events_transactions%';
-UPDATE performance_schema.setup_consumers SET ENABLED='YES' WHERE NAME LIKE '%events_transactions%';
-UPDATE performance_schema.setup_instruments SET ENABLED='YES' WHERE NAME = 'wait/lock/metadata/sql/mdl';
+
+UPDATE performance_schema.setup_instruments set ENABLED = 'YES', TIMED = 'YES' WHERE NAME = 'wait/lock/metadata/sql/mdl';
+UPDATE performance_schema.setup_instruments SET ENABLED = 'YES', TIMED = 'YES' WHERE NAME = 'transaction';
+UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME LIKE 'events_transactions%';
+UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME LIKE '%events_transactions%';
+FLUSH TABLES;
 
 CREATE SCHEMA IF NOT EXISTS test;
 
