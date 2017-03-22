@@ -194,7 +194,8 @@ collect() {
    local curr_time=$start_time
    local ps_instrumentation_enabled=$($CMD_MYSQL $EXT_ARGV -e 'SELECT ENABLED FROM performance_schema.setup_instruments WHERE NAME = "transaction";' \
                                       | sed "2q;d" | sed 'y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/')
-   if [ $ps_instrumentation_enabled != "yes" ]; then
+
+   if [ $ps_instrumentation_enabled != "yes"]; then
       log "Performance Schema instrumentation is disabled"
    fi
 
@@ -247,7 +248,7 @@ collect() {
          (echo $ts; transactions) >>"$d/$p-transactions" &
       fi
 
-      if [ $ps_instrumentation_enabled == "yes" ]; then
+      if [ [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes"] ]; then
          ps_locks_transactions "$d/$p-ps-locks-transactions"
       fi
 
