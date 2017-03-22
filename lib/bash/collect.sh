@@ -242,6 +242,12 @@ collect() {
          (echo $ts; transactions) >>"$d/$p-transactions" &
       fi
 
+      if [ $ps_instrumentation_enabled == "yes" ]; then
+         ps_locks_transactions "$d/$p-ps-locks-transactions"
+      fi
+
+      slave_status "$d/$p-slave-status" $mysql_version
+
       curr_time=$(date +'%s')
    done
    log "Loop end: $(date +'TS %s.%N %F %T')"
@@ -389,6 +395,40 @@ innodb_status() {
          done
       fi
    }
+}
+
+slave_status() {
+   local outfile=$1 
+   local mysql_version=$2
+   
+   if [ "${mysql_version}" '<' "5.7" ]; then
+      echo "MySQL < 5.7 detected"
+      local status="SHOW SLAVE STATUS\G"
+      $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
+   else                                                                                  
+      local status="
+      SELECT * 
+        FROM performance_schema.replication_connection_configuration 
+        JOIN performance_schema.replication_applier_configuration 
+       USING (channel_name)\G"
+      echo -e "\n$status\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
+
+      local status="
+      SELECT * 
+        FROM replication_connection_status\G"
+      echo -e "\n$status\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
+
+      local status="
+      SELECT * 
+        FROM replication_applier_status 
+        JOIN replication_applier_status_by_coordinator 
+       USING (channel_name)\G"
+      echo -e "\n$status\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
+   fi
+
 }
 
 slave_status() {
