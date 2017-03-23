@@ -459,9 +459,6 @@ sub table_is_allowed {
       |gtid_execution
       |innodb_index_stats
       |innodb_table_stats
-      |inventory
-      |plugin
-      |proc
       |slave_master_info
       |slave_relay_log_info
       |slave_worker_info
