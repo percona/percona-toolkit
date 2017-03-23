@@ -39,6 +39,7 @@ make pure_install PERL_INSTALL_ROOT=$RPM_BUILD_ROOT
 find $RPM_BUILD_ROOT -type f -name .packlist -exec rm -f {} ';'
 find $RPM_BUILD_ROOT -type d -depth -exec rmdir {} 2>/dev/null ';'
 find $RPM_BUILD_ROOT -type f -name 'percona-toolkit.pod' -exec rm -f {} ';'
+rm -rf $RPM_BUILD_ROOT/usr/share/perl5
 chmod -R u+w $RPM_BUILD_ROOT/*
 
 
