@@ -1,6 +1,53 @@
 Release Notes
 *************
 
+v3.0.2 released 2017-03-23
+==========================
+
+Percona Toolkit 3.0.2 includes the following changes:
+
+New Features
+
+* PT-73: Added support for SSL connections to ``pt-mongodb-summary`` and ``pt-mongodb-query-digest``
+
+* 1642751: Enabled gathering of information about locks and transactions by ``pt-stalk`` using Performance Schema if it is enabled (Thanks Agustin Gallego)
+
+Bug Fixes
+
+* PT-74: Fixed gathering of security settings when running ``pt-mongodb-summary`` on a mongod instance that is specified as the host
+
+* PT-75: Changed the default sort order in ``pt-mongodb-query-digest`` output to descending
+
+* PT-76: Added support of ``&`` and ``#`` symbols in passwords for ``pt-mysql-summary``
+
+* PT-77: Updated ``Makefile`` to support new MongoDB tools
+
+* PT-89: Fixed ``pt-stalk`` to run ``top`` more than once to collect useful CPU usage
+
+* PT-93: Fixed ``pt-mongodb-query-digest`` to make query ID match query key (Thanks Kamil Dziedzic)
+
+* PT-94: Fixed ``pt-online-schema-change`` to not make duplicate rows in ``_t_new`` when updating primary key. Also see 1646713.
+
+* PT-101: Fixed ``pt-table-checksum`` to correctly use the ``--slave-user`` and ``--slave-password`` options. Also see 1651002.
+
+* PT-105: Fixed ``pt-table-checksum`` to continue running if a database is dropped in the process
+
+Changelog
+---------
+
+* Fixed bug PT-73  : pt-mongodb tools add support for SSL connections
+* Fixed bug PT-74  : pt-mongodb-summary Cannot get security settings when connected to a mongod instance
+* Fixed bug PT-75  : pt-mongodb-query-digest Change the default sort order to -count (descending)
+* Fixed bug PT-76  : pt-mysql-summary password doesn't support '&' and '#' symbols
+* Fixed bug PT-77  : Update Makefile for mongodb tools
+* Fixed bug PT-81  : Collect information about locks and transactions using P_S (Thanks Agustin Gallego)
+* Fixed bug PT-89  : pt-stalk top CPU usage is useless
+* Fixed bug PT-93  : Fix pt-mongodb-query-digest query ID (Thanks Kamil Dziedzic)
+* Fixed bug PT-94  : pt-online-schema-change makes duplicate rows in _t_new for UPDATE t set pk=0 where pk=1
+* Fixed bug PT-96  : Fixed PT tests
+* Fixed bug PT-101 : pt-table-checksum ignores slave-user and slave-password
+* Fixed bug PT-105 : pt-table-checksum fails if a database is dropped while the tool is running
+
 v3.0.1 released 2017-02-16
 ==========================
 

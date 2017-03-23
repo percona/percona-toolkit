@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v3.0.2 released 2017-03-23
+
  * Fixed bug PT-73  : pt-mongodb tools add support for SSL connections
  * Fixed bug PT-74  : pt-mongodb-summary Cannot get security settings when connected to a mongod instance
  * Fixed bug PT-75  : pt-mongodb-query-digest Change the default sort order to -count (descending)
