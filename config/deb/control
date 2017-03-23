@@ -10,7 +10,7 @@ Vcs-Browser: https://github.com/percona/percona-toolkit
 Vcs-Git: git://github.com/percona/percona-toolkit.git
 
 Package: percona-toolkit
-Architecture: @@ARHITECTURE@@
+Architecture: amd64
 Depends: ${perl:Depends}, libdbi-perl (>= 1.13), libdbd-mysql-perl | libdbd-mysql-5.1-perl, libterm-readkey-perl (>=2.10),
     libio-socket-ssl-perl
 Description: Advanced MySQL and system command-line tools

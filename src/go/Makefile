@@ -1,6 +1,6 @@
 GO := go
 pkgs   = $(shell find . -type d -name "pt-mongodb*" -exec basename {} \;)
-VERSION="3.0.1" 
+VERSION="3.0.2" 
 BUILD=$(shell date +%FT%T%z)
 GOVERSION=$(shell go version | cut --delimiter=" " -f3)
 
