@@ -468,10 +468,6 @@ sub table_is_allowed {
       |slow_log    
    )$/x;
 
-   return 0 if $db eq 'sys' && $tbl =~ m/^(?:
-       sys_config
-   )$/x;
-
    if ( $filter->{'ignore-tables'}->{'*'}->{$tbl} 
          || $filter->{'ignore-tables'}->{$db}->{$tbl}) {
       PTDEBUG && _d('Table', $tbl, 'is in --ignore-tables list');
