@@ -404,7 +404,7 @@ innodb_status() {
 ps_locks_transactions() {
    local outfile=$1 
    
-   mysql -e 'select @@performance_schema' | grep "1" &>/dev/null
+   $CMD_MYSQL $EXT_ARGV -e 'select @@performance_schema' | grep "1" &>/dev/null
 
    if [ $? -eq 0 ]; then
       local status="select t.processlist_id, ml.* from performance_schema.metadata_locks ml join performance_schema.threads t on (ml.owner_thread_id=t.thread_id)\G"
