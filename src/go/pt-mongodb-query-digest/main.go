@@ -465,7 +465,7 @@ func getData(i iter, filters []docsFilter) []stat {
 			if s, ok = stats[key]; !ok {
 				realQuery, _ := getQueryField(doc.Query)
 				s = &stat{
-					ID:          fmt.Sprintf("%x", md5.Sum([]byte(key))),
+					ID:          fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s", key)))),
 					Operation:   doc.Op,
 					Fingerprint: fp,
 					Namespace:   doc.Ns,
