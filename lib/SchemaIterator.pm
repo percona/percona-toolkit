@@ -456,7 +456,7 @@ sub table_is_allowed {
    # Always auto-skip these pseudo tables.
    return 0 if $db eq 'mysql' && $tbl =~ m/^(?:
        general_log
-      |gtid_execution
+      |gtid_executed
       |innodb_index_stats
       |innodb_table_stats
       |slave_master_info
