@@ -342,6 +342,7 @@ prep_release_dir() {
       cd $RELEASE_DIR
       mkdir -p $PKG $PKG/bin $PKG/docs $PKG/lib
    )
+   update_manifest
    for file in `cat MANIFEST`; do
       cp $file $RELEASE_DIR/$PKG/$file
    done
