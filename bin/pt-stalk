@@ -907,9 +907,10 @@ collect() {
    log "Loop start: $(date +'TS %s.%N %F %T')"
    local start_time=$(date +'%s')
    local curr_time=$start_time
-   local ps_instrumentation_enabled=$($CMD_MYSQL $EXT_ARGV -e "SELECT ENABLED FROM performance_schema.setup_instruments WHERE NAME = 'transaction';" | sed '2q;d' | sed 'y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/')
+   local ps_instrumentation_enabled=$($CMD_MYSQL $EXT_ARGV -e 'SELECT ENABLED FROM performance_schema.setup_instruments WHERE NAME = "transaction";' \
+                                      | sed "2q;d" | sed 'y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/')
 
-   if [ $ps_instrumentation_enabled != "yes" ]; then
+   if [ $ps_instrumentation_enabled != "yes"]; then
       log "Performance Schema instrumentation is disabled"
    fi
 
@@ -955,9 +956,12 @@ collect() {
          (echo $ts; transactions) >>"$d/$p-transactions" &
       fi
 
+      echo "$ps_instrumentation_enabled" > /tmp/k1
       if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes" ]; then
          ps_locks_transactions "$d/$p-ps-locks-transactions"
       fi
+
+      slave_status "$d/$p-slave-status" "${mysql_version}" 
 
       curr_time=$(date +'%s')
    done
@@ -1099,7 +1103,7 @@ innodb_status() {
 ps_locks_transactions() {
    local outfile=$1 
    
-   mysql -e 'select @@performance_schema' | grep "1" &>/dev/null
+   $CMD_MYSQL $EXT_ARGV -e 'select @@performance_schema' | grep "1" &>/dev/null
 
    if [ $? -eq 0 ]; then
       local status="select t.processlist_id, ml.* from performance_schema.metadata_locks ml join performance_schema.threads t on (ml.owner_thread_id=t.thread_id)\G"
@@ -1121,6 +1125,29 @@ ps_locks_transactions() {
       echo "Performance schema is not enabled" >> $outfile
    fi
 
+}
+
+slave_status() {
+   local outfile=$1
+   local mysql_version=$2
+
+   if [ "${mysql_version}" '<' "5.7" ]; then
+      local sql="SHOW SLAVE STATUS\G"  
+      echo -e "\n$sql\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+   else
+      local sql="SELECT * FROM performance_schema.replication_connection_configuration JOIN performance_schema.replication_applier_configuration USING(channel_name)\G"
+      echo -e "\n$sql\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+
+      sql="SELECT * FROM replication_connection_status\G"
+      echo -e "\n$sql\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+
+      sql="SELECT * FROM replication_applier_status JOIN replication_applier_status_by_coordinator USING(channel_name)\G"
+      echo -e "\n$sql\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+   fi
 }
 
 # ###########################################################################

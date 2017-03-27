@@ -186,7 +186,7 @@ type=$1         # master, slave or master-master
 port=$2         # sandbox port number, e.g. 12345
 master_port=$3  # master port if slave or master-master
 
-if [ "$type" != "master" ] && [ "$type" != "slave" ] && [ "$type" != "master-master" ] && [ "$type" != "cluster" ]; then
+if [ "$type" != "master" ] && [ "$type" != "slave" ] && [ "$type" != "master-master" ] && [ "$type" != "cluster" ] && [ "$type" != "channels" ]; then
    die "Invalid sandbox type: $type.  Valid types are master, slave, and master-master."
 fi
 
