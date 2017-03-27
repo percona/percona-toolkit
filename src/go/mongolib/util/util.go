@@ -12,7 +12,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-func GetReplicasetMembers(dialer pmgo.Dialer, di *mgo.DialInfo) ([]proto.Members, error) {
+func GetReplicasetMembers(dialer pmgo.Dialer, di *pmgo.DialInfo) ([]proto.Members, error) {
 	hostnames, err := GetHostnames(dialer, di)
 	if err != nil {
 		return nil, err
@@ -75,7 +75,7 @@ func GetReplicasetMembers(dialer pmgo.Dialer, di *mgo.DialInfo) ([]proto.Members
 	return members, nil
 }
 
-func GetHostnames(dialer pmgo.Dialer, di *mgo.DialInfo) ([]string, error) {
+func GetHostnames(dialer pmgo.Dialer, di *pmgo.DialInfo) ([]string, error) {
 	hostnames := []string{di.Addrs[0]}
 	di.Direct = true
 	di.Timeout = 2 * time.Second
@@ -182,7 +182,7 @@ func buildHostsListFromShardMap(shardsMap proto.ShardsMap) []string {
 
 // This function is like GetHostnames but it uses listShards instead of getShardMap
 // so it won't include config servers in the returned list
-func GetShardedHosts(dialer pmgo.Dialer, di *mgo.DialInfo) ([]string, error) {
+func GetShardedHosts(dialer pmgo.Dialer, di *pmgo.DialInfo) ([]string, error) {
 	hostnames := []string{di.Addrs[0]}
 	session, err := dialer.DialWithInfo(di)
 	if err != nil {
@@ -206,7 +206,7 @@ func GetShardedHosts(dialer pmgo.Dialer, di *mgo.DialInfo) ([]string, error) {
 	return hostnames, nil
 }
 
-func getTmpDI(di *mgo.DialInfo, hostname string) *mgo.DialInfo {
+func getTmpDI(di *pmgo.DialInfo, hostname string) *pmgo.DialInfo {
 	tmpdi := *di
 	tmpdi.Addrs = []string{hostname}
 	tmpdi.Direct = true
@@ -215,7 +215,7 @@ func getTmpDI(di *mgo.DialInfo, hostname string) *mgo.DialInfo {
 	return &tmpdi
 }
 
-func GetServerStatus(dialer pmgo.Dialer, di *mgo.DialInfo, hostname string) (proto.ServerStatus, error) {
+func GetServerStatus(dialer pmgo.Dialer, di *pmgo.DialInfo, hostname string) (proto.ServerStatus, error) {
 	ss := proto.ServerStatus{}
 
 	tmpdi := getTmpDI(di, hostname)

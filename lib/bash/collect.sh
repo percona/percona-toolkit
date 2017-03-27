@@ -102,7 +102,6 @@ collect() {
       log "Could not find the MySQL error log"
    fi
 
-   slave_status "$d/$p-slave-status" $mysql_version
 
    # Get a sample of these right away, so we can get these without interaction
    # with the other commands we're about to run.
@@ -143,7 +142,7 @@ collect() {
    # Grab a few general things first.  Background all of these so we can start
    # them all up as quickly as possible.  
    ps -eaf  >> "$d/$p-ps"  &
-   top -bn1 >> "$d/$p-top" &
+   top -bn${OPT_RUN_TIME} >> "$d/$p-top" &
 
    [ "$mysqld_pid" ] && _lsof $mysqld_pid >> "$d/$p-lsof" &
 
@@ -193,6 +192,13 @@ collect() {
    log "Loop start: $(date +'TS %s.%N %F %T')"
    local start_time=$(date +'%s')
    local curr_time=$start_time
+   local ps_instrumentation_enabled=$($CMD_MYSQL $EXT_ARGV -e 'SELECT ENABLED FROM performance_schema.setup_instruments WHERE NAME = "transaction";' \
+                                      | sed "2q;d" | sed 'y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/')
+
+   if [ $ps_instrumentation_enabled != "yes"]; then
+      log "Performance Schema instrumentation is disabled"
+   fi
+
    while [ $((curr_time - start_time)) -lt $OPT_RUN_TIME ]; do
 
       # We check the disk, but don't exit, because we need to stop jobs if we
@@ -242,11 +248,9 @@ collect() {
          (echo $ts; transactions) >>"$d/$p-transactions" &
       fi
 
-      if [ $ps_instrumentation_enabled == "yes" ]; then
+      if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes"]; then
          ps_locks_transactions "$d/$p-ps-locks-transactions"
       fi
-
-      slave_status "$d/$p-slave-status" $mysql_version
 
       curr_time=$(date +'%s')
    done
@@ -397,70 +401,29 @@ innodb_status() {
    }
 }
 
-slave_status() {
+ps_locks_transactions() {
    local outfile=$1 
-   local mysql_version=$2
    
-   if [ "${mysql_version}" '<' "5.7" ]; then
-      echo "MySQL < 5.7 detected"
-      local status="SHOW SLAVE STATUS\G"
-      $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
-   else                                                                                  
-      local status="
-      SELECT * 
-        FROM performance_schema.replication_connection_configuration 
-        JOIN performance_schema.replication_applier_configuration 
-       USING (channel_name)\G"
+   $CMD_MYSQL $EXT_ARGV -e 'select @@performance_schema' | grep "1" &>/dev/null
+
+   if [ $? -eq 0 ]; then
+      local status="select t.processlist_id, ml.* from performance_schema.metadata_locks ml join performance_schema.threads t on (ml.owner_thread_id=t.thread_id)\G"
       echo -e "\n$status\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
 
-      local status="
-      SELECT * 
-        FROM replication_connection_status\G"
+      local status="select t.processlist_id, th.* from performance_schema.table_handles th left join performance_schema.threads t on (th.owner_thread_id=t.thread_id)\G"
       echo -e "\n$status\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
 
-      local status="
-      SELECT * 
-        FROM replication_applier_status 
-        JOIN replication_applier_status_by_coordinator 
-       USING (channel_name)\G"
-      echo -e "\n$status\n" >> $outfile
-      $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
-   fi
-
-}
-
-slave_status() {
-   local outfile=$1 
-   local mysql_version=$2
-   
-   if [ "${mysql_version}" '<' "5.7" ]; then
-      echo "MySQL < 5.7 detected"
-      local status="SHOW SLAVE STATUS\G"
-      $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
-   else                                                                                  
-      local status="
-      SELECT * 
-        FROM performance_schema.replication_connection_configuration 
-        JOIN performance_schema.replication_applier_configuration 
-       USING (channel_name)\G"
+      local status="select t.processlist_id, et.* from performance_schema.events_transactions_current et join performance_schema.threads t using(thread_id)\G"
       echo -e "\n$status\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
 
-      local status="
-      SELECT * 
-        FROM replication_connection_status\G"
+      local status="select t.processlist_id, et.* from performance_schema.events_transactions_history_long et join performance_schema.threads t using(thread_id)\G"
       echo -e "\n$status\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
-
-      local status="
-      SELECT * 
-        FROM replication_applier_status 
-        JOIN replication_applier_status_by_coordinator 
-       USING (channel_name)\G"
-      echo -e "\n$status\n" >> $outfile
-      $CMD_MYSQL $EXT_ARGV -e "$status" >> $outfile
+  else
+      echo "Performance schema is not enabled" >> $outfile
    fi
 
 }

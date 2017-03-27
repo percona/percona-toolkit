@@ -83,8 +83,10 @@ sub get_slaves {
       my $o = $self->{OptionParser};
 
       $self->recurse_to_slaves(
-         {  dbh       => $dbh,
-            dsn       => $dsn,
+         {  dbh            => $dbh,
+            dsn            => $dsn,
+            slave_user     => $o->got('slave-user') ? $o->get('slave-user') : '',
+            slave_password => $o->got('slave-password') ? $o->get('slave-password') : '', 
             callback  => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
@@ -161,36 +163,41 @@ sub _resolve_recursion_methods {
 sub recurse_to_slaves {
    my ( $self, $args, $level ) = @_;
    $level ||= 0;
-   my $dp      = $self->{DSNParser};
+   my $dp = $self->{DSNParser};
    my $recurse = $args->{recurse} || $self->{OptionParser}->get('recurse');
-   my $dsn     = $args->{dsn};
+   my $dsn = $args->{dsn};
+   my $slave_user = $args->{slave_user} || '';
+   my $slave_password = $args->{slave_password} || '';
 
-   # Re-resolve the recursion methods for each slave.  In most cases
-   # it won't change, but it could if one slave uses standard port (3306)
-   # and another does not.
    my $methods = $self->_resolve_recursion_methods($dsn);
    PTDEBUG && _d('Recursion methods:', @$methods);
    if ( lc($methods->[0]) eq 'none' ) {
-      # https://bugs.launchpad.net/percona-toolkit/+bug/987694
       PTDEBUG && _d('Not recursing to slaves');
       return;
+   }
+
+   my $slave_dsn = $dsn;
+   if ($slave_user) {
+      $slave_dsn->{u} = $slave_user;
+      PTDEBUG && _d("Using slave user $slave_user on ".$slave_dsn->{h}.":".$slave_dsn->{P});
+   }
+   if ($slave_password) {
+      $slave_dsn->{p} = $slave_password;
+      PTDEBUG && _d("Slave password set");
    }
 
    my $dbh;
    eval {
       $dbh = $args->{dbh} || $dp->get_dbh(
-         $dp->get_cxn_params($dsn), { AutoCommit => 1 });
-      PTDEBUG && _d('Connected to', $dp->as_string($dsn));
+         $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 });
+      PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
    };
    if ( $EVAL_ERROR ) {
-      print STDERR "Cannot connect to ", $dp->as_string($dsn), "\n"
+      print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), "\n"
          or die "Cannot print: $OS_ERROR";
       return;
    }
 
-   # SHOW SLAVE HOSTS sometimes has obsolete information.  Verify that this
-   # server has the ID its master thought, and that we have not seen it before
-   # in any case.
    my $sql  = 'SELECT @@SERVER_ID';
    PTDEBUG && _d($sql);
    my ($id) = $dbh->selectrow_array($sql);
@@ -207,13 +214,10 @@ sub recurse_to_slaves {
       return;
    }
 
-   # Call the callback!
    $args->{callback}->($dsn, $dbh, $level, $args->{parent});
 
    if ( !defined $recurse || $level < $recurse ) {
 
-      # Find the slave hosts.  Eliminate hosts that aren't slaves of me (as
-      # revealed by server_id and master_id).
       my @slaves =
          grep { !$_->{master_id} || $_->{master_id} == $id } # Only my slaves.
          $self->find_slave_hosts($dp, $dbh, $dsn, $methods);
@@ -222,7 +226,7 @@ sub recurse_to_slaves {
          PTDEBUG && _d('Recursing from',
             $dp->as_string($dsn), 'to', $dp->as_string($slave));
          $self->recurse_to_slaves(
-            { %$args, dsn => $slave, dbh => undef, parent => $dsn }, $level + 1 );
+            { %$args, dsn => $slave, dbh => undef, parent => $dsn, slave_user => $slave_user, $slave_password => $slave_password }, $level + 1 );
       }
    }
 }

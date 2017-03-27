@@ -30,5 +30,6 @@ lower_case_table_names     = 0
 
 # fkc test
 binlog_format              = STATEMENT
-
-performance_schema=ON
+performance_schema         = ON
+#performance-schema-instrument='wait/lock/metadata/sql/mdl=ON'
+#performance-schema-instrument='transaction=ON'

@@ -40,7 +40,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.0';
+our $VERSION = '3.0.2';
 
 use strict;
 use warnings FATAL => 'all';
@@ -4911,6 +4911,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-slave-delay 3.0.1
+pt-slave-delay 3.0.2
 
 =cut

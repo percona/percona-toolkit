@@ -6,9 +6,11 @@ import (
 	"io/ioutil"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/pborman/getopt/v2"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/pmgo"
 
@@ -342,6 +344,47 @@ func TestIsProfilerEnabled(t *testing.T) {
 	}
 	if enabled != true {
 		t.Error("Profiler must be enabled")
+	}
+
+}
+
+func TestParseArgs(t *testing.T) {
+	tests := []struct {
+		args []string
+		want *options
+	}{
+		{
+			args: []string{TOOLNAME}, // arg[0] is the command itself
+			want: &options{
+				Host:            DEFAULT_HOST,
+				LogLevel:        DEFAULT_LOGLEVEL,
+				OrderBy:         strings.Split(DEFAULT_ORDERBY, ","),
+				SkipCollections: strings.Split(DEFAULT_SKIPCOLLECTIONS, ","),
+				AuthDB:          DEFAULT_AUTHDB,
+			},
+		},
+		{
+			args: []string{TOOLNAME, "zapp.brannigan.net:27018/samples", "--help"},
+			want: &options{
+				Host:            "zapp.brannigan.net:27018/samples",
+				LogLevel:        DEFAULT_LOGLEVEL,
+				OrderBy:         strings.Split(DEFAULT_ORDERBY, ","),
+				SkipCollections: strings.Split(DEFAULT_SKIPCOLLECTIONS, ","),
+				AuthDB:          DEFAULT_AUTHDB,
+				Help:            true,
+			},
+		},
+	}
+	for i, test := range tests {
+		getopt.Reset()
+		os.Args = test.args
+		got, err := getOptions()
+		if err != nil {
+			t.Errorf("error parsing command line arguments: %s", err.Error())
+		}
+		if !reflect.DeepEqual(got, test.want) {
+			t.Errorf("invalid command line options test %d\ngot %+v\nwant %+v\n", i, got, test.want)
+		}
 	}
 
 }
