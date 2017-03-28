@@ -252,6 +252,8 @@ collect() {
          ps_locks_transactions "$d/$p-ps-locks-transactions"
       fi
 
+      slave_status "$d/$p-slave-status" "${mysql_version}" 
+
       curr_time=$(date +'%s')
    done
    log "Loop end: $(date +'TS %s.%N %F %T')"
@@ -428,6 +430,30 @@ ps_locks_transactions() {
 
 }
 
+slave_status() {
+   local outfile=$1
+   local mysql_version=$2
+
+   if [ "${mysql_version}" '<' "5.7" ]; then
+      local sql="SHOW SLAVE STATUS\G"  
+      echo -e "\n$sql\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+   else
+      local sql="SELECT * FROM performance_schema.replication_connection_configuration JOIN performance_schema.replication_applier_configuration USING(channel_name)\G"
+      echo -e "\n$sql\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+
+      sql="SELECT * FROM replication_connection_status\G"
+      echo -e "\n$sql\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+
+      sql="SELECT * FROM replication_applier_status JOIN replication_applier_status_by_coordinator USING(channel_name)\G"
+      echo -e "\n$sql\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+   fi
+
+}
+
 collect_mysql_variables() {
    local outfile=$1 
 
@@ -446,6 +472,7 @@ collect_mysql_variables() {
    sql="select * from performance_schema.status_by_thread order by thread_id, variable_name; "
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+
 }
 
 # ###########################################################################
