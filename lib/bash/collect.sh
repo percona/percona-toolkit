@@ -75,8 +75,8 @@ collect() {
    # Get MySQL's variables if possible.  Then sleep long enough that we probably
    # complete SHOW VARIABLES if all's well.  (We don't want to run mysql in the
    # foreground, because it could hang.)
-   $CMD_MYSQL $EXT_ARGV -e 'SHOW GLOBAL VARIABLES' >> "$d/$p-variables" &
-   sleep .2
+   collect_mysql_variables "$d/$p-variables" &
+   sleep .5
 
    # Get the major.minor version number.  Version 3.23 doesn't matter for our
    # purposes, and other releases have x.x.x* version conventions so far.
@@ -195,7 +195,7 @@ collect() {
    local ps_instrumentation_enabled=$($CMD_MYSQL $EXT_ARGV -e 'SELECT ENABLED FROM performance_schema.setup_instruments WHERE NAME = "transaction";' \
                                       | sed "2q;d" | sed 'y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/')
 
-   if [ $ps_instrumentation_enabled != "yes"]; then
+   if [ $ps_instrumentation_enabled != "yes" ]; then
       log "Performance Schema instrumentation is disabled"
    fi
 
@@ -248,7 +248,7 @@ collect() {
          (echo $ts; transactions) >>"$d/$p-transactions" &
       fi
 
-      if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes"]; then
+      if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes" ]; then
          ps_locks_transactions "$d/$p-ps-locks-transactions"
       fi
 
@@ -426,6 +426,26 @@ ps_locks_transactions() {
       echo "Performance schema is not enabled" >> $outfile
    fi
 
+}
+
+collect_mysql_variables() {
+   local outfile=$1 
+
+   local sql="SHOW GLOBAL VARIABLES"
+   echo -e "\n$sql\n" >> $outfile
+   $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+
+   sql="select * from performance_schema.variables_by_thread order by thread_id, variable_name;"
+   echo -e "\n$sql\n" >> $outfile
+   $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+   
+   sql="select * from performance_schema.user_variables_by_thread order by thread_id, variable_name;"
+   echo -e "\n$sql\n" >> $outfile
+   $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+   
+   sql="select * from performance_schema.status_by_thread order by thread_id, variable_name; "
+   echo -e "\n$sql\n" >> $outfile
+   $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
 }
 
 # ###########################################################################
