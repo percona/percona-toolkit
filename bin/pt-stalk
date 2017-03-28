@@ -813,8 +813,8 @@ collect() {
          >> "$d/$p-stacktrace"
    fi
 
-   $CMD_MYSQL $EXT_ARGV -e 'SHOW GLOBAL VARIABLES' >> "$d/$p-variables" &
-   sleep .2
+   collect_mysql_variables "$d/$p-variables" &
+   sleep .5
 
    local mysql_version="$(awk '/^version[^_]/{print substr($2,1,3)}' "$d/$p-variables")"
 
@@ -910,7 +910,7 @@ collect() {
    local ps_instrumentation_enabled=$($CMD_MYSQL $EXT_ARGV -e 'SELECT ENABLED FROM performance_schema.setup_instruments WHERE NAME = "transaction";' \
                                       | sed "2q;d" | sed 'y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/')
 
-   if [ $ps_instrumentation_enabled != "yes"]; then
+   if [ $ps_instrumentation_enabled != "yes" ]; then
       log "Performance Schema instrumentation is disabled"
    fi
 
@@ -1148,6 +1148,26 @@ slave_status() {
       echo -e "\n$sql\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
    fi
+}
+
+collect_mysql_variables() {
+   local outfile=$1 
+
+   local sql="SHOW GLOBAL VARIABLES"
+   echo -e "\n$sql\n" >> $outfile
+   $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+
+   sql="select * from performance_schema.variables_by_thread order by thread_id, variable_name;"
+   echo -e "\n$sql\n" >> $outfile
+   $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+   
+   sql="select * from performance_schema.user_variables_by_thread order by thread_id, variable_name;"
+   echo -e "\n$sql\n" >> $outfile
+   $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+   
+   sql="select * from performance_schema.status_by_thread order by thread_id, variable_name; "
+   echo -e "\n$sql\n" >> $outfile
+   $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
 }
 
 # ###########################################################################
