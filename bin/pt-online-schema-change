@@ -8499,6 +8499,13 @@ sub main {
          PTDEBUG && _d('Will check slave lag on all slaves');
          $slave_lag_cxns = $slaves;
       }
+      if ($o->get('skip-check-slave-lag')) {
+          my $servers_to_skip = $o->get('skip-check-slave-lag');
+          my $filtered_slaves = [];
+          warn "------------------------------------------------";
+          warn Data::Dumper::Dumper($o->get('skip-check-slave-lag'));
+          warn "------------------------------------------------";
+      }
       if ( $slave_lag_cxns && scalar @$slave_lag_cxns ) {
          print "Will check slave lag on:\n";
          foreach my $cxn ( @$slave_lag_cxns ) {
@@ -11903,6 +11910,13 @@ ignored.
 
 You can change the list of hosts while OSC is executing:
 if you change the contents of the DSN table, OSC will pick it up very soon.
+
+=item --skip-check-slave-lag
+
+type: DSN; repeatable: yes
+
+DSN to skip when checking slave lag. It can be used multiple times.
+Example: --skip-check-slave-lag h=127.1,P=12345 --skip-check-slave-lag h=127.1,P=12346
 
 =item --slave-user
 
