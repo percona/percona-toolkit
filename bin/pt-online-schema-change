@@ -8504,11 +8504,13 @@ sub main {
          $slave_lag_cxns = $slaves;
       }
       if ($o->get('skip-check-slave-lag')) {
-          my $servers_to_skip = $o->get('skip-check-slave-lag');
+          my $slaves_to_skip = $o->get('skip-check-slave-lag');
           my $filtered_slaves = [];
-          warn "------------------------------------------------";
-          warn Data::Dumper::Dumper($o->get('skip-check-slave-lag'));
-          warn "------------------------------------------------";
+          for my $slave_to_skip (@$slaves_to_skip) {
+
+          warn "i>>>>------------------------------------------------";
+          warn Data::Dumper::Dumper($slave_to_skip->{h});
+          }
       }
       if ( $slave_lag_cxns && scalar @$slave_lag_cxns ) {
          print "Will check slave lag on:\n";
