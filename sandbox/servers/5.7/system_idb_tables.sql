@@ -586,10 +586,9 @@ CREATE TABLE `time_zone_transition_type` (
 -- Table structure for table `user`
 --
 
-DROP TABLE IF EXISTS `user`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `user` (
+CREATE TABLE IF NOT EXISTS `user` (
   `Host` char(60) COLLATE utf8_bin NOT NULL DEFAULT '',
   `User` char(32) COLLATE utf8_bin NOT NULL DEFAULT '',
   `Select_priv` enum('N','Y') CHARACTER SET utf8 NOT NULL DEFAULT 'N',
