@@ -8482,7 +8482,7 @@ sub main {
       if ( scalar @$slaves ) {
          print "Found " . scalar(@$slaves) . " slaves:\n";
          foreach my $cxn ( @$slaves ) {
-            print "  " . $cxn->name() . "\n";
+            printf("%s -> %s:%s\n", $cxn->name(), $cxn->{dsn}->{h}, $cxn->{dsn}->{P});
          }
       }
       elsif ( ($o->get('recursion-method') || '') ne 'none') {
@@ -8507,19 +8507,31 @@ sub main {
          PTDEBUG && _d('Will check slave lag on all slaves');
          $slave_lag_cxns = $slaves;
       }
-      if ($o->get('skip-check-slave-lag')) {
-          my $slaves_to_skip = $o->get('skip-check-slave-lag');
-          my $filtered_slaves = [];
-          for my $slave_to_skip (@$slaves_to_skip) {
-
-          warn "i>>>>------------------------------------------------";
-          warn Data::Dumper::Dumper($slave_to_skip->{h});
-          }
-      }
       if ( $slave_lag_cxns && scalar @$slave_lag_cxns ) {
-         print "Will check slave lag on:\n";
-         foreach my $cxn ( @$slave_lag_cxns ) {
-            print "  " . $cxn->name() . "\n";
+         if ($o->get('skip-check-slave-lag')) {
+             my $slaves_to_skip = $o->get('skip-check-slave-lag');
+             my $filtered_slaves = [];
+             for my $slave (@$slave_lag_cxns) {
+                 my $found=0;
+                 for my $slave_to_skip (@$slaves_to_skip) {
+                     if ($slave->{dsn}->{h} eq $slave_to_skip->{h} && $slave->{dsn}->{P} eq $slave_to_skip->{P}) {
+                         $found=1;
+                     }
+                 }
+                 if ($found) {
+                    printf("Skipping slave %s -> %s:%s\n", $cxn->name(), $cxn->{dsn}->{h}, $cxn->{dsn}->{P});
+                    push @$filtered_slaves, $slave;
+                 }
+             }
+             $slave_lag_cxns = $filtered_slaves;
+         }
+         if (!scalar @$slave_lag_cxns) {
+            print "Not checking slave lag because all slaves were skipped\n";
+         } else{
+            print "Will check slave lag on:\n";
+            foreach my $cxn ( @$slave_lag_cxns ) {
+               printf("%s -> %s:%s\n", $cxn->name(), $cxn->{dsn}->{h}, $cxn->{dsn}->{P});
+            }
          }
       }
       else {
