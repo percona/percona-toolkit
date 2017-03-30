@@ -770,7 +770,11 @@ sub _validate_type {
       if (!$opt->{attributes}->{repeatable}) {
           $opt->{value} = $self->{DSNParser}->parse($val, $prev, $defaults);
       } else {
-          push @{$opt->{value}}, $self->{DSNParser}->parse($val, $prev, $defaults);
+          my $values = [];
+          for my $dsn_string (@$val) {
+              push @$values, $self->{DSNParser}->parse($dsn_string, $prev, $defaults);
+          }
+          $opt->{value} = $values;
       }
    }
    elsif ( $val && $opt->{type} eq 'z' ) {  # type size

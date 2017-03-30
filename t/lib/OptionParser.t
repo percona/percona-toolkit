@@ -15,7 +15,7 @@ use OptionParser;
 use DSNParser;
 use PerconaTest;
 
-use Test::More tests => 161;
+use Test::More tests => 162;
 my $o  = new OptionParser(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>",
@@ -1736,7 +1736,7 @@ is_deeply(
    {
       A => undef,
       D => 'test',
-      F => undef,
+      F =>undef,
       P => '12346',
       S => undef,
       h => '127.1',
@@ -1746,6 +1746,47 @@ is_deeply(
    'Copies DSN values correctly (issue 460)'
 );
 
+# Test DSN can be repeatable
+$o = new OptionParser(
+   description  => 'OptionParser.t parses command line options.',
+   usage        => "$PROGRAM_NAME <options>"
+);
+# Hack DSNParser into OptionParser.  This is just for testing.
+$o->{DSNParser} = $dp;
+$o->_parse_specs(
+   { spec  => 'rep=d',   desc  => 'source', attributes => { repeatable => 1},  },
+);
+@ARGV = (
+   '--rep', 'h=127.1,P=12345,D=test,u=bob,p=foo', '--rep', 'h=127.1,P=12346',
+);
+$o->get_opts();
+my $ddest_dsn = $o->get('rep');
+is_deeply(
+   $ddest_dsn,
+    [
+     {
+       A => undef,
+       u => 'bob',
+       D => 'test',
+       h => '127.1',
+       P => '12345',
+       S => undef,
+       p => 'foo',
+       F => undef
+     },
+     {
+       p => undef,
+       F => undef,
+       u => undef,
+       D => undef,
+       A => undef,
+       P => '12346',
+       S => undef,
+       h => '127.1'
+     }
+    ],
+   'DSN type can be repeatable'
+);
 # #############################################################################
 # Issue 248: Add --user, --pass, --host, etc to all tools
 # #############################################################################
