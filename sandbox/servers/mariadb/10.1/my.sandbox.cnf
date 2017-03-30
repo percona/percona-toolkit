@@ -26,4 +26,4 @@ log-error                  = /tmp/PORT/data/mysqld.log
 innodb_lock_wait_timeout   = 3
 general_log
 general_log_file           = genlog
-performance_schema         = on
+performance_schema         = ON
