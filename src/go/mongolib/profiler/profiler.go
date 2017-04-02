@@ -72,6 +72,7 @@ type Profile struct {
 	stats         []Stat
 	keyFilters    []string
 	fingerprinter fingerprinter.Fingerprinter
+	running       bool
 }
 
 func NewProfiler(iterator Iter, filters []filter.Filter, ticker chan time.Time, fp fingerprinter.Fingerprinter) Profiler {
@@ -91,11 +92,16 @@ func (p *Profile) StatsChan() chan []Stat {
 }
 
 func (p *Profile) Start() {
-	go p.getData()
+	if !p.running {
+		p.running = true
+		go p.getData()
+	}
 }
 
 func (p *Profile) Stop() {
-	p.stopChan <- true
+	if p.running {
+		p.stopChan <- true
+	}
 }
 
 func (p *Profile) getData() {
@@ -165,10 +171,11 @@ func (p *Profile) getData() {
 	}
 
 	p.statsChan <- statsToArray(stats)
+	p.running = false
 }
 
 func statsToArray(stats map[StatsGroupKey]*Stat) []Stat {
-	sa := make([]Stat, len(stats))
+	sa := []Stat{}
 	for _, s := range stats {
 		sa = append(sa, *s)
 	}
