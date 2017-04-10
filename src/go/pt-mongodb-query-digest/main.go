@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -10,7 +9,6 @@ import (
 	"time"
 
 	"github.com/howeyc/gopass"
-	"github.com/montanaflynn/stats"
 	"github.com/pborman/getopt"
 	"github.com/percona/percona-toolkit/src/go/lib/config"
 	"github.com/percona/percona-toolkit/src/go/lib/versioncheck"
@@ -57,41 +55,6 @@ type options struct {
 	SSLPEMKeyFile   string
 	User            string
 	Version         bool
-}
-
-// This func receives a doc from the profiler and returns:
-// true : the document must be considered
-// false: the document must be skipped
-type docsFilter func(proto.SystemProfile) bool
-
-type statistics struct {
-	Pct    float64
-	Total  float64
-	Min    float64
-	Max    float64
-	Avg    float64
-	Pct95  float64
-	StdDev float64
-	Median float64
-}
-
-type queryInfo struct {
-	Count          int
-	Operation      string
-	Query          string
-	Fingerprint    string
-	FirstSeen      time.Time
-	ID             string
-	LastSeen       time.Time
-	Namespace      string
-	NoVersionCheck bool
-	QPS            float64
-	QueryTime      statistics
-	Rank           int
-	Ratio          float64
-	ResponseLength statistics
-	Returned       statistics
-	Scanned        statistics
 }
 
 func main() {
@@ -174,29 +137,28 @@ func main() {
 	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
 	prof := profiler.NewProfiler(i, filters, nil, fp)
 	prof.Start()
-	queries := <-prof.StatsChan()
-
-	queries = sortQueries(queries, opts.OrderBy)
+	queries := <-prof.QueriesChan()
 
 	uptime := uptime(session)
+	queriesStats := profiler.CalcQueriesStats(queries, uptime)
+	sortedQueryStats := sortQueries(queriesStats, opts.OrderBy)
 
 	printHeader(opts)
 
-	queryTotals := calcTotalQueryStats(queries, uptime)
+	queryTotals := profiler.CalcTotalQueriesStats(queries, uptime)
 	tt, _ := template.New("query").Funcs(template.FuncMap{
 		"Format": format,
 	}).Parse(getTotalsTemplate())
 	tt.Execute(os.Stdout, queryTotals)
 
-	queryStats := calcQueryStats(queries, uptime)
 	t, _ := template.New("query").Funcs(template.FuncMap{
 		"Format": format,
 	}).Parse(getQueryTemplate())
 
-	if opts.Limit > 0 && len(queryStats) > opts.Limit {
-		queryStats = queryStats[:opts.Limit]
+	if opts.Limit > 0 && len(sortedQueryStats) > opts.Limit {
+		sortedQueryStats = sortedQueryStats[:opts.Limit]
 	}
-	for _, qs := range queryStats {
+	for _, qs := range sortedQueryStats {
 		t.Execute(os.Stdout, qs)
 	}
 
@@ -236,128 +198,6 @@ func uptime(session pmgo.SessionManager) int64 {
 		return 0
 	}
 	return ss.Uptime
-}
-
-func calcTotalQueryStats(queries []profiler.Stat, uptime int64) queryInfo {
-	qi := queryInfo{}
-	qs := profiler.Stat{}
-	_, totalScanned, totalReturned, totalQueryTime, totalBytes := calcTotals(queries)
-	for _, query := range queries {
-		qs.NScanned = append(qs.NScanned, query.NScanned...)
-		qs.NReturned = append(qs.NReturned, query.NReturned...)
-		qs.QueryTime = append(qs.QueryTime, query.QueryTime...)
-		qs.ResponseLength = append(qs.ResponseLength, query.ResponseLength...)
-		qi.Count += query.Count
-	}
-
-	qi.Scanned = calcStats(qs.NScanned)
-	qi.Returned = calcStats(qs.NReturned)
-	qi.QueryTime = calcStats(qs.QueryTime)
-	qi.ResponseLength = calcStats(qs.ResponseLength)
-
-	if totalScanned > 0 {
-		qi.Scanned.Pct = qi.Scanned.Total * 100 / totalScanned
-	}
-	if totalReturned > 0 {
-		qi.Returned.Pct = qi.Returned.Total * 100 / totalReturned
-	}
-	if totalQueryTime > 0 {
-		qi.QueryTime.Pct = qi.QueryTime.Total * 100 / totalQueryTime
-	}
-	if totalBytes > 0 {
-		qi.ResponseLength.Pct = qi.ResponseLength.Total / totalBytes
-	}
-	if qi.Returned.Total > 0 {
-		qi.Ratio = qi.Scanned.Total / qi.Returned.Total
-	}
-
-	return qi
-}
-
-func calcQueryStats(queries []profiler.Stat, uptime int64) []queryInfo {
-	queryStats := []queryInfo{}
-	_, totalScanned, totalReturned, totalQueryTime, totalBytes := calcTotals(queries)
-	for rank, query := range queries {
-		buf, _ := json.Marshal(query.Query)
-		qi := queryInfo{
-			Rank:           rank,
-			Count:          query.Count,
-			ID:             query.ID,
-			Operation:      query.Operation,
-			Query:          string(buf),
-			Fingerprint:    query.Fingerprint,
-			Scanned:        calcStats(query.NScanned),
-			Returned:       calcStats(query.NReturned),
-			QueryTime:      calcStats(query.QueryTime),
-			ResponseLength: calcStats(query.ResponseLength),
-			FirstSeen:      query.FirstSeen,
-			LastSeen:       query.LastSeen,
-			Namespace:      query.Namespace,
-			QPS:            float64(query.Count) / float64(uptime),
-		}
-		if totalScanned > 0 {
-			qi.Scanned.Pct = qi.Scanned.Total * 100 / totalScanned
-		}
-		if totalReturned > 0 {
-			qi.Returned.Pct = qi.Returned.Total * 100 / totalReturned
-		}
-		if totalQueryTime > 0 {
-			qi.QueryTime.Pct = qi.QueryTime.Total * 100 / totalQueryTime
-		}
-		if totalBytes > 0 {
-			qi.ResponseLength.Pct = qi.ResponseLength.Total / totalBytes
-		}
-		if qi.Returned.Total > 0 {
-			qi.Ratio = qi.Scanned.Total / qi.Returned.Total
-		}
-		queryStats = append(queryStats, qi)
-	}
-	return queryStats
-}
-
-func getTotals(queries []profiler.Stat) profiler.Stat {
-
-	qt := profiler.Stat{}
-	for _, query := range queries {
-		qt.NScanned = append(qt.NScanned, query.NScanned...)
-		qt.NReturned = append(qt.NReturned, query.NReturned...)
-		qt.QueryTime = append(qt.QueryTime, query.QueryTime...)
-		qt.ResponseLength = append(qt.ResponseLength, query.ResponseLength...)
-	}
-	return qt
-
-}
-
-func calcTotals(queries []profiler.Stat) (totalCount int, totalScanned, totalReturned, totalQueryTime, totalBytes float64) {
-
-	for _, query := range queries {
-		totalCount += query.Count
-
-		scanned, _ := stats.Sum(query.NScanned)
-		totalScanned += scanned
-
-		returned, _ := stats.Sum(query.NReturned)
-		totalReturned += returned
-
-		queryTime, _ := stats.Sum(query.QueryTime)
-		totalQueryTime += queryTime
-
-		bytes, _ := stats.Sum(query.ResponseLength)
-		totalBytes += bytes
-	}
-	return
-}
-
-func calcStats(samples []float64) statistics {
-	var s statistics
-	s.Total, _ = stats.Sum(samples)
-	s.Min, _ = stats.Min(samples)
-	s.Max, _ = stats.Max(samples)
-	s.Avg, _ = stats.Mean(samples)
-	s.Pct95, _ = stats.PercentileNearestRank(samples, 95)
-	s.StdDev, _ = stats.StandardDeviation(samples)
-	s.Median, _ = stats.Median(samples)
-	return s
 }
 
 func getOptions() (*options, error) {
@@ -505,15 +345,15 @@ func getTotalsTemplate() string {
 	return t
 }
 
-type lessFunc func(p1, p2 *profiler.Stat) bool
+type lessFunc func(p1, p2 *profiler.QueryStats) bool
 
 type multiSorter struct {
-	queries []profiler.Stat
+	queries []profiler.QueryStats
 	less    []lessFunc
 }
 
 // Sort sorts the argument slice according to the less functions passed to OrderedBy.
-func (ms *multiSorter) Sort(queries []profiler.Stat) {
+func (ms *multiSorter) Sort(queries []profiler.QueryStats) {
 	ms.queries = queries
 	sort.Sort(ms)
 }
@@ -562,82 +402,62 @@ func (ms *multiSorter) Less(i, j int) bool {
 	return ms.less[k](p, q)
 }
 
-func sortQueries(queries []profiler.Stat, orderby []string) []profiler.Stat {
+func sortQueries(queries []profiler.QueryStats, orderby []string) []profiler.QueryStats {
 	sortFuncs := []lessFunc{}
 	for _, field := range orderby {
 		var f lessFunc
 		switch field {
 		//
 		case "count":
-			f = func(c1, c2 *profiler.Stat) bool {
+			f = func(c1, c2 *profiler.QueryStats) bool {
 				return c1.Count < c2.Count
 			}
 		case "-count":
-			f = func(c1, c2 *profiler.Stat) bool {
+			f = func(c1, c2 *profiler.QueryStats) bool {
 				return c1.Count > c2.Count
 			}
 
 		case "ratio":
-			f = func(c1, c2 *profiler.Stat) bool {
-				ns1, _ := stats.Max(c1.NScanned)
-				ns2, _ := stats.Max(c2.NScanned)
-				nr1, _ := stats.Max(c1.NReturned)
-				nr2, _ := stats.Max(c2.NReturned)
-				ratio1 := ns1 / nr1
-				ratio2 := ns2 / nr2
+			f = func(c1, c2 *profiler.QueryStats) bool {
+				ratio1 := c1.Scanned.Max / c1.Returned.Max
+				ratio2 := c2.Scanned.Max / c2.Returned.Max
 				return ratio1 < ratio2
 			}
 		case "-ratio":
-			f = func(c1, c2 *profiler.Stat) bool {
-				ns1, _ := stats.Max(c1.NScanned)
-				ns2, _ := stats.Max(c2.NScanned)
-				nr1, _ := stats.Max(c1.NReturned)
-				nr2, _ := stats.Max(c2.NReturned)
-				ratio1 := ns1 / nr1
-				ratio2 := ns2 / nr2
+			f = func(c1, c2 *profiler.QueryStats) bool {
+				ratio1 := c1.Scanned.Max / c1.Returned.Max
+				ratio2 := c2.Scanned.Max / c2.Returned.Max
 				return ratio1 > ratio2
 			}
 
 		//
 		case "query-time":
-			f = func(c1, c2 *profiler.Stat) bool {
-				qt1, _ := stats.Max(c1.QueryTime)
-				qt2, _ := stats.Max(c2.QueryTime)
-				return qt1 < qt2
+			f = func(c1, c2 *profiler.QueryStats) bool {
+				return c1.QueryTime.Max < c2.QueryTime.Max
 			}
 		case "-query-time":
-			f = func(c1, c2 *profiler.Stat) bool {
-				qt1, _ := stats.Max(c1.QueryTime)
-				qt2, _ := stats.Max(c2.QueryTime)
-				return qt1 > qt2
+			f = func(c1, c2 *profiler.QueryStats) bool {
+				return c1.QueryTime.Max > c2.QueryTime.Max
 			}
 
 		//
 		case "docs-scanned":
-			f = func(c1, c2 *profiler.Stat) bool {
-				ns1, _ := stats.Max(c1.NScanned)
-				ns2, _ := stats.Max(c2.NScanned)
-				return ns1 < ns2
+			f = func(c1, c2 *profiler.QueryStats) bool {
+				return c1.Scanned.Max < c2.Scanned.Max
 			}
 		case "-docs-scanned":
-			f = func(c1, c2 *profiler.Stat) bool {
-				ns1, _ := stats.Max(c1.NScanned)
-				ns2, _ := stats.Max(c2.NScanned)
-				return ns1 > ns2
+			f = func(c1, c2 *profiler.QueryStats) bool {
+				return c1.Scanned.Max > c2.Scanned.Max
 			}
 
 		//
 		case "docs-returned":
-			f = func(c1, c2 *profiler.Stat) bool {
-				nr1, _ := stats.Max(c1.NReturned)
-				nr2, _ := stats.Max(c2.NReturned)
-				return nr1 < nr2
+			f = func(c1, c2 *profiler.QueryStats) bool {
+				return c1.Returned.Max < c2.Scanned.Max
 			}
 		case "-docs-returned":
-			f = func(c1, c2 *profiler.Stat) bool {
-				nr1, _ := stats.Max(c1.NReturned)
-				nr2, _ := stats.Max(c2.NReturned)
-				return nr1 > nr2
+			f = func(c1, c2 *profiler.QueryStats) bool {
+				return c1.Returned.Max > c2.Scanned.Max
 			}
 		}
 		// count,query-time,docs-scanned, docs-returned. - in front of the field name denotes reverse order.")
