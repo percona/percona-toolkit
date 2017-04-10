@@ -50,21 +50,27 @@ type Profiler interface {
 	GetLastError() error
 	QueriesChan() chan []QueryInfoAndCounters
 	TimeoutsChan() <-chan time.Time
+	ProcessDoc(proto.SystemProfile, map[StatsGroupKey]*QueryInfoAndCounters) error
 	Start()
 	Stop()
 }
 
 type Profile struct {
-	filters                []filter.Filter
-	iterator               pmgo.IterManager
-	ticker                 <-chan time.Time
-	queriesChan            chan []QueryInfoAndCounters
-	stopChan               chan bool
-	docsChan               chan proto.SystemProfile
-	timeoutsChan           chan time.Time
+	filters      []filter.Filter
+	iterator     pmgo.IterManager
+	ticker       <-chan time.Time
+	queriesChan  chan []QueryInfoAndCounters
+	stopChan     chan bool
+	docsChan     chan proto.SystemProfile
+	timeoutsChan chan time.Time
+	// For the moment ProcessDoc is exportable to it could be called from the "outside"
+	// For that reason, we need a mutex to make it thread safe. In the future this func
+	// will be unexported
+	countersMapLock        sync.Mutex
 	queriesInfoAndCounters map[StatsGroupKey]*QueryInfoAndCounters
 	keyFilters             []string
 	fingerprinter          fingerprinter.Fingerprinter
+	lock                   sync.Mutex
 	running                bool
 	lastError              error
 	stopWaitGroup          sync.WaitGroup
@@ -142,6 +148,8 @@ func (p *Profile) QueriesChan() chan []QueryInfoAndCounters {
 }
 
 func (p *Profile) Start() {
+	p.lock.Lock()
+	defer p.lock.Unlock()
 	if !p.running {
 		p.running = true
 		p.stopChan = make(chan bool)
@@ -150,15 +158,15 @@ func (p *Profile) Start() {
 }
 
 func (p *Profile) Stop() {
+	p.lock.Lock()
+	defer p.lock.Unlock()
 	if p.running {
 		select {
 		case p.stopChan <- true:
 		default:
 		}
-		close(p.timeoutsChan)
 		// Wait for getData to receive the stop signal
 		p.stopWaitGroup.Wait()
-		p.iterator.Close()
 	}
 }
 
@@ -180,6 +188,7 @@ MAIN_GETDATA_LOOP:
 			p.queriesChan <- mapToArray(p.queriesInfoAndCounters)
 			p.queriesInfoAndCounters = make(map[StatsGroupKey]*QueryInfoAndCounters) // Reset stats
 		case <-p.stopChan:
+			// Close the iterator to break the loop on getDocs
 			p.iterator.Close()
 			break MAIN_GETDATA_LOOP
 		}
@@ -212,10 +221,7 @@ func (p *Profile) getDocs() {
 		}
 	}
 	p.queriesChan <- mapToArray(p.queriesInfoAndCounters)
-	select {
-	case p.stopChan <- true:
-	default:
-	}
+	p.Stop()
 }
 
 func (p *Profile) ProcessDoc(doc proto.SystemProfile, stats map[StatsGroupKey]*QueryInfoAndCounters) error {
@@ -226,12 +232,15 @@ func (p *Profile) ProcessDoc(doc proto.SystemProfile, stats map[StatsGroupKey]*Q
 	}
 	var s *QueryInfoAndCounters
 	var ok bool
+	p.countersMapLock.Lock()
+	defer p.countersMapLock.Unlock()
+
 	key := StatsGroupKey{
 		Operation:   doc.Op,
 		Fingerprint: fp,
 		Namespace:   doc.Ns,
 	}
-	if s, ok = p.queriesInfoAndCounters[key]; !ok {
+	if s, ok = stats[key]; !ok {
 		realQuery, _ := util.GetQueryField(doc.Query)
 		s = &QueryInfoAndCounters{
 			ID:          fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s", key)))),
@@ -241,7 +250,7 @@ func (p *Profile) ProcessDoc(doc proto.SystemProfile, stats map[StatsGroupKey]*Q
 			TableScan:   false,
 			Query:       realQuery,
 		}
-		p.queriesInfoAndCounters[key] = s
+		stats[key] = s
 	}
 	s.Count++
 	s.NScanned = append(s.NScanned, float64(doc.DocsExamined))

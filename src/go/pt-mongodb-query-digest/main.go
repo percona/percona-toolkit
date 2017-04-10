@@ -140,6 +140,7 @@ func main() {
 	queries := <-prof.QueriesChan()
 
 	uptime := uptime(session)
+
 	queriesStats := profiler.CalcQueriesStats(queries, uptime)
 	sortedQueryStats := sortQueries(queriesStats, opts.OrderBy)
 
