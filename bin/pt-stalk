@@ -865,7 +865,7 @@ collect() {
       local strace_pid=$!
    fi
 
-   ps -eaf  >> "$d/$p-ps"  &
+   ps -eaF  >> "$d/$p-ps"  &
    top -bn${OPT_RUN_TIME} >> "$d/$p-top" &
 
    [ "$mysqld_pid" ] && _lsof $mysqld_pid >> "$d/$p-lsof" &
@@ -956,7 +956,6 @@ collect() {
          (echo $ts; transactions) >>"$d/$p-transactions" &
       fi
 
-      echo "$ps_instrumentation_enabled" > /tmp/k1
       if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes" ]; then
          ps_locks_transactions "$d/$p-ps-locks-transactions"
       fi
@@ -1148,6 +1147,7 @@ slave_status() {
       echo -e "\n$sql\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
    fi
+
 }
 
 collect_mysql_variables() {
@@ -1168,6 +1168,7 @@ collect_mysql_variables() {
    sql="select * from performance_schema.status_by_thread order by thread_id, variable_name; "
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+
 }
 
 # ###########################################################################
