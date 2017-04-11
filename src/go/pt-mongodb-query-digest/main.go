@@ -70,7 +70,8 @@ func main() {
 
 	logLevel, err := log.ParseLevel(opts.LogLevel)
 	if err != nil {
-		fmt.Errorf("cannot set log level: %s", err.Error())
+		fmt.Printf("Cannot set log level: %s", err.Error())
+		os.Exit(1)
 	}
 	log.SetLevel(logLevel)
 
@@ -113,7 +114,7 @@ func main() {
 		os.Exit(4)
 	}
 
-	if isProfilerEnabled == false {
+	if !isProfilerEnabled {
 		count, err := systemProfileDocsCount(session, di.Database)
 		if err != nil || count == 0 {
 			log.Error("Profiler is not enabled")

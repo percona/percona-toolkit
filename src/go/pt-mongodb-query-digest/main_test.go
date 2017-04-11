@@ -72,14 +72,6 @@ func TestParseArgs(t *testing.T) {
 		{
 			args: []string{TOOLNAME, "zapp.brannigan.net:27018/samples", "--help"},
 			want: nil,
-			//want: &options{
-			//	Host:            "zapp.brannigan.net:27018/samples",
-			//	LogLevel:        DEFAULT_LOGLEVEL,
-			//	OrderBy:         strings.Split(DEFAULT_ORDERBY, ","),
-			//	SkipCollections: strings.Split(DEFAULT_SKIPCOLLECTIONS, ","),
-			//	AuthDB:          DEFAULT_AUTHDB,
-			//	Help:            true,
-			//},
 		},
 		{
 			args: []string{TOOLNAME, "zapp.brannigan.net:27018/samples"},
