@@ -489,7 +489,7 @@ func isProfilerEnabled(dialer pmgo.Dialer, di *pmgo.DialInfo) (bool, error) {
 
 		isReplicaEnabled := isReplicasetEnabled(session)
 
-		if member.StateStr == "configsvr" {
+		if strings.ToLower(member.StateStr) == "configsvr" {
 			continue
 		}
 
@@ -499,6 +499,7 @@ func isProfilerEnabled(dialer pmgo.Dialer, di *pmgo.DialInfo) (bool, error) {
 		if err := session.DB(di.Database).Run(bson.M{"profile": -1}, &ps); err != nil {
 			continue
 		}
+
 		if ps.Was == 0 {
 			return false, nil
 		}
