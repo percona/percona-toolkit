@@ -1,0 +1,53 @@
+{
+  "ID": "",
+  "Namespace": "",
+  "Operation": "",
+  "Query": "null",
+  "Fingerprint": "",
+  "FirstSeen": "0001-01-01T00:00:00Z",
+  "LastSeen": "0001-01-01T00:00:00Z",
+  "Count": 0,
+  "QPS": 0,
+  "Rank": 0,
+  "Ratio": 134.33333333333334,
+  "QueryTime": {
+    "Pct": 100,
+    "Total": 7,
+    "Min": 0,
+    "Max": 7,
+    "Avg": 2.3333333333333335,
+    "Pct95": 7,
+    "StdDev": 3.2998316455372216,
+    "Median": 0
+  },
+  "ResponseLength": {
+    "Pct": 1,
+    "Total": 1061660,
+    "Min": 215,
+    "Max": 1061230,
+    "Avg": 353886.6666666667,
+    "Pct95": 1061230,
+    "StdDev": 500167.26762709644,
+    "Median": 215
+  },
+  "Returned": {
+    "Pct": 100,
+    "Total": 75,
+    "Min": 0,
+    "Max": 75,
+    "Avg": 25,
+    "Pct95": 75,
+    "StdDev": 35.35533905932738,
+    "Median": 0
+  },
+  "Scanned": {
+    "Pct": 100,
+    "Total": 10075,
+    "Min": 0,
+    "Max": 10000,
+    "Avg": 3358.3333333333335,
+    "Pct95": 10000,
+    "StdDev": 4696.46734850308,
+    "Median": 75
+  }
+}

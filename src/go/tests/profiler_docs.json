@@ -1,0 +1,164 @@
+[
+    {
+        "AllUsers": [],
+        "Client": "127.0.0.1",
+        "CursorExhausted": false,
+        "DocsExamined": 100,
+        "ExecStats": {
+            "Advanced": 75,
+            "ExecutionTimeMillisEstimate": 0,
+            "InputStage": {
+                "Advanced": 0,
+                "Direction": "",
+                "DocsExamined": 0,
+                "ExecutionTimeMillisEstimate": 0,
+                "Filter": {
+                    "Date": {
+                        "Eq": ""
+                    }
+                },
+                "Invalidates": 0,
+                "IsEOF": 0,
+                "NReturned": 0,
+                "NeedTime": 0,
+                "NeedYield": 0,
+                "RestoreState": 0,
+                "SaveState": 0,
+                "Stage": "",
+                "Works": 0
+            },
+            "Invalidates": 0,
+            "IsEOF": 0,
+            "LimitAmount": 0,
+            "NReturned": 50,
+            "NeedTime": 1,
+            "NeedYield": 0,
+            "RestoreState": 0,
+            "SaveState": 1,
+            "Stage": "COLLSCAN",
+            "Works": 76
+        },
+        "KeyUpdates": 0,
+        "KeysExamined": 0,
+        "Locks": {
+            "Collection": {
+                "AcquireCount": {
+                    "R": 0
+                }
+            },
+            "Database": {
+                "AcquireCount": {
+                    "R": 1
+                }
+            },
+            "Global": {
+                "AcquireCount": {
+                    "R": 2
+                }
+            },
+            "MMAPV1Journal": {
+                "AcquireCount": {
+                    "R": 0
+                }
+            }
+        },
+        "Millis": 0,
+        "Nreturned": 50,
+        "Ns": "samples.col1",
+        "NumYield": 0,
+        "Op": "query",
+        "Protocol": "op_command",
+        "Query": {
+            "find": "col1",
+            "shardVersion": [
+                0,
+                "000000000000000000000000"
+            ]
+        },
+        "ResponseLength": 1061230,
+        "Ts": "2017-04-01T23:01:20.214+00:00",
+        "User": "",
+        "WriteConflicts": 0
+    },
+    {
+        "AllUsers": [],
+        "Client": "127.0.0.1",
+        "CursorExhausted": false,
+        "DocsExamined": 75,
+        "ExecStats": {
+            "Advanced": 75,
+            "ExecutionTimeMillisEstimate": 0,
+            "InputStage": {
+                "Advanced": 0,
+                "Direction": "",
+                "DocsExamined": 0,
+                "ExecutionTimeMillisEstimate": 0,
+                "Filter": {
+                    "Date": {
+                        "Eq": ""
+                    }
+                },
+                "Invalidates": 0,
+                "IsEOF": 0,
+                "NReturned": 0,
+                "NeedTime": 0,
+                "NeedYield": 0,
+                "RestoreState": 0,
+                "SaveState": 0,
+                "Stage": "",
+                "Works": 0
+            },
+            "Invalidates": 0,
+            "IsEOF": 0,
+            "LimitAmount": 0,
+            "NReturned": 75,
+            "NeedTime": 1,
+            "NeedYield": 0,
+            "RestoreState": 0,
+            "SaveState": 1,
+            "Stage": "COLLSCAN",
+            "Works": 76
+        },
+        "KeyUpdates": 0,
+        "KeysExamined": 0,
+        "Locks": {
+            "Collection": {
+                "AcquireCount": {
+                    "R": 0
+                }
+            },
+            "Database": {
+                "AcquireCount": {
+                    "R": 1
+                }
+            },
+            "Global": {
+                "AcquireCount": {
+                    "R": 2
+                }
+            },
+            "MMAPV1Journal": {
+                "AcquireCount": {
+                    "R": 0
+                }
+            }
+        },
+        "Millis": 1,
+        "Nreturned": 75,
+        "Ns": "samples.col1",
+        "NumYield": 0,
+        "Op": "query",
+        "Protocol": "op_command",
+        "Query": {
+            "find": "col1",
+            "shardVersion": [
+                0,
+                "000000000000000000000000"
+            ]
+        },
+        "ResponseLength": 1061230,
+        "Ts": "2017-04-01T23:01:19.914+00:00",
+        "User": "",
+        "WriteConflicts": 0
+    }
+]

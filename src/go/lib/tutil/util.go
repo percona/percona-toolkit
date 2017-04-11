@@ -8,6 +8,10 @@ import (
 	"strings"
 )
 
+const (
+	updateSamplesEnvVar = "UPDATE_SAMPLES"
+)
+
 func RootPath() (string, error) {
 	out, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
 	if err != nil {
@@ -42,14 +46,21 @@ func LoadJson(filename string, destination interface{}) error {
 
 func WriteJson(filename string, data interface{}) error {
 
-	buf, err := json.Marshal(data)
+	buf, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(filename, buf, 0)
+	err = ioutil.WriteFile(filename, buf, 777)
 	if err != nil {
 		return err
 	}
 	return nil
 
+}
+
+func ShouldUpdateSamples() bool {
+	if os.Getenv(updateSamplesEnvVar) != "" {
+		return true
+	}
+	return false
 }
