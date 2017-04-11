@@ -467,3 +467,87 @@ func TestProcessDoc(t *testing.T) {
 		t.Errorf("Error in ProcessDoc.\nGot:%#v\nWant: %#v\n", stats, want)
 	}
 }
+
+func TestTimesLen(t *testing.T) {
+	tests := []struct {
+		name string
+		a    times
+		want int
+	}{
+		{
+			name: "Times.Len",
+			a:    []time.Time{time.Now()},
+			want: 1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.a.Len(); got != tt.want {
+				t.Errorf("times.Len() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTimesSwap(t *testing.T) {
+	type args struct {
+		i int
+		j int
+	}
+	t1 := time.Now()
+	t2 := t1.Add(1 * time.Minute)
+	tests := []struct {
+		name string
+		a    times
+		args args
+	}{
+		{
+			name: "Times.Swap",
+			a:    times{t1, t2},
+			args: args{i: 0, j: 1},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.a.Swap(tt.args.i, tt.args.j)
+			if tt.a[0] != t2 || tt.a[1] != t1 {
+				t.Errorf("%s has (%v, %v) want (%v, %v)", tt.name, tt.a[0], tt.a[1], t2, t1)
+			}
+		})
+	}
+}
+
+func TestTimesLess(t *testing.T) {
+	type args struct {
+		i int
+		j int
+	}
+	t1 := time.Now()
+	t2 := t1.Add(1 * time.Minute)
+	tests := []struct {
+		name string
+		a    times
+		args args
+		want bool
+	}{
+		{
+			name: "Times.Swap",
+			a:    times{t1, t2},
+			args: args{i: 0, j: 1},
+			want: true,
+		},
+		{
+			name: "Times.Swap",
+			a:    times{t2, t1},
+			args: args{i: 0, j: 1},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.a.Less(tt.args.i, tt.args.j); got != tt.want {
+				t.Errorf("times.Less() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
