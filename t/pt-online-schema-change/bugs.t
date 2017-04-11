@@ -602,6 +602,29 @@ is(
 
 $master_dbh->do("DROP DATABASE IF EXISTS test");
 
+# Test for --skip-check-slave-lag
+# Use the same files from previous test because for this test we are going to
+# run a nonop so, any file will work
+$master_dbh->do("DROP DATABASE IF EXISTS test");
+
+$sb->load_file('master', "$sample/bug-1613915.sql");
+$output = output(
+   sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=o1",
+         '--execute', 
+         '--alter', "ENGINE=INNODB",
+         '--skip-check-slave-lag', "h=127.0.0.1,P=".$sb->port_for('slave1'),
+         ),
+      },
+);
+
+my $skipping_str = "Skipping.*".$sb->port_for('slave1');
+like(
+      $output,
+      qr/$skipping_str/s,
+      "--skip-check-slave-lag",
+);
+
+$master_dbh->do("DROP DATABASE IF EXISTS test");
 
 # #############################################################################
 # Done.
