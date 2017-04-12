@@ -8519,7 +8519,8 @@ sub main {
                      }
                  }
                  if ($found) {
-                    printf("Skipping slave %s -> %s:%s\n", $cxn->name(), $cxn->{dsn}->{h}, $cxn->{dsn}->{P});
+                    printf("Skipping slave %s -> %s:%s\n", $slave->name(), $slave->{dsn}->{h}, $slave->{dsn}->{P});
+                 } else {
                     push @$filtered_slaves, $slave;
                  }
              }

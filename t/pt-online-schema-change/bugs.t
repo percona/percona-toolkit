@@ -626,6 +626,26 @@ like(
 
 $master_dbh->do("DROP DATABASE IF EXISTS test");
 
+# Use the same data than the previous test
+$master_dbh->do("DROP DATABASE IF EXISTS test");
+
+$sb->load_file('master', "$sample/bug-1613915.sql");
+$output = output(
+   sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=o1",
+         '--execute', 
+         '--alter', "ADD COLUMN c INT",
+         '--chunk-size', '10',
+         '--skip-check-slave-lag', "h=127.0.0.1,P=".$sb->port_for('slave1'),
+         ),
+      },
+);
+
+$output = output(
+   sub { pt_table_checksum::main(@args, 
+         '--skip-check-slave-lag', "h=127.0.0.1,P=".$sb->port_for('slave1'),
+         ),
+      },
+);
 # #############################################################################
 # Done.
 # #############################################################################

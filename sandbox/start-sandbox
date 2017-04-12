@@ -39,7 +39,9 @@ make_sandbox() {
    rm -rf /tmp/$port || die "Failed to rm /tmp/$port"
    mkdir /tmp/$port  || die "Failed to mkdir /tmp/$port"
    cp $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/my.sandbox.cnf /tmp/$port
-   tar xzf $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/data.tar.gz -C /tmp/$port
+   if [ -e $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/data.tar.gz ]; then
+      tar xzf $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/data.tar.gz -C /tmp/$port
+   fi
 
    for script in "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/"*; do
       if [ -f $script ]; then
@@ -244,6 +246,7 @@ else
 fi
 
 APP="${FORK:-"mysql"}"
+echo "APP $APP" > /home/karl/k
 
 if [ $type = "cluster" -o $APP = "pxc" ]; then
 # disabled for now because used perl module is not available everywhere and in some distros it returns ipv6 address
@@ -253,6 +256,7 @@ if [ $type = "cluster" -o $APP = "pxc" ]; then
 else
    version=`$PERCONA_TOOLKIT_SANDBOX/$mysqld -V 2>/dev/null | awk '{print $3}' | cut -d. -f 1,2`;
 fi
+echo "version $version" >> /home/karl/k
 
 if [ ! -d "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version" ]; then
    die "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version does not exist."

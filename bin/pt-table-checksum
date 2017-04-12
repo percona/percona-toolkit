@@ -9681,10 +9681,31 @@ sub main {
             0;
          }
          else {
-            PTDEBUG && _d('Will check slave lag on', $slave_cxn->name());
+            PTDEBUG && _d('May check slave lag on', $slave_cxn->name());
             $slave_cxn;
          }
       } @$slave_lag_cxns;
+
+      if ( $slave_lag_cxns && scalar @$slave_lag_cxns ) {
+         if ($o->get('skip-check-slave-lag')) {
+             my $slaves_to_skip = $o->get('skip-check-slave-lag');
+             my $filtered_slaves = [];
+             for my $slave (@$slave_lag_cxns) {
+                 my $found=0;
+                 for my $slave_to_skip (@$slaves_to_skip) {
+                     if ($slave->{dsn}->{h} eq $slave_to_skip->{h} && $slave->{dsn}->{P} eq $slave_to_skip->{P}) {
+                         $found=1;
+                     }
+                 }
+                 if ($found) {
+                    printf("Skipping slave %s -> %s:%s\n", $slave->name(), $slave->{dsn}->{h}, $slave->{dsn}->{P});
+                 } else {
+                    push @$filtered_slaves, $slave;
+                }
+             }
+             $slave_lag_cxns = $filtered_slaves;
+         }
+      }
 
       # #####################################################################
       # Possibly check replication slaves and exit.
@@ -12700,6 +12721,13 @@ type: string; default: #
 
 The separator character used for CONCAT_WS().  This character is used to join
 the values of columns when checksumming.
+
+=item --skip-check-slave-lag
+
+type: DSN; repeatable: yes
+
+DSN to skip when checking slave lag. It can be used multiple times.
+Example: --skip-check-slave-lag h=127.1,P=12345 --skip-check-slave-lag h=127.1,P=12346
 
 =item --slave-user
 
