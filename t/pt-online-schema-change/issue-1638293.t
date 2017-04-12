@@ -22,6 +22,10 @@ require "$trunk/bin/pt-online-schema-change";
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 
+if ( !$sb->is_cluster_mode ) {
+   plan skip_all => 'Only for PXC',
+}
+
 my ($master_dbh, $master_dsn) = $sb->start_sandbox(
    server => 'cmaster',
    type   => 'master',
