@@ -12,6 +12,10 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+var (
+	CANNOT_GET_QUERY_ERROR = errors.New("cannot get query field from the profile document (it is not a map)")
+)
+
 func GetReplicasetMembers(dialer pmgo.Dialer, di *pmgo.DialInfo) ([]proto.Members, error) {
 	hostnames, err := GetHostnames(dialer, di)
 	if err != nil {
@@ -231,4 +235,23 @@ func GetServerStatus(dialer pmgo.Dialer, di *pmgo.DialInfo, hostname string) (pr
 	}
 
 	return ss, nil
+}
+
+func GetQueryField(query map[string]interface{}) (map[string]interface{}, error) {
+	// MongoDB 3.0
+	if squery, ok := query["$query"]; ok {
+		// just an extra check to ensure this type assertion won't fail
+		if ssquery, ok := squery.(map[string]interface{}); ok {
+			return ssquery, nil
+		}
+		return nil, CANNOT_GET_QUERY_ERROR
+	}
+	// MongoDB 3.2+
+	if squery, ok := query["filter"]; ok {
+		if ssquery, ok := squery.(map[string]interface{}); ok {
+			return ssquery, nil
+		}
+		return nil, CANNOT_GET_QUERY_ERROR
+	}
+	return query, nil
 }
