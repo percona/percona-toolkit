@@ -59,7 +59,6 @@ sub reset_repl_db {
    $master_dbh->do("use $repl_db");
 }
 
-
 # ############################################################################
 # Default checksum and results.  The tool does not technically require any
 # options on well-configured systems (which the test env cannot be).  With

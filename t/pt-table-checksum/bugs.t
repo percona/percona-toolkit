@@ -184,9 +184,9 @@ $output = output(
 
 chomp($output);
 
-like(
+is(
    $output,
-   qr/Checking lag on h=127.0.0.1,P=12346 -> 127.0.0.1:12346/,
+   '',
    "Bug 1074179: ignore-tables-regex works with --replicate-check-only"
 );
 # #############################################################################

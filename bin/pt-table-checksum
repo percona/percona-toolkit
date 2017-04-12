@@ -9707,14 +9707,6 @@ sub main {
          }
       }
 
-      if ( $slave_lag_cxns && scalar @$slave_lag_cxns ) {
-         for my $slave (@$slave_lag_cxns) {
-            printf("Checking lag on %s -> %s:%s\n", $slave->name(), $slave->{dsn}->{h}, $slave->{dsn}->{P});
-        }
-      } else {
-          print "Not checking slave lag because no slaves were found or they were set to be skipped\n";
-      }
-
       # #####################################################################
       # Possibly check replication slaves and exit.
       # #####################################################################
