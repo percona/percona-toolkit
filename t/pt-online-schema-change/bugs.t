@@ -602,6 +602,43 @@ is(
 
 $master_dbh->do("DROP DATABASE IF EXISTS test");
 
+
+
+
+
+$sb->load_file('master', "$sample/bug-1613915.sql");
+$output = output(
+   sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=o1",
+         '--execute', 
+         '--alter', "ADD COLUMN c INT COMMENT 'change plus more than one word'",
+         '--chunk-size', '10', '--no-check-alter',
+         ),
+      },
+);
+
+like(
+      $output,
+      qr/Successfully altered/s,
+      "recognize comments",
+);
+
+$rows = $master_dbh->selectrow_arrayref(
+   "SELECT COUNT(*) FROM test.o1");
+is(
+   $rows->[0],
+   100,
+   "recognize comments fields count"
+) or diag(Dumper($rows));
+
+$rows = $master_dbh->selectrow_arrayref("SHOW CREATE TABLE test.o1");
+like(
+      $rows->[1],
+      qr/COMMENT 'change plus more than one word'/,
+      "recognize comments",
+);
+
+$master_dbh->do("DROP DATABASE IF EXISTS test");
+
 # Test for --skip-check-slave-lag
 # Use the same files from previous test because for this test we are going to
 # run a nonop so, any file will work
@@ -624,8 +661,6 @@ like(
       "--skip-check-slave-lag",
 );
 
-$master_dbh->do("DROP DATABASE IF EXISTS test");
-
 # Use the same data than the previous test
 $master_dbh->do("DROP DATABASE IF EXISTS test");
 
@@ -640,12 +675,6 @@ $output = output(
       },
 );
 
-$output = output(
-   sub { pt_table_checksum::main(@args, 
-         '--skip-check-slave-lag', "h=127.0.0.1,P=".$sb->port_for('slave1'),
-         ),
-      },
-);
 # #############################################################################
 # Done.
 # #############################################################################

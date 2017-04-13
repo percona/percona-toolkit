@@ -10027,7 +10027,7 @@ sub find_renamed_cols {
    /x;
 
    my $table_ident  = qr/$unquoted_ident|`$quoted_ident`|"$ansi_quotes_ident"/;
-   my $alter_change_col_re = qr/\bCHANGE \s+ (?:COLUMN \s+)?
+   my $alter_change_col_re = qr/\bCHANGE \s+ (?:COLUMN \s+)? (?:COMMENT\s+[^\]['"].*?[^\]['"])?
                                     ($table_ident) \s+ ($table_ident)/ix;
 
    my %renames;
