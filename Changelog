@@ -1,5 +1,10 @@
 Changelog for Percona Toolkit
 
+v3.0.3
+
+ * Fixed bug PT-116 : pt-online-schema change eats data on adding a unique index
+
+
 v3.0.2 released 2017-03-23
 
  * Fixed bug PT-73  : pt-mongodb tools add support for SSL connections
