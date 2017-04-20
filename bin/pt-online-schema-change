@@ -8925,12 +8925,13 @@ sub main {
 
       if ( $o->get('check-alter') ) {
          check_alter(
-            tbl          => $orig_tbl,
-            alter        => $alter,
-            dry_run      => $o->get('dry-run'),
-            renamed_cols => $renamed_cols,
-            Cxn          => $cxn,
-            TableParser  => $tp,
+            tbl                   => $orig_tbl,
+            alter                 => $alter,
+            dry_run               => $o->get('dry-run'),
+            renamed_cols          => $renamed_cols,
+            Cxn                   => $cxn,
+            TableParser           => $tp,
+            got_use_insert_ignore => $o->got('use-insert-ignore'),
          );
       }
    }
@@ -9571,7 +9572,8 @@ sub main {
 
    # NibbleIterator combines these two statements and adds
    # "FROM $orig_table->{name} WHERE <nibble stuff>".
-   my $dml = "INSERT LOW_PRIORITY IGNORE INTO $new_tbl->{name} "
+   my $ignore = $o->get('use-insert-ignore') ? "IGNORE" : '';
+   my $dml = "INSERT LOW_PRIORITY $ignore INTO $new_tbl->{name} "
            . "(" . join(', ', map { $q->quote($_->{new}) } @common_cols) . ") "
            . "SELECT";
    my $select = join(', ', map { $q->quote($_->{old}) } @common_cols);
@@ -9908,11 +9910,11 @@ sub validate_tries {
 
 sub check_alter {
    my (%args) = @_;
-   my @required_args = qw(alter tbl dry_run Cxn TableParser);
+   my @required_args = qw(alter tbl dry_run Cxn TableParser got_use_insert_ignore);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless exists $args{$arg};
    }
-   my ($alter, $tbl, $dry_run, $cxn, $tp) = @args{@required_args};
+   my ($alter, $tbl, $dry_run, $cxn, $tp, $got_use_insert_ignore) = @args{@required_args};
 
    my $ok = 1;
 
@@ -9983,11 +9985,31 @@ sub check_alter {
       }
    }
 
+   # This regex matches unquoted strings in $1 and quoted strings in $2
+   # We need to loop through all matches in the alter string and check if the
+   # unquoted part has the string 'UNIQUE INDEX'
+   # We are doing this because the alter could be something like
+   # ADD KEY pk COMMENT "ADD UNIQUE KEY"
+   my $re = qr/([^"']*)?((?:"|\\"|'|\\').*?(?:"|\\"|'|\\'))?/i;
+   my $has_unique_index = 0;
+   while ( $alter =~ m/$re/g) {
+      if ($1 =~ m/UNIQUE INDEX/i) {
+          $has_unique_index = 1;
+      }
+   }
+   if ($has_unique_index && !$got_use_insert_ignore) {
+      $ok = 0;
+      warn "It seems like you are trying to add an UNIQUE INDEX.\n"
+         . "Since in some cases this could lead to data loss, you need to specify a value "
+         . "for the use-insert-ignore parameter.\n"
+         . "Please read the documentation and restart the program with the apropriate paramenters.\n";
+   }
+
    if ( !$ok ) {
       # check_alter.t relies on this output.
       die "--check-alter failed.\n";
    }
-
+   
    return;
 }
 
@@ -10957,6 +10979,7 @@ sub exec_nibble {
          # any pattern
          # use MySQL's message for this warning
       },
+      1062 => {},
    );
 
    return osc_retry(
@@ -11735,6 +11758,25 @@ documentation, then do not specify this option.
 =item --force
 
 This options bypasses confirmation in case of using alter-foreign-keys-method = none , which might break foreign key constraints.
+
+=item --[no]use-insert-ignore
+
+default: yes
+
+pt-online-schema-change by default use INSERT LOW_PRIORITY IGNORE statements to copy rows from the old table to the new one.
+In some cases, like when altering a table to add an unique index, using IGNORE may lead to data loss.
+Example:
+
+CREATE TABLE test.t1 (
+    id        TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    notunique VARCHAR(200) NOT NULL
+);
+
+INSERT INTO test.t1(notunique) VALUES('test01'),('test01'),('test02');
+
+If you run pt-online-schema-change --alter="ADD UNIQUE INDEX unique_1 (notunique)", when copying the second row to the new
+table, INSERT ... IGNORE will fail silently and that row won't be copied.
+In cas osc detects you are adding an UNIQUE index, you need to specify this option in the command line.
 
 =item --help
 
