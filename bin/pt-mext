@@ -573,7 +573,8 @@ NUM=1;
 
 # Split the output on empty lines and put each into a different file; eliminate
 # lines that don't have "real" content.
-$EXT_ARGV | grep -v '+' | grep -v Variable_name | sed 's/|//g' \
+
+$EXT_ARGV | sed '/| Rsa/, /END PUBLIC KEY-----/d' | grep -v '^ |' | grep -v '+' | grep -v Variable_name | sed 's/|//g' \
    | while read line; do
    if [ "$line" = "" ]; then
       NUM=$(($NUM + 1))
