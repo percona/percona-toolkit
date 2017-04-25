@@ -33,3 +33,4 @@ binlog_format              = STATEMENT
 performance_schema         = ON
 #performance-schema-instrument='wait/lock/metadata/sql/mdl=ON'
 #performance-schema-instrument='transaction=ON'
+secure-file-priv           =
