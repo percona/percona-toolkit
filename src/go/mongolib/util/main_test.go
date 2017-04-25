@@ -4,13 +4,13 @@ import (
 	"reflect"
 	"testing"
 
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
-
 	"github.com/golang/mock/gomock"
 	"github.com/percona/percona-toolkit/src/go/lib/tutil"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
+	"github.com/percona/pmgo"
 	"github.com/percona/pmgo/pmgomock"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // OK
@@ -145,9 +145,7 @@ func TestGetReplicasetMembers(t *testing.T) {
 	database.EXPECT().Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, gomock.Any()).SetArg(1, ss)
 	session.EXPECT().Close()
 
-	session.EXPECT().Close()
-
-	di := &mgo.DialInfo{Addrs: []string{"localhost"}}
+	di := &pmgo.DialInfo{Addrs: []string{"localhost"}}
 	rss, err := GetReplicasetMembers(dialer, di)
 	if err != nil {
 		t.Errorf("getReplicasetMembers: %v", err)
@@ -166,26 +164,67 @@ func TestGetHostnames(t *testing.T) {
 	dialer := pmgomock.NewMockDialer(ctrl)
 	session := pmgomock.NewMockSessionManager(ctrl)
 
-	mockShardsInfo := proto.ShardsInfo{
-		Shards: []proto.Shard{
-			proto.Shard{
-				ID:   "r1",
-				Host: "r1/localhost:17001,localhost:17002,localhost:17003",
-			},
-			proto.Shard{
-				ID:   "r2",
-				Host: "r2/localhost:18001,localhost:18002,localhost:18003",
-			},
-		},
-		OK: 1,
+	mockrss := proto.ReplicaSetStatus{
+		Date:    "",
+		MyState: 1,
+		Term:    0,
+		HeartbeatIntervalMillis: 0,
+		Members: []proto.Members{
+			proto.Members{
+				Optime:        nil,
+				OptimeDate:    "",
+				InfoMessage:   "",
+				ID:            0,
+				Name:          "localhost:17001",
+				Health:        1,
+				StateStr:      "PRIMARY",
+				Uptime:        113287,
+				ConfigVersion: 1,
+				Self:          true,
+				State:         1,
+				ElectionTime:  6340960613392449537,
+				ElectionDate:  "",
+				Set:           ""},
+			proto.Members{
+				Optime:        nil,
+				OptimeDate:    "",
+				InfoMessage:   "",
+				ID:            1,
+				Name:          "localhost:17002",
+				Health:        1,
+				StateStr:      "SECONDARY",
+				Uptime:        113031,
+				ConfigVersion: 1,
+				Self:          false,
+				State:         2,
+				ElectionTime:  0,
+				ElectionDate:  "",
+				Set:           ""},
+			proto.Members{
+				Optime:        nil,
+				OptimeDate:    "",
+				InfoMessage:   "",
+				ID:            2,
+				Name:          "localhost:17003",
+				Health:        1,
+				StateStr:      "SECONDARY",
+				Uptime:        113031,
+				ConfigVersion: 1,
+				Self:          false,
+				State:         2,
+				ElectionTime:  0,
+				ElectionDate:  "",
+				Set:           ""}},
+		Ok:  1,
+		Set: "r1",
 	}
 
 	dialer.EXPECT().DialWithInfo(gomock.Any()).Return(session, nil)
-	session.EXPECT().Run("getShardMap", gomock.Any()).SetArg(1, mockShardsInfo)
-	session.EXPECT().Close()
+	session.EXPECT().SetMode(mgo.Monotonic, true)
+	session.EXPECT().Run(bson.M{"replSetGetStatus": 1}, gomock.Any()).SetArg(1, mockrss)
 
-	expect := []string{"localhost", "localhost:17001", "localhost:18001"}
-	di := &mgo.DialInfo{Addrs: []string{"localhost"}}
+	expect := []string{"localhost:17001", "localhost:17002", "localhost:17003"}
+	di := &pmgo.DialInfo{Addrs: []string{"localhost"}}
 	rss, err := GetHostnames(dialer, di)
 	if err != nil {
 		t.Errorf("getHostnames: %v", err)
