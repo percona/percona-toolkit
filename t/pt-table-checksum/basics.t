@@ -84,8 +84,8 @@ ok(
 $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 my $max_chunks = $sandbox_version < '5.7' ? 60 : 100;
 ok(
-   $row->[0] > 30 && $row->[0] < $max_chunks,
-   'Between 30 and 60 chunks'
+   $row->[0] > 25 && $row->[0] < $max_chunks,
+   'Between 25 and 60 chunks'
 ) or diag($row->[0]);
 
 # ############################################################################
@@ -103,10 +103,10 @@ ok(
 
 $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 
-my $max_rows = $sandbox_version < '5.7' ? 90 : 100;
+my $max_rows = $sandbox_version < '5.7' ? 75 : 100;
 ok(
-   $row->[0] >= 85 && $row->[0] <= $max_rows,
-   'Between 85 and 90 chunks on master'
+   $row->[0] >= 75 && $row->[0] <= $max_rows,
+   'Between 75 and 90 chunks on master'
 ) or diag($row->[0]);
 
 
