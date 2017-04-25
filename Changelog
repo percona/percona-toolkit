@@ -2,8 +2,16 @@ Changelog for Percona Toolkit
 
 v3.0.3
 
- * Fixed bug PT-116 : pt-online-schema change eats data on adding a unique index
-
+ * Fixed bug PT-130 : Fixed pt-mext not working with not empty Rsa_public_key
+ * Fixed bug PT-128 : pt-stalk ps include memory usage outputs
+ * Fixed bug PT-126 : Recognize comments in ALTER
+ * Fixed bug PT-116 : pt-online-schema change eats data on adding a unique index. Added --[no]use-insert-ignore
+ * Feature   PT-115 : Make DSNs params able to be repeatable
+ * Fixed bug PT-115 : Made OptionParser to accept repeatable DSNs
+ * Fixed bug PT-111 : Collect MySQL variables
+ * Fixed bug PT-087 : Add --skip-check-slave-lag to pt-table-checksum
+ * Fixed bug PT-086 : Added --skip-check-slave-lag to pt-osc
+ * Fixed bug PT-080 : Added support for slave status in pt-stalk
 
 v3.0.2 released 2017-03-23
 
