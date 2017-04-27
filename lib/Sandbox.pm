@@ -483,7 +483,6 @@ sub start_sandbox {
 
    if ( $type eq 'master') {
       my $out = `$env $trunk/sandbox/start-sandbox $type $port`;
-      warn "$env";
       die $out if $CHILD_ERROR;
    }
    elsif ( $type eq 'slave' ) {

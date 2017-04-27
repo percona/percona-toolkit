@@ -68,6 +68,7 @@ sub reset_repl_db {
 # in throttle.t.
 # ############################################################################
 
+# 1
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args) },
