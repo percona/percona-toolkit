@@ -15,6 +15,7 @@ import (
 	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
 	"github.com/percona/percona-toolkit/src/go/mongolib/profiler"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
+	"github.com/percona/percona-toolkit/src/go/mongolib/stats"
 	"github.com/percona/percona-toolkit/src/go/mongolib/util"
 	"github.com/percona/percona-toolkit/src/go/pt-mongodb-query-digest/filter"
 	"github.com/percona/pmgo"
@@ -136,18 +137,19 @@ func main() {
 	i := session.DB(di.Database).C("system.profile").Find(query).Sort("-$natural").Iter()
 
 	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
-	prof := profiler.NewProfiler(i, filters, nil, fp)
+	s := stats.New(fp)
+	prof := profiler.NewProfiler(i, filters, nil, s)
 	prof.Start()
 	queries := <-prof.QueriesChan()
 
 	uptime := uptime(session)
 
-	queriesStats := profiler.CalcQueriesStats(queries, uptime)
+	queriesStats := queries.CalcQueriesStats(uptime)
 	sortedQueryStats := sortQueries(queriesStats, opts.OrderBy)
 
 	printHeader(opts)
 
-	queryTotals := profiler.CalcTotalQueriesStats(queries, uptime)
+	queryTotals := queries.CalcTotalQueriesStats(uptime)
 	tt, _ := template.New("query").Funcs(template.FuncMap{
 		"Format": format,
 	}).Parse(getTotalsTemplate())
@@ -347,15 +349,15 @@ func getTotalsTemplate() string {
 	return t
 }
 
-type lessFunc func(p1, p2 *profiler.QueryStats) bool
+type lessFunc func(p1, p2 *stats.QueryStats) bool
 
 type multiSorter struct {
-	queries []profiler.QueryStats
+	queries []stats.QueryStats
 	less    []lessFunc
 }
 
 // Sort sorts the argument slice according to the less functions passed to OrderedBy.
-func (ms *multiSorter) Sort(queries []profiler.QueryStats) {
+func (ms *multiSorter) Sort(queries []stats.QueryStats) {
 	ms.queries = queries
 	sort.Sort(ms)
 }
@@ -404,29 +406,29 @@ func (ms *multiSorter) Less(i, j int) bool {
 	return ms.less[k](p, q)
 }
 
-func sortQueries(queries []profiler.QueryStats, orderby []string) []profiler.QueryStats {
+func sortQueries(queries []stats.QueryStats, orderby []string) []stats.QueryStats {
 	sortFuncs := []lessFunc{}
 	for _, field := range orderby {
 		var f lessFunc
 		switch field {
 		//
 		case "count":
-			f = func(c1, c2 *profiler.QueryStats) bool {
+			f = func(c1, c2 *stats.QueryStats) bool {
 				return c1.Count < c2.Count
 			}
 		case "-count":
-			f = func(c1, c2 *profiler.QueryStats) bool {
+			f = func(c1, c2 *stats.QueryStats) bool {
 				return c1.Count > c2.Count
 			}
 
 		case "ratio":
-			f = func(c1, c2 *profiler.QueryStats) bool {
+			f = func(c1, c2 *stats.QueryStats) bool {
 				ratio1 := c1.Scanned.Max / c1.Returned.Max
 				ratio2 := c2.Scanned.Max / c2.Returned.Max
 				return ratio1 < ratio2
 			}
 		case "-ratio":
-			f = func(c1, c2 *profiler.QueryStats) bool {
+			f = func(c1, c2 *stats.QueryStats) bool {
 				ratio1 := c1.Scanned.Max / c1.Returned.Max
 				ratio2 := c2.Scanned.Max / c2.Returned.Max
 				return ratio1 > ratio2
@@ -434,31 +436,31 @@ func sortQueries(queries []profiler.QueryStats, orderby []string) []profiler.Que
 
 		//
 		case "query-time":
-			f = func(c1, c2 *profiler.QueryStats) bool {
+			f = func(c1, c2 *stats.QueryStats) bool {
 				return c1.QueryTime.Max < c2.QueryTime.Max
 			}
 		case "-query-time":
-			f = func(c1, c2 *profiler.QueryStats) bool {
+			f = func(c1, c2 *stats.QueryStats) bool {
 				return c1.QueryTime.Max > c2.QueryTime.Max
 			}
 
 		//
 		case "docs-scanned":
-			f = func(c1, c2 *profiler.QueryStats) bool {
+			f = func(c1, c2 *stats.QueryStats) bool {
 				return c1.Scanned.Max < c2.Scanned.Max
 			}
 		case "-docs-scanned":
-			f = func(c1, c2 *profiler.QueryStats) bool {
+			f = func(c1, c2 *stats.QueryStats) bool {
 				return c1.Scanned.Max > c2.Scanned.Max
 			}
 
 		//
 		case "docs-returned":
-			f = func(c1, c2 *profiler.QueryStats) bool {
+			f = func(c1, c2 *stats.QueryStats) bool {
 				return c1.Returned.Max < c2.Scanned.Max
 			}
 		case "-docs-returned":
-			f = func(c1, c2 *profiler.QueryStats) bool {
+			f = func(c1, c2 *stats.QueryStats) bool {
 				return c1.Returned.Max > c2.Scanned.Max
 			}
 		}
