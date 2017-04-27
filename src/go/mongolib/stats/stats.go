@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/montanaflynn/stats"
@@ -11,6 +12,25 @@ import (
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/percona-toolkit/src/go/mongolib/util"
 )
+
+type StatsError struct {
+	error
+}
+
+func (e *StatsError) Error() string {
+	if e == nil {
+		return "<nil>"
+	}
+
+	return fmt.Sprintf("stats error: %s", e.error)
+}
+
+func (e *StatsError) Parent() error {
+	return e.error
+}
+
+type StatsFingerprintError StatsError
+type StatsGetQueryFieldError StatsError
 
 // New creates new instance of stats with given fingerprinter
 func New(fingerprinter fingerprinter.Fingerprinter) *Stats {
@@ -29,10 +49,14 @@ type Stats struct {
 
 	// internal
 	queryInfoAndCounters map[GroupKey]*QueryInfoAndCounters
+	sync.RWMutex
 }
 
 // Reset clears the collection of statistics
 func (s *Stats) Reset() {
+	s.Lock()
+	defer s.Unlock()
+
 	s.queryInfoAndCounters = make(map[GroupKey]*QueryInfoAndCounters)
 }
 
@@ -40,7 +64,7 @@ func (s *Stats) Reset() {
 func (s *Stats) Add(doc proto.SystemProfile) error {
 	fp, err := s.fingerprinter.Fingerprint(doc.Query)
 	if err != nil {
-		return fmt.Errorf("cannot get fingerprint: %s", err)
+		return &StatsFingerprintError{err}
 	}
 	var qiac *QueryInfoAndCounters
 	var ok bool
@@ -50,8 +74,11 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 		Fingerprint: fp,
 		Namespace:   doc.Ns,
 	}
-	if qiac, ok = s.queryInfoAndCounters[key]; !ok {
-		realQuery, _ := util.GetQueryField(doc.Query)
+	if qiac, ok = s.getQueryInfoAndCounters(key); !ok {
+		realQuery, err := util.GetQueryField(doc.Query)
+		if err != nil {
+			return &StatsGetQueryFieldError{err}
+		}
 		qiac = &QueryInfoAndCounters{
 			ID:          fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s", key)))),
 			Operation:   doc.Op,
@@ -60,7 +87,7 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 			TableScan:   false,
 			Query:       realQuery,
 		}
-		s.queryInfoAndCounters[key] = qiac
+		s.setQueryInfoAndCounters(key, qiac)
 	}
 	qiac.Count++
 	qiac.NScanned = append(qiac.NScanned, float64(doc.DocsExamined))
@@ -80,7 +107,29 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 
 // Queries returns all collected statistics
 func (s *Stats) Queries() Queries {
-	return mapToArray(s.queryInfoAndCounters)
+	s.RLock()
+	defer s.RUnlock()
+
+	queries := []QueryInfoAndCounters{}
+	for _, v := range s.queryInfoAndCounters {
+		queries = append(queries, *v)
+	}
+	return queries
+}
+
+func (s *Stats) getQueryInfoAndCounters(key GroupKey) (*QueryInfoAndCounters, bool) {
+	s.RLock()
+	defer s.RUnlock()
+
+	v, ok := s.queryInfoAndCounters[key]
+	return v, ok
+}
+
+func (s *Stats) setQueryInfoAndCounters(key GroupKey, value *QueryInfoAndCounters) {
+	s.Lock()
+	defer s.Unlock()
+
+	s.queryInfoAndCounters[key] = value
 }
 
 // Queries is a slice of MongoDB statistics
@@ -107,6 +156,25 @@ func (q Queries) CalcTotalQueriesStats(uptime int64) QueryStats {
 	totalStats := countersToStats(totalQueryInfoAndCounters, uptime, tc)
 
 	return totalStats
+}
+
+type QueryInfoAndCounters struct {
+	ID          string
+	Namespace   string
+	Operation   string
+	Query       map[string]interface{}
+	Fingerprint string
+	FirstSeen   time.Time
+	LastSeen    time.Time
+	TableScan   bool
+
+	Count          int
+	BlockedTime    Times
+	LockTime       Times
+	NReturned      []float64
+	NScanned       []float64
+	QueryTime      []float64 // in milliseconds
+	ResponseLength []float64
 }
 
 // times is an array of time.Time that implements the Sorter interface
@@ -147,25 +215,6 @@ type QueryStats struct {
 	ResponseLength Statistics
 	Returned       Statistics
 	Scanned        Statistics
-}
-
-type QueryInfoAndCounters struct {
-	ID          string
-	Namespace   string
-	Operation   string
-	Query       map[string]interface{}
-	Fingerprint string
-	FirstSeen   time.Time
-	LastSeen    time.Time
-	TableScan   bool
-
-	Count          int
-	BlockedTime    Times
-	LockTime       Times
-	NReturned      []float64
-	NScanned       []float64
-	QueryTime      []float64 // in milliseconds
-	ResponseLength []float64
 }
 
 type Statistics struct {
@@ -257,12 +306,4 @@ func calcStats(samples []float64) Statistics {
 	s.StdDev, _ = stats.StandardDeviation(samples)
 	s.Median, _ = stats.Median(samples)
 	return s
-}
-
-func mapToArray(stats map[GroupKey]*QueryInfoAndCounters) []QueryInfoAndCounters {
-	sa := []QueryInfoAndCounters{}
-	for _, s := range stats {
-		sa = append(sa, *s)
-	}
-	return sa
 }

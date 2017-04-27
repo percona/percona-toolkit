@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"os"
 	"reflect"
-	"strings"
 	"testing"
 	"time"
 
@@ -393,29 +392,25 @@ func TestParseArgs(t *testing.T) {
 		{
 			args: []string{TOOLNAME}, // arg[0] is the command itself
 			want: &options{
-				Host:            DEFAULT_HOST,
-				LogLevel:        DEFAULT_LOGLEVEL,
-				OrderBy:         strings.Split(DEFAULT_ORDERBY, ","),
-				SkipCollections: strings.Split(DEFAULT_SKIPCOLLECTIONS, ","),
-				AuthDB:          DEFAULT_AUTHDB,
+				Host:     DEFAULT_HOST,
+				LogLevel: DEFAULT_LOGLEVEL,
+				AuthDB:   DEFAULT_AUTHDB,
 			},
 		},
 		{
 			args: []string{TOOLNAME, "zapp.brannigan.net:27018/samples", "--help"},
 			want: &options{
-				Host:            "zapp.brannigan.net:27018/samples",
-				LogLevel:        DEFAULT_LOGLEVEL,
-				OrderBy:         strings.Split(DEFAULT_ORDERBY, ","),
-				SkipCollections: strings.Split(DEFAULT_SKIPCOLLECTIONS, ","),
-				AuthDB:          DEFAULT_AUTHDB,
-				Help:            true,
+				Host:     "zapp.brannigan.net:27018/samples",
+				LogLevel: DEFAULT_LOGLEVEL,
+				AuthDB:   DEFAULT_AUTHDB,
+				Help:     true,
 			},
 		},
 	}
 	for i, test := range tests {
 		getopt.Reset()
 		os.Args = test.args
-		got, err := getOptions()
+		got, err := parseFlags()
 		if err != nil {
 			t.Errorf("error parsing command line arguments: %s", err.Error())
 		}
