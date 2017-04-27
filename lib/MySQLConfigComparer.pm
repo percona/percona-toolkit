@@ -83,6 +83,7 @@ sub new {
    my %value_is_optional = (
       log_error => 1,
       log_isam  => 1,
+      secure_file_priv => 1,
       ($args{optional_value_variables}
          ? map { $_ => 1 } @{$args{optional_value_variables}}
          : ()),

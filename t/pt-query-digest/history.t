@@ -139,10 +139,14 @@ my $expected =   [  {  lock_time_median     => '0',
 normalize_numbers($res);
 normalize_numbers($expected);
 
+diag('--------------------------------------------------------');
+diag(Data::Dumper::Dumper($res));
+diag('--------------------------------------------------------');
+
 is_deeply(
    $res,
    $expected,
-   'Adds/updates queries to query review history table'
+   'Adds/updates queries to query review history table',
 );
 
 

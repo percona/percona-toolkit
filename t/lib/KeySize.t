@@ -143,8 +143,7 @@ is(
    '',
    'No error (issue 364)'
 );
-like(
-   $ks->explain(),
+my $want = $sandbox_version lt '5.7' ? 
    qr/^extra: Using where; Using index
 id: 1
 key: BASE_KID_ID
@@ -154,9 +153,26 @@ ref: NULL
 rows: 17[1-9]
 select_type: SIMPLE
 table: issue_364
-type: index\Z/,
+type: index\Z/ :
+  qr/^extra: Using where; Using index
+filtered: 1.13
+id: 1
+key: BASE_KID_ID
+key_len: 17
+partitions: NULL
+possible_keys: BASE_KID_ID
+ref: NULL
+rows: 176
+select_type: SIMPLE
+table: issue_364
+type: index/;
+
+like(
+   $ks->explain(),
+   $want,
    'EXPLAIN plan (issue 364)'
 );
+
 is(
    $ks->query(),
    'EXPLAIN SELECT BASE_KID_ID, ID FROM `test`.`issue_364` FORCE INDEX (`BASE_KID_ID`) WHERE BASE_KID_ID=1 OR ID=1',

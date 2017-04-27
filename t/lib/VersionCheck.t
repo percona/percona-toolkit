@@ -670,7 +670,7 @@ my @vc_tools = grep { chomp; basename($_) =~ /\A[a-z-]+\z/ }
 
 foreach my $tool ( @vc_tools ) {
    my $tool_name = basename($tool);
-   next if $tool_name eq 'pt-agent';
+   next if $tool_name eq 'pt-agent' || $tool_name =~ m/^pt-mongodb-/;
    my $output = `$tool --help`;
    like(
       $output,
