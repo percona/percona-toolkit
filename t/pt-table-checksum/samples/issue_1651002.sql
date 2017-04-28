@@ -49,7 +49,3 @@ create table test4 (
 insert into test3(id, name) values(15034, '51707'),(1, '001');
 insert into test4(id, name) values(15034, '051707'),(1, '1');
 
--- set sql_log_bin=0;
--- DROP USER 'slave_user';
--- set sql_log_bin=1;
--- FLUSH PRIVILEGES;

@@ -82,6 +82,7 @@ ok(
 # large that all tables will be done in a single chunk without an index.
 # Since this varies by default, there's no use checking the checksums
 # other than to ensure that there's at least one for each table.
+# 2
 $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 my $max_chunks = $sandbox_version < '5.7' ? 60 : 100;
 ok(
@@ -92,7 +93,7 @@ ok(
 # ############################################################################
 # Static chunk size (disable --chunk-time)
 # ############################################################################
-
+# 3
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args, qw(--chunk-time 0)) },
