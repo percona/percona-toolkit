@@ -1137,7 +1137,8 @@ SKIP: {
    );
 
    my $explain = load_file(
-        $sandbox_version eq '5.6' ? "t/lib/samples/QueryReportFormatter/report031.txt"
+        $sandbox_version ge '5.7' ? "t/lib/samples/QueryReportFormatter/report031-5.7.txt"
+      : $sandbox_version eq '5.6' ? "t/lib/samples/QueryReportFormatter/report031.txt"
       : $sandbox_version ge '5.1' ? "t/lib/samples/QueryReportFormatter/report025.txt"
       :                             "t/lib/samples/QueryReportFormatter/report026.txt");
 

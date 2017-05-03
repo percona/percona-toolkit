@@ -500,37 +500,33 @@ SKIP: {
    
    $output = `cat $dest/*-slave-status 2>/dev/null`;
    
-   if ( $sandbox_version lt '5.7' ) {
-       like(
-          $output,
-          qr/SHOW SLAVE STATUS/,
-          "MySQL 5.6 SLAVE STATUS"
-       );
-   } else {
-       like(
-          $output,
-          qr/FROM performance_schema.replication_connection_configuration JOIN performance_schema.replication_applier_configuration USING/,
-          "MySQL 5.7 SLAVE STATUS"
-       );
-   }
+   like(
+      $output,
+      qr/FROM performance_schema.replication_connection_configuration JOIN performance_schema.replication_applier_configuration USING/,
+      "MySQL 5.7 SLAVE STATUS"
+   );
    $sb->stop_sandbox(qw(chan_master1 chan_master2 chan_slave1));
 }
                                                                               
-my $slave1_port = $sb->port_for('slave1');
-my $cmd = "$trunk/bin/pt-stalk --no-stalk --iterations=1 --host=127.0.0.1 --port=$slave1_port --user=msandbox "
-        . "--password=msandbox --sleep 0 --run-time=10 --dest $dest --log $log_file --iterations=1  "
-        . "--run-time=2  --pid $pid_file --defaults-file=$cnf >$log_file 2>&1";
-system($cmd);                                                                 
-sleep 5;                                                                      
-PerconaTest::kill_program(pid_file => $pid_file);                             
-                                                                              
-$output = `cat $dest/*-slave-status 2>/dev/null`;                             
-                                                                              
-like(                                                                     
-   $output,                                                               
-   qr/SHOW SLAVE STATUS/,                                                 
-   "MySQL 5.6 SLAVE STATUS"                                               
-);
+SKIP: {
+   skip "Only test on mysql 5.6" if ( $sandbox_version ne '5.6' );
+
+   my $slave1_port = $sb->port_for('slave1');
+   my $cmd = "$trunk/bin/pt-stalk --no-stalk --iterations=1 --host=127.0.0.1 --port=$slave1_port --user=msandbox "
+           . "--password=msandbox --sleep 0 --run-time=10 --dest $dest --log $log_file --iterations=1  "
+           . "--run-time=2  --pid $pid_file --defaults-file=$cnf >$log_file 2>&1";
+   system($cmd);                                                                 
+   sleep 5;                                                                      
+   PerconaTest::kill_program(pid_file => $pid_file);                             
+                                                                                 
+   $output = `cat $dest/*-slave-status 2>/dev/null`;                             
+                                                                                 
+   like(                                                                     
+      $output,                                                               
+      qr/SHOW SLAVE STATUS/,                                                 
+      "MySQL 5.6 SLAVE STATUS"                                               
+   );
+}
 
 # #############################################################################
 # Done.

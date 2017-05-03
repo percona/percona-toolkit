@@ -814,10 +814,11 @@ sub tables_used {
    while ( defined(my $chunk = <$fh>) ) {
       map {
          my $db_tbl = $_;
+         $db_tbl =~ s/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+Z?//;  # strip leading timestamp (MySQL 5.7+)
          $db_tbl =~ s/^\s*`?//;  # strip leading space and `
          $db_tbl =~ s/\s*`?$//;  # strip trailing space and `
          $db_tbl =~ s/`\.`/./;   # strip inner `.`
-         $tables{$db_tbl} = 1;
+         $tables{$db_tbl} = 1 if !($db_tbl =~ m/^\s*$/);
       }
       grep {
          m/(?:\w\.\w|`\.`)/  # only db.tbl, not just db

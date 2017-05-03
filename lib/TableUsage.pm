@@ -39,6 +39,7 @@ use Data::Dumper;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
+use VersionParser;
 
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
@@ -844,7 +845,14 @@ sub _explain_query {
       $dbh->do($sql);
    }
 
-   $sql = "EXPLAIN EXTENDED $query";
+   $self->{db_version} ||= VersionParser->new($dbh);
+   if ( $self->{db_version} < '5.7.3' ) { 
+      $sql = "EXPLAIN EXTENDED $query";
+   }
+   else {
+      $sql = "EXPLAIN $query"; # EXTENDED is implicit as of 5.7.3
+   }
+
    PTDEBUG && _d($dbh, $sql);
    eval {
       $dbh->do($sql);  # don't need the result

@@ -635,6 +635,7 @@ SKIP: {
       "DBI:mysql:host=127.0.0.1;port=12345", 'root', 'msandbox',
       { PrintError => 0, RaiseError => 1 });
 
+   $root_dbh->do(q[CREATE USER 'user'@'%' IDENTIFIED BY '';] ) || die($root_dbh->errstr);
    $root_dbh->do(q[GRANT SELECT ON test.* TO 'user'@'%'] ) || die($root_dbh->errstr);
 
    my $user_dbh = DBI->connect(

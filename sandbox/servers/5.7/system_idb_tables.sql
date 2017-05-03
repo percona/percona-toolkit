@@ -330,6 +330,9 @@ CREATE TABLE IF NOT EXISTS `slow_log` (
   `sql_text` mediumblob NOT NULL,
   `thread_id` bigint(21) unsigned NOT NULL
 ) ENGINE=CSV DEFAULT CHARSET=utf8 COMMENT='Slow log';
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
