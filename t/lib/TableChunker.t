@@ -545,7 +545,7 @@ SKIP: {
       ["1=1"],
       "Doesn't chunk if chunk size > total rows"
    );
-};
+}
 
 # #############################################################################
 # Issue 47: TableChunker::range_num broken for very large bigint
@@ -845,75 +845,80 @@ is_deeply(
 # Test issue 941 + issue 602
 # #############################################################################
 
-$dbh->do("insert into issue_602.t values ('12', '0000-00-00 00:00:00')");
-# Now we have:
-# |   12 | 0000-00-00 00:00:00 | 
-# |   11 | 2010-00-09 00:00:00 | 
-# |   10 | 2010-04-30 00:00:00 | 
-# So min is a zero row.  If we don't want zero row, next min will be an
-# invalid row, and we don't want that.  So we should get row "10" as min.
+SKIP: {
+    skip "Requires MySQL < 5.7", 19 if ($sandbox_version ge '5.7');
 
-%params = $c->get_range_statistics(
-   dbh        => $dbh,
-   db         => 'issue_602',
-   tbl        => 't',
-   chunk_col  => 'b',
-   tbl_struct => {
-      type_for   => { b => 'datetime' },
-      is_numeric => { b => 0          },
-   },
-);
-
-is_deeply(
-   \%params,
-   {
-      min => '2010-04-30 00:00:00',
-      max => '2010-05-09 00:00:00',
-      rows_in_range => 12,
-   },
-   "Gets valid min after zero row"
-);
-
-# #############################################################################
-# Test _validate_temporal_value() because it's magical.
-# #############################################################################
-my @invalid_t = (
-   '00:00:60',
-   '00:60:00',
-   '0000-00-00',
-   '2009-00-00',
-   '2009-13-00',
-   '0000-00-00 00:00:00',
-   '1000-00-00 00:00:00',
-   '2009-00-00 00:00:00',
-   '2009-13-00 00:00:00',
-   '2009-05-26 00:00:60',
-   '2009-05-26 00:60:00',
-   '2009-05-26 24:00:00',
-);
-foreach my $t ( @invalid_t ) {
-   my $res = TableChunker::_validate_temporal_value($dbh, $t);
-   is(
-      $res,
-      undef,
-      "$t is invalid"
-   );
-}
-
-my @valid_t = (
-   '00:00:01',
-   '1000-01-01',
-   '2009-01-01',
-   '1000-01-01 00:00:00',
-   '2009-01-01 00:00:00',
-   '2010-05-26 17:48:30',
-);
-foreach my $t ( @valid_t ) {
-   my $res = TableChunker::_validate_temporal_value($dbh, $t);
-   ok(
-      defined $res,
-      "$t is valid"
-   );
+    $dbh->do("insert into issue_602.t values ('12', '0000-00-00 00:00:00')");
+    
+    # Now we have:
+    # |   12 | 0000-00-00 00:00:00 | 
+    # |   11 | 2010-00-09 00:00:00 | 
+    # |   10 | 2010-04-30 00:00:00 | 
+    # So min is a zero row.  If we don't want zero row, next min will be an
+    # invalid row, and we don't want that.  So we should get row "10" as min.
+    
+    %params = $c->get_range_statistics(
+       dbh        => $dbh,
+       db         => 'issue_602',
+       tbl        => 't',
+       chunk_col  => 'b',
+       tbl_struct => {
+          type_for   => { b => 'datetime' },
+          is_numeric => { b => 0          },
+       },
+    );
+    
+    is_deeply(
+       \%params,
+       {
+          min => '2010-04-30 00:00:00',
+          max => '2010-05-09 00:00:00',
+          rows_in_range => 12,
+       },
+       "Gets valid min after zero row"
+    );
+    
+    # #############################################################################
+    # Test _validate_temporal_value() because it's magical.
+    # #############################################################################
+    my @invalid_t = (
+       '00:00:60',
+       '00:60:00',
+       '0000-00-00',
+       '2009-00-00',
+       '2009-13-00',
+       '0000-00-00 00:00:00',
+       '1000-00-00 00:00:00',
+       '2009-00-00 00:00:00',
+       '2009-13-00 00:00:00',
+       '2009-05-26 00:00:60',
+       '2009-05-26 00:60:00',
+       '2009-05-26 24:00:00',
+    );
+    foreach my $t ( @invalid_t ) {
+       my $res = TableChunker::_validate_temporal_value($dbh, $t);
+       is(
+          $res,
+          undef,
+          "$t is invalid"
+       );
+    }
+    
+    my @valid_t = (
+       '00:00:01',
+       '1000-01-01',
+       '2009-01-01',
+       '1000-01-01 00:00:00',
+       '2009-01-01 00:00:00',
+       '2010-05-26 17:48:30',
+    );
+    foreach my $t ( @valid_t ) {
+       my $res = TableChunker::_validate_temporal_value($dbh, $t);
+       ok(
+          defined $res,
+          "$t is valid"
+       );
+    }
 }
 
 # #############################################################################
