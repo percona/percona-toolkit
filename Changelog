@@ -2,6 +2,7 @@ Changelog for Percona Toolkit
 
 v3.0.3
 
+ * Fixed bug PT-132 : pt-online-schema-change should imply --no-drop-new-table 
  * Fixed bug PT-130 : Fixed pt-mext not working with not empty Rsa_public_key
  * Fixed bug PT-128 : pt-stalk ps include memory usage outputs
  * Fixed bug PT-126 : Recognize comments in ALTER
