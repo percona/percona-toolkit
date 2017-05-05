@@ -350,7 +350,7 @@ case $opt in
             ../util/check-load-data
 
             ping=$(/tmp/12345/use -ss -e "SELECT MD5(RAND())")
-            /tmp/12345/use -e "REPLACE INTO percona_test.sentinel (id, ping) VALUES (1, '$ping')";
+            /tmp/12345/use -e "SET AUTOCOMMIT=1; REPLACE INTO percona_test.sentinel (id, ping) VALUES (1, '$ping')";
             echo -n "Waiting for replication to finish..."
             for i in $(_seq 60); do
                pong=$(/tmp/12347/use -ss -e "SELECT ping FROM percona_test.sentinel WHERE id=1 AND ping='$ping'" 2>/dev/null)
