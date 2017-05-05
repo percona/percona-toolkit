@@ -8195,9 +8195,9 @@ sub main {
 
    # Explicit --chunk-size disable auto chunk sizing.
    $o->set('chunk-time', 0) if $o->got('chunk-size');
-   if ($o->get('no-swap-tables') && $o->get('no-drop-triggers')) {
+   if (!$o->get('swap-tables') && !$o->get('drop-triggers')) {
        PTDEBUG && _d('Enabling no-drop-new-table since no-swap-tables & no-drop-triggers were specified');
-       $o->set('no-drop-new-table', 1);
+       $o->set('drop-new-table', 0);
    }
 
    foreach my $opt ( qw(max-load critical-load) ) {
