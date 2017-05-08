@@ -4332,7 +4332,7 @@ sub get_connected_slaves {
 
    $sql = 'SHOW FULL PROCESSLIST';
    PTDEBUG && _d($dbh, $sql);
-   grep { $_->{command} =~ m/Binlog Dump/i }
+   grep { $_->{command} =~ m/Binlog Dump/i && $_->{host} =~ m/^([^:]+):/ }
    map  { # Lowercase the column names
       my %hash;
       @hash{ map { lc $_ } keys %$_ } = values %$_;
