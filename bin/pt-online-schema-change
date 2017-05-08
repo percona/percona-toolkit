@@ -10647,7 +10647,7 @@ sub create_triggers {
       $definer = ' DEFINER = ' . $o->get('definer');
    } else {
       # Fallback to root@localhost if a definer was not explicitly specified.
-      $definer = ' DEFINER = root@localhost';
+      $definer = '';
    }
 
    # Create a unique trigger name prefix based on the orig table name
