@@ -171,7 +171,7 @@ sub new {
       rules             => [],  # desc of rules for --help
       mutex             => [],  # rule: opts are mutually exclusive
       atleast1          => [],  # rule: at least one opt is required
-      disables          => {},  # rule: opt disables other opts 
+      disables          => {},  # rule: opt disables other opts
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
@@ -334,7 +334,7 @@ sub _pod_to_specs {
          }
 
          push @specs, {
-            spec  => $self->{parse_attributes}->($self, $option, \%attribs), 
+            spec  => $self->{parse_attributes}->($self, $option, \%attribs),
             desc  => $para
                . (defined $attribs{default} ? " (default $attribs{default})" : ''),
             group => ($attribs{'group'} ? $attribs{'group'} : 'default'),
@@ -425,7 +425,7 @@ sub _parse_specs {
          $self->{opts}->{$long} = $opt;
       }
       else { # It's an option rule, not a spec.
-         PTDEBUG && _d('Parsing rule:', $opt); 
+         PTDEBUG && _d('Parsing rule:', $opt);
          push @{$self->{rules}}, $opt;
          my @participants = $self->_get_participants($opt);
          my $rule_ok = 0;
@@ -470,7 +470,7 @@ sub _parse_specs {
       PTDEBUG && _d('Option', $long, 'disables', @participants);
    }
 
-   return; 
+   return;
 }
 
 sub _get_participants {
@@ -557,7 +557,7 @@ sub _set_option {
 }
 
 sub get_opts {
-   my ( $self ) = @_; 
+   my ( $self ) = @_;
 
    foreach my $long ( keys %{$self->{opts}} ) {
       $self->{opts}->{$long}->{got} = 0;
@@ -688,7 +688,7 @@ sub _check_opts {
                   else {
                      $err = join(', ',
                                map { "--$self->{opts}->{$_}->{long}" }
-                               grep { $_ } 
+                               grep { $_ }
                                @restricted_opts[0..scalar(@restricted_opts) - 2]
                             )
                           . ' or --'.$self->{opts}->{$restricted_opts[-1]}->{long};
@@ -698,7 +698,7 @@ sub _check_opts {
             }
 
          }
-         elsif ( $opt->{is_required} ) { 
+         elsif ( $opt->{is_required} ) {
             $self->save_error("Required option --$long must be specified");
          }
 
@@ -1074,7 +1074,7 @@ sub clone {
       $clone{$scalar} = $self->{$scalar};
    }
 
-   return bless \%clone;     
+   return bless \%clone;
 }
 
 sub _parse_size {
@@ -1589,7 +1589,7 @@ sub extends {
 
 sub _load_module {
    my ($class) = @_;
-   
+
    (my $file = $class) =~ s{::|'}{/}g;
    $file .= '.pm';
    { local $@; eval { require "$file" } } # or warn $@;
@@ -1620,7 +1620,7 @@ sub has {
    my $caller = scalar caller();
 
    my $class_metadata = Lmo::Meta->metadata_for($caller);
-   
+
    for my $attribute ( ref $names ? @$names : $names ) {
       my %args   = @_;
       my $method = ($args{is} || '') eq 'ro'
@@ -1639,16 +1639,16 @@ sub has {
 
       if ( my $type_check = $args{isa} ) {
          my $check_name = $type_check;
-         
+
          if ( my ($aggregate_type, $inner_type) = $type_check =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
             $type_check = Lmo::Types::_nested_constraints($attribute, $aggregate_type, $inner_type);
          }
-         
+
          my $check_sub = sub {
             my ($new_val) = @_;
             Lmo::Types::check_type_constaints($attribute, $type_check, $check_name, $new_val);
          };
-         
+
          $class_metadata->{$attribute}{isa} = [$check_name, $check_sub];
          my $orig_method = $method;
          $method = sub {
@@ -2282,7 +2282,7 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass,
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       $dbh = eval { DBI->connect($cxn_string, $user, $pass, $defaults) };
@@ -2458,7 +2458,7 @@ sub set_vars {
       }
    }
 
-   return; 
+   return;
 }
 
 sub _d {
@@ -2539,7 +2539,7 @@ sub run {
          $parent_exit->($child_pid) if $parent_exit;
          exit 0;
       }
- 
+
       POSIX::setsid() or die "Cannot start a new session: $OS_ERROR";
       chdir '/'       or die "Cannot chdir to /: $OS_ERROR";
 
@@ -2565,7 +2565,7 @@ sub run {
 
          close STDERR;
          open  STDERR, ">&STDOUT"
-            or die "Cannot dupe STDERR to STDOUT: $OS_ERROR"; 
+            or die "Cannot dupe STDERR to STDOUT: $OS_ERROR";
       }
       else {
          if ( -t STDOUT ) {
@@ -2603,7 +2603,7 @@ sub _make_pid_file {
    eval {
       sysopen(PID_FH, $pid_file, O_RDWR|O_CREAT|O_EXCL) or die $OS_ERROR;
       print PID_FH $PID, "\n";
-      close PID_FH; 
+      close PID_FH;
    };
    if ( my $e = $EVAL_ERROR ) {
       if ( $e =~ m/file exists/i ) {
@@ -2790,7 +2790,7 @@ sub split_unquote {
       s/`\z//;
       s/``/`/g;
    }
-   
+
    return ($db, $tbl);
 }
 
@@ -2920,7 +2920,7 @@ sub generate_asc_stmt {
 
    die "Index '$index' does not exist in table"
       unless exists $tbl_struct->{keys}->{$index};
-   PTDEBUG && _d('Will ascend index', $index);  
+   PTDEBUG && _d('Will ascend index', $index);
 
    my @asc_cols = @{$tbl_struct->{keys}->{$index}->{cols}};
    if ( $args{asc_first} ) {
@@ -3950,7 +3950,7 @@ sub get_id {
       my $sql  = q{SHOW STATUS LIKE 'wsrep\_local\_index'};
       my (undef, $wsrep_local_index) = $cxn->dbh->selectrow_array($sql);
       PTDEBUG && _d("Got cluster wsrep_local_index: ",$wsrep_local_index);
-      $unique_id = $wsrep_local_index."|"; 
+      $unique_id = $wsrep_local_index."|";
       foreach my $val ('server\_id', 'wsrep\_sst\_receive\_address', 'wsrep\_node\_name', 'wsrep\_node\_address') {
          my $sql = "SHOW VARIABLES LIKE '$val'";
          PTDEBUG && _d($cxn->name, $sql);
@@ -3980,7 +3980,7 @@ sub is_cluster_node {
       PTDEBUG && _d($sql); #don't invoke name() if it's not a Cxn!
    }
    else {
-      $dbh = $cxn->dbh();      
+      $dbh = $cxn->dbh();
       PTDEBUG && _d($cxn->name, $sql);
    }
 
@@ -4063,22 +4063,22 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-sub check_recursion_method {                                                       
+sub check_recursion_method {
    my ($methods) = @_;
-   if ( @$methods != 1 ) {                                                         
-      if ( grep({ !m/processlist|hosts/i } @$methods)                              
-            && $methods->[0] !~ /^dsn=/i ) 
-      {     
-         die  "Invalid combination of recursion methods: "                         
-            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "      
-            . "Only hosts and processlist may be combined.\n"                      
-      }                                                                            
-   }     
-   else {   
+   if ( @$methods != 1 ) {
+      if ( grep({ !m/processlist|hosts/i } @$methods)
+            && $methods->[0] !~ /^dsn=/i )
+      {
+         die  "Invalid combination of recursion methods: "
+            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "
+            . "Only hosts and processlist may be combined.\n"
+      }
+   }
+   else {
       my ($method) = @$methods;
-      die "Invalid recursion method: " . ( $method || 'undef' )                    
-         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster$|dsn=)/i;     
-   }                                                                               
+      die "Invalid recursion method: " . ( $method || 'undef' )
+         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster$|dsn=)/i;
+   }
 }
 
 sub new {
@@ -4107,7 +4107,7 @@ sub get_slaves {
    my $methods = $self->_resolve_recursion_methods($args{dsn});
 
    return $slaves unless @$methods;
-   
+
    if ( grep { m/processlist|hosts/i } @$methods ) {
       my @required_args = qw(dbh dsn);
       foreach my $arg ( @required_args ) {
@@ -4151,7 +4151,7 @@ sub get_slaves {
    else {
       die "Unexpected recursion methods: @$methods";
    }
-   
+
    return $slaves;
 }
 
@@ -4619,7 +4619,7 @@ sub short_host {
 }
 
 sub is_replication_thread {
-   my ( $self, $query, %args ) = @_; 
+   my ( $self, $query, %args ) = @_;
    return unless $query;
 
    my $type = lc($args{type} || 'all');
@@ -4634,7 +4634,7 @@ sub is_replication_thread {
    if ( !$match ) {
       if ( ($query->{User} || $query->{user} || '') eq "system user" ) {
          PTDEBUG && _d("Slave replication thread");
-         if ( $type ne 'all' ) { 
+         if ( $type ne 'all' ) {
             my $state = $query->{State} || $query->{state} || '';
 
             if ( $state =~ m/^init|end$/ ) {
@@ -4647,7 +4647,7 @@ sub is_replication_thread {
                    |Reading\sevent\sfrom\sthe\srelay\slog
                    |Has\sread\sall\srelay\slog;\swaiting
                    |Making\stemp\sfile
-                   |Waiting\sfor\sslave\smutex\son\sexit)/xi; 
+                   |Waiting\sfor\sslave\smutex\son\sexit)/xi;
 
                $match = $type eq 'slave_sql' &&  $slave_sql ? 1
                       : $type eq 'slave_io'  && !$slave_sql ? 1
@@ -4711,7 +4711,7 @@ sub get_replication_filters {
          replicate_do_db
          replicate_ignore_db
          replicate_do_table
-         replicate_ignore_table 
+         replicate_ignore_table
          replicate_wild_do_table
          replicate_wild_ignore_table
       );
@@ -4722,7 +4722,7 @@ sub get_replication_filters {
       $filters{slave_skip_errors} = $row->[1] if $row->[1] && $row->[1] ne 'OFF';
    }
 
-   return \%filters; 
+   return \%filters;
 }
 
 
@@ -4884,7 +4884,7 @@ sub wait {
       };
    }
 
-   my @lagged_slaves = map { {cxn=>$_, lag=>undef} } @$slaves;  
+   my @lagged_slaves = map { {cxn=>$_, lag=>undef} } @$slaves;
    while ( $oktorun->() && @lagged_slaves ) {
       PTDEBUG && _d('Checking slave lag');
 
@@ -4981,9 +4981,9 @@ sub new {
    my $self = {
       %args
    };
-   
-   $self->{last_time} = time();   
-   
+
+   $self->{last_time} = time();
+
    my (undef, $last_fc_ns) = $self->{node}->selectrow_array('SHOW STATUS LIKE "wsrep_flow_control_paused_ns"');
 
    $self->{last_fc_secs} = $last_fc_ns/1000_000_000;
@@ -5019,11 +5019,11 @@ sub wait {
       my $current_time = time();
       my (undef, $current_fc_ns) = $node->selectrow_array('SHOW STATUS LIKE "wsrep_flow_control_paused_ns"');
       my $current_fc_secs = $current_fc_ns/1000_000_000;
-      my $current_avg = ($current_fc_secs - $self->{last_fc_secs}) / ($current_time - $self->{last_time});  
-      if ( $current_avg > $max_avg ) { 
+      my $current_avg = ($current_fc_secs - $self->{last_fc_secs}) / ($current_time - $self->{last_time});
+      if ( $current_avg > $max_avg ) {
          if ( $pr ) {
             $pr->update(sub { return 0; });
-         } 
+         }
          PTDEBUG && _d('Calling sleep callback');
          if ( $self->{simple_progress} ) {
             print STDERR "Waiting for Flow Control to abate\n";
@@ -5138,7 +5138,7 @@ sub _parse_spec {
       }
    }
 
-   return \%max_val_for; 
+   return \%max_val_for;
 }
 
 sub max_values {
@@ -5421,10 +5421,10 @@ sub new {
       PTDEBUG && _d('Ascend params:', Dumper($asc));
 
       my $from     = "$tbl->{name} FORCE INDEX(`$index`)";
-      my $order_by = join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' 
+      my $order_by = join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum'
                                         ? "CONCAT(".$q->quote($_).")" : $q->quote($_)} @{$index_cols});
 
-      my $order_by_dec = join(' DESC,', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' 
+      my $order_by_dec = join(' DESC,', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum'
                                         ? "CONCAT(".$q->quote($_).")" : $q->quote($_)} @{$index_cols});
 
       my $first_lb_sql
@@ -5486,7 +5486,7 @@ sub new {
          . " /*$comments{nibble}*/";
       PTDEBUG && _d('Nibble statement:', $nibble_sql);
 
-      my $explain_nibble_sql 
+      my $explain_nibble_sql
          = "EXPLAIN SELECT "
          . ($args{select} ? $args{select}
                           : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
@@ -5586,7 +5586,7 @@ sub next {
             sleep($self->{sleep});
          }
       }
-  
+
       if ( !$self->{have_rows} ) {
          $self->{nibbleno}++;
          PTDEBUG && _d('Nibble:', $self->{nibble_sth}->{Statement}, 'params:',
@@ -5616,7 +5616,7 @@ sub next {
       }
       $self->{rowno}     = 0;
       $self->{have_rows} = 0;
-      
+
    }
 
    PTDEBUG && _d('Done nibbling');
@@ -5753,7 +5753,7 @@ sub can_nibble {
    }
 
    my $pause_file = ($o->has('pause-file') && $o->get('pause-file')) || undef;
-   
+
    return {
       row_est     => $row_est,      # nibble about this many rows
       index       => $index,        # using this index
@@ -5798,7 +5798,7 @@ sub _find_best_index {
          push @possible_indexes, $want_index;
       }
    }
-   
+
    if (!$best_index) {
       PTDEBUG && _d('Auto-selecting best index');
       foreach my $index ( $tp->sort_indexes($tbl_struct) ) {
@@ -5896,7 +5896,7 @@ sub _prepare_sths {
    return;
 }
 
-sub _get_bounds { 
+sub _get_bounds {
    my ($self) = @_;
 
    if ( $self->{one_nibble} ) {
@@ -5909,7 +5909,7 @@ sub _get_bounds {
    my $dbh = $self->{Cxn}->dbh();
 
    $self->{first_lower} = $dbh->selectrow_arrayref($self->{first_lb_sql});
-   PTDEBUG && _d('First lower boundary:', Dumper($self->{first_lower}));  
+   PTDEBUG && _d('First lower boundary:', Dumper($self->{first_lower}));
 
    if ( my $nibble = $self->{resume} ) {
       if (    defined $nibble->{lower_boundary}
@@ -5923,9 +5923,9 @@ sub _get_bounds {
       }
    }
    else {
-      $self->{next_lower}  = $self->{first_lower};   
+      $self->{next_lower}  = $self->{first_lower};
    }
-   PTDEBUG && _d('Next lower boundary:', Dumper($self->{next_lower}));  
+   PTDEBUG && _d('Next lower boundary:', Dumper($self->{next_lower}));
 
    if ( !$self->{next_lower} ) {
       PTDEBUG && _d('At end of table, or no more boundaries to resume');
@@ -6011,7 +6011,7 @@ sub _next_boundaries {
       $self->{upper} = $dbh->selectrow_arrayref($self->{last_ub_sql});
       PTDEBUG && _d('Last upper boundary:', Dumper($self->{upper}));
       $self->{no_more_boundaries} = 1;  # for next call
-      
+
       $self->{last_upper} = $self->{upper};
    }
    $self->{ub_sth}->finish();
@@ -6361,7 +6361,7 @@ sub value_to_json {
 
    my $b_obj = B::svref_2object(\$value);  # for round trip problem
    my $flags = $b_obj->FLAGS;
-   return $value # as is 
+   return $value # as is
       if $flags & ( B::SVp_IOK | B::SVp_NOK ) and !( $flags & B::SVp_POK ); # SvTYPE is IV or NV?
 
    my $type = ref($value);
@@ -6859,7 +6859,7 @@ sub _split_url {
                   or die(qq/SSL certificate not valid for $host\n/);
             }
        }
-         
+
        $self->{host} = $host;
        $self->{port} = $port;
 
@@ -7333,7 +7333,7 @@ eval {
       }
       PTDEBUG && _d('Version check file', $file, 'in', $ENV{PWD});
       return $file;  # in the CWD
-   } 
+   }
 }
 
 sub version_check_time_limit {
@@ -7350,11 +7350,11 @@ sub version_check {
    PTDEBUG && _d('FindBin::Bin:', $FindBin::Bin);
    if ( !$args{force} ) {
       if ( $FindBin::Bin
-           && (-d "$FindBin::Bin/../.bzr"    || 
+           && (-d "$FindBin::Bin/../.bzr"    ||
                -d "$FindBin::Bin/../../.bzr" ||
-               -d "$FindBin::Bin/../.git"    || 
-               -d "$FindBin::Bin/../../.git" 
-              ) 
+               -d "$FindBin::Bin/../.git"    ||
+               -d "$FindBin::Bin/../../.git"
+              )
          ) {
          PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
          return;
@@ -7378,7 +7378,7 @@ sub version_check {
       PTDEBUG && _d(scalar @$instances_to_check, 'instances to check');
       return unless @$instances_to_check;
 
-      my $protocol = 'https';  
+      my $protocol = 'https';
       eval { require IO::Socket::SSL; };
       if ( $EVAL_ERROR ) {
          PTDEBUG && _d($EVAL_ERROR);
@@ -7564,7 +7564,7 @@ sub pingback {
    );
    die "Failed to parse server requested programs: $response->{content}"
       if !scalar keys %$items;
-      
+
    my $versions = get_versions(
       items     => $items,
       instances => $instances,
@@ -7823,7 +7823,7 @@ sub get_from_mysql {
    if ($item->{item} eq 'MySQL' && $item->{type} eq 'mysql_variable') {
       @{$item->{vars}} = grep { $_ eq 'version' || $_ eq 'version_comment' } @{$item->{vars}};
    }
- 
+
 
    my @versions;
    my %version_for;
@@ -7928,7 +7928,7 @@ sub find_cluster_nodes {
    my $dp  = $args{DSNParser};
    my $make_cxn = $args{make_cxn};
 
-   
+
    my $sql = q{SHOW STATUS LIKE 'wsrep\_incoming\_addresses'};
    PTDEBUG && _d($sql);
    my (undef, $addresses) = $dbh->selectrow_array($sql);
@@ -8008,7 +8008,7 @@ sub autodetect_nodes {
    my $new_nodes = [];
 
    return $new_nodes unless @$nodes;
-   
+
    for my $node ( @$nodes ) {
       my $nodes_found = $self->find_cluster_nodes(
          dbh       => $node->dbh(),
@@ -8040,12 +8040,12 @@ sub autodetect_nodes {
    );
 
    my @new_slave_nodes = grep { $self->is_cluster_node($_) } @$new_slaves;
-   
+
    my $slaves_of_slaves = $self->autodetect_nodes(
          %args,
          nodes => \@new_slave_nodes,
    );
-   
+
    my @autodetected_nodes = ( @$new_nodes, @$new_slaves, @$slaves_of_slaves );
    return \@autodetected_nodes;
 }
@@ -8109,7 +8109,7 @@ my $pxc_version = '0';
 # Completely ignore these error codes.
 my %ignore_code = (
    # Error: 1592 SQLSTATE: HY000  (ER_BINLOG_UNSAFE_STATEMENT)
-   # Message: Statement may not be safe to log in statement format. 
+   # Message: Statement may not be safe to log in statement format.
    # Ignore this warning because we have purposely set statement-based
    # replication.
    1592 => 1,
@@ -8146,7 +8146,7 @@ sub main {
 
    if ( $o->get('null-to-not-null') ) {
       $ignore_code{1048} = 1;
-   } 
+   }
 
    my $dp = $o->DSNParser();
    $dp->prop('set-vars', $o->set_vars());
@@ -8162,7 +8162,7 @@ sub main {
       # Parse DSN string and convert it to a DSN data struct.
       $dsn = $dp->parse($dsn, $dp->parse_options($o));
       $db  = $dsn->{D};
-      $tbl = $dsn->{t};  
+      $tbl = $dsn->{t};
    }
 
    my $alter_fk_method = $o->get('alter-foreign-keys-method') || '';
@@ -8240,7 +8240,7 @@ sub main {
          print STDERR "WARNING! Using alter-foreign-keys-method = \"none\". This will typically cause foreign key violations!\nThis method of handling foreign key constraints is only provided so that the database administrator can disable the tool’s built-in functionality if desired.\n\nContinue anyway? (y/N)";
          my $response;
          chomp($response = <STDIN>);
-         if ($response !~ /y|(yes)/i) { 
+         if ($response !~ /y|(yes)/i) {
             exit 1;
          }
       }
@@ -8257,7 +8257,7 @@ sub main {
       $o->save_error("Invalid --recursion-method: $EVAL_ERROR")
    }
 
-   $o->usage_or_errors(); 
+   $o->usage_or_errors();
 
    if ( $o->get('quiet') ) {
       # BARON: this will fail on Windows, where there is no /dev/null. I feel
@@ -8351,7 +8351,7 @@ sub main {
    # Check if MySQL is new enough to have the triggers we need.
    # Although triggers were introduced in 5.0.2, "Prior to MySQL 5.0.10,
    # triggers cannot contain direct references to tables by name."
-   # ########################################################################   
+   # ########################################################################
    my $server_version = VersionParser->new($cxn->dbh());
    if ( $server_version < '5.0.10' ) {
       die "This tool requires MySQL 5.0.10 or newer.\n";
@@ -8395,7 +8395,7 @@ sub main {
 
    # ########################################################################
    # Create --plugin.
-   # ########################################################################   
+   # ########################################################################
    my $plugin;
    if ( my $file = $o->get('plugin') ) {
       die "--plugin file $file does not exist\n" unless -f $file;
@@ -8421,7 +8421,7 @@ sub main {
 
    # ########################################################################
    # Setup lag and load monitors.
-   # ########################################################################   
+   # ########################################################################
    my $slaves;         # all slaves that are found or specified
    my $slave_lag_cxns; # slaves whose lag we'll check
    my $replica_lag;    # ReplicaLagWaiter object
@@ -8531,7 +8531,7 @@ sub main {
       # #####################################################################
       # Make a ReplicaLagWaiter to help wait for slaves after each chunk.
       # Note: the "sleep" function is also used by MySQLStatusWaiter and
-      #       FlowControlWaiter 
+      #       FlowControlWaiter
       # #####################################################################
       my $sleep = sub {
          # Don't let the master dbh die while waiting for slaves because we
@@ -8552,13 +8552,13 @@ sub main {
       };
 
       my $get_lag;
-      # The plugin is able to override the slavelag check so tools like 
-      # pt-heartbeat or other replicators (Tungsten...) can be used to 
+      # The plugin is able to override the slavelag check so tools like
+      # pt-heartbeat or other replicators (Tungsten...) can be used to
       # measure replication lag
       if ( $plugin && $plugin->can('get_slave_lag') ) {
          $get_lag = $plugin->get_slave_lag(oktorun => \$oktorun);
       }
-      else {      
+      else {
          $get_lag = sub {
             my ($cxn) = @_;
             my $dbh = $cxn->dbh();
@@ -8572,7 +8572,7 @@ sub main {
                   PTDEBUG && _d('Cannot connect to', $cxn->name(), ':',
                      $EVAL_ERROR);
                   # Make ReplicaLagWaiter::wait() report slave is stopped.
-                  return undef; 
+                  return undef;
                }
             }
             my $lag;
@@ -8651,7 +8651,7 @@ sub main {
             spec    => $o->get('progress'),
             name    => "Waiting for --max-load", # not used
          );
-        
+
          if ( $pxc_version >= '5.6' && $o->got('max-flow-ctl') ) {
             $flow_ctl_pr = new Progress(
                jobsize => $o->get('max-flow-ctl'),
@@ -8762,7 +8762,7 @@ sub main {
             print "You did not specify --alter-foreign-keys-method, but there "
                 . "are foreign keys that reference the table. "
                 . "Please read the tool's documentation carefully.\n";
-            return 1; 
+            return 1;
          }
       }
    }
@@ -8804,10 +8804,10 @@ sub main {
          #   at /Users/daniel/p/pt-osc-2.1.1/lib/PerconaTest.pm line 559.
          #                   ''
          #   doesn't match '(?-xism:Failed to find a unique new table name)'
-         
+
          # (*) Frank:  commented them out because it caused infinite loop
          # and the mentioned test error doesn't arise
-         
+
          #my $original_error = $EVAL_ERROR;
 
          foreach my $task ( reverse @cleanup_tasks ) {
@@ -8909,7 +8909,7 @@ sub main {
 
    # ########################################################################
    # Init the --plugin.
-   # ########################################################################   
+   # ########################################################################
 
    # --plugin hook
    if ( $plugin && $plugin->can('init') ) {
@@ -9355,7 +9355,7 @@ sub main {
                elsif ( !$key_len ) {
                   die ts("The key_len of the $key index is "
                      . (defined $key_len ? "zero" : "NULL")
-                     . ", but this should not be possible.  " 
+                     . ", but this should not be possible.  "
                      . "See --[no]check-plan in the documentation for more "
                      . "information.");
                }
@@ -9402,7 +9402,7 @@ sub main {
                          (@{$boundary->{lower}}, $nibble_iter->limit()))
                   . "\n";
                die ts($msg);
-            } 
+            }
          }
 
          # Once nibbling begins for a table, control does not return to this
@@ -9558,7 +9558,7 @@ sub main {
          nibble => "pt-online-schema-change $PID copy nibble",
       },
    );
- 
+
    # Init a new weighted avg rate calculator for the table.
    $orig_tbl->{rate} = new WeightedAvgRate(target_t => $chunk_time);
 
@@ -9592,7 +9592,7 @@ sub main {
    }
    $orig_tbl->{copied} = 1;  # flag for cleanup tasks
 
-   # XXX Auto-choose the alter fk method BEFORE swapping/renaming tables 
+   # XXX Auto-choose the alter fk method BEFORE swapping/renaming tables
    # else everything will break because if drop_swap is chosen, then we
    # most NOT rename tables or drop the old table.
    if ( $alter_fk_method eq 'auto' ) {
@@ -9769,7 +9769,7 @@ sub main {
 
          my $sql = "DROP TABLE IF EXISTS $old_tbl->{name}";
          print $sql, "\n" if $o->get('print');
-         PTDEBUG && _d($sql); 
+         PTDEBUG && _d($sql);
          eval {
             $cxn->dbh()->do($sql);
          };
@@ -9817,7 +9817,7 @@ sub validate_tries {
       create_triggers
       drop_triggers
       copy_rows
-      swap_tables 
+      swap_tables
       update_foreign_keys
       analyze_table
    );
@@ -10019,10 +10019,10 @@ sub nibble_is_safe {
       vals => [ @{$boundary->{lower}}, @{$boundary->{upper}} ],
    );
 
-   # Ensure that MySQL is using the chunk index if the table is being chunked. 
+   # Ensure that MySQL is using the chunk index if the table is being chunked.
    # Skip if --nocheck-plan   See: https://bugs.launchpad.net/percona-toolkit/+bug/1340728
       if ( !$nibble_iter->one_nibble()
-           && lc($expl->{key} || '') ne lc($nibble_iter->nibble_index() || '') 
+           && lc($expl->{key} || '') ne lc($nibble_iter->nibble_index() || '')
            && $o->get('check-plan') )
       {
          die ts("Error copying rows at chunk " . $nibble_iter->nibble_number()
@@ -10034,7 +10034,7 @@ sub nibble_is_safe {
    # Ensure that the chunk isn't too large if there's a --chunk-size-limit.
    # If single-chunking the table, this has already been checked, so it
    # shouldn't have changed.  If chunking the table with a non-unique key,
-   # oversize chunks are possible. 
+   # oversize chunks are possible.
    if ( my $limit = $o->get('chunk-size-limit') ) {
       my $oversize_chunk
          = $limit ? ($expl->{rows} || 0) >= $tbl->{chunk_size} * $limit
@@ -10054,12 +10054,12 @@ sub nibble_is_safe {
       }
    }
 
-   # Ensure that MySQL is still using the entire index. 
+   # Ensure that MySQL is still using the entire index.
    # https://bugs.launchpad.net/percona-toolkit/+bug/1010232
    # Skip if --nocheck-plan   See: https://bugs.launchpad.net/percona-toolkit/+bug/1340728
    if ( !$nibble_iter->one_nibble()
         && $tbl->{key_len}
-        && ($expl->{key_len} || 0) < $tbl->{key_len} 
+        && ($expl->{key_len} || 0) < $tbl->{key_len}
         && $o->get('check-plan') )
    {
       die ts("Error copying rows at chunk " . $nibble_iter->nibble_number()
@@ -10126,7 +10126,7 @@ sub create_new_table {
       # If it has a leading underscore, we remove one, otherwise we add one
       # This is in contrast to previous behavior were we added underscores
       # indefinitely, sometimes exceeding the allowed name limit
-      # https://bugs.launchpad.net/percona-toolkit/+bug/1215587 
+      # https://bugs.launchpad.net/percona-toolkit/+bug/1215587
       $sql =~ s/^  CONSTRAINT `(_?)/'  CONSTRAINT `'.($1 eq '' ? '_' : '')/gme;
 
       if ( $o->get('default-engine') ) {
@@ -10134,7 +10134,7 @@ sub create_new_table {
       }
       if ( $o->get('data-dir') && !$o->got('remove-data-dir') ) {
           if ( (-d $o->get('data-dir')) && (-w $o->get('data-dir')) ){
-             $sql =~ s/DATA DIRECTORY='.*?'//; 
+             $sql =~ s/DATA DIRECTORY='.*?'//;
              $sql .= sprintf(" DATA DIRECTORY='%s' ",$o->get('data-dir'));
              PTDEBUG && _d("adding data dir ".$o->get('data-dir'));
           } else {
@@ -10142,7 +10142,7 @@ sub create_new_table {
           }
       }
       if ( $o->got('remove-data-dir') ) {
-         $sql =~ s/DATA DIRECTORY='.*?'//; 
+         $sql =~ s/DATA DIRECTORY='.*?'//;
          PTDEBUG && _d("removing data dir");
       }
       PTDEBUG && _d($sql);
@@ -10203,7 +10203,7 @@ sub swap_tables {
 
       # A return value really isn't needed, but this trick allows
       # rebuild_constraints() to parse and show the sql statements
-      # it would used.  Otherwise, this has no effect.      
+      # it would used.  Otherwise, this has no effect.
       return $orig_tbl;
    }
    elsif ( $o->get('execute') ) {
@@ -10226,14 +10226,14 @@ sub swap_tables {
 
       print ts("Swapping tables...\n");
       while ( $name_tries-- ) {
-       
+
          # https://bugs.launchpad.net/percona-toolkit/+bug/1526105
          if ( $name_tries <= 10 ) { # we've already added 10 underscores?
             # time to try a small random string
             my @chars = ("A".."Z", "0".."9");
             $prefix = '';
             $prefix .= $chars[rand @chars] for 1..6;
-            $prefix .= "_";  
+            $prefix .= "_";
          }
 
          $table_name = $prefix . $table_name;
@@ -10247,7 +10247,7 @@ sub swap_tables {
 
          my $sql = "RENAME TABLE $orig_tbl->{name} "
                  . "TO " . $q->quote($orig_tbl->{db}, $table_name)
-                 . ", $new_tbl->{name} TO $orig_tbl->{name}"; 
+                 . ", $new_tbl->{name} TO $orig_tbl->{name}";
 
          eval {
             osc_retry(
@@ -10288,7 +10288,7 @@ sub swap_tables {
             name => $q->quote($orig_tbl->{db}, $table_name),
          };
       }
-     
+
       # This shouldn't happen.
       die ts("Failed to find a unique old table name after "
          . "serveral attempts.\n");
@@ -10359,9 +10359,9 @@ sub find_child_tables {
       PTDEBUG && _d(q{MyISAM table, not looking for child tables});
       return;
    }
-   
+
    PTDEBUG && _d('Finding child tables');
-   
+
    my $sql = "SELECT table_schema, table_name "
            . "FROM information_schema.key_column_usage "
            . "WHERE referenced_table_schema='$tbl->{db}' "
@@ -10414,7 +10414,7 @@ sub determine_alter_fk_method {
    # The rebuild_constraints method is the default becuase it's safer
    # and doesn't cause the orig table to go missing for a moment.
    my $method = 'rebuild_constraints';
-   
+
    print ts("Max rows for the rebuild_constraints method: $max_rows\n"
       . "Determining the method to update foreign keys...\n");
    foreach my $child_tbl ( @$child_tables ) {
@@ -10512,15 +10512,15 @@ sub rebuild_constraints {
          # If it has a leading underscore, we remove one, otherwise we add one
          # This is in contrast to previous behavior were we added underscores
          # indefinitely, sometimes exceeding the allowed name limit
-         # https://bugs.launchpad.net/percona-toolkit/+bug/1215587 
-         my $new_fk; 
+         # https://bugs.launchpad.net/percona-toolkit/+bug/1215587
+         my $new_fk;
          if ($fk =~ /^_/) {
             ($new_fk = $fk) =~ s/^_//;
          }else {
-            $new_fk = '_'.$fk;     
+            $new_fk = '_'.$fk;
          }
 
-        
+
          PTDEBUG && _d("Old FK name: $fk New FK name: $new_fk");
 
          $constraint =~ s/CONSTRAINT `$fk`/CONSTRAINT `$new_fk`/;
@@ -10592,11 +10592,11 @@ sub drop_swap {
       "DROP TABLE IF EXISTS $orig_tbl->{name}",
       "RENAME TABLE $new_tbl->{name} TO $orig_tbl->{name}",
    );
-  
+
    # we don't want to be interrupted during the swap!
    # since it might leave original table dropped
    # https://bugs.launchpad.net/percona-toolkit/+bug/1368244
-   $dont_interrupt_now = 1; 
+   $dont_interrupt_now = 1;
 
    foreach my $sql ( @sqls ) {
       PTDEBUG && _d($sql);
@@ -10615,7 +10615,7 @@ sub drop_swap {
       }
    }
 
-   $dont_interrupt_now = 0; 
+   $dont_interrupt_now = 0;
 
    if ( $o->get('execute') ) {
       print ts("Dropped and swapped tables OK.\n");
@@ -10644,9 +10644,10 @@ sub create_triggers {
 
    my $definer;
    if ( $o->get('definer') ) {
-      $definer = ' DEFINER = ' . $q->quote($o->get('definer'));
+      $definer = ' DEFINER = ' . $o->get('definer');
    } else {
-      $definer = '';
+      # Fallback to root@localhost if a definer was not explicitly specified.
+      $definer = ' DEFINER = root@localhost';
    }
 
    # Create a unique trigger name prefix based on the orig table name
@@ -10749,7 +10750,7 @@ sub drop_triggers {
    else {
       print ts("Dropping triggers...\n");
    }
- 
+
    foreach my $sql ( @drop_trigger_sqls ) {
       print $sql, "\n" if $o->get('print');
       if ( $o->get('execute') ) {
@@ -10883,8 +10884,8 @@ sub exec_nibble {
    my $ub_quoted   = $q->serialize_list(@{$boundary->{upper}});
    my $chunk       = $nibble_iter->nibble_number();
    my $chunk_index = $nibble_iter->nibble_index();
-         
-         
+
+
    # Warn once per-table for these error codes if the error message
    # matches the pattern.
    my %warn_code = (
@@ -10905,7 +10906,7 @@ sub exec_nibble {
          # ###################################################################
          # Start timing the query.
          # ###################################################################
-         my $t_start = time;        
+         my $t_start = time;
 
          # Execute the INSERT..SELECT query.
          PTDEBUG && _d($sth->{nibble}->{Statement},
@@ -11015,14 +11016,14 @@ sub ts {
 sub sig_int {
    my ( $signal ) = @_;
    if ( $dont_interrupt_now ) {
-      # we're in the middle of something that shouldn't be interrupted 
+      # we're in the middle of something that shouldn't be interrupted
       PTDEBUG && _d("Received Signal: \"$signal\" in middle of critical operation. Continuing anyway.");
       return;
    }
    $oktorun = 0;  # flag for cleanup tasks
    print STDERR "# Exiting on SIG$signal.\n";
    # This is to restore terminal to "normal". lp #1396870
-   if ($term_readkey) { 
+   if ($term_readkey) {
       ReadMode(0);
    }
    exit 1;
@@ -11135,7 +11136,7 @@ safety checks:
 
 =item *
 
-In most cases the tool will refuse to operate unless a PRIMARY KEY or UNIQUE INDEX is 
+In most cases the tool will refuse to operate unless a PRIMARY KEY or UNIQUE INDEX is
 present in the table. See L<"--alter"> for details.
 
 
@@ -11219,12 +11220,12 @@ to fail in unpredictable ways:
 
 =item *
 
-In almost all cases a PRIMARY KEY or UNIQUE INDEX needs to be present in the table. 
-This is necessary because the tool creates a DELETE trigger to keep the new table 
+In almost all cases a PRIMARY KEY or UNIQUE INDEX needs to be present in the table.
+This is necessary because the tool creates a DELETE trigger to keep the new table
 updated while the process is running.
 
-A notable exception is when a PRIMARY KEY or UNIQUE INDEX is being created from 
-B<existing columns> as part of the ALTER clause; in that case it will use these 
+A notable exception is when a PRIMARY KEY or UNIQUE INDEX is being created from
+B<existing columns> as part of the ALTER clause; in that case it will use these
 column(s) for the DELETE trigger.
 
 =item *
@@ -11297,7 +11298,7 @@ tables" that reference the table to be altered.
 
 Automatically determine which method is best.  The tool uses
 C<rebuild_constraints> if possible (see the description of that method for
-details), and if not, then it uses C<drop_swap>. 
+details), and if not, then it uses C<drop_swap>.
 
 =item rebuild_constraints
 
@@ -11615,7 +11616,7 @@ than remove-data-dir.
 
 default: no
 
-If the original table was created using the DATA DIRECTORY feature, remove it and create 
+If the original table was created using the DATA DIRECTORY feature, remove it and create
 the new table in MySQL default directory without creating a new isl file.
 
 =item --defaults-file
@@ -11697,9 +11698,9 @@ Connect to host.
 type: float
 
 Somewhat similar to --max-lag but for PXC clusters.
-Check average time cluster spent pausing for Flow Control and make tool pause if 
+Check average time cluster spent pausing for Flow Control and make tool pause if
 it goes over the percentage indicated in the option.
-A value of 0 would make the tool pause when *any* Flow Control activity is 
+A value of 0 would make the tool pause when *any* Flow Control activity is
 detected.
 Default is no Flow Control checking.
 This option is available for PXC versions 5.6 or higher.
@@ -11778,7 +11779,7 @@ If password contains commas they must be escaped with a backslash: "exam\,ple"
 
 =item --pause-file
 
-type: string 
+type: string
 
 Execution will be paused while the file specified by this param exists.
 
@@ -11875,7 +11876,7 @@ t.  The DSN table should have the following structure:
 To make the tool monitor only the hosts 10.10.1.16 and 10.10.1.17 for
 replication lag, insert the values C<h=10.10.1.16> and C<h=10.10.1.17> into the
 table. Currently, the DSNs are ordered by id, but id and parent_id are otherwise
-ignored.  
+ignored.
 
 You can change the list of hosts while OSC is executing:
 if you change the contents of the DSN table, OSC will pick it up very soon.
@@ -11885,7 +11886,7 @@ if you change the contents of the DSN table, OSC will pick it up very soon.
 type: string
 
 Sets the user to be used to connect to the slaves.
-This parameter allows you to have a different user with less privileges on the 
+This parameter allows you to have a different user with less privileges on the
 slaves but that user must exist on all slaves.
 
 =item --slave-password
@@ -11920,7 +11921,7 @@ The tool prints a warning and continues if a variable cannot be set.
 Note that setting the C<sql_mode> variable requires some tricky escapes
 to be able to parse the quotes and commas.
 
-Example: 
+Example:
 
    --set-vars sql_mode=\'STRICT_ALL_TABLES\\,ALLOW_INVALID_DATES\'
 
@@ -11930,9 +11931,9 @@ Note the single backslash for the quotes and double backslash for the comma.
 
 type: float; default: 0
 
-How long to sleep (in seconds) after copying each chunk. This option is useful 
-when throttling by L<"--max-lag"> and L<"--max-load"> are not possible. 
-A small, sub-second value should be used, like 0.1, else the tool could take 
+How long to sleep (in seconds) after copying each chunk. This option is useful
+when throttling by L<"--max-lag"> and L<"--max-load"> are not possible.
+A small, sub-second value should be used, like 0.1, else the tool could take
 a very long time to copy large tables.
 
 =item --socket
@@ -12041,7 +12042,7 @@ as 5.5.25a.
 
 Any updates or known problems are printed to STDOUT before the tool's normal
 output.  This feature should never interfere with the normal operation of the
-tool.  
+tool.
 
 For more information, visit L<https://www.percona.com/version-check>.
 
@@ -12132,7 +12133,7 @@ Here's a plugin file template for all hooks:
    sub before_create_triggers {
       my ($self, %args) = @_;
       print "PLUGIN before_create_triggers\n";
-   } 
+   }
 
   sub after_create_triggers {
       my ($self, %args) = @_;
@@ -12198,7 +12199,7 @@ Here's a plugin file template for all hooks:
 
    1;
 
-Notice that C<get_slave_lag> must return a function reference; 
+Notice that C<get_slave_lag> must return a function reference;
 ideally one that returns actual slave lag, not simply zero like in the example.
 
 Here's an example that actually does something:
