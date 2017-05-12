@@ -6945,43 +6945,33 @@ sub get_slave_status {
       $sth->execute();
       my ($sss_rows) = $sth->fetchall_arrayref({}); # Show Slave Status rows
 
-      warn ">>>>====================================================================================================";
-      warn Data::Dumper::Dumper($sss_rows);
-      warn ">>>>====================================================================================================";
-      # If SHOW SLAVE STATUS returns more than one row it means that this slave is connected to more
-      # than one master using replication channels.
-      # If we have a channel name as a parameter, we need to select the correct row and return it.
-      # If we don't have a channel name as a parameter, there is no way to know what the correct master is so,
-      # return an error.
       my $ss;
-      $self->{channel} = 'masterchan2';
-      if ( $sss_rows && @$sss_rows && scalar @$sss_rows > 1) {
-        warn "KKKKKKKKKKKKKKKKKK";
-          if (!$self->{channel}) {
-              warn 'This server returned more than one row for SHOW SLAVE STATUS but "channel" was not specified on the command line';
-              $self->{not_a_slave}->{$dbh}++;
-              return;
-          }
-          for my $row (@$sss_rows) {
-              if ($row->{Channel_Name} eq $self->{channel}) {
-                  $ss = $row;
-                  last;
+      if ( $sss_rows && @$sss_rows ) {
+          if (scalar @$sss_rows > 1) {
+              if (!$self->{channel}) {
+                  warn 'This server returned more than one row for SHOW SLAVE STATUS but "channel" was not specified on the command line';
+                  return undef;
               }
+              for my $row (@$sss_rows) {
+                  $row = { map { lc($_) => $row->{$_} } keys %$row }; # lowercase the keys
+                  if ($row->{channel_name} eq $self->{channel}) {
+                      $ss = $row;
+                      last;
+                  }
+              }
+          } else {
+              $ss = $sss_rows->[0];
           }
-      } else {
-          warn "MMMMMMMMMMMMMMMMMMMMMMMMM";
-          $ss = $sss_rows->[0];
-      }
 
-
-      if ( $ss && %$ss ) {
-         $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
-         return $ss;
+          if ( $ss && %$ss ) {
+             $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
+             return $ss;
+          }
       }
 
       PTDEBUG && _d('This server returns nothing for SHOW SLAVE STATUS');
       $self->{not_a_slave}->{$dbh}++;
-   }
+  }
 }
 
 sub get_master_status {
@@ -7021,20 +7011,15 @@ sub wait_for_master {
    my $result;
    my $waited;
    if ( $master_status ) {
-      my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', "
-              . "$master_status->{position}, $timeout)";
+      my $server_version = VersionParser->new($slave_dbh);
+      my $channel_sql = $server_version > '5.6' && $self->{channel} ? ", '$self->{channel}'" : '';
+      my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', $master_status->{position}, $timeout $channel_sql)";
       PTDEBUG && _d($slave_dbh, $sql);
       my $start = time;
-      $result = $slave_dbh->selectrow_array($sql);
-      warn ">>>";
-      warn Data::Dumper::Dumper($result);
+      ($result) = $slave_dbh->selectrow_array($sql);
 
       $waited = time - $start;
 
-      warn "====================================================================================================";
-      warn "slave_dbh $slave_dbh";
-      warn Data::Dumper::Dumper($slave_dbh);
-      warn Data::Dumper::Dumper($master_status);
       PTDEBUG && _d('Result of waiting:', $result);
       PTDEBUG && _d("Waited", $waited, "seconds");
    }
@@ -9884,7 +9869,7 @@ sub main {
    # Do the work.
    # ########################################################################
    my $tp        = new TableParser( Quoter => $q );
-   my $ms        = new MasterSlave(OptionParser=>$o,DSNParser=>$dp,Quoter=>$q);
+   my $ms        = new MasterSlave(OptionParser=>$o,DSNParser=>$dp,Quoter=>$q, channel=>$o->get('channel'));
    my $rt        = new Retry();
    my $chunker   = new TableChunker( Quoter => $q, TableParser => $tp );
    my $nibbler   = new TableNibbler( Quoter => $q, TableParser => $tp );
@@ -12054,6 +12039,18 @@ time anyway, and use all your memory.
 For most non-trivial data sizes, you want to leave this option enabled.
 
 This option is disabled when L<"--bidirectional"> is used.
+
+=item --channel
+
+type: string
+
+Channel name used when connected to a server using replication channels.
+Suppose you have two masters, master_a at port 12345, master_b at port 1236 and
+a slave connected to both masters using channels chan_master_a and chan_master_b.
+If you want to run pt-table-sync to syncronize the slave against master_a, pt-table-sync
+won't be able to determine what's the correct master since SHOW SLAVE STATUS
+will return 2 rows. In this case, you can use --channel=chan_master_a to specify
+the channel name to use in the SHOW SLAVE STATUS command.
 
 =item --charset
 
