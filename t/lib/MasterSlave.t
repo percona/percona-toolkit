@@ -803,6 +803,17 @@ SKIP: {
        'Got warning message if we cannot determine slave in a multi source config without --channel param',
    );
 
+   my $wfm = $ms->wait_for_master(
+      master_status => $ms->get_master_status($dbh),
+      slave_dbh     => $slave1_dbh,
+      timeout       => 1,
+   );
+   like(
+       $wfm->{error},
+       qr/"channel" was not specified on the command line/,
+       'Wait for master returned error',
+   );
+
    # Now try specifying a channel name 
    $ms->{channel} = 'masterchan1';
    $css = $ms->get_slave_status($slave1_dbh);
@@ -810,6 +821,17 @@ SKIP: {
        $css->{channel_name},
        'masterchan1',
        'Returned the correct slave',
+   );
+
+   $wfm = $ms->wait_for_master(
+      master_status => $ms->get_master_status($dbh),
+      slave_dbh     => $slave1_dbh,
+      timeout       => 1,
+   );
+   is(
+       $wfm->{error},
+       undef,
+       'Wait for master returned no error',
    );
 
    $sb->stop_sandbox(qw(chan_master1 chan_master2 chan_slave1));
