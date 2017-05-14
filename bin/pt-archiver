@@ -7029,11 +7029,17 @@ sub do_with_retries {
 # described in the LOAD DATA INFILE section of the MySQL manual,
 # http://dev.mysql.com/doc/refman/5.0/en/load-data.html
 sub escape {
-   my ($row) = @_;
-   return join("\t", map {
+   my ($row, $fields_separated_by, $optionally_enclosed_by) = @_;
+   $fields_separated_by ||= "\t";
+   $optionally_enclosed_by ||= '';
+
+   return join($fields_separated_by, map {
       s/([\t\n\\])/\\$1/g if defined $_;  # Escape tabs etc
-      defined $_ ? $_ : '\N';             # NULL = \N
+      $_ = defined $_ ? $_ : '\N';             # NULL = \N
+      $_ =~ s/[^\\]"/\\"/g if $_ & ~$_ && $optionally_enclosed_by eq '"';
+      $_ = $optionally_enclosed_by && $_ & ~$_ ? $optionally_enclosed_by."$_".$optionally_enclosed_by : $_;
    } @$row);
+
 }
 
 sub ts {
