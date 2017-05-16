@@ -1,5 +1,8 @@
 Changelog for Percona Toolkit
 
+v3.0.4
+ * Fixed bug PT-142 : pt-online-schema-change find_child_tables slow
+
 v3.0.3
 
  * Fixed bug PT-133 : Sandbox won't start correctly if autocommit=0 in my.cnf
