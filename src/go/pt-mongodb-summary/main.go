@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"html/template"
 	"net"
 	"os"
 	"strings"
-	"text/template"
 	"time"
 
 	version "github.com/hashicorp/go-version"
@@ -33,6 +35,7 @@ const (
 	DEFAULT_LOGLEVEL           = "warn"
 	DEFAULT_RUNNINGOPSINTERVAL = 1000 // milliseconds
 	DEFAULT_RUNNINGOPSSAMPLES  = 5
+	DEFAULT_OUTPUT_FORMAT      = "text"
 )
 
 var (
@@ -130,10 +133,22 @@ type options struct {
 	Version            bool
 	NoVersionCheck     bool
 	NoRunningOps       bool
+	OutputFormat       string
 	RunningOpsSamples  int
 	RunningOpsInterval int
 	SSLCAFile          string
 	SSLPEMKeyFile      string
+}
+
+type collectedInfo struct {
+	BalancerStats    *proto.BalancerStats
+	ClusterWideInfo  *clusterwideInfo
+	OplogInfo        []proto.OplogInfo
+	ReplicaMembers   []proto.Members
+	RunningOps       *opCounters
+	SecuritySettings *security
+	HostInfo         *hostInfo
+	Errors           []string
 }
 
 func main() {
@@ -210,77 +225,105 @@ func main() {
 	defer session.Close()
 	session.SetMode(mgo.Monotonic, true)
 
-	hostInfo, err := GetHostinfo(session)
+	ci := &collectedInfo{}
+
+	ci.HostInfo, err = GetHostinfo(session)
 	if err != nil {
 		message := fmt.Sprintf("Cannot get host info for %q: %s", di.Addrs[0], err.Error())
 		log.Errorf(message)
 		os.Exit(2)
 	}
 
-	if replicaMembers, err := util.GetReplicasetMembers(dialer, di); err != nil {
+	if ci.ReplicaMembers, err = util.GetReplicasetMembers(dialer, di); err != nil {
 		log.Warnf("[Error] cannot get replicaset members: %v\n", err)
 		os.Exit(2)
-	} else {
-		log.Debugf("replicaMembers:\n%+v\n", replicaMembers)
-		t := template.Must(template.New("replicas").Parse(templates.Replicas))
-		t.Execute(os.Stdout, replicaMembers)
 	}
-
-	// Host Info
-	t := template.Must(template.New("hosttemplateData").Parse(templates.HostInfo))
-	t.Execute(os.Stdout, hostInfo)
+	log.Debugf("replicaMembers:\n%+v\n", ci.ReplicaMembers)
 
 	if opts.RunningOpsSamples > 0 && opts.RunningOpsInterval > 0 {
-		if rops, err := GetOpCountersStats(session, opts.RunningOpsSamples, time.Duration(opts.RunningOpsInterval)*time.Millisecond); err != nil {
+		if ci.RunningOps, err = GetOpCountersStats(session, opts.RunningOpsSamples, time.Duration(opts.RunningOpsInterval)*time.Millisecond); err != nil {
 			log.Printf("[Error] cannot get Opcounters stats: %v\n", err)
-		} else {
-			t := template.Must(template.New("runningOps").Parse(templates.RunningOps))
-			t.Execute(os.Stdout, rops)
 		}
 	}
 
-	if hostInfo != nil {
-		if security, err := GetSecuritySettings(session, hostInfo.Version); err != nil {
+	if ci.HostInfo != nil {
+		if ci.SecuritySettings, err = GetSecuritySettings(session, ci.HostInfo.Version); err != nil {
 			log.Errorf("[Error] cannot get security settings: %v\n", err)
-		} else {
-			t := template.Must(template.New("ssl").Parse(templates.Security))
-			t.Execute(os.Stdout, security)
 		}
 	} else {
 		log.Warn("Cannot check security settings since host info is not available (permissions?)")
 	}
 
-	if oplogInfo, err := oplog.GetOplogInfo(hostnames, di); err != nil {
+	if ci.OplogInfo, err = oplog.GetOplogInfo(hostnames, di); err != nil {
 		log.Info("Cannot get Oplog info: %v\n", err)
 	} else {
-		if len(oplogInfo) > 0 {
-			t := template.Must(template.New("oplogInfo").Parse(templates.Oplog))
-			t.Execute(os.Stdout, oplogInfo[0])
-		} else {
-
+		if len(ci.OplogInfo) == 0 {
 			log.Info("oplog info is empty. Skipping")
+		} else {
+			ci.OplogInfo = ci.OplogInfo[:1]
 		}
 	}
 
 	// individual servers won't know about this info
-	if hostInfo.NodeType == "mongos" {
-		if cwi, err := GetClusterwideInfo(session); err != nil {
+	if ci.HostInfo.NodeType == "mongos" {
+		if ci.ClusterWideInfo, err = GetClusterwideInfo(session); err != nil {
 			log.Printf("[Error] cannot get cluster wide info: %v\n", err)
-		} else {
-			t := template.Must(template.New("clusterwide").Parse(templates.Clusterwide))
-			t.Execute(os.Stdout, cwi)
 		}
 	}
 
-	if hostInfo.NodeType == "mongos" {
-		if bs, err := GetBalancerStats(session); err != nil {
+	if ci.HostInfo.NodeType == "mongos" {
+		if ci.BalancerStats, err = GetBalancerStats(session); err != nil {
 			log.Printf("[Error] cannot get balancer stats: %v\n", err)
-		} else {
-			t := template.Must(template.New("balancer").Parse(templates.BalancerStats))
-			t.Execute(os.Stdout, bs)
 		}
 	}
 
+	out, err := formatResults(ci, opts.OutputFormat)
+	if err != nil {
+		log.Errorf("Cannot format the results: %s", err.Error())
+		os.Exit(1)
+	}
+	fmt.Println(string(out))
+
+}
+
+func formatResults(ci *collectedInfo, format string) ([]byte, error) {
+	var buf *bytes.Buffer
+
+	switch format {
+	case "json":
+		b, err := json.MarshalIndent(ci, "", "    ")
+		if err != nil {
+			return nil, fmt.Errorf("[Error] Cannot convert results to json: %s", err.Error())
+		}
+		buf = bytes.NewBuffer(b)
+	default:
+		buf = new(bytes.Buffer)
+
+		t := template.Must(template.New("replicas").Parse(templates.Replicas))
+		t.Execute(buf, ci.ReplicaMembers)
+
+		t = template.Must(template.New("hosttemplateData").Parse(templates.HostInfo))
+		t.Execute(buf, ci.HostInfo)
+
+		t = template.Must(template.New("runningOps").Parse(templates.RunningOps))
+		t.Execute(buf, ci.RunningOps)
+
+		t = template.Must(template.New("ssl").Parse(templates.Security))
+		t.Execute(buf, ci.SecuritySettings)
+
+		if ci.OplogInfo != nil && len(ci.OplogInfo) > 0 {
+			t = template.Must(template.New("oplogInfo").Parse(templates.Oplog))
+			t.Execute(buf, ci.OplogInfo[0])
+		}
+
+		t = template.Must(template.New("clusterwide").Parse(templates.Clusterwide))
+		t.Execute(buf, ci.ClusterWideInfo)
+
+		t = template.Must(template.New("balancer").Parse(templates.BalancerStats))
+		t.Execute(buf, ci.BalancerStats)
+	}
+
+	return buf.Bytes(), nil
 }
 
 func GetHostinfo(session pmgo.SessionManager) (*hostInfo, error) {
@@ -472,6 +515,7 @@ func GetSecuritySettings(session pmgo.SessionManager, ver string) (*security, er
 	// Lets try both
 	newSession := session.Clone()
 	defer newSession.Close()
+
 	newSession.SetMode(mgo.Strong, true)
 
 	if s.Users, s.Roles, err = getUserRolesCount(newSession); err != nil {
@@ -811,6 +855,7 @@ func parseFlags() (*options, error) {
 		RunningOpsSamples:  DEFAULT_RUNNINGOPSSAMPLES,
 		RunningOpsInterval: DEFAULT_RUNNINGOPSINTERVAL, // milliseconds
 		AuthDB:             DEFAULT_AUTHDB,
+		OutputFormat:       DEFAULT_OUTPUT_FORMAT,
 	}
 
 	gop := getopt.New()
@@ -821,8 +866,9 @@ func parseFlags() (*options, error) {
 	gop.StringVarLong(&opts.User, "username", 'u', "", "Username to use for optional MongoDB authentication")
 	gop.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").SetOptional()
 	gop.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin",
-		"Databaae to use for optional MongoDB authentication. Default: admin")
+		"Database to use for optional MongoDB authentication. Default: admin")
 	gop.StringVarLong(&opts.LogLevel, "log-level", 'l', "error", "Log level: panic, fatal, error, warn, info, debug. Default: error")
+	gop.StringVarLong(&opts.OutputFormat, "output-format", 'f', "text", "Output format: text, json. Default: text")
 
 	gop.IntVarLong(&opts.RunningOpsSamples, "running-ops-samples", 's',
 		fmt.Sprintf("Number of samples to collect for running ops. Default: %d", opts.RunningOpsSamples))
@@ -851,6 +897,9 @@ func parseFlags() (*options, error) {
 	if opts.Help {
 		gop.PrintUsage(os.Stdout)
 		return nil, nil
+	}
+	if opts.OutputFormat != "json" && opts.OutputFormat != "text" {
+		log.Infof("Invalid output format '%s'. Using text format", opts.OutputFormat)
 	}
 
 	return opts, nil
