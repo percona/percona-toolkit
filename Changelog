@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v3.0.3 released 2017-05-18
+
 v3.0.3
 
  * Fixed bug PT-133 : Sandbox won't start correctly if autocommit=0 in my.cnf

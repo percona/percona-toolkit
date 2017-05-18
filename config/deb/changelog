@@ -1,3 +1,8 @@
+percona-toolkit (3.0.3-1) unstable; urgency=low
+
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Thu, 18 May 2017 11:02:28 +0000
+
 percona-toolkit (3.0.2-1) unstable; urgency=low
 
  * Fixed bug PT-73  : pt-mongodb tools add support for SSL connections

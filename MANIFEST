@@ -8,6 +8,8 @@ INSTALL
 Makefile.PL
 MANIFEST
 README
+bin/glide
+bin/govendor
 bin/pt-align
 bin/pt-archiver
 bin/pt-config-diff
@@ -23,6 +25,8 @@ bin/pt-index-usage
 bin/pt-ioprofile
 bin/pt-kill
 bin/pt-mext
+bin/pt-mongodb-query-digest
+bin/pt-mongodb-summary
 bin/pt-mysql-summary
 bin/pt-online-schema-change
 bin/pt-pmp

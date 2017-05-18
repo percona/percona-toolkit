@@ -26,6 +26,14 @@ This release of Percona Toolkit includes the following tools:
 
 =over
 
+=item glide
+
+
+
+=item govendor
+
+
+
 =item pt-align
 
 Align output from other tools to columns.
@@ -85,6 +93,14 @@ Kill MySQL queries that match certain criteria.
 =item pt-mext
 
 Look at many samples of MySQL C<SHOW GLOBAL STATUS> side-by-side.
+
+=item pt-mongodb-query-digest
+
+
+
+=item pt-mongodb-summary
+
+
 
 =item pt-mysql-summary
 
@@ -560,6 +576,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-Percona Toolkit v3.0.2 released 2017-03-23
+Percona Toolkit v3.0.3 released 2017-05-18
 
 =cut

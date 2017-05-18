@@ -1,6 +1,39 @@
 Release Notes
 *************
 
+v3.0.3 released 2017-05-18
+==========================
+
+Percona Toolkit 3.0.3 includes the following changes:
+
+New Features
+
+* Added the ``--skip-check-slave-lag`` option for ``pt-table-checksum``, ``pt-online-schema-change``, and ``pt-archiver``.
+
+  This option can be used to specify list of servers where to skip checking for slave lag.
+
+* 1642754: Added support for collecting replication slave information in ``pt-stalk``.
+
+* PT-111: Added support for collecting information about variables from Performance Schema in ``pt-stalk``. For more information, see 1642753.
+
+* PT-116: Added the ``--[no]use-insert-ignore`` option for ``pt-online-schema-change`` to force or prevent using ``IGNORE`` on ``INSERT`` statements. For more information, see 1545129.
+
+Bug Fixes
+
+* PT-115: Fixed ``OptionParser`` to accept repeatable DSNs.
+
+* PT-126: Fixed ``pt-online-schema-change`` to correctly parse comments. For more information, see 1592072.
+
+* PT-128: Fixed ``pt-stalk`` to include memory usage information. For more information, see 1510809.
+
+* PT-130: Fixed ``pt-mext`` to work with non-empty RSA public key. For more information, see 1587404.
+
+* PT-132: Fixed ``pt-online-schema-change`` to enable ``--no-drop-new-table`` when ``--no-swap-tables`` and ``--no-drop-triggers`` are used.
+
+Changelog
+---------
+
+
 v3.0.2 released 2017-03-27
 ==========================
 

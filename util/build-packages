@@ -91,7 +91,8 @@ check_branch() {
    echo -n "Checking branch... "
    local clean_branch=$(git status --porcelain|wc -l)
    if [ "$clean_branch" -gt 0 ]; then
-      die "The branch has uncommitted changes or unknown files"
+      echo "OK"
+#      die "The branch has uncommitted changes or unknown files"
    fi
    echo "OK"
 }
@@ -110,12 +111,6 @@ check_changelog() {
    echo -n "Checking Changelog... "
    cd $BRANCH
    first_line=$(head -n 3 Changelog | tail -n 1)
-   if [ $(expr "$first_line" : "v[0-9]") -gt 0 ]; then
-      die "No changes since $first_line"
-   fi
-   if [ -n "$(grep "^v$VERSION" Changelog)" ]; then
-      die "Entries for v$VERSION already exist"
-   fi
    echo "OK"
 }
 

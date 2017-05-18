@@ -38,7 +38,7 @@ const (
 var (
 	Build     string = "01-01-1980"
 	GoVersion string = "1.8"
-	Version   string = "3.0.1"
+	Version   string = "3.0.3"
 )
 
 type TimedStats struct {
