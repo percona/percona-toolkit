@@ -814,6 +814,20 @@ SKIP: {
        'Wait for master returned error',
    );
 
+   # After stopping one of the replication channels, show slave status returns only one slave
+   # but it has a channel name and we didn't specified a channels name in the command line.
+   # It should return undef
+   $slave1_dbh->do("STOP SLAVE for channel 'masterchan2'");
+
+   $css = $ms->get_slave_status($slave1_dbh);
+   is (
+       $css,
+       undef,
+       'Cannot determine slave in a multi source config without --channel param (only one server)'
+   );
+
+   $slave1_dbh->do("START SLAVE for channel 'masterchan2'");
+
    # Now try specifying a channel name 
    $ms->{channel} = 'masterchan1';
    $css = $ms->get_slave_status($slave1_dbh);

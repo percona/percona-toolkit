@@ -457,7 +457,12 @@ sub get_slave_status {
                   }
               }
           } else {
-              $ss = $sss_rows->[0];
+              if ($sss_rows->[0]->{channel_name} && $sss_rows->[0]->{channel_name} ne $self->{channel}) {
+                  warn 'This server is using replication channels but "channel" was not specified on the command line';
+                  return undef;
+              } else {
+                  $ss = $sss_rows->[0];
+              }
           }
 
           if ( $ss && %$ss ) {
