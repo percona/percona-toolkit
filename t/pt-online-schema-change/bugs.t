@@ -610,7 +610,7 @@ $sb->load_file('master', "$sample/bug-1613915.sql");
 $output = output(
    sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=o1",
          '--execute', 
-         '--alter', "ADD COLUMN c INT COMMENT 'change plus more than one word'",
+         '--alter', "ADD COLUMN c INT COMMENT 'change \"plus\" more than one word'",
          '--chunk-size', '10', '--no-check-alter',
          ),
       },
@@ -633,7 +633,7 @@ is(
 $rows = $master_dbh->selectrow_arrayref("SHOW CREATE TABLE test.o1");
 like(
       $rows->[1],
-      qr/COMMENT 'change plus more than one word'/,
+      qr/COMMENT 'change "plus" more than one word'/,
       "recognize comments",
 );
 
