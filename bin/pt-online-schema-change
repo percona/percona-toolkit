@@ -10215,6 +10215,8 @@ sub create_new_table {
       );
       my $constraint_pattern = qr((CONSTRAINT `__|CONSTRAINT `_|CONSTRAINT `));
       $sql =~ s/$constraint_pattern/$search_dict{$1}/gm;
+      # Limit constraint name to 64 characters
+      $sql =~ s/CONSTRAINT `([^`]{1,64})[^`]*` (.*)/  CONSTRAINT `$1` $2/gm;
 
       if ( $o->get('default-engine') ) {
          $sql =~ s/\s+ENGINE=\S+//;
