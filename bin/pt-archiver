@@ -6296,10 +6296,8 @@ sub main {
    # this ensures returned sets are disjoint when ran on partitioned tables
    # issue 1376561
    my $index_cols;
-   if (  $sel_stmt->{index} 
-         && $src->{info}->{keys}->{$sel_stmt->{index}}->{cols} 
-   ) {
-      $index_cols = $src->{info}->{keys}->{$sel_stmt->{index}}->{colnames};
+   if (  $sel_stmt->{index} && $src->{info}->{keys}->{$sel_stmt->{index}}->{cols} ) {
+      $index_cols = join(",",map { "`$_`" } @{$src->{info}->{keys}->{$sel_stmt->{index}}->{cols}});
    }
 
    foreach my $thing ( $first_sql, $next_sql ) {
