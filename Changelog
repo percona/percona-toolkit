@@ -3,6 +3,7 @@ Changelog for Percona Toolkit
 v3.0.4
 
  * Fixed bug PT-138 : Added --output-format option to pt-mongodb-summary
+ * Feature   PT-141 : pt-archiver archive records into csv file
 
 v3.0.3
 
