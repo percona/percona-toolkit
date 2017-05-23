@@ -5893,6 +5893,8 @@ my $get_sth;
 my ( $OUT_OF_RETRIES, $ROLLED_BACK, $ALL_IS_WELL ) = ( 0, -1, 1 );
 my ( $src, $dst );
 my $pxc_version = '0';
+my $fields_separated_by = "\t";
+my $optionally_enclosed_by;
 
 # Holds the arguments for the $sth's bind variables, so it can be re-tried
 # easily.
@@ -6520,12 +6522,19 @@ sub main {
    
    # Open the file and print the header to it. 
    if ( $archive_file ) { 
+      if ($o->got('output-format') && $o->get('output-format') ne 'dump' && $o->get('output-format') ne 'csv') {
+          warn "Invalid output format:". $o->get('format');
+          warn "Using default 'dump' format";
+      } elsif ($o->get('output-format') || '' eq 'csv') {
+              $fields_separated_by = ", ";
+              $optionally_enclosed_by = '"';
+      }
       my $need_hdr = $o->get('header') && !-f $archive_file; 
       $archive_fh = IO::File->new($archive_file, ">>$charset") 
          or die "Cannot open $charset $archive_file: $OS_ERROR\n"; 
       $archive_fh->autoflush(1) unless $o->get('buffer'); 
       if ( $need_hdr ) { 
-         print { $archive_fh } '', escape(\@sel_cols), "\n" 
+         print { $archive_fh } '', escape(\@sel_cols, $fields_separated_by, $optionally_enclosed_by), "\n" 
             or die "Cannot write to $archive_file: $OS_ERROR\n"; 
       } 
    } 
@@ -6570,7 +6579,7 @@ sub main {
          # problem, hopefully the data has at least made it to the file.
          my $escaped_row;
          if ( $archive_fh || $bulkins_file ) {
-            $escaped_row = escape([@{$row}[@sel_slice]]);
+            $escaped_row = escape([@{$row}[@sel_slice]], $fields_separated_by, $optionally_enclosed_by);
          }
          if ( $archive_fh ) {
             trace('print_file', sub {
@@ -7027,11 +7036,18 @@ sub do_with_retries {
 # described in the LOAD DATA INFILE section of the MySQL manual,
 # http://dev.mysql.com/doc/refman/5.0/en/load-data.html
 sub escape {
-   my ($row) = @_;
-   return join("\t", map {
+   my ($row, $fields_separated_by, $optionally_enclosed_by) = @_;
+   $fields_separated_by ||= "\t";
+   $optionally_enclosed_by ||= '';
+ 
+   return join($fields_separated_by, map {
       s/([\t\n\\])/\\$1/g if defined $_;  # Escape tabs etc
-      defined $_ ? $_ : '\N';             # NULL = \N
+      $_ = defined $_ ? $_ : '\N';             # NULL = \N
+      # var & ~var will return 0 only for numbers
+      $_ =~ s/([^\\])"/$1\\"/g if ($_ !~ /^[0-9,.E]+$/  && $optionally_enclosed_by eq '"');
+      $_ = $optionally_enclosed_by && $_ & ~$_ ? $optionally_enclosed_by."$_".$optionally_enclosed_by : $_;
    } @$row);
+
 }
 
 sub ts {
@@ -7651,6 +7667,17 @@ Run OPTIMIZE TABLE afterwards on L<"--source"> and/or L<"--dest">.
 Runs OPTIMIZE TABLE after finishing.  See L<"--analyze"> for the option syntax
 and L<http://dev.mysql.com/doc/en/optimize-table.html> for details on OPTIMIZE
 TABLE.
+
+=item --output-format
+
+type: string
+
+Used with L<"--file"> to specify the output format.
+
+Valid formats are:
+  dump: MySQL dump format using tabs as field separator (default)
+  csv : Dump rows using ',' as separator and optionally enclosing fields by '"'.
+        This format is equivalent to FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"'.
 
 =item --password
 
