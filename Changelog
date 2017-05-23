@@ -1,5 +1,9 @@
 Changelog for Percona Toolkit
 
+v3.0.4
+
+ * Fixed bug PT-138 : Added --output-format option to pt-mongodb-summary
+
 v3.0.3
 
  * Fixed bug PT-133 : Sandbox won't start correctly if autocommit=0 in my.cnf

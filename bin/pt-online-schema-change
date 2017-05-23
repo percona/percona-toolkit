@@ -55,7 +55,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.2';
+our $VERSION = '3.0.3';
 
 use strict;
 use warnings FATAL => 'all';
@@ -10053,8 +10053,13 @@ sub find_renamed_cols {
    /x;
 
    my $table_ident  = qr/$unquoted_ident|`$quoted_ident`|"$ansi_quotes_ident"/;
-   my $alter_change_col_re = qr/\bCHANGE \s+ (?:COLUMN \s+)? (?:COMMENT\s+[^\]['"].*?[^\]['"])?
-                                    ($table_ident) \s+ ($table_ident)/ix;
+
+   # remove comments
+   $alter =~ s/^(.*?)\s+COMMENT\s+'(.*?[^\\]')+(.*)/$1$3/; 
+   $alter =~ s/^(.*?)\s+COMMENT\s+"(.*?[^\\]")+(.*)/$1$3/; 
+
+   my $alter_change_col_re = qr/\bCHANGE \s+ (?:COLUMN \s+)? 
+                                ($table_ident) \s+ ($table_ident)/ix;
 
    my %renames;
    while ( $alter =~ /$alter_change_col_re/g ) {
