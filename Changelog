@@ -2,6 +2,7 @@ Changelog for Percona Toolkit
 
 v3.0.4
 
+ * Fixed bug PT-143 : pt-archiver SELECT query fails because of primary key
  * Fixed bug PT-142 : pt-online-schema-change find_child_tables slow
  * Fixed bug PT-138 : Added --output-format option to pt-mongodb-summary
  * Feature   PT-141 : pt-archiver archive records into csv file
