@@ -52,7 +52,7 @@ my $want = [
            key_len       => 2,
            ref           => 'const',
            rows          => 1,
-           Extra         => $sandbox_version gt '5.6' ? undef : '',
+           Extra         => $sandbox_version eq '5.6' ? undef : '',
          },
       ];
 if ( $sandbox_version gt '5.6' ) {

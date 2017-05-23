@@ -2,6 +2,7 @@ Changelog for Percona Toolkit
 
 v3.0.4
 
+ * Fixed bug PT-142 : pt-online-schema-change find_child_tables slow
  * Fixed bug PT-138 : Added --output-format option to pt-mongodb-summary
  * Feature   PT-141 : pt-archiver archive records into csv file
 
@@ -13,15 +14,17 @@ v3.0.3
  * Fixed bug PT-128 : pt-stalk ps include memory usage outputs
  * Fixed bug PT-126 : Recognize comments in ALTER
  * Fixed bug PT-116 : pt-online-schema change eats data on adding a unique index. Added --[no]use-insert-ignore
- * Feature   PT-115 : Make DSNs params able to be repeatable
  * Fixed bug PT-115 : Made OptionParser to accept repeatable DSNs
  * Fixed bug PT-111 : Collect MySQL variables
  * Fixed bug PT-087 : Add --skip-check-slave-lag to pt-table-checksum
  * Fixed bug PT-086 : Added --skip-check-slave-lag to pt-osc
  * Fixed bug PT-080 : Added support for slave status in pt-stalk
+ * Feature   PT-115 : Make DSNs params able to be repeatable
 
 v3.0.2 released 2017-03-23
 
+ * Fixed bug PT-101 : pt-table-checksum ignores slave-user and slave-password
+ * Fixed bug PT-105 : pt-table-checksum fails if a database is dropped while the tool is running
  * Fixed bug PT-73  : pt-mongodb tools add support for SSL connections
  * Fixed bug PT-74  : pt-mongodb-summary Cannot get security settings when connected to a mongod instance
  * Fixed bug PT-75  : pt-mongodb-query-digest Change the default sort order to -count (descending)
@@ -32,8 +35,6 @@ v3.0.2 released 2017-03-23
  * Fixed bug PT-93  : Fix pt-mongodb-query-digest query ID (Thanks Kamil Dziedzic)
  * Fixed bug PT-94  : pt-online-schema-change makes duplicate rows in _t_new for UPDATE t set pk=0 where pk=1
  * Fixed bug PT-96  : Fixed PT tests
- * Fixed bug PT-101 : pt-table-checksum ignores slave-user and slave-password
- * Fixed bug PT-105 : pt-table-checksum fails if a database is dropped while the tool is running
 
 v3.0.1 released 2017-02-16
 
