@@ -8770,6 +8770,7 @@ sub main {
          tbl    => $orig_tbl,
          Cxn    => $cxn,
          Quoter => $q,
+         only_same_schema_fks => $o->get('only-same-schema-fks'), 
       );
       if ( !$child_tables ) {
          if ( $alter_fk_method ) {
@@ -10455,6 +10456,11 @@ sub find_child_tables {
            . "FROM information_schema.key_column_usage "
            . "WHERE referenced_table_schema='$tbl->{db}' "
            . "AND referenced_table_name='$tbl->{tbl}'";
+
+   if ($args{only_same_schema_fks}) {
+       $sql .= " AND table_schema='$tbl->{db}'";
+   }
+
    PTDEBUG && _d($sql);
    my $rows = $cxn->dbh()->selectall_arrayref($sql);
    if ( !$rows || !@$rows ) {
@@ -11875,6 +11881,13 @@ Allows MODIFYing a column that allows NULL values to one that doesn't allow
 them. The rows which contain NULL values will be converted to the defined
 default value. If no explicit DEFAULT value is given MySQL will assign a default
 value based on datatype, e.g. 0 for number datatypes, '' for string datatypes.
+
+=item --only-same-schema-fks
+
+Check foreigns keys only on tables on the same schema than the original table.
+This option is dangerous since if you have FKs refenrencing tables in other
+schemas, they won't be detected.
+
 
 =item --password
 
