@@ -228,6 +228,11 @@ sub name {
    return $self->{hostname} || $self->{dsn_name} || 'unknown host';
 }
 
+sub description {
+   my ($self) = @_;
+   return sprintf("%s -> %s:%s", $self->name(), $self->{dsn}->{h}, $self->{dsn}->{P} || 'socket');
+}
+
 # This returns the server_id. 
 # For cluster nodes, since server_id is unreliable, we use a combination of 
 # variables to create an id string that is unique.

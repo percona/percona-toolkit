@@ -3948,6 +3948,11 @@ sub name {
    return $self->{hostname} || $self->{dsn_name} || 'unknown host';
 }
 
+sub description {
+   my ($self) = @_;
+   return sprintf("%s -> %s:%s", $self->name(), $self->{dsn}->{h}, $self->{dsn}->{P} || 'socket');
+}
+
 sub get_id {
    my ($self, $cxn) = @_;
 
@@ -8486,7 +8491,7 @@ sub main {
       if ( scalar @$slaves ) {
          print "Found " . scalar(@$slaves) . " slaves:\n";
          foreach my $cxn ( @$slaves ) {
-            printf("%s -> %s:%s\n", $cxn->name(), $cxn->{dsn}->{h}, $cxn->{dsn}->{P});
+            print $cxn->description()."\n";
          }
       }
       elsif ( ($o->get('recursion-method') || '') ne 'none') {
@@ -8523,7 +8528,7 @@ sub main {
                      }
                  }
                  if ($found) {
-                    printf("Skipping slave %s -> %s:%s\n", $slave->name(), $slave->{dsn}->{h}, $slave->{dsn}->{P});
+                    print "Skipping slave ". $slave->description()."\n";
                  } else {
                     push @$filtered_slaves, $slave;
                  }
@@ -8535,7 +8540,7 @@ sub main {
          } else{
             print "Will check slave lag on:\n";
             foreach my $cxn ( @$slave_lag_cxns ) {
-               printf("%s -> %s:%s\n", $cxn->name(), $cxn->{dsn}->{h}, $cxn->{dsn}->{P});
+               print $cxn->description()."\n";
             }
          }
       }
