@@ -2,6 +2,7 @@ Changelog for Percona Toolkit
 
 v3.0.4
 
+ * Fixed bug PT-148 : pt-osc Use of uninitialized value in printf
  * Fixed bug PT-144 : Constraint name is too long (> 64 chars)
  * Fixed bug PT-143 : pt-archiver SELECT query fails because of primary key
  * Fixed bug PT-142 : pt-online-schema-change find_child_tables slow
