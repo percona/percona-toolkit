@@ -1,0 +1,161 @@
+[
+  {
+    "ID": "c6466139b21c392acd0699e863b50d81",
+    "Namespace": "samples.col1",
+    "Operation": "query",
+    "Query": "{\"find\":\"col1\",\"shardVersion\":[0,\"000000000000000000000000\"]}",
+    "Fingerprint": "find",
+    "FirstSeen": "2017-04-10T13:16:23.29-03:00",
+    "LastSeen": "2017-04-10T13:16:23.29-03:00",
+    "Count": 1,
+    "QPS": 1,
+    "Rank": 0,
+    "Ratio": 1,
+    "QueryTime": {
+      "Pct": 0,
+      "Total": 0,
+      "Min": 0,
+      "Max": 0,
+      "Avg": 0,
+      "Pct95": 0,
+      "StdDev": 0,
+      "Median": 0
+    },
+    "ResponseLength": {
+      "Pct": 0.9995949739087844,
+      "Total": 1061230,
+      "Min": 1061230,
+      "Max": 1061230,
+      "Avg": 1061230,
+      "Pct95": 1061230,
+      "StdDev": 0,
+      "Median": 1061230
+    },
+    "Returned": {
+      "Pct": 100,
+      "Total": 75,
+      "Min": 75,
+      "Max": 75,
+      "Avg": 75,
+      "Pct95": 75,
+      "StdDev": 0,
+      "Median": 75
+    },
+    "Scanned": {
+      "Pct": 0.7444168734491315,
+      "Total": 75,
+      "Min": 75,
+      "Max": 75,
+      "Avg": 75,
+      "Pct95": 75,
+      "StdDev": 0,
+      "Median": 75
+    }
+  },
+  {
+    "ID": "84e09ef6a3dc35f472df05fa98eee7d3",
+    "Namespace": "samples.col1",
+    "Operation": "query",
+    "Query": "{\"s2\":{\"$gte\":\"41991\",\"$lt\":\"33754\"}}",
+    "Fingerprint": "s2",
+    "FirstSeen": "2017-04-10T13:15:53.532-03:00",
+    "LastSeen": "2017-04-10T13:15:53.532-03:00",
+    "Count": 1,
+    "QPS": 1,
+    "Rank": 0,
+    "Ratio": 0,
+    "QueryTime": {
+      "Pct": 100,
+      "Total": 7,
+      "Min": 7,
+      "Max": 7,
+      "Avg": 7,
+      "Pct95": 7,
+      "StdDev": 0,
+      "Median": 7
+    },
+    "ResponseLength": {
+      "Pct": 0.00020251304560782172,
+      "Total": 215,
+      "Min": 215,
+      "Max": 215,
+      "Avg": 215,
+      "Pct95": 215,
+      "StdDev": 0,
+      "Median": 215
+    },
+    "Returned": {
+      "Pct": 0,
+      "Total": 0,
+      "Min": 0,
+      "Max": 0,
+      "Avg": 0,
+      "Pct95": 0,
+      "StdDev": 0,
+      "Median": 0
+    },
+    "Scanned": {
+      "Pct": 99.25558312655087,
+      "Total": 10000,
+      "Min": 10000,
+      "Max": 10000,
+      "Avg": 10000,
+      "Pct95": 10000,
+      "StdDev": 0,
+      "Median": 10000
+    }
+  },
+  {
+    "ID": "69e3b2f5f0aefcec868c0fa5ec8cebe5",
+    "Namespace": "samples.col1",
+    "Operation": "query",
+    "Query": "{\"user_id\":{\"$gte\":3384024924,\"$lt\":195092007}}",
+    "Fingerprint": "user_id",
+    "FirstSeen": "2017-04-10T13:15:53.524-03:00",
+    "LastSeen": "2017-04-10T13:15:53.524-03:00",
+    "Count": 1,
+    "QPS": 1,
+    "Rank": 0,
+    "Ratio": 0,
+    "QueryTime": {
+      "Pct": 0,
+      "Total": 0,
+      "Min": 0,
+      "Max": 0,
+      "Avg": 0,
+      "Pct95": 0,
+      "StdDev": 0,
+      "Median": 0
+    },
+    "ResponseLength": {
+      "Pct": 0.00020251304560782172,
+      "Total": 215,
+      "Min": 215,
+      "Max": 215,
+      "Avg": 215,
+      "Pct95": 215,
+      "StdDev": 0,
+      "Median": 215
+    },
+    "Returned": {
+      "Pct": 0,
+      "Total": 0,
+      "Min": 0,
+      "Max": 0,
+      "Avg": 0,
+      "Pct95": 0,
+      "StdDev": 0,
+      "Median": 0
+    },
+    "Scanned": {
+      "Pct": 0,
+      "Total": 0,
+      "Min": 0,
+      "Max": 0,
+      "Avg": 0,
+      "Pct95": 0,
+      "StdDev": 0,
+      "Median": 0
+    }
+  }
+]

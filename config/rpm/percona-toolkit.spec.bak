@@ -8,7 +8,7 @@ Vendor:    Percona
 URL:       http://www.percona.com/software/percona-toolkit/
 Source:    percona-toolkit-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
-BuildArch: x86_64
+BuildArch: @@ARHITECTURE@@
 Requires:  perl(DBI) >= 1.13, perl(DBD::mysql) >= 1.0, perl(Time::HiRes), perl(IO::Socket::SSL), perl(Digest::MD5), perl(Term::ReadKey)
 AutoReq:   no
 

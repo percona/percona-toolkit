@@ -41,11 +41,13 @@ func (s OpLogs) Less(i, j int) bool {
 }
 
 type OplogRow struct {
-	H  int64  `bson:"h"`
-	V  int64  `bson:"v"`
-	Op string `bson:"op"`
-	O  bson.M `bson:"o"`
-	Ts int64  `bson:"ts"`
+	Timestamp int64  `bson:"ts,omitempty"`
+	HistoryId int64  `bson:"h,omitempty"`
+	Version   int64  `bson:"v,omitempty"`
+	Operation string `bson:"op,omitempty"`
+	Namespace string `bson:"ns,omitempty"`
+	Object    bson.D `bson:"o,omitempty"`
+	Query     bson.D `bson:"o2,omitempty"`
 }
 
 type OplogColStats struct {

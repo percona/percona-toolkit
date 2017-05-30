@@ -4,7 +4,7 @@ BEGIN {
    die "The PERCONA_TOOLKIT_BRANCH environment variable is not set.\n"
       unless $ENV{PERCONA_TOOLKIT_BRANCH} && -d $ENV{PERCONA_TOOLKIT_BRANCH};
    unshift @INC, "$ENV{PERCONA_TOOLKIT_BRANCH}/lib";
-   $ENV{PTTEST_PRETTY_JSON} = 1;
+   $ENV{PTTEST_PRETTY_JSON} = 0;
 
 };
 
@@ -160,7 +160,6 @@ ok(
       $result,
       "t/lib/samples/JSONReportFormatter/report001.json",
       cmd_output => 1,
-      update_sample => 1,
    ),
    'Basic output'
 ) or diag($test_diff);

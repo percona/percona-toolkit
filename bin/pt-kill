@@ -47,7 +47,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.0';
+our $VERSION = '3.0.3';
 
 use strict;
 use warnings FATAL => 'all';
@@ -759,7 +759,15 @@ sub _validate_type {
          }
       }
       my $defaults = $self->{DSNParser}->parse_options($self);
-      $opt->{value} = $self->{DSNParser}->parse($val, $prev, $defaults);
+      if (!$opt->{attributes}->{repeatable}) {
+          $opt->{value} = $self->{DSNParser}->parse($val, $prev, $defaults);
+      } else {
+          my $values = [];
+          for my $dsn_string (@$val) {
+              push @$values, $self->{DSNParser}->parse($dsn_string, $prev, $defaults);
+          }
+          $opt->{value} = $values;
+      }
    }
    elsif ( $val && $opt->{type} eq 'z' ) {  # type size
       PTDEBUG && _d('Parsing option', $opt->{long}, 'as a size value');
@@ -3835,8 +3843,10 @@ sub get_slaves {
       my $o = $self->{OptionParser};
 
       $self->recurse_to_slaves(
-         {  dbh       => $dbh,
-            dsn       => $dsn,
+         {  dbh            => $dbh,
+            dsn            => $dsn,
+            slave_user     => $o->got('slave-user') ? $o->get('slave-user') : '',
+            slave_password => $o->got('slave-password') ? $o->get('slave-password') : '', 
             callback  => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
@@ -3891,9 +3901,11 @@ sub _resolve_recursion_methods {
 sub recurse_to_slaves {
    my ( $self, $args, $level ) = @_;
    $level ||= 0;
-   my $dp      = $self->{DSNParser};
+   my $dp = $self->{DSNParser};
    my $recurse = $args->{recurse} || $self->{OptionParser}->get('recurse');
-   my $dsn     = $args->{dsn};
+   my $dsn = $args->{dsn};
+   my $slave_user = $args->{slave_user} || '';
+   my $slave_password = $args->{slave_password} || '';
 
    my $methods = $self->_resolve_recursion_methods($dsn);
    PTDEBUG && _d('Recursion methods:', @$methods);
@@ -3902,14 +3914,24 @@ sub recurse_to_slaves {
       return;
    }
 
+   my $slave_dsn = $dsn;
+   if ($slave_user) {
+      $slave_dsn->{u} = $slave_user;
+      PTDEBUG && _d("Using slave user $slave_user on ".$slave_dsn->{h}.":".$slave_dsn->{P});
+   }
+   if ($slave_password) {
+      $slave_dsn->{p} = $slave_password;
+      PTDEBUG && _d("Slave password set");
+   }
+
    my $dbh;
    eval {
       $dbh = $args->{dbh} || $dp->get_dbh(
-         $dp->get_cxn_params($dsn), { AutoCommit => 1 });
-      PTDEBUG && _d('Connected to', $dp->as_string($dsn));
+         $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 });
+      PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
    };
    if ( $EVAL_ERROR ) {
-      print STDERR "Cannot connect to ", $dp->as_string($dsn), "\n"
+      print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), "\n"
          or die "Cannot print: $OS_ERROR";
       return;
    }
@@ -3942,7 +3964,7 @@ sub recurse_to_slaves {
          PTDEBUG && _d('Recursing from',
             $dp->as_string($dsn), 'to', $dp->as_string($slave));
          $self->recurse_to_slaves(
-            { %$args, dsn => $slave, dbh => undef, parent => $dsn }, $level + 1 );
+            { %$args, dsn => $slave, dbh => undef, parent => $dsn, slave_user => $slave_user, $slave_password => $slave_password }, $level + 1 );
       }
    }
 }
@@ -5278,7 +5300,8 @@ sub lost_connection {
    my ($self, $e) = @_;
    return 0 unless $e;
    return $e =~ m/MySQL server has gone away/
-       || $e =~ m/Lost connection to MySQL server/;
+       || $e =~ m/Lost connection to MySQL server/
+       || $e =~ m/Server shutdown in progress/;
 }
 
 sub dbh {
@@ -5295,6 +5318,11 @@ sub name {
    my ($self) = @_;
    return $self->{dsn_name} if PERCONA_TOOLKIT_TEST_USE_DSN_NAMES;
    return $self->{hostname} || $self->{dsn_name} || 'unknown host';
+}
+
+sub description {
+   my ($self) = @_;
+   return sprintf("%s -> %s:%s", $self->name(), $self->{dsn}->{h}, $self->{dsn}->{P} || 'socket');
 }
 
 sub get_id {
@@ -5328,9 +5356,20 @@ sub is_cluster_node {
    my ($self, $cxn) = @_;
 
    $cxn ||= $self;
+
    my $sql = "SHOW VARIABLES LIKE 'wsrep\_on'";
-   PTDEBUG && _d($cxn->name, $sql);
-   my $row = $cxn->dbh->selectrow_arrayref($sql);
+
+   my $dbh;
+   if ($cxn->isa('DBI::db')) {
+      $dbh = $cxn;
+      PTDEBUG && _d($sql); #don't invoke name() if it's not a Cxn!
+   }
+   else {
+      $dbh = $cxn->dbh();      
+      PTDEBUG && _d($cxn->name, $sql);
+   }
+
+   my $row = $dbh->selectrow_arrayref($sql);
    return $row && $row->[1] && ($row->[1] eq 'ON' || $row->[1] eq '1') ? 1 : 0;
 
 }
@@ -8334,6 +8373,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-kill 3.0.1
+pt-kill 3.0.2
 
 =cut

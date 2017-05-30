@@ -69,6 +69,27 @@ is_deeply(
 ) or diag(Dumper($tables), $output);
 
 # #############################################################################
+# --no-swap-tables --no-drop-triggers implies --no-drop-new-table
+# #############################################################################
+$sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
+
+$output = output(
+   sub { pt_online_schema_change::main(
+      "$master_dsn,D=pt_osc,t=t",
+      '--alter', 'ADD COLUMN d INT',
+      qw(--execute --no-swap-tables --no-drop-triggers))
+   },
+   stderr => 1,
+);
+
+$tables = $dbh1->selectall_arrayref("SHOW TABLES FROM pt_osc");
+is_deeply(
+   $tables,
+   [ ['_t_new'], ['t'] ],
+   "no swap-tables, --no-drop-triggers implies --no-drop-new-table"
+) or diag(Dumper($tables), $output);
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh1);

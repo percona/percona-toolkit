@@ -1,5 +1,5 @@
-hash: 2ff7c989fb0fde1375999fded74ae44e10be513a21416571f026390b679924e4
-updated: 2017-02-15T13:56:15.338996189-03:00
+hash: 7cc97c518c04beac5926bfef5fafc2c291d1c8eff945390edb5e71fecbf461f2
+updated: 2017-04-11T11:01:58.383683464-03:00
 imports:
 - name: github.com/bradfitz/slice
   version: d9036e2120b5ddfa53f3ebccd618c4af275f47da
@@ -17,14 +17,14 @@ imports:
   version: bf9dde6d0d2c004a008c27aaee91170c786f6db8
 - name: github.com/kr/pretty
   version: cfb55aafdaf3ec08f0db22699ab822c50091b1c4
-- name: github.com/kr/text
-  version: 7cafcd837844e784b526369c9bce262804aebc60
 - name: github.com/montanaflynn/stats
   version: eeaced052adbcfeea372c749c281099ed7fdaa38
 - name: github.com/pborman/getopt
   version: 7148bc3a4c3008adfcab60cbebfd0576018f330b
+  subpackages:
+  - v2
 - name: github.com/percona/pmgo
-  version: 27d979df6c6885ff16abe375aead061a86da6df8
+  version: 9566dc76df319b856a12f24a3b6852a0c6463eff
   subpackages:
   - pmgomock
 - name: github.com/pkg/errors
@@ -32,7 +32,7 @@ imports:
 - name: github.com/satori/go.uuid
   version: 879c5887cd475cd7864858769793b2ceb0d44feb
 - name: github.com/shirou/gopsutil
-  version: 70a1b78fe69202d93d6718fc9e3a4d6f81edfd58
+  version: e49a95f3d5f824c3f9875ca49e54e4fef17f82cf
   subpackages:
   - cpu
   - host
@@ -43,7 +43,7 @@ imports:
 - name: github.com/shirou/w32
   version: bb4de0191aa41b5507caa14b0650cdbddcd9280b
 - name: github.com/sirupsen/logrus
-  version: c078b1e43f58d563c74cebe63c85789e76ddb627
+  version: ba1b36c82c5e05c4f912a88eab0dcd91a171688f
 - name: github.com/StackExchange/wmi
   version: e542ed97d15e640bdc14b5c12162d59e8fc67324
 - name: go4.org

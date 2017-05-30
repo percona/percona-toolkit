@@ -1,5 +1,45 @@
 Changelog for Percona Toolkit
 
+v3.0.4
+
+ * Fixed bug PT-148 : pt-osc Use of uninitialized value in printf
+ * Fixed bug PT-144 : Constraint name is too long (> 64 chars)
+ * Fixed bug PT-143 : pt-archiver SELECT query fails because of primary key
+ * Fixed bug PT-142 : pt-online-schema-change find_child_tables slow
+ * Fixed bug PT-138 : Added --output-format option to pt-mongodb-summary
+ * Fixed bug PT-136 : pt-table-checksum fails with columns having different collation/charset
+ * Feature   PT-141 : pt-archiver archive records into csv file
+
+v3.0.3 released 2017-05-19
+
+ * Fixed bug PT-133 : Sandbox won't start correctly if autocommit=0 in my.cnf
+ * Fixed bug PT-132 : pt-online-schema-change should imply --no-drop-new-table 
+ * Fixed bug PT-130 : Fixed pt-mext not working with not empty Rsa_public_key
+ * Fixed bug PT-128 : pt-stalk ps include memory usage outputs
+ * Fixed bug PT-126 : Recognize comments in ALTER
+ * Fixed bug PT-116 : pt-online-schema change eats data on adding a unique index. Added --[no]use-insert-ignore
+ * Fixed bug PT-115 : Made OptionParser to accept repeatable DSNs
+ * Fixed bug PT-111 : Collect MySQL variables
+ * Fixed bug PT-087 : Add --skip-check-slave-lag to pt-table-checksum
+ * Fixed bug PT-086 : Added --skip-check-slave-lag to pt-osc
+ * Fixed bug PT-080 : Added support for slave status in pt-stalk
+ * Feature   PT-115 : Make DSNs params able to be repeatable
+
+v3.0.2 released 2017-03-23
+
+ * Fixed bug PT-101 : pt-table-checksum ignores slave-user and slave-password
+ * Fixed bug PT-105 : pt-table-checksum fails if a database is dropped while the tool is running
+ * Fixed bug PT-73  : pt-mongodb tools add support for SSL connections
+ * Fixed bug PT-74  : pt-mongodb-summary Cannot get security settings when connected to a mongod instance
+ * Fixed bug PT-75  : pt-mongodb-query-digest Change the default sort order to -count (descending)
+ * Fixed bug PT-76  : pt-mysql-summary password doesn't support '&' and '#' symbols
+ * Fixed bug PT-77  : Update Makefile for mongodb tools
+ * Fixed bug PT-81  : Collect information about locks and transactions using P_S (Thanks Agustin Gallego)
+ * Fixed bug PT-89  : pt-stalk top CPU usage is useless
+ * Fixed bug PT-93  : Fix pt-mongodb-query-digest query ID (Thanks Kamil Dziedzic)
+ * Fixed bug PT-94  : pt-online-schema-change makes duplicate rows in _t_new for UPDATE t set pk=0 where pk=1
+ * Fixed bug PT-96  : Fixed PT tests
+
 v3.0.1 released 2017-02-16
 
 v3.0 released 2017-02-03

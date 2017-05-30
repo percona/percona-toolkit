@@ -1,25 +1,23 @@
 package main
 
 import (
-	"crypto/md5"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
-	"regexp"
 	"sort"
 	"strings"
 	"text/template"
 	"time"
 
 	"github.com/howeyc/gopass"
-	"github.com/kr/pretty"
-	"github.com/montanaflynn/stats"
 	"github.com/pborman/getopt"
 	"github.com/percona/percona-toolkit/src/go/lib/config"
 	"github.com/percona/percona-toolkit/src/go/lib/versioncheck"
+	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
+	"github.com/percona/percona-toolkit/src/go/mongolib/profiler"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
+	"github.com/percona/percona-toolkit/src/go/mongolib/stats"
 	"github.com/percona/percona-toolkit/src/go/mongolib/util"
+	"github.com/percona/percona-toolkit/src/go/pt-mongodb-query-digest/filter"
 	"github.com/percona/pmgo"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/mgo.v2"
@@ -27,8 +25,7 @@ import (
 )
 
 const (
-	TOOLNAME        = "pt-mongodb-query-digest"
-	MAX_DEPTH_LEVEL = 10
+	TOOLNAME = "pt-mongodb-query-digest"
 
 	DEFAULT_AUTHDB          = "admin"
 	DEFAULT_HOST            = "localhost:27017"
@@ -41,23 +38,7 @@ var (
 	Build     string = "01-01-1980"
 	GoVersion string = "1.8"
 	Version   string = "3.0.1"
-
-	CANNOT_GET_QUERY_ERROR = errors.New("cannot get query field from the profile document (it is not a map)")
-
-	// This is a regexp array to filter out the keys we don't want in the fingerprint
-	keyFilters = func() []string {
-		return []string{"^shardVersion$", "^\\$"}
-	}
 )
-
-type iter interface {
-	All(result interface{}) error
-	Close() error
-	Err() error
-	For(result interface{}, f func() error) (err error)
-	Next(result interface{}) bool
-	Timeout() bool
-}
 
 type options struct {
 	AuthDB          string
@@ -71,79 +52,10 @@ type options struct {
 	OrderBy         []string
 	Password        string
 	SkipCollections []string
+	SSLCAFile       string
+	SSLPEMKeyFile   string
 	User            string
 	Version         bool
-}
-
-// This func receives a doc from the profiler and returns:
-// true : the document must be considered
-// false: the document must be skipped
-type docsFilter func(proto.SystemProfile) bool
-
-type statsArray []stat
-
-func (a statsArray) Len() int           { return len(a) }
-func (a statsArray) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a statsArray) Less(i, j int) bool { return a[i].Count < a[j].Count }
-
-type times []time.Time
-
-func (a times) Len() int           { return len(a) }
-func (a times) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a times) Less(i, j int) bool { return a[i].Before(a[j]) }
-
-type stat struct {
-	ID             string
-	Operation      string
-	Fingerprint    string
-	Namespace      string
-	Query          map[string]interface{}
-	Count          int
-	TableScan      bool
-	NScanned       []float64
-	NReturned      []float64
-	QueryTime      []float64 // in milliseconds
-	ResponseLength []float64
-	LockTime       times
-	BlockedTime    times
-	FirstSeen      time.Time
-	LastSeen       time.Time
-}
-
-type groupKey struct {
-	Operation   string
-	Fingerprint string
-	Namespace   string
-}
-
-type statistics struct {
-	Pct    float64
-	Total  float64
-	Min    float64
-	Max    float64
-	Avg    float64
-	Pct95  float64
-	StdDev float64
-	Median float64
-}
-
-type queryInfo struct {
-	Count          int
-	Operation      string
-	Query          string
-	Fingerprint    string
-	FirstSeen      time.Time
-	ID             string
-	LastSeen       time.Time
-	Namespace      string
-	NoVersionCheck bool
-	QPS            float64
-	QueryTime      statistics
-	Rank           int
-	Ratio          float64
-	ResponseLength statistics
-	Returned       statistics
-	Scanned        statistics
 }
 
 func main() {
@@ -153,14 +65,14 @@ func main() {
 		log.Errorf("error processing commad line arguments: %s", err)
 		os.Exit(1)
 	}
-	if opts.Help {
-		getopt.Usage()
+	if opts == nil && err == nil {
 		return
 	}
 
 	logLevel, err := log.ParseLevel(opts.LogLevel)
 	if err != nil {
-		fmt.Errorf("cannot set log level: %s", err.Error())
+		fmt.Printf("Cannot set log level: %s", err.Error())
+		os.Exit(1)
 	}
 	log.SetLevel(logLevel)
 
@@ -203,7 +115,7 @@ func main() {
 		os.Exit(4)
 	}
 
-	if isProfilerEnabled == false {
+	if !isProfilerEnabled {
 		count, err := systemProfileDocsCount(session, di.Database)
 		if err != nil || count == 0 {
 			log.Error("Profiler is not enabled")
@@ -214,56 +126,43 @@ func main() {
 		fmt.Println("Using those documents for the stats")
 	}
 
-	filters := []docsFilter{}
+	opts.SkipCollections = sanitizeSkipCollections(opts.SkipCollections)
+	filters := []filter.Filter{}
 
 	if len(opts.SkipCollections) > 0 {
-		// Sanitize the param. using --skip-collections="" will produce an 1 element array but
-		// that element will be empty. The same would be using --skip-collections=a,,d
-		cols := []string{}
-		for _, c := range opts.SkipCollections {
-			if strings.TrimSpace(c) != "" {
-				cols = append(cols, c)
-			}
-		}
-		if len(cols) > 0 {
-			// This func receives a doc from the profiler and returns:
-			// true : the document must be considered
-			// false: the document must be skipped
-			filterSystemProfile := func(doc proto.SystemProfile) bool {
-				for _, collection := range cols {
-					if strings.HasSuffix(doc.Ns, collection) {
-						return false
-					}
-				}
-				return true
-			}
-			filters = append(filters, filterSystemProfile)
-		}
+		filters = append(filters, filter.NewFilterByCollection(opts.SkipCollections))
 	}
 
 	query := bson.M{"op": bson.M{"$nin": []string{"getmore", "delete"}}}
 	i := session.DB(di.Database).C("system.profile").Find(query).Sort("-$natural").Iter()
-	queries := sortQueries(getData(i, filters), opts.OrderBy)
+
+	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
+	s := stats.New(fp)
+	prof := profiler.NewProfiler(i, filters, nil, s)
+	prof.Start()
+	queries := <-prof.QueriesChan()
 
 	uptime := uptime(session)
 
+	queriesStats := queries.CalcQueriesStats(uptime)
+	sortedQueryStats := sortQueries(queriesStats, opts.OrderBy)
+
 	printHeader(opts)
 
-	queryTotals := calcTotalQueryStats(queries, uptime)
+	queryTotals := queries.CalcTotalQueriesStats(uptime)
 	tt, _ := template.New("query").Funcs(template.FuncMap{
 		"Format": format,
 	}).Parse(getTotalsTemplate())
 	tt.Execute(os.Stdout, queryTotals)
 
-	queryStats := calcQueryStats(queries, uptime)
 	t, _ := template.New("query").Funcs(template.FuncMap{
 		"Format": format,
 	}).Parse(getQueryTemplate())
 
-	if opts.Limit > 0 && len(queryStats) > opts.Limit {
-		queryStats = queryStats[:opts.Limit]
+	if opts.Limit > 0 && len(sortedQueryStats) > opts.Limit {
+		sortedQueryStats = sortedQueryStats[:opts.Limit]
 	}
-	for _, qs := range queryStats {
+	for _, qs := range sortedQueryStats {
 		t.Execute(os.Stdout, qs)
 	}
 
@@ -305,200 +204,6 @@ func uptime(session pmgo.SessionManager) int64 {
 	return ss.Uptime
 }
 
-func calcTotalQueryStats(queries []stat, uptime int64) queryInfo {
-	qi := queryInfo{}
-	qs := stat{}
-	_, totalScanned, totalReturned, totalQueryTime, totalBytes := calcTotals(queries)
-	for _, query := range queries {
-		qs.NScanned = append(qs.NScanned, query.NScanned...)
-		qs.NReturned = append(qs.NReturned, query.NReturned...)
-		qs.QueryTime = append(qs.QueryTime, query.QueryTime...)
-		qs.ResponseLength = append(qs.ResponseLength, query.ResponseLength...)
-		qi.Count += query.Count
-	}
-
-	qi.Scanned = calcStats(qs.NScanned)
-	qi.Returned = calcStats(qs.NReturned)
-	qi.QueryTime = calcStats(qs.QueryTime)
-	qi.ResponseLength = calcStats(qs.ResponseLength)
-
-	if totalScanned > 0 {
-		qi.Scanned.Pct = qi.Scanned.Total * 100 / totalScanned
-	}
-	if totalReturned > 0 {
-		qi.Returned.Pct = qi.Returned.Total * 100 / totalReturned
-	}
-	if totalQueryTime > 0 {
-		qi.QueryTime.Pct = qi.QueryTime.Total * 100 / totalQueryTime
-	}
-	if totalBytes > 0 {
-		qi.ResponseLength.Pct = qi.ResponseLength.Total / totalBytes
-	}
-	if qi.Returned.Total > 0 {
-		qi.Ratio = qi.Scanned.Total / qi.Returned.Total
-	}
-
-	return qi
-}
-
-func calcQueryStats(queries []stat, uptime int64) []queryInfo {
-	queryStats := []queryInfo{}
-	_, totalScanned, totalReturned, totalQueryTime, totalBytes := calcTotals(queries)
-	for rank, query := range queries {
-		buf, _ := json.Marshal(query.Query)
-		qi := queryInfo{
-			Rank:           rank,
-			Count:          query.Count,
-			ID:             query.ID,
-			Operation:      query.Operation,
-			Query:          string(buf),
-			Fingerprint:    query.Fingerprint,
-			Scanned:        calcStats(query.NScanned),
-			Returned:       calcStats(query.NReturned),
-			QueryTime:      calcStats(query.QueryTime),
-			ResponseLength: calcStats(query.ResponseLength),
-			FirstSeen:      query.FirstSeen,
-			LastSeen:       query.LastSeen,
-			Namespace:      query.Namespace,
-			QPS:            float64(query.Count) / float64(uptime),
-		}
-		if totalScanned > 0 {
-			qi.Scanned.Pct = qi.Scanned.Total * 100 / totalScanned
-		}
-		if totalReturned > 0 {
-			qi.Returned.Pct = qi.Returned.Total * 100 / totalReturned
-		}
-		if totalQueryTime > 0 {
-			qi.QueryTime.Pct = qi.QueryTime.Total * 100 / totalQueryTime
-		}
-		if totalBytes > 0 {
-			qi.ResponseLength.Pct = qi.ResponseLength.Total / totalBytes
-		}
-		if qi.Returned.Total > 0 {
-			qi.Ratio = qi.Scanned.Total / qi.Returned.Total
-		}
-		queryStats = append(queryStats, qi)
-	}
-	return queryStats
-}
-
-func getTotals(queries []stat) stat {
-
-	qt := stat{}
-	for _, query := range queries {
-		qt.NScanned = append(qt.NScanned, query.NScanned...)
-		qt.NReturned = append(qt.NReturned, query.NReturned...)
-		qt.QueryTime = append(qt.QueryTime, query.QueryTime...)
-		qt.ResponseLength = append(qt.ResponseLength, query.ResponseLength...)
-	}
-	return qt
-
-}
-
-func calcTotals(queries []stat) (totalCount int, totalScanned, totalReturned, totalQueryTime, totalBytes float64) {
-
-	for _, query := range queries {
-		totalCount += query.Count
-
-		scanned, _ := stats.Sum(query.NScanned)
-		totalScanned += scanned
-
-		returned, _ := stats.Sum(query.NReturned)
-		totalReturned += returned
-
-		queryTime, _ := stats.Sum(query.QueryTime)
-		totalQueryTime += queryTime
-
-		bytes, _ := stats.Sum(query.ResponseLength)
-		totalBytes += bytes
-	}
-	return
-}
-
-func calcStats(samples []float64) statistics {
-	var s statistics
-	s.Total, _ = stats.Sum(samples)
-	s.Min, _ = stats.Min(samples)
-	s.Max, _ = stats.Max(samples)
-	s.Avg, _ = stats.Mean(samples)
-	s.Pct95, _ = stats.PercentileNearestRank(samples, 95)
-	s.StdDev, _ = stats.StandardDeviation(samples)
-	s.Median, _ = stats.Median(samples)
-	return s
-}
-
-func getData(i iter, filters []docsFilter) []stat {
-	var doc proto.SystemProfile
-	stats := make(map[groupKey]*stat)
-
-	log.Debug(`Documents returned by db.getSiblinfDB("<dbnamehere>").system.profile.Find({"op": {"$nin": []string{"getmore", "delete"}}).Sort("-$natural")`)
-
-	for i.Next(&doc) && i.Err() == nil {
-		valid := true
-		for _, filter := range filters {
-			if filter(doc) == false {
-				valid = false
-				break
-			}
-		}
-		if !valid {
-			continue
-		}
-
-		log.Debugln("====================================================================================================")
-		log.Debug(pretty.Sprint(doc))
-		if len(doc.Query) > 0 {
-
-			fp, err := fingerprint(doc.Query)
-			if err != nil {
-				log.Errorf("cannot get fingerprint: %s", err.Error())
-				continue
-			}
-			var s *stat
-			var ok bool
-			key := groupKey{
-				Operation:   doc.Op,
-				Fingerprint: fp,
-				Namespace:   doc.Ns,
-			}
-			if s, ok = stats[key]; !ok {
-				realQuery, _ := getQueryField(doc.Query)
-				s = &stat{
-					ID:          fmt.Sprintf("%x", md5.Sum([]byte(fp+doc.Ns))),
-					Operation:   doc.Op,
-					Fingerprint: fp,
-					Namespace:   doc.Ns,
-					TableScan:   false,
-					Query:       realQuery,
-				}
-				stats[key] = s
-			}
-			s.Count++
-			s.NScanned = append(s.NScanned, float64(doc.DocsExamined))
-			s.NReturned = append(s.NReturned, float64(doc.Nreturned))
-			s.QueryTime = append(s.QueryTime, float64(doc.Millis))
-			s.ResponseLength = append(s.ResponseLength, float64(doc.ResponseLength))
-			var zeroTime time.Time
-			if s.FirstSeen == zeroTime || s.FirstSeen.After(doc.Ts) {
-				s.FirstSeen = doc.Ts
-			}
-			if s.LastSeen == zeroTime || s.LastSeen.Before(doc.Ts) {
-				s.LastSeen = doc.Ts
-			}
-		}
-	}
-
-	// We need to sort the data but a hash cannot be sorted so, convert the hash having
-	// the results to a slice
-	sa := statsArray{}
-	for _, s := range stats {
-		sa = append(sa, *s)
-	}
-
-	sort.Sort(sa)
-	return sa
-}
-
 func getOptions() (*options, error) {
 	opts := &options{
 		Host:            DEFAULT_HOST,
@@ -508,44 +213,41 @@ func getOptions() (*options, error) {
 		AuthDB:          DEFAULT_AUTHDB,
 	}
 
-	getopt.BoolVarLong(&opts.Help, "help", '?', "Show help")
-	getopt.BoolVarLong(&opts.Version, "version", 'v', "Show version & exit")
-	getopt.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "Default: Don't check for updates")
+	gop := getopt.New()
+	gop.BoolVarLong(&opts.Help, "help", '?', "Show help")
+	gop.BoolVarLong(&opts.Version, "version", 'v', "Show version & exit")
+	gop.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "Default: Don't check for updates")
 
-	getopt.IntVarLong(&opts.Limit, "limit", 'n', "Show the first n queries")
+	gop.IntVarLong(&opts.Limit, "limit", 'n', "Show the first n queries")
 
-	getopt.ListVarLong(&opts.OrderBy, "order-by", 'o',
+	gop.ListVarLong(&opts.OrderBy, "order-by", 'o',
 		"Comma separated list of order by fields (max values): "+
 			"count,ratio,query-time,docs-scanned,docs-returned. "+
 			"- in front of the field name denotes reverse order. Default: "+DEFAULT_ORDERBY)
-	getopt.ListVarLong(&opts.SkipCollections, "skip-collections", 's', "A comma separated list of collections (namespaces) to skip."+
+	gop.ListVarLong(&opts.SkipCollections, "skip-collections", 's', "A comma separated list of collections (namespaces) to skip."+
 		"  Default: "+DEFAULT_SKIPCOLLECTIONS)
 
-	getopt.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin", "Database to use for optional MongoDB authentication. Default: admin")
-	getopt.StringVarLong(&opts.Database, "database", 'd', "", "MongoDB database to profile")
-	getopt.StringVarLong(&opts.LogLevel, "log-level", 'l', "Log level: error", "panic, fatal, error, warn, info, debug. Default: error")
-	getopt.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").SetOptional()
-	getopt.StringVarLong(&opts.User, "username", 'u', "Username to use for optional MongoDB authentication")
+	gop.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin", "Database to use for optional MongoDB authentication. Default: admin")
+	gop.StringVarLong(&opts.Database, "database", 'd', "", "MongoDB database to profile")
+	gop.StringVarLong(&opts.LogLevel, "log-level", 'l', "Log level: error", "panic, fatal, error, warn, info, debug. Default: error")
+	gop.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").SetOptional()
+	gop.StringVarLong(&opts.User, "username", 'u', "Username to use for optional MongoDB authentication")
+	gop.StringVarLong(&opts.SSLCAFile, "sslCAFile", 0, "SSL CA cert file used for authentication")
+	gop.StringVarLong(&opts.SSLPEMKeyFile, "sslPEMKeyFile", 0, "SSL client PEM file used for authentication")
 
-	getopt.SetParameters("host[:port]/database")
+	gop.SetParameters("host[:port]/database")
 
-	var gop = getopt.CommandLine
 	gop.Parse(os.Args)
 	if gop.NArgs() > 0 {
 		opts.Host = gop.Arg(0)
 		gop.Parse(gop.Args())
 	}
 	if opts.Help {
-		return opts, nil
+		gop.PrintUsage(os.Stdout)
+		return nil, nil
 	}
 
-	//args := getopt.Args() // host is a positional arg
-	//if len(args) > 0 {
-	//	opts.Host = args[0]
-
-	//}
-
-	if getopt.IsSet("order-by") {
+	if gop.IsSet("order-by") {
 		validFields := []string{"count", "ratio", "query-time", "docs-scanned", "docs-returned"}
 		for _, field := range opts.OrderBy {
 			valid := false
@@ -558,11 +260,9 @@ func getOptions() (*options, error) {
 				return nil, fmt.Errorf("invalid sort field '%q'", field)
 			}
 		}
-	} else {
-		opts.OrderBy = []string{"count"}
 	}
 
-	if getopt.IsSet("password") && opts.Password == "" {
+	if gop.IsSet("password") && opts.Password == "" {
 		print("Password: ")
 		pass, err := gopass.GetPasswd()
 		if err != nil {
@@ -574,140 +274,34 @@ func getOptions() (*options, error) {
 	return opts, nil
 }
 
-func getDialInfo(opts *options) *mgo.DialInfo {
+func getDialInfo(opts *options) *pmgo.DialInfo {
 	di, _ := mgo.ParseURL(opts.Host)
 	di.FailFast = true
 
-	if getopt.IsSet("username") {
+	if di.Username != "" {
 		di.Username = opts.User
 	}
-	if getopt.IsSet("password") {
+	if di.Password != "" {
 		di.Password = opts.Password
 	}
-	if getopt.IsSet("authenticationDatabase") {
+	if opts.AuthDB != "" {
 		di.Source = opts.AuthDB
 	}
-
-	if getopt.IsSet("database") {
+	if opts.Database != "" {
 		di.Database = opts.Database
 	}
 
-	return di
-}
+	pmgoDialInfo := pmgo.NewDialInfo(di)
 
-func getQueryField(query map[string]interface{}) (map[string]interface{}, error) {
-	// MongoDB 3.0
-	if squery, ok := query["$query"]; ok {
-		// just an extra check to ensure this type assertion won't fail
-		if ssquery, ok := squery.(map[string]interface{}); ok {
-			return ssquery, nil
-		}
-		return nil, CANNOT_GET_QUERY_ERROR
-	}
-	// MongoDB 3.2+
-	if squery, ok := query["filter"]; ok {
-		if ssquery, ok := squery.(map[string]interface{}); ok {
-			return ssquery, nil
-		}
-		return nil, CANNOT_GET_QUERY_ERROR
-	}
-	return query, nil
-}
-
-// Query is the top level map query element
-// Example for MongoDB 3.2+
-//     "query" : {
-//        "find" : "col1",
-//        "filter" : {
-//            "s2" : {
-//                "$lt" : "54701",
-//                "$gte" : "73754"
-//            }
-//        },
-//        "sort" : {
-//            "user_id" : 1
-//        }
-//     }
-func fingerprint(query map[string]interface{}) (string, error) {
-
-	realQuery, err := getQueryField(query)
-	if err != nil {
-		// Try to encode doc.Query as json for prettiness
-		if buf, err := json.Marshal(realQuery); err == nil {
-			return "", fmt.Errorf("%v for query %s", err, string(buf))
-		}
-		// If we cannot encode as json, return just the error message without the query
-		return "", err
-	}
-	retKeys := keys(realQuery, 0)
-
-	sort.Strings(retKeys)
-
-	// if there is a sort clause in the query, we have to add all fields in the sort
-	// fields list that are not in the query keys list (retKeys)
-	if sortKeys, ok := query["sort"]; ok {
-		if sortKeysMap, ok := sortKeys.(map[string]interface{}); ok {
-			sortKeys := mapKeys(sortKeysMap, 0)
-			for _, sortKey := range sortKeys {
-				if !inSlice(sortKey, retKeys) {
-					retKeys = append(retKeys, sortKey)
-				}
-			}
-		}
+	if opts.SSLCAFile != "" {
+		pmgoDialInfo.SSLCAFile = opts.SSLCAFile
 	}
 
-	return strings.Join(retKeys, ","), nil
-}
-
-func inSlice(str string, list []string) bool {
-	for _, v := range list {
-		if v == str {
-			return true
-		}
+	if opts.SSLPEMKeyFile != "" {
+		pmgoDialInfo.SSLPEMKeyFile = opts.SSLPEMKeyFile
 	}
-	return false
-}
 
-func keys(query map[string]interface{}, level int) []string {
-	ks := []string{}
-	for key, value := range query {
-		if shouldSkipKey(key) {
-			continue
-		}
-		ks = append(ks, key)
-		if m, ok := value.(map[string]interface{}); ok {
-			level++
-			if level <= MAX_DEPTH_LEVEL {
-				ks = append(ks, keys(m, level)...)
-			}
-		}
-	}
-	sort.Strings(ks)
-	return ks
-}
-
-func mapKeys(query map[string]interface{}, level int) []string {
-	ks := []string{}
-	for key, value := range query {
-		ks = append(ks, key)
-		if m, ok := value.(map[string]interface{}); ok {
-			level++
-			if level <= MAX_DEPTH_LEVEL {
-				ks = append(ks, keys(m, level)...)
-			}
-		}
-	}
-	sort.Strings(ks)
-	return ks
-}
-
-func shouldSkipKey(key string) bool {
-	for _, filter := range keyFilters() {
-		if matched, _ := regexp.MatchString(filter, key); matched {
-			return true
-		}
-	}
-	return false
+	return pmgoDialInfo
 }
 
 func printHeader(opts *options) {
@@ -755,15 +349,15 @@ func getTotalsTemplate() string {
 	return t
 }
 
-type lessFunc func(p1, p2 *stat) bool
+type lessFunc func(p1, p2 *stats.QueryStats) bool
 
 type multiSorter struct {
-	queries []stat
+	queries []stats.QueryStats
 	less    []lessFunc
 }
 
 // Sort sorts the argument slice according to the less functions passed to OrderedBy.
-func (ms *multiSorter) Sort(queries []stat) {
+func (ms *multiSorter) Sort(queries []stats.QueryStats) {
 	ms.queries = queries
 	sort.Sort(ms)
 }
@@ -812,82 +406,62 @@ func (ms *multiSorter) Less(i, j int) bool {
 	return ms.less[k](p, q)
 }
 
-func sortQueries(queries []stat, orderby []string) []stat {
+func sortQueries(queries []stats.QueryStats, orderby []string) []stats.QueryStats {
 	sortFuncs := []lessFunc{}
 	for _, field := range orderby {
 		var f lessFunc
 		switch field {
 		//
 		case "count":
-			f = func(c1, c2 *stat) bool {
+			f = func(c1, c2 *stats.QueryStats) bool {
 				return c1.Count < c2.Count
 			}
 		case "-count":
-			f = func(c1, c2 *stat) bool {
+			f = func(c1, c2 *stats.QueryStats) bool {
 				return c1.Count > c2.Count
 			}
 
 		case "ratio":
-			f = func(c1, c2 *stat) bool {
-				ns1, _ := stats.Max(c1.NScanned)
-				ns2, _ := stats.Max(c2.NScanned)
-				nr1, _ := stats.Max(c1.NReturned)
-				nr2, _ := stats.Max(c2.NReturned)
-				ratio1 := ns1 / nr1
-				ratio2 := ns2 / nr2
+			f = func(c1, c2 *stats.QueryStats) bool {
+				ratio1 := c1.Scanned.Max / c1.Returned.Max
+				ratio2 := c2.Scanned.Max / c2.Returned.Max
 				return ratio1 < ratio2
 			}
 		case "-ratio":
-			f = func(c1, c2 *stat) bool {
-				ns1, _ := stats.Max(c1.NScanned)
-				ns2, _ := stats.Max(c2.NScanned)
-				nr1, _ := stats.Max(c1.NReturned)
-				nr2, _ := stats.Max(c2.NReturned)
-				ratio1 := ns1 / nr1
-				ratio2 := ns2 / nr2
+			f = func(c1, c2 *stats.QueryStats) bool {
+				ratio1 := c1.Scanned.Max / c1.Returned.Max
+				ratio2 := c2.Scanned.Max / c2.Returned.Max
 				return ratio1 > ratio2
 			}
 
 		//
 		case "query-time":
-			f = func(c1, c2 *stat) bool {
-				qt1, _ := stats.Max(c1.QueryTime)
-				qt2, _ := stats.Max(c2.QueryTime)
-				return qt1 < qt2
+			f = func(c1, c2 *stats.QueryStats) bool {
+				return c1.QueryTime.Max < c2.QueryTime.Max
 			}
 		case "-query-time":
-			f = func(c1, c2 *stat) bool {
-				qt1, _ := stats.Max(c1.QueryTime)
-				qt2, _ := stats.Max(c2.QueryTime)
-				return qt1 > qt2
+			f = func(c1, c2 *stats.QueryStats) bool {
+				return c1.QueryTime.Max > c2.QueryTime.Max
 			}
 
 		//
 		case "docs-scanned":
-			f = func(c1, c2 *stat) bool {
-				ns1, _ := stats.Max(c1.NScanned)
-				ns2, _ := stats.Max(c2.NScanned)
-				return ns1 < ns2
+			f = func(c1, c2 *stats.QueryStats) bool {
+				return c1.Scanned.Max < c2.Scanned.Max
 			}
 		case "-docs-scanned":
-			f = func(c1, c2 *stat) bool {
-				ns1, _ := stats.Max(c1.NScanned)
-				ns2, _ := stats.Max(c2.NScanned)
-				return ns1 > ns2
+			f = func(c1, c2 *stats.QueryStats) bool {
+				return c1.Scanned.Max > c2.Scanned.Max
 			}
 
 		//
 		case "docs-returned":
-			f = func(c1, c2 *stat) bool {
-				nr1, _ := stats.Max(c1.NReturned)
-				nr2, _ := stats.Max(c2.NReturned)
-				return nr1 < nr2
+			f = func(c1, c2 *stats.QueryStats) bool {
+				return c1.Returned.Max < c2.Scanned.Max
 			}
 		case "-docs-returned":
-			f = func(c1, c2 *stat) bool {
-				nr1, _ := stats.Max(c1.NReturned)
-				nr2, _ := stats.Max(c2.NReturned)
-				return nr1 > nr2
+			f = func(c1, c2 *stats.QueryStats) bool {
+				return c1.Returned.Max > c2.Scanned.Max
 			}
 		}
 		// count,query-time,docs-scanned, docs-returned. - in front of the field name denotes reverse order.")
@@ -899,7 +473,7 @@ func sortQueries(queries []stat, orderby []string) []stat {
 
 }
 
-func isProfilerEnabled(dialer pmgo.Dialer, di *mgo.DialInfo) (bool, error) {
+func isProfilerEnabled(dialer pmgo.Dialer, di *pmgo.DialInfo) (bool, error) {
 	var ps proto.ProfilerStatus
 	replicaMembers, err := util.GetReplicasetMembers(dialer, di)
 	if err != nil {
@@ -918,7 +492,7 @@ func isProfilerEnabled(dialer pmgo.Dialer, di *mgo.DialInfo) (bool, error) {
 
 		isReplicaEnabled := isReplicasetEnabled(session)
 
-		if member.StateStr == "configsvr" {
+		if strings.ToLower(member.StateStr) == "configsvr" {
 			continue
 		}
 
@@ -928,6 +502,7 @@ func isProfilerEnabled(dialer pmgo.Dialer, di *mgo.DialInfo) (bool, error) {
 		if err := session.DB(di.Database).Run(bson.M{"profile": -1}, &ps); err != nil {
 			continue
 		}
+
 		if ps.Was == 0 {
 			return false, nil
 		}
@@ -945,4 +520,18 @@ func isReplicasetEnabled(session pmgo.SessionManager) bool {
 		return false
 	}
 	return true
+}
+
+// Sanitize the param. using --skip-collections="" will produce an 1 element array but
+// that element will be empty. The same would be using --skip-collections=a,,d
+func sanitizeSkipCollections(skipCollections []string) []string {
+	cols := []string{}
+	if len(skipCollections) > 0 {
+		for _, c := range skipCollections {
+			if strings.TrimSpace(c) != "" {
+				cols = append(cols, c)
+			}
+		}
+	}
+	return cols
 }

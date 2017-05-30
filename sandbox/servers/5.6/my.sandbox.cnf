@@ -27,3 +27,4 @@ innodb_lock_wait_timeout   = 3
 general_log
 general_log_file           = genlog
 innodb_flush_log_at_trx_commit=2
+secure-file-priv           = 

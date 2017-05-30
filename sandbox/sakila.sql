@@ -1,3 +1,4 @@
+SET autocommit=1;
 DROP DATABASE IF EXISTS `sakila`;
 CREATE DATABASE `sakila`;
 USE `sakila`;
@@ -449,3 +450,6 @@ LEFT JOIN sakila.film_category fc
 LEFT JOIN sakila.category c
   ON fc.category_id = c.category_id
 GROUP BY a.actor_id, a.first_name, a.last_name;
+
+COMMIT;
+FLUSH TABLES;
