@@ -76,6 +76,7 @@ sub wait {
    my $sleep   = $self->{sleep};
    my $slaves  = $self->{slaves};
    my $max_lag = $self->{max_lag};
+   my $allow_slaves_with_lag_percent = $self->{allow_slaves_with_lag_percent};
 
    my $worst;  # most lagging slave
    my $pr_callback;
@@ -130,8 +131,9 @@ sub wait {
    }
 
    # First check all slaves.
+   my $num_allow_slaves_with_lag = int( (scalar @$slaves) * $self->{allow_slaves_with_lag_percent} / 100 );
    my @lagged_slaves = map { {cxn=>$_, lag=>undef} } @$slaves;  
-   while ( $oktorun->() && @lagged_slaves ) {
+   while ( $oktorun->() && @lagged_slaves && $#lagged_slaves >= $num_allow_slaves_with_lag ) {
       PTDEBUG && _d('Checking slave lag');
 
       ### while we were waiting our list of slaves may have changed...
@@ -183,7 +185,11 @@ sub wait {
       }
    }
 
-   PTDEBUG && _d('All slaves caught up');
+   if ( $num_allow_slaves_with_lag && $#lagged_slaves ) {
+      PTDEBUG && _d('Less than', $num_allow_slaves_with_lag, 'slaves lagging behind');
+   } else {
+      PTDEBUG && _d('All slaves caught up');
+   }
    return;
 }
 
