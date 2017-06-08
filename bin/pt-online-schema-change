@@ -10824,6 +10824,97 @@ sub create_triggers {
       $orig_before_update_trigger = $dbh->selectrow_arrayref($trigger_sql, 'UPDATE', 'BEFORE', $orig_tbl->{db}, $orig_tbl->{tbl});
    }
 
+   my $bdta = "DELETE IGNORE FROM $new_tbl->{name} WHERE $del_index_cols"; # Before Delete Trigger Action
+   my $bita = "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)"; # Before Insert
+   my $buta = "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)"; # Before Update
+
+   my $upd_index_cols = join(" AND ", map {
+          my $new_col = $_;
+          my $old_col = $old_col_for{$new_col} || $new_col;
+          my $new_qcol = $q->quote($new_col);
+          my $old_qcol = $q->quote($old_col);
+          "OLD.$old_qcol <=> NEW.$new_qcol"
+   } @{$tbl_struct->{keys}->{$del_index}->{cols}} );
+
+   my $adta = "DELETE IGNORE FROM $new_tbl->{name} WHERE $del_index_cols"; # After Delete
+   my $aita = "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)"; # After Insert
+   my $auta = "BEGIN DELETE IGNORE FROM $new_tbl->{name} " # After update
+            . "WHERE !($upd_index_cols) AND $del_index_cols;"
+            . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals);";
+
+   my $cbd = "CREATE TRIGGER `${prefix}_delb` BEFORE DELETE ON $orig_tbl->{name} FOR EACH ROW";
+   my $cad = "CREATE TRIGGER `${prefix}_del`  AFTER  DELETE ON $orig_tbl->{name} FOR EACH ROW";
+   my $cbi = "CREATE TRIGGER `${prefix}_insb` BEFORE INSERT ON $orig_tbl->{name} FOR EACH ROW";
+   my $cai = "CREATE TRIGGER `${prefix}_ins`  AFTER  INSERT ON $orig_tbl->{name} FOR EACH ROW";
+   my $cbu = "CREATE TRIGGER `${prefix}_updb` BEFORE UPDATE ON $orig_tbl->{name} FOR EACH ROW";
+   my $cau = "CREATE TRIGGER `${prefix}_upd`  AFTER  UPDATE ON $orig_tbl->{name} FOR EACH ROW";
+
+   my @new_triggers;
+   my $orig_triggers = [
+      { suffix => 'del', event => 'DELETE', time => 'AFTER', orig_values => {}, action => $adta },
+      { suffix => 'ins', event => 'INSERT', time => 'AFTER', orig_values => {}, action => $aita },
+      { suffix => 'upd', event => 'UPDATE', time => 'AFTER', orig_values => {}, action => $auta },
+
+      { suffix => 'delb', event => 'DELETE', time => 'BEFORE', orig_values => {}, action => $bdta },
+      { suffix => 'insb', event => 'INSERT', time => 'BEFORE', orig_values => {}, action => $bita },
+      { suffix => 'updb', event => 'UPDATE', time => 'BEFORE', orig_values => {}, action => $buta },
+   ];
+
+
+   my @new_triggers;
+   for my $trigger (@$orig_triggers) {
+       my $new_trigger;
+       if ( $o->get('preserve-triggers') && %{$trigger->{orig_values}}) {
+          # find if trigger has begin/end - supply insertion point
+          my $trigger_ins_point = trigger_ins_point(trigger => $trigger->{orig_values}->{action_statement});
+
+          my $create_cmd = "CREATE TRIGGER `${prefix}_$trigger->{suffix}` "
+                         . "$trigger->{time} $trigger->{event} ON $orig_tbl->{name} FOR EACH ROW";
+          if ($trigger_ins_point) {
+
+             $new_trigger 
+             = "LOCK TABLES $orig_tbl->{name} WRITE;\n"
+             . "DROP TRIGGER IF EXISTS `$orig_tbl->{db}`.`$orig_before_delete_trigger->{trigger_name}`;\n"
+             . $create_cmd . "\n"
+             . terminate_sql(substr($trigger->{orig_values}->{action_statement}, 0, $trigger_ins_point))."\n"
+             . $trigger->{action} . ";\n"
+             . "END;\n"
+             . "UNLOCK TABLES;";
+          } else {
+             $new_trigger
+             = '/*!50003 SET @saved_sql_mode = @@sql_mode */ ;'
+             . "SET sql_mode = '$trigger->{orig_values}->{sql_mode}';"
+             . "LOCK TABLES $orig_tbl->{name} WRITE;\n"
+             . "DROP TRIGGER IF EXISTS `$orig_tbl->{db}`.`$trigger->{orig_values}->{trigger_name}`;\n"
+             . $create_cmd . "\n"
+             . "BEGIN\n"
+             . terminate_sql($trigger->{orig_values}->{action_statement}) . "\n"
+             . $trigger->{action} . ";\n"
+             . "END;\n"
+             . "UNLOCK TABLES;"
+             . '/*!50003 SET sql_mode = @saved_sql_mode */ ;';
+          }
+
+          my $definer = $orig_before_delete_trigger->{definer} || '';
+          $definer =~ s/@/`@`/;
+          $definer = "`".$definer."`";
+
+          push(@orig_before_triggers,
+               "CREATE DEFINER=$definer TRIGGER `$orig_before_delete_trigger->{trigger_schema}`.`$orig_before_delete_trigger->{trigger_name}` "
+             . "BEFORE DELETE ON $new_tbl->{name}\n"
+             . "FOR EACH ROW\n"
+             . terminate_sql($orig_before_delete_trigger->{action_statement}) . "\n"
+          );
+       } elsif()  {
+          $delete_before_trigger
+             = "CREATE TRIGGER `${prefix}_delb` BEFORE DELETE ON $orig_tbl->{name} "
+             . "FOR EACH ROW "
+             . "DELETE IGNORE FROM $new_tbl->{name} "
+             . "WHERE $del_index_cols";
+       }
+   }
+
+
    #
    if ( $o->get('preserve-triggers') && $orig_before_delete_trigger) {
      
