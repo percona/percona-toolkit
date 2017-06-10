@@ -3,7 +3,7 @@ CREATE TABLE `messages` (
   `MID` int(20) NOT NULL default '0',
   `TID` bigint(20) NOT NULL default '0',
   `AUTHOR` varchar(32) NOT NULL default '',
-  `DATE` datetime NOT NULL default '0000-00-00 00:00:00',
+  `DATE` datetime NOT NULL default CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `INTERNAL` char(1) NOT NULL default '0',
   `ISOPER` char(1) NOT NULL default '0',
   `HEADERS` text NOT NULL,

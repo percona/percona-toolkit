@@ -1,6 +1,6 @@
 GO := go
 pkgs   = $(shell find . -type d -name "pt-mongodb*" -exec basename {} \;)
-VERSION="3.0.1" 
+VERSION="3.0.2" 
 BUILD=$(shell date +%FT%T%z)
 GOVERSION=$(shell go version | cut --delimiter=" " -f3)
 
@@ -14,19 +14,19 @@ LDFLAGS="-X main.Version=${VERSION} -X main.Build=${BUILD} -X main.GoVersion=${G
 
 linux-amd64: 
 	@echo "Building linux/amd64 binaries in ${BIN_DIR}"
-	@cd ${TOP_DIR} && glide install -v
+	@cd ${TOP_DIR} && glide update -v
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
 	@$(foreach pkg,$(pkgs),GOOS=linux GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
 
 linux-386: 
 	@echo "Building linux/386 binaries in ${BIN_DIR}"
-	@cd ${TOP_DIR} && glide install -v
+	@cd ${TOP_DIR} && glide update -v
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
 	@$(foreach pkg,$(pkgs),GOOS=linux GOARCH=386 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
 
 darwin-amd64: 
 	@echo "Building darwin/amd64 binaries in ${BIN_DIR}"
-	@cd ${TOP_DIR} && glide install -v
+	@cd ${TOP_DIR} && glide update -v
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
 	@$(foreach pkg,$(pkgs),GOOS=darwin GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
 

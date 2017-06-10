@@ -42,23 +42,15 @@ $sb->do_as_root("slave1", q/GRANT REPLICATION CLIENT ON *.* TO 'slave_user'@'loc
 $sb->do_as_root("slave1", q/GRANT ALL ON *.* TO 'slave_user'@'localhost'/);                
 $sb->do_as_root("slave1", q/FLUSH PRIVILEGES/);                
 
-$sb->do_as_root("slave2", q/GRANT REPLICATION CLIENT ON *.* TO 'slave_user'@'localhost' IDENTIFIED BY 'slave_password'/);
-$sb->do_as_root("slave2", q/GRANT ALL ON *.* TO 'slave_user'@'localhost'/);                
-$sb->do_as_root("slave2", q/FLUSH PRIVILEGES/);                
-
 $sb->wait_for_slaves();
 
-# Run these commands inside issue_1651002.sql to delete the sandbox user ONLY from master
-# These command must be in the .sql file because all of them need to run in the same session
-# set sql_log_bin=0;
-# DROP USER 'slave_user';
-# set sql_log_bin=1;
 $sb->load_file('master', 't/pt-table-checksum/samples/issue_1651002.sql');
 # Ensure we cannot connect to slaves using standard credentials
 # Since slave2 is a slave of slave1, removing the user from the slave1 will remove
 # the user also from slave2
-$sb->do_as_root("slave1", q/DROP USER 'msandbox'@'%'/);
+$sb->do_as_root("slave1", q/RENAME USER 'msandbox'@'%' TO 'msandbox_old'@'%'/);
 $sb->do_as_root("slave1", q/FLUSH PRIVILEGES/);
+$sb->do_as_root("slave1", q/FLUSH TABLES/);
 
 
 $output = output(
@@ -71,18 +63,18 @@ is(
    "Large BLOB/TEXT/BINARY Checksum"
 );
 
-# Restore privilegs for the other test files
-$sb->do_as_root("master", q/GRANT ALL PRIVILEGES ON *.* TO 'msandbox'@'%' IDENTIFIED BY 'msandbox'/);                
-$sb->do_as_root("master", q/FLUSH PRIVILEGES/);                
-
-$sb->do_as_root("slave1", q/GRANT ALL PRIVILEGES ON *.* TO 'msandbox'@'%' IDENTIFIED BY 'msandbox'/);                
-$sb->do_as_root("slave1", q/FLUSH PRIVILEGES/);                
 # #############################################################################
 # Done.
 # #############################################################################
 diag("Stopping the sandbox to leave a clean sandbox for the next test file");
+
 $sb->do_as_root("slave1", q/DROP USER 'slave_user'@'localhost'/);
 $sb->do_as_root("slave1", q/FLUSH PRIVILEGES/);
+
+# Restore privilegs for the other test files
+$sb->do_as_root("slave1", q/RENAME USER 'msandbox_old'@'%' TO 'msandbox'@'%'/);
+$sb->do_as_root("master", q/FLUSH PRIVILEGES/);                
+$sb->do_as_root("master", q/FLUSH TABLES/);
 
 $sb->wipe_clean($dbh);
 

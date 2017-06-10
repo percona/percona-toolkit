@@ -39,7 +39,9 @@ make_sandbox() {
    rm -rf /tmp/$port || die "Failed to rm /tmp/$port"
    mkdir /tmp/$port  || die "Failed to mkdir /tmp/$port"
    cp $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/my.sandbox.cnf /tmp/$port
-   tar xzf $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/data.tar.gz -C /tmp/$port
+   if [ -e $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/data.tar.gz ]; then
+      tar xzf $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/data.tar.gz -C /tmp/$port
+   fi
 
    for script in "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/"*; do
       if [ -f $script ]; then
@@ -186,7 +188,7 @@ type=$1         # master, slave or master-master
 port=$2         # sandbox port number, e.g. 12345
 master_port=$3  # master port if slave or master-master
 
-if [ "$type" != "master" ] && [ "$type" != "slave" ] && [ "$type" != "master-master" ] && [ "$type" != "cluster" ]; then
+if [ "$type" != "master" ] && [ "$type" != "slave" ] && [ "$type" != "master-master" ] && [ "$type" != "cluster" ] && [ "$type" != "channels" ]; then
    die "Invalid sandbox type: $type.  Valid types are master, slave, and master-master."
 fi
 

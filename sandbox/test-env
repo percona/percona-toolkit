@@ -293,10 +293,23 @@ case $opt in
       exit_status=$((exit_status | $?))
       set_mysql_version
       if [ $exit_status -eq 0 ]; then
-         ./start-sandbox "${2:-"slave"}" 12346 12345
-         exit_status=$((exit_status | $?))
-         ./start-sandbox "${2:-"slave"}" 12347 12346
-         exit_status=$((exit_status | $?))
+         if [ "${2:-""}" = "channels" ] && [ "$MYSQL_VERSION" '>' "5.6" ]; then
+            ./start-sandbox master 12346 
+            exit_status=$((exit_status | $?))
+            ./start-sandbox master 12347 
+            exit_status=$((exit_status | $?))
+            /tmp/12345/use < $PERCONA_TOOLKIT_BRANCH/sandbox/gtid_on.sql
+            exit_status=$?
+            /tmp/12346/use < $PERCONA_TOOLKIT_BRANCH/sandbox/gtid_on.sql
+            exit_status=$?
+            /tmp/12347/use < $PERCONA_TOOLKIT_BRANCH/sandbox/slave_channels.sql
+            exit_status=$?
+         else
+            ./start-sandbox "${2:-"slave"}" 12346 12345
+            exit_status=$((exit_status | $?))
+            ./start-sandbox "${2:-"slave"}" 12347 12346
+            exit_status=$((exit_status | $?))
+         fi
 
          if [ "${2:-""}" = "cluster" ]; then
             # Bit of magic here. 'start-sandbox cluster new_node old_node'
@@ -337,7 +350,7 @@ case $opt in
             ../util/check-load-data
 
             ping=$(/tmp/12345/use -ss -e "SELECT MD5(RAND())")
-            /tmp/12345/use -e "REPLACE INTO percona_test.sentinel (id, ping) VALUES (1, '$ping')";
+            /tmp/12345/use -e "SET AUTOCOMMIT=1; REPLACE INTO percona_test.sentinel (id, ping) VALUES (1, '$ping')";
             echo -n "Waiting for replication to finish..."
             for i in $(_seq 60); do
                pong=$(/tmp/12347/use -ss -e "SELECT ping FROM percona_test.sentinel WHERE id=1 AND ping='$ping'" 2>/dev/null)

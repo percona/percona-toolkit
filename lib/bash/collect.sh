@@ -75,8 +75,8 @@ collect() {
    # Get MySQL's variables if possible.  Then sleep long enough that we probably
    # complete SHOW VARIABLES if all's well.  (We don't want to run mysql in the
    # foreground, because it could hang.)
-   $CMD_MYSQL $EXT_ARGV -e 'SHOW GLOBAL VARIABLES' >> "$d/$p-variables" &
-   sleep .2
+   collect_mysql_variables "$d/$p-variables" &
+   sleep .5
 
    # Get the major.minor version number.  Version 3.23 doesn't matter for our
    # purposes, and other releases have x.x.x* version conventions so far.
@@ -139,7 +139,7 @@ collect() {
 
    # Grab a few general things first.  Background all of these so we can start
    # them all up as quickly as possible.  
-   ps -eaf  >> "$d/$p-ps"  &
+   ps -eaF  >> "$d/$p-ps"  &
    top -bn${OPT_RUN_TIME} >> "$d/$p-top" &
 
    [ "$mysqld_pid" ] && _lsof $mysqld_pid >> "$d/$p-lsof" &
@@ -193,7 +193,7 @@ collect() {
    local ps_instrumentation_enabled=$($CMD_MYSQL $EXT_ARGV -e 'SELECT ENABLED FROM performance_schema.setup_instruments WHERE NAME = "transaction";' \
                                       | sed "2q;d" | sed 'y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/')
 
-   if [ $ps_instrumentation_enabled != "yes"]; then
+   if [ $ps_instrumentation_enabled != "yes" ]; then
       log "Performance Schema instrumentation is disabled"
    fi
 
@@ -246,13 +246,15 @@ collect() {
          (echo $ts; transactions) >>"$d/$p-transactions" &
       fi
 
-      if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes"]; then
+      if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes" ]; then
          ps_locks_transactions "$d/$p-ps-locks-transactions"
       fi
 
       if [ "${mysql_version}" '>' "5.6" ]; then
          (echo $ts; ps_prepared_statements) >> "$d/$p-prepared-statements" &
       fi
+
+      slave_status "$d/$p-slave-status" "${mysql_version}" 
 
       curr_time=$(date +'%s')
    done
@@ -406,7 +408,7 @@ innodb_status() {
 ps_locks_transactions() {
    local outfile=$1 
    
-   mysql -e 'select @@performance_schema' | grep "1" &>/dev/null
+   $CMD_MYSQL $EXT_ARGV -e 'select @@performance_schema' | grep "1" &>/dev/null
 
    if [ $? -eq 0 ]; then
       local status="select t.processlist_id, ml.* from performance_schema.metadata_locks ml join performance_schema.threads t on (ml.owner_thread_id=t.thread_id)\G"
@@ -437,6 +439,50 @@ ps_prepared_statements() {
                             ON (pse.OWNER_THREAD_ID=t.thread_id)\G"
 }
 
+slave_status() {
+   local outfile=$1
+   local mysql_version=$2
+
+   if [ "${mysql_version}" '<' "5.7" ]; then
+      local sql="SHOW SLAVE STATUS\G"  
+      echo -e "\n$sql\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+   else
+      local sql="SELECT * FROM performance_schema.replication_connection_configuration JOIN performance_schema.replication_applier_configuration USING(channel_name)\G"
+      echo -e "\n$sql\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+
+      sql="SELECT * FROM replication_connection_status\G"
+      echo -e "\n$sql\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+
+      sql="SELECT * FROM replication_applier_status JOIN replication_applier_status_by_coordinator USING(channel_name)\G"
+      echo -e "\n$sql\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+   fi
+
+}
+
+collect_mysql_variables() {
+   local outfile=$1 
+
+   local sql="SHOW GLOBAL VARIABLES"
+   echo -e "\n$sql\n" >> $outfile
+   $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+
+   sql="select * from performance_schema.variables_by_thread order by thread_id, variable_name;"
+   echo -e "\n$sql\n" >> $outfile
+   $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+   
+   sql="select * from performance_schema.user_variables_by_thread order by thread_id, variable_name;"
+   echo -e "\n$sql\n" >> $outfile
+   $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+   
+   sql="select * from performance_schema.status_by_thread order by thread_id, variable_name; "
+   echo -e "\n$sql\n" >> $outfile
+   $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+
+}
 
 # ###########################################################################
 # End collect package

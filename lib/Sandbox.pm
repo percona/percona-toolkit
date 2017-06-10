@@ -64,12 +64,15 @@ my %port_for = (
    cslave1 => 12348, # cluster -> slave
    host1   => 12345, # pt-upgrade
    host2   => 12348, # pt-upgrade
+   chan_master1 => 2900,
+   chan_master2 => 2901,
+   chan_slave1  => 2902,
 );
 
 my %server_type = (
-   master => 1,
-   slave  => 1,
-   node   => 1,
+   master   => 1,
+   slave    => 1,
+   node     => 1,
 );
 
 my $test_dbs = qr/^(?:mysql|information_schema|sakila|performance_schema|percona_test|sys)$/;
@@ -494,7 +497,7 @@ sub start_sandbox {
       my $first_node = $args{first_node} ? $port_for{$args{first_node}} : '';
       my $out = `$env $trunk/sandbox/start-sandbox cluster $port $first_node`;
       die $out if $CHILD_ERROR;
-   }
+   } 
 
    my $dbh = $self->get_dbh_for($server, $args{cxn_opts});
    my $dsn = $self->dsn_for($server);

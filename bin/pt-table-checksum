@@ -57,7 +57,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.1';
+our $VERSION = '3.0.3';
 
 use strict;
 use warnings FATAL => 'all';
@@ -2428,7 +2428,15 @@ sub _validate_type {
          }
       }
       my $defaults = $self->{DSNParser}->parse_options($self);
-      $opt->{value} = $self->{DSNParser}->parse($val, $prev, $defaults);
+      if (!$opt->{attributes}->{repeatable}) {
+          $opt->{value} = $self->{DSNParser}->parse($val, $prev, $defaults);
+      } else {
+          my $values = [];
+          for my $dsn_string (@$val) {
+              push @$values, $self->{DSNParser}->parse($dsn_string, $prev, $defaults);
+          }
+          $opt->{value} = $values;
+      }
    }
    elsif ( $val && $opt->{type} eq 'z' ) {  # type size
       PTDEBUG && _d('Parsing option', $opt->{long}, 'as a size value');
@@ -3672,6 +3680,11 @@ sub name {
    return $self->{hostname} || $self->{dsn_name} || 'unknown host';
 }
 
+sub description {
+   my ($self) = @_;
+   return sprintf("%s -> %s:%s", $self->name(), $self->{dsn}->{h}, $self->{dsn}->{P} || 'socket');
+}
+
 sub get_id {
    my ($self, $cxn) = @_;
 
@@ -3703,9 +3716,20 @@ sub is_cluster_node {
    my ($self, $cxn) = @_;
 
    $cxn ||= $self;
+
    my $sql = "SHOW VARIABLES LIKE 'wsrep\_on'";
-   PTDEBUG && _d($cxn->name, $sql);
-   my $row = $cxn->dbh->selectrow_arrayref($sql);
+
+   my $dbh;
+   if ($cxn->isa('DBI::db')) {
+      $dbh = $cxn;
+      PTDEBUG && _d($sql); #don't invoke name() if it's not a Cxn!
+   }
+   else {
+      $dbh = $cxn->dbh();      
+      PTDEBUG && _d($cxn->name, $sql);
+   }
+
+   my $row = $dbh->selectrow_arrayref($sql);
    return $row && $row->[1] && ($row->[1] eq 'ON' || $row->[1] eq '1') ? 1 : 0;
 
 }
@@ -5823,17 +5847,29 @@ sub make_row_checksum {
       $sep    =~ s/'//g;
       $sep  ||= '#';
 
+      my @converted_cols;
+      for my $col(@{$cols->{select}}) {
+          my $colname = $col;
+          $colname =~ s/`//g;
+          my $type = $tbl_struct->{type_for}->{$colname} || '';
+          if ($type =~ m/^(CHAR|VARCHAR|BINARY|VARBINARY|BLOB|TEXT|ENUM|SET|JSON)$/i) {
+              push @converted_cols, "convert($col using utf8mb4)";
+          } else {
+              push @converted_cols, "$col";
+          }
+      }
+
       my @nulls = grep { $cols->{allowed}->{$_} } @{$tbl_struct->{null_cols}};
       if ( @nulls ) {
          my $bitmap = "CONCAT("
             . join(', ', map { 'ISNULL(' . $q->quote($_) . ')' } @nulls)
             . ")";
-         push @{$cols->{select}}, $bitmap;
+         push @converted_cols, $bitmap;
       }
 
-      $query .= @{$cols->{select}} > 1
-              ? "$func(CONCAT_WS('$sep', " . join(', ', @{$cols->{select}}) . '))'
-              : "$func($cols->{select}->[0])";
+      $query .= scalar @converted_cols > 1
+              ? "$func(CONCAT_WS('$sep', " . join(', ', @converted_cols) . '))'
+              : "$func($converted_cols[0])";
    }
    else {
       my $fnv_func = uc $func;
@@ -9293,35 +9329,36 @@ sub main {
          die "Error setting SQL_MODE"
            . ": $EVAL_ERROR";
       }
- 
 
-      # https://bugs.launchpad.net/percona-toolkit/+bug/919352
-      # The tool shouldn't blindly attempt to change binlog_format;
-      # instead, it should check if it's already set to STATEMENT.
-      # This is becase starting with MySQL 5.1.29, changing the format
-      # requires a SUPER user.
-      if ( VersionParser->new($dbh) >= '5.1.5' ) {
-         $sql = 'SELECT @@binlog_format';
-         PTDEBUG && _d($dbh, $sql);
-         my ($original_binlog_format) = $dbh->selectrow_array($sql);
-         PTDEBUG && _d('Original binlog_format:', $original_binlog_format);
-         if ( $original_binlog_format !~ /STATEMENT/i ) {
-            $sql = q{/*!50108 SET @@binlog_format := 'STATEMENT'*/};
-            eval {
-               PTDEBUG && _d($dbh, $sql);
-               $dbh->do($sql);
-            };
-            if ( $EVAL_ERROR ) {
-               die "Failed to $sql: $EVAL_ERROR\n"
-                  . "This tool requires binlog_format=STATEMENT, "
-                  . "but the current binlog_format is set to "
-                  ."$original_binlog_format and an error occurred while "
-                  . "attempting to change it.  If running MySQL 5.1.29 or newer, "
-                  . "setting binlog_format requires the SUPER privilege.  "
-                  . "You will need to manually set binlog_format to 'STATEMENT' "
-                  . "before running this tool.\n";
-            }
-         }
+      if ( $o->get('check-binlog-format') ) {
+        # https://bugs.launchpad.net/percona-toolkit/+bug/919352
+        # The tool shouldn't blindly attempt to change binlog_format;
+        # instead, it should check if it's already set to STATEMENT.
+        # This is becase starting with MySQL 5.1.29, changing the format
+        # requires a SUPER user.
+        if ( VersionParser->new($dbh) >= '5.1.5' ) {
+           $sql = 'SELECT @@binlog_format';
+           PTDEBUG && _d($dbh, $sql);
+           my ($original_binlog_format) = $dbh->selectrow_array($sql);
+           PTDEBUG && _d('Original binlog_format:', $original_binlog_format);
+           if ( $original_binlog_format !~ /STATEMENT/i ) {
+              $sql = q{/*!50108 SET @@binlog_format := 'STATEMENT'*/};
+              eval {
+                 PTDEBUG && _d($dbh, $sql);
+                 $dbh->do($sql);
+              };
+              if ( $EVAL_ERROR ) {
+                 die "Failed to $sql: $EVAL_ERROR\n"
+                    . "This tool requires binlog_format=STATEMENT, "
+                    . "but the current binlog_format is set to "
+                    ."$original_binlog_format and an error occurred while "
+                    . "attempting to change it.  If running MySQL 5.1.29 or newer, "
+                    . "setting binlog_format requires the SUPER privilege.  "
+                    . "You will need to manually set binlog_format to 'STATEMENT' "
+                    . "before running this tool.\n";
+              }
+           }
+        }
       }
 
       # Set transaction isolation level. We set binlog_format to STATEMENT,
@@ -9673,10 +9710,31 @@ sub main {
             0;
          }
          else {
-            PTDEBUG && _d('Will check slave lag on', $slave_cxn->name());
+            PTDEBUG && _d('May check slave lag on', $slave_cxn->name());
             $slave_cxn;
          }
       } @$slave_lag_cxns;
+
+      if ( $slave_lag_cxns && scalar @$slave_lag_cxns ) {
+         if ($o->get('skip-check-slave-lag')) {
+             my $slaves_to_skip = $o->get('skip-check-slave-lag');
+             my $filtered_slaves = [];
+             for my $slave (@$slave_lag_cxns) {
+                 my $found=0;
+                 for my $slave_to_skip (@$slaves_to_skip) {
+                     if ($slave->{dsn}->{h} eq $slave_to_skip->{h} && $slave->{dsn}->{P} eq $slave_to_skip->{P}) {
+                         $found=1;
+                     }
+                 }
+                 if ($found) {
+                    printf("Skipping slave %s -> %s:%s\n", $slave->name(), $slave->{dsn}->{h}, $slave->{dsn}->{P});
+                 } else {
+                    push @$filtered_slaves, $slave;
+                }
+             }
+             $slave_lag_cxns = $filtered_slaves;
+         }
+      }
 
       # #####################################################################
       # Possibly check replication slaves and exit.
@@ -12693,6 +12751,13 @@ type: string; default: #
 The separator character used for CONCAT_WS().  This character is used to join
 the values of columns when checksumming.
 
+=item --skip-check-slave-lag
+
+type: DSN; repeatable: yes
+
+DSN to skip when checking slave lag. It can be used multiple times.
+Example: --skip-check-slave-lag h=127.1,P=12345 --skip-check-slave-lag h=127.1,P=12346
+
 =item --slave-user
 
 type: string
@@ -13075,6 +13140,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-checksum 3.0.1
+pt-table-checksum 3.0.2
 
 =cut

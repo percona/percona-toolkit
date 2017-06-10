@@ -105,6 +105,7 @@ $modes->restore_original_modes();
 
 my $postfix = $sandbox_version < '5.7' ? '' : '-57';
 
+# 11
 ok(
    no_diff(
       sub { pt_show_grants::main('-F', $cnf, qw(--only sally --no-header)) },
@@ -115,6 +116,7 @@ ok(
 );
 
 
+# 12
 ok(
    no_diff(
       sub { pt_show_grants::main('-F', $cnf, qw(--only sally --no-header),
@@ -126,6 +128,7 @@ ok(
 );
 
 
+# 13
 ok(
    no_diff(
       sub { pt_show_grants::main('-F', $cnf, qw(--only sally --no-header),
@@ -139,6 +142,7 @@ ok(
 
 diag(`/tmp/12345/use -u root -e "GRANT SELECT ON sakila.city TO 'sally'\@'%'"`);
 
+# 14
 ok(
    no_diff(
       sub { pt_show_grants::main('-F', $cnf, qw(--only sally --no-header)) },

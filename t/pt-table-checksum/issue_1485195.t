@@ -42,7 +42,7 @@ $output = output(
 
 is(
    PerconaTest::count_checksum_results($output, 'rows'),
-   24,
+   $sandbox_version lt '5.7' ? 24 : 25,
    "Large BLOB/TEXT/BINARY Checksum"
 );
 
