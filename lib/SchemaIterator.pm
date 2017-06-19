@@ -456,20 +456,13 @@ sub table_is_allowed {
    # Always auto-skip these pseudo tables.
    return 0 if $db eq 'mysql' && $tbl =~ m/^(?:
        general_log
-      |gtid_execution
+      |gtid_executed
       |innodb_index_stats
       |innodb_table_stats
-      |inventory
-      |plugin
-      |proc
       |slave_master_info
       |slave_relay_log_info
       |slave_worker_info
       |slow_log    
-   )$/x;
-
-   return 0 if $db eq 'sys' && $tbl =~ m/^(?:
-       sys_config
    )$/x;
 
    if ( $filter->{'ignore-tables'}->{'*'}->{$tbl} 
