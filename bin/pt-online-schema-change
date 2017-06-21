@@ -9926,6 +9926,8 @@ sub check_alter {
 
    my $ok = 1;
 
+   $alter = clean_alter($alter);
+
    # ########################################################################
    # Check for DROP PRIMARY KEY.
    # ########################################################################
@@ -9999,6 +10001,47 @@ sub check_alter {
    }
 
    return;
+}
+
+# This function tries to detect if the --alter param is adding unique indexes.
+# It returns an array of arrays, having a list of fields for each unique index
+# found. 
+# Example:
+# Input string: add i int comment "first comment ", ADD UNIQUE INDEX (C1) comment 
+#               'second comment', CREATE UNIQUE INDEX C ON T1 (C2, c3) comment "third"
+#
+# Output: 
+# $VAR1 = [
+#           [ 'C1' ],
+#           [ 'C2', 'c3' ]
+#         ];
+#
+# Thse fields are used to build an example SELECT to detect if currently there are 
+# rows that will produce duplicates when the new UNIQUE INDEX is created.
+
+sub get_unique_index_fields {
+   my ($alter) = @_;
+   my $remove_comments_re = qr/(.*?\s+)?comment ('.*?'|".*?")(.*)/i;
+
+   $alter =~ s/\\"//g; # Remove \" just to make remove_comments_re easier
+
+   my $clean;
+   my $suffix = $alter;
+
+   while ($alter =~ /$remove_comments_re/g) {
+       $clean .= $1;
+       $suffix = $3;
+   }
+   $clean .= $suffix;
+
+   my $fields = [];
+   my $fields_re = qr/.*?(?:ADD|CREATE)\s*UNIQUE\s*INDEX\s*(?:\w+\s+on\s+\w+|\w+)(?:\s\w+)* \((.*?)\)/i;
+
+   while($clean =~ /$fields_re/g) {
+      push @$fields, [ split /\s*,\s*/, $1 ];
+   }
+
+   return $fields;
 }
 
 sub find_renamed_cols {
