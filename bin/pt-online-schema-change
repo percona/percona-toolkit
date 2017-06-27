@@ -10053,7 +10053,7 @@ sub get_unique_index_fields {
    $clean .= $suffix;
 
    my $fields = [];
-   my $fields_re = qr/UNIQUE\s*INDEX\s*(?:.*?)* \((.*?)\)/i;
+   my $fields_re = qr/UNIQUE\s*(INDEX|KEY|)\s*(?:.*?)* \((.*?)\)/i;
 
    while($clean =~ /$fields_re/g) {
       push @$fields, [ split /\s*,\s*/, $1 ];
