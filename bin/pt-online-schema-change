@@ -8941,6 +8941,7 @@ sub main {
             renamed_cols => $renamed_cols,
             Cxn          => $cxn,
             TableParser  => $tp,
+            OptionParser => $o,
          );
       }
    }
@@ -9918,15 +9919,31 @@ sub validate_tries {
 
 sub check_alter {
    my (%args) = @_;
-   my @required_args = qw(alter tbl dry_run Cxn TableParser);
+   my @required_args = qw(alter tbl dry_run Cxn TableParser OptionParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless exists $args{$arg};
    }
-   my ($alter, $tbl, $dry_run, $cxn, $tp) = @args{@required_args};
+   my ($alter, $tbl, $dry_run, $cxn, $tp, $o) = @args{@required_args};
 
    my $ok = 1;
 
-   $alter = clean_alter($alter);
+   my $unique_fields = get_unique_index_fields($alter);
+
+   if (scalar @$unique_fields && $o->get('fail-on-unique-key-change')) {
+       my $msg = "You are trying to add an unique key. This is highly discouraged.\n"
+               . "Please read the documentation for the --fail-on-unique-key-change parameter.\n"
+               . "You can check if there are already rows that will produce duplicated indexes "
+               . "by running this/these query/queries:\n\n";
+       foreach my $fields (@$unique_fields) {
+           my $sql = "SELECT IF(COUNT(DISTINCT " . join(", ", @$fields) . ") = COUNT(*),\n"
+                   . "       'Yes, the desired unique index currently contains only unique values', \n"
+                   . "       'No, the desired unique index contains duplicated values. There will be data loss'\n"
+                   . ") AS IsThereUniqueness FROM `$tbl->{db}`.`$tbl->{tbl}`;\n\n";
+           $msg .= $sql;
+        }
+        $msg .= "Keep in mind that these queries could take a long time and consume a lot of resources\n\n";
+        die ($msg);
+   }
 
    # ########################################################################
    # Check for DROP PRIMARY KEY.
@@ -10035,7 +10052,7 @@ sub get_unique_index_fields {
    $clean .= $suffix;
 
    my $fields = [];
-   my $fields_re = qr/.*?(?:ADD|CREATE)\s*UNIQUE\s*INDEX\s*(?:\w+\s+on\s+\w+|\w+)(?:\s\w+)* \((.*?)\)/i;
+   my $fields_re = qr/UNIQUE\s*INDEX\s*(?:.*?)* \((.*?)\)/i;
 
    while($clean =~ /$fields_re/g) {
       push @$fields, [ split /\s*,\s*/, $1 ];
@@ -11796,6 +11813,42 @@ must specify this option to alter the table. If you do not, then the tool will
 only perform some safety checks and exit.  This helps ensure that you have read the
 documentation and understand how to use this tool.  If you have not read the
 documentation, then do not specify this option.
+
+=item --[no]fail-on-unique-key-change
+
+default: yes
+
+Force pt-online-schema-change to run even if the specified statement for --alter is 
+trying to add an unique index. 
+Since pt-online-schema-change uses INSERT IGNORE to copy rows to the new table, if the
+row being written produce a duplicate key, it will fail silently.
+
+Example:
+
+    CREATE DATABASE test;
+    USE test;
+    CREATE TABLE `a` (
+      `id` int(11) NOT NULL,
+      `unique_id` varchar(32) DEFAULT NULL,
+      PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+    
+    insert into a values (1, "a");
+    insert into a values (2, "b");
+    insert into a values (3, "");
+    insert into a values (4, "");
+    insert into a values (5, NULL);
+    insert into a values (6, NULL);
+
+Using pt-osc to add an unique index on the `unique_id` field, will cause some rows to
+be lost due to the use os INSERT IGNORE to copy rows from the source table.
+For this reason, pt-osc will fail if it detects that the --alter parameter is trying
+to add an unique key and it will show an example query to run to detect if there are 
+rows that will produce duplicated indexes.
+
+Even if you run the query and there are no rows that will produce duplicated indexes,
+take into consideration that running INSERTs while pt-osc is running, could produce
+duplicated indexes and those rows are going to be lost without any notification.
 
 =item --force
 
