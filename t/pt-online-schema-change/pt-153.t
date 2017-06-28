@@ -58,14 +58,14 @@ isnt(
 
 like(
       $output,
-      qr/You are trying to add an unique key. This is highly discouraged./s,
+      qr/You are trying to add an unique key. This can result in data loss if the data is not unique/s,
       "PT-153 Adding unique index warning message.",
 );
 
 ($output, $exit_status) = full_output(
    sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=t1",
          '--execute', 
-         '--alter', "ADD UNIQUE INDEX c1 (f2, f3), CREATE UNIQUE INDEX idx2 ON test.t1 (f3)",
+         '--alter', "ADD UNIQUE INDEX c1 (f2, f3), PRIMARY KEY (f3), UNIQUE KEY k2 (f3)",
          ),
       },
 );
@@ -78,7 +78,7 @@ isnt(
 
 like(
       $output,
-      qr/You are trying to add an unique key. This is highly discouraged./s,
+      qr/You are trying to add an unique key. This can result in data loss if the data is not unique/s,
       "PT-153 Adding multiple unique indexes warning message.",
 );
 
