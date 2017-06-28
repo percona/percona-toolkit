@@ -9929,10 +9929,11 @@ sub check_alter {
 
    my $unique_fields = get_unique_index_fields($alter);
 
-   if (scalar @$unique_fields && $o->get('fail-on-unique-key-change')) {
-       my $msg = "You are trying to add an unique key. This is highly discouraged.\n"
-               . "Please read the documentation for the --fail-on-unique-key-change parameter.\n"
-               . "You can check if there are already rows that will produce duplicated indexes "
+   if (scalar @$unique_fields && $o->get('check-unique-key-change')) {
+       my $msg = "You are trying to add an unique key. This can result in data loss if the "
+               . "data is not unique.\n"
+               . "Please read the documentation for the --check-unique-key-change parameter.\n"
+               . "You can check if the column(s) contain duplicate content "
                . "by running this/these query/queries:\n\n";
        foreach my $fields (@$unique_fields) {
            my $sql = "SELECT IF(COUNT(DISTINCT " . join(", ", @$fields) . ") = COUNT(*),\n"
@@ -10052,7 +10053,7 @@ sub get_unique_index_fields {
    $clean .= $suffix;
 
    my $fields = [];
-   my $fields_re = qr/UNIQUE\s*INDEX\s*(?:.*?)* \((.*?)\)/i;
+   my $fields_re = qr/UNIQUE\s*(INDEX|KEY|)\s*(?:.*?)* \((.*?)\)/i;
 
    while($clean =~ /$fields_re/g) {
       push @$fields, [ split /\s*,\s*/, $1 ];
@@ -11814,14 +11815,15 @@ only perform some safety checks and exit.  This helps ensure that you have read 
 documentation and understand how to use this tool.  If you have not read the
 documentation, then do not specify this option.
 
-=item --[no]fail-on-unique-key-change
+=item --[no]check-unique-key-change
 
 default: yes
 
-Force pt-online-schema-change to run even if the specified statement for --alter is 
+Avoid C<pt-online-schema-change> to run if the specified statement for L<"--alter"> is 
 trying to add an unique index. 
-Since pt-online-schema-change uses INSERT IGNORE to copy rows to the new table, if the
-row being written produce a duplicate key, it will fail silently.
+Since C<pt-online-schema-change> uses C<INSERT IGNORE> to copy rows to the new table, if
+the row being written produces a duplicate key, it will fail silently and data will
+be lost.
 
 Example:
 
@@ -11840,15 +11842,15 @@ Example:
     insert into a values (5, NULL);
     insert into a values (6, NULL);
 
-Using pt-osc to add an unique index on the `unique_id` field, will cause some rows to
-be lost due to the use os INSERT IGNORE to copy rows from the source table.
-For this reason, pt-osc will fail if it detects that the --alter parameter is trying
+Using C<pt-online-schema-change> to add an unique index on the C<unique_id> field, will cause some rows to
+be lost due to the use of C<INSERT IGNORE> to copy rows from the source table.
+For this reason, C<pt-online-schema-change> will fail if it detects that the L<"--alter"> parameter is trying
 to add an unique key and it will show an example query to run to detect if there are 
 rows that will produce duplicated indexes.
 
 Even if you run the query and there are no rows that will produce duplicated indexes,
-take into consideration that running INSERTs while pt-osc is running, could produce
-duplicated indexes and those rows are going to be lost without any notification.
+take into consideration that after running this query, changes can be made to the table that can produce
+duplicate rows and this data will be lost.
 
 =item --force
 
