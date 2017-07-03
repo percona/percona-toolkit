@@ -100,9 +100,7 @@ collect() {
       $CMD_MYSQLADMIN $EXT_ARGV debug
    else
       log "Could not find the MySQL error log"
-   fi
-
-
+   fi 
    # Get a sample of these right away, so we can get these without interaction
    # with the other commands we're about to run.
    if [ "${mysql_version}" '>' "5.1" ]; then
@@ -250,6 +248,10 @@ collect() {
 
       if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes" ]; then
          ps_locks_transactions "$d/$p-ps-locks-transactions"
+      fi
+
+      if [ "${mysql_version}" '>' "5.6" ]; then
+         (echo $ts; ps_prepared_statements) >> "$d/$p-prepared-statements" &
       fi
 
       slave_status "$d/$p-slave-status" "${mysql_version}" 
@@ -428,6 +430,13 @@ ps_locks_transactions() {
       echo "Performance schema is not enabled" >> $outfile
    fi
 
+}
+
+ps_prepared_statements() {
+   $CMD_MYSQL $EXT_ARGV -e "SELECT t.processlist_id, pse.* \
+                            FROM performance_schema.prepared_statements_instances pse \
+                            JOIN performance_schema.threads t \
+                            ON (pse.OWNER_THREAD_ID=t.thread_id)\G"
 }
 
 slave_status() {
