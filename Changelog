@@ -11,6 +11,7 @@ v3.0.4
  * Fixed bug PT-138 : Added --output-format option to pt-mongodb-summary
  * Fixed bug PT-136 : pt-table-checksum fails with columns having different collation/charset
  * Feature   PT-141 : pt-archiver archive records into csv file
+ * Feature   PT-90  : pt-stalk: Collect information about prepared statements if P_S is enabled (Thanks Agustin Gallego)
 
 v3.0.3 released 2017-05-19
 
