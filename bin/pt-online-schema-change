@@ -14,6 +14,7 @@ use warnings FATAL => 'all';
 BEGIN {
    $INC{$_} = __FILE__ for map { (my $pkg = "$_.pm") =~ s!::!/!g; $pkg } (qw(
       Percona::Toolkit
+      VersionCompare
       OptionParser
       Lmo::Utils
       Lmo::Meta
@@ -105,6 +106,54 @@ sub _d {
 }
 # ###########################################################################
 # End Percona::Toolkit package
+# ###########################################################################
+#
+
+# ###########################################################################
+# VersionCompare package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/VersionCompare.pm
+#   t/lib/VersionCompare.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package VersionCompare;
+
+use strict;
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+sub cmp {
+   my ($v1, $v2) = @_;
+
+   $v1 =~ s/[^\d\.]//;
+   $v2 =~ s/[^\d\.]//;
+
+   my @a = ( $v1 =~ /(\d+)\.?/g ); 
+   my @b = ( $v2 =~ /(\d+)\.?/g ); 
+   foreach my $n1 (@a) {
+      $n1 += 0; #convert to number
+      if (!@b) {
+         return 1;
+      }  
+      my $n2 = shift @b;
+      $n2 += 0; # convert to number
+      if ($n1 == $n2) {
+          next;
+      }
+      else {
+         return $n1 <=> $n2;
+      }  
+   }  
+   return @b ? -1 : 0;
+}
+
+
+1;
+}
+# ###########################################################################
+# End VersionCompare package
 # ###########################################################################
 
 # ###########################################################################
@@ -2267,6 +2316,7 @@ sub get_dbh {
       PrintError         => 0,
       ShowErrorStatement => 1,
       mysql_enable_utf8 => ($cxn_string =~ m/charset=utf8/i ? 1 : 0),
+      #      mysql_multi_statements => 1,
    };
    @{$defaults}{ keys %$opts } = values %$opts;
    if (delete $defaults->{L}) { # L for LOAD DATA LOCAL INFILE, our own extension
@@ -8112,6 +8162,7 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 use List::Util qw(max);
 use Time::HiRes qw(time sleep);
 use Data::Dumper;
+use VersionCompare;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
@@ -8133,6 +8184,9 @@ my $dont_interrupt_now = 0;
 my @drop_trigger_sqls;
 my @triggers_not_dropped;
 my $pxc_version = '0';
+
+my $triggers_info = [];
+
 # Completely ignore these error codes.
 my %ignore_code = (
    # Error: 1592 SQLSTATE: HY000  (ER_BINLOG_UNSAFE_STATEMENT)
@@ -8237,6 +8291,35 @@ sub main {
    if ( !$o->get('drop-triggers') ) {
       $o->set('drop-old-table', 0);
    }
+
+   if ( !$o->get('drop-triggers') && $o->get('preserve-triggers') ) {
+      my $msg = "Cannot use --no-drop-triggers along with --preserve-triggers "
+              . "since --preserve-triggers implies that the old triggers should be deleted"
+              . " and recreated in the new table.\nPlease read the documentation for "
+              . "--preserve-triggers";
+      die $msg;
+   }
+
+   if ( !$o->get('drop-old-table') && $o->get('preserve-triggers') ) {
+      my $msg = "Cannot use --no-drop-old-table and --preserve-triggers together.\n"
+              . "--preserve-triggers implies that the old table and triggers "
+              . " should be deleted and recreated into the new table.\n"
+              . "Please read the documentation for --preserve-triggers";
+      die $msg;
+   }
+
+   if ( !$o->get('swap-tables') && $o->get('preserve-triggers') ) {
+      my $msg = "Canot use --no-swap-tables with --preserve-triggers since trigger names "
+              . "cannot be duplicated so, the old table and triggers should be deleted "
+              . "and recreated into the new table.\n"
+              . "Please read the documentation for --preserve-triggers";
+      die $msg;
+   }
+
+   if ( $o->get('preserve-triggers') ) {
+      $o->set('drop-triggers', 1);
+   }
+
 
    if ( !$o->get('help') ) {
       if ( @ARGV ) {
@@ -9261,7 +9344,7 @@ sub main {
              . "To drop the triggers, execute:\n"
              . join("\n", @drop_trigger_sqls) . "\n";
       }
-      elsif ( !$drop_triggers ) {
+      elsif ( !$drop_triggers  ) {
          print "Not dropping triggers because --no-drop-triggers was "
          . "specified.  To drop the triggers, execute:\n"
          . join("\n", @drop_trigger_sqls) . "\n";
@@ -9693,6 +9776,29 @@ sub main {
    # --plugin hook
    if ( $plugin && $plugin->can('before_swap_tables') ) {
       $plugin->before_swap_tables();
+   }
+
+   if ( $o->get('preserve-triggers') ) {
+      warn "Adding original triggers to new table.\n";
+      foreach my $trigger_info (@$triggers_info) {
+          next if ! ($trigger_info->{orig_triggers});
+          foreach my $orig_trigger (@{$trigger_info->{orig_triggers}}) {
+              my $new_trigger_sqls = create_trigger_sql($orig_trigger, 
+                                                        $new_tbl->{db}, 
+                                                        $new_tbl->{tbl}, 
+                                                        $orig_tbl->{tbl}
+                                                       );
+              next if !$o->get('execute');
+              for my $sql (@$new_trigger_sqls) {
+                  eval {
+                      $cxn->dbh()->do($sql);
+                  };
+                  if ($EVAL_ERROR) {
+                       die "Exiting due to errors while restoring triggers: $EVAL_ERROR";
+                  }
+              }
+          }
+      }
    }
 
    my $old_tbl;
@@ -10444,15 +10550,22 @@ sub check_orig_table {
       die "The original table $orig_tbl->{name} does not exist.\n";
    }
 
+   my ( $version ) = $dbh->selectrow_array("SELECT VERSION()");
    # There cannot be any triggers on the original table.
    my $sql = 'SHOW TRIGGERS FROM ' . $q->quote($orig_tbl->{db})
            . ' LIKE ' . $q->literal_like($orig_tbl->{tbl});
    PTDEBUG && _d($sql);
    my $triggers = $dbh->selectall_arrayref($sql);
    if ( $triggers && @$triggers ) {
-      die "The table $orig_tbl->{name} has triggers.  This tool "
-         . "needs to create its own triggers, so the table cannot "
-         . "already have triggers.\n";
+       if ( VersionCompare::cmp($version, '5.7.0') < 0  && VersionCompare::cmp($version, '10.0.0') <= 0) {
+           die "The table $orig_tbl->{name} has triggers.  This tool "
+             . "needs to create its own triggers, so the table cannot "
+             . "already have triggers.\n";
+       } elsif ( ( VersionCompare::cmp($version, '5.7.0') >= 0 || VersionCompare::cmp($version, '10.0.0') >0 )
+                 && !$o->get('preserve-triggers') ) {
+           die "The table $orig_tbl->{name} has triggers but you --preserve-triggers was not specified.\n"
+             . "Original triggers will be lost. Please read the documentation for --preserve-triggers.\n";
+       }
    }
 
    # Get the table struct.  NibbleIterator needs this, and so do we.
@@ -10801,6 +10914,8 @@ sub create_triggers {
    # they may have been renamed
    my %old_col_for    = map { $_->{new} => $_->{old} } @$cols;
    my $tbl_struct     = $del_tbl->{tbl_struct};
+   
+   # ---------------------------------------------------------------------------------------
    my $del_index      = $del_tbl->{del_index};
    my $del_index_cols = join(" AND ", map {
       my $new_col  = $_;
@@ -10816,21 +10931,25 @@ sub create_triggers {
       . "DELETE IGNORE FROM $new_tbl->{name} "
       . "WHERE $del_index_cols";
 
+   # ---------------------------------------------------------------------------------------
    my $qcols    = join(', ', map { $q->quote($_->{new}) }        @$cols);
    my $new_vals = join(', ', map { "NEW.".$q->quote($_->{old}) } @$cols);
+
    my $insert_trigger
       = "CREATE TRIGGER `${prefix}_ins` AFTER INSERT ON $orig_tbl->{name} "
       . "FOR EACH ROW "
       . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
 
+   # ---------------------------------------------------------------------------------------
    my $upd_index_cols = join(" AND ", map {
-      my $new_col = $_;
-      my $old_col = $old_col_for{$new_col} || $new_col;
-      my $new_qcol = $q->quote($new_col);
-      my $old_qcol = $q->quote($old_col);
-      "OLD.$old_qcol <=> NEW.$new_qcol"
+          my $new_col = $_;
+          my $old_col = $old_col_for{$new_col} || $new_col;
+          my $new_qcol = $q->quote($new_col);
+          my $old_qcol = $q->quote($old_col);
+          "OLD.$old_qcol <=> NEW.$new_qcol"
    } @{$tbl_struct->{keys}->{$del_index}->{cols}} );
-      
+   # ---------------------------------------------------------------------------------------
+
    my $update_trigger
       = "CREATE TRIGGER `${prefix}_upd` AFTER UPDATE ON $orig_tbl->{name} "
       . "FOR EACH ROW "
@@ -10839,36 +10958,110 @@ sub create_triggers {
       . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals);"
       . "END ";      
 
-   my @triggers = (
-      ['del', $delete_trigger],
-      ['upd', $update_trigger],
-      ['ins', $insert_trigger],
-   );
+   $triggers_info = [                                                     
+      { 
+          suffix => 'del', event => 'DELETE', time => 'AFTER', orig_triggers => [], 
+          new_trigger_sql => $delete_trigger, new_trigger_name => "${prefix}_del", 
+      },
+      { 
+          suffix => 'upd', event => 'UPDATE', time => 'AFTER', orig_triggers => [], 
+          new_trigger_sql => $update_trigger, new_trigger_name => "${prefix}_upd",
+      },
+      { 
+          suffix => 'ins', event => 'INSERT', time => 'AFTER', orig_triggers => [], 
+          new_trigger_sql => $insert_trigger, new_trigger_name => "${prefix}_ins", 
+      },
+
+      { 
+          suffix => 'delb', event => 'DELETE', time => 'BEFORE', orig_triggers => [], 
+          new_trigger_sql => '', new_trigger_name => '' 
+      },
+      { 
+          suffix => 'updb', event => 'UPDATE', time => 'BEFORE', orig_triggers => [], 
+          new_trigger_sql => '', new_trigger_name => '' 
+      },
+      { 
+          suffix => 'insb', event => 'INSERT', time => 'BEFORE', orig_triggers => [], 
+          new_trigger_sql => '', new_trigger_name => '' 
+      },
+   ];
+
+   $cxn->connect();
+   my $dbh = $cxn->dbh();
+
+   my $trigger_sql = "SELECT TRIGGER_SCHEMA, TRIGGER_NAME, DEFINER, ACTION_STATEMENT, SQL_MODE, "
+                   . "       CHARACTER_SET_CLIENT, COLLATION_CONNECTION, EVENT_MANIPULATION, ACTION_TIMING "
+                   . "  FROM INFORMATION_SCHEMA.TRIGGERS "
+                   . " WHERE EVENT_MANIPULATION = ? "
+                   . "   AND ACTION_TIMING = ? "
+                   . "   AND TRIGGER_SCHEMA = ? "
+                   . "   AND EVENT_OBJECT_TABLE = ?";
+   foreach my $trigger_info (@$triggers_info) {
+       $trigger_info->{orig_triggers} = $dbh->selectall_arrayref( $trigger_sql, 
+                                                                  { Slice => {} }, 
+                                                                  $trigger_info->{event},
+                                                                  $trigger_info->{time},
+                                                                  $orig_tbl->{db}, 
+                                                                  $orig_tbl->{tbl}
+                                                                ) || [];
+   }
+
+   # If --preserve-triggers was specified, try to create the original triggers into the new table.
+   # We are doing this to ensure the original triggers will work in the new modified table
+   # and we want to know this BEFORE copying all rows from the old table to the new one.
+   if ($o->get('preserve-triggers')) {
+       foreach my $trigger_info (@$triggers_info) {
+           foreach my $orig_trigger (@{$trigger_info->{orig_triggers}}) {
+               my $definer = $orig_trigger->{definer} || '';
+               $definer =~ s/@/`@`/;
+               $definer = "`$definer`" ;
+               
+               my @chars = ("a".."z");
+               my $tmp_trigger_name;
+               $tmp_trigger_name .= $chars[rand @chars] for 1..15;
+
+               my $sql = "CREATE DEFINER=$definer " 
+                       . "TRIGGER `$new_tbl->{db}`.`$tmp_trigger_name` "
+                       . "$orig_trigger->{action_timing} $orig_trigger->{event_manipulation} ON $new_tbl->{tbl}\n"
+                       . "FOR EACH ROW\n"
+                       . $orig_trigger->{action_statement};
+               eval {
+                   $dbh->do($sql);
+               };
+               if ($EVAL_ERROR) {
+                   my $msg = "$EVAL_ERROR.\n"
+                           . "Check if all fields referenced by the trigger still exists "
+                           . "after the operation you are trying to apply";
+                   die ($msg);
+               }
+               $dbh->do("DROP TRIGGER IF EXISTS `$tmp_trigger_name`");
+           }
+       }
+   }
 
    my @trigger_names;
    @drop_trigger_sqls = ();
-   foreach my $trg ( @triggers ) {
-      my ($name, $sql) = @$trg;
-      print $sql, "\n" if $o->get('print');
-      if ( $o->get('execute') ) {
-         osc_retry(
-            Cxn     => $cxn,
-            Retry   => $retry,
-            tries   => $tries->{create_triggers},
-            stats   => $stats,
-            code    => sub {
-               PTDEBUG && _d($sql);
-               $cxn->dbh()->do($sql);
-            },
-         );
-      }
-      # Only save the trigger once it has been created
-      # (or faked to be created) so if the 2nd trigger
-      # fails to create, we know to only drop the 1st.
-      push @trigger_names, "${prefix}_$name";
-      push @drop_trigger_sqls,
-         "DROP TRIGGER IF EXISTS "
-         . $q->quote($orig_tbl->{db}, "${prefix}_$name") . ";";
+
+   foreach my $trigger_info ( @$triggers_info ) {
+       next if !$trigger_info->{new_trigger_sql};
+       if ( $o->get('execute') ) {
+          osc_retry(
+             Cxn     => $cxn,
+             Retry   => $retry,
+             tries   => $tries->{create_triggers},
+             stats   => $stats,
+             code    => sub {
+                PTDEBUG && _d($trigger_info->{new_trigger_sql});
+                $cxn->dbh()->do($trigger_info->{new_trigger_sql});
+             },
+          );
+       }
+       # Only save the trigger once it has been created
+       # (or faked to be created) so if the 2nd trigger
+       # fails to create, we know to only drop the 1st.
+       push @trigger_names, $trigger_info->{new_trigger_name};
+       push @drop_trigger_sqls,
+          "DROP TRIGGER IF EXISTS " . $q->quote($orig_tbl->{db}, $trigger_info->{new_trigger_name});
    }
 
    if ( $o->get('execute') ) {
@@ -10876,6 +11069,42 @@ sub create_triggers {
    }
 
    return @trigger_names;
+}
+
+sub create_trigger_sql {
+    my ($trigger, $db, $new_table, $orig_table) = @_;
+    my $definer = $trigger->{definer} || '';
+    $definer =~ s/@/`@`/;
+    $definer = "`$definer`" ;
+
+    my $sqls = [];
+    push @$sqls, '/*!50003 SET @saved_sql_mode = @@sql_mode */';
+    push @$sqls, '/*!50003 SET @saved_cs_client      = @@character_set_client */ ;';
+    push @$sqls, '/*!50003 SET @saved_cs_results     = @@character_set_results */ ;';
+    push @$sqls, '/*!50003 SET @saved_col_connection = @@collation_connection */ ;';
+
+    push @$sqls, "/*!50003 SET character_set_client  = $trigger->{character_set_client} */ ;";
+    push @$sqls, "/*!50003 SET collation_connection  = $trigger->{collation_connection} */ ;";
+    push @$sqls, "SET SESSION sql_mode = '$trigger->{sql_mode}'";
+
+    push @$sqls, "LOCK TABLES `$db`.`$new_table` WRITE";
+    push @$sqls, "LOCK TABLES `$db`.`$orig_table` WRITE" if $orig_table;
+    push @$sqls, "DROP TRIGGER IF EXISTS `$db`.`$trigger->{trigger_name}` ";
+
+    push @$sqls, "CREATE DEFINER=$definer " 
+               . "TRIGGER `$db`.`$trigger->{trigger_name}` "
+               . "$trigger->{action_timing} $trigger->{event_manipulation} ON $new_table\n"
+               . "FOR EACH ROW\n"
+               . $trigger->{action_statement};
+
+   push @$sqls, '/*!50003 SET sql_mode              = @saved_sql_mode */ ;';
+   push @$sqls, '/*!50003 SET character_set_client  = @saved_cs_client */ ;';
+   push @$sqls, '/*!50003 SET character_set_results = @saved_cs_results */';
+   push @$sqls, '/*!50003 SET collation_connection  = @saved_col_connection */ ;';
+   push @$sqls, 'UNLOCK TABLES';
+
+   return $sqls;
+    
 }
 
 sub drop_triggers {
@@ -11155,6 +11384,40 @@ sub ts {
    my ($msg) = @_;
    my $ts = $ENV{PTTEST_FAKE_TS} ? 'TS' : Transformers::ts(int(time));
    return $msg ? "$ts $msg" : $ts;
+}
+
+# find point in trigger we can insert pt-osc code for --preserve-triggers
+sub trigger_ins_point {
+   my ( %args ) = @_;
+   my @required_args = qw(trigger);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless defined $args{$arg};
+   }
+   my ($trigger) = @args{@required_args};
+
+   my $ins_point;
+   if ($trigger =~ /begin(.*?)end(?!.*end)/igms) {
+         $ins_point = $+[0] - 3;
+      }
+   else { $ins_point = 0;}
+
+   return $ins_point;
+}
+
+# sub to add ; if line doesn't end in ;
+sub terminate_sql {
+   my ( $text ) = @_;
+   die "I need a text argument" unless defined $text;
+   $text = trim($text);
+   if(substr($text, -1) ne ';') { $text .= ';'; }
+   return $text;
+}
+
+sub trim {
+   my ( $text ) = @_;
+   die "I need a text argument" unless defined $text;
+   $text =~ s/^\s+|\s+$//g;
+   return $text;
 }
 
 # Catches signals so we can exit gracefully.
@@ -11925,6 +12188,55 @@ specify a threshold for this variable, then you can instruct the tool to wait
 until queries are running normally again.  This will not prevent queueing,
 however; it will only give the server a chance to recover from the queueing.  If
 you notice queueing, it is best to decrease the chunk time.
+
+=item --preserve-triggers
+
+Preserves old triggers when specified. 
+As of MySQL 5.7.2, it is possible to define multiple triggers for a given 
+table that have the same trigger event and action time. This allows us to
+add the triggers needed for C<pt-online-schema-change> even if the table
+already has its own triggers.
+If this option is enabled, C<pt-online-schema-change> will try to copy all the
+existing triggers to the new table BEFORE start copying rows from the original
+table to ensure the old triggers can be applied after altering the table.
+
+Example.
+
+  CREATE TABLE test.t1 (
+       id INT NOT NULL AUTO_INCREMENT,
+       f1 INT,
+       f2 VARCHAR(32),
+       PRIMARY KEY (id)
+  );
+              
+  CREATE TABLE test.log (
+     ts  TIMESTAMP,
+     msg VARCHAR(255)
+  );
+  
+  CREATE TRIGGER test.after_update
+   AFTER
+     UPDATE ON test.t1
+     FOR EACH ROW 
+       INSERT INTO test.log VALUES (NOW(), CONCAT("updated row row with id ", OLD.id, " old f1:", OLD.f1, " new f1: ", NEW.f1 ));
+
+For this table and triggers combination, it is not possible to use L<--preserve-triggers> 
+with an L<--alter> like this: C<"DROP COLUMN f1"> since the trigger references the column 
+being dropped and at would make the trigger to fail.
+
+After testing the triggers will work on the new table, the triggers are 
+dropped from the new table until all rows have been copied and then they are
+re-applied. 
+
+B<WARNING> The process of re-applying the triggers is not atomic at it will hold a lock 
+on both tables (original and new) for a short period of time, while the old table is 
+dropped and the new table is being renamed.
+
+L<--preserve-triggers> cannot be used with these other parameters, L<--no-drop-triggers>, 
+L<--no-drop-old-table> and L<--no-swap-tables> since L<--preserve-triggers> implies that 
+the old triggers should be deleted and recreated in the new table. 
+Since it is not possible to have more than one trigger with the same name, old triggers 
+must be deleted in order to be able to recreate them into the new table.
 
 =item --new-table-name
 
