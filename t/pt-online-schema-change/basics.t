@@ -120,10 +120,11 @@ sub test_alter_table {
    my $orig_max_id = $master_dbh->selectall_arrayref(
       "SELECT MAX(`$pk_col`) FROM `$db`.`$tbl`");
 
-   my $triggers_sql = "SELECT TRIGGER_SCHEMA, TRIGGER_NAME, DEFINER, ACTION_STATEMENT ".
-                      "  FROM INFORMATION_SCHEMA.TRIGGERS ".
-                       "WHERE TRIGGER_SCHEMA = '$db' " .
-                       "  AND EVENT_OBJECT_TABLE = '$tbl'";
+   my $triggers_sql = "SELECT TRIGGER_SCHEMA, TRIGGER_NAME, DEFINER, ACTION_STATEMENT, SQL_MODE, "
+                    . "       CHARACTER_SET_CLIENT, COLLATION_CONNECTION, EVENT_MANIPULATION, ACTION_TIMING "
+                    . "  FROM INFORMATION_SCHEMA.TRIGGERS "
+                    . " WHERE TRIGGER_SCHEMA = '$db' " 
+                    .  "  AND EVENT_OBJECT_TABLE = '$tbl'";
    my $orig_triggers = $master_dbh->selectall_arrayref($triggers_sql);
 
    my ($orig_auto_inc) = $ddl =~ m/\s+AUTO_INCREMENT=(\d+)\s+/;
@@ -871,18 +872,27 @@ SKIP: {
     );
     
     
-    #test_alter_table(
-    #   name       => "--preserve-triggers --no-swap-tables",
-    #   table      => "pt_osc.t",
-    #   file       => "basic_no_fks_innodb.sql",
-    #   max_id     => 20,
-    #   test_type  => "add_col",
-    #   new_col    => "foo",
-    #   no_change  => 1,
-    #   cmds       => [
-    #      qw(--execute --no-swap-tables --preserve-triggers), '--alter', 'ADD COLUMN foo INT'
-    #   ],
-    #);
+    $sb->load_file('master', "$sample/after_triggers.sql");
+
+    ($output, $exit) = full_output(
+       sub { pt_online_schema_change::main(@args,
+          "$dsn,D=test,t=t1", 
+          qw(--execute --preserve-triggers), '--alter', 'DROP COLUMN f1')
+       },
+       stderr => 1,
+    );
+    
+    isnt(
+          $exit,
+          0,
+          "--preserve-triggers drop field used by trigger",
+    );
+
+    like( 
+          $output,
+          qr/Check if all fields referenced by the trigger still exists after the operation you are trying to apply/,
+          "--preserve-triggers: message if try to drop a field used by triggers",
+    );
 
     ($output, $exit) = full_output(
        sub { pt_online_schema_change::main(@args,
@@ -898,6 +908,34 @@ SKIP: {
           "--preserve-triggers --no-swap-tables",
     );
     
+    ($output, $exit) = full_output(
+       sub { pt_online_schema_change::main(@args,
+          "$dsn,D=pt_osc,t=t", 
+          qw(--execute --no-drop-old-table --preserve-triggers), '--alter', 'ADD COLUMN foo INT')
+       },
+       stderr => 1,
+    );
+    
+    isnt(
+          $exit,
+          0,
+          "--preserve-triggers --no-drop-old-table",
+    );
+    
+    ($output, $exit) = full_output(
+       sub { pt_online_schema_change::main(@args,
+          "$dsn,D=pt_osc,t=t", 
+          qw(--execute --no-drop-triggers --preserve-triggers), '--alter', 'ADD COLUMN foo INT')
+       },
+       stderr => 1,
+    );
+    
+    isnt(
+          $exit,
+          0,
+          "--preserve-triggers --no-drop-triggers",
+    );
+
     test_alter_table(
        name        => "Basic FK auto --execute",
        table       => "pt_osc.country",
