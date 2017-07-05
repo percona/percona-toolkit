@@ -847,7 +847,7 @@ SKIP: {
    skip 'Sandbox MySQL version should be >= 5.7' unless $sandbox_version ge '5.7';
 
     test_alter_table(
-       name       => "Basic --preserve-triggers #1",
+       name       => 'Basic --preserve-triggers #1',
        table      => "pt_osc.account",
        pk_col     => "id",
        file       => "triggers.sql",
@@ -896,26 +896,28 @@ SKIP: {
 
     ($output, $exit) = full_output(
        sub { pt_online_schema_change::main(@args,
-          "$dsn,D=pt_osc,t=t", 
+          "$dsn,D=test,t=t1", 
           qw(--execute --no-swap-tables --preserve-triggers), '--alter', 'ADD COLUMN foo INT')
        },
        stderr => 1,
     );
+    diag($output);
     
-    isnt(
-          $exit,
-          0,
-          "--preserve-triggers --no-swap-tables",
+    is(
+       $exit,
+       0,
+       "--preserve-triggers --no-swap-tables",
     );
     
     ($output, $exit) = full_output(
        sub { pt_online_schema_change::main(@args,
-          "$dsn,D=pt_osc,t=t", 
+          "$dsn,D=test,t=t1", 
           qw(--execute --no-drop-old-table --preserve-triggers), '--alter', 'ADD COLUMN foo INT')
        },
        stderr => 1,
     );
     
+    diag($output);
     isnt(
           $exit,
           0,

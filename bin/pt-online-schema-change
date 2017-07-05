@@ -8300,26 +8300,9 @@ sub main {
       die $msg;
    }
 
-   if ( !$o->get('drop-old-table') && $o->get('preserve-triggers') ) {
-      my $msg = "Cannot use --no-drop-old-table and --preserve-triggers together.\n"
-              . "--preserve-triggers implies that the old table and triggers "
-              . " should be deleted and recreated into the new table.\n"
-              . "Please read the documentation for --preserve-triggers";
-      die $msg;
-   }
-
-   if ( !$o->get('swap-tables') && $o->get('preserve-triggers') ) {
-      my $msg = "Canot use --no-swap-tables with --preserve-triggers since trigger names "
-              . "cannot be duplicated so, the old table and triggers should be deleted "
-              . "and recreated into the new table.\n"
-              . "Please read the documentation for --preserve-triggers";
-      die $msg;
-   }
-
    if ( $o->get('preserve-triggers') ) {
       $o->set('drop-triggers', 1);
    }
-
 
    if ( !$o->get('help') ) {
       if ( @ARGV ) {
