@@ -189,7 +189,7 @@ sub test_alter_table {
       is_deeply(
          $new_triggers,
          $orig_triggers,
-         "$name triggers"
+         "$name triggers still exist"
       ) or $fail = 1;
    }
 
@@ -847,7 +847,7 @@ SKIP: {
    skip 'Sandbox MySQL version should be >= 5.7' unless $sandbox_version ge '5.7';
 
     test_alter_table(
-       name       => 'Basic --preserve-triggers #1',
+       name       => 'Basic --preserve-triggers',
        table      => "pt_osc.account",
        pk_col     => "id",
        file       => "triggers.sql",
@@ -859,13 +859,12 @@ SKIP: {
     );
     
     test_alter_table(
-       name       => "Basic --preserve-triggers after #3",
+       name       => "--preserve-triggers: after triggers",
        table      => "test.t1",
        pk_col     => "id",
        file       => "after_triggers.sql",
        test_type  => "add_col",
        new_col    => "foo3",
-       trigger_timing => 'AFTER',
        cmds       => [
           qw(--execute --preserve-triggers --alter-foreign-keys-method rebuild_constraints), '--alter', 'ADD COLUMN foo3 INT',
        ],
@@ -885,7 +884,7 @@ SKIP: {
     isnt(
           $exit,
           0,
-          "--preserve-triggers drop field used by trigger",
+          "--preserve-triggers cannot drop column used by trigger",
     );
 
     like( 
@@ -901,14 +900,15 @@ SKIP: {
        },
        stderr => 1,
     );
-    diag($output);
     
     is(
        $exit,
        0,
-       "--preserve-triggers --no-swap-tables",
+       "--preserve-triggers --no-swap-tables exit status",
     );
     
+    $sb->load_file('master', "$sample/after_triggers.sql");
+
     ($output, $exit) = full_output(
        sub { pt_online_schema_change::main(@args,
           "$dsn,D=test,t=t1", 
@@ -917,13 +917,19 @@ SKIP: {
        stderr => 1,
     );
     
-    diag($output);
-    isnt(
+    is(
           $exit,
           0,
-          "--preserve-triggers --no-drop-old-table",
+          "--preserve-triggers --no-drop-old-table exit status",
     );
-    
+
+    my $rows = $master_dbh->selectall_arrayref("SHOW TABLES LIKE '%t1%'");
+    is_deeply(
+          $rows,
+          [ [ '_t1_old' ], [ 't1' ] ],
+          "--preserve-triggers --no-drop-old-table original & new tables still exists",
+    );
+
     ($output, $exit) = full_output(
        sub { pt_online_schema_change::main(@args,
           "$dsn,D=pt_osc,t=t", 
@@ -935,7 +941,7 @@ SKIP: {
     isnt(
           $exit,
           0,
-          "--preserve-triggers --no-drop-triggers",
+          "--preserve-triggers cannot be used --no-drop-triggers",
     );
 
     test_alter_table(

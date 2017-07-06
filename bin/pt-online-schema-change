@@ -9763,14 +9763,25 @@ sub main {
 
    if ( $o->get('preserve-triggers') ) {
       warn "Adding original triggers to new table.\n";
+      my $drop_old_triggers = $o->get('drop-triggers');
       foreach my $trigger_info (@$triggers_info) {
           next if ! ($trigger_info->{orig_triggers});
           foreach my $orig_trigger (@{$trigger_info->{orig_triggers}}) {
-              my $new_trigger_sqls = create_trigger_sql($orig_trigger, 
-                                                        $new_tbl->{db}, 
-                                                        $new_tbl->{tbl}, 
-                                                        $orig_tbl->{tbl}
-                                                       );
+              my $new_trigger_sqls;
+              eval {
+                  my $use_random_suffix = $o->get('swap-tables') ? undef : 1;
+                  $new_trigger_sqls = create_trigger_sql(trigger => $orig_trigger, 
+                                                            db => $new_tbl->{db}, 
+                                                            new_tbl => $new_tbl->{tbl}, 
+                                                            orig_tbl => $orig_tbl->{tbl},
+                                                            drop_old_triggers => $drop_old_triggers,
+                                                            use_random_suffix => $use_random_suffix,
+                                                           );
+              };
+              # warn Data::Dumper::Dumper($new_trigger_sqls);
+              if ($EVAL_ERROR) {
+                 die "Cannot create triggers: $EVAL_ERROR";
+              }
               next if !$o->get('execute');
               for my $sql (@$new_trigger_sqls) {
                   eval {
@@ -11054,9 +11065,48 @@ sub create_triggers {
    return @trigger_names;
 }
 
+sub random_suffix {
+    my @chars = ("a".."z");
+    my $suffix;
+    $suffix .= $chars[rand @chars] for 1..15;
+    return "_$suffix";
+}
+
+# Create the sql staments for the new trigger
+# Required args:
+# trigger   : Hash with trigger definition
+# db        : Database handle
+# new_table : New table name
+#
+# Optional args:
+# orig_table.......: Original table name. Used to LOCK the table.
+#                    In case we are creating a new temporary trigger for testing 
+#                    purposes or if --no-swap-tables is enabled, this param should
+#                    be omitted since we are creating a completelly new trigger so,
+#                    since in this case we are not going to DROP the old trigger, 
+#                    there is no need for a LOCK
+#
+# use_random_suffix: If set, it will create a random string as a trigger name suffix.
+#                    This is usefull when creating a temporary trigger for testing 
+#                    purposes or if --no-swap-tables was specified along with 
+#                    --preserve-triggers. In this case, since the original table and
+#                    triggers are not going to be deleted  we need a new random name 
+#                    because trigger names cannot be duplicated
 sub create_trigger_sql {
-    my ($trigger, $db, $new_table, $orig_table) = @_;
-    my $definer = $trigger->{definer} || '';
+   my (%args) = @_;
+   my @required_args = qw(trigger db new_tbl);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+
+    my $trigger = $args{trigger};
+    my $drop_old_triggers = $args{drop_old_triggers} | 1;
+    my $suffix = $args{use_ramdom_suffix} ? random_suffix() : '';
+    if (length("$trigger->{trigger_name}$suffix") > 64) {
+        die "New trigger name $trigger->{trigger_name}$suffix is too long";
+    }
+
+    my $definer = $args{trigger}->{definer} | '';
     $definer =~ s/@/`@`/;
     $definer = "`$definer`" ;
 
@@ -11070,21 +11120,21 @@ sub create_trigger_sql {
     push @$sqls, "/*!50003 SET collation_connection  = $trigger->{collation_connection} */ ;";
     push @$sqls, "SET SESSION sql_mode = '$trigger->{sql_mode}'";
 
-    push @$sqls, "LOCK TABLES `$db`.`$new_table` WRITE";
-    push @$sqls, "LOCK TABLES `$db`.`$orig_table` WRITE" if $orig_table;
-    push @$sqls, "DROP TRIGGER IF EXISTS `$db`.`$trigger->{trigger_name}` ";
+    # Do not add locks since LOCK TABLE will release previous locks
+    
+    push @$sqls, "DROP TRIGGER IF EXISTS `$args{db}`.`$trigger->{trigger_name}` " if $args{drop_old_triggers};
 
     push @$sqls, "CREATE DEFINER=$definer " 
-               . "TRIGGER `$db`.`$trigger->{trigger_name}` "
-               . "$trigger->{action_timing} $trigger->{event_manipulation} ON $new_table\n"
+               . "TRIGGER `$args{db}`.`$trigger->{trigger_name}$suffix` "
+               . "$trigger->{action_timing} $trigger->{event_manipulation} ON $args{new_tbl}\n"
                . "FOR EACH ROW\n"
                . $trigger->{action_statement};
 
-   push @$sqls, '/*!50003 SET sql_mode              = @saved_sql_mode */ ;';
-   push @$sqls, '/*!50003 SET character_set_client  = @saved_cs_client */ ;';
-   push @$sqls, '/*!50003 SET character_set_results = @saved_cs_results */';
-   push @$sqls, '/*!50003 SET collation_connection  = @saved_col_connection */ ;';
-   push @$sqls, 'UNLOCK TABLES';
+    push @$sqls, '/*!50003 SET sql_mode              = @saved_sql_mode */ ;';
+    push @$sqls, '/*!50003 SET character_set_client  = @saved_cs_client */ ;';
+    push @$sqls, '/*!50003 SET character_set_results = @saved_cs_results */';
+    push @$sqls, '/*!50003 SET collation_connection  = @saved_col_connection */ ;';
+    push @$sqls, 'UNLOCK TABLES';
 
    return $sqls;
     
@@ -12221,6 +12271,10 @@ the old triggers should be deleted and recreated in the new table.
 Since it is not possible to have more than one trigger with the same name, old triggers 
 must be deleted in order to be able to recreate them into the new table.
 
+Using C<--preserve-triggers> with C<--no-swap-tables> will cause triggers to remain
+defined for the original table while the new table won't have any trigger.
+Please read the documentation for L<--swap-tables>
+
 =item --new-table-name
 
 type: string; default: %T_new
@@ -12437,6 +12491,10 @@ Swap the original table and the new, altered table.  This step completes the
 online schema change process by making the table with the new schema take the
 place of the original table.  The original table becomes the "old table," and
 the tool drops it unless you disable L<"--[no]drop-old-table">.
+
+Using C<--no-swap-tables> will run the whole process, it will create the new
+table, it will copy all rows but at the end it will drop the new table. It is 
+intended to run a more realistic L<--dry-run>.
 
 =item --tries
 
