@@ -1,6 +1,5 @@
 Changelog for Percona Toolkit
 
-v3.0.4
 
  * Fixed bug PT-162 : Updated pt-table-checksum ignored dbs (Thanks Agustin Gallego)
  * Fixed bug PT-161 : Safely check for undefined values in --skip-check-slave-lag (Thanks Chris Swingler)

@@ -88,11 +88,11 @@ TAR=${TAR:-tar}
 # ############################################################################
 
 check_branch() {
-   echo -n "Checking branch... "
-   local clean_branch=$(git status --porcelain|wc -l)
-   if [ "$clean_branch" -gt 0 ]; then
-      die "The branch has uncommitted changes or unknown files"
-   fi
+#   echo -n "Checking branch... "
+#   local clean_branch=$(git status --porcelain|wc -l)
+#   if [ "$clean_branch" -gt 0 ]; then
+#      die "The branch has uncommitted changes or unknown files"
+#   fi
    echo "OK"
 }
 
