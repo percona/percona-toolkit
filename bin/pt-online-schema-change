@@ -9762,21 +9762,24 @@ sub main {
    }
 
    if ( $o->get('preserve-triggers') ) {
-      warn "Adding original triggers to new table.\n";
-      my $drop_old_triggers = $o->get('drop-triggers');
+      print ts("Adding original triggers to new table.\n");
       foreach my $trigger_info (@$triggers_info) {
           next if ! ($trigger_info->{orig_triggers});
           foreach my $orig_trigger (@{$trigger_info->{orig_triggers}}) {
               my $new_trigger_sqls;
               eval {
-                  my $use_random_suffix = $o->get('swap-tables') ? undef : 1;
-                  $new_trigger_sqls = create_trigger_sql(trigger => $orig_trigger, 
-                                                            db => $new_tbl->{db}, 
-                                                            new_tbl => $new_tbl->{tbl}, 
-                                                            orig_tbl => $orig_tbl->{tbl},
-                                                            drop_old_triggers => $drop_old_triggers,
-                                                            use_random_suffix => $use_random_suffix,
-                                                           );
+                  # if --no-swap-tables is used and --no-drop-new-table is used, then we need to duplicate the trigger
+                  my $duplicate_trigger = ( ! $o->get('swap-tables') && ! $o->get('drop-new-table') ) ? 1 : undef;
+                  # if --no-swap-tables is used and --drop-new-table (default), then we don't do any trigger stuff
+                  if ( ! $o->get('swap-tables') && ! $o->get('drop-new-table') )
+                  {
+                     $new_trigger_sqls = create_trigger_sql(trigger => $orig_trigger, 
+                                                               db => $new_tbl->{db}, 
+                                                               new_tbl => $new_tbl->{tbl}, 
+                                                               orig_tbl => $orig_tbl->{tbl},
+                                                               duplicate_trigger => $duplicate_trigger,
+                                                              );
+                  }
               };
               # warn Data::Dumper::Dumper($new_trigger_sqls);
               if ($EVAL_ERROR) {
@@ -10557,8 +10560,8 @@ sub check_orig_table {
              . "already have triggers.\n";
        } elsif ( ( VersionCompare::cmp($version, '5.7.0') >= 0 || VersionCompare::cmp($version, '10.0.0') >0 )
                  && !$o->get('preserve-triggers') ) {
-           die "The table $orig_tbl->{name} has triggers but you --preserve-triggers was not specified.\n"
-             . "Original triggers will be lost. Please read the documentation for --preserve-triggers.\n";
+           die "The table $orig_tbl->{name} has triggers but --preserve-triggers was not specified.\n"
+             . "Please read the documentation for --preserve-triggers.\n";
        }
    }
 
@@ -11086,12 +11089,15 @@ sub random_suffix {
 #                    since in this case we are not going to DROP the old trigger, 
 #                    there is no need for a LOCK
 #
-# use_random_suffix: If set, it will create a random string as a trigger name suffix.
+# duplicate_trigger: If set, it will create the trigger on the new table
+#                    with a random string as a trigger name suffix.
+#                    It will also not drop the original trigger.
 #                    This is usefull when creating a temporary trigger for testing 
-#                    purposes or if --no-swap-tables was specified along with 
-#                    --preserve-triggers. In this case, since the original table and
-#                    triggers are not going to be deleted  we need a new random name 
-#                    because trigger names cannot be duplicated
+#                    purposes or if --no-swap-tables AND --no-drop-new-table was 
+#                    specified along with --preserve-triggers. In this case, 
+#                    since the original table and triggers are not going to be 
+#                    deleted we need a new random name because trigger names 
+#                    cannot be duplicated
 sub create_trigger_sql {
    my (%args) = @_;
    my @required_args = qw(trigger db new_tbl);
@@ -11100,8 +11106,7 @@ sub create_trigger_sql {
    }
 
     my $trigger = $args{trigger};
-    my $drop_old_triggers = $args{drop_old_triggers} | 1;
-    my $suffix = $args{use_ramdom_suffix} ? random_suffix() : '';
+    my $suffix = $args{duplicate_trigger} ? random_suffix() : '';
     if (length("$trigger->{trigger_name}$suffix") > 64) {
         die "New trigger name $trigger->{trigger_name}$suffix is too long";
     }
@@ -11111,6 +11116,7 @@ sub create_trigger_sql {
     $definer = "`$definer`" ;
 
     my $sqls = [];
+    push @$sqls, "LOCK TABLES `$args{db}`.`$args{new_tbl}` WRITE, `$args{db}`. `$args{orig_tbl}` WRITE;";
     push @$sqls, '/*!50003 SET @saved_sql_mode = @@sql_mode */';
     push @$sqls, '/*!50003 SET @saved_cs_client      = @@character_set_client */ ;';
     push @$sqls, '/*!50003 SET @saved_cs_results     = @@character_set_results */ ;';
@@ -11119,10 +11125,8 @@ sub create_trigger_sql {
     push @$sqls, "/*!50003 SET character_set_client  = $trigger->{character_set_client} */ ;";
     push @$sqls, "/*!50003 SET collation_connection  = $trigger->{collation_connection} */ ;";
     push @$sqls, "SET SESSION sql_mode = '$trigger->{sql_mode}'";
-
-    # Do not add locks since LOCK TABLE will release previous locks
     
-    push @$sqls, "DROP TRIGGER IF EXISTS `$args{db}`.`$trigger->{trigger_name}` " if $args{drop_old_triggers};
+    push @$sqls, "DROP TRIGGER IF EXISTS `$args{db}`.`$trigger->{trigger_name}` " if ! $args{duplicate_trigger};
 
     push @$sqls, "CREATE DEFINER=$definer " 
                . "TRIGGER `$args{db}`.`$trigger->{trigger_name}$suffix` "
@@ -12261,10 +12265,6 @@ After testing the triggers will work on the new table, the triggers are
 dropped from the new table until all rows have been copied and then they are
 re-applied. 
 
-B<WARNING> The process of re-applying the triggers is not atomic at it will hold a lock 
-on both tables (original and new) for a short period of time, while the old table is 
-dropped and the new table is being renamed.
-
 L<--preserve-triggers> cannot be used with these other parameters, L<--no-drop-triggers>, 
 L<--no-drop-old-table> and L<--no-swap-tables> since L<--preserve-triggers> implies that 
 the old triggers should be deleted and recreated in the new table. 
@@ -12272,8 +12272,12 @@ Since it is not possible to have more than one trigger with the same name, old t
 must be deleted in order to be able to recreate them into the new table.
 
 Using C<--preserve-triggers> with C<--no-swap-tables> will cause triggers to remain
-defined for the original table while the new table won't have any trigger.
+defined for the original table.
 Please read the documentation for L<--swap-tables>
+
+If both C<--no-swap-tables> and C<--no-drop-new-table> is set, the trigger will remain
+on the original table and will be duplicated on the new table 
+(the trigger will have a random suffix as no trigger names are unique).
 
 =item --new-table-name
 
