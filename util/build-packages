@@ -321,14 +321,16 @@ update_rel_notes() {
    # to
    # * `PT-73 <https://jira.percona.com/browse/PT-73>`_: Added support for SSL connections to ``pt-mongodb-summary`` and ``pt-mongodb-query-digest``
 
-   sed -i.bak -e 's|\^*\s*\(PT-\(:digit:\+\)\):| `\1 <https://jira.percona.com/browse/\1>`_:|' release_notes.rst  
+   sed -i.bak -e 's|\^*\s*\(PT-\([[:digit:]]\+\)\):| `\1 <https://jira.percona.com/browse/\1>`_:|' release_notes.rst
+
 
    # Lauchpad tickets
    # * 1642751: Enabled gathering of information about locks and transactions by ``pt-stalk`` using Performance Schema if it is enabled 
    # to
    # * `1642751 <https://bugs.launchpad.net/percona-toolkit/+bug/1642751>`_: Enabled gathering of information about locks and transactions 
    # by ``pt-stalk`` using Performance Schema if it is enabled 
-   sed -i.bak -e 's|^*\s*\(\(:digit:\+\)\)\s*:|* `\1 <https://bugs.launchpad.net/percona-toolkit/+bug/\1>`_:|' release_notes.rst
+   sed -i.bak -e 's|^*\s*\(\([[:digit:]]\+\)\)\s*:|* `\1 <https://bugs.launchpad.net/percona-toolkit/+bug/\1>`_:|' release_notes.rst
+
 
    echo "OK"
 }
