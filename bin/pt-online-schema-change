@@ -9762,36 +9762,39 @@ sub main {
    }
 
    if ( $o->get('preserve-triggers') ) {
-      print ts("Adding original triggers to new table.\n");
-      foreach my $trigger_info (@$triggers_info) {
-          next if ! ($trigger_info->{orig_triggers});
-          foreach my $orig_trigger (@{$trigger_info->{orig_triggers}}) {
-              my $new_trigger_sqls;
-              eval {
-                  # if --no-swap-tables is used and --no-drop-new-table is used, then we need to duplicate the trigger
-                  my $duplicate_trigger = ( ! $o->get('swap-tables') && ! $o->get('drop-new-table') ) ? 1 : undef;
+      if ( !$o->get('swap-tables') && $o->get('drop-new-table') ) {
+          print ts("Skipping triggers creation since --no-swap-tables was specified along with --drop-new-table\n");
+      } else {
+          print ts("Adding original triggers to new table.\n");
+          foreach my $trigger_info (@$triggers_info) {
+              next if ! ($trigger_info->{orig_triggers});
+              foreach my $orig_trigger (@{$trigger_info->{orig_triggers}}) {
                   # if --no-swap-tables is used and --drop-new-table (default), then we don't do any trigger stuff
-                  if ( ! $o->get('swap-tables') && ! $o->get('drop-new-table') )
-                  {
-                     $new_trigger_sqls = create_trigger_sql(trigger => $orig_trigger, 
-                                                               db => $new_tbl->{db}, 
-                                                               new_tbl => $new_tbl->{tbl}, 
-                                                               orig_tbl => $orig_tbl->{tbl},
-                                                               duplicate_trigger => $duplicate_trigger,
-                                                              );
-                  }
-              };
-              # warn Data::Dumper::Dumper($new_trigger_sqls);
-              if ($EVAL_ERROR) {
-                 die "Cannot create triggers: $EVAL_ERROR";
-              }
-              next if !$o->get('execute');
-              for my $sql (@$new_trigger_sqls) {
+                  my $new_trigger_sqls;
                   eval {
-                      $cxn->dbh()->do($sql);
+                      # if --no-swap-tables is used and --no-drop-new-table is used, then we need to duplicate the trigger
+                      my $duplicate_trigger = ( ! $o->get('swap-tables') && ! $o->get('drop-new-table') ) ? 1 : undef;
+                          
+                      $new_trigger_sqls = create_trigger_sql(trigger => $orig_trigger, 
+                                                             db => $new_tbl->{db}, 
+                                                             new_tbl => $new_tbl->{tbl}, 
+                                                             orig_tbl => $orig_tbl->{tbl},
+                                                             duplicate_trigger => $duplicate_trigger,
+                                                            );
                   };
                   if ($EVAL_ERROR) {
-                       die "Exiting due to errors while restoring triggers: $EVAL_ERROR";
+                     die "Cannot create triggers: $EVAL_ERROR";
+                  }
+                  next if !$o->get('execute');
+                  PTDEBUG && _d('New triggers sqls');
+                  for my $sql (@$new_trigger_sqls) {
+                      PTDEBUG && _d($sql);
+                      eval {
+                          $cxn->dbh()->do($sql);
+                      };
+                      if ($EVAL_ERROR) {
+                           die "Exiting due to errors while restoring triggers: $EVAL_ERROR";
+                      }
                   }
               }
           }
