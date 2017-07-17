@@ -9762,7 +9762,7 @@ sub main {
    }
 
    if ( $o->get('preserve-triggers') ) {
-      if ( !$o->get('swap-tables') && !$o->get('drop-new-table') ) {
+      if ( !$o->get('swap-tables') && $o->get('drop-new-table') ) {
           print ts("Skipping triggers creation since --no-swap-tables was specified along with --drop-new-table\n");
       } else {
           print ts("Adding original triggers to new table.\n");
