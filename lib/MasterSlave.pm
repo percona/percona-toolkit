@@ -443,31 +443,35 @@ sub get_slave_status {
       # If we don't have a channel name as a parameter, there is no way to know what the correct master is so,
       # return an error.
       my $ss;
+      my @valid_channel_names;
       if ( $sss_rows && @$sss_rows ) {
-          if (scalar @$sss_rows > 1) {
-              if (!$self->{channel}) {
-                  warn 'This server returned more than one row for SHOW SLAVE STATUS but "channel" was not specified on the command line';
-                  return undef;
+          my $channel_name = $self->{channel} || '';
+          for my $row (@$sss_rows) {
+              $row = { map { lc($_) => $row->{$_} } keys %$row }; # lowercase the keys
+              push @valid_channel_names, $row->{channel_name};
+              if ($row->{channel_name} eq $channel_name) {
+                  $ss = $row;
+                  last;
               }
-              for my $row (@$sss_rows) {
-                  $row = { map { lc($_) => $row->{$_} } keys %$row }; # lowercase the keys
-                  if ($row->{channel_name} eq $self->{channel}) {
-                      $ss = $row;
-                      last;
-                  }
-              }
-          } else {
-              if ($sss_rows->[0]->{channel_name} && $sss_rows->[0]->{channel_name} ne $self->{channel}) {
-                  warn 'This server is using replication channels but "channel" was not specified on the command line';
-                  return undef;
-              } else {
-                  $ss = $sss_rows->[0];
-              }
+          }
+          if (scalar @$sss_rows > 1 && !$self->{channel}) {
+             my $msg = "cannot get slave status without using a channel name.\n"
+                     . "SHOW SLAVE STATUS returned these channel names: ".join(", ", @valid_channel_names);
+             die $msg;
           }
 
           if ( $ss && %$ss ) {
              $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
              return $ss;
+          } else {
+             my $msg;
+             if (!$self->{channel}) {
+                 $msg = "cannot get slave status without using a channel name.\n";
+             } else {
+                 $msg = "cannot get slave status using channel name '$self->{channel}'.\n";
+             }
+             $msg .= "SHOW SLAVE STATUS returned these channel names: ".join(", ", @valid_channel_names);
+             die $msg;
           }
       }
 
@@ -572,8 +576,11 @@ sub wait_for_master {
 # Executes STOP SLAVE.
 sub stop_slave {
    my ( $self, $dbh ) = @_;
+   my $server_version = VersionParser->new($dbh);
+   my $channel_sql = $server_version > '5.6' && $self->{channel} ? " FOR CHANNEL '".$self->{channel}."' " : '';
+
    my $sth = $self->{sths}->{$dbh}->{STOP_SLAVE}
-         ||= $dbh->prepare('STOP SLAVE');
+         ||= $dbh->prepare('STOP SLAVE'.$channel_sql);
    PTDEBUG && _d($dbh, $sth->{Statement});
    $sth->execute();
 }
@@ -581,16 +588,19 @@ sub stop_slave {
 # Executes START SLAVE, optionally with UNTIL.
 sub start_slave {
    my ( $self, $dbh, $pos ) = @_;
+   my $server_version = VersionParser->new($dbh);
+   my $channel_sql = $server_version > '5.6' && $self->{channel} ? " FOR CHANNEL '".$self->{channel}."' " : '';
    if ( $pos ) {
       # Just like with CHANGE MASTER TO, you can't quote the position.
       my $sql = "START SLAVE UNTIL MASTER_LOG_FILE='$pos->{file}', "
-              . "MASTER_LOG_POS=$pos->{position}";
+              . "MASTER_LOG_POS=$pos->{position}"
+              . $channel_sql;
       PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
    }
    else {
       my $sth = $self->{sths}->{$dbh}->{START_SLAVE}
-            ||= $dbh->prepare('START SLAVE');
+            ||= $dbh->prepare('START SLAVE' . $channel_sql);
       PTDEBUG && _d($dbh, $sth->{Statement});
       $sth->execute();
    }

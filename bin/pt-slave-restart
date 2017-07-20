@@ -2984,26 +2984,30 @@ sub get_slave_status {
       my ($sss_rows) = $sth->fetchall_arrayref({}); # Show Slave Status rows
 
       my $ss;
+      my @valid_channel_names;
       if ( $sss_rows && @$sss_rows ) {
-          if (scalar @$sss_rows > 1) {
-              if (!$self->{channel}) {
-                  warn 'This server returned more than one row for SHOW SLAVE STATUS but "channel" was not specified on the command line';
-                  return undef;
+          my $channel_name = $self->{channel} || '';
+          for my $row (@$sss_rows) {
+              $row = { map { lc($_) => $row->{$_} } keys %$row }; # lowercase the keys
+              push @valid_channel_names, $row->{channel_name};
+              if ($row->{channel_name} eq $channel_name) {
+                  $ss = $row;
+                  last;
               }
-              for my $row (@$sss_rows) {
-                  $row = { map { lc($_) => $row->{$_} } keys %$row }; # lowercase the keys
-                  if ($row->{channel_name} eq $self->{channel}) {
-                      $ss = $row;
-                      last;
-                  }
-              }
-          } else {
-              $ss = $sss_rows->[0];
           }
 
           if ( $ss && %$ss ) {
              $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
              return $ss;
+          } else {
+             my $msg;
+             if (!$self->{channel}) {
+                 $msg = "cannot get slave status without using a channel name.\n";
+             } else {
+                 $msg = "cannot get slave status using channel name '$self->{channel}'.\n";
+             }
+             $msg .= "SHOW SLAVE STATUS returned these channel names: ".join(", ", @valid_channel_names) if @valid_channel_names;
+             die $msg;
           }
       }
 
@@ -4977,7 +4981,9 @@ sub main {
       OptionParser => $o,
       DSNParser    => $dp,
       Quoter       => $q,
+      channel      => $o->get('channel'),
    );
+
    $ms->recurse_to_slaves(
       {  dbh      => $dbh,
          dsn      => $dsn,
@@ -4988,15 +4994,17 @@ sub main {
                my $stat = $ms->get_slave_status($dbh);
                if ( $stat ) {
                   push @servers_to_watch, { dsn => $dsn, dbh => $dbh };
-               }
-               else {
-                  die "could not find slave status on this server\n";
+               } else {
+                  die "could not find slave status on this server.\n";
                }
             };
             if ( $EVAL_ERROR ) {
                chomp $EVAL_ERROR;
-               PTDEBUG && _d('Not watching', $dp->as_string($dsn),
-                  'because', $EVAL_ERROR);
+               if ($level == 0) {
+                   print 'Not watching '. $dp->as_string($dsn). ' because ' . $EVAL_ERROR;
+               } else {
+                   PTDEBUG && _d('Not watching', $dp->as_string($dsn), 'because', $EVAL_ERROR);
+               }
             }
          },
          skip_callback => sub {
@@ -5059,6 +5067,9 @@ sub main {
 sub watch_server {
    my ( $dsn, $dbh, $was_forked, $ms ) = @_;
 
+   my $server_version = VersionParser->new($dbh);
+   my $channel_sql = $server_version > '5.6' && $o->get('channel') ? " FOR CHANNEL '".$o->get('channel')."' " : '';
+
    PTDEBUG && _d('Watching server', $dp->as_string($dsn),
       'forked:', $was_forked);
 
@@ -5073,8 +5084,9 @@ sub watch_server {
       $start_sql .= " UNTIL RELAY_LOG_FILE = '$file', RELAY_LOG_POS = $pos";
    }
 
+   $start_sql .= $channel_sql;
    my $start = $dbh->prepare($start_sql);
-   my $stop  = $dbh->prepare('STOP SLAVE');
+   my $stop  = $dbh->prepare('STOP SLAVE'.$channel_sql);
 
    # ########################################################################
    # Detect if GTID is enabled. Skipping an event is done differently.
@@ -5131,7 +5143,8 @@ sub watch_server {
          # https://bugs.launchpad.net/percona-toolkit/+bug/932614
          my $sql = "CHANGE MASTER TO "
                  . "MASTER_LOG_FILE='$stat->{relay_master_log_file}', "
-                 . "MASTER_LOG_POS=$stat->{exec_master_log_pos}";
+                 . "MASTER_LOG_POS=$stat->{exec_master_log_pos}"
+                 . $channel_sql;
          PTDEBUG && _d($sql);
          $dbh->do($sql);
       },
@@ -5531,6 +5544,18 @@ pt-slave-restart will not let you stop the slave manually if you want to!
 =item --ask-pass
 
 Prompt for a password when connecting to MySQL.
+
+=item --channel
+
+type: string
+
+Channel name used when connected to a server using replication channels.
+Suppose you have two masters, master_a at port 12345, master_b at port 1236 and
+a slave connected to both masters using channels chan_master_a and chan_master_b.
+If you want to run pt-table-sync to syncronize the slave against master_a, pt-table-sync
+won't be able to determine what's the correct master since SHOW SLAVE STATUS
+will return 2 rows. In this case, you can use --channel=chan_master_a to specify
+the channel name to use in the SHOW SLAVE STATUS command.
 
 =item --charset
 

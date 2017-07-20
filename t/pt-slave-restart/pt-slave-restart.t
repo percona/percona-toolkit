@@ -132,6 +132,69 @@ is(
    'No error with --quiet (issue 673)'
 );
 
+SKIP: {
+
+   skip "Only test on mysql 5.7" if ( $sandbox_version lt '5.7' );
+
+   my ($master1_dbh, $master1_dsn) = $sb->start_sandbox(
+      server => 'chan_master1',
+      type   => 'master',
+   );
+   my ($master2_dbh, $master2_dsn) = $sb->start_sandbox(
+      server => 'chan_master2',
+      type   => 'master',
+   );
+   my ($slave1_dbh, $slave1_dsn) = $sb->start_sandbox(
+      server => 'chan_slave1',
+      type   => 'master',
+   );
+   my $slave1_port = $sb->port_for('chan_slave1');
+   
+   $sb->load_file('chan_master1', "sandbox/gtid_on.sql", undef, no_wait => 1);
+   $sb->load_file('chan_master2', "sandbox/gtid_on.sql", undef, no_wait => 1);
+   $sb->load_file('chan_slave1', "sandbox/slave_channels_ports.sql", undef, no_wait => 1);
+   my $slave_port = $sb->port_for('chan_slave1');
+                                                             
+   eval {
+      $output = `$trunk/bin/pt-slave-restart -h 127.0.0.1 -P $slave_port -u msandbox -p msandbox  --error-numbers 1205,1317 --run-time 1`;
+   };
+
+   like(
+      $output,
+      qr/cannot get slave status without using a channel name/,
+      'Error on slave using replication channels and no --channel param'
+   );
+
+   $master1_dbh->do('DROP DATABASE IF EXISTS test');
+   $master1_dbh->do('CREATE DATABASE test');
+   $master1_dbh->do('CREATE TABLE test.t (a INT)');
+   sleep(2);
+   
+   # Bust replication
+   $slave1_dbh->do('DROP TABLE test.t');
+   $master1_dbh->do('INSERT INTO test.t SELECT 1');
+   wait_until(
+      sub {
+         my $row = $slave1_dbh->selectrow_hashref('show slave status for channel "masterchan1"');
+         return $row->{last_sql_errno};
+      }
+   );
+   
+   my $r = $slave1_dbh->selectrow_hashref('show slave status');
+   like($r->{last_error}, qr/Table 'test.t' doesn't exist'/, 'It is busted');
+   
+   # Start an instance
+   my $cmd = "$trunk/bin/pt-slave-restart --max-sleep 0.25 -h 127.0.0.1 -P $slave_port "
+           . "-u msandbox -p msandbox --daemonize --channel masterchan1 "
+           . "--pid /tmp/pt-slave-restart.pid --log /tmp/pt-slave-restart.log";
+   diag(`$cmd`);
+   my $output = `ps x | grep 'pt-slave-restart \-\-max\-sleep ' | grep -v grep | grep -v pt-slave-restart.t`;
+   like($output, qr/pt-slave-restart --max/, 'It lives');
+   
+   unlike($output, qr/Table 'test.t' doesn't exist'/, 'It is not busted');
+
+   $sb->stop_sandbox(qw(chan_master1 chan_master2 chan_slave1));
+}
 # #############################################################################
 # Done.
 # #############################################################################

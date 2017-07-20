@@ -296,7 +296,10 @@ case $opt in
          if [ "${2:-""}" = "channels" ] && [ "$MYSQL_VERSION" '>' "5.6" ]; then
             ./start-sandbox master 12346 
             exit_status=$((exit_status | $?))
+            echo "Starting slave using port 12347. It will be connected to master 1 (port: 12345) and master 2 (port: 12346), using replication channels"
             ./start-sandbox master 12347 
+            exit_status=$((exit_status | $?))
+            ./start-sandbox slave 12348 12345 
             exit_status=$((exit_status | $?))
             /tmp/12345/use < $PERCONA_TOOLKIT_BRANCH/sandbox/gtid_on.sql
             exit_status=$?
