@@ -1,15 +1,23 @@
 Changelog for Percona Toolkit
 
 
+ * Fixed bug PT-180 : pt-online-schema-change --skip-check-slave-lag doesn't work
+ * Fixed bug PT-178 : pt-online-schema-change appears to ignore the --check-slave-lag option
  * Fixed bug PT-162 : Updated pt-table-checksum ignored dbs (Thanks Agustin Gallego)
  * Fixed bug PT-161 : Safely check for undefined values in --skip-check-slave-lag (Thanks Chris Swingler)
+ * Fixed bug PT-154 : pt-online-schema-change --no-use-insert-ignore is broken
+ * Fixed bug PT-153 : pt-online-schema-change data loss when adding unique keys
+ * Fixed bug PT-151 : point is not decimal
  * Fixed bug PT-148 : pt-osc Use of uninitialized value in printf
+ * Fixed bug PT-146 : Turn off statement based binlog checks
  * Fixed bug PT-144 : Constraint name is too long (> 64 chars)
  * Fixed bug PT-143 : pt-archiver SELECT query fails because of primary key
  * Fixed bug PT-142 : pt-online-schema-change find_child_tables slow
  * Fixed bug PT-138 : Added --output-format option to pt-mongodb-summary
  * Fixed bug PT-136 : pt-table-checksum fails with columns having different collation/charset
+ * Feature   PT-173 : Enable pt-table-checksum to ensure stale data is removed
  * Feature   PT-141 : pt-archiver archive records into csv file
+ * Feature   PT-91  : Make pt-osc compatible with AFTER triggers
  * Feature   PT-90  : pt-stalk: Collect information about prepared statements if P_S is enabled (Thanks Agustin Gallego)
 
 v3.0.3 released 2017-05-19
@@ -55,15 +63,15 @@ v3.0 released 2017-02-03
 v2.2.20  released 2016-12-09
 
  * Fixed bug 1362942: pt-slave-restart fails on MariaDB 10.0.13 (gtid_mode confusion)
- * Fixed bug 1566556: pt-show-grants fails against MariaDB10+	
+ * Fixed bug 1566556: pt-show-grants fails against MariaDB10+ 
  * Feature   1604834: pt-query-digest numbers in table or column names converted to question marks (--preserve-embedded-numbers)
  * Fixed bug 1613915: pt-online-schema-change misses data.  Fixed sort order for ENUM fields 
  * Fixed bug 1625005: pt-online-schema-change doesn't apply underscores to foreign keys individually
  * Fixed bug 1634900: pt-upgrade fails with SELECT INTO 
- * Fixed bug 1635734: pt-slave-restart --config does not recognize = as separator	
+ * Fixed bug 1635734: pt-slave-restart --config does not recognize = as separator 
  * Feature   1636068: Added pause to NibbleIterator
  * Feature   1638293: --data-dir parameter in order to create the table on a different partition
- * Feature   1639052: with pt-table-checksum automatically exclude checking schemas named percona, percona_schema	 
+ * Feature   1639052: with pt-table-checksum automatically exclude checking schemas named percona, percona_schema  
  * Feature   1642364: pt-online-schema-change Added --remove-data-dir feature
  * Feature   1643914: Fixed several typos in the doc (Thanks Dario Minnucci)
  * Feature   1643940: Add Transparent huge pages info to pt-summary
