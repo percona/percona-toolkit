@@ -12019,7 +12019,9 @@ if you change the contents of the DSN table, OSC will pick it up very soon.
 type: DSN; repeatable: yes
 
 DSN to skip when checking slave lag. It can be used multiple times.
-Example: --skip-check-slave-lag h=127.1,P=12345 --skip-check-slave-lag h=127.1,P=12346
+Example: --skip-check-slave-lag h=127.0.0.1,P=12345 --skip-check-slave-lag h=127.0.0.1,P=12346
+Plase take into consideration that even when for the MySQL driver h=127.1 is equal to h=127.0.0.1,
+for this parameter you need to specify the full IP address.
 
 =item --slave-user
 
