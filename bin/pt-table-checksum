@@ -9269,7 +9269,16 @@ sub main {
    }
 
    $o->usage_or_errors();
- 
+
+
+   if ( $o->get('truncate-replicate-table') && $o->get('resume') ) {
+       die "--resume and truncate-replicate-table are mutually exclusive";
+   }
+
+   if ( $o->get('truncate-replicate-table') && !$o->get('empty-replicate-table') ) {
+       die "--resume and --no-empty-replicate-table are mutually exclusive";
+   }
+
    # ########################################################################
    # If --pid, check it first since we'll die if it already exists.
    # ########################################################################
@@ -9497,6 +9506,15 @@ sub main {
    my $fetch_sth;  # fetch chunk from repl table
    my $update_sth; # update master_cnt and master_cnt in repl table
    my $delete_sth; # delete checksums for one db.tbl from repl table
+
+   if ( $o->get('truncate-replicate-table') ) {
+       eval {
+           $master_dbh->do("TRUNCATE TABLE $repl_table");
+       };
+       if ($EVAL_ERROR) {
+           PTDEBUG && _d( "Cannot truncate replicate table $repl_table. $EVAL_ERROR");
+       }
+   }
 
    if ( !$o->get('explain') ) {
       # #####################################################################
@@ -12831,6 +12849,15 @@ This is useful when you don't care about the trailing space differences between
 MySQL versions that vary in their handling of trailing spaces. MySQL 5.0 and 
 later all retain trailing spaces in VARCHAR, while previous versions would 
 remove them.  These differences will cause false checksum differences.
+
+=item --truncate-replicate-table
+
+Truncate the replicate table before starting the checksum.
+This parameter differs from L<--empty-replicate-table> which only deletes the rows
+for the table being checksumed when starting the checksum for that table, while 
+L<--truncate-replicate-table> will truncate the replicate table at the beginning of the 
+process and thus, all previous checksum information will be losti, even if the process
+stops due to an error.
 
 =item --user
 
