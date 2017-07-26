@@ -80,26 +80,6 @@ sub wait {
    my $worst;  # most lagging slave
    my $pr_callback;
    my $pr_first_report;
-
-   ### refresh list of slaves. In: self passed to wait()
-   ### Returns: new slave list
-   my $pr_refresh_slave_list = sub {
-      my ($self) = @_;
-      my ($slaves, $refresher) = ($self->{slaves}, $self->{get_slaves_cb});
-      return if ( not defined $refresher );
-      my $before = join ' ', sort map {$_->name()} @$slaves;
-      $slaves = $refresher->();
-      my $after = join ' ', sort map {$_->name()} @$slaves;
-      if ($before ne $after) {
-         $self->{slaves} = $slaves;
-         printf "Slave set to watch has changed\n  Was: %s\n  Now: %s\n",
-            $before, $after;
-      }
-      return($self->{slaves});
-   };
-
-   $slaves = $pr_refresh_slave_list->($self);
-
    if ( $pr ) {
       # If you use the default Progress report callback, you'll need to
       # to add Transformers.pm to this tool.
@@ -133,15 +113,6 @@ sub wait {
    my @lagged_slaves = map { {cxn=>$_, lag=>undef} } @$slaves;  
    while ( $oktorun->() && @lagged_slaves ) {
       PTDEBUG && _d('Checking slave lag');
-
-      ### while we were waiting our list of slaves may have changed...
-      $slaves = $pr_refresh_slave_list->($self);
-      my $watched = 0;
-      @lagged_slaves = grep {
-         my $slave_name = $_->{cxn}->name();
-         grep {$slave_name eq $_->name()} @{$slaves // []}
-                            } @lagged_slaves;
-
       for my $i ( 0..$#lagged_slaves ) {
          my $lag = $get_lag->($lagged_slaves[$i]->{cxn});
          PTDEBUG && _d($lagged_slaves[$i]->{cxn}->name(),
