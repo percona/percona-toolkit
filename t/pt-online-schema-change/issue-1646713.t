@@ -57,7 +57,7 @@ sub start_thread {
    $dbh->do("UPDATE `test`.`o1` SET id=0 WHERE id=1");
    diag("Row updated");
 }
-my $thr = threads->create('start_thread', $dsn_opts, 3);
+my $thr = threads->create('start_thread', $dsn_opts, 1);
 $thr->detach();
 threads->yield();
 
@@ -71,7 +71,6 @@ $output = output(
          ),
       },
 );
-
 
 like(
       $output,

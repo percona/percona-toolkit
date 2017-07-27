@@ -1,6 +1,7 @@
 Changelog for Percona Toolkit
 
 
+ * Fixed bug PT-181 : pt-online-schema-change not in sync with modules (Thanks Daniël van Eeden)
  * Fixed bug PT-180 : pt-online-schema-change --skip-check-slave-lag doesn't work
  * Fixed bug PT-178 : pt-online-schema-change appears to ignore the --check-slave-lag option
  * Fixed bug PT-162 : Updated pt-table-checksum ignored dbs (Thanks Agustin Gallego)

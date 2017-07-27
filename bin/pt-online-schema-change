@@ -2199,7 +2199,7 @@ sub parse {
    foreach my $key ( keys %$opts ) {
       PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
-      if (   !defined $final_props{$key}
+      if ( !defined $final_props{$key}  
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
@@ -2316,7 +2316,6 @@ sub get_dbh {
       PrintError         => 0,
       ShowErrorStatement => 1,
       mysql_enable_utf8 => ($cxn_string =~ m/charset=utf8/i ? 1 : 0),
-      #      mysql_multi_statements => 1,
    };
    @{$defaults}{ keys %$opts } = values %$opts;
    if (delete $defaults->{L}) { # L for LOAD DATA LOCAL INFILE, our own extension
@@ -3444,7 +3443,6 @@ sub check_table {
       $self->{check_table_error} = $e;
       return 0;
    }
-
    if ( !$row->[0] || $row->[0] ne $tbl ) {
       PTDEBUG && _d('Table does not exist');
       return 0;
@@ -4988,9 +4986,6 @@ sub wait {
 
 sub _d {
    my ($package, undef, $line) = caller 0;
-   #   Backslash found where operator expected at ./pt-online-schema-change line 4933, near "@_ = map { (my $temp = $_) =~ s/\"
-   # (Might be a runaway multi-line // string starting on line 4889)
-
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
         map { defined $_ ? $_ : 'undef' }
         @_;
@@ -5821,23 +5816,26 @@ sub _find_best_index {
    my $tbl_struct = $tbl->{tbl_struct};
    my $indexes    = $tbl_struct->{keys};
 
+   my $best_index;
    my $want_index = $args{chunk_index};
    if ( $want_index ) {
       PTDEBUG && _d('User wants to use index', $want_index);
       if ( !exists $indexes->{$want_index} ) {
          PTDEBUG && _d('Cannot use user index because it does not exist');
          $want_index = undef;
+      } else {
+         $best_index = $want_index;
       }
    }
 
-   if ( !$want_index && $args{mysql_index} ) {
+   if ( !$best_index && !$want_index && $args{mysql_index} ) {
       PTDEBUG && _d('MySQL wants to use index', $args{mysql_index});
       $want_index = $args{mysql_index};
    }
 
-   my $best_index;
+
    my @possible_indexes;
-   if ( $want_index ) {
+   if ( !$best_index && $want_index ) {
       if ( $indexes->{$want_index}->{is_unique} ) {
          PTDEBUG && _d('Will use wanted index');
          $best_index = $want_index;
@@ -5847,7 +5845,8 @@ sub _find_best_index {
          push @possible_indexes, $want_index;
       }
    }
-   else {
+   
+   if (!$best_index) {
       PTDEBUG && _d('Auto-selecting best index');
       foreach my $index ( $tp->sort_indexes($tbl_struct) ) {
          if ( $index eq 'PRIMARY' || $indexes->{$index}->{is_unique} ) {
