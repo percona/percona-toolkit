@@ -5019,7 +5019,7 @@ sub wait {
    my $pr_refresh_slave_list = sub {
       my ($self) = @_;
       my ($slaves, $refresher) = ($self->{slaves}, $self->{get_slaves_cb});
-      return if ( not defined $refresher );
+      return $slaves if ( not defined $refresher );
       my $before = join ' ', sort map {$_->name()} @$slaves;
       $slaves = $refresher->();
       my $after = join ' ', sort map {$_->name()} @$slaves;
