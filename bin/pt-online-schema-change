@@ -5015,6 +5015,24 @@ sub wait {
    my $worst;  # most lagging slave
    my $pr_callback;
    my $pr_first_report;
+
+   my $pr_refresh_slave_list = sub {
+      my ($self) = @_;
+      my ($slaves, $refresher) = ($self->{slaves}, $self->{get_slaves_cb});
+      return if ( not defined $refresher );
+      my $before = join ' ', sort map {$_->name()} @$slaves;
+      $slaves = $refresher->();
+      my $after = join ' ', sort map {$_->name()} @$slaves;
+      if ($before ne $after) {
+         $self->{slaves} = $slaves;
+         printf "Slave set to watch has changed\n  Was: %s\n  Now: %s\n",
+            $before, $after;
+      }
+      return($self->{slaves});
+   };
+
+   $slaves = $pr_refresh_slave_list->($self);
+
    if ( $pr ) {
       $pr_callback = sub {
          my ($fraction, $elapsed, $remaining, $eta, $completed) = @_;
@@ -5048,6 +5066,14 @@ sub wait {
    my @lagged_slaves = map { {cxn=>$_, lag=>undef} } @$slaves;
    while ( $oktorun->() && @lagged_slaves ) {
       PTDEBUG && _d('Checking slave lag');
+
+      $slaves = $pr_refresh_slave_list->($self);
+      my $watched = 0;
+      @lagged_slaves = grep {
+         my $slave_name = $_->{cxn}->name();
+         grep {$slave_name eq $_->name()} @{$slaves || []}
+                             } @lagged_slaves;
+
       for my $i ( 0..$#lagged_slaves ) {
          my $lag;
          eval {
@@ -8604,8 +8630,11 @@ sub main {
    # think that can be less confusing. Also, the $set_on_connect variable can be
    # inlined into this subroutine. Many of our tools have a get_dbh() subroutine
    # and it might be good to just make a convention of it.
+   # Note: args->{errok} to tolerate connection error
    my $make_cxn = sub {
       my (%args) = @_;
+      my $errok = $args{errok};
+      delete($args{errok});
       my $cxn = Cxn->new(
          %args,
          DSNParser    => $dp,
@@ -8614,7 +8643,12 @@ sub main {
       );
       eval { $cxn->connect() };  # connect or die trying
       if ( $EVAL_ERROR ) {
-         _die("Cannot connect to MySQL: $EVAL_ERROR", MYSQL_CONNECTION_ERROR);
+         if ($errok) {
+            printf "IGNORING CONNECTION ERROR: %s\n",
+              $EVAL_ERROR;
+         } else {
+            die "Cannot connect to MySQL: $EVAL_ERROR\n";
+         }
       }
       return $cxn;
    };
@@ -8754,13 +8788,21 @@ sub main {
          channel      => $o->get('channel'),
       );
 
-      $slaves = $ms->get_slaves(
-         dbh          => $cxn->dbh(),
-         dsn          => $cxn->dsn(),
-         make_cxn     => sub {
-            return $make_cxn->(@_, prev_dsn => $cxn->dsn());
-         },
-      );
+      my $get_slaves_cb = sub {
+         my ($intolerant) = @_;
+         return( $ms->get_slaves(
+            dbh          => $cxn->dbh(),
+            dsn          => $cxn->dsn(),
+            make_cxn     => sub {
+               return $make_cxn->(@_, prev_dsn => $cxn->dsn(),
+                 errok => (not $intolerant));
+                                },
+                                )
+               );
+                              };
+
+      ### first ever call only: do not tolerate connection errors
+      $slaves = $get_slaves_cb->('intolerant');
       PTDEBUG && _d(scalar @$slaves, 'slaves found');
       if ( scalar @$slaves ) {
          print "Found " . scalar(@$slaves) . " slaves:\n";
@@ -8784,6 +8826,7 @@ sub main {
             #prev_dsn   => $cxn->dsn(),
          );
          $slave_lag_cxns = [ $cxn ];
+         $get_slaves_cb = undef;
       }
       else {
          PTDEBUG && _d('Will check slave lag on all slaves');
@@ -8926,11 +8969,12 @@ sub main {
       }
 
       $replica_lag = new ReplicaLagWaiter(
-         slaves   => $slave_lag_cxns,
-         max_lag  => $o->get('max-lag'),
-         oktorun  => sub { return $oktorun },
-         get_lag  => $get_lag,
-         sleep    => $sleep,
+         slaves          => $slave_lag_cxns,
+         get_slaves_cb   => $get_slaves_cb,
+         max_lag         => $o->get('max-lag'),
+         oktorun         => sub { return $oktorun },
+         get_lag         => $get_lag,
+         sleep           => $sleep,
       );
 
       my $get_status;
