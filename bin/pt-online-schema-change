@@ -5090,13 +5090,8 @@ sub wait {
       my $watched = 0;
       @lagged_slaves = grep {
          my $slave_name = $_->{cxn}->name();
-<<<<<<< HEAD
          grep {$slave_name eq $_->name()} @{$slaves // []}
                             } @lagged_slaves;
-=======
-         grep {$slave_name eq $_->name()} @{$slaves || []}
-                             } @lagged_slaves;
->>>>>>> Revert "Revert "Merge pull request #119 from dveeden/reread_slaves_dsn""
 
       for my $i ( 0..$#lagged_slaves ) {
          my $lag;
