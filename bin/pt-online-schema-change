@@ -5090,8 +5090,13 @@ sub wait {
       my $watched = 0;
       @lagged_slaves = grep {
          my $slave_name = $_->{cxn}->name();
+<<<<<<< HEAD
          grep {$slave_name eq $_->name()} @{$slaves // []}
                             } @lagged_slaves;
+=======
+         grep {$slave_name eq $_->name()} @{$slaves || []}
+                             } @lagged_slaves;
+>>>>>>> Revert "Revert "Merge pull request #119 from dveeden/reread_slaves_dsn""
 
       for my $i ( 0..$#lagged_slaves ) {
          my $lag;
@@ -8807,6 +8812,7 @@ sub main {
          channel      => $o->get('channel'),
       );
 
+<<<<<<< HEAD
       my $skip_slaves = $o->get('skip-check-slave-lag');
 
       my $get_slaves_cb = sub {
@@ -8826,6 +8832,20 @@ sub main {
             )
          );
       };
+=======
+      my $get_slaves_cb = sub {
+         my ($intolerant) = @_;
+         return( $ms->get_slaves(
+            dbh          => $cxn->dbh(),
+            dsn          => $cxn->dsn(),
+            make_cxn     => sub {
+               return $make_cxn->(@_, prev_dsn => $cxn->dsn(),
+                 errok => (not $intolerant));
+                                },
+                                )
+               );
+                              };
+>>>>>>> Revert "Revert "Merge pull request #119 from dveeden/reread_slaves_dsn""
 
       ### first ever call only: do not tolerate connection errors
       $slaves = $get_slaves_cb->('intolerant');
