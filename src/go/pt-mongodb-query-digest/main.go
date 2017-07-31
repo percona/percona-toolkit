@@ -50,6 +50,7 @@ type options struct {
 	LogLevel        string
 	NoVersionCheck  bool
 	OrderBy         []string
+	OutputFormat    string
 	Password        string
 	SkipCollections []string
 	SSLCAFile       string
@@ -147,7 +148,6 @@ func main() {
 	queriesStats := queries.CalcQueriesStats(uptime)
 	sortedQueryStats := sortQueries(queriesStats, opts.OrderBy)
 
-	printHeader(opts)
 
 	queryTotals := queries.CalcTotalQueriesStats(uptime)
 	tt, _ := template.New("query").Funcs(template.FuncMap{
@@ -168,6 +168,45 @@ func main() {
 
 }
 
+func formatResults(stats []stats.QueryStats, opts options, format string) ([]byte, error) {
+	var buf *bytes.Buffer
+
+	switch format {
+	case "json":
+		b, err := json.MarshalIndent(stats, "", "    ")
+		if err != nil {
+			return nil, fmt.Errorf("[Error] Cannot convert results to json: %s", err.Error())
+		}
+		buf = bytes.NewBuffer(b)
+	default:
+	printHeader(opts)
+		buf = new(bytes.Buffer)
+
+		t := template.Must(template.New("replicas").Parse(templates.Replicas))
+		t.Execute(buf, ci.ReplicaMembers)
+
+		t = template.Must(template.New("hosttemplateData").Parse(templates.HostInfo))
+		t.Execute(buf, ci.HostInfo)
+
+		t = template.Must(template.New("runningOps").Parse(templates.RunningOps))
+		t.Execute(buf, ci.RunningOps)
+
+		t = template.Must(template.New("ssl").Parse(templates.Security))
+		t.Execute(buf, ci.SecuritySettings)
+
+		if ci.OplogInfo != nil && len(ci.OplogInfo) > 0 {
+			t = template.Must(template.New("oplogInfo").Parse(templates.Oplog))
+			t.Execute(buf, ci.OplogInfo[0])
+		}
+
+		t = template.Must(template.New("clusterwide").Parse(templates.Clusterwide))
+		t.Execute(buf, ci.ClusterWideInfo)
+
+		t = template.Must(template.New("balancer").Parse(templates.BalancerStats))
+		t.Execute(buf, ci.BalancerStats)
+	}
+
+	return buf.Bytes(), nil
 // format scales a number and returns a string made of the scaled value and unit (K=Kilo, M=Mega, T=Tera)
 // using I.F where i is the number of digits for the integer part and F is the number of digits for the
 // decimal part
@@ -230,6 +269,7 @@ func getOptions() (*options, error) {
 	gop.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin", "Database to use for optional MongoDB authentication. Default: admin")
 	gop.StringVarLong(&opts.Database, "database", 'd', "", "MongoDB database to profile")
 	gop.StringVarLong(&opts.LogLevel, "log-level", 'l', "Log level: error", "panic, fatal, error, warn, info, debug. Default: error")
+	gop.StringVarLong(&opts.OutputFormat, "output-format", 'f', "text", "Output format: text, json. Default: text")
 	gop.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").SetOptional()
 	gop.StringVarLong(&opts.User, "username", 'u', "Username to use for optional MongoDB authentication")
 	gop.StringVarLong(&opts.SSLCAFile, "sslCAFile", 0, "SSL CA cert file used for authentication")
@@ -260,6 +300,10 @@ func getOptions() (*options, error) {
 				return nil, fmt.Errorf("invalid sort field '%q'", field)
 			}
 		}
+	}
+
+	if opts.OutputFormat != "json" && opts.OutputFormat != "text" {
+		log.Infof("Invalid output format '%s'. Using text format", opts.OutputFormat)
 	}
 
 	if gop.IsSet("password") && opts.Password == "" {

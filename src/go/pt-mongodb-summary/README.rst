@@ -15,13 +15,14 @@ Please check the `releases <https://github.com/percona/toolkit-go/releases>`_ ta
 
 Paramters
 ^^^^^^^^^
-===== ========= ======= ================================================================================
-Short Long      Default Description
-===== ========= ======= ================================================================================ 
-u     user      empty   user name to use when connecting if DB auth is enabled
-p     password  empty   password to use when connecting if DB auth is enabled
-a     auth-db   admin   database used to establish credentials and privileges with a MongoDB server
-===== ========= ======= ================================================================================
+===== ============== ======= ================================================================================
+Short Long           Default Description
+===== ============== ======= ================================================================================ 
+u     user           empty   user name to use when connecting if DB auth is enabled
+p     password       empty   password to use when connecting if DB auth is enabled
+a     auth-db        admin   database used to establish credentials and privileges with a MongoDB server
+f     output-format  text    output format: text, json. Default: text
+===== ============== ======= ================================================================================
 
 | 
 
