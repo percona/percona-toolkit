@@ -86,7 +86,8 @@ pygments_style = 'sphinx'
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
 
-
+extlinks = {'jirabug': ('https://jira.percona.com/browse/%s', ''),
+'lpbug': ('https://bugs.launchpad.net/percona-toolkit/+bug/%s', '#')}
 # -- Options for HTML output ---------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
