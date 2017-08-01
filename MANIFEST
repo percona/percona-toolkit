@@ -7,7 +7,7 @@ glide.yaml
 INSTALL
 Makefile.PL
 MANIFEST
-README.md
+README
 bin/pt-align
 bin/pt-archiver
 bin/pt-config-diff
