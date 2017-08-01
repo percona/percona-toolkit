@@ -67,6 +67,7 @@ func TestParseArgs(t *testing.T) {
 				OrderBy:         strings.Split(DEFAULT_ORDERBY, ","),
 				SkipCollections: strings.Split(DEFAULT_SKIPCOLLECTIONS, ","),
 				AuthDB:          DEFAULT_AUTHDB,
+				OutputFormat:    "text",
 			},
 		},
 		{
@@ -82,6 +83,7 @@ func TestParseArgs(t *testing.T) {
 				SkipCollections: strings.Split(DEFAULT_SKIPCOLLECTIONS, ","),
 				AuthDB:          DEFAULT_AUTHDB,
 				Help:            false,
+				OutputFormat:    "text",
 			},
 		},
 	}

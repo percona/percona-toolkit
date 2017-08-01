@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -57,6 +59,12 @@ type options struct {
 	SSLPEMKeyFile   string
 	User            string
 	Version         bool
+}
+
+type report struct {
+	Headers     []string
+	QueryStats  []stats.QueryStats
+	QueryTotals stats.QueryStats
 }
 
 func main() {
@@ -148,65 +156,56 @@ func main() {
 	queriesStats := queries.CalcQueriesStats(uptime)
 	sortedQueryStats := sortQueries(queriesStats, opts.OrderBy)
 
-
-	queryTotals := queries.CalcTotalQueriesStats(uptime)
-	tt, _ := template.New("query").Funcs(template.FuncMap{
-		"Format": format,
-	}).Parse(getTotalsTemplate())
-	tt.Execute(os.Stdout, queryTotals)
-
-	t, _ := template.New("query").Funcs(template.FuncMap{
-		"Format": format,
-	}).Parse(getQueryTemplate())
-
 	if opts.Limit > 0 && len(sortedQueryStats) > opts.Limit {
 		sortedQueryStats = sortedQueryStats[:opts.Limit]
 	}
-	for _, qs := range sortedQueryStats {
-		t.Execute(os.Stdout, qs)
+
+	rep := report{
+		Headers:     getHeaders(opts),
+		QueryTotals: queries.CalcTotalQueriesStats(uptime),
+		QueryStats:  sortedQueryStats,
 	}
+
+	out, err := formatResults(rep, opts.OutputFormat)
+	if err != nil {
+		log.Errorf("Cannot parse the report: %s", err.Error())
+		os.Exit(5)
+	}
+
+	fmt.Println(string(out))
 
 }
 
-func formatResults(stats []stats.QueryStats, opts options, format string) ([]byte, error) {
+func formatResults(rep report, outputFormat string) ([]byte, error) {
 	var buf *bytes.Buffer
 
-	switch format {
+	switch outputFormat {
 	case "json":
-		b, err := json.MarshalIndent(stats, "", "    ")
+		b, err := json.MarshalIndent(rep, "", "    ")
 		if err != nil {
 			return nil, fmt.Errorf("[Error] Cannot convert results to json: %s", err.Error())
 		}
 		buf = bytes.NewBuffer(b)
 	default:
-	printHeader(opts)
 		buf = new(bytes.Buffer)
 
-		t := template.Must(template.New("replicas").Parse(templates.Replicas))
-		t.Execute(buf, ci.ReplicaMembers)
+		tt, _ := template.New("query").Funcs(template.FuncMap{
+			"Format": format,
+		}).Parse(getTotalsTemplate())
+		tt.Execute(buf, rep.QueryTotals)
 
-		t = template.Must(template.New("hosttemplateData").Parse(templates.HostInfo))
-		t.Execute(buf, ci.HostInfo)
+		t, _ := template.New("query").Funcs(template.FuncMap{
+			"Format": format,
+		}).Parse(getQueryTemplate())
 
-		t = template.Must(template.New("runningOps").Parse(templates.RunningOps))
-		t.Execute(buf, ci.RunningOps)
-
-		t = template.Must(template.New("ssl").Parse(templates.Security))
-		t.Execute(buf, ci.SecuritySettings)
-
-		if ci.OplogInfo != nil && len(ci.OplogInfo) > 0 {
-			t = template.Must(template.New("oplogInfo").Parse(templates.Oplog))
-			t.Execute(buf, ci.OplogInfo[0])
+		for _, qs := range rep.QueryStats {
+			t.Execute(buf, qs)
 		}
-
-		t = template.Must(template.New("clusterwide").Parse(templates.Clusterwide))
-		t.Execute(buf, ci.ClusterWideInfo)
-
-		t = template.Must(template.New("balancer").Parse(templates.BalancerStats))
-		t.Execute(buf, ci.BalancerStats)
 	}
 
 	return buf.Bytes(), nil
+}
+
 // format scales a number and returns a string made of the scaled value and unit (K=Kilo, M=Mega, T=Tera)
 // using I.F where i is the number of digits for the integer part and F is the number of digits for the
 // decimal part
@@ -303,6 +302,7 @@ func getOptions() (*options, error) {
 	}
 
 	if opts.OutputFormat != "json" && opts.OutputFormat != "text" {
+		opts.OutputFormat = "text"
 		log.Infof("Invalid output format '%s'. Using text format", opts.OutputFormat)
 	}
 
@@ -348,11 +348,13 @@ func getDialInfo(opts *options) *pmgo.DialInfo {
 	return pmgoDialInfo
 }
 
-func printHeader(opts *options) {
-	fmt.Printf("%s - %s\n", TOOLNAME, time.Now().Format(time.RFC1123Z))
-	fmt.Printf("Host: %s\n", opts.Host)
-	fmt.Printf("Skipping profiled queries on these collections: %v\n", opts.SkipCollections)
-	fmt.Println("")
+func getHeaders(opts *options) []string {
+	h := []string{
+		fmt.Sprintf("%s - %s\n", TOOLNAME, time.Now().Format(time.RFC1123Z)),
+		fmt.Sprintf("Host: %s\n", opts.Host),
+		fmt.Sprintf("Skipping profiled queries on these collections: %v\n", opts.SkipCollections),
+	}
+	return h
 }
 
 func getQueryTemplate() string {
