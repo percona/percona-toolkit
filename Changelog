@@ -1,5 +1,6 @@
 Changelog for Percona Toolkit
 
+v3.0.4 released 2017-08-02
 
  * Fixed bug PT-181 : pt-online-schema-change not in sync with modules (Thanks Daniël van Eeden)
  * Fixed bug PT-180 : pt-online-schema-change --skip-check-slave-lag doesn't work
