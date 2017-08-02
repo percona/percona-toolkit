@@ -95,6 +95,8 @@ func main() {
 		}
 	}
 
+	log.Debugf("Command line options:\n%+v\n", opts)
+
 	di := getDialInfo(opts)
 	if di.Database == "" {
 		log.Errorln("must indicate a database as host:[port]/database")
@@ -104,6 +106,7 @@ func main() {
 
 	dialer := pmgo.NewDialer()
 	session, err := dialer.DialWithInfo(di)
+	log.Debugf("Dial Info: %+v\n", di)
 	if err != nil {
 		log.Errorf("Error connecting to the db: %s while trying to connect to %s", err, di.Addrs[0])
 		os.Exit(3)
@@ -278,10 +281,10 @@ func getDialInfo(opts *options) *pmgo.DialInfo {
 	di, _ := mgo.ParseURL(opts.Host)
 	di.FailFast = true
 
-	if di.Username != "" {
+	if di.Username == "" {
 		di.Username = opts.User
 	}
-	if di.Password != "" {
+	if di.Password == "" {
 		di.Password = opts.Password
 	}
 	if opts.AuthDB != "" {
