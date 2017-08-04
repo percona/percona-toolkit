@@ -560,6 +560,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-Percona Toolkit v3.0.2 released 2017-03-23
+Percona Toolkit v3.0.4 released 2017-08-02
 
 =cut
