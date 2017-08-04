@@ -10166,7 +10166,7 @@ sub find_renamed_cols {
 
    my %renames;
    while ( $alter =~ /$alter_change_col_re/g ) {
-      my ($orig, $new) = map { $tp->ansi_to_legacy($_) } $1, $2;
+      my ($orig, $new) = map { $tp->ansi_to_legacy($_) } lc($1), lc($2);
       next unless $orig && $new;
       my (undef, $orig_tbl) = Quoter->split_unquote($orig);
       my (undef, $new_tbl)  = Quoter->split_unquote($new);
