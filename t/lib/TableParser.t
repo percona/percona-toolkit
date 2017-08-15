@@ -806,6 +806,32 @@ is_deeply(
    'issue with pairing backticks in column comments (issue 330)'
 );
 
+
+$tbl = $tp->parse( load_file('t/lib/samples/issue_pt-193_backtick_in_col_comments.sql') );
+is_deeply(
+   $tbl,
+   {  cols         => [qw(id f22abcde f23abc)],
+      col_posn     => { id => 0, f22abcde => 1, f23abc => 2 },
+      is_col       => { id => 1, f22abcde => 1, f23abc => 1 },
+      is_autoinc   => { id => 1, f22abcde => 0, f23abc => 0 },
+      null_cols    => [qw(f22abcde)],
+      is_nullable  => { f22abcde => 1},
+      clustered_key => undef,
+      keys         => {},
+      defs         => { id => "    `id` int(11) NOT NULL AUTO_INCREMENT", 
+                       "f22abcde" => "    `f22abcde` int(10) unsigned DEFAULT NULL COMMENT 'xxx`XXx'",   
+                       "f23abc" => "    `f23abc` int(10) unsigned NOT NULL DEFAULT '255' COMMENT \"`yyy\""
+                      },
+      numeric_cols => [qw(id f22abcde f23abc)],
+      is_numeric   => { id => 1, f22abcde => 1, f23abc => 1  },
+      engine       => 'InnoDB',
+      type_for     => { id => 'int', f22abcde => 'int', f23abc => 'int' },
+      name         => 't3',
+      charset      => 'latin1',
+   },
+   'issue with pairing backticks in column comments (issue 330)'
+);
+
 # #############################################################################
 # Issue 170: mk-parallel-dump dies when table-status Data_length is NULL
 # #############################################################################

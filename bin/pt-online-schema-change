@@ -3298,7 +3298,7 @@ sub parse {
    my ($name)     = $ddl =~ m/CREATE (?:TEMPORARY )?TABLE\s+(`.+?`)/;
    (undef, $name) = $self->{Quoter}->split_unquote($name) if $name;
 
-   $ddl =~ s/(`[^`]+`)/\L$1/g;
+   $ddl =~ s/(`[^`\n]+`)/\L$1/gm;
 
    my $engine = $self->get_engine($ddl);
 

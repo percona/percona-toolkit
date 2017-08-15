@@ -145,7 +145,7 @@ sub parse {
 
    # Lowercase identifiers to avoid issues with case-sensitivity in Perl.
    # (Bug #1910276).
-   $ddl =~ s/(`[^`]+`)/\L$1/g;
+   $ddl =~ s/(`[^`\n]+`)/\L$1/gm;
 
    my $engine = $self->get_engine($ddl);
 
