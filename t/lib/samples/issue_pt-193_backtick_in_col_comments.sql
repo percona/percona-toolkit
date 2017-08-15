@@ -1,0 +1,6 @@
+Create Table: CREATE TABLE `t3` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `f22aBcDe` int(10) unsigned DEFAULT NULL COMMENT 'xxx`XXx',
+    `f23aBc` int(10) unsigned NOT NULL DEFAULT '255' COMMENT "`yyy",
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=latin1)
