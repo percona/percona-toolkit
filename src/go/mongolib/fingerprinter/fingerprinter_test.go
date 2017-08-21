@@ -10,8 +10,6 @@ import (
 
 	"github.com/percona/percona-toolkit/src/go/lib/tutil"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
-	"github.com/percona/pmgo"
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -75,81 +73,8 @@ func TestFingerprint(t *testing.T) {
 	}
 }
 
-//func TestFingerprints(t *testing.T) {
-//	//t.Parallel()
-//
-//	dialer := pmgo.NewDialer()
-//	dialInfo, _ := pmgo.ParseURL("127.0.0.1:27017")
-//
-//	session, err := dialer.DialWithInfo(dialInfo)
-//	if err != nil {
-//		t.Fatalf("cannot dial: %s", err)
-//	}
-//	defer session.Close()
-//	session.SetMode(mgo.Eventual, true)
-//
-//	dir := vars.RootPath+samples+"/profile/"
-//	files, err := ioutil.ReadDir(dir)
-//	if err != nil {
-//		t.Fatalf("cannot load samples: %s", err)
-//	}
-//
-//	for _, file := range files {
-//		f, err := os.Open(dir+file.Name())
-//		if err != nil {
-//			t.Fatalf("cannot open file: %s", err)
-//		}
-//
-//		buf, err := ioutil.ReadAll(f)
-//		if err != nil {
-//			t.Fatalf("cannot read file: %s", err)
-//		}
-//
-//		t.Run(file.Name(), func(t *testing.T) {
-//			var err error
-//			result := bson.Raw{}
-//			err = session.DB("").Run(bson.M{"eval": string(buf)}, &result)
-//			if err != nil {
-//				t.Fatalf("cannot execute query: %s", err)
-//			}
-//			doc := proto.SystemProfile{}
-//			query := bson.M{"op": bson.M{"$nin": []string{"getmore"}}, "ns": bson.M{"$nin": []string{"test.system.profile"}}}
-//			err = session.DB("").C("system.profile").Find(query).Sort("-ts").Limit(1).One(&doc)
-//			if err != nil {
-//				t.Fatalf("cannot get system.profile query: %s", err)
-//			}
-//			fmt.Println(doc)
-//
-//			//err = tutil.LoadBson(dir+file.Name(), &doc)
-//			//if err != nil {
-//			//	t.Fatalf("cannot load sample: %s", err)
-//			//}
-//			fp := NewFingerprinter(DEFAULT_KEY_FILTERS)
-//			got, err := fp.Fingerprint(doc)
-//			if err != nil {
-//				panic(err)
-//			}
-//			if !reflect.DeepEqual(got, "") {
-//				t.Errorf("fp.Fingerprint(doc) = %s, want %s", got, "")
-//			}
-//		})
-//	}
-//
-//
-//}
-
 func TestFingerprints(t *testing.T) {
 	t.Parallel()
-
-	dialer := pmgo.NewDialer()
-	dialInfo, _ := pmgo.ParseURL("")
-
-	session, err := dialer.DialWithInfo(dialInfo)
-	if err != nil {
-		t.Fatalf("cannot dial: %s", err)
-	}
-	defer session.Close()
-	session.SetMode(mgo.Eventual, true)
 
 	dir := vars.RootPath + samples + "/doc/out/"
 	files, err := ioutil.ReadDir(dir)
