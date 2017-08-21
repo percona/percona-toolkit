@@ -268,6 +268,8 @@ func TestCalcStats(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot load expected results: %s", err.Error())
 	}
+	want.FirstSeen = want.FirstSeen.UTC()
+	want.LastSeen = want.LastSeen.UTC()
 
 	iter := pmgomock.NewMockIterManager(ctrl)
 	gomock.InOrder(
@@ -294,6 +296,8 @@ func TestCalcStats(t *testing.T) {
 		if os.Getenv("UPDATE_SAMPLES") != "" {
 			tutil.WriteJson(vars.RootPath+samples+"profiler_docs_stats.want.json", s)
 		}
+		s.FirstSeen = s.FirstSeen.UTC()
+		s.LastSeen = s.LastSeen.UTC()
 		if !reflect.DeepEqual(s, want) {
 			t.Errorf("Invalid stats.\nGot:%#v\nWant: %#v\n", s, want)
 		}
