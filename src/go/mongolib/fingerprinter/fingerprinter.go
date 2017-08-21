@@ -98,6 +98,9 @@ func (f *Fingerprint) Fingerprint(doc proto.SystemProfile) (string, error) {
 			collection = ns[1]
 		}
 	default:
+		if query.Len() == 0 {
+			break
+		}
 		// first key is operation type
 		op = query.D[0].Name
 		collection, _ = query.D[0].Value.(string)
