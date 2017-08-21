@@ -22,6 +22,9 @@ script:
   - go test -timeout 1m $(glide nv)
 
 notifications:
+  email:
+    on_success: never
+    on_failure: never
   slack:
     on_success: change
     on_failure: change
