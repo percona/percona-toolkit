@@ -101,11 +101,10 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 	qiac.NReturned = append(qiac.NReturned, float64(doc.Nreturned))
 	qiac.QueryTime = append(qiac.QueryTime, float64(doc.Millis))
 	qiac.ResponseLength = append(qiac.ResponseLength, float64(doc.ResponseLength))
-	var zeroTime time.Time
-	if qiac.FirstSeen == zeroTime || qiac.FirstSeen.After(doc.Ts) {
+	if qiac.FirstSeen.IsZero() || qiac.FirstSeen.After(doc.Ts) {
 		qiac.FirstSeen = doc.Ts
 	}
-	if qiac.LastSeen == zeroTime || qiac.LastSeen.Before(doc.Ts) {
+	if qiac.LastSeen.IsZero() || qiac.LastSeen.Before(doc.Ts) {
 		qiac.LastSeen = doc.Ts
 	}
 

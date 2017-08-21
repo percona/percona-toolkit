@@ -317,6 +317,8 @@ func TestCalcTotalStats(t *testing.T) {
 	if err != nil && !tutil.ShouldUpdateSamples() {
 		t.Fatalf("cannot load expected results: %s", err.Error())
 	}
+	want.FirstSeen = want.FirstSeen.UTC()
+	want.LastSeen = want.LastSeen.UTC()
 
 	iter := pmgomock.NewMockIterManager(ctrl)
 	gomock.InOrder(
@@ -347,6 +349,8 @@ func TestCalcTotalStats(t *testing.T) {
 				fmt.Printf("cannot update samples: %s", err.Error())
 			}
 		}
+		s.FirstSeen = s.FirstSeen.UTC()
+		s.LastSeen = s.LastSeen.UTC()
 		if !reflect.DeepEqual(s, want) {
 			t.Errorf("Invalid stats.\nGot:%#v\nWant: %#v\n", s, want)
 		}
