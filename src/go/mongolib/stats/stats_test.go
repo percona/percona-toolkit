@@ -142,7 +142,7 @@ func TestStats(t *testing.T) {
 		ID:             "4e4774ad26f934a193757002a991ebb8",
 		Namespace:      "samples.col1",
 		Operation:      "query",
-		Query:          "",
+		Query:          "{\"find\":\"col1\",\"filter\":{\"s2\":{\"$gte\":\"41991\",\"$lt\":\"33754\"}},\"shardVersion\":[0,\"000000000000000000000000\"]}\n",
 		Fingerprint:    "FIND col1 s2",
 		FirstSeen:      parseDate("2017-04-10T13:15:53.532-03:00"),
 		LastSeen:       parseDate("2017-04-10T13:15:53.532-03:00"),

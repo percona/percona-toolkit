@@ -2,7 +2,6 @@ package stats
 
 import (
 	"crypto/md5"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"sync"
@@ -252,12 +251,11 @@ type Statistics struct {
 }
 
 func countersToStats(query QueryInfoAndCounters, uptime int64, tc totalCounters) QueryStats {
-	buf, _ := json.Marshal(query.Query)
 	queryStats := QueryStats{
 		Count:          query.Count,
 		ID:             query.ID,
 		Operation:      query.Operation,
-		Query:          string(buf),
+		Query:          query.Query,
 		Fingerprint:    query.Fingerprint,
 		Scanned:        calcStats(query.NScanned),
 		Returned:       calcStats(query.NReturned),
