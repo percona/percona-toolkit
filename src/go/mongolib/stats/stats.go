@@ -4,13 +4,14 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
 	"github.com/montanaflynn/stats"
 	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
-	"github.com/percona/percona-toolkit/src/go/mongolib/util"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type StatsError struct {
@@ -62,7 +63,7 @@ func (s *Stats) Reset() {
 
 // Add adds proto.SystemProfile to the collection of statistics
 func (s *Stats) Add(doc proto.SystemProfile) error {
-	fp, err := s.fingerprinter.Fingerprint(doc.Query)
+	fp, err := s.fingerprinter.Fingerprint(doc)
 	if err != nil {
 		return &StatsFingerprintError{err}
 	}
@@ -75,9 +76,16 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 		Namespace:   doc.Ns,
 	}
 	if qiac, ok = s.getQueryInfoAndCounters(key); !ok {
-		realQuery, err := util.GetQueryField(doc.Query)
+		query := doc.Query
+		if doc.Command.Len() > 0 {
+			query = doc.Command
+		}
 		if err != nil {
 			return &StatsGetQueryFieldError{err}
+		}
+		queryBson, err := bson.MarshalJSON(&query)
+		if err != nil {
+			return err
 		}
 		qiac = &QueryInfoAndCounters{
 			ID:          fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s", key)))),
@@ -85,7 +93,7 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 			Fingerprint: fp,
 			Namespace:   doc.Ns,
 			TableScan:   false,
-			Query:       realQuery,
+			Query:       string(queryBson),
 		}
 		s.setQueryInfoAndCounters(key, qiac)
 	}
@@ -110,9 +118,14 @@ func (s *Stats) Queries() Queries {
 	s.RLock()
 	defer s.RUnlock()
 
+	keys := GroupKeys{}
+	for key := range s.queryInfoAndCounters {
+		keys = append(keys, key)
+	}
+	sort.Sort(keys)
 	queries := []QueryInfoAndCounters{}
-	for _, v := range s.queryInfoAndCounters {
-		queries = append(queries, *v)
+	for _, key := range keys {
+		queries = append(queries, *s.queryInfoAndCounters[key])
 	}
 	return queries
 }
@@ -162,7 +175,7 @@ type QueryInfoAndCounters struct {
 	ID          string
 	Namespace   string
 	Operation   string
-	Query       map[string]interface{}
+	Query       string
 	Fingerprint string
 	FirstSeen   time.Time
 	LastSeen    time.Time
@@ -184,10 +197,20 @@ func (a Times) Len() int           { return len(a) }
 func (a Times) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a Times) Less(i, j int) bool { return a[i].Before(a[j]) }
 
+type GroupKeys []GroupKey
+
+func (a GroupKeys) Len() int           { return len(a) }
+func (a GroupKeys) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a GroupKeys) Less(i, j int) bool { return a[i].String() < a[j].String() }
+
 type GroupKey struct {
 	Operation   string
-	Fingerprint string
 	Namespace   string
+	Fingerprint string
+}
+
+func (g GroupKey) String() string {
+	return g.Operation + g.Namespace + g.Fingerprint
 }
 
 type totalCounters struct {

@@ -150,13 +150,13 @@
         "Op": "query",
         "Protocol": "op_command",
         "Query": {
+            "find": "col1",
             "filter": {
                 "s2": {
                     "$gte": "41991",
                     "$lt": "33754"
                 }
             },
-            "find": "col1",
             "shardVersion": [
                 0,
                 "000000000000000000000000"
@@ -237,13 +237,13 @@
         "Op": "query",
         "Protocol": "op_command",
         "Query": {
+            "find": "col1",
             "filter": {
                 "user_id": {
                     "$gte": 3384024924,
                     "$lt": 195092007
                 }
             },
-            "find": "col1",
             "projection": {
                 "$sortKey": {
                     "$meta": "sortKey"

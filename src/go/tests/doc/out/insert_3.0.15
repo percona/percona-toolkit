@@ -1,0 +1,42 @@
+{
+	"op" : "insert",
+	"ns" : "test.coll",
+	"query" : {
+		"_id" : 1
+	},
+	"ninserted" : 1,
+	"keyUpdates" : 0,
+	"writeConflicts" : 0,
+	"numYield" : 0,
+	"locks" : {
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(1),
+				"w" : NumberLong(1)
+			}
+		},
+		"MMAPV1Journal" : {
+			"acquireCount" : {
+				"w" : NumberLong(2)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"w" : NumberLong(1)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"W" : NumberLong(1)
+			}
+		}
+	},
+	"millis" : 0,
+	"execStats" : {
+		
+	},
+	"ts" : ISODate("2017-08-20T15:39:22.409Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}

@@ -1,0 +1,42 @@
+{
+	"op" : "command",
+	"ns" : "test.$cmd",
+	"command" : {
+		"mapreduce" : "coll",
+		"map" : function () {
+    emit(this.a, this.b);
+},
+		"reduce" : function (a, b) {
+    return Array.sum(b);
+},
+		"query" : {
+			"a" : {
+				"$gte" : 0
+			}
+		},
+		"out" : {
+			"inline" : 1
+		}
+	},
+	"keyUpdates" : 0,
+	"numYield" : 0,
+	"lockStats" : {
+		"timeLockedMicros" : {
+			"r" : NumberLong(226),
+			"w" : NumberLong(0)
+		},
+		"timeAcquiringMicros" : {
+			"r" : NumberLong(4),
+			"w" : NumberLong(13)
+		}
+	},
+	"responseLength" : 233,
+	"millis" : 33,
+	"execStats" : {
+		
+	},
+	"ts" : ISODate("2017-08-20T15:39:16.701Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}

@@ -1,0 +1,67 @@
+{
+	"op" : "query",
+	"ns" : "test.coll",
+	"query" : {
+		"a" : 1
+	},
+	"ntoreturn" : 0,
+	"ntoskip" : 0,
+	"nscanned" : 6,
+	"nscannedObjects" : 6,
+	"keyUpdates" : 0,
+	"numYield" : 0,
+	"lockStats" : {
+		"timeLockedMicros" : {
+			"r" : NumberLong(231),
+			"w" : NumberLong(0)
+		},
+		"timeAcquiringMicros" : {
+			"r" : NumberLong(2),
+			"w" : NumberLong(26)
+		}
+	},
+	"nreturned" : 6,
+	"responseLength" : 251,
+	"millis" : 0,
+	"execStats" : {
+		"type" : "FETCH",
+		"works" : 7,
+		"yields" : 0,
+		"unyields" : 0,
+		"invalidates" : 0,
+		"advanced" : 6,
+		"needTime" : 0,
+		"needFetch" : 0,
+		"isEOF" : 1,
+		"alreadyHasObj" : 0,
+		"forcedFetches" : 0,
+		"matchTested" : 0,
+		"children" : [
+			{
+				"type" : "IXSCAN",
+				"works" : 7,
+				"yields" : 0,
+				"unyields" : 0,
+				"invalidates" : 0,
+				"advanced" : 6,
+				"needTime" : 0,
+				"needFetch" : 0,
+				"isEOF" : 1,
+				"keyPattern" : "{ a: 1.0 }",
+				"isMultiKey" : 0,
+				"boundsVerbose" : "field #0['a']: [1.0, 1.0]",
+				"yieldMovedCursor" : 0,
+				"dupsTested" : 0,
+				"dupsDropped" : 0,
+				"seenInvalidated" : 0,
+				"matchTested" : 0,
+				"keysExamined" : 6,
+				"children" : [ ]
+			}
+		]
+	},
+	"ts" : ISODate("2017-08-20T15:39:15.457Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}

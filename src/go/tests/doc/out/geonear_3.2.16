@@ -1,0 +1,45 @@
+{
+	"op" : "command",
+	"ns" : "test.coll",
+	"command" : {
+		"geoNear" : "coll",
+		"near" : {
+			"type" : "Point",
+			"coordinates" : [
+				1,
+				1
+			]
+		},
+		"spherical" : true
+	},
+	"keyUpdates" : 0,
+	"writeConflicts" : 0,
+	"numYield" : 1,
+	"locks" : {
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(4)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"r" : NumberLong(2)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"r" : NumberLong(2)
+			}
+		}
+	},
+	"responseLength" : 1401,
+	"protocol" : "op_command",
+	"millis" : 8,
+	"execStats" : {
+		
+	},
+	"ts" : ISODate("2017-08-20T15:39:31.797Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}

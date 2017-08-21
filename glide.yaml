@@ -7,7 +7,6 @@ import:
 - package: github.com/montanaflynn/stats
 - package: github.com/pborman/getopt
 - package: github.com/percona/pmgo
-  version: ^0.4
 - package: github.com/pkg/errors
 - package: github.com/satori/go.uuid
 - package: github.com/shirou/gopsutil

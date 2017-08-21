@@ -70,14 +70,11 @@ func TestRegularIterator(t *testing.T) {
 	lastSeen, _ := time.Parse(time.RFC3339Nano, "2017-04-01T23:01:20.214+00:00")
 	want := stats.Queries{
 		{
-			ID:        "c6466139b21c392acd0699e863b50d81",
-			Namespace: "samples.col1",
-			Operation: "query",
-			Query: map[string]interface{}{
-				"find":         "col1",
-				"shardVersion": []interface{}{float64(0), "000000000000000000000000"},
-			},
-			Fingerprint:    "find",
+			ID:             "16196765fb4c14edb91efdbe4f5c5973",
+			Namespace:      "samples.col1",
+			Operation:      "query",
+			Query:          "",
+			Fingerprint:    "FIND col1 find",
 			FirstSeen:      firstSeen,
 			LastSeen:       lastSeen,
 			TableScan:      false,
@@ -130,14 +127,11 @@ func TestIteratorTimeout(t *testing.T) {
 	lastSeen, _ := time.Parse(time.RFC3339Nano, "2017-04-01T23:01:19.914+00:00")
 	want := stats.Queries{
 		{
-			ID:        "c6466139b21c392acd0699e863b50d81",
-			Namespace: "samples.col1",
-			Operation: "query",
-			Query: map[string]interface{}{
-				"find":         "col1",
-				"shardVersion": []interface{}{float64(0), "000000000000000000000000"},
-			},
-			Fingerprint:    "find",
+			ID:             "16196765fb4c14edb91efdbe4f5c5973",
+			Namespace:      "samples.col1",
+			Operation:      "query",
+			Query:          "",
+			Fingerprint:    "FIND col1 find",
 			FirstSeen:      firstSeen,
 			LastSeen:       lastSeen,
 			TableScan:      false,
@@ -214,14 +208,11 @@ func TestTailIterator(t *testing.T) {
 
 	want := stats.Queries{
 		{
-			ID:        "c6466139b21c392acd0699e863b50d81",
-			Namespace: "samples.col1",
-			Operation: "query",
-			Query: map[string]interface{}{
-				"find":         "col1",
-				"shardVersion": []interface{}{float64(0), "000000000000000000000000"},
-			},
-			Fingerprint:    "find",
+			ID:             "16196765fb4c14edb91efdbe4f5c5973",
+			Namespace:      "samples.col1",
+			Operation:      "query",
+			Query:          "",
+			Fingerprint:    "FIND col1 find",
 			FirstSeen:      parseDate("2017-04-01T23:01:20.214+00:00"),
 			LastSeen:       parseDate("2017-04-01T23:01:20.214+00:00"),
 			TableScan:      false,
@@ -232,14 +223,11 @@ func TestTailIterator(t *testing.T) {
 			ResponseLength: []float64{1.06123e+06},
 		},
 		{
-			ID:        "c6466139b21c392acd0699e863b50d81",
-			Namespace: "samples.col1",
-			Operation: "query",
-			Query: map[string]interface{}{
-				"find":         "col1",
-				"shardVersion": []interface{}{float64(0), "000000000000000000000000"},
-			},
-			Fingerprint:    "find",
+			ID:             "16196765fb4c14edb91efdbe4f5c5973",
+			Namespace:      "samples.col1",
+			Operation:      "query",
+			Query:          "",
+			Fingerprint:    "FIND col1 find",
 			FirstSeen:      parseDate("2017-04-01T23:01:19.914+00:00"),
 			LastSeen:       parseDate("2017-04-01T23:01:19.914+00:00"),
 			TableScan:      false,
