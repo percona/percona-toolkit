@@ -76,10 +76,6 @@ func (d *BsonD) UnmarshalJSON(data []byte) error {
 
 func (d *BsonD) MarshalJSON() ([]byte, error) {
 	var b bytes.Buffer
-	if d.D == nil {
-		b.WriteString("null")
-		return nil, nil
-	}
 
 	b.WriteByte('{')
 
