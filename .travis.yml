@@ -19,7 +19,7 @@ before_script:
   - git diff --exit-code
 
 script:
-  - go test $(glide nv)
+  - go test -timeout 1m $(glide nv)
 
 notifications:
   slack:
