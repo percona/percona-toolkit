@@ -8,9 +8,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-type BsonD struct {
-	bson.D
-}
+type BsonD bson.D
 
 func (d *BsonD) UnmarshalJSON(data []byte) error {
 	dec := json.NewDecoder(bytes.NewReader(data))
@@ -45,19 +43,33 @@ func (d *BsonD) UnmarshalJSON(data []byte) error {
 			return fmt.Errorf("missing value for key %s", key)
 		}
 
-		v := BsonD{}
-		r := dec.Buffered()
-		ndec := json.NewDecoder(r)
-		err = ndec.Decode(&v)
+		var raw json.RawMessage
+		err = dec.Decode(&raw)
 		if err != nil {
-			var v interface{}
-			dec.Decode(&v)
-			de.Value = v
+			return err
+		}
+
+		var v BsonD
+		err = bson.UnmarshalJSON(raw, &v)
+		if err != nil {
+			var v []BsonD
+			err = bson.UnmarshalJSON(raw, &v)
+			if err != nil {
+				var v interface{}
+				err = bson.UnmarshalJSON(raw, &v)
+				if err != nil {
+					return err
+				} else {
+					de.Value = v
+				}
+			} else {
+				de.Value = v
+			}
 		} else {
 			de.Value = v
 		}
 
-		d.D = append(d.D, de)
+		*d = append(*d, de)
 		if !dec.More() {
 			break
 		}
@@ -74,12 +86,12 @@ func (d *BsonD) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (d *BsonD) MarshalJSON() ([]byte, error) {
+func (d BsonD) MarshalJSON() ([]byte, error) {
 	var b bytes.Buffer
 
 	b.WriteByte('{')
 
-	for i, v := range d.D {
+	for i, v := range d {
 		if i > 0 {
 			b.WriteByte(',')
 		}
@@ -106,5 +118,35 @@ func (d *BsonD) MarshalJSON() ([]byte, error) {
 }
 
 func (d BsonD) Len() int {
-	return len(d.D)
+	return len(d)
+}
+
+// Map returns a map out of the ordered element name/value pairs in d.
+func (d BsonD) Map() (m bson.M) {
+	m = make(bson.M, len(d))
+	for _, item := range d {
+		switch v := item.Value.(type) {
+		case BsonD:
+			m[item.Name] = v.Map()
+		case []BsonD:
+			el := []bson.M{}
+			for i := range v {
+				el = append(el, v[i].Map())
+			}
+			m[item.Name] = el
+		case []interface{}:
+			// mgo/bson doesn't expose UnmarshalBSON interface
+			// so we can't create custom bson.Unmarshal()
+			el := []bson.M{}
+			for i := range v {
+				if b, ok := v[i].(BsonD); ok {
+					el = append(el, b.Map())
+				}
+			}
+			m[item.Name] = el
+		default:
+			m[item.Name] = item.Value
+		}
+	}
+	return m
 }

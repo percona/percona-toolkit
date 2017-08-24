@@ -73,7 +73,7 @@ func TestRegularIterator(t *testing.T) {
 			ID:             "16196765fb4c14edb91efdbe4f5c5973",
 			Namespace:      "samples.col1",
 			Operation:      "query",
-			Query:          "{\"find\":\"col1\",\"shardVersion\":[0,\"000000000000000000000000\"]}\n",
+			Query:          "{\n    \"find\": \"col1\",\n    \"shardVersion\": [\n        0,\n        \"000000000000000000000000\"\n    ]\n}",
 			Fingerprint:    "FIND col1 find",
 			FirstSeen:      firstSeen,
 			LastSeen:       lastSeen,
@@ -130,7 +130,7 @@ func TestIteratorTimeout(t *testing.T) {
 			ID:             "16196765fb4c14edb91efdbe4f5c5973",
 			Namespace:      "samples.col1",
 			Operation:      "query",
-			Query:          "{\"find\":\"col1\",\"shardVersion\":[0,\"000000000000000000000000\"]}\n",
+			Query:          "{\n    \"find\": \"col1\",\n    \"shardVersion\": [\n        0,\n        \"000000000000000000000000\"\n    ]\n}",
 			Fingerprint:    "FIND col1 find",
 			FirstSeen:      firstSeen,
 			LastSeen:       lastSeen,
@@ -211,7 +211,7 @@ func TestTailIterator(t *testing.T) {
 			ID:             "16196765fb4c14edb91efdbe4f5c5973",
 			Namespace:      "samples.col1",
 			Operation:      "query",
-			Query:          "{\"find\":\"col1\",\"shardVersion\":[0,\"000000000000000000000000\"]}\n",
+			Query:          "{\n    \"find\": \"col1\",\n    \"shardVersion\": [\n        0,\n        \"000000000000000000000000\"\n    ]\n}",
 			Fingerprint:    "FIND col1 find",
 			FirstSeen:      parseDate("2017-04-01T23:01:20.214+00:00"),
 			LastSeen:       parseDate("2017-04-01T23:01:20.214+00:00"),
@@ -226,7 +226,7 @@ func TestTailIterator(t *testing.T) {
 			ID:             "16196765fb4c14edb91efdbe4f5c5973",
 			Namespace:      "samples.col1",
 			Operation:      "query",
-			Query:          "{\"find\":\"col1\",\"shardVersion\":[0,\"000000000000000000000000\"]}\n",
+			Query:          "{\n    \"find\": \"col1\",\n    \"shardVersion\": [\n        0,\n        \"000000000000000000000000\"\n    ]\n}",
 			Fingerprint:    "FIND col1 find",
 			FirstSeen:      parseDate("2017-04-01T23:01:19.914+00:00"),
 			LastSeen:       parseDate("2017-04-01T23:01:19.914+00:00"),
@@ -258,13 +258,13 @@ func TestCalcStats(t *testing.T) {
 	defer ctrl.Finish()
 
 	docs := []proto.SystemProfile{}
-	err := tutil.LoadJson(vars.RootPath+samples+"profiler_docs_stats.json", &docs)
+	err := tutil.LoadBson(vars.RootPath+samples+"profiler_docs_stats.json", &docs)
 	if err != nil {
 		t.Fatalf("cannot load samples: %s", err.Error())
 	}
 
 	want := []stats.QueryStats{}
-	err = tutil.LoadJson(vars.RootPath+samples+"profiler_docs_stats.want.json", &want)
+	err = tutil.LoadBson(vars.RootPath+samples+"profiler_docs_stats.want.json", &want)
 	if err != nil {
 		t.Fatalf("cannot load expected results: %s", err.Error())
 	}
@@ -307,13 +307,13 @@ func TestCalcTotalStats(t *testing.T) {
 	defer ctrl.Finish()
 
 	docs := []proto.SystemProfile{}
-	err := tutil.LoadJson(vars.RootPath+samples+"profiler_docs_stats.json", &docs)
+	err := tutil.LoadBson(vars.RootPath+samples+"profiler_docs_stats.json", &docs)
 	if err != nil {
 		t.Fatalf("cannot load samples: %s", err.Error())
 	}
 
 	want := stats.QueryStats{}
-	err = tutil.LoadJson(vars.RootPath+samples+"profiler_docs_total_stats.want.json", &want)
+	err = tutil.LoadBson(vars.RootPath+samples+"profiler_docs_total_stats.want.json", &want)
 	if err != nil && !tutil.ShouldUpdateSamples() {
 		t.Fatalf("cannot load expected results: %s", err.Error())
 	}

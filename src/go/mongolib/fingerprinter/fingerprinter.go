@@ -9,6 +9,7 @@ import (
 
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/percona-toolkit/src/go/mongolib/util"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -68,7 +69,7 @@ func (f *Fingerprint) Fingerprint(doc proto.SystemProfile) (string, error) {
 	// if there is a sort clause in the query, we have to add all fields in the sort
 	// fields list that are not in the query keys list (retKeys)
 	if sortKeys, ok := query.Map()["sort"]; ok {
-		if sortKeysMap, ok := sortKeys.(map[string]interface{}); ok {
+		if sortKeysMap, ok := sortKeys.(bson.M); ok {
 			sortKeys := keys(sortKeysMap, f.keyFilters)
 			retKeys = append(retKeys, sortKeys...)
 		}
@@ -102,20 +103,20 @@ func (f *Fingerprint) Fingerprint(doc proto.SystemProfile) (string, error) {
 			break
 		}
 		// first key is operation type
-		op = query.D[0].Name
-		collection, _ = query.D[0].Value.(string)
+		op = query[0].Name
+		collection, _ = query[0].Value.(string)
 		switch op {
 		case "group":
 			retKeys = []string{}
 			if g, ok := query.Map()["group"]; ok {
-				if m, ok := g.(map[string]interface{}); ok {
+				if m, ok := g.(bson.M); ok {
 					if f, ok := m["key"]; ok {
-						if keysMap, ok := f.(map[string]interface{}); ok {
+						if keysMap, ok := f.(bson.M); ok {
 							retKeys = append(retKeys, keys(keysMap, []string{})...)
 						}
 					}
 					if f, ok := m["cond"]; ok {
-						if keysMap, ok := f.(map[string]interface{}); ok {
+						if keysMap, ok := f.(bson.M); ok {
 							retKeys = append(retKeys, keys(keysMap, []string{})...)
 						}
 					}
@@ -167,29 +168,27 @@ func keys(query interface{}, keyFilters []string) []string {
 
 func getKeys(query interface{}, keyFilters []string, level int) []string {
 	ks := []string{}
-	var q []interface{}
+	var q []bson.M
 	switch v := query.(type) {
-	case map[string]interface{}:
+	case bson.M:
 		q = append(q, v)
-	case []interface{}:
+	case []bson.M:
 		q = v
+	default:
+		return ks
 	}
 
 	if level <= MAX_DEPTH_LEVEL {
 		for i := range q {
-			if query, ok := q[i].(map[string]interface{}); ok {
-				for key, value := range query {
-					if shouldSkipKey(key, keyFilters) {
-						continue
-					}
-					if matched, _ := regexp.MatchString("^\\$", key); !matched {
-						ks = append(ks, key)
-					}
-
-					ks = append(ks, getKeys(value, keyFilters, level)...)
+			for key, value := range q[i] {
+				if shouldSkipKey(key, keyFilters) {
+					continue
 				}
-			} else {
-				ks = append(ks, getKeys(q[i], keyFilters, level)...)
+				if matched, _ := regexp.MatchString("^\\$", key); !matched {
+					ks = append(ks, key)
+				}
+
+				ks = append(ks, getKeys(value, keyFilters, level)...)
 			}
 		}
 	}

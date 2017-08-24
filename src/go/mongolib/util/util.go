@@ -237,7 +237,7 @@ func GetServerStatus(dialer pmgo.Dialer, di *pmgo.DialInfo, hostname string) (pr
 	return ss, nil
 }
 
-func GetQueryField(doc proto.SystemProfile) (map[string]interface{}, error) {
+func GetQueryField(doc proto.SystemProfile) (bson.M, error) {
 	// Proper way to detect if protocol used is "op_msg" or "op_command"
 	// would be to look at "doc.Protocol" field,
 	// however MongoDB 3.0 doesn't have that field
@@ -248,7 +248,7 @@ func GetQueryField(doc proto.SystemProfile) (map[string]interface{}, error) {
 		if doc.Op == "update" || doc.Op == "remove" {
 			if squery, ok := query.Map()["q"]; ok {
 				// just an extra check to ensure this type assertion won't fail
-				if ssquery, ok := squery.(map[string]interface{}); ok {
+				if ssquery, ok := squery.(bson.M); ok {
 					return ssquery, nil
 				}
 				return nil, CANNOT_GET_QUERY_ERROR
@@ -318,7 +318,7 @@ func GetQueryField(doc proto.SystemProfile) (map[string]interface{}, error) {
 	//
 	if squery, ok := query.Map()["query"]; ok {
 		// just an extra check to ensure this type assertion won't fail
-		if ssquery, ok := squery.(map[string]interface{}); ok {
+		if ssquery, ok := squery.(bson.M); ok {
 			return ssquery, nil
 		}
 		return nil, CANNOT_GET_QUERY_ERROR
@@ -326,7 +326,7 @@ func GetQueryField(doc proto.SystemProfile) (map[string]interface{}, error) {
 
 	// "query" in MongoDB 3.2+ is better structured and always has a "filter" subkey:
 	if squery, ok := query.Map()["filter"]; ok {
-		if ssquery, ok := squery.(map[string]interface{}); ok {
+		if ssquery, ok := squery.(bson.M); ok {
 			return ssquery, nil
 		}
 		return nil, CANNOT_GET_QUERY_ERROR

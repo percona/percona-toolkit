@@ -50,15 +50,15 @@ func ExampleFingerprint() {
 
 func TestFingerprint(t *testing.T) {
 	doc := proto.SystemProfile{}
-	doc.Query = proto.BsonD{bson.D{
+	doc.Query = proto.BsonD{
 		{"find", "feedback"},
-		{"filter", map[string]interface{}{
+		{"filter", bson.M{
 			"tool":  "Atlas",
 			"potId": "2c9180865ae33e85015af1cc29243dc5",
 		}},
 		{"limit", 1},
 		{"singleBatch", true},
-	}}
+	}
 	want := "FIND feedback potId,tool"
 
 	fp := NewFingerprinter(nil)

@@ -6,11 +6,11 @@ import (
 	"sort"
 	"sync"
 	"time"
+	"encoding/json"
 
 	"github.com/montanaflynn/stats"
 	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type StatsError struct {
@@ -82,7 +82,7 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 		if err != nil {
 			return &StatsGetQueryFieldError{err}
 		}
-		queryBson, err := bson.MarshalJSON(&query)
+		queryBson, err := json.MarshalIndent(query, "", "    ")
 		if err != nil {
 			return err
 		}
