@@ -14284,7 +14284,7 @@ sub create_review_tables {
         . "--no-create-$type-table was specified.  You need "
         . "to create the database.\n";
    }
-   else {
+   elsif ( !@db_exists && $args{create_table} ) {
       # Even if the db already exists, do this in case it does not exist
       # on a slave.
       my $create_db_sql
@@ -14321,7 +14321,7 @@ sub create_review_tables {
         . "--no-create-$type-table was specified.  "
         . "You need to create the table.\n";
    }
-   else {
+   elsif ( !$tbl_exists && $args{create_table} ) {
       PTDEBUG && _d($dbh, $create_table_sql);
       eval {
          $dbh->do($create_table_sql);
