@@ -1,17 +1,15 @@
 package explain
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"testing"
 
-	"fmt"
-
 	"github.com/percona/percona-toolkit/src/go/lib/tutil"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/pmgo"
-	"github.com/stretchr/testify/require"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -122,15 +120,18 @@ func TestExplain(t *testing.T) {
 	}
 
 	dialer := pmgo.NewDialer()
-	dialInfo, err := pmgo.ParseURL("127.0.0.1:27017")
-	require.NoError(t, err)
+	dialInfo, err := pmgo.ParseURL("")
+	if err != nil {
+		t.Fatalf("cannot parse URL: %s", err)
+	}
 
 	session, err := dialer.DialWithInfo(dialInfo)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("cannot dial to MongoDB: %s", err)
+	}
 	defer session.Close()
 
 	ex := New(session)
-
 	for _, file := range files {
 		t.Run(file.Name(), func(t *testing.T) {
 			eq := proto.ExampleQuery{}
