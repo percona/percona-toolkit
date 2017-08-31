@@ -1,6 +1,8 @@
 package explain
 
 import (
+	"fmt"
+
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/pmgo"
 	"gopkg.in/mgo.v2/bson"
@@ -22,7 +24,7 @@ func (e *explain) Explain(db string, query []byte) ([]byte, error) {
 
 	err = bson.UnmarshalJSON(query, &eq)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("explain: unable to decode query %v: %s", query, err)
 	}
 
 	if db == "" {
@@ -37,7 +39,7 @@ func (e *explain) Explain(db string, query []byte) ([]byte, error) {
 
 	resultJson, err := bson.MarshalJSON(result)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("explain: unable to encode explain result of %v: %s", query, err)
 	}
 
 	return resultJson, nil
