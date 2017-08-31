@@ -5,8 +5,10 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 	"testing"
 
+	"github.com/Masterminds/semver"
 	"github.com/percona/percona-toolkit/src/go/lib/tutil"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/pmgo"
@@ -131,6 +133,26 @@ func TestExplain(t *testing.T) {
 	}
 	defer session.Close()
 
+	bi, err := session.BuildInfo()
+	if err != nil {
+		t.Fatalf("cannot get BuildInfo: %s", err)
+	}
+
+	versions := []string{
+		"2.6.12",
+		"3.0.15",
+		"3.2.16",
+		"3.4.7",
+		"3.5.11",
+	}
+
+	// For versions < 3.4 trying to explain "insert" returns different error
+	if ok, _ := Constraint("< 3.4", bi.Version); ok {
+		for _, v := range versions {
+			expectError["insert_"+v] = "Only update and delete write ops can be explained"
+		}
+	}
+
 	ex := New(session)
 	for _, file := range files {
 		t.Run(file.Name(), func(t *testing.T) {
@@ -159,4 +181,26 @@ func TestExplain(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Constraint(constraint, version string) (bool, error) {
+	// Drop everything after first dash.
+	// Version with dash is considered a pre-release
+	// but some MongoDB builds add additional information after dash
+	// even though it's not considered a pre-release but a release.
+	s := strings.SplitN(version, "-", 2)
+	version = s[0]
+
+	// Create new version
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		return false, err
+	}
+
+	// Check if version matches constraint
+	constraints, err := semver.NewConstraint(constraint)
+	if err != nil {
+		return false, err
+	}
+	return constraints.Check(v), nil
 }
