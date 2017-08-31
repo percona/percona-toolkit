@@ -16,9 +16,21 @@ func New(session pmgo.SessionManager) *explain {
 	}
 }
 
-func (e *explain) Explain(eq proto.ExampleQuery) ([]byte, error) {
+func (e *explain) Explain(db string, query []byte) ([]byte, error) {
+	var err error
+	var eq proto.ExampleQuery
+
+	err = bson.UnmarshalJSON(query, &eq)
+	if err != nil {
+		return nil, err
+	}
+
+	if db == "" {
+		db = eq.Db()
+	}
+
 	var result proto.BsonD
-	err := e.session.DB(eq.Db()).Run(eq.ExplainCmd(), &result)
+	err = e.session.DB(db).Run(eq.ExplainCmd(), &result)
 	if err != nil {
 		return nil, err
 	}

@@ -138,21 +138,23 @@ func TestExplain(t *testing.T) {
 			if err != nil {
 				t.Fatalf("cannot load sample %s: %s", dir+file.Name(), err)
 			}
-			got, err := ex.Explain(eq)
+			query, err := bson.MarshalJSON(eq)
+			if err != nil {
+				t.Fatalf("cannot marshal json %s: %s", dir+file.Name(), err)
+			}
+			got, err := ex.Explain("", query)
 			expectErrMsg := expectError[file.Name()]
 			gotErrMsg := fmt.Sprintf("%v", err)
 			if gotErrMsg != expectErrMsg {
 				t.Fatalf("explain error should be '%s' but was '%s'", expectErrMsg, gotErrMsg)
 			}
 
-			if err != nil {
-				return
-			}
-
-			result := proto.BsonD{}
-			err = bson.UnmarshalJSON(got, &result)
-			if err != nil {
-				t.Fatalf("cannot unmarshal json explain result: %s", err)
+			if err == nil {
+				result := proto.BsonD{}
+				err = bson.UnmarshalJSON(got, &result)
+				if err != nil {
+					t.Fatalf("cannot unmarshal json explain result: %s", err)
+				}
 			}
 		})
 	}
