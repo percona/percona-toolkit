@@ -26,10 +26,10 @@ install:
   # remove vendor dir and re-fetch it to check later if it's correct with `git diff --exit-code`
   - rm -rf vendor/
   - glide install
-
-before_script:
   # check if vendor dir is correct
   - git diff --exit-code
+
+before_script:
   # run docker containers
   - docker-compose up -d
   # log versions
