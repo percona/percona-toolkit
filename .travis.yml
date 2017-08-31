@@ -15,6 +15,7 @@ env:
     - MONGODB_IMAGE=mongo:3.0
     - MONGODB_IMAGE=mongo:3.2
     - MONGODB_IMAGE=mongo:3.4
+    - MONGODB_IMAGE=percona/percona-server-mongodb:3.0
     - MONGODB_IMAGE=percona/percona-server-mongodb:3.2
     - MONGODB_IMAGE=percona/percona-server-mongodb:3.4
 
