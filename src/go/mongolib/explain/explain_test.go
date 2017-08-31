@@ -108,6 +108,14 @@ func TestExplain(t *testing.T) {
 				expectError["insert_"+v] = "Only update and delete write ops can be explained"
 			}
 		}
+
+		// Explaining `distinct` and `findAndModify` was introduced in MongoDB 3.2
+		if ok, _ := Constraint(">= 3.0, < 3.2", bi.Version); ok {
+			for _, v := range versions {
+				expectError["distinct_"+v] = "Cannot explain cmd: distinct"
+				expectError["findandmodify_"+v] = "Cannot explain cmd: findAndModify"
+			}
+		}
 	}
 
 	ex := New(session)
