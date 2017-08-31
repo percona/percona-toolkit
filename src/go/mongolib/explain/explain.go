@@ -24,7 +24,7 @@ func (e *explain) Explain(db string, query []byte) ([]byte, error) {
 
 	err = bson.UnmarshalJSON(query, &eq)
 	if err != nil {
-		return nil, fmt.Errorf("explain: unable to decode query %v: %s", query, err)
+		return nil, fmt.Errorf("explain: unable to decode query %s: %s", string(query), err)
 	}
 
 	if db == "" {
@@ -39,7 +39,7 @@ func (e *explain) Explain(db string, query []byte) ([]byte, error) {
 
 	resultJson, err := bson.MarshalJSON(result)
 	if err != nil {
-		return nil, fmt.Errorf("explain: unable to encode explain result of %v: %s", query, err)
+		return nil, fmt.Errorf("explain: unable to encode explain result of %s: %s", string(query), err)
 	}
 
 	return resultJson, nil
