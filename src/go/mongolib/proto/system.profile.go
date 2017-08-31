@@ -138,6 +138,18 @@ func (self ExampleQuery) ExplainCmd() bson.D {
 				{"find", coll},
 				{"filter", filter},
 			}
+		} else {
+			for i := range cmd {
+				// drop $db param as it is not supported in MongoDB 3.0
+				if cmd[i].Name == "$db" {
+					if len(cmd) - 1 == i {
+						cmd = cmd[:i]
+					} else {
+						cmd = append(cmd[:i], cmd[i+1:]...)
+					}
+					break
+				}
+			}
 		}
 	case "update":
 		s := strings.SplitN(self.Ns, ".", 2)
@@ -192,8 +204,8 @@ func (self ExampleQuery) ExplainCmd() bson.D {
 			break
 		}
 
-		if v, ok := cmd[0].Value.(BsonD); ok {
-			for i := range v {
+		if group, ok := cmd[0].Value.(BsonD); ok {
+			for i := range group {
 				// for MongoDB <= 3.2
 				// "$reduce" : function () {}
 				// It is then Unmarshaled as empty value, so in essence not working
@@ -206,9 +218,9 @@ func (self ExampleQuery) ExplainCmd() bson.D {
 				//
 				// The $reduce function shouldn't affect explain execution plan (e.g. what indexes are picked)
 				// so we ignore it for now until we find better way to handle this issue
-				if v[i].Name == "$reduce" {
-					v[i].Value = ""
-					cmd[0].Value = v
+				if group[i].Name == "$reduce" {
+					group[i].Value = "{}"
+					cmd[0].Value = group
 					break
 				}
 			}
