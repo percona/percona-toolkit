@@ -288,6 +288,8 @@ func TestCalcStats(t *testing.T) {
 	prof := NewProfiler(iter, filters, nil, s)
 
 	prof.Start()
+	defer prof.Stop()
+
 	select {
 	case queries := <-prof.QueriesChan():
 		s := queries.CalcQueriesStats(1)
