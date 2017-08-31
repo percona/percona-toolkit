@@ -36,6 +36,8 @@ before_script:
   - docker --version
   - docker-compose --version
   - docker-compose exec mongo mongo --version
+  # we need at least one document in test db
+  - mongo --eval 'db.init.insert({})'
 
 script:
   - go test -timeout 1m $(glide nv)
