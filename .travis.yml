@@ -5,7 +5,21 @@ language: go
 
 go:
   - 1.8.x
-  - tip
+
+services:
+  - docker
+
+env:
+  matrix:
+    - MONGODB_IMAGE=mongo:3.2
+    - MONGODB_IMAGE=mongo:3.4
+    - MONGODB_IMAGE=percona/percona-server-mongodb:3.2
+    - MONGODB_IMAGE=percona/percona-server-mongodb:3.4
+
+matrix:
+  include:
+    - go: tip
+      env:
 
 install:
   - go get -u github.com/Masterminds/glide
@@ -16,6 +30,12 @@ install:
 before_script:
   # check if vendor dir is correct
   - git diff --exit-code
+  # run docker containers
+  - docker-compose up -d
+  # log versions
+  - docker --version
+  - docker-compose --version
+  - docker-compose exec mongo mongo --version
 
 script:
   - go test -timeout 1m $(glide nv)

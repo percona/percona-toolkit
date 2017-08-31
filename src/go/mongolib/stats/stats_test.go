@@ -142,7 +142,7 @@ func TestStats(t *testing.T) {
 		ID:             "4e4774ad26f934a193757002a991ebb8",
 		Namespace:      "samples.col1",
 		Operation:      "query",
-		Query:          "{\n    \"find\": \"col1\",\n    \"filter\": {\n        \"s2\": {\n            \"$gte\": \"41991\",\n            \"$lt\": \"33754\"\n        }\n    },\n    \"shardVersion\": [\n        0,\n        \"000000000000000000000000\"\n    ]\n}",
+		Query:          "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"filter\":{\"s2\":{\"$gte\":\"41991\",\"$lt\":\"33754\"}},\"shardVersion\":[0,\"000000000000000000000000\"]}}\n",
 		Fingerprint:    "FIND col1 s2",
 		FirstSeen:      parseDate("2017-04-10T13:15:53.532-03:00"),
 		LastSeen:       parseDate("2017-04-10T13:15:53.532-03:00"),

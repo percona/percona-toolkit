@@ -6,11 +6,11 @@ import (
 	"sort"
 	"sync"
 	"time"
-	"encoding/json"
 
 	"github.com/montanaflynn/stats"
 	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type StatsError struct {
@@ -30,7 +30,6 @@ func (e *StatsError) Parent() error {
 }
 
 type StatsFingerprintError StatsError
-type StatsGetQueryFieldError StatsError
 
 // New creates new instance of stats with given fingerprinter
 func New(fingerprinter fingerprinter.Fingerprinter) *Stats {
@@ -75,14 +74,8 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 		Namespace:   doc.Ns,
 	}
 	if qiac, ok = s.getQueryInfoAndCounters(key); !ok {
-		query := doc.Query
-		if doc.Command.Len() > 0 {
-			query = doc.Command
-		}
-		if err != nil {
-			return &StatsGetQueryFieldError{err}
-		}
-		queryBson, err := json.MarshalIndent(query, "", "    ")
+		query := proto.NewExampleQuery(doc)
+		queryBson, err := bson.MarshalJSON(query)
 		if err != nil {
 			return err
 		}
