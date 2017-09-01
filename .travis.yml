@@ -28,11 +28,7 @@ matrix:
 
 install:
   - go get -u github.com/Masterminds/glide
-  # remove vendor dir and re-fetch it to check later if it's correct with `git diff --exit-code`
-  - rm -rf vendor/
-  - glide install
-  # check if vendor dir is correct
-  - git diff --exit-code
+  - glide install -v
 
 before_script:
   # run docker containers
