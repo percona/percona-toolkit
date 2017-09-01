@@ -34,7 +34,7 @@ func TestMain(m *testing.M) {
 	os.Exit(retCode)
 }
 
-func ExampleServerStatus() {
+func ExamplePing() {
 	ss := map[string]interface{}{}
 	if err := session.DB("admin").Run(bson.D{{"ping", 1}}, &ss); err != nil {
 		panic(err)
