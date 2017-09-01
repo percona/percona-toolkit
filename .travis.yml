@@ -21,6 +21,8 @@ env:
 
 matrix:
   include:
+    - go: 1.9.x
+      env:
     - go: tip
       env:
 
