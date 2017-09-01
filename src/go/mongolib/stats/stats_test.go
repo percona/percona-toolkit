@@ -1,15 +1,16 @@
 package stats
 
 import (
-	"github.com/golang/mock/gomock"
-	"github.com/percona/percona-toolkit/src/go/lib/tutil"
-	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
-	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"log"
 	"os"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/golang/mock/gomock"
+	"github.com/percona/percona-toolkit/src/go/lib/tutil"
+	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
+	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 )
 
 const (

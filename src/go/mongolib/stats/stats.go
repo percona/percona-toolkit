@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -110,9 +111,15 @@ func (s *Stats) Queries() Queries {
 	s.RLock()
 	defer s.RUnlock()
 
+	keys := GroupKeys{}
+	for key := range s.queryInfoAndCounters {
+		keys = append(keys, key)
+	}
+	sort.Sort(keys)
+
 	queries := []QueryInfoAndCounters{}
-	for _, v := range s.queryInfoAndCounters {
-		queries = append(queries, *v)
+	for _, key := range keys {
+		queries = append(queries, *s.queryInfoAndCounters[key])
 	}
 	return queries
 }
@@ -184,10 +191,29 @@ func (a Times) Len() int           { return len(a) }
 func (a Times) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a Times) Less(i, j int) bool { return a[i].Before(a[j]) }
 
+type GroupKeys []GroupKey
+
+func (a GroupKeys) Len() int           { return len(a) }
+func (a GroupKeys) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a GroupKeys) Less(i, j int) bool { return a[i].String() < a[j].String() }
+
 type GroupKey struct {
 	Operation   string
-	Fingerprint string
 	Namespace   string
+	Fingerprint string
+}
+
+func (g GroupKey) String() string {
+	v := struct {
+		Operation   string
+		Fingerprint string
+		Namespace   string
+	}{
+		g.Operation,
+		g.Fingerprint,
+		g.Namespace,
+	}
+	return fmt.Sprintf("%s", v)
 }
 
 type totalCounters struct {
