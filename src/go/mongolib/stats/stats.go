@@ -2,7 +2,6 @@ package stats
 
 import (
 	"crypto/md5"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"sync"
