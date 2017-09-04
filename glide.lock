@@ -1,5 +1,5 @@
-hash: 203838fffdc6549caf8a6a439df2e2df48fe15449dedc702b632f2b06f66ae72
-updated: 2017-08-18T11:00:19.296275985+02:00
+hash: 6d30e29455f610ee47cc43bafd9390da029e7fe8cf5dafe510e423e9c0e897a0
+updated: 2017-08-31T20:21:56.600678687+02:00
 imports:
 - name: github.com/bradfitz/slice
   version: d9036e2120b5ddfa53f3ebccd618c4af275f47da
@@ -8,7 +8,7 @@ imports:
   subpackages:
   - oleutil
 - name: github.com/golang/mock
-  version: 1df903b45f27b0b3685fa78609b653a54c7eead8
+  version: 18f6dd13ccdd227b8ebc546ca95cd62a02f3970c
   subpackages:
   - gomock
 - name: github.com/hashicorp/go-version
@@ -17,6 +17,8 @@ imports:
   version: bf9dde6d0d2c004a008c27aaee91170c786f6db8
 - name: github.com/kr/pretty
   version: cfb55aafdaf3ec08f0db22699ab822c50091b1c4
+- name: github.com/Masterminds/semver
+  version: 517734cc7d6470c0d07130e40fd40bdeb9bcd3fd
 - name: github.com/montanaflynn/stats
   version: 4a163274fa4ca0b524ccee24757d7bec79475aca
 - name: github.com/pborman/getopt
@@ -24,7 +26,7 @@ imports:
   subpackages:
   - v2
 - name: github.com/percona/pmgo
-  version: 9566dc76df319b856a12f24a3b6852a0c6463eff
+  version: 43e01b1a87fe20317bf4329d4ab3cb8d58d50886
   subpackages:
   - pmgomock
 - name: github.com/pkg/errors
@@ -32,7 +34,7 @@ imports:
 - name: github.com/satori/go.uuid
   version: 5bf94b69c6b68ee1b541973bb8e1144db23a194b
 - name: github.com/shirou/gopsutil
-  version: 1c211f0807a3436707409fa313599dd8c7a48664
+  version: a452de7c734a0fa0f16d2e5725b0fa5934d9fbec
   subpackages:
   - cpu
   - host
@@ -43,7 +45,7 @@ imports:
 - name: github.com/shirou/w32
   version: bb4de0191aa41b5507caa14b0650cdbddcd9280b
 - name: github.com/sirupsen/logrus
-  version: 68806b4b77355d6c8577a2c8bbc6d547a5272491
+  version: 89742aefa4b206dcf400792f3bd35b542998eb3b
 - name: github.com/StackExchange/wmi
   version: ea383cf3ba6ec950874b8486cd72356d007c768f
 - name: go4.org
@@ -51,7 +53,7 @@ imports:
   subpackages:
   - reflectutil
 - name: golang.org/x/crypto
-  version: b176d7def5d71bdd214203491f89843ed217f420
+  version: 81e90905daefcd6fd217b62423c0908922eadb30
   subpackages:
   - ssh/terminal
 - name: golang.org/x/net
@@ -59,7 +61,7 @@ imports:
   subpackages:
   - context
 - name: golang.org/x/sys
-  version: 43e60d72a8e2bd92ee98319ba9a384a0e9837c08
+  version: bb24a47a89eac6c1227fbcb2ae37a8b9ed323366
   subpackages:
   - unix
   - windows

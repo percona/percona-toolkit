@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 
 	"gopkg.in/mgo.v2/bson"
 )
@@ -97,17 +98,31 @@ func (d BsonD) MarshalJSON() ([]byte, error) {
 		}
 
 		// marshal key
-		key, err := json.Marshal(v.Name)
+		key, err := bson.MarshalJSON(v.Name)
 		if err != nil {
 			return nil, err
 		}
 		b.Write(key)
 		b.WriteByte(':')
 
-		// marshal value
-		val, err := json.Marshal(v.Value)
-		if err != nil {
-			return nil, err
+		var val []byte
+		if value, ok := v.Value.(float64); ok && math.IsInf(value, 0) {
+			if math.IsInf(value, 1) {
+				val = []byte("Infinity")
+			} else {
+				val = []byte("-Infinity")
+			}
+
+			// below is wrong, but I'm later unable to Unmarshal Infinity,
+			// so we turn it into string for now
+			val = append([]byte(`"`), val...)
+			val = append(val, '"')
+		} else {
+			// marshal value
+			val, err = bson.MarshalJSON(v.Value)
+			if err != nil {
+				return nil, err
+			}
 		}
 		b.Write(val)
 	}

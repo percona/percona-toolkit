@@ -5,9 +5,8 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"strings"
-
 	"regexp"
+	"strings"
 
 	"gopkg.in/mgo.v2/bson"
 )

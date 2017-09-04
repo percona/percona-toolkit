@@ -73,7 +73,7 @@ func TestRegularIterator(t *testing.T) {
 			ID:             "16196765fb4c14edb91efdbe4f5c5973",
 			Namespace:      "samples.col1",
 			Operation:      "query",
-			Query:          "{\n    \"find\": \"col1\",\n    \"shardVersion\": [\n        0,\n        \"000000000000000000000000\"\n    ]\n}",
+			Query:          "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"shardVersion\":[0,\"000000000000000000000000\"]}}\n",
 			Fingerprint:    "FIND col1 find",
 			FirstSeen:      firstSeen,
 			LastSeen:       lastSeen,
@@ -130,7 +130,7 @@ func TestIteratorTimeout(t *testing.T) {
 			ID:             "16196765fb4c14edb91efdbe4f5c5973",
 			Namespace:      "samples.col1",
 			Operation:      "query",
-			Query:          "{\n    \"find\": \"col1\",\n    \"shardVersion\": [\n        0,\n        \"000000000000000000000000\"\n    ]\n}",
+			Query:          "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"shardVersion\":[0,\"000000000000000000000000\"]}}\n",
 			Fingerprint:    "FIND col1 find",
 			FirstSeen:      firstSeen,
 			LastSeen:       lastSeen,
@@ -211,7 +211,7 @@ func TestTailIterator(t *testing.T) {
 			ID:             "16196765fb4c14edb91efdbe4f5c5973",
 			Namespace:      "samples.col1",
 			Operation:      "query",
-			Query:          "{\n    \"find\": \"col1\",\n    \"shardVersion\": [\n        0,\n        \"000000000000000000000000\"\n    ]\n}",
+			Query:          "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"shardVersion\":[0,\"000000000000000000000000\"]}}\n",
 			Fingerprint:    "FIND col1 find",
 			FirstSeen:      parseDate("2017-04-01T23:01:20.214+00:00"),
 			LastSeen:       parseDate("2017-04-01T23:01:20.214+00:00"),
@@ -226,7 +226,7 @@ func TestTailIterator(t *testing.T) {
 			ID:             "16196765fb4c14edb91efdbe4f5c5973",
 			Namespace:      "samples.col1",
 			Operation:      "query",
-			Query:          "{\n    \"find\": \"col1\",\n    \"shardVersion\": [\n        0,\n        \"000000000000000000000000\"\n    ]\n}",
+			Query:          "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"shardVersion\":[0,\"000000000000000000000000\"]}}\n",
 			Fingerprint:    "FIND col1 find",
 			FirstSeen:      parseDate("2017-04-01T23:01:19.914+00:00"),
 			LastSeen:       parseDate("2017-04-01T23:01:19.914+00:00"),
@@ -288,6 +288,8 @@ func TestCalcStats(t *testing.T) {
 	prof := NewProfiler(iter, filters, nil, s)
 
 	prof.Start()
+	defer prof.Stop()
+
 	select {
 	case queries := <-prof.QueriesChan():
 		s := queries.CalcQueriesStats(1)

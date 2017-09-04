@@ -29,6 +29,14 @@ matrix:
 install:
   - go get -u github.com/Masterminds/glide
   - glide install -v
+  # run docker containers
+  - docker-compose up -d
+  # log versions
+  - docker --version
+  - docker-compose --version
+  - docker-compose exec mongo mongo --version
+  # we need at least one document in test db
+  - mongo --eval 'db.init.insert({})'
 
 before_script:
   # run docker containers

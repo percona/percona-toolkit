@@ -1,0 +1,33 @@
+{
+	"op" : "remove",
+	"ns" : "test.coll",
+	"query" : {
+		"a" : {
+			"$gte" : 2
+		},
+		"b" : {
+			"$gte" : 2
+		}
+	},
+	"ndeleted" : 15,
+	"keyUpdates" : 0,
+	"numYield" : 0,
+	"lockStats" : {
+		"timeLockedMicros" : {
+			"r" : NumberLong(0),
+			"w" : NumberLong(238)
+		},
+		"timeAcquiringMicros" : {
+			"r" : NumberLong(0),
+			"w" : NumberLong(4)
+		}
+	},
+	"millis" : 0,
+	"execStats" : {
+		
+	},
+	"ts" : ISODate("2017-08-30T10:54:45.348Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}

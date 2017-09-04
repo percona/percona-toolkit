@@ -1,0 +1,47 @@
+{
+	"op" : "remove",
+	"ns" : "test.coll",
+	"query" : {
+		"a" : {
+			"$gte" : 2
+		},
+		"b" : {
+			"$gte" : 2
+		}
+	},
+	"ndeleted" : 15,
+	"keyUpdates" : 0,
+	"writeConflicts" : 0,
+	"numYield" : 0,
+	"locks" : {
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(1),
+				"w" : NumberLong(1)
+			}
+		},
+		"MMAPV1Journal" : {
+			"acquireCount" : {
+				"w" : NumberLong(16)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"w" : NumberLong(1)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"W" : NumberLong(1)
+			}
+		}
+	},
+	"millis" : 1,
+	"execStats" : {
+		
+	},
+	"ts" : ISODate("2017-08-30T10:54:52.821Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}
