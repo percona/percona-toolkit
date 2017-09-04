@@ -1,0 +1,38 @@
+{
+	"op" : "insert",
+	"ns" : "test.coll",
+	"command" : {
+		"insert" : "coll",
+		"ordered" : true,
+		"$db" : "test"
+	},
+	"ninserted" : 1,
+	"keysInserted" : 2,
+	"numYield" : 0,
+	"locks" : {
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(1),
+				"w" : NumberLong(1)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"w" : NumberLong(1)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"w" : NumberLong(1)
+			}
+		}
+	},
+	"responseLength" : 29,
+	"protocol" : "op_msg",
+	"millis" : 0,
+	"ts" : ISODate("2017-08-20T15:39:49.440Z"),
+	"client" : "127.0.0.1",
+	"appName" : "MongoDB Shell",
+	"allUsers" : [ ],
+	"user" : ""
+}

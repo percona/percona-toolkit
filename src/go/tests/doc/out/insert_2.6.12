@@ -1,0 +1,28 @@
+{
+	"op" : "insert",
+	"ns" : "test.coll",
+	"query" : {
+		"_id" : 1
+	},
+	"ninserted" : 1,
+	"keyUpdates" : 0,
+	"numYield" : 0,
+	"lockStats" : {
+		"timeLockedMicros" : {
+			"r" : NumberLong(0),
+			"w" : NumberLong(90)
+		},
+		"timeAcquiringMicros" : {
+			"r" : NumberLong(0),
+			"w" : NumberLong(4)
+		}
+	},
+	"millis" : 0,
+	"execStats" : {
+		
+	},
+	"ts" : ISODate("2017-08-20T15:39:16.473Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}

@@ -1,0 +1,45 @@
+{
+	"op" : "insert",
+	"ns" : "test.coll",
+	"query" : {
+		"insert" : "coll",
+		"documents" : [
+			{
+				"_id" : 1
+			}
+		],
+		"ordered" : true
+	},
+	"ninserted" : 1,
+	"keyUpdates" : 0,
+	"writeConflicts" : 0,
+	"numYield" : 0,
+	"locks" : {
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(1),
+				"w" : NumberLong(1)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"w" : NumberLong(1)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"w" : NumberLong(1)
+			}
+		}
+	},
+	"responseLength" : 25,
+	"protocol" : "op_command",
+	"millis" : 0,
+	"execStats" : {
+		
+	},
+	"ts" : ISODate("2017-08-20T15:39:32.303Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}

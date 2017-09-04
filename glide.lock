@@ -1,14 +1,14 @@
-hash: 7cc97c518c04beac5926bfef5fafc2c291d1c8eff945390edb5e71fecbf461f2
-updated: 2017-07-10T21:03:28.164296188-03:00
+hash: 203838fffdc6549caf8a6a439df2e2df48fe15449dedc702b632f2b06f66ae72
+updated: 2017-08-18T11:00:19.296275985+02:00
 imports:
 - name: github.com/bradfitz/slice
   version: d9036e2120b5ddfa53f3ebccd618c4af275f47da
 - name: github.com/go-ole/go-ole
-  version: 02d3668a0cf01f58411cc85cd37c174c257ec7c2
+  version: 085abb85892dc1949567b726dff00fa226c60c45
   subpackages:
   - oleutil
 - name: github.com/golang/mock
-  version: 93f6609a15b7de76bd49259f1f9a6b58df358936
+  version: 1df903b45f27b0b3685fa78609b653a54c7eead8
   subpackages:
   - gomock
 - name: github.com/hashicorp/go-version
@@ -18,7 +18,7 @@ imports:
 - name: github.com/kr/pretty
   version: cfb55aafdaf3ec08f0db22699ab822c50091b1c4
 - name: github.com/montanaflynn/stats
-  version: 41c34e4914ec3c05d485e564d9028d8861d5d9ad
+  version: 4a163274fa4ca0b524ccee24757d7bec79475aca
 - name: github.com/pborman/getopt
   version: 7148bc3a4c3008adfcab60cbebfd0576018f330b
   subpackages:
@@ -32,7 +32,7 @@ imports:
 - name: github.com/satori/go.uuid
   version: 5bf94b69c6b68ee1b541973bb8e1144db23a194b
 - name: github.com/shirou/gopsutil
-  version: 09e98597147f04686f71603d5525627cd066701d
+  version: 1c211f0807a3436707409fa313599dd8c7a48664
   subpackages:
   - cpu
   - host
@@ -43,7 +43,7 @@ imports:
 - name: github.com/shirou/w32
   version: bb4de0191aa41b5507caa14b0650cdbddcd9280b
 - name: github.com/sirupsen/logrus
-  version: 7f976d3a76720c4c27af2ba716b85d2e0a7e38b1
+  version: 68806b4b77355d6c8577a2c8bbc6d547a5272491
 - name: github.com/StackExchange/wmi
   version: ea383cf3ba6ec950874b8486cd72356d007c768f
 - name: go4.org
@@ -51,15 +51,15 @@ imports:
   subpackages:
   - reflectutil
 - name: golang.org/x/crypto
-  version: 3627ff35f31987174dbee61d9d1dcc1c643e7174
+  version: b176d7def5d71bdd214203491f89843ed217f420
   subpackages:
   - ssh/terminal
 - name: golang.org/x/net
-  version: 054b33e6527139ad5b1ec2f6232c3b175bd9a30c
+  version: 1c05540f6879653db88113bc4a2b70aec4bd491f
   subpackages:
   - context
 - name: golang.org/x/sys
-  version: abf9c25f54453410d0c6668e519582a9e1115027
+  version: 43e60d72a8e2bd92ee98319ba9a384a0e9837c08
   subpackages:
   - unix
   - windows

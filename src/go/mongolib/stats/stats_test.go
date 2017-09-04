@@ -139,11 +139,11 @@ func TestStats(t *testing.T) {
 		t.Errorf("Error processing doc: %s\n", err.Error())
 	}
 	statsVal := QueryInfoAndCounters{
-		ID:             "84e09ef6a3dc35f472df05fa98eee7d3",
+		ID:             "4e4774ad26f934a193757002a991ebb8",
 		Namespace:      "samples.col1",
 		Operation:      "query",
-		Query:          map[string]interface{}{"s2": map[string]interface{}{"$gte": "41991", "$lt": "33754"}},
-		Fingerprint:    "s2",
+		Query:          "{\n    \"find\": \"col1\",\n    \"filter\": {\n        \"s2\": {\n            \"$gte\": \"41991\",\n            \"$lt\": \"33754\"\n        }\n    },\n    \"shardVersion\": [\n        0,\n        \"000000000000000000000000\"\n    ]\n}",
+		Fingerprint:    "FIND col1 s2",
 		FirstSeen:      parseDate("2017-04-10T13:15:53.532-03:00"),
 		LastSeen:       parseDate("2017-04-10T13:15:53.532-03:00"),
 		TableScan:      false,

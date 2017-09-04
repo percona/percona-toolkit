@@ -1,0 +1,146 @@
+{
+	"op" : "query",
+	"ns" : "test.coll",
+	"query" : {
+		"query" : {
+			"$and" : [
+				{
+					"k" : {
+						"$gt" : 1
+					}
+				},
+				{
+					"k" : {
+						"$lt" : 2
+					}
+				},
+				{
+					"$or" : [
+						{
+							"c" : {
+								"$in" : [
+									/^0/,
+									/^2/,
+									/^4/,
+									/^6/
+								]
+							}
+						},
+						{
+							"pad" : {
+								"$in" : [
+									/9$/,
+									/7$/,
+									/5$/,
+									/3$/
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		"orderby" : {
+			"k" : -1
+		}
+	},
+	"ntoreturn" : 100,
+	"ntoskip" : 0,
+	"nscanned" : 98,
+	"nscannedObjects" : 98,
+	"keyUpdates" : 0,
+	"numYield" : 0,
+	"lockStats" : {
+		"timeLockedMicros" : {
+			"r" : NumberLong(951),
+			"w" : NumberLong(0)
+		},
+		"timeAcquiringMicros" : {
+			"r" : NumberLong(3),
+			"w" : NumberLong(2)
+		}
+	},
+	"nreturned" : 0,
+	"responseLength" : 20,
+	"millis" : 0,
+	"execStats" : {
+		"type" : "OR",
+		"works" : 106,
+		"yields" : 0,
+		"unyields" : 0,
+		"invalidates" : 0,
+		"advanced" : 0,
+		"needTime" : 105,
+		"needFetch" : 0,
+		"isEOF" : 1,
+		"dupsTested" : 0,
+		"dupsDropped" : 0,
+		"locsForgotten" : 0,
+		"matchTested_0" : 0,
+		"matchTested_1" : 0,
+		"children" : [
+			{
+				"type" : "SORT",
+				"works" : 53,
+				"yields" : 0,
+				"unyields" : 0,
+				"invalidates" : 0,
+				"advanced" : 0,
+				"needTime" : 51,
+				"needFetch" : 0,
+				"isEOF" : 1,
+				"forcedFetches" : 0,
+				"memUsage" : 0,
+				"memLimit" : 33554432,
+				"children" : [
+					{
+						"type" : "COLLSCAN",
+						"works" : 51,
+						"yields" : 0,
+						"unyields" : 0,
+						"invalidates" : 0,
+						"advanced" : 0,
+						"needTime" : 50,
+						"needFetch" : 0,
+						"isEOF" : 1,
+						"docsTested" : 49,
+						"children" : [ ]
+					}
+				]
+			},
+			{
+				"type" : "SORT",
+				"works" : 53,
+				"yields" : 0,
+				"unyields" : 0,
+				"invalidates" : 0,
+				"advanced" : 0,
+				"needTime" : 51,
+				"needFetch" : 0,
+				"isEOF" : 1,
+				"forcedFetches" : 0,
+				"memUsage" : 0,
+				"memLimit" : 33554432,
+				"children" : [
+					{
+						"type" : "COLLSCAN",
+						"works" : 51,
+						"yields" : 0,
+						"unyields" : 0,
+						"invalidates" : 0,
+						"advanced" : 0,
+						"needTime" : 50,
+						"needFetch" : 0,
+						"isEOF" : 1,
+						"docsTested" : 49,
+						"children" : [ ]
+					}
+				]
+			}
+		]
+	},
+	"ts" : ISODate("2017-08-20T15:39:15.616Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}

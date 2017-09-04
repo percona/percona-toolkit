@@ -139,7 +139,7 @@ func (p *Profile) getDocs() {
 		if !valid {
 			continue
 		}
-		if len(doc.Query) > 0 {
+		if doc.Query.Len() > 0 {
 			p.stats.Add(doc)
 		}
 	}

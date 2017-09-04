@@ -11,7 +11,6 @@ import (
 	"github.com/montanaflynn/stats"
 	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
-	"github.com/percona/percona-toolkit/src/go/mongolib/util"
 )
 
 type StatsError struct {
@@ -63,7 +62,7 @@ func (s *Stats) Reset() {
 
 // Add adds proto.SystemProfile to the collection of statistics
 func (s *Stats) Add(doc proto.SystemProfile) error {
-	fp, err := s.fingerprinter.Fingerprint(doc.Query)
+	fp, err := s.fingerprinter.Fingerprint(doc)
 	if err != nil {
 		return &StatsFingerprintError{err}
 	}
@@ -76,9 +75,16 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 		Namespace:   doc.Ns,
 	}
 	if qiac, ok = s.getQueryInfoAndCounters(key); !ok {
-		realQuery, err := util.GetQueryField(doc.Query)
+		query := doc.Query
+		if doc.Command.Len() > 0 {
+			query = doc.Command
+		}
 		if err != nil {
 			return &StatsGetQueryFieldError{err}
+		}
+		queryBson, err := json.MarshalIndent(query, "", "    ")
+		if err != nil {
+			return err
 		}
 		qiac = &QueryInfoAndCounters{
 			ID:          fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s", key)))),
@@ -86,7 +92,7 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 			Fingerprint: fp,
 			Namespace:   doc.Ns,
 			TableScan:   false,
-			Query:       realQuery,
+			Query:       string(queryBson),
 		}
 		s.setQueryInfoAndCounters(key, qiac)
 	}
@@ -95,11 +101,10 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 	qiac.NReturned = append(qiac.NReturned, float64(doc.Nreturned))
 	qiac.QueryTime = append(qiac.QueryTime, float64(doc.Millis))
 	qiac.ResponseLength = append(qiac.ResponseLength, float64(doc.ResponseLength))
-	var zeroTime time.Time
-	if qiac.FirstSeen == zeroTime || qiac.FirstSeen.After(doc.Ts) {
+	if qiac.FirstSeen.IsZero() || qiac.FirstSeen.After(doc.Ts) {
 		qiac.FirstSeen = doc.Ts
 	}
-	if qiac.LastSeen == zeroTime || qiac.LastSeen.Before(doc.Ts) {
+	if qiac.LastSeen.IsZero() || qiac.LastSeen.Before(doc.Ts) {
 		qiac.LastSeen = doc.Ts
 	}
 
@@ -169,7 +174,7 @@ type QueryInfoAndCounters struct {
 	ID          string
 	Namespace   string
 	Operation   string
-	Query       map[string]interface{}
+	Query       string
 	Fingerprint string
 	FirstSeen   time.Time
 	LastSeen    time.Time
@@ -204,16 +209,7 @@ type GroupKey struct {
 }
 
 func (g GroupKey) String() string {
-	v := struct {
-		Operation   string
-		Fingerprint string
-		Namespace   string
-	}{
-		g.Operation,
-		g.Fingerprint,
-		g.Namespace,
-	}
-	return fmt.Sprintf("%s", v)
+	return g.Operation + g.Namespace + g.Fingerprint
 }
 
 type totalCounters struct {
@@ -255,12 +251,11 @@ type Statistics struct {
 }
 
 func countersToStats(query QueryInfoAndCounters, uptime int64, tc totalCounters) QueryStats {
-	buf, _ := json.Marshal(query.Query)
 	queryStats := QueryStats{
 		Count:          query.Count,
 		ID:             query.ID,
 		Operation:      query.Operation,
-		Query:          string(buf),
+		Query:          query.Query,
 		Fingerprint:    query.Fingerprint,
 		Scanned:        calcStats(query.NScanned),
 		Returned:       calcStats(query.NReturned),

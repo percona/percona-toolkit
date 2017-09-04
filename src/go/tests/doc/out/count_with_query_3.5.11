@@ -1,0 +1,96 @@
+{
+	"op" : "command",
+	"ns" : "test.coll",
+	"command" : {
+		"count" : "coll",
+		"query" : {
+			"a" : {
+				"$gt" : 5
+			}
+		},
+		"fields" : {
+			
+		},
+		"$db" : "test"
+	},
+	"keysExamined" : 13,
+	"docsExamined" : 0,
+	"numYield" : 0,
+	"locks" : {
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(2)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		}
+	},
+	"responseLength" : 29,
+	"protocol" : "op_msg",
+	"millis" : 0,
+	"planSummary" : "COUNT_SCAN { a: 1 }",
+	"execStats" : {
+		"stage" : "COUNT",
+		"nReturned" : 0,
+		"executionTimeMillisEstimate" : 0,
+		"works" : 13,
+		"advanced" : 0,
+		"needTime" : 12,
+		"needYield" : 0,
+		"saveState" : 0,
+		"restoreState" : 0,
+		"isEOF" : 1,
+		"invalidates" : 0,
+		"nCounted" : 12,
+		"nSkipped" : 0,
+		"inputStage" : {
+			"stage" : "COUNT_SCAN",
+			"nReturned" : 12,
+			"executionTimeMillisEstimate" : 0,
+			"works" : 13,
+			"advanced" : 12,
+			"needTime" : 0,
+			"needYield" : 0,
+			"saveState" : 0,
+			"restoreState" : 0,
+			"isEOF" : 1,
+			"invalidates" : 0,
+			"keysExamined" : 13,
+			"keyPattern" : {
+				"a" : 1
+			},
+			"indexName" : "a_1",
+			"isMultiKey" : false,
+			"multiKeyPaths" : {
+				"a" : [ ]
+			},
+			"isUnique" : false,
+			"isSparse" : false,
+			"isPartial" : false,
+			"indexVersion" : 2,
+			"indexBounds" : {
+				"startKey" : {
+					"a" : 5
+				},
+				"startKeyInclusive" : false,
+				"endKey" : {
+					"a" : Infinity
+				},
+				"endKeyInclusive" : true
+			}
+		}
+	},
+	"ts" : ISODate("2017-08-20T15:39:47.573Z"),
+	"client" : "127.0.0.1",
+	"appName" : "MongoDB Shell",
+	"allUsers" : [ ],
+	"user" : ""
+}

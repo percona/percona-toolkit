@@ -6,6 +6,10 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"regexp"
+
+	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -37,6 +41,39 @@ func LoadJson(filename string, destination interface{}) error {
 	}
 
 	err = json.Unmarshal(buf, &destination)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func LoadBson(filename string, destination interface{}) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+
+	buf, err := ioutil.ReadAll(file)
+	if err != nil {
+		return err
+	}
+
+	// https://github.com/go-mgo/mgo/issues/363
+	re := regexp.MustCompile(`" :`)
+	buf = re.ReplaceAll(buf, []byte(`":`))
+
+	// Using regexp is not supported
+	// https://github.com/go-mgo/mgo/issues/363
+	re = regexp.MustCompile(`(/.*/)`)
+	buf = re.ReplaceAll(buf, []byte(`"$1"`))
+
+	// Using functions is not supported
+	// https://github.com/go-mgo/mgo/issues/363
+	re = regexp.MustCompile(`(?s): (function \(.*?\) {.*?})`)
+	buf = re.ReplaceAll(buf, []byte(`: ""`))
+
+	err = bson.UnmarshalJSON(buf, &destination)
 	if err != nil {
 		return err
 	}

@@ -1,0 +1,36 @@
+{
+	"op" : "command",
+	"ns" : "test.$cmd",
+	"command" : {
+		"geoNear" : "coll",
+		"near" : {
+			"type" : "Point",
+			"coordinates" : [
+				1,
+				1
+			]
+		},
+		"spherical" : true
+	},
+	"keyUpdates" : 0,
+	"numYield" : 0,
+	"lockStats" : {
+		"timeLockedMicros" : {
+			"r" : NumberLong(1851),
+			"w" : NumberLong(0)
+		},
+		"timeAcquiringMicros" : {
+			"r" : NumberLong(3),
+			"w" : NumberLong(3)
+		}
+	},
+	"responseLength" : 1406,
+	"millis" : 1,
+	"execStats" : {
+		
+	},
+	"ts" : ISODate("2017-08-20T15:39:16.061Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}

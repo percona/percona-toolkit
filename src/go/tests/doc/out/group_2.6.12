@@ -1,0 +1,41 @@
+{
+	"op" : "command",
+	"ns" : "test.$cmd",
+	"command" : {
+		"group" : {
+			"key" : {
+				"a" : 1,
+				"b" : 1
+			},
+			"cond" : {
+				"b" : 3
+			},
+			"initial" : {
+				
+			},
+			"ns" : "coll",
+			"$reduce" : function () {}
+		}
+	},
+	"keyUpdates" : 0,
+	"numYield" : 0,
+	"lockStats" : {
+		"timeLockedMicros" : {
+			"r" : NumberLong(77899),
+			"w" : NumberLong(0)
+		},
+		"timeAcquiringMicros" : {
+			"r" : NumberLong(3),
+			"w" : NumberLong(2075)
+		}
+	},
+	"responseLength" : 135,
+	"millis" : 77,
+	"execStats" : {
+		
+	},
+	"ts" : ISODate("2017-08-20T15:39:16.325Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}
