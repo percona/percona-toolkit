@@ -47,7 +47,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.4';
+our $VERSION = '3.0.5';
 
 use strict;
 use warnings FATAL => 'all';
@@ -3297,6 +3297,17 @@ sub new {
    foreach my $arg ( qw(MasterSlave) ) {
       die "I need a $arg argument" unless $args{$arg};
    }
+   my $kill_busy_commands = {};
+   if ($args{kill_busy_commands}) {
+       for my $command (split /,/,$args{kill_busy_commands}) {
+           $command =~ s/^\s+|\s+$//g;
+           $kill_busy_commands->{$command} = 1;
+       }
+   } else {
+       $kill_busy_commands->{Query} = 1;
+   }
+   $args{kill_busy_commands} = $kill_busy_commands;
+
    my $self = {
       %args,
       polls       => 0,
@@ -3523,7 +3534,7 @@ sub find {
          next QUERY;
       }
 
-      if ( $find_spec{busy_time} && ($query->{Command} || '') eq 'Query' ) {
+      if ( $find_spec{busy_time} && exists($self->{kill_busy_commands}->{$query->{Command} || ''}) ) {
          next QUERY unless defined($query->{Time});
          if ( $query->{Time} < $find_spec{busy_time} ) {
             PTDEBUG && _d("Query isn't running long enough");
@@ -6788,7 +6799,7 @@ sub main {
       DSNParser    => $dp,
       Quoter       => "Quoter",
    );
-   my $pl = new Processlist(MasterSlave => $ms);
+   my $pl = new Processlist(MasterSlave => $ms, kill_busy_commands => $o->get('kill-busy-commands'));
    my $qr = new QueryRewriter();
 
    my $cxn;
@@ -8197,6 +8208,21 @@ Unless L<"--print"> is also given, no other information is printed that shows
 that pt-kill matched and killed a query.
 
 See also L<"--wait-before-kill"> and L<"--wait-after-kill">.
+
+=item --kill-busy-commands
+
+default: Query
+
+group: Actions
+
+Comma sepatated list of commands that will be watched/killed if they ran for
+more than L<"--busy-time"> seconds. Default: C<Query>
+
+By default, L<"--busy-time"> kills only C<Query> commands but in some cases, it
+is needed to make L<"--busy-time"> to watch and kill other commands. For example,
+a prepared statement execution command is C<Execute> instead of C<Query>. In this
+case, specifying C<--kill-busy-commands=Query,Execute> will also kill the prepared
+stamente execution.
 
 =item --kill-query
 
