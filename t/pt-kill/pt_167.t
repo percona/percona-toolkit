@@ -11,6 +11,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Time::HiRes qw(sleep);
 use Test::More;
+use threads;
 
 use PerconaTest;
 use Sandbox;
@@ -21,6 +22,13 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
+
+my $o = new OptionParser(description => 'Diskstats',
+   file        => "$trunk/bin/pt-kill",
+);
+$o->get_specs("$trunk/bin/pt-table-checksum");
+$o->get_opts();
+
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
@@ -29,61 +37,58 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 
-my $output;
-my $dsn = $sb->dsn_for('master');
-my $cnf = '/tmp/12345/my.sandbox.cnf';
-
-# #############################################################################
-# Test that --kill-query only kills the query, not the connection.
-# #############################################################################
-
-# Here's how this works.  This cmd is going to try 2 queries on the same
-# connection: sleep5 and sleep3.  --kill-query will kill sleep5 causing
-# sleep3 to start using the same connection id (pid).
-system("/tmp/12345/use -e 'select sleep(5); select sleep(2)' >/dev/null&");
-sleep 0.5;
-
-SKIP: {
-                                         
-    skip "TODO";
-    my $iterations=99;
-    my $query = 'select benchmark(?, md5("when will it end?"))';
-    my $ps = $dbh->prepare($query);
-    $ps->execute($iterations);
-    my $rows = $dbh->selectall_hashref('show processlist', 'id');
-    my $pid = 0;  # reuse, reset
-    map  { $pid = $_->{id} }
-    grep { $_->{info} && $_->{info} =~ m/select sleep\(15\)/ }
-    values %$rows;
-    
-    ok(
-       $pid,
-       'Got proc id of sleeping query'
-    );
-    
-    $output = output(
-       sub { pt_kill::main('-F', $cnf, qw(--busy-time 4s --print --match-info "^(select|SELECT)")), },
-    );
-    like(
-       $output,
-       qr/KILL QUERY $pid /,
-       '--kill-query'
-    );
-    
-    sleep 1;
-    $rows = $dbh->selectall_hashref('show processlist', 'id');
-    my $con_alive = grep { $_->{id} eq $pid } values %$rows;
-    ok(
-       $con_alive,
-       'Killed query, not connection'
-    );
-    
-    is(
-       ($rows->{$pid}->{info} || ''),
-       'select sleep(3)',
-       'Connection is still alive'
-    );
+$sb->load_file('master', "t/pt-kill/samples/pt_167.sql");
+my $ps = $dbh->prepare('INSERT INTO test.foo VALUES (?)');
+for (my $i=0; $i < 20000; $i++) {
+    $ps->execute($i);
 }
+
+sub start_thread {
+   my ($dp, $o, $dsn, $sleep_time) = @_;
+
+   diag("Thread started");
+
+   my $cxn = new Cxn(DSNParser => $dp, OptionParser => $o, dsn => $dsn);
+   $cxn->connect();
+   my $dbh = $cxn->dbh();
+   my $sth = $dbh->prepare('SELECT COUNT(*) FROM (SELECT a.id AS a_id, b.id AS b_id FROM foo AS a, foo AS b) AS c');
+   # Since this query is going to be killed, wrap the execution in an eval to prevent
+   # displaying the error message.
+   eval {
+       $sth->execute();
+   };
+}
+
+my $dsn = "h=127.1,P=12345,u=msandbox,p=msandbox,D=test;mysql_server_prepare=1";
+my $thr = threads->create('start_thread', $dp, $o, $dp->parse($dsn), 1);
+$thr->detach();
+threads->yield();
+
+sleep(1);
+
+my $rows = $dbh->selectall_hashref('show processlist', 'id');
+my $pid = 0;  # reuse, reset
+map  { $pid = $_->{id} }
+grep { $_->{info} && $_->{info} =~ m/SELECT COUNT\(\*\) FROM \(SELECT a.id/ }
+values %$rows;
+
+ok(
+   $pid,
+   "Got proc id of sleeping query: $pid"
+);
+
+$dsn = $sb->dsn_for('master');
+my $output = output(
+   sub { pt_kill::main($dsn, "--kill-busy-commands","Query,Execute", qw(--run-time 3s --kill --busy-time 2s --print --match-info), "^(select|SELECT)"), },
+   stderr => 1,
+);
+
+like(
+   $output,
+   qr/KILL $pid \(Execute/,
+   '--kill-query'
+) or diag($output);
+
 
 # #############################################################################
 # Done.
