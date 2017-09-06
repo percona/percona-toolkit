@@ -81,20 +81,31 @@ func (f *Fingerprint) Fingerprint(doc proto.SystemProfile) (string, error) {
 	switch doc.Op {
 	case "remove", "update":
 		op = doc.Op
-		ns := strings.Split(doc.Ns, ".")
+		ns := strings.SplitN(doc.Ns, ".", 2)
 		if len(ns) == 2 {
 			collection = ns[1]
 		}
 	case "insert":
 		op = doc.Op
-		ns := strings.Split(doc.Ns, ".")
+		ns := strings.SplitN(doc.Ns, ".", 2)
 		if len(ns) == 2 {
 			collection = ns[1]
 		}
 		retKeys = []string{}
 	case "query":
+		// EXPLAIN MongoDB 2.6:
+		// "query" : {
+		//   "query" : {
+		//
+		//   },
+		//	 "$explain" : true
+		// },
+		if _, ok := doc.Query.Map()["$explain"]; ok {
+			op = "explain"
+			break
+		}
 		op = "find"
-		ns := strings.Split(doc.Ns, ".")
+		ns := strings.SplitN(doc.Ns, ".", 2)
 		if len(ns) == 2 {
 			collection = ns[1]
 		}
@@ -139,6 +150,12 @@ func (f *Fingerprint) Fingerprint(doc proto.SystemProfile) (string, error) {
 				retKeys = append(retKeys, keys(v, []string{})...)
 			}
 		case "geoNear":
+			retKeys = []string{}
+		case "explain":
+			retKeys = []string{}
+		case "$eval":
+			op = "eval"
+			collection = ""
 			retKeys = []string{}
 		}
 	}

@@ -84,6 +84,8 @@ func TestExplain(t *testing.T) {
 		"insert":           "Cannot explain cmd: insert",
 		"mapreduce":        "Cannot explain cmd: mapReduce",
 		"update":           "<nil>",
+		"explain":          "Cannot explain cmd: explain",
+		"eval":             "Cannot explain cmd: eval",
 	}
 
 	expectError := map[string]string{}

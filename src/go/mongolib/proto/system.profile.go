@@ -120,6 +120,22 @@ func (self ExampleQuery) ExplainCmd() bson.D {
 		if cmd.Len() == 0 {
 			cmd = self.Query
 		}
+
+		// MongoDB 2.6:
+		//
+		// "query" : {
+		//   "query" : {
+		//
+		//   },
+		//	 "$explain" : true
+		// },
+		if _, ok := cmd.Map()["$explain"]; ok {
+			cmd = BsonD{
+				{"explain", ""},
+			}
+			break
+		}
+
 		if cmd.Len() == 0 || cmd[0].Name != "find" {
 			var filter interface{}
 			if cmd.Len() > 0 && cmd[0].Name == "query" {
