@@ -1,0 +1,30 @@
+{
+	"op" : "command",
+	"ns" : "test.$cmd",
+	"command" : {
+		"$eval" : "db"
+	},
+	"keyUpdates" : 0,
+	"numYield" : 0,
+	"lockStats" : {
+		"timeLockedMicros" : {
+			"R" : NumberLong(0),
+			"W" : NumberLong(64994)
+		},
+		"timeAcquiringMicros" : {
+			"R" : NumberLong(0),
+			"W" : NumberLong(5),
+			"r" : NumberLong(0),
+			"w" : NumberLong(7)
+		}
+	},
+	"responseLength" : 108,
+	"millis" : 65,
+	"execStats" : {
+		
+	},
+	"ts" : ISODate("2017-09-05T19:39:24.522Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}

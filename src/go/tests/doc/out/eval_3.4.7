@@ -1,0 +1,34 @@
+{
+	"op" : "command",
+	"ns" : "test",
+	"command" : {
+		"$eval" : "db"
+	},
+	"numYield" : 0,
+	"locks" : {
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(3),
+				"W" : NumberLong(1)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		}
+	},
+	"responseLength" : 93,
+	"protocol" : "op_command",
+	"millis" : 91,
+	"ts" : ISODate("2017-09-05T19:39:48.888Z"),
+	"client" : "127.0.0.1",
+	"appName" : "MongoDB Shell",
+	"allUsers" : [ ],
+	"user" : ""
+}

@@ -1,0 +1,38 @@
+{
+	"op" : "command",
+	"ns" : "test",
+	"command" : {
+		"$eval" : "db"
+	},
+	"keyUpdates" : 0,
+	"writeConflicts" : 0,
+	"numYield" : 0,
+	"locks" : {
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(3),
+				"W" : NumberLong(1)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		}
+	},
+	"responseLength" : 93,
+	"protocol" : "op_command",
+	"millis" : 88,
+	"execStats" : {
+		
+	},
+	"ts" : ISODate("2017-09-05T19:39:41.581Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}
