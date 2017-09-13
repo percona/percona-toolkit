@@ -165,7 +165,8 @@ func main() {
 	if opts.Limit > 0 && len(sortedQueryStats) > opts.Limit {
 		sortedQueryStats = sortedQueryStats[:opts.Limit]
 	}
-	for _, qs := range sortedQueryStats {
+	for i, qs := range sortedQueryStats {
+		qs.Rank = i + 1
 		t.Execute(os.Stdout, qs)
 	}
 
