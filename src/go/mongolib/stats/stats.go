@@ -91,7 +91,12 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 		s.setQueryInfoAndCounters(key, qiac)
 	}
 	qiac.Count++
-	qiac.NScanned = append(qiac.NScanned, float64(doc.DocsExamined))
+	// docsExamined is renamed from nscannedObjects in 3.2.0.
+	if doc.NscannedObjects > 0 {
+		qiac.NScanned = append(qiac.NScanned, float64(doc.NscannedObjects))
+	} else {
+		qiac.NScanned = append(qiac.NScanned, float64(doc.DocsExamined))
+	}
 	qiac.NReturned = append(qiac.NReturned, float64(doc.Nreturned))
 	qiac.QueryTime = append(qiac.QueryTime, float64(doc.Millis))
 	qiac.ResponseLength = append(qiac.ResponseLength, float64(doc.ResponseLength))
