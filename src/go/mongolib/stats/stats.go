@@ -293,6 +293,7 @@ func countersToStats(query QueryInfoAndCounters, uptime int64, tc totalCounters)
 func aggregateCounters(queries []QueryInfoAndCounters) QueryInfoAndCounters {
 	qt := QueryInfoAndCounters{}
 	for _, query := range queries {
+		qt.Count += query.Count
 		qt.NScanned = append(qt.NScanned, query.NScanned...)
 		qt.NReturned = append(qt.NReturned, query.NReturned...)
 		qt.QueryTime = append(qt.QueryTime, query.QueryTime...)
