@@ -21,7 +21,7 @@
     "Median": 0
   },
   "ResponseLength": {
-    "Pct": 1,
+    "Pct": 100,
     "Total": 1061660,
     "Min": 215,
     "Max": 1061230,

@@ -281,7 +281,7 @@ func countersToStats(query QueryInfoAndCounters, uptime int64, tc totalCounters)
 		queryStats.QueryTime.Pct = queryStats.QueryTime.Total * 100 / tc.QueryTime
 	}
 	if tc.Bytes > 0 {
-		queryStats.ResponseLength.Pct = queryStats.ResponseLength.Total / tc.Bytes
+		queryStats.ResponseLength.Pct = queryStats.ResponseLength.Total * 100 / tc.Bytes
 	}
 	if queryStats.Returned.Total > 0 {
 		queryStats.Ratio = queryStats.Scanned.Total / queryStats.Returned.Total
