@@ -165,7 +165,8 @@ func main() {
 	if opts.Limit > 0 && len(sortedQueryStats) > opts.Limit {
 		sortedQueryStats = sortedQueryStats[:opts.Limit]
 	}
-	for _, qs := range sortedQueryStats {
+	for i, qs := range sortedQueryStats {
+		qs.Rank = i + 1
 		t.Execute(os.Stdout, qs)
 	}
 
@@ -426,15 +427,11 @@ func sortQueries(queries []stats.QueryStats, orderby []string) []stats.QueryStat
 
 		case "ratio":
 			f = func(c1, c2 *stats.QueryStats) bool {
-				ratio1 := c1.Scanned.Max / c1.Returned.Max
-				ratio2 := c2.Scanned.Max / c2.Returned.Max
-				return ratio1 < ratio2
+				return c1.Ratio < c2.Ratio
 			}
 		case "-ratio":
 			f = func(c1, c2 *stats.QueryStats) bool {
-				ratio1 := c1.Scanned.Max / c1.Returned.Max
-				ratio2 := c2.Scanned.Max / c2.Returned.Max
-				return ratio1 > ratio2
+				return c1.Ratio > c2.Ratio
 			}
 
 		//
