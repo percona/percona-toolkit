@@ -91,6 +91,7 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 	}
 	qiac.Count++
 	// docsExamined is renamed from nscannedObjects in 3.2.0.
+	// https://docs.mongodb.com/manual/reference/database-profiler/#system.profile.docsExamined
 	if doc.NscannedObjects > 0 {
 		qiac.NScanned = append(qiac.NScanned, float64(doc.NscannedObjects))
 	} else {

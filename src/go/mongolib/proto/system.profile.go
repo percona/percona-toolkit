@@ -8,6 +8,7 @@ import (
 )
 
 // docsExamined is renamed from nscannedObjects in 3.2.0
+// https://docs.mongodb.com/manual/reference/database-profiler/#system.profile.docsExamined
 type SystemProfile struct {
 	AllUsers        []interface{} `bson:"allUsers"`
 	Client          string        `bson:"client"`
