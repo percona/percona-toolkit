@@ -1,0 +1,27 @@
+[
+  {
+    "ID": "018a055f724d418b80e66b98bfdb25a5",
+    "Namespace": "test.coll",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"command\",\"command\":{\"group\":{\"key\":{\"a\":1,\"b\":1},\"cond\":{\"b\":3},\"initial\":{},\"ns\":\"coll\",\"$reduce\":{\"code\":\"function () {}\"}},\"$db\":\"test\"}}\n",
+    "Fingerprint": "GROUP coll a,b",
+    "FirstSeen": "2017-08-20T15:39:49.276Z",
+    "LastSeen": "2017-08-20T15:39:49.276Z",
+    "TableScan": false,
+    "Count": 1,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0
+    ],
+    "NScanned": [
+      2
+    ],
+    "QueryTime": [
+      68
+    ],
+    "ResponseLength": [
+      124
+    ]
+  }
+]

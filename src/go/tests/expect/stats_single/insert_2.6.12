@@ -1,0 +1,27 @@
+[
+  {
+    "ID": "a7ce8dee16beadb767484112e6b29af3",
+    "Namespace": "test.coll",
+    "Operation": "insert",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"insert\",\"query\":{\"_id\":1}}\n",
+    "Fingerprint": "INSERT coll",
+    "FirstSeen": "2017-08-20T15:39:16.473Z",
+    "LastSeen": "2017-08-20T15:39:16.473Z",
+    "TableScan": false,
+    "Count": 1,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0
+    ],
+    "NScanned": [
+      0
+    ],
+    "QueryTime": [
+      0
+    ],
+    "ResponseLength": [
+      0
+    ]
+  }
+]

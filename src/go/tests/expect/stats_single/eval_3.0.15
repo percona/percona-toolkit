@@ -1,0 +1,27 @@
+[
+  {
+    "ID": "3335908aa111fe5eedf75479d9b1eb72",
+    "Namespace": "test.$cmd",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"$eval\":\"db\"}}\n",
+    "Fingerprint": "EVAL",
+    "FirstSeen": "2017-09-05T19:39:32.054Z",
+    "LastSeen": "2017-09-05T19:39:32.054Z",
+    "TableScan": false,
+    "Count": 1,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0
+    ],
+    "NScanned": [
+      0
+    ],
+    "QueryTime": [
+      35
+    ],
+    "ResponseLength": [
+      108
+    ]
+  }
+]

@@ -1,0 +1,27 @@
+[
+  {
+    "ID": "dd20c739baef5a3fd9352c350c7e69f1",
+    "Namespace": "test.coll",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"command\",\"command\":{\"geoNear\":\"coll\",\"near\":{\"type\":\"Point\",\"coordinates\":[1,1]},\"spherical\":true,\"$db\":\"test\"}}\n",
+    "Fingerprint": "GEONEAR coll",
+    "FirstSeen": "2017-08-20T15:39:48.842Z",
+    "LastSeen": "2017-08-20T15:39:48.842Z",
+    "TableScan": false,
+    "Count": 1,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0
+    ],
+    "NScanned": [
+      10
+    ],
+    "QueryTime": [
+      7
+    ],
+    "ResponseLength": [
+      1383
+    ]
+  }
+]

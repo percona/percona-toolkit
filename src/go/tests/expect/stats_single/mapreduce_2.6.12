@@ -1,0 +1,27 @@
+[
+  {
+    "ID": "23ca094f285d0cd9538fb1b1f6ef0f4f",
+    "Namespace": "test.$cmd",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"mapreduce\":\"coll\",\"map\":\"\",\"reduce\":\"\",\"query\":{\"a\":{\"$gte\":0}},\"out\":{\"inline\":1}}}\n",
+    "Fingerprint": "MAPREDUCE coll a",
+    "FirstSeen": "2017-08-20T15:39:16.701Z",
+    "LastSeen": "2017-08-20T15:39:16.701Z",
+    "TableScan": false,
+    "Count": 1,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0
+    ],
+    "NScanned": [
+      0
+    ],
+    "QueryTime": [
+      33
+    ],
+    "ResponseLength": [
+      233
+    ]
+  }
+]

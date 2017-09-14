@@ -1,0 +1,27 @@
+[
+  {
+    "ID": "5eee3fe927f2234d7655f4fcc7fead0a",
+    "Namespace": "test.$cmd",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"count\":\"coll\",\"query\":{\"a\":{\"$gt\":5}},\"fields\":{}}}\n",
+    "Fingerprint": "COUNT coll a",
+    "FirstSeen": "2017-08-20T15:39:21.124Z",
+    "LastSeen": "2017-08-20T15:39:21.124Z",
+    "TableScan": false,
+    "Count": 1,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0
+    ],
+    "NScanned": [
+      0
+    ],
+    "QueryTime": [
+      0
+    ],
+    "ResponseLength": [
+      44
+    ]
+  }
+]

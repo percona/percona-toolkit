@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
+	"io/ioutil"
+	"fmt"
 
 	"github.com/golang/mock/gomock"
 	"github.com/percona/percona-toolkit/src/go/lib/tutil"
@@ -165,3 +167,97 @@ func TestStats(t *testing.T) {
 		t.Errorf("Error \nGot:%#v\nWant: %#v\n", got, want)
 	}
 }
+
+func TestStatsSingle(t *testing.T) {
+	t.Parallel()
+
+	dirExpect := vars.RootPath + samples + "/expect/stats_single/"
+
+	dir := vars.RootPath + samples + "/doc/out/"
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("cannot list samples: %s", err)
+	}
+
+	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
+
+	for _, file := range files {
+		f := file.Name()
+		t.Run(f, func(t *testing.T) {
+			t.Parallel()
+
+			doc := proto.SystemProfile{}
+			err = tutil.LoadBson(dir+f, &doc)
+			if err != nil {
+				t.Fatalf("cannot load sample %s: %s", dir+f, err)
+			}
+			s := New(fp)
+
+			err = s.Add(doc)
+			if err != nil {
+				t.Errorf("Error processing doc: %s\n", err.Error())
+			}
+			got := s.Queries()
+			expect := Queries{}
+			if tutil.ShouldUpdateSamples() {
+				err := tutil.WriteJson(dirExpect+f, got)
+				if err != nil {
+					fmt.Printf("cannot update samples: %s", err.Error())
+				}
+			}
+			err = tutil.LoadJson(dirExpect+f, &expect)
+			if err != nil {
+				t.Fatalf("cannot load expected data %s: %s", dirExpect+f, err)
+			}
+			if !reflect.DeepEqual(got, expect) {
+				t.Errorf("s.Queries() = %s, want %s", got, expect)
+			}
+		})
+	}
+
+}
+
+func TestStatsAll(t *testing.T) {
+	t.Parallel()
+
+	f := vars.RootPath + samples + "/expect/stats_all/sum.json"
+
+	dir := vars.RootPath + samples + "/doc/out/"
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("cannot list samples: %s", err)
+	}
+
+	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
+	s := New(fp)
+
+	for _, file := range files {
+			doc := proto.SystemProfile{}
+			err = tutil.LoadBson(dir+file.Name(), &doc)
+			if err != nil {
+				t.Fatalf("cannot load sample %s: %s", dir+file.Name(), err)
+			}
+
+			err = s.Add(doc)
+			if err != nil {
+				t.Errorf("Error processing doc: %s\n", err.Error())
+			}
+	}
+
+	got := s.Queries()
+	expect := Queries{}
+	if tutil.ShouldUpdateSamples() {
+		err := tutil.WriteJson(f, got)
+		if err != nil {
+			fmt.Printf("cannot update samples: %s", err.Error())
+		}
+	}
+	err = tutil.LoadJson(f, &expect)
+	if err != nil {
+		t.Fatalf("cannot load expected data %s: %s", f, err)
+	}
+	if !reflect.DeepEqual(got, expect) {
+		t.Errorf("s.Queries() = %s, want %s", got, expect)
+	}
+}
+

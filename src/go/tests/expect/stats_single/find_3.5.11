@@ -1,0 +1,27 @@
+[
+  {
+    "ID": "4e9241090af6f4a49545baf7c015fb5c",
+    "Namespace": "test.coll",
+    "Operation": "query",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"query\",\"command\":{\"find\":\"coll\",\"filter\":{\"a\":1},\"$db\":\"test\"}}\n",
+    "Fingerprint": "FIND coll a",
+    "FirstSeen": "2017-08-20T15:39:48.107Z",
+    "LastSeen": "2017-08-20T15:39:48.107Z",
+    "TableScan": false,
+    "Count": 1,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      6
+    ],
+    "NScanned": [
+      6
+    ],
+    "QueryTime": [
+      1
+    ],
+    "ResponseLength": [
+      331
+    ]
+  }
+]

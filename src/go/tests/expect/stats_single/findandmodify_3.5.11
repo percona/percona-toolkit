@@ -1,0 +1,27 @@
+[
+  {
+    "ID": "9423eaa90c222686d092c04f001fb369",
+    "Namespace": "test.coll",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"command\",\"command\":{\"findandmodify\":\"coll\",\"query\":{\"a\":2},\"update\":{\"$inc\":{\"b\":1}},\"$db\":\"test\"}}\n",
+    "Fingerprint": "FINDANDMODIFY coll a",
+    "FirstSeen": "2017-08-20T15:39:48.636Z",
+    "LastSeen": "2017-08-20T15:39:48.636Z",
+    "TableScan": false,
+    "Count": 1,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0
+    ],
+    "NScanned": [
+      3
+    ],
+    "QueryTime": [
+      0
+    ],
+    "ResponseLength": [
+      116
+    ]
+  }
+]

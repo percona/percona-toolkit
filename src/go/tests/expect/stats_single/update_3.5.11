@@ -1,0 +1,27 @@
+[
+  {
+    "ID": "27cb39e62745b1ff4121b4bf6f21fb12",
+    "Namespace": "test.coll",
+    "Operation": "update",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"update\",\"command\":{\"q\":{\"a\":{\"$gte\":2}},\"u\":{\"$set\":{\"c\":1},\"$inc\":{\"a\":-10}},\"multi\":false,\"upsert\":false}}\n",
+    "Fingerprint": "UPDATE coll a",
+    "FirstSeen": "2017-08-20T15:39:49.855Z",
+    "LastSeen": "2017-08-20T15:39:49.855Z",
+    "TableScan": false,
+    "Count": 1,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0
+    ],
+    "NScanned": [
+      1
+    ],
+    "QueryTime": [
+      0
+    ],
+    "ResponseLength": [
+      0
+    ]
+  }
+]

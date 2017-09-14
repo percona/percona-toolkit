@@ -86,7 +86,7 @@ func WriteJson(filename string, data interface{}) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(filename, buf, 777)
+	err = ioutil.WriteFile(filename, buf, 0777)
 	if err != nil {
 		return err
 	}
