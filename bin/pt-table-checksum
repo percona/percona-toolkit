@@ -11845,6 +11845,15 @@ can try something like the following:
    SET boundaries = COALESCE(CONCAT('id BETWEEN ', lower_boundary,
       ' AND ', upper_boundary), '1=1');
 
+Take into consideration that by default, pt-table-checksum use C<CRC32> checksums.
+C<CRC32> is not a cryptographic algorithm and for that reason it is prone to have 
+collisions. On the other hand, C<CRC32> algorithm is faster and less CPU-intensive
+than C<MD5> and C<SHA1>.
+
+Related reading material: 
+Percona Toolkit UDFs: L<https://www.percona.com/doc/percona-server/LATEST/management/udf_percona_toolkit.html>
+How to avoid hash collisions when using MySQL’s CRC32 function: L<https://www.percona.com/blog/2014/10/13/how-to-avoid-hash-collisions-when-using-mysqls-crc32-function/>
+
 =head1 LIMITATIONS
 
 =over
