@@ -2,11 +2,13 @@ package proto
 
 import "time"
 
+// docsExamined is renamed from nscannedObjects in 3.2.0
 type SystemProfile struct {
 	AllUsers        []interface{} `bson:"allUsers"`
 	Client          string        `bson:"client"`
 	CursorExhausted bool          `bson:"cursorExhausted"`
 	DocsExamined    int           `bson:"docsExamined"`
+	NscannedObjects int           `bson:"nscannedObjects"`
 	ExecStats       struct {
 		Advanced                    int `bson:"advanced"`
 		ExecutionTimeMillisEstimate int `bson:"executionTimeMillisEstimate"`

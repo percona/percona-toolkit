@@ -91,7 +91,12 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 		s.setQueryInfoAndCounters(key, qiac)
 	}
 	qiac.Count++
-	qiac.NScanned = append(qiac.NScanned, float64(doc.DocsExamined))
+	// docsExamined is renamed from nscannedObjects in 3.2.0.
+	if doc.NscannedObjects > 0 {
+		qiac.NScanned = append(qiac.NScanned, float64(doc.NscannedObjects))
+	} else {
+		qiac.NScanned = append(qiac.NScanned, float64(doc.DocsExamined))
+	}
 	qiac.NReturned = append(qiac.NReturned, float64(doc.Nreturned))
 	qiac.QueryTime = append(qiac.QueryTime, float64(doc.Millis))
 	qiac.ResponseLength = append(qiac.ResponseLength, float64(doc.ResponseLength))
@@ -281,7 +286,7 @@ func countersToStats(query QueryInfoAndCounters, uptime int64, tc totalCounters)
 		queryStats.QueryTime.Pct = queryStats.QueryTime.Total * 100 / tc.QueryTime
 	}
 	if tc.Bytes > 0 {
-		queryStats.ResponseLength.Pct = queryStats.ResponseLength.Total / tc.Bytes
+		queryStats.ResponseLength.Pct = queryStats.ResponseLength.Total * 100 / tc.Bytes
 	}
 	if queryStats.Returned.Total > 0 {
 		queryStats.Ratio = queryStats.Scanned.Total / queryStats.Returned.Total
@@ -293,6 +298,7 @@ func countersToStats(query QueryInfoAndCounters, uptime int64, tc totalCounters)
 func aggregateCounters(queries []QueryInfoAndCounters) QueryInfoAndCounters {
 	qt := QueryInfoAndCounters{}
 	for _, query := range queries {
+		qt.Count += query.Count
 		qt.NScanned = append(qt.NScanned, query.NScanned...)
 		qt.NReturned = append(qt.NReturned, query.NReturned...)
 		qt.QueryTime = append(qt.QueryTime, query.QueryTime...)
