@@ -19,7 +19,7 @@ use Sandbox;
 use SqlModes;
 use File::Temp qw/ tempdir /;
 
-plan tests => 2;
+plan tests => 3;
 
 require "$trunk/bin/pt-online-schema-change";
 
@@ -40,19 +40,26 @@ my $output;
 my $exit_status;
 my $sample  = "t/pt-online-schema-change/samples/";
 
-$sb->load_file('master', "$sample/pt-196.sql");
-
+$sb->load_file('master', "$sample/pt-153.sql");
 
 ($output, $exit_status) = full_output(
-   sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=test",
-         '--execute', '--alter', 'DROP COLUMN test', ),
+   sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=t1",
+         '--execute', 
+         '--alter', "ADD COLUMN unique_id BIGINT UNSIGNED NOT NULL DEFAULT 0, ADD INDEX(unique_id)",
+         ),
       },
 );
 
 is(
       $exit_status,
       0,
-      "--alter rename columns with uppercase names -> exit status 0",
+      "PT-200 Adding a column named unique_xxx is not detected as an unique index",
+);
+
+like(
+      $output,
+      qr/Successfully altered `test`.`t1`/s,
+      "PT-200 Adding field having 'unique' in the name",
 );
 
 $master_dbh->do("DROP DATABASE IF EXISTS test");
