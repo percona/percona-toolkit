@@ -4446,8 +4446,8 @@ sub parse {
    my %def_for;
    @def_for{@cols} = @defs;
 
-   my (@nums, @null);
-   my (%type_for, %is_nullable, %is_numeric, %is_autoinc);
+   my (@nums, @null, @non_generated);
+   my (%type_for, %is_nullable, %is_numeric, %is_autoinc, %is_generated);
    foreach my $col ( @cols ) {
       my $def = $def_for{$col};
 
@@ -4464,6 +4464,11 @@ sub parse {
          push @null, $col;
          $is_nullable{$col} = 1;
       }
+      if ( remove_quoted_text($def) =~ m/\WGENERATED\W/i ) {
+          $is_generated{$col} = 1;
+      } else {
+          push @non_generated, $col;
+      }
       $is_autoinc{$col} = $def =~ m/AUTO_INCREMENT/i ? 1 : 0;
    }
 
@@ -4472,22 +4477,32 @@ sub parse {
    my ($charset) = $ddl =~ m/DEFAULT CHARSET=(\w+)/;
 
    return {
-      name           => $name,
-      cols           => \@cols,
-      col_posn       => { map { $cols[$_] => $_ } 0..$#cols },
-      is_col         => { map { $_ => 1 } @cols },
-      null_cols      => \@null,
-      is_nullable    => \%is_nullable,
-      is_autoinc     => \%is_autoinc,
-      clustered_key  => $clustered_key,
-      keys           => $keys,
-      defs           => \%def_for,
-      numeric_cols   => \@nums,
-      is_numeric     => \%is_numeric,
-      engine         => $engine,
-      type_for       => \%type_for,
-      charset        => $charset,
+      name               => $name,
+      cols               => \@cols,
+      col_posn           => { map { $cols[$_] => $_ } 0..$#cols },
+      is_col             => { map { $_ => 1 } @non_generated },
+      null_cols          => \@null,
+      is_nullable        => \%is_nullable,
+      non_generated_cols => \@non_generated,
+      is_autoinc         => \%is_autoinc,
+      is_generated       => \%is_generated,
+      clustered_key      => $clustered_key,
+      keys               => $keys,
+      defs               => \%def_for,
+      numeric_cols       => \@nums,
+      is_numeric         => \%is_numeric,
+      engine             => $engine,
+      type_for           => \%type_for,
+      charset            => $charset,
    };
+}
+
+sub remove_quoted_text {
+   my ($string) = @_;
+   $string =~ s/[^\\]`[^`]*[^\\]`//g; 
+   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
+   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
+   return $string;
 }
 
 sub sort_indexes {
@@ -9331,36 +9346,35 @@ sub main {
          die "Error setting SQL_MODE"
            . ": $EVAL_ERROR";
       }
+ 
 
-      if ( $o->get('check-binlog-format') ) {
-        # https://bugs.launchpad.net/percona-toolkit/+bug/919352
-        # The tool shouldn't blindly attempt to change binlog_format;
-        # instead, it should check if it's already set to STATEMENT.
-        # This is becase starting with MySQL 5.1.29, changing the format
-        # requires a SUPER user.
-        if ( VersionParser->new($dbh) >= '5.1.5' ) {
-           $sql = 'SELECT @@binlog_format';
-           PTDEBUG && _d($dbh, $sql);
-           my ($original_binlog_format) = $dbh->selectrow_array($sql);
-           PTDEBUG && _d('Original binlog_format:', $original_binlog_format);
-           if ( $original_binlog_format !~ /STATEMENT/i ) {
-              $sql = q{/*!50108 SET @@binlog_format := 'STATEMENT'*/};
-              eval {
-                 PTDEBUG && _d($dbh, $sql);
-                 $dbh->do($sql);
-              };
-              if ( $EVAL_ERROR ) {
-                 die "Failed to $sql: $EVAL_ERROR\n"
-                    . "This tool requires binlog_format=STATEMENT, "
-                    . "but the current binlog_format is set to "
-                    ."$original_binlog_format and an error occurred while "
-                    . "attempting to change it.  If running MySQL 5.1.29 or newer, "
-                    . "setting binlog_format requires the SUPER privilege.  "
-                    . "You will need to manually set binlog_format to 'STATEMENT' "
-                    . "before running this tool.\n";
-              }
-           }
-        }
+      # https://bugs.launchpad.net/percona-toolkit/+bug/919352
+      # The tool shouldn't blindly attempt to change binlog_format;
+      # instead, it should check if it's already set to STATEMENT.
+      # This is becase starting with MySQL 5.1.29, changing the format
+      # requires a SUPER user.
+      if ( VersionParser->new($dbh) >= '5.1.5' ) {
+         $sql = 'SELECT @@binlog_format';
+         PTDEBUG && _d($dbh, $sql);
+         my ($original_binlog_format) = $dbh->selectrow_array($sql);
+         PTDEBUG && _d('Original binlog_format:', $original_binlog_format);
+         if ( $original_binlog_format !~ /STATEMENT/i ) {
+            $sql = q{/*!50108 SET @@binlog_format := 'STATEMENT'*/};
+            eval {
+               PTDEBUG && _d($dbh, $sql);
+               $dbh->do($sql);
+            };
+            if ( $EVAL_ERROR ) {
+               die "Failed to $sql: $EVAL_ERROR\n"
+                  . "This tool requires binlog_format=STATEMENT, "
+                  . "but the current binlog_format is set to "
+                  ."$original_binlog_format and an error occurred while "
+                  . "attempting to change it.  If running MySQL 5.1.29 or newer, "
+                  . "setting binlog_format requires the SUPER privilege.  "
+                  . "You will need to manually set binlog_format to 'STATEMENT' "
+                  . "before running this tool.\n";
+            }
+         }
       }
 
       # Set transaction isolation level. We set binlog_format to STATEMENT,
@@ -11844,6 +11858,15 @@ can try something like the following:
   UPDATE checksums
    SET boundaries = COALESCE(CONCAT('id BETWEEN ', lower_boundary,
       ' AND ', upper_boundary), '1=1');
+
+Take into consideration that by default, pt-table-checksum use C<CRC32> checksums.
+C<CRC32> is not a cryptographic algorithm and for that reason it is prone to have 
+collisions. On the other hand, C<CRC32> algorithm is faster and less CPU-intensive
+than C<MD5> and C<SHA1>.
+
+Related reading material: 
+Percona Toolkit UDFs: L<https://www.percona.com/doc/percona-server/LATEST/management/udf_percona_toolkit.html>
+How to avoid hash collisions when using MySQL’s CRC32 function: L<https://www.percona.com/blog/2014/10/13/how-to-avoid-hash-collisions-when-using-mysqls-crc32-function/>
 
 =head1 LIMITATIONS
 

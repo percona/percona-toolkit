@@ -86,6 +86,7 @@ func TestRegularIterator(t *testing.T) {
 		},
 	}
 	prof.Start()
+	defer prof.Stop()
 	select {
 	case queries := <-prof.QueriesChan():
 		if !reflect.DeepEqual(queries, want) {
@@ -144,6 +145,7 @@ func TestIteratorTimeout(t *testing.T) {
 	}
 
 	prof.Start()
+	defer prof.Stop()
 	gotTimeout := false
 
 	// Get a timeout
@@ -168,8 +170,6 @@ func TestIteratorTimeout(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Error("Didn't get any query after 2 seconds")
 	}
-
-	prof.Stop()
 }
 
 func TestTailIterator(t *testing.T) {
@@ -239,6 +239,7 @@ func TestTailIterator(t *testing.T) {
 		},
 	}
 	prof.Start()
+	defer prof.Stop()
 	index := 0
 	// Since the mocked iterator has a Sleep(1500 ms) between Next methods calls,
 	// we are going to have two ticker ticks and on every tick it will return one document.
@@ -339,6 +340,7 @@ func TestCalcTotalStats(t *testing.T) {
 	prof := NewProfiler(iter, filters, nil, s)
 
 	prof.Start()
+	defer prof.Stop()
 	select {
 	case queries := <-prof.QueriesChan():
 		s := queries.CalcTotalQueriesStats(1)
