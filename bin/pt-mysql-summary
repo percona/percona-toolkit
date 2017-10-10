@@ -1374,7 +1374,7 @@ pretty_print_cnf_file () {
 
    perl -n -l -e '
       my $line = $_;
-      if ( $line =~ /^[ \t]*[a-zA-Z[]/ ) { 
+      if ( $line =~ /^\s*[a-zA-Z[]/ ) { 
          if ( $line=~/\s*(.*?)\s*=\s*(.*)\s*$/ ) { 
             printf("%-35s = %s\n", $1, $2)  
          } 
@@ -1386,6 +1386,7 @@ pretty_print_cnf_file () {
       }' "$file"
 
 }
+
 
 find_checkpoint_age() {
    local file="$1"
@@ -2097,19 +2098,6 @@ section_mysqld () {
    done < "$executables_file"
 }
 
-section_slave_hosts () {
-   local slave_hosts_file="$1"
-
-   [ -e "$slave_hosts_file" ] || return
-
-   section "Slave Hosts"
-   if [ -s "$slave_hosts_file" ]; then
-       cat "$slave_hosts_file"
-   else
-       echo "No slaves found"
-   fi
-}
-
 section_mysql_files () {
    local variables_file="$1"
 
@@ -2162,41 +2150,6 @@ parse_wsrep_provider_options () {
    ' "$looking_for"
 }
 
-report_jemalloc_enabled() {
-
-  local JEMALLOC_STATUS=''
-  local GENERAL_JEMALLOC_STATUS=0
-  local JEMALLOC_LOCATION=''
-
-  for PID in $(pidof mysqld); do
-     grep -qc jemalloc /proc/${PID}/environ || ldd $(which mysqld) | grep -qc jemalloc
-     JEMALLOC_STATUS=$?
-     if [ $JEMALLOC_STATUS = 1 ]; then
-       echo "jemalloc is not enabled in MySQL config for process with ID ${PID}" 
-     else
-       echo "jemalloc enabled in MySQL config for process with ID ${PID}"
-       GENERAL_JEMALLOC_STATUS=1
-     fi
-  done
-
-  if [ $GENERAL_JEMALLOC_STATUS = 1 ]; then
-     # Check location for libjemalloc.so.1
-     #for libjemall in "${SCRIPT_PWD}/lib/mysql" "/usr/lib64" "/usr/lib/x86_64-linux-gnu" "/usr/lib"; do
-     for libjemall in "/usr/lib64" "/usr/lib/x86_64-linux-gnu" "/usr/lib"; do
-       if [ -r "$libjemall/libjemalloc.so.1" ]; then
-         JEMALLOC_LOCATION="$libjemall/libjemalloc.so.1"
-         break
-       fi
-     done
-     if [ -z $JEMALLOC_LOCATION ]; then
-       echo "Jemalloc library not found"
-     else
-       echo "Using jemalloc from $JEMALLOC_LOCATION"
-     fi
-  fi
- 
-}
-
 report_mysql_summary () {
    local dir="$1"
 
@@ -2209,8 +2162,6 @@ report_mysql_summary () {
    parse_mysqld_instances "$dir/mysqld-instances" "$dir/mysql-variables"
 
    section_mysqld "$dir/mysqld-executables" "$dir/mysql-variables"
-
-   section_slave_hosts "$dir/mysql-slave-hosts"
 
    local user="$(get_var "pt-summary-internal-user" "$dir/mysql-variables")"
    local port="$(get_var port "$dir/mysql-variables")"
@@ -2390,10 +2341,10 @@ report_mysql_summary () {
    fi
 
    section "InnoDB"
-   local have_innodb="$(get_var "have_innodb" "$dir/mysql-variables")"
-   local innodb_version="$(get_var "innodb_version" "$dir/mysql-variables")"
-   if [ "${have_innodb}" = "YES" ] || [ -n "${innodb_version}" ]; then
+   local innodb_buffer_pool_size="$(get_var "innodb_buffer_pool_size" "$dir/mysql-variables")"
+   if [ -n "${innodb_buffer_pool_size}" ]; then
       section_innodb "$dir/mysql-variables" "$dir/mysql-status"
+
       if [ -s "$dir/innodb-status" ]; then
          format_innodb_status "$dir/innodb-status"
       fi
@@ -2434,8 +2385,6 @@ report_mysql_summary () {
       name_val "Config File" "Cannot autodetect or find, giving up"
    fi
 
-   section "Memory management library"
-   report_jemalloc_enabled
    section "The End"
 }
 
