@@ -1586,7 +1586,7 @@ format_ndb_status() {
    local file=$1
 
    [ -e "$file" ] || return
-   egrep '^[ \t]*Name:|[ \t]*Status:' ndb_status.txt|sed 's/^[ \t]*//g'|while read line; do echo $line; echo $line | grep '^Status:'>/dev/null && echo ; done
+   egrep '^[ \t]*Name:|[ \t]*Status:' $file|sed 's/^[ \t]*//g'|while read line; do echo $line; echo $line | grep '^Status:'>/dev/null && echo ; done
 }
 
 format_overall_db_stats () {
