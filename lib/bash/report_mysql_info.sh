@@ -557,6 +557,14 @@ format_innodb_status () {
    fi
 }
 
+format_ndb_status() {
+   local file=$1
+
+   [ -e "$file" ] || return
+   # at the time being, just cat the file.
+   cat "$file"
+}
+
 # Summarizes per-database statistics for a bunch of different things: count of
 # tables, views, etc.  $1 is the file name.  $2 is the database name; if none,
 # then there should be multiple databases.
