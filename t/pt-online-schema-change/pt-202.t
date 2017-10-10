@@ -19,8 +19,6 @@ use Sandbox;
 use SqlModes;
 use File::Temp qw/ tempdir /;
 
-plan tests => 2;
-
 require "$trunk/bin/pt-online-schema-change";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
@@ -32,6 +30,12 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 
+if ($sandbox_version lt '5.7') {
+   plan skip_all => "generated column tests require MySQL 5.7+";
+}
+
+plan tests => 3;
+
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the
 # tool will die.
@@ -40,19 +44,26 @@ my $output;
 my $exit_status;
 my $sample  = "t/pt-online-schema-change/samples/";
 
-$sb->load_file('master', "$sample/pt-196.sql");
-
+$sb->load_file('master', "$sample/pt-202.sql");
 
 ($output, $exit_status) = full_output(
-   sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=test",
-         '--execute', '--alter', 'DROP COLUMN test', ),
+   sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=t1",
+         '--execute', 
+         '--alter', "ADD COLUMN `Column4` VARCHAR(45) NULL AFTER `Column3`",
+         ),
       },
 );
 
 is(
       $exit_status,
       0,
-      "--alter rename columns with uppercase names -> exit status 0",
+      "PT-202 Altering table having generated columns exit status 0",
+);
+
+like(
+      $output,
+      qr/Successfully altered `test`.`t1`/s,
+      "PT-202 Altering table having generated columns success",
 );
 
 $master_dbh->do("DROP DATABASE IF EXISTS test");
