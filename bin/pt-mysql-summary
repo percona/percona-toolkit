@@ -2362,6 +2362,11 @@ report_mysql_summary () {
       fi
    fi
 
+   if [ -s "$dir/ndb-status" ]; then
+       section "NDB"
+       format_ndb_status "$dir/ndb-status"
+   fi
+
    section "MyISAM"
    section_myisam "$dir/mysql-variables" "$dir/mysql-status"
 
