@@ -561,8 +561,8 @@ format_ndb_status() {
    local file=$1
 
    [ -e "$file" ] || return
-   # at the time being, just cat the file.
-   cat "$file"
+   # We could use "& \n" but that does not seem to work on bsd sed. 
+   egrep '^[ \t]*Name:|[ \t]*Status:' ndb_status.txt|sed 's/^[ \t]*//g'|while read line; do echo $line; echo $line | grep '^Status:'>/dev/null && echo ; done
 }
 
 # Summarizes per-database statistics for a bunch of different things: count of
