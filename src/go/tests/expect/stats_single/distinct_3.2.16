@@ -1,0 +1,27 @@
+[
+  {
+    "ID": "a4be6ed97c946182af7e30cf818afdac",
+    "Namespace": "test.coll",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"command\",\"command\":{\"distinct\":\"coll\",\"key\":\"a\",\"query\":{\"b\":{\"$gte\":5}}}}\n",
+    "Fingerprint": "DISTINCT coll a,b",
+    "FirstSeen": "2017-08-20T15:39:30.748Z",
+    "LastSeen": "2017-08-20T15:39:30.748Z",
+    "TableScan": false,
+    "Count": 1,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0
+    ],
+    "NScanned": [
+      0
+    ],
+    "QueryTime": [
+      0
+    ],
+    "ResponseLength": [
+      264
+    ]
+  }
+]

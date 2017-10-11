@@ -1,0 +1,27 @@
+[
+  {
+    "ID": "11e1b6f695d43b1b5a2f7e6de2ad8305",
+    "Namespace": "test.coll",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"command\",\"command\":{\"aggregate\":\"coll\",\"pipeline\":[{\"$match\":{\"a\":{\"$gte\":2}}}],\"cursor\":{},\"$db\":\"test\"}}\n",
+    "Fingerprint": "AGGREGATE coll a",
+    "FirstSeen": "2017-08-20T15:39:47.203Z",
+    "LastSeen": "2017-08-20T15:39:47.203Z",
+    "TableScan": false,
+    "Count": 1,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      8
+    ],
+    "NScanned": [
+      8
+    ],
+    "QueryTime": [
+      2
+    ],
+    "ResponseLength": [
+      370
+    ]
+  }
+]

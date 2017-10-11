@@ -1,0 +1,27 @@
+[
+  {
+    "ID": "3d52ee232b8c4e1068dd90741632614a",
+    "Namespace": "test.$cmd",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"findandmodify\":\"coll\",\"query\":{\"a\":2},\"update\":{\"$inc\":{\"b\":1}}},\"updateobj\":{\"$inc\":{\"b\":1}}}\n",
+    "Fingerprint": "FINDANDMODIFY coll a",
+    "FirstSeen": "2017-08-20T15:39:15.903Z",
+    "LastSeen": "2017-08-20T15:39:15.903Z",
+    "TableScan": false,
+    "Count": 1,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0
+    ],
+    "NScanned": [
+      1
+    ],
+    "QueryTime": [
+      0
+    ],
+    "ResponseLength": [
+      131
+    ]
+  }
+]

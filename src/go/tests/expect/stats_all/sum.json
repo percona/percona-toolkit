@@ -1,0 +1,909 @@
+[
+  {
+    "ID": "59899eb380b4e48c345fb6f997d06bfa",
+    "Namespace": "test.$cmd",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"aggregate\":\"coll\",\"pipeline\":[{\"$match\":{\"a\":{\"$gte\":2}}}],\"cursor\":{}}}\n",
+    "Fingerprint": "AGGREGATE coll a",
+    "FirstSeen": "2017-08-20T15:39:14.658Z",
+    "LastSeen": "2017-08-20T15:39:20.858Z",
+    "TableScan": false,
+    "Count": 2,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0
+    ],
+    "QueryTime": [
+      0,
+      2
+    ],
+    "ResponseLength": [
+      385,
+      385
+    ]
+  },
+  {
+    "ID": "020d9f1058f3bf08e3b1afb1ef883d44",
+    "Namespace": "test.$cmd",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"count\":\"coll\",\"query\":{},\"fields\":{}}}\n",
+    "Fingerprint": "COUNT coll",
+    "FirstSeen": "2017-08-20T15:39:14.823Z",
+    "LastSeen": "2017-08-20T15:39:20.982Z",
+    "TableScan": false,
+    "Count": 2,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0
+    ],
+    "QueryTime": [
+      0,
+      0
+    ],
+    "ResponseLength": [
+      48,
+      44
+    ]
+  },
+  {
+    "ID": "5eee3fe927f2234d7655f4fcc7fead0a",
+    "Namespace": "test.$cmd",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"count\":\"coll\",\"query\":{\"a\":{\"$gt\":5}},\"fields\":{}}}\n",
+    "Fingerprint": "COUNT coll a",
+    "FirstSeen": "2017-08-20T15:39:14.971Z",
+    "LastSeen": "2017-08-20T15:39:21.124Z",
+    "TableScan": false,
+    "Count": 2,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0
+    ],
+    "QueryTime": [
+      0,
+      0
+    ],
+    "ResponseLength": [
+      48,
+      44
+    ]
+  },
+  {
+    "ID": "24acf4277fabf2a382f266bb4e6e8e3e",
+    "Namespace": "test.$cmd",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"distinct\":\"coll\",\"key\":\"a\",\"query\":{\"b\":{\"$gte\":5}}}}\n",
+    "Fingerprint": "DISTINCT coll a,b",
+    "FirstSeen": "2017-08-20T15:39:15.323Z",
+    "LastSeen": "2017-08-20T15:39:21.392Z",
+    "TableScan": false,
+    "Count": 2,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0
+    ],
+    "QueryTime": [
+      0,
+      0
+    ],
+    "ResponseLength": [
+      254,
+      261
+    ]
+  },
+  {
+    "ID": "3335908aa111fe5eedf75479d9b1eb72",
+    "Namespace": "test.$cmd",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"$eval\":\"db\"}}\n",
+    "Fingerprint": "EVAL",
+    "FirstSeen": "2017-09-05T19:39:24.522Z",
+    "LastSeen": "2017-09-05T19:39:32.054Z",
+    "TableScan": false,
+    "Count": 2,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0
+    ],
+    "QueryTime": [
+      65,
+      35
+    ],
+    "ResponseLength": [
+      108,
+      108
+    ]
+  },
+  {
+    "ID": "ada85b4f1473b9a1fb37158a8481e20e",
+    "Namespace": "test.$cmd",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"explain\":{\"find\":\"coll\",\"filter\":{},\"options\":{}},\"verbosity\":\"queryPlanner\"}}\n",
+    "Fingerprint": "EXPLAIN",
+    "FirstSeen": "2017-09-05T19:39:32.21Z",
+    "LastSeen": "2017-09-05T19:39:32.21Z",
+    "TableScan": false,
+    "Count": 1,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0
+    ],
+    "NScanned": [
+      0
+    ],
+    "QueryTime": [
+      0
+    ],
+    "ResponseLength": [
+      379
+    ]
+  },
+  {
+    "ID": "3d52ee232b8c4e1068dd90741632614a",
+    "Namespace": "test.$cmd",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"findandmodify\":\"coll\",\"query\":{\"a\":2},\"update\":{\"$inc\":{\"b\":1}}},\"updateobj\":{\"$inc\":{\"b\":1}}}\n",
+    "Fingerprint": "FINDANDMODIFY coll a",
+    "FirstSeen": "2017-08-20T15:39:15.903Z",
+    "LastSeen": "2017-08-20T15:39:21.902Z",
+    "TableScan": false,
+    "Count": 2,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0
+    ],
+    "NScanned": [
+      1,
+      1
+    ],
+    "QueryTime": [
+      0,
+      0
+    ],
+    "ResponseLength": [
+      131,
+      131
+    ]
+  },
+  {
+    "ID": "eb3d8174e05f442cc5c3269eb50667d6",
+    "Namespace": "test.$cmd",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"geoNear\":\"coll\",\"near\":{\"type\":\"Point\",\"coordinates\":[1,1]},\"spherical\":true}}\n",
+    "Fingerprint": "GEONEAR coll",
+    "FirstSeen": "2017-08-20T15:39:16.061Z",
+    "LastSeen": "2017-08-20T15:39:22.055Z",
+    "TableScan": false,
+    "Count": 2,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0
+    ],
+    "QueryTime": [
+      1,
+      3
+    ],
+    "ResponseLength": [
+      1406,
+      1398
+    ]
+  },
+  {
+    "ID": "225e5819de843c1779f1118f2f01b77e",
+    "Namespace": "test.$cmd",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"group\":{\"key\":{\"a\":1,\"b\":1},\"cond\":{\"b\":3},\"initial\":{},\"ns\":\"coll\",\"$reduce\":\"\"}}}\n",
+    "Fingerprint": "GROUP coll a,b",
+    "FirstSeen": "2017-08-20T15:39:16.325Z",
+    "LastSeen": "2017-08-20T15:39:22.271Z",
+    "TableScan": false,
+    "Count": 2,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0
+    ],
+    "QueryTime": [
+      77,
+      54
+    ],
+    "ResponseLength": [
+      135,
+      139
+    ]
+  },
+  {
+    "ID": "23ca094f285d0cd9538fb1b1f6ef0f4f",
+    "Namespace": "test.$cmd",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"mapreduce\":\"coll\",\"map\":\"\",\"reduce\":\"\",\"query\":{\"a\":{\"$gte\":0}},\"out\":{\"inline\":1}}}\n",
+    "Fingerprint": "MAPREDUCE coll a",
+    "FirstSeen": "2017-08-20T15:39:16.701Z",
+    "LastSeen": "2017-08-20T15:39:22.582Z",
+    "TableScan": false,
+    "Count": 2,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0
+    ],
+    "QueryTime": [
+      33,
+      26
+    ],
+    "ResponseLength": [
+      233,
+      233
+    ]
+  },
+  {
+    "ID": "11e1b6f695d43b1b5a2f7e6de2ad8305",
+    "Namespace": "test.coll",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"command\",\"command\":{\"aggregate\":\"coll\",\"pipeline\":[{\"$match\":{\"a\":{\"$gte\":2}}}],\"cursor\":{}}}\n",
+    "Fingerprint": "AGGREGATE coll a",
+    "FirstSeen": "2017-08-20T15:39:29.915Z",
+    "LastSeen": "2017-08-20T15:39:47.203Z",
+    "TableScan": false,
+    "Count": 3,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      8,
+      8
+    ],
+    "NScanned": [
+      0,
+      8,
+      8
+    ],
+    "QueryTime": [
+      2,
+      0,
+      2
+    ],
+    "ResponseLength": [
+      388,
+      370,
+      370
+    ]
+  },
+  {
+    "ID": "29701e3d37e0adb35ebd70b7ef2b3f3d",
+    "Namespace": "test.coll",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"command\",\"command\":{\"count\":\"coll\",\"query\":{},\"fields\":{}}}\n",
+    "Fingerprint": "COUNT coll",
+    "FirstSeen": "2017-08-20T15:39:30.094Z",
+    "LastSeen": "2017-08-20T15:39:47.396Z",
+    "TableScan": false,
+    "Count": 3,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0,
+      0
+    ],
+    "QueryTime": [
+      0,
+      0,
+      0
+    ],
+    "ResponseLength": [
+      47,
+      29,
+      29
+    ]
+  },
+  {
+    "ID": "2300d7f2d372205544f249b010e9b8ad",
+    "Namespace": "test.coll",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"command\",\"command\":{\"count\":\"coll\",\"query\":{\"a\":{\"$gt\":5}},\"fields\":{}}}\n",
+    "Fingerprint": "COUNT coll a",
+    "FirstSeen": "2017-08-20T15:39:30.251Z",
+    "LastSeen": "2017-08-20T15:39:47.573Z",
+    "TableScan": false,
+    "Count": 3,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0,
+      0
+    ],
+    "QueryTime": [
+      0,
+      0,
+      0
+    ],
+    "ResponseLength": [
+      47,
+      29,
+      29
+    ]
+  },
+  {
+    "ID": "a4be6ed97c946182af7e30cf818afdac",
+    "Namespace": "test.coll",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"command\",\"command\":{\"distinct\":\"coll\",\"key\":\"a\",\"query\":{\"b\":{\"$gte\":5}}}}\n",
+    "Fingerprint": "DISTINCT coll a,b",
+    "FirstSeen": "2017-08-20T15:39:30.748Z",
+    "LastSeen": "2017-08-20T15:39:47.927Z",
+    "TableScan": false,
+    "Count": 3,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      10,
+      10
+    ],
+    "QueryTime": [
+      0,
+      0,
+      0
+    ],
+    "ResponseLength": [
+      264,
+      145,
+      145
+    ]
+  },
+  {
+    "ID": "e2f53c6824c5cbe454e33e128b350d1e",
+    "Namespace": "test.coll",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"command\",\"command\":{\"explain\":{\"find\":\"coll\",\"filter\":{}},\"verbosity\":\"queryPlanner\"}}\n",
+    "Fingerprint": "EXPLAIN",
+    "FirstSeen": "2017-09-05T19:39:41.753Z",
+    "LastSeen": "2017-09-05T19:40:00.433Z",
+    "TableScan": false,
+    "Count": 3,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0,
+      0
+    ],
+    "QueryTime": [
+      0,
+      0,
+      0
+    ],
+    "ResponseLength": [
+      364,
+      328,
+      329
+    ]
+  },
+  {
+    "ID": "9423eaa90c222686d092c04f001fb369",
+    "Namespace": "test.coll",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"command\",\"command\":{\"findandmodify\":\"coll\",\"query\":{\"a\":2},\"update\":{\"$inc\":{\"b\":1}}},\"updateobj\":{\"$inc\":{\"b\":1}}}\n",
+    "Fingerprint": "FINDANDMODIFY coll a",
+    "FirstSeen": "2017-08-20T15:39:31.548Z",
+    "LastSeen": "2017-08-20T15:39:48.636Z",
+    "TableScan": false,
+    "Count": 3,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      3,
+      3,
+      3
+    ],
+    "QueryTime": [
+      0,
+      0,
+      0
+    ],
+    "ResponseLength": [
+      116,
+      116,
+      116
+    ]
+  },
+  {
+    "ID": "dd20c739baef5a3fd9352c350c7e69f1",
+    "Namespace": "test.coll",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"command\",\"command\":{\"geoNear\":\"coll\",\"near\":{\"type\":\"Point\",\"coordinates\":[1,1]},\"spherical\":true}}\n",
+    "Fingerprint": "GEONEAR coll",
+    "FirstSeen": "2017-08-20T15:39:31.797Z",
+    "LastSeen": "2017-08-20T15:39:48.842Z",
+    "TableScan": false,
+    "Count": 3,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      10,
+      10
+    ],
+    "QueryTime": [
+      8,
+      11,
+      7
+    ],
+    "ResponseLength": [
+      1401,
+      1383,
+      1383
+    ]
+  },
+  {
+    "ID": "018a055f724d418b80e66b98bfdb25a5",
+    "Namespace": "test.coll",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"command\",\"command\":{\"group\":{\"key\":{\"a\":1,\"b\":1},\"cond\":{\"b\":3},\"initial\":{},\"ns\":\"coll\",\"$reduce\":\"\"}}}\n",
+    "Fingerprint": "GROUP coll a,b",
+    "FirstSeen": "2017-08-20T15:39:32.101Z",
+    "LastSeen": "2017-08-20T15:39:49.276Z",
+    "TableScan": false,
+    "Count": 3,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      2,
+      2
+    ],
+    "QueryTime": [
+      74,
+      77,
+      68
+    ],
+    "ResponseLength": [
+      142,
+      124,
+      124
+    ]
+  },
+  {
+    "ID": "130827f5b7afe1369f619ccd5cd61ec4",
+    "Namespace": "test.coll",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"command\",\"command\":{\"mapreduce\":\"coll\",\"map\":\"\",\"reduce\":\"\",\"query\":{\"a\":{\"$gte\":0}},\"out\":{\"inline\":1}}}\n",
+    "Fingerprint": "MAPREDUCE coll a",
+    "FirstSeen": "2017-08-20T15:39:32.572Z",
+    "LastSeen": "2017-08-20T15:39:49.68Z",
+    "TableScan": false,
+    "Count": 3,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      3,
+      3
+    ],
+    "QueryTime": [
+      31,
+      43,
+      35
+    ],
+    "ResponseLength": [
+      218,
+      218,
+      218
+    ]
+  },
+  {
+    "ID": "71b3d6aa44d34aaa02cd65bad3e25f49",
+    "Namespace": "test",
+    "Operation": "command",
+    "Query": "{\"ns\":\"test\",\"op\":\"command\",\"command\":{\"$eval\":\"db\"}}\n",
+    "Fingerprint": "EVAL",
+    "FirstSeen": "2017-09-05T19:39:41.581Z",
+    "LastSeen": "2017-09-05T19:40:00.171Z",
+    "TableScan": false,
+    "Count": 3,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0,
+      0
+    ],
+    "QueryTime": [
+      88,
+      91,
+      47
+    ],
+    "ResponseLength": [
+      93,
+      93,
+      93
+    ]
+  },
+  {
+    "ID": "a7ce8dee16beadb767484112e6b29af3",
+    "Namespace": "test.coll",
+    "Operation": "insert",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"insert\",\"query\":{\"_id\":1}}\n",
+    "Fingerprint": "INSERT coll",
+    "FirstSeen": "2017-08-20T15:39:16.473Z",
+    "LastSeen": "2017-08-20T15:39:49.44Z",
+    "TableScan": false,
+    "Count": 5,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "QueryTime": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "ResponseLength": [
+      0,
+      0,
+      25,
+      29,
+      29
+    ]
+  },
+  {
+    "ID": "4c06ec043313864d76669ddc2a1be353",
+    "Namespace": "test.coll",
+    "Operation": "query",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"query\",\"query\":{\"query\":{},\"$explain\":true}}\n",
+    "Fingerprint": "EXPLAIN",
+    "FirstSeen": "2017-09-05T19:39:24.666Z",
+    "LastSeen": "2017-09-05T19:39:24.666Z",
+    "TableScan": false,
+    "Count": 1,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      1
+    ],
+    "NScanned": [
+      44
+    ],
+    "QueryTime": [
+      0
+    ],
+    "ResponseLength": [
+      583
+    ]
+  },
+  {
+    "ID": "b9a4b74ac8b3747f44951490e6279b96",
+    "Namespace": "test.coll",
+    "Operation": "query",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"query\"}\n",
+    "Fingerprint": "FIND coll",
+    "FirstSeen": "2017-08-20T15:39:15.75Z",
+    "LastSeen": "2017-08-20T15:39:48.429Z",
+    "TableScan": false,
+    "Count": 5,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      49,
+      49,
+      49,
+      49,
+      49
+    ],
+    "NScanned": [
+      49,
+      49,
+      49,
+      49,
+      49
+    ],
+    "QueryTime": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "ResponseLength": [
+      1846,
+      1846,
+      2112,
+      2094,
+      2094
+    ]
+  },
+  {
+    "ID": "4e9241090af6f4a49545baf7c015fb5c",
+    "Namespace": "test.coll",
+    "Operation": "query",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"query\",\"query\":{\"a\":1}}\n",
+    "Fingerprint": "FIND coll a",
+    "FirstSeen": "2017-08-20T15:39:15.457Z",
+    "LastSeen": "2017-08-20T15:39:48.107Z",
+    "TableScan": false,
+    "Count": 5,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      6,
+      6,
+      6,
+      6,
+      6
+    ],
+    "NScanned": [
+      6,
+      6,
+      6,
+      6,
+      6
+    ],
+    "QueryTime": [
+      0,
+      0,
+      0,
+      0,
+      1
+    ],
+    "ResponseLength": [
+      251,
+      251,
+      349,
+      331,
+      331
+    ]
+  },
+  {
+    "ID": "dddda7545e797b073966c514f9b6fe49",
+    "Namespace": "test.coll",
+    "Operation": "query",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"query\",\"query\":{\"query\":{\"$and\":[{\"k\":{\"$gt\":1}},{\"k\":{\"$lt\":2}},{\"$or\":[{\"c\":{\"$in\":[\"/^0/\",\"/^2/\",\"/^4/\",\"/^6/\"]}},{\"pad\":{\"$in\":[\"/9$/\",\"/7$/\",\"/5$/\",\"/3$/\"]}}]}]},\"orderby\":{\"k\":-1}}}\n",
+    "Fingerprint": "FIND coll c,k,pad",
+    "FirstSeen": "2017-08-20T15:39:15.616Z",
+    "LastSeen": "2017-08-20T15:39:48.277Z",
+    "TableScan": false,
+    "Count": 5,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      98,
+      98,
+      49,
+      49,
+      49
+    ],
+    "QueryTime": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "ResponseLength": [
+      20,
+      20,
+      100,
+      82,
+      82
+    ]
+  },
+  {
+    "ID": "bab52c8aa977c96ecd148c015ae07c42",
+    "Namespace": "test.coll",
+    "Operation": "remove",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"remove\",\"query\":{\"a\":{\"$gte\":2},\"b\":{\"$gte\":2}}}\n",
+    "Fingerprint": "REMOVE coll a,b",
+    "FirstSeen": "2017-08-20T15:39:15.126Z",
+    "LastSeen": "2017-08-30T10:55:19.142Z",
+    "TableScan": false,
+    "Count": 10,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0,
+      0,
+      4,
+      4,
+      0,
+      0,
+      0,
+      39,
+      39
+    ],
+    "QueryTime": [
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0
+    ],
+    "ResponseLength": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "ID": "27cb39e62745b1ff4121b4bf6f21fb12",
+    "Namespace": "test.coll",
+    "Operation": "update",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"update\",\"query\":{\"a\":{\"$gte\":2}},\"updateobj\":{\"$set\":{\"c\":1},\"$inc\":{\"a\":-10}}}\n",
+    "Fingerprint": "UPDATE coll a",
+    "FirstSeen": "2017-08-20T15:39:16.921Z",
+    "LastSeen": "2017-08-20T15:39:49.855Z",
+    "TableScan": false,
+    "Count": 5,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "QueryTime": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "ResponseLength": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  }
+]
