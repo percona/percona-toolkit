@@ -427,9 +427,9 @@ func TestAvailableMetrics(t *testing.T) {
 
 			tmpl := template.New("")
 			tmpl = tmpl.Funcs(template.FuncMap{"join": strings.Join})
-			tmpl, err := tmpl.Parse(`| | {{range .Metrics}}{{.}} | {{end}}
-| - | {{range .Metrics}}- | {{end}}{{range $s := .Samples}}
-| {{$s}} | {{range $m := $.Metrics}}{{join (index $.Data $s $m) ", "}} | {{end}}{{end}}`)
+			tmpl, err := tmpl.Parse(`| |{{range .Metrics}} {{.}} |{{end}}
+| - |{{range .Metrics}} - |{{end}}{{range $s := .Samples}}
+| {{$s}} |{{range $m := $.Metrics}} {{join (index $.Data $s $m) ", "}} |{{end}}{{end}}`)
 			if err != nil {
 				panic(err)
 			}
