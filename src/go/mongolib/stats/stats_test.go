@@ -433,15 +433,16 @@ func TestAvailableMetrics(t *testing.T) {
 			if err != nil {
 				panic(err)
 			}
-			var got bytes.Buffer
-			err = tmpl.Execute(&got, r)
+			var bufGot bytes.Buffer
+			err = tmpl.Execute(&bufGot, r)
 			if err != nil {
 				panic(err)
 			}
+			got := bufGot.String()
 
 			fExpect := dirExpect + "cmd_metric.md"
 			if tutil.ShouldUpdateSamples() {
-				err = ioutil.WriteFile(fExpect, got.Bytes(), 0777)
+				err = ioutil.WriteFile(fExpect, bufGot.Bytes(), 0777)
 				if err != nil {
 					fmt.Printf("cannot update samples: %s", err.Error())
 				}
@@ -454,7 +455,7 @@ func TestAvailableMetrics(t *testing.T) {
 			expect := string(buf)
 
 			if !reflect.DeepEqual(got, expect) {
-				t.Errorf("s.Queries() = %s, want %s", got, expect)
+				t.Errorf("got %s, want %s", got, expect)
 			}
 		})
 	})
