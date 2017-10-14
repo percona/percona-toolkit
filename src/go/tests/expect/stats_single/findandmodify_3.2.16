@@ -1,8 +1,8 @@
 [
   {
-    "ID": "9423eaa90c222686d092c04f001fb369",
+    "ID": "e8a3f05a4bd3f0bfa7d38eb2372258b1",
     "Namespace": "test.coll",
-    "Operation": "command",
+    "Operation": "FINDANDMODIFY",
     "Query": "{\"ns\":\"test.coll\",\"op\":\"command\",\"command\":{\"findandmodify\":\"coll\",\"query\":{\"a\":2},\"update\":{\"$inc\":{\"b\":1}}},\"updateobj\":{\"$inc\":{\"b\":1}}}\n",
     "Fingerprint": "FINDANDMODIFY coll a",
     "FirstSeen": "2017-08-20T15:39:31.548Z",

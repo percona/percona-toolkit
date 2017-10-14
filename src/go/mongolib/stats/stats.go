@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/montanaflynn/stats"
-	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -31,8 +30,8 @@ func (e *StatsError) Parent() error {
 
 type StatsFingerprintError StatsError
 
-// New creates new instance of stats with given fingerprinter
-func New(fingerprinter fingerprinter.Fingerprinter) *Stats {
+// New creates new instance of stats with given Fingerprinter
+func New(fingerprinter Fingerprinter) *Stats {
 	s := &Stats{
 		fingerprinter: fingerprinter,
 	}
@@ -44,7 +43,7 @@ func New(fingerprinter fingerprinter.Fingerprinter) *Stats {
 // Stats is a collection of MongoDB statistics
 type Stats struct {
 	// dependencies
-	fingerprinter fingerprinter.Fingerprinter
+	fingerprinter Fingerprinter
 
 	// internal
 	queryInfoAndCounters map[GroupKey]*QueryInfoAndCounters
@@ -69,9 +68,9 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 	var ok bool
 
 	key := GroupKey{
-		Operation:   doc.Op,
-		Fingerprint: fp,
-		Namespace:   doc.Ns,
+		Operation:   fp.Operation,
+		Fingerprint: fp.Fingerprint,
+		Namespace:   fp.Namespace,
 	}
 	if qiac, ok = s.getQueryInfoAndCounters(key); !ok {
 		query := proto.NewExampleQuery(doc)
@@ -81,9 +80,9 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 		}
 		qiac = &QueryInfoAndCounters{
 			ID:          fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s", key)))),
-			Operation:   doc.Op,
-			Fingerprint: fp,
-			Namespace:   doc.Ns,
+			Operation:   fp.Operation,
+			Fingerprint: fp.Fingerprint,
+			Namespace:   fp.Namespace,
 			TableScan:   false,
 			Query:       string(queryBson),
 		}

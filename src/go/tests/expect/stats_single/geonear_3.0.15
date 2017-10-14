@@ -1,8 +1,8 @@
 [
   {
-    "ID": "eb3d8174e05f442cc5c3269eb50667d6",
-    "Namespace": "test.$cmd",
-    "Operation": "command",
+    "ID": "c70403cbd55ffbb07f08c0cb77a24b19",
+    "Namespace": "test.coll",
+    "Operation": "GEONEAR",
     "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"geoNear\":\"coll\",\"near\":{\"type\":\"Point\",\"coordinates\":[1,1]},\"spherical\":true}}\n",
     "Fingerprint": "GEONEAR coll",
     "FirstSeen": "2017-08-20T15:39:22.055Z",

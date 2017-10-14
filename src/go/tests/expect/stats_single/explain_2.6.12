@@ -1,8 +1,8 @@
 [
   {
-    "ID": "4c06ec043313864d76669ddc2a1be353",
-    "Namespace": "test.coll",
-    "Operation": "query",
+    "ID": "76d7662df07b44135ac3e07e44a6eb39",
+    "Namespace": "",
+    "Operation": "EXPLAIN",
     "Query": "{\"ns\":\"test.coll\",\"op\":\"query\",\"query\":{\"query\":{},\"$explain\":true}}\n",
     "Fingerprint": "EXPLAIN",
     "FirstSeen": "2017-09-05T19:39:24.666Z",

@@ -145,9 +145,9 @@ func TestStats(t *testing.T) {
 		t.Errorf("Error processing doc: %s\n", err.Error())
 	}
 	statsVal := QueryInfoAndCounters{
-		ID:             "4e4774ad26f934a193757002a991ebb8",
+		ID:             "d7088d6b50551d1f2f5f34b006c0140d",
 		Namespace:      "samples.col1",
-		Operation:      "query",
+		Operation:      "FIND",
 		Query:          "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"filter\":{\"s2\":{\"$gte\":\"41991\",\"$lt\":\"33754\"}},\"shardVersion\":[0,\"000000000000000000000000\"]}}\n",
 		Fingerprint:    "FIND col1 s2",
 		FirstSeen:      parseDate("2017-04-10T13:15:53.532-03:00"),

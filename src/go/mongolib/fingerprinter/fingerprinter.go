@@ -17,29 +17,34 @@ var (
 	DEFAULT_KEY_FILTERS = []string{"^shardVersion$"}
 )
 
-type Fingerprinter interface {
-	Fingerprint(doc proto.SystemProfile) (string, error)
+type Fingerprint struct {
+	Namespace   string
+	Operation   string
+	Collection  string
+	Database    string
+	Keys        string
+	Fingerprint string
 }
 
-type Fingerprint struct {
+type Fingerprinter struct {
 	keyFilters []string
 }
 
-func NewFingerprinter(keyFilters []string) *Fingerprint {
-	return &Fingerprint{
+func NewFingerprinter(keyFilters []string) *Fingerprinter {
+	return &Fingerprinter{
 		keyFilters: keyFilters,
 	}
 }
 
-func (f *Fingerprint) Fingerprint(doc proto.SystemProfile) (string, error) {
+func (f *Fingerprinter) Fingerprint(doc proto.SystemProfile) (Fingerprint, error) {
 	realQuery, err := util.GetQueryField(doc)
 	if err != nil {
 		// Try to encode doc.Query as json for prettiness
 		if buf, err := json.Marshal(realQuery); err == nil {
-			return "", fmt.Errorf("%v for query %s", err, string(buf))
+			return Fingerprint{}, fmt.Errorf("%v for query %s", err, string(buf))
 		}
 		// If we cannot encode as json, return just the error message without the query
-		return "", err
+		return Fingerprint{}, err
 	}
 	retKeys := keys(realQuery, f.keyFilters)
 
@@ -61,22 +66,22 @@ func (f *Fingerprint) Fingerprint(doc proto.SystemProfile) (string, error) {
 		}
 	}
 
-	// Extract collection name and operation
+	// Extract operation, collection, database and namespace
 	op := ""
 	collection := ""
+	database := ""
+	ns := strings.SplitN(doc.Ns, ".", 2)
+	if len(ns) > 0 {
+		database = ns[0]
+	}
+	if len(ns) == 2 {
+		collection = ns[1]
+	}
 	switch doc.Op {
 	case "remove", "update":
 		op = doc.Op
-		ns := strings.SplitN(doc.Ns, ".", 2)
-		if len(ns) == 2 {
-			collection = ns[1]
-		}
 	case "insert":
 		op = doc.Op
-		ns := strings.SplitN(doc.Ns, ".", 2)
-		if len(ns) == 2 {
-			collection = ns[1]
-		}
 		retKeys = []string{}
 	case "query":
 		// EXPLAIN MongoDB 2.6:
@@ -88,13 +93,11 @@ func (f *Fingerprint) Fingerprint(doc proto.SystemProfile) (string, error) {
 		// },
 		if _, ok := doc.Query.Map()["$explain"]; ok {
 			op = "explain"
+			database = ""
+			collection = ""
 			break
 		}
 		op = "find"
-		ns := strings.SplitN(doc.Ns, ".", 2)
-		if len(ns) == 2 {
-			collection = ns[1]
-		}
 	default:
 		if query.Len() == 0 {
 			break
@@ -138,6 +141,8 @@ func (f *Fingerprint) Fingerprint(doc proto.SystemProfile) (string, error) {
 		case "geoNear":
 			retKeys = []string{}
 		case "explain":
+			database = ""
+			collection = ""
 			retKeys = []string{}
 		case "$eval":
 			op = "eval"
@@ -162,7 +167,23 @@ func (f *Fingerprint) Fingerprint(doc proto.SystemProfile) (string, error) {
 		parts = append(parts, keys)
 	}
 
-	return strings.Join(parts, " "), nil
+	ns = []string{}
+	if database != "" {
+		ns = append(ns, database)
+	}
+	if collection != "" {
+		ns = append(ns, collection)
+	}
+	fp := Fingerprint{
+		Operation:   op,
+		Namespace:   strings.Join(ns, "."),
+		Database:    database,
+		Collection:  collection,
+		Keys:        keys,
+		Fingerprint: strings.Join(parts, " "),
+	}
+
+	return fp, nil
 }
 
 func keys(query interface{}, keyFilters []string) []string {

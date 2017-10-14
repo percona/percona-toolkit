@@ -1,8 +1,8 @@
 [
   {
-    "ID": "59899eb380b4e48c345fb6f997d06bfa",
-    "Namespace": "test.$cmd",
-    "Operation": "command",
+    "ID": "30dbfbc89efd8cfd40774dff0266a28f",
+    "Namespace": "test.coll",
+    "Operation": "AGGREGATE",
     "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"aggregate\":\"coll\",\"pipeline\":[{\"$match\":{\"a\":{\"$gte\":2}}}],\"cursor\":{}}}\n",
     "Fingerprint": "AGGREGATE coll a",
     "FirstSeen": "2017-08-20T15:39:14.658Z",

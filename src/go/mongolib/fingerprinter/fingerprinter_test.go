@@ -44,7 +44,7 @@ func ExampleFingerprint() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(got)
+	fmt.Println(got.Fingerprint)
 	// Output: FIND sbtest3 c,k,pad
 }
 
@@ -68,7 +68,7 @@ func TestFingerprint(t *testing.T) {
 		t.Error("Error in fingerprint")
 	}
 
-	if got != want {
+	if got.Fingerprint != want {
 		t.Errorf("Invalid fingerprint. Got: %q, want %q", got, want)
 	}
 }
@@ -183,8 +183,8 @@ func TestFingerprints(t *testing.T) {
 				t.Errorf("cannot create fingerprint: %s", err)
 			}
 			expect := expects[file.Name()]
-			if !reflect.DeepEqual(got, expect) {
-				t.Errorf("fp.Fingerprint(doc) = %s, want %s", got, expect)
+			if !reflect.DeepEqual(got.Fingerprint, expect) {
+				t.Errorf("fp.Fingerprint(doc) = %s, want %s", got.Fingerprint, expect)
 			}
 		})
 	}

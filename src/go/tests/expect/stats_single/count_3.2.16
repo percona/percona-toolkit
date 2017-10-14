@@ -1,8 +1,8 @@
 [
   {
-    "ID": "29701e3d37e0adb35ebd70b7ef2b3f3d",
+    "ID": "cba2dff0740762c6e5769f0e300df676",
     "Namespace": "test.coll",
-    "Operation": "command",
+    "Operation": "COUNT",
     "Query": "{\"ns\":\"test.coll\",\"op\":\"command\",\"command\":{\"count\":\"coll\",\"query\":{},\"fields\":{}}}\n",
     "Fingerprint": "COUNT coll",
     "FirstSeen": "2017-08-20T15:39:30.094Z",

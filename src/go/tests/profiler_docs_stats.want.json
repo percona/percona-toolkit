@@ -1,8 +1,8 @@
 [
   {
-    "ID": "16196765fb4c14edb91efdbe4f5c5973",
+    "ID": "95575e896c2830043dc333cb8ee61339",
     "Namespace": "samples.col1",
-    "Operation": "query",
+    "Operation": "FIND",
     "Query": "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"shardVersion\":[0,\"000000000000000000000000\"]}}\n",
     "Fingerprint": "FIND col1 find",
     "FirstSeen": "2017-04-10T13:16:23.29-03:00",
@@ -53,9 +53,9 @@
     }
   },
   {
-    "ID": "4e4774ad26f934a193757002a991ebb8",
+    "ID": "d7088d6b50551d1f2f5f34b006c0140d",
     "Namespace": "samples.col1",
-    "Operation": "query",
+    "Operation": "FIND",
     "Query": "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"filter\":{\"s2\":{\"$gte\":\"41991\",\"$lt\":\"33754\"}},\"shardVersion\":[0,\"000000000000000000000000\"]}}\n",
     "Fingerprint": "FIND col1 s2",
     "FirstSeen": "2017-04-10T13:15:53.532-03:00",
@@ -106,9 +106,9 @@
     }
   },
   {
-    "ID": "8cb8666ace7e54767b4d3c4f61860cf9",
+    "ID": "b4b7a063b3afbcbdf042a0f0f9e48a9d",
     "Namespace": "samples.col1",
-    "Operation": "query",
+    "Operation": "FIND",
     "Query": "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"filter\":{\"user_id\":{\"$gte\":3.384024924e+09,\"$lt\":1.95092007e+08}},\"projection\":{\"$sortKey\":{\"$meta\":\"sortKey\"}},\"shardVersion\":[0,\"000000000000000000000000\"],\"sort\":{\"user_id\":1}}}\n",
     "Fingerprint": "FIND col1 user_id",
     "FirstSeen": "2017-04-10T13:15:53.524-03:00",

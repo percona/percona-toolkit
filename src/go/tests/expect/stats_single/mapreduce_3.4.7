@@ -1,8 +1,8 @@
 [
   {
-    "ID": "130827f5b7afe1369f619ccd5cd61ec4",
+    "ID": "cc3cb3824eea4094eb042f5ca76bd385",
     "Namespace": "test.coll",
-    "Operation": "command",
+    "Operation": "MAPREDUCE",
     "Query": "{\"ns\":\"test.coll\",\"op\":\"command\",\"command\":{\"mapreduce\":\"coll\",\"map\":{\"code\":\"function () {\\n    emit(this.a, this.b);\\n}\"},\"reduce\":{\"code\":\"function (a, b) {\\n    return Array.sum(b);\\n}\"},\"query\":{\"a\":{\"$gte\":0}},\"out\":{\"inline\":1}}}\n",
     "Fingerprint": "MAPREDUCE coll a",
     "FirstSeen": "2017-08-20T15:39:39.249Z",

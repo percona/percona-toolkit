@@ -1,8 +1,8 @@
 [
   {
-    "ID": "ada85b4f1473b9a1fb37158a8481e20e",
-    "Namespace": "test.$cmd",
-    "Operation": "command",
+    "ID": "76d7662df07b44135ac3e07e44a6eb39",
+    "Namespace": "",
+    "Operation": "EXPLAIN",
     "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"explain\":{\"find\":\"coll\",\"filter\":{},\"options\":{}},\"verbosity\":\"queryPlanner\"}}\n",
     "Fingerprint": "EXPLAIN",
     "FirstSeen": "2017-09-05T19:39:32.21Z",

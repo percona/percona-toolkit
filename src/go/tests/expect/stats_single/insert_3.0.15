@@ -1,8 +1,8 @@
 [
   {
-    "ID": "a7ce8dee16beadb767484112e6b29af3",
+    "ID": "e357abe482dcc0cd03ab742741bf1c86",
     "Namespace": "test.coll",
-    "Operation": "insert",
+    "Operation": "INSERT",
     "Query": "{\"ns\":\"test.coll\",\"op\":\"insert\",\"query\":{\"_id\":1}}\n",
     "Fingerprint": "INSERT coll",
     "FirstSeen": "2017-08-20T15:39:22.409Z",
