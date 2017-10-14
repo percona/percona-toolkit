@@ -259,11 +259,13 @@ func testAllOperationsTemplate(t *testing.T, data Data) {
 		t.Fatalf("cannot list samples: %s", err)
 	}
 
+	fs := []string{}
 	for _, file := range files {
-		err := run(dir + file.Name())
-		if err != nil {
-			t.Fatalf("cannot execute query '%s': %s", dir+file.Name(), err)
-		}
+		fs = append(fs, dir+file.Name())
+	}
+	err = run(fs...)
+	if err != nil {
+		t.Fatalf("cannot execute queries: %s", err)
 	}
 
 	// disable profiling so pt-mongodb-query digest reads rows from `system.profile`
@@ -279,25 +281,6 @@ func testAllOperationsTemplate(t *testing.T, data Data) {
 	if err != nil {
 		t.Error(err)
 	}
-
-	expected := `Profiler is disabled for the "test" database but there are 125 documents in the system.profile collection.
-Using those documents for the stats
-pt-mongodb-query-digest .+
-Host: ` + data.url + `
-Skipping profiled queries on these collections: \[system\.profile\]
-
-
-# Totals
-# Ratio    [0-9\.]+  \(docs scanned/returned\)
-# Attribute            pct     total        min         max        avg         95%        stddev      median
-# ==================   ===   ========    ========    ========    ========    ========     =======    ========
-# Count \(docs\)                   125\s
-# Exec Time ms         (\s*[0-9]+){8}\s
-# Docs Scanned         (\s*[0-9\.]+){8}\s
-# Docs Returned        (\s*[0-9\.]+){8}\s
-# Bytes sent           (\s*[0-9\.K]+){8}(K|\s)
-#\s
-`
 
 	queries := []stats.QueryStats{
 		{
@@ -392,6 +375,25 @@ Skipping profiled queries on these collections: \[system\.profile\]
 		},
 	}
 
+	expected := `Profiler is disabled for the "test" database but there are 125 documents in the system.profile collection.
+Using those documents for the stats
+pt-mongodb-query-digest .+
+Host: ` + data.url + `
+Skipping profiled queries on these collections: \[system\.profile\]
+
+
+# Totals
+# Ratio    [0-9\.]+  \(docs scanned/returned\)
+# Attribute            pct     total        min         max        avg         95%        stddev      median
+# ==================   ===   ========    ========    ========    ========    ========     =======    ========
+# Count \(docs\)                   125\s
+# Exec Time ms         (\s*[0-9]+){8}\s
+# Docs Scanned         (\s*[0-9\.]+){8}\s
+# Docs Returned        (\s*[0-9\.]+){8}\s
+# Bytes sent           (\s*[0-9\.K]+){8}(K|\s)
+#\s
+`
+
 	queryTpl := `
 # Query [0-9]+:  [0-9\.]+ QPS, ID {{.ID}}
 # Ratio    [0-9\.]+  \(docs scanned/returned\)
@@ -467,9 +469,8 @@ func assertRegexpLines(t *testing.T, rx string, str string, msgAndArgs ...interf
 	}
 }
 
-func run(filename string) error {
+func run(arg ...string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	return exec.CommandContext(ctx, "mongo", filename).Run()
-
+	return exec.CommandContext(ctx, "mongo", arg...).Run()
 }
