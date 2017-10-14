@@ -305,105 +305,90 @@ Skipping profiled queries on these collections: \[system\.profile\]
 			Namespace:   "test.coll",
 			Operation:   "INSERT",
 			Fingerprint: "INSERT coll",
-			Query:       `{"ns":"test.coll","op":"insert","query":{"insert":"coll","documents":\[{"_id":{"\$oid":".*"},"a":9}\],"ordered":true}}`,
 		},
 		{
 			ID:          "c9b40ce564762834d12b0390a292645c",
 			Namespace:   "test.coll",
 			Operation:   "DROP",
 			Fingerprint: "DROP coll drop",
-			Query:       `{"ns":"test.coll","op":"command","command":{"drop":"coll"}}`,
 		},
 		{
 			ID:          "e72ad41302045bd6c2bcad76511f915a",
 			Namespace:   "test.coll",
 			Operation:   "REMOVE",
 			Fingerprint: "REMOVE coll a,b",
-			Query:       regexp.QuoteMeta(`{"ns":"test.coll","op":"remove","query":{"a":{"$gte":2},"b":{"$gte":2}}}`),
 		},
 		{
 			ID:          "30dbfbc89efd8cfd40774dff0266a28f",
 			Namespace:   "test.coll",
 			Operation:   "AGGREGATE",
 			Fingerprint: "AGGREGATE coll a",
-			Query:       regexp.QuoteMeta(`{"ns":"test.coll","op":"command","command":{"aggregate":"coll","pipeline":[{"$match":{"a":{"$gte":2}}}],"cursor":{}}}`),
 		},
 		{
 			ID:          "e4122a58c99ab0a4020ce7d195c5a8cb",
 			Namespace:   "test.coll",
 			Operation:   "DISTINCT",
 			Fingerprint: "DISTINCT coll a,b",
-			Query:       regexp.QuoteMeta(`{"ns":"test.coll","op":"command","command":{"distinct":"coll","key":"a","query":{"b":{"$gte":5}}}}`),
 		},
 		{
 			ID:          "a6782ae38ef891d5506341a4b0ab2747",
 			Namespace:   "test",
 			Operation:   "EVAL",
 			Fingerprint: "EVAL",
-			Query:       regexp.QuoteMeta(`{"ns":"test","op":"command","command":{"$eval":"db"}}`),
 		},
 		{
 			ID:          "76d7662df07b44135ac3e07e44a6eb39",
 			Namespace:   "",
 			Operation:   "EXPLAIN",
 			Fingerprint: "EXPLAIN",
-			Query:       `{"ns":"test.coll","op":"command","command":{"explain":{"find":"coll","filter":{}},"verbosity":"queryPlanner"}}`,
 		},
 		{
 			ID:          "e8a3f05a4bd3f0bfa7d38eb2372258b1",
 			Namespace:   "test.coll",
 			Operation:   "FINDANDMODIFY",
 			Fingerprint: "FINDANDMODIFY coll a",
-			Query:       regexp.QuoteMeta(`{"ns":"test.coll","op":"command","command":{"findandmodify":"coll","query":{"a":2},"update":{"$inc":{"b":1}}},"updateobj":{"$inc":{"b":1}}}`),
 		},
 		{
-			ID:          "67c5f1bafcb8cd4b3af9f008f496f74b",
+			ID:          "798d7c1cd25b63cb6a307126a25910d6",
 			Namespace:   "test.system.js",
 			Operation:   "FIND",
-			Fingerprint: "FIND system.js find",
-			Query:       `{"ns":"test.system.js","op":"query","query":{"find":"system.js"}}`,
+			Fingerprint: "FIND system.js",
 		},
 		{
 			ID:          "c70403cbd55ffbb07f08c0cb77a24b19",
 			Namespace:   "test.coll",
 			Operation:   "GEONEAR",
 			Fingerprint: "GEONEAR coll",
-			Query:       regexp.QuoteMeta(`{"ns":"test.coll","op":"command","command":{"geoNear":"coll","near":{"type":"Point","coordinates":[1,1]},"spherical":true}}`),
 		},
 		{
 			ID:          "ca8bb19386488570447f5753741fb494",
 			Namespace:   "test.coll",
 			Operation:   "GROUP",
 			Fingerprint: "GROUP coll a,b",
-			Query:       regexp.QuoteMeta(`{"ns":"test.coll","op":"command","command":{"group":{"key":{"a":1,"b":1},"cond":{"b":3},"initial":{},"ns":"coll","$reduce":{"Code":"function () {}","Scope":null}}}}`),
 		},
 		{
 			ID:          "10b8f47b366fbfd1fb01f8d17d75b1a2",
 			Namespace:   "test.coll",
 			Operation:   "COUNT",
 			Fingerprint: "COUNT coll a",
-			Query:       regexp.QuoteMeta(`{"ns":"test.coll","op":"command","command":{"count":"coll","query":{"a":{"$gt":5}},"fields":{}}}`),
 		},
 		{
 			ID:          "cc3cb3824eea4094eb042f5ca76bd385",
 			Namespace:   "test.coll",
 			Operation:   "MAPREDUCE",
 			Fingerprint: "MAPREDUCE coll a",
-			Query:       regexp.QuoteMeta(`{"ns":"test.coll","op":"command","command":{"mapreduce":"coll","map":{"Code":"function () {\n    emit(this.a, this.b);\n}","Scope":null},"reduce":{"Code":"function (a, b) {\n    return Array.sum(b);\n}","Scope":null},"query":{"a":{"$gte":0}},"out":{"inline":1}}}`),
 		},
 		{
 			ID:          "cba2dff0740762c6e5769f0e300df676",
 			Namespace:   "test.coll",
 			Operation:   "COUNT",
 			Fingerprint: "COUNT coll",
-			Query:       `{"ns":"test.coll","op":"command","command":{"count":"coll","query":{},"fields":{}}}`,
 		},
 		{
 			ID:          "f74a5120ac22d02120ccbf6d478b0dbc",
 			Namespace:   "test.coll",
 			Operation:   "UPDATE",
 			Fingerprint: "UPDATE coll a",
-			Query:       regexp.QuoteMeta(`{"ns":"test.coll","op":"update","query":{"a":{"$gte":2}},"updateobj":{"$set":{"c":1},"$inc":{"a":-10}}}`),
 		},
 	}
 
@@ -422,7 +407,7 @@ Skipping profiled queries on these collections: \[system\.profile\]
 # Namespace           {{.Namespace}}
 # Operation           {{.Operation}}
 # Fingerprint         {{.Fingerprint}}
-# Query               {{.Query}}
+# Query               .*
 
 `
 

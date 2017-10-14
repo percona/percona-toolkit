@@ -332,5 +332,10 @@ func GetQueryField(doc proto.SystemProfile) (bson.M, error) {
 		return nil, CANNOT_GET_QUERY_ERROR
 	}
 
+	// {"ns":"test.system.js","op":"query","query":{"find":"system.js"}}
+	if len(query) == 1 && query[0].Name == "find" {
+		return bson.M{}, nil
+	}
+
 	return query.Map(), nil
 }
