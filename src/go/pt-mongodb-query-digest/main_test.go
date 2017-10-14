@@ -247,7 +247,6 @@ Skipping profiled queries on these collections: \[system\.profile\]
 # Docs Returned          0       NaN         NaN         NaN         NaN         NaN         NaN         NaN\s
 # Bytes sent             0       NaN         NaN         NaN         NaN         NaN         NaN         NaN\s
 #\s
-
 `
 
 	assertRegexpLines(t, expected, string(output))
