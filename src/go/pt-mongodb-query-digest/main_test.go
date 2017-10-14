@@ -15,9 +15,13 @@ import (
 	"testing"
 	"time"
 
+	"bytes"
+	"text/template"
+
 	"github.com/pborman/getopt/v2"
 	"github.com/percona/percona-toolkit/src/go/lib/profiling"
 	"github.com/percona/percona-toolkit/src/go/lib/tutil"
+	"github.com/percona/percona-toolkit/src/go/mongolib/stats"
 	"github.com/percona/pmgo"
 	"gopkg.in/mgo.v2/dbtest"
 )
@@ -184,6 +188,10 @@ func TestPTMongoDBQueryDigest(t *testing.T) {
 				// Clean up system.profile
 				var err error
 				data.url = "127.0.0.1/test"
+				err = profiling.Disable(data.url)
+				if err != nil {
+					t.Error(err)
+				}
 				err = profiling.Drop(data.url)
 				if err != nil {
 					t.Error(err)
@@ -261,8 +269,12 @@ func testAllOperationsTemplate(t *testing.T, data Data) {
 		if err != nil {
 			t.Fatalf("cannot execute query '%s': %s", dir+file.Name(), err)
 		}
-
 	}
+
+	// disable profiling so pt-mongodb-query digest reads rows from `system.profile`
+	profiling.Disable(data.url)
+
+	// run profiler
 	cmd := exec.Command(
 		data.bin,
 		data.url,
@@ -273,90 +285,162 @@ func testAllOperationsTemplate(t *testing.T, data Data) {
 		t.Error(err)
 	}
 
-	expected := `pt-mongodb-query-digest .+
+	expected := `Profiler is disabled for the "test" database but there are 125 documents in the system.profile collection.
+Using those documents for the stats
+pt-mongodb-query-digest .+
 Host: ` + data.url + `
 Skipping profiled queries on these collections: \[system\.profile\]
 
 
 # Totals
-# Ratio    0.00  \(docs scanned/returned\)
+# Ratio    [0-9\.]+  \(docs scanned/returned\)
 # Attribute            pct     total        min         max        avg         95%        stddev      median
 # ==================   ===   ========    ========    ========    ========    ========     =======    ========
-# Count \(docs\)                   111\s
+# Count \(docs\)                   125\s
 # Exec Time ms         (\s*[0-9]+){8}\s
 # Docs Scanned         (\s*[0-9\.]+){8}\s
 # Docs Returned        (\s*[0-9\.]+){8}\s
-# Bytes recv           (\s*[0-9\.K]+){8}\s
+# Bytes sent           (\s*[0-9\.K]+){8}(K|\s)
 #\s
+`
 
-# Query 1:  0.00 QPS, ID a7ce8dee16beadb767484112e6b29af3
-# Ratio    0.00  \(docs scanned/returned\)
+	queries := []stats.QueryStats{
+		{
+			ID:          "a7ce8dee16beadb767484112e6b29af3",
+			Namespace:   "test.coll",
+			Operation:   "insert",
+			Fingerprint: "INSERT coll",
+			Query:       `{"ns":"test.coll","op":"insert","query":{"insert":"coll","documents":\[{"_id":{"\$oid":".*"},"a":9}\],"ordered":true}}`,
+		},
+		{
+			ID:          "7e6e9af8a1754a065b323acdddbee4b5",
+			Namespace:   "test.coll",
+			Operation:   "command",
+			Fingerprint: "DROP coll drop",
+			Query:       `{"ns":"test.coll","op":"command","command":{"drop":"coll"}}`,
+		},
+		{
+			ID:          "bab52c8aa977c96ecd148c015ae07c42",
+			Namespace:   "test.coll",
+			Operation:   "remove",
+			Fingerprint: "REMOVE coll a,b",
+			Query:       regexp.QuoteMeta(`{"ns":"test.coll","op":"remove","query":{"a":{"$gte":2},"b":{"$gte":2}}}`),
+		},
+		{
+			ID:          "11e1b6f695d43b1b5a2f7e6de2ad8305",
+			Namespace:   "test.coll",
+			Operation:   "command",
+			Fingerprint: "AGGREGATE coll a",
+			Query:       regexp.QuoteMeta(`{"ns":"test.coll","op":"command","command":{"aggregate":"coll","pipeline":[{"$match":{"a":{"$gte":2}}}],"cursor":{}}}`),
+		},
+		{
+			ID:          "a4be6ed97c946182af7e30cf818afdac",
+			Namespace:   "test.coll",
+			Operation:   "command",
+			Fingerprint: "DISTINCT coll a,b",
+			Query:       regexp.QuoteMeta(`{"ns":"test.coll","op":"command","command":{"distinct":"coll","key":"a","query":{"b":{"$gte":5}}}}`),
+		},
+		{
+			ID:          "e2f53c6824c5cbe454e33e128b350d1e",
+			Namespace:   "test.coll",
+			Operation:   "command",
+			Fingerprint: "EXPLAIN",
+			Query:       `{"ns":"test.coll","op":"command","command":{"explain":{"find":"coll","filter":{}},"verbosity":"queryPlanner"}}`,
+		},
+		{
+			ID:          "9423eaa90c222686d092c04f001fb369",
+			Namespace:   "test.coll",
+			Operation:   "command",
+			Fingerprint: "FINDANDMODIFY coll a",
+			Query:       regexp.QuoteMeta(`{"ns":"test.coll","op":"command","command":{"findandmodify":"coll","query":{"a":2},"update":{"$inc":{"b":1}}},"updateobj":{"$inc":{"b":1}}}`),
+		},
+		{
+			ID:          "dd20c739baef5a3fd9352c350c7e69f1",
+			Namespace:   "test.coll",
+			Operation:   "command",
+			Fingerprint: "GEONEAR coll",
+			Query:       regexp.QuoteMeta(`{"ns":"test.coll","op":"command","command":{"geoNear":"coll","near":{"type":"Point","coordinates":[1,1]},"spherical":true}}`),
+		},
+		{
+			ID:          "018a055f724d418b80e66b98bfdb25a5",
+			Namespace:   "test.coll",
+			Operation:   "command",
+			Fingerprint: "GROUP coll a,b",
+			Query:       regexp.QuoteMeta(`{"ns":"test.coll","op":"command","command":{"group":{"key":{"a":1,"b":1},"cond":{"b":3},"initial":{},"ns":"coll","$reduce":{"Code":"function () {}","Scope":null}}}}`),
+		},
+		{
+			ID:          "130827f5b7afe1369f619ccd5cd61ec4",
+			Namespace:   "test.coll",
+			Operation:   "command",
+			Fingerprint: "MAPREDUCE coll a",
+			Query:       regexp.QuoteMeta(`{"ns":"test.coll","op":"command","command":{"mapreduce":"coll","map":{"Code":"function () {\n    emit(this.a, this.b);\n}","Scope":null},"reduce":{"Code":"function (a, b) {\n    return Array.sum(b);\n}","Scope":null},"query":{"a":{"$gte":0}},"out":{"inline":1}}}`),
+		},
+		{
+			ID:          "71b3d6aa44d34aaa02cd65bad3e25f49",
+			Namespace:   "test",
+			Operation:   "command",
+			Fingerprint: "EVAL",
+			Query:       regexp.QuoteMeta(`{"ns":"test","op":"command","command":{"$eval":"db"}}`),
+		},
+		{
+			ID:          "2300d7f2d372205544f249b010e9b8ad",
+			Namespace:   "test.coll",
+			Operation:   "command",
+			Fingerprint: "COUNT coll a",
+			Query:       regexp.QuoteMeta(`{"ns":"test.coll","op":"command","command":{"count":"coll","query":{"a":{"$gt":5}},"fields":{}}}`),
+		},
+		{
+			ID:          "ffd83008fd6affc7c07053f583dea3e0",
+			Namespace:   "test.system.js",
+			Operation:   "query",
+			Fingerprint: "FIND system.js find",
+			Query:       `{"ns":"test.system.js","op":"query","query":{"find":"system.js"}}`,
+		},
+		{
+			ID:          "29701e3d37e0adb35ebd70b7ef2b3f3d",
+			Namespace:   "test.coll",
+			Operation:   "command",
+			Fingerprint: "COUNT coll",
+			Query:       `{"ns":"test.coll","op":"command","command":{"count":"coll","query":{},"fields":{}}}`,
+		},
+		{
+			ID:          "27cb39e62745b1ff4121b4bf6f21fb12",
+			Namespace:   "test.coll",
+			Operation:   "update",
+			Fingerprint: "UPDATE coll a",
+			Query:       regexp.QuoteMeta(`{"ns":"test.coll","op":"update","query":{"a":{"$gte":2}},"updateobj":{"$set":{"c":1},"$inc":{"a":-10}}}`),
+		},
+	}
+
+	queryTpl := `
+# Query [0-9]+:  0.00 QPS, ID {{.ID}}
+# Ratio    [0-9\.]+  \(docs scanned/returned\)
 # Time range: .* to .*
 # Attribute            pct     total        min         max        avg         95%        stddev      median
 # ==================   ===   ========    ========    ========    ========    ========     =======    ========
-# Count \(docs\)                   107\s
+# Count \(docs\)             (\s*[0-9]+)\s
 # Exec Time ms         (\s*[0-9]+){8}\s
 # Docs Scanned         (\s*[0-9\.]+){8}\s
 # Docs Returned        (\s*[0-9\.]+){8}\s
-# Bytes recv           (\s*[0-9\.K]+){8}\s
+# Bytes sent           (\s*[0-9\.K]+){8}(K|\s)
 # String:
-# Namespaces          test.coll
-# Operation           insert
-# Fingerprint         INSERT coll
-# Query               {"ns":"test.coll","op":"insert","query":{"insert":"coll","documents":\[{"_id":{"\$oid":".+"},"a":9}\],"ordered":true}}
-
-
-# Query 2:  0.00 QPS, ID bab52c8aa977c96ecd148c015ae07c42
-# Ratio    0.00  \(docs scanned/returned\)
-# Time range: .* to .*
-# Attribute            pct     total        min         max        avg         95%        stddev      median
-# ==================   ===   ========    ========    ========    ========    ========     =======    ========
-# Count \(docs\)                     2\s
-# Exec Time ms         (\s*[0-9]+){8}\s
-# Docs Scanned         (\s*[0-9\.]+){8}\s
-# Docs Returned        (\s*[0-9\.]+){8}\s
-# Bytes recv           (\s*[0-9\.K]+){8}\s
-# String:
-# Namespaces          test.coll
-# Operation           remove
-# Fingerprint         REMOVE coll a,b
-# Query               {"ns":"test.coll","op":"remove","query":{"a":{"\$gte":2},"b":{"\$gte":2}}}
-
-
-# Query 3:  0.00 QPS, ID ffd83008fd6affc7c07053f583dea3e0
-# Ratio    0.00  \(docs scanned/returned\)
-# Time range: .* to .*
-# Attribute            pct     total        min         max        avg         95%        stddev      median
-# ==================   ===   ========    ========    ========    ========    ========     =======    ========
-# Count \(docs\)                     1\s
-# Exec Time ms         (\s*[0-9]+){8}\s
-# Docs Scanned         (\s*[0-9\.]+){8}\s
-# Docs Returned        (\s*[0-9\.]+){8}\s
-# Bytes recv           (\s*[0-9\.K]+){8}\s
-# String:
-# Namespaces          test.system.js
-# Operation           query
-# Fingerprint         FIND system.js find
-# Query               {"ns":"test.system.js","op":"query","query":{"find":"system.js"}}
-
-
-# Query 4:  0.00 QPS, ID 27cb39e62745b1ff4121b4bf6f21fb12
-# Ratio    0.00  \(docs scanned/returned\)
-# Time range: .* to .*
-# Attribute            pct     total        min         max        avg         95%        stddev      median
-# ==================   ===   ========    ========    ========    ========    ========     =======    ========
-# Count \(docs\)                     1\s
-# Exec Time ms         (\s*[0-9]+){8}\s
-# Docs Scanned         (\s*[0-9\.]+){8}\s
-# Docs Returned        (\s*[0-9\.]+){8}\s
-# Bytes recv           (\s*[0-9\.K]+){8}\s
-# String:
-# Namespaces          test.coll
-# Operation           update
-# Fingerprint         UPDATE coll a
-# Query               {"ns":"test.coll","op":"update","query":{"a":{"\$gte":2}},"updateobj":{"\$set":{"c":1},"\$inc":{"a":-10}}}
+# Namespace           {{.Namespace}}
+# Operation           {{.Operation}}
+# Fingerprint         {{.Fingerprint}}
+# Query               {{.Query}}
 
 `
+
+	tpl, _ := template.New("query").Parse(queryTpl)
+	for _, query := range queries {
+		buf := bytes.Buffer{}
+		err := tpl.Execute(&buf, query)
+		if err != nil {
+			t.Error(err)
+		}
+
+		expected += buf.String()
+	}
 
 	assertRegexpLines(t, expected, string(output))
 }
