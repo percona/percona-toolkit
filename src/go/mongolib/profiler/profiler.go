@@ -18,6 +18,7 @@ var (
 type Profiler interface {
 	GetLastError() error
 	QueriesChan() chan stats.Queries
+	TimeoutsChan() <-chan time.Time
 	FlushQueries()
 	Start()
 	Stop()
@@ -91,6 +92,15 @@ func (p *Profile) Stop() {
 		// Wait for getData to receive the stop signal
 		p.stopWaitGroup.Wait()
 	}
+}
+
+func (p *Profile) TimeoutsChan() <-chan time.Time {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+	if p.timeoutsChan == nil {
+		p.timeoutsChan = make(chan time.Time)
+	}
+	return p.timeoutsChan
 }
 
 func (p *Profile) getData() {
