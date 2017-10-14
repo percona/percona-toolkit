@@ -31,20 +31,6 @@ func NewFingerprinter(keyFilters []string) *Fingerprint {
 	}
 }
 
-// Query is the top level map query element
-// Example for MongoDB 3.2+
-//     "query" : {
-//        "find" : "col1",
-//        "filter" : {
-//            "s2" : {
-//                "$lt" : "54701",
-//                "$gte" : "73754"
-//            }
-//        },
-//        "sort" : {
-//            "user_id" : 1
-//        }
-//     }
 func (f *Fingerprint) Fingerprint(doc proto.SystemProfile) (string, error) {
 	realQuery, err := util.GetQueryField(doc)
 	if err != nil {
