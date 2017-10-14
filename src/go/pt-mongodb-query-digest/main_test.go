@@ -284,9 +284,9 @@ Skipping profiled queries on these collections: \[system\.profile\]
 # ==================   ===   ========    ========    ========    ========    ========     =======    ========
 # Count \(docs\)                   111\s
 # Exec Time ms         (\s*[0-9]+){8}\s
-# Docs Scanned         100     53.00        0.00       47.00        0.48        0.00        4.46        0.00\s
-# Docs Returned          0      0.00        0.00        0.00        0.00        0.00        0.00        0.00\s
-# Bytes recv           100      3.12K       0.00       29.00       28.14       29.00        4.77       29.00\s
+# Docs Scanned         (\s*[0-9\.]+){8}\s
+# Docs Returned        (\s*[0-9\.]+){8}\s
+# Bytes recv           (\s*[0-9\.K]+){8}\s
 #\s
 
 # Query 1:  0.00 QPS, ID a7ce8dee16beadb767484112e6b29af3
@@ -296,9 +296,9 @@ Skipping profiled queries on these collections: \[system\.profile\]
 # ==================   ===   ========    ========    ========    ========    ========     =======    ========
 # Count \(docs\)                   107\s
 # Exec Time ms         (\s*[0-9]+){8}\s
-# Docs Scanned           0      0.00        0.00        0.00        0.00        0.00        0.00        0.00\s
-# Docs Returned          0      0.00        0.00        0.00        0.00        0.00        0.00        0.00\s
-# Bytes recv            99      3.10K      29.00       29.00       29.00       29.00        0.00       29.00\s
+# Docs Scanned         (\s*[0-9\.]+){8}\s
+# Docs Returned        (\s*[0-9\.]+){8}\s
+# Bytes recv           (\s*[0-9\.K]+){8}\s
 # String:
 # Namespaces          test.coll
 # Operation           insert
@@ -313,9 +313,9 @@ Skipping profiled queries on these collections: \[system\.profile\]
 # ==================   ===   ========    ========    ========    ========    ========     =======    ========
 # Count \(docs\)                     2\s
 # Exec Time ms         (\s*[0-9]+){8}\s
-# Docs Scanned          98     52.00        5.00       47.00       26.00       47.00       21.00       26.00\s
-# Docs Returned          0      0.00        0.00        0.00        0.00        0.00        0.00        0.00\s
-# Bytes recv             0      0.00        0.00        0.00        0.00        0.00        0.00        0.00\s
+# Docs Scanned         (\s*[0-9\.]+){8}\s
+# Docs Returned        (\s*[0-9\.]+){8}\s
+# Bytes recv           (\s*[0-9\.K]+){8}\s
 # String:
 # Namespaces          test.coll
 # Operation           remove
@@ -330,9 +330,9 @@ Skipping profiled queries on these collections: \[system\.profile\]
 # ==================   ===   ========    ========    ========    ========    ========     =======    ========
 # Count \(docs\)                     1\s
 # Exec Time ms         (\s*[0-9]+){8}\s
-# Docs Scanned           0      0.00        0.00        0.00        0.00        0.00        0.00        0.00\s
-# Docs Returned          0      0.00        0.00        0.00        0.00        0.00        0.00        0.00\s
-# Bytes recv             1     20.00       20.00       20.00       20.00       20.00        0.00       20.00\s
+# Docs Scanned         (\s*[0-9\.]+){8}\s
+# Docs Returned        (\s*[0-9\.]+){8}\s
+# Bytes recv           (\s*[0-9\.K]+){8}\s
 # String:
 # Namespaces          test.system.js
 # Operation           query
@@ -347,9 +347,9 @@ Skipping profiled queries on these collections: \[system\.profile\]
 # ==================   ===   ========    ========    ========    ========    ========     =======    ========
 # Count \(docs\)                     1\s
 # Exec Time ms         (\s*[0-9]+){8}\s
-# Docs Scanned           2      1.00        1.00        1.00        1.00        1.00        0.00        1.00\s
-# Docs Returned          0      0.00        0.00        0.00        0.00        0.00        0.00        0.00\s
-# Bytes recv             0      0.00        0.00        0.00        0.00        0.00        0.00        0.00\s
+# Docs Scanned         (\s*[0-9\.]+){8}\s
+# Docs Returned        (\s*[0-9\.]+){8}\s
+# Bytes recv           (\s*[0-9\.K]+){8}\s
 # String:
 # Namespaces          test.coll
 # Operation           update
