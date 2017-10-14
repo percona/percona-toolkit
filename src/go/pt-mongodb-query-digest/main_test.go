@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -13,10 +14,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-	"time"
-
-	"bytes"
 	"text/template"
+	"time"
 
 	"github.com/pborman/getopt/v2"
 	"github.com/percona/percona-toolkit/src/go/lib/profiling"
@@ -192,10 +191,7 @@ func TestPTMongoDBQueryDigest(t *testing.T) {
 				if err != nil {
 					t.Error(err)
 				}
-				err = profiling.Drop(data.url)
-				if err != nil {
-					t.Error(err)
-				}
+				profiling.Drop(data.url)
 				err = profiling.Enable(data.url)
 				if err != nil {
 					t.Error(err)
@@ -249,7 +245,7 @@ Skipping profiled queries on these collections: \[system\.profile\]
 # Exec Time ms           0       NaN         NaN         NaN         NaN         NaN         NaN         NaN\s
 # Docs Scanned           0       NaN         NaN         NaN         NaN         NaN         NaN         NaN\s
 # Docs Returned          0       NaN         NaN         NaN         NaN         NaN         NaN         NaN\s
-# Bytes recv             0       NaN         NaN         NaN         NaN         NaN         NaN         NaN\s
+# Bytes sent             0       NaN         NaN         NaN         NaN         NaN         NaN         NaN\s
 #\s
 
 `
@@ -413,7 +409,7 @@ Skipping profiled queries on these collections: \[system\.profile\]
 	}
 
 	queryTpl := `
-# Query [0-9]+:  0.00 QPS, ID {{.ID}}
+# Query [0-9]+:  [0-9\.]+ QPS, ID {{.ID}}
 # Ratio    [0-9\.]+  \(docs scanned/returned\)
 # Time range: .* to .*
 # Attribute            pct     total        min         max        avg         95%        stddev      median
