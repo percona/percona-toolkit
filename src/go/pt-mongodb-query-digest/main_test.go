@@ -413,8 +413,7 @@ func testAllOperationsTemplate(t *testing.T, data Data) {
 		},
 	}
 
-	ndocs := "165"
-	expected := `Profiler is disabled for the "test" database but there are ` + ndocs + ` documents in the system.profile collection.
+	expected := `Profiler is disabled for the "test" database but there are \s*[0-9]+ documents in the system.profile collection.
 Using those documents for the stats
 pt-mongodb-query-digest .+
 Host: ` + data.url + `
@@ -425,7 +424,7 @@ Skipping profiled queries on these collections: \[system\.profile\]
 # Ratio    [0-9\.]+  \(docs scanned/returned\)
 # Attribute            pct     total        min         max        avg         95%        stddev      median
 # ==================   ===   ========    ========    ========    ========    ========     =======    ========
-# Count \(docs\)                   ` + ndocs + `\s
+# Count \(docs\)             (\s*[0-9]+)\s
 # Exec Time ms         (\s*[0-9]+){8}\s
 # Docs Scanned         (\s*[0-9\.]+){8}\s
 # Docs Returned        (\s*[0-9\.]+){8}\s

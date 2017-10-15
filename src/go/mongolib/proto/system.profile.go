@@ -224,9 +224,20 @@ func (self ExampleQuery) ExplainCmd() bson.D {
 	case "getmore":
 		if self.OriginatingCommand.Len() > 0 {
 			cmd = self.OriginatingCommand
+			for i := range cmd {
+				// drop $db param as it is not supported in MongoDB 3.0
+				if cmd[i].Name == "$db" {
+					if len(cmd)-1 == i {
+						cmd = cmd[:i]
+					} else {
+						cmd = append(cmd[:i], cmd[i+1:]...)
+					}
+					break
+				}
+			}
 		} else {
 			cmd = BsonD{
-				{Name: "getMore", Value: ""},
+				{Name: "getmore", Value: ""},
 			}
 		}
 	case "command":

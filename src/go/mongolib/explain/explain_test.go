@@ -109,7 +109,7 @@ func TestExplain(t *testing.T) {
 		for _, v := range versions {
 			// For versions < 3.4 parsing "getmore" is not supported and returns error
 			if ok, _ := Constraint("< 3.4", v); ok {
-				expectError["getmore_"+v] = "Cannot explain cmd: getMore"
+				expectError["getmore_"+v] = "Explain failed due to unknown command: getmore"
 			}
 		}
 
