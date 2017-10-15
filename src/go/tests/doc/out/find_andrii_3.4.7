@@ -48,8 +48,7 @@
 		}
 	},
 	"keysExamined" : 0,
-	"docsExamined" : 49,
-	"hasSortStage" : true,
+	"docsExamined" : 0,
 	"cursorExhausted" : true,
 	"numYield" : 0,
 	"locks" : {
@@ -73,93 +72,21 @@
 	"responseLength" : 82,
 	"protocol" : "op_command",
 	"millis" : 0,
-	"planSummary" : "COLLSCAN",
+	"planSummary" : "EOF",
 	"execStats" : {
-		"stage" : "SORT",
+		"stage" : "EOF",
 		"nReturned" : 0,
 		"executionTimeMillisEstimate" : 0,
-		"works" : 53,
+		"works" : 0,
 		"advanced" : 0,
-		"needTime" : 52,
+		"needTime" : 0,
 		"needYield" : 0,
 		"saveState" : 0,
 		"restoreState" : 0,
 		"isEOF" : 1,
-		"invalidates" : 0,
-		"sortPattern" : {
-			"k" : -1
-		},
-		"memUsage" : 0,
-		"memLimit" : 33554432,
-		"limitAmount" : 100,
-		"inputStage" : {
-			"stage" : "SORT_KEY_GENERATOR",
-			"nReturned" : 0,
-			"executionTimeMillisEstimate" : 0,
-			"works" : 52,
-			"advanced" : 0,
-			"needTime" : 51,
-			"needYield" : 0,
-			"saveState" : 0,
-			"restoreState" : 0,
-			"isEOF" : 1,
-			"invalidates" : 0,
-			"inputStage" : {
-				"stage" : "COLLSCAN",
-				"filter" : {
-					"$and" : [
-						{
-							"$or" : [
-								{
-									"c" : {
-										"$in" : [
-											/^0/,
-											/^2/,
-											/^4/,
-											/^6/
-										]
-									}
-								},
-								{
-									"pad" : {
-										"$in" : [
-											/9$/,
-											/7$/,
-											/5$/,
-											/3$/
-										]
-									}
-								}
-							]
-						},
-						{
-							"k" : {
-								"$lt" : 2
-							}
-						},
-						{
-							"k" : {
-								"$gt" : 1
-							}
-						}
-					]
-				},
-				"nReturned" : 0,
-				"executionTimeMillisEstimate" : 0,
-				"works" : 51,
-				"advanced" : 0,
-				"needTime" : 50,
-				"needYield" : 0,
-				"saveState" : 0,
-				"restoreState" : 0,
-				"isEOF" : 1,
-				"invalidates" : 0,
-				"direction" : "forward",
-				"docsExamined" : 49
-			}
-		}
+		"invalidates" : 0
 	},
-	"ts" : ISODate("2017-08-20T15:39:37.823Z"),
+	"ts" : ISODate("2017-10-15T01:54:43.922Z"),
 	"client" : "127.0.0.1",
 	"appName" : "MongoDB Shell",
 	"allUsers" : [ ],

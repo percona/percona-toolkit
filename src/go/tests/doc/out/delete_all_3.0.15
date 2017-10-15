@@ -9,7 +9,7 @@
 			"$gte" : 2
 		}
 	},
-	"ndeleted" : 15,
+	"ndeleted" : 8,
 	"keyUpdates" : 0,
 	"writeConflicts" : 0,
 	"numYield" : 0,
@@ -22,7 +22,7 @@
 		},
 		"MMAPV1Journal" : {
 			"acquireCount" : {
-				"w" : NumberLong(16)
+				"w" : NumberLong(9)
 			}
 		},
 		"Database" : {
@@ -36,11 +36,11 @@
 			}
 		}
 	},
-	"millis" : 1,
+	"millis" : 0,
 	"execStats" : {
 		
 	},
-	"ts" : ISODate("2017-08-30T10:54:52.821Z"),
+	"ts" : ISODate("2017-10-15T01:54:19.206Z"),
 	"client" : "127.0.0.1",
 	"allUsers" : [ ],
 	"user" : ""

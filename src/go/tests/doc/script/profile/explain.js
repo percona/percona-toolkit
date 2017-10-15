@@ -1,3 +1,3 @@
-var coll = db.coll
+var coll = db.coll;
 
-coll.find().explain()
+coll.find().explain();

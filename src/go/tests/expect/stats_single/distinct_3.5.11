@@ -5,8 +5,8 @@
     "Operation": "DISTINCT",
     "Query": "{\"ns\":\"test.coll\",\"op\":\"command\",\"command\":{\"distinct\":\"coll\",\"key\":\"a\",\"query\":{\"b\":{\"$gte\":5}},\"$db\":\"test\"}}\n",
     "Fingerprint": "DISTINCT coll a,b",
-    "FirstSeen": "2017-08-20T15:39:47.927Z",
-    "LastSeen": "2017-08-20T15:39:47.927Z",
+    "FirstSeen": "2017-10-15T01:54:53.874Z",
+    "LastSeen": "2017-10-15T01:54:53.874Z",
     "TableScan": false,
     "Count": 1,
     "BlockedTime": null,
@@ -15,13 +15,13 @@
       0
     ],
     "NScanned": [
-      10
+      5
     ],
     "QueryTime": [
       0
     ],
     "ResponseLength": [
-      145
+      90
     ]
   }
 ]

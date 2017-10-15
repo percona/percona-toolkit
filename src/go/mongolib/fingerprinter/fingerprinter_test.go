@@ -50,6 +50,8 @@ func ExampleFingerprint() {
 
 func TestFingerprint(t *testing.T) {
 	doc := proto.SystemProfile{}
+	doc.Ns = "db.feedback"
+	doc.Op = "query"
 	doc.Query = proto.BsonD{
 		{"find", "feedback"},
 		{"filter", bson.M{
@@ -63,13 +65,12 @@ func TestFingerprint(t *testing.T) {
 
 	fp := NewFingerprinter(nil)
 	got, err := fp.Fingerprint(doc)
-
 	if err != nil {
 		t.Error("Error in fingerprint")
 	}
 
 	if got.Fingerprint != want {
-		t.Errorf("Invalid fingerprint. Got: %q, want %q", got, want)
+		t.Errorf("Invalid fingerprint. Got: %q, want %q", got.Fingerprint, want)
 	}
 }
 
@@ -128,16 +129,21 @@ func TestFingerprints(t *testing.T) {
 		"find_empty_3.2.16":       "FIND coll",
 		"find_empty_3.4.7":        "FIND coll",
 		"find_empty_3.5.11":       "FIND coll",
-		"find_2.6.12":             "FIND coll a",
-		"find_3.0.15":             "FIND coll a",
-		"find_3.2.16":             "FIND coll a",
-		"find_3.4.7":              "FIND coll a",
-		"find_3.5.11":             "FIND coll a",
+		"find_2.6.12":             "FIND coll k",
+		"find_3.0.15":             "FIND coll k",
+		"find_3.2.16":             "FIND coll k",
+		"find_3.4.7":              "FIND coll k",
+		"find_3.5.11":             "FIND coll k",
 		"find_andrii_2.6.12":      "FIND coll c,k,pad",
 		"find_andrii_3.0.15":      "FIND coll c,k,pad",
 		"find_andrii_3.2.16":      "FIND coll c,k,pad",
 		"find_andrii_3.4.7":       "FIND coll c,k,pad",
 		"find_andrii_3.5.11":      "FIND coll c,k,pad",
+		"find_with_sort_2.6.12":   "FIND coll b,c",
+		"find_with_sort_3.0.15":   "FIND coll b,c",
+		"find_with_sort_3.2.16":   "FIND coll b,c",
+		"find_with_sort_3.4.7":    "FIND coll b,c",
+		"find_with_sort_3.5.11":   "FIND coll b,c",
 		"findandmodify_2.6.12":    "FINDANDMODIFY coll a",
 		"findandmodify_3.0.15":    "FINDANDMODIFY coll a",
 		"findandmodify_3.2.16":    "FINDANDMODIFY coll a",
@@ -148,6 +154,11 @@ func TestFingerprints(t *testing.T) {
 		"geonear_3.2.16":          "GEONEAR coll",
 		"geonear_3.4.7":           "GEONEAR coll",
 		"geonear_3.5.11":          "GEONEAR coll",
+		"getmore_2.6.12":          "GETMORE coll",
+		"getmore_3.0.15":          "GETMORE coll",
+		"getmore_3.2.16":          "GETMORE coll",
+		"getmore_3.4.7":           "GETMORE coll",
+		"getmore_3.5.11":          "GETMORE coll",
 		"group_2.6.12":            "GROUP coll a,b",
 		"group_3.0.15":            "GROUP coll a,b",
 		"group_3.2.16":            "GROUP coll a,b",

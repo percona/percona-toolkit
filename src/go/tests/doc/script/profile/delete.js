@@ -1,9 +1,9 @@
-var coll = db.coll
+var coll = db.coll;
+coll.drop();
 
-for (i = 0; i < 10; ++i) {
+for (var i = 0; i < 10; ++i) {
     coll.insert({a: i, b: i});
 }
-
 coll.createIndex({a: 1});
 
-coll.remove({a: {$gte: 2}, b: {$gte: 2}}, {justOne: true})
+coll.remove({a: {$gte: 2}, b: {$gte: 2}}, {justOne: true});

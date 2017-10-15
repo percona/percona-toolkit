@@ -17,28 +17,30 @@
 	"locks" : {
 		"Global" : {
 			"acquireCount" : {
-				"r" : NumberLong(1),
-				"w" : NumberLong(1)
+				"r" : NumberLong(2),
+				"w" : NumberLong(2)
 			}
 		},
 		"Database" : {
 			"acquireCount" : {
-				"w" : NumberLong(1)
+				"w" : NumberLong(1),
+				"W" : NumberLong(1)
 			}
 		},
 		"Collection" : {
 			"acquireCount" : {
-				"w" : NumberLong(1)
+				"w" : NumberLong(1),
+				"W" : NumberLong(1)
 			}
 		}
 	},
 	"responseLength" : 25,
 	"protocol" : "op_command",
-	"millis" : 0,
+	"millis" : 11,
 	"execStats" : {
 		
 	},
-	"ts" : ISODate("2017-08-20T15:39:32.303Z"),
+	"ts" : ISODate("2017-10-15T01:54:35.088Z"),
 	"client" : "127.0.0.1",
 	"allUsers" : [ ],
 	"user" : ""

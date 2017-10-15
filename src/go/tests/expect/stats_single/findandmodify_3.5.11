@@ -5,8 +5,8 @@
     "Operation": "FINDANDMODIFY",
     "Query": "{\"ns\":\"test.coll\",\"op\":\"command\",\"command\":{\"findandmodify\":\"coll\",\"query\":{\"a\":2},\"update\":{\"$inc\":{\"b\":1}},\"$db\":\"test\"}}\n",
     "Fingerprint": "FINDANDMODIFY coll a",
-    "FirstSeen": "2017-08-20T15:39:48.636Z",
-    "LastSeen": "2017-08-20T15:39:48.636Z",
+    "FirstSeen": "2017-10-15T01:54:55.391Z",
+    "LastSeen": "2017-10-15T01:54:55.391Z",
     "TableScan": false,
     "Count": 1,
     "BlockedTime": null,
@@ -18,7 +18,7 @@
       3
     ],
     "QueryTime": [
-      0
+      1
     ],
     "ResponseLength": [
       116

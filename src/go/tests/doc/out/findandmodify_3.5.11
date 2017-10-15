@@ -40,7 +40,7 @@
 	},
 	"responseLength" : 116,
 	"protocol" : "op_msg",
-	"millis" : 0,
+	"millis" : 1,
 	"planSummary" : "COLLSCAN",
 	"execStats" : {
 		"stage" : "UPDATE",
@@ -80,7 +80,7 @@
 			"docsExamined" : 3
 		}
 	},
-	"ts" : ISODate("2017-08-20T15:39:48.636Z"),
+	"ts" : ISODate("2017-10-15T01:54:55.391Z"),
 	"client" : "127.0.0.1",
 	"appName" : "MongoDB Shell",
 	"allUsers" : [ ],

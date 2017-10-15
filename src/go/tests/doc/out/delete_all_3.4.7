@@ -9,10 +9,10 @@
 			"$gte" : 2
 		}
 	},
-	"keysExamined" : 39,
-	"docsExamined" : 39,
-	"ndeleted" : 15,
-	"keysDeleted" : 30,
+	"keysExamined" : 8,
+	"docsExamined" : 8,
+	"ndeleted" : 8,
+	"keysDeleted" : 16,
 	"numYield" : 0,
 	"locks" : {
 		"Global" : {
@@ -32,21 +32,21 @@
 			}
 		}
 	},
-	"millis" : 0,
+	"millis" : 1,
 	"planSummary" : "IXSCAN { a: 1 }",
 	"execStats" : {
 		"stage" : "DELETE",
 		"nReturned" : 0,
 		"executionTimeMillisEstimate" : 0,
-		"works" : 40,
+		"works" : 9,
 		"advanced" : 0,
-		"needTime" : 39,
+		"needTime" : 8,
 		"needYield" : 0,
 		"saveState" : 0,
 		"restoreState" : 0,
 		"isEOF" : 1,
 		"invalidates" : 0,
-		"nWouldDelete" : 15,
+		"nWouldDelete" : 8,
 		"nInvalidateSkips" : 0,
 		"inputStage" : {
 			"stage" : "FETCH",
@@ -55,28 +55,28 @@
 					"$gte" : 2
 				}
 			},
-			"nReturned" : 15,
+			"nReturned" : 8,
 			"executionTimeMillisEstimate" : 0,
-			"works" : 40,
-			"advanced" : 15,
-			"needTime" : 24,
+			"works" : 9,
+			"advanced" : 8,
+			"needTime" : 0,
 			"needYield" : 0,
-			"saveState" : 15,
-			"restoreState" : 15,
+			"saveState" : 8,
+			"restoreState" : 8,
 			"isEOF" : 1,
 			"invalidates" : 0,
-			"docsExamined" : 39,
+			"docsExamined" : 8,
 			"alreadyHasObj" : 0,
 			"inputStage" : {
 				"stage" : "IXSCAN",
-				"nReturned" : 39,
+				"nReturned" : 8,
 				"executionTimeMillisEstimate" : 0,
-				"works" : 40,
-				"advanced" : 39,
+				"works" : 9,
+				"advanced" : 8,
 				"needTime" : 0,
 				"needYield" : 0,
-				"saveState" : 15,
-				"restoreState" : 15,
+				"saveState" : 8,
+				"restoreState" : 8,
 				"isEOF" : 1,
 				"invalidates" : 0,
 				"keyPattern" : {
@@ -97,7 +97,7 @@
 						"[2.0, inf.0]"
 					]
 				},
-				"keysExamined" : 39,
+				"keysExamined" : 8,
 				"seeks" : 1,
 				"dupsTested" : 0,
 				"dupsDropped" : 0,
@@ -105,7 +105,7 @@
 			}
 		}
 	},
-	"ts" : ISODate("2017-08-30T10:55:09.833Z"),
+	"ts" : ISODate("2017-10-15T01:54:42.820Z"),
 	"client" : "127.0.0.1",
 	"appName" : "MongoDB Shell",
 	"allUsers" : [ ],

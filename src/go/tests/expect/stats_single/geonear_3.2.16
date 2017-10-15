@@ -5,8 +5,8 @@
     "Operation": "GEONEAR",
     "Query": "{\"ns\":\"test.coll\",\"op\":\"command\",\"command\":{\"geoNear\":\"coll\",\"near\":{\"type\":\"Point\",\"coordinates\":[1,1]},\"spherical\":true}}\n",
     "Fingerprint": "GEONEAR coll",
-    "FirstSeen": "2017-08-20T15:39:31.797Z",
-    "LastSeen": "2017-08-20T15:39:31.797Z",
+    "FirstSeen": "2017-10-15T01:54:34.27Z",
+    "LastSeen": "2017-10-15T01:54:34.27Z",
     "TableScan": false,
     "Count": 1,
     "BlockedTime": null,
@@ -18,7 +18,7 @@
       0
     ],
     "QueryTime": [
-      8
+      10
     ],
     "ResponseLength": [
       1401

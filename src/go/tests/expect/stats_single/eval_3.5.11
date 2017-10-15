@@ -3,10 +3,10 @@
     "ID": "a6782ae38ef891d5506341a4b0ab2747",
     "Namespace": "test",
     "Operation": "EVAL",
-    "Query": "{\"ns\":\"test\",\"op\":\"command\",\"command\":{\"$eval\":\"db\",\"$db\":\"test\"}}\n",
+    "Query": "{\"ns\":\"test\",\"op\":\"command\",\"command\":{\"$eval\":\"1\",\"$db\":\"test\"}}\n",
     "Fingerprint": "EVAL",
-    "FirstSeen": "2017-09-05T19:40:00.171Z",
-    "LastSeen": "2017-09-05T19:40:00.171Z",
+    "FirstSeen": "2017-10-15T01:54:54.085Z",
+    "LastSeen": "2017-10-15T01:54:54.085Z",
     "TableScan": false,
     "Count": 1,
     "BlockedTime": null,
@@ -18,10 +18,10 @@
       0
     ],
     "QueryTime": [
-      47
+      40
     ],
     "ResponseLength": [
-      93
+      38
     ]
   }
 ]

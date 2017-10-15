@@ -11,31 +11,37 @@
 	"locks" : {
 		"Global" : {
 			"acquireCount" : {
-				"r" : NumberLong(1),
-				"w" : NumberLong(1)
+				"r" : NumberLong(2),
+				"w" : NumberLong(2)
 			}
 		},
 		"MMAPV1Journal" : {
 			"acquireCount" : {
-				"w" : NumberLong(2)
+				"w" : NumberLong(4)
 			}
 		},
 		"Database" : {
 			"acquireCount" : {
-				"w" : NumberLong(1)
+				"w" : NumberLong(1),
+				"W" : NumberLong(1)
 			}
 		},
 		"Collection" : {
 			"acquireCount" : {
-				"W" : NumberLong(1)
+				"W" : NumberLong(2)
+			}
+		},
+		"Metadata" : {
+			"acquireCount" : {
+				"W" : NumberLong(2)
 			}
 		}
 	},
-	"millis" : 0,
+	"millis" : 4,
 	"execStats" : {
 		
 	},
-	"ts" : ISODate("2017-08-20T15:39:22.409Z"),
+	"ts" : ISODate("2017-10-15T01:54:21.346Z"),
 	"client" : "127.0.0.1",
 	"allUsers" : [ ],
 	"user" : ""

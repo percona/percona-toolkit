@@ -5,8 +5,8 @@
     "Operation": "MAPREDUCE",
     "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"mapreduce\":\"coll\",\"map\":\"\",\"reduce\":\"\",\"query\":{\"a\":{\"$gte\":0}},\"out\":{\"inline\":1}}}\n",
     "Fingerprint": "MAPREDUCE coll a",
-    "FirstSeen": "2017-08-20T15:39:22.582Z",
-    "LastSeen": "2017-08-20T15:39:22.582Z",
+    "FirstSeen": "2017-10-15T01:54:21.559Z",
+    "LastSeen": "2017-10-15T01:54:21.559Z",
     "TableScan": false,
     "Count": 1,
     "BlockedTime": null,
@@ -18,7 +18,7 @@
       0
     ],
     "QueryTime": [
-      26
+      21
     ],
     "ResponseLength": [
       233

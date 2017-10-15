@@ -1,7 +1,7 @@
-var coll = db.coll
+var coll = db.coll;
+coll.drop();
 
-var i;
-for (i = 0; i < 10; ++i) {
+for (var i = 0; i < 10; ++i) {
     coll.insert({a: i % 5, b: i});
 }
 coll.createIndex({b: 1});

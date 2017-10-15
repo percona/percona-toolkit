@@ -42,12 +42,12 @@
 	},
 	"responseLength" : 124,
 	"protocol" : "op_msg",
-	"millis" : 68,
+	"millis" : 24,
 	"planSummary" : "IXSCAN { b: -1 }",
 	"execStats" : {
 		"stage" : "GROUP",
 		"nReturned" : 1,
-		"executionTimeMillisEstimate" : 64,
+		"executionTimeMillisEstimate" : 25,
 		"works" : 4,
 		"advanced" : 1,
 		"needTime" : 3,
@@ -109,7 +109,7 @@
 			}
 		}
 	},
-	"ts" : ISODate("2017-08-20T15:39:49.276Z"),
+	"ts" : ISODate("2017-10-15T01:54:56.478Z"),
 	"client" : "127.0.0.1",
 	"appName" : "MongoDB Shell",
 	"allUsers" : [ ],

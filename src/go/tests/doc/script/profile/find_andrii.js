@@ -1,4 +1,7 @@
-db.coll.find({
+var coll = db.coll;
+coll.drop();
+
+coll.find({
     $and: [
           {
             k: { $gt: 1 }
@@ -13,8 +16,8 @@ db.coll.find({
               },
               {
                 pad: { $in: [/9$/, /7$/, /5$/, /3$/] }
-              },
+              }
             ]
           }
         ]
-}).sort({ k: -1 }).limit(100);
+}).sort({ k: -1 }).limit(100).toArray();

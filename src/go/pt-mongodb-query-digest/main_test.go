@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"regexp"
 	"runtime"
+	"sort"
 	"strings"
 	"testing"
 	"text/template"
@@ -263,6 +264,7 @@ func testAllOperationsTemplate(t *testing.T, data Data) {
 	for _, file := range files {
 		fs = append(fs, dir+file.Name())
 	}
+	sort.Strings(fs)
 	err = run(fs...)
 	if err != nil {
 		t.Fatalf("cannot execute queries: %s", err)
@@ -296,6 +298,12 @@ func testAllOperationsTemplate(t *testing.T, data Data) {
 			Fingerprint: "DROP coll drop",
 		},
 		{
+			ID:          "db759bfd83441deecc71382323041ce6",
+			Namespace:   "test.coll",
+			Operation:   "GETMORE",
+			Fingerprint: "GETMORE coll",
+		},
+		{
 			ID:          "e72ad41302045bd6c2bcad76511f915a",
 			Namespace:   "test.coll",
 			Operation:   "REMOVE",
@@ -306,12 +314,6 @@ func testAllOperationsTemplate(t *testing.T, data Data) {
 			Namespace:   "test.coll",
 			Operation:   "AGGREGATE",
 			Fingerprint: "AGGREGATE coll a",
-		},
-		{
-			ID:          "e4122a58c99ab0a4020ce7d195c5a8cb",
-			Namespace:   "test.coll",
-			Operation:   "DISTINCT",
-			Fingerprint: "DISTINCT coll a,b",
 		},
 		{
 			ID:          "a6782ae38ef891d5506341a4b0ab2747",
@@ -332,6 +334,36 @@ func testAllOperationsTemplate(t *testing.T, data Data) {
 			Fingerprint: "FINDANDMODIFY coll a",
 		},
 		{
+			ID:          "2a639e77efe3e68399ef9482575b3421",
+			Namespace:   "test.coll",
+			Operation:   "FIND",
+			Fingerprint: "FIND coll",
+		},
+		{
+			ID:          "fe0bf975a044fe47fd32b835ceba612d",
+			Namespace:   "test.coll",
+			Operation:   "FIND",
+			Fingerprint: "FIND coll a",
+		},
+		{
+			ID:          "20fe80188ec82c9d3c3dcf3f4817f8f9",
+			Namespace:   "test.coll",
+			Operation:   "FIND",
+			Fingerprint: "FIND coll b,c",
+		},
+		{
+			ID:          "02104210d67fe680273784d833f86831",
+			Namespace:   "test.coll",
+			Operation:   "FIND",
+			Fingerprint: "FIND coll c,k,pad",
+		},
+		{
+			ID:          "5efe4738d807c74b3980de76c37a0870",
+			Namespace:   "test.coll",
+			Operation:   "FIND",
+			Fingerprint: "FIND coll k",
+		},
+		{
 			ID:          "798d7c1cd25b63cb6a307126a25910d6",
 			Namespace:   "test.system.js",
 			Operation:   "FIND",
@@ -342,6 +374,12 @@ func testAllOperationsTemplate(t *testing.T, data Data) {
 			Namespace:   "test.coll",
 			Operation:   "GEONEAR",
 			Fingerprint: "GEONEAR coll",
+		},
+		{
+			ID:          "e4122a58c99ab0a4020ce7d195c5a8cb",
+			Namespace:   "test.coll",
+			Operation:   "DISTINCT",
+			Fingerprint: "DISTINCT coll a,b",
 		},
 		{
 			ID:          "ca8bb19386488570447f5753741fb494",
@@ -375,7 +413,8 @@ func testAllOperationsTemplate(t *testing.T, data Data) {
 		},
 	}
 
-	expected := `Profiler is disabled for the "test" database but there are 125 documents in the system.profile collection.
+	ndocs := "165"
+	expected := `Profiler is disabled for the "test" database but there are ` + ndocs + ` documents in the system.profile collection.
 Using those documents for the stats
 pt-mongodb-query-digest .+
 Host: ` + data.url + `
@@ -386,7 +425,7 @@ Skipping profiled queries on these collections: \[system\.profile\]
 # Ratio    [0-9\.]+  \(docs scanned/returned\)
 # Attribute            pct     total        min         max        avg         95%        stddev      median
 # ==================   ===   ========    ========    ========    ========    ========     =======    ========
-# Count \(docs\)                   125\s
+# Count \(docs\)                   ` + ndocs + `\s
 # Exec Time ms         (\s*[0-9]+){8}\s
 # Docs Scanned         (\s*[0-9\.]+){8}\s
 # Docs Returned        (\s*[0-9\.]+){8}\s

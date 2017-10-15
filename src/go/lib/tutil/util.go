@@ -62,6 +62,10 @@ func LoadBson(filename string, destination interface{}) error {
 	re := regexp.MustCompile(`" :`)
 	buf = re.ReplaceAll(buf, []byte(`":`))
 
+	// Using NumberLong is not supported
+	re = regexp.MustCompile(`NumberLong\((.*)\)`)
+	buf = re.ReplaceAll(buf, []byte(`$1`))
+
 	// Using regexp is not supported
 	// https://github.com/go-mgo/mgo/issues/363
 	re = regexp.MustCompile(`(/.*/)`)

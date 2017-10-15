@@ -43,7 +43,7 @@
 	"protocol" : "op_msg",
 	"millis" : 2,
 	"planSummary" : "IXSCAN { a: 1 }",
-	"ts" : ISODate("2017-08-20T15:39:47.203Z"),
+	"ts" : ISODate("2017-10-15T01:54:52.564Z"),
 	"client" : "127.0.0.1",
 	"appName" : "MongoDB Shell",
 	"allUsers" : [ ],

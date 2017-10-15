@@ -32,7 +32,7 @@
 	"responseLength" : 329,
 	"protocol" : "op_msg",
 	"millis" : 0,
-	"ts" : ISODate("2017-09-05T19:40:00.433Z"),
+	"ts" : ISODate("2017-10-15T01:54:54.257Z"),
 	"client" : "127.0.0.1",
 	"appName" : "MongoDB Shell",
 	"allUsers" : [ ],

@@ -9,7 +9,7 @@
 			"$gte" : 2
 		}
 	},
-	"ndeleted" : 15,
+	"ndeleted" : 8,
 	"keyUpdates" : 0,
 	"writeConflicts" : 0,
 	"numYield" : 0,
@@ -31,11 +31,11 @@
 			}
 		}
 	},
-	"millis" : 0,
+	"millis" : 1,
 	"execStats" : {
 		
 	},
-	"ts" : ISODate("2017-08-30T10:55:02.238Z"),
+	"ts" : ISODate("2017-10-15T01:54:32.281Z"),
 	"client" : "127.0.0.1",
 	"allUsers" : [ ],
 	"user" : ""

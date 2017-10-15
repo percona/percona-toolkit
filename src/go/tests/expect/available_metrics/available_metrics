@@ -5,11 +5,11 @@
       "ResponseLength": 385
     },
     "3.0.15": {
-      "Millis": 2,
+      "Millis": 0,
       "ResponseLength": 385
     },
     "3.2.16": {
-      "Millis": 2,
+      "Millis": 0,
       "ResponseLength": 388
     },
     "3.4.7": {
@@ -63,12 +63,12 @@
       "ResponseLength": 47
     },
     "3.4.7": {
-      "DocsExamined": 0,
+      "DocsExamined": 10,
       "Millis": 0,
       "ResponseLength": 29
     },
     "3.5.11": {
-      "DocsExamined": 0,
+      "DocsExamined": 10,
       "Millis": 0,
       "ResponseLength": 29
     }
@@ -84,12 +84,12 @@
       "Millis": 1
     },
     "3.4.7": {
-      "DocsExamined": 4,
+      "DocsExamined": 1,
       "Millis": 0
     },
     "3.5.11": {
-      "DocsExamined": 4,
-      "Millis": 0
+      "DocsExamined": 1,
+      "Millis": 1
     }
   },
   "delete_all": {
@@ -97,69 +97,69 @@
       "Millis": 0
     },
     "3.0.15": {
-      "Millis": 1
+      "Millis": 0
     },
     "3.2.16": {
-      "Millis": 0
+      "Millis": 1
     },
     "3.4.7": {
-      "DocsExamined": 39,
-      "Millis": 0
+      "DocsExamined": 8,
+      "Millis": 1
     },
     "3.5.11": {
-      "DocsExamined": 39,
-      "Millis": 0
+      "DocsExamined": 8,
+      "Millis": 1
     }
   },
   "distinct": {
     "2.6.12": {
       "Millis": 0,
-      "ResponseLength": 254
+      "ResponseLength": 199
     },
     "3.0.15": {
       "Millis": 0,
-      "ResponseLength": 261
+      "ResponseLength": 206
     },
     "3.2.16": {
       "Millis": 0,
-      "ResponseLength": 264
+      "ResponseLength": 209
     },
     "3.4.7": {
-      "DocsExamined": 10,
+      "DocsExamined": 5,
       "Millis": 0,
-      "ResponseLength": 145
+      "ResponseLength": 90
     },
     "3.5.11": {
-      "DocsExamined": 10,
+      "DocsExamined": 5,
       "Millis": 0,
-      "ResponseLength": 145
+      "ResponseLength": 90
     }
   },
   "eval": {
     "2.6.12": {
-      "Millis": 65,
-      "ResponseLength": 108
+      "Millis": 43,
+      "ResponseLength": 53
     },
     "3.0.15": {
-      "Millis": 35,
-      "ResponseLength": 108
+      "Millis": 37,
+      "ResponseLength": 53
     },
     "3.2.16": {
-      "Millis": 88,
-      "ResponseLength": 93
+      "Millis": 56,
+      "ResponseLength": 38
     },
     "3.4.7": {
-      "Millis": 91,
-      "ResponseLength": 93
+      "Millis": 48,
+      "ResponseLength": 38
     },
     "3.5.11": {
-      "Millis": 47,
-      "ResponseLength": 93
+      "Millis": 40,
+      "ResponseLength": 38
     }
   },
   "explain": {
     "2.6.12": {
-      "NscannedObjects": 44,
+      "NscannedObjects": 10,
       "Millis": 0,
       "Nreturned": 1,
       "ResponseLength": 583
@@ -183,63 +183,63 @@
   },
   "find": {
     "2.6.12": {
-      "NscannedObjects": 6,
+      "NscannedObjects": 2,
       "Millis": 0,
-      "Nreturned": 6,
-      "ResponseLength": 251
+      "Nreturned": 2,
+      "ResponseLength": 86
     },
     "3.0.15": {
-      "NscannedObjects": 6,
+      "NscannedObjects": 2,
       "Millis": 0,
-      "Nreturned": 6,
-      "ResponseLength": 251
+      "Nreturned": 2,
+      "ResponseLength": 86
     },
     "3.2.16": {
-      "DocsExamined": 6,
-      "Millis": 0,
-      "Nreturned": 6,
-      "ResponseLength": 349
+      "DocsExamined": 2,
+      "Millis": 1,
+      "Nreturned": 2,
+      "ResponseLength": 172
     },
     "3.4.7": {
-      "DocsExamined": 6,
+      "DocsExamined": 2,
       "Millis": 0,
-      "Nreturned": 6,
-      "ResponseLength": 331
+      "Nreturned": 2,
+      "ResponseLength": 154
     },
     "3.5.11": {
-      "DocsExamined": 6,
-      "Millis": 1,
-      "Nreturned": 6,
-      "ResponseLength": 331
+      "DocsExamined": 2,
+      "Millis": 0,
+      "Nreturned": 2,
+      "ResponseLength": 154
     }
   },
   "find_andrii": {
     "2.6.12": {
-      "NscannedObjects": 98,
+      "NscannedObjects": 0,
       "Millis": 0,
       "Nreturned": 0,
       "ResponseLength": 20
     },
     "3.0.15": {
-      "NscannedObjects": 98,
+      "NscannedObjects": 0,
       "Millis": 0,
       "Nreturned": 0,
       "ResponseLength": 20
     },
     "3.2.16": {
-      "DocsExamined": 49,
+      "DocsExamined": 0,
       "Millis": 0,
       "Nreturned": 0,
       "ResponseLength": 100
     },
     "3.4.7": {
-      "DocsExamined": 49,
+      "DocsExamined": 0,
       "Millis": 0,
       "Nreturned": 0,
       "ResponseLength": 82
     },
     "3.5.11": {
-      "DocsExamined": 49,
+      "DocsExamined": 0,
       "Millis": 0,
       "Nreturned": 0,
       "ResponseLength": 82
@@ -247,40 +247,40 @@
   },
   "find_empty": {
     "2.6.12": {
-      "NscannedObjects": 49,
+      "NscannedObjects": 0,
       "Millis": 0,
-      "Nreturned": 49,
-      "ResponseLength": 1846
+      "Nreturned": 0,
+      "ResponseLength": 20
     },
     "3.0.15": {
-      "NscannedObjects": 49,
+      "NscannedObjects": 0,
       "Millis": 0,
-      "Nreturned": 49,
-      "ResponseLength": 1846
+      "Nreturned": 0,
+      "ResponseLength": 20
     },
     "3.2.16": {
-      "DocsExamined": 49,
+      "DocsExamined": 0,
       "Millis": 0,
-      "Nreturned": 49,
-      "ResponseLength": 2112
+      "Nreturned": 0,
+      "ResponseLength": 100
     },
     "3.4.7": {
-      "DocsExamined": 49,
+      "DocsExamined": 0,
       "Millis": 0,
-      "Nreturned": 49,
-      "ResponseLength": 2094
+      "Nreturned": 0,
+      "ResponseLength": 82
     },
     "3.5.11": {
-      "DocsExamined": 49,
+      "DocsExamined": 0,
       "Millis": 0,
-      "Nreturned": 49,
-      "ResponseLength": 2094
+      "Nreturned": 0,
+      "ResponseLength": 82
     }
   },
   "findandmodify": {
     "2.6.12": {
       "NscannedObjects": 1,
-      "Millis": 0,
+      "Millis": 6,
       "ResponseLength": 131
     },
     "3.0.15": {
@@ -290,17 +290,17 @@
     },
     "3.2.16": {
       "DocsExamined": 3,
-      "Millis": 0,
+      "Millis": 1,
       "ResponseLength": 116
     },
     "3.4.7": {
       "DocsExamined": 3,
-      "Millis": 0,
+      "Millis": 1,
       "ResponseLength": 116
     },
     "3.5.11": {
       "DocsExamined": 3,
-      "Millis": 0,
+      "Millis": 1,
       "ResponseLength": 116
     }
   },
@@ -310,45 +310,45 @@
       "ResponseLength": 1406
     },
     "3.0.15": {
-      "Millis": 3,
+      "Millis": 2,
       "ResponseLength": 1398
     },
     "3.2.16": {
-      "Millis": 8,
+      "Millis": 10,
       "ResponseLength": 1401
     },
     "3.4.7": {
       "DocsExamined": 10,
-      "Millis": 11,
+      "Millis": 13,
       "ResponseLength": 1383
     },
     "3.5.11": {
       "DocsExamined": 10,
-      "Millis": 7,
+      "Millis": 11,
       "ResponseLength": 1383
     }
   },
   "group": {
     "2.6.12": {
-      "Millis": 77,
+      "Millis": 36,
       "ResponseLength": 135
     },
     "3.0.15": {
-      "Millis": 54,
+      "Millis": 26,
       "ResponseLength": 139
     },
     "3.2.16": {
-      "Millis": 74,
+      "Millis": 31,
       "ResponseLength": 142
     },
     "3.4.7": {
       "DocsExamined": 2,
-      "Millis": 77,
+      "Millis": 31,
       "ResponseLength": 124
     },
     "3.5.11": {
       "DocsExamined": 2,
-      "Millis": 68,
+      "Millis": 24,
       "ResponseLength": 124
     }
   },
@@ -357,42 +357,42 @@
       "Millis": 0
     },
     "3.0.15": {
-      "Millis": 0
+      "Millis": 4
     },
     "3.2.16": {
-      "Millis": 0,
+      "Millis": 11,
       "ResponseLength": 25
     },
     "3.4.7": {
-      "Millis": 0,
+      "Millis": 11,
       "ResponseLength": 29
     },
     "3.5.11": {
-      "Millis": 0,
+      "Millis": 11,
       "ResponseLength": 29
     }
   },
   "mapreduce": {
     "2.6.12": {
-      "Millis": 33,
+      "Millis": 29,
       "ResponseLength": 233
     },
     "3.0.15": {
-      "Millis": 26,
+      "Millis": 21,
       "ResponseLength": 233
     },
     "3.2.16": {
-      "Millis": 31,
+      "Millis": 41,
       "ResponseLength": 218
     },
     "3.4.7": {
       "DocsExamined": 3,
-      "Millis": 43,
+      "Millis": 21,
       "ResponseLength": 218
     },
     "3.5.11": {
       "DocsExamined": 3,
-      "Millis": 35,
+      "Millis": 26,
       "ResponseLength": 218
     }
   },
@@ -407,7 +407,7 @@
     },
     "3.2.16": {
       "DocsExamined": 1,
-      "Millis": 0
+      "Millis": 2
     },
     "3.4.7": {
       "DocsExamined": 1,

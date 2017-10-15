@@ -15,18 +15,18 @@
 	"lockStats" : {
 		"timeLockedMicros" : {
 			"r" : NumberLong(0),
-			"w" : NumberLong(182)
+			"w" : NumberLong(144)
 		},
 		"timeAcquiringMicros" : {
 			"r" : NumberLong(0),
-			"w" : NumberLong(4)
+			"w" : NumberLong(11)
 		}
 	},
 	"millis" : 0,
 	"execStats" : {
 		
 	},
-	"ts" : ISODate("2017-08-20T15:39:15.126Z"),
+	"ts" : ISODate("2017-10-15T01:54:09.246Z"),
 	"client" : "127.0.0.1",
 	"allUsers" : [ ],
 	"user" : ""

@@ -5,8 +5,8 @@
     "Operation": "GROUP",
     "Query": "{\"ns\":\"test.coll\",\"op\":\"command\",\"command\":{\"group\":{\"key\":{\"a\":1,\"b\":1},\"cond\":{\"b\":3},\"initial\":{},\"ns\":\"coll\",\"$reduce\":{\"code\":\"function () {}\"}},\"$db\":\"test\"}}\n",
     "Fingerprint": "GROUP coll a,b",
-    "FirstSeen": "2017-08-20T15:39:49.276Z",
-    "LastSeen": "2017-08-20T15:39:49.276Z",
+    "FirstSeen": "2017-10-15T01:54:56.478Z",
+    "LastSeen": "2017-10-15T01:54:56.478Z",
     "TableScan": false,
     "Count": 1,
     "BlockedTime": null,
@@ -18,7 +18,7 @@
       2
     ],
     "QueryTime": [
-      68
+      24
     ],
     "ResponseLength": [
       124

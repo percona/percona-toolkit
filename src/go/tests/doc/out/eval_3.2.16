@@ -2,7 +2,7 @@
 	"op" : "command",
 	"ns" : "test",
 	"command" : {
-		"$eval" : "db"
+		"$eval" : "1"
 	},
 	"keyUpdates" : 0,
 	"writeConflicts" : 0,
@@ -25,13 +25,13 @@
 			}
 		}
 	},
-	"responseLength" : 93,
+	"responseLength" : 38,
 	"protocol" : "op_command",
-	"millis" : 88,
+	"millis" : 56,
 	"execStats" : {
 		
 	},
-	"ts" : ISODate("2017-09-05T19:39:41.581Z"),
+	"ts" : ISODate("2017-10-15T01:54:32.759Z"),
 	"client" : "127.0.0.1",
 	"allUsers" : [ ],
 	"user" : ""

@@ -77,9 +77,11 @@ func TestExplain(t *testing.T) {
 		"distinct":         "<nil>",
 		"find_empty":       "<nil>",
 		"find":             "<nil>",
+		"find_with_sort":   "<nil>",
 		"find_andrii":      "<nil>",
 		"findandmodify":    "<nil>",
 		"geonear":          "Cannot explain cmd: geoNear",
+		"getmore":          "<nil>",
 		"group":            "<nil>",
 		"insert":           "Cannot explain cmd: insert",
 		"mapreduce":        "Cannot explain cmd: mapReduce",
@@ -101,6 +103,13 @@ func TestExplain(t *testing.T) {
 		for _, v := range versions {
 			for sample, msg := range samples {
 				expectError[sample+"_"+v] = msg
+			}
+		}
+
+		for _, v := range versions {
+			// For versions < 3.4 parsing "getmore" is not supported and returns error
+			if ok, _ := Constraint("< 3.4", v); ok {
+				expectError["getmore_"+v] = "Cannot explain cmd: getMore"
 			}
 		}
 

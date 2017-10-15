@@ -1,4 +1,4 @@
-var coll = db.coll
+var coll = db.coll;
 coll.drop();
 
 for (var i = 0; i < 3; i++) {

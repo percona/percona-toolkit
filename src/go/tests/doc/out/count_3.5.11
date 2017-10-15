@@ -47,10 +47,10 @@
 		"restoreState" : 0,
 		"isEOF" : 1,
 		"invalidates" : 0,
-		"nCounted" : 20,
+		"nCounted" : 10,
 		"nSkipped" : 0
 	},
-	"ts" : ISODate("2017-08-20T15:39:47.396Z"),
+	"ts" : ISODate("2017-10-15T01:54:52.844Z"),
 	"client" : "127.0.0.1",
 	"appName" : "MongoDB Shell",
 	"allUsers" : [ ],

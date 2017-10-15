@@ -22,20 +22,20 @@
 	"numYield" : 0,
 	"lockStats" : {
 		"timeLockedMicros" : {
-			"r" : NumberLong(226),
+			"r" : NumberLong(650),
 			"w" : NumberLong(0)
 		},
 		"timeAcquiringMicros" : {
-			"r" : NumberLong(4),
-			"w" : NumberLong(13)
+			"r" : NumberLong(17),
+			"w" : NumberLong(15)
 		}
 	},
 	"responseLength" : 233,
-	"millis" : 33,
+	"millis" : 29,
 	"execStats" : {
 		
 	},
-	"ts" : ISODate("2017-08-20T15:39:16.701Z"),
+	"ts" : ISODate("2017-10-15T01:54:11.959Z"),
 	"client" : "127.0.0.1",
 	"allUsers" : [ ],
 	"user" : ""

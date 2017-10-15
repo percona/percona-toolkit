@@ -114,7 +114,7 @@
 			}
 		}
 	},
-	"ts" : ISODate("2017-08-20T15:39:49.855Z"),
+	"ts" : ISODate("2017-10-15T01:54:57.231Z"),
 	"client" : "127.0.0.1",
 	"appName" : "MongoDB Shell",
 	"allUsers" : [ ],

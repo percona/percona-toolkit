@@ -1,1 +1,1 @@
-db.eval("db")
+db.eval("1");

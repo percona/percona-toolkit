@@ -1,4 +1,4 @@
-var coll = db.coll
+var coll = db.coll;
 coll.drop();
 
 var mapFunction = function() {
@@ -9,7 +9,6 @@ var reduceFunction = function(a, b) {
     return Array.sum(b);
 };
 
-coll.drop();
 for (var i = 0; i < 3; i++) {
     coll.insert({a: i, b: i});
 }

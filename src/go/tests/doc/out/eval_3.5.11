@@ -2,7 +2,7 @@
 	"op" : "command",
 	"ns" : "test",
 	"command" : {
-		"$eval" : "db",
+		"$eval" : "1",
 		"$db" : "test"
 	},
 	"numYield" : 0,
@@ -24,10 +24,10 @@
 			}
 		}
 	},
-	"responseLength" : 93,
+	"responseLength" : 38,
 	"protocol" : "op_msg",
-	"millis" : 47,
-	"ts" : ISODate("2017-09-05T19:40:00.171Z"),
+	"millis" : 40,
+	"ts" : ISODate("2017-10-15T01:54:54.085Z"),
 	"client" : "127.0.0.1",
 	"appName" : "MongoDB Shell",
 	"allUsers" : [ ],

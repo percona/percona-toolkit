@@ -136,8 +136,7 @@ func main() {
 		filters = append(filters, filter.NewFilterByCollection(opts.SkipCollections))
 	}
 
-	query := bson.M{"op": bson.M{"$nin": []string{"getmore"}}}
-	i := session.DB(di.Database).C("system.profile").Find(query).Sort("-$natural").Iter()
+	i := session.DB(di.Database).C("system.profile").Find(bson.M{}).Sort("-$natural").Iter()
 
 	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
 	s := stats.New(fp)

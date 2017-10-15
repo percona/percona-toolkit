@@ -4,11 +4,11 @@
 	"query" : {
 		"find" : "coll",
 		"filter" : {
-			"a" : 1
+			"k" : 1
 		}
 	},
-	"keysExamined" : 6,
-	"docsExamined" : 6,
+	"keysExamined" : 2,
+	"docsExamined" : 2,
 	"cursorExhausted" : true,
 	"numYield" : 0,
 	"locks" : {
@@ -28,31 +28,31 @@
 			}
 		}
 	},
-	"nreturned" : 6,
-	"responseLength" : 331,
+	"nreturned" : 2,
+	"responseLength" : 154,
 	"protocol" : "op_command",
 	"millis" : 0,
-	"planSummary" : "IXSCAN { a: 1 }",
+	"planSummary" : "IXSCAN { k: 1 }",
 	"execStats" : {
 		"stage" : "FETCH",
-		"nReturned" : 6,
+		"nReturned" : 2,
 		"executionTimeMillisEstimate" : 0,
-		"works" : 7,
-		"advanced" : 6,
+		"works" : 3,
+		"advanced" : 2,
 		"needTime" : 0,
 		"needYield" : 0,
 		"saveState" : 0,
 		"restoreState" : 0,
 		"isEOF" : 1,
 		"invalidates" : 0,
-		"docsExamined" : 6,
+		"docsExamined" : 2,
 		"alreadyHasObj" : 0,
 		"inputStage" : {
 			"stage" : "IXSCAN",
-			"nReturned" : 6,
+			"nReturned" : 2,
 			"executionTimeMillisEstimate" : 0,
-			"works" : 7,
-			"advanced" : 6,
+			"works" : 3,
+			"advanced" : 2,
 			"needTime" : 0,
 			"needYield" : 0,
 			"saveState" : 0,
@@ -60,12 +60,12 @@
 			"isEOF" : 1,
 			"invalidates" : 0,
 			"keyPattern" : {
-				"a" : 1
+				"k" : 1
 			},
-			"indexName" : "a_1",
+			"indexName" : "k_1",
 			"isMultiKey" : false,
 			"multiKeyPaths" : {
-				"a" : [ ]
+				"k" : [ ]
 			},
 			"isUnique" : false,
 			"isSparse" : false,
@@ -73,18 +73,18 @@
 			"indexVersion" : 2,
 			"direction" : "forward",
 			"indexBounds" : {
-				"a" : [
+				"k" : [
 					"[1.0, 1.0]"
 				]
 			},
-			"keysExamined" : 6,
+			"keysExamined" : 2,
 			"seeks" : 1,
 			"dupsTested" : 0,
 			"dupsDropped" : 0,
 			"seenInvalidated" : 0
 		}
 	},
-	"ts" : ISODate("2017-08-20T15:39:37.660Z"),
+	"ts" : ISODate("2017-10-15T01:54:43.713Z"),
 	"client" : "127.0.0.1",
 	"appName" : "MongoDB Shell",
 	"allUsers" : [ ],

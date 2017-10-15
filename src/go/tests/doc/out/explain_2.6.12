@@ -9,18 +9,18 @@
 	},
 	"ntoreturn" : 0,
 	"ntoskip" : 0,
-	"nscanned" : 44,
-	"nscannedObjects" : 44,
+	"nscanned" : 10,
+	"nscannedObjects" : 10,
 	"keyUpdates" : 0,
 	"numYield" : 0,
 	"lockStats" : {
 		"timeLockedMicros" : {
-			"r" : NumberLong(95),
+			"r" : NumberLong(101),
 			"w" : NumberLong(0)
 		},
 		"timeAcquiringMicros" : {
-			"r" : NumberLong(14),
-			"w" : NumberLong(6)
+			"r" : NumberLong(6),
+			"w" : NumberLong(11)
 		}
 	},
 	"nreturned" : 1,
@@ -28,18 +28,18 @@
 	"millis" : 0,
 	"execStats" : {
 		"type" : "COLLSCAN",
-		"works" : 46,
+		"works" : 12,
 		"yields" : 0,
 		"unyields" : 0,
 		"invalidates" : 0,
-		"advanced" : 44,
+		"advanced" : 10,
 		"needTime" : 1,
 		"needFetch" : 0,
 		"isEOF" : 1,
-		"docsTested" : 44,
+		"docsTested" : 10,
 		"children" : [ ]
 	},
-	"ts" : ISODate("2017-09-05T19:39:24.666Z"),
+	"ts" : ISODate("2017-10-15T01:54:10.058Z"),
 	"client" : "127.0.0.1",
 	"allUsers" : [ ],
 	"user" : ""

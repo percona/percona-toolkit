@@ -35,7 +35,7 @@
 	},
 	"responseLength" : 1383,
 	"protocol" : "op_msg",
-	"millis" : 7,
+	"millis" : 11,
 	"planSummary" : "GEO_NEAR_2DSPHERE { loc: \"2dsphere\" }",
 	"execStats" : {
 		"stage" : "LIMIT",
@@ -73,7 +73,7 @@
 			"inputStage" : {
 				"stage" : "GEO_NEAR_2DSPHERE",
 				"nReturned" : 10,
-				"executionTimeMillisEstimate" : 10,
+				"executionTimeMillisEstimate" : 0,
 				"works" : 139,
 				"advanced" : 10,
 				"needTime" : 128,
@@ -3558,7 +3558,7 @@
 			}
 		}
 	},
-	"ts" : ISODate("2017-08-20T15:39:48.842Z"),
+	"ts" : ISODate("2017-10-15T01:54:55.701Z"),
 	"client" : "127.0.0.1",
 	"appName" : "MongoDB Shell",
 	"allUsers" : [ ],

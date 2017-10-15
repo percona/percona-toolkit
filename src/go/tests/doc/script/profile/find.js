@@ -1,10 +1,9 @@
-var coll = db.coll
+var coll = db.coll;
+coll.drop();
 
-coll.createIndex({a: 1})
-
-var i;
-for (i = 0; i < 10; ++i) {
-    coll.insert({a: i % 5});
+for (var i = 0; i < 10; ++i) {
+    coll.insert({k: i % 5});
 }
+coll.createIndex({k: 1});
 
-coll.find({a: 1}).pretty()
+coll.find({k: 1}).toArray();

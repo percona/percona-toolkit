@@ -5,8 +5,8 @@
     "Operation": "INSERT",
     "Query": "{\"ns\":\"test.coll\",\"op\":\"insert\",\"query\":{\"insert\":\"coll\",\"documents\":[{\"_id\":1}],\"ordered\":true}}\n",
     "Fingerprint": "INSERT coll",
-    "FirstSeen": "2017-08-20T15:39:32.303Z",
-    "LastSeen": "2017-08-20T15:39:32.303Z",
+    "FirstSeen": "2017-10-15T01:54:35.088Z",
+    "LastSeen": "2017-10-15T01:54:35.088Z",
     "TableScan": false,
     "Count": 1,
     "BlockedTime": null,
@@ -18,7 +18,7 @@
       0
     ],
     "QueryTime": [
-      0
+      11
     ],
     "ResponseLength": [
       25

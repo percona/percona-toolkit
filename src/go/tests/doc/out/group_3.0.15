@@ -43,11 +43,11 @@
 		}
 	},
 	"responseLength" : 139,
-	"millis" : 54,
+	"millis" : 26,
 	"execStats" : {
 		
 	},
-	"ts" : ISODate("2017-08-20T15:39:22.271Z"),
+	"ts" : ISODate("2017-10-15T01:54:21.188Z"),
 	"client" : "127.0.0.1",
 	"allUsers" : [ ],
 	"user" : ""

@@ -5,8 +5,8 @@
     "Operation": "AGGREGATE",
     "Query": "{\"ns\":\"test.coll\",\"op\":\"command\",\"command\":{\"aggregate\":\"coll\",\"pipeline\":[{\"$match\":{\"a\":{\"$gte\":2}}}],\"cursor\":{}}}\n",
     "Fingerprint": "AGGREGATE coll a",
-    "FirstSeen": "2017-08-20T15:39:29.915Z",
-    "LastSeen": "2017-08-20T15:39:29.915Z",
+    "FirstSeen": "2017-10-15T01:54:31.293Z",
+    "LastSeen": "2017-10-15T01:54:31.293Z",
     "TableScan": false,
     "Count": 1,
     "BlockedTime": null,
@@ -18,7 +18,7 @@
       0
     ],
     "QueryTime": [
-      2
+      0
     ],
     "ResponseLength": [
       388

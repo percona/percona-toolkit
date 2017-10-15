@@ -1,6 +1,7 @@
-var coll = db.coll
+var coll = db.coll;
+coll.drop();
 
-for (i = 0; i < 10; ++i) {
+for (var i = 0; i < 10; ++i) {
     coll.insert({a: i});
 }
 

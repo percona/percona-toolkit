@@ -20,11 +20,11 @@
 	},
 	"keysExamined" : 3,
 	"docsExamined" : 3,
-	"numYield" : 0,
+	"numYield" : 1,
 	"locks" : {
 		"Global" : {
 			"acquireCount" : {
-				"r" : NumberLong(11),
+				"r" : NumberLong(13),
 				"w" : NumberLong(1)
 			}
 		},
@@ -32,7 +32,7 @@
 			"acquireCount" : {
 				"r" : NumberLong(3),
 				"w" : NumberLong(1),
-				"R" : NumberLong(2)
+				"R" : NumberLong(3)
 			}
 		},
 		"Collection" : {
@@ -49,18 +49,18 @@
 	},
 	"responseLength" : 218,
 	"protocol" : "op_command",
-	"millis" : 43,
+	"millis" : 21,
 	"planSummary" : "IXSCAN { a: 1 }",
 	"execStats" : {
 		"stage" : "FETCH",
 		"nReturned" : 3,
-		"executionTimeMillisEstimate" : 0,
+		"executionTimeMillisEstimate" : 11,
 		"works" : 4,
 		"advanced" : 3,
 		"needTime" : 0,
 		"needYield" : 0,
-		"saveState" : 0,
-		"restoreState" : 0,
+		"saveState" : 1,
+		"restoreState" : 1,
 		"isEOF" : 1,
 		"invalidates" : 0,
 		"docsExamined" : 3,
@@ -68,13 +68,13 @@
 		"inputStage" : {
 			"stage" : "IXSCAN",
 			"nReturned" : 3,
-			"executionTimeMillisEstimate" : 0,
+			"executionTimeMillisEstimate" : 11,
 			"works" : 4,
 			"advanced" : 3,
 			"needTime" : 0,
 			"needYield" : 0,
-			"saveState" : 0,
-			"restoreState" : 0,
+			"saveState" : 1,
+			"restoreState" : 1,
 			"isEOF" : 1,
 			"invalidates" : 0,
 			"keyPattern" : {
@@ -102,7 +102,7 @@
 			"seenInvalidated" : 0
 		}
 	},
-	"ts" : ISODate("2017-08-20T15:39:39.249Z"),
+	"ts" : ISODate("2017-10-15T01:54:45.925Z"),
 	"client" : "127.0.0.1",
 	"appName" : "MongoDB Shell",
 	"allUsers" : [ ],

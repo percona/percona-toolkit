@@ -4,11 +4,11 @@
 	"query" : {
 		"find" : "coll",
 		"filter" : {
-			"a" : 1
+			"k" : 1
 		}
 	},
-	"keysExamined" : 6,
-	"docsExamined" : 6,
+	"keysExamined" : 2,
+	"docsExamined" : 2,
 	"cursorExhausted" : true,
 	"keyUpdates" : 0,
 	"writeConflicts" : 0,
@@ -30,30 +30,30 @@
 			}
 		}
 	},
-	"nreturned" : 6,
-	"responseLength" : 349,
+	"nreturned" : 2,
+	"responseLength" : 172,
 	"protocol" : "op_command",
-	"millis" : 0,
+	"millis" : 1,
 	"execStats" : {
 		"stage" : "FETCH",
-		"nReturned" : 6,
+		"nReturned" : 2,
 		"executionTimeMillisEstimate" : 0,
-		"works" : 7,
-		"advanced" : 6,
+		"works" : 3,
+		"advanced" : 2,
 		"needTime" : 0,
 		"needYield" : 0,
 		"saveState" : 0,
 		"restoreState" : 0,
 		"isEOF" : 1,
 		"invalidates" : 0,
-		"docsExamined" : 6,
+		"docsExamined" : 2,
 		"alreadyHasObj" : 0,
 		"inputStage" : {
 			"stage" : "IXSCAN",
-			"nReturned" : 6,
+			"nReturned" : 2,
 			"executionTimeMillisEstimate" : 0,
-			"works" : 7,
-			"advanced" : 6,
+			"works" : 3,
+			"advanced" : 2,
 			"needTime" : 0,
 			"needYield" : 0,
 			"saveState" : 0,
@@ -61,9 +61,9 @@
 			"isEOF" : 1,
 			"invalidates" : 0,
 			"keyPattern" : {
-				"a" : 1
+				"k" : 1
 			},
-			"indexName" : "a_1",
+			"indexName" : "k_1",
 			"isMultiKey" : false,
 			"isUnique" : false,
 			"isSparse" : false,
@@ -71,17 +71,17 @@
 			"indexVersion" : 1,
 			"direction" : "forward",
 			"indexBounds" : {
-				"a" : [
+				"k" : [
 					"[1.0, 1.0]"
 				]
 			},
-			"keysExamined" : 6,
+			"keysExamined" : 2,
 			"dupsTested" : 0,
 			"dupsDropped" : 0,
 			"seenInvalidated" : 0
 		}
 	},
-	"ts" : ISODate("2017-08-20T15:39:30.913Z"),
+	"ts" : ISODate("2017-10-15T01:54:33.179Z"),
 	"client" : "127.0.0.1",
 	"allUsers" : [ ],
 	"user" : ""

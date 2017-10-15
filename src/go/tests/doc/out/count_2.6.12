@@ -14,12 +14,12 @@
 	"numYield" : 0,
 	"lockStats" : {
 		"timeLockedMicros" : {
-			"r" : NumberLong(12),
+			"r" : NumberLong(33),
 			"w" : NumberLong(0)
 		},
 		"timeAcquiringMicros" : {
-			"r" : NumberLong(2),
-			"w" : NumberLong(2)
+			"r" : NumberLong(3),
+			"w" : NumberLong(5)
 		}
 	},
 	"responseLength" : 48,
@@ -27,7 +27,7 @@
 	"execStats" : {
 		
 	},
-	"ts" : ISODate("2017-08-20T15:39:14.823Z"),
+	"ts" : ISODate("2017-10-15T01:54:08.889Z"),
 	"client" : "127.0.0.1",
 	"allUsers" : [ ],
 	"user" : ""

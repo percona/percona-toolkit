@@ -1,27 +1,27 @@
 [
   {
-    "ID": "fe0bf975a044fe47fd32b835ceba612d",
+    "ID": "5efe4738d807c74b3980de76c37a0870",
     "Namespace": "test.coll",
     "Operation": "FIND",
-    "Query": "{\"ns\":\"test.coll\",\"op\":\"query\",\"query\":{\"find\":\"coll\",\"filter\":{\"a\":1}}}\n",
-    "Fingerprint": "FIND coll a",
-    "FirstSeen": "2017-08-20T15:39:30.913Z",
-    "LastSeen": "2017-08-20T15:39:30.913Z",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"query\",\"query\":{\"find\":\"coll\",\"filter\":{\"k\":1}}}\n",
+    "Fingerprint": "FIND coll k",
+    "FirstSeen": "2017-10-15T01:54:33.179Z",
+    "LastSeen": "2017-10-15T01:54:33.179Z",
     "TableScan": false,
     "Count": 1,
     "BlockedTime": null,
     "LockTime": null,
     "NReturned": [
-      6
+      2
     ],
     "NScanned": [
-      6
+      2
     ],
     "QueryTime": [
-      0
+      1
     ],
     "ResponseLength": [
-      349
+      172
     ]
   }
 ]

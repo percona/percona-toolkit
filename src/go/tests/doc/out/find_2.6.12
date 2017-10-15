@@ -2,34 +2,34 @@
 	"op" : "query",
 	"ns" : "test.coll",
 	"query" : {
-		"a" : 1
+		"k" : 1
 	},
 	"ntoreturn" : 0,
 	"ntoskip" : 0,
-	"nscanned" : 6,
-	"nscannedObjects" : 6,
+	"nscanned" : 2,
+	"nscannedObjects" : 2,
 	"keyUpdates" : 0,
 	"numYield" : 0,
 	"lockStats" : {
 		"timeLockedMicros" : {
-			"r" : NumberLong(231),
+			"r" : NumberLong(213),
 			"w" : NumberLong(0)
 		},
 		"timeAcquiringMicros" : {
-			"r" : NumberLong(2),
-			"w" : NumberLong(26)
+			"r" : NumberLong(38),
+			"w" : NumberLong(3)
 		}
 	},
-	"nreturned" : 6,
-	"responseLength" : 251,
+	"nreturned" : 2,
+	"responseLength" : 86,
 	"millis" : 0,
 	"execStats" : {
 		"type" : "FETCH",
-		"works" : 7,
+		"works" : 3,
 		"yields" : 0,
 		"unyields" : 0,
 		"invalidates" : 0,
-		"advanced" : 6,
+		"advanced" : 2,
 		"needTime" : 0,
 		"needFetch" : 0,
 		"isEOF" : 1,
@@ -39,28 +39,28 @@
 		"children" : [
 			{
 				"type" : "IXSCAN",
-				"works" : 7,
+				"works" : 3,
 				"yields" : 0,
 				"unyields" : 0,
 				"invalidates" : 0,
-				"advanced" : 6,
+				"advanced" : 2,
 				"needTime" : 0,
 				"needFetch" : 0,
 				"isEOF" : 1,
-				"keyPattern" : "{ a: 1.0 }",
+				"keyPattern" : "{ k: 1.0 }",
 				"isMultiKey" : 0,
-				"boundsVerbose" : "field #0['a']: [1.0, 1.0]",
+				"boundsVerbose" : "field #0['k']: [1.0, 1.0]",
 				"yieldMovedCursor" : 0,
 				"dupsTested" : 0,
 				"dupsDropped" : 0,
 				"seenInvalidated" : 0,
 				"matchTested" : 0,
-				"keysExamined" : 6,
+				"keysExamined" : 2,
 				"children" : [ ]
 			}
 		]
 	},
-	"ts" : ISODate("2017-08-20T15:39:15.457Z"),
+	"ts" : ISODate("2017-10-15T01:54:10.277Z"),
 	"client" : "127.0.0.1",
 	"allUsers" : [ ],
 	"user" : ""

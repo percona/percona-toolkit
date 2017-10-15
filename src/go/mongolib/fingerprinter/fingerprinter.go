@@ -66,6 +66,15 @@ func (f *Fingerprinter) Fingerprint(doc proto.SystemProfile) (Fingerprint, error
 		}
 	}
 
+	// if there is a orderby clause in the query, we have to add all fields in the sort
+	// fields list that are not in the query keys list (retKeys)
+	if sortKeys, ok := query.Map()["orderby"]; ok {
+		if sortKeysMap, ok := sortKeys.(bson.M); ok {
+			sortKeys := keys(sortKeysMap, f.keyFilters)
+			retKeys = append(retKeys, sortKeys...)
+		}
+	}
+
 	// Extract operation, collection, database and namespace
 	op := ""
 	collection := ""
@@ -98,7 +107,7 @@ func (f *Fingerprinter) Fingerprint(doc proto.SystemProfile) (Fingerprint, error
 			break
 		}
 		op = "find"
-	default:
+	case "command":
 		if query.Len() == 0 {
 			break
 		}
@@ -149,6 +158,9 @@ func (f *Fingerprinter) Fingerprint(doc proto.SystemProfile) (Fingerprint, error
 			collection = ""
 			retKeys = []string{}
 		}
+	default:
+		op = doc.Op
+		retKeys = []string{}
 	}
 
 	sort.Strings(retKeys)

@@ -5,23 +5,23 @@
     "Operation": "FIND",
     "Query": "{\"ns\":\"test.coll\",\"op\":\"query\"}\n",
     "Fingerprint": "FIND coll",
-    "FirstSeen": "2017-08-20T15:39:15.75Z",
-    "LastSeen": "2017-08-20T15:39:15.75Z",
+    "FirstSeen": "2017-10-15T01:54:10.63Z",
+    "LastSeen": "2017-10-15T01:54:10.63Z",
     "TableScan": false,
     "Count": 1,
     "BlockedTime": null,
     "LockTime": null,
     "NReturned": [
-      49
+      0
     ],
     "NScanned": [
-      49
+      0
     ],
     "QueryTime": [
       0
     ],
     "ResponseLength": [
-      1846
+      20
     ]
   }
 ]

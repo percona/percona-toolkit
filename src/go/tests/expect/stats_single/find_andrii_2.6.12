@@ -5,8 +5,8 @@
     "Operation": "FIND",
     "Query": "{\"ns\":\"test.coll\",\"op\":\"query\",\"query\":{\"query\":{\"$and\":[{\"k\":{\"$gt\":1}},{\"k\":{\"$lt\":2}},{\"$or\":[{\"c\":{\"$in\":[\"/^0/\",\"/^2/\",\"/^4/\",\"/^6/\"]}},{\"pad\":{\"$in\":[\"/9$/\",\"/7$/\",\"/5$/\",\"/3$/\"]}}]}]},\"orderby\":{\"k\":-1}}}\n",
     "Fingerprint": "FIND coll c,k,pad",
-    "FirstSeen": "2017-08-20T15:39:15.616Z",
-    "LastSeen": "2017-08-20T15:39:15.616Z",
+    "FirstSeen": "2017-10-15T01:54:10.474Z",
+    "LastSeen": "2017-10-15T01:54:10.474Z",
     "TableScan": false,
     "Count": 1,
     "BlockedTime": null,
@@ -15,7 +15,7 @@
       0
     ],
     "NScanned": [
-      98
+      0
     ],
     "QueryTime": [
       0
