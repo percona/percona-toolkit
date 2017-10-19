@@ -1,17 +1,13 @@
-dist: trusty
-sudo: required
-
 language: go
 
 go:
-  - 1.8.x
+  - 1.9.x
 
 services:
   - docker
 
 env:
   matrix:
-    - MONGODB_IMAGE=mongo:2.6
     - MONGODB_IMAGE=mongo:3.0
     - MONGODB_IMAGE=mongo:3.2
     - MONGODB_IMAGE=mongo:3.4
@@ -21,7 +17,7 @@ env:
 
 matrix:
   include:
-    - go: 1.9.x
+    - go: 1.8.x
       env:
     - go: tip
       env:
@@ -38,7 +34,7 @@ before_script:
   - docker-compose --version
   - docker-compose exec mongo mongo --version
   # we need at least one document in test db
-  - mongo --eval 'db.init.insert({})'
+  - docker-compose exec mongo mongo --eval 'db.init.insert({})'
 
 script:
   - go test -timeout 1m $(glide nv)

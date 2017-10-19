@@ -1,5 +1,5 @@
-hash: 7cc97c518c04beac5926bfef5fafc2c291d1c8eff945390edb5e71fecbf461f2
-updated: 2017-07-10T21:03:28.164296188-03:00
+hash: 6d30e29455f610ee47cc43bafd9390da029e7fe8cf5dafe510e423e9c0e897a0
+updated: 2017-08-31T20:21:56.600678687+02:00
 imports:
 - name: github.com/bradfitz/slice
   version: d9036e2120b5ddfa53f3ebccd618c4af275f47da
@@ -17,6 +17,8 @@ imports:
   version: bf9dde6d0d2c004a008c27aaee91170c786f6db8
 - name: github.com/kr/pretty
   version: cfb55aafdaf3ec08f0db22699ab822c50091b1c4
+- name: github.com/Masterminds/semver
+  version: 517734cc7d6470c0d07130e40fd40bdeb9bcd3fd
 - name: github.com/montanaflynn/stats
   version: 41c34e4914ec3c05d485e564d9028d8861d5d9ad
 - name: github.com/pborman/getopt
@@ -24,7 +26,7 @@ imports:
   subpackages:
   - v2
 - name: github.com/percona/pmgo
-  version: 9566dc76df319b856a12f24a3b6852a0c6463eff
+  version: 43e01b1a87fe20317bf4329d4ab3cb8d58d50886
   subpackages:
   - pmgomock
 - name: github.com/pkg/errors
@@ -43,7 +45,7 @@ imports:
 - name: github.com/shirou/w32
   version: bb4de0191aa41b5507caa14b0650cdbddcd9280b
 - name: github.com/sirupsen/logrus
-  version: 7f976d3a76720c4c27af2ba716b85d2e0a7e38b1
+  version: 89742aefa4b206dcf400792f3bd35b542998eb3b
 - name: github.com/StackExchange/wmi
   version: ea383cf3ba6ec950874b8486cd72356d007c768f
 - name: go4.org

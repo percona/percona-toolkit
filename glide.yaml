@@ -7,7 +7,6 @@ import:
 - package: github.com/montanaflynn/stats
 - package: github.com/pborman/getopt
 - package: github.com/percona/pmgo
-  version: ^0.4
 - package: github.com/pkg/errors
 - package: github.com/satori/go.uuid
 - package: github.com/shirou/gopsutil
@@ -17,6 +16,7 @@ import:
 - package: gopkg.in/mgo.v2
   subpackages:
   - bson
+- package: github.com/Masterminds/semver
 testImport:
 - package: github.com/golang/mock
   subpackages:

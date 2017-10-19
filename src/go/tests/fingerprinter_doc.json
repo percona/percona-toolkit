@@ -1,0 +1,172 @@
+{
+    "op": "query",
+    "ns": "sbtest.sbtest3",
+    "query": {
+        "find": "sbtest3",
+        "filter": {
+            "$and": [
+                {
+                    "k": {
+                        "$gt": -433.7692307692308
+                    }
+                },
+                {
+                    "k": {
+                        "$lt": 174159.27130926086
+                    }
+                },
+                {
+                    "$or": [
+                        {
+                            "c": {
+                                "$in": [
+                                    0,
+                                    2,
+                                    4,
+                                    6
+                                ]
+                            }
+                        },
+                        {
+                            "pad": {
+                                "$in": [
+                                    9,
+                                    7,
+                                    5,
+                                    3
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        "limit": 100,
+        "singleBatch": false,
+        "sort": {
+            "k": -1
+        }
+    },
+    "keysExamined": 0,
+    "docsExamined": 9919,
+    "hasSortStage": true,
+    "cursorExhausted": true,
+    "keyUpdates": 0,
+    "writeConflicts": 0,
+    "numYield": 78,
+    "locks": {
+        "Global": {
+            "acquireCount": {
+                "r": NumberLong(158)
+            }
+        },
+        "Database": {
+            "acquireCount": {
+                "r": NumberLong(79)
+            }
+        },
+        "Collection": {
+            "acquireCount": {
+                "r": NumberLong(79)
+            }
+        }
+    },
+    "nreturned": 100,
+    "responseLength": 22195,
+    "protocol": "op_command",
+    "millis": 26,
+    "execStats": {
+        "stage": "SORT",
+        "nReturned": 100,
+        "executionTimeMillisEstimate": 30,
+        "works": 10023,
+        "advanced": 100,
+        "needTime": 9922,
+        "needYield": 0,
+        "saveState": 78,
+        "restoreState": 78,
+        "isEOF": 1,
+        "invalidates": 0,
+        "sortPattern": {
+            "k": -1
+        },
+        "memUsage": 22500,
+        "memLimit": 33554432,
+        "limitAmount": 100,
+        "inputStage": {
+            "stage": "SORT_KEY_GENERATOR",
+            "nReturned": 0,
+            "executionTimeMillisEstimate": 30,
+            "works": 9922,
+            "advanced": 0,
+            "needTime": 9789,
+            "needYield": 0,
+            "saveState": 78,
+            "restoreState": 78,
+            "isEOF": 1,
+            "invalidates": 0,
+            "inputStage": {
+                "stage": "COLLSCAN",
+                "filter": {
+                    "$and": [
+                        {
+                            "$or": [
+                                {
+                                    "c": {
+                                        "$in": [
+                                            0,
+                                            2,
+                                            4,
+                                            6
+                                        ]
+                                    }
+                                },
+                                {
+                                    "pad": {
+                                        "$in": [
+                                            9,
+                                            7,
+                                            5,
+                                            3
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "k": {
+                                "$lt": 174159.27130926086
+                            }
+                        },
+                        {
+                            "k": {
+                                "$gt": -433.7692307692308
+                            }
+                        }
+                    ]
+                },
+                "nReturned": 132,
+                "executionTimeMillisEstimate": 30,
+                "works": 9921,
+                "advanced": 132,
+                "needTime": 9788,
+                "needYield": 0,
+                "saveState": 78,
+                "restoreState": 78,
+                "isEOF": 1,
+                "invalidates": 0,
+                "direction": "forward",
+                "docsExamined": 9919
+            }
+        }
+    },
+    "ts": ISODate("2017-04-27T16:40:01.029Z"),
+    "client": "127.0.0.1",
+    "allUsers": [
+        {
+            "user": "admin",
+            "db": "admin"
+        }
+    ],
+    "user": "admin@admin"
+}

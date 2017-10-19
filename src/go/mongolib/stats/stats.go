@@ -2,16 +2,14 @@ package stats
 
 import (
 	"crypto/md5"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"sync"
 	"time"
 
 	"github.com/montanaflynn/stats"
-	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
-	"github.com/percona/percona-toolkit/src/go/mongolib/util"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type StatsError struct {
@@ -31,10 +29,9 @@ func (e *StatsError) Parent() error {
 }
 
 type StatsFingerprintError StatsError
-type StatsGetQueryFieldError StatsError
 
-// New creates new instance of stats with given fingerprinter
-func New(fingerprinter fingerprinter.Fingerprinter) *Stats {
+// New creates new instance of stats with given Fingerprinter
+func New(fingerprinter Fingerprinter) *Stats {
 	s := &Stats{
 		fingerprinter: fingerprinter,
 	}
@@ -46,7 +43,7 @@ func New(fingerprinter fingerprinter.Fingerprinter) *Stats {
 // Stats is a collection of MongoDB statistics
 type Stats struct {
 	// dependencies
-	fingerprinter fingerprinter.Fingerprinter
+	fingerprinter Fingerprinter
 
 	// internal
 	queryInfoAndCounters map[GroupKey]*QueryInfoAndCounters
@@ -63,7 +60,7 @@ func (s *Stats) Reset() {
 
 // Add adds proto.SystemProfile to the collection of statistics
 func (s *Stats) Add(doc proto.SystemProfile) error {
-	fp, err := s.fingerprinter.Fingerprint(doc.Query)
+	fp, err := s.fingerprinter.Fingerprint(doc)
 	if err != nil {
 		return &StatsFingerprintError{err}
 	}
@@ -71,27 +68,29 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 	var ok bool
 
 	key := GroupKey{
-		Operation:   doc.Op,
-		Fingerprint: fp,
-		Namespace:   doc.Ns,
+		Operation:   fp.Operation,
+		Fingerprint: fp.Fingerprint,
+		Namespace:   fp.Namespace,
 	}
 	if qiac, ok = s.getQueryInfoAndCounters(key); !ok {
-		realQuery, err := util.GetQueryField(doc.Query)
+		query := proto.NewExampleQuery(doc)
+		queryBson, err := bson.MarshalJSON(query)
 		if err != nil {
-			return &StatsGetQueryFieldError{err}
+			return err
 		}
 		qiac = &QueryInfoAndCounters{
 			ID:          fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s", key)))),
-			Operation:   doc.Op,
-			Fingerprint: fp,
-			Namespace:   doc.Ns,
+			Operation:   fp.Operation,
+			Fingerprint: fp.Fingerprint,
+			Namespace:   fp.Namespace,
 			TableScan:   false,
-			Query:       realQuery,
+			Query:       string(queryBson),
 		}
 		s.setQueryInfoAndCounters(key, qiac)
 	}
 	qiac.Count++
 	// docsExamined is renamed from nscannedObjects in 3.2.0.
+	// https://docs.mongodb.com/manual/reference/database-profiler/#system.profile.docsExamined
 	if doc.NscannedObjects > 0 {
 		qiac.NScanned = append(qiac.NScanned, float64(doc.NscannedObjects))
 	} else {
@@ -100,11 +99,10 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 	qiac.NReturned = append(qiac.NReturned, float64(doc.Nreturned))
 	qiac.QueryTime = append(qiac.QueryTime, float64(doc.Millis))
 	qiac.ResponseLength = append(qiac.ResponseLength, float64(doc.ResponseLength))
-	var zeroTime time.Time
-	if qiac.FirstSeen == zeroTime || qiac.FirstSeen.After(doc.Ts) {
+	if qiac.FirstSeen.IsZero() || qiac.FirstSeen.After(doc.Ts) {
 		qiac.FirstSeen = doc.Ts
 	}
-	if qiac.LastSeen == zeroTime || qiac.LastSeen.Before(doc.Ts) {
+	if qiac.LastSeen.IsZero() || qiac.LastSeen.Before(doc.Ts) {
 		qiac.LastSeen = doc.Ts
 	}
 
@@ -174,7 +172,7 @@ type QueryInfoAndCounters struct {
 	ID          string
 	Namespace   string
 	Operation   string
-	Query       map[string]interface{}
+	Query       string
 	Fingerprint string
 	FirstSeen   time.Time
 	LastSeen    time.Time
@@ -209,16 +207,7 @@ type GroupKey struct {
 }
 
 func (g GroupKey) String() string {
-	v := struct {
-		Operation   string
-		Fingerprint string
-		Namespace   string
-	}{
-		g.Operation,
-		g.Fingerprint,
-		g.Namespace,
-	}
-	return fmt.Sprintf("%s", v)
+	return g.Operation + g.Namespace + g.Fingerprint
 }
 
 type totalCounters struct {
@@ -260,12 +249,11 @@ type Statistics struct {
 }
 
 func countersToStats(query QueryInfoAndCounters, uptime int64, tc totalCounters) QueryStats {
-	buf, _ := json.Marshal(query.Query)
 	queryStats := QueryStats{
 		Count:          query.Count,
 		ID:             query.ID,
 		Operation:      query.Operation,
-		Query:          string(buf),
+		Query:          query.Query,
 		Fingerprint:    query.Fingerprint,
 		Scanned:        calcStats(query.NScanned),
 		Returned:       calcStats(query.NReturned),

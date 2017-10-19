@@ -1,10 +1,10 @@
 [
   {
-    "ID": "c6466139b21c392acd0699e863b50d81",
+    "ID": "95575e896c2830043dc333cb8ee61339",
     "Namespace": "samples.col1",
-    "Operation": "query",
-    "Query": "{\"find\":\"col1\",\"shardVersion\":[0,\"000000000000000000000000\"]}",
-    "Fingerprint": "find",
+    "Operation": "FIND",
+    "Query": "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"shardVersion\":[0,\"000000000000000000000000\"]}}\n",
+    "Fingerprint": "FIND col1 find",
     "FirstSeen": "2017-04-10T13:16:23.29-03:00",
     "LastSeen": "2017-04-10T13:16:23.29-03:00",
     "Count": 1,
@@ -53,11 +53,11 @@
     }
   },
   {
-    "ID": "84e09ef6a3dc35f472df05fa98eee7d3",
+    "ID": "d7088d6b50551d1f2f5f34b006c0140d",
     "Namespace": "samples.col1",
-    "Operation": "query",
-    "Query": "{\"s2\":{\"$gte\":\"41991\",\"$lt\":\"33754\"}}",
-    "Fingerprint": "s2",
+    "Operation": "FIND",
+    "Query": "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"filter\":{\"s2\":{\"$gte\":\"41991\",\"$lt\":\"33754\"}},\"shardVersion\":[0,\"000000000000000000000000\"]}}\n",
+    "Fingerprint": "FIND col1 s2",
     "FirstSeen": "2017-04-10T13:15:53.532-03:00",
     "LastSeen": "2017-04-10T13:15:53.532-03:00",
     "Count": 1,
@@ -106,11 +106,11 @@
     }
   },
   {
-    "ID": "69e3b2f5f0aefcec868c0fa5ec8cebe5",
+    "ID": "b4b7a063b3afbcbdf042a0f0f9e48a9d",
     "Namespace": "samples.col1",
-    "Operation": "query",
-    "Query": "{\"user_id\":{\"$gte\":3384024924,\"$lt\":195092007}}",
-    "Fingerprint": "user_id",
+    "Operation": "FIND",
+    "Query": "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"filter\":{\"user_id\":{\"$gte\":3.384024924e+09,\"$lt\":1.95092007e+08}},\"projection\":{\"$sortKey\":{\"$meta\":\"sortKey\"}},\"shardVersion\":[0,\"000000000000000000000000\"],\"sort\":{\"user_id\":1}}}\n",
+    "Fingerprint": "FIND col1 user_id",
     "FirstSeen": "2017-04-10T13:15:53.524-03:00",
     "LastSeen": "2017-04-10T13:15:53.524-03:00",
     "Count": 1,

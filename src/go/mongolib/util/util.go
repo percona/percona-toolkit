@@ -237,21 +237,71 @@ func GetServerStatus(dialer pmgo.Dialer, di *pmgo.DialInfo, hostname string) (pr
 	return ss, nil
 }
 
-func GetQueryField(query map[string]interface{}) (map[string]interface{}, error) {
-	// MongoDB 3.0
-	if squery, ok := query["$query"]; ok {
+func GetQueryField(doc proto.SystemProfile) (bson.M, error) {
+	// Proper way to detect if protocol used is "op_msg" or "op_command"
+	// would be to look at "doc.Protocol" field,
+	// however MongoDB 3.0 doesn't have that field
+	// so we need to detect protocol by looking at actual data.
+	query := doc.Query
+	if doc.Command.Len() > 0 {
+		query = doc.Command
+		if doc.Op == "update" || doc.Op == "remove" {
+			if squery, ok := query.Map()["q"]; ok {
+				// just an extra check to ensure this type assertion won't fail
+				if ssquery, ok := squery.(bson.M); ok {
+					return ssquery, nil
+				}
+				return nil, CANNOT_GET_QUERY_ERROR
+			}
+		}
+	}
+
+	// "query" in MongoDB 3.0 can look like this:
+	// {
+	//  	"op" : "query",
+	//  	"ns" : "test.coll",
+	//  	"query" : {
+	//  		"a" : 1
+	//  	},
+	// 		...
+	// }
+	//
+	// but also it can have "query" subkey like this:
+	// {
+	//  	"op" : "query",
+	//  	"ns" : "test.coll",
+	//  	"query" : {
+	//  		"query" : {
+	//  			"$and" : [
+	//  			]
+	//  		},
+	//  		"orderby" : {
+	//  			"k" : -1
+	//  		}
+	//  	},
+	// 		...
+	// }
+	//
+	if squery, ok := query.Map()["query"]; ok {
 		// just an extra check to ensure this type assertion won't fail
-		if ssquery, ok := squery.(map[string]interface{}); ok {
+		if ssquery, ok := squery.(bson.M); ok {
 			return ssquery, nil
 		}
 		return nil, CANNOT_GET_QUERY_ERROR
 	}
-	// MongoDB 3.2+
-	if squery, ok := query["filter"]; ok {
-		if ssquery, ok := squery.(map[string]interface{}); ok {
+
+	// "query" in MongoDB 3.2+ is better structured and always has a "filter" subkey:
+	if squery, ok := query.Map()["filter"]; ok {
+		if ssquery, ok := squery.(bson.M); ok {
 			return ssquery, nil
 		}
 		return nil, CANNOT_GET_QUERY_ERROR
 	}
-	return query, nil
+
+	// {"ns":"test.system.js","op":"query","query":{"find":"system.js"}}
+	if len(query) == 1 && query[0].Name == "find" {
+		return bson.M{}, nil
+	}
+
+	return query.Map(), nil
 }

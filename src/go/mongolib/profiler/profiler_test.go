@@ -70,14 +70,11 @@ func TestRegularIterator(t *testing.T) {
 	lastSeen, _ := time.Parse(time.RFC3339Nano, "2017-04-01T23:01:20.214+00:00")
 	want := stats.Queries{
 		{
-			ID:        "c6466139b21c392acd0699e863b50d81",
-			Namespace: "samples.col1",
-			Operation: "query",
-			Query: map[string]interface{}{
-				"find":         "col1",
-				"shardVersion": []interface{}{float64(0), "000000000000000000000000"},
-			},
-			Fingerprint:    "find",
+			ID:             "95575e896c2830043dc333cb8ee61339",
+			Namespace:      "samples.col1",
+			Operation:      "FIND",
+			Query:          "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"shardVersion\":[0,\"000000000000000000000000\"]}}\n",
+			Fingerprint:    "FIND col1 find",
 			FirstSeen:      firstSeen,
 			LastSeen:       lastSeen,
 			TableScan:      false,
@@ -131,14 +128,11 @@ func TestIteratorTimeout(t *testing.T) {
 	lastSeen, _ := time.Parse(time.RFC3339Nano, "2017-04-01T23:01:19.914+00:00")
 	want := stats.Queries{
 		{
-			ID:        "c6466139b21c392acd0699e863b50d81",
-			Namespace: "samples.col1",
-			Operation: "query",
-			Query: map[string]interface{}{
-				"find":         "col1",
-				"shardVersion": []interface{}{float64(0), "000000000000000000000000"},
-			},
-			Fingerprint:    "find",
+			ID:             "95575e896c2830043dc333cb8ee61339",
+			Namespace:      "samples.col1",
+			Operation:      "FIND",
+			Query:          "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"shardVersion\":[0,\"000000000000000000000000\"]}}\n",
+			Fingerprint:    "FIND col1 find",
 			FirstSeen:      firstSeen,
 			LastSeen:       lastSeen,
 			TableScan:      false,
@@ -214,14 +208,11 @@ func TestTailIterator(t *testing.T) {
 
 	want := stats.Queries{
 		{
-			ID:        "c6466139b21c392acd0699e863b50d81",
-			Namespace: "samples.col1",
-			Operation: "query",
-			Query: map[string]interface{}{
-				"find":         "col1",
-				"shardVersion": []interface{}{float64(0), "000000000000000000000000"},
-			},
-			Fingerprint:    "find",
+			ID:             "95575e896c2830043dc333cb8ee61339",
+			Namespace:      "samples.col1",
+			Operation:      "FIND",
+			Query:          "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"shardVersion\":[0,\"000000000000000000000000\"]}}\n",
+			Fingerprint:    "FIND col1 find",
 			FirstSeen:      parseDate("2017-04-01T23:01:20.214+00:00"),
 			LastSeen:       parseDate("2017-04-01T23:01:20.214+00:00"),
 			TableScan:      false,
@@ -232,14 +223,11 @@ func TestTailIterator(t *testing.T) {
 			ResponseLength: []float64{1.06123e+06},
 		},
 		{
-			ID:        "c6466139b21c392acd0699e863b50d81",
-			Namespace: "samples.col1",
-			Operation: "query",
-			Query: map[string]interface{}{
-				"find":         "col1",
-				"shardVersion": []interface{}{float64(0), "000000000000000000000000"},
-			},
-			Fingerprint:    "find",
+			ID:             "95575e896c2830043dc333cb8ee61339",
+			Namespace:      "samples.col1",
+			Operation:      "FIND",
+			Query:          "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"shardVersion\":[0,\"000000000000000000000000\"]}}\n",
+			Fingerprint:    "FIND col1 find",
 			FirstSeen:      parseDate("2017-04-01T23:01:19.914+00:00"),
 			LastSeen:       parseDate("2017-04-01T23:01:19.914+00:00"),
 			TableScan:      false,
@@ -271,13 +259,13 @@ func TestCalcStats(t *testing.T) {
 	defer ctrl.Finish()
 
 	docs := []proto.SystemProfile{}
-	err := tutil.LoadJson(vars.RootPath+samples+"profiler_docs_stats.json", &docs)
+	err := tutil.LoadBson(vars.RootPath+samples+"profiler_docs_stats.json", &docs)
 	if err != nil {
 		t.Fatalf("cannot load samples: %s", err.Error())
 	}
 
 	want := []stats.QueryStats{}
-	err = tutil.LoadJson(vars.RootPath+samples+"profiler_docs_stats.want.json", &want)
+	err = tutil.LoadBson(vars.RootPath+samples+"profiler_docs_stats.want.json", &want)
 	if err != nil {
 		t.Fatalf("cannot load expected results: %s", err.Error())
 	}
@@ -302,6 +290,7 @@ func TestCalcStats(t *testing.T) {
 
 	prof.Start()
 	defer prof.Stop()
+
 	select {
 	case queries := <-prof.QueriesChan():
 		s := queries.CalcQueriesStats(1)
@@ -321,13 +310,13 @@ func TestCalcTotalStats(t *testing.T) {
 	defer ctrl.Finish()
 
 	docs := []proto.SystemProfile{}
-	err := tutil.LoadJson(vars.RootPath+samples+"profiler_docs_stats.json", &docs)
+	err := tutil.LoadBson(vars.RootPath+samples+"profiler_docs_stats.json", &docs)
 	if err != nil {
 		t.Fatalf("cannot load samples: %s", err.Error())
 	}
 
 	want := stats.QueryStats{}
-	err = tutil.LoadJson(vars.RootPath+samples+"profiler_docs_total_stats.want.json", &want)
+	err = tutil.LoadBson(vars.RootPath+samples+"profiler_docs_total_stats.want.json", &want)
 	if err != nil && !tutil.ShouldUpdateSamples() {
 		t.Fatalf("cannot load expected results: %s", err.Error())
 	}
