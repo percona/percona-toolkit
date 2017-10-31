@@ -9502,6 +9502,7 @@ sub main {
       OptionParser => $o,
       DSNParser    => $dp,
       Quoter       => $q,
+      channel      => $o->get('channel')
    );
 
    my $slaves = [];    # all slaves (that we can find)
