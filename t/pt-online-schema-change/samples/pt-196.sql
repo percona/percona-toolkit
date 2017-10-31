@@ -1,0 +1,10 @@
+DROP SCHEMA IF EXISTS test;
+CREATE SCHEMA test;
+USE test;
+
+CREATE TABLE test(
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, 
+    test INT
+);
+
+INSERT INTO test (test) VALUES(1),(2),(3);

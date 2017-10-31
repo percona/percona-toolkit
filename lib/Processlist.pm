@@ -69,6 +69,19 @@ sub new {
    foreach my $arg ( qw(MasterSlave) ) {
       die "I need a $arg argument" unless $args{$arg};
    }
+   # Convert the list of kill commands (Query, Execute, etc) to a hashref for
+   # faster check later
+   my $kill_busy_commands = {};
+   if ($args{kill_busy_commands}) {
+       for my $command (split /,/,$args{kill_busy_commands}) {
+           $command =~ s/^\s+|\s+$//g;
+           $kill_busy_commands->{$command} = 1;
+       }
+   } else {
+       $kill_busy_commands->{Query} = 1;
+   }
+   $args{kill_busy_commands} = $kill_busy_commands;
+
    my $self = {
       %args,
       polls       => 0,
@@ -471,6 +484,7 @@ sub find {
    my $ms  = $self->{MasterSlave};
 
    my @matches;
+   $self->{_reasons_for_matching} = undef;
    QUERY:
    foreach my $query ( @$proclist ) {
       PTDEBUG && _d('Checking query', Dumper($query));
@@ -484,7 +498,8 @@ sub find {
       }
 
       # Match special busy_time.
-      if ( $find_spec{busy_time} && ($query->{Command} || '') eq 'Query' ) {
+      #if ( $find_spec{busy_time} && ($query->{Command} || '') eq 'Query' ) {
+      if ( $find_spec{busy_time} && exists($self->{kill_busy_commands}->{$query->{Command} || ''}) ) {
          next QUERY unless defined($query->{Time});
          if ( $query->{Time} < $find_spec{busy_time} ) {
             PTDEBUG && _d("Query isn't running long enough");

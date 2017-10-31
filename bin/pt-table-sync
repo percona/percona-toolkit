@@ -55,7 +55,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.3';
+our $VERSION = '3.0.4';
 
 use strict;
 use warnings FATAL => 'all';
@@ -2853,7 +2853,7 @@ sub parse {
    my ($name)     = $ddl =~ m/CREATE (?:TEMPORARY )?TABLE\s+(`.+?`)/;
    (undef, $name) = $self->{Quoter}->split_unquote($name) if $name;
 
-   $ddl =~ s/(`[^`]+`)/\L$1/g;
+   $ddl =~ s/(`[^`\n]+`)/\L$1/gm;
 
    my $engine = $self->get_engine($ddl);
 
@@ -2864,8 +2864,8 @@ sub parse {
    my %def_for;
    @def_for{@cols} = @defs;
 
-   my (@nums, @null);
-   my (%type_for, %is_nullable, %is_numeric, %is_autoinc);
+   my (@nums, @null, @non_generated);
+   my (%type_for, %is_nullable, %is_numeric, %is_autoinc, %is_generated);
    foreach my $col ( @cols ) {
       my $def = $def_for{$col};
 
@@ -2882,6 +2882,11 @@ sub parse {
          push @null, $col;
          $is_nullable{$col} = 1;
       }
+      if ( remove_quoted_text($def) =~ m/\WGENERATED\W/i ) {
+          $is_generated{$col} = 1;
+      } else {
+          push @non_generated, $col;
+      }
       $is_autoinc{$col} = $def =~ m/AUTO_INCREMENT/i ? 1 : 0;
    }
 
@@ -2890,22 +2895,32 @@ sub parse {
    my ($charset) = $ddl =~ m/DEFAULT CHARSET=(\w+)/;
 
    return {
-      name           => $name,
-      cols           => \@cols,
-      col_posn       => { map { $cols[$_] => $_ } 0..$#cols },
-      is_col         => { map { $_ => 1 } @cols },
-      null_cols      => \@null,
-      is_nullable    => \%is_nullable,
-      is_autoinc     => \%is_autoinc,
-      clustered_key  => $clustered_key,
-      keys           => $keys,
-      defs           => \%def_for,
-      numeric_cols   => \@nums,
-      is_numeric     => \%is_numeric,
-      engine         => $engine,
-      type_for       => \%type_for,
-      charset        => $charset,
+      name               => $name,
+      cols               => \@cols,
+      col_posn           => { map { $cols[$_] => $_ } 0..$#cols },
+      is_col             => { map { $_ => 1 } @non_generated },
+      null_cols          => \@null,
+      is_nullable        => \%is_nullable,
+      non_generated_cols => \@non_generated,
+      is_autoinc         => \%is_autoinc,
+      is_generated       => \%is_generated,
+      clustered_key      => $clustered_key,
+      keys               => $keys,
+      defs               => \%def_for,
+      numeric_cols       => \@nums,
+      is_numeric         => \%is_numeric,
+      engine             => $engine,
+      type_for           => \%type_for,
+      charset            => $charset,
    };
+}
+
+sub remove_quoted_text {
+   my ($string) = @_;
+   $string =~ s/[^\\]`[^`]*[^\\]`//g; 
+   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
+   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
+   return $string;
 }
 
 sub sort_indexes {
@@ -2984,6 +2999,8 @@ sub check_table {
    my $db_tbl = $q->quote($db, $tbl);
    PTDEBUG && _d('Checking', $db_tbl);
 
+   $self->{check_table_error} = undef;
+
    my $sql = "SHOW TABLES FROM " . $q->quote($db)
            . ' LIKE ' . $q->literal_like($tbl);
    PTDEBUG && _d($sql);
@@ -2991,8 +3008,9 @@ sub check_table {
    eval {
       $row = $dbh->selectrow_arrayref($sql);
    };
-   if ( $EVAL_ERROR ) {
-      PTDEBUG && _d($EVAL_ERROR);
+   if ( my $e = $EVAL_ERROR ) {
+      PTDEBUG && _d($e);
+      $self->{check_table_error} = $e;
       return 0;
    }
    if ( !$row->[0] || $row->[0] ne $tbl ) {
@@ -7934,20 +7952,13 @@ sub table_is_allowed {
 
    return 0 if $db eq 'mysql' && $tbl =~ m/^(?:
        general_log
-      |gtid_execution
+      |gtid_executed
       |innodb_index_stats
       |innodb_table_stats
-      |inventory
-      |plugin
-      |proc
       |slave_master_info
       |slave_relay_log_info
       |slave_worker_info
       |slow_log    
-   )$/x;
-
-   return 0 if $db eq 'sys' && $tbl =~ m/^(?:
-       sys_config
    )$/x;
 
    if ( $filter->{'ignore-tables'}->{'*'}->{$tbl} 
@@ -12337,7 +12348,7 @@ The default is C<CRC32>.  Other good choices include C<MD5> and C<SHA1>.  If you
 have installed the C<FNV_64> user-defined function, C<pt-table-sync> will detect
 it and prefer to use it, because it is much faster than the built-ins.  You can
 also use MURMUR_HASH if you've installed that user-defined function.  Both of
-these are distributed with Maatkit.  See L<pt-table-checksum> for more
+these are distributed with Percona Server.  See L<pt-table-checksum> for more
 information and benchmarks.
 
 =item --help
@@ -12955,6 +12966,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-sync 3.0.2
+pt-table-sync 3.0.4
 
 =cut

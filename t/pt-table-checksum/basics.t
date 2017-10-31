@@ -105,7 +105,7 @@ ok(
 
 $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 
-my $max_rows = $sandbox_version < '5.7' ? 75 : 100;
+my $max_rows = $sandbox_version < '5.7' ? 90 : 100;
 ok(
    $row->[0] >= 75 && $row->[0] <= $max_rows,
    'Between 75 and 90 chunks on master'

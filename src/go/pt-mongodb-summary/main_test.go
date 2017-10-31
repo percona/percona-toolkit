@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/mgo.v2/dbtest"
 
@@ -205,6 +206,9 @@ func TestSecurityOpts(t *testing.T) {
 		session.EXPECT().DB("admin").Return(database)
 		database.EXPECT().Run(bson.D{{"getCmdLineOpts", 1}, {"recordStats", 1}}, gomock.Any()).SetArg(1, cmd)
 
+		session.EXPECT().Clone().Return(session)
+		session.EXPECT().SetMode(mgo.Strong, true)
+
 		session.EXPECT().DB("admin").Return(database)
 		database.EXPECT().C("system.users").Return(usersCol)
 		usersCol.EXPECT().Count().Return(1, nil)
@@ -212,6 +216,7 @@ func TestSecurityOpts(t *testing.T) {
 		session.EXPECT().DB("admin").Return(database)
 		database.EXPECT().C("system.roles").Return(rolesCol)
 		rolesCol.EXPECT().Count().Return(2, nil)
+		session.EXPECT().Close().Return()
 
 		got, err := GetSecuritySettings(session, "3.2")
 
@@ -392,21 +397,25 @@ func TestParseArgs(t *testing.T) {
 		{
 			args: []string{TOOLNAME}, // arg[0] is the command itself
 			want: &options{
-				Host:     DEFAULT_HOST,
-				LogLevel: DEFAULT_LOGLEVEL,
-				AuthDB:   DEFAULT_AUTHDB,
+				Host:               DEFAULT_HOST,
+				LogLevel:           DEFAULT_LOGLEVEL,
+				AuthDB:             DEFAULT_AUTHDB,
+				RunningOpsSamples:  DEFAULT_RUNNINGOPSSAMPLES,
+				RunningOpsInterval: DEFAULT_RUNNINGOPSINTERVAL,
+				OutputFormat:       "text",
 			},
 		},
 		{
 			args: []string{TOOLNAME, "zapp.brannigan.net:27018/samples", "--help"},
-			want: &options{
-				Host:     "zapp.brannigan.net:27018/samples",
-				LogLevel: DEFAULT_LOGLEVEL,
-				AuthDB:   DEFAULT_AUTHDB,
-				Help:     true,
-			},
+			want: nil,
 		},
 	}
+
+	// Capture stdout to not to show help
+	old := os.Stdout // keep backup of the real stdout
+	_, w, _ := os.Pipe()
+	os.Stdout = w
+
 	for i, test := range tests {
 		getopt.Reset()
 		os.Args = test.args
@@ -418,5 +427,7 @@ func TestParseArgs(t *testing.T) {
 			t.Errorf("invalid command line options test %d\ngot %+v\nwant %+v\n", i, got, test.want)
 		}
 	}
+
+	os.Stdout = old
 
 }

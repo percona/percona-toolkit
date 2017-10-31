@@ -1,6 +1,116 @@
 Release Notes
 *************
 
+v3.0.4 released 2017-08-02
+==========================
+
+Percona Toolkit 3.0.4 includes the following changes:
+
+New Features
+
+* :jirabug:`PT-90`: Added collection of information about prepared statements
+  by ``pt-stalk`` when Performance Schema is enabled.
+  For more information, see :lpbug:`1642750`.
+
+* :jirabug:`PT-91`: Added the ``--preserve-triggers`` option
+  for ``pt-online-schema-change`` to support ``AFTER`` triggers.
+
+* :jirabug:`PT-138`: Added ``--output-format`` option
+  for ``pt-mongodb-summary`` to choose between JSON format
+  and the default plain text.
+
+* :jirabug:`PT-141`: Added the ``--output-format=csv`` parameter
+  for ``pt-archiver`` to archive rows in CSV format.
+
+* :jirabug:`PT-142`: Added the ``--only-same-schema-fks`` option
+  for ``pt-online-schema-change`` to check foreigns keys only on tables
+  with the same schema as the original table.
+  This should speed up the tool's execution,
+  but keep in mind that if you have foreign keys
+  referencing tables in other schemas,
+  they won't be detected.
+  For more information, see :lpbug:`1690122`.
+
+* :jirabug:`PT-153`: Added the ``--check-unique-key-change`` option
+  for ``pt-online-schema-change`` to abort
+  if the specified statement for ``--alter`` is trying to add a unique index.
+  This is supposed to avoid adding duplicate keys
+  that might lead to silently losing data.
+
+* :jirabug:`PT-173`: Added the ``--truncate-replicate-table`` option
+  for ``pt-table-checksum`` to ensure stale data is removed.
+
+Bug fixes
+
+* :jirabug:`PT-136`: Fixed ``pt-table-checksum`` to support tables
+  that have columns with different collations or charsets.
+  For more information, see :lpbug:`1674266`.
+
+* :jirabug:`PT-143`: Fixed primary key handling by ``pt-archiver``.
+  For more information, see :lpbug:`1691630`.
+
+* :jirabug:`PT-144`: Limited constraint name in the new table
+  when running ``pt-online-schema-change``.
+  For more information, see :lpbug:`1491674`.
+
+* :jirabug:`PT-146`: Fixed the ``--no-check-binlog-format`` option
+  for ``pt-table-checksum`` to work as expected.
+
+* :jirabug:`PT-148`: Fixed the use of uninitialized value in ``printf()``
+  for ``pt-online-schema-change``.
+  For more information, see :lpbug:`1693614`.
+
+* :jirabug:`PT-151`: Fixed ``pt-table-sync`` to prevent field type ``point``
+  to be taken as decimal.
+
+* :jirabug:`PT-154`: Reverted :jirabug:`PT-116`
+  to remove the ``--use-insert-ignore`` option
+  from ``pt-online-schema-change``.
+
+* :jirabug:`PT-161`: Fixed the ``--skip-check-slave-lag`` feature
+  for ``pt-table-checksum`` to safely check for undefined values.
+
+* :jirabug:`PT-178`: Fixed regression in ``--check-slave-lag`` option
+  for ``pt-online-schema-change``.
+
+* :jirabug:`PT-180`: Fixed regression in ``--skip-check-slave-lag`` option
+  for ``pt-online-schema-change``.
+
+* :jirabug:`PT-181`: Fixed syntax error in ``pt-online-schema-change``.
+
+Other Improvements
+
+* :jirabug:`PT-162`: Updated list of tables ignored by ``pt-table-checksum``.
+
+v3.0.3 released 2017-05-18
+==========================
+
+Percona Toolkit 3.0.3 includes the following changes:
+
+New Features
+
+* Added the ``--skip-check-slave-lag`` option for ``pt-table-checksum``, ``pt-online-schema-change``, and ``pt-archiver``.
+
+  This option can be used to specify list of servers where to skip checking for slave lag.
+
+* 1642754: Added support for collecting replication slave information in ``pt-stalk``.
+
+* PT-111: Added support for collecting information about variables from Performance Schema in ``pt-stalk``. For more information, see 1642753.
+
+* PT-116: Added the ``--[no]use-insert-ignore`` option for ``pt-online-schema-change`` to force or prevent using ``IGNORE`` on ``INSERT`` statements. For more information, see 1545129.
+
+Bug Fixes
+
+* PT-115: Fixed ``OptionParser`` to accept repeatable DSNs.
+
+* PT-126: Fixed ``pt-online-schema-change`` to correctly parse comments. For more information, see 1592072.
+
+* PT-128: Fixed ``pt-stalk`` to include memory usage information. For more information, see 1510809.
+
+* PT-130: Fixed ``pt-mext`` to work with non-empty RSA public key. For more information, see 1587404.
+
+* PT-132: Fixed ``pt-online-schema-change`` to enable ``--no-drop-new-table`` when ``--no-swap-tables`` and ``--no-drop-triggers`` are used.
+
 v3.0.2 released 2017-03-27
 ==========================
 

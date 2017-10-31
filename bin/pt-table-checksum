@@ -57,7 +57,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.3';
+our $VERSION = '3.0.4';
 
 use strict;
 use warnings FATAL => 'all';
@@ -3680,6 +3680,11 @@ sub name {
    return $self->{hostname} || $self->{dsn_name} || 'unknown host';
 }
 
+sub description {
+   my ($self) = @_;
+   return sprintf("%s -> %s:%s", $self->name(), $self->{dsn}->{h}, $self->{dsn}->{P} || 'socket');
+}
+
 sub get_id {
    my ($self, $cxn) = @_;
 
@@ -3711,9 +3716,20 @@ sub is_cluster_node {
    my ($self, $cxn) = @_;
 
    $cxn ||= $self;
+
    my $sql = "SHOW VARIABLES LIKE 'wsrep\_on'";
-   PTDEBUG && _d($cxn->name, $sql);
-   my $row = $cxn->dbh->selectrow_arrayref($sql);
+
+   my $dbh;
+   if ($cxn->isa('DBI::db')) {
+      $dbh = $cxn;
+      PTDEBUG && _d($sql); #don't invoke name() if it's not a Cxn!
+   }
+   else {
+      $dbh = $cxn->dbh();      
+      PTDEBUG && _d($cxn->name, $sql);
+   }
+
+   my $row = $dbh->selectrow_arrayref($sql);
    return $row && $row->[1] && ($row->[1] eq 'ON' || $row->[1] eq '1') ? 1 : 0;
 
 }
@@ -4419,7 +4435,7 @@ sub parse {
    my ($name)     = $ddl =~ m/CREATE (?:TEMPORARY )?TABLE\s+(`.+?`)/;
    (undef, $name) = $self->{Quoter}->split_unquote($name) if $name;
 
-   $ddl =~ s/(`[^`]+`)/\L$1/g;
+   $ddl =~ s/(`[^`\n]+`)/\L$1/gm;
 
    my $engine = $self->get_engine($ddl);
 
@@ -4430,8 +4446,8 @@ sub parse {
    my %def_for;
    @def_for{@cols} = @defs;
 
-   my (@nums, @null);
-   my (%type_for, %is_nullable, %is_numeric, %is_autoinc);
+   my (@nums, @null, @non_generated);
+   my (%type_for, %is_nullable, %is_numeric, %is_autoinc, %is_generated);
    foreach my $col ( @cols ) {
       my $def = $def_for{$col};
 
@@ -4448,6 +4464,11 @@ sub parse {
          push @null, $col;
          $is_nullable{$col} = 1;
       }
+      if ( remove_quoted_text($def) =~ m/\WGENERATED\W/i ) {
+          $is_generated{$col} = 1;
+      } else {
+          push @non_generated, $col;
+      }
       $is_autoinc{$col} = $def =~ m/AUTO_INCREMENT/i ? 1 : 0;
    }
 
@@ -4456,22 +4477,32 @@ sub parse {
    my ($charset) = $ddl =~ m/DEFAULT CHARSET=(\w+)/;
 
    return {
-      name           => $name,
-      cols           => \@cols,
-      col_posn       => { map { $cols[$_] => $_ } 0..$#cols },
-      is_col         => { map { $_ => 1 } @cols },
-      null_cols      => \@null,
-      is_nullable    => \%is_nullable,
-      is_autoinc     => \%is_autoinc,
-      clustered_key  => $clustered_key,
-      keys           => $keys,
-      defs           => \%def_for,
-      numeric_cols   => \@nums,
-      is_numeric     => \%is_numeric,
-      engine         => $engine,
-      type_for       => \%type_for,
-      charset        => $charset,
+      name               => $name,
+      cols               => \@cols,
+      col_posn           => { map { $cols[$_] => $_ } 0..$#cols },
+      is_col             => { map { $_ => 1 } @non_generated },
+      null_cols          => \@null,
+      is_nullable        => \%is_nullable,
+      non_generated_cols => \@non_generated,
+      is_autoinc         => \%is_autoinc,
+      is_generated       => \%is_generated,
+      clustered_key      => $clustered_key,
+      keys               => $keys,
+      defs               => \%def_for,
+      numeric_cols       => \@nums,
+      is_numeric         => \%is_numeric,
+      engine             => $engine,
+      type_for           => \%type_for,
+      charset            => $charset,
    };
+}
+
+sub remove_quoted_text {
+   my ($string) = @_;
+   $string =~ s/[^\\]`[^`]*[^\\]`//g; 
+   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
+   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
+   return $string;
 }
 
 sub sort_indexes {
@@ -5851,17 +5882,29 @@ sub make_row_checksum {
       $sep    =~ s/'//g;
       $sep  ||= '#';
 
+      my @converted_cols;
+      for my $col(@{$cols->{select}}) {
+          my $colname = $col;
+          $colname =~ s/`//g;
+          my $type = $tbl_struct->{type_for}->{$colname} || '';
+          if ($type =~ m/^(CHAR|VARCHAR|BINARY|VARBINARY|BLOB|TEXT|ENUM|SET|JSON)$/i) {
+              push @converted_cols, "convert($col using utf8mb4)";
+          } else {
+              push @converted_cols, "$col";
+          }
+      }
+
       my @nulls = grep { $cols->{allowed}->{$_} } @{$tbl_struct->{null_cols}};
       if ( @nulls ) {
          my $bitmap = "CONCAT("
             . join(', ', map { 'ISNULL(' . $q->quote($_) . ')' } @nulls)
             . ")";
-         push @{$cols->{select}}, $bitmap;
+         push @converted_cols, $bitmap;
       }
 
-      $query .= @{$cols->{select}} > 1
-              ? "$func(CONCAT_WS('$sep', " . join(', ', @{$cols->{select}}) . '))'
-              : "$func($cols->{select}->[0])";
+      $query .= scalar @converted_cols > 1
+              ? "$func(CONCAT_WS('$sep', " . join(', ', @converted_cols) . '))'
+              : "$func($converted_cols[0])";
    }
    else {
       my $fnv_func = uc $func;
@@ -7706,20 +7749,13 @@ sub table_is_allowed {
 
    return 0 if $db eq 'mysql' && $tbl =~ m/^(?:
        general_log
-      |gtid_execution
+      |gtid_executed
       |innodb_index_stats
       |innodb_table_stats
-      |inventory
-      |plugin
-      |proc
       |slave_master_info
       |slave_relay_log_info
       |slave_worker_info
       |slow_log    
-   )$/x;
-
-   return 0 if $db eq 'sys' && $tbl =~ m/^(?:
-       sys_config
    )$/x;
 
    if ( $filter->{'ignore-tables'}->{'*'}->{$tbl} 
@@ -8682,7 +8718,7 @@ sub wait {
             die "$var=$val exceeds its critical threshold "
                . "$self->{critical_val_for}->{$var}\n";
          }
-         if ( !$val || $val >= $self->{max_val_for}->{$var} ) {
+         if ( $val >= $self->{max_val_for}->{$var} ) {
             $vals_too_high{$var} = $val;
          }
          else {
@@ -9268,7 +9304,16 @@ sub main {
    }
 
    $o->usage_or_errors();
- 
+
+
+   if ( $o->get('truncate-replicate-table') && $o->get('resume') ) {
+       die "--resume and truncate-replicate-table are mutually exclusive";
+   }
+
+   if ( $o->get('truncate-replicate-table') && !$o->get('empty-replicate-table') ) {
+       die "--resume and --no-empty-replicate-table are mutually exclusive";
+   }
+
    # ########################################################################
    # If --pid, check it first since we'll die if it already exists.
    # ########################################################################
@@ -9496,6 +9541,15 @@ sub main {
    my $update_sth; # update master_cnt and master_cnt in repl table
    my $delete_sth; # delete checksums for one db.tbl from repl table
 
+   if ( $o->get('truncate-replicate-table') ) {
+       eval {
+           $master_dbh->do("TRUNCATE TABLE $repl_table");
+       };
+       if ($EVAL_ERROR) {
+           PTDEBUG && _d( "Cannot truncate replicate table $repl_table. $EVAL_ERROR");
+       }
+   }
+
    if ( !$o->get('explain') ) {
       # #####################################################################
       # Find and connect to slaves.
@@ -9713,12 +9767,20 @@ sub main {
              for my $slave (@$slave_lag_cxns) {
                  my $found=0;
                  for my $slave_to_skip (@$slaves_to_skip) {
-                     if ($slave->{dsn}->{h} eq $slave_to_skip->{h} && $slave->{dsn}->{P} eq $slave_to_skip->{P}) {
+                     my $h_eq_h = $slave->{dsn}->{h} eq $slave_to_skip->{h};
+                     my $p_eq_p;
+                     if (defined($slave->{dsn}->{P}) || defined($slave_to_skip->{P})) {
+                       $p_eq_p = $slave->{dsn}->{P} eq $slave_to_skip->{P};
+                     } else {
+                       PTDEBUG && _d("Both port DSNs are undefined, setting p_eq_p to true");
+                       $p_eq_p = 1;
+                     }
+                     if ($h_eq_h && $p_eq_p) {
                          $found=1;
                      }
                  }
                  if ($found) {
-                    printf("Skipping slave %s -> %s:%s\n", $slave->name(), $slave->{dsn}->{h}, $slave->{dsn}->{P});
+                    printf("Skipping slave %s\n", $slave->name());
                  } else {
                     push @$filtered_slaves, $slave;
                 }
@@ -11817,6 +11879,15 @@ can try something like the following:
    SET boundaries = COALESCE(CONCAT('id BETWEEN ', lower_boundary,
       ' AND ', upper_boundary), '1=1');
 
+Take into consideration that by default, pt-table-checksum use C<CRC32> checksums.
+C<CRC32> is not a cryptographic algorithm and for that reason it is prone to have 
+collisions. On the other hand, C<CRC32> algorithm is faster and less CPU-intensive
+than C<MD5> and C<SHA1>.
+
+Related reading material: 
+Percona Toolkit UDFs: L<https://www.percona.com/doc/percona-server/LATEST/management/udf_percona_toolkit.html>
+How to avoid hash collisions when using MySQL’s CRC32 function: L<https://www.percona.com/blog/2014/10/13/how-to-avoid-hash-collisions-when-using-mysqls-crc32-function/>
+
 =head1 LIMITATIONS
 
 =over
@@ -12822,6 +12893,15 @@ MySQL versions that vary in their handling of trailing spaces. MySQL 5.0 and
 later all retain trailing spaces in VARCHAR, while previous versions would 
 remove them.  These differences will cause false checksum differences.
 
+=item --truncate-replicate-table
+
+Truncate the replicate table before starting the checksum.
+This parameter differs from L<--empty-replicate-table> which only deletes the rows
+for the table being checksumed when starting the checksum for that table, while 
+L<--truncate-replicate-table> will truncate the replicate table at the beginning of the 
+process and thus, all previous checksum information will be losti, even if the process
+stops due to an error.
+
 =item --user
 
 short form: -u; type: string; group: Connection
@@ -13131,6 +13211,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-checksum 3.0.2
+pt-table-checksum 3.0.4
 
 =cut

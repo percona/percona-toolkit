@@ -1,0 +1,27 @@
+[
+  {
+    "ID": "db759bfd83441deecc71382323041ce6",
+    "Namespace": "test.coll",
+    "Operation": "GETMORE",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"getmore\",\"command\":{\"getMore\":\"62495713089\",\"collection\":\"coll\",\"batchSize\":2,\"$db\":\"test\"},\"originatingCommand\":{\"find\":\"coll\",\"filter\":{\"a\":{\"$gt\":0}},\"batchSize\":2,\"sort\":{\"a\":1},\"$db\":\"test\"}}\n",
+    "Fingerprint": "GETMORE coll",
+    "FirstSeen": "2017-10-15T01:54:56.186Z",
+    "LastSeen": "2017-10-15T01:54:56.186Z",
+    "TableScan": false,
+    "Count": 1,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0
+    ],
+    "NScanned": [
+      0
+    ],
+    "QueryTime": [
+      0
+    ],
+    "ResponseLength": [
+      81
+    ]
+  }
+]

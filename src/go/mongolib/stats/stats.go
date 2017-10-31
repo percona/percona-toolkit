@@ -2,15 +2,14 @@ package stats
 
 import (
 	"crypto/md5"
-	"encoding/json"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
 	"github.com/montanaflynn/stats"
-	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
-	"github.com/percona/percona-toolkit/src/go/mongolib/util"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type StatsError struct {
@@ -30,10 +29,9 @@ func (e *StatsError) Parent() error {
 }
 
 type StatsFingerprintError StatsError
-type StatsGetQueryFieldError StatsError
 
-// New creates new instance of stats with given fingerprinter
-func New(fingerprinter fingerprinter.Fingerprinter) *Stats {
+// New creates new instance of stats with given Fingerprinter
+func New(fingerprinter Fingerprinter) *Stats {
 	s := &Stats{
 		fingerprinter: fingerprinter,
 	}
@@ -45,7 +43,7 @@ func New(fingerprinter fingerprinter.Fingerprinter) *Stats {
 // Stats is a collection of MongoDB statistics
 type Stats struct {
 	// dependencies
-	fingerprinter fingerprinter.Fingerprinter
+	fingerprinter Fingerprinter
 
 	// internal
 	queryInfoAndCounters map[GroupKey]*QueryInfoAndCounters
@@ -62,7 +60,7 @@ func (s *Stats) Reset() {
 
 // Add adds proto.SystemProfile to the collection of statistics
 func (s *Stats) Add(doc proto.SystemProfile) error {
-	fp, err := s.fingerprinter.Fingerprint(doc.Query)
+	fp, err := s.fingerprinter.Fingerprint(doc)
 	if err != nil {
 		return &StatsFingerprintError{err}
 	}
@@ -70,35 +68,41 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 	var ok bool
 
 	key := GroupKey{
-		Operation:   doc.Op,
-		Fingerprint: fp,
-		Namespace:   doc.Ns,
+		Operation:   fp.Operation,
+		Fingerprint: fp.Fingerprint,
+		Namespace:   fp.Namespace,
 	}
 	if qiac, ok = s.getQueryInfoAndCounters(key); !ok {
-		realQuery, err := util.GetQueryField(doc.Query)
+		query := proto.NewExampleQuery(doc)
+		queryBson, err := bson.MarshalJSON(query)
 		if err != nil {
-			return &StatsGetQueryFieldError{err}
+			return err
 		}
 		qiac = &QueryInfoAndCounters{
 			ID:          fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s", key)))),
-			Operation:   doc.Op,
-			Fingerprint: fp,
-			Namespace:   doc.Ns,
+			Operation:   fp.Operation,
+			Fingerprint: fp.Fingerprint,
+			Namespace:   fp.Namespace,
 			TableScan:   false,
-			Query:       realQuery,
+			Query:       string(queryBson),
 		}
 		s.setQueryInfoAndCounters(key, qiac)
 	}
 	qiac.Count++
-	qiac.NScanned = append(qiac.NScanned, float64(doc.DocsExamined))
+	// docsExamined is renamed from nscannedObjects in 3.2.0.
+	// https://docs.mongodb.com/manual/reference/database-profiler/#system.profile.docsExamined
+	if doc.NscannedObjects > 0 {
+		qiac.NScanned = append(qiac.NScanned, float64(doc.NscannedObjects))
+	} else {
+		qiac.NScanned = append(qiac.NScanned, float64(doc.DocsExamined))
+	}
 	qiac.NReturned = append(qiac.NReturned, float64(doc.Nreturned))
 	qiac.QueryTime = append(qiac.QueryTime, float64(doc.Millis))
 	qiac.ResponseLength = append(qiac.ResponseLength, float64(doc.ResponseLength))
-	var zeroTime time.Time
-	if qiac.FirstSeen == zeroTime || qiac.FirstSeen.After(doc.Ts) {
+	if qiac.FirstSeen.IsZero() || qiac.FirstSeen.After(doc.Ts) {
 		qiac.FirstSeen = doc.Ts
 	}
-	if qiac.LastSeen == zeroTime || qiac.LastSeen.Before(doc.Ts) {
+	if qiac.LastSeen.IsZero() || qiac.LastSeen.Before(doc.Ts) {
 		qiac.LastSeen = doc.Ts
 	}
 
@@ -110,9 +114,15 @@ func (s *Stats) Queries() Queries {
 	s.RLock()
 	defer s.RUnlock()
 
+	keys := GroupKeys{}
+	for key := range s.queryInfoAndCounters {
+		keys = append(keys, key)
+	}
+	sort.Sort(keys)
+
 	queries := []QueryInfoAndCounters{}
-	for _, v := range s.queryInfoAndCounters {
-		queries = append(queries, *v)
+	for _, key := range keys {
+		queries = append(queries, *s.queryInfoAndCounters[key])
 	}
 	return queries
 }
@@ -162,7 +172,7 @@ type QueryInfoAndCounters struct {
 	ID          string
 	Namespace   string
 	Operation   string
-	Query       map[string]interface{}
+	Query       string
 	Fingerprint string
 	FirstSeen   time.Time
 	LastSeen    time.Time
@@ -184,10 +194,20 @@ func (a Times) Len() int           { return len(a) }
 func (a Times) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a Times) Less(i, j int) bool { return a[i].Before(a[j]) }
 
+type GroupKeys []GroupKey
+
+func (a GroupKeys) Len() int           { return len(a) }
+func (a GroupKeys) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a GroupKeys) Less(i, j int) bool { return a[i].String() < a[j].String() }
+
 type GroupKey struct {
 	Operation   string
-	Fingerprint string
 	Namespace   string
+	Fingerprint string
+}
+
+func (g GroupKey) String() string {
+	return g.Operation + g.Namespace + g.Fingerprint
 }
 
 type totalCounters struct {
@@ -229,12 +249,11 @@ type Statistics struct {
 }
 
 func countersToStats(query QueryInfoAndCounters, uptime int64, tc totalCounters) QueryStats {
-	buf, _ := json.Marshal(query.Query)
 	queryStats := QueryStats{
 		Count:          query.Count,
 		ID:             query.ID,
 		Operation:      query.Operation,
-		Query:          string(buf),
+		Query:          query.Query,
 		Fingerprint:    query.Fingerprint,
 		Scanned:        calcStats(query.NScanned),
 		Returned:       calcStats(query.NReturned),
@@ -255,7 +274,7 @@ func countersToStats(query QueryInfoAndCounters, uptime int64, tc totalCounters)
 		queryStats.QueryTime.Pct = queryStats.QueryTime.Total * 100 / tc.QueryTime
 	}
 	if tc.Bytes > 0 {
-		queryStats.ResponseLength.Pct = queryStats.ResponseLength.Total / tc.Bytes
+		queryStats.ResponseLength.Pct = queryStats.ResponseLength.Total * 100 / tc.Bytes
 	}
 	if queryStats.Returned.Total > 0 {
 		queryStats.Ratio = queryStats.Scanned.Total / queryStats.Returned.Total
@@ -267,6 +286,7 @@ func countersToStats(query QueryInfoAndCounters, uptime int64, tc totalCounters)
 func aggregateCounters(queries []QueryInfoAndCounters) QueryInfoAndCounters {
 	qt := QueryInfoAndCounters{}
 	for _, query := range queries {
+		qt.Count += query.Count
 		qt.NScanned = append(qt.NScanned, query.NScanned...)
 		qt.NReturned = append(qt.NReturned, query.NReturned...)
 		qt.QueryTime = append(qt.QueryTime, query.QueryTime...)

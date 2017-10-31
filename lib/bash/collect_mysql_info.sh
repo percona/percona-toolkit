@@ -116,6 +116,10 @@ collect_mysql_users () {
    $CMD_MYSQL $EXT_ARGV -ss -e 'SELECT COUNT(*), SUM(user=""), SUM(password=""), SUM(password NOT LIKE "*%") FROM mysql.user' 2>/dev/null
 }
 
+collect_mysql_show_slave_hosts () {
+   $CMD_MYSQL $EXT_ARGV -ssE -e 'SHOW SLAVE HOSTS' 2>/dev/null
+}
+
 collect_master_logs_status () {
    local master_logs_file="$1"
    local master_status_file="$2"
@@ -224,6 +228,7 @@ collect_mysql_info () {
 
    collect_mysqld_instances   "$dir/mysql-variables"  > "$dir/mysqld-instances"
    collect_mysqld_executables "$dir/mysqld-instances" > "$dir/mysqld-executables"
+   collect_mysql_show_slave_hosts  "$dir/mysql-slave-hosts" > "$dir/mysql-slave-hosts"
 
    local binlog="$(get_var log_bin "$dir/mysql-variables")"
    if [ "${binlog}" ]; then

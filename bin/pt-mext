@@ -574,7 +574,7 @@ NUM=1;
 # Split the output on empty lines and put each into a different file; eliminate
 # lines that don't have "real" content.
 
-$EXT_ARGV | sed '/| Rsa/, /END PUBLIC KEY-----/d' | grep -v '^ |' | grep -v '+' | grep -v Variable_name | sed 's/|//g' \
+$EXT_ARGV | grep -v "| Rsa_public_key *|.*|$" | sed '/| Rsa/, /END PUBLIC KEY-----/d' | grep -v '^ |' | grep -v '+' | grep -v Variable_name | sed 's/|//g' \
    | while read line; do
    if [ "$line" = "" ]; then
       NUM=$(($NUM + 1))
@@ -804,7 +804,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-mext 3.0.2
+pt-mext 3.0.5
 
 =cut
 

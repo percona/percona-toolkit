@@ -19,6 +19,7 @@ type Profiler interface {
 	GetLastError() error
 	QueriesChan() chan stats.Queries
 	TimeoutsChan() <-chan time.Time
+	FlushQueries()
 	Start()
 	Stop()
 }
@@ -94,6 +95,8 @@ func (p *Profile) Stop() {
 }
 
 func (p *Profile) TimeoutsChan() <-chan time.Time {
+	p.lock.Lock()
+	defer p.lock.Unlock()
 	if p.timeoutsChan == nil {
 		p.timeoutsChan = make(chan time.Time)
 	}
@@ -108,8 +111,7 @@ MAIN_GETDATA_LOOP:
 	for {
 		select {
 		case <-p.ticker:
-			p.queriesChan <- p.stats.Queries()
-			p.stats.Reset()
+			p.FlushQueries()
 		case <-p.stopChan:
 			// Close the iterator to break the loop on getDocs
 			p.iterator.Close()
@@ -120,6 +122,9 @@ MAIN_GETDATA_LOOP:
 }
 
 func (p *Profile) getDocs() {
+	defer p.Stop()
+	defer p.FlushQueries()
+
 	var doc proto.SystemProfile
 
 	for p.iterator.Next(&doc) || p.iterator.Timeout() {
@@ -139,10 +144,11 @@ func (p *Profile) getDocs() {
 		if !valid {
 			continue
 		}
-		if len(doc.Query) > 0 {
-			p.stats.Add(doc)
-		}
+		p.stats.Add(doc)
 	}
+}
+
+func (p *Profile) FlushQueries() {
 	p.queriesChan <- p.stats.Queries()
-	p.Stop()
+	p.stats.Reset()
 }
