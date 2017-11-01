@@ -8533,6 +8533,7 @@ sub wait {
       PTDEBUG && _d('Checking slave lag');
       for my $i ( 0..$#lagged_slaves ) {
          my $lag = $get_lag->($lagged_slaves[$i]->{cxn});
+         die "Please restart the program using --channel=<channel name>" if !defined($lag);
          PTDEBUG && _d($lagged_slaves[$i]->{cxn}->name(),
             'slave lag:', $lag);
          if ( !defined $lag || $lag > $max_lag ) {
@@ -9159,6 +9160,7 @@ use POSIX qw(signal_h);
 use List::Util qw(max);
 use Time::HiRes qw(sleep time);
 use Data::Dumper;
+use Carp;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
