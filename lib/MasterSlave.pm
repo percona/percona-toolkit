@@ -446,8 +446,7 @@ sub get_slave_status {
       if ( $sss_rows && @$sss_rows ) {
           if (scalar @$sss_rows > 1) {
               if (!$self->{channel}) {
-                  warn 'This server returned more than one row for SHOW SLAVE STATUS but "channel" was not specified on the command line';
-                  return undef;
+                  die 'This server returned more than one row for SHOW SLAVE STATUS but "channel" was not specified on the command line';
               }
               for my $row (@$sss_rows) {
                   $row = { map { lc($_) => $row->{$_} } keys %$row }; # lowercase the keys
@@ -458,8 +457,7 @@ sub get_slave_status {
               }
           } else {
               if ($sss_rows->[0]->{channel_name} && $sss_rows->[0]->{channel_name} ne $self->{channel}) {
-                  warn 'This server is using replication channels but "channel" was not specified on the command line';
-                  return undef;
+                  die 'This server is using replication channels but "channel" was not specified on the command line';
               } else {
                   $ss = $sss_rows->[0];
               }

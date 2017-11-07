@@ -42,7 +42,7 @@ ok(
 my @files = glob("$dir/*");
 my $n_files = scalar @files;
 ok(
-   $n_files == 15 || $n_files == 14,
+   $n_files >= 15 && $n_files <= 16,
    "And leaves all files in there"
 ) or diag($n_files, `ls -l $dir`);
 
