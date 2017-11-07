@@ -89,7 +89,7 @@ SKIP: {
       "Executed zombie command"
    );
 
-   $output = `ps x | grep Z | grep -v grep | grep -v VNote`;
+   $output = `ps x | grep Z | grep -v grep`;
    is(
       $output,
       "",
@@ -102,7 +102,7 @@ SKIP: {
       !-f $pid_file,
       "pt-kill stopped"
    );
-   $output = `ps x | grep Z | grep -v grep | grep -v VNote`;
+   $output = `ps x | grep Z | grep -v grep`;
    is(
       $output,
       "",
