@@ -71,7 +71,7 @@ func main() {
 
 	opts, err := getOptions()
 	if err != nil {
-		log.Errorf("error processing commad line arguments: %s", err)
+		log.Errorf("error processing command line arguments: %s", err)
 		os.Exit(1)
 	}
 	if opts == nil && err == nil {
@@ -104,6 +104,8 @@ func main() {
 		}
 	}
 
+	log.Debugf("Command line options:\n%+v\n", opts)
+
 	di := getDialInfo(opts)
 	if di.Database == "" {
 		log.Errorln("must indicate a database as host:[port]/database")
@@ -113,6 +115,7 @@ func main() {
 
 	dialer := pmgo.NewDialer()
 	session, err := dialer.DialWithInfo(di)
+	log.Debugf("Dial Info: %+v\n", di)
 	if err != nil {
 		log.Errorf("Error connecting to the db: %s while trying to connect to %s", err, di.Addrs[0])
 		os.Exit(3)
@@ -142,8 +145,7 @@ func main() {
 		filters = append(filters, filter.NewFilterByCollection(opts.SkipCollections))
 	}
 
-	query := bson.M{"op": bson.M{"$nin": []string{"getmore", "delete"}}}
-	i := session.DB(di.Database).C("system.profile").Find(query).Sort("-$natural").Iter()
+	i := session.DB(di.Database).C("system.profile").Find(bson.M{}).Sort("-$natural").Iter()
 
 	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
 	s := stats.New(fp)
@@ -160,6 +162,10 @@ func main() {
 		sortedQueryStats = sortedQueryStats[:opts.Limit]
 	}
 
+	if len(queries) == 0 {
+		log.Errorf("No queries found in profiler information for database %q\n", di.Database)
+		return
+	}
 	rep := report{
 		Headers:     getHeaders(opts),
 		QueryTotals: queries.CalcTotalQueriesStats(uptime),
@@ -322,10 +328,10 @@ func getDialInfo(opts *options) *pmgo.DialInfo {
 	di, _ := mgo.ParseURL(opts.Host)
 	di.FailFast = true
 
-	if di.Username != "" {
+	if di.Username == "" {
 		di.Username = opts.User
 	}
-	if di.Password != "" {
+	if di.Password == "" {
 		di.Password = opts.Password
 	}
 	if opts.AuthDB != "" {
@@ -369,9 +375,9 @@ func getQueryTemplate() string {
 # Exec Time ms        {{printf "% 4.0f" .QueryTime.Pct}}   {{printf "% 7.0f " .QueryTime.Total}}    {{printf "% 7.0f " .QueryTime.Min}}    {{printf "% 7.0f " .QueryTime.Max}}    {{printf "% 7.0f " .QueryTime.Avg}}    {{printf "% 7.0f " .QueryTime.Pct95}}    {{printf "% 7.0f " .QueryTime.StdDev}}    {{printf "% 7.0f " .QueryTime.Median}}
 # Docs Scanned        {{printf "% 4.0f" .Scanned.Pct}}   {{Format .Scanned.Total 7.2}}    {{Format .Scanned.Min 7.2}}    {{Format .Scanned.Max 7.2}}    {{Format .Scanned.Avg 7.2}}    {{Format .Scanned.Pct95 7.2}}    {{Format .Scanned.StdDev 7.2}}    {{Format .Scanned.Median 7.2}}
 # Docs Returned       {{printf "% 4.0f" .Returned.Pct}}   {{Format .Returned.Total 7.2}}    {{Format .Returned.Min 7.2}}    {{Format .Returned.Max 7.2}}    {{Format .Returned.Avg 7.2}}    {{Format .Returned.Pct95 7.2}}    {{Format .Returned.StdDev 7.2}}    {{Format .Returned.Median 7.2}}
-# Bytes recv          {{printf "% 4.0f" .ResponseLength.Pct}}   {{Format .ResponseLength.Total 7.2}}    {{Format .ResponseLength.Min 7.2}}    {{Format .ResponseLength.Max 7.2}}    {{Format .ResponseLength.Avg 7.2}}    {{Format .ResponseLength.Pct95 7.2}}    {{Format .ResponseLength.StdDev 7.2}}    {{Format .ResponseLength.Median 7.2}}
+# Bytes sent          {{printf "% 4.0f" .ResponseLength.Pct}}   {{Format .ResponseLength.Total 7.2}}    {{Format .ResponseLength.Min 7.2}}    {{Format .ResponseLength.Max 7.2}}    {{Format .ResponseLength.Avg 7.2}}    {{Format .ResponseLength.Pct95 7.2}}    {{Format .ResponseLength.StdDev 7.2}}    {{Format .ResponseLength.Median 7.2}}
 # String:
-# Namespaces          {{.Namespace}}
+# Namespace           {{.Namespace}}
 # Operation           {{.Operation}}
 # Fingerprint         {{.Fingerprint}}
 # Query               {{.Query}}
@@ -389,7 +395,7 @@ func getTotalsTemplate() string {
 # Exec Time ms        {{printf "% 4.0f" .QueryTime.Pct}}   {{printf "% 7.0f " .QueryTime.Total}}    {{printf "% 7.0f " .QueryTime.Min}}    {{printf "% 7.0f " .QueryTime.Max}}    {{printf "% 7.0f " .QueryTime.Avg}}    {{printf "% 7.0f " .QueryTime.Pct95}}    {{printf "% 7.0f " .QueryTime.StdDev}}    {{printf "% 7.0f " .QueryTime.Median}}
 # Docs Scanned        {{printf "% 4.0f" .Scanned.Pct}}   {{Format .Scanned.Total 7.2}}    {{Format .Scanned.Min 7.2}}    {{Format .Scanned.Max 7.2}}    {{Format .Scanned.Avg 7.2}}    {{Format .Scanned.Pct95 7.2}}    {{Format .Scanned.StdDev 7.2}}    {{Format .Scanned.Median 7.2}}
 # Docs Returned       {{printf "% 4.0f" .Returned.Pct}}   {{Format .Returned.Total 7.2}}    {{Format .Returned.Min 7.2}}    {{Format .Returned.Max 7.2}}    {{Format .Returned.Avg 7.2}}    {{Format .Returned.Pct95 7.2}}    {{Format .Returned.StdDev 7.2}}    {{Format .Returned.Median 7.2}}
-# Bytes recv          {{printf "% 4.0f" .ResponseLength.Pct}}   {{Format .ResponseLength.Total 7.2}}    {{Format .ResponseLength.Min 7.2}}    {{Format .ResponseLength.Max 7.2}}    {{Format .ResponseLength.Avg 7.2}}    {{Format .ResponseLength.Pct95 7.2}}    {{Format .ResponseLength.StdDev 7.2}}    {{Format .ResponseLength.Median 7.2}}
+# Bytes sent          {{printf "% 4.0f" .ResponseLength.Pct}}   {{Format .ResponseLength.Total 7.2}}    {{Format .ResponseLength.Min 7.2}}    {{Format .ResponseLength.Max 7.2}}    {{Format .ResponseLength.Avg 7.2}}    {{Format .ResponseLength.Pct95 7.2}}    {{Format .ResponseLength.StdDev 7.2}}    {{Format .ResponseLength.Median 7.2}}
 # 
 `
 	return t
@@ -469,15 +475,11 @@ func sortQueries(queries []stats.QueryStats, orderby []string) []stats.QueryStat
 
 		case "ratio":
 			f = func(c1, c2 *stats.QueryStats) bool {
-				ratio1 := c1.Scanned.Max / c1.Returned.Max
-				ratio2 := c2.Scanned.Max / c2.Returned.Max
-				return ratio1 < ratio2
+				return c1.Ratio < c2.Ratio
 			}
 		case "-ratio":
 			f = func(c1, c2 *stats.QueryStats) bool {
-				ratio1 := c1.Scanned.Max / c1.Returned.Max
-				ratio2 := c2.Scanned.Max / c2.Returned.Max
-				return ratio1 > ratio2
+				return c1.Ratio > c2.Ratio
 			}
 
 		//
@@ -529,6 +531,7 @@ func isProfilerEnabled(dialer pmgo.Dialer, di *pmgo.DialInfo) (bool, error) {
 	for _, member := range replicaMembers {
 		// Stand alone instances return state = REPLICA_SET_MEMBER_STARTUP
 		di.Addrs = []string{member.Name}
+		di.Direct = true
 		session, err := dialer.DialWithInfo(di)
 		if err != nil {
 			continue
