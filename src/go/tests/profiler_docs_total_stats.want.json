@@ -2,12 +2,12 @@
   "ID": "",
   "Namespace": "",
   "Operation": "",
-  "Query": "null",
+  "Query": "",
   "Fingerprint": "",
   "FirstSeen": "0001-01-01T00:00:00Z",
   "LastSeen": "0001-01-01T00:00:00Z",
-  "Count": 0,
-  "QPS": 0,
+  "Count": 3,
+  "QPS": 3,
   "Rank": 0,
   "Ratio": 134.33333333333334,
   "QueryTime": {
@@ -21,7 +21,7 @@
     "Median": 0
   },
   "ResponseLength": {
-    "Pct": 1,
+    "Pct": 100,
     "Total": 1061660,
     "Min": 215,
     "Max": 1061230,

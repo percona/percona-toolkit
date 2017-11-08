@@ -145,7 +145,7 @@ sub parse {
 
    # Lowercase identifiers to avoid issues with case-sensitivity in Perl.
    # (Bug #1910276).
-   $ddl =~ s/(`[^`]+`)/\L$1/g;
+   $ddl =~ s/(`[^`\n]+`)/\L$1/gm;
 
    my $engine = $self->get_engine($ddl);
 
@@ -159,8 +159,8 @@ sub parse {
 
    # Find column types, whether numeric, whether nullable, whether
    # auto-increment.
-   my (@nums, @null);
-   my (%type_for, %is_nullable, %is_numeric, %is_autoinc);
+   my (@nums, @null, @non_generated);
+   my (%type_for, %is_nullable, %is_numeric, %is_autoinc, %is_generated);
    foreach my $col ( @cols ) {
       my $def = $def_for{$col};
 
@@ -180,6 +180,11 @@ sub parse {
          push @null, $col;
          $is_nullable{$col} = 1;
       }
+      if ( remove_quoted_text($def) =~ m/\WGENERATED\W/i ) {
+          $is_generated{$col} = 1;
+      } else {
+          push @non_generated, $col;
+      }
       $is_autoinc{$col} = $def =~ m/AUTO_INCREMENT/i ? 1 : 0;
    }
 
@@ -191,22 +196,32 @@ sub parse {
    my ($charset) = $ddl =~ m/DEFAULT CHARSET=(\w+)/;
 
    return {
-      name           => $name,
-      cols           => \@cols,
-      col_posn       => { map { $cols[$_] => $_ } 0..$#cols },
-      is_col         => { map { $_ => 1 } @cols },
-      null_cols      => \@null,
-      is_nullable    => \%is_nullable,
-      is_autoinc     => \%is_autoinc,
-      clustered_key  => $clustered_key,
-      keys           => $keys,
-      defs           => \%def_for,
-      numeric_cols   => \@nums,
-      is_numeric     => \%is_numeric,
-      engine         => $engine,
-      type_for       => \%type_for,
-      charset        => $charset,
+      name               => $name,
+      cols               => \@cols,
+      col_posn           => { map { $cols[$_] => $_ } 0..$#cols },
+      is_col             => { map { $_ => 1 } @non_generated },
+      null_cols          => \@null,
+      is_nullable        => \%is_nullable,
+      non_generated_cols => \@non_generated,
+      is_autoinc         => \%is_autoinc,
+      is_generated       => \%is_generated,
+      clustered_key      => $clustered_key,
+      keys               => $keys,
+      defs               => \%def_for,
+      numeric_cols       => \@nums,
+      is_numeric         => \%is_numeric,
+      engine             => $engine,
+      type_for           => \%type_for,
+      charset            => $charset,
    };
+}
+
+sub remove_quoted_text {
+   my ($string) = @_;
+   $string =~ s/[^\\]`[^`]*[^\\]`//g; 
+   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
+   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
+   return $string;
 }
 
 # Sorts indexes in this order: PRIMARY, unique, non-nullable, any (shortest

@@ -6,8 +6,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
-
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/mgo.v2/dbtest"
@@ -36,12 +34,11 @@ func TestMain(m *testing.M) {
 	os.Exit(retCode)
 }
 
-func ExampleServerStatus() {
-	ss := proto.ServerStatus{}
-	if err := session.DB("admin").Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, &ss); err != nil {
+func ExamplePing() {
+	ss := map[string]interface{}{}
+	if err := session.DB("admin").Run(bson.D{{"ping", 1}}, &ss); err != nil {
 		panic(err)
 	}
 	fmt.Printf("%+v", ss)
-	// Output:
-
+	// Output: map[ok:1]
 }

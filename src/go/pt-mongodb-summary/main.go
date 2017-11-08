@@ -504,7 +504,7 @@ func GetSecuritySettings(session pmgo.SessionManager, ver string) (*security, er
 				}
 			} else {
 				if ip != "127.0.0.1" && ip != extIP {
-					s.WarningMsgs = append(s.WarningMsgs, fmt.Sprintf("WARNING: You might be insecure. IP binding %s is not localhost"))
+					s.WarningMsgs = append(s.WarningMsgs, fmt.Sprintf("WARNING: You might be insecure. IP binding %s is not localhost", ip))
 				}
 			}
 		}

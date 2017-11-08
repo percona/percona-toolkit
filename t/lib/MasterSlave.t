@@ -750,6 +750,106 @@ like(
    "--recursion-method none,none"
 );
 
+SKIP: {
+
+   skip "Only test on mysql 5.7" if ( $sandbox_version lt '5.7' );
+
+   my ($master1_dbh, $master1_dsn) = $sb->start_sandbox(
+      server => 'chan_master1',
+      type   => 'master',
+   );
+   my ($master2_dbh, $master2_dsn) = $sb->start_sandbox(
+      server => 'chan_master2',
+      type   => 'master',
+   );
+   my ($slave1_dbh, $slave1_dsn) = $sb->start_sandbox(
+      server => 'chan_slave1',
+      type   => 'master',
+   );
+   my $slave1_port = $sb->port_for('chan_slave1');
+   
+   $sb->load_file('chan_master1', "sandbox/gtid_on.sql", undef, no_wait => 1);
+   $sb->load_file('chan_master2', "sandbox/gtid_on.sql", undef, no_wait => 1);
+   $sb->load_file('chan_slave1', "sandbox/slave_channels.sql", undef, no_wait => 1);
+                                                             
+   my $chan_slaves = $ms->get_slaves(
+      dbh      => $master1_dbh,
+      dsn      => $master1_dsn,
+      make_cxn => sub {
+         my $cxn = new Cxn(
+            @_,
+            DSNParser    => $dp,
+            OptionParser => $o,
+         );
+         $cxn->connect();
+         return $cxn;
+      },
+   );
+
+   our $message;
+   local $SIG{__WARN__} = sub {
+      $message = shift;
+   };
+   my $css = $ms->get_slave_status($slave1_dbh);
+   local $SIG{__WARN__} = undef;
+   is (
+       $css,
+       undef,
+       'Cannot determine slave in a multi source config without --channel param'
+   );
+   like (
+       $message,
+       qr/This server returned more than one row for SHOW SLAVE STATUS/,
+       'Got warning message if we cannot determine slave in a multi source config without --channel param',
+   );
+
+   my $wfm = $ms->wait_for_master(
+      master_status => $ms->get_master_status($dbh),
+      slave_dbh     => $slave1_dbh,
+      timeout       => 1,
+   );
+   like(
+       $wfm->{error},
+       qr/"channel" was not specified on the command line/,
+       'Wait for master returned error',
+   );
+
+   # After stopping one of the replication channels, show slave status returns only one slave
+   # but it has a channel name and we didn't specified a channels name in the command line.
+   # It should return undef
+   $slave1_dbh->do("STOP SLAVE for channel 'masterchan2'");
+
+   $css = $ms->get_slave_status($slave1_dbh);
+   is (
+       $css,
+       undef,
+       'Cannot determine slave in a multi source config without --channel param (only one server)'
+   );
+
+   $slave1_dbh->do("START SLAVE for channel 'masterchan2'");
+
+   # Now try specifying a channel name 
+   $ms->{channel} = 'masterchan1';
+   $css = $ms->get_slave_status($slave1_dbh);
+   is (
+       $css->{channel_name},
+       'masterchan1',
+       'Returned the correct slave',
+   );
+
+   $wfm = $ms->wait_for_master(
+      master_status => $ms->get_master_status($dbh),
+      slave_dbh     => $slave1_dbh,
+      timeout       => 1,
+   );
+   is(
+       $wfm->{error},
+       undef,
+       'Wait for master returned no error',
+   );
+
+   $sb->stop_sandbox(qw(chan_master1 chan_master2 chan_slave1));
+}
 # #############################################################################
 # Done.
 # #############################################################################

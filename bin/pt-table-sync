@@ -55,7 +55,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.3';
+our $VERSION = '3.0.4';
 
 use strict;
 use warnings FATAL => 'all';
@@ -2853,7 +2853,7 @@ sub parse {
    my ($name)     = $ddl =~ m/CREATE (?:TEMPORARY )?TABLE\s+(`.+?`)/;
    (undef, $name) = $self->{Quoter}->split_unquote($name) if $name;
 
-   $ddl =~ s/(`[^`]+`)/\L$1/g;
+   $ddl =~ s/(`[^`\n]+`)/\L$1/gm;
 
    my $engine = $self->get_engine($ddl);
 
@@ -2864,8 +2864,8 @@ sub parse {
    my %def_for;
    @def_for{@cols} = @defs;
 
-   my (@nums, @null);
-   my (%type_for, %is_nullable, %is_numeric, %is_autoinc);
+   my (@nums, @null, @non_generated);
+   my (%type_for, %is_nullable, %is_numeric, %is_autoinc, %is_generated);
    foreach my $col ( @cols ) {
       my $def = $def_for{$col};
 
@@ -2882,6 +2882,11 @@ sub parse {
          push @null, $col;
          $is_nullable{$col} = 1;
       }
+      if ( remove_quoted_text($def) =~ m/\WGENERATED\W/i ) {
+          $is_generated{$col} = 1;
+      } else {
+          push @non_generated, $col;
+      }
       $is_autoinc{$col} = $def =~ m/AUTO_INCREMENT/i ? 1 : 0;
    }
 
@@ -2890,22 +2895,32 @@ sub parse {
    my ($charset) = $ddl =~ m/DEFAULT CHARSET=(\w+)/;
 
    return {
-      name           => $name,
-      cols           => \@cols,
-      col_posn       => { map { $cols[$_] => $_ } 0..$#cols },
-      is_col         => { map { $_ => 1 } @cols },
-      null_cols      => \@null,
-      is_nullable    => \%is_nullable,
-      is_autoinc     => \%is_autoinc,
-      clustered_key  => $clustered_key,
-      keys           => $keys,
-      defs           => \%def_for,
-      numeric_cols   => \@nums,
-      is_numeric     => \%is_numeric,
-      engine         => $engine,
-      type_for       => \%type_for,
-      charset        => $charset,
+      name               => $name,
+      cols               => \@cols,
+      col_posn           => { map { $cols[$_] => $_ } 0..$#cols },
+      is_col             => { map { $_ => 1 } @non_generated },
+      null_cols          => \@null,
+      is_nullable        => \%is_nullable,
+      non_generated_cols => \@non_generated,
+      is_autoinc         => \%is_autoinc,
+      is_generated       => \%is_generated,
+      clustered_key      => $clustered_key,
+      keys               => $keys,
+      defs               => \%def_for,
+      numeric_cols       => \@nums,
+      is_numeric         => \%is_numeric,
+      engine             => $engine,
+      type_for           => \%type_for,
+      charset            => $charset,
    };
+}
+
+sub remove_quoted_text {
+   my ($string) = @_;
+   $string =~ s/[^\\]`[^`]*[^\\]`//g; 
+   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
+   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
+   return $string;
 }
 
 sub sort_indexes {
@@ -2984,6 +2999,8 @@ sub check_table {
    my $db_tbl = $q->quote($db, $tbl);
    PTDEBUG && _d('Checking', $db_tbl);
 
+   $self->{check_table_error} = undef;
+
    my $sql = "SHOW TABLES FROM " . $q->quote($db)
            . ' LIKE ' . $q->literal_like($tbl);
    PTDEBUG && _d($sql);
@@ -2991,8 +3008,9 @@ sub check_table {
    eval {
       $row = $dbh->selectrow_arrayref($sql);
    };
-   if ( $EVAL_ERROR ) {
-      PTDEBUG && _d($EVAL_ERROR);
+   if ( my $e = $EVAL_ERROR ) {
+      PTDEBUG && _d($e);
+      $self->{check_table_error} = $e;
       return 0;
    }
    if ( !$row->[0] || $row->[0] ne $tbl ) {
@@ -6237,6 +6255,9 @@ sub lock_and_wait {
                   slave_dbh     => $dst->{dbh},
                   timeout       => $timeout,
                );
+               if ($wait->{error}) {
+                   die $result->{error};
+               }
                if ( defined $wait->{result} && $wait->{result} != -1 ) {
                   return;  # slave caught up
                }
@@ -6943,16 +6964,35 @@ sub get_slave_status {
             ||= $dbh->prepare('SHOW SLAVE STATUS');
       PTDEBUG && _d($dbh, 'SHOW SLAVE STATUS');
       $sth->execute();
-      my ($ss) = @{$sth->fetchall_arrayref({})};
+      my ($sss_rows) = $sth->fetchall_arrayref({}); # Show Slave Status rows
 
-      if ( $ss && %$ss ) {
-         $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
-         return $ss;
+      my $ss;
+      if ( $sss_rows && @$sss_rows ) {
+          if (scalar @$sss_rows > 1) {
+              if (!$self->{channel}) {
+                  warn 'This server returned more than one row for SHOW SLAVE STATUS but "channel" was not specified on the command line';
+                  return undef;
+              }
+              for my $row (@$sss_rows) {
+                  $row = { map { lc($_) => $row->{$_} } keys %$row }; # lowercase the keys
+                  if ($row->{channel_name} eq $self->{channel}) {
+                      $ss = $row;
+                      last;
+                  }
+              }
+          } else {
+              $ss = $sss_rows->[0];
+          }
+
+          if ( $ss && %$ss ) {
+             $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
+             return $ss;
+          }
       }
 
       PTDEBUG && _d('This server returns nothing for SHOW SLAVE STATUS');
       $self->{not_a_slave}->{$dbh}++;
-   }
+  }
 }
 
 sub get_master_status {
@@ -6992,8 +7032,18 @@ sub wait_for_master {
    my $result;
    my $waited;
    if ( $master_status ) {
-      my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', "
-              . "$master_status->{position}, $timeout)";
+      my $slave_status = $self->get_slave_status($slave_dbh);
+      if (!$slave_status) {
+          return {
+              result => undef,
+              waited => 0,
+              error  =>'This server returned more than one row for SHOW SLAVE STATUS but "channel" was not specified on the command line',
+          };
+      }
+
+      my $server_version = VersionParser->new($slave_dbh);
+      my $channel_sql = $server_version > '5.6' && $self->{channel} ? ", '$self->{channel}'" : '';
+      my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', $master_status->{position}, $timeout $channel_sql)";
       PTDEBUG && _d($slave_dbh, $sql);
       my $start = time;
       ($result) = $slave_dbh->selectrow_array($sql);
@@ -7010,6 +7060,7 @@ sub wait_for_master {
    return {
       result => $result,
       waited => $waited,
+      error  => undef,
    };
 }
 
@@ -7059,6 +7110,10 @@ sub catchup_to_master {
             timeout       => $timeout,
             master_status => $master_status
       );
+      if ($result->{error}) {
+          die $result->{error};
+      }
+
       if ( !defined $result->{result} ) {
          $slave_status = $self->get_slave_status($slave);
          if ( !$self->slave_is_running($slave_status) ) {
@@ -9842,7 +9897,7 @@ sub main {
    # Do the work.
    # ########################################################################
    my $tp        = new TableParser( Quoter => $q );
-   my $ms        = new MasterSlave(OptionParser=>$o,DSNParser=>$dp,Quoter=>$q);
+   my $ms        = new MasterSlave(OptionParser=>$o,DSNParser=>$dp,Quoter=>$q, channel=>$o->get('channel'));
    my $rt        = new Retry();
    my $chunker   = new TableChunker( Quoter => $q, TableParser => $tp );
    my $nibbler   = new TableNibbler( Quoter => $q, TableParser => $tp );
@@ -12013,6 +12068,18 @@ For most non-trivial data sizes, you want to leave this option enabled.
 
 This option is disabled when L<"--bidirectional"> is used.
 
+=item --channel
+
+type: string
+
+Channel name used when connected to a server using replication channels.
+Suppose you have two masters, master_a at port 12345, master_b at port 1236 and
+a slave connected to both masters using channels chan_master_a and chan_master_b.
+If you want to run pt-table-sync to syncronize the slave against master_a, pt-table-sync
+won't be able to determine what's the correct master since SHOW SLAVE STATUS
+will return 2 rows. In this case, you can use --channel=chan_master_a to specify
+the channel name to use in the SHOW SLAVE STATUS command.
+
 =item --charset
 
 short form: -A; type: string
@@ -12899,6 +12966,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-sync 3.0.2
+pt-table-sync 3.0.4
 
 =cut

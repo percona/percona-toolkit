@@ -47,7 +47,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.3';
+our $VERSION = '3.0.5';
 
 use strict;
 use warnings FATAL => 'all';
@@ -2934,7 +2934,7 @@ sub parse {
    my ($name)     = $ddl =~ m/CREATE (?:TEMPORARY )?TABLE\s+(`.+?`)/;
    (undef, $name) = $self->{Quoter}->split_unquote($name) if $name;
 
-   $ddl =~ s/(`[^`]+`)/\L$1/g;
+   $ddl =~ s/(`[^`\n]+`)/\L$1/gm;
 
    my $engine = $self->get_engine($ddl);
 
@@ -2945,8 +2945,8 @@ sub parse {
    my %def_for;
    @def_for{@cols} = @defs;
 
-   my (@nums, @null);
-   my (%type_for, %is_nullable, %is_numeric, %is_autoinc);
+   my (@nums, @null, @non_generated);
+   my (%type_for, %is_nullable, %is_numeric, %is_autoinc, %is_generated);
    foreach my $col ( @cols ) {
       my $def = $def_for{$col};
 
@@ -2963,6 +2963,11 @@ sub parse {
          push @null, $col;
          $is_nullable{$col} = 1;
       }
+      if ( remove_quoted_text($def) =~ m/\WGENERATED\W/i ) {
+          $is_generated{$col} = 1;
+      } else {
+          push @non_generated, $col;
+      }
       $is_autoinc{$col} = $def =~ m/AUTO_INCREMENT/i ? 1 : 0;
    }
 
@@ -2971,22 +2976,32 @@ sub parse {
    my ($charset) = $ddl =~ m/DEFAULT CHARSET=(\w+)/;
 
    return {
-      name           => $name,
-      cols           => \@cols,
-      col_posn       => { map { $cols[$_] => $_ } 0..$#cols },
-      is_col         => { map { $_ => 1 } @cols },
-      null_cols      => \@null,
-      is_nullable    => \%is_nullable,
-      is_autoinc     => \%is_autoinc,
-      clustered_key  => $clustered_key,
-      keys           => $keys,
-      defs           => \%def_for,
-      numeric_cols   => \@nums,
-      is_numeric     => \%is_numeric,
-      engine         => $engine,
-      type_for       => \%type_for,
-      charset        => $charset,
+      name               => $name,
+      cols               => \@cols,
+      col_posn           => { map { $cols[$_] => $_ } 0..$#cols },
+      is_col             => { map { $_ => 1 } @non_generated },
+      null_cols          => \@null,
+      is_nullable        => \%is_nullable,
+      non_generated_cols => \@non_generated,
+      is_autoinc         => \%is_autoinc,
+      is_generated       => \%is_generated,
+      clustered_key      => $clustered_key,
+      keys               => $keys,
+      defs               => \%def_for,
+      numeric_cols       => \@nums,
+      is_numeric         => \%is_numeric,
+      engine             => $engine,
+      type_for           => \%type_for,
+      charset            => $charset,
    };
+}
+
+sub remove_quoted_text {
+   my ($string) = @_;
+   $string =~ s/[^\\]`[^`]*[^\\]`//g; 
+   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
+   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
+   return $string;
 }
 
 sub sort_indexes {
@@ -3065,6 +3080,8 @@ sub check_table {
    my $db_tbl = $q->quote($db, $tbl);
    PTDEBUG && _d('Checking', $db_tbl);
 
+   $self->{check_table_error} = undef;
+
    my $sql = "SHOW TABLES FROM " . $q->quote($db)
            . ' LIKE ' . $q->literal_like($tbl);
    PTDEBUG && _d($sql);
@@ -3072,8 +3089,9 @@ sub check_table {
    eval {
       $row = $dbh->selectrow_arrayref($sql);
    };
-   if ( $EVAL_ERROR ) {
-      PTDEBUG && _d($EVAL_ERROR);
+   if ( my $e = $EVAL_ERROR ) {
+      PTDEBUG && _d($e);
+      $self->{check_table_error} = $e;
       return 0;
    }
    if ( !$row->[0] || $row->[0] ne $tbl ) {
@@ -3294,6 +3312,17 @@ sub new {
    foreach my $arg ( qw(MasterSlave) ) {
       die "I need a $arg argument" unless $args{$arg};
    }
+   my $kill_busy_commands = {};
+   if ($args{kill_busy_commands}) {
+       for my $command (split /,/,$args{kill_busy_commands}) {
+           $command =~ s/^\s+|\s+$//g;
+           $kill_busy_commands->{$command} = 1;
+       }
+   } else {
+       $kill_busy_commands->{Query} = 1;
+   }
+   $args{kill_busy_commands} = $kill_busy_commands;
+
    my $self = {
       %args,
       polls       => 0,
@@ -3520,7 +3549,7 @@ sub find {
          next QUERY;
       }
 
-      if ( $find_spec{busy_time} && ($query->{Command} || '') eq 'Query' ) {
+      if ( $find_spec{busy_time} && exists($self->{kill_busy_commands}->{$query->{Command} || ''}) ) {
          next QUERY unless defined($query->{Time});
          if ( $query->{Time} < $find_spec{busy_time} ) {
             PTDEBUG && _d("Query isn't running long enough");
@@ -4133,16 +4162,35 @@ sub get_slave_status {
             ||= $dbh->prepare('SHOW SLAVE STATUS');
       PTDEBUG && _d($dbh, 'SHOW SLAVE STATUS');
       $sth->execute();
-      my ($ss) = @{$sth->fetchall_arrayref({})};
+      my ($sss_rows) = $sth->fetchall_arrayref({}); # Show Slave Status rows
 
-      if ( $ss && %$ss ) {
-         $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
-         return $ss;
+      my $ss;
+      if ( $sss_rows && @$sss_rows ) {
+          if (scalar @$sss_rows > 1) {
+              if (!$self->{channel}) {
+                  warn 'This server returned more than one row for SHOW SLAVE STATUS but "channel" was not specified on the command line';
+                  return undef;
+              }
+              for my $row (@$sss_rows) {
+                  $row = { map { lc($_) => $row->{$_} } keys %$row }; # lowercase the keys
+                  if ($row->{channel_name} eq $self->{channel}) {
+                      $ss = $row;
+                      last;
+                  }
+              }
+          } else {
+              $ss = $sss_rows->[0];
+          }
+
+          if ( $ss && %$ss ) {
+             $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
+             return $ss;
+          }
       }
 
       PTDEBUG && _d('This server returns nothing for SHOW SLAVE STATUS');
       $self->{not_a_slave}->{$dbh}++;
-   }
+  }
 }
 
 sub get_master_status {
@@ -4182,8 +4230,9 @@ sub wait_for_master {
    my $result;
    my $waited;
    if ( $master_status ) {
-      my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', "
-              . "$master_status->{position}, $timeout)";
+      my $server_version = VersionParser->new($slave_dbh);
+      my $channel_sql = $server_version > '5.6' && $self->{channel} ? ", '$self->{channel}'" : '';
+      my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', $master_status->{position}, $timeout $channel_sql)";
       PTDEBUG && _d($slave_dbh, $sql);
       my $start = time;
       ($result) = $slave_dbh->selectrow_array($sql);
@@ -6785,7 +6834,7 @@ sub main {
       DSNParser    => $dp,
       Quoter       => "Quoter",
    );
-   my $pl = new Processlist(MasterSlave => $ms);
+   my $pl = new Processlist(MasterSlave => $ms, kill_busy_commands => $o->get('kill-busy-commands'));
    my $qr = new QueryRewriter();
 
    my $cxn;
@@ -8195,6 +8244,21 @@ that pt-kill matched and killed a query.
 
 See also L<"--wait-before-kill"> and L<"--wait-after-kill">.
 
+=item --kill-busy-commands
+
+default: Query
+
+group: Actions
+
+Comma sepatated list of commands that will be watched/killed if they ran for
+more than L<"--busy-time"> seconds. Default: C<Query>
+
+By default, L<"--busy-time"> kills only C<Query> commands but in some cases, it
+is needed to make L<"--busy-time"> to watch and kill other commands. For example,
+a prepared statement execution command is C<Execute> instead of C<Query>. In this
+case, specifying C<--kill-busy-commands=Query,Execute> will also kill the prepared
+stamente execution.
+
 =item --kill-query
 
 group: Actions
@@ -8373,6 +8437,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-kill 3.0.2
+pt-kill 3.0.4
 
 =cut
