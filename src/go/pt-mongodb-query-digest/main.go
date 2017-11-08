@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -50,12 +52,19 @@ type options struct {
 	LogLevel        string
 	NoVersionCheck  bool
 	OrderBy         []string
+	OutputFormat    string
 	Password        string
 	SkipCollections []string
 	SSLCAFile       string
 	SSLPEMKeyFile   string
 	User            string
 	Version         bool
+}
+
+type report struct {
+	Headers     []string
+	QueryStats  []stats.QueryStats
+	QueryTotals stats.QueryStats
 }
 
 func main() {
@@ -149,26 +158,58 @@ func main() {
 	queriesStats := queries.CalcQueriesStats(uptime)
 	sortedQueryStats := sortQueries(queriesStats, opts.OrderBy)
 
-	printHeader(opts)
-
-	queryTotals := queries.CalcTotalQueriesStats(uptime)
-	tt, _ := template.New("query").Funcs(template.FuncMap{
-		"Format": format,
-	}).Parse(getTotalsTemplate())
-	tt.Execute(os.Stdout, queryTotals)
-
-	t, _ := template.New("query").Funcs(template.FuncMap{
-		"Format": format,
-	}).Parse(getQueryTemplate())
-
 	if opts.Limit > 0 && len(sortedQueryStats) > opts.Limit {
 		sortedQueryStats = sortedQueryStats[:opts.Limit]
 	}
-	for i, qs := range sortedQueryStats {
-		qs.Rank = i + 1
-		t.Execute(os.Stdout, qs)
+
+	if len(queries) == 0 {
+		log.Errorf("No queries found in profiler information for database %q\n", di.Database)
+		return
+	}
+	rep := report{
+		Headers:     getHeaders(opts),
+		QueryTotals: queries.CalcTotalQueriesStats(uptime),
+		QueryStats:  sortedQueryStats,
 	}
 
+	out, err := formatResults(rep, opts.OutputFormat)
+	if err != nil {
+		log.Errorf("Cannot parse the report: %s", err.Error())
+		os.Exit(5)
+	}
+
+	fmt.Println(string(out))
+
+}
+
+func formatResults(rep report, outputFormat string) ([]byte, error) {
+	var buf *bytes.Buffer
+
+	switch outputFormat {
+	case "json":
+		b, err := json.MarshalIndent(rep, "", "    ")
+		if err != nil {
+			return nil, fmt.Errorf("[Error] Cannot convert results to json: %s", err.Error())
+		}
+		buf = bytes.NewBuffer(b)
+	default:
+		buf = new(bytes.Buffer)
+
+		tt, _ := template.New("query").Funcs(template.FuncMap{
+			"Format": format,
+		}).Parse(getTotalsTemplate())
+		tt.Execute(buf, rep.QueryTotals)
+
+		t, _ := template.New("query").Funcs(template.FuncMap{
+			"Format": format,
+		}).Parse(getQueryTemplate())
+
+		for _, qs := range rep.QueryStats {
+			t.Execute(buf, qs)
+		}
+	}
+
+	return buf.Bytes(), nil
 }
 
 // format scales a number and returns a string made of the scaled value and unit (K=Kilo, M=Mega, T=Tera)
@@ -233,6 +274,7 @@ func getOptions() (*options, error) {
 	gop.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin", "Database to use for optional MongoDB authentication. Default: admin")
 	gop.StringVarLong(&opts.Database, "database", 'd', "", "MongoDB database to profile")
 	gop.StringVarLong(&opts.LogLevel, "log-level", 'l', "Log level: error", "panic, fatal, error, warn, info, debug. Default: error")
+	gop.StringVarLong(&opts.OutputFormat, "output-format", 'f', "text", "Output format: text, json. Default: text")
 	gop.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").SetOptional()
 	gop.StringVarLong(&opts.User, "username", 'u', "Username to use for optional MongoDB authentication")
 	gop.StringVarLong(&opts.SSLCAFile, "sslCAFile", 0, "SSL CA cert file used for authentication")
@@ -263,6 +305,11 @@ func getOptions() (*options, error) {
 				return nil, fmt.Errorf("invalid sort field '%q'", field)
 			}
 		}
+	}
+
+	if opts.OutputFormat != "json" && opts.OutputFormat != "text" {
+		opts.OutputFormat = "text"
+		log.Infof("Invalid output format '%s'. Using text format", opts.OutputFormat)
 	}
 
 	if gop.IsSet("password") && opts.Password == "" {
@@ -307,11 +354,13 @@ func getDialInfo(opts *options) *pmgo.DialInfo {
 	return pmgoDialInfo
 }
 
-func printHeader(opts *options) {
-	fmt.Printf("%s - %s\n", TOOLNAME, time.Now().Format(time.RFC1123Z))
-	fmt.Printf("Host: %s\n", opts.Host)
-	fmt.Printf("Skipping profiled queries on these collections: %v\n", opts.SkipCollections)
-	fmt.Println("")
+func getHeaders(opts *options) []string {
+	h := []string{
+		fmt.Sprintf("%s - %s\n", TOOLNAME, time.Now().Format(time.RFC1123Z)),
+		fmt.Sprintf("Host: %s\n", opts.Host),
+		fmt.Sprintf("Skipping profiled queries on these collections: %v\n", opts.SkipCollections),
+	}
+	return h
 }
 
 func getQueryTemplate() string {
@@ -482,6 +531,7 @@ func isProfilerEnabled(dialer pmgo.Dialer, di *pmgo.DialInfo) (bool, error) {
 	for _, member := range replicaMembers {
 		// Stand alone instances return state = REPLICA_SET_MEMBER_STARTUP
 		di.Addrs = []string{member.Name}
+		di.Direct = true
 		session, err := dialer.DialWithInfo(di)
 		if err != nil {
 			continue
