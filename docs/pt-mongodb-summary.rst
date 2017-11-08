@@ -35,6 +35,10 @@ Options
   with a MongoDB server.
   By default, the ``admin`` database is used.
 
+``-f``, ``--output-format``
+  Specifies the report output format. Valid options are: ``text``, ``json``.
+  The default value is ``text``.
+
 ``-p``, ``--password``
   Specifies the password to use when connecting to a server
   with authentication enabled.
