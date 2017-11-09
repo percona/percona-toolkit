@@ -752,7 +752,7 @@ like(
 
 SKIP: {
 
-   skip "Only test on mysql 5.7" if ( $sandbox_version lt '5.7' );
+   skip "Only test on mysql 5.7",6 if ( $sandbox_version lt '5.7' );
 
    my ($master1_dbh, $master1_dsn) = $sb->start_sandbox(
       server => 'chan_master1',
@@ -772,42 +772,53 @@ SKIP: {
    $sb->load_file('chan_master2', "sandbox/gtid_on.sql", undef, no_wait => 1);
    $sb->load_file('chan_slave1', "sandbox/slave_channels.sql", undef, no_wait => 1);
                                                              
-   my $chan_slaves = $ms->get_slaves(
-      dbh      => $master1_dbh,
-      dsn      => $master1_dsn,
-      make_cxn => sub {
-         my $cxn = new Cxn(
-            @_,
-            DSNParser    => $dp,
-            OptionParser => $o,
-         );
-         $cxn->connect();
-         return $cxn;
-      },
-   );
-
-   our $message;
-   local $SIG{__WARN__} = sub {
-      $message = shift;
+   my $chan_slaves;
+   eval {
+       $chan_slaves = $ms->get_slaves(
+          dbh      => $master1_dbh,
+          dsn      => $master1_dsn,
+          make_cxn => sub {
+             my $cxn = new Cxn(
+                @_,
+                DSNParser    => $dp,
+                OptionParser => $o,
+             );
+             $cxn->connect();
+             return $cxn;
+          },
+       );
    };
-   my $css = $ms->get_slave_status($slave1_dbh);
-   local $SIG{__WARN__} = undef;
+
+   #local $SIG{__WARN__} = sub {
+   #   $message = shift;
+   #};
+   my $css;
+   eval {
+       $css = $ms->get_slave_status($slave1_dbh);
+   };
+   #local $SIG{__WARN__} = undef;
    is (
        $css,
        undef,
        'Cannot determine slave in a multi source config without --channel param'
    );
+
    like (
-       $message,
+       $EVAL_ERROR,
        qr/This server returned more than one row for SHOW SLAVE STATUS/,
        'Got warning message if we cannot determine slave in a multi source config without --channel param',
    );
 
-   my $wfm = $ms->wait_for_master(
-      master_status => $ms->get_master_status($dbh),
-      slave_dbh     => $slave1_dbh,
-      timeout       => 1,
-   );
+   my $wfm;
+   eval {
+       $wfm = $ms->wait_for_master(
+          master_status => $ms->get_master_status($dbh),
+          slave_dbh     => $slave1_dbh,
+          timeout       => 1,
+       );
+   };
+   warn ">>>>>> @_" if @_;
+
    like(
        $wfm->{error},
        qr/"channel" was not specified on the command line/,
@@ -819,7 +830,9 @@ SKIP: {
    # It should return undef
    $slave1_dbh->do("STOP SLAVE for channel 'masterchan2'");
 
-   $css = $ms->get_slave_status($slave1_dbh);
+   eval {
+       $css = $ms->get_slave_status($slave1_dbh);
+   };
    is (
        $css,
        undef,

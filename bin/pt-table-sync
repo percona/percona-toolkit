@@ -7035,8 +7035,11 @@ sub wait_for_master {
    my $result;
    my $waited;
    if ( $master_status ) {
-      my $slave_status = $self->get_slave_status($slave_dbh);
-      if (!$slave_status) {
+      my $slave_status;
+      eval {
+          $slave_status = $self->get_slave_status($slave_dbh);
+      };
+      if ($EVAL_ERROR) {
           return {
               result => undef,
               waited => 0,
