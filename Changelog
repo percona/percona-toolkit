@@ -5,6 +5,7 @@ v3.0.5
  * Improvement PMM-1590: Improve MongoDB Profiler for PMM and PT
  * Improvement   PT-216: mongodb-query digest improved support for v<3.2 fixed incorrect output (Thanks MATSUU Takuto) 
  * Fixed bug     PT-211: pt-mext fails on Rsa_public_key line
+ * Fixed bug     PT-212: pt-mongodb-query-digest shows NaNs
  * Fixed bug     PT-202: pt-online-schema-change fails with virtual columns
  * Fixed bug     PT-200: Index with keyword 'unique' as prefix/suffix considered as unique
  * Fixed bug     PT-199: pt-table-checksum does not make the session statement based when using row based replication
