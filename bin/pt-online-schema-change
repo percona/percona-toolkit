@@ -10020,6 +10020,9 @@ sub check_alter {
 
    my $ok = 1;
 
+   $alter =~ s/^(.*?)\s+COMMENT\s+'(.*?[^\\]')+(.*)/$1$3/; 
+   $alter =~ s/^(.*?)\s+COMMENT\s+"(.*?[^\\]")+(.*)/$1$3/; 
+
    my $unique_fields = get_unique_index_fields($alter);
 
    if (scalar @$unique_fields && $o->get('check-unique-key-change')) {
@@ -10039,6 +10042,12 @@ sub check_alter {
         die ($msg);
    }
 
+   if ( ($tbl->{tbl_struct}->{engine} || '') =~ m/RocksDB/i ) {
+       if ($alter =~ m/FOREIGN KEY/i) {
+            my $msg = "FOREIGN KEYS are not supported by the RocksDB engine\n\n";
+            die ($msg);
+       }
+   }
    # ########################################################################
    # Check for DROP PRIMARY KEY.
    # ########################################################################
