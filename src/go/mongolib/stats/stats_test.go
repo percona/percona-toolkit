@@ -214,7 +214,7 @@ func TestStatsSingle(t *testing.T) {
 				t.Fatalf("cannot load expected data %s: %s", dirExpect+f, err)
 			}
 			if !reflect.DeepEqual(got, expect) {
-				t.Errorf("s.Queries() = %v, want %v", got, expect)
+				t.Errorf("s.Queries() = %#v, want %#v", got, expect)
 			}
 		})
 	}
@@ -261,7 +261,7 @@ func TestStatsAll(t *testing.T) {
 		t.Fatalf("cannot load expected data %s: %s", f, err)
 	}
 	if !reflect.DeepEqual(got, expect) {
-		t.Errorf("s.Queries() = %v, want %v", got, expect)
+		t.Errorf("s.Queries() = %#v, want %#v", got, expect)
 	}
 }
 
@@ -343,7 +343,7 @@ func TestAvailableMetrics(t *testing.T) {
 		}
 
 		if !reflect.DeepEqual(got, expect) {
-			t.Errorf("s.Queries() = %v, want %v", got, expect)
+			t.Errorf("s.Queries() = %#v, want %#v", got, expect)
 		}
 
 	})

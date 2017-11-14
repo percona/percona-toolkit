@@ -18,7 +18,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/kr/pretty"
 	"github.com/pborman/getopt/v2"
 	"github.com/percona/percona-toolkit/src/go/lib/profiling"
 	"github.com/percona/percona-toolkit/src/go/lib/tutil"
@@ -404,10 +403,6 @@ func testAllOperationsTemplate(t *testing.T, data Data) {
 
 	expected := `Profiler is disabled for the "test" database but there are \s*[0-9]+ documents in the system.profile collection.
 Using those documents for the stats
-pt-mongodb-query-digest .+
-Host: ` + data.url + `
-Skipping profiled queries on these collections: \[system\.profile\]
-
 
 # Totals
 # Ratio    [0-9\.]+  \(docs scanned/returned\)
@@ -450,9 +445,7 @@ Skipping profiled queries on these collections: \[system\.profile\]
 
 		expected += buf.String()
 	}
-	fmt.Println("====================================================================================================")
-	pretty.Println(string(output))
-	fmt.Println("====================================================================================================")
+	expected += "\n" // Looks like we expect additional line
 
 	assertRegexpLines(t, expected, string(output))
 }
