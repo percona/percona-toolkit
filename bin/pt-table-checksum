@@ -12004,6 +12004,12 @@ The tool warns when it detects this setup to remind you that it only works
 when used as described above.  These warnings do not affect the exit status
 of the tool; they're only reminders to help avoid false-positive results.
 
+=item RocksDB support
+
+Due to the limitations in the RocksDB engine like not suporting binlog_format=STATEMENT
+or they way RocksDB handles Gap locks, pt-table-cheksum will skip tables using RocksDB engine.
+More Information: (L<https://www.percona.com/doc/percona-server/LATEST/myrocks/limitations.html>)
+
 =back
 
 =head1 OUTPUT
