@@ -12528,7 +12528,7 @@ Ignore databases whose names match this Perl regex.
 
 =item --ignore-engines
 
-type: Hash; default: FEDERATED,MRG_MyISAM; group: Filter
+type: Hash; default: FEDERATED,MRG_MyISAM,RocksDB; group: Filter
 
 Ignore this comma-separated list of storage engines.
 
