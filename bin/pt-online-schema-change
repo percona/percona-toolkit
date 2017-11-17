@@ -12963,6 +12963,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-online-schema-change 3.0.4
+pt-online-schema-change 3.0.5
 
 =cut
