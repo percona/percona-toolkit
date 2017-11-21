@@ -1,7 +1,24 @@
 Changelog for Percona Toolkit
 
+v3.0.5 released 2017-11-20
 
- * Fixed bug PT-186: pt-online-schema-change --alter fails if fields are using mixed case
+ * Improvement PMM-1590: Improve MongoDB Profiler for PMM and PT
+ * Improvement   PT-216: mongodb-query digest improved support for v<3.2 fixed incorrect output (Thanks MATSUU Takuto) 
+ * Fixed bug     PT-211: pt-mext fails on Rsa_public_key line
+ * Fixed bug     PT-212: pt-mongodb-query-digest shows NaNs
+ * Fixed bug     PT-202: pt-online-schema-change fails with virtual columns
+ * Fixed bug     PT-200: Index with keyword 'unique' as prefix/suffix considered as unique
+ * Fixed bug     PT-199: pt-table-checksum does not make the session statement based when using row based replication
+ * Fixed bug     PT-196: pt-onine-schema-change is pausing because {some_status_variable}=0
+ * Fixed bug     PT-193: pt-table-checksum reports misleading error if comment has apostroph
+ * Fixed bug     PT-187: pt-table-checksum not able to get differences for columns
+ * Fixed bug     PT-186: pt-online-schema-change --alter fails if fields are using mixed case
+ * Fixed bug     PT-183: pt-mongodb-query-digest cannot connect to a db using authentication
+ * Feature       PT-182: Provide JSON output format for pt-summary, pt-mysql-summary, pt-mongodb-summary
+ * Fixed bug     PT-167: pt-kill kills prepared statements without checking busy-time
+ * Fixed bug     PT-161: Safely check for undefined values in --skip-check-slave-lag
+ * Feature       PT-152: Add Show Slave Hosts to pt-mysql-summary
+ * Feature       PT-139: Add support for replication channels (MySQL 5.7+) to pt-table-sync
 
 v3.0.4 released 2017-08-02
 

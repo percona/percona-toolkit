@@ -1,3 +1,8 @@
+percona-toolkit (3.0.5-1) unstable; urgency=low
+
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Fri, 17 Nov 2017 08:02:47 +0000
+
 percona-toolkit (3.0.4-1) unstable; urgency=low
 
  * Fixed bug PT-181 : pt-online-schema-change not in sync with modules (Thanks Daniël van Eeden)

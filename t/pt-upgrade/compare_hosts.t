@@ -66,7 +66,9 @@ my $modes_host2 = new SqlModes($dbh2, global=>1);
 $modes_host1->del('STRICT_TRANS_TABLES');
 $modes_host2->del('STRICT_TRANS_TABLES');
 
-while ( my $sampleno = readdir $dh ) {
+my @dirs = sort readdir($dh);
+
+foreach my $sampleno (@dirs) {
    next unless $sampleno =~ m/^\d+$/;
 
    my $conf = "$samples_dir/$sampleno/conf";
