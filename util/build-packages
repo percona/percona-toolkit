@@ -4,7 +4,7 @@
 # packages are created in the release/ directory (which is created if it
 # does not exist).
 #
-# There's only one command line option: VERISON.  It must be newer than
+# There's only one command line option: VERSION.  It must be newer than
 # the last version in the Changelog; see check_version().  Do not include
 # a leading 'v', just `build-packages 1.0.8' for example.
 #
@@ -15,6 +15,7 @@
 #   BUILD_TAR=0|1   - Do (not) build the .tar.gz package
 #   BUILD_RPM=0|1   - Do (not) build the .rpm package
 #   BUILD_DEB=0|1   - Do (not) build the .deb package
+#   BUILD_GO=0|1    - Do (not) build Go binaries
 # All of these env vars are true by default.  If, for example, you just want
 # to build the branch as-is: CHECK=0 UPDATE=0 build-packages VERSION
 # Otherwise, this script is pretty strict and tries to ensure a good build.
@@ -22,6 +23,7 @@
 # These environment variables are for special builds:
 #   UPDATE_DOCS=0|1 - Do (not) update docs
 #   BETA=1          - UPDATE_DOCS=0 BUILD_RPM=0 BUILD_DEB=0
+#   QUIET=1         - Do (not) ask questions
 #
 # A few more things you should know:
 #  * You'll need rpmbuild and dpkg-buildpackage to build the rpm and deb pkgs
@@ -48,7 +50,7 @@ warn() {
 }
 
 cwd=$PWD
-PERCONA_TOOLKIT_BRANCH=${PERCONA_TOOLKIT_BRANCH:-""}
+PERCONA_TOOLKIT_BRANCH=$(git rev-parse --show-toplevel)
 if [ -n "$PERCONA_TOOLKIT_BRANCH" ]; then
    BRANCH=$PERCONA_TOOLKIT_BRANCH
    cd $BRANCH
@@ -73,12 +75,13 @@ SPHINX_CONFIG_DIR=$BRANCH/config/sphinx-build
 DEB_CONFIG_DIR=$BRANCH/config/deb
 RPM_CONFIG_DIR=$BRANCH/config/rpm
 RELEASE_DIR=$BRANCH/release
+GO_SRC_DIR=$(git rev-parse --show-toplevel)/src/go
 
 # ############################################################################
 # Programs and their options
 # ############################################################################
 
-TAR=${TAR:-tar}
+TAR=${TAR:-tar}                                  
 
 # ############################################################################
 # Subroutines
@@ -129,11 +132,13 @@ update_version() {
    echo -n "Updating version in tools... "
    cd $BRANCH/bin
    for tool_file in *; do
-      sed -i'.bak' -e "s/^$tool_file [0-9]\.[0-9][^ ]\+/$tool_file $VERSION/" $tool_file
-      if [ $? -ne 0 ]; then
-         die "Error updating version in $tool_file"
+      if [ $tool_file != "govendor" ]; then
+         sed -i'.bak' -e "s/^$tool_file [0-9]\.[0-9][^ ]\+/$tool_file $VERSION/" $tool_file
+         if [ $? -ne 0 ]; then
+            die "Error updating version in $tool_file"
+         fi
+         rm "$tool_file.bak"
       fi
-      rm "$tool_file.bak"
    done
 
    local new_versions=$(grep --no-filename '^pt-[^ ]\+ [0-9]\.' * | cut -d' ' -f2 | sort -u)
@@ -337,6 +342,7 @@ prep_release_dir() {
       cd $RELEASE_DIR
       mkdir -p $PKG $PKG/bin $PKG/docs $PKG/lib
    )
+   update_manifest
    for file in `cat MANIFEST`; do
       cp $file $RELEASE_DIR/$PKG/$file
    done
@@ -351,7 +357,7 @@ build_tar() {
 }
 
 build_rpm() {
-   echo -n "Building $PKG-1.noarch.rpm... "
+   echo -n "Building $PKG-1.$ARCH.rpm... "
    cd $RELEASE_DIR
    if [ ! -f "$PKG.tar.gz" ]; then
       die "Cannot build RPM because $PKG.tar.gz does not exist"
@@ -361,29 +367,29 @@ build_rpm() {
    mkdir -p RPM
    cd rpm
    local topdir=`pwd`
-
    # Build RPM package from the tarball.
    rpmbuild -bb --clean $RPM_CONFIG_DIR/percona-toolkit.spec \
       --quiet                            \
       --define "_topdir $PWD"            \
       --define "_sourcedir $RELEASE_DIR" \
       --define "version $VERSION"        \
+      --target=$ARCH \
       --define "release 1" > $tmpdir/rpmbuild 2>&1
    if [ $? -ne 0 ]; then
       warn "rpmbuild has warnings; see $tmpdir/rpmbuild"
    fi
 
-   if [ ! -f "RPMS/noarch/$PKG-1.noarch.rpm" ]; then
-      die "RPMS/noarch/$PKG-1.noarch.rpm did not build"
+   if [ ! -f "RPMS/$ARCH/$PKG-1.$ARCH.rpm" ]; then
+      die "RPMS/$ARCH/$PKG-1.$ARCH.rpm did not build"
    fi
-   mv "RPMS/noarch/$PKG-1.noarch.rpm" $RELEASE_DIR/RPM
+   mv "RPMS/$ARCH/$PKG-1.$ARCH.rpm" $RELEASE_DIR/RPM
    rm -rf $RELEASE_DIR/rpm
 
    echo "OK"
 }
 
 build_deb() {
-   local deb_pkg="percona-toolkit_$VERSION-1_all.deb"
+   local deb_pkg="percona-toolkit_$VERSION-1_$DEB_ARCH.deb"
    echo -n "Building $deb_pkg... "
 
    cd $RELEASE_DIR
@@ -401,7 +407,7 @@ build_deb() {
 
    # Build Debian binary and source packages.
    cd $RELEASE_DIR/$PKG
-   dpkg-buildpackage -us -uc >$tmpdir/dpkg-buildpackage 2>&1
+   dpkg-buildpackage -us -uc -a$DEB_ARCH >$tmpdir/dpkg-buildpackage 2>&1
    if [ $? -ne 0 ]; then
       warn "dpkg-buildpackage has warnings; see $tmpdir/dpkg-buildpackage"
    fi
@@ -417,15 +423,77 @@ build_deb() {
    echo "OK"
 }
 
+build_go_binaries() {
+   BASE_DIR=$(git rev-parse --show-toplevel)
+   GITHUB_DIR="${GOPATH}/src/github.com"
+   PERCONA_DIR="${GITHUB_DIR}/percona"
+   TOOLKIT_DIR="${PERCONA_DIR}/percona-toolkit"
+   GO_TOOLS_DIR="${TOOLKIT_DIR}/src/go"
+   CUR_DIR=$(pwd)
+   UNLINK=0               
+   export PATH=${GOPATH}/bin:${PATH}
+   
+   echo "GOPATH: ${GOPATH}"
+   echo "Github directory: ${GITHUB_DIR}"
+   echo "Percona directory: ${PERCONA_DIR}"
+   echo "Toolkit directory: ${TOOLKIT_DIR}"
+   echo "Current directory: ${CUR_DIR}"
+   
+   if [[ ${BASE_DIR} != ${TOOLKIT_DIR} ]]
+   then
+       echo "not in gopath"
+       if [ -e ${TOOLKIT_DIR} ]; then
+           echo "Cannot link current directory into GOPATH. Already exists" >&2
+           die "Please check/remove the ${TOOLKIT_DIR} directory"
+       else
+           mkdir -p ${PERCONA_DIR}
+           ln -s ${BASE_DIR} ${PERCONA_DIR}
+           UNLINK=1
+       fi
+   fi
+   echo "Building Go tools for $OS_ARCH ..."
+   cd $GO_TOOLS_DIR
+   make $OS_ARCH
+   cd $CUR_DIR
+
+   if [ $UNLINK -eq 1 ]; then
+       rm ${TOOLKIT_DIR}
+   fi
+
+   echo "OK"
+}
+
 # ############################################################################
 # Script starts here
 # ############################################################################
 
 if [ $# -lt 2 ]; then
-   die "Usage: $0 VERSION RELEASE_NOTES"
+   echo "Usage: $0 VERSION RELEASE_NOTES OS-ARCH"
+   echo "Example: $0 3.1 docs/release_notes.rst linux-amd64"
+   echo "Valid OS-ARCH combinations are: linux-amd64, linux-386, darwin-amd64"
+   die "Please try again with different parameters"
 fi
 VERSION=$1
 REL_NOTES=$2
+OS_ARCH=${3:-linux-amd64}
+
+if [ $OS_ARCH != "linux-amd64" ] && [ $OS_ARCH != "linux-386" ] && [ $OS_ARCH != "darwin-amd64" ]; then
+   die "Valid OS-ARCH combinations are: linux-amd64, linux-386, darwin-amd64"
+fi
+
+if [ $OS_ARCH == "linux-amd64" ]; then
+   ARCH="x86_64"
+   DEB_ARCH="amd64"
+elif [ $OS_ARCH == "linux-386" ]; then
+   ARCH="i386"
+   DEB_ARCH="i386"
+else
+   ARCH="noarch"
+   DEB_ARCH="all"
+fi
+
+sed -i'.bak' -e "s/@@ARHITECTURE@@/$ARCH/" $RPM_CONFIG_DIR/percona-toolkit.spec
+sed -i'.bak' -e "s/@@ARHITECTURE@@/$DEB_ARCH/" $DEB_CONFIG_DIR/control
 
 if [ ! -f $REL_NOTES ]; then
    die "$REL_NOTES does not exist"
@@ -465,6 +533,11 @@ if [ $CHECK -eq 1 ]; then
    check_rel_notes
 fi
 
+BUILD_GO=${BUILD_GO:-1}
+if [ $BUILD_GO -eq 1 ]; then
+    build_go_binaries
+fi
+
 # These items need to be updated automatically for each release.
 UPDATE=${UPDATE:-1}
 if [ $UPDATE -eq 1 ]; then
@@ -481,12 +554,15 @@ if [ $UPDATE -eq 1 ]; then
    fi
 fi
 
+
 # Now that those ^ items are updated, you need to commit and push one more
 # time before the release packages are built.  This script can't do that
 # because your branch could non-standard.
 BUILD=${BUILD:-1}
+QUIET=${QUIET:-0}
 if [ $BUILD -eq 1 ]; then
-   cat <<MSG
+   if [ $QUIET -eq 0 ]; then
+      cat <<MSG
 
 Branch verified and updated; ready to build $PKG,
 but first you must:
@@ -499,7 +575,8 @@ but first you must:
 Press any key to continue... (or Ctrl-C to abort)
 MSG
 
-   read
+      read
+   fi
 
    prep_release_dir
 

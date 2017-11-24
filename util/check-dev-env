@@ -41,7 +41,7 @@ my $exit_status = 0;
 my $fmt         = "%-23s %8s\n";
 
 # Not a module but we want to know the Perl version.
-printf $fmt, "Perl", `perl -v | perl -ne '/v([\\d\\.]+)/ && print \$1'`, "";
+printf $fmt, "Perl", `perl -v | perl -ne '/v([\\d\\.]+)/ && print \$1'`;
 
 foreach my $module (@required_modules) {
    my $version = "NA";

@@ -57,7 +57,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.20';
+our $VERSION = '3.0.5';
 
 use strict;
 use warnings FATAL => 'all';
@@ -2428,7 +2428,15 @@ sub _validate_type {
          }
       }
       my $defaults = $self->{DSNParser}->parse_options($self);
-      $opt->{value} = $self->{DSNParser}->parse($val, $prev, $defaults);
+      if (!$opt->{attributes}->{repeatable}) {
+          $opt->{value} = $self->{DSNParser}->parse($val, $prev, $defaults);
+      } else {
+          my $values = [];
+          for my $dsn_string (@$val) {
+              push @$values, $self->{DSNParser}->parse($dsn_string, $prev, $defaults);
+          }
+          $opt->{value} = $values;
+      }
    }
    elsif ( $val && $opt->{type} eq 'z' ) {  # type size
       PTDEBUG && _d('Parsing option', $opt->{long}, 'as a size value');
@@ -3672,6 +3680,11 @@ sub name {
    return $self->{hostname} || $self->{dsn_name} || 'unknown host';
 }
 
+sub description {
+   my ($self) = @_;
+   return sprintf("%s -> %s:%s", $self->name(), $self->{dsn}->{h}, $self->{dsn}->{P} || 'socket');
+}
+
 sub get_id {
    my ($self, $cxn) = @_;
 
@@ -3703,9 +3716,20 @@ sub is_cluster_node {
    my ($self, $cxn) = @_;
 
    $cxn ||= $self;
+
    my $sql = "SHOW VARIABLES LIKE 'wsrep\_on'";
-   PTDEBUG && _d($cxn->name, $sql);
-   my $row = $cxn->dbh->selectrow_arrayref($sql);
+
+   my $dbh;
+   if ($cxn->isa('DBI::db')) {
+      $dbh = $cxn;
+      PTDEBUG && _d($sql); #don't invoke name() if it's not a Cxn!
+   }
+   else {
+      $dbh = $cxn->dbh();      
+      PTDEBUG && _d($cxn->name, $sql);
+   }
+
+   my $row = $dbh->selectrow_arrayref($sql);
    return $row && $row->[1] && ($row->[1] eq 'ON' || $row->[1] eq '1') ? 1 : 0;
 
 }
@@ -4411,7 +4435,7 @@ sub parse {
    my ($name)     = $ddl =~ m/CREATE (?:TEMPORARY )?TABLE\s+(`.+?`)/;
    (undef, $name) = $self->{Quoter}->split_unquote($name) if $name;
 
-   $ddl =~ s/(`[^`]+`)/\L$1/g;
+   $ddl =~ s/(`[^`\n]+`)/\L$1/gm;
 
    my $engine = $self->get_engine($ddl);
 
@@ -4422,8 +4446,8 @@ sub parse {
    my %def_for;
    @def_for{@cols} = @defs;
 
-   my (@nums, @null);
-   my (%type_for, %is_nullable, %is_numeric, %is_autoinc);
+   my (@nums, @null, @non_generated);
+   my (%type_for, %is_nullable, %is_numeric, %is_autoinc, %is_generated);
    foreach my $col ( @cols ) {
       my $def = $def_for{$col};
 
@@ -4440,6 +4464,11 @@ sub parse {
          push @null, $col;
          $is_nullable{$col} = 1;
       }
+      if ( remove_quoted_text($def) =~ m/\WGENERATED\W/i ) {
+          $is_generated{$col} = 1;
+      } else {
+          push @non_generated, $col;
+      }
       $is_autoinc{$col} = $def =~ m/AUTO_INCREMENT/i ? 1 : 0;
    }
 
@@ -4448,22 +4477,32 @@ sub parse {
    my ($charset) = $ddl =~ m/DEFAULT CHARSET=(\w+)/;
 
    return {
-      name           => $name,
-      cols           => \@cols,
-      col_posn       => { map { $cols[$_] => $_ } 0..$#cols },
-      is_col         => { map { $_ => 1 } @cols },
-      null_cols      => \@null,
-      is_nullable    => \%is_nullable,
-      is_autoinc     => \%is_autoinc,
-      clustered_key  => $clustered_key,
-      keys           => $keys,
-      defs           => \%def_for,
-      numeric_cols   => \@nums,
-      is_numeric     => \%is_numeric,
-      engine         => $engine,
-      type_for       => \%type_for,
-      charset        => $charset,
+      name               => $name,
+      cols               => \@cols,
+      col_posn           => { map { $cols[$_] => $_ } 0..$#cols },
+      is_col             => { map { $_ => 1 } @non_generated },
+      null_cols          => \@null,
+      is_nullable        => \%is_nullable,
+      non_generated_cols => \@non_generated,
+      is_autoinc         => \%is_autoinc,
+      is_generated       => \%is_generated,
+      clustered_key      => $clustered_key,
+      keys               => $keys,
+      defs               => \%def_for,
+      numeric_cols       => \@nums,
+      is_numeric         => \%is_numeric,
+      engine             => $engine,
+      type_for           => \%type_for,
+      charset            => $charset,
    };
+}
+
+sub remove_quoted_text {
+   my ($string) = @_;
+   $string =~ s/[^\\]`[^`]*[^\\]`//g; 
+   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
+   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
+   return $string;
 }
 
 sub sort_indexes {
@@ -5063,8 +5102,10 @@ sub get_slaves {
       my $o = $self->{OptionParser};
 
       $self->recurse_to_slaves(
-         {  dbh       => $dbh,
-            dsn       => $dsn,
+         {  dbh            => $dbh,
+            dsn            => $dsn,
+            slave_user     => $o->got('slave-user') ? $o->get('slave-user') : '',
+            slave_password => $o->got('slave-password') ? $o->get('slave-password') : '', 
             callback  => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
@@ -5083,8 +5124,7 @@ sub get_slaves {
             },
          }
       );
-   }
-   elsif ( $methods->[0] =~ m/^dsn=/i ) {
+   } elsif ( $methods->[0] =~ m/^dsn=/i ) {
       (my $dsn_table_dsn = join ",", @$methods) =~ s/^dsn=//i;
       $slaves = $self->get_cxn_from_dsn_table(
          %args,
@@ -5119,9 +5159,11 @@ sub _resolve_recursion_methods {
 sub recurse_to_slaves {
    my ( $self, $args, $level ) = @_;
    $level ||= 0;
-   my $dp      = $self->{DSNParser};
+   my $dp = $self->{DSNParser};
    my $recurse = $args->{recurse} || $self->{OptionParser}->get('recurse');
-   my $dsn     = $args->{dsn};
+   my $dsn = $args->{dsn};
+   my $slave_user = $args->{slave_user} || '';
+   my $slave_password = $args->{slave_password} || '';
 
    my $methods = $self->_resolve_recursion_methods($dsn);
    PTDEBUG && _d('Recursion methods:', @$methods);
@@ -5130,14 +5172,24 @@ sub recurse_to_slaves {
       return;
    }
 
+   my $slave_dsn = $dsn;
+   if ($slave_user) {
+      $slave_dsn->{u} = $slave_user;
+      PTDEBUG && _d("Using slave user $slave_user on ".$slave_dsn->{h}.":".$slave_dsn->{P});
+   }
+   if ($slave_password) {
+      $slave_dsn->{p} = $slave_password;
+      PTDEBUG && _d("Slave password set");
+   }
+
    my $dbh;
    eval {
       $dbh = $args->{dbh} || $dp->get_dbh(
-         $dp->get_cxn_params($dsn), { AutoCommit => 1 });
-      PTDEBUG && _d('Connected to', $dp->as_string($dsn));
+         $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 });
+      PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
    };
    if ( $EVAL_ERROR ) {
-      print STDERR "Cannot connect to ", $dp->as_string($dsn), "\n"
+      print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), "\n"
          or die "Cannot print: $OS_ERROR";
       return;
    }
@@ -5170,7 +5222,7 @@ sub recurse_to_slaves {
          PTDEBUG && _d('Recursing from',
             $dp->as_string($dsn), 'to', $dp->as_string($slave));
          $self->recurse_to_slaves(
-            { %$args, dsn => $slave, dbh => undef, parent => $dsn }, $level + 1 );
+            { %$args, dsn => $slave, dbh => undef, parent => $dsn, slave_user => $slave_user, $slave_password => $slave_password }, $level + 1 );
       }
    }
 }
@@ -5334,21 +5386,44 @@ sub get_master_dsn {
 
 sub get_slave_status {
    my ( $self, $dbh ) = @_;
+
    if ( !$self->{not_a_slave}->{$dbh} ) {
       my $sth = $self->{sths}->{$dbh}->{SLAVE_STATUS}
             ||= $dbh->prepare('SHOW SLAVE STATUS');
       PTDEBUG && _d($dbh, 'SHOW SLAVE STATUS');
       $sth->execute();
-      my ($ss) = @{$sth->fetchall_arrayref({})};
+      my ($sss_rows) = $sth->fetchall_arrayref({}); # Show Slave Status rows
 
-      if ( $ss && %$ss ) {
-         $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
-         return $ss;
+      my $ss;
+      if ( $sss_rows && @$sss_rows ) {
+          if (scalar @$sss_rows > 1) {
+              if (!$self->{channel}) {
+                  die 'This server returned more than one row for SHOW SLAVE STATUS but "channel" was not specified on the command line';
+              }
+              for my $row (@$sss_rows) {
+                  $row = { map { lc($_) => $row->{$_} } keys %$row }; # lowercase the keys
+                  if ($row->{channel_name} eq $self->{channel}) {
+                      $ss = $row;
+                      last;
+                  }
+              }
+          } else {
+              if ($sss_rows->[0]->{channel_name} && $sss_rows->[0]->{channel_name} ne $self->{channel}) {
+                  die 'This server is using replication channels but "channel" was not specified on the command line';
+              } else {
+                  $ss = $sss_rows->[0];
+              }
+          }
+
+          if ( $ss && %$ss ) {
+             $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
+             return $ss;
+          }
       }
 
       PTDEBUG && _d('This server returns nothing for SHOW SLAVE STATUS');
       $self->{not_a_slave}->{$dbh}++;
-   }
+  }
 }
 
 sub get_master_status {
@@ -5388,8 +5463,20 @@ sub wait_for_master {
    my $result;
    my $waited;
    if ( $master_status ) {
-      my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', "
-              . "$master_status->{position}, $timeout)";
+      my $slave_status;
+      eval {
+          $slave_status = $self->get_slave_status($slave_dbh);
+      };
+      if ($EVAL_ERROR) {
+          return {
+              result => undef,
+              waited => 0,
+              error  =>'Wait for master: this is a multi-master slave but "channel" was not specified on the command line',
+          };
+      }
+      my $server_version = VersionParser->new($slave_dbh);
+      my $channel_sql = $server_version > '5.6' && $self->{channel} ? ", '$self->{channel}'" : '';
+      my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', $master_status->{position}, $timeout $channel_sql)";
       PTDEBUG && _d($slave_dbh, $sql);
       my $start = time;
       ($result) = $slave_dbh->selectrow_array($sql);
@@ -5455,6 +5542,9 @@ sub catchup_to_master {
             timeout       => $timeout,
             master_status => $master_status
       );
+      if ($result->{error}) {
+          die $result->{error};
+      }
       if ( !defined $result->{result} ) {
          $slave_status = $self->get_slave_status($slave);
          if ( !$self->slave_is_running($slave_status) ) {
@@ -5809,17 +5899,29 @@ sub make_row_checksum {
       $sep    =~ s/'//g;
       $sep  ||= '#';
 
+      my @converted_cols;
+      for my $col(@{$cols->{select}}) {
+          my $colname = $col;
+          $colname =~ s/`//g;
+          my $type = $tbl_struct->{type_for}->{$colname} || '';
+          if ($type =~ m/^(CHAR|VARCHAR|BINARY|VARBINARY|BLOB|TEXT|ENUM|SET|JSON)$/i) {
+              push @converted_cols, "convert($col using utf8mb4)";
+          } else {
+              push @converted_cols, "$col";
+          }
+      }
+
       my @nulls = grep { $cols->{allowed}->{$_} } @{$tbl_struct->{null_cols}};
       if ( @nulls ) {
          my $bitmap = "CONCAT("
             . join(', ', map { 'ISNULL(' . $q->quote($_) . ')' } @nulls)
             . ")";
-         push @{$cols->{select}}, $bitmap;
+         push @converted_cols, $bitmap;
       }
 
-      $query .= @{$cols->{select}} > 1
-              ? "$func(CONCAT_WS('$sep', " . join(', ', @{$cols->{select}}) . '))'
-              : "$func($cols->{select}->[0])";
+      $query .= scalar @converted_cols > 1
+              ? "$func(CONCAT_WS('$sep', " . join(', ', @converted_cols) . '))'
+              : "$func($converted_cols[0])";
    }
    else {
       my $fnv_func = uc $func;
@@ -7566,7 +7668,14 @@ sub _iterate_dbh {
             && $self->_resume_from_table($tbl)
             && $self->table_is_allowed($self->{db}, $tbl);
          }
-         @{$dbh->selectall_arrayref($sql)};
+
+         eval { @{$dbh->selectall_arrayref($sql)}; };
+         if ($EVAL_ERROR) {
+             warn "Skipping $self->{db}...";
+             $self->{db} = undef;
+             next;
+         }
+
          PTDEBUG && _d('Found', scalar @tbls, 'tables in database',$self->{db});
          $self->{tbls} = \@tbls;
       }
@@ -7614,7 +7723,7 @@ sub database_is_allowed {
 
    my $filter = $self->{filters};
 
-   if ( $db =~ m/information_schema|performance_schema|lost\+found|percona|percona_schema|test/ ) {
+   if ( $db =~ m/^(information_schema|performance_schema|lost\+found|percona_schema)$/ ) {
       PTDEBUG && _d('Database', $db, 'is a system database, ignoring');
       return 0;
    }
@@ -7657,21 +7766,15 @@ sub table_is_allowed {
 
    return 0 if $db eq 'mysql' && $tbl =~ m/^(?:
        general_log
-      |gtid_execution
+      |gtid_executed
       |innodb_index_stats
       |innodb_table_stats
-      |inventory
-      |plugin
-      |proc
       |slave_master_info
       |slave_relay_log_info
       |slave_worker_info
       |slow_log    
    )$/x;
 
-   return 0 if $db eq 'sys' && $tbl =~ m/^(?:
-       sys_config
-   )$/x;
    if ( $filter->{'ignore-tables'}->{'*'}->{$tbl} 
          || $filter->{'ignore-tables'}->{$db}->{$tbl}) {
       PTDEBUG && _d('Table', $tbl, 'is in --ignore-tables list');
@@ -8632,7 +8735,7 @@ sub wait {
             die "$var=$val exceeds its critical threshold "
                . "$self->{critical_val_for}->{$var}\n";
          }
-         if ( !$val || $val >= $self->{max_val_for}->{$var} ) {
+         if ( $val >= $self->{max_val_for}->{$var} ) {
             $vals_too_high{$var} = $val;
          }
          else {
@@ -9073,6 +9176,7 @@ use POSIX qw(signal_h);
 use List::Util qw(max);
 use Time::HiRes qw(sleep time);
 use Data::Dumper;
+use Carp;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
@@ -9218,7 +9322,16 @@ sub main {
    }
 
    $o->usage_or_errors();
- 
+
+
+   if ( $o->get('truncate-replicate-table') && $o->get('resume') ) {
+       die "--resume and truncate-replicate-table are mutually exclusive";
+   }
+
+   if ( $o->get('truncate-replicate-table') && !$o->get('empty-replicate-table') ) {
+       die "--resume and --no-empty-replicate-table are mutually exclusive";
+   }
+
    # ########################################################################
    # If --pid, check it first since we'll die if it already exists.
    # ########################################################################
@@ -9407,6 +9520,7 @@ sub main {
       OptionParser => $o,
       DSNParser    => $dp,
       Quoter       => $q,
+      channel      => $o->get('channel')
    );
 
    my $slaves = [];    # all slaves (that we can find)
@@ -9445,6 +9559,15 @@ sub main {
    my $fetch_sth;  # fetch chunk from repl table
    my $update_sth; # update master_cnt and master_cnt in repl table
    my $delete_sth; # delete checksums for one db.tbl from repl table
+
+   if ( $o->get('truncate-replicate-table') ) {
+       eval {
+           $master_dbh->do("TRUNCATE TABLE $repl_table");
+       };
+       if ($EVAL_ERROR) {
+           PTDEBUG && _d( "Cannot truncate replicate table $repl_table. $EVAL_ERROR");
+       }
+   }
 
    if ( !$o->get('explain') ) {
       # #####################################################################
@@ -9651,10 +9774,39 @@ sub main {
             0;
          }
          else {
-            PTDEBUG && _d('Will check slave lag on', $slave_cxn->name());
+            PTDEBUG && _d('May check slave lag on', $slave_cxn->name());
             $slave_cxn;
          }
       } @$slave_lag_cxns;
+
+      if ( $slave_lag_cxns && scalar @$slave_lag_cxns ) {
+         if ($o->get('skip-check-slave-lag')) {
+             my $slaves_to_skip = $o->get('skip-check-slave-lag');
+             my $filtered_slaves = [];
+             for my $slave (@$slave_lag_cxns) {
+                 my $found=0;
+                 for my $slave_to_skip (@$slaves_to_skip) {
+                     my $h_eq_h = $slave->{dsn}->{h} eq $slave_to_skip->{h};
+                     my $p_eq_p;
+                     if (defined($slave->{dsn}->{P}) || defined($slave_to_skip->{P})) {
+                       $p_eq_p = $slave->{dsn}->{P} eq $slave_to_skip->{P};
+                     } else {
+                       PTDEBUG && _d("Both port DSNs are undefined, setting p_eq_p to true");
+                       $p_eq_p = 1;
+                     }
+                     if ($h_eq_h && $p_eq_p) {
+                         $found=1;
+                     }
+                 }
+                 if ($found) {
+                    printf("Skipping slave %s\n", $slave->name());
+                 } else {
+                    push @$filtered_slaves, $slave;
+                }
+             }
+             $slave_lag_cxns = $filtered_slaves;
+         }
+      }
 
       # #####################################################################
       # Possibly check replication slaves and exit.
@@ -10553,7 +10705,7 @@ sub main {
             # TODO: this now happens in 3 places, search for 'columns'.
             my $tbl_struct = $tbl->{tbl_struct};
             my $ignore_col = $o->get('ignore-columns') || {};
-            my $all_cols   = $o->get('columns')        || $tbl_struct->{cols};
+            my $all_cols   = $o->get('columns')        || $tbl_struct->{non_generated_cols};
             my @cols       = map  { lc $_ }
                              grep { !$ignore_col->{$_} }
                              @$all_cols;
@@ -11746,6 +11898,15 @@ can try something like the following:
    SET boundaries = COALESCE(CONCAT('id BETWEEN ', lower_boundary,
       ' AND ', upper_boundary), '1=1');
 
+Take into consideration that by default, pt-table-checksum use C<CRC32> checksums.
+C<CRC32> is not a cryptographic algorithm and for that reason it is prone to have 
+collisions. On the other hand, C<CRC32> algorithm is faster and less CPU-intensive
+than C<MD5> and C<SHA1>.
+
+Related reading material: 
+Percona Toolkit UDFs: L<https://www.percona.com/doc/percona-server/LATEST/management/udf_percona_toolkit.html>
+How to avoid hash collisions when using MySQL’s CRC32 function: L<https://www.percona.com/blog/2014/10/13/how-to-avoid-hash-collisions-when-using-mysqls-crc32-function/>
+
 =head1 LIMITATIONS
 
 =over
@@ -12007,6 +12168,18 @@ L<"SYNOPSIS"> and usage information for details.
 group: Connection
 
 Prompt for a password when connecting to MySQL.
+
+=item --channel
+
+type: string
+
+Channel name used when connected to a server using replication channels.
+Suppose you have two masters, master_a at port 12345, master_b at port 1236 and
+a slave connected to both masters using channels chan_master_a and chan_master_b.
+If you want to run pt-table-sync to syncronize the slave against master_a, pt-table-sync
+won't be able to determine what's the correct master since SHOW SLAVE STATUS
+will return 2 rows. In this case, you can use --channel=chan_master_a to specify
+the channel name to use in the SHOW SLAVE STATUS command.
 
 =item --[no]check-binlog-format
 
@@ -12671,6 +12844,13 @@ type: string; default: #
 The separator character used for CONCAT_WS().  This character is used to join
 the values of columns when checksumming.
 
+=item --skip-check-slave-lag
+
+type: DSN; repeatable: yes
+
+DSN to skip when checking slave lag. It can be used multiple times.
+Example: --skip-check-slave-lag h=127.1,P=12345 --skip-check-slave-lag h=127.1,P=12346
+
 =item --slave-user
 
 type: string
@@ -12743,6 +12923,15 @@ This is useful when you don't care about the trailing space differences between
 MySQL versions that vary in their handling of trailing spaces. MySQL 5.0 and 
 later all retain trailing spaces in VARCHAR, while previous versions would 
 remove them.  These differences will cause false checksum differences.
+
+=item --truncate-replicate-table
+
+Truncate the replicate table before starting the checksum.
+This parameter differs from L<--empty-replicate-table> which only deletes the rows
+for the table being checksumed when starting the checksum for that table, while 
+L<--truncate-replicate-table> will truncate the replicate table at the beginning of the 
+process and thus, all previous checksum information will be losti, even if the process
+stops due to an error.
 
 =item --user
 
@@ -13034,7 +13223,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2016 Percona LLC and/or its affiliates,
+This program is copyright 2011-2017 Percona LLC and/or its affiliates,
 2007-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -13053,6 +13242,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-checksum 2.2.20
+pt-table-checksum 3.0.5
 
 =cut

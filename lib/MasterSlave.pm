@@ -83,8 +83,10 @@ sub get_slaves {
       my $o = $self->{OptionParser};
 
       $self->recurse_to_slaves(
-         {  dbh       => $dbh,
-            dsn       => $dsn,
+         {  dbh            => $dbh,
+            dsn            => $dsn,
+            slave_user     => $o->got('slave-user') ? $o->get('slave-user') : '',
+            slave_password => $o->got('slave-password') ? $o->get('slave-password') : '', 
             callback  => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
@@ -103,8 +105,7 @@ sub get_slaves {
             },
          }
       );
-   }
-   elsif ( $methods->[0] =~ m/^dsn=/i ) {
+   } elsif ( $methods->[0] =~ m/^dsn=/i ) {
       (my $dsn_table_dsn = join ",", @$methods) =~ s/^dsn=//i;
       $slaves = $self->get_cxn_from_dsn_table(
          %args,
@@ -161,36 +162,41 @@ sub _resolve_recursion_methods {
 sub recurse_to_slaves {
    my ( $self, $args, $level ) = @_;
    $level ||= 0;
-   my $dp      = $self->{DSNParser};
+   my $dp = $self->{DSNParser};
    my $recurse = $args->{recurse} || $self->{OptionParser}->get('recurse');
-   my $dsn     = $args->{dsn};
+   my $dsn = $args->{dsn};
+   my $slave_user = $args->{slave_user} || '';
+   my $slave_password = $args->{slave_password} || '';
 
-   # Re-resolve the recursion methods for each slave.  In most cases
-   # it won't change, but it could if one slave uses standard port (3306)
-   # and another does not.
    my $methods = $self->_resolve_recursion_methods($dsn);
    PTDEBUG && _d('Recursion methods:', @$methods);
    if ( lc($methods->[0]) eq 'none' ) {
-      # https://bugs.launchpad.net/percona-toolkit/+bug/987694
       PTDEBUG && _d('Not recursing to slaves');
       return;
+   }
+
+   my $slave_dsn = $dsn;
+   if ($slave_user) {
+      $slave_dsn->{u} = $slave_user;
+      PTDEBUG && _d("Using slave user $slave_user on ".$slave_dsn->{h}.":".$slave_dsn->{P});
+   }
+   if ($slave_password) {
+      $slave_dsn->{p} = $slave_password;
+      PTDEBUG && _d("Slave password set");
    }
 
    my $dbh;
    eval {
       $dbh = $args->{dbh} || $dp->get_dbh(
-         $dp->get_cxn_params($dsn), { AutoCommit => 1 });
-      PTDEBUG && _d('Connected to', $dp->as_string($dsn));
+         $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 });
+      PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
    };
    if ( $EVAL_ERROR ) {
-      print STDERR "Cannot connect to ", $dp->as_string($dsn), "\n"
+      print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), "\n"
          or die "Cannot print: $OS_ERROR";
       return;
    }
 
-   # SHOW SLAVE HOSTS sometimes has obsolete information.  Verify that this
-   # server has the ID its master thought, and that we have not seen it before
-   # in any case.
    my $sql  = 'SELECT @@SERVER_ID';
    PTDEBUG && _d($sql);
    my ($id) = $dbh->selectrow_array($sql);
@@ -207,13 +213,10 @@ sub recurse_to_slaves {
       return;
    }
 
-   # Call the callback!
    $args->{callback}->($dsn, $dbh, $level, $args->{parent});
 
    if ( !defined $recurse || $level < $recurse ) {
 
-      # Find the slave hosts.  Eliminate hosts that aren't slaves of me (as
-      # revealed by server_id and master_id).
       my @slaves =
          grep { !$_->{master_id} || $_->{master_id} == $id } # Only my slaves.
          $self->find_slave_hosts($dp, $dbh, $dsn, $methods);
@@ -222,7 +225,7 @@ sub recurse_to_slaves {
          PTDEBUG && _d('Recursing from',
             $dp->as_string($dsn), 'to', $dp->as_string($slave));
          $self->recurse_to_slaves(
-            { %$args, dsn => $slave, dbh => undef, parent => $dsn }, $level + 1 );
+            { %$args, dsn => $slave, dbh => undef, parent => $dsn, slave_user => $slave_user, $slave_password => $slave_password }, $level + 1 );
       }
    }
 }
@@ -426,21 +429,49 @@ sub get_master_dsn {
 # Gets SHOW SLAVE STATUS, with column names all lowercased, as a hashref.
 sub get_slave_status {
    my ( $self, $dbh ) = @_;
+
    if ( !$self->{not_a_slave}->{$dbh} ) {
       my $sth = $self->{sths}->{$dbh}->{SLAVE_STATUS}
             ||= $dbh->prepare('SHOW SLAVE STATUS');
       PTDEBUG && _d($dbh, 'SHOW SLAVE STATUS');
       $sth->execute();
-      my ($ss) = @{$sth->fetchall_arrayref({})};
+      my ($sss_rows) = $sth->fetchall_arrayref({}); # Show Slave Status rows
 
-      if ( $ss && %$ss ) {
-         $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
-         return $ss;
+      # If SHOW SLAVE STATUS returns more than one row it means that this slave is connected to more
+      # than one master using replication channels.
+      # If we have a channel name as a parameter, we need to select the correct row and return it.
+      # If we don't have a channel name as a parameter, there is no way to know what the correct master is so,
+      # return an error.
+      my $ss;
+      if ( $sss_rows && @$sss_rows ) {
+          if (scalar @$sss_rows > 1) {
+              if (!$self->{channel}) {
+                  die 'This server returned more than one row for SHOW SLAVE STATUS but "channel" was not specified on the command line';
+              }
+              for my $row (@$sss_rows) {
+                  $row = { map { lc($_) => $row->{$_} } keys %$row }; # lowercase the keys
+                  if ($row->{channel_name} eq $self->{channel}) {
+                      $ss = $row;
+                      last;
+                  }
+              }
+          } else {
+              if ($sss_rows->[0]->{channel_name} && $sss_rows->[0]->{channel_name} ne $self->{channel}) {
+                  die 'This server is using replication channels but "channel" was not specified on the command line';
+              } else {
+                  $ss = $sss_rows->[0];
+              }
+          }
+
+          if ( $ss && %$ss ) {
+             $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
+             return $ss;
+          }
       }
 
       PTDEBUG && _d('This server returns nothing for SHOW SLAVE STATUS');
       $self->{not_a_slave}->{$dbh}++;
-   }
+  }
 }
 
 # Gets SHOW MASTER STATUS, with column names all lowercased, as a hashref.
@@ -502,8 +533,20 @@ sub wait_for_master {
    my $result;
    my $waited;
    if ( $master_status ) {
-      my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', "
-              . "$master_status->{position}, $timeout)";
+      my $slave_status;
+      eval {
+          $slave_status = $self->get_slave_status($slave_dbh);
+      };
+      if ($EVAL_ERROR) {
+          return {
+              result => undef,
+              waited => 0,
+              error  =>'Wait for master: this is a multi-master slave but "channel" was not specified on the command line',
+          };
+      }
+      my $server_version = VersionParser->new($slave_dbh);
+      my $channel_sql = $server_version > '5.6' && $self->{channel} ? ", '$self->{channel}'" : '';
+      my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', $master_status->{position}, $timeout $channel_sql)";
       PTDEBUG && _d($slave_dbh, $sql);
       my $start = time;
       ($result) = $slave_dbh->selectrow_array($sql);
@@ -584,6 +627,9 @@ sub catchup_to_master {
             timeout       => $timeout,
             master_status => $master_status
       );
+      if ($result->{error}) {
+          die $result->{error};
+      }
       if ( !defined $result->{result} ) {
          $slave_status = $self->get_slave_status($slave);
          if ( !$self->slave_is_running($slave_status) ) {

@@ -87,7 +87,8 @@ sub before_execute {
          PTDEBUG && _d($sql);
          $dbh->do($sql);
 
-         $sql = "SET storage_engine=MyISAM";
+         # Deprecated since MySQL 5.7
+         #$sql = "SET storage_engine=MyISAM";
          PTDEBUG && _d($sql);
          $dbh->do($sql);
       };

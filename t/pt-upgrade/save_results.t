@@ -82,6 +82,11 @@ while ( my $sampleno = readdir $dh ) {
 
          foreach my $file ( glob("$results_dir/*") ) {
             my $result = basename($file);
+            if ($sandbox_version ge '5.7' && "${basename}_results" eq 'insert_truncate_warning_results' && 
+                ($result eq 'query' || $result eq 'results')) {
+                diag ("Skipping insert_truncate_warning_results. MySQL 5.7+ strict produces errors instead of warnings");
+                next;
+            }
             ok(
                no_diff(
                   "$tmpdir/$result",

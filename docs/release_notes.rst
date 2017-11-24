@@ -1,6 +1,202 @@
 Release Notes
 *************
 
+v3.0.5 released 2017-11-20
+==========================
+
+Percona Toolkit 3.0.5 includes the following changes:
+
+New Features
+
+ * :jirabug:`PMM-1590`: Improve MongoDB Profiler for ``PMM`` and ``PT``
+ * :jirabug:`PT-216`: The ``mongodb-query-digest`` supports ``MongoDB` versions lower than 3.2; incorrect output was fixed.
+ * :jirabug:`PT-182`: The ``pt-summary``, ``pt-mysql-summary``,  ``pt-mongodb-summary`` commands provide output in the the JSON format.
+ * :jirabug:`PT-152`: ``pt-mysql-summary`` shows the output of the *Show Slave Hosts* command.
+ * :jirabug:`PT-139`: ``pt-table-sync`` supports replication channels (requires MySQL version 5.7.6 or higher)
+
+Bug fixes
+
+ * :jirabug:`PT-211`: ``pt-mext`` fails if the ``Rsa_public_key`` variable is empty.
+ * :jirabug:`PT-212`: ``pt-mongodb-query-digest --version`` produced incorrect values.
+ * :jirabug:`PT-202`: ``pt-online-schema-change`` incorrectly processed virtual columns.
+ * :jirabug:`PT-200`: ``pt-online-schema-change`` command reported an error when the name of an index contained 'unique' as as the prefix or suffix.
+ * :jirabug:`PT-199`: ``pt-table-checksum`` did not detect differences on a system with the ROW based replication active.
+ * :jirabug:`PT-196`: ``pt-onine-schema-change --max-load`` paused if a status variable was passed **0** as the value.
+ * :jirabug:`PT-193`: ``pt-table-checksum`` reported a misleading error if a column comment contained an apostrophe. For more information, see :lpbug:`1708749`.
+ * :jirabug:`PT-187`: In some cases, ``pt-table-checksum`` did not report that the same table contained different values on the master and slave.
+ * :jirabug:`PT-186`: ``pt-online-schema-change --alter`` could fail if field names contained upper case characters. For more information, see :lpbug:`1705998`.
+ * :jirabug:`PT-183`: In some cases ``pt-mongodb-query-digest`` could not connect to a db using authentication.
+ * :jirabug:`PT-167`: In some cases, ``pt-kill`` could ignore the value of the ``--busy-time`` parameter.  For more information, see :lpbug:`1016272`.
+ * :jirabug:`PT-161`: When run with the ``--skip-check-slave-lag``, the ``pt-table-checksum`` could could fail in some cases.
+
+v3.0.4 released 2017-08-02
+==========================
+
+Percona Toolkit 3.0.4 includes the following changes:
+
+New Features
+
+* :jirabug:`PT-90`: Added collection of information about prepared statements
+  by ``pt-stalk`` when Performance Schema is enabled.
+  For more information, see :lpbug:`1642750`.
+
+* :jirabug:`PT-91`: Added the ``--preserve-triggers`` option
+  for ``pt-online-schema-change`` to support ``AFTER`` triggers.
+
+* :jirabug:`PT-138`: Added ``--output-format`` option
+  for ``pt-mongodb-summary`` to choose between JSON format
+  and the default plain text.
+
+* :jirabug:`PT-141`: Added the ``--output-format=csv`` parameter
+  for ``pt-archiver`` to archive rows in CSV format.
+
+* :jirabug:`PT-142`: Added the ``--only-same-schema-fks`` option
+  for ``pt-online-schema-change`` to check foreigns keys only on tables
+  with the same schema as the original table.
+  This should speed up the tool's execution,
+  but keep in mind that if you have foreign keys
+  referencing tables in other schemas,
+  they won't be detected.
+  For more information, see :lpbug:`1690122`.
+
+* :jirabug:`PT-153`: Added the ``--check-unique-key-change`` option
+  for ``pt-online-schema-change`` to abort
+  if the specified statement for ``--alter`` is trying to add a unique index.
+  This is supposed to avoid adding duplicate keys
+  that might lead to silently losing data.
+
+* :jirabug:`PT-173`: Added the ``--truncate-replicate-table`` option
+  for ``pt-table-checksum`` to ensure stale data is removed.
+
+Bug fixes
+
+* :jirabug:`PT-136`: Fixed ``pt-table-checksum`` to support tables
+  that have columns with different collations or charsets.
+  For more information, see :lpbug:`1674266`.
+
+* :jirabug:`PT-143`: Fixed primary key handling by ``pt-archiver``.
+  For more information, see :lpbug:`1691630`.
+
+* :jirabug:`PT-144`: Limited constraint name in the new table
+  when running ``pt-online-schema-change``.
+  For more information, see :lpbug:`1491674`.
+
+* :jirabug:`PT-146`: Fixed the ``--no-check-binlog-format`` option
+  for ``pt-table-checksum`` to work as expected.
+
+* :jirabug:`PT-148`: Fixed the use of uninitialized value in ``printf()``
+  for ``pt-online-schema-change``.
+  For more information, see :lpbug:`1693614`.
+
+* :jirabug:`PT-151`: Fixed ``pt-table-sync`` to prevent field type ``point``
+  to be taken as decimal.
+
+* :jirabug:`PT-154`: Reverted :jirabug:`PT-116`
+  to remove the ``--use-insert-ignore`` option
+  from ``pt-online-schema-change``.
+
+* :jirabug:`PT-161`: Fixed the ``--skip-check-slave-lag`` feature
+  for ``pt-table-checksum`` to safely check for undefined values.
+
+* :jirabug:`PT-178`: Fixed regression in ``--check-slave-lag`` option
+  for ``pt-online-schema-change``.
+
+* :jirabug:`PT-180`: Fixed regression in ``--skip-check-slave-lag`` option
+  for ``pt-online-schema-change``.
+
+* :jirabug:`PT-181`: Fixed syntax error in ``pt-online-schema-change``.
+
+Other Improvements
+
+* :jirabug:`PT-162`: Updated list of tables ignored by ``pt-table-checksum``.
+
+v3.0.3 released 2017-05-18
+==========================
+
+Percona Toolkit 3.0.3 includes the following changes:
+
+New Features
+
+* Added the ``--skip-check-slave-lag`` option for ``pt-table-checksum``, ``pt-online-schema-change``, and ``pt-archiver``.
+
+  This option can be used to specify list of servers where to skip checking for slave lag.
+
+* 1642754: Added support for collecting replication slave information in ``pt-stalk``.
+
+* PT-111: Added support for collecting information about variables from Performance Schema in ``pt-stalk``. For more information, see 1642753.
+
+* PT-116: Added the ``--[no]use-insert-ignore`` option for ``pt-online-schema-change`` to force or prevent using ``IGNORE`` on ``INSERT`` statements. For more information, see 1545129.
+
+Bug Fixes
+
+* PT-115: Fixed ``OptionParser`` to accept repeatable DSNs.
+
+* PT-126: Fixed ``pt-online-schema-change`` to correctly parse comments. For more information, see 1592072.
+
+* PT-128: Fixed ``pt-stalk`` to include memory usage information. For more information, see 1510809.
+
+* PT-130: Fixed ``pt-mext`` to work with non-empty RSA public key. For more information, see 1587404.
+
+* PT-132: Fixed ``pt-online-schema-change`` to enable ``--no-drop-new-table`` when ``--no-swap-tables`` and ``--no-drop-triggers`` are used.
+
+v3.0.2 released 2017-03-27
+==========================
+
+Percona Toolkit 3.0.2 includes the following changes:
+
+New Features
+
+* PT-73: Added support for SSL connections to ``pt-mongodb-summary`` and ``pt-mongodb-query-digest``
+
+* 1642751: Enabled gathering of information about locks and transactions by ``pt-stalk`` using Performance Schema if it is enabled (Thanks Agustin Gallego)
+
+Bug Fixes
+
+* PT-74: Fixed gathering of security settings when running ``pt-mongodb-summary`` on a mongod instance that is specified as the host
+
+* PT-75: Changed the default sort order in ``pt-mongodb-query-digest`` output to descending
+
+* PT-76: Added support of ``&`` and ``#`` symbols in passwords for ``pt-mysql-summary``
+
+* PT-77: Updated ``Makefile`` to support new MongoDB tools
+
+* PT-89: Fixed ``pt-stalk`` to run ``top`` more than once to collect useful CPU usage
+
+* PT-93: Fixed ``pt-mongodb-query-digest`` to make query ID match query key (Thanks Kamil Dziedzic)
+
+* PT-94: Fixed ``pt-online-schema-change`` to not make duplicate rows in ``_t_new`` when updating primary key. Also see 1646713.
+
+* PT-101: Fixed ``pt-table-checksum`` to correctly use the ``--slave-user`` and ``--slave-password`` options. Also see 1651002.
+
+* PT-105: Fixed ``pt-table-checksum`` to continue running if a database is dropped in the process
+
+v3.0.1 released 2017-02-20
+==========================
+
+Percona Toolkit 3.0.1 GA includes the following changes:
+
+* Added requirement to run ``pt-mongodb-summary`` as a user with the ``clusterAdmin`` or ``root`` built-in roles.
+
+v3.0 released 2017-02-06
+========================
+
+Percona Toolkit 3.0.0 RC includes the following changes:
+
+New Features
+
+* Added ``pt-mongodb-summary`` tool
+
+* Added ``pt-mongodb-query-digest`` tool
+
+Bug fixes
+
+* 1402776: Updated ``MySQLProtocolParser`` to fix error when parsing ``tcpdump`` capture with ``pt-query-digest``
+
+* 1632522: Fixed failure of ``pt-online-schema-change`` when altering a table with a self-referencing foreign key (Thanks Amiel Marqeta)
+
+* 1654668: Fixed failure of ``pt-summary`` on Red Hat and derivatives (Thanks Marcelo Altmann)
+
+
 v2.2.20 released 2016-12-09
 ===========================
 
@@ -1766,3 +1962,28 @@ Changelog
 ---------
 
 * Fixed bug 1279502: --version-check behaves like spyware
+
+Changelog
+---------
+
+* Fixed bug 1402776: Improved fix (protocol parser fix): error when parsing tcpdump capture with pt-query-digest
+* Fixed bug 1632522: pt-osc: Fails with duplicate key in table for self-referencing (Thanks Amiel Marqeta)
+* Fixed bug 1654668: pt-summary exists with an error (Thanks Marcelo Altmann)
+* New tool         : pt-mongodb-summary 
+* New tool         : pt-mongodb-query-digest
+
+Percona Toolkit 3.0.0 RC includes the following changes:
+
+New Features
+
+* Added ``pt-mongodb-summary`` tool
+
+* Added ``pt-mongodb-query-profiler`` tool
+
+Bug fixes
+
+* 1402776: Updated ``MySQLProtocolParser`` to fix error when parsing ``tcpdump`` capture with ``pt-query-digest``
+
+* 1632522: Fixed failure of ``pt-online-schema-change`` when altering a table with a self-referencing foreign key (Thanks Marcelo Altmann)
+
+* 1654668: Fixed failure of ``pt-summary`` on Red Hat and derivatives (Thanks Marcelo Altmann)

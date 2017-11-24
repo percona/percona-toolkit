@@ -10,9 +10,10 @@ Operation, tries, wait:
 Altering `bug_1045317`.`bits`...
 TS Dropping triggers...
 TS Dropped triggers OK.
-# Event  Count
-# ====== =====
-# INSERT     1
+# Event              Count
+# ================== =====
+# INSERT                 1
+# mysql_warning_1592     1
 Successfully altered `bug_1045317`.`bits`.
 Creating new table...
 Created new table bug_1045317._bits_new OK.

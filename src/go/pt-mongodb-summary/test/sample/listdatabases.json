@@ -1,0 +1,38 @@
+{
+    "Databases": [
+        {
+            "Name": "samples",
+            "SizeOnDisk": 704643072,
+            "Empty": false,
+            "Shards": {
+                "r1": 218103808,
+                "r2": 486539264
+            }
+        },
+        {
+            "Name": "testdb",
+            "SizeOnDisk": 83886080,
+            "Empty": false,
+            "Shards": {
+                "r1": 83886080
+            }
+        },
+        {
+            "Name": "testdb02",
+            "SizeOnDisk": 83886080,
+            "Empty": false,
+            "Shards": {
+                "r2": 83886080
+            }
+        },
+        {
+            "Name": "config",
+            "SizeOnDisk": 67108864,
+            "Empty": false,
+            "Shards": null
+        }
+    ],
+    "TotalSize": 872415232,
+    "TotalSizeMb": 832,
+    "OK": true
+}

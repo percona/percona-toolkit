@@ -53,7 +53,7 @@ ok(
 );
 
 
-# This test will fail come July 2016.
+# This test will eventually fail due to dates
 ok(
    no_diff(
       sub { pt_query_digest::main(@args,
@@ -94,7 +94,7 @@ ok(
       sub { pt_query_digest::main(@args,
          "$sample_in/slow033.txt", qw(--until 1d),
       )},
-      "t/pt-query-digest/samples/slow033-since-Nd.txt",
+      "t/pt-query-digest/samples/slow033-untl-1d.txt",
       stderr => 1,
    ),
    '--until 1d'
@@ -127,7 +127,7 @@ SKIP: {
             "$sample_in/slow033.txt",
             "--since", "\'2009-07-08\' - INTERVAL 7 DAY",
          )},
-         "t/pt-query-digest/samples/slow033-since-Nd.txt",
+         "t/pt-query-digest/samples/slow033-since-2009-07-08.txt",
          stderr => 1,
       ),
       '--since "\'2009-07-08\' - INTERVAL 7 DAY"',

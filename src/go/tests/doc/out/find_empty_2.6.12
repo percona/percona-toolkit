@@ -1,0 +1,33 @@
+{
+	"op" : "query",
+	"ns" : "test.coll",
+	"query" : {
+		
+	},
+	"ntoreturn" : 0,
+	"ntoskip" : 0,
+	"nscanned" : 0,
+	"nscannedObjects" : 0,
+	"keyUpdates" : 0,
+	"numYield" : 0,
+	"lockStats" : {
+		"timeLockedMicros" : {
+			"r" : NumberLong(189),
+			"w" : NumberLong(0)
+		},
+		"timeAcquiringMicros" : {
+			"r" : NumberLong(14),
+			"w" : NumberLong(9)
+		}
+	},
+	"nreturned" : 0,
+	"responseLength" : 20,
+	"millis" : 0,
+	"execStats" : {
+		
+	},
+	"ts" : ISODate("2017-10-15T01:54:10.630Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}

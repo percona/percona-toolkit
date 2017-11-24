@@ -687,7 +687,15 @@ sub _validate_type {
          }
       }
       my $defaults = $self->{DSNParser}->parse_options($self);
-      $opt->{value} = $self->{DSNParser}->parse($val, $prev, $defaults);
+      if (!$opt->{attributes}->{repeatable}) {
+          $opt->{value} = $self->{DSNParser}->parse($val, $prev, $defaults);
+      } else {
+          my $values = [];
+          for my $dsn_string (@$val) {
+              push @$values, $self->{DSNParser}->parse($dsn_string, $prev, $defaults);
+          }
+          $opt->{value} = $values;
+      }
    }
    elsif ( $val && $opt->{type} eq 'z' ) {  # type size
       PTDEBUG && _d('Parsing option', $opt->{long}, 'as a size value');
@@ -2272,8 +2280,10 @@ sub get_slaves {
       my $o = $self->{OptionParser};
 
       $self->recurse_to_slaves(
-         {  dbh       => $dbh,
-            dsn       => $dsn,
+         {  dbh            => $dbh,
+            dsn            => $dsn,
+            slave_user     => $o->got('slave-user') ? $o->get('slave-user') : '',
+            slave_password => $o->got('slave-password') ? $o->get('slave-password') : '', 
             callback  => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
@@ -2292,8 +2302,7 @@ sub get_slaves {
             },
          }
       );
-   }
-   elsif ( $methods->[0] =~ m/^dsn=/i ) {
+   } elsif ( $methods->[0] =~ m/^dsn=/i ) {
       (my $dsn_table_dsn = join ",", @$methods) =~ s/^dsn=//i;
       $slaves = $self->get_cxn_from_dsn_table(
          %args,
@@ -2328,9 +2337,11 @@ sub _resolve_recursion_methods {
 sub recurse_to_slaves {
    my ( $self, $args, $level ) = @_;
    $level ||= 0;
-   my $dp      = $self->{DSNParser};
+   my $dp = $self->{DSNParser};
    my $recurse = $args->{recurse} || $self->{OptionParser}->get('recurse');
-   my $dsn     = $args->{dsn};
+   my $dsn = $args->{dsn};
+   my $slave_user = $args->{slave_user} || '';
+   my $slave_password = $args->{slave_password} || '';
 
    my $methods = $self->_resolve_recursion_methods($dsn);
    PTDEBUG && _d('Recursion methods:', @$methods);
@@ -2339,14 +2350,24 @@ sub recurse_to_slaves {
       return;
    }
 
+   my $slave_dsn = $dsn;
+   if ($slave_user) {
+      $slave_dsn->{u} = $slave_user;
+      PTDEBUG && _d("Using slave user $slave_user on ".$slave_dsn->{h}.":".$slave_dsn->{P});
+   }
+   if ($slave_password) {
+      $slave_dsn->{p} = $slave_password;
+      PTDEBUG && _d("Slave password set");
+   }
+
    my $dbh;
    eval {
       $dbh = $args->{dbh} || $dp->get_dbh(
-         $dp->get_cxn_params($dsn), { AutoCommit => 1 });
-      PTDEBUG && _d('Connected to', $dp->as_string($dsn));
+         $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 });
+      PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
    };
    if ( $EVAL_ERROR ) {
-      print STDERR "Cannot connect to ", $dp->as_string($dsn), "\n"
+      print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), "\n"
          or die "Cannot print: $OS_ERROR";
       return;
    }
@@ -2379,7 +2400,7 @@ sub recurse_to_slaves {
          PTDEBUG && _d('Recursing from',
             $dp->as_string($dsn), 'to', $dp->as_string($slave));
          $self->recurse_to_slaves(
-            { %$args, dsn => $slave, dbh => undef, parent => $dsn }, $level + 1 );
+            { %$args, dsn => $slave, dbh => undef, parent => $dsn, slave_user => $slave_user, $slave_password => $slave_password }, $level + 1 );
       }
    }
 }
@@ -2543,21 +2564,44 @@ sub get_master_dsn {
 
 sub get_slave_status {
    my ( $self, $dbh ) = @_;
+
    if ( !$self->{not_a_slave}->{$dbh} ) {
       my $sth = $self->{sths}->{$dbh}->{SLAVE_STATUS}
             ||= $dbh->prepare('SHOW SLAVE STATUS');
       PTDEBUG && _d($dbh, 'SHOW SLAVE STATUS');
       $sth->execute();
-      my ($ss) = @{$sth->fetchall_arrayref({})};
+      my ($sss_rows) = $sth->fetchall_arrayref({}); # Show Slave Status rows
 
-      if ( $ss && %$ss ) {
-         $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
-         return $ss;
+      my $ss;
+      if ( $sss_rows && @$sss_rows ) {
+          if (scalar @$sss_rows > 1) {
+              if (!$self->{channel}) {
+                  die 'This server returned more than one row for SHOW SLAVE STATUS but "channel" was not specified on the command line';
+              }
+              for my $row (@$sss_rows) {
+                  $row = { map { lc($_) => $row->{$_} } keys %$row }; # lowercase the keys
+                  if ($row->{channel_name} eq $self->{channel}) {
+                      $ss = $row;
+                      last;
+                  }
+              }
+          } else {
+              if ($sss_rows->[0]->{channel_name} && $sss_rows->[0]->{channel_name} ne $self->{channel}) {
+                  die 'This server is using replication channels but "channel" was not specified on the command line';
+              } else {
+                  $ss = $sss_rows->[0];
+              }
+          }
+
+          if ( $ss && %$ss ) {
+             $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
+             return $ss;
+          }
       }
 
       PTDEBUG && _d('This server returns nothing for SHOW SLAVE STATUS');
       $self->{not_a_slave}->{$dbh}++;
-   }
+  }
 }
 
 sub get_master_status {
@@ -2597,8 +2641,20 @@ sub wait_for_master {
    my $result;
    my $waited;
    if ( $master_status ) {
-      my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', "
-              . "$master_status->{position}, $timeout)";
+      my $slave_status;
+      eval {
+          $slave_status = $self->get_slave_status($slave_dbh);
+      };
+      if ($EVAL_ERROR) {
+          return {
+              result => undef,
+              waited => 0,
+              error  =>'Wait for master: this is a multi-master slave but "channel" was not specified on the command line',
+          };
+      }
+      my $server_version = VersionParser->new($slave_dbh);
+      my $channel_sql = $server_version > '5.6' && $self->{channel} ? ", '$self->{channel}'" : '';
+      my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', $master_status->{position}, $timeout $channel_sql)";
       PTDEBUG && _d($slave_dbh, $sql);
       my $start = time;
       ($result) = $slave_dbh->selectrow_array($sql);
@@ -2664,6 +2720,9 @@ sub catchup_to_master {
             timeout       => $timeout,
             master_status => $master_status
       );
+      if ($result->{error}) {
+          die $result->{error};
+      }
       if ( !defined $result->{result} ) {
          $slave_status = $self->get_slave_status($slave);
          if ( !$self->slave_is_running($slave_status) ) {
@@ -4404,7 +4463,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2016 Percona LLC and/or its affiliates,
+This program is copyright 2011-2017 Percona LLC and/or its affiliates,
 2007-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -4423,6 +4482,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-slave-find 2.2.20
+pt-slave-find 3.0.5
 
 =cut

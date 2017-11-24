@@ -41,7 +41,7 @@ my $output;
 sub load_data_infile {
    my ($file, $where) = @_;
    $master_dbh->do('truncate table percona.checksums');
-   $master_dbh->do("LOAD DATA INFILE '$trunk/t/pt-table-checksum/samples/checksum_results/$file' INTO TABLE percona.checksums");
+   $master_dbh->do("LOAD DATA LOCAL INFILE '$trunk/t/pt-table-checksum/samples/checksum_results/$file' INTO TABLE percona.checksums");
    if ( $where ) {
       PerconaTest::wait_for_table($slave1_dbh, 'percona.checksums', $where);
    }
@@ -100,7 +100,7 @@ $output = output(
 
 is(
    $output,
-   "",
+   '',
    "Resume with nothing to do"
 );
 
@@ -267,13 +267,13 @@ is_deeply(
 like(
    $first_tbl,
    qr/sakila.payment$/,
-   "Resumed from sakila.payment"
+   "Resuming from sakila.payment"
 );
 
 like(
    $output,
-   qr/^Resuming from sakila.payment chunk 7, timestamp 2011-10-15 13:00:28\n/,
-    "Resumed from sakila.payment chunk 7"  
+   qr/^Resuming from sakila.payment chunk 7, timestamp 2011-10-15 13:00:28/s,
+    "Resuming from sakila.payment chunk 7"  
 );
 
 is(
@@ -564,7 +564,7 @@ $output = output(
 (undef, undef, $first_tbl) = split /\n/, $output;
 like(
    $first_tbl,
-   qr/test.t1$/,
+   qr/test.t1/,
    "Resumed from test.t1"
 );
 
@@ -622,7 +622,7 @@ $output = output(
 (undef, undef, $first_tbl) = split /\n/, $output;
 like(
    $first_tbl,
-   qr/test.t1$/,
+   qr/test.t1/,
    "Resumed from test.t1"
 );
 

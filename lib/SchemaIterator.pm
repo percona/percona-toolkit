@@ -353,7 +353,14 @@ sub _iterate_dbh {
             && $self->_resume_from_table($tbl)
             && $self->table_is_allowed($self->{db}, $tbl);
          }
-         @{$dbh->selectall_arrayref($sql)};
+
+         eval { @{$dbh->selectall_arrayref($sql)}; };
+         if ($EVAL_ERROR) {
+             warn "Skipping $self->{db}...";
+             $self->{db} = undef;
+             next;
+         }
+
          PTDEBUG && _d('Found', scalar @tbls, 'tables in database',$self->{db});
          $self->{tbls} = \@tbls;
       }
@@ -405,7 +412,7 @@ sub database_is_allowed {
 
    my $filter = $self->{filters};
 
-   if ( $db =~ m/information_schema|performance_schema|lost\+found|percona|percona_schema|test/ ) {
+   if ( $db =~ m/^(information_schema|performance_schema|lost\+found|percona_schema)$/ ) {
       PTDEBUG && _d('Database', $db, 'is a system database, ignoring');
       return 0;
    }
@@ -449,20 +456,13 @@ sub table_is_allowed {
    # Always auto-skip these pseudo tables.
    return 0 if $db eq 'mysql' && $tbl =~ m/^(?:
        general_log
-      |gtid_execution
+      |gtid_executed
       |innodb_index_stats
       |innodb_table_stats
-      |inventory
-      |plugin
-      |proc
       |slave_master_info
       |slave_relay_log_info
       |slave_worker_info
       |slow_log    
-   )$/x;
-
-   return 0 if $db eq 'sys' && $tbl =~ m/^(?:
-       sys_config
    )$/x;
 
    if ( $filter->{'ignore-tables'}->{'*'}->{$tbl} 

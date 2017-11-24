@@ -1,0 +1,7 @@
+#!/bin/sh
+
+get_single_profile() {
+    mongo --quiet <<'EOF'
+    db.system.profile.find().limit(1).sort( { ts : -1 } ).pretty()
+EOF
+}

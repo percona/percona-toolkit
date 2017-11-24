@@ -1,0 +1,161 @@
+[
+  {
+    "ID": "95575e896c2830043dc333cb8ee61339",
+    "Namespace": "samples.col1",
+    "Operation": "FIND",
+    "Query": "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"shardVersion\":[0,\"000000000000000000000000\"]}}\n",
+    "Fingerprint": "FIND col1 find",
+    "FirstSeen": "2017-04-10T13:16:23.29-03:00",
+    "LastSeen": "2017-04-10T13:16:23.29-03:00",
+    "Count": 1,
+    "QPS": 1,
+    "Rank": 0,
+    "Ratio": 1,
+    "QueryTime": {
+      "Pct": 0,
+      "Total": 0,
+      "Min": 0,
+      "Max": 0,
+      "Avg": 0,
+      "Pct95": 0,
+      "StdDev": 0,
+      "Median": 0
+    },
+    "ResponseLength": {
+      "Pct": 99.95949739087844,
+      "Total": 1061230,
+      "Min": 1061230,
+      "Max": 1061230,
+      "Avg": 1061230,
+      "Pct95": 1061230,
+      "StdDev": 0,
+      "Median": 1061230
+    },
+    "Returned": {
+      "Pct": 100,
+      "Total": 75,
+      "Min": 75,
+      "Max": 75,
+      "Avg": 75,
+      "Pct95": 75,
+      "StdDev": 0,
+      "Median": 75
+    },
+    "Scanned": {
+      "Pct": 0.7444168734491315,
+      "Total": 75,
+      "Min": 75,
+      "Max": 75,
+      "Avg": 75,
+      "Pct95": 75,
+      "StdDev": 0,
+      "Median": 75
+    }
+  },
+  {
+    "ID": "d7088d6b50551d1f2f5f34b006c0140d",
+    "Namespace": "samples.col1",
+    "Operation": "FIND",
+    "Query": "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"filter\":{\"s2\":{\"$gte\":\"41991\",\"$lt\":\"33754\"}},\"shardVersion\":[0,\"000000000000000000000000\"]}}\n",
+    "Fingerprint": "FIND col1 s2",
+    "FirstSeen": "2017-04-10T13:15:53.532-03:00",
+    "LastSeen": "2017-04-10T13:15:53.532-03:00",
+    "Count": 1,
+    "QPS": 1,
+    "Rank": 0,
+    "Ratio": 0,
+    "QueryTime": {
+      "Pct": 100,
+      "Total": 7,
+      "Min": 7,
+      "Max": 7,
+      "Avg": 7,
+      "Pct95": 7,
+      "StdDev": 0,
+      "Median": 7
+    },
+    "ResponseLength": {
+      "Pct": 0.020251304560782172,
+      "Total": 215,
+      "Min": 215,
+      "Max": 215,
+      "Avg": 215,
+      "Pct95": 215,
+      "StdDev": 0,
+      "Median": 215
+    },
+    "Returned": {
+      "Pct": 0,
+      "Total": 0,
+      "Min": 0,
+      "Max": 0,
+      "Avg": 0,
+      "Pct95": 0,
+      "StdDev": 0,
+      "Median": 0
+    },
+    "Scanned": {
+      "Pct": 99.25558312655087,
+      "Total": 10000,
+      "Min": 10000,
+      "Max": 10000,
+      "Avg": 10000,
+      "Pct95": 10000,
+      "StdDev": 0,
+      "Median": 10000
+    }
+  },
+  {
+    "ID": "b4b7a063b3afbcbdf042a0f0f9e48a9d",
+    "Namespace": "samples.col1",
+    "Operation": "FIND",
+    "Query": "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"filter\":{\"user_id\":{\"$gte\":3.384024924e+09,\"$lt\":1.95092007e+08}},\"projection\":{\"$sortKey\":{\"$meta\":\"sortKey\"}},\"shardVersion\":[0,\"000000000000000000000000\"],\"sort\":{\"user_id\":1}}}\n",
+    "Fingerprint": "FIND col1 user_id",
+    "FirstSeen": "2017-04-10T13:15:53.524-03:00",
+    "LastSeen": "2017-04-10T13:15:53.524-03:00",
+    "Count": 1,
+    "QPS": 1,
+    "Rank": 0,
+    "Ratio": 0,
+    "QueryTime": {
+      "Pct": 0,
+      "Total": 0,
+      "Min": 0,
+      "Max": 0,
+      "Avg": 0,
+      "Pct95": 0,
+      "StdDev": 0,
+      "Median": 0
+    },
+    "ResponseLength": {
+      "Pct": 0.020251304560782172,
+      "Total": 215,
+      "Min": 215,
+      "Max": 215,
+      "Avg": 215,
+      "Pct95": 215,
+      "StdDev": 0,
+      "Median": 215
+    },
+    "Returned": {
+      "Pct": 0,
+      "Total": 0,
+      "Min": 0,
+      "Max": 0,
+      "Avg": 0,
+      "Pct95": 0,
+      "StdDev": 0,
+      "Median": 0
+    },
+    "Scanned": {
+      "Pct": 0,
+      "Total": 0,
+      "Min": 0,
+      "Max": 0,
+      "Avg": 0,
+      "Pct95": 0,
+      "StdDev": 0,
+      "Median": 0
+    }
+  }
+]

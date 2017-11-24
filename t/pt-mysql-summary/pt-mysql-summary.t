@@ -42,7 +42,7 @@ ok(
 my @files = glob("$dir/*");
 my $n_files = scalar @files;
 ok(
-   $n_files == 15 || $n_files == 14,
+   $n_files >= 15 && $n_files <= 16,
    "And leaves all files in there"
 ) or diag($n_files, `ls -l $dir`);
 
@@ -73,7 +73,7 @@ for my $i (2..7) {
       no_diff(
          sub {
             local $ENV{_NO_FALSE_NEGATIVES} = 1;
-            print `$env $trunk/bin/$tool --read-samples $trunk/t/pt-mysql-summary/samples/temp00$i  -- --defaults-file=/tmp/12345/my.sandbox.cnf | tail -n+3 | perl -wlnpe 's/Skipping schema analysis.*/Specify --databases or --all-databases to dump and summarize schemas/'`
+            print `$env $trunk/bin/$tool --read-samples $trunk/t/pt-mysql-summary/samples/temp00$i  -- --defaults-file=/tmp/12345/my.sandbox.cnf | tail -n+3 | perl -wlnpe 's/Skipping schema analysis.*/Specify --databases or --all-databases to dump and summarize schemas/' | grep -v jemalloc`
          },
          "t/pt-mysql-summary/samples/expected_output_temp00$i.txt",
       ),

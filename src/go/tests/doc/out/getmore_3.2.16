@@ -1,0 +1,44 @@
+{
+	"op" : "getmore",
+	"ns" : "test.coll",
+	"query" : {
+		"getMore" : NumberLong("62137702161"),
+		"collection" : "coll",
+		"batchSize" : 2
+	},
+	"cursorid" : 62137702161,
+	"keysExamined" : 0,
+	"docsExamined" : 0,
+	"cursorExhausted" : true,
+	"keyUpdates" : 0,
+	"writeConflicts" : 0,
+	"numYield" : 0,
+	"locks" : {
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(2)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		}
+	},
+	"nreturned" : 0,
+	"responseLength" : 81,
+	"protocol" : "op_command",
+	"millis" : 0,
+	"execStats" : {
+		
+	},
+	"ts" : ISODate("2017-10-15T01:54:34.569Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}

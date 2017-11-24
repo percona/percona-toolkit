@@ -1,0 +1,27 @@
+[
+  {
+    "ID": "e72ad41302045bd6c2bcad76511f915a",
+    "Namespace": "test.coll",
+    "Operation": "REMOVE",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"remove\",\"command\":{\"q\":{\"a\":{\"$gte\":2},\"b\":{\"$gte\":2}},\"limit\":1}}\n",
+    "Fingerprint": "REMOVE coll a,b",
+    "FirstSeen": "2017-10-15T01:54:53.333Z",
+    "LastSeen": "2017-10-15T01:54:53.333Z",
+    "TableScan": false,
+    "Count": 1,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0
+    ],
+    "NScanned": [
+      1
+    ],
+    "QueryTime": [
+      1
+    ],
+    "ResponseLength": [
+      0
+    ]
+  }
+]

@@ -1,0 +1,27 @@
+[
+  {
+    "ID": "76d7662df07b44135ac3e07e44a6eb39",
+    "Namespace": "",
+    "Operation": "EXPLAIN",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"query\",\"query\":{\"query\":{},\"$explain\":true}}\n",
+    "Fingerprint": "EXPLAIN",
+    "FirstSeen": "2017-10-15T01:54:10.058Z",
+    "LastSeen": "2017-10-15T01:54:10.058Z",
+    "TableScan": false,
+    "Count": 1,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      1
+    ],
+    "NScanned": [
+      10
+    ],
+    "QueryTime": [
+      0
+    ],
+    "ResponseLength": [
+      583
+    ]
+  }
+]
