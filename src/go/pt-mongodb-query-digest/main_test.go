@@ -235,24 +235,10 @@ func testEmptySystemProfile(t *testing.T, data Data) {
 		t.Error(err)
 	}
 
-	expected := `pt-mongodb-query-digest .+
-Host: ` + data.url + `
-Skipping profiled queries on these collections: \[system\.profile\]
-
-
-# Totals
-# Ratio    0.00  \(docs scanned/returned\)
-# Attribute            pct     total        min         max        avg         95%        stddev      median
-# ==================   ===   ========    ========    ========    ========    ========     =======    ========
-# Count \(docs\)                     0\s
-# Exec Time ms           0       NaN         NaN         NaN         NaN         NaN         NaN         NaN\s
-# Docs Scanned           0       NaN         NaN         NaN         NaN         NaN         NaN         NaN\s
-# Docs Returned          0       NaN         NaN         NaN         NaN         NaN         NaN         NaN\s
-# Bytes sent             0       NaN         NaN         NaN         NaN         NaN         NaN         NaN\s
-#\s
-`
-
-	assertRegexpLines(t, expected, string(output))
+	expected := "No queries found in profiler information for database \\\"test\\\""
+	if !strings.Contains(string(output), expected) {
+		t.Errorf("Empty system.profile.\nGot:\n%s\nWant:\n%s\n", string(output), expected)
+	}
 }
 
 func testAllOperationsTemplate(t *testing.T, data Data) {
@@ -417,10 +403,6 @@ func testAllOperationsTemplate(t *testing.T, data Data) {
 
 	expected := `Profiler is disabled for the "test" database but there are \s*[0-9]+ documents in the system.profile collection.
 Using those documents for the stats
-pt-mongodb-query-digest .+
-Host: ` + data.url + `
-Skipping profiled queries on these collections: \[system\.profile\]
-
 
 # Totals
 # Ratio    [0-9\.]+  \(docs scanned/returned\)
@@ -463,6 +445,7 @@ Skipping profiled queries on these collections: \[system\.profile\]
 
 		expected += buf.String()
 	}
+	expected += "\n" // Looks like we expect additional line
 
 	assertRegexpLines(t, expected, string(output))
 }

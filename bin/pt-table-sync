@@ -55,7 +55,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.4';
+our $VERSION = '3.0.5';
 
 use strict;
 use warnings FATAL => 'all';
@@ -6696,8 +6696,7 @@ sub get_slaves {
             },
          }
       );
-   }
-   elsif ( $methods->[0] =~ m/^dsn=/i ) {
+   } elsif ( $methods->[0] =~ m/^dsn=/i ) {
       (my $dsn_table_dsn = join ",", @$methods) =~ s/^dsn=//i;
       $slaves = $self->get_cxn_from_dsn_table(
          %args,
@@ -6959,6 +6958,7 @@ sub get_master_dsn {
 
 sub get_slave_status {
    my ( $self, $dbh ) = @_;
+
    if ( !$self->{not_a_slave}->{$dbh} ) {
       my $sth = $self->{sths}->{$dbh}->{SLAVE_STATUS}
             ||= $dbh->prepare('SHOW SLAVE STATUS');
@@ -6970,8 +6970,7 @@ sub get_slave_status {
       if ( $sss_rows && @$sss_rows ) {
           if (scalar @$sss_rows > 1) {
               if (!$self->{channel}) {
-                  warn 'This server returned more than one row for SHOW SLAVE STATUS but "channel" was not specified on the command line';
-                  return undef;
+                  die 'This server returned more than one row for SHOW SLAVE STATUS but "channel" was not specified on the command line';
               }
               for my $row (@$sss_rows) {
                   $row = { map { lc($_) => $row->{$_} } keys %$row }; # lowercase the keys
@@ -6981,7 +6980,11 @@ sub get_slave_status {
                   }
               }
           } else {
-              $ss = $sss_rows->[0];
+              if ($sss_rows->[0]->{channel_name} && $sss_rows->[0]->{channel_name} ne $self->{channel}) {
+                  die 'This server is using replication channels but "channel" was not specified on the command line';
+              } else {
+                  $ss = $sss_rows->[0];
+              }
           }
 
           if ( $ss && %$ss ) {
@@ -7032,15 +7035,17 @@ sub wait_for_master {
    my $result;
    my $waited;
    if ( $master_status ) {
-      my $slave_status = $self->get_slave_status($slave_dbh);
-      if (!$slave_status) {
+      my $slave_status;
+      eval {
+          $slave_status = $self->get_slave_status($slave_dbh);
+      };
+      if ($EVAL_ERROR) {
           return {
               result => undef,
               waited => 0,
-              error  =>'This server returned more than one row for SHOW SLAVE STATUS but "channel" was not specified on the command line',
+              error  =>'Wait for master: this is a multi-master slave but "channel" was not specified on the command line',
           };
       }
-
       my $server_version = VersionParser->new($slave_dbh);
       my $channel_sql = $server_version > '5.6' && $self->{channel} ? ", '$self->{channel}'" : '';
       my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', $master_status->{position}, $timeout $channel_sql)";
@@ -7060,7 +7065,6 @@ sub wait_for_master {
    return {
       result => $result,
       waited => $waited,
-      error  => undef,
    };
 }
 
@@ -7113,7 +7117,6 @@ sub catchup_to_master {
       if ($result->{error}) {
           die $result->{error};
       }
-
       if ( !defined $result->{result} ) {
          $slave_status = $self->get_slave_status($slave);
          if ( !$self->slave_is_running($slave_status) ) {
@@ -12966,6 +12969,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-sync 3.0.4
+pt-table-sync 3.0.5
 
 =cut

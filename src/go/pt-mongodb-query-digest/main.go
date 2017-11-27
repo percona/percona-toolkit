@@ -255,6 +255,7 @@ func getOptions() (*options, error) {
 		OrderBy:         strings.Split(DEFAULT_ORDERBY, ","),
 		SkipCollections: strings.Split(DEFAULT_SKIPCOLLECTIONS, ","),
 		AuthDB:          DEFAULT_AUTHDB,
+		OutputFormat:    "text",
 	}
 
 	gop := getopt.New()
@@ -308,8 +309,8 @@ func getOptions() (*options, error) {
 	}
 
 	if opts.OutputFormat != "json" && opts.OutputFormat != "text" {
-		opts.OutputFormat = "text"
 		log.Infof("Invalid output format '%s'. Using text format", opts.OutputFormat)
+		opts.OutputFormat = "text"
 	}
 
 	if gop.IsSet("password") && opts.Password == "" {

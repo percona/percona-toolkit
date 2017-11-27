@@ -39,7 +39,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.4';
+our $VERSION = '3.0.5';
 
 use strict;
 use warnings FATAL => 'all';
@@ -5696,6 +5696,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-duplicate-key-checker 3.0.4
+pt-duplicate-key-checker 3.0.5
 
 =cut
