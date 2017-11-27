@@ -1161,7 +1161,7 @@ SKIP: {
         },
         engine => 'InnoDB',
         is_autoinc => { column2 => 0, column3 => 0, id => 0 },
-        is_col => { column2 => 1, column3 => 1, id => 1 },
+        is_col => { column2 => 1, id => 1 },
         is_generated => { column3 => 1 },
         is_nullable => { column2 => 1, column3 => 1 },
         is_numeric => { column2 => 1, column3 => 1, id => 1 },
