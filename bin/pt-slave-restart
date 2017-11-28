@@ -2976,10 +2976,17 @@ sub get_master_dsn {
 sub get_slave_status {
    my ( $self, $dbh ) = @_;
 
+   my $master_channel = "";
+   my $channel = $self->{'channel'};
+
+   if ( $channel ) {
+      $master_channel = " FOR CHANNEL '$channel'";
+   }
+
    if ( !$self->{not_a_slave}->{$dbh} ) {
       my $sth = $self->{sths}->{$dbh}->{SLAVE_STATUS}
-            ||= $dbh->prepare('SHOW SLAVE STATUS');
-      PTDEBUG && _d($dbh, 'SHOW SLAVE STATUS');
+            ||= $dbh->prepare('SHOW SLAVE STATUS' . $master_channel);
+      PTDEBUG && _d($dbh, 'SHOW SLAVE STATUS' . $master_channel);
       $sth->execute();
       my ($sss_rows) = $sth->fetchall_arrayref({}); # Show Slave Status rows
 
@@ -3095,9 +3102,17 @@ sub stop_slave {
 
 sub start_slave {
    my ( $self, $dbh, $pos ) = @_;
+
+   my $master_channel = "";
+   my $channel = $self->{'channel'};
+
+   if ( $channel ) {
+      $master_channel = " FOR CHANNEL '$channel'";
+   }
+
    if ( $pos ) {
       my $sql = "START SLAVE UNTIL MASTER_LOG_FILE='$pos->{file}', "
-              . "MASTER_LOG_POS=$pos->{position}";
+              . "MASTER_LOG_POS=$pos->{position}" . $master_channel;
       PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
    }
@@ -5045,7 +5060,7 @@ sub main {
       my $pid = $must_fork ? fork() : undef;
       if ( !$must_fork || (defined($pid) && $pid == 0) ) {
          # I either forked and I'm a child, or I didn't fork... confusing, eh?
-         watch_server($host->{dsn}, $host->{dbh}, $must_fork, $ms);
+         watch_server($host->{dsn}, $host->{dbh}, $must_fork, $ms, $o->get{'channel'});
       }
       elsif ( $must_fork && !defined($pid) ) {
          die("Unable to fork!");
@@ -5074,7 +5089,7 @@ sub main {
 # Actually watch a server.  If many instances are being watched, this is
 # fork()ed.
 sub watch_server {
-   my ( $dsn, $dbh, $was_forked, $ms ) = @_;
+   my ( $dsn, $dbh, $was_forked, $ms, $channel ) = @_;
 
    PTDEBUG && _d('Watching server', $dp->as_string($dsn),
       'forked:', $was_forked);
@@ -5090,8 +5105,14 @@ sub watch_server {
       $start_sql .= " UNTIL RELAY_LOG_FILE = '$file', RELAY_LOG_POS = $pos";
    }
 
-   my $start = $dbh->prepare($start_sql);
-   my $stop  = $dbh->prepare('STOP SLAVE');
+   my $master_channel = "";
+
+   if ( $channel ) {
+      $master_channel = " FOR CHANNEL '$channel'";
+   }
+
+   my $start = $dbh->prepare($start_sql . $master_channel);
+   my $stop  = $dbh->prepare('STOP SLAVE' . $master_channel);
 
    # ########################################################################
    # Detect if GTID is enabled. Skipping an event is done differently.
@@ -5148,7 +5169,7 @@ sub watch_server {
          # https://bugs.launchpad.net/percona-toolkit/+bug/932614
          my $sql = "CHANGE MASTER TO "
                  . "MASTER_LOG_FILE='$stat->{relay_master_log_file}', "
-                 . "MASTER_LOG_POS=$stat->{exec_master_log_pos}";
+                 . "MASTER_LOG_POS=$stat->{exec_master_log_pos}" . $master_channel;
          PTDEBUG && _d($sql);
          $dbh->do($sql);
       },
@@ -5790,6 +5811,13 @@ The tool prints a warning and continues if a variable cannot be set.
 type: int; default: 1
 
 Number of statements to skip when restarting the slave.
+
+=item --master_channel
+
+type: string
+
+From 5.7.6, MySQL introduces the concept of replication channel, which represents the path
+of transactions flowing from a master to a slave.
 
 =item --master-uuid
 
