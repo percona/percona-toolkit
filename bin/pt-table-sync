@@ -11047,6 +11047,14 @@ sub ok_to_sync {
       db  => $dst->{db},
       tbl => $dst->{tbl},
    );
+
+   if ( lc($src->{tbl_struct}->{engine}) eq 'rocksdb' && ($o->get('sync-to-master')) ) {
+       print STDERR "Cannot sync using --sync-to-master with $dst->{db}.$dst->{tbl} ".
+             "due to the limitations of the RocksDB engine.\n\n".
+             "More information: https://www.percona.com/doc/percona-server/LATEST/myrocks/limitations.html\n\n";
+       die "Process aborted.\n";
+   }
+
    if ( !$dst_has_table ) {
       die "Table $dst->{db}.$dst->{tbl} does not exist on "
          . $dp->as_string($dst->{dsn}) . "\n";
