@@ -587,6 +587,14 @@ sub is_active {
    return $self->{dbh} ? 1 : 0;
 }
 
+sub has_engine {
+    my ($self, $engine) = @_;
+    if (!$self->{dbh}) {
+        die "invalid dbh in has_engine method";
+    }
+
+}
+
 sub _d {
    my ($package, undef, $line) = caller 0;
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
