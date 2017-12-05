@@ -593,6 +593,15 @@ sub has_engine {
         die "invalid dbh in has_engine method";
     }
 
+    my $rows = $self->{dbh}->selectall_arrayref('SHOW ENGINES', {Slice=>{}});
+    my $is_enabled;
+    for my $row (@$rows) {
+        if ($row->{engine} eq 'ROCKSDB') {
+            $is_enabled = 1;
+            last;
+        }
+    }
+    return $is_enabled;
 }
 
 sub _d {
