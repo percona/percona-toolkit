@@ -10110,21 +10110,22 @@ sub main {
                    }
                }
                if ($not_ignored_rocks_db_tables_count > 0) {
-                   print STDERR "\nThe MyRocks storage engine is not supported with pt-table-checksum " .
-                                "since MyRocks does not support binlog_format=STATEMENT.\n".
+                   print STDERR "\nThe RocksDB storage engine is not supported with pt-table-checksum " .
+                                "since RocksDB does not support binlog_format=STATEMENT.\n".
                                 "We have identified the following tables using MyRocks storage engine:\n";
                    for my $row (@$rows) {
                       print "$row->{table_schema}.$row->{table_name}\n";
                    }
                    print STDERR "\nPlease add ROCKSDB to the list of --ignored-engines\n";
-                   print STDERR "--ignored-engines:FEDERATED,MRG_MyISAM,RocksDB\n";
+                   print STDERR "--ignored-engines=FEDERATED,MRG_MyISAM,RocksDB\n";
                    print STDERR "\nConversely exclude the MyRocks tables explicitly:\n";
                    print STDERR "--ignore-tables=$tables_list\n\n";
-                   die "Aborting";
+                   print STDERR "Aborting";
+                   exit($PTC_EXIT_STATUS{SKIP_TABLE});
                }
            }
        }
-       print STDOUT "Staring checksum ...\n";
+       print STDOUT "Starting checksum ...\n";
    }
    # ########################################################################
    # Set up the run time, if any.  Anything that waits should check this

@@ -21,10 +21,11 @@ my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
 if ( !$dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
-}
-else {
-   plan tests => 4;
+    plan skip_all => 'Cannot connect to sandbox master';
+} elsif (!$sb->has_engine('master', 'ROCKSDB')) {
+    plan skip_all => 'These tests need RocksDB';
+} else {
+    plan tests => 9;
 }
 
 $sb->load_file('master', 't/pt-table-checksum/samples/pt-204.sql');
@@ -35,33 +36,75 @@ $sb->load_file('master', 't/pt-table-checksum/samples/pt-204.sql');
 my $master_dsn = $sb->dsn_for('master');
 my @args       = ($master_dsn, "--set-vars", "innodb_lock_wait_timeout=50", 
                                "--no-check-binlog-format"); 
-my $output;
-my $exit_status;
+my ($output, $exit_status);
 
 # Test #1 
-$output = output(
+($output, $exit_status) = full_output(
    sub { $exit_status = pt_table_checksum::main(@args) },
+   stderr => 1,
+);
+
+diag("status: $exit_status");
+
+is(
+   $exit_status,
+   64,
+   "PT-204 Cannot checksum RocksDB tables. Exit status=64 -> SKIP_TABLE",
+);
+
+like(
+    $output,
+    qr/Checking if all tables can be checksummed/,
+    "PT-204 Message before checksum starts",
+);
+
+like(
+    $output,
+    qr/The RocksDB storage engine is not supported with pt-table-checksum/,
+    "PT-204 Error message: cannot checksum RocksDB tables",
+);
+
+# Test #2
+($output, $exit_status) = full_output(
+   sub { $exit_status = pt_table_checksum::main(@args, qw(--ignore-tables test.t1)) },
    stderr => 1,
 );
 
 is(
    $exit_status,
    0,
-   "PT-204 use single backtick in comments",
-);
-
-unlike(
-    $output,
-    qr/test\.t1/,
-    "PT-204 table t1 was skipped (RocksDB)",
+   "PT-204 Starting checksum since RocksDB table was skipped with --ignore-tables",
 );
 
 like(
     $output,
-    qr/test\.t2/,
-    "PT-204 table t2 was checksumed (InnoDB)",
+    qr/Starting checksum/,
+    'PT-204 Got "Starting checksum" message',
 );
 
+unlike(
+    $output,
+    qr/test.t1/,
+    "PT-204 RocksDB table was really skipped with --ignore-tables",
+);
+
+# Test #3
+($output, $exit_status) = full_output(
+   sub { $exit_status = pt_table_checksum::main(@args, qw(--ignore-engines RocksDB)) },
+   stderr => 1,
+);
+
+is(
+   $exit_status,
+   0,
+   "PT-204 Starting checksum since RocksDB table was skipped with --ignore-engines",
+);
+
+unlike(
+    $output,
+    qr/test.t1/,
+    "PT-204 RocksDB table was really skipped with --ignore-engines",
+);
 
 # #############################################################################
 # Done.
