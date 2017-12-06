@@ -1,6 +1,11 @@
 Changelog for Percona Toolkit
 
-v3.0.5
+v3.0.6
+
+ * Fixed bug     PT-225: pt-table-checksum ignores generated cols
+ * Improvement   PT-221: pt-table-sync pt-table-sync support for MyRocks
+
+v3.0.5 released 2017-11-20
 
  * Improvement PMM-1590: Improve MongoDB Profiler for PMM and PT
  * Improvement   PT-216: mongodb-query digest improved support for v<3.2 fixed incorrect output (Thanks MATSUU Takuto) 
