@@ -56,7 +56,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.5';
+our $VERSION = '3.0.6';
 
 use strict;
 use warnings FATAL => 'all';
@@ -11262,6 +11262,7 @@ sub osc_retry {
          if (   $error =~ m/Lock wait timeout exceeded/
              || $error =~ m/Deadlock found/
              || $error =~ m/Query execution was interrupted/
+             || $error =~ m/WSREP detected deadlock\/conflict/
          ) {
             # These errors/warnings can be retried, so don't print
             # a warning yet; do that in final_fail.
@@ -12972,6 +12973,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-online-schema-change 3.0.5
+pt-online-schema-change 3.0.6
 
 =cut
