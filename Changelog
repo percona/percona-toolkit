@@ -2,6 +2,7 @@ Changelog for Percona Toolkit
 
 v3.0.6
 
+ * Fixed bug     PT-229: pt-online-schema-change does not retry on deadlock error when using percona 5.7
  * Fixed bug     PT-225: pt-table-checksum ignores generated cols
  * Improvement   PT-221: pt-table-sync pt-table-sync support for MyRocks
 
