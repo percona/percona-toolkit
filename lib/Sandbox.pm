@@ -172,26 +172,6 @@ sub load_file {
    $self->wait_for_slaves() unless $args{no_wait};
 }
 
-sub has_engine {
-   my ( $self, $host, $want_engine ) = @_;
-
-   # Get the current checksums on the host.
-   my $dbh = $self->get_dbh_for($host);
-   my $sql = "SHOW ENGINES";
-   my @engines = @{$dbh->selectall_arrayref($sql, {Slice => {} })};
-
-   # Diff the two sets of checksums: host to master (ref).
-   my $has_engine=0;
-   foreach my $engine ( @engines ) {
-      if ( $engine->{engine} =~ m/$want_engine/i ) {
-         $has_engine=1;
-         last;
-      }
-   }
-   return $has_engine;
-}
-
-
 sub _use_for {
    my ( $self, $server ) = @_;
    return "$self->{basedir}/$port_for{$server}/use";
@@ -595,6 +575,25 @@ sub do_as_root {
    }
    $dbh->disconnect;
    return $ok;
+}
+
+sub has_engine {
+   my ( $self, $host, $want_engine ) = @_;
+
+   # Get the current checksums on the host.
+   my $dbh = $self->get_dbh_for($host);
+   my $sql = "SHOW ENGINES";
+   my @engines = @{$dbh->selectall_arrayref($sql, {Slice => {} })};
+
+   # Diff the two sets of checksums: host to master (ref).
+   my $has_engine=0;
+   foreach my $engine ( @engines ) {
+      if ( $engine->{engine} =~ m/$want_engine/i ) {
+         $has_engine=1;
+         last;
+      }
+   }
+   return $has_engine;
 }
 
 sub _d {

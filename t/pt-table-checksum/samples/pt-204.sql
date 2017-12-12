@@ -1,0 +1,15 @@
+DROP DATABASE IF EXISTS test;
+CREATE DATABASE test;
+USE test;
+
+CREATE TABLE `test`.`t1` (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    f2 VARCHAR(30),
+    f3 TIMESTAMP
+) Engine=RocksDB;
+
+CREATE TABLE `test`.`t2` (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    f2 VARCHAR(30),
+    f3 TIMESTAMP
+) Engine=InnoDB;
