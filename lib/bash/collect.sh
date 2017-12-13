@@ -110,6 +110,8 @@ collect() {
    fi
    innodb_status 1
    tokudb_status 1
+   rocksdb_status 1
+
    $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status1" &
    open_tables                      >> "$d/$p-opentables1"   &
 
@@ -301,6 +303,8 @@ collect() {
 
    innodb_status 2
    tokudb_status 2
+   rocksdb_status 2
+
    $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status2" &
    open_tables                      >> "$d/$p-opentables2"   &
 
@@ -403,6 +407,18 @@ innodb_status() {
          done
       fi
    }
+}
+
+rocksdb_status() {
+    local n=$1
+
+    has_rocksdb=`$CMD_MYSQL $EXT_ARGV -e "SHOW ENGINES" | grep -i 'rocksdb'`
+    exit_code=$?
+
+    if [ $exit_code -eq 0 ]; then
+        $CMD_MYSQL $EXT_ARGV -e "SHOW ENGINE ROCKSDB STATUS\G" \
+                   >> "$d/$p-rocksdbstatus$n" || rm -f "$d/$p-rocksdbstatus$n"
+    fi
 }
 
 ps_locks_transactions() {
