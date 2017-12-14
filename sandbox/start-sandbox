@@ -176,11 +176,11 @@ make_sandbox() {
 
     if [ -x "$PERCONA_TOOLKIT_SANDBOX/bin/ps-admin" ]; then
         # try to enable RocksDB. Only available on Percona Server 5.7.19+
-        if [ "$version" > "5.6" ]; then
+        if [ "$version" > "5.6" -a -n "$ENABLE_ROCKSDB" ]; then
             $PERCONA_TOOLKIT_SANDBOX/bin/ps-admin --enable-rocksdb -u root -pmsandbox -h 127.1 -P $port
-            if [ -n "$ENABLE_TOKUDB" ]; then 
-                sudo $PERCONA_TOOLKIT_SANDBOX/bin/ps-admin --enable-tokudb -u root -pmsandbox -h 127.1 -P $port
-            fi
+        fi
+        if [ "$version" > "5.6" -a -n "$ENABLE_TOKUDB" ]; then 
+            sudo $PERCONA_TOOLKIT_SANDBOX/bin/ps-admin --enable-tokudb -u root -pmsandbox -h 127.1 -P $port
         fi
     fi
 
