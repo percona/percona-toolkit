@@ -267,6 +267,10 @@ opt=$1
 
 exit_status=0
 
+if [ -e ${PERCONA_TOOLKIT_SANDBOX}/lib/mysql/libjemalloc.so ]; then
+    export LD_PRELOAD=${PERCONA_TOOLKIT_SANDBOX}/lib/mysql/libjemalloc.so
+fi
+
 if [ $opt = 'checkconfig' ]; then
    checkconfig 1
    echo -n "Percona Toolkit test environment config is "
