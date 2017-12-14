@@ -36,7 +36,7 @@ before_script:
   - docker-compose exec mongo mongo --eval 'db.init.insert({})'
 
 script:
-  - go test -timeout 1m $(dep ensure)
+  - go test -timeout 1m $(./src/...)
 
 notifications:
   email: false

@@ -58,8 +58,7 @@
 [[projects]]
   name = "github.com/percona/pmgo"
   packages = [".","pmgomock"]
-  revision = "9566dc76df319b856a12f24a3b6852a0c6463eff"
-  version = "0.5.1"
+  version = "0.5.2"
 
 [[projects]]
   name = "github.com/pkg/errors"
