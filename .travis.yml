@@ -23,8 +23,7 @@ matrix:
       env:
 
 install:
-  - go get -u github.com/Masterminds/glide
-  - glide install -v
+  - go get -u github.com/golang/dep/cmd/dep
 
 before_script:
   # run docker containers
@@ -35,9 +34,10 @@ before_script:
   - docker-compose exec mongo mongo --version
   # we need at least one document in test db
   - docker-compose exec mongo mongo --eval 'db.init.insert({})'
+  - dep ensure
 
 script:
-  - go test -timeout 1m $(glide nv)
+  - go test -timeout 1m ./src/...
 
 notifications:
   email: false

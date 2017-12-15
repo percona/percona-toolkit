@@ -1978,6 +1978,32 @@ section_innodb () {
             "$(get_var innodb_adaptive_checkpoint "$variables_file")"
 }
 
+section_rocksdb () {
+    local variables_file="$1"
+    local status_file="$2"
+
+    local NAME_VAL_LEN=32
+
+    [ -e "$variables_file" -a -e "$status_file" ] || return
+
+    name_val "Block Cache Size" "$(shorten $(get_var rocksdb_block_cache_size "$variables_file") 0)"
+    name_val "Block Size" "$(shorten $(get_var rocksdb_block_size "$variables_file") 0)"
+    name_val "Bytes Per Sync" "$(shorten $(get_var rocksdb_bytes_per_sync "$variables_file") 0)"
+    name_val "Compaction Seq Deletes " "$(shorten $(get_var rocksdb_compaction_sequential_deletes "$variables_file") 0)"
+    name_val "Compaction Seq Deletes Count SD" "$(get_var rocksdb_compaction_sequential_deletes_count_sd "$variables_file")"
+    name_val "Compaction Seq Deletes Window" "$(shorten $(get_var rocksdb_compaction_sequential_deletes_window "$variables_file") 0)"
+    name_val "Default CF Options" "$(get_var rocksdb_default_cf_options "$variables_file")"
+    name_val "Max Background Jobs" "$(shorten $(get_var rocksdb_max_background_jobs "$variables_file") 0)"
+    name_val "Max Block Cache Size" "$(shorten $(get_var rocksdb_max_block_cache_size "$variables_file") 0)"
+    name_val "Max Block Size" "$(shorten $(get_var rocksdb_max_block_size "$variables_file") 0)"
+    name_val "Max Open Files" "$(shorten $(get_var rocksdb_max_open_files "$variables_file") 0)"
+    name_val "Max Total Wal Size" "$(shorten $(get_var rocksdb_max_total_wal_size "$variables_file") 0)"
+    name_val "Rate Limiter Bytes Per Second" "$(shorten $(get_var rocksdb_rate_limiter_bytes_per_sec "$variables_file") 0)"
+    name_val "Rate Limiter Bytes Per Sync" "$(shorten $(get_var rocksdb_bytes_per_sync "$variables_file") 0)"
+    name_val "Rate Limiter Wal Bytes Per Sync" "$(shorten $(get_var rocksdb_wal_bytes_per_sync "$variables_file") 0)"
+    name_val "Table Cache NumHardBits" "$(shorten $(get_var rocksdb_table_cache_numshardbits "$variables_file") 0)"
+    name_val "Wal Bytes per Sync" "$(shorten $(get_var rocksdb_wal_bytes_per_sync "$variables_file") 0)"
+}
 
 section_noteworthy_variables () {
    local file="$1"
@@ -2397,6 +2423,12 @@ report_mysql_summary () {
       if [ -s "$dir/innodb-status" ]; then
          format_innodb_status "$dir/innodb-status"
       fi
+  fi
+
+   local has_rocksdb=$($CMD_MYSQL $EXT_ARGV -ss -e 'SHOW ENGINES' 2>/dev/null | grep -i 'rocksdb')
+   if [ ! -z "$has_rocksdb" ]; then
+       section "RocksDB"
+       section_rocksdb "$dir/mysql-variables" "$dir/mysql-status"
    fi
 
    section "MyISAM"

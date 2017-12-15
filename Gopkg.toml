@@ -1,0 +1,73 @@
+# Gopkg.toml example
+#
+# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# for detailed Gopkg.toml documentation.
+#
+# required = ["github.com/user/thing/cmd/thing"]
+# ignored = ["github.com/user/project/pkgX", "bitbucket.org/user/project/pkgA/pkgY"]
+#
+# [[constraint]]
+#   name = "github.com/user/project"
+#   version = "1.0.0"
+#
+# [[constraint]]
+#   name = "github.com/user/project2"
+#   branch = "dev"
+#   source = "github.com/myfork/project2"
+#
+# [[override]]
+#  name = "github.com/x/y"
+#  version = "2.4.0"
+
+
+[[constraint]]
+  name = "github.com/Masterminds/semver"
+  version = "1.4.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/bradfitz/slice"
+
+[[constraint]]
+  name = "github.com/golang/mock"
+  version = "1.0.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/hashicorp/go-version"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/howeyc/gopass"
+
+[[constraint]]
+  name = "github.com/montanaflynn/stats"
+  version = "0.2.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/pborman/getopt"
+
+[[constraint]]
+  name = "github.com/percona/pmgo"
+  version = "0.5.1"
+
+[[constraint]]
+  name = "github.com/pkg/errors"
+  version = "0.8.0"
+
+[[constraint]]
+  name = "github.com/satori/go.uuid"
+  version = "1.1.0"
+
+[[constraint]]
+  name = "github.com/shirou/gopsutil"
+  version = "2.17.11"
+
+[[constraint]]
+  name = "github.com/sirupsen/logrus"
+  version = "1.0.4"
+
+[[constraint]]
+  branch = "v2"
+  name = "gopkg.in/mgo.v2"
