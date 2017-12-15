@@ -37,7 +37,7 @@ before_script:
   - dep ensure
 
 script:
-  - go test -timeout 1m ./...
+  - go test -timeout 1m ./src/...
 
 notifications:
   email: false
