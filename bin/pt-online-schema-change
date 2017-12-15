@@ -10065,6 +10065,12 @@ sub check_alter {
             die ($msg);
        }
    }
+   if ( $alter =~ m/Engine\s*=\s*["']?RocksDB["']?/i ) {
+      my $row = $cxn->dbh()->selectrow_arrayref('SELECT @@binlog_format');
+      if (scalar $row > 0 && $row->[0] eq 'STATEMENT') {
+          die("Cannot change engine to RocksDB while binlog_format is other than 'ROW'");
+      }
+   }
    # ########################################################################
    # Check for DROP PRIMARY KEY.
    # ########################################################################
