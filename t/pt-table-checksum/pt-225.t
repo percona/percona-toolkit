@@ -22,8 +22,9 @@ my $dbh = $sb->get_dbh_for('master');
 
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
-}
-else {
+} elsif ($sandbox_version lt '5.7') {
+   plan skip_all => "Generated columns are only available in MySQL 5.7+";
+} else {
    plan tests => 3;
 }
 
