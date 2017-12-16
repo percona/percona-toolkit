@@ -85,14 +85,6 @@ CREATE TABLE `func` (
   PRIMARY KEY (`name`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='User defined functions'
 
-mysql.gtid_executed
-CREATE TABLE `gtid_executed` (
-  `source_uuid` char(36) NOT NULL COMMENT 'uuid of the source where the transaction was originally executed.',
-  `interval_start` bigint(20) NOT NULL COMMENT 'First number of interval.',
-  `interval_end` bigint(20) NOT NULL COMMENT 'Last number of interval.',
-  PRIMARY KEY (`source_uuid`,`interval_start`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1
-
 mysql.help_category
 CREATE TABLE `help_category` (
   `help_category_id` smallint(5) unsigned NOT NULL,
@@ -146,6 +138,38 @@ CREATE TABLE `ndb_binlog_index` (
   `next_file` varchar(255) NOT NULL,
   PRIMARY KEY (`epoch`,`orig_server_id`,`orig_epoch`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1
+
+mysql.plugin
+CREATE TABLE `plugin` (
+  `name` varchar(64) NOT NULL DEFAULT '',
+  `dl` varchar(128) NOT NULL DEFAULT '',
+  PRIMARY KEY (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 STATS_PERSISTENT=0 COMMENT='MySQL plugins'
+
+mysql.proc
+CREATE TABLE `proc` (
+  `db` char(64) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '',
+  `name` char(64) NOT NULL DEFAULT '',
+  `type` enum('FUNCTION','PROCEDURE') NOT NULL,
+  `specific_name` char(64) NOT NULL DEFAULT '',
+  `language` enum('SQL') NOT NULL DEFAULT 'SQL',
+  `sql_data_access` enum('CONTAINS_SQL','NO_SQL','READS_SQL_DATA','MODIFIES_SQL_DATA') NOT NULL DEFAULT 'CONTAINS_SQL',
+  `is_deterministic` enum('YES','NO') NOT NULL DEFAULT 'NO',
+  `security_type` enum('INVOKER','DEFINER') NOT NULL DEFAULT 'DEFINER',
+  `param_list` blob NOT NULL,
+  `returns` longblob NOT NULL,
+  `body` longblob NOT NULL,
+  `definer` char(93) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '',
+  `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `modified` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+  `sql_mode` set('REAL_AS_FLOAT','PIPES_AS_CONCAT','ANSI_QUOTES','IGNORE_SPACE','NOT_USED','ONLY_FULL_GROUP_BY','NO_UNSIGNED_SUBTRACTION','NO_DIR_IN_CREATE','POSTGRESQL','ORACLE','MSSQL','DB2','MAXDB','NO_KEY_OPTIONS','NO_TABLE_OPTIONS','NO_FIELD_OPTIONS','MYSQL323','MYSQL40','ANSI','NO_AUTO_VALUE_ON_ZERO','NO_BACKSLASH_ESCAPES','STRICT_TRANS_TABLES','STRICT_ALL_TABLES','NO_ZERO_IN_DATE','NO_ZERO_DATE','INVALID_DATES','ERROR_FOR_DIVISION_BY_ZERO','TRADITIONAL','NO_AUTO_CREATE_USER','HIGH_NOT_PRECEDENCE','NO_ENGINE_SUBSTITUTION','PAD_CHAR_TO_FULL_LENGTH') NOT NULL DEFAULT '',
+  `comment` text CHARACTER SET utf8 COLLATE utf8_bin NOT NULL,
+  `character_set_client` char(32) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL,
+  `collation_connection` char(32) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL,
+  `db_collation` char(32) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL,
+  `body_utf8` longblob,
+  PRIMARY KEY (`db`,`name`,`type`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8 COMMENT='Stored Procedures'
 
 mysql.procs_priv
 CREATE TABLE `procs_priv` (
@@ -534,4 +558,13 @@ CREATE TABLE `store` (
   CONSTRAINT `fk_store_address` FOREIGN KEY (`address_id`) REFERENCES `address` (`address_id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_store_staff` FOREIGN KEY (`manager_staff_id`) REFERENCES `staff` (`staff_id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8
+
+sys.sys_config
+CREATE TABLE `sys_config` (
+  `variable` varchar(128) NOT NULL,
+  `value` varchar(128) DEFAULT NULL,
+  `set_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `set_by` varchar(128) DEFAULT NULL,
+  PRIMARY KEY (`variable`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8
 
