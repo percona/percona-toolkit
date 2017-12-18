@@ -6794,7 +6794,7 @@ sub recurse_to_slaves {
          PTDEBUG && _d('Recursing from',
             $dp->as_string($dsn), 'to', $dp->as_string($slave));
          $self->recurse_to_slaves(
-            { %$args, dsn => $slave, dbh => undef, parent => $dsn, slave_user => $slave_user, $slave_password => $slave_password }, $level + 1 );
+            { %$args, dsn => $slave, dbh => undef, parent => $dsn, slave_user => $slave_user, slave_password => $slave_password }, $level + 1 );
       }
    }
 }
@@ -10329,6 +10329,8 @@ sub sync_via_replication {
       $ms->recurse_to_slaves(
          {  dbh      => $src->{dbh},
             dsn      => $src->{dsn},
+            slave_user     => $o->got('slave-user') ? $o->get('slave-user') : '',
+            slave_password => $o->got('slave-password') ? $o->get('slave-password') : '',
             recurse  => 1,
             callback => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
