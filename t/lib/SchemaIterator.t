@@ -291,7 +291,7 @@ SKIP: {
       test_name => '-t d1.t1,d1.t3 (issue 806)',
    );
 
-   my $want = $sandbox_version le '5.6' ? "d1.t1 " : 'd1.t2 d1.t3 d2.t1 sys.sys_config ';
+   my $want = $sandbox_version le '5.6' ? "d1.t2 d1.t3 d2.t1 " : 'd1.t2 d1.t3 d2.t1 sys.sys_config ';
    test_so(
       filters   => ['--ignore-databases', 'mysql,sakila,percona_test',
                     '--ignore-tables', 'd1.t1'],
