@@ -5105,8 +5105,11 @@ sub get_slaves {
       $self->recurse_to_slaves(
          {  dbh            => $dbh,
             dsn            => $dsn,
-            slave_user     => $o->got('slave-user') ? $o->get('slave-user') : '',
-            slave_password => $o->got('slave-password') ? $o->get('slave-password') : '', 
+            slave_user          => $o->got('slave-user') ? $o->get('slave-user') : '',
+            slave_password      => $o->got('slave-password') ? $o->get('slave-password') : '', 
+            slave_host          => $o->got('slave-host') ? $o->get('slave-host') : '',
+            slave_port          => $o->got('slave-port') ? $o->get('slave-port') : '',
+            slave_defaults_file => $o->got('slave-defaults-file') ? $o->get('slave-defaults-file') : '', 
             callback  => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
@@ -5119,6 +5122,18 @@ sub get_slaves {
                if ($o->got('slave-password')) {
                   $slave_dsn->{p} = $o->get('slave-password');
                   PTDEBUG && _d("Slave password set");
+               }
+               if ($o->got('slave-host')) {
+                  $slave_dsn->{h} = $o->get('slave-host');
+                  PTDEBUG && _d("Slave host set");
+               }
+               if ($o->got('slave-port')) {
+                  $slave_dsn->{P} = $o->get('slave-port');
+                  PTDEBUG && _d("Slave port set");
+               }
+               if ($o->got('slave-defaults-file')) {
+                  $slave_dsn->{F} = $o->get('slave-defaults-file');
+                  PTDEBUG && _d("Slave defaults file set");
                }
                push @$slaves, $make_cxn->(dsn => $slave_dsn, dbh => $dbh);
                return;
@@ -5165,6 +5180,9 @@ sub recurse_to_slaves {
    my $dsn = $args->{dsn};
    my $slave_user = $args->{slave_user} || '';
    my $slave_password = $args->{slave_password} || '';
+   my $slave_host = $args->{slave_host} || '';
+   my $slave_port = $args->{slave_port} || '';
+   my $slave_defaults_file = $args->{slave_defaults_file} || '';
 
    my $methods = $self->_resolve_recursion_methods($dsn);
    PTDEBUG && _d('Recursion methods:', @$methods);
@@ -5181,6 +5199,18 @@ sub recurse_to_slaves {
    if ($slave_password) {
       $slave_dsn->{p} = $slave_password;
       PTDEBUG && _d("Slave password set");
+   }
+   if ($slave_host) {
+      $slave_dsn->{h} = $slave_host;
+      PTDEBUG && _d("Slave host set");
+   }
+   if ($slave_port) {
+      $slave_dsn->{P} = $slave_port;
+      PTDEBUG && _d("Slave port set");
+   }
+   if ($slave_defaults_file) {
+      $slave_dsn->{F} = $slave_defaults_file;
+      PTDEBUG && _d("Slave defaults file set");
    }
 
    my $dbh;
@@ -5223,7 +5253,7 @@ sub recurse_to_slaves {
          PTDEBUG && _d('Recursing from',
             $dp->as_string($dsn), 'to', $dp->as_string($slave));
          $self->recurse_to_slaves(
-            { %$args, dsn => $slave, dbh => undef, parent => $dsn, slave_user => $slave_user, slave_password => $slave_password }, $level + 1 );
+            { %$args, dsn => $slave, dbh => undef, parent => $dsn, slave_user => $slave_user, slave_password => $slave_password, slave_host => $slave_host, slave_port => $slave_port, slave_defaults_file => $slave_defaults_file }, $level + 1 );
       }
    }
 }
@@ -13531,6 +13561,24 @@ type: string
 Sets the password to be used to connect to the slaves.
 It can be used with --slave-user and the password for the user must be the same
 on all slaves.
+
+=item --slave-host
+
+type: string
+
+Sets the host to be used to connect to all slaves.
+
+=item --slave-port
+
+type: string
+
+Sets the port to be used to connect to all slaves.
+
+=item --slave-defaults-file
+
+type: string
+
+Sets the defaults-file to be used to connect to all slaves.
 
 =item --set-vars
 
