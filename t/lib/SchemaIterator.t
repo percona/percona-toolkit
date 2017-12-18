@@ -193,13 +193,13 @@ SKIP: {
 
    # Ignore some dbs and tbls.
    test_so(
-      filters   => ['--ignore-databases', 'mysql,sakila,d1,d3,percona_test'],
+      filters   => ['--ignore-databases', 'mysql,sakila,d1,d3,percona_test,sys'],
       result    => "d2.t1 ",
       test_name => '--ignore-databases',
    );
 
    test_so(
-      filters   => ['--ignore-databases', 'mysql,sakila,d2,d3,percona_test',
+      filters   => ['--ignore-databases', 'mysql,sakila,d2,d3,percona_test,sys',
                     '--ignore-tables', 't1,t2'],
       result    => "d1.t3 ",
       test_name => '--ignore-databases and --ignore-tables',
@@ -233,7 +233,7 @@ SKIP: {
    );
 
    test_so(
-      filters   => ['--ignore-databases-regex', '(?:^d[23]|mysql|info|sakila|percona_test)',
+      filters   => ['--ignore-databases-regex', '(?:^d[23]|mysql|info|sakila|percona_test|sys)',
                     '--ignore-tables-regex', 't[^23]'],
       result    => "d1.t2 d1.t3 ",
       test_name => '--ignore-databases-regex',
@@ -266,6 +266,7 @@ SKIP: {
    # ########################################################################
    # Filter by db-qualified table.  There is t1 in both d1 and d2.
    # We want only d1.t1.
+
    test_so(
       filters   => [qw(-t d1.t1)],
       result    => "d1.t1 ",
@@ -290,10 +291,11 @@ SKIP: {
       test_name => '-t d1.t1,d1.t3 (issue 806)',
    );
 
+   my $want = $sandbox_version le '5.6' ? "d1.t2 d1.t3 d2.t1 " : 'd1.t2 d1.t3 d2.t1 sys.sys_config ';
    test_so(
       filters   => ['--ignore-databases', 'mysql,sakila,percona_test',
                     '--ignore-tables', 'd1.t1'],
-      result    => "d1.t2 d1.t3 d2.t1 ",
+      result    => $want,
       test_name => '--ignore-databases and --ignore-tables d1.t1 (issue 806)',
    );
 
@@ -420,7 +422,7 @@ test_so(
 # ############################################################################
 
 test_so(
-   filters   => ['--ignore-databases', 'sakila,mysql'],
+   filters   => ['--ignore-databases', 'sakila,mysql,sys'],
    result    => "",
    lives_ok  => 1,
    resume    => 'sakila.payment',
@@ -430,7 +432,7 @@ test_so(
 $dbh->do("CREATE DATABASE zakila");
 $dbh->do("CREATE TABLE zakila.bug_911385 (i int)");
 test_so(
-   filters   => ['--ignore-databases', 'sakila,mysql'],
+   filters   => ['--ignore-databases', 'sakila,mysql,sys'],
    result    => "zakila.bug_911385 ",
    resume    => 'sakila.payment',
    test_name => "Bug 911385: ...and continues to the next db"
@@ -438,7 +440,7 @@ test_so(
 $dbh->do("DROP DATABASE zakila");
 
 test_so(
-   filters   => [qw(--ignore-tables-regex payment --ignore-databases mysql)],
+   filters   => ['--ignore-tables-regex', 'payment', '--ignore-databases', 'mysql,sys'],
    result    => "",
    lives_ok  => 1,
    resume    => 'sakila.payment',
@@ -446,7 +448,7 @@ test_so(
 );
 
 test_so(
-   filters   => [qw(--ignore-tables-regex payment --ignore-databases mysql)],
+   filters   => ['--ignore-tables-regex', 'payment', '--ignore-databases', 'mysql,sys'],
    result    => "sakila.rental sakila.staff sakila.store ",
    resume    => 'sakila.payment',
    test_name => "Bug 911385: ...and continues to the next table"

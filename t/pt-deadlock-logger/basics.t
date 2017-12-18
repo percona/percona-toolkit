@@ -43,6 +43,9 @@ $dbh2->commit;
 $dbh1->{InactiveDestroy} = 1;
 $dbh2->{InactiveDestroy} = 1;
 
+$dbh1->{mysql_auto_reconnect} = 1;
+$dbh2->{mysql_auto_reconnect} = 1;
+
 sub make_deadlock {
    # Fork off two children to deadlock against each other.
    my %children;
@@ -82,11 +85,27 @@ sub make_deadlock {
    foreach my $child ( keys %children ) {
       my $pid = waitpid($children{$child}, 0);
    }
-   $dbh1->commit;
-   $dbh2->commit;
+   eval {
+       $dbh1->commit;
+       $dbh1->disconnect();
+   };
+   eval {
+       $dbh2->commit;
+       $dbh2->disconnect();
+   };
+}
+
+sub reconnect {
+    my $dbh = shift;
+    $dbh->disconnect();
+    $dbh = $sb->get_dbh_for('master', { PrintError => 0, RaiseError => 1, AutoCommit => 0 });
+    return $dbh;
 }
 
 make_deadlock();
+
+$dbh1 = reconnect($dbh1);
+$dbh2 = reconnect($dbh2);
 
 # Test that there is a deadlock
 $output = $dbh1->selectrow_hashref('show /*!40101 engine*/ innodb status')->{status};
@@ -208,6 +227,9 @@ SKIP: {
 # #############################################################################
 # Done.
 # #############################################################################
+$dbh1 = reconnect($dbh1);
+$dbh2 = reconnect($dbh2);
+
 $dbh1->commit;
 $dbh2->commit;
 $sb->wipe_clean($dbh1);

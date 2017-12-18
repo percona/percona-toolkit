@@ -22,6 +22,10 @@ use File::Temp qw/ tempdir /;
 plan tests => 4;
 our $delay = 30;
 
+my $tmp_file = File::Temp->new();
+my $tmp_file_name = $tmp_file->filename;
+unlink $tmp_file_name;
+
 require "$trunk/bin/pt-online-schema-change";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
@@ -51,6 +55,10 @@ $slave_dbh->do('START SLAVE');
 diag('Loading test data');
 $sb->load_file('master', "t/pt-online-schema-change/samples/slave_lag.sql");
 
+my $num_rows = 10000;
+diag("Loading $num_rows into the table. This might take some time.");
+diag(`util/mysql_random_data_load_linux_amd64 --host=127.1 --port=12345 --user=msandbox --password=msandbox test pt178 $num_rows`);
+
 # Run a full table scan query to ensure the slave is behind the master
 $master_dbh->do('RESET QUERY CACHE');
 $slave_dbh->do('RESET QUERY CACHE');
@@ -60,8 +68,9 @@ $master_dbh->do('UPDATE `test`.`pt178` SET f2 = f2 + 1 WHERE f1 = ""');
 # pt-online-schema-change will wait on the slave at port 12346
 
 my $max_lag = $delay / 2;
-my $args = "$master_dsn,D=test,t=pt178 --execute --chunk-size 1 --max-lag 5 --alter 'ENGINE=InnoDB' ";
+my $args = "$master_dsn,D=test,t=pt178 --execute --chunk-size 1 --max-lag 5 --alter 'ENGINE=InnoDB' --pid $tmp_file_name";
 diag("Starting base test. This is going to take some time due to the delay in the slave");
+diag("pid: $tmp_file_name");
 my $output = `$trunk/bin/pt-online-schema-change $args 2>&1`;
 
 like(

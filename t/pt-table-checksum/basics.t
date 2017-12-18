@@ -196,6 +196,7 @@ $exit_status = pt_table_checksum::main(@args,
 $slave1_dbh->do("update percona.checksums set this_crc='' where db='sakila' and tbl='city' and (chunk=1 or chunk=6)");
 PerconaTest::wait_for_table($slave2_dbh, "percona.checksums", "db='sakila' and tbl='city' and (chunk=1 or chunk=6) and thic_crc=''");
 
+# 9
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args, qw(--replicate-check-only)) },
@@ -214,6 +215,7 @@ $output = output(
    stderr => 1,
 );
 
+# 10
 like(
    $output,
    qr/infinite loop detected/,
@@ -223,13 +225,14 @@ like(
 # ############################################################################
 # Oversize chunk.
 # ############################################################################
+# 11
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args,
          qw(-t osc.t2 --chunk-size 8 --explain --explain)) },
       "$sample/oversize-chunks.txt",
    ),
-   "Upper boundary same as next lower boundary"
+   "Upper boundary same as next lower boundary",
 );
 
 $output = output(
