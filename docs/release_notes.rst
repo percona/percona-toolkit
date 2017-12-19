@@ -1,6 +1,25 @@
 Release Notes
 *************
 
+v3.0.6 released 2017-11-20
+==========================
+
+Percona Toolkit 3.0.6 includes the following changes:
+
+New Features
+
+* :jirabug:`PT-221`: Improve ``pt-table-sync`` support for ``MyRocks``
+* :jirabug:`PT-218`: ``pt-stalk`` now checks the ``RocksDB`` status
+* :jirabug:`PT-214`:  ``pt-mysql-summary`` contains the ``RocksDB`` section
+* :jirabug:`PT-205`: ``pt-osc`` shows a message if trying to set the engine to ``rocksdb`` and ``binlog_format != row``
+* :jirabug:`PT-204`: ``pt-table-checksum`` skips ``RocksDB`` tables
+
+Bug fixes
+
+* :jirabug:`PT-234`: The genaral log parser cannot handle timestamps which include time zones
+* :jirabug:`PT-229`: ``pt-online-schema-change`` does not retry on a deadlock error when using ``Percona Server`` 5.7
+* :jirabug:`PT-225`: ``pt-table-checksum`` ignores generated columns
+
 v3.0.5 released 2017-11-20
 ==========================
 
@@ -9,7 +28,7 @@ Percona Toolkit 3.0.5 includes the following changes:
 New Features
 
  * :jirabug:`PMM-1590`: Improve MongoDB Profiler for ``PMM`` and ``PT``
- * :jirabug:`PT-216`: The ``mongodb-query-digest`` supports ``MongoDB` versions lower than 3.2; incorrect output was fixed.
+ * :jirabug:`PT-216`: The ``mongodb-query-digest`` supports ``MongoDB`` versions lower than 3.2; incorrect output was fixed.
  * :jirabug:`PT-182`: The ``pt-summary``, ``pt-mysql-summary``,  ``pt-mongodb-summary`` commands provide output in the the JSON format.
  * :jirabug:`PT-152`: ``pt-mysql-summary`` shows the output of the *Show Slave Hosts* command.
  * :jirabug:`PT-139`: ``pt-table-sync`` supports replication channels (requires MySQL version 5.7.6 or higher)
@@ -27,7 +46,7 @@ Bug fixes
  * :jirabug:`PT-186`: ``pt-online-schema-change --alter`` could fail if field names contained upper case characters. For more information, see :lpbug:`1705998`.
  * :jirabug:`PT-183`: In some cases ``pt-mongodb-query-digest`` could not connect to a db using authentication.
  * :jirabug:`PT-167`: In some cases, ``pt-kill`` could ignore the value of the ``--busy-time`` parameter.  For more information, see :lpbug:`1016272`.
- * :jirabug:`PT-161`: When run with the ``--skip-check-slave-lag``, the ``pt-table-checksum`` could could fail in some cases.
+ * :jirabug:`PT-161`: When run with the ``--skip-check-slave-lag``, the ``pt-table-checksum`` could fail in some cases.
 
 v3.0.4 released 2017-08-02
 ==========================
