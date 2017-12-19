@@ -16,7 +16,7 @@ New Features
 
 Bug fixes
 
-* :jirabug:`PT-234`: ``pt-query-digest`` produces empty output for the ``MySQL`` 5.7 general log with a timestamp
+* :jirabug:`PT-234`: The genaral log parser cannot handle timestamps which include time zones
 * :jirabug:`PT-229`: ``pt-online-schema-change`` does not retry on a deadlock error when using ``Percona Server`` 5.7
 * :jirabug:`PT-225`: ``pt-table-checksum`` ignores generated columns
 
