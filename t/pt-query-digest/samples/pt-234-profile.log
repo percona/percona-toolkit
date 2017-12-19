@@ -1,0 +1,11 @@
+/usr/local/mysql/bin/mysqld, Version: 5.7.19-17-log (Percona Server 
+(GPL), Release 17, Revision e19a6b7b73f). started with: 
+Tcp port: 3306 Unix socket: /var/run/mysqld/mysqld.sock 
+Time Id Command Argument 
+2017-12-08T14:56:57.252473-07:00 1 Query BEGIN 
+2017-12-08T14:56:57.252565-07:00 1 Query COMMIT /* implicit, from Xid_log_event */ 
+2017-12-08T14:56:57.252668-07:00 31 Execute SELECT pid, nhash, version, isDir, oid, isDel, userId, grpId, UNIX_TIMESTAMP(ctime) AS ctime FROM namespace WHERE nhash = 18271836372746674803 AND pid = 1674083955 AND version = 0 
+2017-12-08T14:56:57.252705-07:00 349 Execute SELECT id, name, pid, flags, userid, grpid as groupid, UNIX_TIMESTAMP(ctime) as ctime, COALESCE(UNIX_TIMESTAMP(mtime), 0) as mtime FROM directory WHERE id = 1127458736 
+2017-12-08T14:56:57.253326-07:00 1 Query BEGIN 
+2017-12-08T14:56:57.253412-07:00 1 Query COMMIT /* implicit, from Xid_log_event */ 
+2017-12-08T14:56:57.253694-07:00 1 Query BEGIN
