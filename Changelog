@@ -1,6 +1,6 @@
 Changelog for Percona Toolkit
 
-v3.0.6
+v3.0.6 released 2017-12-20
 
  * Fixed bug     PT-234: Genaral log parser cannot handle timestamps with tz
  * Fixed bug     PT-229: pt-online-schema-change does not retry on deadlock error when using percona 5.7
