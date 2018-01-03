@@ -1,7 +1,7 @@
 Release Notes
 *************
 
-v3.0.6 released 2017-12-04
+v3.0.6 released 2018-12-04
 ==========================
 
 Percona Toolkit 3.0.6 includes the following changes:
