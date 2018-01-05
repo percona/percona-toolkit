@@ -1164,11 +1164,11 @@ slave_status() {
       echo -e "\n$sql\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
 
-      sql="SELECT * FROM replication_connection_status\G"
+      sql="SELECT * FROM performance_schema.replication_connection_status\G"
       echo -e "\n$sql\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
 
-      sql="SELECT * FROM replication_applier_status JOIN replication_applier_status_by_coordinator USING(channel_name)\G"
+      sql="SELECT * FROM performance_schema.replication_applier_status JOIN performance_schema.replication_applier_status_by_coordinator USING(channel_name)\G"
       echo -e "\n$sql\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
    fi
