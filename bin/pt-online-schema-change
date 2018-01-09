@@ -10594,6 +10594,11 @@ sub check_orig_table {
       $orig_tbl->{tbl},
    );
    $orig_tbl->{tbl_struct} = $tp->parse($ddl);
+   if (lc($orig_tbl->{tbl_struct}->{engine})  eq 'rocksdb') {
+      my $msg = "The RocksDB storage engine is not supported with pt-online-schema-change " 
+              . "since RocksDB does not support gap locks.\n";
+      die $msg;
+   }
 
    # Must be able to nibble the original table (to copy rows to the new table).
    eval {

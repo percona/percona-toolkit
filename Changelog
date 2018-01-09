@@ -5,6 +5,7 @@ v3.0.6 released 2017-12-20
  * Fixed bug     PT-234: Genaral log parser cannot handle timestamps with tz
  * Fixed bug     PT-229: pt-online-schema-change does not retry on deadlock error when using percona 5.7
  * Fixed bug     PT-225: pt-table-checksum ignores generated cols
+ * Improvement   PT-222: pt-online-schema-change exit if trying to alter a RocksDB table
  * Improvement   PT-221: pt-table-sync pt-table-sync support for MyRocks
  * Improvement   PT-218: pt-stalk checks RocksDB status
  * Improvement   PT-214: Added RocksDB section to pt-mysql-summary
