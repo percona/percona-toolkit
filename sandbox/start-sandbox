@@ -38,9 +38,13 @@ make_sandbox() {
     # Make the sandbox dir and extract the base files.
     rm -rf /tmp/$port || die "Failed to rm /tmp/$port"
     mkdir /tmp/$port  || die "Failed to mkdir /tmp/$port"
+    local generating_database=0
+
     cp $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/my.sandbox.cnf /tmp/$port
     if [ -e $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/data.tar.gz ]; then
         tar xzf $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/data.tar.gz -C /tmp/$port
+    else
+        generating_database=1
     fi
 
     for script in "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/"*; do
@@ -127,9 +131,61 @@ make_sandbox() {
         cat "$EXTRA_DEFAULTS_FILE" >> /tmp/$port/my.sandbox.cnf
     fi
 
-    # If the sandbox is a slave, set it read_only.
-    if [ "$type" = "slave" ]; then
-        echo "read_only" >> /tmp/$port/my.sandbox.cnf
+    if [ $generating_database -eq 0 ]; then 
+        # If the sandbox is a slave, set it read_only.
+        if [ "$type" = "slave" ]; then
+            echo "read_only" >> /tmp/$port/my.sandbox.cnf
+        fi
+    fi
+
+    #if [ ! -e $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/data.tar.gz ]; then
+    #    if [ "$version" > "5.6" ]; then
+    #        rm -f /tmp/empty-defaults.txt
+    #        touch /tmp/empty-defaults.txt
+    #        rm -rf /tmp/$port/data
+    #        $PERCONA_TOOLKIT_SANDBOX/$mysqld --defaults-file=/tmp/${port}/my.sandbox.cnf --initialize
+    #    else 
+    #        # MySQL up to 5.6 needs mysql_install_db
+    #        # Support for it is a TODO
+    #        echo "For MySQL < 5.7 data.tar.gz is required to be in $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/"
+    #        exit 1
+    #    fi
+    #fi
+
+    if [ $generating_database -eq 1 ]; then
+        if [ "$version" > "5.6" ]; then
+            rm -f /tmp/empty-defaults.txt
+            touch /tmp/empty-defaults.txt
+            rm -rf /tmp/$port/data
+            $PERCONA_TOOLKIT_SANDBOX/$mysqld --defaults-file=/tmp/${port}/my.sandbox.cnf --initialize
+        else 
+            # MySQL up to 5.6 needs mysql_install_db
+            # Support for it is a TODO
+            echo "For MySQL < 5.7 data.tar.gz is required to be in $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/"
+            exit 1
+        fi
+
+        init_file="/tmp/$port/mysql-init"
+        rm -rf $init_file
+
+        $PERCONA_TOOLKIT_BRANCH/util/version_cmp $minor_version 5.7.5
+        if [ $? -eq 2 ]; then
+            echo "ALTER USER 'root'@'localhost' IDENTIFIED BY 'msandbox';" > $init_file
+            echo "GRANT ALL PRIVILEGES ON *.* TO 'msandbox'@'127.0.0.1' IDENTIFIED BY 'msandbox';" >> $init_file
+            echo "GRANT ALL PRIVILEGES ON *.* TO 'msandbox'@'localhost' IDENTIFIED BY 'msandbox';" >> $init_file
+            echo "FLUSH PRIVILEGES;" >> $init_file
+        else
+            echo "SET PASSWORD FOR 'root'@'localhost' = PASSWORD('msandbox');" > $init_file
+            echo "GRANT ALL PRIVILEGES ON *.* TO 'msandbox'@'localhost' IDENTIFIED BY 'msandbox';" >> $init_file
+            echo "GRANT ALL PRIVILEGES ON *.* TO 'msandbox'@'127.0.0.1' IDENTIFIED BY 'msandbox';" >> $init_file
+            echo "FLUSH PRIVILEGES;" >> $init_file
+        fi
+
+        if [ "$type" = "slave" ]; then
+            echo "FLUSH TABLES WITH READ LOCK;" >> $init_file
+            echo "SET GLOBAL read_only = ON;" >> $init_file
+            echo "UNLOCK TABLES;" >> $init_file
+        fi
     fi
 
     # Start the sandbox and check that it has InnoDB.
@@ -160,6 +216,7 @@ make_sandbox() {
         debug_sandbox $port
         exit 1
     fi
+
 
     /tmp/$port/use -e "CREATE DATABASE IF NOT EXISTS percona_test";
     /tmp/$port/use -e "CREATE TABLE IF NOT EXISTS percona_test.sentinel (id INT PRIMARY KEY, ping VARCHAR(64) NOT NULL DEFAULT '')";
@@ -264,8 +321,10 @@ if [ $type = "cluster" -o $APP = "pxc" ]; then
     #  ip=$(perl -MNet::Address::IP::Local -le 'print Net::Address::IP::Local->public')
     ip=$(hostname -i | cut -d" " -f2)
     version=`$PERCONA_TOOLKIT_SANDBOX/$mysqld -V --query_cache_size=0 --query_cache_type=0  --bind-address $ip 2>/dev/null | awk '{print $3}' | cut -d. -f 1,2`;
+    minor_version=`$PERCONA_TOOLKIT_SANDBOX/$mysqld -V --query_cache_size=0 --query_cache_type=0  --bind-address $ip 2>/dev/null | awk '{print $3}' | cut -d. -f 1,2,3 | cut -d- -f1`;
 else
     version=`$PERCONA_TOOLKIT_SANDBOX/$mysqld -V 2>/dev/null | awk '{print $3}' | cut -d. -f 1,2`;
+    minor_version=`$PERCONA_TOOLKIT_SANDBOX/$mysqld -V 2>/dev/null | awk '{print $3}' | cut -d. -f 1,2,3 | cut -d- -f1`;
 fi
 
 if [ ! -d "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version" ]; then

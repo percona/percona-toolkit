@@ -105,6 +105,7 @@ sub test_so {
             cmd_output => 1,
             transform_result => $transform,
             transform_sample => $transform,
+            update_sample => 1,
          ),
          $args{test_name},
       );
@@ -155,6 +156,7 @@ SKIP: {
    # ########################################################################
    # Test simple, unfiltered get_db_itr().
    # ########################################################################
+   warn "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM";
    test_so(
       result    => "$out/all-dbs-tbls-$sandbox_version.txt",
       test_name => "Iterate all schema objects with dbh",
@@ -454,6 +456,7 @@ test_so(
    test_name => "Bug 911385: ...and continues to the next table"
 );
 
+warn ">>>>>>>>>>>>>>>>>>>>>>>>>>>";
 # #############################################################################
 # Bug 1047335: pt-duplicate-key-checker fails when it encounters a crashed table
 # https://bugs.launchpad.net/percona-toolkit/+bug/1047335
@@ -465,6 +468,7 @@ diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
 diag(`$trunk/sandbox/start-sandbox master $master3_port >/dev/null`);
 my $dbh3 = $sb->get_dbh_for("master3");
 
+warn "A >>>>>>>>>>>>>>>>>>>>>>>>>>>";
 SKIP: {
    skip "No /dev/urandom, can't corrupt the database", 1
       unless -e q{/dev/urandom};
@@ -488,20 +492,25 @@ SKIP: {
 
    die "Cannot find .myi file for crashed_table" unless $myi && -f $myi;
 
+
    # Truncate the .myi file to corrupt it
    truncate($myi, 4096);
 
+   warn "B >>>>>>>>>>>>>>>>>>>>>>>>>>>";
    use File::Slurp qw( write_file );
 
    # Corrupt the .frm file
    open my $urand_fh, q{<}, "/dev/urandom"
       or die "Cannot open /dev/urandom";
+   warn "B1>>>>>>>>>>>>>>>>>>>>>>>>>>>";
    write_file($frm, scalar(<$urand_fh>), slurp_file($frm), scalar(<$urand_fh>));
    close $urand_fh;
 
+   warn "B2>>>>>>>>>>>>>>>>>>>>>>>>>>>";
    $dbh3->do("FLUSH TABLES");
    eval { $dbh3->do("SELECT etc FROM bug_1047335.crashed_table WHERE etc LIKE '10001' ORDER BY id ASC LIMIT 1") };
 
+   warn "C >>>>>>>>>>>>>>>>>>>>>>>>>>>";
    my $w = '';
    {
       local $SIG{__WARN__} = sub { $w .= shift };
@@ -513,6 +522,7 @@ SKIP: {
       qr/bug_1047335.crashed_table because SHOW CREATE TABLE failed:/,
       "->next() gives a warning if ->get_create_table dies from a strange error",
    );
+   warn "D >>>>>>>>>>>>>>>>>>>>>>>>>>>";
 
 }
 
