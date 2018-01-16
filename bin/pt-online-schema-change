@@ -56,7 +56,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.6';
+our $VERSION = '3.0.7';
 
 use strict;
 use warnings FATAL => 'all';
@@ -10393,15 +10393,15 @@ sub create_new_table {
       }
       if ( $o->get('data-dir') && !$o->got('remove-data-dir') ) {
           if ( (-d $o->get('data-dir')) && (-w $o->get('data-dir')) ){
-             $sql =~ s/DATA DIRECTORY='.*?'//; 
-             $sql .= sprintf(" DATA DIRECTORY='%s' ",$o->get('data-dir'));
+             $sql = insert_data_directory($sql, $o->get('data-dir'));
              PTDEBUG && _d("adding data dir ".$o->get('data-dir'));
+             PTDEBUG && _d("New query\n$sql\n");
           } else {
               die $o->get('data-dir') . " is not a directory or it is not writable";
           }
       }
       if ( $o->got('remove-data-dir') ) {
-         $sql =~ s/DATA DIRECTORY='.*?'//; 
+         $sql =~ s/DATA DIRECTORY\s*=\s*'.*?'//; 
          PTDEBUG && _d("removing data dir");
       }
       PTDEBUG && _d($sql);
@@ -10438,6 +10438,21 @@ sub create_new_table {
      . join("\n", map { "  $_" } @old_tables)
      . "\nExamine these tables and drop some or all of them if they are "
      . "no longer need, then re-run the tool.\n";
+}
+
+sub insert_data_directory {
+    my ($sql, $data_dir) = @_;
+    $sql =~ s/DATA DIRECTORY\s*=\s*'.*?'//; 
+
+    my $re_ps=qr/(\/\*!50100 )?(PARTITION|SUBPARTITION)/;
+    
+    if ($sql=~ m/$re_ps/) {
+        my $insert_pos=$-[0];
+        $sql = substr($sql, 0, $insert_pos - 1). " DATA DIRECTORY = '$data_dir' " .substr($sql, $insert_pos);
+    } else {
+        $sql .= " DATA DIRECTORY = '$data_dir' ";
+    }
+    return $sql;
 }
 
 sub swap_tables {
