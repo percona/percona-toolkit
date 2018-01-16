@@ -1039,20 +1039,21 @@ is_deeply(
 # https://bugs.launchpad.net/percona-toolkit/+bug/1047335
 # #############################################################################
 
-# We need to create a new server here, otherwise the whole test suite might die
-# if the crashed table can't be dropped.
-
-my $master3_port = 2900;
-my $master_basedir = "/tmp/$master3_port";
-diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
-diag(`$trunk/sandbox/start-sandbox master $master3_port >/dev/null`);
-my $dbh3 = $sb->get_dbh_for("master3");
-
-$sb->load_file('master3', "t/lib/samples/bug_1047335_crashed_table.sql");
 
 SKIP: {
-   skip "No /dev/urandom, can't corrupt the database", 1
-      unless -e q{/dev/urandom};
+   skip "No /dev/urandom, can't corrupt the database", 2 unless -e q{/dev/urandom};
+   skip "Cannot corrupt a table in MySQL 8", 2 if ($sandbox_version gt '5.7');
+
+   # We need to create a new server here, otherwise the whole test suite might die
+   # if the crashed table can't be dropped.
+   
+   my $master3_port = 2900;
+   my $master_basedir = "/tmp/$master3_port";
+   diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
+   diag(`$trunk/sandbox/start-sandbox master $master3_port >/dev/null`);
+   my $dbh3 = $sb->get_dbh_for("master3");
+   
+   $sb->load_file('master3', "t/lib/samples/bug_1047335_crashed_table.sql");
 
    my $db_dir         = "$master_basedir/data/bug_1047335";
    my $myi            = glob("$db_dir/crashed_table.[Mm][Yy][Iy]");
@@ -1086,25 +1087,25 @@ SKIP: {
    # This might fail. Doesn't matter -- stop_sandbox will just rm -rf the folder
    eval { $dbh3->do("DROP DATABASE IF EXISTS bug_1047335") };
 
+
+   $dbh3->do(q{DROP DATABASE IF EXISTS bug_1047335_2});
+   $dbh3->do(q{CREATE DATABASE bug_1047335_2});
+   
+   my $broken_frm = "$trunk/t/lib/samples/broken_tbl.frm";
+   my $db_dir_2   = "$master_basedir/data/bug_1047335_2";
+   
+   diag(`cp $broken_frm $db_dir_2 2>&1`);
+   
+   $dbh3->do("FLUSH TABLES");
+   
+   eval { $tp->get_create_table($dbh3, 'bug_1047335_2', 'broken_tbl') };
+   ok(
+      $EVAL_ERROR,
+      "get_create_table dies if SHOW CREATE TABLE failed (using broken_tbl.frm)",
+   );
+   
+   diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
 }
-
-$dbh3->do(q{DROP DATABASE IF EXISTS bug_1047335_2});
-$dbh3->do(q{CREATE DATABASE bug_1047335_2});
-
-my $broken_frm = "$trunk/t/lib/samples/broken_tbl.frm";
-my $db_dir_2   = "$master_basedir/data/bug_1047335_2";
-
-diag(`cp $broken_frm $db_dir_2 2>&1`);
-
-$dbh3->do("FLUSH TABLES");
-
-eval { $tp->get_create_table($dbh3, 'bug_1047335_2', 'broken_tbl') };
-ok(
-   $EVAL_ERROR,
-   "get_create_table dies if SHOW CREATE TABLE failed (using broken_tbl.frm)",
-);
-
-diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
 
 # #############################################################################
 # pt-duplicate-key-checker doesn't support triple quote in column name

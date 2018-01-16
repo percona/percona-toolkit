@@ -284,6 +284,9 @@ my $b = $ENV{PERCONA_TOOLKIT_BRANCH};
 $output = `perl $b/bin/pt-heartbeat -D test --interval 0.8 --update --replace --run-time 1 u=bob,F=/tmp/12346/my.sandbox.cnf 2>&1`;
 
 
+diag(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+diag($output);
+diag("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 like(
    $output,
    qr/--read-only/,
@@ -313,8 +316,8 @@ diag(`/tmp/12345/use -u root -e "DROP DATABASE test"`);
 # Done.
 # #############################################################################
 diag(`rm $pid_file $sent_file 2>/dev/null`);
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave1_dbh);
+# $sb->wipe_clean($master_dbh);
+# $sb->wipe_clean($slave1_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 
 done_testing;

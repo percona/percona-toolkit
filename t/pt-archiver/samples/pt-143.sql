@@ -13,7 +13,7 @@ CREATE TABLE test.`stats_r` (
 `min` float DEFAULT NULL,
 PRIMARY KEY (`id`,`start`,`end`,`user_id`(13),`interval`),
 KEY `cid_start_end` (`user_id`(13),`start`,`end`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM;
 
 CREATE TABLE test.stats_s LIKE test.stats_r;
 

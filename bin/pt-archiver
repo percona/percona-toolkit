@@ -2546,7 +2546,6 @@ sub get_dbh {
 
    if ( $cxn_string =~ m/mysql/i ) {
       my $sql;
-
       if ( my ($charset) = $cxn_string =~ m/charset=([\w]+)/ ) {
          $sql = qq{/*!40101 SET NAMES "$charset"*/};
          PTDEBUG && _d($dbh, $sql);
@@ -5932,6 +5931,7 @@ sub _d {
 # ###########################################################################
 package pt_archiver;
 
+use utf8;
 use English qw(-no_match_vars);
 use List::Util qw(max);
 use IO::File;
@@ -6029,6 +6029,7 @@ sub main {
       );
       $archive_file =~ s/%([dHimsYDt])/$fmt{$1}/g;
    }
+
 
    if ( !$o->got('help') ) {
       $o->save_error("--source DSN requires a 't' (table) part")
@@ -6129,6 +6130,14 @@ sub main {
          $dbh->do("SET SQL_LOG_BIN=0");
       }
 
+      my ($dbh_version) =  $dbh->selectrow_array("SELECT version()");
+      #if ($dbh_version =~ m/^(\d+\.\d+)\.\d+.*/ && $1 ge '8.0' && !$o->get('charset')) {
+      if ($dbh_version =~ m/^(\d+\.\d+)\.\d+.*/ && $1 ge '8.0') {
+         PTDEBUG && _d("MySQL 8.0+ detected and charset was not specified.\n Setting character_set_client = utf8mb4 and --charset=utf8");
+         $dbh->do('/*!40101 SET character_set_connection = utf8mb4 */;');
+         $o->set('charset', 'utf8');
+      }
+
       $table->{dbh}  = $dbh;
       $table->{irot} = get_irot($dbh);
 
@@ -6166,7 +6175,10 @@ sub main {
          my $sql = 'SELECT CONCAT(/*!40100 @@session.character_set_connection, */ "")';
          PTDEBUG && _d($sql);
          my ($dbh_charset) =  $table->{dbh}->selectrow_array($sql);
-         if ( ($dbh_charset || "") ne ($table->{info}->{charset} || "") ) {
+
+         if ( ($dbh_charset || "") ne ($table->{info}->{charset} || "") && 
+              !($dbh_charset eq "utf8mb4" && ($table->{info}->{charset} || "") eq ("utf8"))
+         ) {
             $src->{dbh}->disconnect() if $src && $src->{dbh};
             $dst->{dbh}->disconnect() if $dst && $dst->{dbh};
             die "Character set mismatch: "

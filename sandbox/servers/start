@@ -59,8 +59,6 @@ else
 fi
 cd $PWD
 
-sleep 5
-
 # Wait for MySQL to actually be up, i.e. to respond to queries.
 for i in $(_seq 60); do
    if sandbox_is_alive; then

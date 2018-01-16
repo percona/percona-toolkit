@@ -138,21 +138,8 @@ make_sandbox() {
         fi
     fi
 
-    #if [ ! -e $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/data.tar.gz ]; then
-    #    if [ "$version" > "5.6" ]; then
-    #        rm -f /tmp/empty-defaults.txt
-    #        touch /tmp/empty-defaults.txt
-    #        rm -rf /tmp/$port/data
-    #        $PERCONA_TOOLKIT_SANDBOX/$mysqld --defaults-file=/tmp/${port}/my.sandbox.cnf --initialize
-    #    else 
-    #        # MySQL up to 5.6 needs mysql_install_db
-    #        # Support for it is a TODO
-    #        echo "For MySQL < 5.7 data.tar.gz is required to be in $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/"
-    #        exit 1
-    #    fi
-    #fi
-
     if [ $generating_database -eq 1 ]; then
+        echo "Creating default databases ..."
         if [ "$version" > "5.6" ]; then
             rm -f /tmp/empty-defaults.txt
             touch /tmp/empty-defaults.txt
@@ -171,8 +158,14 @@ make_sandbox() {
         $PERCONA_TOOLKIT_BRANCH/util/version_cmp $minor_version 5.7.5
         if [ $? -eq 2 ]; then
             echo "ALTER USER 'root'@'localhost' IDENTIFIED BY 'msandbox';" > $init_file
-            echo "GRANT ALL PRIVILEGES ON *.* TO 'msandbox'@'127.0.0.1' IDENTIFIED BY 'msandbox';" >> $init_file
-            echo "GRANT ALL PRIVILEGES ON *.* TO 'msandbox'@'localhost' IDENTIFIED BY 'msandbox';" >> $init_file
+            echo "CREATE USER IF NOT EXISTS 'msandbox'@'%';" > $init_file
+            echo "ALTER USER 'msandbox'@'%' IDENTIFIED BY 'msandbox' REQUIRE NONE PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK;" >> $init_file
+            echo "GRANT ALL PRIVILEGES ON *.* TO 'msandbox'@'%';" >> $init_file
+            echo "-- Grants for 'root'@'localhost'" >> $init_file
+            echo "CREATE USER IF NOT EXISTS 'root'@'localhost';" >> $init_file
+            echo "ALTER USER 'root'@'localhost' IDENTIFIED BY 'msandbox' REQUIRE NONE PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK;" >> $init_file
+            echo "GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;" >> $init_file
+            echo "GRANT PROXY ON ''@'' TO 'root'@'localhost' WITH GRANT OPTION;" >> $init_file
             echo "FLUSH PRIVILEGES;" >> $init_file
         else
             echo "SET PASSWORD FOR 'root'@'localhost' = PASSWORD('msandbox');" > $init_file

@@ -4671,6 +4671,8 @@ type: size; group: Tests
 Table data uses n bytes of space.  This tests the Data_length column.
 The specified size can be "NULL" to test where Data_length IS NULL.
 
+Note: Starting from MySQL 8.0, empty tables return 0 instead of NULL.
+
 =item --dblike
 
 type: string; group: Tests
