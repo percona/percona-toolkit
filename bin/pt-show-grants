@@ -2012,7 +2012,7 @@ sub main {
             my $grant = $_;
             PTDEBUG && _d($grant);
             my ( $grants, $on_what, $user ) = $grant
-               =~ m/GRANT (.*?) ON (.*?) TO ('[^']*'\@'[^']*')/;
+               =~ m/GRANT (.*?) ON (.*?) TO ([`'][^'`]*[`']\@[`'][^'`]*[`'])/;
             PTDEBUG && _d('grants:', $grants, 'on_what:', $on_what,
                'user:', $user);
 

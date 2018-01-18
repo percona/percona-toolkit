@@ -50,6 +50,21 @@ $output = output(
    sub { pt_show_grants::main('-F', $cnf, qw(--only bob --no-header)); }
 );
 
+my $expected_80 = <<'END_OUTPUT_0';
+-- Grants for 'bob'@'%'
+CREATE USER IF NOT EXISTS 'bob'@'%';
+ALTER USER 'bob'@'%' IDENTIFIED WITH 'mysql_native_password' REQUIRE NONE PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK PASSWORD HISTORY DEFAULT PASSWORD REUSE INTERVAL DEFAULT;
+GRANT USAGE ON *.* TO `bob`@`%`;
+-- Grants for 'bob'@'192.168.1.1'
+CREATE USER IF NOT EXISTS 'bob'@'192.168.1.1';
+ALTER USER 'bob'@'192.168.1.1' IDENTIFIED WITH 'mysql_native_password' REQUIRE NONE PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK PASSWORD HISTORY DEFAULT PASSWORD REUSE INTERVAL DEFAULT;
+GRANT USAGE ON *.* TO `bob`@`192.168.1.1`;
+-- Grants for 'bob'@'localhost'
+CREATE USER IF NOT EXISTS 'bob'@'localhost';
+ALTER USER 'bob'@'localhost' IDENTIFIED WITH 'mysql_native_password' REQUIRE NONE PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK PASSWORD HISTORY DEFAULT PASSWORD REUSE INTERVAL DEFAULT;
+GRANT USAGE ON *.* TO `bob`@`localhost`;
+END_OUTPUT_0
+
 my $expected_57 = <<'END_OUTPUT_1';
 -- Grants for 'bob'@'%'
 CREATE USER IF NOT EXISTS 'bob'@'%';
@@ -74,7 +89,7 @@ GRANT USAGE ON *.* TO 'bob'@'192.168.1.1';
 GRANT USAGE ON *.* TO 'bob'@'localhost';
 END_OUTPUT_2
 
-my $expected = $sandbox_version < '5.7' ? $expected_56 : $expected_57;
+my $expected =  $sandbox_version < '5.7' ? $expected_56 : $sandbox_version < '8.0' ? $expected_57 : $expected_80;
 
 is(
    $output,
@@ -85,6 +100,13 @@ is(
 $output = output(
    sub { pt_show_grants::main('-F', $cnf, qw(--only bob@192.168.1.1 --no-header)); }
 );
+
+$expected_80 = <<'END_OUTPUT_5';
+-- Grants for 'bob'@'192.168.1.1'
+CREATE USER IF NOT EXISTS 'bob'@'192.168.1.1';
+ALTER USER 'bob'@'192.168.1.1' IDENTIFIED WITH 'mysql_native_password' REQUIRE NONE PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK PASSWORD HISTORY DEFAULT PASSWORD REUSE INTERVAL DEFAULT;
+GRANT USAGE ON *.* TO `bob`@`192.168.1.1`;
+END_OUTPUT_5
 
 $expected_57 = <<'END_OUTPUT_3';
 -- Grants for 'bob'@'192.168.1.1'
@@ -98,7 +120,7 @@ $expected_56 = <<'END_OUTPUT_4';
 GRANT USAGE ON *.* TO 'bob'@'192.168.1.1';
 END_OUTPUT_4
 
-$expected = $sandbox_version < '5.7' ? $expected_56 : $expected_57;
+$expected = $sandbox_version < '5.7' ? $expected_56 : $sandbox_version < '8.0' ? $expected_57: $expected_80;
 
 is(
    $output,
