@@ -262,6 +262,10 @@ is(
 
 diag(`/tmp/12345/use -u root -e "GRANT ALL ON *.* TO 'bob'\@'%' IDENTIFIED BY 'msandbox'"`);
 diag(`/tmp/12345/use -u root -e "REVOKE SUPER ON *.* FROM 'bob'\@'%'"`);
+if ($sandbox_version ge '8.0') {
+    diag(`/tmp/12345/use -u root -e "REVOKE CONNECTION_ADMIN ON *.* FROM 'bob'\@'%'"`);
+}
+diag(`/tmp/12345/use -u root -e "FLUSH PRIVILEGES"`);
 
 # Some subtlety here. 'bob' doesn't have enough privileges to change binlog_format
 # to STATEMENT if it's set to ROW, so the tool will fail with a different error 
@@ -283,10 +287,6 @@ $output = output(
 my $b = $ENV{PERCONA_TOOLKIT_BRANCH};
 $output = `perl $b/bin/pt-heartbeat -D test --interval 0.8 --update --replace --run-time 1 u=bob,F=/tmp/12346/my.sandbox.cnf 2>&1`;
 
-
-diag(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-diag($output);
-diag("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 like(
    $output,
    qr/--read-only/,

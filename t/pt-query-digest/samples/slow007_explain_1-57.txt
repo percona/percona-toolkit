@@ -28,7 +28,7 @@
 # Tables
 #    SHOW TABLE STATUS FROM `food` LIKE 'trees'\G
 #    SHOW CREATE TABLE `food`.`trees`\G
-# EXPLAIN /*!50100 PARTITIONS*/
+# EXPLAIN /*!50100 PARTITIONS */
 SELECT fruit FROM trees\G
 # *************************** 1. row ***************************
 #            id: 1

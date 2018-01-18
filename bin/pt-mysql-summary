@@ -2305,7 +2305,8 @@ report_mysql_summary () {
    section "Plugins"
    name_val "InnoDB compression" "$(get_plugin_status "$dir/mysql-plugins" "INNODB_CMP")"
 
-   if [ "$(get_var have_query_cache "$dir/mysql-variables")" ]; then
+   local has_query_cache=$(get_var have_query_cache "$dir/mysql-variables")
+   if [ "$has_query_cache == 'YES' ]; then
       section "Query cache"
       local query_cache_size=$(get_var query_cache_size "$dir/mysql-variables")
       local used=$(( ${query_cache_size} - $(get_var Qcache_free_memory "$dir/mysql-status") ))

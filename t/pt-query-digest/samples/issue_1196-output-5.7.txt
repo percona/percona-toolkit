@@ -32,7 +32,7 @@
 # Tables
 #    SHOW TABLE STATUS FROM `issue_1196` LIKE 't'\G
 #    SHOW CREATE TABLE `issue_1196`.`t`\G
-# EXPLAIN /*!50100 PARTITIONS*/
+# EXPLAIN /*!50100 PARTITIONS */
 select t.a, count(*) from t join t t2 using(a) group by 1 order by 2 desc limit 10\G
 # *************************** 1. row ***************************
 #            id: 1

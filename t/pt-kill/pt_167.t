@@ -37,12 +37,6 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 
-$sb->load_file('master', "t/pt-kill/samples/pt_167.sql");
-my $ps = $dbh->prepare('INSERT INTO test.foo VALUES (?)');
-for (my $i=0; $i < 20000; $i++) {
-    $ps->execute($i);
-}
-
 sub start_thread {
    my ($dp, $o, $dsn, $sleep_time) = @_;
 
@@ -51,7 +45,7 @@ sub start_thread {
    my $cxn = new Cxn(DSNParser => $dp, OptionParser => $o, dsn => $dsn);
    $cxn->connect();
    my $dbh = $cxn->dbh();
-   my $sth = $dbh->prepare('SELECT COUNT(*) FROM (SELECT a.id AS a_id, b.id AS b_id FROM foo AS a, foo AS b) AS c');
+   my $sth = $dbh->prepare('SELECT SLEEP(10)');
    # Since this query is going to be killed, wrap the execution in an eval to prevent
    # displaying the error message.
    eval {
@@ -59,7 +53,7 @@ sub start_thread {
    };
 }
 
-my $dsn = "h=127.1,P=12345,u=msandbox,p=msandbox,D=test;mysql_server_prepare=1";
+my $dsn = "h=127.1,P=12345,u=msandbox,p=msandbox,D=sakila;mysql_server_prepare=1";
 my $thr = threads->create('start_thread', $dp, $o, $dp->parse($dsn), 1);
 $thr->detach();
 threads->yield();
@@ -69,7 +63,7 @@ sleep(1);
 my $rows = $dbh->selectall_hashref('show processlist', 'id');
 my $pid = 0;  # reuse, reset
 map  { $pid = $_->{id} }
-grep { $_->{info} && $_->{info} =~ m/SELECT COUNT\(\*\) FROM \(SELECT a.id/ }
+grep { $_->{info} && $_->{info} =~ m/SELECT SLEEP\(10\)/ }
 values %$rows;
 
 ok(

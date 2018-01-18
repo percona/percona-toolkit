@@ -41,13 +41,12 @@ if ( !$master_dbh ) {
 my @args = (qw(--set-vars innodb_lock_wait_timeout=3));
 my $output;
 my $exit_status;
-my $sample  = "t/pt-online-schema-change/samples/";
 
-$sb->load_file('master', "$sample/pt-229.sql");
+$sb->load_file('master', "t/pt-online-schema-change/samples/pt-229.sql");
 
 my $num_rows = 40000;
 diag("Loading $num_rows into the table. This might take some time.");
-diag(`util/mysql_random_data_load_linux_amd64 --host=127.1 --port=12345 --user=msandbox --password=msandbox test test_a $num_rows`);
+diag(`util/mysql_random_data_loader --host=127.1 --port=12345 --user=msandbox --password=msandbox test test_a $num_rows`);
 diag("$num_rows rows loaded. Starting tests.");
 $master_dbh->do("FLUSH TABLES");
 
