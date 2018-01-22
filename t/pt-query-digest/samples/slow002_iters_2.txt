@@ -36,7 +36,7 @@ update db2.tuningdetail_21_265507 n
       inner join db1.gonzo a using(gonzo) 
       set n.column1 = a.column1, n.word3 = a.word3\G
 # Converted for EXPLAIN
-# EXPLAIN /*!50100 PARTITIONS*/
+# EXPLAIN /*!50100 PARTITIONS */
 select  n.column1 = a.column1, n.word3 = a.word3 from db2.tuningdetail_21_265507 n
       inner join db1.gonzo a using(gonzo) \G
 

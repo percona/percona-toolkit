@@ -326,12 +326,17 @@ like($EVAL_ERROR, qr/has no connected slaves/, 'slave 1 is not slave of slave 2'
 map { $ms->stop_slave($_) } @slaves;
 map { $ms->start_slave($_) } @slaves;
 
+# Give the slaves so time to restart
+sleep(5);
+
 my $res;
 $res = $ms->wait_for_master(
    master_status => $ms->get_master_status($dbh),
    slave_dbh     => $slaves[0],
-   timeout       => 1,
+   timeout       => 10,
 );
+warn "res->{result}: $res->{result}";
+
 ok($res->{result} >= 0, 'Wait was successful');
 
 $ms->stop_slave($slaves[0]);

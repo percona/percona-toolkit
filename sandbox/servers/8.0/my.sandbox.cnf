@@ -3,7 +3,6 @@ user     = msandbox
 password = msandbox
 port     = PORT
 socket   = /tmp/PORT/mysql_sandboxPORT.sock
-loose-local-infile=1
 
 [mysqld]
 port                       = PORT

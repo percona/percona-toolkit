@@ -467,7 +467,7 @@ sub query_report {
          }
       }
 
-      my $partitions_msg = $self->{no_partitions} ? '' : '/*!50100 PARTITIONS */';
+      my $partitions_msg = $self->{no_partitions} ? '' : '/*!50100 PARTITIONS*/';
       if ( $groupby eq 'fingerprint' ) {
          # Shorten it if necessary (issue 216 and 292).           
          my $samp_query = $qr->shorten($vals->{samp_query}, $self->{options}->{shorten})
@@ -1308,7 +1308,7 @@ sub explain_report {
          }
          my $sth;
          eval {
-             $sth = $dbh->prepare("EXPLAIN /*!50100 PARTITIONS */ $query");
+             $sth = $dbh->prepare("EXPLAIN /*!50100 PARTITIONS*/ $query");
              $sth->execute();
          };
          if ($EVAL_ERROR) { # MySQL 8.0+ doesn't support PARTITIONS
