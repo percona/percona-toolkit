@@ -4889,7 +4889,12 @@ sub make_row_checksum {
             $result .= ' + 0';
          }
          elsif ( $args{float_precision} && $type =~ m/float|double/ ) {
-            $result = "ROUND($result, $args{float_precision})";
+            if ( $args{float_log_precision} ) {
+                $result = "IF($result = 0, 0, SIGN($result) * ROUND(LOG2(ABS($result)), $args{float_precision}))";
+            }
+            else {
+                $result = "ROUND($result, $args{float_precision})";
+            }
          }
          elsif ( $args{trim} && $type =~ m/varchar/ ) {
             $result = "TRIM($result)";
@@ -4909,7 +4914,15 @@ sub make_row_checksum {
       $query = join(', ',
                   map { 
                      my $col = $_;
-                     if ( $col =~ m/\+ 0/ ) {
+                     if ( $col =~ m/SIGN/ ) {
+                        my ($real_col) = m/SIGN\(([^\)]+)\)/;
+                        $col .= " AS $real_col";
+                     }
+                     elsif ( $col =~ m/ROUND/ ) {
+                        my ($real_col) = m/ROUND\(([^,]+)/;
+                        $col .= " AS $real_col";
+                     }
+                     elsif ( $col =~ m/\+ 0/ ) {
                         my ($real_col) = /^(\S+)/;
                         $col .= " AS $real_col";
                      }
@@ -10710,6 +10723,7 @@ sub sync_a_table {
                               || $o->get('bidirectional')
                               || 0,
          float_precision   => $o->get('float-precision'),
+         float_log_precision => $o->get('float-log-precision'),
          index_hint        => $o->get('index-hint'),
          chunk_index       => $o->get('chunk-index'),
          chunk_col         => $o->get('chunk-column'),
@@ -12340,6 +12354,14 @@ values on different MySQL versions and hardware.  The default is no rounding;
 the values are converted to strings by the CONCAT() function, and MySQL chooses
 the string representation.  If you specify a value of 2, for example, then the
 values 1.008 and 1.009 will be rounded to 1.01, and will checksum as equal.
+
+=item --float-log-precision
+
+Activate an alternative rounding algorithm instead of the simple ROUND()
+when using L<"--float-precision">. This is necessary to compare very small or
+large floats. The algorithm is:
+
+IF(col = 0, 0, SIGN(col) * ROUND(LOG2(ABS(col)), float_precision))
 
 =item --[no]foreign-key-checks
 
