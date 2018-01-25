@@ -135,7 +135,7 @@ CREATE TABLE `innodb_ddl_log` (
   `new_file_path` varchar(512) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `thread_id` (`thread_id`)
-) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB AUTO_INCREMENT=280 DEFAULT CHARSET=utf8mb4 STATS_PERSISTENT=0
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB AUTO_INCREMENT=612 DEFAULT CHARSET=utf8mb4 STATS_PERSISTENT=0
 
 mysql.innodb_dynamic_metadata
 CREATE TABLE `innodb_dynamic_metadata` (
