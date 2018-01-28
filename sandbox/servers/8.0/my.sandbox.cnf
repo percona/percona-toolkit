@@ -29,7 +29,7 @@ report-host                = 127.0.0.1
 report-port                = PORT
 server-id                  = PORT
 #local_infile               = ON
-#default_authentication_plugin=mysql_native_password
+default_authentication_plugin=mysql_native_password
 
 # fkc test
 binlog_format              = STATEMENT

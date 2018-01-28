@@ -315,6 +315,7 @@ sub test_alter_table {
       # still functiona: i.e. that they'll prevent us from delete
       # a parent row that's being referenced by a child.
       my $sql = "DELETE FROM $table WHERE $pk_col=1 LIMIT 1";
+      warn ">> SQL: $sql";
       eval {
          $master_dbh->do($sql);
       };
@@ -471,6 +472,7 @@ test_alter_table(
    ],
 );
 
+diag(">>>>>>>");
 test_alter_table(
    name       => "Basic FK drop_swap --execute",
    table      => "pt_osc.country",
@@ -487,6 +489,7 @@ test_alter_table(
    ],
 );
 
+diag("2 >>>>>>>");
 # Let the tool auto-determine the fk update method.  This should choose
 # the rebuild_constraints method because the tables are quite small.
 # This is tested by indicating the rebuild_constraints method, which
@@ -510,6 +513,7 @@ test_alter_table(
    ],
 );
 
+diag("3 >>>>>>>");
 # Specify --alter-foreign-keys-method for a table with no child tables.
 test_alter_table(
    name        => "Child table",
@@ -527,6 +531,7 @@ test_alter_table(
    ],
 );
 
+diag("4 >>>>>>>");
 # Use drop_swap to alter address, which no other table references,
 # so the tool should re-enable --swap-tables and --drop-old-table.
 test_alter_table(
@@ -545,6 +550,7 @@ test_alter_table(
    ],
 );
 
+diag("5 >>>>>>>");
 # Alter city and verify that its fk to country still exists.
 # (https://bugs.launchpad.net/percona-toolkit/+bug/969726)
 test_alter_table(
