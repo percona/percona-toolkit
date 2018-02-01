@@ -20,12 +20,15 @@ use Sandbox;
 use SqlModes;
 use File::Temp qw/ tempdir /;
 
-plan tests => 2;
 
 require "$trunk/bin/pt-online-schema-change";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+
+if ($sandbox_version ge '8.0') {
+    plan skip_all => 'PXC 8 does not exist yet';
+}
 
 our ($master_dbh, $master_dsn) = $sb->start_sandbox(
    server => 'master',
@@ -36,6 +39,8 @@ our ($master_dbh, $master_dsn) = $sb->start_sandbox(
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
+
+plan tests => 2;
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the

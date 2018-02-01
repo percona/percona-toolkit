@@ -18,7 +18,7 @@ innodb_data_home_dir       = /tmp/PORT/data
 innodb_lock_wait_timeout   = 3
 innodb_log_file_size       = 5M
 innodb_log_group_home_dir  = /tmp/PORT/data
-key_buffer_size            = 16M
+key_buffer_size            = 5M
 local-infile               = 1
 log-bin                    = mysql-bin
 log-error                  = /tmp/PORT/data/mysqld.log
@@ -28,7 +28,10 @@ relay_log                  = mysql-relay-bin
 report-host                = 127.0.0.1
 report-port                = PORT
 server-id                  = PORT
-#local_infile               = ON
+#slow-query-log             = 1
+#slow-query-log-file        = /tmp/PORT/data/slow.log
+#log_slow_admin_statements  = 1
+#long_query_time            = 0
 default_authentication_plugin=mysql_native_password
 
 # fkc test

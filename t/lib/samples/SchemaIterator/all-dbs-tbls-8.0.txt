@@ -131,11 +131,11 @@ CREATE TABLE `innodb_ddl_log` (
   `page_no` int(10) unsigned DEFAULT NULL,
   `index_id` bigint(20) unsigned DEFAULT NULL,
   `table_id` bigint(20) unsigned DEFAULT NULL,
-  `old_file_path` varchar(512) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL,
-  `new_file_path` varchar(512) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL,
+  `old_file_path` varchar(512) COLLATE utf8_bin DEFAULT NULL,
+  `new_file_path` varchar(512) COLLATE utf8_bin DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `thread_id` (`thread_id`)
-) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB AUTO_INCREMENT=612 DEFAULT CHARSET=utf8mb4 STATS_PERSISTENT=0
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB AUTO_INCREMENT=478 DEFAULT CHARSET=utf8 COLLATE=utf8_bin STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC
 
 mysql.innodb_dynamic_metadata
 CREATE TABLE `innodb_dynamic_metadata` (
@@ -143,7 +143,7 @@ CREATE TABLE `innodb_dynamic_metadata` (
   `version` bigint(20) unsigned NOT NULL,
   `metadata` blob NOT NULL,
   PRIMARY KEY (`table_id`)
-) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC
 
 mysql.password_history
 CREATE TABLE `password_history` (
@@ -316,7 +316,7 @@ CREATE TABLE `user` (
   `max_updates` int(11) unsigned NOT NULL DEFAULT '0',
   `max_connections` int(11) unsigned NOT NULL DEFAULT '0',
   `max_user_connections` int(11) unsigned NOT NULL DEFAULT '0',
-  `plugin` char(64) COLLATE utf8_bin NOT NULL DEFAULT 'mysql_native_password',
+  `plugin` char(64) COLLATE utf8_bin NOT NULL DEFAULT 'caching_sha2_password',
   `authentication_string` text COLLATE utf8_bin,
   `password_expired` enum('N','Y') CHARACTER SET utf8 NOT NULL DEFAULT 'N',
   `password_last_changed` timestamp NULL DEFAULT NULL,

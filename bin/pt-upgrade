@@ -10243,7 +10243,12 @@ sub disable_query_cache {
 
    my $sql = 'SELECT @@query_cache_type';
    PTDEBUG && _d($sql);
-   my ($query_cache_type) = $dbh->selectrow_array($sql);
+   my $query_cache_type;
+   eval { ($query_cache_type) = $dbh->selectrow_array($sql) };
+   # There is no query cache in MySQL 8.0+
+   if ( $EVAL_ERROR =~ m/Unknown system variable 'query_cache_type'/i ) {
+       return;
+   }
    PTDEBUG && _d($query_cache_type);
    return if ($query_cache_type || '') =~ m/OFF|0/;
 
