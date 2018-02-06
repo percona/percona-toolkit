@@ -28,10 +28,10 @@ relay_log                  = mysql-relay-bin
 report-host                = 127.0.0.1
 report-port                = PORT
 server-id                  = PORT
-#slow-query-log             = 1
-#slow-query-log-file        = /tmp/PORT/data/slow.log
-#log_slow_admin_statements  = 1
-#long_query_time            = 0
+slow-query-log             = 1
+slow-query-log-file        = /tmp/PORT/data/slow.log
+log_slow_admin_statements  = 1
+long_query_time            = 0
 default_authentication_plugin=mysql_native_password
 
 # fkc test
