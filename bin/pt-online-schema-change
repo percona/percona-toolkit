@@ -4281,7 +4281,8 @@ sub recurse_to_slaves {
       PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
    };
    if ( $EVAL_ERROR ) {
-      print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), "\n"
+      #TODO REMOVE DEBUG
+      print STDERR "1> Cannot connect to ", $dp->as_string($slave_dsn), "\n"
          or die "Cannot print: $OS_ERROR";
       return;
    }
@@ -8693,7 +8694,8 @@ sub main {
                   # to stop lagging.  If any replica is stopped, the tool
                   # waits forever until the replica is started."
                   # https://bugs.launchpad.net/percona-toolkit/+bug/1402051
-                  PTDEBUG && _d('Cannot connect to', $cxn->name(), ':',
+                  #TODO REMOVE DEBUG
+                  PTDEBUG && _d('2> Cannot connect to', $cxn->name(), ':',
                      $EVAL_ERROR);
                   # Make ReplicaLagWaiter::wait() report slave is stopped.
                   return undef; 
@@ -9134,7 +9136,8 @@ sub main {
       }
    };
 
-   if ( $slaves && scalar @$slaves ) {
+   my $table_is_replicated;
+   if ( $slaves && scalar @$slaves && $table_is_replicated) {
       foreach my $slave (@$slaves) {
          my ($pr, $pr_first_report);
          if ( $o->get('progress') ) {
@@ -12843,7 +12846,7 @@ Default character set.
 
 =item * D
 
-dsn: database; copy: yes
+dsn: database; copy: no
 
 Database for the old and new table.
 

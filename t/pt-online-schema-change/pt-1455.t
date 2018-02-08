@@ -41,20 +41,15 @@ my @args = (qw(--set-vars innodb_lock_wait_timeout=3));
 my $output;
 my $exit_status;
 
-# $sb->load_file('master3', "t/pt-online-schema-change/samples/pt-244.sql");
-$slave1_dbh->do("STOP SLAVE");
-$slave1_dbh->do("CHANGE REPLICATION FILTER REPLICATE_IGNORE_DB = (ignored_db)");
-$slave1_dbh->do("START SLAVE");
-
-$master_dbh->do("DROP DATABASE IF EXISTS ignored_db");
-$master_dbh->do("CREATE DATABASE ignored_db");
-$master_dbh->do("CREATE TABLE ignored_db.t1 (id int, f2 int) ENGINE=InnoDB");
+$sb->load_file('slave1', "t/pt-online-schema-change/samples/pt-1455_slave.sql");
+$sb->load_file('slave2', "t/pt-online-schema-change/samples/pt-1455_slave.sql");
+$sb->load_file('master', "t/pt-online-schema-change/samples/pt-1455_master.sql");
 
 my $num_rows = 1000;
 my $master_port = $Sandbox::port_for{master};
 
 diag("Loading $num_rows into the table. This might take some time.");
-diag(`util/mysql_random_data_load_linux_amd64 --host=127.1 --port=$master_port --user=msandbox --password=msandbox test t3 $num_rows`);
+diag(`util/mysql_random_data_load_linux_amd64 --host=127.1 --port=$master_port --user=msandbox --password=msandbox ignored_db t1 $num_rows`);
 diag("$num_rows rows loaded. Starting tests.");
 
 $master_dbh->do("FLUSH TABLES");
@@ -63,28 +58,25 @@ my $new_dir='/tmp/tdir';
 diag(`rm -rf $new_dir`);
 diag(`mkdir $new_dir`);
 
-diag("2");
 ($output, $exit_status) = full_output(
-    sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=t3",
+    sub { pt_online_schema_change::main(@args, "$master_dsn,D=ignored_db,t=t1",
             '--execute', 
             '--alter', "engine=innodb",
-            '--data-dir', $new_dir,
         ),
     },
     stderr => 1,
 );
-diag("3");
 
 is(
     $exit_status,
     0,
-    "PT-244 Successfully altered. Exit status = 0",
+    "PT-1455 Successfully altered. Exit status = 0",
 );
 
 like(
     $output,
     qr/Successfully altered/s,
-    "PT-244 Got successfully altered message.",
+    "PT-1455 Got successfully altered message.",
 );
 
 
@@ -96,15 +88,14 @@ closedir $dh;
 is(
     scalar @files,
     4,
-    "PT-224 Number of files is correct",
+    "PT-1455 Number of files is correct",
 );
 
-$dbh3->do("DROP DATABASE IF EXISTS test");
+$master_dbh->do("DROP DATABASE IF EXISTS ignored_db");
 
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($dbh3);
-diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
+$sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
