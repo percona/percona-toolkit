@@ -55,7 +55,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.6';
+our $VERSION = '3.0.7';
 
 use strict;
 use warnings FATAL => 'all';
@@ -2137,6 +2137,7 @@ sub parse {
       }
    }
 
+   $self->{dsn_props} = \%final_props;
    return \%final_props;
 }
 
@@ -2317,6 +2318,20 @@ sub get_dbh {
            . ($sql_mode ? " and $sql_mode" : '')
            . ": $EVAL_ERROR";
       }
+   }
+
+   if ($self->{dsn_props}->{D} && $self->{dsn_props}->{t}) {
+       PTDEBUG && _d("DSN has a schema and table: $self->{dsn_props}->{D}.$self->{dsn_props}->{t}");
+       PTDEBUG && _d("Trying to set the default charset for the connection");
+       my (undef, $create_table) = eval { $dbh->selectrow_array("SHOW CREATE TABLE $self->{dsn_props}->{D}.$self->{dsn_props}->{t}") };
+
+       if ($create_table && $create_table =~ m/DEFAULT CHARSET=(\S+)\s*/) {
+           PTDEBUG && _d("Detected table's character set: $1");
+           PTDEBUG && _d("Executing: SET NAMES '$1'");
+           $dbh->do("SET NAMES '$1'");
+       } else {
+           PTDEBUG && _d("Cannot get the default character set for the table");
+       }
    }
 
    PTDEBUG && _d('DBH info: ',
@@ -10644,6 +10659,16 @@ sub sync_a_table {
                   : $tbl_struct->{engine} eq 'InnoDB' ? 1
                   :                                     0;
 
+      if ($tbl_struct->{charset}) {
+          PTDEBUG && _d("Detected table's character set: $tbl_struct->{charset}");
+          PTDEBUG && _d("Executing: SET NAMES '$tbl_struct->{charset}'");
+          $src->{dbh}->do("SET NAMES '$tbl_struct->{charset}'");
+          $src->{misc_dbh}->do("SET NAMES '$tbl_struct->{charset}'");
+          $dst->{dbh}->do("SET NAMES '$tbl_struct->{charset}'");
+          $dst->{misc_dbh}->do("SET NAMES '$tbl_struct->{charset}'");
+      } else {
+          PTDEBUG && _d("Cannot get the default character set for the table");
+      }
       # Turn off AutoCommit if we're using transactions.
       $src->{dbh}->{AutoCommit}      = !$use_txn;
       $src->{misc_dbh}->{AutoCommit} = !$use_txn;
@@ -12977,6 +13002,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-sync 3.0.6
+pt-table-sync 3.0.7
 
 =cut

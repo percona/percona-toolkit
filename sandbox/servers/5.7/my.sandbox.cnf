@@ -27,6 +27,7 @@ innodb_lock_wait_timeout   = 3
 general_log
 general_log_file           = genlog
 lower_case_table_names     = 0
+#character-set-server       = utf8
 
 # fkc test
 binlog_format              = STATEMENT

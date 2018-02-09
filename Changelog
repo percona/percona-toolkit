@@ -1,5 +1,9 @@
 Changelog for Percona Toolkit
 
+v3.0.7 
+
+ * Fixed bug    PT-1256: pt-table-sync does not use the character set for the table it is synchronizing
+
 v3.0.6 released 2017-12-20
 
  * Fixed bug     PT-234: Genaral log parser cannot handle timestamps with tz
