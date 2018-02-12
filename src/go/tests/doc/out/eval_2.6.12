@@ -8,22 +8,22 @@
 	"numYield" : 0,
 	"lockStats" : {
 		"timeLockedMicros" : {
-			"R" : NumberLong(0),
-			"W" : NumberLong(42972)
+			"R" : NumberLong(1234),
+			"W" : NumberLong(4321)
 		},
 		"timeAcquiringMicros" : {
-			"R" : NumberLong(0),
-			"W" : NumberLong(8),
-			"r" : NumberLong(0),
-			"w" : NumberLong(6)
+			"R" : NumberLong(9876),
+			"W" : NumberLong(6789),
+			"r" : NumberLong(9876),
+			"w" : NumberLong(6789)
 		}
 	},
 	"responseLength" : 53,
-	"millis" : 43,
+	"millis" : 42,
 	"execStats" : {
 		
 	},
-	"ts" : ISODate("2017-10-15T01:54:09.890Z"),
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
 	"client" : "127.0.0.1",
 	"allUsers" : [ ],
 	"user" : ""

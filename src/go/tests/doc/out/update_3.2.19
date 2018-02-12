@@ -1,0 +1,50 @@
+{
+	"op" : "update",
+	"ns" : "test.coll",
+	"query" : {
+		"a" : {
+			"$gte" : 2
+		}
+	},
+	"updateobj" : {
+		"$set" : {
+			"c" : 1
+		},
+		"$inc" : {
+			"a" : -10
+		}
+	},
+	"keysExamined" : 1,
+	"docsExamined" : 1,
+	"nMatched" : 1,
+	"nModified" : 1,
+	"keyUpdates" : 1,
+	"writeConflicts" : 0,
+	"numYield" : 0,
+	"locks" : {
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(1),
+				"w" : NumberLong(1)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"w" : NumberLong(1)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"w" : NumberLong(1)
+			}
+		}
+	},
+	"millis" : 42,
+	"execStats" : {
+		
+	},
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}
