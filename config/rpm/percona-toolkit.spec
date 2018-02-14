@@ -42,6 +42,11 @@ find $RPM_BUILD_ROOT -type f -name 'percona-toolkit.pod' -exec rm -f {} ';'
 rm -rf $RPM_BUILD_ROOT/usr/share/perl5
 chmod -R u+w $RPM_BUILD_ROOT/*
 
+%post
+if [ ! -e /etc/percona-toolkit/.percona.toolkit.uuid ]; then
+  mkdir -p /etc/percona-toolkit
+  perl -e 'printf+($}="%04x")."$}-$}-$}-$}-".$}x3,map rand 65537,0..7;' > /etc/percona-toolkit/.percona.toolkit.uuid
+fi
 
 %clean
 rm -rf $RPM_BUILD_ROOT
