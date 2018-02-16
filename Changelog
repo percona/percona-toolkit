@@ -2,8 +2,10 @@ Changelog for Percona Toolkit
 
 v3.0.7 
 
- * Feature      PT-644 : Added --mysql-only option to pt-stalk for RDS
+ * Fixed Bug    PT-244 : pt-online-schema-change --data-dir option broken for partitioned table
+ * Feature      PT-633 : Added --mysql-only option to pt-stalk for RDS
  * Fixed bug    PT-1256: pt-table-sync does not use the character set for the table it is synchronizing
+ * Fixed bug    PT-1455: pt-osc is stuck when the table that is being altered is filtered out in the slave
 
 v3.0.6 released 2017-12-20
 
