@@ -5002,7 +5002,7 @@ sub wait {
          my $lag = $get_lag->($lagged_slaves[$i]->{cxn});
          PTDEBUG && _d($lagged_slaves[$i]->{cxn}->name(),
             'slave lag:', $lag);
-         if ( !defined $lag || $lag > $max_lag ) {
+        if ( defined $lag && $lag > $max_lag ) {
             $lagged_slaves[$i]->{lag} = $lag;
          }
          else {

@@ -21,7 +21,7 @@ use Sandbox;
 use SqlModes;
 use File::Temp qw/ tempdir /;
 
-plan tests => 4;
+plan tests => 3;
 
 require "$trunk/bin/pt-online-schema-change";
 
@@ -41,26 +41,26 @@ my @args = (qw(--set-vars innodb_lock_wait_timeout=3));
 my $output;
 my $exit_status;
 
-$sb->load_file('slave1', "t/pt-online-schema-change/samples/pt-1455_slave.sql");
+diag("Setting replication filters on slave 2");
 $sb->load_file('slave2', "t/pt-online-schema-change/samples/pt-1455_slave.sql");
-$sb->load_file('master', "t/pt-online-schema-change/samples/pt-1455_master.sql");
+diag("Setting replication filters on slave 1");
+$sb->load_file('slave1', "t/pt-online-schema-change/samples/pt-1455_slave.sql");
+diag("Setting replication filters on master");
+$sb->load_file('master', "t/pt-online-schema-change/samples/pt-1455_master.sql",undef, no_wait => 1);
+diag("replication filters set");
 
 my $num_rows = 1000;
-my $master_port = $Sandbox::port_for{master};
+my $master_port = 12345;
 
 diag("Loading $num_rows into the table. This might take some time.");
-diag(`util/mysql_random_data_load_linux_amd64 --host=127.1 --port=$master_port --user=msandbox --password=msandbox ignored_db t1 $num_rows`);
+diag(`util/mysql_random_data_load_linux_amd64 --host=127.1 --port=$master_port --user=msandbox --password=msandbox employees t1 $num_rows`);
 diag("$num_rows rows loaded. Starting tests.");
 
 $master_dbh->do("FLUSH TABLES");
 
-my $new_dir='/tmp/tdir';
-diag(`rm -rf $new_dir`);
-diag(`mkdir $new_dir`);
-
 ($output, $exit_status) = full_output(
-    sub { pt_online_schema_change::main(@args, "$master_dsn,D=ignored_db,t=t1",
-            '--execute', 
+    sub { pt_online_schema_change::main(@args, "$master_dsn,D=employees,t=t1",
+            '--execute', '--no-check-replication-filters', 
             '--alter', "engine=innodb",
         ),
     },
@@ -79,19 +79,12 @@ like(
     "PT-1455 Got successfully altered message.",
 );
 
+$master_dbh->do("DROP DATABASE IF EXISTS employees");
 
-my $db_dir="$new_dir/test/";
-opendir(my $dh, $db_dir) || die "Can't opendir $db_dir: $!";
-my @files = grep { /^t3#P#p/  } readdir($dh);
-closedir $dh;
-
-is(
-    scalar @files,
-    4,
-    "PT-1455 Number of files is correct",
-);
-
-$master_dbh->do("DROP DATABASE IF EXISTS ignored_db");
+diag("Resetting replication filters on slave 2");
+$sb->load_file('slave2', "t/pt-online-schema-change/samples/pt-1455_reset_slave.sql");
+diag("Resetting replication filters on slave 1");
+$sb->load_file('slave1', "t/pt-online-schema-change/samples/pt-1455_reset_slave.sql");
 
 # #############################################################################
 # Done.
