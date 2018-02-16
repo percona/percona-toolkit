@@ -1,0 +1,106 @@
+{
+	"op" : "getmore",
+	"ns" : "test.coll",
+	"command" : {
+		"getMore" : NumberLong("62414596685"),
+		"collection" : "coll",
+		"batchSize" : 2,
+		"$db" : "test"
+	},
+	"originatingCommand" : {
+		"find" : "coll",
+		"filter" : {
+			"a" : {
+				"$gt" : 0
+			}
+		},
+		"batchSize" : 2,
+		"sort" : {
+			"a" : 1
+		},
+		"$db" : "test"
+	},
+	"cursorid" : 62414596685,
+	"keysExamined" : 0,
+	"docsExamined" : 0,
+	"cursorExhausted" : true,
+	"numYield" : 0,
+	"locks" : {
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(2)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		}
+	},
+	"nreturned" : 0,
+	"responseLength" : 81,
+	"protocol" : "op_msg",
+	"millis" : 42,
+	"planSummary" : "IXSCAN { a: 1 }",
+	"execStats" : {
+		"stage" : "FETCH",
+		"nReturned" : 8,
+		"executionTimeMillisEstimate" : 0,
+		"works" : 9,
+		"advanced" : 8,
+		"needTime" : 0,
+		"needYield" : 0,
+		"saveState" : 4,
+		"restoreState" : 4,
+		"isEOF" : 1,
+		"invalidates" : 0,
+		"docsExamined" : 8,
+		"alreadyHasObj" : 0,
+		"inputStage" : {
+			"stage" : "IXSCAN",
+			"nReturned" : 8,
+			"executionTimeMillisEstimate" : 0,
+			"works" : 9,
+			"advanced" : 8,
+			"needTime" : 0,
+			"needYield" : 0,
+			"saveState" : 4,
+			"restoreState" : 4,
+			"isEOF" : 1,
+			"invalidates" : 0,
+			"keyPattern" : {
+				"a" : 1
+			},
+			"indexName" : "a_1",
+			"isMultiKey" : false,
+			"multiKeyPaths" : {
+				"a" : [ ]
+			},
+			"isUnique" : false,
+			"isSparse" : false,
+			"isPartial" : false,
+			"indexVersion" : 2,
+			"direction" : "forward",
+			"indexBounds" : {
+				"a" : [
+					"(0.0, inf.0]"
+				]
+			},
+			"keysExamined" : 8,
+			"seeks" : 1,
+			"dupsTested" : 0,
+			"dupsDropped" : 0,
+			"seenInvalidated" : 0
+		}
+	},
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
+	"client" : "127.0.0.1",
+	"appName" : "MongoDB Shell",
+	"allUsers" : [ ],
+	"user" : ""
+}

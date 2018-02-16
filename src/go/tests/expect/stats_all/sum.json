@@ -5,8 +5,8 @@
     "Operation": "AGGREGATE",
     "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"aggregate\":\"coll\",\"pipeline\":[{\"$match\":{\"a\":{\"$gte\":2}}}],\"cursor\":{}}}\n",
     "Fingerprint": "AGGREGATE coll a",
-    "FirstSeen": "2017-10-15T01:54:08.661Z",
-    "LastSeen": "2017-10-15T01:54:52.564Z",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
     "TableScan": false,
     "Count": 5,
     "BlockedTime": null,
@@ -26,11 +26,11 @@
       8
     ],
     "QueryTime": [
-      0,
-      0,
-      0,
-      0,
-      2
+      42,
+      42,
+      42,
+      42,
+      42
     ],
     "ResponseLength": [
       385,
@@ -46,8 +46,8 @@
     "Operation": "COUNT",
     "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"count\":\"coll\",\"query\":{},\"fields\":{}}}\n",
     "Fingerprint": "COUNT coll",
-    "FirstSeen": "2017-10-15T01:54:08.889Z",
-    "LastSeen": "2017-10-15T01:54:52.844Z",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
     "TableScan": false,
     "Count": 5,
     "BlockedTime": null,
@@ -67,11 +67,11 @@
       0
     ],
     "QueryTime": [
-      0,
-      0,
-      0,
-      0,
-      0
+      42,
+      42,
+      42,
+      42,
+      42
     ],
     "ResponseLength": [
       48,
@@ -87,8 +87,8 @@
     "Operation": "COUNT",
     "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"count\":\"coll\",\"query\":{\"a\":{\"$gt\":5}},\"fields\":{}}}\n",
     "Fingerprint": "COUNT coll a",
-    "FirstSeen": "2017-10-15T01:54:09.039Z",
-    "LastSeen": "2017-10-15T01:54:53.078Z",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
     "TableScan": false,
     "Count": 5,
     "BlockedTime": null,
@@ -108,11 +108,11 @@
       10
     ],
     "QueryTime": [
-      0,
-      0,
-      0,
-      0,
-      0
+      42,
+      42,
+      42,
+      42,
+      42
     ],
     "ResponseLength": [
       48,
@@ -128,8 +128,8 @@
     "Operation": "DISTINCT",
     "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"distinct\":\"coll\",\"key\":\"a\",\"query\":{\"b\":{\"$gte\":5}}}}\n",
     "Fingerprint": "DISTINCT coll a,b",
-    "FirstSeen": "2017-10-15T01:54:09.687Z",
-    "LastSeen": "2017-10-15T01:54:53.874Z",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
     "TableScan": false,
     "Count": 5,
     "BlockedTime": null,
@@ -149,11 +149,11 @@
       5
     ],
     "QueryTime": [
-      0,
-      0,
-      0,
-      0,
-      0
+      42,
+      42,
+      42,
+      42,
+      42
     ],
     "ResponseLength": [
       199,
@@ -169,8 +169,8 @@
     "Operation": "EVAL",
     "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"$eval\":\"1\"}}\n",
     "Fingerprint": "EVAL",
-    "FirstSeen": "2017-10-15T01:54:09.89Z",
-    "LastSeen": "2017-10-15T01:54:54.085Z",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
     "TableScan": false,
     "Count": 5,
     "BlockedTime": null,
@@ -190,11 +190,11 @@
       0
     ],
     "QueryTime": [
-      43,
-      37,
-      56,
-      48,
-      40
+      42,
+      42,
+      42,
+      42,
+      42
     ],
     "ResponseLength": [
       53,
@@ -210,8 +210,8 @@
     "Operation": "EXPLAIN",
     "Query": "{\"ns\":\"test.coll\",\"op\":\"query\",\"query\":{\"query\":{},\"$explain\":true}}\n",
     "Fingerprint": "EXPLAIN",
-    "FirstSeen": "2017-10-15T01:54:10.058Z",
-    "LastSeen": "2017-10-15T01:54:54.257Z",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
     "TableScan": false,
     "Count": 5,
     "BlockedTime": null,
@@ -231,18 +231,18 @@
       0
     ],
     "QueryTime": [
-      0,
-      0,
-      0,
-      0,
-      0
+      42,
+      42,
+      42,
+      42,
+      42
     ],
     "ResponseLength": [
       583,
       379,
       364,
-      328,
-      329
+      329,
+      328
     ]
   },
   {
@@ -251,8 +251,8 @@
     "Operation": "FINDANDMODIFY",
     "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"findandmodify\":\"coll\",\"query\":{\"a\":2},\"update\":{\"$inc\":{\"b\":1}}},\"updateobj\":{\"$inc\":{\"b\":1}}}\n",
     "Fingerprint": "FINDANDMODIFY coll a",
-    "FirstSeen": "2017-10-15T01:54:11.011Z",
-    "LastSeen": "2017-10-15T01:54:55.391Z",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
     "TableScan": false,
     "Count": 5,
     "BlockedTime": null,
@@ -272,11 +272,11 @@
       3
     ],
     "QueryTime": [
-      6,
-      0,
-      1,
-      1,
-      1
+      42,
+      42,
+      42,
+      42,
+      42
     ],
     "ResponseLength": [
       131,
@@ -292,8 +292,8 @@
     "Operation": "FIND",
     "Query": "{\"ns\":\"test.coll\",\"op\":\"query\"}\n",
     "Fingerprint": "FIND coll",
-    "FirstSeen": "2017-10-15T01:54:10.63Z",
-    "LastSeen": "2017-10-15T01:54:54.87Z",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
     "TableScan": false,
     "Count": 5,
     "BlockedTime": null,
@@ -313,11 +313,11 @@
       0
     ],
     "QueryTime": [
-      0,
-      0,
-      0,
-      0,
-      0
+      42,
+      42,
+      42,
+      42,
+      42
     ],
     "ResponseLength": [
       20,
@@ -333,8 +333,8 @@
     "Operation": "FIND",
     "Query": "{\"ns\":\"test.coll\",\"op\":\"query\",\"query\":{\"query\":{\"c\":1},\"orderby\":{\"b\":-1}}}\n",
     "Fingerprint": "FIND coll b,c",
-    "FirstSeen": "2017-10-15T01:54:10.817Z",
-    "LastSeen": "2017-10-15T01:54:55.111Z",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
     "TableScan": false,
     "Count": 5,
     "BlockedTime": null,
@@ -354,11 +354,11 @@
       2
     ],
     "QueryTime": [
-      0,
-      0,
-      0,
-      0,
-      0
+      42,
+      42,
+      42,
+      42,
+      42
     ],
     "ResponseLength": [
       108,
@@ -374,8 +374,8 @@
     "Operation": "FIND",
     "Query": "{\"ns\":\"test.coll\",\"op\":\"query\",\"query\":{\"query\":{\"$and\":[{\"k\":{\"$gt\":1}},{\"k\":{\"$lt\":2}},{\"$or\":[{\"c\":{\"$in\":[\"/^0/\",\"/^2/\",\"/^4/\",\"/^6/\"]}},{\"pad\":{\"$in\":[\"/9$/\",\"/7$/\",\"/5$/\",\"/3$/\"]}}]}]},\"orderby\":{\"k\":-1}}}\n",
     "Fingerprint": "FIND coll c,k,pad",
-    "FirstSeen": "2017-10-15T01:54:10.474Z",
-    "LastSeen": "2017-10-15T01:54:54.693Z",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
     "TableScan": false,
     "Count": 5,
     "BlockedTime": null,
@@ -395,11 +395,11 @@
       0
     ],
     "QueryTime": [
-      0,
-      0,
-      0,
-      0,
-      0
+      42,
+      42,
+      42,
+      42,
+      42
     ],
     "ResponseLength": [
       20,
@@ -415,8 +415,8 @@
     "Operation": "FIND",
     "Query": "{\"ns\":\"test.coll\",\"op\":\"query\",\"query\":{\"k\":1}}\n",
     "Fingerprint": "FIND coll k",
-    "FirstSeen": "2017-10-15T01:54:10.277Z",
-    "LastSeen": "2017-10-15T01:54:54.507Z",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
     "TableScan": false,
     "Count": 5,
     "BlockedTime": null,
@@ -436,11 +436,11 @@
       2
     ],
     "QueryTime": [
-      0,
-      0,
-      1,
-      0,
-      0
+      42,
+      42,
+      42,
+      42,
+      42
     ],
     "ResponseLength": [
       86,
@@ -456,8 +456,8 @@
     "Operation": "GEONEAR",
     "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"geoNear\":\"coll\",\"near\":{\"type\":\"Point\",\"coordinates\":[1,1]},\"spherical\":true}}\n",
     "Fingerprint": "GEONEAR coll",
-    "FirstSeen": "2017-10-15T01:54:11.181Z",
-    "LastSeen": "2017-10-15T01:54:55.701Z",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
     "TableScan": false,
     "Count": 5,
     "BlockedTime": null,
@@ -477,11 +477,11 @@
       10
     ],
     "QueryTime": [
-      1,
-      2,
-      10,
-      13,
-      11
+      42,
+      42,
+      42,
+      42,
+      42
     ],
     "ResponseLength": [
       1406,
@@ -497,38 +497,38 @@
     "Operation": "GETMORE",
     "Query": "{\"ns\":\"test.coll\",\"op\":\"getmore\",\"query\":{\"a\":{\"$gt\":0}}}\n",
     "Fingerprint": "GETMORE coll",
-    "FirstSeen": "2017-10-15T01:54:11.36Z",
-    "LastSeen": "2017-10-15T01:54:56.186Z",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
     "TableScan": false,
     "Count": 5,
     "BlockedTime": null,
     "LockTime": null,
     "NReturned": [
-      2,
       0,
       0,
-      2,
+      0,
+      0,
       0
     ],
     "NScanned": [
       0,
       0,
       0,
-      2,
+      0,
       0
     ],
     "QueryTime": [
-      0,
-      0,
-      0,
-      0,
-      0
+      42,
+      42,
+      42,
+      42,
+      42
     ],
     "ResponseLength": [
-      86,
+      20,
       20,
       81,
-      153,
+      81,
       81
     ]
   },
@@ -538,8 +538,8 @@
     "Operation": "GROUP",
     "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"group\":{\"key\":{\"a\":1,\"b\":1},\"cond\":{\"b\":3},\"initial\":{},\"ns\":\"coll\",\"$reduce\":\"\"}}}\n",
     "Fingerprint": "GROUP coll a,b",
-    "FirstSeen": "2017-10-15T01:54:11.599Z",
-    "LastSeen": "2017-10-15T01:54:56.478Z",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
     "TableScan": false,
     "Count": 5,
     "BlockedTime": null,
@@ -559,11 +559,11 @@
       2
     ],
     "QueryTime": [
-      36,
-      26,
-      31,
-      31,
-      24
+      42,
+      42,
+      42,
+      42,
+      42
     ],
     "ResponseLength": [
       135,
@@ -579,8 +579,8 @@
     "Operation": "INSERT",
     "Query": "{\"ns\":\"test.coll\",\"op\":\"insert\",\"query\":{\"_id\":1}}\n",
     "Fingerprint": "INSERT coll",
-    "FirstSeen": "2017-10-15T01:54:11.737Z",
-    "LastSeen": "2017-10-15T01:54:56.693Z",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
     "TableScan": false,
     "Count": 5,
     "BlockedTime": null,
@@ -600,11 +600,11 @@
       0
     ],
     "QueryTime": [
-      0,
-      4,
-      11,
-      11,
-      11
+      42,
+      42,
+      42,
+      42,
+      42
     ],
     "ResponseLength": [
       0,
@@ -620,8 +620,8 @@
     "Operation": "MAPREDUCE",
     "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"mapreduce\":\"coll\",\"map\":\"\",\"reduce\":\"\",\"query\":{\"a\":{\"$gte\":0}},\"out\":{\"inline\":1}}}\n",
     "Fingerprint": "MAPREDUCE coll a",
-    "FirstSeen": "2017-10-15T01:54:11.959Z",
-    "LastSeen": "2017-10-15T01:54:56.951Z",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
     "TableScan": false,
     "Count": 5,
     "BlockedTime": null,
@@ -641,11 +641,11 @@
       3
     ],
     "QueryTime": [
-      29,
-      21,
-      41,
-      21,
-      26
+      42,
+      42,
+      42,
+      42,
+      42
     ],
     "ResponseLength": [
       233,
@@ -661,8 +661,8 @@
     "Operation": "REMOVE",
     "Query": "{\"ns\":\"test.coll\",\"op\":\"remove\",\"query\":{\"a\":{\"$gte\":2},\"b\":{\"$gte\":2}}}\n",
     "Fingerprint": "REMOVE coll a,b",
-    "FirstSeen": "2017-10-15T01:54:09.246Z",
-    "LastSeen": "2017-10-15T01:54:53.615Z",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
     "TableScan": false,
     "Count": 10,
     "BlockedTime": null,
@@ -692,16 +692,16 @@
       8
     ],
     "QueryTime": [
-      0,
-      0,
-      1,
-      0,
-      1,
-      0,
-      0,
-      1,
-      1,
-      1
+      42,
+      42,
+      42,
+      42,
+      42,
+      42,
+      42,
+      42,
+      42,
+      42
     ],
     "ResponseLength": [
       0,
@@ -722,8 +722,8 @@
     "Operation": "UPDATE",
     "Query": "{\"ns\":\"test.coll\",\"op\":\"update\",\"query\":{\"a\":{\"$gte\":2}},\"updateobj\":{\"$set\":{\"c\":1},\"$inc\":{\"a\":-10}}}\n",
     "Fingerprint": "UPDATE coll a",
-    "FirstSeen": "2017-10-15T01:54:12.161Z",
-    "LastSeen": "2017-10-15T01:54:57.231Z",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
     "TableScan": false,
     "Count": 5,
     "BlockedTime": null,
@@ -743,11 +743,11 @@
       1
     ],
     "QueryTime": [
-      0,
-      0,
-      2,
-      0,
-      0
+      42,
+      42,
+      42,
+      42,
+      42
     ],
     "ResponseLength": [
       0,

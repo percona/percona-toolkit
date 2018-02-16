@@ -1,0 +1,80 @@
+{
+	"op" : "command",
+	"ns" : "test.coll",
+	"command" : {
+		"count" : "coll",
+		"query" : {
+			"a" : {
+				"$gt" : 5
+			}
+		},
+		"fields" : {
+			
+		},
+		"$db" : "test"
+	},
+	"keysExamined" : 0,
+	"docsExamined" : 10,
+	"numYield" : 0,
+	"locks" : {
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(2)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		}
+	},
+	"responseLength" : 29,
+	"protocol" : "op_msg",
+	"millis" : 42,
+	"planSummary" : "COLLSCAN",
+	"execStats" : {
+		"stage" : "COUNT",
+		"nReturned" : 0,
+		"executionTimeMillisEstimate" : 0,
+		"works" : 12,
+		"advanced" : 0,
+		"needTime" : 11,
+		"needYield" : 0,
+		"saveState" : 0,
+		"restoreState" : 0,
+		"isEOF" : 1,
+		"invalidates" : 0,
+		"nCounted" : 4,
+		"nSkipped" : 0,
+		"inputStage" : {
+			"stage" : "COLLSCAN",
+			"filter" : {
+				"a" : {
+					"$gt" : 5
+				}
+			},
+			"nReturned" : 4,
+			"executionTimeMillisEstimate" : 0,
+			"works" : 12,
+			"advanced" : 4,
+			"needTime" : 7,
+			"needYield" : 0,
+			"saveState" : 0,
+			"restoreState" : 0,
+			"isEOF" : 1,
+			"invalidates" : 0,
+			"direction" : "forward",
+			"docsExamined" : 10
+		}
+	},
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
+	"client" : "127.0.0.1",
+	"appName" : "MongoDB Shell",
+	"allUsers" : [ ],
+	"user" : ""
+}

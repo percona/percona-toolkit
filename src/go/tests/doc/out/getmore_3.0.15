@@ -6,7 +6,7 @@
 			"$gt" : 0
 		}
 	},
-	"cursorid" : 77879406118,
+	"cursorid" : 77823806376,
 	"ntoreturn" : 2,
 	"keyUpdates" : 0,
 	"writeConflicts" : 0,
@@ -35,11 +35,11 @@
 	},
 	"nreturned" : 0,
 	"responseLength" : 20,
-	"millis" : 0,
+	"millis" : 42,
 	"execStats" : {
 		
 	},
-	"ts" : ISODate("2017-10-15T01:54:20.995Z"),
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
 	"client" : "127.0.0.1",
 	"allUsers" : [ ],
 	"user" : ""

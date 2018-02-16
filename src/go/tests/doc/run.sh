@@ -3,20 +3,23 @@
 set -e
 set -x 
 
-## declare an array of images
+## Declare an array of images.
 declare -a images=(
-    "mongo:2.6"
-    "mongo:3.0"
-    "mongo:3.2"
-    "mongo:3.4"
-    "mongo:3.5"
+    "mongo:2.6.12"
+    "mongo:3.0.15"
+    "mongo:3.2.19"
+    "mongo:3.4.12"
+    "mongo:3.6.2"
 )
 
-## now loop through the above array of images
+## Run docker-compose from the location of the script.
+cd $(dirname $0)
+
+## Now loop through the above array of images.
 for image in "${images[@]}"
 do
-    export MONGO_IMAGE=$image
-    # clean up old instance if it got left running e.g. after ctrl+c
+    export MONGO_IMAGE=${image}
+    # Clean up old instance if it got left running e.g. after ctrl+c.
     docker-compose down -v
     docker-compose up -d
     docker-compose exec mongo sh /script/main.sh

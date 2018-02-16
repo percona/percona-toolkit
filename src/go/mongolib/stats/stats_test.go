@@ -275,9 +275,9 @@ func TestAvailableMetrics(t *testing.T) {
 	versions := []string{
 		"2.6.12",
 		"3.0.15",
-		"3.2.16",
-		"3.4.7",
-		"3.5.11",
+		"3.2.19",
+		"3.4.12",
+		"3.6.2",
 	}
 
 	samples := []string{
@@ -345,7 +345,6 @@ func TestAvailableMetrics(t *testing.T) {
 		if !reflect.DeepEqual(got, expect) {
 			t.Errorf("s.Queries() = %#v, want %#v", got, expect)
 		}
-
 	})
 
 	t.Run("cmd_metric", func(t *testing.T) {

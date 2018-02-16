@@ -1,0 +1,27 @@
+[
+  {
+    "ID": "cc3cb3824eea4094eb042f5ca76bd385",
+    "Namespace": "test.coll",
+    "Operation": "MAPREDUCE",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"command\",\"command\":{\"mapreduce\":\"coll\",\"map\":{\"code\":\"function () {\\n    emit(this.a, this.b);\\n}\"},\"reduce\":{\"code\":\"function (a, b) {\\n    return Array.sum(b);\\n}\"},\"query\":{\"a\":{\"$gte\":0}},\"out\":{\"inline\":1},\"$db\":\"test\"}}\n",
+    "Fingerprint": "MAPREDUCE coll a",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
+    "TableScan": false,
+    "Count": 1,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0
+    ],
+    "NScanned": [
+      3
+    ],
+    "QueryTime": [
+      42
+    ],
+    "ResponseLength": [
+      218
+    ]
+  }
+]

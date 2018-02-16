@@ -6,27 +6,27 @@
 			"$gt" : 0
 		}
 	},
-	"cursorid" : 73529665157,
+	"cursorid" : 74634673672,
 	"ntoreturn" : 2,
 	"keyUpdates" : 0,
 	"numYield" : 0,
 	"lockStats" : {
 		"timeLockedMicros" : {
-			"r" : NumberLong(29),
-			"w" : NumberLong(0)
+			"r" : NumberLong(1234),
+			"w" : NumberLong(4321)
 		},
 		"timeAcquiringMicros" : {
-			"r" : NumberLong(5),
-			"w" : NumberLong(4)
+			"r" : NumberLong(9876),
+			"w" : NumberLong(6789)
 		}
 	},
-	"nreturned" : 2,
-	"responseLength" : 86,
-	"millis" : 0,
+	"nreturned" : 0,
+	"responseLength" : 20,
+	"millis" : 42,
 	"execStats" : {
 		
 	},
-	"ts" : ISODate("2017-10-15T01:54:11.360Z"),
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
 	"client" : "127.0.0.1",
 	"allUsers" : [ ],
 	"user" : ""

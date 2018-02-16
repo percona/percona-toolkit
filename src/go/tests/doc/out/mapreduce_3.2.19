@@ -1,0 +1,60 @@
+{
+	"op" : "command",
+	"ns" : "test.coll",
+	"command" : {
+		"mapreduce" : "coll",
+		"map" : function () {
+    emit(this.a, this.b);
+},
+		"reduce" : function (a, b) {
+    return Array.sum(b);
+},
+		"query" : {
+			"a" : {
+				"$gte" : 0
+			}
+		},
+		"out" : {
+			"inline" : 1
+		}
+	},
+	"keyUpdates" : 0,
+	"writeConflicts" : 0,
+	"numYield" : 0,
+	"locks" : {
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(9),
+				"w" : NumberLong(1)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"r" : NumberLong(2),
+				"w" : NumberLong(1),
+				"R" : NumberLong(2)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"r" : NumberLong(2),
+				"w" : NumberLong(1)
+			}
+		},
+		"Metadata" : {
+			"acquireCount" : {
+				"W" : NumberLong(1)
+			}
+		}
+	},
+	"responseLength" : 218,
+	"protocol" : "op_command",
+	"millis" : 42,
+	"execStats" : {
+		
+	},
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}

@@ -63,9 +63,9 @@ func TestExplain(t *testing.T) {
 	versions := []string{
 		"2.6.12",
 		"3.0.15",
-		"3.2.16",
-		"3.4.7",
-		"3.5.11",
+		"3.2.19",
+		"3.4.12",
+		"3.6.2",
 	}
 
 	samples := map[string]string{
