@@ -1,0 +1,8 @@
+#!/bin/bash
+
+if [ ! -e /etc/percona-toolkit/.percona.toolkit.uuid ]; then
+  mkdir -p /etc/percona-toolkit
+  perl -e 'printf+($}="%04x")."$}-$}-$}-$}-".$}x3,map rand 65537,0..7;' > /etc/percona-toolkit/.percona.toolkit.uuid
+fi
+
+#DEBHELPER#
