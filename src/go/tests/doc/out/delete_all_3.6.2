@@ -1,0 +1,116 @@
+{
+	"op" : "remove",
+	"ns" : "test.coll",
+	"command" : {
+		"q" : {
+			"a" : {
+				"$gte" : 2
+			},
+			"b" : {
+				"$gte" : 2
+			}
+		},
+		"limit" : 0
+	},
+	"keysExamined" : 8,
+	"docsExamined" : 8,
+	"ndeleted" : 8,
+	"keysDeleted" : 16,
+	"numYield" : 0,
+	"locks" : {
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(1),
+				"w" : NumberLong(1)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"w" : NumberLong(1)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"w" : NumberLong(1)
+			}
+		}
+	},
+	"millis" : 42,
+	"planSummary" : "IXSCAN { a: 1 }",
+	"execStats" : {
+		"stage" : "DELETE",
+		"nReturned" : 0,
+		"executionTimeMillisEstimate" : 0,
+		"works" : 9,
+		"advanced" : 0,
+		"needTime" : 8,
+		"needYield" : 0,
+		"saveState" : 0,
+		"restoreState" : 0,
+		"isEOF" : 1,
+		"invalidates" : 0,
+		"nWouldDelete" : 8,
+		"nInvalidateSkips" : 0,
+		"inputStage" : {
+			"stage" : "FETCH",
+			"filter" : {
+				"b" : {
+					"$gte" : 2
+				}
+			},
+			"nReturned" : 8,
+			"executionTimeMillisEstimate" : 0,
+			"works" : 9,
+			"advanced" : 8,
+			"needTime" : 0,
+			"needYield" : 0,
+			"saveState" : 8,
+			"restoreState" : 8,
+			"isEOF" : 1,
+			"invalidates" : 0,
+			"docsExamined" : 8,
+			"alreadyHasObj" : 0,
+			"inputStage" : {
+				"stage" : "IXSCAN",
+				"nReturned" : 8,
+				"executionTimeMillisEstimate" : 0,
+				"works" : 9,
+				"advanced" : 8,
+				"needTime" : 0,
+				"needYield" : 0,
+				"saveState" : 8,
+				"restoreState" : 8,
+				"isEOF" : 1,
+				"invalidates" : 0,
+				"keyPattern" : {
+					"a" : 1
+				},
+				"indexName" : "a_1",
+				"isMultiKey" : false,
+				"multiKeyPaths" : {
+					"a" : [ ]
+				},
+				"isUnique" : false,
+				"isSparse" : false,
+				"isPartial" : false,
+				"indexVersion" : 2,
+				"direction" : "forward",
+				"indexBounds" : {
+					"a" : [
+						"[2.0, inf.0]"
+					]
+				},
+				"keysExamined" : 8,
+				"seeks" : 1,
+				"dupsTested" : 0,
+				"dupsDropped" : 0,
+				"seenInvalidated" : 0
+			}
+		}
+	},
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
+	"client" : "127.0.0.1",
+	"appName" : "MongoDB Shell",
+	"allUsers" : [ ],
+	"user" : ""
+}

@@ -1,13 +1,7 @@
 Release Notes
 *************
 
-v3.0.6 released 2017-12-20
-==========================
-
-Release Notes
-*************
-
-v3.0.6 released 2017-11-20
+v3.0.6 released 2018-01-04
 ==========================
 
 Percona Toolkit 3.0.6 includes the following changes:
@@ -16,15 +10,23 @@ New Features
 
 * :jirabug:`PT-221`: Improve ``pt-table-sync`` support for ``MyRocks``
 * :jirabug:`PT-218`: ``pt-stalk`` now checks the ``RocksDB`` status
-* :jirabug:`PT-214`:  ``pt-mysql-summary`` contains the ``RocksDB`` section
-* :jirabug:`PT-205`: ``pt-osc`` shows a message if trying to set the engine to ``rocksdb`` and ``binlog_format != row``
-* :jirabug:`PT-204`: ``pt-table-checksum`` skips ``RocksDB`` tables
+* :jirabug:`PT-214`: ``pt-mysql-summary`` contains the ``RocksDB`` section
+* :jirabug:`PT-205`: ``pt-osc`` shows a message if trying to set the engine to
+  ``rocksdb`` and ``binlog_format != row``.
+* :jirabug:`PT-204`: ``pt-table-checksum`` skips ``RocksDB`` tables.
 
-Bug fixes
+Known Issues
 
-* :jirabug:`PT-234`: The genaral log parser cannot handle timestamps which include time zones
+* :jirabug:`PT-238`: The information message implemented for :jirabug:`PT-204` has a typo when referring to the ``--ignore-engines`` parameter. This problem is planned to be fixed in the next release.
+* :jirabug:`PT-240`: It has been detected that the implementation of :jirabug:`PT-205` is not complete and ``pt-osc`` may fail when altering tables. This problem is planned to be fixed in the next release.
+
+Bug Fixes
+
+* :jirabug:`PT-234`: The general log parser cannot handle timestamps which include time zones
 * :jirabug:`PT-229`: ``pt-online-schema-change`` does not retry on a deadlock error when using ``Percona Server`` 5.7
 * :jirabug:`PT-225`: ``pt-table-checksum`` ignores generated columns
+
+
 
 v3.0.5 released 2017-11-20
 ==========================

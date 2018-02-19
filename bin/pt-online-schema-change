@@ -56,7 +56,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.6';
+our $VERSION = '3.0.7';
 
 use strict;
 use warnings FATAL => 'all';
@@ -4281,7 +4281,8 @@ sub recurse_to_slaves {
       PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
    };
    if ( $EVAL_ERROR ) {
-      print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), "\n"
+      #TODO REMOVE DEBUG
+      print STDERR "1> Cannot connect to ", $dp->as_string($slave_dsn), "\n"
          or die "Cannot print: $OS_ERROR";
       return;
    }
@@ -5001,7 +5002,7 @@ sub wait {
          my $lag = $get_lag->($lagged_slaves[$i]->{cxn});
          PTDEBUG && _d($lagged_slaves[$i]->{cxn}->name(),
             'slave lag:', $lag);
-         if ( !defined $lag || $lag > $max_lag ) {
+        if ( defined $lag && $lag > $max_lag ) {
             $lagged_slaves[$i]->{lag} = $lag;
          }
          else {
@@ -7413,15 +7414,16 @@ eval {
    require HTTP::Micro;
 };
 
+my $home    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
+my @vc_dirs = (
+   '/etc/percona',
+   '/etc/percona-toolkit',
+   '/tmp',
+   "$home",
+);
+
 {
    my $file    = 'percona-version-check';
-   my $home    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
-   my @vc_dirs = (
-      '/etc/percona',
-      '/etc/percona-toolkit',
-      '/tmp',
-      "$home",
-   );
 
    sub version_check_file {
       foreach my $dir ( @vc_dirs ) {
@@ -7638,6 +7640,46 @@ sub get_instance_id {
 }
 
 
+sub get_uuid {
+    my $uuid_file = '/.percona-toolkit.uuid';
+    foreach my $dir (@vc_dirs) {
+        my $filename = $dir.$uuid_file;
+        my $uuid=_read_uuid($filename);
+        return $uuid if $uuid;
+    }
+
+    my $filename = $ENV{"HOME"} . $uuid_file;
+    my $uuid = _generate_uuid();
+
+    open(my $fh, '>', $filename) or die "Could not open file '$filename' $!";
+    print $fh $uuid;
+    close $fh;
+
+    return $uuid;
+}   
+
+sub _generate_uuid {
+    return sprintf+($}="%04x")."$}-$}-$}-$}-".$}x3,map rand 65537,0..7;
+}
+
+sub _read_uuid {
+    my $filename = shift;
+    my $fh;
+
+    eval {
+        open($fh, '<:encoding(UTF-8)', $filename);
+    };
+    return if ($EVAL_ERROR);
+
+    my $uuid;
+    eval { $uuid = <$fh>; };
+    return if ($EVAL_ERROR);
+
+    chomp $uuid;
+    return $uuid;
+}
+
+
 sub pingback {
    my (%args) = @_;
    my @required_args = qw(url instances);
@@ -7674,7 +7716,7 @@ sub pingback {
    my $client_content = encode_client_response(
       items      => $items,
       versions   => $versions,
-      general_id => md5_hex( hostname() ),
+      general_id => get_uuid(),
    );
 
    my $client_response = {
@@ -8693,7 +8735,8 @@ sub main {
                   # to stop lagging.  If any replica is stopped, the tool
                   # waits forever until the replica is started."
                   # https://bugs.launchpad.net/percona-toolkit/+bug/1402051
-                  PTDEBUG && _d('Cannot connect to', $cxn->name(), ':',
+                  #TODO REMOVE DEBUG
+                  PTDEBUG && _d('2> Cannot connect to', $cxn->name(), ':',
                      $EVAL_ERROR);
                   # Make ReplicaLagWaiter::wait() report slave is stopped.
                   return undef; 
@@ -9134,7 +9177,8 @@ sub main {
       }
    };
 
-   if ( $slaves && scalar @$slaves ) {
+   my $table_is_replicated;
+   if ( $slaves && scalar @$slaves && $table_is_replicated) {
       foreach my $slave (@$slaves) {
          my ($pr, $pr_first_report);
          if ( $o->get('progress') ) {
@@ -10393,15 +10437,15 @@ sub create_new_table {
       }
       if ( $o->get('data-dir') && !$o->got('remove-data-dir') ) {
           if ( (-d $o->get('data-dir')) && (-w $o->get('data-dir')) ){
-             $sql =~ s/DATA DIRECTORY='.*?'//; 
-             $sql .= sprintf(" DATA DIRECTORY='%s' ",$o->get('data-dir'));
+             $sql = insert_data_directory($sql, $o->get('data-dir'));
              PTDEBUG && _d("adding data dir ".$o->get('data-dir'));
+             PTDEBUG && _d("New query\n$sql\n");
           } else {
               die $o->get('data-dir') . " is not a directory or it is not writable";
           }
       }
       if ( $o->got('remove-data-dir') ) {
-         $sql =~ s/DATA DIRECTORY='.*?'//; 
+         $sql =~ s/DATA DIRECTORY\s*=\s*'.*?'//; 
          PTDEBUG && _d("removing data dir");
       }
       PTDEBUG && _d($sql);
@@ -10438,6 +10482,21 @@ sub create_new_table {
      . join("\n", map { "  $_" } @old_tables)
      . "\nExamine these tables and drop some or all of them if they are "
      . "no longer need, then re-run the tool.\n";
+}
+
+sub insert_data_directory {
+    my ($sql, $data_dir) = @_;
+    $sql =~ s/DATA DIRECTORY\s*=\s*'.*?'//; 
+
+    my $re_ps=qr/(\/\*!50100 )?(PARTITION|SUBPARTITION)/;
+    
+    if ($sql=~ m/$re_ps/) {
+        my $insert_pos=$-[0];
+        $sql = substr($sql, 0, $insert_pos - 1). " DATA DIRECTORY = '$data_dir' " .substr($sql, $insert_pos);
+    } else {
+        $sql .= " DATA DIRECTORY = '$data_dir' ";
+    }
+    return $sql;
 }
 
 sub swap_tables {
@@ -12828,7 +12887,7 @@ Default character set.
 
 =item * D
 
-dsn: database; copy: yes
+dsn: database; copy: no
 
 Database for the old and new table.
 
@@ -12979,6 +13038,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-online-schema-change 3.0.6
+pt-online-schema-change 3.0.7
 
 =cut

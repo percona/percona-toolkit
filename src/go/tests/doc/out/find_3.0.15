@@ -35,7 +35,7 @@
 	},
 	"nreturned" : 2,
 	"responseLength" : 86,
-	"millis" : 0,
+	"millis" : 42,
 	"execStats" : {
 		"stage" : "FETCH",
 		"nReturned" : 2,
@@ -80,7 +80,7 @@
 			"matchTested" : 0
 		}
 	},
-	"ts" : ISODate("2017-10-15T01:54:19.953Z"),
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
 	"client" : "127.0.0.1",
 	"allUsers" : [ ],
 	"user" : ""

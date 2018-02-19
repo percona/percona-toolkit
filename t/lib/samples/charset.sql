@@ -1,0 +1,15 @@
+DROP DATABASE IF EXISTS `test`;
+CREATE DATABASE `test`;
+
+CREATE TABLE `test`.`t1` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `f2` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) COMMENT "test1" ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `test`.`t2` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `f2` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+

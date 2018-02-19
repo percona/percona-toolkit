@@ -27,10 +27,11 @@ innodb_lock_wait_timeout   = 3
 general_log
 general_log_file           = genlog
 lower_case_table_names     = 0
-slow-query-log             = 1
+slow-query-log             = 0
 slow-query-log-file        = /tmp/PORT/data/slow.log
 log_slow_admin_statements  = 1
 long_query_time            = 0
+#character-set-server       = utf8
 
 # fkc test
 binlog_format              = STATEMENT

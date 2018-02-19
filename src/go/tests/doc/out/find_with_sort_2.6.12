@@ -18,17 +18,17 @@
 	"numYield" : 0,
 	"lockStats" : {
 		"timeLockedMicros" : {
-			"r" : NumberLong(508),
-			"w" : NumberLong(0)
+			"r" : NumberLong(1234),
+			"w" : NumberLong(4321)
 		},
 		"timeAcquiringMicros" : {
-			"r" : NumberLong(19),
-			"w" : NumberLong(38)
+			"r" : NumberLong(9876),
+			"w" : NumberLong(6789)
 		}
 	},
 	"nreturned" : 2,
 	"responseLength" : 108,
-	"millis" : 0,
+	"millis" : 42,
 	"execStats" : {
 		"type" : "SORT",
 		"works" : 7,
@@ -95,7 +95,7 @@
 			}
 		]
 	},
-	"ts" : ISODate("2017-10-15T01:54:10.817Z"),
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
 	"client" : "127.0.0.1",
 	"allUsers" : [ ],
 	"user" : ""

@@ -118,6 +118,7 @@ func (self ExampleQuery) Db() string {
 	return ""
 }
 
+// ExplainCmd returns bson.D ready to use in https://godoc.org/labix.org/v2/mgo#Database.Run
 func (self ExampleQuery) ExplainCmd() bson.D {
 	cmd := self.Command
 
@@ -162,8 +163,16 @@ func (self ExampleQuery) ExplainCmd() bson.D {
 			}
 		} else {
 			for i := range cmd {
-				// drop $db param as it is not supported in MongoDB 3.0
-				if cmd[i].Name == "$db" {
+				switch cmd[i].Name {
+				// PMM-1905: Drop "ntoreturn" if it's negative.
+				case "ntoreturn":
+					// If it's non-negative, then we are fine, continue to next param.
+					if cmd[i].Value.(int64) >= 0 {
+						continue
+					}
+					fallthrough
+				// Drop $db as it is not supported in MongoDB 3.0.
+				case "$db":
 					if len(cmd)-1 == i {
 						cmd = cmd[:i]
 					} else {

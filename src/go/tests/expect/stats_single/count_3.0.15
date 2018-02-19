@@ -5,8 +5,8 @@
     "Operation": "COUNT",
     "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"count\":\"coll\",\"query\":{},\"fields\":{}}}\n",
     "Fingerprint": "COUNT coll",
-    "FirstSeen": "2017-10-15T01:54:18.673Z",
-    "LastSeen": "2017-10-15T01:54:18.673Z",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
     "TableScan": false,
     "Count": 1,
     "BlockedTime": null,
@@ -18,7 +18,7 @@
       0
     ],
     "QueryTime": [
-      0
+      42
     ],
     "ResponseLength": [
       44

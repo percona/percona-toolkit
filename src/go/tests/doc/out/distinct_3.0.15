@@ -36,11 +36,11 @@
 		}
 	},
 	"responseLength" : 206,
-	"millis" : 0,
+	"millis" : 42,
 	"execStats" : {
 		
 	},
-	"ts" : ISODate("2017-10-15T01:54:19.380Z"),
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
 	"client" : "127.0.0.1",
 	"allUsers" : [ ],
 	"user" : ""
