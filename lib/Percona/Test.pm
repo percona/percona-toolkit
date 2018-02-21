@@ -542,11 +542,8 @@ sub no_diff {
       $expected_output = "/tmp/pt-test-outfile-trf";
    }
 
-   print("====================================================================================================");
-   warn("TEST >>>>>>>>>>>>");
    # Determine cmd type and run it.
    if ( ref $cmd eq 'CODE' ) {
-      diag("CODE >>>>>>>>>>>>>>>>");
       output($cmd, file => $tmp_file);
    }
    elsif ( $args{cmd_output} ) {
