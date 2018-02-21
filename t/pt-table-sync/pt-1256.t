@@ -46,13 +46,14 @@ my @args = ('--sync-to-master', 'h=127.1,P=12346,u=msandbox,p=msandbox',
 # use lib/samples dir since the main change is in DSNParser
 $sb->load_file('master', "t/lib/samples/charset.sql");
 
-my $want = encode('UTF-8','абвгд');
+my $put = encode('UTF-8','абвгд');
+my $want = 'абвгд';
 
 $master_dbh->do("SET NAMES 'utf8'");
 $slave1_dbh->do("SET NAMES 'utf8'");
 $slave1_dbh->do("SET NAMES 'utf8'");
 
-$master_dbh->do("INSERT INTO test.t1 VALUES (NULL, '$want')");
+$master_dbh->do("INSERT INTO test.t1 VALUES (NULL, '$put')");
 $sb->wait_for_slaves();
 
 $slave1_dbh->do("DELETE FROM test.t1 WHERE id=1 LIMIT 1");

@@ -5146,7 +5146,7 @@ sub watch_server {
    if ( VersionParser->new($dbh) >= '5.6.5' && VersionParser->new($dbh) <= '10.0.0' ) {
       my $row = $dbh->selectrow_arrayref('SELECT @@GLOBAL.gtid_mode');
       PTDEBUG && _d('@@GLOBAL.gtid_mode:', $row->[0]);
-      if ( $row && $row->[0] eq 'ON' ) {
+      if ( $row && $row->[0] =~ m/^ON/ ) {
          $have_gtid = 1;
       }
    }
