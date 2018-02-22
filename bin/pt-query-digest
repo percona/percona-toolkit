@@ -5246,7 +5246,7 @@ sub new {
 }
 
 sub write {
-   my ( $self, $fh, $event ) = @_;
+   my ( $self, $fh, $event, $field ) = @_;
    if ( $event->{ts} ) {
       print $fh "# Time: $event->{ts}\n";
    }
@@ -5292,7 +5292,11 @@ sub write {
    if ( $event->{arg} =~ m/^administrator command/ ) {
       print $fh '# ';
    }
-   print $fh $event->{arg}, ";\n";
+   if ($field && $event->{$field}) {
+       print $fh $event->{$field}, ";\n";
+   } else {
+       print $fh $event->{arg}, ";\n";
+   }
 
    return;
 }
@@ -14212,13 +14216,14 @@ sub main {
 
    if ( $o->get('output') =~ /slowlog/i ) {
       my $w = new SlowLogWriter();
+      my $field = $o->get('output') eq 'secure-slowlog' ? 'fingerprint' : '';
       $pipeline->add(
          name    => '--output slowlog',
          process => sub {
             my ( $args ) = @_;
             my $event = $args->{event};
             PTDEBUG && _d('callback: --output slowlog');
-            $w->write(*STDOUT, $event);
+            $w->write(*STDOUT, $event, $field);
             return $args;
          },
       );
@@ -15969,12 +15974,13 @@ type: string; default: report
 
 How to format and print the query analysis results.  Accepted values are:
 
-   VALUE      FORMAT
-   =======    ==============================
-   report     Standard query analysis report
-   slowlog    MySQL slow log
-   json       JSON, on array per query class
-   json-anon  JSON without example queries
+   VALUE          FORMAT
+   =======        ==============================
+   report         Standard query analysis report
+   slowlog        MySQL slow log
+   json           JSON, on array per query class
+   json-anon      JSON without example queries
+   secure-slowlog JSON without example queries
 
 The entire C<report> output can be disabled by specifying C<--no-report>
 (see L<"--[no]report">), and its sections can be disabled or rearranged
