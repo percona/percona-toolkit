@@ -10157,8 +10157,8 @@ sub main {
                    for my $row (@$rows) {
                       print "$row->{table_schema}.$row->{table_name}\n";
                    }
-                   print STDERR "\nPlease add ROCKSDB to the list of --ignored-engines\n";
-                   print STDERR "--ignored-engines=FEDERATED,MRG_MyISAM,RocksDB\n";
+                   print STDERR "\nPlease add ROCKSDB to the list of --ignore-engines\n";
+                   print STDERR "--ignore-engines=FEDERATED,MRG_MyISAM,RocksDB\n";
                    print STDERR "\nConversely exclude the MyRocks tables explicitly:\n";
                    print STDERR "--ignore-tables=$tables_list\n\n";
                    print STDERR "Aborting";
