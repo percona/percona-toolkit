@@ -491,7 +491,7 @@ list of supported platforms and versions.
 
 =head1 BUGS
 
-Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
+Please report bugs at L<https://jira.percona.com>.
 Include the following information in your bug report:
 
 =over
