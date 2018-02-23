@@ -8304,6 +8304,8 @@ See also L<"--wait-before-kill"> and L<"--wait-after-kill">.
 
 =item --kill-busy-commands
 
+type: string
+
 default: Query
 
 group: Actions
