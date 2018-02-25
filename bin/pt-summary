@@ -2259,7 +2259,7 @@ report_transparent_huge_pages () {
 
   STATUS_THP_SYSTEM=""
   if [ -f /sys/kernel/mm/transparent_hugepage/enabled ]; then
-    CONTENT_TRANSHP=$(</sys/kernel/mm/transparent_hugepage/enabled)
+    CONTENT_TRANSHP=$(cat /sys/kernel/mm/transparent_hugepage/enabled)
     STATUS_THP_SYSTEM=$(echo $CONTENT_TRANSHP | grep -cv '\[never\]')
   elif [ -f /sys/kernel/mm/redhat_transparent_hugepage/enabled ]; then
     CONTENT_TRANSHP=$(</sys/kernel/mm/redhat_transparent_hugepage/enabled)
