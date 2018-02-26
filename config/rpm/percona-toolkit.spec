@@ -45,7 +45,11 @@ chmod -R u+w $RPM_BUILD_ROOT/*
 %post
 if [ ! -e /etc/percona-toolkit/.percona.toolkit.uuid ]; then
   mkdir -p /etc/percona-toolkit
-  perl -e 'printf+($}="%04x")."$}-$}-$}-$}-".$}x3,map rand 65537,0..7;' > /etc/percona-toolkit/.percona.toolkit.uuid
+  if [ -e /sys/class/dmi/id/product_uuid ]; then
+    cat /sys/class/dmi/id/product_uuid > /etc/percona-toolkit/.percona.toolkit.uuid
+  else
+    perl -e 'printf+($}="%04x")."$}-$}-$}-$}-".$}x3,map rand 65537,0..7;' > /etc/percona-toolkit/.percona.toolkit.uuid
+  fi
 fi
 
 %clean
