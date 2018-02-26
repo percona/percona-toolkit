@@ -6205,6 +6205,8 @@ sub main {
    PTDEBUG && _d($end ? ('Will exit at', ts($end)) : 'Running forever');
 
    my $get_next_interval = make_interval_iter($interval, $skew);
+   my $max_successive_errors = $o->get('fail-successive-errors') || 0;
+   my $num_successive_errors = 0;
 
    while (                         # Stop if...
       (!$end || int(time) < $end)  # runtime exceeded, or
@@ -6278,6 +6280,7 @@ sub main {
          }
       };
       if ( $EVAL_ERROR ) {
+         $num_successive_errors = $num_successive_errors + 1;
          my ( $err ) = $EVAL_ERROR =~ m/^(?:DBI|DBD).*failed: (.*?)\s*at \S+ line .*/;
          if ( $err ) {
             warn "$err\n";
@@ -6285,6 +6288,12 @@ sub main {
          else {
             die $EVAL_ERROR;
          }
+         if ($max_successive_errors > 0 && $num_successive_errors >= $max_successive_errors) {
+            die $EVAL_ERROR;
+         }
+      }
+      else {
+        $num_successive_errors = 0;
       }
    }
 
@@ -6818,6 +6827,13 @@ is the current delay followed by moving averages over the timeframe given in
 L<"--frames">.  For example,
 
  5s [  0.25s,  0.05s,  0.02s ]
+
+=item --fail-successive-errors
+
+type: int
+
+If specified, pt-heartbeat will fail after given number of successive DBI errors
+(failure to connect to server or issue a query).
 
 =item --password
 
