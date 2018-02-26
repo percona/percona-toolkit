@@ -66,6 +66,11 @@ like(
    "InnoDB section present"
 );
 
+like(
+   $out,
+   qr/Users \| 2/,
+   "Security works"
+);
 
 # --read-samples
 for my $i (2..7) {
