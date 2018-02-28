@@ -1,6 +1,27 @@
 Release Notes
 *************
 
+v3.0.7 released
+==========================
+
+New Features
+
+* :jirabug: PT-633  : Added --mysql-only option to pt-stalk for RDS
+
+Bug Fixes     
+
+* :jirabug: PT-244  : pt-online-schema-change --data-dir option broken for partitioned table
+* :jirabug: PT-1256 : pt-table-sync does not use the character set for the table it is synchronizing
+* :jirabug: PT-1455 : pt-osc is stuck when the table that is being altered is filtered out in the slave
+* :jirabug: PT-1485 : pt-mysql-summary has broken Security section in versions bigger then 5.6
+* :jirabug: PMM-1905: Explain fails if encounters negative "ntoreturn"
+
+Known Issues:
+
+* pt-online-schema-change will lock forever if using ``--drop-swap`` under MySQL 8.0.3-rc and 8.0.4-rc due to an error in MySQL: https://bugs.mysql.com/bug.php?id=8948
+* pt-online-schema-change will lose FK constraints under MySQL 8.0.2-dmr, 8.0.3-rc 8.0.4-rc due to an error in MySQL: https://bugs.mysql.com/bug.php?id=89441
+* pt-show-grants can't handle MySQL 8 roles yet
+
 v3.0.6 released 2018-01-04
 ==========================
 
@@ -20,7 +41,7 @@ Known Issues
 * :jirabug:`PT-238`: The information message implemented for :jirabug:`PT-204` has a typo when referring to the ``--ignore-engines`` parameter. This problem is planned to be fixed in the next release.
 * :jirabug:`PT-240`: It has been detected that the implementation of :jirabug:`PT-205` is not complete and ``pt-osc`` may fail when altering tables. This problem is planned to be fixed in the next release.
 
-Bug Fixes
+Bug Fixes     
 
 * :jirabug:`PT-234`: The general log parser cannot handle timestamps which include time zones
 * :jirabug:`PT-229`: ``pt-online-schema-change`` does not retry on a deadlock error when using ``Percona Server`` 5.7
