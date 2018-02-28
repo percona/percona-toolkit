@@ -6,15 +6,15 @@ v3.0.7 released
 
 New Features
 
-* :jirabug: PT-633  : Added --mysql-only option to pt-stalk for RDS
+* :jirabug:`PT-633`: Added --mysql-only option to ``pt-stalk`` for RDS
 
 Bug Fixes     
 
-* :jirabug: PT-244  : pt-online-schema-change --data-dir option broken for partitioned table
-* :jirabug: PT-1256 : pt-table-sync does not use the character set for the table it is synchronizing
-* :jirabug: PT-1455 : pt-osc is stuck when the table that is being altered is filtered out in the slave
-* :jirabug: PT-1485 : pt-mysql-summary has broken Security section in versions bigger then 5.6
-* :jirabug: PMM-1905: Explain fails if encounters negative "ntoreturn"
+* :jirabug:`PT-244`: The ``--data-dir`` option of ``pt-online-schema-change``  is broken for partitioned table
+* :jirabug:`PT-1256`: ``pt-table-sync`` does not use the character set for the table it is synchronizing
+* :jirabug:`PT-1455`: ``pt-osc`` is stuck when filtering out on the slave the table that is being altered
+* :jirabug:`PT-1485`: The *Security* section of ``pt-mysql-summary`` is broken  in versions bigger than 5.6
+* :jirabug:`PMM-1905`: ``Explain`` fails if it encounters a negative ``ntoreturn``
 
 Known Issues:
 
