@@ -44,7 +44,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.6';
+our $VERSION = '3.0.7';
 
 use strict;
 use warnings FATAL => 'all';
