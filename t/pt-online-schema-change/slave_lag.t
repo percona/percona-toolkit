@@ -38,6 +38,14 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 
+sub reset_query_cache {
+    my @dbhs = @_;
+    return if ($sandbox_version >= '8.0');
+    foreach my $dbh (@dbhs) {
+        $dbh->do('RESET QUERY CACHE');
+    }
+}
+
 # 1) Set the slave delay to 0 just in case we are re-running the tests without restarting the sandbox.
 # 2) Load sample data
 # 3) Set the slave delay to 30 seconds to be able to see the 'waiting' message.
@@ -57,11 +65,11 @@ $sb->load_file('master', "t/pt-online-schema-change/samples/slave_lag.sql");
 
 my $num_rows = 10000;
 diag("Loading $num_rows into the table. This might take some time.");
-diag(`util/mysql_random_data_load_linux_amd64 --host=127.1 --port=12345 --user=msandbox --password=msandbox test pt178 $num_rows`);
+diag(`util/mysql_random_data_load --host=127.1 --port=12345 --user=msandbox --password=msandbox test pt178 $num_rows`);
 
 # Run a full table scan query to ensure the slave is behind the master
-$master_dbh->do('RESET QUERY CACHE');
-$slave_dbh->do('RESET QUERY CACHE');
+# There is no query cache in MySQL 8.0+
+reset_query_cache($master_dbh, $master_dbh);
 $master_dbh->do('UPDATE `test`.`pt178` SET f2 = f2 + 1 WHERE f1 = ""'); 
 
 # This is the base test, ust to ensure that without using --check-slave-lag nor --skip-check-slave-lag
@@ -84,8 +92,7 @@ $args = "$master_dsn,D=test,t=pt178 --execute --chunk-size 1 --max-lag 5 --alter
       . "--check-slave-lag h=127.1,P=12346,u=msandbox,p=msandbox,D=test,t=sbtest";
 
 # Run a full table scan query to ensure the slave is behind the master
-$master_dbh->do('RESET QUERY CACHE');
-$slave_dbh->do('RESET QUERY CACHE');
+reset_query_cache($master_dbh, $master_dbh);
 $master_dbh->do('UPDATE `test`.`pt178` SET f2 = f2 + 1 WHERE f1 = ""'); 
 
 diag("Starting --check-slave-lag test. This is going to take some time due to the delay in the slave");
@@ -99,8 +106,7 @@ like(
 
 # Repeat the test now using --skip-check-slave-lag
 # Run a full table scan query to ensure the slave is behind the master
-$master_dbh->do('RESET QUERY CACHE');
-$slave_dbh->do('RESET QUERY CACHE');
+reset_query_cache($master_dbh, $master_dbh);
 $master_dbh->do('UPDATE `test`.`pt178` SET f2 = f2 + 1 WHERE f1 = ""'); 
 
 $args = "$master_dsn,D=test,t=pt178 --execute --chunk-size 1 --max-lag 5 --alter 'ENGINE=InnoDB' "

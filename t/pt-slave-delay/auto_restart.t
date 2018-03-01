@@ -23,6 +23,10 @@ my $sb  = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
 my $dbh        = $sb->get_dbh_for('slave1');
 
+if ($sandbox_version ge '5.7') {
+   plan skip_all => 'Use SQL_DELAY';
+}
+
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to MySQL slave.';
 }

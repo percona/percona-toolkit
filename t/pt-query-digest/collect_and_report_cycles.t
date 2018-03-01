@@ -59,8 +59,9 @@ ok(
 # entirely by the first iteration.
 ok(
    no_diff($run_with . 'slow002.txt --iterations 2   --report-format=query_report,profile --limit 1',
-   "t/pt-query-digest/samples/slow002_iters_2.txt"),
-   '--iterations'
+   "t/pt-query-digest/samples/slow002_iters_2.txt",
+   ),
+   '--iterations' ,
 );
 
 # #############################################################################

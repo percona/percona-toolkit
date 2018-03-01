@@ -2,8 +2,8 @@
 
 start_ts=$(date +%s)
 
-PIDFILE="/tmp/PORT/data/mysql_sandboxPORT.pid"
-SOCKETFILE="/tmp/PORT/mysql_sandboxPORT.sock"
+PIDFILE="TMP_DIR/PORT/data/mysql_sandboxPORT.pid"
+SOCKETFILE="TMP_DIR/PORT/mysql_sandboxPORT.sock"
 BASEDIR="PERCONA_TOOLKIT_SANDBOX"
 
 sandbox_is_alive() {
@@ -11,14 +11,14 @@ sandbox_is_alive() {
    [ -f $PIDFILE -a  -S $SOCKETFILE ] || return 1
 
    # And that PID file must have a PID.
-   local pid=$(cat /tmp/PORT/data/mysql_sandboxPORT.pid 2>/dev/null)
+   local pid=$(cat TMP_DIR/PORT/data/mysql_sandboxPORT.pid 2>/dev/null)
    [ "$pid" ] || return 1
 
    # Second, MySQL is truly alive when it respond to a ping.
    # It's not enough that the mysqld process is running because
    # InnoDB can take time to create ibdata1, etc.  So MySQL is
    # only alive when it responds to queries.
-   $BASEDIR/bin/mysqladmin --defaults-file="/tmp/PORT/my.sandbox.cnf" ping >/dev/null 2>&1
+   $BASEDIR/bin/mysqladmin --defaults-file="TMP_DIR/PORT/my.sandbox.cnf" ping >/dev/null 2>&1
    [ $? -eq 0 ] || return 1
 
    return 0
@@ -36,7 +36,7 @@ _seq() {
 echo -n "Stopping MySQL test server on port PORT... "
 
 if sandbox_is_alive; then
-   $BASEDIR/bin/mysqladmin --defaults-file=/tmp/PORT/my.sandbox.cnf shutdown
+   $BASEDIR/bin/mysqladmin --defaults-file=TMP_DIR/PORT/my.sandbox.cnf shutdown
 fi
 
 for i in $(_seq 60); do

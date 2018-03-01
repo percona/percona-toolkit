@@ -824,7 +824,13 @@ SKIP: {
       $config->mysql_version(),
       qr/5\.\d+\.\d+/,
       "MySQL version from dbh"
-   );
+   ) if ($sandbox_version lt '8.0');
+
+   like(
+      $config->mysql_version(),
+      qr/8\.\d+\.\d+/,
+      "MySQL version from dbh"
+   ) if ($sandbox_version ge '8.0');
 }
 
 $config = new MySQLConfig(
