@@ -1,6 +1,6 @@
 GO := go
 pkgs   = $(shell find . -type d -name "pt-mongodb*" -exec basename {} \;)
-VERSION="3.0.6" 
+VERSION="3.0.7" 
 BUILD=$(shell date +%FT%T%z)
 GOVERSION=$(shell go version | cut --delimiter=" " -f3)
 GOUTILSDIR ?= $(GOPATH)/bin

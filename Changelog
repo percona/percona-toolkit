@@ -1,6 +1,6 @@
 Changelog for Percona Toolkit
 
-v3.0.7 
+v3.0.7 released 2018-03-01
 
  * Fixed Bug    PT-244 : pt-online-schema-change --data-dir option broken for partitioned table
  * Feature      PT-633 : Added --mysql-only option to pt-stalk for RDS

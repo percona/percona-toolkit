@@ -541,7 +541,7 @@ Many people have contributed code over the years.  See each tool's
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-Percona Toolkit is copyright 2011-2017 Percona LLC and/or its affiliates, et al.
+Percona Toolkit is copyright 2011-2018 Percona LLC and/or its affiliates, et al.
 See each program's documentation for complete copyright notices.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -560,6 +560,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-Percona Toolkit v3.0.6 released 2017-12-20
+Percona Toolkit v3.0.7 released 2018-03-01
 
 =cut
