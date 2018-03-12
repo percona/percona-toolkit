@@ -58,7 +58,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.6';
+our $VERSION = '3.0.7';
 
 use strict;
 use warnings FATAL => 'all';
@@ -10157,8 +10157,8 @@ sub main {
                    for my $row (@$rows) {
                       print "$row->{table_schema}.$row->{table_name}\n";
                    }
-                   print STDERR "\nPlease add ROCKSDB to the list of --ignored-engines\n";
-                   print STDERR "--ignored-engines=FEDERATED,MRG_MyISAM,RocksDB\n";
+                   print STDERR "\nPlease add ROCKSDB to the list of --ignore-engines\n";
+                   print STDERR "--ignore-engines=FEDERATED,MRG_MyISAM,RocksDB\n";
                    print STDERR "\nConversely exclude the MyRocks tables explicitly:\n";
                    print STDERR "--ignore-tables=$tables_list\n\n";
                    print STDERR "Aborting";
@@ -13929,7 +13929,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2017 Percona LLC and/or its affiliates,
+This program is copyright 2011-2018 Percona LLC and/or its affiliates,
 2007-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -13948,6 +13948,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-checksum 3.0.6
+pt-table-checksum 3.0.7
 
 =cut

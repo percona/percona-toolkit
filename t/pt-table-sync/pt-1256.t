@@ -46,13 +46,14 @@ my @args = ('--sync-to-master', 'h=127.1,P=12346,u=msandbox,p=msandbox',
 # use lib/samples dir since the main change is in DSNParser
 $sb->load_file('master', "t/lib/samples/charset.sql");
 
-my $want = encode('UTF-8','абвгд');
+my $put = encode('UTF-8','абвгд');
+my $want = 'абвгд';
 
 $master_dbh->do("SET NAMES 'utf8'");
 $slave1_dbh->do("SET NAMES 'utf8'");
 $slave1_dbh->do("SET NAMES 'utf8'");
 
-$master_dbh->do("INSERT INTO test.t1 VALUES (NULL, '$want')");
+$master_dbh->do("INSERT INTO test.t1 VALUES (NULL, '$put')");
 $sb->wait_for_slaves();
 
 $slave1_dbh->do("DELETE FROM test.t1 WHERE id=1 LIMIT 1");
@@ -78,17 +79,20 @@ is(
     "Character set is correct",
 );
 
-# 3
-$output = `$trunk/bin/pt-table-sync --execute --lock-and-rename h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=t1 t=t2 2>&1`;
-$output = `/tmp/12345/use -e 'show create table test.t2'`;
-like($output, qr/COMMENT='test1'/, '--lock-and-rename worked');
-
-$row = $slave1_dbh->selectrow_hashref("SELECT f2 FROM test.t2 WHERE id = 1");
-is(
-    $row->{f2},
-    $want,
-    "Character set is correct",
-);
+SKIP {
+    skip "Skipping in MySQL 8.0.4-rc since there is an error in the server itself", 1 if ($sandbox_version ge '8.0');
+    # 3
+    $output = `$trunk/bin/pt-table-sync --execute --lock-and-rename h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=t1 t=t2 2>&1`;
+    $output = `/tmp/12345/use -e 'show create table test.t2'`;
+    like($output, qr/COMMENT='test1'/, '--lock-and-rename worked');
+    
+    $row = $slave1_dbh->selectrow_hashref("SELECT f2 FROM test.t2 WHERE id = 1");
+    is(
+        $row->{f2},
+        $want,
+        "Character set is correct",
+    );
+}
 # #############################################################################
 # Done.
 # #############################################################################

@@ -927,6 +927,9 @@ collect_mysql_processlist () {
 
 collect_mysql_users () {
    $CMD_MYSQL $EXT_ARGV -ss -e 'SELECT COUNT(*), SUM(user=""), SUM(password=""), SUM(password NOT LIKE "*%") FROM mysql.user' 2>/dev/null
+   if [ "$?" -ne 0 ]; then
+       $CMD_MYSQL $EXT_ARGV -ss -e 'SELECT COUNT(*), SUM(user=""), SUM(authentication_string=""), SUM(authentication_string NOT LIKE "*%") FROM mysql.user' 2>/dev/null
+   fi
 }
 
 collect_mysql_show_slave_hosts () {
@@ -2195,7 +2198,7 @@ report_jemalloc_enabled() {
   local JEMALLOC_LOCATION=''
 
   for PID in $(pidof mysqld); do
-     grep -qc jemalloc /proc/${PID}/environ || ldd $(which mysqld) | grep -qc jemalloc
+     grep -qc jemalloc /proc/${PID}/environ || ldd $(which mysqld) 2>/dev/null | grep -qc jemalloc
      JEMALLOC_STATUS=$?
      if [ $JEMALLOC_STATUS = 1 ]; then
        echo "jemalloc is not enabled in MySQL config for process with ID ${PID}" 
@@ -2305,7 +2308,8 @@ report_mysql_summary () {
    section "Plugins"
    name_val "InnoDB compression" "$(get_plugin_status "$dir/mysql-plugins" "INNODB_CMP")"
 
-   if [ "$(get_var have_query_cache "$dir/mysql-variables")" ]; then
+   local has_query_cache=$(get_var have_query_cache "$dir/mysql-variables")
+   if [ "$has_query_cache" = 'YES' ]; then
       section "Query cache"
       local query_cache_size=$(get_var query_cache_size "$dir/mysql-variables")
       local used=$(( ${query_cache_size} - $(get_var Qcache_free_memory "$dir/mysql-status") ))
@@ -3172,7 +3176,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2017 Percona LLC and/or its affiliates,
+This program is copyright 2011-2018 Percona LLC and/or its affiliates,
 2010-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -3191,7 +3195,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-mysql-summary 3.0.6
+pt-mysql-summary 3.0.7
 
 =cut
 

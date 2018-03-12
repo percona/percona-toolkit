@@ -315,6 +315,7 @@ sub test_alter_table {
       # still functiona: i.e. that they'll prevent us from delete
       # a parent row that's being referenced by a child.
       my $sql = "DELETE FROM $table WHERE $pk_col=1 LIMIT 1";
+      warn ">> SQL: $sql";
       eval {
          $master_dbh->do($sql);
       };

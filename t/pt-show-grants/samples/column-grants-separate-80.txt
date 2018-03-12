@@ -1,0 +1,7 @@
+-- Grants for 'sally'@'%'
+CREATE USER IF NOT EXISTS 'sally'@'%';
+ALTER USER 'sally'@'%' IDENTIFIED WITH 'mysql_native_password' REQUIRE NONE PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK PASSWORD HISTORY DEFAULT PASSWORD REUSE INTERVAL DEFAULT;
+GRANT INSERT (`city`) ON `sakila`.`city` TO `sally`@`%`;
+GRANT SELECT (`DateCreated`, `PaymentStat`, `PckPrice`, `SANumber`) ON `test`.`t` TO `sally`@`%`;
+GRANT SELECT (`city_id`) ON `sakila`.`city` TO `sally`@`%`;
+GRANT USAGE ON *.* TO `sally`@`%`;

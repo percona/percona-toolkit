@@ -37,7 +37,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.6';
+our $VERSION = '3.0.7';
 
 use strict;
 use warnings FATAL => 'all';
@@ -4642,7 +4642,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2017 Percona LLC and/or its affiliates.
+This program is copyright 2011-2018 Percona LLC and/or its affiliates.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
@@ -4660,6 +4660,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-fk-error-logger 3.0.6
+pt-fk-error-logger 3.0.7
 
 =cut

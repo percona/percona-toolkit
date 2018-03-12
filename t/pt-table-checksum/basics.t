@@ -105,7 +105,7 @@ ok(
 
 $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 
-my $max_rows = $sandbox_version < '5.7' ? 90 : 100;
+my $max_rows = $sandbox_version >= '8.0' ? 102 : $sandbox_version < '5.7' ? 90 : 100;
 ok(
    $row->[0] >= 75 && $row->[0] <= $max_rows,
    'Between 75 and 90 chunks on master'
@@ -434,7 +434,7 @@ is(
 # Test --where.
 # #############################################################################
 $sb->load_file('master', 't/pt-table-checksum/samples/600cities.sql');
-$master_dbh->do("LOAD DATA LOCAL INFILE '$trunk/t/pt-table-checksum/samples/600cities.data' INTO TABLE test.t");
+$master_dbh->do("LOAD DATA INFILE '$trunk/t/pt-table-checksum/samples/600cities.data' INTO TABLE test.t");
 
 $output = output(
    sub { $exit_status = pt_table_checksum::main(@args,

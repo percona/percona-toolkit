@@ -61,7 +61,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.6';
+our $VERSION = '3.0.7';
 
 use strict;
 use warnings FATAL => 'all';
@@ -10284,7 +10284,12 @@ sub disable_query_cache {
 
    my $sql = 'SELECT @@query_cache_type';
    PTDEBUG && _d($sql);
-   my ($query_cache_type) = $dbh->selectrow_array($sql);
+   my $query_cache_type;
+   eval { ($query_cache_type) = $dbh->selectrow_array($sql) };
+   # There is no query cache in MySQL 8.0+
+   if ( $EVAL_ERROR =~ m/Unknown system variable 'query_cache_type'/i ) {
+       return;
+   }
    PTDEBUG && _d($query_cache_type);
    return if ($query_cache_type || '') =~ m/OFF|0/;
 
@@ -11390,7 +11395,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2009-2017 Percona LLC and/or its affiliates.
+This program is copyright 2009-2018 Percona LLC and/or its affiliates.
 Feedback and improvements are welcome.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11409,6 +11414,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-upgrade 3.0.6
+pt-upgrade 3.0.7
 
 =cut

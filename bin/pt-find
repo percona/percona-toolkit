@@ -35,7 +35,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.6';
+our $VERSION = '3.0.7';
 
 use strict;
 use warnings FATAL => 'all';
@@ -4712,6 +4712,8 @@ type: size; group: Tests
 Table data uses n bytes of space.  This tests the Data_length column.
 The specified size can be "NULL" to test where Data_length IS NULL.
 
+Note: Starting from MySQL 8.0, empty tables return 0 instead of NULL.
+
 =item --dblike
 
 type: string; group: Tests
@@ -5077,7 +5079,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2017 Percona LLC and/or its affiliates,
+This program is copyright 2011-2018 Percona LLC and/or its affiliates,
 2007-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -5096,6 +5098,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-find 3.0.6
+pt-find 3.0.7
 
 =cut
