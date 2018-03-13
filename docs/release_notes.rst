@@ -1,6 +1,13 @@
 Release Notes
 *************
 
+v3.0.8 
+==========================
+
+New Features
+
+* :jirabug:`PT-1500`: Added --output=secure-slowlog option to ``pt-query-digest``
+
 v3.0.7 released 2018-03-01
 ==========================
 
