@@ -1,6 +1,6 @@
 Changelog for Percona Toolkit
 
-v3.0.8
+v3.0.8 released 2018-03-13
 
  * Feature     PT-1500 : add --secure-slowlog option to pt-query digest
 
