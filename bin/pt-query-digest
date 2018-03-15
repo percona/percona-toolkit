@@ -6732,6 +6732,7 @@ sub BUILDARGS {
          shorten          => 1024,
          report_all       => $o->get('report-all'),
          report_histogram => $o->get('report-histogram'),
+         output           => $o->got('output') ? $o->get('output') : '',
       },
       num_format     => '# %1$-'.$label_width.'s %2$3s %3$7s %4$7s %5$7s %6$7s %7$7s %8$7s %9$7s',
       bool_format    => '# %1$-'.$label_width.'s %2$3d%% yes, %3$3d%% no',
@@ -6932,7 +6933,7 @@ sub query_report_values {
       my $rank       = $top_event->[2];
       my $stats      = $ea->results->{classes}->{$item};
       my $sample     = $ea->results->{samples}->{$item};
-      my $samp_query = $sample->{arg} || '';
+      my $samp_query = ($self->{options}->{output} eq 'secure-slowlog') ? $sample->{fingerprint} || '' : $sample->{arg} || '';
 
       my %item_vals = (
          item       => $item,
