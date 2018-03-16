@@ -64,7 +64,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.7';
+our $VERSION = '3.0.8';
 
 use strict;
 use warnings FATAL => 'all';
@@ -5246,7 +5246,7 @@ sub new {
 }
 
 sub write {
-   my ( $self, $fh, $event ) = @_;
+   my ( $self, $fh, $event, $field ) = @_;
    if ( $event->{ts} ) {
       print $fh "# Time: $event->{ts}\n";
    }
@@ -5292,7 +5292,11 @@ sub write {
    if ( $event->{arg} =~ m/^administrator command/ ) {
       print $fh '# ';
    }
-   print $fh $event->{arg}, ";\n";
+   if ($field && $event->{$field}) {
+       print $fh $event->{$field}, ";\n";
+   } else {
+       print $fh $event->{arg}, ";\n";
+   }
 
    return;
 }
@@ -6728,6 +6732,7 @@ sub BUILDARGS {
          shorten          => 1024,
          report_all       => $o->get('report-all'),
          report_histogram => $o->get('report-histogram'),
+         output           => $o->got('output') ? $o->get('output') : '',
       },
       num_format     => '# %1$-'.$label_width.'s %2$3s %3$7s %4$7s %5$7s %6$7s %7$7s %8$7s %9$7s',
       bool_format    => '# %1$-'.$label_width.'s %2$3d%% yes, %3$3d%% no',
@@ -6928,7 +6933,7 @@ sub query_report_values {
       my $rank       = $top_event->[2];
       my $stats      = $ea->results->{classes}->{$item};
       my $sample     = $ea->results->{samples}->{$item};
-      my $samp_query = $sample->{arg} || '';
+      my $samp_query = ($self->{options}->{output} eq 'secure-slowlog') ? $sample->{fingerprint} || '' : $sample->{arg} || '';
 
       my %item_vals = (
          item       => $item,
@@ -14223,13 +14228,14 @@ sub main {
 
    if ( $o->get('output') =~ /slowlog/i ) {
       my $w = new SlowLogWriter();
+      my $field = $o->get('output') eq 'secure-slowlog' ? 'fingerprint' : '';
       $pipeline->add(
          name    => '--output slowlog',
          process => sub {
             my ( $args ) = @_;
             my $event = $args->{event};
             PTDEBUG && _d('callback: --output slowlog');
-            $w->write(*STDOUT, $event);
+            $w->write(*STDOUT, $event, $field);
             return $args;
          },
       );
@@ -15980,12 +15986,13 @@ type: string; default: report
 
 How to format and print the query analysis results.  Accepted values are:
 
-   VALUE      FORMAT
-   =======    ==============================
-   report     Standard query analysis report
-   slowlog    MySQL slow log
-   json       JSON, on array per query class
-   json-anon  JSON without example queries
+   VALUE          FORMAT
+   =======        ==============================
+   report         Standard query analysis report
+   slowlog        MySQL slow log
+   json           JSON, on array per query class
+   json-anon      JSON without example queries
+   secure-slowlog JSON without example queries
 
 The entire C<report> output can be disabled by specifying C<--no-report>
 (see L<"--[no]report">), and its sections can be disabled or rearranged
@@ -16871,6 +16878,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-query-digest 3.0.7
+pt-query-digest 3.0.8
 
 =cut

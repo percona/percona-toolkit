@@ -34,7 +34,7 @@ sub new {
 
 # Print out in slow-log format.
 sub write {
-   my ( $self, $fh, $event ) = @_;
+   my ( $self, $fh, $event, $field ) = @_;
    if ( $event->{ts} ) {
       print $fh "# Time: $event->{ts}\n";
    }
@@ -85,7 +85,12 @@ sub write {
    if ( $event->{arg} =~ m/^administrator command/ ) {
       print $fh '# ';
    }
-   print $fh $event->{arg}, ";\n";
+
+   if ($field && $event->{$field}) {
+       print $fh $event->{$field}, ";\n";
+   } else {
+       print $fh $event->{arg}, ";\n";
+   }
 
    return;
 }

@@ -47,7 +47,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.7';
+our $VERSION = '3.0.8';
 
 use strict;
 use warnings FATAL => 'all';
@@ -8304,9 +8304,7 @@ See also L<"--wait-before-kill"> and L<"--wait-after-kill">.
 
 =item --kill-busy-commands
 
-type: string
-
-default: Query
+type: string; default: Query
 
 group: Actions
 
@@ -8497,6 +8495,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-kill 3.0.7
+pt-kill 3.0.8
 
 =cut

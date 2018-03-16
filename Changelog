@@ -1,5 +1,9 @@
 Changelog for Percona Toolkit
 
+v3.0.8 released 2018-03-13
+
+ * Feature     PT-1500 : add --secure-slowlog option to pt-query digest
+
 v3.0.7 released 2018-03-01
 
  * Fixed Bug    PT-244 : pt-online-schema-change --data-dir option broken for partitioned table
