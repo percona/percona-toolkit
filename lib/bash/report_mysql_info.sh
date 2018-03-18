@@ -1401,8 +1401,8 @@ report_mysql_summary () {
    # InnoDB
    # ########################################################################
    section "InnoDB"
-   local have_innodb="$(get_var "have_innodb" "$dir/mysql-variables")"
-   if [ "${have_innodb}" = "YES" ]; then
+   local innodb_buffer_pool_size="$(get_var "innodb_buffer_pool_size" "$dir/mysql-variables")"
+   if [ -n "${innodb_buffer_pool_size}" ]; then
       section_innodb "$dir/mysql-variables" "$dir/mysql-status"
 
       if [ -s "$dir/innodb-status" ]; then
