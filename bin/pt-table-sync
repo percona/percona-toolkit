@@ -2866,7 +2866,7 @@ sub parse {
       my ( $type ) = $def =~ m/`[^`]+`\s([a-z]+)/;
       die "Can't determine column type for $def" unless $type;
       $type_for{$col} = $type;
-      if ( $type =~ m/(?:(?:tiny|big|medium|small)?\bint|float|double|decimal|year)/ ) {
+      if ( $type =~ m/(?:(?:tiny|big|medium|small)?int|float|double|decimal|year)/ ) {
          push @nums, $col;
          $is_numeric{$col} = 1;
       }
