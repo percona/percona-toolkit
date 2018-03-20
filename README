@@ -22,7 +22,7 @@ perl Makefile.PL
 make
 make test
 make install
-```  
+```
 
 You probably need to be root to `make install`.  On most systems, the tools
 are installed in /usr/local/bin.  See the INSTALL file for more information.
