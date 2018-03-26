@@ -11023,7 +11023,8 @@ sub get_cxn {
    # instead, it should check if it's already set to STATEMENT.
    # This is becase starting with MySQL 5.1.29, changing the format
    # requires a SUPER user.
-   if ( VersionParser->new($dbh) >= '5.1.29' ) {
+   if ( VersionParser->new($dbh) >= '5.1.29'
+        && ($o->get('replicate') || $o->get('sync-to-master'))) {
       $sql = 'SELECT @@binlog_format';
       PTDEBUG && _d($dbh, $sql);
       my ($original_binlog_format) = $dbh->selectrow_array($sql);
