@@ -1,5 +1,9 @@
 Changelog for Percona Toolkit
 
+v3.0.9 
+
+ * Feature     PT-1509 : Only set binlog_format when necessary (Thanks Moritz Lenz)
+
 v3.0.8 released 2018-03-13
 
  * Feature     PT-1500 : add --secure-slowlog option to pt-query digest
