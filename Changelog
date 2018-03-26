@@ -3,6 +3,7 @@ Changelog for Percona Toolkit
 v3.0.9 
 
  * Feature     PT-1509 : Only set binlog_format when necessary (Thanks Moritz Lenz)
+ * Feature     PT-1508 : Adding --read-only-interval flag, and read-only check on wake-up (Thanks Shlomi Noach)
 
 v3.0.8 released 2018-03-13
 

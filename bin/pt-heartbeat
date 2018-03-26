@@ -5925,6 +5925,7 @@ sub main {
       my $interval           = $o->get('interval') || 5;
       my $read_only_interval = $o->get('read-only-interval') || $interval;
       while (server_is_readonly($dbh)) {
+         PTDEBUG && _d("Sleeping for $read_only_interval seconds");
          sleep($read_only_interval);
          if (
             ($run_time && $run_time < time - $start_time)
@@ -6347,6 +6348,7 @@ sub main {
          if ( $o->get('check-read-only') && $o->get('update') ) {
            my $read_only_interval = $o->get('read-only-interval') || $interval;
            while (server_is_readonly($dbh)) {
+              PTDEBUG && _d("Server is read only. Sleeping for $read_only_interval seconds...");
               sleep($read_only_interval);
               if (
                  -f $sentinel
