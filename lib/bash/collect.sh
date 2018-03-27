@@ -51,7 +51,7 @@ collect() {
 
    local mysqld_pid=""
    # Get pidof mysqld.
-   if [ ! "$OPT_MYSQL_ONLY" ]; then
+   if [ ! "$OPT_MYSQL_ONLY" -a ! "$OPT_COLLECT_MYSQL" ]; then
       mysqld_pid=$(_pidof mysqld | awk '{print $1; exit;}')
    fi
 
@@ -75,49 +75,52 @@ collect() {
          >> "$d/$p-stacktrace"
    fi
 
-   # Get MySQL's variables if possible.  Then sleep long enough that we probably
-   # complete SHOW VARIABLES if all's well.  (We don't want to run mysql in the
-   # foreground, because it could hang.)
-   collect_mysql_variables "$d/$p-variables" &
-   sleep .5
+   if [ "$OPT_COLLECT_MYSQL" ]; then
+    # Get MySQL's variables if possible.  Then sleep long enough that we probably
+    # complete SHOW VARIABLES if all's well.  (We don't want to run mysql in the
+    # foreground, because it could hang.)
+    collect_mysql_variables "$d/$p-variables" &
+    sleep .5
 
-   # Get the major.minor version number.  Version 3.23 doesn't matter for our
-   # purposes, and other releases have x.x.x* version conventions so far.
-   local mysql_version="$(awk '/^version[^_]/{print substr($2,1,3)}' "$d/$p-variables")"
+    # Get the major.minor version number.  Version 3.23 doesn't matter for our
+    # purposes, and other releases have x.x.x* version conventions so far.
+    local mysql_version="$(awk '/^version[^_]/{print substr($2,1,3)}' "$d/$p-variables")"
 
-   # Is MySQL logging its errors to a file?  If so, tail that file.
-   local mysql_error_log="$(awk '/^log_error/{print $2}' "$d/$p-variables")"
-   if [ -z "$mysql_error_log" -a "$mysqld_pid" ]; then
-      # Try getting it from the open filehandle...
-      mysql_error_log="$(ls -l /proc/$mysqld_pid/fd | awk '/ 2 ->/{print $NF}')"
-   fi
+    # Is MySQL logging its errors to a file?  If so, tail that file.
+    local mysql_error_log="$(awk '/^log_error/{print $2}' "$d/$p-variables")"
+    if [ -z "$mysql_error_log" -a "$mysqld_pid" ]; then
+	# Try getting it from the open filehandle...
+	mysql_error_log="$(ls -l /proc/$mysqld_pid/fd | awk '/ 2 ->/{print $NF}')"
+    fi
 
-   local tail_error_log_pid=""
-   if [ "$mysql_error_log" -a ! "$OPT_MYSQL_ONLY" ]; then
-      log "The MySQL error log seems to be $mysql_error_log"
-      tail -f "$mysql_error_log" >"$d/$p-log_error" &
-      tail_error_log_pid=$!
+    local tail_error_log_pid=""
+    if [ "$mysql_error_log" -a ! "$OPT_MYSQL_ONLY" ]; then
+	log "The MySQL error log seems to be $mysql_error_log"
+	tail -f "$mysql_error_log" >"$d/$p-log_error" &
+	tail_error_log_pid=$!
 
-      # Send a mysqladmin debug to the server so we can potentially learn about
-      # locking etc.
-      $CMD_MYSQLADMIN $EXT_ARGV debug
-   else
-      log "Could not find the MySQL error log"
-   fi 
-   # Get a sample of these right away, so we can get these without interaction
-   # with the other commands we're about to run.
-   if [ "${mysql_version}" '>' "5.1" ]; then
-      local mutex="SHOW ENGINE INNODB MUTEX"
-   else
-      local mutex="SHOW MUTEX STATUS"
-   fi
-   innodb_status 1
-   tokudb_status 1
-   rocksdb_status 1
+	# Send a mysqladmin debug to the server so we can potentially learn about
+	# locking etc.
+	$CMD_MYSQLADMIN $EXT_ARGV debug
+    else
+	log "Could not find the MySQL error log"
+    fi 
+    # Get a sample of these right away, so we can get these without interaction
+    # with the other commands we're about to run.
+    if [ "${mysql_version}" '>' "5.1" ]; then
+	local mutex="SHOW ENGINE INNODB MUTEX"
+    else
+	local mutex="SHOW MUTEX STATUS"
+    fi
+    innodb_status 1
+    tokudb_status 1
+    rocksdb_status 1
 
-   $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status1" &
-   open_tables                      >> "$d/$p-opentables1"   &
+    $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status1" &
+    open_tables                      >> "$d/$p-opentables1"   &
 
+   fi # if [ "$OPT_COLLECT_MYSQL" ]
+   
    # If TCP dumping is specified, start that on the server's port.
    local tcpdump_pid=""
    if [ "$CMD_TCPDUMP" -a  "$OPT_COLLECT_TCPDUMP" ]; then
@@ -175,33 +178,37 @@ collect() {
          $CMD_MPSTAT -P ALL $OPT_RUN_TIME 1 >> "$d/$p-mpstat-overall" &
       fi
 
-      # Collect multiple snapshots of the status variables.  We use
-      # mysqladmin -c even though it is buggy and won't stop on its
-      # own in 5.1 and newer, because there is a chance that we will
-      # get and keep a connection to the database; in troubled times
-      # the database tends to exceed max_connections, so reconnecting
-      # in the loop tends not to work very well.
-      $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
-      local mysqladmin_pid=$!
+      if [ "$OPT_COLLECT_MYSQL" ]; then
+	# Collect multiple snapshots of the status variables.  We use
+	# mysqladmin -c even though it is buggy and won't stop on its
+	# own in 5.1 and newer, because there is a chance that we will
+	# get and keep a connection to the database; in troubled times
+	# the database tends to exceed max_connections, so reconnecting
+	# in the loop tends not to work very well.
+	$CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
+	local mysqladmin_pid=$!
+      fi
    fi 
 
-   local have_lock_waits_table=""
-   $CMD_MYSQL $EXT_ARGV -e "SHOW TABLES FROM INFORMATION_SCHEMA" \
-      | grep -i "INNODB_LOCK_WAITS" >/dev/null 2>&1
-   if [ $? -eq 0 ]; then
-      have_lock_waits_table="yes"
-   fi
+   if [ "$OPT_COLLECT_MYSQL" ]; then
+    local have_lock_waits_table=""
+    $CMD_MYSQL $EXT_ARGV -e "SHOW TABLES FROM INFORMATION_SCHEMA" \
+	| grep -i "INNODB_LOCK_WAITS" >/dev/null 2>&1
+    if [ $? -eq 0 ]; then
+	have_lock_waits_table="yes"
+    fi
 
-   # This loop gathers data for the rest of the duration, and defines the time
-   # of the whole job.
-   log "Loop start: $(date +'TS %s.%N %F %T')"
-   local start_time=$(date +'%s')
-   local curr_time=$start_time
-   local ps_instrumentation_enabled=$($CMD_MYSQL $EXT_ARGV -e 'SELECT ENABLED FROM performance_schema.setup_instruments WHERE NAME = "transaction";' \
-                                      | sed "2q;d" | sed 'y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/')
+    # This loop gathers data for the rest of the duration, and defines the time
+    # of the whole job.
+    log "Loop start: $(date +'TS %s.%N %F %T')"
+    local start_time=$(date +'%s')
+    local curr_time=$start_time
+    local ps_instrumentation_enabled=$($CMD_MYSQL $EXT_ARGV -e 'SELECT ENABLED FROM performance_schema.setup_instruments WHERE NAME = "transaction";' \
+					| sed "2q;d" | sed 'y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/')
 
-   if [ $ps_instrumentation_enabled != "yes" ]; then
-      log "Performance Schema instrumentation is disabled"
+    if [ $ps_instrumentation_enabled != "yes" ]; then
+	log "Performance Schema instrumentation is disabled"
+    fi
    fi
 
    while [ $((curr_time - start_time)) -lt $OPT_RUN_TIME ]; do
@@ -247,22 +254,24 @@ collect() {
          (echo $ts; netstat -antp) >> "$d/$p-netstat"   &
          (echo $ts; netstat -s)    >> "$d/$p-netstat_s" &
       fi
-      (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
-         >> "$d/$p-processlist" &
-      if [ "$have_lock_waits_table" ]; then
-         (echo $ts; lock_waits)   >>"$d/$p-lock-waits" &
-         (echo $ts; transactions) >>"$d/$p-transactions" &
-      fi
+      if [ "$OPT_COLLECT_MYSQL" ]; then
+	(echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
+	    >> "$d/$p-processlist" &
+	if [ "$have_lock_waits_table" ]; then
+	    (echo $ts; lock_waits)   >>"$d/$p-lock-waits" &
+	    (echo $ts; transactions) >>"$d/$p-transactions" &
+	fi
 
-      if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes" ]; then
-         ps_locks_transactions "$d/$p-ps-locks-transactions"
-      fi
+	if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes" ]; then
+	    ps_locks_transactions "$d/$p-ps-locks-transactions"
+	fi
 
-      if [ "${mysql_version}" '>' "5.6" ]; then
-         (echo $ts; ps_prepared_statements) >> "$d/$p-prepared-statements" &
-      fi
+	if [ "${mysql_version}" '>' "5.6" ]; then
+	    (echo $ts; ps_prepared_statements) >> "$d/$p-prepared-statements" &
+	fi
 
-      slave_status "$d/$p-slave-status" "${mysql_version}" 
+	slave_status "$d/$p-slave-status" "${mysql_version}" 
+      fi
 
       curr_time=$(date +'%s')
    done
@@ -307,15 +316,17 @@ collect() {
       [ "$mysqld_pid" ] && kill -s 18 $mysqld_pid
    fi
 
-   innodb_status 2
-   tokudb_status 2
-   rocksdb_status 2
+   if [ "$OPT_COLLECT_MYSQL" ]; then
+    innodb_status 2
+    tokudb_status 2
+    rocksdb_status 2
 
-   $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status2" &
-   open_tables                      >> "$d/$p-opentables2"   &
+    $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status2" &
+    open_tables                      >> "$d/$p-opentables2"   &
+   fi
 
    # Kill backgrounded tasks.
-   kill $mysqladmin_pid
+   [ "$OPT_COLLECT_MYSQL" ] && kill $mysqladmin_pid
    [ "$tail_error_log_pid" ] && kill $tail_error_log_pid
    [ "$tcpdump_pid" ]        && kill $tcpdump_pid
 
