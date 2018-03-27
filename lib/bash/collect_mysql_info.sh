@@ -227,7 +227,7 @@ collect_mysql_info () {
    collect_mysql_plugins       > "$dir/mysql-plugins"
    collect_mysql_slave_status  > "$dir/mysql-slave"
    collect_mysql_innodb_status > "$dir/innodb-status"
-   collect_mysql_ndb_status    > "$dir/ndb-status"
+   ndb_status=$(collect_mysql_ndb_status) && echo "$ndb_status" > "$dir/ndb-status"
    collect_mysql_processlist   > "$dir/mysql-processlist"   
    collect_mysql_users         > "$dir/mysql-users"
 
