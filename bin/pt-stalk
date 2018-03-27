@@ -1622,20 +1622,20 @@ if    [ "${0##*/}" = "$TOOL" ] \
    MYSQL_ARGS="$(mysql_options)"
    EXT_ARGV="$(arrange_mysql_options "$EXT_ARGV $MYSQL_ARGS")"
 
+   if [ "$OPT_COLLECT_MYSQL" ]; then
+    # Check that mysql and mysqladmin are in PATH.  If not, we're
+    # already dead in the water, so don't bother with cmd line opts,
+    # just error and exit.
+    [ -n "$(mysql --help)" ] \
+	|| die "Cannot execute mysql.  Check that it is in PATH."
+    [ -n "$(mysqladmin --help)" ] \
+	|| die "Cannot execute mysqladmin.  Check that it is in PATH."
 
-   # Check that mysql and mysqladmin are in PATH.  If not, we're
-   # already dead in the water, so don't bother with cmd line opts,
-   # just error and exit.
-   [ -n "$(mysql --help)" ] \
-      || die "Cannot execute mysql.  Check that it is in PATH."
-   [ -n "$(mysqladmin --help)" ] \
-      || die "Cannot execute mysqladmin.  Check that it is in PATH."
-
-   # Now that we have the cmd line opts, check that we can actually
-   # connect to MySQL.
-   [ -n "$(mysql $EXT_ARGV -e 'SELECT 1')" ] \
-      || die "Cannot connect to MySQL.  Check that MySQL is running and that the options after -- are correct."
-
+    # Now that we have the cmd line opts, check that we can actually
+    # connect to MySQL.
+    [ -n "$(mysql $EXT_ARGV -e 'SELECT 1')" ] \
+	|| die "Cannot connect to MySQL.  Check that MySQL is running and that the options after -- are correct."
+   fi
    # Check existence and access to the --dest dir if we're collecting.
    if [ "$OPT_COLLECT" ]; then
       if [ ! -d "$OPT_DEST" ]; then
