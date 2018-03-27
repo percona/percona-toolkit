@@ -138,6 +138,12 @@ sub BUILDARGS {
          ts          => 1,
       },
    };
+   if (!defined($self->{max_hostname_length})) {
+       $self->{max_hostname_length} = MAX_STRING_LENGTH;
+   }
+   if (!defined($self->{max_line_length})) {
+       $self->{max_line_length} = LINE_LENGTH;
+   }
    return $self;
 }
 
@@ -1160,16 +1166,19 @@ sub format_string_list {
       if ( $str =~ m/(?:\d+\.){3}\d+/ ) {
          $print_str = $str;  # Do not shorten IP addresses.
       }
-      elsif ( length $str > MAX_STRING_LENGTH ) {
-         $print_str = substr($str, 0, MAX_STRING_LENGTH) . '...';
-      }
-      else {
+      elsif ( $self->{max_hostname_length} > 0 and length $str > $self->{max_hostname_length} ) {
+         $print_str = substr($str, 0, $self->{max_hostname_length}) . '...';
+      } else {
          $print_str = $str;
       }
       my $p = percentage_of($cnt_for->{$str}, $class_cnt);
       $print_str .= " ($cnt_for->{$str}/$p%)";
-      if ( !$show_all->{$attrib} ) {
-         last if (length $line) + (length $print_str)  > LINE_LENGTH - 27;
+      my $trim_length = LINE_LENGTH;
+      if ($self->{max_hostname_length} == 0 or $self->{max_hostname_length} > LINE_LENGTH) {
+          $trim_length = $self->{max_hostname_length};
+      }
+      if ( $self->{max_line_length} > 0 and !$show_all->{$attrib} ) {
+         last if (length $line) + (length $print_str)  > $self->{max_line_length} - 27;
       }
       $line .= "$print_str, ";
       $i++;

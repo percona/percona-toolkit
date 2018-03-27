@@ -5,4 +5,4 @@
 # Count        100       2
 # Exec time    100     16s      8s      8s      8s      8s       0      8s
 # String:
-# Hosts        123.123.123.789 (1/50%), a-really-l... (1/50%)
+# Hosts        123.123.123.789 (1/50%)... 1 more
