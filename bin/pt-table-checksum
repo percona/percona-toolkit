@@ -10134,7 +10134,6 @@ sub main {
    if ($o->get('disable-qrt-plugin')) {
        eval {
            $master_dbh->selectrow_arrayref('SELECT @@QUERY_RESPONSE_TIME_SESSION_STATS' );
-           warn Data::Dumper::Dumper($original_qrt_plugin_master_status);
        };
        if ($EVAL_ERROR) {
            $original_qrt_plugin_master_status = undef;
