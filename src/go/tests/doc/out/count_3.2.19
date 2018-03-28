@@ -1,0 +1,43 @@
+{
+	"op" : "command",
+	"ns" : "test.coll",
+	"command" : {
+		"count" : "coll",
+		"query" : {
+			
+		},
+		"fields" : {
+			
+		}
+	},
+	"keyUpdates" : 0,
+	"writeConflicts" : 0,
+	"numYield" : 0,
+	"locks" : {
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(2)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		}
+	},
+	"responseLength" : 47,
+	"protocol" : "op_command",
+	"millis" : 42,
+	"execStats" : {
+		
+	},
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}

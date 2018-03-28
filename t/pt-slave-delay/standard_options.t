@@ -20,6 +20,10 @@ my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
 my $slave_dbh  = $sb->get_dbh_for('slave1');
 
+if ($sandbox_version ge '5.7') {
+   plan skip_all => 'Use SQL_DELAY';
+}
+
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }

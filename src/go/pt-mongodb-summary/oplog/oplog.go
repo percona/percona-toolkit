@@ -58,8 +58,8 @@ func GetOplogInfo(hostnames []string, di *pmgo.DialInfo) ([]proto.OplogInfo, err
 		}
 
 		// https://docs.mongodb.com/manual/reference/bson-types/#timestamps
-		tfirst := firstRow.Ts >> 32
-		tlast := lastRow.Ts >> 32
+		tfirst := firstRow.Timestamp >> 32
+		tlast := lastRow.Timestamp >> 32
 		result.TimeDiff = tlast - tfirst
 		result.TimeDiffHours = float64(result.TimeDiff) / 3600
 

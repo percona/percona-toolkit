@@ -1,0 +1,30 @@
+{
+	"op" : "command",
+	"ns" : "test.$cmd",
+	"command" : {
+		"$eval" : "1"
+	},
+	"keyUpdates" : 0,
+	"numYield" : 0,
+	"lockStats" : {
+		"timeLockedMicros" : {
+			"R" : NumberLong(1234),
+			"W" : NumberLong(4321)
+		},
+		"timeAcquiringMicros" : {
+			"R" : NumberLong(9876),
+			"W" : NumberLong(6789),
+			"r" : NumberLong(9876),
+			"w" : NumberLong(6789)
+		}
+	},
+	"responseLength" : 53,
+	"millis" : 42,
+	"execStats" : {
+		
+	},
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}

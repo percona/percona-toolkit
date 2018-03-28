@@ -45,7 +45,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.2';
+our $VERSION = '3.0.8';
 
 use strict;
 use warnings FATAL => 'all';
@@ -1954,7 +1954,7 @@ sub parse {
    my ($name)     = $ddl =~ m/CREATE (?:TEMPORARY )?TABLE\s+(`.+?`)/;
    (undef, $name) = $self->{Quoter}->split_unquote($name) if $name;
 
-   $ddl =~ s/(`[^`]+`)/\L$1/g;
+   $ddl =~ s/(`[^`\n]+`)/\L$1/gm;
 
    my $engine = $self->get_engine($ddl);
 
@@ -1965,8 +1965,8 @@ sub parse {
    my %def_for;
    @def_for{@cols} = @defs;
 
-   my (@nums, @null);
-   my (%type_for, %is_nullable, %is_numeric, %is_autoinc);
+   my (@nums, @null, @non_generated);
+   my (%type_for, %is_nullable, %is_numeric, %is_autoinc, %is_generated);
    foreach my $col ( @cols ) {
       my $def = $def_for{$col};
 
@@ -1983,6 +1983,11 @@ sub parse {
          push @null, $col;
          $is_nullable{$col} = 1;
       }
+      if ( remove_quoted_text($def) =~ m/\WGENERATED\W/i ) {
+          $is_generated{$col} = 1;
+      } else {
+          push @non_generated, $col;
+      }
       $is_autoinc{$col} = $def =~ m/AUTO_INCREMENT/i ? 1 : 0;
    }
 
@@ -1991,22 +1996,32 @@ sub parse {
    my ($charset) = $ddl =~ m/DEFAULT CHARSET=(\w+)/;
 
    return {
-      name           => $name,
-      cols           => \@cols,
-      col_posn       => { map { $cols[$_] => $_ } 0..$#cols },
-      is_col         => { map { $_ => 1 } @cols },
-      null_cols      => \@null,
-      is_nullable    => \%is_nullable,
-      is_autoinc     => \%is_autoinc,
-      clustered_key  => $clustered_key,
-      keys           => $keys,
-      defs           => \%def_for,
-      numeric_cols   => \@nums,
-      is_numeric     => \%is_numeric,
-      engine         => $engine,
-      type_for       => \%type_for,
-      charset        => $charset,
+      name               => $name,
+      cols               => \@cols,
+      col_posn           => { map { $cols[$_] => $_ } 0..$#cols },
+      is_col             => { map { $_ => 1 } @non_generated },
+      null_cols          => \@null,
+      is_nullable        => \%is_nullable,
+      non_generated_cols => \@non_generated,
+      is_autoinc         => \%is_autoinc,
+      is_generated       => \%is_generated,
+      clustered_key      => $clustered_key,
+      keys               => $keys,
+      defs               => \%def_for,
+      numeric_cols       => \@nums,
+      is_numeric         => \%is_numeric,
+      engine             => $engine,
+      type_for           => \%type_for,
+      charset            => $charset,
    };
+}
+
+sub remove_quoted_text {
+   my ($string) = @_;
+   $string =~ s/[^\\]`[^`]*[^\\]`//g; 
+   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
+   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
+   return $string;
 }
 
 sub sort_indexes {
@@ -2085,6 +2100,8 @@ sub check_table {
    my $db_tbl = $q->quote($db, $tbl);
    PTDEBUG && _d('Checking', $db_tbl);
 
+   $self->{check_table_error} = undef;
+
    my $sql = "SHOW TABLES FROM " . $q->quote($db)
            . ' LIKE ' . $q->literal_like($tbl);
    PTDEBUG && _d($sql);
@@ -2092,8 +2109,9 @@ sub check_table {
    eval {
       $row = $dbh->selectrow_arrayref($sql);
    };
-   if ( $EVAL_ERROR ) {
-      PTDEBUG && _d($EVAL_ERROR);
+   if ( my $e = $EVAL_ERROR ) {
+      PTDEBUG && _d($e);
+      $self->{check_table_error} = $e;
       return 0;
    }
    if ( !$row->[0] || $row->[0] ne $tbl ) {
@@ -2528,7 +2546,6 @@ sub get_dbh {
 
    if ( $cxn_string =~ m/mysql/i ) {
       my $sql;
-
       if ( my ($charset) = $cxn_string =~ m/charset=([\w]+)/ ) {
          $sql = qq{/*!40101 SET NAMES "$charset"*/};
          PTDEBUG && _d($dbh, $sql);
@@ -3595,8 +3612,7 @@ sub get_slaves {
             },
          }
       );
-   }
-   elsif ( $methods->[0] =~ m/^dsn=/i ) {
+   } elsif ( $methods->[0] =~ m/^dsn=/i ) {
       (my $dsn_table_dsn = join ",", @$methods) =~ s/^dsn=//i;
       $slaves = $self->get_cxn_from_dsn_table(
          %args,
@@ -3858,21 +3874,44 @@ sub get_master_dsn {
 
 sub get_slave_status {
    my ( $self, $dbh ) = @_;
+
    if ( !$self->{not_a_slave}->{$dbh} ) {
       my $sth = $self->{sths}->{$dbh}->{SLAVE_STATUS}
             ||= $dbh->prepare('SHOW SLAVE STATUS');
       PTDEBUG && _d($dbh, 'SHOW SLAVE STATUS');
       $sth->execute();
-      my ($ss) = @{$sth->fetchall_arrayref({})};
+      my ($sss_rows) = $sth->fetchall_arrayref({}); # Show Slave Status rows
 
-      if ( $ss && %$ss ) {
-         $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
-         return $ss;
+      my $ss;
+      if ( $sss_rows && @$sss_rows ) {
+          if (scalar @$sss_rows > 1) {
+              if (!$self->{channel}) {
+                  die 'This server returned more than one row for SHOW SLAVE STATUS but "channel" was not specified on the command line';
+              }
+              for my $row (@$sss_rows) {
+                  $row = { map { lc($_) => $row->{$_} } keys %$row }; # lowercase the keys
+                  if ($row->{channel_name} eq $self->{channel}) {
+                      $ss = $row;
+                      last;
+                  }
+              }
+          } else {
+              if ($sss_rows->[0]->{channel_name} && $sss_rows->[0]->{channel_name} ne $self->{channel}) {
+                  die 'This server is using replication channels but "channel" was not specified on the command line';
+              } else {
+                  $ss = $sss_rows->[0];
+              }
+          }
+
+          if ( $ss && %$ss ) {
+             $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
+             return $ss;
+          }
       }
 
       PTDEBUG && _d('This server returns nothing for SHOW SLAVE STATUS');
       $self->{not_a_slave}->{$dbh}++;
-   }
+  }
 }
 
 sub get_master_status {
@@ -3912,8 +3951,20 @@ sub wait_for_master {
    my $result;
    my $waited;
    if ( $master_status ) {
-      my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', "
-              . "$master_status->{position}, $timeout)";
+      my $slave_status;
+      eval {
+          $slave_status = $self->get_slave_status($slave_dbh);
+      };
+      if ($EVAL_ERROR) {
+          return {
+              result => undef,
+              waited => 0,
+              error  =>'Wait for master: this is a multi-master slave but "channel" was not specified on the command line',
+          };
+      }
+      my $server_version = VersionParser->new($slave_dbh);
+      my $channel_sql = $server_version > '5.6' && $self->{channel} ? ", '$self->{channel}'" : '';
+      my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', $master_status->{position}, $timeout $channel_sql)";
       PTDEBUG && _d($slave_dbh, $sql);
       my $start = time;
       ($result) = $slave_dbh->selectrow_array($sql);
@@ -3979,6 +4030,9 @@ sub catchup_to_master {
             timeout       => $timeout,
             master_status => $master_status
       );
+      if ($result->{error}) {
+          die $result->{error};
+      }
       if ( !defined $result->{result} ) {
          $slave_status = $self->get_slave_status($slave);
          if ( !$self->slave_is_running($slave_status) ) {
@@ -4498,7 +4552,8 @@ sub lost_connection {
    my ($self, $e) = @_;
    return 0 unless $e;
    return $e =~ m/MySQL server has gone away/
-       || $e =~ m/Lost connection to MySQL server/;
+       || $e =~ m/Lost connection to MySQL server/
+       || $e =~ m/Server shutdown in progress/;
 }
 
 sub dbh {
@@ -4515,6 +4570,11 @@ sub name {
    my ($self) = @_;
    return $self->{dsn_name} if PERCONA_TOOLKIT_TEST_USE_DSN_NAMES;
    return $self->{hostname} || $self->{dsn_name} || 'unknown host';
+}
+
+sub description {
+   my ($self) = @_;
+   return sprintf("%s -> %s:%s", $self->name(), $self->{dsn}->{h}, $self->{dsn}->{P} || 'socket');
 }
 
 sub get_id {
@@ -5312,15 +5372,16 @@ eval {
    require HTTP::Micro;
 };
 
+my $home    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
+my @vc_dirs = (
+   '/etc/percona',
+   '/etc/percona-toolkit',
+   '/tmp',
+   "$home",
+);
+
 {
    my $file    = 'percona-version-check';
-   my $home    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
-   my @vc_dirs = (
-      '/etc/percona',
-      '/etc/percona-toolkit',
-      '/tmp',
-      "$home",
-   );
 
    sub version_check_file {
       foreach my $dir ( @vc_dirs ) {
@@ -5537,6 +5598,46 @@ sub get_instance_id {
 }
 
 
+sub get_uuid {
+    my $uuid_file = '/.percona-toolkit.uuid';
+    foreach my $dir (@vc_dirs) {
+        my $filename = $dir.$uuid_file;
+        my $uuid=_read_uuid($filename);
+        return $uuid if $uuid;
+    }
+
+    my $filename = $ENV{"HOME"} . $uuid_file;
+    my $uuid = _generate_uuid();
+
+    open(my $fh, '>', $filename) or die "Could not open file '$filename' $!";
+    print $fh $uuid;
+    close $fh;
+
+    return $uuid;
+}   
+
+sub _generate_uuid {
+    return sprintf+($}="%04x")."$}-$}-$}-$}-".$}x3,map rand 65537,0..7;
+}
+
+sub _read_uuid {
+    my $filename = shift;
+    my $fh;
+
+    eval {
+        open($fh, '<:encoding(UTF-8)', $filename);
+    };
+    return if ($EVAL_ERROR);
+
+    my $uuid;
+    eval { $uuid = <$fh>; };
+    return if ($EVAL_ERROR);
+
+    chomp $uuid;
+    return $uuid;
+}
+
+
 sub pingback {
    my (%args) = @_;
    my @required_args = qw(url instances);
@@ -5573,7 +5674,7 @@ sub pingback {
    my $client_content = encode_client_response(
       items      => $items,
       versions   => $versions,
-      general_id => md5_hex( hostname() ),
+      general_id => get_uuid(),
    );
 
    my $client_response = {
@@ -5871,6 +5972,7 @@ sub _d {
 # ###########################################################################
 package pt_archiver;
 
+use utf8;
 use English qw(-no_match_vars);
 use List::Util qw(max);
 use IO::File;
@@ -5893,6 +5995,8 @@ my $get_sth;
 my ( $OUT_OF_RETRIES, $ROLLED_BACK, $ALL_IS_WELL ) = ( 0, -1, 1 );
 my ( $src, $dst );
 my $pxc_version = '0';
+my $fields_separated_by = "\t";
+my $optionally_enclosed_by;
 
 # Holds the arguments for the $sth's bind variables, so it can be re-tried
 # easily.
@@ -5966,6 +6070,7 @@ sub main {
       );
       $archive_file =~ s/%([dHimsYDt])/$fmt{$1}/g;
    }
+
 
    if ( !$o->got('help') ) {
       $o->save_error("--source DSN requires a 't' (table) part")
@@ -6066,6 +6171,14 @@ sub main {
          $dbh->do("SET SQL_LOG_BIN=0");
       }
 
+      my ($dbh_version) =  $dbh->selectrow_array("SELECT version()");
+      #if ($dbh_version =~ m/^(\d+\.\d+)\.\d+.*/ && $1 ge '8.0' && !$o->get('charset')) {
+      if ($dbh_version =~ m/^(\d+\.\d+)\.\d+.*/ && $1 ge '8.0') {
+         PTDEBUG && _d("MySQL 8.0+ detected and charset was not specified.\n Setting character_set_client = utf8mb4 and --charset=utf8");
+         $dbh->do('/*!40101 SET character_set_connection = utf8mb4 */;');
+         $o->set('charset', 'utf8');
+      }
+
       $table->{dbh}  = $dbh;
       $table->{irot} = get_irot($dbh);
 
@@ -6103,7 +6216,10 @@ sub main {
          my $sql = 'SELECT CONCAT(/*!40100 @@session.character_set_connection, */ "")';
          PTDEBUG && _d($sql);
          my ($dbh_charset) =  $table->{dbh}->selectrow_array($sql);
-         if ( ($dbh_charset || "") ne ($table->{info}->{charset} || "") ) {
+
+         if ( ($dbh_charset || "") ne ($table->{info}->{charset} || "") && 
+              !($dbh_charset eq "utf8mb4" && ($table->{info}->{charset} || "") eq ("utf8"))
+         ) {
             $src->{dbh}->disconnect() if $src && $src->{dbh};
             $dst->{dbh}->disconnect() if $dst && $dst->{dbh};
             die "Character set mismatch: "
@@ -6294,10 +6410,8 @@ sub main {
    # this ensures returned sets are disjoint when ran on partitioned tables
    # issue 1376561
    my $index_cols;
-   if (  $sel_stmt->{index} 
-         && $src->{info}->{keys}->{$sel_stmt->{index}}->{cols} 
-   ) {
-      $index_cols = $src->{info}->{keys}->{$sel_stmt->{index}}->{colnames};
+   if (  $sel_stmt->{index} && $src->{info}->{keys}->{$sel_stmt->{index}}->{cols} ) {
+      $index_cols = join(",",map { "`$_`" } @{$src->{info}->{keys}->{$sel_stmt->{index}}->{cols}});
    }
 
    foreach my $thing ( $first_sql, $next_sql ) {
@@ -6522,12 +6636,19 @@ sub main {
    
    # Open the file and print the header to it. 
    if ( $archive_file ) { 
+      if ($o->got('output-format') && $o->get('output-format') ne 'dump' && $o->get('output-format') ne 'csv') {
+          warn "Invalid output format:". $o->get('format');
+          warn "Using default 'dump' format";
+      } elsif ($o->get('output-format') || '' eq 'csv') {
+              $fields_separated_by = ", ";
+              $optionally_enclosed_by = '"';
+      }
       my $need_hdr = $o->get('header') && !-f $archive_file; 
       $archive_fh = IO::File->new($archive_file, ">>$charset") 
          or die "Cannot open $charset $archive_file: $OS_ERROR\n"; 
       $archive_fh->autoflush(1) unless $o->get('buffer'); 
       if ( $need_hdr ) { 
-         print { $archive_fh } '', escape(\@sel_cols), "\n" 
+         print { $archive_fh } '', escape(\@sel_cols, $fields_separated_by, $optionally_enclosed_by), "\n" 
             or die "Cannot write to $archive_file: $OS_ERROR\n"; 
       } 
    } 
@@ -6572,7 +6693,7 @@ sub main {
          # problem, hopefully the data has at least made it to the file.
          my $escaped_row;
          if ( $archive_fh || $bulkins_file ) {
-            $escaped_row = escape([@{$row}[@sel_slice]]);
+            $escaped_row = escape([@{$row}[@sel_slice]], $fields_separated_by, $optionally_enclosed_by);
          }
          if ( $archive_fh ) {
             trace('print_file', sub {
@@ -7029,11 +7150,18 @@ sub do_with_retries {
 # described in the LOAD DATA INFILE section of the MySQL manual,
 # http://dev.mysql.com/doc/refman/5.0/en/load-data.html
 sub escape {
-   my ($row) = @_;
-   return join("\t", map {
+   my ($row, $fields_separated_by, $optionally_enclosed_by) = @_;
+   $fields_separated_by ||= "\t";
+   $optionally_enclosed_by ||= '';
+ 
+   return join($fields_separated_by, map {
       s/([\t\n\\])/\\$1/g if defined $_;  # Escape tabs etc
-      defined $_ ? $_ : '\N';             # NULL = \N
+      $_ = defined $_ ? $_ : '\N';             # NULL = \N
+      # var & ~var will return 0 only for numbers
+      $_ =~ s/([^\\])"/$1\\"/g if ($_ !~ /^[0-9,.E]+$/  && $optionally_enclosed_by eq '"');
+      $_ = $optionally_enclosed_by && $_ & ~$_ ? $optionally_enclosed_by."$_".$optionally_enclosed_by : $_;
    } @$row);
+
 }
 
 sub ts {
@@ -7653,6 +7781,17 @@ Run OPTIMIZE TABLE afterwards on L<"--source"> and/or L<"--dest">.
 Runs OPTIMIZE TABLE after finishing.  See L<"--analyze"> for the option syntax
 and L<http://dev.mysql.com/doc/en/optimize-table.html> for details on OPTIMIZE
 TABLE.
+
+=item --output-format
+
+type: string
+
+Used with L<"--file"> to specify the output format.
+
+Valid formats are:
+  dump: MySQL dump format using tabs as field separator (default)
+  csv : Dump rows using ',' as separator and optionally enclosing fields by '"'.
+        This format is equivalent to FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"'.
 
 =item --password
 
@@ -8421,7 +8560,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2017 Percona LLC and/or its affiliates,
+This program is copyright 2011-2018 Percona LLC and/or its affiliates,
 2007-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -8440,6 +8579,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-archiver 3.0.2
+pt-archiver 3.0.8
 
 =cut

@@ -1,7 +1,97 @@
 Changelog for Percona Toolkit
 
+v3.0.9 
+
+ * Feature     PT-1509 : Only set binlog_format when necessary (Thanks Moritz Lenz)
+ * Feature     PT-1508 : Adding --read-only-interval flag, and read-only check on wake-up (Thanks Shlomi Noach)
+ * Improvement PT-1507 : pt-summary does not reliably read in the transparent huge pages setting (Thanks Nick Veenhof)
+ * Feature      PT-243 : Adding --max-hostname-length and --max-line-length to pt-query-digest
+
+v3.0.8 released 2018-03-13
+
+ * Feature     PT-1500 : add --secure-slowlog option to pt-query digest
+
+v3.0.7 released 2018-03-01
+
+ * Fixed Bug    PT-244 : pt-online-schema-change --data-dir option broken for partitioned table
+ * Feature      PT-633 : Added --mysql-only option to pt-stalk for RDS
+ * Fixed bug    PT-1256: pt-table-sync does not use the character set for the table it is synchronizing
+ * Fixed bug    PT-1455: pt-osc is stuck when the table that is being altered is filtered out in the slave
+ * Fixed bug    PT-1485: pt-mysql-summary has broken Security section in versions bigger then 5.6
+ * Fixed bug   PMM-1905: Explain fails if encounters negative "ntoreturn"
+
+v3.0.6 released 2017-12-20
+
+ * Fixed bug     PT-234: Genaral log parser cannot handle timestamps with tz
+ * Fixed bug     PT-229: pt-online-schema-change does not retry on deadlock error when using percona 5.7
+ * Fixed bug     PT-225: pt-table-checksum ignores generated cols
+ * Improvement   PT-221: pt-table-sync pt-table-sync support for MyRocks
+ * Improvement   PT-218: pt-stalk checks RocksDB status
+ * Improvement   PT-214: Added RocksDB section to pt-mysql-summary
+ * Improvement   PT-205: pt-osc show message if trying to set engine to rocksdb and binlog_format != row
+ * Improvement   PT-204: Make pt-table-checksum to skip RocksDB tables
+
+v3.0.5 released 2017-11-20
+
+ * Improvement PMM-1590: Improve MongoDB Profiler for PMM and PT
+ * Improvement   PT-216: mongodb-query digest improved support for v<3.2 fixed incorrect output (Thanks MATSUU Takuto) 
+ * Fixed bug     PT-211: pt-mext fails on Rsa_public_key line
+ * Fixed bug     PT-212: pt-mongodb-query-digest shows NaNs
+ * Fixed bug     PT-202: pt-online-schema-change fails with virtual columns
+ * Fixed bug     PT-200: Index with keyword 'unique' as prefix/suffix considered as unique
+ * Fixed bug     PT-199: pt-table-checksum does not make the session statement based when using row based replication
+ * Fixed bug     PT-196: pt-onine-schema-change is pausing because {some_status_variable}=0
+ * Fixed bug     PT-193: pt-table-checksum reports misleading error if comment has apostroph
+ * Fixed bug     PT-187: pt-table-checksum not able to get differences for columns
+ * Fixed bug     PT-186: pt-online-schema-change --alter fails if fields are using mixed case
+ * Fixed bug     PT-183: pt-mongodb-query-digest cannot connect to a db using authentication
+ * Feature       PT-182: Provide JSON output format for pt-summary, pt-mysql-summary, pt-mongodb-summary
+ * Fixed bug     PT-167: pt-kill kills prepared statements without checking busy-time
+ * Fixed bug     PT-161: Safely check for undefined values in --skip-check-slave-lag
+ * Feature       PT-152: Add Show Slave Hosts to pt-mysql-summary
+ * Feature       PT-139: Add support for replication channels (MySQL 5.7+) to pt-table-sync
+
+v3.0.4 released 2017-08-02
+
+ * Fixed bug PT-181 : pt-online-schema-change not in sync with modules (Thanks Daniël van Eeden)
+ * Fixed bug PT-180 : pt-online-schema-change --skip-check-slave-lag doesn't work
+ * Fixed bug PT-178 : pt-online-schema-change appears to ignore the --check-slave-lag option
+ * Fixed bug PT-162 : Updated pt-table-checksum ignored dbs (Thanks Agustin Gallego)
+ * Fixed bug PT-161 : Safely check for undefined values in --skip-check-slave-lag (Thanks Chris Swingler)
+ * Fixed bug PT-154 : pt-online-schema-change --no-use-insert-ignore is broken
+ * Fixed bug PT-153 : pt-online-schema-change data loss when adding unique keys
+ * Fixed bug PT-151 : point is not decimal
+ * Fixed bug PT-148 : pt-osc Use of uninitialized value in printf
+ * Fixed bug PT-146 : Turn off statement based binlog checks
+ * Fixed bug PT-144 : Constraint name is too long (> 64 chars)
+ * Fixed bug PT-143 : pt-archiver SELECT query fails because of primary key
+ * Fixed bug PT-142 : pt-online-schema-change find_child_tables slow
+ * Fixed bug PT-138 : Added --output-format option to pt-mongodb-summary
+ * Fixed bug PT-136 : pt-table-checksum fails with columns having different collation/charset
+ * Feature   PT-173 : Enable pt-table-checksum to ensure stale data is removed
+ * Feature   PT-141 : pt-archiver archive records into csv file
+ * Feature   PT-91  : Make pt-osc compatible with AFTER triggers
+ * Feature   PT-90  : pt-stalk: Collect information about prepared statements if P_S is enabled (Thanks Agustin Gallego)
+
+v3.0.3 released 2017-05-19
+
+ * Fixed bug PT-133 : Sandbox won't start correctly if autocommit=0 in my.cnf
+ * Fixed bug PT-132 : pt-online-schema-change should imply --no-drop-new-table 
+ * Fixed bug PT-130 : Fixed pt-mext not working with not empty Rsa_public_key
+ * Fixed bug PT-128 : pt-stalk ps include memory usage outputs
+ * Fixed bug PT-126 : Recognize comments in ALTER
+ * Fixed bug PT-116 : pt-online-schema change eats data on adding a unique index. Added --[no]use-insert-ignore
+ * Fixed bug PT-115 : Made OptionParser to accept repeatable DSNs
+ * Fixed bug PT-111 : Collect MySQL variables
+ * Fixed bug PT-087 : Add --skip-check-slave-lag to pt-table-checksum
+ * Fixed bug PT-086 : Added --skip-check-slave-lag to pt-osc
+ * Fixed bug PT-080 : Added support for slave status in pt-stalk
+ * Feature   PT-115 : Make DSNs params able to be repeatable
+
 v3.0.2 released 2017-03-23
 
+ * Fixed bug PT-101 : pt-table-checksum ignores slave-user and slave-password
+ * Fixed bug PT-105 : pt-table-checksum fails if a database is dropped while the tool is running
  * Fixed bug PT-73  : pt-mongodb tools add support for SSL connections
  * Fixed bug PT-74  : pt-mongodb-summary Cannot get security settings when connected to a mongod instance
  * Fixed bug PT-75  : pt-mongodb-query-digest Change the default sort order to -count (descending)
@@ -12,8 +102,6 @@ v3.0.2 released 2017-03-23
  * Fixed bug PT-93  : Fix pt-mongodb-query-digest query ID (Thanks Kamil Dziedzic)
  * Fixed bug PT-94  : pt-online-schema-change makes duplicate rows in _t_new for UPDATE t set pk=0 where pk=1
  * Fixed bug PT-96  : Fixed PT tests
- * Fixed bug PT-101 : pt-table-checksum ignores slave-user and slave-password
- * Fixed bug PT-105 : pt-table-checksum fails if a database is dropped while the tool is running
 
 v3.0.1 released 2017-02-16
 
@@ -28,15 +116,15 @@ v3.0 released 2017-02-03
 v2.2.20  released 2016-12-09
 
  * Fixed bug 1362942: pt-slave-restart fails on MariaDB 10.0.13 (gtid_mode confusion)
- * Fixed bug 1566556: pt-show-grants fails against MariaDB10+	
+ * Fixed bug 1566556: pt-show-grants fails against MariaDB10+ 
  * Feature   1604834: pt-query-digest numbers in table or column names converted to question marks (--preserve-embedded-numbers)
  * Fixed bug 1613915: pt-online-schema-change misses data.  Fixed sort order for ENUM fields 
  * Fixed bug 1625005: pt-online-schema-change doesn't apply underscores to foreign keys individually
  * Fixed bug 1634900: pt-upgrade fails with SELECT INTO 
- * Fixed bug 1635734: pt-slave-restart --config does not recognize = as separator	
+ * Fixed bug 1635734: pt-slave-restart --config does not recognize = as separator 
  * Feature   1636068: Added pause to NibbleIterator
  * Feature   1638293: --data-dir parameter in order to create the table on a different partition
- * Feature   1639052: with pt-table-checksum automatically exclude checking schemas named percona, percona_schema	 
+ * Feature   1639052: with pt-table-checksum automatically exclude checking schemas named percona, percona_schema  
  * Feature   1642364: pt-online-schema-change Added --remove-data-dir feature
  * Feature   1643914: Fixed several typos in the doc (Thanks Dario Minnucci)
  * Feature   1643940: Add Transparent huge pages info to pt-summary

@@ -59,7 +59,6 @@ sub reset_repl_db {
    $master_dbh->do("use $repl_db");
 }
 
-
 # ############################################################################
 # Default checksum and results.  The tool does not technically require any
 # options on well-configured systems (which the test env cannot be).  With
@@ -69,6 +68,7 @@ sub reset_repl_db {
 # in throttle.t.
 # ############################################################################
 
+# 1
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args) },
@@ -82,17 +82,18 @@ ok(
 # large that all tables will be done in a single chunk without an index.
 # Since this varies by default, there's no use checking the checksums
 # other than to ensure that there's at least one for each table.
+# 2
 $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 my $max_chunks = $sandbox_version < '5.7' ? 60 : 100;
 ok(
-   $row->[0] > 30 && $row->[0] < $max_chunks,
-   'Between 30 and 60 chunks'
+   $row->[0] > 25 && $row->[0] < $max_chunks,
+   'Between 25 and 60 chunks'
 ) or diag($row->[0]);
 
 # ############################################################################
 # Static chunk size (disable --chunk-time)
 # ############################################################################
-
+# 3
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args, qw(--chunk-time 0)) },
@@ -104,10 +105,10 @@ ok(
 
 $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 
-my $max_rows = $sandbox_version < '5.7' ? 90 : 100;
+my $max_rows = $sandbox_version >= '8.0' ? 102 : $sandbox_version < '5.7' ? 90 : 100;
 ok(
-   $row->[0] >= 85 && $row->[0] <= $max_rows,
-   'Between 85 and 90 chunks on master'
+   $row->[0] >= 75 && $row->[0] <= $max_rows,
+   'Between 75 and 90 chunks on master'
 ) or diag($row->[0]);
 
 
@@ -195,6 +196,7 @@ $exit_status = pt_table_checksum::main(@args,
 $slave1_dbh->do("update percona.checksums set this_crc='' where db='sakila' and tbl='city' and (chunk=1 or chunk=6)");
 PerconaTest::wait_for_table($slave2_dbh, "percona.checksums", "db='sakila' and tbl='city' and (chunk=1 or chunk=6) and thic_crc=''");
 
+# 9
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args, qw(--replicate-check-only)) },
@@ -213,6 +215,7 @@ $output = output(
    stderr => 1,
 );
 
+# 10
 like(
    $output,
    qr/infinite loop detected/,
@@ -222,13 +225,14 @@ like(
 # ############################################################################
 # Oversize chunk.
 # ############################################################################
+# 11
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args,
          qw(-t osc.t2 --chunk-size 8 --explain --explain)) },
       "$sample/oversize-chunks.txt",
    ),
-   "Upper boundary same as next lower boundary"
+   "Upper boundary same as next lower boundary",
 );
 
 $output = output(
@@ -430,7 +434,7 @@ is(
 # Test --where.
 # #############################################################################
 $sb->load_file('master', 't/pt-table-checksum/samples/600cities.sql');
-$master_dbh->do("LOAD DATA LOCAL INFILE '$trunk/t/pt-table-checksum/samples/600cities.data' INTO TABLE test.t");
+$master_dbh->do("LOAD DATA INFILE '$trunk/t/pt-table-checksum/samples/600cities.data' INTO TABLE test.t");
 
 $output = output(
    sub { $exit_status = pt_table_checksum::main(@args,

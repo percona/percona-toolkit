@@ -1,0 +1,42 @@
+{
+	"op" : "remove",
+	"ns" : "test.coll",
+	"query" : {
+		"a" : {
+			"$gte" : 2
+		},
+		"b" : {
+			"$gte" : 2
+		}
+	},
+	"ndeleted" : 8,
+	"keyUpdates" : 0,
+	"writeConflicts" : 0,
+	"numYield" : 0,
+	"locks" : {
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(1),
+				"w" : NumberLong(1)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"w" : NumberLong(1)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"w" : NumberLong(1)
+			}
+		}
+	},
+	"millis" : 42,
+	"execStats" : {
+		
+	},
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}

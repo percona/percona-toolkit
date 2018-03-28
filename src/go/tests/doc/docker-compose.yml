@@ -1,0 +1,7 @@
+version: '3'
+services:
+  mongo:
+    image: ${MONGO_IMAGE:-mongo}
+    volumes:
+      - ./script:/script
+      - ./out:/out

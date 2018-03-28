@@ -1,0 +1,124 @@
+{
+	"op" : "query",
+	"ns" : "test.coll",
+	"query" : {
+		"query" : {
+			"c" : 1
+		},
+		"orderby" : {
+			"b" : -1
+		}
+	},
+	"ntoreturn" : 0,
+	"ntoskip" : 0,
+	"nscanned" : 2,
+	"nscannedObjects" : 2,
+	"scanAndOrder" : true,
+	"keyUpdates" : 0,
+	"writeConflicts" : 0,
+	"numYield" : 0,
+	"locks" : {
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(2)
+			}
+		},
+		"MMAPV1Journal" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"R" : NumberLong(1)
+			}
+		}
+	},
+	"nreturned" : 2,
+	"responseLength" : 108,
+	"millis" : 42,
+	"execStats" : {
+		"stage" : "SORT",
+		"nReturned" : 2,
+		"executionTimeMillisEstimate" : 0,
+		"works" : 7,
+		"advanced" : 2,
+		"needTime" : 3,
+		"needFetch" : 0,
+		"saveState" : 0,
+		"restoreState" : 0,
+		"isEOF" : 1,
+		"invalidates" : 0,
+		"sortPattern" : {
+			"b" : -1
+		},
+		"memUsage" : 104,
+		"memLimit" : 33554432,
+		"inputStage" : {
+			"stage" : "KEEP_MUTATIONS",
+			"nReturned" : 2,
+			"executionTimeMillisEstimate" : 0,
+			"works" : 3,
+			"advanced" : 2,
+			"needTime" : 0,
+			"needFetch" : 0,
+			"saveState" : 0,
+			"restoreState" : 0,
+			"isEOF" : 1,
+			"invalidates" : 0,
+			"inputStage" : {
+				"stage" : "FETCH",
+				"nReturned" : 2,
+				"executionTimeMillisEstimate" : 0,
+				"works" : 3,
+				"advanced" : 2,
+				"needTime" : 0,
+				"needFetch" : 0,
+				"saveState" : 0,
+				"restoreState" : 0,
+				"isEOF" : 1,
+				"invalidates" : 0,
+				"docsExamined" : 2,
+				"alreadyHasObj" : 0,
+				"inputStage" : {
+					"stage" : "IXSCAN",
+					"nReturned" : 2,
+					"executionTimeMillisEstimate" : 0,
+					"works" : 3,
+					"advanced" : 2,
+					"needTime" : 0,
+					"needFetch" : 0,
+					"saveState" : 0,
+					"restoreState" : 0,
+					"isEOF" : 1,
+					"invalidates" : 0,
+					"keyPattern" : {
+						"c" : 1
+					},
+					"indexName" : "c_1",
+					"isMultiKey" : false,
+					"direction" : "forward",
+					"indexBounds" : {
+						"c" : [
+							"[1.0, 1.0]"
+						]
+					},
+					"keysExamined" : 2,
+					"dupsTested" : 0,
+					"dupsDropped" : 0,
+					"seenInvalidated" : 0,
+					"matchTested" : 0
+				}
+			}
+		}
+	},
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}

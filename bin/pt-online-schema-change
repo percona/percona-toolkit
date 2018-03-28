@@ -14,6 +14,7 @@ use warnings FATAL => 'all';
 BEGIN {
    $INC{$_} = __FILE__ for map { (my $pkg = "$_.pm") =~ s!::!/!g; $pkg } (qw(
       Percona::Toolkit
+      VersionCompare
       OptionParser
       Lmo::Utils
       Lmo::Meta
@@ -55,7 +56,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.2';
+our $VERSION = '3.0.8';
 
 use strict;
 use warnings FATAL => 'all';
@@ -105,6 +106,54 @@ sub _d {
 }
 # ###########################################################################
 # End Percona::Toolkit package
+# ###########################################################################
+#
+
+# ###########################################################################
+# VersionCompare package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/VersionCompare.pm
+#   t/lib/VersionCompare.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package VersionCompare;
+
+use strict;
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+sub cmp {
+   my ($v1, $v2) = @_;
+
+   $v1 =~ s/[^\d\.]//;
+   $v2 =~ s/[^\d\.]//;
+
+   my @a = ( $v1 =~ /(\d+)\.?/g ); 
+   my @b = ( $v2 =~ /(\d+)\.?/g ); 
+   foreach my $n1 (@a) {
+      $n1 += 0; #convert to number
+      if (!@b) {
+         return 1;
+      }  
+      my $n2 = shift @b;
+      $n2 += 0; # convert to number
+      if ($n1 == $n2) {
+          next;
+      }
+      else {
+         return $n1 <=> $n2;
+      }  
+   }  
+   return @b ? -1 : 0;
+}
+
+
+1;
+}
+# ###########################################################################
+# End VersionCompare package
 # ###########################################################################
 
 # ###########################################################################
@@ -2150,7 +2199,7 @@ sub parse {
    foreach my $key ( keys %$opts ) {
       PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
-      if (   !defined $final_props{$key}
+      if ( !defined $final_props{$key}  
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
@@ -3249,7 +3298,7 @@ sub parse {
    my ($name)     = $ddl =~ m/CREATE (?:TEMPORARY )?TABLE\s+(`.+?`)/;
    (undef, $name) = $self->{Quoter}->split_unquote($name) if $name;
 
-   $ddl =~ s/(`[^`]+`)/\L$1/g;
+   $ddl =~ s/(`[^`\n]+`)/\L$1/gm;
 
    my $engine = $self->get_engine($ddl);
 
@@ -3260,8 +3309,8 @@ sub parse {
    my %def_for;
    @def_for{@cols} = @defs;
 
-   my (@nums, @null);
-   my (%type_for, %is_nullable, %is_numeric, %is_autoinc);
+   my (@nums, @null, @non_generated);
+   my (%type_for, %is_nullable, %is_numeric, %is_autoinc, %is_generated);
    foreach my $col ( @cols ) {
       my $def = $def_for{$col};
 
@@ -3278,6 +3327,11 @@ sub parse {
          push @null, $col;
          $is_nullable{$col} = 1;
       }
+      if ( remove_quoted_text($def) =~ m/\WGENERATED\W/i ) {
+          $is_generated{$col} = 1;
+      } else {
+          push @non_generated, $col;
+      }
       $is_autoinc{$col} = $def =~ m/AUTO_INCREMENT/i ? 1 : 0;
    }
 
@@ -3286,22 +3340,32 @@ sub parse {
    my ($charset) = $ddl =~ m/DEFAULT CHARSET=(\w+)/;
 
    return {
-      name           => $name,
-      cols           => \@cols,
-      col_posn       => { map { $cols[$_] => $_ } 0..$#cols },
-      is_col         => { map { $_ => 1 } @cols },
-      null_cols      => \@null,
-      is_nullable    => \%is_nullable,
-      is_autoinc     => \%is_autoinc,
-      clustered_key  => $clustered_key,
-      keys           => $keys,
-      defs           => \%def_for,
-      numeric_cols   => \@nums,
-      is_numeric     => \%is_numeric,
-      engine         => $engine,
-      type_for       => \%type_for,
-      charset        => $charset,
+      name               => $name,
+      cols               => \@cols,
+      col_posn           => { map { $cols[$_] => $_ } 0..$#cols },
+      is_col             => { map { $_ => 1 } @non_generated },
+      null_cols          => \@null,
+      is_nullable        => \%is_nullable,
+      non_generated_cols => \@non_generated,
+      is_autoinc         => \%is_autoinc,
+      is_generated       => \%is_generated,
+      clustered_key      => $clustered_key,
+      keys               => $keys,
+      defs               => \%def_for,
+      numeric_cols       => \@nums,
+      is_numeric         => \%is_numeric,
+      engine             => $engine,
+      type_for           => \%type_for,
+      charset            => $charset,
    };
+}
+
+sub remove_quoted_text {
+   my ($string) = @_;
+   $string =~ s/[^\\]`[^`]*[^\\]`//g; 
+   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
+   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
+   return $string;
 }
 
 sub sort_indexes {
@@ -3948,6 +4012,11 @@ sub name {
    return $self->{hostname} || $self->{dsn_name} || 'unknown host';
 }
 
+sub description {
+   my ($self) = @_;
+   return sprintf("%s -> %s:%s", $self->name(), $self->{dsn}->{h}, $self->{dsn}->{P} || 'socket');
+}
+
 sub get_id {
    my ($self, $cxn) = @_;
 
@@ -4147,8 +4216,7 @@ sub get_slaves {
             },
          }
       );
-   }
-   elsif ( $methods->[0] =~ m/^dsn=/i ) {
+   } elsif ( $methods->[0] =~ m/^dsn=/i ) {
       (my $dsn_table_dsn = join ",", @$methods) =~ s/^dsn=//i;
       $slaves = $self->get_cxn_from_dsn_table(
          %args,
@@ -4213,7 +4281,8 @@ sub recurse_to_slaves {
       PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
    };
    if ( $EVAL_ERROR ) {
-      print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), "\n"
+      #TODO REMOVE DEBUG
+      print STDERR "1> Cannot connect to ", $dp->as_string($slave_dsn), "\n"
          or die "Cannot print: $OS_ERROR";
       return;
    }
@@ -4410,21 +4479,44 @@ sub get_master_dsn {
 
 sub get_slave_status {
    my ( $self, $dbh ) = @_;
+
    if ( !$self->{not_a_slave}->{$dbh} ) {
       my $sth = $self->{sths}->{$dbh}->{SLAVE_STATUS}
             ||= $dbh->prepare('SHOW SLAVE STATUS');
       PTDEBUG && _d($dbh, 'SHOW SLAVE STATUS');
       $sth->execute();
-      my ($ss) = @{$sth->fetchall_arrayref({})};
+      my ($sss_rows) = $sth->fetchall_arrayref({}); # Show Slave Status rows
 
-      if ( $ss && %$ss ) {
-         $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
-         return $ss;
+      my $ss;
+      if ( $sss_rows && @$sss_rows ) {
+          if (scalar @$sss_rows > 1) {
+              if (!$self->{channel}) {
+                  die 'This server returned more than one row for SHOW SLAVE STATUS but "channel" was not specified on the command line';
+              }
+              for my $row (@$sss_rows) {
+                  $row = { map { lc($_) => $row->{$_} } keys %$row }; # lowercase the keys
+                  if ($row->{channel_name} eq $self->{channel}) {
+                      $ss = $row;
+                      last;
+                  }
+              }
+          } else {
+              if ($sss_rows->[0]->{channel_name} && $sss_rows->[0]->{channel_name} ne $self->{channel}) {
+                  die 'This server is using replication channels but "channel" was not specified on the command line';
+              } else {
+                  $ss = $sss_rows->[0];
+              }
+          }
+
+          if ( $ss && %$ss ) {
+             $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
+             return $ss;
+          }
       }
 
       PTDEBUG && _d('This server returns nothing for SHOW SLAVE STATUS');
       $self->{not_a_slave}->{$dbh}++;
-   }
+  }
 }
 
 sub get_master_status {
@@ -4464,8 +4556,20 @@ sub wait_for_master {
    my $result;
    my $waited;
    if ( $master_status ) {
-      my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', "
-              . "$master_status->{position}, $timeout)";
+      my $slave_status;
+      eval {
+          $slave_status = $self->get_slave_status($slave_dbh);
+      };
+      if ($EVAL_ERROR) {
+          return {
+              result => undef,
+              waited => 0,
+              error  =>'Wait for master: this is a multi-master slave but "channel" was not specified on the command line',
+          };
+      }
+      my $server_version = VersionParser->new($slave_dbh);
+      my $channel_sql = $server_version > '5.6' && $self->{channel} ? ", '$self->{channel}'" : '';
+      my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', $master_status->{position}, $timeout $channel_sql)";
       PTDEBUG && _d($slave_dbh, $sql);
       my $start = time;
       ($result) = $slave_dbh->selectrow_array($sql);
@@ -4531,6 +4635,9 @@ sub catchup_to_master {
             timeout       => $timeout,
             master_status => $master_status
       );
+      if ($result->{error}) {
+          die $result->{error};
+      }
       if ( !defined $result->{result} ) {
          $slave_status = $self->get_slave_status($slave);
          if ( !$self->slave_is_running($slave_status) ) {
@@ -4864,24 +4971,6 @@ sub wait {
    my $worst;  # most lagging slave
    my $pr_callback;
    my $pr_first_report;
-
-   my $pr_refresh_slave_list = sub {
-      my ($self) = @_;
-      my ($slaves, $refresher) = ($self->{slaves}, $self->{get_slaves_cb});
-      return if ( not defined $refresher );
-      my $before = join ' ', sort map {$_->name()} @$slaves;
-      $slaves = $refresher->();
-      my $after = join ' ', sort map {$_->name()} @$slaves;
-      if ($before ne $after) {
-         $self->{slaves} = $slaves;
-         printf "Slave set to watch has changed\n  Was: %s\n  Now: %s\n",
-            $before, $after;
-      }
-      return($self->{slaves});
-   };
-
-   $slaves = $pr_refresh_slave_list->($self);
-
    if ( $pr ) {
       $pr_callback = sub {
          my ($fraction, $elapsed, $remaining, $eta, $completed) = @_;
@@ -4909,19 +4998,11 @@ sub wait {
    my @lagged_slaves = map { {cxn=>$_, lag=>undef} } @$slaves;  
    while ( $oktorun->() && @lagged_slaves ) {
       PTDEBUG && _d('Checking slave lag');
-
-      $slaves = $pr_refresh_slave_list->($self);
-      my $watched = 0;
-      @lagged_slaves = grep {
-         my $slave_name = $_->{cxn}->name();
-         grep {$slave_name eq $_->name()} @{$slaves || []}
-                             } @lagged_slaves;
-
       for my $i ( 0..$#lagged_slaves ) {
          my $lag = $get_lag->($lagged_slaves[$i]->{cxn});
          PTDEBUG && _d($lagged_slaves[$i]->{cxn}->name(),
             'slave lag:', $lag);
-         if ( !defined $lag || $lag > $max_lag ) {
+        if ( defined $lag && $lag > $max_lag ) {
             $lagged_slaves[$i]->{lag} = $lag;
          }
          else {
@@ -4958,9 +5039,6 @@ sub wait {
 
 sub _d {
    my ($package, undef, $line) = caller 0;
-   #   Backslash found where operator expected at ./pt-online-schema-change line 4933, near "@_ = map { (my $temp = $_) =~ s/\"
-   # (Might be a runaway multi-line // string starting on line 4889)
-
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
         map { defined $_ ? $_ : 'undef' }
         @_;
@@ -5213,7 +5291,7 @@ sub wait {
             die "$var=$val exceeds its critical threshold "
                . "$self->{critical_val_for}->{$var}\n";
          }
-         if ( !$val || $val >= $self->{max_val_for}->{$var} ) {
+         if ( $val >= $self->{max_val_for}->{$var} ) {
             $vals_too_high{$var} = $val;
          }
          else {
@@ -7336,15 +7414,16 @@ eval {
    require HTTP::Micro;
 };
 
+my $home    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
+my @vc_dirs = (
+   '/etc/percona',
+   '/etc/percona-toolkit',
+   '/tmp',
+   "$home",
+);
+
 {
    my $file    = 'percona-version-check';
-   my $home    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
-   my @vc_dirs = (
-      '/etc/percona',
-      '/etc/percona-toolkit',
-      '/tmp',
-      "$home",
-   );
 
    sub version_check_file {
       foreach my $dir ( @vc_dirs ) {
@@ -7561,6 +7640,46 @@ sub get_instance_id {
 }
 
 
+sub get_uuid {
+    my $uuid_file = '/.percona-toolkit.uuid';
+    foreach my $dir (@vc_dirs) {
+        my $filename = $dir.$uuid_file;
+        my $uuid=_read_uuid($filename);
+        return $uuid if $uuid;
+    }
+
+    my $filename = $ENV{"HOME"} . $uuid_file;
+    my $uuid = _generate_uuid();
+
+    open(my $fh, '>', $filename) or die "Could not open file '$filename' $!";
+    print $fh $uuid;
+    close $fh;
+
+    return $uuid;
+}   
+
+sub _generate_uuid {
+    return sprintf+($}="%04x")."$}-$}-$}-$}-".$}x3,map rand 65537,0..7;
+}
+
+sub _read_uuid {
+    my $filename = shift;
+    my $fh;
+
+    eval {
+        open($fh, '<:encoding(UTF-8)', $filename);
+    };
+    return if ($EVAL_ERROR);
+
+    my $uuid;
+    eval { $uuid = <$fh>; };
+    return if ($EVAL_ERROR);
+
+    chomp $uuid;
+    return $uuid;
+}
+
+
 sub pingback {
    my (%args) = @_;
    my @required_args = qw(url instances);
@@ -7597,7 +7716,7 @@ sub pingback {
    my $client_content = encode_client_response(
       items      => $items,
       versions   => $versions,
-      general_id => md5_hex( hostname() ),
+      general_id => get_uuid(),
    );
 
    my $client_response = {
@@ -8107,6 +8226,7 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 use List::Util qw(max);
 use Time::HiRes qw(time sleep);
 use Data::Dumper;
+use VersionCompare;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
@@ -8128,6 +8248,9 @@ my $dont_interrupt_now = 0;
 my @drop_trigger_sqls;
 my @triggers_not_dropped;
 my $pxc_version = '0';
+
+my $triggers_info = [];
+
 # Completely ignore these error codes.
 my %ignore_code = (
    # Error: 1592 SQLSTATE: HY000  (ER_BINLOG_UNSAFE_STATEMENT)
@@ -8195,6 +8318,10 @@ sub main {
 
    # Explicit --chunk-size disable auto chunk sizing.
    $o->set('chunk-time', 0) if $o->got('chunk-size');
+   if (!$o->get('swap-tables') && !$o->get('drop-triggers')) {
+       PTDEBUG && _d('Enabling no-drop-new-table since no-swap-tables & no-drop-triggers were specified');
+       $o->set('drop-new-table', 0);
+   }
 
    foreach my $opt ( qw(max-load critical-load) ) {
       next unless $o->has($opt);
@@ -8227,6 +8354,18 @@ sub main {
 
    if ( !$o->get('drop-triggers') ) {
       $o->set('drop-old-table', 0);
+   }
+
+   if ( !$o->get('drop-triggers') && $o->get('preserve-triggers') ) {
+      my $msg = "Cannot use --no-drop-triggers along with --preserve-triggers "
+              . "since --preserve-triggers implies that the old triggers should be deleted"
+              . " and recreated in the new table.\nPlease read the documentation for "
+              . "--preserve-triggers";
+      die $msg;
+   }
+
+   if ( $o->get('preserve-triggers') ) {
+      $o->set('drop-triggers', 1);
    }
 
    if ( !$o->get('help') ) {
@@ -8306,11 +8445,8 @@ sub main {
    # think that can be less confusing. Also, the $set_on_connect variable can be
    # inlined into this subroutine. Many of our tools have a get_dbh() subroutine
    # and it might be good to just make a convention of it.
-   # Note: args->{errok} to tolerate connection error
    my $make_cxn = sub {
       my (%args) = @_;
-      my $errok = $args{errok};
-      delete($args{errok});
       my $cxn = Cxn->new(
          %args,
          DSNParser    => $dp,
@@ -8319,12 +8455,7 @@ sub main {
       );
       eval { $cxn->connect() };  # connect or die trying
       if ( $EVAL_ERROR ) {
-         if ($errok) {
-            printf "IGNORING CONNECTION ERROR: %s\n",
-              $EVAL_ERROR;
-         } else {
-            die "Cannot connect to MySQL: $EVAL_ERROR\n";
-         }
+         die "Cannot connect to MySQL: $EVAL_ERROR\n";
       }
       return $cxn;
    };
@@ -8463,26 +8594,18 @@ sub main {
          Quoter       => $q,
       );
 
-      my $get_slaves_cb = sub {
-         my ($intolerant) = @_;
-         return( $ms->get_slaves(
-            dbh          => $cxn->dbh(),
-            dsn          => $cxn->dsn(),
-            make_cxn     => sub {
-               return $make_cxn->(@_, prev_dsn => $cxn->dsn(),
-                 errok => (not $intolerant));
-                                },
-                                )
-               );
-                              };
-
-      ### first ever call only: do not tolerate connection errors
-      $slaves = $get_slaves_cb->('intolerant');
+      $slaves = $ms->get_slaves(
+         dbh          => $cxn->dbh(),
+         dsn          => $cxn->dsn(),
+         make_cxn     => sub {
+            return $make_cxn->(@_, prev_dsn => $cxn->dsn());
+         },
+      );
       PTDEBUG && _d(scalar @$slaves, 'slaves found');
       if ( scalar @$slaves ) {
          print "Found " . scalar(@$slaves) . " slaves:\n";
          foreach my $cxn ( @$slaves ) {
-            print "  " . $cxn->name() . "\n";
+            print $cxn->description()."\n";
          }
       }
       elsif ( ($o->get('recursion-method') || '') ne 'none') {
@@ -8501,16 +8624,37 @@ sub main {
             prev_dsn   => $cxn->dsn(),
          );
          $slave_lag_cxns = [ $cxn ];
-         $get_slaves_cb = undef;
       }
       else {
          PTDEBUG && _d('Will check slave lag on all slaves');
          $slave_lag_cxns = $slaves;
       }
       if ( $slave_lag_cxns && scalar @$slave_lag_cxns ) {
-         print "Will check slave lag on:\n";
-         foreach my $cxn ( @$slave_lag_cxns ) {
-            print "  " . $cxn->name() . "\n";
+         if ($o->get('skip-check-slave-lag')) {
+             my $slaves_to_skip = $o->get('skip-check-slave-lag');
+             my $filtered_slaves = [];
+             for my $slave (@$slave_lag_cxns) {
+                 my $found=0;
+                 for my $slave_to_skip (@$slaves_to_skip) {
+                     if ($slave->{dsn}->{h} eq $slave_to_skip->{h} && $slave->{dsn}->{P} eq $slave_to_skip->{P}) {
+                         $found=1;
+                     }
+                 }
+                 if ($found) {
+                    print "Skipping slave ". $slave->description()."\n";
+                 } else {
+                    push @$filtered_slaves, $slave;
+                 }
+             }
+             $slave_lag_cxns = $filtered_slaves;
+         }
+         if (!scalar @$slave_lag_cxns) {
+            print "Not checking slave lag because all slaves were skipped\n";
+         } else{
+            print "Will check slave lag on:\n";
+            foreach my $cxn ( @$slave_lag_cxns ) {
+               print $cxn->description()."\n";
+            }
          }
       }
       else {
@@ -8591,7 +8735,8 @@ sub main {
                   # to stop lagging.  If any replica is stopped, the tool
                   # waits forever until the replica is started."
                   # https://bugs.launchpad.net/percona-toolkit/+bug/1402051
-                  PTDEBUG && _d('Cannot connect to', $cxn->name(), ':',
+                  #TODO REMOVE DEBUG
+                  PTDEBUG && _d('2> Cannot connect to', $cxn->name(), ':',
                      $EVAL_ERROR);
                   # Make ReplicaLagWaiter::wait() report slave is stopped.
                   return undef; 
@@ -8610,12 +8755,11 @@ sub main {
       }
 
       $replica_lag = new ReplicaLagWaiter(
-         slaves          => $slave_lag_cxns,
-         get_slaves_cb   => $get_slaves_cb,
-         max_lag         => $o->get('max-lag'),
-         oktorun         => sub { return $oktorun },
-         get_lag         => $get_lag,
-         sleep           => $sleep,
+         slaves   => $slave_lag_cxns,
+         max_lag  => $o->get('max-lag'),
+         oktorun  => sub { return $oktorun },
+         get_lag  => $get_lag,
+         sleep    => $sleep,
       );
 
       my $get_status;
@@ -8744,6 +8888,7 @@ sub main {
          tbl    => $orig_tbl,
          Cxn    => $cxn,
          Quoter => $q,
+         only_same_schema_fks => $o->get('only-same-schema-fks'), 
       );
       if ( !$child_tables ) {
          if ( $alter_fk_method ) {
@@ -8909,6 +9054,7 @@ sub main {
             renamed_cols => $renamed_cols,
             Cxn          => $cxn,
             TableParser  => $tp,
+            OptionParser => $o,
          );
       }
    }
@@ -9031,7 +9177,8 @@ sub main {
       }
    };
 
-   if ( $slaves && scalar @$slaves ) {
+   my $table_is_replicated;
+   if ( $slaves && scalar @$slaves && $table_is_replicated) {
       foreach my $slave (@$slaves) {
          my ($pr, $pr_first_report);
          if ( $o->get('progress') ) {
@@ -9228,7 +9375,7 @@ sub main {
              . "To drop the triggers, execute:\n"
              . join("\n", @drop_trigger_sqls) . "\n";
       }
-      elsif ( !$drop_triggers ) {
+      elsif ( !$drop_triggers  ) {
          print "Not dropping triggers because --no-drop-triggers was "
          . "specified.  To drop the triggers, execute:\n"
          . join("\n", @drop_trigger_sqls) . "\n";
@@ -9662,6 +9809,46 @@ sub main {
       $plugin->before_swap_tables();
    }
 
+   if ( $o->get('preserve-triggers') ) {
+      if ( !$o->get('swap-tables') && $o->get('drop-new-table') ) {
+          print ts("Skipping triggers creation since --no-swap-tables was specified along with --drop-new-table\n");
+      } else {
+          print ts("Adding original triggers to new table.\n");
+          foreach my $trigger_info (@$triggers_info) {
+              next if ! ($trigger_info->{orig_triggers});
+              foreach my $orig_trigger (@{$trigger_info->{orig_triggers}}) {
+                  # if --no-swap-tables is used and --drop-new-table (default), then we don't do any trigger stuff
+                  my $new_trigger_sqls;
+                  eval {
+                      # if --no-swap-tables is used and --no-drop-new-table is used, then we need to duplicate the trigger
+                      my $duplicate_trigger = ( ! $o->get('swap-tables') && ! $o->get('drop-new-table') ) ? 1 : undef;
+                          
+                      $new_trigger_sqls = create_trigger_sql(trigger => $orig_trigger, 
+                                                             db => $new_tbl->{db}, 
+                                                             new_tbl => $new_tbl->{tbl}, 
+                                                             orig_tbl => $orig_tbl->{tbl},
+                                                             duplicate_trigger => $duplicate_trigger,
+                                                            );
+                  };
+                  if ($EVAL_ERROR) {
+                     die "Cannot create triggers: $EVAL_ERROR";
+                  }
+                  next if !$o->get('execute');
+                  PTDEBUG && _d('New triggers sqls');
+                  for my $sql (@$new_trigger_sqls) {
+                      PTDEBUG && _d($sql);
+                      eval {
+                          $cxn->dbh()->do($sql);
+                      };
+                      if ($EVAL_ERROR) {
+                           die "Exiting due to errors while restoring triggers: $EVAL_ERROR";
+                      }
+                  }
+              }
+          }
+      }
+   }
+
    my $old_tbl;
    if ( $o->get('swap-tables') ) {
 
@@ -9886,14 +10073,48 @@ sub validate_tries {
 
 sub check_alter {
    my (%args) = @_;
-   my @required_args = qw(alter tbl dry_run Cxn TableParser);
+   my @required_args = qw(alter tbl dry_run Cxn TableParser OptionParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless exists $args{$arg};
    }
-   my ($alter, $tbl, $dry_run, $cxn, $tp) = @args{@required_args};
+   my ($alter, $tbl, $dry_run, $cxn, $tp, $o) = @args{@required_args};
 
    my $ok = 1;
 
+   $alter =~ s/^(.*?)\s+COMMENT\s+'(.*?[^\\]')+(.*)/$1$3/; 
+   $alter =~ s/^(.*?)\s+COMMENT\s+"(.*?[^\\]")+(.*)/$1$3/; 
+
+   my $unique_fields = get_unique_index_fields($alter);
+
+   if (scalar @$unique_fields && $o->get('check-unique-key-change')) {
+       my $msg = "You are trying to add an unique key. This can result in data loss if the "
+               . "data is not unique.\n"
+               . "Please read the documentation for the --check-unique-key-change parameter.\n"
+               . "You can check if the column(s) contain duplicate content "
+               . "by running this/these query/queries:\n\n";
+       foreach my $fields (@$unique_fields) {
+           my $sql = "SELECT IF(COUNT(DISTINCT " . join(", ", @$fields) . ") = COUNT(*),\n"
+                   . "       'Yes, the desired unique index currently contains only unique values', \n"
+                   . "       'No, the desired unique index contains duplicated values. There will be data loss'\n"
+                   . ") AS IsThereUniqueness FROM `$tbl->{db}`.`$tbl->{tbl}`;\n\n";
+           $msg .= $sql;
+        }
+        $msg .= "Keep in mind that these queries could take a long time and consume a lot of resources\n\n";
+        die ($msg);
+   }
+
+   if ( ($tbl->{tbl_struct}->{engine} || '') =~ m/RocksDB/i ) {
+       if ($alter =~ m/FOREIGN KEY/i) {
+            my $msg = "FOREIGN KEYS are not supported by the RocksDB engine\n\n";
+            die ($msg);
+       }
+   }
+   if ( $alter =~ m/Engine\s*=\s*["']?RocksDB["']?/i ) {
+      my $row = $cxn->dbh()->selectrow_arrayref('SELECT @@binlog_format');
+      if (scalar $row > 0 && $row->[0] eq 'STATEMENT') {
+          die("Cannot change engine to RocksDB while binlog_format is other than 'ROW'");
+      }
+   }
    # ########################################################################
    # Check for DROP PRIMARY KEY.
    # ########################################################################
@@ -9969,6 +10190,47 @@ sub check_alter {
    return;
 }
 
+# This function tries to detect if the --alter param is adding unique indexes.
+# It returns an array of arrays, having a list of fields for each unique index
+# found. 
+# Example:
+# Input string: add i int comment "first comment ", ADD UNIQUE INDEX (C1) comment 
+#               'second comment', CREATE UNIQUE INDEX C ON T1 (C2, c3) comment "third"
+#
+# Output: 
+# $VAR1 = [
+#           [ 'C1' ],
+#           [ 'C2', 'c3' ]
+#         ];
+#
+# Thse fields are used to build an example SELECT to detect if currently there are 
+# rows that will produce duplicates when the new UNIQUE INDEX is created.
+
+sub get_unique_index_fields {
+   my ($alter) = @_;
+   my $remove_comments_re = qr/(.*?\s+)?comment ('.*?'|".*?")(.*)/i;
+
+   $alter =~ s/\\"//g; # Remove \" just to make remove_comments_re easier
+
+   my $clean;
+   my $suffix = $alter;
+
+   while ($alter =~ /$remove_comments_re/g) {
+       $clean .= $1;
+       $suffix = $3;
+   }
+   $clean .= $suffix;
+
+   my $fields = [];
+   my $fields_re = qr/\s(?:PRIMARY|UNIQUE)\s+(?:INDEX|KEY|)\s*(?:.*?)\s*\((.*?)\)/i;
+
+   while($clean =~ /$fields_re/g) {
+      push @$fields, [ split /\s*,\s*/, $1 ];
+   }
+
+   return $fields;
+}
+
 sub find_renamed_cols {
    my (%args) = @_;
    my @required_args = qw(alter TableParser);
@@ -10005,8 +10267,13 @@ sub find_renamed_cols {
    /x;
 
    my $table_ident  = qr/$unquoted_ident|`$quoted_ident`|"$ansi_quotes_ident"/;
-   my $alter_change_col_re = qr/\bCHANGE \s+ (?:COLUMN \s+)?
-                                    ($table_ident) \s+ ($table_ident)/ix;
+
+   # remove comments
+   $alter =~ s/^(.*?)\s+COMMENT\s+'(.*?[^\\]')+(.*)/$1$3/; 
+   $alter =~ s/^(.*?)\s+COMMENT\s+"(.*?[^\\]")+(.*)/$1$3/; 
+
+   my $alter_change_col_re = qr/\bCHANGE \s+ (?:COLUMN \s+)? 
+                                ($table_ident) \s+ ($table_ident)/ix;
 
    my %renames;
    while ( $alter =~ /$alter_change_col_re/g ) {
@@ -10016,7 +10283,7 @@ sub find_renamed_cols {
       my (undef, $new_tbl)  = Quoter->split_unquote($new);
       # Silly but plausible: CHANGE COLUMN same_name same_name ...
       next if lc($orig_tbl) eq lc($new_tbl);
-      $renames{$orig_tbl} = $new_tbl;
+      $renames{lc($orig_tbl)} = $new_tbl;
    }
    PTDEBUG && _d("Renamed columns (old => new): ", Dumper(\%renames));
    return \%renames;
@@ -10162,21 +10429,23 @@ sub create_new_table {
       );
       my $constraint_pattern = qr((CONSTRAINT `__|CONSTRAINT `_|CONSTRAINT `));
       $sql =~ s/$constraint_pattern/$search_dict{$1}/gm;
+      # Limit constraint name to 64 characters
+      $sql =~ s/CONSTRAINT `([^`]{1,64})[^`]*` (.*)/  CONSTRAINT `$1` $2/gm;
 
       if ( $o->get('default-engine') ) {
          $sql =~ s/\s+ENGINE=\S+//;
       }
       if ( $o->get('data-dir') && !$o->got('remove-data-dir') ) {
           if ( (-d $o->get('data-dir')) && (-w $o->get('data-dir')) ){
-             $sql =~ s/DATA DIRECTORY='.*?'//; 
-             $sql .= sprintf(" DATA DIRECTORY='%s' ",$o->get('data-dir'));
+             $sql = insert_data_directory($sql, $o->get('data-dir'));
              PTDEBUG && _d("adding data dir ".$o->get('data-dir'));
+             PTDEBUG && _d("New query\n$sql\n");
           } else {
               die $o->get('data-dir') . " is not a directory or it is not writable";
           }
       }
       if ( $o->got('remove-data-dir') ) {
-         $sql =~ s/DATA DIRECTORY='.*?'//; 
+         $sql =~ s/DATA DIRECTORY\s*=\s*'.*?'//; 
          PTDEBUG && _d("removing data dir");
       }
       PTDEBUG && _d($sql);
@@ -10213,6 +10482,21 @@ sub create_new_table {
      . join("\n", map { "  $_" } @old_tables)
      . "\nExamine these tables and drop some or all of them if they are "
      . "no longer need, then re-run the tool.\n";
+}
+
+sub insert_data_directory {
+    my ($sql, $data_dir) = @_;
+    $sql =~ s/DATA DIRECTORY\s*=\s*'.*?'//; 
+
+    my $re_ps=qr/(\/\*!50100 )?(PARTITION|SUBPARTITION)/;
+    
+    if ($sql=~ m/$re_ps/) {
+        my $insert_pos=$-[0];
+        $sql = substr($sql, 0, $insert_pos - 1). " DATA DIRECTORY = '$data_dir' " .substr($sql, $insert_pos);
+    } else {
+        $sql .= " DATA DIRECTORY = '$data_dir' ";
+    }
+    return $sql;
 }
 
 sub swap_tables {
@@ -10344,15 +10628,22 @@ sub check_orig_table {
       die "The original table $orig_tbl->{name} does not exist.\n";
    }
 
+   my ( $version ) = $dbh->selectrow_array("SELECT VERSION()");
    # There cannot be any triggers on the original table.
    my $sql = 'SHOW TRIGGERS FROM ' . $q->quote($orig_tbl->{db})
            . ' LIKE ' . $q->literal_like($orig_tbl->{tbl});
    PTDEBUG && _d($sql);
    my $triggers = $dbh->selectall_arrayref($sql);
    if ( $triggers && @$triggers ) {
-      die "The table $orig_tbl->{name} has triggers.  This tool "
-         . "needs to create its own triggers, so the table cannot "
-         . "already have triggers.\n";
+       if ( VersionCompare::cmp($version, '5.7.0') < 0  && VersionCompare::cmp($version, '10.0.0') <= 0) {
+           die "The table $orig_tbl->{name} has triggers.  This tool "
+             . "needs to create its own triggers, so the table cannot "
+             . "already have triggers.\n";
+       } elsif ( ( VersionCompare::cmp($version, '5.7.0') >= 0 || VersionCompare::cmp($version, '10.0.0') >0 )
+                 && !$o->get('preserve-triggers') ) {
+           die "The table $orig_tbl->{name} has triggers but --preserve-triggers was not specified.\n"
+             . "Please read the documentation for --preserve-triggers.\n";
+       }
    }
 
    # Get the table struct.  NibbleIterator needs this, and so do we.
@@ -10400,6 +10691,11 @@ sub find_child_tables {
            . "FROM information_schema.key_column_usage "
            . "WHERE referenced_table_schema='$tbl->{db}' "
            . "AND referenced_table_name='$tbl->{tbl}'";
+
+   if ($args{only_same_schema_fks}) {
+       $sql .= " AND table_schema='$tbl->{db}'";
+   }
+
    PTDEBUG && _d($sql);
    my $rows = $cxn->dbh()->selectall_arrayref($sql);
    if ( !$rows || !@$rows ) {
@@ -10696,6 +10992,8 @@ sub create_triggers {
    # they may have been renamed
    my %old_col_for    = map { $_->{new} => $_->{old} } @$cols;
    my $tbl_struct     = $del_tbl->{tbl_struct};
+   
+   # ---------------------------------------------------------------------------------------
    my $del_index      = $del_tbl->{del_index};
    my $del_index_cols = join(" AND ", map {
       my $new_col  = $_;
@@ -10711,21 +11009,25 @@ sub create_triggers {
       . "DELETE IGNORE FROM $new_tbl->{name} "
       . "WHERE $del_index_cols";
 
+   # ---------------------------------------------------------------------------------------
    my $qcols    = join(', ', map { $q->quote($_->{new}) }        @$cols);
    my $new_vals = join(', ', map { "NEW.".$q->quote($_->{old}) } @$cols);
+
    my $insert_trigger
       = "CREATE TRIGGER `${prefix}_ins` AFTER INSERT ON $orig_tbl->{name} "
       . "FOR EACH ROW "
       . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
 
+   # ---------------------------------------------------------------------------------------
    my $upd_index_cols = join(" AND ", map {
-      my $new_col = $_;
-      my $old_col = $old_col_for{$new_col} || $new_col;
-      my $new_qcol = $q->quote($new_col);
-      my $old_qcol = $q->quote($old_col);
-      "OLD.$old_qcol <=> NEW.$new_qcol"
+          my $new_col = $_;
+          my $old_col = $old_col_for{$new_col} || $new_col;
+          my $new_qcol = $q->quote($new_col);
+          my $old_qcol = $q->quote($old_col);
+          "OLD.$old_qcol <=> NEW.$new_qcol"
    } @{$tbl_struct->{keys}->{$del_index}->{cols}} );
-      
+   # ---------------------------------------------------------------------------------------
+
    my $update_trigger
       = "CREATE TRIGGER `${prefix}_upd` AFTER UPDATE ON $orig_tbl->{name} "
       . "FOR EACH ROW "
@@ -10734,36 +11036,110 @@ sub create_triggers {
       . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals);"
       . "END ";      
 
-   my @triggers = (
-      ['del', $delete_trigger],
-      ['upd', $update_trigger],
-      ['ins', $insert_trigger],
-   );
+   $triggers_info = [                                                     
+      { 
+          suffix => 'del', event => 'DELETE', time => 'AFTER', orig_triggers => [], 
+          new_trigger_sql => $delete_trigger, new_trigger_name => "${prefix}_del", 
+      },
+      { 
+          suffix => 'upd', event => 'UPDATE', time => 'AFTER', orig_triggers => [], 
+          new_trigger_sql => $update_trigger, new_trigger_name => "${prefix}_upd",
+      },
+      { 
+          suffix => 'ins', event => 'INSERT', time => 'AFTER', orig_triggers => [], 
+          new_trigger_sql => $insert_trigger, new_trigger_name => "${prefix}_ins", 
+      },
+
+      { 
+          suffix => 'delb', event => 'DELETE', time => 'BEFORE', orig_triggers => [], 
+          new_trigger_sql => '', new_trigger_name => '' 
+      },
+      { 
+          suffix => 'updb', event => 'UPDATE', time => 'BEFORE', orig_triggers => [], 
+          new_trigger_sql => '', new_trigger_name => '' 
+      },
+      { 
+          suffix => 'insb', event => 'INSERT', time => 'BEFORE', orig_triggers => [], 
+          new_trigger_sql => '', new_trigger_name => '' 
+      },
+   ];
+
+   $cxn->connect();
+   my $dbh = $cxn->dbh();
+
+   my $trigger_sql = "SELECT TRIGGER_SCHEMA, TRIGGER_NAME, DEFINER, ACTION_STATEMENT, SQL_MODE, "
+                   . "       CHARACTER_SET_CLIENT, COLLATION_CONNECTION, EVENT_MANIPULATION, ACTION_TIMING "
+                   . "  FROM INFORMATION_SCHEMA.TRIGGERS "
+                   . " WHERE EVENT_MANIPULATION = ? "
+                   . "   AND ACTION_TIMING = ? "
+                   . "   AND TRIGGER_SCHEMA = ? "
+                   . "   AND EVENT_OBJECT_TABLE = ?";
+   foreach my $trigger_info (@$triggers_info) {
+       $trigger_info->{orig_triggers} = $dbh->selectall_arrayref( $trigger_sql, 
+                                                                  { Slice => {} }, 
+                                                                  $trigger_info->{event},
+                                                                  $trigger_info->{time},
+                                                                  $orig_tbl->{db}, 
+                                                                  $orig_tbl->{tbl}
+                                                                ) || [];
+   }
+
+   # If --preserve-triggers was specified, try to create the original triggers into the new table.
+   # We are doing this to ensure the original triggers will work in the new modified table
+   # and we want to know this BEFORE copying all rows from the old table to the new one.
+   if ($o->get('preserve-triggers')) {
+       foreach my $trigger_info (@$triggers_info) {
+           foreach my $orig_trigger (@{$trigger_info->{orig_triggers}}) {
+               my $definer = $orig_trigger->{definer} || '';
+               $definer =~ s/@/`@`/;
+               $definer = "`$definer`" ;
+               
+               my @chars = ("a".."z");
+               my $tmp_trigger_name;
+               $tmp_trigger_name .= $chars[rand @chars] for 1..15;
+
+               my $sql = "CREATE DEFINER=$definer " 
+                       . "TRIGGER `$new_tbl->{db}`.`$tmp_trigger_name` "
+                       . "$orig_trigger->{action_timing} $orig_trigger->{event_manipulation} ON $new_tbl->{tbl}\n"
+                       . "FOR EACH ROW\n"
+                       . $orig_trigger->{action_statement};
+               eval {
+                   $dbh->do($sql);
+               };
+               if ($EVAL_ERROR) {
+                   my $msg = "$EVAL_ERROR.\n"
+                           . "Check if all fields referenced by the trigger still exists "
+                           . "after the operation you are trying to apply";
+                   die ($msg);
+               }
+               $dbh->do("DROP TRIGGER IF EXISTS `$tmp_trigger_name`");
+           }
+       }
+   }
 
    my @trigger_names;
    @drop_trigger_sqls = ();
-   foreach my $trg ( @triggers ) {
-      my ($name, $sql) = @$trg;
-      print $sql, "\n" if $o->get('print');
-      if ( $o->get('execute') ) {
-         osc_retry(
-            Cxn     => $cxn,
-            Retry   => $retry,
-            tries   => $tries->{create_triggers},
-            stats   => $stats,
-            code    => sub {
-               PTDEBUG && _d($sql);
-               $cxn->dbh()->do($sql);
-            },
-         );
-      }
-      # Only save the trigger once it has been created
-      # (or faked to be created) so if the 2nd trigger
-      # fails to create, we know to only drop the 1st.
-      push @trigger_names, "${prefix}_$name";
-      push @drop_trigger_sqls,
-         "DROP TRIGGER IF EXISTS "
-         . $q->quote($orig_tbl->{db}, "${prefix}_$name") . ";";
+
+   foreach my $trigger_info ( @$triggers_info ) {
+       next if !$trigger_info->{new_trigger_sql};
+       if ( $o->get('execute') ) {
+          osc_retry(
+             Cxn     => $cxn,
+             Retry   => $retry,
+             tries   => $tries->{create_triggers},
+             stats   => $stats,
+             code    => sub {
+                PTDEBUG && _d($trigger_info->{new_trigger_sql});
+                $cxn->dbh()->do($trigger_info->{new_trigger_sql});
+             },
+          );
+       }
+       # Only save the trigger once it has been created
+       # (or faked to be created) so if the 2nd trigger
+       # fails to create, we know to only drop the 1st.
+       push @trigger_names, $trigger_info->{new_trigger_name};
+       push @drop_trigger_sqls,
+          "DROP TRIGGER IF EXISTS " . $q->quote($orig_tbl->{db}, $trigger_info->{new_trigger_name});
    }
 
    if ( $o->get('execute') ) {
@@ -10771,6 +11147,82 @@ sub create_triggers {
    }
 
    return @trigger_names;
+}
+
+sub random_suffix {
+    my @chars = ("a".."z");
+    my $suffix;
+    $suffix .= $chars[rand @chars] for 1..15;
+    return "_$suffix";
+}
+
+# Create the sql staments for the new trigger
+# Required args:
+# trigger   : Hash with trigger definition
+# db        : Database handle
+# new_table : New table name
+#
+# Optional args:
+# orig_table.......: Original table name. Used to LOCK the table.
+#                    In case we are creating a new temporary trigger for testing 
+#                    purposes or if --no-swap-tables is enabled, this param should
+#                    be omitted since we are creating a completelly new trigger so,
+#                    since in this case we are not going to DROP the old trigger, 
+#                    there is no need for a LOCK
+#
+# duplicate_trigger: If set, it will create the trigger on the new table
+#                    with a random string as a trigger name suffix.
+#                    It will also not drop the original trigger.
+#                    This is usefull when creating a temporary trigger for testing 
+#                    purposes or if --no-swap-tables AND --no-drop-new-table was 
+#                    specified along with --preserve-triggers. In this case, 
+#                    since the original table and triggers are not going to be 
+#                    deleted we need a new random name because trigger names 
+#                    cannot be duplicated
+sub create_trigger_sql {
+   my (%args) = @_;
+   my @required_args = qw(trigger db new_tbl);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+
+    my $trigger = $args{trigger};
+    my $suffix = $args{duplicate_trigger} ? random_suffix() : '';
+    if (length("$trigger->{trigger_name}$suffix") > 64) {
+        die "New trigger name $trigger->{trigger_name}$suffix is too long";
+    }
+
+    my $definer = $args{trigger}->{definer} | '';
+    $definer =~ s/@/`@`/;
+    $definer = "`$definer`" ;
+
+    my $sqls = [];
+    push @$sqls, "LOCK TABLES `$args{db}`.`$args{new_tbl}` WRITE, `$args{db}`. `$args{orig_tbl}` WRITE;";
+    push @$sqls, '/*!50003 SET @saved_sql_mode = @@sql_mode */';
+    push @$sqls, '/*!50003 SET @saved_cs_client      = @@character_set_client */ ;';
+    push @$sqls, '/*!50003 SET @saved_cs_results     = @@character_set_results */ ;';
+    push @$sqls, '/*!50003 SET @saved_col_connection = @@collation_connection */ ;';
+
+    push @$sqls, "/*!50003 SET character_set_client  = $trigger->{character_set_client} */ ;";
+    push @$sqls, "/*!50003 SET collation_connection  = $trigger->{collation_connection} */ ;";
+    push @$sqls, "SET SESSION sql_mode = '$trigger->{sql_mode}'";
+    
+    push @$sqls, "DROP TRIGGER IF EXISTS `$args{db}`.`$trigger->{trigger_name}` " if ! $args{duplicate_trigger};
+
+    push @$sqls, "CREATE DEFINER=$definer " 
+               . "TRIGGER `$args{db}`.`$trigger->{trigger_name}$suffix` "
+               . "$trigger->{action_timing} $trigger->{event_manipulation} ON $args{new_tbl}\n"
+               . "FOR EACH ROW\n"
+               . $trigger->{action_statement};
+
+    push @$sqls, '/*!50003 SET sql_mode              = @saved_sql_mode */ ;';
+    push @$sqls, '/*!50003 SET character_set_client  = @saved_cs_client */ ;';
+    push @$sqls, '/*!50003 SET character_set_results = @saved_cs_results */';
+    push @$sqls, '/*!50003 SET collation_connection  = @saved_col_connection */ ;';
+    push @$sqls, 'UNLOCK TABLES';
+
+   return $sqls;
+    
 }
 
 sub drop_triggers {
@@ -10875,6 +11327,7 @@ sub osc_retry {
          if (   $error =~ m/Lock wait timeout exceeded/
              || $error =~ m/Deadlock found/
              || $error =~ m/Query execution was interrupted/
+             || $error =~ m/WSREP detected deadlock\/conflict/
          ) {
             # These errors/warnings can be retried, so don't print
             # a warning yet; do that in final_fail.
@@ -11052,6 +11505,40 @@ sub ts {
    return $msg ? "$ts $msg" : $ts;
 }
 
+# find point in trigger we can insert pt-osc code for --preserve-triggers
+sub trigger_ins_point {
+   my ( %args ) = @_;
+   my @required_args = qw(trigger);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless defined $args{$arg};
+   }
+   my ($trigger) = @args{@required_args};
+
+   my $ins_point;
+   if ($trigger =~ /begin(.*?)end(?!.*end)/igms) {
+         $ins_point = $+[0] - 3;
+      }
+   else { $ins_point = 0;}
+
+   return $ins_point;
+}
+
+# sub to add ; if line doesn't end in ;
+sub terminate_sql {
+   my ( $text ) = @_;
+   die "I need a text argument" unless defined $text;
+   $text = trim($text);
+   if(substr($text, -1) ne ';') { $text .= ';'; }
+   return $text;
+}
+
+sub trim {
+   my ( $text ) = @_;
+   die "I need a text argument" unless defined $text;
+   $text =~ s/^\s+|\s+$//g;
+   return $text;
+}
+
 # Catches signals so we can exit gracefully.
 sub sig_int {
    my ( $signal ) = @_;
@@ -11221,6 +11708,11 @@ and C<wsrep_OSU_method> must be set to C<TOI> (total order isolation).
 The tool exits with an error if the host is a cluster node and the table
 is MyISAM or is being converted to MyISAM (C<ENGINE=MyISAM>), or if
 C<wsrep_OSU_method> is not C<TOI>.  There is no way to disable these checks.
+
+=head1 MySQL 5.7+ Generated columns
+
+The tools ignores MySQL 5.7+ C<GENERATED> columns since the value for those columns
+is generated according to the expresion used to compute column values.
 
 =head1 OUTPUT
 
@@ -11710,6 +12202,43 @@ only perform some safety checks and exit.  This helps ensure that you have read 
 documentation and understand how to use this tool.  If you have not read the
 documentation, then do not specify this option.
 
+=item --[no]check-unique-key-change
+
+default: yes
+
+Avoid C<pt-online-schema-change> to run if the specified statement for L<"--alter"> is 
+trying to add an unique index. 
+Since C<pt-online-schema-change> uses C<INSERT IGNORE> to copy rows to the new table, if
+the row being written produces a duplicate key, it will fail silently and data will
+be lost.
+
+Example:
+
+    CREATE DATABASE test;
+    USE test;
+    CREATE TABLE `a` (
+      `id` int(11) NOT NULL,
+      `unique_id` varchar(32) DEFAULT NULL,
+      PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+    
+    insert into a values (1, "a");
+    insert into a values (2, "b");
+    insert into a values (3, "");
+    insert into a values (4, "");
+    insert into a values (5, NULL);
+    insert into a values (6, NULL);
+
+Using C<pt-online-schema-change> to add an unique index on the C<unique_id> field, will cause some rows to
+be lost due to the use of C<INSERT IGNORE> to copy rows from the source table.
+For this reason, C<pt-online-schema-change> will fail if it detects that the L<"--alter"> parameter is trying
+to add an unique key and it will show an example query to run to detect if there are 
+rows that will produce duplicated indexes.
+
+Even if you run the query and there are no rows that will produce duplicated indexes,
+take into consideration that after running this query, changes can be made to the table that can produce
+duplicate rows and this data will be lost.
+
 =item --force
 
 This options bypasses confirmation in case of using alter-foreign-keys-method = none , which might break foreign key constraints.
@@ -11784,6 +12313,59 @@ until queries are running normally again.  This will not prevent queueing,
 however; it will only give the server a chance to recover from the queueing.  If
 you notice queueing, it is best to decrease the chunk time.
 
+=item --preserve-triggers
+
+Preserves old triggers when specified. 
+As of MySQL 5.7.2, it is possible to define multiple triggers for a given 
+table that have the same trigger event and action time. This allows us to
+add the triggers needed for C<pt-online-schema-change> even if the table
+already has its own triggers.
+If this option is enabled, C<pt-online-schema-change> will try to copy all the
+existing triggers to the new table BEFORE start copying rows from the original
+table to ensure the old triggers can be applied after altering the table.
+
+Example.
+
+  CREATE TABLE test.t1 (
+       id INT NOT NULL AUTO_INCREMENT,
+       f1 INT,
+       f2 VARCHAR(32),
+       PRIMARY KEY (id)
+  );
+              
+  CREATE TABLE test.log (
+     ts  TIMESTAMP,
+     msg VARCHAR(255)
+  );
+  
+  CREATE TRIGGER test.after_update
+   AFTER
+     UPDATE ON test.t1
+     FOR EACH ROW 
+       INSERT INTO test.log VALUES (NOW(), CONCAT("updated row row with id ", OLD.id, " old f1:", OLD.f1, " new f1: ", NEW.f1 ));
+
+For this table and triggers combination, it is not possible to use L<--preserve-triggers> 
+with an L<--alter> like this: C<"DROP COLUMN f1"> since the trigger references the column 
+being dropped and at would make the trigger to fail.
+
+After testing the triggers will work on the new table, the triggers are 
+dropped from the new table until all rows have been copied and then they are
+re-applied. 
+
+L<--preserve-triggers> cannot be used with these other parameters, L<--no-drop-triggers>, 
+L<--no-drop-old-table> and L<--no-swap-tables> since L<--preserve-triggers> implies that 
+the old triggers should be deleted and recreated in the new table. 
+Since it is not possible to have more than one trigger with the same name, old triggers 
+must be deleted in order to be able to recreate them into the new table.
+
+Using C<--preserve-triggers> with C<--no-swap-tables> will cause triggers to remain
+defined for the original table.
+Please read the documentation for L<--swap-tables>
+
+If both C<--no-swap-tables> and C<--no-drop-new-table> is set, the trigger will remain
+on the original table and will be duplicated on the new table 
+(the trigger will have a random suffix as no trigger names are unique).
+
 =item --new-table-name
 
 type: string; default: %T_new
@@ -11800,6 +12382,13 @@ Allows MODIFYing a column that allows NULL values to one that doesn't allow
 them. The rows which contain NULL values will be converted to the defined
 default value. If no explicit DEFAULT value is given MySQL will assign a default
 value based on datatype, e.g. 0 for number datatypes, '' for string datatypes.
+
+=item --only-same-schema-fks
+
+Check foreigns keys only on tables on the same schema than the original table.
+This option is dangerous since if you have FKs refenrencing tables in other
+schemas, they won't be detected.
+
 
 =item --password
 
@@ -11912,6 +12501,15 @@ ignored.
 You can change the list of hosts while OSC is executing:
 if you change the contents of the DSN table, OSC will pick it up very soon.
 
+=item --skip-check-slave-lag
+
+type: DSN; repeatable: yes
+
+DSN to skip when checking slave lag. It can be used multiple times.
+Example: --skip-check-slave-lag h=127.0.0.1,P=12345 --skip-check-slave-lag h=127.0.0.1,P=12346
+Plase take into consideration that even when for the MySQL driver h=127.1 is equal to h=127.0.0.1,
+for this parameter you need to specify the full IP address.
+
 =item --slave-user
 
 type: string
@@ -11986,6 +12584,10 @@ Swap the original table and the new, altered table.  This step completes the
 online schema change process by making the table with the new schema take the
 place of the original table.  The original table becomes the "old table," and
 the tool drops it unless you disable L<"--[no]drop-old-table">.
+
+Using C<--no-swap-tables> will run the whole process, it will create the new
+table, it will copy all rows but at the end it will drop the new table. It is 
+intended to run a more realistic L<--dry-run>.
 
 =item --tries
 
@@ -12285,7 +12887,7 @@ Default character set.
 
 =item * D
 
-dsn: database; copy: yes
+dsn: database; copy: no
 
 Database for the old and new table.
 
@@ -12418,7 +13020,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2017 Percona LLC and/or its affiliates.
+This program is copyright 2011-2018 Percona LLC and/or its affiliates.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
@@ -12436,6 +13038,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-online-schema-change 3.0.2
+pt-online-schema-change 3.0.8
 
 =cut

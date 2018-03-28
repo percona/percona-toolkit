@@ -1,0 +1,27 @@
+[
+  {
+    "ID": "cba2dff0740762c6e5769f0e300df676",
+    "Namespace": "test.coll",
+    "Operation": "COUNT",
+    "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"count\":\"coll\",\"query\":{},\"fields\":{}}}\n",
+    "Fingerprint": "COUNT coll",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
+    "TableScan": false,
+    "Count": 1,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0
+    ],
+    "NScanned": [
+      0
+    ],
+    "QueryTime": [
+      42
+    ],
+    "ResponseLength": [
+      48
+    ]
+  }
+]

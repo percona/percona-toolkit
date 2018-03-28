@@ -587,6 +587,23 @@ sub is_active {
    return $self->{dbh} ? 1 : 0;
 }
 
+sub has_engine {
+    my ($self, $engine) = @_;
+    if (!$self->{dbh}) {
+        die "invalid dbh in has_engine method";
+    }
+
+    my $rows = $self->{dbh}->selectall_arrayref('SHOW ENGINES', {Slice=>{}});
+    my $is_enabled;
+    for my $row (@$rows) {
+        if ($row->{engine} eq 'ROCKSDB') {
+            $is_enabled = 1;
+            last;
+        }
+    }
+    return $is_enabled;
+}
+
 sub _d {
    my ($package, undef, $line) = caller 0;
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }

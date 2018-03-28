@@ -1,3 +1,6 @@
+-- For MySQL 5.7+
+set sql_mode='ALLOW_INVALID_DATES';
+
 -- Issue 602: mk-table-checksum issue with invalid dates
 drop database if exists issue_602;
 create database issue_602;

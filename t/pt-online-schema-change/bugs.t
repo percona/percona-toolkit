@@ -445,6 +445,31 @@ $output = output(
 # clear databases with their foreign keys
 $sb->load_file('master', "$sample/bug-1315130_cleanup.sql");  
 
+# #############################################################################
+# Issue 1315130
+# Failed to detect child tables in other schema, and falsely identified
+# child tables in own schema
+# #############################################################################
+
+$sb->load_file('master', "$sample/bug-1315130_cleanup.sql");
+$sb->load_file('master', "$sample/bug-1315130.sql");
+
+$output = output(
+   sub { pt_online_schema_change::main(@args, "$master_dsn,D=bug_1315130_a,t=parent_table",
+         '--dry-run', 
+         '--alter', "add column c varchar(16)",
+         '--alter-foreign-keys-method', 'auto', '--only-same-schema-fks'),
+      },
+);
+
+like(
+      $output,
+      qr/Child tables:\s*`bug_1315130_a`\.`child_table_in_same_schema` \(approx\. 1 rows\)[^`]*?Will/s,
+      "Ignore child tables in other schemas.",
+);
+# clear databases with their foreign keys
+$sb->load_file('master', "$sample/bug-1315130_cleanup.sql");  
+
 
 # #############################################################################
 # Issue 1340728
@@ -602,6 +627,78 @@ is(
 
 $master_dbh->do("DROP DATABASE IF EXISTS test");
 
+
+
+
+
+$sb->load_file('master', "$sample/bug-1613915.sql");
+$output = output(
+   sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=o1",
+         '--execute', 
+         '--alter', "ADD COLUMN c INT COMMENT 'change \"plus\" more than one word'",
+         '--chunk-size', '10', '--no-check-alter',
+         ),
+      },
+);
+
+like(
+      $output,
+      qr/Successfully altered/s,
+      "recognize comments",
+);
+
+$rows = $master_dbh->selectrow_arrayref(
+   "SELECT COUNT(*) FROM test.o1");
+is(
+   $rows->[0],
+   100,
+   "recognize comments fields count"
+) or diag(Dumper($rows));
+
+$rows = $master_dbh->selectrow_arrayref("SHOW CREATE TABLE test.o1");
+like(
+      $rows->[1],
+      qr/COMMENT 'change "plus" more than one word'/,
+      "recognize comments",
+);
+
+$master_dbh->do("DROP DATABASE IF EXISTS test");
+
+# Test for --skip-check-slave-lag
+# Use the same files from previous test because for this test we are going to
+# run a nonop so, any file will work
+$master_dbh->do("DROP DATABASE IF EXISTS test");
+
+$sb->load_file('master', "$sample/bug-1613915.sql");
+$output = output(
+   sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=o1",
+         '--execute', 
+         '--alter', "ENGINE=INNODB",
+         '--skip-check-slave-lag', "h=127.0.0.1,P=".$sb->port_for('slave1'),
+         ),
+      },
+);
+
+my $skipping_str = "Skipping.*".$sb->port_for('slave1');
+like(
+      $output,
+      qr/$skipping_str/s,
+      "--skip-check-slave-lag",
+);
+
+# Use the same data than the previous test
+$master_dbh->do("DROP DATABASE IF EXISTS test");
+
+$sb->load_file('master', "$sample/bug-1613915.sql");
+$output = output(
+   sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=o1",
+         '--execute', 
+         '--alter', "ADD COLUMN c INT",
+         '--chunk-size', '10',
+         '--skip-check-slave-lag', "h=127.0.0.1,P=".$sb->port_for('slave1'),
+         ),
+      },
+);
 
 # #############################################################################
 # Done.

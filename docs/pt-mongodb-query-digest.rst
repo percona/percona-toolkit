@@ -45,6 +45,10 @@ Options
 ``-d``, ``--database``
   Specifies which database to profile
 
+``-f``, ``--output-format``
+  Specifies the report output format. Valid options are: ``text``, ``json``.
+  The default value is ``text``.
+
 ``-l``, ``--log-level``
   Specifies the log level:
   ``panic``, ``fatal``, ``error``, ``warn``, ``info``, ``debug error``

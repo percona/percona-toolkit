@@ -1,0 +1,50 @@
+{
+	"op" : "command",
+	"ns" : "test.coll",
+	"command" : {
+		"aggregate" : "coll",
+		"pipeline" : [
+			{
+				"$match" : {
+					"a" : {
+						"$gte" : 2
+					}
+				}
+			}
+		],
+		"cursor" : {
+			
+		}
+	},
+	"keysExamined" : 8,
+	"docsExamined" : 8,
+	"cursorExhausted" : true,
+	"numYield" : 0,
+	"locks" : {
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(8)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"r" : NumberLong(4)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"r" : NumberLong(3)
+			}
+		}
+	},
+	"nreturned" : 8,
+	"responseLength" : 370,
+	"protocol" : "op_command",
+	"millis" : 42,
+	"planSummary" : "IXSCAN { a: 1 }",
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
+	"client" : "127.0.0.1",
+	"appName" : "MongoDB Shell",
+	"allUsers" : [ ],
+	"user" : ""
+}

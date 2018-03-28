@@ -201,7 +201,7 @@ is_deeply(
 # Former Pingback tests
 # #############################################################################
 
-my $general_id = md5_hex( hostname() );
+my $general_id = VersionCheck::get_uuid();
 my $master_id;  # the instance ID, _not_ 12345 etc.
 my $slave1_id;  # the instance ID, _not_ 12346 etc.
 my ($mysql_ver, $mysql_distro);
@@ -670,7 +670,7 @@ my @vc_tools = grep { chomp; basename($_) =~ /\A[a-z-]+\z/ }
 
 foreach my $tool ( @vc_tools ) {
    my $tool_name = basename($tool);
-   next if $tool_name eq 'pt-agent';
+   next if $tool_name eq 'pt-agent' || $tool_name =~ m/^pt-mongodb-/;
    my $output = `$tool --help`;
    like(
       $output,
@@ -678,6 +678,22 @@ foreach my $tool ( @vc_tools ) {
       "--version-check is on in $tool_name"
    );
 }
+
+my $should_remove_uuid_file;
+my $home_uuid_file = $ENV{"HOME"} . "/.percona-toolkit.uuid";
+
+if ( ! -e $home_uuid_file ) {
+    $should_remove_uuid_file = 1;
+}
+
+my $uuid = VersionCheck::get_uuid();
+is (
+    length($uuid),
+    36,
+    "Have a valid UUID4",
+);
+
+unlink $home_uuid_file if $should_remove_uuid_file;
 
 # #############################################################################
 # Done.

@@ -1,3 +1,6 @@
+-- For MySQL 5.7+
+set sql_mode='ALLOW_INVALID_DATES';
+
 drop database if exists issue_941;
 create database issue_941;
 use issue_941;

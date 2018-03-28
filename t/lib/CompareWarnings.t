@@ -26,8 +26,9 @@ my $dbh = $sb->get_dbh_for('master', {no_lc=>1});
 
 if ( !$dbh ) {
    plan skip_all => "Cannot connect to sandbox master";
-}
-else {
+} elsif ($sandbox_version ge '5.7') {
+   plan skip_all => "MySQL 5.7 use a more strict sql_mode";
+} else {
    plan tests => 21;
 }
 

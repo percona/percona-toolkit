@@ -1,3 +1,4 @@
+STOP SLAVE FOR CHANNEL '';
 SET GLOBAL master_info_repository = 'TABLE';
 SET @@GLOBAL.relay_log_info_repository = 'TABLE';
 SET @@GLOBAL.ENFORCE_GTID_CONSISTENCY=ON;

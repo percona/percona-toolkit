@@ -30,7 +30,7 @@
 #    SHOW CREATE TABLE `food`.`trees`\G
 # EXPLAIN /*!50100 PARTITIONS*/
 SELECT fruit FROM trees\G
-# EXPLAIN failed: DBD::mysql::st execute failed: Table 'food.trees' doesn't exist [for Statement "EXPLAIN /*!50100 PARTITIONS */ SELECT fruit FROM trees"] at line ?.
+# EXPLAIN failed: DBD::mysql::st execute failed: Table 'food.trees' doesn't exist [for Statement "EXPLAIN SELECT fruit FROM trees"] at line ?.
 
 # Profile
 # Rank Query ID           Response time Calls R/Call V/M   Item

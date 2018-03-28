@@ -1,0 +1,73 @@
+{
+	"op" : "query",
+	"ns" : "test.coll",
+	"query" : {
+		"query" : {
+			"$and" : [
+				{
+					"k" : {
+						"$gt" : 1
+					}
+				},
+				{
+					"k" : {
+						"$lt" : 2
+					}
+				},
+				{
+					"$or" : [
+						{
+							"c" : {
+								"$in" : [
+									/^0/,
+									/^2/,
+									/^4/,
+									/^6/
+								]
+							}
+						},
+						{
+							"pad" : {
+								"$in" : [
+									/9$/,
+									/7$/,
+									/5$/,
+									/3$/
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		"orderby" : {
+			"k" : -1
+		}
+	},
+	"ntoreturn" : 100,
+	"ntoskip" : 0,
+	"nscanned" : 0,
+	"nscannedObjects" : 0,
+	"keyUpdates" : 0,
+	"numYield" : 0,
+	"lockStats" : {
+		"timeLockedMicros" : {
+			"r" : NumberLong(1234),
+			"w" : NumberLong(4321)
+		},
+		"timeAcquiringMicros" : {
+			"r" : NumberLong(9876),
+			"w" : NumberLong(6789)
+		}
+	},
+	"nreturned" : 0,
+	"responseLength" : 20,
+	"millis" : 42,
+	"execStats" : {
+		
+	},
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}

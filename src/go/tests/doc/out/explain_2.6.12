@@ -1,0 +1,46 @@
+{
+	"op" : "query",
+	"ns" : "test.coll",
+	"query" : {
+		"query" : {
+			
+		},
+		"$explain" : true
+	},
+	"ntoreturn" : 0,
+	"ntoskip" : 0,
+	"nscanned" : 10,
+	"nscannedObjects" : 10,
+	"keyUpdates" : 0,
+	"numYield" : 0,
+	"lockStats" : {
+		"timeLockedMicros" : {
+			"r" : NumberLong(1234),
+			"w" : NumberLong(4321)
+		},
+		"timeAcquiringMicros" : {
+			"r" : NumberLong(9876),
+			"w" : NumberLong(6789)
+		}
+	},
+	"nreturned" : 1,
+	"responseLength" : 583,
+	"millis" : 42,
+	"execStats" : {
+		"type" : "COLLSCAN",
+		"works" : 12,
+		"yields" : 0,
+		"unyields" : 0,
+		"invalidates" : 0,
+		"advanced" : 10,
+		"needTime" : 1,
+		"needFetch" : 0,
+		"isEOF" : 1,
+		"docsTested" : 10,
+		"children" : [ ]
+	},
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}

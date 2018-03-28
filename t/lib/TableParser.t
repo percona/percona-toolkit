@@ -11,6 +11,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
+use Text::Diff;
 use TableParser;
 use Quoter;
 use DSNParser;
@@ -71,21 +72,23 @@ like($EVAL_ERROR, qr/quoting/, 'No quoting');
 $tbl = $tp->parse( load_file('t/lib/samples/t1.sql') );
 is_deeply(
    $tbl,
-   {  cols         => [qw(a)],
-      col_posn     => { a => 0 },
-      is_col       => { a => 1 },
-      is_autoinc   => { a => 0 },
-      null_cols    => [qw(a)],
-      is_nullable  => { a => 1 },
-      clustered_key => undef,
-      keys         => {},
-      defs         => { a => '  `a` int(11) default NULL' },
-      numeric_cols => [qw(a)],
-      is_numeric   => { a => 1 },
-      engine       => 'MyISAM',
-      type_for     => { a => 'int' },
-      name         => 't1',
-      charset      => 'latin1',
+   {  cols               => [qw(a)],
+      col_posn           => { a => 0 },
+      is_col             => { a => 1 },
+      is_autoinc         => { a => 0 },
+      null_cols          => [qw(a)],
+      is_generated       => {},
+      non_generated_cols => [ 'a' ], 
+      is_nullable        => { a => 1 },
+      clustered_key      => undef,
+      keys               => {},
+      defs               => { a => '  `a` int(11) default NULL' },
+      numeric_cols       => [qw(a)],
+      is_numeric         => { a => 1 },
+      engine             => 'MyISAM',
+      type_for           => { a => 'int' },
+      name               => 't1',
+      charset            => 'latin1',
    },
    'Basic table is OK',
 );
@@ -94,11 +97,13 @@ $tbl = $tp->parse( load_file('t/lib/samples/TableParser-prefix_idx.sql') );
 is_deeply(
    $tbl,
    {
-      name           => 't1',
-      cols           => [ 'a', 'b' ],
-      col_posn       => { a => 0, b => 1 },
-      is_col         => { a => 1, b => 1 },
-      is_autoinc     => { 'a' => 0, 'b' => 0 },
+      name               => 't1',
+      cols               => [ 'a', 'b' ],
+      non_generated_cols => [ 'a', 'b' ],
+      col_posn           => { a => 0, b => 1 },
+      is_col             => { a => 1, b => 1 },
+      is_autoinc         => { 'a' => 0, 'b' => 0 },
+      is_generated       => {},
       null_cols      => [ 'a', 'b' ],
       is_nullable    => { 'a' => 1, 'b' => 1 },
       clustered_key  => undef,
@@ -169,6 +174,12 @@ is_deeply(
             length replacement_cost rating special_features
             last_update)
       ],
+      non_generated_cols => [
+         qw(film_id title description release_year language_id
+            original_language_id rental_duration rental_rate
+            length replacement_cost rating special_features
+            last_update)
+      ],
       col_posn => {
          film_id              => 0,
          title                => 1,
@@ -214,6 +225,7 @@ is_deeply(
          special_features     => 1,
          last_update          => 1,
       },
+      is_generated           => {},
       null_cols   => [qw(description release_year original_language_id length rating special_features )],
       is_nullable => {
          description          => 1,
@@ -342,24 +354,108 @@ throws_ok (
 $tbl = $tp->parse( load_file('t/lib/samples/temporary_table.sql') );
 is_deeply(
    $tbl,
-   {  cols         => [qw(a)],
-      col_posn     => { a => 0 },
-      is_col       => { a => 1 },
-      is_autoinc   => { a => 0 },
-      null_cols    => [qw(a)],
-      is_nullable  => { a => 1 },
-      clustered_key => undef,
-      keys         => {},
-      defs         => { a => '  `a` int(11) default NULL' },
-      numeric_cols => [qw(a)],
-      is_numeric   => { a => 1 },
-      engine       => 'MyISAM',
-      type_for     => { a => 'int' },
-      name         => 't',
-      charset      => 'latin1',
+   {  cols               => [qw(a)],
+      non_generated_cols => [qw(a)],
+      col_posn           => { a => 0 },
+      is_col             => { a => 1 },
+      is_autoinc         => { a => 0 },
+      is_generated       => {},
+      null_cols          => [qw(a)],
+      is_nullable        => { a => 1 },
+      clustered_key      => undef,
+      keys               => {},
+      defs               => { a => '  `a` int(11) default NULL' },
+      numeric_cols       => [qw(a)],
+      is_numeric         => { a => 1 },
+      engine             => 'MyISAM',
+      type_for           => { a => 'int' },
+      name               => 't',
+      charset            => 'latin1',
    },
    'Temporary table',
 );
+
+my $want = {  'is_autoinc' => {
+         'sort_order'                => 0,
+         'pfk-source_instrument_id'  => 0,
+         'pfk-related_instrument_id' => 0
+      },
+      'null_cols'    => [],
+      'numeric_cols' => [
+         'pfk-source_instrument_id', 'pfk-related_instrument_id',
+         'sort_order'
+      ],
+      'cols' => [
+         'pfk-source_instrument_id', 'pfk-related_instrument_id',
+         'sort_order'
+      ],
+      'non_generated_cols' => [
+         'pfk-source_instrument_id', 'pfk-related_instrument_id',
+         'sort_order'
+      ],
+      is_autogenerated => {},
+      'col_posn' => {
+         'sort_order'                => 2,
+         'pfk-source_instrument_id'  => 0,
+         'pfk-related_instrument_id' => 1
+      },
+      clustered_key => 'PRIMARY',
+      'keys' => {
+         'sort_order' => {
+            'is_unique'    => 0,
+            'is_col'       => { 'sort_order' => 1 },
+            'name'         => 'sort_order',
+            'type'         => 'BTREE',
+            'col_prefixes' => [ undef ],
+            'is_nullable'  => 0,
+            'colnames'     => '`sort_order`',
+            'cols'         => [ 'sort_order' ],
+            ddl            => 'KEY `sort_order` (`sort_order`)',
+         },
+         'PRIMARY' => {
+            'is_unique' => 1,
+            'is_col' => {
+               'pfk-source_instrument_id'  => 1,
+               'pfk-related_instrument_id' => 1
+            },
+            'name'         => 'PRIMARY',
+            'type'         => 'BTREE',
+            'col_prefixes' => [ undef, undef ],
+            'is_nullable'  => 0,
+            'colnames' =>
+               '`pfk-source_instrument_id`,`pfk-related_instrument_id`',
+            'cols' =>
+               [ 'pfk-source_instrument_id', 'pfk-related_instrument_id' ],
+            ddl => 'PRIMARY KEY  (`pfk-source_instrument_id`,`pfk-related_instrument_id`),',
+         }
+      },
+      'defs' => {
+         'sort_order' => '  `sort_order` int(11) NOT NULL',
+         'pfk-source_instrument_id' =>
+            '  `pfk-source_instrument_id` int(10) unsigned NOT NULL',
+         'pfk-related_instrument_id' =>
+            '  `pfk-related_instrument_id` int(10) unsigned NOT NULL'
+      },
+      'engine' => 'InnoDB',
+      'is_col' => {
+         'sort_order'                => 1,
+         'pfk-source_instrument_id'  => 1,
+         'pfk-related_instrument_id' => 1
+      },
+      'is_numeric' => {
+         'sort_order'                => 1,
+         'pfk-source_instrument_id'  => 1,
+         'pfk-related_instrument_id' => 1
+      },
+      'type_for' => {
+         'sort_order'                => 'int',
+         'pfk-source_instrument_id'  => 'int',
+         'pfk-related_instrument_id' => 'int'
+      },
+      'is_nullable' => {},
+      name => 'instrument_relation',
+      charset => 'latin1',
+   };
 
 $tbl = $tp->parse( load_file('t/lib/samples/hyphentest.sql') );
 is_deeply(
@@ -378,6 +474,11 @@ is_deeply(
          'pfk-source_instrument_id', 'pfk-related_instrument_id',
          'sort_order'
       ],
+      'non_generated_cols' => [
+         'pfk-source_instrument_id', 'pfk-related_instrument_id',
+         'sort_order'
+      ],
+      is_generated => {},
       'col_posn' => {
          'sort_order'                => 2,
          'pfk-source_instrument_id'  => 0,
@@ -446,13 +547,14 @@ is_deeply(
 $tbl = $tp->parse( load_file('t/lib/samples/ndb_table.sql') );
 is_deeply(
    $tbl,
-   {  cols        => [qw(id)],
-      col_posn    => { id => 0 },
-      is_col      => { id => 1 },
-      is_autoinc  => { id => 1 },
-      null_cols   => [],
-      is_nullable => {},
-      clustered_key => undef,
+   {  cols               => [qw(id)],
+      non_generated_cols => [qw(id)],
+      col_posn           => { id => 0 },
+      is_col             => { id => 1 },
+      is_autoinc         => { id => 1 },
+      null_cols          => [],
+      is_nullable        => {},
+      clustered_key      => undef,
       keys        => {
          PRIMARY => {
             cols         => [qw(id)],
@@ -473,6 +575,7 @@ is_deeply(
       type_for     => { id => 'bigint' },
       name         => 'pipo',
       charset      => 'latin1',
+      is_generated => {},
    },
    'NDB table',
 );
@@ -481,9 +584,11 @@ $tbl = $tp->parse( load_file('t/lib/samples/mixed-case.sql') );
 is_deeply(
    $tbl,
    {  cols         => [qw(a b mixedcol)],
+      non_generated_cols => [qw(a b mixedcol)],
       col_posn     => { a => 0, b => 1, mixedcol => 2 },
       is_col       => { a => 1, b => 1, mixedcol => 1 },
       is_autoinc   => { a => 0, b => 0, mixedcol => 0 },
+      is_generated => {},
       null_cols    => [qw(a b mixedcol)],
       is_nullable  => { a => 1, b => 1, mixedcol => 1 },
       clustered_key => undef,
@@ -518,14 +623,15 @@ is_deeply(
 $tbl = $tp->parse( load_file('t/lib/samples/one_key.sql') );
 is_deeply(
    $tbl,
-   {  cols          => [qw(a b)],
-      col_posn      => { a => 0, b => 1 },
-      is_col        => { a => 1, b => 1 },
-      is_autoinc    => { a => 0, b => 0 },
-      null_cols     => [qw(b)],
-      is_nullable   => { b => 1 },
-      clustered_key => undef,
-      keys          => {
+   {  cols               => [qw(a b)],
+      non_generated_cols => [qw(a b)],
+      col_posn           => { a => 0, b => 1 },
+      is_col             => { a => 1, b => 1 },
+      is_autoinc         => { a => 0, b => 0 },
+      null_cols          => [qw(b)],
+      is_nullable        => { b => 1 },
+      clustered_key      => undef,
+      keys               => {
          PRIMARY => {
             colnames     => '`a`',
             cols         => [qw(a)],
@@ -538,16 +644,17 @@ is_deeply(
             ddl          => 'PRIMARY KEY  (`a`)',
          },
       },
-      defs         => {
+      defs => {
          a => '  `a` int(11) NOT NULL',
          b => '  `b` char(50) default NULL',
       },
-      numeric_cols => [qw(a)],
-      is_numeric   => { a => 1 },
-      engine       => 'MyISAM',
-      type_for     => { a => 'int', b => 'char' },
-      name         => 't2',
-      charset      => 'latin1',
+      numeric_cols       => [qw(a)],
+      is_numeric         => { a => 1 },
+      is_generated       => {},
+      engine             => 'MyISAM',
+      type_for           => { a => 'int', b => 'char' },
+      name               => 't2',
+      charset            => 'latin1',
    },
    'No clustered key on MyISAM table'
 );
@@ -635,6 +742,7 @@ SKIP: {
       "DBI:mysql:host=127.0.0.1;port=12345", 'root', 'msandbox',
       { PrintError => 0, RaiseError => 1 });
 
+   $root_dbh->do(q[CREATE USER 'user'@'%' IDENTIFIED BY '';] ) || die($root_dbh->errstr);
    $root_dbh->do(q[GRANT SELECT ON test.* TO 'user'@'%'] ) || die($root_dbh->errstr);
 
    my $user_dbh = DBI->connect(
@@ -750,21 +858,23 @@ cmp_ddls('v5.0 vs. v5.1', 't/lib/samples/issue_109-01-v50.sql', 't/lib/samples/i
 $tbl = $tp->parse( load_file('t/lib/samples/issue_132.sql') );
 is_deeply(
    $tbl,
-   {  cols         => [qw(country)],
-      col_posn     => { country => 0 },
-      is_col       => { country => 1 },
-      is_autoinc   => { country => 0 },
-      null_cols    => [qw(country)],
-      is_nullable  => { country => 1 },
-      clustered_key => undef,
-      keys         => {},
-      defs         => { country => "  `country` enum('','Cote D`ivoire') default NULL"},
-      numeric_cols => [],
-      is_numeric   => {},
-      engine       => 'MyISAM',
-      type_for     => { country => 'enum' },
-      name         => 'issue_132',
-      charset      => 'latin1',
+   {  cols               => [qw(country)],
+      non_generated_cols => [qw(country)],
+      col_posn           => { country => 0 },
+      is_col             => { country => 1 },
+      is_autoinc         => { country => 0 },
+      is_generated       => {},
+      null_cols          => [qw(country)],
+      is_nullable        => { country => 1 },
+      clustered_key      => undef,
+      keys               => {},
+      defs               => { country => "  `country` enum('','Cote D`ivoire') default NULL"},
+      numeric_cols       => [],
+      is_numeric         => {},
+      engine             => 'MyISAM',
+      type_for           => { country => 'enum' },
+      name               => 'issue_132',
+      charset            => 'latin1',
    },
    'ENUM col with backtick in value (issue 132)'
 );
@@ -786,21 +896,51 @@ is(
 $tbl = $tp->parse( load_file('t/lib/samples/issue_330_backtick_pair_in_col_comments.sql') );
 is_deeply(
    $tbl,
-   {  cols         => [qw(a)],
-      col_posn     => { a => 0 },
-      is_col       => { a => 1 },
-      is_autoinc   => { a => 0 },
-      null_cols    => [qw(a)],
-      is_nullable  => { a => 1 },
-      clustered_key => undef,
-      keys         => {},
-      defs         => { a => "  `a` int(11) DEFAULT NULL COMMENT 'issue_330 `alex`'" },
-      numeric_cols => [qw(a)],
-      is_numeric   => { a => 1 },
-      engine       => 'MyISAM',
-      type_for     => { a => 'int' },
-      name         => 'issue_330',
-      charset      => 'latin1',
+   {  cols               => [qw(a)],
+      non_generated_cols => [qw(a)],
+      col_posn           => { a => 0 },
+      is_col             => { a => 1 },
+      is_generated       => {},
+      is_autoinc         => { a => 0 },
+      null_cols          => [qw(a)],
+      is_nullable        => { a => 1 },
+      clustered_key      => undef,
+      keys               => {},
+      defs               => { a => "  `a` int(11) DEFAULT NULL COMMENT 'issue_330 `alex`'" },
+      numeric_cols       => [qw(a)],
+      is_numeric         => { a => 1 },
+      engine             => 'MyISAM',
+      type_for           => { a => 'int' },
+      name               => 'issue_330',
+      charset            => 'latin1',
+   },
+   'issue with pairing backticks in column comments (issue 330)'
+);
+
+
+$tbl = $tp->parse( load_file('t/lib/samples/issue_pt-193_backtick_in_col_comments.sql') );
+is_deeply(
+   $tbl,
+   {  cols               => [qw(id f22abcde f23abc)],
+      non_generated_cols => [qw(id f22abcde f23abc)],
+      col_posn           => { id => 0, f22abcde => 1, f23abc => 2 },
+      is_col             => { id => 1, f22abcde => 1, f23abc => 1 },
+      is_autoinc         => { id => 1, f22abcde => 0, f23abc => 0 },
+      is_generated       => {},
+      null_cols          => [qw(f22abcde)],
+      is_nullable        => { f22abcde => 1},
+      clustered_key      => undef,
+      keys               => {},
+      defs               => { id => "    `id` int(11) NOT NULL AUTO_INCREMENT", 
+                             "f22abcde" => "    `f22abcde` int(10) unsigned DEFAULT NULL COMMENT 'xxx`XXx'",   
+                             "f23abc" => "    `f23abc` int(10) unsigned NOT NULL DEFAULT '255' COMMENT \"`yyy\""
+                            },
+      numeric_cols       => [qw(id f22abcde f23abc)],
+      is_numeric         => { id => 1, f22abcde => 1, f23abc => 1  },
+      engine             => 'InnoDB',
+      type_for           => { id => 'int', f22abcde => 'int', f23abc => 'int' },
+      name               => 't3',
+      charset            => 'latin1',
    },
    'issue with pairing backticks in column comments (issue 330)'
 );
@@ -847,12 +987,14 @@ is_deeply(
       clustered_key  => undef,
       col_posn       => { 'first, last' => 1, id => 0  },
       cols           => [ 'id', 'first, last' ],
+      non_generated_cols => [ 'id', 'first, last' ],
       defs           => {
          'first, last' => '  `first, last` varchar(32) default NULL',
          id            => '  `id` int(11) NOT NULL auto_increment',
       },
       engine         => 'MyISAM',
       is_autoinc     => { 'first, last' => 0, id => 1 },
+      is_generated   => {},
       is_col         => { 'first, last' => 1, id => 1 },
       is_nullable    => { 'first, last' => 1          },
       is_numeric     => {                     id => 1 },
@@ -897,20 +1039,21 @@ is_deeply(
 # https://bugs.launchpad.net/percona-toolkit/+bug/1047335
 # #############################################################################
 
-# We need to create a new server here, otherwise the whole test suite might die
-# if the crashed table can't be dropped.
-
-my $master3_port = 2900;
-my $master_basedir = "/tmp/$master3_port";
-diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
-diag(`$trunk/sandbox/start-sandbox master $master3_port >/dev/null`);
-my $dbh3 = $sb->get_dbh_for("master3");
-
-$sb->load_file('master3', "t/lib/samples/bug_1047335_crashed_table.sql");
 
 SKIP: {
-   skip "No /dev/urandom, can't corrupt the database", 1
-      unless -e q{/dev/urandom};
+   skip "No /dev/urandom, can't corrupt the database", 2 unless -e q{/dev/urandom};
+   skip "Cannot corrupt a table in MySQL 8", 2 if ($sandbox_version gt '5.7');
+
+   # We need to create a new server here, otherwise the whole test suite might die
+   # if the crashed table can't be dropped.
+   
+   my $master3_port = 2900;
+   my $master_basedir = "/tmp/$master3_port";
+   diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
+   diag(`$trunk/sandbox/start-sandbox master $master3_port >/dev/null`);
+   my $dbh3 = $sb->get_dbh_for("master3");
+   
+   $sb->load_file('master3', "t/lib/samples/bug_1047335_crashed_table.sql");
 
    my $db_dir         = "$master_basedir/data/bug_1047335";
    my $myi            = glob("$db_dir/crashed_table.[Mm][Yy][Iy]");
@@ -944,25 +1087,25 @@ SKIP: {
    # This might fail. Doesn't matter -- stop_sandbox will just rm -rf the folder
    eval { $dbh3->do("DROP DATABASE IF EXISTS bug_1047335") };
 
+
+   $dbh3->do(q{DROP DATABASE IF EXISTS bug_1047335_2});
+   $dbh3->do(q{CREATE DATABASE bug_1047335_2});
+   
+   my $broken_frm = "$trunk/t/lib/samples/broken_tbl.frm";
+   my $db_dir_2   = "$master_basedir/data/bug_1047335_2";
+   
+   diag(`cp $broken_frm $db_dir_2 2>&1`);
+   
+   $dbh3->do("FLUSH TABLES");
+   
+   eval { $tp->get_create_table($dbh3, 'bug_1047335_2', 'broken_tbl') };
+   ok(
+      $EVAL_ERROR,
+      "get_create_table dies if SHOW CREATE TABLE failed (using broken_tbl.frm)",
+   );
+   
+   diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
 }
-
-$dbh3->do(q{DROP DATABASE IF EXISTS bug_1047335_2});
-$dbh3->do(q{CREATE DATABASE bug_1047335_2});
-
-my $broken_frm = "$trunk/t/lib/samples/broken_tbl.frm";
-my $db_dir_2   = "$master_basedir/data/bug_1047335_2";
-
-diag(`cp $broken_frm $db_dir_2 2>&1`);
-
-$dbh3->do("FLUSH TABLES");
-
-eval { $tp->get_create_table($dbh3, 'bug_1047335_2', 'broken_tbl') };
-ok(
-   $EVAL_ERROR,
-   "get_create_table dies if SHOW CREATE TABLE failed (using broken_tbl.frm)",
-);
-
-diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
 
 # #############################################################################
 # pt-duplicate-key-checker doesn't support triple quote in column name
@@ -973,22 +1116,24 @@ $tbl = $tp->parse(load_file('t/lib/samples/triple-quoted-col.sql'));
 is_deeply(
    $tbl,
    {
-      clustered_key  => undef,
-      col_posn       => { 'foo' => 0, bar => 1  },
-      cols           => [ 'foo', 'bar' ],
-      defs           => {
+      clustered_key      => undef,
+      col_posn           => { 'foo' => 0, bar => 1  },
+      is_generated       => {},
+      cols               => [ 'foo', 'bar' ],
+      non_generated_cols => [ 'foo', 'bar' ],
+      defs => {
          'foo' => '  `foo` int(11) DEFAULT NULL',
          'bar' => '  ```bar``` int(11) DEFAULT NULL',
       },
-      engine         => 'InnoDB',
-      is_autoinc     => { foo => 0, bar => 0 },
-      is_col         => { foo => 1, bar  => 1 },
-      is_nullable    => { foo => 1, bar => 1 },
-      is_numeric     => { foo => 1, bar => 1 },
-      name           => 't',
-      null_cols      => [ 'foo', 'bar' ],
-      numeric_cols   => [ 'foo', 'bar' ],
-      type_for       => {
+      engine             => 'InnoDB',
+      is_autoinc         => { foo => 0, bar => 0 },
+      is_col             => { foo => 1, bar  => 1 },
+      is_nullable        => { foo => 1, bar => 1 },
+      is_numeric         => { foo => 1, bar => 1 },
+      name               => 't',
+      null_cols          => [ 'foo', 'bar' ],
+      numeric_cols       => [ 'foo', 'bar' ],
+      type_for           => {
          foo => 'int',
          bar => 'int',
       },
@@ -997,6 +1142,51 @@ is_deeply(
    },
    'Literal backticks (bug 1462904)'
 );
+
+SKIP: {
+   skip "generated column tests require MySQL 5.7+", 1
+      if $sandbox_version lt '5.7';
+   $tbl = $tp->parse( load_file('t/lib/samples/generated_cols.sql') );
+   is_deeply(
+      $tbl,
+      {
+        charset => 'utf8mb4',
+        clustered_key => 'PRIMARY',
+        col_posn => { column2 => 1, column3 => 2, id => 0 },
+        cols => [ 'id', 'column2', 'column3' ],
+        non_generated_cols => [ 'id', 'column2' ],
+        defs => {
+          column2 => '  `column2` int(11) DEFAULT NULL',
+          column3 => '  `column3` int(11) GENERATED ALWAYS AS ((`column2` + 1)) STORED',
+          id => '  `id` int(11) NOT NULL'
+        },
+        engine => 'InnoDB',
+        is_autoinc => { column2 => 0, column3 => 0, id => 0 },
+        is_col => { column2 => 1, id => 1 },
+        is_generated => { column3 => 1 },
+        is_nullable => { column2 => 1, column3 => 1 },
+        is_numeric => { column2 => 1, column3 => 1, id => 1 },
+        keys => {
+          PRIMARY => {
+            col_prefixes => [ undef ],
+            colnames => '`id`',
+            cols => [ 'id' ],
+            ddl => 'PRIMARY KEY (`id`)',
+            is_col => { id => 1 },
+            is_nullable => 0,
+            is_unique => 1,
+            name => 'PRIMARY',
+            type => 'BTREE'
+          }
+        },
+        name => 't1',
+        null_cols => [ 'column2', 'column3' ],
+        numeric_cols => [ 'id', 'column2', 'column3' ],
+        type_for => { column2 => 'int', column3 => 'int', id => 'int' }
+      },
+      'Generated columns is OK',
+   ) or die Data::Dumper::Dumper($tbl);
+}
 
 # #############################################################################
 # Done.

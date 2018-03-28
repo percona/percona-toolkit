@@ -1,178 +1,73 @@
-=======================================
- Installation
-=======================================
+.. _install:
 
-.. You can either download Percona Toolkit manually from the website
- or use the official Percona software repositories for your system.
+==========================
+Installing Percona Toolkit
+==========================
 
-You can install Percona Toolkit 3.0.0 release candidate
-from the official Percona software repositories for your system.
+Percona provides packages for most popular 64-bit Linux distributions:
 
-.. contents::
-   :local:
-..
- Downloading Percona Toolkit
- ===========================
- 
- Visit http://www.percona.com/software/percona-toolkit/
- to download the latest release of Percona Toolkit.
- Alternatively, you can get the latest release using the command line:
- 
- .. code-block:: bash
- 
-     wget percona.com/get/percona-toolkit.tar.gz
-  
-     wget percona.com/get/percona-toolkit.rpm
-  
-     wget percona.com/get/percona-toolkit.deb
- 
- You can also get individual tools from the latest release:
- 
- .. code-block:: bash
- 
-     wget percona.com/get/TOOL
- 
- Replace ``TOOL`` with the name of any tool, for example::
- 
-   wget percona.com/get/pt-summary
+* Debian 7 ("wheezy")
+* Debian 8 ("jessie")
+* Ubuntu 14.04 LTS (Trusty Tahr)
+* Ubuntu 16.04 LTS (Xenial Xerus)
+* Ubuntu 16.10 (Yakkety Yak)
+* Ubuntu 17.04 (Zesty Zapus)
+* Red Hat Enterprise Linux or CentOS 6 (Santiago)
+* Red Hat Enterprise Linux or CentOS 7 (Maipo)
 
-Installing Percona Toolkit on Debian or Ubuntu
-==============================================
+.. note:: Percona Toolkit should work on other DEB-based and RPM-based systems
+   (for example, Oracle Linux and Amazon Linux AMI),
+   but it is tested only on those listed above.
 
-1. Fetch the repository packages from Percona web:
+It is recommended to install Percona software from official repositories:
 
-   .. code-block:: bash
+1. Configure Percona repositories as described in
+   `Percona Software Repositories Documentation
+   <https://www.percona.com/doc/percona-repo-config/index.html>`_.
 
-      wget https://repo.percona.com/apt/percona-release_0.1-4.$(lsb_release -sc)_all.deb
+#. Install Percona Toolkit using the corresponding package manager:
 
-#. Install the downloaded package with :program:`dpkg`
-   by running the following command as root or with :program:`sudo`:
-
-   .. code-block:: bash
-
-      sudo dpkg -i percona-release_0.1-4.$(lsb_release -sc)_all.deb
-
-#. Once you install this package, the Percona repositories should be added.
-   You can check the repository configuration
-   in the :file:`/etc/apt/sources.list.d/percona-release.list` file.
-
-#. Update the local cache:
-
-   .. code-block:: bash
-
-      sudo apt-get update
-
-#. Install the ``percona-toolkit`` package:
-
-   .. code-block:: bash
+   * For Debian or Ubuntu::
 
       sudo apt-get install percona-toolkit
 
-.. _apt-testing-repo:
+   * For RHEL or CentOS::
 
-Testing and Experimental Repositories
--------------------------------------
+      sudo yum install percona-toolkit
 
-Percona offers pre-release builds from the testing repo,
-and early-stage development builds from the experimental repo.
-To enable them, add either ``testing`` or ``experimental`` at the end
-of the Percona repository definition in your repository file
-(by default, :file:`/etc/apt/sources.list.d/percona-release.list`).
+.. rubric:: Generating an instance UUID for statistics
+	    
+During the installating process, the percona-toolkit installer records a unique
+identifier specific to the given percona-toolkit instance. This ID is a the
+product UUID stored in |product-uud|. The installer copies the product_uuid to
+|toolkit-uuid|.
 
-For example, if you are running Debian 8 ("jessie")
-and want to install the latest testing builds,
-the definitions should look like this::
+This unique identifier is used when collecting statistics about the usage of
+percona-toolkit. Note that no other information is gathered for this purpose.
 
-  deb http://repo.percona.com/apt jessie main testing
-  deb-src http://repo.percona.com/apt jessie main testing
+In cases when the installer is not able to read the contents of
+|product-uuid|, a random UUID is generated. A random UUID is
+also generated if percona-toolkit is run from the binary in the *tar.gz* file.
+      
+Alternative Install Methods
+===========================
 
-If you are running Ubuntu 14.04 LTS (Trusty Tahr)
-and want to install the latest experimental builds,
-the definitions should look like this::
+You can also download the packages from the
+`Percona web site <https://www.percona.com/downloads/percona-toolkit/>`_
+and install it using tools like ``dpkg`` and ``rpm``,
+depending on your system.
+For example, to download the package for Debian 8 ("jessie"),
+run the following::
 
-  deb http://repo.percona.com/apt trusty main experimental
-  deb-src http://repo.percona.com/apt trusty main experimental
+ wget https://www.percona.com/downloads/percona-toolkit/3.0.3/binary/debian/jessie/x86_64/percona-toolkit_3.0.3-1.jessie_amd64.deb
 
-Pinning the Packages
---------------------
+If you want to download a specific tool, use the following address:
+http://www.percona.com/get
 
-If you want to pin your packages to avoid upgrades,
-create a new file :file:`/etc/apt/preferences.d/00percona.pref`
-and add the following lines to it::
+For example, to download the ``pt-summary`` tool, run::
 
-  Package: *
-  Pin: release o=Percona Development Team
-  Pin-Priority: 1001
+ wget percona.com/get/pt-summary
 
-For more information about pinning,
-refer to the official `Debian Wiki <http://wiki.debian.org/AptPreferences>`_.
 
-Installing Percona Toolkit on Red Hat or CentOS
-===============================================
-
-1. Install the Percona repository package:
-
-   .. code-block:: bash
-
-      $ sudo yum install http://www.percona.com/downloads/percona-release/redhat/0.1-4/percona-release-0.1-4.noarch.rpm
-
-   You should see the following if successful: ::
-
-      Installed:
-        percona-release.noarch 0:0.1-4
-
-      Complete!
-
-#. Check that the packages are available:
-
-   .. code-block:: bash
-
-      $ yum list | grep percona-toolkit
-
-   You should see output similar to the following:
-
-   .. code-block:: text
-
-    percona-toolkit.noarch                     3.0.0-rc                    percona-release-noarch
- 
-#. Install the |PSMDB| packages:
-
-   .. code-block:: bash
-
-      $ sudo yum install percona-toolkit
-
-.. _yum-testing-repo:
-
-Testing and Experimental Repositories
--------------------------------------
-
-Percona offers pre-release builds from the testing repo,
-and early-stage development builds from the experimental repo.
-You can enable either one in the Percona repository configuration file
-:file:`/etc/yum.repos.d/percona-release.repo`.
-There are three sections in this file,
-for configuring corresponding repositories:
-
-* stable release
-* testing
-* experimental
-
-The latter two repositories are disabled by default.
-
-If you want to install the latest testing builds,
-set ``enabled=1`` for the following entries: ::
-
-  [percona-testing-$basearch]
-  [percona-testing-noarch]
-
-If you want to install the latest experimental builds,
-set ``enabled=1`` for the following entries: ::
-
-  [percona-experimental-$basearch]
-  [percona-experimental-noarch]
-
-.. note:: As of version 3.0,
-   Percona Toolkit is not available in the ``noarch`` repo.
-   Make sure that you enable the ``basearch`` repo
-   when installing or upgrading to Percona Toolkit 3.0 or later.
-
+.. |toolkit-uuid| replace:: :file:`/etc/percona-toolkit/.percona.toolkit.uuid`
+.. |product-uuid| replace:: :file:`/sys/class/dmi/id/product_uuid`

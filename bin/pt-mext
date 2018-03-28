@@ -573,7 +573,8 @@ NUM=1;
 
 # Split the output on empty lines and put each into a different file; eliminate
 # lines that don't have "real" content.
-$EXT_ARGV | grep -v '+' | grep -v Variable_name | sed 's/|//g' \
+
+$EXT_ARGV | grep -v "| Rsa_public_key *|.*|$" | sed '/| Rsa/, /END PUBLIC KEY-----/d' | grep -v '^ |' | grep -v '+' | grep -v Variable_name | sed 's/|//g' \
    | while read line; do
    if [ "$line" = "" ]; then
       NUM=$(($NUM + 1))
@@ -784,7 +785,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2017 Percona LLC and/or its affiliates,
+This program is copyright 2011-2018 Percona LLC and/or its affiliates,
 2010 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -803,7 +804,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-mext 3.0.2
+pt-mext 3.0.8
 
 =cut
 

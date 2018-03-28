@@ -38,6 +38,7 @@ The last step is sorting the results. The default sort order is by ascending que
 |-a|--authenticationDatabase|database used to establish credentials and privileges with a MongoDB server admin|
 |-c|--no-version-check|Don't check for updates|
 |-d|--database|database to profile|
+|-f|--output-format|report output format. Valid values are text, json. Default: text|
 |-l|--log-level|Log level:, panic, fatal, error, warn, info, debug error|
 |-n|--limit|show the first n queries|
 |-o|--order-by|comma separated list of order by fields (max values): `count`, `ratio`, `query-time`, `docs-scanned`, `docs-returned`.<br> A `-` in front of the field name denotes reverse order.<br> Example:`--order-by="count,-ratio"`).|

@@ -133,7 +133,7 @@ sub create_dbs {
 sub get_dbh_for {
    my ( $self, $server, $cxn_ops, $user ) = @_;
    _check_server($server);
-   $cxn_ops ||= { AutoCommit => 1 };
+   $cxn_ops ||= { AutoCommit => 1, mysql_enable_utf8 => 1 };
    $user    ||= 'msandbox';
    PTDEBUG && _d('dbh for', $server, 'on port', $port_for{$server});
    my $dp = $self->{DSNParser};
@@ -365,6 +365,10 @@ sub verify_test_data {
    $self->{checksum_ref} = $ref unless $self->{checksum_ref};
    my @tables_in_mysql  = grep { !/^(?:innodb|slave)_/ }
                           grep { !/_log$/ }
+                          grep { !/engine_cost$/ }
+                          grep { !/server_cost$/ }
+                          grep { !/tables_priv$/ }
+                          grep { !/user$/ }
                           @{$master->selectcol_arrayref('SHOW TABLES FROM mysql')};
    my @tables_in_sakila = qw(actor address category city country customer
                              film film_actor film_category film_text inventory
@@ -575,6 +579,25 @@ sub do_as_root {
    }
    $dbh->disconnect;
    return $ok;
+}
+
+sub has_engine {
+   my ( $self, $host, $want_engine ) = @_;
+
+   # Get the current checksums on the host.
+   my $dbh = $self->get_dbh_for($host);
+   my $sql = "SHOW ENGINES";
+   my @engines = @{$dbh->selectall_arrayref($sql, {Slice => {} })};
+
+   # Diff the two sets of checksums: host to master (ref).
+   my $has_engine=0;
+   foreach my $engine ( @engines ) {
+      if ( $engine->{engine} =~ m/$want_engine/i ) {
+         $has_engine=1;
+         last;
+      }
+   }
+   return $has_engine;
 }
 
 sub _d {
