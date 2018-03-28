@@ -1,15 +1,18 @@
+if all tables can be ...
+checksum ...    
 ERRORS DIFFS ROWS CHUNKS SKIPPED TABLE
 0 0 0 1 0 mysql.columns_priv
 0 0 0 1 0 mysql.db
 0 0 2 1 0 mysql.engine_cost
 0 0 0 1 0 mysql.event
 0 0 0 1 0 mysql.func
-0 0 0 1 0 mysql.gtid_executed
 0 0 40 1 0 mysql.help_category
 0 0 682 1 0 mysql.help_keyword
 0 0 1340 1 0 mysql.help_relation
 0 0 637 1 0 mysql.help_topic
 0 0 0 1 0 mysql.ndb_binlog_index
+0 0 0 1 0 mysql.plugin
+0 0 0 1 0 mysql.proc
 0 0 0 1 0 mysql.procs_priv
 0 0 0 1 0 mysql.proxies_priv
 0 0 6 1 0 mysql.server_cost
@@ -40,3 +43,4 @@ ERRORS DIFFS ROWS CHUNKS SKIPPED TABLE
 0 0 16044 19 0 sakila.rental
 0 0 2 1 0 sakila.staff
 0 0 2 1 0 sakila.store
+0 0 6 1 0 sys.sys_config

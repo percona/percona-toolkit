@@ -1,0 +1,8 @@
+{
+  "Namespace": "test.coll",
+  "Operation": "GETMORE",
+  "Collection": "coll",
+  "Database": "test",
+  "Keys": "",
+  "Fingerprint": "GETMORE coll"
+}

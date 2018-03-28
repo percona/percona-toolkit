@@ -29,8 +29,9 @@ if ( !$master_dbh ) {
 }
 elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
-}
-else {
+} elsif ($sandbox_version ge '8.0') {
+   plan skip_all => "Skipped due to an error in MySQL 8.0.4-rc";
+} else {
    plan tests => 3;
 }
 

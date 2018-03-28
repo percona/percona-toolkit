@@ -2257,10 +2257,11 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
 
 report_transparent_huge_pages () {
 
+  STATUS_THP_SYSTEM=""
   if [ -f /sys/kernel/mm/transparent_hugepage/enabled ]; then
-    CONTENT_TRANSHP=$(</sys/kernel/mm/transparent_hugepage/enabled)
+    CONTENT_TRANSHP=$(cat /sys/kernel/mm/transparent_hugepage/enabled)
     STATUS_THP_SYSTEM=$(echo $CONTENT_TRANSHP | grep -cv '\[never\]')
-  elif [ -f /sys/kernel/mm/redhat_transparent_hugepage/enabled]; then
+  elif [ -f /sys/kernel/mm/redhat_transparent_hugepage/enabled ]; then
     CONTENT_TRANSHP=$(</sys/kernel/mm/redhat_transparent_hugepage/enabled)
     STATUS_THP_SYSTEM=$(echo $CONTENT_TRANSHP | grep -cv '\[never\]')
   fi
@@ -2703,7 +2704,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2017 Percona LLC and/or its affiliates,
+This program is copyright 2011-2018 Percona LLC and/or its affiliates,
 2010-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -2722,7 +2723,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-summary 3.0.2
+pt-summary 3.0.8
 
 =cut
 

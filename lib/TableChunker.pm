@@ -44,6 +44,7 @@
 package TableChunker;
 
 use strict;
+use utf8;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
@@ -591,7 +592,7 @@ sub _chunk_char {
       $dbh->do($sql);
       my $col_def = $args{tbl_struct}->{defs}->{$chunk_col};
       $sql        = "CREATE TEMPORARY TABLE $tmp_db_tbl ($col_def) "
-                  . "ENGINE=MEMORY";
+                  . "ENGINE=MEMORY DEFAULT CHARSET = utf8";
       PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
 
@@ -601,7 +602,8 @@ sub _chunk_char {
       PTDEBUG && _d($dbh, $sql);
       my $ins_char_sth = $dbh->prepare($sql);  # avoid quoting issues
       for my $char_code ( $min_col_ord..$max_col_ord ) {
-         $ins_char_sth->execute($char_code);
+         # Ignore errors on invalid chars for UTF8
+         eval { $ins_char_sth->execute($char_code) };
       }
 
       # Select from the char-to-number map all characters between the

@@ -1,0 +1,128 @@
+{
+	"op" : "query",
+	"ns" : "test.coll",
+	"command" : {
+		"find" : "coll",
+		"filter" : {
+			"c" : 1
+		},
+		"sort" : {
+			"b" : -1
+		},
+		"$db" : "test"
+	},
+	"keysExamined" : 2,
+	"docsExamined" : 2,
+	"hasSortStage" : true,
+	"cursorExhausted" : true,
+	"numYield" : 0,
+	"locks" : {
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(2)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		}
+	},
+	"nreturned" : 2,
+	"responseLength" : 176,
+	"protocol" : "op_msg",
+	"millis" : 42,
+	"planSummary" : "IXSCAN { c: 1 }",
+	"execStats" : {
+		"stage" : "SORT",
+		"nReturned" : 2,
+		"executionTimeMillisEstimate" : 0,
+		"works" : 7,
+		"advanced" : 2,
+		"needTime" : 4,
+		"needYield" : 0,
+		"saveState" : 0,
+		"restoreState" : 0,
+		"isEOF" : 1,
+		"invalidates" : 0,
+		"sortPattern" : {
+			"b" : -1
+		},
+		"memUsage" : 104,
+		"memLimit" : 33554432,
+		"inputStage" : {
+			"stage" : "SORT_KEY_GENERATOR",
+			"nReturned" : 2,
+			"executionTimeMillisEstimate" : 0,
+			"works" : 4,
+			"advanced" : 2,
+			"needTime" : 1,
+			"needYield" : 0,
+			"saveState" : 0,
+			"restoreState" : 0,
+			"isEOF" : 1,
+			"invalidates" : 0,
+			"inputStage" : {
+				"stage" : "FETCH",
+				"nReturned" : 2,
+				"executionTimeMillisEstimate" : 0,
+				"works" : 3,
+				"advanced" : 2,
+				"needTime" : 0,
+				"needYield" : 0,
+				"saveState" : 0,
+				"restoreState" : 0,
+				"isEOF" : 1,
+				"invalidates" : 0,
+				"docsExamined" : 2,
+				"alreadyHasObj" : 0,
+				"inputStage" : {
+					"stage" : "IXSCAN",
+					"nReturned" : 2,
+					"executionTimeMillisEstimate" : 0,
+					"works" : 3,
+					"advanced" : 2,
+					"needTime" : 0,
+					"needYield" : 0,
+					"saveState" : 0,
+					"restoreState" : 0,
+					"isEOF" : 1,
+					"invalidates" : 0,
+					"keyPattern" : {
+						"c" : 1
+					},
+					"indexName" : "c_1",
+					"isMultiKey" : false,
+					"multiKeyPaths" : {
+						"c" : [ ]
+					},
+					"isUnique" : false,
+					"isSparse" : false,
+					"isPartial" : false,
+					"indexVersion" : 2,
+					"direction" : "forward",
+					"indexBounds" : {
+						"c" : [
+							"[1.0, 1.0]"
+						]
+					},
+					"keysExamined" : 2,
+					"seeks" : 1,
+					"dupsTested" : 0,
+					"dupsDropped" : 0,
+					"seenInvalidated" : 0
+				}
+			}
+		}
+	},
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
+	"client" : "127.0.0.1",
+	"appName" : "MongoDB Shell",
+	"allUsers" : [ ],
+	"user" : ""
+}

@@ -1,0 +1,8 @@
+{
+  "Namespace": "test.coll",
+  "Operation": "GEONEAR",
+  "Collection": "coll",
+  "Database": "test",
+  "Keys": "",
+  "Fingerprint": "GEONEAR coll"
+}

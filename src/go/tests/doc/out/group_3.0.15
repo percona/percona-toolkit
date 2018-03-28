@@ -1,0 +1,54 @@
+{
+	"op" : "command",
+	"ns" : "test.$cmd",
+	"command" : {
+		"group" : {
+			"key" : {
+				"a" : 1,
+				"b" : 1
+			},
+			"cond" : {
+				"b" : 3
+			},
+			"initial" : {
+				
+			},
+			"ns" : "coll",
+			"$reduce" : function () {}
+		}
+	},
+	"keyUpdates" : 0,
+	"writeConflicts" : 0,
+	"numYield" : 1,
+	"locks" : {
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(6)
+			}
+		},
+		"MMAPV1Journal" : {
+			"acquireCount" : {
+				"r" : NumberLong(2)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"r" : NumberLong(3)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"R" : NumberLong(3)
+			}
+		}
+	},
+	"responseLength" : 139,
+	"millis" : 42,
+	"execStats" : {
+		
+	},
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}

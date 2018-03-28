@@ -1,0 +1,43 @@
+{
+	"op" : "insert",
+	"ns" : "test.coll",
+	"query" : {
+		"insert" : "coll",
+		"documents" : [
+			{
+				"_id" : 1
+			}
+		],
+		"ordered" : true
+	},
+	"ninserted" : 1,
+	"keysInserted" : 1,
+	"numYield" : 0,
+	"locks" : {
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(3),
+				"w" : NumberLong(3)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"w" : NumberLong(2),
+				"W" : NumberLong(1)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"w" : NumberLong(2)
+			}
+		}
+	},
+	"responseLength" : 29,
+	"protocol" : "op_command",
+	"millis" : 42,
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
+	"client" : "127.0.0.1",
+	"appName" : "MongoDB Shell",
+	"allUsers" : [ ],
+	"user" : ""
+}

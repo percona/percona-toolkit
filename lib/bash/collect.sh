@@ -49,8 +49,11 @@ collect() {
    local d="$1"  # directory to save results in
    local p="$2"  # prefix for each result file
 
+   local mysqld_pid=""
    # Get pidof mysqld.
-   local mysqld_pid=$(_pidof mysqld | awk '{print $1; exit;}')
+   if [ ! "$OPT_MYSQL_ONLY" ]; then
+      mysqld_pid=$(_pidof mysqld | awk '{print $1; exit;}')
+   fi
 
    # Get memory allocation info before anything else.
    if [ "$CMD_PMAP" -a "$mysqld_pid" ]; then
@@ -90,7 +93,7 @@ collect() {
    fi
 
    local tail_error_log_pid=""
-   if [ "$mysql_error_log" ]; then
+   if [ "$mysql_error_log" -a ! "$OPT_MYSQL_ONLY" ]; then
       log "The MySQL error log seems to be $mysql_error_log"
       tail -f "$mysql_error_log" >"$d/$p-log_error" &
       tail_error_log_pid=$!
@@ -100,9 +103,7 @@ collect() {
       $CMD_MYSQLADMIN $EXT_ARGV debug
    else
       log "Could not find the MySQL error log"
-   fi
-
-
+   fi 
    # Get a sample of these right away, so we can get these without interaction
    # with the other commands we're about to run.
    if [ "${mysql_version}" '>' "5.1" ]; then
@@ -112,6 +113,8 @@ collect() {
    fi
    innodb_status 1
    tokudb_status 1
+   rocksdb_status 1
+
    $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status1" &
    open_tables                      >> "$d/$p-opentables1"   &
 
@@ -141,44 +144,46 @@ collect() {
 
    # Grab a few general things first.  Background all of these so we can start
    # them all up as quickly as possible.  
-   ps -eaF  >> "$d/$p-ps"  &
-   top -bn${OPT_RUN_TIME} >> "$d/$p-top" &
+   if [ ! "$OPT_MYSQL_ONLY" ]; then 
+      ps -eaF  >> "$d/$p-ps"  &
+      top -bn${OPT_RUN_TIME} >> "$d/$p-top" &
 
-   [ "$mysqld_pid" ] && _lsof $mysqld_pid >> "$d/$p-lsof" &
+      [ "$mysqld_pid" ] && _lsof $mysqld_pid >> "$d/$p-lsof" &
 
-   if [ "$CMD_SYSCTL" ]; then
-      $CMD_SYSCTL -a >> "$d/$p-sysctl" &
-   fi
+      if [ "$CMD_SYSCTL" ]; then
+         $CMD_SYSCTL -a >> "$d/$p-sysctl" &
+      fi
 
-   # collect dmesg events from 60 seconds ago until present
-   if [ "$CMD_DMESG" ]; then
-      local UPTIME=`cat /proc/uptime | awk '{ print $1 }'`
-      local START_TIME=$(echo "$UPTIME 60" | awk '{print ($1 - $2)}')
-      $CMD_DMESG  | perl -ne 'm/\[\s*(\d+)\./; if ($1 > '${START_TIME}') { print }' >> "$d/$p-dmesg" & 
-   fi
+      # collect dmesg events from 60 seconds ago until present
+      if [ "$CMD_DMESG" ]; then
+         local UPTIME=`cat /proc/uptime | awk '{ print $1 }'`
+         local START_TIME=$(echo "$UPTIME 60" | awk '{print ($1 - $2)}')
+         $CMD_DMESG  | perl -ne 'm/\[\s*(\d+)\./; if ($1 > '${START_TIME}') { print }' >> "$d/$p-dmesg" & 
+      fi
 
-   local cnt=$(($OPT_RUN_TIME / $OPT_SLEEP_COLLECT))
-   if [ "$CMD_VMSTAT" ]; then
-      $CMD_VMSTAT $OPT_SLEEP_COLLECT $cnt >> "$d/$p-vmstat" &
-      $CMD_VMSTAT $OPT_RUN_TIME 2 >> "$d/$p-vmstat-overall" &
-   fi
-   if [ "$CMD_IOSTAT" ]; then
-      $CMD_IOSTAT -dx $OPT_SLEEP_COLLECT $cnt >> "$d/$p-iostat" &
-      $CMD_IOSTAT -dx $OPT_RUN_TIME 2 >> "$d/$p-iostat-overall" &
-   fi
-   if [ "$CMD_MPSTAT" ]; then
-      $CMD_MPSTAT -P ALL $OPT_SLEEP_COLLECT $cnt >> "$d/$p-mpstat" &
-      $CMD_MPSTAT -P ALL $OPT_RUN_TIME 1 >> "$d/$p-mpstat-overall" &
-   fi
+      local cnt=$(($OPT_RUN_TIME / $OPT_SLEEP_COLLECT))
+      if [ "$CMD_VMSTAT" ]; then
+         $CMD_VMSTAT $OPT_SLEEP_COLLECT $cnt >> "$d/$p-vmstat" &
+         $CMD_VMSTAT $OPT_RUN_TIME 2 >> "$d/$p-vmstat-overall" &
+      fi
+      if [ "$CMD_IOSTAT" ]; then
+         $CMD_IOSTAT -dx $OPT_SLEEP_COLLECT $cnt >> "$d/$p-iostat" &
+         $CMD_IOSTAT -dx $OPT_RUN_TIME 2 >> "$d/$p-iostat-overall" &
+      fi
+      if [ "$CMD_MPSTAT" ]; then
+         $CMD_MPSTAT -P ALL $OPT_SLEEP_COLLECT $cnt >> "$d/$p-mpstat" &
+         $CMD_MPSTAT -P ALL $OPT_RUN_TIME 1 >> "$d/$p-mpstat-overall" &
+      fi
 
-   # Collect multiple snapshots of the status variables.  We use
-   # mysqladmin -c even though it is buggy and won't stop on its
-   # own in 5.1 and newer, because there is a chance that we will
-   # get and keep a connection to the database; in troubled times
-   # the database tends to exceed max_connections, so reconnecting
-   # in the loop tends not to work very well.
-   $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
-   local mysqladmin_pid=$!
+      # Collect multiple snapshots of the status variables.  We use
+      # mysqladmin -c even though it is buggy and won't stop on its
+      # own in 5.1 and newer, because there is a chance that we will
+      # get and keep a connection to the database; in troubled times
+      # the database tends to exceed max_connections, so reconnecting
+      # in the loop tends not to work very well.
+      $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
+      local mysqladmin_pid=$!
+   fi 
 
    local have_lock_waits_table=""
    $CMD_MYSQL $EXT_ARGV -e "SHOW TABLES FROM INFORMATION_SCHEMA" \
@@ -200,47 +205,48 @@ collect() {
    fi
 
    while [ $((curr_time - start_time)) -lt $OPT_RUN_TIME ]; do
+      if [ ! "$OPT_MYSQL_ONLY" ]; then
+         # We check the disk, but don't exit, because we need to stop jobs if we
+         # need to exit.
+         disk_space $d > $d/$p-disk-space
+         check_disk_space          \
+            $d/$p-disk-space       \
+            "$OPT_DISK_BYTES_FREE" \
+            "$OPT_DISK_PCT_FREE"   \
+            || break
 
-      # We check the disk, but don't exit, because we need to stop jobs if we
-      # need to exit.
-      disk_space $d > $d/$p-disk-space
-      check_disk_space          \
-         $d/$p-disk-space       \
-         "$OPT_DISK_BYTES_FREE" \
-         "$OPT_DISK_PCT_FREE"   \
-         || break
+         # Sleep between collect cycles.
+         # Synchronize ourselves onto the clock tick, so the sleeps are 1-second
+         sleep $(date +'%s.%N' | awk "{print $OPT_SLEEP_COLLECT - (\$1 % $OPT_SLEEP_COLLECT)}")
+         local ts="$(date +"TS %s.%N %F %T")"
 
-      # Sleep between collect cycles.
-      # Synchronize ourselves onto the clock tick, so the sleeps are 1-second
-      sleep $(date +'%s.%N' | awk "{print $OPT_SLEEP_COLLECT - (\$1 % $OPT_SLEEP_COLLECT)}")
-      local ts="$(date +"TS %s.%N %F %T")"
-
-      # #####################################################################
-      # Collect data for this cycle.
-      # #####################################################################
-      if [ -d "/proc" ]; then
-         if [ -f "/proc/diskstats" ]; then
-            (echo $ts; cat /proc/diskstats) >> "$d/$p-diskstats" &
+         # #####################################################################
+         # Collect data for this cycle.
+         # #####################################################################
+         if [ -d "/proc" ]; then
+            if [ -f "/proc/diskstats" ]; then
+               (echo $ts; cat /proc/diskstats) >> "$d/$p-diskstats" &
+            fi
+            if [ -f "/proc/stat" ]; then
+               (echo $ts; cat /proc/stat) >> "$d/$p-procstat" &
+            fi
+            if [ -f "/proc/vmstat" ]; then
+               (echo $ts; cat /proc/vmstat) >> "$d/$p-procvmstat" &
+            fi
+            if [ -f "/proc/meminfo" ]; then
+               (echo $ts; cat /proc/meminfo) >> "$d/$p-meminfo" &
+            fi
+            if [ -f "/proc/slabinfo" ]; then
+               (echo $ts; cat /proc/slabinfo) >> "$d/$p-slabinfo" &
+            fi
+            if [ -f "/proc/interrupts" ]; then
+               (echo $ts; cat /proc/interrupts) >> "$d/$p-interrupts" &
+            fi
          fi
-         if [ -f "/proc/stat" ]; then
-            (echo $ts; cat /proc/stat) >> "$d/$p-procstat" &
-         fi
-         if [ -f "/proc/vmstat" ]; then
-            (echo $ts; cat /proc/vmstat) >> "$d/$p-procvmstat" &
-         fi
-         if [ -f "/proc/meminfo" ]; then
-            (echo $ts; cat /proc/meminfo) >> "$d/$p-meminfo" &
-         fi
-         if [ -f "/proc/slabinfo" ]; then
-            (echo $ts; cat /proc/slabinfo) >> "$d/$p-slabinfo" &
-         fi
-         if [ -f "/proc/interrupts" ]; then
-            (echo $ts; cat /proc/interrupts) >> "$d/$p-interrupts" &
-         fi
+         (echo $ts; df -k) >> "$d/$p-df" &
+         (echo $ts; netstat -antp) >> "$d/$p-netstat"   &
+         (echo $ts; netstat -s)    >> "$d/$p-netstat_s" &
       fi
-      (echo $ts; df -k) >> "$d/$p-df" &
-      (echo $ts; netstat -antp) >> "$d/$p-netstat"   &
-      (echo $ts; netstat -s)    >> "$d/$p-netstat_s" &
       (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
          >> "$d/$p-processlist" &
       if [ "$have_lock_waits_table" ]; then
@@ -250,6 +256,10 @@ collect() {
 
       if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes" ]; then
          ps_locks_transactions "$d/$p-ps-locks-transactions"
+      fi
+
+      if [ "${mysql_version}" '>' "5.6" ]; then
+         (echo $ts; ps_prepared_statements) >> "$d/$p-prepared-statements" &
       fi
 
       slave_status "$d/$p-slave-status" "${mysql_version}" 
@@ -299,6 +309,8 @@ collect() {
 
    innodb_status 2
    tokudb_status 2
+   rocksdb_status 2
+
    $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status2" &
    open_tables                      >> "$d/$p-opentables2"   &
 
@@ -403,6 +415,18 @@ innodb_status() {
    }
 }
 
+rocksdb_status() {
+    local n=$1
+
+    has_rocksdb=`$CMD_MYSQL $EXT_ARGV -e "SHOW ENGINES" | grep -i 'rocksdb'`
+    exit_code=$?
+
+    if [ $exit_code -eq 0 ]; then
+        $CMD_MYSQL $EXT_ARGV -e "SHOW ENGINE ROCKSDB STATUS\G" \
+                   >> "$d/$p-rocksdbstatus$n" || rm -f "$d/$p-rocksdbstatus$n"
+    fi
+}
+
 ps_locks_transactions() {
    local outfile=$1 
    
@@ -428,6 +452,13 @@ ps_locks_transactions() {
       echo "Performance schema is not enabled" >> $outfile
    fi
 
+}
+
+ps_prepared_statements() {
+   $CMD_MYSQL $EXT_ARGV -e "SELECT t.processlist_id, pse.* \
+                            FROM performance_schema.prepared_statements_instances pse \
+                            JOIN performance_schema.threads t \
+                            ON (pse.OWNER_THREAD_ID=t.thread_id)\G"
 }
 
 slave_status() {

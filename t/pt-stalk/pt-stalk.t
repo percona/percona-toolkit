@@ -528,9 +528,56 @@ SKIP: {
    );
 }
 
+# ###########################################################################
+# Test report about performance schema prepared_statements_instances in MySQL 5.7+
+# ###########################################################################
+
+cleanup();
+
+SKIP: {
+
+   skip "Only test on mysql 5.7" if ( $sandbox_version lt '5.7' );
+
+   sub start_thread_1642750 {
+      # this must run in a thread because we need to have an active session
+      # with prepared statements
+      my ($dsn_opts) = @_;
+      my $dp = new DSNParser(opts=>$dsn_opts);
+      my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+      my $dbh = $sb->get_dbh_for('master');
+      $sb->load_file('master', "t/pt-stalk/samples/issue-1642750.sql");
+   }
+   my $thr = threads->create('start_thread_1642750', $dsn_opts);
+   $thr->detach();
+   threads->yield();
+
+   my $cmd = "$trunk/bin/pt-stalk --no-stalk --iterations=1 --host=127.0.0.1 --port=12345 --user=msandbox "
+           . "--password=msandbox --sleep 0 --run-time=10 --dest $dest --log $log_file --pid $pid_file  "
+           . "--defaults-file=$cnf >$log_file 2>&1";
+
+   system($cmd);
+   sleep 15;
+   PerconaTest::kill_program(pid_file => $pid_file);
+
+   $output = `cat $dest/*-prepared-statements 2>/dev/null`;
+   like(
+      $output,
+      qr/ STATEMENT_NAME: rand_statement/,
+      "MySQL 5.7 prepared statement: rand_statement"
+   );
+
+   like(
+      $output,
+      qr/ STATEMENT_NAME: abs_statement/,
+      "MySQL 5.7 prepared statement: abs_statement"
+   );
+}
+
 # #############################################################################
 # Done.
 # #############################################################################
+
+
 cleanup();
 diag(`rm -rf $dest 2>/dev/null`);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");

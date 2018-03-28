@@ -1,0 +1,42 @@
+[client]
+user     = msandbox
+password = msandbox
+port     = PORT
+socket   = /tmp/PORT/mysql_sandboxPORT.sock
+
+[mysqld]
+port                       = PORT
+socket                     = /tmp/PORT/mysql_sandboxPORT.sock
+pid-file                   = /tmp/PORT/data/mysql_sandboxPORT.pid
+basedir                    = PERCONA_TOOLKIT_SANDBOX
+datadir                    = /tmp/PORT/data
+general_log
+general_log_file           = genlog
+innodb_buffer_pool_size    = 16M
+innodb_data_file_path      = ibdata1:10M:autoextend
+innodb_data_home_dir       = /tmp/PORT/data
+innodb_lock_wait_timeout   = 3
+innodb_log_file_size       = 5M
+innodb_log_group_home_dir  = /tmp/PORT/data
+key_buffer_size            = 5M
+local-infile               = 1
+log-bin                    = mysql-bin
+log-error                  = /tmp/PORT/data/mysqld.log
+log_slave_updates
+lower_case_table_names     = 0
+relay_log                  = mysql-relay-bin
+report-host                = 127.0.0.1
+report-port                = PORT
+server-id                  = PORT
+slow-query-log             = 1
+slow-query-log-file        = /tmp/PORT/data/slow.log
+log_slow_admin_statements  = 1
+long_query_time            = 0
+default_authentication_plugin=mysql_native_password
+
+# fkc test
+binlog_format              = STATEMENT
+#performance_schema         = ON
+#performance-schema-instrument='wait/lock/metadata/sql/mdl=ON'
+#performance-schema-instrument='transaction=ON'
+secure-file-priv           = 

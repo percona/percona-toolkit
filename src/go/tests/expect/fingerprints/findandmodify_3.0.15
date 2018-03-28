@@ -1,0 +1,8 @@
+{
+  "Namespace": "test.coll",
+  "Operation": "FINDANDMODIFY",
+  "Collection": "coll",
+  "Database": "test",
+  "Keys": "a",
+  "Fingerprint": "FINDANDMODIFY coll a"
+}

@@ -445,6 +445,31 @@ $output = output(
 # clear databases with their foreign keys
 $sb->load_file('master', "$sample/bug-1315130_cleanup.sql");  
 
+# #############################################################################
+# Issue 1315130
+# Failed to detect child tables in other schema, and falsely identified
+# child tables in own schema
+# #############################################################################
+
+$sb->load_file('master', "$sample/bug-1315130_cleanup.sql");
+$sb->load_file('master', "$sample/bug-1315130.sql");
+
+$output = output(
+   sub { pt_online_schema_change::main(@args, "$master_dsn,D=bug_1315130_a,t=parent_table",
+         '--dry-run', 
+         '--alter', "add column c varchar(16)",
+         '--alter-foreign-keys-method', 'auto', '--only-same-schema-fks'),
+      },
+);
+
+like(
+      $output,
+      qr/Child tables:\s*`bug_1315130_a`\.`child_table_in_same_schema` \(approx\. 1 rows\)[^`]*?Will/s,
+      "Ignore child tables in other schemas.",
+);
+# clear databases with their foreign keys
+$sb->load_file('master', "$sample/bug-1315130_cleanup.sql");  
+
 
 # #############################################################################
 # Issue 1340728
@@ -610,7 +635,7 @@ $sb->load_file('master', "$sample/bug-1613915.sql");
 $output = output(
    sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=o1",
          '--execute', 
-         '--alter', "ADD COLUMN c INT COMMENT 'change plus more than one word'",
+         '--alter', "ADD COLUMN c INT COMMENT 'change \"plus\" more than one word'",
          '--chunk-size', '10', '--no-check-alter',
          ),
       },
@@ -633,7 +658,7 @@ is(
 $rows = $master_dbh->selectrow_arrayref("SHOW CREATE TABLE test.o1");
 like(
       $rows->[1],
-      qr/COMMENT 'change plus more than one word'/,
+      qr/COMMENT 'change "plus" more than one word'/,
       "recognize comments",
 );
 

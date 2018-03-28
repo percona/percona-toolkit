@@ -1,8 +1,10 @@
+Checking if all tables can be checksummed ...
+Starting checksum ...
 --
 -- osc.t2
 --
 
-REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `c`, CONCAT(ISNULL(`c`)))) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `osc`.`t2` FORCE INDEX(`c`) WHERE (((? IS NULL OR `c` >= ?))) AND (((? IS NULL OR `c` <= ?))) /*checksum chunk*/
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', convert(`c` using utf8mb4), CONCAT(ISNULL(`c`)))) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `osc`.`t2` FORCE INDEX(`c`) WHERE (((? IS NULL OR `c` >= ?))) AND (((? IS NULL OR `c` <= ?))) /*checksum chunk*/
 
 REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*), '0' FROM `osc`.`t2` FORCE INDEX(`c`) WHERE ((((? IS NOT NULL AND `c` IS NULL) OR (`c` < ?)))) ORDER BY `c` /*past lower chunk*/
 

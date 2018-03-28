@@ -1,0 +1,102 @@
+{
+	"op" : "query",
+	"ns" : "test.coll",
+	"query" : {
+		"query" : {
+			"c" : 1
+		},
+		"orderby" : {
+			"b" : -1
+		}
+	},
+	"ntoreturn" : 0,
+	"ntoskip" : 0,
+	"nscanned" : 2,
+	"nscannedObjects" : 2,
+	"scanAndOrder" : true,
+	"keyUpdates" : 0,
+	"numYield" : 0,
+	"lockStats" : {
+		"timeLockedMicros" : {
+			"r" : NumberLong(1234),
+			"w" : NumberLong(4321)
+		},
+		"timeAcquiringMicros" : {
+			"r" : NumberLong(9876),
+			"w" : NumberLong(6789)
+		}
+	},
+	"nreturned" : 2,
+	"responseLength" : 108,
+	"millis" : 42,
+	"execStats" : {
+		"type" : "SORT",
+		"works" : 7,
+		"yields" : 0,
+		"unyields" : 0,
+		"invalidates" : 0,
+		"advanced" : 2,
+		"needTime" : 3,
+		"needFetch" : 0,
+		"isEOF" : 1,
+		"forcedFetches" : 0,
+		"memUsage" : 104,
+		"memLimit" : 33554432,
+		"children" : [
+			{
+				"type" : "KEEP_MUTATIONS",
+				"works" : 3,
+				"yields" : 0,
+				"unyields" : 0,
+				"invalidates" : 0,
+				"advanced" : 2,
+				"needTime" : 0,
+				"needFetch" : 0,
+				"isEOF" : 1,
+				"children" : [
+					{
+						"type" : "FETCH",
+						"works" : 3,
+						"yields" : 0,
+						"unyields" : 0,
+						"invalidates" : 0,
+						"advanced" : 2,
+						"needTime" : 0,
+						"needFetch" : 0,
+						"isEOF" : 1,
+						"alreadyHasObj" : 0,
+						"forcedFetches" : 0,
+						"matchTested" : 0,
+						"children" : [
+							{
+								"type" : "IXSCAN",
+								"works" : 3,
+								"yields" : 0,
+								"unyields" : 0,
+								"invalidates" : 0,
+								"advanced" : 2,
+								"needTime" : 0,
+								"needFetch" : 0,
+								"isEOF" : 1,
+								"keyPattern" : "{ c: 1.0 }",
+								"isMultiKey" : 0,
+								"boundsVerbose" : "field #0['c']: [1.0, 1.0]",
+								"yieldMovedCursor" : 0,
+								"dupsTested" : 0,
+								"dupsDropped" : 0,
+								"seenInvalidated" : 0,
+								"matchTested" : 0,
+								"keysExamined" : 2,
+								"children" : [ ]
+							}
+						]
+					}
+				]
+			}
+		]
+	},
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}

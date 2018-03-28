@@ -1,0 +1,45 @@
+{
+	"op" : "command",
+	"ns" : "test.$cmd",
+	"command" : {
+		"findandmodify" : "coll",
+		"query" : {
+			"a" : 2
+		},
+		"update" : {
+			"$inc" : {
+				"b" : 1
+			}
+		}
+	},
+	"updateobj" : {
+		"$inc" : {
+			"b" : 1
+		}
+	},
+	"nscanned" : 1,
+	"nscannedObjects" : 1,
+	"nMatched" : 1,
+	"nModified" : 1,
+	"keyUpdates" : 1,
+	"numYield" : 0,
+	"lockStats" : {
+		"timeLockedMicros" : {
+			"r" : NumberLong(1234),
+			"w" : NumberLong(4321)
+		},
+		"timeAcquiringMicros" : {
+			"r" : NumberLong(9876),
+			"w" : NumberLong(6789)
+		}
+	},
+	"responseLength" : 131,
+	"millis" : 42,
+	"execStats" : {
+		
+	},
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}

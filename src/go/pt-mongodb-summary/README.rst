@@ -15,15 +15,14 @@ Please check the `releases <https://github.com/percona/toolkit-go/releases>`_ ta
 
 Paramters
 ^^^^^^^^^
-===== ========= ======= ================================================================================
-Short Long      Default Description
-===== ========= ======= ================================================================================ 
-u     user      empty   user name to use when connecting if DB auth is enabled
-p     password  empty   password to use when connecting if DB auth is enabled
-a     auth-db   admin   database used to establish credentials and privileges with a MongoDB server
-===== ========= ======= ================================================================================
+|Short|Long|Default|Description|
+|-----|----|-------|-----------|
+|-a|--auth-db|admin|database used to establish credentials and privileges with a MongoDB server|
+|-f|--output-format|report output format|Valid values are text, json. Default: text|
+|-f|--output-format|text|output format: text, json. Default: text|
+|-p|--password|empty|password to use when connecting if DB auth is enabled|
+|-u|--user|empty|user name to use when connecting if DB auth is enabled|
 
-| 
 
 ``-p`` is an optional parameter. If it is used it shouldn't have a blank between the parameter and its value: `-p<password>`  
 It can be also used as `-p` without specifying a password; in that case, the program will ask the password to avoid using a password in the command line.  

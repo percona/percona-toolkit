@@ -2,6 +2,6 @@
 
 BASEDIR="PERCONA_TOOLKIT_SANDBOX"
 
-$BASEDIR/bin/mysql --defaults-file=/tmp/PORT/my.sandbox.cnf "$@"
+$BASEDIR/bin/mysql --defaults-file=TMP_DIR/PORT/my.sandbox.cnf "$@"
 
 exit

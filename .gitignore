@@ -16,3 +16,8 @@ src/go/pt-mongodb-query-digest/vendor/
 src/go/pt-mongodb-summary/vendor/
 !vendor/vendor.json
 vendor/
+*.bak
+src/go/*.bak
+config/deb/control.bak
+config/rpm/percona-toolkit.spec.bak
+config/sphinx-build/percona-theme/*

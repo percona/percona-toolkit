@@ -83,6 +83,11 @@ cd ${HOME}/perldev/percona-toolkit
 sandbox/test-env start
 ```
 To stop the MySQL sandbox: `sandbox/test-env stop`  
+To enable TokuDB (only available in Percona Server 5.7+), run:  
+
+```
+ENABLE_TOKUDB=1 sandbox/test-env start
+```
 
 ### Running tests
 ```

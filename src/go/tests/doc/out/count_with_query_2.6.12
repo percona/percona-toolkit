@@ -1,0 +1,36 @@
+{
+	"op" : "command",
+	"ns" : "test.$cmd",
+	"command" : {
+		"count" : "coll",
+		"query" : {
+			"a" : {
+				"$gt" : 5
+			}
+		},
+		"fields" : {
+			
+		}
+	},
+	"keyUpdates" : 0,
+	"numYield" : 0,
+	"lockStats" : {
+		"timeLockedMicros" : {
+			"r" : NumberLong(1234),
+			"w" : NumberLong(4321)
+		},
+		"timeAcquiringMicros" : {
+			"r" : NumberLong(9876),
+			"w" : NumberLong(6789)
+		}
+	},
+	"responseLength" : 48,
+	"millis" : 42,
+	"execStats" : {
+		
+	},
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}

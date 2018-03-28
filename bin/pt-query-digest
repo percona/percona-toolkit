@@ -64,7 +64,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.2';
+our $VERSION = '3.0.8';
 
 use strict;
 use warnings FATAL => 'all';
@@ -3251,6 +3251,17 @@ sub new {
    foreach my $arg ( qw(MasterSlave) ) {
       die "I need a $arg argument" unless $args{$arg};
    }
+   my $kill_busy_commands = {};
+   if ($args{kill_busy_commands}) {
+       for my $command (split /,/,$args{kill_busy_commands}) {
+           $command =~ s/^\s+|\s+$//g;
+           $kill_busy_commands->{$command} = 1;
+       }
+   } else {
+       $kill_busy_commands->{Query} = 1;
+   }
+   $args{kill_busy_commands} = $kill_busy_commands;
+
    my $self = {
       %args,
       polls       => 0,
@@ -3465,6 +3476,7 @@ sub find {
    my $ms  = $self->{MasterSlave};
 
    my @matches;
+   $self->{_reasons_for_matching} = undef;
    QUERY:
    foreach my $query ( @$proclist ) {
       PTDEBUG && _d('Checking query', Dumper($query));
@@ -3476,7 +3488,7 @@ sub find {
          next QUERY;
       }
 
-      if ( $find_spec{busy_time} && ($query->{Command} || '') eq 'Query' ) {
+      if ( $find_spec{busy_time} && exists($self->{kill_busy_commands}->{$query->{Command} || ''}) ) {
          next QUERY unless defined($query->{Time});
          if ( $query->{Time} < $find_spec{busy_time} ) {
             PTDEBUG && _d("Query isn't running long enough");
@@ -5234,7 +5246,7 @@ sub new {
 }
 
 sub write {
-   my ( $self, $fh, $event ) = @_;
+   my ( $self, $fh, $event, $field ) = @_;
    if ( $event->{ts} ) {
       print $fh "# Time: $event->{ts}\n";
    }
@@ -5280,7 +5292,11 @@ sub write {
    if ( $event->{arg} =~ m/^administrator command/ ) {
       print $fh '# ';
    }
-   print $fh $event->{arg}, ";\n";
+   if ($field && $event->{$field}) {
+       print $fh $event->{$field}, ";\n";
+   } else {
+       print $fh $event->{arg}, ";\n";
+   }
 
    return;
 }
@@ -6716,10 +6732,12 @@ sub BUILDARGS {
          shorten          => 1024,
          report_all       => $o->get('report-all'),
          report_histogram => $o->get('report-histogram'),
+         output           => $o->got('output') ? $o->get('output') : '',
       },
       num_format     => '# %1$-'.$label_width.'s %2$3s %3$7s %4$7s %5$7s %6$7s %7$7s %8$7s %9$7s',
       bool_format    => '# %1$-'.$label_width.'s %2$3d%% yes, %3$3d%% no',
       string_format  => '# %1$-'.$label_width.'s %2$s',
+      no_partitions  => 0,
       hidden_attrib  => {   # Don't sort/print these attribs in the reports.
          arg         => 1, # They're usually handled specially, or not
          fingerprint => 1, # printed at all.
@@ -6727,6 +6745,12 @@ sub BUILDARGS {
          ts          => 1,
       },
    };
+   if (!defined($self->{max_hostname_length})) {
+       $self->{max_hostname_length} = MAX_STRING_LENGTH;
+   }
+   if (!defined($self->{max_line_length})) {
+       $self->{max_line_length} = LINE_LENGTH;
+   }
    return $self;
 }
 
@@ -6915,7 +6939,7 @@ sub query_report_values {
       my $rank       = $top_event->[2];
       my $stats      = $ea->results->{classes}->{$item};
       my $sample     = $ea->results->{samples}->{$item};
-      my $samp_query = $sample->{arg} || '';
+      my $samp_query = ($self->{options}->{output} eq 'secure-slowlog') ? $sample->{fingerprint} || '' : $sample->{arg} || '';
 
       my %item_vals = (
          item       => $item,
@@ -7002,6 +7026,7 @@ sub query_report {
          }
       }
 
+      my $partitions_msg = $self->{no_partitions} ? '' : '/*!50100 PARTITIONS*/';
       if ( $groupby eq 'fingerprint' ) {
          my $samp_query = $qr->shorten($vals->{samp_query}, $self->{options}->{shorten})
             if $self->{options}->{shorten};
@@ -7022,7 +7047,7 @@ sub query_report {
                $report .= "$samp_query${mark}\n";
             }
             else {
-               $report .= "# EXPLAIN /*!50100 PARTITIONS*/\n$samp_query${mark}\n"; 
+               $report .= "# EXPLAIN $partitions_msg\n$samp_query${mark}\n"; 
                $report .= $self->explain_report($samp_query, $vals->{default_db});
             }
          }
@@ -7031,7 +7056,7 @@ sub query_report {
             my $converted = $qr->convert_to_select($samp_query);
             if ( $converted
                  && $converted =~ m/^[\(\s]*select/i ) {
-               $report .= "# Converted for EXPLAIN\n# EXPLAIN /*!50100 PARTITIONS*/\n$converted${mark}\n";
+               $report .= "# Converted for EXPLAIN\n# EXPLAIN $partitions_msg\n$converted${mark}\n";
             }
          }
       }
@@ -7594,16 +7619,19 @@ sub format_string_list {
       if ( $str =~ m/(?:\d+\.){3}\d+/ ) {
          $print_str = $str;  # Do not shorten IP addresses.
       }
-      elsif ( length $str > MAX_STRING_LENGTH ) {
-         $print_str = substr($str, 0, MAX_STRING_LENGTH) . '...';
-      }
-      else {
+      elsif ( $self->{max_hostname_length} > 0 and length $str > $self->{max_hostname_length} ) {
+         $print_str = substr($str, 0, $self->{max_hostname_length}) . '...';
+      } else {
          $print_str = $str;
       }
       my $p = percentage_of($cnt_for->{$str}, $class_cnt);
       $print_str .= " ($cnt_for->{$str}/$p%)";
-      if ( !$show_all->{$attrib} ) {
-         last if (length $line) + (length $print_str)  > LINE_LENGTH - 27;
+      my $trim_length = LINE_LENGTH;
+      if ($self->{max_hostname_length} == 0 or $self->{max_hostname_length} > LINE_LENGTH) {
+          $trim_length = $self->{max_hostname_length};
+      }
+      if ( $self->{max_line_length} > 0 and !$show_all->{$attrib} ) {
+         last if (length $line) + (length $print_str)  > $self->{max_line_length} - 27;
       }
       $line .= "$print_str, ";
       $i++;
@@ -7734,7 +7762,16 @@ sub explain_report {
             PTDEBUG && _d($dbh, "USE", $db);
             $dbh->do("USE " . $q->quote($db));
          }
-         my $sth = $dbh->prepare("EXPLAIN /*!50100 PARTITIONS */ $query");
+         my $sth;
+         eval {
+             $sth = $dbh->prepare("EXPLAIN /*!50100 PARTITIONS*/ $query");
+             $sth->execute();
+         };
+         if ($EVAL_ERROR) { # MySQL 8.0+ doesn't support PARTITIONS
+             $self->{no_partitions} = 1;
+             $sth = $dbh->prepare("EXPLAIN $query");
+             $sth->execute();
+         }
          $sth->execute();
          my $i = 1;
          while ( my @row = $sth->fetchrow_array() ) {
@@ -8834,7 +8871,7 @@ sub parse {
    my ($name)     = $ddl =~ m/CREATE (?:TEMPORARY )?TABLE\s+(`.+?`)/;
    (undef, $name) = $self->{Quoter}->split_unquote($name) if $name;
 
-   $ddl =~ s/(`[^`]+`)/\L$1/g;
+   $ddl =~ s/(`[^`\n]+`)/\L$1/gm;
 
    my $engine = $self->get_engine($ddl);
 
@@ -8845,8 +8882,8 @@ sub parse {
    my %def_for;
    @def_for{@cols} = @defs;
 
-   my (@nums, @null);
-   my (%type_for, %is_nullable, %is_numeric, %is_autoinc);
+   my (@nums, @null, @non_generated);
+   my (%type_for, %is_nullable, %is_numeric, %is_autoinc, %is_generated);
    foreach my $col ( @cols ) {
       my $def = $def_for{$col};
 
@@ -8863,6 +8900,11 @@ sub parse {
          push @null, $col;
          $is_nullable{$col} = 1;
       }
+      if ( remove_quoted_text($def) =~ m/\WGENERATED\W/i ) {
+          $is_generated{$col} = 1;
+      } else {
+          push @non_generated, $col;
+      }
       $is_autoinc{$col} = $def =~ m/AUTO_INCREMENT/i ? 1 : 0;
    }
 
@@ -8871,22 +8913,32 @@ sub parse {
    my ($charset) = $ddl =~ m/DEFAULT CHARSET=(\w+)/;
 
    return {
-      name           => $name,
-      cols           => \@cols,
-      col_posn       => { map { $cols[$_] => $_ } 0..$#cols },
-      is_col         => { map { $_ => 1 } @cols },
-      null_cols      => \@null,
-      is_nullable    => \%is_nullable,
-      is_autoinc     => \%is_autoinc,
-      clustered_key  => $clustered_key,
-      keys           => $keys,
-      defs           => \%def_for,
-      numeric_cols   => \@nums,
-      is_numeric     => \%is_numeric,
-      engine         => $engine,
-      type_for       => \%type_for,
-      charset        => $charset,
+      name               => $name,
+      cols               => \@cols,
+      col_posn           => { map { $cols[$_] => $_ } 0..$#cols },
+      is_col             => { map { $_ => 1 } @non_generated },
+      null_cols          => \@null,
+      is_nullable        => \%is_nullable,
+      non_generated_cols => \@non_generated,
+      is_autoinc         => \%is_autoinc,
+      is_generated       => \%is_generated,
+      clustered_key      => $clustered_key,
+      keys               => $keys,
+      defs               => \%def_for,
+      numeric_cols       => \@nums,
+      is_numeric         => \%is_numeric,
+      engine             => $engine,
+      type_for           => \%type_for,
+      charset            => $charset,
    };
+}
+
+sub remove_quoted_text {
+   my ($string) = @_;
+   $string =~ s/[^\\]`[^`]*[^\\]`//g; 
+   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
+   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
+   return $string;
 }
 
 sub sort_indexes {
@@ -8965,6 +9017,8 @@ sub check_table {
    my $db_tbl = $q->quote($db, $tbl);
    PTDEBUG && _d('Checking', $db_tbl);
 
+   $self->{check_table_error} = undef;
+
    my $sql = "SHOW TABLES FROM " . $q->quote($db)
            . ' LIKE ' . $q->literal_like($tbl);
    PTDEBUG && _d($sql);
@@ -8972,8 +9026,9 @@ sub check_table {
    eval {
       $row = $dbh->selectrow_arrayref($sql);
    };
-   if ( $EVAL_ERROR ) {
-      PTDEBUG && _d($EVAL_ERROR);
+   if ( my $e = $EVAL_ERROR ) {
+      PTDEBUG && _d($e);
+      $self->{check_table_error} = $e;
       return 0;
    }
    if ( !$row->[0] || $row->[0] ne $tbl ) {
@@ -9868,7 +9923,7 @@ sub new {
 
 my $genlog_line_1= qr{
    \A
-   (?:(\d{6}\s+\d{1,2}:\d\d:\d\d|\d{4}-\d{1,2}-\d{1,2}T\d\d:\d\d:\d\d\.\d+Z))? # Timestamp
+   (?:(\d{6}\s+\d{1,2}:\d\d:\d\d|\d{4}-\d{1,2}-\d{1,2}T\d\d:\d\d:\d\d\.\d+(?:Z|-?\d\d:\d\d)?))? # Timestamp
    \s+
    (?:\s*(\d+))                     # Thread ID
    \s
@@ -10482,8 +10537,7 @@ sub get_slaves {
             },
          }
       );
-   }
-   elsif ( $methods->[0] =~ m/^dsn=/i ) {
+   } elsif ( $methods->[0] =~ m/^dsn=/i ) {
       (my $dsn_table_dsn = join ",", @$methods) =~ s/^dsn=//i;
       $slaves = $self->get_cxn_from_dsn_table(
          %args,
@@ -10745,21 +10799,44 @@ sub get_master_dsn {
 
 sub get_slave_status {
    my ( $self, $dbh ) = @_;
+
    if ( !$self->{not_a_slave}->{$dbh} ) {
       my $sth = $self->{sths}->{$dbh}->{SLAVE_STATUS}
             ||= $dbh->prepare('SHOW SLAVE STATUS');
       PTDEBUG && _d($dbh, 'SHOW SLAVE STATUS');
       $sth->execute();
-      my ($ss) = @{$sth->fetchall_arrayref({})};
+      my ($sss_rows) = $sth->fetchall_arrayref({}); # Show Slave Status rows
 
-      if ( $ss && %$ss ) {
-         $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
-         return $ss;
+      my $ss;
+      if ( $sss_rows && @$sss_rows ) {
+          if (scalar @$sss_rows > 1) {
+              if (!$self->{channel}) {
+                  die 'This server returned more than one row for SHOW SLAVE STATUS but "channel" was not specified on the command line';
+              }
+              for my $row (@$sss_rows) {
+                  $row = { map { lc($_) => $row->{$_} } keys %$row }; # lowercase the keys
+                  if ($row->{channel_name} eq $self->{channel}) {
+                      $ss = $row;
+                      last;
+                  }
+              }
+          } else {
+              if ($sss_rows->[0]->{channel_name} && $sss_rows->[0]->{channel_name} ne $self->{channel}) {
+                  die 'This server is using replication channels but "channel" was not specified on the command line';
+              } else {
+                  $ss = $sss_rows->[0];
+              }
+          }
+
+          if ( $ss && %$ss ) {
+             $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
+             return $ss;
+          }
       }
 
       PTDEBUG && _d('This server returns nothing for SHOW SLAVE STATUS');
       $self->{not_a_slave}->{$dbh}++;
-   }
+  }
 }
 
 sub get_master_status {
@@ -10799,8 +10876,20 @@ sub wait_for_master {
    my $result;
    my $waited;
    if ( $master_status ) {
-      my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', "
-              . "$master_status->{position}, $timeout)";
+      my $slave_status;
+      eval {
+          $slave_status = $self->get_slave_status($slave_dbh);
+      };
+      if ($EVAL_ERROR) {
+          return {
+              result => undef,
+              waited => 0,
+              error  =>'Wait for master: this is a multi-master slave but "channel" was not specified on the command line',
+          };
+      }
+      my $server_version = VersionParser->new($slave_dbh);
+      my $channel_sql = $server_version > '5.6' && $self->{channel} ? ", '$self->{channel}'" : '';
+      my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', $master_status->{position}, $timeout $channel_sql)";
       PTDEBUG && _d($slave_dbh, $sql);
       my $start = time;
       ($result) = $slave_dbh->selectrow_array($sql);
@@ -10866,6 +10955,9 @@ sub catchup_to_master {
             timeout       => $timeout,
             master_status => $master_status
       );
+      if ($result->{error}) {
+          die $result->{error};
+      }
       if ( !defined $result->{result} ) {
          $slave_status = $self->get_slave_status($slave);
          if ( !$self->slave_is_running($slave_status) ) {
@@ -12379,15 +12471,16 @@ eval {
    require HTTP::Micro;
 };
 
+my $home    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
+my @vc_dirs = (
+   '/etc/percona',
+   '/etc/percona-toolkit',
+   '/tmp',
+   "$home",
+);
+
 {
    my $file    = 'percona-version-check';
-   my $home    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
-   my @vc_dirs = (
-      '/etc/percona',
-      '/etc/percona-toolkit',
-      '/tmp',
-      "$home",
-   );
 
    sub version_check_file {
       foreach my $dir ( @vc_dirs ) {
@@ -12604,6 +12697,46 @@ sub get_instance_id {
 }
 
 
+sub get_uuid {
+    my $uuid_file = '/.percona-toolkit.uuid';
+    foreach my $dir (@vc_dirs) {
+        my $filename = $dir.$uuid_file;
+        my $uuid=_read_uuid($filename);
+        return $uuid if $uuid;
+    }
+
+    my $filename = $ENV{"HOME"} . $uuid_file;
+    my $uuid = _generate_uuid();
+
+    open(my $fh, '>', $filename) or die "Could not open file '$filename' $!";
+    print $fh $uuid;
+    close $fh;
+
+    return $uuid;
+}   
+
+sub _generate_uuid {
+    return sprintf+($}="%04x")."$}-$}-$}-$}-".$}x3,map rand 65537,0..7;
+}
+
+sub _read_uuid {
+    my $filename = shift;
+    my $fh;
+
+    eval {
+        open($fh, '<:encoding(UTF-8)', $filename);
+    };
+    return if ($EVAL_ERROR);
+
+    my $uuid;
+    eval { $uuid = <$fh>; };
+    return if ($EVAL_ERROR);
+
+    chomp $uuid;
+    return $uuid;
+}
+
+
 sub pingback {
    my (%args) = @_;
    my @required_args = qw(url instances);
@@ -12640,7 +12773,7 @@ sub pingback {
    my $client_content = encode_client_response(
       items      => $items,
       versions   => $versions,
-      general_id => md5_hex( hostname() ),
+      general_id => get_uuid(),
    );
 
    my $client_response = {
@@ -14104,13 +14237,14 @@ sub main {
 
    if ( $o->get('output') =~ /slowlog/i ) {
       my $w = new SlowLogWriter();
+      my $field = $o->get('output') eq 'secure-slowlog' ? 'fingerprint' : '';
       $pipeline->add(
          name    => '--output slowlog',
          process => sub {
             my ( $args ) = @_;
             my $event = $args->{event};
             PTDEBUG && _d('callback: --output slowlog');
-            $w->write(*STDOUT, $event);
+            $w->write(*STDOUT, $event, $field);
             return $args;
          },
       );
@@ -14397,13 +14531,15 @@ sub print_reports {
                           ? 'JSONReportFormatter'
                           : 'QueryReportFormatter';
          my $qrf = $report_class->new(
-            dbh           => $ep_dbh,
-            QueryReview   => $args{QueryReview},
-            QueryRewriter => $args{QueryRewriter},
-            OptionParser  => $args{OptionParser},
-            QueryParser   => $args{QueryParser},
-            Quoter        => $args{Quoter},
-            show_all      => $show_all,
+            dbh                 => $ep_dbh,
+            QueryReview         => $args{QueryReview},
+            QueryRewriter       => $args{QueryRewriter},
+            OptionParser        => $args{OptionParser},
+            QueryParser         => $args{QueryParser},
+            Quoter              => $args{Quoter},
+            show_all            => $show_all,
+            max_hostname_length => $o->get('max-hostname-length'),
+            max_line_length     => $o->get('max-line-length'),
          );
 
          $qrf->print_reports(
@@ -15796,6 +15932,18 @@ type: string
 
 Print all output to this file when daemonized.
 
+=item --max-hostname-length
+
+type: int; default: 10
+
+Trim host names in reports to this length. 0=Do not trim host names.
+
+=item --max-line-length
+
+type: int; default: 74
+
+Trim lines to this length. 0=Do not trim lines.
+
 =item --order-by
 
 type: Array; default: Query_time:sum
@@ -15861,12 +16009,13 @@ type: string; default: report
 
 How to format and print the query analysis results.  Accepted values are:
 
-   VALUE      FORMAT
-   =======    ==============================
-   report     Standard query analysis report
-   slowlog    MySQL slow log
-   json       JSON, on array per query class
-   json-anon  JSON without example queries
+   VALUE          FORMAT
+   =======        ==============================
+   report         Standard query analysis report
+   slowlog        MySQL slow log
+   json           JSON, on array per query class
+   json-anon      JSON without example queries
+   secure-slowlog JSON without example queries
 
 The entire C<report> output can be disabled by specifying C<--no-report>
 (see L<"--[no]report">), and its sections can be disabled or rearranged
@@ -16734,7 +16883,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2008-2017 Percona LLC and/or its affiliates.
+This program is copyright 2008-2018 Percona LLC and/or its affiliates.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
@@ -16752,6 +16901,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-query-digest 3.0.2
+pt-query-digest 3.0.8
 
 =cut

@@ -576,7 +576,6 @@ sub no_diff {
       `cat $expected_output | sed $sed_args > /tmp/pt-test-outfile-trf`;
       $expected_output = "/tmp/pt-test-outfile-trf";
    }
-
    # Determine cmd type and run it.
    if ( ref $cmd eq 'CODE' ) {
       output($cmd, file => $tmp_file);
@@ -654,7 +653,7 @@ sub no_diff {
    if ( $res_file ne $tmp_file ) {
       unlink $res_file if -f $res_file;
    }
-
+   
    if ( $cmp_file ne $expected_output ) {
       unlink $cmp_file if -f $cmp_file;
    }

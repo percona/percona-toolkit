@@ -1,0 +1,41 @@
+{
+	"op" : "update",
+	"ns" : "test.coll",
+	"query" : {
+		"a" : {
+			"$gte" : 2
+		}
+	},
+	"updateobj" : {
+		"$set" : {
+			"c" : 1
+		},
+		"$inc" : {
+			"a" : -10
+		}
+	},
+	"nscanned" : 1,
+	"nscannedObjects" : 1,
+	"nMatched" : 1,
+	"nModified" : 1,
+	"keyUpdates" : 1,
+	"numYield" : 0,
+	"lockStats" : {
+		"timeLockedMicros" : {
+			"r" : NumberLong(1234),
+			"w" : NumberLong(4321)
+		},
+		"timeAcquiringMicros" : {
+			"r" : NumberLong(9876),
+			"w" : NumberLong(6789)
+		}
+	},
+	"millis" : 42,
+	"execStats" : {
+		
+	},
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
+	"client" : "127.0.0.1",
+	"allUsers" : [ ],
+	"user" : ""
+}

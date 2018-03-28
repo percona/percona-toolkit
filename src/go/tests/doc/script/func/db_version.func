@@ -1,0 +1,5 @@
+#!/bin/sh
+
+db_version() {
+    mongo --quiet --eval 'db.serverBuildInfo().versionArray.slice(0,3).join(".")'
+}

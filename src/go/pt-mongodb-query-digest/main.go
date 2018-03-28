@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -50,6 +52,7 @@ type options struct {
 	LogLevel        string
 	NoVersionCheck  bool
 	OrderBy         []string
+	OutputFormat    string
 	Password        string
 	SkipCollections []string
 	SSLCAFile       string
@@ -58,11 +61,17 @@ type options struct {
 	Version         bool
 }
 
+type report struct {
+	Headers     []string
+	QueryStats  []stats.QueryStats
+	QueryTotals stats.QueryStats
+}
+
 func main() {
 
 	opts, err := getOptions()
 	if err != nil {
-		log.Errorf("error processing commad line arguments: %s", err)
+		log.Errorf("error processing command line arguments: %s", err)
 		os.Exit(1)
 	}
 	if opts == nil && err == nil {
@@ -95,6 +104,8 @@ func main() {
 		}
 	}
 
+	log.Debugf("Command line options:\n%+v\n", opts)
+
 	di := getDialInfo(opts)
 	if di.Database == "" {
 		log.Errorln("must indicate a database as host:[port]/database")
@@ -104,6 +115,7 @@ func main() {
 
 	dialer := pmgo.NewDialer()
 	session, err := dialer.DialWithInfo(di)
+	log.Debugf("Dial Info: %+v\n", di)
 	if err != nil {
 		log.Errorf("Error connecting to the db: %s while trying to connect to %s", err, di.Addrs[0])
 		os.Exit(3)
@@ -133,8 +145,7 @@ func main() {
 		filters = append(filters, filter.NewFilterByCollection(opts.SkipCollections))
 	}
 
-	query := bson.M{"op": bson.M{"$nin": []string{"getmore", "delete"}}}
-	i := session.DB(di.Database).C("system.profile").Find(query).Sort("-$natural").Iter()
+	i := session.DB(di.Database).C("system.profile").Find(bson.M{}).Sort("-$natural").Iter()
 
 	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
 	s := stats.New(fp)
@@ -147,25 +158,58 @@ func main() {
 	queriesStats := queries.CalcQueriesStats(uptime)
 	sortedQueryStats := sortQueries(queriesStats, opts.OrderBy)
 
-	printHeader(opts)
-
-	queryTotals := queries.CalcTotalQueriesStats(uptime)
-	tt, _ := template.New("query").Funcs(template.FuncMap{
-		"Format": format,
-	}).Parse(getTotalsTemplate())
-	tt.Execute(os.Stdout, queryTotals)
-
-	t, _ := template.New("query").Funcs(template.FuncMap{
-		"Format": format,
-	}).Parse(getQueryTemplate())
-
 	if opts.Limit > 0 && len(sortedQueryStats) > opts.Limit {
 		sortedQueryStats = sortedQueryStats[:opts.Limit]
 	}
-	for _, qs := range sortedQueryStats {
-		t.Execute(os.Stdout, qs)
+
+	if len(queries) == 0 {
+		log.Errorf("No queries found in profiler information for database %q\n", di.Database)
+		return
+	}
+	rep := report{
+		Headers:     getHeaders(opts),
+		QueryTotals: queries.CalcTotalQueriesStats(uptime),
+		QueryStats:  sortedQueryStats,
 	}
 
+	out, err := formatResults(rep, opts.OutputFormat)
+	if err != nil {
+		log.Errorf("Cannot parse the report: %s", err.Error())
+		os.Exit(5)
+	}
+
+	fmt.Println(string(out))
+
+}
+
+func formatResults(rep report, outputFormat string) ([]byte, error) {
+	var buf *bytes.Buffer
+
+	switch outputFormat {
+	case "json":
+		b, err := json.MarshalIndent(rep, "", "    ")
+		if err != nil {
+			return nil, fmt.Errorf("[Error] Cannot convert results to json: %s", err.Error())
+		}
+		buf = bytes.NewBuffer(b)
+	default:
+		buf = new(bytes.Buffer)
+
+		tt, _ := template.New("query").Funcs(template.FuncMap{
+			"Format": format,
+		}).Parse(getTotalsTemplate())
+		tt.Execute(buf, rep.QueryTotals)
+
+		t, _ := template.New("query").Funcs(template.FuncMap{
+			"Format": format,
+		}).Parse(getQueryTemplate())
+
+		for _, qs := range rep.QueryStats {
+			t.Execute(buf, qs)
+		}
+	}
+
+	return buf.Bytes(), nil
 }
 
 // format scales a number and returns a string made of the scaled value and unit (K=Kilo, M=Mega, T=Tera)
@@ -211,6 +255,7 @@ func getOptions() (*options, error) {
 		OrderBy:         strings.Split(DEFAULT_ORDERBY, ","),
 		SkipCollections: strings.Split(DEFAULT_SKIPCOLLECTIONS, ","),
 		AuthDB:          DEFAULT_AUTHDB,
+		OutputFormat:    "text",
 	}
 
 	gop := getopt.New()
@@ -230,6 +275,7 @@ func getOptions() (*options, error) {
 	gop.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin", "Database to use for optional MongoDB authentication. Default: admin")
 	gop.StringVarLong(&opts.Database, "database", 'd', "", "MongoDB database to profile")
 	gop.StringVarLong(&opts.LogLevel, "log-level", 'l', "Log level: error", "panic, fatal, error, warn, info, debug. Default: error")
+	gop.StringVarLong(&opts.OutputFormat, "output-format", 'f', "text", "Output format: text, json. Default: text")
 	gop.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").SetOptional()
 	gop.StringVarLong(&opts.User, "username", 'u', "Username to use for optional MongoDB authentication")
 	gop.StringVarLong(&opts.SSLCAFile, "sslCAFile", 0, "SSL CA cert file used for authentication")
@@ -262,6 +308,11 @@ func getOptions() (*options, error) {
 		}
 	}
 
+	if opts.OutputFormat != "json" && opts.OutputFormat != "text" {
+		log.Infof("Invalid output format '%s'. Using text format", opts.OutputFormat)
+		opts.OutputFormat = "text"
+	}
+
 	if gop.IsSet("password") && opts.Password == "" {
 		print("Password: ")
 		pass, err := gopass.GetPasswd()
@@ -278,10 +329,10 @@ func getDialInfo(opts *options) *pmgo.DialInfo {
 	di, _ := mgo.ParseURL(opts.Host)
 	di.FailFast = true
 
-	if di.Username != "" {
+	if di.Username == "" {
 		di.Username = opts.User
 	}
-	if di.Password != "" {
+	if di.Password == "" {
 		di.Password = opts.Password
 	}
 	if opts.AuthDB != "" {
@@ -304,11 +355,13 @@ func getDialInfo(opts *options) *pmgo.DialInfo {
 	return pmgoDialInfo
 }
 
-func printHeader(opts *options) {
-	fmt.Printf("%s - %s\n", TOOLNAME, time.Now().Format(time.RFC1123Z))
-	fmt.Printf("Host: %s\n", opts.Host)
-	fmt.Printf("Skipping profiled queries on these collections: %v\n", opts.SkipCollections)
-	fmt.Println("")
+func getHeaders(opts *options) []string {
+	h := []string{
+		fmt.Sprintf("%s - %s\n", TOOLNAME, time.Now().Format(time.RFC1123Z)),
+		fmt.Sprintf("Host: %s\n", opts.Host),
+		fmt.Sprintf("Skipping profiled queries on these collections: %v\n", opts.SkipCollections),
+	}
+	return h
 }
 
 func getQueryTemplate() string {
@@ -323,9 +376,9 @@ func getQueryTemplate() string {
 # Exec Time ms        {{printf "% 4.0f" .QueryTime.Pct}}   {{printf "% 7.0f " .QueryTime.Total}}    {{printf "% 7.0f " .QueryTime.Min}}    {{printf "% 7.0f " .QueryTime.Max}}    {{printf "% 7.0f " .QueryTime.Avg}}    {{printf "% 7.0f " .QueryTime.Pct95}}    {{printf "% 7.0f " .QueryTime.StdDev}}    {{printf "% 7.0f " .QueryTime.Median}}
 # Docs Scanned        {{printf "% 4.0f" .Scanned.Pct}}   {{Format .Scanned.Total 7.2}}    {{Format .Scanned.Min 7.2}}    {{Format .Scanned.Max 7.2}}    {{Format .Scanned.Avg 7.2}}    {{Format .Scanned.Pct95 7.2}}    {{Format .Scanned.StdDev 7.2}}    {{Format .Scanned.Median 7.2}}
 # Docs Returned       {{printf "% 4.0f" .Returned.Pct}}   {{Format .Returned.Total 7.2}}    {{Format .Returned.Min 7.2}}    {{Format .Returned.Max 7.2}}    {{Format .Returned.Avg 7.2}}    {{Format .Returned.Pct95 7.2}}    {{Format .Returned.StdDev 7.2}}    {{Format .Returned.Median 7.2}}
-# Bytes recv          {{printf "% 4.0f" .ResponseLength.Pct}}   {{Format .ResponseLength.Total 7.2}}    {{Format .ResponseLength.Min 7.2}}    {{Format .ResponseLength.Max 7.2}}    {{Format .ResponseLength.Avg 7.2}}    {{Format .ResponseLength.Pct95 7.2}}    {{Format .ResponseLength.StdDev 7.2}}    {{Format .ResponseLength.Median 7.2}}
+# Bytes sent          {{printf "% 4.0f" .ResponseLength.Pct}}   {{Format .ResponseLength.Total 7.2}}    {{Format .ResponseLength.Min 7.2}}    {{Format .ResponseLength.Max 7.2}}    {{Format .ResponseLength.Avg 7.2}}    {{Format .ResponseLength.Pct95 7.2}}    {{Format .ResponseLength.StdDev 7.2}}    {{Format .ResponseLength.Median 7.2}}
 # String:
-# Namespaces          {{.Namespace}}
+# Namespace           {{.Namespace}}
 # Operation           {{.Operation}}
 # Fingerprint         {{.Fingerprint}}
 # Query               {{.Query}}
@@ -343,7 +396,7 @@ func getTotalsTemplate() string {
 # Exec Time ms        {{printf "% 4.0f" .QueryTime.Pct}}   {{printf "% 7.0f " .QueryTime.Total}}    {{printf "% 7.0f " .QueryTime.Min}}    {{printf "% 7.0f " .QueryTime.Max}}    {{printf "% 7.0f " .QueryTime.Avg}}    {{printf "% 7.0f " .QueryTime.Pct95}}    {{printf "% 7.0f " .QueryTime.StdDev}}    {{printf "% 7.0f " .QueryTime.Median}}
 # Docs Scanned        {{printf "% 4.0f" .Scanned.Pct}}   {{Format .Scanned.Total 7.2}}    {{Format .Scanned.Min 7.2}}    {{Format .Scanned.Max 7.2}}    {{Format .Scanned.Avg 7.2}}    {{Format .Scanned.Pct95 7.2}}    {{Format .Scanned.StdDev 7.2}}    {{Format .Scanned.Median 7.2}}
 # Docs Returned       {{printf "% 4.0f" .Returned.Pct}}   {{Format .Returned.Total 7.2}}    {{Format .Returned.Min 7.2}}    {{Format .Returned.Max 7.2}}    {{Format .Returned.Avg 7.2}}    {{Format .Returned.Pct95 7.2}}    {{Format .Returned.StdDev 7.2}}    {{Format .Returned.Median 7.2}}
-# Bytes recv          {{printf "% 4.0f" .ResponseLength.Pct}}   {{Format .ResponseLength.Total 7.2}}    {{Format .ResponseLength.Min 7.2}}    {{Format .ResponseLength.Max 7.2}}    {{Format .ResponseLength.Avg 7.2}}    {{Format .ResponseLength.Pct95 7.2}}    {{Format .ResponseLength.StdDev 7.2}}    {{Format .ResponseLength.Median 7.2}}
+# Bytes sent          {{printf "% 4.0f" .ResponseLength.Pct}}   {{Format .ResponseLength.Total 7.2}}    {{Format .ResponseLength.Min 7.2}}    {{Format .ResponseLength.Max 7.2}}    {{Format .ResponseLength.Avg 7.2}}    {{Format .ResponseLength.Pct95 7.2}}    {{Format .ResponseLength.StdDev 7.2}}    {{Format .ResponseLength.Median 7.2}}
 # 
 `
 	return t
@@ -423,15 +476,11 @@ func sortQueries(queries []stats.QueryStats, orderby []string) []stats.QueryStat
 
 		case "ratio":
 			f = func(c1, c2 *stats.QueryStats) bool {
-				ratio1 := c1.Scanned.Max / c1.Returned.Max
-				ratio2 := c2.Scanned.Max / c2.Returned.Max
-				return ratio1 < ratio2
+				return c1.Ratio < c2.Ratio
 			}
 		case "-ratio":
 			f = func(c1, c2 *stats.QueryStats) bool {
-				ratio1 := c1.Scanned.Max / c1.Returned.Max
-				ratio2 := c2.Scanned.Max / c2.Returned.Max
-				return ratio1 > ratio2
+				return c1.Ratio > c2.Ratio
 			}
 
 		//
@@ -483,6 +532,7 @@ func isProfilerEnabled(dialer pmgo.Dialer, di *pmgo.DialInfo) (bool, error) {
 	for _, member := range replicaMembers {
 		// Stand alone instances return state = REPLICA_SET_MEMBER_STARTUP
 		di.Addrs = []string{member.Name}
+		di.Direct = true
 		session, err := dialer.DialWithInfo(di)
 		if err != nil {
 			continue

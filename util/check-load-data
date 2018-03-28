@@ -37,6 +37,7 @@ my $dbh = DBI->connect(
       RaiseError         => 1,
       PrintError         => 1,
       ShowErrorStatement => 1,
+      #      mysql_local_infile => 1,
    });
 
 $dbh->do("CREATE TABLE IF NOT EXISTS percona_test.load_data (i int)");
@@ -44,7 +45,7 @@ $dbh->do("CREATE TABLE IF NOT EXISTS percona_test.load_data (i int)");
 `echo 1 > /tmp/load_data_test.$$`;
 
 eval {
-   $dbh->do("LOAD DATA LOCAL INFILE '/tmp/load_data_test.$$' INTO TABLE percona_test.load_data");
+    $dbh->do("LOAD DATA INFILE '/tmp/load_data_test.$$' INTO TABLE percona_test.load_data");
 };
 
 if ( $EVAL_ERROR ) {

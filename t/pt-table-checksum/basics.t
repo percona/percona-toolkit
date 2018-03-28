@@ -105,7 +105,7 @@ ok(
 
 $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 
-my $max_rows = $sandbox_version < '5.7' ? 75 : 100;
+my $max_rows = $sandbox_version >= '8.0' ? 102 : $sandbox_version < '5.7' ? 90 : 100;
 ok(
    $row->[0] >= 75 && $row->[0] <= $max_rows,
    'Between 75 and 90 chunks on master'
@@ -196,6 +196,7 @@ $exit_status = pt_table_checksum::main(@args,
 $slave1_dbh->do("update percona.checksums set this_crc='' where db='sakila' and tbl='city' and (chunk=1 or chunk=6)");
 PerconaTest::wait_for_table($slave2_dbh, "percona.checksums", "db='sakila' and tbl='city' and (chunk=1 or chunk=6) and thic_crc=''");
 
+# 9
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args, qw(--replicate-check-only)) },
@@ -214,6 +215,7 @@ $output = output(
    stderr => 1,
 );
 
+# 10
 like(
    $output,
    qr/infinite loop detected/,
@@ -223,13 +225,14 @@ like(
 # ############################################################################
 # Oversize chunk.
 # ############################################################################
+# 11
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args,
          qw(-t osc.t2 --chunk-size 8 --explain --explain)) },
       "$sample/oversize-chunks.txt",
    ),
-   "Upper boundary same as next lower boundary"
+   "Upper boundary same as next lower boundary",
 );
 
 $output = output(
@@ -431,7 +434,7 @@ is(
 # Test --where.
 # #############################################################################
 $sb->load_file('master', 't/pt-table-checksum/samples/600cities.sql');
-$master_dbh->do("LOAD DATA LOCAL INFILE '$trunk/t/pt-table-checksum/samples/600cities.data' INTO TABLE test.t");
+$master_dbh->do("LOAD DATA INFILE '$trunk/t/pt-table-checksum/samples/600cities.data' INTO TABLE test.t");
 
 $output = output(
    sub { $exit_status = pt_table_checksum::main(@args,
