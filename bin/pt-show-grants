@@ -1922,7 +1922,8 @@ sub main {
    my $ignore_users = $o->get('ignore');
 
    my $exit_status = 0;
-   if (my $roles = get_roles($dbh)) {
+   my $roles = get_roles($dbh);
+   if ($roles && scalar @$roles > 0) {
        print "-- Roles\n";
        my $count=0;
 
@@ -1940,7 +1941,7 @@ sub main {
 
    USER:
    foreach my $u ( @$users ) {
-      my $user_host = "`$u->{User}`\@`$u->{Host}`";
+      my $user_host = "'$u->{User}'\@'$u->{Host}'";
       if ( $ignore_users && $ignore_users->{$user_host} ) {
          PTDEBUG && _d('Ignoring user', $user_host);
          next USER;
@@ -2115,7 +2116,6 @@ __EOQ
     my $roles;
     eval { $roles = $dbh->selectall_arrayref($query, { Slice => {} }) };
     if ($EVAL_ERROR) {
-        warn "Cannot list roles: $EVAL_ERROR";
         PTDEBUG && _d("Cannot list roles: $EVAL_ERROR");
     }
     return $roles;
