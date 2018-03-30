@@ -25,7 +25,7 @@ if ( !$dbh ) {
 } elsif ($sandbox_version < '8.0') {
     plan skip_all => "There are no roles in this MySQL version. Need MySQL 8.0+";
 } else {
-   plan tests => 4;
+   plan tests => 49;
 }
 
 $sb->wipe_clean($dbh);
@@ -77,6 +77,26 @@ unlike(
 
 );
 
+## Do a cleanup and try to run all the queries from the output
+for my $query(@$cleanup_queries) {
+    $sb->do_as_root('master', $query);
+}
+
+my @lines = split(/\n/, $output);
+my $count=0;
+
+for my $query(@lines) {                       
+    next if $query =~ m/^-- /;
+    $count++;
+    eval { $sb->do_as_root('master', $query) };
+    is(
+        $EVAL_ERROR,
+        '',
+        "Ran query $count from the output of pt-show grants",
+    ) or diag("Cannot execute query from the output: $query -> $EVAL_ERROR");
+}
+
+## Cleanup to leave sandbox ready for next test file.
 for my $query(@$cleanup_queries) {
     $sb->do_as_root('master', $query);
 }
