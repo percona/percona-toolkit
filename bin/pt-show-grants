@@ -1922,6 +1922,23 @@ sub main {
    my $ignore_users = $o->get('ignore');
 
    my $exit_status = 0;
+   my $roles = get_roles($dbh);
+   if ($roles && scalar @$roles > 0) {
+       print "-- Roles\n";
+       my $count=0;
+
+       for my $role (@$roles) {
+           next if ($o->get("skip-unused-roles") && $role->{active} == 0);
+           $count++;
+           printf('CREATE ROLE IF NOT EXISTS `%s`;'."\n", $role->{name});
+       }
+
+       if ($count == 0) {
+           print "No active roles found\n";
+       }
+       print "-- End of roles listing\n";
+   }
+
    USER:
    foreach my $u ( @$users ) {
       my $user_host = "'$u->{User}'\@'$u->{Host}'";
@@ -2082,6 +2099,38 @@ sub parse_user {
          /xms;
    $host ||= '%';
    return ( $user, $host );
+}
+
+sub get_roles {
+    my $dbh = shift;
+    my $query = <<__EOQ;
+    SELECT DISTINCT user.user AS name, IF(from_user IS NULL,0, 1) AS active
+      FROM mysql.user
+ LEFT JOIN mysql.role_edges ON role_edges.from_user=user.user
+     WHERE `account_locked`='Y'
+       AND `password_expired`='Y'
+       AND `authentication_string`=''
+__EOQ
+    PTDEBUG && _d("Getting roles");
+    PTDEBUG && _d($query);
+    my $roles;
+    eval { $roles = $dbh->selectall_arrayref($query, { Slice => {} }) };
+    if ($EVAL_ERROR) {
+        PTDEBUG && _d("Cannot list roles: $EVAL_ERROR");
+    }
+    return $roles;
+}
+
+sub is_role {
+    my ($users, $grant) = @_;
+    foreach my $u ( @$users ) {
+        my $user_host = "`$u->{User}`\@`$u->{Host}`";
+        warn "> user_host: $user_host";
+        if ($grant eq $user_host) {
+            return 1;
+        }
+    }
+    return 0;
 }
 
 sub split_grants {
@@ -2345,6 +2394,10 @@ Variables specified on the command line override these defaults.  For
 example, specifying C<--set-vars wait_timeout=500> overrides the defaultvalue of C<10000>.
 
 The tool prints a warning and continues if a variable cannot be set.
+
+=item --skip-unused-roles
+
+When dumping MySQL 8+ roles, skip unused roles.
 
 =item --socket
 
