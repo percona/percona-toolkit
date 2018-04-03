@@ -5505,17 +5505,17 @@ sub wait_for_master {
    my $result;
    my $waited;
    if ( $master_status ) {
-      my $slave_status;
-      eval {
-          $slave_status = $self->get_slave_status($slave_dbh);
-      };
-      if ($EVAL_ERROR) {
-          return {
-              result => undef,
-              waited => 0,
-              error  =>'Wait for master: this is a multi-master slave but "channel" was not specified on the command line',
-          };
-      }
+      #      my $slave_status;
+      #      eval {
+      #          $slave_status = $self->get_slave_status($slave_dbh);
+      #      };
+      #      if ($EVAL_ERROR) {
+      #          return {
+      #              result => undef,
+      #              waited => 0,
+      #              error  =>'Wait for master: this is a multi-master slave but "channel" was not specified on the command line',
+      #          };
+      #      }
       my $server_version = VersionParser->new($slave_dbh);
       my $channel_sql = $server_version > '5.6' && $self->{channel} ? ", '$self->{channel}'" : '';
       my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', $master_status->{position}, $timeout $channel_sql)";
