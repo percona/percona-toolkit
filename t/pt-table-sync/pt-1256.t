@@ -79,7 +79,7 @@ is(
     "Character set is correct",
 );
 
-SKIP {
+SKIP: {
     skip "Skipping in MySQL 8.0.4-rc since there is an error in the server itself", 1 if ($sandbox_version ge '8.0');
     # 3
     $output = `$trunk/bin/pt-table-sync --execute --lock-and-rename h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=t1 t=t2 2>&1`;
