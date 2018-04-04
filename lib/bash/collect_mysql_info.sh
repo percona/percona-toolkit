@@ -118,6 +118,10 @@ collect_mysql_processlist () {
 
 collect_mysql_users () {
    $CMD_MYSQL $EXT_ARGV -ss -e 'SELECT COUNT(*), SUM(user=""), SUM(password=""), SUM(password NOT LIKE "*%") FROM mysql.user' 2>/dev/null
+   if [ "$?" -ne 0 ]; then
+       $CMD_MYSQL $EXT_ARGV -ss -e 'SELECT COUNT(*), SUM(user=""), SUM(authentication_string=""), SUM(authentication_string NOT LIKE "*%") FROM mysql.user' 2>/dev/null
+   fi
+
 }
 
 collect_mysql_show_slave_hosts () {
