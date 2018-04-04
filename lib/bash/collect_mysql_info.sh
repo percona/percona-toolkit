@@ -108,12 +108,20 @@ collect_mysql_innodb_status () {
    $CMD_MYSQL $EXT_ARGV -ssE -e 'SHOW /*!50000 ENGINE*/ INNODB STATUS' 2>/dev/null
 }
 
+collect_mysql_ndb_status () {
+   $CMD_MYSQL $EXT_ARGV -ssE -e 'show /*!50000 ENGINE*/ NDB STATUS' 2>/dev/null
+}
+
 collect_mysql_processlist () {
    $CMD_MYSQL $EXT_ARGV -ssE -e 'SHOW FULL PROCESSLIST' 2>/dev/null
 }
 
 collect_mysql_users () {
    $CMD_MYSQL $EXT_ARGV -ss -e 'SELECT COUNT(*), SUM(user=""), SUM(password=""), SUM(password NOT LIKE "*%") FROM mysql.user' 2>/dev/null
+   if [ "$?" -ne 0 ]; then
+       $CMD_MYSQL $EXT_ARGV -ss -e 'SELECT COUNT(*), SUM(user=""), SUM(authentication_string=""), SUM(authentication_string NOT LIKE "*%") FROM mysql.user' 2>/dev/null
+   fi
+
 }
 
 collect_mysql_show_slave_hosts () {
@@ -223,6 +231,7 @@ collect_mysql_info () {
    collect_mysql_plugins       > "$dir/mysql-plugins"
    collect_mysql_slave_status  > "$dir/mysql-slave"
    collect_mysql_innodb_status > "$dir/innodb-status"
+   collect_mysql_ndb_status    > "$dir/ndb-status"
    collect_mysql_processlist   > "$dir/mysql-processlist"   
    collect_mysql_users         > "$dir/mysql-users"
 

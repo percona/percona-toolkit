@@ -557,6 +557,14 @@ format_innodb_status () {
    fi
 }
 
+format_ndb_status() {
+   local file=$1
+
+   [ -e "$file" ] || return
+   # We could use "& \n" but that does not seem to work on bsd sed. 
+   egrep '^[ \t]*Name:|[ \t]*Status:' $file|sed 's/^[ \t]*//g'|while read line; do echo $line; echo $line | grep '^Status:'>/dev/null && echo ; done
+}
+
 # Summarizes per-database statistics for a bunch of different things: count of
 # tables, views, etc.  $1 is the file name.  $2 is the database name; if none,
 # then there should be multiple databases.
@@ -988,6 +996,32 @@ section_innodb () {
             "$(get_var innodb_adaptive_checkpoint "$variables_file")"
 }
 
+section_rocksdb () {
+    local variables_file="$1"
+    local status_file="$2"
+
+    local NAME_VAL_LEN=32
+
+    [ -e "$variables_file" -a -e "$status_file" ] || return
+
+    name_val "Block Cache Size" "$(shorten $(get_var rocksdb_block_cache_size "$variables_file") 0)"
+    name_val "Block Size" "$(shorten $(get_var rocksdb_block_size "$variables_file") 0)"
+    name_val "Bytes Per Sync" "$(shorten $(get_var rocksdb_bytes_per_sync "$variables_file") 0)"
+    name_val "Compaction Seq Deletes " "$(shorten $(get_var rocksdb_compaction_sequential_deletes "$variables_file") 0)"
+    name_val "Compaction Seq Deletes Count SD" "$(get_var rocksdb_compaction_sequential_deletes_count_sd "$variables_file")"
+    name_val "Compaction Seq Deletes Window" "$(shorten $(get_var rocksdb_compaction_sequential_deletes_window "$variables_file") 0)"
+    name_val "Default CF Options" "$(get_var rocksdb_default_cf_options "$variables_file")"
+    name_val "Max Background Jobs" "$(shorten $(get_var rocksdb_max_background_jobs "$variables_file") 0)"
+    name_val "Max Block Cache Size" "$(shorten $(get_var rocksdb_max_block_cache_size "$variables_file") 0)"
+    name_val "Max Block Size" "$(shorten $(get_var rocksdb_max_block_size "$variables_file") 0)"
+    name_val "Max Open Files" "$(shorten $(get_var rocksdb_max_open_files "$variables_file") 0)"
+    name_val "Max Total Wal Size" "$(shorten $(get_var rocksdb_max_total_wal_size "$variables_file") 0)"
+    name_val "Rate Limiter Bytes Per Second" "$(shorten $(get_var rocksdb_rate_limiter_bytes_per_sec "$variables_file") 0)"
+    name_val "Rate Limiter Bytes Per Sync" "$(shorten $(get_var rocksdb_bytes_per_sync "$variables_file") 0)"
+    name_val "Rate Limiter Wal Bytes Per Sync" "$(shorten $(get_var rocksdb_wal_bytes_per_sync "$variables_file") 0)"
+    name_val "Table Cache NumHardBits" "$(shorten $(get_var rocksdb_table_cache_numshardbits "$variables_file") 0)"
+    name_val "Wal Bytes per Sync" "$(shorten $(get_var rocksdb_wal_bytes_per_sync "$variables_file") 0)"
+}
 
 section_noteworthy_variables () {
    local file="$1"
@@ -1113,6 +1147,19 @@ section_mysqld () {
    done < "$executables_file"
 }
 
+section_slave_hosts () {
+   local slave_hosts_file="$1"
+
+   [ -e "$slave_hosts_file" ] || return
+
+   section "Slave Hosts"
+   if [ -s "$slave_hosts_file" ]; then
+       cat "$slave_hosts_file"
+   else
+       echo "No slaves found"
+   fi
+}
+
 section_mysql_files () {
    local variables_file="$1"
 
@@ -1165,6 +1212,40 @@ parse_wsrep_provider_options () {
    ' "$looking_for"
 }
 
+report_jemalloc_enabled() {
+  local JEMALLOC_STATUS=''
+  local GENERAL_JEMALLOC_STATUS=0
+  local JEMALLOC_LOCATION=''
+
+  for PID in $(pidof mysqld); do
+     grep -qc jemalloc /proc/${PID}/environ || ldd $(which mysqld) 2>/dev/null | grep -qc jemalloc
+     JEMALLOC_STATUS=$?
+     if [ $JEMALLOC_STATUS = 1 ]; then
+       echo "jemalloc is not enabled in MySQL config for process with ID ${PID}" 
+     else
+       echo "jemalloc enabled in MySQL config for process with ID ${PID}"
+       GENERAL_JEMALLOC_STATUS=1
+     fi
+  done
+
+  if [ $GENERAL_JEMALLOC_STATUS = 1 ]; then
+     # Check location for libjemalloc.so.1
+     #for libjemall in "${SCRIPT_PWD}/lib/mysql" "/usr/lib64" "/usr/lib/x86_64-linux-gnu" "/usr/lib"; do
+     for libjemall in "/usr/lib64" "/usr/lib/x86_64-linux-gnu" "/usr/lib"; do
+       if [ -r "$libjemall/libjemalloc.so.1" ]; then
+         JEMALLOC_LOCATION="$libjemall/libjemalloc.so.1"
+         break
+       fi
+     done
+     if [ -z $JEMALLOC_LOCATION ]; then
+       echo "Jemalloc library not found"
+     else
+       echo "Using jemalloc from $JEMALLOC_LOCATION"
+     fi
+  fi
+ 
+}
+
 report_mysql_summary () {
    local dir="$1"
 
@@ -1182,6 +1263,7 @@ report_mysql_summary () {
 
    section_mysqld "$dir/mysqld-executables" "$dir/mysql-variables"
 
+   section_slave_hosts "$dir/mysql-slave-hosts"
    # ########################################################################
    # General date, hostname, etc
    # ########################################################################
@@ -1402,12 +1484,27 @@ report_mysql_summary () {
    # ########################################################################
    section "InnoDB"
    local have_innodb="$(get_var "have_innodb" "$dir/mysql-variables")"
-   if [ "${have_innodb}" = "YES" ]; then
+   local innodb_version="$(get_var "innodb_version" "$dir/mysql-variables")"
+   if [ "${have_innodb}" = "YES" ] || [ -n "${innodb_version}" ]; then
       section_innodb "$dir/mysql-variables" "$dir/mysql-status"
 
       if [ -s "$dir/innodb-status" ]; then
          format_innodb_status "$dir/innodb-status"
       fi
+   fi
+
+   local has_rocksdb=$($CMD_MYSQL $EXT_ARGV -ss -e 'SHOW ENGINES' 2>/dev/null | grep -i 'rocksdb')
+   if [ ! -z "$has_rocksdb" ]; then
+       section "RocksDB"
+       section_rocksdb "$dir/mysql-variables" "$dir/mysql-status"
+   fi
+
+   # ########################################################################
+   # NDB
+   # ########################################################################
+   if [ -s "$dir/ndb-status" ]; then
+       section "NDB"
+       format_ndb_status "$dir/ndb-status"
    fi
 
    # ########################################################################
@@ -1461,6 +1558,9 @@ report_mysql_summary () {
    else
       name_val "Config File" "Cannot autodetect or find, giving up"
    fi
+
+   section "Memory management library"
+   report_jemalloc_enabled
 
    # Make sure that we signal the end of the tool's output.
    section "The End"
