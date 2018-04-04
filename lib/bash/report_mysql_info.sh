@@ -557,6 +557,14 @@ format_innodb_status () {
    fi
 }
 
+format_ndb_status() {
+   local file=$1
+
+   [ -e "$file" ] || return
+   # We could use "& \n" but that does not seem to work on bsd sed. 
+   egrep '^[ \t]*Name:|[ \t]*Status:' $file|sed 's/^[ \t]*//g'|while read line; do echo $line; echo $line | grep '^Status:'>/dev/null && echo ; done
+}
+
 # Summarizes per-database statistics for a bunch of different things: count of
 # tables, views, etc.  $1 is the file name.  $2 is the database name; if none,
 # then there should be multiple databases.
@@ -1408,6 +1416,14 @@ report_mysql_summary () {
       if [ -s "$dir/innodb-status" ]; then
          format_innodb_status "$dir/innodb-status"
       fi
+   fi
+
+   # ########################################################################
+   # NDB
+   # ########################################################################
+   if [ -s "$dir/ndb-status" ]; then
+       section "NDB"
+       format_ndb_status "$dir/ndb-status"
    fi
 
    # ########################################################################
