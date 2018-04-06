@@ -932,9 +932,13 @@ collect_mysql_processlist () {
 collect_mysql_users () {
    $CMD_MYSQL $EXT_ARGV -ss -e 'SELECT COUNT(*), SUM(user=""), SUM(password=""), SUM(password NOT LIKE "*%") FROM mysql.user' 2>/dev/null
    if [ "$?" -ne 0 ]; then
-       $CMD_MYSQL $EXT_ARGV -ss -e 'SELECT COUNT(*), SUM(user=""), SUM(authentication_string=""), SUM(authentication_string NOT LIKE "*%") FROM mysql.user' 2>/dev/null
+       $CMD_MYSQL $EXT_ARGV -ss -e 'SELECT COUNT(*), SUM(user=""), SUM(authentication_string=""), SUM(authentication_string NOT LIKE "*%") FROM mysql.user WHERE account_locked <> "Y" AND password_expired <> "Y" AND authentication_string <> ""' 2>/dev/null
    fi
+}
 
+collect_mysql_roles () {
+   QUERY="SELECT DISTINCT User 'Role Name', if(from_user is NULL,0, 1) Active FROM mysql.user LEFT JOIN mysql.role_edges ON from_user=user WHERE account_locked='Y' AND password_expired='Y' AND authentication_string=''\G"
+   $CMD_MYSQL $EXT_ARGV -ss -e "$QUERY" 2>/dev/null
 }
 
 collect_mysql_show_slave_hosts () {
@@ -1037,6 +1041,7 @@ collect_mysql_info () {
    collect_mysql_ndb_status    > "$dir/ndb-status"
    collect_mysql_processlist   > "$dir/mysql-processlist"   
    collect_mysql_users         > "$dir/mysql-users"
+   collect_mysql_roles         > "$dir/mysql-roles"
 
    collect_mysqld_instances   "$dir/mysql-variables"  > "$dir/mysqld-instances"
    collect_mysqld_executables "$dir/mysqld-instances" > "$dir/mysqld-executables"
@@ -1591,6 +1596,12 @@ format_ndb_status() {
 
    [ -e "$file" ] || return
    egrep '^[ \t]*Name:|[ \t]*Status:' $file|sed 's/^[ \t]*//g'|while read line; do echo $line; echo $line | grep '^Status:'>/dev/null && echo ; done
+}
+
+format_mysql_roles() {
+   local file=$1
+   [ -e "$file" ] || return
+   cat $file
 }
 
 format_overall_db_stats () {
@@ -2318,7 +2329,8 @@ report_mysql_summary () {
    section "Plugins"
    name_val "InnoDB compression" "$(get_plugin_status "$dir/mysql-plugins" "INNODB_CMP")"
 
-   if [ "$(get_var have_query_cache "$dir/mysql-variables")" ]; then
+   local has_query_cache=$(get_var have_query_cache "$dir/mysql-variables")
+   if [ "$has_query_cache" = 'YES' ]; then
       section "Query cache"
       local query_cache_size=$(get_var query_cache_size "$dir/mysql-variables")
       local used=$(( ${query_cache_size} - $(get_var Qcache_free_memory "$dir/mysql-status") ))
@@ -2457,6 +2469,11 @@ report_mysql_summary () {
    local users="$( format_users "$dir/mysql-users" )"
    name_val "Users" "${users}"
    name_val "Old Passwords" "$(get_var old_passwords "$dir/mysql-variables")"
+
+   if [ -s "$dir/mysql-roles" ]; then
+       section "Roles"
+       format_mysql_roles "$dir/mysql-roles"
+   fi
 
    section "Binary Logging"
 

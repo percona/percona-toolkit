@@ -117,11 +117,17 @@ collect_mysql_processlist () {
 }
 
 collect_mysql_users () {
+# The where clause has been added to skip listing MySQL 8+ roles as users.
+# ROLES are locked accounts, without passwords and expired.
    $CMD_MYSQL $EXT_ARGV -ss -e 'SELECT COUNT(*), SUM(user=""), SUM(password=""), SUM(password NOT LIKE "*%") FROM mysql.user' 2>/dev/null
    if [ "$?" -ne 0 ]; then
-       $CMD_MYSQL $EXT_ARGV -ss -e 'SELECT COUNT(*), SUM(user=""), SUM(authentication_string=""), SUM(authentication_string NOT LIKE "*%") FROM mysql.user' 2>/dev/null
+       $CMD_MYSQL $EXT_ARGV -ss -e 'SELECT COUNT(*), SUM(user=""), SUM(authentication_string=""), SUM(authentication_string NOT LIKE "*%") FROM mysql.user WHERE account_locked <> "Y" AND password_expired <> "Y" AND authentication_string <> ""' 2>/dev/null
    fi
+}
 
+collect_mysql_roles () {
+   QUERY="SELECT DISTINCT User 'Role Name', if(from_user is NULL,0, 1) Active FROM mysql.user LEFT JOIN mysql.role_edges ON from_user=user WHERE account_locked='Y' AND password_expired='Y' AND authentication_string=''\G"
+   $CMD_MYSQL $EXT_ARGV -ss -e "$QUERY" 2>/dev/null
 }
 
 collect_mysql_show_slave_hosts () {
@@ -234,6 +240,7 @@ collect_mysql_info () {
    collect_mysql_ndb_status    > "$dir/ndb-status"
    collect_mysql_processlist   > "$dir/mysql-processlist"   
    collect_mysql_users         > "$dir/mysql-users"
+   collect_mysql_roles         > "$dir/mysql-roles"
 
    collect_mysqld_instances   "$dir/mysql-variables"  > "$dir/mysqld-instances"
    collect_mysqld_executables "$dir/mysqld-instances" > "$dir/mysqld-executables"

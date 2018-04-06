@@ -565,6 +565,12 @@ format_ndb_status() {
    egrep '^[ \t]*Name:|[ \t]*Status:' $file|sed 's/^[ \t]*//g'|while read line; do echo $line; echo $line | grep '^Status:'>/dev/null && echo ; done
 }
 
+format_mysql_roles() {
+   local file=$1
+   [ -e "$file" ] || return
+   cat $file
+}
+
 # Summarizes per-database statistics for a bunch of different things: count of
 # tables, views, etc.  $1 is the file name.  $2 is the database name; if none,
 # then there should be multiple databases.
@@ -1360,7 +1366,8 @@ report_mysql_summary () {
    # ########################################################################
    # Query cache
    # ########################################################################
-   if [ "$(get_var have_query_cache "$dir/mysql-variables")" ]; then
+   local has_query_cache=$(get_var have_query_cache "$dir/mysql-variables")
+   if [ "$has_query_cache" = 'YES' ]; then
       section "Query cache"
       local query_cache_size=$(get_var query_cache_size "$dir/mysql-variables")
       local used=$(( ${query_cache_size} - $(get_var Qcache_free_memory "$dir/mysql-status") ))
@@ -1520,6 +1527,11 @@ report_mysql_summary () {
    local users="$( format_users "$dir/mysql-users" )"
    name_val "Users" "${users}"
    name_val "Old Passwords" "$(get_var old_passwords "$dir/mysql-variables")"
+
+   if [ -s "$dir/mysql-roles" ]; then
+       section "Roles"
+       format_mysql_roles "$dir/mysql-roles"
+   fi
 
    # ########################################################################
    # Binary Logging
