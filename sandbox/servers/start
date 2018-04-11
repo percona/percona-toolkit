@@ -51,13 +51,31 @@ echo -n "Starting MySQL test server on port PORT... "
 cwd=$PWD
 cd $BASEDIR
 
-init_file="TMP_DIR/PORT/mysql-init"
-if [ -e $init_file ]; then 
-    $BASEDIR/MYSQLD --defaults-file=TMP_DIR/PORT/my.sandbox.cnf -u root --init-file $init_file &
-else 
-    $BASEDIR/MYSQLD --defaults-file=TMP_DIR/PORT/my.sandbox.cnf > /dev/null 2>&1 &
+plugins=""
+pluginsparam=""
+plugindirparam=""
+
+echo "basedir $BASEDIR"
+if [ -e "${BASEDIR}/lib/mysql/plugin/keyring_file.so" ]; then
+     plugins="${BASEDIR}/lib/mysql/plugin/keyring_file.so"
+     plugindirparam="--plugin-dir=${BASEDIR}/lib/mysql/plugin/"
+fi
+
+if [ ! -z "$plugins" ]; then
+    pluginsparam="--early-plugin-load"
+fi
+
+echo "plugins: $plugins"
+echo "pluginsparam: $pluginsparam"
+
+init_file="/tmp/12345/mysql-init"
+if [ -e $init_file ]; then
+    $BASEDIR/bin/mysqld --defaults-file=/tmp/12345/my.sandbox.cnf -u root --init-file $init_file $pluginsparam &
+else
+    $BASEDIR/bin/mysqld --defaults-file=/tmp/12345/my.sandbox.cnf $pluginsparam $plugins $plugindirparam > /dev/null 2>&1 &
 fi
 cd $PWD
+
 
 # Wait for MySQL to actually be up, i.e. to respond to queries.
 for i in $(_seq 60); do
