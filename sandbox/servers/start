@@ -51,31 +51,29 @@ echo -n "Starting MySQL test server on port PORT... "
 cwd=$PWD
 cd $BASEDIR
 
-plugins=""
-pluginsparam=""
-plugindirparam=""
+encryption_plugins=""
+plugins_dir_cmd=""
 
-echo "basedir $BASEDIR"
+plugins_cmd=""
+keyring_cmd=""
+
 if [ -e "${BASEDIR}/lib/mysql/plugin/keyring_file.so" ]; then
-     plugins="${BASEDIR}/lib/mysql/plugin/keyring_file.so"
-     plugindirparam="--plugin-dir=${BASEDIR}/lib/mysql/plugin/"
+     encryption_plugins="${BASEDIR}/lib/mysql/plugin/keyring_file.so"
 fi
 
-if [ ! -z "$plugins" ]; then
-    pluginsparam="--early-plugin-load"
+if [ ! -z "$encryption_plugins" ]; then
+    plugins_cmd="--early-plugin-load=${encryption_plugins}"
+    keyring_cmd="--keyring_file_data=/tmp/PORT/data/keyring"
+    plugins_dir_cmd="--plugin-dir=${BASEDIR}/lib/mysql/plugin/"
 fi
-
-echo "plugins: $plugins"
-echo "pluginsparam: $pluginsparam"
 
 init_file="/tmp/12345/mysql-init"
 if [ -e $init_file ]; then
-    $BASEDIR/bin/mysqld --defaults-file=/tmp/12345/my.sandbox.cnf -u root --init-file $init_file $pluginsparam &
+    $BASEDIR/bin/mysqld --defaults-file=/tmp/12345/my.sandbox.cnf -u root --init-file $init_file $plugins_cmd $plugins_dir_cmd $keyring_cmd &
 else
-    $BASEDIR/bin/mysqld --defaults-file=/tmp/12345/my.sandbox.cnf $pluginsparam $plugins $plugindirparam > /dev/null 2>&1 &
+    $BASEDIR/bin/mysqld --defaults-file=/tmp/12345/my.sandbox.cnf --keyring_file_data=/tmp/12345/data/keyring $plugins_cmd $plugins_dir_cmd $keyring_cmd > /dev/null 2>&1 &
 fi
 cd $PWD
-
 
 # Wait for MySQL to actually be up, i.e. to respond to queries.
 for i in $(_seq 60); do
