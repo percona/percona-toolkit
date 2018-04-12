@@ -57,15 +57,15 @@ plugins_dir_cmd=""
 plugins_cmd=""
 keyring_cmd=""
 
-if [ -e "${BASEDIR}/lib/mysql/plugin/keyring_file.so" ]; then
-     encryption_plugins="${BASEDIR}/lib/mysql/plugin/keyring_file.so"
-fi
-
-if [ ! -z "$encryption_plugins" ]; then
-    plugins_cmd="--early-plugin-load=${encryption_plugins}"
-    keyring_cmd="--keyring_file_data=/tmp/PORT/data/keyring"
-    plugins_dir_cmd="--plugin-dir=${BASEDIR}/lib/mysql/plugin/"
-fi
+# if [ -e "${BASEDIR}/lib/mysql/plugin/keyring_file.so" ]; then
+#      encryption_plugins="${BASEDIR}/lib/mysql/plugin/keyring_file.so"
+# fi
+# 
+# if [ ! -z "$encryption_plugins" ]; then
+#     plugins_cmd="--early-plugin-load=${encryption_plugins}"
+#     keyring_cmd="--keyring_file_data=/tmp/PORT/data/keyring"
+#     plugins_dir_cmd="--plugin-dir=${BASEDIR}/lib/mysql/plugin/"
+# fi
 
 init_file="/tmp/12345/mysql-init"
 if [ -e $init_file ]; then
