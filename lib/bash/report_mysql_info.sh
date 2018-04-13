@@ -107,6 +107,15 @@ get_plugin_status () {
    echo ${status:-"Not found"}
 }
 
+collect_keyring_plugins() {
+    $CMD_MYSQL $EXT_ARGV --table -ss -e 'SELECT PLUGIN_NAME, PLUGIN_STATUS FROM INFORMATION_SCHEMA.PLUGINS WHERE PLUGIN_NAME LIKE "keyring%";'
+}
+
+collect_encrypted_tables() {
+    $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT TABLE_SCHEMA, TABLE_NAME, CREATE_OPTIONS FROM INFORMATION_SCHEMA.TABLES WHERE CREATE_OPTIONS LIKE '%ENCRYPTION=\"Y\"%';"
+}
+
+
 # ##############################################################################
 # Functions for parsing specific files and getting desired info from them.
 # These are called from within main() and are separated so they can be tested
@@ -563,6 +572,29 @@ format_ndb_status() {
    [ -e "$file" ] || return
    # We could use "& \n" but that does not seem to work on bsd sed. 
    egrep '^[ \t]*Name:|[ \t]*Status:' $file|sed 's/^[ \t]*//g'|while read line; do echo $line; echo $line | grep '^Status:'>/dev/null && echo ; done
+}
+
+format_keyring_plugins() {
+    local keyring_plugins="$1"
+    local encrypted_tables="$2"
+
+    if [ -z "$keyring_plugins" ]; then 
+        echo "No keyring plugins found"
+        if [ ! -z "$encrypted_tables" ]; then
+            echo "Warning! There are encrypted tables but keyring plugins are not loaded"
+        fi
+     else
+        echo "Keyring plugins:"
+        echo "'$keyring_plugins'"
+    fi
+}
+
+format_encrypted_tables() {
+   local encrypted_tables="$1"
+   if [ ! -z "$encrypted_tables" ]; then
+       echo "Encrypted tables:"
+       echo "$encrypted_tables"
+   fi
 }
 
 format_mysql_roles() {
@@ -1532,6 +1564,13 @@ report_mysql_summary () {
        section "Roles"
        format_mysql_roles "$dir/mysql-roles"
    fi
+
+   section "Encryption"
+   local keyring_plugins="$(collect_keyring_plugins)"
+   local encrypted_tables="$(collect_encrypted_tables)"
+
+   format_keyring_plugins "$keyring_plugins" "$encrypted_tables"
+   format_encrypted_tables "$encrypted_tables"
 
    # ########################################################################
    # Binary Logging
