@@ -12,7 +12,6 @@ v3.0.9
  * Feature     PT-1508 : Adding --read-only-interval flag, and read-only check on wake-up (Thanks Shlomi Noach)
  * Improvement PT-1507 : pt-summary does not reliably read in the transparent huge pages setting (Thanks Nick Veenhof)
  * Feature      PT-243 : Adding --max-hostname-length and --max-line-length to pt-query-digest
- * Feature      PT-131 : Make pt-table checksum to disable QRT plugin
 
 v3.0.8 released 2018-03-13
 
