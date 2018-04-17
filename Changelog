@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v3.0.9 released 2018-04-17
+
 v3.0.9 
 
  * Feature     PT-1530 : Add support for encryption status to mysql-summary
