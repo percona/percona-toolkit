@@ -45,7 +45,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.8';
+our $VERSION = '3.0.9';
 
 use strict;
 use warnings FATAL => 'all';
@@ -8579,6 +8579,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-archiver 3.0.8
+pt-archiver 3.0.9
 
 =cut
