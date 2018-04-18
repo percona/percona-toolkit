@@ -9,6 +9,8 @@ v3.0.9
  * Feature     PT-1509 : Only set binlog_format when necessary (Thanks Moritz Lenz)
  * Feature     PT-1508 : Adding --read-only-interval flag, and read-only check on wake-up (Thanks Shlomi Noach)
  * Improvement PT-1507 : pt-summary does not reliably read in the transparent huge pages setting (Thanks Nick Veenhof)
+ * New tool    PT-1501 : pt-secure-collect - New tool to collect and sanitize pt-tools outputs
+ * Improvement PT-1488 : pt-show-grants support for MySQL 8.0
  * Feature      PT-243 : Adding --max-hostname-length and --max-line-length to pt-query-digest
 
 v3.0.8 released 2018-03-13
