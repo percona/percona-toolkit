@@ -1,4 +1,4 @@
-# pt-secure-data
+# pt-secure-collect
 Collect, sanitize, pack and encrypt data. By default, this program will collect the output of:
 
 - `pt-stalk --no-stalk --iterations=2 --sleep=30 --host=$mysql-host --dest=$temp-dir --port=$mysql-port --user=$mysql-user --password=$mysql-pass`
