@@ -67,12 +67,12 @@ type myDefaults struct {
 }
 
 const (
-	DecryptCmd       = "decrypt"
-	EncryptCmd       = "encrypt"
-	CollectCmd       = "collect"
-	SanitizeCmd      = "sanitize"
-	DefaultMySQLHost = "127.0.0.1"
-	DefaultMySQLPort = 3306
+	decryptCmd       = "decrypt"
+	encryptCmd       = "encrypt"
+	collectCmd       = "collect"
+	sanitizeCmd      = "sanitize"
+	defaultMySQLHost = "127.0.0.1"
+	defaultMySQLPort = 3306
 )
 
 var (
@@ -100,7 +100,7 @@ func main() {
 	}
 
 	switch opts.Command {
-	case CollectCmd:
+	case collectCmd:
 		if _, err = os.Stat(*opts.TempDir); os.IsNotExist(err) {
 			log.Infof("Creating temporary directory: %s", *opts.TempDir)
 			if err = os.Mkdir(*opts.TempDir, os.ModePerm); err != nil {
@@ -116,9 +116,9 @@ func main() {
 				log.Fatal(err)
 			}
 		}
-	case EncryptCmd, DecryptCmd:
+	case encryptCmd, decryptCmd:
 		err = encryptorCmd(opts)
-	case SanitizeCmd:
+	case sanitizeCmd:
 		err = sanitizeFile(opts)
 	}
 	if err != nil {
@@ -171,10 +171,10 @@ func processCliParams(baseTempPath string, usageWriter io.Writer) (*cliOptions, 
 	}
 
 	opts := &cliOptions{
-		CollectCommand:  app.Command(CollectCmd, "Collect, sanitize, pack and encrypt data from pt-tools."),
-		DecryptCommand:  app.Command(DecryptCmd, "Decrypt an encrypted file. The password will be requested from the terminal."),
-		EncryptCommand:  app.Command(EncryptCmd, "Encrypt a file. The password will be requested from the terminal."),
-		SanitizeCommand: app.Command(SanitizeCmd, "Replace queries in a file by their fingerprints and obfuscate hostnames."),
+		CollectCommand:  app.Command(collectCmd, "Collect, sanitize, pack and encrypt data from pt-tools."),
+		DecryptCommand:  app.Command(decryptCmd, "Decrypt an encrypted file. The password will be requested from the terminal."),
+		EncryptCommand:  app.Command(encryptCmd, "Encrypt a file. The password will be requested from the terminal."),
+		SanitizeCommand: app.Command(sanitizeCmd, "Replace queries in a file by their fingerprints and obfuscate hostnames."),
 		Debug:           app.Flag("debug", "Enable debug log level.").Bool(),
 	}
 	// Decrypt command flags
@@ -241,7 +241,7 @@ func processCliParams(baseTempPath string, usageWriter io.Writer) (*cliOptions, 
 	}
 
 	switch opts.Command {
-	case CollectCmd:
+	case collectCmd:
 		mycnf, err := getParamsFromMyCnf(*opts.ConfigFile)
 		if err == nil {
 			if err = validateMySQLParams(opts, mycnf); err != nil {
@@ -254,9 +254,9 @@ func processCliParams(baseTempPath string, usageWriter io.Writer) (*cliOptions, 
 			}
 		}
 		err = askEncryptionPassword(opts, true)
-	case EncryptCmd:
+	case encryptCmd:
 		err = askEncryptionPassword(opts, true)
-	case DecryptCmd:
+	case decryptCmd:
 		if !strings.HasSuffix(*opts.DecryptInFile, ".aes") && *opts.DecryptOutFile == "" {
 			return nil, fmt.Errorf("Input file does not have .aes extension. I cannot infer the output file")
 		}
@@ -289,12 +289,12 @@ func validateMySQLParams(opts *cliOptions, mycnf *myDefaults) error {
 	}
 
 	if *opts.MySQLHost == "" {
-		log.Debugf("MySQL host is empty. Setting it to %s", DefaultMySQLHost)
-		*opts.MySQLHost = DefaultMySQLHost
+		log.Debugf("MySQL host is empty. Setting it to %s", defaultMySQLHost)
+		*opts.MySQLHost = defaultMySQLHost
 	}
 	if *opts.MySQLPort == 0 {
-		log.Debugf("MySQL port is empty. Setting it to %d", DefaultMySQLPort)
-		*opts.MySQLPort = DefaultMySQLPort
+		log.Debugf("MySQL port is empty. Setting it to %d", defaultMySQLPort)
+		*opts.MySQLPort = defaultMySQLPort
 	}
 	if *opts.MySQLUser == "" {
 		return fmt.Errorf("MySQL user cannot be empty")
