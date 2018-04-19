@@ -82,9 +82,8 @@ unlike(
    'It has no timestamp',
 );
 
-# 'mysql.infoschema'@'localhost' user only exists on MySQL 8.0+
 $output = output(
-   sub { pt_show_grants::main('-F', $cnf, '--ignore', 'baron,msandbox,root,root@localhost,user,mysql.session@localhost,mysql.sys@localhost,sys,mysql.infoschema@localhost'); }
+   sub { pt_show_grants::main('-F', $cnf, '--ignore', 'baron,msandbox,root,root@localhost,user,mysql.session@localhost,mysql.sys@localhost,sys'); }
 );
 unlike(
    $output,
@@ -95,7 +94,7 @@ like(
    $output,
    qr/\d\d:\d\d:\d\d\n\z/,
    'No output when all users skipped'
-) or diag($output);
+);
 # #############################################################################
 # pt-show-grant doesn't support column-level grants
 # https://bugs.launchpad.net/percona-toolkit/+bug/866075
