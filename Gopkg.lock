@@ -8,12 +8,6 @@
   version = "v1.4.2"
 
 [[projects]]
-  name = "github.com/Sirupsen/logrus"
-  packages = ["."]
-  revision = "c155da19408a8799da419ed3eeb0cb5db0ad5dbc"
-  version = "v1.0.5"
-
-[[projects]]
   name = "github.com/StackExchange/wmi"
   packages = ["."]
   revision = "5d049714c4a64225c3c79a7cf7d02f7fb5b96338"
@@ -177,7 +171,7 @@
     "unix",
     "windows"
   ]
-  revision = "b126b21c05a91c856b027c16779c12e3bf236954"
+  revision = "3ccc7e5779793fd54564baf60c51bf017955e0ba"
 
 [[projects]]
   branch = "v2"
@@ -201,6 +195,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "fbf4dee6023d7297ebed697186e5687b1234ea1f49a100c54fa486c94306e5b9"
+  inputs-digest = "6e2c1fd110c892297e79498479e87f7d4c63755a5a1d63d13c82eb42a7e5fbf2"
   solver-name = "gps-cdcl"
   solver-version = 1

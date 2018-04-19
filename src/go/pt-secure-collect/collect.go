@@ -15,11 +15,11 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	shellwords "github.com/mattn/go-shellwords"
 	"github.com/percona/percona-toolkit/src/go/pt-secure-collect/sanitize"
 	"github.com/percona/percona-toolkit/src/go/pt-secure-collect/sanitize/util"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 func collectData(opts *cliOptions) error {

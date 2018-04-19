@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 func encryptorCmd(opts *cliOptions) (err error) {

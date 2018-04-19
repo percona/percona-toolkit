@@ -12,11 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
-	log "github.com/Sirupsen/logrus"
 	"github.com/alecthomas/kingpin"
 	"github.com/go-ini/ini"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
