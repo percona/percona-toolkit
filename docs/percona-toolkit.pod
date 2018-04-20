@@ -102,6 +102,10 @@ Aggregate GDB stack traces for a selected program.
 
 Analyze MySQL queries from logs, processlist, and tcpdump.
 
+=item pt-secure-collect
+
+Collect, sanitize, pack and encrypt pt-tools outputs.
+
 =item pt-show-grants
 
 Canonicalize and print MySQL grants so you can effectively replicate, compare and version-control them.
