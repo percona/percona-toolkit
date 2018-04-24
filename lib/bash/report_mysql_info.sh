@@ -1567,7 +1567,10 @@ report_mysql_summary () {
 
    section "Encryption"
    local keyring_plugins="$(collect_keyring_plugins)"
-   local encrypted_tables="$(collect_encrypted_tables)"
+   local encrypted_tables=""
+   if [ ${OPT_LIST_ENCRYPTED_TABLES} == 'yes' ]; then 
+       encrypted_tables="$(collect_encrypted_tables)"
+   fi
 
    format_keyring_plugins "$keyring_plugins" "$encrypted_tables"
    format_encrypted_tables "$encrypted_tables"

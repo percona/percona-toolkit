@@ -2509,7 +2509,10 @@ report_mysql_summary () {
 
    section "Encryption"
    local keyring_plugins="$(collect_keyring_plugins)"
-   local encrypted_tables="$(collect_encrypted_tables)"
+   local encrypted_tables=""
+   if [ ${OPT_LIST_ENCRYPTED_TABLES} == 'yes' ]; then 
+       encrypted_tables="$(collect_encrypted_tables)"
+   fi
 
    format_keyring_plugins "$keyring_plugins" "$encrypted_tables"
    format_encrypted_tables "$encrypted_tables"
@@ -3131,6 +3134,13 @@ Print help and exit.
 short form: -h; type: string
 
 Host to connect to.
+
+=item --list-encrypted-tables
+
+default: false
+
+Include a list of the encrypted tables in all databases. This can cause slowdowns since
+querying Information Schema tables can be slow.
 
 =item --password
 
