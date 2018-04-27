@@ -9847,6 +9847,7 @@ use sigtrap 'handler', \&sig_int, 'normal-signals';
 my $oktorun      = 1;
 my $print_header = 1;
 my $exit_status  = 0;
+my $original_qrt_plugin_master_status = undef;
 
 # "exit codes 1 - 2, 126 - 165, and 255 [1] have special meanings,
 # and should therefore be avoided for user-specified exit parameters"
@@ -10052,30 +10053,28 @@ sub main {
       # instead, it should check if it's already set to STATEMENT.
       # This is becase starting with MySQL 5.1.29, changing the format
       # requires a SUPER user.
-      if ( $o->get('check-binlog-format') ) {
-          if ( VersionParser->new($dbh) >= '5.1.5' ) {
-             $sql = 'SELECT @@binlog_format';
-             PTDEBUG && _d($dbh, $sql);
-             my ($original_binlog_format) = $dbh->selectrow_array($sql);
-             PTDEBUG && _d('Original binlog_format:', $original_binlog_format);
-             if ( $original_binlog_format !~ /STATEMENT/i ) {
-                $sql = q{/*!50108 SET @@binlog_format := 'STATEMENT'*/};
-                eval {
-                   PTDEBUG && _d($dbh, $sql);
-                   $dbh->do($sql);
-                };
-                if ( $EVAL_ERROR ) {
-                   die "Failed to $sql: $EVAL_ERROR\n"
-                      . "This tool requires binlog_format=STATEMENT, "
-                      . "but the current binlog_format is set to "
-                      ."$original_binlog_format and an error occurred while "
-                      . "attempting to change it.  If running MySQL 5.1.29 or newer, "
-                      . "setting binlog_format requires the SUPER privilege.  "
-                      . "You will need to manually set binlog_format to 'STATEMENT' "
-                      . "before running this tool.\n";
-                }
-             }
-          }
+      if ( VersionParser->new($dbh) >= '5.1.5' ) {
+         $sql = 'SELECT @@binlog_format';
+         PTDEBUG && _d($dbh, $sql);
+         my ($original_binlog_format) = $dbh->selectrow_array($sql);
+         PTDEBUG && _d('Original binlog_format:', $original_binlog_format);
+         if ( $original_binlog_format !~ /STATEMENT/i ) {
+            $sql = q{/*!50108 SET @@binlog_format := 'STATEMENT'*/};
+            eval {
+               PTDEBUG && _d($dbh, $sql);
+               $dbh->do($sql);
+            };
+            if ( $EVAL_ERROR ) {
+               die "Failed to $sql: $EVAL_ERROR\n"
+                  . "This tool requires binlog_format=STATEMENT, "
+                  . "but the current binlog_format is set to "
+                  ."$original_binlog_format and an error occurred while "
+                  . "attempting to change it.  If running MySQL 5.1.29 or newer, "
+                  . "setting binlog_format requires the SUPER privilege.  "
+                  . "You will need to manually set binlog_format to 'STATEMENT' "
+                  . "before running this tool.\n";
+            }
+         }
       }
 
       # Set transaction isolation level. We set binlog_format to STATEMENT,
@@ -10102,6 +10101,7 @@ sub main {
             . "case you will need to manually set the transaction isolation "
             . "level to REPEATABLE-READ.\n";
       }
+
 
       return;
    };
@@ -10130,6 +10130,20 @@ sub main {
    my $master_cxn = $make_cxn->(set_vars => 1, dsn_string => shift @ARGV);
    my $master_dbh = $master_cxn->dbh();  # just for brevity
    my $master_dsn = $master_cxn->dsn();  # just for brevity
+
+   if ($o->get('disable-qrt-plugin')) {
+       eval {
+           $master_dbh->selectrow_arrayref('SELECT @@query_response_time_session_stats' );
+       };
+       if ($EVAL_ERROR) {
+           $original_qrt_plugin_master_status = undef;
+           PTDEBUG && _d('QRT plugin is not installed: '.$EVAL_ERROR);
+       } else {
+           ($original_qrt_plugin_master_status) = $master_dbh->selectrow_arrayref('SELECT @@query_response_time_stats' );
+           PTDEBUG && _d("Disabling qrt plugin on master server");
+           $master_dbh->do('SET GLOBAL query_response_time_stats = off');
+       }
+   }
 
    my @ignored_engines = keys %{$o->get('ignore-engines')};
    my @rocksdb_ignored = grep(/^ROCKSDB$/i, @ignored_engines); 
@@ -10449,6 +10463,23 @@ sub main {
                   . "Cluster section of the tool's documentation.\n";
             }
          }
+      }
+
+      for my $slave (@$slaves) {
+          my $qrt_plugin_status;
+          eval {
+              ($qrt_plugin_status) = $slave->{dbh}->selectrow_arrayref('SELECT @@QUERY_RESPONSE_TIME_SESSION_STATS' );
+          };
+          if ($EVAL_ERROR) {
+              PTDEBUG && _d('QRT plugin is not installed on slave '.$slave->{dsn_name});
+              $slave->{qrt_plugin_status} = undef;
+              next;
+          }
+          $slave->{qrt_plugin_status} = $qrt_plugin_status->[0];
+          if ($slave->{qrt_plugin_status}) {
+              PTDEBUG && _d("Disabling qrt plugin state on slave ".$slave->{dsn_name});
+              $slave->{dbh}->do('SET GLOBAL query_response_time_stats = off');
+          }
       }
 
       if ( $o->get('check-slave-lag') ) {
@@ -11451,6 +11482,25 @@ sub main {
       if ( $tbl->{checksum_results}->{errors} ) {
          $exit_status |= $PTC_EXIT_STATUS{ERROR};
       }
+   }
+
+   # Restore origin QRT pligin state
+   if ($o->get('disable-qrt-plugin')) {
+       eval {
+           if ($original_qrt_plugin_master_status) {
+               PTDEBUG && _d("Restoring qrt plugin state on master server");
+               $master_dbh->do("SET GLOBAL query_response_time_stats = $original_qrt_plugin_master_status->[0]");
+           }
+           for my $slave (@$slaves) {
+               if ($slave->{qrt_plugin_status}) {
+                   PTDEBUG && _d("Restoring qrt plugin state on slave ".$slave->{dsn_name});
+                   $slave->{dbh}->do("SET GLOBAL query_response_time_stats = $slave->{qrt_plugin_status}");
+               }
+           }
+       };
+       if ($EVAL_ERROR) {
+           warn "Cannot restore qrt_plugin status: $EVAL_ERROR";
+       }
    }
 
    PTDEBUG && _d('Exit status', $exit_status,
@@ -13138,6 +13188,10 @@ short form: -F; type: string; group: Connection
 Only read mysql options from the given file.  You must give an absolute
 pathname.
 
+=item --disable-qrt-plugin
+
+Disable the QRT (Query Response Time) plugin if it is enabled.
+
 =item --[no]empty-replicate-table
 
 default: yes
@@ -13950,6 +14004,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-checksum 3.0.9
+pt-table-checksum 3.0.10-dev
 
 =cut
