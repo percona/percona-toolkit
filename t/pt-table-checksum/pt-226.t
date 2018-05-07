@@ -63,7 +63,7 @@ isnt(
 
 like(
     $output,
-    qr/1\s+100\s+1\s+0\s+.*test.joinit/,
+    qr/1\s+100\s+0\s+1\s+0\s+.*test.joinit/,
     "PT-226 table joinit has differences",
 );
 
