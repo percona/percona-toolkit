@@ -441,10 +441,10 @@ is(
 "Checking if all tables can be checksummed ...
 Starting checksum ...
 Resuming from sakila.rental chunk 11, timestamp 2011-10-15 13:00:49
-ERRORS DIFFS ROWS CHUNKS SKIPPED TABLE
-0 0 5044 8 0 sakila.rental
-0 0 2 1 0 sakila.staff
-0 0 2 1 0 sakila.store
+ERRORS DIFFS ROWS DIFF_ROWS CHUNKS SKIPPED TABLE
+0 0 5044 0 8 0 sakila.rental
+0 0 2 0 1 0 sakila.staff
+0 0 2 0 1 0 sakila.store
 ",
    "Resumed from last updated chunk"
 );
@@ -497,8 +497,8 @@ is(
    $output,
 "Checking if all tables can be checksummed ...
 Starting checksum ...
-ERRORS DIFFS ROWS CHUNKS SKIPPED TABLE
-0 0 26 8 0 test.t3
+ERRORS DIFFS ROWS DIFF_ROWS CHUNKS SKIPPED TABLE
+0 0 26 0 8 0 test.t3
 ",
    "Resumed from t3"
 );
