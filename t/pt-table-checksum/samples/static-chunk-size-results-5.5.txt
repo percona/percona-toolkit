@@ -1,3 +1,5 @@
+if all tables be checksummed 
+checksum ...    
 ERRORS DIFFS ROWS CHUNKS SKIPPED TABLE
 0 0 0 1 0 mysql.columns_priv
 0 0 0 1 0 mysql.db
