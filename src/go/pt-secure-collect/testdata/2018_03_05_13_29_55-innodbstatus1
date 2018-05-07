@@ -1,0 +1,166 @@
+*************************** 1. row ***************************
+  Type: InnoDB
+  Name: 
+Status: 
+=====================================
+180305 13:29:56 INNODB MONITOR OUTPUT
+=====================================
+Per second averages calculated from the last 4 seconds
+-----------------
+BACKGROUND THREAD
+-----------------
+srv_master_thread loops: 10426915 1_second, 10426787 sleeps, 1039511 10_second, 114409 background, 114408 flush
+srv_master_thread log flush and writes: 10573367
+----------
+SEMAPHORES
+----------
+OS WAIT ARRAY INFO: reservation count 36440393, signal count 977828160
+Mutex spin waits 12033977328, rounds 5762851841, OS waits 2335706
+RW-shared spins 263735539, rounds 1073399886, OS waits 17684056
+RW-excl spins 31045745, rounds 1579081554, OS waits 15143742
+Spin rounds per wait: 0.48 mutex, 4.07 RW-shared, 50.86 RW-excl
+--------
+FILE I/O
+--------
+I/O thread 0 state: waiting for completed aio requests (insert buffer thread)
+I/O thread 1 state: waiting for completed aio requests (log thread)
+I/O thread 2 state: waiting for completed aio requests (read thread)
+I/O thread 3 state: waiting for completed aio requests (read thread)
+I/O thread 4 state: waiting for completed aio requests (read thread)
+I/O thread 5 state: waiting for completed aio requests (read thread)
+I/O thread 6 state: waiting for completed aio requests (write thread)
+I/O thread 7 state: waiting for completed aio requests (write thread)
+I/O thread 8 state: waiting for completed aio requests (write thread)
+I/O thread 9 state: waiting for completed aio requests (write thread)
+Pending normal aio reads: 0 [0, 0, 0, 0] , aio writes: 0 [0, 0, 0, 0] ,
+ ibuf aio reads: 0, log i/o's: 0, sync i/o's: 0
+Pending flushes (fsync) log: 0; buffer pool: 0
+69640822 OS file reads, 648923500 OS file writes, 26514364 OS fsyncs
+0.00 reads/s, 0 avg bytes/read, 9.75 writes/s, 1.00 fsyncs/s
+-------------------------------------
+INSERT BUFFER AND ADAPTIVE HASH INDEX
+-------------------------------------
+Ibuf: size 1, free list len 44, seg size 46, 42575 merges
+merged operations:
+ insert 106806, delete mark 214604, delete 13653
+discarded operations:
+ insert 0, delete mark 0, delete 0
+Hash table size 46749559, node heap has 2653 buffer(s)
+46.24 hash searches/s, 40.74 non-hash searches/s
+---
+LOG
+---
+Log sequence number 22611258576197
+Log flushed up to   22611258571295
+Last checkpoint at  22611248332855
+Max checkpoint age    434154333
+Checkpoint age target 420587011
+Modified age          10243342
+Checkpoint age        10243342
+0 pending log writes, 0 pending chkp writes
+465310123 log i/o's done, 9.75 log i/o's/second
+----------------------
+BUFFER POOL AND MEMORY
+----------------------
+Total memory allocated 24245174272; in additional pool allocated 0
+Total memory allocated by read views 2560
+Internal hash tables (constant factor + variable factor)
+    Adaptive hash index 417467440 	(373996472 + 43470968)
+    Page hash           23375608 (buffer pool 0 only)
+    Dictionary cache    141153090 	(93500944 + 47652146)
+    File system         1821472 	(82672 + 1738800)
+    Lock system         58442168 	(58437656 + 4512)
+    Recovery system     0 	(0 + 0)
+Dictionary memory allocated 47652146
+Buffer pool size        1441791
+Buffer pool size, bytes 23622303744
+Free buffers            1
+Database pages          1439137
+Old database pages      531223
+Modified db pages       594
+Pending reads 0
+Pending writes: LRU 0, flush list 0, single page 0
+Pages made young 70145671, not young 0
+0.00 youngs/s, 0.00 non-youngs/s
+Pages read 69635296, created 4832900, written 178737138
+0.00 reads/s, 0.00 creates/s, 0.00 writes/s
+Buffer pool hit rate 1000 / 1000, young-making rate 0 / 1000 not 0 / 1000
+Pages read ahead 0.00/s, evicted without access 0.00/s, Random read ahead 0.00/s
+LRU len: 1439137, unzip_LRU len: 0
+I/O sum[1102]:cur[0], unzip sum[0]:cur[0]
+--------------
+ROW OPERATIONS
+--------------
+0 queries inside InnoDB, 0 queries in queue
+1 read views open inside InnoDB
+0 transactions active inside InnoDB
+0 out of 1000 descriptors used
+---OLDEST VIEW---
+Normal read view
+Read view low limit trx n:o 55D01B7E3
+Read view up limit trx id 55D01B7E3
+Read view low limit trx id 55D01B7E3
+Read view individually stored trx ids:
+-----------------
+Main thread process no. 1648, id 140570308982528, state: sleeping
+Number of rows inserted 296828096, updated 207731732, deleted 40015418, read 2455377947207
+5.00 inserts/s, 3.50 updates/s, 0.25 deletes/s, 211871.28 reads/s
+------------------------
+LATEST DETECTED DEADLOCK
+------------------------
+180227 14:45:46
+*** (1) TRANSACTION:
+TRANSACTION 55984EF58, ACTIVE 0 sec inserting
+mysql tables in use 1, locked 1
+LOCK WAIT 3 lock struct(s), heap size 376, 2 row lock(s)
+MySQL thread id 29247292, OS thread handle 0x7fd903731700, query id 2598871462 bm-dell05-publicwww01.bm.int.percona.com 10.10.9.210 root update
+INSERT INTO semaphore (name, value, expire) VALUES ('variable_init', '557200465a956f1a8822d0.18512229', '1519742747.5575')
+*** (1) WAITING FOR THIS LOCK TO BE GRANTED:
+RECORD LOCKS space id 636643 page no 3 n bits 72 index "PRIMARY" of table "percona_com_redesign2015"."semaphore" trx id 55984EF58 lock_mode X locks rec but not gap waiting
+*** (2) TRANSACTION:
+TRANSACTION 55984EF59, ACTIVE 0 sec inserting
+mysql tables in use 1, locked 1
+3 lock struct(s), heap size 376, 2 row lock(s)
+MySQL thread id 29247291, OS thread handle 0x7fd9033bf700, query id 2598871463 bm-dell05-publicwww01.bm.int.percona.com 10.10.9.210 root update
+INSERT INTO semaphore (name, value, expire) VALUES ('variable_init', '1871808655a956f1a882120.81843263', '1519742747.5575')
+*** (2) HOLDS THE LOCK(S):
+RECORD LOCKS space id 636643 page no 3 n bits 72 index "PRIMARY" of table "percona_com_redesign2015"."semaphore" trx id 55984EF59 lock mode S locks rec but not gap
+*** (2) WAITING FOR THIS LOCK TO BE GRANTED:
+RECORD LOCKS space id 636643 page no 3 n bits 72 index "PRIMARY" of table "percona_com_redesign2015"."semaphore" trx id 55984EF59 lock_mode X locks rec but not gap waiting
+*** WE ROLL BACK TRANSACTION (2)
+------------
+TRANSACTIONS
+------------
+Trx id counter 55D01B7FF
+Purge done for trx's n:o < 55D01B7D4 undo n:o < 0
+History list length 4728
+LIST OF TRANSACTIONS FOR EACH SESSION:
+---TRANSACTION 0, not started
+MySQL thread id 30894959, OS thread handle 0x7fd9037c4700, query id 2739060099 localhost rdba
+SHOW /*!40100 ENGINE*/ INNODB STATUS
+---TRANSACTION 0, not started
+MySQL thread id 30741296, OS thread handle 0x7fd902907700, query id 2739057614 10.10.9.10 rdba
+---TRANSACTION 55D01B7EF, not started
+MySQL thread id 5923113, OS thread handle 0x7fd903b98700, query id 2739060064 www-docker01.bm.int.percona.com 10.10.9.22 version_check
+---TRANSACTION 55D01B7F0, not started
+MySQL thread id 5923112, OS thread handle 0x7fd903d20700, query id 2739060067 www-docker01.bm.int.percona.com 10.10.9.22 version_check
+---TRANSACTION 55D01B7EC, not started
+MySQL thread id 5922912, OS thread handle 0x7fd903d51700, query id 2739060058 www-docker01.bm.int.percona.com 10.10.9.22 version_check
+---TRANSACTION 55D01B7ED, not started
+MySQL thread id 5922013, OS thread handle 0x7fd9035da700, query id 2739060061 www-docker01.bm.int.percona.com 10.10.9.22 version_check
+---TRANSACTION 55D01B7EA, not started
+MySQL thread id 5922000, OS thread handle 0x7fd90366d700, query id 2739060056 www-docker01.bm.int.percona.com 10.10.9.22 version_check
+---TRANSACTION 55D01B7FA, not started
+MySQL thread id 689010, OS thread handle 0x7fd9100f5700, query id 2739060089 www-docker01.bm.int.percona.com 10.10.9.22 version_check
+---TRANSACTION 55D01B7FC, not started
+MySQL thread id 689009, OS thread handle 0x7fd910157700, query id 2739060092 www-docker01.bm.int.percona.com 10.10.9.22 version_check
+---TRANSACTION 55D01B7FD, not started
+MySQL thread id 689008, OS thread handle 0x7fd91021b700, query id 2739060095 www-docker01.bm.int.percona.com 10.10.9.22 version_check
+---TRANSACTION 55D01B7F9, not started
+MySQL thread id 689006, OS thread handle 0x7fd9104eb700, query id 2739060087 www-docker01.bm.int.percona.com 10.10.9.22 version_check
+---TRANSACTION 55D01B7F7, not started
+MySQL thread id 689004, OS thread handle 0x7fd9101ea700, query id 2739060084 www-docker01.bm.int.percona.com 10.10.9.22 version_check
+----------------------------
+END OF INNODB MONITOR OUTPUT
+============================
+

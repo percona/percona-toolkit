@@ -1,10 +1,17 @@
 Changelog for Percona Toolkit
 
+v3.0.9 released 2018-04-17
+
 v3.0.9 
 
+ * Feature     PT-1530 : Add support for encryption status to mysql-summary
+ * Fixed bug   PT-1527 : pt-table-checksum ignores --nocheck-binlog-format
+ * Feature     PT-1526 : Add ndb status to pt-mysql-summary (Thanks Fernando Ipar)
+ * Feature     PT-1525 : Added support for MySQL 8 roles into pt-mysql-summary
  * Feature     PT-1509 : Only set binlog_format when necessary (Thanks Moritz Lenz)
  * Feature     PT-1508 : Adding --read-only-interval flag, and read-only check on wake-up (Thanks Shlomi Noach)
  * Improvement PT-1507 : pt-summary does not reliably read in the transparent huge pages setting (Thanks Nick Veenhof)
+ * New tool    PT-1501 : pt-secure-collect - New tool to collect and sanitize pt-tools outputs
  * Feature      PT-243 : Adding --max-hostname-length and --max-line-length to pt-query-digest
 
 v3.0.8 released 2018-03-13
