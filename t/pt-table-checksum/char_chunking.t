@@ -34,7 +34,7 @@ my @args       = ($master_dsn, qw(--set-vars innodb_lock_wait_timeout=3), '--max
 
 $sb->create_dbs($master_dbh, ['test']);
 $sb->load_file('master', "t/lib/samples/char-chunking/ascii.sql", 'test');
-
+#1
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args,
@@ -44,14 +44,14 @@ ok(
    ),
    "Char chunk ascii, explain"
 );
-
+#2
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args,
          qw(--tables test.ascii --chunk-index c --chunk-size 20),
          qw(--chunk-time 0)) },
       "t/pt-table-checksum/samples/char-chunk-ascii.txt",
-      post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $5 " " $6 " " $8}\'',
+      post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $6 " " $7 " " $9}\'',
    ),
    "Char chunk ascii, chunk size 20"
 );

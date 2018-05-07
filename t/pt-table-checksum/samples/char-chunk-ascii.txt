@@ -1,4 +1,4 @@
-if all tables can be ...
+if all tables be checksummed 
 checksum ...    
-ERRORS DIFFS ROWS DIFF_ROWS CHUNKS TIME
-0 0 142 0 10 0.088
+ERRORS DIFFS ROWS CHUNKS SKIPPED TABLE
+0 0 142 10 0 test.ascii
