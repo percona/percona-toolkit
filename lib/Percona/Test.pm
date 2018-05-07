@@ -656,14 +656,15 @@ sub test_bash_tool {
 }
 
 my %checksum_result_col = (
-   ts      => 0,
-   errors  => 1,
-   diffs   => 2,
-   rows    => 3,
-   chunks  => 4,
-   skipped => 5,
-   time    => 6,
-   table   => 7,
+   ts        => 0,
+   errors    => 1,
+   diffs     => 2,
+   rows      => 3,
+   diff_rows => 4,
+   chunks    => 5,
+   skipped   => 6,
+   time      => 7,
+   table     => 8,
 );
 sub count_checksum_results {
    my ($output, $column, $table) = @_;
