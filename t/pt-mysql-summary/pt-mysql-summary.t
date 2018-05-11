@@ -9,15 +9,36 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-
 use PerconaTest;
-
-my ($tool) = $PROGRAM_NAME =~ m/([\w-]+)\.t$/;
-
+use Sandbox;
+use DSNParser;
+require VersionParser;
 use Test::More;
 use File::Temp qw( tempdir );
 
 local $ENV{PTDEBUG} = "";
+
+my $dp         = new DSNParser(opts=>$dsn_opts);
+my $sb         = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $master_dbh = $sb->get_dbh_for('master');
+my $has_keyring_plugin;
+
+my $db_flavor = VersionParser->new($master_dbh)->flavor();
+if ( $db_flavor =~ m/Percona Server/ ) {
+    my $rows = $master_dbh->selectall_hashref("SHOW PLUGINS", "name");
+    while (my ($key, $values) = each %$rows) {
+        if ($key =~ m/^keyring_/) {
+            $has_keyring_plugin=1;
+            last;
+        }
+    }
+}
+
+if ($has_keyring_plugin) {
+    plan skip_all => 'Keyring plugins are enabled.';
+}
+
+my ($tool) = $PROGRAM_NAME =~ m/([\w-]+)\.t$/;
 
 # mysqldump from earlier versions doesn't seem to work with 5.6,
 # so use the actual mysqldump from each MySQL bin which should

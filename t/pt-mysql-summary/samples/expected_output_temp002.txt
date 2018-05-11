@@ -222,6 +222,8 @@ Uptime                                    90000           1           1
 # Security ###################################################
                     Users | 6 users, 0 anon, 1 w/o pw, 1 old pw
             Old Passwords | OFF
+# Encryption #################################################
+No keyring plugins found
 # Binary Logging #############################################
 # Noteworthy Variables #######################################
      Auto-Inc Incr/Offset | 1/1
@@ -275,4 +277,5 @@ report-port                         = 12345
 log-error                           = mysqld.log
 innodb_lock_wait_timeout            = 3
 # Memory management library ##################################
+Jemalloc library not found
 # The End ####################################################
