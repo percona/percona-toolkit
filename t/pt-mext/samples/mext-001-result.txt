@@ -47,6 +47,7 @@ Com_lock_tables                              37    0    0    0
 Com_optimize                                  1    0    0    0
 Com_preload_keys                              0    0    0    0
 Com_prepare_sql                               0    0    0    0
+Compression                                   0    0    0    0
 Com_purge                                     0    0    0    0
 Com_purge_before_date                         0    0    0    0
 Com_rename_table                              0    0    0    0
@@ -107,7 +108,6 @@ Com_xa_prepare                                0    0    0    0
 Com_xa_recover                                0    0    0    0
 Com_xa_rollback                               0    0    0    0
 Com_xa_start                                  0    0    0    0
-Compression                                   0    0    0    0
 Connections                                1008    0    0    0
 Created_tmp_disk_tables                     350    0    0    0
 Created_tmp_files                             6    0    0    0
@@ -160,8 +160,8 @@ Innodb_os_log_fsyncs                       2505    0    0    0
 Innodb_os_log_pending_fsyncs                  0    0    0    0
 Innodb_os_log_pending_writes                  0    0    0    0
 Innodb_os_log_written                  11063296    0    0    0
-Innodb_page_size                          16384    0    0    0
 Innodb_pages_created                        542    0    0    0
+Innodb_page_size                          16384    0    0    0
 Innodb_pages_read                             0    0    0    0
 Innodb_pages_written                       1071    0    0    0
 Innodb_row_lock_current_waits                 0    0    0    0
@@ -187,10 +187,10 @@ Ndb_config_from_host                          0    0    0    0
 Ndb_config_from_port                          0    0    0    0
 Ndb_number_of_data_nodes                      0    0    0    0
 Not_flushed_delayed_rows                      0    0    0    0
+Opened_tables                              1698    0    0    0
 Open_files                                    5    0    0    0
 Open_streams                                  0    0    0    0
 Open_tables                                   1    0    0    0
-Opened_tables                              1698    0    0    0
 Prepared_stmt_count                           0    0    0    0
 Qcache_free_blocks                            0    0    0    0
 Qcache_free_memory                            0    0    0    0
