@@ -626,7 +626,7 @@ is_deeply(
 
 is_deeply(
    [$c->get_crc_type($dbh, 'MD5')],
-   [qw(varchar 32)],
+   [qw(varchar 96)],
    'Type and length of MD5'
 );
 
