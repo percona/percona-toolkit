@@ -16,6 +16,7 @@ use Quoter;
 use PerconaTest;
 use DSNParser;
 use Sandbox;
+
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
@@ -173,6 +174,12 @@ SKIP: {
    $dbh->do('CREATE DATABASE IF NOT EXISTS serialize_test');
    $dbh->do('DROP TABLE IF EXISTS serialize_test.serialize');
    $dbh->do('CREATE TABLE serialize_test.serialize (id INT, textval TEXT, blobval BLOB)');
+   # Ensure we are using lantin1 as the default for the connection
+   # From the documentation:
+   # This statement sets the three session system variables character_set_client, 
+   # character_set_connection, and character_set_results to the given character set. 
+   $dbh->do("SET NAMES 'latin1'"); 
+   warn Data::Dumper::Dumper($dbh);
 
    my $sth = $dbh->prepare(
       "INSERT INTO serialize_test.serialize VALUES (?, ?, ?)"
