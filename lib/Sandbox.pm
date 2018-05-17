@@ -211,6 +211,7 @@ sub wipe_clean {
 
    $self->wait_for_slaves();
 
+   $self->clear_genlogs();
    return;
 }
 
