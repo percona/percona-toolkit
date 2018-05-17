@@ -847,6 +847,7 @@ $sb->do_as_root("master", q/GRANT REPLICATION SLAVE ON *.* TO 'slave_user'@'%' I
 $sb->do_as_root("master", q/set sql_log_bin=0/);
 $sb->do_as_root("master", q/DROP USER 'slave_user'/);
 $sb->do_as_root("master", q/set sql_log_bin=1/);
+$sb->wait_for_slaves();
 
 test_alter_table(
    name       => "--slave-user --slave-password",
