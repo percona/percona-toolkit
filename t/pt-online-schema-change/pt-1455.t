@@ -21,7 +21,11 @@ use Sandbox;
 use SqlModes;
 use File::Temp qw/ tempdir /;
 
-plan tests => 3;
+if (!$ENV{PERCONA_SLOW_BOX}) {
+    plan skip_all => 'This test needs a fast machine';
+} else {
+    plan tests => 3;
+}
 
 require "$trunk/bin/pt-online-schema-change";
 
