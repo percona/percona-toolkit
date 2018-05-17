@@ -468,6 +468,7 @@ test_alter_table(
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
+$sb->wait_for_slaves();
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 #
 done_testing;
