@@ -845,8 +845,6 @@ system "$trunk/sandbox/load-sakila-db $master_port &";
 
 $sb->do_as_root("slave1", q/CREATE USER 'slave_user'@'%' IDENTIFIED BY 'slave_password'/);
 $sb->do_as_root("slave1", q/GRANT REPLICATION SLAVE ON *.* TO 'slave_user'@'%'/);
-$sb->do_as_root("slave2", q/CREATE USER 'slave_user'@'%' IDENTIFIED BY 'slave_password'/);
-$sb->do_as_root("slave2", q/GRANT REPLICATION SLAVE ON *.* TO 'slave_user'@'%'/);
 
 test_alter_table(
    name       => "--slave-user --slave-password",
@@ -862,7 +860,6 @@ test_alter_table(
 # Done.
 # #############################################################################
 $sb->do_as_root("slave1", q/DROP USER 'slave_user'@'%'/);
-$sb->do_as_root("slave2", q/DROP USER 'slave_user'@'%'/);
 
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
