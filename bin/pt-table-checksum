@@ -11194,6 +11194,7 @@ sub main {
 
                # Update chunk-size based on rows/s checksum rate.
                $nibble_iter->set_chunk_size($tbl->{chunk_size});
+               PTDEBUG && _d('Updated chunk size: '.$tbl->{chunk_size});
             }
 
             # Every table should have a Progress obj; update it.
@@ -11266,6 +11267,12 @@ sub main {
                      # for the full list of columns.
                      map { $diff_chunks{ $_->{chunk} }++ } @$diffs;
                      $exit_status |= $PTC_EXIT_STATUS{TABLE_DIFF};
+                  }
+                  my $max_cnt_diff=0;
+                  for my $diff (@$diffs) {
+                     if ( $diff->{cnt_diff} > $max_cnt_diff ) {
+                         $tbl->{checksum_results}->{max_rows_cnt_diff} = $diff->{cnt_diff};
+                     }
                   }
                };
                if ($EVAL_ERROR) {
@@ -11701,8 +11708,8 @@ sub exec_nibble {
 }
 
 {
-my $line_fmt = "%14s %6s %6s %8s %7s %7s %7s %-s\n";
-my @headers  =  qw(TS ERRORS DIFFS ROWS CHUNKS SKIPPED TIME TABLE);
+my $line_fmt = "%14s %6s %6s %8s % 10s %7s %7s %7s %-s\n";
+my @headers  =  qw(TS ERRORS DIFFS ROWS DIFF_ROWS CHUNKS SKIPPED TIME TABLE);
 
 sub print_checksum_results {
    my (%args) = @_;
@@ -11722,7 +11729,8 @@ sub print_checksum_results {
       ts(),
       $res->{errors}   || 0,
       $res->{diffs}    || 0,
-      $res->{n_rows}   || 0,
+      $res->{n_rows}   || 0,            
+      $tbl->{checksum_results}->{max_rows_cnt_diff} || 0,
       $res->{n_chunks} || 0,
       $res->{skipped}  || 0,
       sprintf('%.3f', $res->{start_time} ? time - $res->{start_time} : 0),

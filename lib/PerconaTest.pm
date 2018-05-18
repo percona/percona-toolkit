@@ -692,14 +692,15 @@ sub test_bash_tool {
 }
 
 my %checksum_result_col = (
-   ts      => 0,
-   errors  => 1,
-   diffs   => 2,
-   rows    => 3,
-   chunks  => 4,
-   skipped => 5,
-   time    => 6,
-   table   => 7,
+   ts        => 0,
+   errors    => 1,
+   diffs     => 2,
+   rows      => 3,
+   diff_rows => 4,
+   chunks    => 5,
+   skipped   => 6,
+   time      => 7,
+   table     => 7,
 );
 sub count_checksum_results {
    my ($output, $column, $table) = @_;
@@ -732,7 +733,7 @@ sub normalize_checksum_results {
    open my $fh, ">", $tmp_file or die "Cannot open $tmp_file: $OS_ERROR";
    printf $fh $output;
    close $fh;
-   my $normal_output = `cat $tmp_file | awk '/^[0-9 ]/ {print \$2 " " \$3 " " \$4 " " \$5 " " \$6 " " \$8} /^[A-Z]/ {print \$0}'`;
+   my $normal_output = `cat $tmp_file | awk '/^[0-9 ]/ {print \$2 " " \$3 " " \$4 " " \$5 " " \$6 " " \$7 " " \$9} /^[A-Z]/ {print \$0}'`;
    if ( wantarray ) {
       my $original_output = `cat $tmp_file`;
       return $normal_output, $original_output;
