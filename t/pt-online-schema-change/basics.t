@@ -841,7 +841,8 @@ $master_dbh->do("DROP DATABASE test_recursion_method");
 
 diag("Reloading sakila");
 my $master_port = $sb->port_for('master');
-system "$trunk/sandbox/load-sakila-db $master_port &";
+system "$trunk/sandbox/load-sakila-db $master_port";
+$sb->wait_for_slaves();
 
 $sb->do_as_root("slave1", q/CREATE USER 'slave_user'@'%' IDENTIFIED BY 'slave_password'/);
 $sb->do_as_root("slave1", q/GRANT SELECT, INSERT, UPDATE, SUPER, REPLICATION SLAVE ON *.* TO 'slave_user'@'%'/);
