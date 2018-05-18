@@ -61,13 +61,13 @@ $output = output(
       qw(--chunk-time 0 --chunk-size 100) ) },
    stderr => 1,
 );
-
+#1
 like(
    $output,
    qr/MySQL error 1265: Data truncated/,
    "MySQL error 1265: Data truncated for column"
 );
-
+#2
 my (@errors) = $output =~ m/error/;
 is(
    scalar @errors,
@@ -91,16 +91,16 @@ $output = output(
 
 my $original_output;
 ($output, $original_output) = PerconaTest::normalize_checksum_results($output);
-
+#3
 like(
    $original_output,
    qr/Lock wait timeout exceeded/,
    "Warns about lock wait timeout"
 );
-
+#4
 like(
    $output,
-   qr/^0 0 0 1 1 sakila.city/m,
+   qr/^0 0 0 0 1 1 sakila.city/m,
    "Skips chunk that times out"
 );
 
@@ -129,7 +129,7 @@ unlike(
 
 like(
    $output,
-   qr/^0 0 600 1 0 sakila.city/m,
+   qr/^0 0 600 0 1 0 sakila.city/m,
    "Checksum retried after lock wait timeout"
 );
 

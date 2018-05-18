@@ -53,7 +53,7 @@ $sb->load_file('master3', "t/pt-online-schema-change/samples/pt-244.sql");
 
 my $num_rows = 1000;
 diag("Loading $num_rows into the table. This might take some time.");
-diag(`util/mysql_random_data_load_linux_amd64 --host=127.1 --port=$master3_port --user=msandbox --password=msandbox test t3 $num_rows`);
+diag(`util/mysql_random_data_load --host=127.0.0.1 --port=$master3_port --user=msandbox --password=msandbox test t3 $num_rows`);
 diag("$num_rows rows loaded. Starting tests.");
 
 $dbh3->do("FLUSH TABLES");

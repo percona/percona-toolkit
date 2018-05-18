@@ -19,7 +19,11 @@ use Sandbox;
 use SqlModes;
 use File::Temp qw/ tempdir /;
 
-plan tests => 4;
+if ($ENV{PERCONA_SLOW_BOX}) {
+    plan skip_all => 'This test needs a fast machine';
+} else {
+    plan tests => 4;
+}
 our $delay = 30;
 
 my $tmp_file = File::Temp->new();
@@ -32,7 +36,7 @@ my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
 my $slave_dbh = $sb->get_dbh_for('slave1');
-my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my $master_dsn = 'h=127.0.0.1,P=12345,u=msandbox,p=msandbox';
 
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
@@ -65,7 +69,7 @@ $sb->load_file('master', "t/pt-online-schema-change/samples/slave_lag.sql");
 
 my $num_rows = 10000;
 diag("Loading $num_rows into the table. This might take some time.");
-diag(`util/mysql_random_data_load --host=127.1 --port=12345 --user=msandbox --password=msandbox test pt178 $num_rows`);
+diag(`util/mysql_random_data_load --host=127.0.0.1 --port=12345 --user=msandbox --password=msandbox test pt178 $num_rows`);
 
 # Run a full table scan query to ensure the slave is behind the master
 # There is no query cache in MySQL 8.0+
@@ -89,7 +93,7 @@ like(
 
 # Repeat the test now using --check-slave-lag
 $args = "$master_dsn,D=test,t=pt178 --execute --chunk-size 1 --max-lag 5 --alter 'ENGINE=InnoDB' "
-      . "--check-slave-lag h=127.1,P=12346,u=msandbox,p=msandbox,D=test,t=sbtest";
+      . "--check-slave-lag h=127.0.0.1,P=12346,u=msandbox,p=msandbox,D=test,t=sbtest";
 
 # Run a full table scan query to ensure the slave is behind the master
 reset_query_cache($master_dbh, $master_dbh);

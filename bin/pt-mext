@@ -599,9 +599,9 @@ for i in `_seq $NUM`; do
    NEXTFILE=$(($i + 1))
 
    # Sort each file and eliminate empty lines, so 'join' doesn't complain.
-   sort "$FILE$i" | grep . > "$FILE$i.tmp"
+   sort -s "$FILE$i" | grep . > "$FILE$i.tmp"
    mv "$FILE$i.tmp" "$FILE$i"
-   sort "$FILE${NEXTFILE}" | grep . > "$FILE${NEXTFILE}.tmp"
+   sort -s "$FILE${NEXTFILE}" | grep . > "$FILE${NEXTFILE}.tmp"
    mv "$FILE${NEXTFILE}.tmp" "$FILE${NEXTFILE}"
 
    # Join the files together.  This gets slow O(n^2) as we add more files, but
@@ -610,7 +610,7 @@ for i in `_seq $NUM`; do
 
    # Find the max length of the [numeric only] values in the file so we know how
    # wide to make the columns
-   MAXLEN=`awk '{print $2}' "$FILE${NEXTFILE}" | grep -v '[^0-9]' | awk '{print length($1)}' | sort -rn | head -n1`
+   MAXLEN=`awk '{print $2}' "$FILE${NEXTFILE}" | grep -v '[^0-9]' | awk '{print length($1)}' | sort -rns | head -n1`
    mv "$FILE" "$FILE${NEXTFILE}"
    SPEC="$SPEC %${MAXLEN}d";
 

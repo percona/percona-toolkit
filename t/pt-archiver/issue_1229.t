@@ -14,6 +14,8 @@ use Data::Dumper;
 
 use PerconaTest;
 use Sandbox;
+use utf8;
+
 require "$trunk/bin/pt-archiver";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);

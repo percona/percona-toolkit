@@ -21,7 +21,11 @@ use Sandbox;
 use SqlModes;
 use File::Temp qw/ tempdir /;
 
-plan tests => 3;
+if (!$ENV{PERCONA_SLOW_BOX}) {
+    plan skip_all => 'This test needs a fast machine';
+} else {
+    plan tests => 3;
+}
 
 require "$trunk/bin/pt-online-schema-change";
 
@@ -53,7 +57,7 @@ my $num_rows = 1000;
 my $master_port = 12345;
 
 diag("Loading $num_rows into the table. This might take some time.");
-diag(`util/mysql_random_data_load_linux_amd64 --host=127.1 --port=$master_port --user=msandbox --password=msandbox employees t1 $num_rows`);
+diag(`util/mysql_random_data_load --host=127.0.0.1 --port=$master_port --user=msandbox --password=msandbox employees t1 $num_rows`);
 diag("$num_rows rows loaded. Starting tests.");
 
 $master_dbh->do("FLUSH TABLES");

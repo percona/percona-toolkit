@@ -1,8 +1,10 @@
 Changelog for Percona Toolkit
 
-v3.0.9 released 2018-04-17
+v3.0.10
 
-v3.0.9 
+ * Improvement PT-1546 : Improved support of MySQL 8 roles
+
+v3.0.9 released 2018-04-17
 
  * Feature     PT-1530 : Add support for encryption status to mysql-summary
  * Fixed bug   PT-1527 : pt-table-checksum ignores --nocheck-binlog-format

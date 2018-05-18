@@ -211,6 +211,7 @@ sub wipe_clean {
 
    $self->wait_for_slaves();
 
+   $self->clear_genlogs();
    return;
 }
 
@@ -391,7 +392,7 @@ sub verify_test_data {
    my @diffs;
    foreach my $c ( @checksums ) {
       next unless $c->{checksum};
-      if ( $c->{checksum} ne $ref->{$c->{table}}->{checksum} ) {
+      if ( $ref->{$c->{table}} && $c->{checksum} ne $ref->{$c->{table}}->{checksum} ) {
          push @diffs, $c->{table};
       }
    }

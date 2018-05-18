@@ -2266,24 +2266,19 @@ report_jemalloc_enabled() {
   local JEMALLOC_LOCATION=''
 
   for PID in $(pidof mysqld); do
-     grep -qc jemalloc /proc/${PID}/environ || ldd $(which mysqld) 2>/dev/null | grep -qc jemalloc
-     JEMALLOC_STATUS=$?
-     if [ $JEMALLOC_STATUS = 1 ]; then
-       echo "jemalloc is not enabled in MySQL config for process with ID ${PID}" 
+     grep -qc jemalloc /proc/${pid}/environ || ldd $(which mysqld) 2>/dev/null | grep -qc jemalloc
+     jemalloc_status=$?
+     if [ $jemalloc_status = 1 ]; then
+       echo "jemalloc is not enabled in mysql config for process with id ${pid}" 
      else
-       echo "jemalloc enabled in MySQL config for process with ID ${PID}"
+       echo "jemalloc enabled in mysql config for process with id ${pid}"
        GENERAL_JEMALLOC_STATUS=1
      fi
   done
 
-  if [ $GENERAL_JEMALLOC_STATUS = 1 ]; then
-     for libjemall in "/usr/lib64" "/usr/lib/x86_64-linux-gnu" "/usr/lib"; do
-       if [ -r "$libjemall/libjemalloc.so.1" ]; then
-         JEMALLOC_LOCATION="$libjemall/libjemalloc.so.1"
-         break
-       fi
-     done
-     if [ -z $JEMALLOC_LOCATION ]; then
+  if [ $GENERAL_JEMALLOC_STATUS -eq 1 ]; then
+     JEMALLOC_LOCATION=$(find /usr/lib64/ /usr/lib/x86_64-linux-gnu /usr/lib -name "libjemalloc.*" 2>/dev/null | head -n 1)
+     if [ -z "$JEMALLOC_LOCATION" ]; then
        echo "Jemalloc library not found"
      else
        echo "Using jemalloc from $JEMALLOC_LOCATION"

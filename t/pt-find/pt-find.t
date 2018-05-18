@@ -191,13 +191,13 @@ SKIP: {
       is(
          $output,
    "`sakila`.`actor_info`
-   `sakila`.`customer_list`
-   `sakila`.`film_list`
-   `sakila`.`nicer_but_slower_film_list`
-   `sakila`.`sales_by_film_category`
-   `sakila`.`sales_by_store`
-   `sakila`.`staff_list`
-   ",
+`sakila`.`customer_list`
+`sakila`.`film_list`
+`sakila`.`nicer_but_slower_film_list`
+`sakila`.`sales_by_film_category`
+`sakila`.`sales_by_store`
+`sakila`.`staff_list`
+",
          '--datasize NULL',
       );
    };
