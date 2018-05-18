@@ -73,7 +73,7 @@ ok(
    no_diff(
       sub { pt_table_checksum::main(@args) },
       "$sample/default-results-$sandbox_version.txt",
-      post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $6 " " $8}\'',
+      post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $7 " " $9}\'',
    ),
    "Default checksum"
 );
@@ -85,6 +85,7 @@ ok(
 # 2
 $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 my $max_chunks = $sandbox_version < '5.7' ? 60 : 100;
+
 ok(
    $row->[0] > 25 && $row->[0] < $max_chunks,
    'Between 25 and 60 chunks'
@@ -98,7 +99,7 @@ ok(
    no_diff(
       sub { pt_table_checksum::main(@args, qw(--chunk-time 0)) },
       "$sample/static-chunk-size-results-$sandbox_version.txt",
-      post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $5 " " $6 " " $8}\'',
+      post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $6 " " $7 " " $9}\'',
    ),
    "Static chunk size (--chunk-time 0)"
 );

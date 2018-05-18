@@ -1909,8 +1909,14 @@ sub main {
       . ($o->get('timestamp') ? ", MySQL $version at $ts" : ", MySQL $version"),
       ), "\n" if $o->get('header');
 
+   # MySQL 8 roles must be excluded from the regular users list.
+   # Roles can be identified because the user password is expired, the authentication 
+   # string is empty and the account is locked
    my $users = $o->get('only') || $dbh->selectall_arrayref(
-      'SELECT DISTINCT User, Host FROM mysql.user ORDER BY User, Host',
+      'SELECT DISTINCT User, Host FROM mysql.user WHERE NOT (`account_locked`="Y"
+      AND `password_expired`="Y"
+      AND `authentication_string`=""
+      ) ORDER BY User, Host',
       { Slice => {} });
    if ( scalar @all_hosts ) {
       my $where = join(' OR ', map { "User='$_'" } @all_hosts);
@@ -1922,6 +1928,24 @@ sub main {
    my $ignore_users = $o->get('ignore');
 
    my $exit_status = 0;
+   my $roles = get_roles($dbh, $users);
+   if ($roles && scalar @$roles > 0) {
+       print "-- Roles\n";
+       my $count=0;
+
+       for my $role (@$roles) {
+           next if (!$o->get("include-unused-roles") && $role->{active} == 0);
+           unshift @$users, { Host => $role->{host}, User => $role->{name}, IsRole => 1};
+           $count++;
+           printf('CREATE ROLE IF NOT EXISTS `%s`;'."\n", $role->{name});
+       }
+
+       if ($count == 0) {
+           print "No active roles found\n";
+       }
+       print "-- End of roles listing\n";
+   }
+   
    USER:
    foreach my $u ( @$users ) {
       my $user_host = "'$u->{User}'\@'$u->{Host}'";
@@ -2040,7 +2064,7 @@ sub main {
             "\n";
       }
 
-      if ( $o->get('drop') ) {
+      if ( $o->get('drop') && !defined($u->{IsRole}) ) {
          print join("\n",
             "DROP USER $user_host;",
             "DELETE FROM `mysql`.`user` WHERE `User`='$u->{User}' AND `Host`='$u->{Host}';",
@@ -2082,6 +2106,42 @@ sub parse_user {
          /xms;
    $host ||= '%';
    return ( $user, $host );
+}
+
+sub get_roles {
+    my ($dbh, $users) = @_;
+    my $query = <<__EOQ;
+    SELECT DISTINCT user.user AS name, user.host, IF(from_user IS NULL,0, 1) AS active
+      FROM mysql.user
+ LEFT JOIN mysql.role_edges ON role_edges.from_user=user.user
+     WHERE `account_locked`='Y'
+       AND `password_expired`='Y'
+       AND `authentication_string`=''
+__EOQ
+    if (scalar $users > 0) {
+       my $user_names = join (", ", map { "'$_->{User}'" } @$users);
+       $query .= " AND to_user IN ($user_names)";
+    }
+    PTDEBUG && _d("Getting roles");
+    PTDEBUG && _d($query);                                      
+    my $roles;
+    eval { $roles = $dbh->selectall_arrayref($query, { Slice => {} }) };
+    if ($EVAL_ERROR) {
+        PTDEBUG && _d("Cannot list roles: $EVAL_ERROR");
+    }
+    return $roles;
+}
+
+sub is_role {
+    my ($users, $grant) = @_;
+    foreach my $u ( @$users ) {
+        my $user_host = "`$u->{User}`\@`$u->{Host}`";
+        warn "> user_host: $user_host";
+        if ($grant eq $user_host) {
+            return 1;
+        }
+    }
+    return 0;
 }
 
 sub split_grants {
@@ -2345,6 +2405,10 @@ Variables specified on the command line override these defaults.  For
 example, specifying C<--set-vars wait_timeout=500> overrides the defaultvalue of C<10000>.
 
 The tool prints a warning and continues if a variable cannot be set.
+
+=item --[no]include-unused-roles
+
+When dumping MySQL 8+ roles, include unused roles.
 
 =item --socket
 

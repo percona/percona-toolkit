@@ -19,55 +19,46 @@ require "$trunk/bin/pt-table-checksum";
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
+my $sb_version = VersionParser->new($dbh);
+my $rows = $dbh->selectall_hashref("SHOW VARIABLES LIKE '%version%'", ['variable_name']);
 
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
-}
-else {
+} elsif ( $sb_version < '5.7.21' || !($rows->{version_comment}->{value} =~ m/percona server/i) ) {
+   plan skip_all => 'This test file needs Percona Server 5.7.21.21+';
+} else {
    plan tests => 3;
 }
 
-diag("loading samples");
-#$sb->load_file('master', 't/pt-table-checksum/samples/pt-226.sql');
-$sb->load_file('master', 't/pt-table-checksum/samples/pt-226.sql');
-
-# The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
+eval {
+      $dbh->selectrow_arrayref('SELECT @@query_response_time_session_stats' );
+};
+if ($EVAL_ERROR) {
+    $sb->load_file('master', 't/pt-table-checksum/samples/pt-131.sql');
+}
+# The sandbox servers run with lock_wait_timeout=3 and it is not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
 my $master_dsn = $sb->dsn_for('master');
-diag("setting up the slaves");
-my $slave_dbh = $sb->get_dbh_for('slave1');
-# Create differences
-
-$slave_dbh->do('DELETE FROM `test`.`joinit` WHERE i > 90');
-$slave_dbh->do('FLUSH TABLES');
-$dbh->do('SET GLOBAL binlog_format="ROW"');
-
-my @args       = ($master_dsn, "--set-vars", "innodb_lock_wait_timeout=50", 
-                               "--ignore-databases", "mysql",
-                               "--nocheck-replication-filters"); 
 my $output;
 my $exit_status;
+$ENV{PTDEBUG} = 1;
 
-# Test #1 
-$output = output(
-   sub { $exit_status = pt_table_checksum::main(@args) },
-   stderr => 1,
-);
+my $cmd ="PTDEBUG=1 $trunk/bin/pt-table-checksum $master_dsn --disable-qrt-plugin 2>&1";
 
-isnt(
-   $exit_status,
-   0,
-   "PT-226 SET binlog_format='STATEMENT' exit status",
-);
-
-like(
+$output = `$cmd`;
+like (
     $output,
-    qr/1\s+100\s+0\s+1\s+0\s+.*test.joinit/,
-    "PT-226 table joinit has differences",
+    qr/Restoring qrt plugin state/,
+    "QRT plugin status has been restored",
 );
 
-$dbh->do('SET GLOBAL binlog_format="STATEMENT"');
+like (
+    $output,
+    qr/Disabling qrt plugin on master server/,
+    "QRT plugin has been disabled",
+);
+delete $ENV{PTDEBUG};
 
 # #############################################################################
 # Done.
