@@ -19,7 +19,7 @@ use Sandbox;
 use SqlModes;
 use File::Temp qw/ tempdir /;
 
-if (!$ENV{PERCONA_SLOW_BOX}) {
+if ($ENV{PERCONA_SLOW_BOX}) {
     plan skip_all => 'This test needs a fast machine';
 } else {
     plan tests => 4;
