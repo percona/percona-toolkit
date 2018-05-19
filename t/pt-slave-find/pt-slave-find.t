@@ -158,7 +158,7 @@ ok(
       ? "t/pt-slave-find/samples/summary001.txt"
       : "t/pt-slave-find/samples/summary001-5.0.txt"), cmd_output => 1, keep_output => 1),
    "Summary report format",
-);
+) or die diag($result);
 
 
 # #############################################################################
