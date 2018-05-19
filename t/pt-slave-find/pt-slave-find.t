@@ -125,6 +125,7 @@ $result =~ s/Version.*/Version/g;
 $result =~ s/Uptime.*/Uptime/g;
 $result =~ s/[0-9]* seconds/0 seconds/g;
 $result =~ s/Binary logging.*/Binary logging/g;
+$result =~ s/Replication     Is a slave, has 1 slaves connected, is.*/Replication     Is a slave, has 1 slaves connected, is/g;
 
 my $innodb_re = qr/InnoDB version\s+(.*)/;
 my (@innodb_versions) = $result =~ /$innodb_re/g;
@@ -157,7 +158,7 @@ ok(
       ? "t/pt-slave-find/samples/summary001.txt"
       : "t/pt-slave-find/samples/summary001-5.0.txt"), cmd_output => 1, keep_output => 1, update_samples => 1),
    "Summary report format",
-) or die diag("\n>>$result<<\n");
+);
 
 # #############################################################################
 # Done.
