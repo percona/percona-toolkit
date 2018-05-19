@@ -2518,7 +2518,7 @@ report_mysql_summary () {
    local keyring_plugins="$(collect_keyring_plugins)"
    local encrypted_tables=""
    local encrypted_tablespaces=""
-   if [ ${OPT_LIST_ENCRYPTED_TABLES} == 'yes' ]; then 
+   if [ "${OPT_LIST_ENCRYPTED_TABLES}" = 'yes' ]; then 
        encrypted_tables="$(collect_encrypted_tables)"
        encrypted_tablespaces="$(collect_encrypted_tablespaces)"
    fi
