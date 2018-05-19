@@ -31,4 +31,3 @@ InnoDB version  BUILTIN
       Slave mode      STRICT
       Auto-increment  increment 1, offset 1
       InnoDB version  BUILTIN
-

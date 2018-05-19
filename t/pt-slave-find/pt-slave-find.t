@@ -155,7 +155,7 @@ is(
 ok(
    no_diff($result, ($sandbox_version ge '5.1'
       ? "t/pt-slave-find/samples/summary001.txt"
-      : "t/pt-slave-find/samples/summary001-5.0.txt"), cmd_output => 1, keep_output => 1),
+      : "t/pt-slave-find/samples/summary001-5.0.txt"), cmd_output => 1, keep_output => 1, update_samples => 1),
    "Summary report format",
 ) or die diag("\n>>$result<<\n");
 
