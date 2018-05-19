@@ -109,7 +109,8 @@ like(
 # Summary report format.
 # #############################################################################
 my $outfile = "/tmp/mk-slave-find-output.txt";
-diag(`rm -rf $outfile >/dev/null`);
+#diag(`rm -rf $outfile >/dev/null`);
+diag(`rm -rf $outfile`);
 
 $output = output(
    sub { pt_slave_find::main(@args) },
@@ -156,7 +157,7 @@ ok(
       ? "t/pt-slave-find/samples/summary001.txt"
       : "t/pt-slave-find/samples/summary001-5.0.txt"), cmd_output => 1, keep_output => 1),
    "Summary report format",
-) or die diag(">>\n$result\n<<\n");
+) or die diag("\n>>$result<<\n");
 
 # #############################################################################
 # Done.
