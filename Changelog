@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v3.0.10 released 2018-05-21
+
 v3.0.10
 
  * Fixed bug   PT-1556 : pt-table-checksum 3.0.9 doesn't change binlog_format to statement anymore

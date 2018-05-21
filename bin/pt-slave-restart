@@ -6112,6 +6112,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-slave-restart 3.0.9
+pt-slave-restart 3.0.10
 
 =cut

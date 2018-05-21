@@ -102,10 +102,6 @@ Aggregate GDB stack traces for a selected program.
 
 Analyze MySQL queries from logs, processlist, and tcpdump.
 
-=item pt-secure-collect
-
-Collect, sanitize, pack and encrypt pt-tools outputs.
-
 =item pt-show-grants
 
 Canonicalize and print MySQL grants so you can effectively replicate, compare and version-control them.
@@ -564,6 +560,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-Percona Toolkit v3.0.9 released 2018-04-17
+Percona Toolkit v3.0.10 released 2018-05-21
 
 =cut
