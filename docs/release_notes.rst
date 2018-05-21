@@ -1,6 +1,25 @@
 Release Notes
 *************
 
+v3.0.10
+================================================================================
+
+New Features
+
+* :jirabug:`PT-131`: ``pt-table-checksum`` disables the QRT plugin
+* :jirabug:`PT-118`: ``pt-table-checksum`` report the number of rows
+  of difference between master and slave.
+
+Improvements
+
+* :jirabug:`PT-1546`: Improved support of MySQL 8 roles
+* :jirabug:`PT-1543`: The encrypted table status query causes high load over multiple minutes
+* :jirabug:`PT-1536`: Added info about encrypted tablespaces in ``pt-mysql-summary``
+
+Bug Fixes
+
+* :jirabug:`PT-1556`: ``pt-table-checksum`` 3.0.9 does not change ``binlog_format`` to statement any more.
+
 v3.0.9 released 2018-04-20
 ==========================
 
@@ -8,7 +27,7 @@ New Tools
 
 * :jirabug:`PT-1501`: ``pt-secure-collect`` - New tool to collect and sanitize pt-tools outputs
 
-* New Features 
+New Features 
 
 * :jirabug:`PT-1530`: Add support for encryption status to ``pt-mysql-summary``
 * :jirabug:`PT-1526`: Add ndb status to ``pt-mysql-summary`` (Thanks Fernando Ipar)
