@@ -64,7 +64,7 @@ if ( $sandbox_version gt '5.6' ) {
            possible_keys => 'PRIMARY',
            key           => 'PRIMARY',
            key_len       => 2,
-           filtered      => 100,
+           filtered      => "100.00", # use quotes to make 100 = 100.00
            partitions    => undef,
            ref           => 'const',
            rows          => 1,
