@@ -64,7 +64,7 @@ if ( $sandbox_version gt '5.6' ) {
            possible_keys => 'PRIMARY',
            key           => 'PRIMARY',
            key_len       => 2,
-           filtered      => "100.00", # use quotes to make 100 = 100.00
+           filtered      => 100,
            partitions    => undef,
            ref           => 'const',
            rows          => 1,
@@ -72,6 +72,13 @@ if ( $sandbox_version gt '5.6' ) {
          },
       ];
 }
+
+my $got = $exa->explain_query(
+      dbh   => $dbh,
+      query => 'select * from actor where actor_id = 5',
+);
+
+$got->[0]->{filtered} = int($got->[0]->{filtered}) if (defined($got->[0]->{filtered}));
 
 is_deeply(
    $exa->explain_query(
