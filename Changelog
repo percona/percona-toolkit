@@ -1,13 +1,19 @@
 Changelog for Percona Toolkit
 
+v3.0.10 released 2018-05-21
+
 v3.0.10
 
+ * Fixed bug   PT-1556 : pt-table-checksum 3.0.9 doesn't change binlog_format to statement anymore
  * Improvement PT-1546 : Improved support of MySQL 8 roles
+ * Improvement PT-1543 : Encrypted table status query causes high load over multiple minutes
+ * Improvement PT-1536 : Add info about encrypted tablespaces in pt-mysql-summary
+ * Feature      PT-131 : Make pt-table checksum to disable QRT plugin
+ * Feature      PT-118 : pt-table-checksum report the number of rows of difference between master and slave
 
 v3.0.9 released 2018-04-17
 
  * Feature     PT-1530 : Add support for encryption status to mysql-summary
- * Fixed bug   PT-1527 : pt-table-checksum ignores --nocheck-binlog-format
  * Feature     PT-1526 : Add ndb status to pt-mysql-summary (Thanks Fernando Ipar)
  * Feature     PT-1525 : Added support for MySQL 8 roles into pt-mysql-summary
  * Feature     PT-1509 : Only set binlog_format when necessary (Thanks Moritz Lenz)
