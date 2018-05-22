@@ -86,11 +86,14 @@ is_deeply(
    'Got a simple EXPLAIN result',
 );
 
-is_deeply(
-   $exa->explain_query(
+$got = $exa->explain_query(
       dbh   => $dbh,
       query => 'delete from actor where actor_id = 5',
-   ),
+);
+$got->[0]->{filtered} = int($got->[0]->{filtered}) if (defined($got->[0]->{filtered}));
+
+is_deeply(
+   $got,
    $want,
    'Got EXPLAIN result for a DELETE',
 );
