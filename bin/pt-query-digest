@@ -7778,7 +7778,12 @@ sub explain_report {
             $explain .= "# *************************** $i. "
                       . "row ***************************\n";
             foreach my $j ( 0 .. $#row ) {
-               $explain .= sprintf "# %13s: %s\n", $sth->{NAME}->[$j],
+               # In some OSes/Perl versions, the filtered row can be reported with or without decimals.
+               # Example, in Ubuntu 16.04 it is being printed as 100.00 while in Ubuntu 18.04 it is
+               # being printed as 100.
+               # To make it testeable, we need to have a consistent format across versions.
+               my $value_format = $sth->{NAME}->[$j] eq 'filtered' ? "%.02f" : "%s";
+               $explain .= sprintf "# %13s: $value_format\n", $sth->{NAME}->[$j],
                   defined $row[$j] ? $row[$j] : 'NULL';
             }
             $i++;  # next row number

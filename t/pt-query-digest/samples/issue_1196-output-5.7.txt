@@ -45,7 +45,7 @@ select t.a, count(*) from t join t t2 using(a) group by 1 order by 2 desc limit 
 #       key_len: NULL
 #           ref: NULL
 #          rows: 14
-#      filtered: 100
+#      filtered: 100.00
 #         Extra: Using temporary; Using filesort
 # *************************** 2. row ***************************
 #            id: 1
@@ -58,5 +58,5 @@ select t.a, count(*) from t join t t2 using(a) group by 1 order by 2 desc limit 
 #       key_len: NULL
 #           ref: NULL
 #          rows: 14
-#      filtered: 10
+#      filtered: 10.00
 #         Extra: Using where; Using join buffer (Block Nested Loop)

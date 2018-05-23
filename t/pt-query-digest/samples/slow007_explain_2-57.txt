@@ -41,5 +41,5 @@ SELECT fruit FROM trees\G
 #       key_len: 27
 #           ref: NULL
 #          rows: 3
-#      filtered: 100
+#      filtered: 100.00
 #         Extra: Using index
