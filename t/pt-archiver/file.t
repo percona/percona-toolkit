@@ -46,7 +46,6 @@ is($output, <<EOF
 2\t\\N\t3\t4
 3\t2\t3\t\\\t
 4\t2\t3\t\\
-
 EOF
 , 'File has the right stuff');
 `rm -f archive.test.table_1`;
@@ -124,8 +123,8 @@ $output = output(
 );
 $output = `cat archive.test.table_2`;
 is($output, <<EOF
-1, 2, 3, "4"
-2, "\\N", 3, "4"
+1, 2, 3, 4
+2, "\\N", 3, 4
 3, 2, 3, "\\\t"
 4, 2, 3, "\\\n"
 5, 2, 3, "Zapp \\"Brannigan"

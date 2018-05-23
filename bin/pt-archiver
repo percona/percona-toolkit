@@ -7156,10 +7156,16 @@ sub escape {
  
    return join($fields_separated_by, map {
       s/([\t\n\\])/\\$1/g if defined $_;  # Escape tabs etc
-      $_ = defined $_ ? $_ : '\N';             # NULL = \N
+      my $s = defined $_ ? $_ : '\N';             # NULL = \N
       # var & ~var will return 0 only for numbers
-      $_ =~ s/([^\\])"/$1\\"/g if ($_ !~ /^[0-9,.E]+$/  && $optionally_enclosed_by eq '"');
-      $_ = $optionally_enclosed_by && $_ & ~$_ ? $optionally_enclosed_by."$_".$optionally_enclosed_by : $_;
+      if ($s !~ /^[0-9,.E]+$/  && $optionally_enclosed_by eq '"') {
+          $s =~ s/([^\\])"/$1\\"/g;
+          $s = $optionally_enclosed_by."$s".$optionally_enclosed_by;
+      }
+      # $_ =~ s/([^\\])"/$1\\"/g if ($_ !~ /^[0-9,.E]+$/  && $optionally_enclosed_by eq '"');
+      # $_ = $optionally_enclosed_by && ($_ & ~$_) ? $optionally_enclosed_by."$_".$optionally_enclosed_by : $_;
+      chomp $s;
+      $s;
    } @$row);
 
 }
