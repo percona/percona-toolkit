@@ -2679,8 +2679,7 @@ sub any_unix_timestamp {
 
 sub make_checksum {
    my ( $val ) = @_;
-   my $checksum = uc substr(md5_hex($val), -16);
-   warn ($checksum, ' checksum for ', $val);
+   my $checksum = uc md5_hex($val);
    PTDEBUG && _d($checksum, 'checksum for', $val);
    return $checksum;
 }
@@ -16189,7 +16188,7 @@ by pt-query-digest.
 MAGIC_create_review_table:
 
   CREATE TABLE IF NOT EXISTS query_review (
-     checksum     BIGINT UNSIGNED NOT NULL PRIMARY KEY,
+     checksum     CHAR(32) NOT NULL PRIMARY KEY,
      fingerprint  TEXT NOT NULL,
      sample       TEXT NOT NULL,
      first_seen   DATETIME,
