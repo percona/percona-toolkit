@@ -2680,6 +2680,7 @@ sub any_unix_timestamp {
 sub make_checksum {
    my ( $val ) = @_;
    my $checksum = uc substr(md5_hex($val), -32);
+   warn ($checksum, ' checksum for ', $val);
    PTDEBUG && _d($checksum, 'checksum for', $val);
    return $checksum;
 }
