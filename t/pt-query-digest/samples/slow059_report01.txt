@@ -25,7 +25,7 @@
 # Boolean:
 # Filesort      33% yes,  66% no
 
-# Query 1: 0 QPS, 0x concurrency, ID 0x9EA505F4786E7F15 at byte 733 ______
+# Query 1: 0 QPS, 0x concurrency, ID 0x24BC7BB1422E14BA9EA505F4786E7F15 at byte 733
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2013-11-28 01:05:31
@@ -72,7 +72,7 @@
 # EXPLAIN /*!50100 PARTITIONS*/
 SELECT foo FROM bar WHERE id=2\G
 
-# Query 2: 0 QPS, 0x concurrency, ID 0xD2BA209E593ABAA7 at byte 1441 _____
+# Query 2: 0 QPS, 0x concurrency, ID 0xF227C8FE1FC34645D2BA209E593ABAA7 at byte 1441
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2013-11-28 01:05:31
@@ -121,7 +121,7 @@ SELECT foo FROM bar WHERE id=2\G
 INSERT INTO foo VALUES (NULL, 3)\G
 
 # Profile
-# Rank Query ID           Response time Calls R/Call V/M   Item
-# ==== ================== ============= ===== ====== ===== ==========
-#    1 0x9EA505F4786E7F15  0.0005 73.8%     2 0.0002  0.00 SELECT bar
-#    2 0xD2BA209E593ABAA7  0.0002 26.2%     1 0.0002  0.00 INSERT foo
+# Rank Query ID                           Response time Calls R/Call V/M  
+# ==== ================================== ============= ===== ====== =====
+#    1 0x24BC7BB1422E14BA9EA505F4786E7F15  0.0005 73.8%     2 0.0002  0.00 SELECT bar
+#    2 0xF227C8FE1FC34645D2BA209E593ABAA7  0.0002 26.2%     1 0.0002  0.00 INSERT foo

@@ -1,5 +1,5 @@
 
-# Query 1: 0 QPS, 0x concurrency, ID 0xC30A1A850F4E510F at byte 0 ________
+# Query 1: 0 QPS, 0x concurrency, ID 0xD29F165EF524D599C30A1A850F4E510F at byte 0
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2009-12-08 13:41:12.811188
@@ -30,7 +30,7 @@ PREPARE SELECT i,j FROM d.t2 WHERE i=? AND j=?\G
 # EXPLAIN /*!50100 PARTITIONS*/
 SELECT i,j FROM d.t2 WHERE i=? AND j=?\G
 
-# Query 2: 0 QPS, 0x concurrency, ID 0x26EEAE2EADD904A1 at byte 1330 _____
+# Query 2: 0 QPS, 0x concurrency, ID 0x095D8FA129E8693526EEAE2EADD904A1 at byte 1330
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2009-12-08 13:41:12.811591

@@ -1,5 +1,5 @@
 
-# Query 1: 1.33 QPS, 0.00x concurrency, ID 0x208AC308FD716D83 at byte 454
+# Query 1: 1.33 QPS, 0.00x concurrency, ID 0xF26B49DB07BBD0EE208AC308FD716D83 at byte 454
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: 2010-06-24 11:48:27 to 11:48:30
@@ -27,6 +27,6 @@
 SELECT * FROM `products` ORDER BY name, shape asc\G
 
 # Profile
-# Rank Query ID           Response time Calls R/Call V/M   Item
-# ==== ================== ============= ===== ====== ===== ===============
-#    1 0x208AC308FD716D83 0.0001 100.0%     4 0.0000  0.00 SELECT products
+# Rank Query ID                           Response time Calls R/Call V/M  
+# ==== ================================== ============= ===== ====== =====
+#    1 0xF26B49DB07BBD0EE208AC308FD716D83 0.0001 100.0%     4 0.0000  0.00 SELECT products

@@ -1,5 +1,5 @@
 
-# Query 1: 2 QPS, 1.90x concurrency, ID 0xA4EAD36B5CEB1C13 at byte 1044 __
+# Query 1: 2 QPS, 1.90x concurrency, ID 0xC99AD0397C9C8DCAA4EAD36B5CEB1C13 at byte 1044
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.01
 # Time range: 2011-02-08 12:00:09 to 12:00:10
@@ -29,7 +29,7 @@
 # EXPLAIN /*!50100 PARTITIONS*/
 SELECT * FROM blah WHERE id IS NOT NULL\G
 
-# Query 2: 1.50 QPS, 0.03x concurrency, ID 0xAC0EC652760FEEB3 at byte 913
+# Query 2: 1.50 QPS, 0.03x concurrency, ID 0x097135BD72A3F117AC0EC652760FEEB3 at byte 913
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.03
 # Time range: 2011-02-08 12:00:06 to 12:00:08
@@ -59,7 +59,7 @@ SELECT * FROM blah WHERE id IS NOT NULL\G
 # EXPLAIN /*!50100 PARTITIONS*/
 SELECT * FROM bar WHERE id=12\G
 
-# Query 3: 1.25 QPS, 0.00x concurrency, ID 0xBB11C6B7F3BAAB30 at byte 521
+# Query 3: 1.25 QPS, 0.00x concurrency, ID 0xA3D5B30F57AF3A43BB11C6B7F3BAAB30 at byte 521
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: 2011-02-08 12:00:01 to 12:00:05

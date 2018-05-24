@@ -1,5 +1,5 @@
 
-# Query 1: 0 QPS, 0x concurrency, ID 0xF33473286088142B at byte 898 ______
+# Query 1: 0 QPS, 0x concurrency, ID 0xC6846BD8C9A8209BF33473286088142B at byte 898
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Attribute    pct   total     min     max     avg     95%  stddev  median
@@ -28,7 +28,7 @@
 #    SHOW CREATE TABLE `db`.`foo`\G
 replace `foo` values("bar")\G
 
-# Query 2: 0 QPS, 0x concurrency, ID 0x471A0C4BD7A4EE34 at byte 730 ______
+# Query 2: 0 QPS, 0x concurrency, ID 0xD2FAEB9897F588D8471A0C4BD7A4EE34 at byte 730
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Attribute    pct   total     min     max     avg     95%  stddev  median
@@ -57,7 +57,7 @@ replace `foo` values("bar")\G
 #    SHOW CREATE TABLE `db`.`foo`\G
 insert `foo` values("bar")\G
 
-# Query 3: 0 QPS, 0x concurrency, ID 0xEBAC9C76529E62CE at byte 534 ______
+# Query 3: 0 QPS, 0x concurrency, ID 0x86FDEB668430A493EBAC9C76529E62CE at byte 534
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Attribute    pct   total     min     max     avg     95%  stddev  median
@@ -87,8 +87,8 @@ insert `foo` values("bar")\G
 load data local infile '/tmp/foo.txt' into table `foo`\G
 
 # Profile
-# Rank Query ID           Response time Calls R/Call V/M   Item
-# ==== ================== ============= ===== ====== ===== =============
-#    1 0xF33473286088142B  0.0376 50.0%     2 0.0188  0.00 REPLACE foo
-#    2 0x471A0C4BD7A4EE34  0.0376 50.0%     2 0.0188  0.00 INSERT foo
-#    3 0xEBAC9C76529E62CE  0.0000  0.0%     2 0.0000  0.00 LOAD DATA foo
+# Rank Query ID                           Response time Calls R/Call V/M  
+# ==== ================================== ============= ===== ====== =====
+#    1 0xC6846BD8C9A8209BF33473286088142B  0.0376 50.0%     2 0.0188  0.00 REPLACE foo
+#    2 0xD2FAEB9897F588D8471A0C4BD7A4EE34  0.0376 50.0%     2 0.0188  0.00 INSERT foo
+#    3 0x86FDEB668430A493EBAC9C76529E62CE  0.0000  0.0%     2 0.0000  0.00 LOAD DATA foo

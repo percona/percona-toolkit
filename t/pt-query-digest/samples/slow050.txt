@@ -1,5 +1,5 @@
 
-# Query 1: 0 QPS, 0x concurrency, ID 0x305E73C51188758F at byte 0 ________
+# Query 1: 0 QPS, 0x concurrency, ID 0x854B57896A3E0670305E73C51188758F at byte 0
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2010-06-24 11:48:00
@@ -28,6 +28,6 @@
 UPDATE mybbl_MBMessage SET groupId = (select groupId from Group_ where name = 'Guest')\G
 
 # Profile
-# Rank Query ID           Response time  Calls R/Call  V/M   Item
-# ==== ================== ============== ===== ======= ===== =============
-#    1 0x305E73C51188758F 10.0000 100.0%     1 10.0000  0.00 UPDATE SELECT mybbl_MBMessage Group_
+# Rank Query ID                           Response time  Calls R/Call  V/M
+# ==== ================================== ============== ===== ======= ===
+#    1 0x854B57896A3E0670305E73C51188758F 10.0000 100.0%     1 10.0000  0.00 UPDATE SELECT mybbl_MBMessage Group_

@@ -6,7 +6,7 @@
 # Exec time              0       0       0       0       0       0       0
 # Query size           964     106     858     482     858  531.74     482
 
-# Query 1: 0 QPS, 0x concurrency, ID 0x0A3E6DCD23F3445A at byte 237 ______
+# Query 1: 0 QPS, 0x concurrency, ID 0xC6637FEB865265BA0A3E6DCD23F3445A at byte 237
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2010-02-11 00:55:24
@@ -42,7 +42,7 @@ SELECT auction_id, auction_title_en AS title, close_time,
                 ORDER BY close_time ASC
                 LIMIT 500\G
 
-# Query 2: 0 QPS, 0x concurrency, ID 0x2361B36A4AEB397B at byte 0 ________
+# Query 2: 0 QPS, 0x concurrency, ID 0xB42FB5382732CE142361B36A4AEB397B at byte 0
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2010-02-11 00:55:24
@@ -69,7 +69,7 @@ SELECT category_id
                 WHERE auction_id = '3015563'\G
 
 # Profile
-# Rank Query ID           Response time Calls R/Call V/M   Item
-# ==== ================== ============= ===== ====== ===== ===============
-#    1 0x0A3E6DCD23F3445A  0.0000  0.0%     1 0.0000  0.00 SELECT auction_search
-#    2 0x2361B36A4AEB397B  0.0000  0.0%     1 0.0000  0.00 SELECT auction_category_map
+# Rank Query ID                           Response time Calls R/Call V/M  
+# ==== ================================== ============= ===== ====== =====
+#    1 0xC6637FEB865265BA0A3E6DCD23F3445A  0.0000  0.0%     1 0.0000  0.00 SELECT auction_search
+#    2 0xB42FB5382732CE142361B36A4AEB397B  0.0000  0.0%     1 0.0000  0.00 SELECT auction_category_map

@@ -1,5 +1,5 @@
 
-# Query 1: 0 QPS, 0x concurrency, ID 0x32B0659E6D13E5A2 at byte 16849 ____
+# Query 1: 0 QPS, 0x concurrency, ID 0x3ACFE4E81547889E32B0659E6D13E5A2 at byte 16849
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.48
 # Attribute    pct   total     min     max     avg     95%  stddev  median
@@ -28,7 +28,7 @@
 # EXPLAIN /*!50100 PARTITIONS*/
 select very_variable_column from unsteady_table\G
 
-# Query 2: 0 QPS, 0x concurrency, ID 0x2F621C2B0611518C at byte 8582 _____
+# Query 2: 0 QPS, 0x concurrency, ID 0x07BD39112F052FC12F621C2B0611518C at byte 8582
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Attribute    pct   total     min     max     avg     95%  stddev  median
@@ -58,7 +58,7 @@ select very_variable_column from unsteady_table\G
 select less_variable_column from steady_table\G
 
 # Profile
-# Rank Query ID           Response time  Calls R/Call V/M   Item
-# ==== ================== ============== ===== ====== ===== ==============
-#    1 0x32B0659E6D13E5A2 308.4675 74.6%   100 3.0847  0.48 SELECT unsteady_table
-#    2 0x2F621C2B0611518C 104.9344 25.4%   100 1.0493  0.00 SELECT steady_table
+# Rank Query ID                           Response time  Calls R/Call V/M 
+# ==== ================================== ============== ===== ====== ====
+#    1 0x3ACFE4E81547889E32B0659E6D13E5A2 308.4675 74.6%   100 3.0847  0.48 SELECT unsteady_table
+#    2 0x07BD39112F052FC12F621C2B0611518C 104.9344 25.4%   100 1.0493  0.00 SELECT steady_table

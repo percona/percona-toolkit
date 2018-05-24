@@ -10,7 +10,7 @@
 # Boolean:
 # No index use  46% yes,  53% no
 
-# Query 1: 2.03k QPS, 0.28x concurrency, ID 0x6EE88728F6F29C72 at byte 800
+# Query 1: 2.03k QPS, 0.28x concurrency, ID 0xE4695C206D6C7F946EE88728F6F29C72 at byte 800
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: 2009-12-18 08:44:07.235011 to 08:44:07.238467
@@ -43,7 +43,7 @@ EXECUTE select * from d.t where name="adam"\G
 # EXPLAIN /*!50100 PARTITIONS*/
 select * from d.t where name="adam"\G
 
-# Query 2: 1.17k QPS, 0.19x concurrency, ID 0xECBCD0412B5E497A at byte 9215
+# Query 2: 1.17k QPS, 0.19x concurrency, ID 0x84DDEEB20D115535ECBCD0412B5E497A at byte 9215
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: 2009-12-18 08:44:07.234727 to 08:44:07.238999
@@ -74,7 +74,7 @@ PREPARE select * from d.t where name="daniel"\G
 # EXPLAIN /*!50100 PARTITIONS*/
 select * from d.t where name="daniel"\G
 
-# Query 3: 1.70k QPS, 0x concurrency, ID 0x559914DA8A7B7F28 at byte 8202 _
+# Query 3: 1.70k QPS, 0x concurrency, ID 0xF35CCCED7D400036559914DA8A7B7F28 at byte 8202
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: 2009-12-18 08:44:07.236509 to 08:44:07.238274
@@ -99,13 +99,13 @@ select * from d.t where name="daniel"\G
 DEALLOCATE PREPARE 4\G
 
 # Profile
-# Rank Query ID           Response time Calls R/Call V/M   Item
-# ==== ================== ============= ===== ====== ===== ==========
-#    1 0x6EE88728F6F29C72  0.0010 54.4%     7 0.0001  0.00 SELECT d.t
-#    2 0xECBCD0412B5E497A  0.0008 45.6%     5 0.0002  0.00 SELECT d.t
-#    3 0x559914DA8A7B7F28  0.0000  0.0%     3 0.0000  0.00 
+# Rank Query ID                           Response time Calls R/Call V/M  
+# ==== ================================== ============= ===== ====== =====
+#    1 0xE4695C206D6C7F946EE88728F6F29C72  0.0010 54.4%     7 0.0001  0.00 SELECT d.t
+#    2 0x84DDEEB20D115535ECBCD0412B5E497A  0.0008 45.6%     5 0.0002  0.00 SELECT d.t
+#    3 0xF35CCCED7D400036559914DA8A7B7F28  0.0000  0.0%     3 0.0000  0.00 
 
 # Prepared statements
-# Rank Query ID           PREP PREP Response EXEC EXEC Response Item
-# ==== ================== ==== ============= ==== ============= ==========
-#    1 0x6EE88728F6F29C72    5  0.0008 45.6%    7  0.0010 54.4% SELECT d.t
+# Rank Query ID                           PREP PREP Response EXEC EXEC Res
+# ==== ================================== ==== ============= ==== ========
+#    1 0xE4695C206D6C7F946EE88728F6F29C72    5  0.0008 45.6%    7  0.0010 54.4% SELECT d.t
