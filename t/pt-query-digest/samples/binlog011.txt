@@ -19,7 +19,7 @@
 # @@session.un           2       0       1    0.67    0.99    0.47    0.99
 # error code             0       0       0       0       0       0       0
 
-# Query 1: 0.58 QPS, 0.50x concurrency, ID 0x85FFF5AA78E5FF6A at byte 1999638
+# Query 1: 0.58 QPS, 0.50x concurrency, ID 0x8D589AFA4DFAEEED85FFF5AA78E5FF6A at byte 1999638
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 3.67
 # Time range: 2014-07-02 13:09:43 to 13:10:21
@@ -46,7 +46,7 @@
 #  10s+
 BEGIN\G
 
-# Query 2: 0.29 QPS, 1x concurrency, ID 0x693F5F4CA1A936BA at byte 1999810
+# Query 2: 0.29 QPS, 1x concurrency, ID 0xD1D19A39A5189A3A693F5F4CA1A936BA at byte 1999810
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 7.00
 # Time range: 2014-07-02 13:10:07 to 13:10:14
@@ -72,7 +72,7 @@ BEGIN\G
 #    SHOW CREATE TABLE `sakila`.`rental`\G
 INSERT INTO `rental` VALUES (1,'2005-05-24 22:53:30',367,130,'2005-05-26 22:04:30',1,'2006-02-16 04:30:53') /*... omitted ...*/\G
 
-# Query 3: 0.40 QPS, 1x concurrency, ID 0x4677E4CEDF8EA4E2 at byte 882234
+# Query 3: 0.40 QPS, 1x concurrency, ID 0x6692BFEDE6AB56814677E4CEDF8EA4E2 at byte 882234
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 5.00
 # Time range: 2014-07-02 13:10:01 to 13:10:06
@@ -98,7 +98,7 @@ INSERT INTO `rental` VALUES (1,'2005-05-24 22:53:30',367,130,'2005-05-26 22:04:3
 #    SHOW CREATE TABLE `sakila`.`payment`\G
 INSERT INTO `payment` VALUES (1,1,1,76,'2.99','2005-05-25 11:30:37','2006-02-16 05:12:30') /*... omitted ...*/\G
 
-# Query 4: 0 QPS, 0x concurrency, ID 0xAAECC8184D17D799 at byte 180631 ___
+# Query 4: 0 QPS, 0x concurrency, ID 0x266D117CFD8ED7C1AAECC8184D17D799 at byte 180631
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2014-07-02 13:09:50
@@ -124,7 +124,7 @@ INSERT INTO `payment` VALUES (1,1,1,76,'2.99','2005-05-25 11:30:37','2006-02-16 
 #    SHOW CREATE TABLE `sakila`.`film`\G
 INSERT INTO `film` VALUES (1,'ACADEMY DINOSAUR','A Epic Drama of a Feminist And a Mad Scientist who must Battle a Teacher in The Canadian Rockies',2006,1,NULL,6,'0.99',86,'20.99','PG','Deleted Scenes,Behind the Scenes','2006-02-15 12:03:42') /*... omitted ...*/\G
 
-# Query 5: 0 QPS, 0x concurrency, ID 0x1A3BF395BD4C2AC5 at byte 3383720 __
+# Query 5: 0 QPS, 0x concurrency, ID 0x5D2F650658D1B9C51A3BF395BD4C2AC5 at byte 3383720
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2014-07-02 13:10:15
@@ -160,7 +160,7 @@ CREATE TABLE `store` (
   CONSTRAINT `fk_store_address` FOREIGN KEY (`address_id`) REFERENCES `address` (`address_id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8\G
 
-# Query 6: 0 QPS, 0x concurrency, ID 0xD8657A03D0724524 at byte 880760 ___
+# Query 6: 0 QPS, 0x concurrency, ID 0xCBD4B02B76FCD5BCD8657A03D0724524 at byte 880760
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2014-07-02 13:10:00
@@ -212,7 +212,7 @@ select  NULL ON UPDATE CASCADE,
   KEY `fk_payment_rental` (`rental_id`),
   CONSTRAINT `fk_payment_rental` FOREIGN KEY (`rental_id`) REFERENCES `rental` (`rental_id`) ON DELETE \G
 
-# Query 7: 0 QPS, 0x concurrency, ID 0x1405E69931A1FC8D at byte 879222 ___
+# Query 7: 0 QPS, 0x concurrency, ID 0x1B49B966156BD5391405E69931A1FC8D at byte 879222
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2014-07-02 13:09:59
@@ -243,7 +243,7 @@ CREATE TABLE `language` (
   PRIMARY KEY (`language_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8\G
 
-# Query 8: 0 QPS, 0x concurrency, ID 0x3B0263BE3363F7DF at byte 8543 _____
+# Query 8: 0 QPS, 0x concurrency, ID 0x0DE767BB5A2112B83B0263BE3363F7DF at byte 8543
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2014-07-02 13:09:42
@@ -278,7 +278,7 @@ CREATE TABLE `actor` (
   KEY `idx_actor_last_name` (`last_name`)
 ) ENGINE=InnoDB AUTO_INCREMENT=201 DEFAULT CHARSET=utf8\G
 
-# Query 9: 0 QPS, 0x concurrency, ID 0x09482CA2620152A7 at byte 77796 ____
+# Query 9: 0 QPS, 0x concurrency, ID 0xC7D5A4E49E422A5209482CA2620152A7 at byte 77796
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2014-07-02 13:09:45
@@ -312,7 +312,7 @@ CREATE TABLE `city` (
   CONSTRAINT `fk_city_country` FOREIGN KEY (`country_id`) REFERENCES `country` (`country_id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=601 DEFAULT CHARSET=utf8\G
 
-# Query 10: 0 QPS, 0x concurrency, ID 0x80F6ECA81D5F0D25 at byte 75909 ___
+# Query 10: 0 QPS, 0x concurrency, ID 0x06B95BC192D493BF80F6ECA81D5F0D25 at byte 75909
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2014-07-02 13:09:44
@@ -343,7 +343,7 @@ CREATE TABLE `category` (
   PRIMARY KEY (`category_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8\G
 
-# Query 11: 0 QPS, 0x concurrency, ID 0xAE6D99E149CE09C6 at byte 719980 __
+# Query 11: 0 QPS, 0x concurrency, ID 0x2191F33283A3743FAE6D99E149CE09C6 at byte 719980
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2014-07-02 13:09:58
@@ -369,7 +369,7 @@ CREATE TABLE `category` (
 #    SHOW CREATE TABLE `sakila`.`inventory`\G
 INSERT INTO `inventory` VALUES (1,1,1,'2006-02-15 12:09:17') /*... omitted ...*/\G
 
-# Query 12: 0 QPS, 0x concurrency, ID 0xE771A1D1EAD499BA at byte 718785 __
+# Query 12: 0 QPS, 0x concurrency, ID 0xFFDE0605772D1BD0E771A1D1EAD499BA at byte 718785
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2014-07-02 13:09:57
@@ -405,7 +405,7 @@ CREATE TABLE `inventory` (
   CONSTRAINT `fk_inventory_film` FOREIGN KEY (`film_id`) REFERENCES `film` (`film_id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=4582 DEFAULT CHARSET=utf8\G
 
-# Query 13: 0 QPS, 0x concurrency, ID 0x8A38006583244505 at byte 597471 __
+# Query 13: 0 QPS, 0x concurrency, ID 0x1161695D97D5E56D8A38006583244505 at byte 597471
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2014-07-02 13:09:56
@@ -437,7 +437,7 @@ CREATE TABLE `film_text` (
   FULLTEXT KEY `idx_title_description` (`title`,`description`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8\G
 
-# Query 14: 0 QPS, 0x concurrency, ID 0x0FD12A9C9BF3E41F at byte 565533 __
+# Query 14: 0 QPS, 0x concurrency, ID 0xE9F9A7EE464D666B0FD12A9C9BF3E41F at byte 565533
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2014-07-02 13:09:55
@@ -471,7 +471,7 @@ CREATE TABLE `film_category` (
   CONSTRAINT `fk_film_category_category` FOREIGN KEY (`category_id`) REFERENCES `category` (`category_id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8\G
 
-# Query 15: 0 QPS, 0x concurrency, ID 0x93E5C17055D970BE at byte 393718 __
+# Query 15: 0 QPS, 0x concurrency, ID 0x28F5E254B8810D1293E5C17055D970BE at byte 393718
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2014-07-02 13:09:54
@@ -497,7 +497,7 @@ CREATE TABLE `film_category` (
 #    SHOW CREATE TABLE `sakila`.`film_actor`\G
 INSERT INTO `film_actor` VALUES (1,1,'2006-02-15 12:05:03') /*... omitted ...*/\G
 
-# Query 16: 0 QPS, 0x concurrency, ID 0x7677746C22CD9F16 at byte 392649 __
+# Query 16: 0 QPS, 0x concurrency, ID 0xB25BC072BED6DE4E7677746C22CD9F16 at byte 392649
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2014-07-02 13:09:53
@@ -531,7 +531,7 @@ CREATE TABLE `film_actor` (
   CONSTRAINT `fk_film_actor_film` FOREIGN KEY (`film_id`) REFERENCES `film` (`film_id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8\G
 
-# Query 17: 0 QPS, 0x concurrency, ID 0xEE462EEBC76A46F2 at byte 3392804 _
+# Query 17: 0 QPS, 0x concurrency, ID 0x45781B86D83AE665EE462EEBC76A46F2 at byte 3392804
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2014-07-02 13:10:19
@@ -559,7 +559,7 @@ CREATE TABLE percona_test.checksums(
           db_tbl varchar(128) not null primary key,
           checksum int unsigned not null)\G
 
-# Query 18: 0 QPS, 0x concurrency, ID 0xC5F99E5B57D2D6DB at byte 3391234 _
+# Query 18: 0 QPS, 0x concurrency, ID 0x2F981A9FC6992839C5F99E5B57D2D6DB at byte 3391234
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2014-07-02 13:10:18
@@ -584,7 +584,7 @@ CREATE TABLE percona_test.checksums(
 #  10s+
 ANALYZE TABLE actor, address, category, city, country, customer, film, film_actor, film_category, film_text, inventory, language, payment, rental, staff, store\G
 
-# Query 19: 0 QPS, 0x concurrency, ID 0x5C6D8C73D42AE624 at byte 3388620 _
+# Query 19: 0 QPS, 0x concurrency, ID 0xC16F5DCD62BA36A15C6D8C73D42AE624 at byte 3388620
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2014-07-02 13:10:17
@@ -653,7 +653,7 @@ INNER JOIN staff AS m ON s.manager_staff_id = m.staff_id
 GROUP BY s.store_id
 ORDER BY cy.country, c.city\G
 
-# Query 20: 0 QPS, 0x concurrency, ID 0xD62F1A6D5A67AFA8 at byte 20196 ___
+# Query 20: 0 QPS, 0x concurrency, ID 0x6846663BC60B4FF9D62F1A6D5A67AFA8 at byte 20196
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2014-07-02 13:09:43
@@ -680,26 +680,26 @@ ORDER BY cy.country, c.city\G
 INSERT INTO `address` VALUES (1,'47 MySakila Drive',NULL,'Alberta',300,'','','2006-02-15 11:45:30') /*... omitted ...*/\G
 
 # Profile
-# Rank Query ID           Response time Calls R/Call V/M   Item
-# ==== ================== ============= ===== ====== ===== ===============
-#    1 0x85FFF5AA78E5FF6A 19.0000 33.3%    22 0.8636  3.67 BEGIN
-#    2 0x693F5F4CA1A936BA  7.0000 12.3%     2 3.5000  7.00 INSERT rental
-#    3 0x4677E4CEDF8EA4E2  5.0000  8.8%     2 2.5000  5.00 INSERT payment
-#    4 0xAAECC8184D17D799  3.0000  5.3%     1 3.0000  0.00 INSERT film
-#    5 0x1A3BF395BD4C2AC5  2.0000  3.5%     1 2.0000  0.00 CREATE TABLE store `store`
-#    6 0xD8657A03D0724524  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE payment `payment`
-#    7 0x1405E69931A1FC8D  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE language `language`
-#    8 0x3B0263BE3363F7DF  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE actor `actor`
-#    9 0x09482CA2620152A7  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE city `city`
-#   10 0x80F6ECA81D5F0D25  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE category `category`
-#   11 0xAE6D99E149CE09C6  1.0000  1.8%     1 1.0000  0.00 INSERT inventory
-#   12 0xE771A1D1EAD499BA  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE inventory `inventory`
-#   13 0x8A38006583244505  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE film_text `film_text`
-#   14 0x0FD12A9C9BF3E41F  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE film_category `film_category`
-#   15 0x93E5C17055D970BE  1.0000  1.8%     1 1.0000  0.00 INSERT film_actor
-#   16 0x7677746C22CD9F16  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE film_actor `film_actor`
-#   17 0xEE462EEBC76A46F2  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE percona_test.checksums
-#   18 0xC5F99E5B57D2D6DB  1.0000  1.8%     1 1.0000  0.00 
-#   19 0x5C6D8C73D42AE624  1.0000  1.8%     1 1.0000  0.00 CREATE payment rental inventory store address city country staff
-#   20 0xD62F1A6D5A67AFA8  1.0000  1.8%     1 1.0000  0.00 INSERT address
-# MISC 0xMISC              6.0000 10.5%    95 0.0632   0.0 <72 ITEMS>
+# Rank Query ID                         Response time Calls R/Call V/M   I
+# ==== ================================ ============= ===== ====== ===== =
+#    1 0x8D589AFA4DFAEEED85FFF5AA78E... 19.0000 33.3%    22 0.8636  3.67 BEGIN
+#    2 0xD1D19A39A5189A3A693F5F4CA1A...  7.0000 12.3%     2 3.5000  7.00 INSERT rental
+#    3 0x6692BFEDE6AB56814677E4CEDF8...  5.0000  8.8%     2 2.5000  5.00 INSERT payment
+#    4 0x266D117CFD8ED7C1AAECC8184D1...  3.0000  5.3%     1 3.0000  0.00 INSERT film
+#    5 0x5D2F650658D1B9C51A3BF395BD4...  2.0000  3.5%     1 2.0000  0.00 CREATE TABLE store `store`
+#    6 0xCBD4B02B76FCD5BCD8657A03D07...  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE payment `payment`
+#    7 0x1B49B966156BD5391405E69931A...  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE language `language`
+#    8 0x0DE767BB5A2112B83B0263BE336...  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE actor `actor`
+#    9 0xC7D5A4E49E422A5209482CA2620...  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE city `city`
+#   10 0x06B95BC192D493BF80F6ECA81D5...  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE category `category`
+#   11 0x2191F33283A3743FAE6D99E149C...  1.0000  1.8%     1 1.0000  0.00 INSERT inventory
+#   12 0xFFDE0605772D1BD0E771A1D1EAD...  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE inventory `inventory`
+#   13 0x1161695D97D5E56D8A380065832...  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE film_text `film_text`
+#   14 0xE9F9A7EE464D666B0FD12A9C9BF...  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE film_category `film_category`
+#   15 0x28F5E254B8810D1293E5C17055D...  1.0000  1.8%     1 1.0000  0.00 INSERT film_actor
+#   16 0xB25BC072BED6DE4E7677746C22C...  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE film_actor `film_actor`
+#   17 0x45781B86D83AE665EE462EEBC76...  1.0000  1.8%     1 1.0000  0.00 CREATE TABLE percona_test.checksums
+#   18 0x2F981A9FC6992839C5F99E5B57D...  1.0000  1.8%     1 1.0000  0.00 
+#   19 0xC16F5DCD62BA36A15C6D8C73D42...  1.0000  1.8%     1 1.0000  0.00 CREATE payment rental inventory store address city country staff
+#   20 0x6846663BC60B4FF9D62F1A6D5A6...  1.0000  1.8%     1 1.0000  0.00 INSERT address
+# MISC 0xMISC                            6.0000 10.5%    95 0.0632   0.0 <72 ITEMS>

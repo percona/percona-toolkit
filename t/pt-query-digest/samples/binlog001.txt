@@ -14,7 +14,7 @@
 # @@session.un           1       1       1       1       1       0       1
 # error code             0       0       0       0       0       0       0
 
-# Query 1: 0 QPS, 0x concurrency, ID 0xCD948EAF18BC614E at byte 953 ______
+# Query 1: 0 QPS, 0x concurrency, ID 0xE82A828B855B8A64CD948EAF18BC614E at byte 953
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2007-12-07 12:02:08
 # Attribute    pct   total     min     max     avg     95%  stddev  median
@@ -50,7 +50,7 @@ replace into test4.tbl9(tbl5, day, todo, comment)
          and o.tbl2 is null
          and o.col3 >= date_sub(current_date, interval 30 day)\G
 
-# Query 2: 0 QPS, 0x concurrency, ID 0xC356FD9EFD7D799E at byte 605 ______
+# Query 2: 0 QPS, 0x concurrency, ID 0xF16F3C71626070A8C356FD9EFD7D799E at byte 605
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2007-12-07 12:02:07
 # Attribute    pct   total     min     max     avg     95%  stddev  median
@@ -86,7 +86,7 @@ select  e.tblo = o.tblo,
           e.col3 = o.col3 from test3.tblo as o
          inner join test3.tbl2 as e on o.animal = e.animal and o.oid = e.oid where  e.tblo is null\G
 
-# Query 3: 0 QPS, 0x concurrency, ID 0xB5E55291C7DE1096 at byte 1469 _____
+# Query 3: 0 QPS, 0x concurrency, ID 0xD2CB5CE49F609121B5E55291C7DE1096 at byte 1469
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2007-12-07 12:02:50
 # Attribute    pct   total     min     max     avg     95%  stddev  median
@@ -122,7 +122,7 @@ select  o.tbl2 = e.tbl2,
           e.col9 = now() from test3.tblo as o inner join test3.tbl2 as e
  on o.animal = e.animal and o.oid = e.oid where  o.tbl2 is null\G
 
-# Query 4: 0 QPS, 0x concurrency, ID 0x85FFF5AA78E5FF6A at byte 146 ______
+# Query 4: 0 QPS, 0x concurrency, ID 0x8D589AFA4DFAEEED85FFF5AA78E5FF6A at byte 146
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2007-12-07 12:02:50
 # Attribute    pct   total     min     max     avg     95%  stddev  median
@@ -151,7 +151,7 @@ select  o.tbl2 = e.tbl2,
 #  10s+  ################################################################
 BEGIN\G
 
-# Query 5: 0 QPS, 0x concurrency, ID 0xED69B13F3D0161D0 at byte 2479 _____
+# Query 5: 0 QPS, 0x concurrency, ID 0xCCEBC6F06883270EED69B13F3D0161D0 at byte 2479
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2007-12-07 12:02:53
 # Attribute    pct   total     min     max     avg     95%  stddev  median
@@ -185,7 +185,7 @@ select  last2metric1 = last1metric1, last2time = last1time,
          last1metric1 = last0metric1, last1time = last0time,
          last0metric1 = ondeckmetric1, last0time = now() from test2.tbl8 where  tbl8 in (10800712)\G
 
-# Query 6: 0 QPS, 0x concurrency, ID 0x79BFEA84D0CED05F at byte 1889 _____
+# Query 6: 0 QPS, 0x concurrency, ID 0xB80726C1C01E650979BFEA84D0CED05F at byte 1889
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2007-12-07 12:02:53
 # Attribute    pct   total     min     max     avg     95%  stddev  median
@@ -216,11 +216,11 @@ insert into test1.tbl6
          metric12 = metric12 + values(metric12), secs = secs + values(secs)\G
 
 # Profile
-# Rank Query ID           Response time    Calls R/Call     V/M   Item
-# ==== ================== ================ ===== ========== ===== ========
-#    1 0xCD948EAF18BC614E 20704.0000 16.7%     1 20704.0000  0.00 REPLACE SELECT test?.tbl? test?.tblo test?.tbl?
-#    2 0xC356FD9EFD7D799E 20675.0000 16.7%     1 20675.0000  0.00 UPDATE test?.tblo test?.tbl?
-#    3 0xB5E55291C7DE1096 20664.0000 16.7%     1 20664.0000  0.00 UPDATE test?.tblo test?.tbl?
-#    4 0x85FFF5AA78E5FF6A 20664.0000 16.7%     1 20664.0000  0.00 BEGIN
-#    5 0xED69B13F3D0161D0 20661.0000 16.7%     1 20661.0000  0.00 UPDATE test?.tbl?
-#    6 0x79BFEA84D0CED05F 20661.0000 16.7%     1 20661.0000  0.00 INSERT UPDATE test?.tbl?
+# Rank Query ID                           Response time    Calls R/Call   
+# ==== ================================== ================ ===== =========
+#    1 0xE82A828B855B8A64CD948EAF18BC614E 20704.0000 16.7%     1 20704.0000  0.00 REPLACE SELECT test?.tbl? test?.tblo test?.tbl?
+#    2 0xF16F3C71626070A8C356FD9EFD7D799E 20675.0000 16.7%     1 20675.0000  0.00 UPDATE test?.tblo test?.tbl?
+#    3 0xD2CB5CE49F609121B5E55291C7DE1096 20664.0000 16.7%     1 20664.0000  0.00 UPDATE test?.tblo test?.tbl?
+#    4 0x8D589AFA4DFAEEED85FFF5AA78E5FF6A 20664.0000 16.7%     1 20664.0000  0.00 BEGIN
+#    5 0xCCEBC6F06883270EED69B13F3D0161D0 20661.0000 16.7%     1 20661.0000  0.00 UPDATE test?.tbl?
+#    6 0xB80726C1C01E650979BFEA84D0CED05F 20661.0000 16.7%     1 20661.0000  0.00 INSERT UPDATE test?.tbl?

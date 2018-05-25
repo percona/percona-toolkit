@@ -17,7 +17,7 @@
 # queue wait             0       0       0       0       0       0       0
 # rec lock wai           0       0       0       0       0       0       0
 
-# Query 1: 0 QPS, 0x concurrency, ID 0x9E892D4B16D7BFC2 at byte 525 ______
+# Query 1: 0 QPS, 0x concurrency, ID 0x01C11894F289821F9E892D4B16D7BFC2 at byte 525
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2007-12-18 11:48:27
@@ -47,7 +47,7 @@
 # EXPLAIN /*!50100 PARTITIONS*/
 SELECT * FROM blah WHERE something = 'important'\G
 
-# Query 2: 0 QPS, 0x concurrency, ID 0x727841EC88423713 at byte 0 ________
+# Query 2: 0 QPS, 0x concurrency, ID 0x53AFEEC4943ACB06727841EC88423713 at byte 0
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2007-12-18 11:48:27
@@ -85,7 +85,7 @@ SELECT * FROM blah WHERE something = 'important'\G
 INSERT INTO db.v (m, b) VALUES ('', 'Exact')\G
 
 # Profile
-# Rank Query ID           Response time Calls R/Call V/M   Item
-# ==== ================== ============= ===== ====== ===== ===========
-#    1 0x9E892D4B16D7BFC2  0.0000  0.0%     1 0.0000  0.00 SELECT blah
-#    2 0x727841EC88423713  0.0000  0.0%     1 0.0000  0.00 INSERT db.v
+# Rank Query ID                           Response time Calls R/Call V/M  
+# ==== ================================== ============= ===== ====== =====
+#    1 0x01C11894F289821F9E892D4B16D7BFC2  0.0000  0.0%     1 0.0000  0.00 SELECT blah
+#    2 0x53AFEEC4943ACB06727841EC88423713  0.0000  0.0%     1 0.0000  0.00 INSERT db.v

@@ -14,7 +14,7 @@
 # @@session.un           1       1       1       1       1       0       1
 # error code             0       0       0       0       0       0       0
 
-# Query 1: 0 QPS, 0x concurrency, ID 0xF579EC4A9633EEA0 at byte 973 ______
+# Query 1: 0 QPS, 0x concurrency, ID 0x184C72455CBE7450F579EC4A9633EEA0 at byte 973
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2009-07-22 07:22:24
@@ -40,7 +40,7 @@
 #    SHOW CREATE TABLE `d`.`foo`\G
 insert foo values (1) /*... omitted ...*/\G
 
-# Query 2: 0 QPS, 0x concurrency, ID 0x03409022EB8A4AE7 at byte 795 ______
+# Query 2: 0 QPS, 0x concurrency, ID 0x4C73A3608535A07A03409022EB8A4AE7 at byte 795
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2009-07-22 07:22:16
@@ -66,7 +66,7 @@ insert foo values (1) /*... omitted ...*/\G
 #    SHOW CREATE TABLE `d`.`foo`\G
 create table foo (i int)\G
 
-# Query 3: 0 QPS, 0x concurrency, ID 0xF25D6D5AC7C18FF3 at byte 381 ______
+# Query 3: 0 QPS, 0x concurrency, ID 0x3EDE13F29C785C9EF25D6D5AC7C18FF3 at byte 381
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2009-07-22 07:21:59
@@ -95,8 +95,8 @@ create table foo (i int)\G
 create database d\G
 
 # Profile
-# Rank Query ID           Response time Calls R/Call V/M   Item
-# ==== ================== ============= ===== ====== ===== ===============
-#    1 0xF579EC4A9633EEA0  0.0000  0.0%     1 0.0000  0.00 INSERT foo
-#    2 0x03409022EB8A4AE7  0.0000  0.0%     1 0.0000  0.00 CREATE TABLE foo
-#    3 0xF25D6D5AC7C18FF3  0.0000  0.0%     1 0.0000  0.00 CREATE DATABASE d
+# Rank Query ID                           Response time Calls R/Call V/M  
+# ==== ================================== ============= ===== ====== =====
+#    1 0x184C72455CBE7450F579EC4A9633EEA0  0.0000  0.0%     1 0.0000  0.00 INSERT foo
+#    2 0x4C73A3608535A07A03409022EB8A4AE7  0.0000  0.0%     1 0.0000  0.00 CREATE TABLE foo
+#    3 0x3EDE13F29C785C9EF25D6D5AC7C18FF3  0.0000  0.0%     1 0.0000  0.00 CREATE DATABASE d

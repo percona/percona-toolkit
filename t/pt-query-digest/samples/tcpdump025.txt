@@ -1,5 +1,5 @@
 
-# Query 1: 0 QPS, 0x concurrency, ID 0x72B6E5BC2632931C at byte 0 ________
+# Query 1: 0 QPS, 0x concurrency, ID 0x3C008805F0F5B5FB72B6E5BC2632931C at byte 0
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2009-12-08 14:44:52.709181
@@ -30,7 +30,7 @@ PREPARE SELECT * FROM d.t WHERE 1 LIMIT 1;\G
 # EXPLAIN /*!50100 PARTITIONS*/
 SELECT * FROM d.t WHERE 1 LIMIT 1;\G
 
-# Query 2: 0 QPS, 0x concurrency, ID 0xDDF5E71E9A66B752 at byte 1014 _____
+# Query 2: 0 QPS, 0x concurrency, ID 0xAA20C459E5513CABDDF5E71E9A66B752 at byte 1014
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2009-12-08 14:44:52.709597

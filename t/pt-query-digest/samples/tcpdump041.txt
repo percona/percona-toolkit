@@ -8,7 +8,7 @@
 # Query size            35      35      35      35      35       0      35
 # Warning coun           0       0       0       0       0       0       0
 
-# Query 1: 0 QPS, 0x concurrency, ID 0xAA8E9FA785927259 at byte 0 ________
+# Query 1: 0 QPS, 0x concurrency, ID 0xC29D79D8CB57E235AA8E9FA785927259 at byte 0
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2009-12-08 09:23:49.637394
@@ -40,11 +40,11 @@ PREPARE SELECT i FROM d.t WHERE i=?\G
 SELECT i FROM d.t WHERE i=?\G
 
 # Profile
-# Rank Query ID           Response time Calls R/Call V/M   Item
-# ==== ================== ============= ===== ====== ===== ==========
-#    1 0xAA8E9FA785927259 0.0003 100.0%     1 0.0003  0.00 SELECT d.t
+# Rank Query ID                           Response time Calls R/Call V/M  
+# ==== ================================== ============= ===== ====== =====
+#    1 0xC29D79D8CB57E235AA8E9FA785927259 0.0003 100.0%     1 0.0003  0.00 SELECT d.t
 
 # Prepared statements
-# Rank Query ID           PREP PREP Response EXEC EXEC Response Item
-# ==== ================== ==== ============= ==== ============= ==========
-#    1 0xAA8E9FA785927259    1 0.0003 100.0%    0  0.0000  0.0% SELECT d.t
+# Rank Query ID                           PREP PREP Response EXEC EXEC Res
+# ==== ================================== ==== ============= ==== ========
+#    1 0xC29D79D8CB57E235AA8E9FA785927259    1 0.0003 100.0%    0  0.0000  0.0% SELECT d.t

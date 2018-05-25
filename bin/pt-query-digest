@@ -2679,7 +2679,7 @@ sub any_unix_timestamp {
 
 sub make_checksum {
    my ( $val ) = @_;
-   my $checksum = uc substr(md5_hex($val), -16);
+   my $checksum = uc md5_hex($val);
    PTDEBUG && _d($checksum, 'checksum for', $val);
    return $checksum;
 }
@@ -7778,7 +7778,12 @@ sub explain_report {
             $explain .= "# *************************** $i. "
                       . "row ***************************\n";
             foreach my $j ( 0 .. $#row ) {
-               $explain .= sprintf "# %13s: %s\n", $sth->{NAME}->[$j],
+               # In some OSes/Perl versions, the filtered row can be reported with or without decimals.
+               # Example, in Ubuntu 16.04 it is being printed as 100.00 while in Ubuntu 18.04 it is
+               # being printed as 100.
+               # To make it testeable, we need to have a consistent format across versions.
+               my $value_format = $sth->{NAME}->[$j] eq 'filtered' ? "%.02f" : "%s";
+               $explain .= sprintf "# %13s: $value_format\n", $sth->{NAME}->[$j],
                   defined $row[$j] ? $row[$j] : 'NULL';
             }
             $i++;  # next row number
@@ -15866,6 +15871,9 @@ MAGIC_create_history_table
 Note that we store the count (cnt) for the ts attribute only; it will be
 redundant to store this for other attributes.
 
+Starting from Percona Toolkit 3.0.11, the checksum function has been updated to use 32 chars in the MD5 sum.
+This causes the checksum field in the history table will have a different value than in the previous versions of the tool.
+
 =item --host
 
 short form: -h; type: string
@@ -16180,7 +16188,7 @@ by pt-query-digest.
 MAGIC_create_review_table:
 
   CREATE TABLE IF NOT EXISTS query_review (
-     checksum     BIGINT UNSIGNED NOT NULL PRIMARY KEY,
+     checksum     CHAR(32) NOT NULL PRIMARY KEY,
      fingerprint  TEXT NOT NULL,
      sample       TEXT NOT NULL,
      first_seen   DATETIME,

@@ -1220,9 +1220,11 @@ SKIP: {
       : $sandbox_version ge '5.1' ? "t/lib/samples/QueryReportFormatter/report025.txt"
       :                             "t/lib/samples/QueryReportFormatter/report026.txt");
 
-   # 30
+   # 32
+   my $explain_report = $qrf->explain_report("select * from qrf.t where i=2", 'qrf');
+   $explain_report =~ s/filtered: 100(\s+)/filtered: 100.00$1/;
    is(
-      $qrf->explain_report("select * from qrf.t where i=2", 'qrf'),
+      $explain_report,
       $explain,
       "explain_report()"
    );

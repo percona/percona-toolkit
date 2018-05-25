@@ -10,14 +10,14 @@
 # Query size           308      30      34   30.80   31.70    1.64   28.75
 
 # Profile
-# Rank Query ID           Response time   Calls R/Call   V/M   Item
-# ==== ================== =============== ===== ======== ===== ===========
-#    1 0x95AADD230F4EB56A 1000.0000 53.8%     2 500.0000  0.00 SELECT two
-#    2 0x5081E1858C60FD05  500.0000 26.9%     1 500.0000  0.00 SELECT three
-#    4 0x70E215C4BFED0080   50.0000  2.7%     5  10.0000  0.00 SELECT one
-# MISC 0xMISC              310.0000 16.7%     2 155.0000   0.0 <2 ITEMS>
+# Rank Query ID                        Response time   Calls R/Call   V/M 
+# ==== =============================== =============== ===== ======== ====
+#    1 0x95FD3A847023D37C95AADD230F... 1000.0000 53.8%     2 500.0000  0.00 SELECT two
+#    2 0xBB15BFCE4C9727175081E1858C...  500.0000 26.9%     1 500.0000  0.00 SELECT three
+#    4 0x66112E536C54CE7170E215C4BF...   50.0000  2.7%     5  10.0000  0.00 SELECT one
+# MISC 0xMISC                           310.0000 16.7%     2 155.0000   0.0 <2 ITEMS>
 
-# Query 1: 2 QPS, 1.00kx concurrency, ID 0x95AADD230F4EB56A at byte 886 __
+# Query 1: 2 QPS, 1.00kx concurrency, ID 0x95FD3A847023D37C95AADD230F4EB56A at byte 886
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: 2010-06-24 11:48:34 to 11:48:35
@@ -44,7 +44,7 @@
 # EXPLAIN /*!50100 PARTITIONS*/
 SELECT two FROM two WHERE id=?\G
 
-# Query 2: 0 QPS, 0x concurrency, ID 0x5081E1858C60FD05 at byte 1013 _____
+# Query 2: 0 QPS, 0x concurrency, ID 0xBB15BFCE4C9727175081E1858C60FD05 at byte 1013
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2010-06-24 11:48:35
@@ -71,7 +71,7 @@ SELECT two FROM two WHERE id=?\G
 # EXPLAIN /*!50100 PARTITIONS*/
 SELECT three FROM three WHERE id=?\G
 
-# Query 4: 1.25 QPS, 12.50x concurrency, ID 0x70E215C4BFED0080 at byte 633
+# Query 4: 1.25 QPS, 12.50x concurrency, ID 0x66112E536C54CE7170E215C4BFED0080 at byte 633
 # This item is included in the report because it matches --outliers.
 # Scores: V/M = 0.00
 # Time range: 2010-06-24 11:48:21 to 11:48:25

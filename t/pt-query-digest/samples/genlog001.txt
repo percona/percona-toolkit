@@ -6,7 +6,7 @@
 # Exec time              0       0       0       0       0       0       0
 # Query size           315      27     124      45  118.34   31.33   28.75
 
-# Query 1: 0.00 QPS, 0x concurrency, ID 0xAA353644DE4C4CB4 at byte 464 ___
+# Query 1: 0.00 QPS, 0x concurrency, ID 0xEDBC971AEC392917AA353644DE4C4CB4 at byte 464
 # Scores: V/M = 0.00
 # Time range: 2005-10-07 21:55:24 to 2006-12-26 16:44:48
 # Attribute    pct   total     min     max     avg     95%  stddev  median
@@ -27,7 +27,7 @@
 #  10s+
 administrator command: Quit\G
 
-# Query 2: 0.00 QPS, 0x concurrency, ID 0x5D51E5F01B88B79E at byte 244 ___
+# Query 2: 0.00 QPS, 0x concurrency, ID 0x7417646A9FE969365D51E5F01B88B79E at byte 244
 # Scores: V/M = 0.00
 # Time range: 2005-10-07 21:55:24 to 2006-12-26 15:42:36
 # Attribute    pct   total     min     max     avg     95%  stddev  median
@@ -50,7 +50,7 @@ administrator command: Quit\G
 #  10s+
 administrator command: Connect\G
 
-# Query 3: 0 QPS, 0x concurrency, ID 0x44AAC79F41BCF692 at byte 58 _______
+# Query 3: 0 QPS, 0x concurrency, ID 0x373CEA028C0EA95444AAC79F41BCF692 at byte 58
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2005-10-07 21:55:24
 # Attribute    pct   total     min     max     avg     95%  stddev  median
@@ -78,7 +78,7 @@ SELECT foo
                          WHERE col=12345
                          ORDER BY col\G
 
-# Query 4: 0 QPS, 0x concurrency, ID 0x4D096479916B0F45 at byte 346 ______
+# Query 4: 0 QPS, 0x concurrency, ID 0x30388146EA1DA5814D096479916B0F45 at byte 346
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2006-12-26 15:42:36
 # Attribute    pct   total     min     max     avg     95%  stddev  median
@@ -103,7 +103,7 @@ SELECT foo
 # EXPLAIN /*!50100 PARTITIONS*/
 SELECT DISTINCT col FROM tbl WHERE foo=20061219\G
 
-# Query 5: 0 QPS, 0x concurrency, ID 0x44AE35A182869033 at byte 300 ______
+# Query 5: 0 QPS, 0x concurrency, ID 0x898255B1BE4F8C3044AE35A182869033 at byte 300
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2006-12-26 15:42:36
 # Attribute    pct   total     min     max     avg     95%  stddev  median
@@ -125,10 +125,10 @@ SELECT DISTINCT col FROM tbl WHERE foo=20061219\G
 administrator command: Init DB\G
 
 # Profile
-# Rank Query ID           Response time Calls R/Call V/M   Item
-# ==== ================== ============= ===== ====== ===== =============
-#    1 0xAA353644DE4C4CB4  0.0000  0.0%     2 0.0000  0.00 ADMIN QUIT
-#    2 0x5D51E5F01B88B79E  0.0000  0.0%     2 0.0000  0.00 ADMIN CONNECT
-#    3 0x44AAC79F41BCF692  0.0000  0.0%     1 0.0000  0.00 SELECT tbl
-#    4 0x4D096479916B0F45  0.0000  0.0%     1 0.0000  0.00 SELECT tbl
-#    5 0x44AE35A182869033  0.0000  0.0%     1 0.0000  0.00 ADMIN INIT DB
+# Rank Query ID                           Response time Calls R/Call V/M  
+# ==== ================================== ============= ===== ====== =====
+#    1 0xEDBC971AEC392917AA353644DE4C4CB4  0.0000  0.0%     2 0.0000  0.00 ADMIN QUIT
+#    2 0x7417646A9FE969365D51E5F01B88B79E  0.0000  0.0%     2 0.0000  0.00 ADMIN CONNECT
+#    3 0x373CEA028C0EA95444AAC79F41BCF692  0.0000  0.0%     1 0.0000  0.00 SELECT tbl
+#    4 0x30388146EA1DA5814D096479916B0F45  0.0000  0.0%     1 0.0000  0.00 SELECT tbl
+#    5 0x898255B1BE4F8C3044AE35A182869033  0.0000  0.0%     1 0.0000  0.00 ADMIN INIT DB

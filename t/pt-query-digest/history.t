@@ -76,7 +76,7 @@ test.query_review_history', { Slice => {} } );
 
    my $expected = [
    {
-     checksum => '11676753765851785216.00000000',
+     checksum => '18446744073709551616.00000000',
      lock_time_max => '0.00000000',
      lock_time_median => '0.00000000',
      lock_time_min => '0.00000000',
@@ -107,7 +107,7 @@ test.query_review_history', { Slice => {} } );
      ts_min => '2007-12-18 11:48:27'
    },
    {
-     checksum => '15334040482108055552.00000000',
+     checksum => '18446744073709551616.00000000',
      lock_time_max => '0.00000000',
      lock_time_median => '0.00000000',
      lock_time_min => '0.00000000',
@@ -171,7 +171,7 @@ $expected =    [
       {
          sample => "UPDATE foo.bar
 SET    biz = '91848182522'",
-         checksum => '12831241509574346332',
+         checksum => '18446744073709551616',
          filesort_on_disk_cnt => '2',
          filesort_on_disk_sum => '0',
          tmp_table_on_disk_cnt => '2',

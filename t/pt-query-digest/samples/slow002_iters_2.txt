@@ -1,5 +1,5 @@
 
-# Query 1: 0 QPS, 0x concurrency, ID 0x66825DDC008FFA89 at byte 338 ______
+# Query 1: 0 QPS, 0x concurrency, ID 0x45FE45AEC222350466825DDC008FFA89 at byte 338
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2007-12-18 11:48:27
@@ -41,7 +41,7 @@ select  n.column1 = a.column1, n.word3 = a.word3 from db2.tuningdetail_21_265507
       inner join db1.gonzo a using(gonzo) \G
 
 # Profile
-# Rank Query ID           Response time Calls R/Call V/M   Item
-# ==== ================== ============= ===== ====== ===== ===============
-#    1 0x66825DDC008FFA89  0.7261 95.3%     1 0.7261  0.00 UPDATE db?.tuningdetail_?_? db?.gonzo
-# MISC 0xMISC              0.0360  4.7%     7 0.0051   0.0 <6 ITEMS>
+# Rank Query ID                          Response time Calls R/Call V/M   
+# ==== ================================= ============= ===== ====== ===== 
+#    1 0x45FE45AEC222350466825DDC008F...  0.7261 95.3%     1 0.7261  0.00 UPDATE db?.tuningdetail_?_? db?.gonzo
+# MISC 0xMISC                             0.0360  4.7%     7 0.0051   0.0 <6 ITEMS>

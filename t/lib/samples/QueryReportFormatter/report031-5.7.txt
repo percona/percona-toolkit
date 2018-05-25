@@ -9,5 +9,5 @@
 #       key_len: 4
 #           ref: const
 #          rows: 1
-#      filtered: 100
+#      filtered: 100.00
 #         Extra: NULL
