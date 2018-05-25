@@ -94,6 +94,7 @@ while ( my $sampleno = readdir $dh ) {
                   full_path => 1,
                   sed => [
                      q{"s/query_time => '[0-9.]*'/query_time => '0'/"},
+                     q{"s/'([0-9.])*'/$1/"},
                   ],
                ), 
                "$sampleno/${basename}_results/$result"
