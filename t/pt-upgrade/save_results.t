@@ -60,6 +60,12 @@ sub load_sample_sql_files {
    }
 }
 
+my $transform = sub {
+    my $txt = slurp_file(shift);
+    $txt =~ s/[^']([0-9.]+)[^']/'$1'/g;
+    print $txt;
+};
+
 while ( my $sampleno = readdir $dh ) {
    next unless $sampleno =~ m/^\d+$/;
    my $conf = "$samples_dir/$sampleno/conf";
@@ -94,8 +100,10 @@ while ( my $sampleno = readdir $dh ) {
                   full_path => 1,
                   sed => [
                      q{"s/query_time => '[0-9.]*'/query_time => '0'/"},
-                     q{"s/'([0-9.])*'/$1/"},
+                     q{"s/'([0-9.]+)[^']/'$1'/g"},
                   ],
+                  transform_result => $transform,
+                  transform_sample => $transform,
                ), 
                "$sampleno/${basename}_results/$result"
             ) or diag("\n\n---- DIFF ----\n\n", $test_diff,
