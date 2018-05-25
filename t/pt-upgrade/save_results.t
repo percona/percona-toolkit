@@ -62,7 +62,7 @@ sub load_sample_sql_files {
 
 my $transform = sub {
     my $txt = slurp_file(shift);
-    $txt =~ s/[^']([0-9.]+)[^']/'$1'/g;
+    $txt =~ s/'([0-9.]+)'/$1/g;
     print $txt;
 };
 
