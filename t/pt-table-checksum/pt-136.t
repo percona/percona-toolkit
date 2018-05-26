@@ -16,8 +16,6 @@ use Sandbox;
 use SqlModes;
 require "$trunk/bin/pt-table-checksum";
 
-$ENV{PTDEBUG} = 1;
-
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
@@ -29,11 +27,11 @@ else {
    plan tests => 2;
 }
 
+$dbh->do("DROP TABLE IF EXISTS percona.checksums");
 $sb->load_file('master', 't/pt-table-checksum/samples/pt-136.sql');
 $sb->wait_for_slaves();
-sleep(1);
 my $master_dsn = $sb->dsn_for('master');
-my @args       = ($master_dsn); 
+my @args       = ($master_dsn, '--databases', 'db1', '--no-replicate-check'); 
 my $output;
 my $exit_status;
 
@@ -46,9 +44,9 @@ is(
    $exit_status,
    0,
    "Checksum columns with mismatching collations",
-);
+) or BAIL_OUT("debug time");
 
-delete $ENV{PTDEBUG};
+
 # #############################################################################
 # Done.
 # #############################################################################
