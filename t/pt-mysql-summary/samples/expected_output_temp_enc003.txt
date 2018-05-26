@@ -225,5 +225,4 @@ report-port                         = 12345
 log-error                           = mysqld.log
 innodb_lock_wait_timeout            = 3
 # Memory management library ##################################
-Jemalloc library not found
 # The End ####################################################

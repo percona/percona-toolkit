@@ -105,7 +105,7 @@ for my $i (2..7) {
          },
          "t/pt-mysql-summary/samples/expected_output_temp_enc00$i.txt",
       ),
-      "--read-samples works for t/pt-mysql-summary/temp00$i",
+      "--read-samples works for t/pt-mysql-summary/temp_enc00$i",
    ) or diag($test_diff);
 }
 
@@ -153,6 +153,8 @@ like(
    "Encrypted tablespaces included in report"
 ) or diag $out;
 
+$master_dbh->do("DROP TABLE IF EXISTS test.t1");
+$master_dbh->do("DROP TABLE IF EXISTS test.t2");
 $master_dbh->do("DROP DATABASE IF EXISTS test");
 $master_dbh->do("DROP TABLESPACE foo");
 

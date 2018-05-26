@@ -28,6 +28,8 @@ else {
 }
 
 $sb->load_file('master', 't/pt-table-checksum/samples/pt-136.sql');
+$sb->wait_for_slaves();
+sleep(1);
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
@@ -44,7 +46,7 @@ $output = output(
 is(
    $exit_status,
    0,
-   "Checksum columns with mismatching collaitons",
+   "Checksum columns with mismatching collations",
 );
 
 # #############################################################################
