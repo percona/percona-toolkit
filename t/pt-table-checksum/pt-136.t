@@ -16,6 +16,8 @@ use Sandbox;
 use SqlModes;
 require "$trunk/bin/pt-table-checksum";
 
+$ENV{PTDEBUG} = 1;
+
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
@@ -30,9 +32,6 @@ else {
 $sb->load_file('master', 't/pt-table-checksum/samples/pt-136.sql');
 $sb->wait_for_slaves();
 sleep(1);
-# The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
-# so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
-# And --max-load "" prevents waiting for status variables.
 my $master_dsn = $sb->dsn_for('master');
 my @args       = ($master_dsn); 
 my $output;
@@ -49,6 +48,7 @@ is(
    "Checksum columns with mismatching collations",
 );
 
+delete $ENV{PTDEBUG};
 # #############################################################################
 # Done.
 # #############################################################################
