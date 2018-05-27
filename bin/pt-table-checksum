@@ -9831,7 +9831,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 
 use Percona::Toolkit;
-use constant PTDEBUG => $ENV{PTDEBUG} || 1;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use POSIX qw(signal_h);
 use List::Util qw(max);
