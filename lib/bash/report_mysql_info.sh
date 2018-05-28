@@ -1269,7 +1269,7 @@ report_jemalloc_enabled() {
   local GENERAL_JEMALLOC_STATUS=0
   local JEMALLOC_LOCATION=''
 
-  for PID in $(pidof mysqld); do
+  for pid in $(pidof mysqld); do
      grep -qc jemalloc /proc/${pid}/environ || ldd $(which mysqld) 2>/dev/null | grep -qc jemalloc
      jemalloc_status=$?
      if [ $jemalloc_status = 1 ]; then
@@ -1576,7 +1576,7 @@ report_mysql_summary () {
    local keyring_plugins="$(collect_keyring_plugins)"
    local encrypted_tables=""
    local encrypted_tablespaces=""
-   if [ ${OPT_LIST_ENCRYPTED_TABLES} == 'yes' ]; then 
+   if [ "${OPT_LIST_ENCRYPTED_TABLES}" = 'yes' ]; then 
        encrypted_tables="$(collect_encrypted_tables)"
        encrypted_tablespaces="$(collect_encrypted_tablespaces)"
    fi
