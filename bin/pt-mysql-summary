@@ -827,7 +827,7 @@ setup_data_dir () {
 get_var () {
    local varname="$1"
    local file="$2"
-   awk -v pattern="${varname}" '$1 == pattern { if (length($2)) { len = length($1); print substr($0, len+index(substr($0, len+1), $2)) } }' "${file}"
+   awk -v pattern="${varname}" '$1 == pattern { if (length($2)) { len = length($1); print substr($0, len+index(substr($0, len+1), $2)) } }' "${file}" | tr -d '\r'
 }
 
 # ###########################################################################
@@ -2580,14 +2580,14 @@ check_mysql () {
    # Check that mysql and mysqldump are in PATH.  If not, we're
    # already dead in the water, so don't bother with cmd line opts,
    # just error and exit.
-   [ -n "$(mysql --help 2>/dev/null)" ] \
+   [ -n "$(${CMD_MYSQL} --help 2>/dev/null)" ] \
       || die "Cannot execute mysql.  Check that it is in PATH."
-   [ -n "$(mysqldump --help 2>/dev/null)" ] \
+   [ -n "$(${CMD_MYSQLDUMP} --help 2>/dev/null)" ] \
       || die "Cannot execute mysqldump.  Check that it is in PATH."
 
    # Now that we have the cmd line opts, check that we can actually
    # connect to MySQL.
-   [ -n "$(mysql $EXT_ARGV -e 'SHOW STATUS')" ] \
+   [ -n "$(${CMD_MYSQL} ${EXT_ARGV} -e 'SHOW STATUS')" ] \
       || die "Cannot connect to MySQL.  Check that MySQL is running and that the options after -- are correct."
 
 }
