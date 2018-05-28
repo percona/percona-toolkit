@@ -83,7 +83,7 @@ unlike(
 );
 
 $output = output(
-   sub { pt_show_grants::main('-F', $cnf, '--ignore', 'baron,msandbox,root,root@localhost,user,mysql.session@localhost,mysql.sys@localhost,sys'); }
+   sub { pt_show_grants::main('-F', $cnf, '--ignore', 'baron,msandbox,root,root@localhost,user,mysql.session@localhost,mysql.sys@localhost,sys,mysql.infoschema@localhost'); }
 );
 unlike(
    $output,
@@ -100,12 +100,9 @@ like(
 # https://bugs.launchpad.net/percona-toolkit/+bug/866075
 # #############################################################################
 $sb->load_file('master', 't/pt-show-grants/samples/column-grants.sql');
-# momentarily disable NO_AUTO_CREATE_USER
-my $modes = new SqlModes($dbh, global=>1);
-$modes->del('NO_AUTO_CREATE_USER');
+diag(`/tmp/12345/use -u root -e "CREATE USER 'sally'\@'%'"`);
 diag(`/tmp/12345/use -u root -e "GRANT SELECT(DateCreated, PckPrice, PaymentStat, SANumber) ON test.t TO 'sally'\@'%'"`);
 diag(`/tmp/12345/use -u root -e "GRANT SELECT(city_id), INSERT(city) ON sakila.city TO 'sally'\@'%'"`);
-$modes->restore_original_modes();
 
 my $postfix = $sandbox_version >= '8.0' ? '-80' : $sandbox_version < '5.7' ? '' : '-57';
 
