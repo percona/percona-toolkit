@@ -1,8 +1,8 @@
 Changelog for Percona Toolkit
 
-v3.0.10 released 2018-05-21
+ * Improvement PT-1562 : pt-mysql-summary: Fix mysqld command for Travis
 
-v3.0.10
+v3.0.10 released 2018-05-21
 
  * Fixed bug   PT-1556 : pt-table-checksum 3.0.9 doesn't change binlog_format to statement anymore
  * Improvement PT-1546 : Improved support of MySQL 8 roles
