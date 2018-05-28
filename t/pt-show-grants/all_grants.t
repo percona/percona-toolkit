@@ -38,9 +38,11 @@ my $cnf = '/tmp/12345/my.sandbox.cnf';
 # user (over multiple hosts)
 # #############################################################################
 
-# to make creating users easier we remove NO_AUTO_CREATE_USER mode
 my $modes = new SqlModes($dbh, global=>1);
-$modes->del('NO_AUTO_CREATE_USER');
+diag(`/tmp/12345/use -u root -e "CREATE USER 'bob'\@'%'"`);
+diag(`/tmp/12345/use -u root -e "CREATE USER 'bob'\@'localhost'"`);
+diag(`/tmp/12345/use -u root -e "CREATE USER 'bob'\@'192.168.1.1'"`);
+
 diag(`/tmp/12345/use -u root -e "GRANT USAGE ON *.* TO 'bob'\@'%'"`);
 diag(`/tmp/12345/use -u root -e "GRANT USAGE ON *.* TO 'bob'\@'localhost'"`);
 diag(`/tmp/12345/use -u root -e "GRANT USAGE ON *.* TO 'bob'\@'192.168.1.1'"`);

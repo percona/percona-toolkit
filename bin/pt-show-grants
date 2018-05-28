@@ -1912,11 +1912,14 @@ sub main {
    # MySQL 8 roles must be excluded from the regular users list.
    # Roles can be identified because the user password is expired, the authentication 
    # string is empty and the account is locked
+   my $mysql8_where = '';
+   if (VersionCompare::cmp($version, '8.0.0') >= 0) {
+       $mysql8_where = ' WHERE NOT ( `account_locked`="Y" AND ' .
+                                      ' `password_expired`="Y" AND ' .
+                                      ' `authentication_string`="" ) ';
+   }
    my $users = $o->get('only') || $dbh->selectall_arrayref(
-      'SELECT DISTINCT User, Host FROM mysql.user WHERE NOT (`account_locked`="Y"
-      AND `password_expired`="Y"
-      AND `authentication_string`=""
-      ) ORDER BY User, Host',
+      "SELECT DISTINCT User, Host FROM mysql.user $mysql8_where ORDER BY User, Host",
       { Slice => {} });
    if ( scalar @all_hosts ) {
       my $where = join(' OR ', map { "User='$_'" } @all_hosts);
