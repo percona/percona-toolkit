@@ -2265,7 +2265,7 @@ report_jemalloc_enabled() {
   local GENERAL_JEMALLOC_STATUS=0
   local JEMALLOC_LOCATION=''
 
-  for PID in $(pidof mysqld); do
+  for pid in $(pidof mysqld); do
      grep -qc jemalloc /proc/${pid}/environ || ldd $(which mysqld) 2>/dev/null | grep -qc jemalloc
      jemalloc_status=$?
      if [ $jemalloc_status = 1 ]; then
