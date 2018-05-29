@@ -21,8 +21,10 @@ use Sandbox;
 use SqlModes;
 use File::Temp qw/ tempdir /;
 
-if (!$ENV{PERCONA_SLOW_BOX}) {
+if ($ENV{PERCONA_SLOW_BOX}) {
     plan skip_all => 'This test needs a fast machine';
+} elsif ($sandbox_version lt '5.7') {
+    plan skip_all => 'This tests needs MySQL 5.7+';
 } else {
     plan tests => 3;
 }
