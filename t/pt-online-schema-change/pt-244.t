@@ -60,7 +60,7 @@ $dbh3->do("FLUSH TABLES");
 
 my $new_dir='/tmp/tdir';
 diag(`rm -rf $new_dir`);
-diag(`mkdir $new_dir`);
+diag(`mkdir -p $new_dir`);
 
 diag("2");
 ($output, $exit_status) = full_output(
