@@ -69,8 +69,7 @@ $slave2_dbh->do('RESET SLAVE');
 $slave2_dbh->do('START SLAVE');
 
 # 3
-# $output = `$trunk/bin/pt-slave-delay --delay 1s h=127.1,P=12346,u=msandbox,p=msandbox h=127.1 2>&1`;
-$output = `$trunk/bin/pt-slave-delay --delay 1s h=127.1,P=12346,u=msandbox,p=msandbox h=127.1 &>/tmp/c`;
+$output = `$trunk/bin/pt-slave-delay --delay 1s h=127.1,P=12346,u=msandbox,p=msandbox h=127.1 2>&1`;
 like(
    $output,
    qr/Binary logging is disabled/,
