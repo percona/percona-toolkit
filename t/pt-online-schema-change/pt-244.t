@@ -21,7 +21,11 @@ use Sandbox;
 use SqlModes;
 use File::Temp qw/ tempdir /;
 
-plan tests => 4;
+if ($sandbox_version lt '5.7') {
+    plan skip_all => 'This test needs MySQL 5.7+';
+} else {
+    plan tests => 4;
+}    
 
 require "$trunk/bin/pt-online-schema-change";
 
@@ -60,7 +64,7 @@ $dbh3->do("FLUSH TABLES");
 
 my $new_dir='/tmp/tdir';
 diag(`rm -rf $new_dir`);
-diag(`mkdir $new_dir`);
+diag(`mkdir -p $new_dir`);
 
 diag("2");
 ($output, $exit_status) = full_output(
@@ -87,7 +91,7 @@ like(
 );
 
 
-my $db_dir="$new_dir/test/";
+my $db_dir="$new_dir";
 opendir(my $dh, $db_dir) || die "Can't opendir $db_dir: $!";
 my @files = grep { /^t3#P#p/  } readdir($dh);
 closedir $dh;
