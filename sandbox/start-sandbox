@@ -122,8 +122,12 @@ make_sandbox() {
     fi
 
     if [ -n "$GTID" ]; then
-        #echo "gtid_mode=on" >> ${TMP_DIR}/$port/my.sandbox.cnf
-        echo "gtid_mode=ON_PERMISSIVE" >> ${TMP_DIR}/$port/my.sandbox.cnf
+        if [ "$version" "<" '5.7' ]; then
+            echo "gtid_mode=on" >> ${TMP_DIR}/$port/my.sandbox.cnf
+        fi
+        if [ ! "$version" "<" '5.7' ]; then
+            echo "gtid_mode=ON_PERMISSIVE" >> ${TMP_DIR}/$port/my.sandbox.cnf
+        fi
         echo "enforce_gtid_consistency" >> ${TMP_DIR}/$port/my.sandbox.cnf
     fi
     if [ -n "$REPLICATION_THREADS" ]; then
@@ -143,7 +147,7 @@ make_sandbox() {
 
     if [ $generating_database -eq 1 ]; then
         echo "Creating default databases ..."
-        if [ "$version" > "5.6" ]; then
+        if [ "$version" ">" "5.6" ]; then
             rm -f ${TMP_DIR}/empty-defaults.txt
             touch ${TMP_DIR}/empty-defaults.txt
             rm -rf ${TMP_DIR}/$port/data

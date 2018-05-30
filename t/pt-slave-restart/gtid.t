@@ -19,7 +19,9 @@ if ( $sandbox_version lt '5.6' ) {
    plan skip_all => "Requires MySQL 5.6";
 }
 
+diag('Restarting the sandbox');
 diag(`SAKILA=0 GTID=1 $trunk/sandbox/test-env restart`);
+diag("Sandbox restarted");
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
