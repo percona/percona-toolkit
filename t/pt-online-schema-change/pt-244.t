@@ -91,7 +91,7 @@ like(
 );
 
 
-my $db_dir="$new_dir";
+my $db_dir="$new_dir/test";
 opendir(my $dh, $db_dir) || die "Can't opendir $db_dir: $!";
 my @files = grep { /^t3#P#p/  } readdir($dh);
 closedir $dh;
