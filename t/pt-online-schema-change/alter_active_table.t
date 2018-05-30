@@ -93,12 +93,13 @@ sub check_ids {
 
    my $n_updated  = $ids->{updated} ? ($ids->{updated}  =~ tr/,//) : 0;
    my $n_deleted  = $ids->{deleted} ? ($ids->{deleted}  =~ tr/,//) : 0;
-   my $n_inserted = $ids->{inserted} ?($ids->{inserted} =~ tr/,//) : 0;
+   my $n_inserted = $ids->{inserted} ? ($ids->{inserted} =~ tr/,//) : 0;
+   warn "n_inser $n_inserted";
 
    # "1,1"=~tr/,// returns 1 but is 2 values
-   $n_updated++ if $n_updated;
-   $n_deleted++ if $n_deleted;
-   $n_inserted++;
+   $n_updated++ if $ids->{updated};
+   $n_deleted++ if $ids->{deleted};
+   $n_inserted++ if $ids->{inserted};
 
    $rows = $master_dbh->selectrow_arrayref(
       "SELECT COUNT($pkcol) FROM $db.$tbl");
@@ -108,13 +109,14 @@ sub check_ids {
       "$test: new table rows: 500 original + $n_inserted inserted - $n_deleted deleted"
    ) or diag(Dumper($rows));
 
+   my $where_ids = $ids->{inserted} ? $ids->{inserted} : '0';
    $rows = $master_dbh->selectall_arrayref(
-      "SELECT $pkcol FROM $db.$tbl WHERE $pkcol > 500 AND $pkcol NOT IN ($ids->{inserted})");
+      "SELECT $pkcol FROM $db.$tbl WHERE $pkcol > 500 AND $pkcol NOT IN ($where_ids)");
    is_deeply(
       $rows,
       [],
       "$test: no extra rows inserted in new table"
-   ) or diag(Dumper($rows));
+   ) or die(Dumper($rows));
 
    if ( $n_deleted ) {
       $rows = $master_dbh->selectall_arrayref(
@@ -247,6 +249,8 @@ is(
    0,
    "Rename columnn: exit status 0"
 );
+
+$sb->wait_for_slaves();
 
 check_ids(qw(pt_osc t id), get_ids(), "Rename column");
 
