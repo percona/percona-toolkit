@@ -65,7 +65,12 @@ my $create_table_sql = <<__EOQ;
 __EOQ
 
 $sb->do_as_root('master', "$create_table_sql");
-$sb->do_as_root('slave1', 'GRANT SELECT, INSERT, UPDATE, REPLICATION CLIENT ON *.* TO "unprivileged"@"localhost" IDENTIFIED BY "password"');
+if ($sandbox_version ge '8.0') {
+    $sb->do_as_root('slave1', 'CREATE USER "unprivileged"@"localhost" IDENTIFIED WITH mysql_native_password BY "password"');
+} else {
+    $sb->do_as_root('slave1', 'CREATE USER "unprivileged"@"localhost" IDENTIFIED BY "password"');
+}
+$sb->do_as_root('slave1', 'GRANT SELECT, INSERT, UPDATE, REPLICATION CLIENT ON *.* TO "unprivileged"@"localhost"');
 $sb->do_as_root('slave1', "FLUSH TABLES WITH READ LOCK;");
 $sb->do_as_root('slave1', "SET GLOBAL read_only = 1;");
 

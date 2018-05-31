@@ -15737,7 +15737,7 @@ pt-query-digest inspects the columns in the table.  The table must have at
 least the following columns:
 
   CREATE TABLE query_review_history (
-    checksum     BIGINT UNSIGNED NOT NULL,
+    checksum     CHAR(32) NOT NULL,
     sample       TEXT NOT NULL
   );
 
