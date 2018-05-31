@@ -263,7 +263,7 @@ is(
 if ($sandbox_version ge '8.0') {
     diag(`/tmp/12345/use -u root -e "CREATE USER 'bob'\@'%' IDENTIFIED WITH mysql_native_password BY 'msandbox'"`);
 } else {
-    diag(`/tmp/12345/use -u root -e "CREAE USER 'bob'\@'%' IDENTIFIED BY 'msandbox'"`);
+    diag(`/tmp/12345/use -u root -e "CREATE USER 'bob'\@'%' IDENTIFIED BY 'msandbox'"`);
 }
 diag(`/tmp/12345/use -u root -e "GRANT ALL ON *.* TO 'bob'\@'%'"`);
 diag(`/tmp/12345/use -u root -e "REVOKE SUPER ON *.* FROM 'bob'\@'%'"`);
