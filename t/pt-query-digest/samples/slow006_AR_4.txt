@@ -64,8 +64,8 @@ SELECT col FROM foo_tbl\G
 #    1s
 #  10s+
 # Review information
-#    first_seen: 2007-12-18 11:48:27
-#     last_seen: 2007-12-18 11:49:30
+#    first_seen: 2007-12-18 11:48:57
+#     last_seen: 2007-12-18 11:49:07
 #   reviewed_by: 
 #   reviewed_on: 
 #      comments: 

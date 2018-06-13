@@ -65,7 +65,17 @@ my $res = $dbh->selectall_arrayref( 'SELECT * FROM test.query_review',
 
 my $expected = [
   {
-    checksum => '18446744073709551616.00000000',
+    checksum => '3E4FB43148C4B07CD4CD74934382A184',
+    comments => undef,
+    fingerprint => 'select col from bar_tbl',
+    first_seen => '2007-12-18 11:48:57',
+    last_seen => '2007-12-18 11:49:07',
+    reviewed_by => undef,
+    reviewed_on => undef,
+    sample => 'SELECT col FROM bar_tbl'
+  },
+  {
+    checksum => '538CA093E701E0CBA20C29AF174CE545',
     comments => undef,
     fingerprint => 'select col from foo_tbl',
     first_seen => '2007-12-18 11:48:27',
@@ -73,17 +83,7 @@ my $expected = [
     reviewed_by => undef,
     reviewed_on => undef,
     sample => 'SELECT col FROM foo_tbl'
-  },
-  #  {
-  #    checksum => '15334040482108055552.00000000',
-  #    comments => undef,
-  #    fingerprint => 'select col from bar_tbl',
-  #    first_seen => '2007-12-18 11:48:57',
-  #    last_seen => '2007-12-18 11:49:07',
-  #    reviewed_by => undef,
-  #    reviewed_on => undef,
-  #    sample => 'SELECT col FROM bar_tbl'
-  #  }
+  }
 ];
 
 normalize_numbers($res);
@@ -100,6 +100,7 @@ is_deeply(
 # their respective query review info added to the report.
 $output = run_with("slow006.txt",
                    '--review', "$dsn,D=test,t=query_review" );
+# 3
 ok(
    no_diff($output, "t/pt-query-digest/samples/slow006_AR_1.txt", cmd_output => 1),
    'Analyze-review pass 1 reports not-reviewed queries'
@@ -109,9 +110,10 @@ ok(
 # not be reported.
 $dbh->do('UPDATE test.query_review
    SET reviewed_by="daniel", reviewed_on="2008-12-24 12:00:00", comments="foo_tbl is ok, so are cranberries"
-   WHERE checksum=11676753765851784517');
+   WHERE checksum="11676753765851784517"');
 $output = run_with("slow006.txt",
                    '--review', "$dsn,D=test,t=query_review");
+# 4
 ok(
    no_diff($output, "t/pt-query-digest/samples/slow006_AR_2.txt", cmd_output => 1),
    'Analyze-review pass 2 does not report the reviewed query'
@@ -130,7 +132,7 @@ ok(
 # Test that reported review info gets all meta-columns dynamically.
 $dbh->do('ALTER TABLE test.query_review ADD COLUMN foo INT');
 $dbh->do('UPDATE test.query_review
-   SET foo=42 WHERE checksum=15334040482108055940');
+   SET foo=42 WHERE checksum="15334040482108055940"');
 
 $output = run_with("slow006.txt",
                    '--review', "$dsn,D=test,t=query_review");
@@ -193,7 +195,7 @@ $output = run_with("slow006.txt", '--no-report',
 $res = $dbh->selectall_arrayref('SELECT * FROM test.query_review');
 is(
    $res->[0]->[1],
-   'select col from foo_tbl',
+   'select col from bar_tbl',
    "--review works with --no-report"
 );
 is(
