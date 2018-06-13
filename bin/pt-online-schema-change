@@ -8510,6 +8510,12 @@ sub main {
       die "This tool requires MySQL 5.0.10 or newer.\n";
    }
 
+   if ($server_version >= '8.0' && $o->get('alter-foreign-keys-method') eq 'drop_swap') {
+       my $msg = "--alter-foreign-keys-method=drop_swap doesn't work with MySQL 8.0+\n".
+                 "See https://bugs.mysql.com/bug.php?id=89441";
+       die($msg);
+   }
+
    # Use LOCK IN SHARE mode unless MySQL 5.0 because there's a bug like
    # http://bugs.mysql.com/bug.php?id=45694
    my $lock_in_share_mode = $server_version < '5.1' ? 0 : 1;
