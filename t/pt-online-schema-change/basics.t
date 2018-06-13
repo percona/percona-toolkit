@@ -312,7 +312,7 @@ sub test_alter_table {
       ) or $fail = 1;
 
       # Go that extra mile and verify that the fks are actually
-      # still functiona: i.e. that they'll prevent us from delete
+      # still functioning: i.e. that they'll prevent us from delete
       # a parent row that's being referenced by a child.
       my $sql = "DELETE FROM $table WHERE $pk_col=1 LIMIT 1";
       eval {
@@ -454,6 +454,9 @@ test_alter_table(
 # Since fk checks were disabled, MySQL doesn't update the child table fk refs.
 # Somewhat dangerous, but quick.  Downside: table doesn't exist for a moment.
 
+SKIP: {
+    skip "MySQL error https://bugs.mysql.com/bug.php?id=89441", 2 if ($sandbox_version ge '8.0');
+
 test_alter_table(
    name       => "Basic FK drop_swap --dry-run",
    table      => "pt_osc.country",
@@ -486,6 +489,7 @@ test_alter_table(
       '--alter', 'DROP COLUMN last_update',
    ],
 );
+}
 
 # Let the tool auto-determine the fk update method.  This should choose
 # the rebuild_constraints method because the tables are quite small.
@@ -567,6 +571,8 @@ test_alter_table(
 SKIP: {
    skip 'Sandbox master does not have the sakila database', 7
    unless @{$master_dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
+
+   skip "MySQL error https://bugs.mysql.com/bug.php?id=89441", 2 if ($sandbox_version ge '8.0');
 
    # This test will use the drop_swap method because the child tables
    # are large.  To prove this, change check_fks to rebuild_constraints
