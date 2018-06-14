@@ -1188,6 +1188,85 @@ SKIP: {
    ) or die Data::Dumper::Dumper($tbl);
 }
 
+# Test that the GENERATED word in a column comment doesn't make that column
+# to be detected as a MySQL 5.7+ generated column.
+$tbl = $tp->parse( load_file('t/lib/samples/generated_cols_comments.sql') );
+is_deeply(
+   $tbl,
+   {
+     charset => 'latin1',
+     clustered_key => 'PRIMARY',
+     col_posn => {
+       id => 0,
+       source => 1,
+       tso_id => 2
+     },
+     cols => [
+       'id',
+       'source',
+       'tso_id'
+     ],
+     defs => {
+       id => '  `id` int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT \'The unique id of the audit record.\'',
+       source => '  `source` enum(\'val1\',\'val2\') NOT NULL COMMENT \'Transaction originator\'',
+       tso_id => '  `tso_id` int(11) unsigned NOT NULL DEFAULT \'0\' COMMENT \'An internally generated transaction.\''
+     },
+     engine => 'InnoDB',
+     is_autoinc => {
+       id => 1,
+       source => 0,
+       tso_id => 0
+     },
+     is_col => {
+       id => 1,
+       source => 1,
+       tso_id => 1
+     },
+     is_generated => {},
+     is_nullable => {},
+     is_numeric => {
+       id => 1,
+       tso_id => 1
+     },
+     keys => {
+       PRIMARY => {
+         col_prefixes => [
+           undef
+         ],
+         colnames => '`id`',
+         cols => [
+           'id'
+         ],
+         ddl => 'PRIMARY KEY (`id`),',
+         is_col => {
+           id => 1
+         },
+         is_nullable => 0,
+         is_unique => 1,
+         name => 'PRIMARY',
+         type => 'BTREE'
+       }
+     },
+     name => 't1',
+     non_generated_cols => [
+       'id',
+       'source',
+       'tso_id'
+     ],
+     null_cols => [],
+     numeric_cols => [
+       'id',
+       'tso_id'
+     ],
+     type_for => {
+       id => 'int',
+       source => 'enum',
+       tso_id => 'int'
+     }
+   },
+   'Column having the word "generated" as part of the comment is OK',
+) or diag Data::Dumper::Dumper($tbl);
+
 # #############################################################################
 # Done.
 # #############################################################################
