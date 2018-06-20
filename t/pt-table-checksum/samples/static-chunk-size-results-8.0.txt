@@ -1,33 +1,6 @@
-if all tables can be ...
+if all tables be checksummed 
 checksum ...    
 ERRORS DIFFS ROWS CHUNKS SKIPPED TABLE
-0 0 0 1 0 mysql.columns_priv
-0 0 0 1 0 mysql.component
-0 0 2 1 0 mysql.db
-0 0 0 1 0 mysql.default_roles
-0 1 2 1 0 mysql.engine_cost
-0 0 0 1 0 mysql.func
-0 0 26 1 0 mysql.global_grants
-0 0 40 1 0 mysql.help_category
-0 0 696 1 0 mysql.help_keyword
-0 0 1471 1 0 mysql.help_relation
-0 0 644 1 0 mysql.help_topic
-0 0 0 1 0 mysql.innodb_ddl_log
-0 0 0 1 0 mysql.innodb_dynamic_metadata
-0 0 0 1 0 mysql.password_history
-0 0 0 1 0 mysql.plugin
-0 0 0 1 0 mysql.procs_priv
-0 0 1 1 0 mysql.proxies_priv
-0 0 0 1 0 mysql.role_edges
-0 1 6 1 0 mysql.server_cost
-0 0 0 1 0 mysql.servers
-0 1 2 1 0 mysql.tables_priv
-0 0 0 1 0 mysql.time_zone
-0 0 0 1 0 mysql.time_zone_leap_second
-0 0 0 1 0 mysql.time_zone_name
-0 0 0 1 0 mysql.time_zone_transition
-0 0 0 1 0 mysql.time_zone_transition_type
-0 1 5 1 0 mysql.user
 0 0 27 1 0 percona_test.checksums
 0 0 1 1 0 percona_test.load_data
 0 0 1 1 0 percona_test.sentinel
