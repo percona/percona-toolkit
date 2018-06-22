@@ -117,7 +117,7 @@ my $mod2 = $master_dbh->selectall_arrayref(q{SELECT city FROM sakila.city});
 is_deeply(
    $orig,
    $mod2,
-   "sakila.city: No date missing after second rename"
+   "sakila.city: No data missing after second rename"
 );
 
 
@@ -125,15 +125,19 @@ is_deeply(
 # Try with sakila.staff
 # #############################################################################
 
+diag("Reloading sakila");
+my $master_port = $sb->port_for('master');
+system "$trunk/sandbox/load-sakila-db $master_port";
+$sb->wait_for_slaves();
+
 $orig = $master_dbh->selectall_arrayref(q{SELECT first_name, last_name FROM sakila.staff});
 
 ($output, $exit_status) = full_output(
    sub { pt_online_schema_change::main(@args,
       "$master_dsn,D=sakila,t=staff",
       "--alter", "change column first_name first_name_mod varchar(45) NOT NULL, change column last_name last_name_mod varchar(45) NOT NULL",
-      qw(--execute --alter-foreign-keys-method auto --no-check-alter)) },
+      qw(--execute --alter-foreign-keys-method rebuild_constraints --no-check-alter)) },
 );
-
 $mod = $master_dbh->selectall_arrayref(q{SELECT first_name_mod, last_name_mod FROM sakila.staff});
 
 is_deeply(

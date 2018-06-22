@@ -36,7 +36,7 @@ elsif ( !$slave1_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave2';
 }
 else {
-   plan tests => 5;
+   plan tests => 4;
 }
 
 my ($output, $status);
@@ -77,7 +77,7 @@ is(
     $row->{f2},
     $want,
     "Character set is correct",
-);
+) or diag("Want '$want', got '$row->{f2}");
 
 SKIP: {
     skip "Skipping in MySQL 8.0.4-rc since there is an error in the server itself", 1 if ($sandbox_version ge '8.0');

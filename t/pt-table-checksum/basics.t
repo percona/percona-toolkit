@@ -97,7 +97,7 @@ ok(
 # 3
 ok(
    no_diff(
-      sub { pt_table_checksum::main(@args, qw(--chunk-time 0)) },
+      sub { pt_table_checksum::main(@args, qw(--chunk-time 0 --ignore-databases mysql)) },
       "$sample/static-chunk-size-results-$sandbox_version.txt",
       post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $6 " " $7 " " $9}\'',
    ),
@@ -130,13 +130,13 @@ $row = $slave1_dbh->selectrow_arrayref("select city, last_update from sakila.cit
 $slave1_dbh->do("update sakila.city set city='test' where city_id=1");
 
 $exit_status = pt_table_checksum::main(@args,
-   qw(--quiet --quiet -t sakila.city));
+   qw(--quiet -t sakila.city --chunk-size 1));
 
 is(
    $exit_status,
    16,  # = TABLE_DIFF but nothing else; https://bugs.launchpad.net/percona-toolkit/+bug/944051
    "--replicate-check on by default, detects diff"
-);
+) or diag("exit status: $exit_status");
 
 $exit_status = pt_table_checksum::main(@args,
    qw(--quiet --quiet -t sakila.city --no-replicate-check));

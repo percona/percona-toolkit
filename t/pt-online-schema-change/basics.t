@@ -760,7 +760,7 @@ ok(
 
 ($output, $exit) = full_output(
    sub { pt_online_schema_change::main(@args,
-      "$dsn,D=sakila,t=actor", qw(--chunk-size-limit 0 --alter-foreign-keys-method drop_swap --execute --alter ENGINE=InnoDB)) },
+      "$dsn,D=sakila,t=actor", qw(--chunk-size-limit 0 --alter-foreign-keys-method rebuild_constraints --execute --alter ENGINE=InnoDB)) },
    stderr => 1,
 );
 
@@ -833,7 +833,7 @@ $sb->load_file('master', "$sample/create_dsns.sql");
 ($output, $exit) = full_output(
    sub { pt_online_schema_change::main(@args,
       "$dsn,D=sakila,t=actor", ('--recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox',  
-          '--alter-foreign-keys-method', 'drop_swap', '--execute', '--alter', 'ENGINE=InnoDB')) 
+          '--alter-foreign-keys-method', 'rebuild_constraints', '--execute', '--alter', 'ENGINE=InnoDB')) 
        },
    stderr => 1,
 );
