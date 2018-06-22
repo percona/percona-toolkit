@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 4;
+use Test::More;
 
 use PerconaTest;
 use Sandbox;
@@ -20,6 +20,8 @@ my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 
 if ($sandbox_version ge '8.0') {
     plan skip_all => "TODO master master sandbox is failing with MySQL 8.0+. FIX ME !!!!";
+} else {
+    plan 4;
 }
 
 # #############################################################################

@@ -168,7 +168,7 @@ wait_until(
 # #############################################################################
 # Bug 916168: bug in pt-table-checksum privileges check
 # #############################################################################
-diag(`/tmp/12345/use -u root < $trunk/t/pt-table-checksum/samples/privs-bug-916168.sql`);
+diag(`/tmp/12345/use -u root < $trunk/ t/pt-table-checksum/samples/privs-bug-916168.sql`);
 
 $output = output(
    sub { $exit_status = pt_table_checksum::main(@args,
