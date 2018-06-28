@@ -21,7 +21,7 @@ my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 if ($sandbox_version ge '8.0') {
     plan skip_all => "TODO master master sandbox is failing with MySQL 8.0+. FIX ME !!!!";
 } else {
-    plan 4;
+    plan tests => 4;
 }
 
 # #############################################################################
