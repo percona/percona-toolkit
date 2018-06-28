@@ -36,7 +36,7 @@ elsif ( !$slave1_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave2';
 }
 else {
-   plan tests => 4;
+   plan tests => 5;
 }
 
 my ($output, $status);
