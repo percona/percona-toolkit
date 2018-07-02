@@ -1,14 +1,38 @@
 Release Notes
 *************
 
-v3.0.10 released 2018-05-21
+v3.0.11 released 
 ===========================
 
-Release Notes
-*************
+Improvements 
 
-v3.0.10
-================================================================================
+ * :jirabug:`PT-1571`: Improved hostname recognition in ``pt-secure-collect``
+ * :jirabug:`PT-1569`: Disabled ``--alter-foreign-keys-method=drop_swap`` in pt-online-schema-change
+ * :jirabug:`PT-1562`: ``pt-mysql-summary``: Fix mysqld command for Travis
+ * :jirabug:`PT-242` : (``pt-stalk``) Include SHOW SLAVE STATUS on 5.7 (Thanks Marcelo Altmann)
+
+ Fixed bugs
+
+ * :jirabug:`PT-1570`: ``pt-archiver`` fails to detect columns with the word GENERATED as part of the comment
+ * :jirabug:`PT-1563`: Fixed ``pt-show-grants`` for MySQL 5.6
+ * :jirabug:`PT-1551`: ``pt-table-checksum`` fails on MySQL 8.0.11
+ * :jirabug:`PT-241` : (``pt-stalk``) Slave queries doesn't run on 5.7 (Thanks Marcelo Altmann)
+
+ Breaking changes:
+
+ Starting with this version, queries checksum in ``pt-query-digest`` has been changed to use a full MD5 field
+ as a CHAR(32) field instead of storing just the less signitficant bytes of the checksum as a BIGINT field.
+ The reasson for this change is that in MySQL 8, storing only the less significant bytes as a BIGINT was producing
+ non-reliable results. For example, the same query on MySQL 5.6+ was producing a different result in MySQL 8, and 
+ that could lead to (help me here to say confusing results?).
+
+ ``pt-online-schema-change`` in MySQL 8:
+Due to an `error in MySQL 8.0+ <https://bugs.mysql.com/bug.php?id=89441>`_ it is not possible to use the ``drop_swap``
+method to rebuild constraints because renaming a table will cause to lose the foreign keys. You must specify a different
+method expicitly.
+
+v3.0.10 released 2018-05-21
+===========================
 
 New Features
 
