@@ -164,7 +164,7 @@ func processCliParams(baseTempPath string, usageWriter io.Writer) (*cliOptions, 
 	}
 	msg += "\n "
 
-	app := kingpin.New("pt-secure-data", msg)
+	app := kingpin.New("pt-secure-collect", msg)
 	if usageWriter != nil {
 		app.UsageWriter(usageWriter)
 		app.Terminate(nil)
