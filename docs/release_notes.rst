@@ -4,19 +4,18 @@ Release Notes
 v3.0.11 released 
 ===========================
 
-Improvements 
+New features
 
 * :jirabug:`PT-1571`: Improved hostname recognition in ``pt-secure-collect``
 * :jirabug:`PT-1569`: Disabled ``--alter-foreign-keys-method=drop_swap`` in ``pt-online-schema-change``
-* :jirabug:`PT-1562`: ``pt-mysql-summary``: Fix the ``mysqld`` command for Travis
-* :jirabug:`PT-242`: (``pt-stalk``) Include ``SHOW SLAVE STATUS`` on MySQL 5.7 (Thanks Marcelo Altmann)
+* :jirabug:`PT-242`: (``pt-stalk``) Include ``SHOW SLAVE STATUS`` on MySQL 5.7 (Thanks `Marcelo Altmann <https://www.percona.com/blog/author/marcelo-altmann/>`_)
 
 Fixed bugs
 
 * :jirabug:`PT-1570`: ``pt-archiver`` fails to detect columns with the word *GENERATED* as part of the comment
-* :jirabug:`PT-1563`: Fixed ``pt-show-grants`` for MySQL 5.6
+* :jirabug:`PT-1563`: ``pt-show-grants`` fails for MySQL 5.6 producing an error which reports that an unknown column **account_locked** has been detected.
 * :jirabug:`PT-1551`: ``pt-table-checksum`` fails on MySQL 8.0.11
-* :jirabug:`PT-241`: (``pt-stalk``) Slave queries don\'t run on MySQL 5.7 (Thanks Marcelo Altmann)
+* :jirabug:`PT-241`: (``pt-stalk``) Slave queries don\'t run on MySQL 5.7 because the FQDN is missing (Thanks `Marcelo Altmann <https://www.percona.com/blog/author/marcelo-altmann/>`_)
 
 Breaking changes:
 
