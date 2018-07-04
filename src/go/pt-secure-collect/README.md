@@ -9,7 +9,7 @@ Internal variables placeholders will be replaced with the corresponding  flag va
 
 Usage:  
 ```
-pt-secure-data [<flags>] <command> [<args> ...]
+pt-secure-collect [<flags>] <command> [<args> ...]
 ```
 
 
