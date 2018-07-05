@@ -20,16 +20,14 @@ Fixed bugs
 Breaking changes:
 
 Starting with this version, the queries checksum in ``pt-query-digest`` will
-use the full MD5 field as a CHAR(32) field instead of storing just the least
+store the full MD5 field as a CHAR(32) field instead of storing just the least
 significant bytes of the checksum as a BIGINT field.  The reason for this
 change is that storing only the least significant bytes as a BIGINT was
-producing inconsistent results in MySQL 8 compared to MySQL 5.6+. For example,
-the same query on MySQL 5.6+ would produce a checksum different from that
-received in MySQL 8; this could cause the validation to fail.
+producing inconsistent results in MySQL 8 compared to MySQL 5.6+.
 
 ``pt-online-schema-change`` in MySQL 8:
 
-Due to an `error in MySQL 8.0+ <https://bugs.mysql.com/bug.php?id=89441>`_, it
+Due to a `bug in MySQL 8.0+ <https://bugs.mysql.com/bug.php?id=89441>`_, it
 is not possible to use the ``drop_swap`` method to rebuild constraints because
 renaming a table will result in losing the foreign keys. You must specify a
 different method explicitly.
