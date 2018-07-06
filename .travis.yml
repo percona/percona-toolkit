@@ -39,6 +39,9 @@ before_script:
 script:
   - go test -timeout 1m ./src/...
 
+allow_failures:
+    - tip
+
 notifications:
   email: false
   slack:

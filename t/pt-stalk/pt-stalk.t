@@ -489,11 +489,13 @@ SKIP: {
    
    $sb->load_file('chan_master1', "sandbox/gtid_on.sql", undef, no_wait => 1);
    $sb->load_file('chan_master2', "sandbox/gtid_on.sql", undef, no_wait => 1);
-   $sb->load_file('chan_slave1', "sandbox/slave_channels.sql", undef, no_wait => 1);
+   $sb->load_file('chan_slave1', "sandbox/slave_channels_t.sql", undef, no_wait => 1);
 
+   my $slave_cnf = "/tmp/$slave1_port/my.sandbox.cnf";
    my $cmd = "$trunk/bin/pt-stalk --no-stalk --iterations=1 --host=127.0.0.1 --port=$slave1_port --user=msandbox "
            . "--password=msandbox --sleep 0 --run-time=10 --dest $dest --log $log_file --iterations=1  "
-           . "--run-time=2  --pid $pid_file --defaults-file=$cnf >$log_file 2>&1";
+           . "--run-time=2 --pid $pid_file --defaults-file=$slave_cnf >$log_file 2>&1";
+   diag ($cmd);
    system($cmd);
    sleep 5;
    PerconaTest::kill_program(pid_file => $pid_file);
@@ -502,9 +504,9 @@ SKIP: {
    
    like(
       $output,
-      qr/FROM performance_schema.replication_connection_configuration JOIN performance_schema.replication_applier_configuration USING/,
+      qr/Slave has read all relay log; waiting for more updates/,
       "MySQL 5.7 SLAVE STATUS"
-   );
+   ) or diag ($output);
    $sb->stop_sandbox(qw(chan_master1 chan_master2 chan_slave1));
 }
                                                                               
