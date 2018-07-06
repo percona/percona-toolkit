@@ -916,7 +916,7 @@ collect() {
    local ps_instrumentation_enabled=$($CMD_MYSQL $EXT_ARGV -e 'SELECT ENABLED FROM performance_schema.setup_instruments WHERE NAME = "transaction";' \
                                       | sed "2q;d" | sed 'y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/')
 
-   if [ $ps_instrumentation_enabled != "yes" ]; then
+   if [ !$ps_instrumentation_enabled = "yes" ]; then
       log "Performance Schema instrumentation is disabled"
    fi
 
@@ -1166,10 +1166,6 @@ slave_status() {
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
    if [ "${mysql_version}" '>' "5.6" ]; then
-      local sql="SHOW SLAVE STATUS\G"  
-      echo -e "\n$sql\n" >> $outfile
-      $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
-   else
       local sql="SELECT * FROM performance_schema.replication_connection_configuration JOIN performance_schema.replication_applier_configuration USING(channel_name)\G"
       echo -e "\n$sql\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
@@ -1182,8 +1178,8 @@ slave_status() {
       echo -e "\n$sql\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
    fi
-
 }
+
 
 collect_mysql_variables() {
    local outfile=$1 
