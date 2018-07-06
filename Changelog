@@ -1,6 +1,6 @@
 Changelog for Percona Toolkit
 
-v3.0.11 released 2018-07-03
+v3.0.11
 
  * Improvement PT-1571 : Improved hostname recognition in pt-secure-collect
  * Fixed bug   PT-1570 : pt-archiver fails to detect columns with the word GENERATED as part of the comment
