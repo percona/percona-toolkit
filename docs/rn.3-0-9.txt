@@ -1,0 +1,25 @@
+
+v3.0.9 released 2018-04-20
+==========================
+
+New Tools
+
+* :jirabug:`PT-1501`: ``pt-secure-collect`` - New tool to collect and sanitize pt-tools outputs
+
+New Features 
+
+* :jirabug:`PT-1530`: Add support for encryption status to ``pt-mysql-summary``
+* :jirabug:`PT-1526`: Add ndb status to ``pt-mysql-summary`` (Thanks Fernando Ipar)
+* :jirabug:`PT-1525`: Add support for MySQL 8 roles into ``pt-mysql-summary``
+* :jirabug:`PT-1509`: Make ``pt-table-sync`` only set binlog_format when necessary (Thanks Moritz Lenz)
+* :jirabug:`PT-1508`: Add ``--read-only-interval`` and ``--fail-successive-errors`` flags to ``pt-heartbeat`` (Thanks Shlomi Noach)
+* :jirabug:`PT-243`: Add ``--max-hostname-length`` and ``--max-line-length`` flags to ``pt-query-digest``
+
+Bug Fixes     
+
+* :jirabug:`PT-1527`: Fixed ``pt-table-checksum`` ignores ``--nocheck-binlog-format``
+
+Improvements
+
+* :jirabug:`PT-1507`: ``pt-summary`` does not reliably read in the transparent huge pages setting (Thanks Nick Veenhof)
+* :jirabug:`PT-1488`: ``pt-show-grants`` support for MySQL 8.0
