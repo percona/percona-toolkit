@@ -1,0 +1,26 @@
+
+v3.0.1 released 2017-02-20
+==========================
+
+Percona Toolkit 3.0.1 GA includes the following changes:
+
+* Added requirement to run ``pt-mongodb-summary`` as a user with the ``clusterAdmin`` or ``root`` built-in roles.
+
+v3.0 released 2017-02-06
+========================
+
+Percona Toolkit 3.0.0 RC includes the following changes:
+
+New Features
+
+* Added ``pt-mongodb-summary`` tool
+
+* Added ``pt-mongodb-query-digest`` tool
+
+Bug fixes
+
+* 1402776: Updated ``MySQLProtocolParser`` to fix error when parsing ``tcpdump`` capture with ``pt-query-digest``
+
+* 1632522: Fixed failure of ``pt-online-schema-change`` when altering a table with a self-referencing foreign key (Thanks Amiel Marqeta)
+
+* 1654668: Fixed failure of ``pt-summary`` on Red Hat and derivatives (Thanks Marcelo Altmann)
