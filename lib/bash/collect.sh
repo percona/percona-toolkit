@@ -86,7 +86,7 @@ collect() {
    local mysql_version="$(awk '/^version[^_]/{print substr($2,1,3)}' "$d/$p-variables")"
 
    # Is MySQL logging its errors to a file?  If so, tail that file.
-   local mysql_error_log="$(awk '/^log_error/{print $2}' "$d/$p-variables")"
+   local mysql_error_log="$(awk '/^log_error\s+/{print $2}' "$d/$p-variables")"
    if [ -z "$mysql_error_log" -a "$mysqld_pid" ]; then
       # Try getting it from the open filehandle...
       mysql_error_log="$(ls -l /proc/$mysqld_pid/fd | awk '/ 2 ->/{print $NF}')"
