@@ -1,0 +1,9 @@
+DROP DATABASE IF EXISTS test;
+CREATE DATABASE test;
+
+USE test;
+
+CREATE TABLE `test`.`t1` (
+    id INT AUTO_INCREMENT PRIMARY KEY NOT NULL,
+    f1 INT
+) Engine=InnoDB CHARSET=utf8;

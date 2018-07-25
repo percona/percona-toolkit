@@ -495,6 +495,8 @@ sub can_nibble {
    my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
                   ? $row_est <= $chunk_size * $chunk_size_limit
                   : 0;
+                  #
+
    PTDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
 
    # Special case: we're resuming and there's no boundaries, so the table
@@ -511,6 +513,23 @@ sub can_nibble {
    if ( !$index && !$one_nibble ) {
       die "There is no good index and the table is oversized.";
    }
+
+   # In some cases, MySQL returns a wrong estimate about number of rows in a table 
+   # and NibbleIterator is trying to process huge tables in a single chunk.
+   # This parameter disable one nibble.
+   # See https://jira.percona.com/browse/PT-1585
+   # This function should work on all scenarios so, to prevent trying to nibble on empty
+   # (or really really small) tables, we need to ensure tha table has an index and it has
+   # at least 2 rows, otherwise there is no way to split only one row into chunks.
+   if ($o->has('force-nibbling') && $o->get('force-nibbling')) {
+       my @nibbling_tables = split(/,/, $o->get('force-nibbling'));
+       my @table_in_list = grep (/$tbl->{tbl}/, @nibbling_tables);
+       if (@table_in_list && $index && $row_est >= 2) {
+           PTDEBUG && _d("Disabling one nibble for the entire table");
+           $one_nibble = 0;
+       }
+   }
+
 
    # The table can be nibbled if this point is reached, else we would have
    # died earlier.  Return some values about nibbling the table.

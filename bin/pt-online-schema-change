@@ -5838,6 +5838,7 @@ sub can_nibble {
    my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
                   ? $row_est <= $chunk_size * $chunk_size_limit
                   : 0;
+
    PTDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
 
    if ( $args{resume}
@@ -5851,6 +5852,16 @@ sub can_nibble {
    if ( !$index && !$one_nibble ) {
       die "There is no good index and the table is oversized.";
    }
+
+   if ($o->has('force-nibbling') && $o->get('force-nibbling')) {
+       my @nibbling_tables = split(/,/, $o->get('force-nibbling'));
+       my @table_in_list = grep (/$tbl->{tbl}/, @nibbling_tables);
+       if (@table_in_list && $index && $row_est >= 2) {
+           PTDEBUG && _d("Disabling one nibble for the entire table");
+           $one_nibble = 0;
+       }
+   }
+
 
    my $pause_file = ($o->has('pause-file') && $o->get('pause-file')) || undef;
    
