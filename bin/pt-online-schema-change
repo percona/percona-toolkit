@@ -9275,13 +9275,12 @@ sub main {
    {
       my $indexes = $new_tbl->{tbl_struct}->{keys}; # brevity
       foreach my $index ( $tp->sort_indexes($new_tbl->{tbl_struct}) ) {
-         if ( $index eq 'PRIMARY' || $indexes->{$index}->{is_unique} ) {
+         if ( $index eq 'PRIMARY' || ($indexes->{$index}->{is_unique} && $indexes->{$index}->{is_nullable} == 0)) {
             PTDEBUG && _d('Delete trigger new index:', Dumper($index));
             $new_tbl->{del_index} = $index;
             last;
          }
       }
-      PTDEBUG && _d('New table delete index:', $new_tbl->{del_index});
    }
 
    {
@@ -9298,7 +9297,8 @@ sub main {
 
    if ( !$new_tbl->{del_index} ) {
       die "The new table $new_tbl->{name} does not have a PRIMARY KEY "
-        . "or a unique index which is required for the DELETE trigger.\n";
+        . "or a unique index which is required for the DELETE trigger.\n"
+        . "Please check you have at least one UNIQUE and NOT NULLABLE index.\n";
    }
 
    # Determine whether to use the new or orig table delete index.
