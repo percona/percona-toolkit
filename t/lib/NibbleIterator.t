@@ -38,6 +38,8 @@ my $dbh = $sb->get_dbh_for('master');
 
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
+} else {
+    plan tests => 60;
 }
 
 my $q   = new Quoter();
@@ -879,7 +881,7 @@ is_deeply(
 # #############################################################################
 
 diag(`/tmp/12345/use < $trunk/t/lib/samples/cardinality.sql >/dev/null`);
-
+$dbh->do('analyze table bad_tables.inv');
 $ni = make_nibble_iter(
    db   => 'cardb',
    tbl  => 't',
@@ -890,6 +892,56 @@ is(
    $ni->{index},
    'b',
    "Use non-unique index with highest cardinality (bug 1199591)"
+);
+
+$sb->load_file('master', "t/lib/samples/NibbleIterator/enum_keys.sql");
+$ni = undef;
+eval {
+    $ni = make_nibble_iter(
+       db   => 'test',
+       tbl  => 't1',
+       argv => [qw(--databases test --chunk-size 3)],
+    );
+};
+
+like(
+    $EVAL_ERROR,
+    qr/The index f3 in table `test`.`t1` has unsorted enum items/,
+    "PT-1572 Die on unsorted enum items in index",
+);
+
+eval {
+    $ni = make_nibble_iter(
+       db   => 'test',
+       tbl  => 't1',
+       argv => [qw(--databases test --force-concat-enums --chunk-size 3)],
+    );
+};
+
+like( 
+    $ni->{explain_first_lb_sql},
+    qr/ORDER BY `f1`, `f2`, CONCAT\(`f3`\)/,
+    "PT-1572 Use of CONCAT for unsorted ENUM field items without --",
+);
+
+eval {
+    $ni = make_nibble_iter(
+       db   => 'test',
+       tbl  => 't2',
+       argv => [qw(--databases test --chunk-size 3)],
+    );
+};
+
+is(
+    $EVAL_ERROR,
+    '',
+    "PT-1572 No errors on sorted enum items in index",
+);
+
+like( 
+    $ni->{explain_first_lb_sql},
+    qr/ORDER BY `f1`, `f2`, `f3`/,
+    "PT-1572 Don't use CONCAT for sorted ENUM field items without --force-concat-enums",
 );
 
 # #############################################################################
@@ -905,6 +957,7 @@ like(
    qr/Complete test coverage/,
    '_d() works'
 );
+
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

@@ -13262,6 +13262,10 @@ the values are converted to strings by the CONCAT() function, and MySQL chooses
 the string representation.  If you specify a value of 2, for example, then the
 values 1.008 and 1.009 will be rounded to 1.01, and will checksum as equal.
 
+=item --force-concat-enums
+
+bla bla bla bla bla
+
 =item --function
 
 type: string
