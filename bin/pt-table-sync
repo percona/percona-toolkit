@@ -12408,6 +12408,30 @@ the values are converted to strings by the CONCAT() function, and MySQL chooses
 the string representation.  If you specify a value of 2, for example, then the
 values 1.008 and 1.009 will be rounded to 1.01, and will checksum as equal.
 
+=item --force-concat-enums
+
+The NibbleIterator in Percona Toolkit can detect indexes having ENUM fields and 
+if the items it has are sorted or not. According to MySQL documentation at 
+L<https://dev.mysql.com/doc/refman/8.0/en/enum.html>:
+
+ENUM values are sorted based on their index numbers, which depend on the order in 
+which the enumeration members were listed in the column specification. 
+For example, 'b' sorts before 'a' for ENUM('b', 'a'). 
+The empty string sorts before nonempty strings, and NULL values sort before all other 
+enumeration values.
+
+To prevent unexpected results when using the ORDER BY clause on an ENUM column, 
+use one of these techniques:
+- Specify the ENUM list in alphabetic order.
+- Make sure that the column is sorted lexically rather than by index number by coding 
+ORDER BY CAST(col AS CHAR) or ORDER BY CONCAT(col).
+
+The NibbleIterator in Percona Toolkit uses CONCAT(col) but, doing that, adds overhead
+since MySQL cannot use the column directly and has to calculate the result of CONCAT
+for every row.
+To make this scenario vissible to the user, if there are indexes having ENUM fields 
+with usorted items, it is necessary to specify the C<--force-concat-enums> parameter.
+
 =item --[no]foreign-key-checks
 
 default: yes
