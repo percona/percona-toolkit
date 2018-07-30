@@ -6,6 +6,9 @@ BEGIN {
    unshift @INC, "$ENV{PERCONA_TOOLKIT_BRANCH}/lib";
 };
 
+binmode(STDIN, ':utf8') or die "Can't binmode(STDIN, ':utf8'): $OS_ERROR";
+binmode(STDOUT, ':utf8') or die "Can't binmode(STDOUT, ':utf8'): $OS_ERROR";
+
 use strict;
 use utf8;
 use Encode qw(decode encode);
@@ -16,9 +19,6 @@ use Test::More;
 use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-table-sync";
-
-binmode(STDIN, ':utf8') or die "Can't binmode(STDIN, ':utf8'): $OS_ERROR";
-binmode(STDOUT, ':utf8') or die "Can't binmode(STDOUT, ':utf8'): $OS_ERROR";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
@@ -39,9 +39,10 @@ else {
    plan tests => 5;
 }
 
+
 my ($output, $status);
 my @args = ('--sync-to-master', 'h=127.1,P=12346,u=msandbox,p=msandbox',
-            qw(-t test.t1 --print --execute));
+            qw(-t test.t1 --print --execute --charset utf8));
 
 # use lib/samples dir since the main change is in DSNParser
 $sb->load_file('master', "t/lib/samples/charset.sql");
@@ -77,10 +78,10 @@ is(
     $row->{f2},
     $want,
     "Character set is correct",
-) or diag("Want '$want', got '$row->{f2}");
+) or diag("Want '".($want||"")."', got '".($row->{f2}||"")."'");
 
 SKIP: {
-    skip "Skipping in MySQL 8.0.4-rc since there is an error in the server itself", 1 if ($sandbox_version ge '8.0');
+    skip "Skipping in MySQL 8.0.4-rc since there is an error in the server itself", 2 if ($sandbox_version ge '8.0');
     # 3
     $output = `$trunk/bin/pt-table-sync --execute --lock-and-rename h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=t1 t=t2 2>&1`;
     $output = `/tmp/12345/use -e 'show create table test.t2'`;
