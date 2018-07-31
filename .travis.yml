@@ -1,7 +1,8 @@
 language: go
 
 go:
-  - 1.9.x
+  - master
+  - tip
 
 services:
   - docker
@@ -14,13 +15,7 @@ env:
     - MONGODB_IMAGE=percona/percona-server-mongodb:3.0
     - MONGODB_IMAGE=percona/percona-server-mongodb:3.2
     - MONGODB_IMAGE=percona/percona-server-mongodb:3.4
-
-matrix:
-  include:
-    - go: 1.8.x
-      env:
-    - go: tip
-      env:
+  
 
 install:
   - go get -u github.com/golang/dep/cmd/dep
