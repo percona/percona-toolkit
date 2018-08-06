@@ -332,6 +332,9 @@ summarize_processlist () {
          }
          \$1 == \"Time:\" {
             t = \$2;
+            if ( t == \"NULL\" ) { 
+                t = 0;
+            }
          }
          \$1 == \"Command:\" {
             c = \$2;

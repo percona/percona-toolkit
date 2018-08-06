@@ -87,9 +87,13 @@ like(
    "InnoDB section present"
 );
 
+my $users_count = 2;
+if ($ENV{FORK} eq 'mariadb') {
+    $users_count = 8;
+}
 like(
    $out,
-   qr/Users \| 2/,
+   qr/Users \| $users_count/,
    "Security works"
 );
 
