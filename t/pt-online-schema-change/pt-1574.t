@@ -24,7 +24,7 @@ use File::Temp qw/ tempdir /;
 if ($sandbox_version lt '5.7') {
     plan skip_all => 'This test needs MySQL 5.7+';
 } else {
-    plan tests => 3;
+    plan tests => 5;
 }    
 
 require "$trunk/bin/pt-online-schema-change";
@@ -46,6 +46,27 @@ $sb->load_file('master', "t/pt-online-schema-change/samples/pt-1574.sql");
 
 ($output, $exit_status) = full_output(
     sub { pt_online_schema_change::main(@args, "$dsn,D=test,t=t1",
+            '--execute', "--chunk-index", "idx_id", "--chunk-size", "1", 
+            "--nocheck-plan", '--alter', "engine=innodb",
+        ),
+    },
+    stderr => 1,
+);
+
+isnt(
+    $exit_status,
+    0,
+    "PT-1544 There is no unique index exit status",
+);
+
+like(
+    $output,
+    qr/at least one UNIQUE and NOT NULLABLE index/s,
+    "PT-1544 Message you need an unique index.",
+);
+
+($output, $exit_status) = full_output(
+    sub { pt_online_schema_change::main(@args, "$dsn,D=test,t=t2",
             '--execute', "--chunk-index", "idx_id", "--chunk-size", "1", 
             "--nocheck-plan", '--alter', "engine=innodb",
         ),
