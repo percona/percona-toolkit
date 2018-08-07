@@ -56,13 +56,13 @@ $sb->load_file('master', "t/pt-online-schema-change/samples/pt-1574.sql");
 isnt(
     $exit_status,
     0,
-    "PT-1544 There is no unique index exit status",
+    "PT-1574, PT-1590 There is no unique index exit status",
 );
 
 like(
     $output,
     qr/at least one UNIQUE and NOT NULLABLE index/s,
-    "PT-1544 Message you need an unique index.",
+    "PT-1574, PT-1590 Message you need an unique index.",
 );
 
 ($output, $exit_status) = full_output(
@@ -74,16 +74,16 @@ like(
     stderr => 1,
 );
 
-isnt(
+is(
     $exit_status,
     0,
-    "PT-1544 There is no unique index exit status",
+    "PT-1574, PT-1590 Exit status 0 with null fields",
 );
 
 like(
     $output,
-    qr/at least one UNIQUE and NOT NULLABLE index/s,
-    "PT-1544 Message you need an unique index.",
+    qr/Successfully altered `test`.`t2`/s,
+    "PT-1574, PT-1590 Successfully altered `test`.`t2`",
 );
 
 # #############################################################################
