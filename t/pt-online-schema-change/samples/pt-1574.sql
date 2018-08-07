@@ -22,12 +22,13 @@ INSERT INTO `test`.`t1` VALUES
 (NULL,NULL,NULL);
 
 
-CREATE TABLE `test`.`t2` (
-`id` int(11) DEFAULT NULL,
-`site_name` varchar(25) PRIMARY KEY,
-`last_update` datetime DEFAULT NULL,
-UNIQUE KEY `idx_id` (`id`),
-KEY `idx_last_update` (`last_update`)
+CREATE TABLE `t2` (
+  `id` int(11) DEFAULT NULL,
+  `site_name` varchar(25) NOT NULL,
+  `last_update` datetime DEFAULT NULL,
+  PRIMARY KEY (`site_name`),
+  UNIQUE KEY `idx_id` (`id`),
+  KEY `idx_last_update` (`last_update`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 INSERT INTO `test`.`t2` VALUES 

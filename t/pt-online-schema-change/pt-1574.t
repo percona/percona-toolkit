@@ -53,6 +53,9 @@ $sb->load_file('master', "t/pt-online-schema-change/samples/pt-1574.sql");
     stderr => 1,
 );
 
+my $sql_mode = $dbh->selectcol_arrayref('SELECT @@sql_mode');
+warn Data::Dumper::Dumper($sql_mode);
+
 isnt(
     $exit_status,
     0,
