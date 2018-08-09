@@ -6372,7 +6372,10 @@ sub new {
       PTDEBUG && _d('Ascend params:', Dumper($asc));
 
       my $force_concat_enums = $o->has('force-concat-enums') && $o->get('force-concat-enums');
+      my $i=0;
       for my $index (@{$index_cols}) {
+          last if $args{n_chunk_index_cols} && $i >= $args{n_chunk_index_cols};
+          $i++;
           if ($tbl->{tbl_struct}->{type_for}->{$index} eq 'enum') {
              if ($tbl->{tbl_struct}->{defs}->{$index} =~ m/enum\s*\((.*?)\)/) {
                  my @items = split(/,\s*/, $1);

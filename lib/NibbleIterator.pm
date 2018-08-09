@@ -137,7 +137,10 @@ sub new {
       # Check if enum fields items are sorted or not.
       # If they are sorted we can skip adding CONCAT to improve the queries eficiency.
       my $force_concat_enums = $o->has('force-concat-enums') && $o->get('force-concat-enums');
+      my $i=0;
       for my $index (@{$index_cols}) {
+          last if $args{n_chunk_index_cols} && $i >= $args{n_chunk_index_cols};
+          $i++;
           if ($tbl->{tbl_struct}->{type_for}->{$index} eq 'enum') {
              if ($tbl->{tbl_struct}->{defs}->{$index} =~ m/enum\s*\((.*?)\)/) {
                  my @items = split(/,\s*/, $1);

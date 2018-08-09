@@ -67,6 +67,7 @@ my $in = "/t/lib/samples/NibbleIterator/";
 sub make_nibble_iter {
    my (%args) = @_;
 
+
    if (my $file = $args{sql_file}) {
       $sb->load_file('master', "$in/$file");
    }
@@ -85,18 +86,19 @@ sub make_nibble_iter {
    1 while $si->next();
 
    my $ni = new NibbleIterator(
-      Cxn         => $cxn,
-      tbl         => $schema->get_table(lc($args{db}), lc($args{tbl})),
-      chunk_size  => $o->get('chunk-size'),
-      chunk_index => $o->get('chunk-index'),
-      callbacks   => $args{callbacks},
-      select      => $args{select},
-      one_nibble  => $args{one_nibble},
-      resume      => $args{resume},
-      order_by    => $args{order_by},
-      comments    => $args{comments},
-      pause_file  => $o->get('pause-file'),
-      sleep       => $args{sleep} || 60,
+      Cxn                => $cxn,
+      tbl                => $schema->get_table(lc($args{db}), lc($args{tbl})),
+      chunk_size         => $o->get('chunk-size'),
+      chunk_index        => $o->get('chunk-index'),
+      callbacks          => $args{callbacks},
+      select             => $args{select},
+      one_nibble         => $args{one_nibble},
+      resume             => $args{resume},
+      order_by           => $args{order_by},
+      comments           => $args{comments},
+      n_chunk_index_cols => $o->get('chunk-index-columns'),
+      pause_file         => $o->get('pause-file'),
+      sleep              => $args{sleep} || 60,
       %common_modules,
    );
 
@@ -942,6 +944,26 @@ like(
     $ni->{explain_first_lb_sql},
     qr/ORDER BY `f1`, `f2`, `f3`/,
     "PT-1572 Don't use CONCAT for sorted ENUM field items without --force-concat-enums",
+);
+
+eval {
+    $ni = make_nibble_iter(
+       db   => 'test',
+       tbl  => 't1',
+       argv => [qw(--databases test --chunk-size 3 --chunk-index-columns 2)],
+    );
+};
+
+is(
+    $EVAL_ERROR,
+    '',
+    "PT-1572 No errors on unsorted enum items in index and --chunk-index-columns",
+);
+
+like( 
+    $ni->{explain_first_lb_sql},
+    qr/ORDER BY `f1`, `f2`, `f3`/,
+    "PT-1572 Don't use CONCAT for sorted ENUM field items without --force-concat-enums & --chunk-index-columns",
 );
 
 # #############################################################################
