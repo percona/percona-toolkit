@@ -134,14 +134,40 @@ sub new {
       );
       PTDEBUG && _d('Ascend params:', Dumper($asc));
 
+      # Check if enum fields items are sorted or not.
+      # If they are sorted we can skip adding CONCAT to improve the queries eficiency.
+      my $force_concat_enums = $o->has('force-concat-enums') && $o->get('force-concat-enums');
+      my $i=0;
+      for my $index (@{$index_cols}) {
+          last if $args{n_chunk_index_cols} && $i >= $args{n_chunk_index_cols};
+          $i++;
+          if ($tbl->{tbl_struct}->{type_for}->{$index} eq 'enum') {
+             if ($tbl->{tbl_struct}->{defs}->{$index} =~ m/enum\s*\((.*?)\)/) {
+                 my @items = split(/,\s*/, $1);
+                 my $sorted = 1; # Asume the items list is sorted to later check if this is true
+                 for (my $i=1; $i < scalar(@items); $i++) {
+                     if ($items[$i-1] gt $items[$i]) {
+                         $sorted = 0;
+                         last;
+                     }
+                 }
+                 if (!$force_concat_enums && !$sorted) {
+                    die "The index " . $index . " in table " .  $tbl->{name} .
+                    " has unsorted enum items.\nPlease read the documentation for the --force-concat-enums parameter\n";
+                 }
+             }
+          }
+      }
+
       # Make SQL statements, prepared on first call to next().  FROM and
       # ORDER BY are the same for all statements.  FORCE IDNEX and ORDER BY
       # are needed to ensure deterministic nibbling.
+
       my $from     = "$tbl->{name} FORCE INDEX(`$index`)";
-      my $order_by = join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' 
+      my $order_by = join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' && $force_concat_enums
                                         ? "CONCAT(".$q->quote($_).")" : $q->quote($_)} @{$index_cols});
 
-      my $order_by_dec = join(' DESC,', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' 
+      my $order_by_dec = join(' DESC,', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' && $force_concat_enums
                                         ? "CONCAT(".$q->quote($_).")" : $q->quote($_)} @{$index_cols});
 
       # The real first row in the table.  Usually we start nibbling from
