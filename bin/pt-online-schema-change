@@ -5714,7 +5714,7 @@ sub next {
       if ( !$self->{have_rows} ) {
          $self->{nibbleno}++;
          PTDEBUG && _d('Nibble:', $self->{nibble_sth}->{Statement}, 'params:',
-            join(', ', (@{$self->{lower} || []}, @{$self->{upper} || []})));
+            join(', ', (@{$self->{lower}} || [], @{$self->{upper} }||[])));
          if ( my $callback = $self->{callbacks}->{exec_nibble} ) {
             $self->{have_rows} = $callback->(%callback_args);
          }
@@ -6113,7 +6113,7 @@ sub _next_boundaries {
 
 
    PTDEBUG && _d($self->{ub_sth}->{Statement}, 'params:',
-      join(', ', @{$self->{lower}}), $self->{limit});
+      join(', ', @{$self->{lower}} || []), $self->{limit});
    $self->{ub_sth}->execute(@{$self->{lower}}, $self->{limit});
    my $boundary = $self->{ub_sth}->fetchall_arrayref();
    PTDEBUG && _d('Next boundary:', Dumper($boundary));
@@ -6154,6 +6154,9 @@ sub identical_boundaries {
       if scalar @$b1 != scalar @$b2;  # shouldn't happen
    my $n_vals = scalar @$b1;
    for my $i ( 0..($n_vals-1) ) {
+      next if (!defined($b1->[$i]) && !defined($b2->[$i]));
+      return 0 if (!defined($b1->[$i]) && defined($b2->[$i])); # diff
+      return 0 if (defined($b1->[$i]) && !defined($b2->[$i])); # diff
       return 0 if $b1->[$i] ne $b2->[$i]; # diff
    }
    return 1;
@@ -9299,13 +9302,12 @@ sub main {
    {
       my $indexes = $new_tbl->{tbl_struct}->{keys}; # brevity
       foreach my $index ( $tp->sort_indexes($new_tbl->{tbl_struct}) ) {
-         if ( $index eq 'PRIMARY' || $indexes->{$index}->{is_unique} ) {
+         if ( $index eq 'PRIMARY' || ($indexes->{$index}->{is_unique} && $indexes->{$index}->{is_nullable} == 0)) {
             PTDEBUG && _d('Delete trigger new index:', Dumper($index));
             $new_tbl->{del_index} = $index;
             last;
          }
       }
-      PTDEBUG && _d('New table delete index:', $new_tbl->{del_index});
    }
 
    {
@@ -9322,7 +9324,8 @@ sub main {
 
    if ( !$new_tbl->{del_index} ) {
       die "The new table $new_tbl->{name} does not have a PRIMARY KEY "
-        . "or a unique index which is required for the DELETE trigger.\n";
+        . "or a unique index which is required for the DELETE trigger.\n"
+        . "Please check you have at least one UNIQUE and NOT NULLABLE index.\n";
    }
 
    # Determine whether to use the new or orig table delete index.
