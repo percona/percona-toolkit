@@ -13009,7 +13009,11 @@ You need Perl, DBI, DBD::mysql, and some core packages that ought to be
 installed in any reasonably new version of Perl.
 
 This tool works only on MySQL 5.0.2 and newer versions, because earlier versions
-do not support triggers.
+do not support triggers. Also a number of permissions should be set on MySQL 
+to make pt-online-schema-change operate as expected. PROCESS, SUPER, REPLICATION SLAVE
+global privileges, as well as SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, ALTER,
+and TRIGGER table privileges should be granted on server. Slave needs only
+REPLICATION SLAVE and REPLICATION CLIENT privileges.
 
 =head1 BUGS
 
