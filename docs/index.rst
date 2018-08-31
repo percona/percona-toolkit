@@ -46,6 +46,7 @@ Configuration
 .. toctree::
    :maxdepth: 1
 
+   version-check
    configuration_files
    dsn_data_source_name_specifications
    environment
