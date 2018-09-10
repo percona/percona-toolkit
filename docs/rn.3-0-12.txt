@@ -1,0 +1,14 @@
+v3.0.11 released 2018-07-06
+===========================
+
+Fixed bugs
+
+* :jirabug:`PT-1611`: ``pt-archiver`` fails with UTF-8 chars
+* :jirabug:`PT-1603`: ``pt-table-sync`` is not considering unsorted enum fields in indexes for calculating chunk boundaries
+* :jirabug:`PT-1574`: ``pt-online-schema-change`` fails on UK and NULLs
+* :jirabug:`PT-1572`: Better usage of ENUM fields in keys in NibbleIterator
+* :jirabug:`PT-1422`: ``pt-mysql-summary`` may get stuck when Time: NULL in processlist
+
+Documentation changes
+
+* :jirabug:`PT-1321`: Add required MySQL privileges to ``pt-online-schema-change`` documentation
