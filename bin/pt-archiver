@@ -6646,6 +6646,8 @@ sub main {
       my $need_hdr = $o->get('header') && !-f $archive_file; 
       $archive_fh = IO::File->new($archive_file, ">>$charset") 
          or die "Cannot open $charset $archive_file: $OS_ERROR\n"; 
+      binmode STDOUT, ":utf8";
+      binmode $archive_fh, ":utf8";
       $archive_fh->autoflush(1) unless $o->get('buffer'); 
       if ( $need_hdr ) { 
          print { $archive_fh } '', escape(\@sel_cols, $fields_separated_by, $optionally_enclosed_by), "\n" 
