@@ -88,7 +88,7 @@ like(
 );
 
 my $users_count = 2;
-if ($ENV{FORK} eq 'mariadb') {
+if ($ENV{FORK} || "" eq 'mariadb') {
     $users_count = 8;
 }
 like(

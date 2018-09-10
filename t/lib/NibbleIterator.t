@@ -39,7 +39,7 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 } else {
-    plan tests => 60;
+    plan tests => 62;
 }
 
 my $q   = new Quoter();
@@ -974,6 +974,7 @@ like(
    open STDERR, '>', \$output;
    $ni->_d('Complete test coverage');
 }
+
 like(
    $output,
    qr/Complete test coverage/,
