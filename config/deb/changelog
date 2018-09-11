@@ -1,3 +1,14 @@
+percona-toolkit (3.0.12-1) unstable; urgency=low
+
+ * Fixed bug   PT-1611: pt-archiver fails with UTF-8 chars
+ * Fixed bug   PT-1603: pt-table-sync is not considering unsorted enum fields in indexes for calculating chunk boundaries
+ * Fixed bug   PT-1574: pt-online-schema-change fails on UK and NULLs
+ * Fixed bug   PT-1572: Better usage of ENUM fields in keys in NibbleIterator
+ * Fixed bug   PT-1422: pt-mysql-summary may get stuck when Time: NULL in processlist
+ * Improvement PT-1321: Add required MySQL privileges to pt-online-schema-change documentation
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Tue, 11 Sep 2018 11:20:08 +0000
+
 percona-toolkit (3.0.11-1) unstable; urgency=low
 
  * Improvement PT-1571 : Improved hostname recognition in pt-secure-collect

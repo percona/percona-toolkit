@@ -1,6 +1,6 @@
 GO := go
 pkgs   = $(shell find . -type d -name "pt-*" -exec basename {} \;)
-VERSION="3.0.11" 
+VERSION="3.0.12" 
 BUILD=$(shell date +%FT%T%z)
 GOVERSION=$(shell go version | cut --delimiter=" " -f3)
 GOUTILSDIR ?= $(GOPATH)/bin

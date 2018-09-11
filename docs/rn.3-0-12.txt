@@ -1,6 +1,3 @@
-v3.0.11 released 2018-07-06
-===========================
-
 Fixed bugs
 
 * :jirabug:`PT-1611`: ``pt-archiver`` fails with UTF-8 chars
