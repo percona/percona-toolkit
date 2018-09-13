@@ -1,29 +1,330 @@
 Percona Toolkit
 ***************
 
-.. include:: rn.3-0-12.txt
+v3.0.12 released 2018-09-13
+===========================
 
-.. include:: rn.3-0-11.txt
+Fixed bugs
 
-.. include:: rn.3-0-10.txt
+* :jirabug:`PT-1611`: ``pt-archiver`` failed to output UTF-8 characters.
+* :jirabug:`PT-1603`: ``pt-table-sync`` incorrectly calculated chunk boundaries in case of unsorted ENUM fields in indexes.
+* :jirabug:`PT-1574`: ``pt-online-schema-change`` failed on tables with a nullable unique key and a row with NULL values.
+* :jirabug:`PT-1572`: ENUM fields usage in keys was improved, resulting in higher speed for expressions with sorted ENUM items.
+* :jirabug:`PT-1422`: ``pt-mysql-summary`` could hung up in case of NULL values in a processlist Time column
 
-.. include:: rn.3-0-9.txt
+Documentation changes
 
-.. include:: rn.3-0-8.txt
+* :jirabug:`PT-1321`: The required MySQL privileges were detailed in `pt-online-schema-change`` documentation
 
-.. include:: rn.3-0-7.txt
+v3.0.11 released 2018-07-06
+===========================
 
-.. include:: rn.3-0-6.txt
+New features
 
-.. include:: rn.3-0-5.txt
+* :jirabug:`PT-1571`: Improved hostname recognition in ``pt-secure-collect``
+* :jirabug:`PT-1569`: Disabled ``--alter-foreign-keys-method=drop_swap`` in ``pt-online-schema-change``
+* :jirabug:`PT-242`: (``pt-stalk``) Include ``SHOW SLAVE STATUS`` on MySQL 5.7 (Thanks `Marcelo Altmann <https://www.p
+ercona.com/blog/author/marcelo-altmann/>`_)
 
-.. include:: rn.3-0-4.txt
+Fixed bugs
 
-.. include:: rn.3-0-3.txt
+* :jirabug:`PT-1570`: ``pt-archiver`` fails to detect columns with the word *GENERATED* as part of the comment
+* :jirabug:`PT-1563`: ``pt-show-grants`` fails for MySQL 5.6 producing an error which reports that an unknown column **account_locked** has been detected.
+* :jirabug:`PT-1551`: ``pt-table-checksum`` fails on MySQL 8.0.11
+* :jirabug:`PT-241`: (``pt-stalk``) Slave queries don\'t run on MySQL 5.7 because the FQDN is missing (Thanks `Marcelo Altmann <https://www.percona.com/blog/author/marcelo-altmann/>`_)
 
-.. include:: rn.3-0-2.txt
+Breaking changes:
 
-.. include:: rn.3-0-1.txt
+Starting with this version, the queries checksum in ``pt-query-digest`` will
+store the full MD5 field as a CHAR(32) field instead of storing just the least
+significant bytes of the checksum as a BIGINT field.  The reason for this
+change is that storing only the least significant bytes as a BIGINT was
+producing inconsistent results in MySQL 8 compared to MySQL 5.6+.
+
+``pt-online-schema-change`` in MySQL 8:
+
+Due to a `bug in MySQL 8.0+ <https://bugs.mysql.com/bug.php?id=89441>`_, it
+is not possible to use the ``drop_swap`` method to rebuild constraints because
+renaming a table will result in losing the foreign keys. You must specify a
+different method explicitly.
+
+v3.0.10 released 2018-05-21
+===========================
+
+New Features
+
+* :jirabug:`PT-131`: ``pt-table-checksum`` disables the QRT plugin
+* :jirabug:`PT-118`: ``pt-table-checksum`` report the number of rows
+  of difference between master and slave.
+
+Improvements
+
+* :jirabug:`PT-1546`: Improved support of MySQL 8 roles
+* :jirabug:`PT-1543`: The encrypted table status query causes high load over multiple minutes
+* :jirabug:`PT-1536`: Added info about encrypted tablespaces in ``pt-mysql-summary``
+
+Bug Fixes
+
+* :jirabug:`PT-1556`: ``pt-table-checksum`` 3.0.9 does not change ``binlog_format`` to statement any more.
+
+v3.0.9 released 2018-04-20
+==========================
+
+New Tools
+
+* :jirabug:`PT-1501`: ``pt-secure-collect`` - New tool to collect and sanitize pt-tools outputs
+
+New Features
+
+* :jirabug:`PT-1530`: Add support for encryption status to ``pt-mysql-summary``
+* :jirabug:`PT-1526`: Add ndb status to ``pt-mysql-summary`` (Thanks Fernando Ipar)
+* :jirabug:`PT-1525`: Add support for MySQL 8 roles into ``pt-mysql-summary``
+* :jirabug:`PT-1509`: Make ``pt-table-sync`` only set binlog_format when necessary (Thanks Moritz Lenz)
+* :jirabug:`PT-1508`: Add ``--read-only-interval`` and ``--fail-successive-errors`` flags to ``pt-heartbeat`` (Thanks Shlomi Noach)
+* :jirabug:`PT-243`: Add ``--max-hostname-length`` and ``--max-line-length`` flags to ``pt-query-digest``
+
+Bug Fixes
+
+* :jirabug:`PT-1527`: Fixed ``pt-table-checksum`` ignores ``--nocheck-binlog-format``
+
+Improvements
+
+* :jirabug:`PT-1507`: ``pt-summary`` does not reliably read in the transparent huge pages setting (Thanks Nick Veenhof)
+* :jirabug:`PT-1488`: ``pt-show-grants`` support for MySQL 8.0
+
+v3.0.8 released 2018-03-13
+==========================
+
+New Features
+
+* :jirabug:`PT-1500`: Added --output=secure-slowlog option to ``pt-query-digest``
+
+Buf Fixes
+
+* :jirabug:`PT-1503`: The post-install script fails on VM due to improper UUID file detection
+* :jirabug:`PT-1492`: ``pt-kill`` in version 3.0.7 ignores the value of the  ``--busy-time``
+
+v3.0.7 released 2018-03-01
+==========================
+
+New Features
+
+* :jirabug:`PT-633`: Added --mysql-only option to ``pt-stalk`` for RDS
+
+Bug Fixes
+
+* :jirabug:`PT-244`: The ``--data-dir`` option of ``pt-online-schema-change``  is broken for partitioned table
+* :jirabug:`PT-1256`: ``pt-table-sync`` does not use the character set for the table it is synchronizing
+* :jirabug:`PT-1455`: ``pt-osc`` is stuck when filtering out on the slave the table that is being altered
+* :jirabug:`PT-1485`: The *Security* section of ``pt-mysql-summary`` is broken  in versions bigger than 5.6
+* :jirabug:`PMM-1905`: ``Explain`` fails if it encounters a negative ``ntoreturn``
+
+Known Issues:
+
+* pt-online-schema-change will lock forever if using ``--drop-swap`` under MySQL 8.0.3-rc and 8.0.4-rc due to an error in MySQL: https://bugs.mysql.com/bug.php?id=8948
+* pt-online-schema-change will lose FK constraints under MySQL 8.0.2-dmr, 8.0.3-rc 8.0.4-rc due to an error in MySQL: https://bugs.mysql.com/bug.php?id=89441
+* pt-show-grants can't handle MySQL 8 roles yet
+
+v3.0.6 released 2018-01-04
+==========================
+
+Percona Toolkit 3.0.6 includes the following changes:
+
+New Features
+
+* :jirabug:`PT-221`: Improve ``pt-table-sync`` support for ``MyRocks``
+* :jirabug:`PT-218`: ``pt-stalk`` now checks the ``RocksDB`` status
+* :jirabug:`PT-214`: ``pt-mysql-summary`` contains the ``RocksDB`` section
+* :jirabug:`PT-205`: ``pt-osc`` shows a message if trying to set the engine to
+  ``rocksdb`` and ``binlog_format != row``.
+* :jirabug:`PT-204`: ``pt-table-checksum`` skips ``RocksDB`` tables.
+
+Known Issues
+
+* :jirabug:`PT-238`: The information message implemented for :jirabug:`PT-204` has a typo when referring to the ``--ignore-engines`` parameter. This problem is planned to be fixed in the next release.
+* :jirabug:`PT-240`: It has been detected that the implementation of :jirabug:`PT-205` is not complete and ``pt-osc`` may fail when altering tables. This problem is planned to be fixed in the next release.
+
+Bug Fixes
+
+* :jirabug:`PT-234`: The general log parser cannot handle timestamps which include time zones
+* :jirabug:`PT-229`: ``pt-online-schema-change`` does not retry on a deadlock error when using ``Percona Server`` 5.7
+* :jirabug:`PT-225`: ``pt-table-checksum`` ignores generated columns
+
+v3.0.5 released 2017-11-20
+==========================
+
+Percona Toolkit 3.0.5 includes the following changes:
+
+New Features
+
+ * :jirabug:`PMM-1590`: Improve MongoDB Profiler for ``PMM`` and ``PT``
+ * :jirabug:`PT-216`: The ``mongodb-query-digest`` supports ``MongoDB`` versions lower than 3.2; incorrect output was fixed.
+ * :jirabug:`PT-182`: The ``pt-summary``, ``pt-mysql-summary``,  ``pt-mongodb-summary`` commands provide output in the the JSON format.
+ * :jirabug:`PT-152`: ``pt-mysql-summary`` shows the output of the *Show Slave Hosts* command.
+ * :jirabug:`PT-139`: ``pt-table-sync`` supports replication channels (requires MySQL version 5.7.6 or higher)
+
+Bug fixes
+
+ * :jirabug:`PT-211`: ``pt-mext`` fails if the ``Rsa_public_key`` variable is empty.
+ * :jirabug:`PT-212`: ``pt-mongodb-query-digest --version`` produced incorrect values.
+ * :jirabug:`PT-202`: ``pt-online-schema-change`` incorrectly processed virtual columns.
+ * :jirabug:`PT-200`: ``pt-online-schema-change`` command reported an error when the name of an index contained 'unique' as as the prefix or suffix.
+ * :jirabug:`PT-199`: ``pt-table-checksum`` did not detect differences on a system with the ROW based replication active.
+ * :jirabug:`PT-196`: ``pt-onine-schema-change --max-load`` paused if a status variable was passed **0** as the value.
+ * :jirabug:`PT-193`: ``pt-table-checksum`` reported a misleading error if a column comment contained an apostrophe. For more information, see :lpbug:`1708749`.
+ * :jirabug:`PT-187`: In some cases, ``pt-table-checksum`` did not report that the same table contained different values on the master and slave.
+ * :jirabug:`PT-186`: ``pt-online-schema-change --alter`` could fail if field names contained upper case characters. For more information, see :lpbug:`1705998`.
+ * :jirabug:`PT-183`: In some cases ``pt-mongodb-query-digest`` could not connect to a db using authentication.
+ * :jirabug:`PT-167`: In some cases, ``pt-kill`` could ignore the value of the ``--busy-time`` parameter.  For more information, see :lpbug:`1016272`.
+ * :jirabug:`PT-161`: When run with the ``--skip-check-slave-lag``, the ``pt-table-checksum`` could fail in some cases.
+
+v3.0.4 released 2017-08-02
+==========================
+
+Percona Toolkit 3.0.4 includes the following changes:
+
+New Features
+
+* :jirabug:`PT-90`: Added collection of information about prepared statements
+  by ``pt-stalk`` when Performance Schema is enabled.
+  For more information, see :lpbug:`1642750`.
+
+* :jirabug:`PT-91`: Added the ``--preserve-triggers`` option
+  for ``pt-online-schema-change`` to support ``AFTER`` triggers.
+
+* :jirabug:`PT-138`: Added ``--output-format`` option
+  for ``pt-mongodb-summary`` to choose between JSON format
+  and the default plain text.
+
+* :jirabug:`PT-141`: Added the ``--output-format=csv`` parameter
+  for ``pt-archiver`` to archive rows in CSV format.
+
+* :jirabug:`PT-142`: Added the ``--only-same-schema-fks`` option
+  for ``pt-online-schema-change`` to check foreigns keys only on tables
+  with the same schema as the original table.
+  This should speed up the tool's execution,
+  but keep in mind that if you have foreign keys
+  referencing tables in other schemas,
+  they won't be detected.
+  For more information, see :lpbug:`1690122`.
+
+* :jirabug:`PT-153`: Added the ``--check-unique-key-change`` option
+  for ``pt-online-schema-change`` to abort
+  if the specified statement for ``--alter`` is trying to add a unique index.
+  This is supposed to avoid adding duplicate keys
+  that might lead to silently losing data.
+
+* :jirabug:`PT-173`: Added the ``--truncate-replicate-table`` option
+  for ``pt-table-checksum`` to ensure stale data is removed.
+
+Bug fixes
+
+* :jirabug:`PT-136`: Fixed ``pt-table-checksum`` to support tables
+  that have columns with different collations or charsets.
+  For more information, see :lpbug:`1674266`.
+
+* :jirabug:`PT-143`: Fixed primary key handling by ``pt-archiver``.
+  For more information, see :lpbug:`1691630`.
+
+* :jirabug:`PT-144`: Limited constraint name in the new table
+  when running ``pt-online-schema-change``.
+  For more information, see :lpbug:`1491674`.
+
+* :jirabug:`PT-146`: Fixed the ``--no-check-binlog-format`` option
+  for ``pt-table-checksum`` to work as expected.
+
+* :jirabug:`PT-148`: Fixed the use of uninitialized value in ``printf()``
+  for ``pt-online-schema-change``.
+  For more information, see :lpbug:`1693614`.
+
+* :jirabug:`PT-151`: Fixed ``pt-table-sync`` to prevent field type ``point``
+  to be taken as decimal.
+
+* :jirabug:`PT-154`: Reverted :jirabug:`PT-116`
+  to remove the ``--use-insert-ignore`` option
+  from ``pt-online-schema-change``.
+
+* :jirabug:`PT-161`: Fixed the ``--skip-check-slave-lag`` feature
+  for ``pt-table-checksum`` to safely check for undefined values.
+
+* :jirabug:`PT-178`: Fixed regression in ``--check-slave-lag`` option
+  for ``pt-online-schema-change``.
+
+* :jirabug:`PT-180`: Fixed regression in ``--skip-check-slave-lag`` option
+  for ``pt-online-schema-change``.
+
+* :jirabug:`PT-181`: Fixed syntax error in ``pt-online-schema-change``.
+
+Other Improvements
+
+* :jirabug:`PT-162`: Updated list of tables ignored by ``pt-table-checksum``.
+
+v3.0.3 released 2017-05-18
+==========================
+
+Percona Toolkit 3.0.3 includes the following changes:
+
+New Features
+
+* Added the ``--skip-check-slave-lag`` option for ``pt-table-checksum``, ``pt-online-schema-change``, and ``pt-archiver``.
+
+  This option can be used to specify list of servers where to skip checking for slave lag.
+
+* 1642754: Added support for collecting replication slave information in ``pt-stalk``.
+
+* PT-111: Added support for collecting information about variables from Performance Schema in ``pt-stalk``. For more information, see 1642753.
+
+* PT-116: Added the ``--[no]use-insert-ignore`` option for ``pt-online-schema-change`` to force or prevent using ``IGNORE`` on ``INSERT`` statements. For more information, see 1545129.
+
+Bug Fixes
+
+* PT-115: Fixed ``OptionParser`` to accept repeatable DSNs.
+
+* PT-126: Fixed ``pt-online-schema-change`` to correctly parse comments. For more information, see 1592072.
+
+* PT-128: Fixed ``pt-stalk`` to include memory usage information. For more information, see 1510809.
+
+* PT-130: Fixed ``pt-mext`` to work with non-empty RSA public key. For more information, see 1587404.
+
+* PT-132: Fixed ``pt-online-schema-change`` to enable ``--no-drop-new-table`` when ``--no-swap-tables`` and ``--no-drop-triggers`` are used.
+
+v3.0.2 released 2017-03-27
+==========================
+
+Percona Toolkit 3.0.2 includes the following changes:
+
+New Features
+
+* PT-73: Added support for SSL connections to ``pt-mongodb-summary`` and ``pt-mongodb-query-digest``
+
+* 1642751: Enabled gathering of information about locks and transactions by ``pt-stalk`` using Performance Schema if it is enabled (Thanks Agustin Gallego)
+
+Bug Fixes
+
+* PT-74: Fixed gathering of security settings when running ``pt-mongodb-summary`` on a mongod instance that is specified as the host
+
+* PT-75: Changed the default sort order in ``pt-mongodb-query-digest`` output to descending
+
+* PT-76: Added support of ``&`` and ``#`` symbols in passwords for ``pt-mysql-summary``
+
+* PT-77: Updated ``Makefile`` to support new MongoDB tools
+
+* PT-89: Fixed ``pt-stalk`` to run ``top`` more than once to collect useful CPU usage
+
+* PT-93: Fixed ``pt-mongodb-query-digest`` to make query ID match query key (Thanks Kamil Dziedzic)
+
+* PT-94: Fixed ``pt-online-schema-change`` to not make duplicate rows in ``_t_new`` when updating primary key. Also see 1646713.
+
+* PT-101: Fixed ``pt-table-checksum`` to correctly use the ``--slave-user`` and ``--slave-password`` options. Also see 1651002.
+
+* PT-105: Fixed ``pt-table-checksum`` to continue running if a database is dropped in the process
+
+v3.0.1 released 2017-02-20
+==========================
+
+Percona Toolkit 3.0.1 GA includes the following changes:
+
+* Added requirement to run ``pt-mongodb-summary`` as a user with the ``clusterAdmin`` or ``root`` built-in roles.
 
 v3.0 released 2017-02-06
 ========================
