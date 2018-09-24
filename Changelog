@@ -1,5 +1,11 @@
 Changelog for Percona Toolkit
 
+ * Fixed bug   PT-1611: pt-archiver fails with UTF-8 chars
+ * Fixed bug   PT-1574: pt-online-schema-change fails on UK and NULLs
+ * Fixed bug   PT-1572: Better usage of ENUM fields in keys in NibbleIterator
+ * Fixed bug   PT-1422: pt-mysql-summary may get stuck when Time: NULL in processlist
+ * Improvement PT-1321: Add required MySQL privileges to pt-online-schema-change documentation
+
 v3.0.11 released 2018-07-06
 
  * Improvement PT-1571 : Improved hostname recognition in pt-secure-collect
