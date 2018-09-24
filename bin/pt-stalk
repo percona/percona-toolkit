@@ -833,7 +833,7 @@ collect() {
       tail -f "$mysql_error_log" >"$d/$p-log_error" &
       tail_error_log_pid=$!
 
-      $CMD_MYSQLADMIN $EXT_ARGV debug
+      $CMD_MYSQLADMIN $EXT_ARGV 
    else
       log "Could not find the MySQL error log"
    fi 
@@ -2281,6 +2281,10 @@ of editing the source, you can call pt-stalk as
 
 which will do exactly what you need.  Combined with the plugin hooks, this
 gives you a fine-grained control of what the tool does.
+
+It is possible to enable C<debug> mode in mysqlmyadmin specigying:
+
+C<CMD_MYSQLADMIN=mysqlmyadmin debug pt-stalk params ...>
 
 =head1 SYSTEM REQUIREMENTS
 
