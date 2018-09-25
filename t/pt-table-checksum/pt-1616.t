@@ -32,23 +32,25 @@ $sb->load_file('master', 't/pt-table-checksum/samples/pt-1616.sql');
 
 my $num_rows = 50000;
 diag("Loading $num_rows into the table. This might take some time.");
-diag(`util/mysql_random_data_load --host=127.0.0.1 --port=12345 --user=msandbox --password=msandbox junk pt_test_100 $num_rows`);
+# diag(`util/mysql_random_data_load --host=127.0.0.1 --port=12345 --user=msandbox --password=msandbox junk pt_test_100 $num_rows`);
 
-# Insert invalid UTF-8 chars
-#diag(">>>1");
-eval {
-    $dbh->do("INSERT INTO junk.pt_test_100 (id1, id2) VALUES(unhex('F96DD7'), unhex('F96DD7'))");
-};
-die $EVAL_ERROR if ($EVAL_ERROR);
-#
-#diag(">>>2");
-#Make checksums table support binary strings
-$dbh->do('ALTER TABLE percona.checksums MODIFY upper_boundary BLOB, MODIFY lower_boundary BLOB;');
-#diag(">>>3");
+my $sql = "INSERT INTO junk.pt_test_100 (id1, id2) VALUES (?, ?)";
+my $sth = $dbh->prepare($sql);
+my @chars = ("A".."Z", "a".."z");
+
+# Generate some random data haivng commas
+for (my $i=0; $i < $num_rows; $i++) {
+    # Generate random strings having commas
+    my ($id1, $id2) = (",,,,", ",,,,");
+    $id1 .= $chars[rand @chars] for 1..10;
+    $id2 .= $chars[rand @chars] for 1..10;
+    
+    $sth->execute($id1, $id2);
+}
+$sth->finish();
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
-# And --max-load "" prevents waiting for status variables.
 my $master_dsn = $sb->dsn_for('master');
 
 my @args = ($master_dsn, "--set-vars", "innodb_lock_wait_timeout=50", 
@@ -56,13 +58,10 @@ my @args = ($master_dsn, "--set-vars", "innodb_lock_wait_timeout=50",
     "--chunk-size", "1", 
     "--empty-replicate-table", "--run-time", "2s"
 );
-#diag(join(" ", @args));
 
 my $output;
 my $exit_status;
 
-#diag(">>>3.1");
-# Test #1 
 $output = output(
     sub { $exit_status = pt_table_checksum::main(@args) },
     stderr => 1,
@@ -74,25 +73,6 @@ is(
     "PT-1616 pt-table-cheksum before --resume with binary fields exit status",
 );
 
-#diag($output);
-#diag($exit_status);
-
-# Once checksum stops, insert an entry in percona.checksums table to make it resume from bad entry
-#diag(">>>4");
-my $row = $dbh->selectcol_arrayref("SELECT MAX(chunk) FROM percona.checksums WHERE tbl='pt_test_100'");
-#diag(">>>4.1: ". $row->[0]);
-my $query = "REPLACE INTO percona.checksums (db, tbl, chunk, chunk_index, lower_boundary, ".
-            "upper_boundary, this_crc, this_cnt, master_crc, master_cnt) VALUES ".
-            "('junk', 'pt_test_100', ". $row->[0]. ", 'PRIMARY', unhex('F96DD72CF96DD7'), ".
-            "unhex('F96DD72CF96DD7'), 'crc', 1, 'crc', 1) ";
-#diag(">>>5");
-eval {
-    $dbh->do($query);
-};
-#diag($EVAL_ERROR) if $EVAL_ERROR;
-
-#diag(">>>6");
-
 @args = ("--set-vars", "innodb_lock_wait_timeout=50", 
     "--ignore-databases", "mysql", "--no-check-binlog-format", 
     "--chunk-size", "1", 
@@ -103,13 +83,6 @@ $output = output(
     sub { $exit_status = pt_table_checksum::main(@args) },
     stderr => 1,
 );
-# my $cmd = "$trunk/bin/pt-table-checksum $master_dsn ".join(" ", @args);
-# eval {
-#     $output = `$cmd &2>1`;
-# };
-#diag(">>>7");
-#diag($output);
-#diag($exit_status);
 
 is(
     $exit_status,
@@ -119,10 +92,9 @@ is(
 
 unlike(
     $output,
-    qr/called with 2 bind variables when 3 are needed/,
+    qr/called with \d+ bind variables when \d+ are needed/,
     "PT-1616 pt-table-cheksum --resume parameters binding error",
-);
-
+) or die($output);
 
 # #############################################################################
 # Done.
