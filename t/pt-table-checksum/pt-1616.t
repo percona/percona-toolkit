@@ -31,7 +31,7 @@ diag("loading samples");
 $sb->load_file('master', 't/pt-table-checksum/samples/pt-1616.sql');
 
 my $num_rows = 50000;
-diag("Loading $num_rows into the table. This might take some time.");
+diag("Loading $num_rows rows into the table. This might take some time.");
 # diag(`util/mysql_random_data_load --host=127.0.0.1 --port=12345 --user=msandbox --password=msandbox junk pt_test_100 $num_rows`);
 
 my $sql = "INSERT INTO junk.pt_test_100 (id1, id2) VALUES (?, ?)";
@@ -48,6 +48,7 @@ for (my $i=0; $i < $num_rows; $i++) {
     $sth->execute($id1, $id2);
 }
 $sth->finish();
+$dbh->do('INSERT INTO junk.pt_test_100 (id1, id2) VALUES(UNHEX("F96DD7"), UNHEX("F96DD7"))');
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
@@ -78,7 +79,7 @@ is(
     "--chunk-size", "1", 
     "--resume", "--run-time", "5s", $master_dsn
 );
-#diag("Running test 1: \nbin/pt-table-checksum ".join(" ", @args) );
+
 $output = output(
     sub { $exit_status = pt_table_checksum::main(@args) },
     stderr => 1,
