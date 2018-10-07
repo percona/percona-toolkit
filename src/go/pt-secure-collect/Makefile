@@ -10,7 +10,7 @@ GOPATH ?=${HOME}/go
 MAKE_TARS = ''
 CUR_DIR=$(shell pwd)
 BIN_DIR=${CUR_DIR}/build
-SOURCES=collect encryptor pt-secure-data
+SOURCES=collect encryptor pt-secure-collect
 LDFLAGS="-X main.Version=${VERSION} -X main.Build=${BUILD} -X main.Commit=${COMMIT} -X main.Branch=${BRANCH} -X main.GoVersion=${GOVERSION} -s -w"
 
 ifeq (${GOPATH},)
@@ -22,7 +22,7 @@ $(error Invalid GOPATH. There is no src dir in the GOPATH)
 endif
 
 ifeq ($(findstring ${GOPATH},${CUR_DIR}), )
-$(error Wrong directorry for the project. It must be in $GOPATH/github/Percona-Lab/pt-secure-data)
+$(error Wrong directorry for the project. It must be in $GOPATH/github/Percona-Lab/pt-secure-collect)
 endif
 
 $(info )
@@ -37,7 +37,7 @@ default: prepare
 	@rm -f ${BIN_DIR}/collect_*.tar.gz
 	@echo
 	@$(info Building in ${BIN_DIR})
-	@go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/pt-secure-data *.go
+	@go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/pt-secure-collect *.go
 
 prepare:
 	@$(info Checking if ${BIN_DIR} exists)
@@ -47,31 +47,31 @@ all: clean darwin-amd64-tar linux-amd64-tar windows-amd64-tar
 
 clean: prepare
 	@$(info Cleaning binaries and tar.gz files in dir ${BIN_DIR})
-	@rm -f ${BIN_DIR}/pt-secure-data
-	@rm -f ${BIN_DIR}/pt-secure-data.exe
-	@rm -f ${BIN_DIR}/pt-secure-data_*.tar.gz
+	@rm -f ${BIN_DIR}/pt-secure-collect
+	@rm -f ${BIN_DIR}/pt-secure-collect.exe
+	@rm -f ${BIN_DIR}/pt-secure-collect_*.tar.gz
 
 linux-amd64: prepare
 	@echo "Building linux/amd64 binaries in ${BIN_DIR}"
-	@GOOS=linux GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/pt-secure-data *.go
+	@GOOS=linux GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/pt-secure-collect *.go
 
 linux-amd64-tar: linux-amd64
-	@tar cvzf ${BIN_DIR}/pt-secure-data_linux_amd64.tar.gz -C ${BIN_DIR} pt-secure-data
+	@tar cvzf ${BIN_DIR}/pt-secure-collect_linux_amd64.tar.gz -C ${BIN_DIR} pt-secure-collect
 
 darwin-amd64: 
 	@echo "Building darwin/amd64 binaries in ${BIN_DIR}"
 	@mkdir -p ${BIN_DIR}
-	@GOOS=darwin GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/pt-secure-data *.go
+	@GOOS=darwin GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/pt-secure-collect *.go
 
 darwin-amd64-tar: darwin-amd64
-	@tar cvzf ${BIN_DIR}/pt-secure-data_darwin_amd64.tar.gz -C ${BIN_DIR} pt-secure-data
+	@tar cvzf ${BIN_DIR}/pt-secure-collect_darwin_amd64.tar.gz -C ${BIN_DIR} pt-secure-collect
 
 windows-amd64: prepare
 	@echo "Building windows/amd64 binaries in ${BIN_DIR}"
-	@GOOS=windows GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/pt-secure-data.exe *.go
+	@GOOS=windows GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/pt-secure-collect.exe *.go
 
 windows-amd64-tar: windows-amd64
-	@tar cvzf ${BIN_DIR}/pt-secure-data_windows_amd64.tar.gz -C ${BIN_DIR} pt-secure-data.exe
+	@tar cvzf ${BIN_DIR}/pt-secure-collect_windows_amd64.tar.gz -C ${BIN_DIR} pt-secure-collect.exe
 
 style:
 	@echo ">> checking code style"
