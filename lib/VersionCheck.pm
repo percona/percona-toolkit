@@ -171,7 +171,7 @@ sub version_check {
          else {
             print "\n# A software update is available:\n";
          }
-         print join("\n", map { "#   * $_" } @$advice), "\n\n";
+         print join("\n", map { "#   * ".($_ || '') } @$advice), "\n\n";
       }
    };
    if ( $EVAL_ERROR ) {
