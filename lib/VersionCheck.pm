@@ -45,7 +45,7 @@ use FindBin qw();
 
 eval {
    require Percona::Toolkit;
-   require HTTP::Micro;
+   require HTTP::Tiny;
 };
 
 my $home    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
@@ -384,7 +384,7 @@ sub pingback {
    my $instances = $args{instances};
 
    # Optional args
-   my $ua = $args{ua} || HTTP::Micro->new( timeout => 3 );
+   my $ua = $args{ua} || HTTP::Tiny->new( timeout => 3 );
 
    # GET https://upgrade.percona.com, the server will return
    # a plaintext list of items/programs it wants the tool
