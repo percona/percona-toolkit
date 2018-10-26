@@ -469,11 +469,11 @@ sub _split_url {
 
    sub write_header_lines {
        (@_ == 2 && ref $_[1] eq 'HASH') || croak(q/Usage: $handle->write_header_lines(headers)/);
-       my($self, $headers) = @_;
+       my($self, $headers) = @_; 
 
        my $buf = '';
        while (my ($k, $v) = each %$headers) {
-           my $field_name = lc $k;
+           my $field_name = lc $k;           
             $field_name =~ /\A [\x21\x23-\x27\x2A\x2B\x2D\x2E\x30-\x39\x41-\x5A\x5E-\x7A\x7C\x7E]+ \z/x
                or croak(q/Invalid HTTP header field name: / . $Printable->($field_name));
             $field_name =~ s/\b(\w)/\u$1/g;
@@ -6890,7 +6890,7 @@ sub _get_bounds {
       if (    defined $nibble->{lower_boundary}
            && defined $nibble->{upper_boundary} ) {
          my $sth = $dbh->prepare($self->{resume_lb_sql});
-         my @ub  = split ',', $nibble->{upper_boundary};
+         my @ub = $self->{Quoter}->deserialize_list($nibble->{upper_boundary});
          PTDEBUG && _d($sth->{Statement}, 'params:', @ub);
          $sth->execute(@ub);
          $self->{next_lower} = $sth->fetchrow_arrayref();
@@ -9899,6 +9899,7 @@ my %ignore_code = (
    # Ignore this warning because we have purposely set statement-based
    # replication.
    1592 => 1,
+   1300 => 1,
 );
 
 # Warn once per-table for these error codes if the error message
