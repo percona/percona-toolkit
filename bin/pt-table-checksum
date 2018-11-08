@@ -8596,6 +8596,9 @@ sub wait {
                . " seconds on $dsn_name.  Waiting.\n";
          }
          else {
+            if ($self->{fail_on_stopped_replication}) {
+                die 'replication is stopped';
+            }
             print STDERR "Replica $dsn_name is stopped.  Waiting.\n";
          }
          return;
@@ -8605,6 +8608,9 @@ sub wait {
       $pr_first_report = sub {
          my $dsn_name = $worst->{cxn}->name();
          if ( !defined $worst->{lag} ) {
+            if ($self->{fail_on_stopped_replication}) {
+                die 'replication is stopped';
+            }
             print STDERR "Replica $dsn_name is stopped.  Waiting.\n";
          }
          return;
@@ -9878,14 +9884,15 @@ my $original_qrt_plugin_master_status = undef;
 # http://www.tldp.org/LDP/abs/html/exitcodes.html
 our %PTC_EXIT_STATUS = (
    # General flags:
-   ERROR           => 1,
-   ALREADY_RUNNING => 2,
-   CAUGHT_SIGNAL   => 4,
-   NO_SLAVES_FOUND => 8,
+   ERROR               => 1,
+   ALREADY_RUNNING     => 2,
+   CAUGHT_SIGNAL       => 4,
+   NO_SLAVES_FOUND     => 8,
    # Tool-specific flags:
-   TABLE_DIFF      => 16,
-   SKIP_CHUNK      => 32,
-   SKIP_TABLE      => 64,
+   TABLE_DIFF          => 16,
+   SKIP_CHUNK          => 32,
+   SKIP_TABLE          => 64,
+   REPLICATION_STOPPED => 128,
 );
 
 # The following two hashes are used in exec_nibble().
@@ -10719,6 +10726,7 @@ sub main {
          oktorun  => sub { return $oktorun && $have_time->(); },
          get_lag  => $get_lag,
          sleep    => $sleep,
+         fail_on_stopped_replication => $o->get('fail-on-stopped-replication'),
       );
 
       my $get_status;
@@ -13273,6 +13281,11 @@ Show, but do not execute, checksum queries (disables
 L<"--[no]empty-replicate-table">).  If specified twice, the tool actually
 iterates through the chunking algorithm, printing the upper and lower boundary
 values for each chunk, but not executing the checksum queries.
+
+=item --fail-on-stopped-replication
+
+If replication is stopped, fail with an error (exit status 128) instead of waiting
+until replication is restarted.
 
 =item --float-precision
 

@@ -91,6 +91,9 @@ sub wait {
                . " seconds on $dsn_name.  Waiting.\n";
          }
          else {
+            if ($self->{fail_on_stopped_replication}) {
+                die 'replication is stopped';
+            }
             print STDERR "Replica $dsn_name is stopped.  Waiting.\n";
          }
          return;
@@ -103,6 +106,9 @@ sub wait {
       $pr_first_report = sub {
          my $dsn_name = $worst->{cxn}->name();
          if ( !defined $worst->{lag} ) {
+            if ($self->{fail_on_stopped_replication}) {
+                die 'replication is stopped';
+            }
             print STDERR "Replica $dsn_name is stopped.  Waiting.\n";
          }
          return;

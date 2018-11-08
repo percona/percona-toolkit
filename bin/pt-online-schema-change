@@ -4980,6 +4980,9 @@ sub wait {
                . " seconds on $dsn_name.  Waiting.\n";
          }
          else {
+            if ($self->{fail_on_stopped_replication}) {
+                die 'replication is stopped';
+            }
             print STDERR "Replica $dsn_name is stopped.  Waiting.\n";
          }
          return;
@@ -4989,6 +4992,9 @@ sub wait {
       $pr_first_report = sub {
          my $dsn_name = $worst->{cxn}->name();
          if ( !defined $worst->{lag} ) {
+            if ($self->{fail_on_stopped_replication}) {
+                die 'replication is stopped';
+            }
             print STDERR "Replica $dsn_name is stopped.  Waiting.\n";
          }
          return;
@@ -5002,7 +5008,7 @@ sub wait {
          my $lag = $get_lag->($lagged_slaves[$i]->{cxn});
          PTDEBUG && _d($lagged_slaves[$i]->{cxn}->name(),
             'slave lag:', $lag);
-        if ( defined $lag && $lag > $max_lag ) {
+         if ( !defined $lag || $lag > $max_lag ) {
             $lagged_slaves[$i]->{lag} = $lag;
          }
          else {
