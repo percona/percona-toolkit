@@ -39,7 +39,7 @@ my ($slave2_dbh, $slave2_dsn) = $sb->start_sandbox(
    master => 'chan_master1',
 );
 
-my $dbh = $sb->get_dbh_for('chan_master1');
+my $dbh = $sb->get_dbh_for('master');
 
 if ( !$dbh ) {
     plan skip_all => 'Cannot connect to sandbox master';
@@ -59,31 +59,29 @@ my @args = ($master1_dsn,
     "--run-time", "5", "--fail-on-stopped-replication",
 );
 
-diag(join(" ", @args));
-
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
-my $master_dsn = $sb->dsn_for('master');
 $sb->do_as_root("chan_slave1", 'stop slave IO_thread;');
 
 my $output;
 my $exit_status;
 
-$output = output(
+($output, $exit_status) = full_output(
     sub { $exit_status = pt_table_checksum::main(@args) },
     stderr => 1,
 );
-diag($output);
 
 is(
     $exit_status,
-    0,
-    "PT-1616 pt-table-cheksum before --resume with binary fields exit status",
+    128,
+    "PT-1637 exist status 128 if replication is stopped and --fail-on-replication-stopped",
 );
 
-$sb->stop_sandbox('chan_master1');
-$sb->stop_sandbox('chan_slave1');
-$sb->stop_sandbox('chan_slave2');
+$sb->do_as_root("chan_slave1", 'start slave IO_thread;');
+sleep(2);
+
+$sb->stop_sandbox(qw(chan_master1 chan_slave2 chan_slave1));
+
 # #############################################################################
 # Done.
 # #############################################################################

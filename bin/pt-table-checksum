@@ -6591,7 +6591,6 @@ sub next {
       }
       $self->{rowno}     = 0;
       $self->{have_rows} = 0;
-      
    }
 
    PTDEBUG && _d('Done nibbling');
@@ -11510,6 +11509,9 @@ sub main {
          }
       };
       if ( $EVAL_ERROR ) {
+          if ($EVAL_ERROR =~ m/replication/) {
+                   exit($PTC_EXIT_STATUS{REPLICATION_STOPPED});
+          }
          # This should not happen.  If it does, it's probably some bug
          # or error that we're not catching.
          warn ts(($oktorun ? "Error " : "Fatal error ")
