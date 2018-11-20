@@ -67,6 +67,7 @@ my %port_for = (
    chan_master1 => 2900,
    chan_master2 => 2901,
    chan_slave1  => 2902,
+   chan_slave2  => 2903,
 );
 
 my %server_type = (
