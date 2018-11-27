@@ -6347,7 +6347,7 @@ sub main {
    $del_stmt = $nibbler->generate_del_stmt(
       tbl_struct => $src->{info},
       cols       => \@sel_cols,
-      index      => $src->{i},
+      index      => $o->get('primary-key-only') ? 'PRIMARY' : $src->{i},
    );
    @del_slice = @{$del_stmt->{slice}};
 
