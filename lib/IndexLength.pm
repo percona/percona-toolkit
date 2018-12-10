@@ -75,6 +75,14 @@ sub index_length {
       n_index_cols => $n_index_cols,
    );
 
+   if (!$vals) {
+       # Maybe the table is empty ...
+       my @row = $cxn->dbh()->selectrow_array('SELECT COUNT(*) FROM '.$args{tbl}->{name});
+       if ($row[0] == 0) {
+           PTDEBUG && _d('Table '.$args{tbl}->{name}.' is empty');
+           return undef, undef;
+       }
+   }
    # Make an EXPLAIN query to scan the range and execute it.
    my $sql = $self->_make_range_query(
       %args,
