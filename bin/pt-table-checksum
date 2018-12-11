@@ -9622,7 +9622,6 @@ sub index_length {
    );
 
    if (!$vals) {
-       # Maybe the table is empty ...
        my @row = $cxn->dbh()->selectrow_array('SELECT COUNT(*) FROM '.$args{tbl}->{name});
        if ($row[0] == 0) {
            PTDEBUG && _d('Table '.$args{tbl}->{name}.' is empty');
