@@ -9621,6 +9621,13 @@ sub index_length {
       n_index_cols => $n_index_cols,
    );
 
+   if (!$vals) {
+       my @row = $cxn->dbh()->selectrow_array('SELECT COUNT(*) FROM '.$args{tbl}->{name});
+       if ($row[0] == 0) {
+           PTDEBUG && _d('Table '.$args{tbl}->{name}.' is empty');
+           return undef, undef;
+       }
+   }
    my $sql = $self->_make_range_query(
       %args,
       n_index_cols => $n_index_cols,
@@ -11024,23 +11031,27 @@ sub main {
                      index        => $nibble_iter->nibble_index(),
                      n_index_cols => $o->get('chunk-index-columns'),
                   );
-                  if ( !$key || lc($key) ne lc($nibble_iter->nibble_index()) ) {
-                     die "Cannot determine the key_len of the chunk index "
-                        . "because MySQL chose "
-                        . ($key ? "the $key" : "no") . " index "
-                        . "instead of the " . $nibble_iter->nibble_index()
-                        . " index for the first lower boundary statement.  "
-                        . "See --[no]check-plan in the documentation for more "
-                        . "information.";
+                  if ($key) {
+                     if ( !$key || lc($key) ne lc($nibble_iter->nibble_index()) ) {
+                        die "Cannot determine the key_len of the chunk index "
+                           . "because MySQL chose "
+                           . ($key ? "the $key" : "no") . " index "
+                           . "instead of the " . $nibble_iter->nibble_index()
+                           . " index for the first lower boundary statement.  "
+                           . "See --[no]check-plan in the documentation for more "
+                           . "information.";
+                     } elsif ( $key_len) {
+                         $tbl->{key_len} = $key_len;
+                     }
                   }
-                  elsif ( !$key_len ) {
-                     die "The key_len of the $key index is "
-                        . (defined $key_len ? "zero" : "NULL")
-                        . ", but this should not be possible.  " 
-                        . "See --[no]check-plan in the documentation for more "
-                        . "information.";
-                  }
-                  $tbl->{key_len} = $key_len;
+                  # If there is no key probably the table is empty
+                  #                  elsif ( !$key_len ) {
+                  #                     die "The key_len of the $key index is "
+                  #                        . (defined $key_len ? "zero" : "NULL")
+                  #                        . ", but this should not be possible.  " 
+                  #                        . "See --[no]check-plan in the documentation for more "
+                  #                        . "information.";
+                  #                  }
                }
             }
 
