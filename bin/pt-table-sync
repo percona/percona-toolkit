@@ -10385,6 +10385,8 @@ sub sync_via_replication {
       $ms->recurse_to_slaves(
          {  dbh      => $src->{dbh},
             dsn      => $src->{dsn},
+            slave_user     => $o->got('slave-user') ? $o->get('slave-user') : '',
+            slave_password => $o->got('slave-password') ? $o->get('slave-password') : '',
             recurse  => 1,
             callback => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
