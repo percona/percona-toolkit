@@ -69,6 +69,7 @@ COMMANDS
      Include this dir into the sanitized tar file.
 
   .. option:: --config-file
+  
      Path to the config file. Default: ``~/.my.cnf``
 
   .. option:: --mysql-host
