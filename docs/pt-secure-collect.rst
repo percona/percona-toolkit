@@ -32,13 +32,13 @@ values specified in the ``--mysql-host`` flag.
 Global flags
 ------------
 
-+---------+-------------------------------------------------------------------+
-| Flag    | Description                                                       |
-+---------+-------------------------------------------------------------------+
-| --help  | Show context-sensitive help (also try --help-long and --help-man).|
-+---------+-------------------------------------------------------------------+
-| --debug | Enable debug log level.                                           |
-+---------+-------------------------------------------------------------------+
+.. option:: --help
+
+   Show context-sensitive help (also try --help-long and --help-man).
+
+.. option:: --debug
+
+   Enable debug log level.
 
 COMMANDS
 ========
@@ -55,51 +55,75 @@ COMMANDS
 
     pt-secure-collect collect <flags>
 
-  +------------------------+--------------------------------------------------+
-  | Flag                   | Description                                      |
-  +------------------------+--------------------------------------------------+
-  | --bin-dir              | Directory having the Percona Toolkit binaries    |
-  |                        | (if they are not in PATH).                       |
-  +------------------------+--------------------------------------------------+
-  | --temp-dir             | Temporary directory used for the data collection.|
-  |                        | Default: ${HOME}/data\_collection\_{timestamp}   |
-  +------------------------+--------------------------------------------------+
-  | --include-dir          | Include this dir into the sanitized tar file     |
-  +------------------------+--------------------------------------------------+
-  | --config-file          | Path to the config file.                         |
-  |                        | Default: ``~/.my.cnf``                           |
-  +------------------------+--------------------------------------------------+
-  | --mysql-host           | MySQL host.                                      |
-  |                        | Default: ``127.0.0.1``                           |
-  +------------------------+--------------------------------------------------+
-  | --mysql-port           | MySQL port.                                      |
-  |                        | Default: ``3306``                                |
-  +------------------------+--------------------------------------------------+
-  | --mysql-user           | MySQL user name.                                 |
-  +------------------------+--------------------------------------------------+
-  | --mysql-password       | MySQL password.                                  |
-  +------------------------+--------------------------------------------------+
-  | --ask-mysql-pass       | password.                                        |
-  +------------------------+--------------------------------------------------+
-  | --extra-cmd            | Also run this command as part of the data        |
-  |                        | collection. This parameter can be used more than |
-  |                        | once.                                            |
-  +------------------------+--------------------------------------------------+
-  | --encrypt-password     | Encrypt the output file using this password. If  |
-  |                        | ommited, it will be asked in the command line.   |
-  +------------------------+--------------------------------------------------+
-  | --no-collect           | Do not collect data                              |
-  +------------------------+--------------------------------------------------+
-  | --no-sanitize          | Do not sanitize data                             |
-  +------------------------+--------------------------------------------------+
-  | --no-encrypt           | Do not encrypt the output file.                  |
-  +------------------------+--------------------------------------------------+
-  | --no-sanitize-hostnames| Do not sanitize hostnames.                       |
-  +------------------------+--------------------------------------------------+
-  | --no-sanitize-queries  | Do not replace queries by their fingerprints.    |
-  +------------------------+--------------------------------------------------+
-  | --no-remove-temp-files | Do not remove temporary files.                   |
-  +------------------------+--------------------------------------------------+
+  .. option:: --bin-dir
+
+     Directory having the Percona Toolkit binaries (if they are not in PATH).
+
+  .. option::  --temp-dir
+
+     Temporary directory used for the data collection.
+     Default: ${HOME}/data\_collection\_{timestamp}
+
+  .. option::  --include-dir
+
+     Include this dir into the sanitized tar file.
+
+  .. option:: --config-file
+     Path to the config file. Default: ``~/.my.cnf``
+
+  .. option:: --mysql-host
+
+     MySQL host. Default: ``127.0.0.1``
+
+  .. option:: --mysql-port
+
+     MySQL port. Default: ``3306``
+
+  .. option:: --mysql-user
+
+     MySQL user name.
+
+  .. option:: --mysql-password
+
+     MySQL password.
+
+  .. option:: --ask-mysql-pass
+
+     password.
+
+  .. option:: --extra-cmd
+
+     Also run this command as part of the data collection. This parameter can
+     be used more than once.
+
+  .. option:: --encrypt-password
+
+     Encrypt the output file using this password. If ommited, it will be asked
+     in the command line.
+
+  .. option:: --no-collect
+
+     Do not collect data
+
+  .. option:: --no-sanitize
+
+     Do not sanitize data
+
+  .. option:: --no-encrypt
+
+     Do not encrypt the output file.
+
+  .. option:: --no-sanitize-hostnames
+
+     Do not sanitize hostnames.
+
+  .. option:: --no-sanitize-queries
+
+     Do not replace queries by their fingerprints.
+
+  .. option:: --no-remove-temp-files
+
+     Do not remove temporary files.
 
 * **Decrypt command**
 
@@ -110,13 +134,10 @@ COMMANDS
 
     pt-secure-collect decrypt [flags] <input file>
 
-  +-----------+---------------------------------------------------------------+
-  | Flag      | Description                                                   |
-  +------------------------+--------------------------------------------------+
-  | --outfile | Write the output to this file. If ommited, the output file    |
-  |           | name will be the same as the input file, adding the ``.aes``  |
-  |           | extension                                                     |
-  +-----------+---------------------------------------------------------------+
+  .. option:: --outfile
+
+     Write the output to this file. If ommited, the output file 
+     name will be the same as the input file, adding the ``.aes`` extension.
 
 * **Encrypt command**
 
@@ -126,13 +147,10 @@ COMMANDS
 
     pt-secure-collect encrypt [flags] <input file>
 
-  +-----------+---------------------------------------------------------------+
-  | Flag      | Description                                                   |
-  +------------------------+--------------------------------------------------+
-  | --outfile | Write the output to this file. If ommited, the output file    |
-  |           | name will be the same as the input file, without the ``.aes`` |
-  |           | extension                                                     |
-  +-----------+---------------------------------------------------------------+
+  .. option:: --outfile
+
+     Write the output to this file. If ommited, the output file 
+     name will be the same as the input file, without the ``.aes`` extension.
 
 * **Sanitize command**
 
@@ -143,16 +161,18 @@ COMMANDS
 
     pt-secure-collect sanitize [flags]
 
-  +---------------------------+-----------------------------------------------+
-  | Flag                      | Description                                   |
-  +------------------------+--------------------------------------------------+
-  | --input-file              | Input file. If not specified, the input will  |
-  |                           | be Stdin.                                     |
-  +---------------------------+-----------------------------------------------+
-  | --output-file             | Output file. If not specified, the input will |
-  |                           | be Stdout.                                    |
-  +---------------------------+-----------------------------------------------+
-  | --no-sanitize-hostnames   | Do not sanitize host names.                   |
-  +---------------------------+-----------------------------------------------+
-  | --no-sanitize-queries     | Do not replace queries by their fingerprints. |
-  +---------------------------+-----------------------------------------------+
+  .. option:: --input-file
+
+     Input file. If not specified, the input will  be Stdin.
+
+  .. option:: --output-file
+
+     Output file. If not specified, the input will be Stdout.
+
+  .. option:: --no-sanitize-hostnames
+
+     Do not sanitize host names.
+
+  .. option:: --no-sanitize-queries
+
+     Do not replace queries by their fingerprints.
