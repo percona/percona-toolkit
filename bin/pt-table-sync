@@ -6762,7 +6762,7 @@ sub recurse_to_slaves {
    my $slave_dsn = $dsn;
    if ($slave_user) {
       $slave_dsn->{u} = $slave_user;
-      PTDEBUG && _d("Using slave user $slave_user on ".$slave_dsn->{h}.":".$slave_dsn->{P});
+      PTDEBUG && _d("Using slave user $slave_user on ".$dp->as_string($slave_dsn));
    }
    if ($slave_password) {
       $slave_dsn->{p} = $slave_password;
