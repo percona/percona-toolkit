@@ -25,10 +25,6 @@ By default, :program:`pt-secure-collect` will collect the output of:
 -  ``pt-summary``
 -  ``pt-mysql-summary``
 
-Internal variables placeholders will be replaced with the corresponding
-flag values. For example, ``$mysql-host`` will be replaced with the
-values specified in the ``--mysql-host`` flag.
-
 Global flags
 ------------
 
@@ -62,7 +58,7 @@ COMMANDS
   .. option::  --temp-dir
 
      Temporary directory used for the data collection.
-     Default: ${HOME}/data\_collection\_{timestamp}
+     Default: ``${HOME}/data_collection_{timestamp}``
 
   .. option::  --include-dir
 
