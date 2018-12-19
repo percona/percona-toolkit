@@ -1,5 +1,16 @@
 Changelog for Percona Toolkit
 
+ * Fixed bug   PT-1673: Fix pt-show-grants for MariaDB 10+ (thanks Tim Birkett)
+ * Fixed bug   PT-1638: pt-online-schema-change not working with MariaDB 10.x
+ * Improvement PT-1637: Added --fail-on stopped-replication param to table checksum
+ * Fixed bug   PT-1616: pt-table-checksum fails to --resume on certain binary strings
+ * Fixed bug   PT-1573: pt-query-digest log_timestamps = SYSTEM # No events processed
+ * Improvement PT-1340: pt-stalk should not call mysqladmin debug by default
+ * Fixed bug   PT-1114: pt-table-checksum fails when table is empty
+ * Fixed bug    PT-157: Specifying the index to use for pt-archiver ignores --primary-key-only
+
+v3.0.12 released 2018-09-13
+
  * Fixed bug   PT-1611: pt-archiver fails with UTF-8 chars
  * Fixed bug   PT-1574: pt-online-schema-change fails on UK and NULLs
  * Fixed bug   PT-1572: Better usage of ENUM fields in keys in NibbleIterator
