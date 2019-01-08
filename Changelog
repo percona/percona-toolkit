@@ -8,7 +8,6 @@ v3.0.13 released 2018-12-28
  * Fixed bug   PT-1616: pt-table-checksum fails to --resume on certain binary strings
  * Fixed bug   PT-1573: pt-query-digest log_timestamps = SYSTEM # No events processed
  * Improvement PT-1340: pt-stalk should not call mysqladmin debug by default
- * Fixed bug   PT-1114: pt-table-checksum fails when table is empty
  * Fixed bug    PT-157: Specifying the index to use for pt-archiver ignores --primary-key-only
 
 v3.0.12 released 2018-09-13
