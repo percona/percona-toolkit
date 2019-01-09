@@ -3244,7 +3244,7 @@ sub _process_val {
       $val =~ s/\s*#.*//;
    }
 
-   if ( my ($num, $factor) = $val =~ m/(\d+)([KMGT])b?$/i ) {
+   if ( my ($num, $factor) = $val =~ m/^(\d+)([KMGT])b?$/i ) {
       my %factor_for = (
          k => 1_024,
          m => 1_048_576,
