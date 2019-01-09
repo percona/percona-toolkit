@@ -1,4 +1,4 @@
-v3.0.13 released 2019-01-03
+v3.0.13 released 2019-01-09
 ===========================
 
 Improvements
@@ -21,7 +21,6 @@ Fixed bugs
   with binary strings containing invalid UTF-8 characters.
 * :jirabug:`PT-1573`: ``pt-query-digest`` didn't work in case of
   ``log_timestamps = SYSTEM`` my.cnf option.
-* :jirabug:`PT-1114`: ``pt-table-checksum`` failed when the table was empty.
 * :jirabug:`PT-157`: Specifying a non-primary key index with the ``i`` part of
   the ``--source`` argument made ``pt-archiver`` to ignore the
   ``--primary-key-only`` option presence.
