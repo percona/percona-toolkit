@@ -1913,8 +1913,7 @@ sub main {
    # Roles can be identified because the user password is expired, the authentication
    # string is empty and the account is locked
    my $mysql8_where = '';
-   if (($version !~ "-MariaDB" && VersionCompare::cmp($version, '8.0.0') >= 0) ||
-       ($version =~ "-MariaDB" && VersionCompare::cmp($version, '10.3.0') >= 0)) {
+   if ($version !~ "-MariaDB" && VersionCompare::cmp($version, '8.0.0') >= 0) {
        $mysql8_where = ' WHERE NOT ( `account_locked`="Y" AND ' .
                                       ' `password_expired`="Y" AND ' .
                                       ' `authentication_string`="" ) ';
@@ -2592,6 +2591,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-show-grants 3.0.12
+pt-show-grants 3.0.13
 
 =cut
