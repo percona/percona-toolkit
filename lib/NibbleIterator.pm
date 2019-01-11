@@ -26,6 +26,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+use IndexLength;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -487,11 +488,11 @@ sub row_estimate {
 
 sub can_nibble {
    my (%args) = @_;
-   my @required_args = qw(Cxn tbl chunk_size OptionParser TableParser);
+   my @required_args = qw(Cxn tbl chunk_size OptionParser TableParser Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($cxn, $tbl, $chunk_size, $o) = @args{@required_args};
+   my ($cxn, $tbl, $chunk_size, $o, $q) = @args{@required_args};
 
    my $where = $o->has('where') ? $o->get('where') : '';
 
@@ -501,6 +502,23 @@ sub can_nibble {
       tbl   => $tbl,
       where => $where,
    );
+
+   my $can_get_keys;
+   if ($mysql_index) {
+       my $idx_len = IndexLength->new(Quoter => $q);
+       my ($key_len, $key) = $idx_len->index_length(
+           Cxn          => $args{Cxn},
+           tbl          => $tbl,
+           index        => $mysql_index,
+           n_index_cols => $o->get('chunk-index-columns'),
+       );
+
+       if ( !$key || !$key_len || lc($key) ne lc($mysql_index)) {
+           $can_get_keys = 0;
+       } else {
+           $can_get_keys = 1;
+       }
+   } 
 
    # MySQL's chosen index is only something we should prefer
    # if --where is used.  Else, we can chose our own index
@@ -521,6 +539,10 @@ sub can_nibble {
    my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
                   ? $row_est <= $chunk_size * $chunk_size_limit
                   : 0;
+   if (!$can_get_keys) {
+       $one_nibble = 1;
+   }
+
    PTDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
 
    # Special case: we're resuming and there's no boundaries, so the table

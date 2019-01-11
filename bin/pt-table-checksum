@@ -6292,6 +6292,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+use IndexLength;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -6690,11 +6691,11 @@ sub row_estimate {
 
 sub can_nibble {
    my (%args) = @_;
-   my @required_args = qw(Cxn tbl chunk_size OptionParser TableParser);
+   my @required_args = qw(Cxn tbl chunk_size OptionParser TableParser Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($cxn, $tbl, $chunk_size, $o) = @args{@required_args};
+   my ($cxn, $tbl, $chunk_size, $o, $q) = @args{@required_args};
 
    my $where = $o->has('where') ? $o->get('where') : '';
 
@@ -6705,13 +6706,30 @@ sub can_nibble {
    );
 
    if ( !$where ) {
-      $mysql_index = undef;
-   }
+       $mysql_index = undef;
+   } 
 
    my $chunk_size_limit = $o->get('chunk-size-limit') || 1;
    my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
                   ? $row_est <= $chunk_size * $chunk_size_limit
                   : 0;
+
+   if ($mysql_index) {
+       my $idx_len = IndexLength->new(Quoter => $q);
+       my ($key_len, $key) = $idx_len->index_length(
+           Cxn          => $args{Cxn},
+           tbl          => $tbl,
+           index        => $mysql_index,
+           n_index_cols => $o->get('chunk-index-columns'),
+       );
+
+       if ( !$key || !$key_len || lc($key) ne lc($mysql_index)) {
+           $one_nibble = 1;
+       }
+   } else {
+       $one_nibble = 1;
+   }
+
    PTDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
 
    if ( $args{resume}
@@ -9660,14 +9678,14 @@ sub _get_first_values {
            . "WHERE " . join(' AND ', @where)
            . " ORDER BY $index_columns "
            . "LIMIT 1 /*key_len*/";  # only need 1 row
-   PTDEBUG && _d($sql);
+   PTDEBUG && _d("_get_first_values: $sql");
    my $vals = $cxn->dbh()->selectrow_arrayref($sql);
    return $vals;
 }
 
 sub _make_range_query {
    my ($self, %args) = @_;
-   my @required_args = qw(tbl index n_index_cols vals);
+   my @required_args = qw(tbl index n_index_cols);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
@@ -9682,13 +9700,11 @@ sub _make_range_query {
    if ( $n_index_cols > 1 ) {
       foreach my $n ( 0..($n_index_cols - 2) ) {
          my $col = $index_cols->[$n];
-         my $val = $vals->[$n];
          push @where, $q->quote($col) . " = ?";
       }
    }
 
    my $col = $index_cols->[$n_index_cols - 1];
-   my $val = $vals->[-1];  # should only be as many vals as cols
    push @where, $q->quote($col) . " >= ?";
 
    my $sql = "EXPLAIN SELECT /*!40001 SQL_NO_CACHE */ * "
