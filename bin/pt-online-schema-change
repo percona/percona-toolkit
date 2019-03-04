@@ -8594,12 +8594,20 @@ sub main {
              for my $slave (@$slave_lag_cxns) {
                  my $found=0;
                  for my $slave_to_skip (@$slaves_to_skip) {
-                     if ($slave->{dsn}->{h} eq $slave_to_skip->{h} && $slave->{dsn}->{P} eq $slave_to_skip->{P}) {
-                         $found=1;
+                   my $h_eq_h = $slave->{dsn}->{h} eq $slave_to_skip->{h};
+                   my $p_eq_p;
+                   if (defined($slave->{dsn}->{P}) || defined($slave_to_skip->{P})) {
+                     $p_eq_p = $slave->{dsn}->{P} eq $slave_to_skip->{P};
+                   } else {
+                     PTDEBUG && _d("Both port DSNs are undefined, setting p_eq_p to true");
+                     $p_eq_p = 1;
+                   }
+                   if ($h_eq_h && $p_eq_p) {
+                     $found=1;
                      }
                  }
                  if ($found) {
-                    print "Skipping slave ". $slave->description()."\n";
+                   printf("Skipping slave %s\n", $slave->name());
                  } else {
                     push @$filtered_slaves, $slave;
                  }
