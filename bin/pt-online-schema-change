@@ -8607,7 +8607,7 @@ sub main {
                      }
                  }
                  if ($found) {
-                    printf("Skipping slave %s\n", $slave->name());
+                    printf("Skipping slave %s\n", $slave->description());
                  } else {
                     push @$filtered_slaves, $slave;
                  }
