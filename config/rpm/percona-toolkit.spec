@@ -1,3 +1,6 @@
+%undefine _missing_build_ids_terminate_build
+%define debug_package %{nil}
+
 Name:      percona-toolkit
 Summary:   Advanced MySQL and system command-line tools
 Version:   %{version}
@@ -9,6 +12,8 @@ URL:       http://www.percona.com/software/percona-toolkit/
 Source:    percona-toolkit-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 BuildArch: x86_64
+
+BuildRequires: perl(ExtUtils::MakeMaker) make
 Requires:  perl(DBI) >= 1.13, perl(DBD::mysql) >= 1.0, perl(Time::HiRes), perl(IO::Socket::SSL), perl(Digest::MD5), perl(Term::ReadKey)
 AutoReq:   no
 
