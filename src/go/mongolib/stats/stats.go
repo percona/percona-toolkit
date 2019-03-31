@@ -91,6 +91,7 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 	qiac.Count++
 	// docsExamined is renamed from nscannedObjects in 3.2.0.
 	// https://docs.mongodb.com/manual/reference/database-profiler/#system.profile.docsExamined
+	s.Lock()
 	if doc.NscannedObjects > 0 {
 		qiac.NScanned = append(qiac.NScanned, float64(doc.NscannedObjects))
 	} else {
@@ -105,14 +106,15 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 	if qiac.LastSeen.IsZero() || qiac.LastSeen.Before(doc.Ts) {
 		qiac.LastSeen = doc.Ts
 	}
+	s.Unlock()
 
 	return nil
 }
 
 // Queries returns all collected statistics
 func (s *Stats) Queries() Queries {
-	s.RLock()
-	defer s.RUnlock()
+	s.Lock()
+	defer s.Unlock()
 
 	keys := GroupKeys{}
 	for key := range s.queryInfoAndCounters {

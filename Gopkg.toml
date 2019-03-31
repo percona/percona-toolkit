@@ -25,10 +25,6 @@
   version = "1.4.0"
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/bradfitz/slice"
-
-[[constraint]]
   name = "github.com/golang/mock"
   version = "1.0.0"
 

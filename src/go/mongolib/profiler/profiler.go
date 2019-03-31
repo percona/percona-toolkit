@@ -57,7 +57,7 @@ func NewProfiler(iterator pmgo.IterManager, filters []filter.Filter, ticker <-ch
 
 		// internal
 		docsChan:     make(chan proto.SystemProfile, DocsBufferSize),
-		timeoutsChan: nil,
+		timeoutsChan: make(chan time.Time),
 		keyFilters:   []string{"^shardVersion$", "^\\$"},
 	}
 }
@@ -97,9 +97,6 @@ func (p *Profile) Stop() {
 func (p *Profile) TimeoutsChan() <-chan time.Time {
 	p.lock.Lock()
 	defer p.lock.Unlock()
-	if p.timeoutsChan == nil {
-		p.timeoutsChan = make(chan time.Time)
-	}
 	return p.timeoutsChan
 }
 
@@ -129,14 +126,15 @@ func (p *Profile) getDocs() {
 
 	for p.iterator.Next(&doc) || p.iterator.Timeout() {
 		if p.iterator.Timeout() {
-			if p.timeoutsChan != nil {
-				p.timeoutsChan <- time.Now().UTC()
+			select {
+			case p.timeoutsChan <- time.Now().UTC():
+			default:
 			}
 			continue
 		}
 		valid := true
 		for _, filter := range p.filters {
-			if filter(doc) == false {
+			if !filter(doc) {
 				valid = false
 				break
 			}
