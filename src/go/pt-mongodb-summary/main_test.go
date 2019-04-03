@@ -29,32 +29,51 @@ func TestGetOpCounterStats(t *testing.T) {
 	database := pmgomock.NewMockDatabaseManager(ctrl)
 
 	ss := proto.ServerStatus{}
-	tutil.LoadJson("test/sample/serverstatus.json", &ss)
+	if err := tutil.LoadJson("test/sample/serverstatus.json", &ss); err != nil {
+		t.Fatalf("Cannot load sample file: %s", err)
+	}
 
 	session.EXPECT().DB("admin").Return(database)
-	database.EXPECT().Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, gomock.Any()).SetArg(1, ss)
+	database.EXPECT().Run(bson.D{
+		{Name: "serverStatus", Value: 1},
+		{Name: "recordStats", Value: 1},
+	}, gomock.Any()).SetArg(1, ss)
 
 	session.EXPECT().DB("admin").Return(database)
-	database.EXPECT().Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, gomock.Any()).SetArg(1, ss)
+	database.EXPECT().Run(bson.D{
+		{Name: "serverStatus", Value: 1},
+		{Name: "recordStats", Value: 1},
+	}, gomock.Any()).SetArg(1, ss)
 
 	session.EXPECT().DB("admin").Return(database)
-	database.EXPECT().Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, gomock.Any()).SetArg(1, ss)
+	database.EXPECT().Run(bson.D{
+		{Name: "serverStatus", Value: 1},
+		{Name: "recordStats", Value: 1},
+	}, gomock.Any()).SetArg(1, ss)
 
 	session.EXPECT().DB("admin").Return(database)
-	database.EXPECT().Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, gomock.Any()).SetArg(1, ss)
+	database.EXPECT().Run(bson.D{
+		{Name: "serverStatus", Value: 1},
+		{Name: "recordStats", Value: 1},
+	}, gomock.Any()).SetArg(1, ss)
 
 	session.EXPECT().DB("admin").Return(database)
-	database.EXPECT().Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, gomock.Any()).SetArg(1, ss)
+	database.EXPECT().Run(bson.D{
+		{Name: "serverStatus", Value: 1},
+		{Name: "recordStats", Value: 1},
+	}, gomock.Any()).SetArg(1, ss)
 
 	ss = addToCounters(ss, 1)
 	session.EXPECT().DB("admin").Return(database)
-	database.EXPECT().Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, gomock.Any()).SetArg(1, ss)
+	database.EXPECT().Run(bson.D{
+		{Name: "serverStatus", Value: 1}, {Name: "recordStats", Value: 1},
+	}, gomock.Any()).SetArg(1, ss)
 
-	var sampleCount int = 5
-	var sampleRate time.Duration = 10 * time.Millisecond // in seconds
+	sampleCount := 5
+	sampleRate := 10 * time.Millisecond // in seconds
 	expect := TimedStats{Min: 0, Max: 0, Total: 0, Avg: 0}
 
-	os, err := GetOpCountersStats(session, sampleCount, sampleRate)
+	os, err := getOpCountersStats(session, sampleCount, sampleRate)
 	if err != nil {
 		t.Error(err)
 	}
@@ -67,7 +86,7 @@ func TestGetOpCounterStats(t *testing.T) {
 func TestSecurityOpts(t *testing.T) {
 	cmdopts := []proto.CommandLineOptions{
 		// 1
-		proto.CommandLineOptions{
+		{
 			Parsed: proto.Parsed{
 				Net: proto.Net{
 					SSL: proto.SSL{
@@ -81,7 +100,7 @@ func TestSecurityOpts(t *testing.T) {
 			},
 		},
 		// 2
-		proto.CommandLineOptions{
+		{
 			Parsed: proto.Parsed{
 				Net: proto.Net{
 					SSL: proto.SSL{
@@ -95,7 +114,7 @@ func TestSecurityOpts(t *testing.T) {
 			},
 		},
 		// 3
-		proto.CommandLineOptions{
+		{
 			Parsed: proto.Parsed{
 				Net: proto.Net{
 					SSL: proto.SSL{
@@ -109,7 +128,7 @@ func TestSecurityOpts(t *testing.T) {
 			},
 		},
 		// 4
-		proto.CommandLineOptions{
+		{
 			Parsed: proto.Parsed{
 				Net: proto.Net{
 					SSL: proto.SSL{
@@ -123,7 +142,7 @@ func TestSecurityOpts(t *testing.T) {
 			},
 		},
 		// 5
-		proto.CommandLineOptions{
+		{
 			Parsed: proto.Parsed{
 				Net: proto.Net{
 					SSL: proto.SSL{
@@ -143,7 +162,7 @@ func TestSecurityOpts(t *testing.T) {
 
 	expect := []*security{
 		// 1
-		&security{
+		{
 			Users:       1,
 			Roles:       2,
 			Auth:        "disabled",
@@ -153,7 +172,7 @@ func TestSecurityOpts(t *testing.T) {
 			WarningMsgs: nil,
 		},
 		// 2
-		&security{
+		{
 			Users:  1,
 			Roles:  2,
 			Auth:   "enabled",
@@ -162,7 +181,7 @@ func TestSecurityOpts(t *testing.T) {
 			WarningMsgs: nil,
 		},
 		// 3
-		&security{
+		{
 			Users:       1,
 			Roles:       2,
 			Auth:        "enabled",
@@ -172,7 +191,7 @@ func TestSecurityOpts(t *testing.T) {
 			WarningMsgs: nil,
 		},
 		// 4
-		&security{
+		{
 			Users:       1,
 			Roles:       2,
 			Auth:        "disabled",
@@ -182,7 +201,7 @@ func TestSecurityOpts(t *testing.T) {
 			WarningMsgs: nil,
 		},
 		// 5
-		&security{
+		{
 			Users:       1,
 			Roles:       2,
 			Auth:        "enabled",
@@ -204,7 +223,9 @@ func TestSecurityOpts(t *testing.T) {
 
 	for i, cmd := range cmdopts {
 		session.EXPECT().DB("admin").Return(database)
-		database.EXPECT().Run(bson.D{{"getCmdLineOpts", 1}, {"recordStats", 1}}, gomock.Any()).SetArg(1, cmd)
+		database.EXPECT().Run(bson.D{
+			{Name: "getCmdLineOpts", Value: 1}, {Name: "recordStats", Value: 1},
+		}, gomock.Any()).SetArg(1, cmd)
 
 		session.EXPECT().Clone().Return(session)
 		session.EXPECT().SetMode(mgo.Strong, true)
@@ -218,7 +239,7 @@ func TestSecurityOpts(t *testing.T) {
 		rolesCol.EXPECT().Count().Return(2, nil)
 		session.EXPECT().Close().Return()
 
-		got, err := GetSecuritySettings(session, "3.2")
+		got, err := getSecuritySettings(session, "3.2")
 
 		if err != nil {
 			t.Errorf("cannot get sec settings: %v", err)
@@ -326,7 +347,9 @@ func TestGetChunks(t *testing.T) {
 	col := pmgomock.NewMockCollectionManager(ctrl)
 
 	var res []proto.ChunksByCollection
-	tutil.LoadJson("test/sample/chunks.json", &res)
+	if err := tutil.LoadJson("test/sample/chunks.json", &res); err != nil {
+		t.Errorf("Cannot load samples file: %s", err)
+	}
 
 	pipe.EXPECT().All(gomock.Any()).SetArg(0, res)
 
@@ -356,10 +379,12 @@ func TestIntegrationGetChunks(t *testing.T) {
 	server.SetPath(tempDir)
 
 	session := pmgo.NewSessionManager(server.Session())
-	session.DB("config").C("chunks").Insert(bson.M{"ns": "samples.col1", "count": 2})
+	if err := session.DB("config").C("chunks").Insert(bson.M{"ns": "samples.col1", "count": 2}); err != nil {
+		t.Errorf("Cannot insert sample data: %s", err)
+	}
 
 	want := []proto.ChunksByCollection{
-		proto.ChunksByCollection{
+		{
 			ID:    "samples.col1",
 			Count: 1,
 		},
@@ -373,7 +398,9 @@ func TestIntegrationGetChunks(t *testing.T) {
 		t.Errorf("Invalid integration chunks count.\ngot: %+v\nwant: %+v", got, want)
 	}
 
-	server.Session().DB("config").DropDatabase()
+	if err := server.Session().DB("config").DropDatabase(); err != nil {
+		t.Logf("Cannot drop config database (cleanup): %s", err)
+	}
 	server.Session().Close()
 	server.Stop()
 
@@ -397,11 +424,11 @@ func TestParseArgs(t *testing.T) {
 		{
 			args: []string{TOOLNAME}, // arg[0] is the command itself
 			want: &options{
-				Host:               DEFAULT_HOST,
-				LogLevel:           DEFAULT_LOGLEVEL,
-				AuthDB:             DEFAULT_AUTHDB,
-				RunningOpsSamples:  DEFAULT_RUNNINGOPSSAMPLES,
-				RunningOpsInterval: DEFAULT_RUNNINGOPSINTERVAL,
+				Host:               DefaultHost,
+				LogLevel:           DefaultLogLevel,
+				AuthDB:             DefaultAuthDB,
+				RunningOpsSamples:  DefaultRunningOpsSamples,
+				RunningOpsInterval: DefaultRunningOpsInterval,
 				OutputFormat:       "text",
 			},
 		},
