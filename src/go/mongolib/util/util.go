@@ -1,10 +1,10 @@
 package util
 
 import (
+	"sort"
 	"strings"
 	"time"
 
-	"github.com/bradfitz/slice"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/pmgo"
 	"github.com/pkg/errors"
@@ -58,9 +58,7 @@ func GetReplicasetMembers(dialer pmgo.Dialer, di *pmgo.DialInfo) ([]proto.Member
 			if serverStatus, err := GetServerStatus(dialer, di, m.Name); err == nil {
 				m.ID = serverStatus.Pid
 				m.StorageEngine = serverStatus.StorageEngine
-				if cmdOpts.Parsed.Sharding.ClusterRole == "" {
-					m.StateStr = m.StateStr
-				} else {
+				if cmdOpts.Parsed.Sharding.ClusterRole != "" {
 					m.StateStr = cmdOpts.Parsed.Sharding.ClusterRole + "/" + m.StateStr
 				}
 				m.StateStr = strings.ToUpper(m.StateStr)
@@ -75,7 +73,7 @@ func GetReplicasetMembers(dialer pmgo.Dialer, di *pmgo.DialInfo) ([]proto.Member
 		members = append(members, member)
 	}
 
-	slice.Sort(members, func(i, j int) bool { return members[i].Name < members[j].Name })
+	sort.Slice(members, func(i, j int) bool { return members[i].Name < members[j].Name })
 	return members, nil
 }
 
@@ -145,13 +143,13 @@ func buildHostsListFromShardMap(shardsMap proto.ShardsMap) []string {
 	/* Example
 	mongos> db.getSiblingDB('admin').runCommand('getShardMap')
 	{
-	        "map" : {
-	                "config" : "localhost:19001,localhost:19002,localhost:19003",
-	                "localhost:17001" : "r1/localhost:17001,localhost:17002,localhost:17003",
-	                "r1" : "r1/localhost:17001,localhost:17002,localhost:17003",
-	                "r1/localhost:17001,localhost:17002,localhost:17003" : "r1/localhost:17001,localhost:17002,localhost:17003",
-	        },
-	        "ok" : 1
+	  "map" : {
+	    "config" : "localhost:19001,localhost:19002,localhost:19003",
+	    "localhost:17001" : "r1/localhost:17001,localhost:17002,localhost:17003",
+	    "r1" : "r1/localhost:17001,localhost:17002,localhost:17003",
+	    "r1/localhost:17001,localhost:17002,localhost:17003" : "r1/localhost:17001,localhost:17002,localhost:17003",
+	  },
+	  "ok" : 1
 	}
 	*/
 
@@ -200,12 +198,10 @@ func GetShardedHosts(dialer pmgo.Dialer, di *pmgo.DialInfo) ([]string, error) {
 		return hostnames, errors.Wrap(err, "cannot list shards")
 	}
 
-	if shardsInfo != nil {
-		for _, shardInfo := range shardsInfo.Shards {
-			m := strings.Split(shardInfo.Host, "/")
-			h := strings.Split(m[1], ",")
-			hostnames = append(hostnames, h[0])
-		}
+	for _, shardInfo := range shardsInfo.Shards {
+		m := strings.Split(shardInfo.Host, "/")
+		h := strings.Split(m[1], ",")
+		hostnames = append(hostnames, h[0])
 	}
 	return hostnames, nil
 }
@@ -230,7 +226,11 @@ func GetServerStatus(dialer pmgo.Dialer, di *pmgo.DialInfo, hostname string) (pr
 	defer session.Close()
 	session.SetMode(mgo.Monotonic, true)
 
-	if err := session.DB("admin").Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, &ss); err != nil {
+	query := bson.D{
+		{Name: "serverStatus", Value: 1},
+		{Name: "recordStats", Value: 1},
+	}
+	if err := session.DB("admin").Run(query, &ss); err != nil {
 		return ss, errors.Wrap(err, "GetHostInfo.serverStatus")
 	}
 

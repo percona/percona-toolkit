@@ -30,12 +30,13 @@ import (
 const (
 	TOOLNAME = "pt-mongodb-summary"
 
-	DEFAULT_AUTHDB             = "admin"
-	DEFAULT_HOST               = "localhost:27017"
-	DEFAULT_LOGLEVEL           = "warn"
-	DEFAULT_RUNNINGOPSINTERVAL = 1000 // milliseconds
-	DEFAULT_RUNNINGOPSSAMPLES  = 5
-	DEFAULT_OUTPUT_FORMAT      = "text"
+	DefaultAuthDB             = "admin"
+	DefaultHost               = "localhost:27017"
+	DefaultLogLevel           = "warn"
+	DefaultRunningOpsInterval = 1000 // milliseconds
+	DefaultRunningOpsSamples  = 5
+	DefaultOutputFormat       = "text"
+	typeMongos                = "mongos"
 )
 
 var (
@@ -99,10 +100,10 @@ type security struct {
 
 type databases struct {
 	Databases []struct {
-		Name       string           `bson:"name"`
-		SizeOnDisk int64            `bson:"sizeOnDisk"`
-		Empty      bool             `bson:"empty"`
-		Shards     map[string]int64 `bson:"shards"`
+		Name string `bson:"name"`
+		// SizeOnDisk int64            `bson:"sizeOnDisk"`
+		// Empty      bool             `bson:"empty"`
+		// Shards     map[string]int64 `bson:"shards"`
 	} `bson:"databases"`
 	TotalSize   int64 `bson:"totalSize"`
 	TotalSizeMb int64 `bson:"totalSizeMb"`
@@ -227,7 +228,7 @@ func main() {
 
 	ci := &collectedInfo{}
 
-	ci.HostInfo, err = GetHostinfo(session)
+	ci.HostInfo, err = getHostinfo(session)
 	if err != nil {
 		message := fmt.Sprintf("Cannot get host info for %q: %s", di.Addrs[0], err.Error())
 		log.Errorf(message)
@@ -241,13 +242,18 @@ func main() {
 	log.Debugf("replicaMembers:\n%+v\n", ci.ReplicaMembers)
 
 	if opts.RunningOpsSamples > 0 && opts.RunningOpsInterval > 0 {
-		if ci.RunningOps, err = GetOpCountersStats(session, opts.RunningOpsSamples, time.Duration(opts.RunningOpsInterval)*time.Millisecond); err != nil {
+		ci.RunningOps, err = getOpCountersStats(
+			session,
+			opts.RunningOpsSamples,
+			time.Duration(opts.RunningOpsInterval)*time.Millisecond,
+		)
+		if err != nil {
 			log.Printf("[Error] cannot get Opcounters stats: %v\n", err)
 		}
 	}
 
 	if ci.HostInfo != nil {
-		if ci.SecuritySettings, err = GetSecuritySettings(session, ci.HostInfo.Version); err != nil {
+		if ci.SecuritySettings, err = getSecuritySettings(session, ci.HostInfo.Version); err != nil {
 			log.Errorf("[Error] cannot get security settings: %v\n", err)
 		}
 	} else {
@@ -255,7 +261,7 @@ func main() {
 	}
 
 	if ci.OplogInfo, err = oplog.GetOplogInfo(hostnames, di); err != nil {
-		log.Info("Cannot get Oplog info: %v\n", err)
+		log.Infof("Cannot get Oplog info: %s\n", err)
 	} else {
 		if len(ci.OplogInfo) == 0 {
 			log.Info("oplog info is empty. Skipping")
@@ -265,13 +271,13 @@ func main() {
 	}
 
 	// individual servers won't know about this info
-	if ci.HostInfo.NodeType == "mongos" {
-		if ci.ClusterWideInfo, err = GetClusterwideInfo(session); err != nil {
+	if ci.HostInfo.NodeType == typeMongos {
+		if ci.ClusterWideInfo, err = getClusterwideInfo(session); err != nil {
 			log.Printf("[Error] cannot get cluster wide info: %v\n", err)
 		}
 	}
 
-	if ci.HostInfo.NodeType == "mongos" {
+	if ci.HostInfo.NodeType == typeMongos {
 		if ci.BalancerStats, err = GetBalancerStats(session); err != nil {
 			log.Printf("[Error] cannot get balancer stats: %v\n", err)
 		}
@@ -326,7 +332,7 @@ func formatResults(ci *collectedInfo, format string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func GetHostinfo(session pmgo.SessionManager) (*hostInfo, error) {
+func getHostinfo(session pmgo.SessionManager) (*hostInfo, error) {
 
 	hi := proto.HostInfo{}
 	if err := session.Run(bson.M{"hostInfo": 1}, &hi); err != nil {
@@ -357,7 +363,7 @@ func GetHostinfo(session pmgo.SessionManager) (*hostInfo, error) {
 		Hostname:          hi.System.Hostname,
 		HostOsType:        hi.Os.Type,
 		HostSystemCPUArch: hi.System.CpuArch,
-		DBPath:            "", // Sets default. It will be overriden later if necessary
+		DBPath:            "", // Sets default. It will be overridden later if necessary
 
 		ProcessName:      ss.Process,
 		ProcProcessCount: procCount,
@@ -390,19 +396,19 @@ func countMongodProcesses() (int, error) {
 		if err != nil {
 			continue
 		}
-		if name, _ := p.Name(); name == "mongod" || name == "mongos" {
+		if name, _ := p.Name(); name == "mongod" || name == typeMongos {
 			count++
 		}
 	}
 	return count, nil
 }
 
-func GetClusterwideInfo(session pmgo.SessionManager) (*clusterwideInfo, error) {
+func getClusterwideInfo(session pmgo.SessionManager) (*clusterwideInfo, error) {
 	var databases databases
 
 	err := session.Run(bson.M{"listDatabases": 1}, &databases)
 	if err != nil {
-		return nil, errors.Wrap(err, "GetClusterwideInfo.listDatabases ")
+		return nil, errors.Wrap(err, "getClusterwideInfo.listDatabases ")
 	}
 
 	cwi := &clusterwideInfo{
@@ -456,7 +462,7 @@ func sizeAndUnit(size int64) (float64, string) {
 	return newSize, unit[idx]
 }
 
-func GetSecuritySettings(session pmgo.SessionManager, ver string) (*security, error) {
+func getSecuritySettings(session pmgo.SessionManager, ver string) (*security, error) {
 	s := security{
 		Auth: "disabled",
 		SSL:  "disabled",
@@ -498,13 +504,22 @@ func GetSecuritySettings(session pmgo.SessionManager, ver string) (*security, er
 			isPrivate, err := isPrivateNetwork(strings.TrimSpace(ip))
 			if !isPrivate && err == nil {
 				if s.Auth == "enabled" {
-					s.WarningMsgs = append(s.WarningMsgs, fmt.Sprintf("Warning: You might be insecure (bind ip %s is public)", ip))
+					s.WarningMsgs = append(
+						s.WarningMsgs,
+						fmt.Sprintf("Warning: You might be insecure (bind ip %s is public)", ip),
+					)
 				} else {
-					s.WarningMsgs = append(s.WarningMsgs, fmt.Sprintf("Error. You are insecure: bind ip %s is public and auth is disabled", ip))
+					s.WarningMsgs = append(
+						s.WarningMsgs,
+						fmt.Sprintf("Error. You are insecure: bind ip %s is public and auth is disabled", ip),
+					)
 				}
 			} else {
 				if ip != "127.0.0.1" && ip != extIP {
-					s.WarningMsgs = append(s.WarningMsgs, fmt.Sprintf("WARNING: You might be insecure. IP binding %s is not localhost", ip))
+					s.WarningMsgs = append(
+						s.WarningMsgs,
+						fmt.Sprintf("WARNING: You might be insecure. IP binding %s is not localhost", ip),
+					)
 				}
 			}
 		}
@@ -553,12 +568,12 @@ func getNodeType(session pmgo.SessionManager) (string, error) {
 	} else if md.Msg == "isdbgrid" {
 		// isdbgrid is always the msg value when calling isMaster on a mongos
 		// see http://docs.mongodb.org/manual/core/sharded-cluster-query-router/
-		return "mongos", nil
+		return typeMongos, nil
 	}
 	return "mongod", nil
 }
 
-func GetOpCountersStats(session pmgo.SessionManager, count int, sleep time.Duration) (*opCounters, error) {
+func getOpCountersStats(session pmgo.SessionManager, count int, sleep time.Duration) (*opCounters, error) {
 	oc := &opCounters{}
 	prevOpCount := &opCounters{}
 	ss := proto.ServerStatus{}
@@ -694,7 +709,7 @@ func getProcInfo(pid int32, templateData *procInfo) error {
 	//proc, err := process.NewProcess(templateData.ServerStatus.Pid)
 	proc, err := process.NewProcess(pid)
 	if err != nil {
-		return fmt.Errorf("cannot get process %d\n", pid)
+		return fmt.Errorf("cannot get process %d", pid)
 	}
 	ct, err := proc.CreateTime()
 	if err != nil {
@@ -850,12 +865,12 @@ func externalIP() (string, error) {
 
 func parseFlags() (*options, error) {
 	opts := &options{
-		Host:               DEFAULT_HOST,
-		LogLevel:           DEFAULT_LOGLEVEL,
-		RunningOpsSamples:  DEFAULT_RUNNINGOPSSAMPLES,
-		RunningOpsInterval: DEFAULT_RUNNINGOPSINTERVAL, // milliseconds
-		AuthDB:             DEFAULT_AUTHDB,
-		OutputFormat:       DEFAULT_OUTPUT_FORMAT,
+		Host:               DefaultHost,
+		LogLevel:           DefaultLogLevel,
+		RunningOpsSamples:  DefaultRunningOpsSamples,
+		RunningOpsInterval: DefaultRunningOpsInterval, // milliseconds
+		AuthDB:             DefaultAuthDB,
+		OutputFormat:       DefaultOutputFormat,
 	}
 
 	gop := getopt.New()
@@ -864,17 +879,22 @@ func parseFlags() (*options, error) {
 	gop.BoolVarLong(&opts.NoVersionCheck, "no-version-check", 'c', "", "Default: Don't check for updates")
 
 	gop.StringVarLong(&opts.User, "username", 'u', "", "Username to use for optional MongoDB authentication")
-	gop.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").SetOptional()
+	gop.StringVarLong(&opts.Password, "password", 'p', "", "Password to use for optional MongoDB authentication").
+		SetOptional()
 	gop.StringVarLong(&opts.AuthDB, "authenticationDatabase", 'a', "admin",
 		"Database to use for optional MongoDB authentication. Default: admin")
-	gop.StringVarLong(&opts.LogLevel, "log-level", 'l', "error", "Log level: panic, fatal, error, warn, info, debug. Default: error")
+	gop.StringVarLong(&opts.LogLevel, "log-level", 'l', "error",
+		"Log level: panic, fatal, error, warn, info, debug. Default: error")
 	gop.StringVarLong(&opts.OutputFormat, "output-format", 'f', "text", "Output format: text, json. Default: text")
 
 	gop.IntVarLong(&opts.RunningOpsSamples, "running-ops-samples", 's',
-		fmt.Sprintf("Number of samples to collect for running ops. Default: %d", opts.RunningOpsSamples))
+		fmt.Sprintf("Number of samples to collect for running ops. Default: %d", opts.RunningOpsSamples),
+	)
 
 	gop.IntVarLong(&opts.RunningOpsInterval, "running-ops-interval", 'i',
-		fmt.Sprintf("Interval to wait betwwen running ops samples in milliseconds. Default %d milliseconds", opts.RunningOpsInterval))
+		fmt.Sprintf("Interval to wait betwwen running ops samples in milliseconds. Default %d milliseconds",
+			opts.RunningOpsInterval),
+	)
 
 	gop.StringVarLong(&opts.SSLCAFile, "sslCAFile", 0, "SSL CA cert file used for authentication")
 	gop.StringVarLong(&opts.SSLPEMKeyFile, "sslPEMKeyFile", 0, "SSL client PEM file used for authentication")

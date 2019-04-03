@@ -3,6 +3,7 @@ language: go
 go:
   - 1.9.x
   - 1.10.x
+  - 1.12.x
 
 services:
   - docker
@@ -31,7 +32,7 @@ before_script:
   - dep ensure
 
 script:
-  - go test -timeout 1m ./src/...
+  - go test -timeout 20m ./src/...
 
 allow_failures:
     - tip

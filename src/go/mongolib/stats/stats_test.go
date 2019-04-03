@@ -188,8 +188,6 @@ func TestStatsSingle(t *testing.T) {
 	for _, file := range files {
 		f := file.Name()
 		t.Run(f, func(t *testing.T) {
-			t.Parallel()
-
 			doc := proto.SystemProfile{}
 			err = tutil.LoadBson(dir+f, &doc)
 			if err != nil {
