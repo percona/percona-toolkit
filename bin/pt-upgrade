@@ -8101,7 +8101,7 @@ sub parse_event {
    }
    else { 
       eval {
-         remove_mysql_header($packet);
+           remove_mysql_header($packet);
       };
       if ( $EVAL_ERROR ) {
          PTDEBUG && _d('remove_mysql_header() failed; failing session');
@@ -8958,9 +8958,9 @@ sub detect_compression {
       PTDEBUG && _d('Client is using compression');
       $session->{compress} = 1;
 
-      $packet->{data} = $packet->{mysql_hdr} . $packet->{data};
+      $packet->{data} = $packet->{mysql_hdr} . $packet->{data} if $packet->{mysql_hdr};
       return 0 unless $self->uncompress_packet($packet, $session);
-      remove_mysql_header($packet);
+      remove_mysql_header($packet) if $packet->{mysql_hdr};
    }
    else {
       PTDEBUG && _d('Client is NOT using compression');
