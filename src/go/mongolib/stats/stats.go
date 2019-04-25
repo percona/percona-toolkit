@@ -8,8 +8,9 @@ import (
 	"time"
 
 	"github.com/montanaflynn/stats"
-	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"gopkg.in/mgo.v2/bson"
+
+	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 )
 
 type StatsError struct {
@@ -246,6 +247,7 @@ type Statistics struct {
 	Max    float64
 	Avg    float64
 	Pct95  float64
+	Pct99  float64
 	StdDev float64
 	Median float64
 }
@@ -325,6 +327,7 @@ func calcStats(samples []float64) Statistics {
 	s.Max, _ = stats.Max(samples)
 	s.Avg, _ = stats.Mean(samples)
 	s.Pct95, _ = stats.PercentileNearestRank(samples, 95)
+	s.Pct99, _ = stats.PercentileNearestRank(samples, 99)
 	s.StdDev, _ = stats.StandardDeviation(samples)
 	s.Median, _ = stats.Median(samples)
 	return s
