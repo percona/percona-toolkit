@@ -6905,6 +6905,9 @@ sub main {
    if ( $o->get('rds') ){
        $kill_sql = $o->get('kill-query') ? 'CALL mysql.rds_kill_query(?)' : 'CALL mysql.rds_kill(?)';
    }
+   elsif ($o->get('tidb')){
+       $kill_sql = $o->get('kill-query') ? 'KILL TIDB QUERY ?' : 'KILL TIDB ?';
+   }
    else{
        $kill_sql = $o->get('kill-query') ? 'KILL QUERY ?' : 'KILL ?';
    }
@@ -7862,6 +7865,14 @@ the MySQL command "kill" for L<"--kill"> and "kill query" L<"--kill-query">.
 On RDS these two commands are not available and are replaced by function calls.
 This option modifies L<"--kill"> to use "CALL mysql.rds_kill(thread-id)" instead
 and L<"--kill-query"> to use "CALL mysql.rds_kill_query(thread-id)"
+
+=item --tidb
+
+Denotes the instance in question is on TiDB. By default pt-kill runs
+the MySQL command "kill" for L<"--kill"> and "kill query" L<"--kill-query">.
+On TiDB these two commands are not available and are replaced by function calls.
+This option modifies L<"--kill"> to use "kill tidb" instead
+and L<"--kill-query"> to use "kill tidb query"
 
 =item --run-time
 
