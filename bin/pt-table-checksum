@@ -11594,13 +11594,15 @@ sub nibble_is_safe {
    # XXX This call and others like it are relying on a Perl oddity.
    # See https://bugs.launchpad.net/percona-toolkit/+bug/987393
    my $sth      = $nibble_iter->statements();
+   #warn(Data::Dumper::Dumper($tbl));
    my $boundary = $nibble_iter->boundaries();
+   #warn ("----- boundaries: ".Data::Dumper::Dumper($boundary));
 
    # See https://jira.percona.com/browse/PT-1728
    # In some cases, tables might be truncated while we are calculating the chunk boundaries.
    # In those cases, we cannot execute the checksum for a nibble because it is empty.
-   if (!defined($boundary)) {
-       return 0; # not safe
+   if (!$boundary) {
+        return 0; # not safe
    }
 
    my $expl     = explain_statement(
