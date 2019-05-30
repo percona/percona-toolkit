@@ -1267,6 +1267,14 @@ is_deeply(
    'Column having the word "generated" as part of the comment is OK',
 ) or diag Data::Dumper::Dumper($tbl);
 
+$tbl = $tp->parse( load_file('t/lib/samples/generated_cols_comments.sql') );
+warn Data::Dumper::Dumper($tbl);
+
+is_deeply(
+   $tbl,
+   {},
+   'pt-1728',
+);
 # #############################################################################
 # Done.
 # #############################################################################

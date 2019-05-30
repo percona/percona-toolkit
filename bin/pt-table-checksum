@@ -9658,9 +9658,7 @@ sub _get_first_values {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($cxn, $tbl, $index, $n_index_cols) = @args{@required_args};
-
-   my $q = $self->{Quoter};
-
+   my $q  = new Quoter();
    my $index_struct  = $tbl->{tbl_struct}->{keys}->{$index};
    my $index_cols    = $index_struct->{cols};
    my $index_columns = join (', ',
@@ -9688,9 +9686,7 @@ sub _make_range_query {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($tbl, $index, $n_index_cols, $vals) = @args{@required_args};
-
-   my $q = $self->{Quoter};
-
+   my $q  = new Quoter();
    my $index_struct = $tbl->{tbl_struct}->{keys}->{$index};
    my $index_cols   = $index_struct->{cols};
 

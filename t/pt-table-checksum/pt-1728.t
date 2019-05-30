@@ -82,6 +82,17 @@ unlike(
    "Truncating tables while checksum is running"
 );
 
+$sb->load_file('master', 't/pt-table-checksum/samples/pt-1728.sql');
+@args = ($master_dsn, qw(--no-check-binlog-format)); 
+my $new_rows_count = $num_rows * 5;
+diag(`util/mysql_random_data_load --host=127.0.0.1 --port=12345 --user=msandbox --password=msandbox test $table $new_rows_count`);
+$output = output(
+   sub { pt_table_checksum::main(@args) },
+   stderr => 1,
+);
+
+diag($output);
+
 $thr->join();
 
 # #############################################################################
