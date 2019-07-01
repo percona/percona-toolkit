@@ -9,10 +9,11 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver"
+	"github.com/percona/pmgo"
+	"go.mongodb.org/mongo-driver/bson"
+
 	"github.com/percona/percona-toolkit/src/go/lib/tutil"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
-	"github.com/percona/pmgo"
-	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -137,7 +138,7 @@ func TestExplain(t *testing.T) {
 			if err != nil {
 				t.Fatalf("cannot load sample %s: %s", dir+file.Name(), err)
 			}
-			query, err := bson.MarshalJSON(eq)
+			query, err := bson.MarshalExtJSON(eq, true, true)
 			if err != nil {
 				t.Fatalf("cannot marshal json %s: %s", dir+file.Name(), err)
 			}
@@ -150,7 +151,7 @@ func TestExplain(t *testing.T) {
 
 			if err == nil {
 				result := proto.BsonD{}
-				err = bson.UnmarshalJSON(got, &result)
+				err = bson.UnmarshalExtJSON(got, true, &result)
 				if err != nil {
 					t.Fatalf("cannot unmarshal json explain result: %s", err)
 				}

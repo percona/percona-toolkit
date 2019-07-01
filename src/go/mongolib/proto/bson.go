@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"math"
 
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type BsonD bson.D
@@ -37,8 +38,8 @@ func (d *BsonD) UnmarshalJSON(data []byte) error {
 			return fmt.Errorf("expected key to be a string but got %s", t)
 		}
 
-		de := bson.DocElem{}
-		de.Name = key
+		de := primitive.E{}
+		de.Key = key
 
 		if !dec.More() {
 			return fmt.Errorf("missing value for key %s", key)
@@ -51,13 +52,13 @@ func (d *BsonD) UnmarshalJSON(data []byte) error {
 		}
 
 		var v BsonD
-		err = bson.UnmarshalJSON(raw, &v)
+		err = bson.UnmarshalExtJSON(raw, true, &v)
 		if err != nil {
 			var v []BsonD
-			err = bson.UnmarshalJSON(raw, &v)
+			err = bson.UnmarshalExtJSON(raw, true, &v)
 			if err != nil {
 				var v interface{}
-				err = bson.UnmarshalJSON(raw, &v)
+				err = bson.UnmarshalExtJSON(raw, true, &v)
 				if err != nil {
 					return err
 				} else {
@@ -98,7 +99,7 @@ func (d BsonD) MarshalJSON() ([]byte, error) {
 		}
 
 		// marshal key
-		key, err := bson.MarshalJSON(v.Name)
+		key, err := bson.MarshalExtJSON(v.Key, true, true)
 		if err != nil {
 			return nil, err
 		}
@@ -119,7 +120,7 @@ func (d BsonD) MarshalJSON() ([]byte, error) {
 			val = append(val, '"')
 		} else {
 			// marshal value
-			val, err = bson.MarshalJSON(v.Value)
+			val, err = bson.MarshalExtJSON(v.Value, true, true)
 			if err != nil {
 				return nil, err
 			}
@@ -142,13 +143,13 @@ func (d BsonD) Map() (m bson.M) {
 	for _, item := range d {
 		switch v := item.Value.(type) {
 		case BsonD:
-			m[item.Name] = v.Map()
+			m[item.Key] = v.Map()
 		case []BsonD:
 			el := []bson.M{}
 			for i := range v {
 				el = append(el, v[i].Map())
 			}
-			m[item.Name] = el
+			m[item.Key] = el
 		case []interface{}:
 			// mgo/bson doesn't expose UnmarshalBSON interface
 			// so we can't create custom bson.Unmarshal()
@@ -158,9 +159,9 @@ func (d BsonD) Map() (m bson.M) {
 					el = append(el, b.Map())
 				}
 			}
-			m[item.Name] = el
+			m[item.Key] = el
 		default:
-			m[item.Name] = item.Value
+			m[item.Key] = item.Value
 		}
 	}
 	return m

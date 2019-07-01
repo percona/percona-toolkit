@@ -6,8 +6,8 @@ import (
 	"os"
 	"testing"
 
+	"go.mongodb.org/mongo-driver/bson"
 	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/mgo.v2/dbtest"
 )
 

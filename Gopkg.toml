@@ -67,3 +67,7 @@
 [[constraint]]
   branch = "v2"
   name = "gopkg.in/mgo.v2"
+
+[[constraint]]
+  name = "go.mongodb.org/mongo-driver"
+  version = "~1.0.0"

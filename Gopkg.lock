@@ -64,6 +64,14 @@
   version = "v1.2.4"
 
 [[projects]]
+  digest = "1:a01080d20c45c031c13f3828c56e58f4f51d926a482ad10cc0316225097eb7ea"
+  name = "github.com/go-stack/stack"
+  packages = ["."]
+  pruneopts = ""
+  revision = "2fee6af1a9795aafbe0253a0cfbdf668e1fb8a9a"
+  version = "v1.8.0"
+
+[[projects]]
   digest = "1:530233672f656641b365f8efb38ed9fba80e420baff2ce87633813ab3755ed6d"
   name = "github.com/golang/mock"
   packages = ["gomock"]
@@ -205,6 +213,21 @@
   version = "v1.4.0"
 
 [[projects]]
+  digest = "1:52376909e3b93cfc66ff439bdf9a7bf88783a0017ceded23c3f1c76b9f7e10ee"
+  name = "go.mongodb.org/mongo-driver"
+  packages = [
+    "bson",
+    "bson/bsoncodec",
+    "bson/bsonrw",
+    "bson/bsontype",
+    "bson/primitive",
+    "x/bsonx/bsoncore",
+  ]
+  pruneopts = ""
+  revision = "582ff343271e8893d785ff094855498c285bce0a"
+  version = "v1.0.3"
+
+[[projects]]
   branch = "master"
   digest = "1:36ef1d8645934b1744cc7d8726e00d3dd9d8d84c18617bf7367a3a6d532f3370"
   name = "golang.org/x/crypto"
@@ -276,6 +299,8 @@
     "github.com/satori/go.uuid",
     "github.com/shirou/gopsutil/process",
     "github.com/sirupsen/logrus",
+    "go.mongodb.org/mongo-driver/bson",
+    "go.mongodb.org/mongo-driver/bson/primitive",
     "golang.org/x/crypto/ssh/terminal",
     "gopkg.in/mgo.v2",
     "gopkg.in/mgo.v2/bson",

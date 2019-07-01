@@ -3,9 +3,10 @@ package explain
 import (
 	"fmt"
 
-	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/pmgo"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+
+	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 )
 
 type explain struct {
@@ -22,7 +23,7 @@ func (e *explain) Explain(db string, query []byte) ([]byte, error) {
 	var err error
 	var eq proto.ExampleQuery
 
-	err = bson.UnmarshalJSON(query, &eq)
+	err = bson.UnmarshalExtJSON(query, true, &eq)
 	if err != nil {
 		return nil, fmt.Errorf("explain: unable to decode query %s: %s", string(query), err)
 	}
@@ -37,7 +38,7 @@ func (e *explain) Explain(db string, query []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	resultJson, err := bson.MarshalJSON(result)
+	resultJson, err := bson.MarshalExtJSON(result, true, true)
 	if err != nil {
 		return nil, fmt.Errorf("explain: unable to encode explain result of %s: %s", string(query), err)
 	}

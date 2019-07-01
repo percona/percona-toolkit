@@ -8,14 +8,15 @@ import (
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/pmgo"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2" // TODO: Remove this dependency
 )
 
 var (
 	CANNOT_GET_QUERY_ERROR = errors.New("cannot get query field from the profile document (it is not a map)")
 )
 
+// TODO: Refactor to official mongo-driver.
 func GetReplicasetMembers(dialer pmgo.Dialer, di *pmgo.DialInfo) ([]proto.Members, error) {
 	hostnames, err := GetHostnames(dialer, di)
 	if err != nil {
@@ -77,6 +78,7 @@ func GetReplicasetMembers(dialer pmgo.Dialer, di *pmgo.DialInfo) ([]proto.Member
 	return members, nil
 }
 
+// TODO: Refactor to official mongo-driver.
 func GetHostnames(dialer pmgo.Dialer, di *pmgo.DialInfo) ([]string, error) {
 	hostnames := []string{di.Addrs[0]}
 	di.Direct = true
@@ -184,6 +186,7 @@ func buildHostsListFromShardMap(shardsMap proto.ShardsMap) []string {
 
 // This function is like GetHostnames but it uses listShards instead of getShardMap
 // so it won't include config servers in the returned list
+// TODO: Refactor to official mongo-driver.
 func GetShardedHosts(dialer pmgo.Dialer, di *pmgo.DialInfo) ([]string, error) {
 	hostnames := []string{di.Addrs[0]}
 	session, err := dialer.DialWithInfo(di)
@@ -215,6 +218,7 @@ func getTmpDI(di *pmgo.DialInfo, hostname string) *pmgo.DialInfo {
 	return &tmpdi
 }
 
+// TODO: Refactor to official mongo-driver.
 func GetServerStatus(dialer pmgo.Dialer, di *pmgo.DialInfo, hostname string) (proto.ServerStatus, error) {
 	ss := proto.ServerStatus{}
 
@@ -227,8 +231,8 @@ func GetServerStatus(dialer pmgo.Dialer, di *pmgo.DialInfo, hostname string) (pr
 	session.SetMode(mgo.Monotonic, true)
 
 	query := bson.D{
-		{Name: "serverStatus", Value: 1},
-		{Name: "recordStats", Value: 1},
+		{Key: "serverStatus", Value: 1},
+		{Key: "recordStats", Value: 1},
 	}
 	if err := session.DB("admin").Run(query, &ss); err != nil {
 		return ss, errors.Wrap(err, "GetHostInfo.serverStatus")
@@ -299,7 +303,7 @@ func GetQueryField(doc proto.SystemProfile) (bson.M, error) {
 	}
 
 	// {"ns":"test.system.js","op":"query","query":{"find":"system.js"}}
-	if len(query) == 1 && query[0].Name == "find" {
+	if len(query) == 1 && query[0].Key == "find" {
 		return bson.M{}, nil
 	}
 

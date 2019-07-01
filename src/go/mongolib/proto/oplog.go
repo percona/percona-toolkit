@@ -3,7 +3,7 @@ package proto
 import (
 	"time"
 
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type OplogEntry struct {

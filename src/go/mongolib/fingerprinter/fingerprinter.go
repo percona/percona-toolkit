@@ -7,9 +7,10 @@ import (
 	"sort"
 	"strings"
 
+	"go.mongodb.org/mongo-driver/bson"
+
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/percona-toolkit/src/go/mongolib/util"
-	"gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -112,7 +113,7 @@ func (f *Fingerprinter) Fingerprint(doc proto.SystemProfile) (Fingerprint, error
 			break
 		}
 		// first key is operation type
-		op = query[0].Name
+		op = query[0].Key
 		collection, _ = query[0].Value.(string)
 		switch op {
 		case "group":

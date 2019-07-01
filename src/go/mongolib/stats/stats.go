@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/montanaflynn/stats"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 )
@@ -75,7 +75,7 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 	}
 	if qiac, ok = s.getQueryInfoAndCounters(key); !ok {
 		query := proto.NewExampleQuery(doc)
-		queryBson, err := bson.MarshalJSON(query)
+		queryBson, err := bson.MarshalExtJSON(query, true, true)
 		if err != nil {
 			return err
 		}
