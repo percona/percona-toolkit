@@ -7330,7 +7330,7 @@ sub main {
             if ( $o->get('print') ) {
                printf "# %s %s %d (%s %d sec) %s\n",
                   ts(time), $o->get('kill-query') ? 'KILL QUERY' : 'KILL',
-                  $query->{Id}, ($query->{Command} || 'NULL'), $query->{Time},
+                  $query->{Id}, $query->{db}, ($query->{Command} || 'NULL'), $query->{Time},
                   ($query->{Info} || 'NULL');
             }
             if ( $o->get('query-id') ) {
