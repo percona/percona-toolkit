@@ -468,7 +468,10 @@ _parse_command_line() {
          else
             spec=$(grep "^short form:-$opt\$" "$PT_TMPDIR"/po/* | cut -d ':' -f 1)
             if [ -z "$spec"  ]; then
-               option_error "Unknown option: $real_opt"
+               # Not all programs uses the same options and since these options can be stored
+               # in a common config file, we need to skip general options not used by a particular
+               # program
+               # option_error "Unknown option: $real_opt"
                continue
             fi
          fi
