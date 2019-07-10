@@ -6726,9 +6726,7 @@ sub can_nibble {
        if ( !$key || !$key_len || lc($key) ne lc($mysql_index)) {
            $one_nibble = 1;
        }
-   } else {
-       $one_nibble = 1;
-   }
+   } 
 
    PTDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
 
@@ -9660,9 +9658,7 @@ sub _get_first_values {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($cxn, $tbl, $index, $n_index_cols) = @args{@required_args};
-
-   my $q = $self->{Quoter};
-
+   my $q  = new Quoter();
    my $index_struct  = $tbl->{tbl_struct}->{keys}->{$index};
    my $index_cols    = $index_struct->{cols};
    my $index_columns = join (', ',
@@ -9690,9 +9686,7 @@ sub _make_range_query {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($tbl, $index, $n_index_cols, $vals) = @args{@required_args};
-
-   my $q = $self->{Quoter};
-
+   my $q  = new Quoter();
    my $index_struct = $tbl->{tbl_struct}->{keys}->{$index};
    my $index_cols   = $index_struct->{cols};
 
@@ -11595,6 +11589,9 @@ sub nibble_is_safe {
    # See https://bugs.launchpad.net/percona-toolkit/+bug/987393
    my $sth      = $nibble_iter->statements();
    my $boundary = $nibble_iter->boundaries();
+   if (!defined($boundary) || !$boundary || (!$boundary->{lower} || !$boundary->{upper})) {
+        return 0;
+   }
    my $expl     = explain_statement(
       tbl  => $tbl,
       sth  => $sth->{explain_nibble},
