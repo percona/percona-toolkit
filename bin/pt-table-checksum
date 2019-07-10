@@ -6066,7 +6066,7 @@ sub get_crc_args {
    my $crc_width = $args{crc_width}|| $self->_get_crc_width(%args, func=>$func);
    my $crc_type  = $args{crc_type} || $self->_get_crc_type(%args, func=>$func);
    my $opt_slice; 
-   if ( $args{dbh} && $crc_type !~ m/int$/ ) {
+   if ( $args{dbh} && $crc_type !~ m/int|integer$/ ) {
       $opt_slice = $self->_optimize_xor(%args, func=>$func);
    }
 

@@ -6138,7 +6138,7 @@ sub make_checksum_queries {
    my $crc_wid    = $checksum->get_crc_wid($src->{dbh}, $src_func);
    my ($crc_type) = $checksum->get_crc_type($src->{dbh}, $src_func);
    my $opt_slice;
-   if ( $src_algo eq 'BIT_XOR' && $crc_type !~ m/int$/ ) {
+   if ( $src_algo eq 'BIT_XOR' && $crc_type !~ m/int|integer$/ ) {
       $opt_slice = $checksum->optimize_xor(
          dbh      => $src->{dbh},
          function => $src_func
