@@ -112,22 +112,22 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-sub check_recursion_method {
+sub check_recursion_method {                                                       
    my ($methods) = @_;
-   if ( @$methods != 1 ) {
-      if ( grep({ !m/processlist|hosts/i } @$methods)
-            && $methods->[0] !~ /^dsn=/i )
-      {
-         die  "Invalid combination of recursion methods: "
-            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "
-            . "Only hosts and processlist may be combined.\n"
-      }
-   }
-   else {
+   if ( @$methods != 1 ) {                                                         
+      if ( grep({ !m/processlist|hosts/i } @$methods)                              
+            && $methods->[0] !~ /^dsn=/i ) 
+      {     
+         die  "Invalid combination of recursion methods: "                         
+            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "      
+            . "Only hosts and processlist may be combined.\n"                      
+      }                                                                            
+   }     
+   else {   
       my ($method) = @$methods;
-      die "Invalid recursion method: " . ( $method || 'undef' )
-         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster$|dsn=)/i;
-   }
+      die "Invalid recursion method: " . ( $method || 'undef' )                    
+         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster$|dsn=)/i;     
+   }                                                                               
 }
 
 sub new {
@@ -156,7 +156,7 @@ sub get_slaves {
    my $methods = $self->_resolve_recursion_methods($args{dsn});
 
    return $slaves unless @$methods;
-
+   
    if ( grep { m/processlist|hosts/i } @$methods ) {
       my @required_args = qw(dbh dsn);
       foreach my $arg ( @required_args ) {
@@ -201,7 +201,7 @@ sub get_slaves {
    else {
       die "Unexpected recursion methods: @$methods";
    }
-
+   
    return $slaves;
 }
 
@@ -321,6 +321,7 @@ sub _find_slaves_by_processlist {
    grep { $_ }
    map  {
       my ( $host ) = $_->{host} =~ m/^([^:]+):/;
+      $host ||= $_->{host};
       if ( $host eq 'localhost' ) {
          $host = '127.0.0.1'; # Replication never uses sockets.
       }
@@ -719,7 +720,7 @@ sub short_host {
 }
 
 sub is_replication_thread {
-   my ( $self, $query, %args ) = @_;
+   my ( $self, $query, %args ) = @_; 
    return unless $query;
 
    my $type = lc($args{type} || 'all');
@@ -734,7 +735,7 @@ sub is_replication_thread {
    if ( !$match ) {
       if ( ($query->{User} || $query->{user} || '') eq "system user" ) {
          PTDEBUG && _d("Slave replication thread");
-         if ( $type ne 'all' ) {
+         if ( $type ne 'all' ) { 
             my $state = $query->{State} || $query->{state} || '';
 
             if ( $state =~ m/^init|end$/ ) {
@@ -747,7 +748,7 @@ sub is_replication_thread {
                    |Reading\sevent\sfrom\sthe\srelay\slog
                    |Has\sread\sall\srelay\slog;\swaiting
                    |Making\stemp\sfile
-                   |Waiting\sfor\sslave\smutex\son\sexit)/xi;
+                   |Waiting\sfor\sslave\smutex\son\sexit)/xi; 
 
                $match = $type eq 'slave_sql' &&  $slave_sql ? 1
                       : $type eq 'slave_io'  && !$slave_sql ? 1
@@ -811,7 +812,7 @@ sub get_replication_filters {
          replicate_do_db
          replicate_ignore_db
          replicate_do_table
-         replicate_ignore_table
+         replicate_ignore_table 
          replicate_wild_do_table
          replicate_wild_ignore_table
       );
@@ -822,7 +823,7 @@ sub get_replication_filters {
       $filters{slave_skip_errors} = $row->[1] if $row->[1] && $row->[1] ne 'OFF';
    }
 
-   return \%filters;
+   return \%filters; 
 }
 
 
