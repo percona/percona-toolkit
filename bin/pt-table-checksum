@@ -11317,7 +11317,9 @@ sub main {
             # MySQL 8+ replication is slower than 5.7 and the old wait_for_last_checksum alone 
             # was failing. The new wait_for_slaves checks that Read_Master_Log_Pos on slaves is 
             # greather or equal Position in the master
-            wait_for_slaves(master_dbh => $args{Cxn}->dbh(), master_slave => $ms, slaves => $slaves);
+            if (!$args{Cxn}->is_cluster_node()) {
+                wait_for_slaves(master_dbh => $args{Cxn}->dbh(), master_slave => $ms, slaves => $slaves);
+            }
             wait_for_last_checksum(
                tbl          => $tbl,
                repl_table   => $repl_table,
