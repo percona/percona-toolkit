@@ -1,13 +1,14 @@
 package profiler
 
 import (
+	"context"
 	"sync"
 	"time"
 
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/percona-toolkit/src/go/mongolib/stats"
 	"github.com/percona/percona-toolkit/src/go/pt-mongodb-query-digest/filter"
-	"github.com/percona/pmgo"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var (
@@ -20,16 +21,16 @@ type Profiler interface {
 	QueriesChan() chan stats.Queries
 	TimeoutsChan() <-chan time.Time
 	FlushQueries()
-	Start()
+	Start(context.Context)
 	Stop()
 }
 
 type Profile struct {
 	// dependencies
-	iterator pmgo.IterManager
-	filters  []filter.Filter
-	ticker   <-chan time.Time
-	stats    Stats
+	cursor  *mongo.Cursor
+	filters []filter.Filter
+	ticker  <-chan time.Time
+	stats   Stats
 
 	// internal
 	queriesChan  chan stats.Queries
@@ -47,13 +48,12 @@ type Profile struct {
 	stopWaitGroup   sync.WaitGroup
 }
 
-func NewProfiler(iterator pmgo.IterManager, filters []filter.Filter, ticker <-chan time.Time, stats Stats) Profiler {
+func NewProfiler(cursor *mongo.Cursor, filters []filter.Filter, ticker <-chan time.Time, stats Stats) Profiler {
 	return &Profile{
-		// dependencies
-		iterator: iterator,
-		filters:  filters,
-		ticker:   ticker,
-		stats:    stats,
+		cursor:  cursor,
+		filters: filters,
+		ticker:  ticker,
+		stats:   stats,
 
 		// internal
 		docsChan:     make(chan proto.SystemProfile, DocsBufferSize),
@@ -70,14 +70,14 @@ func (p *Profile) QueriesChan() chan stats.Queries {
 	return p.queriesChan
 }
 
-func (p *Profile) Start() {
+func (p *Profile) Start(ctx context.Context) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	if !p.running {
 		p.running = true
 		p.queriesChan = make(chan stats.Queries)
 		p.stopChan = make(chan bool)
-		go p.getData()
+		go p.getData(ctx)
 	}
 }
 
@@ -100,43 +100,39 @@ func (p *Profile) TimeoutsChan() <-chan time.Time {
 	return p.timeoutsChan
 }
 
-func (p *Profile) getData() {
-	go p.getDocs()
+func (p *Profile) getData(ctx context.Context) {
+	go p.getDocs(ctx)
 	p.stopWaitGroup.Add(1)
+	defer p.stopWaitGroup.Done()
 
-MAIN_GETDATA_LOOP:
 	for {
 		select {
 		case <-p.ticker:
 			p.FlushQueries()
 		case <-p.stopChan:
 			// Close the iterator to break the loop on getDocs
-			p.iterator.Close()
-			break MAIN_GETDATA_LOOP
+			p.cursor.Close(ctx)
+			return
 		}
 	}
-	p.stopWaitGroup.Done()
 }
 
-func (p *Profile) getDocs() {
+func (p *Profile) getDocs(ctx context.Context) {
 	defer p.Stop()
 	defer p.FlushQueries()
 
 	var doc proto.SystemProfile
 
-	for p.iterator.Next(&doc) || p.iterator.Timeout() {
-		if p.iterator.Timeout() {
-			select {
-			case p.timeoutsChan <- time.Now().UTC():
-			default:
-			}
-			continue
+	for p.cursor.Next(ctx) {
+		if err := p.cursor.Decode(&doc); err != nil {
+			p.lastError = err
+			return
 		}
 		valid := true
 		for _, filter := range p.filters {
 			if !filter(doc) {
 				valid = false
-				break
+				return
 			}
 		}
 		if !valid {

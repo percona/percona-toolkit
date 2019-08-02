@@ -1,20 +1,21 @@
 package profiler
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
-	"reflect"
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
+	tu "github.com/percona/percona-toolkit/src/go/internal/testutils"
 	"github.com/percona/percona-toolkit/src/go/lib/tutil"
 	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
-	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/percona-toolkit/src/go/mongolib/stats"
 	"github.com/percona/percona-toolkit/src/go/pt-mongodb-query-digest/filter"
-	"github.com/percona/pmgo/pmgomock"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -42,319 +43,69 @@ func TestMain(m *testing.M) {
 }
 
 func TestRegularIterator(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	docs := []proto.SystemProfile{}
-	err := tutil.LoadJson(vars.RootPath+samples+"profiler_docs.json", &docs)
+	uri := fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBShard1PrimaryPort)
+	client, err := mongo.NewClient(options.Client().ApplyURI(uri))
 	if err != nil {
-		t.Fatalf("cannot load samples: %s", err.Error())
+		t.Fatalf("Cannot create a new MongoDB client: %s", err)
 	}
 
-	iter := pmgomock.NewMockIterManager(ctrl)
-	gomock.InOrder(
-		iter.EXPECT().Next(gomock.Any()).SetArg(0, docs[0]).Return(true),
-		iter.EXPECT().Timeout().Return(false),
-		iter.EXPECT().Next(gomock.Any()).SetArg(0, docs[1]).Return(true),
-		iter.EXPECT().Timeout().Return(false),
-		iter.EXPECT().Next(gomock.Any()).Return(false),
-		iter.EXPECT().Timeout().Return(false),
-		iter.EXPECT().Close(),
-	)
-	filters := []filter.Filter{}
-	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
-	s := stats.New(fp)
-	prof := NewProfiler(iter, filters, nil, s)
+	ctx := context.Background()
 
-	firstSeen, _ := time.Parse(time.RFC3339Nano, "2017-04-01T23:01:19.914+00:00")
-	lastSeen, _ := time.Parse(time.RFC3339Nano, "2017-04-01T23:01:20.214+00:00")
-	want := stats.Queries{
-		{
-			ID:             "95575e896c2830043dc333cb8ee61339",
-			Namespace:      "samples.col1",
-			Operation:      "FIND",
-			Query:          "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"shardVersion\":[0,\"000000000000000000000000\"]}}\n",
-			Fingerprint:    "FIND col1 find",
-			FirstSeen:      firstSeen,
-			LastSeen:       lastSeen,
-			TableScan:      false,
-			Count:          2,
-			NReturned:      []float64{50, 75},
-			NScanned:       []float64{100, 75},
-			QueryTime:      []float64{0, 1},
-			ResponseLength: []float64{1.06123e+06, 1.06123e+06},
-		},
+	if err := client.Connect(ctx); err != nil {
+		t.Fatalf("Cannot connect to MongoDB: %s", err)
 	}
-	prof.Start()
-	defer prof.Stop()
-	select {
-	case queries := <-prof.QueriesChan():
-		if !reflect.DeepEqual(queries, want) {
-			t.Errorf("invalid queries. \nGot: %#v,\nWant: %#v\n", queries, want)
-		}
-	case <-time.After(2 * time.Second):
-		t.Error("Didn't get any query")
+
+	database := "test"
+	// Disable the profiler and drop the db. This should also remove the system.profile collection
+	// so the stats should be re-initialized
+	res := client.Database("admin").RunCommand(ctx, primitive.M{"profile": 0})
+	if res.Err() != nil {
+		t.Fatalf("Cannot enable profiler: %s", res.Err())
 	}
-}
+	client.Database(database).Drop(ctx)
 
-func TestIteratorTimeout(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	// re-enable the profiler
+	res = client.Database("admin").RunCommand(ctx, primitive.M{"profile": 2, "slowms": 2})
+	if res.Err() != nil {
+		t.Fatalf("Cannot enable profiler: %s", res.Err())
+	}
 
-	docs := []proto.SystemProfile{}
-	err := tutil.LoadJson(vars.RootPath+samples+"profiler_docs.json", &docs)
+	// run some queries to have something to profile
+	count := 1000
+	for j := 0; j < count; j++ {
+		client.Database("test").Collection("testc").InsertOne(ctx, primitive.M{"number": j})
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	cursor, err := client.Database(database).Collection("system.profile").Find(ctx, primitive.M{})
 	if err != nil {
-		t.Fatalf("cannot load samples: %s", err.Error())
+		panic(err)
 	}
-
-	iter := pmgomock.NewMockIterManager(ctrl)
-	gomock.InOrder(
-		iter.EXPECT().Next(gomock.Any()).Return(true),
-		iter.EXPECT().Timeout().Return(true),
-		iter.EXPECT().Next(gomock.Any()).SetArg(0, docs[1]).Return(true),
-		iter.EXPECT().Timeout().Return(false),
-		iter.EXPECT().Next(gomock.Any()).Return(false),
-		iter.EXPECT().Timeout().Return(false),
-		// When there are no more docs, iterator will close
-		iter.EXPECT().Close(),
-	)
 	filters := []filter.Filter{}
 
 	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
 	s := stats.New(fp)
-	prof := NewProfiler(iter, filters, nil, s)
+	prof := NewProfiler(cursor, filters, nil, s)
+	prof.Start(ctx)
 
-	firstSeen, _ := time.Parse(time.RFC3339Nano, "2017-04-01T23:01:19.914+00:00")
-	lastSeen, _ := time.Parse(time.RFC3339Nano, "2017-04-01T23:01:19.914+00:00")
-	want := stats.Queries{
-		{
-			ID:             "95575e896c2830043dc333cb8ee61339",
-			Namespace:      "samples.col1",
-			Operation:      "FIND",
-			Query:          "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"shardVersion\":[0,\"000000000000000000000000\"]}}\n",
-			Fingerprint:    "FIND col1 find",
-			FirstSeen:      firstSeen,
-			LastSeen:       lastSeen,
-			TableScan:      false,
-			Count:          1,
-			NReturned:      []float64{75},
-			NScanned:       []float64{75},
-			QueryTime:      []float64{1},
-			ResponseLength: []float64{1.06123e+06},
-		},
-	}
+	queries := <-prof.QueriesChan()
+	found := false
+	valid := false
 
-	prof.Start()
-	defer prof.Stop()
-	gotTimeout := false
-
-	// Get a timeout
-	select {
-	case <-prof.TimeoutsChan():
-		gotTimeout = true
-	case <-prof.QueriesChan():
-		t.Error("Got queries before timeout")
-	case <-time.After(2 * time.Second):
-		t.Error("Timeout checking timeout")
-	}
-	if !gotTimeout {
-		t.Error("Didn't get a timeout")
-	}
-
-	// After the first document returned a timeout, we should still receive the second document
-	select {
-	case queries := <-prof.QueriesChan():
-		if !reflect.DeepEqual(queries, want) {
-			t.Errorf("invalid queries. \nGot: %#v,\nWant: %#v\n", queries, want)
-		}
-	case <-time.After(2 * time.Second):
-		t.Error("Didn't get any query after 2 seconds")
-	}
-}
-
-func TestTailIterator(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	docs := []proto.SystemProfile{}
-	err := tutil.LoadJson(vars.RootPath+samples+"profiler_docs.json", &docs)
-	if err != nil {
-		t.Fatalf("cannot load samples: %s", err.Error())
-	}
-
-	sleep := func(param interface{}) {
-		time.Sleep(1500 * time.Millisecond)
-	}
-
-	iter := pmgomock.NewMockIterManager(ctrl)
-	gomock.InOrder(
-		iter.EXPECT().Next(gomock.Any()).SetArg(0, docs[0]).Return(true),
-		iter.EXPECT().Timeout().Return(false),
-		// A Tail iterator will wait if the are no available docs.
-		// Do a 1500 ms sleep before returning the second doc to simulate a tail wait
-		// and to let the ticker tick
-		iter.EXPECT().Next(gomock.Any()).Do(sleep).SetArg(0, docs[1]).Return(true),
-		iter.EXPECT().Timeout().Return(false),
-		iter.EXPECT().Next(gomock.Any()).Return(false),
-		iter.EXPECT().Timeout().Return(false),
-		iter.EXPECT().Close(),
-	)
-
-	filters := []filter.Filter{}
-	ticker := time.NewTicker(time.Second)
-	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
-	s := stats.New(fp)
-	prof := NewProfiler(iter, filters, ticker.C, s)
-
-	want := stats.Queries{
-		{
-			ID:             "95575e896c2830043dc333cb8ee61339",
-			Namespace:      "samples.col1",
-			Operation:      "FIND",
-			Query:          "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"shardVersion\":[0,\"000000000000000000000000\"]}}\n",
-			Fingerprint:    "FIND col1 find",
-			FirstSeen:      parseDate("2017-04-01T23:01:20.214+00:00"),
-			LastSeen:       parseDate("2017-04-01T23:01:20.214+00:00"),
-			TableScan:      false,
-			Count:          1,
-			NReturned:      []float64{50},
-			NScanned:       []float64{100},
-			QueryTime:      []float64{0},
-			ResponseLength: []float64{1.06123e+06},
-		},
-		{
-			ID:             "95575e896c2830043dc333cb8ee61339",
-			Namespace:      "samples.col1",
-			Operation:      "FIND",
-			Query:          "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"shardVersion\":[0,\"000000000000000000000000\"]}}\n",
-			Fingerprint:    "FIND col1 find",
-			FirstSeen:      parseDate("2017-04-01T23:01:19.914+00:00"),
-			LastSeen:       parseDate("2017-04-01T23:01:19.914+00:00"),
-			TableScan:      false,
-			Count:          1,
-			NReturned:      []float64{75},
-			NScanned:       []float64{75},
-			QueryTime:      []float64{1},
-			ResponseLength: []float64{1.06123e+06},
-		},
-	}
-	prof.Start()
-	defer prof.Stop()
-	index := 0
-	// Since the mocked iterator has a Sleep(1500 ms) between Next methods calls,
-	// we are going to have two ticker ticks and on every tick it will return one document.
-	for index < 2 {
-		select {
-		case queries := <-prof.QueriesChan():
-			if !reflect.DeepEqual(queries, stats.Queries{want[index]}) {
-				t.Errorf("invalid queries. \nGot: %#v,\nWant: %#v\n", queries, want)
+	for _, query := range queries {
+		if query.Namespace == "test.testc" && query.Operation == "INSERT" {
+			found = true
+			if query.Fingerprint == "INSERT testc" && query.Count == count {
+				valid = true
 			}
-			index++
+			break
 		}
 	}
-}
 
-func TestCalcStats(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	docs := []proto.SystemProfile{}
-	err := tutil.LoadBson(vars.RootPath+samples+"profiler_docs_stats.json", &docs)
-	if err != nil {
-		t.Fatalf("cannot load samples: %s", err.Error())
+	if !found {
+		t.Errorf("Insert query was not found")
 	}
-
-	want := []stats.QueryStats{}
-	err = tutil.LoadBson(vars.RootPath+samples+"profiler_docs_stats.want.json", &want)
-	if err != nil {
-		t.Fatalf("cannot load expected results: %s", err.Error())
-	}
-
-	iter := pmgomock.NewMockIterManager(ctrl)
-	gomock.InOrder(
-		iter.EXPECT().Next(gomock.Any()).SetArg(0, docs[0]).Return(true),
-		iter.EXPECT().Timeout().Return(false),
-		iter.EXPECT().Next(gomock.Any()).SetArg(0, docs[1]).Return(true),
-		iter.EXPECT().Timeout().Return(false),
-		iter.EXPECT().Next(gomock.Any()).SetArg(0, docs[2]).Return(true),
-		iter.EXPECT().Timeout().Return(false),
-		iter.EXPECT().Next(gomock.Any()).Return(false),
-		iter.EXPECT().Timeout().Return(false),
-		iter.EXPECT().Close(),
-	)
-
-	filters := []filter.Filter{}
-	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
-	s := stats.New(fp)
-	prof := NewProfiler(iter, filters, nil, s)
-
-	prof.Start()
-	defer prof.Stop()
-
-	select {
-	case queries := <-prof.QueriesChan():
-		s := queries.CalcQueriesStats(1)
-		if os.Getenv("UPDATE_SAMPLES") != "" {
-			tutil.WriteJson(vars.RootPath+samples+"profiler_docs_stats.want.json", s)
-		}
-		if !reflect.DeepEqual(s, want) {
-			t.Errorf("Invalid stats.\nGot:%#v\nWant: %#v\n", s, want)
-		}
-	case <-time.After(2 * time.Second):
-		t.Error("Didn't get any query")
-	}
-}
-
-func TestCalcTotalStats(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	docs := []proto.SystemProfile{}
-	err := tutil.LoadBson(vars.RootPath+samples+"profiler_docs_stats.json", &docs)
-	if err != nil {
-		t.Fatalf("cannot load samples: %s", err.Error())
-	}
-
-	want := stats.QueryStats{}
-	err = tutil.LoadBson(vars.RootPath+samples+"profiler_docs_total_stats.want.json", &want)
-	if err != nil && !tutil.ShouldUpdateSamples() {
-		t.Fatalf("cannot load expected results: %s", err.Error())
-	}
-
-	iter := pmgomock.NewMockIterManager(ctrl)
-	gomock.InOrder(
-		iter.EXPECT().Next(gomock.Any()).SetArg(0, docs[0]).Return(true),
-		iter.EXPECT().Timeout().Return(false),
-		iter.EXPECT().Next(gomock.Any()).SetArg(0, docs[1]).Return(true),
-		iter.EXPECT().Timeout().Return(false),
-		iter.EXPECT().Next(gomock.Any()).SetArg(0, docs[2]).Return(true),
-		iter.EXPECT().Timeout().Return(false),
-		iter.EXPECT().Next(gomock.Any()).Return(false),
-		iter.EXPECT().Timeout().Return(false),
-		iter.EXPECT().Close(),
-	)
-
-	filters := []filter.Filter{}
-	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
-	s := stats.New(fp)
-	prof := NewProfiler(iter, filters, nil, s)
-
-	prof.Start()
-	defer prof.Stop()
-	select {
-	case queries := <-prof.QueriesChan():
-		s := queries.CalcTotalQueriesStats(1)
-		if os.Getenv("UPDATE_SAMPLES") != "" {
-			fmt.Println("Updating samples: " + vars.RootPath + samples + "profiler_docs_total_stats.want.json")
-			err := tutil.WriteJson(vars.RootPath+samples+"profiler_docs_total_stats.want.json", s)
-			if err != nil {
-				fmt.Printf("cannot update samples: %s", err.Error())
-			}
-		}
-		if !reflect.DeepEqual(s, want) {
-			t.Errorf("Invalid stats.\nGot:%#v\nWant: %#v\n", s, want)
-		}
-	case <-time.After(2 * time.Second):
-		t.Error("Didn't get any query")
+	if !valid {
+		t.Errorf("Query stats are not valid")
 	}
 }
