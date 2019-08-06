@@ -9,9 +9,9 @@ import (
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/percona-toolkit/src/go/mongolib/util"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func GetOplogInfo(ctx context.Context, hostnames []string, co *options.ClientOptions) ([]proto.OplogInfo, error) {

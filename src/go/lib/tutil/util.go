@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -77,7 +77,7 @@ func LoadBson(filename string, destination interface{}) error {
 	re = regexp.MustCompile(`(?s): (function \(.*?\) {.*?})`)
 	buf = re.ReplaceAll(buf, []byte(`: ""`))
 
-	err = bson.UnmarshalJSON(buf, &destination)
+	err = bson.Unmarshal(buf, &destination)
 	if err != nil {
 		return err
 	}

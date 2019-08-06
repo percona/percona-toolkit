@@ -12,7 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-funci TestGetHostnames(t *testing.T) {
+func TestGetHostnames(t *testing.T) {
 	testCases := []struct {
 		name string
 		uri  string
