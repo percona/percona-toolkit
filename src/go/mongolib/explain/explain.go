@@ -1,21 +1,24 @@
 package explain
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/percona/pmgo"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 )
 
 type explain struct {
-	session pmgo.SessionManager
+	ctx    context.Context
+	client *mongo.Client
 }
 
-func New(session pmgo.SessionManager) *explain {
+func New(ctx context.Context, client *mongo.Client) *explain {
 	return &explain{
-		session: session,
+		ctx:    ctx,
+		client: client,
 	}
 }
 
@@ -33,8 +36,12 @@ func (e *explain) Explain(db string, query []byte) ([]byte, error) {
 	}
 
 	var result proto.BsonD
-	err = e.session.DB(db).Run(eq.ExplainCmd(), &result)
-	if err != nil {
+	res := e.client.Database(db).RunCommand(e.ctx, eq.ExplainCmd())
+	if res.Err() != nil {
+		return nil, res.Err()
+	}
+
+	if err := res.Decode(&result); err != nil {
 		return nil, err
 	}
 

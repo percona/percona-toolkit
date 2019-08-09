@@ -1,17 +1,22 @@
 package explain
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Masterminds/semver"
-	"github.com/percona/pmgo"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
+	tu "github.com/percona/percona-toolkit/src/go/internal/testutils"
 	"github.com/percona/percona-toolkit/src/go/lib/tutil"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 )
@@ -38,17 +43,17 @@ func TestMain(m *testing.M) {
 func TestExplain(t *testing.T) {
 	t.Parallel()
 
-	dialer := pmgo.NewDialer()
-	dialInfo, err := pmgo.ParseURL("")
+	uri := fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBMongosPort)
+	client, err := mongo.NewClient(options.Client().ApplyURI(uri))
 	if err != nil {
-		t.Fatalf("cannot parse URL: %s", err)
+		t.Fatalf("cannot get a new MongoDB client: %s", err)
 	}
-
-	session, err := dialer.DialWithInfo(dialInfo)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	err = client.Connect(ctx)
 	if err != nil {
-		t.Fatalf("cannot dial to MongoDB: %s", err)
+		t.Fatalf("Cannot connect to MongoDB: %s", err)
 	}
-	defer session.Close()
 
 	dir := vars.RootPath + samples + "/doc/out/"
 	files, err := ioutil.ReadDir(dir)
@@ -56,9 +61,13 @@ func TestExplain(t *testing.T) {
 		t.Fatalf("cannot list samples: %s", err)
 	}
 
-	bi, err := session.BuildInfo()
-	if err != nil {
-		t.Fatalf("cannot get BuildInfo: %s", err)
+	res := client.Database("admin").RunCommand(ctx, primitive.M{"buildInfo": 1})
+	if res.Err() != nil {
+		t.Fatalf("Cannot get buildInfo: %s", err)
+	}
+	bi := proto.BuildInfo{}
+	if err := res.Decode(&bi); err != nil {
+		t.Fatalf("Cannot decode buildInfo response: %s", err)
 	}
 
 	versions := []string{
@@ -69,35 +78,35 @@ func TestExplain(t *testing.T) {
 		"3.6.2",
 	}
 
-	samples := map[string]string{
-		"aggregate":        "Cannot explain cmd: aggregate",
-		"count":            "<nil>",
-		"count_with_query": "<nil>",
-		"delete":           "<nil>",
-		"delete_all":       "<nil>",
-		"distinct":         "<nil>",
-		"find_empty":       "<nil>",
-		"find":             "<nil>",
-		"find_with_sort":   "<nil>",
-		"find_andrii":      "<nil>",
-		"findandmodify":    "<nil>",
-		"geonear":          "Cannot explain cmd: geoNear",
-		"getmore":          "<nil>",
-		"group":            "<nil>",
-		"insert":           "Cannot explain cmd: insert",
-		"mapreduce":        "Cannot explain cmd: mapReduce",
-		"update":           "<nil>",
-		"explain":          "Cannot explain cmd: explain",
-		"eval":             "Cannot explain cmd: eval",
+	samples := map[string]bool{
+		"aggregate":        false,
+		"count":            false,
+		"count_with_query": false,
+		"delete":           false,
+		"delete_all":       false,
+		"distinct":         false,
+		"find_empty":       true,
+		"find":             false,
+		"find_with_sort":   false,
+		"find_andrii":      false,
+		"findandmodify":    false,
+		"geonear":          true,
+		"getmore":          false,
+		"group":            false,
+		"insert":           true,
+		"mapreduce":        true,
+		"update":           false,
+		"explain":          true,
+		"eval":             true,
 	}
 
-	expectError := map[string]string{}
+	expectError := map[string]bool{}
 
 	// For versions < 3.0 explain is not supported
 	if ok, _ := Constraint("< 3.0", bi.Version); ok {
 		for _, v := range versions {
 			for sample := range samples {
-				expectError[sample+"_"+v] = "no such cmd: explain"
+				expectError[sample+"_"+v] = true
 			}
 		}
 	} else {
@@ -110,27 +119,37 @@ func TestExplain(t *testing.T) {
 		for _, v := range versions {
 			// For versions < 3.4 parsing "getmore" is not supported and returns error
 			if ok, _ := Constraint("< 3.4", v); ok {
-				expectError["getmore_"+v] = "Explain failed due to unknown command: getmore"
+				expectError["getmore_"+v] = true
+			}
+		}
+
+		for _, v := range versions {
+			// For versions < 3.4 parsing "getmore" is not supported and returns error
+			if ok, _ := Constraint(">= 2.4, <= 2.6", v); ok {
+				expectError["find_empty_"+v] = false
+			}
+			if ok, _ := Constraint(">= 3.2", v); ok {
+				expectError["find_empty_"+v] = false
 			}
 		}
 
 		// For versions >= 3.0, < 3.4 trying to explain "insert" returns different error
 		if ok, _ := Constraint(">= 3.0, < 3.4", bi.Version); ok {
 			for _, v := range versions {
-				expectError["insert_"+v] = "Only update and delete write ops can be explained"
+				expectError["insert_"+v] = true
 			}
 		}
 
 		// Explaining `distinct` and `findAndModify` was introduced in MongoDB 3.2
 		if ok, _ := Constraint(">= 3.0, < 3.2", bi.Version); ok {
 			for _, v := range versions {
-				expectError["distinct_"+v] = "Cannot explain cmd: distinct"
-				expectError["findandmodify_"+v] = "Cannot explain cmd: findAndModify"
+				expectError["distinct_"+v] = true
+				expectError["findandmodify_"+v] = true
 			}
 		}
 	}
 
-	ex := New(session)
+	ex := New(ctx, client)
 	for _, file := range files {
 		t.Run(file.Name(), func(t *testing.T) {
 			eq := proto.ExampleQuery{}
@@ -144,9 +163,8 @@ func TestExplain(t *testing.T) {
 			}
 			got, err := ex.Explain("", query)
 			expectErrMsg := expectError[file.Name()]
-			gotErrMsg := fmt.Sprintf("%v", err)
-			if gotErrMsg != expectErrMsg {
-				t.Fatalf("explain error should be '%s' but was '%s'", expectErrMsg, gotErrMsg)
+			if (err != nil) != expectErrMsg {
+				t.Fatalf("explain error for %q \n %s\nshould be '%v' but was '%v'", string(query), file.Name(), expectErrMsg, err)
 			}
 
 			if err == nil {

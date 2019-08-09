@@ -2,9 +2,9 @@
 export DEBUG=1
 export GOLANG_DOCKERHUB_TAG=1.10-stretch
 export AWS_REGION=us-west-2
-#export TEST_MONGODB_FLAVOR=percona/percona-server-mongodb
-export TEST_MONGODB_FLAVOR=mongo
-export TEST_PSMDB_VERSION=4.0
+export TEST_MONGODB_FLAVOR=percona/percona-server-mongodb
+#export TEST_MONGODB_FLAVOR=mongo
+export TEST_PSMDB_VERSION=3.6
 export TEST_MONGODB_ADMIN_USERNAME=admin
 export TEST_MONGODB_ADMIN_PASSWORD=admin123456
 export TEST_MONGODB_USERNAME=test
