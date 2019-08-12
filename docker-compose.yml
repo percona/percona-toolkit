@@ -149,13 +149,6 @@ services:
     - configsvr1
 #   - configsvr2
 #   - configsvr3
-  minio:
-    network_mode: host
-    image: minio/minio
-    environment:
-      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY_ID}
-      - MINIO_SECRET_KEY=${MINIO_SECRET_ACCESS_KEY}
-    command: server /data
   init:
     network_mode: host
     image: ${TEST_MONGODB_FLAVOR}:${TEST_PSMDB_VERSION}
@@ -180,25 +173,3 @@ services:
     - s3-mongo3
     - standalone
     - minio
-  test:
-    build:
-      dockerfile: docker/test/Dockerfile
-      context: .
-      args:
-      - GOLANG_DOCKERHUB_TAG=${GOLANG_DOCKERHUB_TAG}
-    network_mode: host
-    env_file:
-    - .env
-    volumes:
-    - ./test-out:/tmp/out
-    - src/go/docker/test/ssl/rootCA.crt:/rootCA.crt:ro
-    - src/go/docker/test/ssl/client.pem:/client.pem:ro
-    depends_on:
-    - mongos
-    - s1-mongo1
-    - s1-mongo2
-    - s1-mongo3
-    - s2-mongo1
-    - s2-mongo2
-    - s2-mongo3
-    - init

@@ -27,7 +27,7 @@ env:
   TEST_MONGODB_S2_SECONDARY1_PORT: 17005
   TEST_MONGODB_S2_SECONDARY2_PORT: 17006
   TEST_MONGODB_CONFIGSVR_RS: csReplSet
-  TEST_MONGODB_CONFIGSVR1_PORT: 17007
+  TEST_MONGODB_CONFIGSVR1_PORT: 17007                                                  ce
   TEST_MONGODB_CONFIGSVR2_PORT: 17008
   TEST_MONGODB_CONFIGSVR3_PORT: 17009
   TEST_MONGODB_S3_RS: rs3
@@ -54,14 +54,12 @@ install:
   - go get -u github.com/golang/dep/cmd/dep
 
 before_script:
-  # run docker containers
-  - docker-compose up -d
   # log versions
   - docker --version
   - docker-compose --version
-  - docker-compose exec mongo mongo --version
+  # run docker containers
+  - docker-compose run init
   # we need at least one document in test db
-  - docker-compose exec mongo mongo --eval 'db.init.insert({})'
   - dep ensure
 
 script:
