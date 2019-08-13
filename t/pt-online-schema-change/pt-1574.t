@@ -80,7 +80,7 @@ like(
 is(
     $exit_status,
     0,
-    "PT-1574, PT-1590 Exit status 0 with null fields",
+    "PT-1574, PT-1590 Exit status 0 with null fields, got $exit_status",
 );
 
 like(

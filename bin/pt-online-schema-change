@@ -8299,6 +8299,39 @@ my %ignore_code = (
 
 $OUTPUT_AUTOFLUSH = 1;
 
+use constant {
+   INVALID_PARAMETERS        => 1,
+   UNSUPORTED_MYSQL_VERSION  => 2,
+   NO_MINIMUM_REQUIREMENTS   => 3,
+   NO_PRIMARY_OR_UNIQUE_KEY  => 4,
+   INVALID_PLUGIN_FILE       => 5,
+   INVALID_ALTER_FK_METHOD   => 6,
+   INVALID_KEY_SIZE          => 7,
+   INVALID_CHUNKS_COUNT      => 8, # of chunks in master is != than in slaves
+   CANNOT_DETERMINE_KEY_SIZE => 9,
+   NOT_SAFE_TO_ASCEND        => 10,
+   ERROR_CREATING_NEW_TABLE  => 11,
+   ERROR_ALTERING_TABLE      => 12,
+   ERROR_CREATING_TRIGGERS   => 13,
+   ERROR_RESTORING_TRIGGERS  => 15,
+   ERROR_SWAPPING_TABLES     => 16,
+   ERROR_UPDATING_FKS        => 17,
+   ERROR_DROPPING_OLD_TABLE  => 18,
+   UNSUPORTED_OPERATION      => 19,
+   MYSQL_CONNECTION_ERROR    => 20,
+   LOST_MYSQL_CONNECTION     => 21,
+};
+
+sub _die {
+   my ($msg, $exit_status) = @_;
+   warn "msg: $msg",;
+   warn "exit_status: $exit_status";
+   #$exit_status ||= 255;
+   chomp ($msg);
+   print "$msg\n";
+   exit $exit_status;
+}
+
 sub main {
    local @ARGV = @_;
 
@@ -8394,7 +8427,7 @@ sub main {
               . "since --preserve-triggers implies that the old triggers should be deleted"
               . " and recreated in the new table.\nPlease read the documentation for "
               . "--preserve-triggers";
-      die $msg;
+      _die($msg, INVALID_PARAMETERS);
    }
 
    if ( $o->get('preserve-triggers') ) {
@@ -8488,7 +8521,7 @@ sub main {
       );
       eval { $cxn->connect() };  # connect or die trying
       if ( $EVAL_ERROR ) {
-         die "Cannot connect to MySQL: $EVAL_ERROR\n";
+         _die("Cannot connect to MySQL: $EVAL_ERROR", MYSQL_CONNECTION_ERROR);
       }
       return $cxn;
    };
@@ -8504,15 +8537,15 @@ sub main {
       # manifest itself.  If it does, however, then the tools will wait forever.
       $pxc_version = VersionParser->new($cxn->dbh);
       if ( $pxc_version < '5.5.28' ) {
-         die "Percona XtraDB Cluster 5.5.28 or newer is required to run "
+         _die("Percona XtraDB Cluster 5.5.28 or newer is required to run "
             . "this tool on a cluster, but node " . $cxn->name
             . " is running version " . $pxc_version->version
             . ".  Please upgrade the node, or run the tool on a newer node, "
-            . "or contact Percona for support.\n";
+            . "or contact Percona for support.", UNSUPORTED_MYSQL_VERSION);
       }
       if ( $pxc_version < '5.6' && $o->got('max-flow-ctl') ) {
-        die "Option '--max-flow-ctl is only available for PXC version 5.6 "
-            . "or higher."
+        _die("Option '--max-flow-ctl is only available for PXC version 5.6 "
+            . "or higher.", INVALID_PARAMETERS);
       }
 
       # If wsrep_OSU_method=RSU the "DDL will be only processed locally at
@@ -8522,15 +8555,15 @@ sub main {
       my (undef, $wsrep_osu_method) = $cxn->dbh->selectrow_array(
          "SHOW VARIABLES LIKE 'wsrep\_OSU\_method'");
       if ( lc($wsrep_osu_method || '') ne 'toi' ) {
-         die "wsrep_OSU_method=TOI is required because "
+        _die("wsrep_OSU_method=TOI is required because "
             . $cxn->name . " is a cluster node.  wsrep_OSU_method is "
             . "currently set to " . ($wsrep_osu_method || '') . ".  "
-            . "Set it to TOI, or contact Percona for support.\n";
+            . "Set it to TOI, or contact Percona for support.", NO_MINIMUM_REQUIREMENTS);
       }
    } elsif ( $o->got('max-flow-ctl') ) {
-      die "Option '--max-flow-ctl' is meant to be used on PXC clusters. "
+      _die("Option '--max-flow-ctl' is meant to be used on PXC clusters. "
          ."For normal async replication use '--max-lag' and '--check-interval' "
-         ."instead.\n"
+         ."instead.", INVALID_PARAMETERS);
    }
 
    # ########################################################################
@@ -8540,7 +8573,7 @@ sub main {
    # ########################################################################   
    my $server_version = VersionParser->new($cxn->dbh());
    if ( $server_version < '5.0.10' ) {
-      die "This tool requires MySQL 5.0.10 or newer.\n";
+      _die("This tool requires MySQL 5.0.10 or newer.", UNSUPORTED_MYSQL_VERSION);
    }
 
    # Use LOCK IN SHARE mode unless MySQL 5.0 because there's a bug like
@@ -8584,11 +8617,11 @@ sub main {
    # ########################################################################   
    my $plugin;
    if ( my $file = $o->get('plugin') ) {
-      die "--plugin file $file does not exist\n" unless -f $file;
+      _die("--plugin file $file does not exist", INVALID_PLUGIN_FILE) unless -f $file;
       eval {
          require $file;
       };
-      die "Error loading --plugin $file: $EVAL_ERROR" if $EVAL_ERROR;
+      _die("Error loading --plugin $file: $EVAL_ERROR", INVALID_PLUGIN_FILE) if $EVAL_ERROR;
       eval {
          $plugin = pt_online_schema_change_plugin->new(
             cxn     => $cxn,
@@ -8601,7 +8634,7 @@ sub main {
             Quoter  => $q,
          );
       };
-      die "Error creating --plugin: $EVAL_ERROR" if $EVAL_ERROR;
+      _die("Error creating --plugin: $EVAL_ERROR", INVALID_PLUGIN_FILE) if $EVAL_ERROR;
       print "Created plugin from $file.\n";
    }
 
@@ -8723,7 +8756,7 @@ sub main {
             }
             $msg .= "Please read the --check-replication-filters documentation "
                   . "to learn how to solve this problem.";
-            die $msg;
+            _die($msg, INVALID_PARAMETERS);
          }
       }
 
@@ -8741,8 +8774,8 @@ sub main {
             if ( $EVAL_ERROR ) {
                $oktorun = 0;  # flag for cleanup tasks
                chomp $EVAL_ERROR;
-               die "Lost connection to " . $cxn->name() . " while waiting for "
-                  . "replica lag ($EVAL_ERROR)\n";
+               _die("Lost connection to " . $cxn->name() . " while waiting for "
+                  . "replica lag ($EVAL_ERROR)", LOST_MYSQL_CONNECTION);
             }
          }
          $dbh->do("SELECT 'pt-online-schema-change keepalive'");
@@ -8820,13 +8853,13 @@ sub main {
       };
       if ( $EVAL_ERROR ) {
          chomp $EVAL_ERROR;
-         die "Error checking --max-load or --critial-load: $EVAL_ERROR.  "
+         _die("Error checking --max-load or --critial-load: $EVAL_ERROR.  "
             . "Check that the variables specified for --max-load and "
             . "--critical-load are spelled correctly and exist in "
             . "SHOW GLOBAL STATUS.  Current values for these options are:\n"
             . "  --max-load " . (join(',', @{$o->get('max-load')})) . "\n"
             . "  --critial-load "  . (join(',', @{$o->get('critical-load')}))
-            . "\n";
+            , INVALID_PARAMETERS);
       }
 
       if ( $pxc_version >= '5.6' && $o->got('max-flow-ctl') ) {
@@ -9151,7 +9184,7 @@ sub main {
       );
    };
    if ( $EVAL_ERROR ) {
-      die "Error creating new table: $EVAL_ERROR\n";
+      _die("Error creating new table: $EVAL_ERROR", ERROR_CREATING_NEW_TABLE);
    }
 
    # If the new table still exists, drop it unless the tool was interrupted.
@@ -9271,7 +9304,8 @@ sub main {
          $cxn->dbh()->do($sql);
       };
       if ( $EVAL_ERROR ) {
-         die "Error altering new table $new_tbl->{name}: $EVAL_ERROR\n"
+         # this is trapped by a signal handler. Don't replace it with _die 
+         die "Error altering new table $new_tbl->{name}: $EVAL_ERROR\n";
       }
       print "Altered $new_tbl->{name} OK.\n";
    }
@@ -9329,9 +9363,10 @@ sub main {
    }
 
    if ( !$new_tbl->{del_index} ) {
-      die "The new table $new_tbl->{name} does not have a PRIMARY KEY "
+      _die("The new table $new_tbl->{name} does not have a PRIMARY KEY "
         . "or a unique index which is required for the DELETE trigger.\n"
-        . "Please check you have at least one UNIQUE and NOT NULLABLE index.\n";
+        . "Please check you have at least one UNIQUE and NOT NULLABLE index.",
+        NO_PRIMARY_OR_UNIQUE_KEY);
    }
 
    # Determine whether to use the new or orig table delete index.
@@ -9350,11 +9385,12 @@ sub main {
    foreach my $new_del_index_col ( @$new_del_index_cols ) {
       if ( !exists $orig_cols->{$new_del_index_col} ) {
          if ( !$orig_tbl->{del_index} ) {
-            die "The new table index $new_tbl->{del_index} would be used "
+            _die("The new table index $new_tbl->{del_index} would be used "
                . "for the DELETE trigger, but it uses column "
                . "$new_del_index_col which does not exist in the original "
                . "table and the original table does not have a PRIMARY KEY "
-               . "or a unique index to use for the DELETE trigger.\n";
+               . "or a unique index to use for the DELETE trigger.",
+               NO_PRIMARY_OR_UNIQUE_KEY);
          }
          print "Using original table index $orig_tbl->{del_index} for the "
             . "DELETE trigger instead of new table index $new_tbl->{del_index} "
@@ -9446,7 +9482,7 @@ sub main {
       );
    };
    if ( $EVAL_ERROR ) {
-      die "Error creating triggers: $EVAL_ERROR\n";
+      _die("Error creating triggers: $EVAL_ERROR", ERROR_CREATING_TRIGGERS);
    };
 
    # --plugin hook
@@ -9546,20 +9582,20 @@ sub main {
                   n_index_cols => $o->get('chunk-index-columns'),
                );
                if ( !$key || lc($key) ne lc($nibble_iter->nibble_index()) ) {
-                  die ts("Cannot determine the key_len of the chunk index "
+                  _die(ts("Cannot determine the key_len of the chunk index "
                      . "because MySQL chose "
                      . ($key ? "the $key" : "no") . " index "
                      . "instead of the " . $nibble_iter->nibble_index()
                      . " index for the first lower boundary statement.  "
                      . "See --[no]check-plan in the documentation for more "
-                     . "information.");
+                     . "information."), CANNOT_DETERMINE_KEY_SIZE);
                }
                elsif ( !$key_len ) {
-                  die ts("The key_len of the $key index is "
+                  _die(ts("The key_len of the $key index is "
                      . (defined $key_len ? "zero" : "NULL")
                      . ", but this should not be possible.  " 
                      . "See --[no]check-plan in the documentation for more "
-                     . "information.");
+                     . "information."), INVALID_KEY_SIZE);
                }
                $tbl->{key_len} = $key_len;
             }
@@ -9603,7 +9639,7 @@ sub main {
                   . join(", ", map { defined $_ ? $_ : "NULL" }
                          (@{$boundary->{lower}}, $nibble_iter->limit()))
                   . "\n";
-               die ts($msg);
+               _die(ts($msg), NOT_SAFE_TO_ASCEND);
             } 
          }
 
@@ -9790,7 +9826,7 @@ sub main {
    };
    if ( $EVAL_ERROR ) {
       die ts("Error copying rows from $orig_tbl->{name} to "
-        . "$new_tbl->{name}: $EVAL_ERROR\n");
+        . "$new_tbl->{name}: $EVAL_ERROR");
    }
    $orig_tbl->{copied} = 1;  # flag for cleanup tasks
 
@@ -9827,7 +9863,7 @@ sub main {
    if ($vp->cmp('8.0') > -1 && $vp->flavor() !~ m/maria/i && $alter_fk_method eq 'drop_swap') {
        my $msg = "--alter-foreign-keys-method=drop_swap doesn't work with MySQL 8.0+\n".
                  "See https://bugs.mysql.com/bug.php?id=89441";
-       die($msg);
+       _die($msg, INVALID_PARAMETERS);
    }
 
    # --plugin hook
@@ -9871,7 +9907,7 @@ sub main {
                                                             );
                   };
                   if ($EVAL_ERROR) {
-                     die "Cannot create triggers: $EVAL_ERROR";
+                     _die("Cannot create triggers: $EVAL_ERROR", ERROR_CREATING_TRIGGERS);
                   }
                   next if !$o->get('execute');
                   PTDEBUG && _d('New triggers sqls');
@@ -9881,7 +9917,8 @@ sub main {
                           $cxn->dbh()->do($sql);
                       };
                       if ($EVAL_ERROR) {
-                           die "Exiting due to errors while restoring triggers: $EVAL_ERROR";
+                           _die("Exiting due to errors while restoring triggers: $EVAL_ERROR",
+                               ERROR_RESTORING_TRIGGERS);
                       }
                   }
               }
@@ -9908,10 +9945,11 @@ sub main {
       };
       if ( $EVAL_ERROR ) {
          # TODO: one of these values can be undefined
-         die ts("Error swapping tables: $EVAL_ERROR\n"
+         _die(ts("Error swapping tables: $EVAL_ERROR\n"
            . "To clean up, first verify that the original table "
            . "$orig_tbl->{name} has not been modified or renamed, "
-           . "then drop the new table $new_tbl->{name} if it exists.\n");
+           . "then drop the new table $new_tbl->{name} if it exists."),
+              ERROR_SWAPPING_TABLES);
       }
    }
    $orig_tbl->{swapped} = 1;  # flag for cleanup tasks
@@ -9974,12 +10012,12 @@ sub main {
          }
          else {
             # This should "never" happen because we check this var earlier.
-            die "Invalid --alter-foreign-keys-method: $alter_fk_method\n";
+            _die("Invalid --alter-foreign-keys-method: $alter_fk_method", INVALID_ALTER_FK_METHOD);
          }
       };
       if ( $EVAL_ERROR ) {
          # TODO: improve error message and handling.
-         die "Error updating foreign key constraints: $EVAL_ERROR\n";
+         _die("Error updating foreign key constraints: $EVAL_ERROR", ERROR_UPDATING_FKS);
       }
 
       # --plugin hook
@@ -10023,7 +10061,7 @@ sub main {
             $cxn->dbh()->do($sql);
          };
          if ( $EVAL_ERROR ) {
-            die ts("Error dropping the old table: $EVAL_ERROR\n");
+            _die(ts("Error dropping the old table: $EVAL_ERROR\n"), ERROR_DROPPING_OLD_TABLE);
          }
          print ts("Dropped old table $old_tbl->{name} OK.\n");
 
@@ -10075,10 +10113,10 @@ sub validate_tries {
    if ( $user_tries ) {
       foreach my $var_val ( @$user_tries ) {
          my ($op, $tries, $wait) = split(':', $var_val);
-         die "Invalid --tries value: $var_val\n" unless $op && $tries && $wait;
-         die "Invalid --tries operation: $op\n" unless grep { $op eq $_ } @ops;
-         die "Invalid --tries tries: $tries\n" unless $tries > 0;
-         die "Invalid --tries wait: $wait\n" unless $wait > 0;
+         _die("Invalid --tries value: $var_val\n", INVALID_PARAMETERS) unless $op && $tries && $wait;
+         _die("Invalid --tries operation: $op\n", INVALID_PARAMETERS) unless grep { $op eq $_ } @ops;
+         _die("Invalid --tries tries: $tries\n", INVALID_PARAMETERS) unless $tries > 0;
+         _die("Invalid --tries wait: $wait\n", INVALID_PARAMETERS) unless $wait > 0;
          $user_tries{$op} = {
             tries   => $tries,
             wait    => $wait,
@@ -10092,10 +10130,10 @@ sub validate_tries {
       %default_tries = map {
          my $var_val = $_;
          my ($op, $tries, $wait) = $var_val =~ m/(\S+)/g;
-         die "Invalid --tries value: $var_val\n" unless $op && $tries && $wait;
-         die "Invalid --tries operation: $op\n" unless grep { $op eq $_ } @ops;
-         die "Invalid --tries tries: $tries\n" unless $tries > 0;
-         die "Invalid --tries wait: $wait\n" unless $wait > 0;
+         _die("Invalid --tries value: $var_val\n", INVALID_PARAMETERS) unless $op && $tries && $wait;
+         _die("Invalid --tries operation: $op\n", INVALID_PARAMETERS) unless grep { $op eq $_ } @ops;
+         _die("Invalid --tries tries: $tries\n", INVALID_PARAMETERS) unless $tries > 0;
+         _die("Invalid --tries wait: $wait\n", INVALID_PARAMETERS) unless $wait > 0;
          $op => {
             tries => $tries,
             wait  => $wait,
@@ -10140,19 +10178,20 @@ sub check_alter {
            $msg .= $sql;
         }
         $msg .= "Keep in mind that these queries could take a long time and consume a lot of resources\n\n";
-        die ($msg);
+        _die($msg, INVALID_PARAMETERS);
    }
 
    if ( ($tbl->{tbl_struct}->{engine} || '') =~ m/RocksDB/i ) {
        if ($alter =~ m/FOREIGN KEY/i) {
             my $msg = "FOREIGN KEYS are not supported by the RocksDB engine\n\n";
-            die ($msg);
+            _die($msg, UNSUPORTED_OPERATION);
        }
    }
    if ( $alter =~ m/Engine\s*=\s*["']?RocksDB["']?/i ) {
       my $row = $cxn->dbh()->selectrow_arrayref('SELECT @@binlog_format');
       if (scalar $row > 0 && $row->[0] eq 'STATEMENT') {
-          die("Cannot change engine to RocksDB while binlog_format is other than 'ROW'");
+          _die("Cannot change engine to RocksDB while binlog_format is other than 'ROW'",
+          UNSUPORTED_OPERATION);
       }
    }
    # ########################################################################
@@ -10224,7 +10263,7 @@ sub check_alter {
 
    if ( !$ok ) {
       # check_alter.t relies on this output.
-      die "--check-alter failed.\n";
+      _die("--check-alter failed.\n", UNSUPORTED_OPERATION);
    }
 
    return;
@@ -10634,7 +10673,7 @@ sub swap_tables {
                PTDEBUG && _d($e);
                next;
             }
-            die ts($e);
+            die ts($e); # Don't replace this by _die
          }
 
          print $sql, "\n" if $o->get('print');
