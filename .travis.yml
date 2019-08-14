@@ -58,7 +58,7 @@ before_script:
   - docker --version
   - docker-compose --version
   # run docker containers
-  - docker-compose up --detach --always-recreate-deps init
+  - docker-compose up -d init
   # we need at least one document in test db
   - dep ensure
 
