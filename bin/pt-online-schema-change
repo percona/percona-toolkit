@@ -13054,6 +13054,28 @@ To enable debugging and capture all output to a file, run the tool like:
 Be careful: debugging output is voluminous and can generate several megabytes
 of output.
 
+=head1 EXIT STATUS
+
+   INVALID_PARAMETERS        = 1
+   UNSUPORTED_MYSQL_VERSION  = 2
+   NO_MINIMUM_REQUIREMENTS   = 3
+   NO_PRIMARY_OR_UNIQUE_KEY  = 4
+   INVALID_PLUGIN_FILE       = 5
+   INVALID_ALTER_FK_METHOD   = 6
+   INVALID_KEY_SIZE          = 7
+   CANNOT_DETERMINE_KEY_SIZE = 9
+   NOT_SAFE_TO_ASCEND        = 9
+   ERROR_CREATING_NEW_TABLE  = 10
+   ERROR_ALTERING_TABLE      = 11
+   ERROR_CREATING_TRIGGERS   = 12
+   ERROR_RESTORING_TRIGGERS  = 13
+   ERROR_SWAPPING_TABLES     = 14
+   ERROR_UPDATING_FKS        = 15
+   ERROR_DROPPING_OLD_TABLE  = 16
+   UNSUPORTED_OPERATION      = 17
+   MYSQL_CONNECTION_ERROR    = 18
+   LOST_MYSQL_CONNECTION     = 19
+
 =head1 SYSTEM REQUIREMENTS
 
 You need Perl, DBI, DBD::mysql, and some core packages that ought to be
