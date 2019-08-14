@@ -8307,26 +8307,25 @@ use constant {
    INVALID_PLUGIN_FILE       => 5,
    INVALID_ALTER_FK_METHOD   => 6,
    INVALID_KEY_SIZE          => 7,
-   INVALID_CHUNKS_COUNT      => 8, # of chunks in master is != than in slaves
    CANNOT_DETERMINE_KEY_SIZE => 9,
-   NOT_SAFE_TO_ASCEND        => 10,
-   ERROR_CREATING_NEW_TABLE  => 11,
-   ERROR_ALTERING_TABLE      => 12,
-   ERROR_CREATING_TRIGGERS   => 13,
-   ERROR_RESTORING_TRIGGERS  => 15,
-   ERROR_SWAPPING_TABLES     => 16,
-   ERROR_UPDATING_FKS        => 17,
-   ERROR_DROPPING_OLD_TABLE  => 18,
-   UNSUPORTED_OPERATION      => 19,
-   MYSQL_CONNECTION_ERROR    => 20,
-   LOST_MYSQL_CONNECTION     => 21,
+   NOT_SAFE_TO_ASCEND        => 9,
+   ERROR_CREATING_NEW_TABLE  => 10,
+   ERROR_ALTERING_TABLE      => 11,
+   ERROR_CREATING_TRIGGERS   => 12,
+   ERROR_RESTORING_TRIGGERS  => 13,
+   ERROR_SWAPPING_TABLES     => 14,
+   ERROR_UPDATING_FKS        => 15,
+   ERROR_DROPPING_OLD_TABLE  => 16,
+   UNSUPORTED_OPERATION      => 17,
+   MYSQL_CONNECTION_ERROR    => 18,
+   LOST_MYSQL_CONNECTION     => 19,
 };
 
 sub _die {
    my ($msg, $exit_status) = @_;
    warn "msg: $msg",;
    warn "exit_status: $exit_status";
-   #$exit_status ||= 255;
+   $exit_status ||= 255;
    chomp ($msg);
    print "$msg\n";
    exit $exit_status;

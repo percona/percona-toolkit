@@ -39,3 +39,5 @@ INSERT INTO `test`.`t2` VALUES
 (1978918050,'Louis Gray Jr. Sr. I II I','2017-11-01 22:10:39'),
 (1275940242,'Lois Spencer','2018-02-22 01:01:38'),
 (NULL,"aaa",NULL);
+
+ANALYZE TABLE `test`.`t1`, `test`.`t2`;
