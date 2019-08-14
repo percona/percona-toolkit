@@ -143,13 +143,6 @@ services:
     - configsvr1
 #   - configsvr2
 #   - configsvr3
-  minio:
-    network_mode: host
-    image: minio/minio
-    environment:
-      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY_ID}
-      - MINIO_SECRET_KEY=${MINIO_SECRET_ACCESS_KEY}
-    command: server /data
   init:
     network_mode: host
     image: ${TEST_MONGODB_FLAVOR}:${TEST_PSMDB_VERSION}
@@ -173,7 +166,6 @@ services:
     - s3-mongo2
     - s3-mongo3
     - standalone
-    - minio
   test:
     build:
       dockerfile: docker/test/Dockerfile
