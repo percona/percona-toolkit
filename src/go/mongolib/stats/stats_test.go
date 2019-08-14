@@ -40,7 +40,8 @@ func TestMain(m *testing.M) {
 		log.Printf("cannot get root path: %s", err.Error())
 		os.Exit(1)
 	}
-	os.Exit(m.Run())
+	// TODO: Review with the new sandbox
+	// os.Exit(m.Run())
 }
 
 func TestTimesLen(t *testing.T) {
