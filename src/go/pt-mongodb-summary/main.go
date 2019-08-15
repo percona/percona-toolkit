@@ -32,7 +32,7 @@ const (
 	TOOLNAME = "pt-mongodb-summary"
 
 	DefaultAuthDB             = "admin"
-	DefaultHost               = "localhost:27017"
+	DefaultHost               = "mongodb://localhost:27017"
 	DefaultLogLevel           = "warn"
 	DefaultRunningOpsInterval = 1000 // milliseconds
 	DefaultRunningOpsSamples  = 5
