@@ -24,16 +24,19 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+// Enable enabled the mongo profiler
 func Enable(ctx context.Context, client *mongo.Client) error {
 	res := client.Database("admin").RunCommand(ctx, primitive.M{"profile": 2})
 	return res.Err()
 }
 
+// Disable disables the mongo profiler
 func Disable(ctx context.Context, client *mongo.Client) error {
 	res := client.Database("admin").RunCommand(ctx, primitive.M{"profile": 0})
 	return res.Err()
 }
 
+// Drop drops the system.profile collection for clean up
 func Drop(ctx context.Context, client *mongo.Client) error {
 	return client.Database("").Collection("system.profile").Drop(ctx)
 }

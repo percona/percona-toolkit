@@ -36,32 +36,51 @@ const (
 )
 
 var (
+	// MongoDBHost is the hostname. Since it runs locally, it is localhost
 	MongoDBHost = "127.0.0.1"
-	//
-	MongoDBShard1ReplsetName    = os.Getenv(envMongoDBShard1ReplsetName)
-	MongoDBShard1PrimaryPort    = os.Getenv(envMongoDBShard1PrimaryPort)
+
+	// MongoDBShard1ReplsetName Replicaset name for shard 1
+	MongoDBShard1ReplsetName = os.Getenv(envMongoDBShard1ReplsetName)
+	// MongoDBShard1PrimaryPort is the port for the primary instance of shard 1
+	MongoDBShard1PrimaryPort = os.Getenv(envMongoDBShard1PrimaryPort)
+	// MongoDBShard1Secondary1Port is the port for the secondary instance 1 of shard 1
 	MongoDBShard1Secondary1Port = os.Getenv(envMongoDBShard1Secondary1Port)
+	// MongoDBShard1Secondary2Port is the port for the secondary instance 2 of shard 1
 	MongoDBShard1Secondary2Port = os.Getenv(envMongoDBShard1Secondary2Port)
-	//
-	MongoDBShard2ReplsetName    = os.Getenv(envMongoDBShard2ReplsetName)
-	MongoDBShard2PrimaryPort    = os.Getenv(envMongoDBShard2PrimaryPort)
+
+	// MongoDBShard2ReplsetName Replicaset name for shard 2
+	MongoDBShard2ReplsetName = os.Getenv(envMongoDBShard2ReplsetName)
+	// MongoDBShard2PrimaryPort is the port for the primary instance of shard 2
+	MongoDBShard2PrimaryPort = os.Getenv(envMongoDBShard2PrimaryPort)
+	// MongoDBShard2Secondary1Port is the port for the secondary instance 1 of shard 2
 	MongoDBShard2Secondary1Port = os.Getenv(envMongoDBShard2Secondary1Port)
+	// MongoDBShard2Secondary2Port is the port for the secondary instance 1 of shard 2
 	MongoDBShard2Secondary2Port = os.Getenv(envMongoDBShard2Secondary2Port)
-	//
-	MongoDBShard3ReplsetName    = os.Getenv(envMongoDBShard3ReplsetName)
-	MongoDBShard3PrimaryPort    = os.Getenv(envMongoDBShard3PrimaryPort)
+
+	// MongoDBShard3ReplsetName Replicaset name for the 3rd cluster
+	MongoDBShard3ReplsetName = os.Getenv(envMongoDBShard3ReplsetName)
+	// MongoDBShard3PrimaryPort is the port for the primary instance of 3rd cluster (non-sharded)
+	MongoDBShard3PrimaryPort = os.Getenv(envMongoDBShard3PrimaryPort)
+	// MongoDBShard3Secondary1Port is the port for the secondary instance 1 on the 3rd cluster
 	MongoDBShard3Secondary1Port = os.Getenv(envMongoDBShard3Secondary1Port)
+	// MongoDBShard3Secondary2Port is the port for the secondary instance 2 on the 3rd cluster
 	MongoDBShard3Secondary2Port = os.Getenv(envMongoDBShard3Secondary2Port)
-	//
+
+	// MongoDBConfigsvrReplsetName Replicaset name for the config servers
 	MongoDBConfigsvrReplsetName = os.Getenv(envMongoDBConfigsvrReplsetName)
-	MongoDBConfigsvr1Port       = os.Getenv(envMongoDBConfigsvr1Port)
-	MongoDBConfigsvr2Port       = os.Getenv(envMongoDBConfigsvr2Port)
-	MongoDBConfigsvr3Port       = os.Getenv(envMongoDBConfigsvr3Port)
-	//
+	// MongoDBConfigsvr1Port Config server primary's port
+	MongoDBConfigsvr1Port = os.Getenv(envMongoDBConfigsvr1Port)
+	// MongoDBConfigsvr2Port       = os.Getenv(envMongoDBConfigsvr2Port)
+	// MongoDBConfigsvr3Port       = os.Getenv(envMongoDBConfigsvr3Port)
+
+	// MongoDBMongosPort mongos port
 	MongoDBMongosPort = os.Getenv(envMongoDBMongosPort)
-	MongoDBUser       = os.Getenv(envMongoDBUser)
-	MongoDBPassword   = os.Getenv(envMongoDBPassword)
-	MongoDBTimeout    = time.Duration(10) * time.Second
+	// MongoDBUser username for all instances
+	MongoDBUser = os.Getenv(envMongoDBUser)
+	// MongoDBPassword password for all instances
+	MongoDBPassword = os.Getenv(envMongoDBPassword)
+	// MongoDBTimeout global connection timeout
+	MongoDBTimeout = time.Duration(10) * time.Second
 
 	// test mongodb hosts map
 	hosts = map[string]map[string]string{
@@ -86,9 +105,12 @@ var (
 	}
 
 	// The values here are just placeholders. They will be overridden by init()
-	basedir              string
-	MongoDBSSLDir        = "../docker/test/ssl"
+	basedir string
+	// MongoDBSSLDir is the directory having the SSL certs
+	MongoDBSSLDir = "../docker/test/ssl"
+	// MongoDBSSLPEMKeyFile PEM file used on all instances
 	MongoDBSSLPEMKeyFile = filepath.Join(MongoDBSSLDir, "client.pem")
+	// MongoDBSSLCACertFile CA file used on all instances
 	MongoDBSSLCACertFile = filepath.Join(MongoDBSSLDir, "rootCA.crt")
 )
 
@@ -112,6 +134,8 @@ func BaseDir() string {
 	return basedir
 }
 
+// GetMongoDBAddr returns the address of an instance by replicaset name and instance type like
+// (rs1, primary) or (rs1, secondary1)
 func GetMongoDBAddr(rs, name string) string {
 	if _, ok := hosts[rs]; !ok {
 		return ""
@@ -123,6 +147,7 @@ func GetMongoDBAddr(rs, name string) string {
 	return ""
 }
 
+// GetMongoDBReplsetAddrs return the addresses of all instances for a replicaset name
 func GetMongoDBReplsetAddrs(rs string) []string {
 	addrs := []string{}
 	if _, ok := hosts[rs]; !ok {

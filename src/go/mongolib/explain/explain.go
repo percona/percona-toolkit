@@ -10,19 +10,22 @@ import (
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 )
 
-type explain struct {
+// Explain contains unexported fields of the query explainer
+type Explain struct {
 	ctx    context.Context
 	client *mongo.Client
 }
 
-func New(ctx context.Context, client *mongo.Client) *explain {
-	return &explain{
+// New returns a new instance of the query explainer
+func New(ctx context.Context, client *mongo.Client) *Explain {
+	return &Explain{
 		ctx:    ctx,
 		client: client,
 	}
 }
 
-func (e *explain) Explain(db string, query []byte) ([]byte, error) {
+// Run runs mongo's explain for the selected database/query
+func (e *Explain) Run(db string, query []byte) ([]byte, error) {
 	var err error
 	var eq proto.ExampleQuery
 
@@ -45,10 +48,10 @@ func (e *explain) Explain(db string, query []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	resultJson, err := bson.MarshalExtJSON(result, true, true)
+	resultJSON, err := bson.MarshalExtJSON(result, true, true)
 	if err != nil {
 		return nil, fmt.Errorf("explain: unable to encode explain result of %s: %s", string(query), err)
 	}
 
-	return resultJson, nil
+	return resultJSON, nil
 }

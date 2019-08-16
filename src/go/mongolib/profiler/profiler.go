@@ -16,6 +16,7 @@ var (
 	DocsBufferSize = 100
 )
 
+// Profiler interface
 type Profiler interface {
 	GetLastError() error
 	QueriesChan() chan stats.Queries
@@ -25,6 +26,7 @@ type Profiler interface {
 	Stop()
 }
 
+// Profile has unexported variables for the profiler
 type Profile struct {
 	// dependencies
 	cursor  *mongo.Cursor
@@ -48,6 +50,7 @@ type Profile struct {
 	stopWaitGroup   sync.WaitGroup
 }
 
+// NewProfiler returns a new instance of the profiler interface
 func NewProfiler(cursor *mongo.Cursor, filters []filter.Filter, ticker <-chan time.Time, stats Stats) Profiler {
 	return &Profile{
 		cursor:  cursor,
@@ -62,14 +65,17 @@ func NewProfiler(cursor *mongo.Cursor, filters []filter.Filter, ticker <-chan ti
 	}
 }
 
+// GetLastError return the latest error
 func (p *Profile) GetLastError() error {
 	return p.lastError
 }
 
+// QueriesChan returns the channels used to read the queries from the profiler
 func (p *Profile) QueriesChan() chan stats.Queries {
 	return p.queriesChan
 }
 
+// Start the profiler
 func (p *Profile) Start(ctx context.Context) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
@@ -81,6 +87,7 @@ func (p *Profile) Start(ctx context.Context) {
 	}
 }
 
+// Stop the profiler
 func (p *Profile) Stop() {
 	p.lock.Lock()
 	defer p.lock.Unlock()
@@ -94,6 +101,7 @@ func (p *Profile) Stop() {
 	}
 }
 
+// TimeoutsChan returns the channels to receive timeout signals
 func (p *Profile) TimeoutsChan() <-chan time.Time {
 	p.lock.Lock()
 	defer p.lock.Unlock()
@@ -111,7 +119,7 @@ func (p *Profile) getData(ctx context.Context) {
 			p.FlushQueries()
 		case <-p.stopChan:
 			// Close the iterator to break the loop on getDocs
-			p.cursor.Close(ctx)
+			p.lastError = p.cursor.Close(ctx)
 			return
 		}
 	}
@@ -138,10 +146,11 @@ func (p *Profile) getDocs(ctx context.Context) {
 		if !valid {
 			continue
 		}
-		p.stats.Add(doc)
+		p.lastError = p.stats.Add(doc)
 	}
 }
 
+// FlushQueries clean all the queries from the queries chan
 func (p *Profile) FlushQueries() {
 	p.queriesChan <- p.stats.Queries()
 	p.stats.Reset()

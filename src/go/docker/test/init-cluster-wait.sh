@@ -9,7 +9,7 @@ while [ $tries -lt $max_tries ]; do
 	[ $? == 0 ] && break
 	echo "# INFO: 'init' has not completed, retrying check in $sleep_secs secs (try $tries/$max_tries)"
 	sleep $sleep_secs
-	tries=$(($tries + 1))
+	tries=$((tries + 1))
 done
 if [ $tries -ge $max_tries ]; then
         echo "# ERROR: reached max tries $max_tries, exiting"
