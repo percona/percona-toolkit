@@ -9,6 +9,35 @@ services:
   - docker
 
 env:
+  global:
+    - DOCKER_COMPOSE_VERSION: 1.8.0
+    - TEST_MONGODB_FLAVOR: mongo
+    - TEST_PSMDB_VERSION: 4.0
+    - TEST_MONGODB_ADMIN_USERNAME: admin
+    - TEST_MONGODB_ADMIN_PASSWORD: admin123456
+    - TEST_MONGODB_USERNAME: test
+    - TEST_MONGODB_PASSWORD: 123456
+    - TEST_MONGODB_STANDALONE_PORT: 27017
+    - TEST_MONGODB_MONGOS_PORT: 17000
+    - TEST_MONGODB_S1_RS: rs1
+    - TEST_MONGODB_S1_PRIMARY_PORT: 17001
+    - TEST_MONGODB_S1_SECONDARY1_PORT: 17002
+    - TEST_MONGODB_S1_SECONDARY2_PORT: 17003
+    - TEST_MONGODB_S2_RS: rs2
+    - TEST_MONGODB_S2_PRIMARY_PORT: 17004
+    - TEST_MONGODB_S2_SECONDARY1_PORT: 17005
+    - TEST_MONGODB_S2_SECONDARY2_PORT: 17006
+    - TEST_MONGODB_CONFIGSVR_RS: csReplSet
+    - TEST_MONGODB_CONFIGSVR1_PORT: 17007                                                  ce
+    - TEST_MONGODB_CONFIGSVR2_PORT: 17008
+    - TEST_MONGODB_CONFIGSVR3_PORT: 17009
+    - TEST_MONGODB_S3_RS: rs3
+    - TEST_MONGODB_S3_PRIMARY_PORT: 17021
+    - TEST_MONGODB_S3_SECONDARY1_PORT: 17022
+    - TEST_MONGODB_S3_SECONDARY2_PORT: 17023
+    - MINIO_ENDPOINT: http://localhost:9000/
+    - MINIO_ACCESS_KEY_ID: example00000
+    - MINIO_SECRET_ACCESS_KEY: secret00000
   matrix:
     - MONGODB_IMAGE=mongo:3.0
     - MONGODB_IMAGE=mongo:3.2
@@ -17,18 +46,21 @@ env:
     - MONGODB_IMAGE=percona/percona-server-mongodb:3.2
     - MONGODB_IMAGE=percona/percona-server-mongodb:3.4
 
+before_install:
+    - sudo apt-get update
+    - sudo apt-get install -o Dpkg::Options::="--force-confold" --force-yes -y docker-ce
+    - docker-compose --version
+
 install:
   - go get -u github.com/golang/dep/cmd/dep
 
 before_script:
-  # run docker containers
-  - docker-compose up -d
   # log versions
   - docker --version
   - docker-compose --version
-  - docker-compose exec mongo mongo --version
+  # run docker containers
+  - docker-compose up -d init
   # we need at least one document in test db
-  - docker-compose exec mongo mongo --eval 'db.init.insert({})'
   - dep ensure
 
 script:

@@ -7,9 +7,11 @@ import (
 	"sort"
 	"strings"
 
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/percona-toolkit/src/go/mongolib/util"
-	"gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -112,7 +114,7 @@ func (f *Fingerprinter) Fingerprint(doc proto.SystemProfile) (Fingerprint, error
 			break
 		}
 		// first key is operation type
-		op = query[0].Name
+		op = query[0].Key
 		collection, _ = query[0].Value.(string)
 		switch op {
 		case "group":
@@ -206,10 +208,27 @@ func getKeys(query interface{}, keyFilters []string, level int) []string {
 	ks := []string{}
 	var q []bson.M
 	switch v := query.(type) {
-	case bson.M:
+	case primitive.M:
 		q = append(q, v)
 	case []bson.M:
 		q = v
+	case primitive.A:
+		for _, intval := range v {
+			ks = append(ks, getKeys(intval, keyFilters, level+1)...)
+		}
+		return ks
+	case proto.BsonD:
+		for _, intval := range v {
+			ks = append(ks, getKeys(intval, keyFilters, level+1)...)
+		}
+		return ks
+	case primitive.E:
+		if matched, _ := regexp.MatchString("^\\$", v.Key); !matched {
+			ks = append(ks, v.Key)
+		}
+
+		ks = append(ks, getKeys(v.Value, keyFilters, level+1)...)
+		return ks
 	default:
 		return ks
 	}
@@ -224,7 +243,7 @@ func getKeys(query interface{}, keyFilters []string, level int) []string {
 					ks = append(ks, key)
 				}
 
-				ks = append(ks, getKeys(value, keyFilters, level)...)
+				ks = append(ks, getKeys(value, keyFilters, level+1)...)
 			}
 		}
 	}
