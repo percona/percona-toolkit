@@ -65,7 +65,7 @@ func TestRegularIterator(t *testing.T) {
 	client.Database(database).Drop(ctx)
 
 	// re-enable the profiler
-	res = client.Database("admin").RunCommand(ctx, primitive.M{"profile": 2, "slowms": 2})
+	res = client.Database("admin").RunCommand(ctx, primitive.D{{"profile", 2}, {"slowms", 2}})
 	if res.Err() != nil {
 		t.Fatalf("Cannot enable profiler: %s", res.Err())
 	}
