@@ -161,7 +161,7 @@ func TestExplain(t *testing.T) {
 			if err != nil {
 				t.Fatalf("cannot marshal json %s: %s", dir+file.Name(), err)
 			}
-			got, err := ex.Explain("", query)
+			got, err := ex.Run("", query)
 			expectErrMsg := expectError[file.Name()]
 			if (err != nil) != expectErrMsg {
 				t.Fatalf("explain error for %q \n %s\nshould be '%v' but was '%v'", string(query), file.Name(), expectErrMsg, err)
