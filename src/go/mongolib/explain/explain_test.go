@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
+	"github.com/kr/pretty"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -157,6 +158,8 @@ func TestExplain(t *testing.T) {
 			if err != nil {
 				t.Fatalf("cannot load sample %s: %s", dir+file.Name(), err)
 			}
+			pretty.Println(eq)
+
 			query, err := bson.MarshalExtJSON(eq, true, true)
 			if err != nil {
 				t.Fatalf("cannot marshal json %s: %s", dir+file.Name(), err)

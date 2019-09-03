@@ -29,6 +29,7 @@ use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
+use Carp;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
@@ -41,7 +42,7 @@ sub new {
    }
 
    my $self = {
-      Quoter => $args{Quoter},
+       Quoter => $args{Quoter},
    };
 
    return bless $self, $class;
@@ -98,13 +99,21 @@ sub _get_first_values {
    }
    my ($cxn, $tbl, $index, $n_index_cols) = @args{@required_args};
 
-   my $q = $self->{Quoter};
+   my $q = $self->{quoter};
 
    # Select just the index columns.
    my $index_struct  = $tbl->{tbl_struct}->{keys}->{$index};
    my $index_cols    = $index_struct->{cols};
-   my $index_columns = join (', ',
+   my $index_columns;
+   eval {
+   $index_columns = join (', ',
       map { $q->quote($_) } @{$index_cols}[0..($n_index_cols - 1)]);
+  };
+  if ($EVAL_ERROR) {
+      confess "$EVAL_ERROR";
+  }
+
+
 
    # Where no index column is null, because we can't > NULL.
    my @where;
