@@ -52,17 +52,23 @@ $sb->load_file('master', "$sample/long_fk_constraints.sql");
 
 warn $output;
 
-my $constraints = $master_dbh->selectall_arrayref("SELECT TABLE_NAME, CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE table_schema='bug1215587' and (TABLE_NAME='Table1' OR TABLE_NAME='Table2') and CONSTRAINT_NAME LIKE '%fkey%' ORDER BY TABLE_NAME, CONSTRAINT_NAME"); 
-
-warn Data::Dumper::Dumper($constraints);
+my $query = <<_SQL;
+  SELECT TABLE_NAME, CONSTRAINT_NAME 
+    FROM information_schema.KEY_COLUMN_USAGE 
+   WHERE table_schema='bug1215587' 
+     and (TABLE_NAME='Table1' OR TABLE_NAME='Table2') 
+     and CONSTRAINT_NAME LIKE '%fkey%' 
+ORDER BY TABLE_NAME, CONSTRAINT_NAME
+_SQL
+my $constraints = $master_dbh->selectall_arrayref($query); 
 
 is_deeply(
    $constraints,
    [
     [ 'Table1', '__fkey1a' ],
     [ 'Table1', '__fkey_SALES_RECURRING_PROFILE_CUSTOMER_CUSTOMER_ENTITY_ENTITY_I' ],
+    [ 'Table2', '__fkey2b' ],
     [ 'Table2', '_fkey2a' ],
-    [ 'Table2', '__fkey2b' ]
    ],
    "First run adds or removes underscore from constraint names, accordingly"
 );

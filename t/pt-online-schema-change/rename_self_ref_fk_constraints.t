@@ -39,7 +39,9 @@ my $sample  = "t/pt-online-schema-change/samples/";
 # pt-online-schema-change fails with duplicate key in table for self-referencing FK
 # ############################################################################
 
+diag("Before loading sql");
 $sb->load_file('master', "$sample/bug-1632522.sql");
+diag("after loading sql");
 
 # run once: we expect the constraint name to be appended with one underscore
 # but the self-referencing constraint will have 2 underscore
