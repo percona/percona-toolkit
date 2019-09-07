@@ -18,9 +18,10 @@ import (
 )
 
 var (
-	version = "dev"
-	commit  = "none"
-	date    = "unknown"
+	Build     string = "01-01-1980" //nolint
+	Commit    string                //nolint
+	GoVersion string = "1.8"        //nolint
+	Version   string = "3.0.1"      //nolint
 )
 
 type connOpts struct {
@@ -190,7 +191,8 @@ func safeConnString(opts connOpts, dbName string) string {
 func parseCommandLineOpts(args []string) (cliOptions, error) {
 	app := kingpin.New("pt-pg-summary", "Percona Toolkit - PostgreSQL Summary")
 	// version, commit and date will be set at build time by the compiler -ldflags param
-	app.Version(fmt.Sprintf("%s version %s, git commit %s, date: %s", app.Name, version, commit, date))
+	app.Version(fmt.Sprintf("%s version %s\nGIT commit %s\nDate: %s\nGo version: %s",
+		app.Name, Version, Commit, Build, GoVersion))
 	opts := cliOptions{app: app}
 
 	app.Flag("ask-pass", "Prompt for a password when connecting to PostgreSQL").
