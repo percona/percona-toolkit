@@ -10,6 +10,14 @@
   version = "v1.4.2"
 
 [[projects]]
+  digest = "1:c39fbf3b3e138accc03357c72417c0153c54cc1ae8c9f40e8f120a550d876a76"
+  name = "github.com/Percona-Lab/pt-pg-summary"
+  packages = ["models"]
+  pruneopts = ""
+  revision = "f06beea959eb00acfe44ce39342c27582ad84caa"
+  version = "v0.1.9"
+
+[[projects]]
   digest = "1:f82b8ac36058904227087141017bb82f4b0fc58272990a4cdae3e2d6d222644e"
   name = "github.com/StackExchange/wmi"
   packages = ["."]
@@ -81,11 +89,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:6a6322a15aa8e99bd156fbba0aae4e5d67b4bb05251d860b348a45dfdcba9cce"
+  digest = "1:c823f556d11763bb805a60a77226ae321843c9bd1454ee5b808ca169ac515762"
   name = "github.com/golang/snappy"
   packages = ["."]
   pruneopts = ""
-  revision = "2a8bb927dd31d8daada140a5d09578521ce5c36a"
+  revision = "ff6b7dc882cf4cfba7ee0b9f7dcc1ac096c554aa"
 
 [[projects]]
   branch = "master"
@@ -165,11 +173,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:1adb91baf59317a1614c3b465b2734066c256d1dca99d5526baa43274542a737"
+  digest = "1:457024f04029bb321d759cc3b2c46b7e0e43572e3a663ce7d006aeb41efa2b17"
   name = "github.com/percona/go-mysql"
   packages = ["query"]
   pruneopts = ""
-  revision = "c5d0b4a3add9c9bf5bb26b2ab823289e395a3f98"
+  revision = "197f4ad8db8d1b04ff408042119176907c971f0a"
 
 [[projects]]
   digest = "1:1d7e1867c49a6dd9856598ef7c3123604ea3daabf5b83f303ff457bcbc410b1d"
@@ -188,7 +196,7 @@
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:2226ffdae873216a5bc8a0bab7a51ac670b27a4aed852007d77600f809aa04e3"
+  digest = "1:55dcddb2ba6ab25098ee6b96f176f39305f1fde7ea3d138e7e10bb64a5bf45be"
   name = "github.com/shirou/gopsutil"
   packages = [
     "cpu",
@@ -198,8 +206,8 @@
     "process",
   ]
   pruneopts = ""
-  revision = "d80c43f9c984a48783daf22f4bd9278006ae483a"
-  version = "v2.19.7"
+  revision = "e4ec7b275ada47ca32799106c2dba142d96aaf93"
+  version = "v2.19.8"
 
 [[projects]]
   branch = "master"
@@ -274,14 +282,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a530f8e0c0ee8a3b440f9f0b0e9f4e5d5e47cfe3a581086ce32cd8ba114ddf4f"
+  digest = "1:2f8d339c3b89d5abf9a78aafe1e9fbe548f3b1fb9be5c3117036940904d39527"
   name = "golang.org/x/crypto"
   packages = [
     "pbkdf2",
     "ssh/terminal",
   ]
   pruneopts = ""
-  revision = "9756ffdc24725223350eb3266ffb92590d28f278"
+  revision = "71b5226ff73902d121cd9dbbdfdb67045a805845"
 
 [[projects]]
   branch = "master"
@@ -293,14 +301,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d9222a165eab05f8b8f085c68fdee5ecc670f4f834e3ecbac6069dd3b768a6b3"
+  digest = "1:ffaa20332022643a821848aa2322787bbfbf06bceb4b4e84cde3b05d07fa51ac"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = ""
-  revision = "c7b8b68b14567162c6602a7c5659ee0f26417c18"
+  revision = "749cb33beabd9aa6d3178e3de05bcc914f70b2bf"
 
 [[projects]]
   digest = "1:740b51a55815493a8d0f2b1e0d0ae48fe48953bf7eaf3fcc4198823bf67768c0"
@@ -322,6 +330,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/Masterminds/semver",
+    "github.com/Percona-Lab/pt-pg-summary/models",
     "github.com/alecthomas/kingpin",
     "github.com/go-ini/ini",
     "github.com/golang/mock/gomock",
