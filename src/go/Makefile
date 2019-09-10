@@ -1,6 +1,6 @@
 GO := go
 pkgs   = $(shell find . -type d -name "pt-*" -exec basename {} \;)
-VERSION="3.0.13" 
+VERSION=$(shell git describe --abbrev=0 --tags)
 BUILD=$(shell date +%FT%T%z)
 GOVERSION=$(shell go version | cut --delimiter=" " -f3)
 COMMIT=$(shell git rev-list -1 HEAD)
