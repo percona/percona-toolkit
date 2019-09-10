@@ -1,6 +1,50 @@
 Percona Toolkit
 ***************
 
+v3.1.0 released 2019-09-12
+==========================
+
+New features and improvements
+
+* :jirabug:`PT-1696`: the new ``pt-pg-summary`` tool supports PostgreSQL data
+  collection in a way similar to other PT summary tools
+* :jirabug:`PT-1663`: ``pt-stalk`` has two new options limiting the amount of
+  disk space it can consume: ``--retention-size`` option makes ``pt-stalk`` to
+  store less than the specified amount of megabytes, while ``--retention-count``
+  option limits the number of runs for which data are kept
+* :jirabug:`PT-1741`: Migration to a new MongoDB driver was done.
+* :jirabug:`PT-1761`: ``pt-online-schema-change`` will not run under MySQL
+  8.0.14 .. 8.0.17 if the table has foreign keys
+
+  .. note:: There is an error in MySQL from versions 8.0.14 up to the current
+     8.0.17 that makes MySQL die under certain conditions when trying to rename
+     a table. Since the last step for pt-online-schema-change is to rename the
+     tables to swap the old and new ones, we have added a check that prevents
+     running pt-online-schema-change if the conditions for this error are
+     met.
+
+Fixed bugs
+
+* :jirabug:`PT-1114`: ``pt-table-checksum`` failed when the table was empty
+* :jirabug:`PT-1344`: ``pt-online-schema-change`` failed to detect hostnames
+  with a specified port number
+* :jirabug:`PT-1575`: ``pt-mysql-summary`` did not print the PXC section for
+  PXC 5.6 and 5.7
+* :jirabug:`PT-1630`: ``pt-table-checksum`` had a regression which prevented it
+  from working with Galera cluster
+* :jirabug:`PT-1633`: ``pt-config-diff`` incorrectly parsed variables with
+  numbers having K, M, G or T suffix (Thanks to Dieter Adriaenssens)
+* :jirabug:`PT-1709`: ``pt-upgrade`` generated "Use of uninitialized value in
+  concatenation (.) or string" error in case of invalid MySQL packets
+* :jirabug:`PT-1720`: ``pt-pmp`` exited with an error in case of any unknown
+  option in a common PT configuration file
+* :jirabug:`PT-1728`: ``pt-table-checksum`` failed to scan small tables that
+  get wiped out often
+* :jirabug:`PT-1734`: ``pt-stalk`` did non-strict matching for "log_error",
+  resulting in wider filtering
+* :jirabug:`PT-1114`: ``pt-diskstats`` didn't work for newer Linux kernels
+  starting from 4.18
+
 v3.0.13 released 2019-01-03
 ===========================
 
