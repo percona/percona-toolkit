@@ -10512,20 +10512,24 @@ sub main {
          }
       }
 
-      for my $slave (@$slaves) {
-          my $qrt_plugin_status;
-          eval {
-              ($qrt_plugin_status) = $slave->{dbh}->selectrow_arrayref('SELECT @@QUERY_RESPONSE_TIME_SESSION_STATS' );
-          };
-          if ($EVAL_ERROR) {
-              PTDEBUG && _d('QRT plugin is not installed on slave '.$slave->{dsn_name});
-              $slave->{qrt_plugin_status} = undef;
-              next;
-          }
-          $slave->{qrt_plugin_status} = $qrt_plugin_status->[0];
-          if ($slave->{qrt_plugin_status}) {
-              PTDEBUG && _d("Disabling qrt plugin state on slave ".$slave->{dsn_name});
-              $slave->{dbh}->do('SET GLOBAL query_response_time_stats = off');
+      # don't touch the QRT plugin on the slave unless we asked for it
+      # to be disabled.
+      if ($o->get('disable-qrt-plugin')) {
+          for my $slave (@$slaves) {
+              my $qrt_plugin_status;
+              eval {
+                  ($qrt_plugin_status) = $slave->{dbh}->selectrow_arrayref('SELECT @@QUERY_RESPONSE_TIME_SESSION_STATS' );
+              };
+              if ($EVAL_ERROR) {
+                  PTDEBUG && _d('QRT plugin is not installed on slave '.$slave->{dsn_name});
+                  $slave->{qrt_plugin_status} = undef;
+                  next;
+              }
+              $slave->{qrt_plugin_status} = $qrt_plugin_status->[0];
+              if ($slave->{qrt_plugin_status}) {
+                  PTDEBUG && _d("Disabling qrt plugin state on slave ".$slave->{dsn_name});
+                  $slave->{dbh}->do('SET GLOBAL query_response_time_stats = off');
+              }
           }
       }
 
