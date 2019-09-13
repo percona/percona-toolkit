@@ -1,15 +1,16 @@
 GO := go
 pkgs   = $(shell find . -type d -name "pt-*" -exec basename {} \;)
-VERSION="3.0.13" 
+VERSION=$(shell git describe --abbrev=0 --tags)
 BUILD=$(shell date +%FT%T%z)
 GOVERSION=$(shell go version | cut --delimiter=" " -f3)
+COMMIT=$(shell git rev-list -1 HEAD)
 GOUTILSDIR ?= $(GOPATH)/bin
 
 PREFIX=$(shell pwd)
 TOP_DIR=$(shell git rev-parse --show-toplevel)
 BIN_DIR=$(shell git rev-parse --show-toplevel)/bin
 SRC_DIR=$(shell git rev-parse --show-toplevel)/src/go
-LDFLAGS="-X main.Version=${VERSION} -X main.Build=${BUILD} -X main.GoVersion=${GOVERSION} -s -w"
+LDFLAGS="-X main.Version=${VERSION} -X main.Build=${BUILD} -X main.GoVersion=${GOVERSION} -X main.Commit=${COMMIT} -s -w"
 
 TEST_PSMDB_VERSION?=3.6
 TEST_MONGODB_FLAVOR?=percona/percona-server-mongodb

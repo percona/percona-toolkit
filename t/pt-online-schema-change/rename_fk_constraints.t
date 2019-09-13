@@ -21,6 +21,13 @@ my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
 
+my $vp = VersionParser->new($master_dbh);
+warn Data::Dumper::Dumper($vp);
+
+if ($vp->cmp('8.0.14') > -1 && $vp->flavor() !~ m/maria/i) {
+   plan skip_all => 'Cannot run this test under the current MySQL version';
+}
+
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
@@ -50,16 +57,24 @@ $sb->load_file('master', "$sample/bug-1215587.sql");
       qw(--execute)) },
 );
 
-my $constraints = $master_dbh->selectall_arrayref("SELECT TABLE_NAME, CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE table_schema='bug1215587' and (TABLE_NAME='Table1' OR TABLE_NAME='Table2') and CONSTRAINT_NAME LIKE '%fkey%' ORDER BY TABLE_NAME, CONSTRAINT_NAME"); 
+my $query = <<__SQL;
+  SELECT TABLE_NAME, CONSTRAINT_NAME 
+    FROM information_schema.KEY_COLUMN_USAGE 
+   WHERE table_schema='bug1215587' 
+     and (TABLE_NAME='Table1' OR TABLE_NAME='Table2') 
+     and CONSTRAINT_NAME LIKE '%fkey%' 
+ORDER BY TABLE_NAME, CONSTRAINT_NAME 
+__SQL
+my $constraints = $master_dbh->selectall_arrayref($query); 
 
 
 is_deeply(
    $constraints,
    [
-      ['Table1', '_fkey1b'],
       ['Table1', '__fkey1a'],
-      ['Table2', '_fkey2a'],
+      ['Table1', '_fkey1b'],
       ['Table2', '__fkey2b'],
+      ['Table2', '_fkey2a'],
    ],
    "First run adds or removes underscore from constraint names, accordingly"
 );
@@ -81,10 +96,10 @@ $constraints = $master_dbh->selectall_arrayref("SELECT TABLE_NAME, CONSTRAINT_NA
 is_deeply(
    $constraints,
    [
-      ['Table1', 'fkey1a'],
       ['Table1', '__fkey1b'],
-      ['Table2', 'fkey2b'],
+      ['Table1', 'fkey1a'],
       ['Table2', '__fkey2a'],
+      ['Table2', 'fkey2b'],
    ],
    "Second run adds or removes underscore from constraint names, accordingly"
 );
@@ -103,10 +118,10 @@ $constraints = $master_dbh->selectall_arrayref("SELECT TABLE_NAME, CONSTRAINT_NA
 is_deeply(
    $constraints,
    [
-      ['Table1', 'fkey1b'],
       ['Table1', '_fkey1a'],
-      ['Table2', 'fkey2a'],
+      ['Table1', 'fkey1b'],
       ['Table2', '_fkey2b'],
+      ['Table2', 'fkey2a'],
    ],
    "Third run toggles constraint names back to how they were"
 );
