@@ -62,7 +62,6 @@
 
 [[constraint]]
   name = "github.com/sirupsen/logrus"
-  version = "1.0.4"
 
 [[constraint]]
   branch = "v2"
@@ -70,4 +69,3 @@
 
 [[constraint]]
   name = "go.mongodb.org/mongo-driver"
-  version = "~1.0.0"
