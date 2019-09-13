@@ -41,9 +41,10 @@ const (
 )
 
 var (
-	Build     string = "01-01-1980"
-	GoVersion string = "1.8"
-	Version   string = "3.0.1"
+	Build     string = "01-01-1980" // nolint
+	GoVersion string = "1.8"        // nolint
+	Version   string = "3.0.1"      // nolint
+	Commit    string                // nolint
 )
 
 type TimedStats struct {
@@ -126,20 +127,20 @@ type clusterwideInfo struct {
 }
 
 type cliOptions struct {
-	Help               bool
 	Host               string
 	User               string
 	Password           string
 	AuthDB             string
 	LogLevel           string
+	OutputFormat       string
+	SSLCAFile          string
+	SSLPEMKeyFile      string
+	RunningOpsSamples  int
+	RunningOpsInterval int
+	Help               bool
 	Version            bool
 	NoVersionCheck     bool
 	NoRunningOps       bool
-	OutputFormat       string
-	RunningOpsSamples  int
-	RunningOpsInterval int
-	SSLCAFile          string
-	SSLPEMKeyFile      string
 }
 
 type collectedInfo struct {
@@ -179,6 +180,7 @@ func main() {
 		fmt.Println(TOOLNAME)
 		fmt.Printf("Version %s\n", Version)
 		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
+		fmt.Printf("Commit: %s\n", Commit)
 		return
 	}
 
@@ -187,10 +189,8 @@ func main() {
 		advice, err := versioncheck.CheckUpdates(TOOLNAME, Version)
 		if err != nil {
 			log.Infof("cannot check version updates: %s", err.Error())
-		} else {
-			if advice != "" {
-				log.Infof(advice)
-			}
+		} else if advice != "" {
+			log.Infof(advice)
 		}
 	}
 
@@ -203,9 +203,12 @@ func main() {
 	if err := client.Connect(ctx); err != nil {
 		log.Fatalf("Cannot connect to MongoDB: %s", err)
 	}
-	defer client.Disconnect(ctx)
+	defer client.Disconnect(ctx) // nolint
 
 	hostnames, err := util.GetHostnames(ctx, client)
+	if err != nil {
+		log.Errorf("Cannot get hostnames: %s", err)
+	}
 	log.Debugf("hostnames: %v", hostnames)
 
 	ci := &collectedInfo{}
@@ -288,39 +291,39 @@ func formatResults(ci *collectedInfo, format string) ([]byte, error) {
 
 		t := template.Must(template.New("replicas").Parse(templates.Replicas))
 		if err := t.Execute(buf, ci.ReplicaMembers); err != nil {
-			return nil, errors.Wrap(err, "cannnot parse replicas section of the output template")
+			return nil, errors.Wrap(err, "cannot parse replicas section of the output template")
 		}
 
 		t = template.Must(template.New("hosttemplateData").Parse(templates.HostInfo))
 		if err := t.Execute(buf, ci.HostInfo); err != nil {
-			return nil, errors.Wrap(err, "cannnot parse hosttemplateData section of the output template")
+			return nil, errors.Wrap(err, "cannot parse hosttemplateData section of the output template")
 		}
 
 		t = template.Must(template.New("runningOps").Parse(templates.RunningOps))
 		if err := t.Execute(buf, ci.RunningOps); err != nil {
-			return nil, errors.Wrap(err, "cannnot parse runningOps section of the output template")
+			return nil, errors.Wrap(err, "cannot parse runningOps section of the output template")
 		}
 
 		t = template.Must(template.New("ssl").Parse(templates.Security))
 		if err := t.Execute(buf, ci.SecuritySettings); err != nil {
-			return nil, errors.Wrap(err, "cannnot parse ssl section of the output template")
+			return nil, errors.Wrap(err, "cannot parse ssl section of the output template")
 		}
 
 		if ci.OplogInfo != nil && len(ci.OplogInfo) > 0 {
 			t = template.Must(template.New("oplogInfo").Parse(templates.Oplog))
 			if err := t.Execute(buf, ci.OplogInfo[0]); err != nil {
-				return nil, errors.Wrap(err, "cannnot parse oplogInfo section of the output template")
+				return nil, errors.Wrap(err, "cannot parse oplogInfo section of the output template")
 			}
 		}
 
 		t = template.Must(template.New("clusterwide").Parse(templates.Clusterwide))
 		if err := t.Execute(buf, ci.ClusterWideInfo); err != nil {
-			return nil, errors.Wrap(err, "cannnot parse clusterwide section of the output template")
+			return nil, errors.Wrap(err, "cannot parse clusterwide section of the output template")
 		}
 
 		t = template.Must(template.New("balancer").Parse(templates.BalancerStats))
 		if err := t.Execute(buf, ci.BalancerStats); err != nil {
-			return nil, errors.Wrap(err, "cannnot parse balancer section of the output template")
+			return nil, errors.Wrap(err, "cannot parse balancer section of the output template")
 		}
 	}
 
@@ -566,7 +569,8 @@ func getNodeType(ctx context.Context, client *mongo.Client) (string, error) {
 	return "mongod", nil
 }
 
-func getOpCountersStats(ctx context.Context, client *mongo.Client, count int, sleep time.Duration) (*opCounters, error) {
+func getOpCountersStats(ctx context.Context, client *mongo.Client, count int,
+	sleep time.Duration) (*opCounters, error) {
 	oc := &opCounters{}
 	prevOpCount := &opCounters{}
 	ss := proto.ServerStatus{}

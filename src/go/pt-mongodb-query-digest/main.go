@@ -38,9 +38,10 @@ const (
 )
 
 var (
-	Build     string = "01-01-1980"
-	GoVersion string = "1.8"
-	Version   string = "3.0.1"
+	Build     string = "01-01-1980" //nolint
+	GoVersion string = "1.8"        //nolint
+	Version   string = "3.0.1"      //nolint
+	Commit    string                //nolint
 )
 
 type cliOptions struct {
@@ -90,6 +91,7 @@ func main() {
 		fmt.Println(TOOLNAME)
 		fmt.Printf("Version %s\n", Version)
 		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
+		fmt.Printf("Commit: %s\n", Commit)
 		return
 	}
 
@@ -98,10 +100,8 @@ func main() {
 		advice, err := versioncheck.CheckUpdates(TOOLNAME, Version)
 		if err != nil {
 			log.Infof("cannot check version updates: %s", err.Error())
-		} else {
-			if advice != "" {
-				log.Warn(advice)
-			}
+		} else if advice != "" {
+			log.Warn(advice)
 		}
 	}
 
