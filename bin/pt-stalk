@@ -955,12 +955,12 @@ collect() {
          (echo $ts; df -k) >> "$d/$p-df" &
          (echo $ts; netstat -antp) >> "$d/$p-netstat"   &
          (echo $ts; netstat -s)    >> "$d/$p-netstat_s" &
-      fi
-      (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
+     fi
+      ($CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
          >> "$d/$p-processlist" &
       if [ "$have_lock_waits_table" ]; then
-         (echo $ts; lock_waits)   >>"$d/$p-lock-waits" &
-         (echo $ts; transactions) >>"$d/$p-transactions" &
+         (lock_waits)   >>"$d/$p-lock-waits" &
+         (transactions) >>"$d/$p-transactions" &
       fi
 
       if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes" ]; then
@@ -968,7 +968,7 @@ collect() {
       fi
 
       if [ "${mysql_version}" '>' "5.6" ]; then
-         (echo $ts; ps_prepared_statements) >> "$d/$p-prepared-statements" &
+         (ps_prepared_statements) >> "$d/$p-prepared-statements" &
       fi
 
       slave_status "$d/$p-slave-status" "${mysql_version}" 
