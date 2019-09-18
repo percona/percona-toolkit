@@ -4014,7 +4014,7 @@ sub name {
 
 sub description {
    my ($self) = @_;
-   return sprintf("%s -> %s:%s", $self->name(), $self->{dsn}->{h}, $self->{dsn}->{P} || 'socket');
+   return sprintf("%s -> %s:%s", $self->name(), $self->{dsn}->{h} || 'localhost' , $self->{dsn}->{P} || 'socket');
 }
 
 sub get_id {
@@ -4493,6 +4493,7 @@ sub get_slave_status {
               if (!$self->{channel}) {
                   die 'This server returned more than one row for SHOW SLAVE STATUS but "channel" was not specified on the command line';
               }
+              my $slave_use_channels;
               for my $row (@$sss_rows) {
                   $row = { map { lc($_) => $row->{$_} } keys %$row }; # lowercase the keys
                   if ($row->{channel_name} eq $self->{channel}) {
@@ -4500,8 +4501,11 @@ sub get_slave_status {
                       last;
                   }
               }
+              if (!$ss && $slave_use_channels) {
+                 die 'This server is using replication channels but "channel" was not specified on the command line';
+              }
           } else {
-              if ($sss_rows->[0]->{channel_name} && $sss_rows->[0]->{channel_name} ne $self->{channel}) {
+              if ($sss_rows->[0]->{channel_name} && $sss_rows->[0]->{channel_name} ne ($self->{channel} || '')) {
                   die 'This server is using replication channels but "channel" was not specified on the command line';
               } else {
                   $ss = $sss_rows->[0];
@@ -4516,7 +4520,7 @@ sub get_slave_status {
 
       PTDEBUG && _d('This server returns nothing for SHOW SLAVE STATUS');
       $self->{not_a_slave}->{$dbh}++;
-  }
+  } 
 }
 
 sub get_master_status {
@@ -4974,7 +4978,7 @@ sub wait {
    if ( $pr ) {
       $pr_callback = sub {
          my ($fraction, $elapsed, $remaining, $eta, $completed) = @_;
-         my $dsn_name = $worst->{cxn}->name();
+         my $dsn_name = $worst->{cxn}->{dsn_name};
          if ( defined $worst->{lag} ) {
             print STDERR "Replica lag is " . ($worst->{lag} || '?')
                . " seconds on $dsn_name.  Waiting.\n";
@@ -4983,19 +4987,19 @@ sub wait {
             if ($self->{fail_on_stopped_replication}) {
                 die 'replication is stopped';
             }
-            print STDERR "Replica $dsn_name is stopped.  Waiting.\n";
+            print STDERR "(1) Replica '$dsn_name' is stopped.  Waiting.\n";
          }
          return;
       };
       $pr->set_callback($pr_callback);
 
       $pr_first_report = sub {
-         my $dsn_name = $worst->{cxn}->name();
+         my $dsn_name = $worst->{cxn}->{dsn_name};
          if ( !defined $worst->{lag} ) {
             if ($self->{fail_on_stopped_replication}) {
                 die 'replication is stopped';
             }
-            print STDERR "Replica $dsn_name is stopped.  Waiting.\n";
+            print STDERR "(2) Replica $dsn_name is stopped.  Waiting.\n";
          }
          return;
       };
@@ -8655,6 +8659,7 @@ sub main {
          OptionParser => $o,
          DSNParser    => $dp,
          Quoter       => $q,
+         channel      => $o->get('channel'),
       );
 
       $slaves = $ms->get_slaves(
@@ -11997,6 +12002,18 @@ the server very busy, this can cause an outage.
 =item --ask-pass
 
 Prompt for a password when connecting to MySQL.
+
+=item --channel
+
+type: string
+
+Channel name used when connected to a server using replication channels.
+Suppose you have two masters, master_a at port 12345, master_b at port 1236 and
+a slave connected to both masters using channels chan_master_a and chan_master_b.
+If you want to run pt-table-sync to syncronize the slave against master_a, pt-table-sync
+won't be able to determine what's the correct master since SHOW SLAVE STATUS
+will return 2 rows. In this case, you can use --channel=chan_master_a to specify
+the channel name to use in the SHOW SLAVE STATUS command.
 
 =item --charset
 
