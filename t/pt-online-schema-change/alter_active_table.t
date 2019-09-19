@@ -170,6 +170,7 @@ $master_dbh->do("TRUNCATE TABLE t");
 $master_dbh->do("LOAD DATA INFILE '$trunk/t/pt-online-schema-change/samples/basic_no_fks.data' INTO TABLE t");
 $master_dbh->do("ANALYZE TABLE t");
 $sb->wait_for_slaves();
+sleep(2);
 
 # Start inserting, updating, and deleting rows at random.
 start_query_table(qw(pt_osc t id));
@@ -179,7 +180,7 @@ start_query_table(qw(pt_osc t id));
    sub { pt_online_schema_change::main(
       "$master_dsn,D=pt_osc,t=t",
       qw(--set-vars innodb_lock_wait_timeout=5),
-      qw(--print --execute --chunk-size 100 --alter ENGINE=InnoDB)) },
+      qw(--print --execute --chunk-size 100 --alter ENGINE=InnoDB --no-check-plan)) },
    stderr => 1,
 );
 
@@ -234,6 +235,7 @@ start_query_table(qw(pt_osc t id));
    ) },
    stderr => 1,
 );
+diag($output);
 
 # Stop changing the table's data.
 stop_query_table();
