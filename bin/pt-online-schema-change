@@ -2284,6 +2284,9 @@ sub get_cxn_params {
                      qw(h P));
    }
    else {
+      warn "A----------------------------------------------------------------------------------------------------";
+      warn Data::Dumper::Dumper($info);
+      Carp::confess('l');
       $dsn = 'DBI:mysql:' . ( $info->{D} || '' ) . ';'
          . join(';', map  { "$opts{$_}->{dsn}=$info->{$_}" }
                      grep { defined $info->{$_} }
@@ -2341,6 +2344,7 @@ sub get_dbh {
    while ( !$dbh && $tries-- ) {
       PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
+      warn "==== $cxn_string, $user, $pass, $defaults";
 
       $dbh = eval { DBI->connect($cxn_string, $user, $pass, $defaults) };
 
@@ -3888,7 +3892,7 @@ sub new {
    };
    my ($dp, $o) = @args{@required_args};
 
-   my $dsn_defaults = $dp->parse_options($o);
+   my $dsn_defaults = $dp->parse_options($o);  
    my $prev_dsn     = $args{prev_dsn};
    my $dsn          = $args{dsn};
    if ( !$dsn ) {
@@ -5009,7 +5013,13 @@ sub wait {
    while ( $oktorun->() && @lagged_slaves ) {
       PTDEBUG && _d('Checking slave lag');
       for my $i ( 0..$#lagged_slaves ) {
-         my $lag = $get_lag->($lagged_slaves[$i]->{cxn});
+         my $lag;
+         eval {
+             $lag = $get_lag->($lagged_slaves[$i]->{cxn});
+         };
+         if ($EVAL_ERROR) {
+             die $EVAL_ERROR;
+         }
          PTDEBUG && _d($lagged_slaves[$i]->{cxn}->name(),
             'slave lag:', $lag);
          if ( !defined $lag || $lag > $max_lag ) {
@@ -8373,9 +8383,13 @@ sub main {
    else {
       # Parse DSN string and convert it to a DSN data struct.
       $dsn = $dp->parse($dsn, $dp->parse_options($o));
+      $dsn->{P} = $o->get('port') if $o->has('port');
       $db  = $dsn->{D};
       $tbl = $dsn->{t};  
    }
+
+   warn "----------------------------------------------------------------------------------------------------";
+   warn Data::Dumper::Dumper($dsn);
 
    my $alter_fk_method = $o->get('alter-foreign-keys-method') || '';
    if ( $alter_fk_method eq 'drop_swap' ) {
@@ -8697,6 +8711,7 @@ sub main {
          PTDEBUG && _d('Will check slave lag on all slaves');
          $slave_lag_cxns = $slaves;
       }
+
       if ( $slave_lag_cxns && scalar @$slave_lag_cxns ) {
          if ($o->get('skip-check-slave-lag')) {
              my $slaves_to_skip = $o->get('skip-check-slave-lag');
@@ -8728,6 +8743,15 @@ sub main {
       else {
          print "Not checking slave lag because no slaves were found "
                . "and --check-slave-lag was not specified.\n";
+      }
+      # Before starting, check the replication is not using replications channels or that --channel was specified
+      for my $slave (@$slave_lag_cxns) {
+          eval {
+             my $ss = $ms->get_slave_status($slave->{dbh});
+          };
+          if ($EVAL_ERROR) {
+              die $EVAL_ERROR;
+          }
       }
 
       # #####################################################################
@@ -8806,6 +8830,7 @@ sub main {
                   #TODO REMOVE DEBUG
                   PTDEBUG && _d('2> Cannot connect to', $cxn->name(), ':',
                      $EVAL_ERROR);
+                  die '2> Cannot connect to '. $cxn->name() . ':' . $EVAL_ERROR;
                   # Make ReplicaLagWaiter::wait() report slave is stopped.
                   return undef; 
                }
@@ -8815,8 +8840,8 @@ sub main {
                $lag = $ms->get_slave_lag($dbh);
             };
             if ( $EVAL_ERROR ) {
-               PTDEBUG && _d('Cannot get lag for', $cxn->name(), ':',
-                  $EVAL_ERROR);
+               PTDEBUG && _d('Cannot get lag for', $cxn->name(), ':', $EVAL_ERROR);
+                  die '2> Cannot connect to '. $cxn->name() . ':' . $EVAL_ERROR;
             }
             return $lag; # undef if error
          };
@@ -13050,7 +13075,7 @@ If password contains commas they must be escaped with a backslash: "exam\,ple"
 
 =item * P
 
-dsn: port; copy: yes
+dsn: port; copy: no
 
 Port number to use for connection.
 
