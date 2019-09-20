@@ -94,7 +94,6 @@ sub check_ids {
    my $n_updated  = $ids->{updated} ? ($ids->{updated}  =~ tr/,//) : 0;
    my $n_deleted  = $ids->{deleted} ? ($ids->{deleted}  =~ tr/,//) : 0;
    my $n_inserted = $ids->{inserted} ? ($ids->{inserted} =~ tr/,//) : 0;
-   warn "n_inser $n_inserted";
 
    # "1,1"=~tr/,// returns 1 but is 2 values
    $n_updated++ if $ids->{updated};
@@ -170,7 +169,6 @@ $master_dbh->do("TRUNCATE TABLE t");
 $master_dbh->do("LOAD DATA INFILE '$trunk/t/pt-online-schema-change/samples/basic_no_fks.data' INTO TABLE t");
 $master_dbh->do("ANALYZE TABLE t");
 $sb->wait_for_slaves();
-sleep(2);
 
 # Start inserting, updating, and deleting rows at random.
 start_query_table(qw(pt_osc t id));
@@ -235,7 +233,6 @@ start_query_table(qw(pt_osc t id));
    ) },
    stderr => 1,
 );
-diag($output);
 
 # Stop changing the table's data.
 stop_query_table();

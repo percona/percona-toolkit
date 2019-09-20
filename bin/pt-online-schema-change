@@ -6697,16 +6697,10 @@ sub index_length {
    );
    my $sth = $cxn->dbh()->prepare($sql);
    PTDEBUG && _d($sth->{Statement}, 'params:', @$vals);
-   warn "====================================================================================================";
-   _d($sth->{Statement}, 'params:', @$vals);
-   warn "====================================================================================================";
    $sth->execute(@$vals);
    my $row = $sth->fetchrow_hashref();
    $sth->finish();
    PTDEBUG && _d('Range scan:', Dumper($row));
-   warn "====================================================================================================";
-   _d('Range scan:', Dumper($row));
-   warn "====================================================================================================";
    return $row->{key_len}, $row->{key};
 }
 
@@ -6758,15 +6752,15 @@ sub _make_range_query {
       foreach my $n ( 0..($n_index_cols - 2) ) {
          my $col = $index_cols->[$n];
          my $val = $vals->[$n];
-         #push @where, $q->quote($col) . " = ?";
-         push @where, $q->quote($col) . " = " . $tbl->{tbl_struct}->{type_for}->{$col} eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
+         $val = $tbl->{tbl_struct}->{type_for}->{$col} eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
+         push @where, $q->quote($col) . " = " . $val;
       }
    }
 
    my $col = $index_cols->[$n_index_cols - 1];
    my $val = $vals->[-1];  # should only be as many vals as cols
-   #push @where, $q->quote($col) . " >= ?";
-   push @where, $q->quote($col) . " >= " . $tbl->{tbl_struct}->{type_for}->{$col} eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
+   my $condition = $tbl->{tbl_struct}->{type_for}->{$col} eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
+   push @where, $q->quote($col) . " >= " . $condition;
 
    my $sql = "EXPLAIN SELECT /*!40001 SQL_NO_CACHE */ * "
            . "FROM $tbl->{name} FORCE INDEX (" . $q->quote($index) . ") "
@@ -12362,30 +12356,6 @@ duplicate rows and this data will be lost.
 =item --force
 
 This options bypasses confirmation in case of using alter-foreign-keys-method = none , which might break foreign key constraints.
-
-=item --force-concat-enums
-
-The NibbleIterator in Percona Toolkit can detect indexes having ENUM fields and 
-if the items it has are sorted or not. According to MySQL documentation at 
-L<https://dev.mysql.com/doc/refman/8.0/en/enum.html>:
-
-ENUM values are sorted based on their index numbers, which depend on the order in 
-which the enumeration members were listed in the column specification. 
-For example, 'b' sorts before 'a' for ENUM('b', 'a'). 
-The empty string sorts before nonempty strings, and NULL values sort before all other 
-enumeration values.
-
-To prevent unexpected results when using the ORDER BY clause on an ENUM column, 
-use one of these techniques:
-- Specify the ENUM list in alphabetic order.
-- Make sure that the column is sorted lexically rather than by index number by coding 
-ORDER BY CAST(col AS CHAR) or ORDER BY CONCAT(col).
-
-The NibbleIterator in Percona Toolkit uses CONCAT(col) but, doing that, adds overhead
-since MySQL cannot use the column directly and has to calculate the result of CONCAT
-for every row.
-To make this scenario vissible to the user, if there are indexes having ENUM fields 
-with usorted items, it is necessary to specify the C<--force-concat-enums> parameter.
 
 =item --help
 
