@@ -3019,6 +3019,7 @@ sub generate_asc_stmt {
             cols        => \@cols,
             quoter      => $q,
             is_nullable => $tbl_struct->{is_nullable},
+            type_for    => $tbl_struct->{type_for},
          );
          $asc_stmt->{boundaries}->{$cmp} = $cmp_where->{where};
       }
@@ -3039,6 +3040,7 @@ sub generate_cmp_where {
    my @slice       = @{$args{slice}};
    my @cols        = @{$args{cols}};
    my $is_nullable = $args{is_nullable};
+   my $type_for    = $args{type_for};
    my $type        = $args{type};
    my $q           = $self->{Quoter};
 
@@ -3055,13 +3057,16 @@ sub generate_cmp_where {
          my $ord = $slice[$j];
          my $col = $cols[$ord];
          my $quo = $q->quote($col);
+         my $val = $type_for->{$col} eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
          if ( $is_nullable->{$col} ) {
-            push @clause, "((? IS NULL AND $quo IS NULL) OR ($quo = ?))";
+             #push @clause, "((? IS NULL AND $quo IS NULL) OR ($quo = ?))";
+            push @clause, "(($val IS NULL AND $quo IS NULL) OR ($quo = $val))";
             push @r_slice, $ord, $ord;
             push @r_scols, $col, $col;
          }
          else {
-            push @clause, "$quo = ?";
+             #push @clause, "$quo = ?";
+            push @clause, "$quo = $val";
             push @r_slice, $ord;
             push @r_scols, $col;
          }
@@ -3071,15 +3076,19 @@ sub generate_cmp_where {
       my $col = $cols[$ord];
       my $quo = $q->quote($col);
       my $end = $i == $#slice; # Last clause of the whole group.
+      my $val = $type_for->{$col} eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
       if ( $is_nullable->{$col} ) {
          if ( $type =~ m/=/ && $end ) {
-            push @clause, "(? IS NULL OR $quo $type ?)";
+             #push @clause, "(? IS NULL OR $quo $type ?)";
+            push @clause, "($val IS NULL OR $quo $type $val)";
          }
          elsif ( $type =~ m/>/ ) {
-            push @clause, "((? IS NULL AND $quo IS NOT NULL) OR ($quo $cmp ?))";
+            #push @clause, "((? IS NULL AND $quo IS NOT NULL) OR ($quo $cmp ?))";
+            push @clause, "(($val IS NULL AND $quo IS NOT NULL) OR ($quo $cmp $val)";
          }
          else { # If $type =~ m/</ ) {
-            push @clause, "((? IS NOT NULL AND $quo IS NULL) OR ($quo $cmp ?))";
+             #push @clause, "((? IS NOT NULL AND $quo IS NULL) OR ($quo $cmp ?))";
+            push @clauses, "(($val IS NOT NULL AND $quo IS NULL) OR ($quo $cmp $val))";
          }
          push @r_slice, $ord, $ord;
          push @r_scols, $col, $col;
@@ -3087,7 +3096,8 @@ sub generate_cmp_where {
       else {
          push @r_slice, $ord;
          push @r_scols, $col;
-         push @clause, ($type =~ m/=/ && $end ? "$quo $type ?" : "$quo $cmp ?");
+         #push @clause, ($type =~ m/=/ && $end ? "$quo $type ?" : "$quo $cmp ?");
+         push @clause, ($type =~ m/=/ && $end ? "$quo $type $val" : "$quo $cmp $val");
       }
 
       push @clauses, '(' . join(' AND ', @clause) . ')';
@@ -5487,7 +5497,9 @@ sub new {
       my $nibble_sql
          = ($args{dml} ? "$args{dml} " : "SELECT ")
          . ($args{select} ? $args{select}
-                          : join(', ', map { $q->quote($_) } @cols))
+         #                 : join(', ', map { $q->quote($_) } @cols))
+                           : join(', ', map{ $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ?
+                                   "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_) } @cols))
          . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
          . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
@@ -5497,7 +5509,9 @@ sub new {
       my $explain_nibble_sql
          = "EXPLAIN SELECT "
          . ($args{select} ? $args{select}
-                          : join(', ', map { $q->quote($_) } @cols))
+         #                 : join(', ', map { $q->quote($_) } @cols))
+                           : join(', ', map{ $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ?
+                                   "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_) } @cols))
          . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
          . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
@@ -5526,40 +5540,43 @@ sub new {
       );
       PTDEBUG && _d('Ascend params:', Dumper($asc));
 
-      my $force_concat_enums = $o->has('force-concat-enums') && $o->get('force-concat-enums');
-      my $i=0;
-      for my $index (@{$index_cols}) {
-          last if $args{n_chunk_index_cols} && $i >= $args{n_chunk_index_cols};
-          $i++;
-          if ($tbl->{tbl_struct}->{type_for}->{$index} eq 'enum') {
-             if ($tbl->{tbl_struct}->{defs}->{$index} =~ m/enum\s*\((.*?)\)/) {
-                 my @items = split(/,\s*/, $1);
-                 my $sorted = 1; # Asume the items list is sorted to later check if this is true
-                 for (my $i=1; $i < scalar(@items); $i++) {
-                     if ($items[$i-1] gt $items[$i]) {
-                         $sorted = 0;
-                         last;
-                     }
-                 }
-                 if (!$force_concat_enums && !$sorted) {
-                    die "The index " . $index . " in table " .  $tbl->{name} .
-                    " has unsorted enum items.\nPlease read the documentation for the --force-concat-enums parameter\n";
-                 }
-             }
-          }
-      }
+      #      my $force_concat_enums = $o->has('force-concat-enums') && $o->get('force-concat-enums');
+      #      my $i=0;
+      #      for my $index (@{$index_cols}) {
+      #          last if $args{n_chunk_index_cols} && $i >= $args{n_chunk_index_cols};
+      #          $i++;
+      #          if ($tbl->{tbl_struct}->{type_for}->{$index} eq 'enum') {
+      #             if ($tbl->{tbl_struct}->{defs}->{$index} =~ m/enum\s*\((.*?)\)/) {
+      #                 my @items = split(/,\s*/, $1);
+      #                 my $sorted = 1; # Asume the items list is sorted to later check if this is true
+      #                 for (my $i=1; $i < scalar(@items); $i++) {
+      #                     if ($items[$i-1] gt $items[$i]) {
+      #                         $sorted = 0;
+      #                         last;
+      #                     }
+      #                 }
+      #                 if (!$force_concat_enums && !$sorted) {
+      #                    die "The index " . $index . " in table " .  $tbl->{name} .
+      #                    " has unsorted enum items.\nPlease read the documentation for the --force-concat-enums parameter\n";
+      #                 }
+      #             }
+      #          }
+      #      }
 
 
       my $from     = "$tbl->{name} FORCE INDEX(`$index`)";
-      my $order_by = join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' && $force_concat_enums
-                                        ? "CONCAT(".$q->quote($_).")" : $q->quote($_)} @{$index_cols});
+      #my $order_by = join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' && $force_concat_enums
+      #                                  ? "CONCAT(".$q->quote($_).")" : $q->quote($_)} @{$index_cols});
+      my $order_by = join(', ', map {$q->quote($_)} @{$index_cols});
 
-      my $order_by_dec = join(' DESC,', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' && $force_concat_enums
-                                        ? "CONCAT(".$q->quote($_).")" : $q->quote($_)} @{$index_cols});
+      #my $order_by_dec = join(' DESC,', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' && $force_concat_enums
+      #                                  ? "CONCAT(".$q->quote($_).")" : $q->quote($_)} @{$index_cols});
+      my $order_by_dec = join(' DESC,', map {$q->quote($_)} @{$index_cols});
 
       my $first_lb_sql
          = "SELECT /*!40001 SQL_NO_CACHE */ "
-         . join(', ', map { $q->quote($_) } @{$asc->{scols}})
+         #. join(', ', map { $q->quote($_) } @{$asc->{scols}})
+         . join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_)} @{$asc->{scols}})
          . " FROM $from"
          . ($where ? " WHERE $where" : '')
          . " ORDER BY $order_by"
@@ -5571,7 +5588,8 @@ sub new {
       if ( $args{resume} ) {
          $resume_lb_sql
             = "SELECT /*!40001 SQL_NO_CACHE */ "
-            . join(', ', map { $q->quote($_) } @{$asc->{scols}})
+            #. join(', ', map { $q->quote($_) } @{$asc->{scols}})
+            . join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_)} @{$asc->{scols}})
             . " FROM $from"
             . " WHERE " . $asc->{boundaries}->{'>'}
             . ($where ? " AND ($where)" : '')
@@ -5583,7 +5601,8 @@ sub new {
 
       my $last_ub_sql
          = "SELECT /*!40001 SQL_NO_CACHE */ "
-         . join(', ', map { $q->quote($_) } @{$asc->{scols}})
+         #. join(', ', map { $q->quote($_) } @{$asc->{scols}})
+         . join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_)} @{$asc->{scols}})
          . " FROM $from"
          . ($where ? " WHERE $where" : '')
          . " ORDER BY "
@@ -5594,7 +5613,8 @@ sub new {
 
       my $ub_sql
          = "SELECT /*!40001 SQL_NO_CACHE */ "
-         . join(', ', map { $q->quote($_) } @{$asc->{scols}})
+         #. join(', ', map { $q->quote($_) } @{$asc->{scols}})
+         . join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_)} @{$asc->{scols}})
          . " FROM $from"
          . " WHERE " . $asc->{boundaries}->{'>='}
                      . ($where ? " AND ($where)" : '')
@@ -5606,7 +5626,8 @@ sub new {
       my $nibble_sql
          = ($args{dml} ? "$args{dml} " : "SELECT ")
          . ($args{select} ? $args{select}
-                          : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
+         #                          : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
+                                    : join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_)} @{$asc->{cols}}))
          . " FROM $from"
          . " WHERE " . $asc->{boundaries}->{'>='}  # lower boundary
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
@@ -6731,13 +6752,15 @@ sub _make_range_query {
       foreach my $n ( 0..($n_index_cols - 2) ) {
          my $col = $index_cols->[$n];
          my $val = $vals->[$n];
-         push @where, $q->quote($col) . " = ?";
+         $val = $tbl->{tbl_struct}->{type_for}->{$col} eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
+         push @where, $q->quote($col) . " = " . $val;
       }
    }
 
    my $col = $index_cols->[$n_index_cols - 1];
    my $val = $vals->[-1];  # should only be as many vals as cols
-   push @where, $q->quote($col) . " >= ?";
+   my $condition = $tbl->{tbl_struct}->{type_for}->{$col} eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
+   push @where, $q->quote($col) . " >= " . $condition;
 
    my $sql = "EXPLAIN SELECT /*!40001 SQL_NO_CACHE */ * "
            . "FROM $tbl->{name} FORCE INDEX (" . $q->quote($index) . ") "
@@ -12333,30 +12356,6 @@ duplicate rows and this data will be lost.
 =item --force
 
 This options bypasses confirmation in case of using alter-foreign-keys-method = none , which might break foreign key constraints.
-
-=item --force-concat-enums
-
-The NibbleIterator in Percona Toolkit can detect indexes having ENUM fields and 
-if the items it has are sorted or not. According to MySQL documentation at 
-L<https://dev.mysql.com/doc/refman/8.0/en/enum.html>:
-
-ENUM values are sorted based on their index numbers, which depend on the order in 
-which the enumeration members were listed in the column specification. 
-For example, 'b' sorts before 'a' for ENUM('b', 'a'). 
-The empty string sorts before nonempty strings, and NULL values sort before all other 
-enumeration values.
-
-To prevent unexpected results when using the ORDER BY clause on an ENUM column, 
-use one of these techniques:
-- Specify the ENUM list in alphabetic order.
-- Make sure that the column is sorted lexically rather than by index number by coding 
-ORDER BY CAST(col AS CHAR) or ORDER BY CONCAT(col).
-
-The NibbleIterator in Percona Toolkit uses CONCAT(col) but, doing that, adds overhead
-since MySQL cannot use the column directly and has to calculate the result of CONCAT
-for every row.
-To make this scenario vissible to the user, if there are indexes having ENUM fields 
-with usorted items, it is necessary to specify the C<--force-concat-enums> parameter.
 
 =item --help
 
