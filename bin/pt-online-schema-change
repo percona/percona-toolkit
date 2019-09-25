@@ -8969,6 +8969,7 @@ sub main {
          tbl    => $orig_tbl,
          Cxn    => $cxn,
          Quoter => $q,
+         only_same_schema_fks => $o->get('only-same-schema-fks'), 
       );
 
    my $vp = VersionParser->new($cxn->dbh());
