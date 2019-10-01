@@ -2226,6 +2226,10 @@ sub parse {
       }
    }
 
+   if ($final_props{F}) {
+       %final_props = ( 'F' => $final_props{F} );
+   }
+
    return \%final_props;
 }
 
@@ -2284,9 +2288,6 @@ sub get_cxn_params {
                      qw(h P));
    }
    else {
-      warn "A----------------------------------------------------------------------------------------------------";
-      warn Data::Dumper::Dumper($info);
-      Carp::confess('l');
       $dsn = 'DBI:mysql:' . ( $info->{D} || '' ) . ';'
          . join(';', map  { "$opts{$_}->{dsn}=$info->{$_}" }
                      grep { defined $info->{$_} }
@@ -2344,7 +2345,6 @@ sub get_dbh {
    while ( !$dbh && $tries-- ) {
       PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
-      warn "==== $cxn_string, $user, $pass, $defaults";
 
       $dbh = eval { DBI->connect($cxn_string, $user, $pass, $defaults) };
 
@@ -2410,6 +2410,28 @@ sub get_dbh {
            . ($sql_mode ? " and $sql_mode" : '')
            . ": $EVAL_ERROR";
       }
+   }
+   my ($mysql_version) = eval { $dbh->selectrow_array('SELECT VERSION()') };
+   if ($EVAL_ERROR) {
+       die "Cannot get MySQL version: $EVAL_ERROR";
+   }
+
+   my (undef, $character_set_server) = eval { $dbh->selectrow_array("SHOW VARIABLES LIKE 'character_set_server'") };
+   if ($EVAL_ERROR) {
+       die "Cannot get MySQL var character_set_server: $EVAL_ERROR";
+   }
+
+   if ($mysql_version =~ m/^(\d+)\.(\d)\.(\d+).*/) {
+       if ($1 >= 8 && $character_set_server =~ m/^utf8/) {
+           $dbh->{mysql_enable_utf8} = 1;
+           my $msg = "MySQL version $mysql_version >= 8 and character_set_server = $character_set_server\n".
+                     "Setting: SET NAMES $character_set_server";
+           PTDEBUG && _d($msg);
+           eval { $dbh->do("SET NAMES 'utf8mb4'") };
+           if ($EVAL_ERROR) {
+               die "Cannot SET NAMES $character_set_server: $EVAL_ERROR";
+           }
+       }
    }
 
    PTDEBUG && _d('DBH info: ',
@@ -8383,13 +8405,9 @@ sub main {
    else {
       # Parse DSN string and convert it to a DSN data struct.
       $dsn = $dp->parse($dsn, $dp->parse_options($o));
-      $dsn->{P} = $o->get('port') if $o->has('port');
       $db  = $dsn->{D};
       $tbl = $dsn->{t};  
    }
-
-   warn "----------------------------------------------------------------------------------------------------";
-   warn Data::Dumper::Dumper($dsn);
 
    my $alter_fk_method = $o->get('alter-foreign-keys-method') || '';
    if ( $alter_fk_method eq 'drop_swap' ) {
@@ -8703,7 +8721,7 @@ sub main {
          PTDEBUG && _d('Will use --check-slave-lag to check for slave lag');
          my $cxn = $make_cxn->(
             dsn_string => $o->get('check-slave-lag'),
-            prev_dsn   => $cxn->dsn(),
+            #prev_dsn   => $cxn->dsn(),
          );
          $slave_lag_cxns = [ $cxn ];
       }

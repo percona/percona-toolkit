@@ -175,6 +175,16 @@ sub parse {
       }
    }
 
+   # The Perl MySQL driver will override the values from the options file with the other
+   # values specified in the DSN. For us, if the user specified the F parameter, we only
+   # want options to be loaded from the config file.
+   # This is important because if for example, the user specifies F for the --check-slave-lag
+   # paramteter and we don't clean up the other options, the other DSN parameters will be
+   # inherited from the master and we don't want that.
+   if ($final_props{F}) {
+       %final_props = ( 'F' => $final_props{F} );
+   }
+
    return \%final_props;
 }
 
