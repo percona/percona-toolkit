@@ -36,7 +36,6 @@ my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
-plan skip_all => 'Cannot connect to sandbox master';
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 } else {

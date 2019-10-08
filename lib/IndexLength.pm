@@ -99,7 +99,7 @@ sub _get_first_values {
    }
    my ($cxn, $tbl, $index, $n_index_cols) = @args{@required_args};
 
-   my $q = $self->{quoter};
+   my $q = $self->{Quoter};
 
    # Select just the index columns.
    my $index_struct  = $tbl->{tbl_struct}->{keys}->{$index};

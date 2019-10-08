@@ -5457,6 +5457,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+use IndexLength;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -5497,9 +5498,7 @@ sub new {
       my $nibble_sql
          = ($args{dml} ? "$args{dml} " : "SELECT ")
          . ($args{select} ? $args{select}
-         #                 : join(', ', map { $q->quote($_) } @cols))
-                           : join(', ', map{ $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ?
-                                   "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_) } @cols))
+                          : join(', ', map { $q->quote($_) } @cols))
          . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
          . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
@@ -5509,9 +5508,7 @@ sub new {
       my $explain_nibble_sql
          = "EXPLAIN SELECT "
          . ($args{select} ? $args{select}
-         #                 : join(', ', map { $q->quote($_) } @cols))
-                           : join(', ', map{ $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ?
-                                   "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_) } @cols))
+                          : join(', ', map { $q->quote($_) } @cols))
          . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
          . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
@@ -5540,43 +5537,40 @@ sub new {
       );
       PTDEBUG && _d('Ascend params:', Dumper($asc));
 
-      #      my $force_concat_enums = $o->has('force-concat-enums') && $o->get('force-concat-enums');
-      #      my $i=0;
-      #      for my $index (@{$index_cols}) {
-      #          last if $args{n_chunk_index_cols} && $i >= $args{n_chunk_index_cols};
-      #          $i++;
-      #          if ($tbl->{tbl_struct}->{type_for}->{$index} eq 'enum') {
-      #             if ($tbl->{tbl_struct}->{defs}->{$index} =~ m/enum\s*\((.*?)\)/) {
-      #                 my @items = split(/,\s*/, $1);
-      #                 my $sorted = 1; # Asume the items list is sorted to later check if this is true
-      #                 for (my $i=1; $i < scalar(@items); $i++) {
-      #                     if ($items[$i-1] gt $items[$i]) {
-      #                         $sorted = 0;
-      #                         last;
-      #                     }
-      #                 }
-      #                 if (!$force_concat_enums && !$sorted) {
-      #                    die "The index " . $index . " in table " .  $tbl->{name} .
-      #                    " has unsorted enum items.\nPlease read the documentation for the --force-concat-enums parameter\n";
-      #                 }
-      #             }
-      #          }
-      #      }
+      my $force_concat_enums = $o->has('force-concat-enums') && $o->get('force-concat-enums');
+      my $i=0;
+      for my $index (@{$index_cols}) {
+          last if $args{n_chunk_index_cols} && $i >= $args{n_chunk_index_cols};
+          $i++;
+          if ($tbl->{tbl_struct}->{type_for}->{$index} eq 'enum') {
+             if ($tbl->{tbl_struct}->{defs}->{$index} =~ m/enum\s*\((.*?)\)/) {
+                 my @items = split(/,\s*/, $1);
+                 my $sorted = 1; # Asume the items list is sorted to later check if this is true
+                 for (my $i=1; $i < scalar(@items); $i++) {
+                     if ($items[$i-1] gt $items[$i]) {
+                         $sorted = 0;
+                         last;
+                     }
+                 }
+                 if (!$force_concat_enums && !$sorted) {
+                    die "The index " . $index . " in table " .  $tbl->{name} .
+                    " has unsorted enum items.\nPlease read the documentation for the --force-concat-enums parameter\n";
+                 }
+             }
+          }
+      }
 
 
       my $from     = "$tbl->{name} FORCE INDEX(`$index`)";
-      #my $order_by = join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' && $force_concat_enums
-      #                                  ? "CONCAT(".$q->quote($_).")" : $q->quote($_)} @{$index_cols});
-      my $order_by = join(', ', map {$q->quote($_)} @{$index_cols});
+      my $order_by = join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' && $force_concat_enums
+                                        ? "CONCAT(".$q->quote($_).")" : $q->quote($_)} @{$index_cols});
 
-      #my $order_by_dec = join(' DESC,', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' && $force_concat_enums
-      #                                  ? "CONCAT(".$q->quote($_).")" : $q->quote($_)} @{$index_cols});
-      my $order_by_dec = join(' DESC,', map {$q->quote($_)} @{$index_cols});
+      my $order_by_dec = join(' DESC,', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' && $force_concat_enums
+                                        ? "CONCAT(".$q->quote($_).")" : $q->quote($_)} @{$index_cols});
 
       my $first_lb_sql
          = "SELECT /*!40001 SQL_NO_CACHE */ "
-         #. join(', ', map { $q->quote($_) } @{$asc->{scols}})
-         . join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_)} @{$asc->{scols}})
+         . join(', ', map { $q->quote($_) } @{$asc->{scols}})
          . " FROM $from"
          . ($where ? " WHERE $where" : '')
          . " ORDER BY $order_by"
@@ -5588,8 +5582,7 @@ sub new {
       if ( $args{resume} ) {
          $resume_lb_sql
             = "SELECT /*!40001 SQL_NO_CACHE */ "
-            #. join(', ', map { $q->quote($_) } @{$asc->{scols}})
-            . join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_)} @{$asc->{scols}})
+            . join(', ', map { $q->quote($_) } @{$asc->{scols}})
             . " FROM $from"
             . " WHERE " . $asc->{boundaries}->{'>'}
             . ($where ? " AND ($where)" : '')
@@ -5601,8 +5594,7 @@ sub new {
 
       my $last_ub_sql
          = "SELECT /*!40001 SQL_NO_CACHE */ "
-         #. join(', ', map { $q->quote($_) } @{$asc->{scols}})
-         . join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_)} @{$asc->{scols}})
+         . join(', ', map { $q->quote($_) } @{$asc->{scols}})
          . " FROM $from"
          . ($where ? " WHERE $where" : '')
          . " ORDER BY "
@@ -5613,8 +5605,7 @@ sub new {
 
       my $ub_sql
          = "SELECT /*!40001 SQL_NO_CACHE */ "
-         #. join(', ', map { $q->quote($_) } @{$asc->{scols}})
-         . join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_)} @{$asc->{scols}})
+         . join(', ', map { $q->quote($_) } @{$asc->{scols}})
          . " FROM $from"
          . " WHERE " . $asc->{boundaries}->{'>='}
                      . ($where ? " AND ($where)" : '')
@@ -5626,8 +5617,7 @@ sub new {
       my $nibble_sql
          = ($args{dml} ? "$args{dml} " : "SELECT ")
          . ($args{select} ? $args{select}
-         #                          : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
-                                    : join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_)} @{$asc->{cols}}))
+                          : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
          . " FROM $from"
          . " WHERE " . $asc->{boundaries}->{'>='}  # lower boundary
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
@@ -5741,7 +5731,7 @@ sub next {
       if ( !$self->{have_rows} ) {
          $self->{nibbleno}++;
          PTDEBUG && _d('Nibble:', $self->{nibble_sth}->{Statement}, 'params:',
-            join(', ', (@{$self->{lower}} || [], @{$self->{upper} }||[])));
+            join(', ', (@{$self->{lower} || []}, @{$self->{upper} || []})));
          if ( my $callback = $self->{callbacks}->{exec_nibble} ) {
             $self->{have_rows} = $callback->(%callback_args);
          }
@@ -5832,8 +5822,12 @@ sub set_boundary {
 }
 
 sub one_nibble {
-   my ($self) = @_;
-   return $self->{one_nibble};
+   my ($self, $value) = @_;
+   if (@_ == 2) {
+       $self->{one_nibble} = $value;
+   } else {
+       return $self->{one_nibble};
+   }
 }
 
 sub limit {
@@ -5867,11 +5861,11 @@ sub row_estimate {
 
 sub can_nibble {
    my (%args) = @_;
-   my @required_args = qw(Cxn tbl chunk_size OptionParser TableParser);
+   my @required_args = qw(Cxn tbl chunk_size OptionParser TableParser Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($cxn, $tbl, $chunk_size, $o) = @args{@required_args};
+   my ($cxn, $tbl, $chunk_size, $o, $q) = @args{@required_args};
 
    my $where = $o->has('where') ? $o->get('where') : '';
 
@@ -5881,6 +5875,23 @@ sub can_nibble {
       where => $where,
    );
 
+   my $can_get_keys;
+   if ($mysql_index) {
+       my $idx_len = IndexLength->new(Quoter => $q);
+       my ($key_len, $key) = $idx_len->index_length(
+           Cxn          => $args{Cxn},
+           tbl          => $tbl,
+           index        => $mysql_index,
+           n_index_cols => $o->get('chunk-index-columns'),
+       );
+
+       if ( !$key || !$key_len || lc($key) ne lc($mysql_index)) {
+           $can_get_keys = 0;
+       } else {
+           $can_get_keys = 1;
+       }
+   } 
+
    if ( !$where ) {
       $mysql_index = undef;
    }
@@ -5889,6 +5900,10 @@ sub can_nibble {
    my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
                   ? $row_est <= $chunk_size * $chunk_size_limit
                   : 0;
+   if (!$can_get_keys) {
+       $one_nibble = 1;
+   }
+
    PTDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
 
    if ( $args{resume}
@@ -6140,7 +6155,7 @@ sub _next_boundaries {
 
 
    PTDEBUG && _d($self->{ub_sth}->{Statement}, 'params:',
-      join(', ', @{$self->{lower}} || []), $self->{limit});
+      join(', ', @{$self->{lower}}), $self->{limit});
    $self->{ub_sth}->execute(@{$self->{lower}}, $self->{limit});
    my $boundary = $self->{ub_sth}->fetchall_arrayref();
    PTDEBUG && _d('Next boundary:', Dumper($boundary));
@@ -6181,9 +6196,6 @@ sub identical_boundaries {
       if scalar @$b1 != scalar @$b2;  # shouldn't happen
    my $n_vals = scalar @$b1;
    for my $i ( 0..($n_vals-1) ) {
-      next if (!defined($b1->[$i]) && !defined($b2->[$i]));
-      return 0 if (!defined($b1->[$i]) && defined($b2->[$i])); # diff
-      return 0 if (defined($b1->[$i]) && !defined($b2->[$i])); # diff
       return 0 if $b1->[$i] ne $b2->[$i]; # diff
    }
    return 1;
@@ -9579,6 +9591,7 @@ sub main {
          # a single chunk on all slaves.  E.g. if a slave is out of sync
          # and has a lot more rows than the master, single chunking on the
          # master could cause the slave to choke.
+         my $failed_to_nibble;
          if ( $nibble_iter->one_nibble() ) {
             PTDEBUG && _d('Getting table row estimate on replicas');
             my @too_large;
@@ -9605,10 +9618,13 @@ sub main {
                      . ($tbl->{chunk_size} * $limit)
                      . " rows (chunk size=$tbl->{chunk_size}"
                      . " * chunk size limit=$limit).\n";
-               die ts($msg);
+               warn $msg;
+               $failed_to_nibble = 1;
+               $nibble_iter->one_nibble(0); # disable nibbling for this table
+               # die ts($msg);
             }
          }
-         else { # chunking the table
+         if (!$nibble_iter->one_nibble() || $failed_to_nibble) { # chunking the table
             if ( $o->get('check-plan') ) {
                my $idx_len = new IndexLength(Quoter => $q);
                my ($key_len, $key) = $idx_len->index_length(

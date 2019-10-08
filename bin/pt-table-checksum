@@ -6593,6 +6593,7 @@ sub next {
       }
       $self->{rowno}     = 0;
       $self->{have_rows} = 0;
+      
    }
 
    PTDEBUG && _d('Done nibbling');
@@ -6657,8 +6658,12 @@ sub set_boundary {
 }
 
 sub one_nibble {
-   my ($self) = @_;
-   return $self->{one_nibble};
+   my ($self, $value) = @_;
+   if (@_ == 2) {
+       $self->{one_nibble} = $value;
+   } else {
+       return $self->{one_nibble};
+   }
 }
 
 sub limit {
@@ -6706,15 +6711,7 @@ sub can_nibble {
       where => $where,
    );
 
-   if ( !$where ) {
-       $mysql_index = undef;
-   } 
-
-   my $chunk_size_limit = $o->get('chunk-size-limit') || 1;
-   my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
-                  ? $row_est <= $chunk_size * $chunk_size_limit
-                  : 0;
-
+   my $can_get_keys;
    if ($mysql_index) {
        my $idx_len = IndexLength->new(Quoter => $q);
        my ($key_len, $key) = $idx_len->index_length(
@@ -6725,9 +6722,23 @@ sub can_nibble {
        );
 
        if ( !$key || !$key_len || lc($key) ne lc($mysql_index)) {
-           $one_nibble = 1;
+           $can_get_keys = 0;
+       } else {
+           $can_get_keys = 1;
        }
    } 
+
+   if ( !$where ) {
+      $mysql_index = undef;
+   }
+
+   my $chunk_size_limit = $o->get('chunk-size-limit') || 1;
+   my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
+                  ? $row_est <= $chunk_size * $chunk_size_limit
+                  : 0;
+   if (!$can_get_keys) {
+       $one_nibble = 1;
+   }
 
    PTDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
 
@@ -6906,7 +6917,7 @@ sub _get_bounds {
       if (    defined $nibble->{lower_boundary}
            && defined $nibble->{upper_boundary} ) {
          my $sth = $dbh->prepare($self->{resume_lb_sql});
-         my @ub = $self->{Quoter}->deserialize_list($nibble->{upper_boundary});
+         my @ub  = split ',', $nibble->{upper_boundary};
          PTDEBUG && _d($sth->{Statement}, 'params:', @ub);
          $sth->execute(@ub);
          $self->{next_lower} = $sth->fetchrow_arrayref();

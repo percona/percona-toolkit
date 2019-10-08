@@ -121,6 +121,7 @@ sub new {
       };
    }
    else {
+      my $parms = _nibble_params($nibble_params, $tbl, %args, \@cols, $chunk_size, $where, \%comments, $q);
       my $index      = $nibble_params->{index}; # brevity
       my $index_cols = $tbl->{tbl_struct}->{keys}->{$index}->{cols};
 
@@ -293,7 +294,196 @@ sub new {
    $self->{pause_file} = $nibble_params->{pause_file};
    $self->{sleep}      = $args{sleep} || 60;
 
+   $self->{chunk_size} = $chunk_size;
+   $self->{comments}   = %comments;
+   $self->{cols}       = \@cols;
+   $self->{where}      = $where;
+   $self->{tbl}        = $tbl;
+
    return bless $self, $class;
+}
+
+sub _one_nibble {
+    my ($self, %args) = @_;
+    my $q        = new Quoter();
+    my $cols     = $self->{cols};
+    my $where    = $self->{where};
+    my $tbl      = $self->{tbl};
+    my %comments = $self->{comments};
+
+      # If the chunk size is >= number of rows in table, then we don't
+      # need to chunk; we can just select all rows, in order, at once.
+      my $nibble_sql
+         = ($args{dml} ? "$args{dml} " : "SELECT ")
+         . ($args{select} ? $args{select}
+                          : join(', ', map { $q->quote($_) } @$cols))
+         . " FROM $tbl->{name}"
+         . ($where ? " WHERE $where" : '')
+         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
+         . " /*$comments{bite}*/";
+      PTDEBUG && _d('One nibble statement:', $nibble_sql);
+
+      my $explain_nibble_sql
+         = "EXPLAIN SELECT "
+         . ($args{select} ? $args{select}
+                          : join(', ', map { $q->quote($_) } @$cols))
+         . " FROM $tbl->{name}"
+         . ($where ? " WHERE $where" : '')
+         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
+         . " /*explain $comments{bite}*/";
+      PTDEBUG && _d('Explain one nibble statement:', $explain_nibble_sql);
+
+      return {
+         one_nibble         => 1,
+         limit              => 0,
+         nibble_sql         => $nibble_sql,
+         explain_nibble_sql => $explain_nibble_sql,
+      };
+}
+
+sub _nibble_params {
+      my ($nibble_params, $tbl, %args, $cols, $chunk_size, $where, %comments, $q) = @_;
+      my $index      = $nibble_params->{index}; # brevity
+      my $index_cols = $tbl->{tbl_struct}->{keys}->{$index}->{cols};
+
+      # Figure out how to nibble the table with the index.
+      my $asc = $args{TableNibbler}->generate_asc_stmt(
+         %args,
+         tbl_struct   => $tbl->{tbl_struct},
+         index        => $index,
+         n_index_cols => $args{n_chunk_index_cols},
+         cols         => $cols,
+         asc_only     => 1,
+      );
+      PTDEBUG && _d('Ascend params:', Dumper($asc));
+
+      # Check if enum fields items are sorted or not.
+      # If they are sorted we can skip adding CONCAT to improve the queries eficiency.
+      my $force_concat_enums;
+
+      # Make SQL statements, prepared on first call to next().  FROM and
+      # ORDER BY are the same for all statements.  FORCE IDNEX and ORDER BY
+      # are needed to ensure deterministic nibbling.
+
+      my $from     = "$tbl->{name} FORCE INDEX(`$index`)";
+      my $order_by = join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' && $force_concat_enums
+                                        ? "CONCAT(".$q->quote($_).")" : $q->quote($_)} @{$index_cols});
+
+      my $order_by_dec = join(' DESC,', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' && $force_concat_enums
+                                        ? "CONCAT(".$q->quote($_).")" : $q->quote($_)} @{$index_cols});
+
+      # The real first row in the table.  Usually we start nibbling from
+      # this row.  Called once in _get_bounds().
+      my $first_lb_sql
+         = "SELECT /*!40001 SQL_NO_CACHE */ "
+         . join(', ', map { $q->quote($_) } @{$asc->{scols}})
+         . " FROM $from"
+         . ($where ? " WHERE $where" : '')
+         . " ORDER BY $order_by"
+         . " LIMIT 1"
+         . " /*first lower boundary*/";
+      PTDEBUG && _d('First lower boundary statement:', $first_lb_sql);
+
+      # If we're resuming, this fetches the effective first row, which
+      # should differ from the real first row.  Called once in _get_bounds().
+      my $resume_lb_sql;
+      if ( $args{resume} ) {
+         $resume_lb_sql
+            = "SELECT /*!40001 SQL_NO_CACHE */ "
+            . join(', ', map { $q->quote($_) } @{$asc->{scols}})
+            . " FROM $from"
+            . " WHERE " . $asc->{boundaries}->{'>'}
+            . ($where ? " AND ($where)" : '')
+            . " ORDER BY $order_by"
+            . " LIMIT 1"
+            . " /*resume lower boundary*/";
+         PTDEBUG && _d('Resume lower boundary statement:', $resume_lb_sql);
+      }
+
+      # The nibbles are inclusive, so we need to fetch the real last row
+      # in the table.  Saved as boundary last_upper and used as boundary
+      # upper in some cases.  Called once in _get_bounds().
+      my $last_ub_sql
+         = "SELECT /*!40001 SQL_NO_CACHE */ "
+         . join(', ', map { $q->quote($_) } @{$asc->{scols}})
+         . " FROM $from"
+         . ($where ? " WHERE $where" : '')
+         . " ORDER BY "
+         . $order_by_dec . ' DESC'
+         . " LIMIT 1"
+         . " /*last upper boundary*/";
+      PTDEBUG && _d('Last upper boundary statement:', $last_ub_sql);
+
+      # Nibbles are inclusive, so for a..z, the nibbles are: a-e, f-j, k-o, p-t,
+      # u-y, and z.  This complicates getting the next upper boundary because
+      # if we use either (col >= lb AND col < ub) or (col > lb AND col <= ub)
+      # in nibble_sql (below), then that fails for either the last or first
+      # nibble respectively.  E.g. (col >= z AND col < z) doesn't work, nor
+      # does (col > a AND col <= e).  Hence the fancy LIMIT 2 which returns
+      # the upper boundary for the current nibble *and* the lower boundary
+      # for the next nibble.  See _next_boundaries().
+      my $ub_sql
+         = "SELECT /*!40001 SQL_NO_CACHE */ "
+         . join(', ', map { $q->quote($_) } @{$asc->{scols}})
+         . " FROM $from"
+         . " WHERE " . $asc->{boundaries}->{'>='}
+                     . ($where ? " AND ($where)" : '')
+         . " ORDER BY $order_by"
+         . " LIMIT ?, 2"
+         . " /*next chunk boundary*/";
+      PTDEBUG && _d('Upper boundary statement:', $ub_sql);
+
+      # This statement does the actual nibbling work; its rows are returned
+      # to the caller via next().
+      my $nibble_sql
+         = ($args{dml} ? "$args{dml} " : "SELECT ")
+         . ($args{select} ? $args{select}
+                          : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
+         . " FROM $from"
+         . " WHERE " . $asc->{boundaries}->{'>='}  # lower boundary
+         . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
+         . ($where ? " AND ($where)" : '')
+         . ($args{order_by} ? " ORDER BY $order_by" : "")
+         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
+         . " /*$comments{nibble}*/";
+      PTDEBUG && _d('Nibble statement:', $nibble_sql);
+
+      my $explain_nibble_sql 
+         = "EXPLAIN SELECT "
+         . ($args{select} ? $args{select}
+                          : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
+         . " FROM $from"
+         . " WHERE " . $asc->{boundaries}->{'>='}  # lower boundary
+         . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
+         . ($where ? " AND ($where)" : '')
+         . ($args{order_by} ? " ORDER BY $order_by" : "")
+         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
+         . " /*explain $comments{nibble}*/";
+      PTDEBUG && _d('Explain nibble statement:', $explain_nibble_sql);
+
+      my $limit = $chunk_size - 1;
+      PTDEBUG && _d('Initial chunk size (LIMIT):', $limit);
+
+      my $params = {
+         index                => $index,
+         limit                => $limit,
+         first_lb_sql         => $first_lb_sql,
+         last_ub_sql          => $last_ub_sql,
+         ub_sql               => $ub_sql,
+         nibble_sql           => $nibble_sql,
+         explain_first_lb_sql => "EXPLAIN $first_lb_sql",
+         explain_ub_sql       => "EXPLAIN $ub_sql",
+         explain_nibble_sql   => $explain_nibble_sql,
+         resume_lb_sql        => $resume_lb_sql,
+         sql                  => {
+            columns    => $asc->{scols},
+            from       => $from,
+            where      => $where,
+            boundaries => $asc->{boundaries},
+            order_by   => $order_by,
+         },
+      };
+      return $params;
 }
 
 sub next {
@@ -453,8 +643,12 @@ sub set_boundary {
 }
 
 sub one_nibble {
-   my ($self) = @_;
-   return $self->{one_nibble};
+   my ($self, $value) = @_;
+   if (@_ == 2) {
+       $self->{one_nibble} = $value;
+   } else {
+       return $self->{one_nibble};
+   }
 }
 
 sub limit {
