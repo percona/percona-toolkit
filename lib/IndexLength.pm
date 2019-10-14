@@ -99,7 +99,7 @@ sub _get_first_values {
    }
    my ($cxn, $tbl, $index, $n_index_cols) = @args{@required_args};
 
-   my $q = $self->{quoter};
+   my $q = $self->{Quoter};
 
    # Select just the index columns.
    my $index_struct  = $tbl->{tbl_struct}->{keys}->{$index};
@@ -151,8 +151,8 @@ sub _make_range_query {
       # we don't want the last column; that's added below.
       foreach my $n ( 0..($n_index_cols - 2) ) {
          my $col = $index_cols->[$n];
-         my $val = $vals->[$n];
-         push @where, $q->quote($col) . " = ?";
+         my $val = $tbl->{tbl_struct}->{type_for}->{$col} eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
+         push @where, $q->quote($col) . " = " . $val;
       }
    }
 
@@ -160,7 +160,8 @@ sub _make_range_query {
    # the N left-most index columns.
    my $col = $index_cols->[$n_index_cols - 1];
    my $val = $vals->[-1];  # should only be as many vals as cols
-   push @where, $q->quote($col) . " >= ?";
+   my $condition = $tbl->{tbl_struct}->{type_for}->{$col} eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
+   push @where, $q->quote($col) . " >= " . $condition;
 
    my $sql = "EXPLAIN SELECT /*!40001 SQL_NO_CACHE */ * "
            . "FROM $tbl->{name} FORCE INDEX (" . $q->quote($index) . ") "

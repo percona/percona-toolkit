@@ -50,8 +50,6 @@ $sb->load_file('master', "$sample/long_fk_constraints.sql");
       qw(--execute)) },
 );
 
-warn $output;
-
 my $query = <<_SQL;
   SELECT TABLE_NAME, CONSTRAINT_NAME 
     FROM information_schema.KEY_COLUMN_USAGE 
@@ -62,8 +60,11 @@ ORDER BY TABLE_NAME, CONSTRAINT_NAME
 _SQL
 my $constraints = $master_dbh->selectall_arrayref($query); 
 
+# why we need to sort? Depending on the MySQL version and the characters set, the ORDER BY clause
+# in the query will return different values so, it is better to rely on our own sorted results.
+my @sorted_constraints = sort { @$a[0].@$a[1] cmp @$b[0].@$b[1] } @$constraints;
 is_deeply(
-   $constraints,
+   \@sorted_constraints,
    [
     [ 'Table1', '__fkey1a' ],
     [ 'Table1', '__fkey_SALES_RECURRING_PROFILE_CUSTOMER_CUSTOMER_ENTITY_ENTITY_I' ],
