@@ -6202,7 +6202,7 @@ sub identical_boundaries {
       if scalar @$b1 != scalar @$b2;  # shouldn't happen
    my $n_vals = scalar @$b1;
    for my $i ( 0..($n_vals-1) ) {
-      return 0 if $b1->[$i] ne $b2->[$i]; # diff
+      return 0 if ($b1->[$i] || '') ne ($b2->[$i] || ''); # diff
    }
    return 1;
 }
@@ -9103,7 +9103,7 @@ sub main {
          # (*) Frank:  commented them out because it caused infinite loop
          # and the mentioned test error doesn't arise
          
-         #my $original_error = $EVAL_ERROR;
+         my $original_error = $EVAL_ERROR;
 
          foreach my $task ( reverse @cleanup_tasks ) {
             eval {
@@ -9113,7 +9113,7 @@ sub main {
                warn "Error cleaning up: $EVAL_ERROR\n";
             }
          }
-         #die $original_error if $original_error;  # rethrow original error
+         die $original_error if $original_error;  # rethrow original error
          return;
       }
    );
@@ -9638,7 +9638,7 @@ sub main {
                $nibble_iter->switch_to_nibble();
                # die ts($msg);
             } else {
-               return 0;
+               return 1;
             }
          }
          if (!$nibble_iter->one_nibble()) { # chunking the table

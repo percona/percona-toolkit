@@ -22,7 +22,6 @@ my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
 
 my $vp = VersionParser->new($master_dbh);
-warn Data::Dumper::Dumper($vp);
 
 if ($vp->cmp('8.0.14') > -1 && $vp->flavor() !~ m/maria/i) {
    plan skip_all => 'Cannot run this test under the current MySQL version';
@@ -65,11 +64,14 @@ my $query = <<__SQL;
      and CONSTRAINT_NAME LIKE '%fkey%' 
 ORDER BY TABLE_NAME, CONSTRAINT_NAME 
 __SQL
-my $constraints = $master_dbh->selectall_arrayref($query); 
 
+my $constraints = $master_dbh->selectall_arrayref($query); 
+# why we need to sort? Depending on the MySQL version and the characters set, the ORDER BY clause
+# in the query will return different values so, it is better to rely on our own sorted results.
+my @sorted_constraints = sort { @$a[0].@$a[1] cmp @$b[0].@$b[1] } @$constraints;
 
 is_deeply(
-   $constraints,
+   \@sorted_constraints,
    [
       ['Table1', '__fkey1a'],
       ['Table1', '_fkey1b'],
@@ -78,8 +80,6 @@ is_deeply(
    ],
    "First run adds or removes underscore from constraint names, accordingly"
 );
-
-
 
 # run second time: we expect constraint names to be prefixed with one underscore
 # if they havre't one, and to remove 2 if they have 2
@@ -91,10 +91,10 @@ is_deeply(
 );
 
 $constraints = $master_dbh->selectall_arrayref("SELECT TABLE_NAME, CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE table_schema='bug1215587' and (TABLE_NAME='Table1' OR TABLE_NAME='Table2') and CONSTRAINT_NAME LIKE '%fkey%' ORDER BY TABLE_NAME, CONSTRAINT_NAME"); 
-
+@sorted_constraints = sort { @$a[0].@$a[1] cmp @$b[0].@$b[1] } @$constraints; # read above why we need to sort
 
 is_deeply(
-   $constraints,
+   \@sorted_constraints,
    [
       ['Table1', '__fkey1b'],
       ['Table1', 'fkey1a'],
@@ -113,10 +113,10 @@ is_deeply(
 );
 
 $constraints = $master_dbh->selectall_arrayref("SELECT TABLE_NAME, CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE table_schema='bug1215587' and (TABLE_NAME='Table1' OR TABLE_NAME='Table2') and CONSTRAINT_NAME LIKE '%fkey%' ORDER BY TABLE_NAME, CONSTRAINT_NAME"); 
-
+@sorted_constraints = sort { @$a[0].@$a[1] cmp @$b[0].@$b[1] } @$constraints; # read above why we need to sort
 
 is_deeply(
-   $constraints,
+   \@sorted_constraints,
    [
       ['Table1', '_fkey1a'],
       ['Table1', 'fkey1b'],

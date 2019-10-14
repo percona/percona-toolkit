@@ -939,7 +939,7 @@ sub identical_boundaries {
       if scalar @$b1 != scalar @$b2;  # shouldn't happen
    my $n_vals = scalar @$b1;
    for my $i ( 0..($n_vals-1) ) {
-      return 0 if $b1->[$i] ne $b2->[$i]; # diff
+      return 0 if ($b1->[$i] || '') ne ($b2->[$i] || ''); # diff
    }
    return 1;
 }
