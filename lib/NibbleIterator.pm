@@ -139,6 +139,7 @@ sub switch_to_nibble {
     my $params = _nibble_params($self->{nibble_params}, $self->{tbl}, $self->{args}, $self->{cols}, 
                                 $self->{chunk_size}, $self->{where}, $self->{comments}, $self->{Quoter});
 
+    $self->{one_nibble}           = 0;
     $self->{index}                = $params->{index};
     $self->{limit}                = $params->{limit};
     $self->{first_lb_sql}         = $params->{first_lb_sql};
@@ -150,6 +151,8 @@ sub switch_to_nibble {
     $self->{explain_nibble_sql}   = $params->{explain_nibble_sql};
     $self->{resume_lb_sql}        = $params->{resume_lb_sql};
     $self->{sql}                  = $params->{sql};
+    $self->_get_bounds();
+    $self->_prepare_sths();
 }
 
 sub _one_nibble {
@@ -161,7 +164,9 @@ sub _one_nibble {
       my $nibble_sql
          = ($args->{dml} ? "$args->{dml} " : "SELECT ")
          . ($args->{select} ? $args->{select}
-                          : join(', ', map { $q->quote($_) } @$cols))
+             #                          : join(', ', map { $q->quote($_) } @$cols))
+         : join(', ', map{ $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ?
+                                   "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_) } @$cols))
          . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
          . ($args->{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
@@ -171,7 +176,8 @@ sub _one_nibble {
       my $explain_nibble_sql
          = "EXPLAIN SELECT "
          . ($args->{select} ? $args->{select}
-                          : join(', ', map { $q->quote($_) } @$cols))
+                          : join(', ', map{ $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' 
+                          ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_) } @$cols))
          . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
          . ($args->{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
@@ -211,17 +217,14 @@ sub _nibble_params {
       # are needed to ensure deterministic nibbling.
 
       my $from     = "$tbl->{name} FORCE INDEX(`$index`)";
-      my $order_by = join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' 
-                                        ? "CONCAT(".$q->quote($_).")" : $q->quote($_)} @{$index_cols});
-
-      my $order_by_dec = join(' DESC,', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' 
-                                        ? "CONCAT(".$q->quote($_).")" : $q->quote($_)} @{$index_cols});
+      my $order_by = join(', ', map {$q->quote($_)} @{$index_cols});
+      my $order_by_dec = join(' DESC,', map {$q->quote($_)} @{$index_cols});
 
       # The real first row in the table.  Usually we start nibbling from
       # this row.  Called once in _get_bounds().
       my $first_lb_sql
          = "SELECT /*!40001 SQL_NO_CACHE */ "
-         . join(', ', map { $q->quote($_) } @{$asc->{scols}})
+         . join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_)} @{$asc->{scols}})
          . " FROM $from"
          . ($where ? " WHERE $where" : '')
          . " ORDER BY $order_by"
@@ -235,7 +238,7 @@ sub _nibble_params {
       if ( $args->{resume} ) {
          $resume_lb_sql
             = "SELECT /*!40001 SQL_NO_CACHE */ "
-            . join(', ', map { $q->quote($_) } @{$asc->{scols}})
+            . join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_)} @{$asc->{scols}})
             . " FROM $from"
             . " WHERE " . $asc->{boundaries}->{'>'}
             . ($where ? " AND ($where)" : '')
@@ -250,7 +253,7 @@ sub _nibble_params {
       # upper in some cases.  Called once in _get_bounds().
       my $last_ub_sql
          = "SELECT /*!40001 SQL_NO_CACHE */ "
-         . join(', ', map { $q->quote($_) } @{$asc->{scols}})
+         . join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_)} @{$asc->{scols}})
          . " FROM $from"
          . ($where ? " WHERE $where" : '')
          . " ORDER BY "
@@ -269,7 +272,7 @@ sub _nibble_params {
       # for the next nibble.  See _next_boundaries().
       my $ub_sql
          = "SELECT /*!40001 SQL_NO_CACHE */ "
-         . join(', ', map { $q->quote($_) } @{$asc->{scols}})
+         . join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_)} @{$asc->{scols}})
          . " FROM $from"
          . " WHERE " . $asc->{boundaries}->{'>='}
                      . ($where ? " AND ($where)" : '')
@@ -283,7 +286,7 @@ sub _nibble_params {
       my $nibble_sql
          = ($args->{dml} ? "$args->{dml} " : "SELECT ")
          . ($args->{select} ? $args->{select}
-                          : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
+                          : join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_)} @{$asc->{cols}}))
          . " FROM $from"
          . " WHERE " . $asc->{boundaries}->{'>='}  # lower boundary
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
@@ -369,7 +372,6 @@ sub next {
    # If there's another nibble, fetch the rows within it.
    NIBBLE:
    while ( $self->{have_rows} || $self->_next_boundaries() ) {
-
       if ($self->{pause_file}) {
          while(-f $self->{pause_file}) {
             print "Sleeping $self->{sleep} seconds because $self->{pause_file} exists\n";
