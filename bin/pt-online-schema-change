@@ -4522,6 +4522,9 @@ sub get_slave_status {
               my $slave_use_channels;
               for my $row (@$sss_rows) {
                   $row = { map { lc($_) => $row->{$_} } keys %$row }; # lowercase the keys
+                  if ($row->{channel_name}) {
+                      $slave_use_channels = 1;
+                  }
                   if ($row->{channel_name} eq $self->{channel}) {
                       $ss = $row;
                       last;
@@ -4531,7 +4534,7 @@ sub get_slave_status {
                  die 'This server is using replication channels but "channel" was not specified on the command line';
               }
           } else {
-              if ($sss_rows->[0]->{channel_name} && $sss_rows->[0]->{channel_name} ne ($self->{channel} || '')) {
+              if ($sss_rows->[0]->{channel_name} && $sss_rows->[0]->{channel_name} ne $self->{channel}) {
                   die 'This server is using replication channels but "channel" was not specified on the command line';
               } else {
                   $ss = $sss_rows->[0];
@@ -4542,11 +4545,14 @@ sub get_slave_status {
              $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
              return $ss;
           }
+          if (!$ss && $self->{channel}) {
+              die "Specified channel name is invalid";
+          }
       }
 
       PTDEBUG && _d('This server returns nothing for SHOW SLAVE STATUS');
       $self->{not_a_slave}->{$dbh}++;
-  } 
+  }
 }
 
 sub get_master_status {
