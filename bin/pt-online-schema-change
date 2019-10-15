@@ -2226,6 +2226,10 @@ sub parse {
       }
    }
 
+   if ($final_props{F}) {
+       %final_props = ( 'F' => $final_props{F} );
+   }
+
    return \%final_props;
 }
 
@@ -2406,6 +2410,28 @@ sub get_dbh {
            . ($sql_mode ? " and $sql_mode" : '')
            . ": $EVAL_ERROR";
       }
+   }
+   my ($mysql_version) = eval { $dbh->selectrow_array('SELECT VERSION()') };
+   if ($EVAL_ERROR) {
+       die "Cannot get MySQL version: $EVAL_ERROR";
+   }
+
+   my (undef, $character_set_server) = eval { $dbh->selectrow_array("SHOW VARIABLES LIKE 'character_set_server'") };
+   if ($EVAL_ERROR) {
+       die "Cannot get MySQL var character_set_server: $EVAL_ERROR";
+   }
+
+   if ($mysql_version =~ m/^(\d+)\.(\d)\.(\d+).*/) {
+       if ($1 >= 8 && $character_set_server =~ m/^utf8/) {
+           $dbh->{mysql_enable_utf8} = 1;
+           my $msg = "MySQL version $mysql_version >= 8 and character_set_server = $character_set_server\n".
+                     "Setting: SET NAMES $character_set_server";
+           PTDEBUG && _d($msg);
+           eval { $dbh->do("SET NAMES 'utf8mb4'") };
+           if ($EVAL_ERROR) {
+               die "Cannot SET NAMES $character_set_server: $EVAL_ERROR";
+           }
+       }
    }
 
    PTDEBUG && _d('DBH info: ',
@@ -3892,7 +3918,7 @@ sub new {
    };
    my ($dp, $o) = @args{@required_args};
 
-   my $dsn_defaults = $dp->parse_options($o);
+   my $dsn_defaults = $dp->parse_options($o);  
    my $prev_dsn     = $args{prev_dsn};
    my $dsn          = $args{dsn};
    if ( !$dsn ) {
@@ -4018,7 +4044,7 @@ sub name {
 
 sub description {
    my ($self) = @_;
-   return sprintf("%s -> %s:%s", $self->name(), $self->{dsn}->{h}, $self->{dsn}->{P} || 'socket');
+   return sprintf("%s -> %s:%s", $self->name(), $self->{dsn}->{h} || 'localhost' , $self->{dsn}->{P} || 'socket');
 }
 
 sub get_id {
@@ -4497,12 +4523,19 @@ sub get_slave_status {
               if (!$self->{channel}) {
                   die 'This server returned more than one row for SHOW SLAVE STATUS but "channel" was not specified on the command line';
               }
+              my $slave_use_channels;
               for my $row (@$sss_rows) {
                   $row = { map { lc($_) => $row->{$_} } keys %$row }; # lowercase the keys
+                  if ($row->{channel_name}) {
+                      $slave_use_channels = 1;
+                  }
                   if ($row->{channel_name} eq $self->{channel}) {
                       $ss = $row;
                       last;
                   }
+              }
+              if (!$ss && $slave_use_channels) {
+                 die 'This server is using replication channels but "channel" was not specified on the command line';
               }
           } else {
               if ($sss_rows->[0]->{channel_name} && $sss_rows->[0]->{channel_name} ne $self->{channel}) {
@@ -4515,6 +4548,9 @@ sub get_slave_status {
           if ( $ss && %$ss ) {
              $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
              return $ss;
+          }
+          if (!$ss && $self->{channel}) {
+              die "Specified channel name is invalid";
           }
       }
 
@@ -4978,7 +5014,7 @@ sub wait {
    if ( $pr ) {
       $pr_callback = sub {
          my ($fraction, $elapsed, $remaining, $eta, $completed) = @_;
-         my $dsn_name = $worst->{cxn}->name();
+         my $dsn_name = $worst->{cxn}->{dsn_name};
          if ( defined $worst->{lag} ) {
             print STDERR "Replica lag is " . ($worst->{lag} || '?')
                . " seconds on $dsn_name.  Waiting.\n";
@@ -4987,19 +5023,19 @@ sub wait {
             if ($self->{fail_on_stopped_replication}) {
                 die 'replication is stopped';
             }
-            print STDERR "Replica $dsn_name is stopped.  Waiting.\n";
+            print STDERR "(1) Replica '$dsn_name' is stopped.  Waiting.\n";
          }
          return;
       };
       $pr->set_callback($pr_callback);
 
       $pr_first_report = sub {
-         my $dsn_name = $worst->{cxn}->name();
+         my $dsn_name = $worst->{cxn}->{dsn_name};
          if ( !defined $worst->{lag} ) {
             if ($self->{fail_on_stopped_replication}) {
                 die 'replication is stopped';
             }
-            print STDERR "Replica $dsn_name is stopped.  Waiting.\n";
+            print STDERR "(2) Replica $dsn_name is stopped.  Waiting.\n";
          }
          return;
       };
@@ -5009,7 +5045,13 @@ sub wait {
    while ( $oktorun->() && @lagged_slaves ) {
       PTDEBUG && _d('Checking slave lag');
       for my $i ( 0..$#lagged_slaves ) {
-         my $lag = $get_lag->($lagged_slaves[$i]->{cxn});
+         my $lag;
+         eval {
+             $lag = $get_lag->($lagged_slaves[$i]->{cxn});
+         };
+         if ($EVAL_ERROR) {
+             die $EVAL_ERROR;
+         }
          PTDEBUG && _d($lagged_slaves[$i]->{cxn}->name(),
             'slave lag:', $lag);
          if ( !defined $lag || $lag > $max_lag ) {
@@ -8704,6 +8746,7 @@ sub main {
          OptionParser => $o,
          DSNParser    => $dp,
          Quoter       => $q,
+         channel      => $o->get('channel'),
       );
 
       $slaves = $ms->get_slaves(
@@ -8733,7 +8776,7 @@ sub main {
          PTDEBUG && _d('Will use --check-slave-lag to check for slave lag');
          my $cxn = $make_cxn->(
             dsn_string => $o->get('check-slave-lag'),
-            prev_dsn   => $cxn->dsn(),
+            #prev_dsn   => $cxn->dsn(),
          );
          $slave_lag_cxns = [ $cxn ];
       }
@@ -8741,6 +8784,7 @@ sub main {
          PTDEBUG && _d('Will check slave lag on all slaves');
          $slave_lag_cxns = $slaves;
       }
+
       if ( $slave_lag_cxns && scalar @$slave_lag_cxns ) {
          if ($o->get('skip-check-slave-lag')) {
              my $slaves_to_skip = $o->get('skip-check-slave-lag');
@@ -8772,6 +8816,15 @@ sub main {
       else {
          print "Not checking slave lag because no slaves were found "
                . "and --check-slave-lag was not specified.\n";
+      }
+      # Before starting, check the replication is not using replications channels or that --channel was specified
+      for my $slave (@$slave_lag_cxns) {
+          eval {
+             my $ss = $ms->get_slave_status($slave->{dbh});
+          };
+          if ($EVAL_ERROR) {
+              die $EVAL_ERROR;
+          }
       }
 
       # #####################################################################
@@ -8850,6 +8903,7 @@ sub main {
                   #TODO REMOVE DEBUG
                   PTDEBUG && _d('2> Cannot connect to', $cxn->name(), ':',
                      $EVAL_ERROR);
+                  die '2> Cannot connect to '. $cxn->name() . ':' . $EVAL_ERROR;
                   # Make ReplicaLagWaiter::wait() report slave is stopped.
                   return undef; 
                }
@@ -8859,8 +8913,8 @@ sub main {
                $lag = $ms->get_slave_lag($dbh);
             };
             if ( $EVAL_ERROR ) {
-               PTDEBUG && _d('Cannot get lag for', $cxn->name(), ':',
-                  $EVAL_ERROR);
+               PTDEBUG && _d('Cannot get lag for', $cxn->name(), ':', $EVAL_ERROR);
+                  die '2> Cannot connect to '. $cxn->name() . ':' . $EVAL_ERROR;
             }
             return $lag; # undef if error
          };
@@ -12055,6 +12109,18 @@ the server very busy, this can cause an outage.
 
 Prompt for a password when connecting to MySQL.
 
+=item --channel
+
+type: string
+
+Channel name used when connected to a server using replication channels.
+Suppose you have two masters, master_a at port 12345, master_b at port 1236 and
+a slave connected to both masters using channels chan_master_a and chan_master_b.
+If you want to run pt-table-sync to syncronize the slave against master_a, pt-table-sync
+won't be able to determine what's the correct master since SHOW SLAVE STATUS
+will return 2 rows. In this case, you can use --channel=chan_master_a to specify
+the channel name to use in the SHOW SLAVE STATUS command.
+
 =item --charset
 
 short form: -A; type: string
@@ -13066,7 +13132,7 @@ If password contains commas they must be escaped with a backslash: "exam\,ple"
 
 =item * P
 
-dsn: port; copy: yes
+dsn: port; copy: no
 
 Port number to use for connection.
 

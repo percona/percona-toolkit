@@ -28,7 +28,8 @@ if ( !$master_dbh ) {
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout-3 else the
 # tool will die.
-my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+$master_dbh->do('SET @@collation_server="latin1_swedish_ci"');
+my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox,charset=utf8';
 my @args       = (qw(--set-vars innodb_lock_wait_timeout=3 --alter-foreign-keys-method rebuild_constraints));
 my $output;
 my $exit_status;
@@ -47,6 +48,7 @@ $sb->load_file('master', "$sample/long_fk_constraints.sql");
    sub { pt_online_schema_change::main(@args,
       "$master_dsn,D=bug1215587,t=Table1",
       "--alter", "ENGINE=InnoDB",
+      "--charset", "utf8",
       qw(--execute)) },
 );
 
@@ -66,10 +68,10 @@ my @sorted_constraints = sort { @$a[0].@$a[1] cmp @$b[0].@$b[1] } @$constraints;
 is_deeply(
    \@sorted_constraints,
    [
-    [ 'Table1', '__fkey1a' ],
-    [ 'Table1', '__fkey_SALES_RECURRING_PROFILE_CUSTOMER_CUSTOMER_ENTITY_ENTITY_I' ],
-    [ 'Table2', '__fkey2b' ],
-    [ 'Table2', '_fkey2a' ],
+    [ 'Table1', '_fkey1a' ],
+    [ 'Table1', '_fkey_SALES_RECURRING_PROFILE_CUSTOMER_CUSTOMER_ENTITY_ENTITY_ID' ],
+    [ 'Table2', 'fkey2a' ],
+    [ 'Table2', '_fkey2b' ],
    ],
    "First run adds or removes underscore from constraint names, accordingly"
 );
