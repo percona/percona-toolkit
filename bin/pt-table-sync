@@ -7418,12 +7418,35 @@ sub get_cxn_from_dsn_table {
    PTDEBUG && _d($sql);
    my $dsn_strings = $dbh->selectcol_arrayref($sql);
    my @cxn;
+   my $o = $self->{OptionParser};
+
    if ( $dsn_strings ) {
       foreach my $dsn_string ( @$dsn_strings ) {
          PTDEBUG && _d('DSN from DSN table:', $dsn_string);
+
+         if ($o->got('slave-user') || $o->got('slave-password')) {
+
+            my $slave_user = '';
+            my $slave_password = '';
+
+            if ($o->got('slave-user')) {
+               my $slave_user_raw = $o->get('slave-user');
+               $slave_user = "u=$slave_user_raw";
+            }
+
+            if ($o->got('slave-password')) {
+               my $slave_pass_raw = $o->get('slave-password');
+               $slave_password = "p=$slave_pass_raw";
+            }
+
+            $dsn_string = "$slave_user,$slave_password,$dsn_string";
+            PTDEBUG && _d('DSN from DSN table (modified with slave creds):', $dsn_string);
+         }
+
          push @cxn, $make_cxn->(dsn_string => $dsn_string);
       }
    }
+
    return \@cxn;
 }
 
