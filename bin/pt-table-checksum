@@ -7907,7 +7907,7 @@ sub engine_is_allowed {
    my $filter = $self->{filters};
 
    if ( $filter->{'ignore-engines'}->{$engine} ) {
-      PTDEBUG && _d('Engine', $engine, 'is in --ignore-databases list');
+      PTDEBUG && _d('Engine', $engine, 'is in --ignore-engines list');
       return 0;
    }
 
