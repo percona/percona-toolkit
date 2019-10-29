@@ -10,7 +10,7 @@ import (
 
 	"github.com/percona/percona-toolkit/src/go/lib/tutil"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (

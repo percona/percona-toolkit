@@ -1969,6 +1969,10 @@ sub parse {
       }
    }
 
+   if ($final_props{F}) {
+       %final_props = ( 'F' => $final_props{F} );
+   }
+
    return \%final_props;
 }
 
@@ -4988,6 +4992,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-slave-delay 3.0.13
+pt-slave-delay 3.1.0
 
 =cut

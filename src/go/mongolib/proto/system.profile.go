@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // docsExamined is renamed from nscannedObjects in 3.2.0
@@ -143,9 +143,9 @@ func (self ExampleQuery) ExplainCmd() bson.D {
 			break
 		}
 
-		if cmd.Len() == 0 || cmd[0].Name != "find" {
+		if cmd.Len() == 0 || cmd[0].Key != "find" {
 			var filter interface{}
-			if cmd.Len() > 0 && cmd[0].Name == "query" {
+			if cmd.Len() > 0 && cmd[0].Key == "query" {
 				filter = cmd[0].Value
 			} else {
 				filter = cmd
@@ -163,7 +163,7 @@ func (self ExampleQuery) ExplainCmd() bson.D {
 			}
 		} else {
 			for i := range cmd {
-				switch cmd[i].Name {
+				switch cmd[i].Key {
 				// PMM-1905: Drop "ntoreturn" if it's negative.
 				case "ntoreturn":
 					// If it's non-negative, then we are fine, continue to next param.
@@ -190,13 +190,13 @@ func (self ExampleQuery) ExplainCmd() bson.D {
 		}
 		if cmd.Len() == 0 {
 			cmd = BsonD{
-				{Name: "q", Value: self.Query},
-				{Name: "u", Value: self.UpdateObj},
+				{Key: "q", Value: self.Query},
+				{Key: "u", Value: self.UpdateObj},
 			}
 		}
 		cmd = BsonD{
-			{Name: "update", Value: coll},
-			{Name: "updates", Value: []interface{}{cmd}},
+			{Key: "update", Value: coll},
+			{Key: "updates", Value: []interface{}{cmd}},
 		}
 	case "remove":
 		s := strings.SplitN(self.Ns, ".", 2)
@@ -206,20 +206,20 @@ func (self ExampleQuery) ExplainCmd() bson.D {
 		}
 		if cmd.Len() == 0 {
 			cmd = BsonD{
-				{Name: "q", Value: self.Query},
+				{Key: "q", Value: self.Query},
 				// we can't determine if limit was 1 or 0 so we assume 0
-				{Name: "limit", Value: 0},
+				{Key: "limit", Value: 0},
 			}
 		}
 		cmd = BsonD{
-			{Name: "delete", Value: coll},
-			{Name: "deletes", Value: []interface{}{cmd}},
+			{Key: "delete", Value: coll},
+			{Key: "deletes", Value: []interface{}{cmd}},
 		}
 	case "insert":
 		if cmd.Len() == 0 {
 			cmd = self.Query
 		}
-		if cmd.Len() == 0 || cmd[0].Name != "insert" {
+		if cmd.Len() == 0 || cmd[0].Key != "insert" {
 			coll := ""
 			s := strings.SplitN(self.Ns, ".", 2)
 			if len(s) == 2 {
@@ -235,7 +235,7 @@ func (self ExampleQuery) ExplainCmd() bson.D {
 			cmd = self.OriginatingCommand
 			for i := range cmd {
 				// drop $db param as it is not supported in MongoDB 3.0
-				if cmd[i].Name == "$db" {
+				if cmd[i].Key == "$db" {
 					if len(cmd)-1 == i {
 						cmd = cmd[:i]
 					} else {
@@ -246,11 +246,11 @@ func (self ExampleQuery) ExplainCmd() bson.D {
 			}
 		} else {
 			cmd = BsonD{
-				{Name: "getmore", Value: ""},
+				{Key: "getmore", Value: ""},
 			}
 		}
 	case "command":
-		if cmd.Len() == 0 || cmd[0].Name != "group" {
+		if cmd.Len() == 0 || cmd[0].Key != "group" {
 			break
 		}
 
@@ -268,7 +268,7 @@ func (self ExampleQuery) ExplainCmd() bson.D {
 				//
 				// The $reduce function shouldn't affect explain execution plan (e.g. what indexes are picked)
 				// so we ignore it for now until we find better way to handle this issue
-				if group[i].Name == "$reduce" {
+				if group[i].Key == "$reduce" {
 					group[i].Value = "{}"
 					cmd[0].Value = group
 					break
@@ -279,7 +279,7 @@ func (self ExampleQuery) ExplainCmd() bson.D {
 
 	return bson.D{
 		{
-			Name:  "explain",
+			Key:   "explain",
 			Value: cmd,
 		},
 	}

@@ -1,6 +1,27 @@
 Changelog for Percona Toolkit
 
+ * Fixed bug   PT-1759: pt-stalk not collecting processlist and variables
+
+ v3.1.0 release 2019-09-12
+
+ * Fixed bug   PT-1114: pt-table-checksum fails when table is empty
+ * Fixed bug   PT-1344: pt-online-schema-change: Use of uninitialized value $host in string
+ * Fixed bug   PT-1575: pt-mysql-summary does not print PXC section for PXC 5.6 and 5.7
+ * Fixed bug   PT-1630: pt-table-checksum not working with galera cluster anymore since 3.0.11
  * Fixed bug   PT-1633: Fix incorrect parsing of a variable with number + K,M,G,T (Thanks Dieter Adriaenssens)
+ * Fixed bug   PT-1633: pt-config-diff doesn't handle innodb_temp_data_file_path correctly
+ * Improvement PT-1663: Implement retention by bytes for pt-stalk
+ * Fixed bug   PT-1670: pt-table-checksum fails when table is empty
+ * New-tool    PT-1696: pt-postgresql-summary
+ * Improvement PT-1705: Make pt-online-schema-change exit with different codes depending on the status
+ * Fixed bug   PT-1709: Error: Use of uninitialized value in concatenation (.) or string at pt-upgrade
+ * Fixed bug   PT-1715: pt-upgrade documentation doesn't have the type tcpdump
+ * Fixed bug   PT-1720: pt-pmp parses configuration files that lead to errors
+ * Fixed bug   PT-1728: Pt-table-checksum failing to scan small tables that get wiped out often
+ * Fixed bug   PT-1734: Tailing log_error in pt-stalk doesn't work
+ * Improvement PT-1741: Migration to new MongoDB driver
+ * Improvement PT-1746: diskstats not working for kernel 4.18+
+ * Improvement PT-1761: Prevent pt-osc to run under MySQL 8.0.14 ~ 8.0.17
 
 v3.0.13 released 2018-12-28
 

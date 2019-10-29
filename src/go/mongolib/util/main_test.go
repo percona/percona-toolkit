@@ -1,245 +1,172 @@
 package util
 
 import (
+	"context"
+	"fmt"
 	"reflect"
 	"testing"
+	"time"
 
-	"github.com/golang/mock/gomock"
-	"github.com/percona/percona-toolkit/src/go/lib/tutil"
-	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
-	"github.com/percona/pmgo"
-	"github.com/percona/pmgo/pmgomock"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	tu "github.com/percona/percona-toolkit/src/go/internal/testutils"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// OK
-func TestGetReplicasetMembers(t *testing.T) {
-	t.Skip("needs fixed")
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	dialer := pmgomock.NewMockDialer(ctrl)
-
-	session := pmgomock.NewMockSessionManager(ctrl)
-
-	mockrss := proto.ReplicaSetStatus{
-		Date:    "",
-		MyState: 1,
-		Term:    0,
-		HeartbeatIntervalMillis: 0,
-		Members: []proto.Members{
-			proto.Members{
-				Optime:        nil,
-				OptimeDate:    "",
-				InfoMessage:   "",
-				ID:            0,
-				Name:          "localhost:17001",
-				Health:        1,
-				StateStr:      "PRIMARY",
-				Uptime:        113287,
-				ConfigVersion: 1,
-				Self:          true,
-				State:         1,
-				ElectionTime:  6340960613392449537,
-				ElectionDate:  "",
-				Set:           ""},
-			proto.Members{
-				Optime:        nil,
-				OptimeDate:    "",
-				InfoMessage:   "",
-				ID:            1,
-				Name:          "localhost:17002",
-				Health:        1,
-				StateStr:      "SECONDARY",
-				Uptime:        113031,
-				ConfigVersion: 1,
-				Self:          false,
-				State:         2,
-				ElectionTime:  0,
-				ElectionDate:  "",
-				Set:           ""},
-			proto.Members{
-				Optime:        nil,
-				OptimeDate:    "",
-				InfoMessage:   "",
-				ID:            2,
-				Name:          "localhost:17003",
-				Health:        1,
-				StateStr:      "SECONDARY",
-				Uptime:        113031,
-				ConfigVersion: 1,
-				Self:          false,
-				State:         2,
-				ElectionTime:  0,
-				ElectionDate:  "",
-				Set:           ""}},
-		Ok:  1,
-		Set: "r1",
-	}
-	expect := []proto.Members{
-		proto.Members{
-			Optime:        nil,
-			OptimeDate:    "",
-			InfoMessage:   "",
-			ID:            0,
-			Name:          "localhost:17001",
-			Health:        1,
-			StateStr:      "PRIMARY",
-			Uptime:        113287,
-			ConfigVersion: 1,
-			Self:          true,
-			State:         1,
-			ElectionTime:  6340960613392449537,
-			ElectionDate:  "",
-			Set:           "r1"},
-		proto.Members{Optime: (*proto.Optime)(nil),
-			OptimeDate:    "",
-			InfoMessage:   "",
-			ID:            1,
-			Name:          "localhost:17002",
-			Health:        1,
-			StateStr:      "SECONDARY",
-			Uptime:        113031,
-			ConfigVersion: 1,
-			Self:          false,
-			State:         2,
-			ElectionTime:  0,
-			ElectionDate:  "",
-			Set:           "r1"},
-		proto.Members{Optime: (*proto.Optime)(nil),
-			OptimeDate:    "",
-			InfoMessage:   "",
-			ID:            2,
-			Name:          "localhost:17003",
-			Health:        1,
-			StateStr:      "SECONDARY",
-			Uptime:        113031,
-			ConfigVersion: 1,
-			Self:          false,
-			State:         2,
-			ElectionTime:  0,
-			ElectionDate:  "",
-			Set:           "r1",
-		}}
-
-	database := pmgomock.NewMockDatabaseManager(ctrl)
-	ss := proto.ServerStatus{}
-	tutil.LoadJson("test/sample/serverstatus.json", &ss)
-
-	dialer.EXPECT().DialWithInfo(gomock.Any()).Return(session, nil)
-	session.EXPECT().Run(bson.M{"replSetGetStatus": 1}, gomock.Any()).SetArg(1, mockrss)
-
-	dialer.EXPECT().DialWithInfo(gomock.Any()).Return(session, nil)
-	session.EXPECT().DB("admin").Return(database)
-	database.EXPECT().Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, gomock.Any()).SetArg(1, ss)
-	session.EXPECT().Close()
-
-	dialer.EXPECT().DialWithInfo(gomock.Any()).Return(session, nil)
-	session.EXPECT().DB("admin").Return(database)
-	database.EXPECT().Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, gomock.Any()).SetArg(1, ss)
-	session.EXPECT().Close()
-
-	dialer.EXPECT().DialWithInfo(gomock.Any()).Return(session, nil)
-	session.EXPECT().DB("admin").Return(database)
-	database.EXPECT().Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, gomock.Any()).SetArg(1, ss)
-	session.EXPECT().Close()
-
-	di := &pmgo.DialInfo{Addrs: []string{"localhost"}}
-	rss, err := GetReplicasetMembers(dialer, di)
-	if err != nil {
-		t.Errorf("getReplicasetMembers: %v", err)
-	}
-	if !reflect.DeepEqual(rss, expect) {
-		t.Errorf("getReplicasetMembers:\ngot %#v\nwant: %#v\n", rss, expect)
+func TestGetHostnames(t *testing.T) {
+	testCases := []struct {
+		name string
+		uri  string
+		want []string
+	}{
+		{
+			name: "from_mongos",
+			uri:  fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBMongosPort),
+			want: []string{"127.0.0.1:17001", "127.0.0.1:17002", "127.0.0.1:17004", "127.0.0.1:17005", "127.0.0.1:17007"},
+		},
+		{
+			name: "from_mongod",
+			uri:  fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBShard1PrimaryPort),
+			want: []string{"127.0.0.1:17001", "127.0.0.1:17002", "127.0.0.1:17003"},
+		},
+		{
+			name: "from_non_sharded",
+			uri:  fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBShard3PrimaryPort),
+			want: []string{"127.0.0.1:17021", "127.0.0.1:17022", "127.0.0.1:17023"},
+		},
 	}
 
+	for _, test := range testCases {
+		t.Run(test.name, func(t *testing.T) {
+			client, err := mongo.NewClient(options.Client().ApplyURI(test.uri))
+			if err != nil {
+				t.Fatalf("cannot get a new MongoDB client: %s", err)
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			defer cancel()
+			err = client.Connect(ctx)
+			if err != nil {
+				t.Fatalf("Cannot connect to MongoDB: %s", err)
+			}
+
+			hostnames, err := GetHostnames(ctx, client)
+			if err != nil {
+				t.Errorf("getHostnames: %v", err)
+			}
+
+			if !reflect.DeepEqual(hostnames, test.want) {
+				t.Errorf("Invalid hostnames from mongos. Got: %+v, want %+v", hostnames, test.want)
+			}
+		})
+	}
 }
 
-//OK
-func TestGetHostnames(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+func TestGetServerStatus(t *testing.T) {
+	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://admin:admin123456@127.0.0.1:17001"))
+	if err != nil {
+		t.Fatalf("cannot get a new MongoDB client: %s", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
 
-	dialer := pmgomock.NewMockDialer(ctrl)
-	session := pmgomock.NewMockSessionManager(ctrl)
-
-	mockrss := proto.ReplicaSetStatus{
-		Date:    "",
-		MyState: 1,
-		Term:    0,
-		HeartbeatIntervalMillis: 0,
-		Members: []proto.Members{
-			proto.Members{
-				Optime:        nil,
-				OptimeDate:    "",
-				InfoMessage:   "",
-				ID:            0,
-				Name:          "localhost:17001",
-				Health:        1,
-				StateStr:      "PRIMARY",
-				Uptime:        113287,
-				ConfigVersion: 1,
-				Self:          true,
-				State:         1,
-				ElectionTime:  6340960613392449537,
-				ElectionDate:  "",
-				Set:           ""},
-			proto.Members{
-				Optime:        nil,
-				OptimeDate:    "",
-				InfoMessage:   "",
-				ID:            1,
-				Name:          "localhost:17002",
-				Health:        1,
-				StateStr:      "SECONDARY",
-				Uptime:        113031,
-				ConfigVersion: 1,
-				Self:          false,
-				State:         2,
-				ElectionTime:  0,
-				ElectionDate:  "",
-				Set:           ""},
-			proto.Members{
-				Optime:        nil,
-				OptimeDate:    "",
-				InfoMessage:   "",
-				ID:            2,
-				Name:          "localhost:17003",
-				Health:        1,
-				StateStr:      "SECONDARY",
-				Uptime:        113031,
-				ConfigVersion: 1,
-				Self:          false,
-				State:         2,
-				ElectionTime:  0,
-				ElectionDate:  "",
-				Set:           ""}},
-		Ok:  1,
-		Set: "r1",
+	err = client.Connect(ctx)
+	if err != nil {
+		t.Fatalf("Cannot connect to MongoDB: %s", err)
 	}
 
-	dialer.EXPECT().DialWithInfo(gomock.Any()).Return(session, nil)
-	session.EXPECT().SetMode(mgo.Monotonic, true)
-	session.EXPECT().Run(bson.M{"replSetGetStatus": 1}, gomock.Any()).SetArg(1, mockrss)
-
-	expect := []string{"localhost:17001", "localhost:17002", "localhost:17003"}
-	di := &pmgo.DialInfo{Addrs: []string{"localhost"}}
-	rss, err := GetHostnames(dialer, di)
+	_, err = GetServerStatus(ctx, client)
 	if err != nil {
 		t.Errorf("getHostnames: %v", err)
 	}
-	if !reflect.DeepEqual(rss, expect) {
-		t.Errorf("getHostnames: got %+v, expected: %+v\n", rss, expect)
+}
+
+func TestGetReplicasetMembers(t *testing.T) {
+	testCases := []struct {
+		name string
+		uri  string
+		want int
+	}{
+		{
+			name: "from_mongos",
+			uri:  fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBMongosPort),
+			want: 7,
+		},
+		{
+			name: "from_mongod",
+			uri:  fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBShard1PrimaryPort),
+			want: 3,
+		},
+		{
+			name: "from_non_sharded",
+			uri:  fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBShard3PrimaryPort),
+			want: 3,
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.name, func(t *testing.T) {
+			clientOptions := options.Client().ApplyURI(test.uri)
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			defer cancel()
+
+			rsm, err := GetReplicasetMembers(ctx, clientOptions)
+			if err != nil {
+				t.Errorf("Got an error while getting replicaset members: %s", err)
+			}
+			if len(rsm) != test.want {
+				t.Errorf("Invalid number of replicaset members. Want %d, got %d", test.want, len(rsm))
+			}
+		})
 	}
 }
 
-func addToCounters(ss proto.ServerStatus, increment int64) proto.ServerStatus {
-	ss.Opcounters.Command += increment
-	ss.Opcounters.Delete += increment
-	ss.Opcounters.GetMore += increment
-	ss.Opcounters.Insert += increment
-	ss.Opcounters.Query += increment
-	ss.Opcounters.Update += increment
-	return ss
+func TestGetShardedHosts(t *testing.T) {
+	testCases := []struct {
+		name string
+		uri  string
+		want int
+		err  bool
+	}{
+		{
+			name: "from_mongos",
+			uri:  fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBMongosPort),
+			want: 2,
+			err:  false,
+		},
+		{
+			name: "from_mongod",
+			uri:  fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBShard1PrimaryPort),
+			want: 0,
+			err:  true,
+		},
+		{
+			name: "from_non_sharded",
+			uri:  fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBShard3PrimaryPort),
+			want: 0,
+			err:  true,
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.name, func(t *testing.T) {
+			clientOptions := options.Client().ApplyURI(test.uri)
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			defer cancel()
+
+			client, err := mongo.NewClient(clientOptions)
+			if err != nil {
+				t.Errorf("Cannot get a new client for host %s: %s", test.uri, err)
+			}
+			if err := client.Connect(ctx); err != nil {
+				t.Errorf("Cannot connect to host %s: %s", test.uri, err)
+			}
+
+			rsm, err := GetShardedHosts(ctx, client)
+			if (err != nil) != test.err {
+				t.Errorf("Invalid error response. Want %v, got %v", test.err, (err != nil))
+			}
+			if len(rsm) != test.want {
+				t.Errorf("Invalid number of replicaset members. Want %d, got %d", test.want, len(rsm))
+			}
+		})
+	}
 }

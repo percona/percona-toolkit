@@ -7,8 +7,6 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
-
-	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -67,6 +65,8 @@ func LoadBson(filename string, destination interface{}) error {
 	re = regexp.MustCompile(`NumberLong\((.*)\)`)
 	buf = re.ReplaceAll(buf, []byte(`$1`))
 
+	re = regexp.MustCompile(`ISODate\((.*)\)`)
+	buf = re.ReplaceAll(buf, []byte(`$1`))
 	// Using regexp is not supported
 	// https://github.com/go-mgo/mgo/issues/363
 	re = regexp.MustCompile(`(/.*/)`)
@@ -77,7 +77,7 @@ func LoadBson(filename string, destination interface{}) error {
 	re = regexp.MustCompile(`(?s): (function \(.*?\) {.*?})`)
 	buf = re.ReplaceAll(buf, []byte(`: ""`))
 
-	err = bson.UnmarshalJSON(buf, &destination)
+	err = json.Unmarshal(buf, &destination)
 	if err != nil {
 		return err
 	}

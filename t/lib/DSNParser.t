@@ -85,6 +85,14 @@ is_deeply(
 );
 
 is_deeply(
+   $dp->parse('u=a,p=b,F=/something.cnf'),
+   {  
+      F => '/something.cnf',
+   },
+   'Read from config overrides other params'
+);
+
+is_deeply(
    $dp->parse('S=/tmp/sock'),
    {  u => undef,
       p => undef,
@@ -257,7 +265,7 @@ SKIP: {
    is($d->{h}, '127.0.0.1', 'Left hostname alone');
 
    my $want = $sandbox_version lt '8.0' ? [ qw(utf8 utf8 utf8) ]: [ qw(utf8mb4 utf8mb4 utf8mb4) ];
-   warn Data::Dumper::Dumper($want);
+   
    is_deeply(
       $dbh->selectrow_arrayref('select @@character_set_client, @@character_set_connection, @@character_set_results'),
       $want,

@@ -18,77 +18,25 @@
 package profiling
 
 import (
-	"github.com/percona/pmgo"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"context"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func Enable(url string) error {
-	session, err := createSession(url)
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	err = profile(session.DB(""), 2)
-	if err != nil {
-		return err
-	}
-
-	return nil
+// Enable enabled the mongo profiler
+func Enable(ctx context.Context, client *mongo.Client) error {
+	res := client.Database("admin").RunCommand(ctx, primitive.M{"profile": 2})
+	return res.Err()
 }
 
-func Disable(url string) error {
-	session, err := createSession(url)
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	err = profile(session.DB(""), 0)
-	if err != nil {
-		return err
-	}
-
-	return nil
+// Disable disables the mongo profiler
+func Disable(ctx context.Context, client *mongo.Client) error {
+	res := client.Database("admin").RunCommand(ctx, primitive.M{"profile": 0})
+	return res.Err()
 }
 
-func Drop(url string) error {
-	session, err := createSession(url)
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	return session.DB("").C("system.profile").DropCollection()
-}
-
-func profile(db pmgo.DatabaseManager, v int) error {
-	result := struct {
-		Was       int
-		Slowms    int
-		Ratelimit int
-	}{}
-	return db.Run(
-		bson.M{
-			"profile": v,
-		},
-		&result,
-	)
-}
-
-func createSession(url string) (pmgo.SessionManager, error) {
-	dialInfo, err := pmgo.ParseURL(url)
-	if err != nil {
-		return nil, err
-	}
-	dialer := pmgo.NewDialer()
-
-	session, err := dialer.DialWithInfo(dialInfo)
-	if err != nil {
-		return nil, err
-	}
-
-	session.SetMode(mgo.Eventual, true)
-	return session, nil
+// Drop drops the system.profile collection for clean up
+func Drop(ctx context.Context, client *mongo.Client) error {
+	return client.Database("").Collection("system.profile").Drop(ctx)
 }
