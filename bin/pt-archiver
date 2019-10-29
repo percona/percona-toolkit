@@ -45,7 +45,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.1.0';
+our $VERSION = '3.0.14-dev';
 
 use strict;
 use warnings FATAL => 'all';
@@ -3775,8 +3775,7 @@ sub _find_slaves_by_processlist {
    }
    grep { $_ }
    map  {
-      my ( $host ) = $_->{host} =~ m/^([^:]+):/;
-      $host ||= $_->{host};
+      my ( $host ) = $_->{host} =~ m/^(.*):\d+$/;
       if ( $host eq 'localhost' ) {
          $host = '127.0.0.1'; # Replication never uses sockets.
       }
