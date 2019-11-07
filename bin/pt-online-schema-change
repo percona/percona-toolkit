@@ -9994,6 +9994,74 @@ sub main {
    }
 
    # #####################################################################
+   # Step 5a: Update foreign key constraints if there are child tables.
+   # #####################################################################
+   if ( $child_tables ) {
+      # --plugin hook
+      if ( $plugin && $plugin->can('before_update_foreign_keys') ) {
+         $plugin->before_update_foreign_keys();
+      }
+
+      eval {
+         if ( $alter_fk_method eq 'none' ) {
+            # This shouldn't happen, but in case it does we should know.
+            warn "The tool detected child tables but "
+               . "--alter-foreign-keys-method=none";
+         }
+         elsif ( $alter_fk_method eq 'rebuild_constraints' ) {
+            rebuild_constraints(
+               orig_tbl     => $new_tbl,
+               old_tbl      => $orig_tbl,
+               # orig_tbl     => $orig_tbl,
+               # old_tbl      => $old_tbl,
+               child_tables => $child_tables,
+               OptionParser => $o,
+               Quoter       => $q,
+               Cxn          => $cxn,
+               TableParser  => $tp,
+               stats        => \%stats,
+               Retry        => $retry,
+               tries        => $tries,
+            );
+         }
+         elsif ( $alter_fk_method eq 'drop_swap' ) {
+            drop_swap(
+               orig_tbl      => $new_tbl,
+               new_tbl       => $orig_tbl,
+               # orig_tbl      => $orig_tbl,
+               # new_tbl       => $new_tbl,
+               Cxn           => $cxn,
+               OptionParser  => $o,
+               stats         => \%stats,
+               Retry         => $retry,
+               tries         => $tries,
+               analyze_table => $analyze_table,
+            );
+         }
+         elsif ( !$alter_fk_method
+               && $o->has('alter-foreign-keys-method')
+               && ($o->get('alter-foreign-keys-method') || '') eq 'auto' ) {
+            # If --alter-foreign-keys-method is 'auto' and we are on a dry run,
+            # $alter_fk_method is left as an empty string.
+            print "Not updating foreign key constraints because this is a dry run.\n";
+         }
+         else {
+            # This should "never" happen because we check this var earlier.
+            _die("Invalid --alter-foreign-keys-method: $alter_fk_method", INVALID_ALTER_FK_METHOD);
+         }
+      };
+      if ( $EVAL_ERROR ) {
+         # TODO: improve error message and handling.
+         _die("Error updating foreign key constraints: $EVAL_ERROR", ERROR_UPDATING_FKS);
+      }
+
+      # --plugin hook
+      if ( $plugin && $plugin->can('after_update_foreign_keys') ) {
+         $plugin->after_update_foreign_keys();
+      }
+   }
+
+   # #####################################################################
    # XXX
    # Step 5: Rename tables: orig -> old, new -> orig
    # Past this step, the original table has been altered. This shouldn't
@@ -10087,66 +10155,66 @@ sub main {
    # #####################################################################
    # Step 6: Update foreign key constraints if there are child tables.
    # #####################################################################
-   if ( $child_tables ) {
-      # --plugin hook
-      if ( $plugin && $plugin->can('before_update_foreign_keys') ) {
-         $plugin->before_update_foreign_keys();
-      }
-
-      eval {
-         if ( $alter_fk_method eq 'none' ) {
-            # This shouldn't happen, but in case it does we should know.
-            warn "The tool detected child tables but "
-               . "--alter-foreign-keys-method=none";
-         }
-         elsif ( $alter_fk_method eq 'rebuild_constraints' ) {
-            rebuild_constraints(
-               orig_tbl     => $orig_tbl,
-               old_tbl      => $old_tbl,
-               child_tables => $child_tables,
-               OptionParser => $o,
-               Quoter       => $q,
-               Cxn          => $cxn,
-               TableParser  => $tp,
-               stats        => \%stats,
-               Retry        => $retry,
-               tries        => $tries,
-            );
-         }
-         elsif ( $alter_fk_method eq 'drop_swap' ) {
-            drop_swap(
-               orig_tbl      => $orig_tbl,
-               new_tbl       => $new_tbl,
-               Cxn           => $cxn,
-               OptionParser  => $o,
-               stats         => \%stats,
-               Retry         => $retry,
-               tries         => $tries,
-               analyze_table => $analyze_table,
-            );
-         }
-         elsif ( !$alter_fk_method
-               && $o->has('alter-foreign-keys-method')
-               && ($o->get('alter-foreign-keys-method') || '') eq 'auto' ) {
-            # If --alter-foreign-keys-method is 'auto' and we are on a dry run,
-            # $alter_fk_method is left as an empty string.
-            print "Not updating foreign key constraints because this is a dry run.\n";
-         }
-         else {
-            # This should "never" happen because we check this var earlier.
-            _die("Invalid --alter-foreign-keys-method: $alter_fk_method", INVALID_ALTER_FK_METHOD);
-         }
-      };
-      if ( $EVAL_ERROR ) {
-         # TODO: improve error message and handling.
-         _die("Error updating foreign key constraints: $EVAL_ERROR", ERROR_UPDATING_FKS);
-      }
-
-      # --plugin hook
-      if ( $plugin && $plugin->can('after_update_foreign_keys') ) {
-         $plugin->after_update_foreign_keys();
-      }
-   }
+   #   if ( $child_tables ) {
+   #      # --plugin hook
+   #      if ( $plugin && $plugin->can('before_update_foreign_keys') ) {
+   #         $plugin->before_update_foreign_keys();
+   #      }
+   #
+   #      eval {
+   #         if ( $alter_fk_method eq 'none' ) {
+   #            # This shouldn't happen, but in case it does we should know.
+   #            warn "The tool detected child tables but "
+   #               . "--alter-foreign-keys-method=none";
+   #         }
+   #         elsif ( $alter_fk_method eq 'rebuild_constraints' ) {
+   #            rebuild_constraints(
+   #               orig_tbl     => $orig_tbl,
+   #               old_tbl      => $old_tbl,
+   #               child_tables => $child_tables,
+   #               OptionParser => $o,
+   #               Quoter       => $q,
+   #               Cxn          => $cxn,
+   #               TableParser  => $tp,
+   #               stats        => \%stats,
+   #               Retry        => $retry,
+   #               tries        => $tries,
+   #            );
+   #         }
+   #         elsif ( $alter_fk_method eq 'drop_swap' ) {
+   #            drop_swap(
+   #               orig_tbl      => $orig_tbl,
+   #               new_tbl       => $new_tbl,
+   #               Cxn           => $cxn,
+   #               OptionParser  => $o,
+   #               stats         => \%stats,
+   #               Retry         => $retry,
+   #               tries         => $tries,
+   #               analyze_table => $analyze_table,
+   #            );
+   #         }
+   #         elsif ( !$alter_fk_method
+   #               && $o->has('alter-foreign-keys-method')
+   #               && ($o->get('alter-foreign-keys-method') || '') eq 'auto' ) {
+   #            # If --alter-foreign-keys-method is 'auto' and we are on a dry run,
+   #            # $alter_fk_method is left as an empty string.
+   #            print "Not updating foreign key constraints because this is a dry run.\n";
+   #         }
+   #         else {
+   #            # This should "never" happen because we check this var earlier.
+   #            _die("Invalid --alter-foreign-keys-method: $alter_fk_method", INVALID_ALTER_FK_METHOD);
+   #         }
+   #      };
+   #      if ( $EVAL_ERROR ) {
+   #         # TODO: improve error message and handling.
+   #         _die("Error updating foreign key constraints: $EVAL_ERROR", ERROR_UPDATING_FKS);
+   #      }
+   #
+   #      # --plugin hook
+   #      if ( $plugin && $plugin->can('after_update_foreign_keys') ) {
+   #         $plugin->after_update_foreign_keys();
+   #      }
+   #   }
 
    # ########################################################################
    # Step 7: Drop the old table.
@@ -11058,8 +11126,8 @@ sub rebuild_constraints {
 
          $constraint =~ s/CONSTRAINT `$fk`/CONSTRAINT `$new_fk`/;
 
-         my $sql = "DROP FOREIGN KEY `$fk`, "
-                 . "ADD $constraint";
+         my $sql = "" . "DROP FOREIGN KEY `$fk` ";
+         #. "ADD $constraint";
          push @rebuilt_constraints, $sql;
       }
 
