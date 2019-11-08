@@ -8371,6 +8371,7 @@ my $dont_interrupt_now = 0;
 my @drop_trigger_sqls;
 my @triggers_not_dropped;
 my $pxc_version = '0';
+my $can_drop_triggers = 1;
 
 my $triggers_info = [];
 
@@ -9545,6 +9546,7 @@ sub main {
    # called which will drop whichever triggers were created.
    my $drop_triggers = $o->get('drop-triggers');
    push @cleanup_tasks, sub {
+
       PTDEBUG && _d('Clean up triggers');
       # --plugin hook
       if ( $plugin && $plugin->can('before_drop_triggers') ) {
@@ -9555,12 +9557,12 @@ sub main {
          );
       }
 
-      if ( !$oktorun ) {
+      if ( !$oktorun || !_can_drop_triggers()) {
          print "Not dropping triggers because the tool was interrupted.  "
              . "To drop the triggers, execute:\n"
              . join("\n", @drop_trigger_sqls) . "\n";
       }
-      elsif ( !$drop_triggers  ) {
+      elsif ( !$drop_triggers || !_can_drop_triggers()) {
          print "Not dropping triggers because --no-drop-triggers was "
          . "specified.  To drop the triggers, execute:\n"
          . join("\n", @drop_trigger_sqls) . "\n";
@@ -10052,6 +10054,8 @@ sub main {
       };
       if ( $EVAL_ERROR ) {
          # TODO: improve error message and handling.
+         $can_drop_triggers=undef;
+         $oktorun=undef;
          _die("Error updating foreign key constraints: $EVAL_ERROR", ERROR_UPDATING_FKS);
       }
 
@@ -10287,6 +10291,10 @@ sub main {
 # ############################################################################
 # Subroutines.
 # ############################################################################
+
+sub _can_drop_triggers {
+   return $can_drop_triggers;
+}
 
 sub validate_tries {
    my ($o) = @_;
@@ -11069,6 +11077,8 @@ sub rebuild_constraints {
       print ts("Rebuilding foreign key constraints...\n");
    }
 
+   my $foreign_key_checks;
+
    CHILD_TABLE:
    foreach my $child_tbl ( @$child_tables ) {
       my $table_def = $tp->get_create_table(
@@ -11126,26 +11136,47 @@ sub rebuild_constraints {
 
          $constraint =~ s/CONSTRAINT `$fk`/CONSTRAINT `$new_fk`/;
 
-         my $sql = "" . "DROP FOREIGN KEY `$fk` ";
-         #. "ADD $constraint";
+         my $sql =  "DROP FOREIGN KEY `$fk`, ADD $constraint";
          push @rebuilt_constraints, $sql;
       }
 
+      my $server_version = VersionParser->new($cxn->dbh());
+      if ($server_version >= '5.6' && $o->get('disable-fk-checks')) {
+          my $row = $cxn->dbh()->selectrow_arrayref('SELECT @@foreign_key_checks');
+          $foreign_key_checks = @$row[0];
+          ts("Disabling FK checks");
+          $cxn->dbh()->do("SET FOREIGN_KEY_CHECKS=0");
+      }
       my $sql = "ALTER TABLE $child_tbl->{name} "
               . join(', ', @rebuilt_constraints);
       print $sql, "\n" if $o->get('print');
-      if ( $o->get('execute') ) {
-         osc_retry(
-            Cxn     => $cxn,
-            Retry   => $retry,
-            tries   => $tries->{update_foreign_keys},
-            stats   => $stats,
-            code    => sub {
-               PTDEBUG && _d($sql);
-               $cxn->dbh()->do($sql);
-               $stats->{rebuilt_constraint}++;
-            },
-         );
+      if ($o->get('execute')) {
+          eval {
+              osc_retry(
+                  Cxn     => $cxn,
+                  Retry   => $retry,
+                  tries   => $tries->{update_foreign_keys},
+                  stats   => $stats,
+                  code    => sub {
+                  PTDEBUG && _d($sql);
+                  $cxn->dbh()->do($sql);
+                  $stats->{rebuilt_constraint}++;
+              },
+          );
+      };
+      if ($foreign_key_checks) {
+          ts("Re-enabling FK checks");
+          $cxn->dbh()->do("SET FOREIGN_KEY_CHECKS=$foreign_key_checks");
+      }
+      if ($EVAL_ERROR) {
+         $can_drop_triggers=undef;
+         $oktorun=undef;
+         _d("Foreing keys rebuild failed. To rebuild constraints please manually run:");
+         foreach my $cmd (@rebuilt_constraints) {
+             print "$cmd\n";
+         }
+          _die("Foreing keys were not rebuilt");
+      }
       }
    }
 
@@ -11600,6 +11631,11 @@ sub osc_retry {
          ) {
             # These errors/warnings can be retried, so don't print
             # a warning yet; do that in final_fail.
+            # If we found a lock wait timeout and $tries == 0, we are in the rebuilt_constraints part
+            # so we should keep retrying
+            if ($error =~ m/Lock wait timeout exceeded/ && !$tries->{tries}) {
+                return 1;
+            }
             $stats->{ error_event($error) }++;
             return 1;  # try again
          }
@@ -12438,6 +12474,12 @@ short form: -F; type: string
 
 Only read mysql options from the given file.  You must give an absolute
 pathname.
+
+=item --disable-fk-checks
+
+Disable foreign keys check during rebuild constraints. This option improves the process speed
+but it is risky since FKs checks will be disabled for a short period of time, allowing invalid
+values in tables. Please use it carefully.
 
 =item --[no]drop-new-table
 
