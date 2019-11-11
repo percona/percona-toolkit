@@ -18,7 +18,7 @@ func TestCheckUpdates(t *testing.T) {
 		m := strings.Split(string(body), ";")
 
 		advices := []Advice{
-			Advice{
+			{
 				Hash:     m[0],
 				ToolName: m[1],
 				Advice:   "There is a new version",

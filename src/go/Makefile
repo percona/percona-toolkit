@@ -1,10 +1,16 @@
+help:                 ## Display this help message.
+	@echo "Please use \`make <target>\` where <target> is one of:"
+	@grep '^[a-zA-Z]' $(MAKEFILE_LIST) | \
+		awk -F ':.*?## ' 'NF==2 {printf "  %-26s%s\n", $$1, $$2}'
+
 GO := go
-pkgs   = $(shell find . -type d -name "pt-*" -exec basename {} \;)
+pkgs = $(shell find . -type d -name "pt-*" -exec basename {} \;)
 VERSION=$(shell git describe --abbrev=0 --tags)
 BUILD=$(shell date +%FT%T%z)
 GOVERSION=$(shell go version | cut --delimiter=" " -f3)
 COMMIT=$(shell git rev-list -1 HEAD)
 GOUTILSDIR ?= $(GOPATH)/bin
+FILES = $(shell find . -type f -name '*.go' -not -path "./vendor/*")
 
 PREFIX=$(shell pwd)
 TOP_DIR=$(shell git rev-parse --show-toplevel)
@@ -91,7 +97,7 @@ endef
 env:
 	@echo $(TEST_ENV) | tr ' ' '\n' >.env
 
-test-cluster: env
+env-up: env					## Start MongoDB docker containers cluster
 	TEST_PSMDB_VERSION=$(TEST_PSMDB_VERSION) \
 	docker-compose up \
 	--detach \
@@ -101,40 +107,41 @@ test-cluster: env
 	init 
 	docker/test/init-cluster-wait.sh
 
-test-cluster-clean: env
+env-down: env				## Clean-up MongoDB docker containers cluster
 	docker-compose down -v
+	rm .env
 
-linux-amd64: 
+linux-amd64: 				## Build Mongo tools for linux-amd64
 	@echo "Building linux/amd64 binaries in ${BIN_DIR}"
 	@cd ${TOP_DIR} && dep ensure
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
 	@$(foreach pkg,$(pkgs),GOOS=linux GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
 
-linux-386: 
+linux-386: 					## Build Mongo tools for linux-386
 	@echo "Building linux/386 binaries in ${BIN_DIR}"
 	@cd ${TOP_DIR} && dep ensure
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
 	@$(foreach pkg,$(pkgs),GOOS=linux GOARCH=386 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
 
-darwin-amd64: 
+darwin-amd64:				## Build Mongo tools for darwin-amd64 (MacOS) 
 	@echo "Building darwin/amd64 binaries in ${BIN_DIR}"
 	@cd ${TOP_DIR} && dep ensure
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
 	@$(foreach pkg,$(pkgs),GOOS=darwin GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
 
-style:
+style:						## Check code style
 	@echo ">> checking code style"
 	@! gofmt -d $(shell find . -path ./vendor -prune -o -name '*.go' -print) | grep '^'
 
-test:
+test:						## Run tests
 	@echo ">> running tests"
 	@./runtests.sh
 
-format:
-	@echo ">> formatting code"
-	@$(GO) fmt $(pkgs)
+format:                         ## Format source code.
+	gofmt -w -s $(FILES)
+	goimports -local github.com/percona/pmm-managed -l -w $(FILES)
 
-vet:
+vet:						## Run vet on Go code
 	@echo ">> vetting code"
-	@$(GO) vet $(pkgs)
+	@$(foreach pkg,$(pkgs), cd $(TOP_DIR)/src/go/$(pkg); go vet ./... ;)
 
