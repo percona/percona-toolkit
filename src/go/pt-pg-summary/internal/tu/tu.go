@@ -23,10 +23,10 @@ const (
 	ipv6PG11Port = "6432"
 	ipv6PG12Port = "6432"
 
-	pg9Container  = "pt-pg-summary_postgres9_1"
-	pg10Container = "pt-pg-summary_postgres10_1"
-	pg11Container = "pt-pg-summary_postgres11_1"
-	pg12Container = "pt-pg-summary_postgres12_1"
+	pg9Container  = "go_postgres9_1"
+	pg10Container = "go_postgres10_1"
+	pg11Container = "go_postgres11_1"
+	pg12Container = "go_postgres12_1"
 )
 
 var (

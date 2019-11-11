@@ -20,6 +20,7 @@ src/go/pt-mongodb-summary/vendor/
 vendor/
 *.bak
 src/go/*.bak
+src/go/.env
 config/deb/control.bak
 config/rpm/percona-toolkit.spec.bak
 config/sphinx-build/percona-theme/*

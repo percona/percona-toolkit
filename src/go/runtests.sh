@@ -4,7 +4,9 @@ export BASEDIR=$(git rev-parse --show-toplevel)
 export CHECK_SESSIONS=0
 cd $BASEDIR
 
-for dir in $(ls -d pt-*)
+source ${BASEDIR}/src/go/setenv.sh
+
+for dir in $(ls -d ./src/go/pt-*)
 do 
   echo "Running tests at $BASEDIR/$dir"
   cd $BASEDIR/$dir
