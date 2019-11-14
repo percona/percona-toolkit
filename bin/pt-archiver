@@ -6240,6 +6240,12 @@ sub main {
       return 0;
    }
 
+   # Remove sentinel file.
+   if ( $o->get('unstop') ) {
+      unlink $sentinel 
+         or die "Cannot unlink sentinel file: $OS_ERROR\n";
+   }
+
    # Generate a filename with sprintf-like formatting codes.
    if ( $archive_file ) {
       my @time = localtime();
@@ -8371,6 +8377,13 @@ autocommit, dropped performance to 38 seconds per thousand rows.
 
 If you are not archiving from or to a transactional storage engine, you may
 want to disable transactions so pt-archiver doesn't try to commit.
+
+=item --unstop
+
+Remove sentinel file
+
+Causes pt-archiver to remove the sentinel file specified by L<"--sentinel"> and
+continue.
 
 =item --user
 
