@@ -51,7 +51,6 @@ ok(
 );
 
 SKIP: {
-    skip "Skipping in MySQL 8.0.4-rc since there is an error in the server itself. See https://bugs.mysql.com/bug.php?id=89441", 9 if ($sandbox_version ge '8.0');
     ($output, $exit_status) = full_output(
        sub { pt_online_schema_change::main(@args,
           "$master_dsn,D=issue26211,t=process_model_inst",

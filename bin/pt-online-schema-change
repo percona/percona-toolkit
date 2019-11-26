@@ -9053,7 +9053,9 @@ sub main {
       );
 
    my $vp = VersionParser->new($cxn->dbh());
-   if ($vp->cmp('8.0.14') > -1 && $vp->flavor() !~ m/maria/i) {
+   warn "8.0.14: ".$vp->cmp('8.0.14');
+   warn "8.0.18: ".$vp->cmp('8.0.17');
+   if (($vp->cmp('8.0.14') >= 0 && $vp->cmp('8.0.17') <= 0) && $vp->flavor() !~ m/maria/i) {
        my $msg = "There is an error in MySQL that makes the server to die when trying to ".
                  "rename a table with FKs. See https://bugs.mysql.com/bug.php?id=96145\n".
                  "Since pt-online-schema change needs to rename the old <-> new tables as the final " .
@@ -11303,10 +11305,11 @@ sub create_triggers {
       "$new_tbl->{name}.$new_qcol <=> OLD.$old_qcol"
    } @{$tbl_struct->{keys}->{$del_index}->{cols}} );
 
+   my $ignore_clause = $o->get("delete-ignore") ? "IGNORE" : "";
    my $delete_trigger
       = "CREATE TRIGGER `${prefix}_del` AFTER DELETE ON $orig_tbl->{name} "
       . "FOR EACH ROW "
-      . "DELETE IGNORE FROM $new_tbl->{name} "
+      . "DELETE $ignore_clause FROM $new_tbl->{name} "
       . "WHERE $del_index_cols";
 
    # ---------------------------------------------------------------------------------------
@@ -11332,7 +11335,7 @@ sub create_triggers {
       = "CREATE TRIGGER `${prefix}_upd` AFTER UPDATE ON $orig_tbl->{name} "
       . "FOR EACH ROW "
       . "BEGIN "
-      . "DELETE IGNORE FROM $new_tbl->{name} WHERE !($upd_index_cols) AND $del_index_cols;"
+      . "DELETE $ignore_clause FROM $new_tbl->{name} WHERE !($upd_index_cols) AND $del_index_cols;"
       . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals);"
       . "END ";      
 
@@ -12474,6 +12477,15 @@ short form: -F; type: string
 
 Only read mysql options from the given file.  You must give an absolute
 pathname.
+
+=item --[no]delete-ignore
+
+default: yes
+
+Do not use C<IGNORE> on C<DELETE> triggers.
+This is an special case that affects forign keys handling. Since C<DELETE> only return errors when
+there is a problem deleting rows affected by foreign keys, it might be cases when we want to
+receive such errors during the program execution to ensure FKs handling is correct.
 
 =item --disable-fk-checks
 
