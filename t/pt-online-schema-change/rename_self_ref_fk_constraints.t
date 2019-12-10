@@ -58,8 +58,8 @@ is_deeply(
    $constraints,
    [
       ['person', '_fk_testId'],
-      ['test_table', '_fk_person'],
-      ['test_table', '__fk_refId'],
+      ['test_table', 'fk_person'],
+      ['test_table', 'fk_refId'],
    ],
    "First run adds or removes underscore from constraint names, accordingly"
 );
@@ -79,9 +79,9 @@ $constraints = $master_dbh->selectall_arrayref("SELECT TABLE_NAME, CONSTRAINT_NA
 is_deeply(
    $constraints,
    [
-      ['person', '__fk_testId'],
-      ['test_table', '_fk_refId'],
-      ['test_table', '__fk_person'],
+      ['person', '_fk_testId'],
+      ['test_table', 'fk_person'],
+      ['test_table', 'fk_refId'],
    ],
    "Second run self-referencing will be one due to rebuild_constraints"
 );
@@ -100,7 +100,7 @@ $constraints = $master_dbh->selectall_arrayref("SELECT TABLE_NAME, CONSTRAINT_NA
 is_deeply(
    $constraints,
    [
-      ['person', 'fk_testId'],
+      ['person', '_fk_testId'],
       ['test_table', 'fk_person'],
       ['test_table', 'fk_refId'],
    ],

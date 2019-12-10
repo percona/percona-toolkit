@@ -23,10 +23,6 @@ my $master_dbh = $sb->get_dbh_for('master');
 
 my $vp = VersionParser->new($master_dbh);
 
-if ($vp->cmp('8.0.14') > -1 && $vp->flavor() !~ m/maria/i) {
-   plan skip_all => 'Cannot run this test under the current MySQL version';
-}
-
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
