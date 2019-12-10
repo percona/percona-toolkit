@@ -9062,8 +9062,6 @@ sub main {
       );
 
    my $vp = VersionParser->new($cxn->dbh());
-   warn "8.0.14: ".$vp->cmp('8.0.14');
-   warn "8.0.18: ".$vp->cmp('8.0.17');
    if (($vp->cmp('8.0.14') >= 0 && $vp->cmp('8.0.17') <= 0) && $vp->flavor() !~ m/maria/i) {
        my $msg = "There is an error in MySQL that makes the server to die when trying to ".
                  "rename a table with FKs. See https://bugs.mysql.com/bug.php?id=96145\n".
