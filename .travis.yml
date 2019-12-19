@@ -3,6 +3,7 @@ language: go
 go:
   - 1.10.x
   - 1.12.x
+  - 1.13.x
 
 services:
   - docker
@@ -44,6 +45,13 @@ env:
     - MONGODB_IMAGE=percona/percona-server-mongodb:3.0
     - MONGODB_IMAGE=percona/percona-server-mongodb:3.2
     - MONGODB_IMAGE=percona/percona-server-mongodb:3.4
+
+# skip non-trunk PMM-XXXX branch builds, but still build pull requests
+branches:
+  except:
+    - /^PMM\-\d{4}/
+
+go_import_path: github.com/percona/percona-toolkit
 
 before_install:
     - sudo apt-get update
