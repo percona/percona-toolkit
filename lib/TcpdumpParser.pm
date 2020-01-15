@@ -88,6 +88,7 @@ sub parse_event {
       # Remove the separator from the packet, and restore it to the front if
       # necessary.
       $raw_packet =~ s/\n20\Z//;
+      $raw_packet = "20$raw_packet" if $raw_packet =~ /\A20-\d\d-\d\d/; # workaround for year 2020 problem
       $raw_packet = "20$raw_packet" unless $raw_packet =~ m/\A20/;
 
       # Remove special headers (e.g. vlan) before the IPv4 header.
