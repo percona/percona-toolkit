@@ -144,8 +144,12 @@ sub BUILDARGS {
          if ( $query ) {
             $query = { map { $_->{variable_name} => $_->{value} } @$query };
             @args{@methods} = $self->_split_version($query->{version});
-            $args{flavor} = delete $query->{version_comment}
-                  if $query->{version_comment};
+            $args{flavor} = delete $query->{version_comment} if $query->{version_comment};
+            if ($args{flavor} !~ m/mysql|maria|percona/i) {
+                eval {
+                    ($args{flavor}) = $dbh->selectrow_array(q/SELECT VERSION()/);
+                };
+            }
          }
          elsif ( eval { ($query) = $dbh->selectrow_array(q/SELECT VERSION()/) } ) {
             @args{@methods} = $self->_split_version($query);
