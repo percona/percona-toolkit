@@ -7807,7 +7807,8 @@ sub _iterate_dbh {
       }
 
       if ( !$self->{tbls} ) {
-         my $sql = 'SHOW /*!50002 FULL*/ TABLES FROM ' . $q->quote($self->{db});
+         #my $sql = 'SHOW /*!50002 FULL*/ TABLES FROM ' . $q->quote($self->{db});
+         my $sql = 'SELECT TABLE_NAME as Tables_in_'.$self->{db}.", TABLE_TYPE as Table_type from information_schema.TABLES where TABLE_SCHEMA= '".$self->{db}."'";
          PTDEBUG && _d($sql);
          my @tbls = map {
             $_->[0];  # (tbl, type)
