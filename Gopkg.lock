@@ -80,6 +80,14 @@
   version = "v1.8.0"
 
 [[projects]]
+  digest = "1:141cc9fc6279592458b304038bd16a05ef477d125c6dad281216345a11746fd7"
+  name = "github.com/gofrs/uuid"
+  packages = ["."]
+  pruneopts = ""
+  revision = "6b08a5c5172ba18946672b49749cde22873dd7c2"
+  version = "v3.2.0"
+
+[[projects]]
   digest = "1:68c64bb61d55dcd17c82ca0b871ddddb5ae18b30cfe26f6bfd4b6df6287dc2e0"
   name = "github.com/golang/mock"
   packages = ["gomock"]
@@ -186,14 +194,6 @@
   pruneopts = ""
   revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
   version = "v0.8.1"
-
-[[projects]]
-  digest = "1:7f569d906bdd20d906b606415b7d794f798f91a62fcfb6a4daa6d50690fb7a3f"
-  name = "github.com/satori/go.uuid"
-  packages = ["."]
-  pruneopts = ""
-  revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
-  version = "v1.2.0"
 
 [[projects]]
   digest = "1:55dcddb2ba6ab25098ee6b96f176f39305f1fde7ea3d138e7e10bb64a5bf45be"
@@ -333,6 +333,7 @@
     "github.com/Percona-Lab/pt-pg-summary/models",
     "github.com/alecthomas/kingpin",
     "github.com/go-ini/ini",
+    "github.com/gofrs/uuid",
     "github.com/golang/mock/gomock",
     "github.com/hashicorp/go-version",
     "github.com/howeyc/gopass",
@@ -343,7 +344,6 @@
     "github.com/pborman/getopt",
     "github.com/percona/go-mysql/query",
     "github.com/pkg/errors",
-    "github.com/satori/go.uuid",
     "github.com/shirou/gopsutil/process",
     "github.com/sirupsen/logrus",
     "go.mongodb.org/mongo-driver/bson",

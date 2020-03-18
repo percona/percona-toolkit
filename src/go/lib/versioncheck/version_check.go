@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	uuid "github.com/satori/go.uuid"
+	uuid "github.com/gofrs/uuid"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -52,11 +52,14 @@ func CheckUpdates(toolName, version string) (string, error) {
 }
 
 func checkUpdates(url string, timeout time.Duration, toolName, version string) (string, error) {
-
 	client := &http.Client{
 		Timeout: timeout,
 	}
-	payload := fmt.Sprintf("%x;%s;%s", uuid.NewV2(uuid.DomainOrg).String(), PERCONA_TOOLKIT, version)
+	vuuid, err := uuid.NewV2(uuid.DomainOrg)
+	if err != nil {
+		return "", err
+	}
+	payload := fmt.Sprintf("%x;%s;%s", vuuid.String(), PERCONA_TOOLKIT, version)
 	req, err := http.NewRequest("POST", url, strings.NewReader(payload))
 	if err != nil {
 		return "", err
