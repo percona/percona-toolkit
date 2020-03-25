@@ -80,14 +80,6 @@
   version = "v1.8.0"
 
 [[projects]]
-  digest = "1:141cc9fc6279592458b304038bd16a05ef477d125c6dad281216345a11746fd7"
-  name = "github.com/gofrs/uuid"
-  packages = ["."]
-  pruneopts = ""
-  revision = "6b08a5c5172ba18946672b49749cde22873dd7c2"
-  version = "v3.2.0"
-
-[[projects]]
   digest = "1:68c64bb61d55dcd17c82ca0b871ddddb5ae18b30cfe26f6bfd4b6df6287dc2e0"
   name = "github.com/golang/mock"
   packages = ["gomock"]
@@ -102,6 +94,14 @@
   packages = ["."]
   pruneopts = ""
   revision = "ff6b7dc882cf4cfba7ee0b9f7dcc1ac096c554aa"
+
+[[projects]]
+  digest = "1:ad92aa49f34cbc3546063c7eb2cabb55ee2278b72842eda80e2a20a8a06a8d73"
+  name = "github.com/google/uuid"
+  packages = ["."]
+  pruneopts = ""
+  revision = "0cd6bf5da1e1c83f8b45653022c74f71af0538a4"
+  version = "v1.1.1"
 
 [[projects]]
   branch = "master"
@@ -333,8 +333,8 @@
     "github.com/Percona-Lab/pt-pg-summary/models",
     "github.com/alecthomas/kingpin",
     "github.com/go-ini/ini",
-    "github.com/gofrs/uuid",
     "github.com/golang/mock/gomock",
+    "github.com/google/uuid",
     "github.com/hashicorp/go-version",
     "github.com/howeyc/gopass",
     "github.com/kr/pretty",
