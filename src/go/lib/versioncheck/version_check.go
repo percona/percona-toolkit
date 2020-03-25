@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	uuid "github.com/gofrs/uuid"
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -55,10 +55,7 @@ func checkUpdates(url string, timeout time.Duration, toolName, version string) (
 	client := &http.Client{
 		Timeout: timeout,
 	}
-	vuuid, err := uuid.NewV2(uuid.DomainOrg)
-	if err != nil {
-		return "", err
-	}
+	vuuid := uuid.New()
 	payload := fmt.Sprintf("%x;%s;%s", vuuid.String(), PERCONA_TOOLKIT, version)
 	req, err := http.NewRequest("POST", url, strings.NewReader(payload))
 	if err != nil {
