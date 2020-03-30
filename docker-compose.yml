@@ -143,6 +143,30 @@ services:
     - configsvr1
 #   - configsvr2
 #   - configsvr3
+  postgres9:
+    image: ${MYSQL_IMAGE:-postgres:9.6}
+    ports:
+      - ${POSTGRE_HOST:-127.0.0.1}:${POSTGRE_96_PORT:-6432}:5432
+    environment:
+      - POSTGRES_PASSWORD=root
+  postgres10:
+    image: ${POSTGRE_IMAGE:-postgres:10.7}
+    ports:
+      - ${POSTGRE_HOST:-127.0.0.1}:${POSTGRE_10_PORT:-6433}:5432
+    environment:
+      - POSTGRES_PASSWORD=root
+  postgres11:
+    image: ${POSTGRE_IMAGE:-postgres:11}
+    ports:
+      - ${POSTGRE_HOST:-127.0.0.1}:${POSTGRE_11_PORT:-6434}:5432
+    environment:
+      - POSTGRES_PASSWORD=root
+  postgres12:
+    image: ${POSTGRE_IMAGE:-postgres:12}
+    ports:
+      - ${POSTGRE_HOST:-127.0.0.1}:${POSTGRE_12_PORT:-6435}:5432
+    environment:
+      - POSTGRES_PASSWORD=root
   init:
     network_mode: host
     image: ${TEST_MONGODB_FLAVOR}:${TEST_PSMDB_VERSION}
@@ -166,9 +190,13 @@ services:
     - s3-mongo2
     - s3-mongo3
     - standalone
+    - postgres9
+    - postgres10
+    - postgres11
+    - postgres12
   test:
     build:
-      dockerfile: src/go/docker/test/Dockerfile
+      dockerfile: docker/test/Dockerfile
       context: .
       args:
       - GOLANG_DOCKERHUB_TAG=${GOLANG_DOCKERHUB_TAG}
