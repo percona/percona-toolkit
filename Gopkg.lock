@@ -96,6 +96,14 @@
   revision = "ff6b7dc882cf4cfba7ee0b9f7dcc1ac096c554aa"
 
 [[projects]]
+  digest = "1:ad92aa49f34cbc3546063c7eb2cabb55ee2278b72842eda80e2a20a8a06a8d73"
+  name = "github.com/google/uuid"
+  packages = ["."]
+  pruneopts = ""
+  revision = "0cd6bf5da1e1c83f8b45653022c74f71af0538a4"
+  version = "v1.1.1"
+
+[[projects]]
   branch = "master"
   digest = "1:4fbfcfe715329e2f09ea644657aa791b81e73a0c835a4f79b9a0dfff0513e2b8"
   name = "github.com/hashicorp/go-version"
@@ -186,14 +194,6 @@
   pruneopts = ""
   revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
   version = "v0.8.1"
-
-[[projects]]
-  digest = "1:7f569d906bdd20d906b606415b7d794f798f91a62fcfb6a4daa6d50690fb7a3f"
-  name = "github.com/satori/go.uuid"
-  packages = ["."]
-  pruneopts = ""
-  revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
-  version = "v1.2.0"
 
 [[projects]]
   digest = "1:55dcddb2ba6ab25098ee6b96f176f39305f1fde7ea3d138e7e10bb64a5bf45be"
@@ -334,6 +334,7 @@
     "github.com/alecthomas/kingpin",
     "github.com/go-ini/ini",
     "github.com/golang/mock/gomock",
+    "github.com/google/uuid",
     "github.com/hashicorp/go-version",
     "github.com/howeyc/gopass",
     "github.com/kr/pretty",
@@ -343,7 +344,6 @@
     "github.com/pborman/getopt",
     "github.com/percona/go-mysql/query",
     "github.com/pkg/errors",
-    "github.com/satori/go.uuid",
     "github.com/shirou/gopsutil/process",
     "github.com/sirupsen/logrus",
     "go.mongodb.org/mongo-driver/bson",
