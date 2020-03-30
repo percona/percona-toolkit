@@ -69,6 +69,7 @@ before_script:
   - dep ensure
 
 script:
+  - docker ps 
   - go test -timeout 20m ./src/go/...
 
 allow_failures:
