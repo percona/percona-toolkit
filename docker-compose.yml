@@ -144,7 +144,7 @@ services:
 #   - configsvr2
 #   - configsvr3
   postgres9:
-    image: ${MYSQL_IMAGE:-postgres:9.6}
+    image: ${POSTGRE_IMAGE:-postgres:9.6}
     ports:
       - ${POSTGRE_HOST:-127.0.0.1}:${POSTGRE_96_PORT:-6432}:5432
     environment:
