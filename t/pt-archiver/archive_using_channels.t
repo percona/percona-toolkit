@@ -76,6 +76,8 @@ $output = output(
    sub { $exit_status = pt_archiver::main(@args) },
    stderr => 1,
 );
+diag("Exit status: $exit_status");
+diag($output);
 
 isnt(
     $exit_status,

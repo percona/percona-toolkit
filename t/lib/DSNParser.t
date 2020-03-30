@@ -88,6 +88,13 @@ is_deeply(
    $dp->parse('u=a,p=b,F=/something.cnf'),
    {  
       F => '/something.cnf',
+      P => undef,
+      u => "a",
+      p => "b",
+      h => undef,
+      A => undef,
+      S => undef,
+      D => undef,
    },
    'Read from config overrides other params'
 );
