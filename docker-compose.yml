@@ -168,7 +168,7 @@ services:
     - standalone
   test:
     build:
-      dockerfile: docker/test/Dockerfile
+      dockerfile: src/go/docker/test/Dockerfile
       context: .
       args:
       - GOLANG_DOCKERHUB_TAG=${GOLANG_DOCKERHUB_TAG}
