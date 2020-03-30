@@ -10,3 +10,4 @@ do
     sandbox/test-env restart
     prove -vw $d | tee -a ${LOGFILE}
 done
+
