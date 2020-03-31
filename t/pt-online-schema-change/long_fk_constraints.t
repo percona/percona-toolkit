@@ -70,8 +70,8 @@ is_deeply(
    [
     [ 'Table1', '_fkey1a' ],
     [ 'Table1', '_fkey_SALES_RECURRING_PROFILE_CUSTOMER_CUSTOMER_ENTITY_ENTITY_ID' ],
-    [ 'Table2', 'fkey2a' ],
     [ 'Table2', '_fkey2b' ],
+    [ 'Table2', 'fkey2a' ],
    ],
    "First run adds or removes underscore from constraint names, accordingly"
 );
