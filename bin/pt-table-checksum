@@ -4872,7 +4872,7 @@ sub generate_asc_stmt {
 
    die "Index '$index' does not exist in table"
       unless exists $tbl_struct->{keys}->{$index};
-   PTDEBUG && _d('Will ascend index', $index);
+   PTDEBUG && _d('Will ascend index', $index);  
 
    my @asc_cols = @{$tbl_struct->{keys}->{$index}->{cols}};
    if ( $args{asc_first} ) {
@@ -4975,7 +4975,7 @@ sub generate_cmp_where {
             push @clause, "($val IS NULL OR $quo $type $val)";
          }
          elsif ( $type =~ m/>/ ) {
-            push @clause, "(($val IS NULL AND $quo IS NOT NULL) OR ($quo $cmp $val)";
+            push @clause, "($val IS NULL AND $quo IS NOT NULL) OR ($quo $cmp $val)";
          }
          else { # If $type =~ m/</ ) {
             push @clauses, "(($val IS NOT NULL AND $quo IS NULL) OR ($quo $cmp $val))";
@@ -4989,7 +4989,7 @@ sub generate_cmp_where {
          push @clause, ($type =~ m/=/ && $end ? "$quo $type $val" : "$quo $cmp $val");
       }
 
-      push @clauses, '(' . join(' AND ', @clause) . ')';
+      push @clauses, '(' . join(' AND ', @clause) . ')' if @clause;
    }
    my $result = '(' . join(' OR ', @clauses) . ')';
    my $where = {
