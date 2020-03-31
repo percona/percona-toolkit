@@ -882,10 +882,6 @@ sub parse {
       }
    }
 
-   if ($final_props{F}) {
-       %final_props = ( 'F' => $final_props{F} );
-   }
-
    return \%final_props;
 }
 
