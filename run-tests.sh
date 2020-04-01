@@ -11,5 +11,5 @@ for dir in t/*
 do 
     echo "$dir"
     sandbox/test-env restart
-    prove -vw "$dir" | tee -a $LOG_FILE
+    prove -vw --trap --timer "$dir" | tee -a $LOG_FILE
 done
