@@ -11134,7 +11134,7 @@ sub rebuild_constraints {
          if ($fk =~ /^__/) {
            ($new_fk = $fk) =~ s/^__//;
          } else {
-           $new_fk = '_'.$fk;
+           $new_fk = '___'.$fk;
          }
 
          PTDEBUG && _d("Old FK name: $fk New FK name: $new_fk");
