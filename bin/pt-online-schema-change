@@ -11135,6 +11135,9 @@ sub rebuild_constraints {
            ($new_fk = $fk) =~ s/^__//;
          } else {
            $new_fk = '_'.$fk;
+           if(length $new_fk > 64) {
+             substr($new_fk, 64 - length $new_fk) = '';
+           }
          }
 
          PTDEBUG && _d("Old FK name: $fk New FK name: $new_fk");
