@@ -4205,9 +4205,10 @@ sub get_slaves {
    }
    my ($make_cxn) = @args{@required_args};
 
-   my $slaves  = [];
-   my $dp      = $self->{DSNParser};
-   my $methods = $self->_resolve_recursion_methods($args{dsn});
+   my $slaves      = [];
+   my $dp          = $self->{DSNParser};
+   my $methods     = $self->_resolve_recursion_methods($args{dsn});
+   my $skip_slaves = $args{skip_slaves};
 
    return $slaves unless @$methods;
 
@@ -4256,6 +4257,24 @@ sub get_slaves {
       die "Unexpected recursion methods: @$methods";
    }
 
+   if ($skip_slaves) {
+      my $filtered_slaves = [];
+      for my $slave (@$slaves) {
+         my $found=0;
+         for my $slave_to_skip (@$skip_slaves) {
+            if ($slave->{dsn}->{h} eq $skip_slaves->{h} && $slave->{dsn}->{P} eq $skip_slaves->{P}) {
+                  $found=1;
+            }
+         }
+         if ($found) {
+            print "Skipping slave ". $slave->description()."\n";
+         } else {
+            push @$filtered_slaves, $slave;
+         }
+      }
+      $slaves = $filtered_slaves;
+   }
+   
    return $slaves;
 }
 
@@ -8788,18 +8807,25 @@ sub main {
          channel      => $o->get('channel'),
       );
 
+      my $skip_slaves = $o->get('skip-check-slave-lag');
+
       my $get_slaves_cb = sub {
          my ($intolerant) = @_;
-         return( $ms->get_slaves(
-            dbh          => $cxn->dbh(),
-            dsn          => $cxn->dsn(),
-            make_cxn     => sub {
-               return $make_cxn->(@_, prev_dsn => $cxn->dsn(),
-                 errok => (not $intolerant));
-                                },
-                                )
-               );
-                              };
+         return ( 
+            $ms->get_slaves(
+               dbh          => $cxn->dbh(),
+               dsn          => $cxn->dsn(),
+               skip_slaves  => $skip_slaves,
+               make_cxn     => sub {
+                  return $make_cxn->(
+                     @_,
+                     prev_dsn => $cxn->dsn(),
+                     errok => (not $intolerant)
+                  );
+               },
+            )
+         );
+      };
 
       ### first ever call only: do not tolerate connection errors
       $slaves = $get_slaves_cb->('intolerant');
