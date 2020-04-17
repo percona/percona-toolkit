@@ -23,15 +23,5 @@
   name = "github.com/pborman/getopt"
 
 [[constraint]]
-  name = "github.com/pkg/errors"
-  version = "0.8.0"
-
-[[constraint]]
   name = "github.com/shirou/gopsutil"
   version = "2.17.11"
-
-[[constraint]]
-  name = "github.com/sirupsen/logrus"
-
-[[constraint]]
-  name = "go.mongodb.org/mongo-driver"
