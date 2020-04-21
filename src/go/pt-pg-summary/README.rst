@@ -4,7 +4,8 @@ pt-pg-summary
 
 Usage
 -----
-pt-pg-summary [options] [host:[port]]
+
+:samp:`pt-pg-summary [{options}] [{host}:[{port}]]`
 
 Binaries
 --------
@@ -13,67 +14,31 @@ Please check the `releases <https://github.com/percona/toolkit-go/releases>`_ ta
 Parameters
 ^^^^^^^^^^
 
-.. list-table::
-   :header-rows: 1
-
-   * - Short
-     - Long
-     - Default
-     - Description
-   
-   * -
-     - ``--help``
-     -
-     -  Show context-sensitive help (also try ``--help-long`` and ``--help-man``).
-
-   * -
-     - ``--version``
-     -
-     - Show application version.
-
-   * -
-     - :samp:`--databases={DATABASES}`
-     - Summarize this comma-separated list of databases. All if not specified.
-
-   * - ``-h``
-     - :samp:`--host={HOST}`
-     -
-     - Host to connect to.
-
-   * - ``-W``
-     - :samp:`--password={PASSWORD}`
-     -
-     - Password to use when connecting.
-
-   * - ``-p``
-     - :samp:`--port={PORT}`
-     -
-     - Port number to use for connection.
-
-   * -
-     - :samp:`--sleep={SLEEP}`
-     - 10
-     - Seconds to sleep when gathering status counters.
-
-   * - ``-U``
-     - :samp:`--username={USERNAME}`
-     -
-     - User for login if not current user.
-
-   * -
-     - ``--disable-ssl``
-     - true
-     - Disable SSL for the connection.
-
-   * -
-     - ``--verbose``
-     - false
-     - Show verbose log.
-
-   * -
-     - ``--debug``
-     - false
-     - Show debug information in the logs.
++--------+---------------------------------+---------+----------------------------------------------------------------------------+
+| Short  | Long                            | Default | Description                                                                |
++========+=================================+=========+============================================================================+
+|        | ``--help``                      |         | Show context-sensitive help (also try ``--help-long`` and ``--help-man``). |
++--------+---------------------------------+---------+----------------------------------------------------------------------------+
+|        | ``--version``                   |         | Show application version.                                                  |
++--------+---------------------------------+---------+----------------------------------------------------------------------------+
+|        | :samp:`--databases={DATABASES}` |         | Summarize this comma-separated list of databases. All if not specified.    |
++--------+---------------------------------+---------+----------------------------------------------------------------------------+
+| ``-h`` | :samp:`--host={HOST}`           |         | Host to connect to.                                                        |
++--------+---------------------------------+---------+----------------------------------------------------------------------------+
+| ``-W`` | :samp:`--password={PASSWORD}`   |         | Password to use when connecting.                                           |
++--------+---------------------------------+---------+----------------------------------------------------------------------------+
+| ``-p`` | :samp:`--port={PORT}`           |         | Port number to use for connection.                                         |
++--------+---------------------------------+---------+----------------------------------------------------------------------------+
+|        | :samp:`--sleep={SLEEP}`         | 10      | Seconds to sleep when gathering status counters.                           |
++--------+---------------------------------+---------+----------------------------------------------------------------------------+
+| ``-U`` | :samp:`--username={USERNAME}`   |         | User for login if not current user.                                        |
++--------+---------------------------------+---------+----------------------------------------------------------------------------+
+|        | ``--disable-ssl``               | true    | Disable SSL for the connection.                                            |
++--------+---------------------------------+---------+----------------------------------------------------------------------------+
+|        | ``--verbose``                   | false   | Show verbose log.                                                          |
++--------+---------------------------------+---------+----------------------------------------------------------------------------+
+|        | ``--debug``                     | false   | Show debug information in the logs.                                        |
++--------+---------------------------------+---------+----------------------------------------------------------------------------+
 
 
 .. Currently hidden
