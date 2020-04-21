@@ -5,7 +5,7 @@ pt-pg-summary
 Usage
 -----
 
-:samp:`pt-pg-summary [{options}] [{host}:[{port}]]`
+``pt-pg-summary [options] [host:[port]]``
 
 Binaries
 --------
@@ -21,17 +21,17 @@ Parameters
 +--------+---------------------------------+---------+----------------------------------------------------------------------------+
 |        | ``--version``                   |         | Show application version.                                                  |
 +--------+---------------------------------+---------+----------------------------------------------------------------------------+
-|        | :samp:`--databases={DATABASES}` |         | Summarize this comma-separated list of databases. All if not specified.    |
+|        | ``--databases=DATABASES``       |         | Summarize this comma-separated list of databases. All if not specified.    |
 +--------+---------------------------------+---------+----------------------------------------------------------------------------+
-| ``-h`` | :samp:`--host={HOST}`           |         | Host to connect to.                                                        |
+| ``-h`` | ``--host=HOST``                 |         | Host to connect to.                                                        |
 +--------+---------------------------------+---------+----------------------------------------------------------------------------+
-| ``-W`` | :samp:`--password={PASSWORD}`   |         | Password to use when connecting.                                           |
+| ``-W`` | ``--password=PASSWORD``         |         | Password to use when connecting.                                           |
 +--------+---------------------------------+---------+----------------------------------------------------------------------------+
-| ``-p`` | :samp:`--port={PORT}`           |         | Port number to use for connection.                                         |
+| ``-p`` | ``--port=PORT``                 |         | Port number to use for connection.                                         |
 +--------+---------------------------------+---------+----------------------------------------------------------------------------+
-|        | :samp:`--sleep={SLEEP}`         | 10      | Seconds to sleep when gathering status counters.                           |
+|        | ``--sleep=SLEEP``               | 10      | Seconds to sleep when gathering status counters.                           |
 +--------+---------------------------------+---------+----------------------------------------------------------------------------+
-| ``-U`` | :samp:`--username={USERNAME}`   |         | User for login if not current user.                                        |
+| ``-U`` | ``--username=USERNAME``         |         | User for login if not current user.                                        |
 +--------+---------------------------------+---------+----------------------------------------------------------------------------+
 |        | ``--disable-ssl``               | true    | Disable SSL for the connection.                                            |
 +--------+---------------------------------+---------+----------------------------------------------------------------------------+
