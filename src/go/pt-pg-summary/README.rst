@@ -6,9 +6,6 @@ Usage
 -----
 pt-pg-summary [options] [host:[port]]
 
-Default host:port is `localhost:27017`.
-For better results, host must be a **mongos** server.
-
 Binaries
 --------
 Please check the `releases <https://github.com/percona/toolkit-go/releases>`_ tab to download the binaries.
@@ -16,19 +13,67 @@ Please check the `releases <https://github.com/percona/toolkit-go/releases>`_ ta
 Parameters
 ^^^^^^^^^^
 
-|Short| Long                  | Default            | Description|
-|-----|-----------------------|--------------------|------------------------------------------------------------------------------|
-|     | --help                |                    | Show context-sensitive help (also try --help-long and --help-man).           |
-|     | --version             |                    | Show application version.                                                    |
-|     | --databases=DATABASES |                    | Summarize this comma-separated list of databases. All if not specified       |
-| -h  | --host=HOST           |                    | Host to connect to                                                           |
-| -W  | --password=PASSWORD   | empty              | Password to use when connecting                                              |
-| -p  | --port=PORT           |                    | Port number to use for connection                                            |
-|     | --sleep=SLEEP         | 10                 | Seconds to sleep when gathering status counters                              |
-| -U  | --username=USERNAME   |                    | User for login if not current user                                           |
-|     | --disable-ssl         | true               | Disable SSL for the connection                                               |
-|     | --verbose             | false              | Show verbose log                                                             |
-|     | --debug               | false              | Show debug information in the logs                                           |
+.. list-table::
+   :header-rows: 1
+
+   * - Short
+     - Long
+     - Default
+     - Description
+   
+   * -
+     - ``--help``
+     -
+     -  Show context-sensitive help (also try ``--help-long`` and ``--help-man``).
+
+   * -
+     - ``--version``
+     -
+     - Show application version.
+
+   * -
+     - :samp:`--databases={DATABASES}`
+     - Summarize this comma-separated list of databases. All if not specified.
+
+   * - ``-h``
+     - :samp:`--host={HOST}`
+     -
+     - Host to connect to.
+
+   * - ``-W``
+     - :samp:`--password={PASSWORD}`
+     -
+     - Password to use when connecting.
+
+   * - ``-p``
+     - :samp:`--port={PORT}`
+     -
+     - Port number to use for connection.
+
+   * -
+     - :samp:`--sleep={SLEEP}`
+     - 10
+     - Seconds to sleep when gathering status counters.
+
+   * - ``-U``
+     - :samp:`--username={USERNAME}`
+     -
+     - User for login if not current user.
+
+   * -
+     - ``--disable-ssl``
+     - true
+     - Disable SSL for the connection.
+
+   * -
+     - ``--verbose``
+     - false
+     - Show verbose log.
+
+   * -
+     - ``--debug``
+     - false
+     - Show debug information in the logs.
 
 
 .. Currently hidden
