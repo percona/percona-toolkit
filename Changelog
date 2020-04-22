@@ -1,6 +1,6 @@
 Changelog for Percona Toolkit
 
- * Fixed bug   PT-1824: Name of a constraint can exceed 64 chars
+ * Fixed bug   PT-1824: Name of a constraint can exceed 64 chars (Thanks Iwo Panowicz)
  * Fixed bug   PT-1793: Protocol parser cannot handle year 2020 (Thanks Kei Tsuchiya)
  * Fixed bug   PT-1782: pt-online-schema-change: FK keys warning, but there are no foreign keys
  * Fixed bug   PT-1773: pt-online-schema-change: Restrict the FK check if needed
