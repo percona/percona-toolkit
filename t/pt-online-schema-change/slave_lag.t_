@@ -67,7 +67,7 @@ $slave_dbh->do('START SLAVE');
 diag('Loading test data');
 $sb->load_file('master', "t/pt-online-schema-change/samples/slave_lag.sql");
 
-my $num_rows = 10000;
+my $num_rows = 5000;
 diag("Loading $num_rows into the table. This might take some time.");
 diag(`util/mysql_random_data_load --host=127.0.0.1 --port=12345 --user=msandbox --password=msandbox test pt178 $num_rows`);
 
