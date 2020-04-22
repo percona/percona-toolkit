@@ -92,10 +92,10 @@ Setting
     Selects ``name`` and ``setting`` from ``pg_settings``.
 
 SlaveHosts10
-    Selects information from ``pg_stat_replication`` for PostgreSQL version 10.
+    Selects information for PostgreSQL version 10.
 
 SlaveHosts96
-    Selects information from ``pg_stat_replication`` for PostgreSQL version 9.6.
+    Selects information for PostgreSQL version 9.6.
 
 TableAccess
     Shows table access information by selecting from ``pg_locks``, ``pg_stat_database`` and ``pg_class``.
