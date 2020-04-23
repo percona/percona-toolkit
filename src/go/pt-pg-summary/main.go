@@ -18,10 +18,10 @@ import (
 )
 
 var (
-	Build     string = "2020-04-23" //nolint
+	Build     string = "01-01-1980" //nolint
 	Commit    string                //nolint
-	GoVersion string = "1.14.2"     //nolint
-	Version   string = "3.2"        //nolint
+	GoVersion string = "1.8"        //nolint
+	Version   string = "3.0.1"      //nolint
 )
 
 type connOpts struct {
