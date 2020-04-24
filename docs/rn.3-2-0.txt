@@ -5,6 +5,7 @@
 ================================================================================
 
 :Date: April 23, 2020
+
 :Installation: `Installing Percona Toolkit <https://www.percona.com/doc/percona-toolkit/3.0/installation.html>`_
 
 Improvements
@@ -26,11 +27,11 @@ Bugs Fixed
 * :jirabug:`PT-1760`: ``pt-online-schema-change`` regression caused it to hang for a stopped replica when using replication channels on the slave.
 * :jirabug:`PT-1707`: A number of the Percona Toolkit tools failed to operate in the IPv6 environment if the host address specified as a parameter was not enclosed in square brackets.
 * :jirabug:`PT-1502`: ``pt-online-schema-change`` was not recognizing the slave with multi-source replication active.
-* :jirabug:`PT-1824`: ``pt-online-schema-change`` allowed the name of a constraint to exceed 64 characters when ``--alter-foreign-keys-method=rebuild_constraints`` was used.
-* SKIP :jirabug:`PT-1765`: Documentation for ``DIFF_ROWS`` doesn't exist.
+* :jirabug:`PT-1824`: ``pt-online-schema-change`` allowed the name of a constraint to exceed 64 characters when ``--alter-foreign-keys-method=rebuild_constraints`` was used. (Thank you, Iwo Panowicz.)
+* :jirabug:`PT-1765`: Documentation for ``DIFF_ROWS`` doesn't exist.
 * :jirabug:`PT-297`: ``pt-online-schema-change`` could break replication.
 * :jirabug:`PT-1768`: Source code for ``src/go/pt-mongodb-query-digest/pt-mongodb-query-digest`` was missing in the official source tar ball.
 * :jirabug:`PT-1576`: ``pt-stalk` with ``--mysql-only`` option was not adding MySQL ``processlist`` information to the output file.
-* :jirabug:`PT-1793`: ``pt-query-digest`` was unable to handle the year 2020 because of wrong ``tcpdump`` parsing.
+* :jirabug:`PT-1793`: ``pt-query-digest`` was unable to handle the year 2020 because of wrong ``tcpdump`` parsing. (Thank you, Kei Tsuchiya.)
 
 
