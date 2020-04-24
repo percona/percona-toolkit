@@ -99,7 +99,7 @@ of environments running Percona Software and it is good choice for majority of
 the users.
 
 Why not rely on Operating System's built in functionality for software updates?
------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 
 In many environments the Operating Systems repositories may not carry the
 latest version of software and newer versions of software often installed
