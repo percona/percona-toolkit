@@ -1,7 +1,7 @@
 Percona Toolkit
 ***************
 
-v3.2.0 released 2019-04-20
+v3.2.0 released 2019-04-23
 ==========================
 
 Improvements:
