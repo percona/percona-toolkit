@@ -6,22 +6,25 @@ v3.2.0 released 2019-04-20
 
 Improvements:
 
- * :jirabug:`PT-1765`: Added documentation for ``DIFF_ROWS`` in ``pt-table-checksum``.
- * :jirabug:`PT-1757`: ``pt-table-checksum``: Improved handling of Small Tables.
- * :jirabug:`PT-1707`: Added support for IPv6 addresses.
+* :jirabug:`PT-1773`: Don't make the foreign key check in ``pt-online-schema-change`` if not needed.
+* :jirabug:`PT-1757`: ``pt-table-checksum`` can now handle small tables as a single chunk.
+* :jirabug:`PT-1813`: MariaDB 10.4 is now supported.
 
 Bug fixes:
 
- * :jirabug:`PT-1824`: Added 64-character constraint name limit. (Thank you Iwo Panowicz).
- * :jirabug:`PT-1793`: Protocol parser now handles the year 2020. (Thank you Kei Tsuchiya).
- * :jirabug:`PT-1782`: ``pt-online-schema-change``: No longer FK warning if no foreign keys.
- * :jirabug:`PT-1773`: ``pt-online-schema-change``: FK check restricted if needed.
- * :jirabug:`PT-1766`: ``pt-table-checksum``: ``DIFF_ROWS`` now computed correctly.
- * :jirabug:`PT-1760`: ``pt-online-schema-change`` no longer stalls for stopped replica when slave is active.
- * :jirabug:`PT-1759`: ``pt-stalk`` now collecting ``processlist`` and variables.
- * :jirabug:`PT-1576`: ``pt-stalk mysql-only`` now working as expected.
- * :jirabug:`PT-1502`: ``pt-online-schema-change`` now working with multi-source replication.
- * :jirabug:`PT-297` : ``pt-online-schema-change`` doesn't break replication.
+* :jirabug:`PT-1782`: ``pt-online-schema-change`` declined to handle tables because of foreign keys even when there were no foreign keys with some MariaDB 10.2 and MySQL 8 versions.
+* :jirabug:`PT-1759`: ``pt-stalk`` with ``--mysql-only`` option didn't collect MySQL Status variables.
+* :jirabug:`PT-1802`: ``pt-online-schema-change`` didn't handle self-referencing foreign keys properly which caused an unnecessarily high resource consumption.
+* :jirabug:`PT-1766`: ``pt-table-checksum`` ``DIFF_ROWS`` was not computed correctly.
+* :jirabug:`PT-1760`: ``pt-online-schema-change`` regression caused it to hang for a stopped replica when using replication channels on the slave.
+* :jirabug:`PT-1707`: A number of the Percona Toolkit tools failed to operate in the IPv6 environment if the host address specified as a parameter was not enclosed in square brackets.
+* :jirabug:`PT-1502`: ``pt-online-schema-change`` was not recognizing the slave with multi-source replication active.
+* :jirabug:`PT-1824`: ``pt-online-schema-change`` allowed the name of a constraint to exceed 64 characters when ``--alter-foreign-keys-method=rebuild_constraints`` was used. (Thank you, Iwo Panowicz.)
+* :jirabug:`PT-1765`: Documentation for ``DIFF_ROWS`` doesn't exist.
+* :jirabug:`PT-297`: ``pt-online-schema-change`` could break replication.
+* :jirabug:`PT-1768`: Source code for ``src/go/pt-mongodb-query-digest/pt-mongodb-query-digest`` was missing in the official source tar ball.
+* :jirabug:`PT-1576`: ``pt-stalk` with ``--mysql-only`` option was not adding MySQL ``processlist`` information to the output file.
+* :jirabug:`PT-1793`: ``pt-query-digest`` was unable to handle the year 2020 because of wrong ``tcpdump`` parsing. (Thank you, Kei Tsuchiya.)
 
 
 v3.0.13 released 2019-01-03
@@ -564,7 +567,7 @@ Bug Fixes:
 
 * Bug 1336734: ``pt-online-schema-change`` has implemented new ``--null-to-non-null`` flag which can be used to convert ``NULL`` columns to ``NOT NULL``.
 
-* Bug 1362942: ``pt-slave-restart`` would fail to run on |MariaDB| 10.0.13 due to a different implementation of ``GTID``.
+* Bug 1362942: ``pt-slave-restart`` would fail to run on MariaDB 10.0.13 due to a different implementation of ``GTID``.
 
 * Bug 1389041: ``pt-table-checksum`` had a high likelihood to skip a table when row count was around ``chunk-size`` * ``chunk-size-limit``. To address this issue a new ``--slave-skip-tolerance`` option has been implemented.
 

@@ -39,7 +39,7 @@ It is recommended to install Percona software from official repositories:
 	    
 During the installating process, the percona-toolkit installer records a unique
 identifier specific to the given percona-toolkit instance. This ID is a the
-product UUID stored in |product-uud|. The installer copies the product_uuid to
+product UUID stored in |product-uuid|. The installer copies the product_uuid to
 |toolkit-uuid|.
 
 This unique identifier is used when collecting statistics about the usage of
