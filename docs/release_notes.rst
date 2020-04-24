@@ -1,6 +1,29 @@
 Percona Toolkit
 ***************
 
+v3.2.0 released 2019-04-20
+==========================
+
+Improvements:
+
+ * :jirabug:`PT-1765`: Added documentation for ``DIFF_ROWS`` in ``pt-table-checksum``.
+ * :jirabug:`PT-1757`: ``pt-table-checksum``: Improved handling of Small Tables.
+ * :jirabug:`PT-1707`: Added support for IPv6 addresses.
+
+Bug fixes:
+
+ * :jirabug:`PT-1824`: Added 64-character constraint name limit. (Thank you Iwo Panowicz).
+ * :jirabug:`PT-1793`: Protocol parser now handles the year 2020. (Thank you Kei Tsuchiya).
+ * :jirabug:`PT-1782`: ``pt-online-schema-change``: No longer FK warning if no foreign keys.
+ * :jirabug:`PT-1773`: ``pt-online-schema-change``: FK check restricted if needed.
+ * :jirabug:`PT-1766`: ``pt-table-checksum``: ``DIFF_ROWS`` now computed correctly.
+ * :jirabug:`PT-1760`: ``pt-online-schema-change`` no longer stalls for stopped replica when slave is active.
+ * :jirabug:`PT-1759`: ``pt-stalk`` now collecting ``processlist`` and variables.
+ * :jirabug:`PT-1576`: ``pt-stalk mysql-only`` now working as expected.
+ * :jirabug:`PT-1502`: ``pt-online-schema-change`` now working with multi-source replication.
+ * :jirabug:`PT-297` : ``pt-online-schema-change`` doesn't break replication.
+
+
 v3.0.13 released 2019-01-03
 ===========================
 
