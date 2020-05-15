@@ -4,13 +4,10 @@ services:
   standalone:
     network_mode: host
     image: ${TEST_MONGODB_FLAVOR}:${TEST_PSMDB_VERSION}
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${TEST_MONGODB_ADMIN_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${TEST_MONGODB_ADMIN_PASSWORD}
     command: --port=27017 
-    volumes:
-    - ./docker/test/entrypoint-mongod.sh:/entrypoint.sh:ro
-    - ./docker/test/entrypoint-mongod.sh:/usr/local/bin/docker-entrypoint.sh:ro
-    - ./docker/test/mongod.key:/mongod.key:ro
-    - ./docker/test/ssl/rootCA.crt:/rootCA.crt:ro
-    - ./docker/test/ssl/mongodb.pem:/mongod.pem:ro
   s1-mongo1:
     network_mode: host
     image: ${TEST_MONGODB_FLAVOR}:${TEST_PSMDB_VERSION}

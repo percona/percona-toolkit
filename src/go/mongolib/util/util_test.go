@@ -100,6 +100,11 @@ func TestGetReplicasetMembers(t *testing.T) {
 			uri:  fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBShard3PrimaryPort),
 			want: 3,
 		},
+		{
+			name: "from_standalone",
+			uri:  fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBStandalonePort),
+			want: 0,
+		},
 	}
 
 	for _, test := range testCases {
@@ -146,7 +151,7 @@ func TestGetShardedHosts(t *testing.T) {
 		},
 	}
 
-	for _, test := range testCases {
+	for i, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
 			clientOptions := options.Client().ApplyURI(test.uri)
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -156,6 +161,10 @@ func TestGetShardedHosts(t *testing.T) {
 			if err != nil {
 				t.Errorf("Cannot get a new client for host %s: %s", test.uri, err)
 			}
+			if client == nil {
+				panic(fmt.Sprintf("i: %d, uri: %s\n", i, test.uri))
+			}
+
 			if err := client.Connect(ctx); err != nil {
 				t.Errorf("Cannot connect to host %s: %s", test.uri, err)
 			}

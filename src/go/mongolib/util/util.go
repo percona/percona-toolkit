@@ -2,7 +2,6 @@ package util
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"strings"
 
@@ -11,6 +10,10 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+)
+
+const (
+	shardingNotEnabledError = 203
 )
 
 var (
@@ -119,6 +122,9 @@ func GetHostnames(ctx context.Context, client *mongo.Client) ([]string, error) {
 	var shardsMap proto.ShardsMap
 	smRes := client.Database("admin").RunCommand(ctx, primitive.M{"getShardMap": 1})
 	if smRes.Err() != nil {
+		if e, ok := smRes.Err().(mongo.CommandError); ok && e.Code == shardingNotEnabledError {
+			return nil, nil // standalone instance
+		}
 		return nil, errors.Wrap(smRes.Err(), "cannot getShardMap for GetHostnames")
 	}
 	if err := smRes.Decode(&shardsMap); err != nil {
@@ -134,7 +140,7 @@ func GetHostnames(ctx context.Context, client *mongo.Client) ([]string, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("cannot get shards map")
+	return nil, nil // standalone instance
 }
 
 func buildHostsListFromReplStatus(replStatus proto.ReplicaSetStatus) []string {

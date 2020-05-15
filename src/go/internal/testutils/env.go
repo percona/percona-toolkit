@@ -30,6 +30,8 @@ const (
 	envMongoDBConfigsvr3Port       = "TEST_MONGODB_CONFIGSVR3_PORT"
 	//
 	envMongoDBMongosPort = "TEST_MONGODB_MONGOS_PORT"
+
+	envMongoDBStandalonePort = "TEST_MONGODB_STANDALONE_PORT"
 	//
 	envMongoDBUser     = "TEST_MONGODB_ADMIN_USERNAME"
 	envMongoDBPassword = "TEST_MONGODB_ADMIN_PASSWORD"
@@ -38,6 +40,9 @@ const (
 var (
 	// MongoDBHost is the hostname. Since it runs locally, it is localhost
 	MongoDBHost = "127.0.0.1"
+
+	// Port for standalone instance
+	MongoDBStandalonePort = os.Getenv(envMongoDBStandalonePort)
 
 	// MongoDBShard1ReplsetName Replicaset name for shard 1
 	MongoDBShard1ReplsetName = os.Getenv(envMongoDBShard1ReplsetName)
