@@ -19,8 +19,14 @@ env:
 
 install:
   - go get -u github.com/golang/dep/cmd/dep
+  # install reviewdog and golangci-lin
+  - curl -sfL https://raw.githubusercontent.com/reviewdog/reviewdog/master/install.sh| sh -s
+  - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s latest
 
 before_script:
+  # static analyze
+  - bin/golangci-lint run -c=.golangci.yml --out-format=line-number | bin/reviewdog -f=golangci-lint -level=error -reporter=github-pr-check
+  - dep check
   # run docker containers
   - docker-compose up -d
   # log versions
