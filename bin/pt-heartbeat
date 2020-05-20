@@ -6386,19 +6386,6 @@ sub main {
          sleep $next_interval - $time;
          PTDEBUG && _d('Woke up at', ts(time));
 
-         if ( $o->get('check-read-only') && $o->get('update') ) {
-           my $read_only_interval = $o->get('read-only-interval') || $interval;
-           while (server_is_readonly($dbh)) {
-              PTDEBUG && _d("Server is read only. Sleeping for $read_only_interval seconds...");
-              sleep($read_only_interval);
-              if (
-                 -f $sentinel
-              ) {
-                 return 0;
-              }
-           }
-         }
-
          # Connect or reconnect if necessary.
          if ( !$dbh->ping() ) {
             $dbh = $dp->get_dbh($dp->get_cxn_params($dsn), { AutoCommit => 1 });
@@ -6407,6 +6394,17 @@ sub main {
             $dbh->do("USE `$db`");
 
             $heartbeat_sth = undef;
+         }
+
+         if ( $o->get('check-read-only') && $o->get('update') ) {
+           my $read_only_interval = $o->get('read-only-interval') || $interval;
+           while (server_is_readonly($dbh)) {
+              PTDEBUG && _d("Server is read only. Sleeping for $read_only_interval seconds...");
+              sleep($read_only_interval);
+              if (-f $sentinel) {
+                  return 0;
+              }
+           }
          }
 
          if ( $o->get('monitor') ) {
