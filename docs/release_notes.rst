@@ -27,6 +27,39 @@ Bug fixes:
 * :jirabug:`PT-1793`: ``pt-query-digest`` was unable to handle the year 2020 because of wrong ``tcpdump`` parsing. (Thank you, Kei Tsuchiya.)
 
 
+v3.1.0 released 2019-09-12
+==========================
+
+New Features:
+
+* :jirabug:`PT-1663`: Implement retention by bytes for pt-stalk
+
+Improvements:
+
+* :jirabug:`PT-1705`: Make pt-online-schema-change exit with different codes depending on the status
+* :jirabug:`PT-1761`: Prevent pt-osc to run under MySQL 8.0.14+ & 8.0.17
+* :jirabug:`PT-1746`: diskstats not working for kernel 4.18+
+
+Bugs Fixed:
+
+* :jirabug:`PT-1736`: pt-kill ignores --busy-time and --kill-busy-commands=Query when there is a process with Command=Execute
+* :jirabug:`PT-1575`: pt-mysql-summary does not print PXC section for PXC 5.6 and 5.7
+* :jirabug:`PT-1728`: Pt-table-checksum failing to scan small tables that get wiped out often
+* :jirabug:`PT-1720`: pt-pmp parses configuration files that lead to errors
+* :jirabug:`PT-1114`: LP #1182180: pt-table-checksum fails when table is empty
+* :jirabug:`PT-1715`: pt-upgrade documentation doesn't have the type tcpdump
+* :jirabug:`PT-1344`: LP #1580428: pt-online-schema-change: Use of uninitialized value $host in string
+* :jirabug:`PT-1492`: pt-kill in version 3.0.7 seems not to respect busy-time any longer
+* :jirabug:`PT-1798`: CLONE - yum repos do not contain 3.1.1 of percona toolkit
+* :jirabug:`PT-1797`: yum repos do not contain 3.1.1 of percona toolkit
+* :jirabug:`PT-1633`: pt-config-diff doesn't handle innodb_temp_data_file_path correctly
+* :jirabug:`PT-1630`: pt-table-checksum not working with galera cluster anymore since 3.0.11
+* :jirabug:`PT-1734`: Tailing log_error in pt-stalk doesn't work
+* :jirabug:`PT-1732`: Typo in link on percona.com
+
+
+
+  
 v3.0.13 released 2019-01-03
 ===========================
 
