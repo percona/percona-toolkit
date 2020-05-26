@@ -13,11 +13,12 @@ import (
 )
 
 const (
-	shardingNotEnabledError = 203
+	shardingNotEnabledErrorCode = 203
 )
 
 var (
-	CANNOT_GET_QUERY_ERROR = errors.New("cannot get query field from the profile document (it is not a map)")
+	CANNOT_GET_QUERY_ERROR  = errors.New("cannot get query field from the profile document (it is not a map)")
+	ShardingNotEnabledError = errors.New("sharding not enabled")
 )
 
 func GetReplicasetMembers(ctx context.Context, clientOptions *options.ClientOptions) ([]proto.Members, error) {
@@ -95,7 +96,7 @@ func GetReplicasetMembers(ctx context.Context, clientOptions *options.ClientOpti
 			membersMap[m.Name] = m
 		}
 
-		client.Disconnect(ctx)
+		client.Disconnect(ctx) //nolint
 	}
 
 	for _, member := range membersMap {
@@ -122,8 +123,8 @@ func GetHostnames(ctx context.Context, client *mongo.Client) ([]string, error) {
 	var shardsMap proto.ShardsMap
 	smRes := client.Database("admin").RunCommand(ctx, primitive.M{"getShardMap": 1})
 	if smRes.Err() != nil {
-		if e, ok := smRes.Err().(mongo.CommandError); ok && e.Code == shardingNotEnabledError {
-			return nil, nil // standalone instance
+		if e, ok := smRes.Err().(mongo.CommandError); ok && e.Code == shardingNotEnabledErrorCode {
+			return nil, ShardingNotEnabledError // standalone instance
 		}
 		return nil, errors.Wrap(smRes.Err(), "cannot getShardMap for GetHostnames")
 	}

@@ -162,7 +162,7 @@ func TestGetShardedHosts(t *testing.T) {
 				t.Errorf("Cannot get a new client for host %s: %s", test.uri, err)
 			}
 			if client == nil {
-				panic(fmt.Sprintf("i: %d, uri: %s\n", i, test.uri))
+				t.Fatalf("mongodb client is nil i: %d, uri: %s\n", i, test.uri)
 			}
 
 			if err := client.Connect(ctx); err != nil {

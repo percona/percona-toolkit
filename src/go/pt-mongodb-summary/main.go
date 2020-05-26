@@ -38,13 +38,19 @@ const (
 	DefaultRunningOpsSamples  = 5
 	DefaultOutputFormat       = "text"
 	typeMongos                = "mongos"
+
+	// Exit Codes
+	cannotFormatResults              = 1
+	cannotParseCommandLineParameters = 2
+	cannotGetHostInfo                = 3
+	cannotGetReplicasetMembers       = 4
 )
 
 var (
 	Build     string = "2020-04-23" // nolint
 	GoVersion string = "1.14.1"     // nolint
-	Version   string = "3.2.0"      // nolint
-	Commit    string                // nolint
+	Version   string = "3.2.0"
+	Commit    string
 )
 
 type TimedStats struct {
@@ -158,7 +164,7 @@ func main() {
 	opts, err := parseFlags()
 	if err != nil {
 		log.Errorf("cannot get parameters: %s", err.Error())
-		os.Exit(2)
+		os.Exit(cannotParseCommandLineParameters)
 	}
 	if opts == nil && err == nil {
 		return
@@ -206,7 +212,7 @@ func main() {
 	defer client.Disconnect(ctx) // nolint
 
 	hostnames, err := util.GetHostnames(ctx, client)
-	if err != nil {
+	if err != nil && errors.Is(err, util.ShardingNotEnabledError) {
 		log.Errorf("Cannot get hostnames: %s", err)
 	}
 	log.Debugf("hostnames: %v", hostnames)
@@ -217,12 +223,12 @@ func main() {
 	if err != nil {
 		message := fmt.Sprintf("Cannot get host info for %q: %s", opts.Host, err.Error())
 		log.Errorf(message)
-		os.Exit(2)
+		os.Exit(cannotGetHostInfo)
 	}
 
 	if ci.ReplicaMembers, err = util.GetReplicasetMembers(ctx, clientOptions); err != nil {
 		log.Warnf("[Error] cannot get replicaset members: %v\n", err)
-		os.Exit(2)
+		os.Exit(cannotGetReplicasetMembers)
 	}
 	log.Debugf("replicaMembers:\n%+v\n", ci.ReplicaMembers)
 
@@ -270,10 +276,9 @@ func main() {
 	out, err := formatResults(ci, opts.OutputFormat)
 	if err != nil {
 		log.Errorf("Cannot format the results: %s", err.Error())
-		os.Exit(1)
+		os.Exit(cannotFormatResults)
 	}
 	fmt.Println(string(out))
-
 }
 
 func formatResults(ci *collectedInfo, format string) ([]byte, error) {
