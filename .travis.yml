@@ -36,6 +36,8 @@ env:
     - MINIO_ENDPOINT: http://localhost:9000/
     - MINIO_ACCESS_KEY_ID: example00000
     - MINIO_SECRET_ACCESS_KEY: secret00000
+    - secure: "px8XYeNEAFTSTb1hYZuEOxqOXUxvp3EoU+KCtPck/KNozkoS95eBd9klgr3Os4wPKloLdMhrr0VE98lukogUxA/NmnYnos01kegjWgwwM6fkob8JxaN5KK4oUFF1wmirBlrjGlw8vUErPwINmrK4BywKpDbw6Yip6FzxdlWESHI="
+
   matrix:
     - MONGODB_IMAGE=mongo:3.0
     - MONGODB_IMAGE=mongo:3.2
@@ -64,7 +66,8 @@ install:
 
 before_script:
   # static analyze
-  - bin/golangci-lint run -c=.golangci.yml --out-format=line-number | bin/reviewdog -f=golangci-lint -level=error -reporter=github-pr-check
+  - bin/golangci-lint run -c=.golangci-required.yml --out-format=line-number | bin/reviewdog -f=golangci-lint -level=error -reporter=github-pr-check
+  - bin/golangci-lint run -c=.golangci.yml --out-format=line-number | bin/reviewdog -f=golangci-lint -level=error -reporter=github-pr-review
   - dep check
   # log versions
   - docker --version
