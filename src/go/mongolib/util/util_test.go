@@ -81,29 +81,34 @@ func TestGetServerStatus(t *testing.T) {
 
 func TestGetReplicasetMembers(t *testing.T) {
 	testCases := []struct {
-		name string
-		uri  string
-		want int
+		name    string
+		uri     string
+		want    int
+		wantErr bool
 	}{
 		{
-			name: "from_mongos",
-			uri:  fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBMongosPort),
-			want: 7,
+			name:    "from_mongos",
+			uri:     fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBMongosPort),
+			want:    7,
+			wantErr: false,
 		},
 		{
-			name: "from_mongod",
-			uri:  fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBShard1PrimaryPort),
-			want: 3,
+			name:    "from_mongod",
+			uri:     fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBShard1PrimaryPort),
+			want:    3,
+			wantErr: false,
 		},
 		{
-			name: "from_non_sharded",
-			uri:  fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBShard3PrimaryPort),
-			want: 3,
+			name:    "from_non_sharded",
+			uri:     fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBShard3PrimaryPort),
+			want:    3,
+			wantErr: false,
 		},
 		{
-			name: "from_standalone",
-			uri:  fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBStandalonePort),
-			want: 0,
+			name:    "from_standalone",
+			uri:     fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBStandalonePort),
+			want:    0,
+			wantErr: true,
 		},
 	}
 
@@ -114,7 +119,7 @@ func TestGetReplicasetMembers(t *testing.T) {
 			defer cancel()
 
 			rsm, err := GetReplicasetMembers(ctx, clientOptions)
-			if err != nil {
+			if err != nil && !test.wantErr {
 				t.Errorf("Got an error while getting replicaset members: %s", err)
 			}
 			if len(rsm) != test.want {
