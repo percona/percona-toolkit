@@ -36,6 +36,7 @@ env:
     - MINIO_ENDPOINT: http://localhost:9000/
     - MINIO_ACCESS_KEY_ID: example00000
     - MINIO_SECRET_ACCESS_KEY: secret00000
+    # REVIEWDOG_GITHUB_API_TOKEN
     - secure: "px8XYeNEAFTSTb1hYZuEOxqOXUxvp3EoU+KCtPck/KNozkoS95eBd9klgr3Os4wPKloLdMhrr0VE98lukogUxA/NmnYnos01kegjWgwwM6fkob8JxaN5KK4oUFF1wmirBlrjGlw8vUErPwINmrK4BywKpDbw6Yip6FzxdlWESHI="
 
   matrix:
