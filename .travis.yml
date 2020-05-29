@@ -62,8 +62,8 @@ before_install:
 install:
   - go get -u github.com/golang/dep/cmd/dep
   # install reviewdog and golangci-lin
-  - curl -sfL https://raw.githubusercontent.com/reviewdog/reviewdog/master/install.sh| sh -s
-  - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s latest
+  - curl https://raw.githubusercontent.com/reviewdog/reviewdog/master/install.sh| sh -s
+  - curl https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s latest
 
 before_script:
   # static analyze
