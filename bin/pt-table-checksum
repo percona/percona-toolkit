@@ -13324,7 +13324,8 @@ first option on the command line.
 
 See the L<"--help"> output for a list of default config files.
 
-=item --[no]create-replicate-table
+=item --create-replicate-table
+=item --no-create-replicate-table
 
 default: yes
 
@@ -13687,7 +13688,7 @@ structure (MAGIC_create_replicate):
 
 Note: lower_boundary and upper_boundary data type can be BLOB. See L<"--binary-index">.
 
-By default, L<"--[no]create-replicate-table"> is true, so the database and
+By default, L<"--create-replicate-table"> is true, so the database and
 the table specified by this option are created automatically if they do not
 exist.
 

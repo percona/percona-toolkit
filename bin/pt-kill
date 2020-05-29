@@ -8323,9 +8323,9 @@ Print information to STDOUT about what is being done.
 
 These actions are taken for every matching query from all classes.
 The actions are taken in this order: L<"--print">, L<"--execute-command">,
-L<"--kill">/L<"--kill-query">.  This order allows L<"--execute-command">
+L<"--kill"> / L<"--kill-query">.  This order allows L<"--execute-command">
 to see the output of L<"--print"> and the query before
-L<"--kill">/L<"--kill-query">.  This may be helpful because pt-kill does
+L<"--kill"> / L<"--kill-query">.  This may be helpful because pt-kill does
 not pass any information to L<"--execute-command">.
 
 See also L<"GROUP, MATCH AND KILL">.

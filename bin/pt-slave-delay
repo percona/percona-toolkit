@@ -4602,7 +4602,7 @@ server.  Before using this tool, please:
 C<pt-slave-delay> watches a slave and starts and stops its replication SQL
 thread as necessary to hold it at least as far behind the master as you
 request.  In practice, it will typically cause the slave to lag between
-L<"--delay"> and L<"--delay">+L<"--interval"> behind the master.
+L<"--delay"> and L<"--delay"> + L<"--interval"> behind the master.
 
 It bases the delay on binlog positions in the slave's relay logs by default,
 so there is no need to connect to the master.  This works well if the IO

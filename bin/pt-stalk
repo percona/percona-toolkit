@@ -1993,7 +1993,7 @@ then compared to L<"--threshold"> as usual.  The C<$EXT_ARGV> variable
 contains the MySQL options mentioned in the L<"SYNOPSIS"> above.
 
 The file should not alter the tool's existing global variables.  Prefix any
-file-specific global variables with "PLUGIN_" or make them local.
+file-specific global variables with C<PLUGIN_> or make them local.
 
 =item --help
 

@@ -59,6 +59,8 @@ Miscellaneous
    :maxdepth: 2
 
    bugs
+   ipv6_support
+   special_option_types
    authors
    copyright_license_and_warranty
    version
