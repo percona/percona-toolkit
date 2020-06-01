@@ -14,29 +14,34 @@ import (
 
 func TestGetHostnames(t *testing.T) {
 	testCases := []struct {
-		name string
-		uri  string
-		want []string
+		name      string
+		uri       string
+		want      []string
+		wantError bool
 	}{
 		{
-			name: "from_mongos",
-			uri:  fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBMongosPort),
-			want: []string{"127.0.0.1:17001", "127.0.0.1:17002", "127.0.0.1:17004", "127.0.0.1:17005", "127.0.0.1:17007"},
+			name:      "from_mongos",
+			uri:       fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBMongosPort),
+			want:      []string{"127.0.0.1:17001", "127.0.0.1:17002", "127.0.0.1:17004", "127.0.0.1:17005", "127.0.0.1:17007"},
+			wantError: false,
 		},
 		{
-			name: "from_mongod",
-			uri:  fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBShard1PrimaryPort),
-			want: []string{"127.0.0.1:17001", "127.0.0.1:17002", "127.0.0.1:17003"},
+			name:      "from_mongod",
+			uri:       fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBShard1PrimaryPort),
+			want:      []string{"127.0.0.1:17001", "127.0.0.1:17002", "127.0.0.1:17003"},
+			wantError: false,
 		},
 		{
-			name: "from_non_sharded",
-			uri:  fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBShard3PrimaryPort),
-			want: []string{"127.0.0.1:17021", "127.0.0.1:17022", "127.0.0.1:17023"},
+			name:      "from_non_sharded",
+			uri:       fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBShard3PrimaryPort),
+			want:      []string{"127.0.0.1:17021", "127.0.0.1:17022", "127.0.0.1:17023"},
+			wantError: false,
 		},
 		{
-			name: "from_standalone",
-			uri:  fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBStandalonePort),
-			want: nil,
+			name:      "from_standalone",
+			uri:       fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBStandalonePort),
+			want:      nil,
+			wantError: true,
 		},
 	}
 
@@ -54,8 +59,8 @@ func TestGetHostnames(t *testing.T) {
 			}
 
 			hostnames, err := GetHostnames(ctx, client)
-			if err != nil {
-				t.Errorf("getHostnames: %v", err)
+			if err != nil && !test.wantError {
+				t.Errorf("Expecting error=nil, got: %v", err)
 			}
 
 			if !reflect.DeepEqual(hostnames, test.want) {
