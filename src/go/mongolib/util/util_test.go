@@ -33,6 +33,11 @@ func TestGetHostnames(t *testing.T) {
 			uri:  fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBShard3PrimaryPort),
 			want: []string{"127.0.0.1:17021", "127.0.0.1:17022", "127.0.0.1:17023"},
 		},
+		{
+			name: "from_standalone",
+			uri:  fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBStandalonePort),
+			want: nil,
+		},
 	}
 
 	for _, test := range testCases {
@@ -54,7 +59,7 @@ func TestGetHostnames(t *testing.T) {
 			}
 
 			if !reflect.DeepEqual(hostnames, test.want) {
-				t.Errorf("Invalid hostnames from mongos. Got: %+v, want %+v", hostnames, test.want)
+				t.Errorf("Invalid hostnames. Got: %+v, want %+v", hostnames, test.want)
 			}
 		})
 	}

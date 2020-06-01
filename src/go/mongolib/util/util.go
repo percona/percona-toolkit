@@ -17,7 +17,7 @@ const (
 )
 
 var (
-	CANNOT_GET_QUERY_ERROR  = errors.New("cannot get query field from the profile document (it is not a map)")
+	CannotGetQueryError     = errors.New("cannot get query field from the profile document (it is not a map)")
 	ShardingNotEnabledError = errors.New("sharding not enabled")
 )
 
@@ -141,6 +141,7 @@ func GetHostnames(ctx context.Context, client *mongo.Client) ([]string, error) {
 		}
 	}
 
+	// Some MongoDB servers won't return ShardingNotEnabledError for stand alone instances.
 	return nil, nil // standalone instance
 }
 
@@ -272,7 +273,7 @@ func GetQueryField(doc proto.SystemProfile) (primitive.M, error) {
 				if ssquery, ok := squery.(primitive.M); ok {
 					return ssquery, nil
 				}
-				return nil, CANNOT_GET_QUERY_ERROR
+				return nil, CannotGetQueryError
 			}
 		}
 	}
@@ -308,7 +309,7 @@ func GetQueryField(doc proto.SystemProfile) (primitive.M, error) {
 		if ssquery, ok := squery.(primitive.M); ok {
 			return ssquery, nil
 		}
-		return nil, CANNOT_GET_QUERY_ERROR
+		return nil, CannotGetQueryError
 	}
 
 	// "query" in MongoDB 3.2+ is better structured and always has a "filter" subkey:
@@ -316,7 +317,7 @@ func GetQueryField(doc proto.SystemProfile) (primitive.M, error) {
 		if ssquery, ok := squery.(primitive.M); ok {
 			return ssquery, nil
 		}
-		return nil, CANNOT_GET_QUERY_ERROR
+		return nil, CannotGetQueryError
 	}
 
 	// {"ns":"test.system.js","op":"query","query":{"find":"system.js"}}
