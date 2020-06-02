@@ -228,7 +228,6 @@ func main() {
 
 	if ci.ReplicaMembers, err = util.GetReplicasetMembers(ctx, clientOptions); err != nil {
 		log.Warnf("[Error] cannot get replicaset members: %v\n", err)
-		os.Exit(cannotGetReplicasetMembers)
 	}
 	log.Debugf("replicaMembers:\n%+v\n", ci.ReplicaMembers)
 
