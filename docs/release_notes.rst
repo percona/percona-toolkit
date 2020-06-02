@@ -110,8 +110,7 @@ New features
 
 * :jirabug:`PT-1571`: Improved hostname recognition in ``pt-secure-collect``
 * :jirabug:`PT-1569`: Disabled ``--alter-foreign-keys-method=drop_swap`` in ``pt-online-schema-change``
-* :jirabug:`PT-242`: (``pt-stalk``) Include ``SHOW SLAVE STATUS`` on MySQL 5.7 (Thanks `Marcelo Altmann <https://www.p
-ercona.com/blog/author/marcelo-altmann/>`_)
+* :jirabug:`PT-242`: (``pt-stalk``) Include ``SHOW SLAVE STATUS`` on MySQL 5.7 (Thanks `Marcelo Altmann <https://www.percona.com/blog/author/marcelo-altmann/>`_)
 
 Fixed bugs
 
@@ -1138,17 +1137,17 @@ pt-query-digest --output json includes query examples as of v2.2.3. Some people 
 When using drop swap with pt-online-schema-change there is some production impact. This impact can be measured because tool outputs the current timestamp on lines for operations that may take awhile.
 
 * Fixed bug #1163735: pt-table-checksum fails if explicit_defaults_for_timestamp is enabled in 5.6
-pt-table-checksum would fail if variable explicit_defaults_for_timestamp was enabled in MySQL 5.6.
+  pt-table-checksum would fail if variable explicit_defaults_for_timestamp was enabled in MySQL 5.6.
 
 * Fixed bug #1182856: Zero values causes "Invalid --set-vars value: var=0"
-Trying to assign 0 to any variable by using --set-vars option would cause “Invalid --set-vars value” message. 
+  Trying to assign 0 to any variable by using --set-vars option would cause “Invalid --set-vars value” message. 
 
 * Fixed bug #1188264: pt-online-schema-change error copying rows: Undefined subroutine &pt_online_schema_change::get
 
 * Fixed the typo in the pt-online-schema-change code that could lead to a tool crash when copying the rows.
 
 * Fixed bug #1199591: pt-table-checksum doesn't use non-unique index with highest cardinality
-pt-table-checksum was using the first non-unique index instead of the one with the highest cardinality due to a sorting bug.
+  pt-table-checksum was using the first non-unique index instead of the one with the highest cardinality due to a sorting bug.
 
 Percona Toolkit packages can be downloaded from
 http://www.percona.com/downloads/percona-toolkit/ or the Percona Software

@@ -11918,7 +11918,7 @@ The tool exits with an error if the host is a cluster node and the table
 is MyISAM or is being converted to MyISAM (C<ENGINE=MyISAM>), or if
 C<wsrep_OSU_method> is not C<TOI>.  There is no way to disable these checks.
 
-=head1 MySQL 5.7+ Generated columns
+=head1 MySQL 5.7 + Generated columns
 
 The tools ignores MySQL 5.7+ C<GENERATED> columns since the value for those columns
 is generated according to the expresion used to compute column values.

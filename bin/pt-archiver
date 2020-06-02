@@ -7696,8 +7696,8 @@ Example:
 
 The file's contents are in the same format used by SELECT INTO OUTFILE, as
 documented in the MySQL manual: rows terminated by newlines, columns
-terminated by tabs, NULL characters are represented by \N, and special
-characters are escaped by \.  This lets you reload a file with LOAD DATA
+terminated by tabs, NULL characters are represented by C<\N>, and special
+characters are escaped by C<\>.  This lets you reload a file with LOAD DATA
 INFILE's default settings.
 
 If you want a column header at the top of the file, see L<"--header">.  The file
@@ -7856,8 +7856,10 @@ type: string
 Used with L<"--file"> to specify the output format.
 
 Valid formats are:
-  dump: MySQL dump format using tabs as field separator (default)
-  csv : Dump rows using ',' as separator and optionally enclosing fields by '"'.
+
+- dump: MySQL dump format using tabs as field separator (default)
+
+- csv : Dump rows using ',' as separator and optionally enclosing fields by '"'.
         This format is equivalent to FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"'.
 
 =item --password
@@ -7887,10 +7889,10 @@ Specify the Perl module name of a general-purpose plugin.  It is currently used
 only for statistics (see L<"--statistics">) and must have C<new()> and a
 C<statistics()> method.
 
-The C<new( src => $src, dst => $dst, opts => $o )> method gets the source
+The C<new( src =E<gt> $src, dst =E<gt> $dst, opts =E<gt> $o )> method gets the source
 and destination DSNs, and their database connections, just like the
 connection-specific plugins do.  It also gets an OptionParser object (C<$o>) for
-accessing command-line options (example: C<$o->get('purge');>).
+accessing command-line options (example: C<$o-E<gt>get('purge');>).
 
 The C<statistics(\%stats, $time)> method gets a hashref of the statistics
 collected by the archiving job, and the time the whole job started.
