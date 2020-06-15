@@ -2,7 +2,6 @@ package util
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"strings"
 
@@ -13,8 +12,13 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+const (
+	shardingNotEnabledErrorCode = 203
+)
+
 var (
-	CANNOT_GET_QUERY_ERROR = errors.New("cannot get query field from the profile document (it is not a map)")
+	CannotGetQueryError     = errors.New("cannot get query field from the profile document (it is not a map)")
+	ShardingNotEnabledError = errors.New("sharding not enabled")
 )
 
 func GetReplicasetMembers(ctx context.Context, clientOptions *options.ClientOptions) ([]proto.Members, error) {
@@ -92,7 +96,7 @@ func GetReplicasetMembers(ctx context.Context, clientOptions *options.ClientOpti
 			membersMap[m.Name] = m
 		}
 
-		client.Disconnect(ctx)
+		client.Disconnect(ctx) //nolint
 	}
 
 	for _, member := range membersMap {
@@ -119,6 +123,9 @@ func GetHostnames(ctx context.Context, client *mongo.Client) ([]string, error) {
 	var shardsMap proto.ShardsMap
 	smRes := client.Database("admin").RunCommand(ctx, primitive.M{"getShardMap": 1})
 	if smRes.Err() != nil {
+		if e, ok := smRes.Err().(mongo.CommandError); ok && e.Code == shardingNotEnabledErrorCode {
+			return nil, ShardingNotEnabledError // standalone instance
+		}
 		return nil, errors.Wrap(smRes.Err(), "cannot getShardMap for GetHostnames")
 	}
 	if err := smRes.Decode(&shardsMap); err != nil {
@@ -134,7 +141,8 @@ func GetHostnames(ctx context.Context, client *mongo.Client) ([]string, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("cannot get shards map")
+	// Some MongoDB servers won't return ShardingNotEnabledError for stand alone instances.
+	return nil, nil // standalone instance
 }
 
 func buildHostsListFromReplStatus(replStatus proto.ReplicaSetStatus) []string {
@@ -265,7 +273,7 @@ func GetQueryField(doc proto.SystemProfile) (primitive.M, error) {
 				if ssquery, ok := squery.(primitive.M); ok {
 					return ssquery, nil
 				}
-				return nil, CANNOT_GET_QUERY_ERROR
+				return nil, CannotGetQueryError
 			}
 		}
 	}
@@ -301,7 +309,7 @@ func GetQueryField(doc proto.SystemProfile) (primitive.M, error) {
 		if ssquery, ok := squery.(primitive.M); ok {
 			return ssquery, nil
 		}
-		return nil, CANNOT_GET_QUERY_ERROR
+		return nil, CannotGetQueryError
 	}
 
 	// "query" in MongoDB 3.2+ is better structured and always has a "filter" subkey:
@@ -309,7 +317,7 @@ func GetQueryField(doc proto.SystemProfile) (primitive.M, error) {
 		if ssquery, ok := squery.(primitive.M); ok {
 			return ssquery, nil
 		}
-		return nil, CANNOT_GET_QUERY_ERROR
+		return nil, CannotGetQueryError
 	}
 
 	// {"ns":"test.system.js","op":"query","query":{"find":"system.js"}}

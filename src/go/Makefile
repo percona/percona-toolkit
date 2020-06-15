@@ -18,7 +18,7 @@ BIN_DIR=$(shell git rev-parse --show-toplevel)/bin
 SRC_DIR=$(shell git rev-parse --show-toplevel)/src/go
 LDFLAGS="-X main.Version=${VERSION} -X main.Build=${BUILD} -X main.GoVersion=${GOVERSION} -X main.Commit=${COMMIT} -s -w"
 
-TEST_PSMDB_VERSION?=3.6
+TEST_PSMDB_VERSION?=4.0
 TEST_MONGODB_FLAVOR?=percona/percona-server-mongodb
 TEST_MONGODB_ADMIN_USERNAME?=admin
 TEST_MONGODB_ADMIN_PASSWORD?=admin123456
