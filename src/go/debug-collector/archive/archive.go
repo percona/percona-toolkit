@@ -4,12 +4,14 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"os"
+
+	"github.com/pkg/errors"
 )
 
 func TarWrite(path string, data map[string][]byte) error {
 	tarFile, err := os.Create(path + ".tar.gz")
 	if err != nil {
-		return err
+		return errors.Wrap(err, "create tar file")
 	}
 	defer tarFile.Close()
 	zr := gzip.NewWriter(tarFile)
@@ -23,10 +25,10 @@ func TarWrite(path string, data map[string][]byte) error {
 			Size: int64(len(content)),
 		}
 		if err := tw.WriteHeader(hdr); err != nil {
-			return err
+			return errors.Wrap(err, "write header")
 		}
 		if _, err := tw.Write(content); err != nil {
-			return err
+			return errors.Wrap(err, "write content")
 		}
 	}
 	return nil

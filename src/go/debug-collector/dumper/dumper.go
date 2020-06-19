@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"log"
 	"os/exec"
+	"strings"
 
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -52,12 +54,12 @@ type namespaces struct {
 func (d *Dumper) DumpCluster() error {
 	output, err := d.runCmd("get", "namespaces", "-o", "json")
 	if err != nil {
-		return err
+		return errors.Wrap(err, "get namespaces")
 	}
 	var nss namespaces
 	err = json.Unmarshal(output, &nss)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "unmarshal namespaces")
 	}
 
 	for _, ns := range nss.Items {
@@ -68,7 +70,7 @@ func (d *Dumper) DumpCluster() error {
 		var pods k8sPods
 		err = json.Unmarshal(output, &pods)
 		if err != nil {
-			return err
+			log.Println(errors.Wrap(err, "unmarshal pods"))
 		}
 
 		for _, pod := range pods.Items {
@@ -80,21 +82,21 @@ func (d *Dumper) DumpCluster() error {
 		}
 
 		for _, resource := range d.resources {
-			err = d.getAndWriteToFile(resource, ns.Name)
+			err = d.getResource(resource, ns.Name)
 			if err != nil {
-				log.Println(err)
+				log.Println(errors.Wrapf(err, "get %s resource", resource))
 			}
 		}
 	}
 
-	err = d.getAndWriteToFile("nodes", "")
+	err = d.getResource("nodes", "")
 	if err != nil {
-		log.Println(err)
+		log.Println(errors.Wrapf(err, "get nodes"))
 	}
 
 	err = d.writeErrorsToFile()
 	if err != nil {
-		log.Println(err)
+		log.Println(errors.Wrap(err, "write errors"))
 	}
 
 	return nil
@@ -111,7 +113,7 @@ func (d *Dumper) runCmd(args ...string) ([]byte, error) {
 		d.saveCommandError(err.Error()+" "+outb.String(), args...)
 		return outb.Bytes(), err
 	}
-	if len(errb.String()) > 0 {
+	if errb.Len() > 0 {
 		d.saveCommandError(errb.String()+" "+outb.String(), args...)
 		return outb.Bytes(), err
 	}
@@ -119,7 +121,7 @@ func (d *Dumper) runCmd(args ...string) ([]byte, error) {
 	return outb.Bytes(), nil
 }
 
-func (d *Dumper) getAndWriteToFile(name, namespace string) error {
+func (d *Dumper) getResource(name, namespace string) error {
 	location := d.location
 	args := []string{"get", name, "-o", "yaml"}
 	if len(namespace) > 0 {
@@ -137,10 +139,7 @@ func (d *Dumper) getAndWriteToFile(name, namespace string) error {
 }
 
 func (d *Dumper) saveCommandError(err string, args ...string) {
-	command := d.cmd
-	for _, arg := range args {
-		command += " " + arg
-	}
+	command := d.cmd + " " + strings.Join(args, " ")
 
 	d.Errors[command] = err
 }
