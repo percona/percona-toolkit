@@ -3,9 +3,7 @@ package dumper
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"log"
-	"os"
 	"os/exec"
 
 	corev1 "k8s.io/api/core/v1"
@@ -17,6 +15,7 @@ type Dumper struct {
 	resources []string
 	location  string
 	Errors    map[string]string
+	Files     map[string][]byte
 }
 
 // New return new Dumper object
@@ -37,6 +36,7 @@ func New(location string) Dumper {
 		},
 		location: directory,
 		Errors:   make(map[string]string),
+		Files:    make(map[string][]byte),
 	}
 }
 
@@ -61,11 +61,6 @@ func (d *Dumper) DumpCluster() error {
 	}
 
 	for _, ns := range nss.Items {
-		err = os.MkdirAll(d.location+"/"+ns.Name, 0755)
-		if err != nil {
-			return err
-		}
-
 		output, err = d.runCmd("get", "pods", "-o", "json", "--namespace", ns.Name)
 		if err != nil {
 			continue // runCmd already stored this error in Dumper.Errors
@@ -81,20 +76,7 @@ func (d *Dumper) DumpCluster() error {
 			if err != nil {
 				continue // runCmd already stored this error in Dumper.Errors
 			}
-			err = os.MkdirAll(d.location+"/"+ns.Name+"/"+pod.Name, 0755)
-			if err != nil {
-				return err
-			}
-
-			f, err := os.Create(d.location + "/" + ns.Name + "/" + pod.Name + "/logs.txt")
-			if err != nil {
-				return err
-			}
-			_, err = f.Write(output)
-			if err != nil {
-				return err
-			}
-
+			d.Files[d.location+"/"+ns.Name+"/"+pod.Name+"/logs.txt"] = output
 		}
 
 		for _, resource := range d.resources {
@@ -149,14 +131,7 @@ func (d *Dumper) getAndWriteToFile(name, namespace string) error {
 		return nil // runCmd already stored this error in Dumper.Errors
 	}
 
-	f, err := os.Create(location + "/" + name + ".yaml")
-	if err != nil {
-		return err
-	}
-	_, err = f.Write(output)
-	if err != nil {
-		return err
-	}
+	d.Files[location+"/"+name+".yaml"] = output
 
 	return nil
 }
@@ -175,25 +150,9 @@ func (d *Dumper) writeErrorsToFile() error {
 	for cmd, errS := range d.Errors {
 		errStr += cmd + ": " + errS + "\n"
 	}
-	f, err := os.Create(d.location + "/errors.txt")
-	if err != nil {
-		return err
-	}
-	_, err = f.WriteString(errStr)
-	if err != nil {
-		return err
-	}
+	d.Files[d.location+"/errors.txt"] = []byte(errStr)
 
 	return nil
-}
-
-// DeleteDumpDir delete Dumper.location
-func (d *Dumper) DeleteDumpDir() error {
-	if d.location == "/" {
-		return errors.New("don't do this, please") // just for being sure
-	}
-
-	return os.RemoveAll(d.location)
 }
 
 // GetLocation return Dumper.location

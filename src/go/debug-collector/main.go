@@ -21,9 +21,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	archive.Create(d.GetLocation())
-
-	err = d.DeleteDumpDir()
+	err = archive.TarWrite(d.GetLocation(), d.Files)
 	if err != nil {
 		log.Println(err)
 		os.Exit(1)
