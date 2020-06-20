@@ -6,8 +6,10 @@ import (
 	"log"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 
+	"github.com/kr/pretty"
 	"github.com/percona/percona-toolkit/src/go/lib/tutil"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"go.mongodb.org/mongo-driver/bson"
@@ -85,18 +87,49 @@ func TestFingerprints(t *testing.T) {
 	}
 
 	for _, file := range files {
+		if !strings.HasSuffix(file.Name(), ".bson") {
+			continue
+		}
 		t.Run(file.Name(), func(t *testing.T) {
-			doc := proto.SystemProfile{}
-			err = tutil.LoadBson(dir+file.Name(), &doc)
+			//doc := proto.SystemProfile{}
+			docd := proto.SystemProfileD{}
+			err = tutil.LoadBsonD(dir+file.Name(), &docd)
+			// fmt.Printf("1> %s\n", dir+file.Name())
+			// pretty.Println(doc)
+			// fmt.Println("1<")
+
+			// fmt.Println("2>")
+			// pretty.Println(doc.Query)
+			// fmt.Println("3>")
+			// buf, e1 := bson.MarshalExtJSON(doc, true, true)
+			// if e1 != nil {
+			// 	panic(e1)
+			// }
+			// df := dir + file.Name() + ".bson"
+			// if err := ioutil.WriteFile(df, buf, os.ModePerm); err != nil {
+			// 	panic(err)
+			// }
+			// fmt.Println(string(buf))
+			// if err := bson.UnmarshalExtJSON(buf, true, &docd); err != nil {
+			// 	panic(err)
+			// }
+
+			// fmt.Println("docd>")
+			// pretty.Println(docd)
+			// fmt.Println("4>")
+
 			if err != nil {
 				t.Fatalf("cannot load sample %s: %s", dir+file.Name(), err)
 			}
 			fp := NewFingerprinter(DEFAULT_KEY_FILTERS)
-			got, err := fp.Fingerprint(doc)
+			pretty.Println(docd)
+			got, err := fp.FingerprintD(docd)
 			if err != nil {
 				t.Errorf("cannot create fingerprint: %s", err)
 			}
 			fExpect := dirExpect + file.Name()
+			fExpect = strings.TrimSuffix(fExpect, ".bson")
+
 			if tutil.ShouldUpdateSamples() {
 				err := tutil.WriteJson(fExpect, got)
 				if err != nil {
@@ -105,6 +138,7 @@ func TestFingerprints(t *testing.T) {
 			}
 			var expect Fingerprint
 			err = tutil.LoadJson(fExpect, &expect)
+
 			if err != nil {
 				t.Fatalf("cannot load expected data %s: %s", fExpect, err)
 			}

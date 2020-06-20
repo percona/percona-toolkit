@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -78,6 +80,26 @@ func LoadBson(filename string, destination interface{}) error {
 	buf = re.ReplaceAll(buf, []byte(`: ""`))
 
 	err = json.Unmarshal(buf, &destination)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func LoadBsonD(filename string, destination interface{}) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	buf, err := ioutil.ReadAll(file)
+	if err != nil {
+		return err
+	}
+
+	err = bson.UnmarshalExtJSON(buf, true, &destination)
 	if err != nil {
 		return err
 	}
