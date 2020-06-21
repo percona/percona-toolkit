@@ -9102,6 +9102,15 @@ sub main {
                $child_table->{name},
                $child_table->{row_est} || '?';
          }
+         
+         # TODO: Fix self referencing foreign keys handling.
+         # See: https://jira.percona.com/browse/PT-1802
+         #      https://jira.percona.com/browse/PT-1853
+         if (has_self_ref_fks($orig_tbl->{db}, $orig_tbl->{tbl}, $child_tables) and $o->get('check-foreign-keys')) {
+             print "The table has self referencing foreign keys and that might lead to errors.\n";
+             print "Use --no-check-foreign-keys to disable this check.\n";
+             return 1
+         }
 
          if ( $alter_fk_method ) {
             # Let the user know how we're going to update the child table
@@ -10394,6 +10403,20 @@ sub check_alter {
    }
 
    return;
+}
+
+sub has_self_ref_fks { 
+    my ($orig_db, $orig_table, $child_tables) = @_;
+
+    my $db_tbl = sprintf("`%s`.`%s`", $orig_db, $orig_table);
+
+    foreach my $child_table ( @$child_tables ) {
+        if ($db_tbl eq $child_table->{name}) {
+             return 1;
+         }
+    };
+
+    return undef;
 }
 
 # This function tries to detect if the --alter param is adding unique indexes.
@@ -12167,6 +12190,15 @@ for its triggers.  You should first run the tool with L<"--dry-run"> and
 L<"--print"> and verify that the triggers are correct.
 
 =back
+
+=item --[no]check-foreign-keys
+
+default: yes
+
+Check for self referencing foreing keys. Currently self referencing FKs are
+not fully supported so to prevent errors, this program wont't run if the table
+has self referen foreign keys. Use this parameter to disable self referencing
+FK checks.
 
 =item --check-interval
 
