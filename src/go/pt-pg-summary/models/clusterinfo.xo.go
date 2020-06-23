@@ -12,7 +12,7 @@ import (
 type ClusterInfo struct {
 	Usename        string         // usename
 	Time           time.Time      // time
-	ClientAddr     string         // client_addr
+	ClientAddr     sql.NullString // client_addr
 	ClientHostname sql.NullString // client_hostname
 	Version        string         // version
 	Started        time.Time      // started

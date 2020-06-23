@@ -9,10 +9,10 @@ import (
 
 // Table Access
 type TableAccess struct {
-	Relname string        // relname
-	Relkind string        // relkind
-	Datname string        // datname
-	Count   sql.NullInt64 // count
+	Relname string         // relname
+	Relkind string         // relkind
+	Datname sql.NullString // datname
+	Count   sql.NullInt64  // count
 }
 
 // GetTableAccesses runs a custom query, returning results as TableAccess.
@@ -20,7 +20,7 @@ func GetTableAccesses(db XODB) ([]*TableAccess, error) {
 	var err error
 
 	// sql query
-	var sqlstr = `SELECT c.relname, c.relkind, b.datname, count(*) FROM pg_locks a ` +
+	var sqlstr = `SELECT c.relname, c.relkind, b.datname datname, count(*) FROM pg_locks a ` +
 		`JOIN pg_stat_database b ` +
 		`ON a.database=b.datid ` +
 		`JOIN pg_class c ` +
