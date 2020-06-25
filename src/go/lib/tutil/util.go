@@ -47,7 +47,7 @@ func LoadJson(filename string, destination interface{}) error {
 	return nil
 }
 
-func LoadBson(filename string, destination interface{}) error {
+func LoadBsonold(filename string, destination interface{}) error {
 	file, err := os.Open(filename)
 	if err != nil {
 		return err
@@ -87,7 +87,7 @@ func LoadBson(filename string, destination interface{}) error {
 	return nil
 }
 
-func LoadBsonD(filename string, destination interface{}) error {
+func LoadBson(filename string, destination interface{}) error {
 	file, err := os.Open(filename)
 	if err != nil {
 		return err
@@ -99,13 +99,35 @@ func LoadBsonD(filename string, destination interface{}) error {
 		return err
 	}
 
-	err = bson.UnmarshalExtJSON(buf, true, &destination)
+	err = bson.UnmarshalExtJSON(buf, true, destination)
 	if err != nil {
 		return err
 	}
 
 	return nil
 }
+
+//func LoadBsonD(filename string, destination interface{}) error {
+//	file, err := os.Open(filename)
+//	if err != nil {
+//		return err
+//	}
+//	defer file.Close()
+//
+//	buf, err := ioutil.ReadAll(file)
+//	if err != nil {
+//		return err
+//	}
+//
+//	fmt.Println(string(buf))
+//	err = bson.UnmarshalExtJSON(buf, true, destination)
+//	if err != nil {
+//		return err
+//	}
+//	pretty.Println(destination)
+//
+//	return nil
+//}
 
 func WriteJson(filename string, data interface{}) error {
 

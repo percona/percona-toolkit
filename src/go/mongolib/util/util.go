@@ -333,7 +333,7 @@ func GetQueryField(doc proto.SystemProfile) (primitive.M, error) {
 	// however MongoDB 3.0 doesn't have that field
 	// so we need to detect protocol by looking at actual data.
 	query := doc.Query
-	if doc.Command.Len() > 0 {
+	if len(doc.Command) > 0 {
 		query = doc.Command
 		if doc.Op == "update" || doc.Op == "remove" {
 			if squery, ok := query.Map()["q"]; ok {

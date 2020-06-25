@@ -161,7 +161,7 @@ func main() {
 		panic(err)
 	}
 
-	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
+	fp := fingerprinter.NewFingerprinter(fingerprinter.DefaultKeyFilters())
 	s := stats.New(fp)
 	prof := profiler.NewProfiler(cursor, filters, nil, s)
 	prof.Start(ctx)
