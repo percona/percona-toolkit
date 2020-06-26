@@ -5956,6 +5956,7 @@ sub can_nibble {
    my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
                   ? $row_est <= $chunk_size * $chunk_size_limit
                   : 0;
+   PTDEBUG && _d('Chunk size limit: '.$chunk_size_limit. ', chunk size: '.$chunk_size. ', row est: '.$row_est);
    PTDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
 
    if ( $args{resume}
