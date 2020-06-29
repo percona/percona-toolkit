@@ -1,8 +1,1 @@
-{
-  "Namespace": "",
-  "Operation": "EXPLAIN",
-  "Collection": "",
-  "Database": "",
-  "Keys": "",
-  "Fingerprint": "EXPLAIN"
-}
+{"ns":"test.coll","op":"query","query":{"query":{},"$explain":true}}

@@ -1,8 +1,1 @@
-{
-  "Namespace": "",
-  "Operation": "EXPLAIN",
-  "Collection": "",
-  "Database": "",
-  "Keys": "",
-  "Fingerprint": "EXPLAIN"
-}
+{"ns":"test.coll","op":"command","command":{"explain":{"find":"coll","filter":{}},"verbosity":"queryPlanner"}}

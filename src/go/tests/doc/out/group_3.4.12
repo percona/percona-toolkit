@@ -1,8 +1,1 @@
-{
-  "Namespace": "test.coll",
-  "Operation": "GROUP",
-  "Collection": "coll",
-  "Database": "test",
-  "Keys": "a,b",
-  "Fingerprint": "GROUP coll a,b"
-}
+{"ns":"test.coll","op":"command","command":{"group":{"key":{"a":1,"b":1},"cond":{"b":3},"initial":{},"ns":"coll","$reduce":{"code":"function () {}"}}}}

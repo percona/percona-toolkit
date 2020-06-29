@@ -1,8 +1,1 @@
-{
-  "Namespace": "test.coll",
-  "Operation": "FIND",
-  "Collection": "coll",
-  "Database": "test",
-  "Keys": "c,k,pad",
-  "Fingerprint": "FIND coll c,k,pad"
-}
+{"ns":"test.coll","op":"query","query":{"query":{"$and":[{"k":{"$gt":1}},{"k":{"$lt":2}},{"$or":[{"c":{"$in":["/^0/","/^2/","/^4/","/^6/"]}},{"pad":{"$in":["/9$/","/7$/","/5$/","/3$/"]}}]}]},"orderby":{"k":-1}}}

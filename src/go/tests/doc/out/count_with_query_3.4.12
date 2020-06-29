@@ -1,8 +1,1 @@
-{
-  "Namespace": "test.coll",
-  "Operation": "COUNT",
-  "Collection": "coll",
-  "Database": "test",
-  "Keys": "a",
-  "Fingerprint": "COUNT coll a"
-}
+{"ns":"test.coll","op":"command","command":{"count":"coll","query":{"a":{"$gt":5}},"fields":{}}}

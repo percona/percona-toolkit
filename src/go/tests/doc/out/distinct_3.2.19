@@ -1,8 +1,1 @@
-{
-  "Namespace": "test.coll",
-  "Operation": "DISTINCT",
-  "Collection": "coll",
-  "Database": "test",
-  "Keys": "a,b",
-  "Fingerprint": "DISTINCT coll a,b"
-}
+{"ns":"test.coll","op":"command","command":{"distinct":"coll","key":"a","query":{"b":{"$gte":5}}}}

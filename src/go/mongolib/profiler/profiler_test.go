@@ -13,6 +13,7 @@ import (
 	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
 	"github.com/percona/percona-toolkit/src/go/mongolib/stats"
 	"github.com/percona/percona-toolkit/src/go/pt-mongodb-query-digest/filter"
+	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -62,7 +63,8 @@ func TestRegularIterator(t *testing.T) {
 	if res.Err() != nil {
 		t.Fatalf("Cannot enable profiler: %s", res.Err())
 	}
-	client.Database(database).Drop(ctx)
+	err = client.Database(database).Drop(ctx)
+	assert.NoError(t, err)
 
 	// re-enable the profiler
 	res = client.Database("admin").RunCommand(ctx, primitive.D{{"profile", 2}, {"slowms", 2}})
@@ -73,7 +75,8 @@ func TestRegularIterator(t *testing.T) {
 	// run some queries to have something to profile
 	count := 1000
 	for j := 0; j < count; j++ {
-		client.Database("test").Collection("testc").InsertOne(ctx, primitive.M{"number": j})
+		_, err := client.Database("test").Collection("testc").InsertOne(ctx, primitive.M{"number": j})
+		assert.NoError(t, err)
 		time.Sleep(20 * time.Millisecond)
 	}
 
@@ -83,7 +86,7 @@ func TestRegularIterator(t *testing.T) {
 	}
 	filters := []filter.Filter{}
 
-	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
+	fp := fingerprinter.NewFingerprinter(fingerprinter.DefaultKeyFilters())
 	s := stats.New(fp)
 	prof := NewProfiler(cursor, filters, nil, s)
 	prof.Start(ctx)

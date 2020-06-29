@@ -1,8 +1,1 @@
-{
-  "Namespace": "test.coll",
-  "Operation": "FINDANDMODIFY",
-  "Collection": "coll",
-  "Database": "test",
-  "Keys": "a",
-  "Fingerprint": "FINDANDMODIFY coll a"
-}
+{"ns":"test.coll","op":"command","command":{"findandmodify":"coll","query":{"a":2},"update":{"$inc":{"b":1}},"$db":"test"}}

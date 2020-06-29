@@ -190,6 +190,16 @@ type ExampleQuery struct {
 	UpdateObj          bson.D `bson:"updateobj,omitempty" json:"updateobj,omitempty"`
 }
 
+// ExampleQuery is a subset of SystemProfile
+type ExampleQueryOld struct {
+	Ns                 string `bson:"ns" json:"ns"`
+	Op                 string `bson:"op" json:"op"`
+	Query              BsonD  `bson:"query,omitempty" json:"query,omitempty"`
+	Command            BsonD  `bson:"command,omitempty" json:"command,omitempty"`
+	OriginatingCommand BsonD  `bson:"originatingCommand,omitempty" json:"originatingCommand,omitempty"`
+	UpdateObj          BsonD  `bson:"updateobj,omitempty" json:"updateobj,omitempty"`
+}
+
 func (self ExampleQuery) Db() string {
 	ns := strings.SplitN(self.Ns, ".", 2)
 	if len(ns) > 0 {

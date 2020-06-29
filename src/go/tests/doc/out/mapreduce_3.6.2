@@ -1,8 +1,1 @@
-{
-  "Namespace": "test.coll",
-  "Operation": "MAPREDUCE",
-  "Collection": "coll",
-  "Database": "test",
-  "Keys": "a",
-  "Fingerprint": "MAPREDUCE coll a"
-}
+{"ns":"test.coll","op":"command","command":{"mapreduce":"coll","map":{"code":"function () {\n    emit(this.a, this.b);\n}"},"reduce":{"code":"function (a, b) {\n    return Array.sum(b);\n}"},"query":{"a":{"$gte":0}},"out":{"inline":1},"$db":"test"}}

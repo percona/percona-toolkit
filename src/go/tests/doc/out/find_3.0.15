@@ -1,8 +1,1 @@
-{
-  "Namespace": "test.coll",
-  "Operation": "FIND",
-  "Collection": "coll",
-  "Database": "test",
-  "Keys": "k",
-  "Fingerprint": "FIND coll k"
-}
+{"ns":"test.coll","op":"query","query":{"k":1}}

@@ -1,8 +1,1 @@
-{
-  "Namespace": "test",
-  "Operation": "EVAL",
-  "Collection": "",
-  "Database": "test",
-  "Keys": "",
-  "Fingerprint": "EVAL"
-}
+{"ns":"test","op":"command","command":{"$eval":"1"}}

@@ -1,8 +1,1 @@
-{
-  "Namespace": "test.coll",
-  "Operation": "GETMORE",
-  "Collection": "coll",
-  "Database": "test",
-  "Keys": "",
-  "Fingerprint": "GETMORE coll"
-}
+{"ns":"test.coll","op":"getmore","query":{"getMore":"67665905999","collection":"coll","batchSize":2},"originatingCommand":{"find":"coll","filter":{"a":{"$gt":0}},"batchSize":2,"sort":{"a":1}}}
