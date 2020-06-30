@@ -60,13 +60,14 @@ my $query = <<"END";
 ORDER BY TABLE_NAME, CONSTRAINT_NAME
 END
 my $constraints = $master_dbh->selectall_arrayref($query);
+my @constraints = sort { @$a[0].@$a[1] cmp @$b[0].@$b[1] } @$constraints;
 
 is_deeply(
    $constraints,
    [
-      ['person', '_fk_testId'],
-      ['test_table', '_fk_person'],
-      ['test_table', '__fk_refId'],
+      ['person', 'fk_testId'],
+      ['test_table', 'fk_person'],
+      ['test_table', 'fk_refId'],
    ],
    "First run adds or removes underscore from constraint names, accordingly"
 );
@@ -90,13 +91,14 @@ ORDER BY TABLE_NAME, CONSTRAINT_NAME
 END
 $constraints = $master_dbh->selectall_arrayref($query);
 
+@constraints = sort { @$a[0].@$a[1] cmp @$b[0].@$b[1] } @$constraints;
 
 is_deeply(
-   $constraints,
+   \@constraints,
    [
-      ['person', '__fk_testId'],
-      ['test_table', '_fk_refId'],
-      ['test_table', '__fk_person'],
+      ['person', 'fk_testId'],
+      ['test_table', 'fk_person'],
+      ['test_table', 'fk_refId'],
    ],
    "Second run self-referencing will be one due to rebuild_constraints"
 );

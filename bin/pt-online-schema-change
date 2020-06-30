@@ -8594,7 +8594,7 @@ sub main {
    # ########################################################################
    my $set_on_connect = sub {
       my ($dbh) = @_;
-      if ($o->get('check-foreign-keys')) {
+      if (!$o->get('check-foreign-keys')) {
             my $sql = "SET foreign_key_checks=0";
             PTDEBUG && _d($sql);
             print $sql, "\n" if $o->get('print');
@@ -9112,10 +9112,10 @@ sub main {
          # TODO: Fix self referencing foreign keys handling.
          # See: https://jira.percona.com/browse/PT-1802
          #      https://jira.percona.com/browse/PT-1853
-         if (has_self_ref_fks($orig_tbl->{db}, $orig_tbl->{tbl}, $child_tables) and $o->get('check-foreign-keys')) {
-             print "The table has self referencing foreign keys and that might lead to errors.\n";
+         if (_has_self_ref_fks($orig_tbl->{db}, $orig_tbl->{tbl}, $child_tables) && $o->get('check-foreign-keys')) {
+             print "The table has self-referencing foreign keys and that might lead to errors.\n";
              print "Use --no-check-foreign-keys to disable this check.\n";
-             return 1
+             return 1;
          }
 
          if ( $alter_fk_method ) {
@@ -10411,18 +10411,18 @@ sub check_alter {
    return;
 }
 
-sub has_self_ref_fks { 
+sub _has_self_ref_fks { 
     my ($orig_db, $orig_table, $child_tables) = @_;
 
-    my $db_tbl = sprintf("`%s`.`%s`", $orig_db, $orig_table);
+    my $db_tbl = sprintf('`%s`.`%s`', $orig_db, $orig_table);
 
     foreach my $child_table ( @$child_tables ) {
-        if ($db_tbl eq $child_table->{name}) {
+        if ("$db_tbl" eq "$child_table->{name}") {
              return 1;
          }
-    };
+    }
 
-    return undef;
+    return 0;
 }
 
 # This function tries to detect if the --alter param is adding unique indexes.
@@ -12201,9 +12201,9 @@ L<"--print"> and verify that the triggers are correct.
 
 default: yes
 
-Check for self referencing foreing keys. Currently self referencing FKs are
+Check for self-referencing foreing keys. Currently self referencing FKs are
 not fully supported so to prevent errors, this program wont't run if the table
-has self referen foreign keys. Use this parameter to disable self referencing
+has self-referencing foreign keys. Use this parameter to disable self-referencing
 FK checks.
 
 =item --check-interval
