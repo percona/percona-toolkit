@@ -280,16 +280,7 @@ func GetQueryFieldD(doc proto.SystemProfile) (primitive.M, error) {
 	if len(doc.Command) > 0 {
 		query = doc.Command
 		if doc.Op == "update" || doc.Op == "remove" {
-			if squery, ok := query.Map()["q"]; ok {
-				switch v := squery.(type) {
-				case primitive.M:
-					return v, nil
-				case primitive.D:
-					return v.Map(), nil
-				default:
-					return nil, fmt.Errorf("don't know how to handle %T in 'doc.Command' field", v)
-				}
-			}
+			return asMap(query.Map()["q"])
 		}
 	}
 
