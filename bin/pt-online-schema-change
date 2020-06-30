@@ -12201,8 +12201,8 @@ L<"--print"> and verify that the triggers are correct.
 
 default: yes
 
-Check for self-referencing foreing keys. Currently self referencing FKs are
-not fully supported so to prevent errors, this program wont't run if the table
+Check for self-referencing foreign keys. Currently self referencing FKs are
+not full supported, so, to prevent errors, this program won't run if the table
 has self-referencing foreign keys. Use this parameter to disable self-referencing
 FK checks.
 

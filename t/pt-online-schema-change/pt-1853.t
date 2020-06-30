@@ -52,7 +52,7 @@ $sb->load_file('master', "t/pt-online-schema-change/samples/pt-1853.sql");
 isnt(
     $exit_status,
     0,
-    "PT-1853, there are self referencing FKs -> exit status != 0",
+    "PT-1853, there are self-referencing FKs -> exit status != 0",
 );
 
 ($output, $exit_status) = full_output(
@@ -69,7 +69,7 @@ isnt(
 isnt(
     $exit_status,
     0,
-    "PT-1853, there are self referencing FKs but --no-check-foreign-keys was specifid -> exit status = 0",
+    "PT-1853, there are self-referencing FKs but --no-check-foreign-keys was specified -> exit status = 0",
 );
 
 # #############################################################################
