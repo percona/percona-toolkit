@@ -8594,6 +8594,12 @@ sub main {
    # ########################################################################
    my $set_on_connect = sub {
       my ($dbh) = @_;
+      if ($o->get('check-foreign-keys')) {
+            my $sql = "SET foreign_key_checks=0";
+            PTDEBUG && _d($sql);
+            print $sql, "\n" if $o->get('print');
+            $dbh->do($sql);
+      }
       return;
    };
 
