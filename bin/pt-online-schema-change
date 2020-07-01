@@ -4205,10 +4205,9 @@ sub get_slaves {
    }
    my ($make_cxn) = @args{@required_args};
 
-   my $slaves      = [];
-   my $dp          = $self->{DSNParser};
-   my $methods     = $self->_resolve_recursion_methods($args{dsn});
-   my $skip_slaves = $args{skip_slaves};
+   my $slaves  = [];
+   my $dp      = $self->{DSNParser};
+   my $methods = $self->_resolve_recursion_methods($args{dsn});
 
    return $slaves unless @$methods;
    
@@ -4255,24 +4254,6 @@ sub get_slaves {
    }
    else {
       die "Unexpected recursion methods: @$methods";
-   }
-
-   if ($skip_slaves) {
-      my $filtered_slaves = [];
-      for my $slave (@$slaves) {
-         my $found=0;
-         for my $slave_to_skip (@$skip_slaves) {
-            if ($slave->{dsn}->{h} eq $skip_slaves->{h} && $slave->{dsn}->{P} eq $skip_slaves->{P}) {
-                  $found=1;
-            }
-         }
-         if ($found) {
-            print "Skipping slave ". $slave->description()."\n";
-         } else {
-            push @$filtered_slaves, $slave;
-         }
-      }
-      $slaves = $filtered_slaves;
    }
 
    return $slaves;
@@ -8819,24 +8800,37 @@ sub main {
          channel      => $o->get('channel'),
       );
 
-     my $skip_slaves = $o->get('skip-check-slave-lag');
+     my $slaves_to_skip = $o->get('skip-check-slave-lag');
 
      my $get_slaves_cb = sub {
          my ($intolerant) = @_;
-         return (
-            $ms->get_slaves(
-               dbh          => $cxn->dbh(),
-               dsn          => $cxn->dsn(),
-               skip_slaves  => $skip_slaves,
-               make_cxn     => sub {
+         my $slaves =$ms->get_slaves(
+               dbh      => $cxn->dbh(),
+               dsn      => $cxn->dsn(),
+               make_cxn => sub {
                   return $make_cxn->(
                      @_,
                      prev_dsn => $cxn->dsn(),
                      errok => (not $intolerant)
                   );
                },
-            )
-         );
+            );
+
+         if ($slaves_to_skip) {
+            my $filtered_slaves = [];
+            for my $slave (@$slaves) {
+               for my $slave_to_skip (@$slaves_to_skip) {
+                  if ($slave->{dsn}->{h} eq $slave_to_skip->{h} && $slave->{dsn}->{P} eq $slave_to_skip->{P}) {
+                     print "Skipping slave " . $slave->description() . "\n";
+                  } else {
+                     push @$filtered_slaves, $slave;
+                  }
+               }
+            }
+            $slaves = $filtered_slaves;
+         }
+
+         return $slaves;
       };
 
       ### first ever call only: do not tolerate connection errors
@@ -8873,31 +8867,9 @@ sub main {
       }
 
       if ( $slave_lag_cxns && scalar @$slave_lag_cxns ) {
-         if ($o->get('skip-check-slave-lag')) {
-             my $slaves_to_skip = $o->get('skip-check-slave-lag');
-             my $filtered_slaves = [];
-             for my $slave (@$slave_lag_cxns) {
-                 my $found=0;
-                 for my $slave_to_skip (@$slaves_to_skip) {
-                     if ($slave->{dsn}->{h} eq $slave_to_skip->{h} && $slave->{dsn}->{P} eq $slave_to_skip->{P}) {
-                         $found=1;
-                     }
-                 }
-                 if ($found) {
-                    PTDEBUG && _d("Skipping slave", $slave->description());
-                 } else {
-                    push @$filtered_slaves, $slave;
-                 }
-             }
-             $slave_lag_cxns = $filtered_slaves;
-         }
-         if (!scalar @$slave_lag_cxns) {
-            print "Not checking slave lag because all slaves were skipped\n";
-         } else{
-            print "Will check slave lag on:\n";
-            foreach my $cxn ( @$slave_lag_cxns ) {
-               print $cxn->description()."\n";
-            }
+         print "Will check slave lag on:\n";
+         foreach my $cxn ( @$slave_lag_cxns ) {
+            print $cxn->description()."\n";
          }
       }
       else {

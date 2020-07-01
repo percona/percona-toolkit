@@ -68,10 +68,9 @@ sub get_slaves {
    }
    my ($make_cxn) = @args{@required_args};
 
-   my $slaves      = [];
-   my $dp          = $self->{DSNParser};
-   my $methods     = $self->_resolve_recursion_methods($args{dsn});
-   my $skip_slaves = $args{skip_slaves};
+   my $slaves  = [];
+   my $dp      = $self->{DSNParser};
+   my $methods = $self->_resolve_recursion_methods($args{dsn});
 
    return $slaves unless @$methods;
 
@@ -118,24 +117,6 @@ sub get_slaves {
    }
    else {
       die "Unexpected recursion methods: @$methods";
-   }
-
-   if ($skip_slaves) {
-      my $filtered_slaves = [];
-      for my $slave (@$slaves) {
-         my $found=0;
-         for my $slave_to_skip (@$skip_slaves) {
-            if ($slave->{dsn}->{h} eq $skip_slaves->{h} && $slave->{dsn}->{P} eq $skip_slaves->{P}) {
-                  $found=1;
-            }
-         }
-         if ($found) {
-            PTDEBUG && _d("Skipping slave", $slave->description());
-         } else {
-            push @$filtered_slaves, $slave;
-         }
-      }
-      $slaves = $filtered_slaves;
    }
 
    return $slaves;
