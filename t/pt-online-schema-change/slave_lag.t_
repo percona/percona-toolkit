@@ -62,9 +62,9 @@ $slave_dbh->do('START SLAVE');
 diag('Loading test data');
 $sb->load_file('master', "t/pt-online-schema-change/samples/slave_lag.sql");
 
-my $num_rows = 1000;
+my $num_rows = 5000;
 diag("Loading $num_rows into the table. This might take some time.");
-diag(`util/mysql_random_data_load --host=127.0.0.1 --port=12345 --user=msandbox --password=msandbox test pt178 --bulk-size=1000 $num_rows`);
+diag(`util/mysql_random_data_load --host=127.0.0.1 --port=12345 --user=msandbox --password=msandbox test pt178 --bulk-size=1 --max-threads=1 $num_rows`);
 
 diag("Setting slave delay to $delay seconds");
 
@@ -75,7 +75,7 @@ $slave_dbh->do('START SLAVE');
 # Run a full table scan query to ensure the slave is behind the master
 # There is no query cache in MySQL 8.0+
 reset_query_cache($master_dbh, $master_dbh);
-$master_dbh->do('UPDATE `test`.`pt178` SET f2 = f2 + 1 WHERE f1 = ""'); 
+$master_dbh->do('UPDATE `test`.`pt178` SET f2 = f2 + 1 WHERE f1 = ""');
 
 # This is the base test, ust to ensure that without using --check-slave-lag nor --skip-check-slave-lag
 # pt-online-schema-change will wait on the slave at port 12346
@@ -98,7 +98,7 @@ $args = "$master_dsn,D=test,t=pt178 --execute --chunk-size 1 --max-lag $max_lag 
 
 # Run a full table scan query to ensure the slave is behind the master
 reset_query_cache($master_dbh, $master_dbh);
-$master_dbh->do('UPDATE `test`.`pt178` SET f2 = f2 + 1 WHERE f1 = ""'); 
+$master_dbh->do('UPDATE `test`.`pt178` SET f2 = f2 + 1 WHERE f1 = ""');
 
 diag("Starting --check-slave-lag test. This is going to take some time due to the delay in the slave");
 $output = `$trunk/bin/pt-online-schema-change $args 2>&1`;
@@ -118,7 +118,7 @@ $master_dbh->do("INSERT INTO `test`.`dynamic_replicas` (id, dsn) VALUES (1, '$sl
 
 # Run a full table scan query to ensure the slave is behind the master
 reset_query_cache($master_dbh, $master_dbh);
-$master_dbh->do('UPDATE `test`.`pt178` SET f2 = f2 + 1 WHERE f1 = ""'); 
+$master_dbh->do('UPDATE `test`.`pt178` SET f2 = f2 + 1 WHERE f1 = ""');
 
 diag("Starting --recursion-method with changes during the process");
 my ($fh, $filename) = tempfile();
@@ -130,7 +130,7 @@ if (!$pid) {
     exec("$trunk/bin/pt-online-schema-change $args");
 }
 
-sleep(30);
+sleep(60);
 $master_dbh->do("DELETE FROM `test`.`dynamic_replicas` WHERE id = 1;");
 waitpid($pid, 0);
 $output = do {
@@ -138,7 +138,7 @@ $output = do {
       <$fh>;
 };
 
-unlink $fh;
+unlink $filename;
 
 like(
       $output,
@@ -155,7 +155,7 @@ like(
 # Repeat the test now using --skip-check-slave-lag
 # Run a full table scan query to ensure the slave is behind the master
 reset_query_cache($master_dbh, $master_dbh);
-$master_dbh->do('UPDATE `test`.`pt178` SET f2 = f2 + 1 WHERE f1 = ""'); 
+$master_dbh->do('UPDATE `test`.`pt178` SET f2 = f2 + 1 WHERE f1 = ""');
 
 $args = "$master_dsn,D=test,t=pt178 --execute --chunk-size 1 --max-lag $max_lag --alter 'ENGINE=InnoDB' "
       . "--skip-check-slave-lag h=127.0.0.1,P=12346,u=msandbox,p=msandbox,D=test,t=sbtest --pid $tmp_file_name";
