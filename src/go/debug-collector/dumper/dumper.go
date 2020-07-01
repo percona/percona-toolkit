@@ -1,9 +1,12 @@
 package dumper
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"log"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -15,30 +18,53 @@ import (
 type Dumper struct {
 	cmd       string
 	resources []string
+	namespace string
 	location  string
 	Errors    map[string]string
-	Files     map[string][]byte
+	mode      int64
 }
 
 // New return new Dumper object
-func New(location string) Dumper {
+func New(location, namespace, resource string) Dumper {
 	directory := "cluster-dump"
 	if len(location) > 0 {
 		directory = location + "/cluster-dump"
 	}
+	resources := []string{
+		"pods",
+		"replicasets",
+		"deployments",
+		"statefulsets",
+		"replicationcontrollers",
+		"events",
+		"configmaps",
+		"secrets",
+		"cronjobs",
+		"jobs",
+		"podsecuritypolicies",
+		"poddisruptionbudgets",
+		"perconaxtradbbackups",
+		"perconaxtradbclusterbackups",
+		"perconaxtradbclusterrestores",
+		"perconaxtradbclusters",
+		"clusterrolebindings",
+		"clusterroles",
+		"rolebindings",
+		"roles",
+		"storageclasses",
+		"persistentvolumeclaims",
+		"persistentvolumes",
+	}
+	if len(resource) > 0 {
+		resources = append(resources, resource)
+	}
 	return Dumper{
-		cmd: "kubectl",
-		resources: []string{
-			"pods",
-			"replicasets",
-			"deployments",
-			"daemonsets",
-			"replicationcontrollers",
-			"events",
-		},
-		location: directory,
-		Errors:   make(map[string]string),
-		Files:    make(map[string][]byte),
+		cmd:       "kubectl",
+		resources: resources,
+		location:  directory,
+		Errors:    make(map[string]string),
+		mode:      int64(0777),
+		namespace: namespace,
 	}
 }
 
@@ -52,51 +78,78 @@ type namespaces struct {
 
 // DumpCluster create dump of a cluster in Dumper.location
 func (d *Dumper) DumpCluster() error {
-	output, err := d.runCmd("get", "namespaces", "-o", "json")
+	tarFile, err := os.Create(d.location + ".tar.gz")
 	if err != nil {
-		return errors.Wrap(err, "get namespaces")
+		return errors.Wrap(err, "create tar file")
 	}
+	defer tarFile.Close()
+	zr := gzip.NewWriter(tarFile)
+	tw := tar.NewWriter(zr)
+	defer zr.Close()
+	defer tw.Close()
+
 	var nss namespaces
-	err = json.Unmarshal(output, &nss)
-	if err != nil {
-		return errors.Wrap(err, "unmarshal namespaces")
+
+	if len(d.namespace) > 0 {
+		ns := corev1.Namespace{}
+		ns.Name = d.namespace
+		nss.Items = append(nss.Items, ns)
+	} else {
+		output, err := d.runCmd("get", "namespaces", "-o", "json")
+		if err != nil {
+			return errors.Wrap(err, "get namespaces")
+		}
+
+		err = json.Unmarshal(output, &nss)
+		if err != nil {
+			return errors.Wrap(err, "unmarshal namespaces")
+		}
 	}
 
 	for _, ns := range nss.Items {
-		output, err = d.runCmd("get", "pods", "-o", "json", "--namespace", ns.Name)
+		output, err := d.runCmd("get", "pods", "-o", "json", "--namespace", ns.Name)
 		if err != nil {
 			continue // runCmd already stored this error in Dumper.Errors
 		}
 		var pods k8sPods
 		err = json.Unmarshal(output, &pods)
 		if err != nil {
+			d.saveCommandError(err.Error(), "unmarshal pods from namespace", ns.Name)
 			log.Println(errors.Wrap(err, "unmarshal pods"))
 		}
 
 		for _, pod := range pods.Items {
+			location := d.location + "/" + ns.Name + "/" + pod.Name + "/logs.txt"
 			output, err = d.runCmd("logs", pod.Name, "--namespace", ns.Name, "--all-containers")
 			if err != nil {
-				continue // runCmd already stored this error in Dumper.Errors
+				err = createArchive(location, d.mode, []byte(err.Error()), tw)
+				if err != nil {
+					log.Printf("create archive with err: %v", err)
+				}
+				continue
 			}
-			d.Files[d.location+"/"+ns.Name+"/"+pod.Name+"/logs.txt"] = output
+			err = createArchive(location, d.mode, output, tw)
+			if err != nil {
+				log.Printf("create archive for pod %s: %v", pod.Name, err)
+			}
 		}
 
 		for _, resource := range d.resources {
-			err = d.getResource(resource, ns.Name)
+			err = d.getResource(resource, ns.Name, tw)
 			if err != nil {
 				log.Println(errors.Wrapf(err, "get %s resource", resource))
 			}
 		}
+
+		err = d.writeErrorsToFile(tw)
+		if err != nil {
+			log.Println(errors.Wrap(err, "write errors"))
+		}
 	}
 
-	err = d.getResource("nodes", "")
+	err = d.getResource("nodes", "", tw)
 	if err != nil {
 		log.Println(errors.Wrapf(err, "get nodes"))
-	}
-
-	err = d.writeErrorsToFile()
-	if err != nil {
-		log.Println(errors.Wrap(err, "write errors"))
 	}
 
 	return nil
@@ -121,21 +174,20 @@ func (d *Dumper) runCmd(args ...string) ([]byte, error) {
 	return outb.Bytes(), nil
 }
 
-func (d *Dumper) getResource(name, namespace string) error {
+func (d *Dumper) getResource(name, namespace string, tw *tar.Writer) error {
 	location := d.location
 	args := []string{"get", name, "-o", "yaml"}
 	if len(namespace) > 0 {
 		args = append(args, "--namespace", namespace)
 		location = d.location + "/" + namespace
 	}
+	location += "/" + name + ".yaml"
 	output, err := d.runCmd(args...)
 	if err != nil {
-		return nil // runCmd already stored this error in Dumper.Errors
+		return createArchive(location, d.mode, []byte(err.Error()), tw)
 	}
 
-	d.Files[location+"/"+name+".yaml"] = output
-
-	return nil
+	return createArchive(location, d.mode, output, tw)
 }
 
 func (d *Dumper) saveCommandError(err string, args ...string) {
@@ -144,17 +196,27 @@ func (d *Dumper) saveCommandError(err string, args ...string) {
 	d.Errors[command] = err
 }
 
-func (d *Dumper) writeErrorsToFile() error {
+func (d *Dumper) writeErrorsToFile(tw *tar.Writer) error {
 	var errStr string
 	for cmd, errS := range d.Errors {
 		errStr += cmd + ": " + errS + "\n"
 	}
-	d.Files[d.location+"/errors.txt"] = []byte(errStr)
 
-	return nil
+	return createArchive(d.location+"/errors.txt", d.mode, []byte(errStr), tw)
 }
 
-// GetLocation return Dumper.location
-func (d *Dumper) GetLocation() string {
-	return d.location
+func createArchive(location string, mode int64, content []byte, tw *tar.Writer) error {
+	hdr := &tar.Header{
+		Name: location,
+		Mode: mode,
+		Size: int64(len(content)),
+	}
+	if err := tw.WriteHeader(hdr); err != nil {
+		return errors.Wrap(err, "write header")
+	}
+	if _, err := tw.Write(content); err != nil {
+		return errors.Wrapf(err, "write content to %s", location)
+	}
+
+	return nil
 }
