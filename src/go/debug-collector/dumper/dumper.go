@@ -20,7 +20,7 @@ type Dumper struct {
 	resources []string
 	namespace string
 	location  string
-	Errors    map[string]string
+	Errors    string
 	mode      int64
 }
 
@@ -62,7 +62,6 @@ func New(location, namespace, resource string) Dumper {
 		cmd:       "kubectl",
 		resources: resources,
 		location:  directory,
-		Errors:    make(map[string]string),
 		mode:      int64(0777),
 		namespace: namespace,
 	}
@@ -82,11 +81,26 @@ func (d *Dumper) DumpCluster() error {
 	if err != nil {
 		return errors.Wrap(err, "create tar file")
 	}
-	defer tarFile.Close()
+
 	zr := gzip.NewWriter(tarFile)
 	tw := tar.NewWriter(zr)
-	defer zr.Close()
-	defer tw.Close()
+	defer func() {
+		err = tw.Close()
+		if err != nil {
+			log.Panicln("close tar writer", err)
+			return
+		}
+		err = zr.Close()
+		if err != nil {
+			log.Panicln("close gzip writer", err)
+			return
+		}
+		err = tarFile.Close()
+		if err != nil {
+			log.Panicln("close tar file", err)
+			return
+		}
+	}()
 
 	var nss namespaces
 
@@ -95,22 +109,28 @@ func (d *Dumper) DumpCluster() error {
 		ns.Name = d.namespace
 		nss.Items = append(nss.Items, ns)
 	} else {
-		output, err := d.runCmd("get", "namespaces", "-o", "json")
+		args := []string{"get", "namespaces", "-o", "json"}
+		output, err := d.runCmd(args...)
 		if err != nil {
+			d.saveCommandError(err.Error(), args...)
 			return errors.Wrap(err, "get namespaces")
 		}
 
 		err = json.Unmarshal(output, &nss)
 		if err != nil {
+			d.saveCommandError(err.Error(), "unmarshal namespaces")
 			return errors.Wrap(err, "unmarshal namespaces")
 		}
 	}
 
 	for _, ns := range nss.Items {
-		output, err := d.runCmd("get", "pods", "-o", "json", "--namespace", ns.Name)
+		args := []string{"get", "pods", "-o", "json", "--namespace", ns.Name}
+		output, err := d.runCmd(args...)
 		if err != nil {
-			continue // runCmd already stored this error in Dumper.Errors
+			d.saveCommandError(err.Error(), args...)
+			continue
 		}
+
 		var pods k8sPods
 		err = json.Unmarshal(output, &pods)
 		if err != nil {
@@ -120,8 +140,11 @@ func (d *Dumper) DumpCluster() error {
 
 		for _, pod := range pods.Items {
 			location := d.location + "/" + ns.Name + "/" + pod.Name + "/logs.txt"
-			output, err = d.runCmd("logs", pod.Name, "--namespace", ns.Name, "--all-containers")
+			args := []string{"logs", pod.Name, "--namespace", ns.Name, "--all-containers"}
+			output, err = d.runCmd(args...)
 			if err != nil {
+				log.Printf("logs pod %s namespace %s: %v", pod.Name, ns.Name, err)
+				d.saveCommandError(err.Error(), args...)
 				err = createArchive(location, d.mode, []byte(err.Error()), tw)
 				if err != nil {
 					log.Printf("create archive with err: %v", err)
@@ -141,7 +164,7 @@ func (d *Dumper) DumpCluster() error {
 			}
 		}
 
-		err = d.writeErrorsToFile(tw)
+		err = createArchive(d.location+"/errors.txt", d.mode, []byte(d.Errors), tw)
 		if err != nil {
 			log.Println(errors.Wrap(err, "write errors"))
 		}
@@ -155,20 +178,15 @@ func (d *Dumper) DumpCluster() error {
 	return nil
 }
 
-// runCmd run command (Dumper.cmd) with given args, return it output and save all errors in Dumper.errors
+// runCmd run command (Dumper.cmd) with given args, return it output
 func (d *Dumper) runCmd(args ...string) ([]byte, error) {
 	var outb, errb bytes.Buffer
 	cmd := exec.Command(d.cmd, args...)
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
 	err := cmd.Run()
-	if err != nil {
-		d.saveCommandError(err.Error()+" "+outb.String(), args...)
-		return outb.Bytes(), err
-	}
-	if errb.Len() > 0 {
-		d.saveCommandError(errb.String()+" "+outb.String(), args...)
-		return outb.Bytes(), err
+	if err != nil || errb.Len() > 0 {
+		return nil, errors.Errorf("error: %v, stderr: %s, stdout: %s", err, errb, outb)
 	}
 
 	return outb.Bytes(), nil
@@ -184,6 +202,8 @@ func (d *Dumper) getResource(name, namespace string, tw *tar.Writer) error {
 	location += "/" + name + ".yaml"
 	output, err := d.runCmd(args...)
 	if err != nil {
+		d.saveCommandError(err.Error(), args...)
+		log.Printf("get resource %s namespace %s: %v", name, namespace, err)
 		return createArchive(location, d.mode, []byte(err.Error()), tw)
 	}
 
@@ -191,18 +211,7 @@ func (d *Dumper) getResource(name, namespace string, tw *tar.Writer) error {
 }
 
 func (d *Dumper) saveCommandError(err string, args ...string) {
-	command := d.cmd + " " + strings.Join(args, " ")
-
-	d.Errors[command] = err
-}
-
-func (d *Dumper) writeErrorsToFile(tw *tar.Writer) error {
-	var errStr string
-	for cmd, errS := range d.Errors {
-		errStr += cmd + ": " + errS + "\n"
-	}
-
-	return createArchive(d.location+"/errors.txt", d.mode, []byte(errStr), tw)
+	d.Errors += d.cmd + " " + strings.Join(args, " ") + ": " + err + "\n"
 }
 
 func createArchive(location string, mode int64, content []byte, tw *tar.Writer) error {

@@ -9,7 +9,6 @@ import (
 )
 
 func main() {
-	locations := ""
 	namespace := ""
 	resource := ""
 	clusterName := ""
@@ -23,8 +22,9 @@ func main() {
 		resource = resource + "/" + clusterName
 	}
 
-	d := dumper.New(locations, namespace, resource)
+	d := dumper.New("", namespace, resource)
 	log.Println("Start dump cluster")
+
 	err := d.DumpCluster()
 	if err != nil {
 		log.Println(err)
