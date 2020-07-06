@@ -26,4 +26,5 @@ func main() {
 	step(recover.ConfirmCrashedStatus())
 	step(recover.PatchClusterImage())
 	step(recover.RestartPods())
+	step(recover.PodZeroReady())
 }

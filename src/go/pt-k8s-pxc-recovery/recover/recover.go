@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/percona/percona-toolkit/src/go/pt-k8s-pxc-recovery/helpers"
 )
@@ -107,6 +108,36 @@ func RestartPods() error {
 			"--grace-period=0",
 		}
 		_, err := helpers.RunCmd(args...)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func CheckPodStatus(podID int) (bool, error) {
+	args := []string{
+		"get",
+		"pod", clusterName + "-pxc-" + strconv.Itoa(podID),
+		"-o",
+		"jsonpath='{.status.containerStatuses[0].ready}'",
+	}
+	output, err := helpers.RunCmd(args...)
+	if err != nil {
+		return false, err
+	}
+	if output == "true" {
+		return true, nil
+	}
+	return false, nil
+}
+
+func PodZeroReady() error {
+	podZeroStatus := false
+	var err error
+	for podZeroStatus != true {
+		time.Sleep(time.Second)
+		podZeroStatus, err = CheckPodStatus(0)
 		if err != nil {
 			return err
 		}
