@@ -1,7 +1,6 @@
 package helpers
 
 import (
-	"log"
 	"os/exec"
 	"runtime"
 )
@@ -26,19 +25,12 @@ func SetNamespace(name string) {
 func RunCmd(args ...string) (string, error) {
 	args = append([]string{"--namespace", namespace}, args...)
 	cmd := exec.Command(getKubectl(), args...)
-	// err := cmd.Start()
+	println(cmd.String())
+	// stdouterr, err := cmd.CombinedOutput()
 	// if err != nil {
-	// 	log.Fatal(err)
+	// 	return "", errors.New(string(stdouterr))
 	// }
-	err := cmd.Wait()
-	if err != nil {
-		oerr, _ := cmd.CombinedOutput()
-		log.Println(string(oerr))
-		log.Fatal(err)
-	}
-	output, err := cmd.Output()
-	if err != nil {
-		log.Fatal(err)
-	}
-	return string(output), nil
+	// output := string(stdouterr)
+	// return output, nil
+	return "", nil
 }
