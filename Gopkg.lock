@@ -150,22 +150,6 @@
   version = "v1.0.2"
 
 [[projects]]
-  digest = "1:3108ec0946181c60040ff51b811908f89d03e521e2b4ade5ef5c65b3c0e911ae"
-  name = "github.com/kr/pretty"
-  packages = ["."]
-  pruneopts = ""
-  revision = "73f6ac0b30a98e433b289500d779f50c1a6f0712"
-  version = "v0.1.0"
-
-[[projects]]
-  digest = "1:11b056b4421396ab14e384ab8ab8c2079b03f1e51aa5eb4d9b81f9e0d1aa8fbf"
-  name = "github.com/kr/text"
-  packages = ["."]
-  pruneopts = ""
-  revision = "e2ffdb16a802fe2bb95e2e35ff34f0e53aeef34f"
-  version = "v0.1.0"
-
-[[projects]]
   digest = "1:f4216047c24ab66fb757045febd7dac4edc6f4ad9f6c0063d0755d654d04f25e"
   name = "github.com/lib/pq"
   packages = [
@@ -387,7 +371,6 @@
     "github.com/google/uuid",
     "github.com/hashicorp/go-version",
     "github.com/howeyc/gopass",
-    "github.com/kr/pretty",
     "github.com/lib/pq",
     "github.com/mattn/go-shellwords",
     "github.com/montanaflynn/stats",
@@ -396,6 +379,7 @@
     "github.com/pkg/errors",
     "github.com/shirou/gopsutil/process",
     "github.com/sirupsen/logrus",
+    "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/require",
     "go.mongodb.org/mongo-driver/bson",
     "go.mongodb.org/mongo-driver/bson/primitive",

@@ -3,12 +3,9 @@ package sanitize
 import (
 	"reflect"
 	"testing"
-
-	"github.com/kr/pretty"
 )
 
 func TestSanitizeHostnames(t *testing.T) {
-
 	want := []string{
 		"top - 20:05:17 up 10 days, 16:27, 1 user, load average: 0.01, 0.15, 0.19",
 		"Tasks: 115 total, 1 running, 114 sleeping, 0 stopped, 0 zombie",
@@ -24,8 +21,6 @@ func TestSanitizeHostnames(t *testing.T) {
 	copy(lines, want)
 	sanitizeHostnames(lines)
 	if !reflect.DeepEqual(lines, want) {
-		pretty.Println(want)
-		pretty.Println(lines)
 		t.Error("structures don't match")
 	}
 
@@ -48,7 +43,5 @@ func TestSanitizeHostnames(t *testing.T) {
 	sanitizeHostnames(lines)
 	if !reflect.DeepEqual(lines, want) {
 		t.Error("structures don't match")
-		pretty.Println(want)
-		pretty.Println(lines)
 	}
 }
