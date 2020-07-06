@@ -62,7 +62,7 @@ type OplogColStats struct {
 	MaxSize           int64
 	IndexSizes        bson.M
 	GleStats          struct {
-		LastOpTime int64
+		LastOpTime time.Time
 		ElectionId string
 	} `bson:"$gleStats"`
 	StorageSize    int64
