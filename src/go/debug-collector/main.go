@@ -13,23 +13,23 @@ func main() {
 	resource := ""
 	clusterName := ""
 
-	flag.StringVar(&namespace, "namespace", "", "Namespace for dumping. If empty will dump all namespaces")
+	flag.StringVar(&namespace, "namespace", "", "Namespace for collecting data. If empty data will be collected from all namespaces")
 	flag.StringVar(&resource, "resource", "pxc", "Resource name. Default value - 'pxc'")
 	flag.StringVar(&clusterName, "cluster", "", "Cluster name")
 	flag.Parse()
 
 	if len(clusterName) > 0 {
-		resource = resource + "/" + clusterName
+		resource += "/" + clusterName
 	}
 
 	d := dumper.New("", namespace, resource)
-	log.Println("Start dump cluster")
+	log.Println("Start collecting cluster data")
 
 	err := d.DumpCluster()
 	if err != nil {
-		log.Println(err)
+		log.Println("Error:", err)
 		os.Exit(1)
 	}
 
-	log.Println("Cluster dump ready")
+	log.Println("Done")
 }
