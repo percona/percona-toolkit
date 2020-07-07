@@ -24,7 +24,7 @@ func SetClusterSize() error {
 	if err != nil {
 		return err
 	}
-	// strSize = "3"
+	strSize = "3"
 	clusterSize, err = strconv.Atoi(string(strSize))
 	if err != nil {
 		return err
@@ -136,10 +136,81 @@ func PodZeroReady() error {
 	podZeroStatus := false
 	var err error
 	for podZeroStatus != true {
-		time.Sleep(time.Second)
+		time.Sleep(time.Second * 10)
 		podZeroStatus, err = CheckPodStatus(0)
 		if err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+func CheckPodPhase(podID int, phase string) (bool, error) {
+	args := []string{
+		"get",
+		"pod", clusterName + "-pxc-" + strconv.Itoa(podID),
+		"-o",
+		"jsonpath='{.status.phase}'",
+	}
+	output, err := helpers.RunCmd(args...)
+	if err != nil {
+		return false, err
+	}
+	if output == phase {
+		return true, nil
+	}
+	return false, nil
+}
+
+func AllPodsRunning() error {
+	for i := 0; i < clusterSize; i++ {
+		running := false
+		var err error
+		for running == false {
+			time.Sleep(time.Second * 10)
+			running, err = CheckPodPhase(i, "Running")
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func RunCommandInPod(podID int, cmd ...string) (string, error) {
+	args := []string{
+		"exec",
+		clusterName + "-pxc-" + strconv.Itoa(podID),
+		"--",
+	}
+	args = append(args, cmd...)
+	output, err := helpers.RunCmd(args...)
+	if err != nil {
+		return "", err
+	}
+	return output, nil
+}
+
+func SetSSTInProgress() error {
+	for i := 0; i < clusterSize; i++ {
+		_, err := RunCommandInPod(i, "touch", "/var/lib/mysql/sst_in_progress")
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func AllPodsReady() error {
+	for i := 0; i < clusterSize; i++ {
+		podReadyStatus := false
+		var err error
+		for podReadyStatus == false {
+			time.Sleep(time.Second * 10)
+			podReadyStatus, err = CheckPodStatus(i)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil

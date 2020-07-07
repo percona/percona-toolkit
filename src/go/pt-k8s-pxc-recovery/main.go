@@ -8,7 +8,7 @@ import (
 	"github.com/percona/percona-toolkit/src/go/pt-k8s-pxc-recovery/recover"
 )
 
-func step(err error) {
+func stepOrError(err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -22,9 +22,12 @@ func main() {
 	helpers.SetNamespace(namespace)
 	recover.SetClusterName(clusterName)
 
-	step(recover.SetClusterSize())
-	step(recover.ConfirmCrashedStatus())
-	step(recover.PatchClusterImage())
-	step(recover.RestartPods())
-	step(recover.PodZeroReady())
+	stepOrError(recover.SetClusterSize())
+	stepOrError(recover.ConfirmCrashedStatus())
+	stepOrError(recover.PatchClusterImage())
+	stepOrError(recover.RestartPods())
+	stepOrError(recover.PodZeroReady())
+	stepOrError(recover.AllPodsRunning())
+	stepOrError(recover.SetSSTInProgress())
+	stepOrError(recover.AllPodsReady())
 }
