@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
-	"github.com/kr/pretty"
+	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -153,28 +153,21 @@ func TestExplain(t *testing.T) {
 	ex := New(ctx, client)
 	for _, file := range files {
 		t.Run(file.Name(), func(t *testing.T) {
-			eq := proto.ExampleQuery{}
-			err := tutil.LoadBson(dir+file.Name(), &eq)
-			if err != nil {
-				t.Fatalf("cannot load sample %s: %s", dir+file.Name(), err)
-			}
-			pretty.Println(eq)
+			query, err := ioutil.ReadFile(dir + file.Name())
+			assert.NoError(t, err)
 
-			query, err := bson.MarshalExtJSON(eq, true, true)
-			if err != nil {
-				t.Fatalf("cannot marshal json %s: %s", dir+file.Name(), err)
-			}
 			got, err := ex.Run("", query)
-			expectErrMsg := expectError[file.Name()]
+			idx := strings.TrimSuffix(file.Name(), ".new.bson")
+			expectErrMsg := expectError[idx]
 			if (err != nil) != expectErrMsg {
-				t.Fatalf("explain error for %q \n %s\nshould be '%v' but was '%v'", string(query), file.Name(), expectErrMsg, err)
+				t.Errorf("explain error for %q \n %s\nshould be '%v' but was '%v'", string(query), file.Name(), expectErrMsg, err)
 			}
 
 			if err == nil {
 				result := proto.BsonD{}
 				err = bson.UnmarshalExtJSON(got, true, &result)
 				if err != nil {
-					t.Fatalf("cannot unmarshal json explain result: %s", err)
+					t.Errorf("cannot unmarshal json explain result: %s", err)
 				}
 			}
 		})

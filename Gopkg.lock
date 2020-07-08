@@ -53,6 +53,14 @@
   revision = "c3de453c63f4bdb4dadffab9805ec00426c505f7"
 
 [[projects]]
+  digest = "1:0deddd908b6b4b768cfc272c16ee61e7088a60f7fe2f06c547bd3d8e1f8b8e77"
+  name = "github.com/davecgh/go-spew"
+  packages = ["spew"]
+  pruneopts = ""
+  revision = "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
+  version = "v1.1.1"
+
+[[projects]]
   digest = "1:c3f4f5bc77b998746a8061a52a2b8fb172c1744801165227692d702483995d58"
   name = "github.com/go-ini/ini"
   packages = ["."]
@@ -120,28 +128,26 @@
   revision = "bf9dde6d0d2c004a008c27aaee91170c786f6db8"
 
 [[projects]]
+  digest = "1:f02c9b5d6682e16bb484f964445b22af73c0af1c66a7d3f75503adda88610d26"
+  name = "github.com/klauspost/compress"
+  packages = [
+    "fse",
+    "huff0",
+    "snappy",
+    "zstd",
+    "zstd/internal/xxhash",
+  ]
+  pruneopts = ""
+  revision = "a8f778f32d263b3a95d1e5a90534f5f680560abe"
+  version = "v1.10.10"
+
+[[projects]]
   digest = "1:0f51cee70b0d254dbc93c22666ea2abf211af81c1701a96d04e2284b408621db"
   name = "github.com/konsorten/go-windows-terminal-sequences"
   packages = ["."]
   pruneopts = ""
   revision = "f55edac94c9bbba5d6182a4be46d86a2c9b5b50e"
   version = "v1.0.2"
-
-[[projects]]
-  digest = "1:3108ec0946181c60040ff51b811908f89d03e521e2b4ade5ef5c65b3c0e911ae"
-  name = "github.com/kr/pretty"
-  packages = ["."]
-  pruneopts = ""
-  revision = "73f6ac0b30a98e433b289500d779f50c1a6f0712"
-  version = "v0.1.0"
-
-[[projects]]
-  digest = "1:11b056b4421396ab14e384ab8ab8c2079b03f1e51aa5eb4d9b81f9e0d1aa8fbf"
-  name = "github.com/kr/text"
-  packages = ["."]
-  pruneopts = ""
-  revision = "e2ffdb16a802fe2bb95e2e35ff34f0e53aeef34f"
-  version = "v0.1.0"
 
 [[projects]]
   digest = "1:f4216047c24ab66fb757045febd7dac4edc6f4ad9f6c0063d0755d654d04f25e"
@@ -196,6 +202,14 @@
   version = "v0.9.1"
 
 [[projects]]
+  digest = "1:256484dbbcd271f9ecebc6795b2df8cad4c458dd0f5fd82a8c2fa0c29f233411"
+  name = "github.com/pmezard/go-difflib"
+  packages = ["difflib"]
+  pruneopts = ""
+  revision = "792786c7400a136282c1664665ae0a8db921c6c2"
+  version = "v1.0.0"
+
+[[projects]]
   digest = "1:55dcddb2ba6ab25098ee6b96f176f39305f1fde7ea3d138e7e10bb64a5bf45be"
   name = "github.com/shirou/gopsutil"
   packages = [
@@ -226,6 +240,17 @@
   version = "v1.4.2"
 
 [[projects]]
+  digest = "1:83fd2513b9f6ae0997bf646db6b74e9e00131e31002116fda597175f25add42d"
+  name = "github.com/stretchr/testify"
+  packages = [
+    "assert",
+    "require",
+  ]
+  pruneopts = ""
+  revision = "f654a9112bbeac49ca2cd45bfbe11533c4666cf8"
+  version = "v1.6.1"
+
+[[projects]]
   branch = "master"
   digest = "1:ad74f33a69bd6ab0bd7287003b7c1069b94cfb5213eb5597005fe2963d7dfca9"
   name = "github.com/xdg/scram"
@@ -242,11 +267,12 @@
   revision = "73f8eece6fdcd902c185bf651de50f3828bed5ed"
 
 [[projects]]
-  digest = "1:5a7738096093da28b02967e9f29b380341c02baa4dc3104731a62be4290369b7"
+  digest = "1:6085253f6bc0d9e4761ce971e02849b626de51735b35f362a34dbe5dbc3a2168"
   name = "go.mongodb.org/mongo-driver"
   packages = [
     "bson",
     "bson/bsoncodec",
+    "bson/bsonoptions",
     "bson/bsonrw",
     "bson/bsontype",
     "bson/primitive",
@@ -262,23 +288,23 @@
     "x/bsonx",
     "x/bsonx/bsoncore",
     "x/mongo/driver",
+    "x/mongo/driver/address",
     "x/mongo/driver/auth",
     "x/mongo/driver/auth/internal/gssapi",
+    "x/mongo/driver/connstring",
+    "x/mongo/driver/description",
+    "x/mongo/driver/dns",
+    "x/mongo/driver/mongocrypt",
+    "x/mongo/driver/mongocrypt/options",
+    "x/mongo/driver/operation",
     "x/mongo/driver/session",
     "x/mongo/driver/topology",
     "x/mongo/driver/uuid",
-    "x/network/address",
-    "x/network/command",
-    "x/network/compressor",
-    "x/network/connection",
-    "x/network/connstring",
-    "x/network/description",
-    "x/network/result",
-    "x/network/wiremessage",
+    "x/mongo/driver/wiremessage",
   ]
   pruneopts = ""
-  revision = "0d1270edf53072da4da781b76d2e1db58831152f"
-  version = "v1.0.4"
+  revision = "4ce2db174a8ec022f504b9bc0e768e284e44708f"
+  version = "v1.3.4"
 
 [[projects]]
   branch = "master"
@@ -325,6 +351,14 @@
   revision = "342b2e1fbaa52c93f31447ad2c6abc048c63e475"
   version = "v0.3.2"
 
+[[projects]]
+  branch = "v3"
+  digest = "1:2e9c4d6def1d36dcd17730e00c06b49a2e97ea5e1e639bcd24fa60fa43e33ad6"
+  name = "gopkg.in/yaml.v3"
+  packages = ["."]
+  pruneopts = ""
+  revision = "eeeca48fe7764f320e4870d231902bf9c1be2c08"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
@@ -337,7 +371,6 @@
     "github.com/google/uuid",
     "github.com/hashicorp/go-version",
     "github.com/howeyc/gopass",
-    "github.com/kr/pretty",
     "github.com/lib/pq",
     "github.com/mattn/go-shellwords",
     "github.com/montanaflynn/stats",
@@ -346,6 +379,8 @@
     "github.com/pkg/errors",
     "github.com/shirou/gopsutil/process",
     "github.com/sirupsen/logrus",
+    "github.com/stretchr/testify/assert",
+    "github.com/stretchr/testify/require",
     "go.mongodb.org/mongo-driver/bson",
     "go.mongodb.org/mongo-driver/bson/primitive",
     "go.mongodb.org/mongo-driver/mongo",

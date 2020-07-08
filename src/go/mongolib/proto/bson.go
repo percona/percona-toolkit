@@ -99,7 +99,7 @@ func (d BsonD) MarshalJSON() ([]byte, error) {
 		}
 
 		// marshal key
-		key, err := bson.MarshalExtJSON(v.Key, true, true)
+		key, err := bson.MarshalExtJSON(v.Key, false, true)
 		if err != nil {
 			return nil, err
 		}
@@ -120,7 +120,7 @@ func (d BsonD) MarshalJSON() ([]byte, error) {
 			val = append(val, '"')
 		} else {
 			// marshal value
-			val, err = bson.MarshalExtJSON(v.Value, true, true)
+			val, err = bson.MarshalExtJSON(v.Value, false, true)
 			if err != nil {
 				return nil, err
 			}
