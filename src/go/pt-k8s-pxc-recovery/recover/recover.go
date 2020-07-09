@@ -2,6 +2,7 @@ package recover
 
 import (
 	"errors"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -11,6 +12,7 @@ import (
 
 var clusterName = ""
 var clusterSize = 0
+var mostRecentPod int
 
 func SetClusterSize() error {
 	args := []string{
@@ -213,5 +215,28 @@ func AllPodsReady() error {
 			}
 		}
 	}
+	return nil
+}
+
+func FindMostRecentPod() error {
+	var podID int
+	seqNo := 0
+	for i := 0; i < clusterSize; i++ {
+		output, err := RunCommandInPod(i, "cat", "/var/lib/mysql/grastate.dat")
+		if err != nil {
+			return err
+		}
+		re := regexp.MustCompile(`(?m)seqno:\s*(\d*)`)
+		match := re.FindSubmatch([]byte(output))
+		currentSeqNo, err := strconv.Atoi(string(match[1]))
+		if err != nil {
+			return err
+		}
+		if currentSeqNo > seqNo {
+			seqNo = currentSeqNo
+			podID = i
+		}
+	}
+	mostRecentPod = podID
 	return nil
 }

@@ -30,4 +30,5 @@ func main() {
 	stepOrError(recover.AllPodsRunning())
 	stepOrError(recover.SetSSTInProgress())
 	stepOrError(recover.AllPodsReady())
+	stepOrError(recover.FindMostRecentPod())
 }
