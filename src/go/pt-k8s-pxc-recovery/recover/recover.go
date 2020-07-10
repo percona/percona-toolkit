@@ -2,6 +2,7 @@ package recover
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -20,14 +21,14 @@ func SetClusterSize() error {
 		"pxc",
 		clusterName,
 		"-o",
-		"jsonpath='{.spec.pxc.size}')",
+		"jsonpath='{.spec.pxc.size}'",
 	}
 	strSize, err := helpers.RunCmd(args...)
+	strSize = strings.Trim(strSize, "'")
 	if err != nil {
 		return err
 	}
-	strSize = "3"
-	clusterSize, err = strconv.Atoi(string(strSize))
+	clusterSize, err = strconv.Atoi(strSize)
 	if err != nil {
 		return err
 	}
@@ -89,9 +90,8 @@ func PatchClusterImage() error {
 		"patch",
 		"pxc",
 		clusterName,
-		"--type=\"merge\"",
-		"-p",
-		"'{\"spec\":{\"pxc\":{\"image\":\"percona/percona-xtradb-cluster-operator:1.4.0-pxc8.0-debug\"}}}'",
+		"--type=merge",
+		`--patch='{"spec":{"pxc":{"image":"percona/percona-xtradb-cluster-operator:1.4.0-pxc8.0-debug"}}}'`,
 	}
 	_, err := helpers.RunCmd(args...)
 	if err != nil {
@@ -238,5 +238,6 @@ func FindMostRecentPod() error {
 		}
 	}
 	mostRecentPod = podID
+	fmt.Println(mostRecentPod)
 	return nil
 }
