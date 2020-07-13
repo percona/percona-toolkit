@@ -66,9 +66,6 @@ func ConfirmCrashedStatus() error {
 	if err != nil {
 		return err
 	}
-	if len(podNames) > 1 {
-		return errors.New("Cluster has more than one Pod up")
-	}
 	failedNodes := 0
 	for _, pod := range podNames {
 		logs, err := helpers.RunCmd("logs", pod)
@@ -91,7 +88,7 @@ func PatchClusterImage() error {
 		"pxc",
 		clusterName,
 		"--type=merge",
-		`--patch='{"spec":{"pxc":{"image":"percona/percona-xtradb-cluster-operator:1.4.0-pxc8.0-debug"}}}'`,
+		`--patch={"spec":{"pxc":{"image":"percona/percona-xtradb-cluster-operator:1.4.0-pxc8.0-debug"}}}`,
 	}
 	_, err := helpers.RunCmd(args...)
 	if err != nil {
@@ -109,10 +106,7 @@ func RestartPods() error {
 			"--force",
 			"--grace-period=0",
 		}
-		_, err := helpers.RunCmd(args...)
-		if err != nil {
-			return err
-		}
+		helpers.RunCmd(args...)
 	}
 	return nil
 }
@@ -128,7 +122,7 @@ func CheckPodStatus(podID int) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if output == "true" {
+	if strings.Trim(output, "'") == "true" {
 		return true, nil
 	}
 	return false, nil
@@ -158,7 +152,7 @@ func CheckPodPhase(podID int, phase string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if output == phase {
+	if strings.Trim(output, "'") == phase {
 		return true, nil
 	}
 	return false, nil
@@ -167,13 +161,9 @@ func CheckPodPhase(podID int, phase string) (bool, error) {
 func AllPodsRunning() error {
 	for i := 0; i < clusterSize; i++ {
 		running := false
-		var err error
 		for running == false {
 			time.Sleep(time.Second * 10)
-			running, err = CheckPodPhase(i, "Running")
-			if err != nil {
-				return err
-			}
+			running, _ = CheckPodPhase(i, "Running")
 		}
 	}
 	return nil

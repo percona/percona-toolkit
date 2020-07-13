@@ -3,7 +3,6 @@ package helpers
 import (
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 	"runtime"
 )
@@ -28,7 +27,6 @@ func SetNamespace(name string) {
 func RunCmd(args ...string) (string, error) {
 	args = append([]string{"-v=0", "--namespace", namespace}, args...)
 	cmd := exec.Command(getKubectl(), args...)
-	cmd.Env = os.Environ()
 	println(cmd.String())
 	stdouterr, err := cmd.CombinedOutput()
 	if err != nil {
