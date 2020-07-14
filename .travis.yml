@@ -1,7 +1,8 @@
 language: go
 
 go:
-  - 1.13.x
+  - 1.14.x
+  - tip
 
 services:
   - docker
@@ -36,13 +37,16 @@ env:
     # REVIEWDOG_GITHUB_API_TOKEN
     - secure: "px8XYeNEAFTSTb1hYZuEOxqOXUxvp3EoU+KCtPck/KNozkoS95eBd9klgr3Os4wPKloLdMhrr0VE98lukogUxA/NmnYnos01kegjWgwwM6fkob8JxaN5KK4oUFF1wmirBlrjGlw8vUErPwINmrK4BywKpDbw6Yip6FzxdlWESHI="
 
-  matrix:
+matrix:
+  include: 
     - MONGODB_IMAGE=mongo:3.0
     - MONGODB_IMAGE=mongo:3.2
     - MONGODB_IMAGE=mongo:3.4
     - MONGODB_IMAGE=percona/percona-server-mongodb:3.0
     - MONGODB_IMAGE=percona/percona-server-mongodb:3.2
     - MONGODB_IMAGE=percona/percona-server-mongodb:3.4
+  allow_failures:
+    - go: tip
 
 # skip non-trunk PMM-XXXX branch builds, but still build pull requests
 branches:
