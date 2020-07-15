@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/Percona-Lab/pt-pg-summary/models"
+	"github.com/percona/percona-toolkit/src/go/pt-pg-summary/models"
 	"github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/process"
@@ -94,11 +94,11 @@ func new(db models.XODB, databases []string, sleep int, logger *logrus.Logger) (
 
 	serverVersion, err := models.GetServerVersion(db)
 	if err != nil {
-		return nil, errors.Wrap(err, "Cannot get the connected clients list")
+		return nil, errors.Wrap(err, "Cannot get server version")
 	}
 
 	if info.ServerVersion, err = parseServerVersion(serverVersion.Version); err != nil {
-		return nil, fmt.Errorf("cannot get server version: %s", err.Error())
+		return nil, fmt.Errorf("Cannot parse server version: %s", err.Error())
 	}
 	info.logger.Infof("Detected PostgreSQL version: %v", info.ServerVersion)
 
@@ -198,7 +198,7 @@ func (i *PGInfo) CollectGlobalInfo(db models.XODB) []error {
 		}
 	}
 
-	if !i.ServerVersion.LessThan(version10) {
+	if i.ServerVersion.GreaterThanOrEqual(version10) {
 		i.logger.Info("Collecting Slave Hosts (PostgreSQL 10+)")
 		if i.SlaveHosts10, err = models.GetSlaveHosts10s(db); err != nil {
 			errs = append(errs, errors.Wrap(err, "Cannot get slave hosts in Postgre 10+"))

@@ -3,9 +3,10 @@ USERNAME=postgres
 PASSWORD=root
 PORT9=6432
 PORT10=6433
+PORT12=6435
 DO_CLEANUP=0
 
-if [ ! "$(docker ps -q -f name=pt-pg-summary_postgres9_1)" ]; then
+if [ ! "$(docker ps -q -f name=go_postgres9_1)" ]; then
     DO_CLEANUP=1
     docker-compose up -d --force-recreate
     sleep 20
@@ -53,7 +54,7 @@ xo pgsql://${USERNAME}:${PASSWORD}@127.0.0.1:${PORT9}/?sslmode=disable \
 ORDER BY 1
 ENDSQL
 
-FIELDS='Usename string,Time time.Time,ClientAddr string,ClientHostname sql.NullString,Version string,Started time.Time,IsSlave bool'
+FIELDS='Usename string,Time time.Time,ClientAddr sql.NullString,ClientHostname sql.NullString,Version string,Started time.Time,IsSlave bool'
 COMMENT='Cluster info'
 xo pgsql://${USERNAME}:${PASSWORD}@127.0.0.1:${PORT9}/?sslmode=disable \
     --query-mode \
@@ -77,7 +78,7 @@ SELECT usename, now() AS "Time",
 ENDSQL
 
 COMMENT="Databases"
-xo pgsql://${USERNAME}:${PASSWORD}@127.0.0.1:${PORT9}/?sslmode=disable \
+xo pgsql://${USERNAME}:${PASSWORD}@127.0.0.1:${PORT12}/?sslmode=disable \
     --query-mode \
     --query-trim  \
     --query-interpolate \
@@ -87,6 +88,7 @@ xo pgsql://${USERNAME}:${PASSWORD}@127.0.0.1:${PORT9}/?sslmode=disable \
     --out ./ << ENDSQL
 SELECT datname, pg_size_pretty(pg_database_size(datname)) 
   FROM pg_stat_database
+  WHERE datid <> 0
 ENDSQL
  
 xo pgsql://${USERNAME}:${PASSWORD}@127.0.0.1:${PORT9}/?sslmode=disable \
@@ -101,14 +103,14 @@ xo pgsql://${USERNAME}:${PASSWORD}@127.0.0.1:${PORT9}/?sslmode=disable \
 GROUP BY 1
 ENDSQL
  
-xo pgsql://${USERNAME}:${PASSWORD}@127.0.0.1:${PORT9}/?sslmode=disable \
+xo pgsql://${USERNAME}:${PASSWORD}@127.0.0.1:${PORT12}/?sslmode=disable \
     --query-mode \
     --query-interpolate \
     --query-trim  \
     --query-type Counters \
     --package models \
     --out ./ << ENDSQL
-  SELECT datname, numbackends, xact_commit, xact_rollback, 
+  SELECT COALESCE(datname, '') datname, numbackends, xact_commit, xact_rollback,
          blks_read, blks_hit, tup_returned, tup_fetched, tup_inserted, 
          tup_updated, tup_deleted, conflicts, temp_files, 
          temp_bytes, deadlocks 
@@ -116,9 +118,9 @@ xo pgsql://${USERNAME}:${PASSWORD}@127.0.0.1:${PORT9}/?sslmode=disable \
 ORDER BY datname
 ENDSQL
 
-FIELDS='Relname string, Relkind string,Datname string,Count sql.NullInt64'
+FIELDS='Relname string, Relkind string, Datname sql.NullString, Count sql.NullInt64'
 COMMENT='Table Access'
-xo pgsql://${USERNAME}:${PASSWORD}@127.0.0.1:${PORT9}/?sslmode=disable \
+xo pgsql://${USERNAME}:${PASSWORD}@127.0.0.1:${PORT12}/?sslmode=disable \
     --query-mode \
     --query-trim  \
     --query-type TableAccess \
@@ -128,7 +130,7 @@ xo pgsql://${USERNAME}:${PASSWORD}@127.0.0.1:${PORT9}/?sslmode=disable \
     --query-allow-nulls \
     --package models \
     --out ./ << ENDSQL 
-  SELECT c.relname, c.relkind, b.datname, count(*) FROM pg_locks a 
+  SELECT c.relname, c.relkind, b.datname datname, count(*) FROM pg_locks a
     JOIN pg_stat_database b 
       ON a.database=b.datid 
     JOIN pg_class c 

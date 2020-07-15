@@ -50,9 +50,9 @@ var (
 	IPv6PG12Port = getVar("PG_IPV6_12_PORT", ipv6PG12Port)
 
 	PG9DockerIP  = getContainerIP(pg9Container)
-	PG10DockerIP = getContainerIP(pg9Container)
-	PG11DockerIP = getContainerIP(pg9Container)
-	PG12DockerIP = getContainerIP(pg9Container)
+	PG10DockerIP = getContainerIP(pg10Container)
+	PG11DockerIP = getContainerIP(pg11Container)
+	PG12DockerIP = getContainerIP(pg12Container)
 
 	DefaultPGPort = "5432"
 )

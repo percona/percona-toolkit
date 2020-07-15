@@ -15,7 +15,8 @@ func GetDatabases(db XODB) ([]*Databases, error) {
 
 	// sql query
 	var sqlstr = `SELECT datname, pg_size_pretty(pg_database_size(datname)) ` +
-		`FROM pg_stat_database`
+		`FROM pg_stat_database ` +
+		`WHERE datid <> 0`
 
 	// run query
 	XOLog(sqlstr)
