@@ -4,11 +4,14 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -22,6 +25,7 @@ type Dumper struct {
 	location  string
 	errors    string
 	mode      int64
+	crType    string
 }
 
 // New return new Dumper object
@@ -60,6 +64,7 @@ func New(location, namespace, resource string) Dumper {
 		location:  "cluster-dump",
 		mode:      int64(0777),
 		namespace: namespace,
+		crType:    resource,
 	}
 }
 
@@ -156,6 +161,31 @@ func (d *Dumper) DumpCluster() error {
 				d.logError(err.Error(), "create archive for pod "+pod.Name)
 				log.Printf("Error: create archive for pod %s: %v", pod.Name, err)
 			}
+			if len(pod.Labels) == 0 {
+				continue
+			}
+
+			location = d.location + "/" + ns.Name + "/" + pod.Name + "/pt-summary.txt"
+			component := d.crType
+			if d.crType == "psmdb" {
+				component = "mongod"
+			}
+			if pod.Labels["app.kubernetes.io/component"] == component {
+				output, err = d.getPTSummury(d.crType, pod.Name, pod.Labels["app.kubernetes.io/instance"], tw)
+				if err != nil {
+					d.logError(err.Error(), d.crType, pod.Name)
+					err = addToArchive(location, d.mode, []byte(err.Error()), tw)
+					if err != nil {
+						log.Printf("Error: create pt-summary errors archive for pod %s in namespace %s: %v", pod.Name, ns.Name, err)
+					}
+					continue
+				}
+				err = addToArchive(location, d.mode, output, tw)
+				if err != nil {
+					d.logError(err.Error(), "create pt-summary archive for pod "+pod.Name)
+					log.Printf("Error: create pt-summary  archive for pod %s: %v", pod.Name, err)
+				}
+			}
 		}
 
 		for _, resource := range d.resources {
@@ -224,4 +254,102 @@ func addToArchive(location string, mode int64, content []byte, tw *tar.Writer) e
 	}
 
 	return nil
+}
+
+type crSecrets struct {
+	Spec struct {
+		SecretName string `json:"secretsName,omitempty"`
+		Secrets    struct {
+			Users string `json:"users,omitempty"`
+		} `json:"secrets,omitempty"`
+	} `json:"spec"`
+}
+
+func (d *Dumper) getPTSummury(resource, podName, crName string, tw *tar.Writer) ([]byte, error) {
+	var (
+		summCmdName string
+		ports       string
+		summCmdArgs []string
+	)
+
+	switch resource {
+	case "pxc":
+		cr, err := d.getCR("pxc/" + crName)
+		if err != nil {
+			return nil, errors.Wrap(err, "get cr")
+		}
+		pass, err := d.getDataFromSecret(cr.Spec.SecretName, "root")
+		if err != nil {
+			return nil, errors.Wrap(err, "get password from pxc users secret")
+		}
+		ports = "3306:3306"
+		summCmdName = "pt-mysql-summary"
+		summCmdArgs = []string{"--host=127.0.0.1", "--port=3306", "--user=root", "--password=" + string(pass)}
+	case "psmdb":
+		cr, err := d.getCR("psmdb/" + crName)
+		if err != nil {
+			return nil, errors.Wrap(err, "get cr")
+		}
+		pass, err := d.getDataFromSecret(cr.Spec.Secrets.Users, "MONGODB_CLUSTER_ADMIN_PASSWORD")
+		if err != nil {
+			return nil, errors.Wrap(err, "get password from psmdb users secret")
+		}
+		ports = "27017:27017"
+		summCmdName = "pt-mongodb-summary"
+		summCmdArgs = []string{"--username=clusterAdmin", "--password=" + pass, "--authenticationDatabase=admin", "127.0.0.1:27017"}
+	}
+
+	cmdPortFwd := exec.Command(d.cmd, "port-forward", "pod/"+podName, ports)
+	go func() {
+		err := cmdPortFwd.Run()
+		if err != nil {
+			d.logError(err.Error(), "port-forward")
+		}
+	}()
+	defer func() {
+		err := cmdPortFwd.Process.Kill()
+		if err != nil {
+			d.logError(err.Error(), "kill port-forward")
+		}
+	}()
+
+	time.Sleep(3 * time.Second) // wait for port-forward command
+
+	var outb, errb bytes.Buffer
+	cmd := exec.Command(summCmdName, summCmdArgs...)
+	cmd.Stdout = &outb
+	cmd.Stderr = &errb
+	err := cmd.Run()
+	if err != nil {
+		return nil, errors.Errorf("error: %v, stderr: %s, stdout: %s", err, errb, outb)
+	}
+
+	return []byte(fmt.Sprintf("stderr: %s, stdout: %s", errb, outb)), nil
+}
+
+func (d *Dumper) getCR(crName string) (crSecrets, error) {
+	var cr crSecrets
+	output, err := d.runCmd("get", crName, "-o", "json")
+	if err != nil {
+		return cr, errors.Wrap(err, "get "+crName)
+	}
+	err = json.Unmarshal(output, &cr)
+	if err != nil {
+		return cr, errors.Wrap(err, "unmarshal psmdb cr")
+	}
+
+	return cr, nil
+}
+
+func (d *Dumper) getDataFromSecret(secretName, dataName string) (string, error) {
+	passEncoded, err := d.runCmd("get", "secrets/"+secretName, "--template={{.data."+dataName+"}}")
+	if err != nil {
+		return "", errors.Wrap(err, "run get secret cmd")
+	}
+	pass, err := base64.StdEncoding.DecodeString(string(passEncoded))
+	if err != nil {
+		return "", errors.Wrap(err, "decode data")
+	}
+
+	return string(pass), nil
 }
