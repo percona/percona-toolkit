@@ -38,5 +38,7 @@ Flags:
     `--cluster` targeted pxc/psmdb cluster. By default data from all available clusters to be collected 
 
 ### Requirements
-Installed and configured 'kubectl' is needed  for work
+Installed and configured 'kubectl'
+Installed and configured 'pt-mysql-summary'
+Installed and configured 'pt-mongodb-summary' 
 
