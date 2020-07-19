@@ -8,45 +8,42 @@ import (
 	"strings"
 	"time"
 
-	"github.com/percona/percona-toolkit/src/go/pt-k8s-pxc-recovery/helpers"
+	"github.com/percona/percona-toolkit/src/go/pt-k8s-pxc-recovery/kubectl"
 )
 
-var clusterName = ""
-var clusterSize = 0
-var mostRecentPod int
+type Cluster struct {
+	Name          string
+	Size          int
+	MostRecentPod int
+	Namespace     string
+}
 
-func SetClusterSize() error {
+func (c *Cluster) SetClusterSize() error {
 	args := []string{
 		"get",
 		"pxc",
-		clusterName,
+		c.Name,
 		"-o",
 		"jsonpath='{.spec.pxc.size}'",
 	}
-	strSize, err := helpers.RunCmd(args...)
-	strSize = strings.Trim(strSize, "'")
+	strSize, err := kubectl.RunCmd(c.Namespace, args...)
 	if err != nil {
 		return err
 	}
-	clusterSize, err = strconv.Atoi(strSize)
+	strSize = strings.Trim(strSize, "'")
+	c.Size, err = strconv.Atoi(strSize)
 	if err != nil {
-		return err
+		return errors.New("error getting cluster size, " + err.Error())
 	}
 	return nil
 }
 
-func SetClusterName(name string) {
-	if clusterName == "" {
-		clusterName = name
-	}
-}
-
-func getPods() ([]string, error) {
+func (c *Cluster) getPods() ([]string, error) {
 	args := []string{
 		"get",
 		"pods",
 	}
-	out, err := helpers.RunCmd(args...)
+	out, err := kubectl.RunCmd(c.Namespace, args...)
 	if err != nil {
 		return []string{}, err
 	}
@@ -54,71 +51,71 @@ func getPods() ([]string, error) {
 	podNames := []string{}
 	for _, v := range formatedOutput {
 		podName := strings.Split(v, " ")[0]
-		if strings.Contains(podName, clusterName) && strings.Contains(podName, "pxc") {
+		if strings.Contains(podName, c.Name) && strings.Contains(podName, "pxc") {
 			podNames = append(podNames, podName)
 		}
 	}
 	return podNames, nil
 }
 
-func ConfirmCrashedStatus() error {
-	podNames, err := getPods()
+func (c *Cluster) ConfirmCrashedStatus() error {
+	podNames, err := c.getPods()
 	if err != nil {
 		return err
 	}
 	failedNodes := 0
 	for _, pod := range podNames {
-		logs, err := helpers.RunCmd("logs", pod)
+		logs, err := kubectl.RunCmd(c.Namespace, "logs", pod)
 		if err != nil {
-			return err
+			return errors.New("error confirming crashed cluster status" + err.Error())
 		}
 		if strings.Contains(string(logs), "grastate.dat") && strings.Contains(string(logs), "safe_to_bootstrap") {
 			failedNodes++
 		}
 	}
 	if len(podNames) != failedNodes {
-		return errors.New("Not all cluster is down restart failed pods manually")
+		return errors.New("found more than one pod running, can't use recovery tool, please manually restart failed pods")
 	}
 	return nil
 }
 
-func PatchClusterImage() error {
+func (c *Cluster) PatchClusterImage() error {
 	args := []string{
 		"patch",
 		"pxc",
-		clusterName,
+		c.Name,
 		"--type=merge",
 		`--patch={"spec":{"pxc":{"image":"percona/percona-xtradb-cluster-operator:1.4.0-pxc8.0-debug"}}}`,
 	}
-	_, err := helpers.RunCmd(args...)
+	_, err := kubectl.RunCmd(c.Namespace, args...)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func RestartPods() error {
-	for i := 0; i < clusterSize; i++ {
+func (c *Cluster) RestartPods() error {
+	for i := 0; i < c.Size; i++ {
 		args := []string{
 			"delete",
 			"pod",
-			clusterName + "-pxc-" + strconv.Itoa(i),
+			c.Name + "-pxc-" + strconv.Itoa(i),
 			"--force",
 			"--grace-period=0",
 		}
-		helpers.RunCmd(args...)
+		kubectl.RunCmd(c.Namespace, args...)
 	}
 	return nil
 }
 
-func CheckPodStatus(podID int) (bool, error) {
+func (c *Cluster) CheckPodStatus(podID int) (bool, error) {
 	args := []string{
 		"get",
-		"pod", clusterName + "-pxc-" + strconv.Itoa(podID),
+		"pod", c.Name + "-pxc-" + strconv.Itoa(podID),
 		"-o",
 		"jsonpath='{.status.containerStatuses[0].ready}'",
 	}
-	output, err := helpers.RunCmd(args...)
+	output, err := kubectl.RunCmd(c.Namespace, args...)
 	if err != nil {
 		return false, err
 	}
@@ -128,12 +125,12 @@ func CheckPodStatus(podID int) (bool, error) {
 	return false, nil
 }
 
-func PodZeroReady() error {
+func (c *Cluster) PodZeroReady() error {
 	podZeroStatus := false
 	var err error
-	for podZeroStatus != true {
+	for !podZeroStatus {
 		time.Sleep(time.Second * 10)
-		podZeroStatus, err = CheckPodStatus(0)
+		podZeroStatus, err = c.CheckPodStatus(0)
 		if err != nil {
 			return err
 		}
@@ -141,51 +138,48 @@ func PodZeroReady() error {
 	return nil
 }
 
-func CheckPodPhase(podID int, phase string) (bool, error) {
+func (c *Cluster) CheckPodPhase(podID int, phase string) (bool, error) {
 	args := []string{
 		"get",
-		"pod", clusterName + "-pxc-" + strconv.Itoa(podID),
+		"pod", c.Name + "-pxc-" + strconv.Itoa(podID),
 		"-o",
 		"jsonpath='{.status.phase}'",
 	}
-	output, err := helpers.RunCmd(args...)
+	output, err := kubectl.RunCmd(c.Namespace, args...)
 	if err != nil {
 		return false, err
 	}
-	if strings.Trim(output, "'") == phase {
-		return true, nil
-	}
-	return false, nil
+	return strings.Trim(output, "'") == phase, nil
 }
 
-func AllPodsRunning() error {
-	for i := 0; i < clusterSize; i++ {
+func (c *Cluster) AllPodsRunning() error {
+	for i := 0; i < c.Size; i++ {
 		running := false
-		for running == false {
+		for !running {
 			time.Sleep(time.Second * 10)
-			running, _ = CheckPodPhase(i, "Running")
+			running, _ = c.CheckPodPhase(i, "Running")
 		}
 	}
 	return nil
 }
 
-func RunCommandInPod(podID int, cmd ...string) (string, error) {
+func (c *Cluster) RunCommandInPod(podID int, cmd ...string) (string, error) {
 	args := []string{
 		"exec",
-		clusterName + "-pxc-" + strconv.Itoa(podID),
+		c.Name + "-pxc-" + strconv.Itoa(podID),
 		"--",
 	}
 	args = append(args, cmd...)
-	output, err := helpers.RunCmd(args...)
+	output, err := kubectl.RunCmd(c.Namespace, args...)
 	if err != nil {
 		return "", err
 	}
 	return output, nil
 }
 
-func SetSSTInProgress() error {
-	for i := 0; i < clusterSize; i++ {
-		_, err := RunCommandInPod(i, "touch", "/var/lib/mysql/sst_in_progress")
+func (c *Cluster) SetSSTInProgress() error {
+	for i := 0; i < c.Size; i++ {
+		_, err := c.RunCommandInPod(i, "touch", "/var/lib/mysql/sst_in_progress")
 		if err != nil {
 			return err
 		}
@@ -193,13 +187,13 @@ func SetSSTInProgress() error {
 	return nil
 }
 
-func AllPodsReady() error {
-	for i := 0; i < clusterSize; i++ {
+func (c *Cluster) AllPodsReady() error {
+	for i := 0; i < c.Size; i++ {
 		podReadyStatus := false
 		var err error
 		for podReadyStatus == false {
 			time.Sleep(time.Second * 10)
-			podReadyStatus, err = CheckPodStatus(i)
+			podReadyStatus, err = c.CheckPodStatus(i)
 			if err != nil {
 				return err
 			}
@@ -208,16 +202,19 @@ func AllPodsReady() error {
 	return nil
 }
 
-func FindMostRecentPod() error {
+func (c *Cluster) FindMostRecentPod() error {
 	var podID int
 	seqNo := 0
-	for i := 0; i < clusterSize; i++ {
-		output, err := RunCommandInPod(i, "cat", "/var/lib/mysql/grastate.dat")
+	for i := 0; i < c.Size; i++ {
+		output, err := c.RunCommandInPod(i, "cat", "/var/lib/mysql/grastate.dat")
 		if err != nil {
 			return err
 		}
 		re := regexp.MustCompile(`(?m)seqno:\s*(\d*)`)
 		match := re.FindSubmatch([]byte(output))
+		if len(match) < 2 {
+			return errors.New("unable to get seqno")
+		}
 		currentSeqNo, err := strconv.Atoi(string(match[1]))
 		if err != nil {
 			return err
@@ -227,7 +224,7 @@ func FindMostRecentPod() error {
 			podID = i
 		}
 	}
-	mostRecentPod = podID
-	fmt.Println(mostRecentPod)
+	c.MostRecentPod = podID
+	fmt.Println(c.MostRecentPod)
 	return nil
 }

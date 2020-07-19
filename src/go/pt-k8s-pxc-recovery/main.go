@@ -4,13 +4,12 @@ import (
 	"flag"
 	"log"
 
-	"github.com/percona/percona-toolkit/src/go/pt-k8s-pxc-recovery/helpers"
 	"github.com/percona/percona-toolkit/src/go/pt-k8s-pxc-recovery/recover"
 )
 
 func stepOrError(err error) {
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Error:", err)
 	}
 }
 
@@ -19,16 +18,15 @@ func main() {
 	flag.StringVar(&namespace, "namespace", "default", "Select the namespace in which the cluster is deployed in")
 	flag.StringVar(&clusterName, "cluster", "test-cluster", "Select the cluster to recover")
 	flag.Parse()
-	helpers.SetNamespace(namespace)
-	recover.SetClusterName(clusterName)
+	c := recover.Cluster{Namespace: namespace, Name: clusterName}
 
-	stepOrError(recover.SetClusterSize())
-	stepOrError(recover.ConfirmCrashedStatus())
-	stepOrError(recover.PatchClusterImage())
-	stepOrError(recover.RestartPods())
-	stepOrError(recover.PodZeroReady())
-	stepOrError(recover.AllPodsRunning())
-	stepOrError(recover.SetSSTInProgress())
-	stepOrError(recover.AllPodsReady())
-	stepOrError(recover.FindMostRecentPod())
+	stepOrError(c.SetClusterSize())
+	stepOrError(c.ConfirmCrashedStatus())
+	stepOrError(c.PatchClusterImage())
+	stepOrError(c.RestartPods())
+	stepOrError(c.PodZeroReady())
+	stepOrError(c.AllPodsRunning())
+	stepOrError(c.SetSSTInProgress())
+	stepOrError(c.AllPodsReady())
+	stepOrError(c.FindMostRecentPod())
 }

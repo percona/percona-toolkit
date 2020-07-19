@@ -1,4 +1,4 @@
-package helpers
+package kubectl
 
 import (
 	"errors"
@@ -6,8 +6,6 @@ import (
 	"os/exec"
 	"runtime"
 )
-
-var namespace = ""
 
 func getKubectl() string {
 	switch runtime.GOOS {
@@ -18,16 +16,10 @@ func getKubectl() string {
 	}
 }
 
-func SetNamespace(name string) {
-	if namespace == "" {
-		namespace = name
-	}
-}
-
-func RunCmd(args ...string) (string, error) {
+func RunCmd(namespace string, args ...string) (string, error) {
 	args = append([]string{"-v=0", "--namespace", namespace}, args...)
 	cmd := exec.Command(getKubectl(), args...)
-	println(cmd.String())
+	fmt.Println(cmd.String())
 	stdouterr, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", errors.New(string(stdouterr))
