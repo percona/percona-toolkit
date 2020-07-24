@@ -4747,7 +4747,10 @@ sub get_crc_type {
       $type   = $sth->{mysql_type_name}->[0];
       $length = $sth->{mysql_length}->[0];
       PTDEBUG && _d($sql, $type, $length);
-      if ( $type eq 'bigint' && $length < 20 ) {
+      if ( $type eq 'integer' && $length < 11 ) {
+         $type = 'int';
+      }
+      elsif ( $type eq 'bigint' && $length < 20 ) {
          $type = 'int';
       }
    };
