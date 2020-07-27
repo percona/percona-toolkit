@@ -178,7 +178,6 @@ func (self ExampleQuery) ExplainCmd() bson.D {
 					} else {
 						cmd = append(cmd[:i], cmd[i+1:]...)
 					}
-					// break LOOP
 				}
 			}
 		}
