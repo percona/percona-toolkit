@@ -1,5 +1,3 @@
-.. program:: pt-secure-collect
-
 ============================
 :program:`pt-secure-collect`
 ============================
@@ -65,7 +63,7 @@ COMMANDS
      Include this dir into the sanitized tar file.
 
   .. option:: --config-file
-  
+
      Path to the config file. Default: ``~/.my.cnf``
 
   .. option:: --mysql-host
@@ -133,7 +131,7 @@ COMMANDS
 
   .. option:: --outfile
 
-     Write the output to this file. If ommited, the output file 
+     Write the output to this file. If ommited, the output file
      name will be the same as the input file, adding the ``.aes`` extension.
 
 * **Encrypt command**
@@ -146,7 +144,7 @@ COMMANDS
 
   .. option:: --outfile
 
-     Write the output to this file. If ommited, the output file 
+     Write the output to this file. If ommited, the output file
      name will be the same as the input file, without the ``.aes`` extension.
 
 * **Sanitize command**

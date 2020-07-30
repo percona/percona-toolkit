@@ -1,5 +1,7 @@
-pt-pg-summary
-=============
+========================
+:program:`pt-pg-summary`
+========================
+
 **pt-pg-summary** collects information about a PostgreSQL cluster.
 
 Usage
