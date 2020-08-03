@@ -212,7 +212,7 @@ func (d *Dumper) runCmd(args ...string) ([]byte, error) {
 	cmd.Stderr = &errb
 	err := cmd.Run()
 	if err != nil || errb.Len() > 0 {
-		return nil, errors.Errorf("error: %v, stderr: %s, stdout: %s", err, errb, outb)
+		return nil, errors.Errorf("error: %v, stderr: %s, stdout: %s", err, errb.String(), outb.String())
 	}
 
 	return outb.Bytes(), nil
@@ -321,10 +321,10 @@ func (d *Dumper) getPTSummury(resource, podName, crName string, tw *tar.Writer) 
 	cmd.Stderr = &errb
 	err := cmd.Run()
 	if err != nil {
-		return nil, errors.Errorf("error: %v, stderr: %s, stdout: %s", err, errb, outb)
+		return nil, errors.Errorf("error: %v, stderr: %s, stdout: %s", err, errb.String(), outb.String())
 	}
 
-	return []byte(fmt.Sprintf("stderr: %s, stdout: %s", errb, outb)), nil
+	return []byte(fmt.Sprintf("stderr: %s, stdout: %s", errb.String(), outb.String())), nil
 }
 
 func (d *Dumper) getCR(crName string) (crSecrets, error) {
