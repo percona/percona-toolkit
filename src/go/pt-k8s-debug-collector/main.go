@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/percona/percona-toolkit/src/go/k8s-debug-collector/dumper"
+	"github.com/percona/percona-toolkit/src/go/pt-k8s-debug-collector/dumper"
 )
 
 func main() {

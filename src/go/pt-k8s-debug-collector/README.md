@@ -31,7 +31,7 @@ Collects debug data (logs, resource statuses etc.) from a k8s/opeshift cluster. 
 
 
 ### Usage 
-`k8s-debug-collector <flags>`
+`pt-k8s-debug-collector <flags>`
 Flags:
     `--resource` targeted custom resource name (default "pxc")
     `--namespace` targeted namespace. By default data will be collected from all namespaces
