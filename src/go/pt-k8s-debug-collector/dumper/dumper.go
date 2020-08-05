@@ -171,7 +171,7 @@ func (d *Dumper) DumpCluster() error {
 				component = "mongod"
 			}
 			if pod.Labels["app.kubernetes.io/component"] == component {
-				output, err = d.getPodSummury(d.crType, pod.Name, pod.Labels["app.kubernetes.io/instance"], tw)
+				output, err = d.getPodSummary(d.crType, pod.Name, pod.Labels["app.kubernetes.io/instance"], tw)
 				if err != nil {
 					d.logError(err.Error(), d.crType, pod.Name)
 					err = addToArchive(location, d.mode, []byte(err.Error()), tw)
@@ -265,7 +265,7 @@ type crSecrets struct {
 	} `json:"spec"`
 }
 
-func (d *Dumper) getPodSummury(resource, podName, crName string, tw *tar.Writer) ([]byte, error) {
+func (d *Dumper) getPodSummary(resource, podName, crName string, tw *tar.Writer) ([]byte, error) {
 	var (
 		summCmdName string
 		ports       string
