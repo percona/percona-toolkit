@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -145,7 +146,7 @@ func (d *Dumper) DumpCluster() error {
 		}
 
 		for _, pod := range pods.Items {
-			location := d.location + "/" + ns.Name + "/" + pod.Name + "/logs.txt"
+			location := filepath.Join(d.location, ns.Name, pod.Name, "logs.txt")
 			args := []string{"logs", pod.Name, "--namespace", ns.Name, "--all-containers"}
 			output, err = d.runCmd(args...)
 			if err != nil {
@@ -164,14 +165,13 @@ func (d *Dumper) DumpCluster() error {
 			if len(pod.Labels) == 0 {
 				continue
 			}
-
-			location = d.location + "/" + ns.Name + "/" + pod.Name + "/pt-summary.txt"
+			location = filepath.Join(d.location, ns.Name, pod.Name, "/pt-summary.txt")
 			component := d.crType
 			if d.crType == "psmdb" {
 				component = "mongod"
 			}
 			if pod.Labels["app.kubernetes.io/component"] == component {
-				output, err = d.getPTSummury(d.crType, pod.Name, pod.Labels["app.kubernetes.io/instance"], tw)
+				output, err = d.getPodSummury(d.crType, pod.Name, pod.Labels["app.kubernetes.io/instance"], tw)
 				if err != nil {
 					d.logError(err.Error(), d.crType, pod.Name)
 					err = addToArchive(location, d.mode, []byte(err.Error()), tw)
@@ -223,9 +223,9 @@ func (d *Dumper) getResource(name, namespace string, tw *tar.Writer) error {
 	args := []string{"get", name, "-o", "yaml"}
 	if len(namespace) > 0 {
 		args = append(args, "--namespace", namespace)
-		location = d.location + "/" + namespace
+		location = filepath.Join(d.location, namespace)
 	}
-	location += "/" + name + ".yaml"
+	location = filepath.Join(location, name+".yaml")
 	output, err := d.runCmd(args...)
 	if err != nil {
 		d.logError(err.Error(), args...)
@@ -265,7 +265,7 @@ type crSecrets struct {
 	} `json:"spec"`
 }
 
-func (d *Dumper) getPTSummury(resource, podName, crName string, tw *tar.Writer) ([]byte, error) {
+func (d *Dumper) getPodSummury(resource, podName, crName string, tw *tar.Writer) ([]byte, error) {
 	var (
 		summCmdName string
 		ports       string
