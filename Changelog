@@ -1,8 +1,14 @@
 Changelog for Percona Toolkit
 
- * placeholder for 3.2.1 
+ * Fixed bug   PT-1859: pt-pg-summary fails for Postgres12 (Thanks Sergey Kuzmichev)
+ * Improvement PT-1853: Added --no-check-foreing-keys to pt-osc
+ * Improvement PT-1851: Backslashes missing from documentation
+ * Improvement PT-1836: Review and consider lintian reported issues
+ * Fixed bug   PT-1829: pt-heartbeat doesn't reconnect for check-read-only
+ * Fixed bug   PT-1822: pt-mongodb-summary fails on standalone mongodb instances
+ * Fixed bug   PT-1518: pt-table-checksum gives error CRC32. (Thanks @ovidiustanila)
 
-v3.2.0 release 
+v3.2.0 release 2020-04-23 
 
  * Fixed bug   PT-1824: Name of a constraint can exceed 64 chars (Thanks Iwo Panowicz)
  * Fixed bug   PT-1793: Protocol parser cannot handle year 2020 (Thanks Kei Tsuchiya)
