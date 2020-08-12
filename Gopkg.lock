@@ -10,14 +10,6 @@
   version = "v1.4.2"
 
 [[projects]]
-  digest = "1:c39fbf3b3e138accc03357c72417c0153c54cc1ae8c9f40e8f120a550d876a76"
-  name = "github.com/Percona-Lab/pt-pg-summary"
-  packages = ["models"]
-  pruneopts = ""
-  revision = "f06beea959eb00acfe44ce39342c27582ad84caa"
-  version = "v0.1.9"
-
-[[projects]]
   digest = "1:f82b8ac36058904227087141017bb82f4b0fc58272990a4cdae3e2d6d222644e"
   name = "github.com/StackExchange/wmi"
   packages = ["."]
@@ -364,7 +356,6 @@
   analyzer-version = 1
   input-imports = [
     "github.com/Masterminds/semver",
-    "github.com/Percona-Lab/pt-pg-summary/models",
     "github.com/alecthomas/kingpin",
     "github.com/go-ini/ini",
     "github.com/golang/mock/gomock",
