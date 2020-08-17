@@ -1,6 +1,28 @@
 Percona Toolkit
 ***************
 
+
+
+v3.2.1 released 2020-08-13
+==========================
+
+Improvements:
+
+* :jirabug:`PT-1836`: Review and consider lintian reported issues (Thanks to user midget for reporting this issue)
+
+Bugs Fixed:
+
+* :jirabug:`PT-1853`: Added --no-check-foreign-keys to pt-osc
+* :jirabug:`PT-1869`: pt-osc dynamically update slave list on check slaves (Thanks to user mateus.dubiela for reporting this issue)
+* :jirabug:`PT-1829`: pt-heartbeat doesn't reconnect for check-read-only
+* :jirabug:`PT-1822`: pt-mongodb-summary fails on standalone mongodb instances
+* :jirabug:`PT-1851`: Backslashes missing from documentation (Thanks to user billkarwin for reporting this issue)
+* :jirabug:`PT-1518`: pt-table-checksum gives error CRC32 never needs BIT_XOR optimization (Thanks to user soumya_s_das@homedepot.com for reporting this issue)
+* :jirabug:`PT-1859`: pt-pg-summary fails for Postgres12
+
+
+
+
 v3.2.0 released 2020-04-23
 ==========================
 
@@ -59,7 +81,7 @@ Bugs Fixed:
 
 
 
-  
+
 v3.0.13 released 2019-01-03
 ===========================
 
@@ -445,7 +467,7 @@ New Features
 
 * 1642994: Following schemas/tables have been added to the default ignore list: ``mysql.gtid_execution``, ``sys.sys_config``, ``mysql.proc``, ``mysql.inventory``, ``mysql.plugin``, ``percona.*`` (including checksums, dsns table), ``test.*``, and ``percona_schema.*``.
 
-* 1643940: ``pt-summary`` now provides information about Transparent huge pages. 
+* 1643940: ``pt-summary`` now provides information about Transparent huge pages.
 
 * 1604834: New ``--preserve-embedded-numbers`` option has been implemented for ``pt-query-digest`` which can be used to preserve numbers in database/table names when fingerprinting queries.
 
@@ -454,7 +476,7 @@ Bug Fixes
 * 1613915: ``pt-online-schema-change`` could miss the data due to the way ENUM values are sorted.
 
 * 1625005: ``pt-online-schema-change`` didn't apply underscores to foreign keys individually.
-  
+
 * 1566556: ``pt-show-grants`` didn't work correctly with *MariaDB* 10 (*Daniël van Eeden*).
 
 * 1634900: ``pt-upgrade`` would fail when log contained ``SELECT...INTO`` queries.
@@ -469,19 +491,19 @@ Changelog
 ---------
 
 * Fixed bug 1362942: pt-slave-restart fails on MariaDB 10.0.13 (gtid_mode confusion)
-* Fixed bug 1566556: pt-show-grants fails against MariaDB10+    
+* Fixed bug 1566556: pt-show-grants fails against MariaDB10+
 * Feature    1604834: pt-query-digest numbers in table or column names converted to question marks (--preserve-embedded-numbers)
-* Fixed bug 1613915: pt-online-schema-change misses data.  Fixed sort order for ENUM fields 
+* Fixed bug 1613915: pt-online-schema-change misses data.  Fixed sort order for ENUM fields
 * Fixed bug 1625005: pt-online-schema-change doesn't apply underscores to foreign keys individually
-* Fixed bug 1634900: pt-upgrade fails with SELECT INTO 
-* Fixed bug 1635734: pt-slave-restart --config does not recognize = as separator 
+* Fixed bug 1634900: pt-upgrade fails with SELECT INTO
+* Fixed bug 1635734: pt-slave-restart --config does not recognize = as separator
 * Feature   1636068: Added pause to NibbleIterator
 * Feature   1638293: --data-dir parameter in order to create the table on a different partition
-* Feature   1639052: with pt-table-checksum automatically exclude checking schemas named percona, percona_schema     
+* Feature   1639052: with pt-table-checksum automatically exclude checking schemas named percona, percona_schema
 * Feature   1642364: pt-online-schema-change Added --remove-data-dir feature
 * Feature   1643914: Fixed several typos in the doc (Thanks Dario Minnucci)
 * Feature   1643940: Add Transparent huge pages info to pt-summary
-* Feature   1643941: Add Memory management library to pt-mysql-summary 
+* Feature   1643941: Add Memory management library to pt-mysql-summary
 
 v2.2.19 released 2016-08-16
 ===========================
@@ -548,7 +570,7 @@ New features:
 * 1553340: Added "Shared" memory info to ``pt-summary``
 
 * PT-24: Added the ``--no-vertical-format`` option for ``pt-query-digest``, allowing compatibility with non-standard MySQL clients that don't support the ``\G`` directive at the end of a statement
-  
+
 Bug fixes:
 
 * 1402776: Fixed error when parsing ``tcpdump`` capture with ``pt-query-digest``
@@ -674,7 +696,7 @@ v2.2.15 released 2015-08-28
   This feature was requested in the following bugs: 1413101 and 1413137.
 
 * Added the ``--sleep`` option for ``pt-online-schema-change`` to avoid performance problems. The option accepts float values in seconds.
-  
+
   This feature was requested in the following bug: 1413140.
 
 * Implemented ability to specify ``--check-slave-lag`` multiple times. The following example enables lag checks for two slaves:
@@ -686,69 +708,69 @@ v2.2.15 released 2015-08-28
   This feature was requested in the following bug: 14452911.
 
 * Added the ``--rds`` option to ``pt-kill``, which makes the tool use Amazon RDS procedure calls instead of the standard MySQL ``kill`` command.
-  
+
   This feature was requested in the following bug: 1470127.
 
 **Bugs Fixed**
 
 * 1042727: ``pt-table-checksum`` doesn't reconnect the slave $dbh
-  
+
   Before, the tool would die if any slave connection was lost. Now the tool waits forever for slaves.
 
 * 1056507: ``pt-archiver --check-slave-lag`` agressiveness
-  
+
   The tool now checks replication lag every 100 rows instead of every row, which significantly improves efficiency.
 
 * 1215587: Adding underscores to constraints when using ``pt-online-schema-change`` can create issues with constraint name length
-  
+
   Before, multiple schema changes lead to underscores stacking up on the name of the constraint until it reached the 64 character limit. Now there is a limit of two underscores in the prefix, then the tool alternately removes or adds one underscore, attempting to make the name unique.
 
 * 1277049: ``pt-online-schema-change`` can't connect with comma in password
-  
+
   For all tools, documented that commas in passwords provided on the command line must be escaped.
 
 * 1441928: Unlimited chunk size when using ``pt-online-schema-change`` with ``--chunk-size-limit=0`` inhibits checksumming of single-nibble tables
-  
+
   When comparing table size with the slave table, the tool now ignores ``--chunk-size-limit`` if it is set to zero to avoid multiplying by zero.
 
 * 1443763: Update documentation and/or implentation of ``pt-archiver --check-interval``
-  
+
   Fixed the documentation for ``--check-interval`` to reflect its correct behavior.
 
 * 1449226: ``pt-archiver`` dies with "MySQL server has gone away" when ``--innodb_kill_idle_transaction`` is set to a low value and ``--check-slave-lag`` is enabled
-  
-  The tool now sends a dummy SQL query to avoid timing out. 
+
+  The tool now sends a dummy SQL query to avoid timing out.
 
 * 1446928: ``pt-online-schema-change`` not reporting meaningful errors
-  
+
   The tool now produces meaningful errors based on text from MySQL errors.
 
 * 1450499: ReadKeyMini causes ``pt-online-schema-change`` session to lock under some circumstances
-  
+
   Removed ReadKeyMini, because it is no longer necessary.
 
 * 1452914: ``--purge`` and ``--no-delete`` are mutually exclusive, but still allowed to be specified together by ``pt-archiver``
-  
+
   The tool now issues an error when ``--purge`` and ``--no-delete`` are specified together
 
 * 1455486: ``pt-mysql-summary`` is missing the ``--ask-pass`` option
-  
+
   Added the ``--ask-pass`` option to the tool
 
 * 1457573: ``pt-sift`` fails to download ``pt-diskstats`` ``pt-pmp`` ``pt-mext`` ``pt-align``
-  
+
   Added the ``-L`` option to ``curl`` and changed download address to use HTTPS.
 
 * 1462904: ``pt-duplicate-key-checker`` doesn't support triple quote in column name
-  
+
   Updated TableParser module to handle literal backticks.
 
 * 1488600: ``pt-stalk`` doesn't check TokuDB status
-  
+
   Implemented status collection similar to how it is performed for InnoDB.
 
 * 1488611: various testing bugs related to newer perl versions
-  
+
   Fixed test failures related to new Perl versions.
 
 v2.2.14 released 2015-04-14
@@ -758,7 +780,7 @@ Percona Toolkit 2.2.14 has been released. This release contains two new features
 
 New Features:
 
-* pt-slave-find can now resolve the IP address and show the slave's hostname. This can be done with the new ``--resolve-address`` option.  
+* pt-slave-find can now resolve the IP address and show the slave's hostname. This can be done with the new ``--resolve-address`` option.
 
 * pt-table-sync can now ignore the tables whose names match specific Perl regex with the ``--ignore-tables-regex`` option.
 
@@ -778,7 +800,7 @@ Bugs Fixed:
 
 * Fixed bug 1417558: pt-stalk when used along with ``--collect-strace`` didn't write the strace output to the expected destination file.
 
-* Fixed bug 1421025: Missing dependency for ``perl-TermReadKey`` RPM package was causing toolkit commands to fail when they were run with ``--ask-pass`` option. 
+* Fixed bug 1421025: Missing dependency for ``perl-TermReadKey`` RPM package was causing toolkit commands to fail when they were run with ``--ask-pass`` option.
 
 * Fixed bug 1421781: pt-upgrade would fail when log contained ``SELECT...INTO`` queries. Fixed by ignoring/skipping those queries.
 
@@ -815,11 +837,11 @@ Percona Toolkit 2.2.13 has been released. This release contains one new feature 
 
 New Features:
 
-* pt-kill now supports new ``--query-id`` option. This option can be used to print a query fingerprint hash after killing a query to enable the cross-referencing with the pt-query-digest output. This option can be used along with ``--print`` option as well.  
+* pt-kill now supports new ``--query-id`` option. This option can be used to print a query fingerprint hash after killing a query to enable the cross-referencing with the pt-query-digest output. This option can be used along with ``--print`` option as well.
 
 Bugs Fixed:
 
-* Fixed bug 1019479: pt-table-checksum now works with ``ONLY_FULL_GROUP_BY`` sql_mode. 
+* Fixed bug 1019479: pt-table-checksum now works with ``ONLY_FULL_GROUP_BY`` sql_mode.
 
 * Fixed bug 1394934: running pt-table-checksum in debug mode would cause an error.
 
@@ -829,9 +851,9 @@ Bugs Fixed:
 
 * Fixed bug 1408375: Percona Toolkit was vulnerable to MITM attack which could allow exfiltration of MySQL configuration information via ``--version-check`` option. This vulnerability was logged as `CVE 2015-1027 <http://www.cve.mitre.org/cgi-bin/cvename.cgi?name=2015-1027>_`
 
-* Fixed bug 1321297: pt-table-checksum was reporting differences on timestamp columns with replication from 5.5 to 5.6 server version, although the data was identical. 
+* Fixed bug 1321297: pt-table-checksum was reporting differences on timestamp columns with replication from 5.5 to 5.6 server version, although the data was identical.
 
-* Fixed bug 1388870: pt-table-checksum was showing differences if the master and slave were in different time zone.  
+* Fixed bug 1388870: pt-table-checksum was showing differences if the master and slave were in different time zone.
 
 * Fixed bug 1402668: pt-mysql-summary would exit if Percona XtraDB Cluster was in ``Donor/Desynced`` state.
 
@@ -840,19 +862,19 @@ Bugs Fixed:
 Changelog
 ---------
 
-* Feature   1391240:  pt-kill added query fingerprint hash to output 
-* Fixed bug 1402668:  pt-mysql-summary fails on cluster in Donor/Desynced status 
-* Fixed bug 1396870:  pt-online-schema-change CTRL+C leaves terminal in inconsistent state 
+* Feature   1391240:  pt-kill added query fingerprint hash to output
+* Fixed bug 1402668:  pt-mysql-summary fails on cluster in Donor/Desynced status
+* Fixed bug 1396870:  pt-online-schema-change CTRL+C leaves terminal in inconsistent state
 * Fixed bug 1396868:	pt-online-schema-change --ask-pass option error
-* Fixed bug 1266869:  pt-stalk fails to start if $HOME environment variable is not set 
+* Fixed bug 1266869:  pt-stalk fails to start if $HOME environment variable is not set
 * Fixed bug 1019479:	pt-table-checksum does not work with sql_mode ONLY_FULL_GROUP_BY
 * Fixed bug 1394934:  pt-table-checksum error in debug mode
-* Fixed bug 1321297:  pt-table-checksum reports diffs on timestamp columns in 5.5 vs 5.6 
+* Fixed bug 1321297:  pt-table-checksum reports diffs on timestamp columns in 5.5 vs 5.6
 * Fixed bug 1399789:	pt-table-checksum fails to find pxc nodes when wsrep_node_incoming_address is set to AUTO
 * Fixed bug 1388870:  pt-table-checksum has some errors with different time zones
 * Fixed bug 1408375:  vulnerable to MITM attack which would allow exfiltration of MySQL configuration information via --version-check
-* Fixed bug 1404298:  missing MySQL5.7 test files for pt-table-checksum 
-* Fixed bug 1403900:  added sandbox and fixed sakila test db for 5.7 
+* Fixed bug 1404298:  missing MySQL5.7 test files for pt-table-checksum
+* Fixed bug 1403900:  added sandbox and fixed sakila test db for 5.7
 
 v2.2.12 released 2014-11-14
 ===========================
@@ -861,7 +883,7 @@ Percona Toolkit 2.2.12 has been released. This release contains one new feature 
 
 New Features:
 
-* pt-stalk now gathers ``dmesg`` output from up to 60 seconds before the triggering event. 
+* pt-stalk now gathers ``dmesg`` output from up to 60 seconds before the triggering event.
 
 Bugs Fixed:
 
@@ -873,7 +895,7 @@ Bugs Fixed:
 
 * Fixed bug 1328686: Running pt-hearbeat with --check-read-only option would cause an error when running on server with ``read_only`` option. Tool now waits for server ``read_only`` status to be disabled before starting to run.
 
-* Fixed bug 1373937: pt-table-checksum now supports ``none`` as valid ``--recursion-method`` when using with Percona XtraDB Cluster. 
+* Fixed bug 1373937: pt-table-checksum now supports ``none`` as valid ``--recursion-method`` when using with Percona XtraDB Cluster.
 
 * Fixed bug 1377888: Documentation was stating that pt-query-digest is able to parse a raw binary log file, while it can only parse a file which was decoded with ``mysqlbinlog`` tool before. Fixed by improving the documentation and adding a check for binary file and providing a relevant error message.
 
@@ -886,7 +908,7 @@ Changelog
 * Fixed bug 1217466:	pt-table-checksum refuses to run on PXC if server_id is the same on all nodes
 * Fixed bug 1373937:	pt-table-checksum requires recursion when working with and XtraDB Cluster node
 * Fixed bug 1377888:	pt-query-digest manual for --type binlog is ambiguous
-* Fixed bug 1349086:	pt-stalk should also gather dmesg output 
+* Fixed bug 1349086:	pt-stalk should also gather dmesg output
 * Fixed bug 1361293:	Some scripts fail when no-version-check option is put in global config file
 
 v2.2.11 released 2014-09-26
@@ -939,12 +961,12 @@ Bugs Fixed:
 Changelog
 ---------
 
-* Fixed bug 1287253: pt-table-checksum deadlock 
+* Fixed bug 1287253: pt-table-checksum deadlock
 * Fixed bug 1299387: 5.6 slow query log Thead_id becomes Id
 * Fixed bug 1311654: pt-table-checksum + PXC inconsistent results upon --resume
 * Fixed bug 1340728: pt-online-schema-change doesn't work with HASH indexes
 * Fixed bug 1253872: pt-table-checksum max load 20% rounds down
-* Fixed bug 1340364: some shell tools output error when queried for --version 
+* Fixed bug 1340364: some shell tools output error when queried for --version
 
 v2.2.9 released 2014-07-08
 ==========================
@@ -967,10 +989,10 @@ Changelog
 ---------
 
 * Fixed bug 1258135: pt-deadlock-logger introduces a noise to MySQL
-* Fixed bug 1329422: pt-online-schema-change foreign-keys-method=none breaks constraints 
-* Fixed bug 1315130: pt-online-schema-change not properly detecting foreign keys 
+* Fixed bug 1329422: pt-online-schema-change foreign-keys-method=none breaks constraints
+* Fixed bug 1315130: pt-online-schema-change not properly detecting foreign keys
 * Fixed bug 1335960: pt-query-digest cannot parse binlogs from 5.6
-* Fixed bug 1335322: pt-stalk fails when variable or threshold is non-integer 
+* Fixed bug 1335322: pt-stalk fails when variable or threshold is non-integer
 
 v2.2.8 released 2014-06-04
 ==========================
@@ -992,7 +1014,7 @@ Bugs Fixed:
 
 * Fixed bug 1286250: pt-online-schema-change was requesting password twice.
 
-* Fixed bug 1295667: pt-deadlock-logger was logging incorrect timestamp because tool wasn't aware of the time-zones. 
+* Fixed bug 1295667: pt-deadlock-logger was logging incorrect timestamp because tool wasn't aware of the time-zones.
 
 * Fixed bug 1304062: when multiple tables were specified with pt-table-checksum --ignore-tables, only one of them would be ignored.
 
@@ -1016,7 +1038,7 @@ Changelog
 v2.2.7 released 2014-02-20
 ==========================
 
-Percona Toolkit 2.2.7 has been released. This release has only one bug fix. 
+Percona Toolkit 2.2.7 has been released. This release has only one bug fix.
 
 * Fixed bug 1279502: --version-check behaves like spyware
 
@@ -1130,9 +1152,9 @@ Changelog
 v2.2.4 released 2013-07-18
 ==========================
 
-Percona Toolkit 2.2.4 has been released. This release two new features and a number of bugfixes. 
+Percona Toolkit 2.2.4 has been released. This release two new features and a number of bugfixes.
 
-pt-query-digest --output json includes query examples as of v2.2.3. Some people might not want this because it exposes real data. New option, --output json-anon, has been implemented. This option will provide the same data without query examples. It's "anonymous" in the sense that there's no identifying data; nothing more than schema and table structs can be inferred from fingerprints. 
+pt-query-digest --output json includes query examples as of v2.2.3. Some people might not want this because it exposes real data. New option, --output json-anon, has been implemented. This option will provide the same data without query examples. It's "anonymous" in the sense that there's no identifying data; nothing more than schema and table structs can be inferred from fingerprints.
 
 When using drop swap with pt-online-schema-change there is some production impact. This impact can be measured because tool outputs the current timestamp on lines for operations that may take awhile.
 
@@ -1140,7 +1162,7 @@ When using drop swap with pt-online-schema-change there is some production impac
   pt-table-checksum would fail if variable explicit_defaults_for_timestamp was enabled in MySQL 5.6.
 
 * Fixed bug #1182856: Zero values causes "Invalid --set-vars value: var=0"
-  Trying to assign 0 to any variable by using --set-vars option would cause “Invalid --set-vars value” message. 
+  Trying to assign 0 to any variable by using --set-vars option would cause “Invalid --set-vars value” message.
 
 * Fixed bug #1188264: pt-online-schema-change error copying rows: Undefined subroutine &pt_online_schema_change::get
 
@@ -1844,7 +1866,7 @@ Changelog
 * Fixed bug 954990: pt-stalk --nostalk does not work
 * Fixed bug 977226: pt-summary doesn't detect LSI RAID control
 * Fixed bug 1030031: pt-table-checksum reports wrong number of DIFFS
-* Fixed bug 916168: pt-table-checksum privilege check fails on MySQL 5.5 
+* Fixed bug 916168: pt-table-checksum privilege check fails on MySQL 5.5
 * Fixed bug 950294: pt-table-checksum should always create schema and tables with IF NOT EXISTS
 * Fixed bug 953141: pt-table-checksum ignores its default and explicit --recursion-method
 * Fixed bug 1030975: pt-table-sync crashes if sql_mode includes ANSI_QUOTES
@@ -2204,7 +2226,7 @@ Changelog
 * Fixed bug 1402776: Improved fix (protocol parser fix): error when parsing tcpdump capture with pt-query-digest
 * Fixed bug 1632522: pt-osc: Fails with duplicate key in table for self-referencing (Thanks Amiel Marqeta)
 * Fixed bug 1654668: pt-summary exists with an error (Thanks Marcelo Altmann)
-* New tool         : pt-mongodb-summary 
+* New tool         : pt-mongodb-summary
 * New tool         : pt-mongodb-query-digest
 
 Percona Toolkit 3.0.0 RC includes the following changes:
