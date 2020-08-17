@@ -2,7 +2,6 @@ package recover
 
 import (
 	"errors"
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -79,13 +78,13 @@ func (c *Cluster) ConfirmCrashedStatus() error {
 	return nil
 }
 
-func (c *Cluster) PatchClusterImage() error {
+func (c *Cluster) PatchClusterImage(image string) error {
 	args := []string{
 		"patch",
 		"pxc",
 		c.Name,
 		"--type=merge",
-		`--patch={"spec":{"pxc":{"image":"percona/percona-xtradb-cluster-operator:1.4.0-pxc8.0-debug"}}}`,
+		`--patch={"spec":{"pxc":{"image":"` + image + `"}}}`,
 	}
 	_, err := kubectl.RunCmd(c.Namespace, args...)
 	if err != nil {
@@ -103,7 +102,10 @@ func (c *Cluster) RestartPods() error {
 			"--force",
 			"--grace-period=0",
 		}
-		kubectl.RunCmd(c.Namespace, args...)
+		_, err := kubectl.RunCmd(c.Namespace, args...)
+		if err != nil && !strings.ContainsAny(err.Error(), "pods") && !strings.ContainsAny(err.Error(), "not found") {
+			return err
+		}
 	}
 	return nil
 }
@@ -225,6 +227,59 @@ func (c *Cluster) FindMostRecentPod() error {
 		}
 	}
 	c.MostRecentPod = podID
-	fmt.Println(c.MostRecentPod)
+	return nil
+}
+
+func (c *Cluster) RecoverMostRecentPod() error {
+	_, err := c.RunCommandInPod(c.MostRecentPod, "mysqld", "--wsrep_recover")
+	if err != nil {
+		return err
+	}
+	_, err = c.RunCommandInPod(c.MostRecentPod, "bash", "-c", "sed -i 's/safe_to_bootstrap: 0/safe_to_bootstrap: 1/g' /var/lib/mysql/grastate.dat")
+	if err != nil {
+		return err
+	}
+	_, err = c.RunCommandInPod(c.MostRecentPod, "bash", "-c", "sed -i 's/wsrep_cluster_address=.*/wsrep_cluster_address=gcomm:\\/\\//g' /etc/mysql/node.cnf")
+	if err != nil {
+		return err
+	}
+	_, err = c.RunCommandInPod(c.MostRecentPod, "mysqld")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Cluster) RestartAllPodsExceptMostRecent() error {
+	for i := 0; i < c.Size; i++ {
+		if i != c.MostRecentPod {
+			args := []string{
+				"delete",
+				"pod",
+				c.Name + "-pxc-" + strconv.Itoa(i),
+				"--force",
+				"--grace-period=0",
+			}
+			_, err := kubectl.RunCmd(c.Namespace, args...)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (c *Cluster) RestartMostRecentPod() error {
+	args := []string{
+		"delete",
+		"pod",
+		c.Name + "-pxc-" + strconv.Itoa(c.MostRecentPod),
+		"--force",
+		"--grace-period=0",
+	}
+	_, err := kubectl.RunCmd(c.Namespace, args...)
+	if err != nil {
+		return err
+	}
 	return nil
 }
