@@ -17,7 +17,7 @@ Bugs Fixed:
 * :jirabug:`PT-1829`: pt-heartbeat doesn't reconnect for check-read-only
 * :jirabug:`PT-1822`: pt-mongodb-summary fails on standalone mongodb instances
 * :jirabug:`PT-1851`: Backslashes missing from documentation (Thanks to user billkarwin for reporting this issue)
-* :jirabug:`PT-1518`: pt-table-checksum gives error CRC32 never needs BIT_XOR optimization (Thanks to user soumya_s_das@homedepot.com for reporting this issue)
+* :jirabug:`PT-1518`: pt-table-checksum gives error CRC32 never needs BIT_XOR optimization (Thanks to user soumya_s_das (AT homedepot DOT com) for reporting this issue)
 * :jirabug:`PT-1859`: pt-pg-summary fails for Postgres12
 
 
