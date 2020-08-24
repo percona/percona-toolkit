@@ -15,6 +15,7 @@ type Cluster struct {
 	Size          int
 	MostRecentPod int
 	Namespace     string
+	ClusterImage  string
 }
 
 func (c *Cluster) SetClusterSize() error {
@@ -34,6 +35,22 @@ func (c *Cluster) SetClusterSize() error {
 	if err != nil {
 		return fmt.Errorf("error getting cluster size, %s", err.Error())
 	}
+	return nil
+}
+
+func (c *Cluster) GetClusterImage() error {
+	args := []string{
+		"get",
+		"pod",
+		c.Name + "-pxc-0",
+		"-o",
+		"jsonpath='{.spec.containers[0].image}'",
+	}
+	clusterImage, err := kubectl.RunCmd(c.Namespace, args...)
+	if err != nil {
+		return err
+	}
+	c.ClusterImage = clusterImage
 	return nil
 }
 

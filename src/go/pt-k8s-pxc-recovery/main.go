@@ -16,9 +16,10 @@ func stepOrError(err error) {
 }
 
 func main() {
-	namespace, clusterName := "", ""
+	namespace, clusterName, debugImage := "", "", ""
 	flag.StringVar(&namespace, "namespace", "default", "Select the namespace in which the cluster is deployed in")
 	flag.StringVar(&clusterName, "cluster", "test-cluster", "Select the cluster to recover")
+	flag.StringVar(&debugImage, "debug-image", "percona/percona-xtradb-cluster:8.0.19-10.1-debug", "Name and version of the debug image to use")
 	flag.Parse()
 	c := recover.Cluster{Namespace: namespace, Name: clusterName}
 	log.SetPrefix("\n" + log.Prefix())
@@ -34,11 +35,14 @@ func main() {
 	log.Printf("Getting cluster size")
 	stepOrError(c.SetClusterSize())
 
+	log.Printf("Getting cluster image")
+	stepOrError(c.GetClusterImage())
+
 	log.Printf("Confirming crashed status")
 	stepOrError(c.ConfirmCrashedStatus())
 
 	log.Printf("Patching cluster image")
-	stepOrError(c.PatchClusterImage("percona/percona-xtradb-cluster:8.0.19-10.1-debug"))
+	stepOrError(c.PatchClusterImage(debugImage))
 
 	log.Printf("Restarting pods")
 	stepOrError(c.RestartPods())
@@ -66,7 +70,7 @@ func main() {
 	time.Sleep(10 * time.Second)
 
 	log.Printf("Patching cluster image")
-	stepOrError(c.PatchClusterImage("percona/percona-xtradb-cluster:8.0.19-10.1"))
+	stepOrError(c.PatchClusterImage(c.ClusterImage))
 
 	log.Printf("Restart all pods execpt most recent pod")
 	stepOrError(c.RestartAllPodsExceptMostRecent())
