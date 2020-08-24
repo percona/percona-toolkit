@@ -25,7 +25,7 @@ func main() {
 
 	log.Printf("Starting recovery process")
 	go func() {
-		for true {
+		for {
 			time.Sleep(300 * time.Millisecond)
 			fmt.Print(".")
 		}

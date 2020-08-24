@@ -1,7 +1,7 @@
 package recover
 
 import (
-	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -32,7 +32,7 @@ func (c *Cluster) SetClusterSize() error {
 	strSize = strings.Trim(strSize, "'")
 	c.Size, err = strconv.Atoi(strSize)
 	if err != nil {
-		return errors.New("error getting cluster size, " + err.Error())
+		return fmt.Errorf("error getting cluster size, %s", err.Error())
 	}
 	return nil
 }
@@ -46,7 +46,7 @@ func (c *Cluster) getPods() ([]string, error) {
 	if err != nil {
 		return []string{}, err
 	}
-	formatedOutput := strings.Split(string(out), "\n")
+	formatedOutput := strings.Split(out, "\n")
 	podNames := []string{}
 	for _, v := range formatedOutput {
 		podName := strings.Split(v, " ")[0]
@@ -66,14 +66,14 @@ func (c *Cluster) ConfirmCrashedStatus() error {
 	for _, pod := range podNames {
 		logs, err := kubectl.RunCmd(c.Namespace, "logs", pod)
 		if err != nil {
-			return errors.New("error confirming crashed cluster status" + err.Error())
+			return fmt.Errorf("error confirming crashed cluster status %s", err.Error())
 		}
-		if strings.Contains(string(logs), "grastate.dat") && strings.Contains(string(logs), "safe_to_bootstrap") {
+		if strings.Contains(logs, "grastate.dat") && strings.Contains(logs, "safe_to_bootstrap") {
 			failedNodes++
 		}
 	}
 	if len(podNames) != failedNodes {
-		return errors.New("found more than one pod running, can't use recovery tool, please manually restart failed pods")
+		return fmt.Errorf("found more than one pod running, can't use recovery tool, please restart failed pods manually")
 	}
 	return nil
 }
@@ -87,10 +87,7 @@ func (c *Cluster) PatchClusterImage(image string) error {
 		`--patch={"spec":{"pxc":{"image":"` + image + `"}}}`,
 	}
 	_, err := kubectl.RunCmd(c.Namespace, args...)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (c *Cluster) RestartPods() error {
@@ -103,14 +100,14 @@ func (c *Cluster) RestartPods() error {
 			"--grace-period=0",
 		}
 		_, err := kubectl.RunCmd(c.Namespace, args...)
-		if err != nil && !strings.ContainsAny(err.Error(), "pods") && !strings.ContainsAny(err.Error(), "not found") {
+		if err != nil && !strings.Contains(err.Error(), "pods") && !strings.Contains(err.Error(), "not found") {
 			return err
 		}
 	}
 	return nil
 }
 
-func (c *Cluster) CheckPodStatus(podID int) (bool, error) {
+func (c *Cluster) CheckPodReady(podID int) (bool, error) {
 	args := []string{
 		"get",
 		"pod", c.Name + "-pxc-" + strconv.Itoa(podID),
@@ -121,10 +118,7 @@ func (c *Cluster) CheckPodStatus(podID int) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if strings.Trim(output, "'") == "true" {
-		return true, nil
-	}
-	return false, nil
+	return strings.Trim(output, "'") == "true", nil
 }
 
 func (c *Cluster) PodZeroReady() error {
@@ -132,7 +126,7 @@ func (c *Cluster) PodZeroReady() error {
 	var err error
 	for !podZeroStatus {
 		time.Sleep(time.Second * 10)
-		podZeroStatus, err = c.CheckPodStatus(0)
+		podZeroStatus, err = c.CheckPodReady(0)
 		if err != nil {
 			return err
 		}
@@ -157,9 +151,13 @@ func (c *Cluster) CheckPodPhase(podID int, phase string) (bool, error) {
 func (c *Cluster) AllPodsRunning() error {
 	for i := 0; i < c.Size; i++ {
 		running := false
+		var err error
 		for !running {
 			time.Sleep(time.Second * 10)
-			running, _ = c.CheckPodPhase(i, "Running")
+			running, err = c.CheckPodPhase(i, "Running")
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -193,9 +191,9 @@ func (c *Cluster) AllPodsReady() error {
 	for i := 0; i < c.Size; i++ {
 		podReadyStatus := false
 		var err error
-		for podReadyStatus == false {
+		for !podReadyStatus {
 			time.Sleep(time.Second * 10)
-			podReadyStatus, err = c.CheckPodStatus(i)
+			podReadyStatus, err = c.CheckPodReady(i)
 			if err != nil {
 				return err
 			}
@@ -207,15 +205,15 @@ func (c *Cluster) AllPodsReady() error {
 func (c *Cluster) FindMostRecentPod() error {
 	var podID int
 	seqNo := 0
+	re := regexp.MustCompile(`(?m)seqno:\s*(\d*)`)
 	for i := 0; i < c.Size; i++ {
 		output, err := c.RunCommandInPod(i, "cat", "/var/lib/mysql/grastate.dat")
 		if err != nil {
 			return err
 		}
-		re := regexp.MustCompile(`(?m)seqno:\s*(\d*)`)
-		match := re.FindSubmatch([]byte(output))
+		match := re.FindStringSubmatch(output)
 		if len(match) < 2 {
-			return errors.New("unable to get seqno")
+			return fmt.Errorf("unable to get seqno")
 		}
 		currentSeqNo, err := strconv.Atoi(string(match[1]))
 		if err != nil {
@@ -278,8 +276,5 @@ func (c *Cluster) RestartMostRecentPod() error {
 		"--grace-period=0",
 	}
 	_, err := kubectl.RunCmd(c.Namespace, args...)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
