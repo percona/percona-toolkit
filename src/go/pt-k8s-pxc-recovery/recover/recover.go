@@ -50,7 +50,7 @@ func (c *Cluster) GetClusterImage() error {
 	if err != nil {
 		return err
 	}
-	c.ClusterImage = clusterImage
+	c.ClusterImage = strings.Trim(clusterImage, "'")
 	return nil
 }
 
@@ -172,7 +172,7 @@ func (c *Cluster) AllPodsRunning() error {
 		for !running {
 			time.Sleep(time.Second * 10)
 			running, err = c.CheckPodPhase(i, "Running")
-			if err != nil {
+			if err != nil && !strings.Contains(err.Error(), "NotFound") {
 				return err
 			}
 		}

@@ -64,7 +64,10 @@ func main() {
 
 	log.Printf("Recovering most recent pod")
 	go func() {
-		stepOrError(c.RecoverMostRecentPod())
+		err := c.RecoverMostRecentPod()
+		if err != nil {
+			log.Printf("Recovering most recent pod still in progress")
+		}
 	}()
 
 	time.Sleep(10 * time.Second)
@@ -80,6 +83,9 @@ func main() {
 
 	log.Printf("Restart Most Recent Pod")
 	stepOrError(c.RestartMostRecentPod())
+
+	log.Print("Waiting for all pods to be ready")
+	stepOrError(c.AllPodsReady())
 
 	log.Printf("Completed the restore process")
 }
