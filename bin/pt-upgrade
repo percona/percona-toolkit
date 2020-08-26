@@ -6159,7 +6159,7 @@ sub _print_failures {
    foreach my $failure ( @$failures ) {
       print "\n-- $failno.\n";
       if ( ($failure->[1] || '') eq ($failure->[2] || '') ) {
-         printf "\nOn both hosts:\n\n" . ($failure->[1] || '') . "\n";
+         printf "\nOn both hosts:\n\n%s\n", ($failure->[1] || '');
       }
       else {
          printf "\n%s\n\nvs.\n\n%s\n",
