@@ -2175,7 +2175,7 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
          name_val "${disk}" "${scheduler:-"UNREADABLE"}"
       done
 
-      section "Disk Partioning"
+      section "Disk Partitioning"
       parse_fdisk "$data_dir/partitioning"
 
       section "Kernel Inode State"
@@ -2475,7 +2475,7 @@ C<df>. This section is skipped if you disable L<"--summarize-mounts">.
 The disk scheduler information is extracted from the F</sys> filesystem in
 Linux.
 
- # Disk Partioning ############################################
+ # Disk Partitioning ######################################
  Device       Type      Start        End               Size
  ============ ==== ========== ========== ==================
  /dev/sda     Disk                              17179869184

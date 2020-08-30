@@ -15968,7 +15968,7 @@ Port number to use for connection.
 =item --preserve-embedded-numbers
 
 Preserve numbers in database/table names when fingerprinting queries.
-The standar fingeprint method replaces numbers in db/tables names, making
+The standard fingeprint method replaces numbers in db/tables names, making
 a query like 'SELECT * FROM db1.table2' to be figerprinted as 'SELECT * FROM db?.table?'.
 This option changes that behaviour and the fingerprint will become 
 'SELECT * FROM db1.table2'.

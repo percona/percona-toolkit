@@ -7741,7 +7741,7 @@ type: DSN
 Store each query killed in this DSN.
 
 The argument specifies a table to store all killed queries.  The DSN
-passed in must have the databse (D) and table (t) options. The
+passed in must have the database (D) and table (t) options. The
 table must have at least the following columns.  You can add more columns for
 your own special purposes, but they won't be used by pt-kill.  The
 following CREATE TABLE definition is also used for L<"--create-log-table">.
