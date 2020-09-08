@@ -1,6 +1,9 @@
 package proto
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import (
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"gopkg.in/mgo.v2/bson"
+)
 
 const (
 	REPLICA_SET_MEMBER_STARTUP = iota
@@ -47,4 +50,84 @@ type ReplicaSetStatus struct {
 	Members                 []Members          `bson:"members"`                 //
 	Ok                      float64            `bson:"ok"`                      //
 	Set                     string             `bson:"set"`                     // Replica set name
+}
+
+type Member struct {
+	Host         string  `bson:"host"`
+	Votes        int32   `bson:"votes"`
+	ID           int32   `bson:"_id"`
+	SlaveDelay   int64   `bson:"slaveDelay"`
+	Priority     float64 `bson:"priority"`
+	BuildIndexes bool    `bson:"buildIndexes"`
+	ArbiterOnly  bool    `bson:"arbiterOnly"`
+	Hidden       bool    `bson:"hidden"`
+	Tags         bson.M  `bson:"tags"`
+}
+
+type RSConfig struct {
+	ID                                 string     `bson:"_id"`
+	ConfigServer                       bool       `bson:"configsvr"`
+	WriteConcernMajorityJournalDefault bool       `bson:"writeConcernMajorityJournalDefault"`
+	Version                            int32      `bson:"version"`
+	ProtocolVersion                    int64      `bson:"protocolVersion"`
+	Settings                           RSSettings `bson:"settings"`
+	Members                            []Member   `bson:"members"`
+}
+
+type LastErrorDefaults struct {
+	W        int32 `bson:"w"`
+	WTimeout int32 `bson:"wtimeout"`
+}
+
+type RSSettings struct {
+	HeartbeatTimeoutSecs       int32              `bson:"heartbeatTimeoutSecs"`
+	ElectionTimeoutMillis      int32              `bson:"electionTimeoutMillis"`
+	CatchUpTimeoutMillis       int32              `bson:"catchUpTimeoutMillis"`
+	GetLastErrorModes          bson.M             `bson:"getLastErrorModes"`
+	ChainingAllowed            bool               `bson:"chainingAllowed"`
+	HeartbeatIntervalMillis    int32              `bson:"heartbeatIntervalMillis"`
+	CatchUpTakeoverDelayMillis int32              `bson:"catchUpTakeoverDelayMillis"`
+	GetLastErrorDefaults       LastErrorDefaults  `bson:"getLastErrorDefaults"`
+	ReplicaSetID               primitive.ObjectID `bson:"replicaSetId"`
+}
+
+type Signature struct {
+	Hash  primitive.Binary `bson:"hash"`
+	KeyID int64            `bson:"keyId"`
+}
+
+type ClusterTime struct {
+	ClusterTime primitive.Timestamp `bson:"clusterTime"`
+	Signature   Signature           `bson:"signature"`
+}
+
+type ReplicasetConfig struct {
+	Config              RSConfig            `bson:"config"`
+	OK                  float64             `bson:"ok"`
+	LastCommittedOpTime primitive.Timestamp `bson:"lastCommittedOpTime"`
+	ClusterTime         ClusterTime         `bson:"$clusterTime"`
+	OperationTime       primitive.Timestamp `bson:"operationTime"`
+}
+
+type ConfigVersion struct {
+	ID                   int32              `bson:"_id"`
+	MinCompatibleVersion int32              `bson:"minCompatibleVersion"`
+	CurrentVersion       int32              `bson:"currentVersion"`
+	ClusterID            primitive.ObjectID `bson:"clusterId"`
+}
+
+type ShardIdentity struct {
+	ID                        string             `bson:"_id"`
+	ShardName                 string             `bson:"shardName"`
+	ClusterID                 primitive.ObjectID `bson:"clusterId"`
+	ConfigsvrConnectionString string             `bson:"configsvrConnectionString"`
+}
+
+// MyState is a subset of getDiagnosticData result used to tag metrics in the MongoDB exporter
+type MyState struct {
+	Data struct {
+		ReplicasetGetStatus struct {
+			MyState int `bson:"myState"`
+		} `bson:"replSetGetStatus"`
+	} `bson:"data"`
 }

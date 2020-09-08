@@ -1,11 +1,16 @@
 package testutils
 
 import (
+	"context"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -143,30 +148,70 @@ func BaseDir() string {
 	}
 
 	basedir = strings.TrimSpace(string(out))
+
 	return basedir
 }
 
 // GetMongoDBAddr returns the address of an instance by replicaset name and instance type like
-// (rs1, primary) or (rs1, secondary1)
+// (rs1, primary) or (rs1, secondary1).
 func GetMongoDBAddr(rs, name string) string {
 	if _, ok := hosts[rs]; !ok {
 		return ""
 	}
+
 	replset := hosts[rs]
+
 	if host, ok := replset[name]; ok {
 		return host
 	}
+
 	return ""
 }
 
-// GetMongoDBReplsetAddrs return the addresses of all instances for a replicaset name
+// GetMongoDBReplsetAddrs return the addresses of all instances for a replicaset name.
 func GetMongoDBReplsetAddrs(rs string) []string {
 	addrs := []string{}
+
 	if _, ok := hosts[rs]; !ok {
 		return addrs
 	}
+
 	for _, host := range hosts[rs] {
 		addrs = append(addrs, host)
 	}
+
 	return addrs
+}
+
+// TestClient returns a new MongoDB connection to the specified server port.
+func TestClient(ctx context.Context, port string) (*mongo.Client, error) {
+	if port == "" {
+		port = MongoDBShard1PrimaryPort
+	}
+
+	hostname := "127.0.0.1"
+	direct := true
+	to := time.Second
+	co := &options.ClientOptions{
+		ConnectTimeout: &to,
+		Hosts:          []string{net.JoinHostPort(hostname, port)},
+		Direct:         &direct,
+		Auth: &options.Credential{
+			Username:    MongoDBUser,
+			Password:    MongoDBPassword,
+			PasswordSet: true,
+		},
+	}
+
+	client, err := mongo.Connect(ctx, co)
+	if err != nil {
+		return nil, err
+	}
+
+	err = client.Ping(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }

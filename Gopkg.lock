@@ -202,6 +202,14 @@
   version = "v1.0.0"
 
 [[projects]]
+  digest = "1:9d1d58facb0409ecf634fec680d83b6f57f4e619458f7b7b5e4dda1665fd89ec"
+  name = "github.com/prometheus/common"
+  packages = ["log"]
+  pruneopts = ""
+  revision = "f39dfa2b000545b3a763b844012958c275a62266"
+  version = "v0.13.0"
+
+[[projects]]
   digest = "1:9d35a914be9b807050704f377becb1f864ee46b000f590566a8b9fb871d6c571"
   name = "github.com/shirou/gopsutil"
   packages = [
@@ -316,6 +324,8 @@
   packages = [
     "unix",
     "windows",
+    "windows/registry",
+    "windows/svc/eventlog",
   ]
   pruneopts = ""
   revision = "749cb33beabd9aa6d3178e3de05bcc914f70b2bf"
@@ -334,6 +344,25 @@
   pruneopts = ""
   revision = "342b2e1fbaa52c93f31447ad2c6abc048c63e475"
   version = "v0.3.2"
+
+[[projects]]
+  digest = "1:15d017551627c8bb091bde628215b2861bed128855343fdd570c62d08871f6e1"
+  name = "gopkg.in/alecthomas/kingpin.v2"
+  packages = ["."]
+  pruneopts = ""
+  revision = "947dcec5ba9c011838740e680966fd7087a71d0d"
+  version = "v2.2.6"
+
+[[projects]]
+  branch = "v2"
+  digest = "1:e56755c5336ff37d20befca76df29097085c85ea1fe58af746e3df6b815decfa"
+  name = "gopkg.in/mgo.v2"
+  packages = [
+    "bson",
+    "internal/json",
+  ]
+  pruneopts = ""
+  revision = "a6b53ec6cb22a3699387a57a161566f9402ee85b"
 
 [[projects]]
   branch = "v3"
@@ -360,6 +389,7 @@
     "github.com/pborman/getopt",
     "github.com/percona/go-mysql/query",
     "github.com/pkg/errors",
+    "github.com/prometheus/common/log",
     "github.com/shirou/gopsutil/process",
     "github.com/sirupsen/logrus",
     "github.com/stretchr/testify/assert",
@@ -369,6 +399,7 @@
     "go.mongodb.org/mongo-driver/mongo",
     "go.mongodb.org/mongo-driver/mongo/options",
     "golang.org/x/crypto/ssh/terminal",
+    "gopkg.in/mgo.v2/bson",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
