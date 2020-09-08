@@ -10,6 +10,17 @@
   version = "v1.4.2"
 
 [[projects]]
+  branch = "PMM-6494"
+  digest = "1:27622bea3d258489e276ba7de3dfdfe7869a3bce062bb18dfec5dbfeacaf0657"
+  name = "github.com/Percona-Lab/mdbutils"
+  packages = [
+    ".",
+    "proto",
+  ]
+  pruneopts = ""
+  revision = "eab39b49550908d953ced8242ab15f0aba3d2e7a"
+
+[[projects]]
   digest = "1:f82b8ac36058904227087141017bb82f4b0fc58272990a4cdae3e2d6d222644e"
   name = "github.com/StackExchange/wmi"
   packages = ["."]
@@ -43,6 +54,32 @@
   packages = ["."]
   pruneopts = ""
   revision = "c3de453c63f4bdb4dadffab9805ec00426c505f7"
+
+[[projects]]
+  digest = "1:ed666ea4fa19ca52946f41a7004572724b4564191e27b2512b03ecb1de6e0f16"
+  name = "github.com/aws/aws-sdk-go"
+  packages = [
+    "aws",
+    "aws/awserr",
+    "aws/awsutil",
+    "aws/client/metadata",
+    "aws/credentials",
+    "aws/endpoints",
+    "aws/request",
+    "aws/signer/v4",
+    "internal/context",
+    "internal/ini",
+    "internal/sdkio",
+    "internal/sdkmath",
+    "internal/shareddefaults",
+    "internal/strings",
+    "internal/sync/singleflight",
+    "private/protocol",
+    "private/protocol/rest",
+  ]
+  pruneopts = ""
+  revision = "78b437f46d45b2b11d47a903952ecb1e0003b35a"
+  version = "v1.34.18"
 
 [[projects]]
   digest = "1:0deddd908b6b4b768cfc272c16ee61e7088a60f7fe2f06c547bd3d8e1f8b8e77"
@@ -118,6 +155,13 @@
   packages = ["."]
   pruneopts = ""
   revision = "bf9dde6d0d2c004a008c27aaee91170c786f6db8"
+
+[[projects]]
+  digest = "1:13fe471d0ed891e8544eddfeeb0471fd3c9f2015609a1c000aefdedf52a19d40"
+  name = "github.com/jmespath/go-jmespath"
+  packages = ["."]
+  pruneopts = ""
+  revision = "c2b33e84"
 
 [[projects]]
   digest = "1:f02c9b5d6682e16bb484f964445b22af73c0af1c66a7d3f75503adda88610d26"
@@ -202,6 +246,14 @@
   version = "v1.0.0"
 
 [[projects]]
+  digest = "1:9d1d58facb0409ecf634fec680d83b6f57f4e619458f7b7b5e4dda1665fd89ec"
+  name = "github.com/prometheus/common"
+  packages = ["log"]
+  pruneopts = ""
+  revision = "f39dfa2b000545b3a763b844012958c275a62266"
+  version = "v0.13.0"
+
+[[projects]]
   digest = "1:55dcddb2ba6ab25098ee6b96f176f39305f1fde7ea3d138e7e10bb64a5bf45be"
   name = "github.com/shirou/gopsutil"
   packages = [
@@ -259,7 +311,7 @@
   revision = "73f8eece6fdcd902c185bf651de50f3828bed5ed"
 
 [[projects]]
-  digest = "1:6085253f6bc0d9e4761ce971e02849b626de51735b35f362a34dbe5dbc3a2168"
+  digest = "1:8dee90d6c50c69091530c07f79180b6e7430a4d3c995e0cd5d3e3090d991a6e1"
   name = "go.mongodb.org/mongo-driver"
   packages = [
     "bson",
@@ -288,6 +340,7 @@
     "x/mongo/driver/dns",
     "x/mongo/driver/mongocrypt",
     "x/mongo/driver/mongocrypt/options",
+    "x/mongo/driver/ocsp",
     "x/mongo/driver/operation",
     "x/mongo/driver/session",
     "x/mongo/driver/topology",
@@ -295,14 +348,15 @@
     "x/mongo/driver/wiremessage",
   ]
   pruneopts = ""
-  revision = "4ce2db174a8ec022f504b9bc0e768e284e44708f"
-  version = "v1.3.4"
+  revision = "95ed2ee11705a9b1c1e29d05fae34024b7e60ba2"
+  version = "v1.4.1"
 
 [[projects]]
   branch = "master"
   digest = "1:2f8d339c3b89d5abf9a78aafe1e9fbe548f3b1fb9be5c3117036940904d39527"
   name = "golang.org/x/crypto"
   packages = [
+    "ocsp",
     "pbkdf2",
     "ssh/terminal",
   ]
@@ -313,7 +367,10 @@
   branch = "master"
   digest = "1:9f6efefb4e401a4f699a295d14518871368eb89403f2dd23ec11dfcd2c0836ba"
   name = "golang.org/x/sync"
-  packages = ["semaphore"]
+  packages = [
+    "errgroup",
+    "semaphore",
+  ]
   pruneopts = ""
   revision = "112230192c580c3556b8cee6403af37a4fc5f28c"
 
@@ -324,6 +381,8 @@
   packages = [
     "unix",
     "windows",
+    "windows/registry",
+    "windows/svc/eventlog",
   ]
   pruneopts = ""
   revision = "749cb33beabd9aa6d3178e3de05bcc914f70b2bf"
@@ -344,6 +403,25 @@
   version = "v0.3.2"
 
 [[projects]]
+  digest = "1:15d017551627c8bb091bde628215b2861bed128855343fdd570c62d08871f6e1"
+  name = "gopkg.in/alecthomas/kingpin.v2"
+  packages = ["."]
+  pruneopts = ""
+  revision = "947dcec5ba9c011838740e680966fd7087a71d0d"
+  version = "v2.2.6"
+
+[[projects]]
+  branch = "v2"
+  digest = "1:e56755c5336ff37d20befca76df29097085c85ea1fe58af746e3df6b815decfa"
+  name = "gopkg.in/mgo.v2"
+  packages = [
+    "bson",
+    "internal/json",
+  ]
+  pruneopts = ""
+  revision = "a6b53ec6cb22a3699387a57a161566f9402ee85b"
+
+[[projects]]
   branch = "v3"
   digest = "1:2e9c4d6def1d36dcd17730e00c06b49a2e97ea5e1e639bcd24fa60fa43e33ad6"
   name = "gopkg.in/yaml.v3"
@@ -356,6 +434,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/Masterminds/semver",
+    "github.com/Percona-Lab/mdbutils",
     "github.com/alecthomas/kingpin",
     "github.com/go-ini/ini",
     "github.com/golang/mock/gomock",
@@ -368,6 +447,7 @@
     "github.com/pborman/getopt",
     "github.com/percona/go-mysql/query",
     "github.com/pkg/errors",
+    "github.com/prometheus/common/log",
     "github.com/shirou/gopsutil/process",
     "github.com/sirupsen/logrus",
     "github.com/stretchr/testify/assert",
@@ -377,6 +457,7 @@
     "go.mongodb.org/mongo-driver/mongo",
     "go.mongodb.org/mongo-driver/mongo/options",
     "golang.org/x/crypto/ssh/terminal",
+    "gopkg.in/mgo.v2/bson",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
