@@ -27,7 +27,7 @@ env:
     - TEST_MONGODB_S2_SECONDARY1_PORT: 17005
     - TEST_MONGODB_S2_SECONDARY2_PORT: 17006
     - TEST_MONGODB_CONFIGSVR_RS: csReplSet
-    - TEST_MONGODB_CONFIGSVR1_PORT: 17007      
+    - TEST_MONGODB_CONFIGSVR1_PORT: 17007
     - TEST_MONGODB_CONFIGSVR2_PORT: 17008
     - TEST_MONGODB_CONFIGSVR3_PORT: 17009
     - TEST_MONGODB_S3_RS: rs3
@@ -38,7 +38,7 @@ env:
     - secure: "px8XYeNEAFTSTb1hYZuEOxqOXUxvp3EoU+KCtPck/KNozkoS95eBd9klgr3Os4wPKloLdMhrr0VE98lukogUxA/NmnYnos01kegjWgwwM6fkob8JxaN5KK4oUFF1wmirBlrjGlw8vUErPwINmrK4BywKpDbw6Yip6FzxdlWESHI="
 
 matrix:
-  include: 
+  include:
     - MONGODB_IMAGE=mongo:3.0
     - MONGODB_IMAGE=mongo:3.2
     - MONGODB_IMAGE=mongo:3.4
@@ -61,8 +61,9 @@ before_install:
     - docker-compose --version
 
 install:
-  - go get -u github.com/golang/dep/cmd/dep
-  # install reviewdog and golangci-lin
+  - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+
+  # install reviewdog and golangci-lint
   - curl https://raw.githubusercontent.com/reviewdog/reviewdog/master/install.sh| sh -s
   - curl https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s latest
 
