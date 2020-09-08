@@ -9,6 +9,7 @@ services:
 
 env:
   global:
+    - GO111MODULE: "off" # TODO test with "on" too
     - DOCKER_COMPOSE_VERSION: 1.8.0
     - TEST_MONGODB_FLAVOR: mongo
     - TEST_PSMDB_VERSION: 4.0
