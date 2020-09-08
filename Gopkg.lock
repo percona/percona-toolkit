@@ -202,7 +202,7 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:55dcddb2ba6ab25098ee6b96f176f39305f1fde7ea3d138e7e10bb64a5bf45be"
+  digest = "1:9d35a914be9b807050704f377becb1f864ee46b000f590566a8b9fb871d6c571"
   name = "github.com/shirou/gopsutil"
   packages = [
     "cpu",
@@ -212,16 +212,8 @@
     "process",
   ]
   pruneopts = ""
-  revision = "e4ec7b275ada47ca32799106c2dba142d96aaf93"
-  version = "v2.19.8"
-
-[[projects]]
-  branch = "master"
-  digest = "1:99c6a6dab47067c9b898e8c8b13d130c6ab4ffbcc4b7cc6236c2cd0b1e344f5b"
-  name = "github.com/shirou/w32"
-  packages = ["."]
-  pruneopts = ""
-  revision = "bb4de0191aa41b5507caa14b0650cdbddcd9280b"
+  revision = "9aa2bee419e8b592ecf9f46018f3f1f6a5474c10"
+  version = "v2.20.8"
 
 [[projects]]
   digest = "1:1a405cddcf3368445051fb70ab465ae99da56ad7be8d8ca7fc52159d1c2d873c"
