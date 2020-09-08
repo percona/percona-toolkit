@@ -36,7 +36,7 @@ env:
     - TEST_MONGODB_S3_SECONDARY1_PORT: 17022
     - TEST_MONGODB_S3_SECONDARY2_PORT: 17023
     # REVIEWDOG_GITHUB_API_TOKEN
-    - secure: "px8XYeNEAFTSTb1hYZuEOxqOXUxvp3EoU+KCtPck/KNozkoS95eBd9klgr3Os4wPKloLdMhrr0VE98lukogUxA/NmnYnos01kegjWgwwM6fkob8JxaN5KK4oUFF1wmirBlrjGlw8vUErPwINmrK4BywKpDbw6Yip6FzxdlWESHI="
+    secure: "iba+2pzxc/zfMxnYki9qM9pCZs1uTEoqfPTaG9qtVr8cMutDzCJvMftn0bb6gSUrglt2mjSNhV65HX7mZl0qh8p/6a46QpzFiwZmaTH+E1tGQf97Z55tx3tHgrcoFI8LGPEHpTQehcI7V0VVo69aBhz+8lNNScOuJwt8ulyuVwE="
 
 matrix:
   include:
