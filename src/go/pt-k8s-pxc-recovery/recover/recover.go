@@ -33,7 +33,7 @@ func (c *Cluster) SetClusterSize() error {
 	strSize = strings.Trim(strSize, "'")
 	c.Size, err = strconv.Atoi(strSize)
 	if err != nil {
-		return fmt.Errorf("error getting cluster size, %v", err)
+		return fmt.Errorf("error getting cluster size, %s", err)
 	}
 	return nil
 }
@@ -48,7 +48,7 @@ func (c *Cluster) GetClusterImage() error {
 	}
 	clusterImage, err := kubectl.RunCmd(c.Namespace, args...)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error getting cluster image %s", err)
 	}
 	c.ClusterImage = strings.Trim(clusterImage, "'")
 	return nil
@@ -79,13 +79,13 @@ func (c *Cluster) getPods() ([]string, error) {
 func (c *Cluster) ConfirmCrashedStatus() error {
 	podNames, err := c.getPods()
 	if err != nil {
-		return err
+		return fmt.Errorf("Error getting pods : %s", err)
 	}
 	failedNodes := 0
 	for _, pod := range podNames {
 		logs, err := kubectl.RunCmd(c.Namespace, "logs", pod)
 		if err != nil {
-			return fmt.Errorf("error confirming crashed cluster status %s", err.Error())
+			return fmt.Errorf("error confirming crashed cluster status %s", err)
 		}
 		if strings.Contains(logs, "grastate.dat") && strings.Contains(logs, "safe_to_bootstrap") {
 			failedNodes++
@@ -106,7 +106,7 @@ func (c *Cluster) PatchClusterImage(image string) error {
 		`--patch={"spec":{"pxc":{"image":"` + image + `"}}}`,
 	}
 	_, err := kubectl.RunCmd(c.Namespace, args...)
-	return err
+	return fmt.Errorf("Error patching cluster image: %s", err)
 }
 
 func (c *Cluster) RestartPods() error {
@@ -120,7 +120,7 @@ func (c *Cluster) RestartPods() error {
 		}
 		_, err := kubectl.RunCmd(c.Namespace, args...)
 		if err != nil && !strings.Contains(err.Error(), "pods") && !strings.Contains(err.Error(), "not found") {
-			return err
+			return fmt.Errorf("Error restarting pods: %s", err)
 		}
 	}
 	return nil
@@ -135,7 +135,7 @@ func (c *Cluster) CheckPodReady(podID int) (bool, error) {
 	}
 	output, err := kubectl.RunCmd(c.Namespace, args...)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("Error checking pod ready: %s", err)
 	}
 	return strings.Trim(output, "'") == "true", nil
 }
@@ -162,7 +162,7 @@ func (c *Cluster) CheckPodPhase(podID int, phase string) (bool, error) {
 	}
 	output, err := kubectl.RunCmd(c.Namespace, args...)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("Error checking pod phase: %s", err)
 	}
 	return strings.Trim(output, "'") == phase, nil
 }
@@ -200,7 +200,7 @@ func (c *Cluster) SetSSTInProgress() error {
 	for i := 0; i < c.Size; i++ {
 		_, err := c.RunCommandInPod(i, "touch", "/var/lib/mysql/sst_in_progress")
 		if err != nil {
-			return err
+			return fmt.Errorf("Error setting sst in progress", err)
 		}
 	}
 	return nil
@@ -250,19 +250,19 @@ func (c *Cluster) FindMostRecentPod() error {
 func (c *Cluster) RecoverMostRecentPod() error {
 	_, err := c.RunCommandInPod(c.MostRecentPod, "mysqld", "--wsrep_recover")
 	if err != nil {
-		return err
+		return fmt.Errorf("Error recovering most recent pod: %s", err)
 	}
 	_, err = c.RunCommandInPod(c.MostRecentPod, "bash", "-c", "sed -i 's/safe_to_bootstrap: 0/safe_to_bootstrap: 1/g' /var/lib/mysql/grastate.dat")
 	if err != nil {
-		return err
+		return fmt.Errorf("Error recovering most recent pod: %s", err)
 	}
 	_, err = c.RunCommandInPod(c.MostRecentPod, "bash", "-c", "sed -i 's/wsrep_cluster_address=.*/wsrep_cluster_address=gcomm:\\/\\//g' /etc/mysql/node.cnf")
 	if err != nil {
-		return err
+		return fmt.Errorf("Error recovering most recent pod: %s", err)
 	}
 	_, err = c.RunCommandInPod(c.MostRecentPod, "mysqld")
 	if err != nil {
-		return err
+		return fmt.Errorf("Error recovering most recent pod: %s", err)
 	}
 	return nil
 }
@@ -279,7 +279,7 @@ func (c *Cluster) RestartAllPodsExceptMostRecent() error {
 			}
 			_, err := kubectl.RunCmd(c.Namespace, args...)
 			if err != nil {
-				return err
+				return fmt.Errorf("Error restarting pods : %s", err)
 			}
 		}
 	}
@@ -295,5 +295,8 @@ func (c *Cluster) RestartMostRecentPod() error {
 		"--grace-period=0",
 	}
 	_, err := kubectl.RunCmd(c.Namespace, args...)
-	return err
+	if err != nil {
+		return fmt.Errorf("Error restarting most recent pod : %s", err)
+	}
+	return nil
 }
