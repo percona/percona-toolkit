@@ -33,7 +33,7 @@ func (c *Cluster) SetClusterSize() error {
 	strSize = strings.Trim(strSize, "'")
 	c.Size, err = strconv.Atoi(strSize)
 	if err != nil {
-		return fmt.Errorf("error getting cluster size, %s", err.Error())
+		return fmt.Errorf("error getting cluster size, %v", err)
 	}
 	return nil
 }
