@@ -58,6 +58,9 @@ func (c *Cluster) getPods() ([]string, error) {
 	args := []string{
 		"get",
 		"pods",
+		"--no-headers",
+		"-o",
+		"custom-columns=:metadata.name",
 	}
 	out, err := kubectl.RunCmd(c.Namespace, args...)
 	if err != nil {
@@ -65,8 +68,7 @@ func (c *Cluster) getPods() ([]string, error) {
 	}
 	formatedOutput := strings.Split(out, "\n")
 	podNames := []string{}
-	for _, v := range formatedOutput {
-		podName := strings.Split(v, " ")[0]
+	for _, podName := range formatedOutput {
 		if strings.Contains(podName, c.Name) && strings.Contains(podName, "pxc") {
 			podNames = append(podNames, podName)
 		}
@@ -230,7 +232,7 @@ func (c *Cluster) FindMostRecentPod() error {
 		}
 		match := re.FindStringSubmatch(output)
 		if len(match) < 2 {
-			return fmt.Errorf("unable to get seqno")
+			return fmt.Errorf("Error finding the most recent pod : unable to get seqno")
 		}
 		currentSeqNo, err := strconv.Atoi(string(match[1]))
 		if err != nil {
