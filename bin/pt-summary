@@ -1278,7 +1278,7 @@ top_processes () { local PTFUNCNAME=top_processes;
 
 notable_processes_info () { local PTFUNCNAME=notable_processes_info;
    local format="%5s    %+2d    %s\n"
-   local sshd_pid=$(ps -eo pid,args | awk '$2 ~ /\/usr\/sbin\/sshd/ { print $1; exit }')
+   local sshd_pid=$(ps -eo pid,args | awk '$0 ~ /\/usr\/sbin\/sshd/ { print $1; exit }')
 
    echo "  PID    OOM    COMMAND"
 
