@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+ * Fixed bug   PT-1892: pt-summary says sshd not running
+
  * Fixed bug   PT-1859: pt-pg-summary fails for Postgres12 (Thanks Sergey Kuzmichev)
  * Improvement PT-1853: Added --no-check-foreing-keys to pt-osc
  * Improvement PT-1851: Backslashes missing from documentation
