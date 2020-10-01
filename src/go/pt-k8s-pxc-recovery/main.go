@@ -36,7 +36,8 @@ func main() {
 	stepOrError(c.SetClusterSize())
 
 	log.Printf("Getting cluster image")
-	stepOrError(c.GetClusterImage())
+	clusterImage, err := c.GetClusterImage()
+	stepOrError(err)
 
 	log.Printf("Confirming crashed status")
 	stepOrError(c.ConfirmCrashedStatus())
@@ -73,7 +74,7 @@ func main() {
 	time.Sleep(10 * time.Second)
 
 	log.Printf("Patching cluster image")
-	stepOrError(c.PatchClusterImage(c.ClusterImage))
+	stepOrError(c.PatchClusterImage(clusterImage))
 
 	log.Printf("Restart all pods execpt most recent pod")
 	stepOrError(c.RestartAllPodsExceptMostRecent())
