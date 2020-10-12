@@ -8788,6 +8788,7 @@ sub main {
    my $flow_ctl_pr;    # Progress for FlowControlWaiter
    my $sys_load;       # MySQLStatusWaiter object
    my $sys_load_pr;    # Progress for MySQLStatusWaiter object
+   my $process_error;  # Used if drop_swap fails
 
    if ( $o->get('execute') ) {
       # #####################################################################
@@ -9150,7 +9151,7 @@ sub main {
          }
          # No child tables and --alter-fk-method wasn't specified,
          # so nothing to do.
-      }
+      } 
       else {
          print "Child tables:\n";
          foreach my $child_table ( @$child_tables ) {
@@ -9413,6 +9414,9 @@ sub main {
             . "$new_tbl->{name}, else writing to $orig_tbl->{name} will "
             . "cause MySQL error 1146 (42S02): \"Table $new_tbl->{name} "
             . " doesn't exist\".\n";
+      }
+      elsif ($process_error) {
+          print "Not dropping new table because FKs processing has failed.\n";
       }
       else {
          print ts("Dropping new table...\n");
@@ -10208,8 +10212,9 @@ sub main {
          }
       };
       if ( $EVAL_ERROR ) {
-         # TODO: improve error message and handling.
-         _die("Error updating foreign key constraints: $EVAL_ERROR", ERROR_UPDATING_FKS);
+          #$oktorun = 0;
+          $process_error = "Error updating foreign key constraints: $EVAL_ERROR";
+         _die($process_error, ERROR_UPDATING_FKS);
       }
 
       # --plugin hook
@@ -10273,7 +10278,8 @@ sub main {
    # ########################################################################
    # Done.
    # ########################################################################
-   $orig_tbl->{success} = 1;  # flag for cleanup tasks
+   
+   $orig_tbl->{success} = 1;  # flag for cleanup tasks   
    $cleanup = undef;          # exec cleanup tasks
 
    # --plugin hook
