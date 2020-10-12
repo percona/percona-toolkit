@@ -23,7 +23,9 @@ if ($ENV{PERCONA_SLOW_BOX}) {
     plan skip_all => 'This test needs a fast machine';
 } else {
     plan tests => 6;
-}
+    #plan skip_all => 'This test is taking too much time even in fast machines';
+}                                  
+
 our $delay = 30;
 
 my $tmp_file = File::Temp->new();
@@ -38,10 +40,6 @@ my $master_dbh = $sb->get_dbh_for('master');
 my $slave_dbh = $sb->get_dbh_for('slave1');
 my $master_dsn = 'h=127.0.0.1,P=12345,u=msandbox,p=msandbox';
 my $slave_dsn = 'h=127.0.0.1,P=12346,u=msandbox,p=msandbox';
-
-if ( !$master_dbh ) {
-   plan skip_all => 'Cannot connect to sandbox master';
-}
 
 sub reset_query_cache {
     my @dbhs = @_;
@@ -64,7 +62,7 @@ $sb->load_file('master', "t/pt-online-schema-change/samples/slave_lag.sql");
 
 my $num_rows = 5000;
 diag("Loading $num_rows into the table. This might take some time.");
-diag(`util/mysql_random_data_load --host=127.0.0.1 --port=12345 --user=msandbox --password=msandbox test pt178 --bulk-size=1 --max-threads=1 $num_rows`);
+diag(`util/mysql_random_data_load --host=127.0.0.1 --port=12345 --user=msandbox --password=msandbox test pt178 $num_rows`);
 
 diag("Setting slave delay to $delay seconds");
 
