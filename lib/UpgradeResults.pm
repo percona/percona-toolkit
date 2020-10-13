@@ -405,7 +405,7 @@ sub _print_failures {
    foreach my $failure ( @$failures ) {
       print "\n-- $failno.\n";
       if ( ($failure->[1] || '') eq ($failure->[2] || '') ) {
-         printf "\nOn both hosts:\n\n%s\n", ($failure->[1] || '');
+         print "\nOn both hosts:\n\n" . ($failure->[1] || '') . "\n";
       }
       else {
          printf "\n%s\n\nvs.\n\n%s\n",
