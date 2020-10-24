@@ -85,7 +85,6 @@ func GetOplogInfo(ctx context.Context, hostnames []string, co *options.ClientOpt
 
 	sort.Sort(results)
 	return results, nil
-
 }
 
 func getOplogCollection(ctx context.Context, client *mongo.Client) (string, error) {
