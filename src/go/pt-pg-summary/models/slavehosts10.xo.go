@@ -20,7 +20,7 @@ func GetSlaveHosts10s(db XODB) ([]*SlaveHosts10, error) {
 	var err error
 
 	// sql query
-	var sqlstr = `SELECT application_name, client_addr, state, sent_offset - (replay_offset - (sent_lsn - replay_lsn) * 255 * 16 ^ 6 ) AS byte_lag ` +
+	sqlstr := `SELECT application_name, client_addr, state, sent_offset - (replay_offset - (sent_lsn - replay_lsn) * 255 * 16 ^ 6 ) AS byte_lag ` +
 		`FROM ( SELECT application_name, client_addr, client_hostname, state, ` +
 		`('x' || lpad(split_part(sent_lsn::TEXT,   '/', 1), 8, '0'))::bit(32)::bigint AS sent_lsn, ` +
 		`('x' || lpad(split_part(replay_lsn::TEXT, '/', 1), 8, '0'))::bit(32)::bigint AS replay_lsn, ` +

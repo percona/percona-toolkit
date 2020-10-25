@@ -1,6 +1,6 @@
 package main
 
-//TODO: Rewrite tests to use the new sandbox
+// TODO: Rewrite tests to use the new sandbox
 
 // const (
 // 	samples = "/src/go/tests/"

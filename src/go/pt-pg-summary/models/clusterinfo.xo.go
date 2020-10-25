@@ -24,7 +24,7 @@ func GetClusterInfos(db XODB) ([]*ClusterInfo, error) {
 	var err error
 
 	// sql query
-	var sqlstr = `SELECT usename, now() AS "Time", ` +
+	sqlstr := `SELECT usename, now() AS "Time", ` +
 		`client_addr, ` +
 		`client_hostname, ` +
 		`version() AS version, ` +

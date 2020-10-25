@@ -34,9 +34,11 @@ type OpLogs []OplogInfo
 func (s OpLogs) Len() int {
 	return len(s)
 }
+
 func (s OpLogs) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
+
 func (s OpLogs) Less(i, j int) bool {
 	return s[i].TimeDiffHours < s[j].TimeDiffHours
 }

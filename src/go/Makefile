@@ -138,8 +138,8 @@ test:						## Run tests
 	@./runtests.sh
 
 format:                         ## Format source code.
-	gofmt -w -s $(FILES)
-	goimports -local github.com/percona/pmm-managed -l -w $(FILES)
+	gofumpt -w -s $(FILES)
+	gofumports -local github.com/percona/pmm-managed -l -w $(FILES)
 
 vet:						## Run vet on Go code
 	@echo ">> vetting code"

@@ -108,17 +108,15 @@ func LoadBson(filename string, destination interface{}) error {
 }
 
 func WriteJson(filename string, data interface{}) error {
-
 	buf, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(filename, buf, 0777)
+	err = ioutil.WriteFile(filename, buf, 0o777)
 	if err != nil {
 		return err
 	}
 	return nil
-
 }
 
 func ShouldUpdateSamples() bool {

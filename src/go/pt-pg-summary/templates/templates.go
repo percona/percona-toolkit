@@ -57,7 +57,7 @@ var TPL = `{{define "report"}}
 +----------------------+----------------------+----------------------------------------------------+
 {{ end -}} {{/* end define */}}
 ` +
-    `{{- define "slaves_and_log_none" -}}
+	`{{- define "slaves_and_log_none" -}}
 ##### --- Slave and the lag with Master --- ####
 There are no slave hosts
 {{ end -}} {{/* end define */}}

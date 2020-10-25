@@ -15,7 +15,7 @@ func GetTablespaces(db XODB) ([]*Tablespaces, error) {
 	var err error
 
 	// sql query
-	var sqlstr = `SELECT spcname AS Name, ` +
+	sqlstr := `SELECT spcname AS Name, ` +
 		`pg_catalog.pg_get_userbyid(spcowner) AS Owner, ` +
 		`pg_catalog.pg_tablespace_location(oid) AS Location ` +
 		`FROM pg_catalog.pg_tablespace ` +

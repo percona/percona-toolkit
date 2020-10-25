@@ -12,7 +12,6 @@ import (
 )
 
 func TestCheckUpdates(t *testing.T) {
-
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := ioutil.ReadAll(r.Body)
 		m := strings.Split(string(body), ";")
@@ -39,11 +38,9 @@ func TestCheckUpdates(t *testing.T) {
 	if msg == "" {
 		t.Error("got empty response")
 	}
-
 }
 
 func TestEmptyResponse(t *testing.T) {
-
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "")
 	}))
@@ -57,5 +54,4 @@ func TestEmptyResponse(t *testing.T) {
 	if msg != "" {
 		t.Error("response should return error due to empty body")
 	}
-
 }

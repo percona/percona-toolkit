@@ -18,7 +18,7 @@ func GetTableCacheHitRatio(db XODB) (*TableCacheHitRatio, error) {
 	var err error
 
 	// sql query
-	var sqlstr = `SELECT 'cache hit rate' AS name, ` +
+	sqlstr := `SELECT 'cache hit rate' AS name, ` +
 		`CASE WHEN (sum(heap_blks_read) + sum(idx_blks_hit)) > 0 ` +
 		`THEN ` +
 		`sum(heap_blks_hit) / (sum(heap_blks_hit) + sum(heap_blks_read)) ` +

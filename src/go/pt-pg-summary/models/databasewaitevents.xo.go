@@ -22,7 +22,7 @@ func GetDatabaseWaitEvents(db XODB) ([]*DatabaseWaitEvents, error) {
 	var err error
 
 	// sql query
-	var sqlstr = `SELECT c.relname, c.relkind, d.wait_event_type, d.wait_event, b.datname, count(*) ` +
+	sqlstr := `SELECT c.relname, c.relkind, d.wait_event_type, d.wait_event, b.datname, count(*) ` +
 		`FROM pg_locks a ` +
 		`JOIN pg_stat_database b ON a.database=b.datid ` +
 		`JOIN pg_class c ON a.relation=c.oid ` +

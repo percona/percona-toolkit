@@ -4,8 +4,10 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type ReplicaSetConfigTags map[string]string
-type GetLastErrorModes map[string]*ReplicaSetConfigTags
+type (
+	ReplicaSetConfigTags map[string]string
+	GetLastErrorModes    map[string]*ReplicaSetConfigTags
+)
 
 // https://docs.mongodb.com/v3.2/reference/command/getLastError/#dbcmd.getLastError
 type GetLastErrorDefaults struct {

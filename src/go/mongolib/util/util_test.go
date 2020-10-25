@@ -239,7 +239,6 @@ func TestReplicasetConfig(t *testing.T) {
 				Message: "not running with --replSet",
 				Labels:  []string(nil),
 				Name:    "NoReplicationEnabled",
-				Wrapped: error(nil),
 			},
 		},
 		{
@@ -251,7 +250,6 @@ func TestReplicasetConfig(t *testing.T) {
 				Message: "no such cmd: replSetGetConfig",
 				Labels:  []string(nil),
 				Name:    "CommandNotFound",
-				Wrapped: error(nil),
 			},
 		},
 		{
@@ -272,9 +270,11 @@ func TestReplicasetConfig(t *testing.T) {
 
 		rs, err := ReplicasetConfig(ctx, client)
 		assert.Equal(t, tc.wantError, err, fmt.Sprintf("%v", tc.port))
+
 		if tc.wantError != nil {
 			continue
 		}
+
 		assert.Equal(t, tc.wantID, rs.Config.ID)
 		assert.Equal(t, tc.wantConfigServer, rs.Config.ConfigServer)
 		assert.NotEmpty(t, rs.Config.Settings.ReplicaSetID.Hex())

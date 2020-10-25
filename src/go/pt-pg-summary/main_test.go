@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/percona/percona-toolkit/src/go/pt-pg-summary/internal/tu"
 	"github.com/percona/percona-toolkit/src/go/lib/pginfo"
+	"github.com/percona/percona-toolkit/src/go/pt-pg-summary/internal/tu"
 
 	"github.com/sirupsen/logrus"
 )
@@ -37,7 +37,7 @@ func TestConnection(t *testing.T) {
 	// use an "external" IP to simulate a remote host
 	tests := append(tests, Test{"remote_host", tu.PG9DockerIP, tu.DefaultPGPort, tu.Username, tu.Password})
 	// use IPV6 for PostgreSQL 9
-	//tests := append(tests, Test{"IPV6", tu.IPv6Host, tu.IPv6PG9Port, tu.Username, tu.Password})
+	// tests := append(tests, Test{"IPV6", tu.IPv6Host, tu.IPv6PG9Port, tu.Username, tu.Password})
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
@@ -48,16 +48,15 @@ func TestConnection(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestNewWithLogger(t *testing.T) {
-    for _, test := range tests {
+	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s sslmode=disable dbname=%s",
 				test.host, test.port, test.username, test.password, "postgres")
-			db, err := connect(dsn);
+			db, err := connect(dsn)
 			if err != nil {
 				t.Errorf("Cannot connect to the db using %q: %s", dsn, err)
 			}
@@ -65,21 +64,20 @@ func TestNewWithLogger(t *testing.T) {
 				t.Errorf("Cannot run NewWithLogger using %q: %s", dsn, err)
 			}
 		})
-    }
+	}
 }
 
-
 func TestCollectGlobalInfo(t *testing.T) {
-    for _, test := range tests {
+	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s sslmode=disable dbname=%s",
 				test.host, test.port, test.username, test.password, "postgres")
-			db, err := connect(dsn);
+			db, err := connect(dsn)
 			if err != nil {
 				t.Errorf("Cannot connect to the db using %q: %s", dsn, err)
 			}
-			info, err := pginfo.NewWithLogger(db, nil, 30, logger);
+			info, err := pginfo.NewWithLogger(db, nil, 30, logger)
 			if err != nil {
 				t.Errorf("Cannot run NewWithLogger using %q: %s", dsn, err)
 			}
@@ -92,27 +90,27 @@ func TestCollectGlobalInfo(t *testing.T) {
 				t.Errorf("Cannot collect global information using %q", dsn)
 			}
 		})
-    }
+	}
 }
 
 func TestCollectPerDatabaseInfo(t *testing.T) {
-    for _, test := range tests {
+	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s sslmode=disable dbname=%s",
 				test.host, test.port, test.username, test.password, "postgres")
-			db, err := connect(dsn);
+			db, err := connect(dsn)
 			if err != nil {
 				t.Errorf("Cannot connect to the db using %q: %s", dsn, err)
 			}
-			info, err := pginfo.NewWithLogger(db, nil, 30, logger);
+			info, err := pginfo.NewWithLogger(db, nil, 30, logger)
 			if err != nil {
 				t.Errorf("Cannot run New using %q: %s", dsn, err)
 			}
 			for _, dbName := range info.DatabaseNames() {
 				dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s sslmode=disable dbname=%s",
 					test.host, test.port, test.username, test.password, dbName)
-				conn, err := connect(dsn);
+				conn, err := connect(dsn)
 				if err != nil {
 					t.Errorf("Cannot connect to the %s database using %q: %s", dbName, dsn, err)
 				}
@@ -122,5 +120,5 @@ func TestCollectPerDatabaseInfo(t *testing.T) {
 				conn.Close()
 			}
 		})
-    }
+	}
 }
