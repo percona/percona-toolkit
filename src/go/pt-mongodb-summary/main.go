@@ -172,19 +172,11 @@ type collectedInfo struct {
 }
 
 func main() {
-	var exitStatus int
-
-	defer func() {
-		os.Exit(exitStatus)
-	}()
-
 	opts, err := parseFlags()
 	if err != nil {
 		log.Errorf("cannot get parameters: %s", err.Error())
 
-		exitStatus = cannotParseCommandLineParameters
-
-		return
+		os.Exit(cannotParseCommandLineParameters)
 	}
 
 	if opts == nil && err == nil {
@@ -222,22 +214,19 @@ func main() {
 	if err != nil {
 		log.Error(err)
 
-		exitStatus = cannotGetClientOptions
-
-		return
+		os.Exit(cannotGetClientOptions)
 	}
 
 	client, err := mongo.NewClient(clientOptions)
 	if err != nil {
-		exitStatus = cannotConnectToMongoDB
-
 		log.Errorf("Cannot get a MongoDB client: %s", err)
+
+		os.Exit(cannotConnectToMongoDB)
 	}
 
 	if err := client.Connect(ctx); err != nil {
-		exitStatus = cannotConnectToMongoDB
-
 		log.Errorf("Cannot connect to MongoDB: %s", err)
+		os.Exit(cannotConnectToMongoDB)
 	}
 
 	defer client.Disconnect(ctx) // nolint
@@ -253,11 +242,8 @@ func main() {
 
 	ci.HostInfo, err = getHostInfo(ctx, client)
 	if err != nil {
-		exitStatus = cannotGetHostInfo
-		message := fmt.Sprintf("Cannot get host info for %q: %s", opts.Host, err.Error())
-		log.Errorf(message)
-
-		return
+		log.Errorf("Cannot get host info for %q: %s", opts.Host, err)
+		os.Exit(cannotGetHostInfo) //nolint:gocritic
 	}
 
 	if ci.ReplicaMembers, err = util.GetReplicasetMembers(ctx, clientOptions); err != nil {
@@ -309,11 +295,8 @@ func main() {
 
 	out, err := formatResults(ci, opts.OutputFormat)
 	if err != nil {
-		log.Errorf("Cannot format the results: %s", err.Error())
-
-		exitStatus = cannotFormatResults
-
-		return
+		log.Errorf("Cannot format the results: %s", err)
+		os.Exit(cannotFormatResults)
 	}
 
 	fmt.Println(string(out))
@@ -1033,6 +1016,7 @@ func getClientOptions(opts *cliOptions) (*options.ClientOptions, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot read SSL certificate files")
 		}
+
 		clientOptions.TLSConfig = tlsConfig
 	}
 
@@ -1047,22 +1031,25 @@ func getTLSConfig(sslPEMKeyFile, sslCAFile string) (*tls.Config, error) {
 	roots := x509.NewCertPool()
 
 	if sslPEMKeyFile != "" {
-		crt, err := ioutil.ReadFile(expandHome(sslPEMKeyFile))
+		crt, err := ioutil.ReadFile(filepath.Clean(expandHome(sslPEMKeyFile)))
 		if err != nil {
 			return nil, err
 		}
+
 		cert, err := tls.X509KeyPair(crt, crt)
 		if err != nil {
 			log.Fatal(err)
 		}
+
 		tlsConfig.Certificates = []tls.Certificate{cert}
 	}
 
 	if sslCAFile != "" {
-		ca, err := ioutil.ReadFile(expandHome(sslCAFile))
+		ca, err := ioutil.ReadFile(filepath.Clean(expandHome(sslCAFile)))
 		if err != nil {
 			return nil, err
 		}
+
 		roots.AppendCertsFromPEM(ca)
 		tlsConfig.RootCAs = roots
 	}

@@ -6,7 +6,8 @@ import (
 
 type (
 	ReplicaSetConfigTags map[string]string
-	GetLastErrorModes    map[string]*ReplicaSetConfigTags
+
+	GetLastErrorModes map[string]*ReplicaSetConfigTags
 )
 
 // https://docs.mongodb.com/v3.2/reference/command/getLastError/#dbcmd.getLastError
