@@ -2,6 +2,7 @@ Changelog for Percona Toolkit
 
  * Fixed bug   PT-169 : pt-online-schema-change FKs error handling.
  * Fixed bug   PT-1892: pt-summary says sshd not running
+ * Fixed bug   PT-1881: pt-upgrade fails when query including format strings and SQL errors is given (Thanks Nayuta Yanagisawa)
 
  * Fixed bug   PT-1859: pt-pg-summary fails for Postgres12 (Thanks Sergey Kuzmichev)
  * Improvement PT-1853: Added --no-check-foreing-keys to pt-osc
