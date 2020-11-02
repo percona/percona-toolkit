@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/percona/percona-toolkit/src/go/pt-pg-summary/models"
 	"github.com/hashicorp/go-version"
+	"github.com/percona/percona-toolkit/src/go/pt-pg-summary/models"
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/process"
 	"github.com/sirupsen/logrus"

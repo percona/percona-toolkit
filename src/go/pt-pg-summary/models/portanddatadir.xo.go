@@ -14,7 +14,7 @@ func GetPortAndDatadir(db XODB) (*PortAndDatadir, error) {
 	var err error
 
 	// sql query
-	var sqlstr = `SELECT name, ` +
+	sqlstr := `SELECT name, ` +
 		`setting ` +
 		`FROM pg_settings ` +
 		`WHERE name IN ('port','data_directory')`

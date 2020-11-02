@@ -20,7 +20,7 @@ func GetConnectedClients(db XODB) ([]*ConnectedClients, error) {
 	var err error
 
 	// sql query
-	var sqlstr = `SELECT usename, ` +
+	sqlstr := `SELECT usename, ` +
 		`CASE WHEN client_hostname IS NULL THEN client_addr::text ELSE client_hostname END AS client, ` +
 		`state, count(*) ` +
 		`FROM pg_stat_activity ` +

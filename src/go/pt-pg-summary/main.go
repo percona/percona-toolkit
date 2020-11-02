@@ -31,6 +31,7 @@ type connOpts struct {
 	Password   string
 	DisableSSL bool
 }
+
 type cliOptions struct {
 	app                 *kingpin.Application
 	connOpts            connOpts
@@ -110,7 +111,6 @@ func main() {
 	if err := masterTmpl.ExecuteTemplate(os.Stdout, "report", info); err != nil {
 		log.Fatal(err)
 	}
-
 }
 
 func connect(dsn string) (*sql.DB, error) {
@@ -131,29 +131,29 @@ func funcsMap() template.FuncMap {
 			if len(s) < size {
 				return s
 			}
-			return s[:size]+"..."
+			return s[:size] + "..."
 		},
-        "convertnullstring": func(s sql.NullString) string {
-            if s.Valid {
-                return s.String
-            } else {
-                return ""
-            }
-        },
-        "convertnullint64": func(s sql.NullInt64) int64 {
-            if s.Valid {
-                return s.Int64
-            } else {
-                return 0
-            }
-        },
-        "convertnullfloat64": func(s sql.NullFloat64) float64 {
-            if s.Valid {
-                return s.Float64
-            } else {
-                return 0.0
-            }
-        },
+		"convertnullstring": func(s sql.NullString) string {
+			if s.Valid {
+				return s.String
+			} else {
+				return ""
+			}
+		},
+		"convertnullint64": func(s sql.NullInt64) int64 {
+			if s.Valid {
+				return s.Int64
+			} else {
+				return 0
+			}
+		},
+		"convertnullfloat64": func(s sql.NullFloat64) float64 {
+			if s.Valid {
+				return s.Float64
+			} else {
+				return 0.0
+			}
+		},
 	}
 }
 

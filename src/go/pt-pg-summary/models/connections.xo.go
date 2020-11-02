@@ -14,7 +14,7 @@ func GetConnections(db XODB) ([]*Connections, error) {
 	var err error
 
 	// sql query
-	var sqlstr = `SELECT state, count(*) ` +
+	sqlstr := `SELECT state, count(*) ` +
 		`FROM pg_stat_activity ` +
 		`GROUP BY 1`
 

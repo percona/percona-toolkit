@@ -70,7 +70,6 @@ type report struct {
 }
 
 func main() {
-
 	opts, err := getOptions()
 	if err != nil {
 		log.Errorf("error processing command line arguments: %s", err)
@@ -193,7 +192,6 @@ func main() {
 	}
 
 	fmt.Println(string(out))
-
 }
 
 func formatResults(rep report, outputFormat string) ([]byte, error) {
@@ -368,7 +366,6 @@ func getHeaders(opts *cliOptions) []string {
 }
 
 func getQueryTemplate() string {
-
 	t := `
 # Query {{.Rank}}: {{printf "% 0.2f" .QPS}} QPS, ID {{.ID}}
 # Ratio {{Format .Ratio 7.2}} (docs scanned/returned)
@@ -522,7 +519,6 @@ func sortQueries(queries []stats.QueryStats, orderby []string) []stats.QueryStat
 
 	OrderedBy(sortFuncs...).Sort(queries)
 	return queries
-
 }
 
 func isProfilerEnabled(ctx context.Context, clientOptions *options.ClientOptions) (bool, error) {

@@ -13,7 +13,7 @@ func GetAllDatabases(db XODB) ([]*AllDatabases, error) {
 	var err error
 
 	// sql query
-	var sqlstr = `SELECT datname ` +
+	sqlstr := `SELECT datname ` +
 		`FROM pg_database ` +
 		`WHERE datistemplate = false`
 

@@ -11,10 +11,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var (
-	// DocsBufferSize is the buffer size to store documents from the MongoDB profiler
-	DocsBufferSize = 100
-)
+// DocsBufferSize is the buffer size to store documents from the MongoDB profiler
+var DocsBufferSize = 100
 
 // Profiler interface
 type Profiler interface {

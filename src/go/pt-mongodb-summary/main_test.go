@@ -99,8 +99,8 @@ func TestClusterWideInfo(t *testing.T) {
 			}
 		})
 	}
-
 }
+
 func addToCounters(ss proto.ServerStatus, increment int64) proto.ServerStatus {
 	ss.Opcounters.Command += increment
 	ss.Opcounters.Delete += increment
