@@ -61,7 +61,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.13';
+our $VERSION = '3.2.1';
 
 use strict;
 use warnings FATAL => 'all';
@@ -852,7 +852,7 @@ sub parse {
    foreach my $key ( keys %$opts ) {
       PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
-      if (   !defined $final_props{$key}
+      if ( !defined $final_props{$key}  
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
@@ -1059,6 +1059,28 @@ sub get_dbh {
            . ($sql_mode ? " and $sql_mode" : '')
            . ": $EVAL_ERROR";
       }
+   }
+   my ($mysql_version) = eval { $dbh->selectrow_array('SELECT VERSION()') };
+   if ($EVAL_ERROR) {
+       die "Cannot get MySQL version: $EVAL_ERROR";
+   }
+
+   my (undef, $character_set_server) = eval { $dbh->selectrow_array("SHOW VARIABLES LIKE 'character_set_server'") };
+   if ($EVAL_ERROR) {
+       die "Cannot get MySQL var character_set_server: $EVAL_ERROR";
+   }
+
+   if ($mysql_version =~ m/^(\d+)\.(\d)\.(\d+).*/) {
+       if ($1 >= 8 && $character_set_server =~ m/^utf8/) {
+           $dbh->{mysql_enable_utf8} = 1;
+           my $msg = "MySQL version $mysql_version >= 8 and character_set_server = $character_set_server\n".
+                     "Setting: SET NAMES $character_set_server";
+           PTDEBUG && _d($msg);
+           eval { $dbh->do("SET NAMES 'utf8mb4'") };
+           if ($EVAL_ERROR) {
+               die "Cannot SET NAMES $character_set_server: $EVAL_ERROR";
+           }
+       }
    }
 
    PTDEBUG && _d('DBH info: ',
@@ -6137,7 +6159,7 @@ sub _print_failures {
    foreach my $failure ( @$failures ) {
       print "\n-- $failno.\n";
       if ( ($failure->[1] || '') eq ($failure->[2] || '') ) {
-         printf "\nOn both hosts:\n\n" . ($failure->[1] || '') . "\n";
+         print "\nOn both hosts:\n\n" . ($failure->[1] || '') . "\n";
       }
       else {
          printf "\n%s\n\nvs.\n\n%s\n",
@@ -7698,6 +7720,7 @@ sub parse_event {
       $pos_in_log -= 1 if $pos_in_log;
 
       $raw_packet =~ s/\n20\Z//;
+      $raw_packet = "20$raw_packet" if $raw_packet =~ /\A20-\d\d-\d\d/; # workaround for year 2020 problem
       $raw_packet = "20$raw_packet" unless $raw_packet =~ m/\A20/;
 
       $raw_packet =~ s/0x0000:.+?(450.) /0x0000:  $1 /;
@@ -8101,7 +8124,7 @@ sub parse_event {
    }
    else { 
       eval {
-         remove_mysql_header($packet);
+           remove_mysql_header($packet);
       };
       if ( $EVAL_ERROR ) {
          PTDEBUG && _d('remove_mysql_header() failed; failing session');
@@ -8958,9 +8981,9 @@ sub detect_compression {
       PTDEBUG && _d('Client is using compression');
       $session->{compress} = 1;
 
-      $packet->{data} = $packet->{mysql_hdr} . $packet->{data};
+      $packet->{data} = $packet->{mysql_hdr} . $packet->{data} if $packet->{mysql_hdr};
       return 0 unless $self->uncompress_packet($packet, $session);
-      remove_mysql_header($packet);
+      remove_mysql_header($packet) if $packet->{mysql_hdr};
    }
    else {
       PTDEBUG && _d('Client is NOT using compression');
@@ -11421,6 +11444,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-upgrade 3.0.13
+pt-upgrade 3.2.1
 
 =cut

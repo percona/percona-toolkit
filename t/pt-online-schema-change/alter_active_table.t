@@ -94,7 +94,6 @@ sub check_ids {
    my $n_updated  = $ids->{updated} ? ($ids->{updated}  =~ tr/,//) : 0;
    my $n_deleted  = $ids->{deleted} ? ($ids->{deleted}  =~ tr/,//) : 0;
    my $n_inserted = $ids->{inserted} ? ($ids->{inserted} =~ tr/,//) : 0;
-   warn "n_inser $n_inserted";
 
    # "1,1"=~tr/,// returns 1 but is 2 values
    $n_updated++ if $ids->{updated};
@@ -179,7 +178,7 @@ start_query_table(qw(pt_osc t id));
    sub { pt_online_schema_change::main(
       "$master_dsn,D=pt_osc,t=t",
       qw(--set-vars innodb_lock_wait_timeout=5),
-      qw(--print --execute --chunk-size 100 --alter ENGINE=InnoDB)) },
+      qw(--print --execute --chunk-size 100 --alter ENGINE=InnoDB --no-check-plan)) },
    stderr => 1,
 );
 

@@ -38,7 +38,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.13';
+our $VERSION = '3.2.1';
 
 use strict;
 use warnings FATAL => 'all';
@@ -2240,8 +2240,11 @@ sub design_print_formats {
 sub parse_diskstats_line {
    my ( $self, $line, $block_size ) = @_;
 
+   # linux kernel source => Documentation/iostats.txt
+   # 2.6+   => 14 fields
+   # 4.18+  => 18 fields
    my @dev_stats = split ' ', $line;
-   return unless @dev_stats == 14;
+   return unless @dev_stats == 14 or @dev_stats == 18;
 
    my $read_bytes    = $dev_stats[READ_SECTORS]    * $block_size;
    my $written_bytes = $dev_stats[WRITTEN_SECTORS] * $block_size;
@@ -5674,6 +5677,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-diskstats 3.0.13
+pt-diskstats 3.2.1
 
 =cut

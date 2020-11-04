@@ -822,7 +822,7 @@ collect() {
 
    local mysql_version="$(awk '/^version[^_]/{print substr($2,1,3)}' "$d/$p-variables")"
 
-   local mysql_error_log="$(awk '/^log_error/{print $2}' "$d/$p-variables")"
+   local mysql_error_log="$(awk '/^log_error /{print $2}' "$d/$p-variables")"
    if [ -z "$mysql_error_log" -a "$mysqld_pid" ]; then
       mysql_error_log="$(ls -l /proc/$mysqld_pid/fd | awk '/ 2 ->/{print $NF}')"
    fi
@@ -955,12 +955,12 @@ collect() {
          (echo $ts; df -k) >> "$d/$p-df" &
          (echo $ts; netstat -antp) >> "$d/$p-netstat"   &
          (echo $ts; netstat -s)    >> "$d/$p-netstat_s" &
-      fi
-      (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
+     fi
+      ($CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
          >> "$d/$p-processlist" &
       if [ "$have_lock_waits_table" ]; then
-         (echo $ts; lock_waits)   >>"$d/$p-lock-waits" &
-         (echo $ts; transactions) >>"$d/$p-transactions" &
+         (lock_waits)   >>"$d/$p-lock-waits" &
+         (transactions) >>"$d/$p-transactions" &
       fi
 
       if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes" ]; then
@@ -968,7 +968,7 @@ collect() {
       fi
 
       if [ "${mysql_version}" '>' "5.6" ]; then
-         (echo $ts; ps_prepared_statements) >> "$d/$p-prepared-statements" &
+         (ps_prepared_statements) >> "$d/$p-prepared-statements" &
       fi
 
       slave_status "$d/$p-slave-status" "${mysql_version}" 
@@ -1352,6 +1352,8 @@ sleep_ok() {
 purge_samples() {
    local dir="$1"
    local retention_time="$2"
+   local retention_count="$3"
+   local retention_size="$4"
 
    # Delete collect files which more than --retention-time days old.
    find "$dir" -type f -mtime +$retention_time -exec rm -f '{}' \;
@@ -1362,6 +1364,30 @@ purge_samples() {
       # in collect().  TODO: fix this
       find "$oprofile_dir" -depth -type d -name 'pt_collect_*' \
          -mtime +$retention_time -exec rm -rf '{}' \;
+   fi
+
+   targetCnt=$(($retention_count + 0))
+   if [ $targetCnt -gt 0 ]; then
+      targetCnt=$(($retention_count + 1))
+      files_to_delete=$(find $dir -type f -exec basename {} \; | cut -f1 -d- | sort -r | uniq | tail -n +${targetCnt})
+      for prefix in $files_to_delete; do
+          echo "deleting files ${dir}${prefix}* according to the --retention-count param"
+          rm -f ${dir}${prefix}* 2>/dev/null
+      done
+   fi
+
+   targetSize=$(($retention_size + 0))
+   if [ $targetSize -gt 0 ]; then
+      files_to_delete=$(find $dir -type f -exec basename {} \; | cut -f1 -d- | sort -r | uniq | tail -n +1)
+      for prefix in $files_to_delete; do
+          current_size=$(du -BM $dir | cut -f1 -d"M")
+          if [ $current_size -gt $targetSize ]; then
+             echo "deleting files ${dir}${prefix}* according to the --retention-size param"
+             rm -f ${dir}${prefix}* 2>/dev/null
+          else
+             break
+          fi
+      done
    fi
 }
 
@@ -1471,7 +1497,7 @@ stalk() {
 
             # Purge old collect files.
             if [ -d "$OPT_DEST" ]; then
-               purge_samples "$OPT_DEST" "$OPT_RETENTION_TIME"
+               purge_samples "$OPT_DEST" "$OPT_RETENTION_TIME" "$OPT_RETENTION_COUNT" "$OPT_RETENTION_SIZE"
             fi
          fi
 
@@ -1496,7 +1522,7 @@ stalk() {
 
    # One final purge of old collect files, but only if in collect mode.
    if [ "$OPT_COLLECT" -a -d "$OPT_DEST" ]; then
-      purge_samples "$OPT_DEST" "$OPT_RETENTION_TIME"
+      purge_samples "$OPT_DEST" "$OPT_RETENTION_TIME" "$OPT_RETENTION_COUNT" "$OPT_RETENTION_SIZE"
    fi
 
    # Before exiting, the last collector may still be running.
@@ -1967,7 +1993,7 @@ then compared to L<"--threshold"> as usual.  The C<$EXT_ARGV> variable
 contains the MySQL options mentioned in the L<"SYNOPSIS"> above.
 
 The file should not alter the tool's existing global variables.  Prefix any
-file-specific global variables with "PLUGIN_" or make them local.
+file-specific global variables with C<PLUGIN_> or make them local.
 
 =item --help
 
@@ -2119,6 +2145,20 @@ type: string
 The filename prefix for diagnostic samples.  By default, all files created
 by the same L<"--collect"> instance have a timestamp prefix based on the current
 local time, like C<2011_12_06_14_02_02>, which is December 6, 2011 at 14:02:02.
+
+=item --retention-count
+
+type: int; default: 0
+
+Keep the data for the last N runs. If N > 0, the program will keep the data for the last
+N runs and will delete the older data.
+
+=item --retention-size
+
+type: int; default: 0
+
+Keep up to --retention-size MB of data. It will keep at least 1 run even if the size is bigger
+than the specified in this parameter
 
 =item --retention-time
 
@@ -2379,7 +2419,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-stalk 3.0.13
+pt-stalk 3.2.1
 
 =cut
 

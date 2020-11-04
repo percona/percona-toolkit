@@ -27,30 +27,38 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a74730e052a45a3fab1d310fdef2ec17ae3d6af16228421e238320846f2aaec8"
+  digest = "1:a7f619ffc7b99687f9444bd0a07509fec8ae708a7175d234878129896c0918a8"
   name = "github.com/alecthomas/template"
   packages = [
     ".",
     "parse",
   ]
   pruneopts = ""
-  revision = "a0175ee3bccc567396460bf5acd36800cb10c49c"
+  revision = "fb15b899a75114aa79cc930e33c46b577cc664b1"
 
 [[projects]]
   branch = "master"
-  digest = "1:8483994d21404c8a1d489f6be756e25bfccd3b45d65821f25695577791a08e68"
+  digest = "1:86ea497979270399c5e544bbdc6f3a846078cd7c6d9be40fd0012ab54fee4052"
   name = "github.com/alecthomas/units"
   packages = ["."]
   pruneopts = ""
-  revision = "2efee857e7cfd4f3d0138cc3cbb1b4966962b93a"
+  revision = "c3de453c63f4bdb4dadffab9805ec00426c505f7"
 
 [[projects]]
-  digest = "1:03edf882162b807cdf1bc558c66226167fa2f8eb44359eac2eeb3794a91cb168"
+  digest = "1:0deddd908b6b4b768cfc272c16ee61e7088a60f7fe2f06c547bd3d8e1f8b8e77"
+  name = "github.com/davecgh/go-spew"
+  packages = ["spew"]
+  pruneopts = ""
+  revision = "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
+  version = "v1.1.1"
+
+[[projects]]
+  digest = "1:c3f4f5bc77b998746a8061a52a2b8fb172c1744801165227692d702483995d58"
   name = "github.com/go-ini/ini"
   packages = ["."]
   pruneopts = ""
-  revision = "c85607071cf08ca1adaf48319cd1aa322e81d8c1"
-  version = "v1.42.0"
+  revision = "d4cae42d398bc0095297fc3315669590d29166ea"
+  version = "v1.46.0"
 
 [[projects]]
   digest = "1:fd2ee29b7807f198e72dbd6371267b34d05aa83151c8c81b2ade14854e50f4ee"
@@ -83,12 +91,36 @@
   version = "v1.3.1"
 
 [[projects]]
+  digest = "1:a01080d20c45c031c13f3828c56e58f4f51d926a482ad10cc0316225097eb7ea"
+  name = "github.com/go-stack/stack"
+  packages = ["."]
+  pruneopts = ""
+  revision = "2fee6af1a9795aafbe0253a0cfbdf668e1fb8a9a"
+  version = "v1.8.0"
+
+[[projects]]
   digest = "1:530233672f656641b365f8efb38ed9fba80e420baff2ce87633813ab3755ed6d"
   name = "github.com/golang/mock"
   packages = ["gomock"]
   pruneopts = ""
-  revision = "51421b967af1f557f93a59e0057aaf15ca02e29c"
-  version = "v1.2.0"
+  revision = "9fa652df1129bef0e734c9cf9bf6dbae9ef3b9fa"
+  version = "1.3.1"
+
+[[projects]]
+  branch = "master"
+  digest = "1:c823f556d11763bb805a60a77226ae321843c9bd1454ee5b808ca169ac515762"
+  name = "github.com/golang/snappy"
+  packages = ["."]
+  pruneopts = ""
+  revision = "ff6b7dc882cf4cfba7ee0b9f7dcc1ac096c554aa"
+
+[[projects]]
+  digest = "1:ad92aa49f34cbc3546063c7eb2cabb55ee2278b72842eda80e2a20a8a06a8d73"
+  name = "github.com/google/uuid"
+  packages = ["."]
+  pruneopts = ""
+  revision = "0cd6bf5da1e1c83f8b45653022c74f71af0538a4"
+  version = "v1.1.1"
 
 [[projects]]
   digest = "1:16ecf9e89b8b1310d9566a53484c31c5241bb47c32162eba780b46c0dfb58fef"
@@ -100,11 +132,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:b759103c9b4135568253c17d2866064cde398e93764b611caabf5aa8e3059685"
+  digest = "1:4fbfcfe715329e2f09ea644657aa791b81e73a0c835a4f79b9a0dfff0513e2b8"
   name = "github.com/hashicorp/go-version"
   packages = ["."]
   pruneopts = ""
-  revision = "d40cf49b3a77bba84a7afdbd7f1dc295d114efb1"
+  revision = "192140e6f3e645d971b134d4e35b5191adb9dfd3"
 
 [[projects]]
   branch = "master"
@@ -115,6 +147,20 @@
   revision = "bf9dde6d0d2c004a008c27aaee91170c786f6db8"
 
 [[projects]]
+  digest = "1:f02c9b5d6682e16bb484f964445b22af73c0af1c66a7d3f75503adda88610d26"
+  name = "github.com/klauspost/compress"
+  packages = [
+    "fse",
+    "huff0",
+    "snappy",
+    "zstd",
+    "zstd/internal/xxhash",
+  ]
+  pruneopts = ""
+  revision = "a8f778f32d263b3a95d1e5a90534f5f680560abe"
+  version = "v1.10.10"
+
+[[projects]]
   digest = "1:0f51cee70b0d254dbc93c22666ea2abf211af81c1701a96d04e2284b408621db"
   name = "github.com/konsorten/go-windows-terminal-sequences"
   packages = ["."]
@@ -123,28 +169,24 @@
   version = "v1.0.2"
 
 [[projects]]
-  digest = "1:3108ec0946181c60040ff51b811908f89d03e521e2b4ade5ef5c65b3c0e911ae"
-  name = "github.com/kr/pretty"
-  packages = ["."]
+  digest = "1:f4216047c24ab66fb757045febd7dac4edc6f4ad9f6c0063d0755d654d04f25e"
+  name = "github.com/lib/pq"
+  packages = [
+    ".",
+    "oid",
+    "scram",
+  ]
   pruneopts = ""
-  revision = "73f6ac0b30a98e433b289500d779f50c1a6f0712"
-  version = "v0.1.0"
+  revision = "3427c32cb71afc948325f299f040e53c1dd78979"
+  version = "v1.2.0"
 
 [[projects]]
-  digest = "1:11b056b4421396ab14e384ab8ab8c2079b03f1e51aa5eb4d9b81f9e0d1aa8fbf"
-  name = "github.com/kr/text"
-  packages = ["."]
-  pruneopts = ""
-  revision = "e2ffdb16a802fe2bb95e2e35ff34f0e53aeef34f"
-  version = "v0.1.0"
-
-[[projects]]
-  digest = "1:0093a7c66d5b9e0cdaf4be5c20e0a9b889d1d839148eeed1d587e99b4cfd90ff"
+  digest = "1:d5d962b7a8d95b9e6226f6b831a7e50237acf1730dcace6e8cb87c6dd628ef54"
   name = "github.com/mattn/go-shellwords"
   packages = ["."]
   pruneopts = ""
-  revision = "a72fbe27a1b0ed0df2f02754945044ce1456608b"
-  version = "v1.0.5"
+  revision = "36a9b3c57cb5caa559ff63fb7e9b585f1c00df75"
+  version = "v1.0.6"
 
 [[projects]]
   digest = "1:a067513044dc491395a58f56f39cedddb5ad35789b832b570c283a64d712f81b"
@@ -156,88 +198,143 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:020f67c818cb9c3fdc77d92c5744fb2d5b90930280cc43311ba43c6459fd0b98"
+  digest = "1:78d0c21e99e070382e26f862c80a9354593880d51461a4aeacd490f52d6e5942"
   name = "github.com/pborman/getopt"
-  packages = [
-    ".",
-    "v2",
-  ]
+  packages = ["."]
   pruneopts = ""
-  revision = "fd6d657c3083960b8d604310c34a621ec24bdc6a"
+  revision = "ee0cd42419d3adee9239dbd1c375717fe482dac7"
 
 [[projects]]
   branch = "master"
-  digest = "1:7a840dbacabd648e5b511010dea5da9eed99030dd185b3c7c7195fdadb3051a8"
+  digest = "1:457024f04029bb321d759cc3b2c46b7e0e43572e3a663ce7d006aeb41efa2b17"
   name = "github.com/percona/go-mysql"
   packages = ["query"]
   pruneopts = ""
-  revision = "f5cfaf6a5e55b754b7b106f4488e1bc24cb8c2d6"
+  revision = "197f4ad8db8d1b04ff408042119176907c971f0a"
 
 [[projects]]
-  digest = "1:16b4510ba61ab0bb7a4e694ea6396a7b2879f5fabb21e93066e182691f790173"
-  name = "github.com/percona/pmgo"
-  packages = [
-    ".",
-    "pmgomock",
-  ]
-  pruneopts = ""
-  revision = "497d06e28f910fbe26d5d60f59d36284a6901c6f"
-  version = "0.5.2"
-
-[[projects]]
-  digest = "1:1d7e1867c49a6dd9856598ef7c3123604ea3daabf5b83f303ff457bcbc410b1d"
+  digest = "1:c45802472e0c06928cd997661f2af610accd85217023b1d5f6331bebce0671d3"
   name = "github.com/pkg/errors"
   packages = ["."]
   pruneopts = ""
-  revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
-  version = "v0.8.1"
+  revision = "614d223910a179a466c1767a985424175c39b465"
+  version = "v0.9.1"
 
 [[projects]]
-  digest = "1:7f569d906bdd20d906b606415b7d794f798f91a62fcfb6a4daa6d50690fb7a3f"
-  name = "github.com/satori/go.uuid"
-  packages = ["."]
+  digest = "1:256484dbbcd271f9ecebc6795b2df8cad4c458dd0f5fd82a8c2fa0c29f233411"
+  name = "github.com/pmezard/go-difflib"
+  packages = ["difflib"]
   pruneopts = ""
-  revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
-  version = "v1.2.0"
+  revision = "792786c7400a136282c1664665ae0a8db921c6c2"
+  version = "v1.0.0"
 
 [[projects]]
-  digest = "1:d77a85cf43b70ae61fa2543d402d782b40dca0f5f41413839b5f916782b0fab9"
+  digest = "1:9d1d58facb0409ecf634fec680d83b6f57f4e619458f7b7b5e4dda1665fd89ec"
+  name = "github.com/prometheus/common"
+  packages = ["log"]
+  pruneopts = ""
+  revision = "f39dfa2b000545b3a763b844012958c275a62266"
+  version = "v0.13.0"
+
+[[projects]]
+  digest = "1:9d35a914be9b807050704f377becb1f864ee46b000f590566a8b9fb871d6c571"
   name = "github.com/shirou/gopsutil"
   packages = [
     "cpu",
-    "host",
     "internal/common",
     "mem",
     "net",
     "process",
   ]
   pruneopts = ""
-  revision = "6c6abd6d1666d6b27f1c261e0f850441ba22aa3a"
-  version = "v2.19.02"
+  revision = "9aa2bee419e8b592ecf9f46018f3f1f6a5474c10"
+  version = "v2.20.8"
 
 [[projects]]
-  branch = "master"
-  digest = "1:99c6a6dab47067c9b898e8c8b13d130c6ab4ffbcc4b7cc6236c2cd0b1e344f5b"
-  name = "github.com/shirou/w32"
-  packages = ["."]
-  pruneopts = ""
-  revision = "bb4de0191aa41b5507caa14b0650cdbddcd9280b"
-
-[[projects]]
-  digest = "1:b73fe282e350b3ef2c71d8ff08e929e0b9670b1bb5b7fde1d3c1b4cd6e6dc8b1"
+  digest = "1:1a405cddcf3368445051fb70ab465ae99da56ad7be8d8ca7fc52159d1c2d873c"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
   pruneopts = ""
-  revision = "dae0fa8d5b0c810a8ab733fbd5510c7cae84eca4"
-  version = "v1.4.0"
+  revision = "839c75faf7f98a33d445d181f3018b5c3409a45e"
+  version = "v1.4.2"
+
+[[projects]]
+  digest = "1:83fd2513b9f6ae0997bf646db6b74e9e00131e31002116fda597175f25add42d"
+  name = "github.com/stretchr/testify"
+  packages = [
+    "assert",
+    "require",
+  ]
+  pruneopts = ""
+  revision = "f654a9112bbeac49ca2cd45bfbe11533c4666cf8"
+  version = "v1.6.1"
 
 [[projects]]
   branch = "master"
-  digest = "1:36ef1d8645934b1744cc7d8726e00d3dd9d8d84c18617bf7367a3a6d532f3370"
-  name = "golang.org/x/crypto"
-  packages = ["ssh/terminal"]
+  digest = "1:ad74f33a69bd6ab0bd7287003b7c1069b94cfb5213eb5597005fe2963d7dfca9"
+  name = "github.com/xdg/scram"
+  packages = ["."]
   pruneopts = ""
-  revision = "a5d413f7728c81fb97d96a2b722368945f651e78"
+  revision = "7eeb5667e42c09cb51bf7b7c28aea8c56767da90"
+
+[[projects]]
+  branch = "master"
+  digest = "1:62f6eb06f6f39d18fc961956116a50a0e52b89961ed8a83bbb950b4cfb09fe67"
+  name = "github.com/xdg/stringprep"
+  packages = ["."]
+  pruneopts = ""
+  revision = "73f8eece6fdcd902c185bf651de50f3828bed5ed"
+
+[[projects]]
+  digest = "1:6085253f6bc0d9e4761ce971e02849b626de51735b35f362a34dbe5dbc3a2168"
+  name = "go.mongodb.org/mongo-driver"
+  packages = [
+    "bson",
+    "bson/bsoncodec",
+    "bson/bsonoptions",
+    "bson/bsonrw",
+    "bson/bsontype",
+    "bson/primitive",
+    "event",
+    "internal",
+    "mongo",
+    "mongo/options",
+    "mongo/readconcern",
+    "mongo/readpref",
+    "mongo/writeconcern",
+    "tag",
+    "version",
+    "x/bsonx",
+    "x/bsonx/bsoncore",
+    "x/mongo/driver",
+    "x/mongo/driver/address",
+    "x/mongo/driver/auth",
+    "x/mongo/driver/auth/internal/gssapi",
+    "x/mongo/driver/connstring",
+    "x/mongo/driver/description",
+    "x/mongo/driver/dns",
+    "x/mongo/driver/mongocrypt",
+    "x/mongo/driver/mongocrypt/options",
+    "x/mongo/driver/operation",
+    "x/mongo/driver/session",
+    "x/mongo/driver/topology",
+    "x/mongo/driver/uuid",
+    "x/mongo/driver/wiremessage",
+  ]
+  pruneopts = ""
+  revision = "4ce2db174a8ec022f504b9bc0e768e284e44708f"
+  version = "v1.3.4"
+
+[[projects]]
+  branch = "master"
+  digest = "1:2f8d339c3b89d5abf9a78aafe1e9fbe548f3b1fb9be5c3117036940904d39527"
+  name = "golang.org/x/crypto"
+  packages = [
+    "pbkdf2",
+    "ssh/terminal",
+  ]
+  pruneopts = ""
+  revision = "71b5226ff73902d121cd9dbbdfdb67045a805845"
 
 [[projects]]
   branch = "master"
@@ -251,18 +348,51 @@
     "idna",
   ]
   pruneopts = ""
-  revision = "74de082e2cca95839e88aa0aeee5aadf6ce7710f"
+  revision = "112230192c580c3556b8cee6403af37a4fc5f28c"
 
 [[projects]]
   branch = "master"
-  digest = "1:1b0de777d8ddd63356d5a4d76799ea8f47e811aa9dda85ddc72b2a061c799cc9"
+  digest = "1:9f6efefb4e401a4f699a295d14518871368eb89403f2dd23ec11dfcd2c0836ba"
+  name = "golang.org/x/sync"
+  packages = ["semaphore"]
+  pruneopts = ""
+  revision = "112230192c580c3556b8cee6403af37a4fc5f28c"
+
+[[projects]]
+  branch = "master"
+  digest = "1:ffaa20332022643a821848aa2322787bbfbf06bceb4b4e84cde3b05d07fa51ac"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
+    "windows/registry",
+    "windows/svc/eventlog",
   ]
   pruneopts = ""
-  revision = "9eb1bfa1ce65ae8a6ff3114b0aaf9a41a6cf3560"
+  revision = "749cb33beabd9aa6d3178e3de05bcc914f70b2bf"
+
+[[projects]]
+  digest = "1:740b51a55815493a8d0f2b1e0d0ae48fe48953bf7eaf3fcc4198823bf67768c0"
+  name = "golang.org/x/text"
+  packages = [
+    "internal/gen",
+    "internal/triegen",
+    "internal/ucd",
+    "transform",
+    "unicode/cldr",
+    "unicode/norm",
+  ]
+  pruneopts = ""
+  revision = "342b2e1fbaa52c93f31447ad2c6abc048c63e475"
+  version = "v0.3.2"
+
+[[projects]]
+  digest = "1:15d017551627c8bb091bde628215b2861bed128855343fdd570c62d08871f6e1"
+  name = "gopkg.in/alecthomas/kingpin.v2"
+  packages = ["."]
+  pruneopts = ""
+  revision = "947dcec5ba9c011838740e680966fd7087a71d0d"
+  version = "v2.2.6"
 
 [[projects]]
   digest = "1:fccda34e4c58111b1908d8d69bf8d57c41c8e2542bc18ec8cd38c4fa21057f71"
@@ -299,26 +429,22 @@
 
 [[projects]]
   branch = "v2"
-  digest = "1:f54ba71a035aac92ced3e902d2bff3734a15d1891daff73ec0f90ef236750139"
+  digest = "1:e56755c5336ff37d20befca76df29097085c85ea1fe58af746e3df6b815decfa"
   name = "gopkg.in/mgo.v2"
   packages = [
-    ".",
     "bson",
-    "dbtest",
     "internal/json",
-    "internal/sasl",
-    "internal/scram",
   ]
   pruneopts = ""
-  revision = "9856a29383ce1c59f308dd1cf0363a79b5bef6b5"
+  revision = "a6b53ec6cb22a3699387a57a161566f9402ee85b"
 
 [[projects]]
-  branch = "v2"
-  digest = "1:61a650a53e5e865a91ae9581f02990a4b6e3afcb8d280f19b1e67a3c284944e6"
-  name = "gopkg.in/tomb.v2"
+  branch = "v3"
+  digest = "1:2e9c4d6def1d36dcd17730e00c06b49a2e97ea5e1e639bcd24fa60fa43e33ad6"
+  name = "gopkg.in/yaml.v3"
   packages = ["."]
   pruneopts = ""
-  revision = "d5d1b5820637886def9eef33e03a27a9f166942c"
+  revision = "eeeca48fe7764f320e4870d231902bf9c1be2c08"
 
 [[projects]]
   digest = "1:a249e341b9bf261a982ab262c69f08223e839302d0a21cfe6e00f2ef2e8695a2"
@@ -374,22 +500,25 @@
     "github.com/alecthomas/kingpin",
     "github.com/go-ini/ini",
     "github.com/golang/mock/gomock",
+    "github.com/google/uuid",
     "github.com/hashicorp/go-version",
     "github.com/howeyc/gopass",
-    "github.com/kr/pretty",
+    "github.com/lib/pq",
     "github.com/mattn/go-shellwords",
     "github.com/montanaflynn/stats",
     "github.com/pborman/getopt",
-    "github.com/pborman/getopt/v2",
     "github.com/percona/go-mysql/query",
-    "github.com/percona/pmgo",
-    "github.com/percona/pmgo/pmgomock",
     "github.com/pkg/errors",
-    "github.com/satori/go.uuid",
+    "github.com/prometheus/common/log",
     "github.com/shirou/gopsutil/process",
     "github.com/sirupsen/logrus",
+    "github.com/stretchr/testify/assert",
+    "github.com/stretchr/testify/require",
+    "go.mongodb.org/mongo-driver/bson",
+    "go.mongodb.org/mongo-driver/bson/primitive",
+    "go.mongodb.org/mongo-driver/mongo",
+    "go.mongodb.org/mongo-driver/mongo/options",
     "golang.org/x/crypto/ssh/terminal",
-    "gopkg.in/mgo.v2",
     "gopkg.in/mgo.v2/bson",
     "gopkg.in/mgo.v2/dbtest",
     "k8s.io/api/core/v1",

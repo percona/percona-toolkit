@@ -32,11 +32,9 @@ func TestProcessCliParams(t *testing.T) {
 			t.Errorf("Test #%d expected error, have nil", i)
 		}
 		if !reflect.DeepEqual(opts, test.WantOpts) {
-
 		}
 	}
 }
 
 func TestCollect(t *testing.T) {
-
 }

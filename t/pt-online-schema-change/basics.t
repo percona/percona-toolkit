@@ -177,12 +177,14 @@ sub test_alter_table {
    ) or $fail = 1;
 
    # Rows in the original and new table should be identical.
+   my $query = "SELECT $cols FROM $table ORDER BY `$pk_col`";
    my $new_rows = $master_dbh->selectall_arrayref("SELECT $cols FROM $table ORDER BY `$pk_col`");
+   my $should_diag;
    is_deeply(
       $new_rows,
       $orig_rows,
       "$name rows"
-   ) or $fail = 1;
+   ) or $fail=1;
 
    if ( grep { $_ eq '--preserve-triggers' } @$cmds ) {
       my $new_triggers = $master_dbh->selectall_arrayref($triggers_sql);
@@ -341,6 +343,8 @@ sub test_alter_table {
 
 my $db_flavor = VersionParser->new($master_dbh)->flavor();
 if ( $db_flavor =~ m/XtraDB Cluster/ ) {
+diag('====================================================================================================');
+diag($db_flavor);
    test_alter_table(
       name       => "Basic no fks --dry-run",
       table      => "pt_osc.t",

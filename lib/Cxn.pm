@@ -230,7 +230,7 @@ sub name {
 
 sub description {
    my ($self) = @_;
-   return sprintf("%s -> %s:%s", $self->name(), $self->{dsn}->{h}, $self->{dsn}->{P} || 'socket');
+   return sprintf("%s -> %s:%s", $self->name(), $self->{dsn}->{h} || 'localhost' , $self->{dsn}->{P} || 'socket');
 }
 
 # This returns the server_id. 

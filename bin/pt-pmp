@@ -447,7 +447,6 @@ _parse_command_line() {
          else
             spec=$(grep "^short form:-$opt\$" "$PT_TMPDIR"/po/* | cut -d ':' -f 1)
             if [ -z "$spec"  ]; then
-               option_error "Unknown option: $real_opt"
                continue
             fi
          fi
@@ -897,7 +896,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-pmp 3.0.13
+pt-pmp 3.2.1
 
 =cut
 

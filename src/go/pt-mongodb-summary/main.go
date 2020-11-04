@@ -2,11 +2,17 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io/ioutil"
 	"net"
 	"os"
+	"os/user"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -19,30 +25,42 @@ import (
 	"github.com/percona/percona-toolkit/src/go/mongolib/util"
 	"github.com/percona/percona-toolkit/src/go/pt-mongodb-summary/oplog"
 	"github.com/percona/percona-toolkit/src/go/pt-mongodb-summary/templates"
-	"github.com/percona/pmgo"
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/process"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
 	TOOLNAME = "pt-mongodb-summary"
 
 	DefaultAuthDB             = "admin"
-	DefaultHost               = "localhost:27017"
+	DefaultHost               = "mongodb://localhost:27017"
 	DefaultLogLevel           = "warn"
 	DefaultRunningOpsInterval = 1000 // milliseconds
 	DefaultRunningOpsSamples  = 5
 	DefaultOutputFormat       = "text"
 	typeMongos                = "mongos"
+
+	// Exit Codes.
+	cannotFormatResults              = 1
+	cannotParseCommandLineParameters = 2
+	cannotGetHostInfo                = 3
+	cannotGetClientOptions           = 4
+	cannotConnectToMongoDB           = 5
 )
 
+//nolint:gochecknoglobals
 var (
-	Build     string = "01-01-1980"
-	GoVersion string = "1.8"
-	Version   string = "3.0.1"
+	Build     string = "2020-04-23"
+	GoVersion string = "1.14.1"
+	Version   string = "3.2.0"
+	Commit    string
+
+	defaultConnectionTimeout = 3 * time.Second
+	directConnection         = true
 )
 
 type TimedStats struct {
@@ -61,6 +79,7 @@ type opCounters struct {
 	Command    TimedStats
 	SampleRate time.Duration
 }
+
 type hostInfo struct {
 	Hostname          string
 	HostOsType        string
@@ -89,8 +108,8 @@ type procInfo struct {
 }
 
 type security struct {
-	Users       int
-	Roles       int
+	Users       int64
+	Roles       int64
 	Auth        string
 	SSL         string
 	BindIP      string
@@ -105,9 +124,9 @@ type databases struct {
 		// Empty      bool             `bson:"empty"`
 		// Shards     map[string]int64 `bson:"shards"`
 	} `bson:"databases"`
-	TotalSize   int64 `bson:"totalSize"`
-	TotalSizeMb int64 `bson:"totalSizeMb"`
-	OK          bool  `bson:"ok"`
+	TotalSize   int64   `bson:"totalSize"`
+	TotalSizeMb int64   `bson:"totalSizeMb"`
+	OK          float64 `bson:"ok"`
 }
 
 type clusterwideInfo struct {
@@ -124,21 +143,21 @@ type clusterwideInfo struct {
 	Chunks                  []proto.ChunksByCollection
 }
 
-type options struct {
-	Help               bool
+type cliOptions struct {
 	Host               string
 	User               string
 	Password           string
 	AuthDB             string
 	LogLevel           string
+	OutputFormat       string
+	SSLCAFile          string
+	SSLPEMKeyFile      string
+	RunningOpsSamples  int
+	RunningOpsInterval int
+	Help               bool
 	Version            bool
 	NoVersionCheck     bool
 	NoRunningOps       bool
-	OutputFormat       string
-	RunningOpsSamples  int
-	RunningOpsInterval int
-	SSLCAFile          string
-	SSLPEMKeyFile      string
 }
 
 type collectedInfo struct {
@@ -153,18 +172,14 @@ type collectedInfo struct {
 }
 
 func main() {
-
 	opts, err := parseFlags()
 	if err != nil {
 		log.Errorf("cannot get parameters: %s", err.Error())
-		os.Exit(2)
-	}
-	if opts == nil && err == nil {
-		return
+
+		os.Exit(cannotParseCommandLineParameters)
 	}
 
-	if opts.Help {
-		getopt.Usage()
+	if opts == nil && err == nil {
 		return
 	}
 
@@ -179,6 +194,8 @@ func main() {
 		fmt.Println(TOOLNAME)
 		fmt.Printf("Version %s\n", Version)
 		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
+		fmt.Printf("Commit: %s\n", Commit)
+
 		return
 	}
 
@@ -187,64 +204,57 @@ func main() {
 		advice, err := versioncheck.CheckUpdates(TOOLNAME, Version)
 		if err != nil {
 			log.Infof("cannot check version updates: %s", err.Error())
-		} else {
-			if advice != "" {
-				log.Infof(advice)
-			}
+		} else if advice != "" {
+			log.Infof(advice)
 		}
 	}
 
-	di := &pmgo.DialInfo{
-		Username:      opts.User,
-		Password:      opts.Password,
-		Addrs:         []string{opts.Host},
-		FailFast:      true,
-		Source:        opts.AuthDB,
-		SSLCAFile:     opts.SSLCAFile,
-		SSLPEMKeyFile: opts.SSLPEMKeyFile,
-	}
-
-	log.Debugf("Connecting to the db using:\n%+v", di)
-	dialer := pmgo.NewDialer()
-
-	hostnames, err := util.GetHostnames(dialer, di)
-	log.Debugf("hostnames: %v", hostnames)
-
-	session, err := dialer.DialWithInfo(di)
+	ctx := context.Background()
+	clientOptions, err := getClientOptions(opts)
 	if err != nil {
-		message := fmt.Sprintf("Cannot connect to %q", di.Addrs[0])
-		if di.Username != "" || di.Password != "" {
-			message += fmt.Sprintf(" using user: %q", di.Username)
-			if strings.HasPrefix(di.Password, "=") {
-				message += " (probably you are using = with -p or -u instead of a blank space)"
-			}
-		}
-		message += fmt.Sprintf(". %s", err.Error())
-		log.Errorf(message)
-		os.Exit(1)
+		log.Error(err)
+
+		os.Exit(cannotGetClientOptions)
 	}
-	defer session.Close()
-	session.SetMode(mgo.Monotonic, true)
+
+	client, err := mongo.NewClient(clientOptions)
+	if err != nil {
+		log.Errorf("Cannot get a MongoDB client: %s", err)
+
+		os.Exit(cannotConnectToMongoDB)
+	}
+
+	if err := client.Connect(ctx); err != nil {
+		log.Errorf("Cannot connect to MongoDB: %s", err)
+		os.Exit(cannotConnectToMongoDB)
+	}
+
+	defer client.Disconnect(ctx) // nolint
+
+	hostnames, err := util.GetHostnames(ctx, client)
+	if err != nil && errors.Is(err, util.ShardingNotEnabledError) {
+		log.Errorf("Cannot get hostnames: %s", err)
+	}
+
+	log.Debugf("hostnames: %v", hostnames)
 
 	ci := &collectedInfo{}
 
-	ci.HostInfo, err = getHostinfo(session)
+	ci.HostInfo, err = getHostInfo(ctx, client)
 	if err != nil {
-		message := fmt.Sprintf("Cannot get host info for %q: %s", di.Addrs[0], err.Error())
-		log.Errorf(message)
-		os.Exit(2)
+		log.Errorf("Cannot get host info for %q: %s", opts.Host, err)
+		os.Exit(cannotGetHostInfo) //nolint:gocritic
 	}
 
-	if ci.ReplicaMembers, err = util.GetReplicasetMembers(dialer, di); err != nil {
+	if ci.ReplicaMembers, err = util.GetReplicasetMembers(ctx, clientOptions); err != nil {
 		log.Warnf("[Error] cannot get replicaset members: %v\n", err)
-		os.Exit(2)
 	}
+
 	log.Debugf("replicaMembers:\n%+v\n", ci.ReplicaMembers)
 
 	if opts.RunningOpsSamples > 0 && opts.RunningOpsInterval > 0 {
 		ci.RunningOps, err = getOpCountersStats(
-			session,
-			opts.RunningOpsSamples,
+			ctx, client, opts.RunningOpsSamples,
 			time.Duration(opts.RunningOpsInterval)*time.Millisecond,
 		)
 		if err != nil {
@@ -253,14 +263,14 @@ func main() {
 	}
 
 	if ci.HostInfo != nil {
-		if ci.SecuritySettings, err = getSecuritySettings(session, ci.HostInfo.Version); err != nil {
+		if ci.SecuritySettings, err = getSecuritySettings(ctx, client, ci.HostInfo.Version); err != nil {
 			log.Errorf("[Error] cannot get security settings: %v\n", err)
 		}
 	} else {
 		log.Warn("Cannot check security settings since host info is not available (permissions?)")
 	}
 
-	if ci.OplogInfo, err = oplog.GetOplogInfo(hostnames, di); err != nil {
+	if ci.OplogInfo, err = oplog.GetOplogInfo(ctx, hostnames, clientOptions); err != nil {
 		log.Infof("Cannot get Oplog info: %s\n", err)
 	} else {
 		if len(ci.OplogInfo) == 0 {
@@ -272,24 +282,24 @@ func main() {
 
 	// individual servers won't know about this info
 	if ci.HostInfo.NodeType == typeMongos {
-		if ci.ClusterWideInfo, err = getClusterwideInfo(session); err != nil {
+		if ci.ClusterWideInfo, err = getClusterwideInfo(ctx, client); err != nil {
 			log.Printf("[Error] cannot get cluster wide info: %v\n", err)
 		}
 	}
 
 	if ci.HostInfo.NodeType == typeMongos {
-		if ci.BalancerStats, err = GetBalancerStats(session); err != nil {
+		if ci.BalancerStats, err = GetBalancerStats(ctx, client); err != nil {
 			log.Printf("[Error] cannot get balancer stats: %v\n", err)
 		}
 	}
 
 	out, err := formatResults(ci, opts.OutputFormat)
 	if err != nil {
-		log.Errorf("Cannot format the results: %s", err.Error())
-		os.Exit(1)
+		log.Errorf("Cannot format the results: %s", err)
+		os.Exit(cannotFormatResults)
 	}
-	fmt.Println(string(out))
 
+	fmt.Println(string(out))
 }
 
 func formatResults(ci *collectedInfo, format string) ([]byte, error) {
@@ -299,55 +309,72 @@ func formatResults(ci *collectedInfo, format string) ([]byte, error) {
 	case "json":
 		b, err := json.MarshalIndent(ci, "", "    ")
 		if err != nil {
-			return nil, fmt.Errorf("[Error] Cannot convert results to json: %s", err.Error())
+			return nil, errors.Wrap(err, "Cannot convert results to json")
 		}
+
 		buf = bytes.NewBuffer(b)
 	default:
 		buf = new(bytes.Buffer)
 
 		t := template.Must(template.New("replicas").Parse(templates.Replicas))
-		t.Execute(buf, ci.ReplicaMembers)
+		if err := t.Execute(buf, ci.ReplicaMembers); err != nil {
+			return nil, errors.Wrap(err, "cannot parse replicas section of the output template")
+		}
 
 		t = template.Must(template.New("hosttemplateData").Parse(templates.HostInfo))
-		t.Execute(buf, ci.HostInfo)
+		if err := t.Execute(buf, ci.HostInfo); err != nil {
+			return nil, errors.Wrap(err, "cannot parse hosttemplateData section of the output template")
+		}
 
 		t = template.Must(template.New("runningOps").Parse(templates.RunningOps))
-		t.Execute(buf, ci.RunningOps)
+		if err := t.Execute(buf, ci.RunningOps); err != nil {
+			return nil, errors.Wrap(err, "cannot parse runningOps section of the output template")
+		}
 
 		t = template.Must(template.New("ssl").Parse(templates.Security))
-		t.Execute(buf, ci.SecuritySettings)
+		if err := t.Execute(buf, ci.SecuritySettings); err != nil {
+			return nil, errors.Wrap(err, "cannot parse ssl section of the output template")
+		}
 
 		if ci.OplogInfo != nil && len(ci.OplogInfo) > 0 {
 			t = template.Must(template.New("oplogInfo").Parse(templates.Oplog))
-			t.Execute(buf, ci.OplogInfo[0])
+			if err := t.Execute(buf, ci.OplogInfo[0]); err != nil {
+				return nil, errors.Wrap(err, "cannot parse oplogInfo section of the output template")
+			}
 		}
 
 		t = template.Must(template.New("clusterwide").Parse(templates.Clusterwide))
-		t.Execute(buf, ci.ClusterWideInfo)
+		if err := t.Execute(buf, ci.ClusterWideInfo); err != nil {
+			return nil, errors.Wrap(err, "cannot parse clusterwide section of the output template")
+		}
 
 		t = template.Must(template.New("balancer").Parse(templates.BalancerStats))
-		t.Execute(buf, ci.BalancerStats)
+		if err := t.Execute(buf, ci.BalancerStats); err != nil {
+			return nil, errors.Wrap(err, "cannot parse balancer section of the output template")
+		}
 	}
 
 	return buf.Bytes(), nil
 }
 
-func getHostinfo(session pmgo.SessionManager) (*hostInfo, error) {
-
+func getHostInfo(ctx context.Context, client *mongo.Client) (*hostInfo, error) {
 	hi := proto.HostInfo{}
-	if err := session.Run(bson.M{"hostInfo": 1}, &hi); err != nil {
-		log.Debugf("run('hostInfo') error: %s", err.Error())
+	if err := client.Database("admin").RunCommand(ctx, primitive.M{"hostInfo": 1}).Decode(&hi); err != nil {
+		log.Debugf("run('hostInfo') error: %s", err)
+
 		return nil, errors.Wrap(err, "GetHostInfo.hostInfo")
 	}
 
 	cmdOpts := proto.CommandLineOptions{}
-	err := session.DB("admin").Run(bson.D{{"getCmdLineOpts", 1}, {"recordStats", 1}}, &cmdOpts)
+	query := primitive.D{{Key: "getCmdLineOpts", Value: 1}, {Key: "recordStats", Value: 1}}
+	err := client.Database("admin").RunCommand(ctx, query).Decode(&cmdOpts)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot get command line options")
 	}
 
 	ss := proto.ServerStatus{}
-	if err := session.DB("admin").Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, &ss); err != nil {
+	query = primitive.D{{Key: "serverStatus", Value: 1}, {Key: "recordStats", Value: 1}}
+	if err := client.Database("admin").RunCommand(ctx, query).Decode(&ss); err != nil {
 		return nil, errors.Wrap(err, "GetHostInfo.serverStatus")
 	}
 
@@ -356,7 +383,7 @@ func getHostinfo(session pmgo.SessionManager) (*hostInfo, error) {
 		pi.Error = err
 	}
 
-	nodeType, _ := getNodeType(session)
+	nodeType, _ := getNodeType(ctx, client)
 	procCount, _ := countMongodProcesses()
 
 	i := &hostInfo{
@@ -390,12 +417,15 @@ func countMongodProcesses() (int, error) {
 	if err != nil {
 		return 0, err
 	}
+
 	count := 0
+
 	for _, pid := range pids {
 		p, err := process.NewProcess(pid)
 		if err != nil {
 			continue
 		}
+
 		if name, _ := p.Name(); name == "mongod" || name == typeMongos {
 			count++
 		}
@@ -403,10 +433,10 @@ func countMongodProcesses() (int, error) {
 	return count, nil
 }
 
-func getClusterwideInfo(session pmgo.SessionManager) (*clusterwideInfo, error) {
+func getClusterwideInfo(ctx context.Context, client *mongo.Client) (*clusterwideInfo, error) {
 	var databases databases
 
-	err := session.Run(bson.M{"listDatabases": 1}, &databases)
+	err := client.Database("admin").RunCommand(ctx, primitive.M{"listDatabases": 1}).Decode(&databases)
 	if err != nil {
 		return nil, errors.Wrap(err, "getClusterwideInfo.listDatabases ")
 	}
@@ -416,36 +446,44 @@ func getClusterwideInfo(session pmgo.SessionManager) (*clusterwideInfo, error) {
 	}
 
 	for _, db := range databases.Databases {
-		collections, err := session.DB(db.Name).CollectionNames()
+		cursor, err := client.Database(db.Name).ListCollections(ctx, primitive.M{})
 		if err != nil {
 			continue
 		}
 
-		cwi.TotalCollectionsCount += len(collections)
-		for _, collName := range collections {
-			var collStats proto.CollStats
-			err := session.DB(db.Name).Run(bson.M{"collStats": collName}, &collStats)
-			if err != nil {
-				continue
+		for cursor.Next(ctx) {
+			c := proto.CollectionEntry{}
+			if err := cursor.Decode(&c); err != nil {
+				return nil, errors.Wrap(err, "cannot decode ListCollections doc")
 			}
+
+			var collStats proto.CollStats
+			err := client.Database(db.Name).RunCommand(ctx, primitive.M{"collStats": c.Name}).Decode(&collStats)
+			if err != nil {
+				return nil, errors.Wrapf(err, "cannot get info for collection %s.%s", db.Name, c.Name)
+			}
+			cwi.TotalCollectionsCount++
 
 			if collStats.Sharded {
 				cwi.ShardedDataSize += collStats.Size
 				cwi.ShardedColsCount++
+
 				continue
 			}
 
 			cwi.UnshardedDataSize += collStats.Size
 			cwi.UnshardedColsCount++
 		}
-
 	}
 
 	cwi.UnshardedColsCount = cwi.TotalCollectionsCount - cwi.ShardedColsCount
 	cwi.ShardedDataSizeScaled, cwi.ShardedDataSizeScale = sizeAndUnit(cwi.ShardedDataSize)
 	cwi.UnshardedDataSizeScaled, cwi.UnshardedDataSizeScale = sizeAndUnit(cwi.UnshardedDataSize)
 
-	cwi.Chunks, _ = getChunksCount(session)
+	cwi.Chunks, err = getChunksCount(ctx, client)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot get chunks information")
+	}
 
 	return cwi, nil
 }
@@ -454,15 +492,18 @@ func sizeAndUnit(size int64) (float64, string) {
 	unit := []string{"bytes", "KB", "MB", "GB", "TB"}
 	idx := 0
 	newSize := float64(size)
+
 	for newSize > 1024 {
 		newSize /= 1024
 		idx++
 	}
+
 	newSize = float64(int64(newSize*100)) / 100
+
 	return newSize, unit[idx]
 }
 
-func getSecuritySettings(session pmgo.SessionManager, ver string) (*security, error) {
+func getSecuritySettings(ctx context.Context, client *mongo.Client, ver string) (*security, error) {
 	s := security{
 		Auth: "disabled",
 		SSL:  "disabled",
@@ -476,7 +517,10 @@ func getSecuritySettings(session pmgo.SessionManager, ver string) (*security, er
 	}
 
 	cmdOpts := proto.CommandLineOptions{}
-	err = session.DB("admin").Run(bson.D{{"getCmdLineOpts", 1}, {"recordStats", 1}}, &cmdOpts)
+	err = client.Database("admin").RunCommand(ctx, primitive.D{
+		{Key: "getCmdLineOpts", Value: 1},
+		{Key: "recordStats", Value: 1},
+	}).Decode(&cmdOpts)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot get command line options")
 	}
@@ -493,7 +537,7 @@ func getSecuritySettings(session pmgo.SessionManager, ver string) (*security, er
 	s.BindIP = cmdOpts.Parsed.Net.BindIP
 	s.Port = cmdOpts.Parsed.Net.Port
 
-	if cmdOpts.Parsed.Net.BindIP == "" {
+	if cmdOpts.Parsed.Net.BindIP == "" { //nolint:nestif
 		if prior26 {
 			s.WarningMsgs = append(s.WarningMsgs, "WARNING: You might be insecure. There is no IP binding")
 		}
@@ -525,17 +569,8 @@ func getSecuritySettings(session pmgo.SessionManager, ver string) (*security, er
 		}
 	}
 
-	// On some servers, like a mongos with config servers, this fails if session mode is Monotonic
-	// On some other servers like a secondary in a replica set, this fails if the session mode is Strong.
-	// Lets try both
-	newSession := session.Clone()
-	defer newSession.Close()
-
-	newSession.SetMode(mgo.Strong, true)
-
-	if s.Users, s.Roles, err = getUserRolesCount(newSession); err != nil {
-		newSession.SetMode(mgo.Monotonic, true)
-		if s.Users, s.Roles, err = getUserRolesCount(newSession); err != nil {
+	if s.Users, s.Roles, err = getUserRolesCount(ctx, client); err != nil {
+		if s.Users, s.Roles, err = getUserRolesCount(ctx, client); err != nil {
 			return nil, errors.Wrap(err, "cannot get security settings.")
 		}
 	}
@@ -543,23 +578,22 @@ func getSecuritySettings(session pmgo.SessionManager, ver string) (*security, er
 	return &s, nil
 }
 
-func getUserRolesCount(session pmgo.SessionManager) (int, int, error) {
-	users, err := session.DB("admin").C("system.users").Count()
+func getUserRolesCount(ctx context.Context, client *mongo.Client) (int64, int64, error) {
+	users, err := client.Database("admin").Collection("system.users").CountDocuments(ctx, primitive.M{})
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "cannot get users count")
 	}
 
-	roles, err := session.DB("admin").C("system.roles").Count()
+	roles, err := client.Database("admin").Collection("system.roles").CountDocuments(ctx, primitive.M{})
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "cannot get roles count")
 	}
 	return users, roles, nil
 }
 
-func getNodeType(session pmgo.SessionManager) (string, error) {
+func getNodeType(ctx context.Context, client *mongo.Client) (string, error) {
 	md := proto.MasterDoc{}
-	err := session.Run("isMaster", &md)
-	if err != nil {
+	if err := client.Database("admin").RunCommand(ctx, primitive.M{"isMaster": 1}).Decode(&md); err != nil {
 		return "", err
 	}
 
@@ -573,7 +607,8 @@ func getNodeType(session pmgo.SessionManager) (string, error) {
 	return "mongod", nil
 }
 
-func getOpCountersStats(session pmgo.SessionManager, count int, sleep time.Duration) (*opCounters, error) {
+func getOpCountersStats(ctx context.Context, client *mongo.Client, count int,
+	sleep time.Duration) (*opCounters, error) {
 	oc := &opCounters{}
 	prevOpCount := &opCounters{}
 	ss := proto.ServerStatus{}
@@ -585,7 +620,11 @@ func getOpCountersStats(session pmgo.SessionManager, count int, sleep time.Durat
 	// count + 1 because we need 1st reading to stablish a base to measure variation
 	for i := 0; i < count+1; i++ {
 		<-ticker.C
-		err := session.DB("admin").Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, &ss)
+
+		err := client.Database("admin").RunCommand(ctx, primitive.D{
+			{Key: "serverStatus", Value: 1},
+			{Key: "recordStats", Value: 1},
+		}).Decode(&ss)
 		if err != nil {
 			return nil, err
 		}
@@ -597,6 +636,7 @@ func getOpCountersStats(session pmgo.SessionManager, count int, sleep time.Durat
 			prevOpCount.Insert.Total = ss.Opcounters.Insert
 			prevOpCount.Query.Total = ss.Opcounters.Query
 			prevOpCount.Update.Total = ss.Opcounters.Update
+
 			continue
 		}
 
@@ -630,57 +670,63 @@ func getOpCountersStats(session pmgo.SessionManager, count int, sleep time.Durat
 		}
 
 		// Insert --------------------------------------
-		if delta.Opcounters.Insert > oc.Insert.Max {
+		switch {
+		case delta.Opcounters.Insert > oc.Insert.Max:
 			oc.Insert.Max = delta.Opcounters.Insert
-		}
-		if delta.Opcounters.Insert < oc.Insert.Min {
+		case delta.Opcounters.Insert < oc.Insert.Min:
 			oc.Insert.Min = delta.Opcounters.Insert
 		}
+
 		oc.Insert.Total += delta.Opcounters.Insert
 
 		// Query ---------------------------------------
-		if delta.Opcounters.Query > oc.Query.Max {
+		switch {
+		case delta.Opcounters.Query > oc.Query.Max:
 			oc.Query.Max = delta.Opcounters.Query
-		}
-		if delta.Opcounters.Query < oc.Query.Min {
+		case delta.Opcounters.Query < oc.Query.Min:
 			oc.Query.Min = delta.Opcounters.Query
 		}
+
 		oc.Query.Total += delta.Opcounters.Query
 
 		// Command -------------------------------------
-		if delta.Opcounters.Command > oc.Command.Max {
+		switch {
+		case delta.Opcounters.Command > oc.Command.Max:
 			oc.Command.Max = delta.Opcounters.Command
-		}
-		if delta.Opcounters.Command < oc.Command.Min {
+		case delta.Opcounters.Command < oc.Command.Min:
 			oc.Command.Min = delta.Opcounters.Command
 		}
+
 		oc.Command.Total += delta.Opcounters.Command
 
 		// Update --------------------------------------
-		if delta.Opcounters.Update > oc.Update.Max {
+		switch {
+		case delta.Opcounters.Update > oc.Update.Max:
 			oc.Update.Max = delta.Opcounters.Update
-		}
-		if delta.Opcounters.Update < oc.Update.Min {
+		case delta.Opcounters.Update < oc.Update.Min:
 			oc.Update.Min = delta.Opcounters.Update
 		}
+
 		oc.Update.Total += delta.Opcounters.Update
 
 		// Delete --------------------------------------
-		if delta.Opcounters.Delete > oc.Delete.Max {
+		switch {
+		case delta.Opcounters.Delete > oc.Delete.Max:
 			oc.Delete.Max = delta.Opcounters.Delete
-		}
-		if delta.Opcounters.Delete < oc.Delete.Min {
+		case delta.Opcounters.Delete < oc.Delete.Min:
 			oc.Delete.Min = delta.Opcounters.Delete
 		}
+
 		oc.Delete.Total += delta.Opcounters.Delete
 
 		// GetMore -------------------------------------
-		if delta.Opcounters.GetMore > oc.GetMore.Max {
+		switch {
+		case delta.Opcounters.GetMore > oc.GetMore.Max:
 			oc.GetMore.Max = delta.Opcounters.GetMore
-		}
-		if delta.Opcounters.GetMore < oc.GetMore.Min {
+		case delta.Opcounters.GetMore < oc.GetMore.Min:
 			oc.GetMore.Min = delta.Opcounters.GetMore
 		}
+
 		oc.GetMore.Total += delta.Opcounters.GetMore
 
 		prevOpCount.Insert.Total = ss.Opcounters.Insert
@@ -689,8 +735,8 @@ func getOpCountersStats(session pmgo.SessionManager, count int, sleep time.Durat
 		prevOpCount.Update.Total = ss.Opcounters.Update
 		prevOpCount.Delete.Total = ss.Opcounters.Delete
 		prevOpCount.GetMore.Total = ss.Opcounters.GetMore
-
 	}
+
 	ticker.Stop()
 
 	oc.Insert.Avg = oc.Insert.Total
@@ -706,11 +752,12 @@ func getOpCountersStats(session pmgo.SessionManager, count int, sleep time.Durat
 }
 
 func getProcInfo(pid int32, templateData *procInfo) error {
-	//proc, err := process.NewProcess(templateData.ServerStatus.Pid)
+	// proc, err := process.NewProcess(templateData.ServerStatus.Pid)
 	proc, err := process.NewProcess(pid)
 	if err != nil {
-		return fmt.Errorf("cannot get process %d", pid)
+		return errors.New(fmt.Sprintf("cannot get process %d", pid))
 	}
+
 	ct, err := proc.CreateTime()
 	if err != nil {
 		return err
@@ -729,38 +776,8 @@ func getProcInfo(pid int32, templateData *procInfo) error {
 	return nil
 }
 
-func getDbsAndCollectionsCount(hostnames []string) (int, int, error) {
-	dbnames := make(map[string]bool)
-	colnames := make(map[string]bool)
-
-	for _, hostname := range hostnames {
-		session, err := mgo.Dial(hostname)
-		if err != nil {
-			continue
-		}
-		dbs, err := session.DatabaseNames()
-		if err != nil {
-			continue
-		}
-
-		for _, dbname := range dbs {
-			dbnames[dbname] = true
-			cols, err := session.DB(dbname).CollectionNames()
-			if err != nil {
-				continue
-			}
-			for _, colname := range cols {
-				colnames[dbname+"."+colname] = true
-			}
-		}
-	}
-
-	return len(dbnames), len(colnames), nil
-}
-
-func GetBalancerStats(session pmgo.SessionManager) (*proto.BalancerStats, error) {
-
-	scs, err := GetShardingChangelogStatus(session)
+func GetBalancerStats(ctx context.Context, client *mongo.Client) (*proto.BalancerStats, error) {
+	scs, err := GetShardingChangelogStatus(ctx, client)
 	if err != nil {
 		return nil, err
 	}
@@ -771,6 +788,7 @@ func GetBalancerStats(session pmgo.SessionManager) (*proto.BalancerStats, error)
 		event := item.Id.Event
 		note := item.Id.Note
 		count := item.Count
+
 		switch event {
 		case "moveChunk.to", "moveChunk.from", "moveChunk.commit":
 			if note == "success" || note == "" {
@@ -788,15 +806,25 @@ func GetBalancerStats(session pmgo.SessionManager) (*proto.BalancerStats, error)
 	return s, nil
 }
 
-func GetShardingChangelogStatus(session pmgo.SessionManager) (*proto.ShardingChangelogStats, error) {
-	var qresults []proto.ShardingChangelogSummary
-	coll := session.DB("config").C("changelog")
-	match := bson.M{"time": bson.M{"$gt": time.Now().Add(-240 * time.Hour)}}
-	group := bson.M{"_id": bson.M{"event": "$what", "note": "$details.note"}, "count": bson.M{"$sum": 1}}
+func GetShardingChangelogStatus(ctx context.Context, client *mongo.Client) (*proto.ShardingChangelogStats, error) {
+	qresults := []proto.ShardingChangelogSummary{}
+	coll := client.Database("config").Collection("changelog")
+	match := primitive.M{"time": primitive.M{"$gt": time.Now().Add(-240 * time.Hour)}}
+	group := primitive.M{"_id": primitive.M{"event": "$what", "note": "$details.note"}, "count": primitive.M{"$sum": 1}}
 
-	err := coll.Pipe([]bson.M{{"$match": match}, {"$group": group}}).All(&qresults)
+	cursor, err := coll.Aggregate(ctx, []primitive.M{{"$match": match}, {"$group": group}})
 	if err != nil {
 		return nil, errors.Wrap(err, "GetShardingChangelogStatus.changelog.find")
+	}
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx) {
+		res := proto.ShardingChangelogSummary{}
+		if err := cursor.Decode(&res); err != nil {
+			return nil, errors.Wrap(err, "cannot decode GetShardingChangelogStatus")
+		}
+
+		qresults = append(qresults, res)
 	}
 
 	return &proto.ShardingChangelogStats{
@@ -816,6 +844,7 @@ func isPrivateNetwork(ip string) (bool, error) {
 		if err != nil {
 			return false, err
 		}
+
 		addr := net.ParseIP(ip)
 		if cidrnet.Contains(addr) {
 			return true, nil
@@ -823,7 +852,6 @@ func isPrivateNetwork(ip string) (bool, error) {
 	}
 
 	return false, nil
-
 }
 
 func externalIP() (string, error) {
@@ -831,17 +859,21 @@ func externalIP() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	for _, iface := range ifaces {
 		if iface.Flags&net.FlagUp == 0 {
 			continue // interface down
 		}
+
 		if iface.Flags&net.FlagLoopback != 0 {
 			continue // loopback interface
 		}
+
 		addrs, err := iface.Addrs()
 		if err != nil {
 			return "", err
 		}
+
 		for _, addr := range addrs {
 			var ip net.IP
 			switch v := addr.(type) {
@@ -850,9 +882,11 @@ func externalIP() (string, error) {
 			case *net.IPAddr:
 				ip = v.IP
 			}
+
 			if ip == nil || ip.IsLoopback() {
 				continue
 			}
+
 			ip = ip.To4()
 			if ip == nil {
 				continue // not an ipv4 address
@@ -860,11 +894,12 @@ func externalIP() (string, error) {
 			return ip.String(), nil
 		}
 	}
+
 	return "", errors.New("are you connected to the network?")
 }
 
-func parseFlags() (*options, error) {
-	opts := &options{
+func parseFlags() (*cliOptions, error) {
+	opts := &cliOptions{
 		Host:               DefaultHost,
 		LogLevel:           DefaultLogLevel,
 		RunningOpsSamples:  DefaultRunningOpsSamples,
@@ -900,24 +935,34 @@ func parseFlags() (*options, error) {
 	gop.StringVarLong(&opts.SSLPEMKeyFile, "sslPEMKeyFile", 0, "SSL client PEM file used for authentication")
 
 	gop.SetParameters("host[:port]")
-
 	gop.Parse(os.Args)
+
 	if gop.NArgs() > 0 {
 		opts.Host = gop.Arg(0)
 		gop.Parse(gop.Args())
 	}
+
 	if gop.IsSet("password") && opts.Password == "" {
 		print("Password: ")
+
 		pass, err := gopass.GetPasswd()
 		if err != nil {
 			return opts, err
 		}
+
 		opts.Password = string(pass)
 	}
+
+	if !strings.HasPrefix(opts.Host, "mongodb://") {
+		opts.Host = "mongodb://" + opts.Host
+	}
+
 	if opts.Help {
 		gop.PrintUsage(os.Stdout)
+
 		return nil, nil
 	}
+
 	if opts.OutputFormat != "json" && opts.OutputFormat != "text" {
 		log.Infof("Invalid output format '%s'. Using text format", opts.OutputFormat)
 	}
@@ -925,16 +970,104 @@ func parseFlags() (*options, error) {
 	return opts, nil
 }
 
-func getChunksCount(session pmgo.SessionManager) ([]proto.ChunksByCollection, error) {
+func getChunksCount(ctx context.Context, client *mongo.Client) ([]proto.ChunksByCollection, error) {
 	var result []proto.ChunksByCollection
 
-	c := session.DB("config").C("chunks")
-	query := bson.M{"$group": bson.M{"_id": "$ns", "count": bson.M{"$sum": 1}}}
+	c := client.Database("config").Collection("chunks")
+	query := primitive.M{"$group": primitive.M{"_id": "$ns", "count": primitive.M{"$sum": 1}}}
 
 	// db.getSiblingDB('config').chunks.aggregate({$group:{_id:"$ns",count:{$sum:1}}})
-	err := c.Pipe([]bson.M{query}).All(&result)
+	cursor, err := c.Aggregate(ctx, []primitive.M{query})
 	if err != nil {
 		return nil, err
 	}
+
+	for cursor.Next(ctx) {
+		res := proto.ChunksByCollection{}
+		if err := cursor.Decode(&res); err != nil {
+			return nil, errors.Wrap(err, "cannot decode chunks aggregation")
+		}
+
+		result = append(result, res)
+	}
+
 	return result, nil
+}
+
+func getClientOptions(opts *cliOptions) (*options.ClientOptions, error) {
+	clientOptions := options.Client().ApplyURI(opts.Host)
+
+	clientOptions.ServerSelectionTimeout = &defaultConnectionTimeout
+	clientOptions.Direct = &directConnection
+	credential := options.Credential{}
+	if opts.User != "" {
+		credential.Username = opts.User
+		clientOptions.SetAuth(credential)
+	}
+
+	if opts.Password != "" {
+		credential.Password = opts.Password
+		credential.PasswordSet = true
+		clientOptions.SetAuth(credential)
+	}
+
+	if opts.SSLPEMKeyFile != "" || opts.SSLCAFile != "" {
+		tlsConfig, err := getTLSConfig(opts.SSLPEMKeyFile, opts.SSLCAFile)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot read SSL certificate files")
+		}
+
+		clientOptions.TLSConfig = tlsConfig
+	}
+
+	return clientOptions, nil
+}
+
+func getTLSConfig(sslPEMKeyFile, sslCAFile string) (*tls.Config, error) {
+	tlsConfig := &tls.Config{
+		MinVersion:         tls.VersionTLS10,
+		InsecureSkipVerify: true,
+	}
+
+	roots := x509.NewCertPool()
+
+	if sslPEMKeyFile != "" {
+		crt, err := ioutil.ReadFile(filepath.Clean(expandHome(sslPEMKeyFile)))
+		if err != nil {
+			return nil, err
+		}
+
+		cert, err := tls.X509KeyPair(crt, crt)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		tlsConfig.Certificates = []tls.Certificate{cert}
+	}
+
+	if sslCAFile != "" {
+		ca, err := ioutil.ReadFile(filepath.Clean(expandHome(sslCAFile)))
+		if err != nil {
+			return nil, err
+		}
+
+		roots.AppendCertsFromPEM(ca)
+		tlsConfig.RootCAs = roots
+	}
+
+	return tlsConfig, nil
+}
+
+func expandHome(path string) string {
+	usr, _ := user.Current()
+	dir := usr.HomeDir
+
+	switch {
+	case path == "~":
+		path = dir
+	case strings.HasPrefix(path, "~/"):
+		path = filepath.Join(dir, path[2:])
+	}
+
+	return path
 }

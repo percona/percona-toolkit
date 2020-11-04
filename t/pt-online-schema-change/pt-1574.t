@@ -54,7 +54,6 @@ $sb->load_file('master', "t/pt-online-schema-change/samples/pt-1574.sql");
 );
 
 my $sql_mode = $dbh->selectcol_arrayref('SELECT @@sql_mode');
-warn Data::Dumper::Dumper($sql_mode);
 
 isnt(
     $exit_status,
@@ -76,11 +75,12 @@ like(
     },
     stderr => 1,
 );
+diag($output);
 
 is(
     $exit_status,
     0,
-    "PT-1574, PT-1590 Exit status 0 with null fields",
+    "PT-1574, PT-1590 Exit status 0 with null fields, got $exit_status",
 );
 
 like(

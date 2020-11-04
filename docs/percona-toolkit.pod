@@ -489,6 +489,13 @@ Percona Toolkit officially supports and is tested on many popular Linux
 distributions and MySQL 5.0 through 5.6; see http://goo.gl/srHm7 for the
 list of supported platforms and versions.
 
+=head1 IPv6 support
+
+In order to support IPv6 addresses to connect to MySQL, Perl DBD::MySQL driver v4.033_01 is
+required. Also, as stated in RFC 3986 L<https://www.ietf.org/rfc/rfc3986.txt> section 3.2.2
+brackes must be used to distinguish host and port.
+Examples: L<https://metacpan.org/pod/DBD::mysql#port>
+
 =head1 BUGS
 
 Please report bugs at L<https://jira.percona.com>.
@@ -541,7 +548,7 @@ Many people have contributed code over the years.  See each tool's
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-Percona Toolkit is copyright 2011-2018 Percona LLC and/or its affiliates, et al.
+Percona Toolkit is copyright 2011-2020 Percona LLC and/or its affiliates, et al.
 See each program's documentation for complete copyright notices.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -560,6 +567,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-Percona Toolkit v3.0.13 released 2018-12-28
+Percona Toolkit v3.2.1 released 2020-08-12
 
 =cut
