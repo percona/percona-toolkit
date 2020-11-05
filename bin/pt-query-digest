@@ -8073,6 +8073,7 @@ override query_report => sub {
                       :                             undef;
       my $fingerprint = substr($item, 0, $self->max_fingerprint_length);
       my $checksum    = make_checksum($item);
+      my $explain     = $self->explain_report($sample->{arg}, $sample->{db});
       my $class       = {
          checksum    => $checksum,
          fingerprint => $fingerprint,
@@ -8084,6 +8085,8 @@ override query_report => sub {
                query      => substr($sample->{arg}, 0, $self->max_query_length),
                ts         => $sample->{ts} ? parse_timestamp($sample->{ts}) : undef,
                Query_time => $sample->{Query_time},
+               $explain ?
+                   ( explain  => $explain ): (),
             },
          ),
       };
