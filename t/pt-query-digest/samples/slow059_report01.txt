@@ -121,7 +121,7 @@ SELECT foo FROM bar WHERE id=2\G
 INSERT INTO foo VALUES (NULL, 3)\G
 
 # Profile
-# Rank Query ID                           Response time Calls R/Call V/M  
-# ==== ================================== ============= ===== ====== =====
-#    1 0x24BC7BB1422E14BA9EA505F4786E7F15  0.0005 73.8%     2 0.0002  0.00 SELECT bar
-#    2 0xF227C8FE1FC34645D2BA209E593ABAA7  0.0002 26.2%     1 0.0002  0.00 INSERT foo
+# Rank Query ID                            Response time Calls R/Call V/M 
+# ==== =================================== ============= ===== ====== ====
+#    1 0x24BC7BB1422E14BA9EA505F4786E7F15   0.0005 73.8%     2 0.0002  0.00 SELECT bar
+#    2 0xF227C8FE1FC34645D2BA209E593ABAA7   0.0002 26.2%     1 0.0002  0.00 INSERT foo

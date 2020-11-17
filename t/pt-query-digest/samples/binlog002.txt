@@ -95,8 +95,8 @@ create table foo (i int)\G
 create database d\G
 
 # Profile
-# Rank Query ID                           Response time Calls R/Call V/M  
-# ==== ================================== ============= ===== ====== =====
-#    1 0x184C72455CBE7450F579EC4A9633EEA0  0.0000  0.0%     1 0.0000  0.00 INSERT foo
-#    2 0x4C73A3608535A07A03409022EB8A4AE7  0.0000  0.0%     1 0.0000  0.00 CREATE TABLE foo
-#    3 0x3EDE13F29C785C9EF25D6D5AC7C18FF3  0.0000  0.0%     1 0.0000  0.00 CREATE DATABASE d
+# Rank Query ID                            Response time Calls R/Call V/M 
+# ==== =================================== ============= ===== ====== ====
+#    1 0x184C72455CBE7450F579EC4A9633EEA0   0.0000  0.0%     1 0.0000  0.00 INSERT foo
+#    2 0x4C73A3608535A07A03409022EB8A4AE7   0.0000  0.0%     1 0.0000  0.00 CREATE TABLE foo
+#    3 0x3EDE13F29C785C9EF25D6D5AC7C18FF3   0.0000  0.0%     1 0.0000  0.00 CREATE DATABASE d

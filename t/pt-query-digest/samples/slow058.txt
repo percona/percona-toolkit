@@ -87,8 +87,8 @@ insert `foo` values("bar")\G
 load data local infile '/tmp/foo.txt' into table `foo`\G
 
 # Profile
-# Rank Query ID                           Response time Calls R/Call V/M  
-# ==== ================================== ============= ===== ====== =====
-#    1 0xC6846BD8C9A8209BF33473286088142B  0.0376 50.0%     2 0.0188  0.00 REPLACE foo
-#    2 0xD2FAEB9897F588D8471A0C4BD7A4EE34  0.0376 50.0%     2 0.0188  0.00 INSERT foo
-#    3 0x86FDEB668430A493EBAC9C76529E62CE  0.0000  0.0%     2 0.0000  0.00 LOAD DATA foo
+# Rank Query ID                            Response time Calls R/Call V/M 
+# ==== =================================== ============= ===== ====== ====
+#    1 0xC6846BD8C9A8209BF33473286088142B   0.0376 50.0%     2 0.0188  0.00 REPLACE foo
+#    2 0xD2FAEB9897F588D8471A0C4BD7A4EE34   0.0376 50.0%     2 0.0188  0.00 INSERT foo
+#    3 0x86FDEB668430A493EBAC9C76529E62CE   0.0000  0.0%     2 0.0000  0.00 LOAD DATA foo

@@ -31,6 +31,6 @@
 SELECT * FROM foo\G
 
 # Profile
-# Rank Query ID                           Response time Calls R/Call V/M  
-# ==== ================================== ============= ===== ====== =====
-#    1 0x7023AEC64FE3598DAC1BF726F2AB10C5 0.0000 100.0%     1 0.0000  0.00 SELECT foo
+# Rank Query ID                            Response time Calls R/Call V/M 
+# ==== =================================== ============= ===== ====== ====
+#    1 0x7023AEC64FE3598DAC1BF726F2AB10C5  0.0000 100.0%     1 0.0000  0.00 SELECT foo
