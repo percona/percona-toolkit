@@ -69,7 +69,7 @@ SELECT category_id
                 WHERE auction_id = '3015563'\G
 
 # Profile
-# Rank Query ID                           Response time Calls R/Call V/M  
-# ==== ================================== ============= ===== ====== =====
-#    1 0xC6637FEB865265BA0A3E6DCD23F3445A  0.0000  0.0%     1 0.0000  0.00 SELECT auction_search
-#    2 0xB42FB5382732CE142361B36A4AEB397B  0.0000  0.0%     1 0.0000  0.00 SELECT auction_category_map
+# Rank Query ID                            Response time Calls R/Call V/M 
+# ==== =================================== ============= ===== ====== ====
+#    1 0xC6637FEB865265BA0A3E6DCD23F3445A   0.0000  0.0%     1 0.0000  0.00 SELECT auction_search
+#    2 0xB42FB5382732CE142361B36A4AEB397B   0.0000  0.0%     1 0.0000  0.00 SELECT auction_category_map

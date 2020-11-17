@@ -28,6 +28,6 @@
 UPDATE mybbl_MBMessage SET groupId = (select groupId from Group_ where name = 'Guest')\G
 
 # Profile
-# Rank Query ID                           Response time  Calls R/Call  V/M
-# ==== ================================== ============== ===== ======= ===
-#    1 0x854B57896A3E0670305E73C51188758F 10.0000 100.0%     1 10.0000  0.00 UPDATE SELECT mybbl_MBMessage Group_
+# Rank Query ID                            Response time  Calls R/Call  V/
+# ==== =================================== ============== ===== ======= ==
+#    1 0x854B57896A3E0670305E73C51188758F  10.0000 100.0%     1 10.0000  0.00 UPDATE SELECT mybbl_MBMessage Group_
