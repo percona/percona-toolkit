@@ -50,4 +50,3 @@ cd percona-toolkit/src/go
 make
 ```
 
-
