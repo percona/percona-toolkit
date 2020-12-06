@@ -799,7 +799,7 @@ sub _validate_type {
 
    if ( $val && $opt->{type} eq 'm' ) {  # type time
       PTDEBUG && _d('Parsing option', $opt->{long}, 'as a time value');
-      my ( $prefix, $num, $suffix ) = $val =~ m/([+-]?)(\d+)([a-z])?$/;
+      my ( $prefix, $num, $suffix ) = $val =~ m/([+-]?)([0-9]*[.]?[0-9]+)([a-z])?$/;
       # The suffix defaults to 's' unless otherwise specified.
       if ( !$suffix ) {
          my ( $s ) = $opt->{desc} =~ m/\(suffix (.)\)/;

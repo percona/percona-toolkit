@@ -724,7 +724,7 @@ sub _validate_type {
 
    if ( $val && $opt->{type} eq 'm' ) {  # type time
       PTDEBUG && _d('Parsing option', $opt->{long}, 'as a time value');
-      my ( $prefix, $num, $suffix ) = $val =~ m/([+-]?)(\d+)([a-z])?$/;
+      my ( $prefix, $num, $suffix ) = $val =~ m/([+-]?)([0-9]*[.]?[0-9]+)([a-z])?$/;
       if ( !$suffix ) {
          my ( $s ) = $opt->{desc} =~ m/\(suffix (.)\)/;
          $suffix = $s || 's';
@@ -6832,6 +6832,7 @@ use English qw(-no_match_vars);
 use POSIX qw(setsid);
 use List::Util qw(max);
 use Digest::MD5 qw(md5_hex);
+use Time::HiRes qw(sleep);
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
