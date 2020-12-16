@@ -24,7 +24,7 @@ use File::Temp qw/ tempdir /;
 if ($sandbox_version lt '5.7') {
     plan skip_all => 'This test needs MySQL 5.7+';
 } else {
-    plan tests => 5;
+    plan tests => 2;
 }    
 
 require "$trunk/bin/pt-online-schema-change";
@@ -42,60 +42,25 @@ my @args = (qw(--set-vars innodb_lock_wait_timeout=3));
 my $output;
 my $exit_status;
 
-$sb->load_file('master', "t/pt-online-schema-change/samples/pt-1574.sql");
+$sb->load_file('master', "t/pt-online-schema-change/samples/pt-1528.sql");
 
-# TODO WRITE A PROPER TEST
-# It should: 
-# 1. import the data from the jira ticket
-# 2. run pt-osc with --no-drop-old table
-# 3. compare old and new table. they should have the same info 
-#
-die('incomplete test');
+my $rows_before = $dbh->selectall_hashref("SELECT * FROM test.brokenutf8alter", "id");
 
-# ($output, $exit_status) = full_output(
-#     sub { pt_online_schema_change::main(@args, "$dsn,D=test,t=t1",
-#             '--execute', "--chunk-index", "idx_id", "--chunk-size", "1", 
-#             "--nocheck-plan", '--alter', "engine=innodb",
-#         ),
-#     },
-#     stderr => 1,
-# );
-#
-# my $sql_mode = $dbh->selectcol_arrayref('SELECT @@sql_mode');
-# 
-# isnt(
-#     $exit_status,
-#     0,
-#     "PT-1574, PT-1590 There is no unique index exit status",
-# );
-# 
-# like(
-#     $output,
-#     qr/at least one UNIQUE and NOT NULLABLE index/s,
-#     "PT-1574, PT-1590 Message you need an unique index.",
-# );
-# 
-# ($output, $exit_status) = full_output(
-#     sub { pt_online_schema_change::main(@args, "$dsn,D=test,t=t2",
-#             '--execute', "--chunk-index", "idx_id", "--chunk-size", "1", 
-#             "--nocheck-plan", '--alter', "engine=innodb",
-#         ),
-#     },
-#     stderr => 1,
-# );
-# diag($output);
-# 
-# is(
-#     $exit_status,
-#     0,
-#     "PT-1574, PT-1590 Exit status 0 with null fields, got $exit_status",
-# );
-# 
-# like(
-#     $output,
-#     qr/Successfully altered `test`.`t2`/s,
-#     "PT-1574, PT-1590 Successfully altered `test`.`t2`",
-# );
+($output, $exit_status) = full_output(
+    sub { pt_online_schema_change::main(@args, "$dsn,D=test,t=brokenutf8alter",
+            '--execute', '--charset=utf8', '--chunk-size', '2', '--alter', 'engine=innodb',
+        ),
+    },
+    stderr => 1,
+);
+
+my $rows_after = $dbh->selectall_hashref("SELECT * FROM test.brokenutf8alter", "id");
+
+is_deeply(
+    $rows_before, 
+    $rows_after,
+    "Should be equal",
+);
 
 # #############################################################################
 # Done.
