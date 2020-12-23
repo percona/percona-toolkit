@@ -5947,6 +5947,7 @@ sub main {
 
    $dbh->{InactiveDestroy}  = 1; # Don't disconnect on fork
    $dbh->{FetchHashKeyName} = 'NAME_lc';
+   $dbh->{mysql_auto_reconnect} = 1;
    $dbh->do("USE `$db`");
 
    # ########################################################################
