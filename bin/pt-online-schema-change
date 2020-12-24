@@ -8387,6 +8387,7 @@ package pt_online_schema_change;
 
 use strict;
 use warnings FATAL => 'all';
+use utf8;
 use English qw(-no_match_vars);
 
 use Percona::Toolkit;
@@ -8474,7 +8475,7 @@ sub main {
    @drop_trigger_sqls    = ();
    @triggers_not_dropped = ();
    $dont_interrupt_now   = 0;
-   %ignore_code = (1592 => 1, 1062 => 1);
+   %ignore_code = (1592 => 1, 1062 => 1, 1300 => 1);
 
    my %stats = (
       INSERT => 0,
