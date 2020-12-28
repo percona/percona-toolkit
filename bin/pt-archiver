@@ -4166,7 +4166,8 @@ sub get_slave_lag {
    my ( $self, $dbh ) = @_;
    my $stat = $self->get_slave_status($dbh);
    return unless $stat;  # server is not a slave
-   return $stat->{seconds_behind_master};
+   #return $stat->{seconds_behind_master};
+   return 1000;
 }
 
 sub pos_cmp {
@@ -6963,6 +6964,7 @@ sub main {
             my $id      = $lag_server->{'id'};
             if ( $lag_dbh ) {
                my $lag = $ms->get_slave_lag($lag_dbh);
+               warn "Lag: $lag";
                while ( !defined $lag || $lag > $o->get('max-lag') ) {
                   PTDEBUG && _d("Sleeping: slave lag for server '$id' is", $lag);
                   if ($o->got('progress')) {
