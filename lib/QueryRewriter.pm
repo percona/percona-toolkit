@@ -173,7 +173,7 @@ sub fingerprint {
    $query =~ s/\Ause \S+\Z/use ?/i       # Abstract the DB in USE
       && return $query;
 
-   $query =~ s/\\["']//g;                # quoted strings
+      #$query =~ s/\\["']//g;                # quoted strings
    $query =~ s/".*?"/?/sg;               # quoted strings
    $query =~ s/'.*?'/?/sg;               # quoted strings
 

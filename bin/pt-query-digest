@@ -2945,7 +2945,10 @@ sub fingerprint {
    $query =~ s/\Ause \S+\Z/use ?/i       # Abstract the DB in USE
       && return $query;
 
+   warn("1> ".$query);
+
    $query =~ s/\\["']//g;                # quoted strings
+   warn("2> ".$query);
    $query =~ s/".*?"/?/sg;               # quoted strings
    $query =~ s/'.*?'/?/sg;               # quoted strings
 
