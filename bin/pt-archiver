@@ -4166,8 +4166,7 @@ sub get_slave_lag {
    my ( $self, $dbh ) = @_;
    my $stat = $self->get_slave_status($dbh);
    return unless $stat;  # server is not a slave
-   #return $stat->{seconds_behind_master};
-   return 1000;
+   return $stat->{seconds_behind_master};
 }
 
 sub pos_cmp {
