@@ -459,16 +459,6 @@ $sb->do_as_root("master", q/set sql_log_bin=0/);
 $sb->do_as_root("master", q/DROP USER 'slave_user'/);
 $sb->do_as_root("master", q/set sql_log_bin=1/);
 
-test_alter_table(
-   name       => "--slave-user --slave-password",
-   file       => "basic_no_fks_innodb.sql",
-   table      => "pt_osc.t",
-   test_type  => "add_col",
-   new_col    => "bar",
-   cmds       => [
-         qw(--execute --slave-user slave_user --slave-password slave_password), '--alter', 'ADD COLUMN bar INT',
-   ],
-);
 # #############################################################################
 # Done.
 # #############################################################################

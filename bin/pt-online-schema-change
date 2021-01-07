@@ -8436,25 +8436,26 @@ my %ignore_code = (
 $OUTPUT_AUTOFLUSH = 1;
 
 use constant {
-   INVALID_PARAMETERS        => 1,
-   UNSUPORTED_MYSQL_VERSION  => 2,
-   NO_MINIMUM_REQUIREMENTS   => 3,
-   NO_PRIMARY_OR_UNIQUE_KEY  => 4,
-   INVALID_PLUGIN_FILE       => 5,
-   INVALID_ALTER_FK_METHOD   => 6,
-   INVALID_KEY_SIZE          => 7,
-   CANNOT_DETERMINE_KEY_SIZE => 9,
-   NOT_SAFE_TO_ASCEND        => 9,
-   ERROR_CREATING_NEW_TABLE  => 10,
-   ERROR_ALTERING_TABLE      => 11,
-   ERROR_CREATING_TRIGGERS   => 12,
-   ERROR_RESTORING_TRIGGERS  => 13,
-   ERROR_SWAPPING_TABLES     => 14,
-   ERROR_UPDATING_FKS        => 15,
-   ERROR_DROPPING_OLD_TABLE  => 16,
-   UNSUPORTED_OPERATION      => 17,
-   MYSQL_CONNECTION_ERROR    => 18,
-   LOST_MYSQL_CONNECTION     => 19,
+   INVALID_PARAMETERS              => 1,
+   UNSUPORTED_MYSQL_VERSION        => 2,
+   NO_MINIMUM_REQUIREMENTS         => 3,
+   NO_PRIMARY_OR_UNIQUE_KEY        => 4,
+   INVALID_PLUGIN_FILE             => 5,
+   INVALID_ALTER_FK_METHOD         => 6,
+   INVALID_KEY_SIZE                => 7,
+   CANNOT_DETERMINE_KEY_SIZE       => 9,
+   NOT_SAFE_TO_ASCEND              => 9,
+   ERROR_CREATING_NEW_TABLE        => 10,
+   ERROR_ALTERING_TABLE            => 11,
+   ERROR_CREATING_TRIGGERS         => 12,
+   ERROR_RESTORING_TRIGGERS        => 13,
+   ERROR_SWAPPING_TABLES           => 14,
+   ERROR_UPDATING_FKS              => 15,
+   ERROR_DROPPING_OLD_TABLE        => 16,
+   UNSUPORTED_OPERATION            => 17,
+   MYSQL_CONNECTION_ERROR          => 18,
+   LOST_MYSQL_CONNECTION           => 19,
+   ERROR_CREATING_REVERSE_TRIGGERS => 20,
 };
 
 sub _die {
@@ -8565,6 +8566,21 @@ sub main {
 
    if ( $o->get('preserve-triggers') ) {
       $o->set('drop-triggers', 1);
+   }
+
+   if ( $o->get('reverse-triggers') ) {
+       if ($o->get('drop-old-table')) {
+           my $msg = '--reverse-triggers needs --no-drop-old-table';
+           _die($msg, INVALID_PARAMETERS);
+       }
+       if (!$o->get('swap-tables')) {
+           my $msg = 'Cannot use --reverse-triggers with --no-swap-tables';
+           _die($msg, INVALID_PARAMETERS);
+       }
+       if ($o->get('preserve-triggers')) {
+           my $msg = 'Cannot use --reverse-triggers with --preserve-triggers';
+           _die($msg, INVALID_PARAMETERS);
+       }
    }
 
    if ( !$o->get('help') ) {
@@ -10124,7 +10140,6 @@ sub main {
 
    my $old_tbl;
    if ( $o->get('swap-tables') ) {
-
       eval {
          $old_tbl = swap_tables(
             orig_tbl      => $orig_tbl,
@@ -10289,6 +10304,26 @@ sub main {
       );
    }
 
+   if ( $o->get('reverse-triggers') ) {
+       print "Adding reverse triggers";
+       eval {
+           create_triggers(
+               orig_tbl     => $orig_tbl,
+               new_tbl      => $old_tbl,
+               del_tbl      => $orig_tbl,
+               columns      => \@common_cols,
+               Cxn          => $cxn,
+               Quoter       => $q,
+               OptionParser => $o,
+               Retry        => $retry,
+               tries        => $tries,
+               stats        => \%stats,
+           );
+       };
+       if ( $EVAL_ERROR ) {
+          _die("Error creating reverse triggers: $EVAL_ERROR", ERROR_CREATING_REVERSE_TRIGGERS);
+       };
+   }
    return $exit_status;
 }
 
@@ -11343,19 +11378,6 @@ sub create_triggers {
           suffix => 'ins', event => 'INSERT', time => 'AFTER', orig_triggers => [], 
           new_trigger_sql => $insert_trigger, new_trigger_name => "${prefix}_ins", 
       },
-
-      { 
-          suffix => 'delb', event => 'DELETE', time => 'BEFORE', orig_triggers => [], 
-          new_trigger_sql => '', new_trigger_name => '' 
-      },
-      { 
-          suffix => 'updb', event => 'UPDATE', time => 'BEFORE', orig_triggers => [], 
-          new_trigger_sql => '', new_trigger_name => '' 
-      },
-      { 
-          suffix => 'insb', event => 'INSERT', time => 'BEFORE', orig_triggers => [], 
-          new_trigger_sql => '', new_trigger_name => '' 
-      },
    ];
 
    $cxn->connect();
@@ -11415,25 +11437,34 @@ sub create_triggers {
    @drop_trigger_sqls = ();
 
    foreach my $trigger_info ( @$triggers_info ) {
-       next if !$trigger_info->{new_trigger_sql};
-       if ( $o->get('execute') ) {
-          osc_retry(
-             Cxn     => $cxn,
-             Retry   => $retry,
-             tries   => $tries->{create_triggers},
-             stats   => $stats,
-             code    => sub {
-                PTDEBUG && _d($trigger_info->{new_trigger_sql});
-                $cxn->dbh()->do($trigger_info->{new_trigger_sql});
-             },
-          );
+       if ($o->get('execute') && !$args{dont}) {
+           osc_retry(
+               Cxn     => $cxn,
+               Retry   => $retry,
+               tries   => $tries->{create_triggers},
+               stats   => $stats,
+               code    => sub {
+                   PTDEBUG && _d($trigger_info->{new_trigger_sql});
+                   $cxn->dbh()->do($trigger_info->{new_trigger_sql});
+               },
+           );
        }
        # Only save the trigger once it has been created
        # (or faked to be created) so if the 2nd trigger
        # fails to create, we know to only drop the 1st.
        push @trigger_names, $trigger_info->{new_trigger_name};
        push @drop_trigger_sqls,
-          "DROP TRIGGER IF EXISTS " . $q->quote($orig_tbl->{db}, $trigger_info->{new_trigger_name});
+       "DROP TRIGGER IF EXISTS " . $q->quote($orig_tbl->{db}, $trigger_info->{new_trigger_name});
+       if ($o->get('print')) {
+           print "-----------------------------------------------------------\n";
+           print "Skipped trigger creation: \n" if $o->get('dry-run');
+           print "Event : $trigger_info->{event} \n";
+           print "Name  : $trigger_info->{new_trigger_name} \n";
+           print "SQL   : $trigger_info->{new_trigger_sql} \n";
+           print "Suffix: $trigger_info->{suffix} \n";
+           print "Time  : $trigger_info->{time} \n";
+           print "-----------------------------------------------------------\n";
+       }
    }
 
    if ( $o->get('execute') ) {
@@ -12816,6 +12847,16 @@ ignored.
 You can change the list of hosts while OSC is executing:
 if you change the contents of the DSN table, OSC will pick it up very soon.
 
+=item --reverse-triggers
+
+Copy the triggers added during the copy in reverse order. Commands in the new table will be
+reflected in the old table. This is for safety in case something fails, you can make the old 
+table to receive the updates. This option requires C<--no-drop-old-table>.
+Reverse triggers are being added AFTER the table rename/swap and after all the clean up
+processes. This means there is a short period of time between the working triggers deletion and 
+the new triggers are being put in place. During that time, inserts, updates and deletes to the 
+new table won't be replicated to the old one.
+
 =item --skip-check-slave-lag
 
 type: DSN; repeatable: yes
@@ -13269,25 +13310,26 @@ of output.
 
 =head1 EXIT STATUS
 
-   INVALID_PARAMETERS        = 1
-   UNSUPORTED_MYSQL_VERSION  = 2
-   NO_MINIMUM_REQUIREMENTS   = 3
-   NO_PRIMARY_OR_UNIQUE_KEY  = 4
-   INVALID_PLUGIN_FILE       = 5
-   INVALID_ALTER_FK_METHOD   = 6
-   INVALID_KEY_SIZE          = 7
-   CANNOT_DETERMINE_KEY_SIZE = 9
-   NOT_SAFE_TO_ASCEND        = 9
-   ERROR_CREATING_NEW_TABLE  = 10
-   ERROR_ALTERING_TABLE      = 11
-   ERROR_CREATING_TRIGGERS   = 12
-   ERROR_RESTORING_TRIGGERS  = 13
-   ERROR_SWAPPING_TABLES     = 14
-   ERROR_UPDATING_FKS        = 15
-   ERROR_DROPPING_OLD_TABLE  = 16
-   UNSUPORTED_OPERATION      = 17
-   MYSQL_CONNECTION_ERROR    = 18
-   LOST_MYSQL_CONNECTION     = 19
+   INVALID_PARAMETERS              = 1
+   UNSUPORTED_MYSQL_VERSION        = 2
+   NO_MINIMUM_REQUIREMENTS         = 3
+   NO_PRIMARY_OR_UNIQUE_KEY        = 4
+   INVALID_PLUGIN_FILE             = 5
+   INVALID_ALTER_FK_METHOD         = 6
+   INVALID_KEY_SIZE                = 7
+   CANNOT_DETERMINE_KEY_SIZE       = 9
+   NOT_SAFE_TO_ASCEND              = 9
+   ERROR_CREATING_NEW_TABLE        = 10
+   ERROR_ALTERING_TABLE            = 11
+   ERROR_CREATING_TRIGGERS         = 12
+   ERROR_RESTORING_TRIGGERS        = 13
+   ERROR_SWAPPING_TABLES           = 14
+   ERROR_UPDATING_FKS              = 15
+   ERROR_DROPPING_OLD_TABLE        = 16
+   UNSUPORTED_OPERATION            = 17
+   MYSQL_CONNECTION_ERROR          = 18
+   LOST_MYSQL_CONNECTION           = 19
+   ERROR_CREATING_REVERSE_TRIGGERS = 20
 
 =head1 SYSTEM REQUIREMENTS
 
