@@ -61,6 +61,14 @@
   version = "v1.46.0"
 
 [[projects]]
+  digest = "1:fd2ee29b7807f198e72dbd6371267b34d05aa83151c8c81b2ade14854e50f4ee"
+  name = "github.com/go-logr/logr"
+  packages = ["."]
+  pruneopts = ""
+  revision = "d18fcbf02861580d05a1f23601145b272c4e7b4b"
+  version = "v0.2.0"
+
+[[projects]]
   digest = "1:b6581f9180e0f2d5549280d71819ab951db9d511478c87daca95669589d505c0"
   name = "github.com/go-ole/go-ole"
   packages = [
@@ -72,6 +80,17 @@
   version = "v1.2.4"
 
 [[projects]]
+  digest = "1:d69d2ba23955582a64e367ff2b0808cdbd048458c178cea48f11ab8c40bd7aea"
+  name = "github.com/gogo/protobuf"
+  packages = [
+    "proto",
+    "sortkeys",
+  ]
+  pruneopts = ""
+  revision = "5628607bb4c51c3157aacc3a50f0ab707582b805"
+  version = "v1.3.1"
+
+[[projects]]
   digest = "1:a01080d20c45c031c13f3828c56e58f4f51d926a482ad10cc0316225097eb7ea"
   name = "github.com/go-stack/stack"
   packages = ["."]
@@ -80,7 +99,7 @@
   version = "v1.8.0"
 
 [[projects]]
-  digest = "1:68c64bb61d55dcd17c82ca0b871ddddb5ae18b30cfe26f6bfd4b6df6287dc2e0"
+  digest = "1:530233672f656641b365f8efb38ed9fba80e420baff2ce87633813ab3755ed6d"
   name = "github.com/golang/mock"
   packages = ["gomock"]
   pruneopts = ""
@@ -102,6 +121,14 @@
   pruneopts = ""
   revision = "0cd6bf5da1e1c83f8b45653022c74f71af0538a4"
   version = "v1.1.1"
+
+[[projects]]
+  digest = "1:16ecf9e89b8b1310d9566a53484c31c5241bb47c32162eba780b46c0dfb58fef"
+  name = "github.com/google/gofuzz"
+  packages = ["."]
+  pruneopts = ""
+  revision = "db92cf7ae75e4a7a28abc005addab2b394362888"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"
@@ -311,6 +338,20 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:adcb9e84ce154ef1d45851b57c40f8a211db3e36373a65b7c4f10c79b7428718"
+  name = "golang.org/x/net"
+  packages = [
+    "context",
+    "http/httpguts",
+    "http2",
+    "http2/hpack",
+    "idna",
+  ]
+  pruneopts = ""
+  revision = "112230192c580c3556b8cee6403af37a4fc5f28c"
+
+[[projects]]
+  branch = "master"
   digest = "1:9f6efefb4e401a4f699a295d14518871368eb89403f2dd23ec11dfcd2c0836ba"
   name = "golang.org/x/sync"
   packages = ["semaphore"]
@@ -354,6 +395,39 @@
   version = "v2.2.6"
 
 [[projects]]
+  digest = "1:fccda34e4c58111b1908d8d69bf8d57c41c8e2542bc18ec8cd38c4fa21057f71"
+  name = "golang.org/x/text"
+  packages = [
+    "collate",
+    "collate/build",
+    "internal/colltab",
+    "internal/gen",
+    "internal/language",
+    "internal/language/compact",
+    "internal/tag",
+    "internal/triegen",
+    "internal/ucd",
+    "language",
+    "secure/bidirule",
+    "transform",
+    "unicode/bidi",
+    "unicode/cldr",
+    "unicode/norm",
+    "unicode/rangetable",
+  ]
+  pruneopts = ""
+  revision = "23ae387dee1f90d29a23c0e87ee0b46038fbed0e"
+  version = "v0.3.3"
+
+[[projects]]
+  digest = "1:75fb3fcfc73a8c723efde7777b40e8e8ff9babf30d8c56160d01beffea8a95a6"
+  name = "gopkg.in/inf.v0"
+  packages = ["."]
+  pruneopts = ""
+  revision = "d2d2541c53f18d2a059457998ce2876cc8e67cbf"
+  version = "v0.9.1"
+
+[[projects]]
   branch = "v2"
   digest = "1:e56755c5336ff37d20befca76df29097085c85ea1fe58af746e3df6b815decfa"
   name = "gopkg.in/mgo.v2"
@@ -371,6 +445,52 @@
   packages = ["."]
   pruneopts = ""
   revision = "eeeca48fe7764f320e4870d231902bf9c1be2c08"
+
+[[projects]]
+  digest = "1:a249e341b9bf261a982ab262c69f08223e839302d0a21cfe6e00f2ef2e8695a2"
+  name = "k8s.io/api"
+  packages = ["core/v1"]
+  pruneopts = ""
+  revision = "f822fed505d4c9dd4eb2c5f4ca2f4c49c19ea394"
+  version = "v0.18.6"
+
+[[projects]]
+  digest = "1:74eeecf1188777314a92348555adcb977912d530269130143daf7fc0e80bb512"
+  name = "k8s.io/apimachinery"
+  packages = [
+    "pkg/api/resource",
+    "pkg/apis/meta/v1",
+    "pkg/conversion",
+    "pkg/conversion/queryparams",
+    "pkg/fields",
+    "pkg/labels",
+    "pkg/runtime",
+    "pkg/runtime/schema",
+    "pkg/selection",
+    "pkg/types",
+    "pkg/util/errors",
+    "pkg/util/intstr",
+    "pkg/util/json",
+    "pkg/util/naming",
+    "pkg/util/net",
+    "pkg/util/runtime",
+    "pkg/util/sets",
+    "pkg/util/validation",
+    "pkg/util/validation/field",
+    "pkg/watch",
+    "third_party/forked/golang/reflect",
+  ]
+  pruneopts = ""
+  revision = "fbe88689c3c2735e949f67884a4f58cb99379159"
+  version = "v0.17.9"
+
+[[projects]]
+  digest = "1:5ad0a3bf1b13f9b8bd99f4079c635cb813d87b70db65b98fe5503762e1d39735"
+  name = "k8s.io/klog"
+  packages = ["."]
+  pruneopts = ""
+  revision = "b5c3182dac44f851522e32c97c86ac32755c296d"
+  version = "v2.3.0"
 
 [solve-meta]
   analyzer-name = "dep"
@@ -400,6 +520,8 @@
     "go.mongodb.org/mongo-driver/mongo/options",
     "golang.org/x/crypto/ssh/terminal",
     "gopkg.in/mgo.v2/bson",
+    "gopkg.in/mgo.v2/dbtest",
+    "k8s.io/api/core/v1",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
