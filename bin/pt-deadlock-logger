@@ -4650,6 +4650,15 @@ sub main {
    $o->usage_or_errors();
 
    # ########################################################################
+   # Disable buffering log messages to STDOUT
+   # ########################################################################
+   if ( $o->get('disable-buffering-stdout') ) {
+      PTDEBUG && _d('Disabled buffering log messages to STDOUT');
+      use IO::Handle;
+      STDOUT->autoflush(1);
+   }
+
+   # ########################################################################
    # Connect to MySQL and set up the --dest, if any.
    # ########################################################################
    my $q = new Quoter();
@@ -5406,6 +5415,14 @@ MAGIC_dest_table
 
 If you use L<"--columns">, you can omit whichever columns you don't want to
 store.
+
+=item --disable-buffering-stdout
+
+Disable buffering log messages to STDOUT.
+
+This option is useful if you are not attaching any terminal
+(e.g. running as a docker container) and want to get the output
+as soon as possible.
 
 =item --help
 
