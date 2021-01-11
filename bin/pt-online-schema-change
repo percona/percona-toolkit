@@ -10138,7 +10138,37 @@ sub main {
       }
    }
 
-   my $old_tbl;
+   my $old_tbl =  {
+   db => 'test',
+   name => '`test`.`_t1_old`',
+   tbl => '_t1_old'
+ };
+    $cxn->connect();
+    my $dbh = $cxn->dbh();
+    $dbh->do('LOCK TABLES test.t1 WRITE;');
+
+   if ( $o->get('reverse-triggers') ) {
+       print "Adding reverse triggers";
+       eval {
+           create_triggers(
+               orig_tbl     => $orig_tbl,
+               new_tbl      => $old_tbl,
+               del_tbl      => $orig_tbl,
+               columns      => \@common_cols,
+               Cxn          => $cxn,
+               Quoter       => $q,
+               OptionParser => $o,
+               Retry        => $retry,
+               tries        => $tries,
+               stats        => \%stats,
+               prefix       => 'rt_',
+           );
+       };
+       $dbh->do('UNLOCK TABLES');
+       if ( $EVAL_ERROR ) {
+          _die("Error creating reverse triggers: $EVAL_ERROR", ERROR_CREATING_REVERSE_TRIGGERS);
+       };
+   }
    if ( $o->get('swap-tables') ) {
       eval {
          $old_tbl = swap_tables(
@@ -10163,6 +10193,8 @@ sub main {
               ERROR_SWAPPING_TABLES);
       }
    }
+
+   warn "........>>>> ".Data::Dumper::Dumper($old_tbl);
    $orig_tbl->{swapped} = 1;  # flag for cleanup tasks
    PTDEBUG && _d('Old table:', Dumper($old_tbl));
 
@@ -10318,6 +10350,7 @@ sub main {
                Retry        => $retry,
                tries        => $tries,
                stats        => \%stats,
+               prefix       => 'rt',
            );
        };
        if ( $EVAL_ERROR ) {
@@ -10891,7 +10924,7 @@ sub swap_tables {
 
          my $sql = "RENAME TABLE $orig_tbl->{name} "
                  . "TO " . $q->quote($orig_tbl->{db}, $table_name)
-                 . ", $new_tbl->{name} TO $orig_tbl->{name}"; 
+                 . ", $new_tbl->{name} TO $orig_tbl->{name}" ;
 
          eval {
             osc_retry(
@@ -11305,7 +11338,8 @@ sub create_triggers {
 
    # Create a unique trigger name prefix based on the orig table name
    # so multiple instances of the tool can run on different tables.
-   my $prefix = 'pt_osc_' . $orig_tbl->{db} . '_' . $orig_tbl->{tbl};
+   my $pp = $args{prefix} || '';
+   my $prefix = $pp.'pt_osc_' . $orig_tbl->{db} . '_' . $orig_tbl->{tbl};
    $prefix   =~ s/\W/_/g;
 
    if ( length($prefix) > 60 ) {

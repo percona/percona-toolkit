@@ -18,8 +18,11 @@ use PerconaTest;
 use Sandbox;
 use SqlModes;
 use File::Temp qw/ tempdir /;
+use threads;
+use Time::HiRes qw( usleep );
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-plan tests => 4;
+plan tests => 5;
 
 require "$trunk/bin/pt-online-schema-change";
 
@@ -32,6 +35,30 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 
+$sb->load_file('master', "t/pt-online-schema-change/samples/pt-153.sql");
+
+sub start_thread {
+   my ($dsn_opts) = @_;
+   my $dp = new DSNParser(opts=>$dsn_opts);
+   my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+   my $dbh = $sb->get_dbh_for('master');
+   PTDEBUG && diag("Thread started...");
+
+   local $SIG{KILL} = sub { 
+       PTDEBUG && diag("Exit thread");
+       threads->exit ;
+   };
+
+   for (my $i=0; $i < 1_000_000; $i++) {
+       eval {
+           $dbh->do("INSERT INTO test.t1 (f2,f4) VALUES (1,3)");
+       };
+   }
+}
+
+my $thr = threads->create('start_thread', $dsn_opts);
+threads->yield();
+
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the
 # tool will die.
@@ -39,7 +66,7 @@ my @args       = (qw(--set-vars innodb_lock_wait_timeout=3));
 my $output;
 my $exit_status;
 
-$sb->load_file('master', "t/pt-online-schema-change/samples/pt-153.sql");
+sleep(3);
 
 ($output, $exit_status) = full_output(
    sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=t1",
@@ -50,7 +77,7 @@ $sb->load_file('master', "t/pt-online-schema-change/samples/pt-153.sql");
       },
 );
 
-diag($output);
+diag($output); 
 
 is(
       $exit_status,
@@ -64,10 +91,10 @@ like(
       "PT-200 Adding field having 'unique' in the name",
 );
 
-   my $triggers_sql = "SELECT TRIGGER_SCHEMA, TRIGGER_NAME, DEFINER, ACTION_STATEMENT, SQL_MODE, "
-                    . "       CHARACTER_SET_CLIENT, COLLATION_CONNECTION, EVENT_MANIPULATION, ACTION_TIMING "
-                    . "  FROM INFORMATION_SCHEMA.TRIGGERS "
-                    . " WHERE TRIGGER_SCHEMA = 'test'" ;
+my $triggers_sql = "SELECT TRIGGER_SCHEMA, TRIGGER_NAME, DEFINER, ACTION_STATEMENT, SQL_MODE, "
+                 . "       CHARACTER_SET_CLIENT, COLLATION_CONNECTION, EVENT_MANIPULATION, ACTION_TIMING "
+                 . "  FROM INFORMATION_SCHEMA.TRIGGERS "
+                 . " WHERE TRIGGER_SCHEMA = 'test' AND trigger_name LIKE 'rt_%'" ;
 my $want = [
   {
     action_statement => 'REPLACE INTO `test`.`_t1_old` (`id`, `f2`, `f4`) VALUES (NEW.`id`, NEW.`f2`, NEW.`f4`)',
@@ -77,7 +104,7 @@ my $want = [
     definer => 'msandbox@%',
     event_manipulation => 'INSERT',
     sql_mode => 'ONLY_FULL_GROUP_BY,NO_AUTO_VALUE_ON_ZERO,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION',
-    trigger_name => 'pt_osc_test_t1_ins',
+    trigger_name => 'rtpt_osc_test_t1_ins',
     trigger_schema => 'test'
   },
   {
@@ -88,7 +115,7 @@ my $want = [
     definer => 'msandbox@%',
     event_manipulation => 'UPDATE',
     sql_mode => 'ONLY_FULL_GROUP_BY,NO_AUTO_VALUE_ON_ZERO,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION',
-    trigger_name => 'pt_osc_test_t1_upd',
+    trigger_name => 'rtpt_osc_test_t1_upd',
     trigger_schema => 'test'
   },
   {
@@ -99,17 +126,30 @@ my $want = [
     definer => 'msandbox@%',
     event_manipulation => 'DELETE',
     sql_mode => 'ONLY_FULL_GROUP_BY,NO_AUTO_VALUE_ON_ZERO,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION',
-    trigger_name => 'pt_osc_test_t1_del',
+    trigger_name => 'rtpt_osc_test_t1_del',
     trigger_schema => 'test'
   }
 ];
 
 my $rows = $master_dbh->selectall_arrayref($triggers_sql, {Slice =>{}});
-is (
-    @$want, 
-    @$rows,
+is_deeply (
+    $want, 
+    $rows,
     "Reverse triggers in place",
 );
+
+my $new_count = $master_dbh->selectrow_hashref('SELECT COUNT(*) AS cnt FROM test.t1');
+my $old_count = $master_dbh->selectrow_hashref('SELECT COUNT(*) AS cnt FROM test._t1_old');
+
+is (
+    $old_count->{cnt},
+    $new_count->{cnt}, 
+    "Rows count is correct",
+);
+
+$thr->kill('KILL'); 
+$thr->join();
+
 $master_dbh->do("DROP DATABASE IF EXISTS test");
 
 # #############################################################################
