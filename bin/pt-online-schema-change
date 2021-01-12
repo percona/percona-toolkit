@@ -8573,10 +8573,10 @@ sub main {
            my $msg = '--reverse-triggers needs --no-drop-old-table';
            _die($msg, INVALID_PARAMETERS);
        }
-       if (!$o->get('swap-tables')) {
-           my $msg = 'Cannot use --reverse-triggers with --no-swap-tables';
-           _die($msg, INVALID_PARAMETERS);
-       }
+       # if (!$o->get('swap-tables')) {
+       #     my $msg = 'Cannot use --reverse-triggers with --no-swap-tables';
+       #     _die($msg, INVALID_PARAMETERS);
+       # }
        if ($o->get('preserve-triggers')) {
            my $msg = 'Cannot use --reverse-triggers with --preserve-triggers';
            _die($msg, INVALID_PARAMETERS);
@@ -9708,17 +9708,17 @@ sub main {
                tbl  => $new_tbl_name,
            };
            my $triggers=create_triggers(
-               orig_tbl     => $new_tbl,
-               new_tbl      => $old_tbl,
-               del_tbl      => $orig_tbl,
-               columns      => \@common_cols,
-               Cxn          => $cxn,
-               Quoter       => $q,
-               OptionParser => $o,
-               Retry        => $retry,
-               tries        => $tries,
-               stats        => \%stats,
-               prefix       => 'rt_',
+               orig_tbl         => $new_tbl,
+               new_tbl          => $old_tbl,
+               del_tbl          => $orig_tbl,
+               columns          => \@common_cols,
+               Cxn              => $cxn,
+               Quoter           => $q,
+               OptionParser     => $o,
+               Retry            => $retry,
+               tries            => $tries,
+               stats            => \%stats,
+               reverse_triggers => 1,
            );
        };
        if ( $EVAL_ERROR ) {
@@ -10340,27 +10340,6 @@ sub main {
       );
    }
 
-   if ( $o->get('reverse-triggers') ) {
-       print "Adding reverse triggers";
-       eval {
-           create_triggers(
-               orig_tbl     => $orig_tbl,
-               new_tbl      => $old_tbl,
-               del_tbl      => $orig_tbl,
-               columns      => \@common_cols,
-               Cxn          => $cxn,
-               Quoter       => $q,
-               OptionParser => $o,
-               Retry        => $retry,
-               tries        => $tries,
-               stats        => \%stats,
-               prefix       => 'rt',
-           );
-       };
-       if ( $EVAL_ERROR ) {
-          _die("Error creating reverse triggers: $EVAL_ERROR", ERROR_CREATING_REVERSE_TRIGGERS);
-       };
-   }
    return $exit_status;
 }
 
@@ -11342,7 +11321,7 @@ sub create_triggers {
 
    # Create a unique trigger name prefix based on the orig table name
    # so multiple instances of the tool can run on different tables.
-   my $pp = $args{prefix} || '';
+   my $pp = $args{reverse_triggers} ? "rt_" : '';
    my $prefix = $pp.'pt_osc_' . $orig_tbl->{db} . '_' . $orig_tbl->{tbl};
    $prefix   =~ s/\W/_/g;
 
@@ -11479,7 +11458,6 @@ sub create_triggers {
    }
 
    my @trigger_names;
-   @drop_trigger_sqls = ();
 
    foreach my $trigger_info ( @$triggers_info ) {
        if ($o->get('execute') && !$args{dont}) {
@@ -11498,8 +11476,11 @@ sub create_triggers {
        # (or faked to be created) so if the 2nd trigger
        # fails to create, we know to only drop the 1st.
        push @trigger_names, $trigger_info->{new_trigger_name};
-       push @drop_trigger_sqls,
-       "DROP TRIGGER IF EXISTS " . $q->quote($orig_tbl->{db}, $trigger_info->{new_trigger_name});
+
+       if (!$args{'reverse_triggers'}) {
+           push @drop_trigger_sqls,
+           "DROP TRIGGER IF EXISTS " . $q->quote($orig_tbl->{db}, $trigger_info->{new_trigger_name});
+       }
        if ($o->get('print')) {
            print "-----------------------------------------------------------\n";
            print "Skipped trigger creation: \n" if $o->get('dry-run');
