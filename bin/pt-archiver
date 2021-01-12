@@ -6963,7 +6963,6 @@ sub main {
             my $id      = $lag_server->{'id'};
             if ( $lag_dbh ) {
                my $lag = $ms->get_slave_lag($lag_dbh);
-               warn "Lag: $lag";
                while ( !defined $lag || $lag > $o->get('max-lag') ) {
                   PTDEBUG && _d("Sleeping: slave lag for server '$id' is", $lag);
                   if ($o->got('progress')) {
