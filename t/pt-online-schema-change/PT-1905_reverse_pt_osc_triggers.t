@@ -58,6 +58,8 @@ sub start_thread {
 
 my $thr = threads->create('start_thread', $dsn_opts);
 threads->yield();
+my $thr2 = threads->create('start_thread', $dsn_opts);
+threads->yield();
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the
@@ -66,77 +68,49 @@ my @args       = (qw(--set-vars innodb_lock_wait_timeout=3));
 my $output;
 my $exit_status;
 
-sleep(3);
+sleep(1);
 
 ($output, $exit_status) = full_output(
    sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=t1",
          '--execute', 
          '--alter', "DROP COLUMN f3", 
-         '--reverse-triggers', '--no-drop-old-table',
+         '--reverse-triggers', '--no-drop-old-table', 
          ),
       },
 );
 
-diag($output); 
+diag($output);
 
 is(
       $exit_status,
       0,
-      "PT-200 Adding a column named unique_xxx is not detected as an unique index",
+      "Exit status is 0",
 );
 
 like(
       $output,
       qr/Successfully altered `test`.`t1`/s,
-      "PT-200 Adding field having 'unique' in the name",
+      "Successfully altered `test`.`t1`",
 );
 
-my $triggers_sql = "SELECT TRIGGER_SCHEMA, TRIGGER_NAME, DEFINER, ACTION_STATEMENT, SQL_MODE, "
+my $triggers_sql = "SELECT TRIGGER_SCHEMA, TRIGGER_NAME, DEFINER, EVENT_OBJECT_SCHEMA, EVENT_OBJECT_TABLE, ACTION_STATEMENT, SQL_MODE, "
                  . "       CHARACTER_SET_CLIENT, COLLATION_CONNECTION, EVENT_MANIPULATION, ACTION_TIMING "
                  . "  FROM INFORMATION_SCHEMA.TRIGGERS "
-                 . " WHERE TRIGGER_SCHEMA = 'test' AND trigger_name LIKE 'rt_%'" ;
-my $want = [
-  {
-    action_statement => 'REPLACE INTO `test`.`_t1_old` (`id`, `f2`, `f4`) VALUES (NEW.`id`, NEW.`f2`, NEW.`f4`)',
-    action_timing => 'AFTER',
-    character_set_client => 'latin1',
-    collation_connection => 'latin1_swedish_ci',
-    definer => 'msandbox@%',
-    event_manipulation => 'INSERT',
-    sql_mode => 'ONLY_FULL_GROUP_BY,NO_AUTO_VALUE_ON_ZERO,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION',
-    trigger_name => 'rtpt_osc_test_t1_ins',
-    trigger_schema => 'test'
-  },
-  {
-    action_statement => 'BEGIN DELETE IGNORE FROM `test`.`_t1_old` WHERE !(OLD.`id` <=> NEW.`id`) AND `test`.`_t1_old`.`id` <=> OLD.`id`;REPLACE INTO `test`.`_t1_old` (`id`, `f2`, `f4`) VALUES (NEW.`id`, NEW.`f2`, NEW.`f4`);END',
-    action_timing => 'AFTER',
-    character_set_client => 'latin1',
-    collation_connection => 'latin1_swedish_ci',
-    definer => 'msandbox@%',
-    event_manipulation => 'UPDATE',
-    sql_mode => 'ONLY_FULL_GROUP_BY,NO_AUTO_VALUE_ON_ZERO,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION',
-    trigger_name => 'rtpt_osc_test_t1_upd',
-    trigger_schema => 'test'
-  },
-  {
-    action_statement => 'DELETE IGNORE FROM `test`.`_t1_old` WHERE `test`.`_t1_old`.`id` <=> OLD.`id`',
-    action_timing => 'AFTER',
-    character_set_client => 'latin1',
-    collation_connection => 'latin1_swedish_ci',
-    definer => 'msandbox@%',
-    event_manipulation => 'DELETE',
-    sql_mode => 'ONLY_FULL_GROUP_BY,NO_AUTO_VALUE_ON_ZERO,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION',
-    trigger_name => 'rtpt_osc_test_t1_del',
-    trigger_schema => 'test'
-  }
-];
+                 . " WHERE TRIGGER_SCHEMA = 'test'";
 
 my $rows = $master_dbh->selectall_arrayref($triggers_sql, {Slice =>{}});
+
 is_deeply (
-    $want, 
+    want_triggers(), 
     $rows,
     "Reverse triggers in place",
 );
+
+# Kill the thread otherwise the count will be different because we are running 2 separate queries.
+$thr->kill('KILL'); 
+$thr2->kill('KILL'); 
+$thr->join();
+$thr2->join();
 
 my $new_count = $master_dbh->selectrow_hashref('SELECT COUNT(*) AS cnt FROM test.t1');
 my $old_count = $master_dbh->selectrow_hashref('SELECT COUNT(*) AS cnt FROM test._t1_old');
@@ -147,14 +121,96 @@ is (
     "Rows count is correct",
 );
 
-$thr->kill('KILL'); 
-$thr->join();
-
-$master_dbh->do("DROP DATABASE IF EXISTS test");
+#$master_dbh->do("DROP DATABASE IF EXISTS test");
 
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+#$sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
+
+
+# Heres just to make the test more clear.
+sub want_triggers {
+    return [
+        {
+          action_statement => 'BEGIN DECLARE CONTINUE HANDLER FOR 1146 begin end; REPLACE INTO `test`.`_t1_new` (`id`, `f2`, `f4`) VALUES (NEW.`id`, NEW.`f2`, NEW.`f4`);END',
+          action_timing => 'AFTER',
+          character_set_client => 'latin1',
+          collation_connection => 'latin1_swedish_ci',
+          definer => 'msandbox@%',
+          event_manipulation => 'INSERT',
+          event_object_schema => 'test',
+          event_object_table => '_t1_old',
+          sql_mode => 'ONLY_FULL_GROUP_BY,NO_AUTO_VALUE_ON_ZERO,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION',
+          trigger_name => 'pt_osc_test_t1_ins',
+          trigger_schema => 'test'
+        },
+        {
+          action_statement => 'BEGIN DECLARE CONTINUE HANDLER FOR 1146 begin end; DELETE IGNORE FROM `test`.`_t1_new` WHERE !(OLD.`id` <=> NEW.`id`) AND `test`.`_t1_new`.`id` <=> OLD.`id`; REPLACE INTO `test`.`_t1_new` (`id`, `f2`, `f4`) VALUES (NEW.`id`, NEW.`f2`, NEW.`f4`); END',
+          action_timing => 'AFTER',
+          character_set_client => 'latin1',
+          collation_connection => 'latin1_swedish_ci',
+          definer => 'msandbox@%',
+          event_manipulation => 'UPDATE',
+          event_object_schema => 'test',
+          event_object_table => '_t1_old',
+          sql_mode => 'ONLY_FULL_GROUP_BY,NO_AUTO_VALUE_ON_ZERO,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION',
+          trigger_name => 'pt_osc_test_t1_upd',
+          trigger_schema => 'test'
+        },
+        {
+          action_statement => 'BEGIN DECLARE CONTINUE HANDLER FOR 1146 begin end; DELETE IGNORE FROM `test`.`_t1_new` WHERE `test`.`_t1_new`.`id` <=> OLD.`id`; END',
+          action_timing => 'AFTER',
+          character_set_client => 'latin1',
+          collation_connection => 'latin1_swedish_ci',
+          definer => 'msandbox@%',
+          event_manipulation => 'DELETE',
+          event_object_schema => 'test',
+          event_object_table => '_t1_old',
+          sql_mode => 'ONLY_FULL_GROUP_BY,NO_AUTO_VALUE_ON_ZERO,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION',
+          trigger_name => 'pt_osc_test_t1_del',
+          trigger_schema => 'test'
+        },
+        {
+          action_statement => 'BEGIN DECLARE CONTINUE HANDLER FOR 1146 begin end; REPLACE INTO `test`.`_t1_old` (`id`, `f2`, `f4`) VALUES (NEW.`id`, NEW.`f2`, NEW.`f4`);END',
+          action_timing => 'AFTER',
+          character_set_client => 'latin1',
+          collation_connection => 'latin1_swedish_ci',
+          definer => 'msandbox@%',
+          event_manipulation => 'INSERT',
+          event_object_schema => 'test',
+          event_object_table => 't1',
+          sql_mode => 'ONLY_FULL_GROUP_BY,NO_AUTO_VALUE_ON_ZERO,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION',
+          trigger_name => 'rtpt_osc_test_t1_ins',
+          trigger_schema => 'test'
+        },
+        {
+          action_statement => 'BEGIN DECLARE CONTINUE HANDLER FOR 1146 begin end; DELETE IGNORE FROM `test`.`_t1_old` WHERE !(OLD.`id` <=> NEW.`id`) AND `test`.`_t1_old`.`id` <=> OLD.`id`; REPLACE INTO `test`.`_t1_old` (`id`, `f2`, `f4`) VALUES (NEW.`id`, NEW.`f2`, NEW.`f4`); END',
+          action_timing => 'AFTER',
+          character_set_client => 'latin1',
+          collation_connection => 'latin1_swedish_ci',
+          definer => 'msandbox@%',
+          event_manipulation => 'UPDATE',
+          event_object_schema => 'test',
+          event_object_table => 't1',
+          sql_mode => 'ONLY_FULL_GROUP_BY,NO_AUTO_VALUE_ON_ZERO,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION',
+          trigger_name => 'rtpt_osc_test_t1_upd',
+          trigger_schema => 'test'
+        },
+        {
+          action_statement => 'BEGIN DECLARE CONTINUE HANDLER FOR 1146 begin end; DELETE IGNORE FROM `test`.`_t1_old` WHERE `test`.`_t1_old`.`id` <=> OLD.`id`; END',
+          action_timing => 'AFTER',
+          character_set_client => 'latin1',
+          collation_connection => 'latin1_swedish_ci',
+          definer => 'msandbox@%',
+          event_manipulation => 'DELETE',
+          event_object_schema => 'test',
+          event_object_table => 't1',
+          sql_mode => 'ONLY_FULL_GROUP_BY,NO_AUTO_VALUE_ON_ZERO,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION',
+          trigger_name => 'rtpt_osc_test_t1_del',
+          trigger_schema => 'test'
+        }
+    ];
+}

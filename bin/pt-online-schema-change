@@ -9691,6 +9691,41 @@ sub main {
       _die("Error creating triggers: $EVAL_ERROR", ERROR_CREATING_TRIGGERS);
    };
 
+   if ( $o->get('reverse-triggers') ) {
+       print "Adding reverse triggers\n";
+       eval {
+           my $old_tbl_name = '_'.$orig_tbl->{tbl}.'_old';
+           my $new_tbl_name = '_'.$orig_tbl->{tbl}.'_new';
+
+           my $old_tbl = {
+               db   => $orig_tbl->{db},
+               name => '`'.$orig_tbl->{db}.'`.`'.$old_tbl_name.'`',
+               tbl  => $old_tbl_name,
+           };
+           my $new_tbl = {
+               db   => $orig_tbl->{db},
+               name => '`'.$orig_tbl->{db}.'`.`'.$new_tbl_name.'`',
+               tbl  => $new_tbl_name,
+           };
+           my $triggers=create_triggers(
+               orig_tbl     => $new_tbl,
+               new_tbl      => $old_tbl,
+               del_tbl      => $orig_tbl,
+               columns      => \@common_cols,
+               Cxn          => $cxn,
+               Quoter       => $q,
+               OptionParser => $o,
+               Retry        => $retry,
+               tries        => $tries,
+               stats        => \%stats,
+               prefix       => 'rt_',
+           );
+       };
+       if ( $EVAL_ERROR ) {
+          _die("Error creating reverse triggers: $EVAL_ERROR", ERROR_CREATING_REVERSE_TRIGGERS);
+       };
+   }
+
    # --plugin hook
    if ( $plugin && $plugin->can('after_create_triggers') ) {
       $plugin->after_create_triggers();
@@ -10138,37 +10173,7 @@ sub main {
       }
    }
 
-   my $old_tbl =  {
-   db => 'test',
-   name => '`test`.`_t1_old`',
-   tbl => '_t1_old'
- };
-    $cxn->connect();
-    my $dbh = $cxn->dbh();
-    $dbh->do('LOCK TABLES test.t1 WRITE;');
-
-   if ( $o->get('reverse-triggers') ) {
-       print "Adding reverse triggers";
-       eval {
-           create_triggers(
-               orig_tbl     => $orig_tbl,
-               new_tbl      => $old_tbl,
-               del_tbl      => $orig_tbl,
-               columns      => \@common_cols,
-               Cxn          => $cxn,
-               Quoter       => $q,
-               OptionParser => $o,
-               Retry        => $retry,
-               tries        => $tries,
-               stats        => \%stats,
-               prefix       => 'rt_',
-           );
-       };
-       $dbh->do('UNLOCK TABLES');
-       if ( $EVAL_ERROR ) {
-          _die("Error creating reverse triggers: $EVAL_ERROR", ERROR_CREATING_REVERSE_TRIGGERS);
-       };
-   }
+   my $old_tbl;
    if ( $o->get('swap-tables') ) {
       eval {
          $old_tbl = swap_tables(
@@ -10194,7 +10199,6 @@ sub main {
       }
    }
 
-   warn "........>>>> ".Data::Dumper::Dumper($old_tbl);
    $orig_tbl->{swapped} = 1;  # flag for cleanup tasks
    PTDEBUG && _d('Old table:', Dumper($old_tbl));
 
@@ -11369,8 +11373,11 @@ sub create_triggers {
    my $delete_trigger
       = "CREATE TRIGGER `${prefix}_del` AFTER DELETE ON $orig_tbl->{name} "
       . "FOR EACH ROW "
+      . "BEGIN "
+      . "DECLARE CONTINUE HANDLER FOR 1146 begin end; "
       . "DELETE IGNORE FROM $new_tbl->{name} "
-      . "WHERE $del_index_cols";
+      . "WHERE $del_index_cols; "
+      . "END ";
 
    # ---------------------------------------------------------------------------------------
    my $qcols    = join(', ', map { $q->quote($_->{new}) }        @$cols);
@@ -11379,7 +11386,10 @@ sub create_triggers {
    my $insert_trigger
       = "CREATE TRIGGER `${prefix}_ins` AFTER INSERT ON $orig_tbl->{name} "
       . "FOR EACH ROW "
-      . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
+      . "BEGIN "
+      . "DECLARE CONTINUE HANDLER FOR 1146 begin end; "
+      . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals);"
+      . "END ";      
 
    # ---------------------------------------------------------------------------------------
    my $upd_index_cols = join(" AND ", map {
@@ -11395,8 +11405,9 @@ sub create_triggers {
       = "CREATE TRIGGER `${prefix}_upd` AFTER UPDATE ON $orig_tbl->{name} "
       . "FOR EACH ROW "
       . "BEGIN "
-      . "DELETE IGNORE FROM $new_tbl->{name} WHERE !($upd_index_cols) AND $del_index_cols;"
-      . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals);"
+      . "DECLARE CONTINUE HANDLER FOR 1146 begin end; "
+      . "DELETE IGNORE FROM $new_tbl->{name} WHERE !($upd_index_cols) AND $del_index_cols; "
+      . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals); "
       . "END ";      
 
    $triggers_info = [                                                     
