@@ -12879,10 +12879,6 @@ if you change the contents of the DSN table, OSC will pick it up very soon.
 Copy the triggers added during the copy in reverse order. Commands in the new table will be
 reflected in the old table. This is for safety in case something fails, you can make the old 
 table to receive the updates. This option requires C<--no-drop-old-table>.
-Reverse triggers are being added AFTER the table rename/swap and after all the clean up
-processes. This means there is a short period of time between the working triggers deletion and 
-the new triggers are being put in place. During that time, inserts, updates and deletes to the 
-new table won't be replicated to the old one.
 
 =item --skip-check-slave-lag
 
