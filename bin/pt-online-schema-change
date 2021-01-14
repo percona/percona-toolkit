@@ -12875,10 +12875,16 @@ You can change the list of hosts while OSC is executing:
 if you change the contents of the DSN table, OSC will pick it up very soon.
 
 =item --reverse-triggers
-
+=item --reverse-triggers
 Copy the triggers added during the copy in reverse order. Commands in the new table will be
 reflected in the old table. This is for safety in case something fails, you can make the old 
 table to receive the updates. This option requires C<--no-drop-old-table>.
+
+Warning! This option creates reverse triggers on the new table before it starts copying. 
+After new table is renamed to its original name triggers will continue working. But because the 
+name change metadata version in the table cache will also change and you may start receiving 
+"Prepared statement needs to be re-prepared" errors. Workaround for this is to re-prepare statements. 
+If you do not use server-side prepared statements your application would not be affected.
 
 =item --skip-check-slave-lag
 
