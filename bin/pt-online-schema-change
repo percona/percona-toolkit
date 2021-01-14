@@ -8574,10 +8574,10 @@ sub main {
            my $msg = '--reverse-triggers needs --no-drop-old-table';
            _die($msg, INVALID_PARAMETERS);
        }
-       # if (!$o->get('swap-tables')) {
-       #     my $msg = 'Cannot use --reverse-triggers with --no-swap-tables';
-       #     _die($msg, INVALID_PARAMETERS);
-       # }
+       if (!$o->get('swap-tables')) {
+           my $msg = 'Cannot use --reverse-triggers with --no-swap-tables';
+           _die($msg, INVALID_PARAMETERS);
+       }
        if ($o->get('preserve-triggers')) {
            my $msg = 'Cannot use --reverse-triggers with --preserve-triggers';
            _die($msg, INVALID_PARAMETERS);
@@ -12874,7 +12874,6 @@ ignored.
 You can change the list of hosts while OSC is executing:
 if you change the contents of the DSN table, OSC will pick it up very soon.
 
-=item --reverse-triggers
 =item --reverse-triggers
 Copy the triggers added during the copy in reverse order. Commands in the new table will be
 reflected in the old table. This is for safety in case something fails, you can make the old 
