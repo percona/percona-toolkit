@@ -41,7 +41,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Percona Toolkit'
-copyright = u'2020, Percona LLC and/or its affiliates'
+copyright = u'2021, Percona LLC and/or its affiliates'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -116,7 +116,7 @@ html_short_title = 'Percona Toolkit'
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-html_favicon = 'percona_favicon.ico'
+html_favicon = '_static/percona_favicon.ico'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -180,7 +180,7 @@ htmlhelp_basename = 'PerconaToolkitdoc'
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
   ('index', 'PerconaToolkit.tex', u'Percona Toolkit Documentation',
-   u'2020, Percona LLC and/or its affiliates', 'manual'),
+   u'2021, Percona LLC and/or its affiliates', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -214,5 +214,5 @@ latex_toplevel_sectioning = 'part'
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ('index', 'perconatoolkit', u'Percona Toolkit Documentation',
-     [u'2020, Percona LLC and/or its affiliates'], 1)
+     [u'2021, Percona LLC and/or its affiliates'], 1)
 ]
