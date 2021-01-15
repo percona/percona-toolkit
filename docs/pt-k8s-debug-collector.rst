@@ -1,5 +1,7 @@
+.. _pt-k8s-debug-collector:
+
 ==================================
-Debug collector tool
+:program:`pt-k8s-debug-collector`
 ==================================
 
 Collects debug data (logs, resource statuses etc.) from a k8s/OpenShift cluster. Data is packed into the ``cluster-dump.tar.gz`` archive in the current working directory. 
