@@ -12218,6 +12218,13 @@ abort, because the old table is gone permanently.
 
 This method forces C<--no-swap-tables> and C<--no-drop-old-table>.
 
+Check for self-referencing foreign keys. Currently self referencing FKs are not 
+fully supported, so, to prevent errors, this program won't run if the table has
+self-referencing foreign keys. Use this parameter to disable self-referencing FK checks.
+
+On tables having self refference FKs + triggers, C<--alter-foreign-keys-method drop_swap>
+will not work. Use other method like C<--alter-foreign-keys-method rebuild_constraints>.
+
 =item none
 
 This method is like C<drop_swap> without the "swap".  Any foreign keys that
