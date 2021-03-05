@@ -10134,7 +10134,7 @@ sub main {
    }
 
    if ( $o->get('preserve-triggers') ) {
-      if ( !$o->get('swap-tables') && $o->get('drop-new-table') ) {
+       if ( !$o->get('swap-tables') && $o->get('drop-new-table') && !$o->get('alter-foreign-keys-method') eq "drop-swap" ) {
           print ts("Skipping triggers creation since --no-swap-tables was specified along with --drop-new-table\n");
       } else {
           print ts("Adding original triggers to new table.\n");
@@ -11218,8 +11218,12 @@ sub rebuild_constraints {
             tries   => $tries->{update_foreign_keys},
             stats   => $stats,
             code    => sub {
-               PTDEBUG && _d($sql);
+               PTDEBUG && _d("SET foreign_key_checks=0");
+               $cxn->dbh()->do("SET foreign_key_checks=0");
+	       PTDEBUG && _d($sql);
                $cxn->dbh()->do($sql);
+	       PTDEBUG && _d("SET foreign_key_checks=1");
+               $cxn->dbh()->do("SET foreign_key_checks=1");
                $stats->{rebuilt_constraint}++;
             },
          );
@@ -11403,6 +11407,15 @@ sub create_triggers {
           suffix => 'ins', event => 'INSERT', time => 'AFTER', orig_triggers => [],
           new_trigger_sql => $insert_trigger, new_trigger_name => "${prefix}_ins",
       },
+      {
+          event => 'DELETE', time => 'BEFORE', orig_triggers => [], 
+      },
+      {
+          event => 'UPDATE', time => 'BEFORE', orig_triggers => [], 
+      },
+      {
+          event => 'INSERT', time => 'BEFORE', orig_triggers => [], 
+      },
    ];
 
    $cxn->connect();
@@ -11461,6 +11474,7 @@ sub create_triggers {
    my @trigger_names;
 
    foreach my $trigger_info ( @$triggers_info ) {
+       next if ! ($trigger_info->{new_trigger_sql});  ###FIXED PT-1919
        if ($o->get('execute') && !$args{dont}) {
            osc_retry(
                Cxn     => $cxn,

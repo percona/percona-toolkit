@@ -22,8 +22,8 @@ use File::Temp qw/ tempdir tempfile /;
 if ($ENV{PERCONA_SLOW_BOX}) {
     plan skip_all => 'This test needs a fast machine';
 } else {
-    plan tests => 6;
-    #plan skip_all => 'This test is taking too much time even in fast machines';
+    #plan tests => 6;
+    plan skip_all => 'This test is taking too much time even in fast machines';
 }                                  
 
 our $delay = 30;
