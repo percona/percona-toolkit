@@ -75,8 +75,8 @@ type RSConfig struct {
 }
 
 type LastErrorDefaults struct {
-	W        int32 `bson:"w"`
-	WTimeout int32 `bson:"wtimeout"`
+	W        interface{} `bson:"w"`
+	WTimeout int32       `bson:"wtimeout"`
 }
 
 type RSSettings struct {
