@@ -1174,7 +1174,7 @@ find_memory_stats () { local PTFUNCNAME=find_memory_stats;
    local platform="$1"
 
    if [ "${platform}" = "Linux" ]; then
-      free -b
+      free -bw
       cat /proc/meminfo
    elif [ "${platform}" = "SunOS" ]; then
       $CMD_PRTCONF | awk -F: '/Memory/{print $2}'
