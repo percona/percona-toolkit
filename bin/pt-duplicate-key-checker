@@ -5766,6 +5766,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-duplicate-key-checker 3.3.0
+pt-duplicate-key-checker 3.3.1
 
 =cut
