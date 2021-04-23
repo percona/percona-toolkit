@@ -2250,7 +2250,7 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
                                        "$data_dir/vmstat"        \
                                        "$platform"
 
-   section "Memory mamagement"
+   section "Memory management"
    report_transparent_huge_pages
    section "The End"
 }
