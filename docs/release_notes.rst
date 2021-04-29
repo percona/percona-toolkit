@@ -1,6 +1,20 @@
 Percona Toolkit
 ***************
 
+v3.3.1 released 2021-04-28
+==========================
+
+Bugs Fixed
+----------
+
+* :jirabug:`PT-1943`: BEFORE triggers are dropped after pt-online-schema-change run
+* :jirabug:`PT-716`: LP #1641635: pt-summary reports wrong memory size
+* :jirabug:`PT-1919`: drop_swap can drop triggers (Thanks to bob for reporting this issue)
+* :jirabug:`PT-1914`: Column data lost when 'Generated' is in the column comment (Thanks to Kevin Wouters for reporting this issue)
+
+
+
+
 v3.3.0 released 2021-01-14
 ==========================
 
