@@ -40,7 +40,7 @@ const (
 var (
 	Build     string = "2020-04-23" //nolint
 	GoVersion string = "1.14.1"     //nolint
-	Version   string = "3.2.0"      //nolint
+	Version   string = "3.3.1"      //nolint
 	Commit    string                //nolint
 )
 
