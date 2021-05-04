@@ -282,7 +282,7 @@ _eval_po() {
             *)
                echo "Invalid attribute in $opt_spec: $line" >&2
                exit 1
-         esac 
+         esac
       done < "$opt_spec"
 
       if [ -z "$opt" ]; then
@@ -422,7 +422,7 @@ _parse_command_line() {
             if [ "$val" ]; then
                option_error "Option $real_opt does not take a value"
                continue
-            fi 
+            fi
             if [ "$opt_is_negated" ]; then
                val=""
             else
@@ -494,20 +494,20 @@ mysql_options() {
    if [ -n "$OPT_ASK_PASS" ]; then
       stty -echo
       >&2 printf "Enter MySQL password: "
-      read GIVEN_PASS 
+      read GIVEN_PASS
       stty echo
       printf "\n"
       MYSQL_ARGS="$MYSQL_ARGS --password=$GIVEN_PASS"
    elif [ -n "$OPT_PASSWORD" ]; then
       MYSQL_ARGS="$MYSQL_ARGS --password=$OPT_PASSWORD"
    fi
-   
+
    echo $MYSQL_ARGS
 }
 
 arrange_mysql_options() {
    local opts="$1"
-   
+
    local rearranged=""
    for opt in $opts; do
       if [ "$(echo $opt | awk -F= '{print $1}')" = "--defaults-file" ]; then
@@ -516,7 +516,7 @@ arrange_mysql_options() {
          rearranged="$rearranged $opt"
       fi
    done
-   
+
    echo "$rearranged"
 }
 
@@ -1039,7 +1039,7 @@ collect_mysql_info () {
    collect_mysql_slave_status  > "$dir/mysql-slave"
    collect_mysql_innodb_status > "$dir/innodb-status"
    collect_mysql_ndb_status    > "$dir/ndb-status"
-   collect_mysql_processlist   > "$dir/mysql-processlist"   
+   collect_mysql_processlist   > "$dir/mysql-processlist"
    collect_mysql_users         > "$dir/mysql-users"
    collect_mysql_roles         > "$dir/mysql-roles"
 
@@ -1222,7 +1222,7 @@ parse_mysqld_instances () {
             defaults_file="$(echo "${word}" | cut -d= -f2)"
          fi
       done
-      
+
       if [ -n "${defaults_file:-""}" -a -r "${defaults_file:-""}" ]; then
          socket="${socket:-"$(grep "^socket\>" "$defaults_file" | tail -n1 | cut -d= -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')"}"
          port="${port:-"$(grep "^port\>" "$defaults_file" | tail -n1 | cut -d= -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')"}"
@@ -1236,7 +1236,7 @@ parse_mysqld_instances () {
          oom="?"
       fi
       printf "  %5s %-26s %-4s %-3s %s\n" "${port}" "${datadir}" "${nice:-"?"}" "${oom:-"?"}" "${socket}"
-      
+
       defaults_file=""
       socket=""
       port=""
@@ -1366,7 +1366,7 @@ summarize_processlist () {
          }
          \$1 == \"Time:\" {
             t = \$2;
-            if ( t == \"NULL\" ) { 
+            if ( t == \"NULL\" ) {
                 t = 0;
             }
          }
@@ -1404,15 +1404,15 @@ pretty_print_cnf_file () {
 
    perl -n -l -e '
       my $line = $_;
-      if ( $line =~ /^\s*[a-zA-Z[]/ ) { 
-         if ( $line=~/\s*(.*?)\s*=\s*(.*)\s*$/ ) { 
-            printf("%-35s = %s\n", $1, $2)  
-         } 
-         elsif ( $line =~ /\s*\[/ ) { 
-            print "\n$line" 
+      if ( $line =~ /^\s*[a-zA-Z[]/ ) {
+         if ( $line=~/\s*(.*?)\s*=\s*(.*)\s*$/ ) {
+            printf("%-35s = %s\n", $1, $2)
+         }
+         elsif ( $line =~ /\s*\[/ ) {
+            print "\n$line"
          } else {
             print $line
-         } 
+         }
       }' "$file"
 
 }
@@ -1618,7 +1618,7 @@ format_keyring_plugins() {
     local keyring_plugins="$1"
     local encrypted_tables="$2"
 
-    if [ -z "$keyring_plugins" ]; then 
+    if [ -z "$keyring_plugins" ]; then
         echo "No keyring plugins found"
         if [ ! -z "$encrypted_tables" ]; then
             echo "Warning! There are encrypted tables but keyring plugins are not loaded"
@@ -1952,7 +1952,7 @@ section_percona_server_features () {
 
    name_val "Fast Server Restarts"  \
             "$(feat_on_renamed "$file" innodb_auto_lru_dump innodb_buffer_pool_restore_at_startup)"
-   
+
    name_val "Enhanced Logging"      \
             "$(feat_on "$file" log_slow_verbosity ne microtime)"
    name_val "Replica Perf Logging"  \
@@ -1970,7 +1970,7 @@ section_percona_server_features () {
       fi
    fi
    name_val "Smooth Flushing" "$smooth_flushing"
-   
+
    name_val "HandlerSocket NoSQL"   \
             "$(feat_on "$file" handlersocket_port)"
    name_val "Fast Hash UDFs"   \
@@ -2128,7 +2128,7 @@ _semi_sync_stats_for () {
          trace_extra="Unknown setting"
       fi
    fi
-   
+
    name_val "${target} semisync status" "${semisync_status}"
    name_val "${target} trace level" "${semisync_trace}, ${trace_extra}"
 
@@ -2241,10 +2241,10 @@ section_percona_xtradb_cluster () {
 
    name_val "SST Method"      "$(get_var "wsrep_sst_method" "$mysql_var")"
    name_val "Slave Threads"   "$(get_var "wsrep_slave_threads" "$mysql_var")"
-   
+
    name_val "Ignore Split Brain" "$( parse_wsrep_provider_options "pc.ignore_sb" "$mysql_var" )"
    name_val "Ignore Quorum" "$( parse_wsrep_provider_options "pc.ignore_quorum" "$mysql_var" )"
-   
+
    name_val "gcache Size"      "$( parse_wsrep_provider_options "gcache.size" "$mysql_var" )"
    name_val "gcache Directory" "$( parse_wsrep_provider_options "gcache.dir" "$mysql_var" )"
    name_val "gcache Name"      "$( parse_wsrep_provider_options "gcache.name" "$mysql_var" )"
@@ -2272,7 +2272,7 @@ report_jemalloc_enabled() {
      grep -qc jemalloc /proc/${pid}/environ || ldd $(which mysqld) 2>/dev/null | grep -qc jemalloc
      jemalloc_status=$?
      if [ $jemalloc_status = 1 ]; then
-       echo "jemalloc is not enabled in mysql config for process with id ${pid}" 
+       echo "jemalloc is not enabled in mysql config for process with id ${pid}"
      else
        echo "jemalloc enabled in mysql config for process with id ${pid}"
        GENERAL_JEMALLOC_STATUS=1
@@ -2287,7 +2287,7 @@ report_jemalloc_enabled() {
        echo "Using jemalloc from $JEMALLOC_LOCATION"
      fi
   fi
- 
+
 }
 
 report_mysql_summary () {
@@ -2520,7 +2520,7 @@ report_mysql_summary () {
    local keyring_plugins="$(collect_keyring_plugins)"
    local encrypted_tables=""
    local encrypted_tablespaces=""
-   if [ "${OPT_LIST_ENCRYPTED_TABLES}" = 'yes' ]; then 
+   if [ "${OPT_LIST_ENCRYPTED_TABLES}" = 'yes' ]; then
        encrypted_tables="$(collect_encrypted_tables)"
        encrypted_tablespaces="$(collect_encrypted_tablespaces)"
    fi
@@ -2829,11 +2829,11 @@ fuzzy-rounded.
 
   # Status Counters (Wait 10 Seconds) ##########################
   Variable                            Per day  Per second     10 secs
-  Binlog_cache_disk_use                     4                        
-  Binlog_cache_use                         80                        
+  Binlog_cache_disk_use                     4
+  Binlog_cache_use                         80
   Bytes_received                     15000000         175         200
   Bytes_sent                         15000000         175        2000
-  Com_admin_commands                        1                        
+  Com_admin_commands                        1
   ...................(many lines omitted)............................
   Threads_created                          40                       1
   Uptime                                90000           1           1
@@ -2901,18 +2901,18 @@ are fuzzy-rounded.
   # Schema #####################################################
 
     Database           Tables Views SPs Trigs Funcs   FKs Partn
-    mysql                  24                                  
-    performance_schema     17                                  
-    sakila                 16     7   3     6     3    22      
+    mysql                  24
+    performance_schema     17
+    sakila                 16     7   3     6     3    22
 
     Database           MyISAM CSV PERFORMANCE_SCHEMA InnoDB
-    mysql                  22   2                          
-    performance_schema                            17       
+    mysql                  22   2
+    performance_schema                            17
     sakila                  8                            15
 
     Database           BTREE FULLTEXT
-    mysql                 31         
-    performance_schema               
+    mysql                 31
+    performance_schema
     sakila                63        1
 
                          c   t   s   e   l   d   i   t   m   v   s
@@ -2923,11 +2923,11 @@ are fuzzy-rounded.
                              t           l   i       n   m   a   i
                              a           o   m       t   t   r   n
                              m           b   e           e       t
-                             p                           x        
-                                                         t        
+                             p                           x
+                                                         t
     Database           === === === === === === === === === === ===
     mysql               61  10   6  78   5   4  26   3   4   5   3
-    performance_schema               5          16          33    
+    performance_schema               5          16          33
     sakila               1  15   1   3       4   3  19      42  26
 
 If you specify L<"--databases"> or L<"--all-databases">, the tool will print
@@ -2975,7 +2975,7 @@ can be detected by looking at SHOW GLOBAL STATUS.
                   Page Size | 16k
               Log File Size | 2 * 5.0M = 10.0M
             Log Buffer Size | 8M
-               Flush Method | 
+               Flush Method |
         Flush Log At Commit | 1
                  XA Support | ON
                   Checksums | ON
@@ -2987,7 +2987,7 @@ can be detected by looking at SHOW GLOBAL STATUS.
          Commit Concurrency | 0
         Txn Isolation Level | REPEATABLE-READ
           Adaptive Flushing | ON
-        Adaptive Checkpoint | 
+        Adaptive Checkpoint |
              Checkpoint Age | 0
                InnoDB Queue | 0 queries inside InnoDB, 0 queries in queue
          Oldest Transaction | 0 Seconds
@@ -3031,8 +3031,8 @@ old-style passwords and users without passwords.
            expire_logs_days | 0
                 sync_binlog | 0
                   server_id | 12345
-               binlog_do_db | 
-           binlog_ignore_db | 
+               binlog_do_db |
+           binlog_ignore_db |
 
 This section shows configuration and status of the binary logs. If there are
 zero-sized binary logs, then it is possible that the binlog index is out of sync
@@ -3042,9 +3042,9 @@ with the binary logs that actually exist on disk.
        Auto-Inc Incr/Offset | 1/1
      default_storage_engine | InnoDB
                  flush_time | 0
-               init_connect | 
-                  init_file | 
-                   sql_mode | 
+               init_connect |
+                  init_file |
+                   sql_mode |
            join_buffer_size | 128k
            sort_buffer_size | 2M
            read_buffer_size | 128k
@@ -3270,7 +3270,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2018 Percona LLC and/or its affiliates,
+This program is copyright 2011-2021 Percona LLC and/or its affiliates,
 2010-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
