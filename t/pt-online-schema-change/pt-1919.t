@@ -316,6 +316,8 @@ sub test_alter_table {
 
 SKIP: {
     skip 'Sandbox MySQL version should be >= 5.7' unless $sandbox_version ge '5.7';
+    # drop_swap won't work with MySQL 8.0+
+    skip 'Sandbox MySQL version should be < 8.0' unless $sandbox_version lt '8.0';
 
     $sb->load_file('master', "$sample/pt-1919.sql");
 

@@ -102,7 +102,6 @@ if ($sandbox_version ge '8.0') {
     $files_count = 0;
 }
 
-diag (Data::Dumper::Dumper(@files));
 is(
     scalar @files,
     $files_count,
