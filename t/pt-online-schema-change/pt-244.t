@@ -96,9 +96,16 @@ opendir(my $dh, $db_dir) || die "Can't opendir $db_dir: $!";
 my @files = grep { /^t3#P#p/  } readdir($dh);
 closedir $dh;
 
+my $files_count = 4;
+
+if ($sandbox_version ge '8.0') {
+    $files_count = 0;
+}
+
+diag (Data::Dumper::Dumper(@files));
 is(
     scalar @files,
-    4,
+    $files_count,
     "PT-224 Number of files is correct",
 );
 
