@@ -136,7 +136,7 @@ $orig = $master_dbh->selectall_arrayref(q{SELECT first_name, last_name FROM saki
    sub { pt_online_schema_change::main(@args,
       "$master_dsn,D=sakila,t=staff",
       "--alter", "change column first_name first_name_mod varchar(45) NOT NULL, change column last_name last_name_mod varchar(45) NOT NULL",
-      qw(--execute --alter-foreign-keys-method rebuild_constraints --no-check-alter)) },
+      qw(--execute --alter-foreign-keys-method rebuild_constraints --no-check-alter --chunk-size 20000)) },
 );
 $mod = $master_dbh->selectall_arrayref(q{SELECT first_name_mod, last_name_mod FROM sakila.staff});
 
@@ -150,11 +150,10 @@ is_deeply(
    sub { pt_online_schema_change::main(@args,
       "$master_dsn,D=sakila,t=staff",
       "--alter", "change column first_name_mod first_name varchar(45) NOT NULL, change column last_name_mod last_name varchar(45) NOT NULL",
-      qw(--execute --alter-foreign-keys-method auto --no-check-alter)) },
+      qw(--execute --alter-foreign-keys-method auto --no-check-alter --chunk-size 20000)) },
 );
 
 $mod2 = $master_dbh->selectall_arrayref(q{SELECT first_name, last_name FROM sakila.staff});
-
 is_deeply(
    $orig,
    $mod2,
