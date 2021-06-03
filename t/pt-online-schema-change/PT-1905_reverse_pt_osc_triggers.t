@@ -89,10 +89,10 @@ like(
       "Successfully altered `test`.`t1`",
 );
 
-my $triggers_sql = "SELECT TRIGGER_SCHEMA, TRIGGER_NAME, DEFINER, EVENT_OBJECT_SCHEMA, EVENT_OBJECT_TABLE, ACTION_STATEMENT, SQL_MODE, "
-                 . "       CHARACTER_SET_CLIENT, COLLATION_CONNECTION, EVENT_MANIPULATION, ACTION_TIMING "
+my $triggers_sql = "SELECT TRIGGER_SCHEMA, TRIGGER_NAME, DEFINER, EVENT_OBJECT_SCHEMA, EVENT_OBJECT_TABLE, ACTION_STATEMENT, "
+                 . "       EVENT_MANIPULATION, ACTION_TIMING "
                  . "  FROM INFORMATION_SCHEMA.TRIGGERS "
-                 . " WHERE TRIGGER_SCHEMA = 'test'";
+                 . " WHERE TRIGGER_SCHEMA = 'test' ORDER BY TRIGGER_NAME";
 
 my $rows = $master_dbh->selectall_arrayref($triggers_sql, {Slice =>{}});
 
@@ -129,42 +129,33 @@ done_testing;
 sub want_triggers {
     return [
         {
+          action_statement => 'BEGIN DECLARE CONTINUE HANDLER FOR 1146 begin end; DELETE IGNORE FROM `test`.`_t1_old` WHERE `test`.`_t1_old`.`id` <=> OLD.`id`; END',
+          action_timing => 'AFTER',
+          definer => 'msandbox@%',
+          event_manipulation => 'DELETE',
+          event_object_schema => 'test',
+          event_object_table => 't1',
+          trigger_name => 'rt_pt_osc_test__t1_new_del',
+          trigger_schema => 'test'
+        },
+        {
           action_statement => 'BEGIN DECLARE CONTINUE HANDLER FOR 1146 begin end; REPLACE INTO `test`.`_t1_old` (`id`, `f2`, `f4`) VALUES (NEW.`id`, NEW.`f2`, NEW.`f4`);END',
           action_timing => 'AFTER',
-          character_set_client => 'latin1',
-          collation_connection => 'latin1_swedish_ci',
           definer => 'msandbox@%',
           event_manipulation => 'INSERT',
           event_object_schema => 'test',
           event_object_table => 't1',
-          sql_mode => 'ONLY_FULL_GROUP_BY,NO_AUTO_VALUE_ON_ZERO,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION',
           trigger_name => 'rt_pt_osc_test__t1_new_ins',
           trigger_schema => 'test'
         },
         {
           action_statement => 'BEGIN DECLARE CONTINUE HANDLER FOR 1146 begin end; DELETE IGNORE FROM `test`.`_t1_old` WHERE !(OLD.`id` <=> NEW.`id`) AND `test`.`_t1_old`.`id` <=> OLD.`id`; REPLACE INTO `test`.`_t1_old` (`id`, `f2`, `f4`) VALUES (NEW.`id`, NEW.`f2`, NEW.`f4`); END',
           action_timing => 'AFTER',
-          character_set_client => 'latin1',
-          collation_connection => 'latin1_swedish_ci',
           definer => 'msandbox@%',
           event_manipulation => 'UPDATE',
           event_object_schema => 'test',
           event_object_table => 't1',
-          sql_mode => 'ONLY_FULL_GROUP_BY,NO_AUTO_VALUE_ON_ZERO,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION',
           trigger_name => 'rt_pt_osc_test__t1_new_upd',
-          trigger_schema => 'test'
-        },
-        {
-          action_statement => 'BEGIN DECLARE CONTINUE HANDLER FOR 1146 begin end; DELETE IGNORE FROM `test`.`_t1_old` WHERE `test`.`_t1_old`.`id` <=> OLD.`id`; END',
-          action_timing => 'AFTER',
-          character_set_client => 'latin1',
-          collation_connection => 'latin1_swedish_ci',
-          definer => 'msandbox@%',
-          event_manipulation => 'DELETE',
-          event_object_schema => 'test',
-          event_object_table => 't1',
-          sql_mode => 'ONLY_FULL_GROUP_BY,NO_AUTO_VALUE_ON_ZERO,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION',
-          trigger_name => 'rt_pt_osc_test__t1_new_del',
           trigger_schema => 'test'
         },
     ];
