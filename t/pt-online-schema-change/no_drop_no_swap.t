@@ -73,17 +73,14 @@ is_deeply(
 # #############################################################################
 $sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
 
-eval {
-  $output = output(
-     sub { pt_online_schema_change::main(
-        "$master_dsn,D=pt_osc,t=t",
-        '--alter', 'ADD COLUMN t INT',
-        qw(--execute --no-swap-tables --no-drop-triggers))
-     },
-     stderr => 1,
-  );
-};
-ok(!($@), "No error(PT-1966)") or diag($@);
+($output, $exit) = full_output(
+   sub { pt_online_schema_change::main(
+      "$master_dsn,D=pt_osc,t=t",
+      '--alter', 'ADD COLUMN t INT',
+      qw(--execute --no-swap-tables --no-drop-triggers))
+   }
+);
+unlike($output, qr/DBD::mysql::db do failed:/, "Not failed (PT-1966)");
 
 $tables = $dbh1->selectall_arrayref("SHOW TABLES FROM pt_osc");
 is_deeply(
