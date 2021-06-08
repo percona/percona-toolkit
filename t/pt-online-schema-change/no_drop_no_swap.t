@@ -77,7 +77,7 @@ eval {
   $output = output(
      sub { pt_online_schema_change::main(
         "$master_dsn,D=pt_osc,t=t",
-        '--alter', 'ADD COLUMN d INT',
+        '--alter', 'ADD COLUMN t INT',
         qw(--execute --no-swap-tables --no-drop-triggers))
      },
      stderr => 1,
