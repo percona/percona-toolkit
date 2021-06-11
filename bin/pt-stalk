@@ -869,6 +869,11 @@ collect() {
       local strace_pid=$!
    fi
 
+   local cnt=$(($OPT_RUN_TIME / $OPT_SLEEP_COLLECT))
+
+   $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
+   local mysqladmin_pid=$!
+
    if [ ! "$OPT_MYSQL_ONLY" ]; then
       ps -eaF  >> "$d/$p-ps"  &
       top -bn${OPT_RUN_TIME} >> "$d/$p-top" &
@@ -885,7 +890,6 @@ collect() {
          $CMD_DMESG  | perl -ne 'm/\[\s*(\d+)\./; if ($1 > '${START_TIME}') { print }' >> "$d/$p-dmesg" &
       fi
 
-      local cnt=$(($OPT_RUN_TIME / $OPT_SLEEP_COLLECT))
       if [ "$CMD_VMSTAT" ]; then
          $CMD_VMSTAT $OPT_SLEEP_COLLECT $cnt >> "$d/$p-vmstat" &
          $CMD_VMSTAT $OPT_RUN_TIME 2 >> "$d/$p-vmstat-overall" &
@@ -898,9 +902,6 @@ collect() {
          $CMD_MPSTAT -P ALL $OPT_SLEEP_COLLECT $cnt >> "$d/$p-mpstat" &
          $CMD_MPSTAT -P ALL $OPT_RUN_TIME 1 >> "$d/$p-mpstat-overall" &
       fi
-
-      $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
-      local mysqladmin_pid=$!
    fi
 
    local have_lock_waits_table=""
