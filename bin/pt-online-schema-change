@@ -11156,6 +11156,11 @@ sub nibble_is_safe {
       my $oversize_chunk
          = $limit ? ($expl->{rows} || 0) >= $tbl->{chunk_size} * $limit
          :          0;
+
+      printf "oversize_chunk=%s expl->{rows}=%d chunk_size=%d chunk-size-limit=%d\n",
+         $oversize_chunk, $expl->{rows} || 0, $tbl->{chunk_size}, $limit;
+      printf "boundary: " . Dumper($boundary);
+
       if ( $oversize_chunk
            && $nibble_iter->identical_boundaries($boundary->{upper},
                                                  $boundary->{next_lower}) )
