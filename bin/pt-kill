@@ -7370,10 +7370,15 @@ sub main {
          MATCHING_QUERY:
          foreach my $query ( @queries ) {
             if ( $o->get('print') ) {
+               my $qinfo = ($query->{Info} || 'NULL' );
+               if( $o->get('fingerprint') && $qinfo ne 'NULL' ) {
+                        $qinfo = $qr->fingerprint($query->{'Info'});
+               }
+
                printf "# %s %s %d (%s %d sec) %s\n",
                   ts(time), $o->get('kill-query') ? 'KILL QUERY' : 'KILL',
                   $query->{Id}, ($query->{Command} || 'NULL'), $query->{Time},
-                  ($query->{Info} || 'NULL');
+                  $qinfo;
             }
             if ( $o->get('query-id') ) {
                   my $fp = $qr->fingerprint($query->{'Info'});
@@ -8396,6 +8401,13 @@ Print a KILL statement for matching queries; does not actually kill queries.
 If you just want to see which queries match and would be killed without
 actually killing them, specify L<"--print">.  To both kill and print
 matching queries, specify both L<"--kill"> and L<"--print">.
+
+=item --fingerprint
+
+group: Actions
+
+Modifies the L<"--print"> behaviour and forces the query fingerprint to be 
+displayed instead of an original query.
 
 =back
 
