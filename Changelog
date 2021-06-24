@@ -6,6 +6,7 @@ Changelog for Percona Toolkit
  * Fixed bug   PT-1943:	BEFORE triggers are dropped after pt-online-schema-change run
  * Fixed bug   PT-1965: pt-stalk --mysql-only doesn't collect mysqladmin outputs (Thanks Sergey Kuzmichev)
  * Fixed bug   PT-1966: Fixed test (Thanks @yoku0825)
+ * Improvement PT-1974: Support fingerprinting for --print in pt-kill (Thanks Iwo Panowicz)
 
 v3.3.0 release 2021-01-14 
 
