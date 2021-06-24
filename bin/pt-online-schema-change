@@ -11156,12 +11156,9 @@ sub nibble_is_safe {
       my $oversize_chunk
          = $limit ? ($expl->{rows} || 0) >= $tbl->{chunk_size} * $limit
          :          0;
-
-      printf "oversize_chunk=%s expl->{rows}=%d chunk_size=%d chunk-size-limit=%d\n",
-         $oversize_chunk, $expl->{rows} || 0, $tbl->{chunk_size}, $limit;
-      printf "boundary: " . Dumper($boundary);
-
-      if ( $oversize_chunk )
+      if ( $oversize_chunk
+           && $nibble_iter->identical_boundaries($boundary->{upper},
+                                                 $boundary->{next_lower}) )
       {
          die ts("Error copying rows at chunk " . $nibble_iter->nibble_number()
             . " of $tbl->{db}.$tbl->{tbl} because it is oversized.  "
@@ -11169,6 +11166,26 @@ sub nibble_is_safe {
             . ($tbl->{chunk_size} * $limit)
             . " rows (chunk size=$tbl->{chunk_size}"
             . " * chunk size limit=$limit), but MySQL estimates "
+            . "that there are " . ($expl->{rows} || 0)
+            . " rows in the chunk.\n");
+      }
+   }
+
+   # Do not copy a chunk larger than this number of rows. It is an unconditional
+   # check that aborts a migration if an estimated chunk size exceeds the chosen number.
+   if ( my $limit = $o->get('chunk-size-hard-limit') ) {
+      my $oversize_chunk
+         = $limit ? ($expl->{rows} || 0) >= $limit
+         :          0;
+
+      printf "oversize_chunk=%s expl->{rows}=%d chunk-size-hard-limit=%d\n",
+         $oversize_chunk, $expl->{rows} || 0, $limit;
+
+      if ( $oversize_chunk )
+      {
+         die ts("Error copying rows at chunk " . $nibble_iter->nibble_number()
+            . " of $tbl->{db}.$tbl->{tbl} because it is oversized.  "
+            . "The current hard chunk size limit is $limit rows, but MySQL estimates "
             . "that there are " . ($expl->{rows} || 0)
             . " rows in the chunk.\n");
       }
@@ -12960,6 +12977,14 @@ value of 0.
 The tool also uses this option to determine how to handle foreign keys that
 reference the table to be altered. See L<"--alter-foreign-keys-method"> for
 details.
+
+=item --chunk-size-hard-limit
+
+type: size; default: 15000
+
+Do not copy a chunk larger than this number of rows. It is an unconditional
+check that aborts a migration if an estimated chunk size exceeds the chosen
+number.
 
 =item --chunk-time
 
