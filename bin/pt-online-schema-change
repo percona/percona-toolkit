@@ -11178,8 +11178,8 @@ sub nibble_is_safe {
          = $limit ? ($expl->{rows} || 0) >= $limit
          :          0;
 
-      printf "oversize_chunk=%s expl->{rows}=%d chunk-size-hard-limit=%d\n",
-         $oversize_chunk, $expl->{rows} || 0, $limit;
+      PTDEBUG && _d("oversize_chunk", $oversize_chunk,
+          "expl->{rows}", $expl->{rows} || 0, "chunk-size-hard-limit", $limit);
 
       if ( $oversize_chunk )
       {
