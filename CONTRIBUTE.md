@@ -67,12 +67,23 @@ wget https://www.percona.com/downloads/Percona-Server-5.6/Percona-Server-5.6.32-
 ```
 tar xvzf Percona-Server-5.6.32-rel78.1-Linux.x86_64.ssl100.tar.gz --strip 1 -C ${HOME}/mysql/percona-server-5.6.32
 ```
-### Set up environment variables:
+### Set up environment variables
 We need these environment variables to start the MySQL sandbox and to run the tests. Probably it is a good idea to add them to your `.bashrc` file.
 ```
 export PERCONA_TOOLKIT_BRANCH=${HOME}/perldev/percona-toolkit
 export PERL5LIB=${HOME}/perldev/percona-toolkit/lib
 export PERCONA_TOOLKIT_SANDBOX=${HOME}/mysql/percona-server-5.6.32
+```
+
+### Check that all needed tools are correctly installed:
+```
+util/check-dev-env
+```
+If not, you will have to either install them via your package manager of preference, or using Perl directly. For example, let's assume that you are missing the `File::Slurp` package (as flagged by a `NA` output from the previous command), you can use:
+```
+sudo perl -MCPAN -e "shell"
+cpan[1]> install File::Slurp
+...
 ```
 
 ### Starting the sandbox
@@ -97,8 +108,42 @@ Run all tests for a particular program (pt-stalk in this example):
 ```
 prove -v t/pt-stalk/
 ```
+You can also add warnings with:
+```
+prove -vw t/pt-stalk/
+```
 or run a specific test:
 ```
 prove -v t/pt-stalk/option_sanity.t
 ```
 
+# Introducing changes to the toolkit
+
+## Creating a new branch
+
+You should start your own development branch. If you have a JIRA ticket assigned, use its number as reference, and add a short description of what work on this branch will do:
+```
+git checkout -b PT-9999_functionality_name
+```
+The first commit should also have the JIRA reference number as first characters in the commit message (so that JIRA can use the smart tags).
+
+## Running the update-modules tool
+
+Whenever you make changes to libraries under lib/, you should make sure that you run the util/update-modules functionality, to make sure that all tools that use these packages will benefit from the new changes. For example, let's say you changed the lib/bash/collect.sh package, you will need to run:
+```
+cd ${HOME}/perldev/percona-toolkit
+for t in bin/*; do util/update-modules ${t} collect; done
+```
+Or if you changed the lib/NibbleIterator.pm package:
+```
+cd ${HOME}/perldev/percona-toolkit
+for t in bin/*; do util/update-modules ${t} NibbleIterator; done
+```
+
+## Uploading your branch
+
+Finally, after you run another round of tests and everything is ok, you should upload your branch to your GitHub fork:
+```
+git push origin PT-9999_functionality_name
+```
+And then go to the web UI to create the new pull request (PR) based off of this new branch.
