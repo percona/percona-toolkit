@@ -3,10 +3,17 @@ help:                 ## Display this help message.
 	@grep '^[a-zA-Z]' $(MAKEFILE_LIST) | \
 		awk -F ':.*?## ' 'NF==2 {printf "  %-26s%s\n", $$1, $$2}'
 
+DATE_FMT = +%FT%T%z
+ifdef SOURCE_DATE_EPOCH
+    BUILD_DATE ?= $(shell date -u -d "@$(SOURCE_DATE_EPOCH)" "$(DATE_FMT)" 2>/dev/null || date -u -r "$(SOURCE_DATE_EPOCH)" "$(DATE_FMT)" 2>/dev/null || date -u "$(DATE_FMT)")
+else
+    BUILD_DATE ?= $(shell date "$(DATE_FMT)")
+endif
+
 GO := go
 pkgs = $(shell find . -type d -name "pt-*" -exec basename {} \;)
 VERSION=$(shell git describe --abbrev=0 --tags)
-BUILD=$(shell date +%FT%T%z)
+BUILD=$(BUILD_DATE)
 GOVERSION=$(shell go version | cut --delimiter=" " -f3)
 COMMIT=$(shell git rev-list -1 HEAD)
 GOUTILSDIR ?= $(GOPATH)/bin
