@@ -166,12 +166,12 @@ func (d *Dumper) DumpCluster() error {
 				continue
 			}
 			location = filepath.Join(d.location, ns.Name, pod.Name, "/pt-summary.txt")
-			component := d.crType
-			if d.crType == "psmdb" {
+			component := resourceType(d.crType)
+			if component == "psmdb" {
 				component = "mongod"
 			}
 			if pod.Labels["app.kubernetes.io/component"] == component {
-				output, err = d.getPodSummary(d.crType, pod.Name, pod.Labels["app.kubernetes.io/instance"], tw)
+				output, err = d.getPodSummary(resourceType(d.crType), pod.Name, pod.Labels["app.kubernetes.io/instance"], tw)
 				if err != nil {
 					d.logError(err.Error(), d.crType, pod.Name)
 					err = addToArchive(location, d.mode, []byte(err.Error()), tw)
@@ -352,4 +352,13 @@ func (d *Dumper) getDataFromSecret(secretName, dataName string) (string, error) 
 	}
 
 	return string(pass), nil
+}
+
+func resourceType(s string) string {
+	if s == "pxc" || strings.HasPrefix(s, "pxc/") {
+		return "pxc"
+	} else if s == "psmdb" || strings.HasPrefix(s, "psmdb/") {
+		return "psmdb"
+	}
+	return s
 }
