@@ -39,7 +39,6 @@ func New(location, namespace, resource string) Dumper {
 		"replicationcontrollers",
 		"events",
 		"configmaps",
-		"secrets",
 		"cronjobs",
 		"jobs",
 		"podsecuritypolicies",
@@ -170,6 +169,13 @@ func (d *Dumper) DumpCluster() error {
 			if d.crType == "psmdb" {
 				component = "mongod"
 			}
+			if pod.Labels["app.kubernetes.io/instance"] != "" && pod.Labels["app.kubernetes.io/component"] != "" {
+				resource := "secret/" + pod.Labels["app.kubernetes.io/instance"] + "-" + pod.Labels["app.kubernetes.io/component"]
+				err = d.getResource(resource, ns.Name, true, tw)
+				if err != nil {
+					log.Printf("Error: get %s resource: %v", resource, err)
+				}
+			}
 			if pod.Labels["app.kubernetes.io/component"] == component {
 				output, err = d.getPodSummary(d.crType, pod.Name, pod.Labels["app.kubernetes.io/instance"], tw)
 				if err != nil {
@@ -189,14 +195,14 @@ func (d *Dumper) DumpCluster() error {
 		}
 
 		for _, resource := range d.resources {
-			err = d.getResource(resource, ns.Name, tw)
+			err = d.getResource(resource, ns.Name, false, tw)
 			if err != nil {
 				log.Printf("Error: get %s resource: %v", resource, err)
 			}
 		}
 	}
 
-	err = d.getResource("nodes", "", tw)
+	err = d.getResource("nodes", "", false, tw)
 	if err != nil {
 		return errors.Wrapf(err, "get nodes")
 	}
@@ -218,9 +224,12 @@ func (d *Dumper) runCmd(args ...string) ([]byte, error) {
 	return outb.Bytes(), nil
 }
 
-func (d *Dumper) getResource(name, namespace string, tw *tar.Writer) error {
+func (d *Dumper) getResource(name, namespace string, ignoreNotFound bool, tw *tar.Writer) error {
 	location := d.location
 	args := []string{"get", name, "-o", "yaml"}
+	if ignoreNotFound {
+		args = append(args, "--ignore-not-found")
+	}
 	if len(namespace) > 0 {
 		args = append(args, "--namespace", namespace)
 		location = filepath.Join(d.location, namespace)
@@ -233,6 +242,9 @@ func (d *Dumper) getResource(name, namespace string, tw *tar.Writer) error {
 		return addToArchive(location, d.mode, []byte(err.Error()), tw)
 	}
 
+	if ignoreNotFound && len(output) == 0 {
+		return nil
+	}
 	return addToArchive(location, d.mode, output, tw)
 }
 
