@@ -54,13 +54,13 @@ func New(location, namespace, resource string) Dumper {
 	if len(resource) > 0 {
 		resources = append(resources, resource)
 
-		if resource == "pxc" {
+		if resourceType(resource) == "pxc" {
 			resources = append(resources,
 				"perconaxtradbbackups",
 				"perconaxtradbclusterbackups",
 				"perconaxtradbclusterrestores",
 				"perconaxtradbclusters")
-		} else if resource == "psmdb" {
+		} else if resourceType(resource) == "psmdb" {
 			resources = append(resources,
 				"perconaservermongodbbackups",
 				"perconaservermongodbrestores",
