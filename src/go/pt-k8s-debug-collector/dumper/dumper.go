@@ -43,10 +43,6 @@ func New(location, namespace, resource string) Dumper {
 		"jobs",
 		"podsecuritypolicies",
 		"poddisruptionbudgets",
-		"perconaxtradbbackups",
-		"perconaxtradbclusterbackups",
-		"perconaxtradbclusterrestores",
-		"perconaxtradbclusters",
 		"clusterrolebindings",
 		"clusterroles",
 		"rolebindings",
@@ -57,6 +53,20 @@ func New(location, namespace, resource string) Dumper {
 	}
 	if len(resource) > 0 {
 		resources = append(resources, resource)
+
+		if resourceType(resource) == "pxc" {
+			resources = append(resources,
+				"perconaxtradbbackups",
+				"perconaxtradbclusterbackups",
+				"perconaxtradbclusterrestores",
+				"perconaxtradbclusters")
+		} else if resourceType(resource) == "psmdb" {
+			resources = append(resources,
+				"perconaservermongodbbackups",
+				"perconaservermongodbrestores",
+				"perconaservermongodbs",
+			)
+		}
 	}
 	return Dumper{
 		cmd:       "kubectl",
