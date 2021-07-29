@@ -4675,6 +4675,9 @@ sub main {
          $sql =~ s/deadlocks/IF NOT EXISTS $db_tbl/;
          PTDEBUG && _d($sql);
          $dst->dbh->do($sql);
+         if ( $EVAL_ERROR ) {
+             _die("Cannot connect to MySQL: $EVAL_ERROR", 1);
+         }  
       }
    }
 
