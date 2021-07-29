@@ -5945,6 +5945,9 @@ sub main {
    my $dsn          = @ARGV ? $dp->parse(shift @ARGV, $dsn_defaults)
                     :         $dsn_defaults;
    my $dbh          = $dp->get_dbh($dp->get_cxn_params($dsn), {AutoCommit=>1});
+   if ($EVAL_ERROR) {
+      _die("Cannot connect to MySQL: $EVAL_ERROR", 1);
+   }
 
    $dbh->{InactiveDestroy}  = 1; # Don't disconnect on fork
    $dbh->{FetchHashKeyName} = 'NAME_lc';
