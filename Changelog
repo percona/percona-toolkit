@@ -1,12 +1,13 @@
 Changelog for Percona Toolkit
 
- * Fixed bug   PT-716 : pt-summary reports wrong memory size
- * Fixed bug   PT-1914: Column data lost when 'Generated' is in the column comment
- * Fixed bug   PT-1919: pt-online-schema change drop_swap can lose triggers. (Thanks Bob)
- * Fixed bug   PT-1943:	BEFORE triggers are dropped after pt-online-schema-change run
- * Fixed bug   PT-1965: pt-stalk --mysql-only doesn't collect mysqladmin outputs (Thanks Sergey Kuzmichev)
- * Fixed bug   PT-1966: Fixed test (Thanks @yoku0825)
  * Improvement PT-1974: Support fingerprinting for --print in pt-kill (Thanks Iwo Panowicz)
+ * Fixed bug   PT-1966: Fixed test (Thanks @yoku0825)
+ * Fixed bug   PT-1965: pt-stalk --mysql-only doesn't collect mysqladmin outputs (Thanks Sergey Kuzmichev)
+ * Fixed bug   PT-1943:	BEFORE triggers are dropped after pt-online-schema-change run
+ * Improvement PT-1940: Added mysql version check for bug fix introduced in 8.0.14 (Thanks duxthefux)
+ * Fixed bug   PT-1919: pt-online-schema change drop_swap can lose triggers. (Thanks Bob)
+ * Fixed bug   PT-1914: Column data lost when 'Generated' is in the column comment
+ * Fixed bug   PT-716 : pt-summary reports wrong memory size
 
 v3.3.0 release 2021-01-14 
 
