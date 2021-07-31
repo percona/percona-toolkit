@@ -1,27 +1,50 @@
 Changelog for Percona Toolkit
 
- * Improvement PT-1974: Support fingerprinting for --print in pt-kill (Thanks Iwo Panowicz)
- * Fixed bug   PT-1966: Fixed test (Thanks @yoku0825)
+v3.3.2 WIP release date not set yet
+
+ * In Progress PT-1417: Inconsistent creation of toolkit tables
+
+ * TODO  	   PT-1218: LP #1307377: pt-stalk ominous open_tables function
+ * TODO        PT-1336: LP #1557877: pt-stalk removes user's files from the destination directory
+ * TODO        PT-1398: pt-stalk get wrong mysqld pid when the host installed multi mysql instance
+ * TODO        PT-1627:	pt-mysql-summary doesn't verify which version of jemalloc is in use
+ * TODO        PT-1800: PTDEBUG=1 exposes passwords
+
+ * Fixed bug   PT-1747: pt-online-schema-change: metadata lock can break database for rebuild_constraints
+ * Improvement PT-1940:	ptsoc dropswap with mysql8: revise rejection (Thanks duxthefux)
+ * Fixed bug   PT-1953: pt-summary typo: Memory mamagement.
+ * Fixed bug   PT-1959: go part of the toolkit still has the version 3.3.0
  * Fixed bug   PT-1965: pt-stalk --mysql-only doesn't collect mysqladmin outputs (Thanks Sergey Kuzmichev)
- * Fixed bug   PT-1943:	BEFORE triggers are dropped after pt-online-schema-change run
- * Improvement PT-1940: Added mysql version check for bug fix introduced in 8.0.14 (Thanks duxthefux)
- * Fixed bug   PT-1919: pt-online-schema change drop_swap can lose triggers. (Thanks Bob)
- * Fixed bug   PT-1914: Column data lost when 'Generated' is in the column comment
+ * Fixed bug   PT-1966: Test no_drop_no_swap for the pt-online-schema-change is broken (Thanks Tsubasa Tanaka)
+ * Fixed bug   PT-1974: Support fingerprinting for --print in pt-kill
+
+v3.3.1 release 2021-04-28 
+
  * Fixed bug   PT-716 : pt-summary reports wrong memory size
+ * Fixed bug   PT-1914: Column data lost when 'Generated' is in the column comment
+ * Fixed bug   PT-1919: pt-online-schema change drop_swap can lose triggers. (Thanks Bob)
+ * Fixed bug   PT-1943:	BEFORE triggers are dropped after pt-online-schema-change run
 
 v3.3.0 release 2021-01-14 
 
- * Fixed bug   PT-1857: pt-heartbeat cannot reconnect. 
+ * Improvement PT-1940: Added mysql version check for bug fix introduced in 8.0.14 (Thanks duxthefux)
+ * Fixed bug   PT-1965: pt-stalk --mysql-only doesn't collect mysqladmin outputs (Thanks Sergey Kuzmichev)
+ * Fixed bug   PT-1966: Fixed test (Thanks @yoku0825)
+ * Improvement PT-1974: Support fingerprinting for --print in pt-kill (Thanks Iwo Panowicz)
+
+v3.3.0 release 2021-01-14 
+
  * Fixed bug   PT-169 : pt-online-schema-change FKs error handling.
- * Fixed bug   PT-1892: pt-summary says sshd not running
- * Fixed bug   PT-1881: pt-upgrade fails when query including format strings and SQL errors is given (Thanks Nayuta Yanagisawa)
- * Fixed bug   PT-1859: pt-pg-summary fails for Postgres12 (Thanks Sergey Kuzmichev)
- * Improvement PT-1853: Added --no-check-foreing-keys to pt-osc
- * Improvement PT-1851: Backslashes missing from documentation
- * Improvement PT-1836: Review and consider lintian reported issues
- * Fixed bug   PT-1829: pt-heartbeat doesn't reconnect for check-read-only
- * Fixed bug   PT-1822: pt-mongodb-summary fails on standalone mongodb instances
  * Fixed bug   PT-1518: pt-table-checksum gives error CRC32. (Thanks @ovidiustanila)
+ * Fixed bug   PT-1822: pt-mongodb-summary fails on standalone mongodb instances
+ * Fixed bug   PT-1829: pt-heartbeat doesn't reconnect for check-read-only
+ * Improvement PT-1836: Review and consider lintian reported issues
+ * Improvement PT-1851: Backslashes missing from documentation
+ * Improvement PT-1853: Added --no-check-foreing-keys to pt-osc
+ * Fixed bug   PT-1857: pt-heartbeat cannot reconnect. 
+ * Fixed bug   PT-1859: pt-pg-summary fails for Postgres12 (Thanks Sergey Kuzmichev)
+ * Fixed bug   PT-1881: pt-upgrade fails when query including format strings and SQL errors is given (Thanks Nayuta Yanagisawa)
+ * Fixed bug   PT-1892: pt-summary says sshd not running
 
 v3.2.0 release 2020-04-23 
 
