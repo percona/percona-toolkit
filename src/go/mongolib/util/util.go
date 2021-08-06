@@ -27,6 +27,15 @@ const (
 	shardingNotEnabledErrorCode = 203
 	ErrNotYetInitialized        = int32(94)
 	ErrNoReplicationEnabled     = int32(76)
+
+	/*
+		   From the driver:
+			Code:            13436,
+			Message:         "node is not in primary or recovering state",
+			Labels:          nil,
+			Name:            "NotPrimaryOrSecondary",
+	*/
+	ErrNotPrimaryOrSecondary = int(13436)
 )
 
 var (
@@ -460,7 +469,9 @@ func ClusterID(ctx context.Context, client *mongo.Client) (string, error) {
 		if e, ok := err.(mongo.CommandError); ok && IsReplicationNotEnabledError(e) {
 			return "", nil
 		}
-
+		if e, ok := err.(mongo.CommandError); ok && e.HasErrorCode(ErrNotPrimaryOrSecondary) {
+			return "", nil
+		}
 		return "", err
 	}
 
