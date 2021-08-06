@@ -476,7 +476,12 @@ func IsReplicationNotEnabledError(err mongo.CommandError) bool {
 
 func MyState(ctx context.Context, client *mongo.Client) (int, error) {
 	var ms proto.MyState
-	if err := client.Database("admin").RunCommand(ctx, bson.M{"getDiagnosticData": 1}).Decode(&ms); err != nil {
+
+	err := client.Database("admin").RunCommand(ctx, bson.M{"getDiagnosticData": 1}).Decode(&ms)
+	if _, ok := err.(topology.ServerSelectionError); ok {
+		return 0, nil
+	}
+	if err != nil {
 		return 0, err
 	}
 
