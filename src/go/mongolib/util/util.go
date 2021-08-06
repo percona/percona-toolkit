@@ -14,6 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/topology"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -27,15 +28,6 @@ const (
 	shardingNotEnabledErrorCode = 203
 	ErrNotYetInitialized        = int32(94)
 	ErrNoReplicationEnabled     = int32(76)
-
-	/*
-		   From the driver:
-			Code:            13436,
-			Message:         "node is not in primary or recovering state",
-			Labels:          nil,
-			Name:            "NotPrimaryOrSecondary",
-	*/
-	ErrNotPrimaryOrSecondary = int(13436)
 )
 
 var (
@@ -469,7 +461,7 @@ func ClusterID(ctx context.Context, client *mongo.Client) (string, error) {
 		if e, ok := err.(mongo.CommandError); ok && IsReplicationNotEnabledError(e) {
 			return "", nil
 		}
-		if e, ok := err.(mongo.CommandError); ok && e.HasErrorCode(ErrNotPrimaryOrSecondary) {
+		if _, ok := err.(topology.ServerSelectionError); ok {
 			return "", nil
 		}
 		return "", err
