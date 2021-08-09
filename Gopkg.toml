@@ -1,0 +1,27 @@
+[[constraint]]
+  name = "github.com/Masterminds/semver"
+  version = "1.4.0"
+
+[[constraint]]
+  name = "github.com/golang/mock"
+  version = "1.0.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/hashicorp/go-version"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/howeyc/gopass"
+
+[[constraint]]
+  name = "github.com/montanaflynn/stats"
+  version = "0.2.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/pborman/getopt"
+
+[[constraint]]
+  name = "github.com/shirou/gopsutil"
+  version = "2.20.8"
