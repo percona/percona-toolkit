@@ -6,8 +6,8 @@ Installing Percona Toolkit
 
 Percona provides packages for most popular 64-bit Linux distributions:
 
-* Debian 8 ("Jessie")
 * Debian 9 ("Stretch")
+* Debian 10 ("Buster")
 * Ubuntu 18.04 LTS ("Bionic Beaver")
 * Ubuntu 20.04 LTS ("Focal Fossa")
 * Red Hat Enterprise Linux or CentOS 7 ("Maipo")
