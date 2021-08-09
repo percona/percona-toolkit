@@ -80,6 +80,14 @@
   version = "v1.2.4"
 
 [[projects]]
+  digest = "1:a01080d20c45c031c13f3828c56e58f4f51d926a482ad10cc0316225097eb7ea"
+  name = "github.com/go-stack/stack"
+  packages = ["."]
+  pruneopts = ""
+  revision = "2fee6af1a9795aafbe0253a0cfbdf668e1fb8a9a"
+  version = "v1.8.0"
+
+[[projects]]
   digest = "1:d69d2ba23955582a64e367ff2b0808cdbd048458c178cea48f11ab8c40bd7aea"
   name = "github.com/gogo/protobuf"
   packages = [
@@ -91,15 +99,7 @@
   version = "v1.3.1"
 
 [[projects]]
-  digest = "1:a01080d20c45c031c13f3828c56e58f4f51d926a482ad10cc0316225097eb7ea"
-  name = "github.com/go-stack/stack"
-  packages = ["."]
-  pruneopts = ""
-  revision = "2fee6af1a9795aafbe0253a0cfbdf668e1fb8a9a"
-  version = "v1.8.0"
-
-[[projects]]
-  digest = "1:530233672f656641b365f8efb38ed9fba80e420baff2ce87633813ab3755ed6d"
+  digest = "1:68c64bb61d55dcd17c82ca0b871ddddb5ae18b30cfe26f6bfd4b6df6287dc2e0"
   name = "github.com/golang/mock"
   packages = ["gomock"]
   pruneopts = ""
@@ -115,20 +115,20 @@
   revision = "ff6b7dc882cf4cfba7ee0b9f7dcc1ac096c554aa"
 
 [[projects]]
-  digest = "1:ad92aa49f34cbc3546063c7eb2cabb55ee2278b72842eda80e2a20a8a06a8d73"
-  name = "github.com/google/uuid"
-  packages = ["."]
-  pruneopts = ""
-  revision = "0cd6bf5da1e1c83f8b45653022c74f71af0538a4"
-  version = "v1.1.1"
-
-[[projects]]
   digest = "1:16ecf9e89b8b1310d9566a53484c31c5241bb47c32162eba780b46c0dfb58fef"
   name = "github.com/google/gofuzz"
   packages = ["."]
   pruneopts = ""
   revision = "db92cf7ae75e4a7a28abc005addab2b394362888"
   version = "v1.1.0"
+
+[[projects]]
+  digest = "1:ad92aa49f34cbc3546063c7eb2cabb55ee2278b72842eda80e2a20a8a06a8d73"
+  name = "github.com/google/uuid"
+  packages = ["."]
+  pruneopts = ""
+  revision = "0cd6bf5da1e1c83f8b45653022c74f71af0538a4"
+  version = "v1.1.1"
 
 [[projects]]
   branch = "master"
@@ -338,17 +338,16 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:adcb9e84ce154ef1d45851b57c40f8a211db3e36373a65b7c4f10c79b7428718"
+  digest = "1:2f0f30e07781039c6be667da33716cb1b11ca7999a3fac00271cd998618eff29"
   name = "golang.org/x/net"
   packages = [
-    "context",
     "http/httpguts",
     "http2",
     "http2/hpack",
     "idna",
   ]
   pruneopts = ""
-  revision = "112230192c580c3556b8cee6403af37a4fc5f28c"
+  revision = "aaa1db679c0d7765d2b1cb1f92cac8ebf4d94c53"
 
 [[projects]]
   branch = "master"
@@ -370,29 +369,6 @@
   ]
   pruneopts = ""
   revision = "749cb33beabd9aa6d3178e3de05bcc914f70b2bf"
-
-[[projects]]
-  digest = "1:740b51a55815493a8d0f2b1e0d0ae48fe48953bf7eaf3fcc4198823bf67768c0"
-  name = "golang.org/x/text"
-  packages = [
-    "internal/gen",
-    "internal/triegen",
-    "internal/ucd",
-    "transform",
-    "unicode/cldr",
-    "unicode/norm",
-  ]
-  pruneopts = ""
-  revision = "342b2e1fbaa52c93f31447ad2c6abc048c63e475"
-  version = "v0.3.2"
-
-[[projects]]
-  digest = "1:15d017551627c8bb091bde628215b2861bed128855343fdd570c62d08871f6e1"
-  name = "gopkg.in/alecthomas/kingpin.v2"
-  packages = ["."]
-  pruneopts = ""
-  revision = "947dcec5ba9c011838740e680966fd7087a71d0d"
-  version = "v2.2.6"
 
 [[projects]]
   digest = "1:fccda34e4c58111b1908d8d69bf8d57c41c8e2542bc18ec8cd38c4fa21057f71"
@@ -418,6 +394,14 @@
   pruneopts = ""
   revision = "23ae387dee1f90d29a23c0e87ee0b46038fbed0e"
   version = "v0.3.3"
+
+[[projects]]
+  digest = "1:15d017551627c8bb091bde628215b2861bed128855343fdd570c62d08871f6e1"
+  name = "gopkg.in/alecthomas/kingpin.v2"
+  packages = ["."]
+  pruneopts = ""
+  revision = "947dcec5ba9c011838740e680966fd7087a71d0d"
+  version = "v2.2.6"
 
 [[projects]]
   digest = "1:75fb3fcfc73a8c723efde7777b40e8e8ff9babf30d8c56160d01beffea8a95a6"
@@ -518,9 +502,9 @@
     "go.mongodb.org/mongo-driver/bson/primitive",
     "go.mongodb.org/mongo-driver/mongo",
     "go.mongodb.org/mongo-driver/mongo/options",
+    "go.mongodb.org/mongo-driver/x/mongo/driver/topology",
     "golang.org/x/crypto/ssh/terminal",
     "gopkg.in/mgo.v2/bson",
-    "gopkg.in/mgo.v2/dbtest",
     "k8s.io/api/core/v1",
   ]
   solver-name = "gps-cdcl"
