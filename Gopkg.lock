@@ -270,23 +270,39 @@
   version = "v1.6.1"
 
 [[projects]]
-  branch = "master"
-  digest = "1:ad74f33a69bd6ab0bd7287003b7c1069b94cfb5213eb5597005fe2963d7dfca9"
-  name = "github.com/xdg/scram"
+  digest = "1:e3c192bbd32961c2aa86ac067d695fda6dcaa27c14d5b334ba5e1e8e1caf0d02"
+  name = "github.com/xdg-go/pbkdf2"
   packages = ["."]
   pruneopts = ""
-  revision = "7eeb5667e42c09cb51bf7b7c28aea8c56767da90"
+  revision = "7f452ef1dac88350356f1bb84a23748205e64b96"
+  version = "v1.0.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:62f6eb06f6f39d18fc961956116a50a0e52b89961ed8a83bbb950b4cfb09fe67"
-  name = "github.com/xdg/stringprep"
+  digest = "1:c690666fc473c441d92d0765c1f773825b34086d1148e357e7b5ea8ae0925e8c"
+  name = "github.com/xdg-go/scram"
   packages = ["."]
   pruneopts = ""
-  revision = "73f8eece6fdcd902c185bf651de50f3828bed5ed"
+  revision = "2ad501880a7f7bcc9af290278baa3658c9a2f2cd"
+  version = "v1.0.2"
 
 [[projects]]
-  digest = "1:6085253f6bc0d9e4761ce971e02849b626de51735b35f362a34dbe5dbc3a2168"
+  digest = "1:371e44514be249a0554857dbed1f36f0632a3c95703c2287215eb951ffd27ff7"
+  name = "github.com/xdg-go/stringprep"
+  packages = ["."]
+  pruneopts = ""
+  revision = "4fcaaf19bc2a8e388ba275a82eb34c29abcd0bc9"
+  version = "v1.0.2"
+
+[[projects]]
+  digest = "1:96a6e88dae5c6c3e9540fa4069a7112427de946ed7f6ecec851ecb425a585aeb"
+  name = "github.com/youmark/pkcs8"
+  packages = ["."]
+  pruneopts = ""
+  revision = "1be2e3e5546da8a58903ff4adcfab015022538ea"
+  version = "v1.1"
+
+[[projects]]
+  digest = "1:3770bc03c28f87e5aedc27f3a668f3578d37087187b149641131ca98ae447356"
   name = "go.mongodb.org/mongo-driver"
   packages = [
     "bson",
@@ -298,6 +314,8 @@
     "event",
     "internal",
     "mongo",
+    "mongo/address",
+    "mongo/description",
     "mongo/options",
     "mongo/readconcern",
     "mongo/readpref",
@@ -307,14 +325,14 @@
     "x/bsonx",
     "x/bsonx/bsoncore",
     "x/mongo/driver",
-    "x/mongo/driver/address",
     "x/mongo/driver/auth",
+    "x/mongo/driver/auth/internal/awsv4",
     "x/mongo/driver/auth/internal/gssapi",
     "x/mongo/driver/connstring",
-    "x/mongo/driver/description",
     "x/mongo/driver/dns",
     "x/mongo/driver/mongocrypt",
     "x/mongo/driver/mongocrypt/options",
+    "x/mongo/driver/ocsp",
     "x/mongo/driver/operation",
     "x/mongo/driver/session",
     "x/mongo/driver/topology",
@@ -322,14 +340,15 @@
     "x/mongo/driver/wiremessage",
   ]
   pruneopts = ""
-  revision = "4ce2db174a8ec022f504b9bc0e768e284e44708f"
-  version = "v1.3.4"
+  revision = "9e49b5bdd709ca89dad07357876ee04871074f62"
+  version = "v1.7.1"
 
 [[projects]]
   branch = "master"
   digest = "1:2f8d339c3b89d5abf9a78aafe1e9fbe548f3b1fb9be5c3117036940904d39527"
   name = "golang.org/x/crypto"
   packages = [
+    "ocsp",
     "pbkdf2",
     "ssh/terminal",
   ]
@@ -353,7 +372,10 @@
   branch = "master"
   digest = "1:9f6efefb4e401a4f699a295d14518871368eb89403f2dd23ec11dfcd2c0836ba"
   name = "golang.org/x/sync"
-  packages = ["semaphore"]
+  packages = [
+    "errgroup",
+    "semaphore",
+  ]
   pruneopts = ""
   revision = "112230192c580c3556b8cee6403af37a4fc5f28c"
 
