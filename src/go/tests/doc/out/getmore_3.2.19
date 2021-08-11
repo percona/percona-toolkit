@@ -1,1 +1,0 @@
-{"ns":"test.coll","op":"getmore","query":{"getMore":"62858772934","collection":"coll","batchSize":2}}

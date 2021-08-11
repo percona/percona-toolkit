@@ -1,0 +1,43 @@
+{
+	"op" : "command",
+	"ns" : "test.coll",
+	"command" : {
+		"explain" : {
+			"find" : "coll",
+			"filter" : {
+				
+			}
+		},
+		"verbosity" : "queryPlanner",
+		"lsid" : {
+			"id" : UUID("f3ec56ba-ff75-4405-abab-14ad8551227a")
+		},
+		"$db" : "test"
+	},
+	"numYield" : 0,
+	"locks" : {
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		}
+	},
+	"responseLength" : 345,
+	"protocol" : "op_msg",
+	"millis" : 42,
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
+	"client" : "127.0.0.1",
+	"appName" : "MongoDB Shell",
+	"allUsers" : [ ],
+	"user" : ""
+}

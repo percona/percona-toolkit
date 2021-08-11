@@ -1,1 +1,0 @@
-{"ns":"test.coll","op":"command","command":{"count":"coll","query":{"a":{"$gt":5}},"fields":{}}}

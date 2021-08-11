@@ -1,15 +1,18 @@
-#!/bin/sh
+#!/bin/bash
 
 set -e
 set -x 
 
 ## Declare an array of images.
-declare -a images=(
-    "mongo:2.6.12"
-    "mongo:3.0.15"
-    "mongo:3.2.19"
-    "mongo:3.4.12"
-    "mongo:3.6.2"
+images=( \
+    "mongo:3.6" \
+    "mongo:4.0" \
+    "mongo:4.2" \
+    "mongo:4.4" \
+    "percona/percona-server-mongodb:3.6" \
+    "percona/percona-server-mongodb:4.0" \
+    "percona/percona-server-mongodb:4.2" \
+    "percona/percona-server-mongodb:4.4" \
 )
 
 ## Run docker-compose from the location of the script.

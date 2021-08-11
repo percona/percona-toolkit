@@ -1,7 +1,7 @@
 #!/bin/sh
 
-set -e
-set -x
+#set -e
+#set -x
 
 DIR=$(dirname "$0")
 
@@ -21,7 +21,9 @@ done
 profiles=$(ls $DIR/profile)
 
 MONGO_VERSION="$(db_version)"
+VENDOR_NAME="$(vendor_name)"
 RESULT_DIR=${RESULT_DIR:-/out}
+
 
 # turn on profiling
 set_profiling_level
@@ -30,5 +32,5 @@ for p in $profiles
 do
     f="${p%.*}"
     cat "${DIR}/profile/${p}" | mongo
-    get_single_profile > "${RESULT_DIR}/${f}_${MONGO_VERSION}"
+    get_single_profile > "${RESULT_DIR}/${f}_${VENDOR_NAME}_${MONGO_VERSION}"
 done

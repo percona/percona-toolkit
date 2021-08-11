@@ -1,0 +1,131 @@
+{
+	"op" : "query",
+	"ns" : "test.coll",
+	"command" : {
+		"find" : "coll",
+		"filter" : {
+			"c" : 1
+		},
+		"sort" : {
+			"b" : -1
+		},
+		"lsid" : {
+			"id" : UUID("ff5e5233-4cca-4fb3-b482-78e262a9f17c")
+		},
+		"$db" : "test"
+	},
+	"keysExamined" : 2,
+	"docsExamined" : 2,
+	"hasSortStage" : true,
+	"cursorExhausted" : true,
+	"numYield" : 0,
+	"nreturned" : 2,
+	"queryHash" : "87E5F524",
+	"planCacheKey" : "DDB16AA5",
+	"locks" : {
+		"ReplicationStateTransition" : {
+			"acquireCount" : {
+				"w" : NumberLong(1)
+			}
+		},
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		},
+		"Mutex" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		}
+	},
+	"flowControl" : {
+		
+	},
+	"responseLength" : 192,
+	"protocol" : "op_msg",
+	"millis" : 42,
+	"planSummary" : "IXSCAN { c: 1 }",
+	"execStats" : {
+		"stage" : "SORT",
+		"nReturned" : 2,
+		"executionTimeMillisEstimate" : 0,
+		"works" : 6,
+		"advanced" : 2,
+		"needTime" : 3,
+		"needYield" : 0,
+		"saveState" : 0,
+		"restoreState" : 0,
+		"isEOF" : 1,
+		"sortPattern" : {
+			"b" : -1
+		},
+		"memLimit" : 104857600,
+		"type" : "simple",
+		"totalDataSizeSorted" : 120,
+		"usedDisk" : false,
+		"inputStage" : {
+			"stage" : "FETCH",
+			"nReturned" : 2,
+			"executionTimeMillisEstimate" : 0,
+			"works" : 3,
+			"advanced" : 2,
+			"needTime" : 0,
+			"needYield" : 0,
+			"saveState" : 0,
+			"restoreState" : 0,
+			"isEOF" : 1,
+			"docsExamined" : 2,
+			"alreadyHasObj" : 0,
+			"inputStage" : {
+				"stage" : "IXSCAN",
+				"nReturned" : 2,
+				"executionTimeMillisEstimate" : 0,
+				"works" : 3,
+				"advanced" : 2,
+				"needTime" : 0,
+				"needYield" : 0,
+				"saveState" : 0,
+				"restoreState" : 0,
+				"isEOF" : 1,
+				"keyPattern" : {
+					"c" : 1
+				},
+				"indexName" : "c_1",
+				"isMultiKey" : false,
+				"multiKeyPaths" : {
+					"c" : [ ]
+				},
+				"isUnique" : false,
+				"isSparse" : false,
+				"isPartial" : false,
+				"indexVersion" : 2,
+				"direction" : "forward",
+				"indexBounds" : {
+					"c" : [
+						"[1.0, 1.0]"
+					]
+				},
+				"keysExamined" : 2,
+				"seeks" : 1,
+				"dupsTested" : 0,
+				"dupsDropped" : 0
+			}
+		}
+	},
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
+	"client" : "127.0.0.1",
+	"appName" : "MongoDB Shell",
+	"allUsers" : [ ],
+	"user" : ""
+}

@@ -1,0 +1,69 @@
+{
+	"op" : "command",
+	"ns" : "test.coll",
+	"command" : {
+		"aggregate" : "coll",
+		"pipeline" : [
+			{
+				"$match" : {
+					"a" : {
+						"$gte" : 2
+					}
+				}
+			}
+		],
+		"cursor" : {
+			
+		},
+		"lsid" : {
+			"id" : UUID("9e4bd6f4-3300-47d6-b928-7988cef83b57")
+		},
+		"$db" : "test"
+	},
+	"keysExamined" : 8,
+	"docsExamined" : 8,
+	"cursorExhausted" : true,
+	"numYield" : 0,
+	"nreturned" : 8,
+	"queryHash" : "0D966491",
+	"planCacheKey" : "BCC9CBED",
+	"locks" : {
+		"ReplicationStateTransition" : {
+			"acquireCount" : {
+				"w" : NumberLong(1)
+			}
+		},
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		},
+		"Mutex" : {
+			"acquireCount" : {
+				"r" : NumberLong(1)
+			}
+		}
+	},
+	"flowControl" : {
+		
+	},
+	"responseLength" : 386,
+	"protocol" : "op_msg",
+	"millis" : 42,
+	"planSummary" : "IXSCAN { a: 1 }",
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
+	"client" : "127.0.0.1",
+	"appName" : "MongoDB Shell",
+	"allUsers" : [ ],
+	"user" : ""
+}

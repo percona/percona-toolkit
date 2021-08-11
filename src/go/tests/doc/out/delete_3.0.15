@@ -1,1 +1,0 @@
-{"ns":"test.coll","op":"remove","query":{"a":{"$gte":2},"b":{"$gte":2}}}

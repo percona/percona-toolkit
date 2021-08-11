@@ -1,0 +1,65 @@
+{
+	"op" : "command",
+	"ns" : "test.coll",
+	"command" : {
+		"createIndexes" : "coll",
+		"indexes" : [
+			{
+				"key" : {
+					"b" : -1
+				},
+				"name" : "b_-1"
+			}
+		],
+		"lsid" : {
+			"id" : UUID("1383b232-746f-4235-a2d2-b36a42098a56")
+		},
+		"$db" : "test"
+	},
+	"numYield" : 0,
+	"locks" : {
+		"ParallelBatchWriterMode" : {
+			"acquireCount" : {
+				"r" : NumberLong(3)
+			}
+		},
+		"ReplicationStateTransition" : {
+			"acquireCount" : {
+				"w" : NumberLong(4)
+			}
+		},
+		"Global" : {
+			"acquireCount" : {
+				"w" : NumberLong(4)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"w" : NumberLong(3)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"r" : NumberLong(1),
+				"w" : NumberLong(1),
+				"W" : NumberLong(1)
+			}
+		},
+		"Mutex" : {
+			"acquireCount" : {
+				"r" : NumberLong(3)
+			}
+		}
+	},
+	"flowControl" : {
+		"acquireCount" : NumberLong(3)
+	},
+	"responseLength" : 114,
+	"protocol" : "op_msg",
+	"millis" : 42,
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
+	"client" : "127.0.0.1",
+	"appName" : "MongoDB Shell",
+	"allUsers" : [ ],
+	"user" : ""
+}

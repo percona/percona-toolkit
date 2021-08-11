@@ -1,0 +1,124 @@
+{
+	"op" : "command",
+	"ns" : "test.coll",
+	"command" : {
+		"mapreduce" : "coll",
+		"map" : {
+			"code" : "function() {\n    emit(this.a, this.b);\n}"
+		},
+		"reduce" : {
+			"code" : "function(a, b) {\n    return Array.sum(b);\n}"
+		},
+		"query" : {
+			"a" : {
+				"$gte" : 0
+			}
+		},
+		"out" : {
+			"inline" : 1
+		},
+		"lsid" : {
+			"id" : UUID("4ea646b8-8b04-4c46-8662-607ca913315f")
+		},
+		"$db" : "test"
+	},
+	"keysExamined" : 3,
+	"docsExamined" : 3,
+	"numYield" : 0,
+	"queryHash" : "0D966491",
+	"planCacheKey" : "BCC9CBED",
+	"locks" : {
+		"ParallelBatchWriterMode" : {
+			"acquireCount" : {
+				"r" : NumberLong(2)
+			}
+		},
+		"ReplicationStateTransition" : {
+			"acquireCount" : {
+				"w" : NumberLong(4)
+			}
+		},
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(4)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"r" : NumberLong(3),
+				"R" : NumberLong(1)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"r" : NumberLong(5),
+				"R" : NumberLong(1)
+			}
+		},
+		"Mutex" : {
+			"acquireCount" : {
+				"r" : NumberLong(4)
+			}
+		}
+	},
+	"flowControl" : {
+		
+	},
+	"responseLength" : 234,
+	"protocol" : "op_msg",
+	"millis" : 42,
+	"planSummary" : "IXSCAN { a: 1 }",
+	"execStats" : {
+		"stage" : "FETCH",
+		"nReturned" : 3,
+		"executionTimeMillisEstimate" : 0,
+		"works" : 4,
+		"advanced" : 3,
+		"needTime" : 0,
+		"needYield" : 0,
+		"saveState" : 0,
+		"restoreState" : 0,
+		"isEOF" : 1,
+		"docsExamined" : 3,
+		"alreadyHasObj" : 0,
+		"inputStage" : {
+			"stage" : "IXSCAN",
+			"nReturned" : 3,
+			"executionTimeMillisEstimate" : 0,
+			"works" : 4,
+			"advanced" : 3,
+			"needTime" : 0,
+			"needYield" : 0,
+			"saveState" : 0,
+			"restoreState" : 0,
+			"isEOF" : 1,
+			"keyPattern" : {
+				"a" : 1
+			},
+			"indexName" : "a_1",
+			"isMultiKey" : false,
+			"multiKeyPaths" : {
+				"a" : [ ]
+			},
+			"isUnique" : false,
+			"isSparse" : false,
+			"isPartial" : false,
+			"indexVersion" : 2,
+			"direction" : "forward",
+			"indexBounds" : {
+				"a" : [
+					"[0.0, inf.0]"
+				]
+			},
+			"keysExamined" : 3,
+			"seeks" : 1,
+			"dupsTested" : 0,
+			"dupsDropped" : 0
+		}
+	},
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
+	"client" : "127.0.0.1",
+	"appName" : "MongoDB Shell",
+	"allUsers" : [ ],
+	"user" : ""
+}

@@ -1,0 +1,69 @@
+{
+	"op" : "command",
+	"ns" : "test.coll",
+	"command" : {
+		"createIndexes" : "coll",
+		"indexes" : [
+			{
+				"key" : {
+					"loc" : "2dsphere"
+				},
+				"name" : "loc_2dsphere"
+			}
+		],
+		"lsid" : {
+			"id" : UUID("8e0bad68-4678-43f1-8cf6-c6b4003f056e")
+		},
+		"$db" : "test"
+	},
+	"numYield" : 0,
+	"locks" : {
+		"ParallelBatchWriterMode" : {
+			"acquireCount" : {
+				"r" : NumberLong(2)
+			}
+		},
+		"ReplicationStateTransition" : {
+			"acquireCount" : {
+				"w" : NumberLong(3)
+			}
+		},
+		"Global" : {
+			"acquireCount" : {
+				"r" : NumberLong(1),
+				"w" : NumberLong(2)
+			}
+		},
+		"Database" : {
+			"acquireCount" : {
+				"r" : NumberLong(1),
+				"w" : NumberLong(2)
+			}
+		},
+		"Collection" : {
+			"acquireCount" : {
+				"r" : NumberLong(2),
+				"w" : NumberLong(1),
+				"R" : NumberLong(1),
+				"W" : NumberLong(2)
+			}
+		},
+		"Mutex" : {
+			"acquireCount" : {
+				"r" : NumberLong(4)
+			}
+		}
+	},
+	"flowControl" : {
+		"acquireCount" : NumberLong(1),
+		"timeAcquiringMicros" : NumberLong(1)
+	},
+	"responseLength" : 114,
+	"protocol" : "op_msg",
+	"millis" : 42,
+	"ts" : ISODate("2020-01-01T00:00:00Z"),
+	"client" : "127.0.0.1",
+	"appName" : "MongoDB Shell",
+	"allUsers" : [ ],
+	"user" : ""
+}

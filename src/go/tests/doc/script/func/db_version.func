@@ -1,5 +1,14 @@
-#!/bin/sh
+#!/bin/bash
 
 db_version() {
-    mongo --quiet --eval 'db.serverBuildInfo().versionArray.slice(0,3).join(".")'
+    mongo --quiet --eval 'db.serverBuildInfo().versionArray.slice(0,2).join(".")'
+}
+
+vendor_name() {
+    vendor="mongo"
+    vn=$(mongo --quiet --eval 'db.serverBuildInfo()' | grep 'psmdb' &>/dev/null)
+    if [ $vn -eq 0 ]; then 
+        vendor='psmdb'
+    fi
+    echo "$vendor"
 }
