@@ -1,6 +1,9 @@
-#!/bin/sh
+#!/bin/bash
+
+DIR=$(dirname "$0")
+source ${DIR}/env.sh 
 
 set_profiling_level() {
-    mongo --quiet --eval 'db.setProfilingLevel(2)'
+    $CMD --quiet --eval 'db.setProfilingLevel(2, {"slowms": 0})'
 }
 

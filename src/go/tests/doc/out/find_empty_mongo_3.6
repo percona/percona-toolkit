@@ -1,58 +1,70 @@
 {
-	"op" : "query",
-	"ns" : "test.coll",
-	"command" : {
-		"find" : "coll",
-		"filter" : {
-			
-		},
-		"lsid" : {
-			"id" : UUID("be7c724e-c745-4ee6-9952-ca68af1410d0")
-		},
-		"$db" : "test"
-	},
-	"keysExamined" : 0,
-	"docsExamined" : 0,
-	"cursorExhausted" : true,
-	"numYield" : 0,
-	"locks" : {
-		"Global" : {
-			"acquireCount" : {
-				"r" : NumberLong(2)
-			}
-		},
-		"Database" : {
-			"acquireCount" : {
-				"r" : NumberLong(1)
-			}
-		},
-		"Collection" : {
-			"acquireCount" : {
-				"r" : NumberLong(1)
-			}
-		}
-	},
-	"nreturned" : 0,
-	"responseLength" : 82,
-	"protocol" : "op_msg",
-	"millis" : 42,
-	"planSummary" : "EOF",
-	"execStats" : {
-		"stage" : "EOF",
-		"nReturned" : 0,
-		"executionTimeMillisEstimate" : 0,
-		"works" : 0,
-		"advanced" : 0,
-		"needTime" : 0,
-		"needYield" : 0,
-		"saveState" : 0,
-		"restoreState" : 0,
-		"isEOF" : 1,
-		"invalidates" : 0
-	},
-	"ts" : ISODate("2020-01-01T00:00:00Z"),
-	"client" : "127.0.0.1",
-	"appName" : "MongoDB Shell",
-	"allUsers" : [ ],
-	"user" : ""
+  "op": "query",
+  "ns": "admin.test_db.coll",
+  "command": {
+    "find": "test_db.coll",
+    "filter": {},
+    "lsid": {
+      "id": {
+        "$binary": "dsIUiir2R1GsIO/3lBRDsA==",
+        "$type": "04"
+      }
+    },
+    "$db": "admin"
+  },
+  "keysExamined": 0,
+  "docsExamined": 0,
+  "cursorExhausted": true,
+  "numYield": 0,
+  "locks": {
+    "Global": {
+      "acquireCount": {
+        "r": {
+          "$numberLong": "2"
+        }
+      }
+    },
+    "Database": {
+      "acquireCount": {
+        "r": {
+          "$numberLong": "1"
+        }
+      }
+    },
+    "Collection": {
+      "acquireCount": {
+        "r": {
+          "$numberLong": "1"
+        }
+      }
+    }
+  },
+  "nreturned": 0,
+  "responseLength": 91,
+  "protocol": "op_msg",
+  "millis": 42,
+  "planSummary": "EOF",
+  "execStats": {
+    "stage": "EOF",
+    "nReturned": 0,
+    "executionTimeMillisEstimate": 0,
+    "works": 0,
+    "advanced": 0,
+    "needTime": 0,
+    "needYield": 0,
+    "saveState": 0,
+    "restoreState": 0,
+    "isEOF": 1,
+    "invalidates": 0
+  },
+  "ts": "2020-01-01T00:00:00.000Z",
+  "client": "127.0.0.1",
+  "appName": "MongoDB Shell",
+  "allUsers": [
+    {
+      "user": "root",
+      "db": "admin"
+    }
+  ],
+  "user": "root@admin"
 }

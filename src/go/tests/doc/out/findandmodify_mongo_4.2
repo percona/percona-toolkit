@@ -1,106 +1,141 @@
 {
-	"op" : "command",
-	"ns" : "test.coll",
-	"command" : {
-		"findandmodify" : "coll",
-		"query" : {
-			"a" : 2
-		},
-		"update" : {
-			"$inc" : {
-				"b" : 1
-			}
-		},
-		"lsid" : {
-			"id" : UUID("09eb5abe-faef-4f97-97b7-ea588ed64573")
-		},
-		"$db" : "test"
-	},
-	"keysExamined" : 0,
-	"docsExamined" : 3,
-	"nMatched" : 1,
-	"nModified" : 1,
-	"keysInserted" : 1,
-	"keysDeleted" : 1,
-	"numYield" : 0,
-	"queryHash" : "4B53BE76",
-	"planCacheKey" : "4B53BE76",
-	"locks" : {
-		"ParallelBatchWriterMode" : {
-			"acquireCount" : {
-				"r" : NumberLong(1)
-			}
-		},
-		"ReplicationStateTransition" : {
-			"acquireCount" : {
-				"w" : NumberLong(1)
-			}
-		},
-		"Global" : {
-			"acquireCount" : {
-				"w" : NumberLong(1)
-			}
-		},
-		"Database" : {
-			"acquireCount" : {
-				"w" : NumberLong(1)
-			}
-		},
-		"Collection" : {
-			"acquireCount" : {
-				"w" : NumberLong(1)
-			}
-		},
-		"Mutex" : {
-			"acquireCount" : {
-				"r" : NumberLong(2)
-			}
-		}
-	},
-	"flowControl" : {
-		"acquireCount" : NumberLong(1)
-	},
-	"responseLength" : 132,
-	"protocol" : "op_msg",
-	"millis" : 42,
-	"planSummary" : "COLLSCAN",
-	"execStats" : {
-		"stage" : "UPDATE",
-		"nReturned" : 1,
-		"executionTimeMillisEstimate" : 0,
-		"works" : 4,
-		"advanced" : 1,
-		"needTime" : 3,
-		"needYield" : 0,
-		"saveState" : 0,
-		"restoreState" : 0,
-		"isEOF" : 1,
-		"nMatched" : 1,
-		"nWouldModify" : 1,
-		"wouldInsert" : false,
-		"inputStage" : {
-			"stage" : "COLLSCAN",
-			"filter" : {
-				"a" : {
-					"$eq" : 2
-				}
-			},
-			"nReturned" : 1,
-			"executionTimeMillisEstimate" : 0,
-			"works" : 4,
-			"advanced" : 1,
-			"needTime" : 3,
-			"needYield" : 0,
-			"saveState" : 1,
-			"restoreState" : 1,
-			"isEOF" : 0,
-			"direction" : "forward",
-			"docsExamined" : 3
-		}
-	},
-	"ts" : ISODate("2020-01-01T00:00:00Z"),
-	"client" : "127.0.0.1",
-	"appName" : "MongoDB Shell",
-	"allUsers" : [ ],
-	"user" : ""
+  "op": "command",
+  "ns": "admin.test_db.coll",
+  "command": {
+    "findandmodify": "test_db.coll",
+    "query": {
+      "a": 2
+    },
+    "update": {
+      "$inc": {
+        "b": 1
+      }
+    },
+    "lsid": {
+      "id": {
+        "$binary": "EpwnQIxCTOq488cDgKhldQ==",
+        "$type": "04"
+      }
+    },
+    "$db": "admin"
+  },
+  "keysExamined": 0,
+  "docsExamined": 3,
+  "nMatched": 1,
+  "nModified": 1,
+  "keysInserted": 1,
+  "keysDeleted": 1,
+  "numYield": 0,
+  "queryHash": "4B53BE76",
+  "planCacheKey": "4B53BE76",
+  "locks": {
+    "ParallelBatchWriterMode": {
+      "acquireCount": {
+        "r": {
+          "$numberLong": "1"
+        }
+      }
+    },
+    "ReplicationStateTransition": {
+      "acquireCount": {
+        "w": {
+          "$numberLong": "2"
+        }
+      }
+    },
+    "Global": {
+      "acquireCount": {
+        "r": {
+          "$numberLong": "1"
+        },
+        "w": {
+          "$numberLong": "1"
+        }
+      }
+    },
+    "Database": {
+      "acquireCount": {
+        "W": {
+          "$numberLong": "1"
+        }
+      }
+    },
+    "Collection": {
+      "acquireCount": {
+        "w": {
+          "$numberLong": "1"
+        }
+      }
+    },
+    "Mutex": {
+      "acquireCount": {
+        "r": {
+          "$numberLong": "2"
+        }
+      }
+    }
+  },
+  "flowControl": {
+    "acquireCount": {
+      "$numberLong": "1"
+    }
+  },
+  "storage": {
+    "data": {
+      "bytesRead": {
+        "$numberLong": "114"
+      },
+      "timeReadingMicros": {
+        "$numberLong": "1"
+      }
+    }
+  },
+  "responseLength": 132,
+  "protocol": "op_msg",
+  "millis": 42,
+  "planSummary": "COLLSCAN",
+  "execStats": {
+    "stage": "UPDATE",
+    "nReturned": 1,
+    "executionTimeMillisEstimate": 0,
+    "works": 4,
+    "advanced": 1,
+    "needTime": 3,
+    "needYield": 0,
+    "saveState": 0,
+    "restoreState": 0,
+    "isEOF": 1,
+    "nMatched": 1,
+    "nWouldModify": 1,
+    "wouldInsert": false,
+    "inputStage": {
+      "stage": "COLLSCAN",
+      "filter": {
+        "a": {
+          "$eq": 2
+        }
+      },
+      "nReturned": 1,
+      "executionTimeMillisEstimate": 0,
+      "works": 4,
+      "advanced": 1,
+      "needTime": 3,
+      "needYield": 0,
+      "saveState": 1,
+      "restoreState": 1,
+      "isEOF": 0,
+      "direction": "forward",
+      "docsExamined": 3
+    }
+  },
+  "ts": "2020-01-01T00:00:00.000Z",
+  "client": "127.0.0.1",
+  "appName": "MongoDB Shell",
+  "allUsers": [
+    {
+      "user": "root",
+      "db": "admin"
+    }
+  ],
+  "user": "root@admin"
 }

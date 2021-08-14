@@ -1,66 +1,98 @@
 {
-	"op" : "command",
-	"ns" : "test.coll",
-	"command" : {
-		"createIndexes" : "coll",
-		"indexes" : [
-			{
-				"key" : {
-					"loc" : "2dsphere"
-				},
-				"name" : "loc_2dsphere"
-			}
-		],
-		"lsid" : {
-			"id" : UUID("55602bb1-9fad-46be-adfb-c0ca8b568031")
-		},
-		"$db" : "test"
-	},
-	"numYield" : 0,
-	"locks" : {
-		"ParallelBatchWriterMode" : {
-			"acquireCount" : {
-				"r" : NumberLong(3)
-			}
-		},
-		"ReplicationStateTransition" : {
-			"acquireCount" : {
-				"w" : NumberLong(4)
-			}
-		},
-		"Global" : {
-			"acquireCount" : {
-				"w" : NumberLong(4)
-			}
-		},
-		"Database" : {
-			"acquireCount" : {
-				"w" : NumberLong(3)
-			}
-		},
-		"Collection" : {
-			"acquireCount" : {
-				"r" : NumberLong(1),
-				"w" : NumberLong(1),
-				"W" : NumberLong(1)
-			}
-		},
-		"Mutex" : {
-			"acquireCount" : {
-				"r" : NumberLong(3)
-			}
-		}
-	},
-	"flowControl" : {
-		"acquireCount" : NumberLong(3),
-		"timeAcquiringMicros" : NumberLong(1)
-	},
-	"responseLength" : 114,
-	"protocol" : "op_msg",
-	"millis" : 42,
-	"ts" : ISODate("2020-01-01T00:00:00Z"),
-	"client" : "127.0.0.1",
-	"appName" : "MongoDB Shell",
-	"allUsers" : [ ],
-	"user" : ""
+  "op": "command",
+  "ns": "admin.test_db.coll",
+  "command": {
+    "createIndexes": "test_db.coll",
+    "indexes": [
+      {
+        "key": {
+          "loc": "2dsphere"
+        },
+        "name": "loc_2dsphere"
+      }
+    ],
+    "lsid": {
+      "id": {
+        "$binary": "N0QMEHjkRgW1s/LsJorJFg==",
+        "$type": "04"
+      }
+    },
+    "$db": "admin"
+  },
+  "numYield": 0,
+  "locks": {
+    "ParallelBatchWriterMode": {
+      "acquireCount": {
+        "r": {
+          "$numberLong": "3"
+        }
+      }
+    },
+    "ReplicationStateTransition": {
+      "acquireCount": {
+        "w": {
+          "$numberLong": "5"
+        }
+      }
+    },
+    "Global": {
+      "acquireCount": {
+        "r": {
+          "$numberLong": "1"
+        },
+        "w": {
+          "$numberLong": "4"
+        }
+      }
+    },
+    "Database": {
+      "acquireCount": {
+        "W": {
+          "$numberLong": "3"
+        }
+      }
+    },
+    "Collection": {
+      "acquireCount": {
+        "r": {
+          "$numberLong": "1"
+        },
+        "w": {
+          "$numberLong": "1"
+        },
+        "W": {
+          "$numberLong": "1"
+        }
+      }
+    },
+    "Mutex": {
+      "acquireCount": {
+        "r": {
+          "$numberLong": "3"
+        }
+      }
+    }
+  },
+  "flowControl": {
+    "acquireCount": {
+      "$numberLong": "3"
+    },
+    "timeAcquiringMicros": {
+      "$numberLong": "1"
+    }
+  },
+  "storage": {},
+  "responseLength": 114,
+  "protocol": "op_msg",
+  "millis": 42,
+  "ts": "2020-01-01T00:00:00.000Z",
+  "client": "127.0.0.1",
+  "appName": "MongoDB Shell",
+  "allUsers": [
+    {
+      "user": "root",
+      "db": "admin"
+    }
+  ],
+  "user": "root@admin"
 }

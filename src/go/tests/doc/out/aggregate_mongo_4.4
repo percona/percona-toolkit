@@ -1,69 +1,93 @@
 {
-	"op" : "command",
-	"ns" : "test.coll",
-	"command" : {
-		"aggregate" : "coll",
-		"pipeline" : [
-			{
-				"$match" : {
-					"a" : {
-						"$gte" : 2
-					}
-				}
-			}
-		],
-		"cursor" : {
-			
-		},
-		"lsid" : {
-			"id" : UUID("9caaf1fa-7996-4fea-9784-1952abc6879e")
-		},
-		"$db" : "test"
-	},
-	"keysExamined" : 8,
-	"docsExamined" : 8,
-	"cursorExhausted" : true,
-	"numYield" : 0,
-	"nreturned" : 8,
-	"queryHash" : "0D966491",
-	"planCacheKey" : "BCC9CBED",
-	"locks" : {
-		"ReplicationStateTransition" : {
-			"acquireCount" : {
-				"w" : NumberLong(1)
-			}
-		},
-		"Global" : {
-			"acquireCount" : {
-				"r" : NumberLong(1)
-			}
-		},
-		"Database" : {
-			"acquireCount" : {
-				"r" : NumberLong(1)
-			}
-		},
-		"Collection" : {
-			"acquireCount" : {
-				"r" : NumberLong(1)
-			}
-		},
-		"Mutex" : {
-			"acquireCount" : {
-				"r" : NumberLong(1)
-			}
-		}
-	},
-	"flowControl" : {
-		
-	},
-	"responseLength" : 386,
-	"protocol" : "op_msg",
-	"millis" : 42,
-	"planSummary" : "IXSCAN { a: 1 }",
-	"ts" : ISODate("2020-01-01T00:00:00Z"),
-	"client" : "127.0.0.1",
-	"appName" : "MongoDB Shell",
-	"allUsers" : [ ],
-	"user" : ""
+  "op": "command",
+  "ns": "admin.test_db.coll",
+  "command": {
+    "aggregate": "test_db.coll",
+    "pipeline": [
+      {
+        "$match": {
+          "a": {
+            "$gte": 2
+          }
+        }
+      }
+    ],
+    "cursor": {},
+    "lsid": {
+      "id": {
+        "$binary": "HEWMc+tzR0Gj6VqFQOb9Jw==",
+        "$type": "04"
+      }
+    },
+    "$db": "admin"
+  },
+  "keysExamined": 8,
+  "docsExamined": 8,
+  "cursorExhausted": true,
+  "numYield": 0,
+  "nreturned": 8,
+  "queryHash": "0D966491",
+  "planCacheKey": "BCC9CBED",
+  "locks": {
+    "ReplicationStateTransition": {
+      "acquireCount": {
+        "w": {
+          "$numberLong": "2"
+        }
+      }
+    },
+    "Global": {
+      "acquireCount": {
+        "r": {
+          "$numberLong": "2"
+        }
+      }
+    },
+    "Database": {
+      "acquireCount": {
+        "r": {
+          "$numberLong": "1"
+        }
+      }
+    },
+    "Collection": {
+      "acquireCount": {
+        "r": {
+          "$numberLong": "1"
+        }
+      }
+    },
+    "Mutex": {
+      "acquireCount": {
+        "r": {
+          "$numberLong": "1"
+        }
+      }
+    }
+  },
+  "flowControl": {},
+  "storage": {
+    "data": {
+      "bytesRead": {
+        "$numberLong": "171"
+      },
+      "timeReadingMicros": {
+        "$numberLong": "1"
+      }
+    }
+  },
+  "responseLength": 395,
+  "protocol": "op_msg",
+  "millis": 42,
+  "planSummary": "IXSCAN { a: 1 }",
+  "ts": "2020-01-01T00:00:00.000Z",
+  "client": "127.0.0.1",
+  "appName": "MongoDB Shell",
+  "allUsers": [
+    {
+      "user": "root",
+      "db": "admin"
+    }
+  ],
+  "user": "root@admin"
 }

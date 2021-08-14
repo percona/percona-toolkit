@@ -1,8 +1,5 @@
 #!/bin/bash
 
-set -e
-set -x 
-
 ## Declare an array of images.
 images=( \
     "mongo:3.6" \
@@ -17,6 +14,7 @@ images=( \
 
 ## Run docker-compose from the location of the script.
 cd $(dirname $0)
+source script/env.sh
 
 ## Now loop through the above array of images.
 for image in "${images[@]}"
@@ -25,6 +23,7 @@ do
     # Clean up old instance if it got left running e.g. after ctrl+c.
     docker-compose down -v
     docker-compose up -d
-    docker-compose exec mongo sh /script/main.sh
+    sleep 15
+    docker-compose exec mongo bash /script/main.sh
     docker-compose down -v
 done

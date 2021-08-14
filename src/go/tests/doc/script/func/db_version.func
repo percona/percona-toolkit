@@ -1,14 +1,17 @@
 #!/bin/bash
 
+DIR=$(dirname "$0")
+source ${DIR}/env.sh 
+
 db_version() {
-    mongo --quiet --eval 'db.serverBuildInfo().versionArray.slice(0,2).join(".")'
+    $CMD --quiet --eval 'db.serverBuildInfo().versionArray.slice(0,2).join(".")'
 }
 
 vendor_name() {
     vendor="mongo"
-    vn=$(mongo --quiet --eval 'db.serverBuildInfo()' | grep 'psmdb' &>/dev/null)
-    if [ $vn -eq 0 ]; then 
-        vendor='psmdb'
+    ${CMD} --quiet --eval 'db.serverBuildInfo()' | grep -i 'psmdb' &>/dev/null
+    if [ "$?" == "0" ]; then 
+        vendor="psmdb"
     fi
     echo "$vendor"
 }

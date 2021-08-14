@@ -1,42 +1,57 @@
 {
-	"op" : "insert",
-	"ns" : "test.coll",
-	"command" : {
-		"insert" : "coll",
-		"ordered" : true,
-		"lsid" : {
-			"id" : UUID("40f0fd5e-d0e8-4fa0-a533-ec4a65c6a0d3")
-		},
-		"$db" : "test"
-	},
-	"ninserted" : 1,
-	"keysInserted" : 1,
-	"numYield" : 0,
-	"locks" : {
-		"Global" : {
-			"acquireCount" : {
-				"r" : NumberLong(3),
-				"w" : NumberLong(3)
-			}
-		},
-		"Database" : {
-			"acquireCount" : {
-				"w" : NumberLong(2),
-				"W" : NumberLong(1)
-			}
-		},
-		"Collection" : {
-			"acquireCount" : {
-				"w" : NumberLong(2)
-			}
-		}
-	},
-	"responseLength" : 29,
-	"protocol" : "op_msg",
-	"millis" : 42,
-	"ts" : ISODate("2020-01-01T00:00:00Z"),
-	"client" : "127.0.0.1",
-	"appName" : "MongoDB Shell",
-	"allUsers" : [ ],
-	"user" : ""
+  "op": "insert",
+  "ns": "admin.test_db.coll",
+  "command": {
+    "insert": "test_db.coll",
+    "ordered": true,
+    "lsid": {
+      "id": {
+        "$binary": "A323UpIERYuCrX3O+GEFQg==",
+        "$type": "04"
+      }
+    },
+    "$db": "admin"
+  },
+  "ninserted": 1,
+  "keysInserted": 1,
+  "numYield": 0,
+  "locks": {
+    "Global": {
+      "acquireCount": {
+        "r": {
+          "$numberLong": "3"
+        },
+        "w": {
+          "$numberLong": "3"
+        }
+      }
+    },
+    "Database": {
+      "acquireCount": {
+        "W": {
+          "$numberLong": "3"
+        }
+      }
+    },
+    "Collection": {
+      "acquireCount": {
+        "w": {
+          "$numberLong": "2"
+        }
+      }
+    }
+  },
+  "responseLength": 29,
+  "protocol": "op_msg",
+  "millis": 42,
+  "ts": "2020-01-01T00:00:00.000Z",
+  "client": "127.0.0.1",
+  "appName": "MongoDB Shell",
+  "allUsers": [
+    {
+      "user": "root",
+      "db": "admin"
+    }
+  ],
+  "user": "root@admin"
 }

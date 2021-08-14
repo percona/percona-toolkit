@@ -1,56 +1,70 @@
 {
-	"op" : "command",
-	"ns" : "test.coll",
-	"command" : {
-		"explain" : {
-			"find" : "coll",
-			"filter" : {
-				
-			}
-		},
-		"verbosity" : "queryPlanner",
-		"lsid" : {
-			"id" : UUID("43e7e783-f3aa-431c-8165-e72f7591b1b6")
-		},
-		"$db" : "test"
-	},
-	"numYield" : 0,
-	"locks" : {
-		"ReplicationStateTransition" : {
-			"acquireCount" : {
-				"w" : NumberLong(1)
-			}
-		},
-		"Global" : {
-			"acquireCount" : {
-				"r" : NumberLong(1)
-			}
-		},
-		"Database" : {
-			"acquireCount" : {
-				"r" : NumberLong(1)
-			}
-		},
-		"Collection" : {
-			"acquireCount" : {
-				"r" : NumberLong(1)
-			}
-		},
-		"Mutex" : {
-			"acquireCount" : {
-				"r" : NumberLong(1)
-			}
-		}
-	},
-	"flowControl" : {
-		
-	},
-	"responseLength" : 396,
-	"protocol" : "op_msg",
-	"millis" : 42,
-	"ts" : ISODate("2020-01-01T00:00:00Z"),
-	"client" : "127.0.0.1",
-	"appName" : "MongoDB Shell",
-	"allUsers" : [ ],
-	"user" : ""
+  "op": "command",
+  "ns": "admin.test_db.coll",
+  "command": {
+    "explain": {
+      "find": "test_db.coll",
+      "filter": {}
+    },
+    "verbosity": "queryPlanner",
+    "lsid": {
+      "id": {
+        "$binary": "35tbpZ02Q0Cleq2XNuE+Lw==",
+        "$type": "04"
+      }
+    },
+    "$db": "admin"
+  },
+  "numYield": 0,
+  "locks": {
+    "ReplicationStateTransition": {
+      "acquireCount": {
+        "w": {
+          "$numberLong": "2"
+        }
+      }
+    },
+    "Global": {
+      "acquireCount": {
+        "r": {
+          "$numberLong": "2"
+        }
+      }
+    },
+    "Database": {
+      "acquireCount": {
+        "r": {
+          "$numberLong": "1"
+        }
+      }
+    },
+    "Collection": {
+      "acquireCount": {
+        "r": {
+          "$numberLong": "2"
+        }
+      }
+    },
+    "Mutex": {
+      "acquireCount": {
+        "r": {
+          "$numberLong": "1"
+        }
+      }
+    }
+  },
+  "flowControl": {},
+  "responseLength": 326,
+  "protocol": "op_msg",
+  "millis": 42,
+  "ts": "2020-01-01T00:00:00.000Z",
+  "client": "127.0.0.1",
+  "appName": "MongoDB Shell",
+  "allUsers": [
+    {
+      "user": "root",
+      "db": "admin"
+    }
+  ],
+  "user": "root@admin"
 }

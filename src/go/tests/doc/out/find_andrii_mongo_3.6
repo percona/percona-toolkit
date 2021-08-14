@@ -1,98 +1,137 @@
 {
-	"op" : "query",
-	"ns" : "test.coll",
-	"command" : {
-		"find" : "coll",
-		"filter" : {
-			"$and" : [
-				{
-					"k" : {
-						"$gt" : 1
-					}
-				},
-				{
-					"k" : {
-						"$lt" : 2
-					}
-				},
-				{
-					"$or" : [
-						{
-							"c" : {
-								"$in" : [
-									/^0/,
-									/^2/,
-									/^4/,
-									/^6/
-								]
-							}
-						},
-						{
-							"pad" : {
-								"$in" : [
-									/9$/,
-									/7$/,
-									/5$/,
-									/3$/
-								]
-							}
-						}
-					]
-				}
-			]
-		},
-		"limit" : 100,
-		"singleBatch" : false,
-		"sort" : {
-			"k" : -1
-		},
-		"lsid" : {
-			"id" : UUID("687782e6-027c-4e9d-bca9-063636fe10e8")
-		},
-		"$db" : "test"
-	},
-	"keysExamined" : 0,
-	"docsExamined" : 0,
-	"cursorExhausted" : true,
-	"numYield" : 0,
-	"locks" : {
-		"Global" : {
-			"acquireCount" : {
-				"r" : NumberLong(2)
-			}
-		},
-		"Database" : {
-			"acquireCount" : {
-				"r" : NumberLong(1)
-			}
-		},
-		"Collection" : {
-			"acquireCount" : {
-				"r" : NumberLong(1)
-			}
-		}
-	},
-	"nreturned" : 0,
-	"responseLength" : 82,
-	"protocol" : "op_msg",
-	"millis" : 42,
-	"planSummary" : "EOF",
-	"execStats" : {
-		"stage" : "EOF",
-		"nReturned" : 0,
-		"executionTimeMillisEstimate" : 0,
-		"works" : 0,
-		"advanced" : 0,
-		"needTime" : 0,
-		"needYield" : 0,
-		"saveState" : 0,
-		"restoreState" : 0,
-		"isEOF" : 1,
-		"invalidates" : 0
-	},
-	"ts" : ISODate("2020-01-01T00:00:00Z"),
-	"client" : "127.0.0.1",
-	"appName" : "MongoDB Shell",
-	"allUsers" : [ ],
-	"user" : ""
+  "op": "query",
+  "ns": "admin.test_db.coll",
+  "command": {
+    "find": "test_db.coll",
+    "filter": {
+      "$and": [
+        {
+          "k": {
+            "$gt": 1
+          }
+        },
+        {
+          "k": {
+            "$lt": 2
+          }
+        },
+        {
+          "$or": [
+            {
+              "c": {
+                "$in": [
+                  {
+                    "$regex": "^0",
+                    "$options": ""
+                  },
+                  {
+                    "$regex": "^2",
+                    "$options": ""
+                  },
+                  {
+                    "$regex": "^4",
+                    "$options": ""
+                  },
+                  {
+                    "$regex": "^6",
+                    "$options": ""
+                  }
+                ]
+              }
+            },
+            {
+              "pad": {
+                "$in": [
+                  {
+                    "$regex": "9$",
+                    "$options": ""
+                  },
+                  {
+                    "$regex": "7$",
+                    "$options": ""
+                  },
+                  {
+                    "$regex": "5$",
+                    "$options": ""
+                  },
+                  {
+                    "$regex": "3$",
+                    "$options": ""
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "$comment": "find_andrii"
+    },
+    "limit": 100,
+    "singleBatch": false,
+    "sort": {
+      "k": -1
+    },
+    "lsid": {
+      "id": {
+        "$binary": "7vc65wrCSyaMT8mfko6xew==",
+        "$type": "04"
+      }
+    },
+    "$db": "admin"
+  },
+  "keysExamined": 0,
+  "docsExamined": 0,
+  "cursorExhausted": true,
+  "numYield": 0,
+  "locks": {
+    "Global": {
+      "acquireCount": {
+        "r": {
+          "$numberLong": "2"
+        }
+      }
+    },
+    "Database": {
+      "acquireCount": {
+        "r": {
+          "$numberLong": "1"
+        }
+      }
+    },
+    "Collection": {
+      "acquireCount": {
+        "r": {
+          "$numberLong": "1"
+        }
+      }
+    }
+  },
+  "nreturned": 0,
+  "responseLength": 91,
+  "protocol": "op_msg",
+  "millis": 42,
+  "planSummary": "EOF",
+  "execStats": {
+    "stage": "EOF",
+    "nReturned": 0,
+    "executionTimeMillisEstimate": 0,
+    "works": 0,
+    "advanced": 0,
+    "needTime": 0,
+    "needYield": 0,
+    "saveState": 0,
+    "restoreState": 0,
+    "isEOF": 1,
+    "invalidates": 0
+  },
+  "ts": "2020-01-01T00:00:00.000Z",
+  "client": "127.0.0.1",
+  "appName": "MongoDB Shell",
+  "allUsers": [
+    {
+      "user": "root",
+      "db": "admin"
+    }
+  ],
+  "user": "root@admin"
 }

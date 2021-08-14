@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -65,8 +66,8 @@ func TestSingleFingerprint(t *testing.T) {
 func TestFingerprints(t *testing.T) {
 	t.Parallel()
 
-	dir := filepath.Join(vars.RootPath, "/src/go/tests/doc/profiles")
-	dirExpect := filepath.Join(vars.RootPath, "/src/go/tests/expect/fingerprints/")
+	dir := filepath.Join(vars.RootPath, "src/go/tests/doc/out/")
+	dirExpect := filepath.Join(vars.RootPath, "src/go/tests/expect/fingerprints/")
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("cannot list samples: %s", err)
@@ -85,7 +86,9 @@ func TestFingerprints(t *testing.T) {
 				t.Errorf("cannot create fingerprint: %s", err)
 			}
 
-			fExpect := filepath.Join(dirExpect, file.Name())
+			re := regexp.MustCompile(`(_(mongo|psmdb).*)$`)
+			fname := re.ReplaceAllString(file.Name(), "")
+			fExpect := filepath.Join(dirExpect, fname)
 			fExpect = strings.TrimSuffix(fExpect, ".bson")
 
 			if tutil.ShouldUpdateSamples() {
@@ -102,7 +105,7 @@ func TestFingerprints(t *testing.T) {
 			}
 
 			if !reflect.DeepEqual(got, expect) {
-				t.Errorf("fp.Fingerprint(doc) = %s, want %s", got, expect)
+				t.Errorf("fp.Fingerprint(doc) = %+v, want %+v", got, expect)
 			}
 		})
 	}
