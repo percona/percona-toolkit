@@ -8412,7 +8412,7 @@ my $term_readkey = eval {
 
 use sigtrap 'handler', \&sig_int, 'normal-signals';
 
-
+my $plugin;
 my $exit_status = 0;
 my $oktorun     = 1;
 my $dont_interrupt_now = 0;
@@ -8466,6 +8466,9 @@ sub _die {
    $exit_status ||= 255;
    chomp ($msg);
    print "$msg\n";
+   if ( $plugin && $plugin->can('before_die') ) {
+     $plugin->before_die(exit_status => $exit_status);
+   }
    exit $exit_status;
 }
 
@@ -8773,7 +8776,7 @@ sub main {
    # ########################################################################
    # Create --plugin.
    # ########################################################################
-   my $plugin;
+
    if ( my $file = $o->get('plugin') ) {
       _die("--plugin file $file does not exist", INVALID_PLUGIN_FILE) unless -f $file;
       eval {
@@ -9513,6 +9516,9 @@ sub main {
          $cxn->dbh()->do($sql);
       };
       if ( $EVAL_ERROR ) {
+        if ( $plugin && $plugin->can('before_die') ) {
+          $plugin->before_die(exit_status => $EVAL_ERROR);
+        }
          # this is trapped by a signal handler. Don't replace it with _die
          die "Error altering new table $new_tbl->{name}: $EVAL_ERROR\n";
       }
@@ -10076,6 +10082,10 @@ sub main {
       1 while $nibble_iter->next();
    };
    if ( $EVAL_ERROR ) {
+      if ( $plugin && $plugin->can('before_die') ) {
+        $plugin->before_die(exit_status => $EVAL_ERROR);
+      }
+
       die ts("Error copying rows from $orig_tbl->{name} to "
         . "$new_tbl->{name}: $EVAL_ERROR");
    }
@@ -13106,6 +13116,7 @@ These hooks, in this order, are called if defined:
    before_drop_old_table
    after_drop_old_table
    before_drop_triggers
+   before_die
    before_exit
    get_slave_lag
 
@@ -13215,6 +13226,11 @@ Here's a plugin file template for all hooks:
    sub before_drop_triggers {
       my ($self, %args) = @_;
       print "PLUGIN before_drop_triggers\n";
+   }
+
+   sub before_die {
+      my ($self, %args) = @_;
+      print "PLUGIN before_die\n";
    }
 
    sub before_exit {
