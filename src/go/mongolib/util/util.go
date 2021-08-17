@@ -28,6 +28,7 @@ const (
 	shardingNotEnabledErrorCode = 203
 	ErrNotYetInitialized        = int32(94)
 	ErrNoReplicationEnabled     = int32(76)
+	ErrNotPrimaryOrSecondary    = int32(13436)
 )
 
 var (
@@ -471,7 +472,8 @@ func ClusterID(ctx context.Context, client *mongo.Client) (string, error) {
 }
 
 func IsReplicationNotEnabledError(err mongo.CommandError) bool {
-	return err.Code == ErrNotYetInitialized || err.Code == ErrNoReplicationEnabled
+	return err.Code == ErrNotYetInitialized || err.Code == ErrNoReplicationEnabled ||
+		err.Code == ErrNotPrimaryOrSecondary
 }
 
 func MyState(ctx context.Context, client *mongo.Client) (int, error) {
