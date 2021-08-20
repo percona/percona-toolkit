@@ -34,8 +34,8 @@ It is recommended to install Percona software from official repositories:
       sudo yum install percona-toolkit
 
 .. rubric:: Generating an instance UUID for statistics
-	    
-During the installating process, the percona-toolkit installer records a unique
+
+During the installation process, the percona-toolkit installer records a unique
 identifier specific to the given percona-toolkit instance. This ID is a the
 product UUID stored in |product-uuid|. The installer copies the product_uuid to
 |toolkit-uuid|.
@@ -46,7 +46,7 @@ percona-toolkit. Note that no other information is gathered for this purpose.
 In cases when the installer is not able to read the contents of
 |product-uuid|, a random UUID is generated. A random UUID is
 also generated if percona-toolkit is run from the binary in the *tar.gz* file.
-      
+
 Alternative Install Methods
 ===========================
 
