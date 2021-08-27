@@ -58,7 +58,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.2.1';
+our $VERSION = '3.3.1';
 
 use strict;
 use warnings FATAL => 'all';
@@ -1477,7 +1477,7 @@ sub parse {
    foreach my $key ( keys %$opts ) {
       PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
-      if ( !defined $final_props{$key}  
+      if ( !defined $final_props{$key}
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
@@ -1617,7 +1617,7 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass,
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       $dbh = eval { DBI->connect($cxn_string, $user, $pass, $defaults) };
@@ -1815,7 +1815,7 @@ sub set_vars {
       }
    }
 
-   return; 
+   return;
 }
 
 sub _d {
@@ -4563,9 +4563,10 @@ sub parse {
 
 sub remove_quoted_text {
    my ($string) = @_;
-   $string =~ s/[^\\]`[^`]*[^\\]`//g;
-   $string =~ s/[^\\]"[^"]*[^\\]"//g;
-   $string =~ s/[^\\]'[^']*[^\\]'//g;
+   $string =~ s/\\['"]//g;
+   $string =~ s/`[^`]*?`//g;
+   $string =~ s/"[^"]*?"//g;
+   $string =~ s/'[^']*?'//g;
    return $string;
 }
 
@@ -4872,7 +4873,7 @@ sub generate_asc_stmt {
 
    die "Index '$index' does not exist in table"
       unless exists $tbl_struct->{keys}->{$index};
-   PTDEBUG && _d('Will ascend index', $index);  
+   PTDEBUG && _d('Will ascend index', $index);
 
    my @asc_cols = @{$tbl_struct->{keys}->{$index}->{cols}};
    if ( $args{asc_first} ) {
@@ -14163,7 +14164,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2018 Percona LLC and/or its affiliates,
+This program is copyright 2011-2021 Percona LLC and/or its affiliates,
 2007-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -14182,6 +14183,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-checksum 3.2.1
+pt-table-checksum 3.3.1
 
 =cut

@@ -34,6 +34,6 @@
 select @@version_comment limit 1\G
 
 # Profile
-# Rank Query ID                           Response time Calls R/Call V/M  
-# ==== ================================== ============= ===== ====== =====
-#    1 0x0E7680C04FF2596BE3A3649C5FAC418D 0.6696 100.0%     4 0.1674  0.19 SELECT
+# Rank Query ID                            Response time Calls R/Call V/M 
+# ==== =================================== ============= ===== ====== ====
+#    1 0x0E7680C04FF2596BE3A3649C5FAC418D  0.6696 100.0%     4 0.1674  0.19 SELECT

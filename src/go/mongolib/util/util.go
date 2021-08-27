@@ -14,6 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/topology"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -27,6 +28,7 @@ const (
 	shardingNotEnabledErrorCode = 203
 	ErrNotYetInitialized        = int32(94)
 	ErrNoReplicationEnabled     = int32(76)
+	ErrNotPrimaryOrSecondary    = int32(13436)
 )
 
 var (
@@ -460,7 +462,9 @@ func ClusterID(ctx context.Context, client *mongo.Client) (string, error) {
 		if e, ok := err.(mongo.CommandError); ok && IsReplicationNotEnabledError(e) {
 			return "", nil
 		}
-
+		if _, ok := err.(topology.ServerSelectionError); ok {
+			return "", nil
+		}
 		return "", err
 	}
 
@@ -468,12 +472,18 @@ func ClusterID(ctx context.Context, client *mongo.Client) (string, error) {
 }
 
 func IsReplicationNotEnabledError(err mongo.CommandError) bool {
-	return err.Code == ErrNotYetInitialized || err.Code == ErrNoReplicationEnabled
+	return err.Code == ErrNotYetInitialized || err.Code == ErrNoReplicationEnabled ||
+		err.Code == ErrNotPrimaryOrSecondary
 }
 
 func MyState(ctx context.Context, client *mongo.Client) (int, error) {
 	var ms proto.MyState
-	if err := client.Database("admin").RunCommand(ctx, bson.M{"getDiagnosticData": 1}).Decode(&ms); err != nil {
+
+	err := client.Database("admin").RunCommand(ctx, bson.M{"getDiagnosticData": 1}).Decode(&ms)
+	if _, ok := err.(topology.ServerSelectionError); ok {
+		return 0, nil
+	}
+	if err != nil {
 		return 0, err
 	}
 

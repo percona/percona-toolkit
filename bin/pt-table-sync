@@ -55,7 +55,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.2.1';
+our $VERSION = '3.3.1';
 
 use strict;
 use warnings FATAL => 'all';
@@ -171,7 +171,7 @@ sub new {
       rules             => [],  # desc of rules for --help
       mutex             => [],  # rule: opts are mutually exclusive
       atleast1          => [],  # rule: at least one opt is required
-      disables          => {},  # rule: opt disables other opts 
+      disables          => {},  # rule: opt disables other opts
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
@@ -334,7 +334,7 @@ sub _pod_to_specs {
          }
 
          push @specs, {
-            spec  => $self->{parse_attributes}->($self, $option, \%attribs), 
+            spec  => $self->{parse_attributes}->($self, $option, \%attribs),
             desc  => $para
                . (defined $attribs{default} ? " (default $attribs{default})" : ''),
             group => ($attribs{'group'} ? $attribs{'group'} : 'default'),
@@ -425,7 +425,7 @@ sub _parse_specs {
          $self->{opts}->{$long} = $opt;
       }
       else { # It's an option rule, not a spec.
-         PTDEBUG && _d('Parsing rule:', $opt); 
+         PTDEBUG && _d('Parsing rule:', $opt);
          push @{$self->{rules}}, $opt;
          my @participants = $self->_get_participants($opt);
          my $rule_ok = 0;
@@ -470,7 +470,7 @@ sub _parse_specs {
       PTDEBUG && _d('Option', $long, 'disables', @participants);
    }
 
-   return; 
+   return;
 }
 
 sub _get_participants {
@@ -557,7 +557,7 @@ sub _set_option {
 }
 
 sub get_opts {
-   my ( $self ) = @_; 
+   my ( $self ) = @_;
 
    foreach my $long ( keys %{$self->{opts}} ) {
       $self->{opts}->{$long}->{got} = 0;
@@ -688,7 +688,7 @@ sub _check_opts {
                   else {
                      $err = join(', ',
                                map { "--$self->{opts}->{$_}->{long}" }
-                               grep { $_ } 
+                               grep { $_ }
                                @restricted_opts[0..scalar(@restricted_opts) - 2]
                             )
                           . ' or --'.$self->{opts}->{$restricted_opts[-1]}->{long};
@@ -698,7 +698,7 @@ sub _check_opts {
             }
 
          }
-         elsif ( $opt->{is_required} ) { 
+         elsif ( $opt->{is_required} ) {
             $self->save_error("Required option --$long must be specified");
          }
 
@@ -1082,7 +1082,7 @@ sub clone {
       $clone{$scalar} = $self->{$scalar};
    }
 
-   return bless \%clone;     
+   return bless \%clone;
 }
 
 sub _parse_size {
@@ -1596,7 +1596,7 @@ sub extends {
 
 sub _load_module {
    my ($class) = @_;
-   
+
    (my $file = $class) =~ s{::|'}{/}g;
    $file .= '.pm';
    { local $@; eval { require "$file" } } # or warn $@;
@@ -1627,7 +1627,7 @@ sub has {
    my $caller = scalar caller();
 
    my $class_metadata = Lmo::Meta->metadata_for($caller);
-   
+
    for my $attribute ( ref $names ? @$names : $names ) {
       my %args   = @_;
       my $method = ($args{is} || '') eq 'ro'
@@ -1646,16 +1646,16 @@ sub has {
 
       if ( my $type_check = $args{isa} ) {
          my $check_name = $type_check;
-         
+
          if ( my ($aggregate_type, $inner_type) = $type_check =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
             $type_check = Lmo::Types::_nested_constraints($attribute, $aggregate_type, $inner_type);
          }
-         
+
          my $check_sub = sub {
             my ($new_val) = @_;
             Lmo::Types::check_type_constaints($attribute, $type_check, $check_name, $new_val);
          };
-         
+
          $class_metadata->{$attribute}{isa} = [$check_name, $check_sub];
          my $orig_method = $method;
          $method = sub {
@@ -1928,7 +1928,7 @@ sub split_unquote {
       s/`\z//;
       s/``/`/g;
    }
-   
+
    return ($db, $tbl);
 }
 
@@ -2110,7 +2110,7 @@ sub parse {
    foreach my $key ( keys %$opts ) {
       PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
-      if ( !defined $final_props{$key}  
+      if ( !defined $final_props{$key}
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
@@ -2250,7 +2250,7 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass,
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       $dbh = eval { DBI->connect($cxn_string, $user, $pass, $defaults) };
@@ -2448,7 +2448,7 @@ sub set_vars {
       }
    }
 
-   return; 
+   return;
 }
 
 sub _d {
@@ -2939,9 +2939,10 @@ sub parse {
 
 sub remove_quoted_text {
    my ($string) = @_;
-   $string =~ s/[^\\]`[^`]*[^\\]`//g; 
-   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
-   $string =~ s/[^\\]'[^']*[^\\]'//g; 
+   $string =~ s/\\['"]//g;
+   $string =~ s/`[^`]*?`//g;
+   $string =~ s/"[^"]*?"//g;
+   $string =~ s/'[^']*?'//g;
    return $string;
 }
 
@@ -3455,7 +3456,7 @@ sub set_src {
    }
    elsif ( lc $src eq 'right' ) {
       $self->{src_db_tbl} = $self->{right_db_tbl};
-      $self->{dst_db_tbl} = $self->{left_db_tbl}; 
+      $self->{dst_db_tbl} = $self->{left_db_tbl};
    }
    else {
       die "src argument must be either 'left' or 'right'"
@@ -3621,7 +3622,7 @@ sub make_REPLACE {
 
 sub make_row {
    my ( $self, $verb, $row, $cols ) = @_;
-   my @cols; 
+   my @cols;
    if ( my $dbh = $self->{fetch_back} ) {
       my $where = $self->make_where_clause($row, $cols);
       my $sql   = $self->make_fetch_back_query($where);
@@ -3675,7 +3676,7 @@ sub get_changes {
 sub sort_cols {
    my ( $self, $row ) = @_;
    my @cols;
-   if ( $self->{tbl_struct} ) { 
+   if ( $self->{tbl_struct} ) {
       my $pos = $self->{tbl_struct}->{col_posn};
       my @not_in_tbl;
       @cols = sort {
@@ -3808,7 +3809,7 @@ sub find_chunk_columns {
 
    my $can_chunk_exact = 0;
    my @candidate_cols;
-   foreach my $index ( @possible_indexes ) { 
+   foreach my $index ( @possible_indexes ) {
       my $col = $index->{cols}->[0];
 
       my $col_type = $tbl_struct->{type_for}->{$col};
@@ -4133,7 +4134,7 @@ sub _chunk_char {
 
 
    $sql = "SELECT MAX(LENGTH($qchunk_col)) FROM $db_tbl "
-        . ($args{where} ? "WHERE $args{where} " : "") 
+        . ($args{where} ? "WHERE $args{where} " : "")
         . "ORDER BY $qchunk_col";
    PTDEBUG && _d($dbh, $sql);
    $row = $dbh->selectrow_arrayref($sql);
@@ -4651,7 +4652,7 @@ sub base_count {
 
    my @base_powers;
    for my $power ( 0..$highest_power ) {
-      push @base_powers, ($base**$power) || 1;  
+      push @base_powers, ($base**$power) || 1;
    }
 
    my @base_multiples;
@@ -4932,7 +4933,7 @@ sub make_row_checksum {
    my $query;
    if ( !$args{no_cols} ) {
       $query = join(', ',
-                  map { 
+                  map {
                      my $col = $_;
                      if ( $col =~ m/\+ 0/ ) {
                         my ($real_col) = /^(\S+)/;
@@ -5630,7 +5631,7 @@ sub __get_explain_index {
       PTDEBUG && _d($EVAL_ERROR);
       return;
    }
-   PTDEBUG && _d('EXPLAIN key:', $explain->[0]->{key}); 
+   PTDEBUG && _d('EXPLAIN key:', $explain->[0]->{key});
    return $explain->[0]->{key};
 }
 
@@ -5998,7 +5999,7 @@ sub sync_table {
       if ( $EVAL_ERROR ) {
          die "Failed to make checksum queries: $EVAL_ERROR";
       }
-   } 
+   }
 
    if ( $args{dry_run} ) {
       return $ch->get_changes(), ALGORITHM => $plugin->name;
@@ -6405,7 +6406,7 @@ sub generate_asc_stmt {
 
    die "Index '$index' does not exist in table"
       unless exists $tbl_struct->{keys}->{$index};
-   PTDEBUG && _d('Will ascend index', $index);  
+   PTDEBUG && _d('Will ascend index', $index);
 
    my @asc_cols = @{$tbl_struct->{keys}->{$index}->{cols}};
    if ( $args{asc_first} ) {
@@ -6649,22 +6650,22 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-sub check_recursion_method {                                                       
+sub check_recursion_method {
    my ($methods) = @_;
-   if ( @$methods != 1 ) {                                                         
-      if ( grep({ !m/processlist|hosts/i } @$methods)                              
-            && $methods->[0] !~ /^dsn=/i ) 
-      {     
-         die  "Invalid combination of recursion methods: "                         
-            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "      
-            . "Only hosts and processlist may be combined.\n"                      
-      }                                                                            
-   }     
-   else {   
+   if ( @$methods != 1 ) {
+      if ( grep({ !m/processlist|hosts/i } @$methods)
+            && $methods->[0] !~ /^dsn=/i )
+      {
+         die  "Invalid combination of recursion methods: "
+            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "
+            . "Only hosts and processlist may be combined.\n"
+      }
+   }
+   else {
       my ($method) = @$methods;
-      die "Invalid recursion method: " . ( $method || 'undef' )                    
-         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster$|dsn=)/i;     
-   }                                                                               
+      die "Invalid recursion method: " . ( $method || 'undef' )
+         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster$|dsn=)/i;
+   }
 }
 
 sub new {
@@ -6693,7 +6694,7 @@ sub get_slaves {
    my $methods = $self->_resolve_recursion_methods($args{dsn});
 
    return $slaves unless @$methods;
-   
+
    if ( grep { m/processlist|hosts/i } @$methods ) {
       my @required_args = qw(dbh dsn);
       foreach my $arg ( @required_args ) {
@@ -6706,7 +6707,7 @@ sub get_slaves {
          {  dbh            => $dbh,
             dsn            => $dsn,
             slave_user     => $o->got('slave-user') ? $o->get('slave-user') : '',
-            slave_password => $o->got('slave-password') ? $o->get('slave-password') : '', 
+            slave_password => $o->got('slave-password') ? $o->get('slave-password') : '',
             callback  => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
@@ -6738,7 +6739,7 @@ sub get_slaves {
    else {
       die "Unexpected recursion methods: @$methods";
    }
-   
+
    return $slaves;
 }
 
@@ -7275,7 +7276,7 @@ sub short_host {
 }
 
 sub is_replication_thread {
-   my ( $self, $query, %args ) = @_; 
+   my ( $self, $query, %args ) = @_;
    return unless $query;
 
    my $type = lc($args{type} || 'all');
@@ -7290,7 +7291,7 @@ sub is_replication_thread {
    if ( !$match ) {
       if ( ($query->{User} || $query->{user} || '') eq "system user" ) {
          PTDEBUG && _d("Slave replication thread");
-         if ( $type ne 'all' ) { 
+         if ( $type ne 'all' ) {
             my $state = $query->{State} || $query->{state} || '';
 
             if ( $state =~ m/^init|end$/ ) {
@@ -7303,7 +7304,7 @@ sub is_replication_thread {
                    |Reading\sevent\sfrom\sthe\srelay\slog
                    |Has\sread\sall\srelay\slog;\swaiting
                    |Making\stemp\sfile
-                   |Waiting\sfor\sslave\smutex\son\sexit)/xi; 
+                   |Waiting\sfor\sslave\smutex\son\sexit)/xi;
 
                $match = $type eq 'slave_sql' &&  $slave_sql ? 1
                       : $type eq 'slave_io'  && !$slave_sql ? 1
@@ -7367,7 +7368,7 @@ sub get_replication_filters {
          replicate_do_db
          replicate_ignore_db
          replicate_do_table
-         replicate_ignore_table 
+         replicate_ignore_table
          replicate_wild_do_table
          replicate_wild_ignore_table
       );
@@ -7378,7 +7379,7 @@ sub get_replication_filters {
       $filters{slave_skip_errors} = $row->[1] if $row->[1] && $row->[1] ne 'OFF';
    }
 
-   return \%filters; 
+   return \%filters;
 }
 
 
@@ -7518,7 +7519,7 @@ sub daemonize {
 
       close STDERR;
       open  STDERR, ">&STDOUT"
-         or die "Cannot dupe STDERR to STDOUT: $OS_ERROR"; 
+         or die "Cannot dupe STDERR to STDOUT: $OS_ERROR";
    }
    else {
       if ( -t STDOUT ) {
@@ -8009,10 +8010,10 @@ sub table_is_allowed {
       |slave_master_info
       |slave_relay_log_info
       |slave_worker_info
-      |slow_log    
+      |slow_log
    )$/x;
 
-   if ( $filter->{'ignore-tables'}->{'*'}->{$tbl} 
+   if ( $filter->{'ignore-tables'}->{'*'}->{$tbl}
          || $filter->{'ignore-tables'}->{$db}->{$tbl}) {
       PTDEBUG && _d('Table', $tbl, 'is in --ignore-tables list');
       return 0;
@@ -8025,7 +8026,7 @@ sub table_is_allowed {
    }
 
    if ( $filter->{'tables'}
-        && (!$filter->{'tables'}->{'*'}->{$tbl} && !$filter->{'tables'}->{$db}->{$tbl}) ) { 
+        && (!$filter->{'tables'}->{'*'}->{$tbl} && !$filter->{'tables'}->{$db}->{$tbl}) ) {
       PTDEBUG && _d('Table', $tbl, 'is not in --tables list, ignoring');
       return 0;
    }
@@ -8429,7 +8430,7 @@ sub value_to_json {
 
    my $b_obj = B::svref_2object(\$value);  # for round trip problem
    my $flags = $b_obj->FLAGS;
-   return $value # as is 
+   return $value # as is
       if $flags & ( B::SVp_IOK | B::SVp_NOK ) and !( $flags & B::SVp_POK ); # SvTYPE is IV or NV?
 
    my $type = ref($value);
@@ -8793,7 +8794,7 @@ sub _split_url {
                   or die(qq/SSL certificate not valid for $host\n/);
             }
        }
-         
+
        $self->{host} = $host;
        $self->{port} = $port;
 
@@ -9268,7 +9269,7 @@ my @vc_dirs = (
       }
       PTDEBUG && _d('Version check file', $file, 'in', $ENV{PWD});
       return $file;  # in the CWD
-   } 
+   }
 }
 
 sub version_check_time_limit {
@@ -9285,11 +9286,11 @@ sub version_check {
    PTDEBUG && _d('FindBin::Bin:', $FindBin::Bin);
    if ( !$args{force} ) {
       if ( $FindBin::Bin
-           && (-d "$FindBin::Bin/../.bzr"    || 
+           && (-d "$FindBin::Bin/../.bzr"    ||
                -d "$FindBin::Bin/../../.bzr" ||
-               -d "$FindBin::Bin/../.git"    || 
-               -d "$FindBin::Bin/../../.git" 
-              ) 
+               -d "$FindBin::Bin/../.git"    ||
+               -d "$FindBin::Bin/../../.git"
+              )
          ) {
          PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
          return;
@@ -9313,7 +9314,7 @@ sub version_check {
       PTDEBUG && _d(scalar @$instances_to_check, 'instances to check');
       return unless @$instances_to_check;
 
-      my $protocol = 'https';  
+      my $protocol = 'https';
       eval { require IO::Socket::SSL; };
       if ( $EVAL_ERROR ) {
          PTDEBUG && _d($EVAL_ERROR);
@@ -9490,7 +9491,7 @@ sub get_uuid {
     close $fh;
 
     return $uuid;
-}   
+}
 
 sub _generate_uuid {
     return sprintf+($}="%04x")."$}-$}-$}-$}-".$}x3,map rand 65537,0..7;
@@ -9539,7 +9540,7 @@ sub pingback {
    );
    die "Failed to parse server requested programs: $response->{content}"
       if !scalar keys %$items;
-      
+
    my $versions = get_versions(
       items     => $items,
       instances => $instances,
@@ -9798,7 +9799,7 @@ sub get_from_mysql {
    if ($item->{item} eq 'MySQL' && $item->{type} eq 'mysql_variable') {
       @{$item->{vars}} = grep { $_ eq 'version' || $_ eq 'version_comment' } @{$item->{vars}};
    }
- 
+
 
    my @versions;
    my %version_for;
@@ -10476,7 +10477,7 @@ sub sync_via_replication {
                            diff  => $diff,
                            %args,
                         );
-                     } 
+                     }
 
                      unlock_server(src => $src, dst => $dst, %args);
                      disconnect($dst);
@@ -10710,7 +10711,7 @@ sub sync_a_table {
    my ($src, $dst, undef, $o, $q, $tp, $syncer) = @args{@required_args};
 
    my ($start_ts, $end_ts);
-   my $exit_status = 0; 
+   my $exit_status = 0;
    my %status;
    eval {
       $start_ts = get_server_time($src->{dbh}) if $o->get('verbose');
@@ -10779,7 +10780,7 @@ sub sync_a_table {
          left_db    => $src->{db},
          left_tbl   => $src->{tbl},
          right_db   => $dst->{db},
-         right_tbl  => $dst->{tbl}, 
+         right_tbl  => $dst->{tbl},
          tbl_struct => $tbl_struct,
          hex_blob   => $o->get('hex-blob'),
          queue      => $o->get('buffer-to-client') ? 1 : 0,
@@ -10952,7 +10953,7 @@ sub make_action_subs {
    if ( $o->get('print') ) {
       # Print AFTER executing, so the print isn't misleading in case of an
       # index violation etc that doesn't actually get executed.
-      push @actions, sub { 
+      push @actions, sub {
          my ( $sql, $dbh ) = @_;
          # Append /*host:port*/ to the sql, if possible, so the user
          # can see on which host it was/would be ran.
@@ -11048,7 +11049,7 @@ sub get_cxn {
         . "',NO_AUTO_VALUE_ON_ZERO')*/";
    PTDEBUG && _d($dbh, $sql);
    $dbh->do($sql);
-   
+
    # Ensure statement-based replication.
    # http://code.google.com/p/maatkit/issues/detail?id=95
    # https://bugs.launchpad.net/percona-toolkit/+bug/919352
@@ -11275,7 +11276,7 @@ sub filter_diffs {
 #   sub helps keep track of the dbh that are closed.
 #
 # Parameters:
-#   @hosts - Array of hashrefs with host information, one for each host 
+#   @hosts - Array of hashrefs with host information, one for each host
 sub disconnect {
    my ( @hosts ) = @_;
    foreach my $host ( @hosts ) {
@@ -11284,10 +11285,10 @@ sub disconnect {
          next unless $dbh;
          delete $dsn_for{$dbh};
          # The following is for when misc_dbh loses
-         # connection due to timeout. Since it has nothing 
+         # connection due to timeout. Since it has nothing
          # to commit we avoid reporting an error.
          if ( $thing eq 'misc_dbh' &&  !$dbh->ping() ) {
-           next; 
+           next;
          }
          $dbh->commit() unless $dbh->{AutoCommit};
          $dbh->disconnect();
@@ -11489,7 +11490,7 @@ sub set_bidirectional_callbacks {
 #   implement them, like "chunk => TableSyncChunk".
 sub get_plugins {
    my ( %args ) = @_;
-   
+
    my $file = __FILE__;
    open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
    my $contents = do { local $/ = undef; <$fh> };
@@ -11766,7 +11767,7 @@ L<"BIDIRECTIONAL SYNCING"> is described later.
 This tool is complex and functions in several different ways.  To use it
 safely and effectively, you should understand three things: the purpose
 of L<"--replicate">, finding differences, and specifying hosts.  These
-three concepts are closely related and determine how the tool will run. 
+three concepts are closely related and determine how the tool will run.
 The following is the abbreviated logic:
 
    if DSN has a t part, sync only that table:
@@ -11848,7 +11849,7 @@ the DSNs given on the command line.
 =item Replicas using row-based replication
 
 pt-table-sync requires statement-based replication when used with
-the L<"--sync-to-master"> or L<"--replicate"> option. 
+the L<"--sync-to-master"> or L<"--replicate"> option.
 Therefore it will set C<binlog_format=STATEMENT> on the master
 for its session if required.
 To do this user must have C<SUPER> privilege.
@@ -11857,7 +11858,7 @@ To do this user must have C<SUPER> privilege.
 
 =head1 OUTPUT
 
-If you specify the L<"--verbose"> option, you'll see information about the 
+If you specify the L<"--verbose"> option, you'll see information about the
 differences between the tables.  There is one row per table.  Each server is
 printed separately.  For example,
 
@@ -12667,7 +12668,7 @@ you specified.  If it is unable to find any slaves via C<SHOW PROCESSLIST>, it
 will inspect C<SHOW SLAVE HOSTS> instead.  You must configure each slave's
 C<report-host>, C<report-port> and other options for this to work right.  After
 finding slaves, it will inspect the specified table on each slave to find data
-that needs to be synced, and sync it. 
+that needs to be synced, and sync it.
 
 The tool examines the master's copy of the table first, assuming that the master
 is potentially a slave as well.  Any table that shows differences there will
@@ -12682,7 +12683,7 @@ sync that table on servers C and D.
 type: string
 
 Sets the user to be used to connect to the slaves.
-This parameter allows you to have a different user with less privileges on the 
+This parameter allows you to have a different user with less privileges on the
 slaves but that user must exist on all slaves.
 
 =item --slave-password
@@ -12776,8 +12777,8 @@ C<TRIM()> C<VARCHAR> columns in C<BIT_XOR> and C<ACCUM> modes.  Helps when
 comparing MySQL 4.1 to >= 5.0.
 
 This is useful when you don't care about the trailing space differences between
-MySQL versions which vary in their handling of trailing spaces. MySQL 5.0 and 
-later all retain trailing spaces in C<VARCHAR>, while previous versions would 
+MySQL versions which vary in their handling of trailing spaces. MySQL 5.0 and
+later all retain trailing spaces in C<VARCHAR>, while previous versions would
 remove them.
 
 =item --[no]unique-checks
@@ -12828,7 +12829,7 @@ done for the first time.
 
 Any updates or known problems are printed to STDOUT before the tool's normal
 output.  This feature should never interfere with the normal operation of the
-tool.  
+tool.
 
 For more information, visit L<https://www.percona.com/doc/percona-toolkit/LATEST/version-check.html>.
 
@@ -13064,7 +13065,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2018 Percona LLC and/or its affiliates,
+This program is copyright 2011-2021 Percona LLC and/or its affiliates,
 2007-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -13083,6 +13084,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-sync 3.2.1
+pt-table-sync 3.3.1
 
 =cut

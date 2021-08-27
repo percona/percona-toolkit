@@ -44,7 +44,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.2.1';
+our $VERSION = '3.3.1';
 
 use strict;
 use warnings FATAL => 'all';
@@ -3630,9 +3630,10 @@ sub parse {
 
 sub remove_quoted_text {
    my ($string) = @_;
-   $string =~ s/[^\\]`[^`]*[^\\]`//g; 
-   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
-   $string =~ s/[^\\]'[^']*[^\\]'//g; 
+   $string =~ s/\\['"]//g;
+   $string =~ s/`[^`]*?`//g; 
+   $string =~ s/"[^"]*?"//g; 
+   $string =~ s/'[^']*?'//g; 
    return $string;
 }
 
@@ -5944,9 +5945,13 @@ sub main {
    my $dsn          = @ARGV ? $dp->parse(shift @ARGV, $dsn_defaults)
                     :         $dsn_defaults;
    my $dbh          = $dp->get_dbh($dp->get_cxn_params($dsn), {AutoCommit=>1});
+   if ($EVAL_ERROR) {
+      _die("Cannot connect to MySQL: $EVAL_ERROR", 1);
+   }
 
    $dbh->{InactiveDestroy}  = 1; # Don't disconnect on fork
    $dbh->{FetchHashKeyName} = 'NAME_lc';
+   $dbh->{mysql_auto_reconnect} = 1;
    $dbh->do("USE `$db`");
 
    # ########################################################################
@@ -7384,6 +7389,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-heartbeat 3.2.1
+pt-heartbeat 3.3.1
 
 =cut

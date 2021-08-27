@@ -41,7 +41,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.2.1';
+our $VERSION = '3.3.1';
 
 use strict;
 use warnings FATAL => 'all';
@@ -152,7 +152,7 @@ sub split_unquote {
       s/`\z//;
       s/``/`/g;
    }
-   
+
    return ($db, $tbl);
 }
 
@@ -308,7 +308,7 @@ sub new {
       rules             => [],  # desc of rules for --help
       mutex             => [],  # rule: opts are mutually exclusive
       atleast1          => [],  # rule: at least one opt is required
-      disables          => {},  # rule: opt disables other opts 
+      disables          => {},  # rule: opt disables other opts
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
@@ -471,7 +471,7 @@ sub _pod_to_specs {
          }
 
          push @specs, {
-            spec  => $self->{parse_attributes}->($self, $option, \%attribs), 
+            spec  => $self->{parse_attributes}->($self, $option, \%attribs),
             desc  => $para
                . (defined $attribs{default} ? " (default $attribs{default})" : ''),
             group => ($attribs{'group'} ? $attribs{'group'} : 'default'),
@@ -562,7 +562,7 @@ sub _parse_specs {
          $self->{opts}->{$long} = $opt;
       }
       else { # It's an option rule, not a spec.
-         PTDEBUG && _d('Parsing rule:', $opt); 
+         PTDEBUG && _d('Parsing rule:', $opt);
          push @{$self->{rules}}, $opt;
          my @participants = $self->_get_participants($opt);
          my $rule_ok = 0;
@@ -607,7 +607,7 @@ sub _parse_specs {
       PTDEBUG && _d('Option', $long, 'disables', @participants);
    }
 
-   return; 
+   return;
 }
 
 sub _get_participants {
@@ -694,7 +694,7 @@ sub _set_option {
 }
 
 sub get_opts {
-   my ( $self ) = @_; 
+   my ( $self ) = @_;
 
    foreach my $long ( keys %{$self->{opts}} ) {
       $self->{opts}->{$long}->{got} = 0;
@@ -825,7 +825,7 @@ sub _check_opts {
                   else {
                      $err = join(', ',
                                map { "--$self->{opts}->{$_}->{long}" }
-                               grep { $_ } 
+                               grep { $_ }
                                @restricted_opts[0..scalar(@restricted_opts) - 2]
                             )
                           . ' or --'.$self->{opts}->{$restricted_opts[-1]}->{long};
@@ -835,7 +835,7 @@ sub _check_opts {
             }
 
          }
-         elsif ( $opt->{is_required} ) { 
+         elsif ( $opt->{is_required} ) {
             $self->save_error("Required option --$long must be specified");
          }
 
@@ -1219,7 +1219,7 @@ sub clone {
       $clone{$scalar} = $self->{$scalar};
    }
 
-   return bless \%clone;     
+   return bless \%clone;
 }
 
 sub _parse_size {
@@ -1733,7 +1733,7 @@ sub extends {
 
 sub _load_module {
    my ($class) = @_;
-   
+
    (my $file = $class) =~ s{::|'}{/}g;
    $file .= '.pm';
    { local $@; eval { require "$file" } } # or warn $@;
@@ -1764,7 +1764,7 @@ sub has {
    my $caller = scalar caller();
 
    my $class_metadata = Lmo::Meta->metadata_for($caller);
-   
+
    for my $attribute ( ref $names ? @$names : $names ) {
       my %args   = @_;
       my $method = ($args{is} || '') eq 'ro'
@@ -1783,16 +1783,16 @@ sub has {
 
       if ( my $type_check = $args{isa} ) {
          my $check_name = $type_check;
-         
+
          if ( my ($aggregate_type, $inner_type) = $type_check =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
             $type_check = Lmo::Types::_nested_constraints($attribute, $aggregate_type, $inner_type);
          }
-         
+
          my $check_sub = sub {
             my ($new_val) = @_;
             Lmo::Types::check_type_constaints($attribute, $type_check, $check_name, $new_val);
          };
-         
+
          $class_metadata->{$attribute}{isa} = [$check_name, $check_sub];
          my $orig_method = $method;
          $method = sub {
@@ -2288,7 +2288,7 @@ sub parse {
    foreach my $key ( keys %$opts ) {
       PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
-      if ( !defined $final_props{$key}  
+      if ( !defined $final_props{$key}
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
@@ -2428,7 +2428,7 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass,
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       $dbh = eval { DBI->connect($cxn_string, $user, $pass, $defaults) };
@@ -2626,7 +2626,7 @@ sub set_vars {
       }
    }
 
-   return; 
+   return;
 }
 
 sub _d {
@@ -2659,22 +2659,22 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-sub check_recursion_method {                                                       
+sub check_recursion_method {
    my ($methods) = @_;
-   if ( @$methods != 1 ) {                                                         
-      if ( grep({ !m/processlist|hosts/i } @$methods)                              
-            && $methods->[0] !~ /^dsn=/i ) 
-      {     
-         die  "Invalid combination of recursion methods: "                         
-            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "      
-            . "Only hosts and processlist may be combined.\n"                      
-      }                                                                            
-   }     
-   else {   
+   if ( @$methods != 1 ) {
+      if ( grep({ !m/processlist|hosts/i } @$methods)
+            && $methods->[0] !~ /^dsn=/i )
+      {
+         die  "Invalid combination of recursion methods: "
+            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "
+            . "Only hosts and processlist may be combined.\n"
+      }
+   }
+   else {
       my ($method) = @$methods;
-      die "Invalid recursion method: " . ( $method || 'undef' )                    
-         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster$|dsn=)/i;     
-   }                                                                               
+      die "Invalid recursion method: " . ( $method || 'undef' )
+         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster$|dsn=)/i;
+   }
 }
 
 sub new {
@@ -2703,7 +2703,7 @@ sub get_slaves {
    my $methods = $self->_resolve_recursion_methods($args{dsn});
 
    return $slaves unless @$methods;
-   
+
    if ( grep { m/processlist|hosts/i } @$methods ) {
       my @required_args = qw(dbh dsn);
       foreach my $arg ( @required_args ) {
@@ -2716,7 +2716,7 @@ sub get_slaves {
          {  dbh            => $dbh,
             dsn            => $dsn,
             slave_user     => $o->got('slave-user') ? $o->get('slave-user') : '',
-            slave_password => $o->got('slave-password') ? $o->get('slave-password') : '', 
+            slave_password => $o->got('slave-password') ? $o->get('slave-password') : '',
             callback  => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
@@ -2748,7 +2748,7 @@ sub get_slaves {
    else {
       die "Unexpected recursion methods: @$methods";
    }
-   
+
    return $slaves;
 }
 
@@ -3285,7 +3285,7 @@ sub short_host {
 }
 
 sub is_replication_thread {
-   my ( $self, $query, %args ) = @_; 
+   my ( $self, $query, %args ) = @_;
    return unless $query;
 
    my $type = lc($args{type} || 'all');
@@ -3300,7 +3300,7 @@ sub is_replication_thread {
    if ( !$match ) {
       if ( ($query->{User} || $query->{user} || '') eq "system user" ) {
          PTDEBUG && _d("Slave replication thread");
-         if ( $type ne 'all' ) { 
+         if ( $type ne 'all' ) {
             my $state = $query->{State} || $query->{state} || '';
 
             if ( $state =~ m/^init|end$/ ) {
@@ -3313,7 +3313,7 @@ sub is_replication_thread {
                    |Reading\sevent\sfrom\sthe\srelay\slog
                    |Has\sread\sall\srelay\slog;\swaiting
                    |Making\stemp\sfile
-                   |Waiting\sfor\sslave\smutex\son\sexit)/xi; 
+                   |Waiting\sfor\sslave\smutex\son\sexit)/xi;
 
                $match = $type eq 'slave_sql' &&  $slave_sql ? 1
                       : $type eq 'slave_io'  && !$slave_sql ? 1
@@ -3377,7 +3377,7 @@ sub get_replication_filters {
          replicate_do_db
          replicate_ignore_db
          replicate_do_table
-         replicate_ignore_table 
+         replicate_ignore_table
          replicate_wild_do_table
          replicate_wild_ignore_table
       );
@@ -3388,7 +3388,7 @@ sub get_replication_filters {
       $filters{slave_skip_errors} = $row->[1] if $row->[1] && $row->[1] ne 'OFF';
    }
 
-   return \%filters; 
+   return \%filters;
 }
 
 
@@ -3528,7 +3528,7 @@ sub daemonize {
 
       close STDERR;
       open  STDERR, ">&STDOUT"
-         or die "Cannot dupe STDERR to STDOUT: $OS_ERROR"; 
+         or die "Cannot dupe STDERR to STDOUT: $OS_ERROR";
    }
    else {
       if ( -t STDOUT ) {
@@ -3892,7 +3892,7 @@ sub _split_url {
                   or die(qq/SSL certificate not valid for $host\n/);
             }
        }
-         
+
        $self->{host} = $host;
        $self->{port} = $port;
 
@@ -4367,7 +4367,7 @@ my @vc_dirs = (
       }
       PTDEBUG && _d('Version check file', $file, 'in', $ENV{PWD});
       return $file;  # in the CWD
-   } 
+   }
 }
 
 sub version_check_time_limit {
@@ -4384,11 +4384,11 @@ sub version_check {
    PTDEBUG && _d('FindBin::Bin:', $FindBin::Bin);
    if ( !$args{force} ) {
       if ( $FindBin::Bin
-           && (-d "$FindBin::Bin/../.bzr"    || 
+           && (-d "$FindBin::Bin/../.bzr"    ||
                -d "$FindBin::Bin/../../.bzr" ||
-               -d "$FindBin::Bin/../.git"    || 
-               -d "$FindBin::Bin/../../.git" 
-              ) 
+               -d "$FindBin::Bin/../.git"    ||
+               -d "$FindBin::Bin/../../.git"
+              )
          ) {
          PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
          return;
@@ -4412,7 +4412,7 @@ sub version_check {
       PTDEBUG && _d(scalar @$instances_to_check, 'instances to check');
       return unless @$instances_to_check;
 
-      my $protocol = 'https';  
+      my $protocol = 'https';
       eval { require IO::Socket::SSL; };
       if ( $EVAL_ERROR ) {
          PTDEBUG && _d($EVAL_ERROR);
@@ -4589,7 +4589,7 @@ sub get_uuid {
     close $fh;
 
     return $uuid;
-}   
+}
 
 sub _generate_uuid {
     return sprintf+($}="%04x")."$}-$}-$}-$}-".$}x3,map rand 65537,0..7;
@@ -4638,7 +4638,7 @@ sub pingback {
    );
    die "Failed to parse server requested programs: $response->{content}"
       if !scalar keys %$items;
-      
+
    my $versions = get_versions(
       items     => $items,
       instances => $instances,
@@ -4897,7 +4897,7 @@ sub get_from_mysql {
    if ($item->{item} eq 'MySQL' && $item->{type} eq 'mysql_variable') {
       @{$item->{vars}} = grep { $_ eq 'version' || $_ eq 'version_comment' } @{$item->{vars}};
    }
- 
+
 
    my @versions;
    my %version_for;
@@ -4979,7 +4979,7 @@ sub main {
    $o->get_specs();
    $o->get_opts();
 
-   $dp = $o->DSNParser(); 
+   $dp = $o->DSNParser();
    $dp->prop('set-vars', $o->set_vars());
 
    $o->set('verbose', 0) if $o->get('quiet');
@@ -5067,8 +5067,8 @@ sub main {
    # ########################################################################
    # Start monitoring the slave.
    # ########################################################################
-   my $exit_status = 0; 
-   my @servers_to_watch; 
+   my $exit_status = 0;
+   my @servers_to_watch;
 
    # Despite the name, recursing to slaves actually begins at the specified
    # server, so the named server may also be watched, if it's a slave.
@@ -5182,8 +5182,8 @@ sub watch_server {
    # transaction is not possible with SQL_SLAVE_SKIP_COUNTER
    my $skip_event;
    my $have_gtid = 0;
-   # We also check if version is lower than 10.0.0 because MariaDB has different 
-   # versioning system than MySQL 
+   # We also check if version is lower than 10.0.0 because MariaDB has different
+   # versioning system than MySQL
    if ( VersionParser->new($dbh) >= '5.6.5' && VersionParser->new($dbh) <= '10.0.0' ) {
       my $row = $dbh->selectrow_arrayref('SELECT @@GLOBAL.gtid_mode');
       PTDEBUG && _d('@@GLOBAL.gtid_mode:', $row->[0]);
@@ -5193,7 +5193,7 @@ sub watch_server {
    }
    PTDEBUG && _d('Have GTID:', $have_gtid);
 
-   # If GTID is enabled, slave_parallel_workers should be == 0. 
+   # If GTID is enabled, slave_parallel_workers should be == 0.
    # It's currently not possible to know what GTID event the failed trx is.
    if ( $have_gtid ) {
       my $threads = $dbh->selectrow_hashref(
@@ -5236,13 +5236,13 @@ sub watch_server {
       },
       skip => sub {
          my ( $stat, $dbh ) = @_;
-         my $set_skip = $dbh->prepare("SET GLOBAL SQL_SLAVE_SKIP_COUNTER = "   
+         my $set_skip = $dbh->prepare("SET GLOBAL SQL_SLAVE_SKIP_COUNTER = "
                           . $o->get('skip-count'));
          $set_skip->execute();
       },
       skip_gtid => sub {
          my ( $stat, $dbh ) = @_;
-         
+
          # Get master_uuid from SHOW SLAVE STATUS if a UUID is not specified
          # with --master-uuid.
          my $gtid_uuid = $o->get('master-uuid');
@@ -5256,7 +5256,7 @@ sub watch_server {
          # Notes:
          #  - does not work with parallel replication
          #  - it skips the next transaction from the master_uuid
-         #    (when a slaveB is replicating from slaveA, 
+         #    (when a slaveB is replicating from slaveA,
          #     the master_uuid is it's own master, slaveA)
          my ($gtid_exec_ids) = ($stat->{executed_gtid_set} || '') =~ m/$gtid_uuid([0-9-:]*)/;
          $gtid_exec_ids =~ s/:[0-9]+-/:/g;
@@ -5266,7 +5266,7 @@ sub watch_server {
          delete $gtid_exec_ranges[0]; # undef the first value, it's always empty
 
          # Get the highest id by sorting the array, removing the undef value.
-         my @gtid_exec_sorted = sort { $a <=> $b } 
+         my @gtid_exec_sorted = sort { $a <=> $b }
                                 grep { defined($_) } @gtid_exec_ranges;
          my $gtid_exec_last   = $gtid_exec_sorted[-1];
 
@@ -5363,7 +5363,7 @@ sub watch_server {
                );
             }
 
-            if ( $o->got('error-numbers') 
+            if ( $o->got('error-numbers')
                  && !exists($o->get('error-numbers')->{$stat->{last_errno}}) ) {
                die "Error $stat->{last_errno} is not in --error-numbers.\n";
             }
@@ -5543,7 +5543,7 @@ unexpectedly, you should identify and fix the root cause.
 =head1 OUTPUT
 
 pt-slave-restart prints a line every time it sees the slave has an error.
-By default this line is: a timestamp, connection information, relay_log_file, 
+By default this line is: a timestamp, connection information, relay_log_file,
 relay_log_pos, and last_errno.
 You can add more information using the L<"--verbose"> option.
 You can suppress all output using the L<"--quiet"> option.
@@ -5967,9 +5967,9 @@ short form: -v; cumulative: yes; default: 1
 
 Adds more information to the output.
 This flag can be specified multiple times. e.g. -v -v OR -vv.
-By default (no verbose flag) the tool outputs connection information, a timestamp, 
+By default (no verbose flag) the tool outputs connection information, a timestamp,
 relay_log_file, relay_log_pos, and last_errno.
-One flag (-v) adds last_error.  See also L<"--error-length">.  
+One flag (-v) adds last_error.  See also L<"--error-length">.
 Two flags (-vv) prints the current sleep time each time pt-slave-restart sleeps.
 To suppress all output use the L<"--quiet"> option.
 
@@ -5999,7 +5999,7 @@ done for the first time.
 
 Any updates or known problems are printed to STDOUT before the tool's normal
 output.  This feature should never interfere with the normal operation of the
-tool.  
+tool.
 
 For more information, visit L<https://www.percona.com/doc/percona-toolkit/LATEST/version-check.html>.
 
@@ -6140,7 +6140,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2018 Percona LLC and/or its affiliates,
+This program is copyright 2011-2021 Percona LLC and/or its affiliates,
 2007-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -6159,6 +6159,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-slave-restart 3.2.1
+pt-slave-restart 3.3.1
 
 =cut

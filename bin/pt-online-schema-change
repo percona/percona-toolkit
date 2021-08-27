@@ -56,7 +56,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.2.1';
+our $VERSION = '3.3.1';
 
 use strict;
 use warnings FATAL => 'all';
@@ -130,13 +130,13 @@ sub cmp {
    $v1 =~ s/[^\d\.]//;
    $v2 =~ s/[^\d\.]//;
 
-   my @a = ( $v1 =~ /(\d+)\.?/g ); 
-   my @b = ( $v2 =~ /(\d+)\.?/g ); 
+   my @a = ( $v1 =~ /(\d+)\.?/g );
+   my @b = ( $v2 =~ /(\d+)\.?/g );
    foreach my $n1 (@a) {
       $n1 += 0; #convert to number
       if (!@b) {
          return 1;
-      }  
+      }
       my $n2 = shift @b;
       $n2 += 0; # convert to number
       if ($n1 == $n2) {
@@ -144,8 +144,8 @@ sub cmp {
       }
       else {
          return $n1 <=> $n2;
-      }  
-   }  
+      }
+   }
    return @b ? -1 : 0;
 }
 
@@ -220,7 +220,7 @@ sub new {
       rules             => [],  # desc of rules for --help
       mutex             => [],  # rule: opts are mutually exclusive
       atleast1          => [],  # rule: at least one opt is required
-      disables          => {},  # rule: opt disables other opts 
+      disables          => {},  # rule: opt disables other opts
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
@@ -383,7 +383,7 @@ sub _pod_to_specs {
          }
 
          push @specs, {
-            spec  => $self->{parse_attributes}->($self, $option, \%attribs), 
+            spec  => $self->{parse_attributes}->($self, $option, \%attribs),
             desc  => $para
                . (defined $attribs{default} ? " (default $attribs{default})" : ''),
             group => ($attribs{'group'} ? $attribs{'group'} : 'default'),
@@ -474,7 +474,7 @@ sub _parse_specs {
          $self->{opts}->{$long} = $opt;
       }
       else { # It's an option rule, not a spec.
-         PTDEBUG && _d('Parsing rule:', $opt); 
+         PTDEBUG && _d('Parsing rule:', $opt);
          push @{$self->{rules}}, $opt;
          my @participants = $self->_get_participants($opt);
          my $rule_ok = 0;
@@ -519,7 +519,7 @@ sub _parse_specs {
       PTDEBUG && _d('Option', $long, 'disables', @participants);
    }
 
-   return; 
+   return;
 }
 
 sub _get_participants {
@@ -606,7 +606,7 @@ sub _set_option {
 }
 
 sub get_opts {
-   my ( $self ) = @_; 
+   my ( $self ) = @_;
 
    foreach my $long ( keys %{$self->{opts}} ) {
       $self->{opts}->{$long}->{got} = 0;
@@ -737,7 +737,7 @@ sub _check_opts {
                   else {
                      $err = join(', ',
                                map { "--$self->{opts}->{$_}->{long}" }
-                               grep { $_ } 
+                               grep { $_ }
                                @restricted_opts[0..scalar(@restricted_opts) - 2]
                             )
                           . ' or --'.$self->{opts}->{$restricted_opts[-1]}->{long};
@@ -747,7 +747,7 @@ sub _check_opts {
             }
 
          }
-         elsif ( $opt->{is_required} ) { 
+         elsif ( $opt->{is_required} ) {
             $self->save_error("Required option --$long must be specified");
          }
 
@@ -1131,7 +1131,7 @@ sub clone {
       $clone{$scalar} = $self->{$scalar};
    }
 
-   return bless \%clone;     
+   return bless \%clone;
 }
 
 sub _parse_size {
@@ -1646,7 +1646,7 @@ sub extends {
 
 sub _load_module {
    my ($class) = @_;
-   
+
    (my $file = $class) =~ s{::|'}{/}g;
    $file .= '.pm';
    { local $@; eval { require "$file" } } # or warn $@;
@@ -1677,7 +1677,7 @@ sub has {
    my $caller = scalar caller();
 
    my $class_metadata = Lmo::Meta->metadata_for($caller);
-   
+
    for my $attribute ( ref $names ? @$names : $names ) {
       my %args   = @_;
       my $method = ($args{is} || '') eq 'ro'
@@ -1696,16 +1696,16 @@ sub has {
 
       if ( my $type_check = $args{isa} ) {
          my $check_name = $type_check;
-         
+
          if ( my ($aggregate_type, $inner_type) = $type_check =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
             $type_check = Lmo::Types::_nested_constraints($attribute, $aggregate_type, $inner_type);
          }
-         
+
          my $check_sub = sub {
             my ($new_val) = @_;
             Lmo::Types::check_type_constaints($attribute, $type_check, $check_name, $new_val);
          };
-         
+
          $class_metadata->{$attribute}{isa} = [$check_name, $check_sub];
          my $orig_method = $method;
          $method = sub {
@@ -2199,7 +2199,7 @@ sub parse {
    foreach my $key ( keys %$opts ) {
       PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
-      if ( !defined $final_props{$key}  
+      if ( !defined $final_props{$key}
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
@@ -2339,7 +2339,7 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass,
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       $dbh = eval { DBI->connect($cxn_string, $user, $pass, $defaults) };
@@ -2537,7 +2537,7 @@ sub set_vars {
       }
    }
 
-   return; 
+   return;
 }
 
 sub _d {
@@ -2618,7 +2618,7 @@ sub run {
          $parent_exit->($child_pid) if $parent_exit;
          exit 0;
       }
- 
+
       POSIX::setsid() or die "Cannot start a new session: $OS_ERROR";
       chdir '/'       or die "Cannot chdir to /: $OS_ERROR";
 
@@ -2644,7 +2644,7 @@ sub run {
 
          close STDERR;
          open  STDERR, ">&STDOUT"
-            or die "Cannot dupe STDERR to STDOUT: $OS_ERROR"; 
+            or die "Cannot dupe STDERR to STDOUT: $OS_ERROR";
       }
       else {
          if ( -t STDOUT ) {
@@ -2682,7 +2682,7 @@ sub _make_pid_file {
    eval {
       sysopen(PID_FH, $pid_file, O_RDWR|O_CREAT|O_EXCL) or die $OS_ERROR;
       print PID_FH $PID, "\n";
-      close PID_FH; 
+      close PID_FH;
    };
    if ( my $e = $EVAL_ERROR ) {
       if ( $e =~ m/file exists/i ) {
@@ -2869,7 +2869,7 @@ sub split_unquote {
       s/`\z//;
       s/``/`/g;
    }
-   
+
    return ($db, $tbl);
 }
 
@@ -2999,7 +2999,7 @@ sub generate_asc_stmt {
 
    die "Index '$index' does not exist in table"
       unless exists $tbl_struct->{keys}->{$index};
-   PTDEBUG && _d('Will ascend index', $index);  
+   PTDEBUG && _d('Will ascend index', $index);
 
    my @asc_cols = @{$tbl_struct->{keys}->{$index}->{cols}};
    if ( $args{asc_first} ) {
@@ -3388,9 +3388,10 @@ sub parse {
 
 sub remove_quoted_text {
    my ($string) = @_;
-   $string =~ s/[^\\]`[^`]*[^\\]`//g; 
-   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
-   $string =~ s/[^\\]'[^']*[^\\]'//g; 
+   $string =~ s/\\['"]//g;
+   $string =~ s/`[^`]*?`//g;
+   $string =~ s/"[^"]*?"//g;
+   $string =~ s/'[^']*?'//g;
    return $string;
 }
 
@@ -3914,7 +3915,7 @@ sub new {
    };
    my ($dp, $o) = @args{@required_args};
 
-   my $dsn_defaults = $dp->parse_options($o);  
+   my $dsn_defaults = $dp->parse_options($o);
    my $prev_dsn     = $args{prev_dsn};
    my $dsn          = $args{dsn};
    if ( !$dsn ) {
@@ -4053,7 +4054,7 @@ sub get_id {
       my $sql  = q{SHOW STATUS LIKE 'wsrep\_local\_index'};
       my (undef, $wsrep_local_index) = $cxn->dbh->selectrow_array($sql);
       PTDEBUG && _d("Got cluster wsrep_local_index: ",$wsrep_local_index);
-      $unique_id = $wsrep_local_index."|"; 
+      $unique_id = $wsrep_local_index."|";
       foreach my $val ('server\_id', 'wsrep\_sst\_receive\_address', 'wsrep\_node\_name', 'wsrep\_node\_address') {
          my $sql = "SHOW VARIABLES LIKE '$val'";
          PTDEBUG && _d($cxn->name, $sql);
@@ -4083,7 +4084,7 @@ sub is_cluster_node {
       PTDEBUG && _d($sql); #don't invoke name() if it's not a Cxn!
    }
    else {
-      $dbh = $cxn->dbh();      
+      $dbh = $cxn->dbh();
       PTDEBUG && _d($cxn->name, $sql);
    }
 
@@ -4166,22 +4167,22 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-sub check_recursion_method {                                                       
+sub check_recursion_method {
    my ($methods) = @_;
-   if ( @$methods != 1 ) {                                                         
-      if ( grep({ !m/processlist|hosts/i } @$methods)                              
-            && $methods->[0] !~ /^dsn=/i ) 
-      {     
-         die  "Invalid combination of recursion methods: "                         
-            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "      
-            . "Only hosts and processlist may be combined.\n"                      
-      }                                                                            
-   }     
-   else {   
+   if ( @$methods != 1 ) {
+      if ( grep({ !m/processlist|hosts/i } @$methods)
+            && $methods->[0] !~ /^dsn=/i )
+      {
+         die  "Invalid combination of recursion methods: "
+            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "
+            . "Only hosts and processlist may be combined.\n"
+      }
+   }
+   else {
       my ($method) = @$methods;
-      die "Invalid recursion method: " . ( $method || 'undef' )                    
-         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster$|dsn=)/i;     
-   }                                                                               
+      die "Invalid recursion method: " . ( $method || 'undef' )
+         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster$|dsn=)/i;
+   }
 }
 
 sub new {
@@ -4210,7 +4211,7 @@ sub get_slaves {
    my $methods = $self->_resolve_recursion_methods($args{dsn});
 
    return $slaves unless @$methods;
-   
+
    if ( grep { m/processlist|hosts/i } @$methods ) {
       my @required_args = qw(dbh dsn);
       foreach my $arg ( @required_args ) {
@@ -4223,7 +4224,7 @@ sub get_slaves {
          {  dbh            => $dbh,
             dsn            => $dsn,
             slave_user     => $o->got('slave-user') ? $o->get('slave-user') : '',
-            slave_password => $o->got('slave-password') ? $o->get('slave-password') : '', 
+            slave_password => $o->got('slave-password') ? $o->get('slave-password') : '',
             callback  => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
@@ -4792,7 +4793,7 @@ sub short_host {
 }
 
 sub is_replication_thread {
-   my ( $self, $query, %args ) = @_; 
+   my ( $self, $query, %args ) = @_;
    return unless $query;
 
    my $type = lc($args{type} || 'all');
@@ -4807,7 +4808,7 @@ sub is_replication_thread {
    if ( !$match ) {
       if ( ($query->{User} || $query->{user} || '') eq "system user" ) {
          PTDEBUG && _d("Slave replication thread");
-         if ( $type ne 'all' ) { 
+         if ( $type ne 'all' ) {
             my $state = $query->{State} || $query->{state} || '';
 
             if ( $state =~ m/^init|end$/ ) {
@@ -4820,7 +4821,7 @@ sub is_replication_thread {
                    |Reading\sevent\sfrom\sthe\srelay\slog
                    |Has\sread\sall\srelay\slog;\swaiting
                    |Making\stemp\sfile
-                   |Waiting\sfor\sslave\smutex\son\sexit)/xi; 
+                   |Waiting\sfor\sslave\smutex\son\sexit)/xi;
 
                $match = $type eq 'slave_sql' &&  $slave_sql ? 1
                       : $type eq 'slave_io'  && !$slave_sql ? 1
@@ -4884,7 +4885,7 @@ sub get_replication_filters {
          replicate_do_db
          replicate_ignore_db
          replicate_do_table
-         replicate_ignore_table 
+         replicate_ignore_table
          replicate_wild_do_table
          replicate_wild_ignore_table
       );
@@ -4895,7 +4896,7 @@ sub get_replication_filters {
       $filters{slave_skip_errors} = $row->[1] if $row->[1] && $row->[1] ne 'OFF';
    }
 
-   return \%filters; 
+   return \%filters;
 }
 
 
@@ -5178,9 +5179,9 @@ sub new {
    my $self = {
       %args
    };
-   
-   $self->{last_time} = time();   
-   
+
+   $self->{last_time} = time();
+
    my (undef, $last_fc_ns) = $self->{node}->selectrow_array('SHOW STATUS LIKE "wsrep_flow_control_paused_ns"');
 
    $self->{last_fc_secs} = $last_fc_ns/1000_000_000;
@@ -5216,11 +5217,11 @@ sub wait {
       my $current_time = time();
       my (undef, $current_fc_ns) = $node->selectrow_array('SHOW STATUS LIKE "wsrep_flow_control_paused_ns"');
       my $current_fc_secs = $current_fc_ns/1000_000_000;
-      my $current_avg = ($current_fc_secs - $self->{last_fc_secs}) / ($current_time - $self->{last_time});  
-      if ( $current_avg > $max_avg ) { 
+      my $current_avg = ($current_fc_secs - $self->{last_fc_secs}) / ($current_time - $self->{last_time});
+      if ( $current_avg > $max_avg ) {
          if ( $pr ) {
             $pr->update(sub { return 0; });
-         } 
+         }
          PTDEBUG && _d('Calling sleep callback');
          if ( $self->{simple_progress} ) {
             print STDERR "Waiting for Flow Control to abate\n";
@@ -5335,7 +5336,7 @@ sub _parse_spec {
       }
    }
 
-   return \%max_val_for; 
+   return \%max_val_for;
 }
 
 sub max_values {
@@ -5622,7 +5623,7 @@ sub new {
 
 sub switch_to_nibble {
     my $self = shift;
-    my $params = _nibble_params($self->{nibble_params}, $self->{tbl}, $self->{args}, $self->{cols}, 
+    my $params = _nibble_params($self->{nibble_params}, $self->{tbl}, $self->{args}, $self->{cols},
                                 $self->{chunk_size}, $self->{where}, $self->{comments}, $self->{Quoter});
 
     $self->{one_nibble}           = 0;
@@ -5659,7 +5660,7 @@ sub _one_nibble {
       my $explain_nibble_sql
          = "EXPLAIN SELECT "
          . ($args->{select} ? $args->{select}
-                          : join(', ', map{ $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' 
+                          : join(', ', map{ $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum'
                           ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_) } @$cols))
          . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
@@ -5756,7 +5757,7 @@ sub _nibble_params {
          . " /*$comments->{nibble}*/";
       PTDEBUG && _d('Nibble statement:', $nibble_sql);
 
-      my $explain_nibble_sql 
+      my $explain_nibble_sql
          = "EXPLAIN SELECT "
          . ($args->{select} ? $args->{select}
                           : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
@@ -5845,7 +5846,7 @@ sub next {
             sleep($self->{sleep});
          }
       }
-  
+
       if ( !$self->{have_rows} ) {
          $self->{nibbleno}++;
          PTDEBUG && _d('Nibble:', $self->{nibble_sth}->{Statement}, 'params:',
@@ -5875,7 +5876,7 @@ sub next {
       }
       $self->{rowno}     = 0;
       $self->{have_rows} = 0;
-      
+
    }
 
    PTDEBUG && _d('Done nibbling');
@@ -6012,7 +6013,7 @@ sub can_nibble {
    }
 
    my $pause_file = ($o->has('pause-file') && $o->get('pause-file')) || undef;
-   
+
    return {
       row_est     => $row_est,      # nibble about this many rows
       index       => $index,        # using this index
@@ -6057,7 +6058,7 @@ sub _find_best_index {
          push @possible_indexes, $want_index;
       }
    }
-   
+
    if (!$best_index) {
       PTDEBUG && _d('Auto-selecting best index');
       foreach my $index ( $tp->sort_indexes($tbl_struct) ) {
@@ -6155,7 +6156,7 @@ sub _prepare_sths {
    return;
 }
 
-sub _get_bounds { 
+sub _get_bounds {
    my ($self) = @_;
 
    if ( $self->{one_nibble} ) {
@@ -6168,7 +6169,7 @@ sub _get_bounds {
    my $dbh = $self->{Cxn}->dbh();
 
    $self->{first_lower} = $dbh->selectrow_arrayref($self->{first_lb_sql});
-   PTDEBUG && _d('First lower boundary:', Dumper($self->{first_lower}));  
+   PTDEBUG && _d('First lower boundary:', Dumper($self->{first_lower}));
 
    if ( my $nibble = $self->{resume} ) {
       if (    defined $nibble->{lower_boundary}
@@ -6182,9 +6183,9 @@ sub _get_bounds {
       }
    }
    else {
-      $self->{next_lower}  = $self->{first_lower};   
+      $self->{next_lower}  = $self->{first_lower};
    }
-   PTDEBUG && _d('Next lower boundary:', Dumper($self->{next_lower}));  
+   PTDEBUG && _d('Next lower boundary:', Dumper($self->{next_lower}));
 
    if ( !$self->{next_lower} ) {
       PTDEBUG && _d('At end of table, or no more boundaries to resume');
@@ -6270,7 +6271,7 @@ sub _next_boundaries {
       $self->{upper} = $dbh->selectrow_arrayref($self->{last_ub_sql});
       PTDEBUG && _d('Last upper boundary:', Dumper($self->{upper}));
       $self->{no_more_boundaries} = 1;  # for next call
-      
+
       $self->{last_upper} = $self->{upper};
    }
    $self->{ub_sth}->finish();
@@ -6620,7 +6621,7 @@ sub value_to_json {
 
    my $b_obj = B::svref_2object(\$value);  # for round trip problem
    my $flags = $b_obj->FLAGS;
-   return $value # as is 
+   return $value # as is
       if $flags & ( B::SVp_IOK | B::SVp_NOK ) and !( $flags & B::SVp_POK ); # SvTYPE is IV or NV?
 
    my $type = ref($value);
@@ -7128,7 +7129,7 @@ sub _split_url {
                   or die(qq/SSL certificate not valid for $host\n/);
             }
        }
-         
+
        $self->{host} = $host;
        $self->{port} = $port;
 
@@ -7603,7 +7604,7 @@ my @vc_dirs = (
       }
       PTDEBUG && _d('Version check file', $file, 'in', $ENV{PWD});
       return $file;  # in the CWD
-   } 
+   }
 }
 
 sub version_check_time_limit {
@@ -7620,11 +7621,11 @@ sub version_check {
    PTDEBUG && _d('FindBin::Bin:', $FindBin::Bin);
    if ( !$args{force} ) {
       if ( $FindBin::Bin
-           && (-d "$FindBin::Bin/../.bzr"    || 
+           && (-d "$FindBin::Bin/../.bzr"    ||
                -d "$FindBin::Bin/../../.bzr" ||
-               -d "$FindBin::Bin/../.git"    || 
-               -d "$FindBin::Bin/../../.git" 
-              ) 
+               -d "$FindBin::Bin/../.git"    ||
+               -d "$FindBin::Bin/../../.git"
+              )
          ) {
          PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
          return;
@@ -7648,7 +7649,7 @@ sub version_check {
       PTDEBUG && _d(scalar @$instances_to_check, 'instances to check');
       return unless @$instances_to_check;
 
-      my $protocol = 'https';  
+      my $protocol = 'https';
       eval { require IO::Socket::SSL; };
       if ( $EVAL_ERROR ) {
          PTDEBUG && _d($EVAL_ERROR);
@@ -7825,7 +7826,7 @@ sub get_uuid {
     close $fh;
 
     return $uuid;
-}   
+}
 
 sub _generate_uuid {
     return sprintf+($}="%04x")."$}-$}-$}-$}-".$}x3,map rand 65537,0..7;
@@ -7874,7 +7875,7 @@ sub pingback {
    );
    die "Failed to parse server requested programs: $response->{content}"
       if !scalar keys %$items;
-      
+
    my $versions = get_versions(
       items     => $items,
       instances => $instances,
@@ -8133,7 +8134,7 @@ sub get_from_mysql {
    if ($item->{item} eq 'MySQL' && $item->{type} eq 'mysql_variable') {
       @{$item->{vars}} = grep { $_ eq 'version' || $_ eq 'version_comment' } @{$item->{vars}};
    }
- 
+
 
    my @versions;
    my %version_for;
@@ -8238,7 +8239,7 @@ sub find_cluster_nodes {
    my $dp  = $args{DSNParser};
    my $make_cxn = $args{make_cxn};
 
-   
+
    my $sql = q{SHOW STATUS LIKE 'wsrep\_incoming\_addresses'};
    PTDEBUG && _d($sql);
    my (undef, $addresses) = $dbh->selectrow_array($sql);
@@ -8318,7 +8319,7 @@ sub autodetect_nodes {
    my $new_nodes = [];
 
    return $new_nodes unless @$nodes;
-   
+
    for my $node ( @$nodes ) {
       my $nodes_found = $self->find_cluster_nodes(
          dbh       => $node->dbh(),
@@ -8350,12 +8351,12 @@ sub autodetect_nodes {
    );
 
    my @new_slave_nodes = grep { $self->is_cluster_node($_) } @$new_slaves;
-   
+
    my $slaves_of_slaves = $self->autodetect_nodes(
          %args,
          nodes => \@new_slave_nodes,
    );
-   
+
    my @autodetected_nodes = ( @$new_nodes, @$new_slaves, @$slaves_of_slaves );
    return \@autodetected_nodes;
 }
@@ -8387,6 +8388,7 @@ package pt_online_schema_change;
 
 use strict;
 use warnings FATAL => 'all';
+use utf8;
 use English qw(-no_match_vars);
 
 use Percona::Toolkit;
@@ -8417,13 +8419,14 @@ my $dont_interrupt_now = 0;
 my @drop_trigger_sqls;
 my @triggers_not_dropped;
 my $pxc_version = '0';
+my $can_drop_triggers = 1;
 
 my $triggers_info = [];
 
 # Completely ignore these error codes.
 my %ignore_code = (
    # Error: 1592 SQLSTATE: HY000  (ER_BINLOG_UNSAFE_STATEMENT)
-   # Message: Statement may not be safe to log in statement format. 
+   # Message: Statement may not be safe to log in statement format.
    # Ignore this warning because we have purposely set statement-based
    # replication.
    1592 => 1,
@@ -8436,25 +8439,26 @@ my %ignore_code = (
 $OUTPUT_AUTOFLUSH = 1;
 
 use constant {
-   INVALID_PARAMETERS        => 1,
-   UNSUPORTED_MYSQL_VERSION  => 2,
-   NO_MINIMUM_REQUIREMENTS   => 3,
-   NO_PRIMARY_OR_UNIQUE_KEY  => 4,
-   INVALID_PLUGIN_FILE       => 5,
-   INVALID_ALTER_FK_METHOD   => 6,
-   INVALID_KEY_SIZE          => 7,
-   CANNOT_DETERMINE_KEY_SIZE => 9,
-   NOT_SAFE_TO_ASCEND        => 9,
-   ERROR_CREATING_NEW_TABLE  => 10,
-   ERROR_ALTERING_TABLE      => 11,
-   ERROR_CREATING_TRIGGERS   => 12,
-   ERROR_RESTORING_TRIGGERS  => 13,
-   ERROR_SWAPPING_TABLES     => 14,
-   ERROR_UPDATING_FKS        => 15,
-   ERROR_DROPPING_OLD_TABLE  => 16,
-   UNSUPORTED_OPERATION      => 17,
-   MYSQL_CONNECTION_ERROR    => 18,
-   LOST_MYSQL_CONNECTION     => 19,
+   INVALID_PARAMETERS              => 1,
+   UNSUPORTED_MYSQL_VERSION        => 2,
+   NO_MINIMUM_REQUIREMENTS         => 3,
+   NO_PRIMARY_OR_UNIQUE_KEY        => 4,
+   INVALID_PLUGIN_FILE             => 5,
+   INVALID_ALTER_FK_METHOD         => 6,
+   INVALID_KEY_SIZE                => 7,
+   CANNOT_DETERMINE_KEY_SIZE       => 9,
+   NOT_SAFE_TO_ASCEND              => 9,
+   ERROR_CREATING_NEW_TABLE        => 10,
+   ERROR_ALTERING_TABLE            => 11,
+   ERROR_CREATING_TRIGGERS         => 12,
+   ERROR_RESTORING_TRIGGERS        => 13,
+   ERROR_SWAPPING_TABLES           => 14,
+   ERROR_UPDATING_FKS              => 15,
+   ERROR_DROPPING_OLD_TABLE        => 16,
+   UNSUPORTED_OPERATION            => 17,
+   MYSQL_CONNECTION_ERROR          => 18,
+   LOST_MYSQL_CONNECTION           => 19,
+   ERROR_CREATING_REVERSE_TRIGGERS => 20,
 };
 
 sub _die {
@@ -8474,7 +8478,7 @@ sub main {
    @drop_trigger_sqls    = ();
    @triggers_not_dropped = ();
    $dont_interrupt_now   = 0;
-   %ignore_code = (1592 => 1, 1062 => 1);
+   %ignore_code = (1592 => 1, 1062 => 1, 1300 => 1);
 
    my %stats = (
       INSERT => 0,
@@ -8490,7 +8494,7 @@ sub main {
 
    if ( $o->get('null-to-not-null') ) {
       $ignore_code{1048} = 1;
-   } 
+   }
 
    my $dp = $o->DSNParser();
    $dp->prop('set-vars', $o->set_vars());
@@ -8506,7 +8510,7 @@ sub main {
       # Parse DSN string and convert it to a DSN data struct.
       $dsn = $dp->parse($dsn, $dp->parse_options($o));
       $db  = $dsn->{D};
-      $tbl = $dsn->{t};  
+      $tbl = $dsn->{t};
    }
 
    my $alter_fk_method = $o->get('alter-foreign-keys-method') || '';
@@ -8567,6 +8571,21 @@ sub main {
       $o->set('drop-triggers', 1);
    }
 
+   if ( $o->get('reverse-triggers') ) {
+       if ($o->get('drop-old-table')) {
+           my $msg = '--reverse-triggers needs --no-drop-old-table';
+           _die($msg, INVALID_PARAMETERS);
+       }
+       if (!$o->get('swap-tables')) {
+           my $msg = 'Cannot use --reverse-triggers with --no-swap-tables';
+           _die($msg, INVALID_PARAMETERS);
+       }
+       if ($o->get('preserve-triggers')) {
+           my $msg = 'Cannot use --reverse-triggers with --preserve-triggers';
+           _die($msg, INVALID_PARAMETERS);
+       }
+   }
+
    if ( !$o->get('help') ) {
       if ( @ARGV ) {
          $o->save_error('Specify only one DSN on the command line');
@@ -8600,7 +8619,7 @@ sub main {
          print STDERR "WARNING! Using alter-foreign-keys-method = \"none\". This will typically cause foreign key violations!\nThis method of handling foreign key constraints is only provided so that the database administrator can disable the tool’s built-in functionality if desired.\n\nContinue anyway? (y/N)";
          my $response;
          chomp($response = <STDIN>);
-         if ($response !~ /y|(yes)/i) { 
+         if ($response !~ /y|(yes)/i) {
             exit 1;
          }
       }
@@ -8617,7 +8636,7 @@ sub main {
       $o->save_error("Invalid --recursion-method: $EVAL_ERROR")
    }
 
-   $o->usage_or_errors(); 
+   $o->usage_or_errors();
 
    if ( $o->get('quiet') ) {
       # BARON: this will fail on Windows, where there is no /dev/null. I feel
@@ -8709,7 +8728,7 @@ sub main {
    # Check if MySQL is new enough to have the triggers we need.
    # Although triggers were introduced in 5.0.2, "Prior to MySQL 5.0.10,
    # triggers cannot contain direct references to tables by name."
-   # ########################################################################   
+   # ########################################################################
    my $server_version = VersionParser->new($cxn->dbh());
    if ( $server_version < '5.0.10' ) {
       _die("This tool requires MySQL 5.0.10 or newer.", UNSUPORTED_MYSQL_VERSION);
@@ -8753,7 +8772,7 @@ sub main {
 
    # ########################################################################
    # Create --plugin.
-   # ########################################################################   
+   # ########################################################################
    my $plugin;
    if ( my $file = $o->get('plugin') ) {
       _die("--plugin file $file does not exist", INVALID_PLUGIN_FILE) unless -f $file;
@@ -8779,7 +8798,7 @@ sub main {
 
    # ########################################################################
    # Setup lag and load monitors.
-   # ########################################################################   
+   # ########################################################################
    my $slaves;         # all slaves that are found or specified
    my $slave_lag_cxns; # slaves whose lag we'll check
    my $replica_lag;    # ReplicaLagWaiter object
@@ -8922,7 +8941,7 @@ sub main {
       # #####################################################################
       # Make a ReplicaLagWaiter to help wait for slaves after each chunk.
       # Note: the "sleep" function is also used by MySQLStatusWaiter and
-      #       FlowControlWaiter 
+      #       FlowControlWaiter
       # #####################################################################
       my $sleep = sub {
          # Don't let the master dbh die while waiting for slaves because we
@@ -8943,13 +8962,13 @@ sub main {
       };
 
       my $get_lag;
-      # The plugin is able to override the slavelag check so tools like 
-      # pt-heartbeat or other replicators (Tungsten...) can be used to 
+      # The plugin is able to override the slavelag check so tools like
+      # pt-heartbeat or other replicators (Tungsten...) can be used to
       # measure replication lag
       if ( $plugin && $plugin->can('get_slave_lag') ) {
          $get_lag = $plugin->get_slave_lag(oktorun => \$oktorun);
       }
-      else {      
+      else {
          $get_lag = sub {
             my ($cxn) = @_;
             my $dbh = $cxn->dbh();
@@ -8965,7 +8984,7 @@ sub main {
                      $EVAL_ERROR);
                   die '2> Cannot connect to '. $cxn->name() . ':' . $EVAL_ERROR;
                   # Make ReplicaLagWaiter::wait() report slave is stopped.
-                  return undef; 
+                  return undef;
                }
             }
             my $lag;
@@ -9044,7 +9063,7 @@ sub main {
             spec    => $o->get('progress'),
             name    => "Waiting for --max-load", # not used
          );
-        
+
          if ( $pxc_version >= '5.6' && $o->got('max-flow-ctl') ) {
             $flow_ctl_pr = new Progress(
                jobsize => $o->get('max-flow-ctl'),
@@ -9110,7 +9129,7 @@ sub main {
          tbl    => $orig_tbl,
          Cxn    => $cxn,
          Quoter => $q,
-         only_same_schema_fks => $o->get('only-same-schema-fks'), 
+         only_same_schema_fks => $o->get('only-same-schema-fks'),
       );
 
    my $vp = VersionParser->new($cxn->dbh());
@@ -9132,7 +9151,7 @@ sub main {
          tbl    => $orig_tbl,
          Cxn    => $cxn,
          Quoter => $q,
-         only_same_schema_fks => $o->get('only-same-schema-fks'), 
+         only_same_schema_fks => $o->get('only-same-schema-fks'),
       );
       if ( !$child_tables ) {
          if ( $alter_fk_method ) {
@@ -9151,7 +9170,7 @@ sub main {
          }
          # No child tables and --alter-fk-method wasn't specified,
          # so nothing to do.
-      } 
+      }
       else {
          print "Child tables:\n";
          foreach my $child_table ( @$child_tables ) {
@@ -9159,7 +9178,7 @@ sub main {
                $child_table->{name},
                $child_table->{row_est} || '?';
          }
-         
+
          # TODO: Fix self referencing foreign keys handling.
          # See: https://jira.percona.com/browse/PT-1802
          #      https://jira.percona.com/browse/PT-1853
@@ -9182,7 +9201,7 @@ sub main {
             print "You did not specify --alter-foreign-keys-method, but there "
                 . "are foreign keys that reference the table. "
                 . "Please read the tool's documentation carefully.\n";
-            return 1; 
+            return 1;
          }
       }
    }
@@ -9224,10 +9243,10 @@ sub main {
          #   at /Users/daniel/p/pt-osc-2.1.1/lib/PerconaTest.pm line 559.
          #                   ''
          #   doesn't match '(?-xism:Failed to find a unique new table name)'
-         
+
          # (*) Frank:  commented them out because it caused infinite loop
          # and the mentioned test error doesn't arise
-         
+
          my $original_error = $EVAL_ERROR;
 
          foreach my $task ( reverse @cleanup_tasks ) {
@@ -9330,7 +9349,7 @@ sub main {
 
    # ########################################################################
    # Init the --plugin.
-   # ########################################################################   
+   # ########################################################################
 
    # --plugin hook
    if ( $plugin && $plugin->can('init') ) {
@@ -9494,7 +9513,7 @@ sub main {
          $cxn->dbh()->do($sql);
       };
       if ( $EVAL_ERROR ) {
-         # this is trapped by a signal handler. Don't replace it with _die 
+         # this is trapped by a signal handler. Don't replace it with _die
          die "Error altering new table $new_tbl->{name}: $EVAL_ERROR\n";
       }
       print "Altered $new_tbl->{name} OK.\n";
@@ -9675,6 +9694,41 @@ sub main {
       _die("Error creating triggers: $EVAL_ERROR", ERROR_CREATING_TRIGGERS);
    };
 
+   if ( $o->get('reverse-triggers') ) {
+       print "Adding reverse triggers\n";
+       eval {
+           my $old_tbl_name = '_'.$orig_tbl->{tbl}.'_old';
+           my $new_tbl_name = '_'.$orig_tbl->{tbl}.'_new';
+
+           my $old_tbl = {
+               db   => $orig_tbl->{db},
+               name => '`'.$orig_tbl->{db}.'`.`'.$old_tbl_name.'`',
+               tbl  => $old_tbl_name,
+           };
+           my $new_tbl = {
+               db   => $orig_tbl->{db},
+               name => '`'.$orig_tbl->{db}.'`.`'.$new_tbl_name.'`',
+               tbl  => $new_tbl_name,
+           };
+           my $triggers=create_triggers(
+               orig_tbl         => $new_tbl,
+               new_tbl          => $old_tbl,
+               del_tbl          => $orig_tbl,
+               columns          => \@common_cols,
+               Cxn              => $cxn,
+               Quoter           => $q,
+               OptionParser     => $o,
+               Retry            => $retry,
+               tries            => $tries,
+               stats            => \%stats,
+               reverse_triggers => 1,
+           );
+       };
+       if ( $EVAL_ERROR ) {
+          _die("Error creating reverse triggers: $EVAL_ERROR", ERROR_CREATING_REVERSE_TRIGGERS);
+       };
+   }
+
    # --plugin hook
    if ( $plugin && $plugin->can('after_create_triggers') ) {
       $plugin->after_create_triggers();
@@ -9790,7 +9844,7 @@ sub main {
                elsif ( !$key_len ) {
                   _die(ts("The key_len of the $key index is "
                      . (defined $key_len ? "zero" : "NULL")
-                     . ", but this should not be possible.  " 
+                     . ", but this should not be possible.  "
                      . "See --[no]check-plan in the documentation for more "
                      . "information."), INVALID_KEY_SIZE);
                }
@@ -9837,7 +9891,7 @@ sub main {
                          (@{$boundary->{lower}}, $nibble_iter->limit()))
                   . "\n";
                _die(ts($msg), NOT_SAFE_TO_ASCEND);
-            } 
+            }
          }
 
          # Once nibbling begins for a table, control does not return to this
@@ -9993,7 +10047,7 @@ sub main {
          nibble => "pt-online-schema-change $PID copy nibble",
       },
    );
- 
+
    # Init a new weighted avg rate calculator for the table.
    $orig_tbl->{rate} = new WeightedAvgRate(target_t => $chunk_time);
 
@@ -10027,7 +10081,7 @@ sub main {
    }
    $orig_tbl->{copied} = 1;  # flag for cleanup tasks
 
-   # XXX Auto-choose the alter fk method BEFORE swapping/renaming tables 
+   # XXX Auto-choose the alter fk method BEFORE swapping/renaming tables
    # else everything will break because if drop_swap is chosen, then we
    # most NOT rename tables or drop the old table.
    if ( $alter_fk_method eq 'auto' ) {
@@ -10056,7 +10110,7 @@ sub main {
       }
    }
 
-   if ($vp->cmp('8.0') > -1 && $vp->flavor() !~ m/maria/i && $alter_fk_method eq 'drop_swap') {
+   if (($vp->cmp('8.0') >= 0 && $vp->cmp('8.0.14') <= 0) && $vp->flavor() !~ m/maria/i && $alter_fk_method eq 'drop_swap') {
        my $msg = "--alter-foreign-keys-method=drop_swap doesn't work with MySQL 8.0+\n".
                  "See https://bugs.mysql.com/bug.php?id=89441";
        _die($msg, INVALID_PARAMETERS);
@@ -10066,23 +10120,8 @@ sub main {
    if ( $plugin && $plugin->can('after_copy_rows') ) {
       $plugin->after_copy_rows();
    }
-
-   # #####################################################################
-   # XXX
-   # Step 5: Rename tables: orig -> old, new -> orig
-   # Past this step, the original table has been altered. This shouldn't
-   # fail, but if it does, the failure could be serious depending on what
-   # state the tables are left in.
-   # XXX
-   # #####################################################################
-
-   # --plugin hook
-   if ( $plugin && $plugin->can('before_swap_tables') ) {
-      $plugin->before_swap_tables();
-   }
-
    if ( $o->get('preserve-triggers') ) {
-      if ( !$o->get('swap-tables') && $o->get('drop-new-table') ) {
+       if ( !$o->get('swap-tables') && $o->get('drop-new-table') && !$o->get('alter-foreign-keys-method') eq "drop-swap" ) {
           print ts("Skipping triggers creation since --no-swap-tables was specified along with --drop-new-table\n");
       } else {
           print ts("Adding original triggers to new table.\n");
@@ -10094,10 +10133,10 @@ sub main {
                   eval {
                       # if --no-swap-tables is used and --no-drop-new-table is used, then we need to duplicate the trigger
                       my $duplicate_trigger = ( ! $o->get('swap-tables') && ! $o->get('drop-new-table') ) ? 1 : undef;
-                          
-                      $new_trigger_sqls = create_trigger_sql(trigger => $orig_trigger, 
-                                                             db => $new_tbl->{db}, 
-                                                             new_tbl => $new_tbl->{tbl}, 
+
+                      $new_trigger_sqls = create_trigger_sql(trigger => $orig_trigger,
+                                                             db => $new_tbl->{db},
+                                                             new_tbl => $new_tbl->{tbl},
                                                              orig_tbl => $orig_tbl->{tbl},
                                                              duplicate_trigger => $duplicate_trigger,
                                                             );
@@ -10122,44 +10161,8 @@ sub main {
       }
    }
 
-   my $old_tbl;
-   if ( $o->get('swap-tables') ) {
-
-      eval {
-         $old_tbl = swap_tables(
-            orig_tbl      => $orig_tbl,
-            new_tbl       => $new_tbl,
-            suffix        => '_old',
-            Cxn           => $cxn,
-            Quoter        => $q,
-            OptionParser  => $o,
-            Retry         => $retry,
-            tries         => $tries,
-            stats         => \%stats,
-            analyze_table => $analyze_table,
-         );
-      };
-      if ( $EVAL_ERROR ) {
-         # TODO: one of these values can be undefined
-         _die(ts("Error swapping tables: $EVAL_ERROR\n"
-           . "To clean up, first verify that the original table "
-           . "$orig_tbl->{name} has not been modified or renamed, "
-           . "then drop the new table $new_tbl->{name} if it exists."),
-              ERROR_SWAPPING_TABLES);
-      }
-   }
-   $orig_tbl->{swapped} = 1;  # flag for cleanup tasks
-   PTDEBUG && _d('Old table:', Dumper($old_tbl));
-
-   # --plugin hook
-   if ( $plugin && $plugin->can('after_swap_tables') ) {
-      $plugin->after_swap_tables(
-         old_tbl => $old_tbl,
-      );
-   }
-
    # #####################################################################
-   # Step 6: Update foreign key constraints if there are child tables.
+   # Step 5: Update foreign key constraints if there are child tables.
    # #####################################################################
    if ( $child_tables ) {
       # --plugin hook
@@ -10175,8 +10178,8 @@ sub main {
          }
          elsif ( $alter_fk_method eq 'rebuild_constraints' ) {
             rebuild_constraints(
-               orig_tbl     => $orig_tbl,
-               old_tbl      => $old_tbl,
+               orig_tbl     => $new_tbl,
+               old_tbl      => $orig_tbl,
                child_tables => $child_tables,
                OptionParser => $o,
                Quoter       => $q,
@@ -10212,15 +10215,59 @@ sub main {
          }
       };
       if ( $EVAL_ERROR ) {
-          #$oktorun = 0;
-          $process_error = "Error updating foreign key constraints: $EVAL_ERROR";
-         _die($process_error, ERROR_UPDATING_FKS);
+         $can_drop_triggers=undef;
+         $oktorun=undef;
+         _die("Error updating foreign key constraints: $EVAL_ERROR", ERROR_UPDATING_FKS);
       }
 
       # --plugin hook
       if ( $plugin && $plugin->can('after_update_foreign_keys') ) {
          $plugin->after_update_foreign_keys();
       }
+   }
+
+   # ########################################################################
+   # Step 6: Swap tables
+   # ########################################################################
+   # --plugin hook
+   if ( $plugin && $plugin->can('before_swap_tables') ) {
+      $plugin->before_swap_tables();
+   }
+
+   my $old_tbl;
+   if ( $o->get('swap-tables') ) {
+      eval {
+         $old_tbl = swap_tables(
+            orig_tbl      => $orig_tbl,
+            new_tbl       => $new_tbl,
+            suffix        => '_old',
+            Cxn           => $cxn,
+            Quoter        => $q,
+            OptionParser  => $o,
+            Retry         => $retry,
+            tries         => $tries,
+            stats         => \%stats,
+            analyze_table => $analyze_table,
+         );
+      };
+      if ( $EVAL_ERROR ) {
+         # TODO: one of these values can be undefined
+         _die(ts("Error swapping tables: $EVAL_ERROR\n"
+           . "To clean up, first verify that the original table "
+           . "$orig_tbl->{name} has not been modified or renamed, "
+           . "then drop the new table $new_tbl->{name} if it exists."),
+              ERROR_SWAPPING_TABLES);
+      }
+   }
+
+   $orig_tbl->{swapped} = 1;  # flag for cleanup tasks
+   PTDEBUG && _d('Old table:', Dumper($old_tbl));
+
+   # --plugin hook
+   if ( $plugin && $plugin->can('after_swap_tables') ) {
+      $plugin->after_swap_tables(
+         old_tbl => $old_tbl,
+      );
    }
 
    # ########################################################################
@@ -10253,7 +10300,7 @@ sub main {
 
          my $sql = "DROP TABLE IF EXISTS $old_tbl->{name}";
          print $sql, "\n" if $o->get('print');
-         PTDEBUG && _d($sql); 
+         PTDEBUG && _d($sql);
          eval {
             $cxn->dbh()->do($sql);
          };
@@ -10278,8 +10325,8 @@ sub main {
    # ########################################################################
    # Done.
    # ########################################################################
-   
-   $orig_tbl->{success} = 1;  # flag for cleanup tasks   
+
+   $orig_tbl->{success} = 1;  # flag for cleanup tasks
    $cleanup = undef;          # exec cleanup tasks
 
    # --plugin hook
@@ -10302,7 +10349,7 @@ sub validate_tries {
       create_triggers
       drop_triggers
       copy_rows
-      swap_tables 
+      swap_tables
       update_foreign_keys
       analyze_table
    );
@@ -10357,8 +10404,8 @@ sub check_alter {
 
    my $ok = 1;
 
-   $alter =~ s/^(.*?)\s+COMMENT\s+'(.*?[^\\]')+(.*)/$1$3/; 
-   $alter =~ s/^(.*?)\s+COMMENT\s+"(.*?[^\\]")+(.*)/$1$3/; 
+   $alter =~ s/^(.*?)\s+COMMENT\s+'(.*?[^\\]')+(.*)/$1$3/;
+   $alter =~ s/^(.*?)\s+COMMENT\s+"(.*?[^\\]")+(.*)/$1$3/;
 
    my $unique_fields = get_unique_index_fields($alter);
 
@@ -10467,7 +10514,7 @@ sub check_alter {
    return;
 }
 
-sub _has_self_ref_fks { 
+sub _has_self_ref_fks {
     my ($orig_db, $orig_table, $child_tables) = @_;
 
     my $db_tbl = sprintf('`%s`.`%s`', $orig_db, $orig_table);
@@ -10483,18 +10530,18 @@ sub _has_self_ref_fks {
 
 # This function tries to detect if the --alter param is adding unique indexes.
 # It returns an array of arrays, having a list of fields for each unique index
-# found. 
+# found.
 # Example:
-# Input string: add i int comment "first comment ", ADD UNIQUE INDEX (C1) comment 
+# Input string: add i int comment "first comment ", ADD UNIQUE INDEX (C1) comment
 #               'second comment', CREATE UNIQUE INDEX C ON T1 (C2, c3) comment "third"
 #
-# Output: 
+# Output:
 # $VAR1 = [
 #           [ 'C1' ],
 #           [ 'C2', 'c3' ]
 #         ];
 #
-# Thse fields are used to build an example SELECT to detect if currently there are 
+# Thse fields are used to build an example SELECT to detect if currently there are
 # rows that will produce duplicates when the new UNIQUE INDEX is created.
 
 sub get_unique_index_fields {
@@ -10560,10 +10607,10 @@ sub find_renamed_cols {
    my $table_ident  = qr/$unquoted_ident|`$quoted_ident`|"$ansi_quotes_ident"/;
 
    # remove comments
-   $alter =~ s/^(.*?)\s+COMMENT\s+'(.*?[^\\]')+(.*)/$1$3/; 
-   $alter =~ s/^(.*?)\s+COMMENT\s+"(.*?[^\\]")+(.*)/$1$3/; 
+   $alter =~ s/^(.*?)\s+COMMENT\s+'(.*?[^\\]')+(.*)/$1$3/;
+   $alter =~ s/^(.*?)\s+COMMENT\s+"(.*?[^\\]")+(.*)/$1$3/;
 
-   my $alter_change_col_re = qr/\bCHANGE \s+ (?:COLUMN \s+)? 
+   my $alter_change_col_re = qr/\bCHANGE \s+ (?:COLUMN \s+)?
                                 ($table_ident) \s+ ($table_ident)/ix;
 
    my %renames;
@@ -10599,10 +10646,10 @@ sub nibble_is_safe {
       vals => [ @{$boundary->{lower}}, @{$boundary->{upper}} ],
    );
 
-   # Ensure that MySQL is using the chunk index if the table is being chunked. 
+   # Ensure that MySQL is using the chunk index if the table is being chunked.
    # Skip if --nocheck-plan   See: https://bugs.launchpad.net/percona-toolkit/+bug/1340728
       if ( !$nibble_iter->one_nibble()
-           && lc($expl->{key} || '') ne lc($nibble_iter->nibble_index() || '') 
+           && lc($expl->{key} || '') ne lc($nibble_iter->nibble_index() || '')
            && $o->get('check-plan') )
       {
          die ts("Error copying rows at chunk " . $nibble_iter->nibble_number()
@@ -10614,7 +10661,7 @@ sub nibble_is_safe {
    # Ensure that the chunk isn't too large if there's a --chunk-size-limit.
    # If single-chunking the table, this has already been checked, so it
    # shouldn't have changed.  If chunking the table with a non-unique key,
-   # oversize chunks are possible. 
+   # oversize chunks are possible.
    if ( my $limit = $o->get('chunk-size-limit') ) {
       my $oversize_chunk
          = $limit ? ($expl->{rows} || 0) >= $tbl->{chunk_size} * $limit
@@ -10634,12 +10681,12 @@ sub nibble_is_safe {
       }
    }
 
-   # Ensure that MySQL is still using the entire index. 
+   # Ensure that MySQL is still using the entire index.
    # https://bugs.launchpad.net/percona-toolkit/+bug/1010232
    # Skip if --nocheck-plan   See: https://bugs.launchpad.net/percona-toolkit/+bug/1340728
    if ( !$nibble_iter->one_nibble()
         && $tbl->{key_len}
-        && ($expl->{key_len} || 0) < $tbl->{key_len} 
+        && ($expl->{key_len} || 0) < $tbl->{key_len}
         && $o->get('check-plan') )
    {
       die ts("Error copying rows at chunk " . $nibble_iter->nibble_number()
@@ -10706,7 +10753,7 @@ sub create_new_table {
       # When the new temp table is created, we need to avoid collisions on constraint names
       # This is in contrast to previous behavior were we added underscores
       # indefinitely, sometimes exceeding the allowed name limit
-      # https://bugs.launchpad.net/percona-toolkit/+bug/1215587 
+      # https://bugs.launchpad.net/percona-toolkit/+bug/1215587
       # So we do replacements when constraint names:
       # Has 2 _, we remove them
       # Has 1 _, we add one to make 2
@@ -10736,7 +10783,7 @@ sub create_new_table {
           }
       }
       if ( $o->got('remove-data-dir') ) {
-         $sql =~ s/DATA DIRECTORY\s*=\s*'.*?'//; 
+         $sql =~ s/DATA DIRECTORY\s*=\s*'.*?'//;
          PTDEBUG && _d("removing data dir");
       }
       PTDEBUG && _d($sql);
@@ -10777,10 +10824,10 @@ sub create_new_table {
 
 sub insert_data_directory {
     my ($sql, $data_dir) = @_;
-    $sql =~ s/DATA DIRECTORY\s*=\s*'.*?'//; 
+    $sql =~ s/DATA DIRECTORY\s*=\s*'.*?'//;
 
     my $re_ps=qr/(\/\*!50100 )?(PARTITION|SUBPARTITION)/;
-    
+
     if ($sql=~ m/$re_ps/) {
         my $insert_pos=$-[0];
         $sql = substr($sql, 0, $insert_pos - 1). " DATA DIRECTORY = '$data_dir' " .substr($sql, $insert_pos);
@@ -10812,7 +10859,7 @@ sub swap_tables {
 
       # A return value really isn't needed, but this trick allows
       # rebuild_constraints() to parse and show the sql statements
-      # it would used.  Otherwise, this has no effect.      
+      # it would used.  Otherwise, this has no effect.
       return $orig_tbl;
    }
    elsif ( $o->get('execute') ) {
@@ -10835,14 +10882,14 @@ sub swap_tables {
 
       print ts("Swapping tables...\n");
       while ( $name_tries-- ) {
-       
+
          # https://bugs.launchpad.net/percona-toolkit/+bug/1526105
          if ( $name_tries <= 10 ) { # we've already added 10 underscores?
             # time to try a small random string
             my @chars = ("A".."Z", "0".."9");
             $prefix = '';
             $prefix .= $chars[rand @chars] for 1..6;
-            $prefix .= "_";  
+            $prefix .= "_";
          }
 
          $table_name = $prefix . $table_name;
@@ -10856,7 +10903,7 @@ sub swap_tables {
 
          my $sql = "RENAME TABLE $orig_tbl->{name} "
                  . "TO " . $q->quote($orig_tbl->{db}, $table_name)
-                 . ", $new_tbl->{name} TO $orig_tbl->{name}"; 
+                 . ", $new_tbl->{name} TO $orig_tbl->{name}" ;
 
          eval {
             osc_retry(
@@ -10897,7 +10944,7 @@ sub swap_tables {
             name => $q->quote($orig_tbl->{db}, $table_name),
          };
       }
-     
+
       # This shouldn't happen.
       die ts("Failed to find a unique old table name after "
          . "serveral attempts.\n");
@@ -10975,9 +11022,9 @@ sub find_child_tables {
       PTDEBUG && _d(q{MyISAM table, not looking for child tables});
       return;
    }
-   
+
    PTDEBUG && _d('Finding child tables');
-   
+
    my $sql = "SELECT table_schema, table_name "
            . "FROM information_schema.key_column_usage "
            . "WHERE referenced_table_schema='$tbl->{db}' "
@@ -11035,7 +11082,7 @@ sub determine_alter_fk_method {
    # The rebuild_constraints method is the default becuase it's safer
    # and doesn't cause the orig table to go missing for a moment.
    my $method = 'rebuild_constraints';
-   
+
    print ts("Max rows for the rebuild_constraints method: $max_rows\n"
       . "Determining the method to update foreign keys...\n");
    foreach my $child_tbl ( @$child_tables ) {
@@ -11133,7 +11180,7 @@ sub rebuild_constraints {
          # If it has a leading underscore, we remove one, otherwise we add one
          # This is in contrast to previous behavior were we added underscores
          # indefinitely, sometimes exceeding the allowed name limit
-         # https://bugs.launchpad.net/percona-toolkit/+bug/1215587 
+         # https://bugs.launchpad.net/percona-toolkit/+bug/1215587
          # Add one more salt to renaming FK constraint names
          # This will add 2 _ to a self referencing FK thus avoiding a duplicate key constraint
          # https://bugs.launchpad.net/percona-toolkit/+bug/1632522
@@ -11146,7 +11193,7 @@ sub rebuild_constraints {
              substr($new_fk, 64 - length $new_fk) = '';
            }
          }
-        
+
          PTDEBUG && _d("Old FK name: $fk New FK name: $new_fk");
 
          $constraint =~ s/CONSTRAINT `$fk`/CONSTRAINT `$new_fk`/;
@@ -11166,8 +11213,12 @@ sub rebuild_constraints {
             tries   => $tries->{update_foreign_keys},
             stats   => $stats,
             code    => sub {
-               PTDEBUG && _d($sql);
+               PTDEBUG && _d("SET foreign_key_checks=0");
+               $cxn->dbh()->do("SET foreign_key_checks=0");
+	       PTDEBUG && _d($sql);
                $cxn->dbh()->do($sql);
+	       PTDEBUG && _d("SET foreign_key_checks=1");
+               $cxn->dbh()->do("SET foreign_key_checks=1");
                $stats->{rebuilt_constraint}++;
             },
          );
@@ -11218,11 +11269,11 @@ sub drop_swap {
       "DROP TABLE IF EXISTS $orig_tbl->{name}",
       "RENAME TABLE $new_tbl->{name} TO $orig_tbl->{name}",
    );
-  
+
    # we don't want to be interrupted during the swap!
    # since it might leave original table dropped
    # https://bugs.launchpad.net/percona-toolkit/+bug/1368244
-   $dont_interrupt_now = 1; 
+   $dont_interrupt_now = 1;
 
    foreach my $sql ( @sqls ) {
       PTDEBUG && _d($sql);
@@ -11241,7 +11292,7 @@ sub drop_swap {
       }
    }
 
-   $dont_interrupt_now = 0; 
+   $dont_interrupt_now = 0;
 
    if ( $o->get('execute') ) {
       print ts("Dropped and swapped tables OK.\n");
@@ -11270,7 +11321,8 @@ sub create_triggers {
 
    # Create a unique trigger name prefix based on the orig table name
    # so multiple instances of the tool can run on different tables.
-   my $prefix = 'pt_osc_' . $orig_tbl->{db} . '_' . $orig_tbl->{tbl};
+   my $pp = $args{reverse_triggers} ? "rt_" : '';
+   my $prefix = $pp.'pt_osc_' . $orig_tbl->{db} . '_' . $orig_tbl->{tbl};
    $prefix   =~ s/\W/_/g;
 
    if ( length($prefix) > 60 ) {
@@ -11286,7 +11338,7 @@ sub create_triggers {
    # they may have been renamed
    my %old_col_for    = map { $_->{new} => $_->{old} } @$cols;
    my $tbl_struct     = $del_tbl->{tbl_struct};
-   
+
    # ---------------------------------------------------------------------------------------
    my $del_index      = $del_tbl->{del_index};
    my $del_index_cols = join(" AND ", map {
@@ -11300,8 +11352,11 @@ sub create_triggers {
    my $delete_trigger
       = "CREATE TRIGGER `${prefix}_del` AFTER DELETE ON $orig_tbl->{name} "
       . "FOR EACH ROW "
+      . "BEGIN "
+      . "DECLARE CONTINUE HANDLER FOR 1146 begin end; "
       . "DELETE IGNORE FROM $new_tbl->{name} "
-      . "WHERE $del_index_cols";
+      . "WHERE $del_index_cols; "
+      . "END ";
 
    # ---------------------------------------------------------------------------------------
    my $qcols    = join(', ', map { $q->quote($_->{new}) }        @$cols);
@@ -11310,7 +11365,10 @@ sub create_triggers {
    my $insert_trigger
       = "CREATE TRIGGER `${prefix}_ins` AFTER INSERT ON $orig_tbl->{name} "
       . "FOR EACH ROW "
-      . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
+      . "BEGIN "
+      . "DECLARE CONTINUE HANDLER FOR 1146 begin end; "
+      . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals);"
+      . "END ";
 
    # ---------------------------------------------------------------------------------------
    my $upd_index_cols = join(" AND ", map {
@@ -11326,35 +11384,32 @@ sub create_triggers {
       = "CREATE TRIGGER `${prefix}_upd` AFTER UPDATE ON $orig_tbl->{name} "
       . "FOR EACH ROW "
       . "BEGIN "
-      . "DELETE IGNORE FROM $new_tbl->{name} WHERE !($upd_index_cols) AND $del_index_cols;"
-      . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals);"
-      . "END ";      
+      . "DECLARE CONTINUE HANDLER FOR 1146 begin end; "
+      . "DELETE IGNORE FROM $new_tbl->{name} WHERE !($upd_index_cols) AND $del_index_cols; "
+      . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals); "
+      . "END ";
 
-   $triggers_info = [                                                     
-      { 
-          suffix => 'del', event => 'DELETE', time => 'AFTER', orig_triggers => [], 
-          new_trigger_sql => $delete_trigger, new_trigger_name => "${prefix}_del", 
+   $triggers_info = [
+      {
+          suffix => 'del', event => 'DELETE', time => 'AFTER', orig_triggers => [],
+          new_trigger_sql => $delete_trigger, new_trigger_name => "${prefix}_del",
       },
-      { 
-          suffix => 'upd', event => 'UPDATE', time => 'AFTER', orig_triggers => [], 
+      {
+          suffix => 'upd', event => 'UPDATE', time => 'AFTER', orig_triggers => [],
           new_trigger_sql => $update_trigger, new_trigger_name => "${prefix}_upd",
       },
-      { 
-          suffix => 'ins', event => 'INSERT', time => 'AFTER', orig_triggers => [], 
-          new_trigger_sql => $insert_trigger, new_trigger_name => "${prefix}_ins", 
+      {
+          suffix => 'ins', event => 'INSERT', time => 'AFTER', orig_triggers => [],
+          new_trigger_sql => $insert_trigger, new_trigger_name => "${prefix}_ins",
       },
-
-      { 
-          suffix => 'delb', event => 'DELETE', time => 'BEFORE', orig_triggers => [], 
-          new_trigger_sql => '', new_trigger_name => '' 
+      {
+          event => 'DELETE', time => 'BEFORE', orig_triggers => [],
       },
-      { 
-          suffix => 'updb', event => 'UPDATE', time => 'BEFORE', orig_triggers => [], 
-          new_trigger_sql => '', new_trigger_name => '' 
+      {
+          event => 'UPDATE', time => 'BEFORE', orig_triggers => [],
       },
-      { 
-          suffix => 'insb', event => 'INSERT', time => 'BEFORE', orig_triggers => [], 
-          new_trigger_sql => '', new_trigger_name => '' 
+      {
+          event => 'INSERT', time => 'BEFORE', orig_triggers => [],
       },
    ];
 
@@ -11369,11 +11424,11 @@ sub create_triggers {
                    . "   AND TRIGGER_SCHEMA = ? "
                    . "   AND EVENT_OBJECT_TABLE = ?";
    foreach my $trigger_info (@$triggers_info) {
-       $trigger_info->{orig_triggers} = $dbh->selectall_arrayref( $trigger_sql, 
-                                                                  { Slice => {} }, 
+       $trigger_info->{orig_triggers} = $dbh->selectall_arrayref( $trigger_sql,
+                                                                  { Slice => {} },
                                                                   $trigger_info->{event},
                                                                   $trigger_info->{time},
-                                                                  $orig_tbl->{db}, 
+                                                                  $orig_tbl->{db},
                                                                   $orig_tbl->{tbl}
                                                                 ) || [];
    }
@@ -11387,12 +11442,12 @@ sub create_triggers {
                my $definer = $orig_trigger->{definer} || '';
                $definer =~ s/@/`@`/;
                $definer = "`$definer`" ;
-               
+
                my @chars = ("a".."z");
                my $tmp_trigger_name;
                $tmp_trigger_name .= $chars[rand @chars] for 1..15;
 
-               my $sql = "CREATE DEFINER=$definer " 
+               my $sql = "CREATE DEFINER=$definer "
                        . "TRIGGER `$new_tbl->{db}`.`$tmp_trigger_name` "
                        . "$orig_trigger->{action_timing} $orig_trigger->{event_manipulation} ON $new_tbl->{tbl}\n"
                        . "FOR EACH ROW\n"
@@ -11412,28 +11467,40 @@ sub create_triggers {
    }
 
    my @trigger_names;
-   @drop_trigger_sqls = ();
 
    foreach my $trigger_info ( @$triggers_info ) {
-       next if !$trigger_info->{new_trigger_sql};
-       if ( $o->get('execute') ) {
-          osc_retry(
-             Cxn     => $cxn,
-             Retry   => $retry,
-             tries   => $tries->{create_triggers},
-             stats   => $stats,
-             code    => sub {
-                PTDEBUG && _d($trigger_info->{new_trigger_sql});
-                $cxn->dbh()->do($trigger_info->{new_trigger_sql});
-             },
-          );
+       next if ! ($trigger_info->{new_trigger_sql});  ###FIXED PT-1919
+       if ($o->get('execute') && !$args{dont}) {
+           osc_retry(
+               Cxn     => $cxn,
+               Retry   => $retry,
+               tries   => $tries->{create_triggers},
+               stats   => $stats,
+               code    => sub {
+                   PTDEBUG && _d($trigger_info->{new_trigger_sql});
+                   $cxn->dbh()->do($trigger_info->{new_trigger_sql});
+               },
+           );
        }
        # Only save the trigger once it has been created
        # (or faked to be created) so if the 2nd trigger
        # fails to create, we know to only drop the 1st.
        push @trigger_names, $trigger_info->{new_trigger_name};
-       push @drop_trigger_sqls,
-          "DROP TRIGGER IF EXISTS " . $q->quote($orig_tbl->{db}, $trigger_info->{new_trigger_name});
+
+       if (!$args{'reverse_triggers'}) {
+           push @drop_trigger_sqls,
+           "DROP TRIGGER IF EXISTS " . $q->quote($orig_tbl->{db}, $trigger_info->{new_trigger_name});
+       }
+       if ($o->get('print')) {
+           print "-----------------------------------------------------------\n";
+           print "Skipped trigger creation: \n" if $o->get('dry-run');
+           print "Event : $trigger_info->{event} \n";
+           print "Name  : $trigger_info->{new_trigger_name} \n";
+           print "SQL   : $trigger_info->{new_trigger_sql} \n";
+           print "Suffix: $trigger_info->{suffix} \n";
+           print "Time  : $trigger_info->{time} \n";
+           print "-----------------------------------------------------------\n";
+       }
    }
 
    if ( $o->get('execute') ) {
@@ -11458,20 +11525,20 @@ sub random_suffix {
 #
 # Optional args:
 # orig_table.......: Original table name. Used to LOCK the table.
-#                    In case we are creating a new temporary trigger for testing 
+#                    In case we are creating a new temporary trigger for testing
 #                    purposes or if --no-swap-tables is enabled, this param should
 #                    be omitted since we are creating a completelly new trigger so,
-#                    since in this case we are not going to DROP the old trigger, 
+#                    since in this case we are not going to DROP the old trigger,
 #                    there is no need for a LOCK
 #
 # duplicate_trigger: If set, it will create the trigger on the new table
 #                    with a random string as a trigger name suffix.
 #                    It will also not drop the original trigger.
-#                    This is usefull when creating a temporary trigger for testing 
-#                    purposes or if --no-swap-tables AND --no-drop-new-table was 
-#                    specified along with --preserve-triggers. In this case, 
-#                    since the original table and triggers are not going to be 
-#                    deleted we need a new random name because trigger names 
+#                    This is usefull when creating a temporary trigger for testing
+#                    purposes or if --no-swap-tables AND --no-drop-new-table was
+#                    specified along with --preserve-triggers. In this case,
+#                    since the original table and triggers are not going to be
+#                    deleted we need a new random name because trigger names
 #                    cannot be duplicated
 sub create_trigger_sql {
    my (%args) = @_;
@@ -11500,10 +11567,10 @@ sub create_trigger_sql {
     push @$sqls, "/*!50003 SET character_set_client  = $trigger->{character_set_client} */ ;";
     push @$sqls, "/*!50003 SET collation_connection  = $trigger->{collation_connection} */ ;";
     push @$sqls, "SET SESSION sql_mode = '$trigger->{sql_mode}'";
-    
+
     push @$sqls, "DROP TRIGGER IF EXISTS `$args{db}`.`$trigger->{trigger_name}` " if ! $args{duplicate_trigger};
 
-    push @$sqls, "CREATE DEFINER=$definer " 
+    push @$sqls, "CREATE DEFINER=$definer "
                . "TRIGGER `$args{db}`.`$trigger->{trigger_name}$suffix` "
                . "$trigger->{action_timing} $trigger->{event_manipulation} ON $args{new_tbl}\n"
                . "FOR EACH ROW\n"
@@ -11516,7 +11583,7 @@ sub create_trigger_sql {
     push @$sqls, 'UNLOCK TABLES';
 
    return $sqls;
-    
+
 }
 
 sub drop_triggers {
@@ -11536,7 +11603,7 @@ sub drop_triggers {
    else {
       print ts("Dropping triggers...\n");
    }
- 
+
    foreach my $sql ( @drop_trigger_sqls ) {
       print $sql, "\n" if $o->get('print');
       if ( $o->get('execute') ) {
@@ -11671,8 +11738,8 @@ sub exec_nibble {
    my $ub_quoted   = $q->serialize_list(@{$boundary->{upper}});
    my $chunk       = $nibble_iter->nibble_number();
    my $chunk_index = $nibble_iter->nibble_index();
-         
-         
+
+
    # Warn once per-table for these error codes if the error message
    # matches the pattern.
    my %warn_code = (
@@ -11693,7 +11760,7 @@ sub exec_nibble {
          # ###################################################################
          # Start timing the query.
          # ###################################################################
-         my $t_start = time;        
+         my $t_start = time;
 
          # Execute the INSERT..SELECT query.
          PTDEBUG && _d($sth->{nibble}->{Statement},
@@ -11837,14 +11904,14 @@ sub trim {
 sub sig_int {
    my ( $signal ) = @_;
    if ( $dont_interrupt_now ) {
-      # we're in the middle of something that shouldn't be interrupted 
+      # we're in the middle of something that shouldn't be interrupted
       PTDEBUG && _d("Received Signal: \"$signal\" in middle of critical operation. Continuing anyway.");
       return;
    }
    $oktorun = 0;  # flag for cleanup tasks
    print STDERR "# Exiting on SIG$signal.\n";
    # This is to restore terminal to "normal". lp #1396870
-   if ($term_readkey) { 
+   if ($term_readkey) {
       ReadMode(0);
    }
    exit 1;
@@ -11957,7 +12024,7 @@ safety checks:
 
 =item *
 
-In most cases the tool will refuse to operate unless a PRIMARY KEY or UNIQUE INDEX is 
+In most cases the tool will refuse to operate unless a PRIMARY KEY or UNIQUE INDEX is
 present in the table. See L<"--alter"> for details.
 
 
@@ -12046,12 +12113,12 @@ to fail in unpredictable ways:
 
 =item *
 
-In almost all cases a PRIMARY KEY or UNIQUE INDEX needs to be present in the table. 
-This is necessary because the tool creates a DELETE trigger to keep the new table 
+In almost all cases a PRIMARY KEY or UNIQUE INDEX needs to be present in the table.
+This is necessary because the tool creates a DELETE trigger to keep the new table
 updated while the process is running.
 
-A notable exception is when a PRIMARY KEY or UNIQUE INDEX is being created from 
-B<existing columns> as part of the ALTER clause; in that case it will use these 
+A notable exception is when a PRIMARY KEY or UNIQUE INDEX is being created from
+B<existing columns> as part of the ALTER clause; in that case it will use these
 column(s) for the DELETE trigger.
 
 =item *
@@ -12124,7 +12191,7 @@ tables" that reference the table to be altered.
 
 Automatically determine which method is best.  The tool uses
 C<rebuild_constraints> if possible (see the description of that method for
-details), and if not, then it uses C<drop_swap>. 
+details), and if not, then it uses C<drop_swap>.
 
 =item rebuild_constraints
 
@@ -12463,7 +12530,7 @@ than remove-data-dir.
 
 default: no
 
-If the original table was created using the DATA DIRECTORY feature, remove it and create 
+If the original table was created using the DATA DIRECTORY feature, remove it and create
 the new table in MySQL default directory without creating a new isl file.
 
 =item --defaults-file
@@ -12521,8 +12588,8 @@ documentation, then do not specify this option.
 
 default: yes
 
-Avoid C<pt-online-schema-change> to run if the specified statement for L<"--alter"> is 
-trying to add an unique index. 
+Avoid C<pt-online-schema-change> to run if the specified statement for L<"--alter"> is
+trying to add an unique index.
 Since C<pt-online-schema-change> uses C<INSERT IGNORE> to copy rows to the new table, if
 the row being written produces a duplicate key, it will fail silently and data will
 be lost.
@@ -12536,7 +12603,7 @@ Example:
       `unique_id` varchar(32) DEFAULT NULL,
       PRIMARY KEY (`id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-    
+
     insert into a values (1, "a");
     insert into a values (2, "b");
     insert into a values (3, "");
@@ -12547,7 +12614,7 @@ Example:
 Using C<pt-online-schema-change> to add an unique index on the C<unique_id> field, will cause some rows to
 be lost due to the use of C<INSERT IGNORE> to copy rows from the source table.
 For this reason, C<pt-online-schema-change> will fail if it detects that the L<"--alter"> parameter is trying
-to add an unique key and it will show an example query to run to detect if there are 
+to add an unique key and it will show an example query to run to detect if there are
 rows that will produce duplicated indexes.
 
 Even if you run the query and there are no rows that will produce duplicated indexes,
@@ -12573,9 +12640,9 @@ Connect to host.
 type: float
 
 Somewhat similar to --max-lag but for PXC clusters.
-Check average time cluster spent pausing for Flow Control and make tool pause if 
+Check average time cluster spent pausing for Flow Control and make tool pause if
 it goes over the percentage indicated in the option.
-A value of 0 would make the tool pause when *any* Flow Control activity is 
+A value of 0 would make the tool pause when *any* Flow Control activity is
 detected.
 Default is no Flow Control checking.
 This option is available for PXC versions 5.6 or higher.
@@ -12630,8 +12697,8 @@ you notice queueing, it is best to decrease the chunk time.
 
 =item --preserve-triggers
 
-Preserves old triggers when specified. 
-As of MySQL 5.7.2, it is possible to define multiple triggers for a given 
+Preserves old triggers when specified.
+As of MySQL 5.7.2, it is possible to define multiple triggers for a given
 table that have the same trigger event and action time. This allows us to
 add the triggers needed for C<pt-online-schema-change> even if the table
 already has its own triggers.
@@ -12647,30 +12714,30 @@ Example.
        f2 VARCHAR(32),
        PRIMARY KEY (id)
   );
-              
+
   CREATE TABLE test.log (
      ts  TIMESTAMP,
      msg VARCHAR(255)
   );
-  
+
   CREATE TRIGGER test.after_update
    AFTER
      UPDATE ON test.t1
-     FOR EACH ROW 
+     FOR EACH ROW
        INSERT INTO test.log VALUES (NOW(), CONCAT("updated row row with id ", OLD.id, " old f1:", OLD.f1, " new f1: ", NEW.f1 ));
 
-For this table and triggers combination, it is not possible to use L<--preserve-triggers> 
-with an L<--alter> like this: C<"DROP COLUMN f1"> since the trigger references the column 
+For this table and triggers combination, it is not possible to use L<--preserve-triggers>
+with an L<--alter> like this: C<"DROP COLUMN f1"> since the trigger references the column
 being dropped and at would make the trigger to fail.
 
-After testing the triggers will work on the new table, the triggers are 
+After testing the triggers will work on the new table, the triggers are
 dropped from the new table until all rows have been copied and then they are
-re-applied. 
+re-applied.
 
-L<--preserve-triggers> cannot be used with these other parameters, L<--no-drop-triggers>, 
-L<--no-drop-old-table> and L<--no-swap-tables> since L<--preserve-triggers> implies that 
-the old triggers should be deleted and recreated in the new table. 
-Since it is not possible to have more than one trigger with the same name, old triggers 
+L<--preserve-triggers> cannot be used with these other parameters, L<--no-drop-triggers>,
+L<--no-drop-old-table> and L<--no-swap-tables> since L<--preserve-triggers> implies that
+the old triggers should be deleted and recreated in the new table.
+Since it is not possible to have more than one trigger with the same name, old triggers
 must be deleted in order to be able to recreate them into the new table.
 
 Using C<--preserve-triggers> with C<--no-swap-tables> will cause triggers to remain
@@ -12678,7 +12745,7 @@ defined for the original table.
 Please read the documentation for L<--swap-tables>
 
 If both C<--no-swap-tables> and C<--no-drop-new-table> is set, the trigger will remain
-on the original table and will be duplicated on the new table 
+on the original table and will be duplicated on the new table
 (the trigger will have a random suffix as no trigger names are unique).
 
 =item --new-table-name
@@ -12714,7 +12781,7 @@ If password contains commas they must be escaped with a backslash: "exam\,ple"
 
 =item --pause-file
 
-type: string 
+type: string
 
 Execution will be paused while the file specified by this param exists.
 
@@ -12811,10 +12878,21 @@ t.  The DSN table should have the following structure:
 To make the tool monitor only the hosts 10.10.1.16 and 10.10.1.17 for
 replication lag, insert the values C<h=10.10.1.16> and C<h=10.10.1.17> into the
 table. Currently, the DSNs are ordered by id, but id and parent_id are otherwise
-ignored.  
+ignored.
 
 You can change the list of hosts while OSC is executing:
 if you change the contents of the DSN table, OSC will pick it up very soon.
+
+=item --reverse-triggers
+Copy the triggers added during the copy in reverse order. Commands in the new table will be
+reflected in the old table. You can use this as a safety feature, so that the old
+table continues to receive updates. This option requires C<--no-drop-old-table>.
+
+Warning! This option creates reverse triggers on the new table before it starts copying.
+After new table is renamed to its original name triggers will continue working. But because the
+name change metadata version in the table cache will also change you may start receiving
+"Prepared statement needs to be re-prepared" errors. The workaround for this is to re-prepare statements.
+If you do not use server-side prepared statements your application should not be affected.
 
 =item --skip-check-slave-lag
 
@@ -12830,7 +12908,7 @@ for this parameter you need to specify the full IP address.
 type: string
 
 Sets the user to be used to connect to the slaves.
-This parameter allows you to have a different user with less privileges on the 
+This parameter allows you to have a different user with less privileges on the
 slaves but that user must exist on all slaves.
 
 =item --slave-password
@@ -12865,7 +12943,7 @@ The tool prints a warning and continues if a variable cannot be set.
 Note that setting the C<sql_mode> variable requires some tricky escapes
 to be able to parse the quotes and commas.
 
-Example: 
+Example:
 
    --set-vars sql_mode=\'STRICT_ALL_TABLES\\,ALLOW_INVALID_DATES\'
 
@@ -12875,9 +12953,9 @@ Note the single backslash for the quotes and double backslash for the comma.
 
 type: float; default: 0
 
-How long to sleep (in seconds) after copying each chunk. This option is useful 
-when throttling by L<"--max-lag"> and L<"--max-load"> are not possible. 
-A small, sub-second value should be used, like 0.1, else the tool could take 
+How long to sleep (in seconds) after copying each chunk. This option is useful
+when throttling by L<"--max-lag"> and L<"--max-load"> are not possible.
+A small, sub-second value should be used, like 0.1, else the tool could take
 a very long time to copy large tables.
 
 =item --socket
@@ -12901,7 +12979,7 @@ place of the original table.  The original table becomes the "old table," and
 the tool drops it unless you disable L<"--[no]drop-old-table">.
 
 Using C<--no-swap-tables> will run the whole process, it will create the new
-table, it will copy all rows but at the end it will drop the new table. It is 
+table, it will copy all rows but at the end it will drop the new table. It is
 intended to run a more realistic L<--dry-run>.
 
 =item --tries
@@ -12996,7 +13074,7 @@ done for the first time.
 
 Any updates or known problems are printed to STDOUT before the tool's normal
 output.  This feature should never interfere with the normal operation of the
-tool.  
+tool.
 
 For more information, visit L<https://www.percona.com/doc/percona-toolkit/LATEST/version-check.html>.
 
@@ -13087,7 +13165,7 @@ Here's a plugin file template for all hooks:
    sub before_create_triggers {
       my ($self, %args) = @_;
       print "PLUGIN before_create_triggers\n";
-   } 
+   }
 
   sub after_create_triggers {
       my ($self, %args) = @_;
@@ -13153,7 +13231,7 @@ Here's a plugin file template for all hooks:
 
    1;
 
-Notice that C<get_slave_lag> must return a function reference; 
+Notice that C<get_slave_lag> must return a function reference;
 ideally one that returns actual slave lag, not simply zero like in the example.
 
 Here's an example that actually does something:
@@ -13269,25 +13347,26 @@ of output.
 
 =head1 EXIT STATUS
 
-   INVALID_PARAMETERS        = 1
-   UNSUPORTED_MYSQL_VERSION  = 2
-   NO_MINIMUM_REQUIREMENTS   = 3
-   NO_PRIMARY_OR_UNIQUE_KEY  = 4
-   INVALID_PLUGIN_FILE       = 5
-   INVALID_ALTER_FK_METHOD   = 6
-   INVALID_KEY_SIZE          = 7
-   CANNOT_DETERMINE_KEY_SIZE = 9
-   NOT_SAFE_TO_ASCEND        = 9
-   ERROR_CREATING_NEW_TABLE  = 10
-   ERROR_ALTERING_TABLE      = 11
-   ERROR_CREATING_TRIGGERS   = 12
-   ERROR_RESTORING_TRIGGERS  = 13
-   ERROR_SWAPPING_TABLES     = 14
-   ERROR_UPDATING_FKS        = 15
-   ERROR_DROPPING_OLD_TABLE  = 16
-   UNSUPORTED_OPERATION      = 17
-   MYSQL_CONNECTION_ERROR    = 18
-   LOST_MYSQL_CONNECTION     = 19
+   INVALID_PARAMETERS              = 1
+   UNSUPORTED_MYSQL_VERSION        = 2
+   NO_MINIMUM_REQUIREMENTS         = 3
+   NO_PRIMARY_OR_UNIQUE_KEY        = 4
+   INVALID_PLUGIN_FILE             = 5
+   INVALID_ALTER_FK_METHOD         = 6
+   INVALID_KEY_SIZE                = 7
+   CANNOT_DETERMINE_KEY_SIZE       = 9
+   NOT_SAFE_TO_ASCEND              = 9
+   ERROR_CREATING_NEW_TABLE        = 10
+   ERROR_ALTERING_TABLE            = 11
+   ERROR_CREATING_TRIGGERS         = 12
+   ERROR_RESTORING_TRIGGERS        = 13
+   ERROR_SWAPPING_TABLES           = 14
+   ERROR_UPDATING_FKS              = 15
+   ERROR_DROPPING_OLD_TABLE        = 16
+   UNSUPORTED_OPERATION            = 17
+   MYSQL_CONNECTION_ERROR          = 18
+   LOST_MYSQL_CONNECTION           = 19
+   ERROR_CREATING_REVERSE_TRIGGERS = 20
 
 =head1 SYSTEM REQUIREMENTS
 
@@ -13295,7 +13374,7 @@ You need Perl, DBI, DBD::mysql, and some core packages that ought to be
 installed in any reasonably new version of Perl.
 
 This tool works only on MySQL 5.0.2 and newer versions, because earlier versions
-do not support triggers. Also a number of permissions should be set on MySQL 
+do not support triggers. Also a number of permissions should be set on MySQL
 to make pt-online-schema-change operate as expected. PROCESS, SUPER, REPLICATION SLAVE
 global privileges, as well as SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, ALTER,
 and TRIGGER table privileges should be granted on server. Slave needs only
@@ -13367,7 +13446,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2018 Percona LLC and/or its affiliates.
+This program is copyright 2011-2021 Percona LLC and/or its affiliates.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
@@ -13385,6 +13464,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-online-schema-change 3.2.1
+pt-online-schema-change 3.3.1
 
 =cut

@@ -47,7 +47,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.2.1';
+our $VERSION = '3.3.1';
 
 use strict;
 use warnings FATAL => 'all';
@@ -163,7 +163,7 @@ sub new {
       rules             => [],  # desc of rules for --help
       mutex             => [],  # rule: opts are mutually exclusive
       atleast1          => [],  # rule: at least one opt is required
-      disables          => {},  # rule: opt disables other opts 
+      disables          => {},  # rule: opt disables other opts
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
@@ -326,7 +326,7 @@ sub _pod_to_specs {
          }
 
          push @specs, {
-            spec  => $self->{parse_attributes}->($self, $option, \%attribs), 
+            spec  => $self->{parse_attributes}->($self, $option, \%attribs),
             desc  => $para
                . (defined $attribs{default} ? " (default $attribs{default})" : ''),
             group => ($attribs{'group'} ? $attribs{'group'} : 'default'),
@@ -417,7 +417,7 @@ sub _parse_specs {
          $self->{opts}->{$long} = $opt;
       }
       else { # It's an option rule, not a spec.
-         PTDEBUG && _d('Parsing rule:', $opt); 
+         PTDEBUG && _d('Parsing rule:', $opt);
          push @{$self->{rules}}, $opt;
          my @participants = $self->_get_participants($opt);
          my $rule_ok = 0;
@@ -462,7 +462,7 @@ sub _parse_specs {
       PTDEBUG && _d('Option', $long, 'disables', @participants);
    }
 
-   return; 
+   return;
 }
 
 sub _get_participants {
@@ -549,7 +549,7 @@ sub _set_option {
 }
 
 sub get_opts {
-   my ( $self ) = @_; 
+   my ( $self ) = @_;
 
    foreach my $long ( keys %{$self->{opts}} ) {
       $self->{opts}->{$long}->{got} = 0;
@@ -680,7 +680,7 @@ sub _check_opts {
                   else {
                      $err = join(', ',
                                map { "--$self->{opts}->{$_}->{long}" }
-                               grep { $_ } 
+                               grep { $_ }
                                @restricted_opts[0..scalar(@restricted_opts) - 2]
                             )
                           . ' or --'.$self->{opts}->{$restricted_opts[-1]}->{long};
@@ -690,7 +690,7 @@ sub _check_opts {
             }
 
          }
-         elsif ( $opt->{is_required} ) { 
+         elsif ( $opt->{is_required} ) {
             $self->save_error("Required option --$long must be specified");
          }
 
@@ -1074,7 +1074,7 @@ sub clone {
       $clone{$scalar} = $self->{$scalar};
    }
 
-   return bless \%clone;     
+   return bless \%clone;
 }
 
 sub _parse_size {
@@ -1588,7 +1588,7 @@ sub extends {
 
 sub _load_module {
    my ($class) = @_;
-   
+
    (my $file = $class) =~ s{::|'}{/}g;
    $file .= '.pm';
    { local $@; eval { require "$file" } } # or warn $@;
@@ -1619,7 +1619,7 @@ sub has {
    my $caller = scalar caller();
 
    my $class_metadata = Lmo::Meta->metadata_for($caller);
-   
+
    for my $attribute ( ref $names ? @$names : $names ) {
       my %args   = @_;
       my $method = ($args{is} || '') eq 'ro'
@@ -1638,16 +1638,16 @@ sub has {
 
       if ( my $type_check = $args{isa} ) {
          my $check_name = $type_check;
-         
+
          if ( my ($aggregate_type, $inner_type) = $type_check =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
             $type_check = Lmo::Types::_nested_constraints($attribute, $aggregate_type, $inner_type);
          }
-         
+
          my $check_sub = sub {
             my ($new_val) = @_;
             Lmo::Types::check_type_constaints($attribute, $type_check, $check_name, $new_val);
          };
-         
+
          $class_metadata->{$attribute}{isa} = [$check_name, $check_sub];
          my $orig_method = $method;
          $method = sub {
@@ -1949,7 +1949,7 @@ sub parse {
    foreach my $key ( keys %$opts ) {
       PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
-      if ( !defined $final_props{$key}  
+      if ( !defined $final_props{$key}
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
@@ -2089,7 +2089,7 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass,
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       $dbh = eval { DBI->connect($cxn_string, $user, $pass, $defaults) };
@@ -2287,7 +2287,7 @@ sub set_vars {
       }
    }
 
-   return; 
+   return;
 }
 
 sub _d {
@@ -2374,7 +2374,7 @@ sub daemonize {
 
       close STDERR;
       open  STDERR, ">&STDOUT"
-         or die "Cannot dupe STDERR to STDOUT: $OS_ERROR"; 
+         or die "Cannot dupe STDERR to STDOUT: $OS_ERROR";
    }
    else {
       if ( -t STDOUT ) {
@@ -2807,7 +2807,7 @@ sub value_to_json {
 
    my $b_obj = B::svref_2object(\$value);  # for round trip problem
    my $flags = $b_obj->FLAGS;
-   return $value # as is 
+   return $value # as is
       if $flags & ( B::SVp_IOK | B::SVp_NOK ) and !( $flags & B::SVp_POK ); # SvTYPE is IV or NV?
 
    my $type = ref($value);
@@ -3020,9 +3020,10 @@ sub parse {
 
 sub remove_quoted_text {
    my ($string) = @_;
-   $string =~ s/[^\\]`[^`]*[^\\]`//g; 
-   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
-   $string =~ s/[^\\]'[^']*[^\\]'//g; 
+   $string =~ s/\\['"]//g;
+   $string =~ s/`[^`]*?`//g;
+   $string =~ s/"[^"]*?"//g;
+   $string =~ s/'[^']*?'//g;
    return $string;
 }
 
@@ -3314,8 +3315,8 @@ $Data::Dumper::Quotekeys = 0;
 
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 use constant {
-   ID      => 0,  
-   USER    => 1,  
+   ID      => 0,
+   USER    => 1,
    HOST    => 2,
    DB      => 3,
    COMMAND => 4,
@@ -3417,7 +3418,7 @@ sub parse_event {
                     && $query_start - $etime - $prev->[START] > $fudge)
             {
                my $ms = $self->{MasterSlave};
-               
+
                my $is_repl_thread = $ms->is_replication_thread({
                                         Command => $curr->[COMMAND],
                                         User    => $curr->[USER],
@@ -3457,7 +3458,7 @@ sub parse_event {
                ];
             }
          }
-      } 
+      }
       else {
          PTDEBUG && _d('New cxn', $curr->[ID]);
          if ( $curr->[INFO] && defined $curr->[TIME] ) {
@@ -3481,7 +3482,7 @@ sub parse_event {
             $self->make_event($prev, $time);
          delete $active_cxn->{$prev->[ID]};
       }
-      elsif (   ($curr_cxn->{$prev->[ID]}->[COMMAND] || "") eq 'Sleep' 
+      elsif (   ($curr_cxn->{$prev->[ID]}->[COMMAND] || "") eq 'Sleep'
              || !$curr_cxn->{$prev->[ID]}->[STATE]
              || !$curr_cxn->{$prev->[ID]}->[INFO] ) {
          PTDEBUG && _d('cxn', $prev->[ID], 'became idle');
@@ -3594,7 +3595,7 @@ sub find {
          push @{$self->{_reasons_for_matching}->{$query} ||= []}, $reason;
          $matched++;
       }
- 
+
       PROPERTY:
       foreach my $property ( qw(Id User Host db State Command Info) ) {
          my $filter = "_find_match_$property";
@@ -3840,22 +3841,22 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-sub check_recursion_method {                                                       
+sub check_recursion_method {
    my ($methods) = @_;
-   if ( @$methods != 1 ) {                                                         
-      if ( grep({ !m/processlist|hosts/i } @$methods)                              
-            && $methods->[0] !~ /^dsn=/i ) 
-      {     
-         die  "Invalid combination of recursion methods: "                         
-            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "      
-            . "Only hosts and processlist may be combined.\n"                      
-      }                                                                            
-   }     
-   else {   
+   if ( @$methods != 1 ) {
+      if ( grep({ !m/processlist|hosts/i } @$methods)
+            && $methods->[0] !~ /^dsn=/i )
+      {
+         die  "Invalid combination of recursion methods: "
+            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "
+            . "Only hosts and processlist may be combined.\n"
+      }
+   }
+   else {
       my ($method) = @$methods;
-      die "Invalid recursion method: " . ( $method || 'undef' )                    
-         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster$|dsn=)/i;     
-   }                                                                               
+      die "Invalid recursion method: " . ( $method || 'undef' )
+         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster$|dsn=)/i;
+   }
 }
 
 sub new {
@@ -3884,7 +3885,7 @@ sub get_slaves {
    my $methods = $self->_resolve_recursion_methods($args{dsn});
 
    return $slaves unless @$methods;
-   
+
    if ( grep { m/processlist|hosts/i } @$methods ) {
       my @required_args = qw(dbh dsn);
       foreach my $arg ( @required_args ) {
@@ -3897,7 +3898,7 @@ sub get_slaves {
          {  dbh            => $dbh,
             dsn            => $dsn,
             slave_user     => $o->got('slave-user') ? $o->get('slave-user') : '',
-            slave_password => $o->got('slave-password') ? $o->get('slave-password') : '', 
+            slave_password => $o->got('slave-password') ? $o->get('slave-password') : '',
             callback  => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
@@ -3929,7 +3930,7 @@ sub get_slaves {
    else {
       die "Unexpected recursion methods: @$methods";
    }
-   
+
    return $slaves;
 }
 
@@ -4466,7 +4467,7 @@ sub short_host {
 }
 
 sub is_replication_thread {
-   my ( $self, $query, %args ) = @_; 
+   my ( $self, $query, %args ) = @_;
    return unless $query;
 
    my $type = lc($args{type} || 'all');
@@ -4481,7 +4482,7 @@ sub is_replication_thread {
    if ( !$match ) {
       if ( ($query->{User} || $query->{user} || '') eq "system user" ) {
          PTDEBUG && _d("Slave replication thread");
-         if ( $type ne 'all' ) { 
+         if ( $type ne 'all' ) {
             my $state = $query->{State} || $query->{state} || '';
 
             if ( $state =~ m/^init|end$/ ) {
@@ -4494,7 +4495,7 @@ sub is_replication_thread {
                    |Reading\sevent\sfrom\sthe\srelay\slog
                    |Has\sread\sall\srelay\slog;\swaiting
                    |Making\stemp\sfile
-                   |Waiting\sfor\sslave\smutex\son\sexit)/xi; 
+                   |Waiting\sfor\sslave\smutex\son\sexit)/xi;
 
                $match = $type eq 'slave_sql' &&  $slave_sql ? 1
                       : $type eq 'slave_io'  && !$slave_sql ? 1
@@ -4558,7 +4559,7 @@ sub get_replication_filters {
          replicate_do_db
          replicate_ignore_db
          replicate_do_table
-         replicate_ignore_table 
+         replicate_ignore_table
          replicate_wild_do_table
          replicate_wild_ignore_table
       );
@@ -4569,7 +4570,7 @@ sub get_replication_filters {
       $filters{slave_skip_errors} = $row->[1] if $row->[1] && $row->[1] ne 'OFF';
    }
 
-   return \%filters; 
+   return \%filters;
 }
 
 
@@ -4698,7 +4699,7 @@ sub split_unquote {
       s/`\z//;
       s/``/`/g;
    }
-   
+
    return ($db, $tbl);
 }
 
@@ -4918,9 +4919,9 @@ sub fingerprint {
    $query =~ s/([^\\])(".*?[^\\]?")/$1?/sg;    
    $query =~ s/([^\\])('.*?[^\\]?')/$1?/sg;    
 
-   $query =~ s/\bfalse\b|\btrue\b/?/isg; # boolean values 
+   $query =~ s/\bfalse\b|\btrue\b/?/isg; # boolean values
 
-   if ( $self->{match_md5_checksums} ) { 
+   if ( $self->{match_md5_checksums} ) {
       $query =~ s/([._-])[a-f0-9]{32}/$1?/g;
    }
 
@@ -4932,7 +4933,7 @@ sub fingerprint {
    }
 
    if ( $self->{match_md5_checksums} ) {
-      $query =~ s/[xb+-]\?/?/g;                
+      $query =~ s/[xb+-]\?/?/g;
    }
    else {
       $query =~ s/[xb.+-]\?/?/g;
@@ -5074,8 +5075,8 @@ sub distill {
       }
       else {
          my @tables = $self->__distill_tables($query, $table, %args);
-         $query     = join(q{ }, $verbs, @tables); 
-      } 
+         $query     = join(q{ }, $verbs, @tables);
+      }
    }
 
    if ( $args{trf} ) {
@@ -5446,7 +5447,7 @@ sub get_id {
       my $sql  = q{SHOW STATUS LIKE 'wsrep\_local\_index'};
       my (undef, $wsrep_local_index) = $cxn->dbh->selectrow_array($sql);
       PTDEBUG && _d("Got cluster wsrep_local_index: ",$wsrep_local_index);
-      $unique_id = $wsrep_local_index."|"; 
+      $unique_id = $wsrep_local_index."|";
       foreach my $val ('server\_id', 'wsrep\_sst\_receive\_address', 'wsrep\_node\_name', 'wsrep\_node\_address') {
          my $sql = "SHOW VARIABLES LIKE '$val'";
          PTDEBUG && _d($cxn->name, $sql);
@@ -5476,7 +5477,7 @@ sub is_cluster_node {
       PTDEBUG && _d($sql); #don't invoke name() if it's not a Cxn!
    }
    else {
-      $dbh = $cxn->dbh();      
+      $dbh = $cxn->dbh();
       PTDEBUG && _d($cxn->name, $sql);
    }
 
@@ -5775,7 +5776,7 @@ sub _split_url {
                   or die(qq/SSL certificate not valid for $host\n/);
             }
        }
-         
+
        $self->{host} = $host;
        $self->{port} = $port;
 
@@ -6250,7 +6251,7 @@ my @vc_dirs = (
       }
       PTDEBUG && _d('Version check file', $file, 'in', $ENV{PWD});
       return $file;  # in the CWD
-   } 
+   }
 }
 
 sub version_check_time_limit {
@@ -6267,11 +6268,11 @@ sub version_check {
    PTDEBUG && _d('FindBin::Bin:', $FindBin::Bin);
    if ( !$args{force} ) {
       if ( $FindBin::Bin
-           && (-d "$FindBin::Bin/../.bzr"    || 
+           && (-d "$FindBin::Bin/../.bzr"    ||
                -d "$FindBin::Bin/../../.bzr" ||
-               -d "$FindBin::Bin/../.git"    || 
-               -d "$FindBin::Bin/../../.git" 
-              ) 
+               -d "$FindBin::Bin/../.git"    ||
+               -d "$FindBin::Bin/../../.git"
+              )
          ) {
          PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
          return;
@@ -6295,7 +6296,7 @@ sub version_check {
       PTDEBUG && _d(scalar @$instances_to_check, 'instances to check');
       return unless @$instances_to_check;
 
-      my $protocol = 'https';  
+      my $protocol = 'https';
       eval { require IO::Socket::SSL; };
       if ( $EVAL_ERROR ) {
          PTDEBUG && _d($EVAL_ERROR);
@@ -6472,7 +6473,7 @@ sub get_uuid {
     close $fh;
 
     return $uuid;
-}   
+}
 
 sub _generate_uuid {
     return sprintf+($}="%04x")."$}-$}-$}-$}-".$}x3,map rand 65537,0..7;
@@ -6521,7 +6522,7 @@ sub pingback {
    );
    die "Failed to parse server requested programs: $response->{content}"
       if !scalar keys %$items;
-      
+
    my $versions = get_versions(
       items     => $items,
       instances => $instances,
@@ -6780,7 +6781,7 @@ sub get_from_mysql {
    if ($item->{item} eq 'MySQL' && $item->{type} eq 'mysql_variable') {
       @{$item->{vars}} = grep { $_ eq 'version' || $_ eq 'version_comment' } @{$item->{vars}};
    }
- 
+
 
    my @versions;
    my %version_for;
@@ -7010,7 +7011,7 @@ sub main {
          return $retry->retry(
             # Retry for an hour: 1,200 tries x 3 seconds = 3600s/1hr
             tries => 1200,
-            wait  => sub { sleep 3; }, 
+            wait  => sub { sleep 3; },
             try => sub {
                $proc_sth->execute();
                return $proc_sth->fetchall_arrayref({});
@@ -7126,7 +7127,7 @@ sub main {
            . join(", ", $server_id, ("?") x (@all_log_columns-1))
            . ")";
       PTDEBUG && _d($sql);
-      $log_sth = $log_dbh->prepare($log_sql); 
+      $log_sth = $log_dbh->prepare($log_sql);
 
       my $retry = Retry->new();
 
@@ -7210,7 +7211,7 @@ sub main {
    my $each_busy_time = $o->get('each-busy-time');
    my $any_busy_time  = $o->get('any-busy-time');
    my $group_by       = $o->get('group-by');
-   if ( $group_by 
+   if ( $group_by
         && $group_by =~ m/id|user|host|db|command|time|state|info/i ) {
       # Processlist.pm is case-sensitive.  It matches Id, Host, db, etc.
       # So we'll do the same because if we set NAME_lc on the dbh then
@@ -7373,10 +7374,15 @@ sub main {
          MATCHING_QUERY:
          foreach my $query ( @queries ) {
             if ( $o->get('print') ) {
+               my $qinfo = ($query->{Info} || 'NULL' );
+               if( $o->get('fingerprint') && $qinfo ne 'NULL' ) {
+                        $qinfo = $qr->fingerprint($query->{'Info'});
+               }
+
                printf "# %s %s %d (%s %d sec) %s\n",
                   ts(time), $o->get('kill-query') ? 'KILL QUERY' : 'KILL',
                   $query->{Id}, ($query->{Command} || 'NULL'), $query->{Time},
-                  ($query->{Info} || 'NULL');
+                  $qinfo;
             }
             if ( $o->get('query-id') ) {
                   my $fp = $qr->fingerprint($query->{'Info'});
@@ -7502,9 +7508,9 @@ sub group_queries {
          $proc->{Info} = $qr->strip_comments($proc->{Info});
       }
 
-      my $class; 
+      my $class;
       if ( $group_by eq 'fingerprint' ) {
-         $class = $proc->{Info} ? $qr->fingerprint($proc->{Info}) : 'NULL'; 
+         $class = $proc->{Info} ? $qr->fingerprint($proc->{Info}) : 'NULL';
       }
       else {
          $class = $proc->{$group_by} ? $proc->{$group_by} : 'NULL';
@@ -7656,10 +7662,10 @@ For example, using:
 
 will kill all queries having busy-time > 114 C<OR> where the command is C<Query> or C<Execute>
 
-If you want to kill only the queries where C<busy-time > 114> C<AND> the command is Query or 
+If you want to kill only the queries where C<busy-time > 114> C<AND> the command is Query or
 Execute, you need to use L<"--kill-busy-commands>:
 
-  --busy-time 114 --kill-busy-commands 'Query|Execute' 
+  --busy-time 114 --kill-busy-commands 'Query|Execute'
 
 =head1 OUTPUT
 
@@ -7752,7 +7758,7 @@ file and uses its contents as the code.  The file should not contain
 a shebang (#!/usr/bin/perl) line.
 
 If the code returns true, the chain of callbacks continues; otherwise it ends.
-The code is the last statement in the subroutine other than C<return $event>. 
+The code is the last statement in the subroutine other than C<return $event>.
 The subroutine template is:
 
   sub { $event = shift; filter && return $event; }
@@ -7888,15 +7894,15 @@ Port number to use for connection.
 
 =item --query-id
 
-Prints an ID of the query that was just killed. This is 
-equivalent to the "ID" output of pt-query-digest. This allows 
+Prints an ID of the query that was just killed. This is
+equivalent to the "ID" output of pt-query-digest. This allows
 cross-referencing the output of both tools.
 
 Example:
 
    Query ID 0xE9800998ECF8427E
 
-Note that this is a digest (or hash) of the query's "fingerprint", 
+Note that this is a digest (or hash) of the query's "fingerprint",
 so queries of the same form but with different values will have the same ID.
 See pt-query-digest for more information.
 
@@ -8013,7 +8019,7 @@ done for the first time.
 
 Any updates or known problems are printed to STDOUT before the tool's normal
 output.  This feature should never interfere with the normal operation of the
-tool.  
+tool.
 
 For more information, visit L<https://www.percona.com/doc/percona-toolkit/LATEST/version-check.html>.
 
@@ -8400,6 +8406,13 @@ If you just want to see which queries match and would be killed without
 actually killing them, specify L<"--print">.  To both kill and print
 matching queries, specify both L<"--kill"> and L<"--print">.
 
+=item --fingerprint
+
+group: Actions
+
+Modifies the L<"--print"> behaviour and forces the query fingerprint to be 
+displayed instead of an original query.
+
 =back
 
 =head1 DSN OPTIONS
@@ -8539,7 +8552,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2018 Percona LLC and/or its affiliates,
+This program is copyright 2011-2021 Percona LLC and/or its affiliates,
 2009-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -8558,6 +8571,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-kill 3.2.1
+pt-kill 3.3.1
 
 =cut

@@ -45,7 +45,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.2.1';
+our $VERSION = '3.3.1';
 
 use strict;
 use warnings FATAL => 'all';
@@ -475,7 +475,7 @@ sub extends {
 
 sub _load_module {
    my ($class) = @_;
-   
+
    (my $file = $class) =~ s{::|'}{/}g;
    $file .= '.pm';
    { local $@; eval { require "$file" } } # or warn $@;
@@ -506,7 +506,7 @@ sub has {
    my $caller = scalar caller();
 
    my $class_metadata = Lmo::Meta->metadata_for($caller);
-   
+
    for my $attribute ( ref $names ? @$names : $names ) {
       my %args   = @_;
       my $method = ($args{is} || '') eq 'ro'
@@ -525,16 +525,16 @@ sub has {
 
       if ( my $type_check = $args{isa} ) {
          my $check_name = $type_check;
-         
+
          if ( my ($aggregate_type, $inner_type) = $type_check =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
             $type_check = Lmo::Types::_nested_constraints($attribute, $aggregate_type, $inner_type);
          }
-         
+
          my $check_sub = sub {
             my ($new_val) = @_;
             Lmo::Types::check_type_constaints($attribute, $type_check, $check_name, $new_val);
          };
-         
+
          $class_metadata->{$attribute}{isa} = [$check_name, $check_sub];
          my $orig_method = $method;
          $method = sub {
@@ -810,7 +810,7 @@ sub new {
       rules             => [],  # desc of rules for --help
       mutex             => [],  # rule: opts are mutually exclusive
       atleast1          => [],  # rule: at least one opt is required
-      disables          => {},  # rule: opt disables other opts 
+      disables          => {},  # rule: opt disables other opts
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
@@ -973,7 +973,7 @@ sub _pod_to_specs {
          }
 
          push @specs, {
-            spec  => $self->{parse_attributes}->($self, $option, \%attribs), 
+            spec  => $self->{parse_attributes}->($self, $option, \%attribs),
             desc  => $para
                . (defined $attribs{default} ? " (default $attribs{default})" : ''),
             group => ($attribs{'group'} ? $attribs{'group'} : 'default'),
@@ -1064,7 +1064,7 @@ sub _parse_specs {
          $self->{opts}->{$long} = $opt;
       }
       else { # It's an option rule, not a spec.
-         PTDEBUG && _d('Parsing rule:', $opt); 
+         PTDEBUG && _d('Parsing rule:', $opt);
          push @{$self->{rules}}, $opt;
          my @participants = $self->_get_participants($opt);
          my $rule_ok = 0;
@@ -1109,7 +1109,7 @@ sub _parse_specs {
       PTDEBUG && _d('Option', $long, 'disables', @participants);
    }
 
-   return; 
+   return;
 }
 
 sub _get_participants {
@@ -1196,7 +1196,7 @@ sub _set_option {
 }
 
 sub get_opts {
-   my ( $self ) = @_; 
+   my ( $self ) = @_;
 
    foreach my $long ( keys %{$self->{opts}} ) {
       $self->{opts}->{$long}->{got} = 0;
@@ -1327,7 +1327,7 @@ sub _check_opts {
                   else {
                      $err = join(', ',
                                map { "--$self->{opts}->{$_}->{long}" }
-                               grep { $_ } 
+                               grep { $_ }
                                @restricted_opts[0..scalar(@restricted_opts) - 2]
                             )
                           . ' or --'.$self->{opts}->{$restricted_opts[-1]}->{long};
@@ -1337,7 +1337,7 @@ sub _check_opts {
             }
 
          }
-         elsif ( $opt->{is_required} ) { 
+         elsif ( $opt->{is_required} ) {
             $self->save_error("Required option --$long must be specified");
          }
 
@@ -1721,7 +1721,7 @@ sub clone {
       $clone{$scalar} = $self->{$scalar};
    }
 
-   return bless \%clone;     
+   return bless \%clone;
 }
 
 sub _parse_size {
@@ -2018,9 +2018,10 @@ sub parse {
 
 sub remove_quoted_text {
    my ($string) = @_;
-   $string =~ s/[^\\]`[^`]*[^\\]`//g; 
-   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
-   $string =~ s/[^\\]'[^']*[^\\]'//g; 
+   $string =~ s/\\['"]//g;
+   $string =~ s/`[^`]*?`//g;
+   $string =~ s/"[^"]*?"//g;
+   $string =~ s/'[^']*?'//g;
    return $string;
 }
 
@@ -2379,7 +2380,7 @@ sub parse {
    foreach my $key ( keys %$opts ) {
       PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
-      if ( !defined $final_props{$key}  
+      if ( !defined $final_props{$key}
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
@@ -2519,7 +2520,7 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass,
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       $dbh = eval { DBI->connect($cxn_string, $user, $pass, $defaults) };
@@ -2717,7 +2718,7 @@ sub set_vars {
       }
    }
 
-   return; 
+   return;
 }
 
 sub _d {
@@ -2987,7 +2988,7 @@ sub split_unquote {
       s/`\z//;
       s/``/`/g;
    }
-   
+
    return ($db, $tbl);
 }
 
@@ -3117,7 +3118,7 @@ sub generate_asc_stmt {
 
    die "Index '$index' does not exist in table"
       unless exists $tbl_struct->{keys}->{$index};
-   PTDEBUG && _d('Will ascend index', $index);  
+   PTDEBUG && _d('Will ascend index', $index);
 
    my @asc_cols = @{$tbl_struct->{keys}->{$index}->{cols}};
    if ( $args{asc_first} ) {
@@ -3415,7 +3416,7 @@ sub daemonize {
 
       close STDERR;
       open  STDERR, ">&STDOUT"
-         or die "Cannot dupe STDERR to STDOUT: $OS_ERROR"; 
+         or die "Cannot dupe STDERR to STDOUT: $OS_ERROR";
    }
    else {
       if ( -t STDOUT ) {
@@ -3563,22 +3564,22 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-sub check_recursion_method {                                                       
+sub check_recursion_method {
    my ($methods) = @_;
-   if ( @$methods != 1 ) {                                                         
-      if ( grep({ !m/processlist|hosts/i } @$methods)                              
-            && $methods->[0] !~ /^dsn=/i ) 
-      {     
-         die  "Invalid combination of recursion methods: "                         
-            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "      
-            . "Only hosts and processlist may be combined.\n"                      
-      }                                                                            
-   }     
-   else {   
+   if ( @$methods != 1 ) {
+      if ( grep({ !m/processlist|hosts/i } @$methods)
+            && $methods->[0] !~ /^dsn=/i )
+      {
+         die  "Invalid combination of recursion methods: "
+            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "
+            . "Only hosts and processlist may be combined.\n"
+      }
+   }
+   else {
       my ($method) = @$methods;
-      die "Invalid recursion method: " . ( $method || 'undef' )                    
-         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster$|dsn=)/i;     
-   }                                                                               
+      die "Invalid recursion method: " . ( $method || 'undef' )
+         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster$|dsn=)/i;
+   }
 }
 
 sub new {
@@ -3607,7 +3608,7 @@ sub get_slaves {
    my $methods = $self->_resolve_recursion_methods($args{dsn});
 
    return $slaves unless @$methods;
-   
+
    if ( grep { m/processlist|hosts/i } @$methods ) {
       my @required_args = qw(dbh dsn);
       foreach my $arg ( @required_args ) {
@@ -3620,7 +3621,7 @@ sub get_slaves {
          {  dbh            => $dbh,
             dsn            => $dsn,
             slave_user     => $o->got('slave-user') ? $o->get('slave-user') : '',
-            slave_password => $o->got('slave-password') ? $o->get('slave-password') : '', 
+            slave_password => $o->got('slave-password') ? $o->get('slave-password') : '',
             callback  => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
@@ -3652,7 +3653,7 @@ sub get_slaves {
    else {
       die "Unexpected recursion methods: @$methods";
    }
-   
+
    return $slaves;
 }
 
@@ -4189,7 +4190,7 @@ sub short_host {
 }
 
 sub is_replication_thread {
-   my ( $self, $query, %args ) = @_; 
+   my ( $self, $query, %args ) = @_;
    return unless $query;
 
    my $type = lc($args{type} || 'all');
@@ -4204,7 +4205,7 @@ sub is_replication_thread {
    if ( !$match ) {
       if ( ($query->{User} || $query->{user} || '') eq "system user" ) {
          PTDEBUG && _d("Slave replication thread");
-         if ( $type ne 'all' ) { 
+         if ( $type ne 'all' ) {
             my $state = $query->{State} || $query->{state} || '';
 
             if ( $state =~ m/^init|end$/ ) {
@@ -4217,7 +4218,7 @@ sub is_replication_thread {
                    |Reading\sevent\sfrom\sthe\srelay\slog
                    |Has\sread\sall\srelay\slog;\swaiting
                    |Making\stemp\sfile
-                   |Waiting\sfor\sslave\smutex\son\sexit)/xi; 
+                   |Waiting\sfor\sslave\smutex\son\sexit)/xi;
 
                $match = $type eq 'slave_sql' &&  $slave_sql ? 1
                       : $type eq 'slave_io'  && !$slave_sql ? 1
@@ -4281,7 +4282,7 @@ sub get_replication_filters {
          replicate_do_db
          replicate_ignore_db
          replicate_do_table
-         replicate_ignore_table 
+         replicate_ignore_table
          replicate_wild_do_table
          replicate_wild_ignore_table
       );
@@ -4292,7 +4293,7 @@ sub get_replication_filters {
       $filters{slave_skip_errors} = $row->[1] if $row->[1] && $row->[1] ne 'OFF';
    }
 
-   return \%filters; 
+   return \%filters;
 }
 
 
@@ -4391,9 +4392,9 @@ sub new {
    my $self = {
       %args
    };
-   
-   $self->{last_time} = time();   
-   
+
+   $self->{last_time} = time();
+
    my (undef, $last_fc_ns) = $self->{node}->selectrow_array('SHOW STATUS LIKE "wsrep_flow_control_paused_ns"');
 
    $self->{last_fc_secs} = $last_fc_ns/1000_000_000;
@@ -4429,11 +4430,11 @@ sub wait {
       my $current_time = time();
       my (undef, $current_fc_ns) = $node->selectrow_array('SHOW STATUS LIKE "wsrep_flow_control_paused_ns"');
       my $current_fc_secs = $current_fc_ns/1000_000_000;
-      my $current_avg = ($current_fc_secs - $self->{last_fc_secs}) / ($current_time - $self->{last_time});  
-      if ( $current_avg > $max_avg ) { 
+      my $current_avg = ($current_fc_secs - $self->{last_fc_secs}) / ($current_time - $self->{last_time});
+      if ( $current_avg > $max_avg ) {
          if ( $pr ) {
             $pr->update(sub { return 0; });
-         } 
+         }
          PTDEBUG && _d('Calling sleep callback');
          if ( $self->{simple_progress} ) {
             print STDERR "Waiting for Flow Control to abate\n";
@@ -4633,7 +4634,7 @@ sub get_id {
       my $sql  = q{SHOW STATUS LIKE 'wsrep\_local\_index'};
       my (undef, $wsrep_local_index) = $cxn->dbh->selectrow_array($sql);
       PTDEBUG && _d("Got cluster wsrep_local_index: ",$wsrep_local_index);
-      $unique_id = $wsrep_local_index."|"; 
+      $unique_id = $wsrep_local_index."|";
       foreach my $val ('server\_id', 'wsrep\_sst\_receive\_address', 'wsrep\_node\_name', 'wsrep\_node\_address') {
          my $sql = "SHOW VARIABLES LIKE '$val'";
          PTDEBUG && _d($cxn->name, $sql);
@@ -4663,7 +4664,7 @@ sub is_cluster_node {
       PTDEBUG && _d($sql); #don't invoke name() if it's not a Cxn!
    }
    else {
-      $dbh = $cxn->dbh();      
+      $dbh = $cxn->dbh();
       PTDEBUG && _d($cxn->name, $sql);
    }
 
@@ -4963,7 +4964,7 @@ sub _split_url {
                   or die(qq/SSL certificate not valid for $host\n/);
             }
        }
-         
+
        $self->{host} = $host;
        $self->{port} = $port;
 
@@ -5438,7 +5439,7 @@ my @vc_dirs = (
       }
       PTDEBUG && _d('Version check file', $file, 'in', $ENV{PWD});
       return $file;  # in the CWD
-   } 
+   }
 }
 
 sub version_check_time_limit {
@@ -5455,11 +5456,11 @@ sub version_check {
    PTDEBUG && _d('FindBin::Bin:', $FindBin::Bin);
    if ( !$args{force} ) {
       if ( $FindBin::Bin
-           && (-d "$FindBin::Bin/../.bzr"    || 
+           && (-d "$FindBin::Bin/../.bzr"    ||
                -d "$FindBin::Bin/../../.bzr" ||
-               -d "$FindBin::Bin/../.git"    || 
-               -d "$FindBin::Bin/../../.git" 
-              ) 
+               -d "$FindBin::Bin/../.git"    ||
+               -d "$FindBin::Bin/../../.git"
+              )
          ) {
          PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
          return;
@@ -5483,7 +5484,7 @@ sub version_check {
       PTDEBUG && _d(scalar @$instances_to_check, 'instances to check');
       return unless @$instances_to_check;
 
-      my $protocol = 'https';  
+      my $protocol = 'https';
       eval { require IO::Socket::SSL; };
       if ( $EVAL_ERROR ) {
          PTDEBUG && _d($EVAL_ERROR);
@@ -5660,7 +5661,7 @@ sub get_uuid {
     close $fh;
 
     return $uuid;
-}   
+}
 
 sub _generate_uuid {
     return sprintf+($}="%04x")."$}-$}-$}-$}-".$}x3,map rand 65537,0..7;
@@ -5709,7 +5710,7 @@ sub pingback {
    );
    die "Failed to parse server requested programs: $response->{content}"
       if !scalar keys %$items;
-      
+
    my $versions = get_versions(
       items     => $items,
       instances => $instances,
@@ -5968,7 +5969,7 @@ sub get_from_mysql {
    if ($item->{item} eq 'MySQL' && $item->{type} eq 'mysql_variable') {
       @{$item->{vars}} = grep { $_ eq 'version' || $_ eq 'version_comment' } @{$item->{vars}};
    }
- 
+
 
    my @versions;
    my %version_for;
@@ -6166,7 +6167,7 @@ sub main {
       $daemon = new Daemon(o=>$o);
       $daemon->make_PID_file();
    }
-      
+
    # ########################################################################
    # Set up statistics.
    # ########################################################################
@@ -6263,7 +6264,7 @@ sub main {
          PTDEBUG && _d($sql);
          my ($dbh_charset) =  $table->{dbh}->selectrow_array($sql);
 
-         if ( ($dbh_charset || "") ne ($table->{info}->{charset} || "") && 
+         if ( ($dbh_charset || "") ne ($table->{info}->{charset} || "") &&
               !($dbh_charset eq "utf8mb4" && ($table->{info}->{charset} || "") eq ("utf8"))
          ) {
             $src->{dbh}->disconnect() if $src && $src->{dbh};
@@ -6333,7 +6334,7 @@ sub main {
    }
 
    # #######################################################################
-   # Check if it's a cluster and if so get version 
+   # Check if it's a cluster and if so get version
    # Create FlowControlWaiter object if max-flow-ctl was specified and
    # PXC version supports it
    # #######################################################################
@@ -6387,7 +6388,7 @@ sub main {
    my ($sel_stmt, $ins_stmt, $del_stmt);
    my (@asc_slice, @sel_slice, @del_slice, @bulkdel_slice, @ins_slice);
    my @sel_cols = $o->get('columns')          ? @{$o->get('columns')}    # Explicit
-                : $o->get('primary-key-only') ? @{$src->{info}->{keys}->{PRIMARY}->{cols}} 
+                : $o->get('primary-key-only') ? @{$src->{info}->{keys}->{PRIMARY}->{cols}}
                 :                               @{$src->{info}->{cols}}; # All
    PTDEBUG && _d("sel cols: ", @sel_cols);
 
@@ -6453,7 +6454,7 @@ sub main {
       $next_sql .= " AND $sel_stmt->{where}";
    }
 
-   # Obtain index cols so we can order them when ascending 
+   # Obtain index cols so we can order them when ascending
    # this ensures returned sets are disjoint when ran on partitioned tables
    # issue 1376561
    my $index_cols;
@@ -6462,7 +6463,7 @@ sub main {
    }
 
    foreach my $thing ( $first_sql, $next_sql ) {
-      $thing .= " ORDER BY $index_cols" if $index_cols; 
+      $thing .= " ORDER BY $index_cols" if $index_cols;
       $thing .= " LIMIT $limit";
       if ( $o->get('for-update') ) {
          $thing .= ' FOR UPDATE';
@@ -6557,7 +6558,7 @@ sub main {
       _d("del row sql:", $del_sql);
       _d("ins row sql:", $ins_sql);
    }
-   
+
    if ( $o->get('dry-run') ) {
       if ( !$quiet ) {
          print join("\n", grep { $_ } ($archive_file || ''),
@@ -6680,9 +6681,9 @@ sub main {
          . "this warning.";
       $charset = ":raw";
    }
-   
-   # Open the file and print the header to it. 
-   if ( $archive_file ) { 
+
+   # Open the file and print the header to it.
+   if ( $archive_file ) {
       if ($o->got('output-format') && $o->get('output-format') ne 'dump' && $o->get('output-format') ne 'csv') {
           warn "Invalid output format:". $o->get('format');
           warn "Using default 'dump' format";
@@ -6690,17 +6691,17 @@ sub main {
               $fields_separated_by = ", ";
               $optionally_enclosed_by = '"';
       }
-      my $need_hdr = $o->get('header') && !-f $archive_file; 
-      $archive_fh = IO::File->new($archive_file, ">>$charset") 
-         or die "Cannot open $charset $archive_file: $OS_ERROR\n"; 
+      my $need_hdr = $o->get('header') && !-f $archive_file;
+      $archive_fh = IO::File->new($archive_file, ">>$charset")
+         or die "Cannot open $charset $archive_file: $OS_ERROR\n";
       binmode STDOUT, ":utf8";
       binmode $archive_fh, ":utf8";
-      $archive_fh->autoflush(1) unless $o->get('buffer'); 
-      if ( $need_hdr ) { 
-         print { $archive_fh } '', escape(\@sel_cols, $fields_separated_by, $optionally_enclosed_by), "\n" 
-            or die "Cannot write to $archive_file: $OS_ERROR\n"; 
-      } 
-   } 
+      $archive_fh->autoflush(1) unless $o->get('buffer');
+      if ( $need_hdr ) {
+         print { $archive_fh } '', escape(\@sel_cols, $fields_separated_by, $optionally_enclosed_by), "\n"
+            or die "Cannot write to $archive_file: $OS_ERROR\n";
+      }
+   }
 
    # Open the bulk insert file, which doesn't get any header info.
    my $bulkins_file;
@@ -6873,7 +6874,7 @@ sub main {
             $ins_sth ||= $ins_row; # Default to the sth decided before.
             my $success = do_with_retries($o, 'bulk_inserting', sub {
                $ins_sth->execute($bulkins_file->filename());
-               $src->{dbh}->do("SELECT 'pt-archiver keepalive'") if $src; 
+               $src->{dbh}->do("SELECT 'pt-archiver keepalive'") if $src;
                PTDEBUG && _d('Bulk inserted', $del_row->rows, 'rows');
                $statistics{INSERT} += $ins_sth->rows;
             });
@@ -6947,7 +6948,7 @@ sub main {
          }
       }  # no next row (do bulk operations)
       else {
-         # keep alive every 100 rows saved to file 
+         # keep alive every 100 rows saved to file
          # https://bugs.launchpad.net/percona-toolkit/+bug/1452895
          if ( $bulk_count++ % 100 == 0 ) {
             $src->{dbh}->do("SELECT 'pt-archiver keepalive'") if $src;
@@ -6967,9 +6968,10 @@ sub main {
                   PTDEBUG && _d("Sleeping: slave lag for server '$id' is", $lag);
                   if ($o->got('progress')) {
                      _d("Sleeping: slave lag for server '$id' is", $lag);
-                  }  
+                  }
                   sleep($o->get('check-interval'));
                   $lag = $ms->get_slave_lag($lag_dbh);
+                  commit($o, $txnsize || $commit_each);
                   $src->{dbh}->do("SELECT 'pt-archiver keepalive'") if $src;
                   $dst->{dbh}->do("SELECT 'pt-archiver keepalive'") if $dst;
                }
@@ -6982,7 +6984,7 @@ sub main {
          $flow_ctl->wait();
       }
 
-   }  # ROW 
+   }  # ROW
    PTDEBUG && _d('Done fetching rows');
 
    # Transactions might still be open, etc
@@ -7019,7 +7021,7 @@ sub main {
             $dst->{dbh}->do("$maint TABLE $dst->{db_tbl}");
          });
       }
-   } 
+   }
 
    # ########################################################################
    # Print statistics
@@ -7202,7 +7204,7 @@ sub escape {
    my ($row, $fields_separated_by, $optionally_enclosed_by) = @_;
    $fields_separated_by ||= "\t";
    $optionally_enclosed_by ||= '';
- 
+
    return join($fields_separated_by, map {
       s/([\t\n\\])/\\$1/g if defined $_;  # Escape tabs etc
       my $s = defined $_ ? $_ : '\N';             # NULL = \N
@@ -7573,7 +7575,7 @@ To disable this check, specify --no-check-columns.
 
 type: time; default: 1s
 
-If L<"--check-slave-lag"> is given, this defines how long the tool pauses each 
+If L<"--check-slave-lag"> is given, this defines how long the tool pauses each
  time it discovers that a slave is lagging.
  This check is performed every 100 rows.
 
@@ -7776,7 +7778,7 @@ See L<http://dev.mysql.com/doc/en/insert.html> for details.
 type: float
 
 Somewhat similar to --max-lag but for PXC clusters.
-Check average time cluster spent pausing for Flow Control and make tool pause if 
+Check average time cluster spent pausing for Flow Control and make tool pause if
 it goes over the percentage indicated in the option.
 Default is no Flow Control checking.
 This option is available for PXC versions 5.6 or higher.
@@ -8240,7 +8242,7 @@ done for the first time.
 
 Any updates or known problems are printed to STDOUT before the tool's normal
 output.  This feature should never interfere with the normal operation of the
-tool.  
+tool.
 
 For more information, visit L<https://www.percona.com/doc/percona-toolkit/LATEST/version-check.html>.
 
@@ -8336,7 +8338,7 @@ Explicitly enable LOAD DATA LOCAL INFILE.
 
 For some reason, some vendors compile libmysql without the
 --enable-local-infile option, which disables the statement.  This can
-lead to weird situations, like the server allowing LOCAL INFILE, but 
+lead to weird situations, like the server allowing LOCAL INFILE, but
 the client throwing exceptions if it's used.
 
 However, as long as the server allows LOAD DATA, clients can easily
@@ -8635,7 +8637,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2018 Percona LLC and/or its affiliates,
+This program is copyright 2011-2021 Percona LLC and/or its affiliates,
 2007-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -8654,6 +8656,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-archiver 3.2.1
+pt-archiver 3.3.1
 
 =cut

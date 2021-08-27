@@ -113,19 +113,19 @@ env-down: env				## Clean-up MongoDB docker containers cluster
 
 linux-amd64: 				## Build Mongo tools for linux-amd64
 	@echo "Building linux/amd64 binaries in ${BIN_DIR}"
-	@cd ${TOP_DIR} && dep ensure
+	@cd ${TOP_DIR} && go get ./...
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
 	@$(foreach pkg,$(pkgs),GOOS=linux GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
 
 linux-386: 					## Build Mongo tools for linux-386
 	@echo "Building linux/386 binaries in ${BIN_DIR}"
-	@cd ${TOP_DIR} && dep ensure
+	@cd ${TOP_DIR} && go get ./...
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
 	@$(foreach pkg,$(pkgs),GOOS=linux GOARCH=386 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
 
 darwin-amd64:				## Build Mongo tools for darwin-amd64 (MacOS) 
 	@echo "Building darwin/amd64 binaries in ${BIN_DIR}"
-	@cd ${TOP_DIR} && dep ensure
+	@cd ${TOP_DIR} && go get ./...
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
 	@$(foreach pkg,$(pkgs),GOOS=darwin GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
 

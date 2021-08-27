@@ -335,7 +335,7 @@ _eval_po() {
             *)
                echo "Invalid attribute in $opt_spec: $line" >&2
                exit 1
-         esac 
+         esac
       done < "$opt_spec"
 
       if [ -z "$opt" ]; then
@@ -475,7 +475,7 @@ _parse_command_line() {
             if [ "$val" ]; then
                option_error "Option $real_opt does not take a value"
                continue
-            fi 
+            fi
             if [ "$opt_is_negated" ]; then
                val=""
             else
@@ -547,13 +547,13 @@ mysql_options() {
    if [ -n "$OPT_PASSWORD" ]; then
       MYSQL_ARGS="$MYSQL_ARGS --password=$OPT_PASSWORD"
    fi
-   
+
    echo $MYSQL_ARGS
 }
 
 arrange_mysql_options() {
    local opts="$1"
-   
+
    local rearranged=""
    for opt in $opts; do
       if [ "$(echo $opt | awk -F= '{print $1}')" = "--defaults-file" ]; then
@@ -562,7 +562,7 @@ arrange_mysql_options() {
          rearranged="$rearranged $opt"
       fi
    done
-   
+
    echo "$rearranged"
 }
 
@@ -836,7 +836,7 @@ collect() {
       $CMD_MYSQLADMIN $EXT_ARGV
    else
       log "Could not find the MySQL error log"
-   fi 
+   fi
    if [ "${mysql_version}" '>' "5.1" ]; then
       local mutex="SHOW ENGINE INNODB MUTEX"
    else
@@ -869,7 +869,12 @@ collect() {
       local strace_pid=$!
    fi
 
-   if [ ! "$OPT_MYSQL_ONLY" ]; then 
+   local cnt=$(($OPT_RUN_TIME / $OPT_SLEEP_COLLECT))
+
+   $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
+   local mysqladmin_pid=$!
+
+   if [ ! "$OPT_MYSQL_ONLY" ]; then
       ps -eaF  >> "$d/$p-ps"  &
       top -bn${OPT_RUN_TIME} >> "$d/$p-top" &
 
@@ -882,10 +887,9 @@ collect() {
       if [ "$CMD_DMESG" ]; then
          local UPTIME=`cat /proc/uptime | awk '{ print $1 }'`
          local START_TIME=$(echo "$UPTIME 60" | awk '{print ($1 - $2)}')
-         $CMD_DMESG  | perl -ne 'm/\[\s*(\d+)\./; if ($1 > '${START_TIME}') { print }' >> "$d/$p-dmesg" & 
+         $CMD_DMESG  | perl -ne 'm/\[\s*(\d+)\./; if ($1 > '${START_TIME}') { print }' >> "$d/$p-dmesg" &
       fi
 
-      local cnt=$(($OPT_RUN_TIME / $OPT_SLEEP_COLLECT))
       if [ "$CMD_VMSTAT" ]; then
          $CMD_VMSTAT $OPT_SLEEP_COLLECT $cnt >> "$d/$p-vmstat" &
          $CMD_VMSTAT $OPT_RUN_TIME 2 >> "$d/$p-vmstat-overall" &
@@ -898,10 +902,7 @@ collect() {
          $CMD_MPSTAT -P ALL $OPT_SLEEP_COLLECT $cnt >> "$d/$p-mpstat" &
          $CMD_MPSTAT -P ALL $OPT_RUN_TIME 1 >> "$d/$p-mpstat-overall" &
       fi
-
-      $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
-      local mysqladmin_pid=$!
-   fi 
+   fi
 
    local have_lock_waits_table=""
    $CMD_MYSQL $EXT_ARGV -e "SHOW TABLES FROM INFORMATION_SCHEMA" \
@@ -971,7 +972,7 @@ collect() {
          (ps_prepared_statements) >> "$d/$p-prepared-statements" &
       fi
 
-      slave_status "$d/$p-slave-status" "${mysql_version}" 
+      slave_status "$d/$p-slave-status" "${mysql_version}"
 
       curr_time=$(date +'%s')
    done
@@ -1076,7 +1077,7 @@ lock_waits() {
    LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
    ORDER BY wait_time DESC\G"
    $CMD_MYSQL $EXT_ARGV -e "$sql2"
-} 
+}
 
 transactions() {
    $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_TRX ORDER BY trx_id\G"
@@ -1125,8 +1126,8 @@ rocksdb_status() {
 }
 
 ps_locks_transactions() {
-   local outfile=$1 
-   
+   local outfile=$1
+
    $CMD_MYSQL $EXT_ARGV -e 'select @@performance_schema' | grep "1" &>/dev/null
 
    if [ $? -eq 0 ]; then
@@ -1162,7 +1163,7 @@ slave_status() {
    local outfile=$1
    local mysql_version=$2
 
-   local sql="SHOW SLAVE STATUS\G"   
+   local sql="SHOW SLAVE STATUS\G"
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
    if [ "${mysql_version}" '>' "5.6" ]; then
@@ -1182,7 +1183,7 @@ slave_status() {
 
 
 collect_mysql_variables() {
-   local outfile=$1 
+   local outfile=$1
 
    local sql="SHOW GLOBAL VARIABLES"
    echo -e "\n$sql\n" >> $outfile
@@ -1191,11 +1192,11 @@ collect_mysql_variables() {
    sql="select * from performance_schema.variables_by_thread order by thread_id, variable_name;"
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
-   
+
    sql="select * from performance_schema.user_variables_by_thread order by thread_id, variable_name;"
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
-   
+
    sql="select * from performance_schema.status_by_thread order by thread_id, variable_name; "
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
@@ -1441,7 +1442,7 @@ stalk() {
          log "$msg"
       fi
 
-      if [ "$matched" -a $cycles_true -ge $OPT_CYCLES ]; then 
+      if [ "$matched" -a $cycles_true -ge $OPT_CYCLES ]; then
          # ##################################################################
          # Start collecting, maybe.
          # ##################################################################
@@ -1462,7 +1463,7 @@ stalk() {
             local margin="20971520"  # default 20M margin, unless:
             if [ -n "$last_prefix" ]; then
                margin=$(du -mc "$OPT_DEST"/"$last_prefix"-* | tail -n 1 | awk '{print $1'})
-            fi 
+            fi
             disk_space "$OPT_DEST" > "$OPT_DEST/$prefix-disk-space"
             check_disk_space                  \
                "$OPT_DEST/$prefix-disk-space" \
@@ -1490,7 +1491,7 @@ stalk() {
 
                # Plugin hook:
                after_collect $collector_pid
-            else 
+            else
                # There will not be enough disk space, so do not collect.
                warn "Collect canceled because there will not be enough disk space after collecting another $margin MB"
             fi
@@ -1616,7 +1617,7 @@ if    [ "${0##*/}" = "$TOOL" ] \
    fi
 
    # if ASK-PASS , request password on terminal without echoing. This will override --password
-   if [ -n "$OPT_ASK_PASS" ]; then 
+   if [ -n "$OPT_ASK_PASS" ]; then
       stty_orig=`stty -g`           # save original terminal setting.
       echo -n "Enter MySQL password: ";
       stty -echo                    # turn-off echoing.
@@ -1753,7 +1754,7 @@ Threads_running usually is.  Your job, as the tool's user, is to define an
 appropriate trigger condition for the tool.  Choose carefully, because the
 quality of your results will depend on the trigger you choose.
 
-You define the trigger with the L<"--function">, L<"--variable">, 
+You define the trigger with the L<"--function">, L<"--variable">,
 L<"--threshold">, and L<"--cycles"> options.  The default values
 for these options define a reasonable trigger, but you should adjust
 or change them to suite your particular system and needs.
@@ -1793,7 +1794,7 @@ operations is:
    rm old --dest files older than --retention-time
    if --collect process are still running; then
       wait up to --run-time * 3 seconds
-      kill any remaining --collect processes 
+      kill any remaining --collect processes
    fi
 
 The diagnostic data is written to files whose names begin with a timestamp, so
@@ -2138,7 +2139,7 @@ short form: -P; type: int
 
 Port number to use for connection.
 
-=item --prefix 
+=item --prefix
 
 type: string
 
@@ -2400,7 +2401,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2018 Percona LLC and/or its affiliates,
+This program is copyright 2011-2021 Percona LLC and/or its affiliates,
 2010-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -2419,7 +2420,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-stalk 3.2.1
+pt-stalk 3.3.1
 
 =cut
 

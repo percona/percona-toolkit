@@ -40,9 +40,9 @@ PREPARE SELECT i FROM d.t WHERE i=?\G
 SELECT i FROM d.t WHERE i=?\G
 
 # Profile
-# Rank Query ID                           Response time Calls R/Call V/M  
-# ==== ================================== ============= ===== ====== =====
-#    1 0xC29D79D8CB57E235AA8E9FA785927259 0.0003 100.0%     1 0.0003  0.00 SELECT d.t
+# Rank Query ID                            Response time Calls R/Call V/M 
+# ==== =================================== ============= ===== ====== ====
+#    1 0xC29D79D8CB57E235AA8E9FA785927259  0.0003 100.0%     1 0.0003  0.00 SELECT d.t
 
 # Prepared statements
 # Rank Query ID                           PREP PREP Response EXEC EXEC Res

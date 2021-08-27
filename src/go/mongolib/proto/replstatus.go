@@ -24,21 +24,25 @@ type Optime struct {
 }
 
 type Members struct {
-	Optime        map[string]Optime   `bson:"optimes"`       // See Optime struct
-	OptimeDate    primitive.DateTime  `bson:"optimeDate"`    // The last entry from the oplog that this member applied.
-	InfoMessage   string              `bson:"infoMessage"`   // A message
-	ID            int64               `bson:"_id"`           // Server ID
-	Name          string              `bson:"name"`          // server name
-	Health        float64             `bson:"health"`        // This field conveys if the member is up (i.e. 1) or down (i.e. 0).
-	StateStr      string              `bson:"stateStr"`      // A string that describes state.
-	Uptime        float64             `bson:"uptime"`        // number of seconds that this member has been online.
-	ConfigVersion float64             `bson:"configVersion"` // revision # of the replica set configuration object from previous iterations of the configuration.
-	Self          bool                `bson:"self"`          // true if this is the server we are currently connected
-	State         float64             `bson:"state"`         // integer between 0 and 10 that represents the replica state of the member.
-	ElectionTime  primitive.Timestamp `bson:"electionTime"`  // For the current primary, information regarding the election Timestamp from the operation log.
-	ElectionDate  primitive.DateTime  `bson:"electionDate"`  // For the current primary, an ISODate formatted date string that reflects the election date
-	Set           string              `bson:"-"`
-	StorageEngine StorageEngine
+	Optime               map[string]Optime   `bson:"optimes"`              // See Optime struct
+	OptimeDate           primitive.DateTime  `bson:"optimeDate"`           // The last entry from the oplog that this member applied.
+	InfoMessage          string              `bson:"infoMessage"`          // A message
+	ID                   int64               `bson:"_id"`                  // Server ID
+	Name                 string              `bson:"name"`                 // server name
+	Health               float64             `bson:"health"`               // This field conveys if the member is up (i.e. 1) or down (i.e. 0).
+	StateStr             string              `bson:"stateStr"`             // A string that describes state.
+	Uptime               float64             `bson:"uptime"`               // number of seconds that this member has been online.
+	ConfigVersion        float64             `bson:"configVersion"`        // revision # of the replica set configuration object from previous iterations of the configuration.
+	Self                 bool                `bson:"self"`                 // true if this is the server we are currently connected
+	State                float64             `bson:"state"`                // integer between 0 and 10 that represents the replica state of the member.
+	ElectionTime         primitive.Timestamp `bson:"electionTime"`         // For the current primary, information regarding the election Timestamp from the operation log.
+	ElectionDate         primitive.DateTime  `bson:"electionDate"`         // For the current primary, an ISODate formatted date string that reflects the election date.
+	LastHeartbeat        primitive.DateTime  `bson:"lastHeartbeat"`        // Reflects the last time the server that processed the replSetGetStatus command received a response from a heartbeat that it sent to this member.
+	LastHeartbeatRecv    primitive.DateTime  `bson:"lastHeartbeatRecv"`    // Reflects the last time the server that processed the replSetGetStatus command received a heartbeat request from this member.
+	LastHeartbeatMessage string              `bson:"lastHeartbeatMessage"` // Contains a string representation of that message.
+	PingMs               *float64            `bson:"pingMs,omitempty"`     // Represents the number of milliseconds (ms) that a round-trip packet takes to travel between the remote member and the local instance.
+	Set                  string              `bson:"-"`
+	StorageEngine        StorageEngine
 }
 
 // Struct for replSetGetStatus
@@ -75,8 +79,8 @@ type RSConfig struct {
 }
 
 type LastErrorDefaults struct {
-	W        int32 `bson:"w"`
-	WTimeout int32 `bson:"wtimeout"`
+	W        interface{} `bson:"w"`
+	WTimeout int32       `bson:"wtimeout"`
 }
 
 type RSSettings struct {

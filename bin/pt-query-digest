@@ -64,7 +64,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.2.1';
+our $VERSION = '3.3.1';
 
 use strict;
 use warnings FATAL => 'all';
@@ -7395,7 +7395,7 @@ sub profile {
    $report->title('Profile');
    my @cols = (
       { name => 'Rank',          right_justify => 1,             },
-      { name => 'Query ID',                                      },
+      { name => 'Query ID', width => 35                          },
       { name => 'Response time', right_justify => 1,             },
       { name => 'Calls',         right_justify => 1,             },
       { name => 'R/Call',        right_justify => 1,             },
@@ -8967,9 +8967,10 @@ sub parse {
 
 sub remove_quoted_text {
    my ($string) = @_;
-   $string =~ s/[^\\]`[^`]*[^\\]`//g; 
-   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
-   $string =~ s/[^\\]'[^']*[^\\]'//g; 
+   $string =~ s/\\['"]//g;
+   $string =~ s/`[^`]*?`//g; 
+   $string =~ s/"[^"]*?"//g; 
+   $string =~ s/'[^']*?'//g; 
    return $string;
 }
 
@@ -13284,6 +13285,9 @@ sub main {
          DSNParser    => $dp,
          opts         => { AutoCommit => 1 },
       );
+      if ($EVAL_ERROR) {
+          die ("Cannot connect to the explain database: $EVAL_ERROR")
+      }
       $ep_dbh->{InactiveDestroy}  = 1;  # Don't die on fork().
    }
 
@@ -13306,6 +13310,10 @@ sub main {
          DSNParser    => $dp,
          opts         => { AutoCommit => 1 },
       );
+      if ($EVAL_ERROR) {
+          die ("Cannot connect to the review database: $EVAL_ERROR")
+      }
+
       $qv_dbh->{InactiveDestroy}  = 1;  # Don't die on fork().
 
       my @db_tbl = @{$review_dsn}{qw(D t)};
@@ -13350,6 +13358,9 @@ sub main {
          DSNParser    => $dp,
          opts         => { AutoCommit => 1 },
       );
+      if ($EVAL_ERROR) {
+          die ("Cannot connect to the history database: $EVAL_ERROR")
+      }
       $qh_dbh->{InactiveDestroy}  = 1;  # Don't die on fork().
 
       my @hdb_tbl = @{$history_dsn}{qw(D t)};
@@ -16961,6 +16972,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-query-digest 3.2.1
+pt-query-digest 3.3.1
 
 =cut

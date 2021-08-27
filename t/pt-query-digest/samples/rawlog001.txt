@@ -52,7 +52,7 @@
 SELECT c FROM t WHERE id=1\G
 
 # Profile
-# Rank Query ID                           Response time Calls R/Call V/M  
-# ==== ================================== ============= ===== ====== =====
-#    1 0x813FE962AFBBC891774B2B0B59EBAC2C  0.0000  0.0%     1 0.0000  0.00 SELECT t?
-#    2 0x5F47280C0D7DCF5CCB5621E548E5497F  0.0000  0.0%     1 0.0000  0.00 SELECT t
+# Rank Query ID                            Response time Calls R/Call V/M 
+# ==== =================================== ============= ===== ====== ====
+#    1 0x813FE962AFBBC891774B2B0B59EBAC2C   0.0000  0.0%     1 0.0000  0.00 SELECT t?
+#    2 0x5F47280C0D7DCF5CCB5621E548E5497F   0.0000  0.0%     1 0.0000  0.00 SELECT t
