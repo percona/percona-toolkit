@@ -181,7 +181,7 @@ sub fingerprint {
    $query =~ s/\\\\//sg;              
    $query =~ s/\\'//sg;               
    $query =~ s/\\"//sg;                        
-   $query =~ s/(?:[^\\])".*?[^\\]?"/ ?/sg;     
+   $query =~ s/([^\\])(".*?[^\\]?")/$1?/sg;    
    $query =~ s/([^\\])('.*?[^\\]?')/$1?/sg;    
    # -----------------------------------------------------------
 
@@ -245,26 +245,6 @@ sub fingerprint {
    }
 
    return $query;
-}
-
-sub remove_quoted_text {
-   my ($string) = @_;
-   my $new_string;
-
-   my $in_quote;
-   my $prev;
-
-   for (my $i=0; $i < length($string); $i++) {
-       my $c = substr($string, $i, 1);
-
-       if ($c eq "'" or $c eq '"' and not $in_quote and $c ne '\\') {
-           $in_quote = $c;
-       }
-
-       $prev = $c;
-
-   }
-   return $string;
 }
 
 # Gets the verbs from an SQL query, such as SELECT, UPDATE, etc.

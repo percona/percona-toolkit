@@ -1565,8 +1565,8 @@ $bal         = qr/
 
 my $olc_re = qr/(?:--|#)[^'"\r\n]*(?=[\r\n]|\Z)/;  # One-line comments
 my $mlc_re = qr#/\*[^!].*?\*/#sm;                  # But not /*!version */
-my $vlc_re = qr#/\*.*?[0-9+].*?\*/#sm;             # For SHOW + /*!version */
-my $vlc_rf = qr#^(SHOW).*?/\*![0-9+].*?\*/#sm;     # Variation for SHOW
+my $vlc_re = qr#/\*.*?[0-9]+.*?\*/#sm;             # For SHOW + /*!version */
+my $vlc_rf = qr#^(?:SHOW).*?/\*![0-9]+(.*?)\*/#sm;     # Variation for SHOW
 
 
 sub new {
@@ -1581,7 +1581,8 @@ sub strip_comments {
    $query =~ s/$mlc_re//go;
    $query =~ s/$olc_re//go;
    if ( $query =~ m/$vlc_rf/i ) { # contains show + version
-      $query =~ s/$vlc_re//go;
+      my $qualifier = $1 || '';
+      $query =~ s/$vlc_re/$qualifier/go;
    }
    return $query;
 }
@@ -1652,9 +1653,15 @@ sub fingerprint {
    $query =~ s/\Ause \S+\Z/use ?/i       # Abstract the DB in USE
       && return $query;
 
-   $query =~ s/\\["']//g;                # quoted strings
-   $query =~ s/".*?"/?/sg;               # quoted strings
-   $query =~ s/'.*?'/?/sg;               # quoted strings
+   $query =~ s/([^\\])(\\')/$1/sg;    
+   $query =~ s/([^\\])(\\")/$1/sg;    
+   $query =~ s/\\\\//sg;              
+   $query =~ s/\\'//sg;               
+   $query =~ s/\\"//sg;                        
+   $query =~ s/([^\\])(".*?[^\\]?")/$1?/sg;    
+   $query =~ s/([^\\])('.*?[^\\]?')/$1?/sg;    
+
+   $query =~ s/\bfalse\b|\btrue\b/?/isg; # boolean values 
 
    if ( $self->{match_md5_checksums} ) { 
       $query =~ s/([._-])[a-f0-9]{32}/$1?/g;
@@ -1704,6 +1711,13 @@ sub distill_verbs {
    $query =~ m/\A\s*UNLOCK TABLES/i  && return "UNLOCK";
    $query =~ m/\A\s*xa\s+(\S+)/i     && return "XA_$1";
 
+   if ( $query =~ m/\A\s*LOAD/i ) {
+      my ($tbl) = $query =~ m/INTO TABLE\s+(\S+)/i;
+      $tbl ||= '';
+      $tbl =~ s/`//g;
+      return "LOAD DATA $tbl";
+   }
+
    if ( $query =~ m/\Aadministrator command:/ ) {
       $query =~ s/administrator command:/ADMIN/;
       $query = uc $query;
@@ -1716,7 +1730,7 @@ sub distill_verbs {
       PTDEBUG && _d($query);
 
       $query = uc $query;
-      $query =~ s/\s+(?:GLOBAL|SESSION|FULL|STORAGE|ENGINE)\b/ /g;
+      $query =~ s/\s+(?:SESSION|FULL|STORAGE|ENGINE)\b/ /g;
       $query =~ s/\s+COUNT[^)]+\)//g;
 
       $query =~ s/\s+(?:FOR|FROM|LIKE|WHERE|LIMIT|IN)\b.+//ms;
@@ -1731,6 +1745,7 @@ sub distill_verbs {
    eval $QueryParser::tbl_ident;
    my ( $dds ) = $query =~ /^\s*($QueryParser::data_def_stmts)\b/i;
    if ( $dds) {
+      $query =~ s/\s+IF(?:\s+NOT)?\s+EXISTS/ /i;
       my ( $obj ) = $query =~ m/$dds.+(DATABASE|TABLE)\b/i;
       $obj = uc $obj if $obj;
       PTDEBUG && _d('Data def statment:', $dds, 'obj:', $obj);
@@ -1796,6 +1811,9 @@ sub distill {
          );
          map { $verbs =~ s/$_/$alias_for{$_}/ } keys %alias_for;
          $query = $verbs;
+      }
+      elsif ( $verbs && $verbs =~ m/^LOAD DATA/ ) {
+         return $verbs;
       }
       else {
          my @tables = $self->__distill_tables($query, $table, %args);
