@@ -80,6 +80,6 @@ Unable to collect information
    1  0     0    0     0   100    800     50  67  33   0   0   0
    1  0     0    0     0     0   1000     35  80  20   0   0   0
    1  0     0    0     0     0    900     45  62  38   0   0   0
-# Memory mamagement ##########################################
+# Memory management ##########################################
 Transparent huge pages are enabled.
 # The End ####################################################

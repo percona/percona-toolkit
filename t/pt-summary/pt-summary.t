@@ -14,9 +14,9 @@ use PerconaTest;
 
 my ($tool) = $PROGRAM_NAME =~ m/([\w-]+)\.t$/;
 
-use Test::More tests => 2;
+use Test::More tests => 3;
 
-for my $i (2..3) {
+for my $i (2..3,5) {
    ok(
       no_diff(
          sub { print `$trunk/bin/pt-summary --read-samples "$trunk/t/pt-summary/samples/Linux/00$i/" | tail -n+3` },
