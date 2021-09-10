@@ -38,8 +38,8 @@ const (
 
 	envMongoDBStandalonePort = "TEST_MONGODB_STANDALONE_PORT"
 	//
-	envMongoDBUser     = "TEST_MONGODB_ADMIN_USERNAME"
-	envMongoDBPassword = "TEST_MONGODB_ADMIN_PASSWORD"
+	envMongoDBUser     = ""
+	envMongoDBPassword = ""
 )
 
 var (
@@ -86,9 +86,9 @@ var (
 	// MongoDBMongosPort mongos port
 	MongoDBMongosPort = getEnvDefault(envMongoDBMongosPort, "17000")
 	// MongoDBUser username for all instances
-	MongoDBUser = getEnvDefault(envMongoDBUser, "admin")
+	MongoDBUser = getEnvDefault(envMongoDBUser, "")
 	// MongoDBPassword password for all instances
-	MongoDBPassword = getEnvDefault(envMongoDBPassword, "admin123456")
+	MongoDBPassword = getEnvDefault(envMongoDBPassword, "")
 	// MongoDBTimeout global connection timeout
 	MongoDBTimeout = time.Duration(10) * time.Second
 
@@ -196,11 +196,13 @@ func TestClient(ctx context.Context, port string) (*mongo.Client, error) {
 		ConnectTimeout: &to,
 		Hosts:          []string{net.JoinHostPort(hostname, port)},
 		Direct:         &direct,
-		Auth: &options.Credential{
+	}
+	if MongoDBUser != "" {
+		co.Auth = &options.Credential{
 			Username:    MongoDBUser,
 			Password:    MongoDBPassword,
 			PasswordSet: true,
-		},
+		}
 	}
 
 	client, err := mongo.Connect(ctx, co)
@@ -214,4 +216,28 @@ func TestClient(ctx context.Context, port string) (*mongo.Client, error) {
 	}
 
 	return client, nil
+}
+
+func TestClientOptions(port string) *options.ClientOptions {
+	if port == "" {
+		port = MongoDBShard1PrimaryPort
+	}
+
+	hostname := "127.0.0.1"
+	direct := true
+	to := time.Second
+	co := &options.ClientOptions{
+		ConnectTimeout: &to,
+		Hosts:          []string{net.JoinHostPort(hostname, port)},
+		Direct:         &direct,
+	}
+	if MongoDBUser != "" {
+		co.Auth = &options.Credential{
+			Username:    MongoDBUser,
+			Password:    MongoDBPassword,
+			PasswordSet: true,
+		}
+	}
+
+	return co
 }

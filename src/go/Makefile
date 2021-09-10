@@ -22,8 +22,8 @@ TEST_PSMDB_VERSION?=4.0
 TEST_MONGODB_FLAVOR?=percona/percona-server-mongodb
 TEST_MONGODB_ADMIN_USERNAME?=admin
 TEST_MONGODB_ADMIN_PASSWORD?=admin123456
-TEST_MONGODB_USERNAME?=test
-TEST_MONGODB_PASSWORD?=123456
+TEST_MONGODB_USERNAME?=
+TEST_MONGODB_PASSWORD?=
 
 TEST_MONGODB_STANDALONE_PORT?=27017
 
@@ -103,9 +103,7 @@ env-up: env					## Start MongoDB docker containers cluster
 	--detach \
 	--force-recreate \
 	--always-recreate-deps \
-	--renew-anon-volumes \
-	init 
-	docker/test/init-cluster-wait.sh
+	--renew-anon-volumes 
 
 env-down: env				## Clean-up MongoDB docker containers cluster
 	docker-compose down -v

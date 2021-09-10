@@ -2,7 +2,6 @@ package profiler
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"testing"
@@ -14,9 +13,8 @@ import (
 	"github.com/percona/percona-toolkit/src/go/mongolib/stats"
 	"github.com/percona/percona-toolkit/src/go/pt-mongodb-query-digest/filter"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -44,17 +42,9 @@ func TestMain(m *testing.M) {
 }
 
 func TestRegularIterator(t *testing.T) {
-	uri := fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBShard1PrimaryPort)
-	client, err := mongo.NewClient(options.Client().ApplyURI(uri))
-	if err != nil {
-		t.Fatalf("Cannot create a new MongoDB client: %s", err)
-	}
-
 	ctx := context.Background()
-
-	if err := client.Connect(ctx); err != nil {
-		t.Fatalf("Cannot connect to MongoDB: %s", err)
-	}
+	client, err := tu.TestClient(ctx, tu.MongoDBShard1PrimaryPort)
+	require.NoError(t, err)
 
 	database := "test"
 	// Disable the profiler and drop the db. This should also remove the system.profile collection
@@ -67,7 +57,7 @@ func TestRegularIterator(t *testing.T) {
 	assert.NoError(t, err)
 
 	// re-enable the profiler
-	res = client.Database("admin").RunCommand(ctx, primitive.D{{"profile", 2}, {"slowms", 2}})
+	res = client.Database("test").RunCommand(ctx, primitive.D{{"profile", 2}, {"slowms", 0}})
 	if res.Err() != nil {
 		t.Fatalf("Cannot enable profiler: %s", res.Err())
 	}
