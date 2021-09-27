@@ -4818,9 +4818,13 @@ sub fingerprint {
    $query =~ s/\Ause \S+\Z/use ?/i       # Abstract the DB in USE
       && return $query;
 
-   $query =~ s/\\["']//g;                # quoted strings
-   $query =~ s/".*?"/?/sg;               # quoted strings
-   $query =~ s/'.*?'/?/sg;               # quoted strings
+   $query =~ s/([^\\])(\\')/$1/sg;    
+   $query =~ s/([^\\])(\\")/$1/sg;    
+   $query =~ s/\\\\//sg;              
+   $query =~ s/\\'//sg;               
+   $query =~ s/\\"//sg;                        
+   $query =~ s/([^\\])(".*?[^\\]?")/$1?/sg;    
+   $query =~ s/([^\\])('.*?[^\\]?')/$1?/sg;    
 
    $query =~ s/\bfalse\b|\btrue\b/?/isg; # boolean values 
 
