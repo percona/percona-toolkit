@@ -64,7 +64,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.3.1';
+our $VERSION = '3.3.2';
 
 use strict;
 use warnings FATAL => 'all';
@@ -2945,9 +2945,13 @@ sub fingerprint {
    $query =~ s/\Ause \S+\Z/use ?/i       # Abstract the DB in USE
       && return $query;
 
-   $query =~ s/\\["']//g;                # quoted strings
-   $query =~ s/".*?"/?/sg;               # quoted strings
-   $query =~ s/'.*?'/?/sg;               # quoted strings
+   $query =~ s/([^\\])(\\')/$1/sg;    
+   $query =~ s/([^\\])(\\")/$1/sg;    
+   $query =~ s/\\\\//sg;              
+   $query =~ s/\\'//sg;               
+   $query =~ s/\\"//sg;                        
+   $query =~ s/([^\\])(".*?[^\\]?")/$1?/sg;    
+   $query =~ s/([^\\])('.*?[^\\]?')/$1?/sg;    
 
    $query =~ s/\bfalse\b|\btrue\b/?/isg; # boolean values 
 
@@ -13281,6 +13285,9 @@ sub main {
          DSNParser    => $dp,
          opts         => { AutoCommit => 1 },
       );
+      if ($EVAL_ERROR) {
+          die ("Cannot connect to the explain database: $EVAL_ERROR")
+      }
       $ep_dbh->{InactiveDestroy}  = 1;  # Don't die on fork().
    }
 
@@ -13303,6 +13310,10 @@ sub main {
          DSNParser    => $dp,
          opts         => { AutoCommit => 1 },
       );
+      if ($EVAL_ERROR) {
+          die ("Cannot connect to the review database: $EVAL_ERROR")
+      }
+
       $qv_dbh->{InactiveDestroy}  = 1;  # Don't die on fork().
 
       my @db_tbl = @{$review_dsn}{qw(D t)};
@@ -13347,6 +13358,9 @@ sub main {
          DSNParser    => $dp,
          opts         => { AutoCommit => 1 },
       );
+      if ($EVAL_ERROR) {
+          die ("Cannot connect to the history database: $EVAL_ERROR")
+      }
       $qh_dbh->{InactiveDestroy}  = 1;  # Don't die on fork().
 
       my @hdb_tbl = @{$history_dsn}{qw(D t)};
@@ -16749,6 +16763,11 @@ To enable debugging and capture all output to a file, run the tool like:
 Be careful: debugging output is voluminous and can generate several megabytes
 of output.
 
+=head1 ATTENTION
+
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line 
+parameters are shown in the output.
+
 =head1 SYSTEM REQUIREMENTS
 
 You need Perl, DBI, DBD::mysql, and some core packages that ought to be
@@ -16958,6 +16977,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-query-digest 3.3.1
+pt-query-digest 3.3.2
 
 =cut

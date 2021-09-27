@@ -1075,6 +1075,11 @@ Include the following information in your bug report:
 If possible, include debugging output by running the tool with C<PTDEBUG>;
 see L<"ENVIRONMENT">.
 
+=head1 ATTENTION
+
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line 
+parameters are shown in the output.
+
 =head1 DOWNLOADING
 
 Visit L<http://www.percona.com/software/percona-toolkit/> to download the
@@ -1127,7 +1132,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-ioprofile 3.3.1
+pt-ioprofile 3.3.2
 
 =cut
 

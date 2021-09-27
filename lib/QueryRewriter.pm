@@ -173,9 +173,17 @@ sub fingerprint {
    $query =~ s/\Ause \S+\Z/use ?/i       # Abstract the DB in USE
       && return $query;
 
-   $query =~ s/\\["']//g;                # quoted strings
-   $query =~ s/".*?"/?/sg;               # quoted strings
-   $query =~ s/'.*?'/?/sg;               # quoted strings
+   # -----------------------------------------------------------
+   # Remove quoted strings 
+   # -----------------------------------------------------------
+   $query =~ s/([^\\])(\\')/$1/sg;    
+   $query =~ s/([^\\])(\\")/$1/sg;    
+   $query =~ s/\\\\//sg;              
+   $query =~ s/\\'//sg;               
+   $query =~ s/\\"//sg;                        
+   $query =~ s/([^\\])(".*?[^\\]?")/$1?/sg;    
+   $query =~ s/([^\\])('.*?[^\\]?')/$1?/sg;    
+   # -----------------------------------------------------------
 
    $query =~ s/\bfalse\b|\btrue\b/?/isg; # boolean values 
 
@@ -218,8 +226,8 @@ sub fingerprint {
    $query =~ s/\blimit \?(?:, ?\?| offset \?)?/limit ?/; # LIMIT
    # The following are disabled because of speed issues.  Should we try to
    # normalize whitespace between and around operators?  My gut feeling is no.
-   # $query =~ s/ , | ,|, /,/g;    # Normalize commas
-   # $query =~ s/ = | =|= /=/g;       # Normalize equals
+   # $query =~ s/ , | ,|, /,/g;                # Normalize commas
+   # $query =~ s/ = | =|= /=/g;                # Normalize equals
    # $query =~ s# [,=+*/-] ?|[,=+*/-] #+#g;    # Normalize operators
 
    # Remove ASC keywords from ORDER BY clause so these queries fingerprint
