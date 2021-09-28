@@ -9705,7 +9705,7 @@ sub main {
       return unless $new_tbl_exists;
 
       my $sql = "DROP TABLE IF EXISTS $new_tbl->{name};";
-      if ( !$oktorun ) {
+      if ( !$oktorun && $o->get('preserve-new-table-after-interrupt') ) {
          # The tool was interrupted, so do not drop the new table
          # in case the user wants to resume.
          print "Not dropping the new table $new_tbl->{name} because "
@@ -9939,6 +9939,7 @@ sub main {
    # adding the triggers because if adding them fails, this will be
    # called which will drop whichever triggers were created.
    my $drop_triggers = $o->get('drop-triggers');
+   my $preserve_triggers_after_interrupt = $o->get('preserve-triggers-after-interrupt');
    push @cleanup_tasks, sub {
       PTDEBUG && _d('Clean up triggers');
       # --plugin hook
@@ -9950,7 +9951,7 @@ sub main {
          );
       }
 
-      if ( !$oktorun ) {
+      if ( !$oktorun && $preserve_triggers_after_interrupt ) {
          print "Not dropping triggers because the tool was interrupted.  "
              . "To drop the triggers, execute:\n"
              . join("\n", @drop_trigger_sqls) . "\n";
@@ -13102,12 +13103,29 @@ the tool leaves the original table in place.
 
 If C<--no-swap-tables> is specified, then there is no old table to drop.
 
+=item --[no]preserve-new-table-after-interrupt
+
+default: yes
+
+Keep new table after interrupting migration process. If
+C<--no-preserve-new-table-after-interrupt> is used, the tool drops new table
+if, for instance, interrupted by HUP, INT, PIPE and TERM signals. In other
+words, the tool will drop the new table after Ctrl-C. By default, it doesn't do
+so.
+
 =item --[no]drop-triggers
 
 default: yes
 
 Drop triggers on the old table.  C<--no-drop-triggers> forces
 C<--no-drop-old-table>.
+
+=item --[no]preserve-triggers-after-interrupt
+
+default: yes
+
+Similarly to C<--no-preserve-new-table-after-interrupt>, if set, the tool drops
+triggers if, for instance, it's interrupted by HUP, INT, PIPE or TERM signals.
 
 =item --dry-run
 
