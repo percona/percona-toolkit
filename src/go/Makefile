@@ -3,10 +3,17 @@ help:                 ## Display this help message.
 	@grep '^[a-zA-Z]' $(MAKEFILE_LIST) | \
 		awk -F ':.*?## ' 'NF==2 {printf "  %-26s%s\n", $$1, $$2}'
 
+DATE_FMT = +%FT%T%z
+ifdef SOURCE_DATE_EPOCH
+    BUILD_DATE ?= $(shell date -u -d "@$(SOURCE_DATE_EPOCH)" "$(DATE_FMT)" 2>/dev/null || date -u -r "$(SOURCE_DATE_EPOCH)" "$(DATE_FMT)" 2>/dev/null || date -u "$(DATE_FMT)")
+else
+    BUILD_DATE ?= $(shell date "$(DATE_FMT)")
+endif
+
 GO := go
 pkgs = $(shell find . -type d -name "pt-*" -exec basename {} \;)
 VERSION=$(shell git describe --abbrev=0 --tags)
-BUILD=$(shell date +%FT%T%z)
+BUILD=$(BUILD_DATE)
 GOVERSION=$(shell go version | cut --delimiter=" " -f3)
 COMMIT=$(shell git rev-list -1 HEAD)
 GOUTILSDIR ?= $(GOPATH)/bin
@@ -22,8 +29,8 @@ TEST_PSMDB_VERSION?=4.0
 TEST_MONGODB_FLAVOR?=percona/percona-server-mongodb
 TEST_MONGODB_ADMIN_USERNAME?=admin
 TEST_MONGODB_ADMIN_PASSWORD?=admin123456
-TEST_MONGODB_USERNAME?=test
-TEST_MONGODB_PASSWORD?=123456
+TEST_MONGODB_USERNAME?=
+TEST_MONGODB_PASSWORD?=
 
 TEST_MONGODB_STANDALONE_PORT?=27017
 
@@ -103,9 +110,7 @@ env-up: env					## Start MongoDB docker containers cluster
 	--detach \
 	--force-recreate \
 	--always-recreate-deps \
-	--renew-anon-volumes \
-	init 
-	docker/test/init-cluster-wait.sh
+	--renew-anon-volumes 
 
 env-down: env				## Clean-up MongoDB docker containers cluster
 	docker-compose down -v

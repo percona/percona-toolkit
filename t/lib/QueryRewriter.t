@@ -162,7 +162,7 @@ is(
 # This is a known deficiency, fixes seem to be expensive though.
 is(
    $qr->fingerprint("select '\\\\' from foo"),
-   "select '\\ from foo",
+   "select ? from foo",
    "Does not handle all quoted strings",
 );
 
@@ -1478,6 +1478,19 @@ is(
    "Fingerprint db.tbl<number>name (preserve number)"
 );
 
+is(
+   $qr->fingerprint(
+      "SELECT i FROM d.t WHERE i=\"3\""
+   ),
+   "select i from d.t where i=?",
+   "Fingerprint db.tbl<number>name (preserve number)"
+);
+
+is(
+   $qr->fingerprint("CALL foo(1, 2, 3)"),
+   "call foo",
+   'Fingerprints stored procedure calls specially',
+);
 # #############################################################################
 # Done.
 # #############################################################################
