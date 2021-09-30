@@ -822,7 +822,7 @@ collect() {
 
    local mysql_version="$(awk '/^version[^_]/{print substr($2,1,3)}' "$d/$p-variables")"
 
-   local mysql_error_log="$(awk '/^log_error /{print $2}' "$d/$p-variables")"
+   local mysql_error_log="$(awk '/^log_error/{print $2}' "$d/$p-variables")"
    if [ -z "$mysql_error_log" -a "$mysqld_pid" ]; then
       mysql_error_log="$(ls -l /proc/$mysqld_pid/fd | awk '/ 2 ->/{print $NF}')"
    fi
@@ -833,10 +833,10 @@ collect() {
       tail -f "$mysql_error_log" >"$d/$p-log_error" &
       tail_error_log_pid=$!
 
-      $CMD_MYSQLADMIN $EXT_ARGV
+      $CMD_MYSQLADMIN $EXT_ARGV debug
    else
       log "Could not find the MySQL error log"
-   fi
+   fi 
    if [ "${mysql_version}" '>' "5.1" ]; then
       local mutex="SHOW ENGINE INNODB MUTEX"
    else
@@ -869,12 +869,7 @@ collect() {
       local strace_pid=$!
    fi
 
-   local cnt=$(($OPT_RUN_TIME / $OPT_SLEEP_COLLECT))
-
-   $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
-   local mysqladmin_pid=$!
-
-   if [ ! "$OPT_MYSQL_ONLY" ]; then
+   if [ ! "$OPT_MYSQL_ONLY" ]; then 
       ps -eaF  >> "$d/$p-ps"  &
       top -bn${OPT_RUN_TIME} >> "$d/$p-top" &
 
@@ -887,9 +882,10 @@ collect() {
       if [ "$CMD_DMESG" ]; then
          local UPTIME=`cat /proc/uptime | awk '{ print $1 }'`
          local START_TIME=$(echo "$UPTIME 60" | awk '{print ($1 - $2)}')
-         $CMD_DMESG  | perl -ne 'm/\[\s*(\d+)\./; if ($1 > '${START_TIME}') { print }' >> "$d/$p-dmesg" &
+         $CMD_DMESG  | perl -ne 'm/\[\s*(\d+)\./; if ($1 > '${START_TIME}') { print }' >> "$d/$p-dmesg" & 
       fi
 
+      local cnt=$(($OPT_RUN_TIME / $OPT_SLEEP_COLLECT))
       if [ "$CMD_VMSTAT" ]; then
          $CMD_VMSTAT $OPT_SLEEP_COLLECT $cnt >> "$d/$p-vmstat" &
          $CMD_VMSTAT $OPT_RUN_TIME 2 >> "$d/$p-vmstat-overall" &
@@ -902,7 +898,10 @@ collect() {
          $CMD_MPSTAT -P ALL $OPT_SLEEP_COLLECT $cnt >> "$d/$p-mpstat" &
          $CMD_MPSTAT -P ALL $OPT_RUN_TIME 1 >> "$d/$p-mpstat-overall" &
       fi
-   fi
+
+      $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
+      local mysqladmin_pid=$!
+   fi 
 
    local have_lock_waits_table=""
    $CMD_MYSQL $EXT_ARGV -e "SHOW TABLES FROM INFORMATION_SCHEMA" \
@@ -917,7 +916,7 @@ collect() {
    local ps_instrumentation_enabled=$($CMD_MYSQL $EXT_ARGV -e 'SELECT ENABLED FROM performance_schema.setup_instruments WHERE NAME = "transaction";' \
                                       | sed "2q;d" | sed 'y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/')
 
-   if [ !$ps_instrumentation_enabled = "yes" ]; then
+   if [ $ps_instrumentation_enabled != "yes" ]; then
       log "Performance Schema instrumentation is disabled"
    fi
 
@@ -956,12 +955,12 @@ collect() {
          (echo $ts; df -k) >> "$d/$p-df" &
          (echo $ts; netstat -antp) >> "$d/$p-netstat"   &
          (echo $ts; netstat -s)    >> "$d/$p-netstat_s" &
-     fi
-      ($CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
+      fi
+      (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
          >> "$d/$p-processlist" &
       if [ "$have_lock_waits_table" ]; then
-         (lock_waits)   >>"$d/$p-lock-waits" &
-         (transactions) >>"$d/$p-transactions" &
+         (echo $ts; lock_waits)   >>"$d/$p-lock-waits" &
+         (echo $ts; transactions) >>"$d/$p-transactions" &
       fi
 
       if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes" ]; then
@@ -969,10 +968,10 @@ collect() {
       fi
 
       if [ "${mysql_version}" '>' "5.6" ]; then
-         (ps_prepared_statements) >> "$d/$p-prepared-statements" &
+         (echo $ts; ps_prepared_statements) >> "$d/$p-prepared-statements" &
       fi
 
-      slave_status "$d/$p-slave-status" "${mysql_version}"
+      slave_status "$d/$p-slave-status" "${mysql_version}" 
 
       curr_time=$(date +'%s')
    done
@@ -1077,7 +1076,7 @@ lock_waits() {
    LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
    ORDER BY wait_time DESC\G"
    $CMD_MYSQL $EXT_ARGV -e "$sql2"
-}
+} 
 
 transactions() {
    $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_TRX ORDER BY trx_id\G"
@@ -1126,8 +1125,8 @@ rocksdb_status() {
 }
 
 ps_locks_transactions() {
-   local outfile=$1
-
+   local outfile=$1 
+   
    $CMD_MYSQL $EXT_ARGV -e 'select @@performance_schema' | grep "1" &>/dev/null
 
    if [ $? -eq 0 ]; then
@@ -1163,27 +1162,28 @@ slave_status() {
    local outfile=$1
    local mysql_version=$2
 
-   local sql="SHOW SLAVE STATUS\G"
-   echo -e "\n$sql\n" >> $outfile
-   $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
-   if [ "${mysql_version}" '>' "5.6" ]; then
+   if [ "${mysql_version}" '<' "5.7" ]; then
+      local sql="SHOW SLAVE STATUS\G"  
+      echo -e "\n$sql\n" >> $outfile
+      $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+   else
       local sql="SELECT * FROM performance_schema.replication_connection_configuration JOIN performance_schema.replication_applier_configuration USING(channel_name)\G"
       echo -e "\n$sql\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
 
-      sql="SELECT * FROM performance_schema.replication_connection_status\G"
+      sql="SELECT * FROM replication_connection_status\G"
       echo -e "\n$sql\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
 
-      sql="SELECT * FROM performance_schema.replication_applier_status JOIN performance_schema.replication_applier_status_by_coordinator USING(channel_name)\G"
+      sql="SELECT * FROM replication_applier_status JOIN replication_applier_status_by_coordinator USING(channel_name)\G"
       echo -e "\n$sql\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
    fi
+
 }
 
-
 collect_mysql_variables() {
-   local outfile=$1
+   local outfile=$1 
 
    local sql="SHOW GLOBAL VARIABLES"
    echo -e "\n$sql\n" >> $outfile
@@ -1192,11 +1192,11 @@ collect_mysql_variables() {
    sql="select * from performance_schema.variables_by_thread order by thread_id, variable_name;"
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
-
+   
    sql="select * from performance_schema.user_variables_by_thread order by thread_id, variable_name;"
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
-
+   
    sql="select * from performance_schema.status_by_thread order by thread_id, variable_name; "
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
