@@ -52,7 +52,8 @@ collect() {
    local mysqld_pid=""
    # Get pidof mysqld.
    if [ ! "$OPT_MYSQL_ONLY" ]; then
-      mysqld_pid=$(_pidof mysqld | awk '{print $1; exit;}')
+      port=$(mysql -ss -e 'SELECT @@port')
+      mysqld_pid=$(lsof -i ":${port}" | grep -i listen | cut -f 3 -d" ")
    fi
 
    # Get memory allocation info before anything else.
