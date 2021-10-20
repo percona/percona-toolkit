@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kr/pretty"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/log"
@@ -484,7 +483,6 @@ func MyState(ctx context.Context, client *mongo.Client) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	pretty.Println(ms.Data)
 
 	return ms.Data.ReplicasetGetStatus.MyState, nil
 }
