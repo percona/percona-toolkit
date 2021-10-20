@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kr/pretty"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/log"
@@ -480,12 +481,14 @@ func MyState(ctx context.Context, client *mongo.Client) (int, error) {
 	var ms proto.MyState
 
 	err := client.Database("admin").RunCommand(ctx, bson.M{"getDiagnosticData": 1}).Decode(&ms)
+	fmt.Printf("err1: %v\n", err)
 	if _, ok := err.(topology.ServerSelectionError); ok {
 		return 0, err
 	}
 	if err != nil {
 		return 0, err
 	}
+	pretty.Println(ms.Data)
 
 	return ms.Data.ReplicasetGetStatus.MyState, nil
 }
