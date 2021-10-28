@@ -3,13 +3,13 @@ package util
 import (
 	"context"
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/pkg/errors"
-	"github.com/prometheus/common/log"
 	"github.com/shirou/gopsutil/process"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -390,7 +390,7 @@ func GetClientForHost(co *options.ClientOptions, newHost string) (*mongo.Client,
 func GetHostInfo(ctx context.Context, client *mongo.Client) (*proto.GetHostInfo, error) {
 	hi := proto.HostInfo{}
 	if err := client.Database("admin").RunCommand(ctx, primitive.M{"hostInfo": 1}).Decode(&hi); err != nil {
-		log.Debugf("run('hostInfo') error: %s", err)
+		log.Printf("run('hostInfo') error: %s", err)
 		return nil, errors.Wrap(err, "GetHostInfo.hostInfo")
 	}
 
