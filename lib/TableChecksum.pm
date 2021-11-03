@@ -308,6 +308,9 @@ sub make_row_checksum {
          elsif ( $args{trim} && $type =~ m/varchar/ ) {
             $result = "TRIM($result)";
          }
+         elsif ( $type =~ m/binary|text|blob/ ) {
+            $result = "CRC32($result)";
+         }
          $result;
       }
       grep {
@@ -333,6 +336,10 @@ sub make_row_checksum {
                      }
                      elsif ( $col =~ m/TRIM/ ) {
                         my ($real_col) = m/TRIM\(([^\)]+)\)/;
+                        $col .= " AS $real_col";
+                     }
+                     elsif ( $col =~ m/CRC32/ ) {
+                        my ($real_col) = m/CRC32\(([^\)]+)\)/;
                         $col .= " AS $real_col";
                      }
                      $col;
