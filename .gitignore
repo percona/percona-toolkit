@@ -26,3 +26,5 @@ config/rpm/percona-toolkit.spec.bak
 config/sphinx-build/percona-theme/*
 coverage.out
 .idea
+src/go/bin
+bin/pt-k8s-debug-collector

@@ -101,6 +101,12 @@ define TEST_ENV
 	TEST_MONGODB_FLAVOR=$(TEST_MONGODB_FLAVOR)
 endef
 
+init:                       ## Install linters.
+	go build -modfile=tools/go.mod -o bin/gofumports mvdan.cc/gofumpt/gofumports
+	go build -modfile=tools/go.mod -o bin/gofumpt mvdan.cc/gofumpt
+	go build -modfile=tools/go.mod -o bin/golangci-lint github.com/golangci/golangci-lint/cmd/golangci-lint
+	go build -modfile=tools/go.mod -o bin/reviewdog github.com/reviewdog/reviewdog/cmd/reviewdog
+
 env:
 	@echo $(TEST_ENV) | tr ' ' '\n' >.env
 
@@ -136,15 +142,16 @@ darwin-amd64:				## Build Mongo tools for darwin-amd64 (MacOS)
 
 style:						## Check code style
 	@echo ">> checking code style"
-	@! gofmt -d $(shell find . -path ./vendor -prune -o -name '*.go' -print) | grep '^'
+	@! bin/gofumpt -d $(shell find . -path ./vendor -prune -o -name '*.go' -print) | grep '^'
 
 test:						## Run tests
 	@echo ">> running tests"
 	@./runtests.sh
 
 format:                         ## Format source code.
-	gofumpt -w -s $(FILES)
-	gofumports -local github.com/percona/pmm-managed -l -w $(FILES)
+	go mod tidy
+	bin/gofumpt -w -s $(FILES)
+	bin/gofumports -local github.com/percona/pmm-managed -l -w $(FILES)
 
 vet:						## Run vet on Go code
 	@echo ">> vetting code"
