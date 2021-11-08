@@ -480,9 +480,6 @@ func MyState(ctx context.Context, client *mongo.Client) (int, error) {
 	var ms proto.MyState
 
 	err := client.Database("admin").RunCommand(ctx, bson.M{"getDiagnosticData": 1}).Decode(&ms)
-	if _, ok := err.(topology.ServerSelectionError); ok {
-		return 0, nil
-	}
 	if err != nil {
 		return 0, err
 	}
