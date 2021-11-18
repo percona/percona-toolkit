@@ -9386,6 +9386,7 @@ use Percona::Toolkit;
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use sigtrap 'handler', \&sig_int, 'normal-signals';
+binmode(STDOUT, "encoding(UTF-8)");
 
 # Global variables.  Only really essential variables should be here.
 my $oktorun     = 1;
