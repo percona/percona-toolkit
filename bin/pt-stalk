@@ -1351,13 +1351,17 @@ sleep_ok() {
 }
 
 purge_samples() {
-   local dir="$1"
+   local dir=`realpath -s "$1"`
    local retention_time="$2"
    local retention_count="$3"
    local retention_size="$4"
 
    # Delete collect files which more than --retention-time days old.
-   find "$dir" -type f -mtime +$retention_time -exec rm -f '{}' \;
+   if [ -n "$OPT_PREFIX" ]; then
+      find "$dir" -maxdepth 1 -type f -mtime +$retention_time -name "$OPT_PREFIX-*" -exec rm -f '{}' \;
+   else
+      find "$dir" -maxdepth 1 -type f -mtime +$retention_time -regextype posix-egrep -regex "$dir/[0-9]{4}(_[0-9]{2}){5}-.*" -exec rm -f '{}' \;
+   fi
 
    local oprofile_dir="/var/lib/oprofile/samples"
    if [ -d "$oprofile_dir" ]; then
@@ -1370,21 +1374,21 @@ purge_samples() {
    targetCnt=$(($retention_count + 0))
    if [ $targetCnt -gt 0 ]; then
       targetCnt=$(($retention_count + 1))
-      files_to_delete=$(find $dir -type f -exec basename {} \; | cut -f1 -d- | sort -r | uniq | tail -n +${targetCnt})
+      files_to_delete=$(find "$dir" -maxdepth 1 -type f -exec basename {} \; | cut -f1 -d- | sort -r | uniq | tail -n +${targetCnt})
       for prefix in $files_to_delete; do
-          echo "deleting files ${dir}${prefix}* according to the --retention-count param"
-          rm -f ${dir}${prefix}* 2>/dev/null
+          echo "deleting files ${dir}/${prefix}* according to the --retention-count param"
+          rm -f ${dir}/${prefix}* 2>/dev/null
       done
    fi
 
    targetSize=$(($retention_size + 0))
    if [ $targetSize -gt 0 ]; then
-      files_to_delete=$(find $dir -type f -exec basename {} \; | cut -f1 -d- | sort -r | uniq | tail -n +1)
+      files_to_delete=$(find "$dir" -maxdepth 1 -type f -exec basename {} \; | cut -f1 -d- | sort -r | uniq | tail -n +1)
       for prefix in $files_to_delete; do
           current_size=$(du -BM $dir | cut -f1 -d"M")
           if [ $current_size -gt $targetSize ]; then
-             echo "deleting files ${dir}${prefix}* according to the --retention-size param"
-             rm -f ${dir}${prefix}* 2>/dev/null
+             echo "deleting files ${dir}/${prefix}* according to the --retention-size param"
+             rm -f ${dir}/${prefix}* 2>/dev/null
           else
              break
           fi
