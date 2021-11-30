@@ -32,7 +32,7 @@ are installed in /usr/local/bin.  See the INSTALL file for more information.
 
 Run `man percona-toolkit` to see a list of installed tools, then `man tool`
 to read the embedded documentation for a specific tool.  You can also read
-the documentation online at [http://www.percona.com/software/percona-toolkit/](http://www.percona.com/software/percona-toolkit/).
+the [documentation online.](https://www.percona.com/doc/percona-toolkit/LATEST/index.html).
 
 ## Version 3
 
