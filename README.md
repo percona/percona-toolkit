@@ -1,7 +1,7 @@
 # Percona Toolkit
 [![CLA assistant](https://cla-assistant.percona.com/readme/badge/percona/percona-toolkit)](https://cla-assistant.percona.com/percona/percona-toolkit)
 
-*Percona Toolkit* is a collection of advanced command-line tools used by
+[*Percona Toolkit*](https://www.percona.com/software/database-tools/percona-toolkit) is a collection of advanced command-line tools used by
 [Percona](http://www.percona.com/) support staff to perform a variety of
 MySQL and system tasks that are too difficult or complex to perform manually.
 
