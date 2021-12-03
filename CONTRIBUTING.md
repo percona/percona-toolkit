@@ -1,1 +1,0 @@
-To get started, <a href="https://goo.gl/forms/pfjaTq2akPDLqtaJ2">sign the Individual Contributor License Agreement</a> or <a href="https://goo.gl/forms/ZuXlckMyblaLwQr52">sign the Corporate Contributor License Agreement</a>

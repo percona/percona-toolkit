@@ -1,11 +1,11 @@
 # Contributing guide
 ## How Can I Contribute?
 ## Reporting Bugs
-Before creating bug reports, please check this list as you might find out that you don't need to create one. When you create a bug report, please include as many details as possible. You can use this template to structure the information.  
+Before creating a bug report, please check the list below as you might find out that you don't need to create one. When you create a bug report, please include as many details as possible. You can use this template to structure the information.  
 
 ### Before Submitting A Bug Report
 - Ensure you have carefully read the documentation. Percona Toolkit is a mature project with many settings that covers a wide range options.
-- Search for existing bugs in Launchpad to see if the problem has already been reported. If it has, add a comment to the existing issue instead of opening a new one.
+- Search for [existing bugs on Jira](https://jira.percona.com/projects/PT/issues/) to see if the problem has already been reported. If it has, add a comment to the existing issue instead of opening a new one.
 
 ### How Do I Submit A (Good) Bug Report?
 - Explain the problem and include additional details to help others reproduce the problem:
@@ -13,7 +13,7 @@ Before creating bug reports, please check this list as you might find out that y
 - Describe the exact steps which reproduce the problem, including as many details as possible. Provide examples of the command you used and include context information like language, OS and database versions.
 Describe the obtained results and the expected results and, if it is possible, provide examples.
 
-## Submiting fixes
+## Submitting fixes
 ### Create an Issue
 If you find a bug, the first step is to create an issue. Whatever the problem is, you’re likely not the only one experiencing it. Others will find your issue helpful, and other developers might help you find the cause and discuss the best solution for it.
 
@@ -24,11 +24,16 @@ If you find a bug, the first step is to create an issue. Whatever the problem is
 - Paste the error output or logs in your issue or in a Gist.
 
 ### Pull Requests
+To get started, please sign the [Individual Contributor License
+Agreement](https://goo.gl/forms/pfjaTq2akPDLqtaJ2) or the [Corporate Contributor
+License Agreement](https://goo.gl/forms/ZuXlckMyblaLwQr52) if you're making a
+contribution on behalf of your company.
+
 If you fixed a bug or added a new feature – awesome! Open a pull request with the code! Be sure you’ve read any documents on contributing, understand the license and have signed a Contributor Licence Agreement (CLA) if required. Once you’ve submitted a pull request, the maintainers can compare your branch to the existing one and decide whether or not to incorporate (merge) your changes.
 
 ### Tips for creating a pull request
 - Fork the repository and clone it locally. Connect your local to the original ‘upstream’ repository by adding it as a remote. Pull in changes from ‘upstream’ often so that you stay up to date so that when you submit your pull request, merge conflicts will be less likely.
-- Create a branch for your code. Usually it is a good practice to name the branch after the issue ID, like issue-12345.
+- Create a branch for your code. Usually it is a good practice to name the branch after the issue ID, like `PT-12345`.
 - Be clear about the problem you fixed or the feature you added. Include explanations and code references to help the maintainers understand what you did.
 - Add useful comments to the code to help others understand it.
 - Write tests. This is an important step. Run your changes against existing tests and create new ones when needed. Whether tests exist or not, make sure your changes don’t break the existing project.
@@ -41,7 +46,7 @@ If you fixed a bug or added a new feature – awesome! Open a pull request with 
 Once you’ve opened a pull request, a discussion will start around your proposed changes. Other contributors and users may chime in, but ultimately the decision is made by the maintainers. You may be asked to make some changes to your pull request, if so, add more commits to your branch and push them – they’ll automatically go into the existing pull request.
 
 # Licensing
-Along with the pull request, include a message indicating that the submited code is your own creation and it can be distributed under the BSD licence. 
+Along with the pull request, include a message indicating that the submitted code is your own creation and it can be distributed under the BSD licence. 
   
   
 # Setting up the development environment
@@ -53,7 +58,7 @@ mkdir ${HOME}/perldev
 git clone https://github.com/<your-username>/percona-toolkit.git ${HOME}/perldev/percona-toolkit
 ```
 
-For testing, we are going to need to have MySQL with slaves. For that, we already have scripts in the sandbox directory but first we need to download MySQL binaries. Please download the Linux Generic tar file for your distrubution from [https://www.percona.com/downloads/Percona-Server-5.6/](https://www.percona.com/downloads/Percona-Server-5.6/).    
+For testing, we are going to need to have MySQL with replicas. For that, we already have scripts in the sandbox directory but first we need to download MySQL binaries. Please download the Linux Generic tar file for your distribution from [Percona Server for MySQL download page](https://www.percona.com/downloads/Percona-Server-LATEST/).   
 
 ### Set up MySQL sandbox
 In this example, we are going to download Percona Server 5.6.32. Since I am using Ubuntu, according to the documentation [here](https://www.percona.com/doc/percona-server/5.6/installation.html#installing-percona-server-from-a-binary-tarball), I am going to need this tar file: [Percona-Server-5.6.32-rel78.1-Linux.x86_64.ssl100.tar.gz](https://www.percona.com/downloads/Percona-Server-5.6/Percona-Server-5.6.32-78.1/binary/tarball/Percona-Server-5.6.32-rel78.1-Linux.x86_64.ssl100.tar.gz).  
