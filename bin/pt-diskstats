@@ -2243,8 +2243,10 @@ sub parse_diskstats_line {
    # linux kernel source => Documentation/iostats.txt
    # 2.6+   => 14 fields
    # 4.18+  => 18 fields
+   # 5.x+   => 20 fields (PT-1887)
+   my @num_fields = (14, 18, 20);
    my @dev_stats = split ' ', $line;
-   return unless @dev_stats == 14 or @dev_stats == 18;
+   return unless grep {$_ == scalar(@dev_stats)} @num_fields;
 
    my $read_bytes    = $dev_stats[READ_SECTORS]    * $block_size;
    my $written_bytes = $dev_stats[WRITTEN_SECTORS] * $block_size;
