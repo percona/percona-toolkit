@@ -12,7 +12,6 @@ Collects debug data (logs, resource statuses etc.) from a k8s/OpenShift cluster.
 "replicationcontrollers",
 "events",
 "configmaps",
-"secrets",
 "cronjobs",
 "jobs",
 "podsecuritypolicies",
