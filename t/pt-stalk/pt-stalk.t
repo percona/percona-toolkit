@@ -422,7 +422,140 @@ like(
    qr/matched=yes/,
    "Accepts floating point values as treshold variable"
 );
+
+# ###########################################################################
+# Variable declaration for the retention tests
+# ###########################################################################
+
+my $odate;
+
+# ###########################################################################
+# Test if retention does not remove files that were not collected
+# ###########################################################################
+
+cleanup();
+
+system("mkdir $dest");
+$odate=`date --rfc-3339=date --date='-3 month'`;
+system("touch -d '$odate' $dest/nostalk");
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --prefix nostalk --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls -l $dest`;
+
+like(
+   $output,
+   qr/nostalk/m,
+   "Retention test 1: Not-matched file not touched"
+);
           
+# ###########################################################################
+# Test if files that match the prefix-, are removed by the retention option
+# ###########################################################################
+
+cleanup();
+
+system("mkdir $dest");
+$odate=`date --rfc-3339=date --date='-3 month'`;
+system("touch -d '$odate' $dest/nostalk-");
+system("touch -d '$odate' $dest/nostalk-innodbstatus1");
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --prefix nostalk --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls -l $dest`;
+
+unlike(
+   $output,
+   qr/^nostalk-$/m,
+   "Retention test 2: tests, matched prefix-, are removed"
+);
+
+unlike(
+   $output,
+   qr/^nostalk-innodbstatus1$/m,
+   "Retention test 2: tests, matched prefix-innodbstatus1, are removed"
+);
+
+# ###########################################################################
+# Test if retention removes old files that match auto-generated pattern
+# ###########################################################################
+
+cleanup();
+
+system("mkdir $dest");
+$odate=`date --rfc-3339=date --date='-3 month'`;
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls -l $dest | wc -l`;
+
+system("touch -d '$odate' $dest/*");
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls -l $dest | wc -l` - $output;
+
+is(
+   $output,
+   0,
+   "Retention test 3: tests, matched auto-generated patern, are removed"
+);
+
+# ###########################################################################
+# Test if retention by size works as expected
+# ###########################################################################
+
+cleanup();
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --sleep 2 --dest $dest --pid $pid_file --iterations 5 -- --defaults-file=$cnf >$log_file 2>&1");
+
+$output = `du -s $dest | cut -f 1`;
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --retention-size 1 --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = $output / `du -s $dest | cut -f 1`;
+
+ok(
+   $output >= 5,
+   "Retention test 4: retention by size works as expected"
+);
+
+# ###########################################################################
+# Test if retention by count works as expected
+# ###########################################################################
+
+cleanup();
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --sleep 2 --dest $dest --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `du -s $dest | wc -l`;
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --retention-count 1 --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = $output - `du -s $dest | wc -l`;
+
+is(
+   $output,
+   0,
+   "Retention test 5: retention by count works as expected"
+);
+
 # ###########################################################################
 # Test report about performance schema transactions in MySQL 5.7+
 # ###########################################################################
@@ -574,6 +707,7 @@ SKIP: {
       "MySQL 5.7 prepared statement: abs_statement"
    );
 }
+
 
 # #############################################################################
 # Done.

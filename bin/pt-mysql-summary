@@ -2280,12 +2280,14 @@ report_jemalloc_enabled() {
   done
 
   if [ $GENERAL_JEMALLOC_STATUS -eq 1 ]; then
-     JEMALLOC_LOCATION=$(find /usr/lib64/ /usr/lib/x86_64-linux-gnu /usr/lib -name "libjemalloc.*" 2>/dev/null | head -n 1)
-     if [ -z "$JEMALLOC_LOCATION" ]; then
-       echo "Jemalloc library not found"
-     else
-       echo "Using jemalloc from $JEMALLOC_LOCATION"
-     fi
+     for pid in $(pidof mysqld); do
+         JEMALLOC_LOCATION=$(strings /proc/${pid}/environ | grep jemalloc)
+         if [ -z "$JEMALLOC_LOCATION" ]; then
+           echo "Jemalloc library for process ${pid} not found"
+         else
+           echo "Process with PID ${pid} is using jemalloc from $JEMALLOC_LOCATION"
+         fi
+     done
   fi
 
 }

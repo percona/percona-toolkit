@@ -43,7 +43,7 @@ else {
 
 my $output;
 my $cnf = '/tmp/12345/my.sandbox.cnf';
-my @args = ('-F', $cnf, 'h=127.1,P=12345', 'P=2900', qw(-d bidi --bidirectional));
+my @args = ('-F', $cnf, 'h=127.1,P=12345', 'P=2900', qw(-d bidi --bidirectional --no-version-check));
 
 $sb->wipe_clean($c1_dbh);
 $sb->wipe_clean($r1_dbh);

@@ -295,6 +295,7 @@ fi
 case $opt in
     start)
         cd $PERCONA_TOOLKIT_BRANCH/sandbox
+        echo "${2:-"master"}" 12345
         ./start-sandbox "${2:-"master"}" 12345
         exit_status=$((exit_status | $?))
         set_mysql_version

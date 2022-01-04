@@ -6,7 +6,7 @@ require (
 	github.com/Masterminds/semver v1.4.2
 	github.com/alecthomas/kingpin v2.2.6+incompatible
 	github.com/go-ini/ini v1.46.0
-	github.com/golang/mock v1.3.1-0.20190508161146-9fa652df1129
+	github.com/golang/mock v1.4.4
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-version v1.2.1-0.20190424083514-192140e6f3e6
 	github.com/howeyc/gopass v0.0.0-20170109162249-bf9dde6d0d2c
@@ -16,7 +16,6 @@ require (
 	github.com/pborman/getopt v0.0.0-20190409184431-ee0cd42419d3
 	github.com/percona/go-mysql v0.0.0-20190903141930-197f4ad8db8d
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/common v0.13.0
 	github.com/shirou/gopsutil v2.20.8+incompatible
 	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.6.1
