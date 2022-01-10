@@ -121,15 +121,16 @@ kill_all_subshells() {
 
 set -u
 
-ARGV=""           # Non-option args (probably input files)
-EXT_ARGV=""       # Everything after -- (args for an external command)
-HAVE_EXT_ARGV=""  # Got --, everything else is put into EXT_ARGV
-OPT_ERRS=0        # How many command line option errors
-OPT_VERSION=""    # If --version was specified
-OPT_HELP=""       # If --help was specified
-OPT_ASK_PASS=""   # If --ask-pass was specified
-OPT_MYSQL_ONLY="" # If --mysql-only was specified
-PO_DIR=""         # Directory with program option spec files
+ARGV=""            # Non-option args (probably input files)
+EXT_ARGV=""        # Everything after -- (args for an external command)
+HAVE_EXT_ARGV=""   # Got --, everything else is put into EXT_ARGV
+OPT_ERRS=0         # How many command line option errors
+OPT_VERSION=""     # If --version was specified
+OPT_HELP=""        # If --help was specified
+OPT_ASK_PASS=""    # If --ask-pass was specified
+OPT_MYSQL_ONLY=""  # If --mysql-only was specified
+OPT_SYSTEM_ONLY="" # If --system-only was specified
+PO_DIR=""          # Directory with program option spec files
 
 usage() {
    local file="$1"
@@ -796,84 +797,88 @@ collect() {
    local d="$1"  # directory to save results in
    local p="$2"  # prefix for each result file
 
-   local mysqld_pid=""
-   if [ ! "$OPT_MYSQL_ONLY" ]; then
-      mysqld_pid=$(_pidof mysqld | awk '{print $1; exit;}')
-   fi
+   if [ ! "$OPT_SYSTEM_ONLY" ]; then
+      local mysqld_pid=""
+      if [ ! "$OPT_MYSQL_ONLY" ]; then
+         mysqld_pid=$(_pidof mysqld | awk '{print $1; exit;}')
+      fi
 
-   if [ "$CMD_PMAP" -a "$mysqld_pid" ]; then
-      if $CMD_PMAP --help 2>&1 | grep -- -x >/dev/null 2>&1 ; then
-         $CMD_PMAP -x $mysqld_pid > "$d/$p-pmap"
+      if [ "$CMD_PMAP" -a "$mysqld_pid" ]; then
+         if $CMD_PMAP --help 2>&1 | grep -- -x >/dev/null 2>&1 ; then
+            $CMD_PMAP -x $mysqld_pid > "$d/$p-pmap"
+         else
+            $CMD_PMAP $mysqld_pid > "$d/$p-pmap"
+         fi
+      fi
+
+      if [ "$CMD_GDB" -a "$OPT_COLLECT_GDB" -a "$mysqld_pid" ]; then
+         $CMD_GDB                     \
+            -ex "set pagination 0"    \
+            -ex "thread apply all bt" \
+            --batch -p $mysqld_pid    \
+            >> "$d/$p-stacktrace"
+      fi
+
+      collect_mysql_variables "$d/$p-variables" &
+      sleep .5
+
+      local mysql_version="$(awk '/^version[^_]/{print substr($2,1,3)}' "$d/$p-variables")"
+
+      local mysql_error_log="$(awk '/^log_error/{print $2}' "$d/$p-variables")"
+      if [ -z "$mysql_error_log" -a "$mysqld_pid" ]; then
+         mysql_error_log="$(ls -l /proc/$mysqld_pid/fd | awk '/ 2 ->/{print $NF}')"
+      fi
+
+      local tail_error_log_pid=""
+      if [ "$mysql_error_log" -a ! "$OPT_MYSQL_ONLY" ]; then
+         log "The MySQL error log seems to be $mysql_error_log"
+         tail -f "$mysql_error_log" >"$d/$p-log_error" &
+         tail_error_log_pid=$!
+
+         $CMD_MYSQLADMIN $EXT_ARGV debug
       else
-         $CMD_PMAP $mysqld_pid > "$d/$p-pmap"
+         log "Could not find the MySQL error log"
+      fi 
+      if [ "${mysql_version}" '>' "5.1" ]; then
+         local mutex="SHOW ENGINE INNODB MUTEX"
+      else
+         local mutex="SHOW MUTEX STATUS"
       fi
-   fi
+      innodb_status 1
+      tokudb_status 1
+      rocksdb_status 1
 
-   if [ "$CMD_GDB" -a "$OPT_COLLECT_GDB" -a "$mysqld_pid" ]; then
-      $CMD_GDB                     \
-         -ex "set pagination 0"    \
-         -ex "thread apply all bt" \
-         --batch -p $mysqld_pid    \
-         >> "$d/$p-stacktrace"
-   fi
+      $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status1" &
+      open_tables                      >> "$d/$p-opentables1"   &
 
-   collect_mysql_variables "$d/$p-variables" &
-   sleep .5
-
-   local mysql_version="$(awk '/^version[^_]/{print substr($2,1,3)}' "$d/$p-variables")"
-
-   local mysql_error_log="$(awk '/^log_error/{print $2}' "$d/$p-variables")"
-   if [ -z "$mysql_error_log" -a "$mysqld_pid" ]; then
-      mysql_error_log="$(ls -l /proc/$mysqld_pid/fd | awk '/ 2 ->/{print $NF}')"
-   fi
-
-   local tail_error_log_pid=""
-   if [ "$mysql_error_log" -a ! "$OPT_MYSQL_ONLY" ]; then
-      log "The MySQL error log seems to be $mysql_error_log"
-      tail -f "$mysql_error_log" >"$d/$p-log_error" &
-      tail_error_log_pid=$!
-
-      $CMD_MYSQLADMIN $EXT_ARGV debug
-   else
-      log "Could not find the MySQL error log"
-   fi 
-   if [ "${mysql_version}" '>' "5.1" ]; then
-      local mutex="SHOW ENGINE INNODB MUTEX"
-   else
-      local mutex="SHOW MUTEX STATUS"
-   fi
-   innodb_status 1
-   tokudb_status 1
-   rocksdb_status 1
-
-   $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status1" &
-   open_tables                      >> "$d/$p-opentables1"   &
-
-   local tcpdump_pid=""
-   if [ "$CMD_TCPDUMP" -a  "$OPT_COLLECT_TCPDUMP" ]; then
-      local port=$(awk '/^port/{print $2}' "$d/$p-variables")
-      if [ "$port" ]; then
-         $CMD_TCPDUMP -i any -s 4096 -w "$d/$p-tcpdump" port ${port} &
-         tcpdump_pid=$!
+      local tcpdump_pid=""
+      if [ "$CMD_TCPDUMP" -a  "$OPT_COLLECT_TCPDUMP" ]; then
+         local port=$(awk '/^port/{print $2}' "$d/$p-variables")
+         if [ "$port" ]; then
+            $CMD_TCPDUMP -i any -s 4096 -w "$d/$p-tcpdump" port ${port} &
+            tcpdump_pid=$!
+         fi
       fi
-   fi
 
-   local have_oprofile=""
-   if [ "$CMD_OPCONTROL" -a "$OPT_COLLECT_OPROFILE" ]; then
-      if $CMD_OPCONTROL --init; then
-         $CMD_OPCONTROL --start --no-vmlinux
-         have_oprofile="yes"
+      local have_oprofile=""
+      if [ "$CMD_OPCONTROL" -a "$OPT_COLLECT_OPROFILE" ]; then
+         if $CMD_OPCONTROL --init; then
+            $CMD_OPCONTROL --start --no-vmlinux
+            have_oprofile="yes"
+         fi
+      elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" -a "$mysqld_pid" ]; then
+         $CMD_STRACE -T -s 0 -f -p $mysqld_pid -o "$d/$p-strace" &
+         local strace_pid=$!
       fi
-   elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" -a "$mysqld_pid" ]; then
-      $CMD_STRACE -T -s 0 -f -p $mysqld_pid -o "$d/$p-strace" &
-      local strace_pid=$!
    fi
 
    if [ ! "$OPT_MYSQL_ONLY" ]; then 
       ps -eaF  >> "$d/$p-ps"  &
       top -bn${OPT_RUN_TIME} >> "$d/$p-top" &
 
-      [ "$mysqld_pid" ] && _lsof $mysqld_pid >> "$d/$p-lsof" &
+      if [ ! "$OPT_SYSTEM_ONLY" ]; then
+         [ "$mysqld_pid" ] && _lsof $mysqld_pid >> "$d/$p-lsof" &
+      fi
 
       if [ "$CMD_SYSCTL" ]; then
          $CMD_SYSCTL -a >> "$d/$p-sysctl" &
@@ -899,25 +904,31 @@ collect() {
          $CMD_MPSTAT -P ALL $OPT_RUN_TIME 1 >> "$d/$p-mpstat-overall" &
       fi
 
-      $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
-      local mysqladmin_pid=$!
+      if [ ! "$OPT_SYSTEM_ONLY" ]; then
+         $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
+         local mysqladmin_pid=$!
+      fi
    fi 
 
-   local have_lock_waits_table=""
-   $CMD_MYSQL $EXT_ARGV -e "SHOW TABLES FROM INFORMATION_SCHEMA" \
-      | grep -i "INNODB_LOCK_WAITS" >/dev/null 2>&1
-   if [ $? -eq 0 ]; then
-      have_lock_waits_table="yes"
+   if [ ! "$OPT_SYSTEM_ONLY" ]; then
+      local have_lock_waits_table=""
+      $CMD_MYSQL $EXT_ARGV -e "SHOW TABLES FROM INFORMATION_SCHEMA" \
+         | grep -i "INNODB_LOCK_WAITS" >/dev/null 2>&1
+      if [ $? -eq 0 ]; then
+         have_lock_waits_table="yes"
+      fi
    fi
 
    log "Loop start: $(date +'TS %s.%N %F %T')"
    local start_time=$(date +'%s')
    local curr_time=$start_time
-   local ps_instrumentation_enabled=$($CMD_MYSQL $EXT_ARGV -e 'SELECT ENABLED FROM performance_schema.setup_instruments WHERE NAME = "transaction";' \
-                                      | sed "2q;d" | sed 'y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/')
+   if [ ! "$OPT_SYSTEM_ONLY" ]; then
+      local ps_instrumentation_enabled=$($CMD_MYSQL $EXT_ARGV -e 'SELECT ENABLED FROM performance_schema.setup_instruments WHERE NAME = "transaction";' \
+                                         | sed "2q;d" | sed 'y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/')
 
-   if [ $ps_instrumentation_enabled != "yes" ]; then
-      log "Performance Schema instrumentation is disabled"
+      if [ $ps_instrumentation_enabled != "yes" ]; then
+         log "Performance Schema instrumentation is disabled"
+      fi
    fi
 
    while [ $((curr_time - start_time)) -lt $OPT_RUN_TIME ]; do
@@ -956,75 +967,79 @@ collect() {
          (echo $ts; netstat -antp) >> "$d/$p-netstat"   &
          (echo $ts; netstat -s)    >> "$d/$p-netstat_s" &
       fi
-      (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
-         >> "$d/$p-processlist" &
-      if [ "$have_lock_waits_table" ]; then
-         (echo $ts; lock_waits)   >>"$d/$p-lock-waits" &
-         (echo $ts; transactions) >>"$d/$p-transactions" &
-      fi
+      if [ ! "$OPT_SYSTEM_ONLY" ]; then
+         (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
+            >> "$d/$p-processlist" &
+         if [ "$have_lock_waits_table" ]; then
+            (echo $ts; lock_waits)   >>"$d/$p-lock-waits" &
+            (echo $ts; transactions) >>"$d/$p-transactions" &
+         fi
 
-      if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes" ]; then
-         ps_locks_transactions "$d/$p-ps-locks-transactions"
-      fi
+         if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes" ]; then
+            ps_locks_transactions "$d/$p-ps-locks-transactions"
+         fi
 
-      if [ "${mysql_version}" '>' "5.6" ]; then
-         (echo $ts; ps_prepared_statements) >> "$d/$p-prepared-statements" &
-      fi
+         if [ "${mysql_version}" '>' "5.6" ]; then
+            (echo $ts; ps_prepared_statements) >> "$d/$p-prepared-statements" &
+         fi
 
-      slave_status "$d/$p-slave-status" "${mysql_version}" 
+         slave_status "$d/$p-slave-status" "${mysql_version}" 
+      fi
 
       curr_time=$(date +'%s')
    done
    log "Loop end: $(date +'TS %s.%N %F %T')"
 
-   if [ "$have_oprofile" ]; then
-      $CMD_OPCONTROL --stop
-      $CMD_OPCONTROL --dump
+   if [ ! "$OPT_SYSTEM_ONLY" ]; then
+      if [ "$have_oprofile" ]; then
+         $CMD_OPCONTROL --stop
+         $CMD_OPCONTROL --dump
 
-      local oprofiled_pid=$(_pidof oprofiled | awk '{print $1; exit;}')
-      if [ "$oprofiled_pid" ]; then
-         kill $oprofiled_pid
-      else
-         warn "Cannot kill oprofiled because its PID cannot be determined"
+         local oprofiled_pid=$(_pidof oprofiled | awk '{print $1; exit;}')
+         if [ "$oprofiled_pid" ]; then
+            kill $oprofiled_pid
+         else
+            warn "Cannot kill oprofiled because its PID cannot be determined"
+         fi
+
+         $CMD_OPCONTROL --save=pt_collect_$p
+
+         local mysqld_path=$(_which mysqld);
+         if [ "$mysqld_path" -a -f "$mysqld_path" ]; then
+            $CMD_OPREPORT            \
+               --demangle=smart      \
+               --symbols             \
+               --merge tgid          \
+               session:pt_collect_$p \
+               "$mysqld_path"        \
+               > "$d/$p-opreport"
+         else
+            log "oprofile data saved to pt_collect_$p; you should be able"       \
+                 "to get a report by running something like 'opreport"           \
+                 "--demangle=smart --symbols --merge tgid session:pt_collect_$p" \
+                 "/path/to/mysqld'"                                              \
+               > "$d/$p-opreport"
+         fi
+      elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" ]; then
+         kill -s 2 $strace_pid
+         sleep 1
+         kill -s 15 $strace_pid
+         [ "$mysqld_pid" ] && kill -s 18 $mysqld_pid
       fi
 
-      $CMD_OPCONTROL --save=pt_collect_$p
+      innodb_status 2
+      tokudb_status 2
+      rocksdb_status 2
 
-      local mysqld_path=$(_which mysqld);
-      if [ "$mysqld_path" -a -f "$mysqld_path" ]; then
-         $CMD_OPREPORT            \
-            --demangle=smart      \
-            --symbols             \
-            --merge tgid          \
-            session:pt_collect_$p \
-            "$mysqld_path"        \
-            > "$d/$p-opreport"
-      else
-         log "oprofile data saved to pt_collect_$p; you should be able"       \
-              "to get a report by running something like 'opreport"           \
-              "--demangle=smart --symbols --merge tgid session:pt_collect_$p" \
-              "/path/to/mysqld'"                                              \
-            > "$d/$p-opreport"
-      fi
-   elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" ]; then
-      kill -s 2 $strace_pid
-      sleep 1
-      kill -s 15 $strace_pid
-      [ "$mysqld_pid" ] && kill -s 18 $mysqld_pid
+      $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status2" &
+      open_tables                      >> "$d/$p-opentables2"   &
+
+      kill $mysqladmin_pid
+      [ "$tail_error_log_pid" ] && kill $tail_error_log_pid
+      [ "$tcpdump_pid" ]        && kill $tcpdump_pid
+
+      hostname > "$d/$p-hostname"
    fi
-
-   innodb_status 2
-   tokudb_status 2
-   rocksdb_status 2
-
-   $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status2" &
-   open_tables                      >> "$d/$p-opentables2"   &
-
-   kill $mysqladmin_pid
-   [ "$tail_error_log_pid" ] && kill $tail_error_log_pid
-   [ "$tcpdump_pid" ]        && kill $tcpdump_pid
-
-   hostname > "$d/$p-hostname"
 
    wait_for_subshells $OPT_RUN_TIME
    kill_all_subshells
@@ -1452,6 +1467,7 @@ stalk() {
          # ##################################################################
          log "Collect $ITER triggered"
          log "MYSQL_ONLY: $OPT_MYSQL_ONLY"
+         log "SYSTEM_ONLY: $OPT_SYSTEM_ONLY"
 
          # Send email to whomever that collect has been triggered.
          if [ "$OPT_NOTIFY_BY_EMAIL" ]; then
@@ -1633,18 +1649,20 @@ if    [ "${0##*/}" = "$TOOL" ] \
    EXT_ARGV="$(arrange_mysql_options "$EXT_ARGV $MYSQL_ARGS")"
 
 
-   # Check that mysql and mysqladmin are in PATH.  If not, we're
-   # already dead in the water, so don't bother with cmd line opts,
-   # just error and exit.
-   [ -n "$(mysql --help)" ] \
-      || die "Cannot execute mysql.  Check that it is in PATH."
-   [ -n "$(mysqladmin --help)" ] \
-      || die "Cannot execute mysqladmin.  Check that it is in PATH."
+   if [ ! "$OPT_SYSTEM_ONLY" ]; then
+      # Check that mysql and mysqladmin are in PATH.  If not, we're
+      # already dead in the water, so don't bother with cmd line opts,
+      # just error and exit.
+      [ -n "$(mysql --help)" ] \
+         || die "Cannot execute mysql.  Check that it is in PATH."
+      [ -n "$(mysqladmin --help)" ] \
+         || die "Cannot execute mysqladmin.  Check that it is in PATH."
 
-   # Now that we have the cmd line opts, check that we can actually
-   # connect to MySQL.
-   [ -n "$(mysql $EXT_ARGV -e 'SELECT 1')" ] \
-      || die "Cannot connect to MySQL.  Check that MySQL is running and that the options after -- are correct."
+      # Now that we have the cmd line opts, check that we can actually
+      # connect to MySQL.
+      [ -n "$(mysql $EXT_ARGV -e 'SELECT 1')" ] \
+         || die "Cannot connect to MySQL.  Check that MySQL is running and that the options after -- are correct."
+   fi
 
    # Check existence and access to the --dest dir if we're collecting.
    if [ "$OPT_COLLECT" ]; then
@@ -2235,6 +2253,10 @@ with C<--no-stalk>.  Safeguard options, like L<"--disk-bytes-free"> and
 L<"--disk-pct-free">, are still respected.
 
 See also L<"--collect">.
+
+=item --system-only
+
+Trigger only operating system related captures, ignoring all others.
 
 =item --threshold
 
