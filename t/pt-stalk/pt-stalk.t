@@ -557,6 +557,30 @@ is(
 );
 
 # ###########################################################################
+# Test if option --system-only works correctly
+# ###########################################################################
+
+cleanup();
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --system-only --run-time 10 --sleep 2 --dest $dest --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls $dest`;
+
+like(
+   $output,
+   qr/(df)|(ps)/,
+   "Option --system-only collects system data"
+);
+
+unlike(
+   $output,
+   qr/(innodbstatus)|(mysqladmin)/,
+   "Option --system-only does not collect MySQL data"
+);
+
+# ###########################################################################
 # Test report about performance schema transactions in MySQL 5.7+
 # ###########################################################################
 
