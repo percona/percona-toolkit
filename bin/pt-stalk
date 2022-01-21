@@ -796,6 +796,7 @@ CMD_DMESG="${CMD_DMESG:-"$(_which dmesg)"}"
 collect() {
    local d="$1"  # directory to save results in
    local p="$2"  # prefix for each result file
+   local cnt=$(($OPT_RUN_TIME / $OPT_SLEEP_COLLECT))
 
    if [ ! "$OPT_SYSTEM_ONLY" ]; then
       local mysqld_pid=""
@@ -873,42 +874,13 @@ collect() {
    fi
 
    if [ ! "$OPT_MYSQL_ONLY" ]; then 
-      ps -eaF  >> "$d/$p-ps"  &
-      top -bn${OPT_RUN_TIME} >> "$d/$p-top" &
+      system_stats $d $p $cnt
+   fi
 
-      if [ ! "$OPT_SYSTEM_ONLY" ]; then
-         [ "$mysqld_pid" ] && _lsof $mysqld_pid >> "$d/$p-lsof" &
-      fi
-
-      if [ "$CMD_SYSCTL" ]; then
-         $CMD_SYSCTL -a >> "$d/$p-sysctl" &
-      fi
-
-      if [ "$CMD_DMESG" ]; then
-         local UPTIME=`cat /proc/uptime | awk '{ print $1 }'`
-         local START_TIME=$(echo "$UPTIME 60" | awk '{print ($1 - $2)}')
-         $CMD_DMESG  | perl -ne 'm/\[\s*(\d+)\./; if ($1 > '${START_TIME}') { print }' >> "$d/$p-dmesg" & 
-      fi
-
-      local cnt=$(($OPT_RUN_TIME / $OPT_SLEEP_COLLECT))
-      if [ "$CMD_VMSTAT" ]; then
-         $CMD_VMSTAT $OPT_SLEEP_COLLECT $cnt >> "$d/$p-vmstat" &
-         $CMD_VMSTAT $OPT_RUN_TIME 2 >> "$d/$p-vmstat-overall" &
-      fi
-      if [ "$CMD_IOSTAT" ]; then
-         $CMD_IOSTAT -dx $OPT_SLEEP_COLLECT $cnt >> "$d/$p-iostat" &
-         $CMD_IOSTAT -dx $OPT_RUN_TIME 2 >> "$d/$p-iostat-overall" &
-      fi
-      if [ "$CMD_MPSTAT" ]; then
-         $CMD_MPSTAT -P ALL $OPT_SLEEP_COLLECT $cnt >> "$d/$p-mpstat" &
-         $CMD_MPSTAT -P ALL $OPT_RUN_TIME 1 >> "$d/$p-mpstat-overall" &
-      fi
-
-      if [ ! "$OPT_SYSTEM_ONLY" ]; then
-         $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
-         local mysqladmin_pid=$!
-      fi
-   fi 
+   if [ ! "$OPT_SYSTEM_ONLY" ]; then
+      $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
+      local mysqladmin_pid=$!
+   fi
 
    if [ ! "$OPT_SYSTEM_ONLY" ]; then
       local have_lock_waits_table=""
@@ -933,39 +905,12 @@ collect() {
 
    while [ $((curr_time - start_time)) -lt $OPT_RUN_TIME ]; do
       if [ ! "$OPT_MYSQL_ONLY" ]; then
-         disk_space $d > $d/$p-disk-space
-         check_disk_space          \
-            $d/$p-disk-space       \
-            "$OPT_DISK_BYTES_FREE" \
-            "$OPT_DISK_PCT_FREE"   \
-            || break
+         check_disk_space_loop $d $p
 
          sleep $(date +'%s.%N' | awk "{print $OPT_SLEEP_COLLECT - (\$1 % $OPT_SLEEP_COLLECT)}")
          local ts="$(date +"TS %s.%N %F %T")"
 
-         if [ -d "/proc" ]; then
-            if [ -f "/proc/diskstats" ]; then
-               (echo $ts; cat /proc/diskstats) >> "$d/$p-diskstats" &
-            fi
-            if [ -f "/proc/stat" ]; then
-               (echo $ts; cat /proc/stat) >> "$d/$p-procstat" &
-            fi
-            if [ -f "/proc/vmstat" ]; then
-               (echo $ts; cat /proc/vmstat) >> "$d/$p-procvmstat" &
-            fi
-            if [ -f "/proc/meminfo" ]; then
-               (echo $ts; cat /proc/meminfo) >> "$d/$p-meminfo" &
-            fi
-            if [ -f "/proc/slabinfo" ]; then
-               (echo $ts; cat /proc/slabinfo) >> "$d/$p-slabinfo" &
-            fi
-            if [ -f "/proc/interrupts" ]; then
-               (echo $ts; cat /proc/interrupts) >> "$d/$p-interrupts" &
-            fi
-         fi
-         (echo $ts; df -k) >> "$d/$p-df" &
-         (echo $ts; netstat -antp) >> "$d/$p-netstat"   &
-         (echo $ts; netstat -s)    >> "$d/$p-netstat_s" &
+         system_stats_loop $d $p $ts
       fi
       if [ ! "$OPT_SYSTEM_ONLY" ]; then
          (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
@@ -1049,6 +994,85 @@ collect() {
          rm "$file"
       fi
    done
+}
+
+system_stats() {
+   local d="$1"
+   local p="$2"
+   local cnt="$3"
+
+   ps -eaF  >> "$d/$p-ps"  &
+   top -bn${OPT_RUN_TIME} >> "$d/$p-top" &
+
+   if [ ! "$OPT_SYSTEM_ONLY" ]; then
+      [ "$mysqld_pid" ] && _lsof $mysqld_pid >> "$d/$p-lsof" &
+   fi
+
+      if [ "$CMD_SYSCTL" ]; then
+         $CMD_SYSCTL -a >> "$d/$p-sysctl" &
+      fi
+
+      if [ "$CMD_DMESG" ]; then
+         local UPTIME=`cat /proc/uptime | awk '{ print $1 }'`
+         local START_TIME=$(echo "$UPTIME 60" | awk '{print ($1 - $2)}')
+         $CMD_DMESG  | perl -ne 'm/\[\s*(\d+)\./; if ($1 > '${START_TIME}') { print }' >> "$d/$p-dmesg" & 
+      fi
+
+      if [ "$CMD_VMSTAT" ]; then
+         $CMD_VMSTAT $OPT_SLEEP_COLLECT $cnt >> "$d/$p-vmstat" &
+         $CMD_VMSTAT $OPT_RUN_TIME 2 >> "$d/$p-vmstat-overall" &
+      fi
+      if [ "$CMD_IOSTAT" ]; then
+         $CMD_IOSTAT -dx $OPT_SLEEP_COLLECT $cnt >> "$d/$p-iostat" &
+         $CMD_IOSTAT -dx $OPT_RUN_TIME 2 >> "$d/$p-iostat-overall" &
+      fi
+      if [ "$CMD_MPSTAT" ]; then
+         $CMD_MPSTAT -P ALL $OPT_SLEEP_COLLECT $cnt >> "$d/$p-mpstat" &
+         $CMD_MPSTAT -P ALL $OPT_RUN_TIME 1 >> "$d/$p-mpstat-overall" &
+      fi
+}
+
+check_disk_space_loop() {
+   local d="$1"
+   local p="$2"
+
+         disk_space $d > $d/$p-disk-space
+         check_disk_space          \
+            $d/$p-disk-space       \
+            "$OPT_DISK_BYTES_FREE" \
+            "$OPT_DISK_PCT_FREE"   \
+            || break
+}
+
+system_stats_loop() {
+   local d="$1"
+   local p="$2"
+   local ts="$3"
+
+         if [ -d "/proc" ]; then
+            if [ -f "/proc/diskstats" ]; then
+               (echo $ts; cat /proc/diskstats) >> "$d/$p-diskstats" &
+            fi
+            if [ -f "/proc/stat" ]; then
+               (echo $ts; cat /proc/stat) >> "$d/$p-procstat" &
+            fi
+            if [ -f "/proc/vmstat" ]; then
+               (echo $ts; cat /proc/vmstat) >> "$d/$p-procvmstat" &
+            fi
+            if [ -f "/proc/meminfo" ]; then
+               (echo $ts; cat /proc/meminfo) >> "$d/$p-meminfo" &
+            fi
+            if [ -f "/proc/slabinfo" ]; then
+               (echo $ts; cat /proc/slabinfo) >> "$d/$p-slabinfo" &
+            fi
+            if [ -f "/proc/interrupts" ]; then
+               (echo $ts; cat /proc/interrupts) >> "$d/$p-interrupts" &
+            fi
+         fi
+         (echo $ts; df -k) >> "$d/$p-df" &
+         (echo $ts; netstat -antp) >> "$d/$p-netstat"   &
+         (echo $ts; netstat -s)    >> "$d/$p-netstat_s" &
+
 }
 
 open_tables() {

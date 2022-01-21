@@ -570,7 +570,7 @@ $output = `ls $dest`;
 
 like(
    $output,
-   qr/(df)|(ps)/,
+   qr/(df)|(meminfo)/,
    "Option --system-only collects system data"
 );
 
@@ -578,6 +578,30 @@ unlike(
    $output,
    qr/(innodbstatus)|(mysqladmin)/,
    "Option --system-only does not collect MySQL data"
+);
+
+# ###########################################################################
+# Test if option --mysql-only works correctly
+# ###########################################################################
+
+cleanup();
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --mysql-only --run-time 10 --sleep 2 --dest $dest --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls $dest`;
+
+unlike(
+   $output,
+   qr/(df)|(meminfo)/,
+   "Option --mysql-only does not collect system data"
+);
+
+like(
+   $output,
+   qr/(innodbstatus)|(mysqladmin)/,
+   "Option --mysql-only collects MySQL data"
 );
 
 # ###########################################################################
