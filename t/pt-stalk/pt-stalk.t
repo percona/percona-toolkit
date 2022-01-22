@@ -542,13 +542,13 @@ $retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --sleep 2 --dest $
 
 PerconaTest::wait_until(sub { !-f $pid_file });
 
-$output = `du -s $dest | wc -l`;
+$output = `ls -l $dest | wc -l`;
 
 $retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --retention-count 1 --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
 
 PerconaTest::wait_until(sub { !-f $pid_file });
 
-$output = $output - `du -s $dest | wc -l`;
+$output = $output - `ls -l $dest | wc -l`;
 
 is(
    $output,
