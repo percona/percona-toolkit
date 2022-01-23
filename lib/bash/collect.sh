@@ -168,7 +168,7 @@ collect_mysql_data_one() {
 
       # Send a mysqladmin debug to the server so we can potentially learn about
       # locking etc.
-      $CMD_MYSQLADMIN $EXT_ARGV debug
+      $CMD_MYSQLADMIN $EXT_ARGV
    else
       log "Could not find the MySQL error log"
    fi 
@@ -214,14 +214,14 @@ collect_mysql_data_one() {
       have_lock_waits_table="yes"
    fi
 
-      # Collect multiple snapshots of the status variables.  We use
-      # mysqladmin -c even though it is buggy and won't stop on its
-      # own in 5.1 and newer, because there is a chance that we will
-      # get and keep a connection to the database; in troubled times
-      # the database tends to exceed max_connections, so reconnecting
-      # in the loop tends not to work very well.
-      $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
-      mysqladmin_pid=$!
+   # Collect multiple snapshots of the status variables.  We use
+   # mysqladmin -c even though it is buggy and won't stop on its
+   # own in 5.1 and newer, because there is a chance that we will
+   # get and keep a connection to the database; in troubled times
+   # the database tends to exceed max_connections, so reconnecting
+   # in the loop tends not to work very well.
+   $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
+   mysqladmin_pid=$!
 
    ps_instrumentation_enabled=$($CMD_MYSQL $EXT_ARGV -e 'SELECT ENABLED FROM performance_schema.setup_instruments WHERE NAME = "transaction";' \
                                       | sed "2q;d" | sed 'y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/')

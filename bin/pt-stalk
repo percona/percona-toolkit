@@ -894,7 +894,7 @@ collect_mysql_data_one() {
       tail -f "$mysql_error_log" >"$d/$p-log_error" &
       tail_error_log_pid=$!
 
-      $CMD_MYSQLADMIN $EXT_ARGV debug
+      $CMD_MYSQLADMIN $EXT_ARGV
    else
       log "Could not find the MySQL error log"
    fi 
@@ -934,8 +934,8 @@ collect_mysql_data_one() {
       have_lock_waits_table="yes"
    fi
 
-      $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
-      mysqladmin_pid=$!
+   $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
+   mysqladmin_pid=$!
 
    ps_instrumentation_enabled=$($CMD_MYSQL $EXT_ARGV -e 'SELECT ENABLED FROM performance_schema.setup_instruments WHERE NAME = "transaction";' \
                                       | sed "2q;d" | sed 'y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/')
