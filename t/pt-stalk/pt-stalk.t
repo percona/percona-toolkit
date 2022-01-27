@@ -605,6 +605,25 @@ like(
 );
 
 # ###########################################################################
+# Test if options --mysql-only and --system-only specified together,
+# pt-stalk collects only disk-space, hostname, output, and trigger
+# ###########################################################################
+
+cleanup();
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --mysql-only --system-only --run-time 10 --sleep 2 --dest $dest --pid $pid_file --iterations 1 --prefix test -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls $dest`;
+
+is(
+   $output,
+   "test-disk-space\ntest-hostname\ntest-output\ntest-trigger\n",
+   "If both options --mysql-only and --system-only are specified only essential collections are triggered"
+);
+
+# ###########################################################################
 # Test report about performance schema transactions in MySQL 5.7+
 # ###########################################################################
 

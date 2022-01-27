@@ -1517,6 +1517,8 @@ stalk() {
             if [ -n "$last_prefix" ]; then
                margin=$(du -mc "$OPT_DEST"/"$last_prefix"-* | tail -n 1 | awk '{print $1'})
             fi
+            # Disk space checked even if system data collection is OFF
+            # See https://jira.percona.com/browse/PT-1486
             disk_space "$OPT_DEST" > "$OPT_DEST/$prefix-disk-space"
             check_disk_space                  \
                "$OPT_DEST/$prefix-disk-space" \
