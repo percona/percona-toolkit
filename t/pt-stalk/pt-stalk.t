@@ -542,18 +542,85 @@ $retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --sleep 2 --dest $
 
 PerconaTest::wait_until(sub { !-f $pid_file });
 
-$output = `du -s $dest | wc -l`;
+$output = `ls -l $dest | wc -l`;
 
 $retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --retention-count 1 --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
 
 PerconaTest::wait_until(sub { !-f $pid_file });
 
-$output = $output - `du -s $dest | wc -l`;
+$output = $output - `ls -l $dest | wc -l`;
 
 is(
    $output,
    0,
    "Retention test 5: retention by count works as expected"
+);
+
+# ###########################################################################
+# Test if option --system-only works correctly
+# ###########################################################################
+
+cleanup();
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --system-only --run-time 10 --sleep 2 --dest $dest --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls $dest`;
+
+like(
+   $output,
+   qr/(df)|(meminfo)/,
+   "Option --system-only collects system data"
+);
+
+unlike(
+   $output,
+   qr/(innodbstatus)|(mysqladmin)/,
+   "Option --system-only does not collect MySQL data"
+);
+
+# ###########################################################################
+# Test if option --mysql-only works correctly
+# ###########################################################################
+
+cleanup();
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --mysql-only --run-time 10 --sleep 2 --dest $dest --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls $dest`;
+
+unlike(
+   $output,
+   qr/(df)|(meminfo)/,
+   "Option --mysql-only does not collect system data"
+);
+
+like(
+   $output,
+   qr/(innodbstatus)|(mysqladmin)/,
+   "Option --mysql-only collects MySQL data"
+);
+
+# ###########################################################################
+# Test if options --mysql-only and --system-only specified together,
+# pt-stalk collects only disk-space, hostname, output, and trigger
+# ###########################################################################
+
+cleanup();
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --mysql-only --system-only --run-time 10 --sleep 2 --dest $dest --pid $pid_file --iterations 1 --prefix test -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls $dest`;
+
+is(
+   $output,
+   "test-disk-space\ntest-hostname\ntest-output\ntest-trigger\n",
+   "If both options --mysql-only and --system-only are specified only essential collections are triggered"
 );
 
 # ###########################################################################
