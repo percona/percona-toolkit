@@ -5,38 +5,40 @@ Before creating bug reports, please check [this list](https://jira.percona.com/p
 
 ### Before Submitting A Bug Report
 - Ensure you have carefully read the documentation. Percona Toolkit is a mature project with many settings that covers a wide range options.
-- Search for existing bugs in [Jira](https://jira.percona.com) to see if the problem has already been reported. If it has, add a comment to the existing issue instead of opening a new one.
+- Search for existing bugs in [Jira](https://jira.percona.com) to see if the problem has already been reported. If it has, add a comment to the existing issue instead of opening a new one. 
+By doing this, we can avoid duplicating efforts, since the issue might have been already reported and if not, you might find useful information on older issues related to the same problem.
 
 ### How Do I Submit A (Good) Bug Report?
-- Explain the problem and include additional details to help others reproduce the problem:
-- Use a clear and descriptive title for the issue to identify the problem.
-- Describe the exact steps which reproduce the problem, including as many details as possible. Provide examples of the command you used and include context information like language, OS and database versions.
-Describe the obtained results and the expected results and, if it is possible, provide examples.
-
-## Submiting fixes
-### Create an Issue
-If you find a bug, the first step is to create a [Jira issue](https://jira.percona.com). Whatever the problem is, you’re likely not the only one experiencing it. Others will find your issue helpful, and other developers might help you find the cause and discuss the best solution for it.
-
-#### Tips for creating an issue
-- Check if there are any existing issues for your problem. By doing this, we can avoid duplicating efforts, since the issue might have been already reported and if not, you might find useful information on older issues related to the same problem.
-- Be clear about what your problem is: which program were you using, what was the expected result and what is the result you are getting. Detail how someone else can reproduce the problem, including examples.
+- Explain the problem and include additional details to help others reproduce the problem.
+- Use a clear and descriptive title for the issue to identify the problem. 
+- Be clear about what your problem is: which program were you using, what was the expected result and what is the result you are getting. 
 - Include system details like language version, OS, database details or special configurations, etc.
+- Describe the exact steps which reproduce the problem, including as many details as possible. Provide examples of the command you used and include context information like language, OS and database versions.
+- Describe the obtained results and the expected results and, if it is possible, provide examples.
 - Paste the error output or logs in your issue or attach them. You may put large files on our SFTP server if needed. Use Jira ticket number as a login and password for the [Percona SFTP server](sftp.percona.com). Have Jira issue number in the file name and add a comment, so we can access it.
 
+## Submiting fixes
 ### Pull Requests
 If you fixed a bug or added a new feature – awesome! Open a pull request with the code! Be sure you’ve read any documents on contributing, understand the license and have signed a [Contributor Licence Agreement (CLA)](https://github.com/percona/percona-toolkit/blob/3.x/CONTRIBUTING.md). Once you’ve submitted a pull request, the maintainers can compare your branch to the existing one and decide whether or not to incorporate (merge) your changes.
 
 ### Tips for creating a pull request
 - Fork the repository and clone it locally. Connect your local to the original ‘upstream’ repository by adding it as a remote. Pull in changes from ‘upstream’ often so that you stay up to date so that when you submit your pull request, merge conflicts will be less likely.
-- Create a branch for your code. Usually it is a good practice to name the branch after the issue ID, like issue-12345.
+- Create a branch for your code. Usually it is a good practice to name the branch after the issue ID, like PT-12345\_pt-foo\_corrupts\_data.
 - Be clear about the problem you fixed or the feature you added. Include explanations and code references to help the maintainers understand what you did.
 - Add useful comments to the code to help others understand it.
 - Write tests. This is an important step. Run your changes against existing tests and create new ones when needed. Whether tests exist or not, make sure your changes don’t break the existing project.
 - Contribute in the style of the project to the best of your abilities. This may mean using indents, semicolons, or comments differently than you would in your own repository, but makes it easier for the maintainer to merge, others to understand and maintain in the future.
 - Keep your changes as small as possible and solve only what's reported in the issue. Mixing fixes might be confusing to others and makes testing harder.
-- Be as explicit as possible. Avoid using special/internal language variables like $_. Use a variable name that clearly represents the value it holds.
+- Be as explicit as possible. Avoid using special/internal language variables like $\_. Use a variable name that clearly represents the value it holds.
 - Write good commit messages. A comment like 'Misc bugfixes' or 'More code added' does not help to understand what's the change about.
 - Put Jira issue number into the commit message to automatically link it with the Jira issue.
+- Example commit message:
+
+```
+PT-12345 - fixed data corruption issue for pt-foo
+
+New check pt-foo-test-env added when pt-foo is going to perform destructive operation. If check fails pt-foo stops executing and returns an error. 
+```
 
 ### Open Pull Requests
 Once you’ve opened a pull request, a discussion will start around your proposed changes. Other contributors and users may chime in, but ultimately the decision is made by the maintainers. You may be asked to make some changes to your pull request, if so, add more commits to your branch and push them – they’ll automatically go into the existing pull request.
@@ -127,6 +129,10 @@ You should start your own development branch. If you have a JIRA ticket assigned
 git checkout -b PT-9999_functionality_name
 ```
 The first commit should also have the JIRA reference number as first characters in the commit message (so that JIRA can use the smart tags).
+
+## Changing shared code
+
+Percona Toolkit uses `lib` directory for library code. Once you change it you need to run the `update-modules` tool that will merge module code with the tools. Be careful and **do not modify** anything inside `This package is a copy without comments from the original.` comments.
 
 ## Running the update-modules tool
 
