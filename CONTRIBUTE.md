@@ -62,11 +62,9 @@ And then go to the web UI to create the new pull request (PR) based off of this 
 
 ## Submiting fixes
 ### Pull Requests
-If you fixed a bug or added a new feature – awesome! Open a pull request with the code! Be sure you’ve read any documents on contributing, understand the license and have signed a [Contributor Licence Agreement (CLA)](https://github.com/percona/percona-toolkit/blob/3.x/CONTRIBUTING.md). Once you’ve submitted a pull request, the maintainers can compare your branch to the existing one and decide whether or not to incorporate (merge) your changes.
+Once your fix is ready and you pushed it into the feature branch, open a pull request with the code. Be sure you’ve read any documents on contributing, understand the license and have signed a [Contributor Licence Agreement (CLA)](https://github.com/percona/percona-toolkit/blob/3.x/CONTRIBUTING.md). Once you’ve submitted a pull request, the maintainers can compare your branch to the existing one and decide whether or not to incorporate (merge) your changes.
 
 ### Tips for creating a pull request
-- Fork the repository and clone it locally. Connect your local to the original ‘upstream’ repository by adding it as a remote. Pull in changes from ‘upstream’ often so that you stay up to date so that when you submit your pull request, merge conflicts will be less likely.
-- Create a branch for your code. Usually it is a good practice to name the branch after the issue ID, like PT-12345\_pt-foo\_corrupts\_data.
 - Be clear about the problem you fixed or the feature you added. Include explanations and code references to help the maintainers understand what you did.
 - Add useful comments to the code to help others understand it.
 - Write tests. This is an important step. Run your changes against existing tests and create new ones when needed. Whether tests exist or not, make sure your changes don’t break the existing project.
@@ -83,23 +81,22 @@ PT-12345 - fixed data corruption issue for pt-foo
 New check pt-foo-test-env added when pt-foo is going to perform destructive operation. If check fails pt-foo stops executing and returns an error. 
 ```
 
-### Open Pull Requests
+### Open a Pull Request
 Once you’ve opened a pull request, a discussion will start around your proposed changes. Other contributors and users may chime in, but ultimately the decision is made by the maintainers. You may be asked to make some changes to your pull request, if so, add more commits to your branch and push them – they’ll automatically go into the existing pull request.
 
 # Licensing
 Along with the pull request, include a message indicating that the submited code is your own creation and it can be distributed under the GPL2 licence. 
   
   
-## Setting up the development environment
-
-### Setting up the source code
+# Setting up the development environment
+## Setting up the source code
 To start, fork the Percona Toolkit repo to be able to submit pull requests and clone it locally:
 ```
 mkdir ${HOME}/perldev
 git clone https://github.com/percona/percona-toolkit.git ${HOME}/perldev/percona-toolkit
 ```
 
-### Go Tools
+## Go Tools
 
 Starting from version 3, there are new tools for MongoDB. These tools are written in Go so
 in order to compile these program, this repo must me cloned into the GOPATH directory.  
@@ -115,10 +112,10 @@ cd percona-toolkit/src/go
 make
 ```
 
-### Testing
+# Testing
 For testing, we are going to need to have MySQL with replicas. For that, we already have scripts in the sandbox directory but first we need to download MySQL binaries. Please download the Linux Generic tar file for your distrubution from [https://www.percona.com/downloads/Percona-Server-LATEST/](https://www.percona.com/downloads/Percona-Server-LATEST/).    
 
-### Set up MySQL sandbox
+## Set up MySQL sandbox
 In this example, we are going to download Percona Server 8.0.26-17.
 
 ```
@@ -130,7 +127,7 @@ wget https://downloads.percona.com/downloads/Percona-Server-LATEST/Percona-Serve
 ```
 tar xvzf Percona-Server-8.0.26-17-Linux.x86_64.glibc2.17.tar.gz --strip 1 -C ${HOME}/mysql/percona-server-8.0.26-17
 ```
-### Set up environment variables
+## Set up environment variables
 We need these environment variables to start the MySQL sandbox and to run the tests. Probably it is a good idea to add them to your `.bashrc` file.
 ```
 export PERCONA_TOOLKIT_BRANCH=${HOME}/perldev/percona-toolkit
@@ -138,7 +135,7 @@ export PERL5LIB=${HOME}/perldev/percona-toolkit/lib
 export PERCONA_TOOLKIT_SANDBOX=${HOME}/mysql/percona-server-8.0.26-17
 ```
 
-### Check that all needed tools are correctly installed:
+## Check that all needed tools are correctly installed:
 ```
 util/check-dev-env
 ```
@@ -149,7 +146,7 @@ cpan[1]> install File::Slurp
 ...
 ```
 
-### Starting the sandbox
+## Starting the sandbox
 ```
 cd ${HOME}/perldev/percona-toolkit
 ```
@@ -163,7 +160,7 @@ To enable TokuDB (only available in Percona Server 5.7+), run:
 ENABLE_TOKUDB=1 sandbox/test-env start
 ```
 
-### Running tests
+## Running tests
 ```
 cd ${HOME}/perldev/percona-toolkit
 ```
