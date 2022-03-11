@@ -17,6 +17,49 @@ By doing this, we can avoid duplicating efforts, since the issue might have been
 - Describe the obtained results and the expected results and, if it is possible, provide examples.
 - Paste the error output or logs in your issue or attach them. You may put large files on our SFTP server if needed. Use Jira ticket number as a login and password for the [Percona SFTP server](sftp.percona.com). Have Jira issue number in the file name and add a comment, so we can access it.
 
+## Reporting Documentation Issues
+Documentation bugs for Percona Toolkit should be reported at [Percona JIRA](https://jira.percona.com/) in the project **PT** and have component **Documentation**.
+
+### Good Documentation Bug Report
+- Contains link to the user manual page where the documentation is wrong
+- Fully explains the problem
+- Optionally explains how documentation should be fixed
+
+# Introducing changes to the toolkit
+
+## Creating a new branch
+
+You should start your own development branch. If you have a JIRA ticket assigned, use its number as reference, and add a short description of what work on this branch will do:
+```
+git checkout -b PT-9999_functionality_name
+```
+The first commit should also have the JIRA reference number as first characters in the commit message (so that JIRA can use the smart tags).
+
+## Changing shared code
+
+Percona Toolkit uses `lib` directory for library code. Once you change it you need to run the `update-modules` tool that will merge module code with the tools. Be careful and **do not modify** anything inside `This package is a copy without comments from the original.` comments.
+
+## Running the update-modules tool
+
+Whenever you make changes to libraries under lib/, you should make sure that you run the util/update-modules functionality, to make sure that all tools that use these packages will benefit from the new changes. For example, let's say you changed the lib/bash/collect.sh package, you will need to run:
+```
+cd ${HOME}/perldev/percona-toolkit
+for t in bin/*; do util/update-modules ${t} collect; done
+```
+Or if you changed the lib/NibbleIterator.pm package:
+```
+cd ${HOME}/perldev/percona-toolkit
+for t in bin/*; do util/update-modules ${t} NibbleIterator; done
+```
+
+## Uploading your branch
+
+Finally, after you run another round of tests and everything is ok, you should upload your branch to your GitHub fork:
+```
+git push origin PT-9999_functionality_name
+```
+And then go to the web UI to create the new pull request (PR) based off of this new branch.
+
 ## Submiting fixes
 ### Pull Requests
 If you fixed a bug or added a new feature – awesome! Open a pull request with the code! Be sure you’ve read any documents on contributing, understand the license and have signed a [Contributor Licence Agreement (CLA)](https://github.com/percona/percona-toolkit/blob/3.x/CONTRIBUTING.md). Once you’ve submitted a pull request, the maintainers can compare your branch to the existing one and decide whether or not to incorporate (merge) your changes.
@@ -47,15 +90,32 @@ Once you’ve opened a pull request, a discussion will start around your propose
 Along with the pull request, include a message indicating that the submited code is your own creation and it can be distributed under the GPL2 licence. 
   
   
-# Setting up the development environment
+## Setting up the development environment
 
-#### Setting up the source code
+### Setting up the source code
 To start, fork the Percona Toolkit repo to be able to submit pull requests and clone it locally:
 ```
 mkdir ${HOME}/perldev
 git clone https://github.com/percona/percona-toolkit.git ${HOME}/perldev/percona-toolkit
 ```
 
+### Go Tools
+
+Starting from version 3, there are new tools for MongoDB. These tools are written in Go so
+in order to compile these program, this repo must me cloned into the GOPATH directory.  
+Example:  
+
+```
+mkdir ${HOME}/go
+export GOPATH=${HOME}/go
+mkdir -p ${HOME}/go/src/github.com/percona
+cd ${HOME}/go/src/github.com/percona
+git clone https://github.com/percona/percona-toolkit.git
+cd percona-toolkit/src/go
+make
+```
+
+### Testing
 For testing, we are going to need to have MySQL with replicas. For that, we already have scripts in the sandbox directory but first we need to download MySQL binaries. Please download the Linux Generic tar file for your distrubution from [https://www.percona.com/downloads/Percona-Server-LATEST/](https://www.percona.com/downloads/Percona-Server-LATEST/).    
 
 ### Set up MySQL sandbox
@@ -119,38 +179,3 @@ or run a specific test:
 ```
 prove -v t/pt-stalk/option_sanity.t
 ```
-
-# Introducing changes to the toolkit
-
-## Creating a new branch
-
-You should start your own development branch. If you have a JIRA ticket assigned, use its number as reference, and add a short description of what work on this branch will do:
-```
-git checkout -b PT-9999_functionality_name
-```
-The first commit should also have the JIRA reference number as first characters in the commit message (so that JIRA can use the smart tags).
-
-## Changing shared code
-
-Percona Toolkit uses `lib` directory for library code. Once you change it you need to run the `update-modules` tool that will merge module code with the tools. Be careful and **do not modify** anything inside `This package is a copy without comments from the original.` comments.
-
-## Running the update-modules tool
-
-Whenever you make changes to libraries under lib/, you should make sure that you run the util/update-modules functionality, to make sure that all tools that use these packages will benefit from the new changes. For example, let's say you changed the lib/bash/collect.sh package, you will need to run:
-```
-cd ${HOME}/perldev/percona-toolkit
-for t in bin/*; do util/update-modules ${t} collect; done
-```
-Or if you changed the lib/NibbleIterator.pm package:
-```
-cd ${HOME}/perldev/percona-toolkit
-for t in bin/*; do util/update-modules ${t} NibbleIterator; done
-```
-
-## Uploading your branch
-
-Finally, after you run another round of tests and everything is ok, you should upload your branch to your GitHub fork:
-```
-git push origin PT-9999_functionality_name
-```
-And then go to the web UI to create the new pull request (PR) based off of this new branch.
