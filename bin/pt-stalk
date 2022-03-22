@@ -1084,7 +1084,7 @@ open_tables() {
    if [ -n "$open_tables" -a $open_tables -le 1000 ]; then
       $CMD_MYSQL $EXT_ARGV -e 'SHOW OPEN TABLES' &
    else
-      log "Too many open tables: $open_tables"
+      log "Logging disabled due to having over 1000 tables open. Number of tables currently open: $open_tables"
    fi
 }
 

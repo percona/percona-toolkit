@@ -623,6 +623,57 @@ is(
    "If both options --mysql-only and --system-only are specified only essential collections are triggered"
 );
 
+
+# ###########################################################################
+# Test if open tables are collected if number of open tables <= 1000
+# ###########################################################################
+
+cleanup();
+
+$dbh->do('FLUSH TABLES');
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 10 --sleep 2 --dest $dest --pid $pid_file --iterations 1 --prefix test -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `head -n 1 $dest/test-opentables1`;
+
+is(
+  $output,
+  "Database\tTable\tIn_use\tName_locked\n",
+  "If number of open tables is less or equal than 1000, the output of 'SHOW OPEN TABLES' is collected"
+);
+
+# ###########################################################################
+# Test if open tables are not collected if number of open tables > 1000
+# ###########################################################################
+
+cleanup();
+
+$retval = $dbh->do('FLUSH TABLES');
+$retval = $dbh->do('CREATE DATABASE IF NOT EXISTS test_open_tables');
+
+$retval = $dbh->do('SET @old_table_open_cache=@@global.table_open_cache, GLOBAL table_open_cache=1001*@@global.table_open_cache_instances');
+
+for (my $i = 0; $i < 1002; $i++) {
+  $retval = $dbh->do("CREATE TABLE IF NOT EXISTS test_open_tables.t_$i(id int)");
+  $retval = $dbh->do("INSERT INTO test_open_tables.t_$i VALUES($i)");
+}
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time=10 --dest $dest --pid $pid_file --iterations 1 --prefix test -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `cat $dest/test-opentables1`;
+
+like(
+  $output,
+  qr/Logging disabled due to having over 1000 tables open. Number of tables currently open/,
+  "If number of open tables is greater than 1000, the output of 'SHOW OPEN TABLES' is not collected"
+);
+
+$retval = $dbh->do('SET GLOBAL table_open_cache=@old_table_open_cache');
+$retval = $dbh->do('DROP DATABASE test_open_tables');
 # ###########################################################################
 # Test report about performance schema transactions in MySQL 5.7+
 # ###########################################################################
