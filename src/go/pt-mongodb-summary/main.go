@@ -93,6 +93,7 @@ type hostInfo struct {
 	ProcCreateTime   time.Time
 	ProcProcessCount int
 
+	CmdlineArgs []string
 	// Server Status
 	ProcessName    string
 	ReplicasetName string
@@ -326,6 +327,11 @@ func formatResults(ci *collectedInfo, format string) ([]byte, error) {
 			return nil, errors.Wrap(err, "cannot parse hosttemplateData section of the output template")
 		}
 
+		t = template.Must(template.New("cmdlineargsa").Parse(templates.CmdlineArgs))
+		if err := t.Execute(buf, ci.HostInfo); err != nil {
+			return nil, errors.Wrap(err, "cannot parse the command line args section of the output template")
+		}
+
 		t = template.Must(template.New("runningOps").Parse(templates.RunningOps))
 		if err := t.Execute(buf, ci.RunningOps); err != nil {
 			return nil, errors.Wrap(err, "cannot parse runningOps section of the output template")
@@ -400,6 +406,7 @@ func getHostInfo(ctx context.Context, client *mongo.Client) (*hostInfo, error) {
 		ProcPath:       pi.Path,
 		ProcUserName:   pi.UserName,
 		ProcCreateTime: pi.CreateTime,
+		CmdlineArgs:    cmdOpts.Argv,
 	}
 	if ss.Repl != nil {
 		i.ReplicasetName = ss.Repl.SetName
