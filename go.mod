@@ -10,6 +10,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-version v1.2.1-0.20190424083514-192140e6f3e6
 	github.com/howeyc/gopass v0.0.0-20170109162249-bf9dde6d0d2c
+	github.com/kr/pretty v0.1.0
 	github.com/lib/pq v1.2.0
 	github.com/mattn/go-shellwords v1.0.6
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe
@@ -26,6 +27,7 @@ require (
 )
 
 require (
+	github.com/AlekSi/pointer v1.2.0 // indirect
 	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20210208195552-ff826a37aa15 // indirect
@@ -39,6 +41,7 @@ require (
 	github.com/json-iterator/go v1.1.11 // indirect
 	github.com/klauspost/compress v1.10.10 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
+	github.com/kr/text v0.1.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
