@@ -10,7 +10,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-version v1.2.1-0.20190424083514-192140e6f3e6
 	github.com/howeyc/gopass v0.0.0-20170109162249-bf9dde6d0d2c
-	github.com/kr/pretty v0.1.0
+	github.com/kr/pretty v0.3.0
 	github.com/lib/pq v1.2.0
 	github.com/mattn/go-shellwords v1.0.6
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe
@@ -19,7 +19,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/shirou/gopsutil v2.20.8+incompatible
 	github.com/sirupsen/logrus v1.6.0
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1
 	go.mongodb.org/mongo-driver v1.7.1
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
@@ -42,10 +42,11 @@ require (
 	github.com/json-iterator/go v1.1.11 // indirect
 	github.com/klauspost/compress v1.10.10 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
-	github.com/kr/text v0.1.0 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/rogpeppe/go-internal v1.6.1 // indirect
 	github.com/smartystreets/goconvey v1.7.2 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.0.2 // indirect

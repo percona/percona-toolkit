@@ -20,13 +20,24 @@ type collectionIndex struct {
 func (di collectionIndex) ComparableKey() string {
 	str := ""
 	for _, elem := range di.Key {
-		sign := "+"
+		str += sign(elem) + elem.Key
+	}
+	return str
+}
+
+func sign(elem primitive.E) string {
+	sign := "+"
+	switch elem.Value.(type) {
+	case int32: // internal MongoDB indexes like _id_ or lastUsed have the sign field as int32.
 		if elem.Value.(int32) < 0 {
 			sign = "-"
 		}
-		str += sign + elem.Key
+	case float64: // All other indexes have the sign field as float64.
+		if elem.Value.(float64) < 0 {
+			sign = "-"
+		}
 	}
-	return str
+	return sign
 }
 
 // IndexKey holds the list of fields that are part of an index, along with the field order.
@@ -37,11 +48,7 @@ type IndexKey []primitive.E
 func (di IndexKey) String() string {
 	str := ""
 	for _, elem := range di {
-		sign := "+"
-		if elem.Value.(int32) < 0 {
-			sign = "-"
-		}
-		str += sign + elem.Key + " "
+		str += sign(elem) + elem.Key + " "
 	}
 
 	return str

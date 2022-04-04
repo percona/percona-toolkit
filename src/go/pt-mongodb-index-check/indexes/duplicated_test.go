@@ -62,9 +62,10 @@ func TestDuplicateIndexes(t *testing.T) {
 
 	assert.Equal(t, 1, errCount)
 
-	want := []DuplicateIndex{
+	want := []Duplicate{
 		{
-			Name: "idx_03",
+			Name:      "idx_03",
+			Namespace: "test_db.test_col",
 			Key: IndexKey{
 				{Key: "f1", Value: int32(1)},
 				{Key: "f2", Value: int32(-1)},
@@ -77,7 +78,8 @@ func TestDuplicateIndexes(t *testing.T) {
 			},
 		},
 		{
-			Name: "idx_03",
+			Name:      "idx_03",
+			Namespace: "test_db.test_col",
 			Key: IndexKey{
 				{Key: "f1", Value: int32(1)},
 				{Key: "f2", Value: int32(-1)},
@@ -91,7 +93,8 @@ func TestDuplicateIndexes(t *testing.T) {
 			},
 		},
 		{
-			Name: "idx_02",
+			Name:      "idx_02",
+			Namespace: "test_db.test_col",
 			Key: IndexKey{
 				{Key: "f1", Value: int32(1)},
 				{Key: "f2", Value: int32(-1)},
@@ -107,7 +110,7 @@ func TestDuplicateIndexes(t *testing.T) {
 		},
 	}
 
-	di, err := FindDuplicatedIndexes(ctx, client, dbname, collname)
+	di, err := FindDuplicated(ctx, client, dbname, collname)
 	assert.NoError(t, err)
 	assert.Equal(t, want, di)
 }

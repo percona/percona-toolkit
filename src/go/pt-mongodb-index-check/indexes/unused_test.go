@@ -59,9 +59,9 @@ func TestUnusedIndexes(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	want := []string{"_id_", "idx_00", "idx_01", "idx_02"}
+	want := []string{"idx_00", "idx_01", "idx_02"}
 
-	ui, err := FindUnusedIndexes(ctx, client, dbname, collname)
+	ui, err := FindUnused(ctx, client, dbname, collname)
 	assert.NoError(t, err)
 
 	got := make([]string, 0, len(ui))

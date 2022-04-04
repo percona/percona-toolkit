@@ -6,8 +6,10 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"gopkg.in/mgo.v2/bson"
 )
 
+var systemDBs = []string{"admin", "config", "local"} //nolint:gochecknoglobals
 // IndexStat hold an index usage statistics.
 type IndexStat struct {
 	Accesses struct {
@@ -25,11 +27,25 @@ type IndexStat struct {
 	Host string      `bson:"host"`
 }
 
+func in(search string, items []string) bool {
+	for _, item := range items {
+		if search == item {
+			return true
+		}
+	}
+	return false
+}
+
 // FindUnusedIndexes returns a list of unused indexes for the given database and collection.
-func FindUnusedIndexes(ctx context.Context, client *mongo.Client, database, collection string) ([]IndexStat, error) {
+func FindUnused(ctx context.Context, client *mongo.Client, database, collection string) ([]IndexStat, error) {
 	aggregation := mongo.Pipeline{
 		{{Key: "$indexStats", Value: primitive.M{}}},
 		{{Key: "$match", Value: primitive.M{"accesses.ops": 0}}},
+		{{Key: "$match", Value: primitive.M{"name": bson.M{"$ne": "_id_"}}}},
+	}
+
+	if in(database, systemDBs) {
+		return nil, nil
 	}
 
 	cursor, err := client.Database(database).Collection(collection).Aggregate(ctx, aggregation)
