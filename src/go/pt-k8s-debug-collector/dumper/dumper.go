@@ -72,7 +72,7 @@ func New(location, namespace, resource string) Dumper {
 		cmd:       "kubectl",
 		resources: resources,
 		location:  "cluster-dump",
-		mode:      int64(0777),
+		mode:      int64(0o777),
 		namespace: namespace,
 		crType:    resource,
 	}

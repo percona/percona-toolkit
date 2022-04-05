@@ -56,7 +56,7 @@ const (
 var (
 	Build     string = "2020-04-23"
 	GoVersion string = "1.14.1"
-	Version   string = "3.3.2"
+	Version   string = "3.4.0"
 	Commit    string
 
 	defaultConnectionTimeout = 3 * time.Second
@@ -608,7 +608,8 @@ func getNodeType(ctx context.Context, client *mongo.Client) (string, error) {
 }
 
 func getOpCountersStats(ctx context.Context, client *mongo.Client, count int,
-	sleep time.Duration) (*opCounters, error) {
+	sleep time.Duration,
+) (*opCounters, error) {
 	oc := &opCounters{}
 	prevOpCount := &opCounters{}
 	ss := proto.ServerStatus{}

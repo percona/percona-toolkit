@@ -86,7 +86,7 @@ var (
 
 	Build     string = "2020-04-23" //nolint
 	GoVersion string = "1.14.1"     //nolint
-	Version   string = "3.3.1"      //nolint
+	Version   string = "3.4.0"      //nolint
 	Commit    string                //nolint
 )
 
