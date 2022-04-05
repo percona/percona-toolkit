@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"text/template"
 	"time"
 
@@ -31,7 +32,7 @@ type cmdlineArgs struct {
 
 	AllCollections bool     `name:"all-collections" xor:"colls" help:"Check in all collections in the selected databases."`
 	Collections    []string `name:"collections" xor:"colls" help:"Comma separated list of collections to check"`
-	URI            string   `name:"mongodb.uri" help:"Connection URI"`
+	URI            string   `name:"mongodb.uri" required:"" placeholder:"mongodb://host:port/admindb?options" help:"Connection URI"`
 	JSON           bool     `name:"json" help:"Show output as JSON"`
 }
 
@@ -65,6 +66,10 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
+
+	if !strings.HasPrefix(args.URI, "mongodb") && !strings.HasPrefix(args.URI, "mongodb+srv") {
+		args.URI = "mongodb://" + args.URI
+	}
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(args.URI))
 	if err != nil {
