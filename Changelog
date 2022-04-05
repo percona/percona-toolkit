@@ -1,6 +1,6 @@
 Changelog for Percona Toolkit
 
-v3.4.0 release date not set yet
+v3.4.0
 
  * Fixed bug   PT-1218: pt-stalk ominous open_tables function
  * Fixed bug   PT-1336: pt-stalk removes user's files from the destination directory
