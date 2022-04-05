@@ -9,7 +9,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-var systemDBs = []string{"admin", "config", "local"} //nolint:gochecknoglobals
+var systemDBs = []string{"admin", "config", "local", "system.profile"} //nolint:gochecknoglobals
 // IndexStat hold an index usage statistics.
 type IndexStat struct {
 	Accesses struct {
