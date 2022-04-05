@@ -24,6 +24,7 @@ type cmdlineArgs struct {
 	CheckDuplicated struct{} `cmd:"" name:"check-duplicates" help:"Check for duplicated indexes."`
 	CheckAll        struct{} `cmd:"" name:"check-all" help:"Check for unused and duplicated indexes."`
 	ShowHelp        struct{} `cmd:"" default:"1"`
+	Version         struct{} `cmd:"" name:"version"`
 
 	AllDatabases bool     `name:"all-databases" xor:"db" help:"Check in all databases excluding system dbs"`
 	Databases    []string `name:"databases" xor:"db" help:"Comma separated list of databases to check"`
@@ -39,9 +40,28 @@ type response struct {
 	Duplicated []indexes.Duplicate
 }
 
+const (
+	TOOLNAME = "pt-mongodb-index-check"
+)
+
+var (
+	Build     string = "2020-04-23" //nolint
+	GoVersion string = "1.14.1"     //nolint
+	Version   string = "3.4.0"      //nolint
+	Commit    string                //nolint
+)
+
 func main() {
 	var args cmdlineArgs
 	kongctx := kong.Parse(&args, kong.UsageOnError())
+
+	if kongctx.Command() == "version" {
+		fmt.Println(TOOLNAME)
+		fmt.Printf("Version %s\n", Version)
+		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
+		fmt.Printf("Commit: %s\n", Commit)
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
