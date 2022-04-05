@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/Masterminds/semver v1.4.2
 	github.com/alecthomas/kingpin v2.2.6+incompatible
+	github.com/alecthomas/kong v0.5.0
 	github.com/go-ini/ini v1.66.4
 	github.com/golang/mock v1.4.4
 	github.com/google/uuid v1.3.0
@@ -20,8 +21,8 @@ require (
 	github.com/shirou/gopsutil v2.20.8+incompatible
 	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.7.1
-	go.mongodb.org/mongo-driver v1.7.1
-	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+	go.mongodb.org/mongo-driver v1.8.4
+	golang.org/x/crypto v0.0.0-20201216223049-8b5274cf687f
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
 	k8s.io/api v0.23.5
 )
@@ -29,7 +30,6 @@ require (
 require (
 	github.com/AlekSi/pointer v1.2.0 // indirect
 	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect
-	github.com/alecthomas/kong v0.5.0 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -67,7 +67,7 @@ require (
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
-	k8s.io/apimachinery v0.18.6 // indirect
+	k8s.io/apimachinery v0.23.5 // indirect
 	k8s.io/klog v1.0.0 // indirect
 	k8s.io/klog/v2 v2.60.1 // indirect
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9 // indirect
