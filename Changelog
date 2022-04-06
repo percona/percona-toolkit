@@ -20,11 +20,8 @@ v3.4.0
  * New Tool    PT-1978: Add reporting on unused/redundant indexes for MongoDB by pt-mongodb-summary
  * Improvement PT-1979: Add gathering of admin parameters for MongoDB by pt-mongodb-summary
  * Fixed bug   PT-1983:	pt-summary missing one DIMM	
- * Admin task  PT-2009: Update Go Lang dependencies
- * Admin task  PT-2011:	Make build reproducible
  * Fixed bug   PT-2016: pt-table-checksum fails to build replace query when table lack a primary key
  * Fixed bug   PT-2023: pt-upgrade Error: Wide character in print
- * Admin task  PT-2029: Update CONTRIBUTING.md
  * Improvement PT-2037: Add option --skip-mysql or --system-only for pt-stalk
 
 v3.3.1 release 2021-04-28 
