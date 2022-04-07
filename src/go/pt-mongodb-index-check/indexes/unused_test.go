@@ -59,7 +59,12 @@ func TestUnusedIndexes(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	want := []string{"idx_00", "idx_01", "idx_02"}
+	// Make use of idx_02: {"f4": -1} to exclude it from the results so we ensure only unused indexes
+	// are being listed.
+	_, err = database.Collection(collname).Find(ctx, primitive.M{"f4": primitive.M{"$gt": 500}})
+	assert.NoError(t, err)
+
+	want := []string{"idx_00", "idx_01"}
 
 	ui, err := FindUnused(ctx, client, dbname, collname)
 	assert.NoError(t, err)
