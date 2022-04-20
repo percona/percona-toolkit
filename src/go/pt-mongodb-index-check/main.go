@@ -10,14 +10,14 @@ import (
 	"time"
 
 	"github.com/alecthomas/kong"
-	"github.com/percona/percona-toolkit/src/go/pt-mongodb-index-check/indexes"
-	"github.com/percona/percona-toolkit/src/go/pt-mongodb-index-check/templates"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/percona/percona-toolkit/src/go/pt-mongodb-index-check/indexes"
+	"github.com/percona/percona-toolkit/src/go/pt-mongodb-index-check/templates"
 )
 
 type cmdlineArgs struct {
@@ -90,12 +90,12 @@ func main() {
 
 	switch kongctx.Command() {
 	case "check-unused":
-		resp.Unused = append(resp.Unused, findUnused(ctx, client, args.Databases, args.Collections)...)
+		resp.Unused = findUnused(ctx, client, args.Databases, args.Collections)
 	case "check-duplicates":
-		resp.Duplicated = append(resp.Duplicated, findDuplicated(ctx, client, args.Databases, args.Collections)...)
+		resp.Duplicated = findDuplicated(ctx, client, args.Databases, args.Collections)
 	case "check-all":
-		resp.Unused = append(resp.Unused, findUnused(ctx, client, args.Databases, args.Collections)...)
-		resp.Duplicated = append(resp.Duplicated, findDuplicated(ctx, client, args.Databases, args.Collections)...)
+		resp.Unused = findUnused(ctx, client, args.Databases, args.Collections)
+		resp.Duplicated = findDuplicated(ctx, client, args.Databases, args.Collections)
 	default:
 		kong.DefaultHelpPrinter(kong.HelpOptions{}, kongctx)
 	}

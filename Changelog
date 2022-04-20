@@ -10,11 +10,11 @@ v3.4.0
  * Fixed bug   PT-1747: pt-online-schema-change: metadata lock can break database for rebuild_constraints
  * Improvement PT-1800: The environment variable PTDEBUG=1 exposes the passwords
  * Improvement PT-1887: pt-diskstat is not working for new kernels
- * Fixed bug PT-1900:   At times, pt-query-digest does not hide the parameters properly when parameter=binary
+ * Fixed bug   PT-1900: At times, pt-query-digest does not hide the parameters properly when parameter=binary
  * Improvement PT-1940:	ptsoc dropswap method that was rejected for Mysql 8 has been fixed with Mysql 8.0.14
  * Fixed bug   PT-1953: pt-summary typo: Memory mamagement.
  * Fixed bug   PT-1959: go part of the toolkit still has the version 3.3.0
- * Fixed bug   PT-1965: pt-stalk --mysql-only doesn't collect mysqladmin outputs (Thanks Sergey Kuzmichev)
+ * Fixed bug   PT-1965: pt-stalk --mysql-only doesn't collect mysqladmin output (Thanks Sergey Kuzmichev)
  * Fixed bug   PT-1966: Test no_drop_no_swap for the pt-online-schema-change is broken (Thanks Tsubasa Tanaka)
  * Fixed bug   PT-1974: Support fingerprinting for --print in pt-kill
  * New Tool    PT-1978: Add reporting on unused/redundant indexes for MongoDB by pt-mongodb-summary

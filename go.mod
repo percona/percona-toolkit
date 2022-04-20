@@ -1,6 +1,6 @@
 module github.com/percona/percona-toolkit
 
-go 1.18
+go 1.17
 
 require (
 	github.com/Masterminds/semver v1.4.2
@@ -9,27 +9,25 @@ require (
 	github.com/go-ini/ini v1.66.4
 	github.com/golang/mock v1.4.4
 	github.com/google/uuid v1.3.0
-	github.com/hashicorp/go-version v1.2.1-0.20190424083514-192140e6f3e6
-	github.com/howeyc/gopass v0.0.0-20170109162249-bf9dde6d0d2c
-	github.com/kr/pretty v0.3.0
-	github.com/lib/pq v1.2.0
-	github.com/mattn/go-shellwords v1.0.6
-	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe
-	github.com/pborman/getopt v0.0.0-20190409184431-ee0cd42419d3
-	github.com/percona/go-mysql v0.0.0-20190903141930-197f4ad8db8d
+	github.com/hashicorp/go-version v1.4.0
+	github.com/howeyc/gopass v0.0.0-20210920133722-c8aef6fb66ef
+	github.com/lib/pq v1.10.4
+	github.com/mattn/go-shellwords v1.0.12
+	github.com/montanaflynn/stats v0.6.6
+	github.com/pborman/getopt v1.1.0
+	github.com/percona/go-mysql v0.0.0-20210427141028-73d29c6da78c
 	github.com/pkg/errors v0.9.1
-	github.com/shirou/gopsutil v2.20.8+incompatible
-	github.com/sirupsen/logrus v1.6.0
-	github.com/stretchr/testify v1.7.1
-	go.mongodb.org/mongo-driver v1.8.4
-	golang.org/x/crypto v0.0.0-20201216223049-8b5274cf687f
+	github.com/shirou/gopsutil v3.21.11+incompatible
+	github.com/sirupsen/logrus v1.8.1
+	github.com/stretchr/testify v1.7.0
+	go.mongodb.org/mongo-driver v1.9.0
+	golang.org/x/crypto v0.0.0-20220331220935-ae2d96664a29
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
 	k8s.io/api v0.23.5
 )
 
 require (
-	github.com/AlekSi/pointer v1.2.0 // indirect
-	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect
+	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -58,7 +56,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	golang.org/x/net v0.0.0-20220403103023-749bd193bc2b // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220405052023-b1e9470b6e64 // indirect
+	golang.org/x/sys v0.0.0-20220406163625-3f8b81556e12 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect

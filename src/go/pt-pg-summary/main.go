@@ -8,13 +8,13 @@ import (
 	"text/template"
 
 	"github.com/alecthomas/kingpin"
+	_ "github.com/lib/pq"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
+
 	"github.com/percona/percona-toolkit/src/go/lib/pginfo"
 	"github.com/percona/percona-toolkit/src/go/pt-pg-summary/templates"
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
-	log "github.com/sirupsen/logrus"
-
-	_ "github.com/lib/pq"
 )
 
 var (

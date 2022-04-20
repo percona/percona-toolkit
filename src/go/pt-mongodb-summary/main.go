@@ -19,18 +19,19 @@ import (
 	version "github.com/hashicorp/go-version"
 	"github.com/howeyc/gopass"
 	"github.com/pborman/getopt"
-	"github.com/percona/percona-toolkit/src/go/lib/config"
-	"github.com/percona/percona-toolkit/src/go/lib/versioncheck"
-	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
-	"github.com/percona/percona-toolkit/src/go/mongolib/util"
-	"github.com/percona/percona-toolkit/src/go/pt-mongodb-summary/oplog"
-	"github.com/percona/percona-toolkit/src/go/pt-mongodb-summary/templates"
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/process"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+
+	"github.com/percona/percona-toolkit/src/go/lib/config"
+	"github.com/percona/percona-toolkit/src/go/lib/versioncheck"
+	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
+	"github.com/percona/percona-toolkit/src/go/mongolib/util"
+	"github.com/percona/percona-toolkit/src/go/pt-mongodb-summary/oplog"
+	"github.com/percona/percona-toolkit/src/go/pt-mongodb-summary/templates"
 )
 
 const (

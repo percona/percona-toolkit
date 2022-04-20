@@ -13,6 +13,11 @@ import (
 
 	"github.com/howeyc/gopass"
 	"github.com/pborman/getopt"
+	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+
 	"github.com/percona/percona-toolkit/src/go/lib/config"
 	"github.com/percona/percona-toolkit/src/go/lib/versioncheck"
 	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
@@ -21,10 +26,6 @@ import (
 	"github.com/percona/percona-toolkit/src/go/mongolib/stats"
 	"github.com/percona/percona-toolkit/src/go/mongolib/util"
 	"github.com/percona/percona-toolkit/src/go/pt-mongodb-query-digest/filter"
-	log "github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (

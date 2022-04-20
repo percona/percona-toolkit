@@ -15,8 +15,8 @@ import (
 	"github.com/alecthomas/kingpin"
 	"github.com/go-ini/ini"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh/terminal"
 )
 

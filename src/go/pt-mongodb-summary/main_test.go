@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/pborman/getopt"
+
 	tu "github.com/percona/percona-toolkit/src/go/internal/testutils"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 )
