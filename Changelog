@@ -11,7 +11,7 @@ v3.4.0
  * Improvement PT-1800: The environment variable PTDEBUG=1 exposes the passwords
  * Improvement PT-1887: pt-diskstat is not working for new kernels
  * Fixed bug   PT-1900:	pt-query-digest not hiding parameter properly sometimes when parameter=binary
- * Improvement PT-1940:	ptsoc dropswap with mysql8: revise rejection (Thanks duxthefux)
+ * Improvement PT-1940:	ptsoc dropswap method that was rejected for Mysql 8 has been fixed with Mysql 8.0.14
  * Fixed bug   PT-1953: pt-summary typo: Memory mamagement.
  * Fixed bug   PT-1959: go part of the toolkit still has the version 3.3.0
  * Fixed bug   PT-1965: pt-stalk --mysql-only doesn't collect mysqladmin outputs (Thanks Sergey Kuzmichev)
