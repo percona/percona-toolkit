@@ -4,7 +4,7 @@ v3.4.0
 
  * Fixed bug   PT-1218: pt-stalk ominous open_tables function
  * Fixed bug   PT-1336: pt-stalk removes user's files from the destination directory
- * Fixed bug   PT-1398: pt-stalk get wrong mysqld pid when the host installed multi mysql instance
+ * Fixed bug   PT-1398: pt-stalk gets the incorrect mysqld pid when the host installed a multi MySQL instance
  * Improvement PT-1417: Inconsistent creation of toolkit tables
  * Fixed bug   PT-1627:	pt-mysql-summary doesn't verify which version of jemalloc is in use
  * Fixed bug   PT-1747: pt-online-schema-change: metadata lock can break database for rebuild_constraints
