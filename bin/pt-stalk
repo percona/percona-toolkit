@@ -979,7 +979,7 @@ collect_mysql_data_loop() {
    (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
       >> "$d/$p-processlist" &
    if [ "$have_lock_waits_table" ]; then
-      (echo $ts; lock_waits)   >>"$d/$p-lock-waits" &
+      (echo $ts; lock_waits "$d/lock_waits.running")   >>"$d/$p-lock-waits" &
       (echo $ts; transactions) >>"$d/$p-transactions" &
    fi
 
@@ -988,7 +988,7 @@ collect_mysql_data_loop() {
    fi
 
    if [ "${mysql_version}" '>' "5.6" ]; then
-      (echo $ts; ps_prepared_statements) >> "$d/$p-prepared-statements" &
+      (echo $ts; ps_prepared_statements "$d/prepared_statements.isrunnning") >> "$d/$p-prepared-statements" &
    fi
 
    slave_status "$d/$p-slave-status" "${mysql_version}" 
@@ -1089,36 +1089,43 @@ open_tables() {
 }
 
 lock_waits() {
-   local sql1="SELECT SQL_NO_CACHE
-      CONCAT('thread ', b.trx_mysql_thread_id, ' from ', p.host) AS who_blocks,
-      IF(p.command = \"Sleep\", p.time, 0) AS idle_in_trx,
-      MAX(TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP)) AS max_wait_time,
-      COUNT(*) AS num_waiters
-   FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS AS w
-   INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.blocking_trx_id
-   INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.requesting_trx_id
-   LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
-   GROUP BY who_blocks ORDER BY num_waiters DESC\G"
-   $CMD_MYSQL $EXT_ARGV -e "$sql1"
+   local flag_file=$1
+   if test -f "$flag_file"; then
+      echo "Lock collection already running, skipping this iteration"
+   else
+      touch "$flag_file"
+      local sql1="SELECT SQL_NO_CACHE
+         CONCAT('thread ', b.trx_mysql_thread_id, ' from ', p.host) AS who_blocks,
+         IF(p.command = \"Sleep\", p.time, 0) AS idle_in_trx,
+         MAX(TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP)) AS max_wait_time,
+         COUNT(*) AS num_waiters
+      FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS AS w
+      INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.blocking_trx_id
+      INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.requesting_trx_id
+      LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
+      GROUP BY who_blocks ORDER BY num_waiters DESC\G"
+      $CMD_MYSQL $EXT_ARGV -e "$sql1"
 
-   local sql2="SELECT SQL_NO_CACHE
-      r.trx_id AS waiting_trx_id,
-      r.trx_mysql_thread_id AS waiting_thread,
-      TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP) AS wait_time,
-      r.trx_query AS waiting_query,
-      l.lock_table AS waiting_table_lock,
-      b.trx_id AS blocking_trx_id, b.trx_mysql_thread_id AS blocking_thread,
-      SUBSTRING(p.host, 1, INSTR(p.host, ':') - 1) AS blocking_host,
-      SUBSTRING(p.host, INSTR(p.host, ':') +1) AS blocking_port,
-      IF(p.command = \"Sleep\", p.time, 0) AS idle_in_trx,
-      b.trx_query AS blocking_query
-   FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS AS w
-   INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.blocking_trx_id
-   INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.requesting_trx_id
-   INNER JOIN INFORMATION_SCHEMA.INNODB_LOCKS AS l ON w.requested_lock_id = l.lock_id
-   LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
-   ORDER BY wait_time DESC\G"
-   $CMD_MYSQL $EXT_ARGV -e "$sql2"
+      local sql2="SELECT SQL_NO_CACHE
+         r.trx_id AS waiting_trx_id,
+         r.trx_mysql_thread_id AS waiting_thread,
+         TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP) AS wait_time,
+         r.trx_query AS waiting_query,
+         l.lock_table AS waiting_table_lock,
+         b.trx_id AS blocking_trx_id, b.trx_mysql_thread_id AS blocking_thread,
+         SUBSTRING(p.host, 1, INSTR(p.host, ':') - 1) AS blocking_host,
+         SUBSTRING(p.host, INSTR(p.host, ':') +1) AS blocking_port,
+         IF(p.command = \"Sleep\", p.time, 0) AS idle_in_trx,
+         b.trx_query AS blocking_query
+      FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS AS w
+      INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.blocking_trx_id
+      INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.requesting_trx_id
+      INNER JOIN INFORMATION_SCHEMA.INNODB_LOCKS AS l ON w.requested_lock_id = l.lock_id
+      LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
+      ORDER BY wait_time DESC\G"
+      $CMD_MYSQL $EXT_ARGV -e "$sql2"
+      rm "$flag_file"
+   fi
 } 
 
 transactions() {
@@ -1200,10 +1207,17 @@ ps_locks_transactions() {
 }
 
 ps_prepared_statements() {
-   $CMD_MYSQL $EXT_ARGV -e "SELECT t.processlist_id, pse.* \
-                            FROM performance_schema.prepared_statements_instances pse \
-                            JOIN performance_schema.threads t \
-                            ON (pse.OWNER_THREAD_ID=t.thread_id)\G"
+   local flag_file=$1
+   if test -f "$flag_file"; then
+      echo "Prepared statements collection already running, skipping this iteration"
+   else
+      touch "$flag_file"
+      $CMD_MYSQL $EXT_ARGV -e "SELECT t.processlist_id, pse.* \
+                               FROM performance_schema.prepared_statements_instances pse \
+                               JOIN performance_schema.threads t \
+                               ON (pse.OWNER_THREAD_ID=t.thread_id)\G"
+      rm "$flag_file"
+   fi
 }
 
 slave_status() {
