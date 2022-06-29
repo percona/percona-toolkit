@@ -755,7 +755,7 @@ SKIP: {
    
    like(
       $output,
-      qr/Slave has read all relay log; waiting for more updates/,
+      qr/SERVICE_STATE: ON/,
       "MySQL 5.7 SLAVE STATUS"
    ) or diag ($output);
    $sb->stop_sandbox(qw(chan_master1 chan_master2 chan_slave1));
