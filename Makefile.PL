@@ -9,9 +9,9 @@ WriteMakefile(
       map {
          (my $name = $_) =~ s/^bin.//;
          my $file_name = $_;
-         if ( $file_name !~ m/mongo/ ) {
+         if ( ( $file_name !~ m/mongo/ ) || ( $file_name !~ m/pg/ ) ) {
              $_ => "blib/man1/$name.1p";
-        }
+         }
       } <bin/*>
     },
     MAN3PODS     => {}, # man(3) pages are for C libs
