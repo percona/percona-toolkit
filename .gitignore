@@ -12,6 +12,7 @@ Makefile.old
 bin/pt-mongodb-*
 bin/pt-secure-*
 bin/pt-pg-*
+bin/pt-k8s-debug-collector
 !src/go/pt-mongodb-query-digest/vendor/vendor.json
 !src/go/pt-mongodb-summary/vendor/vendor.json
 src/go/pt-mongodb-query-digest/vendor/

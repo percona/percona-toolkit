@@ -5,10 +5,10 @@ import (
 	"os"
 	"testing"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/percona/percona-toolkit/src/go/lib/pginfo"
 	"github.com/percona/percona-toolkit/src/go/pt-pg-summary/internal/tu"
-
-	"github.com/sirupsen/logrus"
 )
 
 type Test struct {
