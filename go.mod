@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/Masterminds/semver v1.4.2
 	github.com/alecthomas/kingpin v2.2.6+incompatible
+	github.com/alecthomas/kong v0.5.0
 	github.com/go-ini/ini v1.66.4
 	github.com/golang/mock v1.4.4
 	github.com/google/uuid v1.3.0
