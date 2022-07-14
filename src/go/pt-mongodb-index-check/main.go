@@ -11,14 +11,13 @@ import (
 
 	"github.com/alecthomas/kong"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/percona/percona-toolkit/src/go/pt-mongodb-index-check/indexes"
 	"github.com/percona/percona-toolkit/src/go/pt-mongodb-index-check/templates"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type cmdlineArgs struct {

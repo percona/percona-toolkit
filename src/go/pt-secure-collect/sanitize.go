@@ -3,9 +3,10 @@ package main
 import (
 	"os"
 
+	"github.com/pkg/errors"
+
 	"github.com/percona/percona-toolkit/src/go/pt-secure-collect/sanitize"
 	"github.com/percona/percona-toolkit/src/go/pt-secure-collect/sanitize/util"
-	"github.com/pkg/errors"
 )
 
 func sanitizeFile(opts *cliOptions) error {

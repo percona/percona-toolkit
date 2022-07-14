@@ -13,6 +13,11 @@ import (
 
 	"github.com/howeyc/gopass"
 	"github.com/pborman/getopt"
+	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+
 	"github.com/percona/percona-toolkit/src/go/lib/config"
 	"github.com/percona/percona-toolkit/src/go/lib/versioncheck"
 	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
@@ -21,10 +26,6 @@ import (
 	"github.com/percona/percona-toolkit/src/go/mongolib/stats"
 	"github.com/percona/percona-toolkit/src/go/mongolib/util"
 	"github.com/percona/percona-toolkit/src/go/pt-mongodb-query-digest/filter"
-	log "github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -40,7 +41,7 @@ const (
 var (
 	Build     string = "2020-04-23" //nolint
 	GoVersion string = "1.14.1"     //nolint
-	Version   string = "3.3.2"      //nolint
+	Version   string = "3.4.0"      //nolint
 	Commit    string                //nolint
 )
 

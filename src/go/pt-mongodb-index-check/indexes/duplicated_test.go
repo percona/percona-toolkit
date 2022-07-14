@@ -7,12 +7,13 @@ import (
 	"time"
 
 	"github.com/AlekSi/pointer"
-	tu "github.com/percona/percona-toolkit/src/go/internal/testutils"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"gopkg.in/mgo.v2/bson"
+
+	tu "github.com/percona/percona-toolkit/src/go/internal/testutils"
 )
 
 func TestDuplicateIndexes(t *testing.T) {

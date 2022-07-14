@@ -19,18 +19,19 @@ import (
 	version "github.com/hashicorp/go-version"
 	"github.com/howeyc/gopass"
 	"github.com/pborman/getopt"
-	"github.com/percona/percona-toolkit/src/go/lib/config"
-	"github.com/percona/percona-toolkit/src/go/lib/versioncheck"
-	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
-	"github.com/percona/percona-toolkit/src/go/mongolib/util"
-	"github.com/percona/percona-toolkit/src/go/pt-mongodb-summary/oplog"
-	"github.com/percona/percona-toolkit/src/go/pt-mongodb-summary/templates"
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/process"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+
+	"github.com/percona/percona-toolkit/src/go/lib/config"
+	"github.com/percona/percona-toolkit/src/go/lib/versioncheck"
+	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
+	"github.com/percona/percona-toolkit/src/go/mongolib/util"
+	"github.com/percona/percona-toolkit/src/go/pt-mongodb-summary/oplog"
+	"github.com/percona/percona-toolkit/src/go/pt-mongodb-summary/templates"
 )
 
 const (
@@ -56,7 +57,7 @@ const (
 var (
 	Build     string = "2020-04-23"
 	GoVersion string = "1.14.1"
-	Version   string = "3.3.2"
+	Version   string = "3.4.0"
 	Commit    string
 
 	defaultConnectionTimeout = 3 * time.Second
@@ -615,7 +616,8 @@ func getNodeType(ctx context.Context, client *mongo.Client) (string, error) {
 }
 
 func getOpCountersStats(ctx context.Context, client *mongo.Client, count int,
-	sleep time.Duration) (*opCounters, error) {
+	sleep time.Duration,
+) (*opCounters, error) {
 	oc := &opCounters{}
 	prevOpCount := &opCounters{}
 	ss := proto.ServerStatus{}
