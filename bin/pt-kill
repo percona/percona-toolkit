@@ -7373,41 +7373,41 @@ sub main {
 
          MATCHING_QUERY:
          foreach my $query ( @queries ) {
+            my $qinfo = ($query->{Info} || 'NULL' );
+            if( $o->get('fingerprint') && $qinfo ne 'NULL' ) {
+                     $qinfo = $qr->fingerprint($query->{'Info'});
+            }
             if ( $o->get('print') ) {
-               my $qinfo = ($query->{Info} || 'NULL' );
-               if( $o->get('fingerprint') && $qinfo ne 'NULL' ) {
-                        $qinfo = $qr->fingerprint($query->{'Info'});
+               printf "# %s %s %d (%s %d sec) %s\n",
+                  ts(time), $o->get('kill-query') ? 'KILL QUERY' : 'KILL',
+                  $query->{Id}, ($query->{Command} || 'NULL'), $query->{Time},
+                  $qinfo;
+            }
+            if ( $o->get('log-json') ) {
+               my $reasons = join "\n", map {
+                     defined($_) ? $_ : "Unkown reason"
+                  } @{ $pl->{_reasons_for_matching}->{$query} };
+               my %jsonOutput = (
+                     ts          => ts(time),
+                     reason      => $reasons,
+                     kill_error  => $EVAL_ERROR,
+                     Id          => $query->{Id},
+                     User        => $query->{User},
+                     Host        => $query->{Host},
+                     db          => $query->{db},
+                     Command     => $query->{Command},
+                     Time        => $query->{Time},
+                     State       => $query->{State},
+                     Info        => $qinfo
+               );
+               if ( $o->get('log-json-fields') ) {
+                  my @logFieldKVs = split(",", $o->get('log-json-fields'));
+                  my %logFields = map { split(":", $_) } @logFieldKVs;
+                  %jsonOutput = (%jsonOutput, %logFields);
                }
-
-               if ( $o->get('log-json') ) {
-                  my $reasons = join "\n", map {
-                        defined($_) ? $_ : "Unkown reason"
-                     } @{ $pl->{_reasons_for_matching}->{$query} };
-                  my %jsonOutput = (
-                        ts          => ts(time),
-                        reason      => $reasons,
-                        kill_error  => $EVAL_ERROR,
-                        Id          => $query->{Id},
-                        User        => $query->{User},
-                        Host        => $query->{Host},
-                        db          => $query->{db},
-                        Command     => $query->{Command},
-                        Time        => $query->{Time},
-                        State       => $query->{State},
-                        Info        => $qinfo
-                  );
-                  if ( $o->get('log-json-fields') ) {
-                     my @logFieldKVs = split(",", $o->get('log-json-fields'));
-                     my %logFields = map { split(":", $_) } @logFieldKVs;
-                     %jsonOutput = (%jsonOutput, %logFields);
-                  }
-                  printf "%s\n", Transformers::hash_to_json(\%jsonOutput);
-               } else {
-                  printf "# %s %s %d (%s %d sec) %s\n",
-                     ts(time), $o->get('kill-query') ? 'KILL QUERY' : 'KILL',
-                     $query->{Id}, ($query->{Command} || 'NULL'), $query->{Time},
-                     $qinfo;
-               }
+               open my $fh, '>>', $o->get('log-json');
+               printf $fh "%s\n", Transformers::hash_to_json(\%jsonOutput);
+               close $fh;
             }
             if ( $o->get('query-id') ) {
                   my $fp = $qr->fingerprint($query->{'Info'});
@@ -7894,6 +7894,30 @@ MAGIC_create_log_table:
       PRIMARY KEY (kill_id)
    ) DEFAULT CHARSET=utf8
 
+=item --log-json
+
+type: string
+
+Write killed queries as JSON to this file, for example:
+
+   --log-json kill_log.json
+
+JSON output will be in the format of:
+
+   {
+      "Command": "Query",
+      "Host": "10.0.0.1:9999",
+      "Id": 1234,
+      "Info": "SELECT SLEEP(5)",
+      "State": "User sleep",
+      "Time": 10,
+      "User": "my_user",
+      "db": "my_db",
+      "kill_error": "",
+      "reason": "Exceeds busy time\nQuery matches Command spec",
+      "ts": "2022-01-01T00:00:00"
+   }
+
 =item --log-json-fields
 
 type: string
@@ -7902,44 +7926,32 @@ Specify a list of additional key:value pairs to include in JSON output when
 using L<"--log-json">, the value of this parameter must be specified in the
 format of:
 
---log-json-fields key1:value1,key2:value2
-
-=item --log-json
-
-Output from L<"--print"> will be in JSON format, must be combined with
-L<"--print">. JSON output will be in the format of:
-
-{
-  "Command": "Query",
-  "Host": "10.0.0.1:9999",
-  "Id": 1234,
-  "Info": "SELECT SLEEP(5)",
-  "State": "User sleep",
-  "Time": 10,
-  "User": "my_user",
-  "db": "my_db",
-  "kill_error": "",
-  "reason": "Exceeds busy time\nQuery matches Command spec",
-  "ts": "2022-01-01T00:00:00"
-}
+   --log-json-fields key1:value1,key2:value2
 
 Any fields specified using L<"--log-json-fields"> will be included in the
-output, for example when using "--log-json-fields hostname:$(hostname)":
+L<"--log-json"> output.
 
-{
-  "Command": "Query",
-  "Host": "10.0.0.1:9999",
-  "Id": 1234,
-  "Info": "SELECT SLEEP(5)",
-  "State": "User sleep",
-  "Time": 10,
-  "User": "my_user",
-  "db": "my_db",
-  "kill_error": "",
-  "reason": "Exceeds busy time\nQuery matches Command spec",
-  "ts": "2022-01-01T00:00:00",
-  "hostname": "my_host"
-}
+For example:
+
+   --log-json kill_log.json --log-json-fields hostname:$(hostname),tag:my_tag
+
+Will result in JSON records being written to "kill_log.json" using this format:
+
+   {
+      "Command": "Query",
+      "Host": "10.0.0.1:9999",
+      "Id": 1234,
+      "Info": "SELECT SLEEP(5)",
+      "State": "User sleep",
+      "Time": 10,
+      "User": "my_user",
+      "db": "my_db",
+      "kill_error": "",
+      "reason": "Exceeds busy time\nQuery matches Command spec",
+      "ts": "2022-01-01T00:00:00",
+      "hostname": "my_host",
+      "tag": "my_tag"
+   }
 
 =item --password
 
