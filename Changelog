@@ -1,21 +1,28 @@
 Changelog for Percona Toolkit
 
-v3.3.2 WIP release date not set yet
+v3.4.0 release 2022-07-11
 
+ * New Tool    PT-1978: Add reporting on unused/redundant indexes for MongoDB by pt-mongodb-summary
  * Improvement PT-1417: Inconsistent creation of toolkit tables
+ * Improvement PT-1800: The environment variable PTDEBUG=1 exposes the passwords
+ * Improvement PT-1940:	ptsoc dropswap method that was rejected for Mysql 8 has been fixed with Mysql 8.0.14
+ * Improvement PT-1979: Add gathering of admin parameters for MongoDB by pt-mongodb-summary
+ * Improvement PT-2037: Add option --skip-mysql or --system-only for pt-stalk
+ * Fixed bug   PT-1218: pt-stalk ominous open_tables function
+ * Fixed bug   PT-1336: pt-stalk removes user's files from the destination directory
+ * Fixed bug   PT-1398: pt-stalk gets the incorrect mysqld pid when the host installed a multi MySQL instance
  * Fixed bug   PT-1627:	pt-mysql-summary doesn't verify which version of jemalloc is in use
  * Fixed bug   PT-1747: pt-online-schema-change: metadata lock can break database for rebuild_constraints
- * Improvement PT-1800: PTDEBUG=1 exposes passwords
- * Fixed bug   PT-1900:	pt-query-digest not hiding parameter properly sometimes when parameter=binary
- * Improvement PT-1940:	ptsoc dropswap with mysql8: revise rejection (Thanks duxthefux)
+ * Fixed bug   PT-1887: pt-diskstat is not working for new kernels
+ * Fixed bug   PT-1900: At times, pt-query-digest does not hide the parameters properly when parameter=binary
  * Fixed bug   PT-1953: pt-summary typo: Memory mamagement.
  * Fixed bug   PT-1959: go part of the toolkit still has the version 3.3.0
- * Fixed bug   PT-1965: pt-stalk --mysql-only doesn't collect mysqladmin outputs (Thanks Sergey Kuzmichev)
+ * Fixed bug   PT-1965: pt-stalk --mysql-only doesn't collect mysqladmin output (Thanks Sergey Kuzmichev)
  * Fixed bug   PT-1966: Test no_drop_no_swap for the pt-online-schema-change is broken (Thanks Tsubasa Tanaka)
  * Fixed bug   PT-1974: Support fingerprinting for --print in pt-kill
  * Fixed bug   PT-1983:	pt-summary missing one DIMM	
- * Admin task  PT-2009: Update Go Lang dependencies
- * Admin task  PT-2011:	Make build reproducible
+ * Fixed bug   PT-2016: pt-table-checksum fails to build replace query when table lacks primary key
+ * Fixed bug   PT-2023: pt-upgrade Error: Wide character in print
 
 v3.3.1 release 2021-04-28 
 

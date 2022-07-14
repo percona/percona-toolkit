@@ -16,10 +16,11 @@ import (
 	"time"
 
 	shellwords "github.com/mattn/go-shellwords"
-	"github.com/percona/percona-toolkit/src/go/pt-secure-collect/sanitize"
-	"github.com/percona/percona-toolkit/src/go/pt-secure-collect/sanitize/util"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/percona/percona-toolkit/src/go/pt-secure-collect/sanitize"
+	"github.com/percona/percona-toolkit/src/go/pt-secure-collect/sanitize/util"
 )
 
 func collectData(opts *cliOptions) error {
