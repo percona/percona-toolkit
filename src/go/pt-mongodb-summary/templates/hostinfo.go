@@ -19,7 +19,7 @@ const HostInfo = `# This host
 {{- end }}
                 Processes | {{.ProcProcessCount}}
              Process Type | {{.NodeType}}
-{{ if .ReplicasetName -}}
+{{- if .ReplicasetName }}
                   ReplSet | {{.ReplicasetName}}
               Repl Status | 
 {{- end -}}

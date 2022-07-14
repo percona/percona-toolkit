@@ -2,16 +2,16 @@ use ExtUtils::MakeMaker;
 
 WriteMakefile(
     NAME      => 'percona-toolkit',
-    VERSION   => '3.3.1',
+    VERSION   => '3.4.0',
     EXE_FILES => [ <bin/*> ],
     MAN1PODS  => {
       'docs/percona-toolkit.pod' => 'blib/man1/percona-toolkit.1p',
       map {
          (my $name = $_) =~ s/^bin.//;
          my $file_name = $_;
-         if ( $file_name !~ m/mongo/ ) {
+         if ( ( $file_name !~ m/mongo/ ) || ( $file_name !~ m/pg/ ) ) {
              $_ => "blib/man1/$name.1p";
-        }
+         }
       } <bin/*>
     },
     MAN3PODS     => {}, # man(3) pages are for C libs

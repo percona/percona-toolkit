@@ -422,7 +422,258 @@ like(
    qr/matched=yes/,
    "Accepts floating point values as treshold variable"
 );
+
+# ###########################################################################
+# Variable declaration for the retention tests
+# ###########################################################################
+
+my $odate;
+
+# ###########################################################################
+# Test if retention does not remove files that were not collected
+# ###########################################################################
+
+cleanup();
+
+system("mkdir $dest");
+$odate=`date --rfc-3339=date --date='-3 month'`;
+system("touch -d '$odate' $dest/nostalk");
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --prefix nostalk --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls -l $dest`;
+
+like(
+   $output,
+   qr/nostalk/m,
+   "Retention test 1: Not-matched file not touched"
+);
           
+# ###########################################################################
+# Test if files that match the prefix-, are removed by the retention option
+# ###########################################################################
+
+cleanup();
+
+system("mkdir $dest");
+$odate=`date --rfc-3339=date --date='-3 month'`;
+system("touch -d '$odate' $dest/nostalk-");
+system("touch -d '$odate' $dest/nostalk-innodbstatus1");
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --prefix nostalk --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls -l $dest`;
+
+unlike(
+   $output,
+   qr/^nostalk-$/m,
+   "Retention test 2: tests, matched prefix-, are removed"
+);
+
+unlike(
+   $output,
+   qr/^nostalk-innodbstatus1$/m,
+   "Retention test 2: tests, matched prefix-innodbstatus1, are removed"
+);
+
+# ###########################################################################
+# Test if retention removes old files that match auto-generated pattern
+# ###########################################################################
+
+cleanup();
+
+system("mkdir $dest");
+$odate=`date --rfc-3339=date --date='-3 month'`;
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls -l $dest | wc -l`;
+
+system("touch -d '$odate' $dest/*");
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls -l $dest | wc -l` - $output;
+
+is(
+   $output,
+   0,
+   "Retention test 3: tests, matched auto-generated patern, are removed"
+);
+
+# ###########################################################################
+# Test if retention by size works as expected
+# ###########################################################################
+
+cleanup();
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --sleep 2 --dest $dest --pid $pid_file --iterations 5 -- --defaults-file=$cnf >$log_file 2>&1");
+
+$output = `du -s $dest | cut -f 1`;
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --retention-size 1 --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = $output / `du -s $dest | cut -f 1`;
+
+ok(
+   $output >= 5,
+   "Retention test 4: retention by size works as expected"
+);
+
+# ###########################################################################
+# Test if retention by count works as expected
+# ###########################################################################
+
+cleanup();
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --sleep 2 --dest $dest --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls -l $dest | wc -l`;
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --retention-count 1 --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = $output - `ls -l $dest | wc -l`;
+
+is(
+   $output,
+   0,
+   "Retention test 5: retention by count works as expected"
+);
+
+# ###########################################################################
+# Test if option --system-only works correctly
+# ###########################################################################
+
+cleanup();
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --system-only --run-time 10 --sleep 2 --dest $dest --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls $dest`;
+
+like(
+   $output,
+   qr/(df)|(meminfo)/,
+   "Option --system-only collects system data"
+);
+
+unlike(
+   $output,
+   qr/(innodbstatus)|(mysqladmin)/,
+   "Option --system-only does not collect MySQL data"
+);
+
+# ###########################################################################
+# Test if option --mysql-only works correctly
+# ###########################################################################
+
+cleanup();
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --mysql-only --run-time 10 --sleep 2 --dest $dest --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls $dest`;
+
+unlike(
+   $output,
+   qr/(df)|(meminfo)/,
+   "Option --mysql-only does not collect system data"
+);
+
+like(
+   $output,
+   qr/(innodbstatus)|(mysqladmin)/,
+   "Option --mysql-only collects MySQL data"
+);
+
+# ###########################################################################
+# Test if options --mysql-only and --system-only specified together,
+# pt-stalk collects only disk-space, hostname, output, and trigger
+# ###########################################################################
+
+cleanup();
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --mysql-only --system-only --run-time 10 --sleep 2 --dest $dest --pid $pid_file --iterations 1 --prefix test -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls $dest`;
+
+is(
+   $output,
+   "test-disk-space\ntest-hostname\ntest-output\ntest-trigger\n",
+   "If both options --mysql-only and --system-only are specified only essential collections are triggered"
+);
+
+
+# ###########################################################################
+# Test if open tables are collected if number of open tables <= 1000
+# ###########################################################################
+
+cleanup();
+
+$dbh->do('FLUSH TABLES');
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 10 --sleep 2 --dest $dest --pid $pid_file --iterations 1 --prefix test -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `head -n 1 $dest/test-opentables1`;
+
+is(
+  $output,
+  "Database\tTable\tIn_use\tName_locked\n",
+  "If number of open tables is less or equal than 1000, the output of 'SHOW OPEN TABLES' is collected"
+);
+
+# ###########################################################################
+# Test if open tables are not collected if number of open tables > 1000
+# ###########################################################################
+
+cleanup();
+
+$retval = $dbh->do('FLUSH TABLES');
+$retval = $dbh->do('CREATE DATABASE IF NOT EXISTS test_open_tables');
+
+$retval = $dbh->do('SET @old_table_open_cache=@@global.table_open_cache, GLOBAL table_open_cache=1001*@@global.table_open_cache_instances');
+
+for (my $i = 0; $i < 1002; $i++) {
+  $retval = $dbh->do("CREATE TABLE IF NOT EXISTS test_open_tables.t_$i(id int)");
+  $retval = $dbh->do("INSERT INTO test_open_tables.t_$i VALUES($i)");
+}
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time=10 --dest $dest --pid $pid_file --iterations 1 --prefix test -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `cat $dest/test-opentables1`;
+
+like(
+  $output,
+  qr/Logging disabled due to having over 1000 tables open. Number of tables currently open/,
+  "If number of open tables is greater than 1000, the output of 'SHOW OPEN TABLES' is not collected"
+);
+
+$retval = $dbh->do('SET GLOBAL table_open_cache=@old_table_open_cache');
+$retval = $dbh->do('DROP DATABASE test_open_tables');
 # ###########################################################################
 # Test report about performance schema transactions in MySQL 5.7+
 # ###########################################################################
@@ -504,7 +755,7 @@ SKIP: {
    
    like(
       $output,
-      qr/Slave has read all relay log; waiting for more updates/,
+      qr/SERVICE_STATE: ON/,
       "MySQL 5.7 SLAVE STATUS"
    ) or diag ($output);
    $sb->stop_sandbox(qw(chan_master1 chan_master2 chan_slave1));
@@ -574,6 +825,7 @@ SKIP: {
       "MySQL 5.7 prepared statement: abs_statement"
    );
 }
+
 
 # #############################################################################
 # Done.
