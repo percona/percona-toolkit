@@ -57,6 +57,7 @@ collect() {
       local mysql_error_log=""
       local tail_error_log_pid=""
       local have_lock_waits_table=""
+      local lock_table_p_s=""
       local have_oprofile=""
       local mysqladmin_pid=""
       local mutex=""
@@ -213,10 +214,13 @@ collect_mysql_data_one() {
    if [ $? -eq 0 ]; then
       have_lock_waits_table="yes"
    else
+      # We cannot simply check version here, because MariaDB uses
+      # Information Schema in its 10.x series
       $CMD_MYSQL $EXT_ARGV -e "SHOW TABLES FROM performance_schema" \
          | grep -i "data_lock_waits" >/dev/null 2>&1
       if [ $? -eq 0 ]; then
          have_lock_waits_table="yes"
+         lock_table_p_s="yes"
       fi
    fi
 
@@ -400,7 +404,7 @@ lock_waits() {
       touch "$flag_file"
       local sql1=""
       local sql2=""
-      if [ "${mysql_version}" '<' "8.0" ]; then
+      if [ "${lock_table_p_s}" != "yes" ]; then
          sql1="SELECT SQL_NO_CACHE
             CONCAT('thread ', b.trx_mysql_thread_id, ' from ', p.host) AS who_blocks,
             MAX(IF(p.command = \"Sleep\", p.time, 0)) AS idle_in_trx,
@@ -469,7 +473,7 @@ lock_waits() {
 
 transactions() {
    $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_TRX ORDER BY trx_id\G"
-   if [ "${mysql_version}" '<' "8.0" ]; then
+   if [ "${lock_table_p_s}" != "yes" ]; then
       $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_LOCKS ORDER BY lock_trx_id\G"
       $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS ORDER BY blocking_trx_id, requesting_trx_id\G"
    else
