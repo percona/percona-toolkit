@@ -826,6 +826,72 @@ SKIP: {
    );
 }
 
+# #############################################################################
+# Test if locks and transactions are printed
+# #############################################################################
+
+cleanup();
+
+# We are not using SKIP here, because lock tables exist since version 5.1
+# Currently, all active MySQL versions support them
+
+sub start_thread_pt_1897_1 {
+   # this must run in a thread because we need to have an active session
+   # with open transaction
+   my ($dsn_opts) = @_;
+   my $dp = new DSNParser(opts=>$dsn_opts);
+   my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+   my $dbh = $sb->get_dbh_for('master');
+   $sb->load_file('master', "t/pt-stalk/samples/PT-1897-1.sql");
+}
+my $thr1 = threads->create('start_thread_pt_1897_1', $dsn_opts);
+$thr1->detach();
+threads->yield();
+sleep 1;
+
+sub start_thread_pt_1897_2 {
+   # this must run in a thread because we need to have an active session
+   # with waiting transaction
+   my ($dsn_opts) = @_;
+   my $dp = new DSNParser(opts=>$dsn_opts);
+   my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+   my $dbh = $sb->get_dbh_for('master');
+   $sb->load_file('master', "t/pt-stalk/samples/PT-1897-2.sql");
+}
+my $thr2 = threads->create('start_thread_pt_1897_2', $dsn_opts);
+$thr2->detach();
+threads->yield();
+
+my $cmd = "$trunk/bin/pt-stalk --no-stalk --iterations=1 --host=127.0.0.1 --port=12345 --user=msandbox "
+        . "--password=msandbox --sleep 0 --run-time=10 --dest $dest --log $log_file --pid $pid_file  "
+        . "--defaults-file=$cnf >$log_file 2>&1";
+system($cmd);
+sleep 15;
+PerconaTest::kill_program(pid_file => $pid_file);
+
+$output = `cat $dest/*-lock-waits 2>/dev/null`;
+like(
+   $output,
+   qr/waiting_query: UPDATE test.t1 SET f1=3/,
+   "lock-wait: LOCK_WAITS collected correctly"
+);
+
+$output = `cat $dest/*[[:digit:]]-transactions 2>/dev/null`;
+like(
+   $output,
+   qr/trx_query: UPDATE test.t1 SET f1=3/,
+   "transactions: InnoDB transaction info collected"
+);
+like(
+   $output,
+   qr/lock_type/i,
+   "transactions: Lock information collected"
+);
+like(
+   $output,
+   qr/requesting_(trx|ENGINE_TRANSACTION)_id/i,
+   "transactions: Lock wait information collected"
+);
 
 # #############################################################################
 # Done.
