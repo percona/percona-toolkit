@@ -7373,9 +7373,11 @@ sub main {
 
          MATCHING_QUERY:
          foreach my $query ( @queries ) {
+            my $fp = $qr->fingerprint($query->{'Info'});
+            my $chksm = Transformers::make_checksum($fp);
             my $qinfo = ($query->{Info} || 'NULL' );
             if( $o->get('fingerprint') && $qinfo ne 'NULL' ) {
-                     $qinfo = $qr->fingerprint($query->{'Info'});
+               $qinfo = $fp;
             }
             if ( $o->get('print') ) {
                printf "# %s %s %d (%s %d sec) %s\n",
@@ -7388,17 +7390,18 @@ sub main {
                      defined($_) ? $_ : "Unkown reason"
                   } @{ $pl->{_reasons_for_matching}->{$query} };
                my %jsonOutput = (
-                     ts          => ts(time),
-                     reason      => $reasons,
-                     kill_error  => $EVAL_ERROR,
+                     Timestamp   => ts(time),
+                     Reason      => $reasons,
+                     Kill_Error  => $EVAL_ERROR,
                      Id          => $query->{Id},
                      User        => $query->{User},
                      Host        => $query->{Host},
-                     db          => $query->{db},
+                     Db          => $query->{db},
                      Command     => $query->{Command},
                      Time        => $query->{Time},
                      State       => $query->{State},
-                     Info        => $qinfo
+                     Info        => $qinfo,
+                     Digest      => $chksm
                );
                if ( $o->get('log-json-fields') ) {
                   my @logFieldKVs = split(",", $o->get('log-json-fields'));
@@ -7410,8 +7413,6 @@ sub main {
                close $fh;
             }
             if ( $o->get('query-id') ) {
-                  my $fp = $qr->fingerprint($query->{'Info'});
-                  my $chksm = Transformers::make_checksum($fp);
                   print "Query ID: 0x$chksm\n";
             }
             if ( $o->get('execute-command') ) {
