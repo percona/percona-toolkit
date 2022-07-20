@@ -7913,10 +7913,11 @@ JSON output will be in the format of:
       "State": "User sleep",
       "Time": 10,
       "User": "my_user",
-      "db": "my_db",
-      "kill_error": "",
-      "reason": "Exceeds busy time\nQuery matches Command spec",
-      "ts": "2022-01-01T00:00:00"
+      "Db": "my_db",
+      "Kill_Error": "",
+      "Digest": "58A43A7DA83F58C1",
+      "Reason": "Exceeds busy time\nQuery matches Command spec",
+      "Timestamp": "2022-01-01T00:00:00"
    }
 
 =item --log-json-fields
@@ -7946,10 +7947,11 @@ Will result in JSON records being written to "kill_log.json" using this format:
       "State": "User sleep",
       "Time": 10,
       "User": "my_user",
-      "db": "my_db",
-      "kill_error": "",
-      "reason": "Exceeds busy time\nQuery matches Command spec",
-      "ts": "2022-01-01T00:00:00",
+      "Db": "my_db",
+      "Kill_Error": "",
+      "Digest": "58A43A7DA83F58C1",
+      "Reason": "Exceeds busy time\nQuery matches Command spec",
+      "Timestamp": "2022-01-01T00:00:00",
       "hostname": "my_host",
       "tag": "my_tag"
    }
