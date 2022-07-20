@@ -10101,6 +10101,12 @@ sub main {
    my $limit      = $o->get('chunk-size-limit');  # brevity
    my $chunk_time = $o->get('chunk-time');        # brevity
 
+   my $countdown = 100;
+   my $temp_max_chunk_size = 0;
+   my $temp_min_chunk_size = 1000000;
+   my $temp_total_chunk_size = 0;
+   my $report_temp_countdown = $countdown;
+
    my $callbacks = {
       init => sub {
          my (%args) = @_;
@@ -10329,6 +10335,22 @@ sub main {
                         . " seconds to execute.\n");
                      $tbl->{warned_slow} = 1;
                   }
+               }
+
+               $temp_max_chunk_size = $tbl->{chunk_size} > $temp_max_chunk_size ? $tbl->{chunk_size} : $temp_max_chunk_size;
+               $temp_min_chunk_size = $tbl->{chunk_size} < $temp_min_chunk_size ? $tbl->{chunk_size} : $temp_min_chunk_size;
+               $temp_total_chunk_size += $tbl->{chunk_size};
+               $report_temp_countdown -= 1;
+               if ($report_temp_countdown == 0) {
+                  my $avg = $temp_total_chunk_size / $countdown;
+                  print ts("In the last $countdown chunks of rows copied: "
+                      . "min chunk size = $temp_min_chunk_size, "
+                      . "max chunk size = $temp_max_chunk_size, "
+                      . "avg chunk size = $avg\n");
+                  $temp_max_chunk_size = 0;
+                  $temp_min_chunk_size = 1000000;
+                  $temp_total_chunk_size = 0;
+                  $report_temp_countdown = $countdown;
                }
 
                # Update chunk-size based on the rate of rows/s.
