@@ -10101,11 +10101,20 @@ sub main {
    my $limit      = $o->get('chunk-size-limit');  # brevity
    my $chunk_time = $o->get('chunk-time');        # brevity
 
-   my $countdown = 100;
-   my $temp_max_chunk_size = 0;
-   my $temp_min_chunk_size = 1000000;
-   my $temp_total_chunk_size = 0;
-   my $report_temp_countdown = $countdown;
+   # report chunk size stat every 10 second
+   my $report_chunk_period = $o->get('report-chunk-period');  # brevity
+   my $report_countdown = $chunk_time>0 && $report_chunk_period>0 ? $report_chunk_period/$chunk_time : 0;
+   my $report_max_size_chunk_size = 0;
+   my $report_max_size_chunk_time = 0;
+   my $report_max_time_chunk_size = 0;
+   my $report_max_time_chunk_time = 0;
+   my $report_min_size_chunk_size = 1000000000;
+   my $report_min_size_chunk_time = 1000000000;
+   my $report_min_time_chunk_size = 1000000000;
+   my $report_min_time_chunk_time = 1000000000;
+   my $report_total_size = 0;
+   my $report_total_time = 0;
+   my $cur_countdown = $report_countdown;
 
    my $callbacks = {
       init => sub {
@@ -10319,6 +10328,47 @@ sub main {
                   $tbl->{nibble_time}, # is this amount of time
                );
 
+               if ($report_countdown > 0) {
+                  if ($report_max_size_chunk_size < $cnt) {
+                     $report_max_size_chunk_size = $cnt;
+                     $report_max_size_chunk_time = $tbl->{nibble_time};
+                  }
+                  if ($report_max_time_chunk_time < $tbl->{nibble_time}) {
+                     $report_max_time_chunk_size = $cnt;
+                     $report_max_time_chunk_time = $tbl->{nibble_time};
+                  }
+                  if ($report_min_size_chunk_size > $cnt) {
+                     $report_min_size_chunk_size = $cnt;
+                     $report_min_size_chunk_time = $tbl->{nibble_time};
+                  }
+                  if ($report_min_time_chunk_time > $tbl->{nibble_time}) {
+                     $report_min_time_chunk_size = $cnt;
+                     $report_min_time_chunk_time = $tbl->{nibble_time};
+                  }
+                  $report_total_size += $cnt;
+                  $report_total_time += $tbl->{nibble_time};
+                  $cur_countdown -= 1;
+                  if ($cur_countdown == 0) {
+                     print ts("In the last $report_chunk_period secs, $report_countdown batches of rows are copied: \n"
+                         . "min-size-batch copied $report_min_size_chunk_size rows in $report_min_size_chunk_time secs \n"
+                         . "min-time-batch copied $report_min_time_chunk_size rows in $report_min_time_chunk_time secs \n"
+                         . "max-size-batch copied $report_max_size_chunk_size rows in $report_max_size_chunk_time secs \n"
+                         . "max-time-batch copied $report_max_time_chunk_size rows in $report_max_time_chunk_time secs \n"
+                         . "totally copied $report_total_size rows in $report_total_time secs\n");
+                     $report_max_size_chunk_size = 0;
+                     $report_max_size_chunk_time = 0;
+                     $report_max_time_chunk_size = 0;
+                     $report_max_time_chunk_time = 0;
+                     $report_min_size_chunk_size = 1000000000;
+                     $report_min_size_chunk_time = 1000000000;
+                     $report_min_time_chunk_size = 1000000000;
+                     $report_min_time_chunk_time = 1000000000;
+                     $report_total_size = 0;
+                     $report_total_time = 0;
+                     $cur_countdown = $report_countdown;
+                  }
+               }
+
                if ( $tbl->{chunk_size} < 1 ) {
                   # This shouldn't happen.  WeightedAvgRate::update() may
                   # return a value < 1, but minimum chunk size is 1.
@@ -10335,22 +10385,6 @@ sub main {
                         . " seconds to execute.\n");
                      $tbl->{warned_slow} = 1;
                   }
-               }
-
-               $temp_max_chunk_size = $tbl->{chunk_size} > $temp_max_chunk_size ? $tbl->{chunk_size} : $temp_max_chunk_size;
-               $temp_min_chunk_size = $tbl->{chunk_size} < $temp_min_chunk_size ? $tbl->{chunk_size} : $temp_min_chunk_size;
-               $temp_total_chunk_size += $tbl->{chunk_size};
-               $report_temp_countdown -= 1;
-               if ($report_temp_countdown == 0) {
-                  my $avg = $temp_total_chunk_size / $countdown;
-                  print ts("In the last $countdown chunks of rows copied: "
-                      . "min chunk size = $temp_min_chunk_size, "
-                      . "max chunk size = $temp_max_chunk_size, "
-                      . "avg chunk size = $avg\n");
-                  $temp_max_chunk_size = 0;
-                  $temp_min_chunk_size = 1000000;
-                  $temp_total_chunk_size = 0;
-                  $report_temp_countdown = $countdown;
                }
 
                # Update chunk-size based on the rate of rows/s.
@@ -13024,6 +13058,12 @@ If this option is set to zero, the chunk size doesn't auto-adjust, so query
 times will vary, but query chunk sizes will not. Another way to do the same
 thing is to specify a value for L<"--chunk-size"> explicitly, instead of leaving
 it at the default.
+
+=item --report-chunk-period
+
+type: size; default: 0
+
+Period of time when reporting chunk stats.
 
 =item --config
 
