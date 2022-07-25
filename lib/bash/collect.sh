@@ -57,6 +57,7 @@ collect() {
       local mysql_error_log=""
       local tail_error_log_pid=""
       local have_lock_waits_table=""
+      local lock_table_p_s=""
       local have_oprofile=""
       local mysqladmin_pid=""
       local mutex=""
@@ -212,6 +213,15 @@ collect_mysql_data_one() {
       | grep -i "INNODB_LOCK_WAITS" >/dev/null 2>&1
    if [ $? -eq 0 ]; then
       have_lock_waits_table="yes"
+   else
+      # We cannot simply check version here, because MariaDB uses
+      # Information Schema in its 10.x series
+      $CMD_MYSQL $EXT_ARGV -e "SHOW TABLES FROM performance_schema" \
+         | grep -i "data_lock_waits" >/dev/null 2>&1
+      if [ $? -eq 0 ]; then
+         have_lock_waits_table="yes"
+         lock_table_p_s="yes"
+      fi
    fi
 
    # Collect multiple snapshots of the status variables.  We use
@@ -392,44 +402,84 @@ lock_waits() {
       echo "Lock collection already running, skipping this iteration"
    else
       touch "$flag_file"
-      local sql1="SELECT SQL_NO_CACHE
-         CONCAT('thread ', b.trx_mysql_thread_id, ' from ', p.host) AS who_blocks,
-         IF(p.command = \"Sleep\", p.time, 0) AS idle_in_trx,
-         MAX(TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP)) AS max_wait_time,
-         COUNT(*) AS num_waiters
-      FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS AS w
-      INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.blocking_trx_id
-      INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.requesting_trx_id
-      LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
-      GROUP BY who_blocks ORDER BY num_waiters DESC\G"
-      $CMD_MYSQL $EXT_ARGV -e "$sql1"
+      local sql1=""
+      local sql2=""
+      if [ "${lock_table_p_s}" != "yes" ]; then
+         sql1="SELECT SQL_NO_CACHE
+            CONCAT('thread ', b.trx_mysql_thread_id, ' from ', p.host) AS who_blocks,
+            MAX(IF(p.command = \"Sleep\", p.time, 0)) AS idle_in_trx,
+            MAX(TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP)) AS max_wait_time,
+            COUNT(*) AS num_waiters
+         FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS AS w
+         INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.blocking_trx_id
+         INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.requesting_trx_id
+         LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
+         GROUP BY who_blocks ORDER BY num_waiters DESC\G"
 
-      local sql2="SELECT SQL_NO_CACHE
-         r.trx_id AS waiting_trx_id,
-         r.trx_mysql_thread_id AS waiting_thread,
-         TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP) AS wait_time,
-         r.trx_query AS waiting_query,
-         l.lock_table AS waiting_table_lock,
-         b.trx_id AS blocking_trx_id, b.trx_mysql_thread_id AS blocking_thread,
-         SUBSTRING(p.host, 1, INSTR(p.host, ':') - 1) AS blocking_host,
-         SUBSTRING(p.host, INSTR(p.host, ':') +1) AS blocking_port,
-         IF(p.command = \"Sleep\", p.time, 0) AS idle_in_trx,
-         b.trx_query AS blocking_query
-      FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS AS w
-      INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.blocking_trx_id
-      INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.requesting_trx_id
-      INNER JOIN INFORMATION_SCHEMA.INNODB_LOCKS AS l ON w.requested_lock_id = l.lock_id
-      LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
-      ORDER BY wait_time DESC\G"
+         sql2="SELECT SQL_NO_CACHE
+            r.trx_id AS waiting_trx_id,
+            r.trx_mysql_thread_id AS waiting_thread,
+            TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP) AS wait_time,
+            r.trx_query AS waiting_query,
+            l.lock_table AS waiting_table_lock,
+            b.trx_id AS blocking_trx_id, b.trx_mysql_thread_id AS blocking_thread,
+            SUBSTRING(p.host, 1, INSTR(p.host, ':') - 1) AS blocking_host,
+            SUBSTRING(p.host, INSTR(p.host, ':') +1) AS blocking_port,
+            IF(p.command = \"Sleep\", p.time, 0) AS idle_in_trx,
+            b.trx_query AS blocking_query
+         FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS AS w
+         INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.blocking_trx_id
+         INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.requesting_trx_id
+         INNER JOIN INFORMATION_SCHEMA.INNODB_LOCKS AS l ON w.requested_lock_id = l.lock_id
+         LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
+         ORDER BY wait_time DESC\G"
+      else
+         sql1="SELECT SQL_NO_CACHE
+            CONCAT('thread ', b.trx_mysql_thread_id, ' from ', p.host) AS who_blocks,
+            MAX(IF(p.command = \"Sleep\", p.time, 0)) AS idle_in_trx,
+            MAX(TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP)) AS max_wait_time,
+            COUNT(*) AS num_waiters
+         FROM performance_schema.data_lock_waits AS w
+         INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.BLOCKING_ENGINE_TRANSACTION_ID
+         INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.REQUESTING_ENGINE_TRANSACTION_ID
+         LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
+         GROUP BY who_blocks ORDER BY num_waiters DESC\G"
+
+         sql2="SELECT SQL_NO_CACHE
+            r.trx_id AS waiting_trx_id,
+            r.trx_mysql_thread_id AS waiting_thread,
+            TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP) AS wait_time,
+            r.trx_query AS waiting_query,
+            CONCAT('\`', l.OBJECT_SCHEMA, '\`.\`', l.OBJECT_NAME, '\`') AS waiting_table_lock,
+            b.trx_id AS blocking_trx_id, b.trx_mysql_thread_id AS blocking_thread,
+            SUBSTRING(p.host, 1, INSTR(p.host, ':') - 1) AS blocking_host,
+            SUBSTRING(p.host, INSTR(p.host, ':') +1) AS blocking_port,
+            IF(p.command = \"Sleep\", p.time, 0) AS idle_in_trx,
+            b.trx_query AS blocking_query
+         FROM performance_schema.data_lock_waits AS w
+         INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.BLOCKING_ENGINE_TRANSACTION_ID
+         INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.REQUESTING_ENGINE_TRANSACTION_ID
+         INNER JOIN performance_schema.data_locks AS l ON w.REQUESTING_ENGINE_LOCK_ID = l.ENGINE_LOCK_ID
+         LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
+         ORDER BY wait_time DESC\G"
+      fi
+
+      $CMD_MYSQL $EXT_ARGV -e "$sql1"
       $CMD_MYSQL $EXT_ARGV -e "$sql2"
+
       rm "$flag_file"
    fi
 } 
 
 transactions() {
    $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_TRX ORDER BY trx_id\G"
-   $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_LOCKS ORDER BY lock_trx_id\G"
-   $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS ORDER BY blocking_trx_id, requesting_trx_id\G"
+   if [ "${lock_table_p_s}" != "yes" ]; then
+      $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_LOCKS ORDER BY lock_trx_id\G"
+      $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS ORDER BY blocking_trx_id, requesting_trx_id\G"
+   else
+      $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM performance_schema.data_locks ORDER BY ENGINE_TRANSACTION_ID\G"
+      $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM performance_schema.data_lock_waits ORDER BY BLOCKING_ENGINE_TRANSACTION_ID, REQUESTING_ENGINE_TRANSACTION_ID\G"
+   fi
 }
 
 tokudb_status() {
