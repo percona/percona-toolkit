@@ -576,7 +576,12 @@ slave_status() {
    local outfile=$1
    local mysql_version=$2
 
-   local sql="SHOW SLAVE STATUS\G"
+   if [ "${mysql_version}" '<' "8.1" ]; then
+      local sql="SHOW SLAVE STATUS\G"
+   else
+      local sql="SHOW REPLICA STATUS\G"
+   fi
+
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
 
