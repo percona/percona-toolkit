@@ -245,7 +245,7 @@ parse_numactl () { local PTFUNCNAME=parse_numactl;
 
    [ -e "$file" ] || return
 
-
+   # Print info about NUMA nodes
    echo "   Node    Size        Free        CPUs"
    echo "   ====    ====        ====        ===="
 
@@ -1110,10 +1110,27 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
                                        "$data_dir/vmstat"        \
                                        "$platform"
 
+   section "Memory management"
+   report_transparent_huge_pages
+
    # ########################################################################
    # All done.  Signal the end so it's explicit.
    # ########################################################################
    section "The End"
+}
+
+report_transparent_huge_pages () {
+
+  if [ -f /sys/kernel/mm/transparent_hugepage/enabled ]; then
+    CONTENT_TRANSHP=$(</sys/kernel/mm/transparent_hugepage/enabled)
+    STATUS_THP_SYSTEM=$(echo $CONTENT_TRANSHP | grep -cv '\[never\]')
+  fi
+  if [ $STATUS_THP_SYSTEM = 0 ]; then
+    echo "Transparent huge pages are currently disabled on the system."
+  else
+    echo "Transparent huge pages are enabled."
+  fi
+
 }
 
 # ###########################################################################

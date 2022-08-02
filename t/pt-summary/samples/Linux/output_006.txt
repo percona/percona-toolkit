@@ -200,4 +200,6 @@ dentry-state | 456513	375385	45	0	141719	0
 # Notable Processes ##########################################
   PID    OOM    COMMAND
     ?      ?    sshd doesn't appear to be running
+# Memory management ##########################################
+Transparent huge pages are enabled.
 # The End ####################################################
