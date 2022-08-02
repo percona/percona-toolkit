@@ -237,6 +237,31 @@ parse_dmidecode_mem_devices () { local PTFUNCNAME=parse_dmidecode_mem_devices;
 }
 
 # ##############################################################################
+# Parse the output of 'numactl'.
+# ##############################################################################
+parse_numactl () { local PTFUNCNAME=parse_numactl;
+   local file="$1"
+
+   [ -e "$file" ] || return
+
+
+   echo "   Node    Size        Free        CPUs"
+   echo "   ====    ====        ====        ===="
+
+   sed -n -e 's/node /node/g' \
+          -e '/node[[:digit:]]/p' \
+       "${file}" \
+       | sort -r \
+       | awk  '$1 == cnode { 
+                        if (NF > 4) { for(i=3;i<=NF;i++){printf("%s ", $i)} printf "\n" }
+                        else { printf("%-12s", $3" "$4); }
+                     }
+               $1 != cnode { cnode = $1; printf("   %-8s", $1); printf("%-12s", $3" "$4); }' 
+
+  echo 
+}
+
+# ##############################################################################
 # Parse the output of 'ip -s link'
 # ##############################################################################
 parse_ip_s_link () { local PTFUNCNAME=parse_ip_s_link;
@@ -842,6 +867,9 @@ section_Memory () {
    local platform="$1"
    local data_dir="$2"
 
+   local name_val_len_orig=$NAME_VAL_LEN;
+   local NAME_VAL_LEN=14
+
    section "Memory"
    if [ "${platform}" = "Linux" ]; then
       parse_free_minus_b "$data_dir/memory"
@@ -866,6 +894,16 @@ section_Memory () {
          name_val "DirtyStatus" "$dirty_status"
       fi
    fi
+
+   if [ -s "$data_dir/numactl" ]; then
+      name_val "Numa Nodes" "$(get_var "numa-available" "$data_dir/summary")"
+      name_val "Numa Policy" "$(get_var "numa-policy" "$data_dir/summary")"
+      name_val "Preferred Node" "$(get_var "numa-preferred-node" "$data_dir/summary")"
+      
+      parse_numactl "$data_dir/numactl"
+   fi
+
+   local NAME_VAL_LEN=$name_val_len_orig;
 
    if [ -s "$data_dir/dmidecode" ]; then
       parse_dmidecode_mem_devices "$data_dir/dmidecode"
