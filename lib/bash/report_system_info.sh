@@ -141,6 +141,7 @@ parse_free_minus_b () { local PTFUNCNAME=parse_free_minus_b;
    name_val "Total"   $(shorten $(awk '/Mem:/{print $2}' "${file}") 1)
    name_val "Free"    $(shorten $(awk '/Mem:/{print $4}' "${file}") 1)
    name_val "Used"    "physical = $(shorten ${physical} 1), swap allocated = $(shorten ${swap_alloc} 1), swap used = $(shorten ${swap_used} 1), virtual = ${virtual}"
+   name_val "Shared"  $(shorten $(awk '/Mem:/{print $5}' "${file}") 1)
    name_val "Buffers" $(shorten $(awk '/Mem:/{print $6}' "${file}") 1)
    name_val "Caches"  $(shorten $(awk '/Mem:/{print $7}' "${file}") 1)
    name_val "Dirty"  "$(awk '/Dirty:/ {print $2, $3}' "${file}")"
@@ -230,10 +231,36 @@ parse_dmidecode_mem_devices () { local PTFUNCNAME=parse_dmidecode_mem_devices;
           -e 's/>/}/g' \
           -e 's/[ \t]*\n/\n/g' \
        "${file}" \
-       | awk -F: '/Size|Type|Form.Factor|Type.Detail|^[\t ]+Locator/{printf("|%s", $2)}/^[\t ]+Speed/{print "|" $2}' \
+       | awk -F: '/Size|Type|Form.Factor|Type.Detail|^[\t ]+Locator|^[\t ]+Speed/{printf("|%s", $2)}/^$/{print}' \
+       | sed '/^$/d' \
        | sed -e 's/No Module Installed/{EMPTY}/' \
        | sort \
        | awk -F'|' '{printf("  %-9s %-8s %-17s %-13s %-13s %-8s\n", $4, $2, $7, $3, $5, $6);}'
+}
+
+# ##############################################################################
+# Parse the output of 'numactl'.
+# ##############################################################################
+parse_numactl () { local PTFUNCNAME=parse_numactl;
+   local file="$1"
+
+   [ -e "$file" ] || return
+
+   # Print info about NUMA nodes
+   echo "   Node    Size        Free        CPUs"
+   echo "   ====    ====        ====        ===="
+
+   sed -n -e 's/node /node/g' \
+          -e '/node[[:digit:]]/p' \
+       "${file}" \
+       | sort -r \
+       | awk  '$1 == cnode { 
+                        if (NF > 4) { for(i=3;i<=NF;i++){printf("%s ", $i)} printf "\n" }
+                        else { printf("%-12s", $3" "$4); }
+                     }
+               $1 != cnode { cnode = $1; printf("   %-8s", $1); printf("%-12s", $3" "$4); }' 
+
+  echo 
 }
 
 # ##############################################################################
@@ -842,6 +869,9 @@ section_Memory () {
    local platform="$1"
    local data_dir="$2"
 
+   local name_val_len_orig=$NAME_VAL_LEN;
+   local NAME_VAL_LEN=14
+
    section "Memory"
    if [ "${platform}" = "Linux" ]; then
       parse_free_minus_b "$data_dir/memory"
@@ -866,6 +896,16 @@ section_Memory () {
          name_val "DirtyStatus" "$dirty_status"
       fi
    fi
+
+   if [ -s "$data_dir/numactl" ]; then
+      name_val "Numa Nodes" "$(get_var "numa-available" "$data_dir/summary")"
+      name_val "Numa Policy" "$(get_var "numa-policy" "$data_dir/summary")"
+      name_val "Preferred Node" "$(get_var "numa-preferred-node" "$data_dir/summary")"
+      
+      parse_numactl "$data_dir/numactl"
+   fi
+
+   local NAME_VAL_LEN=$name_val_len_orig;
 
    if [ -s "$data_dir/dmidecode" ]; then
       parse_dmidecode_mem_devices "$data_dir/dmidecode"
@@ -1071,10 +1111,27 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
                                        "$data_dir/vmstat"        \
                                        "$platform"
 
+   section "Memory management"
+   report_transparent_huge_pages
+
    # ########################################################################
    # All done.  Signal the end so it's explicit.
    # ########################################################################
    section "The End"
+}
+
+report_transparent_huge_pages () {
+
+  if [ -f /sys/kernel/mm/transparent_hugepage/enabled ]; then
+    CONTENT_TRANSHP=$(</sys/kernel/mm/transparent_hugepage/enabled)
+    STATUS_THP_SYSTEM=$(echo $CONTENT_TRANSHP | grep -cv '\[never\]')
+  fi
+  if [ $STATUS_THP_SYSTEM = 0 ]; then
+    echo "Transparent huge pages are currently disabled on the system."
+  else
+    echo "Transparent huge pages are enabled."
+  fi
+
 }
 
 # ###########################################################################

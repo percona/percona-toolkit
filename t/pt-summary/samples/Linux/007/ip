@@ -1,0 +1,312 @@
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    RX: bytes  packets  errors  dropped overrun mcast   
+    288081053881 576594672 0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    288081053881 576594672 0       0       0       0       
+2: em1: <BROADCAST,MULTICAST,SLAVE,UP,LOWER_UP> mtu 1500 qdisc mq master bond0 state UP mode DEFAULT group default qlen 1000
+    link/ether 90:b1:1c:55:31:29 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    118451931881 163297856 0       0       0       5039072 
+    TX: bytes  packets  errors  dropped carrier collsns 
+    90089682163 132411836 0       0       0       0       
+3: em2: <BROADCAST,MULTICAST,SLAVE,UP,LOWER_UP> mtu 1500 qdisc mq master bond0 state UP mode DEFAULT group default qlen 1000
+    link/ether 90:b1:1c:55:31:29 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    404092078  5238978  0       0       0       5040008 
+    TX: bytes  packets  errors  dropped carrier collsns 
+    228        2        0       0       0       0       
+4: bond0: <BROADCAST,MULTICAST,MASTER,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default qlen 1000
+    link/ether 90:b1:1c:55:31:29 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    118856023959 168536834 0       0       0       10079080 
+    TX: bytes  packets  errors  dropped carrier collsns 
+    90089682391 132411838 0       0       0       0       
+5: virbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN mode DEFAULT group default qlen 1000
+    link/ether 52:54:00:16:de:f8 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    0          0        0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    0          0        0       0       0       0       
+6: virbr0-nic: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast master virbr0 state DOWN mode DEFAULT group default qlen 1000
+    link/ether 52:54:00:16:de:f8 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    0          0        0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    0          0        0       0       0       0       
+7: br-5f8d81e2374e: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN mode DEFAULT group default 
+    link/ether 02:42:bc:4d:e2:32 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    0          0        0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    0          0        0       0       0       0       
+8: docker0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default 
+    link/ether 02:42:3f:34:ce:fc brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    2984598222 10523632 0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    18782619553 13752032 0       0       0       0       
+9: br-294661236c88: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN mode DEFAULT group default 
+    link/ether 02:42:25:df:72:e4 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    0          0        0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    0          0        0       0       0       0       
+267: vethe8b73084@if266: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether 36:0b:fa:25:af:c6 brd ff:ff:ff:ff:ff:ff link-netnsid 12
+    RX: bytes  packets  errors  dropped overrun mcast   
+    2301917    33114    0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    546852484  94651    0       0       0       0       
+269: veth1a2f3a50@if268: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether 56:3b:9a:28:9b:53 brd ff:ff:ff:ff:ff:ff link-netnsid 7
+    RX: bytes  packets  errors  dropped overrun mcast   
+    267678933  1952641  0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    519265875  1980967  0       0       0       0       
+271: vethb2e8fb78@if270: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether 16:79:83:36:01:d0 brd ff:ff:ff:ff:ff:ff link-netnsid 22
+    RX: bytes  packets  errors  dropped overrun mcast   
+    268754591  1973312  0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    539694490  2008261  0       0       0       0       
+273: vethc33cb528@if272: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether 26:2b:06:f5:94:6e brd ff:ff:ff:ff:ff:ff link-netnsid 23
+    RX: bytes  packets  errors  dropped overrun mcast   
+    203289570  1649722  0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    504084737  1636551  0       0       0       0       
+275: vethc52473d4@if274: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether 82:94:9b:fb:73:53 brd ff:ff:ff:ff:ff:ff link-netnsid 24
+    RX: bytes  packets  errors  dropped overrun mcast   
+    495512410  46782    0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    107685970  65766    0       0       0       0       
+277: vethf5136d77@if276: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether 06:c6:d7:a2:51:6c brd ff:ff:ff:ff:ff:ff link-netnsid 9
+    RX: bytes  packets  errors  dropped overrun mcast   
+    1072875    14518    0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    164168452  30643    0       0       0       0       
+21: vethfa2d922@if20: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master docker0 state UP mode DEFAULT group default 
+    link/ether aa:b6:e2:4f:54:dc brd ff:ff:ff:ff:ff:ff link-netnsid 5
+    RX: bytes  packets  errors  dropped overrun mcast   
+    73113056   462285   0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    440101321  1081942  0       0       0       0       
+279: veth046457e1@if278: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether e6:1b:76:6b:82:ff brd ff:ff:ff:ff:ff:ff link-netnsid 10
+    RX: bytes  packets  errors  dropped overrun mcast   
+    1190508    16459    0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    164390009  33373    0       0       0       0       
+281: veth522c3e56@if280: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether 76:72:02:83:02:1c brd ff:ff:ff:ff:ff:ff link-netnsid 11
+    RX: bytes  packets  errors  dropped overrun mcast   
+    450447     5875     0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    32596490   8685     0       0       0       0       
+283: vethc532c32b@if282: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether 72:0b:fc:68:1f:b8 brd ff:ff:ff:ff:ff:ff link-netnsid 25
+    RX: bytes  packets  errors  dropped overrun mcast   
+    243841     3466     0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    26670020   5751     0       0       0       0       
+121: vboxnet12: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN mode DEFAULT group default qlen 1000
+    link/ether 0a:00:27:00:00:0c brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    0          0        0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    0          0        0       0       0       0       
+122: vboxnet18: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN mode DEFAULT group default qlen 1000
+    link/ether 0a:00:27:00:00:12 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    0          0        0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    0          0        0       0       0       0       
+123: vboxnet19: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN mode DEFAULT group default qlen 1000
+    link/ether 0a:00:27:00:00:13 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    0          0        0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    0          0        0       0       0       0       
+124: vboxnet20: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN mode DEFAULT group default qlen 1000
+    link/ether 0a:00:27:00:00:14 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    0          0        0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    0          0        0       0       0       0       
+146: veth67e3da0@if145: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master docker0 state UP mode DEFAULT group default 
+    link/ether 6e:6c:20:61:1a:d6 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    RX: bytes  packets  errors  dropped overrun mcast   
+    25074983   290092   0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    1685873208 506528   0       0       0       0       
+147: vboxnet0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN mode DEFAULT group default qlen 1000
+    link/ether 0a:00:27:00:00:00 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    0          0        0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    0          0        0       0       0       0       
+148: vboxnet21: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN mode DEFAULT group default qlen 1000
+    link/ether 0a:00:27:00:00:15 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    0          0        0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    0          0        0       0       0       0       
+149: vboxnet24: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN mode DEFAULT group default qlen 1000
+    link/ether 0a:00:27:00:00:18 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    0          0        0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    0          0        0       0       0       0       
+150: vboxnet25: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc pfifo_fast state DOWN mode DEFAULT group default qlen 1000
+    link/ether 0a:00:27:00:00:19 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    0          0        0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    25156      239      0       0       0       0       
+151: vboxnet3: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN mode DEFAULT group default qlen 1000
+    link/ether 0a:00:27:00:00:03 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    0          0        0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    0          0        0       0       0       0       
+152: vboxnet4: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN mode DEFAULT group default qlen 1000
+    link/ether 0a:00:27:00:00:04 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    0          0        0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    0          0        0       0       0       0       
+154: vethaa8f4de@if153: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master docker0 state UP mode DEFAULT group default 
+    link/ether de:1c:ac:dc:41:88 brd ff:ff:ff:ff:ff:ff link-netnsid 1
+    RX: bytes  packets  errors  dropped overrun mcast   
+    2384501026 5652928  0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    9951815230 7743370  0       0       0       0       
+155: lxdbr0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default qlen 1000
+    link/ether 00:16:3e:c9:ff:26 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    100847667  1591955  0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    7405489236 1792866  0       0       0       0       
+157: veth0bd575f6@if156: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether 16:a2:70:0f:af:53 brd ff:ff:ff:ff:ff:ff link-netnsid 2
+    RX: bytes  packets  errors  dropped overrun mcast   
+    398770     3913     0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    3441398    53752    0       0       0       0       
+159: veth1e01ee50@if158: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether c2:8a:d5:7a:fa:24 brd ff:ff:ff:ff:ff:ff link-netnsid 3
+    RX: bytes  packets  errors  dropped overrun mcast   
+    398710     3912     0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    3441020    53701    0       0       0       0       
+161: veth07d7db6b@if160: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether a6:a8:96:23:e8:58 brd ff:ff:ff:ff:ff:ff link-netnsid 4
+    RX: bytes  packets  errors  dropped overrun mcast   
+    398710     3912     0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    3439590    53684    0       0       0       0       
+177: veth12219f8c@if176: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether d2:a0:d5:df:32:04 brd ff:ff:ff:ff:ff:ff link-netnsid 13
+    RX: bytes  packets  errors  dropped overrun mcast   
+    396668     3892     0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    3401425    53413    0       0       0       0       
+179: vethb9d2af0d@if178: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether 8e:c2:5a:cf:35:ac brd ff:ff:ff:ff:ff:ff link-netnsid 14
+    RX: bytes  packets  errors  dropped overrun mcast   
+    398770     3913     0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    3399264    53395    0       0       0       0       
+181: veth0c948a7c@if180: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether aa:1e:0b:83:66:3d brd ff:ff:ff:ff:ff:ff link-netnsid 15
+    RX: bytes  packets  errors  dropped overrun mcast   
+    397750     3903     0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    3397560    53381    0       0       0       0       
+183: vethad45a55a@if182: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether ee:45:28:ac:4a:d2 brd ff:ff:ff:ff:ff:ff link-netnsid 16
+    RX: bytes  packets  errors  dropped overrun mcast   
+    398198     3907     0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    3396836    53369    0       0       0       0       
+185: veth3bd42127@if184: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether 2a:e9:0b:d7:a4:bb brd ff:ff:ff:ff:ff:ff link-netnsid 17
+    RX: bytes  packets  errors  dropped overrun mcast   
+    398260     3908     0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    3394912    53338    0       0       0       0       
+187: vetha67e3445@if186: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether 3e:4c:8f:9e:cb:9f brd ff:ff:ff:ff:ff:ff link-netnsid 18
+    RX: bytes  packets  errors  dropped overrun mcast   
+    397688     3902     0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    3396256    53312    0       0       0       0       
+189: veth57871859@if188: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether 4e:93:e6:28:56:9d brd ff:ff:ff:ff:ff:ff link-netnsid 19
+    RX: bytes  packets  errors  dropped overrun mcast   
+    398198     3907     0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    3391468    53275    0       0       0       0       
+191: veth61f76055@if190: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether e2:aa:bb:04:c3:51 brd ff:ff:ff:ff:ff:ff link-netnsid 20
+    RX: bytes  packets  errors  dropped overrun mcast   
+    400748     3932     0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    3391394    53262    0       0       0       0       
+193: veth67de6880@if192: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether e6:ed:ce:55:a0:b5 brd ff:ff:ff:ff:ff:ff link-netnsid 21
+    RX: bytes  packets  errors  dropped overrun mcast   
+    1285926    13204    0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    3475083    54268    0       0       0       0       
+209: veth45fa2bdb@if208: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether a2:e2:47:fc:54:3a brd ff:ff:ff:ff:ff:ff link-netnsid 30
+    RX: bytes  packets  errors  dropped overrun mcast   
+    397318     3899     0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    3370766    53144    0       0       0       0       
+219: vethce7b9a4d@if218: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether 8e:a2:b6:ee:d2:37 brd ff:ff:ff:ff:ff:ff link-netnsid 35
+    RX: bytes  packets  errors  dropped overrun mcast   
+    1930874    19334    0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    59751404   64926    0       0       0       0       
+221: veth19c266ca@if220: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether ae:17:9d:7e:42:4f brd ff:ff:ff:ff:ff:ff link-netnsid 36
+    RX: bytes  packets  errors  dropped overrun mcast   
+    395138     3877     0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    3367890    53030    0       0       0       0       
+225: veth140b78c8@if224: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether 66:17:3f:a2:55:dc brd ff:ff:ff:ff:ff:ff link-netnsid 38
+    RX: bytes  packets  errors  dropped overrun mcast   
+    470366     5253     0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    3467344    54349    0       0       0       0       
+227: veth328abad5@if226: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether ce:9d:b7:e8:32:68 brd ff:ff:ff:ff:ff:ff link-netnsid 39
+    RX: bytes  packets  errors  dropped overrun mcast   
+    613062     6737     0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    3533422    55799    0       0       0       0       
+229: veth125aed80@if228: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether 9e:06:5e:ae:9c:96 brd ff:ff:ff:ff:ff:ff link-netnsid 40
+    RX: bytes  packets  errors  dropped overrun mcast   
+    493486     5399     0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    3487996    54527    0       0       0       0       
+231: vetha245bad8@if230: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether 9e:d0:0e:cf:75:38 brd ff:ff:ff:ff:ff:ff link-netnsid 6
+    RX: bytes  packets  errors  dropped overrun mcast   
+    26900276   404736   0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    2519395662 521491   0       0       0       0       
+245: vethe8577b3d@if244: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master lxdbr0 state UP mode DEFAULT group default qlen 1000
+    link/ether 62:7e:f7:14:45:3f brd ff:ff:ff:ff:ff:ff link-netnsid 8
+    RX: bytes  packets  errors  dropped overrun mcast   
+    1323198    17019    0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    138649236  64065    0       0       0       0       
