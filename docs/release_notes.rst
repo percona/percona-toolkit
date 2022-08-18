@@ -28,7 +28,7 @@ Bugs Fixed
 * :jirabug:`PT-1747`: pt-online-schema-change: metadata lock can break database for rebuild_constraints
 * :jirabug:`PT-1887`: pt-diskstat is not working for new kernels
 * :jirabug:`PT-1900`: At times, pt-query-digest does not hide the parameters properly when parameter=binary
-* :jirabug:`PT-1953`: pt-summary typo: Memory mamagement.
+* :jirabug:`PT-1953`: pt-summary typo: Memory management.
 * :jirabug:`PT-1959`: go part of the toolkit still has the version 3.3.0
 * :jirabug:`PT-1965`: pt-stalk --mysql-only doesn't collect mysqladmin output
 * :jirabug:`PT-1966`: Test no_drop_no_swap for the pt-online-schema-change is broken (Thanks Tsubasa Tanaka)
