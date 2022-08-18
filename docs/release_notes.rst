@@ -31,7 +31,7 @@ Bugs Fixed
 * :jirabug:`PT-1953`: pt-summary typo: Memory management.
 * :jirabug:`PT-1959`: go part of the toolkit still has the version 3.3.0
 * :jirabug:`PT-1965`: pt-stalk --mysql-only doesn't collect mysqladmin output
-* :jirabug:`PT-1966`: Test no_drop_no_swap for the pt-online-schema-change is broken (Thanks Tsubasa Tanaka)
+* :jirabug:`PT-1966`: Test no_drop_no_swap for the pt-online-schema-change is broken
 * :jirabug:`PT-1974`: Support fingerprinting for --print in pt-kill
 * :jirabug:`PT-1983`: pt-summary missing one DIMM	
 * :jirabug:`PT-2016`: pt-table-checksum fails to build replace query when table lacks primary key
