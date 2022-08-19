@@ -38,13 +38,13 @@ clean:
 	-rm -rf $(BUILDDIR)/*
 
 html:
-	@echo "Downloading percona-theme ..."
-	@wget -O percona-theme.tar.gz https://www.percona.com/docs/theme-1-4/percona-toolkit/2.2
-	@rm -rf percona-theme
-	@echo "Extracting theme."
-	@tar -zxf percona-theme.tar.gz
-	@mv percona-theme-1-4 percona-theme
-	@rm percona-theme.tar.gz
+#	@echo "Downloading percona-theme ..."
+#	@wget -O percona-theme.tar.gz https://www.percona.com/docs/theme-1-4/percona-toolkit/2.2
+#	@rm -rf percona-theme
+#	@echo "Extracting theme."
+#	@tar -zxf percona-theme.tar.gz
+#	@mv percona-theme-1-4 percona-theme
+#	@rm percona-theme.tar.gz
 	@echo "Building html doc"
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
