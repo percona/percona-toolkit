@@ -1,0 +1,205 @@
+    Hostname | Delly-7390
+      Uptime | 1 day,  6:15,  1 user,  load average: 0,40, 0,72, 0,86
+      System | Dell Inc.; XPS 13 7390 2-in-1; vNot Specified (Convertible)
+ Service Tag | H3RJL13
+    Platform | Linux
+     Release | Ubuntu 20.04.4 LTS (focal)
+      Kernel | 5.15.0-41-generic
+Architecture | CPU = 64-bit, OS = 64-bit
+   Threading | NPTL 2.31
+     SELinux | No SELinux detected
+ Virtualized | No virtualization detected
+# Processor ##################################################
+  Processors | physical = 1, cores = 4, virtual = 8, hyperthreading = yes
+      Speeds | 7x1500.000, 1x3113.329
+      Models | 8xIntel(R) Core(TM) i7-1065G7 CPU @ 1.30GHz
+      Caches | 8x8192 KB
+# Memory #####################################################
+         Total | 31.1G
+          Free | 2.2G
+          Used | physical = 12.6G, swap allocated = 976.0M, swap used = 122.5M, virtual = 12.7G
+        Shared | 5.5G
+       Buffers | 16.4G
+        Caches | 12.6G
+         Dirty | 3992 kB
+       UsedRSS | 19.6G
+    Swappiness | 60
+   DirtyPolicy | 20, 10
+   DirtyStatus | 0, 0
+    Numa Nodes | 1
+   Numa Policy | default
+Preferred Node | current
+   Node    Size        Free        CPUs
+   ====    ====        ====        ====
+   node0   31877 MB    2282 MB     0 1 2 3 4 5 6 7 
+
+  Locator   Size     Speed             Form Factor   Type          Type Detail
+  ========= ======== ================= ============= ============= ===========
+  Motherboard 16384 MB 3733 MT/s         Row Of Chips  LPDDR4        Synchronous
+  Motherboard 16384 MB 3733 MT/s         Row Of Chips  LPDDR4        Synchronous
+# Mounted Filesystems ########################################
+  Filesystem                 Size Used Type     Opts                                                                                                                                                                                                                                                                                                                                                                                                  Mountpoint
+  /dev/mapper/vgubuntu-root  915G  75% ext4     rw,relatime,errors=remount-ro                                                                                                                                                                                                                                                                                                                                                                         /
+  /dev/mmcblk0p1             239G  90% fuseblk  rw,nosuid,nodev,relatime,user_id=0,group_id=0,default_permissions,allow_other,blksize=4096,uhelper=udisks2                                                                                                                                                                                                                                                                                            /media/sveta/disk1
+  /dev/nvme0n1p1             511M   4% vfat     rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro                                                                                                                                                                                                                                                                                                  /boot/efi
+  /dev/nvme0n1p2             704M  42% ext4     rw,relatime                                                                                                                                                                                                                                                                                                                                                                                           /boot
+  overlay                    915G  75% overlay  rw,relatime,lowerdir=/var/lib/docker/overlay2/l/FQIQG2VFFXJ426FBUGGBSCWRG2:/var/lib/docker/overlay2/l/33C2CVPTOUZAT35KSL6I6DIWBZ:/var/lib/docker/overlay2/l/JTYFHSFS4TSV4PYBIQ7R57HCJ7,upperdir=/var/lib/docker/overlay2/c9349dd66a824eb0883d69eb6114a6d713a48901579c45267ef1bea3c6ab7a1a/diff,workdir=/var/lib/docker/overlay2/c9349dd66a824eb0883d69eb6114a6d713a48901579c45267ef1bea3c6ab7a1a/work /var/lib/docker/overlay2/c9349dd66a824eb0883d69eb6114a6d713a48901579c45267ef1bea3c6ab7a1a/merged
+  overlay                    915G  75% overlay  rw,relatime,lowerdir=/var/lib/docker/overlay2/l/RFAP7AE62T2GF223V7KCEJDN64:/var/lib/docker/overlay2/l/33C2CVPTOUZAT35KSL6I6DIWBZ:/var/lib/docker/overlay2/l/JTYFHSFS4TSV4PYBIQ7R57HCJ7,upperdir=/var/lib/docker/overlay2/f70a41a21dd8b3172c92e29fe1b91dfde0a65cfc878ee78acfad91e47124385c/diff,workdir=/var/lib/docker/overlay2/f70a41a21dd8b3172c92e29fe1b91dfde0a65cfc878ee78acfad91e47124385c/work /var/lib/docker/overlay2/c9349dd66a824eb0883d69eb6114a6d713a48901579c45267ef1bea3c6ab7a1a/merged
+  overlay                    915G  75% overlay  rw,relatime,lowerdir=/var/lib/docker/overlay2/l/FQIQG2VFFXJ426FBUGGBSCWRG2:/var/lib/docker/overlay2/l/33C2CVPTOUZAT35KSL6I6DIWBZ:/var/lib/docker/overlay2/l/JTYFHSFS4TSV4PYBIQ7R57HCJ7,upperdir=/var/lib/docker/overlay2/c9349dd66a824eb0883d69eb6114a6d713a48901579c45267ef1bea3c6ab7a1a/diff,workdir=/var/lib/docker/overlay2/c9349dd66a824eb0883d69eb6114a6d713a48901579c45267ef1bea3c6ab7a1a/work /var/lib/docker/overlay2/f70a41a21dd8b3172c92e29fe1b91dfde0a65cfc878ee78acfad91e47124385c/merged
+  overlay                    915G  75% overlay  rw,relatime,lowerdir=/var/lib/docker/overlay2/l/RFAP7AE62T2GF223V7KCEJDN64:/var/lib/docker/overlay2/l/33C2CVPTOUZAT35KSL6I6DIWBZ:/var/lib/docker/overlay2/l/JTYFHSFS4TSV4PYBIQ7R57HCJ7,upperdir=/var/lib/docker/overlay2/f70a41a21dd8b3172c92e29fe1b91dfde0a65cfc878ee78acfad91e47124385c/diff,workdir=/var/lib/docker/overlay2/f70a41a21dd8b3172c92e29fe1b91dfde0a65cfc878ee78acfad91e47124385c/work /var/lib/docker/overlay2/f70a41a21dd8b3172c92e29fe1b91dfde0a65cfc878ee78acfad91e47124385c/merged
+  tmpfs                       16G   0% tmpfs    rw,nosuid,nodev,inode64                                                                                                                                                                                                                                                                                                                                                                               /sys/fs/cgroup
+  tmpfs                       16G   0% tmpfs    rw,nosuid,nodev,noexec,relatime,size=5120k,inode64                                                                                                                                                                                                                                                                                                                                                    /sys/fs/cgroup
+  tmpfs                       16G   0% tmpfs    rw,nosuid,nodev,noexec,relatime,size=3264260k,mode=755,inode64                                                                                                                                                                                                                                                                                                                                        /sys/fs/cgroup
+  tmpfs                       16G   0% tmpfs    rw,nosuid,nodev,noexec,relatime,size=3264260k,mode=755,inode64                                                                                                                                                                                                                                                                                                                                        /sys/fs/cgroup
+  tmpfs                       16G   0% tmpfs    rw,nosuid,nodev,relatime,size=3264256k,mode=700,uid=1000,gid=1000,inode64                                                                                                                                                                                                                                                                                                                             /sys/fs/cgroup
+  tmpfs                       16G   0% tmpfs    ro,nosuid,nodev,noexec,mode=755,inode64                                                                                                                                                                                                                                                                                                                                                               /sys/fs/cgroup
+  tmpfs                       16G   2% tmpfs    rw,nosuid,nodev,inode64                                                                                                                                                                                                                                                                                                                                                                               /dev/shm
+  tmpfs                       16G   2% tmpfs    rw,nosuid,nodev,noexec,relatime,size=5120k,inode64                                                                                                                                                                                                                                                                                                                                                    /dev/shm
+  tmpfs                       16G   2% tmpfs    rw,nosuid,nodev,noexec,relatime,size=3264260k,mode=755,inode64                                                                                                                                                                                                                                                                                                                                        /dev/shm
+  tmpfs                       16G   2% tmpfs    rw,nosuid,nodev,noexec,relatime,size=3264260k,mode=755,inode64                                                                                                                                                                                                                                                                                                                                        /dev/shm
+  tmpfs                       16G   2% tmpfs    rw,nosuid,nodev,relatime,size=3264256k,mode=700,uid=1000,gid=1000,inode64                                                                                                                                                                                                                                                                                                                             /dev/shm
+  tmpfs                       16G   2% tmpfs    ro,nosuid,nodev,noexec,mode=755,inode64                                                                                                                                                                                                                                                                                                                                                               /dev/shm
+  tmpfs                      3,2G   1% tmpfs    rw,nosuid,nodev,inode64                                                                                                                                                                                                                                                                                                                                                                               /run
+  tmpfs                      3,2G   1% tmpfs    rw,nosuid,nodev,noexec,relatime,size=5120k,inode64                                                                                                                                                                                                                                                                                                                                                    /run
+  tmpfs                      3,2G   1% tmpfs    rw,nosuid,nodev,noexec,relatime,size=3264260k,mode=755,inode64                                                                                                                                                                                                                                                                                                                                        /run
+  tmpfs                      3,2G   1% tmpfs    rw,nosuid,nodev,noexec,relatime,size=3264260k,mode=755,inode64                                                                                                                                                                                                                                                                                                                                        /run
+  tmpfs                      3,2G   1% tmpfs    rw,nosuid,nodev,relatime,size=3264256k,mode=700,uid=1000,gid=1000,inode64                                                                                                                                                                                                                                                                                                                             /run
+  tmpfs                      3,2G   1% tmpfs    ro,nosuid,nodev,noexec,mode=755,inode64                                                                                                                                                                                                                                                                                                                                                               /run
+  tmpfs                      3,2G   1% tmpfs    rw,nosuid,nodev,inode64                                                                                                                                                                                                                                                                                                                                                                               /run/user/1000
+  tmpfs                      3,2G   1% tmpfs    rw,nosuid,nodev,noexec,relatime,size=5120k,inode64                                                                                                                                                                                                                                                                                                                                                    /run/user/1000
+  tmpfs                      3,2G   1% tmpfs    rw,nosuid,nodev,noexec,relatime,size=3264260k,mode=755,inode64                                                                                                                                                                                                                                                                                                                                        /run/user/1000
+  tmpfs                      3,2G   1% tmpfs    rw,nosuid,nodev,noexec,relatime,size=3264260k,mode=755,inode64                                                                                                                                                                                                                                                                                                                                        /run/user/1000
+  tmpfs                      3,2G   1% tmpfs    rw,nosuid,nodev,relatime,size=3264256k,mode=700,uid=1000,gid=1000,inode64                                                                                                                                                                                                                                                                                                                             /run/user/1000
+  tmpfs                      3,2G   1% tmpfs    ro,nosuid,nodev,noexec,mode=755,inode64                                                                                                                                                                                                                                                                                                                                                               /run/user/1000
+  tmpfs                      5,0M   1% tmpfs    rw,nosuid,nodev,inode64                                                                                                                                                                                                                                                                                                                                                                               /run/lock
+  tmpfs                      5,0M   1% tmpfs    rw,nosuid,nodev,noexec,relatime,size=5120k,inode64                                                                                                                                                                                                                                                                                                                                                    /run/lock
+  tmpfs                      5,0M   1% tmpfs    rw,nosuid,nodev,noexec,relatime,size=3264260k,mode=755,inode64                                                                                                                                                                                                                                                                                                                                        /run/lock
+  tmpfs                      5,0M   1% tmpfs    rw,nosuid,nodev,noexec,relatime,size=3264260k,mode=755,inode64                                                                                                                                                                                                                                                                                                                                        /run/lock
+  tmpfs                      5,0M   1% tmpfs    rw,nosuid,nodev,relatime,size=3264256k,mode=700,uid=1000,gid=1000,inode64                                                                                                                                                                                                                                                                                                                             /run/lock
+  tmpfs                      5,0M   1% tmpfs    ro,nosuid,nodev,noexec,mode=755,inode64                                                                                                                                                                                                                                                                                                                                                               /run/lock
+  udev                        16G   0% devtmpfs rw,nosuid,noexec,relatime,size=16256608k,nr_inodes=4064152,mode=755,inode64                                                                                                                                                                                                                                                                                                                           /dev
+# Disk Schedulers And Queue Size #############################
+        dm-0 | 128
+        dm-1 | 128
+        dm-2 | 128
+     mmcblk0 | [mq-deadline] 128
+     nvme0n1 | [none] 127
+# Disk Partioning ############################################
+Device       Type      Start        End               Size
+============ ==== ========== ========== ==================
+/dev/dm-0    Disk                            1022886936576
+/dev/dm-1    Disk                             998974160896
+/dev/dm-2    Disk                               1023410176
+/dev/mmcblk0 Disk                             256087425024
+/dev/mmcblk0p1 Part      65536  500170751                  0
+/dev/nvme0n1 Disk                            1024209543168
+/dev/nvme0n1p1 Part       2048    1050623                  0
+/dev/nvme0n1p2 Part    1050624    2549759                  0
+/dev/nvme0n1p3 Part    2549760 2000408575                  0
+# Kernel Inode State #########################################
+dentry-state | 456513	375385	45	0	141719	0
+     file-nr | 30570	0	9223372036854775807
+    inode-nr | 399300	88416
+# LVM Volumes ################################################
+  LV     VG       Attr       LSize    Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
+  root   vgubuntu -wi-ao---- <930,37g                                                    
+  swap_1 vgubuntu -wi-ao----  976,00m                                                    
+# LVM Volume Groups ##########################################
+  VG       VSize    VFree  
+  vgubuntu <952,64g <21,32g
+# RAID Controller ############################################
+  Controller | No RAID controller detected
+# Network Config #############################################
+ FIN Timeout | 60
+  Port Range | 60999
+# Interface Statistics #######################################
+  interface  rx_bytes rx_packets  rx_errors   tx_bytes tx_packets  tx_errors
+  ========= ========= ========== ========== ========== ========== ==========
+  lo          8000000      70000          0    8000000      70000          0
+  wlp0s20f3 1750000000    1750000          0  450000000    1000000          0
+  br-5bbb6abaea1c          0          0          0          0          0          0
+  docker0     9000000      70000          0   40000000      80000          0
+  veth311b798@if5    9000000      60000          0    9000000      70000          0
+  veth505c1de@if7    1000000      12500          0   30000000      20000          0
+# Network Devices ############################################
+  Device    Speed     Duplex
+  ========= ========= =========
+  br-5bbb6abaea1c Unknown!   Unknown!  
+  docker0    10000Mb/s  Unknown!  
+  wlp0s20f3                       
+# Network Connections ########################################
+  Connections from remote IP addresses
+    3.67.131.16         1
+    3.126.186.102       1
+    3.233.54.64         1
+    18.197.249.189      7
+    23.61.80.242        1
+    34.117.237.239      1
+    35.168.140.53       4
+    35.174.127.31       2
+    35.174.188.51       1
+    35.186.227.140      1
+    52.59.193.28        1
+    52.73.62.51         1
+    54.146.182.72       1
+    54.244.16.100       1
+    82.202.226.23       1
+    84.38.188.87        1
+    93.184.220.29       2
+    108.139.241.22      1
+    108.157.4.6         1
+    108.177.119.109     1
+    108.177.126.188     1
+    108.177.127.108     1
+    127.0.0.1           2
+    142.132.213.154     1
+    149.96.232.184      2
+    149.154.167.51      1
+    157.240.9.53        1
+    162.125.19.9        1
+    162.125.19.131      1
+    162.220.4.198       1
+    172.17.0.2          4
+    172.67.8.157        1
+    173.194.69.108      1
+    173.194.79.109      2
+    185.166.143.25      1
+    198.57.27.221       1
+  Connections to local IP addresses
+    127.0.0.1           2
+    172.17.0.1          4
+    192.168.1.25       40
+    192.168.11.22       9
+  Connections to top 10 local ports
+    54208               1
+    55614               1
+    56862               1
+    57302               1
+    58452               1
+    58620               1
+    59664               1
+    59964               1
+    60640               1
+    60766               1
+  States of connections
+    CLOSE_WAIT          9
+    ESTABLISHED        40
+    LISTEN             30
+    TIME_WAIT           5
+# Top Processes ##############################################
+    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+   1836 root      20   0 1862488  39156  14168 S   6,2   0,1   6:31.69 contain+
+   5074 sveta     20   0  715908  14380   3312 S   6,2   0,0   2:32.24 vmalert
+   5511 sveta     20   0 5958132 675752 593316 S   6,2   2,1  23:18.64 Xorg
+   5582 sveta     20   0  992772 140588   5952 S   6,2   0,4   1:32.41 percona+
+   5583 sveta     20   0  992516 246840   5964 S   6,2   0,8   1:29.62 percona+
+   5819 sveta     20   0 5997200 367992  81312 S   6,2   1,1  42:19.42 gnome-s+
+  13430 sveta     20   0 1124,6g 172364  74192 S   6,2   0,5  16:06.71 wavebox
+  14886 sveta     20   0 1124,5g 138544  72440 S   6,2   0,4   0:32.75 wavebox
+ 474260 sveta     20   0 5069828 795952 162860 S   6,2   2,4  33:45.76 thunder+
+# Notable Processes ##########################################
+  PID    OOM    COMMAND
+    ?      ?    sshd doesn't appear to be running
+# Memory management ##########################################
+Transparent huge pages are enabled.
+# The End ####################################################

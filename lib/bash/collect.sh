@@ -332,6 +332,10 @@ collect_system_data_loop() {
    (echo $ts; df -k) >> "$d/$p-df" &
    (echo $ts; netstat -antp) >> "$d/$p-netstat"   &
    (echo $ts; netstat -s)    >> "$d/$p-netstat_s" &
+   (echo $ts;
+   for node in `ls -d /sys/devices/system/node/node*`; do
+      echo `basename $node`; cat "$node/numastat"
+   done)                     >> "$d/$p-numastat"   &
 }
 
 collect_mysql_data_two() {

@@ -893,6 +893,32 @@ like(
    "transactions: Lock wait information collected"
 );
 
+# ###########################################################################
+# Test if option numastat collection works
+# ###########################################################################
+
+cleanup();
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --system-only --run-time 10 --sleep 2 --dest $dest --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `ls $dest`;
+
+like(
+   $output,
+   qr/numastat/,
+   "numastat data collected"
+);
+
+$output = `cat $dest/*-numastat`;
+
+like(
+   $output,
+   qr/(numa_)/,
+   "numastat collection has data"
+);
+
 # #############################################################################
 # Done.
 # #############################################################################

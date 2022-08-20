@@ -1,6 +1,44 @@
 Percona Toolkit
 ***************
 
+v3.4.0 released 2022-07-11
+==========================
+
+New Features
+------------
+
+* :jirabug:`PT-1978`: Add reporting on unused/redundant indexes for MongoDB by pt-mongodb-summary
+
+Improvements
+------------
+
+* :jirabug:`PT-1417`: Inconsistent creation of toolkit tables
+* :jirabug:`PT-1800`: The environment variable PTDEBUG=1 exposes the passwords
+* :jirabug:`PT-1940`: ptsoc dropswap method that was rejected for Mysql 8 has been fixed with Mysql 8.0.14
+* :jirabug:`PT-1979`: Add gathering of admin parameters for MongoDB by pt-mongodb-summary
+* :jirabug:`PT-2037`: Add option --skip-mysql or --system-only for pt-stalk
+
+Bugs Fixed
+----------
+
+* :jirabug:`PT-1218`: pt-stalk ominous open_tables function
+* :jirabug:`PT-1336`: pt-stalk removes user's files from the destination directory
+* :jirabug:`PT-1398`: pt-stalk gets the incorrect mysqld pid when the host installed a multi MySQL instance
+* :jirabug:`PT-1627`: pt-mysql-summary doesn't verify which version of jemalloc is in use
+* :jirabug:`PT-1747`: pt-online-schema-change: metadata lock can break database for rebuild_constraints
+* :jirabug:`PT-1887`: pt-diskstat is not working for new kernels
+* :jirabug:`PT-1900`: At times, pt-query-digest does not hide the parameters properly when parameter=binary
+* :jirabug:`PT-1953`: pt-summary typo: Memory management.
+* :jirabug:`PT-1959`: go part of the toolkit still has the version 3.3.0
+* :jirabug:`PT-1965`: pt-stalk --mysql-only doesn't collect mysqladmin output
+* :jirabug:`PT-1966`: Test no_drop_no_swap for the pt-online-schema-change is broken
+* :jirabug:`PT-1974`: Support fingerprinting for --print in pt-kill
+* :jirabug:`PT-1983`: pt-summary missing one DIMM	
+* :jirabug:`PT-2016`: pt-table-checksum fails to build replace query when table lacks primary key
+* :jirabug:`PT-2023`: pt-upgrade Error: Wide character in print
+
+
+
 v3.3.1 released 2021-04-28
 ==========================
 
