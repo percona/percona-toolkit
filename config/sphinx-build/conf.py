@@ -97,8 +97,20 @@ html_theme = 'sphinx_material'
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-#html_theme_options = {}
+html_theme_options = {
+  'base_url': 'http://bashtage.github.io/sphinx-material/',
+  'repo_url': 'https://github.com/percona/percona-toolkit',
+  'repo_name': 'percona/percona-toolkit',
+  'color_accent': 'grey',
+  'color_primary': 'orange',
+  'google_analytics_account': 'UA-343802-3',
+  'globaltoc_collapse': True,
+  'version_dropdown': True
+}
 
+html_context = {
+   'edit_uri': 'edit/3.x/source'
+}
 # Add any paths that contain custom themes here, relative to this directory.
 #html_theme_path = ['.', './percona-theme']
 
@@ -111,7 +123,7 @@ html_short_title = 'Percona Toolkit'
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-#html_logo = None
+html_logo = '_static/percona-logo.svg'
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
@@ -123,6 +135,14 @@ html_favicon = '_static/percona_favicon.ico'
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
+# Add any paths that contain templates here, relative to this directory.
+templates_path = ['_static/_templates/theme']
+
+# Path to custom css files. These will override the default css attribute if they exist
+html_css_files = [
+    '../_static/css/material.css',
+]
+
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
 #html_last_updated_fmt = '%b %d, %Y'
@@ -132,7 +152,10 @@ html_static_path = ['_static']
 #html_use_smartypants = True
 
 # Custom sidebar templates, maps document names to template names.
-#html_sidebars = {}
+html_sidebars = {
+  '**': ['globaltoc.html', 'searchbox.html', 'localtoc.html', 'logo-text.html', 'sourcelink.html'],
+    'using/windows': ['windowssidebar.html'],
+   }
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
@@ -180,12 +203,12 @@ htmlhelp_basename = 'PerconaToolkitdoc'
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
   ('index', 'PerconaToolkit.tex', u'Percona Toolkit Documentation',
-   u'2021, Percona LLC and/or its affiliates', 'manual'),
+   u'2022, Percona LLC and/or its affiliates', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.
-latex_logo = 'percona-logo.jpg'
+latex_logo = 'Percona_Logo_Color.png'
 
 # For "manual" documents, if this is true, then toplevel headings are parts,
 # not chapters.
@@ -214,5 +237,5 @@ latex_toplevel_sectioning = 'part'
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ('index', 'perconatoolkit', u'Percona Toolkit Documentation',
-     [u'2021, Percona LLC and/or its affiliates'], 1)
+     [u'2022, Percona LLC and/or its affiliates'], 1)
 ]
