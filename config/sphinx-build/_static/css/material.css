@@ -6,7 +6,7 @@
 
 .sphinx-tabs-tab {
   position: relative;
-  font-family: "Roboto", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: "Chivo", "Colfax", Helvetica, Arial, sans-serif;
   color: #fb8c00;
   line-height: 24px;
   margin: 0;
@@ -23,4 +23,11 @@
     font-size:.7rem;
     line-height:1.6;
     -webkit-print-color-adjust:exact
+}
+
+body,input{
+    color:rgba(0,0,0,.87);
+    -webkit-font-feature-settings:"kern","liga";
+    font-feature-settings:"kern","liga";
+    font-family:"Chivo", "Colfax", "Franziska", Helvetica, Arial, sans-serif;
 }
