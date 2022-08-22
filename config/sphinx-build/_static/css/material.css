@@ -18,3 +18,9 @@
   padding: 1rem 1.5rem;
   margin-bottom: 0;
 }
+
+.md-typeset{
+    font-size:.7rem;
+    line-height:1.6;
+    -webkit-print-color-adjust:exact
+}

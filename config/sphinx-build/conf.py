@@ -41,7 +41,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Percona Toolkit'
-copyright = u'2021, Percona LLC and/or its affiliates'
+copyright = u'2022, Percona LLC and/or its affiliates'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -92,27 +92,27 @@ extlinks = {'jirabug': ('https://jira.percona.com/browse/%s', ''),
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'sphinx_material'
+html_theme = 'percona-theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-html_theme_options = {
-  'base_url': 'http://bashtage.github.io/sphinx-material/',
-  'repo_url': 'https://github.com/percona/percona-toolkit',
-  'repo_name': 'percona/percona-toolkit',
-  'color_accent': 'grey',
-  'color_primary': 'orange',
-  'google_analytics_account': 'UA-343802-3',
-  'globaltoc_collapse': True,
-  'version_dropdown': True
-}
+#html_theme_options = {
+#  'base_url': 'http://bashtage.github.io/sphinx-material/',
+#  'repo_url': 'https://github.com/percona/percona-toolkit',
+#  'repo_name': 'percona/percona-toolkit',
+#  'color_accent': 'grey',
+#  'color_primary': 'orange',
+#  'google_analytics_account': 'UA-343802-3',
+#  'globaltoc_collapse': True,
+#  'version_dropdown': True
+#}
 
 html_context = {
    'edit_uri': 'edit/3.x/source'
 }
 # Add any paths that contain custom themes here, relative to this directory.
-#html_theme_path = ['.', './percona-theme']
+html_theme_path = ['.', './percona-theme']
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
@@ -123,25 +123,25 @@ html_short_title = 'Percona Toolkit'
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = '_static/percona-logo.svg'
+#html_logo = '_static/percona-logo.svg'
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-html_favicon = '_static/percona_favicon.ico'
+#html_favicon = '_static/percona_favicon.ico'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+#html_static_path = ['_static']
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_static/_templates/theme']
+#templates_path = ['_static/_templates/theme']
 
 # Path to custom css files. These will override the default css attribute if they exist
-html_css_files = [
-    '../_static/css/material.css',
-]
+#html_css_files = [
+#    '../_static/css/material.css',
+#]
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
@@ -153,7 +153,7 @@ html_css_files = [
 
 # Custom sidebar templates, maps document names to template names.
 html_sidebars = {
-  '**': ['globaltoc.html', 'searchbox.html', 'localtoc.html', 'logo-text.html', 'sourcelink.html'],
+  '**': ['globaltoc.html', 'searchbox.html', 'localtoc.html', 'sourcelink.html'],
     'using/windows': ['windowssidebar.html'],
    }
 
