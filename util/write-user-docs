@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-#set -x
+set -x
 
 # Usage: write-user-docs [TOOLS]
 #
@@ -37,19 +37,21 @@ usage()
 {
   echo "This script writes/updates the user documentation.
 
-        Usage: write-user-docs [ --html ] [ --pdf ] [TOOLS]
+        Usage: write-user-docs [ -h ] [ -p ] [ -t ] [TOOLS]
 
         If no option (html, pdf) specified, builds both html and pdf.
 
-        --html builds docs in html
-        --pdf builds pdf doc
+        -h builds docs in html
+        -t builds docs in html with new theme
+        -p builds pdf doc
 
         TOOLS: If no tools are specified on the command line, then docs for bin/* are written (plus all the extra sections).
         "
   exit 2
 }
 
-TEMP=$(getopt -n 'write-user-docs' -o '' --long 'html,pdf' -- "$@")
+TEMP=$(getopt hpt $*)
+
 if [ $? -ne 0 ]; then
   usage
 fi
@@ -59,12 +61,19 @@ unset TEMP
 
 while true; do
   case "$1" in
-    --html)
+    -h)
         MAKE_HTML="true"
+        MAKE_THTML="false"
         shift
         continue
     ;;
-    --pdf)
+    -t)
+        MAKE_THTML="true"
+        MAKE_HTML="false"
+        shift
+        continue
+    ;;
+    -p)
         MAKE_PDF="true"
         shift
         continue
@@ -232,6 +241,10 @@ if [ $BUILD -eq 1 ]; then
 
    if [ "${MAKE_PDF}" = "true" ]; then
       make latexpdf
+   fi
+
+   if [ "${MAKE_THTML}" = "true" ]; then
+      make thtml
    fi
 
    exit_status=$(( exit_status | $? ))
