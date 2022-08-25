@@ -36,11 +36,15 @@
 usage()
 {
   echo "This script writes/updates the user documentation.
+
         Usage: write-user-docs [ -h ] [ -p ] [ -t ] [TOOLS]
+
         If no option (html, pdf) specified, builds both html and pdf.
+
         -h builds docs in html
         -t builds docs in html with new theme
         -p builds pdf doc
+
         TOOLS: If no tools are specified on the command line, then docs for bin/* are written (plus all the extra sections).
         "
   exit 2
