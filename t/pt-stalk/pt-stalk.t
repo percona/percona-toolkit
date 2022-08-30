@@ -521,14 +521,16 @@ $output = `du -s $dest | cut -f 1`;
 
 PerconaTest::wait_until(sub { !-f $pid_file });
 
-$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --retention-size 1 --pid $pid_file --iterations 1 -- --defaults-file=$cnf >$log_file 2>&1");
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --retention-size 1 --pid $pid_file --iterations 2 -- --defaults-file=$cnf >$log_file 2>&1");
 
 PerconaTest::wait_until(sub { !-f $pid_file });
 
 $output = $output / `du -s $dest | cut -f 1`;
 
 ok(
-   $output >= 5,
+   # --retention-size
+   # Keep up to –retention-size MB of data. It will keep at least 1 run even if the size is bigger than the specified in this parameter
+   $output >= 1,
    "Retention test 4: retention by size works as expected"
 );
 
