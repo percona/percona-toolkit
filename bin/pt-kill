@@ -7373,47 +7373,50 @@ sub main {
 
          MATCHING_QUERY:
          foreach my $query ( @queries ) {
-            my $fp = $qr->fingerprint($query->{'Info'});
-            my $chksm = Transformers::make_checksum($fp);
-            my $qinfo = ($query->{Info} || 'NULL' );
+            my $qinfo = ( $query->{Info} || 'NULL' );
             if( $o->get('fingerprint') && $qinfo ne 'NULL' ) {
-               $qinfo = $fp;
+               $qinfo = $qr->fingerprint($query->{'Info'});
+            }
+            my $chksm = '';
+            if ( $qinfo ne 'NULL' ) {
+               my $fp = $qr->fingerprint($query->{'Info'});
+               # $chksm is used by query-id and json
+               $chksm = Transformers::make_checksum($fp);
             }
             if ( $o->get('print') ) {
-               printf "# %s %s %d (%s %d sec) %s\n",
-                  ts(time), $o->get('kill-query') ? 'KILL QUERY' : 'KILL',
-                  $query->{Id}, ($query->{Command} || 'NULL'), $query->{Time},
-                  $qinfo;
-            }
-            if ( $o->get('log-json') ) {
-               my $reasons = join "\n", map {
-                     defined($_) ? $_ : "Unkown reason"
-                  } @{ $pl->{_reasons_for_matching}->{$query} };
-               my %jsonOutput = (
-                     Timestamp   => ts(time),
-                     Reason      => $reasons,
-                     Kill_Error  => $EVAL_ERROR,
-                     Id          => $query->{Id},
-                     User        => $query->{User},
-                     Host        => $query->{Host},
-                     Db          => $query->{db},
-                     Command     => $query->{Command},
-                     Time        => $query->{Time},
-                     State       => $query->{State},
-                     Info        => $qinfo,
-                     Digest      => $chksm
-               );
-               if ( $o->get('log-json-fields') ) {
-                  my @logFieldKVs = split(",", $o->get('log-json-fields'));
-                  my %logFields = map { split(":", $_) } @logFieldKVs;
-                  %jsonOutput = (%jsonOutput, %logFields);
+               if ( $o->get('json') ) {
+                  my $reasons = join "\n", map {
+                        defined($_) ? $_ : "Unkown reason"
+                     } @{ $pl->{_reasons_for_matching}->{$query} };
+                  my %jsonOutput = (
+                        Timestamp   => ts(time),
+                        Reason      => $reasons,
+                        Kill_Error  => $EVAL_ERROR,
+                        Id          => $query->{Id},
+                        User        => $query->{User},
+                        Host        => $query->{Host},
+                        Db          => $query->{db},
+                        Command     => $query->{Command},
+                        Time        => $query->{Time},
+                        State       => $query->{State},
+                        Info        => $qinfo,
+                        Digest      => $chksm
+                  );
+                  if ( $o->get('json-fields') ) {
+                     my @logFieldKVs = split(",", $o->get('json-fields'));
+                     my %logFields = map { split(":", $_) } @logFieldKVs;
+                     %jsonOutput = (%jsonOutput, %logFields);
+                  }
+                  printf "%s\n", Transformers::hash_to_json(\%jsonOutput);
+               } else {
+                  printf "# %s %s %d (%s %d sec) %s\n",
+                     ts(time), $o->get('kill-query') ? 'KILL QUERY' : 'KILL',
+                     $query->{Id}, ($query->{Command} || 'NULL'), $query->{Time},
+                     $qinfo;
                }
-               open my $fh, '>>', $o->get('log-json');
-               printf $fh "%s\n", Transformers::hash_to_json(\%jsonOutput);
-               close $fh;
             }
             if ( $o->get('query-id') ) {
-                  print "Query ID: 0x$chksm\n";
+               print "Query ID: 0x$chksm\n";
             }
             if ( $o->get('execute-command') ) {
                exec_cmd($o->get('execute-command'));
@@ -7895,13 +7898,13 @@ MAGIC_create_log_table:
       PRIMARY KEY (kill_id)
    ) DEFAULT CHARSET=utf8
 
-=item --log-json
+=item --json
 
-type: string
+Prints killed queries as JSON, must be used with L<"--print">. For example:
 
-Write killed queries as JSON to this file, for example:
+   --print --json
 
-   --log-json kill_log.json
+The usual plain-text output from L<"--print"> will not be displayed.
 
 JSON output will be in the format of:
 
@@ -7920,22 +7923,22 @@ JSON output will be in the format of:
       "Timestamp": "2022-01-01T00:00:00"
    }
 
-=item --log-json-fields
+=item --json-fields
 
 type: string
 
 Specify a list of additional key:value pairs to include in JSON output when
-using L<"--log-json">, the value of this parameter must be specified in the
+using L<"--json">, the value of this parameter must be specified in the
 format of:
 
-   --log-json-fields key1:value1,key2:value2
+   --json-fields key1:value1,key2:value2
 
-Any fields specified using L<"--log-json-fields"> will be included in the
-L<"--log-json"> output.
+Any fields specified using L<"--json-fields"> will be included in the
+L<"--json"> output.
 
 For example:
 
-   --log-json kill_log.json --log-json-fields hostname:$(hostname),tag:my_tag
+   --print --json --json-fields hostname:$(hostname),tag:my_tag
 
 Will result in JSON records being written to "kill_log.json" using this format:
 
