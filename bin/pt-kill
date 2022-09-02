@@ -7386,7 +7386,7 @@ sub main {
             if ( $o->get('print') ) {
                if ( $o->get('json') ) {
                   my $reasons = join "\n", map {
-                        defined($_) ? $_ : "Unkown reason"
+                        defined($_) ? $_ : "Unknown reason"
                      } @{ $pl->{_reasons_for_matching}->{$query} };
                   my %jsonOutput = (
                         Timestamp   => ts(time),
@@ -7513,7 +7513,7 @@ sub log_to_table {
 
    my $ts      = Transformers::ts(time());
    my $reasons = join "\n", map {
-         defined($_) ? $_ : "Unkown reason"
+         defined($_) ? $_ : "Unknown reason"
       } @{ $pl->{_reasons_for_matching}->{$query} };
    $log->(
          $ts, $reasons, $args{eval_error},
