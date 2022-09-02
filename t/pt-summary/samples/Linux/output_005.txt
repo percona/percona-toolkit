@@ -15,17 +15,17 @@ Architecture | CPU = 64-bit, OS = 64-bit
       Models | 4xIntel(R) Core(TM) i7-8565U CPU @ 1.80GHz
       Caches | 4x8192 KB
 # Memory #####################################################
-       Total | 3.7G
-        Free | 2.9G
-        Used | physical = 383.7M, swap allocated = 2.0G, swap used = 0.0, virtual = 383.7M
-      Shared | 32.9M
-     Buffers | 2.0M
-      Caches | 396.0M
-       Dirty | 136 kB
-     UsedRSS | 464.8M
-  Swappiness | 30
- DirtyPolicy | 30, 10
- DirtyStatus | 0, 0
+         Total | 3.7G
+          Free | 2.9G
+          Used | physical = 383.7M, swap allocated = 2.0G, swap used = 0.0, virtual = 383.7M
+        Shared | 32.9M
+       Buffers | 2.0M
+        Caches | 396.0M
+         Dirty | 136 kB
+       UsedRSS | 464.8M
+    Swappiness | 30
+   DirtyPolicy | 30, 10
+   DirtyStatus | 0, 0
   Locator   Size     Speed             Form Factor   Type          Type Detail
   ========= ======== ================= ============= ============= ===========
   DIMM_A1   8192 MB  1333 MT/s         DIMM          DDR3          Synchronous Registered (Buffered)

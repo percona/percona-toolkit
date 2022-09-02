@@ -101,6 +101,7 @@ collect_system_data () { local PTFUNCNAME=collect_system_data;
    [ "$CMD_DMIDECODE" ] && $CMD_DMIDECODE > "$data_dir/dmidecode" 2>/dev/null
 
    find_memory_stats "$platform" > "$data_dir/memory"
+   find_numa_stats > "$data_dir/numactl"
    [ "$OPT_SUMMARIZE_MOUNTS" ] && mounted_fs_info "$platform" > "$data_dir/mounted_fs"
    raid_controller   "$data_dir/dmesg_file" "$data_dir/lspci_file" >> "$data_dir/summary"
 
@@ -224,6 +225,12 @@ linux_exclusive_collection () { local PTFUNCNAME=linux_exclusive_collection;
       if [ "$dirty_bytes" ]; then
          echo "dirtystatus     $(awk '/vm.dirty_bytes/{print $3}' "$data_dir/sysctl"), $(awk '/vm.dirty_background_bytes/{print $3}' "$data_dir/sysctl")" >> "$data_dir/summary"
       fi
+   fi
+   
+   if [ -e "$data_dir/numactl" ]; then
+      echo "numa-available    $(awk '/available/{print $2}' "$data_dir/numactl")" >> "$data_dir/summary"
+      echo "numa-policy    $(awk '/policy/{print $2}' "$data_dir/numactl")" >> "$data_dir/summary"
+      echo "numa-preferred-node    $(awk '/preferred node/{print $3}' "$data_dir/numactl")" >> "$data_dir/summary"
    fi
 
    schedulers_and_queue_size "$data_dir/summary" > "$data_dir/partitioning"
@@ -446,6 +453,13 @@ find_memory_stats () { local PTFUNCNAME=find_memory_stats;
       cat /proc/meminfo
    elif [ "${platform}" = "SunOS" ]; then
       $CMD_PRTCONF | awk -F: '/Memory/{print $2}'
+   fi
+}
+
+find_numa_stats () { local PTFUNCNAME=find_numa_stats;
+   if command -v numactl >/dev/null; then
+      numactl --hardware
+      numactl --show
    fi
 }
 
