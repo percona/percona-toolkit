@@ -15078,7 +15078,7 @@ Report the slowest queries from the processlist on host1:
 
    pt-query-digest --processlist h=host1
 
-Capture MySQL protocol data with tcppdump, then report the slowest queries:
+Capture MySQL protocol data with tcpdump, then report the slowest queries:
 
    tcpdump -s 65535 -x -nn -q -tttt -i any -c 1000 port 3306 > mysql.tcp.txt
 
@@ -15184,7 +15184,7 @@ The information is very similar to what you'll see for each class of queries in
 the log, but it doesn't have some information that would be too expensive to
 keep globally for the analysis.  It also has some statistics about the code's
 execution itself, such as the CPU and memory usage, the local date and time
-of the run, and a list of input file read/parsed.
+of the run, and a list of input files read/parsed.
 
 Following this is the response-time profile over the events.  This is a
 highly summarized view of the unique events in the detailed query report
@@ -15491,7 +15491,7 @@ Prompt for a password when connecting to MySQL.
 
 type: array; default: db|Schema
 
-List of attribute|alias,etc.
+List of attribute|alias, etc.
 
 Certain attributes have multiple names, like db and Schema.  If an event does
 not have the primary attribute, pt-query-digest looks for an alias attribute.
@@ -15653,7 +15653,7 @@ The subroutine template is:
 
   sub { $event = shift; filter && return $event; }
 
-Filters given on the command line are wrapped inside parentheses like like
+Filters given on the command line are wrapped inside parentheses like
 C<( filter )>.  For complex, multi-line filters, you must put the code inside
 a file so it will not be wrapped inside parentheses.  Either way, the filter
 must produce syntactically valid code given the template.  For example, an
@@ -15929,7 +15929,7 @@ Note that we store the count (cnt) for the ts attribute only; it will be
 redundant to store this for other attributes.
 
 Starting from Percona Toolkit 3.0.11, the checksum function has been updated to use 32 chars in the MD5 sum.
-This causes the checksum field in the history table will have a different value than in the previous versions of the tool.
+This causes the checksum field in the history table to have a different value than in the previous versions of the tool.
 
 =item --host
 
@@ -16033,7 +16033,7 @@ For example, the default C<Query_time:sum> means that queries in the
 query analysis report will be ordered (sorted) by their total query execution
 time ("Exec time").  C<Query_time:max> orders the queries by their
 maximum query execution time, so the query with the single largest
-C<Query_time> will be list first.  C<cnt> refers more to the frequency
+C<Query_time> will be listed first.  C<cnt> refers more to the frequency
 of the query as a whole, how often it appears; "Count" is its corresponding
 line in the query analysis report.  So any attribute and C<cnt> should yield
 the same report wherein queries are sorted by the number of times they
@@ -16075,10 +16075,10 @@ type: string; default: report
 How to format and print the query analysis results.  Accepted values are:
 
    VALUE          FORMAT
-   =======        ==============================
+   =======        ===============================
    report         Standard query analysis report
    slowlog        MySQL slow log
-   json           JSON, on array per query class
+   json           JSON, one array per query class
    json-anon      JSON without example queries
    secure-slowlog JSON without example queries
 
@@ -16115,8 +16115,8 @@ Port number to use for connection.
 =item --preserve-embedded-numbers
 
 Preserve numbers in database/table names when fingerprinting queries.
-The standar fingeprint method replaces numbers in db/tables names, making
-a query like 'SELECT * FROM db1.table2' to be figerprinted as 'SELECT * FROM db?.table?'.
+The standard fingerprint method replaces numbers in db/tables names, making
+a query like 'SELECT * FROM db1.table2' to be fingerprinted as 'SELECT * FROM db?.table?'.
 This option changes that behaviour and the fingerprint will become 
 'SELECT * FROM db1.table2'.
 
@@ -16180,7 +16180,7 @@ Print these sections of the query analysis report.
   rusage       CPU times and memory usage reported by ps
   date         Current local date and time
   hostname     Hostname of machine on which pt-query-digest was run
-  files        Input files read/parse
+  files        Input files read/parsed
   header       Summary of the entire analysis run
   profile      Compact table of queries for an overview of the report
   query_report Detailed information about each unique query
@@ -16392,7 +16392,7 @@ MAGIC_set_vars
    wait_timeout=10000
 
 Variables specified on the command line override these defaults.  For
-example, specifying C<--set-vars wait_timeout=500> overrides the defaultvalue of C<10000>.
+example, specifying C<--set-vars wait_timeout=500> overrides the default value of C<10000>.
 
 The tool prints a warning and continues if a variable cannot be set.
 
@@ -16402,7 +16402,7 @@ type: Hash
 
 Show all values for these attributes.
 
-By default pt-query-digest only shows as many of an attribute's value that
+By default pt-query-digest only shows as many of an attribute's value as
 fit on a single line.  This option allows you to specify attributes for which
 all values will be shown (line width is ignored).  This only works for
 attributes with string values like user, host, db, etc.  Multiple attributes
@@ -16438,7 +16438,7 @@ The MySQL time expression is wrapped inside a query like
 valid inside this query.  For example, do not use UNIX_TIMESTAMP() because
 UNIX_TIMESTAMP(UNIX_TIMESTAMP()) returns 0.
 
-Events are assumed to be in chronological: older events at the beginning of
+Events are assumed to be in chronological order: older events at the beginning of
 the log and newer events at the end of the log.  L<"--since"> is strict: it
 ignores all queries until one is found that is new enough.  Therefore, if
 the query events are not consistently timestamped, some may be ignored which
@@ -16459,7 +16459,7 @@ Show a timeline of events.
 This option makes pt-query-digest print another kind of report: a timeline of
 the events.  Each query is still grouped and aggregate into classes according to
 L<"--group-by">, but then they are printed in chronological order.  The timeline
-report prints out the timestamp, interval, count and value of each classes.
+report prints out the timestamp, interval, count and value of each class.
 
 If all you want is the timeline report, then specify C<--no-report> to
 suppress the default query analysis report.  Otherwise, the timeline report
@@ -16551,7 +16551,7 @@ queries.  (See L<http://www.mysqlperformanceblog.com/?p=6092> for details.)
      'port 3306 and tcp[1] & 7 == 2 and tcp[3] & 7 == 2'
 
 All MySQL servers running on port 3306 are automatically detected in the
-tcpdump output.  Therefore, if the tcpdump out contains packets from
+tcpdump output.  Therefore, if the tcpdump output contains packets from
 multiple servers on port 3306 (for example, 10.0.0.1:3306, 10.0.0.2:3306,
 etc.), all packets/queries from all these servers will be analyzed
 together as if they were one server.
