@@ -22,6 +22,7 @@ import (
 type Dumper struct {
 	cmd       string
 	resources []string
+	filePaths []string
 	namespace string
 	location  string
 	errors    string
@@ -51,6 +52,7 @@ func New(location, namespace, resource string) Dumper {
 		"persistentvolumeclaims",
 		"persistentvolumes",
 	}
+	filePaths := make([]string, 0)
 	if len(resource) > 0 {
 		resources = append(resources, resource)
 
@@ -60,6 +62,16 @@ func New(location, namespace, resource string) Dumper {
 				"perconaxtradbclusterbackups",
 				"perconaxtradbclusterrestores",
 				"perconaxtradbclusters")
+			filePaths = append(filePaths,
+				"var/lib/mysql/mysqld-error.log",
+				"var/lib/mysql/innobackup.backup.log",
+				"var/lib/mysql/innobackup.move.log",
+				"var/lib/mysql/innobackup.prepare.log",
+				"var/lib/mysql/grastate.dat",
+				"var/lib/mysql/gvwstate.dat",
+				"var/lib/mysql/mysqld.post.processing.log",
+				"var/lib/mysql/auto.cnf",
+			)
 		} else if resourceType(resource) == "psmdb" {
 			resources = append(resources,
 				"perconaservermongodbbackups",
@@ -71,6 +83,7 @@ func New(location, namespace, resource string) Dumper {
 	return Dumper{
 		cmd:       "kubectl",
 		resources: resources,
+		filePaths: filePaths,
 		location:  "cluster-dump",
 		mode:      int64(0o777),
 		namespace: namespace,
@@ -187,6 +200,7 @@ func (d *Dumper) DumpCluster() error {
 				}
 			}
 			if pod.Labels["app.kubernetes.io/component"] == component {
+				// Get summary
 				output, err = d.getPodSummary(resourceType(d.crType), pod.Name, pod.Labels["app.kubernetes.io/instance"], tw)
 				if err != nil {
 					d.logError(err.Error(), d.crType, pod.Name)
@@ -194,12 +208,22 @@ func (d *Dumper) DumpCluster() error {
 					if err != nil {
 						log.Printf("Error: create pt-summary errors archive for pod %s in namespace %s: %v", pod.Name, ns.Name, err)
 					}
-					continue
+				} else {
+					err = addToArchive(location, d.mode, output, tw)
+					if err != nil {
+						d.logError(err.Error(), "create pt-summary archive for pod "+pod.Name)
+						log.Printf("Error: create pt-summary  archive for pod %s: %v", pod.Name, err)
+					}
 				}
-				err = addToArchive(location, d.mode, output, tw)
-				if err != nil {
-					d.logError(err.Error(), "create pt-summary archive for pod "+pod.Name)
-					log.Printf("Error: create pt-summary  archive for pod %s: %v", pod.Name, err)
+
+				// get individual Logs
+				location = filepath.Join(d.location, ns.Name, pod.Name)
+				for _, path := range d.filePaths {
+					err = d.getIndividualFiles(resourceType(d.crType), pod.Name, path, location, tw)
+					if err != nil {
+						d.logError(err.Error(), "get file "+path+" for pod "+pod.Name)
+						log.Printf("Error: get %s file: %v", path, err)
+					}
 				}
 			}
 		}
@@ -264,9 +288,10 @@ func (d *Dumper) logError(err string, args ...string) {
 
 func addToArchive(location string, mode int64, content []byte, tw *tar.Writer) error {
 	hdr := &tar.Header{
-		Name: location,
-		Mode: mode,
-		Size: int64(len(content)),
+		Name:    location,
+		Mode:    mode,
+		ModTime: time.Now(),
+		Size:    int64(len(content)),
 	}
 	if err := tw.WriteHeader(hdr); err != nil {
 		return errors.Wrapf(err, "write header to %s", location)
@@ -285,6 +310,22 @@ type crSecrets struct {
 			Users string `json:"users,omitempty"`
 		} `json:"secrets,omitempty"`
 	} `json:"spec"`
+}
+
+func (d *Dumper) getIndividualFiles(resource, podName, path, location string, tw *tar.Writer) error {
+	args := []string{"cp", podName + ":" + path, "/dev/stdout"}
+	output, err := d.runCmd(args...)
+
+	if err != nil {
+		d.logError(err.Error(), args...)
+		log.Printf("Error: get path %s for resource %s in namespace %s: %v", path, resource, d.namespace, err)
+		return addToArchive(location, d.mode, []byte(err.Error()), tw)
+	}
+
+	if len(output) == 0 {
+		return nil
+	}
+	return addToArchive(location+"/"+path, d.mode, output, tw)
 }
 
 func (d *Dumper) getPodSummary(resource, podName, crName string, tw *tar.Writer) ([]byte, error) {
