@@ -572,6 +572,7 @@ tabulate_strace() {
    }
    /^COMMAND/ { mode = "lsof";   }
    /^Process/ { mode = "strace"; }
+   /^strace/ { mode = "strace"; }
    {
       # Save the file descriptor and name for lookup later.
       if ( mode == "lsof" ) {
