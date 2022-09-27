@@ -11,6 +11,7 @@ use warnings FATAL => 'all';
 # in this file.  Setting %INC to this file for each module makes Perl aware
 # of this so it will not try to load the module from @INC.  See the tool's
 # documentation for a full list of dependencies.
+
 BEGIN {
    $INC{$_} = __FILE__ for map { (my $pkg = "$_.pm") =~ s!::!/!g; $pkg } (qw(
       Percona::Toolkit
@@ -13347,7 +13348,9 @@ Only checksum this comma-separated list of databases.
 
 type: string; group: Filter
 
-Only checksum databases whose names match this Perl regex.
+Only checksum databases whose names match this Perl regex. This is matched
+against the lowercase table name. This is the bare regex; it should not be
+enclosed in slashes.
 
 =item --defaults-file
 
@@ -13478,7 +13481,9 @@ the database name.  The L<"--replicate"> table is always automatically ignored.
 
 type: string; group: Filter
 
-Ignore tables whose names match the Perl regex.
+Ignore tables whose names match the Perl regex. This is matched
+against the lowercase table name. This is the bare regex; it should not be
+enclosed in slashes.
 
 =item --max-lag
 
