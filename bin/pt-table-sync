@@ -9951,7 +9951,7 @@ sub main {
          $o->save_error("--conflict-comparison $cc requires --conflict-value")
       }
 
-      # Override --algorithms becuase only TableSyncChunk works with
+      # Override --algorithms because only TableSyncChunk works with
       # bidirectional syncing.
       $o->set('algorithms', 'Chunk');
       $o->set('buffer-to-client', 0);
