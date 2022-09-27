@@ -518,7 +518,7 @@ $sb->load_file('master', "$sample/bug-1340728_cleanup.sql");
 # If this test fails it might lead to "segmentation fault" or "out of memory"
 # #############################################################################
 
-$output = output(
+($output, $exit_status) = full_output(
    sub { pt_online_schema_change::main(@args, "$master_dsn,D=sakila,t=actor",
          '--execute', 
          '--alter-foreign-keys-method=drop_swap',
@@ -526,7 +526,6 @@ $output = output(
          '--nocheck-plan',
          ),
       },
-      stderr => 1,
 );
 
 like(
