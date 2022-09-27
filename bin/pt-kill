@@ -7373,21 +7373,50 @@ sub main {
 
          MATCHING_QUERY:
          foreach my $query ( @queries ) {
+            my $qinfo = ( $query->{Info} || 'NULL' );
+            if( $o->get('fingerprint') && $qinfo ne 'NULL' ) {
+               $qinfo = $qr->fingerprint($query->{'Info'});
+            }
+            my $chksm = '';
+            if ( $qinfo ne 'NULL' ) {
+               my $fp = $qr->fingerprint($query->{'Info'});
+               # $chksm is used by query-id and json
+               $chksm = Transformers::make_checksum($fp);
+            }
             if ( $o->get('print') ) {
-               my $qinfo = ($query->{Info} || 'NULL' );
-               if( $o->get('fingerprint') && $qinfo ne 'NULL' ) {
-                        $qinfo = $qr->fingerprint($query->{'Info'});
+               if ( $o->get('json') ) {
+                  my $reasons = join "\n", map {
+                        defined($_) ? $_ : "Unknown reason"
+                     } @{ $pl->{_reasons_for_matching}->{$query} };
+                  my %jsonOutput = (
+                        Timestamp   => ts(time),
+                        Reason      => $reasons,
+                        Kill_Error  => $EVAL_ERROR,
+                        Id          => $query->{Id},
+                        User        => $query->{User},
+                        Host        => $query->{Host},
+                        Db          => $query->{db},
+                        Command     => $query->{Command},
+                        Time        => $query->{Time},
+                        State       => $query->{State},
+                        Info        => $qinfo,
+                        Digest      => $chksm
+                  );
+                  if ( $o->get('json-fields') ) {
+                     my @logFieldKVs = split(",", $o->get('json-fields'));
+                     my %logFields = map { split(":", $_) } @logFieldKVs;
+                     %jsonOutput = (%jsonOutput, %logFields);
+                  }
+                  printf "%s\n", Transformers::hash_to_json(\%jsonOutput);
+               } else {
+                  printf "# %s %s %d (%s %d sec) %s\n",
+                     ts(time), $o->get('kill-query') ? 'KILL QUERY' : 'KILL',
+                     $query->{Id}, ($query->{Command} || 'NULL'), $query->{Time},
+                     $qinfo;
                }
-
-               printf "# %s %s %d (%s %d sec) %s\n",
-                  ts(time), $o->get('kill-query') ? 'KILL QUERY' : 'KILL',
-                  $query->{Id}, ($query->{Command} || 'NULL'), $query->{Time},
-                  $qinfo;
             }
             if ( $o->get('query-id') ) {
-                  my $fp = $qr->fingerprint($query->{'Info'});
-                  my $chksm = Transformers::make_checksum($fp);
-                  print "Query ID: 0x$chksm\n";
+               print "Query ID: 0x$chksm\n";
             }
             if ( $o->get('execute-command') ) {
                exec_cmd($o->get('execute-command'));
@@ -7484,7 +7513,7 @@ sub log_to_table {
 
    my $ts      = Transformers::ts(time());
    my $reasons = join "\n", map {
-         defined($_) ? $_ : "Unkown reason"
+         defined($_) ? $_ : "Unknown reason"
       } @{ $pl->{_reasons_for_matching}->{$query} };
    $log->(
          $ts, $reasons, $args{eval_error},
@@ -7868,6 +7897,67 @@ MAGIC_create_log_table:
       Time_ms     bigint(21) DEFAULT '0', # NOTE, TODO: currently not used
       PRIMARY KEY (kill_id)
    ) DEFAULT CHARSET=utf8
+
+=item --json
+
+Prints killed queries as JSON, must be used with L<"--print">. For example:
+
+   --print --json
+
+The usual plain-text output from L<"--print"> will not be displayed.
+
+JSON output will be in the format of:
+
+   {
+      "Command": "Query",
+      "Host": "10.0.0.1:9999",
+      "Id": 1234,
+      "Info": "SELECT SLEEP(5)",
+      "State": "User sleep",
+      "Time": 10,
+      "User": "my_user",
+      "Db": "my_db",
+      "Kill_Error": "",
+      "Digest": "58A43A7DA83F58C1",
+      "Reason": "Exceeds busy time\nQuery matches Command spec",
+      "Timestamp": "2022-01-01T00:00:00"
+   }
+
+=item --json-fields
+
+type: string
+
+Specify a list of additional key:value pairs to include in JSON output when
+using L<"--json">, the value of this parameter must be specified in the
+format of:
+
+   --json-fields key1:value1,key2:value2
+
+Any fields specified using L<"--json-fields"> will be included in the
+L<"--json"> output.
+
+For example:
+
+   --print --json --json-fields hostname:$(hostname),tag:my_tag
+
+Will result in JSON records being written to "kill_log.json" using this format:
+
+   {
+      "Command": "Query",
+      "Host": "10.0.0.1:9999",
+      "Id": 1234,
+      "Info": "SELECT SLEEP(5)",
+      "State": "User sleep",
+      "Time": 10,
+      "User": "my_user",
+      "Db": "my_db",
+      "Kill_Error": "",
+      "Digest": "58A43A7DA83F58C1",
+      "Reason": "Exceeds busy time\nQuery matches Command spec",
+      "Timestamp": "2022-01-01T00:00:00",
+      "hostname": "my_host",
+      "tag": "my_tag"
+   }
 
 =item --password
 

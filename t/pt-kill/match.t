@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 16;
+use Test::More tests => 17;
 
 use PerconaTest;
 use Sandbox;
@@ -145,6 +145,16 @@ like(
    $output,
    qr/0x69962191E64980E6/,
    '--query-id'
+);
+
+# --json option
+$output = output(
+   sub { pt_kill::main(@args, "$trunk/t/lib/samples/pl/recset011.txt", qw(--match-all --print --json --json-fields key:value)); }
+);
+like(
+   $output,
+   qr/\{"Command"\:"Query","Db"\:"db","Digest"\:"69962191E64980E6","Host"\:"127\.0\.0\.1\:3306","Id"\:"4","Info"\:"\\\/\* fruit\=orange \*\\\/ select 1 from fuits;","Kill_Error"\:"","Reason"\:"","State"\:"statistics","Time"\:"6","Timestamp"\:".*","User"\:"foo","key"\:"value"\}/,
+   '--json'
 );
 
 # #############################################################################
