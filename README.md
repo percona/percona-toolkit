@@ -1,4 +1,5 @@
 # Percona Toolkit
+[![CLA assistant](https://cla-assistant.percona.com/readme/badge/percona/percona-toolkit)](https://cla-assistant.percona.com/percona/percona-toolkit)
 
 *Percona Toolkit* is a collection of advanced command-line tools used by
 [Percona](http://www.percona.com/) support staff to perform a variety of
@@ -32,20 +33,3 @@ are installed in /usr/local/bin.  See the INSTALL file for more information.
 Run `man percona-toolkit` to see a list of installed tools, then `man tool`
 to read the embedded documentation for a specific tool.  You can also read
 the documentation online at [http://www.percona.com/software/percona-toolkit/](http://www.percona.com/software/percona-toolkit/).
-
-## Version 3
-
-Starting from version 3, there are new tools for MongoDB. These tools are written in Go so
-in order to compile these program, this repo must me cloned into the GOPATH directory.  
-Example:  
-
-```
-mkdir ${HOME}/go
-export GOPATH=${HOME}/go
-mkdir -p ${HOME}/go/src/github.com/percona
-cd ${HOME}/go/src/github.com/percona
-git clone https://github.com/percona/percona-toolkit.git
-cd percona-toolkit/src/go
-make
-```
-

@@ -10,6 +10,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
+use utf8;
 
 use PerconaTest;
 use Sandbox;
@@ -43,16 +44,20 @@ is_deeply(
    "Inserted UTF8 data"
 );
 
-throws_ok(
-   sub { pt_archiver::main(
-      '--source',  'h=127.1,P=12345,D=issue_1225,t=t,u=msandbox,p=msandbox',
-      '--dest',    't=a',
-      qw(--where 1=1 --purge))
-   },
-   qr/Character set mismatch/,
-   "--check-charset"
-);
+SKIP: {
+   skip "MySQL 8.0+ uses UTF8 as default", 1 if ($sandbox_version gt '5.7');
 
+   throws_ok(
+      sub { pt_archiver::main(
+         '--source',  'h=127.1,P=12345,D=issue_1225,t=t,u=msandbox,p=msandbox',
+         '--dest',    't=a',
+         qw(--where 1=1 --purge))
+      },
+      qr/Character set mismatch/,
+      "--check-charset"
+   );
+
+}
 $output = output(
    sub { pt_archiver::main(
       '--source',  'h=127.1,P=12345,D=issue_1225,t=t,u=msandbox,p=msandbox',

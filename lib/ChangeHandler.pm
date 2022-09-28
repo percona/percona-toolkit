@@ -326,13 +326,14 @@ sub make_UPDATE {
    my $types = $self->{tbl_struct}->{type_for};
    return "UPDATE $self->{dst_db_tbl} SET "
       . join(', ', map {
+            my $is_hex = ($types->{$_} || '') =~ m/^0x[0-9a-fA-F]+$/i;
             my $is_char  = ($types->{$_} || '') =~ m/char|text|enum/i;
             my $is_float = ($types->{$_} || '') =~ m/float|double/i;
             $self->{Quoter}->quote($_)
             . '='
             .  $self->{Quoter}->quote_val(
                   $row->{$_},
-                  is_char  => $is_char,
+                  is_char  => $is_char && !$is_hex,
                   is_float => $is_float,
             );
          } grep { !$in_where{$_} } @cols)
@@ -407,11 +408,12 @@ sub make_row {
       . ') VALUES ('
       . join(', ',
             map {
-               my $is_char  = ($type_for->{$_} || '') =~ m/char|text/i;
+               my $is_hex = ($type_for->{$_} || '') =~ m/^0x[0-9a-fA-F]+$/i;
+               my $is_char  = ($type_for->{$_} || '') =~ m/char|text|enum/i;
                my $is_float = ($type_for->{$_} || '') =~ m/float|double/i;
                $q->quote_val(
                      $row->{$_},
-                     is_char  => $is_char,
+                     is_char  => $is_char && !$is_hex,
                      is_float => $is_float,
                )
             } @cols)
@@ -431,17 +433,21 @@ sub make_row {
 sub make_where_clause {
    my ( $self, $row, $cols ) = @_;
    my @clauses = map {
+      my $col = $_;
+      $col = $self->{Quoter}->quote($col);
+
       my $val = $row->{$_};
       my $sep = defined $val ? '=' : ' IS ';
-      my $is_char  = ($self->{tbl_struct}->{type_for}->{$_} || '') =~ m/char|text/i;
+      my $is_char  = ($self->{tbl_struct}->{type_for}->{$_} || '') =~ m/char|text|enum/i;
       my $is_float = ($self->{tbl_struct}->{type_for}->{$_} || '') =~ m/float|double/i;
-      $self->{Quoter}->quote($_) . $sep . $self->{Quoter}->quote_val($val,
+      my $is_crc32 = ($self->{tbl_struct}->{type_for}->{$_} || '') =~ m/binary|text|blob/i;
+      $col = "CRC32($col)" if ($is_crc32);
+      $col . $sep . $self->{Quoter}->quote_val($val,
                                               is_char  => $is_char,
                                               is_float => $is_float);
    } @$cols;
    return join(' AND ', @clauses);
 }
-
 
 # Sub: get_changes
 #   Get a summary of changes made.

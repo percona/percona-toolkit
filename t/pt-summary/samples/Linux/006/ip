@@ -1,0 +1,36 @@
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    RX: bytes  packets  errors  dropped overrun mcast   
+    7535270    73015    0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    7535270    73015    0       0       0       0       
+2: wlp0s20f3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DORMANT group default qlen 1000
+    link/ether 98:af:65:26:69:57 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    1657084859 1627351  0       3636    0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    428035923  961445   0       0       0       0       
+3: br-5bbb6abaea1c: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN mode DEFAULT group default 
+    link/ether 02:42:1f:31:64:19 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    0          0        0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    0          0        0       0       0       0       
+4: docker0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default 
+    link/ether 02:42:b7:f9:b8:f1 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    9263705    72006    0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    38436691   83442    0       0       0       0       
+6: veth311b798@if5: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master docker0 state UP mode DEFAULT group default 
+    link/ether 6e:52:2e:46:58:3f brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    RX: bytes  packets  errors  dropped overrun mcast   
+    9194725    58288    0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    8681936    66908    0       0       0       0       
+8: veth505c1de@if7: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master docker0 state UP mode DEFAULT group default 
+    link/ether 46:fd:9c:ed:47:ab brd ff:ff:ff:ff:ff:ff link-netnsid 1
+    RX: bytes  packets  errors  dropped overrun mcast   
+    1077064    13718    0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    30420523   20005    0       0       0       0       

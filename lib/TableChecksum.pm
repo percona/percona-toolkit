@@ -88,7 +88,10 @@ sub get_crc_type {
       $type   = $sth->{mysql_type_name}->[0];
       $length = $sth->{mysql_length}->[0];
       PTDEBUG && _d($sql, $type, $length);
-      if ( $type eq 'bigint' && $length < 20 ) {
+      if ( $type eq 'integer' && $length < 11 ) {
+         $type = 'int';
+      }
+      elsif ( $type eq 'bigint' && $length < 20 ) {
          $type = 'int';
       }
    };
@@ -305,6 +308,9 @@ sub make_row_checksum {
          elsif ( $args{trim} && $type =~ m/varchar/ ) {
             $result = "TRIM($result)";
          }
+         elsif ( $type =~ m/binary|text|blob/ ) {
+            $result = "CRC32($result)";
+         }
          $result;
       }
       grep {
@@ -330,6 +336,10 @@ sub make_row_checksum {
                      }
                      elsif ( $col =~ m/TRIM/ ) {
                         my ($real_col) = m/TRIM\(([^\)]+)\)/;
+                        $col .= " AS $real_col";
+                     }
+                     elsif ( $col =~ m/CRC32/ ) {
+                        my ($real_col) = m/CRC32\(([^\)]+)\)/;
                         $col .= " AS $real_col";
                      }
                      $col;

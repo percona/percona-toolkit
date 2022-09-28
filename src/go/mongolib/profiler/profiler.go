@@ -1,35 +1,36 @@
 package profiler
 
 import (
+	"context"
 	"sync"
 	"time"
 
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/percona-toolkit/src/go/mongolib/stats"
 	"github.com/percona/percona-toolkit/src/go/pt-mongodb-query-digest/filter"
-	"github.com/percona/pmgo"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var (
-	// DocsBufferSize is the buffer size to store documents from the MongoDB profiler
-	DocsBufferSize = 100
-)
+// DocsBufferSize is the buffer size to store documents from the MongoDB profiler
+var DocsBufferSize = 100
 
+// Profiler interface
 type Profiler interface {
 	GetLastError() error
 	QueriesChan() chan stats.Queries
 	TimeoutsChan() <-chan time.Time
 	FlushQueries()
-	Start()
+	Start(context.Context)
 	Stop()
 }
 
+// Profile has unexported variables for the profiler
 type Profile struct {
 	// dependencies
-	iterator pmgo.IterManager
-	filters  []filter.Filter
-	ticker   <-chan time.Time
-	stats    Stats
+	cursor  *mongo.Cursor
+	filters []filter.Filter
+	ticker  <-chan time.Time
+	stats   Stats
 
 	// internal
 	queriesChan  chan stats.Queries
@@ -47,40 +48,44 @@ type Profile struct {
 	stopWaitGroup   sync.WaitGroup
 }
 
-func NewProfiler(iterator pmgo.IterManager, filters []filter.Filter, ticker <-chan time.Time, stats Stats) Profiler {
+// NewProfiler returns a new instance of the profiler interface
+func NewProfiler(cursor *mongo.Cursor, filters []filter.Filter, ticker <-chan time.Time, stats Stats) Profiler {
 	return &Profile{
-		// dependencies
-		iterator: iterator,
-		filters:  filters,
-		ticker:   ticker,
-		stats:    stats,
+		cursor:  cursor,
+		filters: filters,
+		ticker:  ticker,
+		stats:   stats,
 
 		// internal
 		docsChan:     make(chan proto.SystemProfile, DocsBufferSize),
-		timeoutsChan: nil,
+		timeoutsChan: make(chan time.Time),
 		keyFilters:   []string{"^shardVersion$", "^\\$"},
 	}
 }
 
+// GetLastError return the latest error
 func (p *Profile) GetLastError() error {
 	return p.lastError
 }
 
+// QueriesChan returns the channels used to read the queries from the profiler
 func (p *Profile) QueriesChan() chan stats.Queries {
 	return p.queriesChan
 }
 
-func (p *Profile) Start() {
+// Start the profiler
+func (p *Profile) Start(ctx context.Context) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	if !p.running {
 		p.running = true
 		p.queriesChan = make(chan stats.Queries)
 		p.stopChan = make(chan bool)
-		go p.getData()
+		go p.getData(ctx)
 	}
 }
 
+// Stop the profiler
 func (p *Profile) Stop() {
 	p.lock.Lock()
 	defer p.lock.Unlock()
@@ -94,60 +99,56 @@ func (p *Profile) Stop() {
 	}
 }
 
+// TimeoutsChan returns the channels to receive timeout signals
 func (p *Profile) TimeoutsChan() <-chan time.Time {
 	p.lock.Lock()
 	defer p.lock.Unlock()
-	if p.timeoutsChan == nil {
-		p.timeoutsChan = make(chan time.Time)
-	}
 	return p.timeoutsChan
 }
 
-func (p *Profile) getData() {
-	go p.getDocs()
+func (p *Profile) getData(ctx context.Context) {
+	go p.getDocs(ctx)
 	p.stopWaitGroup.Add(1)
+	defer p.stopWaitGroup.Done()
 
-MAIN_GETDATA_LOOP:
 	for {
 		select {
 		case <-p.ticker:
 			p.FlushQueries()
 		case <-p.stopChan:
 			// Close the iterator to break the loop on getDocs
-			p.iterator.Close()
-			break MAIN_GETDATA_LOOP
+			p.lastError = p.cursor.Close(ctx)
+			return
 		}
 	}
-	p.stopWaitGroup.Done()
 }
 
-func (p *Profile) getDocs() {
+func (p *Profile) getDocs(ctx context.Context) {
 	defer p.Stop()
 	defer p.FlushQueries()
 
 	var doc proto.SystemProfile
 
-	for p.iterator.Next(&doc) || p.iterator.Timeout() {
-		if p.iterator.Timeout() {
-			if p.timeoutsChan != nil {
-				p.timeoutsChan <- time.Now().UTC()
-			}
-			continue
+	for p.cursor.Next(ctx) {
+		if err := p.cursor.Decode(&doc); err != nil {
+			p.lastError = err
+			return
 		}
 		valid := true
 		for _, filter := range p.filters {
-			if filter(doc) == false {
+			if !filter(doc) {
 				valid = false
-				break
+				return
 			}
 		}
 		if !valid {
 			continue
 		}
-		p.stats.Add(doc)
+		p.lastError = p.stats.Add(doc)
 	}
 }
 
+// FlushQueries clean all the queries from the queries chan
 func (p *Profile) FlushQueries() {
 	p.queriesChan <- p.stats.Queries()
 	p.stats.Reset()

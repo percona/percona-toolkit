@@ -1,5 +1,5 @@
 
-# Query 1: 0 QPS, 0x concurrency, ID 0x5D51E5F01B88B79E at byte 1470 _____
+# Query 1: 0 QPS, 0x concurrency, ID 0x7417646A9FE969365D51E5F01B88B79E at byte 1470
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2009-04-12 11:00:13.118191
@@ -25,7 +25,7 @@
 #  10s+
 administrator command: Connect\G
 
-# Query 2: 0 QPS, 0x concurrency, ID 0xE3A3649C5FAC418D at byte 2449 _____
+# Query 2: 0 QPS, 0x concurrency, ID 0x0E7680C04FF2596BE3A3649C5FAC418D at byte 2449
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2009-04-12 11:00:13.118643
@@ -52,7 +52,7 @@ administrator command: Connect\G
 # EXPLAIN /*!50100 PARTITIONS*/
 select @@version_comment limit 1\G
 
-# Query 3: 0 QPS, 0x concurrency, ID 0xAE5A83B27932AB98 at byte 3298 _____
+# Query 3: 0 QPS, 0x concurrency, ID 0x444453C18020D84EAE5A83B27932AB98 at byte 3298
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2009-04-12 11:00:13.119079
@@ -79,7 +79,7 @@ select @@version_comment limit 1\G
 # EXPLAIN /*!50100 PARTITIONS*/
 select "paris in the the spring" as trick\G
 
-# Query 4: 0 QPS, 0x concurrency, ID 0xAA353644DE4C4CB4 at byte 4186 _____
+# Query 4: 0 QPS, 0x concurrency, ID 0xEDBC971AEC392917AA353644DE4C4CB4 at byte 4186
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2009-04-12 11:00:13.119487

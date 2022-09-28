@@ -4,7 +4,7 @@
 ===============================
 
 Percona Toolkit is a collection of advanced command-line tools
-used by `Percona <http://www.percona.com/>`_) support staff
+used by `Percona <http://www.percona.com/>`_ support staff
 to perform a variety of MySQL, MongoDB, and system tasks
 that are too difficult or complex to perform manually.
 
@@ -46,6 +46,7 @@ Configuration
 .. toctree::
    :maxdepth: 1
 
+   version-check
    configuration_files
    dsn_data_source_name_specifications
    environment
@@ -58,6 +59,8 @@ Miscellaneous
    :maxdepth: 2
 
    bugs
+   ipv6_support
+   special_option_types
    authors
    copyright_license_and_warranty
    version

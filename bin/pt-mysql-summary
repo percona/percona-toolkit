@@ -282,7 +282,7 @@ _eval_po() {
             *)
                echo "Invalid attribute in $opt_spec: $line" >&2
                exit 1
-         esac 
+         esac
       done < "$opt_spec"
 
       if [ -z "$opt" ]; then
@@ -422,7 +422,7 @@ _parse_command_line() {
             if [ "$val" ]; then
                option_error "Option $real_opt does not take a value"
                continue
-            fi 
+            fi
             if [ "$opt_is_negated" ]; then
                val=""
             else
@@ -494,20 +494,20 @@ mysql_options() {
    if [ -n "$OPT_ASK_PASS" ]; then
       stty -echo
       >&2 printf "Enter MySQL password: "
-      read GIVEN_PASS 
+      read GIVEN_PASS
       stty echo
       printf "\n"
       MYSQL_ARGS="$MYSQL_ARGS --password=$GIVEN_PASS"
    elif [ -n "$OPT_PASSWORD" ]; then
       MYSQL_ARGS="$MYSQL_ARGS --password=$OPT_PASSWORD"
    fi
-   
+
    echo $MYSQL_ARGS
 }
 
 arrange_mysql_options() {
    local opts="$1"
-   
+
    local rearranged=""
    for opt in $opts; do
       if [ "$(echo $opt | awk -F= '{print $1}')" = "--defaults-file" ]; then
@@ -516,7 +516,7 @@ arrange_mysql_options() {
          rearranged="$rearranged $opt"
       fi
    done
-   
+
    echo "$rearranged"
 }
 
@@ -827,7 +827,7 @@ setup_data_dir () {
 get_var () {
    local varname="$1"
    local file="$2"
-   awk -v pattern="${varname}" '$1 == pattern { if (length($2)) { len = length($1); print substr($0, len+index(substr($0, len+1), $2)) } }' "${file}"
+   awk -v pattern="${varname}" '$1 == pattern { if (length($2)) { len = length($1); print substr($0, len+index(substr($0, len+1), $2)) } }' "${file}" | tr -d '\r'
 }
 
 # ###########################################################################
@@ -921,12 +921,24 @@ collect_mysql_innodb_status () {
    $CMD_MYSQL $EXT_ARGV -ssE -e 'SHOW /*!50000 ENGINE*/ INNODB STATUS' 2>/dev/null
 }
 
+collect_mysql_ndb_status () {
+   $CMD_MYSQL $EXT_ARGV -ssE -e 'show /*!50000 ENGINE*/ NDB STATUS' 2>/dev/null
+}
+
 collect_mysql_processlist () {
    $CMD_MYSQL $EXT_ARGV -ssE -e 'SHOW FULL PROCESSLIST' 2>/dev/null
 }
 
 collect_mysql_users () {
    $CMD_MYSQL $EXT_ARGV -ss -e 'SELECT COUNT(*), SUM(user=""), SUM(password=""), SUM(password NOT LIKE "*%") FROM mysql.user' 2>/dev/null
+   if [ "$?" -ne 0 ]; then
+       $CMD_MYSQL $EXT_ARGV -ss -e 'SELECT COUNT(*), SUM(user=""), SUM(authentication_string=""), SUM(authentication_string NOT LIKE "*%") FROM mysql.user WHERE account_locked <> "Y" AND password_expired <> "Y" AND authentication_string <> ""' 2>/dev/null
+   fi
+}
+
+collect_mysql_roles () {
+   QUERY="SELECT DISTINCT User 'Role Name', if(from_user is NULL,0, 1) Active FROM mysql.user LEFT JOIN mysql.role_edges ON from_user=user WHERE account_locked='Y' AND password_expired='Y' AND authentication_string=''\G"
+   $CMD_MYSQL $EXT_ARGV -ss -e "$QUERY" 2>/dev/null
 }
 
 collect_mysql_show_slave_hosts () {
@@ -1026,8 +1038,10 @@ collect_mysql_info () {
    collect_mysql_plugins       > "$dir/mysql-plugins"
    collect_mysql_slave_status  > "$dir/mysql-slave"
    collect_mysql_innodb_status > "$dir/innodb-status"
-   collect_mysql_processlist   > "$dir/mysql-processlist"   
+   collect_mysql_ndb_status    > "$dir/ndb-status"
+   collect_mysql_processlist   > "$dir/mysql-processlist"
    collect_mysql_users         > "$dir/mysql-users"
+   collect_mysql_roles         > "$dir/mysql-roles"
 
    collect_mysqld_instances   "$dir/mysql-variables"  > "$dir/mysqld-instances"
    collect_mysqld_executables "$dir/mysqld-instances" > "$dir/mysqld-executables"
@@ -1163,6 +1177,19 @@ get_plugin_status () {
    echo ${status:-"Not found"}
 }
 
+collect_keyring_plugins() {
+    $CMD_MYSQL $EXT_ARGV --table -ss -e 'SELECT PLUGIN_NAME, PLUGIN_STATUS FROM INFORMATION_SCHEMA.PLUGINS WHERE PLUGIN_NAME LIKE "keyring%";'
+}
+
+collect_encrypted_tables() {
+    $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT TABLE_SCHEMA, TABLE_NAME, CREATE_OPTIONS FROM INFORMATION_SCHEMA.TABLES WHERE CREATE_OPTIONS LIKE '%ENCRYPTION=\"Y\"%';"
+}
+
+collect_encrypted_tablespaces() {
+    $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT SPACE, NAME, SPACE_TYPE from INFORMATION_SCHEMA.INNODB_SYS_TABLESPACES where FLAG&8192 = 8192;"
+}
+
+
 
 _NO_FALSE_NEGATIVES=""
 parse_mysqld_instances () {
@@ -1195,7 +1222,7 @@ parse_mysqld_instances () {
             defaults_file="$(echo "${word}" | cut -d= -f2)"
          fi
       done
-      
+
       if [ -n "${defaults_file:-""}" -a -r "${defaults_file:-""}" ]; then
          socket="${socket:-"$(grep "^socket\>" "$defaults_file" | tail -n1 | cut -d= -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')"}"
          port="${port:-"$(grep "^port\>" "$defaults_file" | tail -n1 | cut -d= -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')"}"
@@ -1209,7 +1236,7 @@ parse_mysqld_instances () {
          oom="?"
       fi
       printf "  %5s %-26s %-4s %-3s %s\n" "${port}" "${datadir}" "${nice:-"?"}" "${oom:-"?"}" "${socket}"
-      
+
       defaults_file=""
       socket=""
       port=""
@@ -1339,6 +1366,9 @@ summarize_processlist () {
          }
          \$1 == \"Time:\" {
             t = \$2;
+            if ( t == \"NULL\" ) {
+                t = 0;
+            }
          }
          \$1 == \"Command:\" {
             c = \$2;
@@ -1374,18 +1404,19 @@ pretty_print_cnf_file () {
 
    perl -n -l -e '
       my $line = $_;
-      if ( $line =~ /^[ \t]*[a-zA-Z[]/ ) { 
-         if ( $line=~/\s*(.*?)\s*=\s*(.*)\s*$/ ) { 
-            printf("%-35s = %s\n", $1, $2)  
-         } 
-         elsif ( $line =~ /\s*\[/ ) { 
-            print "\n$line" 
+      if ( $line =~ /^\s*[a-zA-Z[]/ ) {
+         if ( $line=~/\s*(.*?)\s*=\s*(.*)\s*$/ ) {
+            printf("%-35s = %s\n", $1, $2)
+         }
+         elsif ( $line =~ /\s*\[/ ) {
+            print "\n$line"
          } else {
             print $line
-         } 
+         }
       }' "$file"
 
 }
+
 
 find_checkpoint_age() {
    local file="$1"
@@ -1574,6 +1605,50 @@ format_innodb_status () {
       grep -e 'Mutex at' -e 'lock on' "${file}" | sed -e 's/^[XS]-//' -e 's/,.*$//' \
          | sort | uniq -c | sort -rn
    fi
+}
+
+format_ndb_status() {
+   local file=$1
+
+   [ -e "$file" ] || return
+   egrep '^[ \t]*Name:|[ \t]*Status:' $file|sed 's/^[ \t]*//g'|while read line; do echo $line; echo $line | grep '^Status:'>/dev/null && echo ; done
+}
+
+format_keyring_plugins() {
+    local keyring_plugins="$1"
+    local encrypted_tables="$2"
+
+    if [ -z "$keyring_plugins" ]; then
+        echo "No keyring plugins found"
+        if [ ! -z "$encrypted_tables" ]; then
+            echo "Warning! There are encrypted tables but keyring plugins are not loaded"
+        fi
+     else
+        echo "Keyring plugins:"
+        echo "'$keyring_plugins'"
+    fi
+}
+
+format_encrypted_tables() {
+   local encrypted_tables="$1"
+   if [ ! -z "$encrypted_tables" ]; then
+       echo "Encrypted tables:"
+       echo "$encrypted_tables"
+   fi
+}
+
+format_encrypted_tablespaces() {
+   local encrypted_tablespaces="$1"
+   if [ ! -z "$encrypted_tablespaces" ]; then
+       echo "Encrypted tablespaces:"
+       echo "$encrypted_tablespaces"
+   fi
+}
+
+format_mysql_roles() {
+   local file=$1
+   [ -e "$file" ] || return
+   cat $file
 }
 
 format_overall_db_stats () {
@@ -1877,7 +1952,7 @@ section_percona_server_features () {
 
    name_val "Fast Server Restarts"  \
             "$(feat_on_renamed "$file" innodb_auto_lru_dump innodb_buffer_pool_restore_at_startup)"
-   
+
    name_val "Enhanced Logging"      \
             "$(feat_on "$file" log_slow_verbosity ne microtime)"
    name_val "Replica Perf Logging"  \
@@ -1895,7 +1970,7 @@ section_percona_server_features () {
       fi
    fi
    name_val "Smooth Flushing" "$smooth_flushing"
-   
+
    name_val "HandlerSocket NoSQL"   \
             "$(feat_on "$file" handlersocket_port)"
    name_val "Fast Hash UDFs"   \
@@ -1978,6 +2053,32 @@ section_innodb () {
             "$(get_var innodb_adaptive_checkpoint "$variables_file")"
 }
 
+section_rocksdb () {
+    local variables_file="$1"
+    local status_file="$2"
+
+    local NAME_VAL_LEN=32
+
+    [ -e "$variables_file" -a -e "$status_file" ] || return
+
+    name_val "Block Cache Size" "$(shorten $(get_var rocksdb_block_cache_size "$variables_file") 0)"
+    name_val "Block Size" "$(shorten $(get_var rocksdb_block_size "$variables_file") 0)"
+    name_val "Bytes Per Sync" "$(shorten $(get_var rocksdb_bytes_per_sync "$variables_file") 0)"
+    name_val "Compaction Seq Deletes " "$(shorten $(get_var rocksdb_compaction_sequential_deletes "$variables_file") 0)"
+    name_val "Compaction Seq Deletes Count SD" "$(get_var rocksdb_compaction_sequential_deletes_count_sd "$variables_file")"
+    name_val "Compaction Seq Deletes Window" "$(shorten $(get_var rocksdb_compaction_sequential_deletes_window "$variables_file") 0)"
+    name_val "Default CF Options" "$(get_var rocksdb_default_cf_options "$variables_file")"
+    name_val "Max Background Jobs" "$(shorten $(get_var rocksdb_max_background_jobs "$variables_file") 0)"
+    name_val "Max Block Cache Size" "$(shorten $(get_var rocksdb_max_block_cache_size "$variables_file") 0)"
+    name_val "Max Block Size" "$(shorten $(get_var rocksdb_max_block_size "$variables_file") 0)"
+    name_val "Max Open Files" "$(shorten $(get_var rocksdb_max_open_files "$variables_file") 0)"
+    name_val "Max Total Wal Size" "$(shorten $(get_var rocksdb_max_total_wal_size "$variables_file") 0)"
+    name_val "Rate Limiter Bytes Per Second" "$(shorten $(get_var rocksdb_rate_limiter_bytes_per_sec "$variables_file") 0)"
+    name_val "Rate Limiter Bytes Per Sync" "$(shorten $(get_var rocksdb_bytes_per_sync "$variables_file") 0)"
+    name_val "Rate Limiter Wal Bytes Per Sync" "$(shorten $(get_var rocksdb_wal_bytes_per_sync "$variables_file") 0)"
+    name_val "Table Cache NumHardBits" "$(shorten $(get_var rocksdb_table_cache_numshardbits "$variables_file") 0)"
+    name_val "Wal Bytes per Sync" "$(shorten $(get_var rocksdb_wal_bytes_per_sync "$variables_file") 0)"
+}
 
 section_noteworthy_variables () {
    local file="$1"
@@ -2027,7 +2128,7 @@ _semi_sync_stats_for () {
          trace_extra="Unknown setting"
       fi
    fi
-   
+
    name_val "${target} semisync status" "${semisync_status}"
    name_val "${target} trace level" "${semisync_trace}, ${trace_extra}"
 
@@ -2140,10 +2241,10 @@ section_percona_xtradb_cluster () {
 
    name_val "SST Method"      "$(get_var "wsrep_sst_method" "$mysql_var")"
    name_val "Slave Threads"   "$(get_var "wsrep_slave_threads" "$mysql_var")"
-   
+
    name_val "Ignore Split Brain" "$( parse_wsrep_provider_options "pc.ignore_sb" "$mysql_var" )"
    name_val "Ignore Quorum" "$( parse_wsrep_provider_options "pc.ignore_quorum" "$mysql_var" )"
-   
+
    name_val "gcache Size"      "$( parse_wsrep_provider_options "gcache.size" "$mysql_var" )"
    name_val "gcache Directory" "$( parse_wsrep_provider_options "gcache.dir" "$mysql_var" )"
    name_val "gcache Name"      "$( parse_wsrep_provider_options "gcache.name" "$mysql_var" )"
@@ -2163,38 +2264,32 @@ parse_wsrep_provider_options () {
 }
 
 report_jemalloc_enabled() {
-
   local JEMALLOC_STATUS=''
   local GENERAL_JEMALLOC_STATUS=0
   local JEMALLOC_LOCATION=''
 
-  for PID in $(pidof mysqld); do
-     grep -qc jemalloc /proc/${PID}/environ || ldd $(which mysqld) | grep -qc jemalloc
-     JEMALLOC_STATUS=$?
-     if [ $JEMALLOC_STATUS = 1 ]; then
-       echo "jemalloc is not enabled in MySQL config for process with ID ${PID}" 
+  for pid in $(pidof mysqld); do
+     grep -qc jemalloc /proc/${pid}/environ || ldd $(which mysqld) 2>/dev/null | grep -qc jemalloc
+     jemalloc_status=$?
+     if [ $jemalloc_status = 1 ]; then
+       echo "jemalloc is not enabled in mysql config for process with id ${pid}"
      else
-       echo "jemalloc enabled in MySQL config for process with ID ${PID}"
+       echo "jemalloc enabled in mysql config for process with id ${pid}"
        GENERAL_JEMALLOC_STATUS=1
      fi
   done
 
-  if [ $GENERAL_JEMALLOC_STATUS = 1 ]; then
-     # Check location for libjemalloc.so.1
-     #for libjemall in "${SCRIPT_PWD}/lib/mysql" "/usr/lib64" "/usr/lib/x86_64-linux-gnu" "/usr/lib"; do
-     for libjemall in "/usr/lib64" "/usr/lib/x86_64-linux-gnu" "/usr/lib"; do
-       if [ -r "$libjemall/libjemalloc.so.1" ]; then
-         JEMALLOC_LOCATION="$libjemall/libjemalloc.so.1"
-         break
-       fi
+  if [ $GENERAL_JEMALLOC_STATUS -eq 1 ]; then
+     for pid in $(pidof mysqld); do
+         JEMALLOC_LOCATION=$(strings /proc/${pid}/environ | grep jemalloc)
+         if [ -z "$JEMALLOC_LOCATION" ]; then
+           echo "Jemalloc library for process ${pid} not found"
+         else
+           echo "Process with PID ${pid} is using jemalloc from $JEMALLOC_LOCATION"
+         fi
      done
-     if [ -z $JEMALLOC_LOCATION ]; then
-       echo "Jemalloc library not found"
-     else
-       echo "Using jemalloc from $JEMALLOC_LOCATION"
-     fi
   fi
- 
+
 }
 
 report_mysql_summary () {
@@ -2211,7 +2306,6 @@ report_mysql_summary () {
    section_mysqld "$dir/mysqld-executables" "$dir/mysql-variables"
 
    section_slave_hosts "$dir/mysql-slave-hosts"
-
    local user="$(get_var "pt-summary-internal-user" "$dir/mysql-variables")"
    local port="$(get_var port "$dir/mysql-variables")"
    local now="$(get_var "pt-summary-internal-now" "$dir/mysql-variables")"
@@ -2266,10 +2360,9 @@ report_mysql_summary () {
    section_percona_server_features "$dir/mysql-variables"
 
    section "Percona XtraDB Cluster"
-   local has_wsrep="$(get_var "wsrep_on" "$dir/mysql-variables")"
+   local has_wsrep=$($CMD_MYSQL $EXT_ARGV -ss -e 'show session variables like "%wsrep_on%";' | cut -f2 | grep -i "on")
    if [ -n "${has_wsrep:-""}" ]; then
-      local wsrep_on="$(feat_on "$dir/mysql-variables" "wsrep_on")"
-      if [ "${wsrep_on:-""}" = "Enabled" ]; then
+      if [ "${has_wsrep:-""}" = "ON" ]; then
          section_percona_xtradb_cluster "$dir/mysql-variables" "$dir/mysql-status"
       else
          name_val "wsrep_on" "OFF"
@@ -2279,7 +2372,8 @@ report_mysql_summary () {
    section "Plugins"
    name_val "InnoDB compression" "$(get_plugin_status "$dir/mysql-plugins" "INNODB_CMP")"
 
-   if [ "$(get_var have_query_cache "$dir/mysql-variables")" ]; then
+   local has_query_cache=$(get_var have_query_cache "$dir/mysql-variables")
+   if [ "$has_query_cache" = 'YES' ]; then
       section "Query cache"
       local query_cache_size=$(get_var query_cache_size "$dir/mysql-variables")
       local used=$(( ${query_cache_size} - $(get_var Qcache_free_memory "$dir/mysql-status") ))
@@ -2394,9 +2488,21 @@ report_mysql_summary () {
    local innodb_version="$(get_var "innodb_version" "$dir/mysql-variables")"
    if [ "${have_innodb}" = "YES" ] || [ -n "${innodb_version}" ]; then
       section_innodb "$dir/mysql-variables" "$dir/mysql-status"
+
       if [ -s "$dir/innodb-status" ]; then
          format_innodb_status "$dir/innodb-status"
       fi
+   fi
+
+   local has_rocksdb=$($CMD_MYSQL $EXT_ARGV -ss -e 'SHOW ENGINES' 2>/dev/null | grep -i 'rocksdb')
+   if [ ! -z "$has_rocksdb" ]; then
+       section "RocksDB"
+       section_rocksdb "$dir/mysql-variables" "$dir/mysql-status"
+   fi
+
+   if [ -s "$dir/ndb-status" ]; then
+       section "NDB"
+       format_ndb_status "$dir/ndb-status"
    fi
 
    section "MyISAM"
@@ -2406,6 +2512,24 @@ report_mysql_summary () {
    local users="$( format_users "$dir/mysql-users" )"
    name_val "Users" "${users}"
    name_val "Old Passwords" "$(get_var old_passwords "$dir/mysql-variables")"
+
+   if [ -s "$dir/mysql-roles" ]; then
+       section "Roles"
+       format_mysql_roles "$dir/mysql-roles"
+   fi
+
+   section "Encryption"
+   local keyring_plugins="$(collect_keyring_plugins)"
+   local encrypted_tables=""
+   local encrypted_tablespaces=""
+   if [ "${OPT_LIST_ENCRYPTED_TABLES}" = 'yes' ]; then
+       encrypted_tables="$(collect_encrypted_tables)"
+       encrypted_tablespaces="$(collect_encrypted_tablespaces)"
+   fi
+
+   format_keyring_plugins "$keyring_plugins" "$encrypted_tables"
+   format_encrypted_tables "$encrypted_tables"
+   format_encrypted_tablespaces "$encrypted_tablespaces"
 
    section "Binary Logging"
 
@@ -2436,6 +2560,7 @@ report_mysql_summary () {
 
    section "Memory management library"
    report_jemalloc_enabled
+
    section "The End"
 }
 
@@ -2459,14 +2584,14 @@ check_mysql () {
    # Check that mysql and mysqldump are in PATH.  If not, we're
    # already dead in the water, so don't bother with cmd line opts,
    # just error and exit.
-   [ -n "$(mysql --help 2>/dev/null)" ] \
+   [ -n "$(${CMD_MYSQL} --help 2>/dev/null)" ] \
       || die "Cannot execute mysql.  Check that it is in PATH."
-   [ -n "$(mysqldump --help 2>/dev/null)" ] \
+   [ -n "$(${CMD_MYSQLDUMP} --help 2>/dev/null)" ] \
       || die "Cannot execute mysqldump.  Check that it is in PATH."
 
    # Now that we have the cmd line opts, check that we can actually
    # connect to MySQL.
-   [ -n "$(mysql $EXT_ARGV -e 'SHOW STATUS')" ] \
+   [ -n "$(${CMD_MYSQL} ${EXT_ARGV} -e 'SHOW STATUS')" ] \
       || die "Cannot connect to MySQL.  Check that MySQL is running and that the options after -- are correct."
 
 }
@@ -2706,11 +2831,11 @@ fuzzy-rounded.
 
   # Status Counters (Wait 10 Seconds) ##########################
   Variable                            Per day  Per second     10 secs
-  Binlog_cache_disk_use                     4                        
-  Binlog_cache_use                         80                        
+  Binlog_cache_disk_use                     4
+  Binlog_cache_use                         80
   Bytes_received                     15000000         175         200
   Bytes_sent                         15000000         175        2000
-  Com_admin_commands                        1                        
+  Com_admin_commands                        1
   ...................(many lines omitted)............................
   Threads_created                          40                       1
   Uptime                                90000           1           1
@@ -2778,18 +2903,18 @@ are fuzzy-rounded.
   # Schema #####################################################
 
     Database           Tables Views SPs Trigs Funcs   FKs Partn
-    mysql                  24                                  
-    performance_schema     17                                  
-    sakila                 16     7   3     6     3    22      
+    mysql                  24
+    performance_schema     17
+    sakila                 16     7   3     6     3    22
 
     Database           MyISAM CSV PERFORMANCE_SCHEMA InnoDB
-    mysql                  22   2                          
-    performance_schema                            17       
+    mysql                  22   2
+    performance_schema                            17
     sakila                  8                            15
 
     Database           BTREE FULLTEXT
-    mysql                 31         
-    performance_schema               
+    mysql                 31
+    performance_schema
     sakila                63        1
 
                          c   t   s   e   l   d   i   t   m   v   s
@@ -2800,11 +2925,11 @@ are fuzzy-rounded.
                              t           l   i       n   m   a   i
                              a           o   m       t   t   r   n
                              m           b   e           e       t
-                             p                           x        
-                                                         t        
+                             p                           x
+                                                         t
     Database           === === === === === === === === === === ===
     mysql               61  10   6  78   5   4  26   3   4   5   3
-    performance_schema               5          16          33    
+    performance_schema               5          16          33
     sakila               1  15   1   3       4   3  19      42  26
 
 If you specify L<"--databases"> or L<"--all-databases">, the tool will print
@@ -2852,7 +2977,7 @@ can be detected by looking at SHOW GLOBAL STATUS.
                   Page Size | 16k
               Log File Size | 2 * 5.0M = 10.0M
             Log Buffer Size | 8M
-               Flush Method | 
+               Flush Method |
         Flush Log At Commit | 1
                  XA Support | ON
                   Checksums | ON
@@ -2864,7 +2989,7 @@ can be detected by looking at SHOW GLOBAL STATUS.
          Commit Concurrency | 0
         Txn Isolation Level | REPEATABLE-READ
           Adaptive Flushing | ON
-        Adaptive Checkpoint | 
+        Adaptive Checkpoint |
              Checkpoint Age | 0
                InnoDB Queue | 0 queries inside InnoDB, 0 queries in queue
          Oldest Transaction | 0 Seconds
@@ -2908,8 +3033,8 @@ old-style passwords and users without passwords.
            expire_logs_days | 0
                 sync_binlog | 0
                   server_id | 12345
-               binlog_do_db | 
-           binlog_ignore_db | 
+               binlog_do_db |
+           binlog_ignore_db |
 
 This section shows configuration and status of the binary logs. If there are
 zero-sized binary logs, then it is possible that the binlog index is out of sync
@@ -2919,9 +3044,9 @@ with the binary logs that actually exist on disk.
        Auto-Inc Incr/Offset | 1/1
      default_storage_engine | InnoDB
                  flush_time | 0
-               init_connect | 
-                  init_file | 
-                   sql_mode | 
+               init_connect |
+                  init_file |
+                   sql_mode |
            join_buffer_size | 128k
            sort_buffer_size | 2M
            read_buffer_size | 128k
@@ -3024,6 +3149,13 @@ short form: -h; type: string
 
 Host to connect to.
 
+=item --list-encrypted-tables
+
+default: false
+
+Include a list of the encrypted tables in all databases. This can cause slowdowns since
+querying Information Schema tables can be slow.
+
 =item --password
 
 short form: -p; type: string
@@ -3087,7 +3219,7 @@ On BSD systems, it may require a mounted procfs.
 
 For a list of known bugs, see L<http://www.percona.com/bugs/pt-mysql-summary>.
 
-Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
+Please report bugs at L<https://jira.percona.com/projects/PT>.
 Include the following information in your bug report:
 
 =over
@@ -3106,6 +3238,11 @@ Include the following information in your bug report:
 
 If possible, include debugging output by running the tool with C<PTDEBUG>;
 see L<"ENVIRONMENT">.
+
+=head1 ATTENTION
+
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line 
+parameters are shown in the output.
 
 =head1 DOWNLOADING
 
@@ -3140,7 +3277,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2017 Percona LLC and/or its affiliates,
+This program is copyright 2011-2021 Percona LLC and/or its affiliates,
 2010-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -3159,7 +3296,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-mysql-summary 3.0.5
+pt-mysql-summary 3.4.0
 
 =cut
 

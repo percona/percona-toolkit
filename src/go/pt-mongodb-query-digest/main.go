@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -12,6 +13,11 @@ import (
 
 	"github.com/howeyc/gopass"
 	"github.com/pborman/getopt"
+	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+
 	"github.com/percona/percona-toolkit/src/go/lib/config"
 	"github.com/percona/percona-toolkit/src/go/lib/versioncheck"
 	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
@@ -20,10 +26,6 @@ import (
 	"github.com/percona/percona-toolkit/src/go/mongolib/stats"
 	"github.com/percona/percona-toolkit/src/go/mongolib/util"
 	"github.com/percona/percona-toolkit/src/go/pt-mongodb-query-digest/filter"
-	"github.com/percona/pmgo"
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -37,12 +39,13 @@ const (
 )
 
 var (
-	Build     string = "01-01-1980"
-	GoVersion string = "1.8"
-	Version   string = "3.0.1"
+	Build     string = "2020-04-23" //nolint
+	GoVersion string = "1.14.1"     //nolint
+	Version   string = "3.4.0"      //nolint
+	Commit    string                //nolint
 )
 
-type options struct {
+type cliOptions struct {
 	AuthDB          string
 	Database        string
 	Debug           bool
@@ -68,7 +71,6 @@ type report struct {
 }
 
 func main() {
-
 	opts, err := getOptions()
 	if err != nil {
 		log.Errorf("error processing command line arguments: %s", err)
@@ -89,6 +91,7 @@ func main() {
 		fmt.Println(TOOLNAME)
 		fmt.Printf("Version %s\n", Version)
 		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
+		fmt.Printf("Commit: %s\n", Commit)
 		return
 	}
 
@@ -97,44 +100,52 @@ func main() {
 		advice, err := versioncheck.CheckUpdates(TOOLNAME, Version)
 		if err != nil {
 			log.Infof("cannot check version updates: %s", err.Error())
-		} else {
-			if advice != "" {
-				log.Warn(advice)
-			}
+		} else if advice != "" {
+			log.Warn(advice)
 		}
 	}
 
 	log.Debugf("Command line options:\n%+v\n", opts)
 
-	di := getDialInfo(opts)
-	if di.Database == "" {
-		log.Errorln("must indicate a database as host:[port]/database")
+	clientOptions, err := getClientOptions(opts)
+	if err != nil {
+		log.Errorf("Cannot get a MongoDB client: %s", err)
+		os.Exit(2)
+	}
+
+	if opts.Database == "" {
+		log.Errorln("must indicate a database to profile with the --database parameter")
 		getopt.PrintUsage(os.Stderr)
 		os.Exit(2)
 	}
 
-	dialer := pmgo.NewDialer()
-	session, err := dialer.DialWithInfo(di)
-	log.Debugf("Dial Info: %+v\n", di)
+	ctx := context.Background()
+
+	log.Debugf("Dial Info: %+v\n", clientOptions)
+
+	client, err := mongo.NewClient(clientOptions)
 	if err != nil {
-		log.Errorf("Error connecting to the db: %s while trying to connect to %s", err, di.Addrs[0])
-		os.Exit(3)
+		log.Fatalf("Cannot create a new MongoDB client: %s", err)
 	}
 
-	isProfilerEnabled, err := isProfilerEnabled(dialer, di)
+	if err := client.Connect(ctx); err != nil {
+		log.Fatalf("Cannot connect to MongoDB: %s", err)
+	}
+
+	isProfilerEnabled, err := isProfilerEnabled(ctx, clientOptions)
 	if err != nil {
 		log.Errorf("Cannot get profiler status: %s", err.Error())
 		os.Exit(4)
 	}
 
 	if !isProfilerEnabled {
-		count, err := systemProfileDocsCount(session, di.Database)
+		count, err := systemProfileDocsCount(ctx, client, opts.Database)
 		if err != nil || count == 0 {
 			log.Error("Profiler is not enabled")
 			os.Exit(5)
 		}
 		fmt.Printf("Profiler is disabled for the %q database but there are %d documents in the system.profile collection.\n",
-			di.Database, count)
+			opts.Database, count)
 		fmt.Println("Using those documents for the stats")
 	}
 
@@ -145,15 +156,18 @@ func main() {
 		filters = append(filters, filter.NewFilterByCollection(opts.SkipCollections))
 	}
 
-	i := session.DB(di.Database).C("system.profile").Find(bson.M{}).Sort("-$natural").Iter()
+	cursor, err := client.Database(opts.Database).Collection("system.profile").Find(ctx, primitive.M{})
+	if err != nil {
+		panic(err)
+	}
 
-	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
+	fp := fingerprinter.NewFingerprinter(fingerprinter.DefaultKeyFilters())
 	s := stats.New(fp)
-	prof := profiler.NewProfiler(i, filters, nil, s)
-	prof.Start()
+	prof := profiler.NewProfiler(cursor, filters, nil, s)
+	prof.Start(ctx)
 	queries := <-prof.QueriesChan()
 
-	uptime := uptime(session)
+	uptime := uptime(ctx, client)
 
 	queriesStats := queries.CalcQueriesStats(uptime)
 	sortedQueryStats := sortQueries(queriesStats, opts.OrderBy)
@@ -163,7 +177,7 @@ func main() {
 	}
 
 	if len(queries) == 0 {
-		log.Errorf("No queries found in profiler information for database %q\n", di.Database)
+		log.Errorf("No queries found in profiler information for database %q\n", opts.Database)
 		return
 	}
 	rep := report{
@@ -179,7 +193,6 @@ func main() {
 	}
 
 	fmt.Println(string(out))
-
 }
 
 func formatResults(rep report, outputFormat string) ([]byte, error) {
@@ -236,20 +249,20 @@ func format(val float64, size float64) string {
 	return fmt.Sprintf("%s%s", fval, unit)
 }
 
-func uptime(session pmgo.SessionManager) int64 {
-	ss := proto.ServerStatus{}
-	if err := session.Ping(); err != nil {
+func uptime(ctx context.Context, client *mongo.Client) int64 {
+	res := client.Database("admin").RunCommand(ctx, primitive.D{{"serverStatus", 1}, {"recordStats", 1}})
+	if res.Err() != nil {
 		return 0
 	}
-
-	if err := session.DB("admin").Run(bson.D{{"serverStatus", 1}, {"recordStats", 1}}, &ss); err != nil {
+	ss := proto.ServerStatus{}
+	if err := res.Decode(&ss); err != nil {
 		return 0
 	}
 	return ss.Uptime
 }
 
-func getOptions() (*options, error) {
-	opts := &options{
+func getOptions() (*cliOptions, error) {
+	opts := &cliOptions{
 		Host:            DEFAULT_HOST,
 		LogLevel:        DEFAULT_LOGLEVEL,
 		OrderBy:         strings.Split(DEFAULT_ORDERBY, ","),
@@ -281,7 +294,7 @@ func getOptions() (*options, error) {
 	gop.StringVarLong(&opts.SSLCAFile, "sslCAFile", 0, "SSL CA cert file used for authentication")
 	gop.StringVarLong(&opts.SSLPEMKeyFile, "sslPEMKeyFile", 0, "SSL client PEM file used for authentication")
 
-	gop.SetParameters("host[:port]/database")
+	gop.SetParameters("host[:port]")
 
 	gop.Parse(os.Args)
 	if gop.NArgs() > 0 {
@@ -322,40 +335,29 @@ func getOptions() (*options, error) {
 		opts.Password = string(pass)
 	}
 
+	if !strings.HasPrefix(opts.Host, "mongodb://") {
+		opts.Host = "mongodb://" + opts.Host
+	}
+
 	return opts, nil
 }
 
-func getDialInfo(opts *options) *pmgo.DialInfo {
-	di, _ := mgo.ParseURL(opts.Host)
-	di.FailFast = true
-
-	if di.Username == "" {
-		di.Username = opts.User
+func getClientOptions(opts *cliOptions) (*options.ClientOptions, error) {
+	clientOptions := options.Client().ApplyURI(opts.Host)
+	credential := options.Credential{}
+	if opts.User != "" {
+		credential.Username = opts.User
+		clientOptions.SetAuth(credential)
 	}
-	if di.Password == "" {
-		di.Password = opts.Password
+	if opts.Password != "" {
+		credential.Password = opts.Password
+		credential.PasswordSet = true
+		clientOptions.SetAuth(credential)
 	}
-	if opts.AuthDB != "" {
-		di.Source = opts.AuthDB
-	}
-	if opts.Database != "" {
-		di.Database = opts.Database
-	}
-
-	pmgoDialInfo := pmgo.NewDialInfo(di)
-
-	if opts.SSLCAFile != "" {
-		pmgoDialInfo.SSLCAFile = opts.SSLCAFile
-	}
-
-	if opts.SSLPEMKeyFile != "" {
-		pmgoDialInfo.SSLPEMKeyFile = opts.SSLPEMKeyFile
-	}
-
-	return pmgoDialInfo
+	return clientOptions, nil
 }
 
-func getHeaders(opts *options) []string {
+func getHeaders(opts *cliOptions) []string {
 	h := []string{
 		fmt.Sprintf("%s - %s\n", TOOLNAME, time.Now().Format(time.RFC1123Z)),
 		fmt.Sprintf("Host: %s\n", opts.Host),
@@ -365,7 +367,6 @@ func getHeaders(opts *options) []string {
 }
 
 func getQueryTemplate() string {
-
 	t := `
 # Query {{.Rank}}: {{printf "% 0.2f" .QPS}} QPS, ID {{.ID}}
 # Ratio {{Format .Ratio 7.2}} (docs scanned/returned)
@@ -519,28 +520,23 @@ func sortQueries(queries []stats.QueryStats, orderby []string) []stats.QueryStat
 
 	OrderedBy(sortFuncs...).Sort(queries)
 	return queries
-
 }
 
-func isProfilerEnabled(dialer pmgo.Dialer, di *pmgo.DialInfo) (bool, error) {
+func isProfilerEnabled(ctx context.Context, clientOptions *options.ClientOptions) (bool, error) {
 	var ps proto.ProfilerStatus
-	replicaMembers, err := util.GetReplicasetMembers(dialer, di)
+	replicaMembers, err := util.GetReplicasetMembers(ctx, clientOptions)
 	if err != nil {
 		return false, err
 	}
 
 	for _, member := range replicaMembers {
 		// Stand alone instances return state = REPLICA_SET_MEMBER_STARTUP
-		di.Addrs = []string{member.Name}
-		di.Direct = true
-		session, err := dialer.DialWithInfo(di)
+		client, err := util.GetClientForHost(clientOptions, member.Name)
 		if err != nil {
 			continue
 		}
-		defer session.Close()
-		session.SetMode(mgo.Monotonic, true)
 
-		isReplicaEnabled := isReplicasetEnabled(session)
+		isReplicaEnabled := isReplicasetEnabled(ctx, client)
 
 		if strings.ToLower(member.StateStr) == "configsvr" {
 			continue
@@ -549,7 +545,7 @@ func isProfilerEnabled(dialer pmgo.Dialer, di *pmgo.DialInfo) (bool, error) {
 		if isReplicaEnabled && member.State != proto.REPLICA_SET_MEMBER_PRIMARY {
 			continue
 		}
-		if err := session.DB(di.Database).Run(bson.M{"profile": -1}, &ps); err != nil {
+		if err := client.Database("admin").RunCommand(ctx, primitive.M{"profile": -1}).Decode(&ps); err != nil {
 			continue
 		}
 
@@ -560,13 +556,13 @@ func isProfilerEnabled(dialer pmgo.Dialer, di *pmgo.DialInfo) (bool, error) {
 	return true, nil
 }
 
-func systemProfileDocsCount(session pmgo.SessionManager, dbname string) (int, error) {
-	return session.DB(dbname).C("system.profile").Count()
+func systemProfileDocsCount(ctx context.Context, client *mongo.Client, dbname string) (int64, error) {
+	return client.Database(dbname).Collection("system.profile").CountDocuments(ctx, primitive.M{})
 }
 
-func isReplicasetEnabled(session pmgo.SessionManager) bool {
+func isReplicasetEnabled(ctx context.Context, client *mongo.Client) bool {
 	rss := proto.ReplicaSetStatus{}
-	if err := session.Run(bson.M{"replSetGetStatus": 1}, &rss); err != nil {
+	if err := client.Database("admin").RunCommand(ctx, primitive.M{"replSetGetStatus": 1}).Decode(&rss); err != nil {
 		return false
 	}
 	return true

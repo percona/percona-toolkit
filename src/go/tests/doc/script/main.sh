@@ -20,7 +20,7 @@ done
 # declare list of profile funcs to run
 profiles=$(ls $DIR/profile)
 
-MONGO_VERSION=$(db_version)
+MONGO_VERSION="$(db_version)"
 RESULT_DIR=${RESULT_DIR:-/out}
 
 # turn on profiling

@@ -57,7 +57,8 @@ system('/tmp/12345/use -e "insert into issue_758.t select sleep(3)"');
 # Slave seems to be lagging now so the first row should get purged
 # immediately, then the script should wait about 2 seconds until
 # slave lag is gone.
-system("$cmd --source F=$cnf,D=issue_758,t=t --purge --where 'i>0' --check-slave-lag h=127.1,P=12346,u=msandbox,p=msandbox >/dev/null 2>&1 &");
+#system("$cmd --source F=$cnf,D=issue_758,t=t --purge --where 'i>0' --check-slave-lag h=127.1,P=12346,u=msandbox,p=msandbox >/dev/null 2>&1 &");
+system("$cmd --source F=$cnf,D=issue_758,t=t --purge --where 'i>0' --check-slave-lag h=127.1,P=12346,u=msandbox,p=msandbox &");
 
 sleep 1;
 is_deeply(

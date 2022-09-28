@@ -1,5 +1,5 @@
 
-# Query 1: 0.00 QPS, 0.00x concurrency, ID 0xAC1BF726F2AB10C5 at byte 861
+# Query 1: 0.00 QPS, 0.00x concurrency, ID 0x7023AEC64FE3598DAC1BF726F2AB10C5 at byte 861
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: 2009-07-25 11:19:27 to 2009-07-28 18:00:00
@@ -30,7 +30,7 @@
 # EXPLAIN /*!50100 PARTITIONS*/
 SELECT * FROM foo\G
 
-# Query 2: 2 QPS, 0.00x concurrency, ID 0x07AEF8EFAB3FA3CE at byte 509 ___
+# Query 2: 2 QPS, 0.00x concurrency, ID 0xF1711862B758491C07AEF8EFAB3FA3CE at byte 509
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: 2009-07-27 11:19:30 to 11:19:31

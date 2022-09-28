@@ -1,0 +1,37 @@
+.. _PT-3.3.0:
+
+================================================================================
+*Percona Toolkit* 3.3.0
+================================================================================
+
+:Date: January 14, 2021
+:Installation: `Installing Percona Toolkit <https://www.percona.com/doc/percona-toolkit/LATEST/installation.html>`_
+
+New Features
+================================================================================
+
+* :jirabug:`PT-1905`: pt-osc: Option to reverse triggers after table swap
+* :jirabug:`PT-1865`: New tool: pt-k8s-debug-collector provides information for support teams
+
+
+
+Improvements
+================================================================================
+
+* :jirabug:`PT-1907`: pt-pg-summary: Support socket connections
+
+
+
+Bugs Fixed
+================================================================================
+
+* :jirabug:`PT-1891`: pt-mongodb-summary fails for SSL enabled mongodb instances
+* :jirabug:`PT-169`: pt-online-schema-change remove the old and new table
+* :jirabug:`PT-1898`: pt-archiver keeps transaction open while waiting for replica to catch up
+* :jirabug:`PT-1857`: pt-heartbeat doesn't reconnect after killing connection
+* :jirabug:`PT-1528`: pt-online-schema-change "Invalid utf8mb4 character string: 'A111E8'"
+* :jirabug:`PT-1908`: pt_query_digest: Profile file 'Query ID' field truncated (Thanks to Andrew G for reporting this issue)
+* :jirabug:`PT-1881`: pt-upgrade fails when query including format strings and SQL errors is given (Thanks to Nayuta Yanagisawa for reporting this issue)
+* :jirabug:`PT-1892`: pt-summary reports sshd not running
+
+

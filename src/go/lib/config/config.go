@@ -75,10 +75,8 @@ func DefaultConfigFiles(toolName string) ([]string, error) {
 }
 
 func DefaultConfig(toolname string) *Config {
-
 	files, _ := DefaultConfigFiles(toolname)
 	return NewConfig(files...)
-
 }
 
 func NewConfig(files ...string) *Config {
@@ -94,7 +92,6 @@ func NewConfig(files ...string) *Config {
 }
 
 func read(filename string, opts map[string]interface{}) error {
-
 	f, err := os.Open(filename)
 	if err != nil {
 		return err
@@ -135,7 +132,7 @@ func read(filename string, opts map[string]interface{}) error {
 		}
 
 		if f == float64(int64(f)) {
-			opts[key] = int64(f) //int64
+			opts[key] = int64(f) // int64
 			continue
 		}
 

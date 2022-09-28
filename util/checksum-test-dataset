@@ -42,7 +42,9 @@ my $dbh = DBI->connect(
 # pt-online-schema-change changes sakila tables, causing MySQL to rebuild
 # the procs and update the ts.  Tests must exec this statement again else
 # Sandbox::ok() will throw "ERROR: Tables are different on master: mysql.proc"
-$dbh->do("UPDATE mysql.proc SET created='2012-06-05 00:00:00', modified='2012-06-05 00:00:00'");
+eval {
+    $dbh->do("UPDATE mysql.proc SET created='2012-06-05 00:00:00', modified='2012-06-05 00:00:00'");
+};
 
 my @tables_in_mysql  = grep { !/^(?:innodb|slave)_/ }
                        grep { !/_log$/ }

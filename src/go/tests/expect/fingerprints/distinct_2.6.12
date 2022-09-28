@@ -1,0 +1,8 @@
+{
+  "Namespace": "test.coll",
+  "Operation": "DISTINCT",
+  "Collection": "coll",
+  "Database": "test",
+  "Keys": "a,b",
+  "Fingerprint": "DISTINCT coll a,b"
+}

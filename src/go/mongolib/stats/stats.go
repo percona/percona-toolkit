@@ -8,8 +8,9 @@ import (
 	"time"
 
 	"github.com/montanaflynn/stats"
+	"go.mongodb.org/mongo-driver/bson"
+
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type StatsError struct {
@@ -74,7 +75,7 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 	}
 	if qiac, ok = s.getQueryInfoAndCounters(key); !ok {
 		query := proto.NewExampleQuery(doc)
-		queryBson, err := bson.MarshalJSON(query)
+		queryBson, err := bson.MarshalExtJSON(query, true, true)
 		if err != nil {
 			return err
 		}
@@ -91,6 +92,7 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 	qiac.Count++
 	// docsExamined is renamed from nscannedObjects in 3.2.0.
 	// https://docs.mongodb.com/manual/reference/database-profiler/#system.profile.docsExamined
+	s.Lock()
 	if doc.NscannedObjects > 0 {
 		qiac.NScanned = append(qiac.NScanned, float64(doc.NscannedObjects))
 	} else {
@@ -105,14 +107,15 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 	if qiac.LastSeen.IsZero() || qiac.LastSeen.Before(doc.Ts) {
 		qiac.LastSeen = doc.Ts
 	}
+	s.Unlock()
 
 	return nil
 }
 
 // Queries returns all collected statistics
 func (s *Stats) Queries() Queries {
-	s.RLock()
-	defer s.RUnlock()
+	s.Lock()
+	defer s.Unlock()
 
 	keys := GroupKeys{}
 	for key := range s.queryInfoAndCounters {
@@ -244,6 +247,7 @@ type Statistics struct {
 	Max    float64
 	Avg    float64
 	Pct95  float64
+	Pct99  float64
 	StdDev float64
 	Median float64
 }
@@ -323,6 +327,7 @@ func calcStats(samples []float64) Statistics {
 	s.Max, _ = stats.Max(samples)
 	s.Avg, _ = stats.Mean(samples)
 	s.Pct95, _ = stats.PercentileNearestRank(samples, 95)
+	s.Pct99, _ = stats.PercentileNearestRank(samples, 99)
 	s.StdDev, _ = stats.StandardDeviation(samples)
 	s.Median, _ = stats.Median(samples)
 	return s

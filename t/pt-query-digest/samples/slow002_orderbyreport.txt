@@ -1,5 +1,5 @@
 
-# Query 1: 0 QPS, 0x concurrency, ID 0xB211BA2B8D6D065C at byte 3374 _____
+# Query 1: 0 QPS, 0x concurrency, ID 0x32F63B9B2CE5A9B1B211BA2B8D6D065C at byte 3374
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2007-12-18 11:48:27
@@ -41,7 +41,7 @@ SET    biz = '91848182522'\G
 # EXPLAIN /*!50100 PARTITIONS*/
 select     biz = '91848182522' from foo.bar \G
 
-# Query 2: 0 QPS, 0x concurrency, ID 0x7546F89214254F2F at byte 815 ______
+# Query 2: 0 QPS, 0x concurrency, ID 0x6BADD6C352C61F817546F89214254F2F at byte 815
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2007-12-18 11:48:27

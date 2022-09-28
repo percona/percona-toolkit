@@ -1,5 +1,5 @@
 
-# Query 1: 0 QPS, 0x concurrency, ID 0x8E77A2947B4BC375 at byte 0 ________
+# Query 1: 0 QPS, 0x concurrency, ID 0x6271A735167CF0FB8E77A2947B4BC375 at byte 0
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2009-12-08 14:33:13.711351
@@ -30,7 +30,7 @@ PREPARE SELECT * FROM d.t3 WHERE v=? OR c=? OR f=?\G
 # EXPLAIN /*!50100 PARTITIONS*/
 SELECT * FROM d.t3 WHERE v=? OR c=? OR f=?\G
 
-# Query 2: 0 QPS, 0x concurrency, ID 0xA0B1C345E8654C18 at byte 1540 _____
+# Query 2: 0 QPS, 0x concurrency, ID 0x9C2605C8115C005AA0B1C345E8654C18 at byte 1540
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2009-12-08 14:33:13.711642

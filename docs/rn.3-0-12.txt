@@ -1,0 +1,18 @@
+Fixed bugs
+
+* :jirabug:`PT-1611`: ``pt-archiver`` failed to output UTF-8 characters.
+* :jirabug:`PT-1574`: ``pt-online-schema-change`` failed on tables with a nullable unique key and a row with NULL values.
+* :jirabug:`PT-1572`: ENUM fields usage in keys was improved, resulting in higher speed for expressions with sorted ENUM items.
+* :jirabug:`PT-1422`: ``pt-mysql-summary`` could hang when NULL values appear in the processlist Time column.
+Documentation changes
+
+* :jirabug:`PT-1321`: The required MySQL privileges were detailed in `pt-online-schema-change`` documentation
+
+Changelog
+---------
+
+* Fixed bug   PT-1611: pt-archiver fails with UTF-8 chars
+* Fixed bug   PT-1574: pt-online-schema-change fails on UK and NULLs
+* Fixed bug   PT-1572: Better usage of ENUM fields in keys in NibbleIterator
+* Fixed bug   PT-1422: pt-mysql-summary may get stuck when Time: NULL in processlist
+* Improvement PT-1321: Add required MySQL privileges to pt-online-schema-change documentation

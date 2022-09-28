@@ -1,43 +1,91 @@
 language: go
 
 go:
-  - 1.9.x
+  - 1.17.x
+  - tip
 
 services:
   - docker
 
 env:
-  matrix:
+  global:
+    - GO111MODULE: "off" # TODO test with "on" too
+    - DOCKER_COMPOSE_VERSION: 1.8.0
+    - TEST_MONGODB_FLAVOR: mongo
+    - TEST_PSMDB_VERSION: 4.0
+    - TEST_MONGODB_ADMIN_USERNAME: admin
+    - TEST_MONGODB_ADMIN_PASSWORD: admin123456
+    - TEST_MONGODB_USERNAME: test
+    - TEST_MONGODB_PASSWORD: 123456
+    - TEST_MONGODB_STANDALONE_PORT: 27017
+    - TEST_MONGODB_MONGOS_PORT: 17000
+    - TEST_MONGODB_S1_RS: rs1
+    - TEST_MONGODB_S1_PRIMARY_PORT: 17001
+    - TEST_MONGODB_S1_SECONDARY1_PORT: 17002
+    - TEST_MONGODB_S1_SECONDARY2_PORT: 17003
+    - TEST_MONGODB_S2_RS: rs2
+    - TEST_MONGODB_S2_PRIMARY_PORT: 17004
+    - TEST_MONGODB_S2_SECONDARY1_PORT: 17005
+    - TEST_MONGODB_S2_SECONDARY2_PORT: 17006
+    - TEST_MONGODB_CONFIGSVR_RS: csReplSet
+    - TEST_MONGODB_CONFIGSVR1_PORT: 17007
+    - TEST_MONGODB_CONFIGSVR2_PORT: 17008
+    - TEST_MONGODB_CONFIGSVR3_PORT: 17009
+    - TEST_MONGODB_S3_RS: rs3
+    - TEST_MONGODB_S3_PRIMARY_PORT: 17021
+    - TEST_MONGODB_S3_SECONDARY1_PORT: 17022
+    - TEST_MONGODB_S3_SECONDARY2_PORT: 17023
+    # REVIEWDOG_GITHUB_API_TOKEN
+    secure: "iba+2pzxc/zfMxnYki9qM9pCZs1uTEoqfPTaG9qtVr8cMutDzCJvMftn0bb6gSUrglt2mjSNhV65HX7mZl0qh8p/6a46QpzFiwZmaTH+E1tGQf97Z55tx3tHgrcoFI8LGPEHpTQehcI7V0VVo69aBhz+8lNNScOuJwt8ulyuVwE="
+
+matrix:
+  include:
     - MONGODB_IMAGE=mongo:3.0
     - MONGODB_IMAGE=mongo:3.2
     - MONGODB_IMAGE=mongo:3.4
     - MONGODB_IMAGE=percona/percona-server-mongodb:3.0
     - MONGODB_IMAGE=percona/percona-server-mongodb:3.2
     - MONGODB_IMAGE=percona/percona-server-mongodb:3.4
-
-matrix:
-  include:
-    - go: 1.8.x
-      env:
+  allow_failures:
     - go: tip
-      env:
+
+# skip non-trunk PMM-XXXX branch builds, but still build pull requests
+branches:
+  except:
+    - /^PMM\-\d{4}/
+
+go_import_path: github.com/percona/percona-toolkit
+
+before_install:
+    - sudo apt-get update
+    - sudo apt-get install -o Dpkg::Options::="--force-confold" --force-yes -y docker-ce
+    - docker-compose --version
 
 install:
-  - go get -u github.com/Masterminds/glide
-  - glide install -v
+  - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+
+  # install reviewdog and golangci-lint
+  - curl https://raw.githubusercontent.com/reviewdog/reviewdog/master/install.sh| sh -s
+  - curl https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s latest
 
 before_script:
-  # run docker containers
-  - docker-compose up -d
+  # static analyze
+  - bin/golangci-lint run -c=.golangci-required.yml --out-format=line-number | bin/reviewdog -f=golangci-lint -level=error -reporter=github-pr-check
+  - bin/golangci-lint run -c=.golangci.yml --out-format=line-number | bin/reviewdog -f=golangci-lint -level=error -reporter=github-pr-review
   # log versions
   - docker --version
   - docker-compose --version
-  - docker-compose exec mongo mongo --version
+  # run docker containers
+  - docker-compose up -d init
   # we need at least one document in test db
-  - docker-compose exec mongo mongo --eval 'db.init.insert({})'
+  - dep ensure
 
 script:
-  - go test -timeout 1m $(glide nv)
+  - docker ps
+  - go test -timeout 20m ./src/go/...
+
+allow_failures:
+    - tip
 
 notifications:
   email: false

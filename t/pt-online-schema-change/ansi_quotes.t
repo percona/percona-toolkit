@@ -50,92 +50,95 @@ ok(
    "ANSI modes set"
 );
 
-($output, $exit_status) = full_output(
-   sub { pt_online_schema_change::main(@args,
-      "$master_dsn,D=issue26211,t=process_model_inst",
-      "--alter", "ADD COLUMN foo int",
-      qw(--dry-run --print --alter-foreign-keys-method auto)) },
-);
+SKIP: {
+    skip "Skipping in MySQL 8.0.4-rc since there is an error in the server itself. See https://bugs.mysql.com/bug.php?id=89441", 9 if ($sandbox_version ge '8.0');
+    ($output, $exit_status) = full_output(
+       sub { pt_online_schema_change::main(@args,
+          "$master_dsn,D=issue26211,t=process_model_inst",
+          "--alter", "ADD COLUMN foo int",
+          qw(--dry-run --print --alter-foreign-keys-method auto)) },
+    );
+    
+    is(
+       $exit_status,
+       0,
+       "--dry-run exit 0 (bug 1058285)"
+    ) or diag($output);
+    
+    unlike(
+       $output,
+       qr/errno: 121/,
+       "No error 121 (bug 1058285)"
+    );
 
-is(
-   $exit_status,
-   0,
-   "--dry-run exit 0 (bug 1058285)"
-) or diag($output);
+    my ($sql_mode) = $dbh->selectrow_array(q{SELECT @@SQL_MODE});
+    is(
+       $sql_mode,
+       $orig_sql_mode,
+       "--dry-run SQL_MODE not changed"
+    );
+    
+    ($output, $exit_status) = full_output(
+       sub { pt_online_schema_change::main(@args,
+          "$master_dsn,D=issue26211,t=process_model_inst",
+          "--alter", "ADD COLUMN foo int",
+          qw(--execute --alter-foreign-keys-method auto)) },
+    );
+    
+    is(
+       $exit_status,
+       0,
+       "--execute exit 0 (bug 1058285)"
+    );
+    
+    unlike(
+       $output,
+       qr/\QI need a max_rows argument/,
+       "No 'I need a max_rows' error message (bug 1073996)"
+    );
+    
+    # ANSI_QUOTES are on, so it's "foo" not `foo`.
+    my $rows = $dbh->selectrow_arrayref("SHOW CREATE TABLE issue26211.process_model_inst");
+    like(
+       $rows->[1],
+       qr/"foo"\s+int/i,
+       "--alter actually worked (bug 1058285)"
+    );
+    
+    ($sql_mode) = $dbh->selectrow_array(q{SELECT @@SQL_MODE});
+    is(
+       $sql_mode,
+       $orig_sql_mode,
+       "--execute SQL_MODE not changed"
+    );
 
-unlike(
-   $output,
-   qr/errno: 121/,
-   "No error 121 (bug 1058285)"
-);
-
-my ($sql_mode) = $dbh->selectrow_array(q{SELECT @@SQL_MODE});
-is(
-   $sql_mode,
-   $orig_sql_mode,
-   "--dry-run SQL_MODE not changed"
-);
-
-($output, $exit_status) = full_output(
-   sub { pt_online_schema_change::main(@args,
-      "$master_dsn,D=issue26211,t=process_model_inst",
-      "--alter", "ADD COLUMN foo int",
-      qw(--execute --alter-foreign-keys-method auto)) },
-);
-
-is(
-   $exit_status,
-   0,
-   "--execute exit 0 (bug 1058285)"
-);
-
-unlike(
-   $output,
-   qr/\QI need a max_rows argument/,
-   "No 'I need a max_rows' error message (bug 1073996)"
-);
-
-# ANSI_QUOTES are on, so it's "foo" not `foo`.
-my $rows = $dbh->selectrow_arrayref("SHOW CREATE TABLE issue26211.process_model_inst");
-like(
-   $rows->[1],
-   qr/"foo"\s+int/i,
-   "--alter actually worked (bug 1058285)"
-);
-
-($sql_mode) = $dbh->selectrow_array(q{SELECT @@SQL_MODE});
-is(
-   $sql_mode,
-   $orig_sql_mode,
-   "--execute SQL_MODE not changed"
-);
-
-# ############################################################################
-# pt-online-schema-change foreign key error
-# Customer issue 26211
-# ############################################################################
-$sb->load_file('master1', "$sample/issue-26211.sql");
-
-my $retval;
-($output, $retval) = full_output(sub { pt_online_schema_change::main(@args,
-                              '--alter-foreign-keys-method', 'auto',
-                              '--no-check-replication-filters',
-                              '--alter', "ENGINE=InnoDB",
-                              '--execute', "$master_dsn,D=bug_26211,t=prm_inst")});
-
-is(
-   $retval,
-   0,
-   "Issue 26211: Lives ok"
-) or diag($output);
-
-unlike(
-   $output,
-   qr/\QI need a max_rows argument/,
-   "Issue 26211: No error message"
-);
-
-$dbh->do(q{DROP DATABASE IF EXISTS `bug_26211`});
+    # ############################################################################
+    # pt-online-schema-change foreign key error
+    # Customer issue 26211
+    # ############################################################################
+    $sb->load_file('master1', "$sample/issue-26211.sql");
+    
+    my $retval;
+    ($output, $retval) = full_output(sub { pt_online_schema_change::main(@args,
+                                  '--alter-foreign-keys-method', 'auto',
+                                  '--no-check-replication-filters',
+                                  '--alter', "ENGINE=InnoDB",
+                                  '--execute', "$master_dsn,D=bug_26211,t=prm_inst")});
+    
+    is(
+       $retval,
+       0,
+       "Issue 26211: Lives ok"
+    ) or diag($output);
+    
+    unlike(
+       $output,
+       qr/\QI need a max_rows argument/,
+       "Issue 26211: No error message"
+    );
+    
+    $dbh->do(q{DROP DATABASE IF EXISTS `bug_26211`});
+}
 
 # #############################################################################
 # Done.

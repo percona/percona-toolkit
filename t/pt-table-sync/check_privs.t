@@ -50,7 +50,8 @@ $slave_dbh->do('create table issue_907.t (i int)');
 $slave_dbh->do('insert into issue_907.t values (1)');
 
 # On 5.1 user needs SUPER to set binlog_format, which mk-table-sync does.
-`/tmp/12345/use -uroot -e "GRANT SUPER, SELECT, SHOW DATABASES ON *.* TO 'test_907'\@'localhost' IDENTIFIED BY 'msandbox'"`;
+`/tmp/12345/use -uroot -e "CREATE USER 'test_907'\@'localhost' IDENTIFIED BY 'msandbox'"`;
+`/tmp/12345/use -uroot -e "GRANT SUPER, SELECT, UPDATE, SHOW DATABASES ON *.* TO 'test_907'\@'localhost'"`;
 
 #2) run again to see what output is like when it works
 chomp($output = output(

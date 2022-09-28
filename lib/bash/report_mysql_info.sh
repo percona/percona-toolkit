@@ -107,6 +107,21 @@ get_plugin_status () {
    echo ${status:-"Not found"}
 }
 
+collect_keyring_plugins() {
+    $CMD_MYSQL $EXT_ARGV --table -ss -e 'SELECT PLUGIN_NAME, PLUGIN_STATUS FROM INFORMATION_SCHEMA.PLUGINS WHERE PLUGIN_NAME LIKE "keyring%";'
+}
+
+collect_encrypted_tables() {
+    $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT TABLE_SCHEMA, TABLE_NAME, CREATE_OPTIONS FROM INFORMATION_SCHEMA.TABLES WHERE CREATE_OPTIONS LIKE '%ENCRYPTION=\"Y\"%';"
+}
+
+collect_encrypted_tablespaces() {
+# I_S.INNODB_SYS_TABLESPACES has a "flag" field. Encrypted tablespace has bit 14 set. You can check it with "flag & 8192". 
+# And seems like MySQL is capable of bitwise operations. https://dev.mysql.com/doc/refman/5.7/en/bit-functions.html
+    $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT SPACE, NAME, SPACE_TYPE from INFORMATION_SCHEMA.INNODB_SYS_TABLESPACES where FLAG&8192 = 8192;"
+}
+
+
 # ##############################################################################
 # Functions for parsing specific files and getting desired info from them.
 # These are called from within main() and are separated so they can be tested
@@ -317,6 +332,9 @@ summarize_processlist () {
          }
          \$1 == \"Time:\" {
             t = \$2;
+            if ( t == \"NULL\" ) { 
+                t = 0;
+            }
          }
          \$1 == \"Command:\" {
             c = \$2;
@@ -555,6 +573,51 @@ format_innodb_status () {
       grep -e 'Mutex at' -e 'lock on' "${file}" | sed -e 's/^[XS]-//' -e 's/,.*$//' \
          | sort | uniq -c | sort -rn
    fi
+}
+
+format_ndb_status() {
+   local file=$1
+
+   [ -e "$file" ] || return
+   # We could use "& \n" but that does not seem to work on bsd sed. 
+   egrep '^[ \t]*Name:|[ \t]*Status:' $file|sed 's/^[ \t]*//g'|while read line; do echo $line; echo $line | grep '^Status:'>/dev/null && echo ; done
+}
+
+format_keyring_plugins() {
+    local keyring_plugins="$1"
+    local encrypted_tables="$2"
+
+    if [ -z "$keyring_plugins" ]; then 
+        echo "No keyring plugins found"
+        if [ ! -z "$encrypted_tables" ]; then
+            echo "Warning! There are encrypted tables but keyring plugins are not loaded"
+        fi
+     else
+        echo "Keyring plugins:"
+        echo "'$keyring_plugins'"
+    fi
+}
+
+format_encrypted_tables() {
+   local encrypted_tables="$1"
+   if [ ! -z "$encrypted_tables" ]; then
+       echo "Encrypted tables:"
+       echo "$encrypted_tables"
+   fi
+}
+
+format_encrypted_tablespaces() {
+   local encrypted_tablespaces="$1"
+   if [ ! -z "$encrypted_tablespaces" ]; then
+       echo "Encrypted tablespaces:"
+       echo "$encrypted_tablespaces"
+   fi
+}
+
+format_mysql_roles() {
+   local file=$1
+   [ -e "$file" ] || return
+   cat $file
 }
 
 # Summarizes per-database statistics for a bunch of different things: count of
@@ -988,6 +1051,32 @@ section_innodb () {
             "$(get_var innodb_adaptive_checkpoint "$variables_file")"
 }
 
+section_rocksdb () {
+    local variables_file="$1"
+    local status_file="$2"
+
+    local NAME_VAL_LEN=32
+
+    [ -e "$variables_file" -a -e "$status_file" ] || return
+
+    name_val "Block Cache Size" "$(shorten $(get_var rocksdb_block_cache_size "$variables_file") 0)"
+    name_val "Block Size" "$(shorten $(get_var rocksdb_block_size "$variables_file") 0)"
+    name_val "Bytes Per Sync" "$(shorten $(get_var rocksdb_bytes_per_sync "$variables_file") 0)"
+    name_val "Compaction Seq Deletes " "$(shorten $(get_var rocksdb_compaction_sequential_deletes "$variables_file") 0)"
+    name_val "Compaction Seq Deletes Count SD" "$(get_var rocksdb_compaction_sequential_deletes_count_sd "$variables_file")"
+    name_val "Compaction Seq Deletes Window" "$(shorten $(get_var rocksdb_compaction_sequential_deletes_window "$variables_file") 0)"
+    name_val "Default CF Options" "$(get_var rocksdb_default_cf_options "$variables_file")"
+    name_val "Max Background Jobs" "$(shorten $(get_var rocksdb_max_background_jobs "$variables_file") 0)"
+    name_val "Max Block Cache Size" "$(shorten $(get_var rocksdb_max_block_cache_size "$variables_file") 0)"
+    name_val "Max Block Size" "$(shorten $(get_var rocksdb_max_block_size "$variables_file") 0)"
+    name_val "Max Open Files" "$(shorten $(get_var rocksdb_max_open_files "$variables_file") 0)"
+    name_val "Max Total Wal Size" "$(shorten $(get_var rocksdb_max_total_wal_size "$variables_file") 0)"
+    name_val "Rate Limiter Bytes Per Second" "$(shorten $(get_var rocksdb_rate_limiter_bytes_per_sec "$variables_file") 0)"
+    name_val "Rate Limiter Bytes Per Sync" "$(shorten $(get_var rocksdb_bytes_per_sync "$variables_file") 0)"
+    name_val "Rate Limiter Wal Bytes Per Sync" "$(shorten $(get_var rocksdb_wal_bytes_per_sync "$variables_file") 0)"
+    name_val "Table Cache NumHardBits" "$(shorten $(get_var rocksdb_table_cache_numshardbits "$variables_file") 0)"
+    name_val "Wal Bytes per Sync" "$(shorten $(get_var rocksdb_wal_bytes_per_sync "$variables_file") 0)"
+}
 
 section_noteworthy_variables () {
    local file="$1"
@@ -1113,6 +1202,19 @@ section_mysqld () {
    done < "$executables_file"
 }
 
+section_slave_hosts () {
+   local slave_hosts_file="$1"
+
+   [ -e "$slave_hosts_file" ] || return
+
+   section "Slave Hosts"
+   if [ -s "$slave_hosts_file" ]; then
+       cat "$slave_hosts_file"
+   else
+       echo "No slaves found"
+   fi
+}
+
 section_mysql_files () {
    local variables_file="$1"
 
@@ -1165,6 +1267,33 @@ parse_wsrep_provider_options () {
    ' "$looking_for"
 }
 
+report_jemalloc_enabled() {
+  local JEMALLOC_STATUS=''
+  local GENERAL_JEMALLOC_STATUS=0
+  local JEMALLOC_LOCATION=''
+
+  for pid in $(pidof mysqld); do
+     grep -qc jemalloc /proc/${pid}/environ || ldd $(which mysqld) 2>/dev/null | grep -qc jemalloc
+     jemalloc_status=$?
+     if [ $jemalloc_status = 1 ]; then
+       echo "jemalloc is not enabled in mysql config for process with id ${pid}" 
+     else
+       echo "jemalloc enabled in mysql config for process with id ${pid}"
+       GENERAL_JEMALLOC_STATUS=1
+     fi
+  done
+
+  if [ $GENERAL_JEMALLOC_STATUS -eq 1 ]; then
+     JEMALLOC_LOCATION=$(find /usr/lib64/ /usr/lib/x86_64-linux-gnu /usr/lib -name "libjemalloc.*" 2>/dev/null | head -n 1)
+     if [ -z "$JEMALLOC_LOCATION" ]; then
+       echo "Jemalloc library not found"
+     else
+       echo "Using jemalloc from $JEMALLOC_LOCATION"
+     fi
+  fi
+ 
+}
+
 report_mysql_summary () {
    local dir="$1"
 
@@ -1182,6 +1311,7 @@ report_mysql_summary () {
 
    section_mysqld "$dir/mysqld-executables" "$dir/mysql-variables"
 
+   section_slave_hosts "$dir/mysql-slave-hosts"
    # ########################################################################
    # General date, hostname, etc
    # ########################################################################
@@ -1278,7 +1408,8 @@ report_mysql_summary () {
    # ########################################################################
    # Query cache
    # ########################################################################
-   if [ "$(get_var have_query_cache "$dir/mysql-variables")" ]; then
+   local has_query_cache=$(get_var have_query_cache "$dir/mysql-variables")
+   if [ "$has_query_cache" = 'YES' ]; then
       section "Query cache"
       local query_cache_size=$(get_var query_cache_size "$dir/mysql-variables")
       local used=$(( ${query_cache_size} - $(get_var Qcache_free_memory "$dir/mysql-status") ))
@@ -1402,12 +1533,27 @@ report_mysql_summary () {
    # ########################################################################
    section "InnoDB"
    local have_innodb="$(get_var "have_innodb" "$dir/mysql-variables")"
-   if [ "${have_innodb}" = "YES" ]; then
+   local innodb_version="$(get_var "innodb_version" "$dir/mysql-variables")"
+   if [ "${have_innodb}" = "YES" ] || [ -n "${innodb_version}" ]; then
       section_innodb "$dir/mysql-variables" "$dir/mysql-status"
 
       if [ -s "$dir/innodb-status" ]; then
          format_innodb_status "$dir/innodb-status"
       fi
+   fi
+
+   local has_rocksdb=$($CMD_MYSQL $EXT_ARGV -ss -e 'SHOW ENGINES' 2>/dev/null | grep -i 'rocksdb')
+   if [ ! -z "$has_rocksdb" ]; then
+       section "RocksDB"
+       section_rocksdb "$dir/mysql-variables" "$dir/mysql-status"
+   fi
+
+   # ########################################################################
+   # NDB
+   # ########################################################################
+   if [ -s "$dir/ndb-status" ]; then
+       section "NDB"
+       format_ndb_status "$dir/ndb-status"
    fi
 
    # ########################################################################
@@ -1423,6 +1569,24 @@ report_mysql_summary () {
    local users="$( format_users "$dir/mysql-users" )"
    name_val "Users" "${users}"
    name_val "Old Passwords" "$(get_var old_passwords "$dir/mysql-variables")"
+
+   if [ -s "$dir/mysql-roles" ]; then
+       section "Roles"
+       format_mysql_roles "$dir/mysql-roles"
+   fi
+
+   section "Encryption"
+   local keyring_plugins="$(collect_keyring_plugins)"
+   local encrypted_tables=""
+   local encrypted_tablespaces=""
+   if [ "${OPT_LIST_ENCRYPTED_TABLES}" = 'yes' ]; then 
+       encrypted_tables="$(collect_encrypted_tables)"
+       encrypted_tablespaces="$(collect_encrypted_tablespaces)"
+   fi
+
+   format_keyring_plugins "$keyring_plugins" "$encrypted_tables"
+   format_encrypted_tables "$encrypted_tables"
+   format_encrypted_tablespaces "$encrypted_tablespaces"
 
    # ########################################################################
    # Binary Logging
@@ -1461,6 +1625,9 @@ report_mysql_summary () {
    else
       name_val "Config File" "Cannot autodetect or find, giving up"
    fi
+
+   section "Memory management library"
+   report_jemalloc_enabled
 
    # Make sure that we signal the end of the tool's output.
    section "The End"

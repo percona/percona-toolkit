@@ -881,6 +881,84 @@ ok(
    "IPs not shortened with more"
 );
 
+# Don't shorten hostnames
+$events = [
+   {
+      cmd        => 'Query',
+      arg        => "foo",
+      Query_time => '8.000652',
+      host       => 'a-really-long-host-name',
+   },
+   {
+      cmd        => 'Query',
+      arg        => "foo",
+      Query_time => '8.000652',
+      host       => '123.123.123.789',
+   },
+];
+
+$ea  = new EventAggregator(
+   groupby => 'arg',
+   worst   => 'Query_time',
+   ignore_attributes => [qw(arg cmd)],
+);
+foreach my $event (@$events) {
+   $ea->aggregate($event);
+}
+$ea->calculate_statistical_metrics();
+my $no_trim_qrf = new QueryReportFormatter(
+   OptionParser        => $o,
+   QueryRewriter       => $qr,
+   QueryParser         => $qp,
+   Quoter              => $q, 
+   ExplainAnalyzer     => $ex,
+   max_hostname_length => 0,
+);
+
+$result = $no_trim_qrf->event_report(
+   ea      => $ea,
+   select  => [ qw(Query_time host) ],
+   item    => 'foo',
+   rank    => 1,
+   orderby => 'Query_time',
+);
+
+ok(
+   no_diff(
+      $result,
+      "t/lib/samples/QueryReportFormatter/report014_no_trim.txt",
+      cmd_output => 1,
+   ),
+   "Hostnames were not trimmed"
+);
+
+$no_trim_qrf = new QueryReportFormatter(
+   OptionParser        => $o,
+   QueryRewriter       => $qr,
+   QueryParser         => $qp,
+   Quoter              => $q, 
+   ExplainAnalyzer     => $ex,
+   max_hostname_length => 12,
+   max_line_length     => 200,
+);
+
+$result = $no_trim_qrf->event_report(
+   ea      => $ea,
+   select  => [ qw(Query_time host) ],
+   item    => 'foo',
+   rank    => 1,
+   orderby => 'Query_time',
+);
+
+ok(
+   no_diff(
+      $result,
+      "t/lib/samples/QueryReportFormatter/report014_trim_12.txt",
+      cmd_output => 1,
+   ),
+   "Hostnames were not trimmed"
+);
+
 $result = $qrf->event_report(
    ea       => $ea,
    select   => [ qw(Query_time host) ],
@@ -1142,8 +1220,11 @@ SKIP: {
       : $sandbox_version ge '5.1' ? "t/lib/samples/QueryReportFormatter/report025.txt"
       :                             "t/lib/samples/QueryReportFormatter/report026.txt");
 
+   # 32
+   my $explain_report = $qrf->explain_report("select * from qrf.t where i=2", 'qrf');
+   $explain_report =~ s/filtered: 100(\s+)/filtered: 100.00$1/;
    is(
-      $qrf->explain_report("select * from qrf.t where i=2", 'qrf'),
+      $explain_report,
       $explain,
       "explain_report()"
    );

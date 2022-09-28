@@ -61,7 +61,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.5';
+our $VERSION = '3.3.2';
 
 use strict;
 use warnings FATAL => 'all';
@@ -852,7 +852,7 @@ sub parse {
    foreach my $key ( keys %$opts ) {
       PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
-      if (   !defined $final_props{$key}
+      if ( !defined $final_props{$key}  
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
@@ -1059,6 +1059,28 @@ sub get_dbh {
            . ($sql_mode ? " and $sql_mode" : '')
            . ": $EVAL_ERROR";
       }
+   }
+   my ($mysql_version) = eval { $dbh->selectrow_array('SELECT VERSION()') };
+   if ($EVAL_ERROR) {
+       die "Cannot get MySQL version: $EVAL_ERROR";
+   }
+
+   my (undef, $character_set_server) = eval { $dbh->selectrow_array("SHOW VARIABLES LIKE 'character_set_server'") };
+   if ($EVAL_ERROR) {
+       die "Cannot get MySQL var character_set_server: $EVAL_ERROR";
+   }
+
+   if ($mysql_version =~ m/^(\d+)\.(\d)\.(\d+).*/) {
+       if ($1 >= 8 && $character_set_server =~ m/^utf8/) {
+           $dbh->{mysql_enable_utf8} = 1;
+           my $msg = "MySQL version $mysql_version >= 8 and character_set_server = $character_set_server\n".
+                     "Setting: SET NAMES $character_set_server";
+           PTDEBUG && _d($msg);
+           eval { $dbh->do("SET NAMES 'utf8mb4'") };
+           if ($EVAL_ERROR) {
+               die "Cannot SET NAMES $character_set_server: $EVAL_ERROR";
+           }
+       }
    }
 
    PTDEBUG && _d('DBH info: ',
@@ -4086,15 +4108,16 @@ eval {
    require HTTP::Micro;
 };
 
+my $home    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
+my @vc_dirs = (
+   '/etc/percona',
+   '/etc/percona-toolkit',
+   '/tmp',
+   "$home",
+);
+
 {
    my $file    = 'percona-version-check';
-   my $home    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
-   my @vc_dirs = (
-      '/etc/percona',
-      '/etc/percona-toolkit',
-      '/tmp',
-      "$home",
-   );
 
    sub version_check_file {
       foreach my $dir ( @vc_dirs ) {
@@ -4227,7 +4250,7 @@ sub get_instances_to_check {
    my @instances_to_check;
    foreach my $instance ( @$instances ) {
       my $last_check_time = $last_check_time_for{ $instance->{id} };
-      PTDEBUG && _d('Intsance', $instance->{id}, 'last checked',
+      PTDEBUG && _d('Instance', $instance->{id}, 'last checked',
          $last_check_time, 'now', $now, 'diff', $now - ($last_check_time || 0),
          'hours until next check',
          sprintf '%.2f',
@@ -4311,6 +4334,46 @@ sub get_instance_id {
 }
 
 
+sub get_uuid {
+    my $uuid_file = '/.percona-toolkit.uuid';
+    foreach my $dir (@vc_dirs) {
+        my $filename = $dir.$uuid_file;
+        my $uuid=_read_uuid($filename);
+        return $uuid if $uuid;
+    }
+
+    my $filename = $ENV{"HOME"} . $uuid_file;
+    my $uuid = _generate_uuid();
+
+    open(my $fh, '>', $filename) or die "Could not open file '$filename' $!";
+    print $fh $uuid;
+    close $fh;
+
+    return $uuid;
+}   
+
+sub _generate_uuid {
+    return sprintf+($}="%04x")."$}-$}-$}-$}-".$}x3,map rand 65537,0..7;
+}
+
+sub _read_uuid {
+    my $filename = shift;
+    my $fh;
+
+    eval {
+        open($fh, '<:encoding(UTF-8)', $filename);
+    };
+    return if ($EVAL_ERROR);
+
+    my $uuid;
+    eval { $uuid = <$fh>; };
+    return if ($EVAL_ERROR);
+
+    chomp $uuid;
+    return $uuid;
+}
+
+
 sub pingback {
    my (%args) = @_;
    my @required_args = qw(url instances);
@@ -4347,7 +4410,7 @@ sub pingback {
    my $client_content = encode_client_response(
       items      => $items,
       versions   => $versions,
-      general_id => md5_hex( hostname() ),
+      general_id => get_uuid(),
    );
 
    my $client_response = {
@@ -4755,9 +4818,13 @@ sub fingerprint {
    $query =~ s/\Ause \S+\Z/use ?/i       # Abstract the DB in USE
       && return $query;
 
-   $query =~ s/\\["']//g;                # quoted strings
-   $query =~ s/".*?"/?/sg;               # quoted strings
-   $query =~ s/'.*?'/?/sg;               # quoted strings
+   $query =~ s/([^\\])(\\')/$1/sg;    
+   $query =~ s/([^\\])(\\")/$1/sg;    
+   $query =~ s/\\\\//sg;              
+   $query =~ s/\\'//sg;               
+   $query =~ s/\\"//sg;                        
+   $query =~ s/([^\\])(".*?[^\\]?")/$1?/sg;    
+   $query =~ s/([^\\])('.*?[^\\]?')/$1?/sg;    
 
    $query =~ s/\bfalse\b|\btrue\b/?/isg; # boolean values 
 
@@ -6096,7 +6163,7 @@ sub _print_failures {
    foreach my $failure ( @$failures ) {
       print "\n-- $failno.\n";
       if ( ($failure->[1] || '') eq ($failure->[2] || '') ) {
-         printf "\nOn both hosts:\n\n" . ($failure->[1] || '') . "\n";
+         print "\nOn both hosts:\n\n" . ($failure->[1] || '') . "\n";
       }
       else {
          printf "\n%s\n\nvs.\n\n%s\n",
@@ -6889,7 +6956,7 @@ sub new {
 
 my $genlog_line_1= qr{
    \A
-   (?:(\d{6}\s+\d{1,2}:\d\d:\d\d|\d{4}-\d{1,2}-\d{1,2}T\d\d:\d\d:\d\d\.\d+Z))? # Timestamp
+   (?:(\d{6}\s+\d{1,2}:\d\d:\d\d|\d{4}-\d{1,2}-\d{1,2}T\d\d:\d\d:\d\d\.\d+(?:Z|[-+]?\d\d:\d\d)?))? # Timestamp
    \s+
    (?:\s*(\d+))                     # Thread ID
    \s
@@ -7657,6 +7724,7 @@ sub parse_event {
       $pos_in_log -= 1 if $pos_in_log;
 
       $raw_packet =~ s/\n20\Z//;
+      $raw_packet = "20$raw_packet" if $raw_packet =~ /\A20-\d\d-\d\d/; # workaround for year 2020 problem
       $raw_packet = "20$raw_packet" unless $raw_packet =~ m/\A20/;
 
       $raw_packet =~ s/0x0000:.+?(450.) /0x0000:  $1 /;
@@ -8060,7 +8128,7 @@ sub parse_event {
    }
    else { 
       eval {
-         remove_mysql_header($packet);
+           remove_mysql_header($packet);
       };
       if ( $EVAL_ERROR ) {
          PTDEBUG && _d('remove_mysql_header() failed; failing session');
@@ -8917,9 +8985,9 @@ sub detect_compression {
       PTDEBUG && _d('Client is using compression');
       $session->{compress} = 1;
 
-      $packet->{data} = $packet->{mysql_hdr} . $packet->{data};
+      $packet->{data} = $packet->{mysql_hdr} . $packet->{data} if $packet->{mysql_hdr};
       return 0 unless $self->uncompress_packet($packet, $session);
-      remove_mysql_header($packet);
+      remove_mysql_header($packet) if $packet->{mysql_hdr};
    }
    else {
       PTDEBUG && _d('Client is NOT using compression');
@@ -9318,6 +9386,7 @@ use Percona::Toolkit;
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use sigtrap 'handler', \&sig_int, 'normal-signals';
+binmode(STDOUT, "encoding(UTF-8)");
 
 # Global variables.  Only really essential variables should be here.
 my $oktorun     = 1;
@@ -10243,7 +10312,12 @@ sub disable_query_cache {
 
    my $sql = 'SELECT @@query_cache_type';
    PTDEBUG && _d($sql);
-   my ($query_cache_type) = $dbh->selectrow_array($sql);
+   my $query_cache_type;
+   eval { ($query_cache_type) = $dbh->selectrow_array($sql) };
+   # There is no query cache in MySQL 8.0+
+   if ( $EVAL_ERROR =~ m/Unknown system variable 'query_cache_type'/i ) {
+       return;
+   }
    PTDEBUG && _d($query_cache_type);
    return if ($query_cache_type || '') =~ m/OFF|0/;
 
@@ -11126,6 +11200,7 @@ Type of log files.  Valid types are:
   slowlog  MySQL slow log
   genlog   MySQL general log
   binlog   MySQL binary log (converted by mysqlbinlog)
+  tcpdump  TCP dump file generated by tcpdump command
   rawlog   Custom log with one SQL statement per line
 
 =item --upgrade-table
@@ -11165,12 +11240,18 @@ default: yes
 Check for the latest version of Percona Toolkit, MySQL, and other programs.
 
 This is a standard "check for updates automatically" feature, with two
-additional features.  First, the tool checks the version of other programs
-on the local system in addition to its own version.  For example, it checks
-the version of every MySQL server it connects to, Perl, and the Perl module
-DBD::mysql.  Second, it checks for and warns about versions with known
-problems.  For example, MySQL 5.5.25 had a critical bug and was re-released
+additional features.  First, the tool checks its own version and also the
+versions of the following software: operating system, Percona Monitoring and
+Management (PMM), MySQL, Perl, MySQL driver for Perl (DBD::mysql), and
+Percona Toolkit. Second, it checks for and warns about versions with known
+problems. For example, MySQL 5.5.25 had a critical bug and was re-released
 as 5.5.25a.
+
+A secure connection to Percona’s Version Check database server is done to
+perform these checks. Each request is logged by the server, including software
+version numbers and unique ID of the checked system. The ID is generated by the
+Percona Toolkit installation script or when the Version Check database call is
+done for the first time.
 
 Any updates or known problems are printed to STDOUT before the tool's normal
 output.  This feature should never interfere with the normal operation of the
@@ -11287,6 +11368,11 @@ To enable debugging and capture all output to a file, run the tool like:
 Be careful: debugging output is voluminous and can generate several megabytes
 of output.
 
+=head1 ATTENTION
+
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line 
+parameters are shown in the output.
+
 =head1 SYSTEM REQUIREMENTS
 
 You need Perl, DBI, DBD::mysql, and some core packages that ought to be
@@ -11296,7 +11382,7 @@ installed in any reasonably new version of Perl.
 
 For a list of known bugs, see L<http://www.percona.com/bugs/pt-upgrade>.
 
-Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
+Please report bugs at L<https://jira.percona.com/projects/PT>.
 Include the following information in your bug report:
 
 =over
@@ -11349,7 +11435,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2009-2017 Percona LLC and/or its affiliates.
+This program is copyright 2009-2018 Percona LLC and/or its affiliates.
 Feedback and improvements are welcome.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -11368,6 +11454,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-upgrade 3.0.5
+pt-upgrade 3.4.0
 
 =cut

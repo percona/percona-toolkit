@@ -11,7 +11,6 @@ import (
 )
 
 func TestReadConfig(t *testing.T) {
-
 	rootPath, err := tutil.RootPath()
 	if err != nil {
 		t.Errorf("cannot get root path: %s", err)
@@ -69,7 +68,6 @@ func TestReadConfig(t *testing.T) {
 }
 
 func TestOverrideConfig(t *testing.T) {
-
 	rootPath, err := tutil.RootPath()
 	if err != nil {
 		t.Errorf("cannot get root path: %s", err)
@@ -131,7 +129,6 @@ func TestOverrideConfig(t *testing.T) {
 }
 
 func TestDefaultFiles(t *testing.T) {
-
 	user, _ := user.Current()
 	toolname := "pt-testing"
 
@@ -150,5 +147,4 @@ func TestDefaultFiles(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got %#v\nwant: %#v\n", got, want)
 	}
-
 }

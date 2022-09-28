@@ -27,6 +27,13 @@ else {
    plan tests => 3;
 }
 
+# This table is being used by some other tests and it is not being properly cleaned
+# so this tests fails sometimes. Just in case, clean the table but don't fail if the
+# table doesn't exists.
+eval {
+    $dbh->do("TRUNCATE TABLE percona_test.load_data");
+};
+
 $sb->load_file('master', 't/lib/samples/issue_pt-193_backtick_in_col_comments.sql');
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -49,7 +56,7 @@ is(
    $exit_status,
    0,
    "PT-193 use single backtick in comments",
-);
+) or diag($output);
 
 like(
     $output,

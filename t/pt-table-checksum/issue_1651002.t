@@ -38,7 +38,12 @@ my $output;
 # After that, stop replication, delete the user from the master just to ensure that
 # on the master we are using the sandbox user, and start relication again to run
 # the tests
-$sb->do_as_root("slave1", q/GRANT REPLICATION CLIENT ON *.* TO 'slave_user'@'localhost' IDENTIFIED BY 'slave_password'/);
+if ($sandbox_version ge '8.0') {
+    $sb->do_as_root("slave1", q/CREATE USER 'slave_user'@'localhost' IDENTIFIED WITH mysql_native_password BY 'slave_password'/);
+} else {
+    $sb->do_as_root("slave1", q/CREATE USER 'slave_user'@'localhost' IDENTIFIED BY 'slave_password'/);
+}
+$sb->do_as_root("slave1", q/GRANT REPLICATION CLIENT ON *.* TO 'slave_user'@'localhost'/);
 $sb->do_as_root("slave1", q/GRANT ALL ON *.* TO 'slave_user'@'localhost'/);                
 $sb->do_as_root("slave1", q/FLUSH PRIVILEGES/);                
 

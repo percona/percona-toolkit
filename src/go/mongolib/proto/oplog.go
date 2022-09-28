@@ -3,7 +3,8 @@ package proto
 import (
 	"time"
 
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type OplogEntry struct {
@@ -19,7 +20,7 @@ type OplogInfo struct {
 	Hostname      string
 	Size          int64
 	UsedMB        int64
-	TimeDiff      int64
+	TimeDiff      time.Duration
 	TimeDiffHours float64
 	Running       string // TimeDiffHours in human readable format
 	TFirst        time.Time
@@ -33,21 +34,23 @@ type OpLogs []OplogInfo
 func (s OpLogs) Len() int {
 	return len(s)
 }
+
 func (s OpLogs) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
+
 func (s OpLogs) Less(i, j int) bool {
 	return s[i].TimeDiffHours < s[j].TimeDiffHours
 }
 
 type OplogRow struct {
-	Timestamp int64  `bson:"ts,omitempty"`
-	HistoryId int64  `bson:"h,omitempty"`
-	Version   int64  `bson:"v,omitempty"`
-	Operation string `bson:"op,omitempty"`
-	Namespace string `bson:"ns,omitempty"`
-	Object    bson.D `bson:"o,omitempty"`
-	Query     bson.D `bson:"o2,omitempty"`
+	Timestamp primitive.Timestamp `bson:"ts,omitempty"`
+	HistoryId int64               `bson:"h,omitempty"`
+	Version   int64               `bson:"v,omitempty"`
+	Operation string              `bson:"op,omitempty"`
+	Namespace string              `bson:"ns,omitempty"`
+	Object    bson.D              `bson:"o,omitempty"`
+	Query     bson.D              `bson:"o2,omitempty"`
 }
 
 type OplogColStats struct {
@@ -61,7 +64,7 @@ type OplogColStats struct {
 	MaxSize           int64
 	IndexSizes        bson.M
 	GleStats          struct {
-		LastOpTime int64
+		LastOpTime time.Time
 		ElectionId string
 	} `bson:"$gleStats"`
 	StorageSize    int64

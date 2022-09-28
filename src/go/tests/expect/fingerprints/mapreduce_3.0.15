@@ -1,0 +1,8 @@
+{
+  "Namespace": "test.coll",
+  "Operation": "MAPREDUCE",
+  "Collection": "coll",
+  "Database": "test",
+  "Keys": "a",
+  "Fingerprint": "MAPREDUCE coll a"
+}

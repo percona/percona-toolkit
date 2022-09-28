@@ -56,7 +56,7 @@ unlike(
 
 like(
    $output,
-   qr/^\S+\s+0\s+0\s+1\s+1\s+/m,
+   qr/^\S+\s+0\s+0\s+1\s+0\s+1\s+/m,
    'Checksums the table (issue 388)'
 );
 

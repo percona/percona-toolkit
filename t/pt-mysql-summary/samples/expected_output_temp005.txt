@@ -228,6 +228,8 @@ Uptime                                    90000           1           1
 # Security ###################################################
                     Users | 2 users, 0 anon, 0 w/o pw, 0 old pw
             Old Passwords | OFF
+# Encryption #################################################
+No keyring plugins found
 # Binary Logging #############################################
                   Binlogs | 1
                Zero-Sized | 0

@@ -184,9 +184,9 @@ $output = output(
 
 chomp($output);
 
-is(
+like(
    $output,
-   '',
+   qr/Starting checksum/,
    "Bug 1074179: ignore-tables-regex works with --replicate-check-only"
 );
 # #############################################################################

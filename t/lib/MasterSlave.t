@@ -326,12 +326,16 @@ like($EVAL_ERROR, qr/has no connected slaves/, 'slave 1 is not slave of slave 2'
 map { $ms->stop_slave($_) } @slaves;
 map { $ms->start_slave($_) } @slaves;
 
+# Give the slaves so time to restart
+sleep(5);
+
 my $res;
 $res = $ms->wait_for_master(
    master_status => $ms->get_master_status($dbh),
    slave_dbh     => $slaves[0],
-   timeout       => 1,
+   timeout       => 10,
 );
+
 ok($res->{result} >= 0, 'Wait was successful');
 
 $ms->stop_slave($slaves[0]);
@@ -863,6 +867,33 @@ SKIP: {
 
    $sb->stop_sandbox(qw(chan_master1 chan_master2 chan_slave1));
 }
+
+my $connected_slaves = [
+  {
+    command => 'Binlog Dump',
+    db => undef,
+    host => '2001:db8:1::242:ac11:3:53902',
+    id => 7,
+    info => undef,
+    rows_examined => 0,
+    rows_sent => 0,
+    state => 'Master has sent all binlog to slave; waiting for more updates',
+    time => 80,
+    user => 'root'
+  },
+];
+
+my @g = $ms->_process_slaves_list ($dp, $dsn, $connected_slaves);
+is (
+    scalar @g,
+    1,
+    "1 slave (IPv6) detected",
+);
+is (
+    $g[0]->{h},
+    "[2001:db8:1::242:ac11:3]",
+    "Brackets were added to IPv6 detected slave host",
+);
 # #############################################################################
 # Done.
 # #############################################################################

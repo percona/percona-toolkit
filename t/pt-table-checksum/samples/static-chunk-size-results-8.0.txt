@@ -1,0 +1,22 @@
+if all tables be checksummed 
+checksum ...    
+ERRORS DIFFS ROWS CHUNKS SKIPPED TABLE
+0 0 27 1 0 percona_test.checksums
+0 0 1 1 0 percona_test.sentinel
+0 0 200 1 0 sakila.actor
+0 0 603 1 0 sakila.address
+0 0 16 1 0 sakila.category
+0 0 600 1 0 sakila.city
+0 0 109 1 0 sakila.country
+0 0 599 1 0 sakila.customer
+0 0 1000 1 0 sakila.film
+0 0 5462 8 0 sakila.film_actor
+0 0 1000 1 0 sakila.film_category
+0 0 1000 1 0 sakila.film_text
+0 0 4581 7 0 sakila.inventory
+0 0 6 1 0 sakila.language
+0 0 16049 19 0 sakila.payment
+0 0 16044 19 0 sakila.rental
+0 0 2 1 0 sakila.staff
+0 0 2 1 0 sakila.store
+0 0 6 1 0 sys.sys_config

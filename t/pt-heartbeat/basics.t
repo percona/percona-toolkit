@@ -260,8 +260,17 @@ is(
 # --check-read-only
 # #############################################################################
 
-diag(`/tmp/12345/use -u root -e "GRANT ALL ON *.* TO 'bob'\@'%' IDENTIFIED BY 'msandbox'"`);
+if ($sandbox_version ge '8.0') {
+    diag(`/tmp/12345/use -u root -e "CREATE USER 'bob'\@'%' IDENTIFIED WITH mysql_native_password BY 'msandbox'"`);
+} else {
+    diag(`/tmp/12345/use -u root -e "CREATE USER 'bob'\@'%' IDENTIFIED BY 'msandbox'"`);
+}
+diag(`/tmp/12345/use -u root -e "GRANT ALL ON *.* TO 'bob'\@'%'"`);
 diag(`/tmp/12345/use -u root -e "REVOKE SUPER ON *.* FROM 'bob'\@'%'"`);
+if ($sandbox_version ge '8.0') {
+    diag(`/tmp/12345/use -u root -e "REVOKE CONNECTION_ADMIN ON *.* FROM 'bob'\@'%'"`);
+}
+diag(`/tmp/12345/use -u root -e "FLUSH PRIVILEGES"`);
 
 # Some subtlety here. 'bob' doesn't have enough privileges to change binlog_format
 # to STATEMENT if it's set to ROW, so the tool will fail with a different error 
@@ -282,7 +291,6 @@ $output = output(
 
 my $b = $ENV{PERCONA_TOOLKIT_BRANCH};
 $output = `perl $b/bin/pt-heartbeat -D test --interval 0.8 --update --replace --run-time 1 u=bob,F=/tmp/12346/my.sandbox.cnf 2>&1`;
-
 
 like(
    $output,
@@ -313,8 +321,8 @@ diag(`/tmp/12345/use -u root -e "DROP DATABASE test"`);
 # Done.
 # #############################################################################
 diag(`rm $pid_file $sent_file 2>/dev/null`);
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave1_dbh);
+# $sb->wipe_clean($master_dbh);
+# $sb->wipe_clean($slave1_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 
 done_testing;

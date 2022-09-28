@@ -1,0 +1,6570 @@
+TS 1520256297.002113337 2018-03-05 13:24:57
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 9
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 9
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 9
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 9
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 9
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 3
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 3
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 3
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 3
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 3
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755591
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870367
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635302
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 17
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4195
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893691
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 1
+        State: NULL
+         Info: SHOW ENGINE INNODB MUTEX
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 17. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 18. row ***************************
+           Id: 30893696
+         User: root
+         Host: bm-dell05-publicwww01.bm.int.percona.com:54746
+           db: percona_com_redesign2015
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 19. row ***************************
+           Id: 30893698
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256298.002189374 2018-03-05 13:24:58
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 10
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 10
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 10
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 10
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 10
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 4
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 4
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 4
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 4
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 4
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755592
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870368
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635303
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 18
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4196
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893705
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256299.003129623 2018-03-05 13:24:59
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 11
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 11
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 11
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 11
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 11
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 5
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 5
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 5
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 5
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 5
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755593
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870369
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635304
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 19
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4197
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893710
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 18. row ***************************
+           Id: 30893711
+         User: unauthenticated user
+         Host: localhost
+           db: NULL
+      Command: Connect
+         Time: NULL
+        State: Reading from net
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256300.004959584 2018-03-05 13:25:00
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 12
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 12
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 12
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 12
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 12
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 6
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 6
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 6
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 6
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 6
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755594
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870370
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635305
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 20
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4198
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893716
+         User: root
+         Host: bm-dell05-publicwww01.bm.int.percona.com:54747
+           db: percona_com_redesign2015
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 18. row ***************************
+           Id: 30893718
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 19. row ***************************
+           Id: 30893719
+         User: unauthenticated user
+         Host: localhost
+           db: NULL
+      Command: Connect
+         Time: NULL
+        State: Reading from net
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256301.003641351 2018-03-05 13:25:01
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 7
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 7
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 7
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 7
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 7
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755595
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870371
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635306
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 21
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4199
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893727
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 18. row ***************************
+           Id: 30893728
+         User: unauthenticated user
+         Host: localhost
+           db: NULL
+      Command: Connect
+         Time: NULL
+        State: Reading from net
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256302.003135612 2018-03-05 13:25:02
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755596
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870372
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635307
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 22
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4200
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893742
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256303.002412991 2018-03-05 13:25:03
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755597
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870373
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635308
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 23
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4201
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893749
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256304.002191920 2018-03-05 13:25:04
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Execute
+         Time: 1
+        State: Sending data
+         Info: SELECT c.country_iso_code FROM geoip g JOIN countries c ON c.geoname_id = g.geoname_id WHERE 873842127 BETWEEN g.network_start_integer AND g.network_last_integer
+    Rows_sent: 1
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Prepare
+         Time: 0
+        State: NULL
+         Info: INSERT INTO ClientResponse (ts, tool_name, ip) VALUES (?, ?, ?)
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Execute
+         Time: 0
+        State: Sending data
+         Info: SELECT c.country_iso_code FROM geoip g JOIN countries c ON c.geoname_id = g.geoname_id WHERE 1076294032 BETWEEN g.network_start_integer AND g.network_last_integer
+    Rows_sent: 1
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Execute
+         Time: 1
+        State: Sending data
+         Info: SELECT c.country_iso_code FROM geoip g JOIN countries c ON c.geoname_id = g.geoname_id WHERE 873842127 BETWEEN g.network_start_integer AND g.network_last_integer
+    Rows_sent: 1
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Execute
+         Time: 1
+        State: Sending data
+         Info: SELECT c.country_iso_code FROM geoip g JOIN countries c ON c.geoname_id = g.geoname_id WHERE 873842127 BETWEEN g.network_start_integer AND g.network_last_integer
+    Rows_sent: 1
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755598
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870374
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635309
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 24
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4202
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893761
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 18. row ***************************
+           Id: 30893762
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256305.006965913 2018-03-05 13:25:05
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755599
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870375
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635310
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 25
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4203
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893768
+         User: cod7_user
+         Host: bm-dell05-publicwww01.bm.int.percona.com:54754
+           db: cod7_pl17
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 1
+Rows_examined: 1
+    Rows_read: 1
+*************************** 18. row ***************************
+           Id: 30893769
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256306.003878627 2018-03-05 13:25:06
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755600
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870376
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635311
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 26
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4204
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893785
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 18. row ***************************
+           Id: 30893786
+         User: unauthenticated user
+         Host: localhost
+           db: NULL
+      Command: Connect
+         Time: NULL
+        State: Reading from net
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 19. row ***************************
+           Id: 30893787
+         User: unauthenticated user
+         Host: localhost
+           db: NULL
+      Command: Connect
+         Time: NULL
+        State: Reading from net
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256307.002854457 2018-03-05 13:25:07
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755601
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870377
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635312
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 27
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4205
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893794
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256308.002396440 2018-03-05 13:25:08
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755602
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870378
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635313
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 28
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4206
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893803
+         User: unauthenticated user
+         Host: localhost
+           db: NULL
+      Command: Connect
+         Time: NULL
+        State: Reading from net
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 18. row ***************************
+           Id: 30893805
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256309.002873406 2018-03-05 13:25:09
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755603
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870379
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635314
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 29
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4207
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893811
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 18. row ***************************
+           Id: 30893812
+         User: unauthenticated user
+         Host: localhost
+           db: NULL
+      Command: Connect
+         Time: NULL
+        State: Reading from net
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256310.002969644 2018-03-05 13:25:10
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755604
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870380
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635315
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 30
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4208
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893819
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 18. row ***************************
+           Id: 30893820
+         User: unauthenticated user
+         Host: localhost
+           db: NULL
+      Command: Connect
+         Time: NULL
+        State: Reading from net
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256311.004907819 2018-03-05 13:25:11
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755605
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870381
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635316
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4209
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893828
+         User: unauthenticated user
+         Host: localhost
+           db: NULL
+      Command: Connect
+         Time: NULL
+        State: Reading from net
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 18. row ***************************
+           Id: 30893829
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: Opening tables
+         Info: SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_TRX ORDER BY trx_id
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 19. row ***************************
+           Id: 30893830
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256312.003738582 2018-03-05 13:25:12
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Prepare
+         Time: 0
+        State: NULL
+         Info: INSERT INTO ClientSoftwareVersion (client_response_id, software_item_id, version, client_instance_id) VALUES (?, ?, ?, ?)
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755606
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870382
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635317
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4210
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893839
+         User: forums
+         Host: bm-dell02-forums.bm.int.percona.com:41873
+           db: percona_vbulletin
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 18. row ***************************
+           Id: 30893843
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 19. row ***************************
+           Id: 30893844
+         User: unauthenticated user
+         Host: localhost
+           db: NULL
+      Command: Connect
+         Time: NULL
+        State: Reading from net
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256313.003023920 2018-03-05 13:25:13
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755607
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870383
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635318
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 3
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4211
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893858
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 18. row ***************************
+           Id: 30893859
+         User: unauthenticated user
+         Host: localhost
+           db: NULL
+      Command: Connect
+         Time: NULL
+        State: Reading from net
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 19. row ***************************
+           Id: 30893860
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256314.002657504 2018-03-05 13:25:14
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755608
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870384
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635319
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 4
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4212
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893866
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 18. row ***************************
+           Id: 30893867
+         User: unauthenticated user
+         Host: localhost
+           db: NULL
+      Command: Connect
+         Time: NULL
+        State: Reading from net
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256315.004403748 2018-03-05 13:25:15
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755609
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870385
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635320
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 5
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4213
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893874
+         User: percona_blog
+         Host: bm-dell02-mpblog.bm.int.percona.com:56928
+           db: mpb_recovered
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 18. row ***************************
+           Id: 30893875
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256316.002349491 2018-03-05 13:25:16
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755610
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870386
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635321
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 6
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4214
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893883
+         User: percona_blog
+         Host: bm-dell02-mpblog.bm.int.percona.com:56929
+           db: mpb_recovered
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 18. row ***************************
+           Id: 30893884
+         User: percona_blog
+         Host: bm-dell02-mpblog.bm.int.percona.com:56930
+           db: mpb_recovered
+      Command: Query
+         Time: 1
+        State: Sorting result
+         Info: SELECT SQL_CALC_FOUND_ROWS  wp_posts.ID FROM wp_posts  WHERE 1=1  AND (((wp_posts.post_title LIKE '%master%') OR (wp_posts.post_excerpt LIKE '%master%') OR (wp_posts.post_content LIKE '%master%')) AND ((wp_posts.post_title LIKE '%slave%') OR (wp_posts.post_excerpt LIKE '%slave%') OR (wp_posts.post_content LIKE '%slave%')))  AND (wp_posts.post_password = '')  AND wp_posts.post_type IN ('post', 'page', 'attachment', 'spucpt') AND (wp_posts.post_status = 'publish')  ORDER BY (CASE WHEN wp_posts.post_title LIKE '%master slave%' THEN 1 WHEN wp_posts.post_title LIKE '%master%' AND wp_posts.post_title LIKE '%slave%' THEN 2 WHEN wp_posts.post_title LIKE '%master%' OR wp_posts.post_title LIKE '%slave%' THEN 3 WHEN wp_posts.post_excerpt LIKE '%master slave%' THEN 4 WHEN wp_posts.post_content LIKE '%master slave%' THEN 5 ELSE 6 END), wp_posts.post_date DESC LIMIT 0, 10
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 19. row ***************************
+           Id: 30893886
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: Writing to net
+         Info: select @@version_comment limit 1
+    Rows_sent: 1
+Rows_examined: 0
+    Rows_read: 0
+*************************** 20. row ***************************
+           Id: 30893887
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256317.003991143 2018-03-05 13:25:17
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755611
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870387
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635322
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 7
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4215
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893895
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256318.003900923 2018-03-05 13:25:18
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755612
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870388
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635323
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 8
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4216
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893903
+         User: forums
+         Host: bm-dell02-forums.bm.int.percona.com:41877
+           db: percona_vbulletin
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 18. row ***************************
+           Id: 30893904
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 19. row ***************************
+           Id: 30893905
+         User: unauthenticated user
+         Host: localhost
+           db: NULL
+      Command: Connect
+         Time: NULL
+        State: Reading from net
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256319.003736454 2018-03-05 13:25:19
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 3
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 3
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 3
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 3
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 3
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 3
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 3
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 3
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 3
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 3
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755613
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870389
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635324
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 9
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4217
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893916
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 18. row ***************************
+           Id: 30893917
+         User: unauthenticated user
+         Host: localhost
+           db: NULL
+      Command: Connect
+         Time: NULL
+        State: Reading from net
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256320.002856353 2018-03-05 13:25:20
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 4
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 4
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 4
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 4
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 4
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755614
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870390
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635325
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 10
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4218
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893931
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 18. row ***************************
+           Id: 30893932
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256321.002564115 2018-03-05 13:25:21
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 5
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 5
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 5
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 5
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 5
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755615
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870391
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635326
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 11
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4219
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893938
+         User: root
+         Host: bm-dell05-publicwww01.bm.int.percona.com:54784
+           db: percona_com_redesign2015
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 18. row ***************************
+           Id: 30893941
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256322.005188192 2018-03-05 13:25:22
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 6
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 6
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 6
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 6
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 6
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755616
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870392
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635327
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 12
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4220
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893948
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 18. row ***************************
+           Id: 30893949
+         User: unauthenticated user
+         Host: localhost
+           db: NULL
+      Command: Connect
+         Time: NULL
+        State: Reading from net
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256323.002850748 2018-03-05 13:25:23
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 7
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 7
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 7
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 7
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 7
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755617
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870393
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635328
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 13
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4221
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893963
+         User: percona_blog
+         Host: bm-dell02-mpblog.bm.int.percona.com:56938
+           db: mpb_recovered
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 18. row ***************************
+           Id: 30893965
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 19. row ***************************
+           Id: 30893966
+         User: unauthenticated user
+         Host: localhost
+           db: NULL
+      Command: Connect
+         Time: NULL
+        State: Reading from net
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256324.006445755 2018-03-05 13:25:24
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 8
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 8
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 8
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 8
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 8
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755618
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870394
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635329
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 14
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4222
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893972
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 18. row ***************************
+           Id: 30893973
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 19. row ***************************
+           Id: 30893974
+         User: unauthenticated user
+         Host: localhost
+           db: NULL
+      Command: Connect
+         Time: NULL
+        State: Reading from net
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256325.003934683 2018-03-05 13:25:25
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 2
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 9
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 9
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 9
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 9
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 9
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755619
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870395
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635330
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 15
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4223
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893693
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 1
+        State: 
+         Info: NULL
+    Rows_sent: 376
+Rows_examined: 376
+    Rows_read: 376
+*************************** 17. row ***************************
+           Id: 30893981
+         User: unauthenticated user
+         Host: localhost
+           db: NULL
+      Command: Connect
+         Time: NULL
+        State: Reading from net
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 18. row ***************************
+           Id: 30893982
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 19. row ***************************
+           Id: 30893983
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Sleep
+         Time: 0
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+TS 1520256326.003924709 2018-03-05 13:25:26
+*************************** 1. row ***************************
+           Id: 689004
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48542
+           db: version_check
+      Command: Sleep
+         Time: 3
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 2. row ***************************
+           Id: 689006
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48554
+           db: version_check
+      Command: Sleep
+         Time: 3
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 3. row ***************************
+           Id: 689008
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48556
+           db: version_check
+      Command: Sleep
+         Time: 3
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 4. row ***************************
+           Id: 689009
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48560
+           db: version_check
+      Command: Sleep
+         Time: 3
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 5. row ***************************
+           Id: 689010
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:48568
+           db: version_check
+      Command: Sleep
+         Time: 3
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 6. row ***************************
+           Id: 5922000
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56496
+           db: version_check
+      Command: Sleep
+         Time: 10
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 7. row ***************************
+           Id: 5922013
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:56572
+           db: version_check
+      Command: Sleep
+         Time: 10
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 8. row ***************************
+           Id: 5922912
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:33502
+           db: version_check
+      Command: Sleep
+         Time: 10
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 9. row ***************************
+           Id: 5923112
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34612
+           db: version_check
+      Command: Sleep
+         Time: 10
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 10. row ***************************
+           Id: 5923113
+         User: version_check
+         Host: www-docker01.bm.int.percona.com:34626
+           db: version_check
+      Command: Sleep
+         Time: 10
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 11. row ***************************
+           Id: 25209846
+         User: repl
+         Host: it-db05.bm.int.percona.com:50538
+           db: NULL
+      Command: Binlog Dump
+         Time: 1755620
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 12. row ***************************
+           Id: 28139333
+         User: repl
+         Host: it-db04.bm.int.percona.com:34178
+           db: NULL
+      Command: Binlog Dump
+         Time: 870396
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 13. row ***************************
+           Id: 28851790
+         User: repl
+         Host: 10.10.9.152:43630
+           db: NULL
+      Command: Binlog Dump
+         Time: 635331
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 14. row ***************************
+           Id: 30741296
+         User: rdba
+         Host: 10.10.9.10:51792
+           db: NULL
+      Command: Sleep
+         Time: 16
+        State: 
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 15. row ***************************
+           Id: 30878805
+         User: rdba
+         Host: 10.10.9.152:45277
+           db: NULL
+      Command: Binlog Dump
+         Time: 4224
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0
+*************************** 16. row ***************************
+           Id: 30893988
+         User: rdba
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 0

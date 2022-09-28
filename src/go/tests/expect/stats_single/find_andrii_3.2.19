@@ -1,0 +1,27 @@
+[
+  {
+    "ID": "02104210d67fe680273784d833f86831",
+    "Namespace": "test.coll",
+    "Operation": "FIND",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"query\",\"query\":{\"find\":\"coll\",\"filter\":{\"$and\":[{\"k\":{\"$gt\":1}},{\"k\":{\"$lt\":2}},{\"$or\":[{\"c\":{\"$in\":[\"/^0/\",\"/^2/\",\"/^4/\",\"/^6/\"]}},{\"pad\":{\"$in\":[\"/9$/\",\"/7$/\",\"/5$/\",\"/3$/\"]}}]}]},\"limit\":100,\"singleBatch\":false,\"sort\":{\"k\":-1}}}\n",
+    "Fingerprint": "FIND coll c,k,pad",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
+    "TableScan": false,
+    "Count": 1,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0
+    ],
+    "NScanned": [
+      0
+    ],
+    "QueryTime": [
+      42
+    ],
+    "ResponseLength": [
+      100
+    ]
+  }
+]

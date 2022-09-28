@@ -624,9 +624,10 @@ is_deeply(
    'Type and length of CRC32'
 );
 
+my $want = $sandbox_version ge '8.0' ? [qw(varchar 128)] : [qw(varchar 96)];
 is_deeply(
    [$c->get_crc_type($dbh, 'MD5')],
-   [qw(varchar 32)],
+   $want,
    'Type and length of MD5'
 );
 

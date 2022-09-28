@@ -20,12 +20,15 @@ use Sandbox;
 use SqlModes;
 use File::Temp qw/ tempdir /;
 
-plan tests => 2;
 
 require "$trunk/bin/pt-online-schema-change";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+
+if ($sandbox_version ge '8.0') {
+    plan skip_all => 'PXC 8 does not exist yet';
+}
 
 our ($master_dbh, $master_dsn) = $sb->start_sandbox(
    server => 'master',
@@ -37,6 +40,8 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 
+plan tests => 2;
+
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the
 # tool will die.
@@ -46,6 +51,11 @@ my $exit_status;
 my $sample  = "t/pt-online-schema-change/samples/";
 
 $sb->load_file('master', "$sample/issue-1646713.sql");
+my $num_rows = 1000;
+my $master_port = 12345;
+
+$master_dbh->do("FLUSH TABLES");
+$sb->wait_for_slaves();
 
 sub start_thread {
    my ($dsn_opts, $sleep_time) = @_;
@@ -53,13 +63,17 @@ sub start_thread {
    my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
    my $dbh = $sb->get_dbh_for('master');
    diag("Thread started: Sleeping $sleep_time seconds before updating the PK field for row with id=1 in test.sbtest");
-   sleep($sleep_time);
+   # We need to lock the tables to prevent osc to really start before we are able to write the row to the table
+   $dbh->do("LOCK TABLES `test`.`o1` WRITE");
+   select(undef, undef, undef, $sleep_time);
    $dbh->do("UPDATE `test`.`o1` SET id=0 WHERE id=1");
+   $dbh->do("UNLOCK TABLES");
    diag("Row updated");
 }
-my $thr = threads->create('start_thread', $dsn_opts, 1);
+my $thr = threads->create('start_thread', $dsn_opts, 0.50);
 $thr->detach();
 threads->yield();
+
 
 diag("Starting osc. A row will be updated in a different thread.");
 my $dir = tempdir( CLEANUP => 1 );
@@ -71,6 +85,7 @@ $output = output(
          ),
       },
 );
+diag($output);
 
 like(
       $output,

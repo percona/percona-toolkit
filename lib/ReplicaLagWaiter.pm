@@ -40,7 +40,7 @@ use Data::Dumper;
 #   slaves  - Arrayref of <Cxn> objects
 #
 # Returns:
-#   ReplicaLagWaiter object 
+#   ReplicaLagWaiter object
 sub new {
    my ( $class, %args ) = @_;
    my @required_args = qw(oktorun get_lag sleep max_lag slaves);
@@ -80,6 +80,26 @@ sub wait {
    my $worst;  # most lagging slave
    my $pr_callback;
    my $pr_first_report;
+
+   ### refresh list of slaves. In: self passed to wait()
+   ### Returns: new slave list
+   my $pr_refresh_slave_list = sub {
+      my ($self) = @_;
+      my ($slaves, $refresher) = ($self->{slaves}, $self->{get_slaves_cb});
+      return $slaves if ( not defined $refresher );
+      my $before = join ' ', sort map {$_->name()} @$slaves;
+      $slaves = $refresher->();
+      my $after = join ' ', sort map {$_->name()} @$slaves;
+      if ($before ne $after) {
+         $self->{slaves} = $slaves;
+         printf STDERR "Slave set to watch has changed\n  Was: %s\n  Now: %s\n",
+            $before, $after;
+      }
+      return($self->{slaves});
+   };
+
+   $slaves = $pr_refresh_slave_list->($self);
+
    if ( $pr ) {
       # If you use the default Progress report callback, you'll need to
       # to add Transformers.pm to this tool.
@@ -91,6 +111,9 @@ sub wait {
                . " seconds on $dsn_name.  Waiting.\n";
          }
          else {
+            if ($self->{fail_on_stopped_replication}) {
+                die 'replication is stopped';
+            }
             print STDERR "Replica $dsn_name is stopped.  Waiting.\n";
          }
          return;
@@ -103,6 +126,9 @@ sub wait {
       $pr_first_report = sub {
          my $dsn_name = $worst->{cxn}->name();
          if ( !defined $worst->{lag} ) {
+            if ($self->{fail_on_stopped_replication}) {
+                die 'replication is stopped';
+            }
             print STDERR "Replica $dsn_name is stopped.  Waiting.\n";
          }
          return;
@@ -110,11 +136,26 @@ sub wait {
    }
 
    # First check all slaves.
-   my @lagged_slaves = map { {cxn=>$_, lag=>undef} } @$slaves;  
+   my @lagged_slaves = map { {cxn=>$_, lag=>undef} } @$slaves;
    while ( $oktorun->() && @lagged_slaves ) {
       PTDEBUG && _d('Checking slave lag');
+
+      ### while we were waiting our list of slaves may have changed
+      $slaves = $pr_refresh_slave_list->($self);
+      my $watched = 0;
+      @lagged_slaves = grep {
+         my $slave_name = $_->{cxn}->name();
+         grep {$slave_name eq $_->name()} @{$slaves // []}
+                            } @lagged_slaves;
+
       for my $i ( 0..$#lagged_slaves ) {
-         my $lag = $get_lag->($lagged_slaves[$i]->{cxn});
+         my $lag;
+         eval {
+             $lag = $get_lag->($lagged_slaves[$i]->{cxn});
+         };
+         if ($EVAL_ERROR) {
+             die $EVAL_ERROR;
+         }
          PTDEBUG && _d($lagged_slaves[$i]->{cxn}->name(),
             'slave lag:', $lag);
          if ( !defined $lag || $lag > $max_lag ) {

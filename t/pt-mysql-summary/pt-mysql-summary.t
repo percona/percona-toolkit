@@ -9,15 +9,36 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-
 use PerconaTest;
-
-my ($tool) = $PROGRAM_NAME =~ m/([\w-]+)\.t$/;
-
+use Sandbox;
+use DSNParser;
+require VersionParser;
 use Test::More;
 use File::Temp qw( tempdir );
 
 local $ENV{PTDEBUG} = "";
+
+my $dp         = new DSNParser(opts=>$dsn_opts);
+my $sb         = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $master_dbh = $sb->get_dbh_for('master');
+my $has_keyring_plugin;
+
+my $db_flavor = VersionParser->new($master_dbh)->flavor();
+if ( $db_flavor =~ m/Percona Server/ ) {
+    my $rows = $master_dbh->selectall_hashref("SHOW PLUGINS", "name");
+    while (my ($key, $values) = each %$rows) {
+        if ($key =~ m/^keyring_/) {
+            $has_keyring_plugin=1;
+            last;
+        }
+    }
+}
+
+if ($has_keyring_plugin) {
+    plan skip_all => 'Keyring plugins are enabled.';
+}
+
+my ($tool) = $PROGRAM_NAME =~ m/([\w-]+)\.t$/;
 
 # mysqldump from earlier versions doesn't seem to work with 5.6,
 # so use the actual mysqldump from each MySQL bin which should
@@ -42,7 +63,7 @@ ok(
 my @files = glob("$dir/*");
 my $n_files = scalar @files;
 ok(
-   $n_files >= 15 && $n_files <= 16,
+   $n_files >= 15 && $n_files <= 18,
    "And leaves all files in there"
 ) or diag($n_files, `ls -l $dir`);
 
@@ -66,6 +87,15 @@ like(
    "InnoDB section present"
 );
 
+my $users_count = 2;
+if ($ENV{FORK} || "" eq 'mariadb') {
+    $users_count = 8;
+}
+like(
+   $out,
+   qr/Users \| $users_count/,
+   "Security works"
+);
 
 # --read-samples
 for my $i (2..7) {

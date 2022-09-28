@@ -1,0 +1,28 @@
+.. _PT-3.2.1:
+
+================================================================================
+*Percona Toolkit* 3.2.1
+================================================================================
+
+:Date: August 13, 2020
+:Installation: `Installing Percona Toolkit <https://www.percona.com/doc/percona-toolkit/LATEST/installation.html>`_
+
+Improvements
+================================================================================
+
+* :jirabug:`PT-1836`: Review and consider lintian reported issues (Thanks to user midget for reporting this issue)
+
+
+
+Bugs Fixed
+================================================================================
+
+* :jirabug:`PT-1853`: Added --no-check-foreign-keys to pt-osc
+* :jirabug:`PT-1869`: pt-osc dynamically update slave list on check slaves (Thanks to user mateus.dubiela for reporting this issue)
+* :jirabug:`PT-1829`: pt-heartbeat doesn't reconnect for check-read-only
+* :jirabug:`PT-1822`: pt-mongodb-summary fails on standalone mongodb instances
+* :jirabug:`PT-1851`: Backslashes missing from documentation (Thanks to user billkarwin for reporting this issue)
+* :jirabug:`PT-1518`: pt-table-checksum gives error CRC32 never needs BIT_XOR optimization (Thanks to user soumya_s_das@homedepot.com for reporting this issue)
+* :jirabug:`PT-1859`: pt-pg-summary fails for Postgres12
+
+

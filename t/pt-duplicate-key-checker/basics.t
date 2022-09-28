@@ -140,10 +140,11 @@ ok(
 
 $sb->load_file('master', 't/lib/samples/dupekeys/simple_dupe_bug_1217013.sql', 'test');
 
+my $want = $sandbox_version lt '8.0' ? "$sample/simple_dupe_bug_1217013.txt" : "$sample/simple_dupe_bug_1217013_80.txt";
 ok(
    no_diff(
       sub { pt_duplicate_key_checker::main(@args, qw(-t test.domains -v)) },
-      "$sample/simple_dupe_bug_1217013.txt"),
+      $want),
    'Exact unique dupes (bug 1217013)'
 ) or diag($test_diff);
 
@@ -152,10 +153,11 @@ ok(
 # https://bugs.launchpad.net/percona-toolkit/+bug/1402730
 # #############################################################################
 
+$want = $sandbox_version lt '8.0' ? "$sample/simple_dupe_bug_1402730.txt" : "$sample/simple_dupe_bug_1402730_80.txt";
 ok(
    no_diff(
       sub { pt_duplicate_key_checker::main(@args, qw(-t test.domains --verbose)) },
-      "$sample/simple_dupe_bug_1217013.txt", keep_output=>1),
+      "$want", keep_output=>1),
    q[--verbose option doesn't skip dupes reporting (bug 1402730)]
 ) or diag($test_diff);
 

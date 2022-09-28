@@ -323,7 +323,7 @@ _eval_po() {
             *)
                echo "Invalid attribute in $opt_spec: $line" >&2
                exit 1
-         esac 
+         esac
       done < "$opt_spec"
 
       if [ -z "$opt" ]; then
@@ -447,7 +447,6 @@ _parse_command_line() {
          else
             spec=$(grep "^short form:-$opt\$" "$PT_TMPDIR"/po/* | cut -d ':' -f 1)
             if [ -z "$spec"  ]; then
-               option_error "Unknown option: $real_opt"
                continue
             fi
          fi
@@ -463,7 +462,7 @@ _parse_command_line() {
             if [ "$val" ]; then
                option_error "Option $real_opt does not take a value"
                continue
-            fi 
+            fi
             if [ "$opt_is_negated" ]; then
                val=""
             else
@@ -622,7 +621,7 @@ aggregate_stacktrace() {
          else {
             fname = targ;
             if ( tfile ~ /^\// ) {
-               last=split(tfile,filen,/\//); 
+               last=split(tfile,filen,/\//);
                fname = targ \"(\" filen[last] \")\";
             }
             else {
@@ -825,7 +824,7 @@ on the command line.
 
 For a list of known bugs, see L<http://www.percona.com/bugs/pt-pmp>.
 
-Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
+Please report bugs at L<https://jira.percona.com/projects/PT>.
 Include the following information in your bug report:
 
 =over
@@ -844,6 +843,11 @@ Include the following information in your bug report:
 
 If possible, include debugging output by running the tool with C<PTDEBUG>;
 see L<"ENVIRONMENT">.
+
+=head1 ATTENTION
+
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line 
+parameters are shown in the output.
 
 =head1 DOWNLOADING
 
@@ -878,7 +882,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2017 Percona LLC and/or its affiliates,
+This program is copyright 2011-2021 Percona LLC and/or its affiliates,
 2010-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -897,7 +901,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-pmp 3.0.5
+pt-pmp 3.4.0
 
 =cut
 

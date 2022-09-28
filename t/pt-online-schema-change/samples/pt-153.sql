@@ -2,11 +2,10 @@ DROP DATABASE IF EXISTS test;
 CREATE DATABASE test;
 USE test;
 CREATE TABLE test.t1 (
-id int,
+id int AUTO_INCREMENT PRIMARY KEY,
 f2 int, 
 f3 int NULL,
-f4 int,
-PRIMARY KEY (id)
+f4 int
 );
 
 INSERT INTO test.t1 VALUES

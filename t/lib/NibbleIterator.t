@@ -38,6 +38,8 @@ my $dbh = $sb->get_dbh_for('master');
 
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
+} else {
+    plan tests => 56;
 }
 
 my $q   = new Quoter();
@@ -65,6 +67,7 @@ my $in = "/t/lib/samples/NibbleIterator/";
 sub make_nibble_iter {
    my (%args) = @_;
 
+
    if (my $file = $args{sql_file}) {
       $sb->load_file('master', "$in/$file");
    }
@@ -83,18 +86,19 @@ sub make_nibble_iter {
    1 while $si->next();
 
    my $ni = new NibbleIterator(
-      Cxn         => $cxn,
-      tbl         => $schema->get_table(lc($args{db}), lc($args{tbl})),
-      chunk_size  => $o->get('chunk-size'),
-      chunk_index => $o->get('chunk-index'),
-      callbacks   => $args{callbacks},
-      select      => $args{select},
-      one_nibble  => $args{one_nibble},
-      resume      => $args{resume},
-      order_by    => $args{order_by},
-      comments    => $args{comments},
-      pause_file  => $o->get('pause-file'),
-      sleep       => $args{sleep} || 60,
+      Cxn                => $cxn,
+      tbl                => $schema->get_table(lc($args{db}), lc($args{tbl})),
+      chunk_size         => $o->get('chunk-size'),
+      chunk_index        => $o->get('chunk-index'),
+      callbacks          => $args{callbacks},
+      select             => $args{select},
+      one_nibble         => $args{one_nibble},
+      resume             => $args{resume},
+      order_by           => $args{order_by},
+      comments           => $args{comments},
+      n_chunk_index_cols => $o->get('chunk-index-columns'),
+      pause_file         => $o->get('pause-file'),
+      sleep              => $args{sleep} || 60,
       %common_modules,
    );
 
@@ -879,7 +883,7 @@ is_deeply(
 # #############################################################################
 
 diag(`/tmp/12345/use < $trunk/t/lib/samples/cardinality.sql >/dev/null`);
-
+$dbh->do('analyze table bad_tables.inv');
 $ni = make_nibble_iter(
    db   => 'cardb',
    tbl  => 't',
@@ -900,11 +904,15 @@ is(
    open STDERR, '>', \$output;
    $ni->_d('Complete test coverage');
 }
+
 like(
    $output,
    qr/Complete test coverage/,
    '_d() works'
 );
+
+$dbh->do("DROP DATABASE test");
+
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

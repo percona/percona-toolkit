@@ -1,5 +1,5 @@
 
-# Query 1: 0.05 QPS, 0.00x concurrency, ID 0xA20C29AF174CE545 at byte 1833
+# Query 1: 0.05 QPS, 0.00x concurrency, ID 0x538CA093E701E0CBA20C29AF174CE545 at byte 1833
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: 2007-12-18 11:48:27 to 11:49:30
@@ -31,7 +31,7 @@
 # EXPLAIN /*!50100 PARTITIONS*/
 SELECT col FROM foo_tbl\G
 
-# Query 2: 0.30 QPS, 0.00x concurrency, ID 0xD4CD74934382A184 at byte 1469
+# Query 2: 0.30 QPS, 0.00x concurrency, ID 0x3E4FB43148C4B07CD4CD74934382A184 at byte 1469
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: 2007-12-18 11:48:57 to 11:49:07

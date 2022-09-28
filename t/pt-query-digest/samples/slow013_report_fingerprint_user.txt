@@ -13,7 +13,7 @@
 # Report grouped by fingerprint
 # ########################################################################
 
-# Query 1: 0 QPS, 0x concurrency, ID 0x31DA25F95494CA95 at byte 174 ______
+# Query 1: 0 QPS, 0x concurrency, ID 0xF9734574CDDDC5D231DA25F95494CA95 at byte 174
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2008-11-27 08:51:20
@@ -44,7 +44,7 @@ SHOW STATUS\G
 # Report grouped by user
 # ########################################################################
 
-# Item 1: 2 QPS, 0.15x concurrency, ID 0x4F1658C9B243995F at byte 174 ____
+# Item 1: 2 QPS, 0.15x concurrency, ID 0x628E12FCDECDAA2D4F1658C9B243995F at byte 174
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.15
 # Time range: 2008-11-27 08:51:20 to 08:51:21

@@ -1,8 +1,9 @@
-#!/bin/sh
+#!/bin/bash
+TMP_DIR=${TMP_DIR:-/tmp}
 
 # This script starts a Percona Toolkit sandbox sever.  sandbox/test-env
 # uses it, and many tests use it to create special, temporary sandbox
-# servers.  The actual startup is done by /tmp/PORT/start, which this
+# servers.  The actual startup is done by ${TMP_DIR}/PORT/start, which this
 # script calls after doing a bunch of sanity checks.
 #
 # Exit 0 if the sandbox server started ok, else 1 and debug_sandbox()
@@ -10,211 +11,280 @@
 # server might have been in.
 
 die() {
-   echo $1 >&2
-   exit 1
+    echo $1 >&2
+    exit 1
 }
 
 debug_sandbox() {
-   set -x
-   local port="$1"
-   ps x | grep mysql >&2
-   if [ -d "/tmp/$port" ]; then
-      ls -lh /tmp/$port/* >&2
-      cat /tmp/$port/data/mysqld.log >&2
-      tail -n 100 /tmp/$port/data/genlog >&2
-   else
-      echo "/tmp/$port does not exist" >&2
-   fi
+    set -x
+    local port="$1"
+    ps x | grep mysql >&2
+    if [ -d "${TMP_DIR}/$port" ]; then
+        ls -lh ${TMP_DIR}/$port/* >&2
+        cat ${TMP_DIR}/$port/data/mysqld.log >&2
+        tail -n 100 ${TMP_DIR}/$port/data/genlog >&2
+    else
+        echo "${TMP_DIR}/$port does not exist" >&2
+    fi
 }
 
 mysql_upgrade_on() {
-   local cnf_file="$1"
-   local upgrade="$PERCONA_TOOLKIT_SANDBOX/bin/mysql_upgrade"
+    local cnf_file="$1"
+    local upgrade="$PERCONA_TOOLKIT_SANDBOX/bin/mysql_upgrade"
 
-   $upgrade --defaults-file=$cnf_file --skip-write-binlog
+    $upgrade --defaults-file=$cnf_file --skip-write-binlog
 }
 
 make_sandbox() {
-   # Make the sandbox dir and extract the base files.
-   rm -rf /tmp/$port || die "Failed to rm /tmp/$port"
-   mkdir /tmp/$port  || die "Failed to mkdir /tmp/$port"
-   cp $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/my.sandbox.cnf /tmp/$port
-   if [ -e $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/data.tar.gz ]; then
-      tar xzf $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/data.tar.gz -C /tmp/$port
-   fi
+    # Make the sandbox dir and extract the base files.
+    rm -rf ${TMP_DIR}/$port || die "Failed to rm ${TMP_DIR}/$port"
+    mkdir ${TMP_DIR}/$port  || die "Failed to mkdir ${TMP_DIR}/$port"
+    local generating_database=0
 
-   for script in "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/"*; do
-      if [ -f $script ]; then
-        cp $script /tmp/$port
-      fi
-   done
+    cp $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/my.sandbox.cnf ${TMP_DIR}/$port
+    if [ -e $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/data.tar.gz ]; then
+        tar xzf $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/data.tar.gz -C ${TMP_DIR}/$port
+    else
+        generating_database=1
+    fi
 
-   if [ "${type}" = "cluster" ]; then
-      cp $PERCONA_TOOLKIT_BRANCH/sandbox/servers/pxc/$version/my.sandbox.cnf /tmp/$port
+    for script in "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/"*; do
+        if [ -f $script ]; then
+            cp $script ${TMP_DIR}/$port
+        fi
+    done
 
-      local libgalera="$PERCONA_TOOLKIT_SANDBOX/lib/libgalera_smm.so"
-      local cluster_name="${CLUSTER_NAME:-"pt_sandbox_cluster"}"
-      local cluster_address="gcomm://"
-      local listen_port=$(($port + 10))
-      local receive_port=$(($port + 20))
-      if [ -n "${master_port}" ]; then
-         local master_listen_port=$(($master_port + 10))
-         cluster_address="gcomm://$ip:$master_listen_port"
+    if [ "${type}" = "cluster" ]; then
+        cp $PERCONA_TOOLKIT_BRANCH/sandbox/servers/pxc/$version/my.sandbox.cnf ${TMP_DIR}/$port
 
-         local this_listen_port=$(($port + 10))
-         local this_cluster_address="gcomm://$ip:$this_listen_port"
-         sed -e "s!gcomm://\$!$this_cluster_address!g" -i.bak "/tmp/$master_port/my.sandbox.cnf"
-      fi
+        local libgalera="$PERCONA_TOOLKIT_SANDBOX/lib/libgalera_smm.so"
+        local cluster_name="${CLUSTER_NAME:-"pt_sandbox_cluster"}"
+        local cluster_address="gcomm://"
+        local listen_port=$(($port + 10))
+        local receive_port=$(($port + 20))
+        if [ -n "${master_port}" ]; then
+            local master_listen_port=$(($master_port + 10))
+            cluster_address="gcomm://$ip:$master_listen_port"
 
-      sed -e "s/ADDR/$ip/g" -i.bak "/tmp/$port/my.sandbox.cnf"
-      sed -e "s!CLUSTER_AD!$cluster_address!g" -i.bak "/tmp/$port/my.sandbox.cnf"
-      sed -e "s/CLUSTER_NAME/$cluster_name/g" -i.bak "/tmp/$port/my.sandbox.cnf"
-      sed -e "s/RECEIVE_PRT/$receive_port/g" -i.bak "/tmp/$port/my.sandbox.cnf"
-      sed -e "s/LISTEN_PRT/$listen_port/g" -i.bak "/tmp/$port/my.sandbox.cnf"
-      sed -e "s!LIBGALERA!$libgalera!g" -i.bak "/tmp/$port/my.sandbox.cnf"
-   fi
+            local this_listen_port=$(($port + 10))
+            local this_cluster_address="gcomm://$ip:$this_listen_port"
+            sed -e "s!gcomm://\$!$this_cluster_address!g" -i.bak "${TMP_DIR}/$master_port/my.sandbox.cnf"
+        fi
 
-   for file in `grep -l PORT /tmp/$port/* 2>/dev/null`; do
-      sed -e "s/PORT/$port/g" -i.bak $file
-      # Use ! instead of / because the replacment has / (it's a directory)
-      sed -e "s!PERCONA_TOOLKIT_SANDBOX!$PERCONA_TOOLKIT_SANDBOX!g" -i.bak $file
-      sed -e "s!MYSQLD!$mysqld!g" -i.bak $file
-   done
-   rm /tmp/$port/*.bak >/dev/null 2>&1
+        sed -e "s/ADDR/$ip/g" -i.bak "${TMP_DIR}/$port/my.sandbox.cnf"
+        sed -e "s!CLUSTER_AD!$cluster_address!g" -i.bak "${TMP_DIR}/$port/my.sandbox.cnf"
+        sed -e "s/CLUSTER_NAME/$cluster_name/g" -i.bak "${TMP_DIR}/$port/my.sandbox.cnf"
+        sed -e "s/RECEIVE_PRT/$receive_port/g" -i.bak "${TMP_DIR}/$port/my.sandbox.cnf"
+        sed -e "s/LISTEN_PRT/$listen_port/g" -i.bak "${TMP_DIR}/$port/my.sandbox.cnf"
+        sed -e "s!LIBGALERA!$libgalera!g" -i.bak "${TMP_DIR}/$port/my.sandbox.cnf"
+    fi
 
-   if [ -n "$BINLOG_FORMAT" ]; then
-      echo "binlog-format=$BINLOG_FORMAT" >> /tmp/$port/my.sandbox.cnf
-   fi
-   if [ -n "$SLAVE_EXEC_MODE" ]; then
-      echo "slave_exec_mode=$SLAVE_EXEC_MODE" >> /tmp/$port/my.sandbox.cnf
-   fi
-   if [ -n "$SQL_MODE" ]; then
-      echo "sql-mode=$SQL_MODE" >> /tmp/$port/my.sandbox.cnf
-   fi
-   if [ -n "$GENLOG" ]; then
-      echo "log=genlog" >> /tmp/$port/my.sandbox.cnf
-   fi
-   if [ -n "$SKIP_INNODB" ]; then
-      echo "skip-innodb" >> /tmp/$port/my.sandbox.cnf
-      echo "default-storage-engine=myisam" >> /tmp/$port/my.sandbox.cnf
-      if [ "$version" ">" "5.5" ]; then
-         echo "default-tmp-storage-engine=myisam" >> /tmp/$port/my.sandbox.cnf
-      fi
-   fi
-   if [ -n "$MODE_ANSI" ]; then
-      echo "sql_mode=ansi" >> /tmp/$port/my.sandbox.cnf
-   fi
-   if [ -n "$MULTIPLE_BUFFER_POOLS" ]; then
-      echo "innodb_buffer_pool_instances=$MULTIPLE_BUFFER_POOLS" >> /tmp/$port/my.sandbox.cnf
-   fi
-   if [ -n "$LOCAL_INFILE" ]; then
-      echo "local-infile=$LOCAL_INFILE" >> /tmp/$port/my.sandbox.cnf
-   fi
-   if [ -n "$QUERY_CACHE_SIZE" ]; then
-      echo "query_cache_type=1" >> /tmp/$port/my.sandbox.cnf
-      echo "query_cache_size=$QUERY_CACHE_SIZE" >> /tmp/$port/my.sandbox.cnf
-   fi
+    for file in `grep -l PORT ${TMP_DIR}/$port/* 2>/dev/null`; do
+        sed -e "s/PORT/$port/g" -i.bak $file
+        sed -e "s!TMP_DIR!$TMP_DIR!g" -i.bak $file
+        # Use ! instead of / because the replacment has / (it's a directory)
+        sed -e "s!PERCONA_TOOLKIT_SANDBOX!$PERCONA_TOOLKIT_SANDBOX!g" -i.bak $file
+        sed -e "s!MYSQLD!$mysqld!g" -i.bak $file
+    done
+    rm ${TMP_DIR}/$port/*.bak >/dev/null 2>&1
 
-   if [ -n "$GTID" ]; then
-      echo "gtid_mode=on" >> /tmp/$port/my.sandbox.cnf
-      echo "enforce_gtid_consistency" >> /tmp/$port/my.sandbox.cnf
-   fi
-   if [ -n "$REPLICATION_THREADS" ]; then
-      echo "slave_parallel_workers=$REPLICATION_THREADS" >> /tmp/$port/my.sandbox.cnf
-   fi
+    if [ -n "$BINLOG_FORMAT" ]; then
+        echo "binlog-format=$BINLOG_FORMAT" >> ${TMP_DIR}/$port/my.sandbox.cnf
+    fi
+    if [ -n "$SLAVE_EXEC_MODE" ]; then
+        echo "slave_exec_mode=$SLAVE_EXEC_MODE" >> ${TMP_DIR}/$port/my.sandbox.cnf
+    fi
+    if [ -n "$SQL_MODE" ]; then
+        echo "sql-mode=$SQL_MODE" >> ${TMP_DIR}/$port/my.sandbox.cnf
+    fi
+    if [ -n "$GENLOG" ]; then
+        echo "log=genlog" >> ${TMP_DIR}/$port/my.sandbox.cnf
+    fi
+    if [ -n "$SKIP_INNODB" ]; then
+        echo "skip-innodb" >> ${TMP_DIR}/$port/my.sandbox.cnf
+        echo "default-storage-engine=myisam" >> ${TMP_DIR}/$port/my.sandbox.cnf
+        if [ "$version" ">" "5.5" ]; then
+            echo "default-tmp-storage-engine=myisam" >> ${TMP_DIR}/$port/my.sandbox.cnf
+        fi
+    fi
+    if [ -n "$MODE_ANSI" ]; then
+        echo "sql_mode=ansi" >> ${TMP_DIR}/$port/my.sandbox.cnf
+    fi
+    if [ -n "$MULTIPLE_BUFFER_POOLS" ]; then
+        echo "innodb_buffer_pool_instances=$MULTIPLE_BUFFER_POOLS" >> ${TMP_DIR}/$port/my.sandbox.cnf
+    fi
+    if [ -n "$LOCAL_INFILE" ]; then
+        echo "local-infile=$LOCAL_INFILE" >> ${TMP_DIR}/$port/my.sandbox.cnf
+    fi
+    if [ -n "$QUERY_CACHE_SIZE" ]; then
+        echo "query_cache_type=1" >> ${TMP_DIR}/$port/my.sandbox.cnf
+        echo "query_cache_size=$QUERY_CACHE_SIZE" >> ${TMP_DIR}/$port/my.sandbox.cnf
+    fi
 
-   if [ -n "$EXTRA_DEFAULTS_FILE" ]; then
-      cat "$EXTRA_DEFAULTS_FILE" >> /tmp/$port/my.sandbox.cnf
-   fi
+    if [ -n "$GTID" ]; then
+        if [ "$version" "<" '5.7' ]; then
+            echo "gtid_mode=on" >> ${TMP_DIR}/$port/my.sandbox.cnf
+        fi
+        if [ ! "$version" "<" '5.7' ]; then
+            echo "gtid_mode=ON_PERMISSIVE" >> ${TMP_DIR}/$port/my.sandbox.cnf
+        fi
+        echo "enforce_gtid_consistency" >> ${TMP_DIR}/$port/my.sandbox.cnf
+    fi
+    if [ -n "$REPLICATION_THREADS" ]; then
+        echo "slave_parallel_workers=$REPLICATION_THREADS" >> ${TMP_DIR}/$port/my.sandbox.cnf
+    fi
 
-   # If the sandbox is a slave, set it read_only.
-   if [ "$type" = "slave" ]; then
-      echo "read_only" >> /tmp/$port/my.sandbox.cnf
-   fi
+    if [ -n "$EXTRA_DEFAULTS_FILE" ]; then
+        cat "$EXTRA_DEFAULTS_FILE" >> ${TMP_DIR}/$port/my.sandbox.cnf
+    fi
 
-   # Start the sandbox and check that it has InnoDB.
-   /tmp/$port/start
-   if [ $? -eq 0 ]; then
-      if [ -z "$SKIP_INNODB" ]; then
-         /tmp/$port/use -e 'SHOW /*!40100 ENGINE*/ INNODB STATUS' | grep 'INNODB MONITOR OUTPUT' >/dev/null 2>&1
-         # grep exits 0 if lines are found
-         if [ $? -ne 0 ]; then
-            echo "Sandbox $type $port doesn't have InnoDB." >&2
-            debug_sandbox $port
+    if [ $generating_database -eq 0 ]; then 
+        # If the sandbox is a slave, set it read_only.
+        if [ "$type" = "slave" ]; then
+            echo "read_only" >> ${TMP_DIR}/$port/my.sandbox.cnf
+        fi
+    fi
+
+    if [ $generating_database -eq 1 ]; then
+        echo "Creating default databases ..."
+        if [ "$version" ">" "5.6" ]; then
+            rm -f ${TMP_DIR}/empty-defaults.txt
+            touch ${TMP_DIR}/empty-defaults.txt
+            rm -rf ${TMP_DIR}/$port/data
+            $PERCONA_TOOLKIT_SANDBOX/$mysqld --defaults-file=${TMP_DIR}/${port}/my.sandbox.cnf --initialize
+        else 
+            # MySQL up to 5.6 needs mysql_install_db
+            # Support for it is a TODO
+            echo "For MySQL < 5.7 data.tar.gz is required to be in $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/"
             exit 1
-         fi
+        fi
 
-         for sql in "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/"*.sql; do
-            [ -f "$sql" ] && /tmp/$port/use < $sql
-         done
-      fi
+        init_file="${TMP_DIR}/$port/mysql-init"
+        rm -rf $init_file
 
-      # create sys schema (if exists and is desired)
-      if [ -n "$SYS_SCHEMA" ]; then
-         local sys_dir="$PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/sys"
-         cd "$sys_dir"
-         [ -f "$sys_dir/sys.sql" ] && /tmp/$port/use < "$sys_dir/sys.sql"
-      fi
-   else
-      echo "Sandbox $type $port failed to start." >&2
-      debug_sandbox $port
-      exit 1
-   fi
+        $PERCONA_TOOLKIT_BRANCH/util/version_cmp $minor_version 5.7.5
+        if [ $? -eq 2 ]; then
+            echo "ALTER USER 'root'@'localhost' IDENTIFIED BY 'msandbox';" > $init_file
+            echo "CREATE USER IF NOT EXISTS 'msandbox'@'%';" > $init_file
+            echo "ALTER USER 'msandbox'@'%' IDENTIFIED BY 'msandbox' REQUIRE NONE PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK;" >> $init_file
+            echo "GRANT ALL PRIVILEGES ON *.* TO 'msandbox'@'%';" >> $init_file
+            echo "-- Grants for 'root'@'localhost'" >> $init_file
+            echo "CREATE USER IF NOT EXISTS 'root'@'localhost';" >> $init_file
+            echo "ALTER USER 'root'@'localhost' IDENTIFIED BY 'msandbox' REQUIRE NONE PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK;" >> $init_file
+            echo "GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;" >> $init_file
+            echo "GRANT PROXY ON ''@'' TO 'root'@'localhost' WITH GRANT OPTION;" >> $init_file
+            echo "FLUSH PRIVILEGES;" >> $init_file
+        else
+            echo "SET PASSWORD FOR 'root'@'localhost' = PASSWORD('msandbox');" > $init_file
+            echo "GRANT ALL PRIVILEGES ON *.* TO 'msandbox'@'localhost' IDENTIFIED BY 'msandbox';" >> $init_file
+            echo "GRANT ALL PRIVILEGES ON *.* TO 'msandbox'@'127.0.0.1' IDENTIFIED BY 'msandbox';" >> $init_file
+            echo "FLUSH PRIVILEGES;" >> $init_file
+        fi
 
-   /tmp/$port/use -e "CREATE DATABASE IF NOT EXISTS percona_test";
-   /tmp/$port/use -e "CREATE TABLE IF NOT EXISTS percona_test.sentinel (id INT PRIMARY KEY, ping VARCHAR(64) NOT NULL DEFAULT '')";
+        if [ "$type" = "slave" ]; then
+            echo "FLUSH TABLES WITH READ LOCK;" >> $init_file
+            echo "SET GLOBAL read_only = ON;" >> $init_file
+            echo "UNLOCK TABLES;" >> $init_file
+        fi
+    fi
 
-   if [ -n "${MYSQL_UPGRADE:-""}" ]; then
-      mysql_upgrade_on /tmp/$port/my.sandbox.cnf
-   fi
+    # Start the sandbox and check that it has InnoDB.
+    ${TMP_DIR}/$port/start
+    if [ $? -eq 0 ]; then
+        if [ -z "$SKIP_INNODB" ]; then
+            ${TMP_DIR}/$port/use -e 'SHOW /*!40100 ENGINE*/ INNODB STATUS' | grep 'INNODB MONITOR OUTPUT' >/dev/null 2>&1
+            # grep exits 0 if lines are found
+            if [ $? -ne 0 ]; then
+                echo "Sandbox $type $port doesn't have InnoDB." >&2
+                debug_sandbox $port
+                exit 1
+            fi
 
-   # If the sandbox is a slave, start the slave.
-   if [ "$type" = "slave" ]; then
-      /tmp/$port/use -e "change master to master_host='127.0.0.1', master_user='msandbox', master_password='msandbox', master_port=$master_port"
-      /tmp/$port/use -e "start slave"
-   fi
+            for sql in "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/"*.sql; do
+                [ -f "$sql" ] && ${TMP_DIR}/$port/use < $sql
+            done
+        fi
 
-   return 0
+        # create sys schema (if exists and is desired)
+        if [ -n "$SYS_SCHEMA" ]; then
+            local sys_dir="$PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/sys"
+            cd "$sys_dir"
+            [ -f "$sys_dir/sys.sql" ] && ${TMP_DIR}/$port/use < "$sys_dir/sys.sql"
+        fi
+    else
+        echo "Sandbox $type $port failed to start." >&2
+        debug_sandbox $port
+        exit 1
+    fi
+
+
+    ${TMP_DIR}/$port/use -e "CREATE DATABASE IF NOT EXISTS percona_test";
+    ${TMP_DIR}/$port/use -e "CREATE TABLE IF NOT EXISTS percona_test.sentinel (id INT PRIMARY KEY, ping VARCHAR(64) NOT NULL DEFAULT '')";
+
+    if [ -n "${MYSQL_UPGRADE:-""}" ]; then
+        mysql_upgrade_on ${TMP_DIR}/$port/my.sandbox.cnf
+    fi
+
+    # If the sandbox is a slave, start the slave.
+    if [ "$type" = "slave" ]; then
+        #${TMP_DIR}/$port/use -e "change master to master_host='127.0.0.1', master_user='msandbox', master_password='msandbox', master_port=$master_port"
+        ${TMP_DIR}/$port/use -e "change master to master_host='127.0.0.1', master_user='msandbox', master_password='msandbox', master_port=$master_port"
+        ${TMP_DIR}/$port/use -e "start slave"
+    fi
+
+    if [ -x "$PERCONA_TOOLKIT_SANDBOX/bin/ps-admin" ]; then
+        # try to enable RocksDB. Only available on Percona Server 5.7.19+
+        if [ "$version" > "5.6" -a -n "$ENABLE_ROCKSDB" ]; then
+            $PERCONA_TOOLKIT_SANDBOX/bin/ps-admin --enable-rocksdb -u root -pmsandbox -h 127.1 -P $port
+        fi
+        if [ "$version" > "5.6" -a -n "$ENABLE_TOKUDB" ]; then 
+            sudo $PERCONA_TOOLKIT_SANDBOX/bin/ps-admin --enable-tokudb -u root -pmsandbox -h 127.1 -P $port
+        fi
+    fi
+
+    return 0
 }
 
 # ###########################################################################
 # Sanity check the cmd line options.
 # ###########################################################################
 if [ $# -lt 2 ]; then
-   die "Usage: start-sandbox master|slave|master-master port [master port]"
+    die "Usage: start-sandbox master|slave|master-master port [master port]"
 fi
 
 type=$1         # master, slave or master-master
 port=$2         # sandbox port number, e.g. 12345
 master_port=$3  # master port if slave or master-master
+enable_tokudb=''
+
 
 if [ "$type" != "master" ] && [ "$type" != "slave" ] && [ "$type" != "master-master" ] && [ "$type" != "cluster" ] && [ "$type" != "channels" ]; then
-   die "Invalid sandbox type: $type.  Valid types are master, slave, and master-master."
+    die "Invalid sandbox type: $type.  Valid types are master, slave, and master-master."
 fi
 
 if [ $port -le 1024 ]; then
-   die "Invalid port: $port.  Ports must be > 1024."
+    die "Invalid port: $port.  Ports must be > 1024."
 fi
 
 if [ "$type" = "slave" -o "$type" = "master-master" ] && [ -z "$master_port" ]; then
-   die "No master port given for the $type."
+    die "No master port given for the $type."
 fi
 
 # If creating a slave, the master must exist first.  Not true for creating
 # a master-master though.
-if [ "$type" = "slave" ] && [ ! -d "/tmp/$master_port" ]; then
-   die "Master sandbox does not exist: /tmp/$master_port"
+if [ "$type" = "slave" ] && [ ! -d "${TMP_DIR}/$master_port" ]; then
+    die "Master sandbox does not exist: ${TMP_DIR}/$master_port"
 fi
 
 # ###########################################################################
 # Sanity check the environment.
 # ###########################################################################
 if [ -z "$PERCONA_TOOLKIT_BRANCH" ]; then
-   die "PERCONA_TOOLKIT_BRANCH environment variable is not set."
+    die "PERCONA_TOOLKIT_BRANCH environment variable is not set."
 fi
 
 if [ ! -d "$PERCONA_TOOLKIT_BRANCH" ]; then
-   die "Invalid PERCONA_TOOLKIT_BRANCH directory: $PERCONA_TOOLKIT_BRANCH"
+    die "Invalid PERCONA_TOOLKIT_BRANCH directory: $PERCONA_TOOLKIT_BRANCH"
 fi
 
 cd $PERCONA_TOOLKIT_BRANCH/sandbox
@@ -226,67 +296,69 @@ cd $PERCONA_TOOLKIT_BRANCH/sandbox
 # MySQL executables like PERCONA_TOOLKIT_SANDBOX/bin/mysqld_safe.
 
 if [ -z "$PERCONA_TOOLKIT_SANDBOX" ]; then
-   PERCONA_TOOLKIT_SANDBOX=`./test-env checkconfig | grep PERCONA_TOOLKIT_SANDBOX | cut -d= -f2 | awk '{print $1}'`
-   if [ -z "$PERCONA_TOOLKIT_SANDBOX" ]; then
-      die "PERCONA_TOOLKIT_SANDBOX environment variable is not set."
-   fi
+    PERCONA_TOOLKIT_SANDBOX=`./test-env checkconfig | grep PERCONA_TOOLKIT_SANDBOX | cut -d= -f2 | awk '{print $1}'`
+    if [ -z "$PERCONA_TOOLKIT_SANDBOX" ]; then
+        die "PERCONA_TOOLKIT_SANDBOX environment variable is not set."
+    fi
 fi
 
 # ###########################################################################
 # Get server version.
 # ###########################################################################
 if [ -x "$PERCONA_TOOLKIT_SANDBOX/bin/mysqld" ]; then
-   mysqld="bin/mysqld"
+    mysqld="bin/mysqld"
 elif [ -x "$PERCONA_TOOLKIT_SANDBOX/sbin/mysqld" ]; then
-   mysqld="sbin/mysqld"
+    mysqld="sbin/mysqld"
 elif [ -x "$PERCONA_TOOLKIT_SANDBOX/libexec/mysqld" ]; then
-   mysqld="libexec/mysqld"
+    mysqld="libexec/mysqld"
 else
-   die "Cannot find executable mysqld in $PERCONA_TOOLKIT_SANDBOX/bin, $PERCONA_TOOLKIT_SANDBOX/sbin or $PERCONA_TOOLKIT_SANDBOX/libexec."
+    die "Cannot find executable mysqld in $PERCONA_TOOLKIT_SANDBOX/bin, $PERCONA_TOOLKIT_SANDBOX/sbin or $PERCONA_TOOLKIT_SANDBOX/libexec."
 fi
 
 APP="${FORK:-"mysql"}"
 
 if [ $type = "cluster" -o $APP = "pxc" ]; then
-# disabled for now because used perl module is not available everywhere and in some distros it returns ipv6 address
-#  ip=$(perl -MNet::Address::IP::Local -le 'print Net::Address::IP::Local->public')
-   ip=$(hostname -i | cut -d" " -f2)
-   version=`$PERCONA_TOOLKIT_SANDBOX/$mysqld -V --query_cache_size=0 --query_cache_type=0  --bind-address $ip 2>/dev/null | awk '{print $3}' | cut -d. -f 1,2`;
+    # disabled for now because used perl module is not available everywhere and in some distros it returns ipv6 address
+    #  ip=$(perl -MNet::Address::IP::Local -le 'print Net::Address::IP::Local->public')
+    ip=$(hostname -i | cut -d" " -f2)
+    version=`$PERCONA_TOOLKIT_SANDBOX/$mysqld -V --query_cache_size=0 --query_cache_type=0  --bind-address $ip 2>/dev/null | awk '{print $3}' | cut -d. -f 1,2`;
+    minor_version=`$PERCONA_TOOLKIT_SANDBOX/$mysqld -V --query_cache_size=0 --query_cache_type=0  --bind-address $ip 2>/dev/null | awk '{print $3}' | cut -d. -f 1,2,3 | cut -d- -f1`;
 else
-   version=`$PERCONA_TOOLKIT_SANDBOX/$mysqld -V 2>/dev/null | awk '{print $3}' | cut -d. -f 1,2`;
+    version=`$PERCONA_TOOLKIT_SANDBOX/$mysqld -V 2>/dev/null | awk '{print $3}' | cut -d. -f 1,2`;
+    minor_version=`$PERCONA_TOOLKIT_SANDBOX/$mysqld -V 2>/dev/null | awk '{print $3}' | cut -d. -f 1,2,3 | cut -d- -f1`;
 fi
 
 if [ ! -d "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version" ]; then
-   die "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version does not exist."
+    die "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version does not exist."
 fi
 
 # ###########################################################################
 # Start and configure the sandbox server.
 # ###########################################################################
-PIDFILE="/tmp/$port/data/mysql_sandbox$port.pid"
+PIDFILE="${TMP_DIR}/$port/data/mysql_sandbox$port.pid"
 
 if [ -f $PIDFILE ]; then
-   echo "Sandbox $port already started (found pid file $PIDFILE)"
+    echo "Sandbox $port already started (found pid file $PIDFILE)"
 else
-   make_sandbox
-   # make_sandbox has started slave and set read_only if necessary.
+    make_sandbox
+    # make_sandbox has started slave and set read_only if necessary.
 
-   # If the sandbox is a master-master, start the second master and slave the
-   # two together.
-   if [ "$type" = "master-master" ]; then
-      mm1_port=$port
-      mm2_port=$master_port
-      port=$master_port  # make_sandbox uses $port
-      make_sandbox
+    # If the sandbox is a master-master, start the second master and slave the
+    # two together.
+    if [ "$type" = "master-master" ]; then
+        mm1_port=$port
+        mm2_port=$master_port
+        port=$master_port  # make_sandbox uses $port
+        make_sandbox
 
-      # Slave mm2 -> mm1
-      /tmp/$mm2_port/use -e "change master to master_host='127.0.0.1', master_log_file='mysql-bin.000001', master_log_pos=0, master_user='msandbox', master_password='msandbox', master_port=$mm1_port"
-      /tmp/$mm2_port/use -e "start slave"
+        # Slave mm2 -> mm1
+        ${TMP_DIR}/$mm2_port/use -e "change master to master_host='127.0.0.1', master_log_file='mysql-bin.000001', master_user='msandbox', master_password='msandbox', master_port=$mm1_port"
+        ${TMP_DIR}/$mm2_port/use -e "start slave"
 
-      # Slave mm1 -> mm2
-      /tmp/$mm1_port/use -e "change master to master_host='127.0.0.1', master_log_file='mysql-bin.000001', master_log_pos=0, master_user='msandbox', master_password='msandbox', master_port=$mm2_port"
-      /tmp/$mm1_port/use -e "start slave"
-   fi
+        # Slave mm1 -> mm2
+        ${TMP_DIR}/$mm1_port/use -e "change master to master_host='127.0.0.1', master_log_file='mysql-bin.000001', master_user='msandbox', master_password='msandbox', master_port=$mm2_port"
+        ${TMP_DIR}/$mm1_port/use -e "start slave"
+    fi
 fi
 
 exit $?

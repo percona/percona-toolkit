@@ -27,12 +27,11 @@ else {
    plan tests => 2;
 }
 
+$dbh->do("DROP TABLE IF EXISTS percona.checksums");
 $sb->load_file('master', 't/pt-table-checksum/samples/pt-136.sql');
-# The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
-# so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
-# And --max-load "" prevents waiting for status variables.
+$sb->wait_for_slaves();
 my $master_dsn = $sb->dsn_for('master');
-my @args       = ($master_dsn); 
+my @args       = ($master_dsn, '--databases', 'db1', '--no-replicate-check'); 
 my $output;
 my $exit_status;
 
@@ -44,8 +43,9 @@ $output = output(
 is(
    $exit_status,
    0,
-   "Checksum columns with mismatching collaitons",
-);
+   "Checksum columns with mismatching collations",
+) or BAIL_OUT("debug time");
+
 
 # #############################################################################
 # Done.

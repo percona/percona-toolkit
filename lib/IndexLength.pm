@@ -29,6 +29,7 @@ use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
+use Carp;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
@@ -41,7 +42,7 @@ sub new {
    }
 
    my $self = {
-      Quoter => $args{Quoter},
+       Quoter => $args{Quoter},
    };
 
    return bless $self, $class;
@@ -103,8 +104,16 @@ sub _get_first_values {
    # Select just the index columns.
    my $index_struct  = $tbl->{tbl_struct}->{keys}->{$index};
    my $index_cols    = $index_struct->{cols};
-   my $index_columns = join (', ',
+   my $index_columns;
+   eval {
+   $index_columns = join (', ',
       map { $q->quote($_) } @{$index_cols}[0..($n_index_cols - 1)]);
+  };
+  if ($EVAL_ERROR) {
+      confess "$EVAL_ERROR";
+  }
+
+
 
    # Where no index column is null, because we can't > NULL.
    my @where;
@@ -142,8 +151,8 @@ sub _make_range_query {
       # we don't want the last column; that's added below.
       foreach my $n ( 0..($n_index_cols - 2) ) {
          my $col = $index_cols->[$n];
-         my $val = $vals->[$n];
-         push @where, $q->quote($col) . " = ?";
+         my $val = $tbl->{tbl_struct}->{type_for}->{$col} eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
+         push @where, $q->quote($col) . " = " . $val;
       }
    }
 
@@ -151,7 +160,8 @@ sub _make_range_query {
    # the N left-most index columns.
    my $col = $index_cols->[$n_index_cols - 1];
    my $val = $vals->[-1];  # should only be as many vals as cols
-   push @where, $q->quote($col) . " >= ?";
+   my $condition = $tbl->{tbl_struct}->{type_for}->{$col} eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
+   push @where, $q->quote($col) . " >= " . $condition;
 
    my $sql = "EXPLAIN SELECT /*!40001 SQL_NO_CACHE */ * "
            . "FROM $tbl->{name} FORCE INDEX (" . $q->quote($index) . ") "

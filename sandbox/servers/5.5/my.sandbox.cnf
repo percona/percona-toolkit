@@ -24,5 +24,4 @@ report-host                = 127.0.0.1
 report-port                = PORT
 log-error                  = /tmp/PORT/data/mysqld.log
 innodb_lock_wait_timeout   = 3
-general_log
-general_log_file           = genlog
+secure-file-priv           = 

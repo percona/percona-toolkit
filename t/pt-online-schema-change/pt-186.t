@@ -59,16 +59,14 @@ is(
 );
 
 my $structure = $master_dbh->selectall_arrayref('DESCRIBE test.t1');
+my $want = [ 'c11', 'int(11)', 'NO', 'MUL', '99', '' ];
+if ($sandbox_version ge '8.0') {
+    $want = [ 'c11', 'int', 'NO', 'MUL', '99', '' ];
+}
+
 is_deeply(
     $structure->[2],
-    [
-      'c11',
-      'int(11)',
-      'NO',
-      'MUL',
-      '99',
-      ''
-    ],
+    $want,
     '--alter rename columns with uppercase names -> Column was renamed'
 );
 
