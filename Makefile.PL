@@ -1,7 +1,7 @@
 use ExtUtils::MakeMaker;
 
 WriteMakefile(
-    NAME      => 'percona-toolkit',
+    NAME      => 'Percona::Toolkit',
     VERSION   => '3.4.0',
     EXE_FILES => [ <bin/*> ],
     MAN1PODS  => {
