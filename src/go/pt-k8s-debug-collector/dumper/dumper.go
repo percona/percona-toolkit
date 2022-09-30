@@ -219,7 +219,7 @@ func (d *Dumper) DumpCluster() error {
 				// get individual Logs
 				location = filepath.Join(d.location, ns.Name, pod.Name)
 				for _, path := range d.filePaths {
-					err = d.getIndividualFiles(resourceType(d.crType), pod.Name, path, location, tw)
+					err = d.getIndividualFiles(resourceType(d.crType), ns.Name, pod.Name, path, location, tw)
 					if err != nil {
 						d.logError(err.Error(), "get file "+path+" for pod "+pod.Name)
 						log.Printf("Error: get %s file: %v", path, err)
@@ -312,8 +312,8 @@ type crSecrets struct {
 	} `json:"spec"`
 }
 
-func (d *Dumper) getIndividualFiles(resource, podName, path, location string, tw *tar.Writer) error {
-	args := []string{"cp", podName + ":" + path, "/dev/stdout"}
+func (d *Dumper) getIndividualFiles(resource, namespace string, podName, path, location string, tw *tar.Writer) error {
+	args := []string{"-n", namespace, "cp", podName + ":" + path, "/dev/stdout"}
 	output, err := d.runCmd(args...)
 
 	if err != nil {
