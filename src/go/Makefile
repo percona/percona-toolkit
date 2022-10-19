@@ -20,18 +20,18 @@ GO := go
 pkgs = $(shell find . -type d -name "pt-*" -exec basename {} \;)
 BUILD=$(BUILD_DATE)
 GOVERSION=$(shell go version | cut --delimiter=" " -f3)
-GOUTILSDIR ?= $(GOPATH)/bin
 FILES = $(shell find . -type f -name '*.go' -not -path "./vendor/*")
 PREFIX=$(shell pwd)
 
 CUR_DIR=$(shell pwd)
-COMMIT=$(shell git rev-list -1 HEAD)
+COMMIT=$(shell grep COMMIT RELEASE_TAGS | cut -f2 -d '=')
+VERSION=$(shell grep VERSION RELEASE_TAGS | cut -f2 -d '=')
 
 TOP_DIR=${CUR_DIR}
 BIN_DIR=${CUR_DIR}/../../bin
 SRC_DIR=${CUR_DIR}/../../src/go
 
-LDFLAGS="-X main.Version=${VERSION} -X main.Build=${BUILD} -X main.GoVersion=${GOVERSION} -X main.Commit=${COMMIT} -s -w"
+LDFLAGS="-X main.Version=${VERSION} -X main.Build=${BUILD_DATE} -X main.GoVersion=${GOVERSION} -X main.Commit=${COMMIT} -s -w"
 
 TEST_PSMDB_VERSION?=4.0
 TEST_MONGODB_FLAVOR?=percona/percona-server-mongodb
@@ -74,9 +74,6 @@ export MINIO_ACCESS_KEY_ID
 export MINIO_SECRET_ACCESS_KEY
 
 
-$(GOUTILSDIR)/dep:
-	go get -u github.com/golang/dep/cmd/dep
-
 define TEST_ENV
 	AWS_ACCESS_KEY_ID=$(AWS_ACCESS_KEY_ID) \
 	AWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY) \
@@ -107,6 +104,14 @@ define TEST_ENV
 	TEST_PSMDB_VERSION=$(TEST_PSMDB_VERSION) \
 	TEST_MONGODB_FLAVOR=$(TEST_MONGODB_FLAVOR)
 endef
+
+init:                       ## Install linters.
+	cd tools && go generate -x -tags=tools
+
+format:                     ## Format source code.
+	go mod tidy
+	bin/gofumpt -l -w $(FILES)
+	bin/gci write --section Standard --section Default --section "Prefix(github.com/percona/percona-toolkit)" .
 
 env:
 	@echo $(TEST_ENV) | tr ' ' '\n' >.env
@@ -157,3 +162,6 @@ vet:						## Run vet on Go code
 	@echo ">> vetting code"
 	@$(foreach pkg,$(pkgs), cd $(TOP_DIR)/src/go/$(pkg); go vet ./... ;)
 
+update-release-tags:        ## Updates the RELEASE_TAGS file with version and commit from git. 
+	@echo "VERSION=$(shell git describe --tags $(shell git rev-list --tags --max-count=1))" > RELEASE_TAGS
+	@echo "COMMIT=$(shell git rev-list -1 HEAD)" >> RELEASE_TAGS
