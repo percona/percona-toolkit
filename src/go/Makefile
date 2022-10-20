@@ -25,13 +25,13 @@ PREFIX=$(shell pwd)
 
 CUR_DIR=$(shell pwd)
 COMMIT=$(shell grep COMMIT RELEASE_TAGS | cut -f2 -d '=')
-VERSION=$(shell grep VERSION RELEASE_TAGS | cut -f2 -d '=')
+BUILD_VERSION=$(shell grep VERSION RELEASE_TAGS | cut -f2 -d '=')
 
 TOP_DIR=${CUR_DIR}
 BIN_DIR=${CUR_DIR}/../../bin
 SRC_DIR=${CUR_DIR}/../../src/go
 
-LDFLAGS="-X main.Version=${VERSION} -X main.Build=${BUILD_DATE} -X main.GoVersion=${GOVERSION} -X main.Commit=${COMMIT} -s -w"
+LDFLAGS="-X main.Version=${BUILD_VERSION} -X main.Build=${BUILD_DATE} -X main.GoVersion=${GOVERSION} -X main.Commit=${COMMIT} -s -w"
 
 TEST_PSMDB_VERSION?=4.0
 TEST_MONGODB_FLAVOR?=percona/percona-server-mongodb
@@ -129,19 +129,19 @@ env-down: env				## Clean-up MongoDB docker containers cluster
 	rm .env
 
 linux-amd64: 				## Build Mongo tools for linux-amd64.
-	@echo "Building linux/amd64 binaries in ${BIN_DIR} as version ${VERSION}"
+	@echo "Building linux/amd64 binaries in ${BIN_DIR} as version ${BUILD_VERSION}"
 	@cd ${TOP_DIR} && go get ./...
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
 	@$(foreach pkg,$(pkgs),GOOS=linux GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
 
 linux-386: 					## Build Mongo tools for linux-386
-	@echo "Building linux/386 binaries in ${BIN_DIR} as version ${VERSION}"
+	@echo "Building linux/386 binaries in ${BIN_DIR} as version ${BUILD_VERSION}"
 	@cd ${TOP_DIR} && go get ./...
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
 	@$(foreach pkg,$(pkgs),GOOS=linux GOARCH=386 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
 
 darwin-amd64:				## Build Mongo tools for darwin-amd64 (MacOS) 
-	@echo "Building darwin/amd64 binaries in ${BIN_DIR} as version ${VERSION}"
+	@echo "Building darwin/amd64 binaries in ${BIN_DIR} as version ${BUILD_VERSION}"
 	@cd ${TOP_DIR} && go get ./...
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
 	@$(foreach pkg,$(pkgs),GOOS=darwin GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
@@ -159,18 +159,21 @@ vet:						## Run vet on Go code
 	@$(foreach pkg,$(pkgs), cd $(TOP_DIR)/src/go/$(pkg); go vet ./... ;)
 
 set-tag:        ## Updates the RELEASE_TAGS file with version and commit from git. 
-ifndef $(VERSION)
+ifeq (${VERSION},'')
 	@echo "VERSION variable is empty. Use:\n"
 	@echo "VERSION=m.n make set-tag\n"
 	@echo "to set the tag value and run the git commit.\n"
 	@exit 1
 else
-	@echo -n "Updating the RELEASE_TAGS file ..." 
+	@echo -n "Updating the RELEASE_TAGS file with version ${VERSION} ..." 
 	@echo "VERSION=$(VERSION)" > RELEASE_TAGS
 	@echo "COMMIT=$(shell git rev-list -1 HEAD)" >> RELEASE_TAGS
 	@echo " OK"
-	@git commit -a -m "Set version tag $(VERSION)"
-	@git tag -a ${VERSION} -m "Set tag ${VERSION}"
-	@echo "Tag set: ${VERSION}"
-	@echo "Please push the tag to the repo: git push origin ${VERSION}"
+	@echo "Now follow these steps:\n"
+	@echo "1. Commit the changes to the RELEASE_TAGS file:\n"
+	@echo "git commit -a -m \"Set version tag $(VERSION)\"\n"
+	@echo "2. Create a new Git tag:\n"
+	@echo "git tag -a ${VERSION} -m \"Set tag ${VERSION}\"\n"
+	@echo "3. Push the tag to the repo:\n"
+	@echo "git push origin ${VERSION}\n"
 endif
