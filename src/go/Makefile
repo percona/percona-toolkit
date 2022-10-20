@@ -110,7 +110,7 @@ init:                       ## Install linters.
 
 format:                     ## Format source code.
 	go mod tidy
-	bin/gofumpt -l -w $(FILES)
+	bin/gofumpt -l -s -w $(FILES)
 	bin/gci write --section Standard --section Default --section "Prefix(github.com/percona/percona-toolkit)" .
 
 env:
@@ -154,14 +154,23 @@ test:						## Run tests
 	@echo ">> running tests"
 	@./runtests.sh
 
-format:                         ## Format source code.
-	gofumpt -w -s $(FILES)
-	gofumports -local github.com/percona/pmm-managed -l -w $(FILES)
-
 vet:						## Run vet on Go code
 	@echo ">> vetting code"
 	@$(foreach pkg,$(pkgs), cd $(TOP_DIR)/src/go/$(pkg); go vet ./... ;)
 
-update-release-tags:        ## Updates the RELEASE_TAGS file with version and commit from git. 
-	@echo "VERSION=$(shell git describe --tags $(shell git rev-list --tags --max-count=1))" > RELEASE_TAGS
+set-tag:        ## Updates the RELEASE_TAGS file with version and commit from git. 
+ifndef $(VERSION)
+	@echo "VERSION variable is empty. Use:\n"
+	@echo "VERSION=m.n make set-tag\n"
+	@echo "to set the tag value and run the git commit.\n"
+	@exit 1
+else
+	@echo -n "Updating the RELEASE_TAGS file ..." 
+	@echo "VERSION=$(VERSION)" > RELEASE_TAGS
 	@echo "COMMIT=$(shell git rev-list -1 HEAD)" >> RELEASE_TAGS
+	@echo " OK"
+	@git commit -a -m "Set version tag $(VERSION)"
+	@git tag -a ${VERSION} -m "Set tag ${VERSION}"
+	@echo "Tag set: ${VERSION}"
+	@echo "Please push the tag to the repo: git push origin ${VERSION}"
+endif
