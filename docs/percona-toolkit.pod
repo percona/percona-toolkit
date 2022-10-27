@@ -86,6 +86,14 @@ Kill MySQL queries that match certain criteria.
 
 Look at many samples of MySQL C<SHOW GLOBAL STATUS> side-by-side.
 
+=item pt-mongodb-index-check
+
+Performs checks on MongoDB indexes
+
+=item pt-mongodb-query-digest
+
+Reports query usage statistics by aggregating queries from MongoDB query profiler
+
 =item pt-mysql-summary
 
 Summarize MySQL information nicely.
