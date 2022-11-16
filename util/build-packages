@@ -399,7 +399,7 @@ build_deb() {
 
    cd $RELEASE_DIR
    if [ ! -f "$PKG.tar.gz" ]; then
-      die "Cannot build RPM because $PKG.tar.gz does not exist"
+      die "Cannot build deb because $PKG.tar.gz does not exist"
    fi
 
    # Copy debian pkg files.
