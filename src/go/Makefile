@@ -111,6 +111,7 @@ endef
 env:
 	@echo $(TEST_ENV) | tr ' ' '\n' >.env
 
+# TODO: create envs specific to products: MySQL, PostgreSQL, MongoDB, K8
 env-up: env					## Start MongoDB docker containers cluster
 	TEST_PSMDB_VERSION=$(TEST_PSMDB_VERSION) \
 	docker-compose up \
