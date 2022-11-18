@@ -1,5 +1,25 @@
 Changelog for Percona Toolkit
 
+* Improvement PT-1052: Include NUMA information in pt-tool output
+* Improvement PT-1926: pt-k8s-debug-collector should not collect passwords
+* Improvement PT-2033: Avoid running same query concurrently from pt-stalk
+* Improvement PT-2105: Let pt-k8-debug-collector to collect individual logs in PXC pods in addition to `kubectl logs`
+* Improvement PT-2107: Merge Community PRs 466, 298, 58, 53 into 3.x
+* Improvement PT-2080: Add JSON logging to pt-kill (Thanks dm-2)
+* Improvement PT-2091: Migrate docs to Render
+* Fixed bug   PT-1739: disable-qrt-plugin option of pt-table-checksum is broken (Thanks E. Souhrada)
+* Fixed bug   PT-1799: pt-osc + PTDEBUG=1 fails with Use of uninitialized value in concatenation (.) or string at /usr/bin/pt-online-schema-change line 4270
+* Fixed bug   PT-1897: pt-stalk on MySQL 8 not collecting "lock" information
+* Fixed bug   PT-1959: go part of the toolkit still has the version 3.3.0 
+* Fixed bug   PT-2075: Fix tests for pt-stalk, so they can work with 8.0
+* Fixed bug   PT-2092: Improper version of protobuf in go.sum
+* Fixed bug   PT-2125: Documentation outdated or missed for tools, written in Go
+* Fixed bug   PT-2086: Typos (Thanks Iwo Panowicz)
+* Fixed bug   PR-553:  Fix some typos in documentation of pt-query-digest (Thanks Christian Bartolomäus)
+* Fixed bug   PR-53:   Docs table regex (Thanks Daniël van Eeden)
+* Fixed bug   PR-58:   Correcting specified package type in error message (Thanks Daniel Hoherd)
+* Fixed bug   PR-298:  Fix typo (Thanks Moritz Lenz)
+
 v3.4.0 release 2022-07-11
 
  * New Tool    PT-1978: Add reporting on unused/redundant indexes for MongoDB by pt-mongodb-summary
