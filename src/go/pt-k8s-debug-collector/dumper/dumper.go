@@ -316,7 +316,6 @@ type crSecrets struct {
 func (d *Dumper) getIndividualFiles(resource, namespace string, podName, path, location string, tw *tar.Writer) error {
 	args := []string{"-n", namespace, "cp", podName + ":" + path, "/dev/stdout"}
 	output, err := d.runCmd(args...)
-
 	if err != nil {
 		d.logError(err.Error(), args...)
 		log.Printf("Error: get path %s for resource %s in namespace %s: %v", path, resource, d.namespace, err)
