@@ -2,11 +2,12 @@ package main
 
 import (
 	"bytes"
-	"golang.org/x/exp/slices"
 	"os/exec"
 	"path"
 	"strings"
 	"testing"
+
+	"golang.org/x/exp/slices"
 )
 
 /*

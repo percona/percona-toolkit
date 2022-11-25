@@ -5710,6 +5710,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-deadlock-logger 3.4.0
+pt-deadlock-logger 3.5.0
 
 =cut

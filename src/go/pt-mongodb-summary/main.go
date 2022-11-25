@@ -57,7 +57,7 @@ const (
 var (
 	Build     string = "2020-04-23"
 	GoVersion string = "1.14.1"
-	Version   string = "3.4.0"
+	Version   string = "3.5.0"
 	Commit    string
 
 	defaultConnectionTimeout = 3 * time.Second
