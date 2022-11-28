@@ -19,6 +19,7 @@ Check for indexes that are the prefix of other indexes. For example if we have t
    db.getSiblingDB("testdb").test_col.createIndex({"f1": 1, "f2": -1, "f3": 1, "f4": 1}, {"name": "idx_01"});
    db.getSiblingDB("testdb").test_col.createIndex({"f1": 1, "f2": -1, "f3": 1}, {"name": "idx_02"});
 
+
 The index ``idx_02`` is the prefix of ``idx_01`` because it has the same
 keys in the same order so, ``idx_02`` can be dropped.
 
@@ -66,3 +67,4 @@ Available flags
 +----------------------------+----------------------------------------+
 | –json                      | Show output as JSON                    |
 +----------------------------+----------------------------------------+
+

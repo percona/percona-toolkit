@@ -1,6 +1,46 @@
 Percona Toolkit
 ***************
 
+v3.5.0 released 2022-11-28
+==============================
+
+New Features
+------------
+
+* :jirabug:`PT-191`: add SSL options to DSN field for pt-online-schema-change
+
+
+
+Improvements
+------------------------------------------------------------
+
+* :jirabug:`PT-1718`: Have pt-stalk collect performance_schema.threads along with information_schema.processlist
+* :jirabug:`PT-2033`: Avoid running same query concurrently from pt-stalk
+* :jirabug:`PT-2013`: Change Percona Toolkit tool names to eliminate offensive terminology 
+
+
+
+Bugs Fixed
+------------
+
+* :jirabug:`PT-1926`: pt-k8s-debug-collector should not collect passwords
+* :jirabug:`PT-1628`: pt-mysql-summary checks installed mysqld binary which may not be the version in memory
+* :jirabug:`PT-1739`: disable-qrt-plugin option of pt-table-checksum is broken (Thanks to Ernie Souhrada for reporting this issue)
+* :jirabug:`PT-175`: Add support for replication channels on pt-slave-restart
+* :jirabug:`PT-1052`: Include NUMA information in in pt-summary and pt-stalk output
+
+* :jirabug:`PT-1799`: pt-osc + PTDEBUG=1 fails with Use of uninitialized value in concatenation (.) or string at /usr/bin/pt-online-schema-change line 4270.
+* :jirabug:`PT-1897`: pt-stalk on MySQL 8 not collecting "lock" information
+* :jirabug:`PT-2092`: Improper version of protobuf in go.sum
+* :jirabug:`PT-2079`: Incorrect version is returned
+* :jirabug:`PT-2075`: Fix tests for pt-stalk, so they can work with 8.0
+* :jirabug:`PT-1959`: go part of the toolkit still has the version 3.3.0
+  
+Packaging Notes 
+------------------------
+
+``percona-toolkit`` is now available on Ubuntu 22.04 and Red Hat Enterprise Linux 9
+
 v3.4.0 released 2022-07-11
 ==========================
 
