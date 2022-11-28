@@ -18,7 +18,6 @@ Data that will be collected
    "replicationcontrollers",
    "events",
    "configmaps",
-   "secrets",
    "cronjobs",
    "jobs",
    "podsecuritypolicies",
@@ -37,6 +36,38 @@ Data that will be collected
    "modes",
    "your-custom-resource" (depends on 'resource' flag)
 
+Data, collected for PXC
+~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   "perconaxtradbbackups",
+   "perconaxtradbclusterbackups",
+   "perconaxtradbclusterrestores",
+   "perconaxtradbclusters"
+
+Individual files, collected for PXC
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   "var/lib/mysql/mysqld-error.log",
+   "var/lib/mysql/innobackup.backup.log",
+   "var/lib/mysql/innobackup.move.log",
+   "var/lib/mysql/innobackup.prepare.log",
+   "var/lib/mysql/grastate.dat",
+   "var/lib/mysql/gvwstate.dat",
+   "var/lib/mysql/mysqld.post.processing.log",
+   "var/lib/mysql/auto.cnf"
+
+Data, collected for MongoDB
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   "perconaservermongodbbackups",
+   "perconaservermongodbrestores",
+   "perconaservermongodbs"
 
 Usage
 =====
