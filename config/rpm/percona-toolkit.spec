@@ -15,6 +15,9 @@ BuildArch: x86_64
 
 BuildRequires: perl(ExtUtils::MakeMaker) make
 Requires:  perl(DBI) >= 1.13, perl(DBD::mysql) >= 1.0, perl(Time::HiRes), perl(IO::Socket::SSL), perl(Digest::MD5), perl(Term::ReadKey)
+%if 0%{?rhel} > 9
+Requires:  perl(English)
+%endif
 AutoReq:   no
 
 %description

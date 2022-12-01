@@ -15,8 +15,8 @@ import (
 	"github.com/alecthomas/kingpin"
 	"github.com/go-ini/ini"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -86,7 +86,7 @@ var (
 
 	Build     string = "2020-04-23" //nolint
 	GoVersion string = "1.14.1"     //nolint
-	Version   string = "3.4.0"      //nolint
+	Version   string = "3.5.0"      //nolint
 	Commit    string                //nolint
 )
 
