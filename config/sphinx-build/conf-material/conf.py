@@ -10,8 +10,8 @@ html_sidebars['**']=['globaltoc.html', 'searchbox.html', 'localtoc.html', 'logo-
 html_theme = 'sphinx_material'
 html_theme_options = {
     'base_url': 'http://bashtage.github.io/sphinx-material/',
-    'repo_url': 'https://github.com/percona/percona-server',
-    'repo_name': 'percona/percona-server',
+    'repo_url': 'https://github.com/percona/percona-toolkit',
+    'repo_name': 'percona/percona-toolkit',
     'color_accent': 'grey',
     'color_primary': 'orange',
     'globaltoc_collapse': True,
