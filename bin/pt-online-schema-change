@@ -12073,7 +12073,7 @@ C<wsrep_OSU_method> is not C<TOI>.  There is no way to disable these checks.
 =head1 MySQL 5.7 + Generated columns
 
 The tools ignores MySQL 5.7+ C<GENERATED> columns since the value for those columns
-is generated according to the expresion used to compute column values.
+is generated according to the expression used to compute column values.
 
 =head1 OUTPUT
 

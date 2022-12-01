@@ -10697,7 +10697,7 @@ on the new version of MySQL.
 
 pt-upgrade executes queries from slow, general, binary, tcpdump, and
 "raw" logs on two servers, compares many aspects of each query's exeuction
-and results, and reports any signficant differences.  The two servers are
+and results, and reports any significant differences.  The two servers are
 typically development servers, one running the current production version
 of MySQL and the other running the new version of MySQL.
 
@@ -10785,7 +10785,7 @@ network intensive.  It executes queries as fast as possible.
 
 =head1 QUERY DIFFERENCES
 
-Signficant query differences are determined by comparing these aspects
+Significant query differences are determined by comparing these aspects
 of each query from both hosts:
 
 =over
@@ -11137,7 +11137,7 @@ should be printed, in percentage, seconds, or number of iterations.
 default: yes
 
 Execute only C<SELECT> and C<SET> statements.  If C<--no-read-only> is
-specified, I<all> queries are exeucted: C<DROP>, C<DELETE>, C<UPDATE>, etc.
+specified, I<all> queries are executed: C<DROP>, C<DELETE>, C<UPDATE>, etc.
 Even when running in default read-only mode, you should use a MySQL user
 with only C<SELECT> privileges to insure against bugs in the tool.
 
