@@ -16,7 +16,7 @@ func main() {
 	forwardport := ""
 
 	flag.StringVar(&namespace, "namespace", "", "Namespace for collecting data. If empty data will be collected from all namespaces")
-	flag.StringVar(&resource, "resource", "", "Collect data, specific to the resource. Supported values: pxc, psmdb, psql, ps")
+	flag.StringVar(&resource, "resource", "none", "Collect data, specific to the resource. Supported values: pxc, psmdb, psql, ps, none")
 	flag.StringVar(&clusterName, "cluster", "", "Cluster name")
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to kubeconfig")
 	flag.StringVar(&forwardport, "forwardport", "", "Port to use for  port forwarding")
