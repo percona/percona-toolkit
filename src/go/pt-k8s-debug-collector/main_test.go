@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"os"
 	"os/exec"
 	"path"
 	"strings"
@@ -11,10 +12,32 @@ import (
 )
 
 /*
+This test requires:
+- Running K8 Operator installation
+- kubectl configuration files, one for each supported operator
+-- KUBECONFIG_PXC for K8SPXC
+-- KUBECONFIG_PS for K8SPS
+-- KUBECONFIG_PSMDB for K8SPSMDB
+-- KUBECONFIG_PSQL for K8SPG
+
+You can additionally set option FORWARDPORT if you want to use custom port when testing summaries.
+
+pt-mysql-summary and pt-mongodb-summary must be in the PATH.
+
+Since running pt-k8s-debug-collector may take long time run go test with increase timeout:
+go test -timeout 6000s
+
+We do not explicitly test --kubeconfig and --forwardport options, because they are used in other tests.
+*/
+
+/*
 Tests collection of the individual files by pt-k8s-debug-collector.
 Requires running K8SPXC instance and kubectl, configured to access that instance by default.
 */
 func TestIndividualFiles(t *testing.T) {
+	if os.Getenv("KUBECONFIG_PXC") == "" {
+		t.Skip("TestIndividualFiles requires K8SPXC")
+	}
 	tests := []struct {
 		name        string
 		cmd         []string
@@ -56,7 +79,7 @@ func TestIndividualFiles(t *testing.T) {
 		},
 	}
 
-	cmd := exec.Command("../../../bin/pt-k8s-debug-collector")
+	cmd := exec.Command("../../../bin/pt-k8s-debug-collector", "--kubeconfig", os.Getenv("KUBECONFIG_PXC"), "--forwardport", os.Getenv("FORWARDPORT"), "--resource", "pxc")
 	if err := cmd.Run(); err != nil {
 		t.Errorf("error executing pt-k8s-debug-collector: %s", err.Error())
 	}
@@ -74,6 +97,64 @@ func TestIndividualFiles(t *testing.T) {
 		}
 		if test.preprocesor(bytes.NewBuffer(out).String()) != strings.Join(test.want, "\n") {
 			t.Errorf("test %s, output is not as expected\nOutput: %s\nWanted: %s", test.name, test.preprocesor(bytes.NewBuffer(out).String()), test.want)
+		}
+	}
+}
+
+/*
+Tests for supported values of the --resource option
+*/
+func TestResourceOption(t *testing.T) {
+	testcmd := []string{"sh", "-c", "tar -tf cluster-dump.tar.gz --wildcards '*/summary.txt' 2>/dev/null | wc -l"}
+	tests := []struct {
+		name       string
+		want       string
+		kubeconfig string
+	}{
+		{
+			name:       "none",
+			want:       "0",
+			kubeconfig: "",
+		},
+		{
+			name:       "pxc",
+			want:       "3",
+			kubeconfig: os.Getenv("KUBECONFIG_PXC"),
+		},
+		{
+			name:       "ps",
+			want:       "3",
+			kubeconfig: os.Getenv("KUBECONFIG_PS"),
+		},
+		{
+			name:       "psmdb",
+			want:       "3",
+			kubeconfig: os.Getenv("KUBECONFIG_PSMDB"),
+		},
+		{
+			name:       "psql",
+			want:       "3",
+			kubeconfig: os.Getenv("KUBECONFIG_PSQL"),
+		},
+	}
+
+	for _, test := range tests {
+		cmd := exec.Command("../../../bin/pt-k8s-debug-collector", "--kubeconfig", test.kubeconfig, "--forwardport", os.Getenv("FORWARDPORT"), "--resource", test.name)
+		if err := cmd.Run(); err != nil {
+			t.Errorf("error executing pt-k8s-debug-collector: %s", err.Error())
+		}
+		defer func() {
+			cmd = exec.Command("rm", "-f", "cluster-dump.tar.gz")
+			if err := cmd.Run(); err != nil {
+				t.Errorf("error cleaning up test data: %s", err.Error())
+			}
+		}()
+		out, err := exec.Command(testcmd[0], testcmd[1:]...).Output()
+		if err != nil {
+			t.Errorf("test %s, error running command %s:\n%s\n\nCommand output:\n%s", test.name, testcmd, err.Error(), out)
+		}
+		if strings.TrimRight(bytes.NewBuffer(out).String(), "\n") != test.want {
+			t.Errorf("test %s, output is not as expected\nOutput: %s\nWanted: %s", test.name, out, test.want)
 		}
 	}
 }

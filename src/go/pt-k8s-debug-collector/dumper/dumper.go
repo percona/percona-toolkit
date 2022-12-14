@@ -202,7 +202,7 @@ func (d *Dumper) DumpCluster() error {
 			if len(pod.Labels) == 0 {
 				continue
 			}
-			location = filepath.Join(d.location, ns.Name, pod.Name, "/pt-summary.txt")
+			location = filepath.Join(d.location, ns.Name, pod.Name, "/summary.txt")
 			component := resourceType(d.crType)
 			if component == "psmdb" {
 				component = "mongod"
@@ -218,10 +218,10 @@ func (d *Dumper) DumpCluster() error {
 				}
 			}
 			if pod.Labels["app.kubernetes.io/component"] == component ||
-				(component == "psql" && pod.Labels["pg-cluster"] != "") {
+				(component == "psql" && pod.Labels["pgo-pg-database"] == "true") {
 				var crName string
 				if component == "psql" {
-					crName = pod.Labels["deployment-name"]
+					crName = pod.Labels["pg-cluster"]
 				} else {
 					crName = pod.Labels["app.kubernetes.io/instance"]
 				}
@@ -231,13 +231,13 @@ func (d *Dumper) DumpCluster() error {
 					d.logError(err.Error(), d.crType, pod.Name)
 					err = addToArchive(location, d.mode, []byte(err.Error()), tw)
 					if err != nil {
-						log.Printf("Error: create pt-summary errors archive for pod %s in namespace %s: %v", pod.Name, ns.Name, err)
+						log.Printf("Error: create summary errors archive for pod %s in namespace %s: %v", pod.Name, ns.Name, err)
 					}
 				} else {
 					err = addToArchive(location, d.mode, output, tw)
 					if err != nil {
-						d.logError(err.Error(), "create pt-summary archive for pod "+pod.Name)
-						log.Printf("Error: create pt-summary  archive for pod %s: %v", pod.Name, err)
+						d.logError(err.Error(), "create summary archive for pod "+pod.Name)
+						log.Printf("Error: create summary  archive for pod %s: %v", pod.Name, err)
 					}
 				}
 
@@ -477,7 +477,7 @@ func (d *Dumper) getCR(crName string, namespace string) (crSecrets, error) {
 	}
 	err = json.Unmarshal(output, &cr)
 	if err != nil {
-		return cr, errors.Wrap(err, "unmarshal psmdb cr")
+		return cr, errors.Wrap(err, "unmarshal "+crName+" cr")
 	}
 
 	return cr, nil
