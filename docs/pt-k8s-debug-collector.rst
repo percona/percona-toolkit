@@ -131,7 +131,7 @@ Targeted custom resource name. Supported values:
 
 * ``pxc`` - PXC 
 
-* ``psmdb`` - MongoDB) 
+* ``psmdb`` - MongoDB
 
 * ``psql`` - PostgreSQL 
 
