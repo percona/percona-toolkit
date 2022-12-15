@@ -416,7 +416,7 @@ func (d *Dumper) getPodSummary(resource, podName, crName string, namespace strin
 		ports = port + ":5432"
 		summCmdName = "sh"
 		summCmdArgs = []string{"-c", "curl https://raw.githubusercontent.com/percona/support-snippets/master/postgresql/pg_gather/gather.sql" +
-			" | PGPASSWORD=" + string(pass) + " psql -X --host=127.0.0.1 --port=" + port + " --user=" + user}
+			" 2>/dev/null | PGPASSWORD=" + string(pass) + " psql -X --host=127.0.0.1 --port=" + port + " --user=" + user}
 	case "psmdb":
 		var port string
 		if d.forwardport != "" {
