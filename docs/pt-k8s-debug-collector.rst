@@ -133,7 +133,7 @@ Targeted custom resource name. Supported values:
 
 * ``psmdb`` - MongoDB
 
-* ``psql`` - PostgreSQL 
+* ``pg`` - PostgreSQL 
 
 * ``ps`` - MySQL
 

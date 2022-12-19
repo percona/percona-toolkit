@@ -18,7 +18,7 @@ This test requires:
 -- KUBECONFIG_PXC for K8SPXC
 -- KUBECONFIG_PS for K8SPS
 -- KUBECONFIG_PSMDB for K8SPSMDB
--- KUBECONFIG_PSQL for K8SPG
+-- KUBECONFIG_PG for K8SPG
 
 You can additionally set option FORWARDPORT if you want to use custom port when testing summaries.
 
@@ -132,9 +132,9 @@ func TestResourceOption(t *testing.T) {
 			kubeconfig: os.Getenv("KUBECONFIG_PSMDB"),
 		},
 		{
-			name:       "psql",
+			name:       "pg",
 			want:       "3",
-			kubeconfig: os.Getenv("KUBECONFIG_PSQL"),
+			kubeconfig: os.Getenv("KUBECONFIG_PG"),
 		},
 	}
 

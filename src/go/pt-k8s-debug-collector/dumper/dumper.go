@@ -77,7 +77,7 @@ func New(location, namespace, resource string, kubeconfig string, forwardport st
 				"perconaservermongodbrestores",
 				"perconaservermongodbs",
 			)
-		} else if resourceType(resource) == "psql" {
+		} else if resourceType(resource) == "pg" {
 			resources = append(resources,
 				"perconapgclusters",
 				"pgclusters",
@@ -218,9 +218,9 @@ func (d *Dumper) DumpCluster() error {
 				}
 			}
 			if pod.Labels["app.kubernetes.io/component"] == component ||
-				(component == "psql" && pod.Labels["pgo-pg-database"] == "true") {
+				(component == "pg" && pod.Labels["pgo-pg-database"] == "true") {
 				var crName string
-				if component == "psql" {
+				if component == "pg" {
 					crName = pod.Labels["pg-cluster"]
 				} else {
 					crName = pod.Labels["app.kubernetes.io/instance"]
@@ -386,7 +386,7 @@ func (d *Dumper) getPodSummary(resource, podName, crName string, namespace strin
 		ports = port + ":3306"
 		summCmdName = "pt-mysql-summary"
 		summCmdArgs = []string{"--host=127.0.0.1", "--port=" + port, "--user=root", "--password=" + string(pass)}
-	case "psql":
+	case "pg":
 		var user, pass, port string
 		if d.forwardport != "" {
 			port = d.forwardport
@@ -403,7 +403,7 @@ func (d *Dumper) getPodSummary(resource, podName, crName string, namespace strin
 			user, err = d.getDataFromSecret(crName+"-postgres-secret", "username", namespace)
 		}
 		if err != nil {
-			return nil, errors.Wrap(err, "get user from psql users secret")
+			return nil, errors.Wrap(err, "get user from PostgreSQL users secret")
 		}
 		if cr.Spec.SecretName != "" {
 			pass, err = d.getDataFromSecret(cr.Spec.SecretName, "password", namespace)
@@ -411,7 +411,7 @@ func (d *Dumper) getPodSummary(resource, podName, crName string, namespace strin
 			pass, err = d.getDataFromSecret(crName+"-postgres-secret", "password", namespace)
 		}
 		if err != nil {
-			return nil, errors.Wrap(err, "get password from psql users secret")
+			return nil, errors.Wrap(err, "get password from PostgreSQL users secret")
 		}
 		ports = port + ":5432"
 		summCmdName = "sh"
@@ -501,8 +501,8 @@ func resourceType(s string) string {
 		return "pxc"
 	} else if s == "psmdb" || strings.HasPrefix(s, "psmdb/") {
 		return "psmdb"
-	} else if s == "psql" || strings.HasPrefix(s, "psql/") {
-		return "psql"
+	} else if s == "pg" || strings.HasPrefix(s, "pg/") {
+		return "pg"
 	} else if s == "ps" || strings.HasPrefix(s, "ps/") {
 		return "ps"
 	}
