@@ -86,6 +86,14 @@ Kill MySQL queries that match certain criteria.
 
 Look at many samples of MySQL C<SHOW GLOBAL STATUS> side-by-side.
 
+=item pt-mongodb-index-check
+
+Performs checks on MongoDB indexes
+
+=item pt-mongodb-query-digest
+
+Reports query usage statistics by aggregating queries from MongoDB query profiler
+
 =item pt-mysql-summary
 
 Summarize MySQL information nicely.
@@ -567,6 +575,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-Percona Toolkit v3.4.0 released 2022-04-05
+Percona Toolkit v3.5.0 released 2022-11-28
 
 =cut
