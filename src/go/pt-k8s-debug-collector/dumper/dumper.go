@@ -20,18 +20,20 @@ import (
 
 // Dumper struct is for dumping cluster
 type Dumper struct {
-	cmd       string
-	resources []string
-	filePaths []string
-	namespace string
-	location  string
-	errors    string
-	mode      int64
-	crType    string
+	cmd         string
+	kubeconfig  string
+	resources   []string
+	filePaths   []string
+	namespace   string
+	location    string
+	errors      string
+	mode        int64
+	crType      string
+	forwardport string
 }
 
 // New return new Dumper object
-func New(location, namespace, resource string) Dumper {
+func New(location, namespace, resource string, kubeconfig string, forwardport string) Dumper {
 	resources := []string{
 		"pods",
 		"replicasets",
@@ -54,11 +56,8 @@ func New(location, namespace, resource string) Dumper {
 	}
 	filePaths := make([]string, 0)
 	if len(resource) > 0 {
-		resources = append(resources, resource)
-
 		if resourceType(resource) == "pxc" {
 			resources = append(resources,
-				"perconaxtradbbackups",
 				"perconaxtradbclusterbackups",
 				"perconaxtradbclusterrestores",
 				"perconaxtradbclusters")
@@ -78,16 +77,32 @@ func New(location, namespace, resource string) Dumper {
 				"perconaservermongodbrestores",
 				"perconaservermongodbs",
 			)
+		} else if resourceType(resource) == "pg" {
+			resources = append(resources,
+				"perconapgclusters",
+				"pgclusters",
+				"pgpolicies",
+				"pgreplicas",
+				"pgtasks",
+			)
+		} else if resourceType(resource) == "ps" {
+			resources = append(resources,
+				"perconaservermysqlbackups",
+				"perconaservermysqlrestores",
+				"perconaservermysqls",
+			)
 		}
 	}
 	return Dumper{
-		cmd:       "kubectl",
-		resources: resources,
-		filePaths: filePaths,
-		location:  "cluster-dump",
-		mode:      int64(0o777),
-		namespace: namespace,
-		crType:    resource,
+		cmd:         "kubectl",
+		kubeconfig:  kubeconfig,
+		resources:   resources,
+		filePaths:   filePaths,
+		location:    "cluster-dump",
+		mode:        int64(0o777),
+		namespace:   namespace,
+		crType:      resource,
+		forwardport: forwardport,
 	}
 }
 
@@ -187,10 +202,13 @@ func (d *Dumper) DumpCluster() error {
 			if len(pod.Labels) == 0 {
 				continue
 			}
-			location = filepath.Join(d.location, ns.Name, pod.Name, "/pt-summary.txt")
+			location = filepath.Join(d.location, ns.Name, pod.Name, "/summary.txt")
 			component := resourceType(d.crType)
 			if component == "psmdb" {
 				component = "mongod"
+			}
+			if component == "ps" {
+				component = "mysql"
 			}
 			if pod.Labels["app.kubernetes.io/instance"] != "" && pod.Labels["app.kubernetes.io/component"] != "" {
 				resource := "secret/" + pod.Labels["app.kubernetes.io/instance"] + "-" + pod.Labels["app.kubernetes.io/component"]
@@ -199,20 +217,27 @@ func (d *Dumper) DumpCluster() error {
 					log.Printf("Error: get %s resource: %v", resource, err)
 				}
 			}
-			if pod.Labels["app.kubernetes.io/component"] == component {
+			if pod.Labels["app.kubernetes.io/component"] == component ||
+				(component == "pg" && pod.Labels["pgo-pg-database"] == "true") {
+				var crName string
+				if component == "pg" {
+					crName = pod.Labels["pg-cluster"]
+				} else {
+					crName = pod.Labels["app.kubernetes.io/instance"]
+				}
 				// Get summary
-				output, err = d.getPodSummary(resourceType(d.crType), pod.Name, pod.Labels["app.kubernetes.io/instance"], tw)
+				output, err = d.getPodSummary(resourceType(d.crType), pod.Name, crName, ns.Name, tw)
 				if err != nil {
 					d.logError(err.Error(), d.crType, pod.Name)
 					err = addToArchive(location, d.mode, []byte(err.Error()), tw)
 					if err != nil {
-						log.Printf("Error: create pt-summary errors archive for pod %s in namespace %s: %v", pod.Name, ns.Name, err)
+						log.Printf("Error: create summary errors archive for pod %s in namespace %s: %v", pod.Name, ns.Name, err)
 					}
 				} else {
 					err = addToArchive(location, d.mode, output, tw)
 					if err != nil {
-						d.logError(err.Error(), "create pt-summary archive for pod "+pod.Name)
-						log.Printf("Error: create pt-summary  archive for pod %s: %v", pod.Name, err)
+						d.logError(err.Error(), "create summary archive for pod "+pod.Name)
+						log.Printf("Error: create summary  archive for pod %s: %v", pod.Name, err)
 					}
 				}
 
@@ -247,6 +272,7 @@ func (d *Dumper) DumpCluster() error {
 // runCmd run command (Dumper.cmd) with given args, return it output
 func (d *Dumper) runCmd(args ...string) ([]byte, error) {
 	var outb, errb bytes.Buffer
+	args = append(args, "--kubeconfig", d.kubeconfig)
 	cmd := exec.Command(d.cmd, args...)
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
@@ -328,7 +354,7 @@ func (d *Dumper) getIndividualFiles(resource, namespace string, podName, path, l
 	return addToArchive(location+"/"+path, d.mode, output, tw)
 }
 
-func (d *Dumper) getPodSummary(resource, podName, crName string, tw *tar.Writer) ([]byte, error) {
+func (d *Dumper) getPodSummary(resource, podName, crName string, namespace string, tw *tar.Writer) ([]byte, error) {
 	var (
 		summCmdName string
 		ports       string
@@ -336,33 +362,86 @@ func (d *Dumper) getPodSummary(resource, podName, crName string, tw *tar.Writer)
 	)
 
 	switch resource {
+	case "ps":
+		fallthrough
 	case "pxc":
-		cr, err := d.getCR("pxc/" + crName)
+		var pass, port string
+		if d.forwardport != "" {
+			port = d.forwardport
+		} else {
+			port = "3306"
+		}
+		cr, err := d.getCR(resource+"/"+crName, namespace)
 		if err != nil {
 			return nil, errors.Wrap(err, "get cr")
 		}
-		pass, err := d.getDataFromSecret(cr.Spec.SecretName, "root")
+		if cr.Spec.SecretName != "" {
+			pass, err = d.getDataFromSecret(cr.Spec.SecretName, "root", namespace)
+		} else {
+			pass, err = d.getDataFromSecret(crName+"-secrets", "root", namespace)
+		}
 		if err != nil {
 			return nil, errors.Wrap(err, "get password from pxc users secret")
 		}
-		ports = "3306:3306"
+		ports = port + ":3306"
 		summCmdName = "pt-mysql-summary"
-		summCmdArgs = []string{"--host=127.0.0.1", "--port=3306", "--user=root", "--password=" + string(pass)}
-	case "psmdb":
-		cr, err := d.getCR("psmdb/" + crName)
+		summCmdArgs = []string{"--host=127.0.0.1", "--port=" + port, "--user=root", "--password=" + string(pass)}
+	case "pg":
+		var user, pass, port string
+		if d.forwardport != "" {
+			port = d.forwardport
+		} else {
+			port = "5432"
+		}
+		cr, err := d.getCR("pgclusters", namespace)
 		if err != nil {
 			return nil, errors.Wrap(err, "get cr")
 		}
-		pass, err := d.getDataFromSecret(cr.Spec.Secrets.Users, "MONGODB_CLUSTER_ADMIN_PASSWORD")
+		if cr.Spec.SecretName != "" {
+			user, err = d.getDataFromSecret(cr.Spec.SecretName, "username", namespace)
+		} else {
+			user, err = d.getDataFromSecret(crName+"-postgres-secret", "username", namespace)
+		}
+		if err != nil {
+			return nil, errors.Wrap(err, "get user from PostgreSQL users secret")
+		}
+		if cr.Spec.SecretName != "" {
+			pass, err = d.getDataFromSecret(cr.Spec.SecretName, "password", namespace)
+		} else {
+			pass, err = d.getDataFromSecret(crName+"-postgres-secret", "password", namespace)
+		}
+		if err != nil {
+			return nil, errors.Wrap(err, "get password from PostgreSQL users secret")
+		}
+		ports = port + ":5432"
+		summCmdName = "sh"
+		summCmdArgs = []string{"-c", "curl https://raw.githubusercontent.com/percona/support-snippets/master/postgresql/pg_gather/gather.sql" +
+			" 2>/dev/null | PGPASSWORD=" + string(pass) + " psql -X --host=127.0.0.1 --port=" + port + " --user=" + user}
+	case "psmdb":
+		var port string
+		if d.forwardport != "" {
+			port = d.forwardport
+		} else {
+			port = "27017"
+		}
+		cr, err := d.getCR("psmdb/"+crName, namespace)
+		if err != nil {
+			return nil, errors.Wrap(err, "get cr")
+		}
+		user, err := d.getDataFromSecret(cr.Spec.Secrets.Users, "MONGODB_DATABASE_ADMIN_USER", namespace)
 		if err != nil {
 			return nil, errors.Wrap(err, "get password from psmdb users secret")
 		}
-		ports = "27017:27017"
+		pass, err := d.getDataFromSecret(cr.Spec.Secrets.Users, "MONGODB_DATABASE_ADMIN_PASSWORD", namespace)
+		if err != nil {
+			return nil, errors.Wrap(err, "get password from psmdb users secret")
+		}
+		ports = port + ":27017"
 		summCmdName = "pt-mongodb-summary"
-		summCmdArgs = []string{"--username=clusterAdmin", "--password=" + pass, "--authenticationDatabase=admin", "127.0.0.1:27017"}
+		summCmdArgs = []string{"--username=" + user, "--password=" + pass, "--authenticationDatabase=admin", "127.0.0.1:" + port}
 	}
 
-	cmdPortFwd := exec.Command(d.cmd, "port-forward", "pod/"+podName, ports)
+	cmdPortFwd := exec.Command(d.cmd, "port-forward", "pod/"+podName, ports, "-n", namespace, "--kubeconfig", d.kubeconfig)
 	go func() {
 		err := cmdPortFwd.Run()
 		if err != nil {
@@ -390,22 +469,22 @@ func (d *Dumper) getPodSummary(resource, podName, crName string, tw *tar.Writer)
 	return []byte(fmt.Sprintf("stderr: %s, stdout: %s", errb.String(), outb.String())), nil
 }
 
-func (d *Dumper) getCR(crName string) (crSecrets, error) {
+func (d *Dumper) getCR(crName string, namespace string) (crSecrets, error) {
 	var cr crSecrets
-	output, err := d.runCmd("get", crName, "-o", "json")
+	output, err := d.runCmd("get", crName, "-o", "json", "-n", namespace)
 	if err != nil {
 		return cr, errors.Wrap(err, "get "+crName)
 	}
 	err = json.Unmarshal(output, &cr)
 	if err != nil {
-		return cr, errors.Wrap(err, "unmarshal psmdb cr")
+		return cr, errors.Wrap(err, "unmarshal "+crName+" cr")
 	}
 
 	return cr, nil
 }
 
-func (d *Dumper) getDataFromSecret(secretName, dataName string) (string, error) {
-	passEncoded, err := d.runCmd("get", "secrets/"+secretName, "--template={{.data."+dataName+"}}")
+func (d *Dumper) getDataFromSecret(secretName, dataName string, namespace string) (string, error) {
+	passEncoded, err := d.runCmd("get", "secrets/"+secretName, "--template={{.data."+dataName+"}}", "-n", namespace)
 	if err != nil {
 		return "", errors.Wrap(err, "run get secret cmd")
 	}
@@ -422,6 +501,10 @@ func resourceType(s string) string {
 		return "pxc"
 	} else if s == "psmdb" || strings.HasPrefix(s, "psmdb/") {
 		return "psmdb"
+	} else if s == "pg" || strings.HasPrefix(s, "pg/") {
+		return "pg"
+	} else if s == "ps" || strings.HasPrefix(s, "ps/") {
+		return "ps"
 	}
 	return s
 }
