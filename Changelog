@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v3.5.0 release 2022-11-28
+
 * Improvement PT-1052: Include NUMA information in pt-tool output
 * Improvement PT-1926: pt-k8s-debug-collector should not collect passwords
 * Improvement PT-2033: Avoid running same query concurrently from pt-stalk
