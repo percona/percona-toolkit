@@ -88,7 +88,7 @@ my $max_chunks = $sandbox_version < '5.7' ? 60 : 100;
 
 ok(
    $row->[0] > 25 && $row->[0] < $max_chunks,
-   'Between 25 and 60 chunks'
+   "Between 25 and $max_chunks chunks"
 ) or diag($row->[0]);
 
 # ############################################################################
