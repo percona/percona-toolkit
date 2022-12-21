@@ -32,7 +32,7 @@ $sb->load_file('master', 't/pt-table-checksum/samples/issue_1485195.sql');
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
 my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox,D=my_binary_database';
-my @args       = ($master_dsn, qw(--replicate my_binary_database.my_table -d percona_test)); 
+my @args       = ($master_dsn, qw(--replicate my_binary_database.my_table -t percona_test.checksums)); 
 my $output;
 
 $output = output(

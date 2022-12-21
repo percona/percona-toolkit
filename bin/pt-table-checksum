@@ -11629,7 +11629,7 @@ sub nibble_is_safe {
          warn ts("Skipping chunk " . $nibble_iter->nibble_number()
             . " of $tbl->{db}.$tbl->{tbl} because MySQL chose "
             . ($expl->{key} ? "the $expl->{key}" : "no") . " index "
-            . " instead of the " . $nibble_iter->nibble_index() . "index.\n");
+            . " instead of the " . $nibble_iter->nibble_index() . " index.\n");
       }
       $exit_status |= $PTC_EXIT_STATUS{SKIP_CHUNK};
       return 0; # not safe
