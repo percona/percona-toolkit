@@ -24,8 +24,9 @@ my $rows = $dbh->selectall_hashref("SHOW VARIABLES LIKE '%version%'", ['variable
 
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
-} elsif ( $sb_version < '5.7.21' || !($rows->{version_comment}->{value} =~ m/percona server/i) ) {
-   plan skip_all => 'This test file needs Percona Server 5.7.21.21+';
+} elsif ( $sb_version < '5.7.21' || $sb_version >= '8.0' ||
+      !($rows->{version_comment}->{value} =~ m/percona server/i) ) {
+   plan skip_all => 'This test file needs 5.7 Percona Server, starting from 5.7.21';
 } else {
    plan tests => 3;
 }

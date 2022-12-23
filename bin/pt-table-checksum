@@ -5201,7 +5201,7 @@ sub get_slaves {
                   $slave_dsn->{p} = $o->get('slave-password');
                   PTDEBUG && _d("Slave password set");
                }
-               push @$slaves, $make_cxn->(dsn => $slave_dsn, dbh => $dbh);
+               push @$slaves, $make_cxn->(dsn => $slave_dsn, dbh => $dbh, parent => $parent);
                return;
             },
          }
@@ -12420,9 +12420,12 @@ sub wait_for_slaves {
    }
    my ($master_dbh, $ms, $slaves) = @args{@required_args};
 
-   my $master_status = $ms->get_master_status($master_dbh);
    foreach my $slave ( @$slaves ) {
+       my $dp = %$slave{DSNParser};
+       my $mdbh = $dp->get_dbh($dp->get_cxn_params($slave->{parent}));
+       my $master_status = $ms->get_master_status($mdbh);
        $ms->wait_for_master(master_status => $master_status, slave_dbh => $slave->dbh());
+       $dp->disconnect($mdbh);
    }
 }
 
