@@ -763,7 +763,8 @@ sub _get_bounds {
       if (    defined $nibble->{lower_boundary}
            && defined $nibble->{upper_boundary} ) {
          my $sth = $dbh->prepare($self->{resume_lb_sql});
-         my @ub  = split ',', $nibble->{upper_boundary};
+         #my @ub  = split ',', $nibble->{upper_boundary};
+         my @ub = $self->{Quoter}->deserialize_list($nibble->{upper_boundary});
          PTDEBUG && _d($sth->{Statement}, 'params:', @ub);
          $sth->execute(@ub);
          $self->{next_lower} = $sth->fetchrow_arrayref();

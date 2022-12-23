@@ -19,6 +19,7 @@ require "$trunk/bin/pt-table-checksum";
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
+my $sb_version = VersionParser->new($dbh);
 
 if ( !$dbh ) {
     plan skip_all => 'Cannot connect to sandbox master';
@@ -70,9 +71,11 @@ like(
    stderr => 1,
 );
 
+my $return_code = ($sb_version >= '8.0') ? 16 : 0;
+
 is(
    $exit_status,
-   0,
+   $return_code,
    "PT-204 Starting checksum since RocksDB table was skipped with --ignore-tables",
 );
 
@@ -96,7 +99,7 @@ unlike(
 
 is(
    $exit_status,
-   0,
+   $return_code,
    "PT-204 Starting checksum since RocksDB table was skipped with --ignore-engines",
 );
 
