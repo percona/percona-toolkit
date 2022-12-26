@@ -164,7 +164,6 @@ make_sandbox() {
 
         $PERCONA_TOOLKIT_BRANCH/util/version_cmp $minor_version 5.7.5
         if [ $? -eq 2 ]; then
-            echo "ALTER USER 'root'@'localhost' IDENTIFIED BY 'msandbox';" > $init_file
             echo "CREATE USER IF NOT EXISTS 'msandbox'@'%';" > $init_file
             echo "ALTER USER 'msandbox'@'%' IDENTIFIED BY 'msandbox' REQUIRE NONE PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK;" >> $init_file
             echo "GRANT ALL PRIVILEGES ON *.* TO 'msandbox'@'%';" >> $init_file
