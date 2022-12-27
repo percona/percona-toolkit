@@ -291,7 +291,7 @@ use percona_test/*!*/;
 use sakila/*!*/;
 ";
 
-if ($sb_version >= '8.0') {
+if ($sb_version >= '5.7') {
    $use_dbs .= "use sys/*!*/;\n";
 }
 

@@ -40,9 +40,13 @@ $output = output(
    stderr => 1,
 );
 
+# We do not count these tables by default, because their presense depends from 
+# previously running tests
+my $extra_tables = $dbh->selectrow_arrayref("select count(*) from percona_test.checksums where db_tbl in ('mysql.plugin', 'mysql.func', 'mysql.proxies_priv');")->[0];
+
 is(
    PerconaTest::count_checksum_results($output, 'rows'),
-   $sandbox_version ge '8.0' ? 29 : $sandbox_version lt '5.7' ? 24 : 25,
+   $sandbox_version ge '8.0' ? 27 + $extra_tables : $sandbox_version lt '5.7' ? 24 : 23  + $extra_tables,
    "Large BLOB/TEXT/BINARY Checksum"
 );
 

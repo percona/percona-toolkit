@@ -69,11 +69,16 @@ sub reset_repl_db {
 # ############################################################################
 
 # 1
+# We need to remove mysql.plugin and percona_test.checksums tables from the 
+# result and the sample, because they have different number of rows than default
+# if run test with enabled MyRocks or TokuDB SE
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args) },
       "$sample/default-results-$sandbox_version.txt",
-      post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $7 " " $9}\'',
+      sed_out => '\'/mysql.plugin$/d; /percona_test.checksums$/d\'',
+      post_pipe => 'sed \'/mysql.plugin$/d; /percona_test.checksums$/d\' | ' .
+                   'awk \'{print $2 " " $3 " " $4 " " $7 " " $9}\'',
    ),
    "Default checksum"
 );
@@ -95,11 +100,16 @@ ok(
 # Static chunk size (disable --chunk-time)
 # ############################################################################
 # 3
+# We need to remove mysql.plugin and percona_test.checksums tables from the 
+# result and the sample, because they have different number of rows than default
+# if run test with enabled MyRocks or TokuDB SE
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args, qw(--chunk-time 0 --ignore-databases mysql)) },
       "$sample/static-chunk-size-results-$sandbox_version.txt",
-      post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $6 " " $7 " " $9}\'',
+      sed_out => '\'/mysql.plugin$/d; /percona_test.checksums$/d\'',
+      post_pipe => 'sed \'/mysql.plugin$/d; /percona_test.checksums$/d\' | ' .
+                   'awk \'{print $2 " " $3 " " $4 " " $6 " " $7 " " $9}\'',
    ),
    "Static chunk size (--chunk-time 0)"
 );

@@ -21,6 +21,7 @@ my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 my $sb_version = VersionParser->new($dbh);
 my $rows = $dbh->selectall_hashref("SHOW VARIABLES LIKE '%version%'", ['variable_name']);
+my $remove_plugin = 0;
 
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
@@ -36,6 +37,7 @@ eval {
 };
 if ($EVAL_ERROR) {
     $sb->load_file('master', 't/pt-table-checksum/samples/pt-131.sql');
+    $remove_plugin = 1;
 }
 # The sandbox servers run with lock_wait_timeout=3 and it is not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
@@ -64,6 +66,9 @@ delete $ENV{PTDEBUG};
 # #############################################################################
 # Done.
 # #############################################################################
+if ($remove_plugin) {
+   $sb->load_file('master', 't/pt-table-checksum/samples/pt-131-wipe.sql');
+}
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;
