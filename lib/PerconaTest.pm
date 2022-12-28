@@ -635,8 +635,6 @@ sub no_diff {
    $test_diff = `diff $res_file $cmp_file 2>&1`;
    my $retval = $?;
 
-#REMOVEME
-diag(`diff $res_file $cmp_file`);
    # diff returns 0 if there were no differences,
    # so !0 = 1 = no diff in our testing parlance.
    $retval = $retval >> 8; 
