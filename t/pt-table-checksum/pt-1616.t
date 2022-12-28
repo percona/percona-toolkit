@@ -11,6 +11,10 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
+if ( !$ENV{SLOW_TESTS} ) { 
+   plan skip_all => "pt-table-checksum/replication_filters.t is one of the top slowest files; set SLOW_TESTS=1 to enable it.";
+}
+
 use PerconaTest;
 use Sandbox;
 use SqlModes;
