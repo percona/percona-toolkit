@@ -4108,8 +4108,11 @@ sub main {
       # We're not daemoninzing, it just handles PID stuff.  Keep $daemon
       # in the the scope of main() because when it's destroyed it automatically
       # removes the PID file.
-      $daemon = new Daemon(o=>$o);
-      $daemon->make_PID_file();
+      $daemon = new Daemon(
+         daemonize => 0, # not daemoninzing, just PID file
+         pid_file => $o->get('pid'),
+      );
+      $daemon->run();
    }
 
    # ########################################################################

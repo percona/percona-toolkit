@@ -6370,15 +6370,14 @@ sub main {
    # Daemonize only after (potentially) asking for passwords for --ask-pass.
    # ########################################################################
    my $daemon;
-   if ( $o->get('daemonize') ) {
-      $daemon = new Daemon(o=>$o);
-      $daemon->daemonize();
-      PTDEBUG && _d('I am a daemon now');
-   }
-   elsif ( $o->get('pid') ) {
-      # We're not daemoninzing, it just handles PID stuff.
-      $daemon = new Daemon(o=>$o);
-      $daemon->make_PID_file();
+   if ( $o->get('daemonize') || $o->get('pid')) {
+      $daemon = new Daemon(
+         log_file => $o->get('log'),
+         pid_file => $o->get('pid'),
+         daemonize => $o->get('daemonize'),
+      );
+      $daemon->run();
+      PTDEBUG && $o->get('daemonize') && _d('I am a daemon now');
    }
 
    # ########################################################################

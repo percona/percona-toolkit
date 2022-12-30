@@ -4193,8 +4193,11 @@ sub main {
    }
    elsif ( $o->get('pid') ) {
       # We're not daemoninzing, it just handles PID stuff.
-      $daemon = new Daemon(o=>$o);
-      $daemon->make_PID_file();
+      $daemon = new Daemon(
+         daemonize => 0, # not daemoninzing, just PID file
+         pid_file => $o->get('pid'),
+      );
+      $daemon->run();
    }
 
    # If we daemonized, the parent has already exited and we're the child.

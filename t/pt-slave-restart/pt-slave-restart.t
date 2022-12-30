@@ -57,6 +57,7 @@ ok(-f '/tmp/pt-slave-restart.log', 'Log file created');
 
 my ($pid) = $output =~ /^\s*(\d+)\s+/;
 $output = `cat /tmp/pt-slave-restart.pid`;
+chomp($output);
 is($output, $pid, 'PID file has correct PID');
 
 diag(`$trunk/bin/pt-slave-restart --stop -q`);
@@ -107,7 +108,7 @@ unlike(
 $output = `$trunk/bin/pt-slave-restart --max-sleep 0.25 -h 127.0.0.1 -P 12346 -u msandbox -p msandbox --pid /tmp/pt-script.pid 2>&1`;
 like(
    $output,
-   qr{PID file /tmp/pt-script.pid already exists},
+   qr{PID file /tmp/pt-script.pid exists},
    'Dies if PID file already exists (--pid without --daemonize) (issue 391)'
 );
 `rm -rf /tmp/pt-script.pid`;
