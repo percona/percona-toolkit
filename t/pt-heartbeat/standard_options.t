@@ -42,7 +42,7 @@ my $cmd = "$trunk/bin/pt-heartbeat -F $cnf ";
 $output = `$cmd --host 127.1 -u msandbox -p msandbox --port 12345 -D test --check --recurse 1 --pid /tmp/mk-script.pid --create-table --master-server-id 12345 2>&1`;
 like(
    $output,
-   qr{PID file /tmp/mk-script.pid already exists},
+   qr{PID file /tmp/mk-script.pid exists},
    'Dies if PID file already exists (--pid without --daemonize) (issue 391)'
 );
 `rm -rf /tmp/mk-script.pid`;

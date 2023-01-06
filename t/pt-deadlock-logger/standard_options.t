@@ -67,7 +67,7 @@ $output = output(
 
 like(
    $output,
-   qr{PID file $pid_file already exists},
+   qr{PID file $pid_file exists},
    'Dies if PID file already exists (--pid without --daemonize) (issue 391)'
 );
 
@@ -82,6 +82,8 @@ $sb->load_file('master', 't/pt-deadlock-logger/samples/deadlocks_tbl.sql', 'test
 
 $output = `$trunk/bin/pt-deadlock-logger $dsn --dest D=test,t=deadlocks --daemonize --run-time 10 --interval 1 --pid $pid_file 1>/dev/null 2>/dev/null`;
 
+#REMOVEME
+`echo "test 3" >>/tmp/REMOVEME`;
 PerconaTest::wait_for_files($pid_file);
 
 $output = `ps x | grep 'pt-deadlock-logger $dsn' | grep -v grep`;
@@ -91,6 +93,8 @@ like(
    'It lives daemonized'
 ) or diag($output);
 
+#REMOVEME
+`echo "test 4" >>/tmp/REMOVEME`;
 my ($pid) = $output =~ /(\d+)/;
 
 ok(
@@ -127,7 +131,7 @@ $output = output(
 
 like(
    $output,
-   qr/PID file $pid_file already exists/,
+   qr/PID file $pid_file exists/,
    'Does not run if PID file already exists'
 );
 
