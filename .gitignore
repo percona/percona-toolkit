@@ -27,3 +27,4 @@ config/rpm/percona-toolkit.spec.bak
 config/sphinx-build/percona-theme/*
 coverage.out
 .idea
+config/sphinx-build/__pycache__

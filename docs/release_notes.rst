@@ -1,6 +1,45 @@
 Percona Toolkit
 ***************
 
+v3.5.1 released 2023-01-
+==============================
+
+New Features
+------------------------------------------------------------
+
+* :jirabug:`PT-2134`: Adds support for PostgreSQL and MySQL operators. 
+
+This feature includes the following changes:
+
+- **Incompatible change:** Option `--resource` now supports `pxc`, `ps`, `PDB`, `psql`, and `none` options. The default option is `none`.
+- **Incompatible change:** Output file `pt-summary.txt` is renamed to `summary.txt` to avoid confusion with the `pt-summary` tool.
+- The `--kubeconfig` and `--forwardport` options are added. This allows specifying custom configuration files for `kubectl` and custom port when collecting summary from the database.
+- Test case now uses `--kubeconfig`, `--forwardport` options, and environment variables `KUBECONFIG_PXC`, `KUBECONFIG_PS`, `KUBECONFIG_PSMDB`, `KUBECONFIG_PSQL`, `FORWARDPORT`. This provides more flexibility.
+- Summaries are now collected for all Percona operators unless `--resources=none` is specified. For PXC, MySQL, and MongoDB, the corresponding summary tools (pt-mysql-summary and pt-mongodb-summary) must be in PATH.
+- The README.md file is replaced with a link to the README.rst file. This helps avoid duplicate efforts while working on the tool's documentation.
+
+
+Improvements
+------------------------------------------------------------
+
+* :jirabug:`PT-2138`: Fix tests for pt-table-checksum
+* :jirabug:`PT-2142`: Fix tests for pt-config-diff
+* :jirabug:`PT-2143`: Fix tests for pt-deadlock-logger
+* :jirabug:`PT-2144`: Fix tests for pt-fifo-split
+* :jirabug:`PT-2145`: Fix tests for pt-find
+* :jirabug:`PT-2146`: Fix tests for pt-fk-error-logger
+* :jirabug:`PT-2147`: Fix tests for pt-heartbeat
+* :jirabug:`PT-2148`: Fix tests for pt-kill
+* :jirabug:`PT-2153`: Fix tests for pt-slave-find
+
+
+Bugs Fixed
+------------
+
+* :jirabug:`PT-2139`: CVEs in golang binaries
+* :jirabug:`PT-2140`: Update modules in the main branch
+  
+
 v3.5.0 released 2022-11-28
 ==============================
 
