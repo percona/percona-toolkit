@@ -484,11 +484,6 @@ OS_ARCH=${3:-linux-amd64}
 
 ONLY_UPDATE_VERSION=${ONLY_UPDATE_VERSION:-0}
 
-if [ $ONLY_UPDATE_VERSION -eq 1 ]; then
-   update_version
-   exit
-fi
-
 if [ $OS_ARCH != "linux-amd64" ] && [ $OS_ARCH != "linux-386" ] && [ $OS_ARCH != "darwin-amd64" ]; then
    die "Valid OS-ARCH combinations are: linux-amd64, linux-386, darwin-amd64"
 fi
@@ -521,6 +516,11 @@ YEAR=$(date -u +'%Y')                      # for updating copyright year
 DATE=$(date -u +'%F')                      # for updating release date
 DEB_DATE=$(date -u +'%a, %d %b %Y %T %z')  # for updating deb/changelog
 PKG="percona-toolkit-$VERSION"             # what we're building
+
+if [ $ONLY_UPDATE_VERSION -eq 1 ]; then
+   update_version
+   exit
+fi
 
 # mktemp -d doesn't work on Mac OS X, so we'll do it the old-fashioned way.
 tmpdir="/tmp/build-percona-toolkit-$VERSION"
