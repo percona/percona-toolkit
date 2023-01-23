@@ -21,7 +21,7 @@ var (
 	Build     string = "2020-04-23" //nolint
 	Commit    string                //nolint
 	GoVersion string = "1.14.1"     //nolint
-	Version   string = "3.5.0"      //nolint
+	Version   string = "3.5.1"      //nolint
 )
 
 type connOpts struct {

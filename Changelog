@@ -1,5 +1,21 @@
 Changelog for Percona Toolkit
 
+v3.5.1 release 2023-01-23
+
+* Feature     PT-2134: Add support for PostgreSQL and MySQL operators in pt-k8s-debug-collector
+* Improvement PT-2138: Fix tests for pt-table-checksum
+* Improvement PT-2142: Fix tests for pt-config-diff
+* Improvement PT-2143: Fix tests for pt-deadlock-logger
+* Improvement PT-2144: Fix tests for pt-fifo-split
+* Improvement PT-2145: Fix tests for pt-find
+* Improvement PT-2146: Fix tests for pt-fk-error-logger
+* Improvement PT-2147: Fix tests for pt-heartbeat
+* Improvement PT-2148: Fix tests for pt-kill
+* Improvement PT-2153: Fix tests for pt-slave-find
+* Fixed bug   PT-2139: CVEs in golang binaries
+* Fixed bug   PT-2140: Update modules in the main branch
+* Fixed bug   PR-462:  Fix some spelling errors (Thanks Dario Minnucci)
+
 v3.5.0 release 2022-11-28
 
 * Improvement PT-1052: Include NUMA information in pt-tool output

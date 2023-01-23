@@ -58,7 +58,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.5.0';
+our $VERSION = '3.5.1';
 
 use strict;
 use warnings FATAL => 'all';
@@ -12421,7 +12421,7 @@ sub wait_for_slaves {
    my ($master_dbh, $ms, $slaves) = @args{@required_args};
 
    foreach my $slave ( @$slaves ) {
-       my $dp = %$slave{DSNParser};
+       my $dp = $slave->{DSNParser};
        my $mdbh = $dp->get_dbh($dp->get_cxn_params($slave->{parent}));
        my $master_status = $ms->get_master_status($mdbh);
        $ms->wait_for_master(master_status => $master_status, slave_dbh => $slave->dbh());
@@ -14129,6 +14129,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-checksum 3.5.0
+pt-table-checksum 3.5.1
 
 =cut
