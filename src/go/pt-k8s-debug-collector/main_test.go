@@ -7,6 +7,7 @@ import (
 	"path"
 	"strings"
 	"testing"
+	"regexp"
 
 	"golang.org/x/exp/slices"
 )
@@ -22,7 +23,7 @@ This test requires:
 
 You can additionally set option FORWARDPORT if you want to use custom port when testing summaries.
 
-pt-mysql-summary and pt-mongodb-summary must be in the PATH.
+pt-mysql-summary, mysql, psql, and pt-mongodb-summary must be in the PATH.
 
 Since running pt-k8s-debug-collector may take long time run go test with increase timeout:
 go test -timeout 6000s
@@ -156,5 +157,20 @@ func TestResourceOption(t *testing.T) {
 		if strings.TrimRight(bytes.NewBuffer(out).String(), "\n") != test.want {
 			t.Errorf("test %s, output is not as expected\nOutput: %s\nWanted: %s", test.name, out, test.want)
 		}
+	}
+}
+
+/*
+Option --version
+*/
+func TestVersionOption(t *testing.T) {
+	out, err := exec.Command("../../../bin/pt-k8s-debug-collector", "--version").Output()
+	if err != nil {
+		t.Errorf("error executing pt-k8s-debug-collector --version: %s", err.Error())
+	}
+	// We are using MustCompile here, because hard-coded RE should not fail
+	re := regexp.MustCompile(TOOLNAME + `\n.*Version \d+\.\d+\.\d+\n`)
+	if !re.Match(out) {
+		t.Errorf("pt-k8s-debug-collector --version returns wrong result:\n%s", out)
 	}
 }
