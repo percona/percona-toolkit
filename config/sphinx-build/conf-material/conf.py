@@ -18,7 +18,7 @@ html_theme_options = {
     'version_dropdown': True
 }
 html_logo = '../_static/percona-logo.svg'
-html_favicon = '../_static/percona_favicon.ico'
+html_favicon = '../_static/percona-favicon.ico'
 pygments_style = 'emacs'
 gitstamp_fmt = "%b %d, %Y"
 # Specify the text pattern that won't be copied with the code block contents
