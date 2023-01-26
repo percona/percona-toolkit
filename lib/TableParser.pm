@@ -389,7 +389,8 @@ sub get_keys {
    my $clustered_key = undef;
 
    KEY:
-   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY .*)$/gm ) {
+   #foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY .*)$/gm ) {
+   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY \(?`[\s\S]*?`\),?)$/gm ) {
 
       # If you want foreign keys, use get_fks() below.
       next KEY if $key =~ m/FOREIGN/;
@@ -407,7 +408,7 @@ sub get_keys {
       }
 
       # Determine index type
-      my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \((.+)\)/;
+      my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \(([\s\S]+?)\)/;
       my ( $special ) = $key =~ m/(FULLTEXT|SPATIAL)/;
       $type = $type || $special || 'BTREE';
       my ($name) = $key =~ m/(PRIMARY|`[^`]*`)/;
