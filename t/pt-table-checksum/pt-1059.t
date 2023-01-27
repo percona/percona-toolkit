@@ -24,7 +24,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 2;
+   plan tests => 3;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -33,6 +33,7 @@ else {
 my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox,D=pt_1059';
 my @args       = ($master_dsn, qw(--set-vars innodb_lock_wait_timeout=3), '--max-load', ''); 
 my $output;
+my $exit_status;
 
 # We test that checksum works with columns and indexes
 # that contain new lines
@@ -41,7 +42,7 @@ $sb->load_file('master', 't/pt-table-checksum/samples/pt-1059.sql');
 # PT-1059 LP #1093972: Tools can't parse index names containing newlines
 # #############################################################################
 
-$output = output(
+($output, $exit_status) = full_output(
    sub { pt_table_checksum::main(@args, qw(-d pt_1059)) },
    stderr => 1,
 );
@@ -49,8 +50,15 @@ $output = output(
 is(
    PerconaTest::count_checksum_results($output, 'errors'),
    0,
-   "Checksum with columns and indexes, containing new lines"
+   "Checksum with columns and indexes, containing new lines found no errors"
 );
+
+is(
+    $exit_status,
+    0,
+    "Checksum with columns and indexes, containing new lines finished succesfully",
+);
+
 
 # #############################################################################
 # Done.

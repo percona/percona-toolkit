@@ -37,3 +37,11 @@ newline`)
 
 INSERT INTO t3 (`column_with_
 newline`) VALUES('a'),('b'),('c');
+
+DROP TABLE IF EXISTS t4;
+CREATE TABLE `t4` (
+`
+column, starting from new line` char(1)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+INSERT INTO t4 VALUES('a'),('b'),('c');
