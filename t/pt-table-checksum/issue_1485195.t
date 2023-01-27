@@ -46,7 +46,7 @@ my $extra_tables = $dbh->selectrow_arrayref("select count(*) from percona_test.c
 
 is(
    PerconaTest::count_checksum_results($output, 'rows'),
-   $sandbox_version ge '8.0' ? 27 + $extra_tables : $sandbox_version lt '5.7' ? 24 : 23  + $extra_tables,
+   $sandbox_version ge '8.0' ? 28 + $extra_tables : $sandbox_version lt '5.7' ? 24 : 23  + $extra_tables,
    "Large BLOB/TEXT/BINARY Checksum"
 );
 
