@@ -103,9 +103,13 @@ for my $char ( "\N{KATAKANA LETTER NI}", "\N{U+DF}" ) {
    my $sql = qq{INSERT INTO `bug_1127450`.`original` VALUES (1, ?)};
    $utf8_dbh->prepare($sql)->execute($char);
 
+# We need to have --no-check-charset here, because utf8 that we use in the test file
+# is alias of utf8mb3 in 5.7 and alias of utf8mb4 in 8.0.
+# We cannot set this character set explicitly due to Perl limitations.
+# Changing utf8 to utf8mb4 will break test on 5.7
    $output = output(
       sub { pt_archiver::main(qw(--no-ascend --limit 50 --bulk-insert),
-         qw(--bulk-delete --where 1=1 --statistics --charset utf8),
+         qw(--bulk-delete --where 1=1 --statistics --charset utf8 --no-check-charset),
          '--source', "L=1,D=bug_1127450,t=original,F=$cnf",
          '--dest',   "t=copy") }, stderr => 1
    );
