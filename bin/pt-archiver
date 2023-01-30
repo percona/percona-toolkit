@@ -7859,7 +7859,7 @@ Pause archiving if the slave given by L<"--check-slave-lag"> lags.
 
 This option causes pt-archiver to look at the slave every time it's about
 to fetch another row.  If the slave's lag is greater than the option's value,
-or if the slave isn't running (so its lag is NULL), pt-table-checksum sleeps
+or if the slave isn't running (so its lag is NULL), pt-archiver sleeps
 for L<"--check-interval"> seconds and then looks at the lag again.  It repeats
 until the slave is caught up, then proceeds to fetch and archive the row.
 
