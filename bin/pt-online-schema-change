@@ -12759,9 +12759,9 @@ exist.
 =item --null-to-not-null
 
 Allows MODIFYing a column that allows NULL values to one that doesn't allow
-them. The rows which contain NULL values will be converted to the defined
-default value. If no explicit DEFAULT value is given MySQL will assign a default
-value based on datatype, e.g. 0 for number datatypes, '' for string datatypes.
+them. The existing rows which contain NULL values will be converted to the default value
+based on datatype, e.g. 0 for number datatypes, '' for string datatypes.
+New rows will use the user defined default value if specified for the column.
 
 =item --only-same-schema-fks
 
