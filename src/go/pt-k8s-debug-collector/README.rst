@@ -122,7 +122,7 @@ Usage
 
 ``pt-k8s-debug-collector <flags>``
 
-Supported Flags:
+Supported Flags
 ================
 
 ``--resource`` 
@@ -157,12 +157,18 @@ Path to kubeconfig. Default configuration be used if none specified
 
 Port to use when collecting database-specific summaries. By default, 3306 will be used for PXC and MySQL, 27017 for MongoDB, and 5432 for PostgreSQL
 
+``--version``
+
+Print version info
+
 Requirements
 ============
 
 - Installed, configured, and available in PATH ``kubectl``
 - Installed, configured, and available in PATH ``pt-mysql-summary`` for PXC and MySQL
+- Installed, configured, and available in PATH ``mysql`` for PXC and MySQL
 - Installed, configured, and available in PATH ``pt-mongodb-summary`` for MongoDB
+- Installed, configured, and available in PATH ``psql`` for PostgreSQL
 
 Known Issues
 ============
