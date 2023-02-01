@@ -43,7 +43,9 @@ my ($tool) = $PROGRAM_NAME =~ m/([\w-]+)\.t$/;
 # mysqldump from earlier versions doesn't seem to work with 5.6,
 # so use the actual mysqldump from each MySQL bin which should
 # always be compatible with itself.
-my $env = qq\CMD_MYSQLDUMP="$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqldump"\;
+# We need LC_NUMERIC=POSIX, so test does not fail in environment 
+# which use , insead of . for numbers.
+my $env = qq\CMD_MYSQLDUMP="$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqldump" LC_NUMERIC=POSIX\;
 
 #
 # --save-samples
@@ -98,7 +100,12 @@ like(
 );
 
 # --read-samples
-for my $i (2..7) {
+my @samples = (2..7);
+if ( !$sb->is_cluster_mode ) {
+   @samples = (2..5);
+}
+
+for my $i (@samples) {
    ok(
       no_diff(
          sub {
