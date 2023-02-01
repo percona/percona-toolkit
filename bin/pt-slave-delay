@@ -40,7 +40,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.13-dev';
+our $VERSION = '3.2.1';
 
 use strict;
 use warnings FATAL => 'all';
@@ -1942,7 +1942,7 @@ sub parse {
    foreach my $key ( keys %$opts ) {
       PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
-      if (   !defined $final_props{$key}
+      if ( !defined $final_props{$key}  
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
@@ -2149,6 +2149,28 @@ sub get_dbh {
            . ($sql_mode ? " and $sql_mode" : '')
            . ": $EVAL_ERROR";
       }
+   }
+   my ($mysql_version) = eval { $dbh->selectrow_array('SELECT VERSION()') };
+   if ($EVAL_ERROR) {
+       die "Cannot get MySQL version: $EVAL_ERROR";
+   }
+
+   my (undef, $character_set_server) = eval { $dbh->selectrow_array("SHOW VARIABLES LIKE 'character_set_server'") };
+   if ($EVAL_ERROR) {
+       die "Cannot get MySQL var character_set_server: $EVAL_ERROR";
+   }
+
+   if ($mysql_version =~ m/^(\d+)\.(\d)\.(\d+).*/) {
+       if ($1 >= 8 && $character_set_server =~ m/^utf8/) {
+           $dbh->{mysql_enable_utf8} = 1;
+           my $msg = "MySQL version $mysql_version >= 8 and character_set_server = $character_set_server\n".
+                     "Setting: SET NAMES $character_set_server";
+           PTDEBUG && _d($msg);
+           eval { $dbh->do("SET NAMES 'utf8mb4'") };
+           if ($EVAL_ERROR) {
+               die "Cannot SET NAMES $character_set_server: $EVAL_ERROR";
+           }
+       }
    }
 
    PTDEBUG && _d('DBH info: ',
@@ -4580,7 +4602,7 @@ server.  Before using this tool, please:
 C<pt-slave-delay> watches a slave and starts and stops its replication SQL
 thread as necessary to hold it at least as far behind the master as you
 request.  In practice, it will typically cause the slave to lag between
-L<"--delay"> and L<"--delay">+L<"--interval"> behind the master.
+L<"--delay"> and L<"--delay"> + L<"--interval"> behind the master.
 
 It bases the delay on binlog positions in the slave's relay logs by default,
 so there is no need to connect to the master.  This works well if the IO
@@ -4894,7 +4916,7 @@ installed in any reasonably new version of Perl.
 
 For a list of known bugs, see L<http://www.percona.com/bugs/pt-slave-delay>.
 
-Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
+Please report bugs at L<https://jira.percona.com/projects/PT>.
 Include the following information in your bug report:
 
 =over
@@ -4966,6 +4988,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-slave-delay 3.0.12
+pt-slave-delay 3.2.1
 
 =cut

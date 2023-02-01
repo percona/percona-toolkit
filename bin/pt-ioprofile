@@ -1055,7 +1055,7 @@ This tool requires the Bourne shell (F</bin/sh>).
 
 For a list of known bugs, see L<http://www.percona.com/bugs/pt-ioprofile>.
 
-Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
+Please report bugs at L<https://jira.percona.com/projects/PT>.
 Include the following information in your bug report:
 
 =over
@@ -1127,7 +1127,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-ioprofile 3.0.12
+pt-ioprofile 3.2.1
 
 =cut
 

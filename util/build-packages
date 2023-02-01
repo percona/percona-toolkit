@@ -183,9 +183,14 @@ update_version() {
 }
 
 update_copyright_year() {
-   echo -n "Updating copyright year in tools... "
+   echo -n "Updating copyright year in tools to $YEAR ... "
    cd $BRANCH/bin
    for tool_file in *; do
+      # Skip checking binary files (golang binaries)
+      file bin/pt-pg-summary | grep -q "ELF"
+      if [ $? -eq 0 ]; then
+          continue
+      fi
       local copyright="$(grep "[0-9] Percona LLC and/or its affiliates" $tool_file)"
       local new_copyright="$(../util/new-copyright-year "$YEAR" "$copyright")"
       if [ $? -ne 0 ]; then

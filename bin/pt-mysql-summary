@@ -2358,10 +2358,9 @@ report_mysql_summary () {
    section_percona_server_features "$dir/mysql-variables"
 
    section "Percona XtraDB Cluster"
-   local has_wsrep="$(get_var "wsrep_on" "$dir/mysql-variables")"
+   local has_wsrep=$($CMD_MYSQL $EXT_ARGV -ss -e 'show session variables like "%wsrep_on%";' | cut -f2 | grep -i "on")
    if [ -n "${has_wsrep:-""}" ]; then
-      local wsrep_on="$(feat_on "$dir/mysql-variables" "wsrep_on")"
-      if [ "${wsrep_on:-""}" = "Enabled" ]; then
+      if [ "${has_wsrep:-""}" = "ON" ]; then
          section_percona_xtradb_cluster "$dir/mysql-variables" "$dir/mysql-status"
       else
          name_val "wsrep_on" "OFF"
@@ -3218,7 +3217,7 @@ On BSD systems, it may require a mounted procfs.
 
 For a list of known bugs, see L<http://www.percona.com/bugs/pt-mysql-summary>.
 
-Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
+Please report bugs at L<https://jira.percona.com/projects/PT>.
 Include the following information in your bug report:
 
 =over
@@ -3290,7 +3289,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-mysql-summary 3.0.12
+pt-mysql-summary 3.2.1
 
 =cut
 

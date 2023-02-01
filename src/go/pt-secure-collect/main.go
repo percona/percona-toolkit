@@ -84,9 +84,10 @@ var (
 		"pt-mysql-summary --host=$mysql-host --port=$mysql-port --user=$mysql-user --password=$mysql-pass",
 	}
 
-	Build     string = "01-01-1980"
-	GoVersion string = "1.8"
-	Version   string = "3.0.1"
+	Build     string = "2020-04-23" //nolint
+	GoVersion string = "1.14.1"     //nolint
+	Version   string = "3.2.0"      //nolint
+	Commit    string                //nolint
 )
 
 func main() {
@@ -177,7 +178,8 @@ func processCliParams(baseTempPath string, usageWriter io.Writer) (*cliOptions, 
 	}
 
 	// Add support for --version flag
-	app.Version(TOOLNAME + "\nVersion " + Version + "\nBuild: " + Build + " using " + GoVersion)
+	app.Version(TOOLNAME + "\nVersion " + Version + "\nBuild: " + Build + " using " + GoVersion +
+		" Go version: " + GoVersion)
 
 	opts := &cliOptions{
 		CollectCommand:  app.Command(collectCmd, "Collect, sanitize, pack and encrypt data from pt-tools."),

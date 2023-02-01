@@ -1173,7 +1173,7 @@ they will be fetched from the Internet if curl is available.
 
 For a list of known bugs, see L<http://www.percona.com/bugs/pt-sift>.
 
-Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
+Please report bugs at L<https://jira.percona.com/projects/PT>.
 Include the following information in your bug report:
 
 =over
@@ -1245,7 +1245,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-sift 3.0.12
+pt-sift 3.2.1
 
 =cut
 

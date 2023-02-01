@@ -102,6 +102,7 @@ my $cxn = make_cxn(
    dsn_string => 'h=127.1,P=12345,u=msandbox,p=msandbox',
    set        => sub {
       my ($dbh) = @_;
+      warn "---------------";
       $set_calls++;
       $dbh->do("SET \@a := \@a + 1");
    },

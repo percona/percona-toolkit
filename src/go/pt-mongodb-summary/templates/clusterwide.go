@@ -1,6 +1,7 @@
 package templates
 
 const Clusterwide = `
+{{ if . -}}
 # Cluster wide ###########################################################################################
             Databases: {{.TotalDBsCount}}
           Collections: {{.TotalCollectionsCount}}
@@ -15,5 +16,6 @@ Unsharded Collections: {{.UnshardedColsCount}}
                {{ printf "%5d" .Count }} : {{ printf "%-30s" .ID}}
 {{- end }}
 {{- end }}
+{{- end -}}
 {{- end -}}
 `

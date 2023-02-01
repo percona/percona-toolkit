@@ -85,6 +85,21 @@ is_deeply(
 );
 
 is_deeply(
+   $dp->parse('u=a,p=b,F=/something.cnf'),
+   {  
+      F => '/something.cnf',
+      P => undef,
+      u => "a",
+      p => "b",
+      h => undef,
+      A => undef,
+      S => undef,
+      D => undef,
+   },
+   'Read from config overrides other params'
+);
+
+is_deeply(
    $dp->parse('S=/tmp/sock'),
    {  u => undef,
       p => undef,
@@ -257,7 +272,7 @@ SKIP: {
    is($d->{h}, '127.0.0.1', 'Left hostname alone');
 
    my $want = $sandbox_version lt '8.0' ? [ qw(utf8 utf8 utf8) ]: [ qw(utf8mb4 utf8mb4 utf8mb4) ];
-   warn Data::Dumper::Dumper($want);
+   
    is_deeply(
       $dbh->selectrow_arrayref('select @@character_set_client, @@character_set_connection, @@character_set_results'),
       $want,
@@ -631,6 +646,20 @@ SKIP: {
    $dbh->do(q{DROP DATABASE IF EXISTS bug_821715});
    $dbh->disconnect();
 }
+
+is_deeply(
+   $dp->parse('h=f000::1,P=12345,u=msandbox,p=msandbox'),
+   {  u => 'msandbox',
+      p => 'msandbox',
+      S => undef,
+      h => 'f000::1',
+      P => '12345',
+      F => undef,
+      D => undef,
+      A => undef,
+   },
+   'IPV6 support'
+);
 
 # #############################################################################
 # Done.

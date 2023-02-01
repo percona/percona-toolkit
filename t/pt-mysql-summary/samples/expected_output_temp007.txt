@@ -167,7 +167,6 @@ wsrep_local_index                   4000000000000    45000000
       HandlerSocket NoSQL | Not Supported
            Fast Hash UDFs | Unknown
 # Percona XtraDB Cluster #####################################
-                 wsrep_on | OFF
 # Plugins ####################################################
        InnoDB compression | ACTIVE
 # Query cache ################################################

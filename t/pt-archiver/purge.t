@@ -23,7 +23,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 7;
+   plan tests => 8;
 }
 
 my $output;
@@ -38,8 +38,10 @@ $sb->load_file('master', 't/pt-archiver/samples/table1.sql');
 $output = output(
    sub { pt_archiver::main(qw(--where 1=1), "--source", "D=test,t=table_1,F=$cnf", qw(--purge)) },
 );
+#1
 is($output, '', 'Basic test run did not die');
 $output = `/tmp/12345/use -N -e "select count(*) from test.table_1"`;
+#2
 is($output + 0, 0, 'Purged ok');
 
 # Test basic functionality with --commit-each
@@ -47,8 +49,10 @@ $sb->load_file('master', 't/pt-archiver/samples/table1.sql');
 $output = output(
    sub { pt_archiver::main(qw(--where 1=1), "--source", "D=test,t=table_1,F=$cnf", qw(--commit-each --limit 1 --purge)) },
 );
+#3
 is($output, '', 'Commit-each did not die');
 $output = `/tmp/12345/use -N -e "select count(*) from test.table_1"`;
+#4
 is($output + 0, 0, 'Purged ok with --commit-each');
 
 # Archive only part of the table
@@ -56,9 +60,19 @@ $sb->load_file('master', 't/pt-archiver/samples/table1.sql');
 $output = output(
    sub { pt_archiver::main(qw(--where 1=1), "--source", "D=test,t=table_1,F=$cnf", qw(--where a<4 --purge)) },
 );
+#5
 is($output, '', 'No output for archiving only part of a table');
 $output = `/tmp/12345/use -N -e "select count(*) from test.table_1"`;
+#6
 is($output + 0, 1, 'Purged some rows ok');
+
+# Fail if --primary-key-only was specified and there is no PK in the table
+$sb->load_file('master', 't/pt-archiver/samples/pt_157.sql');
+$output = output(
+   sub { pt_archiver::main(qw(--where 1=1), "--source", "D=test,t=t1,F=$cnf", qw(--purge --primary-key-only)) },
+   stderr => 1,
+);
+like($output, qr/does not have a PRIMARY KEY/, 'Fail if --primary-key was specified and there is no PK');
 
 # #############################################################################
 # Done.

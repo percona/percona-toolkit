@@ -56,7 +56,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.13-dev';
+our $VERSION = '3.2.1';
 
 use strict;
 use warnings FATAL => 'all';
@@ -2407,6 +2407,28 @@ sub get_dbh {
            . ": $EVAL_ERROR";
       }
    }
+   my ($mysql_version) = eval { $dbh->selectrow_array('SELECT VERSION()') };
+   if ($EVAL_ERROR) {
+       die "Cannot get MySQL version: $EVAL_ERROR";
+   }
+
+   my (undef, $character_set_server) = eval { $dbh->selectrow_array("SHOW VARIABLES LIKE 'character_set_server'") };
+   if ($EVAL_ERROR) {
+       die "Cannot get MySQL var character_set_server: $EVAL_ERROR";
+   }
+
+   if ($mysql_version =~ m/^(\d+)\.(\d)\.(\d+).*/) {
+       if ($1 >= 8 && $character_set_server =~ m/^utf8/) {
+           $dbh->{mysql_enable_utf8} = 1;
+           my $msg = "MySQL version $mysql_version >= 8 and character_set_server = $character_set_server\n".
+                     "Setting: SET NAMES $character_set_server";
+           PTDEBUG && _d($msg);
+           eval { $dbh->do("SET NAMES 'utf8mb4'") };
+           if ($EVAL_ERROR) {
+               die "Cannot SET NAMES $character_set_server: $EVAL_ERROR";
+           }
+       }
+   }
 
    PTDEBUG && _d('DBH info: ',
       $dbh,
@@ -3019,6 +3041,7 @@ sub generate_asc_stmt {
             cols        => \@cols,
             quoter      => $q,
             is_nullable => $tbl_struct->{is_nullable},
+            type_for    => $tbl_struct->{type_for},
          );
          $asc_stmt->{boundaries}->{$cmp} = $cmp_where->{where};
       }
@@ -3039,6 +3062,7 @@ sub generate_cmp_where {
    my @slice       = @{$args{slice}};
    my @cols        = @{$args{cols}};
    my $is_nullable = $args{is_nullable};
+   my $type_for    = $args{type_for};
    my $type        = $args{type};
    my $q           = $self->{Quoter};
 
@@ -3055,13 +3079,14 @@ sub generate_cmp_where {
          my $ord = $slice[$j];
          my $col = $cols[$ord];
          my $quo = $q->quote($col);
+         my $val = ($col && ($type_for->{$col} || '')) eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
          if ( $is_nullable->{$col} ) {
-            push @clause, "((? IS NULL AND $quo IS NULL) OR ($quo = ?))";
+            push @clause, "(($val IS NULL AND $quo IS NULL) OR ($quo = $val))";
             push @r_slice, $ord, $ord;
             push @r_scols, $col, $col;
          }
          else {
-            push @clause, "$quo = ?";
+            push @clause, "$quo = $val";
             push @r_slice, $ord;
             push @r_scols, $col;
          }
@@ -3071,15 +3096,16 @@ sub generate_cmp_where {
       my $col = $cols[$ord];
       my $quo = $q->quote($col);
       my $end = $i == $#slice; # Last clause of the whole group.
+      my $val = ($col && ($type_for->{$col} || '')) eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
       if ( $is_nullable->{$col} ) {
          if ( $type =~ m/=/ && $end ) {
-            push @clause, "(? IS NULL OR $quo $type ?)";
+            push @clause, "($val IS NULL OR $quo $type $val)";
          }
          elsif ( $type =~ m/>/ ) {
-            push @clause, "((? IS NULL AND $quo IS NOT NULL) OR ($quo $cmp ?))";
+            push @clause, "($val IS NULL AND $quo IS NOT NULL) OR ($quo $cmp $val)";
          }
          else { # If $type =~ m/</ ) {
-            push @clause, "((? IS NOT NULL AND $quo IS NULL) OR ($quo $cmp ?))";
+            push @clauses, "(($val IS NOT NULL AND $quo IS NULL) OR ($quo $cmp $val))";
          }
          push @r_slice, $ord, $ord;
          push @r_scols, $col, $col;
@@ -3087,10 +3113,10 @@ sub generate_cmp_where {
       else {
          push @r_slice, $ord;
          push @r_scols, $col;
-         push @clause, ($type =~ m/=/ && $end ? "$quo $type ?" : "$quo $cmp ?");
+         push @clause, ($type =~ m/=/ && $end ? "$quo $type $val" : "$quo $cmp $val");
       }
 
-      push @clauses, '(' . join(' AND ', @clause) . ')';
+      push @clauses, '(' . join(' AND ', @clause) . ')' if @clause;
    }
    my $result = '(' . join(' OR ', @clauses) . ')';
    my $where = {
@@ -3888,7 +3914,7 @@ sub new {
    };
    my ($dp, $o) = @args{@required_args};
 
-   my $dsn_defaults = $dp->parse_options($o);
+   my $dsn_defaults = $dp->parse_options($o);  
    my $prev_dsn     = $args{prev_dsn};
    my $dsn          = $args{dsn};
    if ( !$dsn ) {
@@ -4014,7 +4040,7 @@ sub name {
 
 sub description {
    my ($self) = @_;
-   return sprintf("%s -> %s:%s", $self->name(), $self->{dsn}->{h}, $self->{dsn}->{P} || 'socket');
+   return sprintf("%s -> %s:%s", $self->name(), $self->{dsn}->{h} || 'localhost' , $self->{dsn}->{P} || 'socket');
 }
 
 sub get_id {
@@ -4229,7 +4255,7 @@ sub get_slaves {
    else {
       die "Unexpected recursion methods: @$methods";
    }
-   
+
    return $slaves;
 }
 
@@ -4267,7 +4293,7 @@ sub recurse_to_slaves {
    my $slave_dsn = $dsn;
    if ($slave_user) {
       $slave_dsn->{u} = $slave_user;
-      PTDEBUG && _d("Using slave user $slave_user on ".$slave_dsn->{h}.":".$slave_dsn->{P});
+      PTDEBUG && _d("Using slave user $slave_user on ".$slave_dsn->{h}.":".($slave_dsn->{P}?$slave_dsn->{P}:""));
    }
    if ($slave_password) {
       $slave_dsn->{p} = $slave_password;
@@ -4281,8 +4307,7 @@ sub recurse_to_slaves {
       PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
    };
    if ( $EVAL_ERROR ) {
-      #TODO REMOVE DEBUG
-      print STDERR "1> Cannot connect to ", $dp->as_string($slave_dsn), "\n"
+      print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), "\n"
          or die "Cannot print: $OS_ERROR";
       return;
    }
@@ -4341,7 +4366,13 @@ sub find_slave_hosts {
 
 sub _find_slaves_by_processlist {
    my ( $self, $dsn_parser, $dbh, $dsn ) = @_;
+   my @connected_slaves = $self->get_connected_slaves($dbh);
+   my @slaves = $self->_process_slaves_list($dsn_parser, $dsn, \@connected_slaves);
+   return @slaves;
+}
 
+sub _process_slaves_list {
+   my ($self, $dsn_parser, $dsn, $connected_slaves) = @_;
    my @slaves = map  {
       my $slave        = $dsn_parser->parse("h=$_", $dsn);
       $slave->{source} = 'processlist';
@@ -4349,12 +4380,15 @@ sub _find_slaves_by_processlist {
    }
    grep { $_ }
    map  {
-      my ( $host ) = $_->{host} =~ m/^([^:]+):/;
+      my ( $host ) = $_->{host} =~ m/^(.*):\d+$/;
       if ( $host eq 'localhost' ) {
          $host = '127.0.0.1'; # Replication never uses sockets.
       }
+      if ($host =~ m/::/) {
+          $host = '['.$host.']';
+      }
       $host;
-   } $self->get_connected_slaves($dbh);
+   } @$connected_slaves;
 
    return @slaves;
 }
@@ -4493,12 +4527,19 @@ sub get_slave_status {
               if (!$self->{channel}) {
                   die 'This server returned more than one row for SHOW SLAVE STATUS but "channel" was not specified on the command line';
               }
+              my $slave_use_channels;
               for my $row (@$sss_rows) {
                   $row = { map { lc($_) => $row->{$_} } keys %$row }; # lowercase the keys
+                  if ($row->{channel_name}) {
+                      $slave_use_channels = 1;
+                  }
                   if ($row->{channel_name} eq $self->{channel}) {
                       $ss = $row;
                       last;
                   }
+              }
+              if (!$ss && $slave_use_channels) {
+                 die 'This server is using replication channels but "channel" was not specified on the command line';
               }
           } else {
               if ($sss_rows->[0]->{channel_name} && $sss_rows->[0]->{channel_name} ne $self->{channel}) {
@@ -4511,6 +4552,9 @@ sub get_slave_status {
           if ( $ss && %$ss ) {
              $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
              return $ss;
+          }
+          if (!$ss && $self->{channel}) {
+              die "Specified channel name is invalid";
           }
       }
 
@@ -4971,7 +5015,29 @@ sub wait {
    my $worst;  # most lagging slave
    my $pr_callback;
    my $pr_first_report;
+
+   ### refresh list of slaves. In: self passed to wait()
+   ### Returns: new slave list
+   my $pr_refresh_slave_list = sub {
+      my ($self) = @_;
+      my ($slaves, $refresher) = ($self->{slaves}, $self->{get_slaves_cb});
+      return $slaves if ( not defined $refresher );
+      my $before = join ' ', sort map {$_->name()} @$slaves;
+      $slaves = $refresher->();
+      my $after = join ' ', sort map {$_->name()} @$slaves;
+      if ($before ne $after) {
+         $self->{slaves} = $slaves;
+         printf STDERR "Slave set to watch has changed\n  Was: %s\n  Now: %s\n",
+            $before, $after;
+      }
+      return($self->{slaves});
+   };
+
+   $slaves = $pr_refresh_slave_list->($self);
+
    if ( $pr ) {
+      # If you use the default Progress report callback, you'll need to
+      # to add Transformers.pm to this tool.
       $pr_callback = sub {
          my ($fraction, $elapsed, $remaining, $eta, $completed) = @_;
          my $dsn_name = $worst->{cxn}->name();
@@ -4983,29 +5049,48 @@ sub wait {
             if ($self->{fail_on_stopped_replication}) {
                 die 'replication is stopped';
             }
-            print STDERR "Replica $dsn_name is stopped.  Waiting.\n";
+            print STDERR "(1) Replica '$dsn_name' is stopped.  Waiting.\n";
          }
          return;
       };
       $pr->set_callback($pr_callback);
 
+      # If a replic is stopped, don't wait 30s (or whatever interval)
+      # to report this.  Instead, report it once, immediately, then
+      # keep reporting it every interval.
       $pr_first_report = sub {
          my $dsn_name = $worst->{cxn}->name();
          if ( !defined $worst->{lag} ) {
             if ($self->{fail_on_stopped_replication}) {
                 die 'replication is stopped';
             }
-            print STDERR "Replica $dsn_name is stopped.  Waiting.\n";
+            print STDERR "(2) Replica '$dsn_name' is stopped.  Waiting.\n";
          }
          return;
       };
    }
 
-   my @lagged_slaves = map { {cxn=>$_, lag=>undef} } @$slaves;  
+   # First check all slaves.
+   my @lagged_slaves = map { {cxn=>$_, lag=>undef} } @$slaves;
    while ( $oktorun->() && @lagged_slaves ) {
       PTDEBUG && _d('Checking slave lag');
+
+      ### while we were waiting our list of slaves may have changed
+      $slaves = $pr_refresh_slave_list->($self);
+      my $watched = 0;
+      @lagged_slaves = grep {
+         my $slave_name = $_->{cxn}->name();
+         grep {$slave_name eq $_->name()} @{$slaves // []}
+                            } @lagged_slaves;
+
       for my $i ( 0..$#lagged_slaves ) {
-         my $lag = $get_lag->($lagged_slaves[$i]->{cxn});
+         my $lag;
+         eval {
+             $lag = $get_lag->($lagged_slaves[$i]->{cxn});
+         };
+         if ($EVAL_ERROR) {
+             die $EVAL_ERROR;
+         }
          PTDEBUG && _d($lagged_slaves[$i]->{cxn}->name(),
             'slave lag:', $lag);
          if ( !defined $lag || $lag > $max_lag ) {
@@ -5016,8 +5101,10 @@ sub wait {
          }
       }
 
+      # Remove slaves that aren't lagging.
       @lagged_slaves = grep { defined $_ } @lagged_slaves;
       if ( @lagged_slaves ) {
+         # Sort lag, undef is highest because it means the slave is stopped.
          @lagged_slaves = reverse sort {
               defined $a->{lag} && defined $b->{lag} ? $a->{lag} <=> $b->{lag}
             : defined $a->{lag}                      ? -1
@@ -5028,6 +5115,10 @@ sub wait {
             $worst->{lag}, 'on', Dumper($worst->{cxn}->dsn()));
 
          if ( $pr ) {
+            # There's no real progress because we can't estimate how long
+            # it will take all slaves to catch up.  The progress reports
+            # are just to inform the user every 30s which slave is still
+            # lagging this most.
             $pr->update(
                sub { return 0; },
                first_report => $pr_first_report,
@@ -5484,82 +5575,131 @@ sub new {
    my @cols       = grep { !$ignore_col->{$_} } @$all_cols;
    my $self;
    if ( $nibble_params->{one_nibble} ) {
+      my $params = _one_nibble(\%args, \@cols, $where, $tbl, \%comments);
+      $self = {
+         %args,
+         one_nibble         => 1,
+         limit              => 0,
+         nibble_sql         => $params->{nibble_sql},
+         explain_nibble_sql => $params->{explain_nibble_sql},
+      };
+   } else {
+      my $params = _nibble_params($nibble_params, $tbl, \%args, \@cols, $chunk_size, $where, \%comments, $q);
+      $self = {
+         %args,
+         index                => $params->{index},
+         limit                => $params->{limit},
+         first_lb_sql         => $params->{first_lb_sql},
+         last_ub_sql          => $params->{last_ub_sql},
+         ub_sql               => $params->{ub_sql},
+         nibble_sql           => $params->{nibble_sql},
+         explain_first_lb_sql => $params->{explain_first_lb_sql},
+         explain_ub_sql       => $params->{explain_ub_sql},
+         explain_nibble_sql   => $params->{explain_nibble_sql},
+         resume_lb_sql        => $params->{resume_lb_sql},
+         sql                  => $params->{sql},
+      };
+   }
+
+   $self->{row_est}    = $nibble_params->{row_est},
+   $self->{nibbleno}   = 0;
+   $self->{have_rows}  = 0;
+   $self->{rowno}      = 0;
+   $self->{oktonibble} = 1;
+   $self->{pause_file} = $nibble_params->{pause_file};
+   $self->{sleep}      = $args{sleep} || 60;
+
+   $self->{nibble_params} = $nibble_params;
+   $self->{tbl}           = $tbl;
+   $self->{args}          = \%args;
+   $self->{cols}          = \@cols;
+   $self->{chunk_size}    = $chunk_size;
+   $self->{where}         = $where;
+   $self->{comments}      = \%comments;
+
+   return bless $self, $class;
+}
+
+sub switch_to_nibble {
+    my $self = shift;
+    my $params = _nibble_params($self->{nibble_params}, $self->{tbl}, $self->{args}, $self->{cols}, 
+                                $self->{chunk_size}, $self->{where}, $self->{comments}, $self->{Quoter});
+
+    $self->{one_nibble}           = 0;
+    $self->{index}                = $params->{index};
+    $self->{limit}                = $params->{limit};
+    $self->{first_lb_sql}         = $params->{first_lb_sql};
+    $self->{last_ub_sql}          = $params->{last_ub_sql};
+    $self->{ub_sql}               = $params->{ub_sql};
+    $self->{nibble_sql}           = $params->{nibble_sql};
+    $self->{explain_first_lb_sql} = $params->{explain_first_lb_sql};
+    $self->{explain_ub_sql}       = $params->{explain_ub_sql};
+    $self->{explain_nibble_sql}   = $params->{explain_nibble_sql};
+    $self->{resume_lb_sql}        = $params->{resume_lb_sql};
+    $self->{sql}                  = $params->{sql};
+    $self->_get_bounds();
+    $self->_prepare_sths();
+}
+
+sub _one_nibble {
+    my ($args, $cols, $where, $tbl, $comments) = @_;
+    my $q        = new Quoter();
+
       my $nibble_sql
-         = ($args{dml} ? "$args{dml} " : "SELECT ")
-         . ($args{select} ? $args{select}
-                          : join(', ', map { $q->quote($_) } @cols))
+         = ($args->{dml} ? "$args->{dml} " : "SELECT ")
+         . ($args->{select} ? $args->{select}
+         : join(', ', map{ $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ?
+                                   "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_) } @$cols))
          . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
-         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
-         . " /*$comments{bite}*/";
+         . ($args->{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
+         . " /*$comments->{bite}*/";
       PTDEBUG && _d('One nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql
          = "EXPLAIN SELECT "
-         . ($args{select} ? $args{select}
-                          : join(', ', map { $q->quote($_) } @cols))
+         . ($args->{select} ? $args->{select}
+                          : join(', ', map{ $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' 
+                          ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_) } @$cols))
          . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
-         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
-         . " /*explain $comments{bite}*/";
+         . ($args->{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
+         . " /*explain $comments->{bite}*/";
       PTDEBUG && _d('Explain one nibble statement:', $explain_nibble_sql);
 
-      $self = {
-         %args,
+      return {
          one_nibble         => 1,
          limit              => 0,
          nibble_sql         => $nibble_sql,
          explain_nibble_sql => $explain_nibble_sql,
       };
-   }
-   else {
+}
+
+sub _nibble_params {
+      my ($nibble_params, $tbl, $args, $cols, $chunk_size, $where, $comments, $q) = @_;
       my $index      = $nibble_params->{index}; # brevity
       my $index_cols = $tbl->{tbl_struct}->{keys}->{$index}->{cols};
 
-      my $asc = $args{TableNibbler}->generate_asc_stmt(
-         %args,
+      my $asc = $args->{TableNibbler}->generate_asc_stmt(
+         %$args,
          tbl_struct   => $tbl->{tbl_struct},
          index        => $index,
-         n_index_cols => $args{n_chunk_index_cols},
-         cols         => \@cols,
+         n_index_cols => $args->{n_chunk_index_cols},
+         cols         => $cols,
          asc_only     => 1,
       );
       PTDEBUG && _d('Ascend params:', Dumper($asc));
 
-      my $force_concat_enums = $o->has('force-concat-enums') && $o->get('force-concat-enums');
-      my $i=0;
-      for my $index (@{$index_cols}) {
-          last if $args{n_chunk_index_cols} && $i >= $args{n_chunk_index_cols};
-          $i++;
-          if ($tbl->{tbl_struct}->{type_for}->{$index} eq 'enum') {
-             if ($tbl->{tbl_struct}->{defs}->{$index} =~ m/enum\s*\((.*?)\)/) {
-                 my @items = split(/,\s*/, $1);
-                 my $sorted = 1; # Asume the items list is sorted to later check if this is true
-                 for (my $i=1; $i < scalar(@items); $i++) {
-                     if ($items[$i-1] gt $items[$i]) {
-                         $sorted = 0;
-                         last;
-                     }
-                 }
-                 if (!$force_concat_enums && !$sorted) {
-                    die "The index " . $index . " in table " .  $tbl->{name} .
-                    " has unsorted enum items.\nPlease read the documentation for the --force-concat-enums parameter\n";
-                 }
-             }
-          }
-      }
+      my $force_concat_enums;
 
 
       my $from     = "$tbl->{name} FORCE INDEX(`$index`)";
-      my $order_by = join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' && $force_concat_enums
-                                        ? "CONCAT(".$q->quote($_).")" : $q->quote($_)} @{$index_cols});
-
-      my $order_by_dec = join(' DESC,', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' && $force_concat_enums
-                                        ? "CONCAT(".$q->quote($_).")" : $q->quote($_)} @{$index_cols});
+      my $order_by = join(', ', map {$q->quote($_)} @{$index_cols});
+      my $order_by_dec = join(' DESC,', map {$q->quote($_)} @{$index_cols});
 
       my $first_lb_sql
          = "SELECT /*!40001 SQL_NO_CACHE */ "
-         . join(', ', map { $q->quote($_) } @{$asc->{scols}})
+         . join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_)} @{$asc->{scols}})
          . " FROM $from"
          . ($where ? " WHERE $where" : '')
          . " ORDER BY $order_by"
@@ -5568,10 +5708,10 @@ sub new {
       PTDEBUG && _d('First lower boundary statement:', $first_lb_sql);
 
       my $resume_lb_sql;
-      if ( $args{resume} ) {
+      if ( $args->{resume} ) {
          $resume_lb_sql
             = "SELECT /*!40001 SQL_NO_CACHE */ "
-            . join(', ', map { $q->quote($_) } @{$asc->{scols}})
+            . join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_)} @{$asc->{scols}})
             . " FROM $from"
             . " WHERE " . $asc->{boundaries}->{'>'}
             . ($where ? " AND ($where)" : '')
@@ -5583,7 +5723,7 @@ sub new {
 
       my $last_ub_sql
          = "SELECT /*!40001 SQL_NO_CACHE */ "
-         . join(', ', map { $q->quote($_) } @{$asc->{scols}})
+         . join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_)} @{$asc->{scols}})
          . " FROM $from"
          . ($where ? " WHERE $where" : '')
          . " ORDER BY "
@@ -5594,7 +5734,7 @@ sub new {
 
       my $ub_sql
          = "SELECT /*!40001 SQL_NO_CACHE */ "
-         . join(', ', map { $q->quote($_) } @{$asc->{scols}})
+         . join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_)} @{$asc->{scols}})
          . " FROM $from"
          . " WHERE " . $asc->{boundaries}->{'>='}
                      . ($where ? " AND ($where)" : '')
@@ -5604,36 +5744,36 @@ sub new {
       PTDEBUG && _d('Upper boundary statement:', $ub_sql);
 
       my $nibble_sql
-         = ($args{dml} ? "$args{dml} " : "SELECT ")
-         . ($args{select} ? $args{select}
-                          : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
+         = ($args->{dml} ? "$args->{dml} " : "SELECT ")
+         . ($args->{select} ? $args->{select}
+                          : join(', ', map { $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_)} @{$asc->{cols}}))
          . " FROM $from"
          . " WHERE " . $asc->{boundaries}->{'>='}  # lower boundary
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($where ? " AND ($where)" : '')
-         . ($args{order_by} ? " ORDER BY $order_by" : "")
-         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
-         . " /*$comments{nibble}*/";
+         . ($args->{order_by} ? " ORDER BY $order_by" : "")
+         . ($args->{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
+         . " /*$comments->{nibble}*/";
       PTDEBUG && _d('Nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql 
          = "EXPLAIN SELECT "
-         . ($args{select} ? $args{select}
+         . ($args->{select} ? $args->{select}
                           : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
          . " FROM $from"
          . " WHERE " . $asc->{boundaries}->{'>='}  # lower boundary
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($where ? " AND ($where)" : '')
-         . ($args{order_by} ? " ORDER BY $order_by" : "")
-         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
-         . " /*explain $comments{nibble}*/";
+         . ($args->{order_by} ? " ORDER BY $order_by" : "")
+         . ($args->{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
+         . " /*explain $comments->{nibble}*/";
       PTDEBUG && _d('Explain nibble statement:', $explain_nibble_sql);
 
       my $limit = $chunk_size - 1;
       PTDEBUG && _d('Initial chunk size (LIMIT):', $limit);
 
-      $self = {
-         %args,
+      my $params = {
+         one_nibble           => 0,
          index                => $index,
          limit                => $limit,
          first_lb_sql         => $first_lb_sql,
@@ -5652,17 +5792,7 @@ sub new {
             order_by   => $order_by,
          },
       };
-   }
-
-   $self->{row_est}    = $nibble_params->{row_est},
-   $self->{nibbleno}   = 0;
-   $self->{have_rows}  = 0;
-   $self->{rowno}      = 0;
-   $self->{oktonibble} = 1;
-   $self->{pause_file} = $nibble_params->{pause_file};
-   $self->{sleep}      = $args{sleep} || 60;
-
-   return bless $self, $class;
+      return $params;
 }
 
 sub next {
@@ -5699,7 +5829,6 @@ sub next {
 
    NIBBLE:
    while ( $self->{have_rows} || $self->_next_boundaries() ) {
-
       if ($self->{pause_file}) {
          while(-f $self->{pause_file}) {
             print "Sleeping $self->{sleep} seconds because $self->{pause_file} exists\n";
@@ -5720,7 +5849,7 @@ sub next {
       if ( !$self->{have_rows} ) {
          $self->{nibbleno}++;
          PTDEBUG && _d('Nibble:', $self->{nibble_sth}->{Statement}, 'params:',
-            join(', ', (@{$self->{lower}} || [], @{$self->{upper} }||[])));
+            join(', ', (@{$self->{lower} || []}, @{$self->{upper} || []})));
          if ( my $callback = $self->{callbacks}->{exec_nibble} ) {
             $self->{have_rows} = $callback->(%callback_args);
          }
@@ -6119,7 +6248,7 @@ sub _next_boundaries {
 
 
    PTDEBUG && _d($self->{ub_sth}->{Statement}, 'params:',
-      join(', ', @{$self->{lower}} || []), $self->{limit});
+      join(', ', @{$self->{lower}}), $self->{limit});
    $self->{ub_sth}->execute(@{$self->{lower}}, $self->{limit});
    my $boundary = $self->{ub_sth}->fetchall_arrayref();
    PTDEBUG && _d('Next boundary:', Dumper($boundary));
@@ -6160,10 +6289,7 @@ sub identical_boundaries {
       if scalar @$b1 != scalar @$b2;  # shouldn't happen
    my $n_vals = scalar @$b1;
    for my $i ( 0..($n_vals-1) ) {
-      next if (!defined($b1->[$i]) && !defined($b2->[$i]));
-      return 0 if (!defined($b1->[$i]) && defined($b2->[$i])); # diff
-      return 0 if (defined($b1->[$i]) && !defined($b2->[$i])); # diff
-      return 0 if $b1->[$i] ne $b2->[$i]; # diff
+      return 0 if ($b1->[$i] || '') ne ($b2->[$i] || ''); # diff
    }
    return 1;
 }
@@ -6626,6 +6752,7 @@ use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
+use Carp;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
@@ -6638,7 +6765,7 @@ sub new {
    }
 
    my $self = {
-      Quoter => $args{Quoter},
+       Quoter => $args{Quoter},
    };
 
    return bless $self, $class;
@@ -6669,13 +6796,6 @@ sub index_length {
       n_index_cols => $n_index_cols,
    );
 
-   if (!$vals) {
-       my @row = $cxn->dbh()->selectrow_array('SELECT COUNT(*) FROM '.$args{tbl}->{name});
-       if ($row[0] == 0) {
-           PTDEBUG && _d('Table '.$args{tbl}->{name}.' is empty');
-           return undef, undef;
-       }
-   }
    my $sql = $self->_make_range_query(
       %args,
       n_index_cols => $n_index_cols,
@@ -6702,8 +6822,16 @@ sub _get_first_values {
 
    my $index_struct  = $tbl->{tbl_struct}->{keys}->{$index};
    my $index_cols    = $index_struct->{cols};
-   my $index_columns = join (', ',
+   my $index_columns;
+   eval {
+   $index_columns = join (', ',
       map { $q->quote($_) } @{$index_cols}[0..($n_index_cols - 1)]);
+  };
+  if ($EVAL_ERROR) {
+      confess "$EVAL_ERROR";
+  }
+
+
 
    my @where;
    foreach my $col ( @{$index_cols}[0..($n_index_cols - 1)] ) {
@@ -6737,14 +6865,15 @@ sub _make_range_query {
    if ( $n_index_cols > 1 ) {
       foreach my $n ( 0..($n_index_cols - 2) ) {
          my $col = $index_cols->[$n];
-         my $val = $vals->[$n];
-         push @where, $q->quote($col) . " = ?";
+         my $val = $tbl->{tbl_struct}->{type_for}->{$col} eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
+         push @where, $q->quote($col) . " = " . $val;
       }
    }
 
    my $col = $index_cols->[$n_index_cols - 1];
    my $val = $vals->[-1];  # should only be as many vals as cols
-   push @where, $q->quote($col) . " >= ?";
+   my $condition = $tbl->{tbl_struct}->{type_for}->{$col} eq 'enum' ? "CAST(? AS UNSIGNED)" : "?";
+   push @where, $q->quote($col) . " >= " . $condition;
 
    my $sql = "EXPLAIN SELECT /*!40001 SQL_NO_CACHE */ * "
            . "FROM $tbl->{name} FORCE INDEX (" . $q->quote($index) . ") "
@@ -8306,6 +8435,36 @@ my %ignore_code = (
 
 $OUTPUT_AUTOFLUSH = 1;
 
+use constant {
+   INVALID_PARAMETERS        => 1,
+   UNSUPORTED_MYSQL_VERSION  => 2,
+   NO_MINIMUM_REQUIREMENTS   => 3,
+   NO_PRIMARY_OR_UNIQUE_KEY  => 4,
+   INVALID_PLUGIN_FILE       => 5,
+   INVALID_ALTER_FK_METHOD   => 6,
+   INVALID_KEY_SIZE          => 7,
+   CANNOT_DETERMINE_KEY_SIZE => 9,
+   NOT_SAFE_TO_ASCEND        => 9,
+   ERROR_CREATING_NEW_TABLE  => 10,
+   ERROR_ALTERING_TABLE      => 11,
+   ERROR_CREATING_TRIGGERS   => 12,
+   ERROR_RESTORING_TRIGGERS  => 13,
+   ERROR_SWAPPING_TABLES     => 14,
+   ERROR_UPDATING_FKS        => 15,
+   ERROR_DROPPING_OLD_TABLE  => 16,
+   UNSUPORTED_OPERATION      => 17,
+   MYSQL_CONNECTION_ERROR    => 18,
+   LOST_MYSQL_CONNECTION     => 19,
+};
+
+sub _die {
+   my ($msg, $exit_status) = @_;
+   $exit_status ||= 255;
+   chomp ($msg);
+   print "$msg\n";
+   exit $exit_status;
+}
+
 sub main {
    local @ARGV = @_;
 
@@ -8401,7 +8560,7 @@ sub main {
               . "since --preserve-triggers implies that the old triggers should be deleted"
               . " and recreated in the new table.\nPlease read the documentation for "
               . "--preserve-triggers";
-      die $msg;
+      _die($msg, INVALID_PARAMETERS);
    }
 
    if ( $o->get('preserve-triggers') ) {
@@ -8476,6 +8635,12 @@ sub main {
    # ########################################################################
    my $set_on_connect = sub {
       my ($dbh) = @_;
+      if (!$o->get('check-foreign-keys')) {
+            my $sql = "SET foreign_key_checks=0";
+            PTDEBUG && _d($sql);
+            print $sql, "\n" if $o->get('print');
+            $dbh->do($sql);
+      }
       return;
    };
 
@@ -8495,7 +8660,7 @@ sub main {
       );
       eval { $cxn->connect() };  # connect or die trying
       if ( $EVAL_ERROR ) {
-         die "Cannot connect to MySQL: $EVAL_ERROR\n";
+         _die("Cannot connect to MySQL: $EVAL_ERROR", MYSQL_CONNECTION_ERROR);
       }
       return $cxn;
    };
@@ -8511,15 +8676,15 @@ sub main {
       # manifest itself.  If it does, however, then the tools will wait forever.
       $pxc_version = VersionParser->new($cxn->dbh);
       if ( $pxc_version < '5.5.28' ) {
-         die "Percona XtraDB Cluster 5.5.28 or newer is required to run "
+         _die("Percona XtraDB Cluster 5.5.28 or newer is required to run "
             . "this tool on a cluster, but node " . $cxn->name
             . " is running version " . $pxc_version->version
             . ".  Please upgrade the node, or run the tool on a newer node, "
-            . "or contact Percona for support.\n";
+            . "or contact Percona for support.", UNSUPORTED_MYSQL_VERSION);
       }
       if ( $pxc_version < '5.6' && $o->got('max-flow-ctl') ) {
-        die "Option '--max-flow-ctl is only available for PXC version 5.6 "
-            . "or higher."
+        _die("Option '--max-flow-ctl is only available for PXC version 5.6 "
+            . "or higher.", INVALID_PARAMETERS);
       }
 
       # If wsrep_OSU_method=RSU the "DDL will be only processed locally at
@@ -8529,15 +8694,15 @@ sub main {
       my (undef, $wsrep_osu_method) = $cxn->dbh->selectrow_array(
          "SHOW VARIABLES LIKE 'wsrep\_OSU\_method'");
       if ( lc($wsrep_osu_method || '') ne 'toi' ) {
-         die "wsrep_OSU_method=TOI is required because "
+        _die("wsrep_OSU_method=TOI is required because "
             . $cxn->name . " is a cluster node.  wsrep_OSU_method is "
             . "currently set to " . ($wsrep_osu_method || '') . ".  "
-            . "Set it to TOI, or contact Percona for support.\n";
+            . "Set it to TOI, or contact Percona for support.", NO_MINIMUM_REQUIREMENTS);
       }
    } elsif ( $o->got('max-flow-ctl') ) {
-      die "Option '--max-flow-ctl' is meant to be used on PXC clusters. "
+      _die("Option '--max-flow-ctl' is meant to be used on PXC clusters. "
          ."For normal async replication use '--max-lag' and '--check-interval' "
-         ."instead.\n"
+         ."instead.", INVALID_PARAMETERS);
    }
 
    # ########################################################################
@@ -8547,7 +8712,7 @@ sub main {
    # ########################################################################   
    my $server_version = VersionParser->new($cxn->dbh());
    if ( $server_version < '5.0.10' ) {
-      die "This tool requires MySQL 5.0.10 or newer.\n";
+      _die("This tool requires MySQL 5.0.10 or newer.", UNSUPORTED_MYSQL_VERSION);
    }
 
    # Use LOCK IN SHARE mode unless MySQL 5.0 because there's a bug like
@@ -8591,11 +8756,11 @@ sub main {
    # ########################################################################   
    my $plugin;
    if ( my $file = $o->get('plugin') ) {
-      die "--plugin file $file does not exist\n" unless -f $file;
+      _die("--plugin file $file does not exist", INVALID_PLUGIN_FILE) unless -f $file;
       eval {
          require $file;
       };
-      die "Error loading --plugin $file: $EVAL_ERROR" if $EVAL_ERROR;
+      _die("Error loading --plugin $file: $EVAL_ERROR", INVALID_PLUGIN_FILE) if $EVAL_ERROR;
       eval {
          $plugin = pt_online_schema_change_plugin->new(
             cxn     => $cxn,
@@ -8608,7 +8773,7 @@ sub main {
             Quoter  => $q,
          );
       };
-      die "Error creating --plugin: $EVAL_ERROR" if $EVAL_ERROR;
+      _die("Error creating --plugin: $EVAL_ERROR", INVALID_PLUGIN_FILE) if $EVAL_ERROR;
       print "Created plugin from $file.\n";
    }
 
@@ -8623,6 +8788,7 @@ sub main {
    my $flow_ctl_pr;    # Progress for FlowControlWaiter
    my $sys_load;       # MySQLStatusWaiter object
    my $sys_load_pr;    # Progress for MySQLStatusWaiter object
+   my $process_error;  # Used if drop_swap fails
 
    if ( $o->get('execute') ) {
       # #####################################################################
@@ -8632,15 +8798,45 @@ sub main {
          OptionParser => $o,
          DSNParser    => $dp,
          Quoter       => $q,
+         channel      => $o->get('channel'),
       );
 
-      $slaves = $ms->get_slaves(
-         dbh          => $cxn->dbh(),
-         dsn          => $cxn->dsn(),
-         make_cxn     => sub {
-            return $make_cxn->(@_, prev_dsn => $cxn->dsn());
-         },
-      );
+     my $slaves_to_skip = $o->get('skip-check-slave-lag');
+
+     my $get_slaves_cb = sub {
+         my ($intolerant) = @_;
+         my $slaves =$ms->get_slaves(
+               dbh      => $cxn->dbh(),
+               dsn      => $cxn->dsn(),
+               make_cxn => sub {
+                  return $make_cxn->(
+                     @_,
+                     prev_dsn => $cxn->dsn(),
+                     errok => (not $intolerant)
+                  );
+               },
+            );
+
+         if ($slaves_to_skip) {
+            my $filtered_slaves = [];
+            for my $slave (@$slaves) {
+               for my $slave_to_skip (@$slaves_to_skip) {
+                  if ($slave->{dsn}->{h} eq $slave_to_skip->{h} && $slave->{dsn}->{P} eq $slave_to_skip->{P}) {
+                     print "Skipping slave " . $slave->description() . "\n";
+                  } else {
+                     push @$filtered_slaves, $slave;
+                  }
+               }
+            }
+            $slaves = $filtered_slaves;
+         }
+
+         return $slaves;
+      };
+
+      ### first ever call only: do not tolerate connection errors
+      $slaves = $get_slaves_cb->('intolerant');
+
       PTDEBUG && _d(scalar @$slaves, 'slaves found');
       if ( scalar @$slaves ) {
          print "Found " . scalar(@$slaves) . " slaves:\n";
@@ -8661,45 +8857,34 @@ sub main {
          PTDEBUG && _d('Will use --check-slave-lag to check for slave lag');
          my $cxn = $make_cxn->(
             dsn_string => $o->get('check-slave-lag'),
-            prev_dsn   => $cxn->dsn(),
+            #prev_dsn   => $cxn->dsn(),
          );
          $slave_lag_cxns = [ $cxn ];
+         $get_slaves_cb  = undef;
       }
       else {
          PTDEBUG && _d('Will check slave lag on all slaves');
          $slave_lag_cxns = $slaves;
       }
+
       if ( $slave_lag_cxns && scalar @$slave_lag_cxns ) {
-         if ($o->get('skip-check-slave-lag')) {
-             my $slaves_to_skip = $o->get('skip-check-slave-lag');
-             my $filtered_slaves = [];
-             for my $slave (@$slave_lag_cxns) {
-                 my $found=0;
-                 for my $slave_to_skip (@$slaves_to_skip) {
-                     if ($slave->{dsn}->{h} eq $slave_to_skip->{h} && $slave->{dsn}->{P} eq $slave_to_skip->{P}) {
-                         $found=1;
-                     }
-                 }
-                 if ($found) {
-                    print "Skipping slave ". $slave->description()."\n";
-                 } else {
-                    push @$filtered_slaves, $slave;
-                 }
-             }
-             $slave_lag_cxns = $filtered_slaves;
-         }
-         if (!scalar @$slave_lag_cxns) {
-            print "Not checking slave lag because all slaves were skipped\n";
-         } else{
-            print "Will check slave lag on:\n";
-            foreach my $cxn ( @$slave_lag_cxns ) {
-               print $cxn->description()."\n";
-            }
+         print "Will check slave lag on:\n";
+         foreach my $cxn ( @$slave_lag_cxns ) {
+            print $cxn->description()."\n";
          }
       }
       else {
          print "Not checking slave lag because no slaves were found "
                . "and --check-slave-lag was not specified.\n";
+      }
+      # Before starting, check the replication is not using replications channels or that --channel was specified
+      for my $slave (@$slave_lag_cxns) {
+          eval {
+             my $ss = $ms->get_slave_status($slave->{dbh});
+          };
+          if ($EVAL_ERROR) {
+              die $EVAL_ERROR;
+          }
       }
 
       # #####################################################################
@@ -8730,7 +8915,7 @@ sub main {
             }
             $msg .= "Please read the --check-replication-filters documentation "
                   . "to learn how to solve this problem.";
-            die $msg;
+            _die($msg, INVALID_PARAMETERS);
          }
       }
 
@@ -8748,8 +8933,8 @@ sub main {
             if ( $EVAL_ERROR ) {
                $oktorun = 0;  # flag for cleanup tasks
                chomp $EVAL_ERROR;
-               die "Lost connection to " . $cxn->name() . " while waiting for "
-                  . "replica lag ($EVAL_ERROR)\n";
+               _die("Lost connection to " . $cxn->name() . " while waiting for "
+                  . "replica lag ($EVAL_ERROR)", LOST_MYSQL_CONNECTION);
             }
          }
          $dbh->do("SELECT 'pt-online-schema-change keepalive'");
@@ -8778,6 +8963,7 @@ sub main {
                   #TODO REMOVE DEBUG
                   PTDEBUG && _d('2> Cannot connect to', $cxn->name(), ':',
                      $EVAL_ERROR);
+                  die '2> Cannot connect to '. $cxn->name() . ':' . $EVAL_ERROR;
                   # Make ReplicaLagWaiter::wait() report slave is stopped.
                   return undef; 
                }
@@ -8787,19 +8973,20 @@ sub main {
                $lag = $ms->get_slave_lag($dbh);
             };
             if ( $EVAL_ERROR ) {
-               PTDEBUG && _d('Cannot get lag for', $cxn->name(), ':',
-                  $EVAL_ERROR);
+               PTDEBUG && _d('Cannot get lag for', $cxn->name(), ':', $EVAL_ERROR);
+                  die '2> Cannot connect to '. $cxn->name() . ':' . $EVAL_ERROR;
             }
             return $lag; # undef if error
          };
       }
 
       $replica_lag = new ReplicaLagWaiter(
-         slaves   => $slave_lag_cxns,
-         max_lag  => $o->get('max-lag'),
-         oktorun  => sub { return $oktorun },
-         get_lag  => $get_lag,
-         sleep    => $sleep,
+         slaves        => $slave_lag_cxns,
+         get_slaves_cb => $get_slaves_cb,
+         max_lag       => $o->get('max-lag'),
+         oktorun       => sub { return $oktorun },
+         get_lag       => $get_lag,
+         sleep         => $sleep,
       );
 
       my $get_status;
@@ -8827,13 +9014,13 @@ sub main {
       };
       if ( $EVAL_ERROR ) {
          chomp $EVAL_ERROR;
-         die "Error checking --max-load or --critial-load: $EVAL_ERROR.  "
+         _die("Error checking --max-load or --critial-load: $EVAL_ERROR.  "
             . "Check that the variables specified for --max-load and "
             . "--critical-load are spelled correctly and exist in "
             . "SHOW GLOBAL STATUS.  Current values for these options are:\n"
             . "  --max-load " . (join(',', @{$o->get('max-load')})) . "\n"
             . "  --critial-load "  . (join(',', @{$o->get('critical-load')}))
-            . "\n";
+            , INVALID_PARAMETERS);
       }
 
       if ( $pxc_version >= '5.6' && $o->got('max-flow-ctl') ) {
@@ -8918,6 +9105,23 @@ sub main {
    # Get child tables of the original table, if necessary.
    # ########################################################################
    my $child_tables;
+
+   my $have_child_tables = find_child_tables(
+         tbl    => $orig_tbl,
+         Cxn    => $cxn,
+         Quoter => $q,
+         only_same_schema_fks => $o->get('only-same-schema-fks'), 
+      );
+
+   my $vp = VersionParser->new($cxn->dbh());
+   if (($vp->cmp('8.0.14') >= 0 && $vp->cmp('8.0.17') <= 0) && $vp->flavor() !~ m/maria/i) {
+       my $msg = "There is an error in MySQL that makes the server to die when trying to ".
+                 "rename a table with FKs. See https://bugs.mysql.com/bug.php?id=96145\n".
+                 "Since pt-online-schema change needs to rename the old <-> new tables as the final " .
+                 "step, and the requested table has FKs, it cannot be executed under the current MySQL version";
+       _die($msg, NO_MINIMUM_REQUIREMENTS);
+   }
+
    if ( ($alter_fk_method || '') eq 'none' ) {
       print "Not updating foreign keys because "
          . "--alter-foreign-keys-method=none.  Foreign keys "
@@ -8947,13 +9151,22 @@ sub main {
          }
          # No child tables and --alter-fk-method wasn't specified,
          # so nothing to do.
-      }
+      } 
       else {
          print "Child tables:\n";
          foreach my $child_table ( @$child_tables ) {
             printf "  %s (approx. %s rows)\n",
                $child_table->{name},
                $child_table->{row_est} || '?';
+         }
+         
+         # TODO: Fix self referencing foreign keys handling.
+         # See: https://jira.percona.com/browse/PT-1802
+         #      https://jira.percona.com/browse/PT-1853
+         if (_has_self_ref_fks($orig_tbl->{db}, $orig_tbl->{tbl}, $child_tables) && $o->get('check-foreign-keys')) {
+             print "The table has self-referencing foreign keys and that might lead to errors.\n";
+             print "Use --no-check-foreign-keys to disable this check.\n";
+             return 1;
          }
 
          if ( $alter_fk_method ) {
@@ -9015,7 +9228,7 @@ sub main {
          # (*) Frank:  commented them out because it caused infinite loop
          # and the mentioned test error doesn't arise
          
-         #my $original_error = $EVAL_ERROR;
+         my $original_error = $EVAL_ERROR;
 
          foreach my $task ( reverse @cleanup_tasks ) {
             eval {
@@ -9025,7 +9238,7 @@ sub main {
                warn "Error cleaning up: $EVAL_ERROR\n";
             }
          }
-         #die $original_error if $original_error;  # rethrow original error
+         die $original_error if $original_error;  # rethrow original error
          return;
       }
    );
@@ -9158,7 +9371,7 @@ sub main {
       );
    };
    if ( $EVAL_ERROR ) {
-      die "Error creating new table: $EVAL_ERROR\n";
+      _die("Error creating new table: $EVAL_ERROR", ERROR_CREATING_NEW_TABLE);
    }
 
    # If the new table still exists, drop it unless the tool was interrupted.
@@ -9201,6 +9414,9 @@ sub main {
             . "$new_tbl->{name}, else writing to $orig_tbl->{name} will "
             . "cause MySQL error 1146 (42S02): \"Table $new_tbl->{name} "
             . " doesn't exist\".\n";
+      }
+      elsif ($process_error) {
+          print "Not dropping new table because FKs processing has failed.\n";
       }
       else {
          print ts("Dropping new table...\n");
@@ -9278,7 +9494,8 @@ sub main {
          $cxn->dbh()->do($sql);
       };
       if ( $EVAL_ERROR ) {
-         die "Error altering new table $new_tbl->{name}: $EVAL_ERROR\n"
+         # this is trapped by a signal handler. Don't replace it with _die 
+         die "Error altering new table $new_tbl->{name}: $EVAL_ERROR\n";
       }
       print "Altered $new_tbl->{name} OK.\n";
    }
@@ -9336,9 +9553,10 @@ sub main {
    }
 
    if ( !$new_tbl->{del_index} ) {
-      die "The new table $new_tbl->{name} does not have a PRIMARY KEY "
+      _die("The new table $new_tbl->{name} does not have a PRIMARY KEY "
         . "or a unique index which is required for the DELETE trigger.\n"
-        . "Please check you have at least one UNIQUE and NOT NULLABLE index.\n";
+        . "Please check you have at least one UNIQUE and NOT NULLABLE index.",
+        NO_PRIMARY_OR_UNIQUE_KEY);
    }
 
    # Determine whether to use the new or orig table delete index.
@@ -9357,11 +9575,12 @@ sub main {
    foreach my $new_del_index_col ( @$new_del_index_cols ) {
       if ( !exists $orig_cols->{$new_del_index_col} ) {
          if ( !$orig_tbl->{del_index} ) {
-            die "The new table index $new_tbl->{del_index} would be used "
+            _die("The new table index $new_tbl->{del_index} would be used "
                . "for the DELETE trigger, but it uses column "
                . "$new_del_index_col which does not exist in the original "
                . "table and the original table does not have a PRIMARY KEY "
-               . "or a unique index to use for the DELETE trigger.\n";
+               . "or a unique index to use for the DELETE trigger.",
+               NO_PRIMARY_OR_UNIQUE_KEY);
          }
          print "Using original table index $orig_tbl->{del_index} for the "
             . "DELETE trigger instead of new table index $new_tbl->{del_index} "
@@ -9453,7 +9672,7 @@ sub main {
       );
    };
    if ( $EVAL_ERROR ) {
-      die "Error creating triggers: $EVAL_ERROR\n";
+      _die("Error creating triggers: $EVAL_ERROR", ERROR_CREATING_TRIGGERS);
    };
 
    # --plugin hook
@@ -9514,6 +9733,7 @@ sub main {
          # a single chunk on all slaves.  E.g. if a slave is out of sync
          # and has a lot more rows than the master, single chunking on the
          # master could cause the slave to choke.
+         my $failed_to_nibble;
          if ( $nibble_iter->one_nibble() ) {
             PTDEBUG && _d('Getting table row estimate on replicas');
             my @too_large;
@@ -9540,10 +9760,16 @@ sub main {
                      . ($tbl->{chunk_size} * $limit)
                      . " rows (chunk size=$tbl->{chunk_size}"
                      . " * chunk size limit=$limit).\n";
-               die ts($msg);
+               warn $msg;
+               $failed_to_nibble = 1;
+               warn "Switching to nibble\n";
+               $nibble_iter->switch_to_nibble();
+               # die ts($msg);
+            } else {
+               return 1;
             }
          }
-         else { # chunking the table
+         if (!$nibble_iter->one_nibble()) { # chunking the table
             if ( $o->get('check-plan') ) {
                my $idx_len = new IndexLength(Quoter => $q);
                my ($key_len, $key) = $idx_len->index_length(
@@ -9553,20 +9779,20 @@ sub main {
                   n_index_cols => $o->get('chunk-index-columns'),
                );
                if ( !$key || lc($key) ne lc($nibble_iter->nibble_index()) ) {
-                  die ts("Cannot determine the key_len of the chunk index "
+                  _die(ts("Cannot determine the key_len of the chunk index "
                      . "because MySQL chose "
                      . ($key ? "the $key" : "no") . " index "
                      . "instead of the " . $nibble_iter->nibble_index()
                      . " index for the first lower boundary statement.  "
                      . "See --[no]check-plan in the documentation for more "
-                     . "information.");
+                     . "information."), CANNOT_DETERMINE_KEY_SIZE);
                }
                elsif ( !$key_len ) {
-                  die ts("The key_len of the $key index is "
+                  _die(ts("The key_len of the $key index is "
                      . (defined $key_len ? "zero" : "NULL")
                      . ", but this should not be possible.  " 
                      . "See --[no]check-plan in the documentation for more "
-                     . "information.");
+                     . "information."), INVALID_KEY_SIZE);
                }
                $tbl->{key_len} = $key_len;
             }
@@ -9610,7 +9836,7 @@ sub main {
                   . join(", ", map { defined $_ ? $_ : "NULL" }
                          (@{$boundary->{lower}}, $nibble_iter->limit()))
                   . "\n";
-               die ts($msg);
+               _die(ts($msg), NOT_SAFE_TO_ASCEND);
             } 
          }
 
@@ -9797,7 +10023,7 @@ sub main {
    };
    if ( $EVAL_ERROR ) {
       die ts("Error copying rows from $orig_tbl->{name} to "
-        . "$new_tbl->{name}: $EVAL_ERROR\n");
+        . "$new_tbl->{name}: $EVAL_ERROR");
    }
    $orig_tbl->{copied} = 1;  # flag for cleanup tasks
 
@@ -9830,11 +10056,10 @@ sub main {
       }
    }
 
-   my $vp = VersionParser->new($cxn->dbh());
    if ($vp->cmp('8.0') > -1 && $vp->flavor() !~ m/maria/i && $alter_fk_method eq 'drop_swap') {
        my $msg = "--alter-foreign-keys-method=drop_swap doesn't work with MySQL 8.0+\n".
                  "See https://bugs.mysql.com/bug.php?id=89441";
-       die($msg);
+       _die($msg, INVALID_PARAMETERS);
    }
 
    # --plugin hook
@@ -9878,7 +10103,7 @@ sub main {
                                                             );
                   };
                   if ($EVAL_ERROR) {
-                     die "Cannot create triggers: $EVAL_ERROR";
+                     _die("Cannot create triggers: $EVAL_ERROR", ERROR_CREATING_TRIGGERS);
                   }
                   next if !$o->get('execute');
                   PTDEBUG && _d('New triggers sqls');
@@ -9888,7 +10113,8 @@ sub main {
                           $cxn->dbh()->do($sql);
                       };
                       if ($EVAL_ERROR) {
-                           die "Exiting due to errors while restoring triggers: $EVAL_ERROR";
+                           _die("Exiting due to errors while restoring triggers: $EVAL_ERROR",
+                               ERROR_RESTORING_TRIGGERS);
                       }
                   }
               }
@@ -9915,10 +10141,11 @@ sub main {
       };
       if ( $EVAL_ERROR ) {
          # TODO: one of these values can be undefined
-         die ts("Error swapping tables: $EVAL_ERROR\n"
+         _die(ts("Error swapping tables: $EVAL_ERROR\n"
            . "To clean up, first verify that the original table "
            . "$orig_tbl->{name} has not been modified or renamed, "
-           . "then drop the new table $new_tbl->{name} if it exists.\n");
+           . "then drop the new table $new_tbl->{name} if it exists."),
+              ERROR_SWAPPING_TABLES);
       }
    }
    $orig_tbl->{swapped} = 1;  # flag for cleanup tasks
@@ -9981,12 +10208,13 @@ sub main {
          }
          else {
             # This should "never" happen because we check this var earlier.
-            die "Invalid --alter-foreign-keys-method: $alter_fk_method\n";
+            _die("Invalid --alter-foreign-keys-method: $alter_fk_method", INVALID_ALTER_FK_METHOD);
          }
       };
       if ( $EVAL_ERROR ) {
-         # TODO: improve error message and handling.
-         die "Error updating foreign key constraints: $EVAL_ERROR\n";
+          #$oktorun = 0;
+          $process_error = "Error updating foreign key constraints: $EVAL_ERROR";
+         _die($process_error, ERROR_UPDATING_FKS);
       }
 
       # --plugin hook
@@ -10030,7 +10258,7 @@ sub main {
             $cxn->dbh()->do($sql);
          };
          if ( $EVAL_ERROR ) {
-            die ts("Error dropping the old table: $EVAL_ERROR\n");
+            _die(ts("Error dropping the old table: $EVAL_ERROR\n"), ERROR_DROPPING_OLD_TABLE);
          }
          print ts("Dropped old table $old_tbl->{name} OK.\n");
 
@@ -10050,7 +10278,8 @@ sub main {
    # ########################################################################
    # Done.
    # ########################################################################
-   $orig_tbl->{success} = 1;  # flag for cleanup tasks
+   
+   $orig_tbl->{success} = 1;  # flag for cleanup tasks   
    $cleanup = undef;          # exec cleanup tasks
 
    # --plugin hook
@@ -10082,10 +10311,10 @@ sub validate_tries {
    if ( $user_tries ) {
       foreach my $var_val ( @$user_tries ) {
          my ($op, $tries, $wait) = split(':', $var_val);
-         die "Invalid --tries value: $var_val\n" unless $op && $tries && $wait;
-         die "Invalid --tries operation: $op\n" unless grep { $op eq $_ } @ops;
-         die "Invalid --tries tries: $tries\n" unless $tries > 0;
-         die "Invalid --tries wait: $wait\n" unless $wait > 0;
+         _die("Invalid --tries value: $var_val\n", INVALID_PARAMETERS) unless $op && $tries && $wait;
+         _die("Invalid --tries operation: $op\n", INVALID_PARAMETERS) unless grep { $op eq $_ } @ops;
+         _die("Invalid --tries tries: $tries\n", INVALID_PARAMETERS) unless $tries > 0;
+         _die("Invalid --tries wait: $wait\n", INVALID_PARAMETERS) unless $wait > 0;
          $user_tries{$op} = {
             tries   => $tries,
             wait    => $wait,
@@ -10099,10 +10328,10 @@ sub validate_tries {
       %default_tries = map {
          my $var_val = $_;
          my ($op, $tries, $wait) = $var_val =~ m/(\S+)/g;
-         die "Invalid --tries value: $var_val\n" unless $op && $tries && $wait;
-         die "Invalid --tries operation: $op\n" unless grep { $op eq $_ } @ops;
-         die "Invalid --tries tries: $tries\n" unless $tries > 0;
-         die "Invalid --tries wait: $wait\n" unless $wait > 0;
+         _die("Invalid --tries value: $var_val\n", INVALID_PARAMETERS) unless $op && $tries && $wait;
+         _die("Invalid --tries operation: $op\n", INVALID_PARAMETERS) unless grep { $op eq $_ } @ops;
+         _die("Invalid --tries tries: $tries\n", INVALID_PARAMETERS) unless $tries > 0;
+         _die("Invalid --tries wait: $wait\n", INVALID_PARAMETERS) unless $wait > 0;
          $op => {
             tries => $tries,
             wait  => $wait,
@@ -10147,19 +10376,20 @@ sub check_alter {
            $msg .= $sql;
         }
         $msg .= "Keep in mind that these queries could take a long time and consume a lot of resources\n\n";
-        die ($msg);
+        _die($msg, INVALID_PARAMETERS);
    }
 
    if ( ($tbl->{tbl_struct}->{engine} || '') =~ m/RocksDB/i ) {
        if ($alter =~ m/FOREIGN KEY/i) {
             my $msg = "FOREIGN KEYS are not supported by the RocksDB engine\n\n";
-            die ($msg);
+            _die($msg, UNSUPORTED_OPERATION);
        }
    }
    if ( $alter =~ m/Engine\s*=\s*["']?RocksDB["']?/i ) {
       my $row = $cxn->dbh()->selectrow_arrayref('SELECT @@binlog_format');
       if (scalar $row > 0 && $row->[0] eq 'STATEMENT') {
-          die("Cannot change engine to RocksDB while binlog_format is other than 'ROW'");
+          _die("Cannot change engine to RocksDB while binlog_format is other than 'ROW'",
+          UNSUPORTED_OPERATION);
       }
    }
    # ########################################################################
@@ -10231,10 +10461,24 @@ sub check_alter {
 
    if ( !$ok ) {
       # check_alter.t relies on this output.
-      die "--check-alter failed.\n";
+      _die("--check-alter failed.\n", UNSUPORTED_OPERATION);
    }
 
    return;
+}
+
+sub _has_self_ref_fks { 
+    my ($orig_db, $orig_table, $child_tables) = @_;
+
+    my $db_tbl = sprintf('`%s`.`%s`', $orig_db, $orig_table);
+
+    foreach my $child_table ( @$child_tables ) {
+        if ("$db_tbl" eq "$child_table->{name}") {
+             return 1;
+         }
+    }
+
+    return 0;
 }
 
 # This function tries to detect if the --alter param is adding unique indexes.
@@ -10641,7 +10885,7 @@ sub swap_tables {
                PTDEBUG && _d($e);
                next;
             }
-            die ts($e);
+            die ts($e); # Don't replace this by _die
          }
 
          print $sql, "\n" if $o->get('print');
@@ -10898,6 +11142,9 @@ sub rebuild_constraints {
            ($new_fk = $fk) =~ s/^__//;
          } else {
            $new_fk = '_'.$fk;
+           if(length $new_fk > 64) {
+             substr($new_fk, 64 - length $new_fk) = '';
+           }
          }
         
          PTDEBUG && _d("Old FK name: $fk New FK name: $new_fk");
@@ -11756,7 +12003,7 @@ The tool exits with an error if the host is a cluster node and the table
 is MyISAM or is being converted to MyISAM (C<ENGINE=MyISAM>), or if
 C<wsrep_OSU_method> is not C<TOI>.  There is no way to disable these checks.
 
-=head1 MySQL 5.7+ Generated columns
+=head1 MySQL 5.7 + Generated columns
 
 The tools ignores MySQL 5.7+ C<GENERATED> columns since the value for those columns
 is generated according to the expresion used to compute column values.
@@ -11954,6 +12201,18 @@ the server very busy, this can cause an outage.
 
 Prompt for a password when connecting to MySQL.
 
+=item --channel
+
+type: string
+
+Channel name used when connected to a server using replication channels.
+Suppose you have two masters, master_a at port 12345, master_b at port 1236 and
+a slave connected to both masters using channels chan_master_a and chan_master_b.
+If you want to run pt-table-sync to synchronize the slave against master_a, pt-table-sync
+won't be able to determine what's the correct master since SHOW SLAVE STATUS
+will return 2 rows. In this case, you can use --channel=chan_master_a to specify
+the channel name to use in the SHOW SLAVE STATUS command.
+
 =item --charset
 
 short form: -A; type: string
@@ -11993,6 +12252,15 @@ for its triggers.  You should first run the tool with L<"--dry-run"> and
 L<"--print"> and verify that the triggers are correct.
 
 =back
+
+=item --[no]check-foreign-keys
+
+default: yes
+
+Check for self-referencing foreign keys. Currently self referencing FKs are
+not full supported, so, to prevent errors, this program won't run if the table
+has self-referencing foreign keys. Use this parameter to disable self-referencing
+FK checks.
 
 =item --check-interval
 
@@ -12289,30 +12557,6 @@ duplicate rows and this data will be lost.
 =item --force
 
 This options bypasses confirmation in case of using alter-foreign-keys-method = none , which might break foreign key constraints.
-
-=item --force-concat-enums
-
-The NibbleIterator in Percona Toolkit can detect indexes having ENUM fields and 
-if the items it has are sorted or not. According to MySQL documentation at 
-L<https://dev.mysql.com/doc/refman/8.0/en/enum.html>:
-
-ENUM values are sorted based on their index numbers, which depend on the order in 
-which the enumeration members were listed in the column specification. 
-For example, 'b' sorts before 'a' for ENUM('b', 'a'). 
-The empty string sorts before nonempty strings, and NULL values sort before all other 
-enumeration values.
-
-To prevent unexpected results when using the ORDER BY clause on an ENUM column, 
-use one of these techniques:
-- Specify the ENUM list in alphabetic order.
-- Make sure that the column is sorted lexically rather than by index number by coding 
-ORDER BY CAST(col AS CHAR) or ORDER BY CONCAT(col).
-
-The NibbleIterator in Percona Toolkit uses CONCAT(col) but, doing that, adds overhead
-since MySQL cannot use the column directly and has to calculate the result of CONCAT
-for every row.
-To make this scenario vissible to the user, if there are indexes having ENUM fields 
-with usorted items, it is necessary to specify the C<--force-concat-enums> parameter.
 
 =item --help
 
@@ -12989,7 +13233,7 @@ If password contains commas they must be escaped with a backslash: "exam\,ple"
 
 =item * P
 
-dsn: port; copy: yes
+dsn: port; copy: no
 
 Port number to use for connection.
 
@@ -13022,6 +13266,28 @@ To enable debugging and capture all output to a file, run the tool like:
 
 Be careful: debugging output is voluminous and can generate several megabytes
 of output.
+
+=head1 EXIT STATUS
+
+   INVALID_PARAMETERS        = 1
+   UNSUPORTED_MYSQL_VERSION  = 2
+   NO_MINIMUM_REQUIREMENTS   = 3
+   NO_PRIMARY_OR_UNIQUE_KEY  = 4
+   INVALID_PLUGIN_FILE       = 5
+   INVALID_ALTER_FK_METHOD   = 6
+   INVALID_KEY_SIZE          = 7
+   CANNOT_DETERMINE_KEY_SIZE = 9
+   NOT_SAFE_TO_ASCEND        = 9
+   ERROR_CREATING_NEW_TABLE  = 10
+   ERROR_ALTERING_TABLE      = 11
+   ERROR_CREATING_TRIGGERS   = 12
+   ERROR_RESTORING_TRIGGERS  = 13
+   ERROR_SWAPPING_TABLES     = 14
+   ERROR_UPDATING_FKS        = 15
+   ERROR_DROPPING_OLD_TABLE  = 16
+   UNSUPORTED_OPERATION      = 17
+   MYSQL_CONNECTION_ERROR    = 18
+   LOST_MYSQL_CONNECTION     = 19
 
 =head1 SYSTEM REQUIREMENTS
 
@@ -13119,6 +13385,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-online-schema-change 3.0.12
+pt-online-schema-change 3.2.1
 
 =cut

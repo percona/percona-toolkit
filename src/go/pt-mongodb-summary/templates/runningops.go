@@ -2,7 +2,6 @@ package templates
 
 const RunningOps = `
 # Running Ops ############################################################################################
-
 Type         Min        Max        Avg
 Insert    {{printf "% 8d" .Insert.Min}}   {{printf "% 8d" .Insert.Max}}   {{printf "% 8d" .Insert.Avg}}/{{.SampleRate}}
 Query     {{printf "% 8d" .Query.Min}}   {{printf "% 8d" .Query.Max}}   {{printf "% 8d" .Query.Avg}}/{{.SampleRate}}

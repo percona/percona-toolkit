@@ -1,11 +1,14 @@
 package proto
 
 import (
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type ReplicaSetConfigTags map[string]string
-type GetLastErrorModes map[string]*ReplicaSetConfigTags
+type (
+	ReplicaSetConfigTags map[string]string
+
+	GetLastErrorModes map[string]*ReplicaSetConfigTags
+)
 
 // https://docs.mongodb.com/v3.2/reference/command/getLastError/#dbcmd.getLastError
 type GetLastErrorDefaults struct {
@@ -35,7 +38,7 @@ type ReplicaSetConfigSettings struct {
 	ElectionTimeoutMillis   int64                 `bson:"electionTimeoutMillis,omitempty"`   // The time limit in milliseconds for detecting when a replica set’s primary is unreachable.
 	GetLastErrorDefaults    *GetLastErrorDefaults `bson:"getLastErrorDefaults,omitempty"`    // A document that specifies the write concern for the replica set.
 	GetLastErrorModes       *GetLastErrorModes    `bson:"getLastErrorModes,omitempty"`       // A document used to define an extended write concern through the use of members[n].tags.
-	ReplicaSetId            *bson.ObjectId        `bson:"replicaSetId,omitempty"`            // Replset Id (ObjectId)
+	ReplicaSetId            *primitive.ObjectID   `bson:"replicaSetId,omitempty"`            // Replset Id (ObjectId)
 }
 
 type ReplicaSetConfig struct {

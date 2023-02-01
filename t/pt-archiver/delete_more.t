@@ -38,6 +38,7 @@ my $cmd = "perl -I $trunk/t/pt-archiver/samples $trunk/bin/pt-archiver";
 $sb->load_file('master', "t/pt-archiver/samples/delete_more.sql");
 $dbh->do('use dm');
 
+#1
 is_deeply(
    $dbh->selectall_arrayref('select * from `main_table-123` order by id'),
    [
@@ -49,7 +50,7 @@ is_deeply(
    ],
    'main_table-123 data before archiving'
 );
-
+#2
 is_deeply(
    $dbh->selectall_arrayref('select * from `other_table-123` order by id'),
    [
@@ -67,6 +68,10 @@ is_deeply(
 
 `$cmd --purge --primary-key-only --source F=$cnf,D=dm,t=main_table-123,i=pub_date,b=1,m=delete_more --where "pub_date < '2010-02-16'" --bulk-delete --limit 2`;
 
+
+# PT-157 has changed the program behavior when using --primary-key-only even if an index was
+# specified in the DSN
+#3
 is_deeply(
    $dbh->selectall_arrayref('select * from `main_table-123` order by id'),
    [
@@ -74,17 +79,19 @@ is_deeply(
       # [2, '2010-02-15', 'b'],
       # [3, '2010-02-15', 'c'],
       [4, '2010-02-16', 'd'],
-      # [5, '2010-02-14', 'e'],
+      [5, '2010-02-14', 'e'],
    ],
    'main_table-123 data after archiving (limit 2)'
 );
 
+#4
 is_deeply(
    $dbh->selectall_arrayref('select * from `other_table-123` order by id'),
    [
       [1, 'a'],
       [4, 'd'],
-      [6, 'ot1'],
+      [5, 'e'],
+      [6, 'ot1']
    ],
    'other_table-123 data after archiving (limit 2)'
 );
@@ -92,6 +99,7 @@ is_deeply(
 SKIP: {
    skip 'Cannot connect to slave sandbox', 6 unless $slave_dbh;
    $slave_dbh->do('use dm');
+#5
    is_deeply(
       $slave_dbh->selectall_arrayref('select * from `main_table-123` order by id'),
       [
@@ -103,7 +111,7 @@ SKIP: {
       ],
       'Slave main_table-123 not changed'
    );
-
+#6
    is_deeply(
       $slave_dbh->selectall_arrayref('select * from `other_table-123` order by id'),
       [
@@ -122,6 +130,7 @@ SKIP: {
    # Run it again without DSN b so changes should be made on slave.
    $sb->load_file('master', "t/pt-archiver/samples/delete_more.sql");
 
+#7
    is_deeply(
       $slave_dbh->selectall_arrayref('select * from `main_table-123` order by id'),
       [
@@ -133,7 +142,7 @@ SKIP: {
       ],
       'Reset slave main_table-123'
    );
-
+#8
    is_deeply(
       $slave_dbh->selectall_arrayref('select * from `other_table-123` order by id'),
       [
@@ -151,7 +160,7 @@ SKIP: {
 
    `$cmd --purge --primary-key-only --source F=$cnf,D=dm,t=main_table-123,i=pub_date,m=delete_more --where "pub_date < '2010-02-16'" --bulk-delete --limit 2`;
    sleep 1;
-
+#9
    is_deeply(
       $slave_dbh->selectall_arrayref('select * from `main_table-123` order by id'),
       [
@@ -159,16 +168,18 @@ SKIP: {
          # [2, '2010-02-15', 'b'],
          # [3, '2010-02-15', 'c'],
          [4, '2010-02-16', 'd'],
-         # [5, '2010-02-14', 'e'],
+         [5, '2010-02-14', 'e'],
       ],
       'Slave main_table-123 changed'
    );
 
+#10
    is_deeply(
       $slave_dbh->selectall_arrayref('select * from `other_table-123` order by id'),
       [
          [1, 'a'],
          [4, 'd'],
+         [5, 'e'],
          [6, 'ot1'],
       ],
       'Slave other_table-123 changed'
@@ -180,7 +191,7 @@ SKIP: {
 # ###########################################################################
 $sb->load_file('master', "t/pt-archiver/samples/delete_more.sql");
 $dbh->do('use dm');
-
+#11
 is_deeply(
    $dbh->selectall_arrayref('select * from `main_table-123` order by id'),
    [
@@ -192,7 +203,7 @@ is_deeply(
    ],
    'main_table-123 data before archiving'
 );
-
+#12
 is_deeply(
    $dbh->selectall_arrayref('select * from `other_table-123` order by id'),
    [
@@ -209,7 +220,7 @@ is_deeply(
 );
 
 `$cmd --purge --primary-key-only --source F=$cnf,D=dm,t=main_table-123,i=pub_date,b=1,m=delete_more --where "pub_date < '2010-02-16'" --bulk-delete --limit 100`;
-
+#13
 is_deeply(
    $dbh->selectall_arrayref('select * from `main_table-123` order by id'),
    [
@@ -217,16 +228,17 @@ is_deeply(
       # [2, '2010-02-15', 'b'],
       # [3, '2010-02-15', 'c'],
       [4, '2010-02-16', 'd'],
-      # [5, '2010-02-14', 'e'],
+      [5, '2010-02-14', 'e'],
    ],
    'main_table-123 data after archiving (limit 100)'
 );
-
+#14
 is_deeply(
    $dbh->selectall_arrayref('select * from `other_table-123` order by id'),
    [
       [1, 'a'],
       [4, 'd'],
+      [5, 'e'],
       [6, 'ot1'],
    ],
    'other_table-123 data after archiving (limit 100)'
@@ -237,7 +249,7 @@ is_deeply(
 # ###########################################################################
 $sb->load_file('master', "t/pt-archiver/samples/delete_more.sql");
 $dbh->do('use dm');
-
+#15
 is_deeply(
    $dbh->selectall_arrayref('select * from `main_table-123` order by id'),
    [
@@ -249,7 +261,7 @@ is_deeply(
    ],
    'main_table-123 data before archiving'
 );
-
+#16
 is_deeply(
    $dbh->selectall_arrayref('select * from `other_table-123` order by id'),
    [
@@ -267,7 +279,7 @@ is_deeply(
 
 `$cmd --purge --primary-key-only --source F=$cnf,D=dm,t=main_table-123,i=pub_date,b=1,m=delete_more --where "pub_date < '2010-02-16'"`;
 `$cmd --purge --primary-key-only --source F=$cnf,D=dm,t=main_table-123,i=pub_date,b=1,m=delete_more --where "pub_date < '2010-02-16'"`;
-
+#17
 is_deeply(
    $dbh->selectall_arrayref('select * from `main_table-123` order by id'),
    [
@@ -275,7 +287,7 @@ is_deeply(
       # [2, '2010-02-15', 'b'],
       # [3, '2010-02-15', 'c'],
       [4, '2010-02-16', 'd'],
-      # [5, '2010-02-14', 'e'],
+      [5, '2010-02-14', 'e'],
    ],
    'main_table-123 data after archiving (single delete)'
 );
@@ -285,6 +297,7 @@ is_deeply(
    [
       [1, 'a'],
       [4, 'd'],
+      [5, 'e'],
       [6, 'ot1'],
    ],
    'other_table-123 data after archiving (single delete)'

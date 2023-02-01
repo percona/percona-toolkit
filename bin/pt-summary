@@ -1278,7 +1278,7 @@ top_processes () { local PTFUNCNAME=top_processes;
 
 notable_processes_info () { local PTFUNCNAME=notable_processes_info;
    local format="%5s    %+2d    %s\n"
-   local sshd_pid=$(ps -eo pid,args | awk '$2 ~ /\/usr\/sbin\/sshd/ { print $1; exit }')
+   local sshd_pid=$(ps -eo pid,args | awk '$0 ~ /\/usr\/sbin\/sshd/ { print $1; exit }')
 
    echo "  PID    OOM    COMMAND"
 
@@ -2651,7 +2651,7 @@ This tool requires the Bourne shell (F</bin/sh>).
 
 For a list of known bugs, see L<http://www.percona.com/bugs/pt-summary>.
 
-Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
+Please report bugs at L<https://jira.percona.com/projects/PT>.
 Include the following information in your bug report:
 
 =over
@@ -2723,7 +2723,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-summary 3.0.12
+pt-summary 3.2.1
 
 =cut
 

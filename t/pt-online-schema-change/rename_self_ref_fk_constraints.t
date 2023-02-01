@@ -32,14 +32,15 @@ my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
 my @args       = (qw(--set-vars innodb_lock_wait_timeout=3 --alter-foreign-keys-method rebuild_constraints));
 my $output;
 my $exit_status;
-my $sample  = "t/pt-online-schema-change/samples/";
 
 # ############################################################################
 # https://bugs.launchpad.net/percona-toolkit/+bug/1632522
 # pt-online-schema-change fails with duplicate key in table for self-referencing FK
 # ############################################################################
 
-$sb->load_file('master', "$sample/bug-1632522.sql");
+diag("Before loading sql");
+$sb->load_file('master', "t/pt-online-schema-change/samples/bug-1632522.sql");
+diag("after loading sql");
 
 # run once: we expect the constraint name to be appended with one underscore
 # but the self-referencing constraint will have 2 underscore
@@ -50,14 +51,22 @@ $sb->load_file('master', "$sample/bug-1632522.sql");
       qw(--execute)) },
 );
 
-my $constraints = $master_dbh->selectall_arrayref("SELECT TABLE_NAME, CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE table_schema='bug1632522' and (TABLE_NAME='test_table' OR TABLE_NAME='person') and CONSTRAINT_NAME LIKE '%fk_%' ORDER BY TABLE_NAME, CONSTRAINT_NAME"); 
+my $query = <<"END";
+  SELECT TABLE_NAME, CONSTRAINT_NAME 
+    FROM information_schema.KEY_COLUMN_USAGE 
+   WHERE table_schema='bug1632522' 
+     AND (TABLE_NAME='test_table' OR TABLE_NAME='person') 
+     AND CONSTRAINT_NAME LIKE '%fk_%' 
+ORDER BY TABLE_NAME, CONSTRAINT_NAME
+END
+my $constraints = $master_dbh->selectall_arrayref($query);
 
 is_deeply(
    $constraints,
    [
-      ['person', '_fk_testId'],
-      ['test_table', '_fk_person'],
-      ['test_table', '__fk_refId'],
+      ['person', 'fk_testId'],
+      ['test_table', 'fk_person'],
+      ['test_table', 'fk_refId'],
    ],
    "First run adds or removes underscore from constraint names, accordingly"
 );
@@ -71,15 +80,23 @@ is_deeply(
       qw(--execute)) },
 );
 
-$constraints = $master_dbh->selectall_arrayref("SELECT TABLE_NAME, CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE table_schema='bug1632522' and (TABLE_NAME='test_table' OR TABLE_NAME='person') and CONSTRAINT_NAME LIKE '%fk_%' ORDER BY TABLE_NAME, CONSTRAINT_NAME"); 
+$query = <<"END";
+  SELECT TABLE_NAME, CONSTRAINT_NAME 
+    FROM information_schema.KEY_COLUMN_USAGE 
+   WHERE table_schema='bug1632522' 
+     AND (TABLE_NAME='test_table' OR TABLE_NAME='person') 
+     AND CONSTRAINT_NAME LIKE '%fk_%' 
+ORDER BY TABLE_NAME, CONSTRAINT_NAME
+END
+$constraints = $master_dbh->selectall_arrayref($query);
 
 
 is_deeply(
    $constraints,
    [
-      ['person', '__fk_testId'],
-      ['test_table', '_fk_refId'],
-      ['test_table', '__fk_person'],
+      ['person', 'fk_testId'],
+      ['test_table', 'fk_person'],
+      ['test_table', 'fk_refId'],
    ],
    "Second run self-referencing will be one due to rebuild_constraints"
 );
@@ -92,7 +109,15 @@ is_deeply(
       qw(--execute)) },
 );
 
-$constraints = $master_dbh->selectall_arrayref("SELECT TABLE_NAME, CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE table_schema='bug1632522' and (TABLE_NAME='test_table' OR TABLE_NAME='person') and CONSTRAINT_NAME LIKE '%fk_%' ORDER BY TABLE_NAME, CONSTRAINT_NAME"); 
+$query = <<"END";
+  SELECT TABLE_NAME, CONSTRAINT_NAME 
+    FROM information_schema.KEY_COLUMN_USAGE 
+   WHERE table_schema='bug1632522' 
+     and (TABLE_NAME='test_table' OR TABLE_NAME='person') 
+     and CONSTRAINT_NAME LIKE '%fk_%' 
+ORDER BY TABLE_NAME, CONSTRAINT_NAME
+END
+$constraints = $master_dbh->selectall_arrayref($query);
 
 
 is_deeply(

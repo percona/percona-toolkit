@@ -1,5 +1,7 @@
 package proto
 
+import "go.mongodb.org/mongo-driver/bson/primitive"
+
 type Extra struct {
 	LibcVersion      string  `bson:"libcVersion"`
 	PageSize         float64 `bson:"pageSize"`
@@ -19,13 +21,13 @@ type Os struct {
 }
 
 type System struct {
-	CurrentTime string  `bson:"currentTime"`
-	Hostname    string  `bson:"hostname"`
-	MemSizeMB   float64 `bson:"memSizeMB"`
-	NumCores    float64 `bson:"numCores"`
-	NumaEnabled bool    `bson:"numaEnabled"`
-	CpuAddrSize float64 `bson:"cpuAddrSize"`
-	CpuArch     string  `bson:"cpuArch"`
+	CurrentTime primitive.DateTime `bson:"currentTime"`
+	Hostname    string             `bson:"hostname"`
+	MemSizeMB   float64            `bson:"memSizeMB"`
+	NumCores    float64            `bson:"numCores"`
+	NumaEnabled bool               `bson:"numaEnabled"`
+	CpuAddrSize float64            `bson:"cpuAddrSize"`
+	CpuArch     string             `bson:"cpuArch"`
 }
 
 // HostInfo has exported field for the 'hostInfo' command plus some other
