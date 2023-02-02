@@ -24,31 +24,41 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 2;
+   plan tests => 3;
 }
 
-$sb->load_file('master', 't/pt-table-checksum/samples/issue_1485195.sql');
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
-my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox,D=my_binary_database';
-my @args       = ($master_dsn, qw(--replicate my_binary_database.my_table -t percona_test.checksums)); 
+my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox,D=pt_1059';
+my @args       = ($master_dsn, qw(--set-vars innodb_lock_wait_timeout=3), '--max-load', ''); 
 my $output;
+my $exit_status;
 
-$output = output(
-   sub { pt_table_checksum::main(@args) },
+# We test that checksum works with columns and indexes
+# that contain new lines
+$sb->load_file('master', 't/pt-table-checksum/samples/pt-1059.sql');
+# #############################################################################
+# PT-1059 LP #1093972: Tools can't parse index names containing newlines
+# #############################################################################
+
+($output, $exit_status) = full_output(
+   sub { pt_table_checksum::main(@args, qw(-d pt_1059)) },
    stderr => 1,
 );
 
-# We do not count these tables by default, because their presense depends from 
-# previously running tests
-my $extra_tables = $dbh->selectrow_arrayref("select count(*) from percona_test.checksums where db_tbl in ('mysql.plugin', 'mysql.func', 'mysql.proxies_priv');")->[0];
+is(
+   PerconaTest::count_checksum_results($output, 'errors'),
+   0,
+   "Checksum with columns and indexes, containing new lines found no errors"
+);
 
 is(
-   PerconaTest::count_checksum_results($output, 'rows'),
-   $sandbox_version ge '8.0' ? 28 + $extra_tables : $sandbox_version lt '5.7' ? 24 : 23  + $extra_tables,
-   "Large BLOB/TEXT/BINARY Checksum"
+    $exit_status,
+    0,
+    "Checksum with columns and indexes, containing new lines finished succesfully",
 );
+
 
 # #############################################################################
 # Done.
