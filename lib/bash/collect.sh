@@ -580,11 +580,16 @@ slave_status() {
    local outfile=$1
    local mysql_version=$2
 
-   if [ "${mysql_version}" '<' "5.7" ]; then
-      local sql="SHOW SLAVE STATUS\G"  
-      echo -e "\n$sql\n" >> $outfile
-      $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+   if [ "${mysql_version}" '<' "8.1" ]; then
+      local sql="SHOW SLAVE STATUS\G"
    else
+      local sql="SHOW REPLICA STATUS\G"
+   fi
+
+   echo -e "\n$sql\n" >> $outfile
+   $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+
+   if [ "${mysql_version}" '>' "5.6" ]; then
       local sql="SELECT * FROM performance_schema.replication_connection_configuration JOIN performance_schema.replication_applier_configuration USING(channel_name)\G"
       echo -e "\n$sql\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
