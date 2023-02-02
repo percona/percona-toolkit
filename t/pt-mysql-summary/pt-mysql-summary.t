@@ -99,13 +99,7 @@ like(
    "Security works"
 );
 
-# --read-samples
-my @samples = (2..7);
-if ( !$sb->is_cluster_mode ) {
-   @samples = (2..5);
-}
-
-for my $i (@samples) {
+for my $i (2..7) {
    ok(
       no_diff(
          sub {
