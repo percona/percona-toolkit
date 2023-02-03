@@ -18,4 +18,3 @@ insert into pt_2123.t1 (col2) values ('あ');
 insert into pt_2123.t1 (col2) values ('あ');
 insert into pt_2123.t1 (col2) values ('あ');
 insert into pt_2123.t1 (col2) values ('あ');
-insert into pt_2123.t1 (col2) values ('w');
