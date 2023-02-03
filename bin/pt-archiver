@@ -6777,6 +6777,10 @@ sub main {
       require File::Temp;
       $bulkins_file = File::Temp->new( SUFFIX => 'pt-archiver' )
          or die "Cannot open temp file: $OS_ERROR\n";
+	  if ( !$charset && $src->{info}->{charset} 
+	       && $src->{info}->{charset} =~ /utf/ ) {
+	     binmode($bulkins_file, ':utf8')
+	  }
       binmode($bulkins_file, $charset)
          or die "Cannot set $charset as an encoding for the bulk-insert "
               . "file: $OS_ERROR";
