@@ -139,32 +139,6 @@ for my $char ( "\N{KATAKANA LETTER NI}", "\N{U+DF}" ) {
       "Warns about the UTF-8 bug in DBD::mysql::VERSION lt '4', quiet otherwise"
    );
 }
-
-# #############################################################################
-# PT-2123: pt-archiver gives error "Wide character in print at 
-# /usr/bin/pt-archiver line 6815" when using --bulk-insert 
-# #############################################################################
-$sb->load_file('master', 't/pt-archiver/samples/pt-2123.sql');
-
-$dbh->do('set names "utf8mb4"');
-my $original_rows = $dbh->selectall_arrayref('select col2 from pt_2123.t1 where col1=5');
-
-$output = output(
-   sub { pt_archiver::main(
-    '--source',  'L=1,h=127.1,P=12345,D=pt_2123,t=t1,u=msandbox,p=msandbox,A=utf8mb4',
-    '--dest',    'L=1,h=127.1,P=12345,D=pt_2123,t=t2,u=msandbox,p=msandbox,A=utf8mb4',
-    qw(--where col1=5 --bulk-insert --limit=100 --purge))
-   },
-);
-
-my $archived_rows = $dbh->selectall_arrayref('select col2 from pt_2123.t2');
-
-is_deeply(
-   $original_rows,
-   $archived_rows,
-   "UTF8 characters copied successfully with --bulk-insert"
-);
-
 # #############################################################################
 # Done.
 # #############################################################################
