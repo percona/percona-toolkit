@@ -45,7 +45,9 @@ my ($tool) = $PROGRAM_NAME =~ m/([\w-]+)_encryption\.t$/;
 # mysqldump from earlier versions doesn't seem to work with 5.6,
 # so use the actual mysqldump from each MySQL bin which should
 # always be compatible with itself.
-my $env = qq\CMD_MYSQLDUMP="$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqldump"\;
+# We need LC_NUMERIC=POSIX, so test does not fail in environment 
+# which use , insead of . for numbers.
+my $env = qq\CMD_MYSQLDUMP="$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqldump" LC_NUMERIC=POSIX\;
 
 #
 # --save-samples
@@ -127,7 +129,7 @@ $master_dbh->do("CREATE TABLESPACE foo ADD DATAFILE 'foo.ibd' ENCRYPTION='Y'");
 $master_dbh->do("ALTER TABLE test.t1 TABLESPACE=foo");
 $master_dbh->do("CREATE TABLE test.t2(a INT PRIMARY KEY) ENCRYPTION='Y'");
 
-$out = `bash $trunk/bin/$tool --list-encrypted-tables`;
+$out = `bash $trunk/bin/$tool --list-encrypted-tables -- --defaults-file=/tmp/12345/my.sandbox.cnf`;
 
 like(
    $out,

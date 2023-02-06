@@ -116,9 +116,14 @@ collect_encrypted_tables() {
 }
 
 collect_encrypted_tablespaces() {
-# I_S.INNODB_SYS_TABLESPACES has a "flag" field. Encrypted tablespace has bit 14 set. You can check it with "flag & 8192". 
+    local version="$1"
+# I_S.INNODB_[SYS_]TABLESPACES has a "flag" field. Encrypted tablespace has bit 14 set. You can check it with "flag & 8192". 
 # And seems like MySQL is capable of bitwise operations. https://dev.mysql.com/doc/refman/5.7/en/bit-functions.html
-    $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT SPACE, NAME, SPACE_TYPE from INFORMATION_SCHEMA.INNODB_SYS_TABLESPACES where FLAG&8192 = 8192;"
+    if [ "$version" '<' "8.0" ]; then
+        $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT SPACE, NAME, SPACE_TYPE from INFORMATION_SCHEMA.INNODB_SYS_TABLESPACES where FLAG&8192 = 8192;"
+    else
+        $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT SPACE, NAME, SPACE_TYPE from INFORMATION_SCHEMA.INNODB_TABLESPACES where FLAG&8192 = 8192;"
+    fi
 }
 
 
@@ -1580,8 +1585,9 @@ report_mysql_summary () {
    local encrypted_tables=""
    local encrypted_tablespaces=""
    if [ "${OPT_LIST_ENCRYPTED_TABLES}" = 'yes' ]; then 
+       local mysql_version="$(get_var version "$dir/mysql-variables")"
        encrypted_tables="$(collect_encrypted_tables)"
-       encrypted_tablespaces="$(collect_encrypted_tablespaces)"
+       encrypted_tablespaces="$(collect_encrypted_tablespaces ${mysql_version})"
    fi
 
    format_keyring_plugins "$keyring_plugins" "$encrypted_tables"
