@@ -12,8 +12,8 @@ html_theme_options = {
     'base_url': 'http://bashtage.github.io/sphinx-material/',
     'repo_url': 'https://github.com/percona/percona-toolkit',
     'repo_name': 'percona/percona-toolkit',
-    'color_accent': 'grey',
-    'color_primary': 'orange',
+    'color_accent': 'cyan',
+    'color_primary': 'blue-grey',
     'globaltoc_collapse': True,
     'version_dropdown': True
 }
