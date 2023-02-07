@@ -1419,6 +1419,13 @@ pretty_print_cnf_file () {
          } 
       }' "$file"
 
+   for includedir in $(grep "\!includedir" $file | cut -d ' ' -f 2); do
+      for subfile in $(find -L "$includedir" -type f -maxdepth 1 -name *.cnf ); do
+         echo "# $subfile"
+         pretty_print_cnf_file $subfile
+      done
+   done
+
 }
 
 
