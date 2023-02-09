@@ -1570,11 +1570,11 @@ stalk() {
          # Start collecting, maybe.
          # ##################################################################
          log "Collect $ITER triggered"
-		 if [ "$OPT_MYSQL_ONLY" ]; then
+         if [ "$OPT_MYSQL_ONLY" ]; then
             log "MYSQL_ONLY: $OPT_MYSQL_ONLY"
-		 elif [ "$OPT_SYSTEM_ONLY" ]; then
+         elif [ "$OPT_SYSTEM_ONLY" ]; then
             log "SYSTEM_ONLY: $OPT_SYSTEM_ONLY"
-		 fi
+         fi
 
          # Send email to whomever that collect has been triggered.
          if [ "$OPT_NOTIFY_BY_EMAIL" ]; then
