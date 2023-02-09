@@ -54,8 +54,6 @@ $output = output(
    stderr => 1,
 );
 
-#REMOVEME
-diag($exit_status);
 isnt(
    $exit_status,
    0,

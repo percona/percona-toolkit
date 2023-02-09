@@ -6097,6 +6097,9 @@ $Data::Dumper::Quotekeys = 0;
 use Percona::Toolkit;
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
+# We need SQL types in order to properly handle BIT columns in WHERE clause
+use DBI qw(:sql_types);
+
 # Global variables; as few as possible.
 my $oktorun   = 1;
 my $txn_cnt   = 0;
@@ -6864,7 +6867,14 @@ sub main {
             }
             if ( !$o->get('no-delete') ) {
                my $success = do_with_retries($o, 'deleting', sub {
-                  $del_row->execute(@{$row}[@del_slice]);
+                  for my $i (0 .. $#del_slice) {
+                     if ($src->{info}->{type_for}->{$del_stmt->{cols}[$del_slice[$i]]} eq 'bit') {
+	                    $del_row->bind_param($i + 1, oct('0b' . unpack('B*', @{$row}[$del_slice[$i]])), SQL_INTEGER);					 
+					 } else {
+					    $del_row->bind_param($i + 1, @{$row}[$del_slice[$i]]);
+				     }
+				  }
+				  $del_row->execute();
                   PTDEBUG && _d('Deleted', $del_row->rows, 'rows');
                   $statistics{DELETE} += $del_row->rows;
                });
