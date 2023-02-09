@@ -23,7 +23,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 8;
+   plan tests => 12;
 }
 
 my $output;
@@ -78,7 +78,7 @@ $output = output(
       '--source',  'h=127.1,P=12345,D=pt_2114,t=t1,u=msandbox,p=msandbox',
       '--dest',  'h=127.1,P=12345,D=pt_2114,t=t2,u=msandbox,p=msandbox',
       '--where', '(val) in (select a.val from pt_2114.t1_tmp a where id =2)', 
-	  '--purge')
+	  )
    },
 );
 
@@ -111,7 +111,55 @@ is_deeply(
    $archived_rows,
    "PT-2114 Correct rows archived"
 );
-$dbh->do('DROP DATABASE pt_2114');
+
+# #############################################################################
+# Reloading dump to perform archiving
+# #############################################################################
+$sb->load_file('master', 't/pt-archiver/samples/pt-2114.sql');
+
+$output = output(
+   sub { $exit_status = pt_archiver::main(
+      '--source',  'h=127.1,P=12345,D=pt_2114,t=t1,u=msandbox,p=msandbox,L=yes',
+      '--dest',  'h=127.1,P=12345,D=pt_2114,t=t2,u=msandbox,p=msandbox,L=yes',
+      '--where', '(val) in (select a.val from pt_2114.t1_tmp a where id =2)', 
+	  '--bulk-insert', '--limit', '10')
+   },
+);
+
+is (
+    $exit_status,
+    0,
+    "PT-2114 exit status OK",
+);
+
+$left_rows = $dbh->selectall_arrayref('select id, hex(val) from pt_2114.t1');
+
+is_deeply(
+   $zero_rows,
+   $left_rows,
+   "PT-2114 Only rows with val=0 left in the table with --bulk-insert"
+);
+
+$count_rows = $dbh->selectrow_arrayref('select count(*) from pt_2114.t1');
+
+is (
+   @{$count_rows}[0],
+   4,
+   "PT-2114 Four rows left in the table"
+);
+
+$archived_rows = $dbh->selectall_arrayref('select id, hex(val) from pt_2114.t2');
+
+is_deeply(
+   $one_rows,
+   $archived_rows,
+   "PT-2114 Correct rows archived with --bulk-insert"
+);
+
+# TODO
+# --bulk-delete with --purge
+# --file
+# fancy values in BIT column
 
 # #############################################################################
 # Done.
