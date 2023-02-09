@@ -23,13 +23,13 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 4;
+   plan tests => 8;
 }
 
 my $output;
 
 # #############################################################################
-# Issue 1152: mk-archiver columns option resulting in null archived table data
+# PT-2114: Incorrect casting of BIT columns by pt-archiver 
 # #############################################################################
 $sb->load_file('master', 't/pt-archiver/samples/pt-2114.sql');
 
@@ -66,6 +66,51 @@ is (
    "PT-2114 Four rows left in the table"
 );
 
+# #############################################################################
+# Reloading dump to perform archiving
+# #############################################################################
+$sb->load_file('master', 't/pt-archiver/samples/pt-2114.sql');
+
+my $one_rows = $dbh->selectall_arrayref('select id, hex(val) from pt_2114.t1 where val = 1');
+
+$output = output(
+   sub { $exit_status = pt_archiver::main(
+      '--source',  'h=127.1,P=12345,D=pt_2114,t=t1,u=msandbox,p=msandbox',
+      '--dest',  'h=127.1,P=12345,D=pt_2114,t=t2,u=msandbox,p=msandbox',
+      '--where', '(val) in (select a.val from pt_2114.t1_tmp a where id =2)', 
+	  '--purge')
+   },
+);
+
+is (
+    $exit_status,
+    0,
+    "PT-2114 exit status OK",
+);
+
+$left_rows = $dbh->selectall_arrayref('select id, hex(val) from pt_2114.t1');
+
+is_deeply(
+   $zero_rows,
+   $left_rows,
+   "PT-2114 Only rows with val=0 left in the table"
+);
+
+$count_rows = $dbh->selectrow_arrayref('select count(*) from pt_2114.t1');
+
+is (
+   @{$count_rows}[0],
+   4,
+   "PT-2114 Four rows left in the table"
+);
+
+my $archived_rows = $dbh->selectall_arrayref('select id, hex(val) from pt_2114.t2');
+
+is_deeply(
+   $one_rows,
+   $archived_rows,
+   "PT-2114 Correct rows archived"
+);
 $dbh->do('DROP DATABASE pt_2114');
 
 # #############################################################################
