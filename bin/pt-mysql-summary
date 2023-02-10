@@ -2859,7 +2859,7 @@ The third column is the value from the first snapshot, divided by Uptime and
 then fuzzy-rounded, so it represents approximately how quickly the counter is
 growing per-second over the uptime of the server.
 
-The third column is the incremental difference from the first and second
+The fourth column is the incremental difference from the first and second
 snapshot, divided by the difference in uptime and then fuzzy-rounded. Therefore,
 it shows how quickly the counter is growing per second at the time the report
 was generated.
