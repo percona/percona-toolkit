@@ -4987,7 +4987,7 @@ installed in any reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs, see L<http://www.percona.com/bugs/pt-slave-delay>.
+For a list of known bugs, see L<https://jira.percona.com/projects/PT/issues>.
 
 Please report bugs at L<https://jira.percona.com/projects/PT>.
 Include the following information in your bug report:

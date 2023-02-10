@@ -1053,7 +1053,7 @@ This tool requires the Bourne shell (F</bin/sh>).
 
 =head1 BUGS
 
-For a list of known bugs, see L<http://www.percona.com/bugs/pt-ioprofile>.
+For a list of known bugs, see L<https://jira.percona.com/projects/PT/issues>.
 
 Please report bugs at L<https://jira.percona.com/projects/PT>.
 Include the following information in your bug report:
