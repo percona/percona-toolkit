@@ -1,0 +1,40 @@
+name: toolkit
+
+on:
+  push:
+    branches: [ "3.x" ]
+  pull_request:
+    branches: [ "3.x" ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.19
+    - name: Install make
+      run:  sudo apt-get update && sudo apt-get -y install make
+    - name: Build
+      run: cd src/go; make linux-amd64; cd ../../
+      
+    - name: Build the Docker image
+      run: echo "FROM oraclelinux:9-slim" > Dockerfile; echo "COPY bin/* /usr/bin/" >> Dockerfile; docker build . --file Dockerfile --tag percona-toolkit:${{ github.sha }}
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@0.8.0
+      with:
+          image-ref: 'percona-toolkit:${{ github.sha }}'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'  
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: binaries
+        path: bin/*
