@@ -11794,11 +11794,11 @@ Make slave1 have the same data as its replication master:
 
 Resolve differences that L<pt-table-checksum> found on all slaves of master1:
 
-  pt-table-sync --execute --replicate test.checksum master1
+  pt-table-sync --execute --replicate percona.checksum master1
 
 Same as above but only resolve differences on slave1:
 
-  pt-table-sync --execute --replicate test.checksum \
+  pt-table-sync --execute --replicate percona.checksum \
     --sync-to-master slave1
 
 Sync master2 in a master-master replication configuration, where master2's copy
