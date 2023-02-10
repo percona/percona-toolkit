@@ -995,9 +995,9 @@ sub _parse_csv {
    if ( $args{quoted_values} ) {
       # If the vals are quoted, then they can contain commas, like:
       # "hello, world!", 'batman'.  If only we could use Text::CSV,
-      # then I wouldn't write yet another csv parser to handle this,
-      # but Maatkit doesn't like package dependencies, so here's my
-      # light implementation of this classic problem.
+      # then we wouldn't write yet another csv parser to handle this,
+      # but Percona Toolkit doesn't like package dependencies, so here's
+      # our light implementation of this classic problem.
       my $quote_char   = '';
       VAL:
       foreach my $val ( split(',', $vals) ) {

@@ -13101,7 +13101,7 @@ This existing literature mostly addressed how to find the differences between
 the tables, not how to resolve them once found.  I needed a tool that would not
 only find them efficiently, but would then resolve them.  I first began thinking
 about how to improve the technique further with my article
-L<http://tinyurl.com/mysql-data-diff-algorithm>,
+L<https://web.archive.org/web/20071018105253/http://www.xaprb.com/blog/2007/03/05/an-algorithm-to-find-and-resolve-data-differences-between-mysql-tables/>,
 where I discussed a number of problems with the Maxia/Coelho "bottom-up"
 algorithm.  After writing that article, I began to write this tool.  I wanted to
 actually implement their algorithm with some improvements so I was sure I
@@ -13119,8 +13119,8 @@ also my own work.
 
 Another tool that can synchronize tables is the SQLyog Job Agent from webyog.
 Thanks to Rohit Nadhani, SJA's author, for the conversations about the general
-techniques.  There is a comparison of pt-table-sync and SJA at
-L<http://tinyurl.com/maatkit-vs-sqlyog>
+techniques. There is a comparison of pt-table-sync and SJA at
+L<https://web.archive.org/web/20070919024435/http://www.xaprb.com/blog/2007/04/05/mysql-table-sync-vs-sqlyog-job-agent/>
 
 Thanks to the following people and organizations for helping in many ways:
 

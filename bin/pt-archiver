@@ -7380,7 +7380,7 @@ server.  Before using this tool, please:
 =head1 DESCRIPTION
 
 pt-archiver is the tool I use to archive tables as described in
-L<http://tinyurl.com/mysql-archiving>.  The goal is a low-impact, forward-only
+L<https://web.archive.org/web/20071014031743/http://www.xaprb.com/blog/2006/05/02/how-to-write-efficient-archiving-and-purging-jobs-in-sql>.  The goal is a low-impact, forward-only
 job to nibble old data out of the table without impacting OLTP queries much.
 You can insert the data into another table, which need not be on the same
 server.  You can also write it to a file in a format suitable for LOAD DATA
