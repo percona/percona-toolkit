@@ -23,12 +23,16 @@ jobs:
       run: cd src/go; make linux-amd64; cd ../../
       
     - name: Build the Docker image
-      run: echo "FROM oraclelinux:9-slim" > Dockerfile; echo "COPY bin/* /usr/bin/" >> Dockerfile; docker build . --file Dockerfile --tag percona-toolkit:$(date +%s)
-    - name: Install Trivy
-      run: wget https://github.com/aquasecurity/trivy/releases/download/v0.37.1/trivy_0.37.1_Linux-64bit.deb && sudo dpkg -i ./trivy_0.37.1_Linux-64bit.deb && rm -f trivy_0.37.1_Linux-64bit.deb
-    - name: Scan Image
-      run: trivy image --scanners vuln  --format table --exit-code  1 --vuln-type  os,library --severity  CRITICAL,HIGH percona-toolkit:$(docker images | grep percona-toolkit | head -n 1 | awk '{print $2}')
-     
+      run: echo "FROM oraclelinux:9-slim" > Dockerfile; echo "COPY bin/* /usr/bin/" >> Dockerfile; docker build . --file Dockerfile --tag percona-toolkit:${{ github.sha }}
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@0.8.0
+      with:
+          image-ref: 'percona-toolkit:${{ github.sha }}'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'  
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v3.1.2
       with:
