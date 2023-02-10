@@ -23,7 +23,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 12;
+   plan tests => 23;
 }
 
 my $output;
@@ -156,10 +156,127 @@ is_deeply(
    "PT-2114 Correct rows archived with --bulk-insert"
 );
 
-# TODO
-# --bulk-delete with --purge
-# --file
-# fancy values in BIT column
+# #############################################################################
+# Reloading dump to perform archiving
+# #############################################################################
+$sb->load_file('master', 't/pt-archiver/samples/pt-2114.sql');
+
+$output = output(
+   sub { $exit_status = pt_archiver::main(
+      '--source',  'h=127.1,P=12345,D=pt_2114,t=t1,u=msandbox,p=msandbox,L=yes',
+      '--where', '(val) in (select a.val from pt_2114.t1_tmp a where id =2)', 
+	  '--bulk-delete', '--purge', '--limit', '10')
+   },
+);
+
+is (
+    $exit_status,
+    0,
+    "PT-2114 exit status OK",
+);
+
+$left_rows = $dbh->selectall_arrayref('select id, hex(val) from pt_2114.t1');
+
+is_deeply(
+   $zero_rows,
+   $left_rows,
+   "PT-2114 Only rows with val=0 left in the table with --bulk-delete"
+);
+
+$count_rows = $dbh->selectrow_arrayref('select count(*) from pt_2114.t1');
+
+is (
+   @{$count_rows}[0],
+   4,
+   "PT-2114 Four rows left in the table"
+);
+
+# #############################################################################
+# Reloading dump to perform archiving
+# #############################################################################
+$sb->load_file('master', 't/pt-archiver/samples/pt-2114.sql');
+
+# Archiving into a file
+$output = output(
+   sub { $exit_status = pt_archiver::main(
+      '--where', '(val) in (select a.val from pt_2114.t1_tmp a where id =2)', 
+      '--source',  'h=127.1,P=12345,D=pt_2114,t=t1,u=msandbox,p=msandbox,L=yes',
+      '--file',  'archive.%D.%t', '-c', 'id'
+  )
+   },
+);
+
+is (
+    $exit_status,
+    0,
+    "PT-2114 exit status OK",
+);
+
+ok(-f 'archive.pt_2114.t1', 'PT-2114 Archive file written OK');
+
+$output = `cat archive.pt_2114.t1`;
+is($output, <<EOF
+123
+125
+128
+130
+EOF
+, 'PT-2114 Correct rows archived into the file');
+`rm -f archive.pt_2114.t1`;
+
+$left_rows = $dbh->selectall_arrayref('select id, hex(val) from pt_2114.t1');
+
+is_deeply(
+   $zero_rows,
+   $left_rows,
+   "PT-2114 Only rows with val=0 left in the table after archiving into the file"
+);
+
+$count_rows = $dbh->selectrow_arrayref('select count(*) from pt_2114.t1');
+
+is (
+   @{$count_rows}[0],
+   4,
+   "PT-2114 Four rows left in the table"
+);
+
+# #############################################################################
+# Longer BIT values
+# Loading dump to perform archiving
+# #############################################################################
+$sb->load_file('master', 't/pt-archiver/samples/pt-2114-2.sql');
+my $not_archived_rows = $dbh->selectall_arrayref("select id, hex(val) from pt_2114.t1 where val = b'1111000010'");
+
+$output = output(
+   sub { $exit_status = pt_archiver::main(
+      '--source',  'h=127.1,P=12345,D=pt_2114,t=t1,u=msandbox,p=msandbox',
+      '--where', '(val) in (select a.val from pt_2114.t1_tmp a where id =2)', 
+	  '--purge')
+   },
+);
+
+is (
+    $exit_status,
+    0,
+    "PT-2114 exit status OK",
+);
+
+$left_rows = $dbh->selectall_arrayref('select id, hex(val) from pt_2114.t1');
+
+is_deeply(
+   $not_archived_rows,
+   $left_rows,
+   "PT-2114 Only rows with val=0 left in the table"
+);
+
+$count_rows = $dbh->selectrow_arrayref('select count(*) from pt_2114.t1');
+
+is (
+   @{$count_rows}[0],
+   4,
+   "PT-2114 Four rows left in the table"
+);
+
 
 # #############################################################################
 # Done.
