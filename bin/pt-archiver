@@ -6603,7 +6603,9 @@ sub main {
                   . ($o->get('replace')    ? ' REPLACE'      : '')
                   . ($o->get('ignore')     ? ' IGNORE'       : '')
                   . " INTO TABLE $dst->{db_tbl}"
-                  . ($got_charset ? "CHARACTER SET $got_charset" : "")
+                  . ($got_charset ? "CHARACTER SET $got_charset" : 
+					 ( $src->{info}->{charset} && $src->{info}->{charset} =~ /utf/ ?
+				     "CHARACTER SET utf8mb4" : "" ))
                   . "("
                   . join(",", map { $q->quote($_) } @{$ins_stmt->{cols}} )
                   . ")";

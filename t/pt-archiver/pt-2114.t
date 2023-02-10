@@ -38,7 +38,7 @@ my $exit_status;
 
 $output = output(
    sub { $exit_status = pt_archiver::main(
-      '--source',  'h=127.1,P=12345,D=pt_2114,t=t1,u=msandbox,p=msandbox',
+      '--source',  'h=127.1,P=12345,D=pt_2114,t=t1,u=msandbox,p=msandbox,A=utf8mb4',
       '--where', '(val) in (select a.val from pt_2114.t1_tmp a where id =2)', 
 	  '--purge')
    },
@@ -75,8 +75,8 @@ my $one_rows = $dbh->selectall_arrayref('select id, hex(val) from pt_2114.t1 whe
 
 $output = output(
    sub { $exit_status = pt_archiver::main(
-      '--source',  'h=127.1,P=12345,D=pt_2114,t=t1,u=msandbox,p=msandbox',
-      '--dest',  'h=127.1,P=12345,D=pt_2114,t=t2,u=msandbox,p=msandbox',
+      '--source',  'h=127.1,P=12345,D=pt_2114,t=t1,u=msandbox,p=msandbox,A=utf8mb4',
+      '--dest',  'h=127.1,P=12345,D=pt_2114,t=t2,u=msandbox,p=msandbox,A=utf8mb4',
       '--where', '(val) in (select a.val from pt_2114.t1_tmp a where id =2)', 
 	  )
    },
@@ -119,8 +119,8 @@ $sb->load_file('master', 't/pt-archiver/samples/pt-2114.sql');
 
 $output = output(
    sub { $exit_status = pt_archiver::main(
-      '--source',  'h=127.1,P=12345,D=pt_2114,t=t1,u=msandbox,p=msandbox,L=yes',
-      '--dest',  'h=127.1,P=12345,D=pt_2114,t=t2,u=msandbox,p=msandbox,L=yes',
+      '--source',  'h=127.1,P=12345,D=pt_2114,t=t1,u=msandbox,p=msandbox,A=utf8mb4,L=yes',
+      '--dest',  'h=127.1,P=12345,D=pt_2114,t=t2,u=msandbox,p=msandbox,A=utf8mb4,L=yes',
       '--where', '(val) in (select a.val from pt_2114.t1_tmp a where id =2)', 
 	  '--bulk-insert', '--limit', '10')
    },
@@ -163,7 +163,7 @@ $sb->load_file('master', 't/pt-archiver/samples/pt-2114.sql');
 
 $output = output(
    sub { $exit_status = pt_archiver::main(
-      '--source',  'h=127.1,P=12345,D=pt_2114,t=t1,u=msandbox,p=msandbox,L=yes',
+      '--source',  'h=127.1,P=12345,D=pt_2114,t=t1,u=msandbox,p=msandbox,A=utf8mb4,L=yes',
       '--where', '(val) in (select a.val from pt_2114.t1_tmp a where id =2)', 
 	  '--bulk-delete', '--purge', '--limit', '10')
    },
@@ -200,7 +200,7 @@ $sb->load_file('master', 't/pt-archiver/samples/pt-2114.sql');
 $output = output(
    sub { $exit_status = pt_archiver::main(
       '--where', '(val) in (select a.val from pt_2114.t1_tmp a where id =2)', 
-      '--source',  'h=127.1,P=12345,D=pt_2114,t=t1,u=msandbox,p=msandbox,L=yes',
+      '--source',  'h=127.1,P=12345,D=pt_2114,t=t1,u=msandbox,p=msandbox,A=utf8mb4,L=yes',
       '--file',  'archive.%D.%t', '-c', 'id'
   )
    },
@@ -249,7 +249,7 @@ my $not_archived_rows = $dbh->selectall_arrayref("select id, hex(val) from pt_21
 
 $output = output(
    sub { $exit_status = pt_archiver::main(
-      '--source',  'h=127.1,P=12345,D=pt_2114,t=t1,u=msandbox,p=msandbox',
+      '--source',  'h=127.1,P=12345,D=pt_2114,t=t1,u=msandbox,p=msandbox,A=utf8mb4',
       '--where', '(val) in (select a.val from pt_2114.t1_tmp a where id =2)', 
 	  '--purge')
    },
