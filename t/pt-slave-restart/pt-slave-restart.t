@@ -15,6 +15,10 @@ use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-slave-restart";
 
+diag('Restarting the sandbox');
+diag(`SAKILA=0 REPLICATION_THREADS=0 GTID=1 $trunk/sandbox/test-env restart`);
+diag("Sandbox restarted");
+
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
@@ -137,7 +141,6 @@ is(
 # Done.
 # #############################################################################
 diag(`rm -f /tmp/pt-slave-re*`);
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
+diag(`$trunk/sandbox/test-env restart`);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
