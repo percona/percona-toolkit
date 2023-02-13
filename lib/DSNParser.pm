@@ -265,7 +265,7 @@ sub fill_in_dsn {
 }
 
 # Actually opens a connection, then sets some things on the connection so it is
-# the way the Maatkit tools will expect.  Tools should NEVER open their own
+# the way the Percona tools will expect.  Tools should NEVER open their own
 # connection or use $dbh->reconnect, or these things will not take place!
 sub get_dbh {
    my ( $self, $cxn_string, $user, $pass, $opts ) = @_;
