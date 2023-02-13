@@ -1570,8 +1570,11 @@ stalk() {
          # Start collecting, maybe.
          # ##################################################################
          log "Collect $ITER triggered"
-         log "MYSQL_ONLY: $OPT_MYSQL_ONLY"
-         log "SYSTEM_ONLY: $OPT_SYSTEM_ONLY"
+         if [ "$OPT_MYSQL_ONLY" ]; then
+            log "MYSQL_ONLY: $OPT_MYSQL_ONLY"
+         elif [ "$OPT_SYSTEM_ONLY" ]; then
+            log "SYSTEM_ONLY: $OPT_SYSTEM_ONLY"
+         fi
 
          # Send email to whomever that collect has been triggered.
          if [ "$OPT_NOTIFY_BY_EMAIL" ]; then
@@ -1671,6 +1674,10 @@ stalk() {
 
 main() {
    trap sigtrap SIGHUP SIGINT SIGTERM
+
+   if [ "$OPT_SYSTEM_ONLY" ] && [ "$OPT_MYSQL_ONLY" ]; then
+      log 'Both options --system-only and --mysql-only specified, collecting only disk-space, hostname, output, and trigger metrics';
+   fi
 
    # Note: $$ is the parent's PID, but we're a child proc.
    # Bash 4 has $BASHPID but we can't rely on that.  Consequently,

@@ -582,6 +582,20 @@ unlike(
    "Option --system-only does not collect MySQL data"
 );
 
+$output = `cat $log_file`;
+
+like(
+   $output,
+   qr/SYSTEM_ONLY: yes/,
+   "We are printing information message about option SYSTEM_ONLY"
+);
+
+unlike(
+   $output,
+   qr/MYSQL_ONLY:/,
+   "We are not printing information message about option MYSQL_ONLY"
+);
+
 # ###########################################################################
 # Test if option --mysql-only works correctly
 # ###########################################################################
@@ -606,6 +620,20 @@ like(
    "Option --mysql-only collects MySQL data"
 );
 
+$output = `cat $log_file`;
+
+like(
+   $output,
+   qr/MYSQL_ONLY:/,
+   "We are printing information message about option MYSQL_ONLY"
+);
+
+unlike(
+   $output,
+   qr/SYSTEM_ONLY: yes/,
+   "We are not printing information message about option SYSTEM_ONLY"
+);
+
 # ###########################################################################
 # Test if options --mysql-only and --system-only specified together,
 # pt-stalk collects only disk-space, hostname, output, and trigger
@@ -625,6 +653,13 @@ is(
    "If both options --mysql-only and --system-only are specified only essential collections are triggered"
 );
 
+$output = `cat $log_file`;
+
+like(
+   $output,
+   qr/Both options --system-only and --mysql-only specified, collecting only disk-space, hostname, output, and trigger metrics/,
+   "We are printing warning about both options SYSTEM_ONLY and MYSQL_ONLY are specified"
+);
 
 # ###########################################################################
 # Test if open tables are collected if number of open tables <= 1000
