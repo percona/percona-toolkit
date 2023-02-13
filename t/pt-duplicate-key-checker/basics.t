@@ -32,11 +32,30 @@ my @args   = ('-F', $cnf, qw(-h 127.1));
 $sb->wipe_clean($dbh);
 $sb->create_dbs($dbh, ['test']);
 
+my $transform_int = undef;
+# In version 8.0 integer display width is deprecated and not shown in the outputs.
+# So we need to transform our samples.
+if ($sandbox_version ge '8.0') {
+   $transform_int = sub {
+      my $txt = slurp_file(shift);
+      $txt =~ s/int\(\d{1,2}\)/int/g;
+      print $txt;
+   };
+}
+
 $output = `$cmd -d mysql -t columns_priv -v`;
-like($output,
-   qr/PRIMARY \(`Host`,`Db`,`User`,`Table_name`,`Column_name`\)/,
-   'Finds mysql.columns_priv PK'
-);
+# In version 8.0 order of columns in the index changed
+if ($sandbox_version ge '8.0') {
+   like($output,
+      qr/PRIMARY \(`Host`,`User`,`Db`,`Table_name`,`Column_name`\)/,
+      'Finds mysql.columns_priv PK'
+   );
+} else {
+   like($output,
+      qr/PRIMARY \(`Host`,`Db`,`User`,`Table_name`,`Column_name`\)/,
+      'Finds mysql.columns_priv PK'
+   );
+}
 
 is(`$cmd -d test --nosummary`, '', 'No dupes on clean sandbox');
 
@@ -45,21 +64,27 @@ $sb->load_file('master', 't/lib/samples/dupe_key.sql', 'test');
 ok(
    no_diff(
       sub { pt_duplicate_key_checker::main(@args, qw(-d test)) },
-      "$sample/basic_output.txt"),
-   'Default output'
+      "$sample/basic_output.txt",
+      transform_sample => $transform_int
+   ),
+   'Default output',
 );
 
 ok(
    no_diff(
       sub { pt_duplicate_key_checker::main(@args, qw(-d test --nosql)) },
-      "$sample/nosql_output.txt"),
+      "$sample/nosql_output.txt",
+      transform_sample => $transform_int
+   ),
    '--nosql'
 );
 
 ok(
    no_diff(
       sub { pt_duplicate_key_checker::main(@args, qw(-d test --nosummary)) },
-      "$sample/nosummary_output.txt"),
+      "$sample/nosummary_output.txt",
+      transform_sample => $transform_int
+   ),
    '--nosummary'
 );
 
@@ -69,7 +94,8 @@ ok(
    no_diff(
       sub { pt_duplicate_key_checker::main(@args, qw(-d test -t UPPER_TEST)) },
       ($sandbox_version ge '5.1' ? "$sample/uppercase_names-51.txt"
-                                 : "$sample/uppercase_names.txt")
+                                 : "$sample/uppercase_names.txt"),
+      transform_sample => $transform_int
    ),
    'Issue 306 crash on uppercase column names'
 );
@@ -97,9 +123,10 @@ $sb->load_file('master', 't/lib/samples/dupekeys/dupe-cluster-bug-894140.sql', '
 
 ok(
    no_diff(
-      sub { pt_duplicate_key_checker::main(@args, qw(-d test)) },
+      sub { pt_duplicate_key_checker::main(@args, qw(-d test)) },   
       "$sample/bug-894140.txt",
       sed => [ "-e 's/  */ /g'" ],
+      transform_sample => $transform_int
     ),
    "Bug 894140"
 );
