@@ -5489,7 +5489,7 @@ pt-variable-advisor examines C<SHOW VARIABLES> for bad values and settings
 according to the L<"RULES"> described below.  It reports on variables that
 match the rules, so you can find bad settings in your MySQL server.
 
-At the time of this release, pt-variable-advisor only examples
+At the time of this release, pt-variable-advisor only examines
 C<SHOW VARIABLES>, but other input sources are planned like C<SHOW STATUS>
 and C<SHOW SLAVE STATUS>.
 
