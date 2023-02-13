@@ -76,7 +76,25 @@ my $expect = [
                    [qw(msandbox)],
                 ]
              ];
-if ($sandbox_version ge '8.0') {
+if ($sandbox_version ge '5.7' and $sandbox_version lt '8.0') {
+    $expect =[
+               [
+                 1,
+                 [ 'msandbox' ],
+                 [ 'root' ]
+               ],
+               [
+                 2,
+                 [ 'mysql.session' ],
+                 [ 'mysql.sys' ]
+               ],
+               [
+                 3,
+                 [ 'mysql.sys' ],
+                 [ 'mysql.session' ]
+               ]
+             ]; 
+} elsif ($sandbox_version ge '8.0') {
     $expect =[
                [
                  1,
@@ -103,9 +121,6 @@ test_diff (
    expect => $expect,
 );
 
-# Test 3
-diag(">> 3");
-
 $expect = [
    [
       1,
@@ -116,7 +131,19 @@ $expect = [
    ],
 ];
 
-if ($sandbox_version ge '8.0') {
+if ($sandbox_version ge '5.7' and $sandbox_version lt '8.0') {
+    $expect =[
+              [
+                3,
+                undef,
+                [
+                  [ 'mysql.session' ],
+                  [ 'mysql.sys' ],
+                  [ 'root' ],
+                ]
+              ]
+            ];
+} elsif ($sandbox_version ge '8.0') {
     $expect =[
               [
                 4,
@@ -131,7 +158,7 @@ if ($sandbox_version ge '8.0') {
 }
 
 test_diff (
-   name   => 'Host1 missing a row',
+   name   => 'Host1 missing rows',
    query1 => "select user from mysql.user where user='msandbox' order by user",
    query2 => 'select user from mysql.user order by user',
    expect => $expect,
@@ -147,7 +174,19 @@ $expect = [
               ],
            ];
 
-if ($sandbox_version ge '8.0') {
+if ($sandbox_version ge '5.7' and $sandbox_version lt '8.0') {
+    $expect =[
+              [
+                3,
+                [
+                  [ 'mysql.session' ],
+                  [ 'mysql.sys' ],
+                  [ 'root' ],
+                ],
+                undef,
+              ]
+            ];
+} elsif ($sandbox_version ge '8.0') {
     $expect =[
                [
                  4,
