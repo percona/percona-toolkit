@@ -38,6 +38,16 @@ my $master_basedir = "/tmp/$master3_port";
 diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
 diag(`$trunk/sandbox/start-sandbox master $master3_port >/dev/null`);
 
+my $new_dir='/tmp/tdir';
+diag(`rm -rf $new_dir`);
+diag(`mkdir -p $new_dir`);
+
+if ($sandbox_version ge '8.0') {
+    diag(`/tmp/$master3_port/stop >/dev/null`);
+	diag(`echo "innodb_directories='$new_dir'" >> /tmp/$master3_port/my.sandbox.cnf`);
+    diag(`/tmp/$master3_port/start >/dev/null`);
+}
+
 my $dbh3 = $sb->get_dbh_for("master3");
 my $dsn3 = $sb->dsn_for("master3");
 
@@ -61,10 +71,6 @@ diag(`util/mysql_random_data_load --host=127.0.0.1 --port=$master3_port --user=m
 diag("$num_rows rows loaded. Starting tests.");
 
 $dbh3->do("FLUSH TABLES");
-
-my $new_dir='/tmp/tdir';
-diag(`rm -rf $new_dir`);
-diag(`mkdir -p $new_dir`);
 
 diag("2");
 ($output, $exit_status) = full_output(

@@ -29,8 +29,12 @@ my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
 
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
-} elsif ($sandbox_version ge '8.0') {
-    plan skip_all => 'Drop swap does not work with MySQL 8.0+';
+}
+
+my $vp = VersionParser->new($master_dbh);
+
+if ($vp->cmp('8.0') > -1 && $vp->cmp('8.0.14') < 0 && $vp->flavor() !~ m/maria/i) {
+    plan skip_all => 'Drop swap does not work with MySQL 8.0 - 8.0.13';
 } else {
     plan tests => 3;
 }

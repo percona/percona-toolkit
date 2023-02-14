@@ -84,11 +84,11 @@ like(
     qr/Successfully altered/s,
     "PT-1455 Got successfully altered message.",
 );
-
 $master_dbh->do("DROP DATABASE IF EXISTS employees");
 
 diag("Resetting replication filters on slave 2");
 $sb->load_file('slave2', "t/pt-online-schema-change/samples/pt-1455_reset_slave.sql");
+$sb->wait_for_slaves();
 diag("Resetting replication filters on slave 1");
 $sb->load_file('slave1', "t/pt-online-schema-change/samples/pt-1455_reset_slave.sql");
 

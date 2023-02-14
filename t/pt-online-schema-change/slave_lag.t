@@ -22,8 +22,8 @@ use File::Temp qw/ tempdir tempfile /;
 if ($ENV{PERCONA_SLOW_BOX}) {
     plan skip_all => 'This test needs a fast machine';
 } else {
-    #plan tests => 6;
-    plan skip_all => 'This test is taking too much time even in fast machines';
+    plan tests => 6;
+	#plan skip_all => 'This test is taking too much time even in fast machines';
 }                                  
 
 our $delay = 30;
@@ -64,6 +64,7 @@ my $num_rows = 5000;
 diag("Loading $num_rows into the table. This might take some time.");
 diag(`util/mysql_random_data_load --host=127.0.0.1 --port=12345 --user=msandbox --password=msandbox test pt178 $num_rows`);
 
+$sb->wait_for_slaves();
 diag("Setting slave delay to $delay seconds");
 
 $slave_dbh->do('STOP SLAVE');

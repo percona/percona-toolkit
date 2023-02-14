@@ -459,7 +459,7 @@ test_alter_table(
 # Somewhat dangerous, but quick.  Downside: table doesn't exist for a moment.
 
 SKIP: {
-    skip "MySQL error https://bugs.mysql.com/bug.php?id=89441", 2 if ($sandbox_version ge '8.0');
+    skip "MySQL error https://bugs.mysql.com/bug.php?id=89441", 2 if ($sandbox_version ge '8.0' and VersionParser->new($master_dbh) le '8.0.14');
 
 test_alter_table(
    name       => "Basic FK drop_swap --dry-run",
@@ -576,7 +576,7 @@ SKIP: {
    skip 'Sandbox master does not have the sakila database', 7
    unless @{$master_dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
 
-   skip "MySQL error https://bugs.mysql.com/bug.php?id=89441", 2 if ($sandbox_version ge '8.0');
+   skip "MySQL error https://bugs.mysql.com/bug.php?id=89441", 2 if ($sandbox_version ge '8.0' and VersionParser->new($master_dbh) le '8.0.14');
 
    # This test will use the drop_swap method because the child tables
    # are large.  To prove this, change check_fks to rebuild_constraints
