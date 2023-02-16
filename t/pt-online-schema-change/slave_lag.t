@@ -23,7 +23,6 @@ if ($ENV{PERCONA_SLOW_BOX}) {
     plan skip_all => 'This test needs a fast machine';
 } else {
     plan tests => 6;
-	#plan skip_all => 'This test is taking too much time even in fast machines';
 }                                  
 
 our $delay = 30;
@@ -54,13 +53,14 @@ sub reset_query_cache {
 # 3) Set the slave delay to 30 seconds to be able to see the 'waiting' message.
 diag("Setting slave delay to 0 seconds");
 $slave_dbh->do('STOP SLAVE');
+$master_dbh->do("RESET MASTER");
 $slave_dbh->do('RESET SLAVE');
 $slave_dbh->do('START SLAVE');
 
 diag('Loading test data');
 $sb->load_file('master', "t/pt-online-schema-change/samples/slave_lag.sql");
 
-my $num_rows = 10000;
+my $num_rows = 1000;
 diag("Loading $num_rows into the table. This might take some time.");
 diag(`util/mysql_random_data_load --host=127.0.0.1 --port=12345 --user=msandbox --password=msandbox test pt178 $num_rows`);
 
@@ -171,6 +171,7 @@ unlike(
 
 diag("Setting slave delay to 0 seconds");
 $slave_dbh->do('STOP SLAVE');
+$master_dbh->do("RESET MASTER");
 $slave_dbh->do('RESET SLAVE');
 $slave_dbh->do('START SLAVE');
 
