@@ -60,7 +60,7 @@ $slave_dbh->do('START SLAVE');
 diag('Loading test data');
 $sb->load_file('master', "t/pt-online-schema-change/samples/slave_lag.sql");
 
-my $num_rows = 5000;
+my $num_rows = 10000;
 diag("Loading $num_rows into the table. This might take some time.");
 diag(`util/mysql_random_data_load --host=127.0.0.1 --port=12345 --user=msandbox --password=msandbox test pt178 $num_rows`);
 
@@ -80,11 +80,12 @@ $master_dbh->do('UPDATE `test`.`pt178` SET f2 = f2 + 1 WHERE f1 = ""');
 # pt-online-schema-change will wait on the slave at port 12346
 
 my $max_lag = $delay / 2;
+# We need to sleep, otherwise pt-osc can finish before slave is delayed
+sleep($max_lag);
 my $args = "$master_dsn,D=test,t=pt178 --execute --chunk-size 10 --max-lag $max_lag --alter 'ENGINE=InnoDB' --pid $tmp_file_name";
 diag("Starting base test. This is going to take some time due to the delay in the slave");
 diag("pid: $tmp_file_name");
 my $output = `$trunk/bin/pt-online-schema-change $args 2>&1`;
-
 like(
       $output,
       qr/Replica lag is \d+ seconds on .*  Waiting/s,
@@ -174,6 +175,7 @@ $slave_dbh->do('RESET SLAVE');
 $slave_dbh->do('START SLAVE');
 
 $master_dbh->do("DROP DATABASE IF EXISTS test");
+$sb->wait_for_slaves();
 
 # #############################################################################
 # Done.
