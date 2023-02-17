@@ -47,12 +47,15 @@ my @args = (qw(--set-vars innodb_lock_wait_timeout=3));
 my $output;
 my $exit_status;
 
+# We need to reset master, because otherwise later RESET SLAVE call
+# will let sandbox to re-apply all previous events, executed on the sandbox.
+$master_dbh->do("RESET MASTER");
 diag("Setting replication filters on slave 2");
-$sb->load_file('slave2', "t/pt-online-schema-change/samples/pt-1455_slave.sql");
+$sb->load_file('slave2', "t/pt-online-schema-change/samples/pt-1455_slave.sql", undef, no_wait => 1);
 diag("Setting replication filters on slave 1");
-$sb->load_file('slave1', "t/pt-online-schema-change/samples/pt-1455_slave.sql");
+$sb->load_file('slave1', "t/pt-online-schema-change/samples/pt-1455_slave.sql", undef, no_wait => 1);
 diag("Setting replication filters on master");
-$sb->load_file('master', "t/pt-online-schema-change/samples/pt-1455_master.sql",undef, no_wait => 1);
+$sb->load_file('master', "t/pt-online-schema-change/samples/pt-1455_master.sql");
 diag("replication filters set");
 
 my $num_rows = 1000;
@@ -84,13 +87,14 @@ like(
     qr/Successfully altered/s,
     "PT-1455 Got successfully altered message.",
 );
+$master_dbh->do("RESET MASTER");
 $master_dbh->do("DROP DATABASE IF EXISTS employees");
 
 diag("Resetting replication filters on slave 2");
-$sb->load_file('slave2', "t/pt-online-schema-change/samples/pt-1455_reset_slave.sql");
-$sb->wait_for_slaves();
+$sb->load_file('slave2', "t/pt-online-schema-change/samples/pt-1455_reset_slave.sql", undef, no_wait => 1);
 diag("Resetting replication filters on slave 1");
-$sb->load_file('slave1', "t/pt-online-schema-change/samples/pt-1455_reset_slave.sql");
+$sb->load_file('slave1', "t/pt-online-schema-change/samples/pt-1455_reset_slave.sql", undef, no_wait => 1);
+$sb->wait_for_slaves();
 
 # #############################################################################
 # Done.
