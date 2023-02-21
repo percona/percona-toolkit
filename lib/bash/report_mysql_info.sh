@@ -387,6 +387,26 @@ pretty_print_cnf_file () {
          } 
       }' "$file"
 
+   while read line; do
+      echo $line | grep -q '!include'
+      if [ $? -ne 0 ]; then
+         continue
+      fi
+      clause=$(echo -n $line | tr -s ' ' | cut -d ' ' -f 1)
+      include=$(echo -n $line | tr -s ' ' | cut -d ' ' -f 2)
+
+      if [ "x$include" != "x" -a -d "${include}" -a "x$clause" = 'x!includedir' ]; then
+      for subfile in $(find -L "$include" -type f -maxdepth 1 -name *.cnf ); do
+         echo "# $subfile"
+         pretty_print_cnf_file $subfile
+      done
+      elif [ -f "$include" -a "$clause" = '!include' ]; then
+      echo "# $include"
+         pretty_print_cnf_file $include
+      fi
+
+   done < "$file"
+
 }
 
 

@@ -878,10 +878,16 @@ find_my_cnf_file() {
    if [ "$port" ]; then
       cnf_file="$(grep --max-count 1 "/mysqld.*--port=$port" "$file" \
          | awk 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }')"
-   else
-      cnf_file="$(grep --max-count 1 '/mysqld' "$file" \
-         | awk 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }')"
+
+	  if [ -n "$cnf_file" ]; then
+	     echo "$cnf_file"
+		 return
+      fi
    fi
+
+   cnf_file="$(grep --max-count 1 '/mysqld' "$file" \
+      | awk 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }')"
+
 
    if [ -z "$cnf_file" ]; then
       if [ -e "/etc/my.cnf" ]; then
@@ -1420,22 +1426,22 @@ pretty_print_cnf_file () {
       }' "$file"
 
    while read line; do
-	  echo $line | grep -q '!include'
-	  if [ $? -ne 0 ]; then
-		  continue
-	  fi
-	  clause=$(echo -n $line | tr -s ' ' | cut -d ' ' -f 1)
-	  include=$(echo -n $line | tr -s ' ' | cut -d ' ' -f 2)
+      echo $line | grep -q '!include'
+      if [ $? -ne 0 ]; then
+         continue
+      fi
+      clause=$(echo -n $line | tr -s ' ' | cut -d ' ' -f 1)
+      include=$(echo -n $line | tr -s ' ' | cut -d ' ' -f 2)
 
-	  if [ "x$include" != "x" -a -d "${include}" -a "x$clause" = 'x!includedir' ]; then
-         for subfile in $(find -L "$include" -type f -maxdepth 1 -name *.cnf ); do
-            echo "# $subfile"
-            pretty_print_cnf_file $subfile
-         done
-	  elif [ -f "$include" -a "$clause" = '!include' ]; then
-         echo "# $include"
-		 pretty_print_cnf_file $include
-	  fi
+      if [ "x$include" != "x" -a -d "${include}" -a "x$clause" = 'x!includedir' ]; then
+      for subfile in $(find -L "$include" -type f -maxdepth 1 -name *.cnf ); do
+         echo "# $subfile"
+         pretty_print_cnf_file $subfile
+      done
+      elif [ -f "$include" -a "$clause" = '!include' ]; then
+      echo "# $include"
+         pretty_print_cnf_file $include
+      fi
 
    done < "$file"
 
