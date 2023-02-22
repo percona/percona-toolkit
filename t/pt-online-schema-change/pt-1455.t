@@ -66,6 +66,7 @@ diag(`util/mysql_random_data_load --host=127.0.0.1 --port=$master_port --user=ms
 diag("$num_rows rows loaded. Starting tests.");
 
 $master_dbh->do("FLUSH TABLES");
+$sb->wait_for_slaves();
 
 ($output, $exit_status) = full_output(
     sub { pt_online_schema_change::main(@args, "$master_dsn,D=employees,t=t1",

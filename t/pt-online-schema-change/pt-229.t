@@ -124,7 +124,8 @@ like(
 my $rows = $master_dbh->selectrow_arrayref('SHOW CREATE TABLE test.test_a');
 like(
     @$rows[1],
-    qr/  `zzz` int\(11\) DEFAULT NULL,/im,
+    ($sandbox_version ge '8.0') ? qr/  `zzz` int DEFAULT NULL,/im :
+       qr/  `zzz` int\(11\) DEFAULT NULL,/im,
     "PT-229 New field was added",
 );
 

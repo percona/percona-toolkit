@@ -44,7 +44,7 @@ diag(`mkdir -p $new_dir`);
 
 if ($sandbox_version ge '8.0') {
     diag(`/tmp/$master3_port/stop >/dev/null`);
-	diag(`echo "innodb_directories='$new_dir'" >> /tmp/$master3_port/my.sandbox.cnf`);
+    diag(`echo "innodb_directories='$new_dir'" >> /tmp/$master3_port/my.sandbox.cnf`);
     diag(`/tmp/$master3_port/start >/dev/null`);
 }
 

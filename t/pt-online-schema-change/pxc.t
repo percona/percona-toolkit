@@ -146,14 +146,14 @@ is_deeply(
 my ($master_dbh, $master_dsn) = $sb->start_sandbox(
    server => 'cmaster',
    type   => 'master',
-   env    => q/FORK="pxc" BINLOG_FORMAT="ROW"/,
+   env    => q/BINLOG_FORMAT="ROW"/,
 );
 
 $sb->set_as_slave('node1', 'cmaster');
 
 $sb->load_file('cmaster', "$sample/basic_with_fks.sql", undef, no_wait => 1);
 
-$master_dbh->do("SET SESSION binlog_format=STATEMENT");
+$master_dbh->do('SET @@binlog_format:="STATEMENT"');
 $master_dbh->do("REPLACE INTO percona_test.sentinel (id, ping) VALUES (1, '')");
 $sb->wait_for_slaves(master => 'cmaster', slave => 'node1');
 
