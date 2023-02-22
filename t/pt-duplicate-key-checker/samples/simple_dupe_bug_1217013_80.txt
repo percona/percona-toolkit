@@ -12,7 +12,7 @@
 #   UNIQUE KEY `domain` (`domain`),
 #   UNIQUE KEY `unique_key_domain` (`domain`)
 # Column types:
-#	  `domain` varchar(175) character set utf8 collate utf8_bin not null
+#	  `domain` varchar(175) character set utf8mb3 collate utf8mb3_bin not null
 # To remove this duplicate index, execute:
 ALTER TABLE `test`.`domains` DROP INDEX `domain`;
 
