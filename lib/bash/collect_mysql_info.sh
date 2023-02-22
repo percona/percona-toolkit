@@ -65,9 +65,9 @@ find_my_cnf_file() {
       cnf_file="$(grep --max-count 1 "/mysqld.*--port=$port" "$file" \
          | awk 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }')"
 
-	  if [ -n "$cnf_file" ]; then
-	     echo "$cnf_file"
-		 return
+      if [ -n "$cnf_file" ]; then
+         echo "$cnf_file"
+         return
       fi
    fi
 
