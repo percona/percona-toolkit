@@ -64,11 +64,16 @@ find_my_cnf_file() {
       # Find the cnf file for the specific port.
       cnf_file="$(grep --max-count 1 "/mysqld.*--port=$port" "$file" \
          | awk 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }')"
-   else
-      # Find the cnf file for the first mysqld instance.
-      cnf_file="$(grep --max-count 1 '/mysqld' "$file" \
-         | awk 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }')"
+
+      if [ -n "$cnf_file" ]; then
+         echo "$cnf_file"
+         return
+      fi
    fi
+
+   cnf_file="$(grep --max-count 1 '/mysqld' "$file" \
+      | awk 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }')"
+
 
    if [ -z "$cnf_file" ]; then
       # Cannot autodetect config file, try common locations.
