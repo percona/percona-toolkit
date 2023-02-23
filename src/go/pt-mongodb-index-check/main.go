@@ -45,11 +45,12 @@ const (
 	TOOLNAME = "pt-mongodb-index-check"
 )
 
+// We do not set anything here, these variables are defined by the Makefile
 var (
-	Build     string = "2020-04-23" //nolint
-	GoVersion string = "1.14.1"     //nolint
-	Version   string = "3.5.1"      //nolint
-	Commit    string                //nolint
+	Build     string //nolint
+	GoVersion string //nolint
+	Version   string //nolint
+	Commit    string //nolint
 )
 
 func main() {
