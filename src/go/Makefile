@@ -18,6 +18,8 @@ endif
 
 GO := go
 pkgs = $(shell find . -type d -name "pt-*" -exec basename {} \;)
+# VERSION ?=$(shell git describe --abbrev=0) doesn't always work here, need to use git log
+VERSION ?=$(shell git log --no-walk --tags --pretty="%H %d" --decorate=short | head -n1 | awk  -F'[, ]' '{ print $$4; }')
 BUILD=$(BUILD_DATE)
 GOVERSION=$(shell go version | cut --delimiter=" " -f3)
 GOUTILSDIR ?= $(GOPATH)/bin

@@ -15,10 +15,10 @@ const (
 
 // We do not set anything here, these variables are defined by the Makefile
 var (
-	Build     string
-	GoVersion string
-	Version   string
-	Commit    string
+	Build     string //nolint
+	GoVersion string //nolint
+	Version   string //nolint
+	Commit    string //nolint
 )
 
 func main() {
