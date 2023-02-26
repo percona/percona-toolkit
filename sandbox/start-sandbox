@@ -258,7 +258,7 @@ enable_tokudb=''
 
 
 if [ "$type" != "master" ] && [ "$type" != "slave" ] && [ "$type" != "master-master" ] && [ "$type" != "cluster" ] && [ "$type" != "channels" ]; then
-    die "Invalid sandbox type: $type.  Valid types are master, slave, and master-master."
+    die "Invalid sandbox type: $type.  Valid types are master, slave, master-master, cluster, and channels."
 fi
 
 if [ $port -le 1024 ]; then

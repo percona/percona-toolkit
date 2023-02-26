@@ -232,6 +232,8 @@ for my $i ( 0..4 ) {
    $master_dbh->do(qq{create table `bug_1041372`.$tbl (a INT NOT NULL AUTO_INCREMENT PRIMARY KEY )});
    $master_dbh->do(qq{insert into `bug_1041372`.$tbl values (1), (2), (3), (4), (5)});
 
+   $sb->wait_for_slaves();
+
    ($output) = full_output(sub {
       pt_online_schema_change::main(@args,
           '--alter', "ADD COLUMN ptosc INT",
@@ -491,7 +493,8 @@ for (my $i = 0; $i < $rows; $i++) {
 $big_insert .= "(NULL, 'xx')";
 
 $master_dbh->do($big_insert);
-
+# This big test causes slave lag error on slow boxes
+$sb->wait_for_slaves();
 
 $output = output(
    sub { pt_online_schema_change::main(@args, "$master_dsn,D=bug_1340728,t=test",

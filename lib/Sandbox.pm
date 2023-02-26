@@ -372,6 +372,7 @@ sub verify_test_data {
                           grep { !/tables_priv$/ }
                           grep { !/user$/ }
                           grep { !/proxies_priv$/ }
+                          grep { !/global_grants$/ }
                           @{$master->selectcol_arrayref('SHOW TABLES FROM mysql')};
    my @tables_in_sakila = qw(actor address category city country customer
                              film film_actor film_category film_text inventory

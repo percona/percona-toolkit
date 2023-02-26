@@ -389,8 +389,7 @@ sub get_keys {
    my $clustered_key = undef;
 
    KEY:
-   #foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY .*)$/gm ) {
-   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY \(?`[\s\S]*?`\),?)$/gm ) {
+   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY \(`[\s\S]*?`\)[\s\S]*?,?)$/gm ) {
 
       # If you want foreign keys, use get_fks() below.
       next KEY if $key =~ m/FOREIGN/;
