@@ -268,7 +268,7 @@ sub fill_in_dsn {
 # the way the Percona tools will expect.  Tools should NEVER open their own
 # connection or use $dbh->reconnect, or these things will not take place!
 sub get_dbh {
-   my ( $self, $cxn_string, $user, $pass, $opts ) = @_;
+   my ( $self, $cxn_string, $user, $pass, $opts, $wait_no_die ) = @_;
    $opts ||= {};
    my $defaults = {
       AutoCommit         => 0,
@@ -302,7 +302,7 @@ sub get_dbh {
    # Try twice to open the $dbh and set it up as desired.
    my $dbh;
    my $tries = 2;
-   while ( !$dbh && $tries-- ) {
+   while ( !$dbh && ($wait_no_die or $tries--) ) {
       PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
@@ -323,7 +323,12 @@ sub get_dbh {
             delete $defaults->{mysql_enable_utf8};
          }
          if ( !$tries ) {
-            die $EVAL_ERROR;
+            if ( $wait_no_die ) {
+               _d("Server is not accessible, waiting when it is online again");
+			   sleep(1);
+            } else {
+               die $EVAL_ERROR;
+			}
          }
       }
    }

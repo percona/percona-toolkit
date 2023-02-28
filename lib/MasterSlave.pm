@@ -104,6 +104,7 @@ sub get_slaves {
                push @$slaves, $make_cxn->(dsn => $slave_dsn, dbh => $dbh, parent => $parent);
                return;
             },
+			wait_no_die => $args{'wait_no_die'},
          }
       );
    } elsif ( $methods->[0] =~ m/^dsn=/i ) {
@@ -188,6 +189,19 @@ sub recurse_to_slaves {
 
    my $dbh = $args->{dbh};
    
+   my $get_dbh = sub {
+         eval {
+            $dbh = $dp->get_dbh(
+               $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 }, $args->{wait_no_die});
+            PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
+         };
+         if ( $EVAL_ERROR ) {
+            print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), ": ", $EVAL_ERROR, "\n"
+               or die "Cannot print: $OS_ERROR";
+            return;
+         }
+   };
+
    DBH: {
       if ( !defined $dbh ) {
          foreach my $known_slave ( @{$args->{slaves}} ) {
@@ -197,23 +211,26 @@ sub recurse_to_slaves {
                last DBH;
             }
          }
-
-         eval {
-            $dbh = $dp->get_dbh(
-               $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 });
-            PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
-         };
-         if ( $EVAL_ERROR ) {
-            print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), ": ", $EVAL_ERROR, "\n"
-               or die "Cannot print: $OS_ERROR";
-            return;
-         }
+      $get_dbh->();
       }
    }
 
    my $sql  = 'SELECT @@SERVER_ID';
    PTDEBUG && _d($sql);
-   my ($id) = $dbh->selectrow_array($sql);
+   my $id = undef;
+   do {
+      eval {
+         ($id) = $dbh->selectrow_array($sql);
+      };
+	  if ( $EVAL_ERROR ) {
+		 if ( $args->{wait_no_die} ) {
+			print STDERR "Error getting server id: ", $EVAL_ERROR, "Retrying\n";
+            $get_dbh->();
+		 } else {
+		    die $EVAL_ERROR;
+		 }
+	  }
+   } until ($id);
    PTDEBUG && _d('Working on server ID', $id);
    my $master_thinks_i_am = $dsn->{server_id};
    if ( !defined $id
