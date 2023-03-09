@@ -7287,9 +7287,11 @@ sub do_with_retries {
          $success = $OUT_OF_RETRIES;
       }
       $get_sth->finish;
-      trace('rollback', sub {
-         $dst->{dbh}->rollback;
-      });
+      if ( $dst && $dst->{dbh} ) {
+         trace('rollback', sub {
+            $dst->{dbh}->rollback;
+         });
+      }
       trace('rollback', sub {
          $src->{dbh}->rollback;
       });
