@@ -123,7 +123,8 @@ sub connect {
    my $dp  = $self->{DSNParser};
 
    my $dbh = $self->{dbh};
-   if ( !$dbh || !$dbh->ping() ) {
+   # We cannot use $dbh->ping() here due to https://github.com/perl5-dbi/DBD-mysql/issues/306
+   if ( !$dbh || !$dbh->{Active} ) {
       # Ask for password once.
       if ( $self->{ask_pass} && !$self->{asked_for_pass} && !defined $dsn->{p} ) {
          $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
@@ -160,7 +161,7 @@ sub set_dbh {
    # created the dbh probably didn't set what we set here.  For example,
    # MasterSlave makes dbhs when finding slaves, but it doesn't set
    # anything.
-   if ( $self->{dbh} && $self->{dbh} == $dbh && $self->{dbh_set} ) {
+   if ( $self->{dbh} && $self->{dbh} == $dbh && $self->{dbh_set}) {
       PTDEBUG && _d($dbh, 'Already set dbh');
       return $dbh;
    }

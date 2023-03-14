@@ -8,8 +8,8 @@ SET @@GLOBAL.GTID_MODE = ON;
 
 CHANGE MASTER TO master_host='127.0.0.1', master_port=12345, master_user='msandbox', master_password='msandbox', master_auto_position=1 FOR CHANNEL 'masterchan1';  
 
--- CHANGE MASTER TO master_host='127.0.0.1', master_port=12346, master_user='msandbox', master_password='msandbox', master_auto_position=1 FOR CHANNEL 'masterchan2';  
+CHANGE MASTER TO master_host='127.0.0.1', master_port=12346, master_user='msandbox', master_password='msandbox', master_auto_position=1 FOR CHANNEL 'masterchan2';  
 
 START SLAVE for channel 'masterchan1';
--- START SLAVE for channel 'masterchan2';
+START SLAVE for channel 'masterchan2';
 
