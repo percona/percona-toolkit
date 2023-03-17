@@ -3673,7 +3673,7 @@ sub connect {
    my $dp  = $self->{DSNParser};
 
    my $dbh = $self->{dbh};
-   if ( !$dbh || !$dbh->ping() ) {
+   if ( !$dbh || ( $dbh && $self->{dbh_set} && !$self->_ping($dbh) ) ) {
       if ( $self->{ask_pass} && !$self->{asked_for_pass} && !defined $dsn->{p} ) {
          $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
          $self->{asked_for_pass} = 1;
@@ -3702,19 +3702,20 @@ sub connect {
 sub set_dbh {
    my ($self, $dbh) = @_;
 
-   if ( $self->{dbh} && $self->{dbh} == $dbh && $self->{dbh_set} ) {
-      PTDEBUG && _d($dbh, 'Already set dbh');
-      return $dbh;
-   }
-
    PTDEBUG && _d($dbh, 'Setting dbh');
 
    $dbh->{FetchHashKeyName} = 'NAME_lc' if $self->{NAME_lc};
 
-   my $sql = 'SELECT @@server_id /*!50038 , @@hostname*/';
+   my $sql = 'SELECT @@server_id /*!50038 , @@hostname*/, CONNECTION_ID() as connection_id';
    PTDEBUG && _d($dbh, $sql);
-   my ($server_id, $hostname) = $dbh->selectrow_array($sql);
+   my ($server_id, $hostname, $connection_id) = $dbh->selectrow_array($sql);
    PTDEBUG && _d($dbh, 'hostname:', $hostname, $server_id);
+
+   if ( $self->{dbh} && $self->{dbh} == $dbh && $self->{dbh_set} && $self->{dbh_set} == $connection_id) {
+      PTDEBUG && _d($dbh, 'Already set dbh');
+      return $dbh;
+   }
+
    if ( $hostname ) {
       $self->{hostname} = $hostname;
    }
@@ -3729,7 +3730,7 @@ sub set_dbh {
    }
 
    $self->{dbh}     = $dbh;
-   $self->{dbh_set} = 1;
+   $self->{dbh_set} = $connection_id;
    return $dbh;
 }
 
@@ -3853,6 +3854,17 @@ sub DESTROY {
    }
 
    return;
+}
+
+sub _ping() {
+   my ( $self, $dbh ) = @_;
+   if (!$dbh->ping()) {
+      return 0;
+   }
+   my $sql = 'SELECT CONNECTION_ID() as connection_id';
+   PTDEBUG && _d($dbh, $sql);
+   my ($connection_id) = $dbh->selectrow_array($sql);
+   return $self->{dbh_set} == $connection_id;
 }
 
 sub _d {
@@ -4697,8 +4709,7 @@ sub get_keys {
    my $clustered_key = undef;
 
    KEY:
-   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY \(?`[\s\S]*?`\),?)$/gm ) {
-
+   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY [\s\S]*?\),?.*)$/gm ) {
       next KEY if $key =~ m/FOREIGN/;
 
       my $key_ddl = $key;
@@ -4708,7 +4719,7 @@ sub get_keys {
          $key =~ s/USING HASH/USING BTREE/;
       }
 
-      my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \(([\s\S]+?)\)/;
+      my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \(([\s\S]+)\)/;
       my ( $special ) = $key =~ m/(FULLTEXT|SPATIAL)/;
       $type = $type || $special || 'BTREE';
       my ($name) = $key =~ m/(PRIMARY|`[^`]*`)/;
@@ -4989,7 +5000,7 @@ sub generate_cmp_where {
             push @clause, "($val IS NULL OR $quo $type $val)";
          }
          elsif ( $type =~ m/>/ ) {
-            push @clause, "($val IS NULL AND $quo IS NOT NULL) OR ($quo $cmp $val)";
+            push @clause, "(($val IS NULL AND $quo IS NOT NULL) OR ($quo $cmp $val))";
          }
          else { # If $type =~ m/</ ) {
             push @clauses, "(($val IS NOT NULL AND $quo IS NULL) OR ($quo $cmp $val))";
@@ -5188,6 +5199,7 @@ sub get_slaves {
             dsn            => $dsn,
             slave_user     => $o->got('slave-user') ? $o->get('slave-user') : '',
             slave_password => $o->got('slave-password') ? $o->get('slave-password') : '',
+            slaves         => $args{slaves},
             callback  => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
@@ -5264,16 +5276,29 @@ sub recurse_to_slaves {
       PTDEBUG && _d("Slave password set");
    }
 
-   my $dbh;
-   eval {
-      $dbh = $args->{dbh} || $dp->get_dbh(
-         $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 });
-      PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
-   };
-   if ( $EVAL_ERROR ) {
-      print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), "\n"
-         or die "Cannot print: $OS_ERROR";
-      return;
+   my $dbh = $args->{dbh};
+   
+   DBH: {
+      if ( !defined $dbh ) {
+         foreach my $known_slave ( @{$args->{slaves}} ) {
+            if ($known_slave->{dsn}->{h} eq $slave_dsn->{h} and
+                $known_slave->{dsn}->{P} eq $slave_dsn->{P} ) {
+               $dbh = $known_slave->{dbh};
+               last DBH;
+            }
+         }
+
+         eval {
+            $dbh = $dp->get_dbh(
+               $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 });
+            PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
+         };
+         if ( $EVAL_ERROR ) {
+            print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), ": ", $EVAL_ERROR, "\n"
+               or die "Cannot print: $OS_ERROR";
+            return;
+         }
+      }
    }
 
    my $sql  = 'SELECT @@SERVER_ID';

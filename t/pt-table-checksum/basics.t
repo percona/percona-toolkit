@@ -71,13 +71,22 @@ sub reset_repl_db {
 # 1
 # We need to remove mysql.plugin and percona_test.checksums tables from the 
 # result and the sample, because they have different number of rows than default
-# if run test with enabled MyRocks or TokuDB SE
-ok(
+# if run test with enabled MyRocks or TokuDB SE.
+# We also need to remove mysql.global_grants because it contains dynamic privileges
+# that could be modified by other tests. At the same time, privileges are not removed
+# from this table after they have been added, so we cannot remove them when wipe cleaning
+# sandbox. See https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#static-dynamic-privileges
+
+# This test often fails if run after other tests, we need to see what is wrong
+# So we will re-run failed code if test does not pass.
+my $cmd = sub { pt_table_checksum::main(@args) };
+
+diag(output($cmd)) if not ok(
    no_diff(
-      sub { pt_table_checksum::main(@args) },
+      $cmd,
       "$sample/default-results-$sandbox_version.txt",
       sed_out => '\'/mysql.plugin$/d; /percona_test.checksums$/d\'',
-      post_pipe => 'sed \'/mysql.plugin$/d; /percona_test.checksums$/d\' | ' .
+      post_pipe => 'sed \'/mysql.plugin$/d; /percona_test.checksums$/d; /mysql.global_grants$/d\' | ' .
                    'awk \'{print $2 " " $3 " " $4 " " $7 " " $9}\'',
    ),
    "Default checksum"
