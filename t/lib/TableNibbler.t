@@ -419,7 +419,7 @@ is_deeply(
             . '= ? AND (? IS NULL OR `customer_id` >= ?)))',
          '>' => '((`rental_date` > ?) OR (`rental_date` = ? AND `inventory_id` > ?) OR '
               . '(`rental_date` = ? AND `inventory_id` = ? AND ((? IS NULL AND `customer_id` IS NOT NULL) ' 
-              . 'OR (`customer_id` > ?)))',
+              . 'OR (`customer_id` > ?))))',
             #  '((`rental_date` > ?) OR (`rental_date` = ? AND '
             #. '`inventory_id` > ?) OR (`rental_date` = ? AND `inventory_id` '
             # . '= ? AND ((? IS NULL AND `customer_id` IS NOT NULL) '
@@ -469,7 +469,7 @@ is_deeply(
       index => 'rental_date',
       where => '((`rental_date` > ?) OR (`rental_date` = ? AND `inventory_id` > ?) OR '
           . '(`rental_date` = ? AND `inventory_id` = ? AND ((? IS NULL AND `customer_id` IS NOT NULL) '
-          . 'OR (`customer_id` > ?)))',
+          . 'OR (`customer_id` > ?))))',
          #  '((`rental_date` > ?) OR (`rental_date` = ? AND `inventory_id` > ?)'
          #. ' OR (`rental_date` = ? AND `inventory_id` = ? AND '
          #. '((? IS NULL AND `customer_id` IS NOT NULL) OR (`customer_id` > ?))))',
@@ -481,7 +481,7 @@ is_deeply(
             . '= ? AND (? IS NULL OR `customer_id` >= ?)))',
          '>' => '((`rental_date` > ?) OR (`rental_date` = ? AND `inventory_id` > ?) OR '
              . '(`rental_date` = ? AND `inventory_id` = ? AND ((? IS NULL AND `customer_id` IS NOT NULL) OR '
-             . '(`customer_id` > ?)))',
+             . '(`customer_id` > ?))))',
             #  '((`rental_date` > ?) OR (`rental_date` = ? AND '
             #. '`inventory_id` > ?) OR (`rental_date` = ? AND `inventory_id` '
             #. '= ? AND ((? IS NULL AND `customer_id` IS NOT NULL) '
@@ -517,7 +517,7 @@ is_deeply(
                   return_date staff_id last_update)],
       index => 'rental_date',
       where => '((`rental_date` > ?) OR (`rental_date` = ? AND ((? IS NULL AND `inventory_id` IS NOT NULL)'
-          . ' OR (`inventory_id` > ?)) OR (`rental_date` = ? AND ((? IS NULL AND `inventory_id` IS NULL) OR '
+          . ' OR (`inventory_id` > ?))) OR (`rental_date` = ? AND ((? IS NULL AND `inventory_id` IS NULL) OR '
           . '(`inventory_id` = ?)) AND `customer_id` >= ?))',
          # '((`rental_date` > ?) OR '
          #. '(`rental_date` = ? AND ((? IS NULL AND `inventory_id` IS NOT NULL) OR (`inventory_id` > ?)))'
@@ -528,14 +528,14 @@ is_deeply(
                    rental_date inventory_id inventory_id customer_id)],
       boundaries => {
          '>=' => '((`rental_date` > ?) OR (`rental_date` = ? AND ((? IS NULL AND `inventory_id` IS NOT NULL) OR '
-             . '(`inventory_id` > ?)) OR (`rental_date` = ? AND ((? IS NULL AND `inventory_id` IS NULL) OR '
+             . '(`inventory_id` > ?))) OR (`rental_date` = ? AND ((? IS NULL AND `inventory_id` IS NULL) OR '
              . '(`inventory_id` = ?)) AND `customer_id` >= ?))',
             #  '((`rental_date` > ?) OR (`rental_date` = ? AND '
             #. '((? IS NULL AND `inventory_id` IS NOT NULL) OR (`inventory_id` '
             #. '> ?))) OR (`rental_date` = ? AND ((? IS NULL AND `inventory_id` '
             #. 'IS NULL) OR (`inventory_id` = ?)) AND `customer_id` >= ?))',
          '>' => '((`rental_date` > ?) OR (`rental_date` = ? AND ((? IS NULL AND `inventory_id` IS NOT NULL) OR '
-             . '(`inventory_id` > ?)) OR (`rental_date` = ? AND ((? IS NULL AND `inventory_id` IS NULL) OR '
+             . '(`inventory_id` > ?))) OR (`rental_date` = ? AND ((? IS NULL AND `inventory_id` IS NULL) OR '
              . '(`inventory_id` = ?)) AND `customer_id` > ?))',
             #  '((`rental_date` > ?) OR (`rental_date` = ? AND ((? IS NULL '
             #. 'AND `inventory_id` IS NOT NULL) OR (`inventory_id` > ?))) OR '
@@ -572,7 +572,7 @@ is_deeply(
                   return_date staff_id last_update)],
       index => 'rental_date',
       where => '((`rental_date` > ?) OR (`rental_date` = ? AND ((? IS NULL AND `inventory_id` IS NOT NULL) OR '
-          . '(`inventory_id` > ?)) OR (`rental_date` = ? AND ((? IS NULL AND `inventory_id` IS NULL) OR '
+          . '(`inventory_id` > ?))) OR (`rental_date` = ? AND ((? IS NULL AND `inventory_id` IS NULL) OR '
           . '(`inventory_id` = ?)) AND `customer_id` > ?))',
          #  '((`rental_date` > ?) OR '
          #. '(`rental_date` = ? AND ((? IS NULL AND `inventory_id` IS NOT NULL) OR (`inventory_id` > ?)))'
@@ -583,14 +583,14 @@ is_deeply(
                    rental_date inventory_id inventory_id customer_id)],
       boundaries => {
          '>=' => '((`rental_date` > ?) OR (`rental_date` = ? AND ((? IS NULL AND `inventory_id` IS NOT NULL) OR '
-             . '(`inventory_id` > ?)) OR (`rental_date` = ? AND ((? IS NULL AND `inventory_id` IS NULL) OR ' 
+             . '(`inventory_id` > ?))) OR (`rental_date` = ? AND ((? IS NULL AND `inventory_id` IS NULL) OR ' 
              . '(`inventory_id` = ?)) AND `customer_id` >= ?))',
             #  '((`rental_date` > ?) OR (`rental_date` = ? AND '
             #. '((? IS NULL AND `inventory_id` IS NOT NULL) OR (`inventory_id` '
             #. '> ?))) OR (`rental_date` = ? AND ((? IS NULL AND `inventory_id` '
             #. 'IS NULL) OR (`inventory_id` = ?)) AND `customer_id` >= ?))',
          '>' => '((`rental_date` > ?) OR (`rental_date` = ? AND ((? IS NULL AND `inventory_id` IS NOT NULL) OR '
-             . '(`inventory_id` > ?)) OR (`rental_date` = ? AND ((? IS NULL AND `inventory_id` IS NULL) OR '
+             . '(`inventory_id` > ?))) OR (`rental_date` = ? AND ((? IS NULL AND `inventory_id` IS NULL) OR '
              . '(`inventory_id` = ?)) AND `customer_id` > ?))',
             #  '((`rental_date` > ?) OR (`rental_date` = ? AND ((? IS NULL '
             #. 'AND `inventory_id` IS NOT NULL) OR (`inventory_id` > ?))) OR '

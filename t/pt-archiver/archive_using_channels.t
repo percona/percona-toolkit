@@ -28,7 +28,7 @@ elsif ( !$slave_dbh ) {
 } elsif ($sandbox_version lt '5.7') {
    plan skip_all => 'Only on MySQL 5.7+';
 } else {
-   plan tests => 4;
+   plan tests => 5;
 }
 
 my ($master1_dbh, $master1_dsn) = $sb->start_sandbox(
@@ -76,10 +76,19 @@ $output = output(
    sub { $exit_status = pt_archiver::main(@args) },
    stderr => 1,
 );
-is(
+diag("Exit status: $exit_status") if ($exit_status);
+diag($output);
+
+isnt(
     $exit_status,
     0,
-    'No need of channel name since there is only one master',
+    'Must specify a channel name',
+);
+
+like (
+    $output,
+    qr/"channel" was not specified/,
+    'Message saying channel name must be specified'
 );
 
 push @args, ('--channel', 'masterchan1');

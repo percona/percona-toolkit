@@ -28,6 +28,18 @@ my $tp  = new TableParser(Quoter=>$q);
 my $tbl;
 my $sample = "t/lib/samples/tables/";
 
+my $transform_int = undef;
+# In version 8.0 integer display width is deprecated and not shown in the outputs.
+# So we need to transform our samples.
+if ($sandbox_version ge '8.0') {
+   $transform_int = sub {
+      my $txt = slurp_file(shift);
+      $txt =~ s/int\(\d{1,2}\)/int/g;
+      $txt =~ s/utf8/utf8mb3/g;
+      print $txt;
+   };
+}
+
 SKIP: {
    skip "Cannot connect to sandbox master", 2 unless $dbh;
    skip 'Sandbox master does not have the sakila database', 2
@@ -44,12 +56,14 @@ SKIP: {
       $ddl = $tp->ansi_to_legacy($ddl);
       $ddl = "$ddl ENGINE=InnoDB AUTO_INCREMENT=201 DEFAULT CHARSET=utf8";
    }
+
    ok(
       no_diff(
          "$ddl\n",
          $sandbox_version ge '5.1' ? "$sample/sakila.actor"
                                    : "$sample/sakila.actor-5.0",
          cmd_output => 1,
+		 transform_sample => $transform_int
       ),
       "get_create_table(sakila.actor)"
    );
