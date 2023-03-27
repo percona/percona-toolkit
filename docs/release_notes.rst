@@ -1,6 +1,48 @@
 Percona Toolkit
 ***************
 
+v3.5.2 released 2023-03-28
+==============================
+
+Improvements
+------------------------------------------------------------
+
+* :jirabug:`PT-188`: Use percona.checksums in examples
+* :jirabug:`PT-2141`: Fix tests for pt-archiver
+* :jirabug:`PT-2149`: Fix tests for pt-mext
+* :jirabug:`PT-2150`: Fix tests for pt-mysql-summary
+* :jirabug:`PT-2152`: Fix tests for pt-show-grants
+* :jirabug:`PT-2155`: Fix tests for pt-upgrade
+* :jirabug:`PT-2156`: Fix tests for lib
+* :jirabug:`PT-2159`: Fix tests for pt-duplicate-key-checker
+* :jirabug:`PT-2160`: Fix tests for pt-online-schema-change
+* :jirabug:`PT-2161`: Fix tests for pt-slave-restart
+* :jirabug:`PT-2164`: pt-k8s-debug-collector does not have version flag
+* :jirabug:`PT-2165`: Actual Version, GoVersion, and Build for Go tools
+
+Bugs Fixed
+------------
+
+* :jirabug:`PT-215`: Documentation fix
+* :jirabug:`PT-1059`: LP #1093972: Tools can't parse index names containing newlines
+* :jirabug:`PT-1389`: LP #1637859: [pt-variable-advisor] Docs Typos
+* :jirabug:`PT-1594`: Need correction in the Documentation - pt-mysql-summary
+* :jirabug:`PT-1595`: percona toolkit docs still reference Maatkit
+* :jirabug:`PT-1642`: Update PT docs to reference bug reporting location as Percona JIRA
+* :jirabug:`PT-1683`: List of supported distributions in the docs is outdated
+* :jirabug:`PT-1700`: pt-table-checksum REPLICATION_STOPPED exit status not documented
+* :jirabug:`PT-1927`: pt-k8s-debug-collector requires mysql client
+* :jirabug:`PT-1930`: pt-k8s-debug-collector should not attempt collecting PXC information when running against PSMDB
+* :jirabug:`PT-2084`: Changes from PT-80 broke previous pt-stalk functionality (Thanks to Agustín Gallego for reporting this issue)
+* :jirabug:`PT-2102`: pt-mysql-summary should support !include* in config files (Thanks to Yoann La Cancellera for reporting this issue)
+* :jirabug:`PT-2110`: Incorrect PTDEBUG output with --ignore-engines option (Thanks to Kazuya Yokogawa for reporting this issue)
+* :jirabug:`PT-2114`: Incorrect casting of BIT columns by pt-archiver
+* :jirabug:`PT-2116`: pt-osc --null-to-not-null description is wrong (Thanks to Yoann La Cancellera for reporting this issue)
+* :jirabug:`PT-2120`: pt-stalk with --system-only displaying "MYSQL_ONLY:" message on the screen
+* :jirabug:`PT-2123`: pt-archiver gives error "Wide character in print at /usr/bin/pt-archiver line 6815" when using --bulk-insert while using character set alias
+* :jirabug:`PT-2187`: CVEs reported in Percona Toolkit version 5.3.1 related to GO
+
+
 v3.5.1 released 2023-01-23
 ==============================
 
