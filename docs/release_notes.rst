@@ -33,11 +33,11 @@ Bugs Fixed
 * :jirabug:`PT-1700`: pt-table-checksum REPLICATION_STOPPED exit status not documented
 * :jirabug:`PT-1927`: pt-k8s-debug-collector requires mysql client
 * :jirabug:`PT-1930`: pt-k8s-debug-collector should not attempt collecting PXC information when running against PSMDB
-* :jirabug:`PT-2084`: Changes from PT-80 broke previous pt-stalk functionality (Thanks to Agustín Gallego for reporting this issue)
-* :jirabug:`PT-2102`: pt-mysql-summary should support !include* in config files (Thanks to Yoann La Cancellera for reporting this issue)
-* :jirabug:`PT-2110`: Incorrect PTDEBUG output with --ignore-engines option (Thanks to Kazuya Yokogawa for reporting this issue)
+* :jirabug:`PT-2084`: Changes from PT-80 broke previous pt-stalk functionality (Thanks to Agustín Gallego for reporting and fixing this issue)
+* :jirabug:`PT-2102`: pt-mysql-summary should support !include* in config files (Thanks to Yoann La Cancellera for fixing this issue)
+* :jirabug:`PT-2110`: Incorrect PTDEBUG output with --ignore-engines option (Thanks to Kazuya Yokogawa for reporting and fixing this issue)
 * :jirabug:`PT-2114`: Incorrect casting of BIT columns by pt-archiver
-* :jirabug:`PT-2116`: pt-osc --null-to-not-null description is wrong (Thanks to Yoann La Cancellera for reporting this issue)
+* :jirabug:`PT-2116`: pt-osc --null-to-not-null description is wrong (Thanks to Yoann La Cancellera for fixing this issue)
 * :jirabug:`PT-2120`: pt-stalk with --system-only displaying "MYSQL_ONLY:" message on the screen
 * :jirabug:`PT-2123`: pt-archiver gives error "Wide character in print at /usr/bin/pt-archiver line 6815" when using --bulk-insert while using character set alias
 * :jirabug:`PT-2187`: CVEs reported in Percona Toolkit version 5.3.1 related to GO
