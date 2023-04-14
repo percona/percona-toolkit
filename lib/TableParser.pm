@@ -94,14 +94,16 @@ sub get_create_table {
    if ( my $e = $EVAL_ERROR ) {
       # Restore old SQL mode.
       PTDEBUG && _d($old_sql_mode);
-      $dbh->do($old_sql_mode);
+      eval { $dbh->do($old_sql_mode); };
+      PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
 
       die $e;
    }
 
    # Restore old SQL mode.
    PTDEBUG && _d($old_sql_mode);
-   $dbh->do($old_sql_mode);
+   eval { $dbh->do($old_sql_mode); };
+   PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
 
    # SHOW CREATE TABLE has at least 2 columns like:
    # mysql> show create table city\G
