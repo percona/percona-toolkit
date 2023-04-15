@@ -5,9 +5,9 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"regexp"
 	"strings"
 	"testing"
-	"regexp"
 
 	"golang.org/x/exp/slices"
 )
@@ -169,8 +169,56 @@ func TestVersionOption(t *testing.T) {
 		t.Errorf("error executing pt-k8s-debug-collector --version: %s", err.Error())
 	}
 	// We are using MustCompile here, because hard-coded RE should not fail
-	re := regexp.MustCompile(TOOLNAME + `\n.*Version \d+\.\d+\.\d+\n`)
+	re := regexp.MustCompile(TOOLNAME + `\n.*Version v?\d+\.\d+\.\d+\n`)
 	if !re.Match(out) {
 		t.Errorf("pt-k8s-debug-collector --version returns wrong result:\n%s", out)
+	}
+}
+
+/*
+If we handle error properly
+*/
+func TestPT_2169(t *testing.T) {
+	busyport, _ := os.Getwd() // we are using wrong socket for ssh tunnel here to ensure we get error
+
+	testcmd := []string{"sh", "-c", "tar -xf cluster-dump.tar.gz --wildcards '*/summary.txt' --to-command 'grep stderr:' 2>/dev/null | wc -l"}
+	tests := []struct {
+		name       string
+		want       string
+		port       string
+		kubeconfig string
+	}{
+		{
+			name:       "pg",
+			want:       "3",
+			port:       busyport,
+			kubeconfig: os.Getenv("KUBECONFIG_PG"),
+		},
+		{
+			name:       "pg",
+			want:       "0",
+			port:       os.Getenv("FORWARDPORT"),
+			kubeconfig: os.Getenv("KUBECONFIG_PG"),
+		},
+	}
+
+	for _, test := range tests {
+		cmd := exec.Command("../../../bin/pt-k8s-debug-collector", "--kubeconfig", test.kubeconfig, "--forwardport", test.port, "--resource", test.name)
+		if err := cmd.Run(); err != nil {
+			t.Errorf("error executing pt-k8s-debug-collector: %s", err.Error())
+		}
+		defer func() {
+			cmd = exec.Command("rm", "-f", "cluster-dump.tar.gz")
+			if err := cmd.Run(); err != nil {
+				t.Errorf("error cleaning up test data: %s", err.Error())
+			}
+		}()
+		out, err := exec.Command(testcmd[0], testcmd[1:]...).Output()
+		if err != nil {
+			t.Errorf("test %s, error running command %s:\n%s\n\nCommand output:\n%s", test.name, testcmd, err.Error(), out)
+		}
+		if strings.TrimRight(bytes.NewBuffer(out).String(), "\n") != test.want {
+			t.Errorf("test %s, output is not as expected\nOutput: %s\nWanted: %s", test.name, out, test.want)
+		}
 	}
 }

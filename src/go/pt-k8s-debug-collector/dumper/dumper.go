@@ -6,7 +6,6 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -309,7 +308,7 @@ func (d *Dumper) getResource(name, namespace string, ignoreNotFound bool, tw *ta
 }
 
 func (d *Dumper) logError(err string, args ...string) {
-	d.errors += d.cmd + " " + strings.Join(args, " ") + ": " + err + "\n"
+	d.errors += d.cmd + " " + strings.Join(args, " ") + "\n" + err + "\n\n"
 }
 
 func addToArchive(location string, mode int64, content []byte, tw *tar.Writer) error {
@@ -463,10 +462,10 @@ func (d *Dumper) getPodSummary(resource, podName, crName string, namespace strin
 	cmd.Stderr = &errb
 	err := cmd.Run()
 	if err != nil {
-		return nil, errors.Errorf("error: %v, stderr: %s, stdout: %s", err, errb.String(), outb.String())
+		return nil, errors.Errorf("error: %v\nstderr: %sstdout: %s", err, errb.String(), outb.String())
+	} else {
+		return outb.Bytes(), nil
 	}
-
-	return []byte(fmt.Sprintf("stderr: %s, stdout: %s", errb.String(), outb.String())), nil
 }
 
 func (d *Dumper) getCR(crName string, namespace string) (crSecrets, error) {
