@@ -12368,7 +12368,7 @@ the tool to run EXPLAIN before running queries that are meant to access
 a small amount of data, but which could access many rows if MySQL chooses a bad
 execution plan. These include the queries to determine chunk boundaries and the
 chunk queries themselves. If it appears that MySQL will use a bad query
-execution plan, the tool will skip the chunk of the table.
+execution plan, the tool will stop copying rows and die.
 
 The tool uses several heuristics to determine whether an execution plan is bad.
 The first is whether EXPLAIN reports that MySQL intends to use the desired index
@@ -12377,14 +12377,8 @@ query unsafe.
 
 The tool also checks how much of the index MySQL reports that it will use for
 the query. The EXPLAIN output shows this in the key_len column. The tool
-remembers the largest key_len seen, and skips chunks where MySQL reports that it
-will use a smaller prefix of the index. This heuristic can be understood as
-skipping chunks that have a worse execution plan than other chunks.
-
-The tool prints a warning the first time a chunk is skipped due to
-a bad execution plan in each table. Subsequent chunks are skipped silently,
-although you can see the count of skipped chunks in the SKIPPED column in
-the tool's output.
+remembers the largest key_len seen, and terminates if MySQL reports that it
+will use a smaller prefix of the index.
 
 This option adds some setup work to each table and chunk. Although the work is
 not intrusive for MySQL, it results in more round-trips to the server, which
@@ -12455,13 +12449,6 @@ point, but after that, the tool ignores this option's value.  If you set this
 option explicitly, however, then it disables the dynamic adjustment behavior and
 tries to make all chunks exactly the specified number of rows.
 
-There is a subtlety: if the chunk index is not unique, then it's possible that
-chunks will be larger than desired. For example, if a table is chunked by an
-index that contains 10,000 of a given value, there is no way to write a WHERE
-clause that matches only 1,000 of the values, and that chunk will be at least
-10,000 rows large.  Such a chunk will probably be skipped because of
-L<"--chunk-size-limit">.
-
 =item --chunk-size-limit
 
 type: float; default: 4.0
@@ -12471,7 +12458,7 @@ Do not copy chunks this much larger than the desired chunk size.
 When a table has no unique indexes, chunk sizes can be inaccurate.  This option
 specifies a maximum tolerable limit to the inaccuracy.  The tool uses <EXPLAIN>
 to estimate how many rows are in the chunk.  If that estimate exceeds the
-desired chunk size times the limit, then the tool skips the chunk.
+desired chunk size times the limit, then the tool will stop copying rows and die.
 
 The minimum value for this option is 1, which means that no chunk can be larger
 than L<"--chunk-size">.  You probably don't want to specify 1, because rows
