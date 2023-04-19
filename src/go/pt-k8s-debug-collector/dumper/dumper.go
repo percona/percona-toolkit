@@ -463,9 +463,8 @@ func (d *Dumper) getPodSummary(resource, podName, crName string, namespace strin
 	err := cmd.Run()
 	if err != nil {
 		return nil, errors.Errorf("error: %v\nstderr: %sstdout: %s", err, errb.String(), outb.String())
-	} else {
-		return outb.Bytes(), nil
 	}
+	return outb.Bytes(), nil
 }
 
 func (d *Dumper) getCR(crName string, namespace string) (crSecrets, error) {
