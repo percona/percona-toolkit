@@ -16,13 +16,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 {{ super() }}
 {%- endblock %}
 
-{% block extrahead %}
+{%- block extrahead %}
 {{ super() }}
-  <meta property="og:type" content="website" />
-  <meta property="og:title" content="Percona Toolkit" />
-  <meta property="og:url" content="https://percona-toolkit-ad.onrender.com" />
-  <meta property="og:description" content="Documentation" />
-  <meta property="og:image" content="https://percona-toolkit-ad.onrender.com/_static/toolkit.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Percona Toolkit Documentation" />
+    <meta property="og:description" content="Command-line tools for common MySQL database administration tasks." />
+    <meta property="og:url" content="https://docs.percona.com/percona-toolkit/" />
 {% endblock %}
 
 {%- block relbar2 %}
