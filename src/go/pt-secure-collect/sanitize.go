@@ -22,7 +22,7 @@ func sanitizeFile(opts *cliOptions) error {
 	}
 
 	if *opts.SanitizeOutputFile != "" {
-		ifh, err = os.Create(*opts.SanitizeOutputFile)
+		ofh, err = os.Create(*opts.SanitizeOutputFile)
 		if err != nil {
 			return errors.Wrapf(err, "Cannot create output file %q", *opts.SanitizeOutputFile)
 		}
