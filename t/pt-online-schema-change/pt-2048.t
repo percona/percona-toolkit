@@ -12,7 +12,6 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
-use Data::Dumper;
 use PerconaTest;
 use Sandbox;
 
@@ -22,8 +21,18 @@ my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 
 my $dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $slave_dbh = $sb->get_dbh_for('slave1');
 my $dsn = $sb->dsn_for("master");
+
+if ( !dbh ) {
+   plan skip_all => 'Cannot connect to sandbox master';
+}
+elsif ( !$slave_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox slave';
+}
+else {
+   plan tests => 3;
+}
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the
