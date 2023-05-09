@@ -24,14 +24,14 @@ my $dbh = $sb->get_dbh_for('master');
 my $slave_dbh = $sb->get_dbh_for('slave1');
 my $dsn = $sb->dsn_for("master");
 
-if ( !dbh ) {
+if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 3;
+   plan tests => 2;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
