@@ -2,7 +2,7 @@
 {% extends "!layout.html" %}
 
 {# Adds Google Analytics events on button click. #}
-{%- block extrahead %}
+{%- block analytics %}
 <!-- Google Tag Manager -->
 <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
@@ -16,6 +16,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 {{ super() }}
 {%- endblock %}
 
+{%- block extrahead %}
+{{ super() }}
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Percona Toolkit Documentation" />
+    <meta property="og:description" content="Command-line tools for common MySQL database administration tasks." />
+    <meta property="og:url" content="https://docs.percona.com/percona-toolkit/" />
+{% endblock %}
 
 {%- block relbar2 %}
 {% include "relbar2.html" %}
