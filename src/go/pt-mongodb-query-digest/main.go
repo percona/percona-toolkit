@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -133,7 +134,7 @@ func main() {
 		log.Fatalf("Cannot connect to MongoDB: %s", err)
 	}
 
-	isProfilerEnabled, err := isProfilerEnabled(ctx, clientOptions)
+	isProfilerEnabled, err := isProfilerEnabled(ctx, clientOptions, opts.Database)
 	if err != nil {
 		log.Errorf("Cannot get profiler status: %s", err.Error())
 		os.Exit(4)
@@ -523,18 +524,36 @@ func sortQueries(queries []stats.QueryStats, orderby []string) []stats.QueryStat
 	return queries
 }
 
-func isProfilerEnabled(ctx context.Context, clientOptions *options.ClientOptions) (bool, error) {
+func isProfilerEnabled(ctx context.Context, clientOptions *options.ClientOptions, dbname string) (bool, error) {
 	var ps proto.ProfilerStatus
 	replicaMembers, err := util.GetReplicasetMembers(ctx, clientOptions)
-	if err != nil {
+	if err != nil && !errors.Is(err, util.ShardingNotEnabledError) {
 		return false, err
 	}
 
+	if len(replicaMembers) == 0 {
+		client, err := mongo.NewClient(clientOptions)
+		if err != nil {
+			return false, err
+		}
+		if err = client.Connect(ctx); err != nil {
+			return false, err
+		}
+
+		client.Database(dbname).RunCommand(ctx, primitive.M{"profile": -1}).Decode(&ps)
+
+		if ps.Was == 0 {
+			return false, nil
+		}
+	}
+
 	for _, member := range replicaMembers {
-		// Stand alone instances return state = REPLICA_SET_MEMBER_STARTUP
 		client, err := util.GetClientForHost(clientOptions, member.Name)
 		if err != nil {
 			continue
+		}
+		if err := client.Connect(ctx); err != nil {
+			log.Fatalf("Cannot connect to MongoDB: %s", err)
 		}
 
 		isReplicaEnabled := isReplicasetEnabled(ctx, client)
@@ -546,7 +565,7 @@ func isProfilerEnabled(ctx context.Context, clientOptions *options.ClientOptions
 		if isReplicaEnabled && member.State != proto.REPLICA_SET_MEMBER_PRIMARY {
 			continue
 		}
-		if err := client.Database("admin").RunCommand(ctx, primitive.M{"profile": -1}).Decode(&ps); err != nil {
+		if err := client.Database(dbname).RunCommand(ctx, primitive.M{"profile": -1}).Decode(&ps); err != nil {
 			continue
 		}
 
