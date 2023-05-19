@@ -40,6 +40,7 @@ var (
 )
 
 func GetReplicasetMembers(ctx context.Context, clientOptions *options.ClientOptions) ([]proto.Members, error) {
+	fmt.Println("REMOVE ME - checking replicas - util")
 	client, err := mongo.NewClient(clientOptions)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot get a new client for GetReplicasetMembers")
@@ -49,14 +50,18 @@ func GetReplicasetMembers(ctx context.Context, clientOptions *options.ClientOpti
 		return nil, errors.Wrap(err, "cannot connect to MongoDB")
 	}
 
+	fmt.Println("REMOVE ME - connect - util")
 	hostnames, err := GetHostnames(ctx, client)
+	fmt.Println("REMOVE ME - hn - util")
 	if err != nil {
 		return nil, err
 	}
 
+	fmt.Println("REMOVE ME - hostnames")
 	if err := client.Disconnect(ctx); err != nil {
 		return nil, errors.Wrapf(err, "cannot disconnect from %v", clientOptions.Hosts)
 	}
+	fmt.Println("REMOVE ME - map")
 
 	membersMap := make(map[string]proto.Members)
 	members := []proto.Members{}
@@ -84,6 +89,7 @@ func GetReplicasetMembers(ctx context.Context, clientOptions *options.ClientOpti
 			}
 		}
 
+		fmt.Println("REMOVE ME - rs")
 		rss := proto.ReplicaSetStatus{}
 
 		res = client.Database("admin").RunCommand(ctx, primitive.M{"replSetGetStatus": 1})
@@ -107,6 +113,8 @@ func GetReplicasetMembers(ctx context.Context, clientOptions *options.ClientOpti
 			return nil, errors.Wrap(err, "cannot decode replSetGetStatus response")
 		}
 
+		fmt.Println("REMOVE ME - rss.Members")
+
 		for _, m := range rss.Members {
 			if _, ok := membersMap[m.Name]; ok {
 				continue // already exists
@@ -128,6 +136,8 @@ func GetReplicasetMembers(ctx context.Context, clientOptions *options.ClientOpti
 			membersMap[m.Name] = m
 		}
 
+		fmt.Println("REMOVE ME - members found")
+
 		client.Disconnect(ctx) //nolint
 	}
 
@@ -141,6 +151,7 @@ func GetReplicasetMembers(ctx context.Context, clientOptions *options.ClientOpti
 }
 
 func GetHostnames(ctx context.Context, client *mongo.Client) ([]string, error) {
+	fmt.Println("REMOVE ME - GetHostnames")
 	// Probably we are connected to an individual member of a replica set
 	rss := proto.ReplicaSetStatus{}
 
@@ -152,12 +163,14 @@ func GetHostnames(ctx context.Context, client *mongo.Client) ([]string, error) {
 
 		return buildHostsListFromReplStatus(rss), nil
 	}
+	fmt.Println("REMOVE ME - rss")
 
 	// Try getShardMap first. If we are connected to a mongos it will return
 	// all hosts, including config hosts
 	var shardsMap proto.ShardsMap
 
 	smRes := client.Database("admin").RunCommand(ctx, primitive.M{"getShardMap": 1})
+	fmt.Println("REMOVE ME - shardmap")
 	if smRes.Err() != nil {
 		if e, ok := smRes.Err().(mongo.CommandError); ok && e.Code == shardingNotEnabledErrorCode {
 			return nil, ShardingNotEnabledError // standalone instance
@@ -165,6 +178,7 @@ func GetHostnames(ctx context.Context, client *mongo.Client) ([]string, error) {
 
 		return nil, errors.Wrap(smRes.Err(), "cannot getShardMap for GetHostnames")
 	}
+	fmt.Println("REMOVE ME - shardmap no err")
 
 	if err := smRes.Decode(&shardsMap); err != nil {
 		return nil, errors.Wrap(err, "cannot decode getShardMap result for GetHostnames")

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -120,6 +121,7 @@ func main() {
 		os.Exit(2)
 	}
 
+	fmt.Println("REMOVE ME - starting")
 	ctx := context.Background()
 
 	log.Debugf("Dial Info: %+v\n", clientOptions)
@@ -132,12 +134,14 @@ func main() {
 	if err := client.Connect(ctx); err != nil {
 		log.Fatalf("Cannot connect to MongoDB: %s", err)
 	}
+	fmt.Println("REMOVE ME - connected")
 
 	isProfilerEnabled, err := isProfilerEnabled(ctx, clientOptions)
 	if err != nil {
 		log.Errorf("Cannot get profiler status: %s", err.Error())
 		os.Exit(4)
 	}
+	fmt.Println("REMOVE ME - Profiler")
 
 	if !isProfilerEnabled {
 		count, err := systemProfileDocsCount(ctx, client, opts.Database)
@@ -149,6 +153,7 @@ func main() {
 			opts.Database, count)
 		fmt.Println("Using those documents for the stats")
 	}
+	fmt.Println("REMOVE ME - enabled")
 
 	opts.SkipCollections = sanitizeSkipCollections(opts.SkipCollections)
 	filters := []filter.Filter{}
@@ -525,16 +530,23 @@ func sortQueries(queries []stats.QueryStats, orderby []string) []stats.QueryStat
 
 func isProfilerEnabled(ctx context.Context, clientOptions *options.ClientOptions) (bool, error) {
 	var ps proto.ProfilerStatus
+	fmt.Println("REMOVE ME - checking replicas")
 	replicaMembers, err := util.GetReplicasetMembers(ctx, clientOptions)
-	if err != nil {
+	if err != nil && !errors.Is(err, util.ShardingNotEnabledError) {
 		return false, err
 	}
 
+	fmt.Println("REMOVE ME - found replicas")
+
 	for _, member := range replicaMembers {
+		fmt.Println("REMOVE ME - found member")
 		// Stand alone instances return state = REPLICA_SET_MEMBER_STARTUP
 		client, err := util.GetClientForHost(clientOptions, member.Name)
 		if err != nil {
 			continue
+		}
+		if err := client.Connect(ctx); err != nil {
+			log.Fatalf("Cannot connect to MongoDB: %s", err)
 		}
 
 		isReplicaEnabled := isReplicasetEnabled(ctx, client)
@@ -547,8 +559,10 @@ func isProfilerEnabled(ctx context.Context, clientOptions *options.ClientOptions
 			continue
 		}
 		if err := client.Database("admin").RunCommand(ctx, primitive.M{"profile": -1}).Decode(&ps); err != nil {
+			fmt.Println("REMOVE ME - ", err.Error())
 			continue
 		}
+		fmt.Printf("REMOVE ME - ps.Was: %v, ps: %v\n", ps.Was, ps)
 
 		if ps.Was == 0 {
 			return false, nil
