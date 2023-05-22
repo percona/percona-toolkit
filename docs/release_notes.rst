@@ -1,6 +1,17 @@
 Percona Toolkit
 ***************
 
+v3.5.3 released 2023-05-
+==============================
+
+Bugs Fixed
+------------
+
+* :jirabug:`PT-1583`: Skipping chunks when using pt-online-schema-change (Thanks to monty solomon for reporting this issue)
+* :jirabug:`PT-2048`: pt-osc spans excessive connections to the replica when executing in the source
+* :jirabug:`PT-2169`: pt-k8s-debug-collector integration of pg_gather requires croping first line of the output file
+* :jirabug:`PT-2203`: CVEs reported in Percona Toolkit version 5.3.2 related to GO (Thanks to Kushal Haldar for reporting this issue)
+
 v3.5.2 released 2023-03-28
 ==============================
 
