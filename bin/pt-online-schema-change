@@ -8863,12 +8863,16 @@ sub main {
          if ($slaves_to_skip) {
             my $filtered_slaves = [];
             for my $slave (@$slaves) {
+               my $is_skip = 0;
                for my $slave_to_skip (@$slaves_to_skip) {
                   if ($slave->{dsn}->{h} eq $slave_to_skip->{h} && $slave->{dsn}->{P} eq $slave_to_skip->{P}) {
                      print "Skipping slave " . $slave->description() . "\n";
-                  } else {
-                     push @$filtered_slaves, $slave;
-                  }
+                     $is_skip = 1;
+                     last;
+                  } 
+               }
+               if (!$is_skip) {
+                   push @$filtered_slaves, $slave;
                }
             }
             $slaves = $filtered_slaves;
