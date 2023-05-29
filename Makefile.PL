@@ -9,7 +9,7 @@ WriteMakefile(
       map {
          (my $name = $_) =~ s/^bin.//;
          my $file_name = $_;
-         if ( ( $file_name !~ m/mongo/ ) || ( $file_name !~ m/pg/ ) ) {
+         if ( ( $file_name !~ m/mongo/ ) || ( $file_name !~ m/pg/ ) || ( $file_name !~ m/pt-stalk/ ) ) {
              $_ => "blib/man1/$name.1p";
          }
       } <bin/*>
