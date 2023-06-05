@@ -1,6 +1,6 @@
 Changelog for Percona Toolkit
 
-v3.5.3 release 2023-05-29
+v3.5.3 release 2023-06-05
 
 * Fixed bug PT-1583: Skipping chunks when using pt-online-schema-change (Thanks to monty solomon for reporting this issue)
 * Fixed bug PT-2048: pt-osc spans excessive connections to the replica when executing in the source
