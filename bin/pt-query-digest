@@ -7386,7 +7386,7 @@ sub profile {
    $report->title('Profile');
    my @cols = (
       { name => 'Rank',          right_justify => 1,             },
-      { name => 'Query ID',                                      },
+      { name => 'Query ID',      width => 35                     },
       { name => 'Response time', right_justify => 1,             },
       { name => 'Calls',         right_justify => 1,             },
       { name => 'R/Call',        right_justify => 1,             },
