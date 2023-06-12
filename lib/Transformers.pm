@@ -272,7 +272,7 @@ sub any_unix_timestamp {
 # Returns the rightmost 64 bits of an MD5 checksum of the value.
 sub make_checksum {
    my ( $val ) = @_;
-   my $checksum = uc substr(md5_hex($val), -16);
+   my $checksum = uc md5_hex($val);
    PTDEBUG && _d($checksum, 'checksum for', $val);
    return $checksum;
 }
