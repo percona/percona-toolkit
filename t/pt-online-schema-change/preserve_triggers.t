@@ -459,11 +459,16 @@ $sb->do_as_root("master", q/set sql_log_bin=0/);
 $sb->do_as_root("master", q/DROP USER 'slave_user'/);
 $sb->do_as_root("master", q/set sql_log_bin=1/);
 
+# Need to wait for both slaves here to avoid deadlock
+$sb->wait_for_slaves(slave => 'slave1');
+$sb->wait_for_slaves(slave => 'slave2');
 # #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
-$sb->wait_for_slaves();
+# Need to wait for both slaves here to avoid deadlock
+$sb->wait_for_slaves(slave => 'slave1');
+$sb->wait_for_slaves(slave => 'slave2');
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 #
 done_testing;
