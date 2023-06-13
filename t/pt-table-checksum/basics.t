@@ -85,8 +85,8 @@ diag(output($cmd)) if not ok(
    no_diff(
       $cmd,
       "$sample/default-results-$sandbox_version.txt",
-      sed_out => '\'/mysql.plugin$/d; /percona_test.checksums$/d\'',
-      post_pipe => 'sed \'/mysql.plugin$/d; /percona_test.checksums$/d; /mysql.global_grants$/d\' | ' .
+      sed_out => '\'/mysql.plugin$/d; /percona_test.checksums$/d; /mysql.help_category$/d; /mysql.help_keyword$/d; /mysql.help_relation$/d; /mysql.help_topic$/d\'',
+      post_pipe => 'sed \'/mysql.plugin$/d; /percona_test.checksums$/d; /mysql.help_category$/d; /mysql.help_keyword$/d; /mysql.help_relation$/d; /mysql.help_topic$/d; /mysql.ndb_binlog_index$/d; /mysql.global_grants$/d\' | ' .
                    'awk \'{print $2 " " $3 " " $4 " " $7 " " $9}\'',
    ),
    "Default checksum"
