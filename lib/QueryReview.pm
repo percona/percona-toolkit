@@ -91,7 +91,7 @@ sub new {
    $sql = "SELECT "
         . join(', ', map { $args{quoter}->quote($_) } @review_cols)
         . ", checksum AS checksum_conv FROM $args{db_tbl}"
-        . " WHERE ?";
+        . " WHERE checksum=?";
    PTDEBUG && _d('SQL to select from review table:', $sql);
    my $select_sth = $args{dbh}->prepare($sql);
 
