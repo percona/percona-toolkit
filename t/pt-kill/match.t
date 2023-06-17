@@ -143,7 +143,7 @@ $output = output(
 );
 like(
    $output,
-   qr/0x69962191E64980E6/,
+   qr/0x877B0CFF7AD32CA969962191E64980E6/,
    '--query-id'
 );
 
@@ -153,7 +153,7 @@ $output = output(
 );
 like(
    $output,
-   qr/\{"Command"\:"Query","Db"\:"db","Digest"\:"69962191E64980E6","Host"\:"127\.0\.0\.1\:3306","Id"\:"4","Info"\:"\\\/\* fruit\=orange \*\\\/ select 1 from fuits;","Kill_Error"\:"","Reason"\:"","State"\:"statistics","Time"\:"6","Timestamp"\:".*","User"\:"foo","key"\:"value"\}/,
+   qr/\{"Command"\:"Query","Db"\:"db","Digest"\:"877B0CFF7AD32CA969962191E64980E6","Host"\:"127\.0\.0\.1\:3306","Id"\:"4","Info"\:"\\\/\* fruit\=orange \*\\\/ select 1 from fuits;","Kill_Error"\:"","Reason"\:"","State"\:"statistics","Time"\:"6","Timestamp"\:".*","User"\:"foo","key"\:"value"\}/,
    '--json'
 );
 

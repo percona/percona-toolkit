@@ -2787,7 +2787,7 @@ sub any_unix_timestamp {
 
 sub make_checksum {
    my ( $val ) = @_;
-   my $checksum = uc substr(md5_hex($val), -16);
+   my $checksum = uc md5_hex($val);
    PTDEBUG && _d($checksum, 'checksum for', $val);
    return $checksum;
 }
@@ -3501,10 +3501,10 @@ sub parse_event {
             else {
                PTDEBUG && _d('Saving new query, state', $curr->[STATE]);
                push @new_cxn, [
-                  @{$curr}[0..7],           # proc info
-                  int($query_start),        # START
-                  $etime,                   # ETIME
-                  $time,                    # FSEEN
+                  @{$curr}[0..7],                  # proc info
+                  $query_start,                    # START
+                  $etime,                          # ETIME
+                  $time,                           # FSEEN
                   { ($curr->[STATE] || "") => 0 }, # PROFILE
                ];
             }
@@ -3515,10 +3515,10 @@ sub parse_event {
          if ( $curr->[INFO] && defined $curr->[TIME] ) {
             PTDEBUG && _d('Saving query of new cxn, state', $curr->[STATE]);
             push @new_cxn, [
-               @{$curr}[0..7],           # proc info
-               int($query_start),        # START
-               $etime,                   # ETIME
-               $time,                    # FSEEN
+               @{$curr}[0..7],                  # proc info
+               $query_start,                    # START
+               $etime,                          # ETIME
+               $time,                           # FSEEN
                { ($curr->[STATE] || "") => 0 }, # PROFILE
             ];
          }
