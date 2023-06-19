@@ -3709,7 +3709,7 @@ sub any_unix_timestamp {
 
 sub make_checksum {
    my ( $val ) = @_;
-   my $checksum = uc substr(md5_hex($val), -16);
+   my $checksum = uc md5_hex($val);
    PTDEBUG && _d($checksum, 'checksum for', $val);
    return $checksum;
 }
@@ -4919,7 +4919,7 @@ sub save_results {
    PTDEBUG && _d("Save query data");
    my $insert_query_sth = $dbh->prepare(
       "INSERT IGNORE INTO `$db`.`queries` (query_id, fingerprint, sample) "
-      . " VALUES (CONV(?, 16, 10), ?, ?)");
+      . " VALUES (?, ?, ?)");
    foreach my $query_id ( keys %{$self->{queries}} ) {
       my $query = $self->{queries}->{$query_id};
       $insert_query_sth->execute(
@@ -4929,7 +4929,7 @@ sub save_results {
    PTDEBUG && _d("Saving index usage data");
    my $insert_index_usage_sth = $dbh->prepare(
       "INSERT INTO `$db`.`index_usage` (query_id, db, tbl, idx, cnt) "
-      . "VALUES (CONV(?, 16, 10), ?, ?, ?, ?) "
+      . "VALUES (?, ?, ?, ?, ?) "
       . "ON DUPLICATE KEY UPDATE cnt = cnt + ?");
    foreach my $query_id ( keys %{$self->{index_usage}} ) {
       foreach my $db ( keys %{$self->{index_usage}->{$query_id}} ) {
@@ -4948,7 +4948,7 @@ sub save_results {
    my $insert_index_alt_sth = $dbh->prepare(
       "INSERT INTO `$db`.`index_alternatives` "
       . "(query_id, db, tbl, idx, alt_idx, cnt) "
-      . "VALUES (CONV(?, 16, 10), ?, ?, ?, ?, ?) "
+      . "VALUES (?, ?, ?, ?, ?, ?) "
       . "ON DUPLICATE KEY UPDATE cnt = cnt + ?");
    foreach my $query_id ( keys %{$self->{alt_index_usage}} ) {
       foreach my $db ( keys %{$self->{alt_index_usage}->{$query_id}} ) {
@@ -7366,7 +7366,7 @@ MAGIC_create_indexes:
 MAGIC_create_queries:
 
   CREATE TABLE IF NOT EXISTS queries (
-    query_id     BIGINT UNSIGNED NOT NULL,
+    query_id     CHAR(32) NOT NULL,
     fingerprint  TEXT NOT NULL,
     sample       TEXT NOT NULL,
     PRIMARY KEY  (query_id)
@@ -7384,7 +7384,7 @@ MAGIC_create_tables:
 MAGIC_create_index_usage:
 
   CREATE TABLE IF NOT EXISTS index_usage (
-    query_id      BIGINT UNSIGNED NOT NULL,
+    query_id      CHAR(32) NOT NULL,
     db            VARCHAR(64) NOT NULL,
     tbl           VARCHAR(64) NOT NULL,
     idx           VARCHAR(64) NOT NULL,
@@ -7395,7 +7395,7 @@ MAGIC_create_index_usage:
 MAGIC_create_index_alternatives:
 
   CREATE TABLE IF NOT EXISTS index_alternatives (
-    query_id      BIGINT UNSIGNED NOT NULL, -- This query used
+    query_id      CHAR(32) NOT NULL,        -- This query used
     db            VARCHAR(64) NOT NULL,     -- this index, but...
     tbl           VARCHAR(64) NOT NULL,     --
     idx           VARCHAR(64) NOT NULL,     --
