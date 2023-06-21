@@ -9149,13 +9149,6 @@ sub main {
    # ########################################################################
    my $child_tables;
 
-   my $have_child_tables = find_child_tables(
-         tbl    => $orig_tbl,
-         Cxn    => $cxn,
-         Quoter => $q,
-         only_same_schema_fks => $o->get('only-same-schema-fks'),
-      );
-
    my $vp = VersionParser->new($cxn->dbh());
    if (($vp->cmp('8.0.14') >= 0 && $vp->cmp('8.0.17') <= 0) && $vp->flavor() !~ m/maria/i) {
        my $msg = "There is an error in MySQL that makes the server to die when trying to ".
