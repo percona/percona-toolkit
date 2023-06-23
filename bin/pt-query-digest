@@ -2703,7 +2703,7 @@ sub any_unix_timestamp {
 
 sub make_checksum {
    my ( $val ) = @_;
-   my $checksum = uc substr(md5_hex($val), -16);
+   my $checksum = uc md5_hex($val);
    PTDEBUG && _d($checksum, 'checksum for', $val);
    return $checksum;
 }
@@ -3394,10 +3394,10 @@ sub parse_event {
             else {
                PTDEBUG && _d('Saving new query, state', $curr->[STATE]);
                push @new_cxn, [
-                  @{$curr}[0..7],           # proc info
-                  int($query_start),        # START
-                  $etime,                   # ETIME
-                  $time,                    # FSEEN
+                  @{$curr}[0..7],                  # proc info
+                  $query_start,                    # START
+                  $etime,                          # ETIME
+                  $time,                           # FSEEN
                   { ($curr->[STATE] || "") => 0 }, # PROFILE
                ];
             }
@@ -3408,10 +3408,10 @@ sub parse_event {
          if ( $curr->[INFO] && defined $curr->[TIME] ) {
             PTDEBUG && _d('Saving query of new cxn, state', $curr->[STATE]);
             push @new_cxn, [
-               @{$curr}[0..7],           # proc info
-               int($query_start),        # START
-               $etime,                   # ETIME
-               $time,                    # FSEEN
+               @{$curr}[0..7],                  # proc info
+               $query_start,                    # START
+               $etime,                          # ETIME
+               $time,                           # FSEEN
                { ($curr->[STATE] || "") => 0 }, # PROFILE
             ];
          }
@@ -5892,7 +5892,10 @@ sub top_events {
    my ( $self, %args ) = @_;
    my $classes = $self->{result_classes};
    my @sorted = reverse sort { # Sorted list of $groupby values
-      $classes->{$a}->{$args{attrib}}->{$args{orderby}}
+	  ($classes->{$a}->{$args{attrib}}->{$args{orderby}}
+	     == $classes->{$b}->{$args{attrib}}->{$args{orderby}})
+      ? $a cmp $b
+      : $classes->{$a}->{$args{attrib}}->{$args{orderby}}
          <=> $classes->{$b}->{$args{attrib}}->{$args{orderby}}
       } grep {
          defined $classes->{$_}->{$args{attrib}}->{$args{orderby}}
@@ -7386,7 +7389,7 @@ sub profile {
    $report->title('Profile');
    my @cols = (
       { name => 'Rank',          right_justify => 1,             },
-      { name => 'Query ID',                                      },
+      { name => 'Query ID',      width => 35                     },
       { name => 'Response time', right_justify => 1,             },
       { name => 'Calls',         right_justify => 1,             },
       { name => 'R/Call',        right_justify => 1,             },
@@ -9264,7 +9267,7 @@ sub new {
    my $sql = <<"      SQL";
       INSERT INTO $args{db_tbl}
       (checksum, fingerprint, sample, first_seen, last_seen)
-      VALUES(CONV(?, 16, 10), ?, ?, COALESCE(?, $now), COALESCE(?, $now))
+      VALUES(?, ?, ?, COALESCE(?, $now), COALESCE(?, $now))
       ON DUPLICATE KEY UPDATE
          first_seen = IF(
             first_seen IS NULL,
@@ -9281,8 +9284,8 @@ sub new {
    my @review_cols = grep { !$skip_cols{$_} } @{$args{tbl_struct}->{cols}};
    $sql = "SELECT "
         . join(', ', map { $args{quoter}->quote($_) } @review_cols)
-        . ", CONV(checksum, 10, 16) AS checksum_conv FROM $args{db_tbl}"
-        . " WHERE checksum=CONV(?, 16, 10)";
+        . ", checksum AS checksum_conv FROM $args{db_tbl}"
+        . " WHERE checksum=?";
    PTDEBUG && _d('SQL to select from review table:', $sql);
    my $select_sth = $args{dbh}->prepare($sql);
 
@@ -9412,7 +9415,7 @@ sub set_history_options {
    my $sql = "REPLACE INTO $args{table}("
       . join(', ',
          map { Quoter->quote($_) } ('checksum', 'sample', @cols))
-      . ') VALUES (CONV(?, 16, 10), ?'
+      . ') VALUES (?, ?'
       . (@cols ? ', ' : '')  # issue 1265
       . join(', ', map {
          $_ eq 'ts_min' || $_ eq 'ts_max'
