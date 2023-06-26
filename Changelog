@@ -1,5 +1,15 @@
 Changelog for Percona Toolkit
 
+v3.5.4 released 2023-06-30
+
+* Improvement PT-2151: Fix tests for pt-query-digest
+* Improvement PR-614: Support for environments that do not have SQL mode, such as OceanBase (Thanks to hanzhongzi for the contribution)
+* Improvement PR-617: Remove $has_child_tables var (Thanks to Ricardo for the contribution)
+* Fixed bug PT-2101: pt-mongodb-query-digest doesn't work on standalone server
+* Fixed bug PT-813: LP #1371774: pt-query-digest inconsistent rank order
+* Fixed bug PT-981: LP #1008240: t/pt-query-digest/processlist.t occasionally fails
+* Fixed bug PT-2229: CVE reported in Percona Toolkit version 3.5.3 related to Logrus (Thanks to Kushal Haldar for reporting this issue and testing the fix)
+
 v3.5.3 release 2023-06-05
 
 * Fixed bug PT-1583: Skipping chunks when using pt-online-schema-change (Thanks to monty solomon for reporting this issue)
