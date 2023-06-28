@@ -10022,6 +10022,11 @@ sub main {
             sleep $sleep;
          }
 
+         # --plugin hook
+         if ( $plugin && $plugin->can('on_copy_rows_after_nibble') ) {
+             $plugin->on_copy_rows_after_nibble();
+         }
+
          return;
       },
       done => sub {
@@ -13102,6 +13107,7 @@ These hooks, in this order, are called if defined:
    before_create_triggers
    after_create_triggers
    before_copy_rows
+   on_copy_rows_after_nibble
    after_copy_rows
    before_swap_tables
    after_swap_tables
@@ -13179,6 +13185,11 @@ Here's a plugin file template for all hooks:
    sub before_copy_rows {
       my ($self, %args) = @_;
       print "PLUGIN before_copy_rows\n";
+   }
+
+   sub on_copy_rows_after_nibble {
+      my ($self, %args) = @_;
+      print "PLUGIN on_copy_rows_after_nibble\n";
    }
 
    sub after_copy_rows {
