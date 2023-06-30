@@ -1,6 +1,22 @@
 Percona Toolkit
 ***************
 
+v3.5.4 released 2023-06-30
+==============================
+
+Improvements
+------------------------------------------------------------
+
+* :jirabug:`PT-2151`: Fix tests for pt-query-digest
+
+Bugs Fixed
+------------
+
+* :jirabug:`PT-2101`: pt-mongodb-query-digest doesn't work on standalone server
+* :jirabug:`PT-813`: LP #1371774: pt-query-digest inconsistent rank order
+* :jirabug:`PT-981`: LP #1008240: t/pt-query-digest/processlist.t occasionally fails
+* :jirabug:`PT-2229`: CVE reported in Percona Toolkit version 3.5.3 related to Logrus (Thanks to Kushal Haldar for reporting this issue and testing the fix)
+
 v3.5.3 released 2023-06-05
 ==============================
 
@@ -12,7 +28,7 @@ Bugs Fixed
 * :jirabug:`PT-2169`: pt-k8s-debug-collector integration of pg_gather requires croping first line of the output file
 * :jirabug:`PT-2203`: CVEs reported in Percona Toolkit version 5.3.2 related to GO (Thanks to Kushal Haldar for reporting this issue)
 * :jirabug:`PT-2196`: Bug in pt-secure-collect --output-file (Thanks to Michael Patrick for reporting and fixing this issue)
-* 
+
 v3.5.2 released 2023-03-28
 ==============================
 
