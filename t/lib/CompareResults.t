@@ -273,14 +273,14 @@ is_deeply(
 
 $report = <<EOF;
 # Checksum differences
-# Query ID           host1     host2
-# ================== ========= ==========
-# D2D386B840D3BEEA-1 $events[0]->{checksum} $events[1]->{checksum}
+# Query ID                           host1     host2
+# ================================== ========= ==========
+# 5B07DA841600FC6FD2D386B840D3BEEA-1 $events[0]->{checksum} $events[1]->{checksum}
 
 # Row count differences
-# Query ID           host1 host2
-# ================== ===== =====
-# D2D386B840D3BEEA-1     3     4
+# Query ID                           host1 host2
+# ================================== ===== =====
+# 5B07DA841600FC6FD2D386B840D3BEEA-1     3     4
 EOF
 
 is(
@@ -483,14 +483,14 @@ is_deeply(
 
 $report = <<EOF;
 # Column value differences
-# Query ID           Column host1 host2
-# ================== ====== ===== ===========
-# CFC309761E9131C5-3 c      c     should be c
+# Query ID                           Column host1 host2
+# ================================== ====== ===== ===========
+# C5434AE784E8BC8BCFC309761E9131C5-3 c      c     should be c
 
 # Row count differences
-# Query ID           host1 host2
-# ================== ===== =====
-# B8B721D77EA1FD78-0     3     4
+# Query ID                           host1 host2
+# ================================== ===== =====
+# 5F9FE76EA02DE954B8B721D77EA1FD78-0     3     4
 EOF
 
 is(
@@ -536,6 +536,10 @@ is_deeply(
 # I don't know why but several months ago this test started
 # failing although nothing afaik was changed.  This module
 # is only used in pt-upgrade and that tool passes its tests.
+# Added by Daniel Nichter on Feb 02, 2012, 
+# by commit 38c421351df19f463c046100b0b6889b018428d3
+# Likely affected by move of the function get_create_table 
+# to TableParser.pm and subsequent changes. Need to investigate.
 SKIP: {
    skip "Fix this test", 1;
 is_deeply(
@@ -547,9 +551,9 @@ is_deeply(
 
 $report = <<EOF;
 # Column value differences
-# Query ID           Column host1 host2
-# ================== ====== ===== ===========
-# CFC309761E9131C5-3 c      a     should be a
+# Query ID                           Column host1 host2
+# ================================== ====== ===== ===========
+# C5434AE784E8BC8BCFC309761E9131C5-3 c      a     should be a
 EOF
 
 is(
@@ -670,9 +674,9 @@ is_deeply(
 
 $report = <<EOF;
 # Row count differences
-# Query ID           host1 host2
-# ================== ===== =====
-# D56E6FABA26D1F1C-3     3     1
+# Query ID                           host1 host2
+# ================================== ===== =====
+# B26B22621BF4FD9CD56E6FABA26D1F1C-3     3     1
 EOF
 
 is(

@@ -630,6 +630,12 @@ $Data::Dumper::Quotekeys = 0;
 
 $sb->load_file('master', 't/lib/samples/issue_941.sql');
 
+# We use empty SQL mode here, because zero dates do not work with 
+# the default SQL mode. We do not adjust the tool, because, if users
+# have zero or invalid dates, they can adjust SQL mode when using Toolkit.
+my $old_sql_mode = ($dbh->selectrow_array('SELECT @@sql_mode'))[0];
+$dbh->do("set sql_mode=''");
+
 sub test_zero_row {
    my ( $tbl, $range, $chunks, $zero_chunk ) = @_;
    $zero_chunk = 1 unless defined $zero_chunk;
@@ -840,6 +846,7 @@ is_deeply(
    "Gets valid min with enough tries"
 );
 
+$dbh->do("set sql_mode='$old_sql_mode'");
 
 # #############################################################################
 # Test issue 941 + issue 602

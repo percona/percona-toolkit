@@ -298,7 +298,7 @@ SKIP: {
          { a => 'a', b => 2, c => 3 },
       ),
       syncer     => $s,
-      tbl_struct => { collation_for => { a => 'utf8_general_ci' } },
+      tbl_struct => { collation_for => { a => 'utf8mb4_general_ci' } },
    );
    is_deeply(
       $s,

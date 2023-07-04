@@ -211,7 +211,7 @@ SKIP: {
    is_deeply(
       $rows,
       [
-         [qw(12852102680195556712 sakila actor PRIMARY idx_actor_last_name 1)],
+         [qw(85D2331F8094117AB25BD74B55E6E568 sakila actor PRIMARY idx_actor_last_name 1)],
       ],
       "Save alt index data"
    );
