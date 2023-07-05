@@ -413,7 +413,9 @@ is(
 test_so(
    filters   => [qw(-d sakila)],
    result    => $sandbox_version ge '5.1'
-                ? "$out/resume-from-sakila-payment.txt"
+                ? ($sandbox_version ge '8.0'
+                   ? "$out/resume-from-sakila-payment-8.0.txt"
+                   : "$out/resume-from-sakila-payment.txt")
                 : "$out/resume-from-sakila-payment-5.0.txt",
    resume    => 'sakila.payment',
    test_name => "Resume"
@@ -423,7 +425,9 @@ test_so(
 test_so(
    filters   => [qw(-d sakila --ignore-tables sakila.payment)],
    result    => $sandbox_version ge '5.1'
-                ? "$out/resume-from-ignored-sakila-payment.txt"
+                ? ($sandbox_version ge '8.0'
+			   	   ? "$out/resume-from-ignored-sakila-payment-8.0.txt"
+			   	   : "$out/resume-from-ignored-sakila-payment.txt")
                 : "$out/resume-from-ignored-sakila-payment-5.0.txt",
    resume    => 'sakila.payment',
    test_name => "Resume from ignored table"

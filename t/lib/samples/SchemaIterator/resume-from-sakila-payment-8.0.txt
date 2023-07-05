@@ -1,9 +1,9 @@
 sakila.payment
 CREATE TABLE `payment` (
-  `payment_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
-  `customer_id` smallint(5) unsigned NOT NULL,
-  `staff_id` tinyint(3) unsigned NOT NULL,
-  `rental_id` int(11) DEFAULT NULL,
+  `payment_id` smallint unsigned NOT NULL AUTO_INCREMENT,
+  `customer_id` smallint unsigned NOT NULL,
+  `staff_id` tinyint unsigned NOT NULL,
+  `rental_id` int DEFAULT NULL,
   `amount` decimal(5,2) NOT NULL,
   `payment_date` datetime NOT NULL,
   `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -14,16 +14,16 @@ CREATE TABLE `payment` (
   CONSTRAINT `fk_payment_customer` FOREIGN KEY (`customer_id`) REFERENCES `customer` (`customer_id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_payment_rental` FOREIGN KEY (`rental_id`) REFERENCES `rental` (`rental_id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_payment_staff` FOREIGN KEY (`staff_id`) REFERENCES `staff` (`staff_id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=16050 DEFAULT CHARSET=utf8
+) ENGINE=InnoDB AUTO_INCREMENT=16050 DEFAULT CHARSET=utf8mb3
 
 sakila.rental
 CREATE TABLE `rental` (
-  `rental_id` int(11) NOT NULL AUTO_INCREMENT,
+  `rental_id` int NOT NULL AUTO_INCREMENT,
   `rental_date` datetime NOT NULL,
-  `inventory_id` mediumint(8) unsigned NOT NULL,
-  `customer_id` smallint(5) unsigned NOT NULL,
+  `inventory_id` mediumint unsigned NOT NULL,
+  `customer_id` smallint unsigned NOT NULL,
   `return_date` datetime DEFAULT NULL,
-  `staff_id` tinyint(3) unsigned NOT NULL,
+  `staff_id` tinyint unsigned NOT NULL,
   `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`rental_id`),
   UNIQUE KEY `rental_date` (`rental_date`,`inventory_id`,`customer_id`),
@@ -33,38 +33,38 @@ CREATE TABLE `rental` (
   CONSTRAINT `fk_rental_customer` FOREIGN KEY (`customer_id`) REFERENCES `customer` (`customer_id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_rental_inventory` FOREIGN KEY (`inventory_id`) REFERENCES `inventory` (`inventory_id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_rental_staff` FOREIGN KEY (`staff_id`) REFERENCES `staff` (`staff_id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=16050 DEFAULT CHARSET=utf8
+) ENGINE=InnoDB AUTO_INCREMENT=16050 DEFAULT CHARSET=utf8mb3
 
 sakila.staff
 CREATE TABLE `staff` (
-  `staff_id` tinyint(3) unsigned NOT NULL AUTO_INCREMENT,
+  `staff_id` tinyint unsigned NOT NULL AUTO_INCREMENT,
   `first_name` varchar(45) NOT NULL,
   `last_name` varchar(45) NOT NULL,
-  `address_id` smallint(5) unsigned NOT NULL,
+  `address_id` smallint unsigned NOT NULL,
   `picture` blob,
   `email` varchar(50) DEFAULT NULL,
-  `store_id` tinyint(3) unsigned NOT NULL,
+  `store_id` tinyint unsigned NOT NULL,
   `active` tinyint(1) NOT NULL DEFAULT '1',
   `username` varchar(16) NOT NULL,
-  `password` varchar(40) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL,
+  `password` varchar(40) CHARACTER SET utf8mb3 COLLATE utf8mb3_bin DEFAULT NULL,
   `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`staff_id`),
   KEY `idx_fk_store_id` (`store_id`),
   KEY `idx_fk_address_id` (`address_id`),
   CONSTRAINT `fk_staff_address` FOREIGN KEY (`address_id`) REFERENCES `address` (`address_id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_staff_store` FOREIGN KEY (`store_id`) REFERENCES `store` (`store_id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb3
 
 sakila.store
 CREATE TABLE `store` (
-  `store_id` tinyint(3) unsigned NOT NULL AUTO_INCREMENT,
-  `manager_staff_id` tinyint(3) unsigned NOT NULL,
-  `address_id` smallint(5) unsigned NOT NULL,
+  `store_id` tinyint unsigned NOT NULL AUTO_INCREMENT,
+  `manager_staff_id` tinyint unsigned NOT NULL,
+  `address_id` smallint unsigned NOT NULL,
   `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`store_id`),
   UNIQUE KEY `idx_unique_manager` (`manager_staff_id`),
   KEY `idx_fk_address_id` (`address_id`),
   CONSTRAINT `fk_store_address` FOREIGN KEY (`address_id`) REFERENCES `address` (`address_id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_store_staff` FOREIGN KEY (`manager_staff_id`) REFERENCES `staff` (`staff_id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb3
 
