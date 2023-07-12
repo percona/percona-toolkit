@@ -57,8 +57,20 @@ collect_mysqld_instances () {
 find_my_cnf_file() {
    local file="$1"
    local port="${2:-""}"
+   local pid_file="${3:-""}"
 
    local cnf_file=""
+
+   if [ "$pid_file" ]; then
+      local pid=$(cat "$pid_file")
+      cnf_file="$(grep --max-count 1 -E "^\s+$pid\s+" "$file" \
+         | awk 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }')"
+
+      if [ -n "$cnf_file" ]; then
+         echo "$cnf_file"
+         return
+      fi
+   fi
 
    if [ "$port" ]; then
       # Find the cnf file for the specific port.
@@ -69,11 +81,10 @@ find_my_cnf_file() {
          echo "$cnf_file"
          return
       fi
+   else
+      cnf_file="$(grep --max-count 1 '/mysqld' "$file" \
+         | awk 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }')"
    fi
-
-   cnf_file="$(grep --max-count 1 '/mysqld' "$file" \
-      | awk 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }')"
-
 
    if [ -z "$cnf_file" ]; then
       # Cannot autodetect config file, try common locations.
@@ -261,15 +272,15 @@ collect_mysql_info () {
    local current_time="$($CMD_MYSQL $EXT_ARGV -ss -e \
                          "SELECT LEFT(NOW() - INTERVAL ${uptime} SECOND, 16)")"
 
-   local port="$(get_var port "$dir/mysql-variables")"
-   local cnf_file="$(find_my_cnf_file "$dir/mysqld-instances" ${port})"
-
-   [ -e "$cnf_file" ] && cat "$cnf_file" > "$dir/mysql-config-file"
-
    local pid_file="$(get_var "pid_file" "$dir/mysql-variables")"
    local pid_file_exists=""
    [ -e "${pid_file}" ] && pid_file_exists=1
    echo "pt-summary-internal-pid_file_exists    $pid_file_exists" >> "$dir/mysql-variables"
+
+   local port="$(get_var port "$dir/mysql-variables")"
+   local cnf_file="$(find_my_cnf_file "$dir/mysqld-instances" ${port}i ${pid_file})"
+
+   [ -e "$cnf_file" ] && cat "$cnf_file" > "$dir/mysql-config-file"
 
    # TODO: Do these require a file of their own?
    echo "pt-summary-internal-current_time    $current_time" >> "$dir/mysql-variables"
