@@ -42,9 +42,9 @@ wait
 file_count=$(ls "$p" | wc -l)
 
 if [ "$sys_cnf_file" ]; then
-   n_files=17
+   n_files=18
 else
-   n_files=16
+   n_files=17
 fi
 
 is $file_count $n_files "Creates the correct number of files (without --databases)"

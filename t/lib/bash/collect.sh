@@ -16,6 +16,10 @@ source "$LIB_DIR/safeguards.sh"
 source "$LIB_DIR/alt_cmds.sh"
 source "$LIB_DIR/collect.sh"
 
+# We need flush tables, otherwise we won't have stable results for opentables tests
+CMD_MYSQL="$(_which mysql)"
+$CMD_MYSQL --defaults-file=/tmp/12345/my.sandbox.cnf -ss -e 'FLUSH TABLES'
+
 parse_options "$BIN_DIR/pt-stalk" --run-time 1 -- --defaults-file=/tmp/12345/my.sandbox.cnf
 
 # Prefix (with path) for the collect files.
