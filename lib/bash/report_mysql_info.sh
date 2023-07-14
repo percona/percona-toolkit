@@ -107,26 +107,6 @@ get_plugin_status () {
    echo ${status:-"Not found"}
 }
 
-collect_keyring_plugins() {
-    $CMD_MYSQL $EXT_ARGV --table -ss -e 'SELECT PLUGIN_NAME, PLUGIN_STATUS FROM INFORMATION_SCHEMA.PLUGINS WHERE PLUGIN_NAME LIKE "keyring%";'
-}
-
-collect_encrypted_tables() {
-    $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT TABLE_SCHEMA, TABLE_NAME, CREATE_OPTIONS FROM INFORMATION_SCHEMA.TABLES WHERE CREATE_OPTIONS LIKE '%ENCRYPTION=\"Y\"%';"
-}
-
-collect_encrypted_tablespaces() {
-    local version="$1"
-# I_S.INNODB_[SYS_]TABLESPACES has a "flag" field. Encrypted tablespace has bit 14 set. You can check it with "flag & 8192". 
-# And seems like MySQL is capable of bitwise operations. https://dev.mysql.com/doc/refman/5.7/en/bit-functions.html
-    if [ "$version" '<' "8.0" ]; then
-        $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT SPACE, NAME, SPACE_TYPE from INFORMATION_SCHEMA.INNODB_SYS_TABLESPACES where FLAG&8192 = 8192;"
-    else
-        $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT SPACE, NAME, SPACE_TYPE from INFORMATION_SCHEMA.INNODB_TABLESPACES where FLAG&8192 = 8192;"
-    fi
-}
-
-
 # ##############################################################################
 # Functions for parsing specific files and getting desired info from them.
 # These are called from within main() and are separated so they can be tested
@@ -1292,30 +1272,31 @@ parse_wsrep_provider_options () {
 }
 
 report_jemalloc_enabled() {
-  local JEMALLOC_STATUS=''
-  local GENERAL_JEMALLOC_STATUS=0
-  local JEMALLOC_LOCATION=''
+   local instances_file="$1"
+   local variables_file="$2"
+   local GENERAL_JEMALLOC_STATUS=0
+   
+   for pid in $(grep '/mysqld ' "$instances_file" | awk '{print $1;}'); do
+	  local jemalloc_status="$(get_var "pt-summary-internal-jemalloc_enabled_for_pid_${pid}" "${variables_file}")"
+	  if [ -z $jemalloc_status ]; then
+		  continue
+      elif [ $jemalloc_status = 0 ]; then
+         echo "jemalloc is not enabled in mysql config for process with id ${pid}" 
+      else
+         echo "jemalloc enabled in mysql config for process with id ${pid}"
+		 GENERAL_JEMALLOC_STATUS=1
+      fi
+   done
 
-  for pid in $(pidof mysqld); do
-     grep -qc jemalloc /proc/${pid}/environ || ldd $(which mysqld) 2>/dev/null | grep -qc jemalloc
-     jemalloc_status=$?
-     if [ $jemalloc_status = 1 ]; then
-       echo "jemalloc is not enabled in mysql config for process with id ${pid}" 
-     else
-       echo "jemalloc enabled in mysql config for process with id ${pid}"
-       GENERAL_JEMALLOC_STATUS=1
-     fi
-  done
+   if [ $GENERAL_JEMALLOC_STATUS -eq 1 ]; then
+      local jemalloc_location="$(get_var "pt-summary-internal-jemalloc_location" "${variables_file}")"
+      if [ -n "$jemalloc_location" ]; then
+	     echo "Using jemalloc from $jemalloc_location"
+      else
+         echo "Jemalloc library not found"
+      fi
+   fi
 
-  if [ $GENERAL_JEMALLOC_STATUS -eq 1 ]; then
-     JEMALLOC_LOCATION=$(find /usr/lib64/ /usr/lib/x86_64-linux-gnu /usr/lib -name "libjemalloc.*" 2>/dev/null | head -n 1)
-     if [ -z "$JEMALLOC_LOCATION" ]; then
-       echo "Jemalloc library not found"
-     else
-       echo "Using jemalloc from $JEMALLOC_LOCATION"
-     fi
-  fi
- 
 }
 
 report_mysql_summary () {
@@ -1566,7 +1547,7 @@ report_mysql_summary () {
       fi
    fi
 
-   local has_rocksdb=$($CMD_MYSQL $EXT_ARGV -ss -e 'SHOW ENGINES' 2>/dev/null | grep -i 'rocksdb')
+   local has_rocksdb=$(cat $dir/mysql-plugins | grep -i 'rocksdb.*active.*storage engine')
    if [ ! -z "$has_rocksdb" ]; then
        section "RocksDB"
        section_rocksdb "$dir/mysql-variables" "$dir/mysql-status"
@@ -1600,13 +1581,17 @@ report_mysql_summary () {
    fi
 
    section "Encryption"
-   local keyring_plugins="$(collect_keyring_plugins)"
+   local keyring_plugins=""
    local encrypted_tables=""
    local encrypted_tablespaces=""
-   if [ "${OPT_LIST_ENCRYPTED_TABLES}" = 'yes' ]; then 
-       local mysql_version="$(get_var version "$dir/mysql-variables")"
-       encrypted_tables="$(collect_encrypted_tables)"
-       encrypted_tablespaces="$(collect_encrypted_tablespaces ${mysql_version})"
+   if [ -s "$dir/keyring-plugins" ]; then
+	   keyring_plugins="$(cat $dir/keyring-plugins)"
+   fi
+   if [ -s "$dir/encrypted-tables" ]; then
+      encrypted_tables="$(cat $dir/encrypted-tables)"
+   fi
+   if [ -s "$dir/encrypted-tablespaces" ]; then
+      encrypted_tablespaces="$(cat $dir/encrypted-tablespaces)"
    fi
 
    format_keyring_plugins "$keyring_plugins" "$encrypted_tables"
@@ -1652,7 +1637,7 @@ report_mysql_summary () {
    fi
 
    section "Memory management library"
-   report_jemalloc_enabled
+   report_jemalloc_enabled "$dir/mysqld-instances" "$dir/mysql-variables"
 
    # Make sure that we signal the end of the tool's output.
    section "The End"

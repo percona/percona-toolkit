@@ -1,0 +1,48 @@
+*************************** 1. row ***************************
+           Id: 1
+         User: system user
+         Host: 
+           db: NULL
+      Command: Sleep
+         Time: 2510
+        State: NULL
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 1
+*************************** 2. row ***************************
+           Id: 2
+         User: system user
+         Host: 
+           db: NULL
+      Command: Sleep
+         Time: 2510
+        State: wsrep aborter idle
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 1
+*************************** 3. row ***************************
+           Id: 3
+         User: system user
+         Host: 
+           db: NULL
+      Command: Sleep
+         Time: 2507
+        State: NULL
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 1
+*************************** 4. row ***************************
+           Id: 206
+         User: msandbox
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: sleeping
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 1

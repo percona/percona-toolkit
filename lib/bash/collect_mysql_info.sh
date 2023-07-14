@@ -63,7 +63,7 @@ find_my_cnf_file() {
 
    if [ "$pid_file" ]; then
       local pid=$(cat "$pid_file")
-      cnf_file="$(grep --max-count 1 -E "^\s+$pid\s+" "$file" \
+      cnf_file="$(grep --max-count 1 -E "^\s*$pid\s+" "$file" \
          | awk 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }')"
 
       if [ -n "$cnf_file" ]; then
@@ -191,6 +191,46 @@ collect_internal_vars () {
          i=$(($i + 1))
       done < "$mysqld_executables"
    fi
+
+   # jemalloc info
+   local JEMALLOC_STATUS=''
+   local GENERAL_JEMALLOC_STATUS=0
+   local JEMALLOC_LOCATION=''
+
+   for pid in $(pidof mysqld); do
+      grep -qc jemalloc /proc/${pid}/environ || ldd $(which mysqld) 2>/dev/null | grep -qc jemalloc
+      jemalloc_status=$?
+      if [ $jemalloc_status = 1 ]; then
+         echo "pt-summary-internal-jemalloc_enabled_for_pid_${pid}    0"
+      else
+         echo "pt-summary-internal-jemalloc_enabled_for_pid_${pid}    1"
+         GENERAL_JEMALLOC_STATUS=1
+      fi
+   done
+
+   if [ $GENERAL_JEMALLOC_STATUS -eq 1 ]; then
+      JEMALLOC_LOCATION=$(find /usr/lib64/ /usr/lib/x86_64-linux-gnu /usr/lib -name "libjemalloc.*" 2>/dev/null | head -n 1)
+      echo "pt-summary-internal-jemalloc_location    ${JEMALLOC_LOCATION}"
+   fi 
+}
+
+collect_keyring_plugins() {
+    $CMD_MYSQL $EXT_ARGV --table -ss -e 'SELECT PLUGIN_NAME, PLUGIN_STATUS FROM INFORMATION_SCHEMA.PLUGINS WHERE PLUGIN_NAME LIKE "keyring%";'
+}
+
+collect_encrypted_tables() {
+    $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT TABLE_SCHEMA, TABLE_NAME, CREATE_OPTIONS FROM INFORMATION_SCHEMA.TABLES WHERE CREATE_OPTIONS LIKE '%ENCRYPTION=_Y_%';"
+}
+
+collect_encrypted_tablespaces() {
+    local version="$1"
+# I_S.INNODB_[SYS_]TABLESPACES has a "flag" field. Encrypted tablespace has bit 14 set. You can check it with "flag & 8192". 
+# And seems like MySQL is capable of bitwise operations. https://dev.mysql.com/doc/refman/5.7/en/bit-functions.html
+    if [ "$version" '<' "8.0" ]; then
+        $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT SPACE, NAME, SPACE_TYPE from INFORMATION_SCHEMA.INNODB_SYS_TABLESPACES where FLAG&8192 = 8192;"
+    else
+        $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT SPACE, NAME, SPACE_TYPE from INFORMATION_SCHEMA.INNODB_TABLESPACES where FLAG&8192 = 8192;"
+    fi
 }
 
 # Uses mysqldump and dumps the results to FILE.
@@ -257,6 +297,7 @@ collect_mysql_info () {
    collect_mysql_processlist   > "$dir/mysql-processlist"   
    collect_mysql_users         > "$dir/mysql-users"
    collect_mysql_roles         > "$dir/mysql-roles"
+   collect_keyring_plugins     > "$dir/keyring-plugins"
 
    collect_mysqld_instances   "$dir/mysql-variables"  > "$dir/mysqld-instances"
    collect_mysqld_executables "$dir/mysqld-instances" > "$dir/mysqld-executables"
@@ -278,7 +319,7 @@ collect_mysql_info () {
    echo "pt-summary-internal-pid_file_exists    $pid_file_exists" >> "$dir/mysql-variables"
 
    local port="$(get_var port "$dir/mysql-variables")"
-   local cnf_file="$(find_my_cnf_file "$dir/mysqld-instances" ${port}i ${pid_file})"
+   local cnf_file="$(find_my_cnf_file "$dir/mysqld-instances" ${port} ${pid_file})"
 
    [ -e "$cnf_file" ] && cat "$cnf_file" > "$dir/mysql-config-file"
 
@@ -292,6 +333,13 @@ collect_mysql_info () {
       local trg_arg="$(get_mysqldump_args "$dir/mysql-variables")"
       local dbs="${OPT_DATABASES:-""}"
       get_mysqldump_for "${trg_arg}" "$dbs" > "$dir/mysqldump"
+   fi
+
+   # encrypted tables and tablespaces
+   if [ "${OPT_LIST_ENCRYPTED_TABLES}" = 'yes' ]; then
+      local mysql_version="$(get_var version "$dir/mysql-variables")"
+      collect_encrypted_tables                       > "$dir/encrypted-tables"
+      collect_encrypted_tablespaces ${mysql_version} > "$dir/encrypted-tablespaces"
    fi
 
    # TODO: gather this data in the same format as normal: TS line, stats
