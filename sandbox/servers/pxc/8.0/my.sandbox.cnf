@@ -26,6 +26,7 @@ log-error                  = /tmp/PORT/data/mysqld.log
 innodb_lock_wait_timeout   = 3
 general_log
 general_log_file           = genlog
+local-infile               = 1
 
 binlog_format              = ROW
 wsrep_provider             = LIBGALERA
@@ -41,3 +42,4 @@ innodb_autoinc_lock_mode   = 2
 wsrep-replicate-myisam
 pxc_strict_mode            = DISABLED
 pxc_encrypt_cluster_traffic = 0
+secure-file-priv           = 

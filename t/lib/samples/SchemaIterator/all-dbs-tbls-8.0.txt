@@ -365,6 +365,35 @@ CREATE TABLE `user` (
   PRIMARY KEY (`Host`,`User`)
 ) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='Users and global privileges'
 
+mysql.wsrep_cluster
+CREATE TABLE `wsrep_cluster` (
+  `cluster_uuid` char(36) NOT NULL,
+  `view_id` bigint NOT NULL,
+  `view_seqno` bigint NOT NULL,
+  `protocol_version` int NOT NULL,
+  `capabilities` int NOT NULL,
+  PRIMARY KEY (`cluster_uuid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+
+mysql.wsrep_cluster_members
+CREATE TABLE `wsrep_cluster_members` (
+  `node_uuid` char(36) NOT NULL,
+  `cluster_uuid` char(36) NOT NULL,
+  `node_name` char(32) NOT NULL,
+  `node_incoming_address` varchar(256) NOT NULL,
+  PRIMARY KEY (`node_uuid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+
+mysql.wsrep_streaming_log
+CREATE TABLE `wsrep_streaming_log` (
+  `node_uuid` char(36) NOT NULL,
+  `trx_id` bigint NOT NULL,
+  `seqno` bigint NOT NULL,
+  `flags` int NOT NULL,
+  `frag` longblob NOT NULL,
+  PRIMARY KEY (`node_uuid`,`trx_id`,`seqno`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+
 percona_test.checksums
 CREATE TABLE `checksums` (
   `db_tbl` varchar(128) NOT NULL,
