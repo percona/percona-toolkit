@@ -39,7 +39,7 @@ visit http://www.percona.com/software/.
 
 %build
 %{__perl} Makefile.PL INSTALLDIRS=vendor < /dev/null
-sed -i '499d' Makefile
+#sed -i '499d' Makefile
 make %{?_smp_mflags}
 
 %install
