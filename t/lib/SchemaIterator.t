@@ -169,7 +169,9 @@ SKIP: {
    # Test simple, unfiltered get_db_itr().
    # ########################################################################
    test_so(
-      result    => "$out/all-dbs-tbls-$sandbox_version.txt",
+      result    => $sb->is_cluster_mode 
+	     ? "$out/all-dbs-tbls-cluster-$sandbox_version.txt" 
+		 : "$out/all-dbs-tbls-$sandbox_version.txt",
       test_name => "Iterate all schema objects with dbh",
    );
 
