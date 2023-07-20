@@ -7502,9 +7502,9 @@ sub main {
                   }
                   printf "%s\n", Transformers::hash_to_json(\%jsonOutput);
                } else {
-                  printf "# %s %s %d (%s %d sec) %s\n",
-                     ts(time), $o->get('kill-query') ? 'KILL QUERY' : 'KILL',
-                     $query->{Id}, ($query->{Command} || 'NULL'), $query->{Time},
+                  printf "# CheckTime: %s ,Type: %s ,Query_Id: %d ,User: %s ,Host: %s ,DB: %s (%s %d sec) ,SQL: %s\n",
+                     ts(time), ($o->get('kill-query') || $o->get('kill')) ? 'KILL_QUERY OR KILL' : 'ONLY_PRINT',
+                     $query->{Id},$query->{User},$query->{Host},($query->{db} ? $query->{db} :'none'),($query->{Command} || 'NULL'), $query->{Time},
                      $qinfo;
                }
             }
