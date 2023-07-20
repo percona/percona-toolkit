@@ -452,7 +452,7 @@ _parse_command_line() {
          else
             spec=$(grep "^short form:-$opt\$" "$PT_TMPDIR"/po/* | cut -d ':' -f 1)
             if [ -z "$spec"  ]; then
-               if [ 1 -eq $GLOBAL_CONFIG ]; then
+               if [ $GLOBAL_CONFIG -eq 1 ]; then
                   continue
                else
                   option_error "Unknown option: $real_opt"

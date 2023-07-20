@@ -476,7 +476,7 @@ _parse_command_line() {
          else
             spec=$(grep "^short form:-$opt\$" "$PT_TMPDIR"/po/* | cut -d ':' -f 1)
             if [ -z "$spec"  ]; then
-               if [ 1 -eq $GLOBAL_CONFIG ]; then
+               if [ $GLOBAL_CONFIG -eq 1 ]; then
                   # Not all programs uses the same options and since these options can be stored
                   # in a common config file, we need to skip general options not used by a particular
                   # program
