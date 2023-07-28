@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"regexp"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -120,5 +122,20 @@ func TestCollectPerDatabaseInfo(t *testing.T) {
 				conn.Close()
 			}
 		})
+	}
+}
+
+/*
+Option --version
+*/
+func TestVersionOption(t *testing.T) {
+	out, err := exec.Command("../../../bin/"+TOOLNAME, "--version").Output()
+	if err != nil {
+		t.Errorf("error executing %s --version: %s", TOOLNAME, err.Error())
+	}
+	// We are using MustCompile here, because hard-coded RE should not fail
+	re := regexp.MustCompile(TOOLNAME + `\n.*Version v?\d+\.\d+\.\d+\n`)
+	if !re.Match(out) {
+		t.Errorf("%s --version returns wrong result:\n%s", TOOLNAME, out)
 	}
 }

@@ -176,11 +176,13 @@ func processCliParams(baseTempPath string, usageWriter io.Writer) (*cliOptions, 
 	if usageWriter != nil {
 		app.UsageWriter(usageWriter)
 		app.Terminate(nil)
+	} else {
+		app.UsageWriter(os.Stdout)
 	}
 
 	// Add support for --version flag
 	app.Version(TOOLNAME + "\nVersion " + Version + "\nBuild: " + Build + " using " + GoVersion +
-		" Go version: " + GoVersion)
+		"\nCommit:" + Commit)
 
 	opts := &cliOptions{
 		CollectCommand:  app.Command(collectCmd, "Collect, sanitize, pack and encrypt data from pt-tools."),
