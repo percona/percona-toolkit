@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	TOOLNAME = "pt-pg-summary"
+	toolname = "pt-pg-summary"
 )
 
 // We do not set anything here, these variables are defined by the Makefile
@@ -215,7 +215,7 @@ func safeConnString(opts connOpts, dbName string) string {
 }
 
 func parseCommandLineOpts(args []string) (cliOptions, error) {
-	app := kingpin.New(TOOLNAME, "Percona Toolkit - PostgreSQL Summary")
+	app := kingpin.New(toolname, "Percona Toolkit - PostgreSQL Summary")
 	app.UsageWriter(os.Stdout)
 	// version, commit and date will be set at build time by the compiler -ldflags param
 	app.Version(fmt.Sprintf("%s\nVersion %s\nBuild: %s using %s\nCommit: %s",

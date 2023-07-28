@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	TOOLNAME = "pt-k8s-debug-collector"
+	toolname = "pt-k8s-debug-collector"
 )
 
 // We do not set anything here, these variables are defined by the Makefile
@@ -38,7 +38,7 @@ func main() {
 	flag.Parse()
 
 	if version {
-		fmt.Println(TOOLNAME)
+		fmt.Println(toolname)
 		fmt.Printf("Version %s\n", Version)
 		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
 		fmt.Printf("Commit: %s\n", Commit)

@@ -67,7 +67,7 @@ type myDefaults struct {
 }
 
 const (
-	TOOLNAME = "pt-secure-collect"
+	toolname = "pt-secure-collect"
 
 	decryptCmd       = "decrypt"
 	encryptCmd       = "encrypt"
@@ -172,7 +172,7 @@ func processCliParams(baseTempPath string, usageWriter io.Writer) (*cliOptions, 
 	}
 	msg += "\n "
 
-	app := kingpin.New(TOOLNAME, msg)
+	app := kingpin.New(toolname, msg)
 	if usageWriter != nil {
 		app.UsageWriter(usageWriter)
 		app.Terminate(nil)
@@ -181,7 +181,7 @@ func processCliParams(baseTempPath string, usageWriter io.Writer) (*cliOptions, 
 	}
 
 	// Add support for --version flag
-	app.Version(TOOLNAME + "\nVersion " + Version + "\nBuild: " + Build + " using " + GoVersion +
+	app.Version(toolname + "\nVersion " + Version + "\nBuild: " + Build + " using " + GoVersion +
 		"\nCommit:" + Commit)
 
 	opts := &cliOptions{
