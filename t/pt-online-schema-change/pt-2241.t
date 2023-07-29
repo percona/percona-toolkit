@@ -95,6 +95,15 @@ unlike(
 # #############################################################################
 # Done.
 # #############################################################################
+diag("Setting slave delay to 0 seconds");
+$slave1_dbh->do('STOP SLAVE');
+$slave2_dbh->do('STOP SLAVE');
+$master_dbh->do("RESET MASTER");
+$slave1_dbh->do('RESET SLAVE');
+$slave1_dbh->do('START SLAVE');
+$slave2_dbh->do('RESET SLAVE');
+$slave2_dbh->do('START SLAVE');
+
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
