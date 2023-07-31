@@ -51,6 +51,11 @@ sub before_copy_rows {
    print "PLUGIN before_copy_rows\n";
 }
  
+sub on_copy_rows_after_nibble {
+   my ($self, %args) = @_;
+   print "PLUGIN on_copy_rows_after_nibble\n";
+}
+ 
 sub after_copy_rows {
    my ($self, %args) = @_;
    print "PLUGIN after_copy_rows\n";
