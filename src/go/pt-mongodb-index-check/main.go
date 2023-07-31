@@ -42,7 +42,7 @@ type response struct {
 }
 
 const (
-	TOOLNAME = "pt-mongodb-index-check"
+	toolname = "pt-mongodb-index-check"
 )
 
 // We do not set anything here, these variables are defined by the Makefile
@@ -58,7 +58,7 @@ func main() {
 	kongctx := kong.Parse(&args, kong.UsageOnError())
 
 	if kongctx.Command() == "version" {
-		fmt.Println(TOOLNAME)
+		fmt.Println(toolname)
 		fmt.Printf("Version %s\n", Version)
 		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
 		fmt.Printf("Commit: %s\n", Commit)

@@ -106,7 +106,7 @@ func TestParseArgs(t *testing.T) {
 		want *cliOptions
 	}{
 		{
-			args: []string{TOOLNAME}, // arg[0] is the command itself
+			args: []string{toolname}, // arg[0] is the command itself
 			want: &cliOptions{
 				Host:            "mongodb://" + DEFAULT_HOST,
 				LogLevel:        DEFAULT_LOGLEVEL,
@@ -117,11 +117,11 @@ func TestParseArgs(t *testing.T) {
 			},
 		},
 		{
-			args: []string{TOOLNAME, "zapp.brannigan.net:27018/samples", "--help"},
+			args: []string{toolname, "zapp.brannigan.net:27018/samples", "--help"},
 			want: nil,
 		},
 		{
-			args: []string{TOOLNAME, "zapp.brannigan.net:27018/samples"},
+			args: []string{toolname, "zapp.brannigan.net:27018/samples"},
 			want: &cliOptions{
 				Host:            "mongodb://zapp.brannigan.net:27018/samples",
 				LogLevel:        DEFAULT_LOGLEVEL,

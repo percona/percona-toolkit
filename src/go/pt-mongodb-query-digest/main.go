@@ -30,7 +30,7 @@ import (
 )
 
 const (
-	TOOLNAME = "pt-mongodb-query-digest"
+	toolname = "pt-mongodb-query-digest"
 
 	DEFAULT_AUTHDB          = "admin"
 	DEFAULT_HOST            = "localhost:27017"
@@ -90,16 +90,16 @@ func main() {
 	log.SetLevel(logLevel)
 
 	if opts.Version {
-		fmt.Println(TOOLNAME)
+		fmt.Println(toolname)
 		fmt.Printf("Version %s\n", Version)
 		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
 		fmt.Printf("Commit: %s\n", Commit)
 		return
 	}
 
-	conf := config.DefaultConfig(TOOLNAME)
+	conf := config.DefaultConfig(toolname)
 	if !conf.GetBool("no-version-check") && !opts.NoVersionCheck {
-		advice, err := versioncheck.CheckUpdates(TOOLNAME, Version)
+		advice, err := versioncheck.CheckUpdates(toolname, Version)
 		if err != nil {
 			log.Infof("cannot check version updates: %s", err.Error())
 		} else if advice != "" {
@@ -361,7 +361,7 @@ func getClientOptions(opts *cliOptions) (*options.ClientOptions, error) {
 
 func getHeaders(opts *cliOptions) []string {
 	h := []string{
-		fmt.Sprintf("%s - %s\n", TOOLNAME, time.Now().Format(time.RFC1123Z)),
+		fmt.Sprintf("%s - %s\n", toolname, time.Now().Format(time.RFC1123Z)),
 		fmt.Sprintf("Host: %s\n", opts.Host),
 		fmt.Sprintf("Skipping profiled queries on these collections: %v\n", opts.SkipCollections),
 	}
