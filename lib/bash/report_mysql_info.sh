@@ -1277,9 +1277,9 @@ report_jemalloc_enabled() {
    local GENERAL_JEMALLOC_STATUS=0
    
    for pid in $(grep '/mysqld ' "$instances_file" | awk '{print $1;}'); do
-	  local jemalloc_status="$(get_var "pt-summary-internal-jemalloc_enabled_for_pid_${pid}" "${variables_file}")"
-	  if [ -z $jemalloc_status ]; then
-		  continue
+      local jemalloc_status="$(get_var "pt-summary-internal-jemalloc_enabled_for_pid_${pid}" "${variables_file}")"
+      if [ -z $jemalloc_status ]; then
+         continue
       elif [ $jemalloc_status = 0 ]; then
          echo "jemalloc is not enabled in mysql config for process with id ${pid}" 
       else
