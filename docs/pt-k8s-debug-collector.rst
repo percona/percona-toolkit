@@ -133,13 +133,17 @@ Targeted custom resource name. Supported values:
 
 * ``psmdb`` - MongoDB
 
-* ``pg`` - PostgreSQL 
+* ``pg`` - PostgreSQL Operator v1 (deprecated)
+
+* ``pgv2`` - PostgreSQL Operator v2
 
 * ``ps`` - MySQL
 
 * ``none`` - Collect only general Kubernetes data, do not collect anything specific to the particular operator). 
 
-Default: ``none``
+* ``auto`` - Auto-detect custom resource
+
+Default: ``auto``
 
 ``--namespace`` 
 
