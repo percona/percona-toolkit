@@ -131,7 +131,6 @@ $master_dbh->do("CREATE TABLE test.t2(a INT PRIMARY KEY) ENCRYPTION='Y'");
 
 $out = `bash $trunk/bin/$tool --list-encrypted-tables -- --defaults-file=/tmp/12345/my.sandbox.cnf`;
 
-#diag($out);
 like(
    $out,
    qr/Encryption/,
