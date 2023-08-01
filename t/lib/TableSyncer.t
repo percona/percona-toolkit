@@ -1023,7 +1023,6 @@ like(
    qr/Complete test coverage/,
    '_d() works'
 );
-#$dbh->do('DROP DATABASE issue_96');
 $src_dbh->disconnect() if $src_dbh;
 $dst_dbh->disconnect() if $dst_dbh;
 $sb->wipe_clean($dbh);
