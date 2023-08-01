@@ -25,7 +25,7 @@ type cmdlineArgs struct {
 	CheckDuplicated struct{} `cmd:"" name:"check-duplicates" help:"Check for duplicated indexes."`
 	CheckAll        struct{} `cmd:"" name:"check-all" help:"Check for unused and duplicated indexes."`
 	ShowHelp        struct{} `cmd:"" default:"1"`
-	Version         struct{} `cmd:"" name:"version"`
+	Version         kong.VersionFlag
 
 	AllDatabases bool     `name:"all-databases" xor:"db" help:"Check in all databases excluding system dbs"`
 	Databases    []string `name:"databases" xor:"db" help:"Comma separated list of databases to check"`
@@ -55,15 +55,9 @@ var (
 
 func main() {
 	var args cmdlineArgs
-	kongctx := kong.Parse(&args, kong.UsageOnError())
-
-	if kongctx.Command() == "version" {
-		fmt.Println(toolname)
-		fmt.Printf("Version %s\n", Version)
-		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
-		fmt.Printf("Commit: %s\n", Commit)
-		return
-	}
+	kongctx := kong.Parse(&args, kong.UsageOnError(),
+		kong.Vars{"version": fmt.Sprintf("%s\nVersion %s\nBuild: %s using %s\nCommit: %s",
+			toolname, Version, Build, GoVersion, Commit)})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
