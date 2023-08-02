@@ -84,6 +84,7 @@ OPT_VERSION=""    # If --version was specified
 OPT_HELP=""       # If --help was specified
 OPT_ASK_PASS=""   # If --ask-pass was specified
 PO_DIR=""         # Directory with program option spec files
+GLOBAL_CONFIG=0   # We ignore non-recognized options in global configs
 
 usage() {
    local file="$1"
@@ -212,9 +213,15 @@ parse_options() {
          _parse_config_files "$user_config_file"
       done
    else
-      _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf" "/etc/percona-toolkit/$TOOL.conf"
+       GLOBAL_CONFIG=1
+      _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf"
+       GLOBAL_CONFIG=0
+       _parse_config_files "/etc/percona-toolkit/$TOOL.conf"
       if [ "${HOME:-}" ]; then
-         _parse_config_files "$HOME/.percona-toolkit.conf" "$HOME/.$TOOL.conf"
+         GLOBAL_CONFIG=1
+         _parse_config_files "$HOME/.percona-toolkit.conf"
+         GLOBAL_CONFIG=0
+         _parse_config_files "$HOME/.$TOOL.conf"
       fi
    fi
 
@@ -321,7 +328,7 @@ _parse_config_files() {
 
          echo "$config_opt" | grep '^[ ]*[^#]' >/dev/null 2>&1 || continue
 
-         config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/[ ]+#.*$//')"
+		 config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/\s[ ]*#.*$//')"
 
          [ "$config_opt" = "" ] && continue
 
@@ -413,7 +420,11 @@ _parse_command_line() {
          else
             spec=$(grep "^short form:-$opt\$" "$PT_TMPDIR"/po/* | cut -d ':' -f 1)
             if [ -z "$spec"  ]; then
-               continue
+               if [ $GLOBAL_CONFIG -eq 1 ]; then
+                  continue
+               else
+                  option_error "Unknown option: $real_opt"
+               fi
             fi
          fi
 

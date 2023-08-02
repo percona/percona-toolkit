@@ -3818,7 +3818,7 @@ sub BUILDARGS {
    if ( ($args->{line_width} || '') eq 'auto' ) {
       die "Cannot auto-detect line width because the Term::ReadKey module "
          . "is not installed" unless $have_term;
-      ($args->{line_width}) = GetTerminalSize();
+      ($args->{line_width}) = Term::ReadKey::GetTerminalSize();
       PTDEBUG && _d('Line width:', $args->{line_width});
    }
 

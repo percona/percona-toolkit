@@ -77,6 +77,7 @@ OPT_VERSION=""    # If --version was specified
 OPT_HELP=""       # If --help was specified
 OPT_ASK_PASS=""   # If --ask-pass was specified
 PO_DIR=""         # Directory with program option spec files
+GLOBAL_CONFIG=0   # We ignore non-recognized options in global configs
 
 usage() {
    local file="$1"
@@ -205,9 +206,15 @@ parse_options() {
          _parse_config_files "$user_config_file"
       done
    else
-      _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf" "/etc/percona-toolkit/$TOOL.conf"
+       GLOBAL_CONFIG=1
+      _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf"
+       GLOBAL_CONFIG=0
+       _parse_config_files "/etc/percona-toolkit/$TOOL.conf"
       if [ "${HOME:-}" ]; then
-         _parse_config_files "$HOME/.percona-toolkit.conf" "$HOME/.$TOOL.conf"
+         GLOBAL_CONFIG=1
+         _parse_config_files "$HOME/.percona-toolkit.conf"
+         GLOBAL_CONFIG=0
+         _parse_config_files "$HOME/.$TOOL.conf"
       fi
    fi
 
@@ -314,7 +321,7 @@ _parse_config_files() {
 
          echo "$config_opt" | grep '^[ ]*[^#]' >/dev/null 2>&1 || continue
 
-         config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/[ ]+#.*$//')"
+		 config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/\s[ ]*#.*$//')"
 
          [ "$config_opt" = "" ] && continue
 
@@ -406,7 +413,11 @@ _parse_command_line() {
          else
             spec=$(grep "^short form:-$opt\$" "$PT_TMPDIR"/po/* | cut -d ':' -f 1)
             if [ -z "$spec"  ]; then
-               continue
+               if [ $GLOBAL_CONFIG -eq 1 ]; then
+                  continue
+               else
+                  option_error "Unknown option: $real_opt"
+               fi
             fi
          fi
 
@@ -872,8 +883,20 @@ collect_mysqld_instances () {
 find_my_cnf_file() {
    local file="$1"
    local port="${2:-""}"
+   local pid_file="${3:-""}"
 
    local cnf_file=""
+
+   if [ "$pid_file" ]; then
+      local pid=$(cat "$pid_file")
+      cnf_file="$(grep --max-count 1 -E "^\s*$pid\s+" "$file" \
+         | awk 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }')"
+
+      if [ -n "$cnf_file" ]; then
+         echo "$cnf_file"
+         return
+      fi
+   fi
 
    if [ "$port" ]; then
       cnf_file="$(grep --max-count 1 "/mysqld.*--port=$port" "$file" \
@@ -883,11 +906,10 @@ find_my_cnf_file() {
          echo "$cnf_file"
          return
       fi
+   else
+      cnf_file="$(grep --max-count 1 '/mysqld' "$file" \
+         | awk 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }')"
    fi
-
-   cnf_file="$(grep --max-count 1 '/mysqld' "$file" \
-      | awk 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }')"
-
 
    if [ -z "$cnf_file" ]; then
       if [ -e "/etc/my.cnf" ]; then
@@ -990,6 +1012,43 @@ collect_internal_vars () {
          i=$(($i + 1))
       done < "$mysqld_executables"
    fi
+
+   local JEMALLOC_STATUS=''
+   local GENERAL_JEMALLOC_STATUS=0
+   local JEMALLOC_LOCATION=''
+
+   for pid in $(pidof mysqld); do
+      grep -qc jemalloc /proc/${pid}/environ || ldd $(which mysqld) 2>/dev/null | grep -qc jemalloc
+      jemalloc_status=$?
+      if [ $jemalloc_status = 1 ]; then
+         echo "pt-summary-internal-jemalloc_enabled_for_pid_${pid}    0"
+      else
+         echo "pt-summary-internal-jemalloc_enabled_for_pid_${pid}    1"
+         GENERAL_JEMALLOC_STATUS=1
+      fi
+   done
+
+   if [ $GENERAL_JEMALLOC_STATUS -eq 1 ]; then
+      JEMALLOC_LOCATION=$(find /usr/lib64/ /usr/lib/x86_64-linux-gnu /usr/lib -name "libjemalloc.*" 2>/dev/null | head -n 1)
+      echo "pt-summary-internal-jemalloc_location    ${JEMALLOC_LOCATION}"
+   fi 
+}
+
+collect_keyring_plugins() {
+    $CMD_MYSQL $EXT_ARGV --table -ss -e 'SELECT PLUGIN_NAME, PLUGIN_STATUS FROM INFORMATION_SCHEMA.PLUGINS WHERE PLUGIN_NAME LIKE "keyring%";'
+}
+
+collect_encrypted_tables() {
+    $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT TABLE_SCHEMA, TABLE_NAME, CREATE_OPTIONS FROM INFORMATION_SCHEMA.TABLES WHERE CREATE_OPTIONS LIKE '%ENCRYPTION=_Y_%';"
+}
+
+collect_encrypted_tablespaces() {
+    local version="$1"
+    if [ "$version" '<' "8.0" ]; then
+        $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT SPACE, NAME, SPACE_TYPE from INFORMATION_SCHEMA.INNODB_SYS_TABLESPACES where FLAG&8192 = 8192;"
+    else
+        $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT SPACE, NAME, SPACE_TYPE from INFORMATION_SCHEMA.INNODB_TABLESPACES where FLAG&8192 = 8192;"
+    fi
 }
 
 get_mysqldump_for () {
@@ -1047,6 +1106,7 @@ collect_mysql_info () {
    collect_mysql_processlist   > "$dir/mysql-processlist"   
    collect_mysql_users         > "$dir/mysql-users"
    collect_mysql_roles         > "$dir/mysql-roles"
+   collect_keyring_plugins     > "$dir/keyring-plugins"
 
    collect_mysqld_instances   "$dir/mysql-variables"  > "$dir/mysqld-instances"
    collect_mysqld_executables "$dir/mysqld-instances" > "$dir/mysqld-executables"
@@ -1061,15 +1121,15 @@ collect_mysql_info () {
    local current_time="$($CMD_MYSQL $EXT_ARGV -ss -e \
                          "SELECT LEFT(NOW() - INTERVAL ${uptime} SECOND, 16)")"
 
-   local port="$(get_var port "$dir/mysql-variables")"
-   local cnf_file="$(find_my_cnf_file "$dir/mysqld-instances" ${port})"
-
-   [ -e "$cnf_file" ] && cat "$cnf_file" > "$dir/mysql-config-file"
-
    local pid_file="$(get_var "pid_file" "$dir/mysql-variables")"
    local pid_file_exists=""
    [ -e "${pid_file}" ] && pid_file_exists=1
    echo "pt-summary-internal-pid_file_exists    $pid_file_exists" >> "$dir/mysql-variables"
+
+   local port="$(get_var port "$dir/mysql-variables")"
+   local cnf_file="$(find_my_cnf_file "$dir/mysqld-instances" ${port} ${pid_file})"
+
+   [ -e "$cnf_file" ] && cat "$cnf_file" > "$dir/mysql-config-file"
 
    echo "pt-summary-internal-current_time    $current_time" >> "$dir/mysql-variables"
    echo "pt-summary-internal-Config_File_path    $cnf_file" >> "$dir/mysql-variables"
@@ -1079,6 +1139,12 @@ collect_mysql_info () {
       local trg_arg="$(get_mysqldump_args "$dir/mysql-variables")"
       local dbs="${OPT_DATABASES:-""}"
       get_mysqldump_for "${trg_arg}" "$dbs" > "$dir/mysqldump"
+   fi
+
+   if [ "${OPT_LIST_ENCRYPTED_TABLES}" = 'yes' ]; then
+      local mysql_version="$(get_var version "$dir/mysql-variables")"
+      collect_encrypted_tables                       > "$dir/encrypted-tables"
+      collect_encrypted_tablespaces ${mysql_version} > "$dir/encrypted-tablespaces"
    fi
 
    (
@@ -1181,24 +1247,6 @@ get_plugin_status () {
 
    echo ${status:-"Not found"}
 }
-
-collect_keyring_plugins() {
-    $CMD_MYSQL $EXT_ARGV --table -ss -e 'SELECT PLUGIN_NAME, PLUGIN_STATUS FROM INFORMATION_SCHEMA.PLUGINS WHERE PLUGIN_NAME LIKE "keyring%";'
-}
-
-collect_encrypted_tables() {
-    $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT TABLE_SCHEMA, TABLE_NAME, CREATE_OPTIONS FROM INFORMATION_SCHEMA.TABLES WHERE CREATE_OPTIONS LIKE '%ENCRYPTION=\"Y\"%';"
-}
-
-collect_encrypted_tablespaces() {
-    local version="$1"
-    if [ "$version" '<' "8.0" ]; then
-        $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT SPACE, NAME, SPACE_TYPE from INFORMATION_SCHEMA.INNODB_SYS_TABLESPACES where FLAG&8192 = 8192;"
-    else
-        $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT SPACE, NAME, SPACE_TYPE from INFORMATION_SCHEMA.INNODB_TABLESPACES where FLAG&8192 = 8192;"
-    fi
-}
-
 
 
 _NO_FALSE_NEGATIVES=""
@@ -2293,30 +2341,31 @@ parse_wsrep_provider_options () {
 }
 
 report_jemalloc_enabled() {
-  local JEMALLOC_STATUS=''
-  local GENERAL_JEMALLOC_STATUS=0
-  local JEMALLOC_LOCATION=''
+   local instances_file="$1"
+   local variables_file="$2"
+   local GENERAL_JEMALLOC_STATUS=0
+   
+   for pid in $(grep '/mysqld ' "$instances_file" | awk '{print $1;}'); do
+	  local jemalloc_status="$(get_var "pt-summary-internal-jemalloc_enabled_for_pid_${pid}" "${variables_file}")"
+	  if [ -z $jemalloc_status ]; then
+		  continue
+      elif [ $jemalloc_status = 0 ]; then
+         echo "jemalloc is not enabled in mysql config for process with id ${pid}" 
+      else
+         echo "jemalloc enabled in mysql config for process with id ${pid}"
+		 GENERAL_JEMALLOC_STATUS=1
+      fi
+   done
 
-  for pid in $(pidof mysqld); do
-     grep -qc jemalloc /proc/${pid}/environ || ldd $(which mysqld) 2>/dev/null | grep -qc jemalloc
-     jemalloc_status=$?
-     if [ $jemalloc_status = 1 ]; then
-       echo "jemalloc is not enabled in mysql config for process with id ${pid}" 
-     else
-       echo "jemalloc enabled in mysql config for process with id ${pid}"
-       GENERAL_JEMALLOC_STATUS=1
-     fi
-  done
+   if [ $GENERAL_JEMALLOC_STATUS -eq 1 ]; then
+      local jemalloc_location="$(get_var "pt-summary-internal-jemalloc_location" "${variables_file}")"
+      if [ -n "$jemalloc_location" ]; then
+	     echo "Using jemalloc from $jemalloc_location"
+      else
+         echo "Jemalloc library not found"
+      fi
+   fi
 
-  if [ $GENERAL_JEMALLOC_STATUS -eq 1 ]; then
-     JEMALLOC_LOCATION=$(find /usr/lib64/ /usr/lib/x86_64-linux-gnu /usr/lib -name "libjemalloc.*" 2>/dev/null | head -n 1)
-     if [ -z "$JEMALLOC_LOCATION" ]; then
-       echo "Jemalloc library not found"
-     else
-       echo "Using jemalloc from $JEMALLOC_LOCATION"
-     fi
-  fi
- 
 }
 
 report_mysql_summary () {
@@ -2522,7 +2571,7 @@ report_mysql_summary () {
       fi
    fi
 
-   local has_rocksdb=$($CMD_MYSQL $EXT_ARGV -ss -e 'SHOW ENGINES' 2>/dev/null | grep -i 'rocksdb')
+   local has_rocksdb=$(cat $dir/mysql-plugins | grep -i 'rocksdb.*active.*storage engine')
    if [ ! -z "$has_rocksdb" ]; then
        section "RocksDB"
        section_rocksdb "$dir/mysql-variables" "$dir/mysql-status"
@@ -2547,13 +2596,17 @@ report_mysql_summary () {
    fi
 
    section "Encryption"
-   local keyring_plugins="$(collect_keyring_plugins)"
+   local keyring_plugins=""
    local encrypted_tables=""
    local encrypted_tablespaces=""
-   if [ "${OPT_LIST_ENCRYPTED_TABLES}" = 'yes' ]; then 
-       local mysql_version="$(get_var version "$dir/mysql-variables")"
-       encrypted_tables="$(collect_encrypted_tables)"
-       encrypted_tablespaces="$(collect_encrypted_tablespaces ${mysql_version})"
+   if [ -s "$dir/keyring-plugins" ]; then
+	   keyring_plugins="$(cat $dir/keyring-plugins)"
+   fi
+   if [ -s "$dir/encrypted-tables" ]; then
+      encrypted_tables="$(cat $dir/encrypted-tables)"
+   fi
+   if [ -s "$dir/encrypted-tablespaces" ]; then
+      encrypted_tablespaces="$(cat $dir/encrypted-tablespaces)"
    fi
 
    format_keyring_plugins "$keyring_plugins" "$encrypted_tables"
@@ -2588,7 +2641,7 @@ report_mysql_summary () {
    fi
 
    section "Memory management library"
-   report_jemalloc_enabled
+   report_jemalloc_enabled "$dir/mysqld-instances" "$dir/mysql-variables"
 
    section "The End"
 }

@@ -33,6 +33,9 @@ if ( !$dbh1 || !$dbh2 ) {
 elsif ( $sandbox_version lt '5.5' ) {
    plan skip_all => "Metadata locks require MySQL 5.5 and newer";
 }
+elsif ($sb->is_cluster_mode) {
+    plan skip_all => 'Not for PXC';
+}
 
 my $output;
 my $master_dsn = $sb->dsn_for('master');

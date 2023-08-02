@@ -23,7 +23,7 @@ use PerconaTest;
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master', {no_lc=>1});
+my $dbh = $sb->get_dbh_for('master', {no_lc=>1, AutoCommit => 1});
 
 if ( !$dbh ) {
    plan skip_all => "Cannot connect to sandbox master";
@@ -91,22 +91,22 @@ my $res = $dbh->selectall_arrayref(
    { Slice => {} });
 is_deeply(
    $res,
-   [  {  checksum   => '4222630712410165197',
-         last_seen  => '2007-10-15 21:45:10',
-         first_seen => '2007-10-15 21:45:10'
-      },
-      {  checksum   => '9186595214868493422',
-         last_seen  => '2009-01-01 00:00:00',
-         first_seen => '2009-01-01 00:00:00'
-      },
-      {  checksum   => '11676753765851784517',
+   [  {  checksum   => '3E4FB43148C4B07CD4CD74934382A184',
+         last_seen  => '2007-12-18 11:49:07',
+         first_seen => '2005-12-19 16:56:31'
+      }, 
+      {  checksum   => '538CA093E701E0CBA20C29AF174CE545',
          last_seen  => '2007-12-18 11:49:30',
          first_seen => '2007-12-18 11:48:27'
       },
-      {  checksum   => '15334040482108055940',
-         last_seen  => '2007-12-18 11:49:07',
-         first_seen => '2005-12-19 16:56:31'
-      }
+	  {  checksum   => 'A853B50CDEB4866B3A99CC42AEDCCFCD',
+         last_seen  => '2007-10-15 21:45:10',
+         first_seen => '2007-10-15 21:45:10'
+      },
+      {  checksum   => 'AE9D6BB6AF470B997F7D57ACDD8A346E',
+         last_seen  => '2009-01-01 00:00:00',
+         first_seen => '2009-01-01 00:00:00'
+      },
    ],
    'Updates last_seen'
 );
@@ -128,7 +128,7 @@ $res = $qv->get_review_info($fp);
 is_deeply(
    $res,
    {
-      checksum_conv => 'D3A1C1CD468791EE',
+      checksum_conv => '1C094E0B4F345C8DD3A1C1CD468791EE',
       first_seen    => '2008-12-22 13:13:13',
       last_seen     => '2008-12-22 13:13:13',
       reviewed_by   => undef,

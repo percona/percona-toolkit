@@ -497,77 +497,80 @@ is_deeply(
 # ###########################################################################
 # Test locking.
 # ###########################################################################
-make_plugins();
+SKIP: {
+   skip 'Not for PXC' if ( $sb->is_cluster_mode );
 
-sync_table(
-   src  => "test.test1",
-   dst  => "test.test2",
-   lock => 1,
-);
+   make_plugins();
 
-# The locks should be released.
-ok($src_dbh->do('select * from test.test4'), 'Cycle locks released');
-
-sync_table(
-   src  => "test.test1",
-   dst  => "test.test2",
-   lock => 2,
-);
-
-# The locks should be released.
-ok($src_dbh->do('select * from test.test4'), 'Table locks released');
-
-sync_table(
-   src  => "test.test1",
-   dst  => "test.test2",
-   lock => 3,
-);
-
-ok(
-   $dbh->do('replace into test.test3 select * from test.test3 limit 0'),
-   'Does not lock in level 3 locking'
-);
-
-eval {
-   $syncer->lock_and_wait(
-      src         => $src,
-      dst         => $dst,
-      lock        => 3,
-      lock_level  => 3,
-      replicate   => 0,
-      timeout_ok  => 1,
-      transaction => 0,
-      wait        => 60,
+   sync_table(
+      src  => "test.test1",
+      dst  => "test.test2",
+      lock => 1,
    );
-};
-is($EVAL_ERROR, '', 'Locks in level 3');
 
-# See DBI man page.
-use POSIX ':signal_h';
-my $mask = POSIX::SigSet->new(SIGALRM);    # signals to mask in the handler
-my $action = POSIX::SigAction->new( sub { die "maatkit timeout" }, $mask, );
-my $oldaction = POSIX::SigAction->new();
-sigaction( SIGALRM, $action, $oldaction );
+   # The locks should be released.
+   ok($src_dbh->do('select * from test.test4'), 'Cycle locks released');
 
-throws_ok (
-   sub {
-      alarm 1;
-      $dbh->do('replace into test.test3 select * from test.test3 limit 0');
-   },
-   qr/maatkit timeout/,
-   "Level 3 lock NOT released",
-);
+   sync_table(
+      src  => "test.test1",
+      dst  => "test.test2",
+      lock => 2,
+   );
 
-# Kill the DBHs it in the right order: there's a connection waiting on
-# a lock.
-$src_dbh->disconnect();
-$dst_dbh->disconnect();
-$src_dbh = $sb->get_dbh_for('master');
-$dst_dbh = $sb->get_dbh_for('slave1');
+   # The locks should be released.
+   ok($src_dbh->do('select * from test.test4'), 'Table locks released');
 
-$src->{dbh} = $src_dbh;
-$dst->{dbh} = $dst_dbh;
+   sync_table(
+      src  => "test.test1",
+      dst  => "test.test2",
+      lock => 3,
+   );
 
+   ok(
+      $dbh->do('replace into test.test3 select * from test.test3 limit 0'),
+      'Does not lock in level 3 locking'
+   );
+
+   eval {
+      $syncer->lock_and_wait(
+         src         => $src,
+         dst         => $dst,
+         lock        => 3,
+         lock_level  => 3,
+         replicate   => 0,
+         timeout_ok  => 1,
+         transaction => 0,
+         wait        => 60,
+      );
+   };
+   is($EVAL_ERROR, '', 'Locks in level 3');
+
+   # See DBI man page.
+   use POSIX ':signal_h';
+   my $mask = POSIX::SigSet->new(SIGALRM);    # signals to mask in the handler
+   my $action = POSIX::SigAction->new( sub { die "maatkit timeout" }, $mask, );
+   my $oldaction = POSIX::SigAction->new();
+   sigaction( SIGALRM, $action, $oldaction );
+
+   throws_ok (
+      sub {
+         alarm 1;
+         $dbh->do('replace into test.test3 select * from test.test3 limit 0');
+      },
+      qr/maatkit timeout/,
+      "Level 3 lock NOT released",
+   );
+
+   # Kill the DBHs it in the right order: there's a connection waiting on
+   # a lock.
+   $src_dbh->disconnect();
+   $dst_dbh->disconnect();
+   $src_dbh = $sb->get_dbh_for('master');
+   $dst_dbh = $sb->get_dbh_for('slave1');
+
+   $src->{dbh} = $src_dbh;
+   $dst->{dbh} = $dst_dbh;
+}
 # ###########################################################################
 # Test TableSyncGroupBy.
 # ###########################################################################
