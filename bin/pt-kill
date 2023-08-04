@@ -47,7 +47,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.5.1';
+our $VERSION = '3.5.4';
 
 use strict;
 use warnings FATAL => 'all';
@@ -2787,7 +2787,7 @@ sub any_unix_timestamp {
 
 sub make_checksum {
    my ( $val ) = @_;
-   my $checksum = uc substr(md5_hex($val), -16);
+   my $checksum = uc md5_hex($val);
    PTDEBUG && _d($checksum, 'checksum for', $val);
    return $checksum;
 }
@@ -2977,13 +2977,15 @@ sub get_create_table {
    eval { $href = $dbh->selectrow_hashref($show_sql); };
    if ( my $e = $EVAL_ERROR ) {
       PTDEBUG && _d($old_sql_mode);
-      $dbh->do($old_sql_mode);
+      eval { $dbh->do($old_sql_mode); };
+      PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
 
       die $e;
    }
 
    PTDEBUG && _d($old_sql_mode);
-   $dbh->do($old_sql_mode);
+   eval { $dbh->do($old_sql_mode); };
+   PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
 
    my ($key) = grep { m/create (?:table|view)/i } keys %$href;
    if ( !$key ) {
@@ -3012,7 +3014,7 @@ sub parse {
 
    my $engine = $self->get_engine($ddl);
 
-   my @defs   = $ddl =~ m/^(\s+`.*?),?$/gm;
+   my @defs = $ddl =~ m/(?:(?<=,\n)|(?<=\(\n))(\s+`(?:.|\n)+?`.+?),?\n/g;
    my @cols   = map { $_ =~ m/`([^`]+)`/ } @defs;
    PTDEBUG && _d('Table cols:', join(', ', map { "`$_`" } @cols));
 
@@ -3193,8 +3195,7 @@ sub get_keys {
    my $clustered_key = undef;
 
    KEY:
-   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY .*)$/gm ) {
-
+   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY [\s\S]*?\),?.*)$/gm ) {
       next KEY if $key =~ m/FOREIGN/;
 
       my $key_ddl = $key;
@@ -3204,7 +3205,7 @@ sub get_keys {
          $key =~ s/USING HASH/USING BTREE/;
       }
 
-      my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \((.+)\)/;
+      my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \(([\s\S]+)\)/;
       my ( $special ) = $key =~ m/(FULLTEXT|SPATIAL)/;
       $type = $type || $special || 'BTREE';
       my ($name) = $key =~ m/(PRIMARY|`[^`]*`)/;
@@ -3502,10 +3503,10 @@ sub parse_event {
             else {
                PTDEBUG && _d('Saving new query, state', $curr->[STATE]);
                push @new_cxn, [
-                  @{$curr}[0..7],           # proc info
-                  int($query_start),        # START
-                  $etime,                   # ETIME
-                  $time,                    # FSEEN
+                  @{$curr}[0..7],                  # proc info
+                  $query_start,                    # START
+                  $etime,                          # ETIME
+                  $time,                           # FSEEN
                   { ($curr->[STATE] || "") => 0 }, # PROFILE
                ];
             }
@@ -3516,10 +3517,10 @@ sub parse_event {
          if ( $curr->[INFO] && defined $curr->[TIME] ) {
             PTDEBUG && _d('Saving query of new cxn, state', $curr->[STATE]);
             push @new_cxn, [
-               @{$curr}[0..7],           # proc info
-               int($query_start),        # START
-               $etime,                   # ETIME
-               $time,                    # FSEEN
+               @{$curr}[0..7],                  # proc info
+               $query_start,                    # START
+               $etime,                          # ETIME
+               $time,                           # FSEEN
                { ($curr->[STATE] || "") => 0 }, # PROFILE
             ];
          }
@@ -3951,6 +3952,7 @@ sub get_slaves {
             dsn            => $dsn,
             slave_user     => $o->got('slave-user') ? $o->get('slave-user') : '',
             slave_password => $o->got('slave-password') ? $o->get('slave-password') : '',
+            slaves         => $args{slaves},
             callback  => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
@@ -4027,16 +4029,29 @@ sub recurse_to_slaves {
       PTDEBUG && _d("Slave password set");
    }
 
-   my $dbh;
-   eval {
-      $dbh = $args->{dbh} || $dp->get_dbh(
-         $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 });
-      PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
-   };
-   if ( $EVAL_ERROR ) {
-      print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), "\n"
-         or die "Cannot print: $OS_ERROR";
-      return;
+   my $dbh = $args->{dbh};
+   
+   DBH: {
+      if ( !defined $dbh ) {
+         foreach my $known_slave ( @{$args->{slaves}} ) {
+            if ($known_slave->{dsn}->{h} eq $slave_dsn->{h} and
+                $known_slave->{dsn}->{P} eq $slave_dsn->{P} ) {
+               $dbh = $known_slave->{dbh};
+               last DBH;
+            }
+         }
+
+         eval {
+            $dbh = $dp->get_dbh(
+               $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 });
+            PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
+         };
+         if ( $EVAL_ERROR ) {
+            print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), ": ", $EVAL_ERROR, "\n"
+               or die "Cannot print: $OS_ERROR";
+            return;
+         }
+      }
    }
 
    my $sql  = 'SELECT @@SERVER_ID';
@@ -5402,7 +5417,7 @@ sub connect {
    my $dp  = $self->{DSNParser};
 
    my $dbh = $self->{dbh};
-   if ( !$dbh || !$dbh->ping() ) {
+   if ( !$dbh || ( $dbh && $self->{dbh_set} && !$self->_ping($dbh) ) ) {
       if ( $self->{ask_pass} && !$self->{asked_for_pass} && !defined $dsn->{p} ) {
          $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
          $self->{asked_for_pass} = 1;
@@ -5431,19 +5446,20 @@ sub connect {
 sub set_dbh {
    my ($self, $dbh) = @_;
 
-   if ( $self->{dbh} && $self->{dbh} == $dbh && $self->{dbh_set} ) {
-      PTDEBUG && _d($dbh, 'Already set dbh');
-      return $dbh;
-   }
-
    PTDEBUG && _d($dbh, 'Setting dbh');
 
    $dbh->{FetchHashKeyName} = 'NAME_lc' if $self->{NAME_lc};
 
-   my $sql = 'SELECT @@server_id /*!50038 , @@hostname*/';
+   my $sql = 'SELECT @@server_id /*!50038 , @@hostname*/, CONNECTION_ID() as connection_id';
    PTDEBUG && _d($dbh, $sql);
-   my ($server_id, $hostname) = $dbh->selectrow_array($sql);
+   my ($server_id, $hostname, $connection_id) = $dbh->selectrow_array($sql);
    PTDEBUG && _d($dbh, 'hostname:', $hostname, $server_id);
+
+   if ( $self->{dbh} && $self->{dbh} == $dbh && $self->{dbh_set} && $self->{dbh_set} == $connection_id) {
+      PTDEBUG && _d($dbh, 'Already set dbh');
+      return $dbh;
+   }
+
    if ( $hostname ) {
       $self->{hostname} = $hostname;
    }
@@ -5458,7 +5474,7 @@ sub set_dbh {
    }
 
    $self->{dbh}     = $dbh;
-   $self->{dbh_set} = 1;
+   $self->{dbh_set} = $connection_id;
    return $dbh;
 }
 
@@ -5582,6 +5598,17 @@ sub DESTROY {
    }
 
    return;
+}
+
+sub _ping() {
+   my ( $self, $dbh ) = @_;
+   if (!$dbh->ping()) {
+      return 0;
+   }
+   my $sql = 'SELECT CONNECTION_ID() as connection_id';
+   PTDEBUG && _d($dbh, $sql);
+   my ($connection_id) = $dbh->selectrow_array($sql);
+   return $self->{dbh_set} == $connection_id;
 }
 
 sub _d {
@@ -8734,6 +8761,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-kill 3.5.1
+pt-kill 3.5.4
 
 =cut

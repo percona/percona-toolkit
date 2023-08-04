@@ -8,6 +8,7 @@
 # Standard startup, find the branch's root directory
 # ############################################################################
 LANG='en_US.UTF-8'
+LC_NUMERIC='POSIX' 
 
 die() {
    echo $1 >&2

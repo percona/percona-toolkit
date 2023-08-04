@@ -1052,15 +1052,7 @@ $qrf = new QueryReportFormatter(
    Quoter          => $q, 
    ExplainAnalyzer => $ex,
 );
-# Normally, the report subs will make their own ReportFormatter but
-# that package isn't visible to QueryReportFormatter right now so we
-# make ReportFormatters and pass them in.  Since ReporFormatters can't
-# be shared, we can only test one subreport at a time, else the
-# prepared statements subreport will reuse/reprint stuff from the
-# profile subreport.  And the line width is 82 because that's the new
-# default to accommodate the EXPLAIN sparkline (issue 1141).
-my $report = new ReportFormatter(line_width=>82);
-$qrf->{formatter} = $report;
+
 ok(
    no_diff(
       sub { $qrf->print_reports(

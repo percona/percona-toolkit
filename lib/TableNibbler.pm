@@ -197,7 +197,7 @@ sub generate_cmp_where {
             push @clause, "($val IS NULL OR $quo $type $val)";
          }
          elsif ( $type =~ m/>/ ) {
-            push @clause, "($val IS NULL AND $quo IS NOT NULL) OR ($quo $cmp $val)";
+            push @clause, "(($val IS NULL AND $quo IS NOT NULL) OR ($quo $cmp $val))";
          }
          else { # If $type =~ m/</ ) {
             push @clauses, "(($val IS NOT NULL AND $quo IS NULL) OR ($quo $cmp $val))";

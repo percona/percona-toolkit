@@ -1,0 +1,18 @@
+*************************** 1. row ***************************
+     Id: 3
+   User: msandbox
+   Host: localhost:58268
+     db: NULL
+Command: Binlog Dump
+   Time: 2872
+  State: Has sent all binlog to slave; waiting for binlog to be updated
+   Info: NULL
+*************************** 2. row ***************************
+     Id: 446
+   User: msandbox
+   Host: localhost
+     db: NULL
+Command: Query
+   Time: 0
+  State: NULL
+   Info: SHOW FULL PROCESSLIST

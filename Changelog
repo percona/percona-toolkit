@@ -1,5 +1,56 @@
 Changelog for Percona Toolkit
 
+v3.5.4 released 2023-06-30
+
+* Improvement PT-2151: Fix tests for pt-query-digest
+* Improvement PR-614: Support for environments that do not have SQL mode, such as OceanBase (Thanks to hanzhongzi for the contribution)
+* Improvement PR-617: Remove $has_child_tables var (Thanks to Ricardo for the contribution)
+* Fixed bug PT-2101: pt-mongodb-query-digest doesn't work on standalone server
+* Fixed bug PT-813: LP #1371774: pt-query-digest inconsistent rank order
+* Fixed bug PT-981: LP #1008240: t/pt-query-digest/processlist.t occasionally fails
+* Fixed bug PT-2229: CVE reported in Percona Toolkit version 3.5.3 related to Logrus (Thanks to Kushal Haldar for reporting this issue and testing the fix)
+
+v3.5.3 release 2023-06-05
+
+* Fixed bug PT-1583: Skipping chunks when using pt-online-schema-change (Thanks to monty solomon for reporting this issue)
+* Fixed bug PT-2048: pt-osc spans excessive connections to the replica when executing in the source
+* Fixed bug PT-2169: pt-k8s-debug-collector integration of pg_gather requires croping first line of the output file
+* Fixed bug PT-2203: CVEs reported in Percona Toolkit version 5.3.2 related to GO (Thanks to Kushal Haldar for reporting this issue)
+* Fixed bug PT-2196: Bug in pt-secure-collect --output-file (Thanks to Michael Patrick for reporting and fixing this issue)
+
+v3.5.2 release 2023-03-28
+
+* Improvement PT-188:  Use percona.checksums in examples
+* Improvement PT-2141: Fix tests for pt-archiver
+* Improvement PT-2149: Fix tests for pt-mext
+* Improvement PT-2150: Fix tests for pt-mysql-summary
+* Improvement PT-2152: Fix tests for pt-show-grants
+* Improvement PT-2155: Fix tests for pt-upgrade
+* Improvement PT-2156: Fix tests for lib
+* Improvement PT-2159: Fix tests for pt-duplicate-key-checker
+* Improvement PT-2160: Fix tests for pt-online-schema-change
+* Improvement PT-2161: Fix tests for pt-slave-restart
+* Improvement PT-2164: pt-k8s-debug-collector does not have version flag
+* Improvement PT-2165: Actual Version, GoVersion, and Build for Go tools
+* Fixed bug PT-215: Documentation fix
+* Fixed bug PT-1059: LP #1093972: Tools can't parse index names containing newlines
+* Fixed bug PT-1389: LP #1637859: [pt-variable-advisor] Docs Typos
+* Fixed bug PT-1594: Need correction in the Documentation - pt-mysql-summary
+* Fixed bug PT-1595: percona toolkit docs still reference Maatkit
+* Fixed bug PT-1642: Update PT docs to reference bug reporting location as Percona JIRA
+* Fixed bug PT-1683: List of supported distributions in the docs is outdated
+* Fixed bug PT-1700: pt-table-checksum REPLICATION_STOPPED exit status not documented
+* Fixed bug PT-1927: pt-k8s-debug-collector requires mysql client
+* Fixed bug PT-1930: pt-k8s-debug-collector should not attempt collecting PXC information when running against PSMDB
+* Fixed bug PT-2084: Changes from PT-80 broke previous pt-stalk functionality (Thanks Agustín Gallego)
+* Fixed bug PT-2102: pt-mysql-summary should support !include* in config files (Thanks Yoann La Cancellera)
+* Fixed bug PT-2110: Incorrect PTDEBUG output with --ignore-engines option (Thanks Kazuya Yokogawa)
+* Fixed bug PT-2114: Incorrect casting of BIT columns by pt-archiver
+* Fixed bug PT-2116: pt-osc --null-to-not-null description is wrong (Thanks Yoann La Cancellera)
+* Fixed bug PT-2120: pt-stalk with --system-only displaying "MYSQL_ONLY:" message on the screen
+* Fixed bug PT-2123: pt-archiver gives error "Wide character in print at /usr/bin/pt-archiver line 6815" when using --bulk-insert while using character set alias
+* Fixed bug PT-2187: CVEs reported in Percona Toolkit version 5.3.1 related to GO.
+
 v3.5.1 release 2023-01-23
 
 * Feature     PT-2134: Add support for PostgreSQL and MySQL operators in pt-k8s-debug-collector

@@ -55,7 +55,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.5.1';
+our $VERSION = '3.5.4';
 
 use strict;
 use warnings FATAL => 'all';
@@ -2842,13 +2842,15 @@ sub get_create_table {
    eval { $href = $dbh->selectrow_hashref($show_sql); };
    if ( my $e = $EVAL_ERROR ) {
       PTDEBUG && _d($old_sql_mode);
-      $dbh->do($old_sql_mode);
+      eval { $dbh->do($old_sql_mode); };
+      PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
 
       die $e;
    }
 
    PTDEBUG && _d($old_sql_mode);
-   $dbh->do($old_sql_mode);
+   eval { $dbh->do($old_sql_mode); };
+   PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
 
    my ($key) = grep { m/create (?:table|view)/i } keys %$href;
    if ( !$key ) {
@@ -2877,7 +2879,7 @@ sub parse {
 
    my $engine = $self->get_engine($ddl);
 
-   my @defs   = $ddl =~ m/^(\s+`.*?),?$/gm;
+   my @defs = $ddl =~ m/(?:(?<=,\n)|(?<=\(\n))(\s+`(?:.|\n)+?`.+?),?\n/g;
    my @cols   = map { $_ =~ m/`([^`]+)`/ } @defs;
    PTDEBUG && _d('Table cols:', join(', ', map { "`$_`" } @cols));
 
@@ -3058,8 +3060,7 @@ sub get_keys {
    my $clustered_key = undef;
 
    KEY:
-   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY .*)$/gm ) {
-
+   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY [\s\S]*?\),?.*)$/gm ) {
       next KEY if $key =~ m/FOREIGN/;
 
       my $key_ddl = $key;
@@ -3069,7 +3070,7 @@ sub get_keys {
          $key =~ s/USING HASH/USING BTREE/;
       }
 
-      my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \((.+)\)/;
+      my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \(([\s\S]+)\)/;
       my ( $special ) = $key =~ m/(FULLTEXT|SPATIAL)/;
       $type = $type || $special || 'BTREE';
       my ($name) = $key =~ m/(PRIMARY|`[^`]*`)/;
@@ -6517,7 +6518,7 @@ sub generate_cmp_where {
             push @clause, "($val IS NULL OR $quo $type $val)";
          }
          elsif ( $type =~ m/>/ ) {
-            push @clause, "($val IS NULL AND $quo IS NOT NULL) OR ($quo $cmp $val)";
+            push @clause, "(($val IS NULL AND $quo IS NOT NULL) OR ($quo $cmp $val))";
          }
          else { # If $type =~ m/</ ) {
             push @clauses, "(($val IS NOT NULL AND $quo IS NULL) OR ($quo $cmp $val))";
@@ -6716,6 +6717,7 @@ sub get_slaves {
             dsn            => $dsn,
             slave_user     => $o->got('slave-user') ? $o->get('slave-user') : '',
             slave_password => $o->got('slave-password') ? $o->get('slave-password') : '',
+            slaves         => $args{slaves},
             callback  => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
@@ -6792,16 +6794,29 @@ sub recurse_to_slaves {
       PTDEBUG && _d("Slave password set");
    }
 
-   my $dbh;
-   eval {
-      $dbh = $args->{dbh} || $dp->get_dbh(
-         $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 });
-      PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
-   };
-   if ( $EVAL_ERROR ) {
-      print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), "\n"
-         or die "Cannot print: $OS_ERROR";
-      return;
+   my $dbh = $args->{dbh};
+   
+   DBH: {
+      if ( !defined $dbh ) {
+         foreach my $known_slave ( @{$args->{slaves}} ) {
+            if ($known_slave->{dsn}->{h} eq $slave_dsn->{h} and
+                $known_slave->{dsn}->{P} eq $slave_dsn->{P} ) {
+               $dbh = $known_slave->{dbh};
+               last DBH;
+            }
+         }
+
+         eval {
+            $dbh = $dp->get_dbh(
+               $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 });
+            PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
+         };
+         if ( $EVAL_ERROR ) {
+            print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), ": ", $EVAL_ERROR, "\n"
+               or die "Cannot print: $OS_ERROR";
+            return;
+         }
+      }
    }
 
    my $sql  = 'SELECT @@SERVER_ID';
@@ -8418,7 +8433,7 @@ sub any_unix_timestamp {
 
 sub make_checksum {
    my ( $val ) = @_;
-   my $checksum = uc substr(md5_hex($val), -16);
+   my $checksum = uc md5_hex($val);
    PTDEBUG && _d($checksum, 'checksum for', $val);
    return $checksum;
 }
@@ -13165,6 +13180,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-sync 3.5.1
+pt-table-sync 3.5.4
 
 =cut

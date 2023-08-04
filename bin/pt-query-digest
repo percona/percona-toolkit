@@ -64,7 +64,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.5.1';
+our $VERSION = '3.5.4';
 
 use strict;
 use warnings FATAL => 'all';
@@ -2703,7 +2703,7 @@ sub any_unix_timestamp {
 
 sub make_checksum {
    my ( $val ) = @_;
-   my $checksum = uc substr(md5_hex($val), -16);
+   my $checksum = uc md5_hex($val);
    PTDEBUG && _d($checksum, 'checksum for', $val);
    return $checksum;
 }
@@ -3394,10 +3394,10 @@ sub parse_event {
             else {
                PTDEBUG && _d('Saving new query, state', $curr->[STATE]);
                push @new_cxn, [
-                  @{$curr}[0..7],           # proc info
-                  int($query_start),        # START
-                  $etime,                   # ETIME
-                  $time,                    # FSEEN
+                  @{$curr}[0..7],                  # proc info
+                  $query_start,                    # START
+                  $etime,                          # ETIME
+                  $time,                           # FSEEN
                   { ($curr->[STATE] || "") => 0 }, # PROFILE
                ];
             }
@@ -3408,10 +3408,10 @@ sub parse_event {
          if ( $curr->[INFO] && defined $curr->[TIME] ) {
             PTDEBUG && _d('Saving query of new cxn, state', $curr->[STATE]);
             push @new_cxn, [
-               @{$curr}[0..7],           # proc info
-               int($query_start),        # START
-               $etime,                   # ETIME
-               $time,                    # FSEEN
+               @{$curr}[0..7],                  # proc info
+               $query_start,                    # START
+               $etime,                          # ETIME
+               $time,                           # FSEEN
                { ($curr->[STATE] || "") => 0 }, # PROFILE
             ];
          }
@@ -5892,7 +5892,10 @@ sub top_events {
    my ( $self, %args ) = @_;
    my $classes = $self->{result_classes};
    my @sorted = reverse sort { # Sorted list of $groupby values
-      $classes->{$a}->{$args{attrib}}->{$args{orderby}}
+	  ($classes->{$a}->{$args{attrib}}->{$args{orderby}}
+	     == $classes->{$b}->{$args{attrib}}->{$args{orderby}})
+      ? $a cmp $b
+      : $classes->{$a}->{$args{attrib}}->{$args{orderby}}
          <=> $classes->{$b}->{$args{attrib}}->{$args{orderby}}
       } grep {
          defined $classes->{$_}->{$args{attrib}}->{$args{orderby}}
@@ -6354,7 +6357,7 @@ sub BUILDARGS {
    if ( ($args->{line_width} || '') eq 'auto' ) {
       die "Cannot auto-detect line width because the Term::ReadKey module "
          . "is not installed" unless $have_term;
-      ($args->{line_width}) = GetTerminalSize();
+      ($args->{line_width}) = Term::ReadKey::GetTerminalSize();
       PTDEBUG && _d('Line width:', $args->{line_width});
    }
 
@@ -7386,7 +7389,7 @@ sub profile {
    $report->title('Profile');
    my @cols = (
       { name => 'Rank',          right_justify => 1,             },
-      { name => 'Query ID',                                      },
+      { name => 'Query ID',      width => 35                     },
       { name => 'Response time', right_justify => 1,             },
       { name => 'Calls',         right_justify => 1,             },
       { name => 'R/Call',        right_justify => 1,             },
@@ -8859,13 +8862,15 @@ sub get_create_table {
    eval { $href = $dbh->selectrow_hashref($show_sql); };
    if ( my $e = $EVAL_ERROR ) {
       PTDEBUG && _d($old_sql_mode);
-      $dbh->do($old_sql_mode);
+      eval { $dbh->do($old_sql_mode); };
+      PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
 
       die $e;
    }
 
    PTDEBUG && _d($old_sql_mode);
-   $dbh->do($old_sql_mode);
+   eval { $dbh->do($old_sql_mode); };
+   PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
 
    my ($key) = grep { m/create (?:table|view)/i } keys %$href;
    if ( !$key ) {
@@ -8894,7 +8899,7 @@ sub parse {
 
    my $engine = $self->get_engine($ddl);
 
-   my @defs   = $ddl =~ m/^(\s+`.*?),?$/gm;
+   my @defs = $ddl =~ m/(?:(?<=,\n)|(?<=\(\n))(\s+`(?:.|\n)+?`.+?),?\n/g;
    my @cols   = map { $_ =~ m/`([^`]+)`/ } @defs;
    PTDEBUG && _d('Table cols:', join(', ', map { "`$_`" } @cols));
 
@@ -9075,8 +9080,7 @@ sub get_keys {
    my $clustered_key = undef;
 
    KEY:
-   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY .*)$/gm ) {
-
+   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY [\s\S]*?\),?.*)$/gm ) {
       next KEY if $key =~ m/FOREIGN/;
 
       my $key_ddl = $key;
@@ -9086,7 +9090,7 @@ sub get_keys {
          $key =~ s/USING HASH/USING BTREE/;
       }
 
-      my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \((.+)\)/;
+      my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \(([\s\S]+)\)/;
       my ( $special ) = $key =~ m/(FULLTEXT|SPATIAL)/;
       $type = $type || $special || 'BTREE';
       my ($name) = $key =~ m/(PRIMARY|`[^`]*`)/;
@@ -9265,7 +9269,7 @@ sub new {
    my $sql = <<"      SQL";
       INSERT INTO $args{db_tbl}
       (checksum, fingerprint, sample, first_seen, last_seen)
-      VALUES(CONV(?, 16, 10), ?, ?, COALESCE(?, $now), COALESCE(?, $now))
+      VALUES(?, ?, ?, COALESCE(?, $now), COALESCE(?, $now))
       ON DUPLICATE KEY UPDATE
          first_seen = IF(
             first_seen IS NULL,
@@ -9282,8 +9286,8 @@ sub new {
    my @review_cols = grep { !$skip_cols{$_} } @{$args{tbl_struct}->{cols}};
    $sql = "SELECT "
         . join(', ', map { $args{quoter}->quote($_) } @review_cols)
-        . ", CONV(checksum, 10, 16) AS checksum_conv FROM $args{db_tbl}"
-        . " WHERE checksum=CONV(?, 16, 10)";
+        . ", checksum AS checksum_conv FROM $args{db_tbl}"
+        . " WHERE checksum=?";
    PTDEBUG && _d('SQL to select from review table:', $sql);
    my $select_sth = $args{dbh}->prepare($sql);
 
@@ -9413,7 +9417,7 @@ sub set_history_options {
    my $sql = "REPLACE INTO $args{table}("
       . join(', ',
          map { Quoter->quote($_) } ('checksum', 'sample', @cols))
-      . ') VALUES (CONV(?, 16, 10), ?'
+      . ') VALUES (?, ?'
       . (@cols ? ', ' : '')  # issue 1265
       . join(', ', map {
          $_ eq 'ts_min' || $_ eq 'ts_max'
@@ -10539,6 +10543,7 @@ sub get_slaves {
             dsn            => $dsn,
             slave_user     => $o->got('slave-user') ? $o->get('slave-user') : '',
             slave_password => $o->got('slave-password') ? $o->get('slave-password') : '',
+            slaves         => $args{slaves},
             callback  => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
@@ -10615,16 +10620,29 @@ sub recurse_to_slaves {
       PTDEBUG && _d("Slave password set");
    }
 
-   my $dbh;
-   eval {
-      $dbh = $args->{dbh} || $dp->get_dbh(
-         $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 });
-      PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
-   };
-   if ( $EVAL_ERROR ) {
-      print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), "\n"
-         or die "Cannot print: $OS_ERROR";
-      return;
+   my $dbh = $args->{dbh};
+   
+   DBH: {
+      if ( !defined $dbh ) {
+         foreach my $known_slave ( @{$args->{slaves}} ) {
+            if ($known_slave->{dsn}->{h} eq $slave_dsn->{h} and
+                $known_slave->{dsn}->{P} eq $slave_dsn->{P} ) {
+               $dbh = $known_slave->{dbh};
+               last DBH;
+            }
+         }
+
+         eval {
+            $dbh = $dp->get_dbh(
+               $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 });
+            PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
+         };
+         if ( $EVAL_ERROR ) {
+            print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), ": ", $EVAL_ERROR, "\n"
+               or die "Cannot print: $OS_ERROR";
+            return;
+         }
+      }
    }
 
    my $sql  = 'SELECT @@SERVER_ID';
@@ -16977,6 +16995,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-query-digest 3.5.1
+pt-query-digest 3.5.4
 
 =cut

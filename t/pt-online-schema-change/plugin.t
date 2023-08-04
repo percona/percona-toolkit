@@ -65,6 +65,7 @@ is_deeply(
       'PLUGIN before_create_triggers',
       'PLUGIN after_create_triggers',
       'PLUGIN before_copy_rows',
+      'PLUGIN on_copy_rows_after_nibble',
       'PLUGIN after_copy_rows',
       'PLUGIN before_swap_tables',
       'PLUGIN after_swap_tables',

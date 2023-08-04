@@ -7,7 +7,6 @@ ERRORS DIFFS ROWS SKIPPED TABLE
 0 0 0 0 mysql.default_roles
 0 1 2 0 mysql.engine_cost
 0 0 0 0 mysql.func
-0 0 85 0 mysql.global_grants
 0 0 53 0 mysql.help_category
 0 0 985 0 mysql.help_keyword
 0 0 2043 0 mysql.help_relation

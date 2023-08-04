@@ -17,6 +17,10 @@ import (
 	"github.com/percona/percona-toolkit/src/go/pt-pg-summary/templates"
 )
 
+const (
+	toolname = "pt-pg-summary"
+)
+
 // We do not set anything here, these variables are defined by the Makefile
 var (
 	Build     string //nolint
@@ -211,10 +215,11 @@ func safeConnString(opts connOpts, dbName string) string {
 }
 
 func parseCommandLineOpts(args []string) (cliOptions, error) {
-	app := kingpin.New("pt-pg-summary", "Percona Toolkit - PostgreSQL Summary")
+	app := kingpin.New(toolname, "Percona Toolkit - PostgreSQL Summary")
+	app.UsageWriter(os.Stdout)
 	// version, commit and date will be set at build time by the compiler -ldflags param
-	app.Version(fmt.Sprintf("%s version %s\nGIT commit %s\nDate: %s\nGo version: %s",
-		app.Name, Version, Commit, Build, GoVersion))
+	app.Version(fmt.Sprintf("%s\nVersion %s\nBuild: %s using %s\nCommit: %s",
+		app.Name, Version, Build, GoVersion, Commit))
 	opts := cliOptions{app: app}
 
 	app.Flag("ask-pass", "Prompt for a password when connecting to PostgreSQL").

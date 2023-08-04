@@ -28,6 +28,9 @@ if ( !$master_dbh ) {
 elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave1';
 }
+elsif ($sb->is_cluster_mode) {
+    plan skip_all => 'Not for PXC';
+}
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --set-vars innodb_lock_wait_timeout=3 else the
