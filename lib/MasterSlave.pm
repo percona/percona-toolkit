@@ -192,7 +192,8 @@ sub recurse_to_slaves {
    my $get_dbh = sub {
          eval {
             $dbh = $dp->get_dbh(
-               $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 }, $args->{wait_no_die});
+               $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 }, $args->{wait_no_die}
+            );
             PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
          };
          if ( $EVAL_ERROR ) {
@@ -211,7 +212,7 @@ sub recurse_to_slaves {
                last DBH;
             }
          }
-      $get_dbh->();
+         $get_dbh->();
       }
    }
 
@@ -222,14 +223,16 @@ sub recurse_to_slaves {
       eval {
          ($id) = $dbh->selectrow_array($sql);
       };
-	  if ( $EVAL_ERROR ) {
-		 if ( $args->{wait_no_die} ) {
-			print STDERR "Error getting server id: ", $EVAL_ERROR, "Retrying\n";
+	   if ( $EVAL_ERROR ) {
+		   if ( $args->{wait_no_die} ) {
+			   print STDERR "Error getting server id: ", $EVAL_ERROR, 
+               "\nRetrying query for server ", $slave_dsn->{h}, ":", $slave_dsn->{P}, "\n";
+            sleep 1;
             $get_dbh->();
-		 } else {
-		    die $EVAL_ERROR;
-		 }
-	  }
+         } else {
+            die $EVAL_ERROR;
+         }
+      }
    } until ($id);
    PTDEBUG && _d('Working on server ID', $id);
    my $master_thinks_i_am = $dsn->{server_id};

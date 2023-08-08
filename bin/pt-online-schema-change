@@ -4326,7 +4326,8 @@ sub recurse_to_slaves {
    my $get_dbh = sub {
          eval {
             $dbh = $dp->get_dbh(
-               $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 }, $args->{wait_no_die});
+               $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 }, $args->{wait_no_die}
+            );
             PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
          };
          if ( $EVAL_ERROR ) {
@@ -4345,7 +4346,7 @@ sub recurse_to_slaves {
                last DBH;
             }
          }
-      $get_dbh->();
+         $get_dbh->();
       }
    }
 
@@ -4356,14 +4357,16 @@ sub recurse_to_slaves {
       eval {
          ($id) = $dbh->selectrow_array($sql);
       };
-	  if ( $EVAL_ERROR ) {
-		 if ( $args->{wait_no_die} ) {
-			print STDERR "Error getting server id: ", $EVAL_ERROR, "Retrying\n";
+	   if ( $EVAL_ERROR ) {
+		   if ( $args->{wait_no_die} ) {
+			   print STDERR "Error getting server id: ", $EVAL_ERROR, 
+               "\nRetrying query for server ", $slave_dsn->{h}, ":", $slave_dsn->{P}, "\n";
+            sleep 1;
             $get_dbh->();
-		 } else {
-		    die $EVAL_ERROR;
-		 }
-	  }
+         } else {
+            die $EVAL_ERROR;
+         }
+      }
    } until ($id);
    PTDEBUG && _d('Working on server ID', $id);
    my $master_thinks_i_am = $dsn->{server_id};
@@ -5087,9 +5090,10 @@ sub wait {
       $pr_callback = sub {
          my ($fraction, $elapsed, $remaining, $eta, $completed) = @_;
          my $dsn_name = $worst->{cxn}->name();
+         my $dsn_description = $worst->{cxn}->description();
          if ( defined $worst->{lag} ) {
             print STDERR "Replica lag is " . ($worst->{lag} || '?')
-               . " seconds on $dsn_name.  Waiting.\n";
+               . " seconds on $dsn_description.  Waiting.\n";
          }
          else {
             if ($self->{fail_on_stopped_replication}) {
@@ -8874,7 +8878,7 @@ sub main {
          my $slaves =$ms->get_slaves(
                dbh      => $cxn->dbh(),
                dsn      => $cxn->dsn(),
-			   slaves   => $slaves,
+			      slaves   => $slaves,
                make_cxn => sub {
                   return $make_cxn->(
                      @_,
@@ -8893,6 +8897,7 @@ sub main {
                   if ($slave->{dsn}->{h} eq $slave_to_skip->{h} && $slave->{dsn}->{P} eq $slave_to_skip->{P}) {
                      print "Skipping slave " . $slave->description() . "\n";
                      $is_skip = 1;
+                     $slave->{dbh}->disconnect;
                      last;
                   } 
                }
@@ -13118,7 +13123,7 @@ For more information, visit L<https://www.percona.com/doc/percona-toolkit/LATEST
 
 =item --wait-lost-replicas
 
-default: no
+default: 0
 
 If a replica becomes not available while the tool did not finish copying the table,
 it waits until replica is back online.
