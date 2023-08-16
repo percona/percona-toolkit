@@ -29,7 +29,7 @@ package ReadKeyMini;
 # Here be magic. We lie to %INC and say that someone already pulled us from
 # the filesystem. Which might be true, if this is inside a .pm file, but
 # might not be, if we are part of the big file. The spurious BEGINs are mostly
-# unnecesary, but if we aren't inside a .pm and something uses us, import or
+# unnecessary, but if we aren't inside a .pm and something uses us, import or
 # EXPORT_OK might not yet be defined. Though that probably won't help.
 # Costs us nothing though, so worth trying. Putting this on top of the file
 # would solve the issue.

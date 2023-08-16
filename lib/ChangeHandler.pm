@@ -147,7 +147,7 @@ sub dst {
 }
 
 # Sub: _take_action
-#   Call the user-provied actions.  Actions are passed an action statement
+#   Call the user-provided actions.  Actions are passed an action statement
 #   and an optional dbh.  This sub is not called directly; it's called
 #   by <change()> or <process_rows()>.
 #
@@ -164,7 +164,7 @@ sub _take_action {
 }
 
 # Sub: change
-#   Make an action SQL statment for the given parameters if not queueing.
+#   Make an action SQL statement for the given parameters if not queueing.
 #   This sub calls <_take_action()>, passing the action statement and
 #   optional dbh.  If queueing, the parameters are saved and the same work
 #   is done in <process_rows()>.  Queueing does not work with bidirectional

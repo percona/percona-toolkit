@@ -49,7 +49,7 @@ sub new {
 #   tbl  - Table ref
 #
 # Optional Arguments:
-#   no_cols - Don't append columns to list oustide of functions.
+#   no_cols - Don't append columns to list outside of functions.
 #
 # Returns:
 #   Column list for SELECT
@@ -169,7 +169,7 @@ sub make_chunk_checksum {
    my $q     = $self->{Quoter};
 
    my %crc_args = $self->get_crc_args(%args);
-   PTDEBUG && _d("Checksum strat:", Dumper(\%crc_args));
+   PTDEBUG && _d('Checksum start:', Dumper(\%crc_args));
 
    # This checksum algorithm concatenates the columns in each row and
    # checksums them, then slices this checksum up into 16-character chunks.

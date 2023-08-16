@@ -1191,7 +1191,7 @@ sub _read_config_file {
 
 # Sub: read_para_after
 #   Read the POD paragraph after a magical regex.  This is used,
-#   for exmaple, to get default CREATE TABLE from the POD.  We write something
+#   for example, to get default CREATE TABLE from the POD.  We write something
 #   like:
 #   (start code)
 #   This is the default MAGIC_foo_table:

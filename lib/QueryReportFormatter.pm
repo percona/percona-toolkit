@@ -158,7 +158,7 @@ sub BUILDARGS {
 #   * files         arrayref: files read for input
 #   * group         hashref: don't add blank line between these reports
 #                            if they appear together
-# Prints the given reports (rusage, heade (global), query_report, etc.) in
+# Prints the given reports (rusage, header (global), query_report, etc.) in
 # the given order.  These usually come from mk-query-digest --report-format.
 # Most of the required args are for header() and query_report().
 sub print_reports {

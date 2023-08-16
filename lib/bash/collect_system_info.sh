@@ -29,7 +29,7 @@ set -u
 
 # This is inside a function so it can take into account our PATH mungling.
 setup_commands () {
-   # While extremely unwieldly, this allows us to fake the commands when testing.
+   # While extremely unwieldy, this allows us to fake the commands when testing.
    CMD_SYSCTL="$(_which sysctl 2>/dev/null )"
    CMD_DMIDECODE="$(_which dmidecode 2>/dev/null )"
    CMD_ZONENAME="$(_which zonename 2>/dev/null )"
@@ -106,7 +106,7 @@ collect_system_data () { local PTFUNCNAME=collect_system_data;
    raid_controller   "$data_dir/dmesg_file" "$data_dir/lspci_file" >> "$data_dir/summary"
 
    local controller="$(get_var raid_controller "$data_dir/summary")"
-   propietary_raid_controller "$data_dir/raid-controller" "$data_dir/summary" "$data_dir" "$controller"
+   proprietary_raid_controller "$data_dir/raid-controller" "$data_dir/summary" "$data_dir" "$controller"
 
    [ "${platform}" = "Linux" ] && linux_exclusive_collection "$data_dir"
 
@@ -611,7 +611,7 @@ processor_info () { local PTFUNCNAME=processor_info;
 # in a weird location, such as /usr/StorMan/arcconf, should have their
 # location added to $PATH at the beginning of main().
 # ########################################################################
-propietary_raid_controller () { local PTFUNCNAME=propietary_raid_controller;
+proprietary_raid_controller () { local PTFUNCNAME=proprietary_raid_controller;
    local file="$1"
    local variable_file="$2"
    local data_dir="$3"

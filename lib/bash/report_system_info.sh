@@ -1024,7 +1024,7 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
          name_val "${disk}" "${scheduler:-"UNREADABLE"}"
       done
 
-      section "Disk Partioning"
+      section "Disk Partitioning"
       parse_fdisk "$data_dir/partitioning"
 
       section "Kernel Inode State"

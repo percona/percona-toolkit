@@ -300,7 +300,7 @@ sub distill_verbs {
       return $query;
    }
 
-   # Data defintion statements verbs like CREATE and ALTER.
+   # Data definition statements verbs like CREATE and ALTER.
    # The two evals are a hack to keep Perl from warning that
    # "QueryParser::data_def_stmts" used only once: possible typo at...".
    # Some day we'll group all our common regex together in a packet and
@@ -313,7 +313,7 @@ sub distill_verbs {
       $query =~ s/\s+IF(?:\s+NOT)?\s+EXISTS/ /i;
       my ( $obj ) = $query =~ m/$dds.+(DATABASE|TABLE)\b/i;
       $obj = uc $obj if $obj;
-      PTDEBUG && _d('Data def statment:', $dds, 'obj:', $obj);
+      PTDEBUG && _d('Data def statement:', $dds, 'obj:', $obj);
       my ($db_or_tbl)
          = $query =~ m/(?:TABLE|DATABASE)\s+($QueryParser::tbl_ident)(\s+.*)?/i;
       PTDEBUG && _d('Matches db or table:', $db_or_tbl);
@@ -343,7 +343,7 @@ sub distill_verbs {
       @verbs    = $union ? qw(SELECT UNION) : qw(SELECT);
    }
 
-   # This used to be "my $verbs" but older verisons of Perl complain that
+   # This used to be "my $verbs" but older versions of Perl complain that
    # ""my" variable $verbs masks earlier declaration in same scope" where
    # the earlier declaration is our $verbs.
    # http://code.google.com/p/maatkit/issues/detail?id=957
@@ -397,7 +397,7 @@ sub distill {
 
       if ( $verbs && $verbs =~ m/^SHOW/ ) {
          # Ignore tables for SHOW statements and normalize some
-         # aliases like SCHMEA==DATABASE, KEYS==INDEX.
+         # aliases like SCHEMA==DATABASE, KEYS==INDEX.
          my %alias_for = qw(
             SCHEMA   DATABASE
             KEYS     INDEX
@@ -427,7 +427,7 @@ sub convert_to_select {
    my ( $self, $query ) = @_;
    return unless $query;
 
-   # Trying to convert statments that have subqueries as values to column
+   # Trying to convert statements that have subqueries as values to column
    # assignments doesn't work.  E.g. SET col=(SELECT ...).  But subqueries
    # do work in other cases like JOIN (SELECT ...).
    # http://code.google.com/p/maatkit/issues/detail?id=347

@@ -527,9 +527,9 @@ find_max_trx_time() {
    }' "${file}"
 }
 
-find_transation_states () {
+find_transaction_states () {
    local file="$1"
-   local tmpfile="$PT_TMPDIR/find_transation_states.tmp"
+   local tmpfile="$PT_TMPDIR/find_transaction_states.tmp"
 
    [ -e "$file" ] || return
 
@@ -555,7 +555,7 @@ format_innodb_status () {
    name_val "Pending I/O Reads"   "$(find_pending_io_reads "${file}")"
    name_val "Pending I/O Writes"  "$(find_pending_io_writes "${file}")"
    name_val "Pending I/O Flushes" "$(find_pending_io_flushes "${file}")"
-   name_val "Transaction States"  "$(find_transation_states "${file}" )"
+   name_val "Transaction States"  "$(find_transaction_states "${file}" )"
    if grep 'TABLE LOCK table' "${file}" >/dev/null ; then
       echo "Tables Locked"
       awk '/^TABLE LOCK table/{print $4}' "${file}" \
