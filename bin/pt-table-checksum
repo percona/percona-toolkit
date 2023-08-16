@@ -1074,7 +1074,7 @@ sub pingback {
    my (%args) = @_;
    my @required_args = qw(url instances);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my $url       = $args{url};
    my $instances = $args{instances};
@@ -1142,7 +1142,7 @@ sub encode_client_response {
    my (%args) = @_;
    my @required_args = qw(items versions general_id);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($items, $versions, $general_id) = @args{@required_args};
 
@@ -1168,7 +1168,7 @@ sub parse_server_response {
    my (%args) = @_;
    my @required_args = qw(response);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($response) = @args{@required_args};
 
@@ -1211,7 +1211,7 @@ sub get_versions {
    my (%args) = @_;
    my @required_args = qw(items);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($items) = @args{@required_args};
 
@@ -3391,7 +3391,7 @@ sub has {
          
          my $check_sub = sub {
             my ($new_val) = @_;
-            Lmo::Types::check_type_constaints($attribute, $type_check, $check_name, $new_val);
+            Lmo::Types::check_type_constraints($attribute, $type_check, $check_name, $new_val);
          };
          
          $class_metadata->{$attribute}{isa} = [$check_name, $check_sub];
@@ -6074,7 +6074,7 @@ sub make_chunk_checksum {
    my $q     = $self->{Quoter};
 
    my %crc_args = $self->get_crc_args(%args);
-   PTDEBUG && _d("Checksum strat:", Dumper(\%crc_args));
+   PTDEBUG && _d('Checksum start:', Dumper(\%crc_args));
 
    my $row_checksum = $self->make_row_checksum(
       %args,
@@ -8960,7 +8960,7 @@ sub _parse_config_output {
    my ( %args ) = @_;
    my @required_args = qw(output TextResultSetParser);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($output) = @args{@required_args};
    PTDEBUG && _d("Parsing config output");
@@ -9011,7 +9011,7 @@ sub detect_config_output_format {
    my ( %args ) = @_;
    my @required_args = qw(output);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($output) = @args{@required_args};
 
@@ -9047,7 +9047,7 @@ sub parse_show_variables {
    my ( %args ) = @_;
    my @required_args = qw(output TextResultSetParser);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($output, $trp) = @args{@required_args};
 
@@ -9062,7 +9062,7 @@ sub parse_mysqld {
    my ( %args ) = @_;
    my @required_args = qw(output);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($output) = @args{@required_args};
 
@@ -9096,7 +9096,7 @@ sub parse_my_print_defaults {
    my ( %args ) = @_;
    my @required_args = qw(output);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($output) = @args{@required_args};
 
@@ -9112,7 +9112,7 @@ sub parse_option_file {
    my ( %args ) = @_;
    my @required_args = qw(output);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($output) = @args{@required_args};
 
@@ -9223,7 +9223,7 @@ sub _mimic_show_variables {
    my ( %args ) = @_;
    my @required_args = qw(vars format);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($vars, $format) = @args{@required_args};
    
@@ -9405,7 +9405,7 @@ sub _parse_spec {
       die "$var is not a variable name\n" unless $var =~ m/^[a-zA-Z_]+$/;
 
       if ( !$val ) {
-         PTDEBUG && _d('Will get intial value for', $var, 'later');
+         PTDEBUG && _d('Will get initial value for', $var, 'later');
          $max_val_for{$var} = undef;
       }
       else {
