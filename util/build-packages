@@ -166,7 +166,7 @@ update_version() {
    echo "OK"   
    
    echo -n "Updating version in sphinx-build/conf.py... "
-   # What Sphinx calls verison, we call series; what it calls release we
+   # What Sphinx calls version, we call series; what it calls release we
    # call version.
    cd $SPHINX_CONFIG_DIR
    sed -i'.bak' -e "s/^version = .*/version = '$SERIES'/" conf.py

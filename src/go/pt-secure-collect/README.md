@@ -42,7 +42,7 @@ pt-secure-collect collect <flags>
 |--mysql-password|MySQL password.|
 |--ask-mysql-pass|Ask MySQL password.|
 |--extra-cmd|Also run this command as part of the data collection. This parameter can be used more than once.|
-|--encrypt-password|Encrypt the output file using this password.<br>If ommited, it will be asked in the command line.|
+|--encrypt-password|Encrypt the output file using this password.<br>If omitted, it will be asked in the command line.|
 |--no-collect|Do not collect data|
 |--no-sanitize|Do not sanitize data|
 |--no-encrypt|Do not encrypt the output file.|
@@ -58,7 +58,7 @@ pt-secure-collect decrypt [flags] <input file>
 ```
 |Flag|Description|
 |-----|------|
-|--outfile|Write the output to this file.<br>If ommited, the output file name will be the same as the input file, adding the `.aes` extension|
+|--outfile|Write the output to this file.<br>If omitted, the output file name will be the same as the input file, adding the `.aes` extension|
 
 
 #### **Encrypt command**
@@ -69,7 +69,7 @@ pt-secure-collect encrypt [flags] <input file>
 ```  
 |Flag|Description|
 |-----|------|
-|--outfile|Write the output to this file.<br>If ommited, the output file name will be the same as the input file, without the `.aes` extension|
+|--outfile|Write the output to this file.<br>If omitted, the output file name will be the same as the input file, without the `.aes` extension|
 
 
 #### **Sanitize command**

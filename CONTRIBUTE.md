@@ -74,7 +74,7 @@ git push origin PT-9999_functionality_name
 ```
 And then go to the web UI to create the new pull request (PR) based off of this new branch.
 
-## Submiting Fixes
+## Submitting Fixes
 ### Pull Requests
 Once your fix is ready and you pushed it into the feature branch, open a pull request with the code. Be sure you’ve read any documents on contributing, understand the license and have signed a [Contributor Licence Agreement (CLA)](https://github.com/percona/percona-toolkit/blob/3.x/CONTRIBUTING.md). Once you’ve submitted a pull request, the maintainers can compare your branch to the existing one and decide whether or not to incorporate (merge) your changes.
 
@@ -92,12 +92,12 @@ Once your fix is ready and you pushed it into the feature branch, open a pull re
 Once you’ve opened a pull request, a discussion will start around your proposed changes. Other contributors and users may chime in, but ultimately the decision is made by the maintainers. You may be asked to make some changes to your pull request, if so, add more commits to your branch and push them – they’ll automatically go into the existing pull request.
 
 ## Licensing
-Along with the pull request, include a message indicating that the submited code is your own creation and it can be distributed under the GPL2 licence. 
+Along with the pull request, include a message indicating that the submitted code is your own creation and it can be distributed under the GPL2 licence. 
   
   
 ## Setting up the Development Environment and Testing
 ### Perl and Shell Tools
-For testing, we are going to need to have MySQL with replicas. For that, we already have scripts in the sandbox directory but first we need to download MySQL binaries. Please download the Linux Generic tar file for your distrubution from [https://www.percona.com/downloads/Percona-Server-LATEST/](https://www.percona.com/downloads/Percona-Server-LATEST/). 
+For testing, we are going to need to have MySQL with replicas. For that, we already have scripts in the sandbox directory but first we need to download MySQL binaries. Please download the Linux Generic tar file for your distribution from [https://www.percona.com/downloads/Percona-Server-LATEST/](https://www.percona.com/downloads/Percona-Server-LATEST/). 
 
 #### Set up MySQL Sandbox
 In this example, we are going to download Percona Server 8.0.26-17.

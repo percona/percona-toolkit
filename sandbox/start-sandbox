@@ -82,7 +82,7 @@ make_sandbox() {
     for file in `grep -l PORT ${TMP_DIR}/$port/* 2>/dev/null`; do
         sed -e "s/PORT/$port/g" -i.bak $file
         sed -e "s!TMP_DIR!$TMP_DIR!g" -i.bak $file
-        # Use ! instead of / because the replacment has / (it's a directory)
+        # Use ! instead of / because the replacement has / (it's a directory)
         sed -e "s!PERCONA_TOOLKIT_SANDBOX!$PERCONA_TOOLKIT_SANDBOX!g" -i.bak $file
         sed -e "s!MYSQLD!$mysqld!g" -i.bak $file
     done
@@ -290,7 +290,7 @@ cd $PERCONA_TOOLKIT_BRANCH/sandbox
 
 # This script is usually called by test-env which discovers and
 # sets PERCONA_TOOLKIT_SANDBOX.  If this script is called directly,
-# then the caller is reponsible for setting PERCONA_TOOLKIT_SANDBOX.
+# then the caller is responsible for setting PERCONA_TOOLKIT_SANDBOX.
 # PERCONA_TOOLKIT_SANDBOX points to a base directory containing the
 # MySQL executables like PERCONA_TOOLKIT_SANDBOX/bin/mysqld_safe.
 
