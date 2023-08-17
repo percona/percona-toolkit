@@ -3,7 +3,7 @@ Title: License
 Natural Docs is Copyright © 2003-2010 Greg Valure.  Natural Docs is licensed under version 3 of the GNU
 Affero General Public License (AGPL).
 
-Natural Docs incorporates code from Google Prettify, which is Copyright © 2006 Google Inc.  Google Prettify
+Natural Docs incorporates code from Google Prettify, which is Copyright (c) 2006 Google Inc.  Google Prettify
 may be obtained separately under version 2.0 of the Apache License.  However, this combined product is still
 licensed under the terms of the AGPLv3.
 
