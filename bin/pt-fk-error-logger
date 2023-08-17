@@ -3079,7 +3079,7 @@ sub _split_url {
        $len += $self->write($request->{content});
 
        $len == $content_length
-         or croak(qq/Content-Length missmatch (got: $len expected: $content_length)/);
+         or croak(qq/Content-Length mismatch (got: $len expected: $content_length)/);
 
        return $len;
    }

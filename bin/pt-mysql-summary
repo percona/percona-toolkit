@@ -774,10 +774,10 @@ get_oom_of_pid () {
    if [ -n "${pid}" -a -e /proc/cpuinfo ]; then
       if [ -s "/proc/$pid/oom_score_adj" ]; then
          oom_adj=$(cat "/proc/$pid/oom_score_adj" 2>/dev/null)
-         _d "For $pid, the oom value is $oom_adj, retreived from oom_score_adj"
+         _d "For $pid, the oom value is $oom_adj, retrieved from oom_score_adj"
       else
          oom_adj=$(cat "/proc/$pid/oom_adj" 2>/dev/null)
-         _d "For $pid, the oom value is $oom_adj, retreived from oom_adj"
+         _d "For $pid, the oom value is $oom_adj, retrieved from oom_adj"
       fi
    fi
 
@@ -1633,9 +1633,9 @@ find_max_trx_time() {
    }' "${file}"
 }
 
-find_transation_states () {
+find_transaction_states () {
    local file="$1"
-   local tmpfile="$PT_TMPDIR/find_transation_states.tmp"
+   local tmpfile="$PT_TMPDIR/find_transaction_states.tmp"
 
    [ -e "$file" ] || return
 
@@ -1660,7 +1660,7 @@ format_innodb_status () {
    name_val "Pending I/O Reads"   "$(find_pending_io_reads "${file}")"
    name_val "Pending I/O Writes"  "$(find_pending_io_writes "${file}")"
    name_val "Pending I/O Flushes" "$(find_pending_io_flushes "${file}")"
-   name_val "Transaction States"  "$(find_transation_states "${file}" )"
+   name_val "Transaction States"  "$(find_transaction_states "${file}" )"
    if grep 'TABLE LOCK table' "${file}" >/dev/null ; then
       echo "Tables Locked"
       awk '/^TABLE LOCK table/{print $4}' "${file}" \
@@ -2346,9 +2346,9 @@ report_jemalloc_enabled() {
    local GENERAL_JEMALLOC_STATUS=0
    
    for pid in $(grep '/mysqld ' "$instances_file" | awk '{print $1;}'); do
-	  local jemalloc_status="$(get_var "pt-summary-internal-jemalloc_enabled_for_pid_${pid}" "${variables_file}")"
-	  if [ -z $jemalloc_status ]; then
-		  continue
+      local jemalloc_status="$(get_var "pt-summary-internal-jemalloc_enabled_for_pid_${pid}" "${variables_file}")"
+      if [ -z $jemalloc_status ]; then
+         continue
       elif [ $jemalloc_status = 0 ]; then
          echo "jemalloc is not enabled in mysql config for process with id ${pid}" 
       else
