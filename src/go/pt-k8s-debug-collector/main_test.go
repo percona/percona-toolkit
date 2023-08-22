@@ -33,6 +33,15 @@ We do not explicitly test --kubeconfig and --forwardport options, because they a
 */
 
 /*
+Tests TODO:
+
+- Test clusters with custom user and secrets. With the way we currently test,
+  we just need to create a cluster with particular options. But it is already
+  time and resource consuming operation. So we need to either test only getCR
+  function or create a mock cluster, or find a better way to deploy test clusters.
+*/
+
+/*
 Tests collection of the individual files by pt-k8s-debug-collector.
 Requires running K8SPXC instance and kubectl, configured to access that instance by default.
 */
