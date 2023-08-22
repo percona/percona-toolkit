@@ -250,7 +250,7 @@ func parseCommandLineOpts(args []string) (cliOptions, error) {
 	app.Flag("username", "User for login if not current user").
 		Short('U').
 		StringVar(&opts.connOpts.User)
-	app.Flag("disable-ssl", "Diable SSL for the connection").
+	app.Flag("disable-ssl", "Disable SSL for the connection").
 		Default("true").BoolVar(&opts.connOpts.DisableSSL)
 	app.Flag("verbose", "Show verbose log").
 		Default("false").BoolVar(&opts.Verbose)

@@ -157,7 +157,7 @@ sub check_module_usage {
       Transformers   => 1,
    );
 
-   # Many tools dyanmically instantiate objs like $plugin="WatchStatus",
+   # Many tools dynamically instantiate objs like $plugin="WatchStatus",
    # $plugin->new().  So this script can't detect that.
    my %dynamic = (
       'pt-query-digest' => {

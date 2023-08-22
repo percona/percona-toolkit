@@ -38,7 +38,7 @@ usage() {
     err "Usage: test-env start|stop|restart|status|checkconfig|reset|kill" \
         ""                                                          \
         "  start       Start test servers in ${TMP_DIR}/PORT"             \
-        "  stop        Stop test servers and remvoe all ${TMP_DIR}/PORT"  \
+        "  stop        Stop test servers and remove all ${TMP_DIR}/PORT"  \
         "  kill        Kill test servers (use if stop fails)"       \
         "  restart     Stop and start test servers"                 \
         "  status      Print status of test servers"                \
@@ -219,7 +219,7 @@ kill_sandbox() {
             [ "$pid2" ] && kill -9 $pid2
             sleep 2
 
-            # Third and finaly check if the sandbox server is running.
+            # Third and finally check if the sandbox server is running.
             sandbox_is_running $p
             if [ $? -eq 0 ]; then
                 err "Failed to kill MySQL test server on port $p (PID $pid1, $pid2)"

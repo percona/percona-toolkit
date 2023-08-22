@@ -192,7 +192,7 @@ percona-toolkit (2.2.17-1) unstable; urgency=low
  * Fixed bug 1523730:  pt-show-grants doesn't sort column-level privileges
  * Fixed bug 1362942:  pt-slave-restart fails on MariaDB 10.0.13 (gtid_mode confusion)
  * Fixed bug PT-30:    pt-stalk: new var binlog_error_action causes bug in collect module
- * Fixed bug 1389041:  pt-table-checksum has high likelyhood to skip a table when row count is around chunk-size * chunk-size-limit
+ * Fixed bug 1389041:  pt-table-checksum has high likelihood to skip a table when row count is around chunk-size * chunk-size-limit
  * Fixed bug 1480719:  pt-table-checksum redundant argument in printf
 
  -- Percona Toolkit Developers <toolkit-dev@percona.com>  Fri, 04 Mar 2016 12:09:54 +0000
@@ -228,7 +228,7 @@ percona-toolkit (2.2.15-2) unstable; urgency=low
   * Fixed bug 1457573: pt-sift failed when fetching missing tools
   * Feature   1488600: pt-stalk monitors tokudb status
   * Fixed bug 1042727: pt-table-checksum doesn't reconnect to slaves when timed out on very long lags
-  * Fixed bug 1277049: passsword parameter must escape commas - all tools [DOC]
+  * Fixed bug 1277049: password parameter must escape commas - all tools [DOC]
   * Fixed bug BLD-271: changes needed to build packages from git tree
   * Fixed bug PT-21  : write-user-docs script stopped working after switching to github
   * Fixed bug 1488611: testing bugs related to newer perl versions
@@ -684,7 +684,7 @@ percona-toolkit (2.1.2) unstable; urgency=low
   * Fixed bug 978432: pt-table-checksum ignoring primary key
   * Fixed bug 995274: pt-table-checksum can't use an undefined value as an ARRAY reference at line 2206
   * Fixed bug 996110: pt-table-checksum crashes if InnoDB is disabled
-  * Fixed bug 987393: pt-table-checksum: Empy tables cause "undefined value as an ARRAY" errors
+  * Fixed bug 987393: pt-table-checksum: Empty tables cause "undefined value as an ARRAY" errors
   * Fixed bug 1002365: pt-table-sync --ignore-* options don't work with --replicate
   * Fixed bug 1003014: pt-table-sync --replicate and --sync-to-master error "index does not exist"
   * Fixed bug 823403: pt-table-sync --lock-and-rename doesn't work on 5.1

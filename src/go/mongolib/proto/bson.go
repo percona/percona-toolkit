@@ -82,7 +82,7 @@ func (d *BsonD) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	if t != json.Delim('}') {
-		return fmt.Errorf("expect delimeter %s but got %s", json.Delim('}'), t)
+		return fmt.Errorf("expect delimiter %s but got %s", json.Delim('}'), t)
 	}
 
 	return nil

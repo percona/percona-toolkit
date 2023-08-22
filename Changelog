@@ -104,7 +104,7 @@ v3.4.0 release 2022-07-11
  * Fixed bug   PT-1747: pt-online-schema-change: metadata lock can break database for rebuild_constraints
  * Fixed bug   PT-1887: pt-diskstat is not working for new kernels
  * Fixed bug   PT-1900: At times, pt-query-digest does not hide the parameters properly when parameter=binary
- * Fixed bug   PT-1953: pt-summary typo: Memory mamagement.
+ * Fixed bug   PT-1953: pt-summary typo: Memory management.
  * Fixed bug   PT-1959: go part of the toolkit still has the version 3.3.0
  * Fixed bug   PT-1965: pt-stalk --mysql-only doesn't collect mysqladmin output (Thanks Sergey Kuzmichev)
  * Fixed bug   PT-1966: Test no_drop_no_swap for the pt-online-schema-change is broken (Thanks Tsubasa Tanaka)
@@ -136,7 +136,7 @@ v3.3.0 release 2021-01-14
  * Fixed bug   PT-1829: pt-heartbeat doesn't reconnect for check-read-only
  * Improvement PT-1836: Review and consider lintian reported issues
  * Improvement PT-1851: Backslashes missing from documentation
- * Improvement PT-1853: Added --no-check-foreing-keys to pt-osc
+ * Improvement PT-1853: Added --no-check-foreign-keys to pt-osc
  * Fixed bug   PT-1857: pt-heartbeat cannot reconnect. 
  * Fixed bug   PT-1859: pt-pg-summary fails for Postgres12 (Thanks Sergey Kuzmichev)
  * Fixed bug   PT-1881: pt-upgrade fails when query including format strings and SQL errors is given (Thanks Nayuta Yanagisawa)
@@ -395,7 +395,7 @@ v2.2.17 released 2016-03-07
  * Fixed bug 1523730:  pt-show-grants doesn't sort column-level privileges
  * Fixed bug 1362942:  pt-slave-restart fails on MariaDB 10.0.13 (gtid_mode confusion)
  * Fixed bug PT-30  :  pt-stalk: new var binlog_error_action causes bug in collect module
- * Fixed bug 1389041:  pt-table-checksum has high likelyhood to skip a table when row count is around chunk-size * chunk-size-limit
+ * Fixed bug 1389041:  pt-table-checksum has high likelihood to skip a table when row count is around chunk-size * chunk-size-limit
  * Fixed bug 1480719:  pt-table-checksum redundant argument in printf
 
 v2.2.16 released 2015-11-09
@@ -427,7 +427,7 @@ v2.2.15 released 2015-08-28
   * Fixed bug 1457573: pt-sift failed when fetching missing tools
   * Feature   1488600: pt-stalk monitors tokudb status
   * Fixed bug 1042727: pt-table-checksum doesn't reconnect to slaves when timed out on very long lags
-  * Fixed bug 1277049: passsword parameter must escape commas - all tools [DOC]
+  * Fixed bug 1277049: password parameter must escape commas - all tools [DOC]
   * Fixed bug BLD-271: changes needed to build packages from git tree
   * Fixed bug PT-21  : write-user-docs script stopped working after switching to github
   * Fixed bug 1488611: testing bugs related to newer perl versions
@@ -860,7 +860,7 @@ v2.1.2 released 2012-06-12
   * Fixed bug 978432: pt-table-checksum ignoring primary key
   * Fixed bug 995274: pt-table-checksum can't use an undefined value as an ARRAY reference at line 2206
   * Fixed bug 996110: pt-table-checksum crashes if InnoDB is disabled
-  * Fixed bug 987393: pt-table-checksum: Empy tables cause "undefined value as an ARRAY" errors
+  * Fixed bug 987393: pt-table-checksum: Empty tables cause "undefined value as an ARRAY" errors
   * Fixed bug 997155: pt-table-sync sets binlog_format needlessly
   * Fixed bug 1002365: pt-table-sync --ignore-* options don't work with --replicate
   * Fixed bug 1003014: pt-table-sync --replicate and --sync-to-master error "index does not exist"

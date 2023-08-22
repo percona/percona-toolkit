@@ -210,11 +210,11 @@ func processCliParams(baseTempPath string, usageWriter io.Writer) (*cliOptions, 
 	opts.MySQLUser = opts.CollectCommand.Flag("mysql-user", "MySQL user name.").String()
 	opts.MySQLPass = opts.CollectCommand.Flag("mysql-password", "MySQL password.").String()
 	opts.AskMySQLPass = opts.CollectCommand.Flag("ask-mysql-pass", "Ask MySQL password.").Bool()
-	// Aditional flags
+	// Additional flags
 	opts.AdditionalCmds = opts.CollectCommand.Flag("extra-cmd",
 		"Also run this command as part of the data collection. This parameter can be used more than once.").Strings()
 	opts.EncryptPassword = opts.CollectCommand.Flag("encrypt-password", "Encrypt the output file using this password."+
-		" If ommited, the file won't be encrypted.").String()
+		" If omitted, the file won't be encrypted.").String()
 	// No-Flags
 	opts.NoCollect = opts.CollectCommand.Flag("no-collect", "Do not collect data").Bool()
 	opts.NoSanitize = opts.CollectCommand.Flag("no-sanitize", "Sanitize data").Bool()
