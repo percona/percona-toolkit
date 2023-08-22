@@ -77,7 +77,7 @@ sub get_duplicate_keys {
       # The primary key is treated specially.  It is effectively never a
       # duplicate, so it is never removed.  It is compared to all other
       # keys, and in any case of duplication, the primary is always kept
-      # and the other key removed.  Usually the primary is the acutal
+      # and the other key removed.  Usually the primary is the actual
       # PRIMARY KEY, but for an InnoDB table without a PRIMARY KEY, the
       # effective primary key is the clustered key.
       if ( $key->{name} eq 'PRIMARY'
@@ -439,7 +439,7 @@ sub shorten_clustered_duplicate {
 }
 
 # Given a primary key (can be undef) and an arrayref of unique keys,
-# removes and returns redundantly contrained unique keys from uniquie_keys.
+# removes and returns redundantly constrained unique keys from uniquie_keys.
 sub unconstrain_keys {
    my ( $self, $primary_key, $unique_keys ) = @_;
    die "I need a unique_keys argument" unless $unique_keys;

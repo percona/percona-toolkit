@@ -70,7 +70,7 @@ sub new {
    return bless $self, $class;
 }
 
-# Sub: _pasre_tabular
+# Sub: _parse_tabular
 #   Parse a line from tabular horizontal output.
 #
 # Parameters:
@@ -88,7 +88,7 @@ sub _parse_tabular {
    return (\%row, undef);
 }
 
-# Sub: _pasre_tabular
+# Sub: _parse_tabular
 #   Parse a line from tab-separated horizontal output.
 #
 # Parameters:

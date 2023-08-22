@@ -147,7 +147,7 @@ sub has_mode {
 
    my (undef, $sql_mode_string) = $self->{dbh}->selectrow_array("show variables like 'sql_mode'");
 
-   # Need to account for occurrance at 
+   # Need to account for occurrence at 
    # beginning, middle or end of comma separated string
    return $sql_mode_string =~ /(?:,|^)$mode(?:,|$)/;
 

@@ -44,7 +44,7 @@ $Data::Dumper::Quotekeys = 0;
 #   TableParser  - <TableParser> object
 #
 # Optional Arguments:
-#   dml         - Data manipulation statment to precede the SELECT statement
+#   dml         - Data manipulation statement to precede the SELECT statement
 #   select      - Arrayref of table columns to select
 #   chunk_index - Index to use for nibbling
 #   one_nibble  - Allow one-chunk tables (default yes)
@@ -610,7 +610,7 @@ sub _find_best_index {
       }
    }
 
-   # if no user definded index or user defined index not valid
+   # if no user defined index or user defined index not valid
    # consider mysql's preferred index a candidate
    if ( !$best_index && !$want_index && $args{mysql_index} ) {
       PTDEBUG && _d('MySQL wants to use index', $args{mysql_index});
@@ -870,7 +870,7 @@ sub _next_boundaries {
    #    g <- next_lower
    #
    # Why fetch both upper and next_lower?  We wanted to keep nibbling simple,
-   # i.e. one nibble statment, not one for the first nibble, one for "middle"
+   # i.e. one nibble statement, not one for the first nibble, one for "middle"
    # nibbles, and another for the end (this is how older code worked).  So the
    # nibble statement is inclusive, but this requires both boundaries for
    # reasons explained in a comment above my $ub_sql in new().
@@ -934,7 +934,7 @@ sub identical_boundaries {
    return 1 if !$b1 && !$b2;
 
    # Both boundaries are defined; compare their values and return false
-   # on the fisrt difference because only one diff is needed to prove
+   # on the first difference because only one diff is needed to prove
    # that they're not identical.
    die "Boundaries have different numbers of values"
       if scalar @$b1 != scalar @$b2;  # shouldn't happen

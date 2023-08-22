@@ -59,7 +59,7 @@ sub new {
 #   Tell the object that an index exists.  Internally, it just creates usage
 #   counters for the index and the table it belongs to.
 #
-# Parameteres:
+# Parameters:
 #   %args - Arguments
 #
 # Required Arguments:

@@ -23,7 +23,7 @@
 # out-of-bounds: beyond the lower and upper boundaries.  NibbleIterator
 # nibbles a table from its lowest to its highest value, but sometimes
 # another server's copy of the table might have more values below or above
-# the first table's boundaires.  When the parent NibbleIterator is done,
+# the first table's boundaries.  When the parent NibbleIterator is done,
 # this class executes two more nibbles for values past the lower boundary
 # and past the upper boundary.
 package OobNibbleIterator;

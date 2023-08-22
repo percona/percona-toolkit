@@ -75,7 +75,7 @@ sub get_key_size {
    # only covers the portion of the key needed to satisfy the query.
    # For 2), we have to break normal index usage which normally
    # allows MySQL to access only the limited number of rows needed
-   # to satisify the query because we want to know total table rows.
+   # to satisfy the query because we want to know total table rows.
    my $sql = 'EXPLAIN SELECT ' . join(', ', @cols)
            . ' FROM ' . $args{tbl_name}
            . ($key_exists ? " FORCE INDEX (`$name`)" : '')
@@ -85,7 +85,7 @@ sub get_key_size {
       push @where_cols, "$col=1";
    }
    # For single column indexes we have to trick MySQL into scanning
-   # the whole index by giving it two irreducible condtions. Otherwise,
+   # the whole index by giving it two irreducible conditions. Otherwise,
    # EXPLAIN rows will report only the rows that satisfy the query
    # using the key, but this is not what we want. We want total table rows.
    # In other words, we need an EXPLAIN type index, not ref or range.

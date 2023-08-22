@@ -390,7 +390,7 @@ override query_report => sub {
          }
       }
 
-      # Add reponse time histogram for Query_time
+      # Add response time histogram for Query_time
       my $vals = $stats->{Query_time}->{all};
       if ( defined $vals && scalar %$vals ) {
          # TODO: this is broken.

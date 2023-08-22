@@ -84,7 +84,7 @@ Preferred Node | current
         dm-2 | 128
      mmcblk0 | [mq-deadline] 128
      nvme0n1 | [none] 127
-# Disk Partioning ############################################
+# Disk Partitioning ##########################################
 Device       Type      Start        End               Size
 ============ ==== ========== ========== ==================
 /dev/dm-0    Disk                            1022886936576
