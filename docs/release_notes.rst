@@ -77,7 +77,7 @@ v3.5.1 released 2023-01-23
 New Features
 ------------------------------------------------------------
 
-* :jirabug:`PT-2134`: Adds support for PostgreSQL and MySQL operators. 
+* :jirabug:`PT-2134`: Adds support for PostgreSQL and MySQL operators.
 
 This feature includes the following changes:
 
@@ -108,7 +108,7 @@ Bugs Fixed
 
 * :jirabug:`PT-2139`: CVEs in golang binaries
 * :jirabug:`PT-2140`: Update modules in the main branch
-  
+
 
 v3.5.0 released 2022-11-28
 ==============================
@@ -125,7 +125,7 @@ Improvements
 
 * :jirabug:`PT-1718`: Have pt-stalk collect performance_schema.threads along with information_schema.processlist
 * :jirabug:`PT-2033`: Avoid running same query concurrently from pt-stalk
-* :jirabug:`PT-2013`: Change Percona Toolkit tool names to eliminate offensive terminology 
+* :jirabug:`PT-2013`: Change Percona Toolkit tool names to eliminate offensive terminology
 
 
 
@@ -144,8 +144,8 @@ Bugs Fixed
 * :jirabug:`PT-2079`: Incorrect version is returned
 * :jirabug:`PT-2075`: Fix tests for pt-stalk, so they can work with 8.0
 * :jirabug:`PT-1959`: go part of the toolkit still has the version 3.3.0
-  
-Packaging Notes 
+
+Packaging Notes
 ------------------------
 
 ``percona-toolkit`` is now available on Ubuntu 22.04 and Red Hat Enterprise Linux 9
@@ -182,7 +182,7 @@ Bugs Fixed
 * :jirabug:`PT-1965`: pt-stalk --mysql-only doesn't collect mysqladmin output
 * :jirabug:`PT-1966`: Test no_drop_no_swap for the pt-online-schema-change is broken
 * :jirabug:`PT-1974`: Support fingerprinting for --print in pt-kill
-* :jirabug:`PT-1983`: pt-summary missing one DIMM	
+* :jirabug:`PT-1983`: pt-summary missing one DIMM
 * :jirabug:`PT-2016`: pt-table-checksum fails to build replace query when table lacks primary key
 * :jirabug:`PT-2023`: pt-upgrade Error: Wide character in print
 

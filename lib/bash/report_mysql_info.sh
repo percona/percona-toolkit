@@ -147,7 +147,7 @@ parse_mysqld_instances () {
             defaults_file="$(echo "${word}" | cut -d= -f2)"
          fi
       done
-      
+
       if [ -n "${defaults_file:-""}" -a -r "${defaults_file:-""}" ]; then
          socket="${socket:-"$(grep "^socket\>" "$defaults_file" | tail -n1 | cut -d= -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')"}"
          port="${port:-"$(grep "^port\>" "$defaults_file" | tail -n1 | cut -d= -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')"}"
@@ -162,7 +162,7 @@ parse_mysqld_instances () {
          oom="?"
       fi
       printf "  %5s %-26s %-4s %-3s %s\n" "${port}" "${datadir}" "${nice:-"?"}" "${oom:-"?"}" "${socket}"
-      
+
       # Need to unset all of them in case the next process uses --defaults-file
       defaults_file=""
       socket=""
@@ -317,7 +317,7 @@ summarize_processlist () {
          }
          \$1 == \"Time:\" {
             t = \$2;
-            if ( t == \"NULL\" ) { 
+            if ( t == \"NULL\" ) {
                 t = 0;
             }
          }
@@ -356,15 +356,15 @@ pretty_print_cnf_file () {
 
    perl -n -l -e '
       my $line = $_;
-      if ( $line =~ /^\s*[a-zA-Z[]/ ) { 
-         if ( $line=~/\s*(.*?)\s*=\s*(.*)\s*$/ ) { 
-            printf("%-35s = %s\n", $1, $2)  
-         } 
-         elsif ( $line =~ /\s*\[/ ) { 
-            print "\n$line" 
+      if ( $line =~ /^\s*[a-zA-Z[]/ ) {
+         if ( $line=~/\s*(.*?)\s*=\s*(.*)\s*$/ ) {
+            printf("%-35s = %s\n", $1, $2)
+         }
+         elsif ( $line =~ /\s*\[/ ) {
+            print "\n$line"
          } else {
             print $line
-         } 
+         }
       }' "$file"
 
    while read line; do
@@ -583,7 +583,7 @@ format_ndb_status() {
    local file=$1
 
    [ -e "$file" ] || return
-   # We could use "& \n" but that does not seem to work on bsd sed. 
+   # We could use "& \n" but that does not seem to work on bsd sed.
    egrep '^[ \t]*Name:|[ \t]*Status:' $file|sed 's/^[ \t]*//g'|while read line; do echo $line; echo $line | grep '^Status:'>/dev/null && echo ; done
 }
 
@@ -591,7 +591,7 @@ format_keyring_plugins() {
     local keyring_plugins="$1"
     local encrypted_tables="$2"
 
-    if [ -z "$keyring_plugins" ]; then 
+    if [ -z "$keyring_plugins" ]; then
         echo "No keyring plugins found"
         if [ ! -z "$encrypted_tables" ]; then
             echo "Warning! There are encrypted tables but keyring plugins are not loaded"
@@ -948,7 +948,7 @@ section_percona_server_features () {
    # Renamed to innodb_buffer_pool_restore_at_startup in 5.5.10-20.1
    name_val "Fast Server Restarts"  \
             "$(feat_on_renamed "$file" innodb_auto_lru_dump innodb_buffer_pool_restore_at_startup)"
-   
+
    name_val "Enhanced Logging"      \
             "$(feat_on "$file" log_slow_verbosity ne microtime)"
    name_val "Replica Perf Logging"  \
@@ -970,7 +970,7 @@ section_percona_server_features () {
       fi
    fi
    name_val "Smooth Flushing" "$smooth_flushing"
-   
+
    name_val "HandlerSocket NoSQL"   \
             "$(feat_on "$file" handlersocket_port)"
    name_val "Fast Hash UDFs"   \
@@ -1133,7 +1133,7 @@ _semi_sync_stats_for () {
          trace_extra="Unknown setting"
       fi
    fi
-   
+
    name_val "${target} semisync status" "${semisync_status}"
    name_val "${target} trace level" "${semisync_trace}, ${trace_extra}"
 
@@ -1249,10 +1249,10 @@ section_percona_xtradb_cluster () {
 
    name_val "SST Method"      "$(get_var "wsrep_sst_method" "$mysql_var")"
    name_val "Slave Threads"   "$(get_var "wsrep_slave_threads" "$mysql_var")"
-   
+
    name_val "Ignore Split Brain" "$( parse_wsrep_provider_options "pc.ignore_sb" "$mysql_var" )"
    name_val "Ignore Quorum" "$( parse_wsrep_provider_options "pc.ignore_quorum" "$mysql_var" )"
-   
+
    name_val "gcache Size"      "$( parse_wsrep_provider_options "gcache.size" "$mysql_var" )"
    name_val "gcache Directory" "$( parse_wsrep_provider_options "gcache.dir" "$mysql_var" )"
    name_val "gcache Name"      "$( parse_wsrep_provider_options "gcache.name" "$mysql_var" )"
@@ -1275,13 +1275,13 @@ report_jemalloc_enabled() {
    local instances_file="$1"
    local variables_file="$2"
    local GENERAL_JEMALLOC_STATUS=0
-   
+
    for pid in $(grep '/mysqld ' "$instances_file" | awk '{print $1;}'); do
       local jemalloc_status="$(get_var "pt-summary-internal-jemalloc_enabled_for_pid_${pid}" "${variables_file}")"
       if [ -z $jemalloc_status ]; then
          continue
       elif [ $jemalloc_status = 0 ]; then
-         echo "jemalloc is not enabled in mysql config for process with id ${pid}" 
+         echo "jemalloc is not enabled in mysql config for process with id ${pid}"
       else
          echo "jemalloc enabled in mysql config for process with id ${pid}"
 		 GENERAL_JEMALLOC_STATUS=1

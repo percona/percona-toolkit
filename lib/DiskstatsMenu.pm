@@ -112,18 +112,18 @@ sub run_interactive {
       # fork(), but future-proofing it in case we ever need to speak to
       # the child
       $child_pid = open $child_fh, "-|";
-   
+
       die "Cannot fork: $OS_ERROR" unless defined $child_pid;
-      
+
       if ( !$child_pid ) {
          # Child
          STDOUT->autoflush(1);
          # Bit of helpful magic: Changes how the program's name is displayed,
          # so it's easier to track in things like ps.
          local $PROGRAM_NAME = "$PROGRAM_NAME (data-gathering daemon)";
-   
+
          close $tmp_fh if $tmp_fh;
-   
+
          PTDEBUG && _d("Child is [$PROGRAM_NAME] in ps aux and similar");
 
          gather_samples(
@@ -317,7 +317,7 @@ sub gather_samples {
 
       my @to_print = timestamp();
       push @to_print, <$diskstats_fh>;
-   
+
       for my $fh ( @fhs ) {
          print { $fh } @to_print;
       }
@@ -417,13 +417,13 @@ sub group_by {
          else {
             $obj->set_interactive(0);
          }
-   
+
          my $print_header;
          my $header_callback = $args{header_callback} || sub {
                                  my ($self, @args) = @_;
                                  $self->print_header(@args) unless $print_header++
                               };
-   
+
          $obj->group_by(
                   filehandle      => $args{filehandle},
                   # Only print the header once, as if in interactive.
@@ -501,7 +501,7 @@ sub get_new_value_for {
       my (%args)       = @_;
       my $o            = $args{OptionParser};
       my $new_interval = get_blocking_input($message) || 0;
-   
+
       die "Invalid timeout: $new_interval"
          unless looks_like_number($new_interval)
                   && ($new_interval = int($new_interval));
@@ -523,7 +523,7 @@ sub get_new_regex_for {
       my (%args)    = @_;
       my $o         = $args{OptionParser};
       my $new_regex = get_blocking_input($message);
-   
+
       local $EVAL_ERROR;
       if ( $new_regex && (my $re = eval { qr/$new_regex/i }) ) {
          $o->get("current_group_by_obj")

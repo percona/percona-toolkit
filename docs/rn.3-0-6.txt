@@ -18,7 +18,7 @@ Known Issues
 * :jirabug:`PT-238`: The information message implemented for :jirabug:`PT-204` has a typo when referring to the ``--ignore-engines`` parameter. This problem is planned to be fixed in the next release.
 * :jirabug:`PT-240`: It has been detected that the implementation of :jirabug:`PT-205` is not complete and ``pt-osc`` may fail when altering tables. This problem is planned to be fixed in the next release.
 
-Bug Fixes     
+Bug Fixes
 
 * :jirabug:`PT-234`: The general log parser cannot handle timestamps which include time zones
 * :jirabug:`PT-229`: ``pt-online-schema-change`` does not retry on a deadlock error when using ``Percona Server`` 5.7

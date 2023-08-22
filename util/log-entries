@@ -18,7 +18,7 @@ BEGIN {
          exit
       if ( \$0 ~ /^\$/ )
          continue
-      
+
       print
    }
 }

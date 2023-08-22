@@ -623,7 +623,7 @@ sub parse_from {
    }
    else {
       my $filename = $args{filename} || $self->filename();
-   
+
       open my $fh, "<", $filename
          or die "Cannot parse $filename: $OS_ERROR";
       $lines_read = $self->_parse_from_filehandle(
@@ -642,7 +642,7 @@ sub parse_from {
 #   run of the mill filehandle.
 #
 # Parameters:
-#   filehandle       - 
+#   filehandle       -
 #   sample_callback  - Called each time a sample is processed, passed
 #                      the latest timestamp.
 #
@@ -879,7 +879,7 @@ sub _print_device_if {
       $self->_mark_if_active($dev);
       return $dev if $dev =~ $dev_re;
    }
-   else {   
+   else {
       if ( $self->active_device($dev) ) {
          # If --show-interactive is enabled, or we've seen
          # the device be active at least once.

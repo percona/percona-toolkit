@@ -37,7 +37,7 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 #   oktorun    - Callback that returns true if it's ok to continue running.
 #
 # Returns:
-#   MySQLStatusWaiter object 
+#   MySQLStatusWaiter object
 sub new {
    my ( $class, %args ) = @_;
    my @required_args = qw(max_spec get_status sleep oktorun);
@@ -111,7 +111,7 @@ sub _parse_spec {
       }
    }
 
-   return \%max_val_for; 
+   return \%max_val_for;
 }
 
 # Sub: max_values

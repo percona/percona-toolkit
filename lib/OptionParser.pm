@@ -95,7 +95,7 @@ sub new {
       rules             => [],  # desc of rules for --help
       mutex             => [],  # rule: opts are mutually exclusive
       atleast1          => [],  # rule: at least one opt is required
-      disables          => {},  # rule: opt disables other opts 
+      disables          => {},  # rule: opt disables other opts
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
@@ -305,7 +305,7 @@ sub _pod_to_specs {
          }
 
          push @specs, {
-            spec  => $self->{parse_attributes}->($self, $option, \%attribs), 
+            spec  => $self->{parse_attributes}->($self, $option, \%attribs),
             desc  => $para
                . (defined $attribs{default} ? " (default $attribs{default})" : ''),
             group => ($attribs{'group'} ? $attribs{'group'} : 'default'),
@@ -426,7 +426,7 @@ sub _parse_specs {
          $self->{opts}->{$long} = $opt;
       }
       else { # It's an option rule, not a spec.
-         PTDEBUG && _d('Parsing rule:', $opt); 
+         PTDEBUG && _d('Parsing rule:', $opt);
          push @{$self->{rules}}, $opt;
          my @participants = $self->_get_participants($opt);
          my $rule_ok = 0;
@@ -478,7 +478,7 @@ sub _parse_specs {
       PTDEBUG && _d('Option', $long, 'disables', @participants);
    }
 
-   return; 
+   return;
 }
 
 # Sub: _get_participants
@@ -599,9 +599,9 @@ sub _set_option {
 #   later by <get()>, <got()>, and <set()>.  Call <get_specs()>
 #   before calling this sub.
 sub get_opts {
-   my ( $self ) = @_; 
+   my ( $self ) = @_;
 
-   # Reset opts. 
+   # Reset opts.
    foreach my $long ( keys %{$self->{opts}} ) {
       $self->{opts}->{$long}->{got} = 0;
       $self->{opts}->{$long}->{value}
@@ -749,7 +749,7 @@ sub _check_opts {
                   else {
                      $err = join(', ',
                                map { "--$self->{opts}->{$_}->{long}" }
-                               grep { $_ } 
+                               grep { $_ }
                                @restricted_opts[0..scalar(@restricted_opts) - 2]
                             )
                           . ' or --'.$self->{opts}->{$restricted_opts[-1]}->{long};
@@ -759,7 +759,7 @@ sub _check_opts {
             }
 
          }
-         elsif ( $opt->{is_required} ) { 
+         elsif ( $opt->{is_required} ) {
             $self->save_error("Required option --$long must be specified");
          }
 
@@ -1197,7 +1197,7 @@ sub _read_config_file {
 #   This is the default MAGIC_foo_table:
 #
 #     CREATE TABLE `foo` (i INT)
-#   
+#
 #   Blah blah...
 #   (end code)
 #   Then to get that CREATE TABLE, you pass "MAGIC_foo_table" as the
@@ -1234,7 +1234,7 @@ sub read_para_after {
 sub clone {
    my ( $self ) = @_;
 
-   # Deep-copy contents of hashrefs; do not just copy the refs. 
+   # Deep-copy contents of hashrefs; do not just copy the refs.
    my %clone = map {
       my $hashref  = $self->{$_};
       my $val_copy = {};
@@ -1253,7 +1253,7 @@ sub clone {
       $clone{$scalar} = $self->{$scalar};
    }
 
-   return bless \%clone;     
+   return bless \%clone;
 }
 
 sub _parse_size {

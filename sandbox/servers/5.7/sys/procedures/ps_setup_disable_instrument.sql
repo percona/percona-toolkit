@@ -24,7 +24,7 @@ CREATE DEFINER='root'@'localhost' PROCEDURE ps_setup_disable_instrument (
              Description
              -----------
 
-             Disables instruments within Performance Schema 
+             Disables instruments within Performance Schema
              matching the input pattern.
 
              Parameters

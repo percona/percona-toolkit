@@ -55,7 +55,7 @@ use constant {
 # Optional Arguments:
 #   dbh - Pre-created, uninitialized dbh
 #   set - Callback to set vars on dbh when dbh is first connected
-# 
+#
 # Returns:
 #   Cxn object
 sub new {
@@ -173,7 +173,7 @@ sub set_dbh {
    # created the dbh probably didn't set what we set here.  For example,
    # MasterSlave makes dbhs when finding slaves, but it doesn't set
    # anything.
-   # Due to https://github.com/perl5-dbi/DBD-mysql/issues/306 we assigning 
+   # Due to https://github.com/perl5-dbi/DBD-mysql/issues/306 we assigning
    # connection_id to $self->{dbh_set} and compare it with current connection_id.
    # This is required to set variable values again after disconnect.
    if ( $self->{dbh} && $self->{dbh} == $dbh && $self->{dbh_set} && $self->{dbh_set} == $connection_id) {
@@ -238,8 +238,8 @@ sub description {
    return sprintf("%s -> %s:%s", $self->name(), $self->{dsn}->{h} || 'localhost' , $self->{dsn}->{P} || 'socket');
 }
 
-# This returns the server_id. 
-# For cluster nodes, since server_id is unreliable, we use a combination of 
+# This returns the server_id.
+# For cluster nodes, since server_id is unreliable, we use a combination of
 # variables to create an id string that is unique.
 sub get_id {
    my ($self, $cxn) = @_;
@@ -251,7 +251,7 @@ sub get_id {
       my $sql  = q{SHOW STATUS LIKE 'wsrep\_local\_index'};
       my (undef, $wsrep_local_index) = $cxn->dbh->selectrow_array($sql);
       PTDEBUG && _d("Got cluster wsrep_local_index: ",$wsrep_local_index);
-      $unique_id = $wsrep_local_index."|"; 
+      $unique_id = $wsrep_local_index."|";
       foreach my $val ('server\_id', 'wsrep\_sst\_receive\_address', 'wsrep\_node\_name', 'wsrep\_node\_address') {
          my $sql = "SHOW VARIABLES LIKE '$val'";
          PTDEBUG && _d($cxn->name, $sql);
@@ -285,7 +285,7 @@ sub is_cluster_node {
       PTDEBUG && _d($sql); #don't invoke name() if it's not a Cxn!
    }
    else {
-      $dbh = $cxn->dbh();      
+      $dbh = $cxn->dbh();
       PTDEBUG && _d($cxn->name, $sql);
    }
 
@@ -348,7 +348,7 @@ sub DESTROY {
    return;
 }
 
-# We have to create a wrapper around $dbh->ping() here due to 
+# We have to create a wrapper around $dbh->ping() here due to
 # https://github.com/perl5-dbi/DBD-mysql/issues/306
 sub _ping() {
    my ( $self, $dbh ) = @_;

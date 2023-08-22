@@ -42,7 +42,7 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 #   IndexUsage object
 sub new {
    my ( $class, %args ) = @_;
- 
+
    my $self = {
       %args,
       tables_for      => {}, # Keyed off db
@@ -110,7 +110,7 @@ sub add_query {
 }
 
 # Sub: add_table_usage
-#   Increase usage count for table (even if no indexes in it are used). 
+#   Increase usage count for table (even if no indexes in it are used).
 #   If saving results, the tables table is updated, too.
 #
 # Parameters:

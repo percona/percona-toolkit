@@ -122,13 +122,13 @@ sub _parse_config {
    }
 
    handle_special_vars(\%config_data);
-   
+
    return %config_data;
 }
 
 sub handle_special_vars {
    my ($config_data) = @_;
-   
+
    if ( $config_data->{vars}->{wsrep_provider_options} ) {
       my $vars  = $config_data->{vars};
       my $dupes = $config_data->{duplicate_vars};
@@ -191,7 +191,7 @@ sub _parse_config_output {
          vars   => $vars,
       );
    }
-   
+
    return (
       format         => $format,
       vars           => $vars,
@@ -265,7 +265,7 @@ sub parse_mysqld {
 
    # First look for the list of option files like
    #   Default options are read from the following files in the given order:
-   #   /etc/my.cnf /usr/local/mysql/etc/my.cnf ~/.my.cnf 
+   #   /etc/my.cnf /usr/local/mysql/etc/my.cnf ~/.my.cnf
    my @opt_files;
    if ( $output =~ m/^Default options are read.+\n/mg ) {
       my ($opt_files) = $output =~ m/\G^(.+)\n/m;
@@ -288,7 +288,7 @@ sub parse_mysqld {
    # It also ends with something like
    #
    #   wait_timeout                      28800
-   #   
+   #
    #   To see what values a running MySQL server is using, type
    #   'mysqladmin variables' instead of 'mysqld --verbose --help'.
    #
@@ -374,7 +374,7 @@ sub _preprocess_varvals {
       }
 
       my ($var, $val) = ($1, $2);
-      
+
       # Variable names are usually specified like "log-bin"
       # but in SHOW VARIABLES they're all like "log_bin".
       $var =~ tr/-/_/;
@@ -385,7 +385,7 @@ sub _preprocess_varvals {
       if ( !defined $val ) {
          $val = '';
       }
-      
+
       # Strip leading and trailing whitespace.
       for my $item ($var, $val) {
          $item =~ s/^\s+//;
@@ -407,7 +407,7 @@ sub _parse_varvals {
    # Config built from parsing the given varvals.
    my %config;
 
-   # Discover duplicate vars.  
+   # Discover duplicate vars.
    my %duplicates;
 
    while ( my ($var, $vals) = each %$vars ) {
@@ -487,7 +487,7 @@ sub _mimic_show_variables {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($vars, $format) = @args{@required_args};
-   
+
    foreach my $var ( keys %$vars ) {
       if ( $vars->{$var} eq '' ) {
          if ( $format eq 'mysqld' ) {

@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 
 mongodb1=`getent hosts ${MONGO1} | awk '{ print $1 }'`
 mongodb2=`getent hosts ${MONGO2} | awk '{ print $1 }'`

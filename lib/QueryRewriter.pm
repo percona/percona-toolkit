@@ -174,21 +174,21 @@ sub fingerprint {
       && return $query;
 
    # -----------------------------------------------------------
-   # Remove quoted strings 
+   # Remove quoted strings
    # -----------------------------------------------------------
-   $query =~ s/([^\\])(\\')/$1/sg;    
-   $query =~ s/([^\\])(\\")/$1/sg;    
-   $query =~ s/\\\\//sg;              
-   $query =~ s/\\'//sg;               
-   $query =~ s/\\"//sg;                        
-   $query =~ s/([^\\])(".*?[^\\]?")/$1?/sg;    
-   $query =~ s/([^\\])('.*?[^\\]?')/$1?/sg;    
+   $query =~ s/([^\\])(\\')/$1/sg;
+   $query =~ s/([^\\])(\\")/$1/sg;
+   $query =~ s/\\\\//sg;
+   $query =~ s/\\'//sg;
+   $query =~ s/\\"//sg;
+   $query =~ s/([^\\])(".*?[^\\]?")/$1?/sg;
+   $query =~ s/([^\\])('.*?[^\\]?')/$1?/sg;
    # -----------------------------------------------------------
 
-   $query =~ s/\bfalse\b|\btrue\b/?/isg; # boolean values 
+   $query =~ s/\bfalse\b|\btrue\b/?/isg; # boolean values
 
-   # MD5 checksums which are always 32 hex chars 
-   if ( $self->{match_md5_checksums} ) { 
+   # MD5 checksums which are always 32 hex chars
+   if ( $self->{match_md5_checksums} ) {
       $query =~ s/([._-])[a-f0-9]{32}/$1?/g;
    }
 
@@ -204,7 +204,7 @@ sub fingerprint {
 
    # Clean up leftovers
    if ( $self->{match_md5_checksums} ) {
-      $query =~ s/[xb+-]\?/?/g;                
+      $query =~ s/[xb+-]\?/?/g;
    }
    else {
       $query =~ s/[xb.+-]\?/?/g;
@@ -270,11 +270,11 @@ sub distill_verbs {
       return $query;
    }
 
-   # All other, more complex verbs. 
+   # All other, more complex verbs.
    $query = $self->strip_comments($query);
 
    # SHOW statements are either 2 or 3 words: SHOW A (B), where A and B
-   # are words; B is optional.  E.g. "SHOW TABLES" or "SHOW SLAVE STATUS". 
+   # are words; B is optional.  E.g. "SHOW TABLES" or "SHOW SLAVE STATUS".
    # There's a few common keywords that may show up in place of A, so we
    # remove them first.  Then there's some keywords that signify extra clauses
    # that may show up in place of B and since these clauses are at the
@@ -412,8 +412,8 @@ sub distill {
       else {
          # For everything else, distill the tables.
          my @tables = $self->__distill_tables($query, $table, %args);
-         $query     = join(q{ }, $verbs, @tables); 
-      } 
+         $query     = join(q{ }, $verbs, @tables);
+      }
    }
 
    if ( $args{trf} ) {

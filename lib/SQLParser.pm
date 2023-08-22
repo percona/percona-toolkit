@@ -423,7 +423,7 @@ sub parse_select {
    # only statement with optional keywords at the end.  Also, these
    # appear to be the only keywords with spaces instead of _.
    my @keywords;
-   my $final_keywords = qr/(FOR UPDATE|LOCK IN SHARE MODE)/i; 
+   my $final_keywords = qr/(FOR UPDATE|LOCK IN SHARE MODE)/i;
    1 while $query =~ s/\s+$final_keywords/(push @keywords, $1), ''/gie;
 
    my $keywords = qr/(
@@ -678,7 +678,7 @@ sub parse_table_reference {
 #   * not "fully" tested because the possibilities are infinite
 #
 # It works in four steps; let's take this WHERE clause as an example:
-# 
+#
 #   i="x and y" or j in ("and", "or") and x is not null or a between 1 and 10 and sz="this 'and' foo"
 #
 # The first step splits the string on and|or, the only two keywords I'm
@@ -704,7 +704,7 @@ sub parse_table_reference {
 # The third step runs through the list of pred frags backwards and joins
 # the current frag to the preceding frag if it does not have an operator.
 # The result is:
-# 
+#
 #   PREDICATE FRAGMENT                OPERATOR
 #   ================================  ========
 #   i="x and y"                       Y
@@ -721,7 +721,7 @@ sub parse_table_reference {
 # The fourth step is similar but not shown: pred frags with unbalanced ' or "
 # are joined to the preceding pred frag.  This fixes cases where a pred frag
 # has multiple and|or in a string value; e.g. "foo and bar or dog".
-# 
+#
 # After the pred frags are complete, the parts of these predicates are parsed
 # and returned in an arrayref of hashrefs like:
 #
@@ -858,7 +858,7 @@ sub parse_where {
          $op  =~ s/\s+$//;
       }
       $val =~ s/^\s+//;
-      
+
       # No unquoted value ends with ) except FUNCTION(...)
       if ( ($op || '') !~ m/IN/i && $val !~ m/^\w+\([^\)]+\)$/ ) {
          $val =~ s/\)+$//;
@@ -1326,7 +1326,7 @@ sub parse_identifier {
    else {
       die "Invalid number of parts in $type reference: $ident";
    }
-   
+
    if ( $self->{Schema} ) {
       if ( $type eq 'column' && (!$ident_struct{tbl} || !$ident_struct{db}) ) {
          my $qcol = $self->{Schema}->find_column(%ident_struct);

@@ -99,9 +99,9 @@ echo "# ########################################################################
 # End $pkg package" >> $tmp_file
 
    tail -n +$pkg_end_line  $tool_file >> $tmp_file
- 
+
    mv $tmp_file $tool_file
-} 
+}
 
 update_tool_header() {
    local tool_file=$1

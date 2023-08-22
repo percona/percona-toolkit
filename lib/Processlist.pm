@@ -35,8 +35,8 @@ $Data::Dumper::Quotekeys = 0;
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 use constant {
    # 0-7 are the standard processlist columns.
-   ID      => 0,  
-   USER    => 1,  
+   ID      => 0,
+   USER    => 1,
    HOST    => 2,
    DB      => 3,
    COMMAND => 4,
@@ -265,7 +265,7 @@ sub parse_event {
                # the query has restarted.  I.e. the new start time is after
                # the previous start time.
                my $ms = $self->{MasterSlave};
-               
+
                my $is_repl_thread = $ms->is_replication_thread({
                                         Command => $curr->[COMMAND],
                                         User    => $curr->[USER],
@@ -310,7 +310,7 @@ sub parse_event {
                ];
             }
          }
-      } 
+      }
       else {
          PTDEBUG && _d('New cxn', $curr->[ID]);
          if ( $curr->[INFO] && defined $curr->[TIME] ) {
@@ -340,7 +340,7 @@ sub parse_event {
             $self->make_event($prev, $time);
          delete $active_cxn->{$prev->[ID]};
       }
-      elsif (   ($curr_cxn->{$prev->[ID]}->[COMMAND] || "") eq 'Sleep' 
+      elsif (   ($curr_cxn->{$prev->[ID]}->[COMMAND] || "") eq 'Sleep'
              || !$curr_cxn->{$prev->[ID]}->[STATE]
              || !$curr_cxn->{$prev->[ID]}->[INFO] ) {
          PTDEBUG && _d('cxn', $prev->[ID], 'became idle');
@@ -529,7 +529,7 @@ sub find {
          push @{$self->{_reasons_for_matching}->{$query} ||= []}, $reason;
          $matched++;
       }
- 
+
       PROPERTY:
       foreach my $property ( qw(Id User Host db State Command Info) ) {
          my $filter = "_find_match_$property";

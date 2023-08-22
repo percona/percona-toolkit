@@ -86,7 +86,7 @@ sub parse_event {
          $args{stats}->{events_parsed}++ if $args{stats};
       } sort { $a->{seq} <=> $b->{seq} }
       @{$session->{client_packets}};
-      
+
       map {
          $event = $self->_parse_packet($_, $args{misc});
          $args{stats}->{events_parsed}++ if $args{stats};

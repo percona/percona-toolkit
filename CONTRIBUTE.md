@@ -1,17 +1,17 @@
 # Contributing Guide
 ## How Can I Contribute?
 ## Reporting Bugs
-Before creating bug reports, please check [this list](https://jira.percona.com/projects/PT/issues) as you might find out that you don't need to create one. When you create a bug report, please include as many details as possible. You can use [this guide](https://www.percona.com/blog/2019/06/12/report-bugs-improvements-new-feature-requests-for-percona-products/) to structure the information. 
+Before creating bug reports, please check [this list](https://jira.percona.com/projects/PT/issues) as you might find out that you don't need to create one. When you create a bug report, please include as many details as possible. You can use [this guide](https://www.percona.com/blog/2019/06/12/report-bugs-improvements-new-feature-requests-for-percona-products/) to structure the information.
 
 ### Before Submitting a Bug Report
 - Ensure you have carefully read the documentation. Percona Toolkit is a mature project with many settings that cover a wide range of options.
-- Search for existing bugs in [Jira](https://jira.percona.com) to see if the problem has already been reported. If it has, add a comment to the existing issue instead of opening a new one. 
+- Search for existing bugs in [Jira](https://jira.percona.com) to see if the problem has already been reported. If it has, add a comment to the existing issue instead of opening a new one.
 By doing this, we can avoid duplicating efforts, since the issue might have been already reported and if not, you might find useful information on older issues related to the same problem.
 
 ### How Do I Submit a (Good) Bug Report?
 - Explain the problem and include additional details to help others to reproduce the problem.
-- Use a clear and descriptive title for the issue. 
-- Be clear about what your problem is: which program you are using, what is the expected result and what is the result you are getting. 
+- Use a clear and descriptive title for the issue.
+- Be clear about what your problem is: which program you are using, what is the expected result and what is the result you are getting.
 - Include system details, such as language version, OS, database details or special configurations, etc.
 - Describe the exact steps which reproduce the problem, including as many details as possible. Provide examples of the command you used and include context information like language, OS and database versions.
 - Describe the obtained and the expected results and, if possible, provide examples.
@@ -46,7 +46,7 @@ The first commit should also have the Jira reference number as first characters 
 PT-12345 - fixed data corruption issue for pt-foo
 
 New check pt-foo-test-env added when pt-foo is going to perform destructive operation.
-If check fails, now pt-foo will stop executing and return an error. 
+If check fails, now pt-foo will stop executing and return an error.
 ```
 
 ### Changing Shared Code
@@ -92,12 +92,12 @@ Once your fix is ready and you pushed it into the feature branch, open a pull re
 Once you’ve opened a pull request, a discussion will start around your proposed changes. Other contributors and users may chime in, but ultimately the decision is made by the maintainers. You may be asked to make some changes to your pull request, if so, add more commits to your branch and push them – they’ll automatically go into the existing pull request.
 
 ## Licensing
-Along with the pull request, include a message indicating that the submitted code is your own creation and it can be distributed under the GPL2 licence. 
-  
-  
+Along with the pull request, include a message indicating that the submitted code is your own creation and it can be distributed under the GPL2 licence.
+
+
 ## Setting up the Development Environment and Testing
 ### Perl and Shell Tools
-For testing, we are going to need to have MySQL with replicas. For that, we already have scripts in the sandbox directory but first we need to download MySQL binaries. Please download the Linux Generic tar file for your distribution from [https://www.percona.com/downloads/Percona-Server-LATEST/](https://www.percona.com/downloads/Percona-Server-LATEST/). 
+For testing, we are going to need to have MySQL with replicas. For that, we already have scripts in the sandbox directory but first we need to download MySQL binaries. Please download the Linux Generic tar file for your distribution from [https://www.percona.com/downloads/Percona-Server-LATEST/](https://www.percona.com/downloads/Percona-Server-LATEST/).
 
 #### Set up MySQL Sandbox
 In this example, we are going to download Percona Server 8.0.26-17.
@@ -137,8 +137,8 @@ cd ${HOME}/perldev/percona-toolkit
 ```
 sandbox/test-env start
 ```
-To stop the MySQL sandbox: `sandbox/test-env stop`  
-To enable TokuDB (only available in Percona Server 5.7+), run:  
+To stop the MySQL sandbox: `sandbox/test-env stop`
+To enable TokuDB (only available in Percona Server 5.7+), run:
 
 ```
 ENABLE_TOKUDB=1 sandbox/test-env start

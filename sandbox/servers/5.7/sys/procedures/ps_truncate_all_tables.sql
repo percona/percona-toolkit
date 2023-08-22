@@ -24,7 +24,7 @@ CREATE DEFINER='root'@'localhost' PROCEDURE ps_truncate_all_tables (
              Description
              -----------
 
-             Truncates all summary tables within Performance Schema, 
+             Truncates all summary tables within Performance Schema,
              resetting all aggregated instrumentation as a snapshot.
 
              Parameters
@@ -54,10 +54,10 @@ BEGIN
     DECLARE v_total_tables INT DEFAULT 0;
     DECLARE v_ps_table VARCHAR(64);
     DECLARE ps_tables CURSOR FOR
-        SELECT table_name 
-          FROM INFORMATION_SCHEMA.TABLES 
-         WHERE table_schema = 'performance_schema' 
-           AND (table_name LIKE '%summary%' 
+        SELECT table_name
+          FROM INFORMATION_SCHEMA.TABLES
+         WHERE table_schema = 'performance_schema'
+           AND (table_name LIKE '%summary%'
             OR table_name LIKE '%history%');
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = TRUE;
 
