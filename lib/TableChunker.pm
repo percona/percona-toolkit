@@ -721,7 +721,7 @@ sub _chunk_char {
 #   exact        - bool: passed to <find_chunk_columns()>
 #
 # Returns:
-#   List: chunkable column name, chunkable colum index
+#   List: chunkable column name, chunkable column index
 sub get_first_chunkable_column {
    my ( $self, %args ) = @_;
    foreach my $arg ( qw(tbl_struct) ) {
@@ -1297,7 +1297,7 @@ sub get_first_valid_value {
    return $val;
 }
 
-# Evalutes any temporal value, returns NULL if it's invalid, else returns
+# Evaluates any temporal value, returns NULL if it's invalid, else returns
 # a value (possibly zero). It's magical but tested.  See also,
 # http://hackmysql.com/blog/2010/05/26/detecting-invalid-and-zero-temporal-values/
 sub _validate_temporal_value {
@@ -1364,7 +1364,7 @@ sub get_nonzero_value {
 # Sub: base_count
 #   Count to any number in any base with the given symbols.  E.g. if counting
 #   to 10 in base 16 with symbols 0,1,2,3,4,5,6,7,8,9,a,b,c,d,e,f the result
-#   is "a".  This is trival for stuff like base 16 (hex), but far less trivial
+#   is "a".  This is trivial for stuff like base 16 (hex), but far less trivial
 #   for arbitrary bases with arbitrary symbols like base 25 with symbols
 #   B,C,D,...X,Y,Z.  For that, counting to 10 results in "L".  The base and its
 #   symbols are determined by the character column.  Symbols can be non-ASCII.

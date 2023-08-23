@@ -21,7 +21,7 @@
 # Package: SQLParser
 # SQLParser parses common MySQL SQL statements into data structures.
 # This parser is MySQL-specific and intentionally meant to handle only
-# "common" cases.  Although there are many limiations (like UNION, CASE,
+# "common" cases.  Although there are many limitations (like UNION, CASE,
 # etc.), many complex cases are handled that no other free, Perl SQL
 # parser at the time of writing can parse, notably subqueries in all their
 # places and varieties.
@@ -30,7 +30,7 @@
 # mildly complex regex, so do not expect amazing performance.
 #
 # See SQLParser.t for examples of the various data structures.  There are
-# many and they vary a lot depending on the statment parsed, so documentation
+# many and they vary a lot depending on the statement parsed, so documentation
 # in this file is not exhaustive.
 #
 # This package differs from QueryParser because here we parse the entire SQL
@@ -48,7 +48,7 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-# Basic identifers for database, table, column and function names.
+# Basic identifiers for database, table, column and function names.
 my $quoted_ident   = qr/`[^`]+`/;
 my $unquoted_ident = qr/
    \@{0,2}         # optional @ or @@ for variables
@@ -112,14 +112,14 @@ sub new {
 }
 
 # Sub: parse
-#   Parse a SQL statment.   Only statements of $allowed_types are parsed.
+#   Parse a SQL statement.   Only statements of $allowed_types are parsed.
 #   This sub recurses to parse subqueries.
 #
 # Parameters:
 #   $query - SQL statement
 #
 # Returns:
-#   A complex hashref of the parsed SQL statment.  All keys and almost all
+#   A complex hashref of the parsed SQL statement.  All keys and almost all
 #   values are lowercase for consistency.  The struct is roughly:
 #   (start code)
 #   {
@@ -375,7 +375,7 @@ sub parse_insert {
             (?:INTO\s+)?            # INTO, optional
             (.+?)\s+                # table ref
             (\([^\)]+\)\s+)?        # column list, optional
-            (VALUE.?|SET|SELECT)\s+ # start of next caluse
+            (VALUE.?|SET|SELECT)\s+ # start of next clause
          /xgci)
    ) {
       my $tbl  = shift @into;  # table ref
@@ -580,7 +580,7 @@ sub parse_from {
       }
       elsif ( $thing =~ m/(?:,|JOIN)/i ) {
          # A comma or JOIN signals the end of the current table ref and
-         # the begining of the next table ref.  Save the current table ref.
+         # the beginning of the next table ref.  Save the current table ref.
          if ( $join ) {
             $tbl_ref->{join} = $join;
          }
@@ -640,7 +640,7 @@ sub parse_table_reference {
    # `tbl` FORCE INDEX (foo), makes FORCE look like an implicit alias.
    if ( $tbl_ref =~ s/
          \s+(
-            (?:FORCE|USE|INGORE)\s
+            (?:FORCE|USE|IGNORE)\s
             (?:INDEX|KEY)
             \s*\([^\)]+\)\s*
          )//xi)
@@ -909,7 +909,7 @@ sub parse_group_by {
    # Remove special "WITH ROLLUP" clause so we're left with a simple csv list.
    my $with_rollup = $group_by =~ s/\s+WITH ROLLUP\s*//i;
 
-   # Parse the identifers.
+   # Parse the identifiers.
    my $idents = $self->parse_identifiers( $self->_parse_csv($group_by) );
 
    $idents->{with_rollup} = 1 if $with_rollup;
@@ -1191,7 +1191,7 @@ sub remove_subqueries {
       }
       else {
          # If the subquery is not preceded by an operator (=, >, etc.)
-         # or IN(), EXISTS(), etc. then it should be an indentifier,
+         # or IN(), EXISTS(), etc. then it should be an identifier,
          # either a derived table or column.
          $struct->{context} = 'identifier';
       }

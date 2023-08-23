@@ -218,9 +218,9 @@ else
    skip 1 5 "Tests exclusive for Linux"
 fi
 
-# propietary_raid_controller
+# proprietary_raid_controller
 
-test_propietary_raid_controller () {
+test_proprietary_raid_controller () {
    local dir="$1"
 
    local CMD_ARCCONF=""
@@ -232,24 +232,24 @@ test_propietary_raid_controller () {
    for controller in "AACRAID" "HP Smart Array" "LSI Logic MegaRAID SAS"; do
       rm "$dir/1/summary" 2>/dev/null
       touch "$dir/1/summary"
-      propietary_raid_controller "$dir/1/raid-controller" "$dir/1/summary" "$dir/1" "$controller"
+      proprietary_raid_controller "$dir/1/raid-controller" "$dir/1/summary" "$dir/1" "$controller"
       is \
          "$(get_var "internal::raid_opt" "$dir/1/summary")" \
          0 \
-         "propietary_raid_controller: correct raid_opt default for $controller"
+         "proprietary_raid_controller: correct raid_opt default for $controller"
 
       cmd_ok \
          "grep -q 'RAID controller software not found' \"$dir/1/raid-controller\"" \
-         "propietary_raid_controller: correct default for $controller if the command isn't available"
+         "proprietary_raid_controller: correct default for $controller if the command isn't available"
    done
    
    mkdir "$dir/2"
    fake_command arcconf "ok arcconf"
-   propietary_raid_controller "$dir/2/raid-controller" "$dir/2/summary" "$dir/2" "AACRAID"
+   proprietary_raid_controller "$dir/2/raid-controller" "$dir/2/summary" "$dir/2" "AACRAID"
    is \
       "$(get_var "internal::raid_opt" "$dir/2/summary")" \
       1 \
-      "propietary_raid_controller: correct raid_opt default for $controller when arcconf is there"
+      "proprietary_raid_controller: correct raid_opt default for $controller when arcconf is there"
 
    is \
       "$(cat "$dir/2/raid-controller")" \
@@ -258,7 +258,7 @@ test_propietary_raid_controller () {
 }
 
 mkdir "$PT_TMPDIR/raid_controller"
-test_propietary_raid_controller "$PT_TMPDIR/raid_controller"
+test_proprietary_raid_controller "$PT_TMPDIR/raid_controller"
 
 
 # notable_processes_info

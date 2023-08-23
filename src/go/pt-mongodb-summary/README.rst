@@ -13,7 +13,7 @@ Binaries
 --------
 Please check the `releases <https://github.com/percona/toolkit-go/releases>`_ tab to download the binaries.  
 
-Paramters
+Parameters
 ^^^^^^^^^
 |Short|Long|Default|Description|
 |-----|----|-------|-----------|

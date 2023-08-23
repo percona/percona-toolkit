@@ -43,7 +43,7 @@ func TestIndividualFiles(t *testing.T) {
 		name        string
 		cmd         []string
 		want        []string
-		preprocesor func(string) string
+		preprocessor func(string) string
 	}{
 		{
 			// If the tool collects required log files
@@ -51,7 +51,7 @@ func TestIndividualFiles(t *testing.T) {
 			// tar -tf cluster-dump-test.tar.gz --wildcards 'cluster-dump/*/var/lib/mysql/*'
 			cmd:  []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/var/lib/mysql/*"},
 			want: []string{"auto.cnf", "grastate.dat", "gvwstate.dat", "innobackup.backup.log", "innobackup.move.log", "innobackup.prepare.log", "mysqld-error.log", "mysqld.post.processing.log"},
-			preprocesor: func(in string) string {
+			preprocessor: func(in string) string {
 				files := strings.Split(in, "\n")
 				var result []string
 				for _, f := range files {
@@ -70,7 +70,7 @@ func TestIndividualFiles(t *testing.T) {
 			// tar --to-command="grep -m 1 -o Version:" -xzf cluster-dump-test.tar.gz --wildcards 'cluster-dump/*/var/lib/mysql/mysqld-error.log'
 			cmd:  []string{"tar", "--to-command", "grep -m 1 -o Version:", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/var/lib/mysql/mysqld-error.log"},
 			want: []string{"Version:"},
-			preprocesor: func(in string) string {
+			preprocessor: func(in string) string {
 				nl := strings.Index(in, "\n")
 				if nl == -1 {
 					return ""
@@ -96,8 +96,8 @@ func TestIndividualFiles(t *testing.T) {
 		if err != nil {
 			t.Errorf("test %s, error running command %s:\n%s\n\nCommand output:\n%s", test.name, test.cmd[0], err.Error(), out)
 		}
-		if test.preprocesor(bytes.NewBuffer(out).String()) != strings.Join(test.want, "\n") {
-			t.Errorf("test %s, output is not as expected\nOutput: %s\nWanted: %s", test.name, test.preprocesor(bytes.NewBuffer(out).String()), test.want)
+		if test.preprocessor(bytes.NewBuffer(out).String()) != strings.Join(test.want, "\n") {
+			t.Errorf("test %s, output is not as expected\nOutput: %s\nWanted: %s", test.name, test.preprocessor(bytes.NewBuffer(out).String()), test.want)
 		}
 	}
 }

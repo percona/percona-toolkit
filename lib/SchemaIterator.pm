@@ -270,7 +270,7 @@ sub _iterate_files {
       }
       elsif ($self->{db} && $chunk =~ m/CREATE TABLE/) {
          if ($chunk =~ m/DROP VIEW IF EXISTS/) {
-            # Tables that are actually views have this DROP statment in the
+            # Tables that are actually views have this DROP statement in the
             # chunk just before the CREATE TABLE.  We don't want views.
             PTDEBUG && _d('Table is a VIEW, skipping');
             next CHUNK;

@@ -1520,7 +1520,7 @@ Architecture | CPU = 32-bit, OS = 32-bit
 # Disk Schedulers And Queue Size #############################
          sda | [cfq] 128
          sdb | [cfq] 128
-# Disk Partioning ############################################
+# Disk Partitioning ##########################################
 Device       Type      Start        End               Size
 ============ ==== ========== ========== ==================
 /dev/sda     Disk                             500107862016

@@ -516,7 +516,7 @@ sub make_handler {
 #   standard deviation, 95th percentile, etc.  So memory usage is bounded by
 #   the number of distinct aggregated values, not the number of events.
 #
-#   TODO: could export this by default to avoid having to specific packge::.
+#   TODO: could export this by default to avoid having to specific package::.
 #
 # Parameters:
 #   $val - Numeric value to bucketize
@@ -539,7 +539,7 @@ sub bucket_idx {
 #   from inside this module like bucket_idx() or outside this module
 #   like EventAggregator::bucket_value().
 #
-#   TODO: could export this by default to avoid having to specific packge::.
+#   TODO: could export this by default to avoid having to specific package::.
 #
 # Parameters:
 #   $bucket - Bucket number (0 to NUM_BUCK-1)
@@ -1022,7 +1022,7 @@ sub merge {
                _add_attrib_vals($r1_global, $r2_global);
             }
             elsif ( !$r1_global ) {
-               # Global attrib is missing in r1; deep cpoy it from r2 global.
+               # Global attrib is missing in r1; deep copy it from r2 global.
                PTDEBUG && _d('copy', $attrib);
                $r_merged->{globals}->{$attrib}
                   = _deep_copy_attrib_vals($r2_global);
@@ -1093,7 +1093,7 @@ sub _add_attrib_vals {
          }
       }
       elsif ( (ref $val1 eq 'HASH')  && (ref $val2 eq 'HASH')  ) {
-         # Value is a hashref, probably for unq string occurences.
+         # Value is a hashref, probably for unq string occurrences.
          # Should never be empty.
          die "Empty $val hashref" unless %$val1 and %$val2;
          map { $vals1->{$val}->{$_} += $val2->{$_} } keys %$val2;

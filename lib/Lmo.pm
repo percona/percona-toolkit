@@ -132,7 +132,7 @@ sub has {
 
       $class_metadata->{$attribute} = ();
 
-      # isa => Constaint,
+      # isa => Constraint,
       if ( my $type_check = $args{isa} ) {
          my $check_name = $type_check;
          
@@ -142,7 +142,7 @@ sub has {
          
          my $check_sub = sub {
             my ($new_val) = @_;
-            Lmo::Types::check_type_constaints($attribute, $type_check, $check_name, $new_val);
+            Lmo::Types::check_type_constraints($attribute, $type_check, $check_name, $new_val);
          };
          
          $class_metadata->{$attribute}{isa} = [$check_name, $check_sub];
@@ -332,7 +332,7 @@ BEGIN {
    # mro is the method resolution order. The module itself is core in
    # recent Perls; In older Perls it's available from MRO::Compat from
    # CPAN, and in case that isn't available to us, we inline the barest
-   # funcionality.
+   # functionality.
    if ($] >= 5.010) {
       { local $@; require mro; }
    }

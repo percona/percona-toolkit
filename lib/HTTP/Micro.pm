@@ -414,7 +414,7 @@ sub _split_url {
        $len += $self->write($request->{content});
 
        $len == $content_length
-         or croak(qq/Content-Length missmatch (got: $len expected: $content_length)/);
+         or croak(qq/Content-Length mismatch (got: $len expected: $content_length)/);
 
        return $len;
    }
@@ -641,7 +641,7 @@ BEGIN {
          $ipn = IO::Socket::SSL::inet_pton(IO::Socket::SSL::AF_INET6,$identity)
             or croak "'$identity' is not IPv6, but neither IPv4 nor hostname";
       } elsif ( $identity =~m{^\d+\.\d+\.\d+\.\d+$} ) {
-          # definitly no hostname, try IPv4
+          # definitely no hostname, try IPv4
          $ipn = IO::Socket::SSL::inet_aton( $identity ) or croak "'$identity' is not IPv4, but neither IPv6 nor hostname";
       } else {
          # assume hostname, check for umlauts etc

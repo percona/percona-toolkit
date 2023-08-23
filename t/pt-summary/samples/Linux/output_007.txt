@@ -392,7 +392,7 @@ Preferred Node | current
          sdb | [mq-deadline] 256
          sdc | [mq-deadline] 256
          sr0 | [mq-deadline] 64
-# Disk Partioning ############################################
+# Disk Partitioning ##########################################
 Device       Type      Start        End               Size
 ============ ==== ========== ========== ==================
 /dev/dm-0    Disk                            3032246910976

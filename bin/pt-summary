@@ -627,10 +627,10 @@ get_oom_of_pid () {
    if [ -n "${pid}" -a -e /proc/cpuinfo ]; then
       if [ -s "/proc/$pid/oom_score_adj" ]; then
          oom_adj=$(cat "/proc/$pid/oom_score_adj" 2>/dev/null)
-         _d "For $pid, the oom value is $oom_adj, retreived from oom_score_adj"
+         _d "For $pid, the oom value is $oom_adj, retrieved from oom_score_adj"
       else
          oom_adj=$(cat "/proc/$pid/oom_adj" 2>/dev/null)
-         _d "For $pid, the oom value is $oom_adj, retreived from oom_adj"
+         _d "For $pid, the oom value is $oom_adj, retrieved from oom_adj"
       fi
    fi
 
@@ -875,7 +875,7 @@ collect_system_data () { local PTFUNCNAME=collect_system_data;
    raid_controller   "$data_dir/dmesg_file" "$data_dir/lspci_file" >> "$data_dir/summary"
 
    local controller="$(get_var raid_controller "$data_dir/summary")"
-   propietary_raid_controller "$data_dir/raid-controller" "$data_dir/summary" "$data_dir" "$controller"
+   proprietary_raid_controller "$data_dir/raid-controller" "$data_dir/summary" "$data_dir" "$controller"
 
    [ "${platform}" = "Linux" ] && linux_exclusive_collection "$data_dir"
 
@@ -1331,7 +1331,7 @@ processor_info () { local PTFUNCNAME=processor_info;
    fi 
 }
 
-propietary_raid_controller () { local PTFUNCNAME=propietary_raid_controller;
+proprietary_raid_controller () { local PTFUNCNAME=proprietary_raid_controller;
    local file="$1"
    local variable_file="$2"
    local data_dir="$3"
@@ -2234,7 +2234,7 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
          name_val "${disk}" "${scheduler:-"UNREADABLE"}"
       done
 
-      section "Disk Partioning"
+      section "Disk Partitioning"
       parse_fdisk "$data_dir/partitioning"
 
       section "Kernel Inode State"

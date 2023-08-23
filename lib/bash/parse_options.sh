@@ -169,7 +169,7 @@ option_error() {
 #   TIMDIR  - Temp directory set by <set_PT_TMPDIR()>.
 #
 # Set Global Variables:
-#   This sub decalres a global var for each option by uppercasing the
+#   This sub declares a global var for each option by uppercasing the
 #   option, removing the option's leading --, changing all - to _, and
 #   prefixing with "OPT_".  E.g. --foo-bar becomes OPT_FOO_BAR.
 parse_options() {

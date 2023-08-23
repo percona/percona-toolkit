@@ -2,7 +2,7 @@
 
 version=$1
 if [ -z "$version" ]; then
-   echo "Usage: log-entires VERSION" >&2
+   echo "Usage: log-entries VERSION" >&2
    echo "Example: cat Changelog | log-entries 1.0.1" >&2
    exit 1
 fi
