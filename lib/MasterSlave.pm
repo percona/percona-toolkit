@@ -104,7 +104,7 @@ sub get_slaves {
                push @$slaves, $make_cxn->(dsn => $slave_dsn, dbh => $dbh, parent => $parent);
                return;
             },
-			wait_no_die => $args{'wait_no_die'},
+            wait_no_die => $args{'wait_no_die'},
          }
       );
    } elsif ( $methods->[0] =~ m/^dsn=/i ) {
@@ -112,6 +112,7 @@ sub get_slaves {
       $slaves = $self->get_cxn_from_dsn_table(
          %args,
          dsn_table_dsn => $dsn_table_dsn,
+         wait_no_die => $args{'wait_no_die'},
       );
    }
    elsif ( $methods->[0] =~ m/none/i ) {
@@ -228,6 +229,7 @@ sub recurse_to_slaves {
 			   print STDERR "Error getting server id: ", $EVAL_ERROR, 
                "\nRetrying query for server ", $slave_dsn->{h}, ":", $slave_dsn->{P}, "\n";
             sleep 1;
+            $dbh->disconnect();
             $get_dbh->();
          } else {
             die $EVAL_ERROR;
@@ -1023,7 +1025,7 @@ sub get_cxn_from_dsn_table {
    if ( $dsn_strings ) {
       foreach my $dsn_string ( @$dsn_strings ) {
          PTDEBUG && _d('DSN from DSN table:', $dsn_string);
-         push @cxn, $make_cxn->(dsn_string => $dsn_string);
+         push @cxn, $make_cxn->(dsn_string => $dsn_string, wait_no_die => $args{wait_no_die});
       }
    }
    return \@cxn;

@@ -32,12 +32,15 @@ my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 if ($sb->is_cluster_mode) {
     plan skip_all => 'Not for PXC';
 } else {
-    plan tests => 3;
+    plan tests => 9;
 }                                  
 my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh = $sb->get_dbh_for('slave1');
+my $slave_dbh1 = $sb->get_dbh_for('slave1');
+my $slave_dbh2 = $sb->get_dbh_for('slave2');
 my $master_dsn = 'h=127.0.0.1,P=12345,u=msandbox,p=msandbox';
-my $slave_dsn = 'h=127.0.0.1,P=12346,u=msandbox,p=msandbox';
+my $slave_dsn1 = 'h=127.0.0.1,P=12346,u=msandbox,p=msandbox';
+my $slave_dsn2 = 'h=127.0.0.1,P=12347,u=msandbox,p=msandbox';
+my $sample = "t/pt-online-schema-change/samples";
 
 sub reset_query_cache {
     my @dbhs = @_;
@@ -51,10 +54,10 @@ sub reset_query_cache {
 # 2) Load sample data
 # 3) Set the slave delay to 30 seconds to be able to see the 'waiting' message.
 diag("Setting slave delay to 0 seconds");
-$slave_dbh->do('STOP SLAVE');
+$slave_dbh1->do('STOP SLAVE');
 $master_dbh->do("RESET MASTER");
-$slave_dbh->do('RESET SLAVE');
-$slave_dbh->do('START SLAVE');
+$slave_dbh1->do('RESET SLAVE');
+$slave_dbh1->do('START SLAVE');
 
 diag('Loading test data');
 $sb->load_file('master', "t/pt-online-schema-change/samples/slave_lag.sql");
@@ -64,6 +67,9 @@ my $num_rows = 5000;
 diag("Loading $num_rows into the table. This might take some time.");
 diag(`util/mysql_random_data_load --host=127.0.0.1 --port=12345 --user=msandbox --password=msandbox test pt178 $num_rows`);
 
+# DSN table for further tests
+$sb->load_file('master', "$sample/create_dsns.sql");
+
 $sb->wait_for_slaves();
 
 # Plan for tests
@@ -72,13 +78,17 @@ $sb->wait_for_slaves();
 # 3. Places to test:
 #  - get_dbh
 #  - SELECT @@SERVER_ID
+# 4. Slave never returns
+#  - die after timeout
+#  - inject new slave
+#  - ignore after timeout
 
 
 diag("Setting slave delay to $delay seconds");
 
-$slave_dbh->do('STOP SLAVE');
-$slave_dbh->do("CHANGE MASTER TO MASTER_DELAY=$delay");
-$slave_dbh->do('START SLAVE');
+$slave_dbh1->do('STOP SLAVE');
+$slave_dbh1->do("CHANGE MASTER TO MASTER_DELAY=$delay");
+$slave_dbh1->do('START SLAVE');
 
 # Run a full table scan query to ensure the slave is behind the master
 # There is no query cache in MySQL 8.0+
@@ -94,32 +104,69 @@ my $max_lag = $delay / 2;
 # We need to sleep, otherwise pt-osc can finish before slave is delayed
 sleep($max_lag);
 
-my $args = "$master_dsn,D=test,t=pt178 --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5";
-diag("Starting base test. This is going to take some time due to the delay in the slave");
-diag("pid: $tmp_file_name");
+# Basic test: we check if pt-osc fails if replica restarted while it is running with default options
 
-my ($fh, $filename) = tempfile();
-my $pid = fork();
+sub base_test {
+   my ($args) = @_;
+   #diag("pid: $tmp_file_name");
 
-if (!$pid) {
-    open(STDERR, '>', $filename);
-    open(STDOUT, '>', $filename);
-    exec("$trunk/bin/pt-online-schema-change $args");
-}
+   my ($fh, $filename) = tempfile();
+   my $pid = fork();
 
-sleep($max_lag + 10);
-# restart slave 12347
-diag(`/tmp/12347/stop >/dev/null`);
-sleep 1;
-diag(`/tmp/12347/start >/dev/null`);
+   if (!$pid) {
+       open(STDERR, '>', $filename);
+      open(STDOUT, '>', $filename);
+      exec("$trunk/bin/pt-online-schema-change $args");
+   }
 
-waitpid($pid, 0);
-my $output = do {
+   sleep($max_lag + 10);
+   # restart slave 12347
+   diag(`/tmp/12347/stop >/dev/null`);
+   sleep 1;
+   diag(`/tmp/12347/start >/dev/null`);
+
+   waitpid($pid, 0);
+   my $output = do {
       local $/ = undef;
       <$fh>;
-};
+   };
 
-unlink $filename;
+   unlink $filename;
+
+   return $output;
+}
+
+sub crash_test {
+   my ($args) = @_;
+   #diag("pid: $tmp_file_name");
+
+   my ($fh, $filename) = tempfile();
+   my $pid = fork();
+
+   if (!$pid) {
+       open(STDERR, '>', $filename);
+      open(STDOUT, '>', $filename);
+      exec("$trunk/bin/pt-online-schema-change $args");
+   }
+
+   sleep($max_lag + 10);
+   # restart slave 12347
+   diag(`/tmp/12347/start >/dev/null`);
+
+   waitpid($pid, 0);
+   my $output = do {
+      local $/ = undef;
+      <$fh>;
+   };
+
+   unlink $filename;
+
+   return $output;
+}
+
+diag("Starting base tests. This is going to take some time due to the delay in the slave");
+
+my $output = base_test("$master_dsn,D=test,t=pt178 --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5");
 
 unlike(
    $output,
@@ -127,32 +174,8 @@ unlike(
    "pt-osc fails when one of replicas is restarted",
 );
 
-$args = "$master_dsn,D=test,t=pt178 --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --wait-lost-replicas";
-diag("Starting test with option --wait-lost-replicas. This is going to take some time due to the delay in the slave");
-diag("pid: $tmp_file_name");
-
-($fh, $filename) = tempfile();
-$pid = fork();
-
-if (!$pid) {
-    open(STDERR, '>', $filename);
-    open(STDOUT, '>', $filename);
-    exec("$trunk/bin/pt-online-schema-change $args");
-}
-
-sleep($max_lag + 10);
-# restart slave 12347
-diag(`/tmp/12347/stop >/dev/null`);
-sleep 1;
-diag(`/tmp/12347/start >/dev/null`);
-
-waitpid($pid, 0);
-$output = do {
-      local $/ = undef;
-      <$fh>;
-};
-
-unlink $filename;
+# pt-osc doesn't fail if replica is restarted and option --wait-lost-replicas specified
+$output = base_test("$master_dsn,D=test,t=pt178 --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --wait-lost-replicas");
 
 like(
    $output,
@@ -160,22 +183,116 @@ like(
    "pt-osc completes successfully when one of replicas is restarted and option --wait-lost-replicas is specified",
 );
 
+$output = base_test("$master_dsn,D=test,t=pt178 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5");
+
+unlike(
+   $output,
+   qr/Successfully altered `test`.`pt178`/s,
+   "pt-osc fails with recursion-method=dsn when one of replicas is restarted",
+);
+
+$output = base_test("$master_dsn,D=test,t=pt178 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --wait-lost-replicas");
+
+like(
+   $output,
+   qr/Successfully altered `test`.`pt178`/s,
+   "pt-osc completes successfully with recursion-method=dsn when one of replicas is restarted and option --wait-lost-replicas is specified",
+);
+
 #diag($output);
+#diag("=====================");
 
 #my $args = "$master_dsn,D=test,t=pt178 --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --wait-lost-replicas";
 
-diag("Setting slave delay to 0 seconds");
-$slave_dbh->do('STOP SLAVE');
-$master_dbh->do("RESET MASTER");
-$slave_dbh->do('RESET SLAVE');
-$slave_dbh->do('START SLAVE');
+# Errors that happen while pt-osc executes SQL while checking slave availability.
+# We check few scenarios.
+# - Error not related to connection: pt-osc aborted regardless option --wait-lost-replicas
+# - Error, related to connection: pt-osc behavior depends on option --wait-lost-replicas
+# We work only with replica with port 12347 here.
+diag("Starting replica lost and error tests");
 
+$master_dbh->do("UPDATE test_recursion_method.dsns SET dsn='D=test_recursion_method,t=dsns,P=12346,h=127.0.0.1,u=root,p=msandbox,A=utf8' WHERE id=1");
+$master_dbh->do("UPDATE test_recursion_method.dsns SET dsn='D=test_recursion_method,t=dsns,P=12347,h=127.0.0.1,u=root,p=msandbox,A=utf8' WHERE id=2");
+
+# get_dbh sets character set connection
+
+#sleep($max_lag);
+$slave_dbh2 = $sb->get_dbh_for('slave2');
+$slave_dbh2->do("install plugin simple_rewrite_plugin soname 'simple_rewrite_plugin.so'");
+
+$slave_dbh2->do("SET GLOBAL simple_rewrite_plugin_pattern= '(SET NAMES) \"([[:alpha:]]+[0-9]*)\"'");
+$slave_dbh2->do("SET GLOBAL simple_rewrite_plugin_query= '\$1 \$2\$2'");
+$slave_dbh2->do("SET GLOBAL sync_relay_log=1");
+$slave_dbh2->do('STOP SLAVE');
+$slave_dbh2->do('START SLAVE');
+
+my $args = "$master_dsn,D=test,t=pt178,A=utf8 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5";
+
+$output = `$trunk/bin/pt-online-schema-change $args 2>&1`;
+
+unlike(
+   $output,
+   qr/Successfully altered `test`.`pt178`/s,
+   "pt-osc fails with error if replica returns error when setting character set",
+);
+
+$args = "$master_dsn,D=test,t=pt178,A=utf8 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --wait-lost-replicas";
+
+$output = `$trunk/bin/pt-online-schema-change $args 2>&1`;
+
+unlike(
+   $output,
+   qr/Successfully altered `test`.`pt178`/s,
+   "pt-osc fails with error if replica returns error when setting character set and option --wait-lost-replicas is specified",
+);
+
+$slave_dbh2 = $sb->get_dbh_for('slave2');
+$slave_dbh2->do("SET GLOBAL simple_rewrite_plugin_action='abort'");
+
+$args = "$master_dsn,D=test,t=pt178,A=utf8 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5";
+
+$output = crash_test($args);
+
+unlike(
+   $output,
+   qr/Successfully altered `test`.`pt178`/s,
+   "pt-osc fails with error if replica disconnects when setting character set",
+);
+
+$args = "$master_dsn,D=test,t=pt178,A=utf8 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --wait-lost-replicas";
+
+$output = crash_test($args);
+
+like(
+   $output,
+   qr/Successfully altered `test`.`pt178`/s,
+   "pt-osc finishes succesfully if replica disconnects when setting character set and option --wait-lost-replicas is specified",
+);
+
+$slave_dbh2 = $sb->get_dbh_for('slave2');
+
+# Cleanup
+diag("Setting slave delay to 0 seconds");
+$slave_dbh1->do('STOP SLAVE');
+$slave_dbh2->do('STOP SLAVE');
+$master_dbh->do("RESET MASTER");
+$slave_dbh1->do('RESET SLAVE');
+$slave_dbh2->do('RESET SLAVE');
+$slave_dbh1->do('START SLAVE');
+$slave_dbh2->do('START SLAVE');
+$slave_dbh2->do("uninstall plugin simple_rewrite_plugin");
+
+diag(`/tmp/12347/stop >/dev/null`);
+diag(`/tmp/12347/start >/dev/null`);
+
+diag("Dropping test database");
 $master_dbh->do("DROP DATABASE IF EXISTS test");
 $sb->wait_for_slaves();
 
 # #############################################################################
 # Done.
 # #############################################################################
+diag("Cleaning");
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

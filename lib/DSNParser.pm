@@ -289,6 +289,10 @@ sub get_dbh {
       $defaults->{mysql_use_result} = 1;
    }
 
+   if ( $opts->{wait_no_die} ) {
+      $wait_no_die = 1;
+   }
+
    if ( !$have_dbi ) {
       die "Cannot connect to MySQL because the Perl DBI module is not "
          . "installed or not found.  Run 'perl -MDBI' to see the directories "
@@ -324,11 +328,11 @@ sub get_dbh {
          }
          if ( !$tries ) {
             if ( $wait_no_die ) {
-               _d("Server is not accessible, waiting when it is online again");
-			   sleep(1);
+               PTDEBUG && _d("Server is not accessible, waiting when it is online again");
+               sleep(1);
             } else {
                die $EVAL_ERROR;
-			}
+            }
          }
       }
    }

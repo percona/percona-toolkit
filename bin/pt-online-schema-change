@@ -2326,6 +2326,10 @@ sub get_dbh {
       $defaults->{mysql_use_result} = 1;
    }
 
+   if ( $opts->{wait_no_die} ) {
+      $wait_no_die = 1;
+   }
+
    if ( !$have_dbi ) {
       die "Cannot connect to MySQL because the Perl DBI module is not "
          . "installed or not found.  Run 'perl -MDBI' to see the directories "
@@ -2360,11 +2364,11 @@ sub get_dbh {
          }
          if ( !$tries ) {
             if ( $wait_no_die ) {
-               _d("Server is not accessible, waiting when it is online again");
-			   sleep(1);
+               PTDEBUG && _d("Server is not accessible, waiting when it is online again");
+               sleep(1);
             } else {
                die $EVAL_ERROR;
-			}
+            }
          }
       }
    }
@@ -4260,7 +4264,7 @@ sub get_slaves {
                push @$slaves, $make_cxn->(dsn => $slave_dsn, dbh => $dbh, parent => $parent);
                return;
             },
-			wait_no_die => $args{'wait_no_die'},
+            wait_no_die => $args{'wait_no_die'},
          }
       );
    } elsif ( $methods->[0] =~ m/^dsn=/i ) {
@@ -4268,6 +4272,7 @@ sub get_slaves {
       $slaves = $self->get_cxn_from_dsn_table(
          %args,
          dsn_table_dsn => $dsn_table_dsn,
+         wait_no_die => $args{'wait_no_die'},
       );
    }
    elsif ( $methods->[0] =~ m/none/i ) {
@@ -4362,6 +4367,7 @@ sub recurse_to_slaves {
 			   print STDERR "Error getting server id: ", $EVAL_ERROR, 
                "\nRetrying query for server ", $slave_dsn->{h}, ":", $slave_dsn->{P}, "\n";
             sleep 1;
+            $dbh->disconnect();
             $get_dbh->();
          } else {
             die $EVAL_ERROR;
@@ -4998,7 +5004,7 @@ sub get_cxn_from_dsn_table {
    if ( $dsn_strings ) {
       foreach my $dsn_string ( @$dsn_strings ) {
          PTDEBUG && _d('DSN from DSN table:', $dsn_string);
-         push @cxn, $make_cxn->(dsn_string => $dsn_string);
+         push @cxn, $make_cxn->(dsn_string => $dsn_string, wait_no_die => $args{wait_no_die});
       }
    }
    return \@cxn;
@@ -8728,10 +8734,21 @@ sub main {
          OptionParser => $o,
          set          => $set_on_connect,
       );
-      eval { $cxn->connect() };  # connect or die trying
-      if ( $EVAL_ERROR ) {
-         _die("Cannot connect to MySQL: $EVAL_ERROR", MYSQL_CONNECTION_ERROR);
-      }
+      my $done = 0;
+      do {
+         eval { $cxn->connect() };  # connect or die trying
+         if ( $EVAL_ERROR ) {
+            if ($args{'wait_no_die'} && ($cxn->lost_connection($EVAL_ERROR)
+               || $EVAL_ERROR =~ m/Can't connect to MySQL server/)) {
+               PTDEBUG && _d("Server is not accessible, waiting when it is online again");
+               sleep(1);
+            } else {
+               _die("Cannot connect to MySQL: $EVAL_ERROR", MYSQL_CONNECTION_ERROR);
+            }
+         } else {
+            $done = 1;
+         }
+      } until $done;
       return $cxn;
    };
 
@@ -8897,7 +8914,7 @@ sub main {
                   if ($slave->{dsn}->{h} eq $slave_to_skip->{h} && $slave->{dsn}->{P} eq $slave_to_skip->{P}) {
                      print "Skipping slave " . $slave->description() . "\n";
                      $is_skip = 1;
-                     $slave->{dbh}->disconnect;
+                     $slave->{dbh}->disconnect();
                      last;
                   } 
                }
