@@ -230,6 +230,7 @@ func (base *LogCtx) Inherit(ctx LogCtx) {
 	if base.Version == "" {
 		base.Version = ctx.Version
 	}
+	base.Conflicts = append(ctx.Conflicts, base.Conflicts...)
 	base.MergeMapsWith([]LogCtx{ctx})
 }
 
