@@ -2,6 +2,7 @@ package types
 
 import (
 	"math"
+	"path/filepath"
 	"time"
 )
 
@@ -25,6 +26,27 @@ func (lt LocalTimeline) Add(li LogInfo) LocalTimeline {
 
 // "string" key is a node IP
 type Timeline map[string]LocalTimeline
+
+func (timeline Timeline) MergeByIdentifier(lt LocalTimeline) {
+	// identify the node with the easiest to read information
+	// this is critical part to aggregate logs: this is what enable to merge logs
+	// ultimately the "identifier" will be used for columns header
+	node := Identifier(lt[len(lt)-1].Ctx)
+	if lt2, ok := timeline[node]; ok {
+		lt = MergeTimeline(lt2, lt)
+	}
+	timeline[node] = lt
+}
+
+func (timeline Timeline) MergeByDirectory(path string, lt LocalTimeline) {
+	node := filepath.Base(filepath.Dir(path))
+	for _, lt2 := range timeline {
+		if len(lt2) > 0 && node == filepath.Base(filepath.Dir(lt2[0].Ctx.FilePath)) {
+			lt = MergeTimeline(lt2, lt)
+		}
+	}
+	timeline[node] = lt
+}
 
 // MergeTimeline is helpful when log files are split by date, it can be useful to be able to merge content
 // a "timeline" come from a log file. Log files that came from some node should not never have overlapping dates

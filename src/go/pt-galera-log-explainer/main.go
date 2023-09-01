@@ -26,12 +26,13 @@ var (
 )
 
 var CLI struct {
-	NoColor        bool
-	Since          *time.Time      `help:"Only list events after this date, format: 2023-01-23T03:53:40Z (RFC3339)"`
-	Until          *time.Time      `help:"Only list events before this date"`
-	Verbosity      types.Verbosity `type:"counter" short:"v" default:"1" help:"-v: Detailed (default), -vv: DebugMySQL (add every mysql info the tool used), -vvv: Debug (internal tool debug)"`
-	PxcOperator    bool            `default:"false" help:"Analyze logs from Percona PXC operator. Off by default because it negatively impacts performance for non-k8s setups"`
-	ExcludeRegexes []string        `help:"Remove regexes from analysis. List regexes using 'pt-galera-log-explainer regex-list'"`
+	NoColor          bool
+	Since            *time.Time      `help:"Only list events after this date, format: 2023-01-23T03:53:40Z (RFC3339)"`
+	Until            *time.Time      `help:"Only list events before this date"`
+	Verbosity        types.Verbosity `type:"counter" short:"v" default:"1" help:"-v: Detailed (default), -vv: DebugMySQL (add every mysql info the tool used), -vvv: Debug (internal tool debug)"`
+	PxcOperator      bool            `default:"false" help:"Analyze logs from Percona PXC operator. Off by default because it negatively impacts performance for non-k8s setups"`
+	ExcludeRegexes   []string        `help:"Remove regexes from analysis. List regexes using 'pt-galera-log-explainer regex-list'"`
+	MergeByDirectory bool            `help:"Instead of relying on identification, merge contexts and columns by base directory. Very useful when dealing with many small logs organized per directories."`
 
 	List      list       `cmd:""`
 	Whois     whois      `cmd:""`
@@ -92,28 +93,16 @@ func timelineFromPaths(paths []string, toCheck types.RegexMap, since, until *tim
 		found = true
 		extr.logger.Debug().Str("path", path).Msg("Finished searching")
 
-		// identify the node with the easiest to read information
-		// this is critical part to aggregate logs: this is what enable to merge logs
-		// ultimately the "identifier" will be used for columns header
-		var node string
+		// Why it should not just identify using the file path:
+		// so that we are able to merge files that belong to the same nodes
+		// we wouldn't want them to be shown as from different nodes
 		if CLI.PxcOperator {
-			node = path
-
+			timeline[path] = localTimeline
+		} else if CLI.MergeByDirectory {
+			timeline.MergeByDirectory(path, localTimeline)
 		} else {
-
-			// Why it should not just identify using the file path:
-			// so that we are able to merge files that belong to the same nodes
-			// we wouldn't want them to be shown as from different nodes
-			node = types.Identifier(localTimeline[len(localTimeline)-1].Ctx)
-			if t, ok := timeline[node]; ok {
-
-				extr.logger.Debug().Str("path", path).Str("node", node).Msg("Merging with existing timeline")
-				localTimeline = types.MergeTimeline(t, localTimeline)
-			}
+			timeline.MergeByIdentifier(localTimeline)
 		}
-		extr.logger.Debug().Str("path", path).Str("node", node).Msg("Storing timeline")
-		timeline[node] = localTimeline
-
 	}
 	if !found {
 		return nil, errors.New("Could not find data")
