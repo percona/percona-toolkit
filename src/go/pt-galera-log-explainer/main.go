@@ -212,6 +212,9 @@ func (e *extractor) search() (types.LocalTimeline, error) {
 
 	// double-check it stopped correctly
 	if err = cmd.Wait(); err != nil {
+		if exiterr, ok := err.(*exec.ExitError); ok && exiterr.ExitCode() == 1 {
+			return nil, errors.New("Found nothing")
+		}
 		return nil, errors.Wrap(err, "grep subprocess error")
 	}
 
