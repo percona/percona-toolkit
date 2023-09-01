@@ -19,7 +19,7 @@ use Sandbox;
 use SqlModes;
 use File::Temp qw/ tempdir tempfile /;
 
-our $delay = 30;
+our $delay = 10;
 
 my $tmp_file = File::Temp->new();
 my $tmp_file_name = $tmp_file->filename;
@@ -31,9 +31,8 @@ my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 if ($sb->is_cluster_mode) {
     plan skip_all => 'Not for PXC';
-} else {
-    plan tests => 9;
-}                                  
+}
+
 my $master_dbh = $sb->get_dbh_for('master');
 my $slave_dbh1 = $sb->get_dbh_for('slave1');
 my $slave_dbh2 = $sb->get_dbh_for('slave2');
@@ -41,6 +40,18 @@ my $master_dsn = 'h=127.0.0.1,P=12345,u=msandbox,p=msandbox';
 my $slave_dsn1 = 'h=127.0.0.1,P=12346,u=msandbox,p=msandbox';
 my $slave_dsn2 = 'h=127.0.0.1,P=12347,u=msandbox,p=msandbox';
 my $sample = "t/pt-online-schema-change/samples";
+
+# We need sync_relay_log=1 to have 
+my $cnf = '/tmp/12347/my.sandbox.cnf';
+diag(`cp $cnf $cnf.bak`);
+diag(`echo "[mysqld]" > /tmp/12347/my.sandbox.2.cnf`);
+diag(`echo "sync_relay_log=1" >> /tmp/12347/my.sandbox.2.cnf`);
+diag(`echo "sync_relay_log_info=1" >> /tmp/12347/my.sandbox.2.cnf`);
+diag(`echo "relay_log_recovery=1" >> /tmp/12347/my.sandbox.2.cnf`);
+diag(`echo "!include /tmp/12347/my.sandbox.2.cnf" >> $cnf`);
+diag(`/tmp/12347/stop >/dev/null`);
+sleep 1;
+diag(`/tmp/12347/start >/dev/null`);
 
 sub reset_query_cache {
     my @dbhs = @_;
@@ -119,7 +130,7 @@ sub base_test {
       exec("$trunk/bin/pt-online-schema-change $args");
    }
 
-   sleep($max_lag + 10);
+   sleep($max_lag + $max_lag/2);
    # restart slave 12347
    diag(`/tmp/12347/stop >/dev/null`);
    sleep 1;
@@ -164,6 +175,66 @@ sub crash_test {
    return $output;
 }
 
+sub error_test {
+   my ($test, $pattern, $query) = @_;
+
+   $slave_dbh2->do("SET GLOBAL simple_rewrite_plugin_action='rewrite'");
+   $slave_dbh2->do("SET GLOBAL simple_rewrite_plugin_pattern='$pattern'");
+   $slave_dbh2->do("SET GLOBAL simple_rewrite_plugin_query='$query'");
+
+   my $args = "$master_dsn,D=test,t=pt178,A=utf8 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5";
+
+   my $output = `$trunk/bin/pt-online-schema-change $args 2>&1`;
+
+   unlike(
+      $output,
+      qr/Successfully altered `test`.`pt178`/s,
+      "pt-osc fails with error if replica returns error when $test",
+   );
+
+   $args = "$master_dsn,D=test,t=pt178,A=utf8 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --wait-lost-replicas";
+
+   $output = `$trunk/bin/pt-online-schema-change $args 2>&1`;
+
+   unlike(
+      $output,
+      qr/Successfully altered `test`.`pt178`/s,
+      "pt-osc fails with error if replica returns error when $test and option --wait-lost-replicas is specified",
+   );
+
+   $slave_dbh2->do("SET GLOBAL simple_rewrite_plugin_pattern=''");
+   $slave_dbh2 = $sb->get_dbh_for('slave2');
+   $slave_dbh2->do("SET GLOBAL simple_rewrite_plugin_pattern='$pattern'");
+   $slave_dbh2->do("SET GLOBAL simple_rewrite_plugin_action='abort'");
+
+   $args = "$master_dsn,D=test,t=pt178,A=utf8 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5";
+
+   $output = crash_test($args);
+
+   unlike(
+      $output,
+      qr/Successfully altered `test`.`pt178`/s,
+      "pt-osc fails with error if replica disconnects when $test",
+   );
+
+   $slave_dbh2 = $sb->get_dbh_for('slave2');
+   $slave_dbh2->do("SET GLOBAL simple_rewrite_plugin_pattern='$pattern'");
+   $slave_dbh2->do("SET GLOBAL simple_rewrite_plugin_action='abort'");
+
+   $args = "$master_dsn,D=test,t=pt178,A=utf8 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --wait-lost-replicas";
+
+   $output = crash_test($args);
+
+   like(
+      $output,
+      qr/Successfully altered `test`.`pt178`/s,
+      "pt-osc finishes succesfully if replica disconnects when $test and option --wait-lost-replicas is specified",
+   );
+
+   $slave_dbh2 = $sb->get_dbh_for('slave2');
+   $slave_dbh2->do("SET GLOBAL simple_rewrite_plugin_action='rewrite'");
+}
+
 diag("Starting base tests. This is going to take some time due to the delay in the slave");
 
 my $output = base_test("$master_dsn,D=test,t=pt178 --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5");
@@ -199,11 +270,6 @@ like(
    "pt-osc completes successfully with recursion-method=dsn when one of replicas is restarted and option --wait-lost-replicas is specified",
 );
 
-#diag($output);
-#diag("=====================");
-
-#my $args = "$master_dsn,D=test,t=pt178 --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --wait-lost-replicas";
-
 # Errors that happen while pt-osc executes SQL while checking slave availability.
 # We check few scenarios.
 # - Error not related to connection: pt-osc aborted regardless option --wait-lost-replicas
@@ -211,67 +277,41 @@ like(
 # We work only with replica with port 12347 here.
 diag("Starting replica lost and error tests");
 
-$master_dbh->do("UPDATE test_recursion_method.dsns SET dsn='D=test_recursion_method,t=dsns,P=12346,h=127.0.0.1,u=root,p=msandbox,A=utf8' WHERE id=1");
-$master_dbh->do("UPDATE test_recursion_method.dsns SET dsn='D=test_recursion_method,t=dsns,P=12347,h=127.0.0.1,u=root,p=msandbox,A=utf8' WHERE id=2");
-
-# get_dbh sets character set connection
-
-#sleep($max_lag);
 $slave_dbh2 = $sb->get_dbh_for('slave2');
 $slave_dbh2->do("install plugin simple_rewrite_plugin soname 'simple_rewrite_plugin.so'");
 
-$slave_dbh2->do("SET GLOBAL simple_rewrite_plugin_pattern= '(SET NAMES) \"([[:alpha:]]+[0-9]*)\"'");
-$slave_dbh2->do("SET GLOBAL simple_rewrite_plugin_query= '\$1 \$2\$2'");
-$slave_dbh2->do("SET GLOBAL sync_relay_log=1");
-$slave_dbh2->do('STOP SLAVE');
-$slave_dbh2->do('START SLAVE');
 
-my $args = "$master_dsn,D=test,t=pt178,A=utf8 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5";
+# get_dbh sets character set connection
+$master_dbh->do("UPDATE test_recursion_method.dsns SET dsn='D=test_recursion_method,t=dsns,P=12346,h=127.0.0.1,u=root,p=msandbox,A=utf8' WHERE id=1");
+$master_dbh->do("UPDATE test_recursion_method.dsns SET dsn='D=test_recursion_method,t=dsns,P=12347,h=127.0.0.1,u=root,p=msandbox,A=utf8' WHERE id=2");
 
-$output = `$trunk/bin/pt-online-schema-change $args 2>&1`;
+error_test("setting character set", '(SET NAMES) \"([[:alpha:]]+[0-9]*)\"', '$1 $2$2');
 
-unlike(
-   $output,
-   qr/Successfully altered `test`.`pt178`/s,
-   "pt-osc fails with error if replica returns error when setting character set",
-);
+$master_dbh->do("UPDATE test_recursion_method.dsns SET dsn='D=test_recursion_method,t=dsns,P=12346,h=127.0.0.1,u=root,p=msandbox' WHERE id=1");
+$master_dbh->do("UPDATE test_recursion_method.dsns SET dsn='D=test_recursion_method,t=dsns,P=12347,h=127.0.0.1,u=root,p=msandbox' WHERE id=2");
 
-$args = "$master_dsn,D=test,t=pt178,A=utf8 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --wait-lost-replicas";
+# get_dbh selects SQL mode
+error_test("selecting SQL mode", 'SELECT @@SQL_MODE', 'SELEC @@SQL_MODE');
 
-$output = `$trunk/bin/pt-online-schema-change $args 2>&1`;
+# get_dbh sets SQL mode
+error_test("setting SQL mode", 'SET @@SQL_QUOTE_SHOW_CREATE = 1', 'SE @@SQL_QUOTE_SHOW_CREATE = 1');
 
-unlike(
-   $output,
-   qr/Successfully altered `test`.`pt178`/s,
-   "pt-osc fails with error if replica returns error when setting character set and option --wait-lost-replicas is specified",
-);
+# get_dbh selects version
+error_test("selecting MySQL version", 'SELECT VERSION()', 'SELEC VERSION()');
 
+# get_dbh queries server character set
+error_test("querying server character set", "SHOW VARIABLES LIKE \\'character_set_server\\'", "SHO VARIABLES LIKE \\'character_set_server\\'");
+
+# get_dbh sets character set utf8mb4 in version 8+
+if ($sandbox_version ge '8.0') {
+   error_test("setting character set utf8mb4", "SET NAMES \\'utf8mb4\\'", "SET NAMES \\'utf8mb4utf8mb4\\'");
+}
+
+# #############################################################################
+# Done.
+# #############################################################################
+diag("Cleaning");
 $slave_dbh2 = $sb->get_dbh_for('slave2');
-$slave_dbh2->do("SET GLOBAL simple_rewrite_plugin_action='abort'");
-
-$args = "$master_dsn,D=test,t=pt178,A=utf8 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5";
-
-$output = crash_test($args);
-
-unlike(
-   $output,
-   qr/Successfully altered `test`.`pt178`/s,
-   "pt-osc fails with error if replica disconnects when setting character set",
-);
-
-$args = "$master_dsn,D=test,t=pt178,A=utf8 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --wait-lost-replicas";
-
-$output = crash_test($args);
-
-like(
-   $output,
-   qr/Successfully altered `test`.`pt178`/s,
-   "pt-osc finishes succesfully if replica disconnects when setting character set and option --wait-lost-replicas is specified",
-);
-
-$slave_dbh2 = $sb->get_dbh_for('slave2');
-
-# Cleanup
 diag("Setting slave delay to 0 seconds");
 $slave_dbh1->do('STOP SLAVE');
 $slave_dbh2->do('STOP SLAVE');
@@ -282,6 +322,8 @@ $slave_dbh1->do('START SLAVE');
 $slave_dbh2->do('START SLAVE');
 $slave_dbh2->do("uninstall plugin simple_rewrite_plugin");
 
+diag(`mv $cnf.bak $cnf`);
+
 diag(`/tmp/12347/stop >/dev/null`);
 diag(`/tmp/12347/start >/dev/null`);
 
@@ -289,10 +331,6 @@ diag("Dropping test database");
 $master_dbh->do("DROP DATABASE IF EXISTS test");
 $sb->wait_for_slaves();
 
-# #############################################################################
-# Done.
-# #############################################################################
-diag("Cleaning");
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
