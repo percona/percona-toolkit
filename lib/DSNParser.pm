@@ -268,7 +268,7 @@ sub fill_in_dsn {
 # the way the Percona tools will expect.  Tools should NEVER open their own
 # connection or use $dbh->reconnect, or these things will not take place!
 sub get_dbh {
-   my ( $self, $cxn_string, $user, $pass, $opts, $wait_no_die ) = @_;
+   my ( $self, $cxn_string, $user, $pass, $opts ) = @_;
    $opts ||= {};
    my $defaults = {
       AutoCommit         => 0,
@@ -289,10 +289,6 @@ sub get_dbh {
       $defaults->{mysql_use_result} = 1;
    }
 
-   if ( $opts->{wait_no_die} ) {
-      $wait_no_die = 1;
-   }
-
    if ( !$have_dbi ) {
       die "Cannot connect to MySQL because the Perl DBI module is not "
          . "installed or not found.  Run 'perl -MDBI' to see the directories "
@@ -306,7 +302,7 @@ sub get_dbh {
    # Try twice to open the $dbh and set it up as desired.
    my $dbh;
    my $tries = 2;
-   while ( !$dbh && ($wait_no_die or $tries--) ) {
+   while ( !$dbh && $tries-- ) {
       PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
@@ -327,12 +323,7 @@ sub get_dbh {
             delete $defaults->{mysql_enable_utf8};
          }
          if ( !$tries ) {
-            if ( $wait_no_die ) {
-               PTDEBUG && _d("Server is not accessible, waiting when it is online again");
-               sleep(1);
-            } else {
-               die $EVAL_ERROR;
-            }
+            die $EVAL_ERROR;
          }
       }
    }

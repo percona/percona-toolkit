@@ -193,7 +193,7 @@ sub recurse_to_slaves {
    my $get_dbh = sub {
          eval {
             $dbh = $dp->get_dbh(
-               $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 }, $args->{wait_no_die}
+               $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 }
             );
             PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
          };

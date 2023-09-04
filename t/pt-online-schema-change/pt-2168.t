@@ -307,6 +307,15 @@ if ($sandbox_version ge '8.0') {
    error_test("setting character set utf8mb4", "SET NAMES \\'utf8mb4\\'", "SET NAMES \\'utf8mb4utf8mb4\\'");
 }
 
+# recurse_to_slaves asks for SERVER_ID
+error_test("selecting server id", 'SELECT @@SERVER_ID', 'SELEC @@SERVER_ID');
+
+# get_slave_status checks replica status
+error_test("asking for replica status", 'SHOW SLAVE STATUS', 'SHO SLAVE STATUS');
+
+# get_replication_filters checks variable slave_skip_errors
+error_test("asking for variable slave_skip_errors", "SHOW VARIABLES LIKE \\'slave_skip_errors\\'", "SHO VARIABLES LIKE \\'slave_skip_errors\\'");
+
 # #############################################################################
 # Done.
 # #############################################################################

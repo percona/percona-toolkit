@@ -2308,7 +2308,7 @@ sub fill_in_dsn {
 }
 
 sub get_dbh {
-   my ( $self, $cxn_string, $user, $pass, $opts, $wait_no_die ) = @_;
+   my ( $self, $cxn_string, $user, $pass, $opts ) = @_;
    $opts ||= {};
    my $defaults = {
       AutoCommit         => 0,
@@ -2326,10 +2326,6 @@ sub get_dbh {
       $defaults->{mysql_use_result} = 1;
    }
 
-   if ( $opts->{wait_no_die} ) {
-      $wait_no_die = 1;
-   }
-
    if ( !$have_dbi ) {
       die "Cannot connect to MySQL because the Perl DBI module is not "
          . "installed or not found.  Run 'perl -MDBI' to see the directories "
@@ -2342,7 +2338,7 @@ sub get_dbh {
 
    my $dbh;
    my $tries = 2;
-   while ( !$dbh && ($wait_no_die or $tries--) ) {
+   while ( !$dbh && $tries-- ) {
       PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
@@ -2363,12 +2359,7 @@ sub get_dbh {
             delete $defaults->{mysql_enable_utf8};
          }
          if ( !$tries ) {
-            if ( $wait_no_die ) {
-               PTDEBUG && _d("Server is not accessible, waiting when it is online again");
-               sleep(1);
-            } else {
-               die $EVAL_ERROR;
-            }
+            die $EVAL_ERROR;
          }
       }
    }
@@ -4331,7 +4322,7 @@ sub recurse_to_slaves {
    my $get_dbh = sub {
          eval {
             $dbh = $dp->get_dbh(
-               $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 }, $args->{wait_no_die}
+               $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 }
             );
             PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
          };
