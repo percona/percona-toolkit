@@ -9466,7 +9466,7 @@ binmode(STDOUT, "encoding(UTF-8)");
 my $oktorun     = 1;
 my $exit_status = 0;
 my $stats       = {};
-         
+
 my %modules_for_log_type = (
    slowlog => ['SlowLogParser'],
    binlog  => ['BinaryLogParser'],
@@ -9696,9 +9696,9 @@ sub main {
       );
    }
 
-   # ######################################################################## 
+   # ########################################################################
    # Preprocess the log files.
-   # ######################################################################## 
+   # ########################################################################
    my $parser = make_parser(
       type         => $o->get('type'),
       watch_server => $o->get('watch-server'),
@@ -9820,7 +9820,7 @@ sub make_parser {
    }
 
    if ( @parsers == 1 ) {
-      return sub { 
+      return sub {
          my (%args) = @_;
          return $parsers[0]->parse_event(%args);
       };
@@ -9913,7 +9913,7 @@ sub check_upgrade_table {
    # was given; see https://bugs.launchpad.net/percona-toolkit/+bug/950294
    if ( $o->get('create-upgrade-table') ) {
       eval {
-         PTDEBUG && _d('Creating --upgrade-table table', $upgrade_table); 
+         PTDEBUG && _d('Creating --upgrade-table table', $upgrade_table);
          my $sql = $o->read_para_after(__FILE__, qr/MAGIC_upgrade_table/);
          $sql =~ s/CREATE TABLE pt_upgrade/CREATE TABLE IF NOT EXISTS $upgrade_table/;
          $sql =~ s/;$//;
@@ -9987,7 +9987,7 @@ sub compare_host_to_host {
    my $host1          = $args{host1};
    my $host2          = $args{host2};
    my $max_class_size = $args{max_class_size};
-   my $max_examples   = $args{max_examples}; 
+   my $max_examples   = $args{max_examples};
    my $upgrade_table  = $args{upgrade_table};
    my $run_time       = $args{run_time};
 
@@ -10196,7 +10196,7 @@ sub compare_results_to_host {
    my $results_dir    = $args{results_dir};
    my $host           = $args{host};
    my $max_class_size = $args{max_class_size};
-   my $max_examples   = $args{max_examples}; 
+   my $max_examples   = $args{max_examples};
    my $upgrade_table  = $args{upgrade_table};
    my $run_time       = $args{run_time};
    PTDEBUG && _d('Compare', $results_dir, 'to', $host->name);
@@ -10336,10 +10336,10 @@ sub save_and_report_results {
          ignore_warnings => $ignore_warnings,
       );
 
-      # Only SELECT statements return rows, *except* when they are directed 
+      # Only SELECT statements return rows, *except* when they are directed
       # INTO a file or a variable.
       my $row_diffs;
-      if ( $event->{arg} =~ m/(?:^\s*SELECT|(?:\*\/\s*SELECT))/i 
+      if ( $event->{arg} =~ m/(?:^\s*SELECT|(?:\*\/\s*SELECT))/i
          &&  $event->{arg} !~ m/INTO\s*(?:OUTFILE|DUMPFILE|@)/i ) {
          $row_diffs = diff_rows(
             sth1 => $results1->{sth},
@@ -10564,7 +10564,7 @@ sub identical_rows {
    }
 
    return 1;
-} 
+}
 
 sub report_logs {
    my (%args) = @_;
@@ -11027,7 +11027,7 @@ Then C<tail -f err> while the tool is running to track its L<"--progress">.
 
 In general, the tool exits zero if it finishes normally and there were
 no internal warnings or errors, and no L<"QUERY DIFFERENCES"> were found.
-Else the tool exits non-zero with one or more of the following codes: 
+Else the tool exits non-zero with one or more of the following codes:
 
 =over
 
@@ -11329,7 +11329,7 @@ done for the first time.
 
 Any updates or known problems are printed to STDOUT before the tool's normal
 output.  This feature should never interfere with the normal operation of the
-tool.  
+tool.
 
 For more information, visit L<https://www.percona.com/version-check>.
 
@@ -11393,7 +11393,7 @@ Explicitly enable LOAD DATA LOCAL INFILE.
 
 For some reason, some vendors compile libmysql without the
 --enable-local-infile option, which disables the statement.  This can
-lead to weird situations, like the server allowing LOCAL INFILE, but 
+lead to weird situations, like the server allowing LOCAL INFILE, but
 the client throwing exceptions if it's used.
 
 However, as long as the server allows LOAD DATA, clients can easily
@@ -11444,7 +11444,7 @@ of output.
 
 =head1 ATTENTION
 
-Using <PTDEBUG> might expose passwords. When debug is enabled, all command line 
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
 parameters are shown in the output.
 
 =head1 SYSTEM REQUIREMENTS

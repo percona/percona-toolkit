@@ -80,7 +80,7 @@ add_percona_yum_repo(){
     yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm
     percona-release disable all
     percona-release enable ppg-11.19 testing
-    return 
+    return
 }
 
 get_sources(){
@@ -118,7 +118,7 @@ get_sources(){
     cd ../
     if [ -z "${DESTINATION}" ]; then
         export DESTINATION=experimental
-    fi 
+    fi
     echo "REVISION=${REVISION}" >> ${WORKDIR}/percona-toolkit.properties
     echo "DESTINATION=${DESTINATION}" >> percona-toolkit.properties
     echo "UPLOAD=UPLOAD/${DESTINATION}/BUILDS/${PRODUCT}/${PRODUCT_FULL}/${BRANCH_NAME}/${REVISION}/${BUILD_ID}" >> percona-toolkit.properties
@@ -130,7 +130,7 @@ get_sources(){
     #
     source percona-toolkit.properties
     #
-    
+
     tar --owner=0 --group=0 -czf ${PRODUCT}-${VERSION}.tar.gz ${PRODUCT_FULL}
     mkdir $WORKDIR/source_tarball
     mkdir $CURDIR/source_tarball
@@ -167,7 +167,7 @@ install_go() {
     update-alternatives --set go /usr/local/go/bin/go
     update-alternatives --install "/usr/bin/gofmt" "gofmt" "/usr/local/go/bin/gofmt" 0
     update-alternatives --set gofmt /usr/local/go/bin/gofmt
-    rm /tmp/golang.tar.gz 
+    rm /tmp/golang.tar.gz
 }
 
 update_go() {
@@ -179,7 +179,7 @@ update_go() {
     export PATH="/usr/local/go/bin:$PATH:$GOPATH"
     export GOBINPATH="/usr/local/go/bin"
     cd src/github.com/percona
-    cp -r $WORKDIR/$PRODUCT_FULL . 
+    cp -r $WORKDIR/$PRODUCT_FULL .
     mv ${PRODUCT_FULL} ${PRODUCT}
     cd ${PRODUCT}
     go get -u github.com/golang/dep/cmd/dep
@@ -243,7 +243,7 @@ install_deps() {
               echo "waiting"
               sleep 1
           done
-      fi 
+      fi
       install_go
       #update_pat
     fi
@@ -321,7 +321,7 @@ build_srpm(){
     rm -rf bin/glide
     cd ../
     tar czf ${TARFILE} ${PRODUCT_FULL}
-    
+
    # wget --no-check-certificate https://download.osgeo.org/postgis/docs/postgis-3.3.1.pdf
     #wget --no-check-certificate https://www.postgresql.org/files/documentation/pdf/12/postgresql-12-A4.pdf
     cd ${WORKDIR}
@@ -381,7 +381,7 @@ build_rpm(){
     ARCH=$(echo $(uname -m) | sed -e 's:i686:i386:g')
     echo "RHEL=${RHEL}" >> percona-toolkit.properties
     echo "ARCH=${ARCH}" >> percona-toolkit.properties
-    rpmbuild --target=x86_64 --define "version $VERSION" --define "dist .el${RHEL}" --define "release $RPM_RELEASE.el${RHEL}" --define "_topdir ${WORKDIR}/rpmbuild" --rebuild rpmbuild/SRPMS/${SRC_RPM} 
+    rpmbuild --target=x86_64 --define "version $VERSION" --define "dist .el${RHEL}" --define "release $RPM_RELEASE.el${RHEL}" --define "_topdir ${WORKDIR}/rpmbuild" --rebuild rpmbuild/SRPMS/${SRC_RPM}
 
     return_code=$?
     if [ $return_code != 0 ]; then
@@ -421,7 +421,7 @@ build_source_deb(){
     echo "  * Initial Release." >> changelog
     echo " -- Percona Toolkit Developers <toolkit-dev@percona.com>  $(date -R)" >> changelog
     echo "override_dh_builddeb:" >> rules
-    echo "	dh_builddeb -- -Zgzip" >> rules 
+    echo "	dh_builddeb -- -Zgzip" >> rules
     cd ../
     dch -D unstable --force-distribution -v "${VERSION}-${DEB_RELEASE}" "Update to new upstream release Percona-Toolkit ${VERSION}-${DEB_RELEASE}"
     dpkg-buildpackage -S
@@ -450,7 +450,7 @@ build_tarball(){
     export UPDATE=0
     export CHECK=0
     cd $WORKDIR
-    mkdir TARGET 
+    mkdir TARGET
     get_tar "source_tarball"
     TARBALL=$(find . -type f -name 'percona-toolkit*.tar.gz')
     #VERSION_TMP=$(echo ${TARBALL}| awk -F '-' '{print $2}')

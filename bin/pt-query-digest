@@ -13212,7 +13212,7 @@ sub main {
        $aux_dsn = $dp->parse(splice(@ARGV, $i, 1));
        last;
    }
-   
+
    # Frequently used options.
    my $review_dsn  = handle_special_defaults($o, 'review');
    my $history_dsn = handle_special_defaults($o, 'history');
@@ -13223,7 +13223,7 @@ sub main {
         && !$o->got('order-by') ) {
       @orderby = 'Query_time:cnt';
    }
-   else { 
+   else {
       @orderby = @{$o->get('order-by')};
    }
 
@@ -13264,7 +13264,7 @@ sub main {
    $o->set('order-by', \@orderby);
 
    my $run_time_mode = lc $o->get('run-time-mode');
-   my $run_time_interval; 
+   my $run_time_interval;
    eval {
       $run_time_interval = verify_run_time(
          run_mode => $run_time_mode,
@@ -13320,7 +13320,7 @@ sub main {
       my %dsn_without_Dt = %$review_dsn;
       delete $dsn_without_Dt{D};
       delete $dsn_without_Dt{t};
-      
+
       $qv_dbh = get_cxn(
          for          => '--review',
          dsn          => \%dsn_without_Dt,
@@ -13336,11 +13336,11 @@ sub main {
 
       my @db_tbl = @{$review_dsn}{qw(D t)};
       my $db_tbl = $q->quote(@db_tbl);
-      
+
       my $create_review_sql = $o->read_para_after(
          __FILE__, qr/\bMAGIC_create_review_table\b/);
       $create_review_sql =~ s/\bquery_review\b/$db_tbl/;
-      
+
       create_review_tables(
           type             => 'review',
           dbh              => $qv_dbh,
@@ -13383,7 +13383,7 @@ sub main {
 
       my @hdb_tbl = @{$history_dsn}{qw(D t)};
       my $hdb_tbl = $q->quote(@hdb_tbl);
-      
+
       my $create_history_sql = $o->read_para_after(
          __FILE__, qr/\bMAGIC_create_history_table\b/);
       $create_history_sql =~ s/\bquery_history\b/$hdb_tbl/;
@@ -13396,7 +13396,7 @@ sub main {
          create_table     => $o->get('create-history-table'),
          TableParser      => $tp,
       );
-      
+
       my $tbl = $tp->parse($tp->get_create_table($qh_dbh, @hdb_tbl));
       my $pat = $o->read_para_after(__FILE__, qr/\bMAGIC_history_columns\b/);
       $pat    =~ s/\s+//g;
@@ -13955,7 +13955,7 @@ sub main {
                my $iter_start = $args->{iter_start} = time;
                PTDEBUG && _d('Iteration', $args->{iter},
                   'started at', ts($iter_start));
-               
+
                if ( PTDEBUG ) {
                   _d("\n# Iteration $args->{iter} started at ",
                      ts($iter_start), "\n");
@@ -14267,7 +14267,7 @@ sub main {
       },
    );
    # zero admin
-   
+
    # Filter after special attributes, like fingerprint, tables,
    # distill, etc., have been created.
    if ( $o->get('filter') ) {
@@ -14515,7 +14515,7 @@ sub create_review_tables {
             . "created automatically.  You need to create the database.\n";
       }
    }
-   
+
    # USE the correct db
    my $sql = "USE " . Quoter->quote($db);
    PTDEBUG && _d($sql);
@@ -14653,7 +14653,7 @@ sub print_reports {
             ea           => $eas->[$i],
             worst        => $worst,
             QueryHistory => $qh,
-         );      
+         );
       }
 
       if ( $o->get('timeline') ) {  # --timeline
@@ -14726,7 +14726,7 @@ sub handle_special_defaults {
    my ($D, $t) = Quoter->split_unquote($default_table);
    $dsn->{D} ||= $D;
    $dsn->{t} ||= $t;
-   
+
    return $dsn;
 }
 
@@ -14741,7 +14741,7 @@ sub make_alt_attrib {
       'my $event = $args->{event}; ',
       "if ( exists \$event->{'$attrib'} ) { ",
       (map { "delete \$event->{'$_'}; "; } @alts),
-      'return $args; }',     
+      'return $args; }',
       # Primary attrib doesn't exist; look for alts
       (map {
          "if ( exists \$event->{'$_'} ) { "
@@ -14876,7 +14876,7 @@ sub update_query_review_table {
 
    my $attribs = $ea->get_attributes();
 
-   PTDEBUG && _d('Updating query review tables'); 
+   PTDEBUG && _d('Updating query review tables');
 
    foreach my $worst_info ( @$worst ) {
       my $item        = $worst_info->[0];
@@ -14905,7 +14905,7 @@ sub update_query_history_table {
 
    my $attribs = $ea->get_attributes();
 
-   PTDEBUG && _d('Updating query review tables'); 
+   PTDEBUG && _d('Updating query review tables');
 
    foreach my $worst_info ( @$worst ) {
       my $item        = $worst_info->[0];
@@ -15048,8 +15048,8 @@ sub sanitize_event {
 # (i.e. was not converted to text using mysqlbinlog)
 sub is_raw_binlog {
    my $filename = shift;
-   
-   return -B $filename; 
+
+   return -B $filename;
 }
 
 sub _d {
@@ -15236,7 +15236,7 @@ approximate concurrency for this query (calculated as a function of the timespan
 and total Query_time).  Next there's a query ID.  This ID is a hex version of
 the query's checksum in the database, if you're using L<"--review">.  You can
 select the reviewed query's details from the database with a query like C<SELECT
-.... WHERE checksum=0xFDEA8D2993C9CAF3>.  
+.... WHERE checksum=0xFDEA8D2993C9CAF3>.
 
 If you are investigating the report and want to print out every sample of a
 particular query, then the following L<"--filter"> may be helpful:
@@ -15335,7 +15335,7 @@ See also L<"--report-format">.
 
 =head1 QUERY REVIEW
 
-A query L<"--review"> is the process of storing all the query fingerprints 
+A query L<"--review"> is the process of storing all the query fingerprints
 analyzed.  This has several benefits:
 
 =over
@@ -15441,7 +15441,7 @@ Query fingerprinting accommodates many special cases, which have proven
 necessary in the real world.  For example, an C<IN> list with 5 literals
 is really equivalent to one with 4 literals, so lists of literals are
 collapsed to a single one.  If you find something that is not fingerprinted
-properly, please submit a bug report with a reproducible test case. 
+properly, please submit a bug report with a reproducible test case.
 
 Here is a list of transformations during fingerprinting, which might not
 be exhaustive:
@@ -15523,7 +15523,7 @@ be report lines for both db and Schema.
 
 =item --attribute-value-limit
 
-type: int; default: 0 
+type: int; default: 0
 
 A sanity limit for attribute values.
 
@@ -15666,7 +15666,7 @@ file and uses its contents as the code.  The file should not contain
 a shebang (#!/usr/bin/perl) line.
 
 If the code returns true, the chain of callbacks continues; otherwise it ends.
-The code is the last statement in the subroutine other than C<return $event>. 
+The code is the last statement in the subroutine other than C<return $event>.
 The subroutine template is:
 
   sub { $event = shift; filter && return $event; }
@@ -15871,7 +15871,7 @@ MAGIC_create_history_table
    Rows_examined_pct_95 FLOAT,
    Rows_examined_stddev FLOAT,
    Rows_examined_median FLOAT,
-   -- Percona extended slowlog attributes 
+   -- Percona extended slowlog attributes
    -- http://www.percona.com/docs/wiki/patches:slow_extended
    Rows_affected_sum             FLOAT,
    Rows_affected_min             FLOAT,
@@ -16135,7 +16135,7 @@ Port number to use for connection.
 Preserve numbers in database/table names when fingerprinting queries.
 The standard fingerprint method replaces numbers in db/tables names, making
 a query like 'SELECT * FROM db1.table2' to be fingerprinted as 'SELECT * FROM db?.table?'.
-This option changes that behaviour and the fingerprint will become 
+This option changes that behaviour and the fingerprint will become
 'SELECT * FROM db1.table2'.
 
 =item --processlist
@@ -16509,7 +16509,7 @@ The type of input to parse.  The permitted types are
 
 Parse a binary log file that has first been converted to text using mysqlbinlog.
 
-For example: 
+For example:
 
    mysqlbinlog mysql-bin.000441 > mysql-bin.000441.txt
 
@@ -16674,7 +16674,7 @@ done for the first time.
 
 Any updates or known problems are printed to STDOUT before the tool's normal
 output.  This feature should never interfere with the normal operation of the
-tool.  
+tool.
 
 For more information, visit L<https://www.percona.com/doc/percona-toolkit/LATEST/version-check.html>.
 
@@ -16783,7 +16783,7 @@ of output.
 
 =head1 ATTENTION
 
-Using <PTDEBUG> might expose passwords. When debug is enabled, all command line 
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
 parameters are shown in the output.
 
 =head1 SYSTEM REQUIREMENTS
@@ -16889,11 +16889,11 @@ The byte length of the C<arg>.
 
 =item db
 
-The current database.  The value comes from USE database statements.  
+The current database.  The value comes from USE database statements.
 By default, C<Schema> is an alias which is automatically
 changed to C<db>; see L<"--attribute-aliases">.
 
-=item fingerprint 
+=item fingerprint
 
 An abstracted form of the query.  See L<"FINGERPRINTS">.
 

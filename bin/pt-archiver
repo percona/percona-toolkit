@@ -6630,7 +6630,7 @@ sub main {
                   . ($o->get('replace')    ? ' REPLACE'      : '')
                   . ($o->get('ignore')     ? ' IGNORE'       : '')
                   . " INTO TABLE $dst->{db_tbl}"
-                  . ($got_charset ? "CHARACTER SET $got_charset" : 
+                  . ($got_charset ? "CHARACTER SET $got_charset" :
 					 ( $src->{info}->{charset} && $src->{info}->{charset} =~ /utf/ ?
 				     "CHARACTER SET utf8mb4" : "" ))
                   . "("
@@ -6809,7 +6809,7 @@ sub main {
       require File::Temp;
       $bulkins_file = File::Temp->new( SUFFIX => 'pt-archiver' )
          or die "Cannot open temp file: $OS_ERROR\n";
-	  if ( !$charset && $src->{info}->{charset} 
+	  if ( !$charset && $src->{info}->{charset}
 	       && $src->{info}->{charset} =~ /utf/ ) {
 	     binmode($bulkins_file, ':utf8')
 	  }
@@ -6899,7 +6899,7 @@ sub main {
                   # We have to make exception for BIT column, see PT-2114
                   for my $i (0 .. $#del_slice) {
                      if ($src->{info}->{type_for}->{$del_stmt->{cols}[$del_slice[$i]]} eq 'bit') {
-	                    $del_row->bind_param($i + 1, oct('0b' . unpack('B*', @{$row}[$del_slice[$i]])), SQL_INTEGER);					 
+	                    $del_row->bind_param($i + 1, oct('0b' . unpack('B*', @{$row}[$del_slice[$i]])), SQL_INTEGER);
 					 } else {
 					    $del_row->bind_param($i + 1, @{$row}[$del_slice[$i]]);
 				     }
@@ -7010,8 +7010,8 @@ sub main {
                   # We have to make exception for BIT column, see PT-2114
                   for my $i (0 .. $#bulkdel_slice) {
                      if ($src->{info}->{type_for}->{$del_stmt->{cols}[$bulkdel_slice[$i]]} eq 'bit') {
-	                    $del_row->bind_param($i + 1, oct('0b' . unpack('B*', @{$first_row}[$bulkdel_slice[$i]])), SQL_INTEGER);					 
-	                    $del_row->bind_param($i + $#bulkdel_slice + 2, oct('0b' . unpack('B*', @{$lastrow}[$bulkdel_slice[$i]])), SQL_INTEGER);					 
+	                    $del_row->bind_param($i + 1, oct('0b' . unpack('B*', @{$first_row}[$bulkdel_slice[$i]])), SQL_INTEGER);
+	                    $del_row->bind_param($i + $#bulkdel_slice + 2, oct('0b' . unpack('B*', @{$lastrow}[$bulkdel_slice[$i]])), SQL_INTEGER);
 					 } else {
 					    $del_row->bind_param($i + 1, @{$first_row}[$bulkdel_slice[$i]]);
 					    $del_row->bind_param($i + $#bulkdel_slice + 2, @{$lastrow}[$bulkdel_slice[$i]]);
@@ -8692,7 +8692,7 @@ of output.
 
 =head1 ATTENTION
 
-Using <PTDEBUG> might expose passwords. When debug is enabled, all command line 
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
 parameters are shown in the output.
 
 =head1 SYSTEM REQUIREMENTS

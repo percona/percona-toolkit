@@ -13085,7 +13085,7 @@ See "Replicas using row-based replication" under L<"LIMITATIONS">.
 This option modifies the behavior of L<"--create-replicate-table"> such that the
 replicate table's upper and lower boundary columns are created with the BLOB
 data type.
-This is useful in cases where you have trouble checksumming tables with keys that 
+This is useful in cases where you have trouble checksumming tables with keys that
 include a binary data type or that have non-standard character sets.
 See L<"--replicate">.
 
@@ -14068,7 +14068,7 @@ of output.
 
 =head1 ATTENTION
 
-Using <PTDEBUG> might expose passwords. When debug is enabled, all command line 
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
 parameters are shown in the output.
 
 =head1 SYSTEM REQUIREMENTS

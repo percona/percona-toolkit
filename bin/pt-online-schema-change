@@ -8871,7 +8871,7 @@ sub main {
                      print "Skipping slave " . $slave->description() . "\n";
                      $is_skip = 1;
                      last;
-                  } 
+                  }
                }
                if (!$is_skip) {
                    push @$filtered_slaves, $slave;
@@ -13368,7 +13368,7 @@ of output.
 
 =head1 ATTENTION
 
-Using <PTDEBUG> might expose passwords. When debug is enabled, all command line 
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
 parameters are shown in the output.
 
 =head1 EXIT STATUS
