@@ -3974,7 +3974,7 @@ sub main {
       node          => $root,
       print_node    => $print_node,
       MasterSlave   => $ms,
-       resolve_address => $o->get('resolve-address'),
+      resolve_address => $o->get('resolve-address'),
    );
 
    return 0;
