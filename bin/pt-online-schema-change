@@ -8786,7 +8786,7 @@ sub main {
             PTDEBUG && _d('innodb_stats_persistent is ON, enabling --analyze-before-swap');
             $analyze_table = 1;
          } else {
-            PTDEBUG && _d('innodb_stats_persitent is OFF, disabling --analyze-before-swap');
+            PTDEBUG && _d('innodb_stats_persistent is OFF, disabling --analyze-before-swap');
             $analyze_table = 0;
          }
       } else {
