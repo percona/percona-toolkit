@@ -16,7 +16,7 @@ For instance if you download to /tmp/mysql-sys/, and want to install the 5.6 ver
 Or if you would like to log in to the client, and install the 5.7 version:
 
     cd /tmp/mysql-sys/
-    mysql -u root -p 
+    mysql -u root -p
     SOURCE ./sys_57.sql
 
 Alternatively, you could just choose to load individual files based on your needs, but beware, certain objects have dependencies on other objects. You will need to ensure that these are also loaded.
@@ -58,7 +58,7 @@ Generate a MySQL 5.7 bootstrap file:
 
 ##### Description
 
-Holds configuration options for the sys schema. This is a persistent table (using the `InnoDB` storage engine), with the configuration persisting across upgrades (new options are added with `INSERT IGNORE`). 
+Holds configuration options for the sys schema. This is a persistent table (using the `InnoDB` storage engine), with the configuration persisting across upgrades (new options are added with `INSERT IGNORE`).
 
 The table also has two related triggers, which maintain the user that `INSERTs` or `UPDATEs` the configuration - `sys_config_insert_set_user` and `sys_config_update_set_user` respectively.
 
@@ -146,7 +146,7 @@ mysql> desc x$host_summary;
 
 ##### Example
 
-```SQL 
+```SQL
   mysql> select * from host_summary;
   +------+------------+-------------------+-----------------------+-------------+----------+-----------------+---------------------+-------------------+--------------+
   | host | statements | statement_latency | statement_avg_latency | table_scans | file_ios | file_io_latency | current_connections | total_connections | unique_users |
@@ -3514,7 +3514,7 @@ mysql> SELECT sys.extract_table_from_file_name('/var/lib/mysql/employees/employe
 | employee                                                                  |
 +---------------------------------------------------------------------------+
 1 row in set (0.02 sec)
-```         
+```
 
 #### format_bytes
 
@@ -3561,7 +3561,7 @@ mysql> SELECT sys.format_bytes(23487234) AS size;
 
 ##### Description
 
-Takes a raw path value, and strips out the datadir or tmpdir replacing with @@datadir and @@tmpdir respectively. 
+Takes a raw path value, and strips out the datadir or tmpdir replacing with @@datadir and @@tmpdir respectively.
 
 Also normalizes the paths across operating systems, so backslashes on Windows are converted to forward slashes.
 
@@ -3632,7 +3632,7 @@ mysql> SELECT sys.format_statement(digest_text)
 ##### Description
 
 Takes a raw picoseconds value, and converts it to a human readable form.
-             
+
 Picoseconds are the precision that all latency values are printed in within Performance Schema, however are not user friendly when wanting to scan output from the command line.
 
 ##### Parameters
@@ -3929,8 +3929,8 @@ Outputs a JSON formatted stack of all statements, stages and events within Perfo
  mysql> SELECT sys.ps_thread_stack(37, FALSE) AS thread_stack\G
 *************************** 1. row ***************************
 thread_stack: {"rankdir": "LR","nodesep": "0.10","stack_created": "2014-02-19 13:39:03",
-"mysql_version": "5.7.3-m13","mysql_user": "root@localhost","events": 
-[{"nesting_event_id": "0", "event_id": "10", "timer_wait": 256.35, "event_info": 
+"mysql_version": "5.7.3-m13","mysql_user": "root@localhost","events":
+[{"nesting_event_id": "0", "event_id": "10", "timer_wait": 256.35, "event_info":
 "sql/select", "wait_info": "select @@version_comment limit 1\nerrors: 0\nwarnings: 0\nlock time:
 ...
 ```
@@ -4587,7 +4587,7 @@ mysql> CALL sys.ps_setup_enable_thread(CONNECTION_ID());
 ##### Description
 
 Reloads a saved Performance Schema configuration, so that you can alter the setup for debugging purposes, but restore it to a previous state.
-             
+
 Use the companion procedure - ps_setup_save(), to save a configuration.
 
 Requires the SUPER privilege for "SET sql_log_bin = 0;".
@@ -4661,7 +4661,7 @@ None.
 mysql> CALL sys.ps_setup_save();
 Query OK, 0 rows affected (0.08 sec)
 
-mysql> UPDATE performance_schema.setup_instruments 
+mysql> UPDATE performance_schema.setup_instruments
     ->    SET enabled = 'YES', timed = 'YES';
 Query OK, 547 rows affected (0.40 sec)
 Rows matched: 784  Changed: 547  Warnings: 0
@@ -4738,7 +4738,7 @@ mysql> CALL sys.ps_setup_show_disabled(TRUE, TRUE);
 10 rows in set (0.00 sec)
 
 Empty set (0.00 sec)
-             
+
 +---------------------------------------------------------------------------------------+-------+
 | disabled_instruments                                                                  | timed |
 +---------------------------------------------------------------------------------------+-------+
@@ -4764,7 +4764,7 @@ Shows all currently disabled consumers.
 ##### Parameters
 
 None
- 
+
 ##### Example
 
 ```SQL
@@ -4790,7 +4790,7 @@ Shows all currently disabled instruments.
 ##### Parameters
 
 None
-			 
+
 ##### Example
 
 ```SQL
@@ -4959,7 +4959,7 @@ Performance Schema Statement Digest Average Latency Histogram:
 
 ##### Description
 
-Traces all instrumentation within Performance Schema for a specific Statement Digest. 
+Traces all instrumentation within Performance Schema for a specific Statement Digest.
 
 When finding a statement of interest within the performance_schema.events_statements_summary_by_digest table, feed the DIGEST MD5 value in to this procedure, set how long to poll for, and at what interval to poll, and it will generate a report of all statistics tracked within Performance Schema for that digest for the interval.
 
@@ -5013,7 +5013,7 @@ mysql> call ps_analyze_statement_digest('891ec6860f98ba46d89dd20b0c03652c', 10, 
 | LONGEST RUNNING STATEMENT |
 +---------------------------+
 1 row in set (9.16 sec)
-             
+
 +-----------+-----------+-----------+-----------+---------------+------------+-----------+
 | thread_id | exec_time | lock_time | rows_sent | rows_examined | tmp_tables | full_scan |
 +-----------+-----------+-----------+-----------+---------------+------------+-----------+
@@ -5056,7 +5056,7 @@ Query OK, 0 rows affected (9.28 sec)
 
 ##### Description
 
-Dumps all data within Performance Schema for an instrumented thread, to create a DOT formatted graph file. 
+Dumps all data within Performance Schema for an instrumented thread, to create a DOT formatted graph file.
 
 Each resultset returned from the procedure should be used for a complete graph
 
@@ -5193,7 +5193,7 @@ The following configuration options are supported:
 * in_table (VARCHAR(129)):
   The table argument used for some actions. Use the format 'db1.t1' or 't1' without using any backticks (`)
   for quoting. Periods (.) are not supported in the database and table names.
-  
+
   The meaning of the table for each action supporting the argument is:
 
     - snapshot      The snapshot is created based on the specified table. Set to NULL or NOW() to use
@@ -5274,10 +5274,10 @@ mysql> CALL sys.statement_performance_analyzer('delta', 'mydb.tmp_digests_ini', 
 -- To create an overall report of the 95th percentile queries and the top 10 queries with full table scans:
 
 mysql> CALL sys.statement_performance_analyzer('snapshot', NULL, NULL);
-Query OK, 0 rows affected (0.01 sec)                                   
+Query OK, 0 rows affected (0.01 sec)
 
 mysql> SET @sys.statement_performance_analyzer.limit = 10;
-Query OK, 0 rows affected (0.00 sec)          
+Query OK, 0 rows affected (0.00 sec)
 
 mysql> CALL sys.statement_performance_analyzer('overall', NULL, 'with_runtimes_in_95th_percentile,with_full_table_scans');
 +-----------------------------------------+

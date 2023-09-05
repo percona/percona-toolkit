@@ -289,7 +289,7 @@ _eval_po() {
             *)
                echo "Invalid attribute in $opt_spec: $line" >&2
                exit 1
-         esac 
+         esac
       done < "$opt_spec"
 
       if [ -z "$opt" ]; then
@@ -432,7 +432,7 @@ _parse_command_line() {
             if [ "$val" ]; then
                option_error "Option $real_opt does not take a value"
                continue
-            fi 
+            fi
             if [ "$opt_is_negated" ]; then
                val=""
             else
@@ -504,20 +504,20 @@ mysql_options() {
    if [ -n "$OPT_ASK_PASS" ]; then
       stty -echo
       >&2 printf "Enter MySQL password: "
-      read GIVEN_PASS 
+      read GIVEN_PASS
       stty echo
       printf "\n"
       MYSQL_ARGS="$MYSQL_ARGS --password=$GIVEN_PASS"
    elif [ -n "$OPT_PASSWORD" ]; then
       MYSQL_ARGS="$MYSQL_ARGS --password=$OPT_PASSWORD"
    fi
-   
+
    echo $MYSQL_ARGS
 }
 
 arrange_mysql_options() {
    local opts="$1"
-   
+
    local rearranged=""
    for opt in $opts; do
       if [ "$(echo $opt | awk -F= '{print $1}')" = "--defaults-file" ]; then
@@ -526,7 +526,7 @@ arrange_mysql_options() {
          rearranged="$rearranged $opt"
       fi
    done
-   
+
    echo "$rearranged"
 }
 
@@ -1031,7 +1031,7 @@ collect_internal_vars () {
    if [ $GENERAL_JEMALLOC_STATUS -eq 1 ]; then
       JEMALLOC_LOCATION=$(find /usr/lib64/ /usr/lib/x86_64-linux-gnu /usr/lib -name "libjemalloc.*" 2>/dev/null | head -n 1)
       echo "pt-summary-internal-jemalloc_location    ${JEMALLOC_LOCATION}"
-   fi 
+   fi
 }
 
 collect_keyring_plugins() {
@@ -1103,7 +1103,7 @@ collect_mysql_info () {
    collect_mysql_slave_status  > "$dir/mysql-slave"
    collect_mysql_innodb_status > "$dir/innodb-status"
    collect_mysql_ndb_status    > "$dir/ndb-status"
-   collect_mysql_processlist   > "$dir/mysql-processlist"   
+   collect_mysql_processlist   > "$dir/mysql-processlist"
    collect_mysql_users         > "$dir/mysql-users"
    collect_mysql_roles         > "$dir/mysql-roles"
    collect_keyring_plugins     > "$dir/keyring-plugins"
@@ -1280,7 +1280,7 @@ parse_mysqld_instances () {
             defaults_file="$(echo "${word}" | cut -d= -f2)"
          fi
       done
-      
+
       if [ -n "${defaults_file:-""}" -a -r "${defaults_file:-""}" ]; then
          socket="${socket:-"$(grep "^socket\>" "$defaults_file" | tail -n1 | cut -d= -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')"}"
          port="${port:-"$(grep "^port\>" "$defaults_file" | tail -n1 | cut -d= -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')"}"
@@ -1294,7 +1294,7 @@ parse_mysqld_instances () {
          oom="?"
       fi
       printf "  %5s %-26s %-4s %-3s %s\n" "${port}" "${datadir}" "${nice:-"?"}" "${oom:-"?"}" "${socket}"
-      
+
       defaults_file=""
       socket=""
       port=""
@@ -1424,7 +1424,7 @@ summarize_processlist () {
          }
          \$1 == \"Time:\" {
             t = \$2;
-            if ( t == \"NULL\" ) { 
+            if ( t == \"NULL\" ) {
                 t = 0;
             }
          }
@@ -1462,15 +1462,15 @@ pretty_print_cnf_file () {
 
    perl -n -l -e '
       my $line = $_;
-      if ( $line =~ /^\s*[a-zA-Z[]/ ) { 
-         if ( $line=~/\s*(.*?)\s*=\s*(.*)\s*$/ ) { 
-            printf("%-35s = %s\n", $1, $2)  
-         } 
-         elsif ( $line =~ /\s*\[/ ) { 
-            print "\n$line" 
+      if ( $line =~ /^\s*[a-zA-Z[]/ ) {
+         if ( $line=~/\s*(.*?)\s*=\s*(.*)\s*$/ ) {
+            printf("%-35s = %s\n", $1, $2)
+         }
+         elsif ( $line =~ /\s*\[/ ) {
+            print "\n$line"
          } else {
             print $line
-         } 
+         }
       }' "$file"
 
    while read line; do
@@ -1695,7 +1695,7 @@ format_keyring_plugins() {
     local keyring_plugins="$1"
     local encrypted_tables="$2"
 
-    if [ -z "$keyring_plugins" ]; then 
+    if [ -z "$keyring_plugins" ]; then
         echo "No keyring plugins found"
         if [ ! -z "$encrypted_tables" ]; then
             echo "Warning! There are encrypted tables but keyring plugins are not loaded"
@@ -2029,7 +2029,7 @@ section_percona_server_features () {
 
    name_val "Fast Server Restarts"  \
             "$(feat_on_renamed "$file" innodb_auto_lru_dump innodb_buffer_pool_restore_at_startup)"
-   
+
    name_val "Enhanced Logging"      \
             "$(feat_on "$file" log_slow_verbosity ne microtime)"
    name_val "Replica Perf Logging"  \
@@ -2047,7 +2047,7 @@ section_percona_server_features () {
       fi
    fi
    name_val "Smooth Flushing" "$smooth_flushing"
-   
+
    name_val "HandlerSocket NoSQL"   \
             "$(feat_on "$file" handlersocket_port)"
    name_val "Fast Hash UDFs"   \
@@ -2205,7 +2205,7 @@ _semi_sync_stats_for () {
          trace_extra="Unknown setting"
       fi
    fi
-   
+
    name_val "${target} semisync status" "${semisync_status}"
    name_val "${target} trace level" "${semisync_trace}, ${trace_extra}"
 
@@ -2318,10 +2318,10 @@ section_percona_xtradb_cluster () {
 
    name_val "SST Method"      "$(get_var "wsrep_sst_method" "$mysql_var")"
    name_val "Slave Threads"   "$(get_var "wsrep_slave_threads" "$mysql_var")"
-   
+
    name_val "Ignore Split Brain" "$( parse_wsrep_provider_options "pc.ignore_sb" "$mysql_var" )"
    name_val "Ignore Quorum" "$( parse_wsrep_provider_options "pc.ignore_quorum" "$mysql_var" )"
-   
+
    name_val "gcache Size"      "$( parse_wsrep_provider_options "gcache.size" "$mysql_var" )"
    name_val "gcache Directory" "$( parse_wsrep_provider_options "gcache.dir" "$mysql_var" )"
    name_val "gcache Name"      "$( parse_wsrep_provider_options "gcache.name" "$mysql_var" )"
@@ -2344,13 +2344,13 @@ report_jemalloc_enabled() {
    local instances_file="$1"
    local variables_file="$2"
    local GENERAL_JEMALLOC_STATUS=0
-   
+
    for pid in $(grep '/mysqld ' "$instances_file" | awk '{print $1;}'); do
       local jemalloc_status="$(get_var "pt-summary-internal-jemalloc_enabled_for_pid_${pid}" "${variables_file}")"
       if [ -z $jemalloc_status ]; then
          continue
       elif [ $jemalloc_status = 0 ]; then
-         echo "jemalloc is not enabled in mysql config for process with id ${pid}" 
+         echo "jemalloc is not enabled in mysql config for process with id ${pid}"
       else
          echo "jemalloc enabled in mysql config for process with id ${pid}"
 		 GENERAL_JEMALLOC_STATUS=1

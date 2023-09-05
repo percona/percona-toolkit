@@ -59,7 +59,7 @@ BEGIN
     END IF;
 
     SELECT INSTRUMENTED INTO v_enabled
-      FROM performance_schema.threads 
+      FROM performance_schema.threads
      WHERE PROCESSLIST_ID = in_connection_id;
 
     IF (v_enabled IS NULL) THEN

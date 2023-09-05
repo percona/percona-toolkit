@@ -93,7 +93,7 @@ my %modes = (
    }
 
    sub cbreak {
-      my ($lflag) = $_[0] || $noecho; 
+      my ($lflag) = $_[0] || $noecho;
       $term->setlflag($lflag);
       $term->setcc( VTIME, 1 );
       $term->setattr( $fd_stdin, TCSANOW );

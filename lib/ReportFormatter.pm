@@ -27,7 +27,7 @@
 # Internally, all column widths are *first* treated as percentages of the
 # line width. Even if a column is specified with width=>N where N is some
 # length of characters, this is converted to a percent/line width (rounded up).
-# 
+#
 # Columns specified with width=>N or width_pct=>P (where P is some percent
 # of *total* line width, not remaining line width when used with other width=>N
 # columns) are fixed.  You get exactly what you specify even if this results
@@ -50,7 +50,7 @@
 # Extra space is distributed evenly among auto-width cols with print widths
 # less than the column's max val or header/name.  This widens auto-width cols
 # to either show longer values or truncate the column header/name less.
-# 
+#
 # After these adjustments, get_report() calls _truncate_headers() and
 # _truncate_line_values().  These truncate output to the columns' final,
 # calculated widths.

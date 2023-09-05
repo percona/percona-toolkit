@@ -239,7 +239,7 @@ _parse_pod() {
 
    # Parse the program options (po) from the POD.  Each option has
    # a spec file like:
-   #   $ cat po/string-opt2 
+   #   $ cat po/string-opt2
    #   long=string-opt2
    #   type=string
    #   default=foo
@@ -313,7 +313,7 @@ _eval_po() {
             *)
                echo "Invalid attribute in $opt_spec: $line" >&2
                exit 1
-         esac 
+         esac
       done < "$opt_spec"
 
       if [ -z "$opt" ]; then
@@ -504,7 +504,7 @@ _parse_command_line() {
             if [ "$val" ]; then
                option_error "Option $real_opt does not take a value"
                continue
-            fi 
+            fi
             if [ "$opt_is_negated" ]; then
                val=""
             else

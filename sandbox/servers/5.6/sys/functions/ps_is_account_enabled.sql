@@ -18,21 +18,21 @@ DROP FUNCTION IF EXISTS ps_is_account_enabled;
 DELIMITER $$
 
 CREATE DEFINER='root'@'localhost' FUNCTION ps_is_account_enabled (
-        in_host VARCHAR(60), 
+        in_host VARCHAR(60),
         in_user VARCHAR(16)
-    ) 
+    )
     RETURNS ENUM('YES', 'NO')
     COMMENT '
              Description
              -----------
 
-             Determines whether instrumentation of an account is enabled 
+             Determines whether instrumentation of an account is enabled
              within Performance Schema.
 
              Parameters
              -----------
 
-             in_host VARCHAR(60): 
+             in_host VARCHAR(60):
                The hostname of the account to check.
              in_user (VARCHAR(16)):
                The username of the account to check.
@@ -54,8 +54,8 @@ CREATE DEFINER='root'@'localhost' FUNCTION ps_is_account_enabled (
              1 row in set (0.01 sec)
             '
     SQL SECURITY INVOKER
-    DETERMINISTIC 
-    READS SQL DATA 
+    DETERMINISTIC
+    READS SQL DATA
 BEGIN
     RETURN IF(EXISTS(SELECT 1
                        FROM performance_schema.setup_actors

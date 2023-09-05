@@ -138,7 +138,7 @@ make_sandbox() {
         cat "$EXTRA_DEFAULTS_FILE" >> ${TMP_DIR}/$port/my.sandbox.cnf
     fi
 
-    if [ $generating_database -eq 0 ]; then 
+    if [ $generating_database -eq 0 ]; then
         # If the sandbox is a slave, set it read_only.
         if [ "$type" = "slave" ]; then
             echo "read_only" >> ${TMP_DIR}/$port/my.sandbox.cnf
@@ -152,7 +152,7 @@ make_sandbox() {
             touch ${TMP_DIR}/empty-defaults.txt
             rm -rf ${TMP_DIR}/$port/data
             $PERCONA_TOOLKIT_SANDBOX/$mysqld --defaults-file=${TMP_DIR}/${port}/my.sandbox.cnf --initialize
-        else 
+        else
             # MySQL up to 5.6 needs mysql_install_db
             # Support for it is a TODO
             echo "For MySQL < 5.7 data.tar.gz is required to be in $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/"
@@ -236,7 +236,7 @@ make_sandbox() {
         if [ "$version" > "5.6" -a -n "$ENABLE_ROCKSDB" ]; then
             $PERCONA_TOOLKIT_SANDBOX/bin/ps-admin --enable-rocksdb -u root -pmsandbox -h 127.1 -P $port
         fi
-        if [ "$version" > "5.6" -a -n "$ENABLE_TOKUDB" ]; then 
+        if [ "$version" > "5.6" -a -n "$ENABLE_TOKUDB" ]; then
             sudo $PERCONA_TOOLKIT_SANDBOX/bin/ps-admin --enable-tokudb -u root -pmsandbox -h 127.1 -P $port
         fi
     fi

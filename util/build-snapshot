@@ -65,14 +65,14 @@ prep_release_dir() {
    # Make temp snapshot dir so we can copy and modify files in it
    # without affecting the underlying bzr branch because, unlike
    # a release, we don't want to commit anything, but we do want
-   # to modify stuff, namely the tools' version. 
+   # to modify stuff, namely the tools' version.
    if [ ! -d $SNAPSHOT_DIR ]; then
       mkdir $SNAPSHOT_DIR
    elif [ -d $SNAPSHOT_DIR/$PKG ]; then
       rm -rf $SNAPSHOT_DIR/$PKG/*
    fi
 
-   # Copy the tools, of course.   
+   # Copy the tools, of course.
    mkdir -p $SNAPSHOT_DIR/$PKG/bin
    cp bin/* $SNAPSHOT_DIR/$PKG/bin
 

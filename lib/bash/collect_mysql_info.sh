@@ -211,7 +211,7 @@ collect_internal_vars () {
    if [ $GENERAL_JEMALLOC_STATUS -eq 1 ]; then
       JEMALLOC_LOCATION=$(find /usr/lib64/ /usr/lib/x86_64-linux-gnu /usr/lib -name "libjemalloc.*" 2>/dev/null | head -n 1)
       echo "pt-summary-internal-jemalloc_location    ${JEMALLOC_LOCATION}"
-   fi 
+   fi
 }
 
 collect_keyring_plugins() {
@@ -224,7 +224,7 @@ collect_encrypted_tables() {
 
 collect_encrypted_tablespaces() {
     local version="$1"
-# I_S.INNODB_[SYS_]TABLESPACES has a "flag" field. Encrypted tablespace has bit 14 set. You can check it with "flag & 8192". 
+# I_S.INNODB_[SYS_]TABLESPACES has a "flag" field. Encrypted tablespace has bit 14 set. You can check it with "flag & 8192".
 # And seems like MySQL is capable of bitwise operations. https://dev.mysql.com/doc/refman/5.7/en/bit-functions.html
     if [ "$version" '<' "8.0" ]; then
         $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT SPACE, NAME, SPACE_TYPE from INFORMATION_SCHEMA.INNODB_SYS_TABLESPACES where FLAG&8192 = 8192;"
@@ -294,7 +294,7 @@ collect_mysql_info () {
    collect_mysql_slave_status  > "$dir/mysql-slave"
    collect_mysql_innodb_status > "$dir/innodb-status"
    collect_mysql_ndb_status    > "$dir/ndb-status"
-   collect_mysql_processlist   > "$dir/mysql-processlist"   
+   collect_mysql_processlist   > "$dir/mysql-processlist"
    collect_mysql_users         > "$dir/mysql-users"
    collect_mysql_roles         > "$dir/mysql-roles"
    collect_keyring_plugins     > "$dir/keyring-plugins"

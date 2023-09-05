@@ -42,4 +42,4 @@ innodb_autoinc_lock_mode   = 2
 wsrep-replicate-myisam
 pxc_strict_mode            = DISABLED
 pxc_encrypt_cluster_traffic = 0
-secure-file-priv           = 
+secure-file-priv           =

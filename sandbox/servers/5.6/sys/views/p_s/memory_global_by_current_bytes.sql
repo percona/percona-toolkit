@@ -15,7 +15,7 @@
 
 --
 -- View: memory_global_by_current_bytes
--- 
+--
 -- Shows the current memory usage within the server globally broken down by allocation type.
 --
 -- mysql> select * from memory_global_by_current_bytes;
@@ -34,7 +34,7 @@
 CREATE OR REPLACE
   ALGORITHM = MERGE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW memory_global_by_current_bytes (
   event_name,
   current_count,

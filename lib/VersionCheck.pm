@@ -73,7 +73,7 @@ my @vc_dirs = (
       }
       PTDEBUG && _d('Version check file', $file, 'in', $ENV{PWD});
       return $file;  # in the CWD
-   } 
+   }
 }
 
 # Return time limit between checks.
@@ -112,11 +112,11 @@ sub version_check {
    PTDEBUG && _d('FindBin::Bin:', $FindBin::Bin);
    if ( !$args{force} ) {
       if ( $FindBin::Bin
-           && (-d "$FindBin::Bin/../.bzr"    || 
+           && (-d "$FindBin::Bin/../.bzr"    ||
                -d "$FindBin::Bin/../../.bzr" ||
-               -d "$FindBin::Bin/../.git"    || 
-               -d "$FindBin::Bin/../../.git" 
-              ) 
+               -d "$FindBin::Bin/../.git"    ||
+               -d "$FindBin::Bin/../../.git"
+              )
          ) {
          PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
          return;
@@ -145,7 +145,7 @@ sub version_check {
       return unless @$instances_to_check;
 
       # Skip Version Check altogether if SSL not available
-      my $protocol = 'https';  
+      my $protocol = 'https';
       eval { require IO::Socket::SSL; };
       if ( $EVAL_ERROR ) {
          PTDEBUG && _d($EVAL_ERROR);
@@ -330,7 +330,7 @@ sub get_instance_id {
 }
 
 
-# This function has been implemented solely to be able to count individual 
+# This function has been implemented solely to be able to count individual
 # Toolkit users for statistics. It uses a random UUID, no client info is
 # being gathered nor stored
 sub get_uuid {
@@ -354,7 +354,7 @@ sub get_uuid {
     }
 
     return $uuid;
-}   
+}
 
 sub _generate_uuid {
     return sprintf+($}="%04x")."$}-$}-$}-$}-".$}x3,map rand 65537,0..7;
@@ -421,7 +421,7 @@ sub pingback {
    );
    die "Failed to parse server requested programs: $response->{content}"
       if !scalar keys %$items;
-      
+
    # Get the versions for those items in another hashref also keyed on
    # the items like:
    #    "MySQL" => "MySQL Community Server 5.1.49-log",
@@ -706,12 +706,12 @@ sub get_from_mysql {
       return;
    }
 
-   # Only allow version variables to be reported 
+   # Only allow version variables to be reported
    # So in case of MITM attack, we don't report sensitive data
    if ($item->{item} eq 'MySQL' && $item->{type} eq 'mysql_variable') {
       @{$item->{vars}} = grep { $_ eq 'version' || $_ eq 'version_comment' } @{$item->{vars}};
    }
- 
+
 
    my @versions;
    my %version_for;

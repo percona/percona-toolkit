@@ -19,7 +19,7 @@
 # ###########################################################################
 
 # Package: report_system_info
-# 
+#
 
 set -u
 
@@ -28,7 +28,7 @@ set -u
 # These are called from within report_system_summary() and are separated so
 # they can be tested easily.
 # ##############################################################################
-   
+
 # ##############################################################################
 # Parse Linux's /proc/cpuinfo.
 # ##############################################################################
@@ -254,13 +254,13 @@ parse_numactl () { local PTFUNCNAME=parse_numactl;
           -e '/node[[:digit:]]/p' \
        "${file}" \
        | sort -r \
-       | awk  '$1 == cnode { 
+       | awk  '$1 == cnode {
                         if (NF > 4) { for(i=3;i<=NF;i++){printf("%s ", $i)} printf "\n" }
                         else { printf("%-12s", $3" "$4); }
                      }
-               $1 != cnode { cnode = $1; printf("   %-8s", $1); printf("%-12s", $3" "$4); }' 
+               $1 != cnode { cnode = $1; printf("   %-8s", $1); printf("%-12s", $3" "$4); }'
 
-  echo 
+  echo
 }
 
 # ##############################################################################
@@ -901,7 +901,7 @@ section_Memory () {
       name_val "Numa Nodes" "$(get_var "numa-available" "$data_dir/summary")"
       name_val "Numa Policy" "$(get_var "numa-policy" "$data_dir/summary")"
       name_val "Preferred Node" "$(get_var "numa-preferred-node" "$data_dir/summary")"
-      
+
       parse_numactl "$data_dir/numactl"
    fi
 
@@ -928,7 +928,7 @@ report_fio_minus_a () {
    local file="$1"
 
    name_val "fio Driver" "$(get_var driver_version "$file")"
-   
+
    local adapters="$( get_var "adapters" "$file" )"
    for adapter in $( echo $adapters | awk '{for (i=1; i<=NF; i++) print $i;}' ); do
       local adapter_for_output="$(echo "$adapter" | sed 's/::[0-9]*$//' | tr ':' ' ')"
@@ -1009,7 +1009,7 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
       section "Fusion-io Card"
       report_fio_minus_a "$data_dir/fusion-io_card"
    fi
-   
+
    if [ -s "$data_dir/mounted_fs" ]; then
       section "Mounted Filesystems"
       parse_filesystems "$data_dir/mounted_fs" "${platform}"

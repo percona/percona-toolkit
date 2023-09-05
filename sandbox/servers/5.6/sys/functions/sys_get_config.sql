@@ -87,7 +87,7 @@ BEGIN
 
     -- Check if we have the variable in the sys.sys_config table
     SET v_value = (SELECT value FROM sys.sys_config WHERE variable = in_variable_name);
-  
+
     -- Protection against the variable not existing in sys_config
     IF (v_value IS NULL) THEN
         SET v_value = in_default_value;

@@ -94,7 +94,7 @@ sub pending_changes {
 # uses sth attributes to return a pseudo table struct for the query's columns.
 sub get_result_set_struct {
    my ( $dbh, $sth ) = @_;
-   my @cols     = map { 
+   my @cols     = map {
       my $name = $_;
       my $name_len = length($name);
       if ( $name_len > 64 ) {
@@ -109,7 +109,7 @@ sub get_result_set_struct {
    my @nullable = map { $dbh->type_info($_)->{NULLABLE} == 1 ? 1 : 0 } @{$sth->{TYPE}};
 
    my $struct   = {
-      cols => \@cols, 
+      cols => \@cols,
       # collation_for => {},  RowDiff::key_cmp() may need this.
    };
 
@@ -120,7 +120,7 @@ sub get_result_set_struct {
       $struct->{col_posn}->{$col}    = $i;
       $struct->{type_for}->{$col}    = $type;
       $struct->{is_nullable}->{$col} = $nullable[$i];
-      $struct->{is_numeric}->{$col} 
+      $struct->{is_numeric}->{$col}
          = ($type =~ m/(?:(?:tiny|big|medium|small)?int|float|double|decimal|year)/ ? 1 : 0);
 
       # We no longer specify the (precision, scale) for double, float, and
