@@ -48,4 +48,3 @@ extend-ignore-re = [
 "TOI" = "TOI"
 "UNIONed" = "UNIONed"
 "UNIONs" = "UNIONs"
-"WatchFileFoChanges" = "WatchFileFoChanges"
