@@ -1,7 +1,6 @@
 [files]
 extend-exclude = [
     ".git/",
-    # "bin/",
     "sandbox/sakila.sql",
     "sandbox/sakila-db/",
     "sandbox/servers/",
@@ -24,6 +23,10 @@ extend-ignore-re = [
     "\\$nin",
     "set -ue",
     "\\[R\\]esponding",
+    "ne 'toi'",
+    "FDEA8D2993C9CAF3",
+    "\\$parms",
+    "Claus Jeppesen",
 ]
 
 [default.extend-identifiers]
