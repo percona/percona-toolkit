@@ -10770,7 +10770,7 @@ steps, one of which is ensuring that queries will produce identical results
 on the new version of MySQL.
 
 pt-upgrade executes queries from slow, general, binary, tcpdump, and
-"raw" logs on two servers, compares many aspects of each query's exeuction
+"raw" logs on two servers, compares many aspects of each query's execution
 and results, and reports any significant differences.  The two servers are
 typically development servers, one running the current production version
 of MySQL and the other running the new version of MySQL.
@@ -11008,7 +11008,7 @@ or query errors has L<"--max-examples">.  Else, all queries with differences
 are reported when the tool finishes.
 
 For example, if two query time differences are found for a query class,
-it is not reported yet.  Once a third query time diffence is found,
+it is not reported yet.  Once a third query time difference is found,
 the query class is reported, including any other differences that may
 have been found too.  Queries for the class will continue to be executed,
 but the class will not be reported again.

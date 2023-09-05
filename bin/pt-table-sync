@@ -10126,7 +10126,7 @@ sub main {
 
    # Create callbacks for bidirectional syncing.  Currently, this only
    # works with TableSyncChunk, so that should be the only plugin because
-   # --algorithms was overriden earlier.
+   # --algorithms was overridden earlier.
    if ( $o->get('bidirectional') ) {
       set_bidirectional_callbacks(
          plugin => $plugins->[0],
@@ -11146,7 +11146,7 @@ sub get_cxn {
    # https://bugs.launchpad.net/percona-toolkit/+bug/919352
    # The tool shouldn't blindly attempt to change binlog_format;
    # instead, it should check if it's already set to STATEMENT.
-   # This is becase starting with MySQL 5.1.29, changing the format
+   # This is because starting with MySQL 5.1.29, changing the format
    # requires a SUPER user.
    if ( VersionParser->new($dbh) >= '5.1.29'
         && ($o->get('replicate') || $o->get('sync-to-master'))) {
@@ -11538,7 +11538,7 @@ sub set_bidirectional_callbacks {
          }
       }
       elsif ( $res == FAILED_THRESHOLD ) {
-         $err = "`$col` values do not differ by the threhold, $thr."
+         $err = "`$col` values do not differ by the threshold, $thr."
       }
       else {
          # Shouldn't happen.
@@ -11577,7 +11577,7 @@ sub set_bidirectional_callbacks {
 #   Get internal TableSync* plugins.
 #
 # Returns:
-#   Hash of available algoritms and the plugin/module names that
+#   Hash of available algorithms and the plugin/module names that
 #   implement them, like "chunk => TableSyncChunk".
 sub get_plugins {
    my ( %args ) = @_;

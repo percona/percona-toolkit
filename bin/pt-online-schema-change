@@ -8465,7 +8465,7 @@ $OUTPUT_AUTOFLUSH = 1;
 
 use constant {
    INVALID_PARAMETERS              => 1,
-   UNSUPORTED_MYSQL_VERSION        => 2,
+   UNSUPPORTED_MYSQL_VERSION       => 2,
    NO_MINIMUM_REQUIREMENTS         => 3,
    NO_PRIMARY_OR_UNIQUE_KEY        => 4,
    INVALID_PLUGIN_FILE             => 5,
@@ -8480,7 +8480,7 @@ use constant {
    ERROR_SWAPPING_TABLES           => 14,
    ERROR_UPDATING_FKS              => 15,
    ERROR_DROPPING_OLD_TABLE        => 16,
-   UNSUPORTED_OPERATION            => 17,
+   UNSUPPORTED_OPERATION           => 17,
    MYSQL_CONNECTION_ERROR          => 18,
    LOST_MYSQL_CONNECTION           => 19,
    ERROR_CREATING_REVERSE_TRIGGERS => 20,
@@ -8724,7 +8724,7 @@ sub main {
             . "this tool on a cluster, but node " . $cxn->name
             . " is running version " . $pxc_version->version
             . ".  Please upgrade the node, or run the tool on a newer node, "
-            . "or contact Percona for support.", UNSUPORTED_MYSQL_VERSION);
+            . "or contact Percona for support.", UNSUPPORTED_MYSQL_VERSION);
       }
       if ( $pxc_version < '5.6' && $o->got('max-flow-ctl') ) {
         _die("Option '--max-flow-ctl is only available for PXC version 5.6 "
@@ -8756,7 +8756,7 @@ sub main {
    # ########################################################################
    my $server_version = VersionParser->new($cxn->dbh());
    if ( $server_version < '5.0.10' ) {
-      _die("This tool requires MySQL 5.0.10 or newer.", UNSUPORTED_MYSQL_VERSION);
+      _die("This tool requires MySQL 5.0.10 or newer.", UNSUPPORTED_MYSQL_VERSION);
    }
 
    # Use LOCK IN SHARE mode unless MySQL 5.0 because there's a bug like
@@ -8770,7 +8770,7 @@ sub main {
    my $analyze_table = $o->get('analyze-before-swap');
    if ( $o->got('analyze-before-swap') ) {
       # User specified so respect their wish. If --analyze-before-swap, do it
-      # regardless of MySQL version and innodb_stats_peristent.
+      # regardless of MySQL version and innodb_stats_persistent.
       # If --no-analyze-before-swap, don't do it.
       PTDEBUG && _d('User specified explicit --analyze-before-swap:',
          ($analyze_table ? 'on' : 'off'));
@@ -8783,10 +8783,10 @@ sub main {
          my (undef, $innodb_stats_persistent) = $cxn->dbh->selectrow_array(
             "SHOW VARIABLES LIKE 'innodb_stats_persistent'");
          if ($innodb_stats_persistent eq 'ON' || $innodb_stats_persistent eq '1') {
-            PTDEBUG && _d('innodb_stats_peristent is ON, enabling --analyze-before-swap');
+            PTDEBUG && _d('innodb_stats_persistent is ON, enabling --analyze-before-swap');
             $analyze_table = 1;
          } else {
-            PTDEBUG && _d('innodb_stats_peristent is OFF, disabling --analyze-before-swap');
+            PTDEBUG && _d('innodb_stats_persitent is OFF, disabling --analyze-before-swap');
             $analyze_table = 0;
          }
       } else {
@@ -9975,7 +9975,7 @@ sub main {
 
             # Adjust chunk size.  This affects the next chunk.
             if ( $chunk_time ) {
-               # Calcuate a new chunk-size based on the rate of rows/s.
+               # Calculate a new chunk-size based on the rate of rows/s.
                $tbl->{chunk_size} = $tbl->{rate}->update(
                   $cnt,                # processed this many rows
                   $tbl->{nibble_time}, # is this amount of time
@@ -10457,14 +10457,14 @@ sub check_alter {
    if ( ($tbl->{tbl_struct}->{engine} || '') =~ m/RocksDB/i ) {
        if ($alter =~ m/FOREIGN KEY/i) {
             my $msg = "FOREIGN KEYS are not supported by the RocksDB engine\n\n";
-            _die($msg, UNSUPORTED_OPERATION);
+            _die($msg, UNSUPPORTED_OPERATION);
        }
    }
    if ( $alter =~ m/Engine\s*=\s*["']?RocksDB["']?/i ) {
       my $row = $cxn->dbh()->selectrow_arrayref('SELECT @@binlog_format');
       if (scalar $row > 0 && $row->[0] eq 'STATEMENT') {
           _die("Cannot change engine to RocksDB while binlog_format is other than 'ROW'",
-          UNSUPORTED_OPERATION);
+          UNSUPPORTED_OPERATION);
       }
    }
    # ########################################################################
@@ -10536,7 +10536,7 @@ sub check_alter {
 
    if ( !$ok ) {
       # check_alter.t relies on this output.
-      _die("--check-alter failed.\n", UNSUPORTED_OPERATION);
+      _die("--check-alter failed.\n", UNSUPPORTED_OPERATION);
    }
 
    return;
@@ -10569,7 +10569,7 @@ sub _has_self_ref_fks {
 #           [ 'C2', 'c3' ]
 #         ];
 #
-# Thse fields are used to build an example SELECT to detect if currently there are
+# These fields are used to build an example SELECT to detect if currently there are
 # rows that will produce duplicates when the new UNIQUE INDEX is created.
 
 sub get_unique_index_fields {
@@ -10842,7 +10842,7 @@ sub create_new_table {
       };
    }
 
-   die "Failed to find a unique new table name after $tries attemps.  "
+   die "Failed to find a unique new table name after $tries attempts.  "
      . "The following tables exist which may be left over from previous "
      . "failed runs of the tool:\n"
      . join("\n", map { "  $_" } @old_tables)
@@ -10975,7 +10975,7 @@ sub swap_tables {
 
       # This shouldn't happen.
       die ts("Failed to find a unique old table name after "
-         . "serveral attempts.\n");
+         . "several attempts.\n");
    }
 }
 
@@ -11555,7 +11555,7 @@ sub random_suffix {
 # orig_table.......: Original table name. Used to LOCK the table.
 #                    In case we are creating a new temporary trigger for testing
 #                    purposes or if --no-swap-tables is enabled, this param should
-#                    be omitted since we are creating a completelly new trigger so,
+#                    be omitted since we are creating a completely new trigger so,
 #                    since in this case we are not going to DROP the old trigger,
 #                    there is no need for a LOCK
 #
@@ -12915,7 +12915,7 @@ type: DSN; repeatable: yes
 
 DSN to skip when checking slave lag. It can be used multiple times.
 Example: --skip-check-slave-lag h=127.0.0.1,P=12345 --skip-check-slave-lag h=127.0.0.1,P=12346
-Plase take into consideration that even when for the MySQL driver h=127.1 is equal to h=127.0.0.1,
+Please take into consideration that even when for the MySQL driver h=127.1 is equal to h=127.0.0.1,
 for this parameter you need to specify the full IP address.
 
 =item --slave-user
@@ -13374,7 +13374,7 @@ parameters are shown in the output.
 =head1 EXIT STATUS
 
    INVALID_PARAMETERS              = 1
-   UNSUPORTED_MYSQL_VERSION        = 2
+   UNSUPPORTED_MYSQL_VERSION       = 2
    NO_MINIMUM_REQUIREMENTS         = 3
    NO_PRIMARY_OR_UNIQUE_KEY        = 4
    INVALID_PLUGIN_FILE             = 5
@@ -13389,7 +13389,7 @@ parameters are shown in the output.
    ERROR_SWAPPING_TABLES           = 14
    ERROR_UPDATING_FKS              = 15
    ERROR_DROPPING_OLD_TABLE        = 16
-   UNSUPORTED_OPERATION            = 17
+   UNSUPPORTED_OPERATION           = 17
    MYSQL_CONNECTION_ERROR          = 18
    LOST_MYSQL_CONNECTION           = 19
    ERROR_CREATING_REVERSE_TRIGGERS = 20

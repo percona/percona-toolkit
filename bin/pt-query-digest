@@ -13425,7 +13425,7 @@ sub main {
    my %stats;      # various stats/counters used in some procs
 
    # The pipeline data hashref is passed to each proc.  Procs use this to
-   # pass data through the pipeline.  The most importat data is the event.
+   # pass data through the pipeline.  The most important data is the event.
    # Other data includes in the next_event callback, time and iters left,
    # etc.  This hashref is accessed inside a proc via the $args arg.
    my $pipeline_data = {
@@ -13492,7 +13492,7 @@ sub main {
                   }
                   PTDEBUG && _d('Reading', $filename);
                   PTDEBUG && _d('File size:', $filesize);
-                  # catch if user is trying to use an uncoverted (raw) binlog  # issue 1377888
+                  # catch if user is trying to use an unconverted (raw) binlog  # issue 1377888
                   if ( $filename &&  $o->get('type')->[0] eq 'binlog') {
                      if (is_raw_binlog($filename)) {
                         warn "Binlog file $filename must first be converted to text format using mysqlbinlog";

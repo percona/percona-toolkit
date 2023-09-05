@@ -6646,7 +6646,7 @@ sub main {
       TableParser  => $tp,
       Schema       => $schema,
    );
-   TALBE:
+   TABLE:
    while ( my $tbl = $schema_itr->next() ) {
       eval {
          my $ddl = $tbl->{ddl};
@@ -6843,7 +6843,7 @@ sub print_unused_indexes {
    my ( %args ) = @_;
    my @required_args = qw(unused drop Quoter);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($unused, $drop, $q) = @args{@required_args};
 
@@ -6892,7 +6892,7 @@ sub print_alter_drop_key {
    my ( %args ) = @_;
    my @required_args = qw(db_tbl idx Quoter);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($db_tbl, $idx, $q) = @args{@required_args};
 
@@ -6929,7 +6929,7 @@ sub create_save_results_database {
    my ( %args ) = @_;
    my @required_args = qw(dbh db Quoter);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($dbh, $db, $q) = @args{@required_args};
    my $sql;
@@ -6964,7 +6964,7 @@ sub get_save_results_tables {
    my ( %args ) = @_;
    my @required_args = qw(OptionParser);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($o)  = @args{@required_args};
    my $file = $args{file} || __FILE__;
@@ -6988,7 +6988,7 @@ sub empty_save_results_tables {
    my ( %args ) = @_;
    my @required_args = qw(dbh db tbls Quoter);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($dbh, $db, $tbls, $q) = @args{@required_args};
 
@@ -7009,7 +7009,7 @@ sub create_save_results_tables {
    my ( %args ) = @_;
    my @required_args = qw(dbh db tbls);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($dbh, $db, $tbls) = @args{@required_args};
 
@@ -7026,7 +7026,7 @@ sub create_views {
    my ( %args ) = @_;
    my @required_args = qw(dbh);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($dbh) = @args{@required_args};
    PTDEBUG && _d("Creating views");

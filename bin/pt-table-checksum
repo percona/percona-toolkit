@@ -10135,7 +10135,7 @@ sub main {
       # https://bugs.launchpad.net/percona-toolkit/+bug/919352
       # The tool shouldn't blindly attempt to change binlog_format;
       # instead, it should check if it's already set to STATEMENT.
-      # This is becase starting with MySQL 5.1.29, changing the format
+      # This is because starting with MySQL 5.1.29, changing the format
       # requires a SUPER user.
       if ( VersionParser->new($dbh) >= '5.1.5' ) {
          $sql = 'SELECT @@binlog_format';
@@ -11362,7 +11362,7 @@ sub main {
             # to each slave.
             # MySQL 8+ replication is slower than 5.7 and the old wait_for_last_checksum alone
             # was failing. The new wait_for_slaves checks that Read_Master_Log_Pos on slaves is
-            # greather or equal Position in the master
+            # greater or equal Position in the master
             if (!$args{Cxn}->is_cluster_node()) {
                 wait_for_slaves(master_dbh => $args{Cxn}->dbh(), master_slave => $ms, slaves => $slaves);
             }
@@ -12885,8 +12885,8 @@ of the tool; they're only reminders to help avoid false-positive results.
 
 =item RocksDB support
 
-Due to the limitations in the RocksDB engine like not suporting binlog_format=STATEMENT
-or they way RocksDB handles Gap locks, pt-table-cheksum will skip tables using RocksDB engine.
+Due to the limitations in the RocksDB engine like not supporting binlog_format=STATEMENT
+or they way RocksDB handles Gap locks, pt-table-checksum will skip tables using RocksDB engine.
 More Information: (L<https://www.percona.com/doc/percona-server/LATEST/myrocks/limitations.html>)
 
 =back
@@ -13800,7 +13800,7 @@ Socket file to use for connection.
 
 type: float; default: 1.0
 
-When a master table is marked to be checksumed in only one chunk but a slave
+When a master table is marked to be checksummed in only one chunk but a slave
 table exceeds the maximum accepted size for this, the table is skipped.
 Since number of rows are often rough estimates, many times tables are skipped
 needlessly for very small differences.
@@ -13832,7 +13832,7 @@ remove them.  These differences will cause false checksum differences.
 
 Truncate the replicate table before starting the checksum.
 This parameter differs from L<--empty-replicate-table> which only deletes the rows
-for the table being checksumed when starting the checksum for that table, while
+for the table being checksummed when starting the checksum for that table, while
 L<--truncate-replicate-table> will truncate the replicate table at the beginning of the
 process and thus, all previous checksum information will be losti, even if the process
 stops due to an error.

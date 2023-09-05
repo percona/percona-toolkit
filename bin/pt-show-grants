@@ -2238,7 +2238,7 @@ sub split_grants {
                 (?:INSERT|SELECT|UPDATE)\s\(.+?\) # a column grants
               | [A-Z\s]+
             )
-            (?:,\s)?    # Separted from the next grant, if any, by a comma
+            (?:,\s)?    # Separated from the next grant, if any, by a comma
       /xg;
       # sort columns in column-level permissions (bug lp-1523730)
       @grants = map {

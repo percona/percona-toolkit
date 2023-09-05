@@ -7647,7 +7647,7 @@ type: string
 Channel name used when connected to a server using replication channels.
 Suppose you have two masters, master_a at port 12345, master_b at port 1236 and
 a slave connected to both masters using channels chan_master_a and chan_master_b.
-If you want to run pt-archiver to syncronize the slave against master_a, pt-archiver
+If you want to run pt-archiver to synchronize the slave against master_a, pt-archiver
 won't be able to determine what's the correct master since SHOW SLAVE STATUS
 will return 2 rows. In this case, you can use --channel=chan_master_a to specify
 the channel name to use in the SHOW SLAVE STATUS command.

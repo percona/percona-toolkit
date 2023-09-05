@@ -571,7 +571,7 @@ main() {
          BASEDIR="$(dirname "$1")"
          PREFIX="$(echo "$1" | perl -ne '$_ =~ m/([\d_]+)/; print $1;')"
       else
-         echo "Error: $1 is not a directory, and there are no pt-stalk files in the curent working directory ($BASEDIR) with a $1 prefix." >&2
+         echo "Error: $1 is not a directory, and there are no pt-stalk files in the current working directory ($BASEDIR) with a $1 prefix." >&2
          echo "For more information, 'man pt-sift' or 'perldoc $0'." >&2
          exit 1
       fi

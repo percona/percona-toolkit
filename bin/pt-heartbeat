@@ -6100,7 +6100,7 @@ sub main {
 
       # 2)
       # RBR (Row Based Replication) converts REPLACE to INSERT if row isn't
-      # present in master. This breakes replication when the row is present in slave.
+      # present in master. This breaks replication when the row is present in slave.
       # Other workarounds also fail.
       #     INSERT IGNORE (ignore is not replicated if no error in master)
       #     DELETE then INSERT (DELETE is ignored, INSERT breaks replication)
