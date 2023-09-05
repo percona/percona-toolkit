@@ -296,7 +296,7 @@ _eval_po() {
             *)
                echo "Invalid attribute in $opt_spec: $line" >&2
                exit 1
-         esac 
+         esac
       done < "$opt_spec"
 
       if [ -z "$opt" ]; then
@@ -439,7 +439,7 @@ _parse_command_line() {
             if [ "$val" ]; then
                option_error "Option $real_opt does not take a value"
                continue
-            fi 
+            fi
             if [ "$opt_is_negated" ]; then
                val=""
             else
@@ -899,7 +899,7 @@ collect_system_data () { local PTFUNCNAME=collect_system_data;
    fi
 
    fio_status_minus_a "$data_dir/fusion-io_card"
-   
+
    for file in $data_dir/*; do
       [ "$file" = "vmstat" ] && continue
       [ ! -s "$file" ] && rm "$file"
@@ -936,7 +936,7 @@ fio_status_minus_a () {
 
       print "${adapter}_general     $adapter_general";
       print "${adapter}_modules     @connected_modules";
-      
+
       for my $module (@connected_modules) {
          my ($rest, $attached, $general, $firmware, $temperature, $media_status) = /(
             ^ \s* $module  \s+ (Attached[^\n]+) \n
@@ -957,7 +957,7 @@ fio_status_minus_a () {
    } while <>;
 
    print "adapters     @adapters\n";
-   
+
    exit;
 EOP
 
@@ -987,7 +987,7 @@ linux_exclusive_collection () { local PTFUNCNAME=linux_exclusive_collection;
          echo "dirtystatus     $(awk '/vm.dirty_bytes/{print $3}' "$data_dir/sysctl"), $(awk '/vm.dirty_background_bytes/{print $3}' "$data_dir/sysctl")" >> "$data_dir/summary"
       fi
    fi
-   
+
    if [ -e "$data_dir/numactl" ]; then
       echo "numa-available    $(awk '/available/{print $2}' "$data_dir/numactl")" >> "$data_dir/summary"
       echo "numa-policy    $(awk '/policy/{print $2}' "$data_dir/numactl")" >> "$data_dir/summary"
@@ -1328,7 +1328,7 @@ processor_info () { local PTFUNCNAME=processor_info;
       cat /proc/cpuinfo > "$data_dir/proc_cpuinfo_copy" 2>/dev/null
    elif [ "${platform}" = "SunOS" ]; then
       $CMD_PSRINFO -v > "$data_dir/psrinfo_minus_v"
-   fi 
+   fi
 }
 
 proprietary_raid_controller () { local PTFUNCNAME=proprietary_raid_controller;
@@ -1351,7 +1351,7 @@ proprietary_raid_controller () { local PTFUNCNAME=proprietary_raid_controller;
          echo "internal::raid_opt    2" >> "$variable_file"
       fi
    elif [ "${controller}" = "LSI Logic MegaRAID SAS" ]; then
-      if [ -z "$CMD_MEGACLI64" ]; then 
+      if [ -z "$CMD_MEGACLI64" ]; then
          notfound="your package repository or the manufacturer's website"
       else
          echo "internal::raid_opt    3" >> "$variable_file"
@@ -1384,7 +1384,7 @@ proprietary_raid_controller () { local PTFUNCNAME=proprietary_raid_controller;
 
 set -u
 
-   
+
 parse_proc_cpuinfo () { local PTFUNCNAME=parse_proc_cpuinfo;
    local file="$1"
    local virtual="$(grep -c ^processor "${file}")";
@@ -1557,13 +1557,13 @@ parse_numactl () { local PTFUNCNAME=parse_numactl;
           -e '/node[[:digit:]]/p' \
        "${file}" \
        | sort -r \
-       | awk  '$1 == cnode { 
+       | awk  '$1 == cnode {
                         if (NF > 4) { for(i=3;i<=NF;i++){printf("%s ", $i)} printf "\n" }
                         else { printf("%-12s", $3" "$4); }
                      }
-               $1 != cnode { cnode = $1; printf("   %-8s", $1); printf("%-12s", $3" "$4); }' 
+               $1 != cnode { cnode = $1; printf("   %-8s", $1); printf("%-12s", $3" "$4); }'
 
-  echo 
+  echo
 }
 
 parse_ip_s_link () { local PTFUNCNAME=parse_ip_s_link;
@@ -2122,7 +2122,7 @@ section_Memory () {
       name_val "Numa Nodes" "$(get_var "numa-available" "$data_dir/summary")"
       name_val "Numa Policy" "$(get_var "numa-policy" "$data_dir/summary")"
       name_val "Preferred Node" "$(get_var "numa-preferred-node" "$data_dir/summary")"
-      
+
       parse_numactl "$data_dir/numactl"
    fi
 
@@ -2149,7 +2149,7 @@ report_fio_minus_a () {
    local file="$1"
 
    name_val "fio Driver" "$(get_var driver_version "$file")"
-   
+
    local adapters="$( get_var "adapters" "$file" )"
    for adapter in $( echo $adapters | awk '{for (i=1; i<=NF; i++) print $i;}' ); do
       local adapter_for_output="$(echo "$adapter" | sed 's/::[0-9]*$//' | tr ':' ' ')"
@@ -2219,7 +2219,7 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
       section "Fusion-io Card"
       report_fio_minus_a "$data_dir/fusion-io_card"
    fi
-   
+
    if [ -s "$data_dir/mounted_fs" ]; then
       section "Mounted Filesystems"
       parse_filesystems "$data_dir/mounted_fs" "${platform}"

@@ -447,7 +447,7 @@ SKIP: {
 
 diag("Reloading sakila");
 my $master_port = $sb->port_for('master');
-system "$trunk/sandbox/load-sakila-db $master_port &";
+system "$trunk/sandbox/load-sakila-db $master_port";
 
 if ($sandbox_version ge '8.0') {
     $sb->do_as_root("master", q/CREATE USER 'slave_user'@'%' IDENTIFIED WITH mysql_native_password BY 'slave_password'/);

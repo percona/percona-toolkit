@@ -130,13 +130,13 @@ sub cmp {
    $v1 =~ s/[^\d\.]//;
    $v2 =~ s/[^\d\.]//;
 
-   my @a = ( $v1 =~ /(\d+)\.?/g ); 
-   my @b = ( $v2 =~ /(\d+)\.?/g ); 
+   my @a = ( $v1 =~ /(\d+)\.?/g );
+   my @b = ( $v2 =~ /(\d+)\.?/g );
    foreach my $n1 (@a) {
       $n1 += 0; #convert to number
       if (!@b) {
          return 1;
-      }  
+      }
       my $n2 = shift @b;
       $n2 += 0; # convert to number
       if ($n1 == $n2) {
@@ -144,8 +144,8 @@ sub cmp {
       }
       else {
          return $n1 <=> $n2;
-      }  
-   }  
+      }
+   }
    return @b ? -1 : 0;
 }
 
@@ -220,7 +220,7 @@ sub new {
       rules             => [],  # desc of rules for --help
       mutex             => [],  # rule: opts are mutually exclusive
       atleast1          => [],  # rule: at least one opt is required
-      disables          => {},  # rule: opt disables other opts 
+      disables          => {},  # rule: opt disables other opts
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
@@ -383,7 +383,7 @@ sub _pod_to_specs {
          }
 
          push @specs, {
-            spec  => $self->{parse_attributes}->($self, $option, \%attribs), 
+            spec  => $self->{parse_attributes}->($self, $option, \%attribs),
             desc  => $para
                . (defined $attribs{default} ? " (default $attribs{default})" : ''),
             group => ($attribs{'group'} ? $attribs{'group'} : 'default'),
@@ -474,7 +474,7 @@ sub _parse_specs {
          $self->{opts}->{$long} = $opt;
       }
       else { # It's an option rule, not a spec.
-         PTDEBUG && _d('Parsing rule:', $opt); 
+         PTDEBUG && _d('Parsing rule:', $opt);
          push @{$self->{rules}}, $opt;
          my @participants = $self->_get_participants($opt);
          my $rule_ok = 0;
@@ -519,7 +519,7 @@ sub _parse_specs {
       PTDEBUG && _d('Option', $long, 'disables', @participants);
    }
 
-   return; 
+   return;
 }
 
 sub _get_participants {
@@ -606,7 +606,7 @@ sub _set_option {
 }
 
 sub get_opts {
-   my ( $self ) = @_; 
+   my ( $self ) = @_;
 
    foreach my $long ( keys %{$self->{opts}} ) {
       $self->{opts}->{$long}->{got} = 0;
@@ -737,7 +737,7 @@ sub _check_opts {
                   else {
                      $err = join(', ',
                                map { "--$self->{opts}->{$_}->{long}" }
-                               grep { $_ } 
+                               grep { $_ }
                                @restricted_opts[0..scalar(@restricted_opts) - 2]
                             )
                           . ' or --'.$self->{opts}->{$restricted_opts[-1]}->{long};
@@ -747,7 +747,7 @@ sub _check_opts {
             }
 
          }
-         elsif ( $opt->{is_required} ) { 
+         elsif ( $opt->{is_required} ) {
             $self->save_error("Required option --$long must be specified");
          }
 
@@ -1131,7 +1131,7 @@ sub clone {
       $clone{$scalar} = $self->{$scalar};
    }
 
-   return bless \%clone;     
+   return bless \%clone;
 }
 
 sub _parse_size {
@@ -1646,7 +1646,7 @@ sub extends {
 
 sub _load_module {
    my ($class) = @_;
-   
+
    (my $file = $class) =~ s{::|'}{/}g;
    $file .= '.pm';
    { local $@; eval { require "$file" } } # or warn $@;
@@ -1677,7 +1677,7 @@ sub has {
    my $caller = scalar caller();
 
    my $class_metadata = Lmo::Meta->metadata_for($caller);
-   
+
    for my $attribute ( ref $names ? @$names : $names ) {
       my %args   = @_;
       my $method = ($args{is} || '') eq 'ro'
@@ -1696,16 +1696,16 @@ sub has {
 
       if ( my $type_check = $args{isa} ) {
          my $check_name = $type_check;
-         
+
          if ( my ($aggregate_type, $inner_type) = $type_check =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
             $type_check = Lmo::Types::_nested_constraints($attribute, $aggregate_type, $inner_type);
          }
-         
+
          my $check_sub = sub {
             my ($new_val) = @_;
             Lmo::Types::check_type_constraints($attribute, $type_check, $check_name, $new_val);
          };
-         
+
          $class_metadata->{$attribute}{isa} = [$check_name, $check_sub];
          my $orig_method = $method;
          $method = sub {
@@ -2199,7 +2199,7 @@ sub parse {
    foreach my $key ( keys %$opts ) {
       PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
-      if ( !defined $final_props{$key}  
+      if ( !defined $final_props{$key}
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
@@ -2339,7 +2339,7 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass,
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       $dbh = eval { DBI->connect($cxn_string, $user, $pass, $defaults) };
@@ -2537,7 +2537,7 @@ sub set_vars {
       }
    }
 
-   return; 
+   return;
 }
 
 sub _d {
@@ -2618,7 +2618,7 @@ sub run {
          $parent_exit->($child_pid) if $parent_exit;
          exit 0;
       }
- 
+
       POSIX::setsid() or die "Cannot start a new session: $OS_ERROR";
       chdir '/'       or die "Cannot chdir to /: $OS_ERROR";
 
@@ -2644,7 +2644,7 @@ sub run {
 
          close STDERR;
          open  STDERR, ">&STDOUT"
-            or die "Cannot dupe STDERR to STDOUT: $OS_ERROR"; 
+            or die "Cannot dupe STDERR to STDOUT: $OS_ERROR";
       }
       else {
          if ( -t STDOUT ) {
@@ -2682,7 +2682,7 @@ sub _make_pid_file {
    eval {
       sysopen(PID_FH, $pid_file, O_RDWR|O_CREAT|O_EXCL) or die $OS_ERROR;
       print PID_FH $PID, "\n";
-      close PID_FH; 
+      close PID_FH;
    };
    if ( my $e = $EVAL_ERROR ) {
       if ( $e =~ m/file exists/i ) {
@@ -2869,7 +2869,7 @@ sub split_unquote {
       s/`\z//;
       s/``/`/g;
    }
-   
+
    return ($db, $tbl);
 }
 
@@ -2999,7 +2999,7 @@ sub generate_asc_stmt {
 
    die "Index '$index' does not exist in table"
       unless exists $tbl_struct->{keys}->{$index};
-   PTDEBUG && _d('Will ascend index', $index);  
+   PTDEBUG && _d('Will ascend index', $index);
 
    my @asc_cols = @{$tbl_struct->{keys}->{$index}->{cols}};
    if ( $args{asc_first} ) {
@@ -3391,9 +3391,9 @@ sub parse {
 sub remove_quoted_text {
    my ($string) = @_;
    $string =~ s/\\['"]//g;
-   $string =~ s/`[^`]*?`//g; 
-   $string =~ s/"[^"]*?"//g; 
-   $string =~ s/'[^']*?'//g; 
+   $string =~ s/`[^`]*?`//g;
+   $string =~ s/"[^"]*?"//g;
+   $string =~ s/'[^']*?'//g;
    return $string;
 }
 
@@ -4056,7 +4056,7 @@ sub get_id {
       my $sql  = q{SHOW STATUS LIKE 'wsrep\_local\_index'};
       my (undef, $wsrep_local_index) = $cxn->dbh->selectrow_array($sql);
       PTDEBUG && _d("Got cluster wsrep_local_index: ",$wsrep_local_index);
-      $unique_id = $wsrep_local_index."|"; 
+      $unique_id = $wsrep_local_index."|";
       foreach my $val ('server\_id', 'wsrep\_sst\_receive\_address', 'wsrep\_node\_name', 'wsrep\_node\_address') {
          my $sql = "SHOW VARIABLES LIKE '$val'";
          PTDEBUG && _d($cxn->name, $sql);
@@ -4086,7 +4086,7 @@ sub is_cluster_node {
       PTDEBUG && _d($sql); #don't invoke name() if it's not a Cxn!
    }
    else {
-      $dbh = $cxn->dbh();      
+      $dbh = $cxn->dbh();
       PTDEBUG && _d($cxn->name, $sql);
    }
 
@@ -4316,7 +4316,7 @@ sub recurse_to_slaves {
    }
 
    my $dbh = $args->{dbh};
-   
+
    DBH: {
       if ( !defined $dbh ) {
          foreach my $known_slave ( @{$args->{slaves}} ) {
@@ -5191,9 +5191,9 @@ sub new {
    my $self = {
       %args
    };
-   
-   $self->{last_time} = time();   
-   
+
+   $self->{last_time} = time();
+
    my (undef, $last_fc_ns) = $self->{node}->selectrow_array('SHOW STATUS LIKE "wsrep_flow_control_paused_ns"');
 
    $self->{last_fc_secs} = $last_fc_ns/1000_000_000;
@@ -5229,11 +5229,11 @@ sub wait {
       my $current_time = time();
       my (undef, $current_fc_ns) = $node->selectrow_array('SHOW STATUS LIKE "wsrep_flow_control_paused_ns"');
       my $current_fc_secs = $current_fc_ns/1000_000_000;
-      my $current_avg = ($current_fc_secs - $self->{last_fc_secs}) / ($current_time - $self->{last_time});  
-      if ( $current_avg > $max_avg ) { 
+      my $current_avg = ($current_fc_secs - $self->{last_fc_secs}) / ($current_time - $self->{last_time});
+      if ( $current_avg > $max_avg ) {
          if ( $pr ) {
             $pr->update(sub { return 0; });
-         } 
+         }
          PTDEBUG && _d('Calling sleep callback');
          if ( $self->{simple_progress} ) {
             print STDERR "Waiting for Flow Control to abate\n";
@@ -5348,7 +5348,7 @@ sub _parse_spec {
       }
    }
 
-   return \%max_val_for; 
+   return \%max_val_for;
 }
 
 sub max_values {
@@ -5635,7 +5635,7 @@ sub new {
 
 sub switch_to_nibble {
     my $self = shift;
-    my $params = _nibble_params($self->{nibble_params}, $self->{tbl}, $self->{args}, $self->{cols}, 
+    my $params = _nibble_params($self->{nibble_params}, $self->{tbl}, $self->{args}, $self->{cols},
                                 $self->{chunk_size}, $self->{where}, $self->{comments}, $self->{Quoter});
 
     $self->{one_nibble}           = 0;
@@ -5672,7 +5672,7 @@ sub _one_nibble {
       my $explain_nibble_sql
          = "EXPLAIN SELECT "
          . ($args->{select} ? $args->{select}
-                          : join(', ', map{ $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' 
+                          : join(', ', map{ $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum'
                           ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_) } @$cols))
          . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
@@ -5769,7 +5769,7 @@ sub _nibble_params {
          . " /*$comments->{nibble}*/";
       PTDEBUG && _d('Nibble statement:', $nibble_sql);
 
-      my $explain_nibble_sql 
+      my $explain_nibble_sql
          = "EXPLAIN SELECT "
          . ($args->{select} ? $args->{select}
                           : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
@@ -5858,7 +5858,7 @@ sub next {
             sleep($self->{sleep});
          }
       }
-  
+
       if ( !$self->{have_rows} ) {
          $self->{nibbleno}++;
          PTDEBUG && _d('Nibble:', $self->{nibble_sth}->{Statement}, 'params:',
@@ -5888,7 +5888,7 @@ sub next {
       }
       $self->{rowno}     = 0;
       $self->{have_rows} = 0;
-      
+
    }
 
    PTDEBUG && _d('Done nibbling');
@@ -6025,7 +6025,7 @@ sub can_nibble {
    }
 
    my $pause_file = ($o->has('pause-file') && $o->get('pause-file')) || undef;
-   
+
    return {
       row_est     => $row_est,      # nibble about this many rows
       index       => $index,        # using this index
@@ -6070,7 +6070,7 @@ sub _find_best_index {
          push @possible_indexes, $want_index;
       }
    }
-   
+
    if (!$best_index) {
       PTDEBUG && _d('Auto-selecting best index');
       foreach my $index ( $tp->sort_indexes($tbl_struct) ) {
@@ -6168,7 +6168,7 @@ sub _prepare_sths {
    return;
 }
 
-sub _get_bounds { 
+sub _get_bounds {
    my ($self) = @_;
 
    if ( $self->{one_nibble} ) {
@@ -6181,7 +6181,7 @@ sub _get_bounds {
    my $dbh = $self->{Cxn}->dbh();
 
    $self->{first_lower} = $dbh->selectrow_arrayref($self->{first_lb_sql});
-   PTDEBUG && _d('First lower boundary:', Dumper($self->{first_lower}));  
+   PTDEBUG && _d('First lower boundary:', Dumper($self->{first_lower}));
 
    if ( my $nibble = $self->{resume} ) {
       if (    defined $nibble->{lower_boundary}
@@ -6195,9 +6195,9 @@ sub _get_bounds {
       }
    }
    else {
-      $self->{next_lower}  = $self->{first_lower};   
+      $self->{next_lower}  = $self->{first_lower};
    }
-   PTDEBUG && _d('Next lower boundary:', Dumper($self->{next_lower}));  
+   PTDEBUG && _d('Next lower boundary:', Dumper($self->{next_lower}));
 
    if ( !$self->{next_lower} ) {
       PTDEBUG && _d('At end of table, or no more boundaries to resume');
@@ -6283,7 +6283,7 @@ sub _next_boundaries {
       $self->{upper} = $dbh->selectrow_arrayref($self->{last_ub_sql});
       PTDEBUG && _d('Last upper boundary:', Dumper($self->{upper}));
       $self->{no_more_boundaries} = 1;  # for next call
-      
+
       $self->{last_upper} = $self->{upper};
    }
    $self->{ub_sth}->finish();
@@ -6633,7 +6633,7 @@ sub value_to_json {
 
    my $b_obj = B::svref_2object(\$value);  # for round trip problem
    my $flags = $b_obj->FLAGS;
-   return $value # as is 
+   return $value # as is
       if $flags & ( B::SVp_IOK | B::SVp_NOK ) and !( $flags & B::SVp_POK ); # SvTYPE is IV or NV?
 
    my $type = ref($value);
@@ -7141,7 +7141,7 @@ sub _split_url {
                   or die(qq/SSL certificate not valid for $host\n/);
             }
        }
-         
+
        $self->{host} = $host;
        $self->{port} = $port;
 
@@ -7616,7 +7616,7 @@ my @vc_dirs = (
       }
       PTDEBUG && _d('Version check file', $file, 'in', $ENV{PWD});
       return $file;  # in the CWD
-   } 
+   }
 }
 
 sub version_check_time_limit {
@@ -7633,11 +7633,11 @@ sub version_check {
    PTDEBUG && _d('FindBin::Bin:', $FindBin::Bin);
    if ( !$args{force} ) {
       if ( $FindBin::Bin
-           && (-d "$FindBin::Bin/../.bzr"    || 
+           && (-d "$FindBin::Bin/../.bzr"    ||
                -d "$FindBin::Bin/../../.bzr" ||
-               -d "$FindBin::Bin/../.git"    || 
-               -d "$FindBin::Bin/../../.git" 
-              ) 
+               -d "$FindBin::Bin/../.git"    ||
+               -d "$FindBin::Bin/../../.git"
+              )
          ) {
          PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
          return;
@@ -7661,7 +7661,7 @@ sub version_check {
       PTDEBUG && _d(scalar @$instances_to_check, 'instances to check');
       return unless @$instances_to_check;
 
-      my $protocol = 'https';  
+      my $protocol = 'https';
       eval { require IO::Socket::SSL; };
       if ( $EVAL_ERROR ) {
          PTDEBUG && _d($EVAL_ERROR);
@@ -7845,7 +7845,7 @@ sub get_uuid {
     }
 
     return $uuid;
-}   
+}
 
 sub _generate_uuid {
     return sprintf+($}="%04x")."$}-$}-$}-$}-".$}x3,map rand 65537,0..7;
@@ -7894,7 +7894,7 @@ sub pingback {
    );
    die "Failed to parse server requested programs: $response->{content}"
       if !scalar keys %$items;
-      
+
    my $versions = get_versions(
       items     => $items,
       instances => $instances,
@@ -8159,7 +8159,7 @@ sub get_from_mysql {
    if ($item->{item} eq 'MySQL' && $item->{type} eq 'mysql_variable') {
       @{$item->{vars}} = grep { $_ eq 'version' || $_ eq 'version_comment' } @{$item->{vars}};
    }
- 
+
 
    my @versions;
    my %version_for;
@@ -8264,7 +8264,7 @@ sub find_cluster_nodes {
    my $dp  = $args{DSNParser};
    my $make_cxn = $args{make_cxn};
 
-   
+
    my $sql = q{SHOW STATUS LIKE 'wsrep\_incoming\_addresses'};
    PTDEBUG && _d($sql);
    my (undef, $addresses) = $dbh->selectrow_array($sql);
@@ -8344,7 +8344,7 @@ sub autodetect_nodes {
    my $new_nodes = [];
 
    return $new_nodes unless @$nodes;
-   
+
    for my $node ( @$nodes ) {
       my $nodes_found = $self->find_cluster_nodes(
          dbh       => $node->dbh(),
@@ -8376,12 +8376,12 @@ sub autodetect_nodes {
    );
 
    my @new_slave_nodes = grep { $self->is_cluster_node($_) } @$new_slaves;
-   
+
    my $slaves_of_slaves = $self->autodetect_nodes(
          %args,
          nodes => \@new_slave_nodes,
    );
-   
+
    my @autodetected_nodes = ( @$new_nodes, @$new_slaves, @$slaves_of_slaves );
    return \@autodetected_nodes;
 }
