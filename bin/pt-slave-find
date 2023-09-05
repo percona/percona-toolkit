@@ -3974,7 +3974,7 @@ sub main {
       node          => $root,
       print_node    => $print_node,
       MasterSlave   => $ms,
-	   resolve_address => $o->get('resolve-address'),
+       resolve_address => $o->get('resolve-address'),
    );
 
    return 0;
@@ -4132,14 +4132,14 @@ sub print_host {
       $without_port =~ s/:\d*$//;  # strip port from ip address
       my $packed = inet_aton($without_port);
       if ($packed) {
-	      $hostname = gethostbyaddr($packed, AF_INET);
+          $hostname = gethostbyaddr($packed, AF_INET);
       }
    }
    if ($hostname) {
-	   print "$prefix$host ($hostname)\n";
+       print "$prefix$host ($hostname)\n";
    }
    else {
-	   print "$prefix$host\n";
+       print "$prefix$host\n";
    }
 }
 

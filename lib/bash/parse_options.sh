@@ -356,7 +356,7 @@ _parse_config_files() {
 
          # Strip leading and trailing spaces, and spaces around the first =,
          # and end-of-line # comments.
-		 config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/\s[ ]*#.*$//')"
+         config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/\s[ ]*#.*$//')"
 
          # Skip blank lines.
          [ "$config_opt" = "" ] && continue

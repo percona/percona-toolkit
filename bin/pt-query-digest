@@ -5892,8 +5892,8 @@ sub top_events {
    my ( $self, %args ) = @_;
    my $classes = $self->{result_classes};
    my @sorted = reverse sort { # Sorted list of $groupby values
-	  ($classes->{$a}->{$args{attrib}}->{$args{orderby}}
-	     == $classes->{$b}->{$args{attrib}}->{$args{orderby}})
+      ($classes->{$a}->{$args{attrib}}->{$args{orderby}}
+         == $classes->{$b}->{$args{attrib}}->{$args{orderby}})
       ? $a cmp $b
       : $classes->{$a}->{$args{attrib}}->{$args{orderby}}
          <=> $classes->{$b}->{$args{attrib}}->{$args{orderby}}
