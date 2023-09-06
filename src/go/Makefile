@@ -121,7 +121,7 @@ env-up: env					## Start MongoDB docker containers cluster
 	--detach \
 	--force-recreate \
 	--always-recreate-deps \
-	--renew-anon-volumes 
+	--renew-anon-volumes
 
 env-down: env				## Clean-up MongoDB docker containers cluster
 	docker-compose down -v
@@ -139,7 +139,7 @@ linux-386: 					## Build Mongo tools for linux-386
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
 	@$(foreach pkg,$(pkgs),GOOS=linux GOARCH=386 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
 
-darwin-amd64:				## Build Mongo tools for darwin-amd64 (MacOS) 
+darwin-amd64:				## Build Mongo tools for darwin-amd64 (MacOS)
 	@echo "Building darwin/amd64 binaries in ${BIN_DIR} as version ${VERSION}"
 	@cd ${TOP_DIR} && go get ./...
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)

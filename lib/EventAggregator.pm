@@ -68,7 +68,7 @@ my @buck_vals = map { bucket_value($_); } (0..NUM_BUCK-1);
 #                       will be created using the event's "apple" value or,
 #                       if that attrib doesn't exist, its "orange" value.
 #                       If this option isn't specified, then then all attributes#                       are auto-detected and aggregated.
-#   ignore_attributes - Arrayref of auto-detected attributes to ignore. 
+#   ignore_attributes - Arrayref of auto-detected attributes to ignore.
 #                       This does not apply to the attributes specified
 #                       with the optional attributes option above.
 #   unroll_limit      - If this many events have been processed and some
@@ -457,13 +457,13 @@ sub make_handler {
    # "unrolled" subroutine.
    my @unrolled = (
       # Get $val from primary attrib name.
-      "\$val = \$event->{'$attrib'};", 
-      
+      "\$val = \$event->{'$attrib'};",
+
       # Get $val from alternate attrib names.
       ( map  { "\$val = \$event->{'$_'} unless defined \$val;" }
         grep { $_ ne $attrib } @{$args{alternates}}
       ),
-      
+
       # Execute the code lines, if $val is defined.
       'defined $val && do {',
          @lines,
@@ -498,7 +498,7 @@ sub make_handler {
 # Sub: bucket_idx
 #   Return the bucket number for the given value. Buck numbers are zero-indexed,
 #   so although there are 1,000 buckets (NUM_BUCK), 999 is the greatest idx.
-# 
+#
 #   Notice that this sub is not a class method, so either call it
 #   from inside this module like bucket_idx() or outside this module
 #   like EventAggregator::bucket_idx().
@@ -558,7 +558,7 @@ sub bucket_value {
 # of 1,000 buckets, the value of each represents its index in an 8 bucket
 # base 10 array. For example: base 10 bucket 0 represents vals (0, 0.000010),
 # and base 1.05 buckets 0..47 represent vals (0, 0.000010401). So the first
-# 48 elements of the returned array will have 0 as their values. 
+# 48 elements of the returned array will have 0 as their values.
 # TODO: right now it's hardcoded to buckets of 10, in the future maybe not.
 {
    my @buck_tens;
@@ -566,7 +566,7 @@ sub bucket_value {
       return @buck_tens if @buck_tens;
 
       # To make a more precise map, we first set the starting values for
-      # each of the 8 base 10 buckets. 
+      # each of the 8 base 10 buckets.
       my $start_bucket  = 0;
       my @base10_starts = (0);
       map { push @base10_starts, (10**$_)*MIN_BUCK } (1..7);
@@ -714,7 +714,7 @@ sub _calc_metrics {
    BUCKET:
    for my $bucket ( reverse 0..(NUM_BUCK-1) ) {
       my $val = $vals->[$bucket];
-      next BUCKET unless $val; 
+      next BUCKET unless $val;
 
       $total_left -= $val;
       $sum_excl   += $val;
@@ -809,7 +809,7 @@ sub top_events {
    my ($total, $count) = (0, 0);
    foreach my $groupby ( @sorted ) {
       # Events that fall into the top criterion for some reason
-      if ( 
+      if (
          (!$args{total} || $total < $args{total} )
          && ( !$args{count} || $count < $args{count} )
       ) {
@@ -918,7 +918,7 @@ sub merge {
       die "EventAggregator objects have different worst: "
          . "$ea1->{worst} and $ea->{worst}"
          unless $ea1->{worst} eq $ea->{worst};
-      
+
       my $attrib_types = $ea->attributes();
       map {
          $attrib_types{$_} = $attrib_types->{$_}

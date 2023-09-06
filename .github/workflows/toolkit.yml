@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ "3.x" ]
 
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
 jobs:
 
   build:
@@ -19,18 +23,18 @@ jobs:
         go-version: '1.20'
     - name: Build
       run: cd src/go; make linux-amd64; cd ../../
-      
+
     - name: Build the Docker image
       run: echo "FROM oraclelinux:9-slim" > Dockerfile; echo "COPY bin/* /usr/bin/" >> Dockerfile; docker build . --file Dockerfile --tag percona-toolkit:${{ github.sha }}
     - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@0.11.2
+      uses: aquasecurity/trivy-action@0.12.0
       with:
           image-ref: 'percona-toolkit:${{ github.sha }}'
           format: 'table'
           exit-code: '1'
           ignore-unfixed: true
           vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'  
+          severity: 'CRITICAL,HIGH'
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v3.1.2
       with:

@@ -494,7 +494,7 @@ sub extends {
 
 sub _load_module {
    my ($class) = @_;
-   
+
    (my $file = $class) =~ s{::|'}{/}g;
    $file .= '.pm';
    { local $@; eval { require "$file" } } # or warn $@;
@@ -525,7 +525,7 @@ sub has {
    my $caller = scalar caller();
 
    my $class_metadata = Lmo::Meta->metadata_for($caller);
-   
+
    for my $attribute ( ref $names ? @$names : $names ) {
       my %args   = @_;
       my $method = ($args{is} || '') eq 'ro'
@@ -544,16 +544,16 @@ sub has {
 
       if ( my $type_check = $args{isa} ) {
          my $check_name = $type_check;
-         
+
          if ( my ($aggregate_type, $inner_type) = $type_check =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
             $type_check = Lmo::Types::_nested_constraints($attribute, $aggregate_type, $inner_type);
          }
-         
+
          my $check_sub = sub {
             my ($new_val) = @_;
             Lmo::Types::check_type_constraints($attribute, $type_check, $check_name, $new_val);
          };
-         
+
          $class_metadata->{$attribute}{isa} = [$check_name, $check_sub];
          my $orig_method = $method;
          $method = sub {
@@ -855,7 +855,7 @@ sub parse {
    foreach my $key ( keys %$opts ) {
       PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
-      if ( !defined $final_props{$key}  
+      if ( !defined $final_props{$key}
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
@@ -995,7 +995,7 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass,
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       $dbh = eval { DBI->connect($cxn_string, $user, $pass, $defaults) };
@@ -1193,7 +1193,7 @@ sub set_vars {
       }
    }
 
-   return; 
+   return;
 }
 
 sub _d {
@@ -1271,7 +1271,7 @@ sub split_unquote {
       s/`\z//;
       s/``/`/g;
    }
-   
+
    return ($db, $tbl);
 }
 
@@ -1427,7 +1427,7 @@ sub new {
       rules             => [],  # desc of rules for --help
       mutex             => [],  # rule: opts are mutually exclusive
       atleast1          => [],  # rule: at least one opt is required
-      disables          => {},  # rule: opt disables other opts 
+      disables          => {},  # rule: opt disables other opts
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
@@ -1590,7 +1590,7 @@ sub _pod_to_specs {
          }
 
          push @specs, {
-            spec  => $self->{parse_attributes}->($self, $option, \%attribs), 
+            spec  => $self->{parse_attributes}->($self, $option, \%attribs),
             desc  => $para
                . (defined $attribs{default} ? " (default $attribs{default})" : ''),
             group => ($attribs{'group'} ? $attribs{'group'} : 'default'),
@@ -1681,7 +1681,7 @@ sub _parse_specs {
          $self->{opts}->{$long} = $opt;
       }
       else { # It's an option rule, not a spec.
-         PTDEBUG && _d('Parsing rule:', $opt); 
+         PTDEBUG && _d('Parsing rule:', $opt);
          push @{$self->{rules}}, $opt;
          my @participants = $self->_get_participants($opt);
          my $rule_ok = 0;
@@ -1726,7 +1726,7 @@ sub _parse_specs {
       PTDEBUG && _d('Option', $long, 'disables', @participants);
    }
 
-   return; 
+   return;
 }
 
 sub _get_participants {
@@ -1813,7 +1813,7 @@ sub _set_option {
 }
 
 sub get_opts {
-   my ( $self ) = @_; 
+   my ( $self ) = @_;
 
    foreach my $long ( keys %{$self->{opts}} ) {
       $self->{opts}->{$long}->{got} = 0;
@@ -1944,7 +1944,7 @@ sub _check_opts {
                   else {
                      $err = join(', ',
                                map { "--$self->{opts}->{$_}->{long}" }
-                               grep { $_ } 
+                               grep { $_ }
                                @restricted_opts[0..scalar(@restricted_opts) - 2]
                             )
                           . ' or --'.$self->{opts}->{$restricted_opts[-1]}->{long};
@@ -1954,7 +1954,7 @@ sub _check_opts {
             }
 
          }
-         elsif ( $opt->{is_required} ) { 
+         elsif ( $opt->{is_required} ) {
             $self->save_error("Required option --$long must be specified");
          }
 
@@ -2338,7 +2338,7 @@ sub clone {
       $clone{$scalar} = $self->{$scalar};
    }
 
-   return bless \%clone;     
+   return bless \%clone;
 }
 
 sub _parse_size {
@@ -2775,7 +2775,7 @@ sub value_to_json {
 
    my $b_obj = B::svref_2object(\$value);  # for round trip problem
    my $flags = $b_obj->FLAGS;
-   return $value # as is 
+   return $value # as is
       if $flags & ( B::SVp_IOK | B::SVp_NOK ) and !( $flags & B::SVp_POK ); # SvTYPE is IV or NV?
 
    my $type = ref($value);
@@ -2947,17 +2947,17 @@ sub fingerprint {
    $query =~ s/\Ause \S+\Z/use ?/i       # Abstract the DB in USE
       && return $query;
 
-   $query =~ s/([^\\])(\\')/$1/sg;    
-   $query =~ s/([^\\])(\\")/$1/sg;    
-   $query =~ s/\\\\//sg;              
-   $query =~ s/\\'//sg;               
-   $query =~ s/\\"//sg;                        
-   $query =~ s/([^\\])(".*?[^\\]?")/$1?/sg;    
-   $query =~ s/([^\\])('.*?[^\\]?')/$1?/sg;    
+   $query =~ s/([^\\])(\\')/$1/sg;
+   $query =~ s/([^\\])(\\")/$1/sg;
+   $query =~ s/\\\\//sg;
+   $query =~ s/\\'//sg;
+   $query =~ s/\\"//sg;
+   $query =~ s/([^\\])(".*?[^\\]?")/$1?/sg;
+   $query =~ s/([^\\])('.*?[^\\]?')/$1?/sg;
 
-   $query =~ s/\bfalse\b|\btrue\b/?/isg; # boolean values 
+   $query =~ s/\bfalse\b|\btrue\b/?/isg; # boolean values
 
-   if ( $self->{match_md5_checksums} ) { 
+   if ( $self->{match_md5_checksums} ) {
       $query =~ s/([._-])[a-f0-9]{32}/$1?/g;
    }
 
@@ -2969,7 +2969,7 @@ sub fingerprint {
    }
 
    if ( $self->{match_md5_checksums} ) {
-      $query =~ s/[xb+-]\?/?/g;                
+      $query =~ s/[xb+-]\?/?/g;
    }
    else {
       $query =~ s/[xb.+-]\?/?/g;
@@ -3111,8 +3111,8 @@ sub distill {
       }
       else {
          my @tables = $self->__distill_tables($query, $table, %args);
-         $query     = join(q{ }, $verbs, @tables); 
-      } 
+         $query     = join(q{ }, $verbs, @tables);
+      }
    }
 
    if ( $args{trf} ) {
@@ -3259,8 +3259,8 @@ $Data::Dumper::Quotekeys = 0;
 
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 use constant {
-   ID      => 0,  
-   USER    => 1,  
+   ID      => 0,
+   USER    => 1,
    HOST    => 2,
    DB      => 3,
    COMMAND => 4,
@@ -3362,7 +3362,7 @@ sub parse_event {
                     && $query_start - $etime - $prev->[START] > $fudge)
             {
                my $ms = $self->{MasterSlave};
-               
+
                my $is_repl_thread = $ms->is_replication_thread({
                                         Command => $curr->[COMMAND],
                                         User    => $curr->[USER],
@@ -3402,7 +3402,7 @@ sub parse_event {
                ];
             }
          }
-      } 
+      }
       else {
          PTDEBUG && _d('New cxn', $curr->[ID]);
          if ( $curr->[INFO] && defined $curr->[TIME] ) {
@@ -3426,7 +3426,7 @@ sub parse_event {
             $self->make_event($prev, $time);
          delete $active_cxn->{$prev->[ID]};
       }
-      elsif (   ($curr_cxn->{$prev->[ID]}->[COMMAND] || "") eq 'Sleep' 
+      elsif (   ($curr_cxn->{$prev->[ID]}->[COMMAND] || "") eq 'Sleep'
              || !$curr_cxn->{$prev->[ID]}->[STATE]
              || !$curr_cxn->{$prev->[ID]}->[INFO] ) {
          PTDEBUG && _d('cxn', $prev->[ID], 'became idle');
@@ -3539,7 +3539,7 @@ sub find {
          push @{$self->{_reasons_for_matching}->{$query} ||= []}, $reason;
          $matched++;
       }
- 
+
       PROPERTY:
       foreach my $property ( qw(Id User Host db State Command Info) ) {
          my $filter = "_find_match_$property";
@@ -3696,9 +3696,9 @@ sub _parse_packet {
 
    $src_port = $self->port_number($src_port);
    $dst_port = $self->port_number($dst_port);
-   
+
    my $hex = qr/[0-9a-f]/;
-   (my $data = join('', $packet =~ m/\s+0x$hex+:\s((?:\s$hex{2,4})+)/go)) =~ s/\s+//g; 
+   (my $data = join('', $packet =~ m/\s+0x$hex+:\s((?:\s$hex{2,4})+)/go)) =~ s/\s+//g;
 
    my $ip_hlen = hex(substr($data, 1, 1)); # Num of 32-bit words in header.
    my $ip_plen = hex(substr($data, 4, 4)); # Num of BYTES in IPv4 datagram.
@@ -3852,24 +3852,24 @@ my %com_for = (
 );
 
 my %flag_for = (
-   'CLIENT_LONG_PASSWORD'     => 1,       # new more secure passwords 
-   'CLIENT_FOUND_ROWS'        => 2,       # Found instead of affected rows 
-   'CLIENT_LONG_FLAG'         => 4,       # Get all column flags 
-   'CLIENT_CONNECT_WITH_DB'   => 8,       # One can specify db on connect 
-   'CLIENT_NO_SCHEMA'         => 16,      # Don't allow database.table.column 
-   'CLIENT_COMPRESS'          => 32,      # Can use compression protocol 
-   'CLIENT_ODBC'              => 64,      # Odbc client 
-   'CLIENT_LOCAL_FILES'       => 128,     # Can use LOAD DATA LOCAL 
-   'CLIENT_IGNORE_SPACE'      => 256,     # Ignore spaces before '(' 
-   'CLIENT_PROTOCOL_41'       => 512,     # New 4.1 protocol 
-   'CLIENT_INTERACTIVE'       => 1024,    # This is an interactive client 
-   'CLIENT_SSL'               => 2048,    # Switch to SSL after handshake 
-   'CLIENT_IGNORE_SIGPIPE'    => 4096,    # IGNORE sigpipes 
-   'CLIENT_TRANSACTIONS'      => 8192,    # Client knows about transactions 
-   'CLIENT_RESERVED'          => 16384,   # Old flag for 4.1 protocol  
-   'CLIENT_SECURE_CONNECTION' => 32768,   # New 4.1 authentication 
-   'CLIENT_MULTI_STATEMENTS'  => 65536,   # Enable/disable multi-stmt support 
-   'CLIENT_MULTI_RESULTS'     => 131072,  # Enable/disable multi-results 
+   'CLIENT_LONG_PASSWORD'     => 1,       # new more secure passwords
+   'CLIENT_FOUND_ROWS'        => 2,       # Found instead of affected rows
+   'CLIENT_LONG_FLAG'         => 4,       # Get all column flags
+   'CLIENT_CONNECT_WITH_DB'   => 8,       # One can specify db on connect
+   'CLIENT_NO_SCHEMA'         => 16,      # Don't allow database.table.column
+   'CLIENT_COMPRESS'          => 32,      # Can use compression protocol
+   'CLIENT_ODBC'              => 64,      # Odbc client
+   'CLIENT_LOCAL_FILES'       => 128,     # Can use LOAD DATA LOCAL
+   'CLIENT_IGNORE_SPACE'      => 256,     # Ignore spaces before '('
+   'CLIENT_PROTOCOL_41'       => 512,     # New 4.1 protocol
+   'CLIENT_INTERACTIVE'       => 1024,    # This is an interactive client
+   'CLIENT_SSL'               => 2048,    # Switch to SSL after handshake
+   'CLIENT_IGNORE_SIGPIPE'    => 4096,    # IGNORE sigpipes
+   'CLIENT_TRANSACTIONS'      => 8192,    # Client knows about transactions
+   'CLIENT_RESERVED'          => 16384,   # Old flag for 4.1 protocol
+   'CLIENT_SECURE_CONNECTION' => 32768,   # New 4.1 authentication
+   'CLIENT_MULTI_STATEMENTS'  => 65536,   # Enable/disable multi-stmt support
+   'CLIENT_MULTI_RESULTS'     => 131072,  # Enable/disable multi-results
 );
 
 use constant {
@@ -4070,7 +4070,7 @@ sub parse_event {
       PTDEBUG && _d('Appending data to buff; expecting',
          $session->{buff_left}, 'more bytes');
    }
-   else { 
+   else {
       eval {
          remove_mysql_header($packet);
       };
@@ -4145,7 +4145,7 @@ sub _packet_from_server {
    die "I need a packet"  unless $packet;
    die "I need a session" unless $session;
 
-   PTDEBUG && _d('Packet is from server; client state:', $session->{state}); 
+   PTDEBUG && _d('Packet is from server; client state:', $session->{state});
 
    if ( ($session->{server_seq} || '') eq $packet->{seq} ) {
       push @{ $session->{server_retransmissions} }, $packet->{seq};
@@ -4187,7 +4187,7 @@ sub _packet_from_server {
       }
    }
    else {
-      if ( $first_byte eq '00' ) { 
+      if ( $first_byte eq '00' ) {
          if ( ($session->{state} || '') eq 'client_auth' ) {
 
             $session->{compress} = $session->{will_compress};
@@ -4255,7 +4255,7 @@ sub _packet_from_server {
                },
                $packet, $session
             );
-         } 
+         }
          else {
             PTDEBUG && _d('Looks like an OK packet but session has no cmd');
          }
@@ -4344,7 +4344,7 @@ sub _packet_from_server {
             if ( $packet->{complete} ) {
                my ( $warning_count, $status_flags )
                   = $data =~ m/fe(.{4})(.{4})\Z/;
-               if ( $warning_count ) { 
+               if ( $warning_count ) {
                   $event->{Warnings} = to_num($warning_count);
                   my $flags = to_num($status_flags); # TODO set all flags?
                   $event->{No_good_index_used}
@@ -4370,7 +4370,7 @@ sub _packet_from_client {
    die "I need a packet"  unless $packet;
    die "I need a session" unless $session;
 
-   PTDEBUG && _d('Packet is from client; state:', $session->{state}); 
+   PTDEBUG && _d('Packet is from client; state:', $session->{state});
 
    if ( ($session->{client_seq} || '') eq $packet->{seq} ) {
       push @{ $session->{client_retransmissions} }, $packet->{seq};
@@ -4403,7 +4403,7 @@ sub _packet_from_client {
    elsif ( ($session->{state} || '') eq 'awaiting_reply' ) {
       my $arg = $session->{cmd}->{arg} ? substr($session->{cmd}->{arg}, 0, 50)
               : 'unknown';
-      PTDEBUG && _d('More data for previous command:', $arg, '...'); 
+      PTDEBUG && _d('More data for previous command:', $arg, '...');
       return;
    }
    else {
@@ -4763,7 +4763,7 @@ sub parse_client_handshake_packet {
 
    my $code_len = hex($buff_len);
    my $db;
-   
+
    my $capability_flags = to_num($flags); # $flags is stored as little endian.
 
    if ($capability_flags & $flag_for{CLIENT_CONNECT_WITH_DB}) {
@@ -4825,11 +4825,11 @@ sub parse_execute_packet {
    my $null_count  = int(($sth->{num_params} + 7) / 8) || 1;
    my $null_bitmap = to_num(substr($data, 20, $null_count * 2));
    PTDEBUG && _d('NULL bitmap:', $null_bitmap, 'count:', $null_count);
-   
+
    substr($data, 0, 20 + ($null_count * 2), '');
 
    my $new_params = to_num(substr($data, 0, 2, ''));
-   my @types; 
+   my @types;
    if ( $new_params ) {
       PTDEBUG && _d('New param types');
       for my $i ( 0..($sth->{num_params}-1) ) {
@@ -5125,7 +5125,7 @@ sub parse_event {
                   PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
                   $host ||= $ip;  # sometimes host is missing when using skip-name-resolve (LP #issue 1262456)
                   push @properties, 'user', $user, 'host', $host, 'ip', $ip;
-                  if ( $thread_id ) {  
+                  if ( $thread_id ) {
                      push @properties, 'Thread_id', $thread_id;
                  }
                  ++$got_uh;
@@ -5138,7 +5138,7 @@ sub parse_event {
                   PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
                   $host ||= $ip;  # sometimes host is missing when using skip-name-resolve (LP #issue 1262456)
                   push @properties, 'user', $user, 'host', $host, 'ip', $ip;
-                  if ( $thread_id ) {       
+                  if ( $thread_id ) {
                      push @properties, 'Thread_id', $thread_id;
                  }
                ++$got_uh;
@@ -5309,7 +5309,7 @@ sub write {
             map { $_ || 0 }
                @{$event}{qw(InnoDB_IO_r_ops InnoDB_IO_r_bytes InnoDB_IO_r_wait InnoDB_rec_lock_wait InnoDB_queue_wait InnoDB_pages_distinct)};
 
-      } 
+      }
       else {
          printf $fh "# No InnoDB statistics available for this query\n";
       }
@@ -5667,12 +5667,12 @@ sub make_handler {
    }
 
    my @unrolled = (
-      "\$val = \$event->{'$attrib'};", 
-      
+      "\$val = \$event->{'$attrib'};",
+
       ( map  { "\$val = \$event->{'$_'} unless defined \$val;" }
         grep { $_ ne $attrib } @{$args{alternates}}
       ),
-      
+
       'defined $val && do {',
          @lines,
       '};',
@@ -5829,7 +5829,7 @@ sub _calc_metrics {
    BUCKET:
    for my $bucket ( reverse 0..(NUM_BUCK-1) ) {
       my $val = $vals->[$bucket];
-      next BUCKET unless $val; 
+      next BUCKET unless $val;
 
       $total_left -= $val;
       $sum_excl   += $val;
@@ -5904,7 +5904,7 @@ sub top_events {
    my @other;   # other events (< top)
    my ($total, $count) = (0, 0);
    foreach my $groupby ( @sorted ) {
-      if ( 
+      if (
          (!$args{total} || $total < $args{total} )
          && ( !$args{count} || $count < $args{count} )
       ) {
@@ -6001,7 +6001,7 @@ sub merge {
       die "EventAggregator objects have different worst: "
          . "$ea1->{worst} and $ea->{worst}"
          unless $ea1->{worst} eq $ea->{worst};
-      
+
       my $attrib_types = $ea->attributes();
       map {
          $attrib_types{$_} = $attrib_types->{$_}
@@ -6785,7 +6785,7 @@ sub print_reports {
    my $last_report;
 
    foreach my $report ( @$reports ) {
-      PTDEBUG && _d('Printing', $report, 'report'); 
+      PTDEBUG && _d('Printing', $report, 'report');
       my $report_output = $self->$report(%args);
       if ( $report_output ) {
          print "\n"
@@ -6905,7 +6905,7 @@ sub header {
          my $store   = $results->{globals}->{$attrib};
          my $metrics = $ea->stats()->{globals}->{$attrib};
          my $func    = $attrib =~ m/time|wait$/ ? \&micro_t : \&shorten;
-         my @values  = ( 
+         my @values  = (
             @{$store}{qw(sum min max)},
             $store->{sum} / $store->{cnt},
             @{$metrics}{qw(pct_95 stddev median)},
@@ -6926,7 +6926,7 @@ sub header {
          next unless exists $results->{globals}->{$attrib};
 
          my $store = $results->{globals}->{$attrib};
-         if ( $store->{sum} > 0 ) { 
+         if ( $store->{sum} > 0 ) {
             push @result,
                sprintf $self->{bool_format},
                   $self->make_label($attrib), $self->bool_percents($store);
@@ -7068,12 +7068,12 @@ sub query_report {
                $report .= "$samp_query${mark}\n";
             }
             else {
-               $report .= "# EXPLAIN $partitions_msg\n$samp_query${mark}\n"; 
+               $report .= "# EXPLAIN $partitions_msg\n$samp_query${mark}\n";
                $report .= $self->explain_report($samp_query, $vals->{default_db});
             }
          }
          else {
-            $report .= "$samp_query${mark}\n"; 
+            $report .= "$samp_query${mark}\n";
             my $converted = $qr->convert_to_select($samp_query);
             if ( $converted
                  && $converted =~ m/^[\(\s]*select/i ) {
@@ -7380,7 +7380,7 @@ sub profile {
                     $qr->distill($samp_query, %{$args{distill_args}}) : $item,
          id     => $groupby eq 'fingerprint' ? make_checksum($item)   : '',
          vmr    => ($query_time->{stddev}**2) / ($query_time->{avg} || 1),
-      ); 
+      );
 
       push @profiles, \%profile;
    }
@@ -7504,7 +7504,7 @@ sub prepared {
          }
 
          push @prepared, {
-            prep_r   => $prep_r, 
+            prep_r   => $prep_r,
             prep_cnt => $prep_cnt,
             exec_r   => $exec_r,
             exec_cnt => $exec_cnt,
@@ -7617,7 +7617,7 @@ sub bool_percents {
 
 sub format_string_list {
    my ( $self, $attrib, $vals, $class_cnt ) = @_;
-   
+
    if ( !exists $vals->{unq} ) {
       return ($vals->{cnt});
    }
@@ -7895,14 +7895,14 @@ has _json => (
    builder  => '_build_json',
 );
 
-has 'max_query_length' => (  
+has 'max_query_length' => (
    is       => 'rw',
    isa      => 'Int',
    required => 0,
    default  => sub { return 10_000; }, # characters, not bytes
 );
 
-has 'max_fingerprint_length' => ( 
+has 'max_fingerprint_length' => (
    is       => 'rw',
    isa      => 'Int',
    required => 0,
@@ -8017,7 +8017,7 @@ override query_report => sub {
       my $real_attrib = $attrib eq 'bytes' ? 'Query_length' : $attrib;
 
       if ( $type eq 'num' ) {
-         foreach my $m ( qw(sum min max) ) { 
+         foreach my $m ( qw(sum min max) ) {
             if ( $int ) {
                $global_data->{metrics}->{$real_attrib}->{$m}
                   = sprintf('%d', $store->{$m} || 0);
@@ -8044,7 +8044,7 @@ override query_report => sub {
          else {
             $global_data->{metrics}->{$real_attrib}->{avg}
                = sprintf('%.6f', $store->{sum} / $store->{cnt});
-         }  
+         }
       }
       elsif ( $type eq 'bool' ) {
          my $store = $results->{globals}->{$real_attrib};
@@ -8113,7 +8113,7 @@ override query_report => sub {
          else {
             my $type = $attrib eq 'Query_length' ? 'num' : $ea->type_for($attrib) || 'string';
             if ( $type eq 'string' ) {
-               $metrics{$attrib} = { value => $metrics{$attrib}{max} }; 
+               $metrics{$attrib} = { value => $metrics{$attrib}{max} };
             }
             elsif ( $type eq 'num' ) {
                foreach my $value ( values %{$metrics{$attrib}} ) {
@@ -8960,9 +8960,9 @@ sub parse {
 sub remove_quoted_text {
    my ($string) = @_;
    $string =~ s/\\['"]//g;
-   $string =~ s/`[^`]*?`//g; 
-   $string =~ s/"[^"]*?"//g; 
-   $string =~ s/'[^']*?'//g; 
+   $string =~ s/`[^`]*?`//g;
+   $string =~ s/"[^"]*?"//g;
+   $string =~ s/'[^']*?'//g;
    return $string;
 }
 
@@ -9522,7 +9522,7 @@ sub run {
          $parent_exit->($child_pid) if $parent_exit;
          exit 0;
       }
- 
+
       POSIX::setsid() or die "Cannot start a new session: $OS_ERROR";
       chdir '/'       or die "Cannot chdir to /: $OS_ERROR";
 
@@ -9548,7 +9548,7 @@ sub run {
 
          close STDERR;
          open  STDERR, ">&STDOUT"
-            or die "Cannot dupe STDERR to STDOUT: $OS_ERROR"; 
+            or die "Cannot dupe STDERR to STDOUT: $OS_ERROR";
       }
       else {
          if ( -t STDOUT ) {
@@ -9586,7 +9586,7 @@ sub _make_pid_file {
    eval {
       sysopen(PID_FH, $pid_file, O_RDWR|O_CREAT|O_EXCL) or die $OS_ERROR;
       print PID_FH $PID, "\n";
-      close PID_FH; 
+      close PID_FH;
    };
    if ( my $e = $EVAL_ERROR ) {
       if ( $e =~ m/file exists/i ) {
@@ -9782,7 +9782,7 @@ sub parse_event {
             PTDEBUG && _d('Comment line');
             next LINE;
          }
- 
+
          if ( $line =~ m/^DELIMITER/m ) {
             my ( $del ) = $line =~ m/^DELIMITER (\S*)$/m;
             if ( $del ) {
@@ -10229,7 +10229,7 @@ sub parse_event {
          $args{stats}->{events_parsed}++ if $args{stats};
       } sort { $a->{seq} <=> $b->{seq} }
       @{$session->{client_packets}};
-      
+
       map {
          $event = $self->_parse_packet($_, $args{misc});
          $args{stats}->{events_parsed}++ if $args{stats};
@@ -10621,7 +10621,7 @@ sub recurse_to_slaves {
    }
 
    my $dbh = $args->{dbh};
-   
+
    DBH: {
       if ( !defined $dbh ) {
          foreach my $known_slave ( @{$args->{slaves}} ) {
@@ -12073,7 +12073,7 @@ sub _split_url {
                   or die(qq/SSL certificate not valid for $host\n/);
             }
        }
-         
+
        $self->{host} = $host;
        $self->{port} = $port;
 
@@ -12548,7 +12548,7 @@ my @vc_dirs = (
       }
       PTDEBUG && _d('Version check file', $file, 'in', $ENV{PWD});
       return $file;  # in the CWD
-   } 
+   }
 }
 
 sub version_check_time_limit {
@@ -12565,11 +12565,11 @@ sub version_check {
    PTDEBUG && _d('FindBin::Bin:', $FindBin::Bin);
    if ( !$args{force} ) {
       if ( $FindBin::Bin
-           && (-d "$FindBin::Bin/../.bzr"    || 
+           && (-d "$FindBin::Bin/../.bzr"    ||
                -d "$FindBin::Bin/../../.bzr" ||
-               -d "$FindBin::Bin/../.git"    || 
-               -d "$FindBin::Bin/../../.git" 
-              ) 
+               -d "$FindBin::Bin/../.git"    ||
+               -d "$FindBin::Bin/../../.git"
+              )
          ) {
          PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
          return;
@@ -12593,7 +12593,7 @@ sub version_check {
       PTDEBUG && _d(scalar @$instances_to_check, 'instances to check');
       return unless @$instances_to_check;
 
-      my $protocol = 'https';  
+      my $protocol = 'https';
       eval { require IO::Socket::SSL; };
       if ( $EVAL_ERROR ) {
          PTDEBUG && _d($EVAL_ERROR);
@@ -12777,7 +12777,7 @@ sub get_uuid {
     }
 
     return $uuid;
-}   
+}
 
 sub _generate_uuid {
     return sprintf+($}="%04x")."$}-$}-$}-$}-".$}x3,map rand 65537,0..7;
@@ -12826,7 +12826,7 @@ sub pingback {
    );
    die "Failed to parse server requested programs: $response->{content}"
       if !scalar keys %$items;
-      
+
    my $versions = get_versions(
       items     => $items,
       instances => $instances,
@@ -13091,7 +13091,7 @@ sub get_from_mysql {
    if ($item->{item} eq 'MySQL' && $item->{type} eq 'mysql_variable') {
       @{$item->{vars}} = grep { $_ eq 'version' || $_ eq 'version_comment' } @{$item->{vars}};
    }
- 
+
 
    my @versions;
    my %version_for;
@@ -13425,7 +13425,7 @@ sub main {
    my %stats;      # various stats/counters used in some procs
 
    # The pipeline data hashref is passed to each proc.  Procs use this to
-   # pass data through the pipeline.  The most importat data is the event.
+   # pass data through the pipeline.  The most important data is the event.
    # Other data includes in the next_event callback, time and iters left,
    # etc.  This hashref is accessed inside a proc via the $args arg.
    my $pipeline_data = {
@@ -13492,7 +13492,7 @@ sub main {
                   }
                   PTDEBUG && _d('Reading', $filename);
                   PTDEBUG && _d('File size:', $filesize);
-                  # catch if user is trying to use an uncoverted (raw) binlog  # issue 1377888
+                  # catch if user is trying to use an unconverted (raw) binlog  # issue 1377888
                   if ( $filename &&  $o->get('type')->[0] eq 'binlog') {
                      if (is_raw_binlog($filename)) {
                         warn "Binlog file $filename must first be converted to text format using mysqlbinlog";

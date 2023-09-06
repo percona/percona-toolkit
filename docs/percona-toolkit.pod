@@ -13,7 +13,7 @@ MySQL and system tasks that are too difficult or complex to perform manually.
 These tools are ideal alternatives to private or "one-off" scripts because
 they are professionally developed, formally tested, and fully documented.
 They are also fully self-contained, so installation is quick and easy and
-no libraries are installed. 
+no libraries are installed.
 
 Percona Toolkit is derived from Maatkit and Aspersa, two of the best-known
 toolkits for MySQL server administration.  It is developed and supported by
@@ -413,7 +413,7 @@ Explicitly enable LOAD DATA LOCAL INFILE.
 
 For some reason, some vendors compile libmysql without the
 --enable-local-infile option, which disables the statement.  This can
-lead to weird situations, like the server allowing LOCAL INFILE, but 
+lead to weird situations, like the server allowing LOCAL INFILE, but
 the client throwing exceptions if it's used.
 
 However, as long as the server allows LOAD DATA, clients can easily

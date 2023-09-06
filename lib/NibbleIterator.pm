@@ -53,7 +53,7 @@ $Data::Dumper::Quotekeys = 0;
 #   order_by    - Add ORDER BY to nibble SQL (default no)
 #
 # Returns:
-#  NibbleIterator object 
+#  NibbleIterator object
 sub new {
    my ( $class, %args ) = @_;
    my @required_args = qw(Cxn tbl chunk_size OptionParser Quoter TableNibbler TableParser);
@@ -136,7 +136,7 @@ sub new {
 
 sub switch_to_nibble {
     my $self = shift;
-    my $params = _nibble_params($self->{nibble_params}, $self->{tbl}, $self->{args}, $self->{cols}, 
+    my $params = _nibble_params($self->{nibble_params}, $self->{tbl}, $self->{args}, $self->{cols},
                                 $self->{chunk_size}, $self->{where}, $self->{comments}, $self->{Quoter});
 
     $self->{one_nibble}           = 0;
@@ -176,7 +176,7 @@ sub _one_nibble {
       my $explain_nibble_sql
          = "EXPLAIN SELECT "
          . ($args->{select} ? $args->{select}
-                          : join(', ', map{ $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' 
+                          : join(', ', map{ $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum'
                           ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_) } @$cols))
          . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
@@ -296,7 +296,7 @@ sub _nibble_params {
          . " /*$comments->{nibble}*/";
       PTDEBUG && _d('Nibble statement:', $nibble_sql);
 
-      my $explain_nibble_sql 
+      my $explain_nibble_sql
          = "EXPLAIN SELECT "
          . ($args->{select} ? $args->{select}
                           : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
@@ -388,7 +388,7 @@ sub next {
             sleep($self->{sleep});
          }
       }
-  
+
       # If no rows, then we just got the next boundaries, which start
       # the next nibble.
       if ( !$self->{have_rows} ) {
@@ -426,7 +426,7 @@ sub next {
       }
       $self->{rowno}     = 0;
       $self->{have_rows} = 0;
-      
+
    }
 
    PTDEBUG && _d('Done nibbling');
@@ -580,7 +580,7 @@ sub can_nibble {
    # The table can be nibbled if this point is reached, else we would have
    # died earlier.  Return some values about nibbling the table.
    my $pause_file = ($o->has('pause-file') && $o->get('pause-file')) || undef;
-   
+
    return {
       row_est     => $row_est,      # nibble about this many rows
       index       => $index,        # using this index
@@ -632,9 +632,9 @@ sub _find_best_index {
          push @possible_indexes, $want_index;
       }
    }
-   
+
    # still no best index?
-   # prefer unique index. otherwise put in candidates array. 
+   # prefer unique index. otherwise put in candidates array.
    if (!$best_index) {
       PTDEBUG && _d('Auto-selecting best index');
       foreach my $index ( $tp->sort_indexes($tbl_struct) ) {
@@ -648,7 +648,7 @@ sub _find_best_index {
       }
    }
 
-   # choose the one with best cardinality 
+   # choose the one with best cardinality
    if ( !$best_index && @possible_indexes ) {
       PTDEBUG && _d('No PRIMARY or unique indexes;',
          'will use index with highest cardinality');
@@ -740,7 +740,7 @@ sub _prepare_sths {
    return;
 }
 
-sub _get_bounds { 
+sub _get_bounds {
    my ($self) = @_;
 
    if ( $self->{one_nibble} ) {
@@ -754,7 +754,7 @@ sub _get_bounds {
 
    # Get the real first lower boundary.
    $self->{first_lower} = $dbh->selectrow_arrayref($self->{first_lb_sql});
-   PTDEBUG && _d('First lower boundary:', Dumper($self->{first_lower}));  
+   PTDEBUG && _d('First lower boundary:', Dumper($self->{first_lower}));
 
    # The next boundary is the first lower boundary.  If resuming,
    # this should be something > the real first lower boundary and
@@ -772,9 +772,9 @@ sub _get_bounds {
       }
    }
    else {
-      $self->{next_lower}  = $self->{first_lower};   
+      $self->{next_lower}  = $self->{first_lower};
    }
-   PTDEBUG && _d('Next lower boundary:', Dumper($self->{next_lower}));  
+   PTDEBUG && _d('Next lower boundary:', Dumper($self->{next_lower}));
 
    if ( !$self->{next_lower} ) {
       # This happens if we resume from the end of the table, or if the
@@ -915,7 +915,7 @@ sub _next_boundaries {
       $self->{upper} = $dbh->selectrow_arrayref($self->{last_ub_sql});
       PTDEBUG && _d('Last upper boundary:', Dumper($self->{upper}));
       $self->{no_more_boundaries} = 1;  # for next call
-      
+
       # OobNibbleIterator needs to know the last upper boundary.
       $self->{last_upper} = $self->{upper};
    }

@@ -24,14 +24,14 @@
 -- +-------------+---------------+
 -- | 1.5.0       | 5.7.8-rc      |
 -- +-------------+---------------+
--- 
+--
 
 CREATE OR REPLACE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW version (
   sys_version,
   mysql_version
-) AS 
-SELECT '1.5.0' AS sys_version, 
+) AS
+SELECT '1.5.0' AS sys_version,
         version() AS mysql_version;

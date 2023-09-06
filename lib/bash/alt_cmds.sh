@@ -50,11 +50,11 @@ _lsof() {
 # they are somewhere
 
 # TODO:
-#  we just need to redirect STDERR when we execute 
-#  "which" and check it. Some shells are really weird this way. We 
-#  can't check "which"'s exit status because it will be nonzero if 
+#  we just need to redirect STDERR when we execute
+#  "which" and check it. Some shells are really weird this way. We
+#  can't check "which"'s exit status because it will be nonzero if
 #  the sought-for command doesn't exist.
-# 
+#
 _which() {
    # which on CentOS is aliased to a cmd that prints extra stuff.
    # Also, if the cmd isn't found, a msg is printed to stderr.

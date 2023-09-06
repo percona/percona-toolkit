@@ -22,12 +22,12 @@
 CREATE OR REPLACE
   ALGORITHM = TEMPTABLE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW x$ps_digest_avg_latency_distribution (
   cnt,
   avg_us
 ) AS
-SELECT COUNT(*) cnt, 
+SELECT COUNT(*) cnt,
        ROUND(avg_timer_wait/1000000) AS avg_us
   FROM performance_schema.events_statements_summary_by_digest
  GROUP BY avg_us;

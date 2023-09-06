@@ -42,4 +42,4 @@ innodb_locks_unsafe_for_binlog = 1
 innodb_autoinc_lock_mode   = 2
 wsrep-replicate-myisam
 pxc_strict_mode            = DISABLED
-secure-file-priv           = 
+secure-file-priv           =

@@ -1,9 +1,9 @@
 DESC sys.sys_config;
 Field	Type	Null	Key	Default	Extra
-variable	varchar(128)	NO	PRI	NULL	
-value	varchar(128)	YES		NULL	
+variable	varchar(128)	NO	PRI	NULL
+value	varchar(128)	YES		NULL
 set_time	timestamp	NO		CURRENT_TIMESTAMP	on update CURRENT_TIMESTAMP
-set_by	varchar(128)	YES		NULL	
+set_by	varchar(128)	YES		NULL
 SELECT variable, value, set_by FROM sys.sys_config;
 variable	value	set_by
 diagnostics.allow_i_s_tables	OFF	NULL

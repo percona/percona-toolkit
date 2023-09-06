@@ -25,7 +25,7 @@
 # types.  Any numeric column type that MySQL can do positional comparisons
 # (<, <=, >, >=) on works.  Chunking on character data is not supported yet
 # (but see <issue 568 at http://code.google.com/p/maatkit/issues/detail?id=568>).
-# 
+#
 # Usually chunks range over all rows in a table but sometimes they only
 # range over a subset of rows if an optional where arg is passed to various
 # subs.  In either case a chunk is like "`col` >= 5 AND `col` < 10".  If
@@ -133,10 +133,10 @@ sub find_chunk_columns {
    PTDEBUG && _d('Possible chunk indexes in order:',
       join(', ', map { $_->{name} } @possible_indexes));
 
-   # Build list of candidate chunk columns.   
+   # Build list of candidate chunk columns.
    my $can_chunk_exact = 0;
    my @candidate_cols;
-   foreach my $index ( @possible_indexes ) { 
+   foreach my $index ( @possible_indexes ) {
       my $col = $index->{cols}->[0];
 
       # Accept only integer or real number type columns or character columns.
@@ -373,7 +373,7 @@ sub _chunk_numeric {
    my $col_type = $args{tbl_struct}->{type_for}->{$args{chunk_col}};
 
    # Convert the given MySQL values to (Perl) numbers using some MySQL function.
-   # E.g.: SELECT TIME_TO_SEC('12:34') == 45240.  
+   # E.g.: SELECT TIME_TO_SEC('12:34') == 45240.
    my $range_func;
    if ( $col_type =~ m/(?:int|year|float|double|decimal)$/ ) {
       $range_func  = 'range_num';
@@ -650,7 +650,7 @@ sub _chunk_char {
    # than not so we use the minimum number of characters to express a chunk
    # size.
    $sql = "SELECT MAX(LENGTH($qchunk_col)) FROM $db_tbl "
-        . ($args{where} ? "WHERE $args{where} " : "") 
+        . ($args{where} ? "WHERE $args{where} " : "")
         . "ORDER BY $qchunk_col";
    PTDEBUG && _d($dbh, $sql);
    $row = $dbh->selectrow_arrayref($sql);
@@ -728,7 +728,7 @@ sub get_first_chunkable_column {
       die "I need a $arg argument" unless $args{$arg};
    }
 
-   # First auto-detected chunk col/index.  If any combination of preferred 
+   # First auto-detected chunk col/index.  If any combination of preferred
    # chunk col or index are specified and are sane, they will overwrite
    # these defaults.  Else, these defaults will be returned.
    my ($exact, @cols) = $self->find_chunk_columns(%args);
@@ -858,7 +858,7 @@ sub size_to_rows {
 #   tries      - Fetch up to this many rows to find a valid value
 #
 # Returns:
-#   Array: min row value, max row value, rows in range 
+#   Array: min row value, max row value, rows in range
 sub get_range_statistics {
    my ( $self, %args ) = @_;
    my @required_args = qw(dbh db tbl chunk_col tbl_struct);
@@ -872,7 +872,7 @@ sub get_range_statistics {
    my $col_type       = $args{tbl_struct}->{type_for}->{$col};
    my $col_is_numeric = $args{tbl_struct}->{is_numeric}->{$col};
 
-   # Quote these once so we don't have to do it again. 
+   # Quote these once so we don't have to do it again.
    my $db_tbl = $q->quote($db, $tbl);
    $col       = $q->quote($col);
 
@@ -924,7 +924,7 @@ sub get_range_statistics {
 
 # Sub: inject_chunks
 #   Create a SQL statement from a query prototype by filling in placeholders.
-# 
+#
 # Parameters:
 #   %args - Arguments
 #
@@ -1398,7 +1398,7 @@ sub base_count {
 
    my @base_powers;
    for my $power ( 0..$highest_power ) {
-      push @base_powers, ($base**$power) || 1;  
+      push @base_powers, ($base**$power) || 1;
    }
 
    my @base_multiples;

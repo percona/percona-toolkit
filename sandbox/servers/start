@@ -57,7 +57,7 @@ plugins_dir_cmd=""
 plugins_cmd=""
 keyring_cmd=""
 
-if [ -z "${DISABLE_KEYRING}" ]; then 
+if [ -z "${DISABLE_KEYRING}" ]; then
     if [ -e "${BASEDIR}/lib/mysql/plugin/keyring_file.so" ]; then
         encryption_plugins="${BASEDIR}/lib/mysql/plugin/keyring_file.so"
         plugins_dir_cmd="--plugin-dir=${BASEDIR}/lib/mysql/plugin/"

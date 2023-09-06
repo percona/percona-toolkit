@@ -19,7 +19,7 @@ Improvements
 
 * :jirabug:`PT-1718`: Have pt-stalk collect performance_schema.threads along with information_schema.processlist
 * :jirabug:`PT-2033`: Avoid running same query concurrently from pt-stalk
-* :jirabug:`PT-2013`: Change PT tool names changes to eliminate offensive terminology 
+* :jirabug:`PT-2013`: Change PT tool names changes to eliminate offensive terminology
 
 
 

@@ -19,7 +19,7 @@
 -- Statistics around tables.
 --
 -- Ordered by the total wait time descending - top tables are most contended.
--- 
+--
 -- mysql> SELECT * FROM schema_table_statistics\G
 -- *************************** 1. row ***************************
 --      table_schema: sys
@@ -46,7 +46,7 @@
 CREATE OR REPLACE
   ALGORITHM = TEMPTABLE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW schema_table_statistics (
   table_schema,
   table_name,

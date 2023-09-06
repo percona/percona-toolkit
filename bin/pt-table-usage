@@ -4144,7 +4144,7 @@ sub parse_insert {
             (?:INTO\s+)?            # INTO, optional
             (.+?)\s+                # table ref
             (\([^\)]+\)\s+)?        # column list, optional
-            (VALUE.?|SET|SELECT)\s+ # start of next caluse
+            (VALUE.?|SET|SELECT)\s+ # start of next clause
          /xgci)
    ) {
       my $tbl  = shift @into;  # table ref
@@ -4325,7 +4325,7 @@ sub parse_table_reference {
 
    if ( $tbl_ref =~ s/
          \s+(
-            (?:FORCE|USE|INGORE)\s
+            (?:FORCE|USE|IGNORE)\s
             (?:INDEX|KEY)
             \s*\([^\)]+\)\s*
          )//xi)
@@ -7725,7 +7725,7 @@ sub main {
                return;        # 1. exit pipeline early
             }
 
-            # There's input and time left so keep runnning...
+            # There's input and time left so keep running...
             if ( $args->{event} ) {
                PTDEBUG && _d("Event in pipeline, continuing");
                return $args;

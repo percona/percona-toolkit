@@ -158,7 +158,7 @@ sub output {
 
    my $output = '';
    {
-      if ( $file ) { 
+      if ( $file ) {
          open *output_fh, '>', $file
             or die "Cannot open file $file: $OS_ERROR";
       }
@@ -600,7 +600,7 @@ sub no_diff {
 
    # diff returns 0 if there were no differences,
    # so !0 = 1 = no diff in our testing parlance.
-   $retval = $retval >> 8; 
+   $retval = $retval >> 8;
 
    if ( $retval ) {
       diag($out);
@@ -762,7 +762,7 @@ sub full_output {
 
    unlink $file;
    unlink $file2;
-   
+
    return ($output, $status);
 }
 

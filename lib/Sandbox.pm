@@ -130,7 +130,7 @@ sub create_dbs {
 
    return;
 }
-   
+
 sub get_dbh_for {
    my ( $self, $server, $cxn_ops, $user ) = @_;
    _check_server($server);
@@ -192,10 +192,10 @@ sub wipe_clean {
    # the DROP commands will just hang forever.
    my @cxns = @{$dbh->selectall_arrayref('SHOW FULL PROCESSLIST', {Slice => {}})};
    foreach my $cxn ( @cxns ) {
-      if (( 
+      if ((
          (($cxn->{user}||'') eq 'msandbox' && ($cxn->{command}||'') eq 'Sleep')
       || (($cxn->{User}||'') eq 'msandbox' && ($cxn->{Command}||'') eq 'Sleep')
-         ) && $cxn->{db} 
+         ) && $cxn->{db}
       ) {
          my $id  = $cxn->{id} ? $cxn->{id} : $cxn->{Id};
          my $sql = "KILL $id /* db: $cxn->{db} */";
@@ -505,7 +505,7 @@ sub start_sandbox {
       my $first_node = $args{first_node} ? $port_for{$args{first_node}} : '';
       my $out = `$env $trunk/sandbox/start-sandbox cluster $port $first_node`;
       die $out if $CHILD_ERROR;
-   } 
+   }
 
    my $dbh = $self->get_dbh_for($server, $args{cxn_opts});
    my $dsn = $self->dsn_for($server);

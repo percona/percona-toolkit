@@ -136,7 +136,7 @@ collect_system_data () { local PTFUNCNAME=collect_system_data;
 
    # Fusion-io cards
    fio_status_minus_a "$data_dir/fusion-io_card"
-   
+
    # Clean the data directory, don't leave empty files
    for file in $data_dir/*; do
       # The vmstat file gets special treatmeant, see above.
@@ -175,7 +175,7 @@ fio_status_minus_a () {
 
       print "${adapter}_general     $adapter_general";
       print "${adapter}_modules     @connected_modules";
-      
+
       for my $module (@connected_modules) {
          my ($rest, $attached, $general, $firmware, $temperature, $media_status) = /(
             ^ \s* $module  \s+ (Attached[^\n]+) \n
@@ -196,7 +196,7 @@ fio_status_minus_a () {
    } while <>;
 
    print "adapters     @adapters\n";
-   
+
    exit;
 EOP
 
@@ -226,7 +226,7 @@ linux_exclusive_collection () { local PTFUNCNAME=linux_exclusive_collection;
          echo "dirtystatus     $(awk '/vm.dirty_bytes/{print $3}' "$data_dir/sysctl"), $(awk '/vm.dirty_background_bytes/{print $3}' "$data_dir/sysctl")" >> "$data_dir/summary"
       fi
    fi
-   
+
    if [ -e "$data_dir/numactl" ]; then
       echo "numa-available    $(awk '/available/{print $2}' "$data_dir/numactl")" >> "$data_dir/summary"
       echo "numa-policy    $(awk '/policy/{print $2}' "$data_dir/numactl")" >> "$data_dir/summary"
@@ -602,7 +602,7 @@ processor_info () { local PTFUNCNAME=processor_info;
       cat /proc/cpuinfo > "$data_dir/proc_cpuinfo_copy" 2>/dev/null
    elif [ "${platform}" = "SunOS" ]; then
       $CMD_PSRINFO -v > "$data_dir/psrinfo_minus_v"
-   fi 
+   fi
 }
 
 # ########################################################################
@@ -631,7 +631,7 @@ proprietary_raid_controller () { local PTFUNCNAME=proprietary_raid_controller;
          echo "internal::raid_opt    2" >> "$variable_file"
       fi
    elif [ "${controller}" = "LSI Logic MegaRAID SAS" ]; then
-      if [ -z "$CMD_MEGACLI64" ]; then 
+      if [ -z "$CMD_MEGACLI64" ]; then
          notfound="your package repository or the manufacturer's website"
       else
          echo "internal::raid_opt    3" >> "$variable_file"

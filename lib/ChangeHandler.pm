@@ -116,7 +116,7 @@ sub set_src {
    }
    elsif ( lc $src eq 'right' ) {
       $self->{src_db_tbl} = $self->{right_db_tbl};
-      $self->{dst_db_tbl} = $self->{left_db_tbl}; 
+      $self->{dst_db_tbl} = $self->{left_db_tbl};
    }
    else {
       die "src argument must be either 'left' or 'right'"
@@ -388,7 +388,7 @@ sub make_REPLACE {
 #   A SQL statement
 sub make_row {
    my ( $self, $verb, $row, $cols ) = @_;
-   my @cols; 
+   my @cols;
    if ( my $dbh = $self->{fetch_back} ) {
       my $where = $self->make_where_clause($row, $cols);
       my $sql   = $self->make_fetch_back_query($where);
@@ -474,7 +474,7 @@ sub get_changes {
 sub sort_cols {
    my ( $self, $row ) = @_;
    my @cols;
-   if ( $self->{tbl_struct} ) { 
+   if ( $self->{tbl_struct} ) {
       my $pos = $self->{tbl_struct}->{col_posn};
       my @not_in_tbl;
       @cols = sort {

@@ -328,7 +328,7 @@ _eval_po() {
             *)
                echo "Invalid attribute in $opt_spec: $line" >&2
                exit 1
-         esac 
+         esac
       done < "$opt_spec"
 
       if [ -z "$opt" ]; then
@@ -471,7 +471,7 @@ _parse_command_line() {
             if [ "$val" ]; then
                option_error "Option $real_opt does not take a value"
                continue
-            fi 
+            fi
             if [ "$opt_is_negated" ]; then
                val=""
             else
@@ -571,7 +571,7 @@ main() {
          BASEDIR="$(dirname "$1")"
          PREFIX="$(echo "$1" | perl -ne '$_ =~ m/([\d_]+)/; print $1;')"
       else
-         echo "Error: $1 is not a directory, and there are no pt-stalk files in the curent working directory ($BASEDIR) with a $1 prefix." >&2
+         echo "Error: $1 is not a directory, and there are no pt-stalk files in the current working directory ($BASEDIR) with a $1 prefix." >&2
          echo "For more information, 'man pt-sift' or 'perldoc $0'." >&2
          exit 1
       fi

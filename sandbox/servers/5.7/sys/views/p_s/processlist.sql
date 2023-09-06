@@ -16,7 +16,7 @@
 --
 -- View: processlist
 --
--- A detailed non-blocking processlist view to replace 
+-- A detailed non-blocking processlist view to replace
 -- [INFORMATION_SCHEMA. | SHOW FULL] PROCESSLIST
 --
 -- mysql> select * from processlist where conn_id is not null\G

@@ -353,7 +353,7 @@ sub __get_explain_index {
       PTDEBUG && _d($EVAL_ERROR);
       return;
    }
-   PTDEBUG && _d('EXPLAIN key:', $explain->[0]->{key}); 
+   PTDEBUG && _d('EXPLAIN key:', $explain->[0]->{key});
    return $explain->[0]->{key};
 }
 

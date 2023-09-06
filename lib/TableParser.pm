@@ -111,7 +111,7 @@ sub get_create_table {
    #        Table: city
    # Create Table: CREATE TABLE `city` (
    #   `city_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
-   #   ... 
+   #   ...
    # We want the second column.
    my ($key) = grep { m/create (?:table|view)/i } keys %$href;
    if ( !$key ) {
@@ -221,9 +221,9 @@ sub parse {
 sub remove_quoted_text {
    my ($string) = @_;
    $string =~ s/\\['"]//g;
-   $string =~ s/`[^`]*?`//g; 
-   $string =~ s/"[^"]*?"//g; 
-   $string =~ s/'[^']*?'//g; 
+   $string =~ s/`[^`]*?`//g;
+   $string =~ s/"[^"]*?"//g;
+   $string =~ s/'[^']*?'//g;
    return $string;
 }
 
