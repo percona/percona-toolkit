@@ -87,9 +87,9 @@ sub wait {
       my ($self) = @_;
       my ($slaves, $refresher) = ($self->{slaves}, $self->{get_slaves_cb});
       return $slaves if ( not defined $refresher );
-      my $before = join ' ', sort map {$_->name()} @$slaves;
+      my $before = join ' ', sort map {$_->description()} @$slaves;
       $slaves = $refresher->();
-      my $after = join ' ', sort map {$_->name()} @$slaves;
+      my $after = join ' ', sort map {$_->description()} @$slaves;
       if ($before ne $after) {
          $self->{slaves} = $slaves;
          printf STDERR "Slave set to watch has changed\n  Was: %s\n  Now: %s\n",

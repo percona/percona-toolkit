@@ -125,7 +125,7 @@ sub base_test {
    my $pid = fork();
 
    if (!$pid) {
-       open(STDERR, '>', $filename);
+      open(STDERR, '>', $filename);
       open(STDOUT, '>', $filename);
       exec("$trunk/bin/pt-online-schema-change $args");
    }
@@ -192,14 +192,14 @@ sub error_test {
       "pt-osc fails with error if replica returns error when $test",
    );
 
-   $args = "$master_dsn,D=test,t=pt178,A=utf8 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --wait-lost-replicas";
+   $args = "$master_dsn,D=test,t=pt178,A=utf8 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --nofail-on-stopped-replication";
 
    $output = `$trunk/bin/pt-online-schema-change $args 2>&1`;
 
    unlike(
       $output,
       qr/Successfully altered `test`.`pt178`/s,
-      "pt-osc fails with error if replica returns error when $test and option --wait-lost-replicas is specified",
+      "pt-osc fails with error if replica returns error when $test and option --nofail-on-stopped-replication is specified",
    );
 
    $slave_dbh2->do("SET GLOBAL simple_rewrite_plugin_pattern=''");
@@ -221,14 +221,14 @@ sub error_test {
    $slave_dbh2->do("SET GLOBAL simple_rewrite_plugin_pattern='$pattern'");
    $slave_dbh2->do("SET GLOBAL simple_rewrite_plugin_action='abort'");
 
-   $args = "$master_dsn,D=test,t=pt178,A=utf8 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --wait-lost-replicas";
+   $args = "$master_dsn,D=test,t=pt178,A=utf8 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --nofail-on-stopped-replication";
 
    $output = crash_test($args);
 
    like(
       $output,
       qr/Successfully altered `test`.`pt178`/s,
-      "pt-osc finishes succesfully if replica disconnects when $test and option --wait-lost-replicas is specified",
+      "pt-osc finishes succesfully if replica disconnects when $test and option --nofail-on-stopped-replication is specified",
    );
 
    $slave_dbh2 = $sb->get_dbh_for('slave2');
@@ -245,13 +245,13 @@ unlike(
    "pt-osc fails when one of replicas is restarted",
 );
 
-# pt-osc doesn't fail if replica is restarted and option --wait-lost-replicas specified
-$output = base_test("$master_dsn,D=test,t=pt178 --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --wait-lost-replicas");
+# pt-osc doesn't fail if replica is restarted and option --nofail-on-stopped-replication specified
+$output = base_test("$master_dsn,D=test,t=pt178 --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --nofail-on-stopped-replication");
 
 like(
    $output,
    qr/Successfully altered `test`.`pt178`/s,
-   "pt-osc completes successfully when one of replicas is restarted and option --wait-lost-replicas is specified",
+   "pt-osc completes successfully when one of replicas is restarted and option --nofail-on-stopped-replication is specified",
 );
 
 $output = base_test("$master_dsn,D=test,t=pt178 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5");
@@ -262,18 +262,18 @@ unlike(
    "pt-osc fails with recursion-method=dsn when one of replicas is restarted",
 );
 
-$output = base_test("$master_dsn,D=test,t=pt178 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --wait-lost-replicas");
+$output = base_test("$master_dsn,D=test,t=pt178 --recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox --execute --chunk-size 10 --max-lag $max_lag --alter 'engine=INNODB' --pid $tmp_file_name --progress time,5 --nofail-on-stopped-replication");
 
 like(
    $output,
    qr/Successfully altered `test`.`pt178`/s,
-   "pt-osc completes successfully with recursion-method=dsn when one of replicas is restarted and option --wait-lost-replicas is specified",
+   "pt-osc completes successfully with recursion-method=dsn when one of replicas is restarted and option --nofail-on-stopped-replication is specified",
 );
 
 # Errors that happen while pt-osc executes SQL while checking slave availability.
 # We check few scenarios.
-# - Error not related to connection: pt-osc aborted regardless option --wait-lost-replicas
-# - Error, related to connection: pt-osc behavior depends on option --wait-lost-replicas
+# - Error not related to connection: pt-osc aborted regardless option --nofail-on-stopped-replication
+# - Error, related to connection: pt-osc behavior depends on option --nofail-on-stopped-replication
 # We work only with replica with port 12347 here.
 diag("Starting replica lost and error tests");
 

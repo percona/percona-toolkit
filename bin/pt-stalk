@@ -1103,7 +1103,7 @@ collect_mysql_data_two() {
 }
 
 open_tables() {
-   local open_tables=$($CMD_MYSQLADMIN $EXT_ARGV ext | grep "Open_tables" | awk '{print $4}')
+   local open_tables=$($CMD_MYSQLADMIN $EXT_ARGV ext | grep "Open_tables" | grep -v "Open_tables_with_triggers" | awk '{print $4}')
    if [ -n "$open_tables" -a $open_tables -le 1000 ]; then
       $CMD_MYSQL $EXT_ARGV -e 'SHOW OPEN TABLES' &
    else
