@@ -22,7 +22,7 @@ func (c *conflicts) Help() string {
 func (c *conflicts) Run() error {
 
 	regexes := regex.IdentsMap.Merge(regex.ApplicativeMap)
-	timeline, err := timelineFromPaths(c.Paths, regexes, CLI.Since, CLI.Until)
+	timeline, err := timelineFromPaths(c.Paths, regexes)
 	if err != nil {
 		return err
 	}

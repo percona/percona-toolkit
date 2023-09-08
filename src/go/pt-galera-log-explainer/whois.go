@@ -24,7 +24,7 @@ It will list known node name(s), IP(s), hostname(s), and other known node's UUID
 func (w *whois) Run() error {
 
 	toCheck := regex.AllRegexes()
-	timeline, err := timelineFromPaths(CLI.Whois.Paths, toCheck, CLI.Since, CLI.Until)
+	timeline, err := timelineFromPaths(CLI.Whois.Paths, toCheck)
 	if err != nil {
 		return errors.Wrap(err, "Found nothing to translate")
 	}

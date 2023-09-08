@@ -22,7 +22,7 @@ func (c *ctx) Run() error {
 		return errors.New("Can only use 1 path at a time for ctx subcommand")
 	}
 
-	timeline, err := timelineFromPaths(c.Paths, regex.AllRegexes(), CLI.Since, CLI.Until)
+	timeline, err := timelineFromPaths(c.Paths, regex.AllRegexes())
 	if err != nil {
 		return err
 	}

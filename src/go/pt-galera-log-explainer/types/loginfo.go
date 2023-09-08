@@ -79,8 +79,8 @@ type Date struct {
 	Layout      string
 }
 
-func NewDate(t time.Time, layout string) Date {
-	return Date{
+func NewDate(t time.Time, layout string) *Date {
+	return &Date{
 		Time:        t,
 		Layout:      layout,
 		DisplayTime: t.Format(layout),

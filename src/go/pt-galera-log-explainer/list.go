@@ -41,7 +41,7 @@ func (l *list) Run() error {
 
 	toCheck := l.regexesToUse()
 
-	timeline, err := timelineFromPaths(CLI.List.Paths, toCheck, CLI.Since, CLI.Until)
+	timeline, err := timelineFromPaths(CLI.List.Paths, toCheck)
 	if err != nil {
 		return errors.Wrap(err, "Could not list events")
 	}

@@ -29,7 +29,7 @@ You can also simply call the command to get a generated sed command to review an
 
 func (s *sed) Run() error {
 	toCheck := regex.AllRegexes()
-	timeline, err := timelineFromPaths(s.Paths, toCheck, CLI.Since, CLI.Until)
+	timeline, err := timelineFromPaths(s.Paths, toCheck)
 	if err != nil {
 		return errors.Wrap(err, "Found nothing worth replacing")
 	}
