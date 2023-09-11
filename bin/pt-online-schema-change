@@ -13163,8 +13163,8 @@ For more information, visit L<https://www.percona.com/doc/percona-toolkit/LATEST
 
 default: yes
 
-If a replica becomes not available while the tool did not finish copying the table,
-it waits until replica is back online.
+If replication is stopped, fail with an error (exit status 128) instead of waiting
+until replication is restarted.
 
 =back
 
