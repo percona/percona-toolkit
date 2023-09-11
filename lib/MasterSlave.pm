@@ -189,7 +189,7 @@ sub recurse_to_slaves {
    }
 
    my $dbh = $args->{dbh};
-   
+
    my $get_dbh = sub {
          eval {
             $dbh = $dp->get_dbh(
@@ -226,7 +226,7 @@ sub recurse_to_slaves {
       };
 	   if ( $EVAL_ERROR ) {
 		   if ( $args->{wait_no_die} ) {
-			   print STDERR "Error getting server id: ", $EVAL_ERROR, 
+			   print STDERR "Error getting server id: ", $EVAL_ERROR,
                "\nRetrying query for server ", $slave_dsn->{h}, ":", $slave_dsn->{P}, "\n";
             sleep 1;
             $dbh->disconnect();
