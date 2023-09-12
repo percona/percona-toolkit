@@ -44,9 +44,9 @@ func timelineFromPaths(paths []string, regexes types.RegexMap) (types.Timeline, 
 		}()
 
 		// it will iterate on stdout pipe results
-		localTimeline, err := iterateOnGrepResults(path, regexes, stdout)
-		if err != nil {
-			logger.Warn().Err(err).Msg("Failed to iterate on results")
+		localTimeline := iterateOnGrepResults(path, regexes, stdout)
+		if len(localTimeline) == 0 {
+			continue
 		}
 		found = true
 		logger.Debug().Str("path", path).Msg("Finished searching")
@@ -153,7 +153,7 @@ func sanitizeLine(s string) string {
 // iterateOnGrepResults will take line by line each logs that matched regex
 // it will iterate on every regexes in slice, and apply the handler for each
 // it also filters out --since and --until rows
-func iterateOnGrepResults(path string, regexes types.RegexMap, grepStdout <-chan string) (types.LocalTimeline, error) {
+func iterateOnGrepResults(path string, regexes types.RegexMap, grepStdout <-chan string) types.LocalTimeline {
 
 	var (
 		lt           types.LocalTimeline
@@ -178,7 +178,7 @@ func iterateOnGrepResults(path string, regexes types.RegexMap, grepStdout <-chan
 			continue
 		}
 		if CLI.Until != nil && date != nil && CLI.Until.Before(date.Time) {
-			return lt, nil
+			return lt
 		}
 		recentEnough = true
 
@@ -198,5 +198,5 @@ func iterateOnGrepResults(path string, regexes types.RegexMap, grepStdout <-chan
 		}
 
 	}
-	return lt, nil
+	return lt
 }
