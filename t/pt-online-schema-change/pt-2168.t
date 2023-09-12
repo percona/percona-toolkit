@@ -277,44 +277,56 @@ like(
 # We work only with replica with port 12347 here.
 diag("Starting replica lost and error tests");
 
-$slave_dbh2 = $sb->get_dbh_for('slave2');
-$slave_dbh2->do("install plugin simple_rewrite_plugin soname 'simple_rewrite_plugin.so'");
+SKIP: {
+   $slave_dbh2 = $sb->get_dbh_for('slave2');
+   eval { $slave_dbh2->do("install plugin simple_rewrite_plugin soname 'simple_rewrite_plugin.so'") };
+   if ( $EVAL_ERROR && $EVAL_ERROR !~ m/Function 'simple_rewrite_plugin' already exists/) {
+      skip 'These tests require simple_rewrite_plugin';
+   }
 
+   my @res = $slave_dbh2->selectrow_array("select count(*) from information_schema.plugins where plugin_name='simple_rewrite_plugin' and PLUGIN_STATUS='ACTIVE'");
+   if ( $res[0] != 1 ) {
+      skip 'These tests require simple_rewrite_plugin in active status';
+   }
 
-# get_dbh sets character set connection
-$master_dbh->do("UPDATE test_recursion_method.dsns SET dsn='D=test_recursion_method,t=dsns,P=12346,h=127.0.0.1,u=root,p=msandbox,A=utf8' WHERE id=1");
-$master_dbh->do("UPDATE test_recursion_method.dsns SET dsn='D=test_recursion_method,t=dsns,P=12347,h=127.0.0.1,u=root,p=msandbox,A=utf8' WHERE id=2");
+   # get_dbh sets character set connection
+   $master_dbh->do("UPDATE test_recursion_method.dsns SET dsn='D=test_recursion_method,t=dsns,P=12346,h=127.0.0.1,u=root,p=msandbox,A=utf8' WHERE id=1");
+   $master_dbh->do("UPDATE test_recursion_method.dsns SET dsn='D=test_recursion_method,t=dsns,P=12347,h=127.0.0.1,u=root,p=msandbox,A=utf8' WHERE id=2");
 
-error_test("setting character set", '(SET NAMES) \"([[:alpha:]]+[0-9]*)\"', '$1 $2$2');
+   error_test("setting character set", '(SET NAMES) \"([[:alpha:]]+[0-9]*)\"', '$1 $2$2');
 
-$master_dbh->do("UPDATE test_recursion_method.dsns SET dsn='D=test_recursion_method,t=dsns,P=12346,h=127.0.0.1,u=root,p=msandbox' WHERE id=1");
-$master_dbh->do("UPDATE test_recursion_method.dsns SET dsn='D=test_recursion_method,t=dsns,P=12347,h=127.0.0.1,u=root,p=msandbox' WHERE id=2");
+   $master_dbh->do("UPDATE test_recursion_method.dsns SET dsn='D=test_recursion_method,t=dsns,P=12346,h=127.0.0.1,u=root,p=msandbox' WHERE id=1");
+   $master_dbh->do("UPDATE test_recursion_method.dsns SET dsn='D=test_recursion_method,t=dsns,P=12347,h=127.0.0.1,u=root,p=msandbox' WHERE id=2");
 
-# get_dbh selects SQL mode
-error_test("selecting SQL mode", 'SELECT @@SQL_MODE', 'SELEC @@SQL_MODE');
+   # get_dbh selects SQL mode
+   error_test("selecting SQL mode", 'SELECT @@SQL_MODE', 'SELEC @@SQL_MODE');
 
-# get_dbh sets SQL mode
-error_test("setting SQL mode", 'SET @@SQL_QUOTE_SHOW_CREATE = 1', 'SE @@SQL_QUOTE_SHOW_CREATE = 1');
+   # get_dbh sets SQL mode
+   error_test("setting SQL mode", 'SET @@SQL_QUOTE_SHOW_CREATE = 1', 'SE @@SQL_QUOTE_SHOW_CREATE = 1');
 
-# get_dbh selects version
-error_test("selecting MySQL version", 'SELECT VERSION()', 'SELEC VERSION()');
+   # get_dbh selects version
+   error_test("selecting MySQL version", 'SELECT VERSION()', 'SELEC VERSION()');
 
-# get_dbh queries server character set
-error_test("querying server character set", "SHOW VARIABLES LIKE \\'character_set_server\\'", "SHO VARIABLES LIKE \\'character_set_server\\'");
+   # get_dbh queries server character set
+   error_test("querying server character set", "SHOW VARIABLES LIKE \\'character_set_server\\'", "SHO VARIABLES LIKE \\'character_set_server\\'");
 
-# get_dbh sets character set utf8mb4 in version 8+
-if ($sandbox_version ge '8.0') {
-   error_test("setting character set utf8mb4", "SET NAMES \\'utf8mb4\\'", "SET NAMES \\'utf8mb4utf8mb4\\'");
+   # get_dbh sets character set utf8mb4 in version 8+
+   if ($sandbox_version ge '8.0') {
+      error_test("setting character set utf8mb4", "SET NAMES \\'utf8mb4\\'", "SET NAMES \\'utf8mb4utf8mb4\\'");
+   }
+
+   # recurse_to_slaves asks for SERVER_ID
+   error_test("selecting server id", 'SELECT @@SERVER_ID', 'SELEC @@SERVER_ID');
+
+   # get_slave_status checks replica status
+   error_test("asking for replica status", 'SHOW SLAVE STATUS', 'SHO SLAVE STATUS');
+
+   # get_replication_filters checks variable slave_skip_errors
+   error_test("asking for variable slave_skip_errors", "SHOW VARIABLES LIKE \\'slave_skip_errors\\'", "SHO VARIABLES LIKE \\'slave_skip_errors\\'");
+
+   $slave_dbh2 = $sb->get_dbh_for('slave2');
+   $slave_dbh2->do("uninstall plugin simple_rewrite_plugin");
 }
-
-# recurse_to_slaves asks for SERVER_ID
-error_test("selecting server id", 'SELECT @@SERVER_ID', 'SELEC @@SERVER_ID');
-
-# get_slave_status checks replica status
-error_test("asking for replica status", 'SHOW SLAVE STATUS', 'SHO SLAVE STATUS');
-
-# get_replication_filters checks variable slave_skip_errors
-error_test("asking for variable slave_skip_errors", "SHOW VARIABLES LIKE \\'slave_skip_errors\\'", "SHO VARIABLES LIKE \\'slave_skip_errors\\'");
 
 # #############################################################################
 # Done.
@@ -329,7 +341,6 @@ $slave_dbh1->do('RESET SLAVE');
 $slave_dbh2->do('RESET SLAVE');
 $slave_dbh1->do('START SLAVE');
 $slave_dbh2->do('START SLAVE');
-$slave_dbh2->do("uninstall plugin simple_rewrite_plugin");
 
 diag(`mv $cnf.bak $cnf`);
 
