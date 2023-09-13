@@ -77,7 +77,7 @@ v3.5.1 released 2023-01-23
 New Features
 ------------------------------------------------------------
 
-* :jirabug:`PT-2134`: Adds support for PostgreSQL and MySQL operators. 
+* :jirabug:`PT-2134`: Adds support for PostgreSQL and MySQL operators.
 
 This feature includes the following changes:
 
@@ -108,7 +108,7 @@ Bugs Fixed
 
 * :jirabug:`PT-2139`: CVEs in golang binaries
 * :jirabug:`PT-2140`: Update modules in the main branch
-  
+
 
 v3.5.0 released 2022-11-28
 ==============================
@@ -125,7 +125,7 @@ Improvements
 
 * :jirabug:`PT-1718`: Have pt-stalk collect performance_schema.threads along with information_schema.processlist
 * :jirabug:`PT-2033`: Avoid running same query concurrently from pt-stalk
-* :jirabug:`PT-2013`: Change Percona Toolkit tool names to eliminate offensive terminology 
+* :jirabug:`PT-2013`: Change Percona Toolkit tool names to eliminate offensive terminology
 
 
 
@@ -144,8 +144,8 @@ Bugs Fixed
 * :jirabug:`PT-2079`: Incorrect version is returned
 * :jirabug:`PT-2075`: Fix tests for pt-stalk, so they can work with 8.0
 * :jirabug:`PT-1959`: go part of the toolkit still has the version 3.3.0
-  
-Packaging Notes 
+
+Packaging Notes
 ------------------------
 
 ``percona-toolkit`` is now available on Ubuntu 22.04 and Red Hat Enterprise Linux 9
@@ -182,7 +182,7 @@ Bugs Fixed
 * :jirabug:`PT-1965`: pt-stalk --mysql-only doesn't collect mysqladmin output
 * :jirabug:`PT-1966`: Test no_drop_no_swap for the pt-online-schema-change is broken
 * :jirabug:`PT-1974`: Support fingerprinting for --print in pt-kill
-* :jirabug:`PT-1983`: pt-summary missing one DIMM	
+* :jirabug:`PT-1983`: pt-summary missing one DIMM
 * :jirabug:`PT-2016`: pt-table-checksum fails to build replace query when table lacks primary key
 * :jirabug:`PT-2023`: pt-upgrade Error: Wide character in print
 
@@ -880,7 +880,7 @@ Changelog
 * Fixed bug 1523730:  pt-show-grants doesn't sort column-level privileges
 * Fixed bug 1362942:  pt-slave-restart fails on MariaDB 10.0.13 (gtid_mode confusion)
 * Fixed bug PT-30  :  pt-stalk: new var binlog_error_action causes bug in collect module
-* Fixed bug 1389041:  pt-table-checksum has high likelyhood to skip a table when row count is around chunk-size * chunk-size-limit
+* Fixed bug 1389041:  pt-table-checksum has high likelihood to skip a table when row count is around chunk-size * chunk-size-limit
 * Fixed bug 1480719:  pt-table-checksum redundant argument in printf
 
 v2.2.16 released 2015-11-09
@@ -945,7 +945,7 @@ v2.2.15 released 2015-08-28
 
   Before, the tool would die if any slave connection was lost. Now the tool waits forever for slaves.
 
-* 1056507: ``pt-archiver --check-slave-lag`` agressiveness
+* 1056507: ``pt-archiver --check-slave-lag`` aggressiveness
 
   The tool now checks replication lag every 100 rows instead of every row, which significantly improves efficiency.
 
@@ -961,7 +961,7 @@ v2.2.15 released 2015-08-28
 
   When comparing table size with the slave table, the tool now ignores ``--chunk-size-limit`` if it is set to zero to avoid multiplying by zero.
 
-* 1443763: Update documentation and/or implentation of ``pt-archiver --check-interval``
+* 1443763: Update documentation and/or implementation of ``pt-archiver --check-interval``
 
   Fixed the documentation for ``--check-interval`` to reflect its correct behavior.
 
@@ -1121,7 +1121,7 @@ Bugs Fixed:
 
 * Fixed bug 1269695: pt-online-schema-change documentation now contains more information about limitations on why it isn't running ``ALTER TABLE`` for a table which has only a non-unique index.
 
-* Fixed bug 1328686: Running pt-hearbeat with --check-read-only option would cause an error when running on server with ``read_only`` option. Tool now waits for server ``read_only`` status to be disabled before starting to run.
+* Fixed bug 1328686: Running pt-heartbeat with --check-read-only option would cause an error when running on server with ``read_only`` option. Tool now waits for server ``read_only`` status to be disabled before starting to run.
 
 * Fixed bug 1373937: pt-table-checksum now supports ``none`` as valid ``--recursion-method`` when using with Percona XtraDB Cluster.
 
@@ -1211,7 +1211,7 @@ Bugs Fixed:
 
 * Fixed bug 1258135: pt-deadlock-logger was inserting older deadlocks into the ``deadlock`` table even if it was already there creating unnecessary noise. For example, if the deadlock happened 1 year ago, and MySQL keeps it in the memory and pt-deadlock-logger would ``INSERT`` it into ``percona.deadlocks`` table every minute all the time until server was restarted. This was fixed by comparing with the last deadlock fingerprint before issuing the ``INSERT`` query.
 
-* Fixed bug 1329422: pt-online-schema-change foreign-keys-method=none can break FK constraints in a way that is hard to recover from. Allthough this method of handling foreign key constraints is provided so that the database administrator can disable the tool's built-in functionality if desired, a warning and confirmation request when using alter-foreign-keys-method "none" has been added to warn users when using this option.
+* Fixed bug 1329422: pt-online-schema-change foreign-keys-method=none can break FK constraints in a way that is hard to recover from. Although this method of handling foreign key constraints is provided so that the database administrator can disable the tool's built-in functionality if desired, a warning and confirmation request when using alter-foreign-keys-method "none" has been added to warn users when using this option.
 
 Changelog
 ---------
@@ -1232,7 +1232,7 @@ New Features:
 * pt-agent has been replaced by percona-agent. More information on percona-agent can be found in the `Introducing the 3-Minute MySQL Monitor <http://www.mysqlperformanceblog.com/2014/05/23/3-minute-mysql-monitor/>`_ blogpost.
 * pt-slave-restart now supports MySQL 5.6 global transaction IDs.
 
-* pt-table-checkum now has new --plugin option which is similar to pt-online-schema-change --plugin
+* pt-table-checksum now has new --plugin option which is similar to pt-online-schema-change --plugin
 
 Bugs Fixed:
 
@@ -1450,7 +1450,7 @@ v2.2.2 released 2013-04-24
 
 Percona Toolkit 2.2.2 has been released.  This is the second release of
 the 2.2 series and aims to fix bugs in the previous release and provide
-usability enhacements to the toolkit.
+usability enhancements to the toolkit.
 
 Users may note the revival of the --show-all option in pt-query-digest.
 This had been removed in 2.2.1, but resulted in too much output in
@@ -2187,7 +2187,7 @@ Changelog
 * Fixed bug 978432: pt-table-checksum ignoring primary key
 * Fixed bug 995274: pt-table-checksum can't use an undefined value as an ARRAY reference at line 2206
 * Fixed bug 996110: pt-table-checksum crashes if InnoDB is disabled
-* Fixed bug 987393: pt-table-checksum: Empy tables cause "undefined value as an ARRAY" errors
+* Fixed bug 987393: pt-table-checksum: Empty tables cause "undefined value as an ARRAY" errors
 * Fixed bug 1002365: pt-table-sync --ignore-* options don't work with --replicate
 * Fixed bug 1003014: pt-table-sync --replicate and --sync-to-master error "index does not exist"
 * Fixed bug 823403: pt-table-sync --lock-and-rename doesn't work on 5.1

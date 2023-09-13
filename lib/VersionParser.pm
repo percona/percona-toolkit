@@ -115,7 +115,7 @@ my @methods = qw(major minor revision);
 sub cmp {
    my ($left, $right) = @_;
    # If the first object is blessed and ->isa( self's class ), then
-   # just use that; Otherwise, contruct a new VP object from it.
+   # just use that; Otherwise, construct a new VP object from it.
    my $right_obj = (blessed($right) && $right->isa(ref($left)))
                    ? $right
                    : ref($left)->new($right);

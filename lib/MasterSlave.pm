@@ -187,7 +187,7 @@ sub recurse_to_slaves {
    }
 
    my $dbh = $args->{dbh};
-   
+
    DBH: {
       if ( !defined $dbh ) {
          foreach my $known_slave ( @{$args->{slaves}} ) {

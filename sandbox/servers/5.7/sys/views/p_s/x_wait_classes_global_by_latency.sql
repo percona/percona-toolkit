@@ -15,7 +15,7 @@
 
 --
 -- View: x$wait_classes_global_by_latency
--- 
+--
 -- Lists the top wait classes by total latency, ignoring idle (this may be very large).
 --
 -- mysql> SELECT * FROM x$wait_classes_global_by_latency;
@@ -34,7 +34,7 @@
 CREATE OR REPLACE
   ALGORITHM = TEMPTABLE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW x$wait_classes_global_by_latency (
   event_class,
   total,
@@ -43,7 +43,7 @@ VIEW x$wait_classes_global_by_latency (
   avg_latency,
   max_latency
 ) AS
-SELECT SUBSTRING_INDEX(event_name,'/', 3) AS event_class, 
+SELECT SUBSTRING_INDEX(event_name,'/', 3) AS event_class,
        SUM(COUNT_STAR) AS total,
        SUM(sum_timer_wait) AS total_latency,
        MIN(min_timer_wait) AS min_latency,
@@ -52,5 +52,5 @@ SELECT SUBSTRING_INDEX(event_name,'/', 3) AS event_class,
   FROM performance_schema.events_waits_summary_global_by_event_name
  WHERE sum_timer_wait > 0
    AND event_name != 'idle'
- GROUP BY SUBSTRING_INDEX(event_name,'/', 3) 
+ GROUP BY SUBSTRING_INDEX(event_name,'/', 3)
  ORDER BY SUM(sum_timer_wait) DESC;

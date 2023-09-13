@@ -15,7 +15,7 @@ const (
 	maxDepthLevel = 10
 )
 
-// Fingerprint models the MongnDB query fingeprint result fields.
+// Fingerprint models the MongnDB query fingerprint result fields.
 type Fingerprint struct {
 	Namespace   string
 	Operation   string

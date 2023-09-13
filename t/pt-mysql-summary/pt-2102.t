@@ -21,7 +21,6 @@ local $ENV{PTDEBUG} = "";
 my $dp         = new DSNParser(opts=>$dsn_opts);
 my $sb         = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
-my $has_keyring_plugin;
 
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
@@ -29,24 +28,6 @@ if ( !$master_dbh ) {
 else {
    plan tests => 3;
 }
-
-my $db_flavor = VersionParser->new($master_dbh)->flavor();
-if ( $db_flavor =~ m/Percona Server/ ) {
-    my $rows = $master_dbh->selectall_hashref("SHOW PLUGINS", "name");
-    while (my ($key, $values) = each %$rows) {
-        if ($key =~ m/^keyring_/) {
-            $has_keyring_plugin=1;
-            last;
-        }
-    }
-}
-
-# mysqldump from earlier versions doesn't seem to work with 5.6,
-# so use the actual mysqldump from each MySQL bin which should
-# always be compatible with itself.
-# We need LC_NUMERIC=POSIX, so test does not fail in environment 
-# which use , insead of . for numbers.
-my $env = qq\CMD_MYSQLDUMP="$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqldump" LC_NUMERIC=POSIX\;
 
 #
 # --save-samples

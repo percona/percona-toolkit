@@ -67,7 +67,7 @@ ok(
 my @files = glob("$dir/*");
 my $n_files = scalar @files;
 ok(
-   $n_files >= 15 && $n_files <= 18,
+   $n_files >= 15 && $n_files <= 19,
    "And leaves all files in there"
 ) or diag($n_files, `ls -l $dir`);
 
@@ -98,12 +98,12 @@ like(
 );
 
 # --read-samples
-for my $i (2..7) {
+for my $i (2..9) {
    ok(
       no_diff(
          sub {
             local $ENV{_NO_FALSE_NEGATIVES} = 1;
-            print `$env $trunk/bin/$tool --read-samples $trunk/t/pt-mysql-summary/samples/temp00$i  -- --defaults-file=/tmp/12345/my.sandbox.cnf | tail -n+3 | perl -wlnpe 's/Skipping schema analysis.*/Specify --databases or --all-databases to dump and summarize schemas/' | grep -v jemalloc`
+            print `$env $trunk/bin/$tool --read-samples $trunk/t/pt-mysql-summary/samples/temp_enc00$i  -- --defaults-file=/tmp/12345/my.sandbox.cnf | tail -n+3 | perl -wlnpe 's/Skipping schema analysis.*/Specify --databases or --all-databases to dump and summarize schemas/'`
          },
          "t/pt-mysql-summary/samples/expected_output_temp_enc00$i.txt",
       ),
@@ -139,19 +139,19 @@ like(
 
 like(
    $out,
-   qr/Keyring plugins/,
+   qr/Keyring plugins:/,
    "Keyring plugins included in report"
 ) or diag $out;
 
 like(
    $out,
-   qr/Encrypted tables/,
+   qr/Encrypted tables:/,
    "Encrypted tables included in report"
 ) or diag $out;
 
 like(
    $out,
-   qr/Encrypted tablespaces/,
+   qr/Encrypted tablespaces:/,
    "Encrypted tablespaces included in report"
 ) or diag $out;
 

@@ -105,7 +105,7 @@ percona-toolkit (3.0.4-1) unstable; urgency=low
 percona-toolkit (3.0.3-1) unstable; urgency=low
 
  * Fixed bug PT-133 : Sandbox won't start correctly if autocommit=0 in my.cnf
- * Fixed bug PT-132 : pt-online-schema-change should imply --no-drop-new-table 
+ * Fixed bug PT-132 : pt-online-schema-change should imply --no-drop-new-table
  * Fixed bug PT-130 : Fixed pt-mext not working with not empty Rsa_public_key
  * Fixed bug PT-128 : pt-stalk ps include memory usage outputs
  * Fixed bug PT-126 : Recognize comments in ALTER
@@ -146,7 +146,7 @@ percona-toolkit (3.0-1) unstable; urgency=low
  * Fixed bug 1402776: Improved fix (protocol parser fix): error when parsing tcpdump capture with pt-query-digest
  * Fixed bug 1632522: pt-osc: Fails with duplicate key in table for self-referencing (Thanks Amiel Marqeta)
  * Fixed bug 1654668: pt-summary exists with an error (Thanks Marcelo Altmann)
- * New tool         : pt-mongodb-summary 
+ * New tool         : pt-mongodb-summary
  * New tool         : pt-mongodb-query-digest
 
  -- Percona Toolkit Developers <toolkit-dev@percona.com>  Fri, 03 Feb 2017 23:23:31 +0000
@@ -192,7 +192,7 @@ percona-toolkit (2.2.17-1) unstable; urgency=low
  * Fixed bug 1523730:  pt-show-grants doesn't sort column-level privileges
  * Fixed bug 1362942:  pt-slave-restart fails on MariaDB 10.0.13 (gtid_mode confusion)
  * Fixed bug PT-30:    pt-stalk: new var binlog_error_action causes bug in collect module
- * Fixed bug 1389041:  pt-table-checksum has high likelyhood to skip a table when row count is around chunk-size * chunk-size-limit
+ * Fixed bug 1389041:  pt-table-checksum has high likelihood to skip a table when row count is around chunk-size * chunk-size-limit
  * Fixed bug 1480719:  pt-table-checksum redundant argument in printf
 
  -- Percona Toolkit Developers <toolkit-dev@percona.com>  Fri, 04 Mar 2016 12:09:54 +0000
@@ -228,7 +228,7 @@ percona-toolkit (2.2.15-2) unstable; urgency=low
   * Fixed bug 1457573: pt-sift failed when fetching missing tools
   * Feature   1488600: pt-stalk monitors tokudb status
   * Fixed bug 1042727: pt-table-checksum doesn't reconnect to slaves when timed out on very long lags
-  * Fixed bug 1277049: passsword parameter must escape commas - all tools [DOC]
+  * Fixed bug 1277049: password parameter must escape commas - all tools [DOC]
   * Fixed bug BLD-271: changes needed to build packages from git tree
   * Fixed bug PT-21  : write-user-docs script stopped working after switching to github
   * Fixed bug 1488611: testing bugs related to newer perl versions
@@ -260,19 +260,19 @@ percona-toolkit (2.2.14) unstable; urgency=low
 
 percona-toolkit (2.2.13) unstable; urgency=low
 
-  * Feature   1391240:  pt-kill added query fingerprint hash to output 
-  * Fixed bug 1402668:  pt-mysql-summary fails on cluster in Donor/Desynced status 
-  * Fixed bug 1396870:  pt-online-schema-change CTRL+C leaves terminal in inconsistent state 
+  * Feature   1391240:  pt-kill added query fingerprint hash to output
+  * Fixed bug 1402668:  pt-mysql-summary fails on cluster in Donor/Desynced status
+  * Fixed bug 1396870:  pt-online-schema-change CTRL+C leaves terminal in inconsistent state
   * Fixed bug 1396868:	pt-online-schema-change --ask-pass option error
-  * Fixed bug 1266869:  pt-stalk fails to start if $HOME environment variable is not set 
+  * Fixed bug 1266869:  pt-stalk fails to start if $HOME environment variable is not set
   * Fixed bug 1019479:	pt-table-checksum does not work with sql_mode ONLY_FULL_GROUP_BY
   * Fixed bug 1394934:  pt-table-checksum error in debug mode
-  * Fixed bug 1321297:  pt-table-checksum reports diffs on timestamp columns in 5.5 vs 5.6 
+  * Fixed bug 1321297:  pt-table-checksum reports diffs on timestamp columns in 5.5 vs 5.6
   * Fixed bug 1399789:	pt-table-checksum fails to find pxc nodes when wsrep_node_incoming_address is set to AUTO
   * Fixed bug 1388870:  pt-table-checksum has some errors with different time zones
   * Fixed bug 1408375:  vulnerable to MITM attack which would allow exfiltration of MySQL configuration information via --version-check
-  * Fixed bug 1404298:  missing MySQL5.7 test files for pt-table-checksum 
-  * Fixed bug 1403900:  added sandbox and fixed sakila test db for 5.7 
+  * Fixed bug 1404298:  missing MySQL5.7 test files for pt-table-checksum
+  * Fixed bug 1403900:  added sandbox and fixed sakila test db for 5.7
 
  -- Percona Toolkit Developers <toolkit-dev@percona.com>  Fri, 23 Jan 2015 10:08:15 +0000
 
@@ -284,7 +284,7 @@ percona-toolkit (2.2.12) unstable; urgency=low
   * Fixed bug 1217466:	pt-table-checksum refuses to run on PXC if server_id is the same on all nodes
   * Fixed bug 1373937:	pt-table-checksum requires recursion when working with and XtraDB Cluster node
   * Fixed bug 1377888:	pt-query-digest manual for --type binlog is ambiguous
-  * Fixed bug 1349086:	pt-stalk should also gather dmesg output 
+  * Fixed bug 1349086:	pt-stalk should also gather dmesg output
   * Fixed bug 1361293:	Some scripts fail when no-version-check option is put in global config file
 
  -- Percona Toolkit Developers <toolkit-dev@percona.com>  Tue, 11 Nov 2014 13:02:51 +0000
@@ -303,22 +303,22 @@ percona-toolkit (2.2.11) unstable; urgency=low
 
 percona-toolkit (2.2.10) unstable; urgency=low
 
-  * Fixed bug 1287253: pt-table-checksum deadlock 
+  * Fixed bug 1287253: pt-table-checksum deadlock
   * Fixed bug 1299387: 5.6 slow query log Thead_id becomes Id
   * Fixed bug 1311654: pt-table-checksum + PXC inconsistent results upon --resume
   * Fixed bug 1340728: pt-online-schema-change doesn't work with HASH indexes
   * Fixed bug 1253872: pt-table-checksum max load 20% rounds down
-  * Fixed bug 1340364: some shell tools output error when queried for --version 
+  * Fixed bug 1340364: some shell tools output error when queried for --version
 
  -- Percona Toolkit Developers <toolkit-dev@percona.com>  Wed, 06 Aug 2014 19:53:53 +0000
 
 percona-toolkit (2.2.9) unstable; urgency=low
 
   * Fixed bug 1258135: pt-deadlock-logger introduces a noise to MySQL
-  * Fixed bug 1329422: pt-online-schema-change foreign-keys-method=none breaks constraints 
-  * Fixed bug 1315130: pt-online-schema-change not properly detecting foreign keys 
+  * Fixed bug 1329422: pt-online-schema-change foreign-keys-method=none breaks constraints
+  * Fixed bug 1315130: pt-online-schema-change not properly detecting foreign keys
   * Fixed bug 1335960: pt-query-digest cannot parse binlogs from 5.6
-  * Fixed bug 1335322: pt-stalk fails when variable or threshold is non-integer 
+  * Fixed bug 1335322: pt-stalk fails when variable or threshold is non-integer
 
  -- Percona Toolkit Developers <toolkit-dev@percona.com>  Tue, 08 Jul 2014 12:04:05 +0000
 
@@ -384,7 +384,7 @@ percona-toolkit (2.2.5) unstable; urgency=low
   * Fixed bug #1226721: pt-agent on CentOS 5 fails to send data
   * Fixed bug #821690: pt-query-digest doesn't distill IF EXISTS correctly
   * Fixed bug #1206677: pt-agent docs reference clodu.percona.com
-  
+
  -- Percona Toolkit Developers <toolkit-dev@percona.com>  Thu, 17 Oct 2013 05:00:27 +0000
 
 percona-toolkit (2.2.3) unstable; urgency=low
@@ -611,7 +611,7 @@ percona-toolkit (2.1.3) unstable; urgency=low
   * Fixed bug 954990: pt-stalk --nostalk does not work
   * Fixed bug 977226: pt-summary doesn't detect LSI RAID control
   * Fixed bug 1030031: pt-table-checksum reports wrong number of DIFFS
-  * Fixed bug 916168: pt-table-checksum privilege check fails on MySQL 5.5 
+  * Fixed bug 916168: pt-table-checksum privilege check fails on MySQL 5.5
   * Fixed bug 950294: pt-table-checksum should always create schema and tables with IF NOT EXISTS
   * Fixed bug 953141: pt-table-checksum ignores its default and explicit --recursion-method
   * Fixed bug 1030975: pt-table-sync crashes if sql_mode includes ANSI_QUOTES
@@ -684,7 +684,7 @@ percona-toolkit (2.1.2) unstable; urgency=low
   * Fixed bug 978432: pt-table-checksum ignoring primary key
   * Fixed bug 995274: pt-table-checksum can't use an undefined value as an ARRAY reference at line 2206
   * Fixed bug 996110: pt-table-checksum crashes if InnoDB is disabled
-  * Fixed bug 987393: pt-table-checksum: Empy tables cause "undefined value as an ARRAY" errors
+  * Fixed bug 987393: pt-table-checksum: Empty tables cause "undefined value as an ARRAY" errors
   * Fixed bug 1002365: pt-table-sync --ignore-* options don't work with --replicate
   * Fixed bug 1003014: pt-table-sync --replicate and --sync-to-master error "index does not exist"
   * Fixed bug 823403: pt-table-sync --lock-and-rename doesn't work on 5.1

@@ -700,10 +700,10 @@ sub meta {
 # ###########################################################################
 # Lmo::Types package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo/Types.pm
 #   t/lib/Lmo/Types.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Lmo::Types;
@@ -729,7 +729,7 @@ our %TYPES = (
    } qw(Array Code Hash Regexp Glob Scalar)
 );
 
-sub check_type_constaints {
+sub check_type_constraints {
    my ($attribute, $type_check, $check_name, $val) = @_;
    ( ref($type_check) eq 'CODE'
       ? $type_check->($val)
@@ -801,10 +801,10 @@ sub _nested_constraints {
 # ###########################################################################
 # Lmo package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo.pm
 #   t/lib/Lmo.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 BEGIN {
@@ -919,7 +919,7 @@ sub has {
          
          my $check_sub = sub {
             my ($new_val) = @_;
-            Lmo::Types::check_type_constaints($attribute, $type_check, $check_name, $new_val);
+            Lmo::Types::check_type_constraints($attribute, $type_check, $check_name, $new_val);
          };
          
          $class_metadata->{$attribute}{isa} = [$check_name, $check_sub];
@@ -1137,10 +1137,10 @@ sub override {
 # ###########################################################################
 # OptionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/OptionParser.pm
 #   t/lib/OptionParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package OptionParser;
@@ -2829,10 +2829,10 @@ sub _d {
 # ###########################################################################
 # QueryRewriter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/QueryRewriter.pm
 #   t/lib/QueryRewriter.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package QueryRewriter;
@@ -3041,7 +3041,7 @@ sub distill_verbs {
       $query =~ s/\s+IF(?:\s+NOT)?\s+EXISTS/ /i;
       my ( $obj ) = $query =~ m/$dds.+(DATABASE|TABLE)\b/i;
       $obj = uc $obj if $obj;
-      PTDEBUG && _d('Data def statment:', $dds, 'obj:', $obj);
+      PTDEBUG && _d('Data def statement:', $dds, 'obj:', $obj);
       my ($db_or_tbl)
          = $query =~ m/(?:TABLE|DATABASE)\s+($QueryParser::tbl_ident)(\s+.*)?/i;
       PTDEBUG && _d('Matches db or table:', $db_or_tbl);
@@ -3641,10 +3641,10 @@ sub _d {
 # ###########################################################################
 # VersionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/VersionParser.pm
 #   t/lib/VersionParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package VersionParser;
@@ -3662,8 +3662,6 @@ use overload (
 );
 
 use Carp ();
-
-our $VERSION = 0.01;
 
 has major => (
     is       => 'ro',
@@ -4146,7 +4144,7 @@ sub parse_insert {
             (?:INTO\s+)?            # INTO, optional
             (.+?)\s+                # table ref
             (\([^\)]+\)\s+)?        # column list, optional
-            (VALUE.?|SET|SELECT)\s+ # start of next caluse
+            (VALUE.?|SET|SELECT)\s+ # start of next clause
          /xgci)
    ) {
       my $tbl  = shift @into;  # table ref
@@ -4327,7 +4325,7 @@ sub parse_table_reference {
 
    if ( $tbl_ref =~ s/
          \s+(
-            (?:FORCE|USE|INGORE)\s
+            (?:FORCE|USE|IGNORE)\s
             (?:INDEX|KEY)
             \s*\([^\)]+\)\s*
          )//xi)
@@ -7727,7 +7725,7 @@ sub main {
                return;        # 1. exit pipeline early
             }
 
-            # There's input and time left so keep runnning...
+            # There's input and time left so keep running...
             if ( $args->{event} ) {
                PTDEBUG && _d("Event in pipeline, continuing");
                return $args;

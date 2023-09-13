@@ -326,7 +326,7 @@ sub make_row_checksum {
    my $query;
    if ( !$args{no_cols} ) {
       $query = join(', ',
-                  map { 
+                  map {
                      my $col = $_;
                      if ( $col =~ m/\+ 0/ ) {
                         # Alias col name back to itself else its name becomes

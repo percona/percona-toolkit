@@ -21,9 +21,7 @@ use File::Temp qw/ tempdir tempfile /;
 
 if ($ENV{PERCONA_SLOW_BOX}) {
     plan skip_all => 'This test needs a fast machine';
-} else {
-    plan tests => 6;
-}                                  
+} 
 
 our $delay = 30;
 
@@ -35,6 +33,11 @@ require "$trunk/bin/pt-online-schema-change";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+if ($sb->is_cluster_mode) {
+    plan skip_all => 'Not for PXC';
+} else {
+    plan tests => 6;
+}                                  
 my $master_dbh = $sb->get_dbh_for('master');
 my $slave_dbh = $sb->get_dbh_for('slave1');
 my $master_dsn = 'h=127.0.0.1,P=12345,u=msandbox,p=msandbox';

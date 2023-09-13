@@ -832,46 +832,50 @@ test_alter_table(
 # --recursion-method=dns  (lp: 1523685)
 # #############################################################################
 
-$sb->load_file('master', "$sample/create_dsns.sql");
+SKIP: {
+   skip 'Not for PXC' if ( $sb->is_cluster_mode );
 
-($output, $exit) = full_output(
-   sub { pt_online_schema_change::main(@args,
-      "$dsn,D=sakila,t=actor", ('--recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox',  
-          '--alter-foreign-keys-method', 'rebuild_constraints', '--execute', '--alter', 'ENGINE=InnoDB')) 
-       },
-   stderr => 1,
-);
+   $sb->load_file('master', "$sample/create_dsns.sql");
 
-like(
+   ($output, $exit) = full_output(
+      sub { pt_online_schema_change::main(@args,
+         "$dsn,D=sakila,t=actor", ('--recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox',  
+             '--alter-foreign-keys-method', 'rebuild_constraints', '--execute', '--alter', 'ENGINE=InnoDB')) 
+          },
+      stderr => 1,
+   ); 
+
+   like(
       $output,
       qr/Found 2 slaves.*Successfully altered/si,
       "--recursion-method=dns works"
-);
+   );
 
-$master_dbh->do("DROP DATABASE test_recursion_method");
+   $master_dbh->do("DROP DATABASE test_recursion_method");
 
-diag("Reloading sakila");
-my $master_port = $sb->port_for('master');
-system "$trunk/sandbox/load-sakila-db $master_port";
-$sb->wait_for_slaves();
+   diag("Reloading sakila");
+   my $master_port = $sb->port_for('master');
+   system "$trunk/sandbox/load-sakila-db $master_port";
+   $sb->wait_for_slaves();
 
-$sb->do_as_root("slave1", q/CREATE USER 'slave_user'@'%' IDENTIFIED BY 'slave_password'/);
-$sb->do_as_root("slave1", q/GRANT SELECT, INSERT, UPDATE, SUPER, REPLICATION SLAVE ON *.* TO 'slave_user'@'%'/);
+   $sb->do_as_root("slave1", q/CREATE USER 'slave_user'@'%' IDENTIFIED BY 'slave_password'/);
+   $sb->do_as_root("slave1", q/GRANT SELECT, INSERT, UPDATE, SUPER, REPLICATION SLAVE ON *.* TO 'slave_user'@'%'/);
 
-test_alter_table(
-   name       => "--slave-user --slave-password",
-   file       => "basic_no_fks_innodb.sql",
-   table      => "pt_osc.t",
-   test_type  => "add_col",
-   new_col    => "bar",
-   cmds       => [
-         qw(--execute --slave-user slave_user --slave-password slave_password), '--alter', 'ADD COLUMN bar INT',
-   ],
-);
+   test_alter_table(
+      name       => "--slave-user --slave-password",
+      file       => "basic_no_fks_innodb.sql",
+      table      => "pt_osc.t",
+      test_type  => "add_col",
+      new_col    => "bar",
+      cmds       => [
+            qw(--execute --slave-user slave_user --slave-password slave_password), '--alter', 'ADD COLUMN bar INT',
+      ],
+   );
+   $sb->do_as_root("slave1", q/DROP USER 'slave_user'@'%'/);
+}
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->do_as_root("slave1", q/DROP USER 'slave_user'@'%'/);
 
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");

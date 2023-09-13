@@ -35,7 +35,7 @@ Architecture | CPU = 32-bit, OS = 32-bit
          hda | [cfq] 128
          hdc | [cfq] 128
          md0 | UNREADABLE
-# Disk Partioning ############################################
+# Disk Partitioning ##########################################
 Device       Type      Start        End               Size
 ============ ==== ========== ========== ==================
 # Kernel Inode State #########################################

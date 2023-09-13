@@ -50,10 +50,10 @@ func TestIndividualFiles(t *testing.T) {
 		t.Skip("TestIndividualFiles requires K8SPXC")
 	}
 	tests := []struct {
-		name        string
-		cmd         []string
-		want        []string
-		preprocesor func(string) string
+		name         string
+		cmd          []string
+		want         []string
+		preprocessor func(string) string
 	}{
 		{
 			// If the tool collects required log files
@@ -61,7 +61,7 @@ func TestIndividualFiles(t *testing.T) {
 			// tar -tf cluster-dump-test.tar.gz --wildcards 'cluster-dump/*/var/lib/mysql/*'
 			cmd:  []string{"tar", "-tf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/var/lib/mysql/*"},
 			want: []string{"auto.cnf", "grastate.dat", "gvwstate.dat", "innobackup.backup.log", "innobackup.move.log", "innobackup.prepare.log", "mysqld-error.log", "mysqld.post.processing.log"},
-			preprocesor: func(in string) string {
+			preprocessor: func(in string) string {
 				files := strings.Split(in, "\n")
 				var result []string
 				for _, f := range files {
@@ -80,7 +80,7 @@ func TestIndividualFiles(t *testing.T) {
 			// tar --to-command="grep -m 1 -o Version:" -xzf cluster-dump-test.tar.gz --wildcards 'cluster-dump/*/var/lib/mysql/mysqld-error.log'
 			cmd:  []string{"tar", "--to-command", "grep -m 1 -o Version:", "-xzf", "cluster-dump.tar.gz", "--wildcards", "cluster-dump/*/var/lib/mysql/mysqld-error.log"},
 			want: []string{"Version:"},
-			preprocesor: func(in string) string {
+			preprocessor: func(in string) string {
 				nl := strings.Index(in, "\n")
 				if nl == -1 {
 					return ""

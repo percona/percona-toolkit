@@ -50,7 +50,7 @@ collect() {
    local p="$2"  # prefix for each result file
 
    local cnt=$(($OPT_RUN_TIME / $OPT_SLEEP_COLLECT))
-   
+
    if [ ! "$OPT_SYSTEM_ONLY" ]; then
       local mysqld_pid=""
       local mysql_version=""
@@ -68,10 +68,10 @@ collect() {
    fi
 
    # Grab a few general things first.  Background all of these so we can start
-   # them all up as quickly as possible.  
-   if [ ! "$OPT_MYSQL_ONLY" ]; then 
+   # them all up as quickly as possible.
+   if [ ! "$OPT_MYSQL_ONLY" ]; then
       collect_system_data
-   fi 
+   fi
 
    # This loop gathers data for the rest of the duration, and defines the time
    # of the whole job.
@@ -172,7 +172,7 @@ collect_mysql_data_one() {
       $CMD_MYSQLADMIN $EXT_ARGV
    else
       log "Could not find the MySQL error log"
-   fi 
+   fi
    # Get a sample of these right away, so we can get these without interaction
    # with the other commands we're about to run.
    if [ "${mysql_version}" '>' "5.1" ]; then
@@ -255,7 +255,7 @@ collect_system_data() {
    if [ "$CMD_DMESG" ]; then
       local UPTIME=`cat /proc/uptime | awk '{ print $1 }'`
       local START_TIME=$(echo "$UPTIME 60" | awk '{print ($1 - $2)}')
-      $CMD_DMESG  | perl -ne 'm/\[\s*(\d+)\./; if ($1 > '${START_TIME}') { print }' >> "$d/$p-dmesg" & 
+      $CMD_DMESG  | perl -ne 'm/\[\s*(\d+)\./; if ($1 > '${START_TIME}') { print }' >> "$d/$p-dmesg" &
    fi
 
    if [ "$CMD_VMSTAT" ]; then
@@ -288,7 +288,7 @@ collect_mysql_data_loop() {
       (echo $ts; ps_prepared_statements "$d/prepared_statements.isrunnning") >> "$d/$p-prepared-statements" &
    fi
 
-   slave_status "$d/$p-slave-status" "${mysql_version}" 
+   slave_status "$d/$p-slave-status" "${mysql_version}"
 }
 
 collect_system_data_loop() {
@@ -473,7 +473,7 @@ lock_waits() {
 
       rm "$flag_file"
    fi
-} 
+}
 
 transactions() {
    $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_TRX ORDER BY trx_id\G"
@@ -532,8 +532,8 @@ rocksdb_status() {
 }
 
 ps_locks_transactions() {
-   local outfile=$1 
-   
+   local outfile=$1
+
    $CMD_MYSQL $EXT_ARGV -e 'select @@performance_schema' | grep "1" &>/dev/null
 
    if [ $? -eq 0 ]; then
@@ -606,7 +606,7 @@ slave_status() {
 }
 
 collect_mysql_variables() {
-   local outfile=$1 
+   local outfile=$1
 
    local sql="SHOW GLOBAL VARIABLES"
    echo -e "\n$sql\n" >> $outfile
@@ -615,11 +615,11 @@ collect_mysql_variables() {
    sql="select * from performance_schema.variables_by_thread order by thread_id, variable_name;"
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
-   
+
    sql="select * from performance_schema.user_variables_by_thread order by thread_id, variable_name;"
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
-   
+
    sql="select * from performance_schema.status_by_thread order by thread_id, variable_name; "
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile

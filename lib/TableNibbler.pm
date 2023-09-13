@@ -73,7 +73,7 @@ sub generate_asc_stmt {
    # a nonexistent index.
    die "Index '$index' does not exist in table"
       unless exists $tbl_struct->{keys}->{$index};
-   PTDEBUG && _d('Will ascend index', $index);  
+   PTDEBUG && _d('Will ascend index', $index);
 
    # These are the columns we'll ascend.
    my @asc_cols = @{$tbl_struct->{keys}->{$index}->{cols}};

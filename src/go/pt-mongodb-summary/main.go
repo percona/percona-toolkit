@@ -937,7 +937,7 @@ func parseFlags() (*cliOptions, error) {
 	)
 
 	gop.IntVarLong(&opts.RunningOpsInterval, "running-ops-interval", 'i',
-		fmt.Sprintf("Interval to wait betwwen running ops samples in milliseconds. Default %d milliseconds",
+		fmt.Sprintf("Interval to wait between running ops samples in milliseconds. Default %d milliseconds",
 			opts.RunningOpsInterval),
 	)
 

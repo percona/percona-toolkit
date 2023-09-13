@@ -29,7 +29,7 @@ set -u
 
 # This is inside a function so it can take into account our PATH mungling.
 setup_commands () {
-   # While extremely unwieldly, this allows us to fake the commands when testing.
+   # While extremely unwieldy, this allows us to fake the commands when testing.
    CMD_SYSCTL="$(_which sysctl 2>/dev/null )"
    CMD_DMIDECODE="$(_which dmidecode 2>/dev/null )"
    CMD_ZONENAME="$(_which zonename 2>/dev/null )"
@@ -106,7 +106,7 @@ collect_system_data () { local PTFUNCNAME=collect_system_data;
    raid_controller   "$data_dir/dmesg_file" "$data_dir/lspci_file" >> "$data_dir/summary"
 
    local controller="$(get_var raid_controller "$data_dir/summary")"
-   propietary_raid_controller "$data_dir/raid-controller" "$data_dir/summary" "$data_dir" "$controller"
+   proprietary_raid_controller "$data_dir/raid-controller" "$data_dir/summary" "$data_dir" "$controller"
 
    [ "${platform}" = "Linux" ] && linux_exclusive_collection "$data_dir"
 
@@ -136,7 +136,7 @@ collect_system_data () { local PTFUNCNAME=collect_system_data;
 
    # Fusion-io cards
    fio_status_minus_a "$data_dir/fusion-io_card"
-   
+
    # Clean the data directory, don't leave empty files
    for file in $data_dir/*; do
       # The vmstat file gets special treatmeant, see above.
@@ -175,7 +175,7 @@ fio_status_minus_a () {
 
       print "${adapter}_general     $adapter_general";
       print "${adapter}_modules     @connected_modules";
-      
+
       for my $module (@connected_modules) {
          my ($rest, $attached, $general, $firmware, $temperature, $media_status) = /(
             ^ \s* $module  \s+ (Attached[^\n]+) \n
@@ -196,7 +196,7 @@ fio_status_minus_a () {
    } while <>;
 
    print "adapters     @adapters\n";
-   
+
    exit;
 EOP
 
@@ -226,7 +226,7 @@ linux_exclusive_collection () { local PTFUNCNAME=linux_exclusive_collection;
          echo "dirtystatus     $(awk '/vm.dirty_bytes/{print $3}' "$data_dir/sysctl"), $(awk '/vm.dirty_background_bytes/{print $3}' "$data_dir/sysctl")" >> "$data_dir/summary"
       fi
    fi
-   
+
    if [ -e "$data_dir/numactl" ]; then
       echo "numa-available    $(awk '/available/{print $2}' "$data_dir/numactl")" >> "$data_dir/summary"
       echo "numa-policy    $(awk '/policy/{print $2}' "$data_dir/numactl")" >> "$data_dir/summary"
@@ -602,7 +602,7 @@ processor_info () { local PTFUNCNAME=processor_info;
       cat /proc/cpuinfo > "$data_dir/proc_cpuinfo_copy" 2>/dev/null
    elif [ "${platform}" = "SunOS" ]; then
       $CMD_PSRINFO -v > "$data_dir/psrinfo_minus_v"
-   fi 
+   fi
 }
 
 # ########################################################################
@@ -611,7 +611,7 @@ processor_info () { local PTFUNCNAME=processor_info;
 # in a weird location, such as /usr/StorMan/arcconf, should have their
 # location added to $PATH at the beginning of main().
 # ########################################################################
-propietary_raid_controller () { local PTFUNCNAME=propietary_raid_controller;
+proprietary_raid_controller () { local PTFUNCNAME=proprietary_raid_controller;
    local file="$1"
    local variable_file="$2"
    local data_dir="$3"
@@ -631,7 +631,7 @@ propietary_raid_controller () { local PTFUNCNAME=propietary_raid_controller;
          echo "internal::raid_opt    2" >> "$variable_file"
       fi
    elif [ "${controller}" = "LSI Logic MegaRAID SAS" ]; then
-      if [ -z "$CMD_MEGACLI64" ]; then 
+      if [ -z "$CMD_MEGACLI64" ]; then
          notfound="your package repository or the manufacturer's website"
       else
          echo "internal::raid_opt    3" >> "$variable_file"

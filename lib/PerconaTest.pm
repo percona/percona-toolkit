@@ -152,7 +152,7 @@ sub output {
 
    my $output = '';
    {
-      if ( $file ) { 
+      if ( $file ) {
          open *output_fh, '>', $file
             or die "Cannot open file $file: $OS_ERROR";
       }
@@ -400,7 +400,7 @@ sub test_log_parser {
          misc       => $args{misc},
          oktorun    => $args{oktorun},
       );
-      while ( my $e = $p->parse_event(%parser_args) ) { 
+      while ( my $e = $p->parse_event(%parser_args) ) {
          push @e, $e;
       }
       close $fh;
@@ -637,7 +637,7 @@ sub no_diff {
 
    # diff returns 0 if there were no differences,
    # so !0 = 1 = no diff in our testing parlance.
-   $retval = $retval >> 8; 
+   $retval = $retval >> 8;
 
    if ( $retval ) {
       if ( $ENV{UPDATE_SAMPLES} || $args{update_sample} ) {
@@ -653,7 +653,7 @@ sub no_diff {
    if ( $res_file ne $tmp_file ) {
       unlink $res_file if -f $res_file;
    }
-   
+
    if ( $cmp_file ne $expected_output ) {
       unlink $cmp_file if -f $cmp_file;
    }
@@ -802,7 +802,7 @@ sub full_output {
 
    unlink $file;
    unlink $file2;
-   
+
    return ($output, $status);
 }
 

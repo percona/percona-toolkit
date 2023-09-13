@@ -768,6 +768,7 @@ cat <<EOF > "$PT_TMPDIR/expected"
        Total | 3.9G
         Free | 1.4G
         Used | physical = 2.5G, swap allocated = 4.9G, swap used = 0.0, virtual = 2.5G
+      Shared | 0.0
      Buffers | 131.8M
       Caches | 1.9G
        Dirty | 60 kB
@@ -832,6 +833,7 @@ cat <<EOF > "$PT_TMPDIR/expected"
        Total | 1010.5M
         Free | 784.4M
         Used | physical = 226.1M, swap allocated = 2.0G, swap used = 0.0, virtual = 226.1M
+      Shared | 0.0
      Buffers | 48.8M
       Caches | 122.2M
        Dirty | 152 kB
@@ -1316,10 +1318,10 @@ Architecture | CPU = 32-bit, OS = 32-bit
       Speeds | 2109
       Models | AMD Athlon(tm) 64 X2 Dual Core Processor 4000+
 # Memory #####################################################
-       Total | 499.4M
-     Virtual | 511.9M
-        Used | 66.4M
-     UsedRSS | 17.7M
+         Total | 499.4M
+       Virtual | 511.9M
+          Used | 66.4M
+       UsedRSS | 17.7M
 # Mounted Filesystems ########################################
   Filesystem   Size Used Type    Opts                Mountpoint
   /dev/ad0s1a  620M  30% ufs     local               /
@@ -1353,6 +1355,8 @@ Architecture | CPU = 32-bit, OS = 32-bit
  0 0 0   58164  339792     0   0   0   0     0   0   0   0  230  107  231  0  9 91
  0 0 0   58164  339792     0   0   0   0     0   0   0   0  230  107  229  0  3 97
  0 0 0   58164  339792     0   0   0   0     0   0   0   0  231  115  229  0  5 95
+# Memory management ##########################################
+Transparent huge pages are enabled.
 # The End ####################################################
 EOF
 report_system_summary "$samples/BSD/freebsd_001" | tail -n +3 > "$PT_TMPDIR/got"
@@ -1372,10 +1376,10 @@ Architecture | CPU = 32-bit, OS = 32-bit
       Models | 1xAMD Athlon(tm) 64 X2 Dual Core Processor 4000+
       Caches | 
 # Memory #####################################################
-       Total | 127.6M
-        User | 127.2M
-        Swap | 64.5M
-     UsedRSS | 10.6M
+         Total | 127.6M
+          User | 127.2M
+          Swap | 64.5M
+       UsedRSS | 10.6M
 # Mounted Filesystems ########################################
   Filesystem  Size Used Type Opts                                                             Mountpoint
   /dev/sd0e   3.8G   0% yp   dev/sd0e 3.8G 17M 3.7G 0% /mnt/usb on /mnt/usb type msdos (local /mnt/usb
@@ -1407,6 +1411,8 @@ Architecture | CPU = 32-bit, OS = 32-bit
  0 0 0  78564  21364 1208   0   0    0    0    0  0  0   98  806  43  2  9 89
  0 0 0  78564  21364    0   0   0    0    0    0  0  0  101   11   9  0 0 100
  0 0 0  78564  21364    0   0   0    0    0    0  0  0  101   11  10  0 0 100
+# Memory management ##########################################
+Transparent huge pages are enabled.
 # The End ####################################################
 EOF
 report_system_summary "$samples/BSD/netbsd_001" | tail -n +3 > "$PT_TMPDIR/got"
@@ -1425,10 +1431,10 @@ Architecture | CPU = 32-bit, OS = 32-bit
       Speeds | 2111
       Models | AMD 
 # Memory #####################################################
-       Total | 255.5M
-        User | 255.5M
-        Swap | 81.1M
-     UsedRSS | 5.3M
+         Total | 255.5M
+          User | 255.5M
+          Swap | 81.1M
+       UsedRSS | 5.3M
 # Mounted Filesystems ########################################
   Filesystem  Size Used Type Opts                                               Mountpoint
   /dev/sd0i   3.8G   0% yp   long                                               /mnt/usb
@@ -1459,6 +1465,8 @@ Architecture | CPU = 32-bit, OS = 32-bit
  1 0 0   7600  191360 9461   0   0   0   0   0   0   0  256 14435  285  6 94  0
  0 0 0   7496  191456 1272   0   0   0   0   0   0   0  256  1973   50  2 12 85
  0 0 0   7496  191456   11   0   0   0   0   0   0   0  230    23   12  0  0 100
+# Memory management ##########################################
+Transparent huge pages are enabled.
 # The End ####################################################
 EOF
 report_system_summary "$samples/BSD/openbsd_001" | tail -n +3  > "$PT_TMPDIR/got"
@@ -1482,15 +1490,16 @@ Architecture | CPU = 32-bit, OS = 32-bit
       Models | 2xIntel(R) Atom(TM) CPU N455 @ 1.66GHz
       Caches | 2x512 KB
 # Memory #####################################################
-       Total | 2.0G
-        Free | 477.3M
-        Used | physical = 1.5G, swap allocated = 2.0G, swap used = 0.0, virtual = 1.5G
-     Buffers | 194.9M
-      Caches | 726.8M
-       Dirty | 144 kB
-     UsedRSS | 1.1G
-  Swappiness | 60
- DirtyPolicy | 20, 10
+         Total | 2.0G
+          Free | 477.3M
+          Used | physical = 1.5G, swap allocated = 2.0G, swap used = 0.0, virtual = 1.5G
+        Shared | 0.0
+       Buffers | 194.9M
+        Caches | 726.8M
+         Dirty | 144 kB
+       UsedRSS | 1.1G
+    Swappiness | 60
+   DirtyPolicy | 20, 10
   Locator   Size     Speed             Form Factor   Type          Type Detail
   ========= ======== ================= ============= ============= ===========
   DIMM0     2048 MB  667 MHz (1.5 ns)  SODIMM        DDR2          Synchronous
@@ -1511,7 +1520,7 @@ Architecture | CPU = 32-bit, OS = 32-bit
 # Disk Schedulers And Queue Size #############################
          sda | [cfq] 128
          sdb | [cfq] 128
-# Disk Partioning ############################################
+# Disk Partitioning ##########################################
 Device       Type      Start        End               Size
 ============ ==== ========== ========== ==================
 /dev/sda     Disk                             500107862016
@@ -1577,6 +1586,8 @@ Unable to collect information
    0  0     0    0     0     0    200    200   1   0  99   0    
    1  0     0    0     0   150    225    225   1   1  95   3    
    0  0     0    0     0   150    250    250   1   0  99   0    
+# Memory management ##########################################
+Transparent huge pages are enabled.
 # The End ####################################################
 EOF
 
