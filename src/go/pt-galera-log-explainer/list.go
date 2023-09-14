@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/display"
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/regex"
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/types"
@@ -20,30 +22,30 @@ type list struct {
 }
 
 func (l *list) Help() string {
-	return `List events for each nodes in a columnar output
+	return fmt.Sprintf(`List events for each nodes in a columnar output
 	It will merge logs between themselves
 
 	"identifier" is an internal metadata, this is used to merge logs.
 
 Usage:
-	galera-log-explainer list --all <list of files>
-	galera-log-explainer list --all *.log
-	galera-log-explainer list --sst --views --states <list of files>
-	galera-log-explainer list --events --views *.log
-	`
+	%[1]s list --all <list of files>
+	%[1]s list --all *.log
+	%[1]s list --sst --views --states <list of files>
+	%[1]s list --events --views *.log
+	`, toolname)
 }
 
 func (l *list) Run() error {
 
 	if !(l.All || l.Events || l.States || l.SST || l.Views || l.Applicative) {
-		return errors.New("Please select a type of logs to search: --all, or any parameters from: --sst --views --events --states")
+		return errors.New("flag required: --all, or any parameters from: --sst --views --events --states --applicative")
 	}
 
 	toCheck := l.regexesToUse()
 
 	timeline, err := timelineFromPaths(CLI.List.Paths, toCheck)
 	if err != nil {
-		return errors.Wrap(err, "Could not list events")
+		return errors.Wrap(err, "could not list events")
 	}
 
 	display.TimelineCLI(timeline, CLI.Verbosity)

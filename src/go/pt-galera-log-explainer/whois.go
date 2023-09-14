@@ -26,7 +26,7 @@ func (w *whois) Run() error {
 	toCheck := regex.AllRegexes()
 	timeline, err := timelineFromPaths(CLI.Whois.Paths, toCheck)
 	if err != nil {
-		return errors.Wrap(err, "Found nothing to translate")
+		return errors.Wrap(err, "found nothing to translate")
 	}
 	ctxs := timeline.GetLatestUpdatedContextsByNodes()
 

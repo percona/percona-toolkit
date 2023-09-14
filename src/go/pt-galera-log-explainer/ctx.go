@@ -19,7 +19,7 @@ func (c *ctx) Help() string {
 func (c *ctx) Run() error {
 
 	if len(c.Paths) != 1 {
-		return errors.New("Can only use 1 path at a time for ctx subcommand")
+		return errors.New("can only use 1 path at a time for ctx subcommand")
 	}
 
 	timeline, err := timelineFromPaths(c.Paths, regex.AllRegexes())

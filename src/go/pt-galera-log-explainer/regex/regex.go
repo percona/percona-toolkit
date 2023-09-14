@@ -12,7 +12,7 @@ import (
 func internalRegexSubmatch(regex *regexp.Regexp, log string) ([]string, error) {
 	slice := regex.FindStringSubmatch(log)
 	if len(slice) == 0 {
-		return nil, errors.New(fmt.Sprintf("Could not find submatch from log \"%s\" using pattern \"%s\"", log, regex.String()))
+		return nil, errors.New(fmt.Sprintf("could not find submatch from log \"%s\" using pattern \"%s\"", log, regex.String()))
 	}
 	return slice, nil
 }

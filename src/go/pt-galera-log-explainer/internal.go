@@ -49,7 +49,7 @@ func timelineFromPaths(paths []string, regexes types.RegexMap) (types.Timeline, 
 			continue
 		}
 		found = true
-		logger.Debug().Str("path", path).Msg("Finished searching")
+		logger.Debug().Str("path", path).Msg("finished searching")
 
 		// Why it should not just identify using the file path:
 		// so that we are able to merge files that belong to the same nodes
@@ -63,7 +63,7 @@ func timelineFromPaths(paths []string, regexes types.RegexMap) (types.Timeline, 
 		}
 	}
 	if !found {
-		return nil, errors.New("Could not find data")
+		return nil, errors.New("could not find data")
 	}
 	return timeline, nil
 }
@@ -89,7 +89,7 @@ func prepareGrepArgument(regexes types.RegexMap) string {
 	if CLI.PxcOperator {
 		grepRegex += ")"
 	}
-	logger.Debug().Str("grepArg", grepRegex).Msg("Compiled grep arguments")
+	logger.Debug().Str("grepArg", grepRegex).Msg("compiled grep arguments")
 	return grepRegex
 }
 
@@ -135,7 +135,7 @@ func execGrepAndIterate(path, compiledRegex string, stdout chan<- string) error 
 	// double-check it stopped correctly
 	if err = cmd.Wait(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok && exiterr.ExitCode() == 1 {
-			return errors.New("Found nothing")
+			return errors.New("found nothing")
 		}
 		return errors.Wrap(err, "grep subprocess error")
 	}

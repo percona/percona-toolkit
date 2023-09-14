@@ -17,21 +17,22 @@ type sed struct {
 }
 
 func (s *sed) Help() string {
-	return `sed translates a log, replacing node UUID, IPS, names with either name or IP everywhere. By default it replaces by name.
+
+	return fmt.Sprintf(`sed translates a log, replacing node UUID, IPS, names with either name or IP everywhere. By default it replaces by name.
 
 Use like so:
-	cat node1.log | galera-log-explainer sed *.log | less
-	galera-log-explainer sed *.log < node1.log | less
+	cat node1.log | %[1]s sed *.log | less
+	%[1]s sed *.log < node1.log | less
 
 You can also simply call the command to get a generated sed command to review and apply yourself
-	galera-log-explainer sed *.log`
+	%[1]s sed *.log`, toolname)
 }
 
 func (s *sed) Run() error {
 	toCheck := regex.AllRegexes()
 	timeline, err := timelineFromPaths(s.Paths, toCheck)
 	if err != nil {
-		return errors.Wrap(err, "Found nothing worth replacing")
+		return errors.Wrap(err, "found nothing worth replacing")
 	}
 	ctxs := timeline.GetLatestUpdatedContextsByNodes()
 
@@ -56,7 +57,7 @@ func (s *sed) Run() error {
 
 	}
 	if len(args) == 0 {
-		return errors.New("Could not find informations to replace")
+		return errors.New("could not find informations to replace")
 	}
 
 	fstat, err := os.Stdin.Stat()
