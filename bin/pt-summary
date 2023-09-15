@@ -328,7 +328,7 @@ _parse_config_files() {
 
          echo "$config_opt" | grep '^[ ]*[^#]' >/dev/null 2>&1 || continue
 
-		 config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/\s[ ]*#.*$//')"
+         config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/\s[ ]*#.*$//')"
 
          [ "$config_opt" = "" ] && continue
 
@@ -2725,7 +2725,7 @@ see L<"ENVIRONMENT">.
 
 =head1 ATTENTION
 
-Using <PTDEBUG> might expose passwords. When debug is enabled, all command line 
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
 parameters are shown in the output.
 
 =head1 DOWNLOADING

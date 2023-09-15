@@ -4754,7 +4754,7 @@ sub main {
          $dst->dbh->do($sql);
          if ( $EVAL_ERROR ) {
              _die("Cannot connect to MySQL: $EVAL_ERROR", 1);
-         }  
+         }
       }
    }
 
@@ -5704,7 +5704,7 @@ of output.
 
 =head1 ATTENTION
 
-Using <PTDEBUG> might expose passwords. When debug is enabled, all command line 
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
 parameters are shown in the output.
 
 =head1 SYSTEM REQUIREMENTS
