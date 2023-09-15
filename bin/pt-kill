@@ -8638,7 +8638,7 @@ matching queries, specify both L<"--kill"> and L<"--print">.
 
 group: Actions
 
-Modifies the L<"--print"> behaviour and forces the query fingerprint to be 
+Modifies the L<"--print"> behaviour and forces the query fingerprint to be
 displayed instead of an original query.
 
 =back
@@ -8720,7 +8720,7 @@ of output.
 
 =head1 ATTENTION
 
-Using <PTDEBUG> might expose passwords. When debug is enabled, all command line 
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
 parameters are shown in the output.
 
 =head1 SYSTEM REQUIREMENTS

@@ -8907,7 +8907,7 @@ sub main {
          my $slaves =$ms->get_slaves(
                dbh      => $cxn->dbh(),
                dsn      => $cxn->dsn(),
-			      slaves   => $slaves,
+               slaves   => $slaves,
                make_cxn => sub {
                   return $make_cxn->(
                      @_,
@@ -8928,7 +8928,7 @@ sub main {
                      $is_skip = 1;
                      $slave->{dbh}->disconnect();
                      last;
-                  } 
+                  }
                }
                if (!$is_skip) {
                    push @$filtered_slaves, $slave;
@@ -11309,9 +11309,9 @@ sub rebuild_constraints {
             code    => sub {
                PTDEBUG && _d("SET foreign_key_checks=0");
                $cxn->dbh()->do("SET foreign_key_checks=0");
-	       PTDEBUG && _d($sql);
+           PTDEBUG && _d($sql);
                $cxn->dbh()->do($sql);
-	       PTDEBUG && _d("SET foreign_key_checks=1");
+           PTDEBUG && _d("SET foreign_key_checks=1");
                $cxn->dbh()->do("SET foreign_key_checks=1");
                $stats->{rebuilt_constraint}++;
             },
@@ -13441,7 +13441,7 @@ of output.
 
 =head1 ATTENTION
 
-Using <PTDEBUG> might expose passwords. When debug is enabled, all command line 
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
 parameters are shown in the output.
 
 =head1 EXIT STATUS

@@ -5533,7 +5533,7 @@ reused.
 
 =item connect_timeout
 
-severity: note 
+severity: note
 
 A large value of this setting can create a denial of service
 vulnerability.
@@ -5555,19 +5555,19 @@ usual.
 
 =item flush
 
-severity: warn 
+severity: warn
 
 This option might decrease performance greatly.
 
 =item flush_time
 
-severity: warn 
+severity: warn
 
 This option might decrease performance greatly.
 
 =item have_bdb
 
-severity: note 
+severity: note
 
 The BDB engine is deprecated.  If you aren't using it, you should
 disable it with the skip_bdb option.
@@ -5580,7 +5580,7 @@ The init_connect option is enabled on this server.
 
 =item init_file
 
-severity: note 
+severity: note
 
 The init_file option is enabled on this server.
 
@@ -5598,7 +5598,7 @@ This variable generally doesn't need to be larger than 20MB.
 
 =item innodb_buffer_pool_size
 
-severity: warn 
+severity: warn
 
 The InnoDB buffer pool size is unconfigured.  In a production
 environment it should always be configured explicitly, and the default
@@ -5606,14 +5606,14 @@ environment it should always be configured explicitly, and the default
 
 =item innodb_checksums
 
-severity: warn 
+severity: warn
 
 InnoDB checksums are disabled.  Your data is not protected from
 hardware corruption or other errors!
 
 =item innodb_doublewrite
 
-severity: warn 
+severity: warn
 
 InnoDB doublewrite is disabled.  Unless you use a filesystem that
 protects against partial page writes, your data is not safe!
@@ -5627,7 +5627,7 @@ poor performance, or the need to perform crash recovery upon startup.
 
 =item innodb_flush_log_at_trx_commit-1
 
-severity: warn 
+severity: warn
 
 InnoDB is not configured in strictly ACID mode.  If there
 is a crash, some transactions can be lost.
@@ -5643,7 +5643,7 @@ set it to 2 instead of 0.
 
 =item innodb_force_recovery
 
-severity: warn 
+severity: warn
 
 InnoDB is in forced recovery mode!  This should be used only
 temporarily when recovering from data corruption or other bugs, not for
@@ -5651,14 +5651,14 @@ normal usage.
 
 =item innodb_lock_wait_timeout
 
-severity: warn 
+severity: warn
 
 This option has an unusually long value, which can cause
 system overload if locks are not being released.
 
 =item innodb_log_buffer_size
 
-severity: warn 
+severity: warn
 
 The InnoDB log buffer size generally should not be set larger than
 16MB.  If you are doing large BLOB operations, InnoDB is not really a good
@@ -5666,42 +5666,42 @@ choice of engines anyway.
 
 =item innodb_log_file_size
 
-severity: warn 
+severity: warn
 
 The InnoDB log file size is set to its default value, which is not
 usable on production systems.
 
 =item innodb_max_dirty_pages_pct
 
-severity: note 
+severity: note
 
 The innodb_max_dirty_pages_pct is lower than the default.  This can
 cause overly aggressive flushing and add load to the I/O system.
 
 =item flush_time
 
-severity: warn 
+severity: warn
 
 This setting is likely to cause very bad performance every
 flush_time seconds.
 
 =item key_buffer_size
 
-severity: warn 
+severity: warn
 
-The key buffer size is set to its default value, which is not good 
+The key buffer size is set to its default value, which is not good
 for most production systems.  In a production environment, key_buffer_size
 should be larger than the default 8MB size.
 
 =item large_pages
 
-severity: note 
+severity: note
 
 Large pages are enabled.
 
 =item locked_in_memory
 
-severity: note 
+severity: note
 
 The server is locked in memory with --memlock.
 
@@ -5722,27 +5722,27 @@ as aborted connections.
 
 =item low_priority_updates
 
-severity: note 
+severity: note
 
 The server is running with non-default lock priority for updates.
 This could cause update queries to wait unexpectedly for read queries.
 
 =item max_binlog_size
 
-severity: note 
+severity: note
 
 The max_binlog_size is smaller than the default of 1GB.
 
 =item max_connect_errors
 
-severity: note 
+severity: note
 
 max_connect_errors should probably be set as large as your platform
 allows.
 
 =item max_connections
 
-severity: warn 
+severity: warn
 
 If the server ever really has more than a thousand threads running,
 then the system is likely to spend more time scheduling threads than
@@ -5751,7 +5751,7 @@ light of your workload.
 
 =item myisam_repair_threads
 
-severity: note 
+severity: note
 
 myisam_repair_threads > 1 enables multi-threaded repair, which is
 relatively untested and is still listed as beta-quality code in the
@@ -5759,48 +5759,48 @@ official documentation.
 
 =item old_passwords
 
-severity: warn 
+severity: warn
 
 Old-style passwords are insecure.  They are sent in plain text
 across the wire.
 
 =item optimizer_prune_level
 
-severity: warn 
+severity: warn
 
 The optimizer will use an exhaustive search when planning complex
 queries, which can cause the planning process to take a long time.
 
 =item port
 
-severity: note 
+severity: note
 
 The server is listening on a non-default port.
 
 =item query_cache_size-1
 
-severity: note 
+severity: note
 
 The query cache does not scale to large sizes and can cause unstable
 performance when larger than 128MB, especially on multi-core machines.
 
 =item query_cache_size-2
 
-severity: warn 
+severity: warn
 
 The query cache can cause severe performance problems when it is
 larger than 256MB, especially on multi-core machines.
 
 =item read_buffer_size-1
 
-severity: note 
+severity: note
 
 The read_buffer_size variable should generally be left at its
 default unless an expert determines it is necessary to change it.
 
 =item read_buffer_size-2
 
-severity: warn 
+severity: warn
 
 The read_buffer_size variable should not be larger than 8MB.  It
 should generally be left at its default unless an expert determines it is
@@ -5810,14 +5810,14 @@ become extremely unstable.
 
 =item read_rnd_buffer_size-1
 
-severity: note 
+severity: note
 
 The read_rnd_buffer_size variable should generally be left at its
 default unless an expert determines it is necessary to change it.
 
 =item read_rnd_buffer_size-2
 
-severity: warn 
+severity: warn
 
 The read_rnd_buffer_size variable should not be larger than 4M.  It
 should generally be left at its default unless an expert determines it is
@@ -5825,7 +5825,7 @@ necessary to change it.
 
 =item relay_log_space_limit
 
-severity: warn 
+severity: warn
 
 Setting relay_log_space_limit can cause replicas to stop fetching binary logs
 from their master immediately. This could increase the risk that your data will
@@ -5835,7 +5835,7 @@ master and no replica has retrieved them.
 
 =item slave_net_timeout
 
-severity: warn 
+severity: warn
 
 This variable is set too high.  This is too long to wait before
 noticing that the connection to the master has failed and retrying.  This
@@ -5845,7 +5845,7 @@ when the master is simply idle.
 
 =item slave_skip_errors
 
-severity: crit 
+severity: crit
 
 You should not set this option.  If replication is having errors,
 you need to find and resolve the cause of that; it is likely that your
@@ -5854,14 +5854,14 @@ pt-table-checksum.
 
 =item sort_buffer_size-1
 
-severity: note 
+severity: note
 
 The sort_buffer_size variable should generally be left at its
 default unless an expert determines it is necessary to change it.
 
 =item sort_buffer_size-2
 
-severity: note 
+severity: note
 
 The sort_buffer_size variable should generally be left at its
 default unless an expert determines it is necessary to change it.  Making
@@ -5870,27 +5870,27 @@ the server crash, swap to death, or just become extremely unstable.
 
 =item sql_notes
 
-severity: note 
+severity: note
 
 This server is configured not to log Note level warnings to the
 error log.
 
 =item sync_frm
 
-severity: warn 
+severity: warn
 
 It is best to set sync_frm so that .frm files are flushed safely to
 disk in case of a server crash.
 
 =item tx_isolation-1
 
-severity: note 
+severity: note
 
 This server's transaction isolation level is non-default.
 
 =item tx_isolation-2
 
-severity: warn 
+severity: warn
 
 Most applications should use the default REPEATABLE-READ transaction
 isolation level, or in a few cases READ-COMMITTED.
@@ -5906,13 +5906,13 @@ Always ask MySQL to purge obsolete logs, never delete them externally.
 
 =item innodb_file_io_threads
 
-severity: note 
+severity: note
 
 This option is useless except on Windows.
 
 =item innodb_data_file_path
 
-severity: note 
+severity: note
 
 Auto-extending InnoDB files can consume a lot of disk space that is
 very difficult to reclaim later.  Some people prefer to set
@@ -5920,7 +5920,7 @@ innodb_file_per_table and allocate a fixed-size file for ibdata1.
 
 =item innodb_flush_method
 
-severity: note 
+severity: note
 
 Most production database servers that use InnoDB should set
 innodb_flush_method to O_DIRECT to avoid double-buffering, unless the I/O
@@ -5928,14 +5928,14 @@ system is very low performance.
 
 =item innodb_locks_unsafe_for_binlog
 
-severity: warn 
+severity: warn
 
 This option makes point-in-time recovery from binary logs, and
 replication, untrustworthy if statement-based logging is used.
 
 =item innodb_support_xa
 
-severity: warn 
+severity: warn
 
 MySQL's internal XA transaction support between InnoDB and the
 binary log is disabled.  The binary log might not match InnoDB's state
@@ -5944,46 +5944,46 @@ out-of-order statements in the binary log.
 
 =item log_bin
 
-severity: warn 
+severity: warn
 
 Binary logging is disabled, so point-in-time recovery and
 replication are not possible.
 
 =item log_output
 
-severity: warn 
+severity: warn
 
 Directing log output to tables has a high performance impact.
 
 =item max_relay_log_size
 
-severity: note 
+severity: note
 
 A custom max_relay_log_size is defined.
 
 =item myisam_recover_options
 
-severity: warn 
+severity: warn
 
 myisam_recover_options should be set to some value such as
 BACKUP,FORCE to ensure that table corruption is noticed.
 
 =item storage_engine
 
-severity: note 
+severity: note
 
 The server is using a non-standard storage engine as default.
 
 =item sync_binlog
 
-severity: warn 
+severity: warn
 
 Binary logging is enabled, but sync_binlog isn't configured so that
 every transaction is flushed to the binary log for durability.
 
 =item tmp_table_size
 
-severity: note 
+severity: note
 
 The effective minimum size of in-memory implicit temporary tables
 used internally during query execution is min(tmp_table_size,
@@ -5994,7 +5994,7 @@ as tmp_table_size.
 
 severity: warn
 
-These are the recommended minimum version for each major release: 3.23, 4.1.20, 5.0.37, 5.1.30.  
+These are the recommended minimum version for each major release: 3.23, 4.1.20, 5.0.37, 5.1.30.
 
 =item end-of-life mysql version
 
@@ -6243,7 +6243,7 @@ of output.
 
 =head1 ATTENTION
 
-Using <PTDEBUG> might expose passwords. When debug is enabled, all command line 
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
 parameters are shown in the output.
 
 =head1 SYSTEM REQUIREMENTS

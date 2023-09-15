@@ -1284,14 +1284,14 @@ report_jemalloc_enabled() {
          echo "jemalloc is not enabled in mysql config for process with id ${pid}"
       else
          echo "jemalloc enabled in mysql config for process with id ${pid}"
-		 GENERAL_JEMALLOC_STATUS=1
+         GENERAL_JEMALLOC_STATUS=1
       fi
    done
 
    if [ $GENERAL_JEMALLOC_STATUS -eq 1 ]; then
       local jemalloc_location="$(get_var "pt-summary-internal-jemalloc_location" "${variables_file}")"
       if [ -n "$jemalloc_location" ]; then
-	     echo "Using jemalloc from $jemalloc_location"
+         echo "Using jemalloc from $jemalloc_location"
       else
          echo "Jemalloc library not found"
       fi
@@ -1585,7 +1585,7 @@ report_mysql_summary () {
    local encrypted_tables=""
    local encrypted_tablespaces=""
    if [ -s "$dir/keyring-plugins" ]; then
-	   keyring_plugins="$(cat $dir/keyring-plugins)"
+       keyring_plugins="$(cat $dir/keyring-plugins)"
    fi
    if [ -s "$dir/encrypted-tables" ]; then
       encrypted_tables="$(cat $dir/encrypted-tables)"
