@@ -15,7 +15,7 @@ Usage: $0 [OPTIONS]
         --build_rpm         If it is set - rpm will be built
         --build_deb         If it is set - deb will be built
         --build_tarball     If it is set - tarball will be built
-        --install_deps      Install build dependencies(root privilages are required)
+        --install_deps      Install build dependencies(root privileges are required)
         --branch            Branch for build
         --repo              Repo for build
         --help) usage ;;
