@@ -107,8 +107,8 @@ func TestIndividualFiles(t *testing.T) {
 			if err != nil {
 				t.Errorf("test %s, error running command %s:\n%s\n\nCommand output:\n%s", test.name, test.cmd[0], err.Error(), out)
 			}
-			if test.preprocesor(bytes.NewBuffer(out).String()) != strings.Join(test.want, "\n") {
-				t.Errorf("test %s, output is not as expected\nOutput: %s\nWanted: %s", test.name, test.preprocesor(bytes.NewBuffer(out).String()), test.want)
+			if test.preprocessor(bytes.NewBuffer(out).String()) != strings.Join(test.want, "\n") {
+				t.Errorf("test %s, output is not as expected\nOutput: %s\nWanted: %s", test.name, test.preprocessor(bytes.NewBuffer(out).String()), test.want)
 			}
 		}
 	}
