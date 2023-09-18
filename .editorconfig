@@ -3,21 +3,29 @@ root = true
 [*]
 indent_style = space
 indent_size = 4
-indent_size = unset
 end_of_line = lf
 charset = utf-8
 trim_trailing_whitespace = true
 insert_final_newline = true
 
+[{*.pm,bin/*}]
+indent_size = 3
+
 [*.go]
 indent_style = tab
 
+[src/go/tests/expect/**]
+indent_size = unset
 [{src/go/tests/**,src/go/pt-mongodb-summary/test/**,src/go/pt-secure-collect/testdata/*}]
 insert_final_newline = unset
 [util/NaturalDocs/**]
+indent_size = unset
 trim_trailing_whitespace = unset
 
 # TODO
 [t/**]
+indent_size = unset
 insert_final_newline = unset
 trim_trailing_whitespace = unset
+[sandbox/servers/**]
+indent_size = unset
