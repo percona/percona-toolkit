@@ -2039,7 +2039,7 @@ sub main {
 
       # If MySQL 5.7.6+ then we need to use SHOW CREATE USER
       my @create_user;
-      if (( VersionCompare::cmp($version, '5.7.6') >= 0 ) &&
+      if (( VersionCompare::cmp($version, '5.7.6') >= 0 ) ||
           ( VersionCompare::cmp($version, '10.0.0') <= 0 )) {
          eval {
             @create_user = @{ $dbh->selectcol_arrayref("SHOW CREATE USER $user_host") };
@@ -2048,16 +2048,18 @@ sub main {
             PTDEBUG && _d($EVAL_ERROR);
             $exit_status = 1;
          }
-         PTDEBUG && _d('CreateUser:', Dumper(\@create_user));
-         # make this replication safe converting the CREATE USER into
-         # CREATE USER IF NOT EXISTS and then doing an ALTER USER
-            my $create = $create_user[0];
-            my $alter  = $create;
-            $create =~ s{CREATE USER}{CREATE USER IF NOT EXISTS};
-            $create =~ s{ IDENTIFIED .*}{};
-            $alter  =~ s{CREATE USER}{ALTER USER};
-            @create_user = ( $create, $alter );
-            PTDEBUG && _d('AdjustedCreateUser:', Dumper(\@create_user));
+         if ($#create_user > 0){
+            PTDEBUG && _d('CreateUser:', Dumper(\@create_user));
+            # make this replication safe converting the CREATE USER into
+            # CREATE USER IF NOT EXISTS and then doing an ALTER USER
+               my $create = $create_user[0];
+               my $alter  = $create;
+               $create =~ s{CREATE USER}{CREATE USER IF NOT EXISTS};
+               $create =~ s{ IDENTIFIED .*}{};
+               $alter  =~ s{CREATE USER}{ALTER USER};
+               @create_user = ( $create, $alter );
+               PTDEBUG && _d('AdjustedCreateUser:', Dumper(\@create_user));
+         }
       }
       my @grants;
       eval {
@@ -2066,6 +2068,13 @@ sub main {
       if ( $EVAL_ERROR ) {
          PTDEBUG && _d($EVAL_ERROR);
          $exit_status = 1;
+      }
+      #IF is MariaDB we need to remove the password from the user
+      if ( VersionCompare::cmp($version, 'MariaDB') >= 0 ){
+          for my $i (0 .. $#grants){
+            $grants[$i] =~ s{IDENTIFIED.*}{};
+          }
+          PTDEBUG && _d('Grants:', Dumper(\@grants));
       }
       PTDEBUG && _d('Grants:', Dumper(\@grants));
       next unless @grants;
