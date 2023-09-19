@@ -1,0 +1,72 @@
+identifier                    172.17.0.2                                 node2                                      node3                                   
+current path                  tests/logs/upgrade/node1.log               tests/logs/upgrade/node2.log               tests/logs/upgrade/node3.log            
+last known ip                 172.17.0.2                                 172.17.0.3                                 172.17.0.4                              
+last known name                                                          node2                                      node3                                   
+mysql version                 8.0.28                                     8.0.28                                     8.0.28                                  
+                                                                                                                                                            
+                                                                         [1;34m5.7.40[0000m                                                                             
+                                                                         [0034m(version)[0000m                                                                          
+                                                                         [1;34m V [0000m                                                                                
+                                                                         [1;34m8.0.28[0000m                                                                             
+2023-03-12T11:35:16.342707Z   |                                          [0033mIST to [0000mnode3(seqno:170403898)              |                                       
+2023-03-12T11:35:17.118100Z   |                                          IST will be used                           |                                       
+2023-03-12T11:35:18.140723Z   |                                          [0032mfinished sending IST to [0000mnode3              |                                       
+2023-03-12T11:39:21.952242Z   |                                          [0033mIST to [0000mnode3(seqno:170403900)              |                                       
+2023-03-12T11:39:33.420743Z   |                                          [0033mSST to [0000mnode3                               |                                       
+2023-03-12T11:39:38.734654Z   |                                          [0031mSST error[0000m                                  |                                       
+2023-03-12T11:39:38.738833Z   |                                          node2[0031m failed to sync ??(node left)[0000m         |                                       
+2023-03-12T12:48:44.597299Z   |                                          [0032m| [0000m                                         [0033mwill receive [0000mIST(seqno:170403905)       
+2023-03-12T12:48:44.616436Z   |                                          [0033mIST to [0000mnode3(seqno:170403905)              [0033m| [0000m                                      
+2023-03-12T12:48:45.044873Z   |                                          IST will be used                           [0033m| [0000m                                      
+2023-03-12T12:48:46.064764Z   |                                          [0032mfinished sending IST to [0000mnode3              [0033m| [0000m                                      
+2023-03-12T12:48:46.065014Z   |                                          |                                          [0032mgot IST from [0000mnode2                      
+2023-03-12T12:48:54.269978Z   |                                          [0032m| [0000m                                         [0032mIST received[0000m(seqno:170403905)           
+2023-03-12T13:04:25.735999Z   |                                          [0032m| [0000m                                         [0033mIST to [0000mnode1(seqno:170407335)           
+2023-03-12T13:04:37.415791Z   |                                          [0032m| [0000m                                         [0033mSST to [0000mnode1                            
+2023-03-12T13:04:39.715275Z   |                                          [0032m| [0000m                                         [0031mSST error[0000m                               
+2023-03-12T13:04:39.720325Z   |                                          node3[0031m failed to sync ??(node left)[0000m         [0033m| [0000m                                      
+2023-03-12T13:04:39.720379Z   |                                          [0032m| [0000m                                         node3[0031m failed to sync ??(node left)[0000m      
+2023-03-12T13:13:13.245723Z   |                                          [0033mwill receive [0000mIST(seqno:170407338)          [0032m| [0000m                                      
+2023-03-12T13:13:13.262238Z   |                                          [0033m| [0000m                                         [0033mIST to [0000mnode2(seqno:170407338)           
+2023-03-12T13:13:13.863959Z   |                                          [0033m| [0000m                                         IST will be used                        
+2023-03-12T13:13:14.886853Z   |                                          [0032mgot IST from [0000mnode3                         [0033m| [0000m                                      
+2023-03-12T13:13:14.886942Z   |                                          [0033m| [0000m                                         [0032mfinished sending IST to [0000mnode2           
+2023-03-12T13:13:19.156722Z   |                                          [0032mIST received[0000m(seqno:170407338)              [0032m| [0000m                                      
+2023-03-12T19:35:07.638676Z   [0033mwill receive [0000mIST(seqno:178226774)          [0032m| [0000m                                         [0032m| [0000m                                      
+2023-03-12T19:36:48.567087Z   [0031mtimeout from donor in gtid/keyring stage[0000m   [0032m| [0000m                                         [0033m| [0000m                                      
+2023-03-12T19:36:48.589084Z   [0031mSST error[0000m                                  [0032m| [0000m                                         [0033m| [0000m                                      
+2023-03-12T19:36:48.590647Z   [0031mformer SST cancelled[0000m                       [0032m| [0000m                                         [0033m| [0000m                                      
+2023-03-12T19:43:18.904410Z   [0033mwill receive [0000mIST(seqno:178226792)          [0032m| [0000m                                         [0033m| [0000m                                      
+2023-03-12T19:43:18.913328Z   [0033m| [0000m                                         [0032m| [0000m                                         node1[0033m cannot find donor[0000m                 
+2023-03-12T19:43:18.913429Z   node1[0033m cannot find donor[0000m                    [0032m| [0000m                                         [0033m| [0000m                                      
+2023-03-12T19:43:18.913565Z   [0033m| [0000m                                         node1[0033m cannot find donor[0000m                    [0033m| [0000m                                      
+2023-03-12T19:43:19.914122Z   [0033m| [0000m                                         [0032m| [0000m                                         node1[0033m cannot find donor[0000m                 
+2023-03-12T19:43:19.914259Z   node1[0033m cannot find donor[0000m                    [0032m| [0000m                                         [0033m| [0000m                                      
+2023-03-12T19:43:19.914362Z   [0033m| [0000m                                         node1[0033m cannot find donor[0000m                    [0033m| [0000m                                      
+2023-03-12T19:43:20.914957Z   [0033m| [0000m                                         [0032m| [0000m                                         [0034m(repeated x97)[0000mnode1[0033m cannot find donor[0000m   
+2023-03-12T19:43:20.915143Z   [0034m(repeated x97)[0000mnode1[0033m cannot find donor[0000m      [0032m| [0000m                                         [0033m| [0000m                                      
+2023-03-12T19:43:20.915262Z   [0033m| [0000m                                         [0034m(repeated x97)[0000mnode1[0033m cannot find donor[0000m      [0033m| [0000m                                      
+2023-03-12T19:44:58.999603Z   [0033m| [0000m                                         [0032m| [0000m                                         node1[0033m cannot find donor[0000m                 
+2023-03-12T19:44:58.999791Z   node1[0033m cannot find donor[0000m                    [0032m| [0000m                                         [0033m| [0000m                                      
+2023-03-12T19:44:58.999891Z   [0033m| [0000m                                         node1[0033m cannot find donor[0000m                    [0033m| [0000m                                      
+2023-03-12T19:44:59.817822Z   [0031mtimeout from donor in gtid/keyring stage[0000m   [0032m| [0000m                                         [0033m| [0000m                                      
+2023-03-12T19:44:59.839692Z   [0031mSST error[0000m                                  [0032m| [0000m                                         [0033m| [0000m                                      
+2023-03-12T19:44:59.841529Z   [0031mformer SST cancelled[0000m                       [0032m| [0000m                                         [0033m| [0000m                                      
+2023-03-12T21:58:46.155159Z   [0031m| [0000m                                         [0033mwill receive [0000mIST(seqno:178226798)          [0033m| [0000m                                      
+2023-03-12T21:58:46.160014Z   [0031m| [0000m                                         [0033mcannot find donor[0000m                          [0033m| [0000m                                      
+2023-03-12T21:58:46.160016Z   [0031m| [0000m                                         [0033m| [0000m                                         node2[0033m cannot find donor[0000m                 
+2023-03-12T21:58:47.160736Z   [0031m| [0000m                                         [0033m| [0000m                                         node2[0033m cannot find donor[0000m                 
+2023-03-12T21:58:47.160758Z   [0031m| [0000m                                         [0033mcannot find donor[0000m                          [0033m| [0000m                                      
+2023-03-12T21:58:48.161511Z   [0031m| [0000m                                         [0033m| [0000m                                         [0034m(repeated x97)[0000mnode2[0033m cannot find donor[0000m   
+2023-03-12T21:58:48.161544Z   [0031m| [0000m                                         [0034m(repeated x97)[0000m[0033mcannot find donor[0000m            [0033m| [0000m                                      
+2023-03-12T22:00:26.237092Z   [0031m| [0000m                                         [0033m| [0000m                                         node2[0033m cannot find donor[0000m                 
+2023-03-12T22:00:26.237093Z   [0031m| [0000m                                         [0033mcannot find donor[0000m                          [0033m| [0000m                                      
+2023-03-12T22:00:27.067645Z   [0031m| [0000m                                         [0031mtimeout from donor in gtid/keyring stage[0000m   [0033m| [0000m                                      
+2023-03-12T22:00:27.089809Z   [0031m| [0000m                                         [0031mSST error[0000m                                  [0033m| [0000m                                      
+2023-03-12T22:00:27.237486Z   [0031m| [0000m                                         [0031mformer SST cancelled[0000m                       [0033m| [0000m                                      
+                                                                                                                                                            
+identifier                    172.17.0.2                                 node2                                      node3                                   
+current path                  tests/logs/upgrade/node1.log               tests/logs/upgrade/node2.log               tests/logs/upgrade/node3.log            
+last known ip                 172.17.0.2                                 172.17.0.3                                 172.17.0.4                              
+last known name                                                          node2                                      node3                                   
+mysql version                 8.0.28                                     8.0.28                                     8.0.28                                  
