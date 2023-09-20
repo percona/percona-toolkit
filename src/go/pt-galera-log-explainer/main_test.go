@@ -69,6 +69,17 @@ func TestMain(t *testing.T) {
 			cmd:  []string{"list", "--all", "--until=2023-03-12T12:29:51.445280Z"},
 			path: "tests/logs/upgrade/*.log",
 		},
+
+		{
+			name: "merge_rotated_daily_list_all",
+			cmd:  []string{"list", "--all"},
+			path: "tests/logs/merge_rotated_daily/*",
+		},
+		{
+			name: "merge_rotated_daily_list_all_since_keeping_latest_logs",
+			cmd:  []string{"list", "--all", "--since=2023-03-18T21:18:23.102709+02:00"},
+			path: "tests/logs/merge_rotated_daily/*",
+		},
 	}
 
 	for _, test := range tests {

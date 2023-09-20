@@ -1,0 +1,728 @@
+2023-03-18T12:17:33.806079+02:00 30517 [Warning] [MY-000000] [WSREP] Percona-XtraDB-Cluster doesn't recommend use of GET_LOCK with pxc_strict_mode = PERMISSIVE
+2023-03-18T12:17:33.882504+02:00 30517 [Warning] [MY-000000] [WSREP] Percona-XtraDB-Cluster doesn't recommend use of RELEASE_LOCK with pxc_strict_mode = PERMISSIVE
+2023-03-18T21:17:37.960685+02:00 0 [System] [MY-013172] [Server] Received SHUTDOWN from user <via user signal>. Shutting down mysqld (Version: 8.0.28-19.1).
+2023-03-18T21:17:37.960721+02:00 0 [Note] [MY-000000] [WSREP] Received shutdown signal. Will sleep for 10 secs before initiating shutdown. pxc_maint_mode switched to SHUTDOWN
+2023-03-18T21:17:47.968843+02:00 0 [Note] [MY-000000] [WSREP] Shutdown replication
+2023-03-18T21:17:47.968883+02:00 0 [Note] [MY-000000] [WSREP] Server status change synced -> disconnecting
+2023-03-18T21:17:47.968903+02:00 0 [Note] [MY-000000] [WSREP] wsrep_notify_cmd is not defined, skipping notification.
+2023-03-18T21:17:47.968928+02:00 0 [Note] [MY-000000] [Galera] Closing send monitor...
+2023-03-18T21:17:47.968935+02:00 0 [Note] [MY-000000] [Galera] Closed send monitor.
+2023-03-18T21:17:47.968944+02:00 0 [Note] [MY-000000] [Galera] gcomm: terminating thread
+2023-03-18T21:17:47.968954+02:00 0 [Note] [MY-000000] [Galera] gcomm: joining thread
+2023-03-18T21:17:47.970670+02:00 0 [Note] [MY-000000] [Galera] gcomm: closing backend
+2023-03-18T21:17:47.970716+02:00 0 [Note] [MY-000000] [Galera] PC protocol downgrade 1 -> 0
+2023-03-18T21:17:47.970726+02:00 0 [Note] [MY-000000] [Galera] Current view of cluster as seen by this node
+view ((empty))
+2023-03-18T21:17:47.971745+02:00 0 [Note] [MY-000000] [Galera] gcomm: closed
+2023-03-18T21:17:47.972274+02:00 0 [Note] [MY-000000] [Galera] New SELF-LEAVE.
+2023-03-18T21:17:47.972611+02:00 0 [Note] [MY-000000] [Galera] Flow-control interval: [0, 0]
+2023-03-18T21:17:47.972619+02:00 0 [Note] [MY-000000] [Galera] Received SELF-LEAVE. Closing connection.
+2023-03-18T21:17:47.972624+02:00 0 [Note] [MY-000000] [Galera] Shifting SYNCED -> CLOSED (TO: 23109522)
+2023-03-18T21:17:47.972638+02:00 0 [Note] [MY-000000] [Galera] RECV thread exiting 0: Success
+2023-03-18T21:17:47.973221+02:00 2 [Note] [MY-000000] [Galera] Maybe drain monitors from 23109522 upto current CC event 23109522 upto:23109522
+2023-03-18T21:17:47.973822+02:00 2 [Note] [MY-000000] [Galera] Drain monitors from 23109522 up to 23109522
+2023-03-18T21:17:47.973839+02:00 2 [Note] [MY-000000] [Galera] ================================================
+View:
+  id: 937dcf28-d38e-11ed-82ac-63ef4aef5b2a:23109522
+  status: non-primary
+  protocol_version: 4
+  capabilities: MULTI-MASTER, CERTIFICATION, PARALLEL_APPLYING, REPLAY, ISOLATION, PAUSE, CAUSAL_READ, INCREMENTAL_WS, UNORDERED, PREORDERED, STREAMING, NBO
+  final: yes
+  own_index: -1
+  members(0):
+=================================================
+2023-03-18T21:17:47.973855+02:00 2 [Note] [MY-000000] [Galera] Non-primary view
+2023-03-18T21:17:47.973862+02:00 2 [Note] [MY-000000] [WSREP] Server status change disconnecting -> disconnected
+2023-03-18T21:17:47.974397+02:00 0 [Note] [MY-000000] [Galera] recv_thread() joined.
+2023-03-18T21:17:47.974412+02:00 0 [Note] [MY-000000] [Galera] Closing replication queue.
+2023-03-18T21:17:47.974417+02:00 0 [Note] [MY-000000] [Galera] Closing slave action queue.
+2023-03-18T21:17:47.974441+02:00 2 [Note] [MY-000000] [WSREP] wsrep_notify_cmd is not defined, skipping notification.
+2023-03-18T21:17:47.974730+02:00 2 [Note] [MY-000000] [WSREP] wsrep_notify_cmd is not defined, skipping notification.
+2023-03-18T21:17:47.976594+02:00 2 [Note] [MY-000000] [WSREP] Applier thread exiting ret: 0 thd: 2
+2023-03-18T21:17:47.976629+02:00 0 [Note] [MY-000000] [WSREP] Waiting for active wsrep applier to exit
+2023-03-18T21:17:47.976643+02:00 0 [Note] [MY-000000] [WSREP] All applier thread terminated. Will now terminate rollback thread
+2023-03-18T21:17:47.976651+02:00 0 [Note] [MY-000000] [WSREP] Waiting for rollback thread to terminate
+2023-03-18T21:17:47.977026+02:00 1 [Note] [MY-000000] [WSREP] rollbacker thread exiting 1
+2023-03-18T21:17:48.976746+02:00 0 [Note] [MY-000000] [WSREP] Rollback thread terminated
+2023-03-18T21:17:48.988356+02:00 0 [Note] [MY-010067] [Server] Giving 126 client threads a chance to die gracefully
+2023-03-18T21:17:48.998588+02:00 0 [Note] [MY-010117] [Server] Shutting down slave threads
+2023-03-18T21:17:50.998776+02:00 0 [Note] [MY-010118] [Server] Forcefully disconnecting 99 remaining clients
+2023-03-18T21:17:51.060288+02:00 0 [Note] [MY-000000] [Galera] dtor state: CLOSED
+2023-03-18T21:17:51.060338+02:00 0 [Note] [MY-000000] [Galera] MemPool(TrxHandleSlave): hit ratio: 0.999597, misses: 134, in use: 73, in pool: 61
+2023-03-18T21:17:51.062534+02:00 0 [Note] [MY-000000] [Galera] mon: entered 332222 oooe fraction 0 oool fraction 0
+2023-03-18T21:17:51.064710+02:00 0 [Note] [MY-000000] [Galera] mon: entered 332222 oooe fraction 0.00727827 oool fraction 8.7291e-05
+2023-03-18T21:17:51.066916+02:00 0 [Note] [MY-000000] [Galera] mon: entered 335459 oooe fraction 0 oool fraction 0
+2023-03-18T21:17:51.066933+02:00 0 [Note] [MY-000000] [Galera] cert index usage at exit 19
+2023-03-18T21:17:51.066940+02:00 0 [Note] [MY-000000] [Galera] cert trx map usage at exit 73
+2023-03-18T21:17:51.066946+02:00 0 [Note] [MY-000000] [Galera] deps set usage at exit 0
+2023-03-18T21:17:51.066952+02:00 0 [Note] [MY-000000] [Galera] avg deps dist 1.03186
+2023-03-18T21:17:51.066959+02:00 0 [Note] [MY-000000] [Galera] avg cert interval 0.0318582
+2023-03-18T21:17:51.066965+02:00 0 [Note] [MY-000000] [Galera] cert index size 19
+2023-03-18T21:17:51.067251+02:00 0 [Note] [MY-000000] [Galera] Service thread queue flushed.
+2023-03-18T21:17:51.076098+02:00 0 [Note] [MY-000000] [Galera] wsdb trx map usage 0 conn query map usage 0
+2023-03-18T21:17:51.076118+02:00 0 [Note] [MY-000000] [Galera] MemPool(LocalTrxHandle): hit ratio: 0.99997, misses: 10, in use: 0, in pool: 10
+2023-03-18T21:17:51.080773+02:00 0 [Note] [MY-000000] [Galera] Flushing memory map to disk...
+2023-03-18T21:17:51.534547+02:00 0 [Note] [MY-012330] [InnoDB] FTS optimize thread exiting.
+2023-03-18T21:17:52.576183+02:00 0 [Note] [MY-010120] [Server] Binlog end
+2023-03-18T21:17:52.673103+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'validate_password'
+2023-03-18T21:17:52.673987+02:00 0 [Warning] [MY-011068] [Server] The syntax 'validate password plugin' is deprecated and will be removed in a future release. Please use validate_password component instead.
+2023-03-18T21:17:52.677165+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'auth_pam_compat'
+2023-03-18T21:17:52.677182+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'auth_pam'
+2023-03-18T21:17:52.677187+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'audit_log'
+2023-03-18T21:17:53.183508+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'mysqlx_cache_cleaner'
+2023-03-18T21:17:53.183540+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'ngram'
+2023-03-18T21:17:53.183546+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'BLACKHOLE'
+2023-03-18T21:17:53.183553+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'ARCHIVE'
+2023-03-18T21:17:53.183556+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'TempTable'
+2023-03-18T21:17:53.183560+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'MRG_MYISAM'
+2023-03-18T21:17:53.183565+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'MyISAM'
+2023-03-18T21:17:53.185548+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_CHANGED_PAGES'
+2023-03-18T21:17:53.185574+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_TABLESPACES_SCRUBBING'
+2023-03-18T21:17:53.185584+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_TABLESPACES_ENCRYPTION'
+2023-03-18T21:17:53.185588+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_SESSION_TEMP_TABLESPACES'
+2023-03-18T21:17:53.185598+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_CACHED_INDEXES'
+2023-03-18T21:17:53.185602+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_VIRTUAL'
+2023-03-18T21:17:53.185606+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_COLUMNS'
+2023-03-18T21:17:53.185609+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_TABLESPACES'
+2023-03-18T21:17:53.185615+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_INDEXES'
+2023-03-18T21:17:53.185619+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_TABLESTATS'
+2023-03-18T21:17:53.185623+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_TABLES'
+2023-03-18T21:17:53.185626+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_FT_INDEX_TABLE'
+2023-03-18T21:17:53.185630+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_FT_INDEX_CACHE'
+2023-03-18T21:17:53.185633+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_FT_CONFIG'
+2023-03-18T21:17:53.185637+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_FT_BEING_DELETED'
+2023-03-18T21:17:53.185640+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_FT_DELETED'
+2023-03-18T21:17:53.185646+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_FT_DEFAULT_STOPWORD'
+2023-03-18T21:17:53.185650+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_METRICS'
+2023-03-18T21:17:53.185656+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_TEMP_TABLE_INFO'
+2023-03-18T21:17:53.185659+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_BUFFER_POOL_STATS'
+2023-03-18T21:17:53.185671+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_BUFFER_PAGE_LRU'
+2023-03-18T21:17:53.185675+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_BUFFER_PAGE'
+2023-03-18T21:17:53.185678+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_CMP_PER_INDEX_RESET'
+2023-03-18T21:17:53.185687+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_CMP_PER_INDEX'
+2023-03-18T21:17:53.185696+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_CMPMEM_RESET'
+2023-03-18T21:17:53.185700+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_CMPMEM'
+2023-03-18T21:17:53.185703+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_CMP_RESET'
+2023-03-18T21:17:53.185707+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_CMP'
+2023-03-18T21:17:53.185711+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_TRX'
+2023-03-18T21:17:53.185717+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'InnoDB'
+2023-03-18T21:17:53.187376+02:00 0 [Note] [MY-013072] [InnoDB] Starting shutdown...
+2023-03-18T21:17:53.189399+02:00 0 [Note] [MY-011944] [InnoDB] Dumping buffer pool(s) to /var/lib/mysql/ib_buffer_pool
+2023-03-18T21:17:53.212101+02:00 0 [Note] [MY-011944] [InnoDB] Buffer pool(s) dump completed at 230528 21:17:53
+2023-03-18T21:17:53.234171+02:00 0 [Note] [MY-013084] [InnoDB] Log background threads are being closed...
+2023-03-18T21:18:00.859823+02:00 0 [Note] [MY-012980] [InnoDB] Shutdown completed; log sequence number 1481408816092
+2023-03-18T21:18:00.861446+02:00 0 [Note] [MY-012255] [InnoDB] Removed temporary tablespace data file: "../../tmp0/ibtmp1"
+2023-03-18T21:18:00.865184+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'MEMORY'
+2023-03-18T21:18:00.865207+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'CSV'
+2023-03-18T21:18:00.865214+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'PERFORMANCE_SCHEMA'
+2023-03-18T21:18:00.865242+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'wsrep'
+2023-03-18T21:18:00.865250+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'daemon_keyring_proxy_plugin'
+2023-03-18T21:18:00.866695+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'sha2_cache_cleaner'
+2023-03-18T21:18:00.866713+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'caching_sha2_password'
+2023-03-18T21:18:00.866720+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'sha256_password'
+2023-03-18T21:18:00.866724+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'mysql_native_password'
+2023-03-18T21:18:01.235476+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'binlog'
+2023-03-18T21:18:01.246750+02:00 0 [System] [MY-010910] [Server] /usr/sbin/mysqld: Shutdown complete (mysqld 8.0.28-19.1)  Percona XtraDB Cluster (GPL), Release rel19, Revision f544540, WSREP version 26.4.3.
+2023-03-18T21:18:12.740442+02:00 0 [Warning] [MY-011068] [Server] The syntax 'slave_parallel_workers' is deprecated and will be removed in a future release. Please use replica_parallel_workers instead.
+2023-03-18T21:18:12.740450+02:00 0 [Warning] [MY-011068] [Server] The syntax 'slave_preserve_commit_order' is deprecated and will be removed in a future release. Please use replica_preserve_commit_order instead.
+2023-03-18T21:18:12.740455+02:00 0 [Warning] [MY-011068] [Server] The syntax 'log_slave_updates' is deprecated and will be removed in a future release. Please use log_replica_updates instead.
+2023-03-18T21:18:12.740539+02:00 0 [Warning] [MY-010086] [Server] TIMESTAMP with implicit DEFAULT value is deprecated. Please use --explicit_defaults_for_timestamp server option (see documentation for more details).
+2023-03-18T21:18:12.740576+02:00 0 [Warning] [MY-010097] [Server] Insecure configuration for --secure-file-priv: Current value does not restrict location of generated files. Consider setting it to a valid, non-empty path.
+2023-03-18T21:18:12.740967+02:00 0 [Note] [MY-010949] [Server] Basedir set to /usr/.
+2023-03-18T21:18:12.740972+02:00 0 [System] [MY-010116] [Server] /usr/sbin/mysqld (mysqld 8.0.28-19.1) starting as process 1104931
+2023-03-18T21:18:12.745317+02:00 0 [Warning] [MY-013242] [Server] --character-set-server: 'utf8' is currently an alias for the character set UTF8MB3, but will be an alias for UTF8MB4 in a future release. Please consider using UTF8MB4 in order to be unambiguous.
+2023-03-18T21:18:12.745330+02:00 0 [Warning] [MY-013244] [Server] --collation-server: 'utf8_unicode_ci' is a collation of the deprecated character set UTF8MB3. Please consider using UTF8MB4 with an appropriate collation instead.
+2023-03-18T21:18:12.746380+02:00 0 [Note] [MY-000000] [Galera] Loading provider /usr/lib64/galera4/libgalera_smm.so initial position: 00000000-0000-0000-0000-000000000000:-1
+2023-03-18T21:18:12.746454+02:00 0 [Note] [MY-000000] [Galera] wsrep_load(): loading provider library '/usr/lib64/galera4/libgalera_smm.so'
+2023-03-18T21:18:12.748787+02:00 0 [Note] [MY-000000] [Galera] wsrep_load(): Galera 4.11(a9008fc) by Codership Oy <info@codership.com> (modified by Percona <https://percona.com/>) loaded successfully.
+2023-03-18T21:18:12.748814+02:00 0 [Note] [MY-000000] [Galera] CRC-32C: using 64-bit x86 acceleration.
+2023-03-18T21:18:12.749007+02:00 0 [Note] [MY-000000] [Galera] Found saved state: 937dcf28-d38e-11ed-82ac-63ef4aef5b2a:23109522, safe_to_bootstrap: 1
+2023-03-18T21:18:12.749087+02:00 0 [Note] [MY-000000] [Galera] GCache DEBUG: opened preamble:
+Version: 2
+UUID: 937dcf28-d38e-11ed-82ac-63ef4aef5b2a
+Seqno: 20123204 - 23109522
+Offset: 4529229488
+Synced: 1
+2023-03-18T21:18:12.749103+02:00 0 [Note] [MY-000000] [Galera] Recovering GCache ring buffer: version: 2, UUID: 937dcf28-d38e-11ed-82ac-63ef4aef5b2a, offset: 4529229488
+2023-03-18T21:18:12.749146+02:00 0 [Note] [MY-000000] [Galera] GCache::RingBuffer initial scan...  0.0% (         0/6291456024 bytes) complete.
+2023-03-18T21:18:19.238670+02:00 0 [Note] [MY-000000] [Galera] GCache::RingBuffer initial scan...100.0% (6291456024/6291456024 bytes) complete.
+2023-03-18T21:18:19.270318+02:00 0 [Note] [MY-000000] [Galera] Recovering GCache ring buffer: found gapless sequence 20123204-23109522
+2023-03-18T21:18:19.270486+02:00 0 [Note] [MY-000000] [Galera] GCache::RingBuffer unused buffers scan...  0.0% (         0/6291147960 bytes) complete.
+2023-03-18T21:18:19.587614+02:00 0 [Note] [MY-000000] [Galera] GCache::RingBuffer unused buffers scan...100.0% (6291147960/6291147960 bytes) complete.
+2023-03-18T21:18:19.587665+02:00 0 [Note] [MY-000000] [Galera] Recovering GCache ring buffer: found 2/2986321 locked buffers
+2023-03-18T21:18:19.587682+02:00 0 [Note] [MY-000000] [Galera] Recovering GCache ring buffer: free space: 308832/6291456000
+2023-03-18T21:18:19.588392+02:00 0 [Warning] [MY-000000] [Galera] Option 'gcs.fc_master_slave' is deprecated and will be removed in the future versions, please use 'gcs.fc_single_primary' instead. 
+2023-03-18T21:18:19.588851+02:00 0 [Note] [MY-000000] [Galera] Passing config to GCS: base_dir = /var/lib/mysql/; base_host = node1_hostname; base_port = 4567; cert.log_conflicts = no; cert.optimistic_pa = NO; debug = no; evs.auto_evict = 0; evs.delay_margin = PT1S; evs.delayed_keep_period = PT30S; evs.inactive_check_period = PT0.5S; evs.inactive_timeout = PT15S; evs.join_retrans_period = PT1S; evs.max_install_timeouts = 3; evs.send_window = 10; evs.stats_report_period = PT1M; evs.suspect_timeout = PT5S; evs.user_send_window = 4; evs.view_forget_timeout = PT24H; gcache.dir = /var/lib/mysql/; gcache.freeze_purge_at_seqno = -1; gcache.keep_pages_count = 0; gcache.keep_pages_size = 0; gcache.mem_size = 0; gcache.name = galera.cache; gcache.page_size = 128M; gcache.recover = yes; gcache.size = 6000M; gcomm.thread_prio = ; gcs.fc_debug = 0; gcs.fc_factor = 1.0; gcs.fc_limit = 800; gcs.fc_master_slave = YES; gcs.fc_single_primary = no; gcs.max_packet_size = 64500; gcs.max_throttle = 0.25; gcs.recv_q_hard_limit = 9223372036854775807; gcs.recv_q_soft_limit = 0.25; gcs.sync_donor = no; gmcast.segment = 0; gmcast.version = 0; pc.announce_timeout = PT3S; pc.checksum = false; pc.ignore_quorum = false; pc.ignore_sb = false; pc.npvo = false; pc.recovery = true; pc.version = 0; pc.wait_prim = true; pc.wait_prim_timeout = PT30S; pc.weight = 1; protonet.backend = asio; protonet.version = 0; repl.causal_read_timeout = PT30S; repl.commit_order = 3; repl.key_format = FLAT8; repl.max_ws_size = 2147483647; repl.proto_max = 10; socket.checksum = 2; socket.recv_buf_size = auto; socket.send_buf_size = auto; 
+2023-03-18T21:18:19.596189+02:00 0 [Note] [MY-000000] [Galera] Service thread queue flushed.
+2023-03-18T21:18:19.596229+02:00 0 [Note] [MY-000000] [Galera] ####### Assign initial position for certification: 937dcf28-d38e-11ed-82ac-63ef4aef5b2a:23109522, protocol version: -1
+2023-03-18T21:18:19.596299+02:00 0 [Note] [MY-000000] [WSREP] Starting replication
+2023-03-18T21:18:19.596317+02:00 0 [Note] [MY-000000] [Galera] Connecting with bootstrap option: 0
+2023-03-18T21:18:19.596338+02:00 0 [Note] [MY-000000] [Galera] Setting GCS initial position to 937dcf28-d38e-11ed-82ac-63ef4aef5b2a:23109522
+2023-03-18T21:18:19.596399+02:00 0 [Note] [MY-000000] [Galera] protonet asio version 0
+2023-03-18T21:18:19.596465+02:00 0 [Note] [MY-000000] [Galera] Using CRC-32C for message checksums.
+2023-03-18T21:18:19.596481+02:00 0 [Note] [MY-000000] [Galera] backend: asio
+2023-03-18T21:18:19.596525+02:00 0 [Note] [MY-000000] [Galera] gcomm thread scheduling priority set to other:0 
+2023-03-18T21:18:19.596658+02:00 0 [Warning] [MY-000000] [Galera] Fail to access the file (/var/lib/mysql//gvwstate.dat) error (No such file or directory). It is possible if node is booting for first time or re-booting after a graceful shutdown
+2023-03-18T21:18:19.596669+02:00 0 [Note] [MY-000000] [Galera] Restoring primary-component from disk failed. Either node is booting for first time or re-booting after a graceful shutdown
+2023-03-18T21:18:19.596807+02:00 0 [Note] [MY-000000] [Galera] GMCast version 0
+2023-03-18T21:18:19.597937+02:00 0 [Note] [MY-000000] [Galera] (141ab367-b833, 'tcp://0.0.0.0:4567') listening at tcp://0.0.0.0:4567
+2023-03-18T21:18:19.597954+02:00 0 [Note] [MY-000000] [Galera] (141ab367-b833, 'tcp://0.0.0.0:4567') multicast: , ttl: 1
+2023-03-18T21:18:19.598122+02:00 0 [Note] [MY-000000] [Galera] EVS version 1
+2023-03-18T21:18:19.598191+02:00 0 [Note] [MY-000000] [Galera] gcomm: connecting to group 'node1_hostname', peer 'node1_hostname:,node2_hostname:,node3_hostname:'
+2023-03-18T21:18:19.598658+02:00 0 [Note] [MY-000000] [Galera] (141ab367-b833, 'tcp://0.0.0.0:4567') Found matching local endpoint for a connection, blacklisting address tcp://172.17.0.2:4567
+2023-03-18T21:18:19.609084+02:00 0 [Note] [MY-000000] [Galera] (141ab367-b833, 'tcp://0.0.0.0:4567') connection established to 582bb7c0-8cec tcp://172.17.0.3:4567
+2023-03-18T21:18:19.609124+02:00 0 [Note] [MY-000000] [Galera] (141ab367-b833, 'tcp://0.0.0.0:4567') turning message relay requesting on, nonlive peers: 
+2023-03-18T21:18:19.613839+02:00 0 [Note] [MY-000000] [Galera] (141ab367-b833, 'tcp://0.0.0.0:4567') connection established to 75b291cc-baf9 tcp://172.17.0.4:4567
+2023-03-18T21:18:22.070384+02:00 0 [Note] [MY-000000] [Galera] EVS version upgrade 0 -> 1
+2023-03-18T21:18:22.070512+02:00 0 [Note] [MY-000000] [Galera] declaring 582bb7c0-8cec at tcp://172.17.0.3:4567 stable
+2023-03-18T21:18:22.070534+02:00 0 [Note] [MY-000000] [Galera] declaring 75b291cc-baf9 at tcp://172.17.0.4:4567 stable
+2023-03-18T21:18:22.070563+02:00 0 [Note] [MY-000000] [Galera] PC protocol upgrade 0 -> 1
+2023-03-18T21:18:23.075139+02:00 0 [Note] [MY-000000] [Galera] Node 582bb7c0-8cec state primary
+2023-03-18T21:18:23.080056+02:00 0 [Note] [MY-000000] [Galera] Current view of cluster as seen by this node
+view (view_id(PRIM,141ab367-b833,7)
+memb {
+	141ab367-b833,0
+	582bb7c0-8cec,0
+	75b291cc-baf9,0
+	}
+joined {
+	}
+left {
+	}
+partitioned {
+	}
+)
+2023-03-18T21:18:23.080121+02:00 0 [Note] [MY-000000] [Galera] Save the discovered primary-component to disk
+2023-03-18T21:18:23.083289+02:00 0 [Note] [MY-000000] [Galera] (141ab367-b833, 'tcp://0.0.0.0:4567') turning message relay requesting off
+2023-03-18T21:18:23.102393+02:00 0 [Note] [MY-000000] [Galera] gcomm: connected
+2023-03-18T21:18:23.102426+02:00 0 [Note] [MY-000000] [Galera] Changing maximum packet size to 64500, resulting msg size: 32636
+2023-03-18T21:18:23.102496+02:00 0 [Note] [MY-000000] [Galera] Shifting CLOSED -> OPEN (TO: 0)
+2023-03-18T21:18:23.102507+02:00 0 [Note] [MY-000000] [Galera] Opened channel 'node1_hostname'
+2023-03-18T21:18:23.102709+02:00 0 [Note] [MY-000000] [Galera] New COMPONENT: primary = yes, bootstrap = no, my_idx = 0, memb_num = 3
+2023-03-18T21:18:23.102770+02:00 0 [Note] [MY-000000] [Galera] STATE_EXCHANGE: sent state UUID: 1631ae33-fdc7-11ed-bfe0-5a088f2510a9
+2023-03-18T21:18:23.102950+02:00 1 [Note] [MY-000000] [WSREP] Starting rollbacker thread 1
+2023-03-18T21:18:23.106164+02:00 2 [Note] [MY-000000] [WSREP] Starting applier thread 2
+2023-03-18T21:18:23.108418+02:00 0 [Note] [MY-000000] [Galera] STATE EXCHANGE: sent state msg: 1631ae33-fdc7-11ed-bfe0-5a088f2510a9
+2023-03-18T21:18:23.114576+02:00 0 [Note] [MY-000000] [Galera] STATE EXCHANGE: got state msg: 1631ae33-fdc7-11ed-bfe0-5a088f2510a9 from 0 (node1)
+2023-03-18T21:18:23.114609+02:00 0 [Note] [MY-000000] [Galera] STATE EXCHANGE: got state msg: 1631ae33-fdc7-11ed-bfe0-5a088f2510a9 from 1 (node2)
+2023-03-18T21:18:23.118262+02:00 0 [Note] [MY-000000] [Galera] STATE EXCHANGE: got state msg: 1631ae33-fdc7-11ed-bfe0-5a088f2510a9 from 2 (node3)
+2023-03-18T21:18:23.118577+02:00 0 [ERROR] [MY-000000] [Galera] gcs/src/gcs_group.cpp:group_post_state_exchange():431: Reversing history: 23109522 -> 22777300, this member has applied 332222 more events than the primary component.Data loss is possible. Must abort.
+2023-03-18T21:18:23.118598+02:00 0 [Note] [MY-000000] [Galera] gcomm: terminating thread
+2023-03-18T21:18:23.118617+02:00 0 [Note] [MY-000000] [Galera] gcomm: joining thread
+2023-03-18T21:18:23.118766+02:00 0 [Note] [MY-000000] [Galera] gcomm: closing backend
+2023-03-18T21:18:23.125643+02:00 0 [Note] [MY-000000] [Galera] Current view of cluster as seen by this node
+view (view_id(NON_PRIM,141ab367-b833,7)
+memb {
+	141ab367-b833,0
+	}
+joined {
+	}
+left {
+	}
+partitioned {
+	582bb7c0-8cec,0
+	75b291cc-baf9,0
+	}
+)
+2023-03-18T21:18:23.125684+02:00 0 [Note] [MY-000000] [Galera] PC protocol downgrade 1 -> 0
+2023-03-18T21:18:23.125700+02:00 0 [Note] [MY-000000] [Galera] Current view of cluster as seen by this node
+view ((empty))
+2023-03-18T21:18:23.125869+02:00 0 [Note] [MY-000000] [Galera] gcomm: closed
+2023-03-18T21:18:23.125899+02:00 0 [Note] [MY-000000] [Galera] Shifting OPEN -> CLOSED (TO: 0)
+2023-03-18T21:18:23.125912+02:00 0 [Note] [MY-000000] [Galera] Closing send monitor...
+2023-03-18T21:18:23.125927+02:00 0 [Note] [MY-000000] [Galera] Closed send monitor.
+2023-03-18T21:18:23.125940+02:00 0 [Warning] [MY-000000] [Galera] gcomm: backend already closed
+2023-03-18T21:18:23.125952+02:00 0 [Note] [MY-000000] [Galera] Closing replication queue.
+2023-03-18T21:18:23.125963+02:00 0 [Note] [MY-000000] [Galera] Closing slave action queue.
+2023-03-18T21:18:23.125977+02:00 0 [Note] [MY-000000] [Galera] RECV thread exiting -131: State not recoverable
+2023-03-18T21:18:23.129818+02:00 2 [Note] [MY-000000] [Galera] recv_thread() already closing, joining thread.
+2023-03-18T21:18:23.129842+02:00 2 [Note] [MY-000000] [Galera] recv_thread() joined.
+2023-03-18T21:18:23.129875+02:00 2 [Note] [MY-000000] [Galera] ================================================
+View:
+  id: 00000000-0000-0000-0000-000000000000:-1
+  status: non-primary
+  protocol_version: -1
+  capabilities: 
+  final: yes
+  own_index: -1
+  members(0):
+=================================================
+2023-03-18T21:18:23.129886+02:00 2 [Note] [MY-000000] [Galera] Non-primary view
+2023-03-18T21:18:23.129897+02:00 2 [Warning] [MY-000000] [Galera] server: node1 unallowed state transition: disconnected -> disconnected
+
+2023-03-18T21:18:23.129907+02:00 2 [Note] [MY-000000] [WSREP] Server status change disconnected -> disconnected
+2023-03-18T21:18:23.129933+02:00 2 [Note] [MY-000000] [WSREP] wsrep_notify_cmd is not defined, skipping notification.
+2023-03-18T21:18:23.130010+02:00 0 [Note] [MY-000000] [Galera] Service thread queue flushed.
+2023-03-18T21:18:23.130040+02:00 2 [Note] [MY-000000] [Galera] ####### Assign initial position for certification: 00000000-0000-0000-0000-000000000000:-1, protocol version: -1
+2023-03-18T21:18:23.130099+02:00 2 [Note] [MY-000000] [WSREP] Applier thread exiting ret: 8 thd: 2
+2023-03-18T21:25:02.042588+02:00 0 [Warning] [MY-011068] [Server] The syntax 'slave_parallel_workers' is deprecated and will be removed in a future release. Please use replica_parallel_workers instead.
+2023-03-18T21:25:02.042598+02:00 0 [Warning] [MY-011068] [Server] The syntax 'slave_preserve_commit_order' is deprecated and will be removed in a future release. Please use replica_preserve_commit_order instead.
+2023-03-18T21:25:02.042603+02:00 0 [Warning] [MY-011068] [Server] The syntax 'log_slave_updates' is deprecated and will be removed in a future release. Please use log_replica_updates instead.
+2023-03-18T21:25:02.042705+02:00 0 [Warning] [MY-010086] [Server] TIMESTAMP with implicit DEFAULT value is deprecated. Please use --explicit_defaults_for_timestamp server option (see documentation for more details).
+2023-03-18T21:25:02.042760+02:00 0 [Warning] [MY-010097] [Server] Insecure configuration for --secure-file-priv: Current value does not restrict location of generated files. Consider setting it to a valid, non-empty path.
+2023-03-18T21:25:02.043222+02:00 0 [Note] [MY-010949] [Server] Basedir set to /usr/.
+2023-03-18T21:25:02.043230+02:00 0 [System] [MY-010116] [Server] /usr/sbin/mysqld (mysqld 8.0.28-19.1) starting as process 1105681
+2023-03-18T21:25:02.045096+02:00 0 [Warning] [MY-013242] [Server] --character-set-server: 'utf8' is currently an alias for the character set UTF8MB3, but will be an alias for UTF8MB4 in a future release. Please consider using UTF8MB4 in order to be unambiguous.
+2023-03-18T21:25:02.045112+02:00 0 [Warning] [MY-013244] [Server] --collation-server: 'utf8_unicode_ci' is a collation of the deprecated character set UTF8MB3. Please consider using UTF8MB4 with an appropriate collation instead.
+2023-03-18T21:25:02.046422+02:00 0 [Note] [MY-000000] [Galera] Loading provider /usr/lib64/galera4/libgalera_smm.so initial position: 00000000-0000-0000-0000-000000000000:-1
+2023-03-18T21:25:02.046519+02:00 0 [Note] [MY-000000] [Galera] wsrep_load(): loading provider library '/usr/lib64/galera4/libgalera_smm.so'
+2023-03-18T21:25:02.048668+02:00 0 [Note] [MY-000000] [Galera] wsrep_load(): Galera 4.11(a9008fc) by Codership Oy <info@codership.com> (modified by Percona <https://percona.com/>) loaded successfully.
+2023-03-18T21:25:02.048700+02:00 0 [Note] [MY-000000] [Galera] CRC-32C: using 64-bit x86 acceleration.
+2023-03-18T21:25:02.048933+02:00 0 [Note] [MY-000000] [Galera] Found saved state: 00000000-0000-0000-0000-000000000000:-1, safe_to_bootstrap: 1
+2023-03-18T21:25:02.049042+02:00 0 [Note] [MY-000000] [Galera] GCache DEBUG: opened preamble:
+Version: 2
+UUID: 937dcf28-d38e-11ed-82ac-63ef4aef5b2a
+Seqno: -1 - -1
+Offset: -1
+Synced: 0
+2023-03-18T21:25:02.049075+02:00 0 [Note] [MY-000000] [Galera] Recovering GCache ring buffer: version: 2, UUID: 937dcf28-d38e-11ed-82ac-63ef4aef5b2a, offset: -1
+2023-03-18T21:25:02.049129+02:00 0 [Note] [MY-000000] [Galera] GCache::RingBuffer initial scan...  0.0% (         0/6291456024 bytes) complete.
+2023-03-18T21:25:03.704242+02:00 0 [Note] [MY-000000] [Galera] GCache::RingBuffer initial scan...100.0% (6291456024/6291456024 bytes) complete.
+2023-03-18T21:25:03.756604+02:00 0 [Note] [MY-000000] [Galera] Recovering GCache ring buffer: found gapless sequence 20123204-23109522
+2023-03-18T21:25:03.756710+02:00 0 [Note] [MY-000000] [Galera] GCache::RingBuffer unused buffers scan...  0.0% (         0/6291147960 bytes) complete.
+2023-03-18T21:25:04.109851+02:00 0 [Note] [MY-000000] [Galera] GCache::RingBuffer unused buffers scan...100.0% (6291147960/6291147960 bytes) complete.
+2023-03-18T21:25:04.109888+02:00 0 [Note] [MY-000000] [Galera] Recovering GCache ring buffer: found 2/2986321 locked buffers
+2023-03-18T21:25:04.109899+02:00 0 [Note] [MY-000000] [Galera] Recovering GCache ring buffer: free space: 308832/6291456000
+2023-03-18T21:25:04.110620+02:00 0 [Warning] [MY-000000] [Galera] Option 'gcs.fc_master_slave' is deprecated and will be removed in the future versions, please use 'gcs.fc_single_primary' instead. 
+2023-03-18T21:25:04.111098+02:00 0 [Note] [MY-000000] [Galera] Passing config to GCS: base_dir = /var/lib/mysql/; base_host = node1_hostname; base_port = 4567; cert.log_conflicts = no; cert.optimistic_pa = NO; debug = no; evs.auto_evict = 0; evs.delay_margin = PT1S; evs.delayed_keep_period = PT30S; evs.inactive_check_period = PT0.5S; evs.inactive_timeout = PT15S; evs.join_retrans_period = PT1S; evs.max_install_timeouts = 3; evs.send_window = 10; evs.stats_report_period = PT1M; evs.suspect_timeout = PT5S; evs.user_send_window = 4; evs.view_forget_timeout = PT24H; gcache.dir = /var/lib/mysql/; gcache.freeze_purge_at_seqno = -1; gcache.keep_pages_count = 0; gcache.keep_pages_size = 0; gcache.mem_size = 0; gcache.name = galera.cache; gcache.page_size = 128M; gcache.recover = yes; gcache.size = 6000M; gcomm.thread_prio = ; gcs.fc_debug = 0; gcs.fc_factor = 1.0; gcs.fc_limit = 800; gcs.fc_master_slave = YES; gcs.fc_single_primary = no; gcs.max_packet_size = 64500; gcs.max_throttle = 0.25; gcs.recv_q_hard_limit = 9223372036854775807; gcs.recv_q_soft_limit = 0.25; gcs.sync_donor = no; gmcast.segment = 0; gmcast.version = 0; pc.announce_timeout = PT3S; pc.checksum = false; pc.ignore_quorum = false; pc.ignore_sb = false; pc.npvo = false; pc.recovery = true; pc.version = 0; pc.wait_prim = true; pc.wait_prim_timeout = PT30S; pc.weight = 1; protonet.backend = asio; protonet.version = 0; repl.causal_read_timeout = PT30S; repl.commit_order = 3; repl.key_format = FLAT8; repl.max_ws_size = 2147483647; repl.proto_max = 10; socket.checksum = 2; socket.recv_buf_size = auto; socket.send_buf_size = auto; 
+2023-03-18T21:25:04.118715+02:00 0 [Note] [MY-000000] [WSREP] Starting replication
+2023-03-18T21:25:04.118738+02:00 0 [Note] [MY-000000] [Galera] Connecting with bootstrap option: 0
+2023-03-18T21:25:04.118752+02:00 0 [Note] [MY-000000] [Galera] Setting GCS initial position to 00000000-0000-0000-0000-000000000000:-1
+2023-03-18T21:25:04.118792+02:00 0 [Note] [MY-000000] [Galera] protonet asio version 0
+2023-03-18T21:25:04.118824+02:00 0 [Note] [MY-000000] [Galera] Using CRC-32C for message checksums.
+2023-03-18T21:25:04.118836+02:00 0 [Note] [MY-000000] [Galera] backend: asio
+2023-03-18T21:25:04.118898+02:00 0 [Note] [MY-000000] [Galera] gcomm thread scheduling priority set to other:0 
+2023-03-18T21:25:04.118960+02:00 0 [Warning] [MY-000000] [Galera] Fail to access the file (/var/lib/mysql//gvwstate.dat) error (No such file or directory). It is possible if node is booting for first time or re-booting after a graceful shutdown
+2023-03-18T21:25:04.118969+02:00 0 [Note] [MY-000000] [Galera] Restoring primary-component from disk failed. Either node is booting for first time or re-booting after a graceful shutdown
+2023-03-18T21:25:04.119143+02:00 0 [Note] [MY-000000] [Galera] GMCast version 0
+2023-03-18T21:25:04.124372+02:00 0 [Note] [MY-000000] [Galera] (0537e7f3-9989, 'tcp://0.0.0.0:4567') listening at tcp://0.0.0.0:4567
+2023-03-18T21:25:04.124414+02:00 0 [Note] [MY-000000] [Galera] (0537e7f3-9989, 'tcp://0.0.0.0:4567') multicast: , ttl: 1
+2023-03-18T21:25:04.125616+02:00 0 [Note] [MY-000000] [Galera] EVS version 1
+2023-03-18T21:25:04.126055+02:00 0 [Note] [MY-000000] [Galera] gcomm: connecting to group 'node1_hostname', peer 'node1_hostname:,node2_hostname:,node3_hostname:'
+2023-03-18T21:25:04.127502+02:00 0 [Note] [MY-000000] [Galera] (0537e7f3-9989, 'tcp://0.0.0.0:4567') Found matching local endpoint for a connection, blacklisting address tcp://172.17.0.2:4567
+2023-03-18T21:25:04.138674+02:00 0 [Note] [MY-000000] [Galera] (0537e7f3-9989, 'tcp://0.0.0.0:4567') connection established to 582bb7c0-8cec tcp://172.17.0.3:4567
+2023-03-18T21:25:04.138725+02:00 0 [Note] [MY-000000] [Galera] (0537e7f3-9989, 'tcp://0.0.0.0:4567') turning message relay requesting on, nonlive peers: 
+2023-03-18T21:25:04.144113+02:00 0 [Note] [MY-000000] [Galera] (0537e7f3-9989, 'tcp://0.0.0.0:4567') connection established to 75b291cc-baf9 tcp://172.17.0.4:4567
+2023-03-18T21:25:06.205186+02:00 0 [Note] [MY-000000] [Galera] EVS version upgrade 0 -> 1
+2023-03-18T21:25:06.205274+02:00 0 [Note] [MY-000000] [Galera] declaring 582bb7c0-8cec at tcp://172.17.0.3:4567 stable
+2023-03-18T21:25:06.205321+02:00 0 [Note] [MY-000000] [Galera] declaring 75b291cc-baf9 at tcp://172.17.0.4:4567 stable
+2023-03-18T21:25:06.205341+02:00 0 [Note] [MY-000000] [Galera] PC protocol upgrade 0 -> 1
+2023-03-18T21:25:07.210059+02:00 0 [Note] [MY-000000] [Galera] Node 582bb7c0-8cec state primary
+2023-03-18T21:25:07.215406+02:00 0 [Note] [MY-000000] [Galera] Current view of cluster as seen by this node
+view (view_id(PRIM,0537e7f3-9989,9)
+memb {
+	0537e7f3-9989,0
+	582bb7c0-8cec,0
+	75b291cc-baf9,0
+	}
+joined {
+	}
+left {
+	}
+partitioned {
+	}
+)
+2023-03-18T21:25:07.215438+02:00 0 [Note] [MY-000000] [Galera] Save the discovered primary-component to disk
+2023-03-18T21:25:07.216824+02:00 0 [Note] [MY-000000] [Galera] (0537e7f3-9989, 'tcp://0.0.0.0:4567') turning message relay requesting off
+2023-03-18T21:25:07.630533+02:00 0 [Note] [MY-000000] [Galera] gcomm: connected
+2023-03-18T21:25:07.630586+02:00 0 [Note] [MY-000000] [Galera] Changing maximum packet size to 64500, resulting msg size: 32636
+2023-03-18T21:25:07.630676+02:00 0 [Note] [MY-000000] [Galera] Shifting CLOSED -> OPEN (TO: 0)
+2023-03-18T21:25:07.630692+02:00 0 [Note] [MY-000000] [Galera] Opened channel 'node1_hostname'
+2023-03-18T21:25:07.630920+02:00 0 [Note] [MY-000000] [Galera] New COMPONENT: primary = yes, bootstrap = no, my_idx = 0, memb_num = 3
+2023-03-18T21:25:07.631044+02:00 0 [Note] [MY-000000] [Galera] STATE_EXCHANGE: sent state UUID: 074fc9cc-fdc8-11ed-8dc4-33a162bce548
+2023-03-18T21:25:07.631303+02:00 1 [Note] [MY-000000] [WSREP] Starting rollbacker thread 1
+2023-03-18T21:25:07.631434+02:00 2 [Note] [MY-000000] [WSREP] Starting applier thread 2
+2023-03-18T21:25:07.637379+02:00 0 [Note] [MY-000000] [Galera] STATE EXCHANGE: sent state msg: 074fc9cc-fdc8-11ed-8dc4-33a162bce548
+2023-03-18T21:25:07.643378+02:00 0 [Note] [MY-000000] [Galera] STATE EXCHANGE: got state msg: 074fc9cc-fdc8-11ed-8dc4-33a162bce548 from 0 (node1)
+2023-03-18T21:25:07.643404+02:00 0 [Note] [MY-000000] [Galera] STATE EXCHANGE: got state msg: 074fc9cc-fdc8-11ed-8dc4-33a162bce548 from 1 (node2)
+2023-03-18T21:25:07.646380+02:00 0 [Note] [MY-000000] [Galera] STATE EXCHANGE: got state msg: 074fc9cc-fdc8-11ed-8dc4-33a162bce548 from 2 (node3)
+2023-03-18T21:25:07.646413+02:00 0 [Note] [MY-000000] [Galera] Quorum results:
+	version    = 6,
+	component  = PRIMARY,
+	conf_id    = 8,
+	members    = 2/3 (primary/total),
+	act_id     = 22777302,
+	last_appl. = 22777235,
+	protocols  = 2/10/4 (gcs/repl/appl),
+	vote policy= 0,
+	group UUID = 937dcf28-d38e-11ed-82ac-63ef4aef5b2a
+2023-03-18T21:25:07.646433+02:00 0 [Note] [MY-000000] [Galera] Votes over 937dcf28-d38e-11ed-82ac-63ef4aef5b2a:12241881:
+   0000000000000000:   1/2
+   f63e2eaa8b007cd0:   1/2
+Winner: 0000000000000000
+2023-03-18T21:25:07.646518+02:00 0 [Note] [MY-000000] [Galera] Flow-control interval: [1386, 1386]
+2023-03-18T21:25:07.646531+02:00 0 [Note] [MY-000000] [Galera] Shifting OPEN -> PRIMARY (TO: 22777303)
+2023-03-18T21:25:07.646572+02:00 2 [Note] [MY-000000] [Galera] ####### processing CC 22777303, local, ordered
+2023-03-18T21:25:07.646589+02:00 2 [Note] [MY-000000] [Galera] Maybe drain monitors from -1 upto current CC event 22777303 upto:-1
+2023-03-18T21:25:07.646606+02:00 2 [Note] [MY-000000] [Galera] Drain monitors from -1 up to -1
+2023-03-18T21:25:07.646628+02:00 2 [Note] [MY-000000] [Galera] Process first view: 937dcf28-d38e-11ed-82ac-63ef4aef5b2a my uuid: 0537e7f3-fdc8-11ed-9989-1754b20bc43f
+2023-03-18T21:25:07.646657+02:00 2 [Note] [MY-000000] [Galera] Server node1 connected to cluster at position 937dcf28-d38e-11ed-82ac-63ef4aef5b2a:22777303 with ID 0537e7f3-fdc8-11ed-9989-1754b20bc43f
+2023-03-18T21:25:07.646681+02:00 2 [Note] [MY-000000] [WSREP] Server status change disconnected -> connected
+2023-03-18T21:25:07.646712+02:00 2 [Note] [MY-000000] [WSREP] wsrep_notify_cmd is not defined, skipping notification.
+2023-03-18T21:25:07.646743+02:00 2 [Note] [MY-000000] [Galera] ####### My UUID: 0537e7f3-fdc8-11ed-9989-1754b20bc43f
+2023-03-18T21:25:07.646759+02:00 2 [Note] [MY-000000] [Galera] Cert index reset to 00000000-0000-0000-0000-000000000000:-1 (proto: 10), state transfer needed: yes
+2023-03-18T21:25:07.647098+02:00 0 [Note] [MY-000000] [Galera] Service thread queue flushed.
+2023-03-18T21:25:07.647153+02:00 2 [Note] [MY-000000] [Galera] ####### Assign initial position for certification: 00000000-0000-0000-0000-000000000000:-1, protocol version: -1
+2023-03-18T21:25:07.647168+02:00 2 [Note] [MY-000000] [Galera] State transfer required: 
+	Group state: 937dcf28-d38e-11ed-82ac-63ef4aef5b2a:22777303
+	Local state: 00000000-0000-0000-0000-000000000000:-1
+2023-03-18T21:25:07.647176+02:00 2 [Note] [MY-000000] [WSREP] Server status change connected -> joiner
+2023-03-18T21:25:07.647184+02:00 2 [Note] [MY-000000] [WSREP] wsrep_notify_cmd is not defined, skipping notification.
+2023-03-18T21:25:07.647328+02:00 0 [Note] [MY-000000] [WSREP] Initiating SST/IST transfer on JOINER side (wsrep_sst_xtrabackup-v2 --role 'joiner' --address 'node1_hostname' --datadir '/var/lib/mysql/' --basedir '/usr/' --plugindir '/usr/lib64/mysql/plugin/' --defaults-file '/etc/mysql/my.cnf' --defaults-group-suffix '' --parent '1105681' --mysqld-version '8.0.28-19.1'  --binlog '/var/lib/mysql' )
+2023-03-18T21:25:08.577076+02:00 2 [Note] [MY-000000] [WSREP] Prepared SST request: xtrabackup-v2|node1_hostname:4444/xtrabackup_sst//1
+2023-03-18T21:25:08.577121+02:00 2 [Note] [MY-000000] [Galera] Check if state gap can be serviced using IST
+2023-03-18T21:25:08.577139+02:00 2 [Note] [MY-000000] [Galera] Local UUID: 00000000-0000-0000-0000-000000000000 != Group UUID: 937dcf28-d38e-11ed-82ac-63ef4aef5b2a
+2023-03-18T21:25:08.577152+02:00 2 [Note] [MY-000000] [Galera] ####### IST uuid:00000000-0000-0000-0000-000000000000 f: 0, l: 22777303, STRv: 3
+2023-03-18T21:25:08.577205+02:00 2 [Note] [MY-000000] [Galera] IST receiver addr using tcp://node1_hostname:4568
+2023-03-18T21:25:08.577339+02:00 2 [Note] [MY-000000] [Galera] Prepared IST receiver for 0-22777303, listening at: tcp://172.17.0.2:4568
+2023-03-18T21:25:08.588074+02:00 0 [Note] [MY-000000] [Galera] Member 0.0 (node1) requested state transfer from '*any*'. Selected 1.0 (node2)(SYNCED) as donor.
+2023-03-18T21:25:08.588096+02:00 0 [Note] [MY-000000] [Galera] Shifting PRIMARY -> JOINER (TO: 22777303)
+2023-03-18T21:25:08.588139+02:00 2 [Note] [MY-000000] [Galera] Requesting state transfer: success, donor: 1
+2023-03-18T21:25:08.588160+02:00 2 [Note] [MY-000000] [Galera] Resetting GCache seqno map due to different histories.
+2023-03-18T21:25:10.414098+02:00 0 [Note] [MY-000000] [WSREP-SST] Proceeding with SST.........
+2023-03-18T21:25:10.615392+02:00 0 [Note] [MY-000000] [WSREP-SST] ............Waiting for SST streaming to complete!
+2023-03-18T21:40:25.127116+02:00 0 [Note] [MY-000000] [WSREP-SST] Preparing the backup at /var/lib/mysql//sst-xb-tmpdir
+2023-03-18T21:40:25.137798+02:00 0 [Note] [MY-000000] [Galera] 1.0 (node2): State transfer to 0.0 (node1) complete.
+2023-03-18T21:40:25.151689+02:00 0 [Note] [MY-000000] [Galera] Member 1.0 (node2) synced with group.
+2023-03-18T21:40:31.416205+02:00 0 [Note] [MY-000000] [WSREP-SST] Moving the backup to /var/lib/mysql/
+2023-03-18T21:40:31.598807+02:00 0 [Note] [MY-000000] [WSREP-SST] Running post-processing...........
+2023-03-18T21:40:31.602078+02:00 0 [Note] [MY-000000] [WSREP-SST] Skipping mysql_upgrade (sst): local version (8.0.28) == donor version (8.0.28)
+2023-03-18T21:40:31.750153+02:00 0 [Note] [MY-000000] [WSREP-SST] Waiting for server instance to start.....  This may take some time
+2023-03-18T21:40:36.562373+02:00 0 [Note] [MY-000000] [WSREP-SST] ...........post-processing done
+2023-03-18T21:40:36.564066+02:00 0 [Note] [MY-000000] [WSREP-SST] Galera co-ords from recovery: 937dcf28-d38e-11ed-82ac-63ef4aef5b2a:22777303
+2023-03-18T21:40:36.589125+02:00 3 [Note] [MY-000000] [Galera] Processing SST received
+2023-03-18T21:40:36.589159+02:00 3 [Note] [MY-000000] [WSREP] Server status change joiner -> initializing
+2023-03-18T21:40:36.589179+02:00 3 [Note] [MY-000000] [WSREP] wsrep_notify_cmd is not defined, skipping notification.
+2023-03-18T21:40:36.596419+02:00 0 [Warning] [MY-013245] [Server] The SSL library function CRYPTO_set_mem_functions failed. This is typically caused by the SSL library already being used. As a result the SSL memory allocation will not be instrumented.
+2023-03-18T21:40:36.597558+02:00 0 [Note] [MY-012366] [InnoDB] Using Linux native AIO
+2023-03-18T21:40:36.597751+02:00 0 [Note] [MY-010747] [Server] Plugin 'FEDERATED' is disabled.
+2023-03-18T21:40:36.597791+02:00 0 [Note] [MY-010747] [Server] Plugin 'mysqlx' is disabled.
+2023-03-18T21:40:36.598677+02:00 4 [System] [MY-013576] [InnoDB] InnoDB initialization has started.
+2023-03-18T21:40:36.598717+02:00 4 [Note] [MY-013546] [InnoDB] Atomic write enabled
+2023-03-18T21:40:36.598785+02:00 4 [Note] [MY-012932] [InnoDB] PUNCH HOLE support available
+2023-03-18T21:40:36.598801+02:00 4 [Note] [MY-012944] [InnoDB] Uses event mutexes
+2023-03-18T21:40:36.598813+02:00 4 [Note] [MY-012945] [InnoDB] GCC builtin __atomic_thread_fence() is used for memory barrier
+2023-03-18T21:40:36.598824+02:00 4 [Note] [MY-012948] [InnoDB] Compressed tables use zlib 1.2.11
+2023-03-18T21:40:36.601142+02:00 4 [Note] [MY-013251] [InnoDB] Number of pools: 1
+2023-03-18T21:40:36.601216+02:00 4 [Note] [MY-012951] [InnoDB] Using hardware accelerated crc32 and polynomial multiplication.
+2023-03-18T21:40:36.601503+02:00 4 [Note] [MY-012203] [InnoDB] Directories to scan './'
+2023-03-18T21:40:36.601539+02:00 4 [Note] [MY-012204] [InnoDB] Scanning './'
+2023-03-18T21:40:36.895964+02:00 4 [Note] [MY-012208] [InnoDB] Completed space ID check of 530 files.
+2023-03-18T21:40:36.897334+02:00 4 [Note] [MY-012955] [InnoDB] Initializing buffer pool, total size = 6.000000G, instances = 16, chunk size =128.000000M 
+2023-03-18T21:40:37.111188+02:00 4 [Note] [MY-012957] [InnoDB] Completed initialization of buffer pool
+2023-03-18T21:40:37.262137+02:00 0 [Note] [MY-011952] [InnoDB] If the mysqld execution user is authorized, page cleaner and LRU manager thread priority can be changed. See the man page of setpriority().
+2023-03-18T21:40:37.534712+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_0.dblwr' for doublewrite
+2023-03-18T21:40:37.535380+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_1.dblwr' for doublewrite
+2023-03-18T21:40:37.537111+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_2.dblwr' for doublewrite
+2023-03-18T21:40:37.537783+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_3.dblwr' for doublewrite
+2023-03-18T21:40:37.539665+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_4.dblwr' for doublewrite
+2023-03-18T21:40:37.540197+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_5.dblwr' for doublewrite
+2023-03-18T21:40:37.541606+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_6.dblwr' for doublewrite
+2023-03-18T21:40:37.542047+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_7.dblwr' for doublewrite
+2023-03-18T21:40:37.543539+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_8.dblwr' for doublewrite
+2023-03-18T21:40:37.544000+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_9.dblwr' for doublewrite
+2023-03-18T21:40:37.545409+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_10.dblwr' for doublewrite
+2023-03-18T21:40:37.545849+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_11.dblwr' for doublewrite
+2023-03-18T21:40:37.547062+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_12.dblwr' for doublewrite
+2023-03-18T21:40:37.547622+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_13.dblwr' for doublewrite
+2023-03-18T21:40:37.549666+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_14.dblwr' for doublewrite
+2023-03-18T21:40:37.550211+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_15.dblwr' for doublewrite
+2023-03-18T21:40:37.551781+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_16.dblwr' for doublewrite
+2023-03-18T21:40:37.552200+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_17.dblwr' for doublewrite
+2023-03-18T21:40:37.553873+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_18.dblwr' for doublewrite
+2023-03-18T21:40:37.554397+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_19.dblwr' for doublewrite
+2023-03-18T21:40:37.556168+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_20.dblwr' for doublewrite
+2023-03-18T21:40:37.556693+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_21.dblwr' for doublewrite
+2023-03-18T21:40:37.558222+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_22.dblwr' for doublewrite
+2023-03-18T21:40:37.558808+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_23.dblwr' for doublewrite
+2023-03-18T21:40:37.560449+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_24.dblwr' for doublewrite
+2023-03-18T21:40:37.560969+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_25.dblwr' for doublewrite
+2023-03-18T21:40:37.562548+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_26.dblwr' for doublewrite
+2023-03-18T21:40:37.562943+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_27.dblwr' for doublewrite
+2023-03-18T21:40:37.564812+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_28.dblwr' for doublewrite
+2023-03-18T21:40:37.565229+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_29.dblwr' for doublewrite
+2023-03-18T21:40:37.566632+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_30.dblwr' for doublewrite
+2023-03-18T21:40:37.567430+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_31.dblwr' for doublewrite
+2023-03-18T21:40:37.586257+02:00 4 [Note] [MY-013566] [InnoDB] Double write buffer files: 32
+2023-03-18T21:40:37.586287+02:00 4 [Note] [MY-013565] [InnoDB] Double write buffer pages per instance: 4
+2023-03-18T21:40:37.586309+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_0.dblwr' for doublewrite
+2023-03-18T21:40:37.586324+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_1.dblwr' for doublewrite
+2023-03-18T21:40:37.586338+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_2.dblwr' for doublewrite
+2023-03-18T21:40:37.586351+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_3.dblwr' for doublewrite
+2023-03-18T21:40:37.586364+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_4.dblwr' for doublewrite
+2023-03-18T21:40:37.586377+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_5.dblwr' for doublewrite
+2023-03-18T21:40:37.586390+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_6.dblwr' for doublewrite
+2023-03-18T21:40:37.586403+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_7.dblwr' for doublewrite
+2023-03-18T21:40:37.586415+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_8.dblwr' for doublewrite
+2023-03-18T21:40:37.586429+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_9.dblwr' for doublewrite
+2023-03-18T21:40:37.586443+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_10.dblwr' for doublewrite
+2023-03-18T21:40:37.586456+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_11.dblwr' for doublewrite
+2023-03-18T21:40:37.586470+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_12.dblwr' for doublewrite
+2023-03-18T21:40:37.586483+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_13.dblwr' for doublewrite
+2023-03-18T21:40:37.586500+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_14.dblwr' for doublewrite
+2023-03-18T21:40:37.586512+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_15.dblwr' for doublewrite
+2023-03-18T21:40:37.586524+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_16.dblwr' for doublewrite
+2023-03-18T21:40:37.586538+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_17.dblwr' for doublewrite
+2023-03-18T21:40:37.586551+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_18.dblwr' for doublewrite
+2023-03-18T21:40:37.586563+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_19.dblwr' for doublewrite
+2023-03-18T21:40:37.586576+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_20.dblwr' for doublewrite
+2023-03-18T21:40:37.586589+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_21.dblwr' for doublewrite
+2023-03-18T21:40:37.586601+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_22.dblwr' for doublewrite
+2023-03-18T21:40:37.586614+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_23.dblwr' for doublewrite
+2023-03-18T21:40:37.586626+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_24.dblwr' for doublewrite
+2023-03-18T21:40:37.586639+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_25.dblwr' for doublewrite
+2023-03-18T21:40:37.586651+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_26.dblwr' for doublewrite
+2023-03-18T21:40:37.586664+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_27.dblwr' for doublewrite
+2023-03-18T21:40:37.586677+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_28.dblwr' for doublewrite
+2023-03-18T21:40:37.586690+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_29.dblwr' for doublewrite
+2023-03-18T21:40:37.586702+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_30.dblwr' for doublewrite
+2023-03-18T21:40:37.586715+02:00 4 [Note] [MY-013532] [InnoDB] Using './#ib_16384_31.dblwr' for doublewrite
+2023-03-18T21:40:37.588112+02:00 4 [Note] [MY-013086] [InnoDB] Starting to parse redo log at lsn = 1482407635478, whereas checkpoint_lsn = 1482407635744 and start_lsn = 1482407635456
+2023-03-18T21:40:37.595661+02:00 4 [Note] [MY-013083] [InnoDB] Log background threads are being started...
+2023-03-18T21:40:37.607014+02:00 4 [Note] [MY-012532] [InnoDB] Applying a batch of 0 redo log records ...
+2023-03-18T21:40:37.607039+02:00 4 [Note] [MY-012535] [InnoDB] Apply batch completed!
+2023-03-18T21:40:37.607816+02:00 4 [Note] [MY-013252] [InnoDB] Using undo tablespace './undo_001'.
+2023-03-18T21:40:37.608758+02:00 4 [Note] [MY-013252] [InnoDB] Using undo tablespace './undo_002'.
+2023-03-18T21:40:37.609939+02:00 4 [Note] [MY-012910] [InnoDB] Opened 2 existing undo tablespaces.
+2023-03-18T21:40:37.609964+02:00 4 [Note] [MY-011980] [InnoDB] GTID recovery trx_no: 2970926103
+2023-03-18T21:40:37.833332+02:00 4 [Note] [MY-013776] [InnoDB] Parallel initialization of rseg complete
+2023-03-18T21:40:37.833373+02:00 4 [Note] [MY-013777] [InnoDB] Time taken to initialize rseg using 2 thread: 223409 ms.
+2023-03-18T21:40:37.833491+02:00 4 [Note] [MY-012923] [InnoDB] Creating shared tablespace for temporary tables
+2023-03-18T21:40:37.833564+02:00 4 [Note] [MY-012265] [InnoDB] Setting file '../../tmp0/ibtmp1' size to 12 MB. Physically writing the file full; Please wait ...
+2023-03-18T21:40:37.851506+02:00 4 [Note] [MY-012266] [InnoDB] File '../../tmp0/ibtmp1' size is now 12 MB.
+2023-03-18T21:40:37.851612+02:00 4 [Note] [MY-013627] [InnoDB] Scanning temp tablespace dir:'/mysql/tmp0/'
+2023-03-18T21:40:37.863393+02:00 4 [Note] [MY-013018] [InnoDB] Created 128 and tracked 128 new rollback segment(s) in the temporary tablespace. 128 are now active.
+2023-03-18T21:40:37.889155+02:00 4 [Note] [MY-012976] [InnoDB] Percona XtraDB (http://www.percona.com) 8.0.28-19 started; log sequence number 1482407635754
+2023-03-18T21:40:37.889590+02:00 4 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.
+2023-03-18T21:40:37.905322+02:00 4 [Note] [MY-011089] [Server] Data dictionary restarting version '80023'.
+2023-03-18T21:40:38.033125+02:00 4 [Note] [MY-012357] [InnoDB] Reading DD tablespace files
+2023-03-18T21:40:38.053146+02:00 4 [Note] [MY-012356] [InnoDB] Scanned 532 tablespaces. Validated 532.
+2023-03-18T21:40:38.097586+02:00 4 [Note] [MY-000000] [WSREP] wsrep_init_schema_and_SR (nil)
+2023-03-18T21:40:38.113071+02:00 4 [System] [MY-000000] [WSREP] PXC upgrade completed successfully
+2023-03-18T21:40:38.113126+02:00 4 [Note] [MY-010006] [Server] Using data dictionary with version '80023'.
+2023-03-18T21:40:38.120025+02:00 0 [Warning] [MY-013129] [Server] A message intended for a client cannot be sent there as no client-session is attached. Therefore, we're sending the information to the error-log instead: MY-001287 - 'validate password plugin' is deprecated and will be removed in a future release. Please use validate_password component instead
+2023-03-18T21:40:38.146511+02:00 0 [Note] [MY-010902] [Server] Thread priority attribute setting in Resource Group SQL shall be ignored due to unsupported platform or insufficient privilege.
+2023-03-18T21:40:38.160704+02:00 0 [Note] [MY-012487] [InnoDB] DDL log recovery : begin
+2023-03-18T21:40:38.161098+02:00 0 [Note] [MY-012488] [InnoDB] DDL log recovery : end
+2023-03-18T21:40:38.165182+02:00 0 [Note] [MY-011946] [InnoDB] Loading buffer pool(s) from /var/lib/mysql/ib_buffer_pool
+2023-03-18T21:40:38.356601+02:00 0 [Note] [MY-010303] [Server] Skipping generation of SSL certificates as options related to SSL are specified.
+2023-03-18T21:40:38.357698+02:00 0 [Note] [MY-010308] [Server] Skipping generation of RSA key pair through --sha256_password_auto_generate_rsa_keys as key files are present in data directory.
+2023-03-18T21:40:38.357708+02:00 0 [Note] [MY-010308] [Server] Skipping generation of RSA key pair through --caching_sha2_password_auto_generate_rsa_keys as key files are present in data directory.
+2023-03-18T21:40:38.357788+02:00 0 [Note] [MY-010252] [Server] Server hostname (bind-address): '0.0.0.0'; port: 3306
+2023-03-18T21:40:38.357805+02:00 0 [Note] [MY-010264] [Server]   - '0.0.0.0' resolves to '0.0.0.0';
+2023-03-18T21:40:38.357834+02:00 0 [Note] [MY-010251] [Server] Server socket created on IP: '0.0.0.0'.
+2023-03-18T21:40:38.375702+02:00 0 [Warning] [MY-010324] [Server] 'db' entry 'percona_schema mysql.pxc.sst.role@localhost' had database in mixed case that has been forced to lowercase because lower_case_table_names is set. It will not be possible to remove this privilege using REVOKE.
+2023-03-18T21:40:38.402988+02:00 0 [Note] [MY-011025] [Repl] Failed to start slave threads for channel ''.
+2023-03-18T21:40:38.403130+02:00 0 [Note] [MY-000000] [WSREP] Initialized wsrep sidno 4
+2023-03-18T21:40:38.403147+02:00 0 [Note] [MY-000000] [Galera] Server initialized
+2023-03-18T21:40:38.403157+02:00 0 [Note] [MY-000000] [WSREP] Server status change initializing -> initialized
+2023-03-18T21:40:38.403171+02:00 0 [Note] [MY-000000] [WSREP] wsrep_notify_cmd is not defined, skipping notification.
+2023-03-18T21:40:38.403200+02:00 3 [Note] [MY-000000] [Galera] Recovered position from storage: 937dcf28-d38e-11ed-82ac-63ef4aef5b2a:22777303
+2023-03-18T21:40:38.403210+02:00 3 [Note] [MY-000000] [WSREP] Server status change initialized -> joined
+2023-03-18T21:40:38.403218+02:00 3 [Note] [MY-000000] [WSREP] wsrep_notify_cmd is not defined, skipping notification.
+2023-03-18T21:40:38.406475+02:00 0 [System] [MY-010931] [Server] /usr/sbin/mysqld: ready for connections. Version: '8.0.28-19.1'  socket: '/var/lib/mysqltmp/mysql.sock'  port: 3306  Percona XtraDB Cluster (GPL), Release rel19, Revision f544540, WSREP version 26.4.3.
+2023-03-18T21:40:38.415068+02:00 3 [Note] [MY-000000] [Galera] Recovered view from SST:
+  id: 937dcf28-d38e-11ed-82ac-63ef4aef5b2a:22777303
+  status: primary
+  protocol_version: 4
+  capabilities: MULTI-MASTER, CERTIFICATION, PARALLEL_APPLYING, REPLAY, ISOLATION, PAUSE, CAUSAL_READ, INCREMENTAL_WS, UNORDERED, PREORDERED, STREAMING, NBO
+  final: no
+  own_index: 0
+  members(3):
+	0: 0537e7f3-fdc8-11ed-9989-1754b20bc43f, node1
+	1: 582bb7c0-d9ea-11ed-8cec-8b327c75e4c8, node2
+	2: 75b291cc-fb63-11ed-baf9-7e3119267d35, node3
+
+2023-03-18T21:40:38.415093+02:00 3 [Note] [MY-000000] [WSREP] wsrep_notify_cmd is not defined, skipping notification.
+2023-03-18T21:40:38.415174+02:00 10 [Note] [MY-000000] [WSREP] Recovered cluster id 937dcf28-d38e-11ed-82ac-63ef4aef5b2a
+2023-03-18T21:40:38.427892+02:00 3 [Note] [MY-000000] [Galera] SST received: 937dcf28-d38e-11ed-82ac-63ef4aef5b2a:22777303
+2023-03-18T21:40:38.427918+02:00 3 [System] [MY-000000] [WSREP] SST completed
+2023-03-18T21:40:38.431069+02:00 2 [Note] [MY-000000] [Galera]  str_proto_ver_: 3 sst_seqno_: 22777303 cc_seqno: 22777303 req->ist_len(): 72
+2023-03-18T21:40:38.431109+02:00 2 [Note] [MY-000000] [Galera] Installed new state from SST: 937dcf28-d38e-11ed-82ac-63ef4aef5b2a:22777303
+2023-03-18T21:40:38.432495+02:00 2 [Note] [MY-000000] [Galera] Cert. index preload up to 22777303
+2023-03-18T21:40:38.432547+02:00 0 [Note] [MY-000000] [Galera] ####### IST applying starts with 22777304
+2023-03-18T21:40:38.432588+02:00 0 [Note] [MY-000000] [Galera] ####### IST current seqno initialized to 22777236
+2023-03-18T21:40:38.432627+02:00 0 [Note] [MY-000000] [Galera] Receiving IST...  0.0% ( 0/68 events) complete.
+2023-03-18T21:40:38.432637+02:00 0 [Note] [MY-000000] [Galera] IST preload starting at 22777236
+2023-03-18T21:40:38.432664+02:00 0 [Note] [MY-000000] [Galera] Service thread queue flushed.
+2023-03-18T21:40:38.432684+02:00 0 [Note] [MY-000000] [Galera] ####### Assign initial position for certification: 00000000-0000-0000-0000-000000000000:22777235, protocol version: 5
+2023-03-18T21:40:38.432881+02:00 0 [Note] [MY-000000] [Galera] ####### Passing IST CC 22777300, must_apply: 0, preload: true
+2023-03-18T21:40:38.432898+02:00 0 [Note] [MY-000000] [Galera] REPL Protocols: 10 (5)
+2023-03-18T21:40:38.432903+02:00 0 [Note] [MY-000000] [Galera] ####### Adjusting cert position: 22777299 -> 22777300
+2023-03-18T21:40:38.432912+02:00 0 [Note] [MY-000000] [Galera] Service thread queue flushed.
+2023-03-18T21:40:38.432920+02:00 0 [Note] [MY-000000] [Galera] Recording CC from preload: 22777300
+2023-03-18T21:40:38.432924+02:00 0 [Note] [MY-000000] [Galera] Lowest cert index boundary for CC from preload: 22777236
+2023-03-18T21:40:38.432928+02:00 0 [Note] [MY-000000] [Galera] Min available from gcache for CC from preload: 20123204
+2023-03-18T21:40:38.432933+02:00 0 [Note] [MY-000000] [Galera] ####### Passing IST CC 22777301, must_apply: 0, preload: true
+2023-03-18T21:40:38.432979+02:00 0 [ERROR] [MY-000000] [Galera] got exception while reading IST stream: Unsupported CC action version: 71 (Protocol error)
+	 at gcs/src/gcs_act_cchange.cpp:_version():43
+2023-03-18T21:40:38.432993+02:00 0 [Note] [MY-000000] [Galera] Receiving IST... 95.6% (65/68 events) complete.
+2023-03-18T21:40:38.433098+02:00 0 [ERROR] [MY-000000] [Galera] IST didn't contain all write sets, expected last: 22777303 last received: 22777301
+2023-03-18T21:40:38.434082+02:00 2 [ERROR] [MY-000000] [Galera] Receiving IST failed, node restart required: IST receiver reported failure: 71 (Protocol error)
+	 at galera/src/replicator_smm.hpp:pop_front():349. Null event.
+2023-03-18T21:40:38.434098+02:00 2 [Note] [MY-000000] [Galera] Closing send monitor...
+2023-03-18T21:40:38.434105+02:00 2 [Note] [MY-000000] [Galera] Closed send monitor.
+2023-03-18T21:40:38.434111+02:00 2 [Note] [MY-000000] [Galera] gcomm: terminating thread
+2023-03-18T21:40:38.434119+02:00 2 [Note] [MY-000000] [Galera] gcomm: joining thread
+2023-03-18T21:40:38.440067+02:00 2 [Note] [MY-000000] [Galera] gcomm: closing backend
+2023-03-18T21:40:39.442923+02:00 2 [Note] [MY-000000] [Galera] Current view of cluster as seen by this node
+view (view_id(NON_PRIM,0537e7f3-9989,9)
+memb {
+	0537e7f3-9989,0
+	}
+joined {
+	}
+left {
+	}
+partitioned {
+	582bb7c0-8cec,0
+	75b291cc-baf9,0
+	}
+)
+2023-03-18T21:40:39.442971+02:00 2 [Note] [MY-000000] [Galera] PC protocol downgrade 1 -> 0
+2023-03-18T21:40:39.442982+02:00 2 [Note] [MY-000000] [Galera] Current view of cluster as seen by this node
+view ((empty))
+2023-03-18T21:40:39.443180+02:00 2 [Note] [MY-000000] [Galera] gcomm: closed
+2023-03-18T21:40:39.443259+02:00 0 [Note] [MY-000000] [Galera] New COMPONENT: primary = no, bootstrap = no, my_idx = 0, memb_num = 1
+2023-03-18T21:40:39.443309+02:00 0 [Note] [MY-000000] [Galera] Flow-control interval: [800, 800]
+2023-03-18T21:40:39.443315+02:00 0 [Note] [MY-000000] [Galera] Received NON-PRIMARY.
+2023-03-18T21:40:39.443320+02:00 0 [Note] [MY-000000] [Galera] Shifting JOINER -> OPEN (TO: 22777303)
+2023-03-18T21:40:39.443325+02:00 0 [Note] [MY-000000] [Galera] New SELF-LEAVE.
+2023-03-18T21:40:39.443334+02:00 0 [Note] [MY-000000] [Galera] Flow-control interval: [0, 0]
+2023-03-18T21:40:39.443337+02:00 0 [Note] [MY-000000] [Galera] Received SELF-LEAVE. Closing connection.
+2023-03-18T21:40:39.443341+02:00 0 [Note] [MY-000000] [Galera] Shifting OPEN -> CLOSED (TO: 22777303)
+2023-03-18T21:40:39.443349+02:00 0 [Note] [MY-000000] [Galera] RECV thread exiting 0: Success
+2023-03-18T21:40:39.443881+02:00 2 [Note] [MY-000000] [Galera] recv_thread() joined.
+2023-03-18T21:40:39.443898+02:00 2 [Note] [MY-000000] [Galera] Closing replication queue.
+2023-03-18T21:40:39.443905+02:00 2 [Note] [MY-000000] [Galera] Closing slave action queue.
+2023-03-18T21:40:39.444049+02:00 2 [Note] [MY-000000] [Galera] Cert. index preloaded up to 22777301
+2023-03-18T21:40:39.444073+02:00 2 [Warning] [MY-000000] [Galera] Failed to JOIN the cluster after SST gcs_join(937dcf28-d38e-11ed-82ac-63ef4aef5b2a:22777303) failed: 77 (File descriptor in bad state)
+	 at galera/src/galera_gcs.hpp:join():220
+2023-03-18T21:40:39.444079+02:00 2 [Note] [MY-000000] [Galera] Recording CC from sst: 22777303
+2023-03-18T21:40:39.444084+02:00 2 [Note] [MY-000000] [Galera] Lowest cert index boundary for CC from sst: 22777236
+2023-03-18T21:40:39.444088+02:00 2 [Note] [MY-000000] [Galera] Min available from gcache for CC from sst: 20123204
+2023-03-18T21:40:39.444109+02:00 2 [Note] [MY-000000] [Galera] Maybe drain monitors from 22777303 upto current CC event 22777303 upto:22777300
+2023-03-18T21:40:39.444114+02:00 2 [Warning] [MY-000000] [Galera] Cert position 22777300 less than last committed 22777303
+2023-03-18T21:40:39.444136+02:00 2 [Note] [MY-000000] [Galera] ================================================
+View:
+  id: 937dcf28-d38e-11ed-82ac-63ef4aef5b2a:22777303
+  status: non-primary
+  protocol_version: 4
+  capabilities: MULTI-MASTER, CERTIFICATION, PARALLEL_APPLYING, REPLAY, ISOLATION, PAUSE, CAUSAL_READ, INCREMENTAL_WS, UNORDERED, PREORDERED, STREAMING, NBO
+  final: no
+  own_index: 0
+  members(1):
+	0: 0537e7f3-fdc8-11ed-9989-1754b20bc43f, node1
+=================================================
+2023-03-18T21:40:39.444142+02:00 2 [Note] [MY-000000] [Galera] Non-primary view
+2023-03-18T21:40:39.444147+02:00 2 [Note] [MY-000000] [WSREP] Server status change joined -> connected
+2023-03-18T21:40:39.444151+02:00 2 [Note] [MY-000000] [WSREP] wsrep_notify_cmd is not defined, skipping notification.
+2023-03-18T21:40:39.444158+02:00 2 [Note] [MY-000000] [WSREP] wsrep_notify_cmd is not defined, skipping notification.
+2023-03-18T21:40:39.444166+02:00 2 [Note] [MY-000000] [Galera] Maybe drain monitors from 22777303 upto current CC event 22777303 upto:22777300
+2023-03-18T21:40:39.444170+02:00 2 [Warning] [MY-000000] [Galera] Cert position 22777300 less than last committed 22777303
+2023-03-18T21:40:39.444181+02:00 2 [Note] [MY-000000] [Galera] ================================================
+View:
+  id: 937dcf28-d38e-11ed-82ac-63ef4aef5b2a:22777303
+  status: non-primary
+  protocol_version: 4
+  capabilities: MULTI-MASTER, CERTIFICATION, PARALLEL_APPLYING, REPLAY, ISOLATION, PAUSE, CAUSAL_READ, INCREMENTAL_WS, UNORDERED, PREORDERED, STREAMING, NBO
+  final: yes
+  own_index: -1
+  members(0):
+=================================================
+2023-03-18T21:40:39.444185+02:00 2 [Note] [MY-000000] [Galera] Non-primary view
+2023-03-18T21:40:39.444189+02:00 2 [Note] [MY-000000] [WSREP] Server status change connected -> disconnected
+2023-03-18T21:40:39.444194+02:00 2 [Note] [MY-000000] [WSREP] wsrep_notify_cmd is not defined, skipping notification.
+2023-03-18T21:40:39.444198+02:00 2 [Note] [MY-000000] [WSREP] wsrep_notify_cmd is not defined, skipping notification.
+2023-03-18T21:40:39.448531+02:00 2 [Note] [MY-000000] [WSREP] Applier thread exiting ret: 0 thd: 2
+2023-03-18T21:40:39.755091+02:00 0 [Note] [MY-011946] [InnoDB] Buffer pool(s) load completed at 230528 21:40:39
+2023-03-19T00:43:31.152425+02:00 145212 [Note] [MY-010914] [Server] Got an error reading communication packets
+2023-03-19T02:01:21.122504+02:00 200900 [Note] [MY-010914] [Server] Got an error reading communication packets
+2023-03-19T03:22:21.173733+02:00 254366 [Note] [MY-010914] [Server] Got an error reading communication packets
+2023-03-19T08:18:47.520492+02:00 0 [System] [MY-013172] [Server] Received SHUTDOWN from user <via user signal>. Shutting down mysqld (Version: 8.0.28-19.1).
+2023-03-19T08:18:47.520541+02:00 0 [Note] [MY-000000] [WSREP] Received shutdown signal. Will sleep for 10 secs before initiating shutdown. pxc_maint_mode switched to SHUTDOWN
+2023-03-19T08:18:57.522056+02:00 0 [Note] [MY-000000] [WSREP] Shutdown replication
+2023-03-19T08:18:57.522104+02:00 0 [Note] [MY-000000] [WSREP] Waiting for active wsrep applier to exit
+2023-03-19T08:18:57.522123+02:00 0 [Note] [MY-000000] [WSREP] All applier thread terminated. Will now terminate rollback thread
+2023-03-19T08:18:57.522138+02:00 0 [Note] [MY-000000] [WSREP] Waiting for rollback thread to terminate
+2023-03-19T08:18:57.522154+02:00 1 [Note] [MY-000000] [WSREP] rollbacker thread exiting 1
+2023-03-19T08:18:58.522233+02:00 0 [Note] [MY-000000] [WSREP] Rollback thread terminated
+2023-03-19T08:18:58.529723+02:00 0 [Note] [MY-010067] [Server] Giving 98 client threads a chance to die gracefully
+2023-03-19T08:18:58.529783+02:00 0 [Note] [MY-010117] [Server] Shutting down slave threads
+2023-03-19T08:19:00.529883+02:00 0 [Note] [MY-010118] [Server] Forcefully disconnecting 91 remaining clients
+2023-03-19T08:19:00.551480+02:00 0 [Note] [MY-000000] [Galera] dtor state: CLOSED
+2023-03-19T08:19:00.551508+02:00 0 [Note] [MY-000000] [Galera] MemPool(TrxHandleSlave): hit ratio: 0, misses: 64, in use: 64, in pool: 0
+2023-03-19T08:19:00.553051+02:00 0 [Note] [MY-000000] [Galera] apply mon: entered 0
+2023-03-19T08:19:00.554400+02:00 0 [Note] [MY-000000] [Galera] apply mon: entered 0
+2023-03-19T08:19:00.556063+02:00 0 [Note] [MY-000000] [Galera] mon: entered 3 oooe fraction 0 oool fraction 0.333333
+2023-03-19T08:19:00.556083+02:00 0 [Note] [MY-000000] [Galera] cert index usage at exit 73
+2023-03-19T08:19:00.556091+02:00 0 [Note] [MY-000000] [Galera] cert trx map usage at exit 64
+2023-03-19T08:19:00.556097+02:00 0 [Note] [MY-000000] [Galera] deps set usage at exit 0
+2023-03-19T08:19:00.556105+02:00 0 [Note] [MY-000000] [Galera] avg deps dist 1
+2023-03-19T08:19:00.556114+02:00 0 [Note] [MY-000000] [Galera] avg cert interval 2.27773e+07
+2023-03-19T08:19:00.556122+02:00 0 [Note] [MY-000000] [Galera] cert index size 73
+2023-03-19T08:19:00.556280+02:00 0 [Note] [MY-000000] [Galera] Service thread queue flushed.
+2023-03-19T08:19:00.556299+02:00 0 [Note] [MY-000000] [Galera] wsdb trx map usage 0 conn query map usage 0
+2023-03-19T08:19:00.556314+02:00 0 [Note] [MY-000000] [Galera] MemPool(LocalTrxHandle): hit ratio: 0, misses: 0, in use: 0, in pool: 0
+2023-03-19T08:19:00.557067+02:00 0 [Note] [MY-000000] [Galera] Flushing memory map to disk...
+2023-03-19T08:19:00.712383+02:00 0 [Note] [MY-012330] [InnoDB] FTS optimize thread exiting.
+2023-03-19T08:19:01.698079+02:00 0 [Note] [MY-010120] [Server] Binlog end
+2023-03-19T08:19:01.704260+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'validate_password'
+2023-03-19T08:19:01.704341+02:00 0 [Warning] [MY-011068] [Server] The syntax 'validate password plugin' is deprecated and will be removed in a future release. Please use validate_password component instead.
+2023-03-19T08:19:01.704358+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'auth_pam_compat'
+2023-03-19T08:19:01.704364+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'auth_pam'
+2023-03-19T08:19:01.704369+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'audit_log'
+2023-03-19T08:19:02.129584+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'mysqlx_cache_cleaner'
+2023-03-19T08:19:02.129622+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'ngram'
+2023-03-19T08:19:02.129631+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'BLACKHOLE'
+2023-03-19T08:19:02.129640+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'ARCHIVE'
+2023-03-19T08:19:02.129647+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'TempTable'
+2023-03-19T08:19:02.129654+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'MRG_MYISAM'
+2023-03-19T08:19:02.129662+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'MyISAM'
+2023-03-19T08:19:02.129690+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_CHANGED_PAGES'
+2023-03-19T08:19:02.129708+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_TABLESPACES_SCRUBBING'
+2023-03-19T08:19:02.129719+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_TABLESPACES_ENCRYPTION'
+2023-03-19T08:19:02.129727+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_SESSION_TEMP_TABLESPACES'
+2023-03-19T08:19:02.129733+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_CACHED_INDEXES'
+2023-03-19T08:19:02.129740+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_VIRTUAL'
+2023-03-19T08:19:02.129747+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_COLUMNS'
+2023-03-19T08:19:02.129753+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_TABLESPACES'
+2023-03-19T08:19:02.129760+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_INDEXES'
+2023-03-19T08:19:02.129766+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_TABLESTATS'
+2023-03-19T08:19:02.129773+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_TABLES'
+2023-03-19T08:19:02.129779+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_FT_INDEX_TABLE'
+2023-03-19T08:19:02.129786+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_FT_INDEX_CACHE'
+2023-03-19T08:19:02.129793+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_FT_CONFIG'
+2023-03-19T08:19:02.129800+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_FT_BEING_DELETED'
+2023-03-19T08:19:02.129807+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_FT_DELETED'
+2023-03-19T08:19:02.129813+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_FT_DEFAULT_STOPWORD'
+2023-03-19T08:19:02.129820+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_METRICS'
+2023-03-19T08:19:02.129827+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_TEMP_TABLE_INFO'
+2023-03-19T08:19:02.129834+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_BUFFER_POOL_STATS'
+2023-03-19T08:19:02.129840+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_BUFFER_PAGE_LRU'
+2023-03-19T08:19:02.129847+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_BUFFER_PAGE'
+2023-03-19T08:19:02.129854+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_CMP_PER_INDEX_RESET'
+2023-03-19T08:19:02.129861+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_CMP_PER_INDEX'
+2023-03-19T08:19:02.129868+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_CMPMEM_RESET'
+2023-03-19T08:19:02.129875+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_CMPMEM'
+2023-03-19T08:19:02.129886+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_CMP_RESET'
+2023-03-19T08:19:02.129892+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_CMP'
+2023-03-19T08:19:02.129899+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'INNODB_TRX'
+2023-03-19T08:19:02.129906+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'InnoDB'
+2023-03-19T08:19:02.129944+02:00 0 [Note] [MY-013072] [InnoDB] Starting shutdown...
+2023-03-19T08:19:02.130483+02:00 0 [Note] [MY-011944] [InnoDB] Dumping buffer pool(s) to /var/lib/mysql/ib_buffer_pool
+2023-03-19T08:19:02.131018+02:00 0 [Note] [MY-011944] [InnoDB] Buffer pool(s) dump completed at 230529  8:19:02
+2023-03-19T08:19:02.236298+02:00 0 [Note] [MY-013084] [InnoDB] Log background threads are being closed...
+2023-03-19T08:19:02.843215+02:00 0 [Note] [MY-012980] [InnoDB] Shutdown completed; log sequence number 1482407810924
+2023-03-19T08:19:02.843351+02:00 0 [Note] [MY-012255] [InnoDB] Removed temporary tablespace data file: "../../tmp0/ibtmp1"
+2023-03-19T08:19:02.843380+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'MEMORY'
+2023-03-19T08:19:02.843390+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'CSV'
+2023-03-19T08:19:02.843397+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'PERFORMANCE_SCHEMA'
+2023-03-19T08:19:02.843426+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'wsrep'
+2023-03-19T08:19:02.843432+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'daemon_keyring_proxy_plugin'
+2023-03-19T08:19:02.843460+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'sha2_cache_cleaner'
+2023-03-19T08:19:02.843467+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'caching_sha2_password'
+2023-03-19T08:19:02.843474+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'sha256_password'
+2023-03-19T08:19:02.843480+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'mysql_native_password'
+2023-03-19T08:19:02.846085+02:00 0 [Note] [MY-010733] [Server] Shutting down plugin 'binlog'
+2023-03-19T08:19:02.849987+02:00 0 [System] [MY-010910] [Server] /usr/sbin/mysqld: Shutdown complete (mysqld 8.0.28-19.1)  Percona XtraDB Cluster (GPL), Release rel19, Revision f544540, WSREP version 26.4.3.
