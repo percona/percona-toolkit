@@ -135,7 +135,7 @@ func execGrepAndIterate(path, compiledRegex string, stdout chan<- string) error 
 	// double-check it stopped correctly
 	if err = cmd.Wait(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok && exiterr.ExitCode() == 1 {
-			return errors.New("found nothing")
+			return nil
 		}
 		return errors.Wrap(err, "grep subprocess error")
 	}
