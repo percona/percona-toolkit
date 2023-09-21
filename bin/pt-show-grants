@@ -2057,12 +2057,11 @@ sub main {
                $create =~ s{CREATE USER}{CREATE USER IF NOT EXISTS};
                $create =~ s{ IDENTIFIED VIA }{ IDENTIFIED AS };
                $create =~ s{ BY }{ AS };
-               $create =~ s{ AS.*PASSWORD }{ AS };
                $alter  =~ s{CREATE USER}{ALTER USER};
                # Alter user should not be pass in the latest MySQL version
                #we need to cleanup other MariaDB diversions
-               if ( VersionCompare::cmp($version, 'MariaDB') >= 0 &&
-                   $o->get('convert-MariaDB')){
+               if ( ($version =~ m/MariaDB/) && $o->get('convert-MariaDB')){
+                  $create =~ s{ AS.*PASSWORD }{ AS };
                   $create =~ s/IDENTIFIED.*USING.*unix_socket.*/IDENTIFIED WITH auth_socket/;
                   $create =~ s/IDENTIFIED AS/IDENTIFIED WITH mysql_native_password AS/;
                }
@@ -2079,7 +2078,7 @@ sub main {
          $exit_status = 1;
       }
       #IF is MariaDB we need to remove the password from the user
-      if ( VersionCompare::cmp($version, 'MariaDB') >= 0 ){
+      if (($version =~ m/MariaDB/)){
           for my $i (0 .. $#grants){
             $grants[$i] =~ s{IDENTIFIED.*}{};
           }
@@ -2165,7 +2164,7 @@ sub main {
       if ( $o->get('drop') && !defined($u->{IsRole}) ) {
          print join("\n",
             "DROP USER $user_host;",
-            "DELETE FROM `mysql`.`user` WHERE `User`='$u->{User}' AND `Host`='$u->{Host}';",
+            #"DELETE FROM `mysql`.`user` WHERE `User`='$u->{User}' AND `Host`='$u->{Host}';",
             ), "\n";
       }
 
