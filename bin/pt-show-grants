@@ -2048,16 +2048,25 @@ sub main {
             PTDEBUG && _d($EVAL_ERROR);
             $exit_status = 1;
          }
-         if ($#create_user > 0){
+         if ($#create_user >= 0){
             PTDEBUG && _d('CreateUser:', Dumper(\@create_user));
             # make this replication safe converting the CREATE USER into
             # CREATE USER IF NOT EXISTS and then doing an ALTER USER
                my $create = $create_user[0];
-               my $alter  = $create;
+               my $alter  = $create_user[0];
                $create =~ s{CREATE USER}{CREATE USER IF NOT EXISTS};
-               $create =~ s{ IDENTIFIED .*}{};
+               $create =~ s{ IDENTIFIED VIA }{ IDENTIFIED AS };
+               $create =~ s{ BY }{ AS };
+               $create =~ s{ AS.*PASSWORD }{ AS };
                $alter  =~ s{CREATE USER}{ALTER USER};
-               @create_user = ( $create, $alter );
+               # Alter user should not be pass in the latest MySQL version
+               #we need to cleanup other MariaDB diversions
+               if ( VersionCompare::cmp($version, 'MariaDB') >= 0 &&
+                   $o->get('convert-MariaDB')){
+                  $create =~ s/IDENTIFIED.*USING.*unix_socket.*/IDENTIFIED WITH auth_socket/;
+                  $create =~ s/IDENTIFIED AS/IDENTIFIED WITH mysql_native_password AS/;
+               }
+               @create_user = ( $create);
                PTDEBUG && _d('AdjustedCreateUser:', Dumper(\@create_user));
          }
       }
@@ -2441,6 +2450,10 @@ Ignore this comma-separated list of users.
 type: array
 
 Only show grants for this comma-separated list of users.
+
+=item --convert-MariaDB
+
+When set it convert some of the proprietary MariaDB syntax into valid MySQL form
 
 =item --password
 
