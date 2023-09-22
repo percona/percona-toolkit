@@ -2175,7 +2175,7 @@ sub main {
 
       if ( $o->get('drop') && !defined($u->{IsRole}) ) {
          print join("\n",
-            "DROP USER $user_host;",
+            "DROP USER IF EXISTS $user_host;",
             #"DELETE FROM `mysql`.`user` WHERE `User`='$u->{User}' AND `Host`='$u->{Host}';",
             ), "\n";
       }
