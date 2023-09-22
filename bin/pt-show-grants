@@ -2067,7 +2067,7 @@ sub main {
                $create =~ s{ BY }{ AS };
                if ( $create =~ m/caching_sha2_password/ ) {
                   print "-- Converting $user_host caching_sha2_password to binary for correct export/import\n";
-                  $create =~ s/\sAS\s.*'\s|$/ AS $pw_bin /g;
+                  $create =~ s/\sAS\s.*'\s/ AS $pw_bin /g;
                }
                $alter  =~ s{CREATE USER}{ALTER USER};
                # Alter user should not be pass in the latest MySQL version
