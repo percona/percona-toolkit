@@ -1,6 +1,31 @@
 Percona Toolkit
 ***************
 
+v3.5.5 released 2023-10-02
+==============================
+
+New Features
+------------------------------------------------------------
+
+* :jirabug:`PT-2168`: PT-OSC shouldn't fail while unable to monitor a replica node
+* `PR-645`:  Add after nibble hook to pt-online-schema-change (Thanks to Marcelo HP Ferreira for the implementing this feature)
+* :jirabug:`PT-2258`: Pass tbl as argument for on_copy_rows_after_nibble
+
+Improvements
+------------------------------------------------------------
+
+* :jirabug:`PT-2156`: Fix tests for lib
+* Fixed typos, removed trailing whitespaces, added spelling workflow to GitHub (Thanks to Viktor Szépe for fixing these issues)
+
+Bugs Fixed
+------------
+
+* :jirabug:`PT-2235`: pt-mongodb-index-check does not support option --version
+* :jirabug:`PT-2236`: pt-secure-collect, pt-pg-summary do not follow PT standard for option --version
+* :jirabug:`PT-2241`: using --skip-check-slave-lag multiple times does not work as expected (Thanks to PinoCao for reporting and fixing this issue)
+* :jirabug:`PT-2246`: CVE reported in Percona Toolkit version 3.5.4 related to Go (Thanks to Kushal Haldar for reporting this issue)
+* :jirabug:`PT-2248`: pt-k8s-debug-collector does not run pg_gather with K8SPG 2
+
 v3.5.4 released 2023-06-30
 ==============================
 
