@@ -2050,6 +2050,14 @@ sub main {
          }
          if ($#create_user >= 0){
             PTDEBUG && _d('CreateUser:', Dumper(\@create_user));
+            #given caching_sha2_password issue we need to select the password in binary format and replace the one coming from the create
+            my $query = "SELECT authentication_string  sha2 from mysql.user where user='$u->{User}' and host='$u->{Host}'";
+            PTDEBUG && _d('get password:', Dumper($query));
+            my ( $pw_sha2) = $dbh->selectrow_array($query);
+            my $pw_bin = $pw_sha2;
+            $pw_bin =~ s/(.)/sprintf '%02X', ord $1/seg;
+            $pw_bin = "0x".$pw_bin;
+            
             # make this replication safe converting the CREATE USER into
             # CREATE USER IF NOT EXISTS and then doing an ALTER USER
                my $create = $create_user[0];
@@ -2057,6 +2065,10 @@ sub main {
                $create =~ s{CREATE USER}{CREATE USER IF NOT EXISTS};
                $create =~ s{ IDENTIFIED VIA }{ IDENTIFIED AS };
                $create =~ s{ BY }{ AS };
+               if ( $create =~ m/caching_sha2_password/ ) {
+                  print "-- Converting $user_host caching_sha2_password to binary for correct export/import\n";
+                  $create =~ s/\sAS\s.*'\s|$/ AS $pw_bin /g;
+               }
                $alter  =~ s{CREATE USER}{ALTER USER};
                # Alter user should not be pass in the latest MySQL version
                #we need to cleanup other MariaDB diversions
