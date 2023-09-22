@@ -2039,7 +2039,7 @@ sub main {
 
       # If MySQL 5.7.6+ then we need to use SHOW CREATE USER
       my @create_user;
-      if (( VersionCompare::cmp($version, '5.7.6') >= 0 ) &&
+      if (( VersionCompare::cmp($version, '5.7.6') >= 0 ) ||
           ( VersionCompare::cmp($version, '10.0.0') <= 0 )) {
          eval {
             @create_user = @{ $dbh->selectcol_arrayref("SHOW CREATE USER $user_host") };
@@ -2048,16 +2048,38 @@ sub main {
             PTDEBUG && _d($EVAL_ERROR);
             $exit_status = 1;
          }
-         PTDEBUG && _d('CreateUser:', Dumper(\@create_user));
-         # make this replication safe converting the CREATE USER into
-         # CREATE USER IF NOT EXISTS and then doing an ALTER USER
-            my $create = $create_user[0];
-            my $alter  = $create;
-            $create =~ s{CREATE USER}{CREATE USER IF NOT EXISTS};
-            $create =~ s{ IDENTIFIED .*}{};
-            $alter  =~ s{CREATE USER}{ALTER USER};
-            @create_user = ( $create, $alter );
-            PTDEBUG && _d('AdjustedCreateUser:', Dumper(\@create_user));
+         if ($#create_user >= 0){
+            PTDEBUG && _d('CreateUser:', Dumper(\@create_user));
+            #given caching_sha2_password issue we need to select the password in binary format and replace the one coming from the create
+            my $query = "SELECT authentication_string  sha2 from mysql.user where user='$u->{User}' and host='$u->{Host}'";
+            PTDEBUG && _d('get password:', Dumper($query));
+            my ( $pw_sha2) = $dbh->selectrow_array($query);
+            my $pw_bin = $pw_sha2;
+            $pw_bin =~ s/(.)/sprintf '%02X', ord $1/seg;
+            $pw_bin = "0x".$pw_bin;
+            
+            # make this replication safe converting the CREATE USER into
+            # CREATE USER IF NOT EXISTS and then doing an ALTER USER
+               my $create = $create_user[0];
+               my $alter  = $create_user[0];
+               $create =~ s{CREATE USER}{CREATE USER IF NOT EXISTS};
+               $create =~ s{ IDENTIFIED VIA }{ IDENTIFIED AS };
+               $create =~ s{ BY }{ AS };
+               if ( $create =~ m/caching_sha2_password/ ) {
+                  print "-- Converting $user_host caching_sha2_password to binary for correct export/import\n";
+                  $create =~ s/\sAS\s.*'\s/ AS $pw_bin /g;
+               }
+               $alter  =~ s{CREATE USER}{ALTER USER};
+               # Alter user should not be pass in the latest MySQL version
+               #we need to cleanup other MariaDB diversions
+               if ( ($version =~ m/MariaDB/) && $o->get('convert-MariaDB')){
+                  $create =~ s{ AS.*PASSWORD }{ AS };
+                  $create =~ s/IDENTIFIED.*USING.*unix_socket.*/IDENTIFIED WITH auth_socket/;
+                  $create =~ s/IDENTIFIED AS/IDENTIFIED WITH mysql_native_password AS/;
+               }
+               @create_user = ( $create);
+               PTDEBUG && _d('AdjustedCreateUser:', Dumper(\@create_user));
+         }
       }
       my @grants;
       eval {
@@ -2066,6 +2088,13 @@ sub main {
       if ( $EVAL_ERROR ) {
          PTDEBUG && _d($EVAL_ERROR);
          $exit_status = 1;
+      }
+      #IF is MariaDB we need to remove the password from the user
+      if (($version =~ m/MariaDB/)){
+          for my $i (0 .. $#grants){
+            $grants[$i] =~ s{IDENTIFIED.*}{};
+          }
+          PTDEBUG && _d('Grants:', Dumper(\@grants));
       }
       PTDEBUG && _d('Grants:', Dumper(\@grants));
       next unless @grants;
@@ -2146,8 +2175,8 @@ sub main {
 
       if ( $o->get('drop') && !defined($u->{IsRole}) ) {
          print join("\n",
-            "DROP USER $user_host;",
-            "DELETE FROM `mysql`.`user` WHERE `User`='$u->{User}' AND `Host`='$u->{Host}';",
+            "DROP USER IF EXISTS $user_host;",
+            #"DELETE FROM `mysql`.`user` WHERE `User`='$u->{User}' AND `Host`='$u->{Host}';",
             ), "\n";
       }
 
@@ -2432,6 +2461,10 @@ Ignore this comma-separated list of users.
 type: array
 
 Only show grants for this comma-separated list of users.
+
+=item --convert-MariaDB
+
+When set it convert some of the proprietary MariaDB syntax into valid MySQL form
 
 =item --password
 
