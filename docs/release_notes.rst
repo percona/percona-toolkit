@@ -9,6 +9,7 @@ New Features
 
 * :jirabug:`PT-2168`: PT-OSC shouldn't fail while unable to monitor a replica node
 * `PR-645`:  Add after nibble hook to pt-online-schema-change (Thanks to Marcelo HP Ferreira for the implementing this feature)
+* :jirabug:`PT-2258`: Pass tbl as argument for on_copy_rows_after_nibble
 
 Improvements
 ------------------------------------------------------------
