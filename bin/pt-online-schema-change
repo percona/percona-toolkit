@@ -10096,7 +10096,9 @@ sub main {
 
          # --plugin hook
          if ( $plugin && $plugin->can('on_copy_rows_after_nibble') ) {
-             $plugin->on_copy_rows_after_nibble();
+             $plugin->on_copy_rows_after_nibble(
+               tbl => $tbl,
+             );
          }
 
          return;
