@@ -25,6 +25,11 @@ func TestMain(t *testing.T) {
 			path: "tests/logs/upgrade/*.log",
 		},
 		{
+			name: "upgrade_list_all_no_color",
+			cmd:  []string{"list", "--all", "--no-color"},
+			path: "tests/logs/upgrade/*.log",
+		},
+		{
 			name: "upgrade_list_sst",
 			cmd:  []string{"list", "--sst"},
 			path: "tests/logs/upgrade/*.log",
