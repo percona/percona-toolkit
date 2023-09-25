@@ -9,7 +9,6 @@ import (
 )
 
 type regexList struct {
-	Json bool
 }
 
 func (l *regexList) Help() string {
@@ -21,19 +20,10 @@ func (l *regexList) Run() error {
 	allregexes := regex.AllRegexes()
 	allregexes.Merge(regex.PXCOperatorMap)
 
-	if l.Json {
-		out, err := json.Marshal(&allregexes)
-		if err != nil {
-			return errors.Wrap(err, "could not marshal regexes")
-		}
-		fmt.Println(string(out))
-		return nil
+	out, err := json.Marshal(&allregexes)
+	if err != nil {
+		return errors.Wrap(err, "could not marshal regexes")
 	}
-	keys := []string{}
-	for k := range allregexes {
-		keys = append(keys, k)
-
-	}
-	fmt.Println(keys)
+	fmt.Println(string(out))
 	return nil
 }
