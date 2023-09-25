@@ -11,7 +11,8 @@ Usage
 =====
 
 .. code-block:: bash
-    pt-galera-log-explainer [--since=] [--until=] [-vvv] [--merge-by-directory] [--pxc-operator] <command> <paths ...>
+
+   pt-galera-log-explainer [--since=] [--until=] [-vvv] [--merge-by-directory] [--pxc-operator] <command> <paths ...>
 
 Commands available
 ==================
@@ -20,6 +21,7 @@ list
 ~~~~
 
 .. code-block:: bash
+
     pt-galera-log-explainer [flags] list { --all | [--states] [--views] [--events] [--sst] [--applicative] } <paths ...>
 
 List key events in chronological order from any number of nodes (sst, view changes, general errors, maintenance operations)
@@ -27,23 +29,31 @@ It will aggregates logs together by identifying them using node names, IPs and i
 
 
 
-It can be from a single node
-.. code-block:: bash
-    pt-galera-log-explainer list --all --since 2023-01-05T03:24:26.000000Z /var/log/mysql/``*``.log
+It can be from a single node:
 
-or from multiple nodes
 .. code-block:: bash
-    pt-galera-log-explainer list --all ``*``.log
+
+    pt-galera-log-explainer list --all --since 2023-01-05T03:24:26.000000Z /var/log/mysql/*.log
+
+or from multiple nodes.
+
+.. code-block:: bash
+
+    pt-galera-log-explainer list --all *.log
 
 You can filter by type of events
+
 .. code-block:: bash
-    pt-galera-log-explainer list --sst --views ``*``.log
+
+    pt-galera-log-explainer list --sst --views *.log
 
 
 whois
 ~~~~~
 Find out information about nodes, using any type of info
+
 .. code-block:: bash
+
     pt-galera-log-explainer whois '218469b2' mysql.log 
     {
     	"input": "218469b2",
@@ -62,7 +72,9 @@ Find out information about nodes, using any type of info
     }
 
 Using any type of information
+
 .. code-block:: bash
+
     pt-galera-log-explainer whois '172.17.0.3' mysql.log 
     pt-galera-log-explainer whois 'galera-node2' mysql.log 
 
@@ -71,15 +83,19 @@ conflicts
 ~~~~~~~~~
 
 List every replication failure votes (Galera 4)
+
 .. code-block:: bash
-    pt-galera-log-explainer conflicts [--json|--yaml] ``*``.log
+
+    pt-galera-log-explainer conflicts [--json|--yaml] *.log
 
 ctx
 ~~~
 
 Get the tool crafted context for a single log.
 It will contain everything the tool extracted from the log file: version, sst information, known uuid-ip-nodename mappings, ...
+
 .. code-block:: bash
+
     pt-galera-log-explainer ctx mysql.log
 
 regex-list
@@ -92,6 +108,7 @@ Will print every implemented regexes:
 * verbosity: the required level of verbosity to which it will be printed
 
 .. code-block:: bash
+
     pt-galera-log-explainer regex-list
 
 Available flags
@@ -137,6 +154,64 @@ Available flags
     grep arguments. perl regexp (-P) is necessary. -o will break the tool
     Default: ``-P``
 
+``--version``
+    Show version and exit.
+
+
+Example outputs
+===============
+
+.. code-block:: bash
+
+    $ pt-galera-log-explainer list --all --no-color --since=2023-03-12T19:41:28.493046Z --until=2023-03-12T19:44:59.855491Z tests/logs/upgrade/*
+    identifier                    172.17.0.2                                 node2                                   tests/logs/upgrade/node3.log            
+    current path                  tests/logs/upgrade/node1.log               tests/logs/upgrade/node2.log            tests/logs/upgrade/node3.log            
+    last known ip                 172.17.0.2                                                                                                                 
+    last known name                                                          node2                                                                           
+    mysql version                 8.0.28                                                                                                                     
+                                                                                                                                                             
+    2023-03-12T19:41:28.493046Z   starting(8.0.28)                           |                                       |                                       
+    2023-03-12T19:41:28.500789Z   started(cluster)                           |                                       |                                       
+    2023-03-12T19:43:17.630191Z   |                                          node3 joined                            |                                       
+    2023-03-12T19:43:17.630208Z   node3 joined                               |                                       |                                       
+    2023-03-12T19:43:17.630221Z   node2 joined                               |                                       |                                       
+    2023-03-12T19:43:17.630243Z   |                                          node1 joined                            |                                       
+    2023-03-12T19:43:17.634138Z   |                                          |                                       node2 joined                            
+    2023-03-12T19:43:17.634229Z   |                                          |                                       node1 joined                            
+    2023-03-12T19:43:17.643210Z   |                                          PRIMARY(n=3)                            |                                       
+    2023-03-12T19:43:17.648163Z   |                                          |                                       PRIMARY(n=3)                            
+    2023-03-12T19:43:18.130088Z   CLOSED -> OPEN                             |                                       |                                       
+    2023-03-12T19:43:18.130230Z   PRIMARY(n=3)                               |                                       |                                       
+    2023-03-12T19:43:18.130916Z   OPEN -> PRIMARY                            |                                       |                                       
+    2023-03-12T19:43:18.904410Z   will receive IST(seqno:178226792)          |                                       |                                       
+    2023-03-12T19:43:18.913328Z   |                                          |                                       node1 cannot find donor                 
+    2023-03-12T19:43:18.913429Z   node1 cannot find donor                    |                                       |                                       
+    2023-03-12T19:43:18.913565Z   |                                          node1 cannot find donor                 |                                       
+    2023-03-12T19:43:19.914122Z   |                                          |                                       node1 cannot find donor                 
+    2023-03-12T19:43:19.914259Z   node1 cannot find donor                    |                                       |                                       
+    2023-03-12T19:43:19.914362Z   |                                          node1 cannot find donor                 |                                       
+    2023-03-12T19:43:20.914957Z   |                                          |                                       (repeated x97)node1 cannot find donor   
+    2023-03-12T19:43:20.915143Z   (repeated x97)node1 cannot find donor      |                                       |                                       
+    2023-03-12T19:43:20.915262Z   |                                          (repeated x97)node1 cannot find donor   |                                       
+    2023-03-12T19:44:58.999603Z   |                                          |                                       node1 cannot find donor                 
+    2023-03-12T19:44:58.999791Z   node1 cannot find donor                    |                                       |                                       
+    2023-03-12T19:44:58.999891Z   |                                          node1 cannot find donor                 |                                       
+    2023-03-12T19:44:59.817822Z   timeout from donor in gtid/keyring stage   |                                       |                                       
+    2023-03-12T19:44:59.839692Z   SST error                                  |                                       |                                       
+    2023-03-12T19:44:59.840669Z   |                                          |                                       node2 joined                            
+    2023-03-12T19:44:59.840745Z   |                                          |                                       node1 left                              
+    2023-03-12T19:44:59.840933Z   |                                          node3 joined                            |                                       
+    2023-03-12T19:44:59.841034Z   |                                          node1 left                              |                                       
+    2023-03-12T19:44:59.841189Z   NON-PRIMARY(n=1)                           |                                       |                                       
+    2023-03-12T19:44:59.841292Z   PRIMARY -> OPEN                            |                                       |                                       
+    2023-03-12T19:44:59.841352Z   OPEN -> CLOSED                             |                                       |                                       
+    2023-03-12T19:44:59.841515Z   terminated                                 |                                       |                                       
+    2023-03-12T19:44:59.841529Z   former SST cancelled                       |                                       |                                       
+    2023-03-12T19:44:59.848349Z   |                                          |                                       node1 left                              
+    2023-03-12T19:44:59.848409Z   |                                          |                                       PRIMARY(n=2)                            
+    2023-03-12T19:44:59.855443Z   |                                          node1 left                              |                                       
+    2023-03-12T19:44:59.855491Z   |                                          PRIMARY(n=2)                            |                        
+
 
 
 Compatibility
@@ -153,3 +228,5 @@ Known issues
   This is mainly when the log file does not contain enough information.
 * Some information will seems missed. Depending on the case, it may be simply unimplemented yet, or it was disabled later because it was found to be unreliable (node index numbers are not reliable for example)
 * Columns width are sometimes too large to be easily readable. This usually happens when printing SST events with long node names
+* Using ``list`` on PXC operator logs can silently lead to broken results, ``--pxc-operator`` should be used
+* When some display corner-cases seems broken (events not deduplicated, ...), it is because of extra hidden internal events.
