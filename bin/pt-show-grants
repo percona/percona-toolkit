@@ -2042,8 +2042,9 @@ sub main {
       if (( VersionCompare::cmp($version, '5.7.6') >= 0 ) ||
           ( VersionCompare::cmp($version, '10.0.0') <= 0 )) {
          eval {
-            if (( VersionCompare::cmp($version, '8.0.17') >= 0 ) && ($o->get('print_identified_with_as_hex'))){
+            if (!($version =~ m/MariaDB/) && ( VersionCompare::cmp($version, '8.0.17') >= 0 ) && ($o->get('print_identified_with_as_hex'))){
                $dbh->do("SET print_identified_with_as_hex=1") or die();
+               print "-- Setting  print_identified_with_as_hex as ACTIVE at session level for correct export/import\n";
             }
             @create_user = @{ $dbh->selectcol_arrayref("SHOW CREATE USER $user_host") };
          };
