@@ -2042,6 +2042,9 @@ sub main {
       if (( VersionCompare::cmp($version, '5.7.6') >= 0 ) ||
           ( VersionCompare::cmp($version, '10.0.0') <= 0 )) {
          eval {
+            if (( VersionCompare::cmp($version, '8.0.17') >= 0 ) && ($o->get('print_identified_with_as_hex'))){
+               $dbh->do("SET print_identified_with_as_hex=1") or die();
+            }
             @create_user = @{ $dbh->selectcol_arrayref("SHOW CREATE USER $user_host") };
          };
          if ( $EVAL_ERROR ) {
@@ -2051,6 +2054,7 @@ sub main {
          if ($#create_user >= 0){
             PTDEBUG && _d('CreateUser:', Dumper(\@create_user));
             #given caching_sha2_password issue we need to select the password in binary format and replace the one coming from the create
+            #my $query = "SELECT authentication_string as sha2, convert(authentication_string using Binary) as bin from mysql.user where user='$u->{User}' and host='$u->{Host}'";
             my $query = "SELECT authentication_string  sha2 from mysql.user where user='$u->{User}' and host='$u->{Host}'";
             PTDEBUG && _d('get password:', Dumper($query));
             my ( $pw_sha2) = $dbh->selectrow_array($query);
@@ -2065,7 +2069,7 @@ sub main {
                $create =~ s{CREATE USER}{CREATE USER IF NOT EXISTS};
                $create =~ s{ IDENTIFIED VIA }{ IDENTIFIED AS };
                $create =~ s{ BY }{ AS };
-               if ( $create =~ m/caching_sha2_password/ ) {
+               if (( $create =~ m/caching_sha2_password/ ) && !($o->get('print_identified_with_as_hex'))) {
                   print "-- Converting $user_host caching_sha2_password to binary for correct export/import\n";
                   $create =~ s/\sAS\s.*'\s/ AS $pw_bin /g;
                }
@@ -2465,6 +2469,12 @@ Only show grants for this comma-separated list of users.
 =item --convert-MariaDB
 
 When set it convert some of the proprietary MariaDB syntax into valid MySQL form
+
+=item --print_identified_with_as_hex
+
+Enabling print_identified_with_as_hex causes SHOW CREATE USER to display such hash values as hexadecimal strings rather than as regular string literals.
+Hash values that do not contain unprintable characters still display as regular string literals, even with this variable enabled.
+
 
 =item --password
 
