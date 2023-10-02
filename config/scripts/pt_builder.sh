@@ -160,7 +160,7 @@ install_go() {
     rm -rf /usr/local/go /usr/local/go1.8 /usr/local/go1.9
     mv go1.9 /usr/local/
     ln -s /usr/local/go1.9 /usr/local/go
-    GO_VERSION=1.20.5
+    GO_VERSION=1.21.1
     wget --progress=dot:giga https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz -O /tmp/golang.tar.gz
     tar -C /usr/local -xzf /tmp/golang.tar.gz
     update-alternatives --install "/usr/bin/go" "go" "/usr/local/go/bin/go" 0
@@ -381,7 +381,7 @@ build_rpm(){
     ARCH=$(echo $(uname -m) | sed -e 's:i686:i386:g')
     echo "RHEL=${RHEL}" >> percona-toolkit.properties
     echo "ARCH=${ARCH}" >> percona-toolkit.properties
-    rpmbuild --target=x86_64 --define "version $VERSION" --define "dist .el${RHEL}" --define "release $RPM_RELEASE.el${RHEL}" --define "_topdir ${WORKDIR}/rpmbuild" --rebuild rpmbuild/SRPMS/${SRC_RPM}
+    rpmbuild --target=x86_64 --define "version $VERSION" --define "VERSION $VERSION" --define "dist .el${RHEL}" --define "release $RPM_RELEASE.el${RHEL}" --define "_topdir ${WORKDIR}/rpmbuild" --rebuild rpmbuild/SRPMS/${SRC_RPM}
 
     return_code=$?
     if [ $return_code != 0 ]; then
@@ -460,7 +460,7 @@ build_tarball(){
     tar xzf ${TARBALL}
     update_go
     cd ${WORKDIR}/go/src/github.com/percona/${PRODUCT}
-    sed -i 's:make $OS_ARCH:version=$VERSION make linux-amd64:' util/build-packages
+    sed -i 's:make $OS_ARCH:VERSION=$VERSION make linux-amd64:' util/build-packages
     bash -x util/build-packages ${VERSION} docs/release_notes.rst
     cp release/${PRODUCT}-${VERSION}.tar.gz ${WORKDIR}/${PRODUCT}-${VERSION}_x86_64.tar.gz
     cd ${WORKDIR}
@@ -513,7 +513,7 @@ build_deb(){
     rm -rf bin/pt-mongo*
     cd src/go
     sed -i "s|dep ensure|${GOBINPATH}/dep ensure|g" Makefile
-    version=$VERSION make linux-amd64
+    VERSION=$VERSION make linux-amd64
     cd ../../
     dch -b -m -D "all" --force-distribution -v "${VERSION}-${DEB_RELEASE}.${DEBIAN_VERSION}" 'Update distribution'
     dpkg-buildpackage -rfakeroot -us -uc -b
