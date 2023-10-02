@@ -11175,7 +11175,7 @@ sub determine_alter_fk_method {
       return '';  # $alter_fk_method can't be undef
    }
 
-   # The rebuild_constraints method is the default becuase it's safer
+   # The rebuild_constraints method is the default because it's safer
    # and doesn't cause the orig table to go missing for a moment.
    my $method = 'rebuild_constraints';
 
@@ -11630,7 +11630,7 @@ sub random_suffix {
 # duplicate_trigger: If set, it will create the trigger on the new table
 #                    with a random string as a trigger name suffix.
 #                    It will also not drop the original trigger.
-#                    This is usefull when creating a temporary trigger for testing
+#                    This is useful when creating a temporary trigger for testing
 #                    purposes or if --no-swap-tables AND --no-drop-new-table was
 #                    specified along with --preserve-triggers. In this case,
 #                    since the original table and triggers are not going to be
