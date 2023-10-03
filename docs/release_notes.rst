@@ -1,7 +1,8 @@
 Percona Toolkit
 ***************
 
-v3.5.5 released 2023-10-02
+
+v3.5.5 released 2023-10-03
 ==============================
 
 New Features
