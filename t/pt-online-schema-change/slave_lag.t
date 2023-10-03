@@ -184,7 +184,7 @@ $output = `$trunk/bin/pt-online-schema-change $args 2>&1`;
 
 unlike(
       $output,
-      qr/Replica lag is \d+ seconds on .*  Waiting/s,
+      qr/Replica lag is \d+ seconds on .*:12346.  Waiting/s,
       "--skip-check-slave-lag is really skipping the slave",
 );
 

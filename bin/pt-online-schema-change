@@ -56,7 +56,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.5.4';
+our $VERSION = '3.5.5';
 
 use strict;
 use warnings FATAL => 'all';
@@ -4255,6 +4255,7 @@ sub get_slaves {
                push @$slaves, $make_cxn->(dsn => $slave_dsn, dbh => $dbh, parent => $parent);
                return;
             },
+            wait_no_die => $args{'wait_no_die'},
          }
       );
    } elsif ( $methods->[0] =~ m/^dsn=/i ) {
@@ -4262,6 +4263,7 @@ sub get_slaves {
       $slaves = $self->get_cxn_from_dsn_table(
          %args,
          dsn_table_dsn => $dsn_table_dsn,
+         wait_no_die => $args{'wait_no_die'},
       );
    }
    elsif ( $methods->[0] =~ m/none/i ) {
@@ -4317,6 +4319,20 @@ sub recurse_to_slaves {
 
    my $dbh = $args->{dbh};
 
+   my $get_dbh = sub {
+         eval {
+            $dbh = $dp->get_dbh(
+               $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 }
+            );
+            PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
+         };
+         if ( $EVAL_ERROR ) {
+            print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), ": ", $EVAL_ERROR, "\n"
+               or die "Cannot print: $OS_ERROR";
+            return;
+         }
+   };
+
    DBH: {
       if ( !defined $dbh ) {
          foreach my $known_slave ( @{$args->{slaves}} ) {
@@ -4326,23 +4342,29 @@ sub recurse_to_slaves {
                last DBH;
             }
          }
-
-         eval {
-            $dbh = $dp->get_dbh(
-               $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 });
-            PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
-         };
-         if ( $EVAL_ERROR ) {
-            print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), ": ", $EVAL_ERROR, "\n"
-               or die "Cannot print: $OS_ERROR";
-            return;
-         }
+         $get_dbh->();
       }
    }
 
    my $sql  = 'SELECT @@SERVER_ID';
    PTDEBUG && _d($sql);
-   my ($id) = $dbh->selectrow_array($sql);
+   my $id = undef;
+   do {
+      eval {
+         ($id) = $dbh->selectrow_array($sql);
+      };
+	   if ( $EVAL_ERROR ) {
+		   if ( $args->{wait_no_die} ) {
+			   print STDERR "Error getting server id: ", $EVAL_ERROR,
+               "\nRetrying query for server ", $slave_dsn->{h}, ":", $slave_dsn->{P}, "\n";
+            sleep 1;
+            $dbh->disconnect();
+            $get_dbh->();
+         } else {
+            die $EVAL_ERROR;
+         }
+      }
+   } until ($id);
    PTDEBUG && _d('Working on server ID', $id);
    my $master_thinks_i_am = $dsn->{server_id};
    if ( !defined $id
@@ -4964,18 +4986,39 @@ sub get_cxn_from_dsn_table {
         . "or a database-qualified table (t)";
    }
 
+   my $done = 0;
    my $dsn_tbl_cxn = $make_cxn->(dsn => $dsn);
    my $dbh         = $dsn_tbl_cxn->connect();
    my $sql         = "SELECT dsn FROM $dsn_table ORDER BY id";
    PTDEBUG && _d($sql);
-   my $dsn_strings = $dbh->selectcol_arrayref($sql);
    my @cxn;
-   if ( $dsn_strings ) {
-      foreach my $dsn_string ( @$dsn_strings ) {
-         PTDEBUG && _d('DSN from DSN table:', $dsn_string);
-         push @cxn, $make_cxn->(dsn_string => $dsn_string);
+   use Data::Dumper;
+   DSN:
+   do {
+      @cxn = ();
+      my $dsn_strings = $dbh->selectcol_arrayref($sql);
+      if ( $dsn_strings ) {
+         foreach my $dsn_string ( @$dsn_strings ) {
+            PTDEBUG && _d('DSN from DSN table:', $dsn_string);
+            if ($args{wait_no_die}) {
+               my $lcxn;
+               eval {
+                  $lcxn = $make_cxn->(dsn_string => $dsn_string);
+               };
+               if ( $EVAL_ERROR && ($dsn_tbl_cxn->lost_connection($EVAL_ERROR)
+                     || $EVAL_ERROR =~ m/Can't connect to MySQL server/)) {
+                  PTDEBUG && _d("Server is not accessible, waiting when it is online again");
+                  sleep(1);
+                  goto DSN;
+               }
+               push @cxn, $lcxn;
+            } else {
+               push @cxn, $make_cxn->(dsn_string => $dsn_string);
+            }
+         }
       }
-   }
+      $done = 1;
+   } until $done;
    return \@cxn;
 }
 
@@ -5048,9 +5091,9 @@ sub wait {
       my ($self) = @_;
       my ($slaves, $refresher) = ($self->{slaves}, $self->{get_slaves_cb});
       return $slaves if ( not defined $refresher );
-      my $before = join ' ', sort map {$_->name()} @$slaves;
+      my $before = join ' ', sort map {$_->description()} @$slaves;
       $slaves = $refresher->();
-      my $after = join ' ', sort map {$_->name()} @$slaves;
+      my $after = join ' ', sort map {$_->description()} @$slaves;
       if ($before ne $after) {
          $self->{slaves} = $slaves;
          printf STDERR "Slave set to watch has changed\n  Was: %s\n  Now: %s\n",
@@ -5065,9 +5108,10 @@ sub wait {
       $pr_callback = sub {
          my ($fraction, $elapsed, $remaining, $eta, $completed) = @_;
          my $dsn_name = $worst->{cxn}->name();
+         my $dsn_description = $worst->{cxn}->description();
          if ( defined $worst->{lag} ) {
             print STDERR "Replica lag is " . ($worst->{lag} || '?')
-               . " seconds on $dsn_name.  Waiting.\n";
+               . " seconds on $dsn_description.  Waiting.\n";
          }
          else {
             if ($self->{fail_on_stopped_replication}) {
@@ -8702,10 +8746,21 @@ sub main {
          OptionParser => $o,
          set          => $set_on_connect,
       );
-      eval { $cxn->connect() };  # connect or die trying
-      if ( $EVAL_ERROR ) {
-         _die("Cannot connect to MySQL: $EVAL_ERROR", MYSQL_CONNECTION_ERROR);
-      }
+      my $done = 0;
+      do {
+         eval { $cxn->connect() };  # connect or die trying
+         if ( $EVAL_ERROR ) {
+            if ($args{'wait_no_die'} && ($cxn->lost_connection($EVAL_ERROR)
+               || $EVAL_ERROR =~ m/Can't connect to MySQL server/)) {
+               PTDEBUG && _d("Server is not accessible, waiting when it is online again");
+               sleep(1);
+            } else {
+               die("Cannot connect to MySQL: $EVAL_ERROR", MYSQL_CONNECTION_ERROR);
+            }
+         } else {
+            $done = 1;
+         }
+      } until $done;
       return $cxn;
    };
 
@@ -8860,6 +8915,7 @@ sub main {
                      errok => (not $intolerant)
                   );
                },
+               wait_no_die => !$o->get('fail-on-stopped-replication'),
             );
 
          if ($slaves_to_skip) {
@@ -8870,6 +8926,7 @@ sub main {
                   if ($slave->{dsn}->{h} eq $slave_to_skip->{h} && $slave->{dsn}->{P} eq $slave_to_skip->{P}) {
                      print "Skipping slave " . $slave->description() . "\n";
                      $is_skip = 1;
+                     $slave->{dbh}->disconnect();
                      last;
                   }
                }
@@ -9009,10 +9066,8 @@ sub main {
                   # to stop lagging.  If any replica is stopped, the tool
                   # waits forever until the replica is started."
                   # https://bugs.launchpad.net/percona-toolkit/+bug/1402051
-                  #TODO REMOVE DEBUG
                   PTDEBUG && _d('2> Cannot connect to', $cxn->name(), ':',
                      $EVAL_ERROR);
-                  die '2> Cannot connect to '. $cxn->name() . ':' . $EVAL_ERROR;
                   # Make ReplicaLagWaiter::wait() report slave is stopped.
                   return undef;
                }
@@ -9023,7 +9078,6 @@ sub main {
             };
             if ( $EVAL_ERROR ) {
                PTDEBUG && _d('Cannot get lag for', $cxn->name(), ':', $EVAL_ERROR);
-                  die '2> Cannot connect to '. $cxn->name() . ':' . $EVAL_ERROR;
             }
             return $lag; # undef if error
          };
@@ -10011,7 +10065,19 @@ sub main {
 
          # Wait forever for slaves to catch up.
          $replica_lag_pr->start() if $replica_lag_pr;
-         $replica_lag->wait(Progress => $replica_lag_pr);
+         LAG:
+         {
+            eval { $replica_lag->wait(Progress => $replica_lag_pr) };
+            if ( $EVAL_ERROR ) {
+               if (!$o->get('fail-on-stopped-replication')) {
+                  PTDEBUG && _d($EVAL_ERROR);
+                  sleep 1;
+                  next LAG;
+               } else {
+                  _die("Error while waiting for replica lag: " . $EVAL_ERROR);
+               }
+            }
+         }
 
          # Wait forever for system load to abate.  wait() will die if
          # --critical load is reached.
@@ -10030,7 +10096,9 @@ sub main {
 
          # --plugin hook
          if ( $plugin && $plugin->can('on_copy_rows_after_nibble') ) {
-             $plugin->on_copy_rows_after_nibble();
+             $plugin->on_copy_rows_after_nibble(
+               tbl => $tbl,
+             );
          }
 
          return;
@@ -13093,6 +13161,13 @@ tool.
 
 For more information, visit L<https://www.percona.com/doc/percona-toolkit/LATEST/version-check.html>.
 
+=item --[no]fail-on-stopped-replication
+
+default: yes
+
+If replication is stopped, fail with an error (exit status 128) instead of waiting
+until replication is restarted.
+
 =back
 
 =head1 PLUGIN
@@ -13490,6 +13565,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-online-schema-change 3.5.4
+pt-online-schema-change 3.5.5
 
 =cut
