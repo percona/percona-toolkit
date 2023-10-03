@@ -1,6 +1,6 @@
 Changelog for Percona Toolkit
 
-v3.5.5 released 2023-10-02
+v3.5.5 released 2023-10-03
 
 * Feature PR-645: Add after nibble hook to pt-online-schema-change (Thanks to Marcelo HP Ferreira for the contribution)
 * Feature PT-2258: Pass tbl as argument for on_copy_rows_after_nibble
