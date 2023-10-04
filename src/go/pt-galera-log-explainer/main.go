@@ -24,7 +24,7 @@ var (
 	Commit    string //nolint
 )
 
-var buildInfo = fmt.Sprintf("%s\nVersion %s\nBuild: %s using %s\nCommit: %s\n", toolname, Version, Build, GoVersion, Commit)
+var buildInfo = fmt.Sprintf("%s\nVersion %s\nBuild: %s using %s\nCommit: %s", toolname, Version, Build, GoVersion, Commit)
 
 var CLI struct {
 	NoColor          bool
