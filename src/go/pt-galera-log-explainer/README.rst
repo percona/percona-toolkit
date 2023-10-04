@@ -14,6 +14,7 @@ Usage
 
    pt-galera-log-explainer [--since=] [--until=] [-vvv] [--merge-by-directory] [--pxc-operator] <command> <paths ...>
 
+
 Commands available
 ==================
 
@@ -212,6 +213,12 @@ Example outputs
     2023-03-12T19:44:59.855443Z   |                                          node1 left                              |                                       
     2023-03-12T19:44:59.855491Z   |                                          PRIMARY(n=2)                            |                        
 
+Requirements
+============
+
+grep, version 3
+On Darwin based OS, grep is only version 2 due to license limitations. --grep-cmd can be used to point the correct grep binary, usually ggrep
+>>>>>>> 33cc7526 (Add: requirements in README.rst)
 
 
 Compatibility
