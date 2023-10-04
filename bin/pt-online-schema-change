@@ -48,15 +48,15 @@ BEGIN {
 # ###########################################################################
 # Percona::Toolkit package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Percona/Toolkit.pm
 #   t/lib/Percona/Toolkit.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.3.2';
+our $VERSION = '3.5.5';
 
 use strict;
 use warnings FATAL => 'all';
@@ -112,10 +112,10 @@ sub _d {
 # ###########################################################################
 # VersionCompare package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/VersionCompare.pm
 #   t/lib/VersionCompare.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package VersionCompare;
@@ -159,10 +159,10 @@ sub cmp {
 # ###########################################################################
 # OptionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/OptionParser.pm
 #   t/lib/OptionParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package OptionParser;
@@ -1271,10 +1271,10 @@ if ( PTDEBUG ) {
 # ###########################################################################
 # Lmo::Utils package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo/Utils.pm
 #   t/lib/Lmo/Utils.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Lmo::Utils;
@@ -1331,10 +1331,10 @@ sub _unimport_coderefs {
 # ###########################################################################
 # Lmo::Meta package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo/Meta.pm
 #   t/lib/Lmo/Meta.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Lmo::Meta;
@@ -1388,10 +1388,10 @@ sub attributes_for_new {
 # ###########################################################################
 # Lmo::Object package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo/Object.pm
 #   t/lib/Lmo/Object.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Lmo::Object;
@@ -1484,10 +1484,10 @@ sub meta {
 # ###########################################################################
 # Lmo::Types package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo/Types.pm
 #   t/lib/Lmo/Types.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Lmo::Types;
@@ -1513,7 +1513,7 @@ our %TYPES = (
    } qw(Array Code Hash Regexp Glob Scalar)
 );
 
-sub check_type_constaints {
+sub check_type_constraints {
    my ($attribute, $type_check, $check_name, $val) = @_;
    ( ref($type_check) eq 'CODE'
       ? $type_check->($val)
@@ -1585,10 +1585,10 @@ sub _nested_constraints {
 # ###########################################################################
 # Lmo package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo.pm
 #   t/lib/Lmo.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 BEGIN {
@@ -1703,7 +1703,7 @@ sub has {
 
          my $check_sub = sub {
             my ($new_val) = @_;
-            Lmo::Types::check_type_constaints($attribute, $type_check, $check_name, $new_val);
+            Lmo::Types::check_type_constraints($attribute, $type_check, $check_name, $new_val);
          };
 
          $class_metadata->{$attribute}{isa} = [$check_name, $check_sub];
@@ -1920,10 +1920,10 @@ sub override {
 # ###########################################################################
 # VersionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/VersionParser.pm
 #   t/lib/VersionParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package VersionParser;
@@ -2112,10 +2112,10 @@ no Lmo;
 # ###########################################################################
 # DSNParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/DSNParser.pm
 #   t/lib/DSNParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package DSNParser;
@@ -2557,10 +2557,10 @@ sub _d {
 # ###########################################################################
 # Daemon package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Daemon.pm
 #   t/lib/Daemon.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Daemon;
@@ -2811,10 +2811,10 @@ sub _d {
 # ###########################################################################
 # Quoter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Quoter.pm
 #   t/lib/Quoter.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Quoter;
@@ -2964,10 +2964,10 @@ sub _d {
 # ###########################################################################
 # TableNibbler package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/TableNibbler.pm
 #   t/lib/TableNibbler.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package TableNibbler;
@@ -3102,7 +3102,7 @@ sub generate_cmp_where {
             push @clause, "($val IS NULL OR $quo $type $val)";
          }
          elsif ( $type =~ m/>/ ) {
-            push @clause, "($val IS NULL AND $quo IS NOT NULL) OR ($quo $cmp $val)";
+            push @clause, "(($val IS NULL AND $quo IS NOT NULL) OR ($quo $cmp $val))";
          }
          else { # If $type =~ m/</ ) {
             push @clauses, "(($val IS NOT NULL AND $quo IS NULL) OR ($quo $cmp $val))";
@@ -3230,10 +3230,10 @@ sub _d {
 # ###########################################################################
 # TableParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/TableParser.pm
 #   t/lib/TableParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package TableParser;
@@ -3293,13 +3293,15 @@ sub get_create_table {
    eval { $href = $dbh->selectrow_hashref($show_sql); };
    if ( my $e = $EVAL_ERROR ) {
       PTDEBUG && _d($old_sql_mode);
-      $dbh->do($old_sql_mode);
+      eval { $dbh->do($old_sql_mode); };
+      PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
 
       die $e;
    }
 
    PTDEBUG && _d($old_sql_mode);
-   $dbh->do($old_sql_mode);
+   eval { $dbh->do($old_sql_mode); };
+   PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
 
    my ($key) = grep { m/create (?:table|view)/i } keys %$href;
    if ( !$key ) {
@@ -3328,7 +3330,7 @@ sub parse {
 
    my $engine = $self->get_engine($ddl);
 
-   my @defs   = $ddl =~ m/^(\s+`.*?),?$/gm;
+   my @defs = $ddl =~ m/(?:(?<=,\n)|(?<=\(\n))(\s+`(?:.|\n)+?`.+?),?\n/g;
    my @cols   = map { $_ =~ m/`([^`]+)`/ } @defs;
    PTDEBUG && _d('Table cols:', join(', ', map { "`$_`" } @cols));
 
@@ -3509,8 +3511,7 @@ sub get_keys {
    my $clustered_key = undef;
 
    KEY:
-   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY .*)$/gm ) {
-
+   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY [\s\S]*?\),?.*)$/gm ) {
       next KEY if $key =~ m/FOREIGN/;
 
       my $key_ddl = $key;
@@ -3520,7 +3521,7 @@ sub get_keys {
          $key =~ s/USING HASH/USING BTREE/;
       }
 
-      my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \((.+)\)/;
+      my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \(([\s\S]+)\)/;
       my ( $special ) = $key =~ m/(FULLTEXT|SPATIAL)/;
       $type = $type || $special || 'BTREE';
       my ($name) = $key =~ m/(PRIMARY|`[^`]*`)/;
@@ -3663,10 +3664,10 @@ sub _d {
 # ###########################################################################
 # Progress package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Progress.pm
 #   t/lib/Progress.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Progress;
@@ -3810,10 +3811,10 @@ sub _d {
 # ###########################################################################
 # Retry package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Retry.pm
 #   t/lib/Retry.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Retry;
@@ -3890,10 +3891,10 @@ sub _d {
 # ###########################################################################
 # Cxn package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Cxn.pm
 #   t/lib/Cxn.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Cxn;
@@ -3955,7 +3956,7 @@ sub connect {
    my $dp  = $self->{DSNParser};
 
    my $dbh = $self->{dbh};
-   if ( !$dbh || !$dbh->ping() ) {
+   if ( !$dbh || ( $dbh && $self->{dbh_set} && !$self->_ping($dbh) ) ) {
       if ( $self->{ask_pass} && !$self->{asked_for_pass} && !defined $dsn->{p} ) {
          $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
          $self->{asked_for_pass} = 1;
@@ -3984,19 +3985,20 @@ sub connect {
 sub set_dbh {
    my ($self, $dbh) = @_;
 
-   if ( $self->{dbh} && $self->{dbh} == $dbh && $self->{dbh_set} ) {
-      PTDEBUG && _d($dbh, 'Already set dbh');
-      return $dbh;
-   }
-
    PTDEBUG && _d($dbh, 'Setting dbh');
 
    $dbh->{FetchHashKeyName} = 'NAME_lc' if $self->{NAME_lc};
 
-   my $sql = 'SELECT @@server_id /*!50038 , @@hostname*/';
+   my $sql = 'SELECT @@server_id /*!50038 , @@hostname*/, CONNECTION_ID() as connection_id';
    PTDEBUG && _d($dbh, $sql);
-   my ($server_id, $hostname) = $dbh->selectrow_array($sql);
+   my ($server_id, $hostname, $connection_id) = $dbh->selectrow_array($sql);
    PTDEBUG && _d($dbh, 'hostname:', $hostname, $server_id);
+
+   if ( $self->{dbh} && $self->{dbh} == $dbh && $self->{dbh_set} && $self->{dbh_set} == $connection_id) {
+      PTDEBUG && _d($dbh, 'Already set dbh');
+      return $dbh;
+   }
+
    if ( $hostname ) {
       $self->{hostname} = $hostname;
    }
@@ -4011,7 +4013,7 @@ sub set_dbh {
    }
 
    $self->{dbh}     = $dbh;
-   $self->{dbh_set} = 1;
+   $self->{dbh_set} = $connection_id;
    return $dbh;
 }
 
@@ -4137,6 +4139,17 @@ sub DESTROY {
    return;
 }
 
+sub _ping() {
+   my ( $self, $dbh ) = @_;
+   if (!$dbh->ping()) {
+      return 0;
+   }
+   my $sql = 'SELECT CONNECTION_ID() as connection_id';
+   PTDEBUG && _d($dbh, $sql);
+   my ($connection_id) = $dbh->selectrow_array($sql);
+   return $self->{dbh_set} == $connection_id;
+}
+
 sub _d {
    my ($package, undef, $line) = caller 0;
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
@@ -4154,10 +4167,10 @@ sub _d {
 # ###########################################################################
 # MasterSlave package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/MasterSlave.pm
 #   t/lib/MasterSlave.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package MasterSlave;
@@ -4225,6 +4238,7 @@ sub get_slaves {
             dsn            => $dsn,
             slave_user     => $o->got('slave-user') ? $o->get('slave-user') : '',
             slave_password => $o->got('slave-password') ? $o->get('slave-password') : '',
+            slaves         => $args{slaves},
             callback  => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
@@ -4238,9 +4252,10 @@ sub get_slaves {
                   $slave_dsn->{p} = $o->get('slave-password');
                   PTDEBUG && _d("Slave password set");
                }
-               push @$slaves, $make_cxn->(dsn => $slave_dsn, dbh => $dbh);
+               push @$slaves, $make_cxn->(dsn => $slave_dsn, dbh => $dbh, parent => $parent);
                return;
             },
+            wait_no_die => $args{'wait_no_die'},
          }
       );
    } elsif ( $methods->[0] =~ m/^dsn=/i ) {
@@ -4248,6 +4263,7 @@ sub get_slaves {
       $slaves = $self->get_cxn_from_dsn_table(
          %args,
          dsn_table_dsn => $dsn_table_dsn,
+         wait_no_die => $args{'wait_no_die'},
       );
    }
    elsif ( $methods->[0] =~ m/none/i ) {
@@ -4301,21 +4317,54 @@ sub recurse_to_slaves {
       PTDEBUG && _d("Slave password set");
    }
 
-   my $dbh;
-   eval {
-      $dbh = $args->{dbh} || $dp->get_dbh(
-         $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 });
-      PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
+   my $dbh = $args->{dbh};
+
+   my $get_dbh = sub {
+         eval {
+            $dbh = $dp->get_dbh(
+               $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 }
+            );
+            PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
+         };
+         if ( $EVAL_ERROR ) {
+            print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), ": ", $EVAL_ERROR, "\n"
+               or die "Cannot print: $OS_ERROR";
+            return;
+         }
    };
-   if ( $EVAL_ERROR ) {
-      print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), "\n"
-         or die "Cannot print: $OS_ERROR";
-      return;
+
+   DBH: {
+      if ( !defined $dbh ) {
+         foreach my $known_slave ( @{$args->{slaves}} ) {
+            if ($known_slave->{dsn}->{h} eq $slave_dsn->{h} and
+                $known_slave->{dsn}->{P} eq $slave_dsn->{P} ) {
+               $dbh = $known_slave->{dbh};
+               last DBH;
+            }
+         }
+         $get_dbh->();
+      }
    }
 
    my $sql  = 'SELECT @@SERVER_ID';
    PTDEBUG && _d($sql);
-   my ($id) = $dbh->selectrow_array($sql);
+   my $id = undef;
+   do {
+      eval {
+         ($id) = $dbh->selectrow_array($sql);
+      };
+	   if ( $EVAL_ERROR ) {
+		   if ( $args->{wait_no_die} ) {
+			   print STDERR "Error getting server id: ", $EVAL_ERROR,
+               "\nRetrying query for server ", $slave_dsn->{h}, ":", $slave_dsn->{P}, "\n";
+            sleep 1;
+            $dbh->disconnect();
+            $get_dbh->();
+         } else {
+            die $EVAL_ERROR;
+         }
+      }
+   } until ($id);
    PTDEBUG && _d('Working on server ID', $id);
    my $master_thinks_i_am = $dsn->{server_id};
    if ( !defined $id
@@ -4937,18 +4986,39 @@ sub get_cxn_from_dsn_table {
         . "or a database-qualified table (t)";
    }
 
+   my $done = 0;
    my $dsn_tbl_cxn = $make_cxn->(dsn => $dsn);
    my $dbh         = $dsn_tbl_cxn->connect();
    my $sql         = "SELECT dsn FROM $dsn_table ORDER BY id";
    PTDEBUG && _d($sql);
-   my $dsn_strings = $dbh->selectcol_arrayref($sql);
    my @cxn;
-   if ( $dsn_strings ) {
-      foreach my $dsn_string ( @$dsn_strings ) {
-         PTDEBUG && _d('DSN from DSN table:', $dsn_string);
-         push @cxn, $make_cxn->(dsn_string => $dsn_string);
+   use Data::Dumper;
+   DSN:
+   do {
+      @cxn = ();
+      my $dsn_strings = $dbh->selectcol_arrayref($sql);
+      if ( $dsn_strings ) {
+         foreach my $dsn_string ( @$dsn_strings ) {
+            PTDEBUG && _d('DSN from DSN table:', $dsn_string);
+            if ($args{wait_no_die}) {
+               my $lcxn;
+               eval {
+                  $lcxn = $make_cxn->(dsn_string => $dsn_string);
+               };
+               if ( $EVAL_ERROR && ($dsn_tbl_cxn->lost_connection($EVAL_ERROR)
+                     || $EVAL_ERROR =~ m/Can't connect to MySQL server/)) {
+                  PTDEBUG && _d("Server is not accessible, waiting when it is online again");
+                  sleep(1);
+                  goto DSN;
+               }
+               push @cxn, $lcxn;
+            } else {
+               push @cxn, $make_cxn->(dsn_string => $dsn_string);
+            }
+         }
       }
-   }
+      $done = 1;
+   } until $done;
    return \@cxn;
 }
 
@@ -4969,10 +5039,10 @@ sub _d {
 # ###########################################################################
 # ReplicaLagWaiter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/ReplicaLagWaiter.pm
 #   t/lib/ReplicaLagWaiter.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package ReplicaLagWaiter;
@@ -5017,15 +5087,13 @@ sub wait {
    my $pr_callback;
    my $pr_first_report;
 
-   ### refresh list of slaves. In: self passed to wait()
-   ### Returns: new slave list
    my $pr_refresh_slave_list = sub {
       my ($self) = @_;
       my ($slaves, $refresher) = ($self->{slaves}, $self->{get_slaves_cb});
       return $slaves if ( not defined $refresher );
-      my $before = join ' ', sort map {$_->name()} @$slaves;
+      my $before = join ' ', sort map {$_->description()} @$slaves;
       $slaves = $refresher->();
-      my $after = join ' ', sort map {$_->name()} @$slaves;
+      my $after = join ' ', sort map {$_->description()} @$slaves;
       if ($before ne $after) {
          $self->{slaves} = $slaves;
          printf STDERR "Slave set to watch has changed\n  Was: %s\n  Now: %s\n",
@@ -5037,46 +5105,40 @@ sub wait {
    $slaves = $pr_refresh_slave_list->($self);
 
    if ( $pr ) {
-      # If you use the default Progress report callback, you'll need to
-      # to add Transformers.pm to this tool.
       $pr_callback = sub {
          my ($fraction, $elapsed, $remaining, $eta, $completed) = @_;
          my $dsn_name = $worst->{cxn}->name();
+         my $dsn_description = $worst->{cxn}->description();
          if ( defined $worst->{lag} ) {
             print STDERR "Replica lag is " . ($worst->{lag} || '?')
-               . " seconds on $dsn_name.  Waiting.\n";
+               . " seconds on $dsn_description.  Waiting.\n";
          }
          else {
             if ($self->{fail_on_stopped_replication}) {
                 die 'replication is stopped';
             }
-            print STDERR "(1) Replica '$dsn_name' is stopped.  Waiting.\n";
+            print STDERR "Replica $dsn_name is stopped.  Waiting.\n";
          }
          return;
       };
       $pr->set_callback($pr_callback);
 
-      # If a replic is stopped, don't wait 30s (or whatever interval)
-      # to report this.  Instead, report it once, immediately, then
-      # keep reporting it every interval.
       $pr_first_report = sub {
          my $dsn_name = $worst->{cxn}->name();
          if ( !defined $worst->{lag} ) {
             if ($self->{fail_on_stopped_replication}) {
                 die 'replication is stopped';
             }
-            print STDERR "(2) Replica '$dsn_name' is stopped.  Waiting.\n";
+            print STDERR "Replica $dsn_name is stopped.  Waiting.\n";
          }
          return;
       };
    }
 
-   # First check all slaves.
    my @lagged_slaves = map { {cxn=>$_, lag=>undef} } @$slaves;
    while ( $oktorun->() && @lagged_slaves ) {
       PTDEBUG && _d('Checking slave lag');
 
-      ### while we were waiting our list of slaves may have changed
       $slaves = $pr_refresh_slave_list->($self);
       my $watched = 0;
       @lagged_slaves = grep {
@@ -5102,10 +5164,8 @@ sub wait {
          }
       }
 
-      # Remove slaves that aren't lagging.
       @lagged_slaves = grep { defined $_ } @lagged_slaves;
       if ( @lagged_slaves ) {
-         # Sort lag, undef is highest because it means the slave is stopped.
          @lagged_slaves = reverse sort {
               defined $a->{lag} && defined $b->{lag} ? $a->{lag} <=> $b->{lag}
             : defined $a->{lag}                      ? -1
@@ -5116,10 +5176,6 @@ sub wait {
             $worst->{lag}, 'on', Dumper($worst->{cxn}->dsn()));
 
          if ( $pr ) {
-            # There's no real progress because we can't estimate how long
-            # it will take all slaves to catch up.  The progress reports
-            # are just to inform the user every 30s which slave is still
-            # lagging this most.
             $pr->update(
                sub { return 0; },
                first_report => $pr_first_report,
@@ -5153,10 +5209,10 @@ sub _d {
 # ###########################################################################
 # FlowControlWaiter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/FlowControlWaiter.pm
 #   t/lib/FlowControlWaiter.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package FlowControlWaiter;
@@ -5258,10 +5314,10 @@ sub _d {
 # ###########################################################################
 # MySQLStatusWaiter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/MySQLStatusWaiter.pm
 #   t/lib/MySQLStatusWaiter.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package MySQLStatusWaiter;
@@ -5326,7 +5382,7 @@ sub _parse_spec {
       die "$var is not a variable name\n" unless $var =~ m/^[a-zA-Z_]+$/;
 
       if ( !$val ) {
-         PTDEBUG && _d('Will get intial value for', $var, 'later');
+         PTDEBUG && _d('Will get initial value for', $var, 'later');
          $max_val_for{$var} = undef;
       }
       else {
@@ -5389,7 +5445,7 @@ sub wait {
             die "$var=$val exceeds its critical threshold "
                . "$self->{critical_val_for}->{$var}\n";
          }
-         if ( $val >= $self->{max_val_for}->{$var} ) {
+         if ( $val && $val >= $self->{max_val_for}->{$var} ) {
             $vals_too_high{$var} = $val;
          }
          else {
@@ -5458,10 +5514,10 @@ sub _d {
 # ###########################################################################
 # WeightedAvgRate package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/WeightedAvgRate.pm
 #   t/lib/WeightedAvgRate.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package WeightedAvgRate;
@@ -5527,10 +5583,10 @@ sub _d {
 # ###########################################################################
 # NibbleIterator package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/NibbleIterator.pm
 #   t/lib/NibbleIterator.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package NibbleIterator;
@@ -6175,7 +6231,7 @@ sub _get_bounds {
       if (    defined $nibble->{lower_boundary}
            && defined $nibble->{upper_boundary} ) {
          my $sth = $dbh->prepare($self->{resume_lb_sql});
-         my @ub  = split ',', $nibble->{upper_boundary};
+         my @ub = $self->{Quoter}->deserialize_list($nibble->{upper_boundary});
          PTDEBUG && _d($sth->{Statement}, 'params:', @ub);
          $sth->execute(@ub);
          $self->{next_lower} = $sth->fetchrow_arrayref();
@@ -6323,10 +6379,10 @@ sub _d {
 # ###########################################################################
 # Transformers package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Transformers.pm
 #   t/lib/Transformers.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Transformers;
@@ -6549,7 +6605,7 @@ sub any_unix_timestamp {
 
 sub make_checksum {
    my ( $val ) = @_;
-   my $checksum = uc substr(md5_hex($val), -16);
+   my $checksum = uc md5_hex($val);
    PTDEBUG && _d($checksum, 'checksum for', $val);
    return $checksum;
 }
@@ -6676,10 +6732,10 @@ sub _d {
 # ###########################################################################
 # CleanupTask package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/CleanupTask.pm
 #   t/lib/CleanupTask.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package CleanupTask;
@@ -6738,10 +6794,10 @@ sub _d {
 # ###########################################################################
 # IndexLength package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/IndexLength.pm
 #   t/lib/IndexLength.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 
@@ -6900,10 +6956,10 @@ sub _d {
 # ###########################################################################
 # HTTP::Micro package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/HTTP/Micro.pm
 #   t/lib/HTTP/Micro.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package HTTP::Micro;
@@ -7295,7 +7351,7 @@ sub _split_url {
        $len += $self->write($request->{content});
 
        $len == $content_length
-         or croak(qq/Content-Length missmatch (got: $len expected: $content_length)/);
+         or croak(qq/Content-Length mismatch (got: $len expected: $content_length)/);
 
        return $len;
    }
@@ -7553,10 +7609,10 @@ if ( $INC{"IO/Socket/SSL.pm"} ) {
 # ###########################################################################
 # VersionCheck package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/VersionCheck.pm
 #   t/lib/VersionCheck.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package VersionCheck;
@@ -7657,13 +7713,15 @@ sub version_check {
          return;
       }
       PTDEBUG && _d('Using', $protocol);
+      my $url = $args{url}                       # testing
+                || $ENV{PERCONA_VERSION_CHECK_URL}  # testing
+                || "$protocol://v.percona.com";
+      PTDEBUG && _d('API URL:', $url);
 
       my $advice = pingback(
          instances => $instances_to_check,
          protocol  => $protocol,
-         url       => $args{url}                       # testing
-                   || $ENV{PERCONA_VERSION_CHECK_URL}  # testing
-                   || "$protocol://v.percona.com",
+         url       => $url,
       );
       if ( $advice ) {
          PTDEBUG && _d('Advice:', Dumper($advice));
@@ -7726,7 +7784,7 @@ sub get_instances_to_check {
    my @instances_to_check;
    foreach my $instance ( @$instances ) {
       my $last_check_time = $last_check_time_for{ $instance->{id} };
-      PTDEBUG && _d('Intsance', $instance->{id}, 'last checked',
+      PTDEBUG && _d('Instance', $instance->{id}, 'last checked',
          $last_check_time, 'now', $now, 'diff', $now - ($last_check_time || 0),
          'hours until next check',
          sprintf '%.2f',
@@ -7821,9 +7879,14 @@ sub get_uuid {
     my $filename = $ENV{"HOME"} . $uuid_file;
     my $uuid = _generate_uuid();
 
-    open(my $fh, '>', $filename) or die "Could not open file '$filename' $!";
-    print $fh $uuid;
-    close $fh;
+    my $fh;
+    eval {
+        open($fh, '>', $filename);
+    };
+    if (!$EVAL_ERROR) {
+        print $fh $uuid;
+        close $fh;
+    }
 
     return $uuid;
 }
@@ -7854,7 +7917,7 @@ sub pingback {
    my (%args) = @_;
    my @required_args = qw(url instances);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my $url       = $args{url};
    my $instances = $args{instances};
@@ -7889,8 +7952,9 @@ sub pingback {
       general_id => get_uuid(),
    );
 
+   my $tool_name = $ENV{XTRABACKUP_VERSION} ? "Percona XtraBackup" : File::Basename::basename($0);
    my $client_response = {
-      headers => { "X-Percona-Toolkit-Tool" => File::Basename::basename($0) },
+      headers => { "X-Percona-Toolkit-Tool" => $tool_name },
       content => $client_content,
    };
    PTDEBUG && _d('Client response:', Dumper($client_response));
@@ -7921,7 +7985,7 @@ sub encode_client_response {
    my (%args) = @_;
    my @required_args = qw(items versions general_id);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($items, $versions, $general_id) = @args{@required_args};
 
@@ -7947,7 +8011,7 @@ sub parse_server_response {
    my (%args) = @_;
    my @required_args = qw(response);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($response) = @args{@required_args};
 
@@ -7973,6 +8037,7 @@ my %sub_for_type = (
    perl_version        => \&get_perl_version,
    perl_module_version => \&get_perl_module_version,
    mysql_variable      => \&get_mysql_variable,
+   xtrabackup          => \&get_xtrabackup_version,
 );
 
 sub valid_item {
@@ -7989,7 +8054,7 @@ sub get_versions {
    my (%args) = @_;
    my @required_args = qw(items);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($items) = @args{@required_args};
 
@@ -8100,6 +8165,10 @@ sub get_perl_version {
    return $version;
 }
 
+sub get_xtrabackup_version {
+    return $ENV{XTRABACKUP_VERSION};
+}
+
 sub get_perl_module_version {
    my (%args) = @_;
    my $item = $args{item};
@@ -8177,10 +8246,10 @@ sub _d {
 # ###########################################################################
 # Percona::XtraDB::Cluster package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Percona/XtraDB/Cluster.pm
 #   t/lib/Percona/XtraDB/Cluster.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Percona::XtraDB::Cluster;
@@ -8440,7 +8509,7 @@ $OUTPUT_AUTOFLUSH = 1;
 
 use constant {
    INVALID_PARAMETERS              => 1,
-   UNSUPORTED_MYSQL_VERSION        => 2,
+   UNSUPPORTED_MYSQL_VERSION       => 2,
    NO_MINIMUM_REQUIREMENTS         => 3,
    NO_PRIMARY_OR_UNIQUE_KEY        => 4,
    INVALID_PLUGIN_FILE             => 5,
@@ -8455,7 +8524,7 @@ use constant {
    ERROR_SWAPPING_TABLES           => 14,
    ERROR_UPDATING_FKS              => 15,
    ERROR_DROPPING_OLD_TABLE        => 16,
-   UNSUPORTED_OPERATION            => 17,
+   UNSUPPORTED_OPERATION           => 17,
    MYSQL_CONNECTION_ERROR          => 18,
    LOST_MYSQL_CONNECTION           => 19,
    ERROR_CREATING_REVERSE_TRIGGERS => 20,
@@ -8677,10 +8746,21 @@ sub main {
          OptionParser => $o,
          set          => $set_on_connect,
       );
-      eval { $cxn->connect() };  # connect or die trying
-      if ( $EVAL_ERROR ) {
-         _die("Cannot connect to MySQL: $EVAL_ERROR", MYSQL_CONNECTION_ERROR);
-      }
+      my $done = 0;
+      do {
+         eval { $cxn->connect() };  # connect or die trying
+         if ( $EVAL_ERROR ) {
+            if ($args{'wait_no_die'} && ($cxn->lost_connection($EVAL_ERROR)
+               || $EVAL_ERROR =~ m/Can't connect to MySQL server/)) {
+               PTDEBUG && _d("Server is not accessible, waiting when it is online again");
+               sleep(1);
+            } else {
+               die("Cannot connect to MySQL: $EVAL_ERROR", MYSQL_CONNECTION_ERROR);
+            }
+         } else {
+            $done = 1;
+         }
+      } until $done;
       return $cxn;
    };
 
@@ -8699,7 +8779,7 @@ sub main {
             . "this tool on a cluster, but node " . $cxn->name
             . " is running version " . $pxc_version->version
             . ".  Please upgrade the node, or run the tool on a newer node, "
-            . "or contact Percona for support.", UNSUPORTED_MYSQL_VERSION);
+            . "or contact Percona for support.", UNSUPPORTED_MYSQL_VERSION);
       }
       if ( $pxc_version < '5.6' && $o->got('max-flow-ctl') ) {
         _die("Option '--max-flow-ctl is only available for PXC version 5.6 "
@@ -8731,7 +8811,7 @@ sub main {
    # ########################################################################
    my $server_version = VersionParser->new($cxn->dbh());
    if ( $server_version < '5.0.10' ) {
-      _die("This tool requires MySQL 5.0.10 or newer.", UNSUPORTED_MYSQL_VERSION);
+      _die("This tool requires MySQL 5.0.10 or newer.", UNSUPPORTED_MYSQL_VERSION);
    }
 
    # Use LOCK IN SHARE mode unless MySQL 5.0 because there's a bug like
@@ -8745,7 +8825,7 @@ sub main {
    my $analyze_table = $o->get('analyze-before-swap');
    if ( $o->got('analyze-before-swap') ) {
       # User specified so respect their wish. If --analyze-before-swap, do it
-      # regardless of MySQL version and innodb_stats_peristent.
+      # regardless of MySQL version and innodb_stats_persistent.
       # If --no-analyze-before-swap, don't do it.
       PTDEBUG && _d('User specified explicit --analyze-before-swap:',
          ($analyze_table ? 'on' : 'off'));
@@ -8758,10 +8838,10 @@ sub main {
          my (undef, $innodb_stats_persistent) = $cxn->dbh->selectrow_array(
             "SHOW VARIABLES LIKE 'innodb_stats_persistent'");
          if ($innodb_stats_persistent eq 'ON' || $innodb_stats_persistent eq '1') {
-            PTDEBUG && _d('innodb_stats_peristent is ON, enabling --analyze-before-swap');
+            PTDEBUG && _d('innodb_stats_persistent is ON, enabling --analyze-before-swap');
             $analyze_table = 1;
          } else {
-            PTDEBUG && _d('innodb_stats_peristent is OFF, disabling --analyze-before-swap');
+            PTDEBUG && _d('innodb_stats_persistent is OFF, disabling --analyze-before-swap');
             $analyze_table = 0;
          }
       } else {
@@ -8827,6 +8907,7 @@ sub main {
          my $slaves =$ms->get_slaves(
                dbh      => $cxn->dbh(),
                dsn      => $cxn->dsn(),
+               slaves   => $slaves,
                make_cxn => sub {
                   return $make_cxn->(
                      @_,
@@ -8834,17 +8915,23 @@ sub main {
                      errok => (not $intolerant)
                   );
                },
+               wait_no_die => !$o->get('fail-on-stopped-replication'),
             );
 
          if ($slaves_to_skip) {
             my $filtered_slaves = [];
             for my $slave (@$slaves) {
+               my $is_skip = 0;
                for my $slave_to_skip (@$slaves_to_skip) {
                   if ($slave->{dsn}->{h} eq $slave_to_skip->{h} && $slave->{dsn}->{P} eq $slave_to_skip->{P}) {
                      print "Skipping slave " . $slave->description() . "\n";
-                  } else {
-                     push @$filtered_slaves, $slave;
+                     $is_skip = 1;
+                     $slave->{dbh}->disconnect();
+                     last;
                   }
+               }
+               if (!$is_skip) {
+                   push @$filtered_slaves, $slave;
                }
             }
             $slaves = $filtered_slaves;
@@ -8979,10 +9066,8 @@ sub main {
                   # to stop lagging.  If any replica is stopped, the tool
                   # waits forever until the replica is started."
                   # https://bugs.launchpad.net/percona-toolkit/+bug/1402051
-                  #TODO REMOVE DEBUG
                   PTDEBUG && _d('2> Cannot connect to', $cxn->name(), ':',
                      $EVAL_ERROR);
-                  die '2> Cannot connect to '. $cxn->name() . ':' . $EVAL_ERROR;
                   # Make ReplicaLagWaiter::wait() report slave is stopped.
                   return undef;
                }
@@ -8993,7 +9078,6 @@ sub main {
             };
             if ( $EVAL_ERROR ) {
                PTDEBUG && _d('Cannot get lag for', $cxn->name(), ':', $EVAL_ERROR);
-                  die '2> Cannot connect to '. $cxn->name() . ':' . $EVAL_ERROR;
             }
             return $lag; # undef if error
          };
@@ -9124,13 +9208,6 @@ sub main {
    # Get child tables of the original table, if necessary.
    # ########################################################################
    my $child_tables;
-
-   my $have_child_tables = find_child_tables(
-         tbl    => $orig_tbl,
-         Cxn    => $cxn,
-         Quoter => $q,
-         only_same_schema_fks => $o->get('only-same-schema-fks'),
-      );
 
    my $vp = VersionParser->new($cxn->dbh());
    if (($vp->cmp('8.0.14') >= 0 && $vp->cmp('8.0.17') <= 0) && $vp->flavor() !~ m/maria/i) {
@@ -9952,7 +10029,7 @@ sub main {
 
             # Adjust chunk size.  This affects the next chunk.
             if ( $chunk_time ) {
-               # Calcuate a new chunk-size based on the rate of rows/s.
+               # Calculate a new chunk-size based on the rate of rows/s.
                $tbl->{chunk_size} = $tbl->{rate}->update(
                   $cnt,                # processed this many rows
                   $tbl->{nibble_time}, # is this amount of time
@@ -9988,7 +10065,19 @@ sub main {
 
          # Wait forever for slaves to catch up.
          $replica_lag_pr->start() if $replica_lag_pr;
-         $replica_lag->wait(Progress => $replica_lag_pr);
+         LAG:
+         {
+            eval { $replica_lag->wait(Progress => $replica_lag_pr) };
+            if ( $EVAL_ERROR ) {
+               if (!$o->get('fail-on-stopped-replication')) {
+                  PTDEBUG && _d($EVAL_ERROR);
+                  sleep 1;
+                  next LAG;
+               } else {
+                  _die("Error while waiting for replica lag: " . $EVAL_ERROR);
+               }
+            }
+         }
 
          # Wait forever for system load to abate.  wait() will die if
          # --critical load is reached.
@@ -10003,6 +10092,13 @@ sub main {
          my $sleep = $args{NibbleIterator}->{OptionParser}->get('sleep');
          if ( $sleep ) {
             sleep $sleep;
+         }
+
+         # --plugin hook
+         if ( $plugin && $plugin->can('on_copy_rows_after_nibble') ) {
+             $plugin->on_copy_rows_after_nibble(
+               tbl => $tbl,
+             );
          }
 
          return;
@@ -10429,14 +10525,14 @@ sub check_alter {
    if ( ($tbl->{tbl_struct}->{engine} || '') =~ m/RocksDB/i ) {
        if ($alter =~ m/FOREIGN KEY/i) {
             my $msg = "FOREIGN KEYS are not supported by the RocksDB engine\n\n";
-            _die($msg, UNSUPORTED_OPERATION);
+            _die($msg, UNSUPPORTED_OPERATION);
        }
    }
    if ( $alter =~ m/Engine\s*=\s*["']?RocksDB["']?/i ) {
       my $row = $cxn->dbh()->selectrow_arrayref('SELECT @@binlog_format');
       if (scalar $row > 0 && $row->[0] eq 'STATEMENT') {
           _die("Cannot change engine to RocksDB while binlog_format is other than 'ROW'",
-          UNSUPORTED_OPERATION);
+          UNSUPPORTED_OPERATION);
       }
    }
    # ########################################################################
@@ -10508,7 +10604,7 @@ sub check_alter {
 
    if ( !$ok ) {
       # check_alter.t relies on this output.
-      _die("--check-alter failed.\n", UNSUPORTED_OPERATION);
+      _die("--check-alter failed.\n", UNSUPPORTED_OPERATION);
    }
 
    return;
@@ -10541,7 +10637,7 @@ sub _has_self_ref_fks {
 #           [ 'C2', 'c3' ]
 #         ];
 #
-# Thse fields are used to build an example SELECT to detect if currently there are
+# These fields are used to build an example SELECT to detect if currently there are
 # rows that will produce duplicates when the new UNIQUE INDEX is created.
 
 sub get_unique_index_fields {
@@ -10814,7 +10910,7 @@ sub create_new_table {
       };
    }
 
-   die "Failed to find a unique new table name after $tries attemps.  "
+   die "Failed to find a unique new table name after $tries attempts.  "
      . "The following tables exist which may be left over from previous "
      . "failed runs of the tool:\n"
      . join("\n", map { "  $_" } @old_tables)
@@ -10947,7 +11043,7 @@ sub swap_tables {
 
       # This shouldn't happen.
       die ts("Failed to find a unique old table name after "
-         . "serveral attempts.\n");
+         . "several attempts.\n");
    }
 }
 
@@ -11215,9 +11311,9 @@ sub rebuild_constraints {
             code    => sub {
                PTDEBUG && _d("SET foreign_key_checks=0");
                $cxn->dbh()->do("SET foreign_key_checks=0");
-	       PTDEBUG && _d($sql);
+           PTDEBUG && _d($sql);
                $cxn->dbh()->do($sql);
-	       PTDEBUG && _d("SET foreign_key_checks=1");
+           PTDEBUG && _d("SET foreign_key_checks=1");
                $cxn->dbh()->do("SET foreign_key_checks=1");
                $stats->{rebuilt_constraint}++;
             },
@@ -11527,7 +11623,7 @@ sub random_suffix {
 # orig_table.......: Original table name. Used to LOCK the table.
 #                    In case we are creating a new temporary trigger for testing
 #                    purposes or if --no-swap-tables is enabled, this param should
-#                    be omitted since we are creating a completelly new trigger so,
+#                    be omitted since we are creating a completely new trigger so,
 #                    since in this case we are not going to DROP the old trigger,
 #                    there is no need for a LOCK
 #
@@ -12073,7 +12169,7 @@ C<wsrep_OSU_method> is not C<TOI>.  There is no way to disable these checks.
 =head1 MySQL 5.7 + Generated columns
 
 The tools ignores MySQL 5.7+ C<GENERATED> columns since the value for those columns
-is generated according to the expresion used to compute column values.
+is generated according to the expression used to compute column values.
 
 =head1 OUTPUT
 
@@ -12344,7 +12440,7 @@ the tool to run EXPLAIN before running queries that are meant to access
 a small amount of data, but which could access many rows if MySQL chooses a bad
 execution plan. These include the queries to determine chunk boundaries and the
 chunk queries themselves. If it appears that MySQL will use a bad query
-execution plan, the tool will skip the chunk of the table.
+execution plan, the tool will stop copying rows and die.
 
 The tool uses several heuristics to determine whether an execution plan is bad.
 The first is whether EXPLAIN reports that MySQL intends to use the desired index
@@ -12353,14 +12449,8 @@ query unsafe.
 
 The tool also checks how much of the index MySQL reports that it will use for
 the query. The EXPLAIN output shows this in the key_len column. The tool
-remembers the largest key_len seen, and skips chunks where MySQL reports that it
-will use a smaller prefix of the index. This heuristic can be understood as
-skipping chunks that have a worse execution plan than other chunks.
-
-The tool prints a warning the first time a chunk is skipped due to
-a bad execution plan in each table. Subsequent chunks are skipped silently,
-although you can see the count of skipped chunks in the SKIPPED column in
-the tool's output.
+remembers the largest key_len seen, and terminates if MySQL reports that it
+will use a smaller prefix of the index.
 
 This option adds some setup work to each table and chunk. Although the work is
 not intrusive for MySQL, it results in more round-trips to the server, which
@@ -12431,13 +12521,6 @@ point, but after that, the tool ignores this option's value.  If you set this
 option explicitly, however, then it disables the dynamic adjustment behavior and
 tries to make all chunks exactly the specified number of rows.
 
-There is a subtlety: if the chunk index is not unique, then it's possible that
-chunks will be larger than desired. For example, if a table is chunked by an
-index that contains 10,000 of a given value, there is no way to write a WHERE
-clause that matches only 1,000 of the values, and that chunk will be at least
-10,000 rows large.  Such a chunk will probably be skipped because of
-L<"--chunk-size-limit">.
-
 =item --chunk-size-limit
 
 type: float; default: 4.0
@@ -12447,7 +12530,7 @@ Do not copy chunks this much larger than the desired chunk size.
 When a table has no unique indexes, chunk sizes can be inaccurate.  This option
 specifies a maximum tolerable limit to the inaccuracy.  The tool uses <EXPLAIN>
 to estimate how many rows are in the chunk.  If that estimate exceeds the
-desired chunk size times the limit, then the tool skips the chunk.
+desired chunk size times the limit, then the tool will stop copying rows and die.
 
 The minimum value for this option is 1, which means that no chunk can be larger
 than L<"--chunk-size">.  You probably don't want to specify 1, because rows
@@ -12761,9 +12844,9 @@ exist.
 =item --null-to-not-null
 
 Allows MODIFYing a column that allows NULL values to one that doesn't allow
-them. The rows which contain NULL values will be converted to the defined
-default value. If no explicit DEFAULT value is given MySQL will assign a default
-value based on datatype, e.g. 0 for number datatypes, '' for string datatypes.
+them. The existing rows which contain NULL values will be converted to the default value
+based on datatype, e.g. 0 for number datatypes, '' for string datatypes.
+New rows will use the user defined default value if specified for the column.
 
 =item --only-same-schema-fks
 
@@ -12900,7 +12983,7 @@ type: DSN; repeatable: yes
 
 DSN to skip when checking slave lag. It can be used multiple times.
 Example: --skip-check-slave-lag h=127.0.0.1,P=12345 --skip-check-slave-lag h=127.0.0.1,P=12346
-Plase take into consideration that even when for the MySQL driver h=127.1 is equal to h=127.0.0.1,
+Please take into consideration that even when for the MySQL driver h=127.1 is equal to h=127.0.0.1,
 for this parameter you need to specify the full IP address.
 
 =item --slave-user
@@ -13078,6 +13161,13 @@ tool.
 
 For more information, visit L<https://www.percona.com/doc/percona-toolkit/LATEST/version-check.html>.
 
+=item --[no]fail-on-stopped-replication
+
+default: yes
+
+If replication is stopped, fail with an error (exit status 128) instead of waiting
+until replication is restarted.
+
 =back
 
 =head1 PLUGIN
@@ -13098,6 +13188,7 @@ These hooks, in this order, are called if defined:
    before_create_triggers
    after_create_triggers
    before_copy_rows
+   on_copy_rows_after_nibble
    after_copy_rows
    before_swap_tables
    after_swap_tables
@@ -13175,6 +13266,11 @@ Here's a plugin file template for all hooks:
    sub before_copy_rows {
       my ($self, %args) = @_;
       print "PLUGIN before_copy_rows\n";
+   }
+
+   sub on_copy_rows_after_nibble {
+      my ($self, %args) = @_;
+      print "PLUGIN on_copy_rows_after_nibble\n";
    }
 
    sub after_copy_rows {
@@ -13347,13 +13443,13 @@ of output.
 
 =head1 ATTENTION
 
-Using <PTDEBUG> might expose passwords. When debug is enabled, all command line 
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
 parameters are shown in the output.
 
 =head1 EXIT STATUS
 
    INVALID_PARAMETERS              = 1
-   UNSUPORTED_MYSQL_VERSION        = 2
+   UNSUPPORTED_MYSQL_VERSION       = 2
    NO_MINIMUM_REQUIREMENTS         = 3
    NO_PRIMARY_OR_UNIQUE_KEY        = 4
    INVALID_PLUGIN_FILE             = 5
@@ -13368,7 +13464,7 @@ parameters are shown in the output.
    ERROR_SWAPPING_TABLES           = 14
    ERROR_UPDATING_FKS              = 15
    ERROR_DROPPING_OLD_TABLE        = 16
-   UNSUPORTED_OPERATION            = 17
+   UNSUPPORTED_OPERATION           = 17
    MYSQL_CONNECTION_ERROR          = 18
    LOST_MYSQL_CONNECTION           = 19
    ERROR_CREATING_REVERSE_TRIGGERS = 20
@@ -13387,9 +13483,9 @@ REPLICATION SLAVE and REPLICATION CLIENT privileges.
 
 =head1 BUGS
 
-For a list of known bugs, see L<http://www.percona.com/bugs/pt-online-schema-change>.
+For a list of known bugs, see L<https://jira.percona.com/projects/PT/issues>.
 
-Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
+Please report bugs at L<https://jira.percona.com/projects/PT>.
 Include the following information in your bug report:
 
 =over
@@ -13469,6 +13565,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-online-schema-change 3.3.2
+pt-online-schema-change 3.5.5
 
 =cut

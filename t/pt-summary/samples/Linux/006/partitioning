@@ -1,0 +1,33 @@
+Disk /dev/dm-0: 952,65 GiB, 1022886936576 bytes, 1997826048 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk /dev/dm-1: 930,38 GiB, 998974160896 bytes, 1951121408 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk /dev/dm-2: 976 MiB, 1023410176 bytes, 1998848 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk /dev/mmcblk0: 238,51 GiB, 256087425024 bytes, 500170752 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: dos
+Disk identifier: 0x00000000
+
+Device         Boot Start       End   Sectors   Size Id Type
+/dev/mmcblk0p1      65536 500170751 500105216 238,5G  7 HPFS/NTFS/exFAT
+Disk /dev/nvme0n1: 953,89 GiB, 1024209543168 bytes, 2000409264 sectors
+Disk model: KBG40ZPZ1T02 NVMe KIOXIA 1024GB         
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: gpt
+Disk identifier: 85C611CD-5431-4294-868D-B74F61A4AEBC
+
+Device           Start        End    Sectors   Size Type
+/dev/nvme0n1p1    2048    1050623    1048576   512M EFI System
+/dev/nvme0n1p2 1050624    2549759    1499136   732M Linux filesystem
+/dev/nvme0n1p3 2549760 2000408575 1997858816 952,7G Linux filesystem

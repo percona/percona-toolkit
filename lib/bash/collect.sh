@@ -49,10 +49,78 @@ collect() {
    local d="$1"  # directory to save results in
    local p="$2"  # prefix for each result file
 
-   local mysqld_pid=""
+   local cnt=$(($OPT_RUN_TIME / $OPT_SLEEP_COLLECT))
+
+   if [ ! "$OPT_SYSTEM_ONLY" ]; then
+      local mysqld_pid=""
+      local mysql_version=""
+      local mysql_error_log=""
+      local tail_error_log_pid=""
+      local have_lock_waits_table=""
+      local lock_table_p_s=""
+      local have_oprofile=""
+      local mysqladmin_pid=""
+      local mutex=""
+      local tcpdump_pid=""
+      local ps_instrumentation_enabled=""
+
+      collect_mysql_data_one
+   fi
+
+   # Grab a few general things first.  Background all of these so we can start
+   # them all up as quickly as possible.
+   if [ ! "$OPT_MYSQL_ONLY" ]; then
+      collect_system_data
+   fi
+
+   # This loop gathers data for the rest of the duration, and defines the time
+   # of the whole job.
+   log "Loop start: $(date +'TS %s.%N %F %T')"
+   local start_time=$(date +'%s')
+   local curr_time=$start_time
+   local ts="$(date +"TS %s.%N %F %T")"
+
+   while [ $((curr_time - start_time)) -lt $OPT_RUN_TIME ]; do
+      if [ ! "$OPT_MYSQL_ONLY" ]; then
+         collect_system_data_loop
+      fi
+
+      if [ ! "$OPT_SYSTEM_ONLY" ]; then
+         collect_mysql_data_loop
+      fi
+
+      curr_time=$(date +'%s')
+   done
+   log "Loop end: $(date +'TS %s.%N %F %T')"
+
+   if [ ! "$OPT_SYSTEM_ONLY" ]; then
+      collect_mysql_data_two
+   fi
+
+   # Finally, record what system we collected this data from.
+   hostname > "$d/$p-hostname"
+
+   # Remove "empty" files, i.e. ones that are truly empty or
+   # just contain timestamp lines.  When a command above fails,
+   # it may leave an empty file.  But first wait another --run-time
+   # seconds for any slow process to finish:
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1047701
+   wait_for_subshells $OPT_RUN_TIME
+   kill_all_subshells
+   for file in "$d/$p-"*; do
+      # If there's not at least 1 line that's not a TS,
+      # then the file is empty.
+      if [ -z "$(grep -v '^TS ' --max-count 10 "$file")" ]; then
+         log "Removing empty file $file";
+         rm "$file"
+      fi
+   done
+}
+
+collect_mysql_data_one() {
    # Get pidof mysqld.
    if [ ! "$OPT_MYSQL_ONLY" ]; then
-      port=$(mysql -ss -e 'SELECT @@port')
+      port=$($CMD_MYSQL $EXT_ARGV -ss -e 'SELECT @@port')
       mysqld_pid=$(lsof -i ":${port}" | grep -i listen | cut -f 3 -d" ")
    fi
 
@@ -84,16 +152,16 @@ collect() {
 
    # Get the major.minor version number.  Version 3.23 doesn't matter for our
    # purposes, and other releases have x.x.x* version conventions so far.
-   local mysql_version="$(awk '/^version[^_]/{print substr($2,1,3)}' "$d/$p-variables")"
+   mysql_version="$(awk '/^version[^_]/{print substr($2,1,3)}' "$d/$p-variables")"
 
    # Is MySQL logging its errors to a file?  If so, tail that file.
-   local mysql_error_log="$(awk '/^log_error/{print $2}' "$d/$p-variables")"
+   mysql_error_log="$(awk '/^log_error\s/{print $2}' "$d/$p-variables")"
    if [ -z "$mysql_error_log" -a "$mysqld_pid" ]; then
+      log $mysqld_pid
       # Try getting it from the open filehandle...
       mysql_error_log="$(ls -l /proc/$mysqld_pid/fd | awk '/ 2 ->/{print $NF}')"
    fi
 
-   local tail_error_log_pid=""
    if [ "$mysql_error_log" -a ! "$OPT_MYSQL_ONLY" ]; then
       log "The MySQL error log seems to be $mysql_error_log"
       tail -f "$mysql_error_log" >"$d/$p-log_error" &
@@ -101,16 +169,16 @@ collect() {
 
       # Send a mysqladmin debug to the server so we can potentially learn about
       # locking etc.
-      $CMD_MYSQLADMIN $EXT_ARGV debug
+      $CMD_MYSQLADMIN $EXT_ARGV
    else
       log "Could not find the MySQL error log"
-   fi 
+   fi
    # Get a sample of these right away, so we can get these without interaction
    # with the other commands we're about to run.
    if [ "${mysql_version}" '>' "5.1" ]; then
-      local mutex="SHOW ENGINE INNODB MUTEX"
+      mutex="SHOW ENGINE INNODB MUTEX"
    else
-      local mutex="SHOW MUTEX STATUS"
+      mutex="SHOW MUTEX STATUS"
    fi
    innodb_status 1
    tokudb_status 1
@@ -120,7 +188,6 @@ collect() {
    open_tables                      >> "$d/$p-opentables1"   &
 
    # If TCP dumping is specified, start that on the server's port.
-   local tcpdump_pid=""
    if [ "$CMD_TCPDUMP" -a  "$OPT_COLLECT_TCPDUMP" ]; then
       local port=$(awk '/^port/{print $2}' "$d/$p-variables")
       if [ "$port" ]; then
@@ -131,7 +198,6 @@ collect() {
 
    # Next, start oprofile gathering data during the whole rest of this process.
    # The --init should be a no-op if it has already been init-ed.
-   local have_oprofile=""
    if [ "$CMD_OPCONTROL" -a "$OPT_COLLECT_OPROFILE" ]; then
       if $CMD_OPCONTROL --init; then
          $CMD_OPCONTROL --start --no-vmlinux
@@ -143,132 +209,136 @@ collect() {
       local strace_pid=$!
    fi
 
-   # Grab a few general things first.  Background all of these so we can start
-   # them all up as quickly as possible.  
-   if [ ! "$OPT_MYSQL_ONLY" ]; then 
-      ps -eaF  >> "$d/$p-ps"  &
-      top -bn${OPT_RUN_TIME} >> "$d/$p-top" &
-
-      [ "$mysqld_pid" ] && _lsof $mysqld_pid >> "$d/$p-lsof" &
-
-      if [ "$CMD_SYSCTL" ]; then
-         $CMD_SYSCTL -a >> "$d/$p-sysctl" &
-      fi
-
-      # collect dmesg events from 60 seconds ago until present
-      if [ "$CMD_DMESG" ]; then
-         local UPTIME=`cat /proc/uptime | awk '{ print $1 }'`
-         local START_TIME=$(echo "$UPTIME 60" | awk '{print ($1 - $2)}')
-         $CMD_DMESG  | perl -ne 'm/\[\s*(\d+)\./; if ($1 > '${START_TIME}') { print }' >> "$d/$p-dmesg" & 
-      fi
-
-      local cnt=$(($OPT_RUN_TIME / $OPT_SLEEP_COLLECT))
-      if [ "$CMD_VMSTAT" ]; then
-         $CMD_VMSTAT $OPT_SLEEP_COLLECT $cnt >> "$d/$p-vmstat" &
-         $CMD_VMSTAT $OPT_RUN_TIME 2 >> "$d/$p-vmstat-overall" &
-      fi
-      if [ "$CMD_IOSTAT" ]; then
-         $CMD_IOSTAT -dx $OPT_SLEEP_COLLECT $cnt >> "$d/$p-iostat" &
-         $CMD_IOSTAT -dx $OPT_RUN_TIME 2 >> "$d/$p-iostat-overall" &
-      fi
-      if [ "$CMD_MPSTAT" ]; then
-         $CMD_MPSTAT -P ALL $OPT_SLEEP_COLLECT $cnt >> "$d/$p-mpstat" &
-         $CMD_MPSTAT -P ALL $OPT_RUN_TIME 1 >> "$d/$p-mpstat-overall" &
-      fi
-
-      # Collect multiple snapshots of the status variables.  We use
-      # mysqladmin -c even though it is buggy and won't stop on its
-      # own in 5.1 and newer, because there is a chance that we will
-      # get and keep a connection to the database; in troubled times
-      # the database tends to exceed max_connections, so reconnecting
-      # in the loop tends not to work very well.
-      $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
-      local mysqladmin_pid=$!
-   fi 
-
-   local have_lock_waits_table=""
    $CMD_MYSQL $EXT_ARGV -e "SHOW TABLES FROM INFORMATION_SCHEMA" \
       | grep -i "INNODB_LOCK_WAITS" >/dev/null 2>&1
    if [ $? -eq 0 ]; then
       have_lock_waits_table="yes"
+   else
+      # We cannot simply check version here, because MariaDB uses
+      # Information Schema in its 10.x series
+      $CMD_MYSQL $EXT_ARGV -e "SHOW TABLES FROM performance_schema" \
+         | grep -i "data_lock_waits" >/dev/null 2>&1
+      if [ $? -eq 0 ]; then
+         have_lock_waits_table="yes"
+         lock_table_p_s="yes"
+      fi
    fi
 
-   # This loop gathers data for the rest of the duration, and defines the time
-   # of the whole job.
-   log "Loop start: $(date +'TS %s.%N %F %T')"
-   local start_time=$(date +'%s')
-   local curr_time=$start_time
-   local ps_instrumentation_enabled=$($CMD_MYSQL $EXT_ARGV -e 'SELECT ENABLED FROM performance_schema.setup_instruments WHERE NAME = "transaction";' \
+   # Collect multiple snapshots of the status variables.  We use
+   # mysqladmin -c even though it is buggy and won't stop on its
+   # own in 5.1 and newer, because there is a chance that we will
+   # get and keep a connection to the database; in troubled times
+   # the database tends to exceed max_connections, so reconnecting
+   # in the loop tends not to work very well.
+   $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
+   mysqladmin_pid=$!
+
+   ps_instrumentation_enabled=$($CMD_MYSQL $EXT_ARGV -e 'SELECT ENABLED FROM performance_schema.setup_instruments WHERE NAME = "transaction";' \
                                       | sed "2q;d" | sed 'y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/')
 
    if [ $ps_instrumentation_enabled != "yes" ]; then
       log "Performance Schema instrumentation is disabled"
    fi
+}
 
-   while [ $((curr_time - start_time)) -lt $OPT_RUN_TIME ]; do
-      if [ ! "$OPT_MYSQL_ONLY" ]; then
-         # We check the disk, but don't exit, because we need to stop jobs if we
-         # need to exit.
-         disk_space $d > $d/$p-disk-space
-         check_disk_space          \
-            $d/$p-disk-space       \
-            "$OPT_DISK_BYTES_FREE" \
-            "$OPT_DISK_PCT_FREE"   \
-            || break
+collect_system_data() {
+   ps -eaF  >> "$d/$p-ps"  &
+   top -bn${OPT_RUN_TIME} >> "$d/$p-top" &
 
-         # Sleep between collect cycles.
-         # Synchronize ourselves onto the clock tick, so the sleeps are 1-second
-         sleep $(date +'%s.%N' | awk "{print $OPT_SLEEP_COLLECT - (\$1 % $OPT_SLEEP_COLLECT)}")
-         local ts="$(date +"TS %s.%N %F %T")"
+   [ "$mysqld_pid" ] && _lsof $mysqld_pid >> "$d/$p-lsof" &
 
-         # #####################################################################
-         # Collect data for this cycle.
-         # #####################################################################
-         if [ -d "/proc" ]; then
-            if [ -f "/proc/diskstats" ]; then
-               (echo $ts; cat /proc/diskstats) >> "$d/$p-diskstats" &
-            fi
-            if [ -f "/proc/stat" ]; then
-               (echo $ts; cat /proc/stat) >> "$d/$p-procstat" &
-            fi
-            if [ -f "/proc/vmstat" ]; then
-               (echo $ts; cat /proc/vmstat) >> "$d/$p-procvmstat" &
-            fi
-            if [ -f "/proc/meminfo" ]; then
-               (echo $ts; cat /proc/meminfo) >> "$d/$p-meminfo" &
-            fi
-            if [ -f "/proc/slabinfo" ]; then
-               (echo $ts; cat /proc/slabinfo) >> "$d/$p-slabinfo" &
-            fi
-            if [ -f "/proc/interrupts" ]; then
-               (echo $ts; cat /proc/interrupts) >> "$d/$p-interrupts" &
-            fi
-         fi
-         (echo $ts; df -k) >> "$d/$p-df" &
-         (echo $ts; netstat -antp) >> "$d/$p-netstat"   &
-         (echo $ts; netstat -s)    >> "$d/$p-netstat_s" &
+   if [ "$CMD_SYSCTL" ]; then
+      $CMD_SYSCTL -a >> "$d/$p-sysctl" &
+   fi
+
+   # collect dmesg events from 60 seconds ago until present
+   if [ "$CMD_DMESG" ]; then
+      local UPTIME=`cat /proc/uptime | awk '{ print $1 }'`
+      local START_TIME=$(echo "$UPTIME 60" | awk '{print ($1 - $2)}')
+      $CMD_DMESG  | perl -ne 'm/\[\s*(\d+)\./; if ($1 > '${START_TIME}') { print }' >> "$d/$p-dmesg" &
+   fi
+
+   if [ "$CMD_VMSTAT" ]; then
+      $CMD_VMSTAT $OPT_SLEEP_COLLECT $cnt >> "$d/$p-vmstat" &
+      $CMD_VMSTAT $OPT_RUN_TIME 2 >> "$d/$p-vmstat-overall" &
+   fi
+   if [ "$CMD_IOSTAT" ]; then
+      $CMD_IOSTAT -dx $OPT_SLEEP_COLLECT $cnt >> "$d/$p-iostat" &
+      $CMD_IOSTAT -dx $OPT_RUN_TIME 2 >> "$d/$p-iostat-overall" &
+   fi
+   if [ "$CMD_MPSTAT" ]; then
+      $CMD_MPSTAT -P ALL $OPT_SLEEP_COLLECT $cnt >> "$d/$p-mpstat" &
+      $CMD_MPSTAT -P ALL $OPT_RUN_TIME 1 >> "$d/$p-mpstat-overall" &
+   fi
+}
+
+collect_mysql_data_loop() {
+   (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
+      >> "$d/$p-processlist" &
+   if [ "$have_lock_waits_table" ]; then
+      (echo $ts; lock_waits "$d/lock_waits.running")   >>"$d/$p-lock-waits" &
+      (echo $ts; transactions) >>"$d/$p-transactions" &
+   fi
+
+   if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes" ]; then
+      ps_locks_transactions "$d/$p-ps-locks-transactions"
+   fi
+
+   if [ "${mysql_version}" '>' "5.6" ]; then
+      (echo $ts; ps_prepared_statements "$d/prepared_statements.isrunnning") >> "$d/$p-prepared-statements" &
+   fi
+
+   slave_status "$d/$p-slave-status" "${mysql_version}"
+}
+
+collect_system_data_loop() {
+   # We check the disk, but don't exit, because we need to stop jobs if we
+   # need to exit.
+   disk_space $d > $d/$p-disk-space
+   check_disk_space          \
+      $d/$p-disk-space       \
+      "$OPT_DISK_BYTES_FREE" \
+      "$OPT_DISK_PCT_FREE"   \
+      || break
+
+   # Sleep between collect cycles.
+   # Synchronize ourselves onto the clock tick, so the sleeps are 1-second
+   sleep $(date +'%s.%N' | awk "{print $OPT_SLEEP_COLLECT - (\$1 % $OPT_SLEEP_COLLECT)}")
+   ts="$(date +"TS %s.%N %F %T")"
+
+   # #####################################################################
+   # Collect data for this cycle.
+   # #####################################################################
+   if [ -d "/proc" ]; then
+      if [ -f "/proc/diskstats" ]; then
+         (echo $ts; cat /proc/diskstats) >> "$d/$p-diskstats" &
       fi
-      (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
-         >> "$d/$p-processlist" &
-      if [ "$have_lock_waits_table" ]; then
-         (echo $ts; lock_waits)   >>"$d/$p-lock-waits" &
-         (echo $ts; transactions) >>"$d/$p-transactions" &
+      if [ -f "/proc/stat" ]; then
+         (echo $ts; cat /proc/stat) >> "$d/$p-procstat" &
       fi
-
-      if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes" ]; then
-         ps_locks_transactions "$d/$p-ps-locks-transactions"
+      if [ -f "/proc/vmstat" ]; then
+         (echo $ts; cat /proc/vmstat) >> "$d/$p-procvmstat" &
       fi
-
-      if [ "${mysql_version}" '>' "5.6" ]; then
-         (echo $ts; ps_prepared_statements) >> "$d/$p-prepared-statements" &
+      if [ -f "/proc/meminfo" ]; then
+         (echo $ts; cat /proc/meminfo) >> "$d/$p-meminfo" &
       fi
+      if [ -f "/proc/slabinfo" ]; then
+         (echo $ts; cat /proc/slabinfo) >> "$d/$p-slabinfo" &
+      fi
+      if [ -f "/proc/interrupts" ]; then
+         (echo $ts; cat /proc/interrupts) >> "$d/$p-interrupts" &
+      fi
+   fi
+   (echo $ts; df -k) >> "$d/$p-df" &
+   (echo $ts; netstat -antp) >> "$d/$p-netstat"   &
+   (echo $ts; netstat -s)    >> "$d/$p-netstat_s" &
+   (echo $ts;
+   for node in `ls -d /sys/devices/system/node/node*`; do
+      echo `basename $node`; cat "$node/numastat"
+   done)                     >> "$d/$p-numastat"   &
+}
 
-      slave_status "$d/$p-slave-status" "${mysql_version}" 
-
-      curr_time=$(date +'%s')
-   done
-   log "Loop end: $(date +'TS %s.%N %F %T')"
-
+collect_mysql_data_two() {
    if [ "$have_oprofile" ]; then
       $CMD_OPCONTROL --stop
       $CMD_OPCONTROL --dump
@@ -316,83 +386,116 @@ collect() {
    open_tables                      >> "$d/$p-opentables2"   &
 
    # Kill backgrounded tasks.
-   kill $mysqladmin_pid
+   [ "$mysqladmin_pid" ] &&  kill $mysqladmin_pid
    [ "$tail_error_log_pid" ] && kill $tail_error_log_pid
    [ "$tcpdump_pid" ]        && kill $tcpdump_pid
-
-   # Finally, record what system we collected this data from.
-   hostname > "$d/$p-hostname"
-
-   # Remove "empty" files, i.e. ones that are truly empty or
-   # just contain timestamp lines.  When a command above fails,
-   # it may leave an empty file.  But first wait another --run-time
-   # seconds for any slow process to finish:
-   # https://bugs.launchpad.net/percona-toolkit/+bug/1047701
-   wait_for_subshells $OPT_RUN_TIME
-   kill_all_subshells
-   for file in "$d/$p-"*; do
-      # If there's not at least 1 line that's not a TS,
-      # then the file is empty.
-      if [ -z "$(grep -v '^TS ' --max-count 10 "$file")" ]; then
-         log "Removing empty file $file";
-         rm "$file"
-      fi
-   done
 }
 
 open_tables() {
-   local open_tables=$($CMD_MYSQLADMIN $EXT_ARGV ext | grep "Open_tables" | awk '{print $4}')
+   local open_tables=$($CMD_MYSQLADMIN $EXT_ARGV ext | grep "Open_tables" | grep -v "Open_tables_with_triggers" | awk '{print $4}')
    if [ -n "$open_tables" -a $open_tables -le 1000 ]; then
       $CMD_MYSQL $EXT_ARGV -e 'SHOW OPEN TABLES' &
    else
-      log "Too many open tables: $open_tables"
+      log "Logging disabled due to having over 1000 tables open. Number of tables currently open: $open_tables"
    fi
 }
 
 lock_waits() {
-   local sql1="SELECT SQL_NO_CACHE
-      CONCAT('thread ', b.trx_mysql_thread_id, ' from ', p.host) AS who_blocks,
-      IF(p.command = \"Sleep\", p.time, 0) AS idle_in_trx,
-      MAX(TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP)) AS max_wait_time,
-      COUNT(*) AS num_waiters
-   FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS AS w
-   INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.blocking_trx_id
-   INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.requesting_trx_id
-   LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
-   GROUP BY who_blocks ORDER BY num_waiters DESC\G"
-   $CMD_MYSQL $EXT_ARGV -e "$sql1"
+   local flag_file=$1
+   if test -f "$flag_file"; then
+      echo "Lock collection already running, skipping this iteration"
+   else
+      touch "$flag_file"
+      local sql1=""
+      local sql2=""
+      if [ "${lock_table_p_s}" != "yes" ]; then
+         sql1="SELECT SQL_NO_CACHE
+            CONCAT('thread ', b.trx_mysql_thread_id, ' from ', p.host) AS who_blocks,
+            MAX(IF(p.command = \"Sleep\", p.time, 0)) AS idle_in_trx,
+            MAX(TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP)) AS max_wait_time,
+            COUNT(*) AS num_waiters
+         FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS AS w
+         INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.blocking_trx_id
+         INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.requesting_trx_id
+         LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
+         GROUP BY who_blocks ORDER BY num_waiters DESC\G"
 
-   local sql2="SELECT SQL_NO_CACHE
-      r.trx_id AS waiting_trx_id,
-      r.trx_mysql_thread_id AS waiting_thread,
-      TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP) AS wait_time,
-      r.trx_query AS waiting_query,
-      l.lock_table AS waiting_table_lock,
-      b.trx_id AS blocking_trx_id, b.trx_mysql_thread_id AS blocking_thread,
-      SUBSTRING(p.host, 1, INSTR(p.host, ':') - 1) AS blocking_host,
-      SUBSTRING(p.host, INSTR(p.host, ':') +1) AS blocking_port,
-      IF(p.command = \"Sleep\", p.time, 0) AS idle_in_trx,
-      b.trx_query AS blocking_query
-   FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS AS w
-   INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.blocking_trx_id
-   INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.requesting_trx_id
-   INNER JOIN INFORMATION_SCHEMA.INNODB_LOCKS AS l ON w.requested_lock_id = l.lock_id
-   LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
-   ORDER BY wait_time DESC\G"
-   $CMD_MYSQL $EXT_ARGV -e "$sql2"
-} 
+         sql2="SELECT SQL_NO_CACHE
+            r.trx_id AS waiting_trx_id,
+            r.trx_mysql_thread_id AS waiting_thread,
+            TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP) AS wait_time,
+            r.trx_query AS waiting_query,
+            l.lock_table AS waiting_table_lock,
+            b.trx_id AS blocking_trx_id, b.trx_mysql_thread_id AS blocking_thread,
+            SUBSTRING(p.host, 1, INSTR(p.host, ':') - 1) AS blocking_host,
+            SUBSTRING(p.host, INSTR(p.host, ':') +1) AS blocking_port,
+            IF(p.command = \"Sleep\", p.time, 0) AS idle_in_trx,
+            b.trx_query AS blocking_query
+         FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS AS w
+         INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.blocking_trx_id
+         INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.requesting_trx_id
+         INNER JOIN INFORMATION_SCHEMA.INNODB_LOCKS AS l ON w.requested_lock_id = l.lock_id
+         LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
+         ORDER BY wait_time DESC\G"
+      else
+         sql1="SELECT SQL_NO_CACHE
+            CONCAT('thread ', b.trx_mysql_thread_id, ' from ', p.host) AS who_blocks,
+            MAX(IF(p.command = \"Sleep\", p.time, 0)) AS idle_in_trx,
+            MAX(TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP)) AS max_wait_time,
+            COUNT(*) AS num_waiters
+         FROM performance_schema.data_lock_waits AS w
+         INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.BLOCKING_ENGINE_TRANSACTION_ID
+         INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.REQUESTING_ENGINE_TRANSACTION_ID
+         LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
+         GROUP BY who_blocks ORDER BY num_waiters DESC\G"
+
+         sql2="SELECT SQL_NO_CACHE
+            r.trx_id AS waiting_trx_id,
+            r.trx_mysql_thread_id AS waiting_thread,
+            TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP) AS wait_time,
+            r.trx_query AS waiting_query,
+            CONCAT('\`', l.OBJECT_SCHEMA, '\`.\`', l.OBJECT_NAME, '\`') AS waiting_table_lock,
+            b.trx_id AS blocking_trx_id, b.trx_mysql_thread_id AS blocking_thread,
+            SUBSTRING(p.host, 1, INSTR(p.host, ':') - 1) AS blocking_host,
+            SUBSTRING(p.host, INSTR(p.host, ':') +1) AS blocking_port,
+            IF(p.command = \"Sleep\", p.time, 0) AS idle_in_trx,
+            b.trx_query AS blocking_query
+         FROM performance_schema.data_lock_waits AS w
+         INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.BLOCKING_ENGINE_TRANSACTION_ID
+         INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.REQUESTING_ENGINE_TRANSACTION_ID
+         INNER JOIN performance_schema.data_locks AS l ON w.REQUESTING_ENGINE_LOCK_ID = l.ENGINE_LOCK_ID
+         LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
+         ORDER BY wait_time DESC\G"
+      fi
+
+      $CMD_MYSQL $EXT_ARGV -e "$sql1"
+      $CMD_MYSQL $EXT_ARGV -e "$sql2"
+
+      rm "$flag_file"
+   fi
+}
 
 transactions() {
    $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_TRX ORDER BY trx_id\G"
-   $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_LOCKS ORDER BY lock_trx_id\G"
-   $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS ORDER BY blocking_trx_id, requesting_trx_id\G"
+   if [ "${lock_table_p_s}" != "yes" ]; then
+      $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_LOCKS ORDER BY lock_trx_id\G"
+      $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS ORDER BY blocking_trx_id, requesting_trx_id\G"
+   else
+      $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM performance_schema.data_locks ORDER BY ENGINE_TRANSACTION_ID\G"
+      $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM performance_schema.data_lock_waits ORDER BY BLOCKING_ENGINE_TRANSACTION_ID, REQUESTING_ENGINE_TRANSACTION_ID\G"
+   fi
 }
 
 tokudb_status() {
     local n=$1
 
-    $CMD_MYSQL $EXT_ARGV -e "SHOW ENGINE TOKUDB STATUS\G" \
-      >> "$d/$p-tokudbstatus$n" || rm -f "$d/$p-tokudbstatus$n"
+    has_tokudb=`$CMD_MYSQL $EXT_ARGV -e "SHOW ENGINES" | grep -i 'tokudb'`
+    exit_code=$?
+
+    if [ $exit_code -eq 0 ]; then
+       $CMD_MYSQL $EXT_ARGV -e "SHOW ENGINE TOKUDB STATUS\G" \
+         >> "$d/$p-tokudbstatus$n" || rm -f "$d/$p-tokudbstatus$n"
+    fi
 }
 
 innodb_status() {
@@ -429,8 +532,8 @@ rocksdb_status() {
 }
 
 ps_locks_transactions() {
-   local outfile=$1 
-   
+   local outfile=$1
+
    $CMD_MYSQL $EXT_ARGV -e 'select @@performance_schema' | grep "1" &>/dev/null
 
    if [ $? -eq 0 ]; then
@@ -456,30 +559,46 @@ ps_locks_transactions() {
 }
 
 ps_prepared_statements() {
-   $CMD_MYSQL $EXT_ARGV -e "SELECT t.processlist_id, pse.* \
-                            FROM performance_schema.prepared_statements_instances pse \
-                            JOIN performance_schema.threads t \
-                            ON (pse.OWNER_THREAD_ID=t.thread_id)\G"
+# PS-2033:
+# If no flag file exists, create it, then collect data
+# After data collected, remove the file
+# If flag file exists, skip current iteration
+   local flag_file=$1
+   if test -f "$flag_file"; then
+      echo "Prepared statements collection already running, skipping this iteration"
+   else
+      touch "$flag_file"
+      $CMD_MYSQL $EXT_ARGV -e "SELECT t.processlist_id, pse.* \
+                               FROM performance_schema.prepared_statements_instances pse \
+                               JOIN performance_schema.threads t \
+                               ON (pse.OWNER_THREAD_ID=t.thread_id)\G"
+      rm "$flag_file"
+   fi
 }
 
 slave_status() {
    local outfile=$1
    local mysql_version=$2
 
-   if [ "${mysql_version}" '<' "5.7" ]; then
-      local sql="SHOW SLAVE STATUS\G"  
-      echo -e "\n$sql\n" >> $outfile
-      $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+   if [ "${mysql_version}" '<' "8.1" ]; then
+      local sql="SHOW SLAVE STATUS\G"
    else
+      local sql="SHOW REPLICA STATUS\G"
+   fi
+
+   echo -e "\n$sql\n" >> $outfile
+   $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+
+   if [ "${mysql_version}" '>' "5.6" ]; then
       local sql="SELECT * FROM performance_schema.replication_connection_configuration JOIN performance_schema.replication_applier_configuration USING(channel_name)\G"
       echo -e "\n$sql\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
 
-      sql="SELECT * FROM replication_connection_status\G"
+      sql="SELECT * FROM performance_schema.replication_connection_status\G"
       echo -e "\n$sql\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
 
-      sql="SELECT * FROM replication_applier_status JOIN replication_applier_status_by_coordinator USING(channel_name)\G"
+      sql="SELECT * FROM performance_schema.replication_applier_status JOIN performance_schema.replication_applier_status_by_coordinator USING(channel_name)\G"
       echo -e "\n$sql\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
    fi
@@ -487,7 +606,7 @@ slave_status() {
 }
 
 collect_mysql_variables() {
-   local outfile=$1 
+   local outfile=$1
 
    local sql="SHOW GLOBAL VARIABLES"
    echo -e "\n$sql\n" >> $outfile
@@ -496,11 +615,11 @@ collect_mysql_variables() {
    sql="select * from performance_schema.variables_by_thread order by thread_id, variable_name;"
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
-   
+
    sql="select * from performance_schema.user_variables_by_thread order by thread_id, variable_name;"
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
-   
+
    sql="select * from performance_schema.status_by_thread order by thread_id, variable_name; "
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile

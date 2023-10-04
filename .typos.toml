@@ -1,0 +1,53 @@
+[files]
+extend-exclude = [
+    ".git/",
+    "sandbox/sakila.sql",
+    "sandbox/sakila-db/",
+    "sandbox/servers/",
+    "src/go/pt-secure-collect/testdata/",
+    "util/NaturalDocs/",
+    "util/pod2rst-fixed.packed",
+    # For now
+    "t/",
+]
+ignore-hidden = false
+
+[default]
+extend-ignore-re = [
+    "Info\\.nd",
+    "State\\.nd",
+    "Table\\.nd",
+    "perl -ane",
+    "begin nd\\b",
+    "end nd\\b",
+    "\\$nin",
+    "set -ue",
+    "\\[R\\]esponding",
+    "ne 'toi'",
+    "FDEA8D2993C9CAF3",
+    "\\$parms",
+    "Claus Jeppesen",
+]
+
+[default.extend-identifiers]
+"Continuent" = "Continuent"
+"END_ND_SUMMARY" = "END_ND_SUMMARY"
+"END_ND_TOOLTIPS" = "END_ND_TOOLTIPS"
+"EXPLAINed" = "EXPLAINed"
+"FH_ND_FILE" = "FH_ND_FILE"
+"INSERTs" = "INSERTs"
+"JOINed" = "JOINed"
+"MERCHANTIBILITY" = "MERCHANTIBILITY"
+"ND" = "ND"
+"NDDoResize" = "NDDoResize"
+"NDMarkup" = "NDMarkup"
+"NDMarkupToHTML" = "NDMarkupToHTML"
+"NDOnLoad" = "NDOnLoad"
+"NDOnResize" = "NDOnResize"
+"NULLable" = "NULLable"
+"O_WRONLY" = "O_WRONLY"
+"START_ND_SUMMARY" = "START_ND_SUMMARY"
+"START_ND_TOOLTIPS" = "START_ND_TOOLTIPS"
+"TOI" = "TOI"
+"UNIONed" = "UNIONed"
+"UNIONs" = "UNIONs"

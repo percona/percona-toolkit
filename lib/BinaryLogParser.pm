@@ -108,7 +108,7 @@ sub parse_event {
             PTDEBUG && _d('Comment line');
             next LINE;
          }
- 
+
          if ( $line =~ m/^DELIMITER/m ) {
             my ( $del ) = $line =~ m/^DELIMITER (\S*)$/m;
             if ( $del ) {

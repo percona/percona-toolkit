@@ -30,6 +30,72 @@
 # Exits 0 on success, else 1 on warnings and errors.
 
 # ############################################################################
+# Parsing options
+# ############################################################################
+
+usage()
+{
+  echo "This script writes/updates the user documentation.
+
+        Usage: write-user-docs [ -h ] [ -p ] [ -t ] [TOOLS]
+
+        If no option (html, pdf) specified, builds both html and pdf.
+
+        -h builds docs in html
+        -t builds docs in html with new theme
+        -p builds pdf doc
+
+        TOOLS: If no tools are specified on the command line, then docs for bin/* are written (plus all the extra sections).
+        "
+  exit 2
+}
+
+TEMP=$(getopt hpt $*)
+
+if [ $? -ne 0 ]; then
+  usage
+fi
+
+eval set -- "$TEMP"
+unset TEMP
+
+while true; do
+  case "$1" in
+    -h)
+        MAKE_HTML="true"
+        MAKE_THTML="false"
+        shift
+        continue
+    ;;
+    -t)
+        MAKE_THTML="true"
+        MAKE_HTML="false"
+        shift
+        continue
+    ;;
+    -p)
+        MAKE_PDF="true"
+        shift
+        continue
+    ;;
+    --)
+        shift
+        break
+    ;;
+    *)
+        echo 'Internal error!' >&2
+        usage
+    ;;
+  esac
+done
+
+# if both specified or none, build both
+if [[ "$MAKE_HTML" == "$MAKE_PDF" ]]; then
+    MAKE_HTML="true"
+    MAKE_PDF="true"
+fi
+
+# ############################################################################
 # Standard startup, find the branch's root directory
 # ############################################################################
 
@@ -168,7 +234,19 @@ fi
 BUILD=${BUILD:-1}
 if [ $BUILD -eq 1 ]; then
    cd $BRANCH/config/sphinx-build
-   make html && make latexpdf
+
+   if [ "${MAKE_HTML}" = "true" ]; then
+      make html
+   fi
+
+   if [ "${MAKE_PDF}" = "true" ]; then
+      make latexpdf
+   fi
+
+   if [ "${MAKE_THTML}" = "true" ]; then
+      make thtml
+   fi
+
    exit_status=$(( exit_status | $? ))
 fi
 

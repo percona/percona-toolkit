@@ -17,7 +17,7 @@
 -- View: x$statements_with_runtimes_in_95th_percentile
 --
 -- List all statements whose average runtime, in microseconds, is in the top 95th percentile.
--- 
+--
 -- mysql> SELECT * FROM x$statements_with_runtimes_in_95th_percentile LIMIT 1\G
 -- *************************** 1. row ***************************
 --             query: SELECT `e` . `round_robin_bin` AS `round1_1706_0_` , `e` . `id` AS `id1706_0_` , `e` . `timestamp` AS `timestamp1706_0_` , ... truncated
@@ -41,7 +41,7 @@
 CREATE OR REPLACE
   ALGORITHM = MERGE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW x$statements_with_runtimes_in_95th_percentile (
   query,
   db,

@@ -16,6 +16,10 @@ source "$LIB_DIR/safeguards.sh"
 source "$LIB_DIR/alt_cmds.sh"
 source "$LIB_DIR/collect.sh"
 
+# We need flush tables, otherwise we won't have stable results for opentables tests
+CMD_MYSQL="$(_which mysql)"
+$CMD_MYSQL --defaults-file=/tmp/12345/my.sandbox.cnf -ss -e 'FLUSH TABLES'
+
 parse_options "$BIN_DIR/pt-stalk" --run-time 1 -- --defaults-file=/tmp/12345/my.sandbox.cnf
 
 # Prefix (with path) for the collect files.
@@ -25,6 +29,8 @@ p="$PT_TMPDIR/collect/2011_12_05"
 collect "$PT_TMPDIR/collect" "2011_12_05" > $p-output 2>&1
 
 wait_for_files "$p-hostname" "$p-opentables2" "$p-variables" "$p-df" "$p-innodbstatus2"
+
+cat "$p-opentables2" > /tmp/collect.test
 
 # Even if this system doesn't have all the cmds, collect should still
 # have created some files for cmds that (hopefully) all systems have.
@@ -67,15 +73,6 @@ cmd_ok \
 cmd_ok \
    "grep -q 'error log seems to be .*/mysqld.log' $p-output" \
    "Finds MySQL error log"
-
-if [[ "$SANDBOX_VERSION" > "5.0" ]]; then
-   wait_for_files "$p-log_error"
-   cmd_ok \
-      "grep -qE 'Memory status|Open streams|Begin safemalloc' $p-log_error" \
-      "debug"
-else
-   is "1" "1" "SKIP Can't determine MySQL 5.0 error log"
-fi
 
 if [ "$(which lsof 2>/dev/null)" ]; then
    cmd_ok \
@@ -126,13 +123,47 @@ for file in $p-*; do
       empty_files=1
       break
    fi
-   if [ -z "$(grep -v '^TS ' --max-count 1 $file)" ]; then
+   # We need additional check here in case if first match
+   # is empty string.
+   if [ 0 -eq "$(grep -vc '^TS ' --max-count 1 $file)" ] || 
+	   [ 0 -eq "$(grep -vc '^$' --max-count 1 $file)" ]; then
       empty_files=1
       break
    fi
 done
 
 is "$empty_files" "0" "No empty files"
+
+# ###########################################################################
+# Debug option for mysqladmin is not default now, we will test it separately.
+# ###########################################################################
+
+#Skipping until PT-2242 is fixed
+if false; then
+   parse_options "$BIN_DIR/pt-stalk" --run-time 2 -- --defaults-file=/tmp/12345/my.sandbox.cnf
+
+   rm $PT_TMPDIR/collect/*
+
+   # Prefix (with path) for the collect files.
+   p="$PT_TMPDIR/collect/2011_12_05"
+
+   CMD_MYSQLADMIN="mysqladmin debug"
+   # Default collect, no extras like gdb, tcpdump, etc.
+   collect "$PT_TMPDIR/collect" "2011_12_05" > $p-output 2>&1
+
+   wait_for_files "$p-hostname" "$p-opentables2" "$p-variables" "$p-df" "$p-innodbstatus2"
+
+   if [[ "$SANDBOX_VERSION" > "5.0" ]]; then
+      wait_for_files "$p-log_error"
+      cmd_ok \
+         "grep -qE 'Memory status|Open streams|Begin safemalloc' $p-log_error" \
+         "debug"
+   else
+      is "1" "1" "SKIP Can't determine MySQL 5.0 error log"
+   fi
+else
+   is "1" "1" "SKIP until PT-2242 is fixed"
+fi
 
 # ###########################################################################
 # Try longer run time.

@@ -9,10 +9,10 @@ TOOL="pt-pmp"
 # ###########################################################################
 # log_warn_die package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/bash/log_warn_die.sh
 #   t/lib/bash/log_warn_die.sh
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 
 
@@ -57,10 +57,10 @@ _d () {
 # ###########################################################################
 # tmpdir package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/bash/tmpdir.sh
 #   t/lib/bash/tmpdir.sh
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 
 
@@ -98,10 +98,10 @@ rm_tmpdir() {
 # ###########################################################################
 # parse_options package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/bash/parse_options.sh
 #   t/lib/bash/parse_options.sh
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 
 
@@ -118,6 +118,7 @@ OPT_VERSION=""    # If --version was specified
 OPT_HELP=""       # If --help was specified
 OPT_ASK_PASS=""   # If --ask-pass was specified
 PO_DIR=""         # Directory with program option spec files
+GLOBAL_CONFIG=0   # We ignore non-recognized options in global configs
 
 usage() {
    local file="$1"
@@ -246,9 +247,15 @@ parse_options() {
          _parse_config_files "$user_config_file"
       done
    else
-      _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf" "/etc/percona-toolkit/$TOOL.conf"
+       GLOBAL_CONFIG=1
+      _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf"
+       GLOBAL_CONFIG=0
+       _parse_config_files "/etc/percona-toolkit/$TOOL.conf"
       if [ "${HOME:-}" ]; then
-         _parse_config_files "$HOME/.percona-toolkit.conf" "$HOME/.$TOOL.conf"
+         GLOBAL_CONFIG=1
+         _parse_config_files "$HOME/.percona-toolkit.conf"
+         GLOBAL_CONFIG=0
+         _parse_config_files "$HOME/.$TOOL.conf"
       fi
    fi
 
@@ -355,7 +362,7 @@ _parse_config_files() {
 
          echo "$config_opt" | grep '^[ ]*[^#]' >/dev/null 2>&1 || continue
 
-         config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/[ ]+#.*$//')"
+         config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/\s[ ]*#.*$//')"
 
          [ "$config_opt" = "" ] && continue
 
@@ -447,7 +454,11 @@ _parse_command_line() {
          else
             spec=$(grep "^short form:-$opt\$" "$PT_TMPDIR"/po/* | cut -d ':' -f 1)
             if [ -z "$spec"  ]; then
-               continue
+               if [ $GLOBAL_CONFIG -eq 1 ]; then
+                  continue
+               else
+                  option_error "Unknown option: $real_opt"
+               fi
             fi
          fi
 
@@ -505,10 +516,10 @@ size_to_bytes() {
 # ###########################################################################
 # alt_cmds package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/bash/alt_cmds.sh
 #   t/lib/bash/alt_cmds.sh
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 
 
@@ -822,7 +833,7 @@ on the command line.
 
 =head1 BUGS
 
-For a list of known bugs, see L<http://www.percona.com/bugs/pt-pmp>.
+For a list of known bugs, see L<https://jira.percona.com/projects/PT/issues>.
 
 Please report bugs at L<https://jira.percona.com/projects/PT>.
 Include the following information in your bug report:
@@ -846,7 +857,7 @@ see L<"ENVIRONMENT">.
 
 =head1 ATTENTION
 
-Using <PTDEBUG> might expose passwords. When debug is enabled, all command line 
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
 parameters are shown in the output.
 
 =head1 DOWNLOADING
@@ -901,7 +912,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-pmp 3.3.2
+pt-pmp 3.5.5
 
 =cut
 

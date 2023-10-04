@@ -138,7 +138,7 @@ func (p *Profile) getDocs(ctx context.Context) {
 		for _, filter := range p.filters {
 			if !filter(doc) {
 				valid = false
-				return
+				break
 			}
 		}
 		if !valid {

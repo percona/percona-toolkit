@@ -77,7 +77,7 @@ sub get_duplicate_keys {
       # The primary key is treated specially.  It is effectively never a
       # duplicate, so it is never removed.  It is compared to all other
       # keys, and in any case of duplication, the primary is always kept
-      # and the other key removed.  Usually the primary is the acutal
+      # and the other key removed.  Usually the primary is the actual
       # PRIMARY KEY, but for an InnoDB table without a PRIMARY KEY, the
       # effective primary key is the clustered key.
       if ( $key->{name} eq 'PRIMARY'
@@ -93,7 +93,7 @@ sub get_duplicate_keys {
       if ( $args{ignore_order} || $is_fulltext  ) {
          my $ordered_cols = join(',', sort(split(/,/, $key->{colnames})));
          PTDEBUG && _d('Reordered', $key->{name}, 'cols from',
-            $key->{colnames}, 'to', $ordered_cols); 
+            $key->{colnames}, 'to', $ordered_cols);
          $key->{colnames} = $ordered_cols;
       }
 
@@ -107,7 +107,7 @@ sub get_duplicate_keys {
          # $push_to = \@hash_keys     if $is_hash;
          # $push_to = \@spatial_keys  if $is_spatial;
       }
-      push @$push_to, $key; 
+      push @$push_to, $key;
    }
 
    # Redundantly constrained unique keys are treated as normal keys.
@@ -246,7 +246,7 @@ sub get_duplicate_fks {
 # Optional args are:
 #    * exact_duplicates  Keys are dupes only if they're exact duplicates
 #    * callback          Sub called for each dupe found
-# 
+#
 # For a full technical explanation of how/why this sub works, read:
 # http://code.google.com/p/maatkit/wiki/DeterminingDuplicateKeys
 sub remove_prefix_duplicates {
@@ -282,7 +282,7 @@ sub remove_prefix_duplicates {
       @$left_keys = reverse sort { lc($a->{colnames}) cmp lc($b->{colnames}) }
                     grep { defined $_; }
                     @$left_keys;
-      
+
       # Last left key is its second-to-last key.
       # The very last left key will be used as a right key.
       $last_left_key = scalar(@$left_keys) - 2;
@@ -339,7 +339,7 @@ sub remove_prefix_duplicates {
             if ( my $type = $right_keys->[$right_index]->{unconstrained} ) {
                $reason .= "Uniqueness of $right_name ignored because "
                   . $right_keys->[$right_index]->{constraining_key}->{name}
-                  . " is a $type constraint\n"; 
+                  . " is a $type constraint\n";
             }
             my $exact_dupe = $right_len_cols < $left_len_cols ? 0 : 1;
             $reason .= $right_name
@@ -439,7 +439,7 @@ sub shorten_clustered_duplicate {
 }
 
 # Given a primary key (can be undef) and an arrayref of unique keys,
-# removes and returns redundantly contrained unique keys from uniquie_keys.
+# removes and returns redundantly constrained unique keys from uniquie_keys.
 sub unconstrain_keys {
    my ( $self, $primary_key, $unique_keys ) = @_;
    die "I need a unique_keys argument" unless $unique_keys;

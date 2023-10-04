@@ -92,7 +92,7 @@ CREATE DEFINER='root'@'localhost' PROCEDURE ps_setup_show_disabled (
              10 rows in set (0.00 sec)
 
              Empty set (0.00 sec)
-             
+
              +---------------------------------------------------------------------------------------+-------+
              | disabled_instruments                                                                  | timed |
              +---------------------------------------------------------------------------------------+-------+
@@ -129,8 +129,8 @@ BEGIN
      WHERE enabled = 'NO';
 
     IF (in_show_threads) THEN
-        SELECT IF(name = 'thread/sql/one_connection', 
-                  CONCAT(processlist_user, '@', processlist_host), 
+        SELECT IF(name = 'thread/sql/one_connection',
+                  CONCAT(processlist_user, '@', processlist_host),
                   REPLACE(name, 'thread/', '')) AS enabled_threads,
         TYPE AS thread_type
           FROM performance_schema.threads

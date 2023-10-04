@@ -7,7 +7,7 @@ cd $BASEDIR
 source ${BASEDIR}/src/go/setenv.sh
 
 for dir in $(ls -d ./src/go/pt-* ) ./src/go/mongolib
-do 
+do
   echo "Running tests at $BASEDIR/$dir"
   cd $BASEDIR/$dir
   go get ./...

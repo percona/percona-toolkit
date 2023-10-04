@@ -3,13 +3,13 @@ package util
 import (
 	"context"
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/pkg/errors"
-	"github.com/prometheus/common/log"
 	"github.com/shirou/gopsutil/process"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -184,21 +184,22 @@ func GetHostnames(ctx context.Context, client *mongo.Client) ([]string, error) {
 }
 
 /*
-   "members" : [
-            {
-                    "_id" : 0,
-                    "name" : "localhost:17001",
-                    "health" : 1,
-                    "state" : 1,
-                    "stateStr" : "PRIMARY",
-                    "uptime" : 4700,
-                    "optime" : Timestamp(1486554836, 1),
-                    "optimeDate" : ISODate("2017-02-08T11:53:56Z"),
-                    "electionTime" : Timestamp(1486651810, 1),
-                    "electionDate" : ISODate("2017-02-09T14:50:10Z"),
-                    "configVersion" : 1,
-                    "self" : true
-            },
+"members" : [
+
+	{
+	        "_id" : 0,
+	        "name" : "localhost:17001",
+	        "health" : 1,
+	        "state" : 1,
+	        "stateStr" : "PRIMARY",
+	        "uptime" : 4700,
+	        "optime" : Timestamp(1486554836, 1),
+	        "optimeDate" : ISODate("2017-02-08T11:53:56Z"),
+	        "electionTime" : Timestamp(1486651810, 1),
+	        "electionDate" : ISODate("2017-02-09T14:50:10Z"),
+	        "configVersion" : 1,
+	        "self" : true
+	},
 */
 func buildHostsListFromReplStatus(replStatus proto.ReplicaSetStatus) []string {
 	hostnames := []string{}
@@ -211,17 +212,20 @@ func buildHostsListFromReplStatus(replStatus proto.ReplicaSetStatus) []string {
 	return hostnames
 }
 
-/* Example
+/*
+	Example
+
 mongos> db.getSiblingDB('admin').runCommand('getShardMap')
-{
-  "map" : {
-    "config" : "localhost:19001,localhost:19002,localhost:19003",
-    "localhost:17001" : "r1/localhost:17001,localhost:17002,localhost:17003",
-    "r1" : "r1/localhost:17001,localhost:17002,localhost:17003",
-    "r1/localhost:17001,localhost:17002,localhost:17003" : "r1/localhost:17001,localhost:17002,localhost:17003",
-  },
-  "ok" : 1
-}.
+
+	{
+	  "map" : {
+	    "config" : "localhost:19001,localhost:19002,localhost:19003",
+	    "localhost:17001" : "r1/localhost:17001,localhost:17002,localhost:17003",
+	    "r1" : "r1/localhost:17001,localhost:17002,localhost:17003",
+	    "r1/localhost:17001,localhost:17002,localhost:17003" : "r1/localhost:17001,localhost:17002,localhost:17003",
+	  },
+	  "ok" : 1
+	}.
 */
 func buildHostsListFromShardMap(shardsMap proto.ShardsMap) []string {
 	hostnames := []string{}
@@ -390,7 +394,7 @@ func GetClientForHost(co *options.ClientOptions, newHost string) (*mongo.Client,
 func GetHostInfo(ctx context.Context, client *mongo.Client) (*proto.GetHostInfo, error) {
 	hi := proto.HostInfo{}
 	if err := client.Database("admin").RunCommand(ctx, primitive.M{"hostInfo": 1}).Decode(&hi); err != nil {
-		log.Debugf("run('hostInfo') error: %s", err)
+		log.Printf("run('hostInfo') error: %s", err)
 		return nil, errors.Wrap(err, "GetHostInfo.hostInfo")
 	}
 
@@ -480,9 +484,6 @@ func MyState(ctx context.Context, client *mongo.Client) (int, error) {
 	var ms proto.MyState
 
 	err := client.Database("admin").RunCommand(ctx, bson.M{"getDiagnosticData": 1}).Decode(&ms)
-	if _, ok := err.(topology.ServerSelectionError); ok {
-		return 0, nil
-	}
 	if err != nil {
 		return 0, err
 	}

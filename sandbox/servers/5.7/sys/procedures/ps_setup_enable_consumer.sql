@@ -24,7 +24,7 @@ CREATE DEFINER='root'@'localhost' PROCEDURE ps_setup_enable_consumer (
              Description
              -----------
 
-             Enables consumers within Performance Schema 
+             Enables consumers within Performance Schema
              matching the input pattern.
 
              Parameters

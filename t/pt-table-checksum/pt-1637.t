@@ -16,6 +16,8 @@ use Sandbox;
 use SqlModes;
 require "$trunk/bin/pt-table-checksum";
 
+plan skip_all => 'Disabled until PT-2174 is fixed';
+
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 

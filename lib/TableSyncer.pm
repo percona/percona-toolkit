@@ -183,7 +183,7 @@ sub sync_table {
          # checksum algo and hash func can't be used on both.
          die "Failed to make checksum queries: $EVAL_ERROR";
       }
-   } 
+   }
 
    # ########################################################################
    # Plugin is ready, return now if this is a dry run.

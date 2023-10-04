@@ -33,7 +33,7 @@ elsif ( $DBD::mysql::VERSION lt '4' ) {
 my $output;
 my $rows;
 my $cnf  = "/tmp/12345/my.sandbox.cnf";
-my $file = "/tmp/mk-archiver-file.txt";
+my $file = "/tmp/pt-archiver-file.txt";
 
 # #############################################################################
 # Issue 1229: mk-archiver not creating UTF8 compatible file handles for
@@ -53,11 +53,15 @@ is_deeply(
 
 diag(`rm -rf $file >/dev/null`);
 
+# We need to have --no-check-charset here, because utf8 that we use in the test file
+# is alias of utf8mb3 in 5.7 and alias of utf8mb4 in 8.0.
+# We cannot set this character set explicitly due to Perl limitations.
+# Changing utf8 to utf8mb4 will break test on 5.7
 $output = output(
    sub { pt_archiver::main(
       '--source',  'h=127.1,P=12345,D=issue_1225,t=t,u=msandbox,p=msandbox',
       '--file',    $file,
-      qw(--where 1=1 -A UTF8)) # -A utf8 makes it work
+      qw(--no-check-charset --where 1=1 -A UTF8)) # -A utf8 makes it work
    },
    stderr => 1,
 );

@@ -1,7 +1,13 @@
+.PHONY: all style format build test vet tarball linux-amd64 clean help
+
 help:                 ## Display this help message.
 	@echo "Please use \`make <target>\` where <target> is one of:"
 	@grep '^[a-zA-Z]' $(MAKEFILE_LIST) | \
 		awk -F ':.*?## ' 'NF==2 {printf "  %-26s%s\n", $$1, $$2}'
+	@echo
+	@echo 'To build binaries use: VERSION=m.n.p make <target>'
+	@echo 'Example: VERSION=3.4.0 make linux-amd64'
+	@echo 'The binaries generation uses pwd command to set the base directory. Please run make from the same directory where the Makefile is located.'
 
 DATE_FMT = +%FT%T%z
 ifdef SOURCE_DATE_EPOCH
@@ -11,18 +17,23 @@ else
 endif
 
 GO := go
+CP := )
 pkgs = $(shell find . -type d -name "pt-*" -exec basename {} \;)
-VERSION=$(shell git describe --abbrev=0 --tags)
+# VERSION ?=$(shell git describe --abbrev=0) doesn't always work here, need to use git log
+VERSION ?=$(shell git log --no-walk --tags --pretty="%H %d" --decorate=short | head -n1 | awk  -F'[, $(CP)]' '{ print $$4; }')
 BUILD=$(BUILD_DATE)
 GOVERSION=$(shell go version | cut --delimiter=" " -f3)
-COMMIT=$(shell git rev-list -1 HEAD)
 GOUTILSDIR ?= $(GOPATH)/bin
 FILES = $(shell find . -type f -name '*.go' -not -path "./vendor/*")
-
 PREFIX=$(shell pwd)
-TOP_DIR=$(shell git rev-parse --show-toplevel)
-BIN_DIR=$(shell git rev-parse --show-toplevel)/bin
-SRC_DIR=$(shell git rev-parse --show-toplevel)/src/go
+
+CUR_DIR=$(shell pwd)
+COMMIT=$(shell git rev-list -1 HEAD)
+
+TOP_DIR=${CUR_DIR}
+BIN_DIR=${CUR_DIR}/../../bin
+SRC_DIR=${CUR_DIR}/../../src/go
+
 LDFLAGS="-X main.Version=${VERSION} -X main.Build=${BUILD} -X main.GoVersion=${GOVERSION} -X main.Commit=${COMMIT} -s -w"
 
 TEST_PSMDB_VERSION?=4.0
@@ -65,7 +76,6 @@ MINIO_SECRET_ACCESS_KEY=secret00000
 export MINIO_ACCESS_KEY_ID
 export MINIO_SECRET_ACCESS_KEY
 
-.PHONY: all style format build test vet tarball linux-amd64
 
 $(GOUTILSDIR)/dep:
 	go get -u github.com/golang/dep/cmd/dep
@@ -104,32 +114,33 @@ endef
 env:
 	@echo $(TEST_ENV) | tr ' ' '\n' >.env
 
+# TODO: create envs specific to products: MySQL, PostgreSQL, MongoDB, K8
 env-up: env					## Start MongoDB docker containers cluster
 	TEST_PSMDB_VERSION=$(TEST_PSMDB_VERSION) \
 	docker-compose up \
 	--detach \
 	--force-recreate \
 	--always-recreate-deps \
-	--renew-anon-volumes 
+	--renew-anon-volumes
 
 env-down: env				## Clean-up MongoDB docker containers cluster
 	docker-compose down -v
 	rm .env
 
-linux-amd64: 				## Build Mongo tools for linux-amd64
-	@echo "Building linux/amd64 binaries in ${BIN_DIR}"
+linux-amd64: 				## Build Mongo tools for linux-amd64.
+	@echo "Building linux/amd64 binaries in ${BIN_DIR} as version ${VERSION}"
 	@cd ${TOP_DIR} && go get ./...
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
 	@$(foreach pkg,$(pkgs),GOOS=linux GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
 
 linux-386: 					## Build Mongo tools for linux-386
-	@echo "Building linux/386 binaries in ${BIN_DIR}"
+	@echo "Building linux/386 binaries in ${BIN_DIR} as version ${VERSION}"
 	@cd ${TOP_DIR} && go get ./...
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
 	@$(foreach pkg,$(pkgs),GOOS=linux GOARCH=386 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
 
-darwin-amd64:				## Build Mongo tools for darwin-amd64 (MacOS) 
-	@echo "Building darwin/amd64 binaries in ${BIN_DIR}"
+darwin-amd64:				## Build Mongo tools for darwin-amd64 (MacOS)
+	@echo "Building darwin/amd64 binaries in ${BIN_DIR} as version ${VERSION}"
 	@cd ${TOP_DIR} && go get ./...
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
 	@$(foreach pkg,$(pkgs),GOOS=darwin GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)

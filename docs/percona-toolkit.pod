@@ -13,7 +13,7 @@ MySQL and system tasks that are too difficult or complex to perform manually.
 These tools are ideal alternatives to private or "one-off" scripts because
 they are professionally developed, formally tested, and fully documented.
 They are also fully self-contained, so installation is quick and easy and
-no libraries are installed. 
+no libraries are installed.
 
 Percona Toolkit is derived from Maatkit and Aspersa, two of the best-known
 toolkits for MySQL server administration.  It is developed and supported by
@@ -85,6 +85,14 @@ Kill MySQL queries that match certain criteria.
 =item pt-mext
 
 Look at many samples of MySQL C<SHOW GLOBAL STATUS> side-by-side.
+
+=item pt-mongodb-index-check
+
+Performs checks on MongoDB indexes
+
+=item pt-mongodb-query-digest
+
+Reports query usage statistics by aggregating queries from MongoDB query profiler
 
 =item pt-mysql-summary
 
@@ -405,7 +413,7 @@ Explicitly enable LOAD DATA LOCAL INFILE.
 
 For some reason, some vendors compile libmysql without the
 --enable-local-infile option, which disables the statement.  This can
-lead to weird situations, like the server allowing LOCAL INFILE, but 
+lead to weird situations, like the server allowing LOCAL INFILE, but
 the client throwing exceptions if it's used.
 
 However, as long as the server allows LOAD DATA, clients can easily
@@ -567,6 +575,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-Percona Toolkit v3.3.1 released 2021-04-22
+Percona Toolkit v3.5.5 released 2023-10-02
 
 =cut

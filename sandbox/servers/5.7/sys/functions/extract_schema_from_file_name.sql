@@ -20,17 +20,17 @@ DELIMITER $$
 CREATE DEFINER='root'@'localhost' FUNCTION extract_schema_from_file_name (
         path VARCHAR(512)
     )
-    RETURNS VARCHAR(64) 
+    RETURNS VARCHAR(64)
     COMMENT '
              Description
              -----------
 
              Takes a raw file path, and attempts to extract the schema name from it.
 
-             Useful for when interacting with Performance Schema data 
+             Useful for when interacting with Performance Schema data
              concerning IO statistics, for example.
 
-             Currently relies on the fact that a table data file will be within a 
+             Currently relies on the fact that a table data file will be within a
              specified database directory (will not work with partitions or tables
              that specify an individual DATA_DIRECTORY).
 

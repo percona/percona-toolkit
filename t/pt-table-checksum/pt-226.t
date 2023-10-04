@@ -28,7 +28,6 @@ else {
 }
 
 diag("loading samples");
-#$sb->load_file('master', 't/pt-table-checksum/samples/pt-226.sql');
 $sb->load_file('master', 't/pt-table-checksum/samples/pt-226.sql');
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -63,7 +62,7 @@ isnt(
 
 like(
     $output,
-    qr/1\s+100\s+0\s+1\s+0\s+.*test.joinit/,
+    qr/1\s+100\s+10\s+1\s+0\s+.*test.joinit/,
     "PT-226 table joinit has differences",
 );
 

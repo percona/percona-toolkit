@@ -26,10 +26,6 @@ require "$trunk/bin/pt-online-schema-change";
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 
-if ($sandbox_version ge '8.0') {
-    plan skip_all => 'PXC 8 does not exist yet';
-}
-
 our ($master_dbh, $master_dsn) = $sb->start_sandbox(
    server => 'master',
    type   => 'master',

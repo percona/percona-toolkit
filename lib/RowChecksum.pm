@@ -49,7 +49,7 @@ sub new {
 #   tbl  - Table ref
 #
 # Optional Arguments:
-#   no_cols - Don't append columns to list oustide of functions.
+#   no_cols - Don't append columns to list outside of functions.
 #
 # Returns:
 #   Column list for SELECT
@@ -71,7 +71,7 @@ sub make_row_checksum {
    # https://bugs.launchpad.net/percona-toolkit/+bug/1016131
    die "all columns are excluded by --columns or --ignore-columns"
       unless @{$cols->{select}};
-      
+
    # Prepend columns to query, resulting in "col1, col2, FUNC(..col1, col2...)",
    # unless caller says not to.  The only caller that says not to is
    # make_chunk_checksum() which uses this row checksum as part of a larger
@@ -80,7 +80,7 @@ sub make_row_checksum {
    my $query;
    if ( !$args{no_cols} ) {
       $query = join(', ',
-                  map { 
+                  map {
                      my $col = $_;
                      if ( $col =~ m/UNIX_TIMESTAMP/ ) {
                         # Alias col name back to itself else its name becomes
@@ -102,18 +102,30 @@ sub make_row_checksum {
       $sep    =~ s/'//g;
       $sep  ||= '#';
 
+      my @converted_cols;
+      for my $col(@{$cols->{select}}) {
+          my $colname = $col;
+          $colname =~ s/`//g;
+          my $type = $tbl_struct->{type_for}->{$colname} || '';
+          if ($type =~ m/^(CHAR|VARCHAR|BINARY|VARBINARY|BLOB|TEXT|ENUM|SET|JSON)$/i) {
+              push @converted_cols, "convert($col using utf8mb4)";
+          } else {
+              push @converted_cols, "$col";
+          }
+      }
+
       # Add a bitmap of which nullable columns are NULL.
       my @nulls = grep { $cols->{allowed}->{$_} } @{$tbl_struct->{null_cols}};
       if ( @nulls ) {
          my $bitmap = "CONCAT("
             . join(', ', map { 'ISNULL(' . $q->quote($_) . ')' } @nulls)
             . ")";
-         push @{$cols->{select}}, $bitmap;
+         push @converted_cols, $bitmap;
       }
 
-      $query .= @{$cols->{select}} > 1
-              ? "$func(CONCAT_WS('$sep', " . join(', ', @{$cols->{select}}) . '))'
-              : "$func($cols->{select}->[0])";
+      $query .= scalar @converted_cols > 1
+              ? "$func(CONCAT_WS('$sep', " . join(', ', @converted_cols) . '))'
+              : "$func($converted_cols[0])";
    }
    else {
       # As a special case, FNV1A_64/FNV_64 doesn't need its arguments
@@ -140,7 +152,7 @@ sub make_row_checksum {
 #   func      - Hash function name
 #   crc_width - CRC width
 #   crc_type  - CRC type
-# 
+#
 # Returns:
 #   Column list for SELECT
 sub make_chunk_checksum {
@@ -157,7 +169,7 @@ sub make_chunk_checksum {
    my $q     = $self->{Quoter};
 
    my %crc_args = $self->get_crc_args(%args);
-   PTDEBUG && _d("Checksum strat:", Dumper(\%crc_args));
+   PTDEBUG && _d('Checksum start:', Dumper(\%crc_args));
 
    # This checksum algorithm concatenates the columns in each row and
    # checksums them, then slices this checksum up into 16-character chunks.
@@ -245,7 +257,7 @@ sub get_crc_args {
    my $func      = $args{func}     || $self->_get_hash_func(%args);
    my $crc_width = $args{crc_width}|| $self->_get_crc_width(%args, func=>$func);
    my $crc_type  = $args{crc_type} || $self->_get_crc_type(%args, func=>$func);
-   my $opt_slice; 
+   my $opt_slice;
    if ( $args{dbh} && $crc_type !~ m/int$/ ) {
       $opt_slice = $self->_optimize_xor(%args, func=>$func);
    }
@@ -465,8 +477,8 @@ sub find_replication_differences {
    }
    my ($dbh, $repl_table) = @args{@required_args};
 
-    
-   my $tries = $self->{'OptionParser'}->get('replicate-check-retries') || 1; 
+
+   my $tries = $self->{'OptionParser'}->get('replicate-check-retries') || 1;
    my $diffs;
    while ($tries--) {
       my $sql
@@ -485,7 +497,7 @@ sub find_replication_differences {
       if (!@$diffs || !$tries) { # if no differences are found OR we are out of tries left...
          last;                   # get out now
       }
-      sleep 1;            
+      sleep 1;
    }
    return $diffs;
 }

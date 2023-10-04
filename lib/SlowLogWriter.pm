@@ -73,7 +73,7 @@ sub write {
             map { $_ || 0 }
                @{$event}{qw(InnoDB_IO_r_ops InnoDB_IO_r_bytes InnoDB_IO_r_wait InnoDB_rec_lock_wait InnoDB_queue_wait InnoDB_pages_distinct)};
 
-      } 
+      }
       else {
          printf $fh "# No InnoDB statistics available for this query\n";
       }
