@@ -3,6 +3,8 @@ package utils
 import (
 	"fmt"
 	"strings"
+
+	"k8s.io/utils/net"
 )
 
 // Color is given its own type for safe function signatures
@@ -116,6 +118,10 @@ func UUIDToShortUUID(uuid string) string {
 func ShortNodeName(s string) string {
 	// short enough
 	if len(s) < 10 {
+		return s
+	}
+	// for the rare case of having IPs set as node names
+	if net.IsIPv4String(s) {
 		return s
 	}
 	before, _, _ := strings.Cut(s, ".")
