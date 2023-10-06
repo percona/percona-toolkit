@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
@@ -32,8 +31,6 @@ type Dumper struct {
 	forwardport string
 }
 
-var resourcesRe = regexp.MustCompile(`(\w+)\.(\w+).percona\.com`)
-
 // New return new Dumper object
 func New(location, namespace, resource string, kubeconfig string, forwardport string) Dumper {
 	d := Dumper{
@@ -44,86 +41,22 @@ func New(location, namespace, resource string, kubeconfig string, forwardport st
 		namespace:   namespace,
 		forwardport: forwardport,
 	}
-	resources := []string{
-		"pods",
-		"replicasets",
-		"deployments",
-		"statefulsets",
-		"replicationcontrollers",
-		"events",
-		"configmaps",
-		"cronjobs",
-		"jobs",
-		"poddisruptionbudgets",
-		"clusterrolebindings",
-		"clusterroles",
-		"rolebindings",
-		"roles",
-		"storageclasses",
-		"persistentvolumeclaims",
-		"persistentvolumes",
-	}
+	resources := resourcesMapping["common"].k8sResources
+	filePaths := make([]string, 0)
 
-	switch resource {
-	case "auto":
-		result, err := d.runCmd("api-resources", "-o", "name")
+	if resource == "auto" {
+		result, err := d.runCmd("api-versions")
 		if err != nil {
-			log.Panicf("Cannot get API resources and option --resource=auto specified:\n%s", err)
+			log.Panicf("Cannot get API versions and option --resource=auto specified:\n%s", err)
 		}
 		matches := resourcesRe.FindAllStringSubmatch(string(result), -1)
-		if len(matches) == 0 {
-			resource = "none"
-			break
-		}
 		for _, match := range matches {
-			resources = append(resources, match[1])
-			resource = match[2]
+			resources = append(resources, resourcesMapping[match[1]].k8sResources...)
+			filePaths = append(filePaths, resourcesMapping[match[1]].filePaths...)
 		}
-	case "pg":
-		resources = append(resources,
-			"perconapgclusters",
-			"pgclusters",
-			"pgpolicies",
-			"pgreplicas",
-			"pgtasks",
-		)
-	case "pgv2":
-		resources = append(resources,
-			"perconapgbackups",
-			"perconapgclusters",
-			"perconapgrestores",
-		)
-	case "pxc":
-		resources = append(resources,
-			"perconaxtradbclusterbackups",
-			"perconaxtradbclusterrestores",
-			"perconaxtradbclusters",
-		)
-	case "ps":
-		resources = append(resources,
-			"perconaservermysqlbackups",
-			"perconaservermysqlrestores",
-			"perconaservermysqls",
-		)
-	case "psmdb":
-		resources = append(resources,
-			"perconaservermongodbbackups",
-			"perconaservermongodbrestores",
-			"perconaservermongodbs",
-		)
-	}
-	filePaths := make([]string, 0)
-	if resourceType(resource) == "pxc" {
-		filePaths = append(filePaths,
-			"var/lib/mysql/mysqld-error.log",
-			"var/lib/mysql/innobackup.backup.log",
-			"var/lib/mysql/innobackup.move.log",
-			"var/lib/mysql/innobackup.prepare.log",
-			"var/lib/mysql/grastate.dat",
-			"var/lib/mysql/gvwstate.dat",
-			"var/lib/mysql/mysqld.post.processing.log",
-			"var/lib/mysql/auto.cnf",
-		)
+	} else {
+		resources = append(resources, resourcesMapping[resource].k8sResources...)
+		filePaths = append(filePaths, resourcesMapping[resource].filePaths...)
 	}
 	d.resources = resources
 	d.crType = resource
