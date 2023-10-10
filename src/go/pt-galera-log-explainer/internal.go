@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"os"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -25,6 +26,10 @@ func init() {
 	}
 }
 
+var (
+	errDirectoriesUnsupported = errors.New("directories are not supported")
+)
+
 // timelineFromPaths takes every path, search them using a list of regexes
 // and organize them in a timeline that will be ready to aggregate or read
 func timelineFromPaths(paths []string, regexes types.RegexMap) (types.Timeline, error) {
@@ -34,6 +39,14 @@ func timelineFromPaths(paths []string, regexes types.RegexMap) (types.Timeline, 
 	compiledRegex := prepareGrepArgument(regexes)
 
 	for _, path := range paths {
+		osinfo, err := os.Stat(path)
+		if err != nil {
+			return nil, err
+		}
+		if osinfo.IsDir() {
+			return nil, errDirectoriesUnsupported
+		}
+
 		stdout := make(chan string)
 
 		go func() {
@@ -193,7 +206,6 @@ func iterateOnGrepResults(path string, regexes types.RegexMap, grepStdout <-chan
 			}
 			ctx, displayer = regex.Handle(ctx, line)
 			li := types.NewLogInfo(date, displayer, line, regex, key, ctx, filetype)
-
 			lt = lt.Add(li)
 		}
 
