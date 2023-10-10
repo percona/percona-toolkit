@@ -165,6 +165,9 @@ var ApplicativeMap = types.RegexMap{
 			errormd5 := submatches[groupErrorMD5]
 			seqno := submatches[groupSeqno]
 			c := ctx.Conflicts.ConflictWithSeqno(seqno)
+			if c == nil { // the actual vote could have been lost
+				return ctx, nil
+			}
 			vote := types.ConflictVote{MD5: errormd5}
 			c.VotePerNode[ctx.OwnNames[len(ctx.OwnNames)-1]] = vote
 
