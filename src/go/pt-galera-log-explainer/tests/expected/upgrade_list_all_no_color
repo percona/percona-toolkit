@@ -16,6 +16,8 @@ mysql version                 8.0.28                                     8.0.28 
 2023-03-12T07:34:57.286990Z   |                                          node1 joined                               |                                       
 2023-03-12T07:34:57.287111Z   |                                          node3 left                                 |                                       
 2023-03-12T07:34:57.290903Z   |                                          node3 left                                 |                                       
+2023-03-12T07:35:02.791416Z   |                                          (repeated x17)node1 suspected to be down   |                                       
+2023-03-12T07:35:11.793101Z   |                                          node1 suspected to be down                 |                                       
 2023-03-12T07:35:12.293578Z   |                                          PRIMARY(n=2)                               |                                       
 2023-03-12T07:35:12.293705Z   |                                          NON-PRIMARY(n=1)                           |                                       
 2023-03-12T07:35:12.293723Z   |                                          SYNCED -> OPEN                             |                                       
@@ -90,6 +92,7 @@ mysql version                 8.0.28                                     8.0.28 
 2023-03-12T11:24:33.334761Z   |                                          JOINED -> SYNCED                           |                                       
 2023-03-12T11:35:14.693312Z   |                                          node3 joined                               |                                       
 2023-03-12T11:35:14.695410Z   |                                          PRIMARY(n=2)                               |                                       
+2023-03-12T11:35:16.321586Z   |                                          local node will resync node3               |                                       
 2023-03-12T11:35:16.321642Z   |                                          SYNCED -> DONOR                            |                                       
 2023-03-12T11:35:16.342707Z   |                                          IST to node3(seqno:170403898)              |                                       
 2023-03-12T11:35:17.118100Z   |                                          IST will be used                           |                                       
@@ -101,6 +104,7 @@ mysql version                 8.0.28                                     8.0.28 
 2023-03-12T11:35:21.035794Z   |                                          PRIMARY(n=1)                               |                                       
 2023-03-12T11:39:20.681083Z   |                                          node3 joined                               |                                       
 2023-03-12T11:39:20.683800Z   |                                          PRIMARY(n=2)                               |                                       
+2023-03-12T11:39:21.948501Z   |                                          local node will resync node3               |                                       
 2023-03-12T11:39:21.948554Z   |                                          SYNCED -> DONOR                            |                                       
 2023-03-12T11:39:21.952242Z   |                                          IST to node3(seqno:170403900)              |                                       
 2023-03-12T11:39:33.420743Z   |                                          SST to node3                               |                                       
@@ -136,7 +140,9 @@ mysql version                 8.0.28                                     8.0.28 
 2023-03-12T12:48:43.820929Z   |                                          |                                          PRIMARY(n=2)                            
 2023-03-12T12:48:43.822001Z   |                                          |                                          OPEN -> PRIMARY                         
 2023-03-12T12:48:44.597299Z   |                                          |                                          will receive IST(seqno:170403905)       
+2023-03-12T12:48:44.599287Z   |                                          local node will resync node3               |                                       
 2023-03-12T12:48:44.599341Z   |                                          SYNCED -> DONOR                            |                                       
+2023-03-12T12:48:44.599346Z   |                                          |                                          node2 will resync local node            
 2023-03-12T12:48:44.599377Z   |                                          |                                          PRIMARY -> JOINER                       
 2023-03-12T12:48:44.616436Z   |                                          IST to node3(seqno:170403905)              |                                       
 2023-03-12T12:48:45.044873Z   |                                          IST will be used                           |                                       
@@ -154,6 +160,8 @@ mysql version                 8.0.28                                     8.0.28 
 2023-03-12T13:04:24.476863Z   |                                          |                                          node2 joined                            
 2023-03-12T13:04:24.478964Z   |                                          PRIMARY(n=3)                               |                                       
 2023-03-12T13:04:24.479206Z   |                                          |                                          PRIMARY(n=3)                            
+2023-03-12T13:04:25.731994Z   |                                          node3 will resync node1                    |                                       
+2023-03-12T13:04:25.732124Z   |                                          |                                          local node will resync node1            
 2023-03-12T13:04:25.732132Z   |                                          |                                          SYNCED -> DONOR                         
 2023-03-12T13:04:25.735999Z   |                                          |                                          IST to node1(seqno:170407335)           
 2023-03-12T13:04:37.415791Z   |                                          |                                          SST to node1                            
@@ -187,7 +195,9 @@ mysql version                 8.0.28                                     8.0.28 
 2023-03-12T13:13:12.515641Z   |                                          PRIMARY(n=2)                               |                                       
 2023-03-12T13:13:12.516249Z   |                                          OPEN -> PRIMARY                            |                                       
 2023-03-12T13:13:13.245723Z   |                                          will receive IST(seqno:170407338)          |                                       
+2023-03-12T13:13:13.247714Z   |                                          node3 will resync local node               |                                       
 2023-03-12T13:13:13.247750Z   |                                          PRIMARY -> JOINER                          |                                       
+2023-03-12T13:13:13.248015Z   |                                          |                                          local node will resync node2            
 2023-03-12T13:13:13.248065Z   |                                          |                                          SYNCED -> DONOR                         
 2023-03-12T13:13:13.262238Z   |                                          |                                          IST to node2(seqno:170407338)           
 2023-03-12T13:13:13.863959Z   |                                          |                                          IST will be used                        
@@ -213,8 +223,11 @@ mysql version                 8.0.28                                     8.0.28 
 2023-03-12T19:35:06.875717Z   PRIMARY(n=3)                               |                                          |                                       
 2023-03-12T19:35:06.876501Z   OPEN -> PRIMARY                            |                                          |                                       
 2023-03-12T19:35:07.638676Z   will receive IST(seqno:178226774)          |                                          |                                       
+2023-03-12T19:35:07.644560Z   |                                          |                                          local node will resync node1            
 2023-03-12T19:35:07.644570Z   |                                          |                                          SYNCED -> DONOR                         
+2023-03-12T19:35:07.644668Z   node3 will resync node1                    |                                          |                                       
 2023-03-12T19:35:07.644683Z   PRIMARY -> JOINER                          |                                          |                                       
+2023-03-12T19:35:07.644740Z   |                                          node3 will resync node1                    |                                       
 2023-03-12T19:36:48.567087Z   timeout from donor in gtid/keyring stage   |                                          |                                       
 2023-03-12T19:36:48.589084Z   SST error                                  |                                          |                                       
 2023-03-12T19:36:48.590054Z   |                                          |                                          node2 joined                            

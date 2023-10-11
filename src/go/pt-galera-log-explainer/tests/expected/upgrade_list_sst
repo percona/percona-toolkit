@@ -8,31 +8,42 @@ mysql version                 8.0.28                                     8.0.28 
                                                                          [0034m(version)[0000m                                                                          
                                                                          [1;34m V [0000m                                                                                
                                                                          [1;34m8.0.28[0000m                                                                             
+2023-03-12T11:35:16.321586Z   |                                          [0032mlocal node will resync [0000mnode3               |                                       
 2023-03-12T11:35:16.342707Z   |                                          [0033mIST to [0000mnode3(seqno:170403898)              |                                       
 2023-03-12T11:35:17.118100Z   |                                          IST will be used                           |                                       
 2023-03-12T11:35:18.140723Z   |                                          [0032mfinished sending IST to [0000mnode3              |                                       
+2023-03-12T11:39:21.948501Z   |                                          [0032mlocal node will resync [0000mnode3               |                                       
 2023-03-12T11:39:21.952242Z   |                                          [0033mIST to [0000mnode3(seqno:170403900)              |                                       
 2023-03-12T11:39:33.420743Z   |                                          [0033mSST to [0000mnode3                               |                                       
 2023-03-12T11:39:38.734654Z   |                                          [0031mSST error[0000m                                  |                                       
 2023-03-12T11:39:38.738833Z   |                                          node2[0031m failed to sync ??(node left)[0000m         |                                       
 2023-03-12T12:48:44.597299Z   |                                          [0032m| [0000m                                         [0033mwill receive [0000mIST(seqno:170403905)       
+2023-03-12T12:48:44.599287Z   |                                          [0032mlocal node will resync [0000mnode3               [0033m| [0000m                                      
+2023-03-12T12:48:44.599346Z   |                                          [0033m| [0000m                                         node2[0032m will resync local node[0000m            
 2023-03-12T12:48:44.616436Z   |                                          [0033mIST to [0000mnode3(seqno:170403905)              [0033m| [0000m                                      
 2023-03-12T12:48:45.044873Z   |                                          IST will be used                           [0033m| [0000m                                      
 2023-03-12T12:48:46.064764Z   |                                          [0032mfinished sending IST to [0000mnode3              [0033m| [0000m                                      
 2023-03-12T12:48:46.065014Z   |                                          |                                          [0032mgot IST from [0000mnode2                      
 2023-03-12T12:48:54.269978Z   |                                          [0032m| [0000m                                         [0032mIST received[0000m(seqno:170403905)           
+2023-03-12T13:04:25.731994Z   |                                          node3[0032m will resync [0000mnode1                    [0032m| [0000m                                      
+2023-03-12T13:04:25.732124Z   |                                          [0032m| [0000m                                         [0032mlocal node will resync [0000mnode1            
 2023-03-12T13:04:25.735999Z   |                                          [0032m| [0000m                                         [0033mIST to [0000mnode1(seqno:170407335)           
 2023-03-12T13:04:37.415791Z   |                                          [0032m| [0000m                                         [0033mSST to [0000mnode1                            
 2023-03-12T13:04:39.715275Z   |                                          [0032m| [0000m                                         [0031mSST error[0000m                               
 2023-03-12T13:04:39.720325Z   |                                          node3[0031m failed to sync ??(node left)[0000m         [0033m| [0000m                                      
 2023-03-12T13:04:39.720379Z   |                                          [0032m| [0000m                                         node3[0031m failed to sync ??(node left)[0000m      
 2023-03-12T13:13:13.245723Z   |                                          [0033mwill receive [0000mIST(seqno:170407338)          [0032m| [0000m                                      
+2023-03-12T13:13:13.247714Z   |                                          node3[0032m will resync local node[0000m               [0032m| [0000m                                      
+2023-03-12T13:13:13.248015Z   |                                          [0033m| [0000m                                         [0032mlocal node will resync [0000mnode2            
 2023-03-12T13:13:13.262238Z   |                                          [0033m| [0000m                                         [0033mIST to [0000mnode2(seqno:170407338)           
 2023-03-12T13:13:13.863959Z   |                                          [0033m| [0000m                                         IST will be used                        
 2023-03-12T13:13:14.886853Z   |                                          [0032mgot IST from [0000mnode3                         [0033m| [0000m                                      
 2023-03-12T13:13:14.886942Z   |                                          [0033m| [0000m                                         [0032mfinished sending IST to [0000mnode2           
 2023-03-12T13:13:19.156722Z   |                                          [0032mIST received[0000m(seqno:170407338)              [0032m| [0000m                                      
 2023-03-12T19:35:07.638676Z   [0033mwill receive [0000mIST(seqno:178226774)          [0032m| [0000m                                         [0032m| [0000m                                      
+2023-03-12T19:35:07.644560Z   [0033m| [0000m                                         [0032m| [0000m                                         [0032mlocal node will resync [0000mnode1            
+2023-03-12T19:35:07.644668Z   node3[0032m will resync [0000mnode1                    [0032m| [0000m                                         [0033m| [0000m                                      
+2023-03-12T19:35:07.644740Z   [0033m| [0000m                                         node3[0032m will resync [0000mnode1                    [0033m| [0000m                                      
 2023-03-12T19:36:48.567087Z   [0031mtimeout from donor in gtid/keyring stage[0000m   [0032m| [0000m                                         [0033m| [0000m                                      
 2023-03-12T19:36:48.589084Z   [0031mSST error[0000m                                  [0032m| [0000m                                         [0033m| [0000m                                      
 2023-03-12T19:36:48.590647Z   [0031mformer SST cancelled[0000m                       [0032m| [0000m                                         [0033m| [0000m                                      

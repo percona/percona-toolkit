@@ -11,8 +11,6 @@ type Verbosity int
 
 const (
 	Info Verbosity = iota
-	// Detailed is having every suspect/warn
-	Detailed
 	// DebugMySQL only includes finding that are usually not relevant to show but useful to create the log context (eg: how we found the local address)
 	DebugMySQL
 	Debug

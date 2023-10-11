@@ -103,7 +103,6 @@ var ViewsMap = types.RegexMap{
 			}
 			return ctx, types.SimpleDisplayer(hash + utils.Paint(utils.YellowText, " suspected to be down"))
 		},
-		Verbosity: types.Detailed,
 	},
 
 	"RegexNodeChangedIdentity": &types.LogRegex{
@@ -128,7 +127,6 @@ var ViewsMap = types.RegexMap{
 				return types.DisplayNodeSimplestForm(ctx, ip) + utils.Paint(utils.YellowText, " changed identity")
 			}
 		},
-		Verbosity: types.Detailed,
 	},
 
 	"RegexWsrepUnsafeBootstrap": &types.LogRegex{
@@ -172,7 +170,6 @@ var ViewsMap = types.RegexMap{
 		Handler: func(submatches map[string]string, ctx types.LogCtx, log string) (types.LogCtx, types.LogDisplayer) {
 			return ctx, types.SimpleDisplayer(utils.Paint(utils.YellowText, "no grastate.dat file"))
 		},
-		Verbosity: types.Detailed,
 	},
 	"RegexBootstrapingDefaultState": &types.LogRegex{
 		Regex: regexp.MustCompile("Bootstraping with default state"),

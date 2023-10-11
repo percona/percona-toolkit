@@ -71,7 +71,7 @@ func TimelineCLI(timeline types.Timeline, verbosity types.Verbosity) {
 			timeline.Dequeue(node)
 
 			msg := loginfo.Msg(latestContext[node])
-			if verbosity > loginfo.Verbosity && msg != "" {
+			if verbosity >= loginfo.Verbosity && msg != "" {
 				args = append(args, msg)
 				displayedValue++
 			} else {

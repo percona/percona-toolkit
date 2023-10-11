@@ -38,7 +38,6 @@ var SSTMap = types.RegexMap{
 				return donor + utils.Paint(utils.GreenText, " will resync ") + joiner
 			}
 		},
-		Verbosity: types.Detailed,
 	},
 
 	"RegexSSTResourceUnavailable": &types.LogRegex{
@@ -253,7 +252,6 @@ var SSTMap = types.RegexMap{
 		Handler: func(submatches map[string]string, ctx types.LogCtx, log string) (types.LogCtx, types.LogDisplayer) {
 			return ctx, types.SimpleDisplayer("preparing SST backup")
 		},
-		Verbosity: types.Detailed,
 	},
 
 	"RegexTimeoutReceivingFirstData": &types.LogRegex{
