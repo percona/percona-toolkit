@@ -61,7 +61,7 @@ var (
 	regexSeqno         = "(?P<" + groupSeqno + ">[0-9]+)"
 	regexNodeIP        = "(?P<" + groupNodeIP + ">[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})"
 	regexNodeIPMethod  = "(?P<" + groupMethod + ">.+)://" + regexNodeIP + ":[0-9]{1,6}"
-	regexIdx           = "(?P<" + groupIdx + ">-?[0-9]{1,2})"
+	regexIdx           = "(?P<" + groupIdx + ">-?[0-9]{1,2})(\\.-?[0-9])?"
 	regexVersion       = "(?P<" + groupVersion + ">(5|8|10|11)\\.[0-9]\\.[0-9]{1,2})"
 	regexErrorMD5      = "(?P<" + groupErrorMD5 + ">[a-z0-9]*)"
 )

@@ -14,7 +14,16 @@ func init() {
 var (
 	shiftFunc = func(submatches map[string]string, ctx types.LogCtx, log string) (types.LogCtx, types.LogDisplayer) {
 
-		ctx.SetState(submatches["state2"])
+		newState := submatches["state2"]
+		ctx.SetState(newState)
+
+		if newState == "DONOR" || newState == "JOINER" {
+			shiftTimestamp, _, ok := SearchDateFromLog(log)
+			if ok {
+				ctx.ConfirmSSTMetadata(shiftTimestamp)
+			}
+		}
+
 		log = utils.PaintForState(submatches["state1"], submatches["state1"]) + " -> " + utils.PaintForState(submatches["state2"], submatches["state2"])
 
 		return ctx, types.SimpleDisplayer(log)

@@ -2,13 +2,16 @@ package types
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/utils"
 )
 
-// LogCtx is a context for a given file.
-// It is the principal storage of this tool
-// Everything relevant will be stored here
+// LogCtx is the main context storage for a node.
+// It is the principal storage of this tool, this is the source of truth to merge logs and take decisions
+// It is stored along wih each single log line we matched, and copied for each new log line.
+// It is NOT meant to be used as a singleton by pointer, it must keep its original state for each log lines
+// If not, every informaiton would be overwritten (states, sst, version, membercount, ...) and we would not be able to give the history of changes
 type LogCtx struct {
 	FilePath               string
 	FileType               string
@@ -20,21 +23,38 @@ type LogCtx struct {
 	statePostProcessingLog string
 	stateBackupLog         string
 	Version                string
-	SST                    SST
-	MyIdx                  string
-	MemberCount            int
-	Desynced               bool
-	HashToIP               map[string]string
-	HashToNodeName         map[string]string
-	IPToHostname           map[string]string
-	IPToMethod             map[string]string
-	IPToNodeName           map[string]string
-	minVerbosity           Verbosity
-	Conflicts              Conflicts
+
+	// SSTs where key is donor name, as it will always be known.
+	// is meant to be shared with a deep copy, there's no sense to share the pointer
+	// because it is meant to store a state at a specific time
+	SSTs         map[string]SST
+	MyIdx        string
+	MemberCount  int
+	Desynced     bool
+	minVerbosity Verbosity
+	Conflicts    Conflicts
+
+	// translation maps, the only elements that can be shared and copied by pointer
+	HashToIP       map[string]string
+	HashToNodeName map[string]string
+	IPToHostname   map[string]string
+	IPToMethod     map[string]string
+	IPToNodeName   map[string]string
 }
 
 func NewLogCtx() LogCtx {
-	return LogCtx{minVerbosity: Debug, HashToIP: map[string]string{}, IPToHostname: map[string]string{}, IPToMethod: map[string]string{}, IPToNodeName: map[string]string{}, HashToNodeName: map[string]string{}}
+	ctx := LogCtx{minVerbosity: Debug}
+	ctx.InitMaps()
+	return ctx
+}
+
+func (ctx *LogCtx) InitMaps() {
+	ctx.SSTs = map[string]SST{}
+	ctx.HashToIP = map[string]string{}
+	ctx.IPToHostname = map[string]string{}
+	ctx.IPToMethod = map[string]string{}
+	ctx.IPToNodeName = map[string]string{}
+	ctx.HashToNodeName = map[string]string{}
 }
 
 // State will return the wsrep state of the current file type
@@ -234,6 +254,34 @@ func (base *LogCtx) Inherit(ctx LogCtx) {
 	base.MergeMapsWith([]LogCtx{ctx})
 }
 
+func (ctx *LogCtx) SetSSTTypeMaybe(ssttype string) {
+	for key, sst := range ctx.SSTs {
+		if len(ctx.SSTs) == 1 || (ctx.State() == "DONOR" && utils.SliceContains(ctx.OwnNames, key)) || (ctx.State() == "JOINER" && utils.SliceContains(ctx.OwnNames, sst.Joiner)) {
+			sst.Type = ssttype
+			ctx.SSTs[key] = sst
+			return
+		}
+	}
+}
+
+func (ctx *LogCtx) ConfirmSSTMetadata(shiftTimestamp time.Time) {
+	if ctx.State() != "DONOR" && ctx.State() != "JOINER" {
+		return
+	}
+	for key, sst := range ctx.SSTs {
+		if sst.MustHaveHappenedLocally(shiftTimestamp) {
+			if ctx.State() == "DONOR" {
+				ctx.AddOwnName(key)
+			}
+			if ctx.State() == "JOINER" {
+				ctx.AddOwnName(sst.Joiner)
+			}
+		}
+	}
+
+	return
+}
+
 func (l LogCtx) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		FilePath               string
@@ -246,7 +294,7 @@ func (l LogCtx) MarshalJSON() ([]byte, error) {
 		StatePostProcessingLog string
 		StateBackupLog         string
 		Version                string
-		SST                    SST
+		SSTs                   map[string]SST
 		MyIdx                  string
 		MemberCount            int
 		Desynced               bool
@@ -267,7 +315,7 @@ func (l LogCtx) MarshalJSON() ([]byte, error) {
 		StatePostProcessingLog: l.statePostProcessingLog,
 		StateBackupLog:         l.stateBackupLog,
 		Version:                l.Version,
-		SST:                    l.SST,
+		SSTs:                   l.SSTs,
 		MyIdx:                  l.MyIdx,
 		MemberCount:            l.MemberCount,
 		Desynced:               l.Desynced,

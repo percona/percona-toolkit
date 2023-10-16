@@ -1,7 +1,7 @@
-identifier                    172.17.0.2                                 node2                                      node3                                   
+identifier                    node1                                      node2                                      node3                                   
 current path                  tests/logs/upgrade/node1.log               tests/logs/upgrade/node2.log               tests/logs/upgrade/node3.log            
 last known ip                 172.17.0.2                                 172.17.0.3                                 172.17.0.4                              
-last known name                                                          node2                                      node3                                   
+last known name               node1                                      node2                                      node3                                   
 mysql version                 8.0.28                                     8.0.28                                     8.0.28                                  
                                                                                                                                                             
 2023-03-12T07:24:13.733958Z   |                                          starting(5.7.40)                           |                                       
@@ -225,7 +225,7 @@ mysql version                 8.0.28                                     8.0.28 
 2023-03-12T19:35:07.638676Z   will receive IST(seqno:178226774)          |                                          |                                       
 2023-03-12T19:35:07.644560Z   |                                          |                                          local node will resync node1            
 2023-03-12T19:35:07.644570Z   |                                          |                                          SYNCED -> DONOR                         
-2023-03-12T19:35:07.644668Z   node3 will resync node1                    |                                          |                                       
+2023-03-12T19:35:07.644668Z   node3 will resync local node               |                                          |                                       
 2023-03-12T19:35:07.644683Z   PRIMARY -> JOINER                          |                                          |                                       
 2023-03-12T19:35:07.644740Z   |                                          node3 will resync node1                    |                                       
 2023-03-12T19:36:48.567087Z   timeout from donor in gtid/keyring stage   |                                          |                                       
@@ -259,16 +259,16 @@ mysql version                 8.0.28                                     8.0.28 
 2023-03-12T19:43:18.130916Z   OPEN -> PRIMARY                            |                                          |                                       
 2023-03-12T19:43:18.904410Z   will receive IST(seqno:178226792)          |                                          |                                       
 2023-03-12T19:43:18.913328Z   |                                          |                                          node1 cannot find donor                 
-2023-03-12T19:43:18.913429Z   node1 cannot find donor                    |                                          |                                       
+2023-03-12T19:43:18.913429Z   cannot find donor                          |                                          |                                       
 2023-03-12T19:43:18.913565Z   |                                          node1 cannot find donor                    |                                       
 2023-03-12T19:43:19.914122Z   |                                          |                                          node1 cannot find donor                 
-2023-03-12T19:43:19.914259Z   node1 cannot find donor                    |                                          |                                       
+2023-03-12T19:43:19.914259Z   cannot find donor                          |                                          |                                       
 2023-03-12T19:43:19.914362Z   |                                          node1 cannot find donor                    |                                       
 2023-03-12T19:43:20.914957Z   |                                          |                                          (repeated x97)node1 cannot find donor   
-2023-03-12T19:43:20.915143Z   (repeated x97)node1 cannot find donor      |                                          |                                       
+2023-03-12T19:43:20.915143Z   (repeated x97)cannot find donor            |                                          |                                       
 2023-03-12T19:43:20.915262Z   |                                          (repeated x97)node1 cannot find donor      |                                       
 2023-03-12T19:44:58.999603Z   |                                          |                                          node1 cannot find donor                 
-2023-03-12T19:44:58.999791Z   node1 cannot find donor                    |                                          |                                       
+2023-03-12T19:44:58.999791Z   cannot find donor                          |                                          |                                       
 2023-03-12T19:44:58.999891Z   |                                          node1 cannot find donor                    |                                       
 2023-03-12T19:44:59.817822Z   timeout from donor in gtid/keyring stage   |                                          |                                       
 2023-03-12T19:44:59.839692Z   SST error                                  |                                          |                                       
@@ -318,8 +318,8 @@ mysql version                 8.0.28                                     8.0.28 
 2023-03-12T22:00:28.094664Z   |                                          |                                          node2 left                              
 2023-03-12T22:00:28.094708Z   |                                          |                                          PRIMARY(n=1)                            
                                                                                                                                                             
-identifier                    172.17.0.2                                 node2                                      node3                                   
+identifier                    node1                                      node2                                      node3                                   
 current path                  tests/logs/upgrade/node1.log               tests/logs/upgrade/node2.log               tests/logs/upgrade/node3.log            
 last known ip                 172.17.0.2                                 172.17.0.3                                 172.17.0.4                              
-last known name                                                          node2                                      node3                                   
+last known name               node1                                      node2                                      node3                                   
 mysql version                 8.0.28                                     8.0.28                                     8.0.28                                  

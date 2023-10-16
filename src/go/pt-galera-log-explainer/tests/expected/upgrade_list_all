@@ -1,7 +1,7 @@
-identifier                    172.17.0.2                                 node2                                      node3                                   
+identifier                    node1                                      node2                                      node3                                   
 current path                  tests/logs/upgrade/node1.log               tests/logs/upgrade/node2.log               tests/logs/upgrade/node3.log            
 last known ip                 172.17.0.2                                 172.17.0.3                                 172.17.0.4                              
-last known name                                                          node2                                      node3                                   
+last known name               node1                                      node2                                      node3                                   
 mysql version                 8.0.28                                     8.0.28                                     8.0.28                                  
                                                                                                                                                             
 2023-03-12T07:24:13.733958Z   |                                          starting(5.7.40)                           |                                       
@@ -225,7 +225,7 @@ mysql version                 8.0.28                                     8.0.28 
 2023-03-12T19:35:07.638676Z   [0033mwill receive [0000mIST(seqno:178226774)          [0032m| [0000m                                         [0032m| [0000m                                      
 2023-03-12T19:35:07.644560Z   [0033m| [0000m                                         [0032m| [0000m                                         [0032mlocal node will resync [0000mnode1            
 2023-03-12T19:35:07.644570Z   [0033m| [0000m                                         [0032m| [0000m                                         [0032mSYNCED[0000m -> [0033mDONOR[0000m                         
-2023-03-12T19:35:07.644668Z   node3[0032m will resync [0000mnode1                    [0032m| [0000m                                         [0033m| [0000m                                      
+2023-03-12T19:35:07.644668Z   node3[0032m will resync local node[0000m               [0032m| [0000m                                         [0033m| [0000m                                      
 2023-03-12T19:35:07.644683Z   PRIMARY -> [0033mJOINER[0000m                          [0032m| [0000m                                         [0033m| [0000m                                      
 2023-03-12T19:35:07.644740Z   [0033m| [0000m                                         node3[0032m will resync [0000mnode1                    [0033m| [0000m                                      
 2023-03-12T19:36:48.567087Z   [0031mtimeout from donor in gtid/keyring stage[0000m   [0032m| [0000m                                         [0033m| [0000m                                      
@@ -259,16 +259,16 @@ mysql version                 8.0.28                                     8.0.28 
 2023-03-12T19:43:18.130916Z   OPEN -> PRIMARY                            [0032m| [0000m                                         [0033m| [0000m                                      
 2023-03-12T19:43:18.904410Z   [0033mwill receive [0000mIST(seqno:178226792)          [0032m| [0000m                                         [0033m| [0000m                                      
 2023-03-12T19:43:18.913328Z   [0033m| [0000m                                         [0032m| [0000m                                         node1[0033m cannot find donor[0000m                 
-2023-03-12T19:43:18.913429Z   node1[0033m cannot find donor[0000m                    [0032m| [0000m                                         [0033m| [0000m                                      
+2023-03-12T19:43:18.913429Z   [0033mcannot find donor[0000m                          [0032m| [0000m                                         [0033m| [0000m                                      
 2023-03-12T19:43:18.913565Z   [0033m| [0000m                                         node1[0033m cannot find donor[0000m                    [0033m| [0000m                                      
 2023-03-12T19:43:19.914122Z   [0033m| [0000m                                         [0032m| [0000m                                         node1[0033m cannot find donor[0000m                 
-2023-03-12T19:43:19.914259Z   node1[0033m cannot find donor[0000m                    [0032m| [0000m                                         [0033m| [0000m                                      
+2023-03-12T19:43:19.914259Z   [0033mcannot find donor[0000m                          [0032m| [0000m                                         [0033m| [0000m                                      
 2023-03-12T19:43:19.914362Z   [0033m| [0000m                                         node1[0033m cannot find donor[0000m                    [0033m| [0000m                                      
 2023-03-12T19:43:20.914957Z   [0033m| [0000m                                         [0032m| [0000m                                         [0034m(repeated x97)[0000mnode1[0033m cannot find donor[0000m   
-2023-03-12T19:43:20.915143Z   [0034m(repeated x97)[0000mnode1[0033m cannot find donor[0000m      [0032m| [0000m                                         [0033m| [0000m                                      
+2023-03-12T19:43:20.915143Z   [0034m(repeated x97)[0000m[0033mcannot find donor[0000m            [0032m| [0000m                                         [0033m| [0000m                                      
 2023-03-12T19:43:20.915262Z   [0033m| [0000m                                         [0034m(repeated x97)[0000mnode1[0033m cannot find donor[0000m      [0033m| [0000m                                      
 2023-03-12T19:44:58.999603Z   [0033m| [0000m                                         [0032m| [0000m                                         node1[0033m cannot find donor[0000m                 
-2023-03-12T19:44:58.999791Z   node1[0033m cannot find donor[0000m                    [0032m| [0000m                                         [0033m| [0000m                                      
+2023-03-12T19:44:58.999791Z   [0033mcannot find donor[0000m                          [0032m| [0000m                                         [0033m| [0000m                                      
 2023-03-12T19:44:58.999891Z   [0033m| [0000m                                         node1[0033m cannot find donor[0000m                    [0033m| [0000m                                      
 2023-03-12T19:44:59.817822Z   [0031mtimeout from donor in gtid/keyring stage[0000m   [0032m| [0000m                                         [0033m| [0000m                                      
 2023-03-12T19:44:59.839692Z   [0031mSST error[0000m                                  [0032m| [0000m                                         [0033m| [0000m                                      
@@ -318,8 +318,8 @@ mysql version                 8.0.28                                     8.0.28 
 2023-03-12T22:00:28.094664Z   [0031m| [0000m                                         [0031m| [0000m                                         node2[0031m left[0000m                              
 2023-03-12T22:00:28.094708Z   [0031m| [0000m                                         [0031m| [0000m                                         [0032mPRIMARY[0000m(n=1)                            
                                                                                                                                                             
-identifier                    172.17.0.2                                 node2                                      node3                                   
+identifier                    node1                                      node2                                      node3                                   
 current path                  tests/logs/upgrade/node1.log               tests/logs/upgrade/node2.log               tests/logs/upgrade/node3.log            
 last known ip                 172.17.0.2                                 172.17.0.3                                 172.17.0.4                              
-last known name                                                          node2                                      node3                                   
+last known name               node1                                      node2                                      node3                                   
 mysql version                 8.0.28                                     8.0.28                                     8.0.28                                  
