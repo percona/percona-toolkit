@@ -208,9 +208,6 @@ func (ctx *LogCtx) AddOwnIP(ip string) {
 		return
 	}
 	ctx.OwnIPs = append(ctx.OwnIPs, ip)
-	for _, hash := range ctx.OwnHashes {
-		ctx.HashToIP[hash] = ip
-	}
 	for _, name := range ctx.OwnNames {
 		ctx.IPToNodeName[ip] = name
 	}

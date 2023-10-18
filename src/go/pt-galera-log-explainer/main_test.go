@@ -85,6 +85,12 @@ func TestMain(t *testing.T) {
 			cmd:  []string{"list", "--all", "--since=2023-03-18T21:18:23.102709+02:00"},
 			path: "tests/logs/merge_rotated_daily/*",
 		},
+
+		{
+			name: "operator_concurrent_ssts_list_all_no_color",
+			cmd:  []string{"list", "--all", "--pxc-operator", "--no-color"},
+			path: "tests/logs/operator_concurrent_ssts/*",
+		},
 	}
 
 	for _, test := range tests {
