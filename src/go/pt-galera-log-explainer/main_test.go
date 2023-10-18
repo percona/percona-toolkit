@@ -99,17 +99,22 @@ func TestMain(t *testing.T) {
 			t.Fatalf("error during filepath.Glob(%s): %v", test.path, err)
 		}
 		test.cmd = append(test.cmd, filepaths...)
-		out, err := exec.Command(toolExecutable, test.cmd...).CombinedOutput()
-		if err != nil {
-			t.Fatalf("error executing %s %s: %s: %s", toolExecutable, strings.Join(test.cmd, " "), err.Error(), string(out))
-		}
-		expected, err := ioutil.ReadFile("tests/expected/" + test.name)
-		if err != nil {
-			t.Fatalf("error loading test 'expected' file: %s", err)
-		}
 
-		if !cmp.Equal(out, expected) {
-			t.Errorf("%s: test %s failed: %s\nout: %s", toolname, test.name, strings.Join(test.cmd, " "), cmp.Diff(string(out), string(expected)))
+		// because there has been some cases that created few different outputs
+		// source of random: order of files read, map iteration order are random and it affects map merges
+		for i := 0; i < 5; i++ {
+			out, err := exec.Command(toolExecutable, test.cmd...).CombinedOutput()
+			if err != nil {
+				t.Fatalf("error executing %s %s: %s: %s", toolExecutable, strings.Join(test.cmd, " "), err.Error(), string(out))
+			}
+			expected, err := ioutil.ReadFile("tests/expected/" + test.name)
+			if err != nil {
+				t.Fatalf("error loading test 'expected' file: %s", err)
+			}
+
+			if !cmp.Equal(out, expected) {
+				t.Errorf("%s: test %s failed: %s\nout: %s", toolname, test.name, strings.Join(test.cmd, " "), cmp.Diff(string(expected), string(out)))
+			}
 		}
 	}
 
