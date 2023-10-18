@@ -434,6 +434,27 @@ func TestRegexes(t *testing.T) {
 		},
 
 		{
+			log: "{\"log\":\"2001-01-01T01:01:01.000000Z 0 [Note] [MY-000000] [Galera] ================================================\\nView:\\n  id: 9f191762-2542-11ee-89be-13bdb1218f0e:9375811\\n  status: primary\\n  protocol_version: 4\\n  capabilities: MULTI-MASTER, CERTIFICATION, PARALLEL_APPLYING, REPLAY, ISOLATION, PAUSE, CAUSAL_READ, INCREMENTAL_WS, UNORDERED, PREORDERED, STREAMING, NBO\\n  final: no\\n  own_index: 0\\n  members(3):\\n\\t0: 45406e8d-2de0-11ee-95fc-f29a5fdf1ee0, cluster1-0\\n\\t1: 5bf18376-2de0-11ee-8333-6e755a3456ca, cluster1-2\\n\\t2: 66e2b7bf-2de0-11ee-8000-f7d68b5cf6f6, cluster1-1\\n=================================================\\n\",\"file\":\"/var/lib/mysql/mysqld-error.log\"}",
+			inputCtx: types.LogCtx{
+				OwnHashes:      []string{},
+				OwnNames:       []string{},
+				HashToNodeName: map[string]string{},
+			},
+			inputState: "PRIMARY",
+			expectedCtx: types.LogCtx{
+				MyIdx:          "0",
+				MemberCount:    3,
+				OwnHashes:      []string{"45406e8d-95fc"},
+				OwnNames:       []string{"cluster1-0"},
+				HashToNodeName: map[string]string{"45406e8d-95fc": "cluster1-0", "5bf18376-8333": "cluster1-2", "66e2b7bf-8000": "cluster1-1"},
+			},
+			expectedState: "PRIMARY",
+			expectedOut:   "view member count: 3; 45406e8d-95fc is cluster1-0; 5bf18376-8333 is cluster1-2; 66e2b7bf-8000 is cluster1-1; ",
+			mapToTest:     PXCOperatorMap,
+			key:           "RegexOperatorMemberAssociations",
+		},
+
+		{
 			log:         "  members(1):",
 			expectedOut: "view member count: 1",
 			expectedCtx: types.LogCtx{MemberCount: 1},

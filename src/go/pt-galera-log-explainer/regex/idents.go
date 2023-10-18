@@ -42,7 +42,7 @@ var IdentsMap = types.RegexMap{
 
 	//        0: 015702fc-32f5-11ed-a4ca-267f97316394, node-1
 	//	      1: 08dd5580-32f7-11ed-a9eb-af5e3d01519e, garb
-	// TO *never* DO: store indexes to later search for them using SST infos and STATES EXCHANGES logs. EDIT: is definitely NOT reliable
+	// TO *never* DO: store indexes to later search for them using SST infos and STATES EXCHANGES logs. They are definitely NOT reliable
 	"RegexMemberAssociations": &types.LogRegex{
 		Regex:         regexp.MustCompile("[0-9]: [a-z0-9]+-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]+, [a-zA-Z0-9-_]+"),
 		InternalRegex: regexp.MustCompile(regexIdx + ": " + regexUUID + ", " + regexNodeName),
