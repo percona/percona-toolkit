@@ -231,6 +231,7 @@ Compatibility
 Known issues
 ============
 
+* Nodes sharing the same ip, or nodes with identical names are not supported
 * Sparse files identification can be missed, resulting in many columns displayed. ``--merge-by-directory`` can be used, but files need to be organized already in separate directories
   This is mainly when the log file does not contain enough information.
 * Some information will seems missed. Depending on the case, it may be simply unimplemented yet, or it was disabled later because it was found to be unreliable (node index numbers are not reliable for example)
