@@ -105,6 +105,24 @@ var ApplicativeMap = types.RegexMap{
 		},
 	},
 
+	//2023-10-20T03:33:48.155825Z 16 [ERROR] [MY-000000] [Galera] Vote 0 (success) on 7b1a6710-18da-11ed-b777-42b15728f657:8847713 is inconsistent with group. Leaving cluster.
+	"RegexInconsistencyVoteInconsistentWithGroup": &types.LogRegex{
+		Regex:         regexp.MustCompile("is inconsistent with group. Leaving cluster"),
+		InternalRegex: regexp.MustCompile("Vote [0-9] \\((?P<error>.*)\\) on " + regexUUID + ":" + regexSeqno + " is inconsistent with group. Leaving cluster"),
+		Handler: func(submatches map[string]string, ctx types.LogCtx, log string) (types.LogCtx, types.LogDisplayer) {
+			seqno := submatches[groupSeqno]
+			errorstring := submatches["error"]
+			latestConflict := ctx.Conflicts.ConflictWithSeqno(seqno)
+			if latestConflict == nil {
+				return ctx, nil
+			}
+			if len(ctx.OwnNames) > 0 {
+				latestConflict.VotePerNode[ctx.OwnNames[len(ctx.OwnNames)-1]] = types.ConflictVote{Error: errorstring}
+			}
+			return ctx, types.SimpleDisplayer(utils.Paint(utils.RedText, "vote inconsistent, leaving cluster"))
+		},
+	},
+
 	"RegexInconsistencyVoted": &types.LogRegex{
 		Regex: regexp.MustCompile("Inconsistency detected: Inconsistent by consensus"),
 		Handler: func(submatches map[string]string, ctx types.LogCtx, log string) (types.LogCtx, types.LogDisplayer) {
