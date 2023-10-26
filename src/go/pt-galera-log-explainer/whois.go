@@ -6,7 +6,6 @@ import (
 
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/regex"
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/types"
-	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/utils"
 	"github.com/pkg/errors"
 )
 
@@ -28,7 +27,7 @@ func (w *whois) Run() error {
 	if err != nil {
 		return errors.Wrap(err, "found nothing to translate")
 	}
-	ctxs := timeline.GetLatestUpdatedContextsByNodes()
+	ctxs := timeline.GetLatestContextsByNodes()
 
 	ni := whoIs(ctxs, CLI.Whois.Search)
 
@@ -41,62 +40,64 @@ func (w *whois) Run() error {
 }
 
 func whoIs(ctxs map[string]types.LogCtx, search string) types.NodeInfo {
-	ni := types.NodeInfo{Input: search}
-	if regex.IsNodeUUID(search) {
-		search = utils.UUIDToShortUUID(search)
-	}
-	var (
-		ips       []string
-		hashes    []string
-		nodenames []string
-	)
-
-	for _, ctx := range ctxs {
-		if utils.SliceContains(ctx.OwnNames, search) || utils.SliceContains(ctx.OwnHashes, search) || utils.SliceContains(ctx.OwnIPs, search) {
-			ni.NodeNames = ctx.OwnNames
-			ni.NodeUUIDs = ctx.OwnHashes
-			ni.IPs = ctx.OwnIPs
-			ni.Hostname = ctx.OwnHostname()
+	/*
+		ni := types.NodeInfo{Input: search}
+		if regex.IsNodeUUID(search) {
+			search = utils.UUIDToShortUUID(search)
 		}
+		var (
+			ips       []string
+			hashes    []string
+			nodenames []string
+		)
+			for _, ctx := range ctxs {
+				if utils.SliceContains(ctx.OwnNames, search) || utils.SliceContains(ctx.OwnHashes, search) || utils.SliceContains(ctx.OwnIPs, search) {
+					ni.NodeNames = ctx.OwnNames
+					ni.NodeUUIDs = ctx.OwnHashes
+					ni.IPs = ctx.OwnIPs
+					ni.Hostname = ctx.OwnHostname()
+				}
 
-		if nodename, ok := ctx.HashToNodeName[search]; ok {
-			nodenames = utils.SliceMergeDeduplicate(nodenames, []string{nodename})
-			hashes = utils.SliceMergeDeduplicate(hashes, []string{search})
-		}
+				if nodename, ok := ctx.HashToNodeName[search]; ok {
+					nodenames = utils.SliceMergeDeduplicate(nodenames, []string{nodename})
+					hashes = utils.SliceMergeDeduplicate(hashes, []string{search})
+				}
 
-		if ip, ok := ctx.HashToIP[search]; ok {
-			ips = utils.SliceMergeDeduplicate(ips, []string{ip})
-			hashes = utils.SliceMergeDeduplicate(hashes, []string{search})
+				if ip, ok := ctx.HashToIP[search]; ok {
+					ips = utils.SliceMergeDeduplicate(ips, []string{ip})
+					hashes = utils.SliceMergeDeduplicate(hashes, []string{search})
 
-		} else if nodename, ok := ctx.IPToNodeName[search]; ok {
-			nodenames = utils.SliceMergeDeduplicate(nodenames, []string{nodename})
-			ips = utils.SliceMergeDeduplicate(ips, []string{search})
+				} else if nodename, ok := ctx.IPToNodeName[search]; ok {
+					nodenames = utils.SliceMergeDeduplicate(nodenames, []string{nodename})
+					ips = utils.SliceMergeDeduplicate(ips, []string{search})
 
-		} else if utils.SliceContains(ctx.AllNodeNames(), search) {
-			nodenames = utils.SliceMergeDeduplicate(nodenames, []string{search})
-		}
+				} else if utils.SliceContains(ctx.AllNodeNames(), search) {
+					nodenames = utils.SliceMergeDeduplicate(nodenames, []string{search})
+				}
 
-		for _, nodename := range nodenames {
-			hashes = utils.SliceMergeDeduplicate(hashes, ctx.HashesFromNodeName(nodename))
-			ips = utils.SliceMergeDeduplicate(ips, ctx.IPsFromNodeName(nodename))
-		}
+				for _, nodename := range nodenames {
+					hashes = utils.SliceMergeDeduplicate(hashes, ctx.HashesFromNodeName(nodename))
+					ips = utils.SliceMergeDeduplicate(ips, ctx.IPsFromNodeName(nodename))
+				}
 
-		for _, ip := range ips {
-			hashes = utils.SliceMergeDeduplicate(hashes, ctx.HashesFromIP(ip))
-			nodename, ok := ctx.IPToNodeName[ip]
-			if ok {
-				nodenames = utils.SliceMergeDeduplicate(nodenames, []string{nodename})
+				for _, ip := range ips {
+					hashes = utils.SliceMergeDeduplicate(hashes, ctx.HashesFromIP(ip))
+					nodename, ok := ctx.IPToNodeName[ip]
+					if ok {
+						nodenames = utils.SliceMergeDeduplicate(nodenames, []string{nodename})
+					}
+				}
+				for _, hash := range hashes {
+					nodename, ok := ctx.HashToNodeName[hash]
+					if ok {
+						nodenames = utils.SliceMergeDeduplicate(nodenames, []string{nodename})
+					}
+				}
 			}
-		}
-		for _, hash := range hashes {
-			nodename, ok := ctx.HashToNodeName[hash]
-			if ok {
-				nodenames = utils.SliceMergeDeduplicate(nodenames, []string{nodename})
-			}
-		}
-	}
-	ni.NodeNames = nodenames
-	ni.NodeUUIDs = hashes
-	ni.IPs = ips
-	return ni
+			ni.NodeNames = nodenames
+			ni.NodeUUIDs = hashes
+			ni.IPs = ips
+			return ni
+	*/
+	return types.NodeInfo{}
 }

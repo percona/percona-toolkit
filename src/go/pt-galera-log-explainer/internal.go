@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/regex"
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/types"
@@ -169,9 +170,9 @@ func sanitizeLine(s string) string {
 func iterateOnGrepResults(path string, regexes types.RegexMap, grepStdout <-chan string) types.LocalTimeline {
 
 	var (
-		lt           types.LocalTimeline
-		recentEnough bool
-		displayer    types.LogDisplayer
+		lt        types.LocalTimeline
+		displayer types.LogDisplayer
+		timestamp time.Time
 	)
 	ctx := types.NewLogCtx()
 	ctx.FilePath = path
@@ -182,18 +183,23 @@ func iterateOnGrepResults(path string, regexes types.RegexMap, grepStdout <-chan
 		var date *types.Date
 		t, layout, ok := regex.SearchDateFromLog(line)
 		if ok {
+			// diff between date and timestamp:
+			// timestamp is an internal usage to handle translations, it must be non-empty
+			// date is something that will be displayed ultimately, it can empty
 			date = types.NewDate(t, layout)
-		}
+			timestamp = t
+		} // else, keep the previous timestamp
 
 		// If it's recentEnough, it means we already validated a log: every next logs necessarily happened later
 		// this is useful because not every logs have a date attached, and some without date are very useful
-		if !recentEnough && CLI.Since != nil && (date == nil || (date != nil && CLI.Since.After(date.Time))) {
+		//if !recentEnough && CLI.Since != nil && (!foundDate || (foundDate && CLI.Since.After(date.Time))) {
+		if CLI.Since != nil && CLI.Since.After(timestamp) {
 			continue
 		}
-		if CLI.Until != nil && date != nil && CLI.Until.Before(date.Time) {
+		if CLI.Until != nil && CLI.Until.Before(timestamp) {
 			return lt
 		}
-		recentEnough = true
+		// recentEnough = true
 
 		filetype := regex.FileType(line, CLI.PxcOperator)
 		ctx.FileType = filetype
@@ -204,7 +210,7 @@ func iterateOnGrepResults(path string, regexes types.RegexMap, grepStdout <-chan
 			if !regex.Regex.MatchString(line) || utils.SliceContains(CLI.ExcludeRegexes, key) {
 				continue
 			}
-			ctx, displayer = regex.Handle(ctx, line)
+			ctx, displayer = regex.Handle(ctx, line, timestamp)
 			li := types.NewLogInfo(date, displayer, line, regex, key, ctx, filetype)
 			lt = lt.Add(li)
 		}
