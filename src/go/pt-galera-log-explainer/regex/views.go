@@ -4,7 +4,9 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/translate"
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/types"
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/utils"
 )
@@ -18,14 +20,15 @@ var ViewsMap = types.RegexMap{
 	"RegexNodeEstablished": &types.LogRegex{
 		Regex:         regexp.MustCompile("connection established"),
 		InternalRegex: regexp.MustCompile("established to " + regexNodeHash + " " + regexNodeIPMethod),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
 			ip := submatches[groupNodeIP]
-			ctx.HashToIP[submatches[groupNodeHash]] = ip
+			hash := submatches[groupNodeHash]
+			translate.AddHashToIP(hash, ip, date)
 			if utils.SliceContains(ctx.OwnIPs, ip) {
 				return ctx, nil
 			}
-			return ctx, func(ctx types.LogCtx) string { return types.DisplayNodeSimplestForm(ctx, ip) + " established" }
+			return ctx, types.FormatByHashDisplayer("%s established", hash, date)
 		},
 		Verbosity: types.DebugMySQL,
 	},
@@ -33,26 +36,26 @@ var ViewsMap = types.RegexMap{
 	"RegexNodeJoined": &types.LogRegex{
 		Regex:         regexp.MustCompile("declaring .* stable"),
 		InternalRegex: regexp.MustCompile("declaring " + regexNodeHash + " at " + regexNodeIPMethod),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
 			ip := submatches[groupNodeIP]
-			ctx.HashToIP[submatches[groupNodeHash]] = ip
-			ctx.IPToMethod[ip] = submatches[groupMethod]
-			return ctx, func(ctx types.LogCtx) string {
-				return types.DisplayNodeSimplestForm(ctx, ip) + utils.Paint(utils.GreenText, " joined")
-			}
+			hash := submatches[groupNodeHash]
+			translate.AddHashToIP(hash, ip, date)
+			translate.AddIPToMethod(ip, submatches[groupMethod], date)
+			return ctx, types.FormatByHashDisplayer("%s"+utils.Paint(utils.GreenText, " joined"), hash, date)
 		},
 	},
 
 	"RegexNodeLeft": &types.LogRegex{
 		Regex:         regexp.MustCompile("forgetting"),
 		InternalRegex: regexp.MustCompile("forgetting " + regexNodeHash + " \\(" + regexNodeIPMethod),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
 			ip := submatches[groupNodeIP]
-			return ctx, func(ctx types.LogCtx) string {
-				return types.DisplayNodeSimplestForm(ctx, ip) + utils.Paint(utils.RedText, " left")
-			}
+			hash := submatches[groupNodeHash]
+			translate.AddHashToIP(hash, ip, date)
+			translate.AddIPToMethod(ip, submatches[groupMethod], date)
+			return ctx, types.FormatByHashDisplayer("%s"+utils.Paint(utils.RedText, " left"), hash, date)
 		},
 	},
 
@@ -60,7 +63,7 @@ var ViewsMap = types.RegexMap{
 	"RegexNewComponent": &types.LogRegex{
 		Regex:         regexp.MustCompile("New COMPONENT:"),
 		InternalRegex: regexp.MustCompile("New COMPONENT: primary = (?P<primary>.+), bootstrap = (?P<bootstrap>.*), my_idx = .*, memb_num = (?P<memb_num>[0-9]{1,2})"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
 			primary := submatches["primary"] == "yes"
 			membNum := submatches["memb_num"]
@@ -92,46 +95,31 @@ var ViewsMap = types.RegexMap{
 	"RegexNodeSuspect": &types.LogRegex{
 		Regex:         regexp.MustCompile("suspecting node"),
 		InternalRegex: regexp.MustCompile("suspecting node: " + regexNodeHash),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
 			hash := submatches[groupNodeHash]
-			ip, ok := ctx.HashToIP[hash]
-			if ok {
-				return ctx, func(ctx types.LogCtx) string {
-					return types.DisplayNodeSimplestForm(ctx, ip) + utils.Paint(utils.YellowText, " suspected to be down")
-				}
-			}
-			return ctx, types.SimpleDisplayer(hash + utils.Paint(utils.YellowText, " suspected to be down"))
+
+			return ctx, types.FormatByHashDisplayer("%s"+utils.Paint(utils.YellowText, " suspected to be down"), hash, date)
 		},
 	},
 
 	"RegexNodeChangedIdentity": &types.LogRegex{
 		Regex:         regexp.MustCompile("remote endpoint.*changed identity"),
 		InternalRegex: regexp.MustCompile("remote endpoint " + regexNodeIPMethod + " changed identity " + regexNodeHash + " -> " + strings.Replace(regexNodeHash, groupNodeHash, groupNodeHash+"2", -1)),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
-			hash := submatches[groupNodeHash]
-			hash2 := submatches[groupNodeHash+"2"]
-			ip, ok := ctx.HashToIP[hash]
-			if !ok && IsNodeUUID(hash) {
-				ip, ok = ctx.HashToIP[utils.UUIDToShortUUID(hash)]
-
-				// there could have additional corner case to discover yet
-				if !ok {
-					return ctx, types.SimpleDisplayer(hash + utils.Paint(utils.YellowText, " changed identity"))
-				}
-				hash2 = utils.UUIDToShortUUID(hash2)
+			hash := utils.UUIDToShortUUID(submatches[groupNodeHash])
+			hash2 := utils.UUIDToShortUUID(submatches[groupNodeHash+"2"])
+			if ip := translate.GetIPFromHash(hash); ip != "" {
+				translate.AddHashToIP(hash2, ip, date)
 			}
-			ctx.HashToIP[hash2] = ip
-			return ctx, func(ctx types.LogCtx) string {
-				return types.DisplayNodeSimplestForm(ctx, ip) + utils.Paint(utils.YellowText, " changed identity")
-			}
+			return ctx, types.FormatByHashDisplayer("%s"+utils.Paint(utils.YellowText, " changed identity"), hash, date)
 		},
 	},
 
 	"RegexWsrepUnsafeBootstrap": &types.LogRegex{
 		Regex: regexp.MustCompile("ERROR.*not be safe to bootstrap"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 			ctx.SetState("CLOSED")
 
 			return ctx, types.SimpleDisplayer(utils.Paint(utils.RedText, "not safe to bootstrap"))
@@ -139,7 +127,7 @@ var ViewsMap = types.RegexMap{
 	},
 	"RegexWsrepConsistenctyCompromised": &types.LogRegex{
 		Regex: regexp.MustCompile(".ode consistency compromi.ed"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 			ctx.SetState("CLOSED")
 
 			return ctx, types.SimpleDisplayer(utils.Paint(utils.RedText, "consistency compromised"))
@@ -147,33 +135,33 @@ var ViewsMap = types.RegexMap{
 	},
 	"RegexWsrepNonPrimary": &types.LogRegex{
 		Regex: regexp.MustCompile("failed to reach primary view"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 			return ctx, types.SimpleDisplayer("received " + utils.Paint(utils.RedText, "non primary"))
 		},
 	},
 
 	"RegexBootstrap": &types.LogRegex{
 		Regex: regexp.MustCompile("gcomm: bootstrapping new group"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 			return ctx, types.SimpleDisplayer(utils.Paint(utils.YellowText, "bootstrapping"))
 		},
 	},
 
 	"RegexSafeToBoostrapSet": &types.LogRegex{
 		Regex: regexp.MustCompile("safe_to_bootstrap: 1"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 			return ctx, types.SimpleDisplayer(utils.Paint(utils.YellowText, "safe_to_bootstrap: 1"))
 		},
 	},
 	"RegexNoGrastate": &types.LogRegex{
 		Regex: regexp.MustCompile("Could not open state file for reading.*grastate.dat"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 			return ctx, types.SimpleDisplayer(utils.Paint(utils.YellowText, "no grastate.dat file"))
 		},
 	},
 	"RegexBootstrapingDefaultState": &types.LogRegex{
 		Regex: regexp.MustCompile("Bootstraping with default state"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 			return ctx, types.SimpleDisplayer(utils.Paint(utils.YellowText, "bootstrapping(empty grastate)"))
 		},
 	},
@@ -250,5 +238,8 @@ d4397932 at tcp://ip:4567
 
 
 [Warning] WSREP: FLOW message from member -12921743687968 in non-primary configuration. Ignored.
+
+ 0 [Note] [MY-000000] [Galera] (<hash>, 'tcp://0.0.0.0:4567') reconnecting to <hash (tcp://<ip>:4567), attempt 0
+
 
 */

@@ -27,7 +27,7 @@ func (c *conflicts) Run() error {
 		return err
 	}
 
-	ctxs := timeline.GetLatestUpdatedContextsByNodes()
+	ctxs := timeline.GetLatestContextsByNodes()
 	for _, ctx := range ctxs {
 		if len(ctx.Conflicts) == 0 {
 			continue

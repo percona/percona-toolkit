@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"regexp"
+	"time"
 )
 
 // LogRegex is the work struct to work on lines that were sent by "grep"
@@ -15,17 +16,17 @@ type LogRegex struct {
 	// Taking into arguments the current context and log line, returning an updated context and a closure to get the msg to display
 	// Why a closure: to later inject an updated context instead of the current partial context
 	// This ensure every hash/ip/nodenames are already known when crafting the message
-	Handler   func(map[string]string, LogCtx, string) (LogCtx, LogDisplayer)
+	Handler   func(map[string]string, LogCtx, string, time.Time) (LogCtx, LogDisplayer)
 	Verbosity Verbosity // To be able to hide details from summaries
 }
 
-func (l *LogRegex) Handle(ctx LogCtx, line string) (LogCtx, LogDisplayer) {
+func (l *LogRegex) Handle(ctx LogCtx, line string, date time.Time) (LogCtx, LogDisplayer) {
 	if ctx.minVerbosity > l.Verbosity {
 		ctx.minVerbosity = l.Verbosity
 	}
 	mergedResults := map[string]string{}
 	if l.InternalRegex == nil {
-		return l.Handler(mergedResults, ctx, line)
+		return l.Handler(mergedResults, ctx, line, date)
 	}
 	slice := l.InternalRegex.FindStringSubmatch(line)
 	if len(slice) == 0 {
@@ -37,7 +38,7 @@ func (l *LogRegex) Handle(ctx LogCtx, line string) (LogCtx, LogDisplayer) {
 		}
 		mergedResults[subexpname] = slice[l.InternalRegex.SubexpIndex(subexpname)]
 	}
-	return l.Handler(mergedResults, ctx, line)
+	return l.Handler(mergedResults, ctx, line, date)
 }
 
 func (l *LogRegex) MarshalJSON() ([]byte, error) {

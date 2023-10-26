@@ -661,21 +661,21 @@ mysql version                 8.0.31                                          8.
 2023-05-29T07:16:49.685402Z   cluster1-2 joined                               |                                               |                                               
 2023-05-29T07:16:49.685497Z   |                                               NON-PRIMARY(n=3)                                |                                               
 2023-05-29T07:16:49.686149Z   NON-PRIMARY(n=3)                                |                                               |                                               
-2023-05-29T07:16:49.686256Z   |                                               |                                               cluster1-0 joined                               
+2023-05-29T07:16:49.686256Z   |                                               |                                               unspecified joined                              
 2023-05-29T07:16:49.686310Z   |                                               |                                               cluster1-1 joined                               
 2023-05-29T07:16:49.687051Z   |                                               |                                               NON-PRIMARY(n=3)                                
 2023-05-29T07:17:06.846743Z   |                                               |                                               received shutdown                               
 2023-05-29T07:17:15.812255Z   received shutdown                               |                                               |                                               
-2023-05-29T07:17:16.848791Z   |                                               cluster1-0 joined                               |                                               
-2023-05-29T07:17:16.848924Z   |                                               cluster1-2 left                                 |                                               
-2023-05-29T07:17:16.849374Z   cluster1-1 joined                               |                                               |                                               
-2023-05-29T07:17:16.849499Z   cluster1-2 left                                 |                                               |                                               
+2023-05-29T07:17:16.848791Z   |                                               unspecified joined                              |                                               
+2023-05-29T07:17:16.848924Z   |                                               unspecified left                                |                                               
+2023-05-29T07:17:16.849374Z   unspecified joined                              |                                               |                                               
+2023-05-29T07:17:16.849499Z   unspecified left                                |                                               |                                               
 2023-05-29T07:17:16.850012Z   |                                               NON-PRIMARY(n=2)                                |                                               
 2023-05-29T07:17:16.850477Z   |                                               |                                               NON-PRIMARY(n=1)                                
 2023-05-29T07:17:16.850489Z   NON-PRIMARY(n=2)                                |                                               |                                               
 2023-05-29T07:17:16.850794Z   |                                               |                                               OPEN -> CLOSED                                  
 2023-05-29T07:17:17.387918Z   |                                               received shutdown                               |                                               
-2023-05-29T07:17:26.815037Z   |                                               cluster1-0 left                                 |                                               
+2023-05-29T07:17:26.815037Z   |                                               unspecified left                                |                                               
 2023-05-29T07:17:26.815352Z   |                                               NON-PRIMARY(n=1)                                |                                               
 2023-05-29T07:17:26.816357Z   NON-PRIMARY(n=1)                                |                                               |                                               
 2023-05-29T07:17:26.816671Z   OPEN -> CLOSED                                  |                                               |                                               
