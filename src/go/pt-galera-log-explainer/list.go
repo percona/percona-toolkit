@@ -5,6 +5,7 @@ import (
 
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/display"
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/regex"
+	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/translate"
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/types"
 	"github.com/pkg/errors"
 )
@@ -46,6 +47,10 @@ func (l *list) Run() error {
 	timeline, err := timelineFromPaths(CLI.List.Paths, toCheck)
 	if err != nil {
 		return errors.Wrap(err, "could not list events")
+	}
+
+	if CLI.Verbosity == types.Debug {
+		fmt.Println(translate.DBToJson())
 	}
 
 	display.TimelineCLI(timeline, CLI.Verbosity)

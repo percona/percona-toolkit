@@ -34,7 +34,7 @@ func (s *sed) Run() error {
 	if err != nil {
 		return errors.Wrap(err, "found nothing worth replacing")
 	}
-	ctxs := timeline.GetLatestUpdatedContextsByNodes()
+	ctxs := timeline.GetLatestContextsByNodes()
 
 	args := []string{}
 	for key, ctx := range ctxs {

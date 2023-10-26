@@ -2,6 +2,7 @@ package regex
 
 import (
 	"regexp"
+	"time"
 
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/types"
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/utils"
@@ -12,7 +13,7 @@ func init() {
 }
 
 var (
-	shiftFunc = func(submatches map[string]string, ctx types.LogCtx, log string) (types.LogCtx, types.LogDisplayer) {
+	shiftFunc = func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
 		newState := submatches["state2"]
 		ctx.SetState(newState)
@@ -41,9 +42,9 @@ var StatesMap = types.RegexMap{
 	"RegexRestoredState": &types.LogRegex{
 		Regex:         regexp.MustCompile("Restored state"),
 		InternalRegex: shiftRegex,
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 			var displayer types.LogDisplayer
-			ctx, displayer = shiftFunc(submatches, ctx, log)
+			ctx, displayer = shiftFunc(submatches, ctx, log, date)
 
 			return ctx, types.SimpleDisplayer("(restored)" + displayer(ctx))
 		},

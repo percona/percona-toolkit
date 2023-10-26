@@ -91,8 +91,15 @@ func TestMain(t *testing.T) {
 			cmd:  []string{"list", "--all", "--pxc-operator", "--no-color"},
 			path: "tests/logs/operator_concurrent_ssts/*",
 		},
+
+		{
+			name: "operator_ambiguous_ips_list_all_no_color",
+			cmd:  []string{"list", "--all", "--pxc-operator", "--no-color"},
+			path: "tests/logs/operator_ambiguous_ips/*",
+		},
 	}
 
+TESTS:
 	for _, test := range tests {
 		filepaths, err := filepath.Glob(test.path)
 		if err != nil {
@@ -114,6 +121,7 @@ func TestMain(t *testing.T) {
 
 			if !cmp.Equal(out, expected) {
 				t.Errorf("%s: test %s failed: %s\nout: %s", toolname, test.name, strings.Join(test.cmd, " "), cmp.Diff(string(expected), string(out)))
+				continue TESTS
 			}
 		}
 	}

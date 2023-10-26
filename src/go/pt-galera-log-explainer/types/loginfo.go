@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/translate"
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/utils"
 )
 
@@ -92,4 +93,16 @@ type LogDisplayer func(LogCtx) string
 // SimpleDisplayer satisfies LogDisplayer and ignores any context received
 func SimpleDisplayer(s string) LogDisplayer {
 	return func(_ LogCtx) string { return s }
+}
+
+func FormatByIPDisplayer(layout, ip string, date time.Time) LogDisplayer {
+	return func(_ LogCtx) string {
+		return fmt.Sprintf(layout, translate.SimplestInfoFromIP(ip, date))
+	}
+}
+
+func FormatByHashDisplayer(layout, hash string, date time.Time) LogDisplayer {
+	return func(_ LogCtx) string {
+		return fmt.Sprintf(layout, translate.SimplestInfoFromHash(hash, date))
+	}
 }

@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/regex"
-	"github.com/pkg/errors"
+	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/translate"
 )
 
 type ctx struct {
@@ -18,14 +18,12 @@ func (c *ctx) Help() string {
 
 func (c *ctx) Run() error {
 
-	if len(c.Paths) != 1 {
-		return errors.New("can only use 1 path at a time for ctx subcommand")
-	}
-
 	timeline, err := timelineFromPaths(c.Paths, regex.AllRegexes())
 	if err != nil {
 		return err
 	}
+
+	fmt.Println(translate.DBToJson())
 
 	for _, t := range timeline {
 		out, err := json.MarshalIndent(t[len(t)-1].Ctx, "", "\t")

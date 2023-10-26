@@ -3,6 +3,7 @@ package regex
 import (
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/types"
 )
@@ -19,11 +20,11 @@ var PXCOperatorMap = types.RegexMap{
 	"RegexNodeNameFromEnv": &types.LogRegex{
 		Regex:         regexp.MustCompile(". NODE_NAME="),
 		InternalRegex: regexp.MustCompile("NODE_NAME=" + regexNodeName),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
 			nodename := submatches[groupNodeName]
 			nodename, _, _ = strings.Cut(nodename, ".")
-			ctx.AddOwnName(nodename)
+			ctx.AddOwnName(nodename, date)
 			return ctx, types.SimpleDisplayer("local name:" + nodename)
 		},
 		Verbosity: types.DebugMySQL,
@@ -32,10 +33,10 @@ var PXCOperatorMap = types.RegexMap{
 	"RegexNodeIPFromEnv": &types.LogRegex{
 		Regex:         regexp.MustCompile(". NODE_IP="),
 		InternalRegex: regexp.MustCompile("NODE_IP=" + regexNodeIP),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
 			ip := submatches[groupNodeIP]
-			ctx.AddOwnIP(ip)
+			ctx.AddOwnIP(ip, date)
 			return ctx, types.SimpleDisplayer("local ip:" + ip)
 		},
 		Verbosity: types.DebugMySQL,
@@ -48,7 +49,7 @@ var PXCOperatorMap = types.RegexMap{
 		// those "operators" regexes do not have the log prefix added implicitely. It's not strictly needed, but
 		// it will help to avoid catching random piece of log out of order
 		Regex: regexp.MustCompile(k8sprefix + ".*GCache::RingBuffer initial scan"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 			return ctx, types.SimpleDisplayer("recovering gcache")
 		},
 	},
@@ -59,7 +60,7 @@ var PXCOperatorMap = types.RegexMap{
 	"RegexOperatorMemberAssociations": &types.LogRegex{
 		Regex:         regexp.MustCompile("================================================.*View:"),
 		InternalRegex: regexp.MustCompile("own_index: " + regexIdx + ".*(?P<memberlog>" + IdentsMap["RegexMemberCount"].Regex.String() + ")(?P<compiledAssocations>(....-?[0-9]{1,2}(\\.-?[0-9])?: [a-z0-9]+-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]+, [a-zA-Z0-9-_\\.]+)+)"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
 			ctx.MyIdx = submatches[groupIdx]
 
@@ -68,7 +69,7 @@ var PXCOperatorMap = types.RegexMap{
 				msg       string
 			)
 
-			ctx, displayer = IdentsMap["RegexMemberCount"].Handle(ctx, submatches["memberlog"])
+			ctx, displayer = IdentsMap["RegexMemberCount"].Handle(ctx, submatches["memberlog"], date)
 			msg += displayer(ctx) + "; "
 
 			subAssociations := strings.Split(submatches["compiledAssocations"], "\\n\\t")
@@ -77,7 +78,7 @@ var PXCOperatorMap = types.RegexMap{
 			}
 			for _, subAssocation := range subAssociations[1:] {
 				// better to reuse the idents regex
-				ctx, displayer = IdentsMap["RegexMemberAssociations"].Handle(ctx, subAssocation)
+				ctx, displayer = IdentsMap["RegexMemberAssociations"].Handle(ctx, subAssocation, date)
 				msg += displayer(ctx) + "; "
 			}
 			return ctx, types.SimpleDisplayer(msg)

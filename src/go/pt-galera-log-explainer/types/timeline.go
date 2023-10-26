@@ -31,7 +31,7 @@ func (timeline Timeline) MergeByIdentifier(lt LocalTimeline) {
 	// identify the node with the easiest to read information
 	// this is critical part to aggregate logs: this is what enable to merge logs
 	// ultimately the "identifier" will be used for columns header
-	node := Identifier(lt[len(lt)-1].Ctx)
+	node := Identifier(lt[len(lt)-1].Ctx, getlasttime(lt))
 	if lt2, ok := timeline[node]; ok {
 		lt = MergeTimeline(lt2, lt)
 	}
@@ -147,24 +147,14 @@ func CutTimelineAt(t LocalTimeline, at time.Time) LocalTimeline {
 	return t[i:]
 }
 
-func (t *Timeline) GetLatestUpdatedContextsByNodes() map[string]LogCtx {
-	updatedCtxs := map[string]LogCtx{}
-	latestctxs := []LogCtx{}
+func (t *Timeline) GetLatestContextsByNodes() map[string]LogCtx {
+	latestctxs := map[string]LogCtx{}
 
 	for key, localtimeline := range *t {
-		if len(localtimeline) == 0 {
-			updatedCtxs[key] = NewLogCtx()
-			continue
-		}
-		latestctx := localtimeline[len(localtimeline)-1].Ctx
-		latestctxs = append(latestctxs, latestctx)
-		updatedCtxs[key] = latestctx
+		latestctxs[key] = localtimeline[len(localtimeline)-1].Ctx
 	}
 
-	for _, ctx := range updatedCtxs {
-		ctx.MergeMapsWith(latestctxs)
-	}
-	return updatedCtxs
+	return latestctxs
 }
 
 // iterateNode is used to search the source node(s) that contains the next chronological events

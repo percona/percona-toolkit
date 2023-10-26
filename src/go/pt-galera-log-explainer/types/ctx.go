@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/translate"
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/utils"
 )
 
@@ -33,13 +34,6 @@ type LogCtx struct {
 	Desynced     bool
 	minVerbosity Verbosity
 	Conflicts    Conflicts
-
-	// translation maps, the only elements that can be shared and copied by pointer
-	HashToIP       map[string]string
-	HashToNodeName map[string]string
-	IPToHostname   map[string]string
-	IPToMethod     map[string]string
-	IPToNodeName   map[string]string
 }
 
 func NewLogCtx() LogCtx {
@@ -50,11 +44,6 @@ func NewLogCtx() LogCtx {
 
 func (ctx *LogCtx) InitMaps() {
 	ctx.SSTs = map[string]SST{}
-	ctx.HashToIP = map[string]string{}
-	ctx.IPToHostname = map[string]string{}
-	ctx.IPToMethod = map[string]string{}
-	ctx.IPToNodeName = map[string]string{}
-	ctx.HashToNodeName = map[string]string{}
 }
 
 // State will return the wsrep state of the current file type
@@ -109,67 +98,8 @@ func (ctx *LogCtx) IsPrimary() bool {
 	return utils.SliceContains([]string{"SYNCED", "DONOR", "DESYNCED", "JOINER", "PRIMARY"}, ctx.State())
 }
 
-func (ctx *LogCtx) OwnHostname() string {
-	for _, ip := range ctx.OwnIPs {
-		if hn, ok := ctx.IPToHostname[ip]; ok {
-			return hn
-		}
-	}
-	for _, hash := range ctx.OwnHashes {
-		if hn, ok := ctx.IPToHostname[ctx.HashToIP[hash]]; ok {
-			return hn
-		}
-	}
-	return ""
-}
-
-func (ctx *LogCtx) HashesFromIP(ip string) []string {
-	hashes := []string{}
-	for hash, ip2 := range ctx.HashToIP {
-		if ip == ip2 {
-			hashes = append(hashes, hash)
-		}
-	}
-	return hashes
-}
-
-func (ctx *LogCtx) HashesFromNodeName(nodename string) []string {
-	hashes := []string{}
-	for hash, nodename2 := range ctx.HashToNodeName {
-		if nodename == nodename2 {
-			hashes = append(hashes, hash)
-		}
-	}
-	return hashes
-}
-
-func (ctx *LogCtx) IPsFromNodeName(nodename string) []string {
-	ips := []string{}
-	for ip, nodename2 := range ctx.IPToNodeName {
-		if nodename == nodename2 {
-			ips = append(ips, ip)
-		}
-	}
-	return ips
-}
-
-func (ctx *LogCtx) AllNodeNames() []string {
-	nodenames := ctx.OwnNames
-	for _, nn := range ctx.HashToNodeName {
-		if !utils.SliceContains(nodenames, nn) {
-			nodenames = append(nodenames, nn)
-		}
-	}
-	for _, nn := range ctx.IPToNodeName {
-		if !utils.SliceContains(nodenames, nn) {
-			nodenames = append(nodenames, nn)
-		}
-	}
-	return nodenames
-}
-
 // AddOwnName propagates a name into the translation maps using the trusted node's known own hashes and ips
-func (ctx *LogCtx) AddOwnName(name string) {
+func (ctx *LogCtx) AddOwnName(name string, date time.Time) {
 	// used to be a simple "if utils.SliceContains", changed to "is it the last known name?"
 	// because somes names/ips come back and forth, we should keep track of that
 	name = utils.ShortNodeName(name)
@@ -178,61 +108,37 @@ func (ctx *LogCtx) AddOwnName(name string) {
 	}
 	ctx.OwnNames = append(ctx.OwnNames, name)
 	for _, hash := range ctx.OwnHashes {
-
-		ctx.HashToNodeName[hash] = name
+		translate.AddHashToNodeName(hash, name, date)
 	}
 	for _, ip := range ctx.OwnIPs {
-		ctx.IPToNodeName[ip] = name
+		translate.AddIPToNodeName(ip, name, date)
 	}
 }
 
 // AddOwnHash propagates a hash into the translation maps
-func (ctx *LogCtx) AddOwnHash(hash string) {
+func (ctx *LogCtx) AddOwnHash(hash string, date time.Time) {
 	if utils.SliceContains(ctx.OwnHashes, hash) {
 		return
 	}
 	ctx.OwnHashes = append(ctx.OwnHashes, hash)
 
 	for _, ip := range ctx.OwnIPs {
-		ctx.HashToIP[hash] = ip
+		translate.AddHashToIP(hash, ip, date)
 	}
 	for _, name := range ctx.OwnNames {
-		ctx.HashToNodeName[hash] = name
+		translate.AddHashToNodeName(hash, name, date)
 	}
 }
 
 // AddOwnIP propagates a ip into the translation maps
-func (ctx *LogCtx) AddOwnIP(ip string) {
+func (ctx *LogCtx) AddOwnIP(ip string, date time.Time) {
 	// see AddOwnName comment
 	if len(ctx.OwnIPs) > 0 && ctx.OwnIPs[len(ctx.OwnIPs)-1] == ip {
 		return
 	}
 	ctx.OwnIPs = append(ctx.OwnIPs, ip)
 	for _, name := range ctx.OwnNames {
-		ctx.IPToNodeName[ip] = name
-	}
-}
-
-// MergeMapsWith will take a slice of contexts and merge every translation maps
-// into the base context. It won't touch "local" infos such as "ownNames"
-func (base *LogCtx) MergeMapsWith(ctxs []LogCtx) {
-	for _, ctx := range ctxs {
-		for hash, ip := range ctx.HashToIP {
-			base.HashToIP[hash] = ip
-		}
-		for hash, nodename := range ctx.HashToNodeName {
-
-			base.HashToNodeName[hash] = nodename
-		}
-		for ip, hostname := range ctx.IPToHostname {
-			base.IPToHostname[ip] = hostname
-		}
-		for ip, nodename := range ctx.IPToNodeName {
-			base.IPToNodeName[ip] = nodename
-		}
-		for ip, method := range ctx.IPToMethod {
-			base.IPToMethod[ip] = method
-		}
+		translate.AddIPToNodeName(ip, name, date)
 	}
 }
 
@@ -248,7 +154,6 @@ func (base *LogCtx) Inherit(ctx LogCtx) {
 		base.Version = ctx.Version
 	}
 	base.Conflicts = append(ctx.Conflicts, base.Conflicts...)
-	base.MergeMapsWith([]LogCtx{ctx})
 }
 
 func (ctx *LogCtx) SetSSTTypeMaybe(ssttype string) {
@@ -268,10 +173,10 @@ func (ctx *LogCtx) ConfirmSSTMetadata(shiftTimestamp time.Time) {
 	for key, sst := range ctx.SSTs {
 		if sst.MustHaveHappenedLocally(shiftTimestamp) {
 			if ctx.State() == "DONOR" {
-				ctx.AddOwnName(key)
+				ctx.AddOwnName(key, shiftTimestamp)
 			}
 			if ctx.State() == "JOINER" {
-				ctx.AddOwnName(sst.Joiner)
+				ctx.AddOwnName(sst.Joiner, shiftTimestamp)
 			}
 		}
 	}
@@ -295,11 +200,6 @@ func (l LogCtx) MarshalJSON() ([]byte, error) {
 		MyIdx                  string
 		MemberCount            int
 		Desynced               bool
-		HashToIP               map[string]string
-		HashToNodeName         map[string]string
-		IPToHostname           map[string]string
-		IPToMethod             map[string]string
-		IPToNodeName           map[string]string
 		MinVerbosity           Verbosity
 		Conflicts              Conflicts
 	}{
@@ -316,11 +216,6 @@ func (l LogCtx) MarshalJSON() ([]byte, error) {
 		MyIdx:                  l.MyIdx,
 		MemberCount:            l.MemberCount,
 		Desynced:               l.Desynced,
-		HashToIP:               l.HashToIP,
-		HashToNodeName:         l.HashToNodeName,
-		IPToHostname:           l.IPToHostname,
-		IPToMethod:             l.IPToMethod,
-		IPToNodeName:           l.IPToNodeName,
 		MinVerbosity:           l.minVerbosity,
 		Conflicts:              l.Conflicts,
 	})

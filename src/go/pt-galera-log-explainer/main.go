@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/alecthomas/kong"
+	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/translate"
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/types"
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/utils"
 	"github.com/rs/zerolog"
@@ -66,6 +67,8 @@ func main() {
 	}
 
 	utils.SkipColor = CLI.NoColor
+	translate.AssumeIPStable = !CLI.PxcOperator
+
 	err := ctx.Run()
 	ctx.FatalIfErrorf(err)
 }
