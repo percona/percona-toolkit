@@ -9,7 +9,7 @@ require (
 	github.com/alecthomas/kong v0.8.0
 	github.com/go-ini/ini v1.67.0
 	github.com/golang/mock v1.6.0
-	github.com/google/uuid v1.3.1
+	github.com/google/uuid v1.4.0
 	github.com/hashicorp/go-version v1.6.0
 	github.com/howeyc/gopass v0.0.0-20210920133722-c8aef6fb66ef
 	github.com/lib/pq v1.10.9
