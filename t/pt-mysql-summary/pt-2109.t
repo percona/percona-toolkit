@@ -14,7 +14,6 @@ use Sandbox;
 use DSNParser;
 require VersionParser;
 use Test::More;
-use File::Temp qw( tempdir );
 
 local $ENV{PTDEBUG} = "";
 
@@ -30,25 +29,6 @@ else {
    plan tests => 3;
 }
 
-my $db_flavor = VersionParser->new($dbh)->flavor();
-if ( $db_flavor =~ m/Percona Server/ ) {
-    my $rows = $dbh->selectall_hashref("SHOW PLUGINS", "name");
-    while (my ($key, $values) = each %$rows) {
-        if ($key =~ m/^keyring_/) {
-            $has_keyring_plugin=1;
-            last;
-        }
-    }
-}
-
-if (!$has_keyring_plugin) {
-    plan skip_all => 'Keyring plugins are not enabled.';
-} elsif ( $sandbox_version lt '5.7' || $db_flavor !~ m/Percona Server/) {
-    plan skip_all => 'These tests need Percona Server 5.7+';
-}
-
-my $dir = tempdir( "percona-testXXXXXXXX", CLEANUP => 1 );
-
 my $output;
 my $cnf = '/tmp/12345/my.sandbox.cnf';
 
@@ -61,7 +41,7 @@ $output = `$cmd 2>&1`;
 
 unlike(
    $output,
-   qr/You have an error in your SQL syntax.*keyring/s,
+   qr/Unknown column 'keyring%' in 'where clause'/s,
    "pt-mysql-summary works fine with SQL Mode ANSI_QUOTES"
 );
 
