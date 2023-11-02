@@ -6401,7 +6401,7 @@ sub main {
          $tp->get_create_table( $dbh, $table->{D}, $table->{t} ));
 
       if ( $o->get('check-charset') ) {
-         my $sql = 'SELECT CONCAT(/*!40100 @@session.character_set_connection, */ "")';
+         my $sql = 'SELECT CONCAT(/*!40100 @@session.character_set_connection, */ \'\')';
          PTDEBUG && _d($sql);
          my ($dbh_charset) =  $table->{dbh}->selectrow_array($sql);
 
