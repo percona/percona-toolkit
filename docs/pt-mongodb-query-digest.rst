@@ -60,7 +60,7 @@ Options
   Specifies the sorting order using fields:
   ``count``, ``ratio``, ``query-time``, ``docs-scanned``, ``docs-returned``.
 
-  Adding a hypen (``-``) in front of a field denotes reverse order.
+  Adding a hyphen (``-``) in front of a field denotes reverse order.
   For example: ``--order-by="count,-ratio"``.
 
 ``-p``, ``--password``

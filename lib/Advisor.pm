@@ -115,7 +115,7 @@ sub load_rule_info {
 
 
 # Sub: run_rules
-#   Run all rules from all advisors loaded ealier.
+#   Run all rules from all advisors loaded earlier.
 #
 # Parameters:
 #   %args - Arguments passed through to each rule's coderef

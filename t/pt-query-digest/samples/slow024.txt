@@ -28,36 +28,7 @@
 #    SHOW CREATE TABLE `film_actor`\G
 INSERT INTO `film_actor` VALUES (1,1,'2006-02-15 10:05:03') /*... omitted ...*/ON duplicate KEY UPDATE actor_id=actor_id+1\G
 
-# Query 2: 0 QPS, 0x concurrency, ID 0x1B65226A5F15AD8CA1C3EE4F5996E672 at byte 342942
-# This item is included in the report because it matches --limit.
-# Scores: V/M = 0.00
-# Time range: all events occurred at 2007-10-15 21:43:52
-# Attribute    pct   total     min     max     avg     95%  stddev  median
-# ============ === ======= ======= ======= ======= ======= ======= =======
-# Count         25       1
-# Exec time     25      2s      2s      2s      2s      2s       0      2s
-# Lock time      0       0       0       0       0       0       0       0
-# Rows sent     25       1       1       1       1       1       0       1
-# Rows examine   0       0       0       0       0       0       0       0
-# Query size    24 167.33k 167.33k 167.33k 167.33k 167.33k       0 167.33k
-# String:
-# Hosts        localhost
-# Users        root
-# Query_time distribution
-#   1us
-#  10us
-# 100us
-#   1ms
-#  10ms
-# 100ms
-#    1s  ################################################################
-#  10s+
-# Tables
-#    SHOW TABLE STATUS LIKE 'film_actor'\G
-#    SHOW CREATE TABLE `film_actor`\G
-INSERT IGNORE INTO `film_actor` VALUES (1,1,'2006-02-15 10:05:03') /*... omitted ...*/\G
-
-# Query 3: 0 QPS, 0x concurrency, ID 0x40B5C2023608F2CFA2C576176F348267 at byte 171471
+# Query 2: 0 QPS, 0x concurrency, ID 0x40B5C2023608F2CFA2C576176F348267 at byte 171471
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2007-10-15 21:43:52
@@ -85,3 +56,32 @@ INSERT IGNORE INTO `film_actor` VALUES (1,1,'2006-02-15 10:05:03') /*... omitted
 #    SHOW TABLE STATUS LIKE 'film_actor'\G
 #    SHOW CREATE TABLE `film_actor`\G
 REPLACE INTO `film_actor` VALUES (1,1,'2006-02-15 10:05:03') /*... omitted ...*/\G
+
+# Query 3: 0 QPS, 0x concurrency, ID 0x1B65226A5F15AD8CA1C3EE4F5996E672 at byte 342942
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: all events occurred at 2007-10-15 21:43:52
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         25       1
+# Exec time     25      2s      2s      2s      2s      2s       0      2s
+# Lock time      0       0       0       0       0       0       0       0
+# Rows sent     25       1       1       1       1       1       0       1
+# Rows examine   0       0       0       0       0       0       0       0
+# Query size    24 167.33k 167.33k 167.33k 167.33k 167.33k       0 167.33k
+# String:
+# Hosts        localhost
+# Users        root
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  ################################################################
+#  10s+
+# Tables
+#    SHOW TABLE STATUS LIKE 'film_actor'\G
+#    SHOW CREATE TABLE `film_actor`\G
+INSERT IGNORE INTO `film_actor` VALUES (1,1,'2006-02-15 10:05:03') /*... omitted ...*/\G

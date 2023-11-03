@@ -19,7 +19,7 @@
 -- Lists a normalized statement view with aggregated statistics,
 -- mimics the MySQL Enterprise Monitor Query Analysis view,
 -- ordered by the total execution time per normalized statement
--- 
+--
 -- mysql> select * from x$statement_analysis limit 1\G
 -- *************************** 1. row ***************************
 --             query: SELECT * FROM `schema_object_overview` SELECT `information_schema` . `routines`  -- truncated
@@ -50,7 +50,7 @@
 CREATE OR REPLACE
   ALGORITHM = MERGE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW x$statement_analysis (
   query,
   db,

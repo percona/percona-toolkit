@@ -109,6 +109,7 @@ like($output, qr/$cmd/, 'It is running');
 ok(-f $pid_file, 'PID file created');
 my ($pid) = $output =~ /^\s*(\d+)\s+/;
 $output = `cat $pid_file` if -f $pid_file;
+chomp($output);
 is($output, $pid, 'PID file has correct PID');
 
 $output = `$cmd -D test --monitor --run-time 1s`;

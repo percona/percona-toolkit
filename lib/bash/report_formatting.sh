@@ -76,7 +76,7 @@ section () {
 NAME_VAL_LEN=12
 name_val () {
    # We use $NAME_VAL_LEN here because the two summary tools, as well as
-   # the tests, use diffent widths.
+   # the tests, use different widths.
    printf "%+*s | %s\n" "${NAME_VAL_LEN}" "$1" "$2"
 }
 

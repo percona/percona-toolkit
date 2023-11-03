@@ -17,8 +17,8 @@
 -- View: x$user_summary
 --
 -- Summarizes statement activity, file IO and connections by user.
--- 
--- When the user found is NULL, it is assumed to be a "background" thread.  
+--
+-- When the user found is NULL, it is assumed to be a "background" thread.
 --
 -- mysql> select * from x$user_summary;
 -- +------+------------+-------------------+-----------------------+-------------+----------+-----------------+---------------------+-------------------+--------------+
@@ -31,7 +31,7 @@
 CREATE OR REPLACE
   ALGORITHM = TEMPTABLE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW x$user_summary (
   user,
   statements,

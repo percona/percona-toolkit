@@ -232,6 +232,8 @@ for my $i ( 0..4 ) {
    $master_dbh->do(qq{create table `bug_1041372`.$tbl (a INT NOT NULL AUTO_INCREMENT PRIMARY KEY )});
    $master_dbh->do(qq{insert into `bug_1041372`.$tbl values (1), (2), (3), (4), (5)});
 
+   $sb->wait_for_slaves();
+
    ($output) = full_output(sub {
       pt_online_schema_change::main(@args,
           '--alter', "ADD COLUMN ptosc INT",
@@ -286,14 +288,20 @@ $sb->load_file('master', "$sample/del-trg-bug-1062324.sql");
       "No delete trigger error after altering PK (bug 1062324)"
    ) or diag($output);
 
-   # The original row was (c1,c2,c3) = (1,1,1).  We deleted where c1=1,
-   # so the row where c2=1 AND c3=1 should no longer exist.
-   my $row = $master_dbh->selectrow_arrayref("SELECT * FROM test._t1_new WHERE c2=1 AND c3=1");
-   is(
-      $row,
-      undef,
-      "Delete trigger works after altering PK (bug 1062324)"
-   );
+   my $row;
+
+   SKIP: {
+      skip 'Not for PXC' if ( $sb->is_cluster_mode );
+
+      # The original row was (c1,c2,c3) = (1,1,1).  We deleted where c1=1,
+      # so the row where c2=1 AND c3=1 should no longer exist.
+      my $row = $master_dbh->selectrow_arrayref("SELECT * FROM test._t1_new WHERE c2=1 AND c3=1");
+      is(
+         $row,
+         undef,
+         "Delete trigger works after altering PK (bug 1062324)"
+      );
+   }
 
    # Another instance of this bug:
    # https://bugs.launchpad.net/percona-toolkit/+bug/1103672
@@ -491,7 +499,8 @@ for (my $i = 0; $i < $rows; $i++) {
 $big_insert .= "(NULL, 'xx')";
 
 $master_dbh->do($big_insert);
-
+# This big test causes slave lag error on slow boxes
+$sb->wait_for_slaves();
 
 $output = output(
    sub { pt_online_schema_change::main(@args, "$master_dsn,D=bug_1340728,t=test",
@@ -518,7 +527,7 @@ $sb->load_file('master', "$sample/bug-1340728_cleanup.sql");
 # If this test fails it might lead to "segmentation fault" or "out of memory"
 # #############################################################################
 
-$output = output(
+($output, $exit_status) = full_output(
    sub { pt_online_schema_change::main(@args, "$master_dsn,D=sakila,t=actor",
          '--execute', 
          '--alter-foreign-keys-method=drop_swap',
@@ -526,7 +535,6 @@ $output = output(
          '--nocheck-plan',
          ),
       },
-      stderr => 1,
 );
 
 like(
@@ -667,24 +675,28 @@ $master_dbh->do("DROP DATABASE IF EXISTS test");
 # Test for --skip-check-slave-lag
 # Use the same files from previous test because for this test we are going to
 # run a nonop so, any file will work
-$master_dbh->do("DROP DATABASE IF EXISTS test");
+SKIP: {
+   skip 'Not for PXC' if ( $sb->is_cluster_mode );
 
-$sb->load_file('master', "$sample/bug-1613915.sql");
-$output = output(
-   sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=o1",
-         '--execute', 
-         '--alter', "ENGINE=INNODB",
-         '--skip-check-slave-lag', "h=127.0.0.1,P=".$sb->port_for('slave1'),
-         ),
-      },
-);
+   $master_dbh->do("DROP DATABASE IF EXISTS test");
 
-my $skipping_str = "Skipping.*".$sb->port_for('slave1');
-like(
-      $output,
-      qr/$skipping_str/s,
-      "--skip-check-slave-lag",
-);
+   $sb->load_file('master', "$sample/bug-1613915.sql");
+   $output = output(
+      sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=o1",
+            '--execute', 
+            '--alter', "ENGINE=INNODB",
+            '--skip-check-slave-lag', "h=127.0.0.1,P=".$sb->port_for('slave1'),
+            ),
+         },
+   );
+
+   my $skipping_str = "Skipping.*".$sb->port_for('slave1');
+   like(
+         $output,
+         qr/$skipping_str/s,
+         "--skip-check-slave-lag",
+   );
+}
 
 # Use the same data than the previous test
 $master_dbh->do("DROP DATABASE IF EXISTS test");

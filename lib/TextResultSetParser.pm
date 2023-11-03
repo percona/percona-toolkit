@@ -22,13 +22,13 @@
 # TextResultSetParser converts a text result set to a data struct like
 # DBI::selectall_arrayref().  Text result sets are like what SHOW PROCESSLIST
 # and EXPLAIN print, like:
-# 
+#
 #   +----+------+
 #   | Id | User |
 #   +----+------+
 #   | 1  | bob  |
 #   +----+------+
-# 
+#
 # That converts to:
 # (start code)
 #   [
@@ -70,7 +70,7 @@ sub new {
    return bless $self, $class;
 }
 
-# Sub: _pasre_tabular
+# Sub: _parse_tabular
 #   Parse a line from tabular horizontal output.
 #
 # Parameters:
@@ -88,7 +88,7 @@ sub _parse_tabular {
    return (\%row, undef);
 }
 
-# Sub: _pasre_tabular
+# Sub: _parse_tabular
 #   Parse a line from tab-separated horizontal output.
 #
 # Parameters:

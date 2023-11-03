@@ -60,6 +60,9 @@ if ( !$pid ) {
    exit;
 }
 
+# We need to sleep here to get child process to start
+sleep(2);
+
 # parent
 PerconaTest::wait_until(sub {
    $slave_dbh->selectrow_hashref("show slave status")->{seconds_behind_master}

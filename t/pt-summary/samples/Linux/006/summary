@@ -1,0 +1,29 @@
+platform    Linux
+hostname    Delly-7390
+kernel    5.15.0-41-generic
+release    Ubuntu 20.04.4 LTS (focal)
+CPU_ARCH    64-bit
+OS_ARCH    64-bit
+virt    No virtualization detected
+vendor    Dell Inc.
+system    Dell Inc.; XPS 13 7390 2-in-1; vNot Specified (Convertible)
+servicetag    H3RJL13
+rss    21008793600
+raid_controller    No RAID controller detected
+threading    NPTL 2.31
+getenforce    No SELinux detected
+swappiness    60
+dirtypolicy    20, 10
+dirtystatus     0, 0
+numa-available    1
+numa-policy    default
+numa-preferred-node    current
+internal::disks    dm-0 dm-1 dm-2 mmcblk0 nvme0n1
+internal::dm-0     128
+internal::dm-1     128
+internal::dm-2     128
+internal::mmcblk0    [mq-deadline] 128
+internal::nvme0n1    [none] 127
+dentry-state    456513	375385	45	0	141719	0
+file-nr    30570	0	9223372036854775807
+inode-nr    399300	88416

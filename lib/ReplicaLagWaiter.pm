@@ -87,9 +87,9 @@ sub wait {
       my ($self) = @_;
       my ($slaves, $refresher) = ($self->{slaves}, $self->{get_slaves_cb});
       return $slaves if ( not defined $refresher );
-      my $before = join ' ', sort map {$_->name()} @$slaves;
+      my $before = join ' ', sort map {$_->description()} @$slaves;
       $slaves = $refresher->();
-      my $after = join ' ', sort map {$_->name()} @$slaves;
+      my $after = join ' ', sort map {$_->description()} @$slaves;
       if ($before ne $after) {
          $self->{slaves} = $slaves;
          printf STDERR "Slave set to watch has changed\n  Was: %s\n  Now: %s\n",
@@ -106,9 +106,10 @@ sub wait {
       $pr_callback = sub {
          my ($fraction, $elapsed, $remaining, $eta, $completed) = @_;
          my $dsn_name = $worst->{cxn}->name();
+         my $dsn_description = $worst->{cxn}->description();
          if ( defined $worst->{lag} ) {
             print STDERR "Replica lag is " . ($worst->{lag} || '?')
-               . " seconds on $dsn_name.  Waiting.\n";
+               . " seconds on $dsn_description.  Waiting.\n";
          }
          else {
             if ($self->{fail_on_stopped_replication}) {

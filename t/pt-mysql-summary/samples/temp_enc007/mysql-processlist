@@ -1,0 +1,24 @@
+*************************** 1. row ***************************
+           Id: 4
+         User: msandbox
+         Host: localhost:49789
+           db: NULL
+      Command: Binlog Dump
+         Time: 88
+        State: Master has sent all binlog to slave; waiting for binlog to be updated
+         Info: NULL
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 2
+*************************** 2. row ***************************
+           Id: 19
+         User: msandbox
+         Host: localhost
+           db: NULL
+      Command: Query
+         Time: 0
+        State: NULL
+         Info: SHOW FULL PROCESSLIST
+    Rows_sent: 0
+Rows_examined: 0
+    Rows_read: 1

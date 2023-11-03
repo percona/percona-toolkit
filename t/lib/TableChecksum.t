@@ -229,9 +229,9 @@ is (
       function  => 'SHA1',
       tbl_struct => $t,
    ),
-     q{`film_id`, `title`, `description`, `release_year`, `language_id`, `original_language_id`, `rental_duration`, `rental_rate`, `length`, `replacement_cost`, `rating`, `special_features`, `last_update` + 0 AS `last_update`, }
+     q{`film_id`, `title`, CRC32(`description`) AS `description`, `release_year`, `language_id`, `original_language_id`, `rental_duration`, `rental_rate`, `length`, `replacement_cost`, `rating`, `special_features`, `last_update` + 0 AS `last_update`, }
    . q{SHA1(CONCAT_WS('#', }
-   . q{`film_id`, `title`, `description`, `release_year`, `language_id`, }
+   . q{`film_id`, `title`, CRC32(`description`), `release_year`, `language_id`, }
    . q{`original_language_id`, `rental_duration`, `rental_rate`, `length`, }
    . q{`replacement_cost`, `rating`, `special_features`, `last_update` + 0, }
    . q{CONCAT(ISNULL(`description`), ISNULL(`release_year`), }
@@ -245,9 +245,9 @@ is (
       function      => 'FNV_64',
       tbl_struct => $t,
    ),
-     q{`film_id`, `title`, `description`, `release_year`, `language_id`, `original_language_id`, `rental_duration`, `rental_rate`, `length`, `replacement_cost`, `rating`, `special_features`, `last_update` + 0 AS `last_update`, }
+     q{`film_id`, `title`, CRC32(`description`) AS `description`, `release_year`, `language_id`, `original_language_id`, `rental_duration`, `rental_rate`, `length`, `replacement_cost`, `rating`, `special_features`, `last_update` + 0 AS `last_update`, }
    . q{FNV_64(}
-   . q{`film_id`, `title`, `description`, `release_year`, `language_id`, }
+   . q{`film_id`, `title`, CRC32(`description`), `release_year`, `language_id`, }
    . q{`original_language_id`, `rental_duration`, `rental_rate`, `length`, }
    . q{`replacement_cost`, `rating`, `special_features`, `last_update` + 0)},
    'FNV_64 query for sakila.film',
@@ -490,7 +490,7 @@ is (
    q{SELECT /*PROGRESS_COMMENT*//*CHUNK_NUM*/ COUNT(*) AS cnt, }
    . q{COALESCE(RIGHT(MAX(@crc := CONCAT(LPAD(@cnt := @cnt + 1, 16, '0'), }
    . q{SHA1(CONCAT(@crc, SHA1(CONCAT_WS('#', }
-   . q{`film_id`, `title`, `description`, `release_year`, `language_id`, }
+   . q{`film_id`, `title`, CRC32(`description`), `release_year`, `language_id`, }
    . q{`original_language_id`, `rental_duration`, `rental_rate`, `length`, }
    . q{`replacement_cost`, `rating`, `special_features`, `last_update` + 0, }
    . q{CONCAT(ISNULL(`description`), ISNULL(`release_year`), }
@@ -514,7 +514,7 @@ is (
    q{SELECT /*PROGRESS_COMMENT*//*CHUNK_NUM*/ COUNT(*) AS cnt, }
    . q{COALESCE(RIGHT(MAX(@crc := CONCAT(LPAD(@cnt := @cnt + 1, 16, '0'), }
    . q{CONV(CAST(FNV_64(CONCAT(@crc, FNV_64(}
-   . q{`film_id`, `title`, `description`, `release_year`, `language_id`, }
+   . q{`film_id`, `title`, CRC32(`description`), `release_year`, `language_id`, }
    . q{`original_language_id`, `rental_duration`, `rental_rate`, `length`, }
    . q{`replacement_cost`, `rating`, `special_features`, `last_update` + 0}
    . q{))) AS UNSIGNED), 10, 16))), 16), 0) AS crc }
@@ -559,7 +559,7 @@ is (
    . q{SELECT ?, ?, /*CHUNK_NUM*/ ?, COUNT(*) AS cnt, }
    . q{COALESCE(RIGHT(MAX(@crc := CONCAT(LPAD(@cnt := @cnt + 1, 16, '0'), }
    . q{SHA1(CONCAT(@crc, SHA1(CONCAT_WS('#', }
-   . q{`film_id`, `title`, `description`, `release_year`, `language_id`, }
+   . q{`film_id`, `title`, CRC32(`description`), `release_year`, `language_id`, }
    . q{`original_language_id`, `rental_duration`, `rental_rate`, `length`, }
    . q{`replacement_cost`, `rating`, `special_features`, `last_update` + 0, }
    . q{CONCAT(ISNULL(`description`), ISNULL(`release_year`), }

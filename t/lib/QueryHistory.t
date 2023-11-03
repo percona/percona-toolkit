@@ -87,7 +87,7 @@ my $res = $dbh->selectall_arrayref(
    { Slice => {} });
 is_deeply(
    $res,
-   [  {  checksum          => '17145033699835028696',
+   [  {  checksum          => 'ACBD18DB4CC2F85CEDEF654FCCC4A4D8',
          sample            => 'foo sample',
          ts_min            => '2009-01-01 12:39:12',
          ts_max            => '2009-01-01 13:19:12',
@@ -141,7 +141,7 @@ $dbh->do('truncate table test.query_review');
 $dbh->do('drop table test.query_review_history');
 # mqd says "The table must have at least the following columns:"
 my $min_tbl = "CREATE TABLE query_review_history (
-  checksum     BIGINT UNSIGNED NOT NULL,
+  checksum     CHAR(32) NOT NULL,
   sample       TEXT NOT NULL
 )";
 $dbh->do($min_tbl);

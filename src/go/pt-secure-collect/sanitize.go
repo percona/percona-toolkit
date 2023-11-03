@@ -3,9 +3,10 @@ package main
 import (
 	"os"
 
+	"github.com/pkg/errors"
+
 	"github.com/percona/percona-toolkit/src/go/pt-secure-collect/sanitize"
 	"github.com/percona/percona-toolkit/src/go/pt-secure-collect/sanitize/util"
-	"github.com/pkg/errors"
 )
 
 func sanitizeFile(opts *cliOptions) error {
@@ -21,7 +22,7 @@ func sanitizeFile(opts *cliOptions) error {
 	}
 
 	if *opts.SanitizeOutputFile != "" {
-		ifh, err = os.Create(*opts.SanitizeOutputFile)
+		ofh, err = os.Create(*opts.SanitizeOutputFile)
 		if err != nil {
 			return errors.Wrapf(err, "Cannot create output file %q", *opts.SanitizeOutputFile)
 		}

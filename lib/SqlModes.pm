@@ -19,7 +19,7 @@
 # ###########################################################################
 {
 # Package: SqlModes
-# SqlModes is a simple module that helps add/delete elements to the sql_mode 
+# SqlModes is a simple module that helps add/delete elements to the sql_mode
 # variable in MySql.
 package SqlModes;
 
@@ -36,7 +36,7 @@ use Data::Dumper;
 #   dbh     - Database where to apply changes
 #
 # Returns:
-#   SqlModes object 
+#   SqlModes object
 
 sub new {
    my ( $class, $dbh, %args ) = @_;
@@ -45,7 +45,7 @@ sub new {
    my $global = $args{'global'} ? 'GLOBAL' : '';
 
    my $self = {
-      dbh => $dbh, 
+      dbh => $dbh,
       global => $global,
       original_modes_string => '',
    };
@@ -57,11 +57,11 @@ sub new {
 }
 
 
-# Sub: set_mode_string 
-#   sets sql_mode in traditional csv format 
+# Sub: set_mode_string
+#   sets sql_mode in traditional csv format
 #
 #   Required Arguments:
-#     string of valid formats in csv formta (or null string)      
+#     string of valid formats in csv formta (or null string)
 #
 # Returns:
 #   1 if successful, 0 if error.
@@ -77,10 +77,10 @@ sub set_mode_string {
 }
 
 # Sub: add
-#   adds one or more modes 
+#   adds one or more modes
 #
 #   Required Arguments:
-#     list of sql modes      
+#     list of sql modes
 #
 # Returns:
 #   1 if successful, 0 if error.
@@ -96,7 +96,7 @@ sub add {
       PTDEBUG && _d('adding sql_mode: ', $mode);
    }
 
-   my $sql_mode_string = join ",", keys %$curr_modes; 
+   my $sql_mode_string = join ",", keys %$curr_modes;
 
    $self->{dbh}->do("set $self->{global} sql_mode = '$sql_mode_string'") || return 0;
 
@@ -108,7 +108,7 @@ sub add {
 #     remove one or more modes
 #
 #   Required Arguments:
-#     list of sql modes      
+#     list of sql modes
 #
 # Returns:
 #   1 if successful, 0 if error.
@@ -124,7 +124,7 @@ sub del {
       PTDEBUG && _d('deleting sql_mode: ', $mode);
    }
 
-   my $sql_mode_string = join ",", keys %$curr_modes; 
+   my $sql_mode_string = join ",", keys %$curr_modes;
 
    $self->{dbh}->do("SET $self->{global} sql_mode = '$sql_mode_string'") || return 0;
 
@@ -132,11 +132,11 @@ sub del {
    return $curr_modes || 1;
 }
 
-# Sub: has_mode 
-#   checks if a mode is on. (exists within the sql_mode string) 
+# Sub: has_mode
+#   checks if a mode is on. (exists within the sql_mode string)
 #
 #   Required Arguments:
-#     1 mode string 
+#     1 mode string
 #
 # Returns:
 #   1 = yes , 0 = no
@@ -147,14 +147,14 @@ sub has_mode {
 
    my (undef, $sql_mode_string) = $self->{dbh}->selectrow_array("show variables like 'sql_mode'");
 
-   # Need to account for occurrance at 
+   # Need to account for occurrence at
    # beginning, middle or end of comma separated string
    return $sql_mode_string =~ /(?:,|^)$mode(?:,|$)/;
 
 }
 
 # Sub: get_modes
-#   get current set of sql modes 
+#   get current set of sql modes
 #
 #   Required Arguments:
 #     none
@@ -177,13 +177,13 @@ sub get_modes {
 }
 
 # Sub: get_modes_string
-#   get current set of sql modes as string 
+#   get current set of sql modes as string
 #
 #   Required Arguments:
 #     none
 #
 # Returns:
-#   sql_modes as a string (coma separated values) 
+#   sql_modes as a string (coma separated values)
 sub get_modes_string {
    my ( $self ) = @_;
 
@@ -192,8 +192,8 @@ sub get_modes_string {
    return $sql_mode_string;
 }
 
-# Sub: restore_original_modes 
-#   resets sql_mode to the state it was when object was created 
+# Sub: restore_original_modes
+#   resets sql_mode to the state it was when object was created
 #
 #   Required Arguments:
 #     none
