@@ -101,7 +101,7 @@ $output = output(
 
 like(
    $output,
-   qr{PID file $pid_file already exists},
+   qr{PID file $pid_file exists},
    'Dies if PID file already exists (issue 391)'
 );
 

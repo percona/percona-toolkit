@@ -46,7 +46,7 @@ use constant MAX_STRING_LENGTH => 10;
 { local $EVAL_ERROR; eval { require ReportFormatter } };
 
 # Sub: new
-# 
+#
 # Parameters:
 #   %args - Required arguments
 #
@@ -158,7 +158,7 @@ sub BUILDARGS {
 #   * files         arrayref: files read for input
 #   * group         hashref: don't add blank line between these reports
 #                            if they appear together
-# Prints the given reports (rusage, heade (global), query_report, etc.) in
+# Prints the given reports (rusage, header (global), query_report, etc.) in
 # the given order.  These usually come from mk-query-digest --report-format.
 # Most of the required args are for header() and query_report().
 sub print_reports {
@@ -171,7 +171,7 @@ sub print_reports {
    my $last_report;
 
    foreach my $report ( @$reports ) {
-      PTDEBUG && _d('Printing', $report, 'report'); 
+      PTDEBUG && _d('Printing', $report, 'report');
       my $report_output = $self->$report(%args);
       if ( $report_output ) {
          print "\n"
@@ -306,7 +306,7 @@ sub header {
          my $store   = $results->{globals}->{$attrib};
          my $metrics = $ea->stats()->{globals}->{$attrib};
          my $func    = $attrib =~ m/time|wait$/ ? \&micro_t : \&shorten;
-         my @values  = ( 
+         my @values  = (
             @{$store}{qw(sum min max)},
             $store->{sum} / $store->{cnt},
             @{$metrics}{qw(pct_95 stddev median)},
@@ -327,7 +327,7 @@ sub header {
          next unless exists $results->{globals}->{$attrib};
 
          my $store = $results->{globals}->{$attrib};
-         if ( $store->{sum} > 0 ) { 
+         if ( $store->{sum} > 0 ) {
             push @result,
                sprintf $self->{bool_format},
                   $self->make_label($attrib), $self->bool_percents($store);
@@ -476,7 +476,7 @@ sub query_report {
 
       my $partitions_msg = $self->{no_partitions} ? '' : '/*!50100 PARTITIONS*/';
       if ( $groupby eq 'fingerprint' ) {
-         # Shorten it if necessary (issue 216 and 292).           
+         # Shorten it if necessary (issue 216 and 292).
          my $samp_query = $qr->shorten($vals->{samp_query}, $self->{options}->{shorten})
             if $self->{options}->{shorten};
 
@@ -503,12 +503,12 @@ sub query_report {
                $report .= "$samp_query${mark}\n";
             }
             else {
-               $report .= "# EXPLAIN $partitions_msg\n$samp_query${mark}\n"; 
+               $report .= "# EXPLAIN $partitions_msg\n$samp_query${mark}\n";
                $report .= $self->explain_report($samp_query, $vals->{default_db});
             }
          }
          else {
-            $report .= "$samp_query${mark}\n"; 
+            $report .= "$samp_query${mark}\n";
             my $converted = $qr->convert_to_select($samp_query);
             if ( $converted
                  && $converted =~ m/^[\(\s]*select/i ) {
@@ -867,7 +867,7 @@ sub profile {
                     $qr->distill($samp_query, %{$args{distill_args}}) : $item,
          id     => $groupby eq 'fingerprint' ? make_checksum($item)   : '',
          vmr    => ($query_time->{stddev}**2) / ($query_time->{avg} || 1),
-      ); 
+      );
 
       push @profiles, \%profile;
    }
@@ -876,7 +876,7 @@ sub profile {
    $report->title('Profile');
    my @cols = (
       { name => 'Rank',          right_justify => 1,             },
-      { name => 'Query ID',                                      },
+      { name => 'Query ID',      width => 35                     },
       { name => 'Response time', right_justify => 1,             },
       { name => 'Calls',         right_justify => 1,             },
       { name => 'R/Call',        right_justify => 1,             },
@@ -1006,7 +1006,7 @@ sub prepared {
          }
 
          push @prepared, {
-            prep_r   => $prep_r, 
+            prep_r   => $prep_r,
             prep_cnt => $prep_cnt,
             exec_r   => $exec_r,
             exec_cnt => $exec_cnt,
@@ -1057,7 +1057,7 @@ sub make_global_header {
    my ( $self ) = @_;
    my @lines;
 
-   # First line: 
+   # First line:
    # Attribute          total     min     max     avg     95%  stddev  median
    push @lines,
       sprintf $self->{num_format}, "Attribute", '', @{$self->global_headers()};
@@ -1140,7 +1140,7 @@ sub bool_percents {
 # Does pretty-printing for lists of strings like users, hosts, db.
 sub format_string_list {
    my ( $self, $attrib, $vals, $class_cnt ) = @_;
-   
+
    # Only class result values have unq.  So if unq doesn't exist,
    # then we've been given global values.
    if ( !exists $vals->{unq} ) {

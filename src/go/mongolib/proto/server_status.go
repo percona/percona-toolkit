@@ -164,7 +164,7 @@ type NetworkStats struct {
 	NumRequests int64 `bson:"numRequests"`
 }
 
-// OpcountStats stores information related to comamnds and basic CRUD operations.
+// OpcountStats stores information related to commands and basic CRUD operations.
 type OpcountStats struct {
 	Command int64 `bson:"command"`
 	Delete  int64 `bson:"delete"`

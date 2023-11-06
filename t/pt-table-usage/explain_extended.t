@@ -62,17 +62,6 @@ is(
    "No error if table doesn't exist"
 );
 
-# This test fails in Maatkit, too.  I guess I never finished writing it?
-#ok(
-#   no_diff(
-#      sub { pt_table_usage::main(@args,
-#         '--query', "select count(*), max(lmp), min(lmp) FROM ca.interval_lmp_rt_5min as A INNER JOIN ca.lmp_rt_5min as B ON A.datetime = B.datetime WHERE A.datetime = '2011-12-01 21:05:00'") },
-#      "t/pt-table-usage/samples/ee.out",
-#      stderr => 1,
-#   ),
-#   "New EXPLAIN EXTENDED"
-#);
-
 # #############################################################################
 # Done.
 # #############################################################################

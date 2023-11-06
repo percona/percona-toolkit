@@ -91,7 +91,8 @@ like(
    "Checksumming continues after waiting for slave lag"
 );
 
-is(
+# This test randomly fails, we need to know the reason
+diag($output) if not is(
    PerconaTest::count_checksum_results($output, 'errors'),
    0,
    "No errors after waiting for slave lag"

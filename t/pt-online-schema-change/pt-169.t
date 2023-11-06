@@ -19,7 +19,6 @@ use Sandbox;
 use SqlModes;
 use File::Temp qw/ tempdir /;
 
-plan tests => 3;
 
 require "$trunk/bin/pt-online-schema-change";
 
@@ -30,6 +29,14 @@ my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
 
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
+}
+
+my $vp = VersionParser->new($master_dbh);
+
+if ($vp->cmp('8.0') > -1 && $vp->cmp('8.0.14') < 0 && $vp->flavor() !~ m/maria/i) {
+    plan skip_all => 'Drop swap does not work with MySQL 8.0 - 8.0.13';
+} else {
+    plan tests => 3;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -51,12 +58,14 @@ $sb->load_file('master', "$sample/pt-169.sql");
       },
 );
 
+# 1
 is(
       $exit_status,
       $ERROR_UPDATING_FKS,
       "--alter rename columns with uppercase names -> exit status 0",
 );
 
+# 2
 # Since drop_swap has failed, the clueanup process should be skipped and the new table
 # shouldn't be deleted
 my $row = $master_dbh->selectrow_hashref("select count(*) AS how_many from test._users_new");

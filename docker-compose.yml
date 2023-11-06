@@ -4,7 +4,7 @@ services:
   standalone:
     network_mode: host
     image: ${TEST_MONGODB_FLAVOR}:${TEST_PSMDB_VERSION}
-    command: --port=27017 
+    command: --port=27017
     volumes:
     - ./src/go/docker/test/entrypoint-mongod.sh:/entrypoint.sh:ro
     - ./src/go/docker/test/entrypoint-mongod.sh:/usr/local/bin/docker-entrypoint.sh:ro
@@ -132,7 +132,7 @@ services:
   mongos:
     network_mode: host
     image: ${TEST_MONGODB_FLAVOR}:${TEST_PSMDB_VERSION}
-    command: --port=${TEST_MONGODB_MONGOS_PORT} --configdb=${TEST_MONGODB_CONFIGSVR_RS}/127.0.0.1:${TEST_MONGODB_CONFIGSVR1_PORT} 
+    command: --port=${TEST_MONGODB_MONGOS_PORT} --configdb=${TEST_MONGODB_CONFIGSVR_RS}/127.0.0.1:${TEST_MONGODB_CONFIGSVR1_PORT}
     volumes:
     - ./src/go/docker/test/entrypoint-mongos.sh:/entrypoint.sh:ro
     - ./src/go/docker/test/entrypoint-mongos.sh:/usr/local/bin/docker-entrypoint.sh:ro

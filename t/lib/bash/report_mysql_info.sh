@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 44
+plan 46
 
 . "$LIB_DIR/alt_cmds.sh"
 . "$LIB_DIR/log_warn_die.sh"
@@ -231,7 +231,8 @@ is \
 echo "INNODB_CMP  ACTIVE" >> $PT_TMPDIR/plugins
 is \
    "$(get_plugin_status $PT_TMPDIR/plugins "INNODB_CMP" )"  \
-   "ACTIVE"
+   "ACTIVE" \
+   "InnoDB compression active"
 
 cat <<EOF > $PT_TMPDIR/plugins
 binlog   ACTIVE   STORAGE ENGINE NULL  GPL
@@ -476,7 +477,7 @@ cat <<EOF > "$PT_TMPDIR/expected"
 
 EOF
 format_overall_db_stats "$samples/mysql-schema-001.txt" > "$PT_TMPDIR/got"
-no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "format_overall_db_stats"
 
 cat <<EOF > $PT_TMPDIR/expected
 
@@ -719,7 +720,10 @@ OPT_READ_SAMPLES=""
 OPT_ALL_DATABASES=""
 NAME_VAL_LEN=25
 report_mysql_summary "$samples/tempdir" | tail -n+3 > "$PT_TMPDIR/got"
-no_diff "$PT_TMPDIR/got" "$samples/expected_result_report_summary.txt"
+no_diff \
+   "$PT_TMPDIR/got" \
+   "$samples/expected_result_report_summary.txt" \
+   "report_mysql_summary, default result"
 
 _NO_FALSE_NEGATIVES=""
 OPT_SLEEP=10
@@ -752,6 +756,18 @@ no_diff \
    "$PT_TMPDIR/got" \
    "$samples/expected_output_temp007.txt" \
    "report_mysql_summary, dir: temp007 (PXC, traditional master)"
+
+report_mysql_summary "$samples/temp_enc008" 2>/dev/null | tail -n+3 > "$PT_TMPDIR/got"
+no_diff \
+   "$PT_TMPDIR/got" \
+   "$samples/expected_output_temp_enc008.txt" \
+   "report_mysql_summary, dir: temp_enc008 (libjemalloc, encryption)"
+
+report_mysql_summary "$samples/temp_enc009" 2>/dev/null | tail -n+3 > "$PT_TMPDIR/got"
+no_diff \
+   "$PT_TMPDIR/got" \
+   "$samples/expected_output_temp_enc009.txt" \
+   "report_mysql_summary, dir: temp_enc009 (keyring plugin, MyRocks)"
 
 # ###########################################################################
 # parse_wsrep_provider_options
@@ -803,7 +819,6 @@ no_diff \
    "Bug 1015590: section_percona_server_features works on 5.1 with innodb_adaptive_checkpoint=none"
 
 section_percona_server_features "$samples/percona-server-5.1-variables-martin" > "$PT_TMPDIR/got"
-cp "$PT_TMPDIR/got" /tmp/dasgot
 no_diff \
    "$PT_TMPDIR/got" \
    "$samples/expected_output_ps-5.1-martin.txt" \

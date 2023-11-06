@@ -68,7 +68,7 @@ sub new {
    };
    return bless $self, $class;
 }
- 
+
 sub get_items {
    my ( $self, $section ) = @_;
    return $section ? $self->{items}->{$section} : $self->{items};
@@ -110,7 +110,7 @@ sub parse_from_file {
 # these command are passed to textblock().
 sub command {
    my ( $self, $cmd, $name ) = @_;
-   
+
    $name =~ s/\s+\Z//m;  # Remove \n and blank line after name.
 
    if  ( $cmd eq 'head1' ) {
@@ -145,7 +145,7 @@ sub command {
    else {
       $self->{current_section} = '';
    }
-   
+
    return;
 }
 

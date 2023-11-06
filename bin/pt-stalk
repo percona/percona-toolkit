@@ -9,10 +9,10 @@ set -u
 # ###########################################################################
 # log_warn_die package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/bash/log_warn_die.sh
 #   t/lib/bash/log_warn_die.sh
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 
 
@@ -57,10 +57,10 @@ _d () {
 # ###########################################################################
 # subshell package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/bash/subshell.sh
 #   t/lib/bash/subshell.sh
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 
 
@@ -109,10 +109,10 @@ kill_all_subshells() {
 # ###########################################################################
 # parse_options package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/bash/parse_options.sh
 #   t/lib/bash/parse_options.sh
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 
 
@@ -128,8 +128,8 @@ OPT_ERRS=0        # How many command line option errors
 OPT_VERSION=""    # If --version was specified
 OPT_HELP=""       # If --help was specified
 OPT_ASK_PASS=""   # If --ask-pass was specified
-OPT_MYSQL_ONLY="" # If --mysql-only was specified
 PO_DIR=""         # Directory with program option spec files
+GLOBAL_CONFIG=0   # We ignore non-recognized options in global configs
 
 usage() {
    local file="$1"
@@ -258,9 +258,15 @@ parse_options() {
          _parse_config_files "$user_config_file"
       done
    else
-      _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf" "/etc/percona-toolkit/$TOOL.conf"
+       GLOBAL_CONFIG=1
+      _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf"
+       GLOBAL_CONFIG=0
+       _parse_config_files "/etc/percona-toolkit/$TOOL.conf"
       if [ "${HOME:-}" ]; then
-         _parse_config_files "$HOME/.percona-toolkit.conf" "$HOME/.$TOOL.conf"
+         GLOBAL_CONFIG=1
+         _parse_config_files "$HOME/.percona-toolkit.conf"
+         GLOBAL_CONFIG=0
+         _parse_config_files "$HOME/.$TOOL.conf"
       fi
    fi
 
@@ -335,7 +341,7 @@ _eval_po() {
             *)
                echo "Invalid attribute in $opt_spec: $line" >&2
                exit 1
-         esac 
+         esac
       done < "$opt_spec"
 
       if [ -z "$opt" ]; then
@@ -367,7 +373,7 @@ _parse_config_files() {
 
          echo "$config_opt" | grep '^[ ]*[^#]' >/dev/null 2>&1 || continue
 
-         config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/[ ]+#.*$//')"
+         config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/\s[ ]*#.*$//')"
 
          [ "$config_opt" = "" ] && continue
 
@@ -459,8 +465,11 @@ _parse_command_line() {
          else
             spec=$(grep "^short form:-$opt\$" "$PT_TMPDIR"/po/* | cut -d ':' -f 1)
             if [ -z "$spec"  ]; then
-               option_error "Unknown option: $real_opt"
-               continue
+               if [ $GLOBAL_CONFIG -eq 1 ]; then
+                  continue
+               else
+                  option_error "Unknown option: $real_opt"
+               fi
             fi
          fi
 
@@ -475,7 +484,7 @@ _parse_command_line() {
             if [ "$val" ]; then
                option_error "Option $real_opt does not take a value"
                continue
-            fi 
+            fi
             if [ "$opt_is_negated" ]; then
                val=""
             else
@@ -518,10 +527,10 @@ size_to_bytes() {
 # ###########################################################################
 # mysql_options package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/bash/mysql_options.sh
 #   t/lib/bash/mysql_options.sh
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 
 
@@ -544,16 +553,23 @@ mysql_options() {
    if [ -n "$OPT_USER" ]; then
       MYSQL_ARGS="$MYSQL_ARGS --user=$OPT_USER"
    fi
-   if [ -n "$OPT_PASSWORD" ]; then
+   if [ -n "$OPT_ASK_PASS" ]; then
+      stty -echo
+      >&2 printf "Enter MySQL password: "
+      read GIVEN_PASS
+      stty echo
+      printf "\n"
+      MYSQL_ARGS="$MYSQL_ARGS --password=$GIVEN_PASS"
+   elif [ -n "$OPT_PASSWORD" ]; then
       MYSQL_ARGS="$MYSQL_ARGS --password=$OPT_PASSWORD"
    fi
-   
+
    echo $MYSQL_ARGS
 }
 
 arrange_mysql_options() {
    local opts="$1"
-   
+
    local rearranged=""
    for opt in $opts; do
       if [ "$(echo $opt | awk -F= '{print $1}')" = "--defaults-file" ]; then
@@ -562,7 +578,7 @@ arrange_mysql_options() {
          rearranged="$rearranged $opt"
       fi
    done
-   
+
    echo "$rearranged"
 }
 
@@ -573,10 +589,10 @@ arrange_mysql_options() {
 # ###########################################################################
 # tmpdir package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/bash/tmpdir.sh
 #   t/lib/bash/tmpdir.sh
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 
 
@@ -614,10 +630,10 @@ rm_tmpdir() {
 # ###########################################################################
 # alt_cmds package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/bash/alt_cmds.sh
 #   t/lib/bash/alt_cmds.sh
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 
 
@@ -661,10 +677,10 @@ _which() {
 # ###########################################################################
 # safeguards package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/bash/safeguards.sh
 #   t/lib/bash/safeguards.sh
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 
 
@@ -717,10 +733,10 @@ check_disk_space() {
 # ###########################################################################
 # daemon package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/bash/daemon.sh
 #   t/lib/bash/daemon.sh
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 
 
@@ -766,10 +782,10 @@ remove_pid_file() {
 # ###########################################################################
 # collect package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/bash/collect.sh
 #   t/lib/bash/collect.sh
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 
 
@@ -796,9 +812,66 @@ collect() {
    local d="$1"  # directory to save results in
    local p="$2"  # prefix for each result file
 
-   local mysqld_pid=""
+   local cnt=$(($OPT_RUN_TIME / $OPT_SLEEP_COLLECT))
+
+   if [ ! "$OPT_SYSTEM_ONLY" ]; then
+      local mysqld_pid=""
+      local mysql_version=""
+      local mysql_error_log=""
+      local tail_error_log_pid=""
+      local have_lock_waits_table=""
+      local lock_table_p_s=""
+      local have_oprofile=""
+      local mysqladmin_pid=""
+      local mutex=""
+      local tcpdump_pid=""
+      local ps_instrumentation_enabled=""
+
+      collect_mysql_data_one
+   fi
+
    if [ ! "$OPT_MYSQL_ONLY" ]; then
-      mysqld_pid=$(_pidof mysqld | awk '{print $1; exit;}')
+      collect_system_data
+   fi
+
+   log "Loop start: $(date +'TS %s.%N %F %T')"
+   local start_time=$(date +'%s')
+   local curr_time=$start_time
+   local ts="$(date +"TS %s.%N %F %T")"
+
+   while [ $((curr_time - start_time)) -lt $OPT_RUN_TIME ]; do
+      if [ ! "$OPT_MYSQL_ONLY" ]; then
+         collect_system_data_loop
+      fi
+
+      if [ ! "$OPT_SYSTEM_ONLY" ]; then
+         collect_mysql_data_loop
+      fi
+
+      curr_time=$(date +'%s')
+   done
+   log "Loop end: $(date +'TS %s.%N %F %T')"
+
+   if [ ! "$OPT_SYSTEM_ONLY" ]; then
+      collect_mysql_data_two
+   fi
+
+   hostname > "$d/$p-hostname"
+
+   wait_for_subshells $OPT_RUN_TIME
+   kill_all_subshells
+   for file in "$d/$p-"*; do
+      if [ -z "$(grep -v '^TS ' --max-count 10 "$file")" ]; then
+         log "Removing empty file $file";
+         rm "$file"
+      fi
+   done
+}
+
+collect_mysql_data_one() {
+   if [ ! "$OPT_MYSQL_ONLY" ]; then
+      port=$($CMD_MYSQL $EXT_ARGV -ss -e 'SELECT @@port')
+      mysqld_pid=$(lsof -i ":${port}" | grep -i listen | cut -f 3 -d" ")
    fi
 
    if [ "$CMD_PMAP" -a "$mysqld_pid" ]; then
@@ -820,14 +893,14 @@ collect() {
    collect_mysql_variables "$d/$p-variables" &
    sleep .5
 
-   local mysql_version="$(awk '/^version[^_]/{print substr($2,1,3)}' "$d/$p-variables")"
+   mysql_version="$(awk '/^version[^_]/{print substr($2,1,3)}' "$d/$p-variables")"
 
-   local mysql_error_log="$(awk '/^log_error /{print $2}' "$d/$p-variables")"
+   mysql_error_log="$(awk '/^log_error\s/{print $2}' "$d/$p-variables")"
    if [ -z "$mysql_error_log" -a "$mysqld_pid" ]; then
+      log $mysqld_pid
       mysql_error_log="$(ls -l /proc/$mysqld_pid/fd | awk '/ 2 ->/{print $NF}')"
    fi
 
-   local tail_error_log_pid=""
    if [ "$mysql_error_log" -a ! "$OPT_MYSQL_ONLY" ]; then
       log "The MySQL error log seems to be $mysql_error_log"
       tail -f "$mysql_error_log" >"$d/$p-log_error" &
@@ -836,11 +909,11 @@ collect() {
       $CMD_MYSQLADMIN $EXT_ARGV
    else
       log "Could not find the MySQL error log"
-   fi 
+   fi
    if [ "${mysql_version}" '>' "5.1" ]; then
-      local mutex="SHOW ENGINE INNODB MUTEX"
+      mutex="SHOW ENGINE INNODB MUTEX"
    else
-      local mutex="SHOW MUTEX STATUS"
+      mutex="SHOW MUTEX STATUS"
    fi
    innodb_status 1
    tokudb_status 1
@@ -849,7 +922,6 @@ collect() {
    $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status1" &
    open_tables                      >> "$d/$p-opentables1"   &
 
-   local tcpdump_pid=""
    if [ "$CMD_TCPDUMP" -a  "$OPT_COLLECT_TCPDUMP" ]; then
       local port=$(awk '/^port/{print $2}' "$d/$p-variables")
       if [ "$port" ]; then
@@ -858,7 +930,6 @@ collect() {
       fi
    fi
 
-   local have_oprofile=""
    if [ "$CMD_OPCONTROL" -a "$OPT_COLLECT_OPROFILE" ]; then
       if $CMD_OPCONTROL --init; then
          $CMD_OPCONTROL --start --no-vmlinux
@@ -869,114 +940,120 @@ collect() {
       local strace_pid=$!
    fi
 
-   if [ ! "$OPT_MYSQL_ONLY" ]; then 
-      ps -eaF  >> "$d/$p-ps"  &
-      top -bn${OPT_RUN_TIME} >> "$d/$p-top" &
-
-      [ "$mysqld_pid" ] && _lsof $mysqld_pid >> "$d/$p-lsof" &
-
-      if [ "$CMD_SYSCTL" ]; then
-         $CMD_SYSCTL -a >> "$d/$p-sysctl" &
-      fi
-
-      if [ "$CMD_DMESG" ]; then
-         local UPTIME=`cat /proc/uptime | awk '{ print $1 }'`
-         local START_TIME=$(echo "$UPTIME 60" | awk '{print ($1 - $2)}')
-         $CMD_DMESG  | perl -ne 'm/\[\s*(\d+)\./; if ($1 > '${START_TIME}') { print }' >> "$d/$p-dmesg" & 
-      fi
-
-      local cnt=$(($OPT_RUN_TIME / $OPT_SLEEP_COLLECT))
-      if [ "$CMD_VMSTAT" ]; then
-         $CMD_VMSTAT $OPT_SLEEP_COLLECT $cnt >> "$d/$p-vmstat" &
-         $CMD_VMSTAT $OPT_RUN_TIME 2 >> "$d/$p-vmstat-overall" &
-      fi
-      if [ "$CMD_IOSTAT" ]; then
-         $CMD_IOSTAT -dx $OPT_SLEEP_COLLECT $cnt >> "$d/$p-iostat" &
-         $CMD_IOSTAT -dx $OPT_RUN_TIME 2 >> "$d/$p-iostat-overall" &
-      fi
-      if [ "$CMD_MPSTAT" ]; then
-         $CMD_MPSTAT -P ALL $OPT_SLEEP_COLLECT $cnt >> "$d/$p-mpstat" &
-         $CMD_MPSTAT -P ALL $OPT_RUN_TIME 1 >> "$d/$p-mpstat-overall" &
-      fi
-
-      $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
-      local mysqladmin_pid=$!
-   fi 
-
-   local have_lock_waits_table=""
    $CMD_MYSQL $EXT_ARGV -e "SHOW TABLES FROM INFORMATION_SCHEMA" \
       | grep -i "INNODB_LOCK_WAITS" >/dev/null 2>&1
    if [ $? -eq 0 ]; then
       have_lock_waits_table="yes"
+   else
+      $CMD_MYSQL $EXT_ARGV -e "SHOW TABLES FROM performance_schema" \
+         | grep -i "data_lock_waits" >/dev/null 2>&1
+      if [ $? -eq 0 ]; then
+         have_lock_waits_table="yes"
+         lock_table_p_s="yes"
+      fi
    fi
 
-   log "Loop start: $(date +'TS %s.%N %F %T')"
-   local start_time=$(date +'%s')
-   local curr_time=$start_time
-   local ps_instrumentation_enabled=$($CMD_MYSQL $EXT_ARGV -e 'SELECT ENABLED FROM performance_schema.setup_instruments WHERE NAME = "transaction";' \
+   $CMD_MYSQLADMIN $EXT_ARGV ext -i$OPT_SLEEP_COLLECT -c$cnt >>"$d/$p-mysqladmin" &
+   mysqladmin_pid=$!
+
+   ps_instrumentation_enabled=$($CMD_MYSQL $EXT_ARGV -e 'SELECT ENABLED FROM performance_schema.setup_instruments WHERE NAME = "transaction";' \
                                       | sed "2q;d" | sed 'y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/')
 
-   if [ !$ps_instrumentation_enabled = "yes" ]; then
+   if [ $ps_instrumentation_enabled != "yes" ]; then
       log "Performance Schema instrumentation is disabled"
    fi
+}
 
-   while [ $((curr_time - start_time)) -lt $OPT_RUN_TIME ]; do
-      if [ ! "$OPT_MYSQL_ONLY" ]; then
-         disk_space $d > $d/$p-disk-space
-         check_disk_space          \
-            $d/$p-disk-space       \
-            "$OPT_DISK_BYTES_FREE" \
-            "$OPT_DISK_PCT_FREE"   \
-            || break
+collect_system_data() {
+   ps -eaF  >> "$d/$p-ps"  &
+   top -bn${OPT_RUN_TIME} >> "$d/$p-top" &
 
-         sleep $(date +'%s.%N' | awk "{print $OPT_SLEEP_COLLECT - (\$1 % $OPT_SLEEP_COLLECT)}")
-         local ts="$(date +"TS %s.%N %F %T")"
+   [ "$mysqld_pid" ] && _lsof $mysqld_pid >> "$d/$p-lsof" &
 
-         if [ -d "/proc" ]; then
-            if [ -f "/proc/diskstats" ]; then
-               (echo $ts; cat /proc/diskstats) >> "$d/$p-diskstats" &
-            fi
-            if [ -f "/proc/stat" ]; then
-               (echo $ts; cat /proc/stat) >> "$d/$p-procstat" &
-            fi
-            if [ -f "/proc/vmstat" ]; then
-               (echo $ts; cat /proc/vmstat) >> "$d/$p-procvmstat" &
-            fi
-            if [ -f "/proc/meminfo" ]; then
-               (echo $ts; cat /proc/meminfo) >> "$d/$p-meminfo" &
-            fi
-            if [ -f "/proc/slabinfo" ]; then
-               (echo $ts; cat /proc/slabinfo) >> "$d/$p-slabinfo" &
-            fi
-            if [ -f "/proc/interrupts" ]; then
-               (echo $ts; cat /proc/interrupts) >> "$d/$p-interrupts" &
-            fi
-         fi
-         (echo $ts; df -k) >> "$d/$p-df" &
-         (echo $ts; netstat -antp) >> "$d/$p-netstat"   &
-         (echo $ts; netstat -s)    >> "$d/$p-netstat_s" &
-     fi
-      ($CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
-         >> "$d/$p-processlist" &
-      if [ "$have_lock_waits_table" ]; then
-         (lock_waits)   >>"$d/$p-lock-waits" &
-         (transactions) >>"$d/$p-transactions" &
+   if [ "$CMD_SYSCTL" ]; then
+      $CMD_SYSCTL -a >> "$d/$p-sysctl" &
+   fi
+
+   if [ "$CMD_DMESG" ]; then
+      local UPTIME=`cat /proc/uptime | awk '{ print $1 }'`
+      local START_TIME=$(echo "$UPTIME 60" | awk '{print ($1 - $2)}')
+      $CMD_DMESG  | perl -ne 'm/\[\s*(\d+)\./; if ($1 > '${START_TIME}') { print }' >> "$d/$p-dmesg" &
+   fi
+
+   if [ "$CMD_VMSTAT" ]; then
+      $CMD_VMSTAT $OPT_SLEEP_COLLECT $cnt >> "$d/$p-vmstat" &
+      $CMD_VMSTAT $OPT_RUN_TIME 2 >> "$d/$p-vmstat-overall" &
+   fi
+   if [ "$CMD_IOSTAT" ]; then
+      $CMD_IOSTAT -dx $OPT_SLEEP_COLLECT $cnt >> "$d/$p-iostat" &
+      $CMD_IOSTAT -dx $OPT_RUN_TIME 2 >> "$d/$p-iostat-overall" &
+   fi
+   if [ "$CMD_MPSTAT" ]; then
+      $CMD_MPSTAT -P ALL $OPT_SLEEP_COLLECT $cnt >> "$d/$p-mpstat" &
+      $CMD_MPSTAT -P ALL $OPT_RUN_TIME 1 >> "$d/$p-mpstat-overall" &
+   fi
+}
+
+collect_mysql_data_loop() {
+   (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
+      >> "$d/$p-processlist" &
+   if [ "$have_lock_waits_table" ]; then
+      (echo $ts; lock_waits "$d/lock_waits.running")   >>"$d/$p-lock-waits" &
+      (echo $ts; transactions) >>"$d/$p-transactions" &
+   fi
+
+   if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes" ]; then
+      ps_locks_transactions "$d/$p-ps-locks-transactions"
+   fi
+
+   if [ "${mysql_version}" '>' "5.6" ]; then
+      (echo $ts; ps_prepared_statements "$d/prepared_statements.isrunnning") >> "$d/$p-prepared-statements" &
+   fi
+
+   slave_status "$d/$p-slave-status" "${mysql_version}"
+}
+
+collect_system_data_loop() {
+   disk_space $d > $d/$p-disk-space
+   check_disk_space          \
+      $d/$p-disk-space       \
+      "$OPT_DISK_BYTES_FREE" \
+      "$OPT_DISK_PCT_FREE"   \
+      || break
+
+   sleep $(date +'%s.%N' | awk "{print $OPT_SLEEP_COLLECT - (\$1 % $OPT_SLEEP_COLLECT)}")
+   ts="$(date +"TS %s.%N %F %T")"
+
+   if [ -d "/proc" ]; then
+      if [ -f "/proc/diskstats" ]; then
+         (echo $ts; cat /proc/diskstats) >> "$d/$p-diskstats" &
       fi
-
-      if [ "${mysql_version}" '>' "5.6" ] && [ $ps_instrumentation_enabled == "yes" ]; then
-         ps_locks_transactions "$d/$p-ps-locks-transactions"
+      if [ -f "/proc/stat" ]; then
+         (echo $ts; cat /proc/stat) >> "$d/$p-procstat" &
       fi
-
-      if [ "${mysql_version}" '>' "5.6" ]; then
-         (ps_prepared_statements) >> "$d/$p-prepared-statements" &
+      if [ -f "/proc/vmstat" ]; then
+         (echo $ts; cat /proc/vmstat) >> "$d/$p-procvmstat" &
       fi
+      if [ -f "/proc/meminfo" ]; then
+         (echo $ts; cat /proc/meminfo) >> "$d/$p-meminfo" &
+      fi
+      if [ -f "/proc/slabinfo" ]; then
+         (echo $ts; cat /proc/slabinfo) >> "$d/$p-slabinfo" &
+      fi
+      if [ -f "/proc/interrupts" ]; then
+         (echo $ts; cat /proc/interrupts) >> "$d/$p-interrupts" &
+      fi
+   fi
+   (echo $ts; df -k) >> "$d/$p-df" &
+   (echo $ts; netstat -antp) >> "$d/$p-netstat"   &
+   (echo $ts; netstat -s)    >> "$d/$p-netstat_s" &
+   (echo $ts;
+   for node in `ls -d /sys/devices/system/node/node*`; do
+      echo `basename $node`; cat "$node/numastat"
+   done)                     >> "$d/$p-numastat"   &
+}
 
-      slave_status "$d/$p-slave-status" "${mysql_version}" 
-
-      curr_time=$(date +'%s')
-   done
-   log "Loop end: $(date +'TS %s.%N %F %T')"
-
+collect_mysql_data_two() {
    if [ "$have_oprofile" ]; then
       $CMD_OPCONTROL --stop
       $CMD_OPCONTROL --dump
@@ -1020,75 +1097,116 @@ collect() {
    $CMD_MYSQL $EXT_ARGV -e "$mutex" >> "$d/$p-mutex-status2" &
    open_tables                      >> "$d/$p-opentables2"   &
 
-   kill $mysqladmin_pid
+   [ "$mysqladmin_pid" ] &&  kill $mysqladmin_pid
    [ "$tail_error_log_pid" ] && kill $tail_error_log_pid
    [ "$tcpdump_pid" ]        && kill $tcpdump_pid
-
-   hostname > "$d/$p-hostname"
-
-   wait_for_subshells $OPT_RUN_TIME
-   kill_all_subshells
-   for file in "$d/$p-"*; do
-      if [ -z "$(grep -v '^TS ' --max-count 10 "$file")" ]; then
-         log "Removing empty file $file";
-         rm "$file"
-      fi
-   done
 }
 
 open_tables() {
-   local open_tables=$($CMD_MYSQLADMIN $EXT_ARGV ext | grep "Open_tables" | awk '{print $4}')
+   local open_tables=$($CMD_MYSQLADMIN $EXT_ARGV ext | grep "Open_tables" | grep -v "Open_tables_with_triggers" | awk '{print $4}')
    if [ -n "$open_tables" -a $open_tables -le 1000 ]; then
       $CMD_MYSQL $EXT_ARGV -e 'SHOW OPEN TABLES' &
    else
-      log "Too many open tables: $open_tables"
+      log "Logging disabled due to having over 1000 tables open. Number of tables currently open: $open_tables"
    fi
 }
 
 lock_waits() {
-   local sql1="SELECT SQL_NO_CACHE
-      CONCAT('thread ', b.trx_mysql_thread_id, ' from ', p.host) AS who_blocks,
-      IF(p.command = \"Sleep\", p.time, 0) AS idle_in_trx,
-      MAX(TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP)) AS max_wait_time,
-      COUNT(*) AS num_waiters
-   FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS AS w
-   INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.blocking_trx_id
-   INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.requesting_trx_id
-   LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
-   GROUP BY who_blocks ORDER BY num_waiters DESC\G"
-   $CMD_MYSQL $EXT_ARGV -e "$sql1"
+   local flag_file=$1
+   if test -f "$flag_file"; then
+      echo "Lock collection already running, skipping this iteration"
+   else
+      touch "$flag_file"
+      local sql1=""
+      local sql2=""
+      if [ "${lock_table_p_s}" != "yes" ]; then
+         sql1="SELECT SQL_NO_CACHE
+            CONCAT('thread ', b.trx_mysql_thread_id, ' from ', p.host) AS who_blocks,
+            MAX(IF(p.command = \"Sleep\", p.time, 0)) AS idle_in_trx,
+            MAX(TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP)) AS max_wait_time,
+            COUNT(*) AS num_waiters
+         FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS AS w
+         INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.blocking_trx_id
+         INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.requesting_trx_id
+         LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
+         GROUP BY who_blocks ORDER BY num_waiters DESC\G"
 
-   local sql2="SELECT SQL_NO_CACHE
-      r.trx_id AS waiting_trx_id,
-      r.trx_mysql_thread_id AS waiting_thread,
-      TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP) AS wait_time,
-      r.trx_query AS waiting_query,
-      l.lock_table AS waiting_table_lock,
-      b.trx_id AS blocking_trx_id, b.trx_mysql_thread_id AS blocking_thread,
-      SUBSTRING(p.host, 1, INSTR(p.host, ':') - 1) AS blocking_host,
-      SUBSTRING(p.host, INSTR(p.host, ':') +1) AS blocking_port,
-      IF(p.command = \"Sleep\", p.time, 0) AS idle_in_trx,
-      b.trx_query AS blocking_query
-   FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS AS w
-   INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.blocking_trx_id
-   INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.requesting_trx_id
-   INNER JOIN INFORMATION_SCHEMA.INNODB_LOCKS AS l ON w.requested_lock_id = l.lock_id
-   LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
-   ORDER BY wait_time DESC\G"
-   $CMD_MYSQL $EXT_ARGV -e "$sql2"
-} 
+         sql2="SELECT SQL_NO_CACHE
+            r.trx_id AS waiting_trx_id,
+            r.trx_mysql_thread_id AS waiting_thread,
+            TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP) AS wait_time,
+            r.trx_query AS waiting_query,
+            l.lock_table AS waiting_table_lock,
+            b.trx_id AS blocking_trx_id, b.trx_mysql_thread_id AS blocking_thread,
+            SUBSTRING(p.host, 1, INSTR(p.host, ':') - 1) AS blocking_host,
+            SUBSTRING(p.host, INSTR(p.host, ':') +1) AS blocking_port,
+            IF(p.command = \"Sleep\", p.time, 0) AS idle_in_trx,
+            b.trx_query AS blocking_query
+         FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS AS w
+         INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.blocking_trx_id
+         INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.requesting_trx_id
+         INNER JOIN INFORMATION_SCHEMA.INNODB_LOCKS AS l ON w.requested_lock_id = l.lock_id
+         LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
+         ORDER BY wait_time DESC\G"
+      else
+         sql1="SELECT SQL_NO_CACHE
+            CONCAT('thread ', b.trx_mysql_thread_id, ' from ', p.host) AS who_blocks,
+            MAX(IF(p.command = \"Sleep\", p.time, 0)) AS idle_in_trx,
+            MAX(TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP)) AS max_wait_time,
+            COUNT(*) AS num_waiters
+         FROM performance_schema.data_lock_waits AS w
+         INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.BLOCKING_ENGINE_TRANSACTION_ID
+         INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.REQUESTING_ENGINE_TRANSACTION_ID
+         LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
+         GROUP BY who_blocks ORDER BY num_waiters DESC\G"
+
+         sql2="SELECT SQL_NO_CACHE
+            r.trx_id AS waiting_trx_id,
+            r.trx_mysql_thread_id AS waiting_thread,
+            TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP) AS wait_time,
+            r.trx_query AS waiting_query,
+            CONCAT('\`', l.OBJECT_SCHEMA, '\`.\`', l.OBJECT_NAME, '\`') AS waiting_table_lock,
+            b.trx_id AS blocking_trx_id, b.trx_mysql_thread_id AS blocking_thread,
+            SUBSTRING(p.host, 1, INSTR(p.host, ':') - 1) AS blocking_host,
+            SUBSTRING(p.host, INSTR(p.host, ':') +1) AS blocking_port,
+            IF(p.command = \"Sleep\", p.time, 0) AS idle_in_trx,
+            b.trx_query AS blocking_query
+         FROM performance_schema.data_lock_waits AS w
+         INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.BLOCKING_ENGINE_TRANSACTION_ID
+         INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.REQUESTING_ENGINE_TRANSACTION_ID
+         INNER JOIN performance_schema.data_locks AS l ON w.REQUESTING_ENGINE_LOCK_ID = l.ENGINE_LOCK_ID
+         LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
+         ORDER BY wait_time DESC\G"
+      fi
+
+      $CMD_MYSQL $EXT_ARGV -e "$sql1"
+      $CMD_MYSQL $EXT_ARGV -e "$sql2"
+
+      rm "$flag_file"
+   fi
+}
 
 transactions() {
    $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_TRX ORDER BY trx_id\G"
-   $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_LOCKS ORDER BY lock_trx_id\G"
-   $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS ORDER BY blocking_trx_id, requesting_trx_id\G"
+   if [ "${lock_table_p_s}" != "yes" ]; then
+      $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_LOCKS ORDER BY lock_trx_id\G"
+      $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS ORDER BY blocking_trx_id, requesting_trx_id\G"
+   else
+      $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM performance_schema.data_locks ORDER BY ENGINE_TRANSACTION_ID\G"
+      $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM performance_schema.data_lock_waits ORDER BY BLOCKING_ENGINE_TRANSACTION_ID, REQUESTING_ENGINE_TRANSACTION_ID\G"
+   fi
 }
 
 tokudb_status() {
     local n=$1
 
-    $CMD_MYSQL $EXT_ARGV -e "SHOW ENGINE TOKUDB STATUS\G" \
-      >> "$d/$p-tokudbstatus$n" || rm -f "$d/$p-tokudbstatus$n"
+    has_tokudb=`$CMD_MYSQL $EXT_ARGV -e "SHOW ENGINES" | grep -i 'tokudb'`
+    exit_code=$?
+
+    if [ $exit_code -eq 0 ]; then
+       $CMD_MYSQL $EXT_ARGV -e "SHOW ENGINE TOKUDB STATUS\G" \
+         >> "$d/$p-tokudbstatus$n" || rm -f "$d/$p-tokudbstatus$n"
+    fi
 }
 
 innodb_status() {
@@ -1125,8 +1243,8 @@ rocksdb_status() {
 }
 
 ps_locks_transactions() {
-   local outfile=$1 
-   
+   local outfile=$1
+
    $CMD_MYSQL $EXT_ARGV -e 'select @@performance_schema' | grep "1" &>/dev/null
 
    if [ $? -eq 0 ]; then
@@ -1152,19 +1270,32 @@ ps_locks_transactions() {
 }
 
 ps_prepared_statements() {
-   $CMD_MYSQL $EXT_ARGV -e "SELECT t.processlist_id, pse.* \
-                            FROM performance_schema.prepared_statements_instances pse \
-                            JOIN performance_schema.threads t \
-                            ON (pse.OWNER_THREAD_ID=t.thread_id)\G"
+   local flag_file=$1
+   if test -f "$flag_file"; then
+      echo "Prepared statements collection already running, skipping this iteration"
+   else
+      touch "$flag_file"
+      $CMD_MYSQL $EXT_ARGV -e "SELECT t.processlist_id, pse.* \
+                               FROM performance_schema.prepared_statements_instances pse \
+                               JOIN performance_schema.threads t \
+                               ON (pse.OWNER_THREAD_ID=t.thread_id)\G"
+      rm "$flag_file"
+   fi
 }
 
 slave_status() {
    local outfile=$1
    local mysql_version=$2
 
-   local sql="SHOW SLAVE STATUS\G"   
+   if [ "${mysql_version}" '<' "8.1" ]; then
+      local sql="SHOW SLAVE STATUS\G"
+   else
+      local sql="SHOW REPLICA STATUS\G"
+   fi
+
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
+
    if [ "${mysql_version}" '>' "5.6" ]; then
       local sql="SELECT * FROM performance_schema.replication_connection_configuration JOIN performance_schema.replication_applier_configuration USING(channel_name)\G"
       echo -e "\n$sql\n" >> $outfile
@@ -1178,11 +1309,11 @@ slave_status() {
       echo -e "\n$sql\n" >> $outfile
       $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
    fi
+
 }
 
-
 collect_mysql_variables() {
-   local outfile=$1 
+   local outfile=$1
 
    local sql="SHOW GLOBAL VARIABLES"
    echo -e "\n$sql\n" >> $outfile
@@ -1191,11 +1322,11 @@ collect_mysql_variables() {
    sql="select * from performance_schema.variables_by_thread order by thread_id, variable_name;"
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
-   
+
    sql="select * from performance_schema.user_variables_by_thread order by thread_id, variable_name;"
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
-   
+
    sql="select * from performance_schema.status_by_thread order by thread_id, variable_name; "
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
@@ -1350,13 +1481,17 @@ sleep_ok() {
 }
 
 purge_samples() {
-   local dir="$1"
+   local dir=`realpath -s "$1"`
    local retention_time="$2"
    local retention_count="$3"
    local retention_size="$4"
 
    # Delete collect files which more than --retention-time days old.
-   find "$dir" -type f -mtime +$retention_time -exec rm -f '{}' \;
+   if [ -n "$OPT_PREFIX" ]; then
+      find "$dir" -maxdepth 1 -type f -mtime +$retention_time -name "$OPT_PREFIX-*" -exec rm -f '{}' \;
+   else
+      find "$dir" -maxdepth 1 -type f -mtime +$retention_time -regextype posix-egrep -regex "$dir/[0-9]{4}(_[0-9]{2}){5}-.*" -exec rm -f '{}' \;
+   fi
 
    local oprofile_dir="/var/lib/oprofile/samples"
    if [ -d "$oprofile_dir" ]; then
@@ -1369,21 +1504,21 @@ purge_samples() {
    targetCnt=$(($retention_count + 0))
    if [ $targetCnt -gt 0 ]; then
       targetCnt=$(($retention_count + 1))
-      files_to_delete=$(find $dir -type f -exec basename {} \; | cut -f1 -d- | sort -r | uniq | tail -n +${targetCnt})
+      files_to_delete=$(find "$dir" -maxdepth 1 -type f -exec basename {} \; | cut -f1 -d- | sort -r | uniq | tail -n +${targetCnt})
       for prefix in $files_to_delete; do
-          echo "deleting files ${dir}${prefix}* according to the --retention-count param"
-          rm -f ${dir}${prefix}* 2>/dev/null
+          echo "deleting files ${dir}/${prefix}* according to the --retention-count param"
+          rm -f ${dir}/${prefix}* 2>/dev/null
       done
    fi
 
    targetSize=$(($retention_size + 0))
    if [ $targetSize -gt 0 ]; then
-      files_to_delete=$(find $dir -type f -exec basename {} \; | cut -f1 -d- | sort -r | uniq | tail -n +1)
+      files_to_delete=$(find "$dir" -maxdepth 1 -type f -exec basename {} \; | cut -f1 -d- | sort -r | uniq | tail -n +1)
       for prefix in $files_to_delete; do
           current_size=$(du -BM $dir | cut -f1 -d"M")
           if [ $current_size -gt $targetSize ]; then
-             echo "deleting files ${dir}${prefix}* according to the --retention-size param"
-             rm -f ${dir}${prefix}* 2>/dev/null
+             echo "deleting files ${dir}/${prefix}* according to the --retention-size param"
+             rm -f ${dir}/${prefix}* 2>/dev/null
           else
              break
           fi
@@ -1441,12 +1576,16 @@ stalk() {
          log "$msg"
       fi
 
-      if [ "$matched" -a $cycles_true -ge $OPT_CYCLES ]; then 
+      if [ "$matched" -a $cycles_true -ge $OPT_CYCLES ]; then
          # ##################################################################
          # Start collecting, maybe.
          # ##################################################################
          log "Collect $ITER triggered"
-         log "MYSQL_ONLY: $OPT_MYSQL_ONLY"
+         if [ "$OPT_MYSQL_ONLY" ]; then
+            log "MYSQL_ONLY: $OPT_MYSQL_ONLY"
+         elif [ "$OPT_SYSTEM_ONLY" ]; then
+            log "SYSTEM_ONLY: $OPT_SYSTEM_ONLY"
+         fi
 
          # Send email to whomever that collect has been triggered.
          if [ "$OPT_NOTIFY_BY_EMAIL" ]; then
@@ -1462,7 +1601,9 @@ stalk() {
             local margin="20971520"  # default 20M margin, unless:
             if [ -n "$last_prefix" ]; then
                margin=$(du -mc "$OPT_DEST"/"$last_prefix"-* | tail -n 1 | awk '{print $1'})
-            fi 
+            fi
+            # Disk space checked even if system data collection is OFF
+            # See https://jira.percona.com/browse/PT-1486
             disk_space "$OPT_DEST" > "$OPT_DEST/$prefix-disk-space"
             check_disk_space                  \
                "$OPT_DEST/$prefix-disk-space" \
@@ -1490,7 +1631,7 @@ stalk() {
 
                # Plugin hook:
                after_collect $collector_pid
-            else 
+            else
                # There will not be enough disk space, so do not collect.
                warn "Collect canceled because there will not be enough disk space after collecting another $margin MB"
             fi
@@ -1544,6 +1685,10 @@ stalk() {
 
 main() {
    trap sigtrap SIGHUP SIGINT SIGTERM
+
+   if [ "$OPT_SYSTEM_ONLY" ] && [ "$OPT_MYSQL_ONLY" ]; then
+      log 'Both options --system-only and --mysql-only specified, collecting only disk-space, hostname, output, and trigger metrics';
+   fi
 
    # Note: $$ is the parent's PID, but we're a child proc.
    # Bash 4 has $BASHPID but we can't rely on that.  Consequently,
@@ -1616,7 +1761,7 @@ if    [ "${0##*/}" = "$TOOL" ] \
    fi
 
    # if ASK-PASS , request password on terminal without echoing. This will override --password
-   if [ -n "$OPT_ASK_PASS" ]; then 
+   if [ -n "$OPT_ASK_PASS" ]; then
       stty_orig=`stty -g`           # save original terminal setting.
       echo -n "Enter MySQL password: ";
       stty -echo                    # turn-off echoing.
@@ -1628,18 +1773,20 @@ if    [ "${0##*/}" = "$TOOL" ] \
    EXT_ARGV="$(arrange_mysql_options "$EXT_ARGV $MYSQL_ARGS")"
 
 
-   # Check that mysql and mysqladmin are in PATH.  If not, we're
-   # already dead in the water, so don't bother with cmd line opts,
-   # just error and exit.
-   [ -n "$(mysql --help)" ] \
-      || die "Cannot execute mysql.  Check that it is in PATH."
-   [ -n "$(mysqladmin --help)" ] \
-      || die "Cannot execute mysqladmin.  Check that it is in PATH."
+   if [ ! "$OPT_SYSTEM_ONLY" ]; then
+      # Check that mysql and mysqladmin are in PATH.  If not, we're
+      # already dead in the water, so don't bother with cmd line opts,
+      # just error and exit.
+      [ -n "$(mysql --help)" ] \
+         || die "Cannot execute mysql.  Check that it is in PATH."
+      [ -n "$(mysqladmin --help)" ] \
+         || die "Cannot execute mysqladmin.  Check that it is in PATH."
 
-   # Now that we have the cmd line opts, check that we can actually
-   # connect to MySQL.
-   [ -n "$(mysql $EXT_ARGV -e 'SELECT 1')" ] \
-      || die "Cannot connect to MySQL.  Check that MySQL is running and that the options after -- are correct."
+      # Now that we have the cmd line opts, check that we can actually
+      # connect to MySQL.
+      [ -n "$(mysql $EXT_ARGV -e 'SELECT 1')" ] \
+         || die "Cannot connect to MySQL.  Check that MySQL is running and that the options after -- are correct."
+   fi
 
    # Check existence and access to the --dest dir if we're collecting.
    if [ "$OPT_COLLECT" ]; then
@@ -1753,7 +1900,7 @@ Threads_running usually is.  Your job, as the tool's user, is to define an
 appropriate trigger condition for the tool.  Choose carefully, because the
 quality of your results will depend on the trigger you choose.
 
-You define the trigger with the L<"--function">, L<"--variable">, 
+You define the trigger with the L<"--function">, L<"--variable">,
 L<"--threshold">, and L<"--cycles"> options.  The default values
 for these options define a reasonable trigger, but you should adjust
 or change them to suite your particular system and needs.
@@ -1793,7 +1940,7 @@ operations is:
    rm old --dest files older than --retention-time
    if --collect process are still running; then
       wait up to --run-time * 3 seconds
-      kill any remaining --collect processes 
+      kill any remaining --collect processes
    fi
 
 The diagnostic data is written to files whose names begin with a timestamp, so
@@ -2138,7 +2285,7 @@ short form: -P; type: int
 
 Port number to use for connection.
 
-=item --prefix 
+=item --prefix
 
 type: string
 
@@ -2230,6 +2377,10 @@ with C<--no-stalk>.  Safeguard options, like L<"--disk-bytes-free"> and
 L<"--disk-pct-free">, are still respected.
 
 See also L<"--collect">.
+
+=item --system-only
+
+Trigger only operating system related captures, ignoring all others.
 
 =item --threshold
 
@@ -2344,7 +2495,7 @@ This tool requires Bash v3 or newer.  Certain options require other programs:
 
 =head1 BUGS
 
-For a list of known bugs, see L<http://www.percona.com/bugs/pt-stalk>.
+For a list of known bugs, see L<https://jira.percona.com/projects/PT/issues>.
 
 Please report bugs at L<https://jira.percona.com/projects/PT>.
 Include the following information in your bug report:
@@ -2365,6 +2516,11 @@ Include the following information in your bug report:
 
 If possible, include debugging output by running the tool with C<PTDEBUG>;
 see L<"ENVIRONMENT">.
+
+=head1 ATTENTION
+
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
+parameters are shown in the output.
 
 =head1 DOWNLOADING
 
@@ -2400,7 +2556,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2018 Percona LLC and/or its affiliates,
+This program is copyright 2011-2021 Percona LLC and/or its affiliates,
 2010-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -2419,7 +2575,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-stalk 3.2.1
+pt-stalk 3.5.5
 
 =cut
 

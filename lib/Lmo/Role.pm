@@ -56,9 +56,9 @@ sub import {
   $INFO{$target} = { is_role => 1 };
   # get symbol table reference_unimport_coderefs
   my $stash = _stash_for $target;
-  
+
   _install_tracked $target => has => \*Lmo::has;
-  
+
   # install before/after/around subs
   foreach my $type (qw(before after around)) {
     _install_tracked $target => $type => sub {
@@ -66,11 +66,11 @@ sub import {
       push @{$INFO{$target}{modifiers}||=[]}, [ $type => @_ ];
     };
   }
-  
+
   _install_tracked $target => requires => sub {
     push @{$INFO{$target}{requires}||=[]}, @_;
   };
-  
+
   _install_tracked $target => with => \*Lmo::with;
 
   # grab all *non-constant* (stash slot is not a scalarref) subs present

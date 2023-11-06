@@ -6,10 +6,10 @@ ERRORS DIFFS ROWS SKIPPED TABLE
 0 0 2 0 mysql.engine_cost
 0 0 0 0 mysql.event
 0 0 0 0 mysql.func
-0 0 40 0 mysql.help_category
-0 0 682 0 mysql.help_keyword
-0 0 1340 0 mysql.help_relation
-0 0 637 0 mysql.help_topic
+0 0 50 0 mysql.help_category
+0 0 908 0 mysql.help_keyword
+0 0 1803 0 mysql.help_relation
+0 0 659 0 mysql.help_topic
 0 0 0 0 mysql.ndb_binlog_index
 0 0 0 0 mysql.plugin
 0 0 0 0 mysql.proc
@@ -23,7 +23,7 @@ ERRORS DIFFS ROWS SKIPPED TABLE
 0 0 0 0 mysql.time_zone_name
 0 0 0 0 mysql.time_zone_transition
 0 0 0 0 mysql.time_zone_transition_type
-0 0 2 0 mysql.user
+0 0 4 0 mysql.user
 0 0 23 0 percona_test.checksums
 0 0 1 0 percona_test.sentinel
 0 0 200 0 sakila.actor

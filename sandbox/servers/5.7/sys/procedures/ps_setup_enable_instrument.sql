@@ -24,7 +24,7 @@ CREATE DEFINER='root'@'localhost' PROCEDURE ps_setup_enable_instrument (
              Description
              -----------
 
-             Enables instruments within Performance Schema 
+             Enables instruments within Performance Schema
              matching the input pattern.
 
              Parameters

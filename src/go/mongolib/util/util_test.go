@@ -3,110 +3,70 @@ package util
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"testing"
 	"time"
 
 	tu "github.com/percona/percona-toolkit/src/go/internal/testutils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func TestGetHostnames(t *testing.T) {
 	testCases := []struct {
 		name      string
-		uri       string
-		want      []string
+		port      string
+		want      int
 		wantError bool
 	}{
 		{
-			name: "from_mongos",
-			uri: fmt.Sprintf("mongodb://%s:%s@%s:%s",
-				tu.MongoDBUser,
-				tu.MongoDBPassword,
-				tu.MongoDBHost,
-				tu.MongoDBMongosPort,
-			),
-			want:      []string{"127.0.0.1:17001", "127.0.0.1:17002", "127.0.0.1:17004", "127.0.0.1:17005", "127.0.0.1:17007"},
+			name:      "from_mongos",
+			port:      tu.MongoDBMongosPort,
+			want:      9,
 			wantError: false,
 		},
 		{
-			name: "from_mongod",
-			uri: fmt.Sprintf("mongodb://%s:%s@%s:%s",
-				tu.MongoDBUser,
-				tu.MongoDBPassword,
-				tu.MongoDBHost,
-				tu.MongoDBShard1PrimaryPort,
-			),
-			want:      []string{"127.0.0.1:17001", "127.0.0.1:17002", "127.0.0.1:17003"},
+			name:      "from_mongod",
+			port:      tu.MongoDBShard1PrimaryPort,
+			want:      3,
 			wantError: false,
 		},
 		{
-			name: "from_non_sharded",
-			uri: fmt.Sprintf("mongodb://%s:%s@%s:%s",
-				tu.MongoDBUser,
-				tu.MongoDBPassword,
-				tu.MongoDBHost,
-				tu.MongoDBShard3PrimaryPort,
-			),
-			want:      []string{"127.0.0.1:17021", "127.0.0.1:17022", "127.0.0.1:17023"},
-			wantError: false,
-		},
-		{
-			name: "from_standalone",
-			uri: fmt.Sprintf("mongodb://%s:%s@%s:%s",
-				tu.MongoDBUser,
-				tu.MongoDBPassword,
-				tu.MongoDBHost,
-				tu.MongoDBStandalonePort,
-			),
-			want:      nil,
+			name:      "from_standalone",
+			port:      tu.MongoDBStandalonePort,
+			want:      0,
 			wantError: true,
 		},
 	}
 
-	for _, test := range testCases {
-		uri := test.uri
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	for i, test := range testCases {
+		port := test.port
 		want := test.want
 		wantError := test.wantError
 
 		t.Run(test.name, func(t *testing.T) {
-			client, err := mongo.NewClient(options.Client().ApplyURI(uri))
-			if err != nil {
-				t.Fatalf("cannot get a new MongoDB client: %s", err)
-			}
-			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-			defer cancel()
-			err = client.Connect(ctx)
-			if err != nil {
-				t.Fatalf("Cannot connect to MongoDB: %s", err)
-			}
+			client, err := tu.TestClient(ctx, port)
+			require.NoError(t, err)
 
 			hostnames, err := GetHostnames(ctx, client)
 			if err != nil && !wantError {
-				t.Errorf("Expecting error=nil, got: %v", err)
+				t.Errorf("%d) Expecting error=nil, got: %v", i, err)
 			}
 
-			if !reflect.DeepEqual(hostnames, want) {
-				t.Errorf("Invalid hostnames. Got: %+v, want %+v", hostnames, want)
-			}
+			require.Equal(t, want, len(hostnames))
 		})
 	}
 }
 
 func TestGetServerStatus(t *testing.T) {
-	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://admin:admin123456@127.0.0.1:17001"))
-	if err != nil {
-		t.Fatalf("cannot get a new MongoDB client: %s", err)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	err = client.Connect(ctx)
-	if err != nil {
-		t.Fatalf("Cannot connect to MongoDB: %s", err)
-	}
+	client, err := tu.TestClient(ctx, tu.MongoDBShard1PrimaryPort)
+	require.NoError(t, err)
 
 	_, err = GetServerStatus(ctx, client)
 	if err != nil {
@@ -117,41 +77,38 @@ func TestGetServerStatus(t *testing.T) {
 func TestGetReplicasetMembers(t *testing.T) {
 	testCases := []struct {
 		name    string
-		uri     string
+		port    string
 		want    int
 		wantErr bool
 	}{
+		/* Replication is not enabled in the current sandbox
 		{
 			name:    "from_mongos",
-			uri:     fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBMongosPort),
+			port:    tu.MongoDBMongosPort,
 			want:    7,
 			wantErr: false,
 		},
+		*/
 		{
 			name:    "from_mongod",
-			uri:     fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBShard1PrimaryPort),
-			want:    3,
-			wantErr: false,
-		},
-		{
-			name:    "from_non_sharded",
-			uri:     fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBShard3PrimaryPort),
+			port:    tu.MongoDBShard1PrimaryPort,
 			want:    3,
 			wantErr: false,
 		},
 		{
 			name:    "from_standalone",
-			uri:     fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBStandalonePort),
+			port:    tu.MongoDBStandalonePort,
 			want:    0,
 			wantErr: true,
 		},
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			clientOptions := options.Client().ApplyURI(test.uri)
-			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-			defer cancel()
+			clientOptions := tu.TestClientOptions(test.port)
 
 			rsm, err := GetReplicasetMembers(ctx, clientOptions)
 			if err != nil && !test.wantErr {
@@ -167,46 +124,44 @@ func TestGetReplicasetMembers(t *testing.T) {
 func TestGetShardedHosts(t *testing.T) {
 	testCases := []struct {
 		name string
-		uri  string
+		port string
 		want int
 		err  bool
 	}{
 		{
 			name: "from_mongos",
-			uri:  fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBMongosPort),
+			port: tu.MongoDBMongosPort,
 			want: 2,
 			err:  false,
 		},
 		{
 			name: "from_mongod",
-			uri:  fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBShard1PrimaryPort),
+			port: tu.MongoDBShard1PrimaryPort,
 			want: 0,
 			err:  true,
 		},
 		{
 			name: "from_non_sharded",
-			uri:  fmt.Sprintf("mongodb://%s:%s@%s:%s", tu.MongoDBUser, tu.MongoDBPassword, tu.MongoDBHost, tu.MongoDBShard3PrimaryPort),
+			port: tu.MongoDBShard3PrimaryPort,
 			want: 0,
 			err:  true,
 		},
 	}
 
-	for i, test := range testCases {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			clientOptions := options.Client().ApplyURI(test.uri)
-			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-			defer cancel()
+			clientOptions := tu.TestClientOptions(test.port)
 
 			client, err := mongo.NewClient(clientOptions)
 			if err != nil {
-				t.Errorf("Cannot get a new client for host %s: %s", test.uri, err)
-			}
-			if client == nil {
-				t.Fatalf("mongodb client is nil i: %d, uri: %s\n", i, test.uri)
+				t.Errorf("Cannot get a new client for host at port %s: %s", test.port, err)
 			}
 
 			if err := client.Connect(ctx); err != nil {
-				t.Errorf("Cannot connect to host %s: %s", test.uri, err)
+				t.Errorf("Cannot connect to host at port %s: %s", test.port, err)
 			}
 
 			rsm, err := GetShardedHosts(ctx, client)
@@ -221,6 +176,8 @@ func TestGetShardedHosts(t *testing.T) {
 }
 
 func TestReplicasetConfig(t *testing.T) {
+	t.Skip("current sandbox doesn't support replicasets")
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 

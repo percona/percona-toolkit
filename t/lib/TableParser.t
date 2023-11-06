@@ -28,6 +28,18 @@ my $tp  = new TableParser(Quoter=>$q);
 my $tbl;
 my $sample = "t/lib/samples/tables/";
 
+my $transform_int = undef;
+# In version 8.0 integer display width is deprecated and not shown in the outputs.
+# So we need to transform our samples.
+if ($sandbox_version ge '8.0') {
+   $transform_int = sub {
+      my $txt = slurp_file(shift);
+      $txt =~ s/int\(\d{1,2}\)/int/g;
+      $txt =~ s/utf8/utf8mb3/g;
+      print $txt;
+   };
+}
+
 SKIP: {
    skip "Cannot connect to sandbox master", 2 unless $dbh;
    skip 'Sandbox master does not have the sakila database', 2
@@ -44,12 +56,14 @@ SKIP: {
       $ddl = $tp->ansi_to_legacy($ddl);
       $ddl = "$ddl ENGINE=InnoDB AUTO_INCREMENT=201 DEFAULT CHARSET=utf8";
    }
+
    ok(
       no_diff(
          "$ddl\n",
          $sandbox_version ge '5.1' ? "$sample/sakila.actor"
                                    : "$sample/sakila.actor-5.0",
          cmd_output => 1,
+		 transform_sample => $transform_int
       ),
       "get_create_table(sakila.actor)"
    );
@@ -739,7 +753,7 @@ SKIP: {
 
    # msandbox user does not have GRANT privs.
    my $root_dbh = DBI->connect(
-      "DBI:mysql:host=127.0.0.1;port=12345", 'root', 'msandbox',
+      "DBI:mysql:host=127.0.0.1;port=12345;mysql_ssl=1", 'root', 'msandbox',
       { PrintError => 0, RaiseError => 1 });
 
    $root_dbh->do(q[CREATE USER 'user'@'%' IDENTIFIED BY '';] ) || die($root_dbh->errstr);
@@ -1267,6 +1281,68 @@ is_deeply(
    'Column having the word "generated" as part of the comment is OK',
 ) or diag Data::Dumper::Dumper($tbl);
 
+$tbl = $tp->parse( load_file('t/lib/samples/generated_cols_comments_2.sql') );
+is_deeply(
+    $tbl,
+    {
+        charset => 'latin1',
+        clustered_key => undef,
+        col_posn => {
+            c => 1,
+            id => 0,
+            v => 2
+        },
+        cols => [
+            'id',
+            'c',
+            'v'
+        ],
+        defs => {
+            c => ' `c` varchar(100) NOT NULL DEFAULT \'\' COMMENT \'Generated\'',
+            id => ' `id` int(11) NOT NULL',
+            v => ' `v` int(11) DEFAULT NULL'
+        },
+        engine => 'InnoDB',
+        is_autoinc => {
+            c => 0,
+            id => 0,
+            v => 0
+        },
+        is_col => {
+            c => 1,
+            id => 1,
+            v => 1
+        },
+        is_generated => {},
+        is_nullable => {
+            v => 1
+        },
+        is_numeric => {
+            id => 1,
+            v => 1
+        },
+        keys => {},
+        name => 't',
+        non_generated_cols => [
+            'id',
+            'c',
+            'v'
+        ],
+        null_cols => [
+            'v'
+        ],
+        numeric_cols => [
+            'id',
+            'v'
+        ],
+        type_for => {
+            c => 'varchar',
+            id => 'int',
+            v => 'int'
+        }
+    },
+    'Column having the word "generated" as part of the comment is OK',
+) or diag Data::Dumper::Dumper($tbl);
 # #############################################################################
 # Done.
 # #############################################################################

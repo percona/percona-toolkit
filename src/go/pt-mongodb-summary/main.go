@@ -19,22 +19,23 @@ import (
 	version "github.com/hashicorp/go-version"
 	"github.com/howeyc/gopass"
 	"github.com/pborman/getopt"
-	"github.com/percona/percona-toolkit/src/go/lib/config"
-	"github.com/percona/percona-toolkit/src/go/lib/versioncheck"
-	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
-	"github.com/percona/percona-toolkit/src/go/mongolib/util"
-	"github.com/percona/percona-toolkit/src/go/pt-mongodb-summary/oplog"
-	"github.com/percona/percona-toolkit/src/go/pt-mongodb-summary/templates"
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/process"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+
+	"github.com/percona/percona-toolkit/src/go/lib/config"
+	"github.com/percona/percona-toolkit/src/go/lib/versioncheck"
+	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
+	"github.com/percona/percona-toolkit/src/go/mongolib/util"
+	"github.com/percona/percona-toolkit/src/go/pt-mongodb-summary/oplog"
+	"github.com/percona/percona-toolkit/src/go/pt-mongodb-summary/templates"
 )
 
 const (
-	TOOLNAME = "pt-mongodb-summary"
+	toolname = "pt-mongodb-summary"
 
 	DefaultAuthDB             = "admin"
 	DefaultHost               = "mongodb://localhost:27017"
@@ -54,10 +55,11 @@ const (
 
 //nolint:gochecknoglobals
 var (
-	Build     string = "2020-04-23"
-	GoVersion string = "1.14.1"
-	Version   string = "3.2.0"
-	Commit    string
+	// We do not set anything here, these variables are defined by the Makefile
+	Build     string //nolint
+	GoVersion string //nolint
+	Version   string //nolint
+	Commit    string //nolint
 
 	defaultConnectionTimeout = 3 * time.Second
 	directConnection         = true
@@ -93,6 +95,7 @@ type hostInfo struct {
 	ProcCreateTime   time.Time
 	ProcProcessCount int
 
+	CmdlineArgs []string
 	// Server Status
 	ProcessName    string
 	ReplicasetName string
@@ -191,7 +194,7 @@ func main() {
 	log.SetLevel(logLevel)
 
 	if opts.Version {
-		fmt.Println(TOOLNAME)
+		fmt.Println(toolname)
 		fmt.Printf("Version %s\n", Version)
 		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
 		fmt.Printf("Commit: %s\n", Commit)
@@ -199,9 +202,9 @@ func main() {
 		return
 	}
 
-	conf := config.DefaultConfig(TOOLNAME)
+	conf := config.DefaultConfig(toolname)
 	if !conf.GetBool("no-version-check") && !opts.NoVersionCheck {
-		advice, err := versioncheck.CheckUpdates(TOOLNAME, Version)
+		advice, err := versioncheck.CheckUpdates(toolname, Version)
 		if err != nil {
 			log.Infof("cannot check version updates: %s", err.Error())
 		} else if advice != "" {
@@ -326,6 +329,11 @@ func formatResults(ci *collectedInfo, format string) ([]byte, error) {
 			return nil, errors.Wrap(err, "cannot parse hosttemplateData section of the output template")
 		}
 
+		t = template.Must(template.New("cmdlineargsa").Parse(templates.CmdlineArgs))
+		if err := t.Execute(buf, ci.HostInfo); err != nil {
+			return nil, errors.Wrap(err, "cannot parse the command line args section of the output template")
+		}
+
 		t = template.Must(template.New("runningOps").Parse(templates.RunningOps))
 		if err := t.Execute(buf, ci.RunningOps); err != nil {
 			return nil, errors.Wrap(err, "cannot parse runningOps section of the output template")
@@ -400,6 +408,7 @@ func getHostInfo(ctx context.Context, client *mongo.Client) (*hostInfo, error) {
 		ProcPath:       pi.Path,
 		ProcUserName:   pi.UserName,
 		ProcCreateTime: pi.CreateTime,
+		CmdlineArgs:    cmdOpts.Argv,
 	}
 	if ss.Repl != nil {
 		i.ReplicasetName = ss.Repl.SetName
@@ -608,7 +617,8 @@ func getNodeType(ctx context.Context, client *mongo.Client) (string, error) {
 }
 
 func getOpCountersStats(ctx context.Context, client *mongo.Client, count int,
-	sleep time.Duration) (*opCounters, error) {
+	sleep time.Duration,
+) (*opCounters, error) {
 	oc := &opCounters{}
 	prevOpCount := &opCounters{}
 	ss := proto.ServerStatus{}
@@ -927,7 +937,7 @@ func parseFlags() (*cliOptions, error) {
 	)
 
 	gop.IntVarLong(&opts.RunningOpsInterval, "running-ops-interval", 'i',
-		fmt.Sprintf("Interval to wait betwwen running ops samples in milliseconds. Default %d milliseconds",
+		fmt.Sprintf("Interval to wait between running ops samples in milliseconds. Default %d milliseconds",
 			opts.RunningOpsInterval),
 	)
 

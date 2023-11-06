@@ -16,9 +16,9 @@
 --
 -- View: processlist
 --
--- A detailed non-blocking processlist view to replace 
+-- A detailed non-blocking processlist view to replace
 -- [INFORMATION_SCHEMA. | SHOW FULL] PROCESSLIST
--- 
+--
 -- Performs less locking than the legacy sources, whilst giving extra information.
 --
 -- mysql> select * from sys.processlist where conn_id is not null and command != 'daemon' and conn_id != connection_id()\G

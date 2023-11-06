@@ -75,7 +75,6 @@ $output = output(
    stderr => 1,
 );
 
-diag($output);
 unlike(
    $output,
    qr/Can't use an undefined value as an ARRAY/,

@@ -19,8 +19,8 @@
 # ###########################################################################
 {
 # Package: FlowControlWaiter
-# FlowControlWaiter helps limit load when there's too much Flow Control pausing 
-# It is based on the other "Waiter" modules: 
+# FlowControlWaiter helps limit load when there's too much Flow Control pausing
+# It is based on the other "Waiter" modules:
 # ReplicaLagWaiter & MySQLStatusWaiter
 package FlowControlWaiter;
 
@@ -36,12 +36,12 @@ use Data::Dumper;
 #
 # Required Arguments:
 #   oktorun - Callback that returns true if it's ok to continue running
-#   node    - Node dbh on which to check for wsrep_flow_control_paused_ns 
+#   node    - Node dbh on which to check for wsrep_flow_control_paused_ns
 #   sleep   - Callback to sleep between checks.
-#   max_pct - Max percent of flow control caused pause time to tolerate 
+#   max_pct - Max percent of flow control caused pause time to tolerate
 #
 # Returns:
-#   FlowControlWaiter object 
+#   FlowControlWaiter object
 sub new {
    my ( $class, %args ) = @_;
    my @required_args = qw(oktorun node sleep max_flow_ctl);
@@ -52,10 +52,10 @@ sub new {
    my $self = {
       %args
    };
-   
+
    # Get current hi-res epoch seconds
-   $self->{last_time} = time();   
-   
+   $self->{last_time} = time();
+
    # Get nanoseconds server has been paused due to Flow Control
    my (undef, $last_fc_ns) = $self->{node}->selectrow_array('SHOW STATUS LIKE "wsrep_flow_control_paused_ns"');
 
@@ -99,19 +99,19 @@ sub wait {
       $pr->set_callback($pr_callback);
    }
 
-   # Loop where we wait for average pausing time caused by FC to fall below --max-flow-ctl  
+   # Loop where we wait for average pausing time caused by FC to fall below --max-flow-ctl
    # Average pause time is calculated starting from the last iteration.
    while ( $oktorun->() && $too_much_fc ) {
       my $current_time = time();
       my (undef, $current_fc_ns) = $node->selectrow_array('SHOW STATUS LIKE "wsrep_flow_control_paused_ns"');
       my $current_fc_secs = $current_fc_ns/1000_000_000;
-      my $current_avg = ($current_fc_secs - $self->{last_fc_secs}) / ($current_time - $self->{last_time});  
-      if ( $current_avg > $max_avg ) { 
+      my $current_avg = ($current_fc_secs - $self->{last_fc_secs}) / ($current_time - $self->{last_time});
+      if ( $current_avg > $max_avg ) {
          if ( $pr ) {
             # There's no real progress because we can't estimate how long
             # it will take the values to abate.
             $pr->update(sub { return 0; });
-         } 
+         }
          PTDEBUG && _d('Calling sleep callback');
          if ( $self->{simple_progress} ) {
             print STDERR "Waiting for Flow Control to abate\n";

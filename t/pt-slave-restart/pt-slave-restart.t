@@ -15,6 +15,10 @@ use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-slave-restart";
 
+diag('Restarting the sandbox');
+diag(`SAKILA=0 REPLICATION_THREADS=0 GTID=1 $trunk/sandbox/test-env restart`);
+diag("Sandbox restarted");
+
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
@@ -57,6 +61,7 @@ ok(-f '/tmp/pt-slave-restart.log', 'Log file created');
 
 my ($pid) = $output =~ /^\s*(\d+)\s+/;
 $output = `cat /tmp/pt-slave-restart.pid`;
+chomp($output);
 is($output, $pid, 'PID file has correct PID');
 
 diag(`$trunk/bin/pt-slave-restart --stop -q`);
@@ -107,7 +112,7 @@ unlike(
 $output = `$trunk/bin/pt-slave-restart --max-sleep 0.25 -h 127.0.0.1 -P 12346 -u msandbox -p msandbox --pid /tmp/pt-script.pid 2>&1`;
 like(
    $output,
-   qr{PID file /tmp/pt-script.pid already exists},
+   qr{PID file /tmp/pt-script.pid exists},
    'Dies if PID file already exists (--pid without --daemonize) (issue 391)'
 );
 `rm -rf /tmp/pt-script.pid`;
@@ -136,7 +141,6 @@ is(
 # Done.
 # #############################################################################
 diag(`rm -f /tmp/pt-slave-re*`);
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
+diag(`$trunk/sandbox/test-env restart`);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

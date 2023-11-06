@@ -67,7 +67,7 @@ type myDefaults struct {
 }
 
 const (
-	TOOLNAME = "pt-secure-collect"
+	toolname = "pt-secure-collect"
 
 	decryptCmd       = "decrypt"
 	encryptCmd       = "encrypt"
@@ -84,10 +84,11 @@ var (
 		"pt-mysql-summary --host=$mysql-host --port=$mysql-port --user=$mysql-user --password=$mysql-pass",
 	}
 
-	Build     string = "2020-04-23" //nolint
-	GoVersion string = "1.14.1"     //nolint
-	Version   string = "3.2.0"      //nolint
-	Commit    string                //nolint
+	// We do not set anything here, these variables are defined by the Makefile
+	Build     string //nolint
+	GoVersion string //nolint
+	Version   string //nolint
+	Commit    string //nolint
 )
 
 func main() {
@@ -171,15 +172,17 @@ func processCliParams(baseTempPath string, usageWriter io.Writer) (*cliOptions, 
 	}
 	msg += "\n "
 
-	app := kingpin.New(TOOLNAME, msg)
+	app := kingpin.New(toolname, msg)
 	if usageWriter != nil {
 		app.UsageWriter(usageWriter)
 		app.Terminate(nil)
+	} else {
+		app.UsageWriter(os.Stdout)
 	}
 
 	// Add support for --version flag
-	app.Version(TOOLNAME + "\nVersion " + Version + "\nBuild: " + Build + " using " + GoVersion +
-		" Go version: " + GoVersion)
+	app.Version(toolname + "\nVersion " + Version + "\nBuild: " + Build + " using " + GoVersion +
+		"\nCommit:" + Commit)
 
 	opts := &cliOptions{
 		CollectCommand:  app.Command(collectCmd, "Collect, sanitize, pack and encrypt data from pt-tools."),
@@ -207,11 +210,11 @@ func processCliParams(baseTempPath string, usageWriter io.Writer) (*cliOptions, 
 	opts.MySQLUser = opts.CollectCommand.Flag("mysql-user", "MySQL user name.").String()
 	opts.MySQLPass = opts.CollectCommand.Flag("mysql-password", "MySQL password.").String()
 	opts.AskMySQLPass = opts.CollectCommand.Flag("ask-mysql-pass", "Ask MySQL password.").Bool()
-	// Aditional flags
+	// Additional flags
 	opts.AdditionalCmds = opts.CollectCommand.Flag("extra-cmd",
 		"Also run this command as part of the data collection. This parameter can be used more than once.").Strings()
 	opts.EncryptPassword = opts.CollectCommand.Flag("encrypt-password", "Encrypt the output file using this password."+
-		" If ommited, the file won't be encrypted.").String()
+		" If omitted, the file won't be encrypted.").String()
 	// No-Flags
 	opts.NoCollect = opts.CollectCommand.Flag("no-collect", "Do not collect data").Bool()
 	opts.NoSanitize = opts.CollectCommand.Flag("no-sanitize", "Sanitize data").Bool()

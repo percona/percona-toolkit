@@ -17,7 +17,7 @@
 -- View: x$statements_with_temp_tables
 --
 -- Lists all normalized statements that use temporary tables
--- ordered by number of on disk temporary tables descending first, 
+-- ordered by number of on disk temporary tables descending first,
 -- then by the number of memory tables.
 --
 -- mysql> select * from x$statements_with_temp_tables limit 1\G
@@ -38,7 +38,7 @@
 CREATE OR REPLACE
   ALGORITHM = MERGE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW x$statements_with_temp_tables (
   query,
   db,

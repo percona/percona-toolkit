@@ -107,21 +107,6 @@ get_plugin_status () {
    echo ${status:-"Not found"}
 }
 
-collect_keyring_plugins() {
-    $CMD_MYSQL $EXT_ARGV --table -ss -e 'SELECT PLUGIN_NAME, PLUGIN_STATUS FROM INFORMATION_SCHEMA.PLUGINS WHERE PLUGIN_NAME LIKE "keyring%";'
-}
-
-collect_encrypted_tables() {
-    $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT TABLE_SCHEMA, TABLE_NAME, CREATE_OPTIONS FROM INFORMATION_SCHEMA.TABLES WHERE CREATE_OPTIONS LIKE '%ENCRYPTION=\"Y\"%';"
-}
-
-collect_encrypted_tablespaces() {
-# I_S.INNODB_SYS_TABLESPACES has a "flag" field. Encrypted tablespace has bit 14 set. You can check it with "flag & 8192". 
-# And seems like MySQL is capable of bitwise operations. https://dev.mysql.com/doc/refman/5.7/en/bit-functions.html
-    $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT SPACE, NAME, SPACE_TYPE from INFORMATION_SCHEMA.INNODB_SYS_TABLESPACES where FLAG&8192 = 8192;"
-}
-
-
 # ##############################################################################
 # Functions for parsing specific files and getting desired info from them.
 # These are called from within main() and are separated so they can be tested
@@ -162,7 +147,7 @@ parse_mysqld_instances () {
             defaults_file="$(echo "${word}" | cut -d= -f2)"
          fi
       done
-      
+
       if [ -n "${defaults_file:-""}" -a -r "${defaults_file:-""}" ]; then
          socket="${socket:-"$(grep "^socket\>" "$defaults_file" | tail -n1 | cut -d= -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')"}"
          port="${port:-"$(grep "^port\>" "$defaults_file" | tail -n1 | cut -d= -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')"}"
@@ -177,7 +162,7 @@ parse_mysqld_instances () {
          oom="?"
       fi
       printf "  %5s %-26s %-4s %-3s %s\n" "${port}" "${datadir}" "${nice:-"?"}" "${oom:-"?"}" "${socket}"
-      
+
       # Need to unset all of them in case the next process uses --defaults-file
       defaults_file=""
       socket=""
@@ -332,7 +317,7 @@ summarize_processlist () {
          }
          \$1 == \"Time:\" {
             t = \$2;
-            if ( t == \"NULL\" ) { 
+            if ( t == \"NULL\" ) {
                 t = 0;
             }
          }
@@ -371,16 +356,35 @@ pretty_print_cnf_file () {
 
    perl -n -l -e '
       my $line = $_;
-      if ( $line =~ /^\s*[a-zA-Z[]/ ) { 
-         if ( $line=~/\s*(.*?)\s*=\s*(.*)\s*$/ ) { 
-            printf("%-35s = %s\n", $1, $2)  
-         } 
-         elsif ( $line =~ /\s*\[/ ) { 
-            print "\n$line" 
+      if ( $line =~ /^\s*[a-zA-Z[]/ ) {
+         if ( $line=~/\s*(.*?)\s*=\s*(.*)\s*$/ ) {
+            printf("%-35s = %s\n", $1, $2)
+         }
+         elsif ( $line =~ /\s*\[/ ) {
+            print "\n$line"
          } else {
             print $line
-         } 
+         }
       }' "$file"
+
+   while read line; do
+      echo $line | grep -q '!include'
+      if [ $? -eq 0 ]; then
+         clause=$(echo -n $line | tr -s ' ' | cut -d ' ' -f 1)
+         include=$(echo -n $line | tr -s ' ' | cut -d ' ' -f 2)
+
+         if [ "x$include" != "x" -a -d "${include}" -a "x$clause" = 'x!includedir' ]; then
+            for subfile in $(find -L "$include" -type f -maxdepth 1 -name *.cnf ); do
+               echo "# $subfile"
+               pretty_print_cnf_file $subfile
+            done
+         elif [ -f "$include" -a "$clause" = '!include' ]; then
+            echo "# $include"
+            pretty_print_cnf_file $include
+         fi
+      fi
+
+   done < "$file"
 
 }
 
@@ -523,9 +527,9 @@ find_max_trx_time() {
    }' "${file}"
 }
 
-find_transation_states () {
+find_transaction_states () {
    local file="$1"
-   local tmpfile="$PT_TMPDIR/find_transation_states.tmp"
+   local tmpfile="$PT_TMPDIR/find_transaction_states.tmp"
 
    [ -e "$file" ] || return
 
@@ -551,7 +555,7 @@ format_innodb_status () {
    name_val "Pending I/O Reads"   "$(find_pending_io_reads "${file}")"
    name_val "Pending I/O Writes"  "$(find_pending_io_writes "${file}")"
    name_val "Pending I/O Flushes" "$(find_pending_io_flushes "${file}")"
-   name_val "Transaction States"  "$(find_transation_states "${file}" )"
+   name_val "Transaction States"  "$(find_transaction_states "${file}" )"
    if grep 'TABLE LOCK table' "${file}" >/dev/null ; then
       echo "Tables Locked"
       awk '/^TABLE LOCK table/{print $4}' "${file}" \
@@ -579,7 +583,7 @@ format_ndb_status() {
    local file=$1
 
    [ -e "$file" ] || return
-   # We could use "& \n" but that does not seem to work on bsd sed. 
+   # We could use "& \n" but that does not seem to work on bsd sed.
    egrep '^[ \t]*Name:|[ \t]*Status:' $file|sed 's/^[ \t]*//g'|while read line; do echo $line; echo $line | grep '^Status:'>/dev/null && echo ; done
 }
 
@@ -587,7 +591,7 @@ format_keyring_plugins() {
     local keyring_plugins="$1"
     local encrypted_tables="$2"
 
-    if [ -z "$keyring_plugins" ]; then 
+    if [ -z "$keyring_plugins" ]; then
         echo "No keyring plugins found"
         if [ ! -z "$encrypted_tables" ]; then
             echo "Warning! There are encrypted tables but keyring plugins are not loaded"
@@ -944,7 +948,7 @@ section_percona_server_features () {
    # Renamed to innodb_buffer_pool_restore_at_startup in 5.5.10-20.1
    name_val "Fast Server Restarts"  \
             "$(feat_on_renamed "$file" innodb_auto_lru_dump innodb_buffer_pool_restore_at_startup)"
-   
+
    name_val "Enhanced Logging"      \
             "$(feat_on "$file" log_slow_verbosity ne microtime)"
    name_val "Replica Perf Logging"  \
@@ -966,7 +970,7 @@ section_percona_server_features () {
       fi
    fi
    name_val "Smooth Flushing" "$smooth_flushing"
-   
+
    name_val "HandlerSocket NoSQL"   \
             "$(feat_on "$file" handlersocket_port)"
    name_val "Fast Hash UDFs"   \
@@ -1129,7 +1133,7 @@ _semi_sync_stats_for () {
          trace_extra="Unknown setting"
       fi
    fi
-   
+
    name_val "${target} semisync status" "${semisync_status}"
    name_val "${target} trace level" "${semisync_trace}, ${trace_extra}"
 
@@ -1245,10 +1249,10 @@ section_percona_xtradb_cluster () {
 
    name_val "SST Method"      "$(get_var "wsrep_sst_method" "$mysql_var")"
    name_val "Slave Threads"   "$(get_var "wsrep_slave_threads" "$mysql_var")"
-   
+
    name_val "Ignore Split Brain" "$( parse_wsrep_provider_options "pc.ignore_sb" "$mysql_var" )"
    name_val "Ignore Quorum" "$( parse_wsrep_provider_options "pc.ignore_quorum" "$mysql_var" )"
-   
+
    name_val "gcache Size"      "$( parse_wsrep_provider_options "gcache.size" "$mysql_var" )"
    name_val "gcache Directory" "$( parse_wsrep_provider_options "gcache.dir" "$mysql_var" )"
    name_val "gcache Name"      "$( parse_wsrep_provider_options "gcache.name" "$mysql_var" )"
@@ -1268,30 +1272,31 @@ parse_wsrep_provider_options () {
 }
 
 report_jemalloc_enabled() {
-  local JEMALLOC_STATUS=''
-  local GENERAL_JEMALLOC_STATUS=0
-  local JEMALLOC_LOCATION=''
+   local instances_file="$1"
+   local variables_file="$2"
+   local GENERAL_JEMALLOC_STATUS=0
 
-  for pid in $(pidof mysqld); do
-     grep -qc jemalloc /proc/${pid}/environ || ldd $(which mysqld) 2>/dev/null | grep -qc jemalloc
-     jemalloc_status=$?
-     if [ $jemalloc_status = 1 ]; then
-       echo "jemalloc is not enabled in mysql config for process with id ${pid}" 
-     else
-       echo "jemalloc enabled in mysql config for process with id ${pid}"
-       GENERAL_JEMALLOC_STATUS=1
-     fi
-  done
+   for pid in $(grep '/mysqld ' "$instances_file" | awk '{print $1;}'); do
+      local jemalloc_status="$(get_var "pt-summary-internal-jemalloc_enabled_for_pid_${pid}" "${variables_file}")"
+      if [ -z $jemalloc_status ]; then
+         continue
+      elif [ $jemalloc_status = 0 ]; then
+         echo "jemalloc is not enabled in mysql config for process with id ${pid}"
+      else
+         echo "jemalloc enabled in mysql config for process with id ${pid}"
+         GENERAL_JEMALLOC_STATUS=1
+      fi
+   done
 
-  if [ $GENERAL_JEMALLOC_STATUS -eq 1 ]; then
-     JEMALLOC_LOCATION=$(find /usr/lib64/ /usr/lib/x86_64-linux-gnu /usr/lib -name "libjemalloc.*" 2>/dev/null | head -n 1)
-     if [ -z "$JEMALLOC_LOCATION" ]; then
-       echo "Jemalloc library not found"
-     else
-       echo "Using jemalloc from $JEMALLOC_LOCATION"
-     fi
-  fi
- 
+   if [ $GENERAL_JEMALLOC_STATUS -eq 1 ]; then
+      local jemalloc_location="$(get_var "pt-summary-internal-jemalloc_location" "${variables_file}")"
+      if [ -n "$jemalloc_location" ]; then
+         echo "Using jemalloc from $jemalloc_location"
+      else
+         echo "Jemalloc library not found"
+      fi
+   fi
+
 }
 
 report_mysql_summary () {
@@ -1542,7 +1547,7 @@ report_mysql_summary () {
       fi
    fi
 
-   local has_rocksdb=$($CMD_MYSQL $EXT_ARGV -ss -e 'SHOW ENGINES' 2>/dev/null | grep -i 'rocksdb')
+   local has_rocksdb=$(cat $dir/mysql-plugins | grep -i 'rocksdb.*active.*storage engine')
    if [ ! -z "$has_rocksdb" ]; then
        section "RocksDB"
        section_rocksdb "$dir/mysql-variables" "$dir/mysql-status"
@@ -1576,12 +1581,17 @@ report_mysql_summary () {
    fi
 
    section "Encryption"
-   local keyring_plugins="$(collect_keyring_plugins)"
+   local keyring_plugins=""
    local encrypted_tables=""
    local encrypted_tablespaces=""
-   if [ "${OPT_LIST_ENCRYPTED_TABLES}" = 'yes' ]; then 
-       encrypted_tables="$(collect_encrypted_tables)"
-       encrypted_tablespaces="$(collect_encrypted_tablespaces)"
+   if [ -s "$dir/keyring-plugins" ]; then
+       keyring_plugins="$(cat $dir/keyring-plugins)"
+   fi
+   if [ -s "$dir/encrypted-tables" ]; then
+      encrypted_tables="$(cat $dir/encrypted-tables)"
+   fi
+   if [ -s "$dir/encrypted-tablespaces" ]; then
+      encrypted_tablespaces="$(cat $dir/encrypted-tablespaces)"
    fi
 
    format_keyring_plugins "$keyring_plugins" "$encrypted_tables"
@@ -1627,7 +1637,7 @@ report_mysql_summary () {
    fi
 
    section "Memory management library"
-   report_jemalloc_enabled
+   report_jemalloc_enabled "$dir/mysqld-instances" "$dir/mysql-variables"
 
    # Make sure that we signal the end of the tool's output.
    section "The End"

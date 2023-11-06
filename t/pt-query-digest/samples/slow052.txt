@@ -58,7 +58,7 @@ select very_variable_column from unsteady_table\G
 select less_variable_column from steady_table\G
 
 # Profile
-# Rank Query ID                           Response time  Calls R/Call V/M 
-# ==== ================================== ============== ===== ====== ====
-#    1 0x3ACFE4E81547889E32B0659E6D13E5A2 308.4675 74.6%   100 3.0847  0.48 SELECT unsteady_table
-#    2 0x07BD39112F052FC12F621C2B0611518C 104.9344 25.4%   100 1.0493  0.00 SELECT steady_table
+# Rank Query ID                            Response time  Calls R/Call V/M
+# ==== =================================== ============== ===== ====== ===
+#    1 0x3ACFE4E81547889E32B0659E6D13E5A2  308.4675 74.6%   100 3.0847  0.48 SELECT unsteady_table
+#    2 0x07BD39112F052FC12F621C2B0611518C  104.9344 25.4%   100 1.0493  0.00 SELECT steady_table

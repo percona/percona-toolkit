@@ -1,14 +1,14 @@
 #pt-mongodb-query-digest
 
-This program reports query usage statistics by aggregating queries from MongoDB query profiler.  
+This program reports query usage statistics by aggregating queries from MongoDB query profiler.
 The queries are the result of running:
 ```javascript
 db.getSiblingDB("samples").system.profile.find({"op":{"$nin":["getmore", "delete"]}});
 ```
 and then, the results are grouped by fingerprint and namespace (database.collection).
 
-The fingerprint is calculated as the **sorted list** of the keys in the document. The max depth level is 10.  
-The last step is sorting the results. The default sort order is by ascending query count.  
+The fingerprint is calculated as the **sorted list** of the keys in the document. The max depth level is 10.
+The last step is sorting the results. The default sort order is by ascending query count.
 
 ##Sample output
 ```
@@ -29,9 +29,9 @@ The last step is sorting the results. The default sort order is by ascending que
 # Query               {"find":"col1","shardVersion":[0,"000000000000000000000000"]}
 
 ```
-  
-##Command line parameters  
-  
+
+##Command line parameters
+
 |Short|Long|Help|
 |-----|----|----|
 |-?|--help|Show help|

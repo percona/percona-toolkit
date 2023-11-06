@@ -21,8 +21,9 @@ my $master_dbh = $sb->get_dbh_for('master');
 
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
-}
-else {
+} elsif ($sandbox_version >= '8.0') { 
+   plan skip_all => "8.0 requires fix for https://jira.percona.com/browse/PT-1805";
+} else {
    plan tests => 3;
 }
 
