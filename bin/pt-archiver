@@ -6786,8 +6786,8 @@ sub main {
    }
 
    my $charset  = $got_charset || '';
-   if ($charset eq 'utf8') {
-      $charset = ":$charset";
+   if ($charset =~ m/utf8/) {
+      $charset = ":utf8";
    }
    elsif ($charset) {
       eval { require Encode }
