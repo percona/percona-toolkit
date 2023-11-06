@@ -19,7 +19,7 @@
 -- Filter sys.processlist to only show user sessions and not background threads.
 -- This is a non-blocking closer replacement to
 -- [INFORMATION_SCHEMA. | SHOW FULL] PROCESSLIST
--- 
+--
 -- Performs less locking than the legacy sources, whilst giving extra information.
 --
 -- mysql> select * from sys.x$session\G
@@ -56,7 +56,7 @@
 
 CREATE OR REPLACE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW x$session
  AS
 SELECT * FROM sys.x$processlist

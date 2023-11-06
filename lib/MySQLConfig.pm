@@ -23,7 +23,7 @@
 # SHOW VARIABLES, option files, mysqld --help --verbose or my_print_defaults.
 # A MySQLConfig object represents how MySQL is or would be configured given
 # one of those inputs.  If the input is SHOW VARIABLES, then the config is
-# acive, i.e. MySQL's running config.  All other inputs are inactive, i.e.
+# active, i.e. MySQL's running config.  All other inputs are inactive, i.e.
 # how MySQL should or would be running if started with the config.
 #
 # Inactive configs are made to mimic SHOW VARIABLES so that MySQLConfig
@@ -122,13 +122,13 @@ sub _parse_config {
    }
 
    handle_special_vars(\%config_data);
-   
+
    return %config_data;
 }
 
 sub handle_special_vars {
    my ($config_data) = @_;
-   
+
    if ( $config_data->{vars}->{wsrep_provider_options} ) {
       my $vars  = $config_data->{vars};
       my $dupes = $config_data->{duplicate_vars};
@@ -153,7 +153,7 @@ sub _parse_config_output {
    my ( %args ) = @_;
    my @required_args = qw(output TextResultSetParser);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($output) = @args{@required_args};
    PTDEBUG && _d("Parsing config output");
@@ -191,7 +191,7 @@ sub _parse_config_output {
          vars   => $vars,
       );
    }
-   
+
    return (
       format         => $format,
       vars           => $vars,
@@ -204,7 +204,7 @@ sub detect_config_output_format {
    my ( %args ) = @_;
    my @required_args = qw(output);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($output) = @args{@required_args};
 
@@ -240,7 +240,7 @@ sub parse_show_variables {
    my ( %args ) = @_;
    my @required_args = qw(output TextResultSetParser);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($output, $trp) = @args{@required_args};
 
@@ -259,13 +259,13 @@ sub parse_mysqld {
    my ( %args ) = @_;
    my @required_args = qw(output);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($output) = @args{@required_args};
 
    # First look for the list of option files like
    #   Default options are read from the following files in the given order:
-   #   /etc/my.cnf /usr/local/mysql/etc/my.cnf ~/.my.cnf 
+   #   /etc/my.cnf /usr/local/mysql/etc/my.cnf ~/.my.cnf
    my @opt_files;
    if ( $output =~ m/^Default options are read.+\n/mg ) {
       my ($opt_files) = $output =~ m/\G^(.+)\n/m;
@@ -283,12 +283,12 @@ sub parse_mysqld {
    #   --------------------------------- -----------------------------
    #   help                              TRUE
    #   abort-slave-event-count           0
-   # So we search for that line of hypens.
+   # So we search for that line of hyphens.
    #
    # It also ends with something like
    #
    #   wait_timeout                      28800
-   #   
+   #
    #   To see what values a running MySQL server is using, type
    #   'mysqladmin variables' instead of 'mysqld --verbose --help'.
    #
@@ -317,7 +317,7 @@ sub parse_my_print_defaults {
    my ( %args ) = @_;
    my @required_args = qw(output);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($output) = @args{@required_args};
 
@@ -336,7 +336,7 @@ sub parse_option_file {
    my ( %args ) = @_;
    my @required_args = qw(output);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($output) = @args{@required_args};
 
@@ -374,7 +374,7 @@ sub _preprocess_varvals {
       }
 
       my ($var, $val) = ($1, $2);
-      
+
       # Variable names are usually specified like "log-bin"
       # but in SHOW VARIABLES they're all like "log_bin".
       $var =~ tr/-/_/;
@@ -385,7 +385,7 @@ sub _preprocess_varvals {
       if ( !defined $val ) {
          $val = '';
       }
-      
+
       # Strip leading and trailing whitespace.
       for my $item ($var, $val) {
          $item =~ s/^\s+//;
@@ -407,7 +407,7 @@ sub _parse_varvals {
    # Config built from parsing the given varvals.
    my %config;
 
-   # Discover duplicate vars.  
+   # Discover duplicate vars.
    my %duplicates;
 
    while ( my ($var, $vals) = each %$vars ) {
@@ -484,10 +484,10 @@ sub _mimic_show_variables {
    my ( %args ) = @_;
    my @required_args = qw(vars format);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($vars, $format) = @args{@required_args};
-   
+
    foreach my $var ( keys %$vars ) {
       if ( $vars->{$var} eq '' ) {
          if ( $format eq 'mysqld' ) {
@@ -505,7 +505,7 @@ sub _mimic_show_variables {
          else {
             # Output formats other than mysqld (e.g. option file), if
             # a variable is listed then it's enabled, like --skip-federated.
-            # SHOW VARIBLES will show ON for these.
+            # SHOW VARIABLES will show ON for these.
             $vars->{$var} = 'ON';
          }
       }

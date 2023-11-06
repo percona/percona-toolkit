@@ -28,7 +28,7 @@ MySQL and system tasks that are too difficult or complex to perform manually.
 These tools are ideal alternatives to private or "one-off" scripts because
 they are professionally developed, formally tested, and fully documented.
 They are also fully self-contained, so installation is quick and easy and
-no libraries are installed. 
+no libraries are installed.
 
 Percona Toolkit is developed and supported by Percona.  For more
 information and other free, open-source software developed by Percona,
@@ -39,6 +39,7 @@ visit http://www.percona.com/software/.
 
 %build
 %{__perl} Makefile.PL INSTALLDIRS=vendor < /dev/null
+#sed -i '499d' Makefile
 make %{?_smp_mflags}
 
 %install

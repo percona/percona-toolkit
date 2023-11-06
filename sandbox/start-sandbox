@@ -82,7 +82,7 @@ make_sandbox() {
     for file in `grep -l PORT ${TMP_DIR}/$port/* 2>/dev/null`; do
         sed -e "s/PORT/$port/g" -i.bak $file
         sed -e "s!TMP_DIR!$TMP_DIR!g" -i.bak $file
-        # Use ! instead of / because the replacment has / (it's a directory)
+        # Use ! instead of / because the replacement has / (it's a directory)
         sed -e "s!PERCONA_TOOLKIT_SANDBOX!$PERCONA_TOOLKIT_SANDBOX!g" -i.bak $file
         sed -e "s!MYSQLD!$mysqld!g" -i.bak $file
     done
@@ -138,7 +138,7 @@ make_sandbox() {
         cat "$EXTRA_DEFAULTS_FILE" >> ${TMP_DIR}/$port/my.sandbox.cnf
     fi
 
-    if [ $generating_database -eq 0 ]; then 
+    if [ $generating_database -eq 0 ]; then
         # If the sandbox is a slave, set it read_only.
         if [ "$type" = "slave" ]; then
             echo "read_only" >> ${TMP_DIR}/$port/my.sandbox.cnf
@@ -152,7 +152,7 @@ make_sandbox() {
             touch ${TMP_DIR}/empty-defaults.txt
             rm -rf ${TMP_DIR}/$port/data
             $PERCONA_TOOLKIT_SANDBOX/$mysqld --defaults-file=${TMP_DIR}/${port}/my.sandbox.cnf --initialize
-        else 
+        else
             # MySQL up to 5.6 needs mysql_install_db
             # Support for it is a TODO
             echo "For MySQL < 5.7 data.tar.gz is required to be in $PERCONA_TOOLKIT_BRANCH/sandbox/servers/${APP#mysql}/$version/"
@@ -236,7 +236,7 @@ make_sandbox() {
         if [ "$version" > "5.6" -a -n "$ENABLE_ROCKSDB" ]; then
             $PERCONA_TOOLKIT_SANDBOX/bin/ps-admin --enable-rocksdb -u root -pmsandbox -h 127.1 -P $port
         fi
-        if [ "$version" > "5.6" -a -n "$ENABLE_TOKUDB" ]; then 
+        if [ "$version" > "5.6" -a -n "$ENABLE_TOKUDB" ]; then
             sudo $PERCONA_TOOLKIT_SANDBOX/bin/ps-admin --enable-tokudb -u root -pmsandbox -h 127.1 -P $port
         fi
     fi
@@ -290,7 +290,7 @@ cd $PERCONA_TOOLKIT_BRANCH/sandbox
 
 # This script is usually called by test-env which discovers and
 # sets PERCONA_TOOLKIT_SANDBOX.  If this script is called directly,
-# then the caller is reponsible for setting PERCONA_TOOLKIT_SANDBOX.
+# then the caller is responsible for setting PERCONA_TOOLKIT_SANDBOX.
 # PERCONA_TOOLKIT_SANDBOX points to a base directory containing the
 # MySQL executables like PERCONA_TOOLKIT_SANDBOX/bin/mysqld_safe.
 

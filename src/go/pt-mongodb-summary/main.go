@@ -35,7 +35,7 @@ import (
 )
 
 const (
-	TOOLNAME = "pt-mongodb-summary"
+	toolname = "pt-mongodb-summary"
 
 	DefaultAuthDB             = "admin"
 	DefaultHost               = "mongodb://localhost:27017"
@@ -194,7 +194,7 @@ func main() {
 	log.SetLevel(logLevel)
 
 	if opts.Version {
-		fmt.Println(TOOLNAME)
+		fmt.Println(toolname)
 		fmt.Printf("Version %s\n", Version)
 		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
 		fmt.Printf("Commit: %s\n", Commit)
@@ -202,9 +202,9 @@ func main() {
 		return
 	}
 
-	conf := config.DefaultConfig(TOOLNAME)
+	conf := config.DefaultConfig(toolname)
 	if !conf.GetBool("no-version-check") && !opts.NoVersionCheck {
-		advice, err := versioncheck.CheckUpdates(TOOLNAME, Version)
+		advice, err := versioncheck.CheckUpdates(toolname, Version)
 		if err != nil {
 			log.Infof("cannot check version updates: %s", err.Error())
 		} else if advice != "" {
@@ -937,7 +937,7 @@ func parseFlags() (*cliOptions, error) {
 	)
 
 	gop.IntVarLong(&opts.RunningOpsInterval, "running-ops-interval", 'i',
-		fmt.Sprintf("Interval to wait betwwen running ops samples in milliseconds. Default %d milliseconds",
+		fmt.Sprintf("Interval to wait between running ops samples in milliseconds. Default %d milliseconds",
 			opts.RunningOpsInterval),
 	)
 

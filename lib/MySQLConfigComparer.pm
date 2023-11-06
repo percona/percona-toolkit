@@ -19,7 +19,7 @@
 # ###########################################################################
 {
 # Package: MySQLConfigComparer
-# MySQLConfigComparer compares and diffs C<MySQLConfig> objects. 
+# MySQLConfigComparer compares and diffs C<MySQLConfig> objects.
 package MySQLConfigComparer;
 
 use strict;
@@ -47,7 +47,7 @@ my %alt_val_for = (
 # Optional Arguments:
 #   ignore_variables            - Arrayref of variables to ignore
 #   numeric_variables           - Arrayref of variables to compare numerically
-#   optional_value_variables    - Arrayref of vars whose val is optional 
+#   optional_value_variables    - Arrayref of vars whose val is optional
 #   any_value_is_true_variables - Arrayref of vars... see below
 #   base_path                   - Hashref of variable=>base_path
 #
@@ -71,7 +71,7 @@ sub new {
    # The vars should be compared with == instead of eq so that
    # 0 equals 0.0, etc.
    my %is_numeric = (
-      long_query_time => 1, 
+      long_query_time => 1,
       ($args{numeric_variables}
          ? map { $_ => 1 } @{$args{numeric_variables}}
          : ()),
@@ -87,7 +87,7 @@ sub new {
       ($args{optional_value_variables}
          ? map { $_ => 1 } @{$args{optional_value_variables}}
          : ()),
-   ); 
+   );
 
    # Like value_is_optional but SHOW VARIABlES does not list a default value,
    # it only lists ON if the variable was given in a config file without or

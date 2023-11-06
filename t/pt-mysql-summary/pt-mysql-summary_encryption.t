@@ -67,7 +67,7 @@ ok(
 my @files = glob("$dir/*");
 my $n_files = scalar @files;
 ok(
-   $n_files >= 15 && $n_files <= 18,
+   $n_files >= 15 && $n_files <= 19,
    "And leaves all files in there"
 ) or diag($n_files, `ls -l $dir`);
 
@@ -97,13 +97,42 @@ like(
    "Security works"
 );
 
+#
+# SQL Mode ANSI_QUOTES
+#
+
+my ($orig_sql_mode) = $master_dbh->selectrow_array(q{SELECT @@SQL_MODE});
+$master_dbh->do("SET GLOBAL SQL_MODE='ANSI_QUOTES'");
+
+$out = `$env $trunk/bin/$tool --sleep 1 --databases mysql 2>/dev/null -- --defaults-file=/tmp/12345/my.sandbox.cnf`;
+
+like(
+   $out,
+   qr/Database Tables Views SPs Trigs Funcs   FKs Partn\s+\Qmysql\E/,
+   "--databases works with SQL Mode ANSI_QUOTES"
+);
+
+like(
+   $out,
+   qr/# InnoDB #.*Version.*# MyISAM #/s,
+   "InnoDB section present with SQL Mode ANSI_QUOTES"
+);
+
+like(
+   $out,
+   qr/Users \| 2/,
+   "Security works with SQL Mode ANSI_QUOTES"
+);
+
+$master_dbh->do("SET GLOBAL SQL_MODE='${orig_sql_mode}'");
+
 # --read-samples
-for my $i (2..7) {
+for my $i (2..9) {
    ok(
       no_diff(
          sub {
             local $ENV{_NO_FALSE_NEGATIVES} = 1;
-            print `$env $trunk/bin/$tool --read-samples $trunk/t/pt-mysql-summary/samples/temp00$i  -- --defaults-file=/tmp/12345/my.sandbox.cnf | tail -n+3 | perl -wlnpe 's/Skipping schema analysis.*/Specify --databases or --all-databases to dump and summarize schemas/' | grep -v jemalloc`
+            print `$env $trunk/bin/$tool --read-samples $trunk/t/pt-mysql-summary/samples/temp_enc00$i  -- --defaults-file=/tmp/12345/my.sandbox.cnf | tail -n+3 | perl -wlnpe 's/Skipping schema analysis.*/Specify --databases or --all-databases to dump and summarize schemas/'`
          },
          "t/pt-mysql-summary/samples/expected_output_temp_enc00$i.txt",
       ),
@@ -139,19 +168,19 @@ like(
 
 like(
    $out,
-   qr/Keyring plugins/,
+   qr/Keyring plugins:/,
    "Keyring plugins included in report"
 ) or diag $out;
 
 like(
    $out,
-   qr/Encrypted tables/,
+   qr/Encrypted tables:/,
    "Encrypted tables included in report"
 ) or diag $out;
 
 like(
    $out,
-   qr/Encrypted tablespaces/,
+   qr/Encrypted tablespaces:/,
    "Encrypted tablespaces included in report"
 ) or diag $out;
 

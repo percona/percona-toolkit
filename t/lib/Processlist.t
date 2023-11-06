@@ -326,7 +326,7 @@ is_deeply(
    {
       2 => [
          2, 'root', 'localhost', 'test', 'Query', 0, 'executing', 'query2_2',
-         Transformers::unix_timestamp('2001-01-01 00:05:08'),
+         (my $t = Transformers::unix_timestamp('2001-01-01 00:05:08.5')) =~ s/0+$//r,
          0.123,
          Transformers::unix_timestamp('2001-01-01 00:05:08.500'),
          { executing => 0 },
@@ -544,23 +544,23 @@ is_deeply(
    {
       1 => [
          1, 'root', 'localhost', 'test', 'Query', 1, 'Locked',    'query1',
-         Transformers::unix_timestamp('2011-01-01 00:00:09'),   # START
-         0.5,                                                   # ETIME
-         Transformers::unix_timestamp('2011-01-01 00:00:10.5'), # FSEEN
+         ($t = Transformers::unix_timestamp('2011-01-01 00:00:09.5')) =~ s/0+$//r,    # START
+         0.5,                                                                         # ETIME
+         Transformers::unix_timestamp('2011-01-01 00:00:10.5'),                       # FSEEN
          { Locked => 0 },
       ],
       2 => [
          2, 'root', 'localhost', 'test', 'Query', 2, 'executing', 'query2',
-         Transformers::unix_timestamp('2011-01-01 00:00:08'),   # START
-         0.5,                                                   # ETIME
-         Transformers::unix_timestamp('2011-01-01 00:00:10.5'), # FSEEN
+         ($t = Transformers::unix_timestamp('2011-01-01 00:00:08.5')) =~ s/0+$//r,    # START
+         0.5,                                                                         # ETIME
+         Transformers::unix_timestamp('2011-01-01 00:00:10.5'),                       # FSEEN
          { executing => 0 },
       ],
       3 => [
          3, 'root', 'localhost', 'test', 'Query', 3, 'executing', 'query3',
-         Transformers::unix_timestamp('2011-01-01 00:00:07'),   # START
-         0.5,                                                   # ETIME
-         Transformers::unix_timestamp('2011-01-01 00:00:10.5'), # FSEEN
+         ($t = Transformers::unix_timestamp('2011-01-01 00:00:07.5')) =~ s/0+$//r,    # START
+         0.5,                                                                         # ETIME
+         Transformers::unix_timestamp('2011-01-01 00:00:10.5'),                       # FSEEN
          { executing => 0 },
       ],
    },
@@ -624,7 +624,7 @@ is_deeply(
       db          => 'test',
       host        => 'localhost',
       id          => 2,
-      ts          => '2011-01-01T00:00:10',
+      ts          => '2011-01-01T00:00:10.500000',
       user        => 'root'
    },
    {
@@ -635,7 +635,7 @@ is_deeply(
       db          => 'test',
       host        => 'localhost',
       id          => 3,
-      ts          => '2011-01-01T00:00:10',
+      ts          => '2011-01-01T00:00:10.500000',
       user        => 'root'
    } ],
    "Cxn 2 and 3 finished (issue 1252)",
@@ -667,7 +667,7 @@ is_deeply(
       db          => 'test',
       host        => 'localhost',
       id          => 1,
-      ts          => '2011-01-01T00:00:10',
+      ts          => '2011-01-01T00:00:10.500000',
       user        => 'root'
    } ],
    "4th call, last finished event (issue 1252)"

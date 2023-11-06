@@ -137,7 +137,7 @@ sub parse_options {
          map { printf $fmt, $opts[$_], $sorted[$_] }
          grep { $opts[$_] ne $sorted[$_] }
          ($i..$#sorted);
-         last; 
+         last;
       }
    }
 
@@ -157,7 +157,7 @@ sub check_module_usage {
       Transformers   => 1,
    );
 
-   # Many tools dyanmically instantiate objs like $plugin="WatchStatus",
+   # Many tools dynamically instantiate objs like $plugin="WatchStatus",
    # $plugin->new().  So this script can't detect that.
    my %dynamic = (
       'pt-query-digest' => {
@@ -223,7 +223,7 @@ sub check_module_usage {
          . join('', map { "\t$_\n" } @unused);
       $exit_status = 1;
    }
-   
+
    return;
 }
 
@@ -278,7 +278,7 @@ sub check_option_types {
    # standard filter --columns (e.g. same family as --databases, --tables, etc.)
    # These exceptions are good candidates for change, so our standard options
    # really are standard across all tools.
-   my $exception = { 
+   my $exception = {
       'pt-deadlock-logger' => {  # not standard filter
          columns => {
             type  => 'h',
@@ -382,7 +382,7 @@ sub check_pod_header_order {
          map { printf $fmt, ($hdrs[$_] || ''), $std_hdrs[$_] }
          grep { ($hdrs[$_] || '') ne $std_hdrs[$_] }
          ($i..$#std_hdrs);
-         last; 
+         last;
       }
    }
 
@@ -400,7 +400,7 @@ sub check_pod_formatting {
    }
 
    chomp(my $podchecker = `which podchecker`);
-   if ( $podchecker ) { 
+   if ( $podchecker ) {
       $output = `$podchecker $tool_file 2>&1`;
       if ( $output !~ m/pod syntax OK/ ) {
          $exit_status = 1;

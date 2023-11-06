@@ -81,7 +81,7 @@ GO_SRC_DIR=$(git rev-parse --show-toplevel)/src/go
 # Programs and their options
 # ############################################################################
 
-TAR=${TAR:-tar}                                  
+TAR=${TAR:-tar}
 
 # ############################################################################
 # Subroutines
@@ -154,8 +154,8 @@ update_version() {
       die "Error updating version in Makefile.PL"
    fi
    rm "Makefile.PL.bak"
-   echo "OK"   
-   
+   echo "OK"
+
    echo -n "Updating version in percona-toolkit.pod... "
    cd $DOCS_DIR
    sed -i'.bak' -e "s/^Percona Toolkit v.*/Percona Toolkit v$VERSION released $DATE/" percona-toolkit.pod
@@ -163,10 +163,10 @@ update_version() {
       die "Error updating version in percona-toolkit.pod"
    fi
    rm "percona-toolkit.pod.bak"
-   echo "OK"   
-   
+   echo "OK"
+
    echo -n "Updating version in sphinx-build/conf.py... "
-   # What Sphinx calls verison, we call series; what it calls release we
+   # What Sphinx calls version, we call series; what it calls release we
    # call version.
    cd $SPHINX_CONFIG_DIR
    sed -i'.bak' -e "s/^version = .*/version = '$SERIES'/" conf.py
@@ -179,7 +179,7 @@ update_version() {
       die "Error updating release in conf.py"
    fi
    rm "conf.py.bak"
-   echo "OK"   
+   echo "OK"
 }
 
 update_copyright_year() {
@@ -288,7 +288,7 @@ update_changelog() {
    cat $BRANCH/Changelog | $BRANCH/util/log-entries $VERSION >> /tmp/changelog.tmp
    echo >> /tmp/changelog.tmp
    echo " -- Percona Toolkit Developers <toolkit-dev@percona.com>  $DEB_DATE
-" >> /tmp/changelog.tmp 
+" >> /tmp/changelog.tmp
    cat changelog >> /tmp/changelog.tmp
    mv /tmp/changelog.tmp changelog
    echo "OK"
@@ -435,15 +435,15 @@ build_go_binaries() {
    TOOLKIT_DIR="${PERCONA_DIR}/percona-toolkit"
    GO_TOOLS_DIR="${TOOLKIT_DIR}/src/go"
    CUR_DIR=$(pwd)
-   UNLINK=0               
+   UNLINK=0
    export PATH=${GOPATH}/bin:${PATH}
-   
+
    echo "GOPATH: ${GOPATH}"
    echo "Github directory: ${GITHUB_DIR}"
    echo "Percona directory: ${PERCONA_DIR}"
    echo "Toolkit directory: ${TOOLKIT_DIR}"
    echo "Current directory: ${CUR_DIR}"
-   
+
    if [[ ${BASE_DIR} != ${TOOLKIT_DIR} ]]
    then
        echo "not in gopath"
@@ -562,7 +562,7 @@ if [ $UPDATE -eq 1 ]; then
       update_percona_toolkit_pod
       update_changelog
       update_rel_notes
-      update_user_docs 
+      update_user_docs
    fi
 fi
 
@@ -601,7 +601,7 @@ MSG
    if [ $BUILD_RPM -eq 1 ]; then
       build_rpm
    fi
-   
+
    BUILD_DEB=${BUILD_DEB:-1}
    if [ $BUILD_DEB -eq 1 ]; then
       build_deb

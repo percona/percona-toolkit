@@ -8,7 +8,7 @@ truncate --size=0 ${LOG_FILE}
 echo "Logging to $LOG_FILE"
 
 for dir in t/*
-do 
+do
     echo "$dir"
     sandbox/test-env restart
     prove -vw --trap --timer "$dir" | tee -a $LOG_FILE

@@ -150,7 +150,7 @@ sub next {
 
    $results->{query} = $query;
    $results->{rows}  = $rows;
-      
+
    if ( my $pr = $self->_progress ) {
       $pr->update(sub { tell $_query_fh });
    }

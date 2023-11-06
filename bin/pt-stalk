@@ -129,6 +129,7 @@ OPT_VERSION=""    # If --version was specified
 OPT_HELP=""       # If --help was specified
 OPT_ASK_PASS=""   # If --ask-pass was specified
 PO_DIR=""         # Directory with program option spec files
+GLOBAL_CONFIG=0   # We ignore non-recognized options in global configs
 
 usage() {
    local file="$1"
@@ -257,9 +258,15 @@ parse_options() {
          _parse_config_files "$user_config_file"
       done
    else
-      _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf" "/etc/percona-toolkit/$TOOL.conf"
+       GLOBAL_CONFIG=1
+      _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf"
+       GLOBAL_CONFIG=0
+       _parse_config_files "/etc/percona-toolkit/$TOOL.conf"
       if [ "${HOME:-}" ]; then
-         _parse_config_files "$HOME/.percona-toolkit.conf" "$HOME/.$TOOL.conf"
+         GLOBAL_CONFIG=1
+         _parse_config_files "$HOME/.percona-toolkit.conf"
+         GLOBAL_CONFIG=0
+         _parse_config_files "$HOME/.$TOOL.conf"
       fi
    fi
 
@@ -334,7 +341,7 @@ _eval_po() {
             *)
                echo "Invalid attribute in $opt_spec: $line" >&2
                exit 1
-         esac 
+         esac
       done < "$opt_spec"
 
       if [ -z "$opt" ]; then
@@ -366,7 +373,7 @@ _parse_config_files() {
 
          echo "$config_opt" | grep '^[ ]*[^#]' >/dev/null 2>&1 || continue
 
-         config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/[ ]+#.*$//')"
+         config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/\s[ ]*#.*$//')"
 
          [ "$config_opt" = "" ] && continue
 
@@ -458,7 +465,11 @@ _parse_command_line() {
          else
             spec=$(grep "^short form:-$opt\$" "$PT_TMPDIR"/po/* | cut -d ':' -f 1)
             if [ -z "$spec"  ]; then
-               continue
+               if [ $GLOBAL_CONFIG -eq 1 ]; then
+                  continue
+               else
+                  option_error "Unknown option: $real_opt"
+               fi
             fi
          fi
 
@@ -473,7 +484,7 @@ _parse_command_line() {
             if [ "$val" ]; then
                option_error "Option $real_opt does not take a value"
                continue
-            fi 
+            fi
             if [ "$opt_is_negated" ]; then
                val=""
             else
@@ -545,20 +556,20 @@ mysql_options() {
    if [ -n "$OPT_ASK_PASS" ]; then
       stty -echo
       >&2 printf "Enter MySQL password: "
-      read GIVEN_PASS 
+      read GIVEN_PASS
       stty echo
       printf "\n"
       MYSQL_ARGS="$MYSQL_ARGS --password=$GIVEN_PASS"
    elif [ -n "$OPT_PASSWORD" ]; then
       MYSQL_ARGS="$MYSQL_ARGS --password=$OPT_PASSWORD"
    fi
-   
+
    echo $MYSQL_ARGS
 }
 
 arrange_mysql_options() {
    local opts="$1"
-   
+
    local rearranged=""
    for opt in $opts; do
       if [ "$(echo $opt | awk -F= '{print $1}')" = "--defaults-file" ]; then
@@ -567,7 +578,7 @@ arrange_mysql_options() {
          rearranged="$rearranged $opt"
       fi
    done
-   
+
    echo "$rearranged"
 }
 
@@ -802,7 +813,7 @@ collect() {
    local p="$2"  # prefix for each result file
 
    local cnt=$(($OPT_RUN_TIME / $OPT_SLEEP_COLLECT))
-   
+
    if [ ! "$OPT_SYSTEM_ONLY" ]; then
       local mysqld_pid=""
       local mysql_version=""
@@ -819,9 +830,9 @@ collect() {
       collect_mysql_data_one
    fi
 
-   if [ ! "$OPT_MYSQL_ONLY" ]; then 
+   if [ ! "$OPT_MYSQL_ONLY" ]; then
       collect_system_data
-   fi 
+   fi
 
    log "Loop start: $(date +'TS %s.%N %F %T')"
    local start_time=$(date +'%s')
@@ -898,7 +909,7 @@ collect_mysql_data_one() {
       $CMD_MYSQLADMIN $EXT_ARGV
    else
       log "Could not find the MySQL error log"
-   fi 
+   fi
    if [ "${mysql_version}" '>' "5.1" ]; then
       mutex="SHOW ENGINE INNODB MUTEX"
    else
@@ -966,7 +977,7 @@ collect_system_data() {
    if [ "$CMD_DMESG" ]; then
       local UPTIME=`cat /proc/uptime | awk '{ print $1 }'`
       local START_TIME=$(echo "$UPTIME 60" | awk '{print ($1 - $2)}')
-      $CMD_DMESG  | perl -ne 'm/\[\s*(\d+)\./; if ($1 > '${START_TIME}') { print }' >> "$d/$p-dmesg" & 
+      $CMD_DMESG  | perl -ne 'm/\[\s*(\d+)\./; if ($1 > '${START_TIME}') { print }' >> "$d/$p-dmesg" &
    fi
 
    if [ "$CMD_VMSTAT" ]; then
@@ -999,7 +1010,7 @@ collect_mysql_data_loop() {
       (echo $ts; ps_prepared_statements "$d/prepared_statements.isrunnning") >> "$d/$p-prepared-statements" &
    fi
 
-   slave_status "$d/$p-slave-status" "${mysql_version}" 
+   slave_status "$d/$p-slave-status" "${mysql_version}"
 }
 
 collect_system_data_loop() {
@@ -1092,7 +1103,7 @@ collect_mysql_data_two() {
 }
 
 open_tables() {
-   local open_tables=$($CMD_MYSQLADMIN $EXT_ARGV ext | grep "Open_tables" | awk '{print $4}')
+   local open_tables=$($CMD_MYSQLADMIN $EXT_ARGV ext | grep "Open_tables" | grep -v "Open_tables_with_triggers" | awk '{print $4}')
    if [ -n "$open_tables" -a $open_tables -le 1000 ]; then
       $CMD_MYSQL $EXT_ARGV -e 'SHOW OPEN TABLES' &
    else
@@ -1173,7 +1184,7 @@ lock_waits() {
 
       rm "$flag_file"
    fi
-} 
+}
 
 transactions() {
    $CMD_MYSQL $EXT_ARGV -e "SELECT SQL_NO_CACHE * FROM INFORMATION_SCHEMA.INNODB_TRX ORDER BY trx_id\G"
@@ -1232,8 +1243,8 @@ rocksdb_status() {
 }
 
 ps_locks_transactions() {
-   local outfile=$1 
-   
+   local outfile=$1
+
    $CMD_MYSQL $EXT_ARGV -e 'select @@performance_schema' | grep "1" &>/dev/null
 
    if [ $? -eq 0 ]; then
@@ -1302,7 +1313,7 @@ slave_status() {
 }
 
 collect_mysql_variables() {
-   local outfile=$1 
+   local outfile=$1
 
    local sql="SHOW GLOBAL VARIABLES"
    echo -e "\n$sql\n" >> $outfile
@@ -1311,11 +1322,11 @@ collect_mysql_variables() {
    sql="select * from performance_schema.variables_by_thread order by thread_id, variable_name;"
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
-   
+
    sql="select * from performance_schema.user_variables_by_thread order by thread_id, variable_name;"
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
-   
+
    sql="select * from performance_schema.status_by_thread order by thread_id, variable_name; "
    echo -e "\n$sql\n" >> $outfile
    $CMD_MYSQL $EXT_ARGV -e "$sql" >> $outfile
@@ -2508,7 +2519,7 @@ see L<"ENVIRONMENT">.
 
 =head1 ATTENTION
 
-Using <PTDEBUG> might expose passwords. When debug is enabled, all command line 
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
 parameters are shown in the output.
 
 =head1 DOWNLOADING
@@ -2564,7 +2575,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-stalk 3.5.1
+pt-stalk 3.5.5
 
 =cut
 

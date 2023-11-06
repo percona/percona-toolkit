@@ -24,9 +24,13 @@ for my $test_url ( "http://www.percona.com/robots.txt", "https://v.percona.com" 
    my $tiny     = HTTP::Tiny->new(max_redirect => 0)->request('GET', $test_url);
    my $micro    = HTTP::Micro->new->request('GET', $test_url);
 
+   # Need to split and sort content, because v.percona.com returns data
+   # in different order for each call
+   my $tiny_content = join "\n", sort (split /\n/, $tiny->{content});
+   my $micro_content = (join "\n", sort (split /\n/, $micro->{content}));
    like(
-      $micro->{content},
-      qr/^\Q$tiny->{content}/,
+      $micro_content,
+      qr/^\Q$tiny_content/,
       "HTTP::Micro == HTTP::Tiny for $test_url"
    );
 }

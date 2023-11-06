@@ -6,11 +6,11 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -32,8 +32,18 @@ type Dumper struct {
 	forwardport string
 }
 
+var resourcesRe = regexp.MustCompile(`(\w+)\.(\w+).percona\.com`)
+
 // New return new Dumper object
 func New(location, namespace, resource string, kubeconfig string, forwardport string) Dumper {
+	d := Dumper{
+		cmd:         "kubectl",
+		kubeconfig:  kubeconfig,
+		location:    "cluster-dump",
+		mode:        int64(0o777),
+		namespace:   namespace,
+		forwardport: forwardport,
+	}
 	resources := []string{
 		"pods",
 		"replicasets",
@@ -44,7 +54,6 @@ func New(location, namespace, resource string, kubeconfig string, forwardport st
 		"configmaps",
 		"cronjobs",
 		"jobs",
-		"podsecuritypolicies",
 		"poddisruptionbudgets",
 		"clusterrolebindings",
 		"clusterroles",
@@ -54,56 +63,72 @@ func New(location, namespace, resource string, kubeconfig string, forwardport st
 		"persistentvolumeclaims",
 		"persistentvolumes",
 	}
-	filePaths := make([]string, 0)
-	if len(resource) > 0 {
-		if resourceType(resource) == "pxc" {
-			resources = append(resources,
-				"perconaxtradbclusterbackups",
-				"perconaxtradbclusterrestores",
-				"perconaxtradbclusters")
-			filePaths = append(filePaths,
-				"var/lib/mysql/mysqld-error.log",
-				"var/lib/mysql/innobackup.backup.log",
-				"var/lib/mysql/innobackup.move.log",
-				"var/lib/mysql/innobackup.prepare.log",
-				"var/lib/mysql/grastate.dat",
-				"var/lib/mysql/gvwstate.dat",
-				"var/lib/mysql/mysqld.post.processing.log",
-				"var/lib/mysql/auto.cnf",
-			)
-		} else if resourceType(resource) == "psmdb" {
-			resources = append(resources,
-				"perconaservermongodbbackups",
-				"perconaservermongodbrestores",
-				"perconaservermongodbs",
-			)
-		} else if resourceType(resource) == "pg" {
-			resources = append(resources,
-				"perconapgclusters",
-				"pgclusters",
-				"pgpolicies",
-				"pgreplicas",
-				"pgtasks",
-			)
-		} else if resourceType(resource) == "ps" {
-			resources = append(resources,
-				"perconaservermysqlbackups",
-				"perconaservermysqlrestores",
-				"perconaservermysqls",
-			)
+
+	switch resource {
+	case "auto":
+		result, err := d.runCmd("api-resources", "-o", "name")
+		if err != nil {
+			log.Panicf("Cannot get API resources and option --resource=auto specified:\n%s", err)
 		}
+		matches := resourcesRe.FindAllStringSubmatch(string(result), -1)
+		if len(matches) == 0 {
+			resource = "none"
+			break
+		}
+		for _, match := range matches {
+			resources = append(resources, match[1])
+			resource = match[2]
+		}
+	case "pg":
+		resources = append(resources,
+			"perconapgclusters",
+			"pgclusters",
+			"pgpolicies",
+			"pgreplicas",
+			"pgtasks",
+		)
+	case "pgv2":
+		resources = append(resources,
+			"perconapgbackups",
+			"perconapgclusters",
+			"perconapgrestores",
+		)
+	case "pxc":
+		resources = append(resources,
+			"perconaxtradbclusterbackups",
+			"perconaxtradbclusterrestores",
+			"perconaxtradbclusters",
+		)
+	case "ps":
+		resources = append(resources,
+			"perconaservermysqlbackups",
+			"perconaservermysqlrestores",
+			"perconaservermysqls",
+		)
+	case "psmdb":
+		resources = append(resources,
+			"perconaservermongodbbackups",
+			"perconaservermongodbrestores",
+			"perconaservermongodbs",
+		)
 	}
-	return Dumper{
-		cmd:         "kubectl",
-		kubeconfig:  kubeconfig,
-		resources:   resources,
-		filePaths:   filePaths,
-		location:    "cluster-dump",
-		mode:        int64(0o777),
-		namespace:   namespace,
-		crType:      resource,
-		forwardport: forwardport,
+	filePaths := make([]string, 0)
+	if resourceType(resource) == "pxc" {
+		filePaths = append(filePaths,
+			"var/lib/mysql/mysqld-error.log",
+			"var/lib/mysql/innobackup.backup.log",
+			"var/lib/mysql/innobackup.move.log",
+			"var/lib/mysql/innobackup.prepare.log",
+			"var/lib/mysql/grastate.dat",
+			"var/lib/mysql/gvwstate.dat",
+			"var/lib/mysql/mysqld.post.processing.log",
+			"var/lib/mysql/auto.cnf",
+		)
 	}
+	d.resources = resources
+	d.crType = resource
+	d.filePaths = filePaths
+	return d
 }
 
 type k8sPods struct {
@@ -218,10 +243,13 @@ func (d *Dumper) DumpCluster() error {
 				}
 			}
 			if pod.Labels["app.kubernetes.io/component"] == component ||
-				(component == "pg" && pod.Labels["pgo-pg-database"] == "true") {
+				(component == "pg" && pod.Labels["pgo-pg-database"] == "true") ||
+				(component == "pgv2" && pod.Labels["pgv2.percona.com/version"] != "" && pod.Labels["postgres-operator.crunchydata.com/instance"] != "") {
 				var crName string
 				if component == "pg" {
 					crName = pod.Labels["pg-cluster"]
+				} else if component == "pgv2" {
+					crName = pod.Labels["postgres-operator.crunchydata.com/cluster"]
 				} else {
 					crName = pod.Labels["app.kubernetes.io/instance"]
 				}
@@ -309,7 +337,7 @@ func (d *Dumper) getResource(name, namespace string, ignoreNotFound bool, tw *ta
 }
 
 func (d *Dumper) logError(err string, args ...string) {
-	d.errors += d.cmd + " " + strings.Join(args, " ") + ": " + err + "\n"
+	d.errors += d.cmd + " " + strings.Join(args, " ") + "\n" + err + "\n\n"
 }
 
 func addToArchive(location string, mode int64, content []byte, tw *tar.Writer) error {
@@ -335,6 +363,10 @@ type crSecrets struct {
 		Secrets    struct {
 			Users string `json:"users,omitempty"`
 		} `json:"secrets,omitempty"`
+		Users []struct {
+			Name       string `json:"name,omitempty"`
+			SecretName string `json:"secretName,omitempty"`
+		} `json:"users,omitempty"`
 	} `json:"spec"`
 }
 
@@ -385,7 +417,7 @@ func (d *Dumper) getPodSummary(resource, podName, crName string, namespace strin
 		}
 		ports = port + ":3306"
 		summCmdName = "pt-mysql-summary"
-		summCmdArgs = []string{"--host=127.0.0.1", "--port=" + port, "--user=root", "--password=" + string(pass)}
+		summCmdArgs = []string{"--host=127.0.0.1", "--port=" + port, "--user=root", "--password='" + string(pass) + "'"}
 	case "pg":
 		var user, pass, port string
 		if d.forwardport != "" {
@@ -416,7 +448,46 @@ func (d *Dumper) getPodSummary(resource, podName, crName string, namespace strin
 		ports = port + ":5432"
 		summCmdName = "sh"
 		summCmdArgs = []string{"-c", "curl https://raw.githubusercontent.com/percona/support-snippets/master/postgresql/pg_gather/gather.sql" +
-			" 2>/dev/null | PGPASSWORD=" + string(pass) + " psql -X --host=127.0.0.1 --port=" + port + " --user=" + user}
+			" 2>/dev/null | PGPASSWORD='" + string(pass) + "' psql -X --host=127.0.0.1 --port=" + port + " --user='" + user + "'"}
+	case "pgv2":
+		var user, pass, port string
+		if d.forwardport != "" {
+			port = d.forwardport
+		} else {
+			port = "5432"
+		}
+		cr, err := d.getCR("perconapgclusters/"+crName, namespace)
+		if err != nil {
+			return nil, errors.Wrap(err, "get cr")
+		}
+		if cr.Spec.SecretName != "" {
+			user, err = d.getDataFromSecret(cr.Spec.SecretName, "user", namespace)
+		} else if len(cr.Spec.Users) > 0 && cr.Spec.Users[0].Name != "" {
+			user = cr.Spec.Users[0].Name
+		} else {
+			user, err = d.getDataFromSecret(crName+"-pguser-"+crName, "user", namespace)
+		}
+		if err != nil {
+			return nil, errors.Wrap(err, "get user from PostgreSQL users secret")
+		}
+		if cr.Spec.SecretName != "" {
+			pass, err = d.getDataFromSecret(cr.Spec.SecretName, "password", namespace)
+		} else if len(cr.Spec.Users) > 0 {
+			if cr.Spec.Users[0].SecretName != "" {
+				pass, err = d.getDataFromSecret(cr.Spec.Users[0].SecretName, "password", namespace)
+			} else {
+				pass, err = d.getDataFromSecret(crName+"-pguser-"+user, "password", namespace)
+			}
+		} else {
+			pass, err = d.getDataFromSecret(crName+"-pguser-"+crName, "password", namespace)
+		}
+		if err != nil {
+			return nil, errors.Wrap(err, "get password from PostgreSQL users secret")
+		}
+		ports = port + ":5432"
+		summCmdName = "sh"
+		summCmdArgs = []string{"-c", "curl https://raw.githubusercontent.com/percona/support-snippets/master/postgresql/pg_gather/gather.sql" +
+			" 2>/dev/null | PGPASSWORD='" + string(pass) + "' psql -X --host=127.0.0.1 --port=" + port + " --user='" + user + "'"}
 	case "psmdb":
 		var port string
 		if d.forwardport != "" {
@@ -438,7 +509,7 @@ func (d *Dumper) getPodSummary(resource, podName, crName string, namespace strin
 		}
 		ports = port + ":27017"
 		summCmdName = "pt-mongodb-summary"
-		summCmdArgs = []string{"--username=" + user, "--password=" + pass, "--authenticationDatabase=admin", "127.0.0.1:" + port}
+		summCmdArgs = []string{"--username='" + user + "'", "--password='" + pass + "'", "--authenticationDatabase=admin", "127.0.0.1:" + port}
 	}
 
 	cmdPortFwd := exec.Command(d.cmd, "port-forward", "pod/"+podName, ports, "-n", namespace, "--kubeconfig", d.kubeconfig)
@@ -463,10 +534,9 @@ func (d *Dumper) getPodSummary(resource, podName, crName string, namespace strin
 	cmd.Stderr = &errb
 	err := cmd.Run()
 	if err != nil {
-		return nil, errors.Errorf("error: %v, stderr: %s, stdout: %s", err, errb.String(), outb.String())
+		return nil, errors.Errorf("error: %v\nstderr: %sstdout: %s", err, errb.String(), outb.String())
 	}
-
-	return []byte(fmt.Sprintf("stderr: %s, stdout: %s", errb.String(), outb.String())), nil
+	return outb.Bytes(), nil
 }
 
 func (d *Dumper) getCR(crName string, namespace string) (crSecrets, error) {
@@ -503,6 +573,8 @@ func resourceType(s string) string {
 		return "psmdb"
 	} else if s == "pg" || strings.HasPrefix(s, "pg/") {
 		return "pg"
+	} else if s == "pgv2" || strings.HasPrefix(s, "pgv2/") {
+		return "pgv2"
 	} else if s == "ps" || strings.HasPrefix(s, "ps/") {
 		return "ps"
 	}

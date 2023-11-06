@@ -187,7 +187,7 @@ is(
 
 is(
    $err,
-"# Cannot resolve conflict WHERE `id`='3': `ts` values do not differ by the threhold, 30m.
+"# Cannot resolve conflict WHERE `id`='3': `ts` values do not differ by the threshold, 30m.
 ",
    'Warns about conflict'
 );
@@ -266,7 +266,7 @@ is(
 # syncing other tables.
 is(
    $err,
-"# Cannot resolve conflict WHERE `id`='3': `ts` values do not differ by the threhold, 30m.  while doing bidi.t on 127.1
+"# Cannot resolve conflict WHERE `id`='3': `ts` values do not differ by the threshold, 30m.  while doing bidi.t on 127.1
 ",
    'Die/warn about conflict'
 );

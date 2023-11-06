@@ -25,14 +25,18 @@ if ($ENV{PERCONA_SLOW_BOX}) {
     plan skip_all => 'This test needs a fast machine';
 } elsif ($sandbox_version lt '5.7') {
     plan skip_all => 'This tests needs MySQL 5.7+';
-} else {
-    plan tests => 3;
 }
 
 require "$trunk/bin/pt-online-schema-change";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+
+if ($sb->is_cluster_mode) {
+    plan skip_all => 'Not for PXC';
+} else {
+    plan tests => 3;
+}                                  
 
 my $master_dbh = $sb->get_dbh_for("master");
 my $master_dsn = $sb->dsn_for("master");

@@ -44,7 +44,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.5.1';
+our $VERSION = '3.5.5';
 
 use strict;
 use warnings FATAL => 'all';
@@ -160,7 +160,7 @@ sub new {
       rules             => [],  # desc of rules for --help
       mutex             => [],  # rule: opts are mutually exclusive
       atleast1          => [],  # rule: at least one opt is required
-      disables          => {},  # rule: opt disables other opts 
+      disables          => {},  # rule: opt disables other opts
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
@@ -323,7 +323,7 @@ sub _pod_to_specs {
          }
 
          push @specs, {
-            spec  => $self->{parse_attributes}->($self, $option, \%attribs), 
+            spec  => $self->{parse_attributes}->($self, $option, \%attribs),
             desc  => $para
                . (defined $attribs{default} ? " (default $attribs{default})" : ''),
             group => ($attribs{'group'} ? $attribs{'group'} : 'default'),
@@ -414,7 +414,7 @@ sub _parse_specs {
          $self->{opts}->{$long} = $opt;
       }
       else { # It's an option rule, not a spec.
-         PTDEBUG && _d('Parsing rule:', $opt); 
+         PTDEBUG && _d('Parsing rule:', $opt);
          push @{$self->{rules}}, $opt;
          my @participants = $self->_get_participants($opt);
          my $rule_ok = 0;
@@ -459,7 +459,7 @@ sub _parse_specs {
       PTDEBUG && _d('Option', $long, 'disables', @participants);
    }
 
-   return; 
+   return;
 }
 
 sub _get_participants {
@@ -546,7 +546,7 @@ sub _set_option {
 }
 
 sub get_opts {
-   my ( $self ) = @_; 
+   my ( $self ) = @_;
 
    foreach my $long ( keys %{$self->{opts}} ) {
       $self->{opts}->{$long}->{got} = 0;
@@ -677,7 +677,7 @@ sub _check_opts {
                   else {
                      $err = join(', ',
                                map { "--$self->{opts}->{$_}->{long}" }
-                               grep { $_ } 
+                               grep { $_ }
                                @restricted_opts[0..scalar(@restricted_opts) - 2]
                             )
                           . ' or --'.$self->{opts}->{$restricted_opts[-1]}->{long};
@@ -687,7 +687,7 @@ sub _check_opts {
             }
 
          }
-         elsif ( $opt->{is_required} ) { 
+         elsif ( $opt->{is_required} ) {
             $self->save_error("Required option --$long must be specified");
          }
 
@@ -1071,7 +1071,7 @@ sub clone {
       $clone{$scalar} = $self->{$scalar};
    }
 
-   return bless \%clone;     
+   return bless \%clone;
 }
 
 sub _parse_size {
@@ -1452,7 +1452,7 @@ our %TYPES = (
    } qw(Array Code Hash Regexp Glob Scalar)
 );
 
-sub check_type_constaints {
+sub check_type_constraints {
    my ($attribute, $type_check, $check_name, $val) = @_;
    ( ref($type_check) eq 'CODE'
       ? $type_check->($val)
@@ -1585,7 +1585,7 @@ sub extends {
 
 sub _load_module {
    my ($class) = @_;
-   
+
    (my $file = $class) =~ s{::|'}{/}g;
    $file .= '.pm';
    { local $@; eval { require "$file" } } # or warn $@;
@@ -1616,7 +1616,7 @@ sub has {
    my $caller = scalar caller();
 
    my $class_metadata = Lmo::Meta->metadata_for($caller);
-   
+
    for my $attribute ( ref $names ? @$names : $names ) {
       my %args   = @_;
       my $method = ($args{is} || '') eq 'ro'
@@ -1635,16 +1635,16 @@ sub has {
 
       if ( my $type_check = $args{isa} ) {
          my $check_name = $type_check;
-         
+
          if ( my ($aggregate_type, $inner_type) = $type_check =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
             $type_check = Lmo::Types::_nested_constraints($attribute, $aggregate_type, $inner_type);
          }
-         
+
          my $check_sub = sub {
             my ($new_val) = @_;
-            Lmo::Types::check_type_constaints($attribute, $type_check, $check_name, $new_val);
+            Lmo::Types::check_type_constraints($attribute, $type_check, $check_name, $new_val);
          };
-         
+
          $class_metadata->{$attribute}{isa} = [$check_name, $check_sub];
          my $orig_method = $method;
          $method = sub {
@@ -1946,7 +1946,7 @@ sub parse {
    foreach my $key ( keys %$opts ) {
       PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
-      if ( !defined $final_props{$key}  
+      if ( !defined $final_props{$key}
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
@@ -2086,7 +2086,7 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass,
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       $dbh = eval { DBI->connect($cxn_string, $user, $pass, $defaults) };
@@ -2284,7 +2284,7 @@ sub set_vars {
       }
    }
 
-   return; 
+   return;
 }
 
 sub _d {
@@ -2557,7 +2557,7 @@ sub run {
          $parent_exit->($child_pid) if $parent_exit;
          exit 0;
       }
- 
+
       POSIX::setsid() or die "Cannot start a new session: $OS_ERROR";
       chdir '/'       or die "Cannot chdir to /: $OS_ERROR";
 
@@ -2583,7 +2583,7 @@ sub run {
 
          close STDERR;
          open  STDERR, ">&STDOUT"
-            or die "Cannot dupe STDERR to STDOUT: $OS_ERROR"; 
+            or die "Cannot dupe STDERR to STDOUT: $OS_ERROR";
       }
       else {
          if ( -t STDOUT ) {
@@ -2621,7 +2621,7 @@ sub _make_pid_file {
    eval {
       sysopen(PID_FH, $pid_file, O_RDWR|O_CREAT|O_EXCL) or die $OS_ERROR;
       print PID_FH $PID, "\n";
-      close PID_FH; 
+      close PID_FH;
    };
    if ( my $e = $EVAL_ERROR ) {
       if ( $e =~ m/file exists/i ) {
@@ -2792,7 +2792,7 @@ sub new {
    };
    return bless $self, $class;
 }
- 
+
 sub get_items {
    my ( $self, $section ) = @_;
    return $section ? $self->{items}->{$section} : $self->{items};
@@ -2831,7 +2831,7 @@ sub parse_from_file {
 
 sub command {
    my ( $self, $cmd, $name ) = @_;
-   
+
    $name =~ s/\s+\Z//m;  # Remove \n and blank line after name.
 
    if  ( $cmd eq 'head1' ) {
@@ -2866,7 +2866,7 @@ sub command {
    else {
       $self->{current_section} = '';
    }
-   
+
    return;
 }
 
@@ -3647,7 +3647,7 @@ sub get_rules {
          return _var_gt($args{variables}->{relay_log_space_limit}, 0);
       },
    },
-   
+
    {
       id   => 'slave_net_timeout',
       code => sub {
@@ -4122,7 +4122,7 @@ sub _split_url {
                   or die(qq/SSL certificate not valid for $host\n/);
             }
        }
-         
+
        $self->{host} = $host;
        $self->{port} = $port;
 
@@ -4288,7 +4288,7 @@ sub _split_url {
        $len += $self->write($request->{content});
 
        $len == $content_length
-         or croak(qq/Content-Length missmatch (got: $len expected: $content_length)/);
+         or croak(qq/Content-Length mismatch (got: $len expected: $content_length)/);
 
        return $len;
    }
@@ -4597,7 +4597,7 @@ my @vc_dirs = (
       }
       PTDEBUG && _d('Version check file', $file, 'in', $ENV{PWD});
       return $file;  # in the CWD
-   } 
+   }
 }
 
 sub version_check_time_limit {
@@ -4614,11 +4614,11 @@ sub version_check {
    PTDEBUG && _d('FindBin::Bin:', $FindBin::Bin);
    if ( !$args{force} ) {
       if ( $FindBin::Bin
-           && (-d "$FindBin::Bin/../.bzr"    || 
+           && (-d "$FindBin::Bin/../.bzr"    ||
                -d "$FindBin::Bin/../../.bzr" ||
-               -d "$FindBin::Bin/../.git"    || 
-               -d "$FindBin::Bin/../../.git" 
-              ) 
+               -d "$FindBin::Bin/../.git"    ||
+               -d "$FindBin::Bin/../../.git"
+              )
          ) {
          PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
          return;
@@ -4642,7 +4642,7 @@ sub version_check {
       PTDEBUG && _d(scalar @$instances_to_check, 'instances to check');
       return unless @$instances_to_check;
 
-      my $protocol = 'https';  
+      my $protocol = 'https';
       eval { require IO::Socket::SSL; };
       if ( $EVAL_ERROR ) {
          PTDEBUG && _d($EVAL_ERROR);
@@ -4826,7 +4826,7 @@ sub get_uuid {
     }
 
     return $uuid;
-}   
+}
 
 sub _generate_uuid {
     return sprintf+($}="%04x")."$}-$}-$}-$}-".$}x3,map rand 65537,0..7;
@@ -4854,7 +4854,7 @@ sub pingback {
    my (%args) = @_;
    my @required_args = qw(url instances);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my $url       = $args{url};
    my $instances = $args{instances};
@@ -4875,7 +4875,7 @@ sub pingback {
    );
    die "Failed to parse server requested programs: $response->{content}"
       if !scalar keys %$items;
-      
+
    my $versions = get_versions(
       items     => $items,
       instances => $instances,
@@ -4922,7 +4922,7 @@ sub encode_client_response {
    my (%args) = @_;
    my @required_args = qw(items versions general_id);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($items, $versions, $general_id) = @args{@required_args};
 
@@ -4948,7 +4948,7 @@ sub parse_server_response {
    my (%args) = @_;
    my @required_args = qw(response);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($response) = @args{@required_args};
 
@@ -4991,7 +4991,7 @@ sub get_versions {
    my (%args) = @_;
    my @required_args = qw(items);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($items) = @args{@required_args};
 
@@ -5140,7 +5140,7 @@ sub get_from_mysql {
    if ($item->{item} eq 'MySQL' && $item->{type} eq 'mysql_variable') {
       @{$item->{vars}} = grep { $_ eq 'version' || $_ eq 'version_comment' } @{$item->{vars}};
    }
- 
+
 
    my @versions;
    my %version_for;
@@ -5533,7 +5533,7 @@ reused.
 
 =item connect_timeout
 
-severity: note 
+severity: note
 
 A large value of this setting can create a denial of service
 vulnerability.
@@ -5555,19 +5555,19 @@ usual.
 
 =item flush
 
-severity: warn 
+severity: warn
 
 This option might decrease performance greatly.
 
 =item flush_time
 
-severity: warn 
+severity: warn
 
 This option might decrease performance greatly.
 
 =item have_bdb
 
-severity: note 
+severity: note
 
 The BDB engine is deprecated.  If you aren't using it, you should
 disable it with the skip_bdb option.
@@ -5580,7 +5580,7 @@ The init_connect option is enabled on this server.
 
 =item init_file
 
-severity: note 
+severity: note
 
 The init_file option is enabled on this server.
 
@@ -5598,7 +5598,7 @@ This variable generally doesn't need to be larger than 20MB.
 
 =item innodb_buffer_pool_size
 
-severity: warn 
+severity: warn
 
 The InnoDB buffer pool size is unconfigured.  In a production
 environment it should always be configured explicitly, and the default
@@ -5606,14 +5606,14 @@ environment it should always be configured explicitly, and the default
 
 =item innodb_checksums
 
-severity: warn 
+severity: warn
 
 InnoDB checksums are disabled.  Your data is not protected from
 hardware corruption or other errors!
 
 =item innodb_doublewrite
 
-severity: warn 
+severity: warn
 
 InnoDB doublewrite is disabled.  Unless you use a filesystem that
 protects against partial page writes, your data is not safe!
@@ -5627,7 +5627,7 @@ poor performance, or the need to perform crash recovery upon startup.
 
 =item innodb_flush_log_at_trx_commit-1
 
-severity: warn 
+severity: warn
 
 InnoDB is not configured in strictly ACID mode.  If there
 is a crash, some transactions can be lost.
@@ -5643,7 +5643,7 @@ set it to 2 instead of 0.
 
 =item innodb_force_recovery
 
-severity: warn 
+severity: warn
 
 InnoDB is in forced recovery mode!  This should be used only
 temporarily when recovering from data corruption or other bugs, not for
@@ -5651,14 +5651,14 @@ normal usage.
 
 =item innodb_lock_wait_timeout
 
-severity: warn 
+severity: warn
 
 This option has an unusually long value, which can cause
 system overload if locks are not being released.
 
 =item innodb_log_buffer_size
 
-severity: warn 
+severity: warn
 
 The InnoDB log buffer size generally should not be set larger than
 16MB.  If you are doing large BLOB operations, InnoDB is not really a good
@@ -5666,42 +5666,42 @@ choice of engines anyway.
 
 =item innodb_log_file_size
 
-severity: warn 
+severity: warn
 
 The InnoDB log file size is set to its default value, which is not
 usable on production systems.
 
 =item innodb_max_dirty_pages_pct
 
-severity: note 
+severity: note
 
 The innodb_max_dirty_pages_pct is lower than the default.  This can
 cause overly aggressive flushing and add load to the I/O system.
 
 =item flush_time
 
-severity: warn 
+severity: warn
 
 This setting is likely to cause very bad performance every
 flush_time seconds.
 
 =item key_buffer_size
 
-severity: warn 
+severity: warn
 
-The key buffer size is set to its default value, which is not good 
+The key buffer size is set to its default value, which is not good
 for most production systems.  In a production environment, key_buffer_size
 should be larger than the default 8MB size.
 
 =item large_pages
 
-severity: note 
+severity: note
 
 Large pages are enabled.
 
 =item locked_in_memory
 
-severity: note 
+severity: note
 
 The server is locked in memory with --memlock.
 
@@ -5722,27 +5722,27 @@ as aborted connections.
 
 =item low_priority_updates
 
-severity: note 
+severity: note
 
 The server is running with non-default lock priority for updates.
 This could cause update queries to wait unexpectedly for read queries.
 
 =item max_binlog_size
 
-severity: note 
+severity: note
 
 The max_binlog_size is smaller than the default of 1GB.
 
 =item max_connect_errors
 
-severity: note 
+severity: note
 
 max_connect_errors should probably be set as large as your platform
 allows.
 
 =item max_connections
 
-severity: warn 
+severity: warn
 
 If the server ever really has more than a thousand threads running,
 then the system is likely to spend more time scheduling threads than
@@ -5751,7 +5751,7 @@ light of your workload.
 
 =item myisam_repair_threads
 
-severity: note 
+severity: note
 
 myisam_repair_threads > 1 enables multi-threaded repair, which is
 relatively untested and is still listed as beta-quality code in the
@@ -5759,48 +5759,48 @@ official documentation.
 
 =item old_passwords
 
-severity: warn 
+severity: warn
 
 Old-style passwords are insecure.  They are sent in plain text
 across the wire.
 
 =item optimizer_prune_level
 
-severity: warn 
+severity: warn
 
 The optimizer will use an exhaustive search when planning complex
 queries, which can cause the planning process to take a long time.
 
 =item port
 
-severity: note 
+severity: note
 
 The server is listening on a non-default port.
 
 =item query_cache_size-1
 
-severity: note 
+severity: note
 
 The query cache does not scale to large sizes and can cause unstable
 performance when larger than 128MB, especially on multi-core machines.
 
 =item query_cache_size-2
 
-severity: warn 
+severity: warn
 
 The query cache can cause severe performance problems when it is
 larger than 256MB, especially on multi-core machines.
 
 =item read_buffer_size-1
 
-severity: note 
+severity: note
 
 The read_buffer_size variable should generally be left at its
 default unless an expert determines it is necessary to change it.
 
 =item read_buffer_size-2
 
-severity: warn 
+severity: warn
 
 The read_buffer_size variable should not be larger than 8MB.  It
 should generally be left at its default unless an expert determines it is
@@ -5810,14 +5810,14 @@ become extremely unstable.
 
 =item read_rnd_buffer_size-1
 
-severity: note 
+severity: note
 
 The read_rnd_buffer_size variable should generally be left at its
 default unless an expert determines it is necessary to change it.
 
 =item read_rnd_buffer_size-2
 
-severity: warn 
+severity: warn
 
 The read_rnd_buffer_size variable should not be larger than 4M.  It
 should generally be left at its default unless an expert determines it is
@@ -5825,7 +5825,7 @@ necessary to change it.
 
 =item relay_log_space_limit
 
-severity: warn 
+severity: warn
 
 Setting relay_log_space_limit can cause replicas to stop fetching binary logs
 from their master immediately. This could increase the risk that your data will
@@ -5835,7 +5835,7 @@ master and no replica has retrieved them.
 
 =item slave_net_timeout
 
-severity: warn 
+severity: warn
 
 This variable is set too high.  This is too long to wait before
 noticing that the connection to the master has failed and retrying.  This
@@ -5845,7 +5845,7 @@ when the master is simply idle.
 
 =item slave_skip_errors
 
-severity: crit 
+severity: crit
 
 You should not set this option.  If replication is having errors,
 you need to find and resolve the cause of that; it is likely that your
@@ -5854,14 +5854,14 @@ pt-table-checksum.
 
 =item sort_buffer_size-1
 
-severity: note 
+severity: note
 
 The sort_buffer_size variable should generally be left at its
 default unless an expert determines it is necessary to change it.
 
 =item sort_buffer_size-2
 
-severity: note 
+severity: note
 
 The sort_buffer_size variable should generally be left at its
 default unless an expert determines it is necessary to change it.  Making
@@ -5870,27 +5870,27 @@ the server crash, swap to death, or just become extremely unstable.
 
 =item sql_notes
 
-severity: note 
+severity: note
 
 This server is configured not to log Note level warnings to the
 error log.
 
 =item sync_frm
 
-severity: warn 
+severity: warn
 
 It is best to set sync_frm so that .frm files are flushed safely to
 disk in case of a server crash.
 
 =item tx_isolation-1
 
-severity: note 
+severity: note
 
 This server's transaction isolation level is non-default.
 
 =item tx_isolation-2
 
-severity: warn 
+severity: warn
 
 Most applications should use the default REPEATABLE-READ transaction
 isolation level, or in a few cases READ-COMMITTED.
@@ -5906,13 +5906,13 @@ Always ask MySQL to purge obsolete logs, never delete them externally.
 
 =item innodb_file_io_threads
 
-severity: note 
+severity: note
 
 This option is useless except on Windows.
 
 =item innodb_data_file_path
 
-severity: note 
+severity: note
 
 Auto-extending InnoDB files can consume a lot of disk space that is
 very difficult to reclaim later.  Some people prefer to set
@@ -5920,7 +5920,7 @@ innodb_file_per_table and allocate a fixed-size file for ibdata1.
 
 =item innodb_flush_method
 
-severity: note 
+severity: note
 
 Most production database servers that use InnoDB should set
 innodb_flush_method to O_DIRECT to avoid double-buffering, unless the I/O
@@ -5928,14 +5928,14 @@ system is very low performance.
 
 =item innodb_locks_unsafe_for_binlog
 
-severity: warn 
+severity: warn
 
 This option makes point-in-time recovery from binary logs, and
 replication, untrustworthy if statement-based logging is used.
 
 =item innodb_support_xa
 
-severity: warn 
+severity: warn
 
 MySQL's internal XA transaction support between InnoDB and the
 binary log is disabled.  The binary log might not match InnoDB's state
@@ -5944,46 +5944,46 @@ out-of-order statements in the binary log.
 
 =item log_bin
 
-severity: warn 
+severity: warn
 
 Binary logging is disabled, so point-in-time recovery and
 replication are not possible.
 
 =item log_output
 
-severity: warn 
+severity: warn
 
 Directing log output to tables has a high performance impact.
 
 =item max_relay_log_size
 
-severity: note 
+severity: note
 
 A custom max_relay_log_size is defined.
 
 =item myisam_recover_options
 
-severity: warn 
+severity: warn
 
 myisam_recover_options should be set to some value such as
 BACKUP,FORCE to ensure that table corruption is noticed.
 
 =item storage_engine
 
-severity: note 
+severity: note
 
 The server is using a non-standard storage engine as default.
 
 =item sync_binlog
 
-severity: warn 
+severity: warn
 
 Binary logging is enabled, but sync_binlog isn't configured so that
 every transaction is flushed to the binary log for durability.
 
 =item tmp_table_size
 
-severity: note 
+severity: note
 
 The effective minimum size of in-memory implicit temporary tables
 used internally during query execution is min(tmp_table_size,
@@ -5994,7 +5994,7 @@ as tmp_table_size.
 
 severity: warn
 
-These are the recommended minimum version for each major release: 3.23, 4.1.20, 5.0.37, 5.1.30.  
+These are the recommended minimum version for each major release: 3.23, 4.1.20, 5.0.37, 5.1.30.
 
 =item end-of-life mysql version
 
@@ -6243,7 +6243,7 @@ of output.
 
 =head1 ATTENTION
 
-Using <PTDEBUG> might expose passwords. When debug is enabled, all command line 
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
 parameters are shown in the output.
 
 =head1 SYSTEM REQUIREMENTS
@@ -6326,6 +6326,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-variable-advisor 3.5.1
+pt-variable-advisor 3.5.5
 
 =cut

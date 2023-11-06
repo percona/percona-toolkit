@@ -74,7 +74,7 @@ Architecture | CPU = 64-bit, OS = 64-bit
   tmpfs       379M   0% tmpfs    ro,nosuid,nodev,noexec,seclabel,mode=755                                  /run/user/1000
 # Disk Schedulers And Queue Size #############################
          sda | [noop] 128
-# Disk Partioning ############################################
+# Disk Partitioning ##########################################
 Device       Type      Start        End               Size
 ============ ==== ========== ========== ==================
 /dev/sda     Disk                              42949672960

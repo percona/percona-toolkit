@@ -44,7 +44,7 @@ $Data::Dumper::Quotekeys = 0;
 #   TableParser  - <TableParser> object
 #
 # Optional Arguments:
-#   dml         - Data manipulation statment to precede the SELECT statement
+#   dml         - Data manipulation statement to precede the SELECT statement
 #   select      - Arrayref of table columns to select
 #   chunk_index - Index to use for nibbling
 #   one_nibble  - Allow one-chunk tables (default yes)
@@ -53,7 +53,7 @@ $Data::Dumper::Quotekeys = 0;
 #   order_by    - Add ORDER BY to nibble SQL (default no)
 #
 # Returns:
-#  NibbleIterator object 
+#  NibbleIterator object
 sub new {
    my ( $class, %args ) = @_;
    my @required_args = qw(Cxn tbl chunk_size OptionParser Quoter TableNibbler TableParser);
@@ -136,7 +136,7 @@ sub new {
 
 sub switch_to_nibble {
     my $self = shift;
-    my $params = _nibble_params($self->{nibble_params}, $self->{tbl}, $self->{args}, $self->{cols}, 
+    my $params = _nibble_params($self->{nibble_params}, $self->{tbl}, $self->{args}, $self->{cols},
                                 $self->{chunk_size}, $self->{where}, $self->{comments}, $self->{Quoter});
 
     $self->{one_nibble}           = 0;
@@ -176,7 +176,7 @@ sub _one_nibble {
       my $explain_nibble_sql
          = "EXPLAIN SELECT "
          . ($args->{select} ? $args->{select}
-                          : join(', ', map{ $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum' 
+                          : join(', ', map{ $tbl->{tbl_struct}->{type_for}->{$_} eq 'enum'
                           ? "CAST(".$q->quote($_)." AS UNSIGNED)" : $q->quote($_) } @$cols))
          . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
@@ -296,7 +296,7 @@ sub _nibble_params {
          . " /*$comments->{nibble}*/";
       PTDEBUG && _d('Nibble statement:', $nibble_sql);
 
-      my $explain_nibble_sql 
+      my $explain_nibble_sql
          = "EXPLAIN SELECT "
          . ($args->{select} ? $args->{select}
                           : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
@@ -388,7 +388,7 @@ sub next {
             sleep($self->{sleep});
          }
       }
-  
+
       # If no rows, then we just got the next boundaries, which start
       # the next nibble.
       if ( !$self->{have_rows} ) {
@@ -426,7 +426,7 @@ sub next {
       }
       $self->{rowno}     = 0;
       $self->{have_rows} = 0;
-      
+
    }
 
    PTDEBUG && _d('Done nibbling');
@@ -580,7 +580,7 @@ sub can_nibble {
    # The table can be nibbled if this point is reached, else we would have
    # died earlier.  Return some values about nibbling the table.
    my $pause_file = ($o->has('pause-file') && $o->get('pause-file')) || undef;
-   
+
    return {
       row_est     => $row_est,      # nibble about this many rows
       index       => $index,        # using this index
@@ -610,7 +610,7 @@ sub _find_best_index {
       }
    }
 
-   # if no user definded index or user defined index not valid
+   # if no user defined index or user defined index not valid
    # consider mysql's preferred index a candidate
    if ( !$best_index && !$want_index && $args{mysql_index} ) {
       PTDEBUG && _d('MySQL wants to use index', $args{mysql_index});
@@ -632,9 +632,9 @@ sub _find_best_index {
          push @possible_indexes, $want_index;
       }
    }
-   
+
    # still no best index?
-   # prefer unique index. otherwise put in candidates array. 
+   # prefer unique index. otherwise put in candidates array.
    if (!$best_index) {
       PTDEBUG && _d('Auto-selecting best index');
       foreach my $index ( $tp->sort_indexes($tbl_struct) ) {
@@ -648,7 +648,7 @@ sub _find_best_index {
       }
    }
 
-   # choose the one with best cardinality 
+   # choose the one with best cardinality
    if ( !$best_index && @possible_indexes ) {
       PTDEBUG && _d('No PRIMARY or unique indexes;',
          'will use index with highest cardinality');
@@ -740,7 +740,7 @@ sub _prepare_sths {
    return;
 }
 
-sub _get_bounds { 
+sub _get_bounds {
    my ($self) = @_;
 
    if ( $self->{one_nibble} ) {
@@ -754,7 +754,7 @@ sub _get_bounds {
 
    # Get the real first lower boundary.
    $self->{first_lower} = $dbh->selectrow_arrayref($self->{first_lb_sql});
-   PTDEBUG && _d('First lower boundary:', Dumper($self->{first_lower}));  
+   PTDEBUG && _d('First lower boundary:', Dumper($self->{first_lower}));
 
    # The next boundary is the first lower boundary.  If resuming,
    # this should be something > the real first lower boundary and
@@ -772,9 +772,9 @@ sub _get_bounds {
       }
    }
    else {
-      $self->{next_lower}  = $self->{first_lower};   
+      $self->{next_lower}  = $self->{first_lower};
    }
-   PTDEBUG && _d('Next lower boundary:', Dumper($self->{next_lower}));  
+   PTDEBUG && _d('Next lower boundary:', Dumper($self->{next_lower}));
 
    if ( !$self->{next_lower} ) {
       # This happens if we resume from the end of the table, or if the
@@ -870,7 +870,7 @@ sub _next_boundaries {
    #    g <- next_lower
    #
    # Why fetch both upper and next_lower?  We wanted to keep nibbling simple,
-   # i.e. one nibble statment, not one for the first nibble, one for "middle"
+   # i.e. one nibble statement, not one for the first nibble, one for "middle"
    # nibbles, and another for the end (this is how older code worked).  So the
    # nibble statement is inclusive, but this requires both boundaries for
    # reasons explained in a comment above my $ub_sql in new().
@@ -915,7 +915,7 @@ sub _next_boundaries {
       $self->{upper} = $dbh->selectrow_arrayref($self->{last_ub_sql});
       PTDEBUG && _d('Last upper boundary:', Dumper($self->{upper}));
       $self->{no_more_boundaries} = 1;  # for next call
-      
+
       # OobNibbleIterator needs to know the last upper boundary.
       $self->{last_upper} = $self->{upper};
    }
@@ -934,7 +934,7 @@ sub identical_boundaries {
    return 1 if !$b1 && !$b2;
 
    # Both boundaries are defined; compare their values and return false
-   # on the fisrt difference because only one diff is needed to prove
+   # on the first difference because only one diff is needed to prove
    # that they're not identical.
    die "Boundaries have different numbers of values"
       if scalar @$b1 != scalar @$b2;  # shouldn't happen

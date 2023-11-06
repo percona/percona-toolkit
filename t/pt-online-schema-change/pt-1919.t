@@ -36,6 +36,9 @@ if ( !$master_dbh ) {
 elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
+elsif ($sb->is_cluster_mode) {
+    plan skip_all => 'Not for PXC';
+}
 
 my $q      = new Quoter();
 my $tp     = new TableParser(Quoter => $q);

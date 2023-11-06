@@ -77,7 +77,7 @@ use warnings FATAL => 'all';
 # of this so it will not try to load the module from @INC.  See the tool's
 # documentation for a full list of dependencies.
 BEGIN {
-   \$INC{\$_} = __FILE__ for map { (my \$pkg = \"\$_.pm\") =~ s!::!/!g; \$pkg } (qw(" 
+   \$INC{\$_} = __FILE__ for map { (my \$pkg = \"\$_.pm\") =~ s!::!/!g; \$pkg } (qw("
 
 for pkg in $(grep '^package [A-Za-z:]*;' $tool_file | cut -d' ' -f2 | cut -d';' -f1); do
    echo "      $pkg"

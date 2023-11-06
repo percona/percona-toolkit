@@ -21,6 +21,6 @@ const HostInfo = `# This host
              Process Type | {{.NodeType}}
 {{- if .ReplicasetName }}
                   ReplSet | {{.ReplicasetName}}
-              Repl Status | 
+              Repl Status |
 {{- end -}}
 `

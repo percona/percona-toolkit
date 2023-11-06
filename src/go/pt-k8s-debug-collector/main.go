@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	TOOLNAME = "pt-k8s-debug-collector"
+	toolname = "pt-k8s-debug-collector"
 )
 
 // We do not set anything here, these variables are defined by the Makefile
@@ -30,7 +30,7 @@ func main() {
 	version := false
 
 	flag.StringVar(&namespace, "namespace", "", "Namespace for collecting data. If empty data will be collected from all namespaces")
-	flag.StringVar(&resource, "resource", "none", "Collect data, specific to the resource. Supported values: pxc, psmdb, pg, ps, none")
+	flag.StringVar(&resource, "resource", "auto", "Collect data, specific to the resource. Supported values: pxc, psmdb, pg, pgv2, ps, none, auto")
 	flag.StringVar(&clusterName, "cluster", "", "Cluster name")
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to kubeconfig")
 	flag.StringVar(&forwardport, "forwardport", "", "Port to use for  port forwarding")
@@ -38,7 +38,7 @@ func main() {
 	flag.Parse()
 
 	if version {
-		fmt.Println(TOOLNAME)
+		fmt.Println(toolname)
 		fmt.Printf("Version %s\n", Version)
 		fmt.Printf("Build: %s using %s\n", Build, GoVersion)
 		fmt.Printf("Commit: %s\n", Commit)
