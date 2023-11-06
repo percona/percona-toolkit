@@ -8080,7 +8080,7 @@ override query_report => sub {
                ts         => $sample->{ts} ? parse_timestamp($sample->{ts}) : undef,
                Query_time => $sample->{Query_time},
                $explain ?
-                   ( explain  => $explain ): (),
+                  ( explain  => $explain ): (),
             },
          ),
       };
