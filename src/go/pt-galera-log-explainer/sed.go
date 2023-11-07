@@ -1,16 +1,6 @@
 package main
 
-import (
-	"fmt"
-	"os"
-	"os/exec"
-	"strings"
-
-	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/regex"
-	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/types"
-	"github.com/pkg/errors"
-)
-
+/*
 type sed struct {
 	Paths []string `arg:"" name:"paths" help:"paths of the log to use"`
 	ByIP  bool     `help:"Replace by IP instead of name"`
@@ -109,3 +99,4 @@ func sedSliceWith(elems []string, replace string) []string {
 	}
 	return args
 }
+*/
