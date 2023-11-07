@@ -1,14 +1,6 @@
 package main
 
-import (
-	"encoding/json"
-	"fmt"
-
-	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/regex"
-	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/types"
-	"github.com/pkg/errors"
-)
-
+/*
 type whois struct {
 	Search string   `arg:"" name:"search" help:"the identifier (node name, ip, uuid, hash) to search"`
 	Paths  []string `arg:"" name:"paths" help:"paths of the log to use"`
@@ -16,7 +8,7 @@ type whois struct {
 
 func (w *whois) Help() string {
 	return `Take any type of info pasted from error logs and find out about it.
-It will list known node name(s), IP(s), hostname(s), and other known node's UUIDs. 
+It will list known node name(s), IP(s), hostname(s), and other known node's UUIDs.
 `
 }
 
@@ -40,7 +32,6 @@ func (w *whois) Run() error {
 }
 
 func whoIs(ctxs map[string]types.LogCtx, search string) types.NodeInfo {
-	/*
 		ni := types.NodeInfo{Input: search}
 		if regex.IsNodeUUID(search) {
 			search = utils.UUIDToShortUUID(search)
@@ -98,6 +89,6 @@ func whoIs(ctxs map[string]types.LogCtx, search string) types.NodeInfo {
 			ni.NodeUUIDs = hashes
 			ni.IPs = ips
 			return ni
-	*/
 	return types.NodeInfo{}
 }
+*/

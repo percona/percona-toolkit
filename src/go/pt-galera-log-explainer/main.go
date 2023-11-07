@@ -36,9 +36,9 @@ var CLI struct {
 	ExcludeRegexes   []string        `help:"Remove regexes from analysis. List regexes using 'pt-galera-log-explainer regex-list'"`
 	MergeByDirectory bool            `help:"Instead of relying on identification, merge contexts and columns by base directory. Very useful when dealing with many small logs organized per directories."`
 
-	List      list      `cmd:""`
-	Whois     whois     `cmd:""`
-	Sed       sed       `cmd:""`
+	List list `cmd:""`
+	//Whois     whois     `cmd:""`
+	//	Sed       sed       `cmd:""`
 	Ctx       ctx       `cmd:""`
 	RegexList regexList `cmd:""`
 	Conflicts conflicts `cmd:""`
