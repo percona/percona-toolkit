@@ -66,11 +66,15 @@ func AddHashToIP(hash, ip string, ts time.Time) {
 	db.HashToIP[hash] = translationUnit{Value: ip, Timestamp: ts}
 }
 
+func sameAsLatestValue(m map[string][]translationUnit, key string, newvalue string) bool {
+	return len(m[key]) > 0 && m[key][len(m[key])-1].Value == newvalue
+}
+
 func AddHashToNodeName(hash, name string, ts time.Time) {
 	db.rwlock.Lock()
 	defer db.rwlock.Unlock()
 	name = utils.ShortNodeName(name)
-	if len(db.HashToNodeNames[hash]) > 0 && db.HashToNodeNames[hash][len(db.HashToNodeNames[hash])-1].Value == name {
+	if sameAsLatestValue(db.HashToNodeNames, hash, name) {
 		return
 	}
 	db.HashToNodeNames[hash] = append(db.HashToNodeNames[hash], translationUnit{Value: name, Timestamp: ts})
@@ -80,7 +84,7 @@ func AddIPToNodeName(ip, name string, ts time.Time) {
 	db.rwlock.Lock()
 	defer db.rwlock.Unlock()
 	name = utils.ShortNodeName(name)
-	if len(db.IPToNodeNames[ip]) > 0 && db.IPToNodeNames[ip][len(db.IPToNodeNames[ip])-1].Value == name {
+	if sameAsLatestValue(db.IPToNodeNames, ip, name) {
 		return
 	}
 	db.IPToNodeNames[ip] = append(db.IPToNodeNames[ip], translationUnit{Value: name, Timestamp: ts})
@@ -89,7 +93,7 @@ func AddIPToNodeName(ip, name string, ts time.Time) {
 func AddIPToMethod(ip, method string, ts time.Time) {
 	db.rwlock.Lock()
 	defer db.rwlock.Unlock()
-	if len(db.IPToMethods[ip]) > 0 && db.IPToMethods[ip][len(db.IPToMethods[ip])-1].Value == method {
+	if sameAsLatestValue(db.IPToMethods, ip, method) {
 		return
 	}
 	db.IPToMethods[ip] = append(db.IPToMethods[ip], translationUnit{Value: method, Timestamp: ts})
