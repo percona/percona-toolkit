@@ -6244,6 +6244,8 @@ sub main {
    if ( $o->get('unstop') ) {
       unlink $sentinel 
          or die "Cannot unlink sentinel file: $OS_ERROR\n";
+      print STDOUT "Successfully removed file $sentinel\n"
+         unless $quiet;
    }
 
    # Generate a filename with sprintf-like formatting codes.
@@ -8351,7 +8353,7 @@ Stop running instances by creating the sentinel file.
 
 Causes pt-archiver to create the sentinel file specified by L<"--sentinel"> and
 exit.  This should have the effect of stopping all running instances which are
-watching the same sentinel file.
+watching the same sentinel file. See also L<"--unstop">.
 
 =item --txn-size
 
@@ -8383,7 +8385,7 @@ want to disable transactions so pt-archiver doesn't try to commit.
 Remove sentinel file
 
 Causes pt-archiver to remove the sentinel file specified by L<"--sentinel"> and
-continue.
+continue. See also L<"--stop">.
 
 =item --user
 
