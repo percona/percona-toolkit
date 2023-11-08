@@ -128,9 +128,9 @@ is(
    ),
    q{`film_id`, `title`, CRC32(`description`), `release_year`, `language_id`, `original_language_id`,}
    .q{ `rental_duration`, `rental_rate`, `length`, `replacement_cost`, `rating`, `special_features`,}
-   .q{ UNIX_TIMESTAMP(`last_update`) AS `last_update`, SHA1(CONCAT_WS('#', `film_id`, `title`,}
+   .q{ UNIX_TIMESTAMP(`last_update`) AS `last_update`, SHA1(CONCAT_WS('#', `film_id`, convert(`title` using utf8mb4),}
    .q{ CRC32(`description`), `release_year`, `language_id`, `original_language_id`, `rental_duration`,}
-   .q{ `rental_rate`, `length`, `replacement_cost`, `rating`, `special_features`, }
+   .q{ `rental_rate`, `length`, `replacement_cost`, convert(`rating` using utf8mb4), convert(`special_features` using utf8mb4), }
    .q{UNIX_TIMESTAMP(`last_update`), CONCAT(ISNULL(`description`), ISNULL(`release_year`), }
    .q{ISNULL(`original_language_id`), ISNULL(`length`), ISNULL(`rating`), ISNULL(`special_features`))))},
    'SHA1 query for sakila.film',
@@ -180,7 +180,7 @@ is(
       tbl  => $tbl,
       func => 'SHA1',
    ),
-   q{`film_id`, `title`, SHA1(CONCAT_WS('%', `film_id`, `title`))},
+   q{`film_id`, `title`, SHA1(CONCAT_WS('%', `film_id`, convert(`title` using utf8mb4)))},
    'Separator',
 );
 
@@ -191,7 +191,7 @@ is(
       tbl  => $tbl,
       func => 'SHA1',
    ),
-   q{`film_id`, `title`, SHA1(CONCAT_WS('%', `film_id`, `title`))},
+   q{`film_id`, `title`, SHA1(CONCAT_WS('%', `film_id`, convert(`title` using utf8mb4)))},
    'Bad separator',
 );
 
@@ -204,7 +204,7 @@ is(
       cols => [qw(film_id title)],
       sep  => "'''",
    ),
-   q{`film_id`, `title`, SHA1(CONCAT_WS('#', `film_id`, `title`))},
+   q{`film_id`, `title`, SHA1(CONCAT_WS('#', `film_id`, convert(`title` using utf8mb4)))},
    'Really bad separator',
 );
 

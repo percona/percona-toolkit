@@ -1,0 +1,26 @@
+v3.0.13 released 2019-01-09
+===========================
+
+Improvements
+
+* :jirabug:`PT-1340`: ``pt-stalk`` now doesn't call ``mysqladmin debug`` command
+  by default to avoid flooding in the error log.
+  ``CMD_MYSQLADMIN="mysqladmin debug"`` environment variable reverts
+  ``pt-stalk`` to the previous way of operation.
+* :jirabug:`PT-1637`: A new ``--fail-on-stopped-replication`` option  allows
+  ``pt-table-checksum`` to detect failing slave nodes.
+
+Fixed bugs
+
+* :jirabug:`PT-1673`: ``pt-show-grants`` was incompatible with MariaDB 10+
+  (thanks `Tim Birkett <https://github.com/pysysops>`_)
+* :jirabug:`PT-1638`: ``pt-online-schema-change`` was erroneously taking MariaDB
+  10.x for MySQL 8.0 and rejecting to work with it to avoid the upstream bug
+  `#89441 <https://bugs.mysql.com/bug.php?id=89441>`_ scope.
+* :jirabug:`PT-1616`: ``pt-table-checksum`` failed to resume on large tables
+  with binary strings containing invalid UTF-8 characters.
+* :jirabug:`PT-1573`: ``pt-query-digest`` didn't work in case of
+  ``log_timestamps = SYSTEM`` my.cnf option.
+* :jirabug:`PT-157`: Specifying a non-primary key index with the ``i`` part of
+  the ``--source`` argument made ``pt-archiver`` to ignore the
+  ``--primary-key-only`` option presence.

@@ -1,4 +1,5 @@
-grant select, replication slave, replication client, super, process on *.* to 'test_user'@'%' identified by 'foo';
+CREATE USER 'test_user'@'%' identified by 'foo';
+grant select, replication slave, replication client, super, process on *.* to 'test_user'@'%';
 grant all on percona.* to 'test_user'@'%';
 create database if not exists percona;
 use percona;

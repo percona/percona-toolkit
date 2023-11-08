@@ -116,7 +116,7 @@ sub before_execute {
 #   * dbh    scalar: active dbh
 # Returns: hashref
 # Can die: yes
-# execute() executes the event's query if is hasn't already been executed. 
+# execute() executes the event's query if is hasn't already been executed.
 # Any prep work should have been done in before_execute().  Adds Query_time
 # attrib to the event.
 sub execute {

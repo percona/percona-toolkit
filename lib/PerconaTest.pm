@@ -152,7 +152,7 @@ sub output {
 
    my $output = '';
    {
-      if ( $file ) { 
+      if ( $file ) {
          open *output_fh, '>', $file
             or die "Cannot open file $file: $OS_ERROR";
       }
@@ -400,7 +400,7 @@ sub test_log_parser {
          misc       => $args{misc},
          oktorun    => $args{oktorun},
       );
-      while ( my $e = $p->parse_event(%parser_args) ) { 
+      while ( my $e = $p->parse_event(%parser_args) ) {
          push @e, $e;
       }
       close $fh;
@@ -576,7 +576,6 @@ sub no_diff {
       `cat $expected_output | sed $sed_args > /tmp/pt-test-outfile-trf`;
       $expected_output = "/tmp/pt-test-outfile-trf";
    }
-
    # Determine cmd type and run it.
    if ( ref $cmd eq 'CODE' ) {
       output($cmd, file => $tmp_file);
@@ -638,7 +637,7 @@ sub no_diff {
 
    # diff returns 0 if there were no differences,
    # so !0 = 1 = no diff in our testing parlance.
-   $retval = $retval >> 8; 
+   $retval = $retval >> 8;
 
    if ( $retval ) {
       if ( $ENV{UPDATE_SAMPLES} || $args{update_sample} ) {
@@ -693,14 +692,15 @@ sub test_bash_tool {
 }
 
 my %checksum_result_col = (
-   ts      => 0,
-   errors  => 1,
-   diffs   => 2,
-   rows    => 3,
-   chunks  => 4,
-   skipped => 5,
-   time    => 6,
-   table   => 7,
+   ts        => 0,
+   errors    => 1,
+   diffs     => 2,
+   rows      => 3,
+   diff_rows => 4,
+   chunks    => 5,
+   skipped   => 6,
+   time      => 7,
+   table     => 7,
 );
 sub count_checksum_results {
    my ($output, $column, $table) = @_;
@@ -733,7 +733,7 @@ sub normalize_checksum_results {
    open my $fh, ">", $tmp_file or die "Cannot open $tmp_file: $OS_ERROR";
    printf $fh $output;
    close $fh;
-   my $normal_output = `cat $tmp_file | awk '/^[0-9 ]/ {print \$2 " " \$3 " " \$4 " " \$5 " " \$6 " " \$8} /^[A-Z]/ {print \$0}'`;
+   my $normal_output = `cat $tmp_file | awk '/^[0-9 ]/ {print \$2 " " \$3 " " \$4 " " \$5 " " \$6 " " \$7 " " \$9} /^[A-Z]/ {print \$0}'`;
    if ( wantarray ) {
       my $original_output = `cat $tmp_file`;
       return $normal_output, $original_output;
@@ -802,7 +802,7 @@ sub full_output {
 
    unlink $file;
    unlink $file2;
-   
+
    return ($output, $status);
 }
 

@@ -1,0 +1,31 @@
+
+v3.0.2 released 2017-03-27
+==========================
+
+Percona Toolkit 3.0.2 includes the following changes:
+
+New Features
+
+* PT-73: Added support for SSL connections to ``pt-mongodb-summary`` and ``pt-mongodb-query-digest``
+
+* 1642751: Enabled gathering of information about locks and transactions by ``pt-stalk`` using Performance Schema if it is enabled (Thanks Agustin Gallego)
+
+Bug Fixes
+
+* PT-74: Fixed gathering of security settings when running ``pt-mongodb-summary`` on a mongod instance that is specified as the host
+
+* PT-75: Changed the default sort order in ``pt-mongodb-query-digest`` output to descending
+
+* PT-76: Added support of ``&`` and ``#`` symbols in passwords for ``pt-mysql-summary``
+
+* PT-77: Updated ``Makefile`` to support new MongoDB tools
+
+* PT-89: Fixed ``pt-stalk`` to run ``top`` more than once to collect useful CPU usage
+
+* PT-93: Fixed ``pt-mongodb-query-digest`` to make query ID match query key (Thanks Kamil Dziedzic)
+
+* PT-94: Fixed ``pt-online-schema-change`` to not make duplicate rows in ``_t_new`` when updating primary key. Also see 1646713.
+
+* PT-101: Fixed ``pt-table-checksum`` to correctly use the ``--slave-user`` and ``--slave-password`` options. Also see 1651002.
+
+* PT-105: Fixed ``pt-table-checksum`` to continue running if a database is dropped in the process

@@ -1,0 +1,8 @@
+/usr/local/mysql-5.7.21/bin/mysqld, Version: 5.7.21-log (MySQL Community Server (GPL)). started with:
+Tcp port: 5721  Unix socket: /tmp/mysql5721.sock
+Time                 Id Command    Argument
+2018-09-07T18:45:40.098124+08:00	257426 Connect	mysqlha_common@127.0.0.1 on  using TCP/IP
+2018-09-07T18:45:40.098511+08:00	257426 Query	set autocommit=0
+2018-09-07T18:45:40.098613+08:00	257426 Query	set autocommit=1
+2018-09-07T18:45:40.098769+08:00	257426 Query	show global status like 'Threads_connected'
+2018-09-07T18:45:40.101009+08:00	257426 Quit	

@@ -1,17 +1,17 @@
 --  Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
--- 
+--
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
 --  the Free Software Foundation; version 2 of the License.
--- 
+--
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
 --  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 --  GNU General Public License for more details.
--- 
+--
 --  You should have received a copy of the GNU General Public License
 --  along with this program; if not, write to the Free Software
---  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA 
+--  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 
 DROP PROCEDURE IF EXISTS diagnostics;
 
@@ -45,7 +45,7 @@ CREATE DEFINER='root'@'localhost' PROCEDURE diagnostics (
                   they are simply the min or max value from the end view respectively, so does not necessarily reflect
                   the minimum/maximum value in the monitored period.
                   Note: except for the metrics views the delta is only calculation between the first and last outputs.
-             
+
              Requires the SUPER privilege for "SET sql_log_bin = 0;".
 
              Versions supported:
@@ -146,7 +146,7 @@ BEGIN
     DECLARE c_sysviews_w_delta CURSOR FOR
         SELECT table_name
           FROM tmp_sys_views_delta
-         ORDER BY table_name; 
+         ORDER BY table_name;
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = TRUE;
 
     -- Do not track the current thread - no reason to clutter the output
@@ -567,12 +567,12 @@ BEGIN
     ELSE
         -- No guarantee that replication is actually configured, but we can't really know
         SELECT CONCAT('Replication Configured: ', v_has_replication, ' - Performance Schema Replication Tables: ', v_has_ps_replication) AS 'Replication Status';
-        
+
         IF (v_has_ps_replication = 'YES') THEN
             SELECT 'Replication - Connection Configuration' AS 'The following output is:';
             SELECT * FROM performance_schema.replication_connection_configuration/*!50706 ORDER BY CHANNEL_NAME*/;
         END IF;
-        
+
         IF (v_has_ps_replication = 'YES') THEN
             SELECT 'Replication - Applier Configuration' AS 'The following output is:';
             SELECT * FROM performance_schema.replication_applier_configuration ORDER BY CHANNEL_NAME;
@@ -674,7 +674,7 @@ BEGIN
         v_sql_status_summary_from   = '';
 
     -- Start the loop
-    REPEAT 
+    REPEAT
         SET v_output_count = v_output_count + 1;
         IF (v_output_count > 1) THEN
             -- Don't sleep on the first execution
@@ -697,14 +697,14 @@ BEGIN
         IF (v_has_replication <> 'NO') THEN
             SELECT 'SHOW SLAVE STATUS' AS 'The following output is:';
             SHOW SLAVE STATUS;
-            
+
             IF (v_has_ps_replication = 'YES') THEN
                 SELECT 'Replication Connection Status' AS 'The following output is:';
                 SELECT * FROM performance_schema.replication_connection_status;
 
                 SELECT 'Replication Applier Status' AS 'The following output is:';
                 SELECT * FROM performance_schema.replication_applier_status ORDER BY CHANNEL_NAME;
-                
+
                 SELECT 'Replication Applier Status - Coordinator' AS 'The following output is:';
                 SELECT * FROM performance_schema.replication_applier_status_by_coordinator ORDER BY CHANNEL_NAME;
 
@@ -735,7 +735,7 @@ BEGIN
         -- join the outputs in the summary at the end.
         SET v_table_name = CONCAT('tmp_metrics_', v_output_count);
         CALL sys.execute_prepared_stmt(CONCAT('DROP TEMPORARY TABLE IF EXISTS ', v_table_name));
-        
+
         -- Currently information_schema.GLOBAL_STATUS has VARIABLE_VALUE as varchar(1024)
         CALL sys.execute_prepared_stmt(CONCAT('CREATE TEMPORARY TABLE ', v_table_name, ' (
   Variable_name VARCHAR(193) NOT NULL,
@@ -949,7 +949,7 @@ SELECT ''UNIX_TIMESTAMP()'' AS Variable_name, ROUND(UNIX_TIMESTAMP(NOW(3)), 3) A
     IF (v_has_ps = 'YES') THEN
         SELECT 'Unused Indexes' AS 'The following output is:';
         SELECT object_schema, COUNT(*) AS NumUnusedIndexes
-          FROM performance_schema.table_io_waits_summary_by_index_usage 
+          FROM performance_schema.table_io_waits_summary_by_index_usage
          WHERE index_name IS NOT NULL
                AND count_star = 0
                AND object_schema NOT IN ('mysql', 'sys')

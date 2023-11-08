@@ -96,7 +96,7 @@ sub before_execute {
          if $EVAL_ERROR;
 
       # Save the tmp tbl; it's used later in _compare_checksums().
-      $event->{tmp_tbl} = $tmp_tbl; 
+      $event->{tmp_tbl} = $tmp_tbl;
 
       # Wrap the original query so when it's executed its results get
       # put in tmp table.
@@ -297,7 +297,7 @@ sub _checksum_results {
       };
       die "Failed to checksum table: $EVAL_ERROR"
          if $EVAL_ERROR;
-   
+
       $sql = "DROP TABLE IF EXISTS $tmp_tbl";
       PTDEBUG && _d($sql);
      eval {
@@ -331,7 +331,7 @@ sub _compare_rows {
    my $different_column_values = 0;
 
    my $n_events = scalar @$events;
-   my $event0   = $events->[0]; 
+   my $event0   = $events->[0];
    my $item     = $event0->{fingerprint} || $event0->{arg};
    my $sampleno = $event0->{sampleno} || 0;
    my $dbh      = $hosts->[0]->{dbh};  # doesn't matter which one
@@ -402,7 +402,7 @@ sub _compare_rows {
             sth     => $left,
             row     => $lr,
             Outfile => $outfile,
-         ); 
+         );
          return;
       };
 
@@ -472,8 +472,8 @@ sub _compare_rows {
       );
 
       # Save differences.
-      if ( scalar @diff_rows ) { 
-         $different_column_values++; 
+      if ( scalar @diff_rows ) {
+         $different_column_values++;
          $self->{diffs}->{col_vals}->{$item}->{$sampleno} = \@diff_rows;
          $self->{samples}->{$item}->{$sampleno} = $event0->{arg};
       }
@@ -532,12 +532,12 @@ sub diff_rows {
 
    $left_dbh->do("DROP TABLE IF EXISTS $left_tbl");
    $left_dbh->do("CREATE TABLE $left_tbl $table_ddl");
-   $left_dbh->do("LOAD DATA LOCAL INFILE '$left_outfile' "
+   $left_dbh->do("LOAD DATA INFILE '$left_outfile' "
       . "INTO TABLE $left_tbl");
 
    $right_dbh->do("DROP TABLE IF EXISTS $right_tbl");
    $right_dbh->do("CREATE TABLE $right_tbl $table_ddl");
-   $right_dbh->do("LOAD DATA LOCAL INFILE '$right_outfile' "
+   $right_dbh->do("LOAD DATA INFILE '$right_outfile' "
       . "INTO TABLE $right_tbl");
 
    PTDEBUG && _d('Loaded', $left_outfile, 'into table', $left_tbl, 'and',

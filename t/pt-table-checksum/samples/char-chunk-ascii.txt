@@ -1,2 +1,4 @@
+if all tables be checksummed 
+checksum ...    
 ERRORS DIFFS ROWS CHUNKS SKIPPED TABLE
 0 0 142 10 0 test.ascii

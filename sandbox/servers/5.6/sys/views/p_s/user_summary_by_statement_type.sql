@@ -17,7 +17,7 @@
 -- View: user_summary_by_statement_type
 --
 -- Summarizes the types of statements executed by each user.
--- 
+--
 -- When the user found is NULL, it is assumed to be a "background" thread.
 --
 -- mysql> select * from user_summary_by_statement_type;
@@ -36,7 +36,7 @@
 CREATE OR REPLACE
   ALGORITHM = MERGE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW user_summary_by_statement_type (
   user,
   statement,

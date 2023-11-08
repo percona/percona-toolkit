@@ -1,0 +1,5 @@
+- [ ] The contributed code is licensed under GPL v2.0
+- [ ] Contributor Licence Agreement (CLA) is signed
+- [ ] util/update-modules has been ran
+- [ ] Documentation updated
+- [ ] Test suite update

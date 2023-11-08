@@ -50,159 +50,163 @@ my $ms = new MasterSlave(
 
 SKIP: {
    skip "Cannot connect to sandbox master", 2 unless $master_dbh;
-   local @ARGV = ();
-   $o->get_opts();
+
+PXC_SKIP: {
+      skip 'Not for PXC' if ( $sb->is_cluster_mode );
+
+      local @ARGV = ();
+      $o->get_opts();
    
-   my $slaves = $ms->get_slaves(
-      dbh      => $master_dbh,
-      dsn      => $master_dsn,
-      make_cxn => sub {
-         my $cxn = new Cxn(
-            @_,
-            DSNParser    => $dp,
-            OptionParser => $o,
-         );
-         $cxn->connect();
-         return $cxn;
-      },
-   );
+      my $slaves = $ms->get_slaves(
+         dbh      => $master_dbh,
+         dsn      => $master_dsn,
+         make_cxn => sub {
+            my $cxn = new Cxn(
+               @_,
+               DSNParser    => $dp,
+               OptionParser => $o,
+            );
+            $cxn->connect();
+            return $cxn;
+         },
+      );
 
-   is_deeply(
-      $slaves->[0]->dsn(),
-      {  A => undef,
-         D => undef,
-         F => undef,
-         P => '12346',
-         S => undef,
-         h => '127.0.0.1',
-         p => 'msandbox',
-         t => undef,
-         u => 'msandbox',
-         server_id => 12346,
-         master_id => 12345,
-         source    => 'hosts',
-      },
-      'get_slaves() from recurse_to_slaves() with a default --recursion-method'
-   );
+      is_deeply(
+         $slaves->[0]->dsn(),
+         {  A => undef,
+            D => undef,
+            F => undef,
+            P => '12346',
+            S => undef,
+            h => '127.0.0.1',
+            p => 'msandbox',
+            t => undef,
+            u => 'msandbox',
+            server_id => 12346,
+            master_id => 12345,
+            source    => 'hosts',
+         },
+         'get_slaves() from recurse_to_slaves() with a default --recursion-method'
+      );
 
-   my ($id) = $slaves->[0]->dbh()->selectrow_array('SELECT @@SERVER_ID');
-   is(
-      $id,
-      '12346',
-      'dbh created from get_slaves()'
-   );
+      my ($id) = $slaves->[0]->dbh()->selectrow_array('SELECT @@SERVER_ID');
+      is(
+         $id,
+         '12346',
+         'dbh created from get_slaves()'
+      );
 
-   # This doesn't actually work because the master and slave are both
-   # localhost/127.1 so it will connect agian to the master, detect this,
-   # and ignore it.  This tests nonetheless that "processlist" isn't
-   # misspelled, which would cause the sub to die.
-   # https://bugs.launchpad.net/percona-toolkit/+bug/921802
-   local @ARGV = ('--recursion-method', 'processlist');
-   $o->get_opts();
+      # This doesn't actually work because the master and slave are both
+      # localhost/127.1 so it will connect agian to the master, detect this,
+      # and ignore it.  This tests nonetheless that "processlist" isn't
+      # misspelled, which would cause the sub to die.
+      # https://bugs.launchpad.net/percona-toolkit/+bug/921802
+      local @ARGV = ('--recursion-method', 'processlist');
+      $o->get_opts();
 
-   $slaves = $ms->get_slaves(
-      dbh      => $master_dbh,
-      dsn      => $master_dsn,
-      make_cxn => sub {
-         my $cxn = new Cxn(
-            @_,
-            DSNParser    => $dp,
-            OptionParser => $o,
-         );
-         $cxn->connect();
-         return $cxn;
-      },
-   );
+      $slaves = $ms->get_slaves(
+         dbh      => $master_dbh,
+         dsn      => $master_dsn,
+         make_cxn => sub {
+            my $cxn = new Cxn(
+               @_,
+               DSNParser    => $dp,
+               OptionParser => $o,
+            );
+            $cxn->connect();
+            return $cxn;
+         },
+      );
 
-   is_deeply(
-      $slaves,
-      [],
-      "get_slaves() by processlist"
-   );
+      is_deeply(
+         $slaves,
+         [],
+         "get_slaves() by processlist"
+      );
 
-   # ##########################################################################
-   # --recursion-method=none
-   # https://bugs.launchpad.net/percona-toolkit/+bug/987694
-   # ##########################################################################
+      # ##########################################################################
+      # --recursion-method=none
+      # https://bugs.launchpad.net/percona-toolkit/+bug/987694
+      # ##########################################################################
 
-   # Create percona.checksums to make the privs happy.
-   diag(`/tmp/12345/use -e "create database if not exists percona"`);
-   diag(`/tmp/12345/use -e "create table if not exists percona.checksums (id int)"`);
+      # Create percona.checksums to make the privs happy.
+      diag(`/tmp/12345/use -e "create database if not exists percona"`);
+      diag(`/tmp/12345/use -e "create table if not exists percona.checksums (id int)"`);
    
-   # Create a read-only checksum user that can't SHOW SLAVES HOSTS or much else.
-   diag(`/tmp/12345/use -u root < $trunk/t/lib/samples/ro-checksum-user.sql`);
+      # Create a read-only checksum user that can't SHOW SLAVES HOSTS or much else.
+      diag(`/tmp/12345/use -u root < $trunk/t/lib/samples/ro-checksum-user.sql`);
 
-   my $ro_dbh = DBI->connect(
-      "DBI:mysql:;host=127.0.0.1;port=12345", 'ro_checksum_user', 'msandbox',
-           { PrintError => 0, RaiseError => 1 });
-   my $ro_dsn = {
-      h => '127.1',
-      P => '12345',
-      u => 'ro_checksum_user',
-      p => 'ro_checksum_user',
-   };
+      my $ro_dbh = DBI->connect(
+         "DBI:mysql:;host=127.0.0.1;port=12345", 'ro_checksum_user', 'msandbox',
+              { PrintError => 0, RaiseError => 1 });
+      my $ro_dsn = {
+         h => '127.1',
+         P => '12345',
+         u => 'ro_checksum_user',
+         p => 'ro_checksum_user',
+      };
 
-   @ARGV = ('--recursion-method', 'hosts');
-   $o->get_opts();
-   throws_ok(
-      sub {
-         $slaves = $ms->get_slaves(
-            dbh      => $ro_dbh,
-            dsn      => $ro_dsn,
-            make_cxn => sub {
-               my $cxn = new Cxn(
-                  @_,
-                  DSNParser    => $dp,
-                  OptionParser => $o,
-               );
-               $cxn->connect();
-               return $cxn;
-            },
-         );
-      },
-      qr/Access denied/,
-      "Can't SHOW SLAVE HOSTS without privs (bug 987694)"
-   );
+      @ARGV = ('--recursion-method', 'hosts');
+      $o->get_opts();
+      throws_ok(
+         sub {
+            $slaves = $ms->get_slaves(
+               dbh      => $ro_dbh,
+               dsn      => $ro_dsn,
+               make_cxn => sub {
+                  my $cxn = new Cxn(
+                     @_,
+                     DSNParser    => $dp,
+                     OptionParser => $o,
+                  );
+                  $cxn->connect();
+                  return $cxn;
+               },
+            );
+         },
+         qr/Access denied/,
+         "Can't SHOW SLAVE HOSTS without privs (bug 987694)"
+      );
 
-   @ARGV = ('--recursion-method', 'none');
-   $o->get_opts();
-   $slaves = $ms->get_slaves(
-      dbh      => $ro_dbh,
-      dsn      => $ro_dsn,
-      make_cxn => sub {
-         my $cxn = new Cxn(
-            @_,
-            DSNParser    => $dp,
-            OptionParser => $o,
-         );
-         $cxn->connect();
-         return $cxn;
-      },
-   );
-   is_deeply(
-      $slaves,
-      [],
-      "No privs needed for --recursion-method=none (bug 987694)"
-   );
-
-   @ARGV = ('--recursion-method', 'none', '--recurse', '2');
-   $o->get_opts();
-   my $recursed = 0;
-   $ms->recurse_to_slaves(
-      {  dbh      => $ro_dbh,
+      @ARGV = ('--recursion-method', 'none');
+      $o->get_opts();
+      $slaves = $ms->get_slaves(
+         dbh      => $ro_dbh,
          dsn      => $ro_dsn,
-         callback => sub { $recursed++ },
-      });
-   is(
-      $recursed,
-      0,
-      "recurse_to_slaves() doesn't recurse if method=none"
-   );
+         make_cxn => sub {
+            my $cxn = new Cxn(
+               @_,
+               DSNParser    => $dp,
+               OptionParser => $o,
+            );
+            $cxn->connect();
+            return $cxn;
+         },
+      );
+      is_deeply(
+         $slaves,
+         [],
+         "No privs needed for --recursion-method=none (bug 987694)"
+      );
 
-   $ro_dbh->disconnect();
-   diag(`/tmp/12345/use -u root -e "drop user 'ro_checksum_user'\@'%'"`); 
+      @ARGV = ('--recursion-method', 'none', '--recurse', '2');
+      $o->get_opts();
+      my $recursed = 0;
+      $ms->recurse_to_slaves(
+         {  dbh      => $ro_dbh,
+            dsn      => $ro_dsn,
+            callback => sub { $recursed++ },
+         });
+      is(
+         $recursed,
+         0,
+         "recurse_to_slaves() doesn't recurse if method=none"
+      );
+
+      $ro_dbh->disconnect();
+      diag(`/tmp/12345/use -u root -e "drop user 'ro_checksum_user'\@'%'"`); 
+   }
 }
-
 # #############################################################################
 # First we need to setup a special replication sandbox environment apart from
 # the usual persistent sandbox servers on ports 12345 and 12346.
@@ -326,12 +330,16 @@ like($EVAL_ERROR, qr/has no connected slaves/, 'slave 1 is not slave of slave 2'
 map { $ms->stop_slave($_) } @slaves;
 map { $ms->start_slave($_) } @slaves;
 
+# Give the slaves so time to restart
+sleep(5);
+
 my $res;
 $res = $ms->wait_for_master(
    master_status => $ms->get_master_status($dbh),
    slave_dbh     => $slaves[0],
-   timeout       => 1,
+   timeout       => 10,
 );
+
 ok($res->{result} >= 0, 'Wait was successful');
 
 $ms->stop_slave($slaves[0]);
@@ -596,6 +604,9 @@ SKIP: {
    skip "Cannot connect to sandbox master", 3 unless $master_dbh;
    skip "Cannot connect to sandbox slave", 3 unless $slave_dbh;
 
+PXC_SKIP: {
+      skip 'Not for PXC' if ( $sb->is_cluster_mode );
+
    is_deeply(
       $ms->get_replication_filters(dbh=>$slave_dbh),
       {
@@ -701,7 +712,7 @@ is(
    '12346',
    'dbh created from DSN table works'
 );
-
+}
 # ############################################################################
 # Invalid recursion methods are caught
 # ############################################################################
@@ -863,6 +874,33 @@ SKIP: {
 
    $sb->stop_sandbox(qw(chan_master1 chan_master2 chan_slave1));
 }
+
+my $connected_slaves = [
+  {
+    command => 'Binlog Dump',
+    db => undef,
+    host => '2001:db8:1::242:ac11:3:53902',
+    id => 7,
+    info => undef,
+    rows_examined => 0,
+    rows_sent => 0,
+    state => 'Master has sent all binlog to slave; waiting for more updates',
+    time => 80,
+    user => 'root'
+  },
+];
+
+my @g = $ms->_process_slaves_list ($dp, $dsn, $connected_slaves);
+is (
+    scalar @g,
+    1,
+    "1 slave (IPv6) detected",
+);
+is (
+    $g[0]->{h},
+    "[2001:db8:1::242:ac11:3]",
+    "Brackets were added to IPv6 detected slave host",
+);
 # #############################################################################
 # Done.
 # #############################################################################

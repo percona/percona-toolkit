@@ -1,0 +1,30 @@
+No slaves found.  See --recursion-method if host h=127.1,P=12345 has slaves.
+Not checking slave lag because no slaves were found and --check-slave-lag was not specified.
+Operation, tries, wait:
+  analyze_table, 10, 1
+  copy_rows, 10, 0.25
+  create_triggers, 10, 1
+  drop_triggers, 10, 1
+  swap_tables, 10, 1
+  update_foreign_keys, 10, 1
+Altering `bug_1045317`.`bits`...
+TS Dropping triggers...
+TS Dropped triggers OK.
+# Event              Count
+# ================== =====
+# INSERT                 1
+# mysql_warning_1592     1
+Successfully altered `bug_1045317`.`bits`.
+Creating new table...
+Created new table bug_1045317._bits_new OK.
+Altering new table...
+Altered `bug_1045317`.`_bits_new` OK.
+TS Creating triggers...
+TS Created triggers OK.
+TS Copying approximately 3 rows...
+TS Copied rows OK.
+TS Analyzing new table...
+TS Swapping tables...
+TS Swapped original and new tables OK.
+TS Dropping old table...
+TS Dropped old table `bug_1045317`.`_bits_old` OK.

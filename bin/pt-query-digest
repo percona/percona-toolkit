@@ -56,15 +56,15 @@ BEGIN {
 # ###########################################################################
 # Percona::Toolkit package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Percona/Toolkit.pm
 #   t/lib/Percona/Toolkit.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.5';
+our $VERSION = '3.5.5';
 
 use strict;
 use warnings FATAL => 'all';
@@ -119,10 +119,10 @@ sub _d {
 # ###########################################################################
 # Lmo::Utils package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo/Utils.pm
 #   t/lib/Lmo/Utils.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Lmo::Utils;
@@ -179,10 +179,10 @@ sub _unimport_coderefs {
 # ###########################################################################
 # Lmo::Meta package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo/Meta.pm
 #   t/lib/Lmo/Meta.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Lmo::Meta;
@@ -236,10 +236,10 @@ sub attributes_for_new {
 # ###########################################################################
 # Lmo::Object package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo/Object.pm
 #   t/lib/Lmo/Object.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Lmo::Object;
@@ -332,10 +332,10 @@ sub meta {
 # ###########################################################################
 # Lmo::Types package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo/Types.pm
 #   t/lib/Lmo/Types.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Lmo::Types;
@@ -361,7 +361,7 @@ our %TYPES = (
    } qw(Array Code Hash Regexp Glob Scalar)
 );
 
-sub check_type_constaints {
+sub check_type_constraints {
    my ($attribute, $type_check, $check_name, $val) = @_;
    ( ref($type_check) eq 'CODE'
       ? $type_check->($val)
@@ -433,10 +433,10 @@ sub _nested_constraints {
 # ###########################################################################
 # Lmo package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo.pm
 #   t/lib/Lmo.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 BEGIN {
@@ -494,7 +494,7 @@ sub extends {
 
 sub _load_module {
    my ($class) = @_;
-   
+
    (my $file = $class) =~ s{::|'}{/}g;
    $file .= '.pm';
    { local $@; eval { require "$file" } } # or warn $@;
@@ -525,7 +525,7 @@ sub has {
    my $caller = scalar caller();
 
    my $class_metadata = Lmo::Meta->metadata_for($caller);
-   
+
    for my $attribute ( ref $names ? @$names : $names ) {
       my %args   = @_;
       my $method = ($args{is} || '') eq 'ro'
@@ -544,16 +544,16 @@ sub has {
 
       if ( my $type_check = $args{isa} ) {
          my $check_name = $type_check;
-         
+
          if ( my ($aggregate_type, $inner_type) = $type_check =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
             $type_check = Lmo::Types::_nested_constraints($attribute, $aggregate_type, $inner_type);
          }
-         
+
          my $check_sub = sub {
             my ($new_val) = @_;
-            Lmo::Types::check_type_constaints($attribute, $type_check, $check_name, $new_val);
+            Lmo::Types::check_type_constraints($attribute, $type_check, $check_name, $new_val);
          };
-         
+
          $class_metadata->{$attribute}{isa} = [$check_name, $check_sub];
          my $orig_method = $method;
          $method = sub {
@@ -768,10 +768,10 @@ sub override {
 # ###########################################################################
 # DSNParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/DSNParser.pm
 #   t/lib/DSNParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package DSNParser;
@@ -855,7 +855,7 @@ sub parse {
    foreach my $key ( keys %$opts ) {
       PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
-      if (   !defined $final_props{$key}
+      if ( !defined $final_props{$key}
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
@@ -995,7 +995,7 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass,
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       $dbh = eval { DBI->connect($cxn_string, $user, $pass, $defaults) };
@@ -1062,6 +1062,28 @@ sub get_dbh {
            . ($sql_mode ? " and $sql_mode" : '')
            . ": $EVAL_ERROR";
       }
+   }
+   my ($mysql_version) = eval { $dbh->selectrow_array('SELECT VERSION()') };
+   if ($EVAL_ERROR) {
+       die "Cannot get MySQL version: $EVAL_ERROR";
+   }
+
+   my (undef, $character_set_server) = eval { $dbh->selectrow_array("SHOW VARIABLES LIKE 'character_set_server'") };
+   if ($EVAL_ERROR) {
+       die "Cannot get MySQL var character_set_server: $EVAL_ERROR";
+   }
+
+   if ($mysql_version =~ m/^(\d+)\.(\d)\.(\d+).*/) {
+       if ($1 >= 8 && $character_set_server =~ m/^utf8/) {
+           $dbh->{mysql_enable_utf8} = 1;
+           my $msg = "MySQL version $mysql_version >= 8 and character_set_server = $character_set_server\n".
+                     "Setting: SET NAMES $character_set_server";
+           PTDEBUG && _d($msg);
+           eval { $dbh->do("SET NAMES 'utf8mb4'") };
+           if ($EVAL_ERROR) {
+               die "Cannot SET NAMES $character_set_server: $EVAL_ERROR";
+           }
+       }
    }
 
    PTDEBUG && _d('DBH info: ',
@@ -1171,7 +1193,7 @@ sub set_vars {
       }
    }
 
-   return; 
+   return;
 }
 
 sub _d {
@@ -1191,10 +1213,10 @@ sub _d {
 # ###########################################################################
 # Quoter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Quoter.pm
 #   t/lib/Quoter.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Quoter;
@@ -1230,6 +1252,8 @@ sub quote_val {
    return $val if $val =~ m/^0x[0-9a-fA-F]+$/  # quote hex data
                   && !$args{is_char};          # unless is_char is true
 
+   return $val if $args{is_float};
+
    $val =~ s/(['\\])/\\$1/g;
    return "'$val'";
 }
@@ -1247,7 +1271,7 @@ sub split_unquote {
       s/`\z//;
       s/``/`/g;
    }
-   
+
    return ($db, $tbl);
 }
 
@@ -1342,10 +1366,10 @@ sub _d {
 # ###########################################################################
 # OptionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/OptionParser.pm
 #   t/lib/OptionParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package OptionParser;
@@ -1403,7 +1427,7 @@ sub new {
       rules             => [],  # desc of rules for --help
       mutex             => [],  # rule: opts are mutually exclusive
       atleast1          => [],  # rule: at least one opt is required
-      disables          => {},  # rule: opt disables other opts 
+      disables          => {},  # rule: opt disables other opts
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
@@ -1566,7 +1590,7 @@ sub _pod_to_specs {
          }
 
          push @specs, {
-            spec  => $self->{parse_attributes}->($self, $option, \%attribs), 
+            spec  => $self->{parse_attributes}->($self, $option, \%attribs),
             desc  => $para
                . (defined $attribs{default} ? " (default $attribs{default})" : ''),
             group => ($attribs{'group'} ? $attribs{'group'} : 'default'),
@@ -1657,7 +1681,7 @@ sub _parse_specs {
          $self->{opts}->{$long} = $opt;
       }
       else { # It's an option rule, not a spec.
-         PTDEBUG && _d('Parsing rule:', $opt); 
+         PTDEBUG && _d('Parsing rule:', $opt);
          push @{$self->{rules}}, $opt;
          my @participants = $self->_get_participants($opt);
          my $rule_ok = 0;
@@ -1702,7 +1726,7 @@ sub _parse_specs {
       PTDEBUG && _d('Option', $long, 'disables', @participants);
    }
 
-   return; 
+   return;
 }
 
 sub _get_participants {
@@ -1789,7 +1813,7 @@ sub _set_option {
 }
 
 sub get_opts {
-   my ( $self ) = @_; 
+   my ( $self ) = @_;
 
    foreach my $long ( keys %{$self->{opts}} ) {
       $self->{opts}->{$long}->{got} = 0;
@@ -1920,7 +1944,7 @@ sub _check_opts {
                   else {
                      $err = join(', ',
                                map { "--$self->{opts}->{$_}->{long}" }
-                               grep { $_ } 
+                               grep { $_ }
                                @restricted_opts[0..scalar(@restricted_opts) - 2]
                             )
                           . ' or --'.$self->{opts}->{$restricted_opts[-1]}->{long};
@@ -1930,7 +1954,7 @@ sub _check_opts {
             }
 
          }
-         elsif ( $opt->{is_required} ) { 
+         elsif ( $opt->{is_required} ) {
             $self->save_error("Required option --$long must be specified");
          }
 
@@ -2314,7 +2338,7 @@ sub clone {
       $clone{$scalar} = $self->{$scalar};
    }
 
-   return bless \%clone;     
+   return bless \%clone;
 }
 
 sub _parse_size {
@@ -2453,10 +2477,10 @@ if ( PTDEBUG ) {
 # ###########################################################################
 # Transformers package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Transformers.pm
 #   t/lib/Transformers.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Transformers;
@@ -2679,7 +2703,7 @@ sub any_unix_timestamp {
 
 sub make_checksum {
    my ( $val ) = @_;
-   my $checksum = uc substr(md5_hex($val), -16);
+   my $checksum = uc md5_hex($val);
    PTDEBUG && _d($checksum, 'checksum for', $val);
    return $checksum;
 }
@@ -2751,7 +2775,7 @@ sub value_to_json {
 
    my $b_obj = B::svref_2object(\$value);  # for round trip problem
    my $flags = $b_obj->FLAGS;
-   return $value # as is 
+   return $value # as is
       if $flags & ( B::SVp_IOK | B::SVp_NOK ) and !( $flags & B::SVp_POK ); # SvTYPE is IV or NV?
 
    my $type = ref($value);
@@ -2806,10 +2830,10 @@ sub _d {
 # ###########################################################################
 # QueryRewriter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/QueryRewriter.pm
 #   t/lib/QueryRewriter.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package QueryRewriter;
@@ -2923,13 +2947,17 @@ sub fingerprint {
    $query =~ s/\Ause \S+\Z/use ?/i       # Abstract the DB in USE
       && return $query;
 
-   $query =~ s/\\["']//g;                # quoted strings
-   $query =~ s/".*?"/?/sg;               # quoted strings
-   $query =~ s/'.*?'/?/sg;               # quoted strings
+   $query =~ s/([^\\])(\\')/$1/sg;
+   $query =~ s/([^\\])(\\")/$1/sg;
+   $query =~ s/\\\\//sg;
+   $query =~ s/\\'//sg;
+   $query =~ s/\\"//sg;
+   $query =~ s/([^\\])(".*?[^\\]?")/$1?/sg;
+   $query =~ s/([^\\])('.*?[^\\]?')/$1?/sg;
 
-   $query =~ s/\bfalse\b|\btrue\b/?/isg; # boolean values 
+   $query =~ s/\bfalse\b|\btrue\b/?/isg; # boolean values
 
-   if ( $self->{match_md5_checksums} ) { 
+   if ( $self->{match_md5_checksums} ) {
       $query =~ s/([._-])[a-f0-9]{32}/$1?/g;
    }
 
@@ -2941,7 +2969,7 @@ sub fingerprint {
    }
 
    if ( $self->{match_md5_checksums} ) {
-      $query =~ s/[xb+-]\?/?/g;                
+      $query =~ s/[xb+-]\?/?/g;
    }
    else {
       $query =~ s/[xb.+-]\?/?/g;
@@ -3014,7 +3042,7 @@ sub distill_verbs {
       $query =~ s/\s+IF(?:\s+NOT)?\s+EXISTS/ /i;
       my ( $obj ) = $query =~ m/$dds.+(DATABASE|TABLE)\b/i;
       $obj = uc $obj if $obj;
-      PTDEBUG && _d('Data def statment:', $dds, 'obj:', $obj);
+      PTDEBUG && _d('Data def statement:', $dds, 'obj:', $obj);
       my ($db_or_tbl)
          = $query =~ m/(?:TABLE|DATABASE)\s+($QueryParser::tbl_ident)(\s+.*)?/i;
       PTDEBUG && _d('Matches db or table:', $db_or_tbl);
@@ -3083,8 +3111,8 @@ sub distill {
       }
       else {
          my @tables = $self->__distill_tables($query, $table, %args);
-         $query     = join(q{ }, $verbs, @tables); 
-      } 
+         $query     = join(q{ }, $verbs, @tables);
+      }
    }
 
    if ( $args{trf} ) {
@@ -3211,10 +3239,10 @@ sub _d {
 # ###########################################################################
 # Processlist package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Processlist.pm
 #   t/lib/Processlist.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Processlist;
@@ -3231,8 +3259,8 @@ $Data::Dumper::Quotekeys = 0;
 
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 use constant {
-   ID      => 0,  
-   USER    => 1,  
+   ID      => 0,
+   USER    => 1,
    HOST    => 2,
    DB      => 3,
    COMMAND => 4,
@@ -3334,7 +3362,7 @@ sub parse_event {
                     && $query_start - $etime - $prev->[START] > $fudge)
             {
                my $ms = $self->{MasterSlave};
-               
+
                my $is_repl_thread = $ms->is_replication_thread({
                                         Command => $curr->[COMMAND],
                                         User    => $curr->[USER],
@@ -3366,24 +3394,24 @@ sub parse_event {
             else {
                PTDEBUG && _d('Saving new query, state', $curr->[STATE]);
                push @new_cxn, [
-                  @{$curr}[0..7],           # proc info
-                  int($query_start),        # START
-                  $etime,                   # ETIME
-                  $time,                    # FSEEN
+                  @{$curr}[0..7],                  # proc info
+                  $query_start,                    # START
+                  $etime,                          # ETIME
+                  $time,                           # FSEEN
                   { ($curr->[STATE] || "") => 0 }, # PROFILE
                ];
             }
          }
-      } 
+      }
       else {
          PTDEBUG && _d('New cxn', $curr->[ID]);
          if ( $curr->[INFO] && defined $curr->[TIME] ) {
             PTDEBUG && _d('Saving query of new cxn, state', $curr->[STATE]);
             push @new_cxn, [
-               @{$curr}[0..7],           # proc info
-               int($query_start),        # START
-               $etime,                   # ETIME
-               $time,                    # FSEEN
+               @{$curr}[0..7],                  # proc info
+               $query_start,                    # START
+               $etime,                          # ETIME
+               $time,                           # FSEEN
                { ($curr->[STATE] || "") => 0 }, # PROFILE
             ];
          }
@@ -3398,7 +3426,7 @@ sub parse_event {
             $self->make_event($prev, $time);
          delete $active_cxn->{$prev->[ID]};
       }
-      elsif (   ($curr_cxn->{$prev->[ID]}->[COMMAND] || "") eq 'Sleep' 
+      elsif (   ($curr_cxn->{$prev->[ID]}->[COMMAND] || "") eq 'Sleep'
              || !$curr_cxn->{$prev->[ID]}->[STATE]
              || !$curr_cxn->{$prev->[ID]}->[INFO] ) {
          PTDEBUG && _d('cxn', $prev->[ID], 'became idle');
@@ -3511,7 +3539,7 @@ sub find {
          push @{$self->{_reasons_for_matching}->{$query} ||= []}, $reason;
          $matched++;
       }
- 
+
       PROPERTY:
       foreach my $property ( qw(Id User Host db State Command Info) ) {
          my $filter = "_find_match_$property";
@@ -3600,10 +3628,10 @@ sub _d {
 # ###########################################################################
 # TcpdumpParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/TcpdumpParser.pm
 #   t/lib/TcpdumpParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package TcpdumpParser;
@@ -3640,6 +3668,7 @@ sub parse_event {
       $pos_in_log -= 1 if $pos_in_log;
 
       $raw_packet =~ s/\n20\Z//;
+      $raw_packet = "20$raw_packet" if $raw_packet =~ /\A20-\d\d-\d\d/; # workaround for year 2020 problem
       $raw_packet = "20$raw_packet" unless $raw_packet =~ m/\A20/;
 
       $raw_packet =~ s/0x0000:.+?(450.) /0x0000:  $1 /;
@@ -3667,9 +3696,9 @@ sub _parse_packet {
 
    $src_port = $self->port_number($src_port);
    $dst_port = $self->port_number($dst_port);
-   
+
    my $hex = qr/[0-9a-f]/;
-   (my $data = join('', $packet =~ m/\s+0x$hex+:\s((?:\s$hex{2,4})+)/go)) =~ s/\s+//g; 
+   (my $data = join('', $packet =~ m/\s+0x$hex+:\s((?:\s$hex{2,4})+)/go)) =~ s/\s+//g;
 
    my $ip_hlen = hex(substr($data, 1, 1)); # Num of 32-bit words in header.
    my $ip_plen = hex(substr($data, 4, 4)); # Num of BYTES in IPv4 datagram.
@@ -3731,10 +3760,10 @@ sub _d {
 # ###########################################################################
 # MySQLProtocolParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/MySQLProtocolParser.pm
 #   t/lib/MySQLProtocolParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package MySQLProtocolParser;
@@ -3823,24 +3852,24 @@ my %com_for = (
 );
 
 my %flag_for = (
-   'CLIENT_LONG_PASSWORD'     => 1,       # new more secure passwords 
-   'CLIENT_FOUND_ROWS'        => 2,       # Found instead of affected rows 
-   'CLIENT_LONG_FLAG'         => 4,       # Get all column flags 
-   'CLIENT_CONNECT_WITH_DB'   => 8,       # One can specify db on connect 
-   'CLIENT_NO_SCHEMA'         => 16,      # Don't allow database.table.column 
-   'CLIENT_COMPRESS'          => 32,      # Can use compression protocol 
-   'CLIENT_ODBC'              => 64,      # Odbc client 
-   'CLIENT_LOCAL_FILES'       => 128,     # Can use LOAD DATA LOCAL 
-   'CLIENT_IGNORE_SPACE'      => 256,     # Ignore spaces before '(' 
-   'CLIENT_PROTOCOL_41'       => 512,     # New 4.1 protocol 
-   'CLIENT_INTERACTIVE'       => 1024,    # This is an interactive client 
-   'CLIENT_SSL'               => 2048,    # Switch to SSL after handshake 
-   'CLIENT_IGNORE_SIGPIPE'    => 4096,    # IGNORE sigpipes 
-   'CLIENT_TRANSACTIONS'      => 8192,    # Client knows about transactions 
-   'CLIENT_RESERVED'          => 16384,   # Old flag for 4.1 protocol  
-   'CLIENT_SECURE_CONNECTION' => 32768,   # New 4.1 authentication 
-   'CLIENT_MULTI_STATEMENTS'  => 65536,   # Enable/disable multi-stmt support 
-   'CLIENT_MULTI_RESULTS'     => 131072,  # Enable/disable multi-results 
+   'CLIENT_LONG_PASSWORD'     => 1,       # new more secure passwords
+   'CLIENT_FOUND_ROWS'        => 2,       # Found instead of affected rows
+   'CLIENT_LONG_FLAG'         => 4,       # Get all column flags
+   'CLIENT_CONNECT_WITH_DB'   => 8,       # One can specify db on connect
+   'CLIENT_NO_SCHEMA'         => 16,      # Don't allow database.table.column
+   'CLIENT_COMPRESS'          => 32,      # Can use compression protocol
+   'CLIENT_ODBC'              => 64,      # Odbc client
+   'CLIENT_LOCAL_FILES'       => 128,     # Can use LOAD DATA LOCAL
+   'CLIENT_IGNORE_SPACE'      => 256,     # Ignore spaces before '('
+   'CLIENT_PROTOCOL_41'       => 512,     # New 4.1 protocol
+   'CLIENT_INTERACTIVE'       => 1024,    # This is an interactive client
+   'CLIENT_SSL'               => 2048,    # Switch to SSL after handshake
+   'CLIENT_IGNORE_SIGPIPE'    => 4096,    # IGNORE sigpipes
+   'CLIENT_TRANSACTIONS'      => 8192,    # Client knows about transactions
+   'CLIENT_RESERVED'          => 16384,   # Old flag for 4.1 protocol
+   'CLIENT_SECURE_CONNECTION' => 32768,   # New 4.1 authentication
+   'CLIENT_MULTI_STATEMENTS'  => 65536,   # Enable/disable multi-stmt support
+   'CLIENT_MULTI_RESULTS'     => 131072,  # Enable/disable multi-results
 );
 
 use constant {
@@ -4041,7 +4070,7 @@ sub parse_event {
       PTDEBUG && _d('Appending data to buff; expecting',
          $session->{buff_left}, 'more bytes');
    }
-   else { 
+   else {
       eval {
          remove_mysql_header($packet);
       };
@@ -4116,7 +4145,7 @@ sub _packet_from_server {
    die "I need a packet"  unless $packet;
    die "I need a session" unless $session;
 
-   PTDEBUG && _d('Packet is from server; client state:', $session->{state}); 
+   PTDEBUG && _d('Packet is from server; client state:', $session->{state});
 
    if ( ($session->{server_seq} || '') eq $packet->{seq} ) {
       push @{ $session->{server_retransmissions} }, $packet->{seq};
@@ -4158,7 +4187,7 @@ sub _packet_from_server {
       }
    }
    else {
-      if ( $first_byte eq '00' ) { 
+      if ( $first_byte eq '00' ) {
          if ( ($session->{state} || '') eq 'client_auth' ) {
 
             $session->{compress} = $session->{will_compress};
@@ -4226,7 +4255,7 @@ sub _packet_from_server {
                },
                $packet, $session
             );
-         } 
+         }
          else {
             PTDEBUG && _d('Looks like an OK packet but session has no cmd');
          }
@@ -4315,7 +4344,7 @@ sub _packet_from_server {
             if ( $packet->{complete} ) {
                my ( $warning_count, $status_flags )
                   = $data =~ m/fe(.{4})(.{4})\Z/;
-               if ( $warning_count ) { 
+               if ( $warning_count ) {
                   $event->{Warnings} = to_num($warning_count);
                   my $flags = to_num($status_flags); # TODO set all flags?
                   $event->{No_good_index_used}
@@ -4341,7 +4370,7 @@ sub _packet_from_client {
    die "I need a packet"  unless $packet;
    die "I need a session" unless $session;
 
-   PTDEBUG && _d('Packet is from client; state:', $session->{state}); 
+   PTDEBUG && _d('Packet is from client; state:', $session->{state});
 
    if ( ($session->{client_seq} || '') eq $packet->{seq} ) {
       push @{ $session->{client_retransmissions} }, $packet->{seq};
@@ -4374,7 +4403,7 @@ sub _packet_from_client {
    elsif ( ($session->{state} || '') eq 'awaiting_reply' ) {
       my $arg = $session->{cmd}->{arg} ? substr($session->{cmd}->{arg}, 0, 50)
               : 'unknown';
-      PTDEBUG && _d('More data for previous command:', $arg, '...'); 
+      PTDEBUG && _d('More data for previous command:', $arg, '...');
       return;
    }
    else {
@@ -4734,7 +4763,7 @@ sub parse_client_handshake_packet {
 
    my $code_len = hex($buff_len);
    my $db;
-   
+
    my $capability_flags = to_num($flags); # $flags is stored as little endian.
 
    if ($capability_flags & $flag_for{CLIENT_CONNECT_WITH_DB}) {
@@ -4796,11 +4825,11 @@ sub parse_execute_packet {
    my $null_count  = int(($sth->{num_params} + 7) / 8) || 1;
    my $null_bitmap = to_num(substr($data, 20, $null_count * 2));
    PTDEBUG && _d('NULL bitmap:', $null_bitmap, 'count:', $null_count);
-   
+
    substr($data, 0, 20 + ($null_count * 2), '');
 
    my $new_params = to_num(substr($data, 0, 2, ''));
-   my @types; 
+   my @types;
    if ( $new_params ) {
       PTDEBUG && _d('New param types');
       for my $i ( 0..($sth->{num_params}-1) ) {
@@ -4999,10 +5028,10 @@ sub _d {
 # ###########################################################################
 # SlowLogParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/SlowLogParser.pm
 #   t/lib/SlowLogParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package SlowLogParser;
@@ -5096,7 +5125,7 @@ sub parse_event {
                   PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
                   $host ||= $ip;  # sometimes host is missing when using skip-name-resolve (LP #issue 1262456)
                   push @properties, 'user', $user, 'host', $host, 'ip', $ip;
-                  if ( $thread_id ) {  
+                  if ( $thread_id ) {
                      push @properties, 'Thread_id', $thread_id;
                  }
                  ++$got_uh;
@@ -5109,7 +5138,7 @@ sub parse_event {
                   PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
                   $host ||= $ip;  # sometimes host is missing when using skip-name-resolve (LP #issue 1262456)
                   push @properties, 'user', $user, 'host', $host, 'ip', $ip;
-                  if ( $thread_id ) {       
+                  if ( $thread_id ) {
                      push @properties, 'Thread_id', $thread_id;
                  }
                ++$got_uh;
@@ -5227,10 +5256,10 @@ sub _d {
 # ###########################################################################
 # SlowLogWriter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/SlowLogWriter.pm
 #   t/lib/SlowLogWriter.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package SlowLogWriter;
@@ -5246,7 +5275,7 @@ sub new {
 }
 
 sub write {
-   my ( $self, $fh, $event ) = @_;
+   my ( $self, $fh, $event, $field ) = @_;
    if ( $event->{ts} ) {
       print $fh "# Time: $event->{ts}\n";
    }
@@ -5280,7 +5309,7 @@ sub write {
             map { $_ || 0 }
                @{$event}{qw(InnoDB_IO_r_ops InnoDB_IO_r_bytes InnoDB_IO_r_wait InnoDB_rec_lock_wait InnoDB_queue_wait InnoDB_pages_distinct)};
 
-      } 
+      }
       else {
          printf $fh "# No InnoDB statistics available for this query\n";
       }
@@ -5292,7 +5321,12 @@ sub write {
    if ( $event->{arg} =~ m/^administrator command/ ) {
       print $fh '# ';
    }
-   print $fh $event->{arg}, ";\n";
+
+   if ($field && $event->{$field}) {
+       print $fh $event->{$field}, ";\n";
+   } else {
+       print $fh $event->{arg}, ";\n";
+   }
 
    return;
 }
@@ -5314,10 +5348,10 @@ sub _d {
 # ###########################################################################
 # EventAggregator package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/EventAggregator.pm
 #   t/lib/EventAggregator.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package EventAggregator;
@@ -5332,8 +5366,6 @@ use Data::Dumper;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
-
-use Digest::MD5 qw(md5);
 
 use constant BUCK_SIZE   => 1.05;
 use constant BASE_LOG    => log(BUCK_SIZE);
@@ -5635,12 +5667,12 @@ sub make_handler {
    }
 
    my @unrolled = (
-      "\$val = \$event->{'$attrib'};", 
-      
+      "\$val = \$event->{'$attrib'};",
+
       ( map  { "\$val = \$event->{'$_'} unless defined \$val;" }
         grep { $_ ne $attrib } @{$args{alternates}}
       ),
-      
+
       'defined $val && do {',
          @lines,
       '};',
@@ -5797,7 +5829,7 @@ sub _calc_metrics {
    BUCKET:
    for my $bucket ( reverse 0..(NUM_BUCK-1) ) {
       my $val = $vals->[$bucket];
-      next BUCKET unless $val; 
+      next BUCKET unless $val;
 
       $total_left -= $val;
       $sum_excl   += $val;
@@ -5860,17 +5892,19 @@ sub top_events {
    my ( $self, %args ) = @_;
    my $classes = $self->{result_classes};
    my @sorted = reverse sort { # Sorted list of $groupby values
-      $classes->{$a}->{$args{attrib}}->{$args{orderby}}
+      ($classes->{$a}->{$args{attrib}}->{$args{orderby}}
+         == $classes->{$b}->{$args{attrib}}->{$args{orderby}})
+      ? $a cmp $b
+      : $classes->{$a}->{$args{attrib}}->{$args{orderby}}
          <=> $classes->{$b}->{$args{attrib}}->{$args{orderby}}
-         || tiebreaker($classes->{$a}, $classes->{$b});
       } grep {
          defined $classes->{$_}->{$args{attrib}}->{$args{orderby}}
-      } keys %$classes;  # this should first be sorted for test consistency, but many tests already in place would fail 
+      } keys %$classes;
    my @chosen;  # top events
    my @other;   # other events (< top)
    my ($total, $count) = (0, 0);
    foreach my $groupby ( @sorted ) {
-      if ( 
+      if (
          (!$args{total} || $total < $args{total} )
          && ( !$args{count} || $count < $args{count} )
       ) {
@@ -5897,15 +5931,6 @@ sub top_events {
       $count++;
    }
    return \@chosen, \@other;
-}
-
-sub tiebreaker {
-    my ($a, $b) = @_;
-   if (defined $a->{pos_in_log}) {
-      return $a->{pos_in_log}->{max} cmp $b->{pos_in_log}->{max};
-   }
-   return 0;
-     
 }
 
 sub add_new_attributes {
@@ -5976,7 +6001,7 @@ sub merge {
       die "EventAggregator objects have different worst: "
          . "$ea1->{worst} and $ea->{worst}"
          unless $ea1->{worst} eq $ea->{worst};
-      
+
       my $attrib_types = $ea->attributes();
       map {
          $attrib_types{$_} = $attrib_types->{$_}
@@ -6223,10 +6248,10 @@ sub _d {
 # ###########################################################################
 # ReportFormatter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/ReportFormatter.pm
 #   t/lib/ReportFormatter.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package ReportFormatter;
@@ -6332,7 +6357,7 @@ sub BUILDARGS {
    if ( ($args->{line_width} || '') eq 'auto' ) {
       die "Cannot auto-detect line width because the Term::ReadKey module "
          . "is not installed" unless $have_term;
-      ($args->{line_width}) = GetTerminalSize();
+      ($args->{line_width}) = Term::ReadKey::GetTerminalSize();
       PTDEBUG && _d('Line width:', $args->{line_width});
    }
 
@@ -6644,10 +6669,10 @@ no Lmo;
 # ###########################################################################
 # QueryReportFormatter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/QueryReportFormatter.pm
 #   t/lib/QueryReportFormatter.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package QueryReportFormatter;
@@ -6728,10 +6753,12 @@ sub BUILDARGS {
          shorten          => 1024,
          report_all       => $o->get('report-all'),
          report_histogram => $o->get('report-histogram'),
+         output           => $o->got('output') ? $o->get('output') : '',
       },
       num_format     => '# %1$-'.$label_width.'s %2$3s %3$7s %4$7s %5$7s %6$7s %7$7s %8$7s %9$7s',
       bool_format    => '# %1$-'.$label_width.'s %2$3d%% yes, %3$3d%% no',
       string_format  => '# %1$-'.$label_width.'s %2$s',
+      no_partitions  => 0,
       hidden_attrib  => {   # Don't sort/print these attribs in the reports.
          arg         => 1, # They're usually handled specially, or not
          fingerprint => 1, # printed at all.
@@ -6739,6 +6766,12 @@ sub BUILDARGS {
          ts          => 1,
       },
    };
+   if (!defined($self->{max_hostname_length})) {
+       $self->{max_hostname_length} = MAX_STRING_LENGTH;
+   }
+   if (!defined($self->{max_line_length})) {
+       $self->{max_line_length} = LINE_LENGTH;
+   }
    return $self;
 }
 
@@ -6752,7 +6785,7 @@ sub print_reports {
    my $last_report;
 
    foreach my $report ( @$reports ) {
-      PTDEBUG && _d('Printing', $report, 'report'); 
+      PTDEBUG && _d('Printing', $report, 'report');
       my $report_output = $self->$report(%args);
       if ( $report_output ) {
          print "\n"
@@ -6872,7 +6905,7 @@ sub header {
          my $store   = $results->{globals}->{$attrib};
          my $metrics = $ea->stats()->{globals}->{$attrib};
          my $func    = $attrib =~ m/time|wait$/ ? \&micro_t : \&shorten;
-         my @values  = ( 
+         my @values  = (
             @{$store}{qw(sum min max)},
             $store->{sum} / $store->{cnt},
             @{$metrics}{qw(pct_95 stddev median)},
@@ -6893,7 +6926,7 @@ sub header {
          next unless exists $results->{globals}->{$attrib};
 
          my $store = $results->{globals}->{$attrib};
-         if ( $store->{sum} > 0 ) { 
+         if ( $store->{sum} > 0 ) {
             push @result,
                sprintf $self->{bool_format},
                   $self->make_label($attrib), $self->bool_percents($store);
@@ -6927,7 +6960,7 @@ sub query_report_values {
       my $rank       = $top_event->[2];
       my $stats      = $ea->results->{classes}->{$item};
       my $sample     = $ea->results->{samples}->{$item};
-      my $samp_query = $sample->{arg} || '';
+      my $samp_query = ($self->{options}->{output} eq 'secure-slowlog') ? $sample->{fingerprint} || '' : $sample->{arg} || '';
 
       my %item_vals = (
          item       => $item,
@@ -7014,6 +7047,7 @@ sub query_report {
          }
       }
 
+      my $partitions_msg = $self->{no_partitions} ? '' : '/*!50100 PARTITIONS*/';
       if ( $groupby eq 'fingerprint' ) {
          my $samp_query = $qr->shorten($vals->{samp_query}, $self->{options}->{shorten})
             if $self->{options}->{shorten};
@@ -7034,16 +7068,16 @@ sub query_report {
                $report .= "$samp_query${mark}\n";
             }
             else {
-               $report .= "# EXPLAIN /*!50100 PARTITIONS*/\n$samp_query${mark}\n"; 
+               $report .= "# EXPLAIN $partitions_msg\n$samp_query${mark}\n";
                $report .= $self->explain_report($samp_query, $vals->{default_db});
             }
          }
          else {
-            $report .= "$samp_query${mark}\n"; 
+            $report .= "$samp_query${mark}\n";
             my $converted = $qr->convert_to_select($samp_query);
             if ( $converted
                  && $converted =~ m/^[\(\s]*select/i ) {
-               $report .= "# Converted for EXPLAIN\n# EXPLAIN /*!50100 PARTITIONS*/\n$converted${mark}\n";
+               $report .= "# Converted for EXPLAIN\n# EXPLAIN $partitions_msg\n$converted${mark}\n";
             }
          }
       }
@@ -7346,7 +7380,7 @@ sub profile {
                     $qr->distill($samp_query, %{$args{distill_args}}) : $item,
          id     => $groupby eq 'fingerprint' ? make_checksum($item)   : '',
          vmr    => ($query_time->{stddev}**2) / ($query_time->{avg} || 1),
-      ); 
+      );
 
       push @profiles, \%profile;
    }
@@ -7355,7 +7389,7 @@ sub profile {
    $report->title('Profile');
    my @cols = (
       { name => 'Rank',          right_justify => 1,             },
-      { name => 'Query ID',                                      },
+      { name => 'Query ID',      width => 35                     },
       { name => 'Response time', right_justify => 1,             },
       { name => 'Calls',         right_justify => 1,             },
       { name => 'R/Call',        right_justify => 1,             },
@@ -7470,7 +7504,7 @@ sub prepared {
          }
 
          push @prepared, {
-            prep_r   => $prep_r, 
+            prep_r   => $prep_r,
             prep_cnt => $prep_cnt,
             exec_r   => $exec_r,
             exec_cnt => $exec_cnt,
@@ -7583,7 +7617,7 @@ sub bool_percents {
 
 sub format_string_list {
    my ( $self, $attrib, $vals, $class_cnt ) = @_;
-   
+
    if ( !exists $vals->{unq} ) {
       return ($vals->{cnt});
    }
@@ -7606,16 +7640,19 @@ sub format_string_list {
       if ( $str =~ m/(?:\d+\.){3}\d+/ ) {
          $print_str = $str;  # Do not shorten IP addresses.
       }
-      elsif ( length $str > MAX_STRING_LENGTH ) {
-         $print_str = substr($str, 0, MAX_STRING_LENGTH) . '...';
-      }
-      else {
+      elsif ( $self->{max_hostname_length} > 0 and length $str > $self->{max_hostname_length} ) {
+         $print_str = substr($str, 0, $self->{max_hostname_length}) . '...';
+      } else {
          $print_str = $str;
       }
       my $p = percentage_of($cnt_for->{$str}, $class_cnt);
       $print_str .= " ($cnt_for->{$str}/$p%)";
-      if ( !$show_all->{$attrib} ) {
-         last if (length $line) + (length $print_str)  > LINE_LENGTH - 27;
+      my $trim_length = LINE_LENGTH;
+      if ($self->{max_hostname_length} == 0 or $self->{max_hostname_length} > LINE_LENGTH) {
+          $trim_length = $self->{max_hostname_length};
+      }
+      if ( $self->{max_line_length} > 0 and !$show_all->{$attrib} ) {
+         last if (length $line) + (length $print_str)  > $self->{max_line_length} - 27;
       }
       $line .= "$print_str, ";
       $i++;
@@ -7746,14 +7783,24 @@ sub explain_report {
             PTDEBUG && _d($dbh, "USE", $db);
             $dbh->do("USE " . $q->quote($db));
          }
-         my $sth = $dbh->prepare("EXPLAIN /*!50100 PARTITIONS */ $query");
+         my $sth;
+         eval {
+             $sth = $dbh->prepare("EXPLAIN /*!50100 PARTITIONS*/ $query");
+             $sth->execute();
+         };
+         if ($EVAL_ERROR) { # MySQL 8.0+ doesn't support PARTITIONS
+             $self->{no_partitions} = 1;
+             $sth = $dbh->prepare("EXPLAIN $query");
+             $sth->execute();
+         }
          $sth->execute();
          my $i = 1;
          while ( my @row = $sth->fetchrow_array() ) {
             $explain .= "# *************************** $i. "
                       . "row ***************************\n";
             foreach my $j ( 0 .. $#row ) {
-               $explain .= sprintf "# %13s: %s\n", $sth->{NAME}->[$j],
+               my $value_format = $sth->{NAME}->[$j] eq 'filtered' ? "%.02f" : "%s";
+               $explain .= sprintf "# %13s: $value_format\n", $sth->{NAME}->[$j],
                   defined $row[$j] ? $row[$j] : 'NULL';
             }
             $i++;  # next row number
@@ -7802,10 +7849,10 @@ no Lmo;
 # ###########################################################################
 # JSONReportFormatter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/JSONReportFormatter.pm
 #   t/lib/JSONReportFormatter.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package JSONReportFormatter;
@@ -7848,14 +7895,14 @@ has _json => (
    builder  => '_build_json',
 );
 
-has 'max_query_length' => (  
+has 'max_query_length' => (
    is       => 'rw',
    isa      => 'Int',
    required => 0,
    default  => sub { return 10_000; }, # characters, not bytes
 );
 
-has 'max_fingerprint_length' => ( 
+has 'max_fingerprint_length' => (
    is       => 'rw',
    isa      => 'Int',
    required => 0,
@@ -7970,7 +8017,7 @@ override query_report => sub {
       my $real_attrib = $attrib eq 'bytes' ? 'Query_length' : $attrib;
 
       if ( $type eq 'num' ) {
-         foreach my $m ( qw(sum min max) ) { 
+         foreach my $m ( qw(sum min max) ) {
             if ( $int ) {
                $global_data->{metrics}->{$real_attrib}->{$m}
                   = sprintf('%d', $store->{$m} || 0);
@@ -7997,7 +8044,7 @@ override query_report => sub {
          else {
             $global_data->{metrics}->{$real_attrib}->{avg}
                = sprintf('%.6f', $store->{sum} / $store->{cnt});
-         }  
+         }
       }
       elsif ( $type eq 'bool' ) {
          my $store = $results->{globals}->{$real_attrib};
@@ -8066,7 +8113,7 @@ override query_report => sub {
          else {
             my $type = $attrib eq 'Query_length' ? 'num' : $ea->type_for($attrib) || 'string';
             if ( $type eq 'string' ) {
-               $metrics{$attrib} = { value => $metrics{$attrib}{max} }; 
+               $metrics{$attrib} = { value => $metrics{$attrib}{max} };
             }
             elsif ( $type eq 'num' ) {
                foreach my $value ( values %{$metrics{$attrib}} ) {
@@ -8168,10 +8215,10 @@ no Lmo;
 # ###########################################################################
 # EventTimeline package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/EventTimeline.pm
 #   t/lib/EventTimeline.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package EventTimeline;
@@ -8340,10 +8387,10 @@ sub _d {
 # ###########################################################################
 # QueryParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/QueryParser.pm
 #   t/lib/QueryParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package QueryParser;
@@ -8752,10 +8799,10 @@ sub _d {
 # ###########################################################################
 # TableParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/TableParser.pm
 #   t/lib/TableParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package TableParser;
@@ -8815,13 +8862,15 @@ sub get_create_table {
    eval { $href = $dbh->selectrow_hashref($show_sql); };
    if ( my $e = $EVAL_ERROR ) {
       PTDEBUG && _d($old_sql_mode);
-      $dbh->do($old_sql_mode);
+      eval { $dbh->do($old_sql_mode); };
+      PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
 
       die $e;
    }
 
    PTDEBUG && _d($old_sql_mode);
-   $dbh->do($old_sql_mode);
+   eval { $dbh->do($old_sql_mode); };
+   PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
 
    my ($key) = grep { m/create (?:table|view)/i } keys %$href;
    if ( !$key ) {
@@ -8850,7 +8899,7 @@ sub parse {
 
    my $engine = $self->get_engine($ddl);
 
-   my @defs   = $ddl =~ m/^(\s+`.*?),?$/gm;
+   my @defs = $ddl =~ m/(?:(?<=,\n)|(?<=\(\n))(\s+`(?:.|\n)+?`.+?),?\n/g;
    my @cols   = map { $_ =~ m/`([^`]+)`/ } @defs;
    PTDEBUG && _d('Table cols:', join(', ', map { "`$_`" } @cols));
 
@@ -8910,9 +8959,10 @@ sub parse {
 
 sub remove_quoted_text {
    my ($string) = @_;
-   $string =~ s/[^\\]`[^`]*[^\\]`//g; 
-   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
-   $string =~ s/[^\\]"[^"]*[^\\]"//g; 
+   $string =~ s/\\['"]//g;
+   $string =~ s/`[^`]*?`//g;
+   $string =~ s/"[^"]*?"//g;
+   $string =~ s/'[^']*?'//g;
    return $string;
 }
 
@@ -9030,8 +9080,7 @@ sub get_keys {
    my $clustered_key = undef;
 
    KEY:
-   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY .*)$/gm ) {
-
+   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY [\s\S]*?\),?.*)$/gm ) {
       next KEY if $key =~ m/FOREIGN/;
 
       my $key_ddl = $key;
@@ -9041,7 +9090,7 @@ sub get_keys {
          $key =~ s/USING HASH/USING BTREE/;
       }
 
-      my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \((.+)\)/;
+      my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \(([\s\S]+)\)/;
       my ( $special ) = $key =~ m/(FULLTEXT|SPATIAL)/;
       $type = $type || $special || 'BTREE';
       my ($name) = $key =~ m/(PRIMARY|`[^`]*`)/;
@@ -9184,10 +9233,10 @@ sub _d {
 # ###########################################################################
 # QueryReview package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/QueryReview.pm
 #   t/lib/QueryReview.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package QueryReview;
@@ -9220,7 +9269,7 @@ sub new {
    my $sql = <<"      SQL";
       INSERT INTO $args{db_tbl}
       (checksum, fingerprint, sample, first_seen, last_seen)
-      VALUES(CONV(?, 16, 10), ?, ?, COALESCE(?, $now), COALESCE(?, $now))
+      VALUES(?, ?, ?, COALESCE(?, $now), COALESCE(?, $now))
       ON DUPLICATE KEY UPDATE
          first_seen = IF(
             first_seen IS NULL,
@@ -9237,8 +9286,8 @@ sub new {
    my @review_cols = grep { !$skip_cols{$_} } @{$args{tbl_struct}->{cols}};
    $sql = "SELECT "
         . join(', ', map { $args{quoter}->quote($_) } @review_cols)
-        . ", CONV(checksum, 10, 16) AS checksum_conv FROM $args{db_tbl}"
-        . " WHERE checksum=CONV(?, 16, 10)";
+        . ", checksum AS checksum_conv FROM $args{db_tbl}"
+        . " WHERE checksum=?";
    PTDEBUG && _d('SQL to select from review table:', $sql);
    my $select_sth = $args{dbh}->prepare($sql);
 
@@ -9295,10 +9344,10 @@ sub _d {
 # ###########################################################################
 # QueryHistory package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/QueryHistory.pm
 #   t/lib/QueryHistory.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package QueryHistory;
@@ -9368,7 +9417,7 @@ sub set_history_options {
    my $sql = "REPLACE INTO $args{table}("
       . join(', ',
          map { Quoter->quote($_) } ('checksum', 'sample', @cols))
-      . ') VALUES (CONV(?, 16, 10), ?'
+      . ') VALUES (?, ?'
       . (@cols ? ', ' : '')  # issue 1265
       . join(', ', map {
          $_ eq 'ts_min' || $_ eq 'ts_max'
@@ -9412,10 +9461,10 @@ sub _d {
 # ###########################################################################
 # Daemon package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Daemon.pm
 #   t/lib/Daemon.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Daemon;
@@ -9473,7 +9522,7 @@ sub run {
          $parent_exit->($child_pid) if $parent_exit;
          exit 0;
       }
- 
+
       POSIX::setsid() or die "Cannot start a new session: $OS_ERROR";
       chdir '/'       or die "Cannot chdir to /: $OS_ERROR";
 
@@ -9499,7 +9548,7 @@ sub run {
 
          close STDERR;
          open  STDERR, ">&STDOUT"
-            or die "Cannot dupe STDERR to STDOUT: $OS_ERROR"; 
+            or die "Cannot dupe STDERR to STDOUT: $OS_ERROR";
       }
       else {
          if ( -t STDOUT ) {
@@ -9537,7 +9586,7 @@ sub _make_pid_file {
    eval {
       sysopen(PID_FH, $pid_file, O_RDWR|O_CREAT|O_EXCL) or die $OS_ERROR;
       print PID_FH $PID, "\n";
-      close PID_FH; 
+      close PID_FH;
    };
    if ( my $e = $EVAL_ERROR ) {
       if ( $e =~ m/file exists/i ) {
@@ -9666,10 +9715,10 @@ sub _d {
 # ###########################################################################
 # BinaryLogParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/BinaryLogParser.pm
 #   t/lib/BinaryLogParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package BinaryLogParser;
@@ -9733,7 +9782,7 @@ sub parse_event {
             PTDEBUG && _d('Comment line');
             next LINE;
          }
- 
+
          if ( $line =~ m/^DELIMITER/m ) {
             my ( $del ) = $line =~ m/^DELIMITER (\S*)$/m;
             if ( $del ) {
@@ -9869,10 +9918,10 @@ sub _d {
 # ###########################################################################
 # GeneralLogParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/GeneralLogParser.pm
 #   t/lib/GeneralLogParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package GeneralLogParser;
@@ -9898,7 +9947,7 @@ sub new {
 
 my $genlog_line_1= qr{
    \A
-   (?:(\d{6}\s+\d{1,2}:\d\d:\d\d|\d{4}-\d{1,2}-\d{1,2}T\d\d:\d\d:\d\d\.\d+Z))? # Timestamp
+   (?:(\d{6}\s+\d{1,2}:\d\d:\d\d|\d{4}-\d{1,2}-\d{1,2}T\d\d:\d\d:\d\d\.\d+(?:Z|[-+]?\d\d:\d\d)?))? # Timestamp
    \s+
    (?:\s*(\d+))                     # Thread ID
    \s
@@ -10031,10 +10080,10 @@ sub _d {
 # ###########################################################################
 # RawLogParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/RawLogParser.pm
 #   t/lib/RawLogParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package RawLogParser;
@@ -10111,10 +10160,10 @@ sub _d {
 # ###########################################################################
 # ProtocolParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/ProtocolParser.pm
 #   t/lib/ProtocolParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package ProtocolParser;
@@ -10180,7 +10229,7 @@ sub parse_event {
          $args{stats}->{events_parsed}++ if $args{stats};
       } sort { $a->{seq} <=> $b->{seq} }
       @{$session->{client_packets}};
-      
+
       map {
          $event = $self->_parse_packet($_, $args{misc});
          $args{stats}->{events_parsed}++ if $args{stats};
@@ -10423,10 +10472,10 @@ sub _d {
 # ###########################################################################
 # MasterSlave package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/MasterSlave.pm
 #   t/lib/MasterSlave.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package MasterSlave;
@@ -10436,22 +10485,22 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-sub check_recursion_method {                                                       
+sub check_recursion_method {
    my ($methods) = @_;
-   if ( @$methods != 1 ) {                                                         
-      if ( grep({ !m/processlist|hosts/i } @$methods)                              
-            && $methods->[0] !~ /^dsn=/i ) 
-      {     
-         die  "Invalid combination of recursion methods: "                         
-            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "      
-            . "Only hosts and processlist may be combined.\n"                      
-      }                                                                            
-   }     
-   else {   
+   if ( @$methods != 1 ) {
+      if ( grep({ !m/processlist|hosts/i } @$methods)
+            && $methods->[0] !~ /^dsn=/i )
+      {
+         die  "Invalid combination of recursion methods: "
+            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "
+            . "Only hosts and processlist may be combined.\n"
+      }
+   }
+   else {
       my ($method) = @$methods;
-      die "Invalid recursion method: " . ( $method || 'undef' )                    
-         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster$|dsn=)/i;     
-   }                                                                               
+      die "Invalid recursion method: " . ( $method || 'undef' )
+         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster$|dsn=)/i;
+   }
 }
 
 sub new {
@@ -10480,7 +10529,7 @@ sub get_slaves {
    my $methods = $self->_resolve_recursion_methods($args{dsn});
 
    return $slaves unless @$methods;
-   
+
    if ( grep { m/processlist|hosts/i } @$methods ) {
       my @required_args = qw(dbh dsn);
       foreach my $arg ( @required_args ) {
@@ -10493,7 +10542,8 @@ sub get_slaves {
          {  dbh            => $dbh,
             dsn            => $dsn,
             slave_user     => $o->got('slave-user') ? $o->get('slave-user') : '',
-            slave_password => $o->got('slave-password') ? $o->get('slave-password') : '', 
+            slave_password => $o->got('slave-password') ? $o->get('slave-password') : '',
+            slaves         => $args{slaves},
             callback  => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
@@ -10507,9 +10557,10 @@ sub get_slaves {
                   $slave_dsn->{p} = $o->get('slave-password');
                   PTDEBUG && _d("Slave password set");
                }
-               push @$slaves, $make_cxn->(dsn => $slave_dsn, dbh => $dbh);
+               push @$slaves, $make_cxn->(dsn => $slave_dsn, dbh => $dbh, parent => $parent);
                return;
             },
+            wait_no_die => $args{'wait_no_die'},
          }
       );
    } elsif ( $methods->[0] =~ m/^dsn=/i ) {
@@ -10517,6 +10568,7 @@ sub get_slaves {
       $slaves = $self->get_cxn_from_dsn_table(
          %args,
          dsn_table_dsn => $dsn_table_dsn,
+         wait_no_die => $args{'wait_no_die'},
       );
    }
    elsif ( $methods->[0] =~ m/none/i ) {
@@ -10525,7 +10577,7 @@ sub get_slaves {
    else {
       die "Unexpected recursion methods: @$methods";
    }
-   
+
    return $slaves;
 }
 
@@ -10570,21 +10622,54 @@ sub recurse_to_slaves {
       PTDEBUG && _d("Slave password set");
    }
 
-   my $dbh;
-   eval {
-      $dbh = $args->{dbh} || $dp->get_dbh(
-         $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 });
-      PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
+   my $dbh = $args->{dbh};
+
+   my $get_dbh = sub {
+         eval {
+            $dbh = $dp->get_dbh(
+               $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 }
+            );
+            PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
+         };
+         if ( $EVAL_ERROR ) {
+            print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), ": ", $EVAL_ERROR, "\n"
+               or die "Cannot print: $OS_ERROR";
+            return;
+         }
    };
-   if ( $EVAL_ERROR ) {
-      print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), "\n"
-         or die "Cannot print: $OS_ERROR";
-      return;
+
+   DBH: {
+      if ( !defined $dbh ) {
+         foreach my $known_slave ( @{$args->{slaves}} ) {
+            if ($known_slave->{dsn}->{h} eq $slave_dsn->{h} and
+                $known_slave->{dsn}->{P} eq $slave_dsn->{P} ) {
+               $dbh = $known_slave->{dbh};
+               last DBH;
+            }
+         }
+         $get_dbh->();
+      }
    }
 
    my $sql  = 'SELECT @@SERVER_ID';
    PTDEBUG && _d($sql);
-   my ($id) = $dbh->selectrow_array($sql);
+   my $id = undef;
+   do {
+      eval {
+         ($id) = $dbh->selectrow_array($sql);
+      };
+	   if ( $EVAL_ERROR ) {
+		   if ( $args->{wait_no_die} ) {
+			   print STDERR "Error getting server id: ", $EVAL_ERROR,
+               "\nRetrying query for server ", $slave_dsn->{h}, ":", $slave_dsn->{P}, "\n";
+            sleep 1;
+            $dbh->disconnect();
+            $get_dbh->();
+         } else {
+            die $EVAL_ERROR;
+         }
+      }
+   } until ($id);
    PTDEBUG && _d('Working on server ID', $id);
    my $master_thinks_i_am = $dsn->{server_id};
    if ( !defined $id
@@ -10636,7 +10721,13 @@ sub find_slave_hosts {
 
 sub _find_slaves_by_processlist {
    my ( $self, $dsn_parser, $dbh, $dsn ) = @_;
+   my @connected_slaves = $self->get_connected_slaves($dbh);
+   my @slaves = $self->_process_slaves_list($dsn_parser, $dsn, \@connected_slaves);
+   return @slaves;
+}
 
+sub _process_slaves_list {
+   my ($self, $dsn_parser, $dsn, $connected_slaves) = @_;
    my @slaves = map  {
       my $slave        = $dsn_parser->parse("h=$_", $dsn);
       $slave->{source} = 'processlist';
@@ -10644,12 +10735,15 @@ sub _find_slaves_by_processlist {
    }
    grep { $_ }
    map  {
-      my ( $host ) = $_->{host} =~ m/^([^:]+):/;
+      my ( $host ) = $_->{host} =~ m/^(.*):\d+$/;
       if ( $host eq 'localhost' ) {
          $host = '127.0.0.1'; # Replication never uses sockets.
       }
+      if ($host =~ m/::/) {
+          $host = '['.$host.']';
+      }
       $host;
-   } $self->get_connected_slaves($dbh);
+   } @$connected_slaves;
 
    return @slaves;
 }
@@ -10788,12 +10882,19 @@ sub get_slave_status {
               if (!$self->{channel}) {
                   die 'This server returned more than one row for SHOW SLAVE STATUS but "channel" was not specified on the command line';
               }
+              my $slave_use_channels;
               for my $row (@$sss_rows) {
                   $row = { map { lc($_) => $row->{$_} } keys %$row }; # lowercase the keys
+                  if ($row->{channel_name}) {
+                      $slave_use_channels = 1;
+                  }
                   if ($row->{channel_name} eq $self->{channel}) {
                       $ss = $row;
                       last;
                   }
+              }
+              if (!$ss && $slave_use_channels) {
+                 die 'This server is using replication channels but "channel" was not specified on the command line';
               }
           } else {
               if ($sss_rows->[0]->{channel_name} && $sss_rows->[0]->{channel_name} ne $self->{channel}) {
@@ -10806,6 +10907,9 @@ sub get_slave_status {
           if ( $ss && %$ss ) {
              $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
              return $ss;
+          }
+          if (!$ss && $self->{channel}) {
+              die "Specified channel name is invalid";
           }
       }
 
@@ -11043,7 +11147,7 @@ sub short_host {
 }
 
 sub is_replication_thread {
-   my ( $self, $query, %args ) = @_; 
+   my ( $self, $query, %args ) = @_;
    return unless $query;
 
    my $type = lc($args{type} || 'all');
@@ -11058,7 +11162,7 @@ sub is_replication_thread {
    if ( !$match ) {
       if ( ($query->{User} || $query->{user} || '') eq "system user" ) {
          PTDEBUG && _d("Slave replication thread");
-         if ( $type ne 'all' ) { 
+         if ( $type ne 'all' ) {
             my $state = $query->{State} || $query->{state} || '';
 
             if ( $state =~ m/^init|end$/ ) {
@@ -11071,7 +11175,7 @@ sub is_replication_thread {
                    |Reading\sevent\sfrom\sthe\srelay\slog
                    |Has\sread\sall\srelay\slog;\swaiting
                    |Making\stemp\sfile
-                   |Waiting\sfor\sslave\smutex\son\sexit)/xi; 
+                   |Waiting\sfor\sslave\smutex\son\sexit)/xi;
 
                $match = $type eq 'slave_sql' &&  $slave_sql ? 1
                       : $type eq 'slave_io'  && !$slave_sql ? 1
@@ -11135,7 +11239,7 @@ sub get_replication_filters {
          replicate_do_db
          replicate_ignore_db
          replicate_do_table
-         replicate_ignore_table 
+         replicate_ignore_table
          replicate_wild_do_table
          replicate_wild_ignore_table
       );
@@ -11146,7 +11250,7 @@ sub get_replication_filters {
       $filters{slave_skip_errors} = $row->[1] if $row->[1] && $row->[1] ne 'OFF';
    }
 
-   return \%filters; 
+   return \%filters;
 }
 
 
@@ -11187,18 +11291,39 @@ sub get_cxn_from_dsn_table {
         . "or a database-qualified table (t)";
    }
 
+   my $done = 0;
    my $dsn_tbl_cxn = $make_cxn->(dsn => $dsn);
    my $dbh         = $dsn_tbl_cxn->connect();
    my $sql         = "SELECT dsn FROM $dsn_table ORDER BY id";
    PTDEBUG && _d($sql);
-   my $dsn_strings = $dbh->selectcol_arrayref($sql);
    my @cxn;
-   if ( $dsn_strings ) {
-      foreach my $dsn_string ( @$dsn_strings ) {
-         PTDEBUG && _d('DSN from DSN table:', $dsn_string);
-         push @cxn, $make_cxn->(dsn_string => $dsn_string);
+   use Data::Dumper;
+   DSN:
+   do {
+      @cxn = ();
+      my $dsn_strings = $dbh->selectcol_arrayref($sql);
+      if ( $dsn_strings ) {
+         foreach my $dsn_string ( @$dsn_strings ) {
+            PTDEBUG && _d('DSN from DSN table:', $dsn_string);
+            if ($args{wait_no_die}) {
+               my $lcxn;
+               eval {
+                  $lcxn = $make_cxn->(dsn_string => $dsn_string);
+               };
+               if ( $EVAL_ERROR && ($dsn_tbl_cxn->lost_connection($EVAL_ERROR)
+                     || $EVAL_ERROR =~ m/Can't connect to MySQL server/)) {
+                  PTDEBUG && _d("Server is not accessible, waiting when it is online again");
+                  sleep(1);
+                  goto DSN;
+               }
+               push @cxn, $lcxn;
+            } else {
+               push @cxn, $make_cxn->(dsn_string => $dsn_string);
+            }
+         }
       }
-   }
+      $done = 1;
+   } until $done;
    return \@cxn;
 }
 
@@ -11219,10 +11344,10 @@ sub _d {
 # ###########################################################################
 # Progress package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Progress.pm
 #   t/lib/Progress.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Progress;
@@ -11366,10 +11491,10 @@ sub _d {
 # ###########################################################################
 # FileIterator package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/FileIterator.pm
 #   t/lib/FileIterator.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package FileIterator;
@@ -11445,10 +11570,10 @@ sub _d {
 # ###########################################################################
 # Runtime package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Runtime.pm
 #   t/lib/Runtime.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Runtime;
@@ -11578,10 +11703,10 @@ sub _d {
 # ###########################################################################
 # Pipeline package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Pipeline.pm
 #   t/lib/Pipeline.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Pipeline;
@@ -11762,10 +11887,10 @@ sub _d {
 # ###########################################################################
 # HTTP::Micro package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/HTTP/Micro.pm
 #   t/lib/HTTP/Micro.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package HTTP::Micro;
@@ -11991,7 +12116,7 @@ sub _split_url {
                   or die(qq/SSL certificate not valid for $host\n/);
             }
        }
-         
+
        $self->{host} = $host;
        $self->{port} = $port;
 
@@ -12157,7 +12282,7 @@ sub _split_url {
        $len += $self->write($request->{content});
 
        $len == $content_length
-         or croak(qq/Content-Length missmatch (got: $len expected: $content_length)/);
+         or croak(qq/Content-Length mismatch (got: $len expected: $content_length)/);
 
        return $len;
    }
@@ -12415,10 +12540,10 @@ if ( $INC{"IO/Socket/SSL.pm"} ) {
 # ###########################################################################
 # VersionCheck package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/VersionCheck.pm
 #   t/lib/VersionCheck.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package VersionCheck;
@@ -12446,15 +12571,16 @@ eval {
    require HTTP::Micro;
 };
 
+my $home    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
+my @vc_dirs = (
+   '/etc/percona',
+   '/etc/percona-toolkit',
+   '/tmp',
+   "$home",
+);
+
 {
    my $file    = 'percona-version-check';
-   my $home    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
-   my @vc_dirs = (
-      '/etc/percona',
-      '/etc/percona-toolkit',
-      '/tmp',
-      "$home",
-   );
 
    sub version_check_file {
       foreach my $dir ( @vc_dirs ) {
@@ -12465,7 +12591,7 @@ eval {
       }
       PTDEBUG && _d('Version check file', $file, 'in', $ENV{PWD});
       return $file;  # in the CWD
-   } 
+   }
 }
 
 sub version_check_time_limit {
@@ -12482,11 +12608,11 @@ sub version_check {
    PTDEBUG && _d('FindBin::Bin:', $FindBin::Bin);
    if ( !$args{force} ) {
       if ( $FindBin::Bin
-           && (-d "$FindBin::Bin/../.bzr"    || 
+           && (-d "$FindBin::Bin/../.bzr"    ||
                -d "$FindBin::Bin/../../.bzr" ||
-               -d "$FindBin::Bin/../.git"    || 
-               -d "$FindBin::Bin/../../.git" 
-              ) 
+               -d "$FindBin::Bin/../.git"    ||
+               -d "$FindBin::Bin/../../.git"
+              )
          ) {
          PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
          return;
@@ -12510,7 +12636,7 @@ sub version_check {
       PTDEBUG && _d(scalar @$instances_to_check, 'instances to check');
       return unless @$instances_to_check;
 
-      my $protocol = 'https';  
+      my $protocol = 'https';
       eval { require IO::Socket::SSL; };
       if ( $EVAL_ERROR ) {
          PTDEBUG && _d($EVAL_ERROR);
@@ -12518,13 +12644,15 @@ sub version_check {
          return;
       }
       PTDEBUG && _d('Using', $protocol);
+      my $url = $args{url}                       # testing
+                || $ENV{PERCONA_VERSION_CHECK_URL}  # testing
+                || "$protocol://v.percona.com";
+      PTDEBUG && _d('API URL:', $url);
 
       my $advice = pingback(
          instances => $instances_to_check,
          protocol  => $protocol,
-         url       => $args{url}                       # testing
-                   || $ENV{PERCONA_VERSION_CHECK_URL}  # testing
-                   || "$protocol://v.percona.com",
+         url       => $url,
       );
       if ( $advice ) {
          PTDEBUG && _d('Advice:', Dumper($advice));
@@ -12587,7 +12715,7 @@ sub get_instances_to_check {
    my @instances_to_check;
    foreach my $instance ( @$instances ) {
       my $last_check_time = $last_check_time_for{ $instance->{id} };
-      PTDEBUG && _d('Intsance', $instance->{id}, 'last checked',
+      PTDEBUG && _d('Instance', $instance->{id}, 'last checked',
          $last_check_time, 'now', $now, 'diff', $now - ($last_check_time || 0),
          'hours until next check',
          sprintf '%.2f',
@@ -12671,11 +12799,56 @@ sub get_instance_id {
 }
 
 
+sub get_uuid {
+    my $uuid_file = '/.percona-toolkit.uuid';
+    foreach my $dir (@vc_dirs) {
+        my $filename = $dir.$uuid_file;
+        my $uuid=_read_uuid($filename);
+        return $uuid if $uuid;
+    }
+
+    my $filename = $ENV{"HOME"} . $uuid_file;
+    my $uuid = _generate_uuid();
+
+    my $fh;
+    eval {
+        open($fh, '>', $filename);
+    };
+    if (!$EVAL_ERROR) {
+        print $fh $uuid;
+        close $fh;
+    }
+
+    return $uuid;
+}
+
+sub _generate_uuid {
+    return sprintf+($}="%04x")."$}-$}-$}-$}-".$}x3,map rand 65537,0..7;
+}
+
+sub _read_uuid {
+    my $filename = shift;
+    my $fh;
+
+    eval {
+        open($fh, '<:encoding(UTF-8)', $filename);
+    };
+    return if ($EVAL_ERROR);
+
+    my $uuid;
+    eval { $uuid = <$fh>; };
+    return if ($EVAL_ERROR);
+
+    chomp $uuid;
+    return $uuid;
+}
+
+
 sub pingback {
    my (%args) = @_;
    my @required_args = qw(url instances);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my $url       = $args{url};
    my $instances = $args{instances};
@@ -12696,7 +12869,7 @@ sub pingback {
    );
    die "Failed to parse server requested programs: $response->{content}"
       if !scalar keys %$items;
-      
+
    my $versions = get_versions(
       items     => $items,
       instances => $instances,
@@ -12707,11 +12880,12 @@ sub pingback {
    my $client_content = encode_client_response(
       items      => $items,
       versions   => $versions,
-      general_id => md5_hex( hostname() ),
+      general_id => get_uuid(),
    );
 
+   my $tool_name = $ENV{XTRABACKUP_VERSION} ? "Percona XtraBackup" : File::Basename::basename($0);
    my $client_response = {
-      headers => { "X-Percona-Toolkit-Tool" => File::Basename::basename($0) },
+      headers => { "X-Percona-Toolkit-Tool" => $tool_name },
       content => $client_content,
    };
    PTDEBUG && _d('Client response:', Dumper($client_response));
@@ -12742,7 +12916,7 @@ sub encode_client_response {
    my (%args) = @_;
    my @required_args = qw(items versions general_id);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($items, $versions, $general_id) = @args{@required_args};
 
@@ -12768,7 +12942,7 @@ sub parse_server_response {
    my (%args) = @_;
    my @required_args = qw(response);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($response) = @args{@required_args};
 
@@ -12794,6 +12968,7 @@ my %sub_for_type = (
    perl_version        => \&get_perl_version,
    perl_module_version => \&get_perl_module_version,
    mysql_variable      => \&get_mysql_variable,
+   xtrabackup          => \&get_xtrabackup_version,
 );
 
 sub valid_item {
@@ -12810,7 +12985,7 @@ sub get_versions {
    my (%args) = @_;
    my @required_args = qw(items);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($items) = @args{@required_args};
 
@@ -12921,6 +13096,10 @@ sub get_perl_version {
    return $version;
 }
 
+sub get_xtrabackup_version {
+    return $ENV{XTRABACKUP_VERSION};
+}
+
 sub get_perl_module_version {
    my (%args) = @_;
    my $item = $args{item};
@@ -12955,7 +13134,7 @@ sub get_from_mysql {
    if ($item->{item} eq 'MySQL' && $item->{type} eq 'mysql_variable') {
       @{$item->{vars}} = grep { $_ eq 'version' || $_ eq 'version_comment' } @{$item->{vars}};
    }
- 
+
 
    my @versions;
    my %version_for;
@@ -13076,7 +13255,7 @@ sub main {
        $aux_dsn = $dp->parse(splice(@ARGV, $i, 1));
        last;
    }
-   
+
    # Frequently used options.
    my $review_dsn  = handle_special_defaults($o, 'review');
    my $history_dsn = handle_special_defaults($o, 'history');
@@ -13087,7 +13266,7 @@ sub main {
         && !$o->got('order-by') ) {
       @orderby = 'Query_time:cnt';
    }
-   else { 
+   else {
       @orderby = @{$o->get('order-by')};
    }
 
@@ -13128,7 +13307,7 @@ sub main {
    $o->set('order-by', \@orderby);
 
    my $run_time_mode = lc $o->get('run-time-mode');
-   my $run_time_interval; 
+   my $run_time_interval;
    eval {
       $run_time_interval = verify_run_time(
          run_mode => $run_time_mode,
@@ -13167,6 +13346,9 @@ sub main {
          DSNParser    => $dp,
          opts         => { AutoCommit => 1 },
       );
+      if ($EVAL_ERROR) {
+          die ("Cannot connect to the explain database: $EVAL_ERROR")
+      }
       $ep_dbh->{InactiveDestroy}  = 1;  # Don't die on fork().
    }
 
@@ -13181,7 +13363,7 @@ sub main {
       my %dsn_without_Dt = %$review_dsn;
       delete $dsn_without_Dt{D};
       delete $dsn_without_Dt{t};
-      
+
       $qv_dbh = get_cxn(
          for          => '--review',
          dsn          => \%dsn_without_Dt,
@@ -13189,15 +13371,19 @@ sub main {
          DSNParser    => $dp,
          opts         => { AutoCommit => 1 },
       );
+      if ($EVAL_ERROR) {
+          die ("Cannot connect to the review database: $EVAL_ERROR")
+      }
+
       $qv_dbh->{InactiveDestroy}  = 1;  # Don't die on fork().
 
       my @db_tbl = @{$review_dsn}{qw(D t)};
       my $db_tbl = $q->quote(@db_tbl);
-      
+
       my $create_review_sql = $o->read_para_after(
          __FILE__, qr/\bMAGIC_create_review_table\b/);
       $create_review_sql =~ s/\bquery_review\b/$db_tbl/;
-      
+
       create_review_tables(
           type             => 'review',
           dbh              => $qv_dbh,
@@ -13233,11 +13419,14 @@ sub main {
          DSNParser    => $dp,
          opts         => { AutoCommit => 1 },
       );
+      if ($EVAL_ERROR) {
+          die ("Cannot connect to the history database: $EVAL_ERROR")
+      }
       $qh_dbh->{InactiveDestroy}  = 1;  # Don't die on fork().
 
       my @hdb_tbl = @{$history_dsn}{qw(D t)};
       my $hdb_tbl = $q->quote(@hdb_tbl);
-      
+
       my $create_history_sql = $o->read_para_after(
          __FILE__, qr/\bMAGIC_create_history_table\b/);
       $create_history_sql =~ s/\bquery_history\b/$hdb_tbl/;
@@ -13250,7 +13439,7 @@ sub main {
          create_table     => $o->get('create-history-table'),
          TableParser      => $tp,
       );
-      
+
       my $tbl = $tp->parse($tp->get_create_table($qh_dbh, @hdb_tbl));
       my $pat = $o->read_para_after(__FILE__, qr/\bMAGIC_history_columns\b/);
       $pat    =~ s/\s+//g;
@@ -13279,7 +13468,7 @@ sub main {
    my %stats;      # various stats/counters used in some procs
 
    # The pipeline data hashref is passed to each proc.  Procs use this to
-   # pass data through the pipeline.  The most importat data is the event.
+   # pass data through the pipeline.  The most important data is the event.
    # Other data includes in the next_event callback, time and iters left,
    # etc.  This hashref is accessed inside a proc via the $args arg.
    my $pipeline_data = {
@@ -13346,7 +13535,7 @@ sub main {
                   }
                   PTDEBUG && _d('Reading', $filename);
                   PTDEBUG && _d('File size:', $filesize);
-                  # catch if user is trying to use an uncoverted (raw) binlog  # issue 1377888
+                  # catch if user is trying to use an unconverted (raw) binlog  # issue 1377888
                   if ( $filename &&  $o->get('type')->[0] eq 'binlog') {
                      if (is_raw_binlog($filename)) {
                         warn "Binlog file $filename must first be converted to text format using mysqlbinlog";
@@ -13809,7 +13998,7 @@ sub main {
                my $iter_start = $args->{iter_start} = time;
                PTDEBUG && _d('Iteration', $args->{iter},
                   'started at', ts($iter_start));
-               
+
                if ( PTDEBUG ) {
                   _d("\n# Iteration $args->{iter} started at ",
                      ts($iter_start), "\n");
@@ -14121,7 +14310,7 @@ sub main {
       },
    );
    # zero admin
-   
+
    # Filter after special attributes, like fingerprint, tables,
    # distill, etc., have been created.
    if ( $o->get('filter') ) {
@@ -14171,13 +14360,14 @@ sub main {
 
    if ( $o->get('output') =~ /slowlog/i ) {
       my $w = new SlowLogWriter();
+      my $field = $o->get('output') eq 'secure-slowlog' ? 'fingerprint' : '';
       $pipeline->add(
          name    => '--output slowlog',
          process => sub {
             my ( $args ) = @_;
             my $event = $args->{event};
             PTDEBUG && _d('callback: --output slowlog');
-            $w->write(*STDOUT, $event);
+            $w->write(*STDOUT, $event, $field);
             return $args;
          },
       );
@@ -14368,7 +14558,7 @@ sub create_review_tables {
             . "created automatically.  You need to create the database.\n";
       }
    }
-   
+
    # USE the correct db
    my $sql = "USE " . Quoter->quote($db);
    PTDEBUG && _d($sql);
@@ -14464,13 +14654,15 @@ sub print_reports {
                           ? 'JSONReportFormatter'
                           : 'QueryReportFormatter';
          my $qrf = $report_class->new(
-            dbh           => $ep_dbh,
-            QueryReview   => $args{QueryReview},
-            QueryRewriter => $args{QueryRewriter},
-            OptionParser  => $args{OptionParser},
-            QueryParser   => $args{QueryParser},
-            Quoter        => $args{Quoter},
-            show_all      => $show_all,
+            dbh                 => $ep_dbh,
+            QueryReview         => $args{QueryReview},
+            QueryRewriter       => $args{QueryRewriter},
+            OptionParser        => $args{OptionParser},
+            QueryParser         => $args{QueryParser},
+            Quoter              => $args{Quoter},
+            show_all            => $show_all,
+            max_hostname_length => $o->get('max-hostname-length'),
+            max_line_length     => $o->get('max-line-length'),
          );
 
          $qrf->print_reports(
@@ -14504,7 +14696,7 @@ sub print_reports {
             ea           => $eas->[$i],
             worst        => $worst,
             QueryHistory => $qh,
-         );      
+         );
       }
 
       if ( $o->get('timeline') ) {  # --timeline
@@ -14577,7 +14769,7 @@ sub handle_special_defaults {
    my ($D, $t) = Quoter->split_unquote($default_table);
    $dsn->{D} ||= $D;
    $dsn->{t} ||= $t;
-   
+
    return $dsn;
 }
 
@@ -14592,7 +14784,7 @@ sub make_alt_attrib {
       'my $event = $args->{event}; ',
       "if ( exists \$event->{'$attrib'} ) { ",
       (map { "delete \$event->{'$_'}; "; } @alts),
-      'return $args; }',     
+      'return $args; }',
       # Primary attrib doesn't exist; look for alts
       (map {
          "if ( exists \$event->{'$_'} ) { "
@@ -14727,7 +14919,7 @@ sub update_query_review_table {
 
    my $attribs = $ea->get_attributes();
 
-   PTDEBUG && _d('Updating query review tables'); 
+   PTDEBUG && _d('Updating query review tables');
 
    foreach my $worst_info ( @$worst ) {
       my $item        = $worst_info->[0];
@@ -14756,7 +14948,7 @@ sub update_query_history_table {
 
    my $attribs = $ea->get_attributes();
 
-   PTDEBUG && _d('Updating query review tables'); 
+   PTDEBUG && _d('Updating query review tables');
 
    foreach my $worst_info ( @$worst ) {
       my $item        = $worst_info->[0];
@@ -14899,8 +15091,8 @@ sub sanitize_event {
 # (i.e. was not converted to text using mysqlbinlog)
 sub is_raw_binlog {
    my $filename = shift;
-   
-   return -B $filename; 
+
+   return -B $filename;
 }
 
 sub _d {
@@ -14947,7 +15139,7 @@ Report the slowest queries from the processlist on host1:
 
    pt-query-digest --processlist h=host1
 
-Capture MySQL protocol data with tcppdump, then report the slowest queries:
+Capture MySQL protocol data with tcpdump, then report the slowest queries:
 
    tcpdump -s 65535 -x -nn -q -tttt -i any -c 1000 port 3306 > mysql.tcp.txt
 
@@ -15053,7 +15245,7 @@ The information is very similar to what you'll see for each class of queries in
 the log, but it doesn't have some information that would be too expensive to
 keep globally for the analysis.  It also has some statistics about the code's
 execution itself, such as the CPU and memory usage, the local date and time
-of the run, and a list of input file read/parsed.
+of the run, and a list of input files read/parsed.
 
 Following this is the response-time profile over the events.  This is a
 highly summarized view of the unique events in the detailed query report
@@ -15087,7 +15279,7 @@ approximate concurrency for this query (calculated as a function of the timespan
 and total Query_time).  Next there's a query ID.  This ID is a hex version of
 the query's checksum in the database, if you're using L<"--review">.  You can
 select the reviewed query's details from the database with a query like C<SELECT
-.... WHERE checksum=0xFDEA8D2993C9CAF3>.  
+.... WHERE checksum=0xFDEA8D2993C9CAF3>.
 
 If you are investigating the report and want to print out every sample of a
 particular query, then the following L<"--filter"> may be helpful:
@@ -15186,7 +15378,7 @@ See also L<"--report-format">.
 
 =head1 QUERY REVIEW
 
-A query L<"--review"> is the process of storing all the query fingerprints 
+A query L<"--review"> is the process of storing all the query fingerprints
 analyzed.  This has several benefits:
 
 =over
@@ -15292,7 +15484,7 @@ Query fingerprinting accommodates many special cases, which have proven
 necessary in the real world.  For example, an C<IN> list with 5 literals
 is really equivalent to one with 4 literals, so lists of literals are
 collapsed to a single one.  If you find something that is not fingerprinted
-properly, please submit a bug report with a reproducible test case. 
+properly, please submit a bug report with a reproducible test case.
 
 Here is a list of transformations during fingerprinting, which might not
 be exhaustive:
@@ -15360,7 +15552,7 @@ Prompt for a password when connecting to MySQL.
 
 type: array; default: db|Schema
 
-List of attribute|alias,etc.
+List of attribute|alias, etc.
 
 Certain attributes have multiple names, like db and Schema.  If an event does
 not have the primary attribute, pt-query-digest looks for an alias attribute.
@@ -15374,7 +15566,7 @@ be report lines for both db and Schema.
 
 =item --attribute-value-limit
 
-type: int; default: 0 
+type: int; default: 0
 
 A sanity limit for attribute values.
 
@@ -15517,12 +15709,12 @@ file and uses its contents as the code.  The file should not contain
 a shebang (#!/usr/bin/perl) line.
 
 If the code returns true, the chain of callbacks continues; otherwise it ends.
-The code is the last statement in the subroutine other than C<return $event>. 
+The code is the last statement in the subroutine other than C<return $event>.
 The subroutine template is:
 
   sub { $event = shift; filter && return $event; }
 
-Filters given on the command line are wrapped inside parentheses like like
+Filters given on the command line are wrapped inside parentheses like
 C<( filter )>.  For complex, multi-line filters, you must put the code inside
 a file so it will not be wrapped inside parentheses.  Either way, the filter
 must produce syntactically valid code given the template.  For example, an
@@ -15663,7 +15855,7 @@ pt-query-digest inspects the columns in the table.  The table must have at
 least the following columns:
 
   CREATE TABLE query_review_history (
-    checksum     BIGINT UNSIGNED NOT NULL,
+    checksum     CHAR(32) NOT NULL,
     sample       TEXT NOT NULL
   );
 
@@ -15693,7 +15885,7 @@ The following table definition is used for L<"--[no]create-history-table">:
 MAGIC_create_history_table
 
  CREATE TABLE IF NOT EXISTS query_history (
-   checksum             BIGINT UNSIGNED NOT NULL,
+   checksum             CHAR(32) NOT NULL,
    sample               TEXT NOT NULL,
    ts_min               DATETIME,
    ts_max               DATETIME,
@@ -15722,7 +15914,7 @@ MAGIC_create_history_table
    Rows_examined_pct_95 FLOAT,
    Rows_examined_stddev FLOAT,
    Rows_examined_median FLOAT,
-   -- Percona extended slowlog attributes 
+   -- Percona extended slowlog attributes
    -- http://www.percona.com/docs/wiki/patches:slow_extended
    Rows_affected_sum             FLOAT,
    Rows_affected_min             FLOAT,
@@ -15797,6 +15989,9 @@ MAGIC_create_history_table
 Note that we store the count (cnt) for the ts attribute only; it will be
 redundant to store this for other attributes.
 
+Starting from Percona Toolkit 3.0.11, the checksum function has been updated to use 32 chars in the MD5 sum.
+This causes the checksum field in the history table to have a different value than in the previous versions of the tool.
+
 =item --host
 
 short form: -h; type: string
@@ -15863,6 +16058,18 @@ type: string
 
 Print all output to this file when daemonized.
 
+=item --max-hostname-length
+
+type: int; default: 10
+
+Trim host names in reports to this length. 0=Do not trim host names.
+
+=item --max-line-length
+
+type: int; default: 74
+
+Trim lines to this length. 0=Do not trim lines.
+
 =item --order-by
 
 type: Array; default: Query_time:sum
@@ -15887,7 +16094,7 @@ For example, the default C<Query_time:sum> means that queries in the
 query analysis report will be ordered (sorted) by their total query execution
 time ("Exec time").  C<Query_time:max> orders the queries by their
 maximum query execution time, so the query with the single largest
-C<Query_time> will be list first.  C<cnt> refers more to the frequency
+C<Query_time> will be listed first.  C<cnt> refers more to the frequency
 of the query as a whole, how often it appears; "Count" is its corresponding
 line in the query analysis report.  So any attribute and C<cnt> should yield
 the same report wherein queries are sorted by the number of times they
@@ -15928,12 +16135,13 @@ type: string; default: report
 
 How to format and print the query analysis results.  Accepted values are:
 
-   VALUE      FORMAT
-   =======    ==============================
-   report     Standard query analysis report
-   slowlog    MySQL slow log
-   json       JSON, on array per query class
-   json-anon  JSON without example queries
+   VALUE          FORMAT
+   =======        ===============================
+   report         Standard query analysis report
+   slowlog        MySQL slow log
+   json           JSON, one array per query class
+   json-anon      JSON without example queries
+   secure-slowlog JSON without example queries
 
 The entire C<report> output can be disabled by specifying C<--no-report>
 (see L<"--[no]report">), and its sections can be disabled or rearranged
@@ -15968,9 +16176,9 @@ Port number to use for connection.
 =item --preserve-embedded-numbers
 
 Preserve numbers in database/table names when fingerprinting queries.
-The standar fingeprint method replaces numbers in db/tables names, making
-a query like 'SELECT * FROM db1.table2' to be figerprinted as 'SELECT * FROM db?.table?'.
-This option changes that behaviour and the fingerprint will become 
+The standard fingerprint method replaces numbers in db/tables names, making
+a query like 'SELECT * FROM db1.table2' to be fingerprinted as 'SELECT * FROM db?.table?'.
+This option changes that behaviour and the fingerprint will become
 'SELECT * FROM db1.table2'.
 
 =item --processlist
@@ -16033,7 +16241,7 @@ Print these sections of the query analysis report.
   rusage       CPU times and memory usage reported by ps
   date         Current local date and time
   hostname     Hostname of machine on which pt-query-digest was run
-  files        Input files read/parse
+  files        Input files read/parsed
   header       Summary of the entire analysis run
   profile      Compact table of queries for an overview of the report
   query_report Detailed information about each unique query
@@ -16098,7 +16306,7 @@ by pt-query-digest.
 MAGIC_create_review_table:
 
   CREATE TABLE IF NOT EXISTS query_review (
-     checksum     BIGINT UNSIGNED NOT NULL PRIMARY KEY,
+     checksum     CHAR(32) NOT NULL PRIMARY KEY,
      fingerprint  TEXT NOT NULL,
      sample       TEXT NOT NULL,
      first_seen   DATETIME,
@@ -16245,7 +16453,7 @@ MAGIC_set_vars
    wait_timeout=10000
 
 Variables specified on the command line override these defaults.  For
-example, specifying C<--set-vars wait_timeout=500> overrides the defaultvalue of C<10000>.
+example, specifying C<--set-vars wait_timeout=500> overrides the default value of C<10000>.
 
 The tool prints a warning and continues if a variable cannot be set.
 
@@ -16255,7 +16463,7 @@ type: Hash
 
 Show all values for these attributes.
 
-By default pt-query-digest only shows as many of an attribute's value that
+By default pt-query-digest only shows as many of an attribute's value as
 fit on a single line.  This option allows you to specify attributes for which
 all values will be shown (line width is ignored).  This only works for
 attributes with string values like user, host, db, etc.  Multiple attributes
@@ -16291,7 +16499,7 @@ The MySQL time expression is wrapped inside a query like
 valid inside this query.  For example, do not use UNIX_TIMESTAMP() because
 UNIX_TIMESTAMP(UNIX_TIMESTAMP()) returns 0.
 
-Events are assumed to be in chronological: older events at the beginning of
+Events are assumed to be in chronological order: older events at the beginning of
 the log and newer events at the end of the log.  L<"--since"> is strict: it
 ignores all queries until one is found that is new enough.  Therefore, if
 the query events are not consistently timestamped, some may be ignored which
@@ -16312,7 +16520,7 @@ Show a timeline of events.
 This option makes pt-query-digest print another kind of report: a timeline of
 the events.  Each query is still grouped and aggregate into classes according to
 L<"--group-by">, but then they are printed in chronological order.  The timeline
-report prints out the timestamp, interval, count and value of each classes.
+report prints out the timestamp, interval, count and value of each class.
 
 If all you want is the timeline report, then specify C<--no-report> to
 suppress the default query analysis report.  Otherwise, the timeline report
@@ -16344,7 +16552,7 @@ The type of input to parse.  The permitted types are
 
 Parse a binary log file that has first been converted to text using mysqlbinlog.
 
-For example: 
+For example:
 
    mysqlbinlog mysql-bin.000441 > mysql-bin.000441.txt
 
@@ -16404,7 +16612,7 @@ queries.  (See L<http://www.mysqlperformanceblog.com/?p=6092> for details.)
      'port 3306 and tcp[1] & 7 == 2 and tcp[3] & 7 == 2'
 
 All MySQL servers running on port 3306 are automatically detected in the
-tcpdump output.  Therefore, if the tcpdump out contains packets from
+tcpdump output.  Therefore, if the tcpdump output contains packets from
 multiple servers on port 3306 (for example, 10.0.0.1:3306, 10.0.0.2:3306,
 etc.), all packets/queries from all these servers will be analyzed
 together as if they were one server.
@@ -16494,18 +16702,24 @@ default: yes
 Check for the latest version of Percona Toolkit, MySQL, and other programs.
 
 This is a standard "check for updates automatically" feature, with two
-additional features.  First, the tool checks the version of other programs
-on the local system in addition to its own version.  For example, it checks
-the version of every MySQL server it connects to, Perl, and the Perl module
-DBD::mysql.  Second, it checks for and warns about versions with known
-problems.  For example, MySQL 5.5.25 had a critical bug and was re-released
+additional features.  First, the tool checks its own version and also the
+versions of the following software: operating system, Percona Monitoring and
+Management (PMM), MySQL, Perl, MySQL driver for Perl (DBD::mysql), and
+Percona Toolkit. Second, it checks for and warns about versions with known
+problems. For example, MySQL 5.5.25 had a critical bug and was re-released
 as 5.5.25a.
+
+A secure connection to Percona’s Version Check database server is done to
+perform these checks. Each request is logged by the server, including software
+version numbers and unique ID of the checked system. The ID is generated by the
+Percona Toolkit installation script or when the Version Check database call is
+done for the first time.
 
 Any updates or known problems are printed to STDOUT before the tool's normal
 output.  This feature should never interfere with the normal operation of the
-tool.  
+tool.
 
-For more information, visit L<https://www.percona.com/version-check>.
+For more information, visit L<https://www.percona.com/doc/percona-toolkit/LATEST/version-check.html>.
 
 =item --[no]vertical-format
 
@@ -16610,6 +16824,11 @@ To enable debugging and capture all output to a file, run the tool like:
 Be careful: debugging output is voluminous and can generate several megabytes
 of output.
 
+=head1 ATTENTION
+
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
+parameters are shown in the output.
+
 =head1 SYSTEM REQUIREMENTS
 
 You need Perl, DBI, DBD::mysql, and some core packages that ought to be
@@ -16617,9 +16836,9 @@ installed in any reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs, see L<http://www.percona.com/bugs/pt-query-digest>.
+For a list of known bugs, see L<https://jira.percona.com/projects/PT/issues>.
 
-Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
+Please report bugs at L<https://jira.percona.com/projects/PT>.
 Include the following information in your bug report:
 
 =over
@@ -16713,11 +16932,11 @@ The byte length of the C<arg>.
 
 =item db
 
-The current database.  The value comes from USE database statements.  
+The current database.  The value comes from USE database statements.
 By default, C<Schema> is an alias which is automatically
 changed to C<db>; see L<"--attribute-aliases">.
 
-=item fingerprint 
+=item fingerprint
 
 An abstracted form of the query.  See L<"FINGERPRINTS">.
 
@@ -16801,7 +17020,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2008-2017 Percona LLC and/or its affiliates.
+This program is copyright 2008-2018 Percona LLC and/or its affiliates.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
@@ -16819,6 +17038,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-query-digest 3.0.5
+pt-query-digest 3.5.5
 
 =cut

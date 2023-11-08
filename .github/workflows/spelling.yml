@@ -1,0 +1,24 @@
+name: spelling
+# I take care of your fat fingers and ESL mistakes.
+
+on:
+  push:
+    branches: [ "3.x" ]
+  pull_request:
+    branches: [ "3.x" ]
+
+permissions: {}
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+
+  typos_check:
+    name: Typos
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+    - uses: actions/checkout@v4
+    - uses: crate-ci/typos@master

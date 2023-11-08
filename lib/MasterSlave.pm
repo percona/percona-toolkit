@@ -29,22 +29,22 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # Sub: check_recursion_method
 #   Check that the arrayref of recursion methods passed in is valid
-sub check_recursion_method {                                                       
+sub check_recursion_method {
    my ($methods) = @_;
-   if ( @$methods != 1 ) {                                                         
-      if ( grep({ !m/processlist|hosts/i } @$methods)                              
-            && $methods->[0] !~ /^dsn=/i ) 
-      {     
-         die  "Invalid combination of recursion methods: "                         
-            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "      
-            . "Only hosts and processlist may be combined.\n"                      
-      }                                                                            
-   }     
-   else {   
+   if ( @$methods != 1 ) {
+      if ( grep({ !m/processlist|hosts/i } @$methods)
+            && $methods->[0] !~ /^dsn=/i )
+      {
+         die  "Invalid combination of recursion methods: "
+            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "
+            . "Only hosts and processlist may be combined.\n"
+      }
+   }
+   else {
       my ($method) = @$methods;
-      die "Invalid recursion method: " . ( $method || 'undef' )                    
-         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster$|dsn=)/i;     
-   }                                                                               
+      die "Invalid recursion method: " . ( $method || 'undef' )
+         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster$|dsn=)/i;
+   }
 }
 
 sub new {
@@ -73,7 +73,7 @@ sub get_slaves {
    my $methods = $self->_resolve_recursion_methods($args{dsn});
 
    return $slaves unless @$methods;
-   
+
    if ( grep { m/processlist|hosts/i } @$methods ) {
       my @required_args = qw(dbh dsn);
       foreach my $arg ( @required_args ) {
@@ -86,7 +86,8 @@ sub get_slaves {
          {  dbh            => $dbh,
             dsn            => $dsn,
             slave_user     => $o->got('slave-user') ? $o->get('slave-user') : '',
-            slave_password => $o->got('slave-password') ? $o->get('slave-password') : '', 
+            slave_password => $o->got('slave-password') ? $o->get('slave-password') : '',
+            slaves         => $args{slaves},
             callback  => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
@@ -100,9 +101,10 @@ sub get_slaves {
                   $slave_dsn->{p} = $o->get('slave-password');
                   PTDEBUG && _d("Slave password set");
                }
-               push @$slaves, $make_cxn->(dsn => $slave_dsn, dbh => $dbh);
+               push @$slaves, $make_cxn->(dsn => $slave_dsn, dbh => $dbh, parent => $parent);
                return;
             },
+            wait_no_die => $args{'wait_no_die'},
          }
       );
    } elsif ( $methods->[0] =~ m/^dsn=/i ) {
@@ -110,6 +112,7 @@ sub get_slaves {
       $slaves = $self->get_cxn_from_dsn_table(
          %args,
          dsn_table_dsn => $dsn_table_dsn,
+         wait_no_die => $args{'wait_no_die'},
       );
    }
    elsif ( $methods->[0] =~ m/none/i ) {
@@ -118,7 +121,7 @@ sub get_slaves {
    else {
       die "Unexpected recursion methods: @$methods";
    }
-   
+
    return $slaves;
 }
 
@@ -185,21 +188,54 @@ sub recurse_to_slaves {
       PTDEBUG && _d("Slave password set");
    }
 
-   my $dbh;
-   eval {
-      $dbh = $args->{dbh} || $dp->get_dbh(
-         $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 });
-      PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
+   my $dbh = $args->{dbh};
+
+   my $get_dbh = sub {
+         eval {
+            $dbh = $dp->get_dbh(
+               $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 }
+            );
+            PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
+         };
+         if ( $EVAL_ERROR ) {
+            print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), ": ", $EVAL_ERROR, "\n"
+               or die "Cannot print: $OS_ERROR";
+            return;
+         }
    };
-   if ( $EVAL_ERROR ) {
-      print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), "\n"
-         or die "Cannot print: $OS_ERROR";
-      return;
+
+   DBH: {
+      if ( !defined $dbh ) {
+         foreach my $known_slave ( @{$args->{slaves}} ) {
+            if ($known_slave->{dsn}->{h} eq $slave_dsn->{h} and
+                $known_slave->{dsn}->{P} eq $slave_dsn->{P} ) {
+               $dbh = $known_slave->{dbh};
+               last DBH;
+            }
+         }
+         $get_dbh->();
+      }
    }
 
    my $sql  = 'SELECT @@SERVER_ID';
    PTDEBUG && _d($sql);
-   my ($id) = $dbh->selectrow_array($sql);
+   my $id = undef;
+   do {
+      eval {
+         ($id) = $dbh->selectrow_array($sql);
+      };
+	   if ( $EVAL_ERROR ) {
+		   if ( $args->{wait_no_die} ) {
+			   print STDERR "Error getting server id: ", $EVAL_ERROR,
+               "\nRetrying query for server ", $slave_dsn->{h}, ":", $slave_dsn->{P}, "\n";
+            sleep 1;
+            $dbh->disconnect();
+            $get_dbh->();
+         } else {
+            die $EVAL_ERROR;
+         }
+      }
+   } until ($id);
    PTDEBUG && _d('Working on server ID', $id);
    my $master_thinks_i_am = $dsn->{server_id};
    if ( !defined $id
@@ -263,7 +299,13 @@ sub find_slave_hosts {
 
 sub _find_slaves_by_processlist {
    my ( $self, $dsn_parser, $dbh, $dsn ) = @_;
+   my @connected_slaves = $self->get_connected_slaves($dbh);
+   my @slaves = $self->_process_slaves_list($dsn_parser, $dsn, \@connected_slaves);
+   return @slaves;
+}
 
+sub _process_slaves_list {
+   my ($self, $dsn_parser, $dsn, $connected_slaves) = @_;
    my @slaves = map  {
       my $slave        = $dsn_parser->parse("h=$_", $dsn);
       $slave->{source} = 'processlist';
@@ -271,12 +313,15 @@ sub _find_slaves_by_processlist {
    }
    grep { $_ }
    map  {
-      my ( $host ) = $_->{host} =~ m/^([^:]+):/;
+      my ( $host ) = $_->{host} =~ m/^(.*):\d+$/;
       if ( $host eq 'localhost' ) {
          $host = '127.0.0.1'; # Replication never uses sockets.
       }
+      if ($host =~ m/::/) {
+          $host = '['.$host.']';
+      }
       $host;
-   } $self->get_connected_slaves($dbh);
+   } @$connected_slaves;
 
    return @slaves;
 }
@@ -448,12 +493,19 @@ sub get_slave_status {
               if (!$self->{channel}) {
                   die 'This server returned more than one row for SHOW SLAVE STATUS but "channel" was not specified on the command line';
               }
+              my $slave_use_channels;
               for my $row (@$sss_rows) {
                   $row = { map { lc($_) => $row->{$_} } keys %$row }; # lowercase the keys
+                  if ($row->{channel_name}) {
+                      $slave_use_channels = 1;
+                  }
                   if ($row->{channel_name} eq $self->{channel}) {
                       $ss = $row;
                       last;
                   }
+              }
+              if (!$ss && $slave_use_channels) {
+                 die 'This server is using replication channels but "channel" was not specified on the command line';
               }
           } else {
               if ($sss_rows->[0]->{channel_name} && $sss_rows->[0]->{channel_name} ne $self->{channel}) {
@@ -466,6 +518,9 @@ sub get_slave_status {
           if ( $ss && %$ss ) {
              $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
              return $ss;
+          }
+          if (!$ss && $self->{channel}) {
+              die "Specified channel name is invalid";
           }
       }
 
@@ -779,7 +834,7 @@ sub short_host {
 # Returns:
 #   True if the proclist item is the given type of replication thread.
 sub is_replication_thread {
-   my ( $self, $query, %args ) = @_; 
+   my ( $self, $query, %args ) = @_;
    return unless $query;
 
    my $type = lc($args{type} || 'all');
@@ -795,7 +850,7 @@ sub is_replication_thread {
       # On a slave, there are two threads.  Both have user="system user".
       if ( ($query->{User} || $query->{user} || '') eq "system user" ) {
          PTDEBUG && _d("Slave replication thread");
-         if ( $type ne 'all' ) { 
+         if ( $type ne 'all' ) {
             # Match a particular slave thread.
             my $state = $query->{State} || $query->{state} || '';
 
@@ -812,7 +867,7 @@ sub is_replication_thread {
                    |Reading\sevent\sfrom\sthe\srelay\slog
                    |Has\sread\sall\srelay\slog;\swaiting
                    |Making\stemp\sfile
-                   |Waiting\sfor\sslave\smutex\son\sexit)/xi; 
+                   |Waiting\sfor\sslave\smutex\son\sexit)/xi;
 
                # Type is either "slave_sql" or "slave_io".  The second line
                # implies that if this isn't the sql thread then it must be
@@ -900,7 +955,7 @@ sub get_replication_filters {
          replicate_do_db
          replicate_ignore_db
          replicate_do_table
-         replicate_ignore_table 
+         replicate_ignore_table
          replicate_wild_do_table
          replicate_wild_ignore_table
       );
@@ -912,7 +967,7 @@ sub get_replication_filters {
       $filters{slave_skip_errors} = $row->[1] if $row->[1] && $row->[1] ne 'OFF';
    }
 
-   return \%filters; 
+   return \%filters;
 }
 
 
@@ -961,18 +1016,39 @@ sub get_cxn_from_dsn_table {
         . "or a database-qualified table (t)";
    }
 
+   my $done = 0;
    my $dsn_tbl_cxn = $make_cxn->(dsn => $dsn);
    my $dbh         = $dsn_tbl_cxn->connect();
    my $sql         = "SELECT dsn FROM $dsn_table ORDER BY id";
    PTDEBUG && _d($sql);
-   my $dsn_strings = $dbh->selectcol_arrayref($sql);
    my @cxn;
-   if ( $dsn_strings ) {
-      foreach my $dsn_string ( @$dsn_strings ) {
-         PTDEBUG && _d('DSN from DSN table:', $dsn_string);
-         push @cxn, $make_cxn->(dsn_string => $dsn_string);
+   use Data::Dumper;
+   DSN:
+   do {
+      @cxn = ();
+      my $dsn_strings = $dbh->selectcol_arrayref($sql);
+      if ( $dsn_strings ) {
+         foreach my $dsn_string ( @$dsn_strings ) {
+            PTDEBUG && _d('DSN from DSN table:', $dsn_string);
+            if ($args{wait_no_die}) {
+               my $lcxn;
+               eval {
+                  $lcxn = $make_cxn->(dsn_string => $dsn_string);
+               };
+               if ( $EVAL_ERROR && ($dsn_tbl_cxn->lost_connection($EVAL_ERROR)
+                     || $EVAL_ERROR =~ m/Can't connect to MySQL server/)) {
+                  PTDEBUG && _d("Server is not accessible, waiting when it is online again");
+                  sleep(1);
+                  goto DSN;
+               }
+               push @cxn, $lcxn;
+            } else {
+               push @cxn, $make_cxn->(dsn_string => $dsn_string);
+            }
+         }
       }
-   }
+      $done = 1;
+   } until $done;
    return \@cxn;
 }
 

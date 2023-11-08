@@ -28,6 +28,18 @@ my $tp  = new TableParser(Quoter=>$q);
 my $tbl;
 my $sample = "t/lib/samples/tables/";
 
+my $transform_int = undef;
+# In version 8.0 integer display width is deprecated and not shown in the outputs.
+# So we need to transform our samples.
+if ($sandbox_version ge '8.0') {
+   $transform_int = sub {
+      my $txt = slurp_file(shift);
+      $txt =~ s/int\(\d{1,2}\)/int/g;
+      $txt =~ s/utf8/utf8mb3/g;
+      print $txt;
+   };
+}
+
 SKIP: {
    skip "Cannot connect to sandbox master", 2 unless $dbh;
    skip 'Sandbox master does not have the sakila database', 2
@@ -44,12 +56,14 @@ SKIP: {
       $ddl = $tp->ansi_to_legacy($ddl);
       $ddl = "$ddl ENGINE=InnoDB AUTO_INCREMENT=201 DEFAULT CHARSET=utf8";
    }
+
    ok(
       no_diff(
          "$ddl\n",
          $sandbox_version ge '5.1' ? "$sample/sakila.actor"
                                    : "$sample/sakila.actor-5.0",
          cmd_output => 1,
+		 transform_sample => $transform_int
       ),
       "get_create_table(sakila.actor)"
    );
@@ -739,7 +753,7 @@ SKIP: {
 
    # msandbox user does not have GRANT privs.
    my $root_dbh = DBI->connect(
-      "DBI:mysql:host=127.0.0.1;port=12345", 'root', 'msandbox',
+      "DBI:mysql:host=127.0.0.1;port=12345;mysql_ssl=1", 'root', 'msandbox',
       { PrintError => 0, RaiseError => 1 });
 
    $root_dbh->do(q[CREATE USER 'user'@'%' IDENTIFIED BY '';] ) || die($root_dbh->errstr);
@@ -1039,20 +1053,21 @@ is_deeply(
 # https://bugs.launchpad.net/percona-toolkit/+bug/1047335
 # #############################################################################
 
-# We need to create a new server here, otherwise the whole test suite might die
-# if the crashed table can't be dropped.
-
-my $master3_port = 2900;
-my $master_basedir = "/tmp/$master3_port";
-diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
-diag(`$trunk/sandbox/start-sandbox master $master3_port >/dev/null`);
-my $dbh3 = $sb->get_dbh_for("master3");
-
-$sb->load_file('master3', "t/lib/samples/bug_1047335_crashed_table.sql");
 
 SKIP: {
-   skip "No /dev/urandom, can't corrupt the database", 1
-      unless -e q{/dev/urandom};
+   skip "No /dev/urandom, can't corrupt the database", 2 unless -e q{/dev/urandom};
+   skip "Cannot corrupt a table in MySQL 8", 2 if ($sandbox_version gt '5.7');
+
+   # We need to create a new server here, otherwise the whole test suite might die
+   # if the crashed table can't be dropped.
+   
+   my $master3_port = 2900;
+   my $master_basedir = "/tmp/$master3_port";
+   diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
+   diag(`$trunk/sandbox/start-sandbox master $master3_port >/dev/null`);
+   my $dbh3 = $sb->get_dbh_for("master3");
+   
+   $sb->load_file('master3', "t/lib/samples/bug_1047335_crashed_table.sql");
 
    my $db_dir         = "$master_basedir/data/bug_1047335";
    my $myi            = glob("$db_dir/crashed_table.[Mm][Yy][Iy]");
@@ -1086,25 +1101,25 @@ SKIP: {
    # This might fail. Doesn't matter -- stop_sandbox will just rm -rf the folder
    eval { $dbh3->do("DROP DATABASE IF EXISTS bug_1047335") };
 
+
+   $dbh3->do(q{DROP DATABASE IF EXISTS bug_1047335_2});
+   $dbh3->do(q{CREATE DATABASE bug_1047335_2});
+   
+   my $broken_frm = "$trunk/t/lib/samples/broken_tbl.frm";
+   my $db_dir_2   = "$master_basedir/data/bug_1047335_2";
+   
+   diag(`cp $broken_frm $db_dir_2 2>&1`);
+   
+   $dbh3->do("FLUSH TABLES");
+   
+   eval { $tp->get_create_table($dbh3, 'bug_1047335_2', 'broken_tbl') };
+   ok(
+      $EVAL_ERROR,
+      "get_create_table dies if SHOW CREATE TABLE failed (using broken_tbl.frm)",
+   );
+   
+   diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
 }
-
-$dbh3->do(q{DROP DATABASE IF EXISTS bug_1047335_2});
-$dbh3->do(q{CREATE DATABASE bug_1047335_2});
-
-my $broken_frm = "$trunk/t/lib/samples/broken_tbl.frm";
-my $db_dir_2   = "$master_basedir/data/bug_1047335_2";
-
-diag(`cp $broken_frm $db_dir_2 2>&1`);
-
-$dbh3->do("FLUSH TABLES");
-
-eval { $tp->get_create_table($dbh3, 'bug_1047335_2', 'broken_tbl') };
-ok(
-   $EVAL_ERROR,
-   "get_create_table dies if SHOW CREATE TABLE failed (using broken_tbl.frm)",
-);
-
-diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
 
 # #############################################################################
 # pt-duplicate-key-checker doesn't support triple quote in column name
@@ -1161,7 +1176,7 @@ SKIP: {
         },
         engine => 'InnoDB',
         is_autoinc => { column2 => 0, column3 => 0, id => 0 },
-        is_col => { column2 => 1, column3 => 1, id => 1 },
+        is_col => { column2 => 1, id => 1 },
         is_generated => { column3 => 1 },
         is_nullable => { column2 => 1, column3 => 1 },
         is_numeric => { column2 => 1, column3 => 1, id => 1 },
@@ -1187,6 +1202,147 @@ SKIP: {
    ) or die Data::Dumper::Dumper($tbl);
 }
 
+# Test that the GENERATED word in a column comment doesn't make that column
+# to be detected as a MySQL 5.7+ generated column.
+$tbl = $tp->parse( load_file('t/lib/samples/generated_cols_comments.sql') );
+is_deeply(
+   $tbl,
+   {
+     charset => 'latin1',
+     clustered_key => 'PRIMARY',
+     col_posn => {
+       id => 0,
+       source => 1,
+       tso_id => 2
+     },
+     cols => [
+       'id',
+       'source',
+       'tso_id'
+     ],
+     defs => {
+       id => '  `id` int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT \'The unique id of the audit record.\'',
+       source => '  `source` enum(\'val1\',\'val2\') NOT NULL COMMENT \'Transaction originator\'',
+       tso_id => '  `tso_id` int(11) unsigned NOT NULL DEFAULT \'0\' COMMENT \'An internally generated transaction.\''
+     },
+     engine => 'InnoDB',
+     is_autoinc => {
+       id => 1,
+       source => 0,
+       tso_id => 0
+     },
+     is_col => {
+       id => 1,
+       source => 1,
+       tso_id => 1
+     },
+     is_generated => {},
+     is_nullable => {},
+     is_numeric => {
+       id => 1,
+       tso_id => 1
+     },
+     keys => {
+       PRIMARY => {
+         col_prefixes => [
+           undef
+         ],
+         colnames => '`id`',
+         cols => [
+           'id'
+         ],
+         ddl => 'PRIMARY KEY (`id`),',
+         is_col => {
+           id => 1
+         },
+         is_nullable => 0,
+         is_unique => 1,
+         name => 'PRIMARY',
+         type => 'BTREE'
+       }
+     },
+     name => 't1',
+     non_generated_cols => [
+       'id',
+       'source',
+       'tso_id'
+     ],
+     null_cols => [],
+     numeric_cols => [
+       'id',
+       'tso_id'
+     ],
+     type_for => {
+       id => 'int',
+       source => 'enum',
+       tso_id => 'int'
+     }
+   },
+   'Column having the word "generated" as part of the comment is OK',
+) or diag Data::Dumper::Dumper($tbl);
+
+$tbl = $tp->parse( load_file('t/lib/samples/generated_cols_comments_2.sql') );
+is_deeply(
+    $tbl,
+    {
+        charset => 'latin1',
+        clustered_key => undef,
+        col_posn => {
+            c => 1,
+            id => 0,
+            v => 2
+        },
+        cols => [
+            'id',
+            'c',
+            'v'
+        ],
+        defs => {
+            c => ' `c` varchar(100) NOT NULL DEFAULT \'\' COMMENT \'Generated\'',
+            id => ' `id` int(11) NOT NULL',
+            v => ' `v` int(11) DEFAULT NULL'
+        },
+        engine => 'InnoDB',
+        is_autoinc => {
+            c => 0,
+            id => 0,
+            v => 0
+        },
+        is_col => {
+            c => 1,
+            id => 1,
+            v => 1
+        },
+        is_generated => {},
+        is_nullable => {
+            v => 1
+        },
+        is_numeric => {
+            id => 1,
+            v => 1
+        },
+        keys => {},
+        name => 't',
+        non_generated_cols => [
+            'id',
+            'c',
+            'v'
+        ],
+        null_cols => [
+            'v'
+        ],
+        numeric_cols => [
+            'id',
+            'v'
+        ],
+        type_for => {
+            c => 'varchar',
+            id => 'int',
+            v => 'int'
+        }
+    },
+    'Column having the word "generated" as part of the comment is OK',
+) or diag Data::Dumper::Dumper($tbl);
 # #############################################################################
 # Done.
 # #############################################################################

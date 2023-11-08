@@ -177,12 +177,14 @@ sub test_alter_table {
    ) or $fail = 1;
 
    # Rows in the original and new table should be identical.
+   my $query = "SELECT $cols FROM $table ORDER BY `$pk_col`";
    my $new_rows = $master_dbh->selectall_arrayref("SELECT $cols FROM $table ORDER BY `$pk_col`");
+   my $should_diag;
    is_deeply(
       $new_rows,
       $orig_rows,
       "$name rows"
-   ) or $fail = 1;
+   ) or $fail=1;
 
    if ( grep { $_ eq '--preserve-triggers' } @$cmds ) {
       my $new_triggers = $master_dbh->selectall_arrayref($triggers_sql);
@@ -312,7 +314,7 @@ sub test_alter_table {
       ) or $fail = 1;
 
       # Go that extra mile and verify that the fks are actually
-      # still functiona: i.e. that they'll prevent us from delete
+      # still functioning: i.e. that they'll prevent us from delete
       # a parent row that's being referenced by a child.
       my $sql = "DELETE FROM $table WHERE $pk_col=1 LIMIT 1";
       eval {
@@ -341,6 +343,8 @@ sub test_alter_table {
 
 my $db_flavor = VersionParser->new($master_dbh)->flavor();
 if ( $db_flavor =~ m/XtraDB Cluster/ ) {
+diag('====================================================================================================');
+diag($db_flavor);
    test_alter_table(
       name       => "Basic no fks --dry-run",
       table      => "pt_osc.t",
@@ -454,6 +458,9 @@ test_alter_table(
 # Since fk checks were disabled, MySQL doesn't update the child table fk refs.
 # Somewhat dangerous, but quick.  Downside: table doesn't exist for a moment.
 
+SKIP: {
+    skip "MySQL error https://bugs.mysql.com/bug.php?id=89441", 2 if ($sandbox_version ge '8.0' and VersionParser->new($master_dbh) le '8.0.14');
+
 test_alter_table(
    name       => "Basic FK drop_swap --dry-run",
    table      => "pt_osc.country",
@@ -486,6 +493,7 @@ test_alter_table(
       '--alter', 'DROP COLUMN last_update',
    ],
 );
+}
 
 # Let the tool auto-determine the fk update method.  This should choose
 # the rebuild_constraints method because the tables are quite small.
@@ -567,6 +575,8 @@ test_alter_table(
 SKIP: {
    skip 'Sandbox master does not have the sakila database', 7
    unless @{$master_dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
+
+   skip "MySQL error https://bugs.mysql.com/bug.php?id=89441", 2 if ($sandbox_version ge '8.0' and VersionParser->new($master_dbh) le '8.0.14');
 
    # This test will use the drop_swap method because the child tables
    # are large.  To prove this, change check_fks to rebuild_constraints
@@ -727,6 +737,8 @@ if ($sandbox_version eq '5.5' && $db_flavor !~ m/XtraDB Cluster/) {
    $res_file =  "$sample/stats-execute-5.6.txt";
 } elsif ($sandbox_version eq '5.7' && $db_flavor !~ m/XtraDB Cluster/) {
    $res_file =  "$sample/stats-execute-5.7.txt";
+} elsif ($sandbox_version eq '8.0' && $db_flavor !~ m/XtraDB Cluster/) {
+   $res_file =  "$sample/stats-execute-8.0.txt";
 }
  
 
@@ -752,7 +764,7 @@ ok(
 
 ($output, $exit) = full_output(
    sub { pt_online_schema_change::main(@args,
-      "$dsn,D=sakila,t=actor", qw(--chunk-size-limit 0 --alter-foreign-keys-method drop_swap --execute --alter ENGINE=InnoDB)) },
+      "$dsn,D=sakila,t=actor", qw(--chunk-size-limit 0 --alter-foreign-keys-method rebuild_constraints --execute --alter ENGINE=InnoDB)) },
    stderr => 1,
 );
 
@@ -820,46 +832,51 @@ test_alter_table(
 # --recursion-method=dns  (lp: 1523685)
 # #############################################################################
 
-$sb->load_file('master', "$sample/create_dsns.sql");
+SKIP: {
+   skip 'Not for PXC' if ( $sb->is_cluster_mode );
 
-($output, $exit) = full_output(
-   sub { pt_online_schema_change::main(@args,
-      "$dsn,D=sakila,t=actor", ('--recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox',  
-          '--alter-foreign-keys-method', 'drop_swap', '--execute', '--alter', 'ENGINE=InnoDB')) 
-       },
-   stderr => 1,
-);
+   $sb->load_file('master', "$sample/create_dsns.sql");
 
-like(
+   ($output, $exit) = full_output(
+      sub { pt_online_schema_change::main(@args,
+         "$dsn,D=sakila,t=actor", ('--recursion-method=dsn=D=test_recursion_method,t=dsns,h=127.0.0.1,P=12345,u=msandbox,p=msandbox',  
+             '--alter-foreign-keys-method', 'rebuild_constraints', '--execute', '--alter', 'ENGINE=InnoDB')) 
+          },
+      stderr => 1,
+   ); 
+
+   like(
       $output,
       qr/Found 2 slaves.*Successfully altered/si,
       "--recursion-method=dns works"
-);
+   );
 
-$master_dbh->do("DROP DATABASE test_recursion_method");
+   $master_dbh->do("DROP DATABASE test_recursion_method");
 
-diag("Reloading sakila");
-my $master_port = $sb->port_for('master');
-system "$trunk/sandbox/load-sakila-db $master_port &";
+   diag("Reloading sakila");
+   my $master_port = $sb->port_for('master');
+   system "$trunk/sandbox/load-sakila-db $master_port";
+   $sb->wait_for_slaves();
 
-$sb->do_as_root("master", q/GRANT REPLICATION SLAVE ON *.* TO 'slave_user'@'%' IDENTIFIED BY 'slave_password'/);
-$sb->do_as_root("master", q/set sql_log_bin=0/);
-$sb->do_as_root("master", q/DROP USER 'slave_user'/);
-$sb->do_as_root("master", q/set sql_log_bin=1/);
+   $sb->do_as_root("slave1", q/CREATE USER 'slave_user'@'%' IDENTIFIED BY 'slave_password'/);
+   $sb->do_as_root("slave1", q/GRANT SELECT, INSERT, UPDATE, SUPER, REPLICATION SLAVE ON *.* TO 'slave_user'@'%'/);
 
-test_alter_table(
-   name       => "--slave-user --slave-password",
-   file       => "basic_no_fks_innodb.sql",
-   table      => "pt_osc.t",
-   test_type  => "add_col",
-   new_col    => "bar",
-   cmds       => [
-         qw(--execute --slave-user slave_user --slave-password slave_password), '--alter', 'ADD COLUMN bar INT',
-   ],
-);
+   test_alter_table(
+      name       => "--slave-user --slave-password",
+      file       => "basic_no_fks_innodb.sql",
+      table      => "pt_osc.t",
+      test_type  => "add_col",
+      new_col    => "bar",
+      cmds       => [
+            qw(--execute --slave-user slave_user --slave-password slave_password), '--alter', 'ADD COLUMN bar INT',
+      ],
+   );
+   $sb->do_as_root("slave1", q/DROP USER 'slave_user'@'%'/);
+}
 # #############################################################################
 # Done.
 # #############################################################################
+
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 #

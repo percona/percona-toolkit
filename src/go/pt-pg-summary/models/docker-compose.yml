@@ -1,0 +1,38 @@
+version: '2.2'
+services:
+  postgres9:
+    image: ${MYSQL_IMAGE:-postgres:9.6}
+    ports:
+      - ${POSTGRE_HOST:-127.0.0.1}:${POSTGRE_96_PORT:-6432}:5432
+    environment:
+      - POSTGRES_PASSWORD=root
+    networks:
+      app_net:
+        ipv6_address: 2001:3200:3200::20
+  postgres10:
+    image: ${POSTGRE_IMAGE:-postgres:10.7}
+    ports:
+      - ${POSTGRE_HOST:-127.0.0.1}:${POSTGRE_10_PORT:-6433}:5432
+    environment:
+      - POSTGRES_PASSWORD=root
+  postgres11:
+    image: ${POSTGRE_IMAGE:-postgres:11}
+    ports:
+      - ${POSTGRE_HOST:-127.0.0.1}:${POSTGRE_11_PORT:-6434}:5432
+    environment:
+      - POSTGRES_PASSWORD=root
+  postgres12:
+    image: ${POSTGRE_IMAGE:-postgres:12}
+    ports:
+      - ${POSTGRE_HOST:-127.0.0.1}:${POSTGRE_12_PORT:-6435}:5432
+    environment:
+      - POSTGRES_PASSWORD=root
+
+networks:
+  app_net:
+    enable_ipv6: true
+    driver: bridge
+    ipam:
+      config:
+          - subnet: "2001:3200:3200::/64"
+#        gateway: 2001:3200:3200::1

@@ -44,21 +44,21 @@ mysql_options() {
    if [ -n "$OPT_ASK_PASS" ]; then
       stty -echo
       >&2 printf "Enter MySQL password: "
-      read GIVEN_PASS 
+      read GIVEN_PASS
       stty echo
       printf "\n"
       MYSQL_ARGS="$MYSQL_ARGS --password=$GIVEN_PASS"
    elif [ -n "$OPT_PASSWORD" ]; then
       MYSQL_ARGS="$MYSQL_ARGS --password=$OPT_PASSWORD"
    fi
-   
+
    echo $MYSQL_ARGS
 }
 
 # This basically makes sure that --defaults-file comes first
 arrange_mysql_options() {
    local opts="$1"
-   
+
    local rearranged=""
    for opt in $opts; do
       if [ "$(echo $opt | awk -F= '{print $1}')" = "--defaults-file" ]; then
@@ -67,7 +67,7 @@ arrange_mysql_options() {
          rearranged="$rearranged $opt"
       fi
    done
-   
+
    echo "$rearranged"
 }
 

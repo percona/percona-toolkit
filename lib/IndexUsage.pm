@@ -42,7 +42,7 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 #   IndexUsage object
 sub new {
    my ( $class, %args ) = @_;
- 
+
    my $self = {
       %args,
       tables_for      => {}, # Keyed off db
@@ -59,7 +59,7 @@ sub new {
 #   Tell the object that an index exists.  Internally, it just creates usage
 #   counters for the index and the table it belongs to.
 #
-# Parameteres:
+# Parameters:
 #   %args - Arguments
 #
 # Required Arguments:
@@ -110,7 +110,7 @@ sub add_query {
 }
 
 # Sub: add_table_usage
-#   Increase usage count for table (even if no indexes in it are used). 
+#   Increase usage count for table (even if no indexes in it are used).
 #   If saving results, the tables table is updated, too.
 #
 # Parameters:
@@ -262,7 +262,7 @@ sub save_results {
    PTDEBUG && _d("Save query data");
    my $insert_query_sth = $dbh->prepare(
       "INSERT IGNORE INTO `$db`.`queries` (query_id, fingerprint, sample) "
-      . " VALUES (CONV(?, 16, 10), ?, ?)");
+      . " VALUES (?, ?, ?)");
    foreach my $query_id ( keys %{$self->{queries}} ) {
       my $query = $self->{queries}->{$query_id};
       $insert_query_sth->execute(
@@ -272,7 +272,7 @@ sub save_results {
    PTDEBUG && _d("Saving index usage data");
    my $insert_index_usage_sth = $dbh->prepare(
       "INSERT INTO `$db`.`index_usage` (query_id, db, tbl, idx, cnt) "
-      . "VALUES (CONV(?, 16, 10), ?, ?, ?, ?) "
+      . "VALUES (?, ?, ?, ?, ?) "
       . "ON DUPLICATE KEY UPDATE cnt = cnt + ?");
    foreach my $query_id ( keys %{$self->{index_usage}} ) {
       foreach my $db ( keys %{$self->{index_usage}->{$query_id}} ) {
@@ -291,7 +291,7 @@ sub save_results {
    my $insert_index_alt_sth = $dbh->prepare(
       "INSERT INTO `$db`.`index_alternatives` "
       . "(query_id, db, tbl, idx, alt_idx, cnt) "
-      . "VALUES (CONV(?, 16, 10), ?, ?, ?, ?, ?) "
+      . "VALUES (?, ?, ?, ?, ?, ?) "
       . "ON DUPLICATE KEY UPDATE cnt = cnt + ?");
    foreach my $query_id ( keys %{$self->{alt_index_usage}} ) {
       foreach my $db ( keys %{$self->{alt_index_usage}->{$query_id}} ) {

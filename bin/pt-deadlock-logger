@@ -34,15 +34,15 @@ BEGIN {
 # ###########################################################################
 # Percona::Toolkit package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Percona/Toolkit.pm
 #   t/lib/Percona/Toolkit.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.5';
+our $VERSION = '3.5.5';
 
 use strict;
 use warnings FATAL => 'all';
@@ -97,10 +97,10 @@ sub _d {
 # ###########################################################################
 # OptionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/OptionParser.pm
 #   t/lib/OptionParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package OptionParser;
@@ -158,7 +158,7 @@ sub new {
       rules             => [],  # desc of rules for --help
       mutex             => [],  # rule: opts are mutually exclusive
       atleast1          => [],  # rule: at least one opt is required
-      disables          => {},  # rule: opt disables other opts 
+      disables          => {},  # rule: opt disables other opts
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
@@ -321,7 +321,7 @@ sub _pod_to_specs {
          }
 
          push @specs, {
-            spec  => $self->{parse_attributes}->($self, $option, \%attribs), 
+            spec  => $self->{parse_attributes}->($self, $option, \%attribs),
             desc  => $para
                . (defined $attribs{default} ? " (default $attribs{default})" : ''),
             group => ($attribs{'group'} ? $attribs{'group'} : 'default'),
@@ -412,7 +412,7 @@ sub _parse_specs {
          $self->{opts}->{$long} = $opt;
       }
       else { # It's an option rule, not a spec.
-         PTDEBUG && _d('Parsing rule:', $opt); 
+         PTDEBUG && _d('Parsing rule:', $opt);
          push @{$self->{rules}}, $opt;
          my @participants = $self->_get_participants($opt);
          my $rule_ok = 0;
@@ -457,7 +457,7 @@ sub _parse_specs {
       PTDEBUG && _d('Option', $long, 'disables', @participants);
    }
 
-   return; 
+   return;
 }
 
 sub _get_participants {
@@ -544,7 +544,7 @@ sub _set_option {
 }
 
 sub get_opts {
-   my ( $self ) = @_; 
+   my ( $self ) = @_;
 
    foreach my $long ( keys %{$self->{opts}} ) {
       $self->{opts}->{$long}->{got} = 0;
@@ -675,7 +675,7 @@ sub _check_opts {
                   else {
                      $err = join(', ',
                                map { "--$self->{opts}->{$_}->{long}" }
-                               grep { $_ } 
+                               grep { $_ }
                                @restricted_opts[0..scalar(@restricted_opts) - 2]
                             )
                           . ' or --'.$self->{opts}->{$restricted_opts[-1]}->{long};
@@ -685,7 +685,7 @@ sub _check_opts {
             }
 
          }
-         elsif ( $opt->{is_required} ) { 
+         elsif ( $opt->{is_required} ) {
             $self->save_error("Required option --$long must be specified");
          }
 
@@ -1069,7 +1069,7 @@ sub clone {
       $clone{$scalar} = $self->{$scalar};
    }
 
-   return bless \%clone;     
+   return bless \%clone;
 }
 
 sub _parse_size {
@@ -1208,10 +1208,10 @@ if ( PTDEBUG ) {
 # ###########################################################################
 # Lmo::Utils package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo/Utils.pm
 #   t/lib/Lmo/Utils.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Lmo::Utils;
@@ -1268,10 +1268,10 @@ sub _unimport_coderefs {
 # ###########################################################################
 # Lmo::Meta package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo/Meta.pm
 #   t/lib/Lmo/Meta.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Lmo::Meta;
@@ -1325,10 +1325,10 @@ sub attributes_for_new {
 # ###########################################################################
 # Lmo::Object package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo/Object.pm
 #   t/lib/Lmo/Object.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Lmo::Object;
@@ -1421,10 +1421,10 @@ sub meta {
 # ###########################################################################
 # Lmo::Types package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo/Types.pm
 #   t/lib/Lmo/Types.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Lmo::Types;
@@ -1450,7 +1450,7 @@ our %TYPES = (
    } qw(Array Code Hash Regexp Glob Scalar)
 );
 
-sub check_type_constaints {
+sub check_type_constraints {
    my ($attribute, $type_check, $check_name, $val) = @_;
    ( ref($type_check) eq 'CODE'
       ? $type_check->($val)
@@ -1522,10 +1522,10 @@ sub _nested_constraints {
 # ###########################################################################
 # Lmo package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo.pm
 #   t/lib/Lmo.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 BEGIN {
@@ -1583,7 +1583,7 @@ sub extends {
 
 sub _load_module {
    my ($class) = @_;
-   
+
    (my $file = $class) =~ s{::|'}{/}g;
    $file .= '.pm';
    { local $@; eval { require "$file" } } # or warn $@;
@@ -1614,7 +1614,7 @@ sub has {
    my $caller = scalar caller();
 
    my $class_metadata = Lmo::Meta->metadata_for($caller);
-   
+
    for my $attribute ( ref $names ? @$names : $names ) {
       my %args   = @_;
       my $method = ($args{is} || '') eq 'ro'
@@ -1633,16 +1633,16 @@ sub has {
 
       if ( my $type_check = $args{isa} ) {
          my $check_name = $type_check;
-         
+
          if ( my ($aggregate_type, $inner_type) = $type_check =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
             $type_check = Lmo::Types::_nested_constraints($attribute, $aggregate_type, $inner_type);
          }
-         
+
          my $check_sub = sub {
             my ($new_val) = @_;
-            Lmo::Types::check_type_constaints($attribute, $type_check, $check_name, $new_val);
+            Lmo::Types::check_type_constraints($attribute, $type_check, $check_name, $new_val);
          };
-         
+
          $class_metadata->{$attribute}{isa} = [$check_name, $check_sub];
          my $orig_method = $method;
          $method = sub {
@@ -1857,10 +1857,10 @@ sub override {
 # ###########################################################################
 # VersionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/VersionParser.pm
 #   t/lib/VersionParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package VersionParser;
@@ -1878,8 +1878,6 @@ use overload (
 );
 
 use Carp ();
-
-our $VERSION = 0.01;
 
 has major => (
     is       => 'ro',
@@ -2051,10 +2049,10 @@ no Lmo;
 # ###########################################################################
 # Quoter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Quoter.pm
 #   t/lib/Quoter.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Quoter;
@@ -2090,6 +2088,8 @@ sub quote_val {
    return $val if $val =~ m/^0x[0-9a-fA-F]+$/  # quote hex data
                   && !$args{is_char};          # unless is_char is true
 
+   return $val if $args{is_float};
+
    $val =~ s/(['\\])/\\$1/g;
    return "'$val'";
 }
@@ -2107,7 +2107,7 @@ sub split_unquote {
       s/`\z//;
       s/``/`/g;
    }
-   
+
    return ($db, $tbl);
 }
 
@@ -2202,10 +2202,10 @@ sub _d {
 # ###########################################################################
 # DSNParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/DSNParser.pm
 #   t/lib/DSNParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package DSNParser;
@@ -2289,7 +2289,7 @@ sub parse {
    foreach my $key ( keys %$opts ) {
       PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
-      if (   !defined $final_props{$key}
+      if ( !defined $final_props{$key}
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
@@ -2429,7 +2429,7 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass,
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       $dbh = eval { DBI->connect($cxn_string, $user, $pass, $defaults) };
@@ -2496,6 +2496,28 @@ sub get_dbh {
            . ($sql_mode ? " and $sql_mode" : '')
            . ": $EVAL_ERROR";
       }
+   }
+   my ($mysql_version) = eval { $dbh->selectrow_array('SELECT VERSION()') };
+   if ($EVAL_ERROR) {
+       die "Cannot get MySQL version: $EVAL_ERROR";
+   }
+
+   my (undef, $character_set_server) = eval { $dbh->selectrow_array("SHOW VARIABLES LIKE 'character_set_server'") };
+   if ($EVAL_ERROR) {
+       die "Cannot get MySQL var character_set_server: $EVAL_ERROR";
+   }
+
+   if ($mysql_version =~ m/^(\d+)\.(\d)\.(\d+).*/) {
+       if ($1 >= 8 && $character_set_server =~ m/^utf8/) {
+           $dbh->{mysql_enable_utf8} = 1;
+           my $msg = "MySQL version $mysql_version >= 8 and character_set_server = $character_set_server\n".
+                     "Setting: SET NAMES $character_set_server";
+           PTDEBUG && _d($msg);
+           eval { $dbh->do("SET NAMES 'utf8mb4'") };
+           if ($EVAL_ERROR) {
+               die "Cannot SET NAMES $character_set_server: $EVAL_ERROR";
+           }
+       }
    }
 
    PTDEBUG && _d('DBH info: ',
@@ -2605,7 +2627,7 @@ sub set_vars {
       }
    }
 
-   return; 
+   return;
 }
 
 sub _d {
@@ -2625,10 +2647,10 @@ sub _d {
 # ###########################################################################
 # Cxn package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Cxn.pm
 #   t/lib/Cxn.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Cxn;
@@ -2690,7 +2712,7 @@ sub connect {
    my $dp  = $self->{DSNParser};
 
    my $dbh = $self->{dbh};
-   if ( !$dbh || !$dbh->ping() ) {
+   if ( !$dbh || ( $dbh && $self->{dbh_set} && !$self->_ping($dbh) ) ) {
       if ( $self->{ask_pass} && !$self->{asked_for_pass} && !defined $dsn->{p} ) {
          $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
          $self->{asked_for_pass} = 1;
@@ -2719,19 +2741,20 @@ sub connect {
 sub set_dbh {
    my ($self, $dbh) = @_;
 
-   if ( $self->{dbh} && $self->{dbh} == $dbh && $self->{dbh_set} ) {
-      PTDEBUG && _d($dbh, 'Already set dbh');
-      return $dbh;
-   }
-
    PTDEBUG && _d($dbh, 'Setting dbh');
 
    $dbh->{FetchHashKeyName} = 'NAME_lc' if $self->{NAME_lc};
 
-   my $sql = 'SELECT @@server_id /*!50038 , @@hostname*/';
+   my $sql = 'SELECT @@server_id /*!50038 , @@hostname*/, CONNECTION_ID() as connection_id';
    PTDEBUG && _d($dbh, $sql);
-   my ($server_id, $hostname) = $dbh->selectrow_array($sql);
+   my ($server_id, $hostname, $connection_id) = $dbh->selectrow_array($sql);
    PTDEBUG && _d($dbh, 'hostname:', $hostname, $server_id);
+
+   if ( $self->{dbh} && $self->{dbh} == $dbh && $self->{dbh_set} && $self->{dbh_set} == $connection_id) {
+      PTDEBUG && _d($dbh, 'Already set dbh');
+      return $dbh;
+   }
+
    if ( $hostname ) {
       $self->{hostname} = $hostname;
    }
@@ -2746,7 +2769,7 @@ sub set_dbh {
    }
 
    $self->{dbh}     = $dbh;
-   $self->{dbh_set} = 1;
+   $self->{dbh_set} = $connection_id;
    return $dbh;
 }
 
@@ -2776,7 +2799,7 @@ sub name {
 
 sub description {
    my ($self) = @_;
-   return sprintf("%s -> %s:%s", $self->name(), $self->{dsn}->{h}, $self->{dsn}->{P} || 'socket');
+   return sprintf("%s -> %s:%s", $self->name(), $self->{dsn}->{h} || 'localhost' , $self->{dsn}->{P} || 'socket');
 }
 
 sub get_id {
@@ -2789,7 +2812,7 @@ sub get_id {
       my $sql  = q{SHOW STATUS LIKE 'wsrep\_local\_index'};
       my (undef, $wsrep_local_index) = $cxn->dbh->selectrow_array($sql);
       PTDEBUG && _d("Got cluster wsrep_local_index: ",$wsrep_local_index);
-      $unique_id = $wsrep_local_index."|"; 
+      $unique_id = $wsrep_local_index."|";
       foreach my $val ('server\_id', 'wsrep\_sst\_receive\_address', 'wsrep\_node\_name', 'wsrep\_node\_address') {
          my $sql = "SHOW VARIABLES LIKE '$val'";
          PTDEBUG && _d($cxn->name, $sql);
@@ -2819,7 +2842,7 @@ sub is_cluster_node {
       PTDEBUG && _d($sql); #don't invoke name() if it's not a Cxn!
    }
    else {
-      $dbh = $cxn->dbh();      
+      $dbh = $cxn->dbh();
       PTDEBUG && _d($cxn->name, $sql);
    }
 
@@ -2872,6 +2895,17 @@ sub DESTROY {
    return;
 }
 
+sub _ping() {
+   my ( $self, $dbh ) = @_;
+   if (!$dbh->ping()) {
+      return 0;
+   }
+   my $sql = 'SELECT CONNECTION_ID() as connection_id';
+   PTDEBUG && _d($dbh, $sql);
+   my ($connection_id) = $dbh->selectrow_array($sql);
+   return $self->{dbh_set} == $connection_id;
+}
+
 sub _d {
    my ($package, undef, $line) = caller 0;
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
@@ -2889,10 +2923,10 @@ sub _d {
 # ###########################################################################
 # Daemon package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Daemon.pm
 #   t/lib/Daemon.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Daemon;
@@ -2900,157 +2934,214 @@ package Daemon;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use POSIX qw(setsid);
+use Fcntl qw(:DEFAULT);
 
 sub new {
-   my ( $class, %args ) = @_;
-   foreach my $arg ( qw(o) ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my $o = $args{o};
+   my ($class, %args) = @_;
    my $self = {
-      o        => $o,
-      log_file => $o->has('log') ? $o->get('log') : undef,
-      PID_file => $o->has('pid') ? $o->get('pid') : undef,
+      log_file       => $args{log_file},
+      pid_file       => $args{pid_file},
+      daemonize      => $args{daemonize},
+      force_log_file => $args{force_log_file},
+      parent_exit    => $args{parent_exit},
+      pid_file_owner => 0,
    };
-
-   check_PID_file(undef, $self->{PID_file});
-
-   PTDEBUG && _d('Daemonized child will log to', $self->{log_file});
    return bless $self, $class;
 }
 
-sub daemonize {
-   my ( $self ) = @_;
+sub run {
+   my ($self) = @_;
 
-   PTDEBUG && _d('About to fork and daemonize');
-   defined (my $pid = fork()) or die "Cannot fork: $OS_ERROR";
-   if ( $pid ) {
-      PTDEBUG && _d('Parent PID', $PID, 'exiting after forking child PID',$pid);
-      exit;
-   }
+   my $daemonize      = $self->{daemonize};
+   my $pid_file       = $self->{pid_file};
+   my $log_file       = $self->{log_file};
+   my $force_log_file = $self->{force_log_file};
+   my $parent_exit    = $self->{parent_exit};
 
-   PTDEBUG && _d('Daemonizing child PID', $PID);
-   $self->{PID_owner} = $PID;
-   $self->{child}     = 1;
+   PTDEBUG && _d('Starting daemon');
 
-   POSIX::setsid() or die "Cannot start a new session: $OS_ERROR";
-   chdir '/'       or die "Cannot chdir to /: $OS_ERROR";
-
-   $self->_make_PID_file();
-
-   $OUTPUT_AUTOFLUSH = 1;
-
-   PTDEBUG && _d('Redirecting STDIN to /dev/null');
-   close STDIN;
-   open  STDIN, '/dev/null'
-      or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
-
-   if ( $self->{log_file} ) {
-      PTDEBUG && _d('Redirecting STDOUT and STDERR to', $self->{log_file});
-      close STDOUT;
-      open  STDOUT, '>>', $self->{log_file}
-         or die "Cannot open log file $self->{log_file}: $OS_ERROR";
-
-      close STDERR;
-      open  STDERR, ">&STDOUT"
-         or die "Cannot dupe STDERR to STDOUT: $OS_ERROR"; 
-   }
-   else {
-      if ( -t STDOUT ) {
-         PTDEBUG && _d('No log file and STDOUT is a terminal;',
-            'redirecting to /dev/null');
-         close STDOUT;
-         open  STDOUT, '>', '/dev/null'
-            or die "Cannot reopen STDOUT to /dev/null: $OS_ERROR";
-      }
-      if ( -t STDERR ) {
-         PTDEBUG && _d('No log file and STDERR is a terminal;',
-            'redirecting to /dev/null');
-         close STDERR;
-         open  STDERR, '>', '/dev/null'
-            or die "Cannot reopen STDERR to /dev/null: $OS_ERROR";
-      }
-   }
-
-   return;
-}
-
-sub check_PID_file {
-   my ( $self, $file ) = @_;
-   my $PID_file = $self ? $self->{PID_file} : $file;
-   PTDEBUG && _d('Checking PID file', $PID_file);
-   if ( $PID_file && -f $PID_file ) {
-      my $pid;
+   if ( $pid_file ) {
       eval {
-         chomp($pid = (slurp_file($PID_file) || ''));
+         $self->_make_pid_file(
+            pid      => $PID,  # parent's pid
+            pid_file => $pid_file,
+         );
       };
-      if ( $EVAL_ERROR ) {
-         die "The PID file $PID_file already exists but it cannot be read: "
-            . $EVAL_ERROR;
+      die "$EVAL_ERROR\n" if $EVAL_ERROR;
+      if ( !$daemonize ) {
+         $self->{pid_file_owner} = $PID;  # parent's pid
       }
-      PTDEBUG && _d('PID file exists; it contains PID', $pid);
-      if ( $pid ) {
-         my $pid_is_alive = kill 0, $pid;
-         if ( $pid_is_alive ) {
-            die "The PID file $PID_file already exists "
-               . " and the PID that it contains, $pid, is running";
-         }
-         else {
-            warn "Overwriting PID file $PID_file because the PID that it "
-               . "contains, $pid, is not running";
-         }
+   }
+
+   if ( $daemonize ) {
+      defined (my $child_pid = fork()) or die "Cannot fork: $OS_ERROR";
+      if ( $child_pid ) {
+         PTDEBUG && _d('Forked child', $child_pid);
+         $parent_exit->($child_pid) if $parent_exit;
+         exit 0;
+      }
+
+      POSIX::setsid() or die "Cannot start a new session: $OS_ERROR";
+      chdir '/'       or die "Cannot chdir to /: $OS_ERROR";
+
+      if ( $pid_file ) {
+         $self->_update_pid_file(
+            pid      => $PID,  # child's pid
+            pid_file => $pid_file,
+         );
+         $self->{pid_file_owner} = $PID;
+      }
+   }
+
+   if ( $daemonize || $force_log_file ) {
+      PTDEBUG && _d('Redirecting STDIN to /dev/null');
+      close STDIN;
+      open  STDIN, '/dev/null'
+         or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
+      if ( $log_file ) {
+         PTDEBUG && _d('Redirecting STDOUT and STDERR to', $log_file);
+         close STDOUT;
+         open  STDOUT, '>>', $log_file
+            or die "Cannot open log file $log_file: $OS_ERROR";
+
+         close STDERR;
+         open  STDERR, ">&STDOUT"
+            or die "Cannot dupe STDERR to STDOUT: $OS_ERROR";
       }
       else {
-         die "The PID file $PID_file already exists but it does not "
-            . "contain a PID";
+         if ( -t STDOUT ) {
+            PTDEBUG && _d('No log file and STDOUT is a terminal;',
+               'redirecting to /dev/null');
+            close STDOUT;
+            open  STDOUT, '>', '/dev/null'
+               or die "Cannot reopen STDOUT to /dev/null: $OS_ERROR";
+         }
+         if ( -t STDERR ) {
+            PTDEBUG && _d('No log file and STDERR is a terminal;',
+               'redirecting to /dev/null');
+            close STDERR;
+            open  STDERR, '>', '/dev/null'
+               or die "Cannot reopen STDERR to /dev/null: $OS_ERROR";
+         }
+      }
+
+      $OUTPUT_AUTOFLUSH = 1;
+   }
+
+   PTDEBUG && _d('Daemon running');
+   return;
+}
+
+sub _make_pid_file {
+   my ($self, %args) = @_;
+   my @required_args = qw(pid pid_file);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my $pid      = $args{pid};
+   my $pid_file = $args{pid_file};
+
+   eval {
+      sysopen(PID_FH, $pid_file, O_RDWR|O_CREAT|O_EXCL) or die $OS_ERROR;
+      print PID_FH $PID, "\n";
+      close PID_FH;
+   };
+   if ( my $e = $EVAL_ERROR ) {
+      if ( $e =~ m/file exists/i ) {
+         my $old_pid = $self->_check_pid_file(
+            pid_file => $pid_file,
+            pid      => $PID,
+         );
+         if ( $old_pid ) {
+            warn "Overwriting PID file $pid_file because PID $old_pid "
+               . "is not running.\n";
+         }
+         $self->_update_pid_file(
+            pid      => $PID,
+            pid_file => $pid_file
+         );
+      }
+      else {
+         die "Error creating PID file $pid_file: $e\n";
       }
    }
-   else {
-      PTDEBUG && _d('No PID file');
-   }
+
    return;
 }
 
-sub make_PID_file {
-   my ( $self ) = @_;
-   if ( exists $self->{child} ) {
-      die "Do not call Daemon::make_PID_file() for daemonized scripts";
-   }
-   $self->_make_PID_file();
-   $self->{PID_owner} = $PID;
-   return;
-}
+sub _check_pid_file {
+   my ($self, %args) = @_;
+   my @required_args = qw(pid_file pid);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my $pid_file = $args{pid_file};
+   my $pid      = $args{pid};
 
-sub _make_PID_file {
-   my ( $self ) = @_;
+   PTDEBUG && _d('Checking if PID in', $pid_file, 'is running');
 
-   my $PID_file = $self->{PID_file};
-   if ( !$PID_file ) {
-      PTDEBUG && _d('No PID file to create');
+   if ( ! -f $pid_file ) {
+      PTDEBUG && _d('PID file', $pid_file, 'does not exist');
       return;
    }
 
-   $self->check_PID_file();
+   open my $fh, '<', $pid_file
+      or die "Error opening $pid_file: $OS_ERROR";
+   my $existing_pid = do { local $/; <$fh> };
+   chomp($existing_pid) if $existing_pid;
+   close $fh
+      or die "Error closing $pid_file: $OS_ERROR";
 
-   open my $PID_FH, '>', $PID_file
-      or die "Cannot open PID file $PID_file: $OS_ERROR";
-   print $PID_FH $PID
-      or die "Cannot print to PID file $PID_file: $OS_ERROR";
-   close $PID_FH
-      or die "Cannot close PID file $PID_file: $OS_ERROR";
+   if ( $existing_pid ) {
+      if ( $existing_pid == $pid ) {
+         warn "The current PID $pid already holds the PID file $pid_file\n";
+         return;
+      }
+      else {
+         PTDEBUG && _d('Checking if PID', $existing_pid, 'is running');
+         my $pid_is_alive = kill 0, $existing_pid;
+         if ( $pid_is_alive ) {
+            die "PID file $pid_file exists and PID $existing_pid is running\n";
+         }
+      }
+   }
+   else {
+      die "PID file $pid_file exists but it is empty.  Remove the file "
+         . "if the process is no longer running.\n";
+   }
 
-   PTDEBUG && _d('Created PID file:', $self->{PID_file});
+   return $existing_pid;
+}
+
+sub _update_pid_file {
+   my ($self, %args) = @_;
+   my @required_args = qw(pid pid_file);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my $pid      = $args{pid};
+   my $pid_file = $args{pid_file};
+
+   open my $fh, '>', $pid_file
+      or die "Cannot open $pid_file: $OS_ERROR";
+   print { $fh } $pid, "\n"
+      or die "Cannot print to $pid_file: $OS_ERROR";
+   close $fh
+      or warn "Cannot close $pid_file: $OS_ERROR";
+
    return;
 }
 
-sub _remove_PID_file {
-   my ( $self ) = @_;
-   if ( $self->{PID_file} && -f $self->{PID_file} ) {
-      unlink $self->{PID_file}
-         or warn "Cannot remove PID file $self->{PID_file}: $OS_ERROR";
+sub remove_pid_file {
+   my ($self, $pid_file) = @_;
+   $pid_file ||= $self->{pid_file};
+   if ( $pid_file && -f $pid_file ) {
+      unlink $self->{pid_file}
+         or warn "Cannot remove PID file $pid_file: $OS_ERROR";
       PTDEBUG && _d('Removed PID file');
    }
    else {
@@ -3060,18 +3151,13 @@ sub _remove_PID_file {
 }
 
 sub DESTROY {
-   my ( $self ) = @_;
+   my ($self) = @_;
 
-   $self->_remove_PID_file() if ($self->{PID_owner} || 0) == $PID;
+   if ( $self->{pid_file_owner} == $PID ) {
+      $self->remove_pid_file();
+   }
 
    return;
-}
-
-sub slurp_file {
-   my ($file) = @_;
-   return unless $file;
-   open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
-   return do { local $/; <$fh> };
 }
 
 sub _d {
@@ -3091,10 +3177,10 @@ sub _d {
 # ###########################################################################
 # HTTP::Micro package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/HTTP/Micro.pm
 #   t/lib/HTTP/Micro.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package HTTP::Micro;
@@ -3320,7 +3406,7 @@ sub _split_url {
                   or die(qq/SSL certificate not valid for $host\n/);
             }
        }
-         
+
        $self->{host} = $host;
        $self->{port} = $port;
 
@@ -3486,7 +3572,7 @@ sub _split_url {
        $len += $self->write($request->{content});
 
        $len == $content_length
-         or croak(qq/Content-Length missmatch (got: $len expected: $content_length)/);
+         or croak(qq/Content-Length mismatch (got: $len expected: $content_length)/);
 
        return $len;
    }
@@ -3744,10 +3830,10 @@ if ( $INC{"IO/Socket/SSL.pm"} ) {
 # ###########################################################################
 # VersionCheck package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/VersionCheck.pm
 #   t/lib/VersionCheck.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package VersionCheck;
@@ -3775,15 +3861,16 @@ eval {
    require HTTP::Micro;
 };
 
+my $home    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
+my @vc_dirs = (
+   '/etc/percona',
+   '/etc/percona-toolkit',
+   '/tmp',
+   "$home",
+);
+
 {
    my $file    = 'percona-version-check';
-   my $home    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
-   my @vc_dirs = (
-      '/etc/percona',
-      '/etc/percona-toolkit',
-      '/tmp',
-      "$home",
-   );
 
    sub version_check_file {
       foreach my $dir ( @vc_dirs ) {
@@ -3794,7 +3881,7 @@ eval {
       }
       PTDEBUG && _d('Version check file', $file, 'in', $ENV{PWD});
       return $file;  # in the CWD
-   } 
+   }
 }
 
 sub version_check_time_limit {
@@ -3811,11 +3898,11 @@ sub version_check {
    PTDEBUG && _d('FindBin::Bin:', $FindBin::Bin);
    if ( !$args{force} ) {
       if ( $FindBin::Bin
-           && (-d "$FindBin::Bin/../.bzr"    || 
+           && (-d "$FindBin::Bin/../.bzr"    ||
                -d "$FindBin::Bin/../../.bzr" ||
-               -d "$FindBin::Bin/../.git"    || 
-               -d "$FindBin::Bin/../../.git" 
-              ) 
+               -d "$FindBin::Bin/../.git"    ||
+               -d "$FindBin::Bin/../../.git"
+              )
          ) {
          PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
          return;
@@ -3839,7 +3926,7 @@ sub version_check {
       PTDEBUG && _d(scalar @$instances_to_check, 'instances to check');
       return unless @$instances_to_check;
 
-      my $protocol = 'https';  
+      my $protocol = 'https';
       eval { require IO::Socket::SSL; };
       if ( $EVAL_ERROR ) {
          PTDEBUG && _d($EVAL_ERROR);
@@ -3847,13 +3934,15 @@ sub version_check {
          return;
       }
       PTDEBUG && _d('Using', $protocol);
+      my $url = $args{url}                       # testing
+                || $ENV{PERCONA_VERSION_CHECK_URL}  # testing
+                || "$protocol://v.percona.com";
+      PTDEBUG && _d('API URL:', $url);
 
       my $advice = pingback(
          instances => $instances_to_check,
          protocol  => $protocol,
-         url       => $args{url}                       # testing
-                   || $ENV{PERCONA_VERSION_CHECK_URL}  # testing
-                   || "$protocol://v.percona.com",
+         url       => $url,
       );
       if ( $advice ) {
          PTDEBUG && _d('Advice:', Dumper($advice));
@@ -3916,7 +4005,7 @@ sub get_instances_to_check {
    my @instances_to_check;
    foreach my $instance ( @$instances ) {
       my $last_check_time = $last_check_time_for{ $instance->{id} };
-      PTDEBUG && _d('Intsance', $instance->{id}, 'last checked',
+      PTDEBUG && _d('Instance', $instance->{id}, 'last checked',
          $last_check_time, 'now', $now, 'diff', $now - ($last_check_time || 0),
          'hours until next check',
          sprintf '%.2f',
@@ -4000,11 +4089,56 @@ sub get_instance_id {
 }
 
 
+sub get_uuid {
+    my $uuid_file = '/.percona-toolkit.uuid';
+    foreach my $dir (@vc_dirs) {
+        my $filename = $dir.$uuid_file;
+        my $uuid=_read_uuid($filename);
+        return $uuid if $uuid;
+    }
+
+    my $filename = $ENV{"HOME"} . $uuid_file;
+    my $uuid = _generate_uuid();
+
+    my $fh;
+    eval {
+        open($fh, '>', $filename);
+    };
+    if (!$EVAL_ERROR) {
+        print $fh $uuid;
+        close $fh;
+    }
+
+    return $uuid;
+}
+
+sub _generate_uuid {
+    return sprintf+($}="%04x")."$}-$}-$}-$}-".$}x3,map rand 65537,0..7;
+}
+
+sub _read_uuid {
+    my $filename = shift;
+    my $fh;
+
+    eval {
+        open($fh, '<:encoding(UTF-8)', $filename);
+    };
+    return if ($EVAL_ERROR);
+
+    my $uuid;
+    eval { $uuid = <$fh>; };
+    return if ($EVAL_ERROR);
+
+    chomp $uuid;
+    return $uuid;
+}
+
+
 sub pingback {
    my (%args) = @_;
    my @required_args = qw(url instances);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my $url       = $args{url};
    my $instances = $args{instances};
@@ -4025,7 +4159,7 @@ sub pingback {
    );
    die "Failed to parse server requested programs: $response->{content}"
       if !scalar keys %$items;
-      
+
    my $versions = get_versions(
       items     => $items,
       instances => $instances,
@@ -4036,11 +4170,12 @@ sub pingback {
    my $client_content = encode_client_response(
       items      => $items,
       versions   => $versions,
-      general_id => md5_hex( hostname() ),
+      general_id => get_uuid(),
    );
 
+   my $tool_name = $ENV{XTRABACKUP_VERSION} ? "Percona XtraBackup" : File::Basename::basename($0);
    my $client_response = {
-      headers => { "X-Percona-Toolkit-Tool" => File::Basename::basename($0) },
+      headers => { "X-Percona-Toolkit-Tool" => $tool_name },
       content => $client_content,
    };
    PTDEBUG && _d('Client response:', Dumper($client_response));
@@ -4071,7 +4206,7 @@ sub encode_client_response {
    my (%args) = @_;
    my @required_args = qw(items versions general_id);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($items, $versions, $general_id) = @args{@required_args};
 
@@ -4097,7 +4232,7 @@ sub parse_server_response {
    my (%args) = @_;
    my @required_args = qw(response);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($response) = @args{@required_args};
 
@@ -4123,6 +4258,7 @@ my %sub_for_type = (
    perl_version        => \&get_perl_version,
    perl_module_version => \&get_perl_module_version,
    mysql_variable      => \&get_mysql_variable,
+   xtrabackup          => \&get_xtrabackup_version,
 );
 
 sub valid_item {
@@ -4139,7 +4275,7 @@ sub get_versions {
    my (%args) = @_;
    my @required_args = qw(items);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($items) = @args{@required_args};
 
@@ -4250,6 +4386,10 @@ sub get_perl_version {
    return $version;
 }
 
+sub get_xtrabackup_version {
+    return $ENV{XTRABACKUP_VERSION};
+}
+
 sub get_perl_module_version {
    my (%args) = @_;
    my $item = $args{item};
@@ -4284,7 +4424,7 @@ sub get_from_mysql {
    if ($item->{item} eq 'MySQL' && $item->{type} eq 'mysql_variable') {
       @{$item->{vars}} = grep { $_ eq 'version' || $_ eq 'version_comment' } @{$item->{vars}};
    }
- 
+
 
    my @versions;
    my %version_for;
@@ -4327,10 +4467,10 @@ sub _d {
 # ###########################################################################
 # Runtime package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Runtime.pm
 #   t/lib/Runtime.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Runtime;
@@ -4558,10 +4698,10 @@ sub main {
             $dbh->do($sql);
          };
          if ( $EVAL_ERROR ) {
-            die "Failed to $sql: $EVAL_ERROR\n";   
+            die "Failed to $sql: $EVAL_ERROR\n";
          }
       };
-      
+
       $dst = Cxn->new(
          dsn          => $dst_dsn,
          prev_dsn     => ($src ? $src->dsn : undef),
@@ -4612,22 +4752,26 @@ sub main {
          $sql =~ s/deadlocks/IF NOT EXISTS $db_tbl/;
          PTDEBUG && _d($sql);
          $dst->dbh->do($sql);
+         if ( $EVAL_ERROR ) {
+             _die("Cannot connect to MySQL: $EVAL_ERROR", 1);
+         }
       }
    }
 
    # ########################################################################
    # Daemonize only after (potentially) asking for passwords for --ask-pass.
+   # If option daemonize is not provided while option pid is provided,
+   # we're not daemoninzing, it just handles PID stuff.
    # ########################################################################
    my $daemon;
-   if ( $o->get('daemonize') ) {
-      $daemon = new Daemon(o=>$o);
-      $daemon->daemonize();
-      PTDEBUG && _d('I am a daemon now');
-   }
-   elsif ( $o->get('pid') ) {
-      # We're not daemoninzing, it just handles PID stuff.
-      $daemon = new Daemon(o=>$o);
-      $daemon->make_PID_file();
+   if ( $o->get('daemonize') || $o->get('pid')) {
+      $daemon = new Daemon(
+         log_file => $o->get('log'),
+         pid_file => $o->get('pid'),
+         daemonize => $o->get('daemonize'),
+      );
+      $daemon->run();
+      PTDEBUG && $o->get('daemonize') && _d('I am a daemon now');
    }
 
    # If we daemonized, the parent has already exited and we're the child.
@@ -4658,7 +4802,7 @@ sub main {
    # ########################################################################
    my $clear_deadlocks_table_def;
    my $clear_deadlocks_table = $o->get('clear-deadlocks');
-   if ( $clear_deadlocks_table ) { 
+   if ( $clear_deadlocks_table ) {
       $clear_deadlocks_table_def
          = $o->read_para_after(__FILE__, qr/MAGIC_clear_deadlocks/);
       if ( VersionParser->new($src->dbh) < '4.1.2') {
@@ -4745,7 +4889,7 @@ sub main {
                         $dst->dbh->disconnect() if $dst->dbh;
                         $dst->connect(AutoCommit => 0);
                         $ins_sth = $dst->dbh->prepare($ins_sql);
-                     }; 
+                     };
                      if ( $EVAL_ERROR ) {
                         warn "Lost connection to " . $dst->name . ".  Will try "
                            . "to reconnect in the next iteration.\n";
@@ -5462,18 +5606,24 @@ default: yes
 Check for the latest version of Percona Toolkit, MySQL, and other programs.
 
 This is a standard "check for updates automatically" feature, with two
-additional features.  First, the tool checks the version of other programs
-on the local system in addition to its own version.  For example, it checks
-the version of every MySQL server it connects to, Perl, and the Perl module
-DBD::mysql.  Second, it checks for and warns about versions with known
-problems.  For example, MySQL 5.5.25 had a critical bug and was re-released
+additional features.  First, the tool checks its own version and also the
+versions of the following software: operating system, Percona Monitoring and
+Management (PMM), MySQL, Perl, MySQL driver for Perl (DBD::mysql), and
+Percona Toolkit. Second, it checks for and warns about versions with known
+problems. For example, MySQL 5.5.25 had a critical bug and was re-released
 as 5.5.25a.
+
+A secure connection to Percona's Version Check database server is done to
+perform these checks. Each request is logged by the server, including software
+version numbers and unique ID of the checked system. The ID is generated by the
+Percona Toolkit installation script or when the Version Check database call is
+done for the first time.
 
 Any updates or known problems are printed to STDOUT before the tool's normal
 output.  This feature should never interfere with the normal operation of the
-tool.  
+tool.
 
-For more information, visit L<https://www.percona.com/version-check>.
+For more information, visit L<https://www.percona.com/doc/percona-toolkit/LATEST/version-check.html>.
 
 =back
 
@@ -5552,6 +5702,11 @@ To enable debugging and capture all output to a file, run the tool like:
 Be careful: debugging output is voluminous and can generate several megabytes
 of output.
 
+=head1 ATTENTION
+
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
+parameters are shown in the output.
+
 =head1 SYSTEM REQUIREMENTS
 
 You need Perl, DBI, DBD::mysql, and some core packages that ought to be
@@ -5559,9 +5714,9 @@ installed in any reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs, see L<http://www.percona.com/bugs/pt-deadlock-logger>.
+For a list of known bugs, see L<https://jira.percona.com/projects/PT/issues>.
 
-Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
+Please report bugs at L<https://jira.percona.com/projects/PT>.
 Include the following information in your bug report:
 
 =over
@@ -5614,7 +5769,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2017 Percona LLC and/or its affiliates,
+This program is copyright 2011-2021 Percona LLC and/or its affiliates,
 2007-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -5633,6 +5788,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-deadlock-logger 3.0.5
+pt-deadlock-logger 3.5.5
 
 =cut

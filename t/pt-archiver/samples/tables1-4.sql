@@ -1,3 +1,5 @@
+DROP DATABASE IF EXISTS test;
+CREATE DATABASE test;
 use test;
 
 drop table if exists table_1;

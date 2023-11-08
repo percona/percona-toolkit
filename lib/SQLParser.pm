@@ -21,7 +21,7 @@
 # Package: SQLParser
 # SQLParser parses common MySQL SQL statements into data structures.
 # This parser is MySQL-specific and intentionally meant to handle only
-# "common" cases.  Although there are many limiations (like UNION, CASE,
+# "common" cases.  Although there are many limitations (like UNION, CASE,
 # etc.), many complex cases are handled that no other free, Perl SQL
 # parser at the time of writing can parse, notably subqueries in all their
 # places and varieties.
@@ -30,7 +30,7 @@
 # mildly complex regex, so do not expect amazing performance.
 #
 # See SQLParser.t for examples of the various data structures.  There are
-# many and they vary a lot depending on the statment parsed, so documentation
+# many and they vary a lot depending on the statement parsed, so documentation
 # in this file is not exhaustive.
 #
 # This package differs from QueryParser because here we parse the entire SQL
@@ -48,7 +48,7 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-# Basic identifers for database, table, column and function names.
+# Basic identifiers for database, table, column and function names.
 my $quoted_ident   = qr/`[^`]+`/;
 my $unquoted_ident = qr/
    \@{0,2}         # optional @ or @@ for variables
@@ -112,14 +112,14 @@ sub new {
 }
 
 # Sub: parse
-#   Parse a SQL statment.   Only statements of $allowed_types are parsed.
+#   Parse a SQL statement.   Only statements of $allowed_types are parsed.
 #   This sub recurses to parse subqueries.
 #
 # Parameters:
 #   $query - SQL statement
 #
 # Returns:
-#   A complex hashref of the parsed SQL statment.  All keys and almost all
+#   A complex hashref of the parsed SQL statement.  All keys and almost all
 #   values are lowercase for consistency.  The struct is roughly:
 #   (start code)
 #   {
@@ -375,7 +375,7 @@ sub parse_insert {
             (?:INTO\s+)?            # INTO, optional
             (.+?)\s+                # table ref
             (\([^\)]+\)\s+)?        # column list, optional
-            (VALUE.?|SET|SELECT)\s+ # start of next caluse
+            (VALUE.?|SET|SELECT)\s+ # start of next clause
          /xgci)
    ) {
       my $tbl  = shift @into;  # table ref
@@ -423,7 +423,7 @@ sub parse_select {
    # only statement with optional keywords at the end.  Also, these
    # appear to be the only keywords with spaces instead of _.
    my @keywords;
-   my $final_keywords = qr/(FOR UPDATE|LOCK IN SHARE MODE)/i; 
+   my $final_keywords = qr/(FOR UPDATE|LOCK IN SHARE MODE)/i;
    1 while $query =~ s/\s+$final_keywords/(push @keywords, $1), ''/gie;
 
    my $keywords = qr/(
@@ -580,7 +580,7 @@ sub parse_from {
       }
       elsif ( $thing =~ m/(?:,|JOIN)/i ) {
          # A comma or JOIN signals the end of the current table ref and
-         # the begining of the next table ref.  Save the current table ref.
+         # the beginning of the next table ref.  Save the current table ref.
          if ( $join ) {
             $tbl_ref->{join} = $join;
          }
@@ -640,7 +640,7 @@ sub parse_table_reference {
    # `tbl` FORCE INDEX (foo), makes FORCE look like an implicit alias.
    if ( $tbl_ref =~ s/
          \s+(
-            (?:FORCE|USE|INGORE)\s
+            (?:FORCE|USE|IGNORE)\s
             (?:INDEX|KEY)
             \s*\([^\)]+\)\s*
          )//xi)
@@ -678,7 +678,7 @@ sub parse_table_reference {
 #   * not "fully" tested because the possibilities are infinite
 #
 # It works in four steps; let's take this WHERE clause as an example:
-# 
+#
 #   i="x and y" or j in ("and", "or") and x is not null or a between 1 and 10 and sz="this 'and' foo"
 #
 # The first step splits the string on and|or, the only two keywords I'm
@@ -704,7 +704,7 @@ sub parse_table_reference {
 # The third step runs through the list of pred frags backwards and joins
 # the current frag to the preceding frag if it does not have an operator.
 # The result is:
-# 
+#
 #   PREDICATE FRAGMENT                OPERATOR
 #   ================================  ========
 #   i="x and y"                       Y
@@ -721,7 +721,7 @@ sub parse_table_reference {
 # The fourth step is similar but not shown: pred frags with unbalanced ' or "
 # are joined to the preceding pred frag.  This fixes cases where a pred frag
 # has multiple and|or in a string value; e.g. "foo and bar or dog".
-# 
+#
 # After the pred frags are complete, the parts of these predicates are parsed
 # and returned in an arrayref of hashrefs like:
 #
@@ -858,7 +858,7 @@ sub parse_where {
          $op  =~ s/\s+$//;
       }
       $val =~ s/^\s+//;
-      
+
       # No unquoted value ends with ) except FUNCTION(...)
       if ( ($op || '') !~ m/IN/i && $val !~ m/^\w+\([^\)]+\)$/ ) {
          $val =~ s/\)+$//;
@@ -909,7 +909,7 @@ sub parse_group_by {
    # Remove special "WITH ROLLUP" clause so we're left with a simple csv list.
    my $with_rollup = $group_by =~ s/\s+WITH ROLLUP\s*//i;
 
-   # Parse the identifers.
+   # Parse the identifiers.
    my $idents = $self->parse_identifiers( $self->_parse_csv($group_by) );
 
    $idents->{with_rollup} = 1 if $with_rollup;
@@ -995,9 +995,9 @@ sub _parse_csv {
    if ( $args{quoted_values} ) {
       # If the vals are quoted, then they can contain commas, like:
       # "hello, world!", 'batman'.  If only we could use Text::CSV,
-      # then I wouldn't write yet another csv parser to handle this,
-      # but Maatkit doesn't like package dependencies, so here's my
-      # light implementation of this classic problem.
+      # then we wouldn't write yet another csv parser to handle this,
+      # but Percona Toolkit doesn't like package dependencies, so here's
+      # our light implementation of this classic problem.
       my $quote_char   = '';
       VAL:
       foreach my $val ( split(',', $vals) ) {
@@ -1191,7 +1191,7 @@ sub remove_subqueries {
       }
       else {
          # If the subquery is not preceded by an operator (=, >, etc.)
-         # or IN(), EXISTS(), etc. then it should be an indentifier,
+         # or IN(), EXISTS(), etc. then it should be an identifier,
          # either a derived table or column.
          $struct->{context} = 'identifier';
       }
@@ -1326,7 +1326,7 @@ sub parse_identifier {
    else {
       die "Invalid number of parts in $type reference: $ident";
    }
-   
+
    if ( $self->{Schema} ) {
       if ( $type eq 'column' && (!$ident_struct{tbl} || !$ident_struct{db}) ) {
          my $qcol = $self->{Schema}->find_column(%ident_struct);

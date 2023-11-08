@@ -1,6 +1,43 @@
 
+# Query 1: 0.05 QPS, 0.00x concurrency, ID 0x538CA093E701E0CBA20C29AF174CE545 at byte 1833
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.00
+# Time range: 2007-12-18 11:48:27 to 11:49:30
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         50       3
+# Exec time     50    36us    12us    12us    12us    12us       0    12us
+# Lock time      0       0       0       0       0       0       0       0
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0       0       0       0       0       0       0       0
+# Merge passes   0       0       0       0       0       0       0       0
+# Query size    50      69      23      23      23      23       0      23
+# String:
+# Databases    foo
+# Hosts
+# Users        [SQL_SLAVE]
+# Query_time distribution
+#   1us
+#  10us  ################################################################
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# Review information
+#    first_seen: 2007-12-18 11:48:27
+#     last_seen: 2007-12-18 11:49:30
+#   reviewed_by: 
+#   reviewed_on: 
+#      comments: 
+# Tables
+#    SHOW TABLE STATUS FROM `foo` LIKE 'foo_tbl'\G
+#    SHOW CREATE TABLE `foo`.`foo_tbl`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT col FROM foo_tbl\G
 
-# Query 2: 0.30 QPS, 0.00x concurrency, ID 0xD4CD74934382A184 at byte 1469
+# Query 2: 0.30 QPS, 0.00x concurrency, ID 0x3E4FB43148C4B07CD4CD74934382A184 at byte 1469
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: 2007-12-18 11:48:57 to 11:49:07

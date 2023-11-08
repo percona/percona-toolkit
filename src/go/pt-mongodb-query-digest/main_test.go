@@ -18,12 +18,13 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/pborman/getopt/v2"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+
+	"github.com/pborman/getopt"
 	"github.com/percona/percona-toolkit/src/go/lib/profiling"
 	"github.com/percona/percona-toolkit/src/go/lib/tutil"
 	"github.com/percona/percona-toolkit/src/go/mongolib/stats"
-	"github.com/percona/pmgo"
-	"gopkg.in/mgo.v2/dbtest"
 )
 
 const (
@@ -34,8 +35,14 @@ type testVars struct {
 	RootPath string
 }
 
+type Data struct {
+	bin string
+	url string
+	db  string
+}
+
 var vars testVars
-var Server dbtest.DBServer
+var client *mongo.Client
 
 func TestMain(m *testing.M) {
 	var err error
@@ -43,23 +50,37 @@ func TestMain(m *testing.M) {
 		log.Printf("cannot get root path: %s", err.Error())
 		os.Exit(1)
 	}
-	os.Exit(m.Run())
 
-	// The tempdir is created so MongoDB has a location to store its files.
-	// Contents are wiped once the server stops
-	os.Setenv("CHECK_SESSIONS", "0")
-	tempDir, _ := ioutil.TempDir("", "testing")
-	Server.SetPath(tempDir)
+	client, err = mongo.Connect(context.TODO(), options.Client().ApplyURI(os.Getenv("PT_TEST_MONGODB_DSN")))
+	if err != nil {
+		log.Printf("Cannot connect: %s", err.Error())
+		os.Exit(1)
+	}
+
+	err = profiling.Disable(context.TODO(), client, "test")
+	if err != nil {
+		log.Printf("Cannot disable profile: %s", err.Error())
+		os.Exit(1)
+	}
+	err = profiling.Drop(context.TODO(), client, "test")
+	if err != nil {
+		log.Printf("Cannot drop profile database: %s", err.Error())
+		os.Exit(1)
+	}
+	err = profiling.Enable(context.TODO(), client, "test")
+	if err != nil {
+		log.Printf("Cannot enable profile: %s", err.Error())
+		os.Exit(1)
+	}
 
 	retCode := m.Run()
 
-	Server.Session().Close()
-	Server.Session().DB("samples").DropDatabase()
+	err = profiling.Disable(context.TODO(), client, "test")
+	if err != nil {
+		log.Printf("Cannot disable profile: %s", err.Error())
+		os.Exit(1)
+	}
 
-	// Stop shuts down the temporary server and removes data on disk.
-	Server.Stop()
-
-	// call with result of m.Run()
 	os.Exit(retCode)
 }
 
@@ -69,29 +90,25 @@ func TestIsProfilerEnabled(t *testing.T) {
 		t.Skip("Skippping TestIsProfilerEnabled. It runs only in integration tests")
 	}
 
-	dialer := pmgo.NewDialer()
-	di, _ := pmgo.ParseURL(mongoDSN)
-
-	enabled, err := isProfilerEnabled(dialer, di)
-
+	enabled, err := isProfilerEnabled(context.TODO(), options.Client().ApplyURI(mongoDSN), "test")
+	//
 	if err != nil {
 		t.Errorf("Cannot check if profiler is enabled: %s", err.Error())
 	}
 	if enabled != true {
 		t.Error("Profiler must be enabled")
 	}
-
 }
 
 func TestParseArgs(t *testing.T) {
 	tests := []struct {
 		args []string
-		want *options
+		want *cliOptions
 	}{
 		{
-			args: []string{TOOLNAME}, // arg[0] is the command itself
-			want: &options{
-				Host:            DEFAULT_HOST,
+			args: []string{toolname}, // arg[0] is the command itself
+			want: &cliOptions{
+				Host:            "mongodb://" + DEFAULT_HOST,
 				LogLevel:        DEFAULT_LOGLEVEL,
 				OrderBy:         strings.Split(DEFAULT_ORDERBY, ","),
 				SkipCollections: strings.Split(DEFAULT_SKIPCOLLECTIONS, ","),
@@ -100,13 +117,13 @@ func TestParseArgs(t *testing.T) {
 			},
 		},
 		{
-			args: []string{TOOLNAME, "zapp.brannigan.net:27018/samples", "--help"},
+			args: []string{toolname, "zapp.brannigan.net:27018/samples", "--help"},
 			want: nil,
 		},
 		{
-			args: []string{TOOLNAME, "zapp.brannigan.net:27018/samples"},
-			want: &options{
-				Host:            "zapp.brannigan.net:27018/samples",
+			args: []string{toolname, "zapp.brannigan.net:27018/samples"},
+			want: &cliOptions{
+				Host:            "mongodb://zapp.brannigan.net:27018/samples",
 				LogLevel:        DEFAULT_LOGLEVEL,
 				OrderBy:         strings.Split(DEFAULT_ORDERBY, ","),
 				SkipCollections: strings.Split(DEFAULT_SKIPCOLLECTIONS, ","),
@@ -119,7 +136,11 @@ func TestParseArgs(t *testing.T) {
 	for i, test := range tests {
 		getopt.Reset()
 		os.Args = test.args
+		//disabling Stdout to avoid printing help message to the screen
+		sout := os.Stdout
+		os.Stdout = nil
 		got, err := getOptions()
+		os.Stdout = sout
 		if err != nil {
 			t.Errorf("error parsing command line arguments: %s", err.Error())
 		}
@@ -127,18 +148,12 @@ func TestParseArgs(t *testing.T) {
 			t.Errorf("invalid command line options test %d\ngot %+v\nwant %+v\n", i, got, test.want)
 		}
 	}
-
-}
-
-type Data struct {
-	bin string
-	url string
 }
 
 func TestPTMongoDBQueryDigest(t *testing.T) {
 	var err error
-
-	binDir, err := ioutil.TempDir("/tmp", "pmm-client-test-bindir-")
+	//
+	binDir, err := ioutil.TempDir("/tmp", "pt-test-bindir")
 	if err != nil {
 		t.Error(err)
 	}
@@ -148,12 +163,13 @@ func TestPTMongoDBQueryDigest(t *testing.T) {
 			t.Error(err)
 		}
 	}()
-
+	//
 	bin := binDir + "/pt-mongodb-query-digest"
 	xVariables := map[string]string{
 		"main.Build":     "<Build>",
 		"main.Version":   "<Version>",
 		"main.GoVersion": "<GoVersion>",
+		"main.Commit":    "<Commit>",
 	}
 	var ldflags []string
 	for x, value := range xVariables {
@@ -173,40 +189,41 @@ func TestPTMongoDBQueryDigest(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-
+	//
 	data := Data{
 		bin: bin,
+		url: os.Getenv("PT_TEST_MONGODB_DSN"),
+		db:  "test",
 	}
 	tests := []func(*testing.T, Data){
 		testVersion,
 		testEmptySystemProfile,
 		testAllOperationsTemplate,
 	}
-	t.Run("pmm-admin", func(t *testing.T) {
+
+	t.Run("pt-mongodb-query-digest", func(t *testing.T) {
 		for _, f := range tests {
 			f := f // capture range variable
 			fName := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
 			t.Run(fName, func(t *testing.T) {
 				// Clean up system.profile
 				var err error
-				data.url = "127.0.0.1/test"
-				err = profiling.Disable(data.url)
+				err = profiling.Disable(context.TODO(), client, data.db)
 				if err != nil {
 					t.Error(err)
 				}
-				profiling.Drop(data.url)
-				err = profiling.Enable(data.url)
+				profiling.Drop(context.TODO(), client, data.db)
+				err = profiling.Enable(context.TODO(), client, data.db)
 				if err != nil {
 					t.Error(err)
 				}
-				defer profiling.Disable(data.url)
-
+				defer profiling.Disable(context.TODO(), client, data.db)
+				//
 				// t.Parallel()
 				f(t, data)
 			})
 		}
 	})
-
 }
 
 func testVersion(t *testing.T, data Data) {
@@ -220,8 +237,9 @@ func testVersion(t *testing.T, data Data) {
 	}
 	expected := `pt-mongodb-query-digest
 Version <Version>
-Build: <Build> using <GoVersion>`
-
+Build: <Build> using <GoVersion>
+Commit: <Commit>`
+	//
 	assertRegexpLines(t, expected, string(output))
 }
 
@@ -229,13 +247,14 @@ func testEmptySystemProfile(t *testing.T, data Data) {
 	cmd := exec.Command(
 		data.bin,
 		data.url,
+		"--database="+data.db,
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Error(err)
 	}
-
-	expected := "No queries found in profiler information for database \\\"test\\\""
+	//
+	expected := "No queries found in profiler information for database \\\"" + data.db + "\\\""
 	if !strings.Contains(string(output), expected) {
 		t.Errorf("Empty system.profile.\nGot:\n%s\nWant:\n%s\n", string(output), expected)
 	}
@@ -247,31 +266,34 @@ func testAllOperationsTemplate(t *testing.T, data Data) {
 	if err != nil {
 		t.Fatalf("cannot list samples: %s", err)
 	}
-
+	//
 	fs := []string{}
 	for _, file := range files {
 		fs = append(fs, dir+file.Name())
 	}
 	sort.Strings(fs)
+	fs = append([]string{os.Getenv("PT_TEST_MONGODB_DSN")}, fs...)
 	err = run(fs...)
 	if err != nil {
 		t.Fatalf("cannot execute queries: %s", err)
 	}
-
+	//
 	// disable profiling so pt-mongodb-query digest reads rows from `system.profile`
-	profiling.Disable(data.url)
 
+	profiling.Disable(context.TODO(), client, data.db)
+	//
 	// run profiler
 	cmd := exec.Command(
 		data.bin,
 		data.url,
+		"--database="+data.db,
 	)
-
+	//
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Error(err)
 	}
-
+	//
 	queries := []stats.QueryStats{
 		{
 			ID:          "e357abe482dcc0cd03ab742741bf1c86",
@@ -280,10 +302,16 @@ func testAllOperationsTemplate(t *testing.T, data Data) {
 			Fingerprint: "INSERT coll",
 		},
 		{
-			ID:          "c9b40ce564762834d12b0390a292645c",
+			ID:          "22eda5c05290c1af6dbffd8c38aceff6",
 			Namespace:   "test.coll",
 			Operation:   "DROP",
-			Fingerprint: "DROP coll drop",
+			Fingerprint: "DROP coll",
+		},
+		{
+			ID:          "ba1d8c1620d1aaf36c1010c809ec462b",
+			Namespace:   "test.coll",
+			Operation:   "CREATEINDEXES",
+			Fingerprint: "CREATEINDEXES coll",
 		},
 		{
 			ID:          "db759bfd83441deecc71382323041ce6",
@@ -298,16 +326,10 @@ func testAllOperationsTemplate(t *testing.T, data Data) {
 			Fingerprint: "REMOVE coll a,b",
 		},
 		{
-			ID:          "30dbfbc89efd8cfd40774dff0266a28f",
+			ID:          "2a639e77efe3e68399ef9482575b3421",
 			Namespace:   "test.coll",
-			Operation:   "AGGREGATE",
-			Fingerprint: "AGGREGATE coll a",
-		},
-		{
-			ID:          "a6782ae38ef891d5506341a4b0ab2747",
-			Namespace:   "test",
-			Operation:   "EVAL",
-			Fingerprint: "EVAL",
+			Operation:   "FIND",
+			Fingerprint: "FIND coll",
 		},
 		{
 			ID:          "76d7662df07b44135ac3e07e44a6eb39",
@@ -322,10 +344,10 @@ func testAllOperationsTemplate(t *testing.T, data Data) {
 			Fingerprint: "FINDANDMODIFY coll a",
 		},
 		{
-			ID:          "2a639e77efe3e68399ef9482575b3421",
+			ID:          "30dbfbc89efd8cfd40774dff0266a28f",
 			Namespace:   "test.coll",
-			Operation:   "FIND",
-			Fingerprint: "FIND coll",
+			Operation:   "AGGREGATE",
+			Fingerprint: "AGGREGATE coll a",
 		},
 		{
 			ID:          "fe0bf975a044fe47fd32b835ceba612d",
@@ -352,28 +374,10 @@ func testAllOperationsTemplate(t *testing.T, data Data) {
 			Fingerprint: "FIND coll k",
 		},
 		{
-			ID:          "798d7c1cd25b63cb6a307126a25910d6",
-			Namespace:   "test.system.js",
-			Operation:   "FIND",
-			Fingerprint: "FIND system.js",
-		},
-		{
-			ID:          "c70403cbd55ffbb07f08c0cb77a24b19",
-			Namespace:   "test.coll",
-			Operation:   "GEONEAR",
-			Fingerprint: "GEONEAR coll",
-		},
-		{
 			ID:          "e4122a58c99ab0a4020ce7d195c5a8cb",
 			Namespace:   "test.coll",
 			Operation:   "DISTINCT",
 			Fingerprint: "DISTINCT coll a,b",
-		},
-		{
-			ID:          "ca8bb19386488570447f5753741fb494",
-			Namespace:   "test.coll",
-			Operation:   "GROUP",
-			Fingerprint: "GROUP coll a,b",
 		},
 		{
 			ID:          "10b8f47b366fbfd1fb01f8d17d75b1a2",
@@ -400,7 +404,7 @@ func testAllOperationsTemplate(t *testing.T, data Data) {
 			Fingerprint: "UPDATE coll a",
 		},
 	}
-
+	//
 	expected := `Profiler is disabled for the "test" database but there are \s*[0-9]+ documents in the system.profile collection.
 Using those documents for the stats
 
@@ -415,7 +419,7 @@ Using those documents for the stats
 # Bytes sent           (\s*[0-9\.K]+){8}(K|\s)
 #\s
 `
-
+	//
 	queryTpl := `
 # Query [0-9]+:  [0-9\.]+ QPS, ID {{.ID}}
 # Ratio    [0-9\.]+  \(docs scanned/returned\)
@@ -432,9 +436,8 @@ Using those documents for the stats
 # Operation           {{.Operation}}
 # Fingerprint         {{.Fingerprint}}
 # Query               .*
-
 `
-
+	//
 	tpl, _ := template.New("query").Parse(queryTpl)
 	for _, query := range queries {
 		buf := bytes.Buffer{}
@@ -442,11 +445,11 @@ Using those documents for the stats
 		if err != nil {
 			t.Error(err)
 		}
-
+		//
 		expected += buf.String()
 	}
 	expected += "\n" // Looks like we expect additional line
-
+	//
 	assertRegexpLines(t, expected, string(output))
 }
 
@@ -458,19 +461,19 @@ func assertRegexpLines(t *testing.T, rx string, str string, msgAndArgs ...interf
 			t.Fatal(err)
 		}
 	}()
-
+	//
 	actualScanner := bufio.NewScanner(strings.NewReader(str))
 	defer func() {
 		if err := actualScanner.Err(); err != nil {
 			t.Fatal(err)
 		}
 	}()
-
+	//
 	ok := true
 	for {
 		asOk := actualScanner.Scan()
 		esOk := expectedScanner.Scan()
-
+		//
 		switch {
 		case asOk && esOk:
 			ok, err := regexp.MatchString("^"+expectedScanner.Text()+"$", actualScanner.Text())

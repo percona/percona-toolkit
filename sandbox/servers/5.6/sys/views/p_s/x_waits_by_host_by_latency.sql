@@ -33,7 +33,7 @@
 CREATE OR REPLACE
   ALGORITHM = MERGE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW x$waits_by_host_by_latency (
   host,
   event,

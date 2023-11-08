@@ -67,6 +67,7 @@ my %port_for = (
    chan_master1 => 2900,
    chan_master2 => 2901,
    chan_slave1  => 2902,
+   chan_slave2  => 2903,
 );
 
 my %server_type = (
@@ -129,11 +130,11 @@ sub create_dbs {
 
    return;
 }
-   
+
 sub get_dbh_for {
    my ( $self, $server, $cxn_ops, $user ) = @_;
    _check_server($server);
-   $cxn_ops ||= { AutoCommit => 1 };
+   $cxn_ops ||= { AutoCommit => 1, mysql_enable_utf8 => 1 };
    $user    ||= 'msandbox';
    PTDEBUG && _d('dbh for', $server, 'on port', $port_for{$server});
    my $dp = $self->{DSNParser};
@@ -191,10 +192,10 @@ sub wipe_clean {
    # the DROP commands will just hang forever.
    my @cxns = @{$dbh->selectall_arrayref('SHOW FULL PROCESSLIST', {Slice => {}})};
    foreach my $cxn ( @cxns ) {
-      if (( 
+      if ((
          (($cxn->{user}||'') eq 'msandbox' && ($cxn->{command}||'') eq 'Sleep')
       || (($cxn->{User}||'') eq 'msandbox' && ($cxn->{Command}||'') eq 'Sleep')
-         ) && $cxn->{db} 
+         ) && $cxn->{db}
       ) {
          my $id  = $cxn->{id} ? $cxn->{id} : $cxn->{Id};
          my $sql = "KILL $id /* db: $cxn->{db} */";
@@ -211,6 +212,7 @@ sub wipe_clean {
 
    $self->wait_for_slaves();
 
+   $self->clear_genlogs();
    return;
 }
 
@@ -365,6 +367,12 @@ sub verify_test_data {
    $self->{checksum_ref} = $ref unless $self->{checksum_ref};
    my @tables_in_mysql  = grep { !/^(?:innodb|slave)_/ }
                           grep { !/_log$/ }
+                          grep { !/engine_cost$/ }
+                          grep { !/server_cost$/ }
+                          grep { !/tables_priv$/ }
+                          grep { !/user$/ }
+                          grep { !/proxies_priv$/ }
+                          grep { !/global_grants$/ }
                           @{$master->selectcol_arrayref('SHOW TABLES FROM mysql')};
    my @tables_in_sakila = qw(actor address category city country customer
                              film film_actor film_category film_text inventory
@@ -387,7 +395,7 @@ sub verify_test_data {
    my @diffs;
    foreach my $c ( @checksums ) {
       next unless $c->{checksum};
-      if ( $c->{checksum} ne $ref->{$c->{table}}->{checksum} ) {
+      if ( $ref->{$c->{table}} && $c->{checksum} ne $ref->{$c->{table}}->{checksum} ) {
          push @diffs, $c->{table};
       }
    }
@@ -497,7 +505,7 @@ sub start_sandbox {
       my $first_node = $args{first_node} ? $port_for{$args{first_node}} : '';
       my $out = `$env $trunk/sandbox/start-sandbox cluster $port $first_node`;
       die $out if $CHILD_ERROR;
-   } 
+   }
 
    my $dbh = $self->get_dbh_for($server, $args{cxn_opts});
    my $dsn = $self->dsn_for($server);
@@ -575,6 +583,25 @@ sub do_as_root {
    }
    $dbh->disconnect;
    return $ok;
+}
+
+sub has_engine {
+   my ( $self, $host, $want_engine ) = @_;
+
+   # Get the current checksums on the host.
+   my $dbh = $self->get_dbh_for($host);
+   my $sql = "SHOW ENGINES";
+   my @engines = @{$dbh->selectall_arrayref($sql, {Slice => {} })};
+
+   # Diff the two sets of checksums: host to master (ref).
+   my $has_engine=0;
+   foreach my $engine ( @engines ) {
+      if ( $engine->{engine} =~ m/$want_engine/i ) {
+         $has_engine=1;
+         last;
+      }
+   }
+   return $has_engine;
 }
 
 sub _d {

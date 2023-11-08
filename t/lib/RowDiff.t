@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 27;
+use Test::More;
 
 use MockSync;
 use RowDiff;
@@ -298,7 +298,7 @@ SKIP: {
          { a => 'a', b => 2, c => 3 },
       ),
       syncer     => $s,
-      tbl_struct => { collation_for => { a => 'utf8_general_ci' } },
+      tbl_struct => { collation_for => { a => 'utf8mb4_general_ci' } },
    );
    is_deeply(
       $s,
@@ -442,6 +442,9 @@ SKIP: {
    skip 'Cannot connect to sandbox master', 4 unless $master_dbh;
    skip 'Cannot connect to sandbox slave',  4 unless $slave_dbh;
 
+PXC_SKIP: {
+      skip 'Not for PXC' if ( $sb->is_cluster_mode );
+
    $d = new RowDiff(dbh => $master_dbh);
 
    $sb->create_dbs($master_dbh, [qw(test)]);
@@ -543,10 +546,10 @@ SKIP: {
       ],
       'one identical row (real DBI sth)',
    );
-
+}
+}
    $sb->wipe_clean($master_dbh);
    $sb->wipe_clean($slave_dbh);
-}
 
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+done_testing;

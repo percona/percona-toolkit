@@ -3,8 +3,8 @@ CONTRIBUTE.md
 CONTRIBUTING.md
 COPYING
 docker-compose.yml
-glide.lock
-glide.yaml
+Gopkg.lock
+Gopkg.toml
 INSTALL
 Makefile.PL
 MANIFEST

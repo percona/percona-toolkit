@@ -14,16 +14,16 @@ Architecture | CPU = 32-bit, OS = 32-bit
       Models | 1xQEMU Virtual CPU version 0.14.1
       Caches | 1x4096 KB
 # Memory #####################################################
-       Total | 1010.5M
-        Free | 784.4M
-        Used | physical = 226.1M, swap allocated = 2.0G, swap used = 0.0, virtual = 226.1M
-      Shared | 0.0
-     Buffers | 48.8M
-      Caches | 122.2M
-       Dirty | 152 kB
-     UsedRSS | 63.2M
-  Swappiness | 
- DirtyPolicy | 
+         Total | 1010.5M
+          Free | 784.4M
+          Used | physical = 226.1M, swap allocated = 2.0G, swap used = 0.0, virtual = 226.1M
+        Shared | 0.0
+       Buffers | 48.8M
+        Caches | 122.2M
+         Dirty | 152 kB
+       UsedRSS | 63.2M
+    Swappiness | 
+   DirtyPolicy | 
 # Mounted Filesystems ########################################
   Filesystem                       Size Used Type  Opts Mountpoint
   /dev/hda1                         99M  13% ext3  rw   /boot
@@ -35,7 +35,7 @@ Architecture | CPU = 32-bit, OS = 32-bit
          hda | [cfq] 128
          hdc | [cfq] 128
          md0 | UNREADABLE
-# Disk Partioning ############################################
+# Disk Partitioning ##########################################
 Device       Type      Start        End               Size
 ============ ==== ========== ========== ==================
 /dev/hda     Disk                               8589934592
@@ -80,6 +80,6 @@ Unable to collect information
    1  0     0    0     0   100    800     50  67  33   0   0   0
    1  0     0    0     0     0   1000     35  80  20   0   0   0
    1  0     0    0     0     0    900     45  62  38   0   0   0
-# Memory mamagement ##########################################
+# Memory management ##########################################
 Transparent huge pages are enabled.
 # The End ####################################################

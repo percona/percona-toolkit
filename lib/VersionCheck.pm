@@ -48,6 +48,14 @@ eval {
    require HTTP::Micro;
 };
 
+my $home    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
+my @vc_dirs = (
+   '/etc/percona',
+   '/etc/percona-toolkit',
+   '/tmp',
+   "$home",
+);
+
 # Return the version check file used to keep track of
 # MySQL instance that have been checked and when.  Some
 # systems use random tmp dirs; we don't want that else
@@ -55,13 +63,6 @@ eval {
 # per system is the goal, so prefer global sys dirs first.
 {
    my $file    = 'percona-version-check';
-   my $home    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
-   my @vc_dirs = (
-      '/etc/percona',
-      '/etc/percona-toolkit',
-      '/tmp',
-      "$home",
-   );
 
    sub version_check_file {
       foreach my $dir ( @vc_dirs ) {
@@ -72,7 +73,7 @@ eval {
       }
       PTDEBUG && _d('Version check file', $file, 'in', $ENV{PWD});
       return $file;  # in the CWD
-   } 
+   }
 }
 
 # Return time limit between checks.
@@ -111,11 +112,11 @@ sub version_check {
    PTDEBUG && _d('FindBin::Bin:', $FindBin::Bin);
    if ( !$args{force} ) {
       if ( $FindBin::Bin
-           && (-d "$FindBin::Bin/../.bzr"    || 
+           && (-d "$FindBin::Bin/../.bzr"    ||
                -d "$FindBin::Bin/../../.bzr" ||
-               -d "$FindBin::Bin/../.git"    || 
-               -d "$FindBin::Bin/../../.git" 
-              ) 
+               -d "$FindBin::Bin/../.git"    ||
+               -d "$FindBin::Bin/../../.git"
+              )
          ) {
          PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
          return;
@@ -144,7 +145,7 @@ sub version_check {
       return unless @$instances_to_check;
 
       # Skip Version Check altogether if SSL not available
-      my $protocol = 'https';  
+      my $protocol = 'https';
       eval { require IO::Socket::SSL; };
       if ( $EVAL_ERROR ) {
          PTDEBUG && _d($EVAL_ERROR);
@@ -152,14 +153,16 @@ sub version_check {
          return;
       }
       PTDEBUG && _d('Using', $protocol);
+      my $url = $args{url}                       # testing
+                || $ENV{PERCONA_VERSION_CHECK_URL}  # testing
+                || "$protocol://v.percona.com";
+      PTDEBUG && _d('API URL:', $url);
 
       # Get list of programs to check from Percona.
       my $advice = pingback(
          instances => $instances_to_check,
          protocol  => $protocol,
-         url       => $args{url}                       # testing
-                   || $ENV{PERCONA_VERSION_CHECK_URL}  # testing
-                   || "$protocol://v.percona.com",
+         url       => $url,
       );
       if ( $advice ) {
          PTDEBUG && _d('Advice:', Dumper($advice));
@@ -231,7 +234,7 @@ sub get_instances_to_check {
    my @instances_to_check;
    foreach my $instance ( @$instances ) {
       my $last_check_time = $last_check_time_for{ $instance->{id} };
-      PTDEBUG && _d('Intsance', $instance->{id}, 'last checked',
+      PTDEBUG && _d('Instance', $instance->{id}, 'last checked',
          $last_check_time, 'now', $now, 'diff', $now - ($last_check_time || 0),
          'hours until next check',
          sprintf '%.2f',
@@ -326,6 +329,54 @@ sub get_instance_id {
    return $name, $id;
 }
 
+
+# This function has been implemented solely to be able to count individual
+# Toolkit users for statistics. It uses a random UUID, no client info is
+# being gathered nor stored
+sub get_uuid {
+    my $uuid_file = '/.percona-toolkit.uuid';
+    foreach my $dir (@vc_dirs) {
+        my $filename = $dir.$uuid_file;
+        my $uuid=_read_uuid($filename);
+        return $uuid if $uuid;
+    }
+
+    my $filename = $ENV{"HOME"} . $uuid_file;
+    my $uuid = _generate_uuid();
+
+    my $fh;
+    eval {
+        open($fh, '>', $filename);
+    };
+    if (!$EVAL_ERROR) {
+        print $fh $uuid;
+        close $fh;
+    }
+
+    return $uuid;
+}
+
+sub _generate_uuid {
+    return sprintf+($}="%04x")."$}-$}-$}-$}-".$}x3,map rand 65537,0..7;
+}
+
+sub _read_uuid {
+    my $filename = shift;
+    my $fh;
+
+    eval {
+        open($fh, '<:encoding(UTF-8)', $filename);
+    };
+    return if ($EVAL_ERROR);
+
+    my $uuid;
+    eval { $uuid = <$fh>; };
+    return if ($EVAL_ERROR);
+
+    chomp $uuid;
+    return $uuid;
+}
+
 # #############################################################################
 # Protocol handlers
 # #############################################################################
@@ -334,7 +385,7 @@ sub pingback {
    my (%args) = @_;
    my @required_args = qw(url instances);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my $url       = $args{url};
    my $instances = $args{instances};
@@ -370,7 +421,7 @@ sub pingback {
    );
    die "Failed to parse server requested programs: $response->{content}"
       if !scalar keys %$items;
-      
+
    # Get the versions for those items in another hashref also keyed on
    # the items like:
    #    "MySQL" => "MySQL Community Server 5.1.49-log",
@@ -387,11 +438,12 @@ sub pingback {
    my $client_content = encode_client_response(
       items      => $items,
       versions   => $versions,
-      general_id => md5_hex( hostname() ),
+      general_id => get_uuid(),
    );
 
+   my $tool_name = $ENV{XTRABACKUP_VERSION} ? "Percona XtraBackup" : File::Basename::basename($0);
    my $client_response = {
-      headers => { "X-Percona-Toolkit-Tool" => File::Basename::basename($0) },
+      headers => { "X-Percona-Toolkit-Tool" => $tool_name },
       content => $client_content,
    };
    PTDEBUG && _d('Client response:', Dumper($client_response));
@@ -426,7 +478,7 @@ sub encode_client_response {
    my (%args) = @_;
    my @required_args = qw(items versions general_id);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($items, $versions, $general_id) = @args{@required_args};
 
@@ -457,7 +509,7 @@ sub parse_server_response {
    my (%args) = @_;
    my @required_args = qw(response);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($response) = @args{@required_args};
 
@@ -484,6 +536,7 @@ my %sub_for_type = (
    perl_version        => \&get_perl_version,
    perl_module_version => \&get_perl_module_version,
    mysql_variable      => \&get_mysql_variable,
+   xtrabackup          => \&get_xtrabackup_version,
 );
 
 sub valid_item {
@@ -500,7 +553,7 @@ sub get_versions {
    my (%args) = @_;
    my @required_args = qw(items);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($items) = @args{@required_args};
 
@@ -615,13 +668,17 @@ sub get_perl_version {
    return $version;
 }
 
+sub get_xtrabackup_version {
+    return $ENV{XTRABACKUP_VERSION};
+}
+
 sub get_perl_module_version {
    my (%args) = @_;
    my $item = $args{item};
    return unless $item;
 
    # If there's a var, then its an explicit Perl variable name to get,
-   # else the item name is an implicity Perl module name to which we
+   # else the item name is an implicitly Perl module name to which we
    # append ::VERSION to get the module's version.
    my $var     = '$' . $item->{item} . '::VERSION';
    my $version = eval "use $item->{item}; $var;";
@@ -649,12 +706,12 @@ sub get_from_mysql {
       return;
    }
 
-   # Only allow version variables to be reported 
+   # Only allow version variables to be reported
    # So in case of MITM attack, we don't report sensitive data
    if ($item->{item} eq 'MySQL' && $item->{type} eq 'mysql_variable') {
       @{$item->{vars}} = grep { $_ eq 'version' || $_ eq 'version_comment' } @{$item->{vars}};
    }
- 
+
 
    my @versions;
    my %version_for;

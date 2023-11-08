@@ -33,7 +33,7 @@
 CREATE OR REPLACE
   ALGORITHM = MERGE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW x$io_global_by_file_by_latency (
   file,
   total,
@@ -45,8 +45,8 @@ VIEW x$io_global_by_file_by_latency (
   count_misc,
   misc_latency
 ) AS
-SELECT file_name AS file, 
-       count_star AS total, 
+SELECT file_name AS file,
+       count_star AS total,
        sum_timer_wait AS total_latency,
        count_read,
        sum_timer_read AS read_latency,

@@ -1,0 +1,3 @@
+#!/bin/bash
+
+echo "a dummy output for pt-summary"

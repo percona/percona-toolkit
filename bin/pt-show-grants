@@ -23,10 +23,10 @@ BEGIN {
 # ###########################################################################
 # OptionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/OptionParser.pm
 #   t/lib/OptionParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package OptionParser;
@@ -84,7 +84,7 @@ sub new {
       rules             => [],  # desc of rules for --help
       mutex             => [],  # rule: opts are mutually exclusive
       atleast1          => [],  # rule: at least one opt is required
-      disables          => {},  # rule: opt disables other opts 
+      disables          => {},  # rule: opt disables other opts
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
@@ -247,7 +247,7 @@ sub _pod_to_specs {
          }
 
          push @specs, {
-            spec  => $self->{parse_attributes}->($self, $option, \%attribs), 
+            spec  => $self->{parse_attributes}->($self, $option, \%attribs),
             desc  => $para
                . (defined $attribs{default} ? " (default $attribs{default})" : ''),
             group => ($attribs{'group'} ? $attribs{'group'} : 'default'),
@@ -338,7 +338,7 @@ sub _parse_specs {
          $self->{opts}->{$long} = $opt;
       }
       else { # It's an option rule, not a spec.
-         PTDEBUG && _d('Parsing rule:', $opt); 
+         PTDEBUG && _d('Parsing rule:', $opt);
          push @{$self->{rules}}, $opt;
          my @participants = $self->_get_participants($opt);
          my $rule_ok = 0;
@@ -383,7 +383,7 @@ sub _parse_specs {
       PTDEBUG && _d('Option', $long, 'disables', @participants);
    }
 
-   return; 
+   return;
 }
 
 sub _get_participants {
@@ -470,7 +470,7 @@ sub _set_option {
 }
 
 sub get_opts {
-   my ( $self ) = @_; 
+   my ( $self ) = @_;
 
    foreach my $long ( keys %{$self->{opts}} ) {
       $self->{opts}->{$long}->{got} = 0;
@@ -601,7 +601,7 @@ sub _check_opts {
                   else {
                      $err = join(', ',
                                map { "--$self->{opts}->{$_}->{long}" }
-                               grep { $_ } 
+                               grep { $_ }
                                @restricted_opts[0..scalar(@restricted_opts) - 2]
                             )
                           . ' or --'.$self->{opts}->{$restricted_opts[-1]}->{long};
@@ -611,7 +611,7 @@ sub _check_opts {
             }
 
          }
-         elsif ( $opt->{is_required} ) { 
+         elsif ( $opt->{is_required} ) {
             $self->save_error("Required option --$long must be specified");
          }
 
@@ -995,7 +995,7 @@ sub clone {
       $clone{$scalar} = $self->{$scalar};
    }
 
-   return bless \%clone;     
+   return bless \%clone;
 }
 
 sub _parse_size {
@@ -1134,10 +1134,10 @@ if ( PTDEBUG ) {
 # ###########################################################################
 # DSNParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/DSNParser.pm
 #   t/lib/DSNParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package DSNParser;
@@ -1221,7 +1221,7 @@ sub parse {
    foreach my $key ( keys %$opts ) {
       PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
-      if (   !defined $final_props{$key}
+      if ( !defined $final_props{$key}
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
@@ -1361,7 +1361,7 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass,
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       $dbh = eval { DBI->connect($cxn_string, $user, $pass, $defaults) };
@@ -1428,6 +1428,28 @@ sub get_dbh {
            . ($sql_mode ? " and $sql_mode" : '')
            . ": $EVAL_ERROR";
       }
+   }
+   my ($mysql_version) = eval { $dbh->selectrow_array('SELECT VERSION()') };
+   if ($EVAL_ERROR) {
+       die "Cannot get MySQL version: $EVAL_ERROR";
+   }
+
+   my (undef, $character_set_server) = eval { $dbh->selectrow_array("SHOW VARIABLES LIKE 'character_set_server'") };
+   if ($EVAL_ERROR) {
+       die "Cannot get MySQL var character_set_server: $EVAL_ERROR";
+   }
+
+   if ($mysql_version =~ m/^(\d+)\.(\d)\.(\d+).*/) {
+       if ($1 >= 8 && $character_set_server =~ m/^utf8/) {
+           $dbh->{mysql_enable_utf8} = 1;
+           my $msg = "MySQL version $mysql_version >= 8 and character_set_server = $character_set_server\n".
+                     "Setting: SET NAMES $character_set_server";
+           PTDEBUG && _d($msg);
+           eval { $dbh->do("SET NAMES 'utf8mb4'") };
+           if ($EVAL_ERROR) {
+               die "Cannot SET NAMES $character_set_server: $EVAL_ERROR";
+           }
+       }
    }
 
    PTDEBUG && _d('DBH info: ',
@@ -1537,7 +1559,7 @@ sub set_vars {
       }
    }
 
-   return; 
+   return;
 }
 
 sub _d {
@@ -1557,10 +1579,10 @@ sub _d {
 # ###########################################################################
 # Daemon package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Daemon.pm
 #   t/lib/Daemon.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Daemon;
@@ -1568,157 +1590,214 @@ package Daemon;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use POSIX qw(setsid);
+use Fcntl qw(:DEFAULT);
 
 sub new {
-   my ( $class, %args ) = @_;
-   foreach my $arg ( qw(o) ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my $o = $args{o};
+   my ($class, %args) = @_;
    my $self = {
-      o        => $o,
-      log_file => $o->has('log') ? $o->get('log') : undef,
-      PID_file => $o->has('pid') ? $o->get('pid') : undef,
+      log_file       => $args{log_file},
+      pid_file       => $args{pid_file},
+      daemonize      => $args{daemonize},
+      force_log_file => $args{force_log_file},
+      parent_exit    => $args{parent_exit},
+      pid_file_owner => 0,
    };
-
-   check_PID_file(undef, $self->{PID_file});
-
-   PTDEBUG && _d('Daemonized child will log to', $self->{log_file});
    return bless $self, $class;
 }
 
-sub daemonize {
-   my ( $self ) = @_;
+sub run {
+   my ($self) = @_;
 
-   PTDEBUG && _d('About to fork and daemonize');
-   defined (my $pid = fork()) or die "Cannot fork: $OS_ERROR";
-   if ( $pid ) {
-      PTDEBUG && _d('Parent PID', $PID, 'exiting after forking child PID',$pid);
-      exit;
-   }
+   my $daemonize      = $self->{daemonize};
+   my $pid_file       = $self->{pid_file};
+   my $log_file       = $self->{log_file};
+   my $force_log_file = $self->{force_log_file};
+   my $parent_exit    = $self->{parent_exit};
 
-   PTDEBUG && _d('Daemonizing child PID', $PID);
-   $self->{PID_owner} = $PID;
-   $self->{child}     = 1;
+   PTDEBUG && _d('Starting daemon');
 
-   POSIX::setsid() or die "Cannot start a new session: $OS_ERROR";
-   chdir '/'       or die "Cannot chdir to /: $OS_ERROR";
-
-   $self->_make_PID_file();
-
-   $OUTPUT_AUTOFLUSH = 1;
-
-   PTDEBUG && _d('Redirecting STDIN to /dev/null');
-   close STDIN;
-   open  STDIN, '/dev/null'
-      or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
-
-   if ( $self->{log_file} ) {
-      PTDEBUG && _d('Redirecting STDOUT and STDERR to', $self->{log_file});
-      close STDOUT;
-      open  STDOUT, '>>', $self->{log_file}
-         or die "Cannot open log file $self->{log_file}: $OS_ERROR";
-
-      close STDERR;
-      open  STDERR, ">&STDOUT"
-         or die "Cannot dupe STDERR to STDOUT: $OS_ERROR"; 
-   }
-   else {
-      if ( -t STDOUT ) {
-         PTDEBUG && _d('No log file and STDOUT is a terminal;',
-            'redirecting to /dev/null');
-         close STDOUT;
-         open  STDOUT, '>', '/dev/null'
-            or die "Cannot reopen STDOUT to /dev/null: $OS_ERROR";
-      }
-      if ( -t STDERR ) {
-         PTDEBUG && _d('No log file and STDERR is a terminal;',
-            'redirecting to /dev/null');
-         close STDERR;
-         open  STDERR, '>', '/dev/null'
-            or die "Cannot reopen STDERR to /dev/null: $OS_ERROR";
-      }
-   }
-
-   return;
-}
-
-sub check_PID_file {
-   my ( $self, $file ) = @_;
-   my $PID_file = $self ? $self->{PID_file} : $file;
-   PTDEBUG && _d('Checking PID file', $PID_file);
-   if ( $PID_file && -f $PID_file ) {
-      my $pid;
+   if ( $pid_file ) {
       eval {
-         chomp($pid = (slurp_file($PID_file) || ''));
+         $self->_make_pid_file(
+            pid      => $PID,  # parent's pid
+            pid_file => $pid_file,
+         );
       };
-      if ( $EVAL_ERROR ) {
-         die "The PID file $PID_file already exists but it cannot be read: "
-            . $EVAL_ERROR;
+      die "$EVAL_ERROR\n" if $EVAL_ERROR;
+      if ( !$daemonize ) {
+         $self->{pid_file_owner} = $PID;  # parent's pid
       }
-      PTDEBUG && _d('PID file exists; it contains PID', $pid);
-      if ( $pid ) {
-         my $pid_is_alive = kill 0, $pid;
-         if ( $pid_is_alive ) {
-            die "The PID file $PID_file already exists "
-               . " and the PID that it contains, $pid, is running";
-         }
-         else {
-            warn "Overwriting PID file $PID_file because the PID that it "
-               . "contains, $pid, is not running";
-         }
+   }
+
+   if ( $daemonize ) {
+      defined (my $child_pid = fork()) or die "Cannot fork: $OS_ERROR";
+      if ( $child_pid ) {
+         PTDEBUG && _d('Forked child', $child_pid);
+         $parent_exit->($child_pid) if $parent_exit;
+         exit 0;
+      }
+
+      POSIX::setsid() or die "Cannot start a new session: $OS_ERROR";
+      chdir '/'       or die "Cannot chdir to /: $OS_ERROR";
+
+      if ( $pid_file ) {
+         $self->_update_pid_file(
+            pid      => $PID,  # child's pid
+            pid_file => $pid_file,
+         );
+         $self->{pid_file_owner} = $PID;
+      }
+   }
+
+   if ( $daemonize || $force_log_file ) {
+      PTDEBUG && _d('Redirecting STDIN to /dev/null');
+      close STDIN;
+      open  STDIN, '/dev/null'
+         or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
+      if ( $log_file ) {
+         PTDEBUG && _d('Redirecting STDOUT and STDERR to', $log_file);
+         close STDOUT;
+         open  STDOUT, '>>', $log_file
+            or die "Cannot open log file $log_file: $OS_ERROR";
+
+         close STDERR;
+         open  STDERR, ">&STDOUT"
+            or die "Cannot dupe STDERR to STDOUT: $OS_ERROR";
       }
       else {
-         die "The PID file $PID_file already exists but it does not "
-            . "contain a PID";
+         if ( -t STDOUT ) {
+            PTDEBUG && _d('No log file and STDOUT is a terminal;',
+               'redirecting to /dev/null');
+            close STDOUT;
+            open  STDOUT, '>', '/dev/null'
+               or die "Cannot reopen STDOUT to /dev/null: $OS_ERROR";
+         }
+         if ( -t STDERR ) {
+            PTDEBUG && _d('No log file and STDERR is a terminal;',
+               'redirecting to /dev/null');
+            close STDERR;
+            open  STDERR, '>', '/dev/null'
+               or die "Cannot reopen STDERR to /dev/null: $OS_ERROR";
+         }
+      }
+
+      $OUTPUT_AUTOFLUSH = 1;
+   }
+
+   PTDEBUG && _d('Daemon running');
+   return;
+}
+
+sub _make_pid_file {
+   my ($self, %args) = @_;
+   my @required_args = qw(pid pid_file);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my $pid      = $args{pid};
+   my $pid_file = $args{pid_file};
+
+   eval {
+      sysopen(PID_FH, $pid_file, O_RDWR|O_CREAT|O_EXCL) or die $OS_ERROR;
+      print PID_FH $PID, "\n";
+      close PID_FH;
+   };
+   if ( my $e = $EVAL_ERROR ) {
+      if ( $e =~ m/file exists/i ) {
+         my $old_pid = $self->_check_pid_file(
+            pid_file => $pid_file,
+            pid      => $PID,
+         );
+         if ( $old_pid ) {
+            warn "Overwriting PID file $pid_file because PID $old_pid "
+               . "is not running.\n";
+         }
+         $self->_update_pid_file(
+            pid      => $PID,
+            pid_file => $pid_file
+         );
+      }
+      else {
+         die "Error creating PID file $pid_file: $e\n";
       }
    }
-   else {
-      PTDEBUG && _d('No PID file');
-   }
+
    return;
 }
 
-sub make_PID_file {
-   my ( $self ) = @_;
-   if ( exists $self->{child} ) {
-      die "Do not call Daemon::make_PID_file() for daemonized scripts";
-   }
-   $self->_make_PID_file();
-   $self->{PID_owner} = $PID;
-   return;
-}
+sub _check_pid_file {
+   my ($self, %args) = @_;
+   my @required_args = qw(pid_file pid);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my $pid_file = $args{pid_file};
+   my $pid      = $args{pid};
 
-sub _make_PID_file {
-   my ( $self ) = @_;
+   PTDEBUG && _d('Checking if PID in', $pid_file, 'is running');
 
-   my $PID_file = $self->{PID_file};
-   if ( !$PID_file ) {
-      PTDEBUG && _d('No PID file to create');
+   if ( ! -f $pid_file ) {
+      PTDEBUG && _d('PID file', $pid_file, 'does not exist');
       return;
    }
 
-   $self->check_PID_file();
+   open my $fh, '<', $pid_file
+      or die "Error opening $pid_file: $OS_ERROR";
+   my $existing_pid = do { local $/; <$fh> };
+   chomp($existing_pid) if $existing_pid;
+   close $fh
+      or die "Error closing $pid_file: $OS_ERROR";
 
-   open my $PID_FH, '>', $PID_file
-      or die "Cannot open PID file $PID_file: $OS_ERROR";
-   print $PID_FH $PID
-      or die "Cannot print to PID file $PID_file: $OS_ERROR";
-   close $PID_FH
-      or die "Cannot close PID file $PID_file: $OS_ERROR";
+   if ( $existing_pid ) {
+      if ( $existing_pid == $pid ) {
+         warn "The current PID $pid already holds the PID file $pid_file\n";
+         return;
+      }
+      else {
+         PTDEBUG && _d('Checking if PID', $existing_pid, 'is running');
+         my $pid_is_alive = kill 0, $existing_pid;
+         if ( $pid_is_alive ) {
+            die "PID file $pid_file exists and PID $existing_pid is running\n";
+         }
+      }
+   }
+   else {
+      die "PID file $pid_file exists but it is empty.  Remove the file "
+         . "if the process is no longer running.\n";
+   }
 
-   PTDEBUG && _d('Created PID file:', $self->{PID_file});
+   return $existing_pid;
+}
+
+sub _update_pid_file {
+   my ($self, %args) = @_;
+   my @required_args = qw(pid pid_file);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my $pid      = $args{pid};
+   my $pid_file = $args{pid_file};
+
+   open my $fh, '>', $pid_file
+      or die "Cannot open $pid_file: $OS_ERROR";
+   print { $fh } $pid, "\n"
+      or die "Cannot print to $pid_file: $OS_ERROR";
+   close $fh
+      or warn "Cannot close $pid_file: $OS_ERROR";
+
    return;
 }
 
-sub _remove_PID_file {
-   my ( $self ) = @_;
-   if ( $self->{PID_file} && -f $self->{PID_file} ) {
-      unlink $self->{PID_file}
-         or warn "Cannot remove PID file $self->{PID_file}: $OS_ERROR";
+sub remove_pid_file {
+   my ($self, $pid_file) = @_;
+   $pid_file ||= $self->{pid_file};
+   if ( $pid_file && -f $pid_file ) {
+      unlink $self->{pid_file}
+         or warn "Cannot remove PID file $pid_file: $OS_ERROR";
       PTDEBUG && _d('Removed PID file');
    }
    else {
@@ -1728,18 +1807,13 @@ sub _remove_PID_file {
 }
 
 sub DESTROY {
-   my ( $self ) = @_;
+   my ($self) = @_;
 
-   $self->_remove_PID_file() if ($self->{PID_owner} || 0) == $PID;
+   if ( $self->{pid_file_owner} == $PID ) {
+      $self->remove_pid_file();
+   }
 
    return;
-}
-
-sub slurp_file {
-   my ($file) = @_;
-   return unless $file;
-   open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
-   return do { local $/; <$fh> };
 }
 
 sub _d {
@@ -1759,10 +1833,10 @@ sub _d {
 # ###########################################################################
 # VersionCompare package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/VersionCompare.pm
 #   t/lib/VersionCompare.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package VersionCompare;
@@ -1777,22 +1851,22 @@ sub cmp {
    $v1 =~ s/[^\d\.]//;
    $v2 =~ s/[^\d\.]//;
 
-   my @a = ( $v1 =~ /(\d+)\.?/g ); 
-   my @b = ( $v2 =~ /(\d+)\.?/g ); 
+   my @a = ( $v1 =~ /(\d+)\.?/g );
+   my @b = ( $v2 =~ /(\d+)\.?/g );
    foreach my $n1 (@a) {
-      $n1 += 0;
+      $n1 += 0; #convert to number
       if (!@b) {
          return 1;
-      }  
+      }
       my $n2 = shift @b;
-      $n2 += 0;
+      $n2 += 0; # convert to number
       if ($n1 == $n2) {
           next;
       }
       else {
          return $n1 <=> $n2;
-      }  
-   }  
+      }
+   }
    return @b ? -1 : 0;
 }
 
@@ -1846,13 +1920,16 @@ sub main {
       # We're not daemoninzing, it just handles PID stuff.  Keep $daemon
       # in the the scope of main() because when it's destroyed it automatically
       # removes the PID file.
-      $daemon = new Daemon(o=>$o);
-      $daemon->make_PID_file();
+      $daemon = new Daemon(
+         daemonize => 0, # not daemoninzing, just PID file
+         pid_file => $o->get('pid'),
+      );
+      $daemon->run();
    }
 
    # ########################################################################
    # Parse --only and --ignore users.
-   # ######################################################################## 
+   # ########################################################################
    my @all_hosts;
    if ( my $users = $o->get('only') ) {
       my @users = map {
@@ -1902,15 +1979,24 @@ sub main {
                               { AutoCommit => 1, });
 
    my ( $version, $ts ) = $dbh->selectrow_array("SELECT VERSION(), NOW()");
-   
+
    print join("\n",
       "-- Grants dumped by pt-show-grants",
       "-- Dumped from server " . ($dbh->{mysql_hostinfo} || '')
       . ($o->get('timestamp') ? ", MySQL $version at $ts" : ", MySQL $version"),
       ), "\n" if $o->get('header');
 
+   # MySQL 8 roles must be excluded from the regular users list.
+   # Roles can be identified because the user password is expired, the authentication
+   # string is empty and the account is locked
+   my $mysql8_where = '';
+   if ($version !~ "-MariaDB" && VersionCompare::cmp($version, '8.0.0') >= 0) {
+       $mysql8_where = ' WHERE NOT ( `account_locked`="Y" AND ' .
+                                      ' `password_expired`="Y" AND ' .
+                                      ' `authentication_string`="" ) ';
+   }
    my $users = $o->get('only') || $dbh->selectall_arrayref(
-      'SELECT DISTINCT User, Host FROM mysql.user ORDER BY User, Host',
+      "SELECT DISTINCT User, Host FROM mysql.user $mysql8_where ORDER BY User, Host",
       { Slice => {} });
    if ( scalar @all_hosts ) {
       my $where = join(' OR ', map { "User='$_'" } @all_hosts);
@@ -1922,6 +2008,24 @@ sub main {
    my $ignore_users = $o->get('ignore');
 
    my $exit_status = 0;
+   my $roles = get_roles($dbh, $users);
+   if ($roles && scalar @$roles > 0) {
+       print "-- Roles\n";
+       my $count=0;
+
+       for my $role (@$roles) {
+           next if (!$o->get("include-unused-roles") && $role->{active} == 0);
+           unshift @$users, { Host => $role->{host}, User => $role->{name}, IsRole => 1};
+           $count++;
+           printf('CREATE ROLE IF NOT EXISTS `%s`;'."\n", $role->{name});
+       }
+
+       if ($count == 0) {
+           print "No active roles found\n";
+       }
+       print "-- End of roles listing\n";
+   }
+
    USER:
    foreach my $u ( @$users ) {
       my $user_host = "'$u->{User}'\@'$u->{Host}'";
@@ -2012,7 +2116,7 @@ sub main {
             my $grant = $_;
             PTDEBUG && _d($grant);
             my ( $grants, $on_what, $user ) = $grant
-               =~ m/GRANT (.*?) ON (.*?) TO ('[^']*'\@'[^']*')/;
+               =~ m/GRANT (.*?) ON (.*?) TO ([`'][^'`]*[`']\@[`'][^'`]*[`'])/; # MySQL 8 uses ` instead of ' for `user`@`host`
             PTDEBUG && _d('grants:', $grants, 'on_what:', $on_what,
                'user:', $user);
 
@@ -2026,7 +2130,7 @@ sub main {
             }
 
             # The WITH GRANT OPTION must be revoked separately.
-            if ( $grant =~ m/WITH GRANT OPTION/ ) { 
+            if ( $grant =~ m/WITH GRANT OPTION/ ) {
                push @result, "REVOKE GRANT OPTION ON *.* FROM $user" if $user;
             }
 
@@ -2040,13 +2144,13 @@ sub main {
             "\n";
       }
 
-      if ( $o->get('drop') ) {
+      if ( $o->get('drop') && !defined($u->{IsRole}) ) {
          print join("\n",
             "DROP USER $user_host;",
             "DELETE FROM `mysql`.`user` WHERE `User`='$u->{User}' AND `Host`='$u->{Host}';",
             ), "\n";
       }
-      
+
       print join( "\n", "-- Grants for $user_host",
          map {"$_;"} @grants ), "\n";
 
@@ -2084,6 +2188,42 @@ sub parse_user {
    return ( $user, $host );
 }
 
+sub get_roles {
+    my ($dbh, $users) = @_;
+    my $query = <<__EOQ;
+    SELECT DISTINCT user.user AS name, user.host, IF(from_user IS NULL,0, 1) AS active
+      FROM mysql.user
+ LEFT JOIN mysql.role_edges ON role_edges.from_user=user.user
+     WHERE `account_locked`='Y'
+       AND `password_expired`='Y'
+       AND `authentication_string`=''
+__EOQ
+    if (scalar $users > 0) {
+       my $user_names = join (", ", map { "'$_->{User}'" } @$users);
+       $query .= " AND to_user IN ($user_names)";
+    }
+    PTDEBUG && _d("Getting roles");
+    PTDEBUG && _d($query);
+    my $roles;
+    eval { $roles = $dbh->selectall_arrayref($query, { Slice => {} }) };
+    if ($EVAL_ERROR) {
+        PTDEBUG && _d("Cannot list roles: $EVAL_ERROR");
+    }
+    return $roles;
+}
+
+sub is_role {
+    my ($users, $grant) = @_;
+    foreach my $u ( @$users ) {
+        my $user_host = "`$u->{User}`\@`$u->{Host}`";
+        warn "> user_host: $user_host";
+        if ($grant eq $user_host) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 sub split_grants {
    my ($grants) = @_;
    return unless $grants;
@@ -2098,7 +2238,7 @@ sub split_grants {
                 (?:INSERT|SELECT|UPDATE)\s\(.+?\) # a column grants
               | [A-Z\s]+
             )
-            (?:,\s)?    # Separted from the next grant, if any, by a comma
+            (?:,\s)?    # Separated from the next grant, if any, by a comma
       /xg;
       # sort columns in column-level permissions (bug lp-1523730)
       @grants = map {
@@ -2346,6 +2486,10 @@ example, specifying C<--set-vars wait_timeout=500> overrides the defaultvalue of
 
 The tool prints a warning and continues if a variable cannot be set.
 
+=item --[no]include-unused-roles
+
+When dumping MySQL 8+ roles, include unused roles.
+
 =item --socket
 
 short form: -S; type: string
@@ -2443,6 +2587,11 @@ To enable debugging and capture all output to a file, run the tool like:
 Be careful: debugging output is voluminous and can generate several megabytes
 of output.
 
+=head1 ATTENTION
+
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
+parameters are shown in the output.
+
 =head1 SYSTEM REQUIREMENTS
 
 You need Perl, DBI, DBD::mysql, and some core packages that ought to be
@@ -2450,9 +2599,9 @@ installed in any reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs, see L<http://www.percona.com/bugs/pt-show-grants>.
+For a list of known bugs, see L<https://jira.percona.com/projects/PT/issues>.
 
-Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
+Please report bugs at L<https://jira.percona.com/projects/PT>.
 Include the following information in your bug report:
 
 =over
@@ -2505,7 +2654,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2017 Percona LLC and/or its affiliates,
+This program is copyright 2011-2021 Percona LLC and/or its affiliates,
 2007-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -2524,6 +2673,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-show-grants 3.0.5
+pt-show-grants 3.5.5
 
 =cut

@@ -1,0 +1,162 @@
+    Hostname | localhost.localdomain
+      Uptime |  1:34,  1 user,  load average: 0.10, 0.04, 0.05
+      System | innotek GmbH; VirtualBox; v1.2 (Other)
+ Service Tag | 0
+    Platform | Linux
+     Release | CentOS Linux release 7.6.1810 (Core) 
+      Kernel | 3.10.0-1160.31.1.el7.x86_64
+Architecture | CPU = 64-bit, OS = 64-bit
+   Threading | NPTL 2.17
+     SELinux | Enforcing
+ Virtualized | KVM
+# Processor ##################################################
+  Processors | physical = 1, cores = 4, virtual = 4, hyperthreading = no
+      Speeds | 4x2043.942
+      Models | 4xIntel(R) Core(TM) i7-8565U CPU @ 1.80GHz
+      Caches | 4x8192 KB
+# Memory #####################################################
+         Total | 3.7G
+          Free | 2.9G
+          Used | physical = 383.7M, swap allocated = 2.0G, swap used = 0.0, virtual = 383.7M
+        Shared | 32.9M
+       Buffers | 2.0M
+        Caches | 396.0M
+         Dirty | 136 kB
+       UsedRSS | 464.8M
+    Swappiness | 30
+   DirtyPolicy | 30, 10
+   DirtyStatus | 0, 0
+  Locator   Size     Speed             Form Factor   Type          Type Detail
+  ========= ======== ================= ============= ============= ===========
+  DIMM_A1   8192 MB  1333 MT/s         DIMM          DDR3          Synchronous Registered (Buffered)
+  DIMM_A2   8192 MB  1333 MT/s         DIMM          DDR3          Synchronous Registered (Buffered)
+  DIMM_B1   8192 MB  1333 MT/s         DIMM          DDR3          Synchronous Registered (Buffered)
+  DIMM_B2   8192 MB  1333 MT/s         DIMM          DDR3          Synchronous Registered (Buffered)
+  DIMM_A10  {EMPTY}                    DIMM          DDR3          Synchronous
+  DIMM_A11  {EMPTY}                    DIMM          DDR3          Synchronous
+  DIMM_A12  {EMPTY}                    DIMM          DDR3          Synchronous
+  DIMM_A3   {EMPTY}                    DIMM          DDR3          Synchronous
+  DIMM_A4   {EMPTY}                    DIMM          DDR3          Synchronous
+  DIMM_A5   {EMPTY}                    DIMM          DDR3          Synchronous
+  DIMM_A6   {EMPTY}                    DIMM          DDR3          Synchronous
+  DIMM_A7   {EMPTY}                    DIMM          DDR3          Synchronous
+  DIMM_A8   {EMPTY}                    DIMM          DDR3          Synchronous
+  DIMM_A9   {EMPTY}                    DIMM          DDR3          Synchronous
+  DIMM_B10  {EMPTY}                    DIMM          DDR3          Synchronous
+  DIMM_B11  {EMPTY}                    DIMM          DDR3          Synchronous
+  DIMM_B12  {EMPTY}                    DIMM          DDR3          Synchronous
+  DIMM_B3   {EMPTY}                    DIMM          DDR3          Synchronous
+  DIMM_B4   {EMPTY}                    DIMM          DDR3          Synchronous
+  DIMM_B5   {EMPTY}                    DIMM          DDR3          Synchronous
+  DIMM_B6   {EMPTY}                    DIMM          DDR3          Synchronous
+  DIMM_B7   {EMPTY}                    DIMM          DDR3          Synchronous
+  DIMM_B8   {EMPTY}                    DIMM          DDR3          Synchronous
+  DIMM_B9   {EMPTY}                    DIMM          DDR3          Synchronous
+# Mounted Filesystems ########################################
+  Filesystem  Size Used Type     Opts                                                                      Mountpoint
+  /dev/sda1    40G  78% xfs      rw,relatime,seclabel,attr2,inode64,noquota                                /
+  devtmpfs    1.9G   0% devtmpfs rw,nosuid,seclabel,size=1932568k,nr_inodes=483142,mode=755                /dev
+  tmpfs       1.9G   0% tmpfs    rw,nosuid,nodev,seclabel                                                  /sys/fs/cgroup
+  tmpfs       1.9G   0% tmpfs    rw,nosuid,nodev,seclabel,mode=755                                         /sys/fs/cgroup
+  tmpfs       1.9G   0% tmpfs    rw,nosuid,nodev,relatime,seclabel,size=387996k,mode=700,uid=1000,gid=1000 /sys/fs/cgroup
+  tmpfs       1.9G   0% tmpfs    ro,nosuid,nodev,noexec,seclabel,mode=755                                  /sys/fs/cgroup
+  tmpfs       1.9G   1% tmpfs    rw,nosuid,nodev,seclabel                                                  /dev/shm
+  tmpfs       1.9G   1% tmpfs    rw,nosuid,nodev,seclabel,mode=755                                         /dev/shm
+  tmpfs       1.9G   1% tmpfs    rw,nosuid,nodev,relatime,seclabel,size=387996k,mode=700,uid=1000,gid=1000 /dev/shm
+  tmpfs       1.9G   1% tmpfs    ro,nosuid,nodev,noexec,seclabel,mode=755                                  /dev/shm
+  tmpfs       1.9G   1% tmpfs    rw,nosuid,nodev,seclabel                                                  /run
+  tmpfs       1.9G   1% tmpfs    rw,nosuid,nodev,seclabel,mode=755                                         /run
+  tmpfs       1.9G   1% tmpfs    rw,nosuid,nodev,relatime,seclabel,size=387996k,mode=700,uid=1000,gid=1000 /run
+  tmpfs       1.9G   1% tmpfs    ro,nosuid,nodev,noexec,seclabel,mode=755                                  /run
+  tmpfs       379M   0% tmpfs    rw,nosuid,nodev,seclabel                                                  /run/user/1000
+  tmpfs       379M   0% tmpfs    rw,nosuid,nodev,seclabel,mode=755                                         /run/user/1000
+  tmpfs       379M   0% tmpfs    rw,nosuid,nodev,relatime,seclabel,size=387996k,mode=700,uid=1000,gid=1000 /run/user/1000
+  tmpfs       379M   0% tmpfs    ro,nosuid,nodev,noexec,seclabel,mode=755                                  /run/user/1000
+# Disk Schedulers And Queue Size #############################
+         sda | [noop] 128
+# Disk Partitioning ##########################################
+Device       Type      Start        End               Size
+============ ==== ========== ========== ==================
+/dev/sda     Disk                              42949672960
+/dev/sda1    Part       2048   83886079        42948623872
+# Kernel Inode State #########################################
+dentry-state | 44507	24627	45	0	6751	0
+     file-nr | 1824	0	380072
+    inode-nr | 37935	335
+# LVM Volumes ################################################
+Unable to collect information
+# LVM Volume Groups ##########################################
+Unable to collect information
+# RAID Controller ############################################
+  Controller | No RAID controller detected
+# Network Config #############################################
+  Controller | Intel Corporation 82540EM Gigabit Ethernet Controller (rev 02)
+  Controller | Intel Corporation 82540EM Gigabit Ethernet Controller (rev 02)
+ FIN Timeout | 60
+  Port Range | 60999
+# Interface Statistics #######################################
+  interface  rx_bytes rx_packets  rx_errors   tx_bytes tx_packets  tx_errors
+  ========= ========= ========== ========== ========== ========== ==========
+  lo         15000000      90000          0   15000000      90000          0
+  eth0         250000       1750          0     175000       1250          0
+  eth1          40000        200          0       1500         20          0
+  br-8a44fb82c9f4          0          0          0          0          0          0
+  docker0           0          0          0          0          0          0
+# Network Devices ############################################
+  Device    Speed     Duplex
+  ========= ========= =========
+  eth0       1000Mb/s   Full      
+  eth1       1000Mb/s   Full      
+  docker0                         
+  br-8a44fb82c9f4                      
+# Network Connections ########################################
+  Connections from remote IP addresses
+    10.0.2.2            1
+    74.121.199.231      1
+    104.22.8.28         1
+    127.0.0.1          20
+    192.168.10.11      30
+  Connections to local IP addresses
+    10.0.2.15           3
+    127.0.0.1          20
+    192.168.10.11      30
+  Connections to top 10 local ports
+    46372               1
+    53180               1
+    5432                1
+    58962               1
+    58964               1
+    58982               1
+    58984               1
+    8616                5
+    8620                4
+    8700                1
+  States of connections
+    ESTABLISHED        25
+    LISTEN             15
+    TIME_WAIT          30
+# Top Processes ##############################################
+  PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND
+    1 root      20   0  193676   6696   4156 S   0.0  0.2   0:01.48 systemd
+    2 root      20   0       0      0      0 S   0.0  0.0   0:00.01 kthreadd
+    4 root       0 -20       0      0      0 S   0.0  0.0   0:00.00 kworker/0:+
+    5 root      20   0       0      0      0 S   0.0  0.0   0:00.01 kworker/u8+
+    6 root      20   0       0      0      0 S   0.0  0.0   0:00.33 ksoftirqd/0
+    7 root      rt   0       0      0      0 S   0.0  0.0   0:00.02 migration/0
+    8 root      20   0       0      0      0 S   0.0  0.0   0:00.00 rcu_bh
+    9 root      20   0       0      0      0 R   0.0  0.0   0:02.34 rcu_sched
+   10 root       0 -20       0      0      0 S   0.0  0.0   0:00.00 lru-add-dr+
+# Notable Processes ##########################################
+  PID    OOM    COMMAND
+ 2798    -17    sshd
+# Simplified and fuzzy rounded vmstat (wait please) ##########
+  procs  ---swap-- -----io---- ---system---- --------cpu--------
+   r  b    si   so    bi    bo     ir     cs  us  sy  il  wa  st
+   1  0     0    0    15     2     35     25   0   0 100   0   0
+   0  0     0    0    90    20   1750   1250   3   5  93   0   0
+   0  0     0    0     0     0    250    175   0   0  99   0   0
+   0  0     0    0     0     0    150    100   0   0 100   0   0
+   0  0     0    0     0     0    125    100   0   0 100   0   0
+# Memory management ##########################################
+Transparent huge pages are enabled.
+# The End ####################################################

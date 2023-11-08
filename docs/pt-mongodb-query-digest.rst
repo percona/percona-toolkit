@@ -1,8 +1,8 @@
 .. _pt-mongodb-query-digest:
 
-=======================
-pt-mongodb-query-digest
-=======================
+==================================
+:program:`pt-mongodb-query-digest`
+==================================
 
 ``pt-mongodb-query-digest`` reports query usage statistics
 by aggregating queries from MongoDB query profiler.
@@ -60,7 +60,7 @@ Options
   Specifies the sorting order using fields:
   ``count``, ``ratio``, ``query-time``, ``docs-scanned``, ``docs-returned``.
 
-  Adding a hypen (``-``) in front of a field denotes reverse order.
+  Adding a hyphen (``-``) in front of a field denotes reverse order.
   For example: ``--order-by="count,-ratio"``.
 
 ``-p``, ``--password``
@@ -89,11 +89,11 @@ Output Example
    # Time range: 2017-01-11 12:58:26.519 -0300 ART to 2017-01-11 12:58:26.686 -0300 ART
    # Attribute            pct     total        min         max        avg         95%        stddev      median
    # ==================   ===   ========    ========    ========    ========    ========     =======    ========
-   # Count (docs)                    36 
-   # Exec Time ms           0         0           0           0           0           0           0           0 
-   # Docs Scanned           0    148.00        0.00       74.00        4.11       74.00       16.95        0.00 
-   # Docs Returned          2    148.00        0.00       74.00        4.11       74.00       16.95        0.00 
-   # Bytes recv             0      2.11M     215.00        1.05M      58.48K       1.05M     240.22K     215.00 
+   # Count (docs)                    36
+   # Exec Time ms           0         0           0           0           0           0           0           0
+   # Docs Scanned           0    148.00        0.00       74.00        4.11       74.00       16.95        0.00
+   # Docs Returned          2    148.00        0.00       74.00        4.11       74.00       16.95        0.00
+   # Bytes recv             0      2.11M     215.00        1.05M      58.48K       1.05M     240.22K     215.00
    # String:
    # Namespaces          samples.col1
    # Fingerprint         $gte,$lt,$meta,$sortKey,filter,find,projection,shardVersion,sort,user_id,user_id

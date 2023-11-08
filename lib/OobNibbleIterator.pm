@@ -23,7 +23,7 @@
 # out-of-bounds: beyond the lower and upper boundaries.  NibbleIterator
 # nibbles a table from its lowest to its highest value, but sometimes
 # another server's copy of the table might have more values below or above
-# the first table's boundaires.  When the parent NibbleIterator is done,
+# the first table's boundaries.  When the parent NibbleIterator is done,
 # this class executes two more nibbles for values past the lower boundary
 # and past the upper boundary.
 package OobNibbleIterator;
@@ -96,7 +96,7 @@ sub new {
          . $tail_sql
          . " /*past upper chunk*/";
       PTDEBUG && _d('Past upper statement:', $past_upper_sql);
-      
+
       my $explain_past_upper_sql
          = "EXPLAIN SELECT "
          . ($args{past_select}
@@ -146,7 +146,7 @@ sub statements {
    # Get the parent's statements.
    my $sths = $self->SUPER::statements();
 
-   # Add our special statements. 
+   # Add our special statements.
    $sths->{past_lower_boundary} = $self->{past_lower_sth};
    $sths->{past_upper_boundary} = $self->{past_upper_sth};
 

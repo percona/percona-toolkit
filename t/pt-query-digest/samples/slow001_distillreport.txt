@@ -3,7 +3,7 @@
 # Report grouped by distill
 # ########################################################################
 
-# Item 1: 0 QPS, 0x concurrency, ID 0x7AD070CD3F4121D5 at byte 359 _______
+# Item 1: 0 QPS, 0x concurrency, ID 0x289A27D8EC00FC657AD070CD3F4121D5 at byte 359
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2007-10-15 21:45:10
@@ -30,7 +30,7 @@
 #  10s+
 SELECT test.n
 
-# Item 2: 0 QPS, 0x concurrency, ID 0x82E67ABEEDCA3249 at byte 0 _________
+# Item 2: 0 QPS, 0x concurrency, ID 0x728A51DF43DA252882E67ABEEDCA3249 at byte 0
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2007-10-15 21:43:52

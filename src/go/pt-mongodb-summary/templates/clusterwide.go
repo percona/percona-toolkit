@@ -1,19 +1,21 @@
 package templates
 
 const Clusterwide = `
+{{ if . -}}
 # Cluster wide ###########################################################################################
             Databases: {{.TotalDBsCount}}
           Collections: {{.TotalCollectionsCount}}
   Sharded Collections: {{.ShardedColsCount}}
 Unsharded Collections: {{.UnshardedColsCount}}
-    Sharded Data Size: {{.ShardedDataSizeScaled}} {{.ShardedDataSizeScale}}          
+    Sharded Data Size: {{.ShardedDataSizeScaled}} {{.ShardedDataSizeScale}}
   Unsharded Data Size: {{.UnshardedDataSizeScaled}} {{.UnshardedDataSizeScale}}
 {{- if .Chunks }}
-          ###  Chunks: 
+          ###  Chunks:
 {{- range .Chunks }}
 {{- if .ID }}
                {{ printf "%5d" .Count }} : {{ printf "%-30s" .ID}}
 {{- end }}
 {{- end }}
+{{- end -}}
 {{- end -}}
 `

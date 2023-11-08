@@ -1,0 +1,28 @@
+
+v3.0.5 released 2017-11-20
+==========================
+
+Percona Toolkit 3.0.5 includes the following changes:
+
+New Features
+
+ * :jirabug:`PMM-1590`: Improve MongoDB Profiler for ``PMM`` and ``PT``
+ * :jirabug:`PT-216`: The ``mongodb-query-digest`` supports ``MongoDB`` versions lower than 3.2; incorrect output was fixed.
+ * :jirabug:`PT-182`: The ``pt-summary``, ``pt-mysql-summary``,  ``pt-mongodb-summary`` commands provide output in the the JSON format.
+ * :jirabug:`PT-152`: ``pt-mysql-summary`` shows the output of the *Show Slave Hosts* command.
+ * :jirabug:`PT-139`: ``pt-table-sync`` supports replication channels (requires MySQL version 5.7.6 or higher)
+
+Bug fixes
+
+ * :jirabug:`PT-211`: ``pt-mext`` fails if the ``Rsa_public_key`` variable is empty.
+ * :jirabug:`PT-212`: ``pt-mongodb-query-digest --version`` produced incorrect values.
+ * :jirabug:`PT-202`: ``pt-online-schema-change`` incorrectly processed virtual columns.
+ * :jirabug:`PT-200`: ``pt-online-schema-change`` command reported an error when the name of an index contained 'unique' as as the prefix or suffix.
+ * :jirabug:`PT-199`: ``pt-table-checksum`` did not detect differences on a system with the ROW based replication active.
+ * :jirabug:`PT-196`: ``pt-onine-schema-change --max-load`` paused if a status variable was passed **0** as the value.
+ * :jirabug:`PT-193`: ``pt-table-checksum`` reported a misleading error if a column comment contained an apostrophe. For more information, see :lpbug:`1708749`.
+ * :jirabug:`PT-187`: In some cases, ``pt-table-checksum`` did not report that the same table contained different values on the master and slave.
+ * :jirabug:`PT-186`: ``pt-online-schema-change --alter`` could fail if field names contained upper case characters. For more information, see :lpbug:`1705998`.
+ * :jirabug:`PT-183`: In some cases ``pt-mongodb-query-digest`` could not connect to a db using authentication.
+ * :jirabug:`PT-167`: In some cases, ``pt-kill`` could ignore the value of the ``--busy-time`` parameter.  For more information, see :lpbug:`1016272`.
+ * :jirabug:`PT-161`: When run with the ``--skip-check-slave-lag``, the ``pt-table-checksum`` could fail in some cases.

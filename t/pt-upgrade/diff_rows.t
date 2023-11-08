@@ -63,52 +63,155 @@ test_diff(
    expect => [],
 );
 
+# Test 2
+my $expect = [
+                [
+                   1,
+                   [qw(msandbox)],
+                   [qw(root)],
+                ],
+                [
+                   2,
+                   [qw(root)],
+                   [qw(msandbox)],
+                ]
+             ];
+if ($sandbox_version ge '5.7' and $sandbox_version lt '8.0') {
+    $expect =[
+               [
+                 1,
+                 [ 'msandbox' ],
+                 [ 'root' ]
+               ],
+               [
+                 2,
+                 [ 'mysql.session' ],
+                 [ 'mysql.sys' ]
+               ],
+               [
+                 3,
+                 [ 'mysql.sys' ],
+                 [ 'mysql.session' ]
+               ]
+             ]; 
+} elsif ($sandbox_version ge '8.0') {
+    $expect =[
+               [
+                 1,
+                 [ 'msandbox' ],
+                 [ 'root' ]
+               ],
+               [
+                 2,
+                 [ 'mysql.infoschema' ],
+                 [ 'mysql.sys' ]
+               ],
+               [
+                 4,
+                 [ 'mysql.sys' ],
+                 [ 'mysql.infoschema' ]
+               ]
+             ]; 
+}
+
 test_diff (
    name   => '2 diffs (ORDER BY ASC vs. DESC)',
    query1 => "select user from mysql.user order by user ASC",
    query2 => "select user from mysql.user order by user DESC",
-   expect => [
-      [
-         1,
-         [qw(msandbox)],
-         [qw(root)],
-      ],
-      [
-         2,
-         [qw(root)],
-         [qw(msandbox)],
-      ]
-   ],
+   expect => $expect,
 );
 
-test_diff (
-   name   => 'Host1 missing a row',
-   query1 => "select user from mysql.user where user='msandbox' order by user",
-   query2 => 'select user from mysql.user order by user',
-   expect => [
+$expect = [
+   [
+      1,
+      undef,
       [
-         1,
-         undef,
-         [
-            [qw(root)],
-         ],
+         [qw(root)],
       ],
    ],
+];
+
+if ($sandbox_version ge '5.7' and $sandbox_version lt '8.0') {
+    $expect =[
+              [
+                3,
+                undef,
+                [
+                  [ 'mysql.session' ],
+                  [ 'mysql.sys' ],
+                  [ 'root' ],
+                ]
+              ]
+            ];
+} elsif ($sandbox_version ge '8.0') {
+    $expect =[
+              [
+                4,
+                undef,
+                [
+                  [ 'mysql.infoschema' ],
+                  [ 'mysql.session' ],
+                  [ 'mysql.sys' ]
+                ]
+              ]
+            ];
+}
+
+test_diff (
+   name   => 'Host1 missing rows',
+   query1 => "select user from mysql.user where user='msandbox' order by user",
+   query2 => 'select user from mysql.user order by user',
+   expect => $expect,
 );
+
+$expect = [
+              [
+                 1,
+                 [
+                    [qw(root)],
+                 ],
+                 undef,
+              ],
+           ];
+
+if ($sandbox_version ge '5.7' and $sandbox_version lt '8.0') {
+    $expect =[
+              [
+                3,
+                [
+                  [ 'mysql.session' ],
+                  [ 'mysql.sys' ],
+                  [ 'root' ],
+                ],
+                undef,
+              ]
+            ];
+} elsif ($sandbox_version ge '8.0') {
+    $expect =[
+               [
+                 4,
+                 [
+                   [
+                     'mysql.infoschema'
+                   ],
+                   [
+                     'mysql.session'
+                   ],
+                   [
+                     'mysql.sys'
+                   ]
+                 ],
+                 undef
+               ]
+             ];
+}
+
 
 test_diff (
    name   => 'Host2 missing a row',
    query1 => 'select user from mysql.user order by user',
    query2 => "select user from mysql.user where user='msandbox' order by user",
-   expect => [
-      [
-         1,
-         [
-            [qw(root)],
-         ],
-         undef,
-      ],
-   ],
+   expect => $expect,
 );
 
 # #############################################################################

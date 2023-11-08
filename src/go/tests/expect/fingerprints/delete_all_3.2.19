@@ -1,0 +1,8 @@
+{
+  "Namespace": "test.coll",
+  "Operation": "REMOVE",
+  "Collection": "coll",
+  "Database": "test",
+  "Keys": "a,b",
+  "Fingerprint": "REMOVE coll a,b"
+}
