@@ -9,7 +9,7 @@ SSL    : {{.SSL}}
 Port   : {{.Port}}
 Bind IP: {{.BindIP}}
 {{- if .WarningMsgs -}}
-{{- range .WarningMsgs }} 
+{{- range .WarningMsgs }}
 {{ . }}
 {{end}}
 {{end }}

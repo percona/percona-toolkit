@@ -91,7 +91,7 @@ BEGIN
     PREPARE reset_stmt FROM @query;
     EXECUTE reset_stmt;
     DEALLOCATE PREPARE reset_stmt;
-         
+
     SET @query = 'UPDATE performance_schema.setup_consumers
                      SET ENABLED = IF(NAME IN (''events_statements_current'', ''global_instrumentation'', ''thread_instrumentation'', ''statements_digest''), ''YES'', ''NO'')';
 

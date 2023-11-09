@@ -25,14 +25,18 @@ if ($ENV{PERCONA_SLOW_BOX}) {
     plan skip_all => 'This test needs a fast machine';
 } elsif ($sandbox_version lt '5.7') {
     plan skip_all => 'This tests needs MySQL 5.7+';
-} else {
-    plan tests => 3;
 }
 
 require "$trunk/bin/pt-online-schema-change";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+
+if ($sb->is_cluster_mode) {
+    plan skip_all => 'Not for PXC';
+} else {
+    plan tests => 3;
+}                                  
 
 my $master_dbh = $sb->get_dbh_for("master");
 my $master_dsn = $sb->dsn_for("master");
@@ -47,12 +51,15 @@ my @args = (qw(--set-vars innodb_lock_wait_timeout=3));
 my $output;
 my $exit_status;
 
+# We need to reset master, because otherwise later RESET SLAVE call
+# will let sandbox to re-apply all previous events, executed on the sandbox.
+$master_dbh->do("RESET MASTER");
 diag("Setting replication filters on slave 2");
-$sb->load_file('slave2', "t/pt-online-schema-change/samples/pt-1455_slave.sql");
+$sb->load_file('slave2', "t/pt-online-schema-change/samples/pt-1455_slave.sql", undef, no_wait => 1);
 diag("Setting replication filters on slave 1");
-$sb->load_file('slave1', "t/pt-online-schema-change/samples/pt-1455_slave.sql");
+$sb->load_file('slave1', "t/pt-online-schema-change/samples/pt-1455_slave.sql", undef, no_wait => 1);
 diag("Setting replication filters on master");
-$sb->load_file('master', "t/pt-online-schema-change/samples/pt-1455_master.sql",undef, no_wait => 1);
+$sb->load_file('master', "t/pt-online-schema-change/samples/pt-1455_master.sql");
 diag("replication filters set");
 
 my $num_rows = 1000;
@@ -63,6 +70,7 @@ diag(`util/mysql_random_data_load --host=127.0.0.1 --port=$master_port --user=ms
 diag("$num_rows rows loaded. Starting tests.");
 
 $master_dbh->do("FLUSH TABLES");
+$sb->wait_for_slaves();
 
 ($output, $exit_status) = full_output(
     sub { pt_online_schema_change::main(@args, "$master_dsn,D=employees,t=t1",
@@ -84,13 +92,14 @@ like(
     qr/Successfully altered/s,
     "PT-1455 Got successfully altered message.",
 );
-
+$master_dbh->do("RESET MASTER");
 $master_dbh->do("DROP DATABASE IF EXISTS employees");
 
 diag("Resetting replication filters on slave 2");
-$sb->load_file('slave2', "t/pt-online-schema-change/samples/pt-1455_reset_slave.sql");
+$sb->load_file('slave2', "t/pt-online-schema-change/samples/pt-1455_reset_slave.sql", undef, no_wait => 1);
 diag("Resetting replication filters on slave 1");
-$sb->load_file('slave1', "t/pt-online-schema-change/samples/pt-1455_reset_slave.sql");
+$sb->load_file('slave1', "t/pt-online-schema-change/samples/pt-1455_reset_slave.sql", undef, no_wait => 1);
+$sb->wait_for_slaves();
 
 # #############################################################################
 # Done.

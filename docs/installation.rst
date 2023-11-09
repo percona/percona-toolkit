@@ -41,10 +41,10 @@ You can also download the packages from the
 `Percona web site <https://www.percona.com/downloads/percona-toolkit/>`_
 and install it using tools like ``dpkg`` and ``rpm``,
 depending on your system.
-For example, to download the package for Debian 8 ("jessie"),
+For example, to download the package for Debian 11 ("bullseye"),
 run the following::
 
- wget https://www.percona.com/downloads/percona-toolkit/3.0.3/binary/debian/jessie/x86_64/percona-toolkit_3.0.3-1.jessie_amd64.deb
+ wget https://downloads.percona.com/downloads/percona-toolkit/3.5.1/binary/debian/bullseye/x86_64/percona-toolkit_3.5.1-2.bullseye_amd64.deb
 
 If you want to download a specific tool, use the following address:
 http://www.percona.com/get

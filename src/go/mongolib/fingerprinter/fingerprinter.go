@@ -15,7 +15,7 @@ const (
 	maxDepthLevel = 10
 )
 
-// Fingerprint models the MongnDB query fingeprint result fields.
+// Fingerprint models the MongnDB query fingerprint result fields.
 type Fingerprint struct {
 	Namespace   string
 	Operation   string
@@ -156,6 +156,10 @@ func (f *Fingerprinter) Fingerprint(doc proto.SystemProfile) (Fingerprint, error
 			op = "eval"
 			collection = ""
 			retKeys = []string{}
+		case "drop":
+			retKeys = []string{}
+		case "createIndexes":
+			retKeys = []string{}
 		}
 	default:
 		op = doc.Op
@@ -177,7 +181,6 @@ func (f *Fingerprinter) Fingerprint(doc proto.SystemProfile) (Fingerprint, error
 	if keys != "" {
 		parts = append(parts, keys)
 	}
-
 	ns = []string{}
 	if database != "" {
 		ns = append(ns, database)

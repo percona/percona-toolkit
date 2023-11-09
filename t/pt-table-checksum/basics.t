@@ -69,11 +69,25 @@ sub reset_repl_db {
 # ############################################################################
 
 # 1
-ok(
+# We need to remove mysql.plugin and percona_test.checksums tables from the 
+# result and the sample, because they have different number of rows than default
+# if run test with enabled MyRocks or TokuDB SE.
+# We also need to remove mysql.global_grants because it contains dynamic privileges
+# that could be modified by other tests. At the same time, privileges are not removed
+# from this table after they have been added, so we cannot remove them when wipe cleaning
+# sandbox. See https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#static-dynamic-privileges
+
+# This test often fails if run after other tests, we need to see what is wrong
+# So we will re-run failed code if test does not pass.
+my $cmd = sub { pt_table_checksum::main(@args) };
+
+diag(output($cmd)) if not ok(
    no_diff(
-      sub { pt_table_checksum::main(@args) },
+      $cmd,
       "$sample/default-results-$sandbox_version.txt",
-      post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $7 " " $9}\'',
+      sed_out => '\'/mysql.plugin$/d; /percona_test.checksums$/d; /mysql.help_category$/d; /mysql.help_keyword$/d; /mysql.help_relation$/d; /mysql.help_topic$/d\'',
+      post_pipe => 'sed \'/mysql.plugin$/d; /percona_test.checksums$/d; /mysql.help_category$/d; /mysql.help_keyword$/d; /mysql.help_relation$/d; /mysql.help_topic$/d; /mysql.ndb_binlog_index$/d; /mysql.global_grants$/d\' | ' .
+                   'awk \'{print $2 " " $3 " " $4 " " $7 " " $9}\'',
    ),
    "Default checksum"
 );
@@ -88,18 +102,23 @@ my $max_chunks = $sandbox_version < '5.7' ? 60 : 100;
 
 ok(
    $row->[0] > 25 && $row->[0] < $max_chunks,
-   'Between 25 and 60 chunks'
+   "Between 25 and $max_chunks chunks"
 ) or diag($row->[0]);
 
 # ############################################################################
 # Static chunk size (disable --chunk-time)
 # ############################################################################
 # 3
+# We need to remove mysql.plugin and percona_test.checksums tables from the 
+# result and the sample, because they have different number of rows than default
+# if run test with enabled MyRocks or TokuDB SE
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args, qw(--chunk-time 0 --ignore-databases mysql)) },
       "$sample/static-chunk-size-results-$sandbox_version.txt",
-      post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $6 " " $7 " " $9}\'',
+      sed_out => '\'/mysql.plugin$/d; /percona_test.checksums$/d\'',
+      post_pipe => 'sed \'/mysql.plugin$/d; /percona_test.checksums$/d\' | ' .
+                   'awk \'{print $2 " " $3 " " $4 " " $6 " " $7 " " $9}\'',
    ),
    "Static chunk size (--chunk-time 0)"
 );

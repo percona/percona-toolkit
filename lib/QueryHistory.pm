@@ -98,7 +98,7 @@ sub set_history_options {
    my $sql = "REPLACE INTO $args{table}("
       . join(', ',
          map { Quoter->quote($_) } ('checksum', 'sample', @cols))
-      . ') VALUES (CONV(?, 16, 10), ?'
+      . ') VALUES (?, ?'
       . (@cols ? ', ' : '')  # issue 1265
       . join(', ', map {
          # ts_min and ts_max might be part of the PK, in which case they must

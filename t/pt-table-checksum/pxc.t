@@ -27,8 +27,13 @@ my $ip = qr/\Q127.1\E|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/;
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $node1 = $sb->get_dbh_for('node1');
+my $sb_version = VersionParser->new($node1);
 my $node2 = $sb->get_dbh_for('node2');
 my $node3 = $sb->get_dbh_for('node3');
+
+if ($sb_version >= '8.0') {
+   plan skip_all => 'Cannot run tests on PXC 8.0 until PT-1699 is fixed';
+}
 
 if ( !$node1 ) {
    plan skip_all => 'Cannot connect to cluster node1';
@@ -93,8 +98,8 @@ ok (
 );
 
 for my $args (
-      ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
-      ["using recursion-method=cluster", '--recursion-method', 'cluster']
+      ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns", '--ignore-tables=mysql.proxies_priv'],
+      ["using recursion-method=cluster", '--recursion-method', 'cluster', '--ignore-tables=mysql.proxies_priv']
    )
 {
    my $test = shift @$args;
@@ -125,14 +130,12 @@ for my $args (
 }
 
 # Now really test checksumming a cluster.  To create a diff we have to disable
-# the binlog.  Although PXC doesn't need or use the binlog to communicate
-# (it has its own broadcast-based protocol implemented via the Galera lib)
-# it still respects sql_log_bin, so we can make a change on one node without
+# wsrep replication, so we can make a change on one node without
 # affecting the others.
 $sb->load_file('node1', "$sample/a-z.sql");
-$node2->do("set sql_log_bin=0");
+$node2->do("set wsrep_on=0");
 $node2->do("update test.t set c='zebra' where c='z'");
-$node2->do("set sql_log_bin=1");
+$node2->do("set wsrep_on=1");
 
 my ($row) = $node2->selectrow_array("select c from test.t order by c desc limit 1");
 is(
@@ -188,8 +191,8 @@ sub test_recursion_methods {
    }
 
    for my $args (
-         ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
-         ["using recursion-method=cluster", '--recursion-method', 'cluster']
+         ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns", '--ignore-tables=mysql.proxies_priv'],
+         ["using recursion-method=cluster", '--recursion-method', 'cluster', '--ignore-tables=mysql.proxies_priv']
       )
    {
       my $test = shift @$args;
@@ -227,6 +230,7 @@ sub test_recursion_methods {
             0\s+     # errors
             1\s+     # diffs
             26\s+    # rows
+            0\s+     # diff_rows
             \d+\s+   # chunks
             0\s+     # skipped
             \S+\s+   # time
@@ -264,16 +268,16 @@ my ($slave_dbh, $slave_dsn) = $sb->start_sandbox(
    server => 'cslave1',
    type   => 'slave',
    master => 'node1',
-   env    => q/FORK="pxc" BINLOG_FORMAT="ROW"/,
+   env    => q/BINLOG_FORMAT="ROW"/,
 );
 
 # Add the slave to the DSN table.
 $node1->do(qq/INSERT INTO dsns.dsns VALUES (4, 3, '$slave_dsn')/);
 
 # Fix what we changed earlier on node2 so the cluster is consistent.
-$node2->do("set sql_log_bin=0");
+$node2->do("set wsrep_on=0");
 $node2->do("update test.t set c='z' where c='zebra'");
-$node2->do("set sql_log_bin=1");
+$node2->do("set wsrep_on=1");
 
 # Wait for the slave to apply the binlogs from node1 (its master).
 # Then change it so it's not consistent.
@@ -287,8 +291,8 @@ $slave_dbh->do("update test.t set c='zebra' where c='z'");
 # Cluster nodes default to ROW format because that's what Galeara
 # works best with, even though it doesn't really use binlogs.
 for my $args (
-      ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
-      ["using recursion-method=cluster,hosts", '--recursion-method', 'cluster,hosts']
+      ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns", '--ignore-tables=mysql.user'],
+      ["using recursion-method=cluster,hosts", '--recursion-method', 'cluster,hosts', '--ignore-tables=mysql.user']
    )
 {
    my $test = shift @$args;
@@ -347,7 +351,7 @@ $sb->stop_sandbox('cslave1');
    server => 'cslave1',
    type   => 'slave',
    master => 'node2',
-   env    => q/FORK="pxc" BINLOG_FORMAT="ROW"/,
+   env    => q/BINLOG_FORMAT="ROW"/,
 );
 
 # Wait for the slave to apply the binlogs from node2 (its master).
@@ -364,8 +368,8 @@ is(
 );
 
 for my $args (
-      ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
-      ["using recursion-method=cluster,hosts", '--recursion-method', 'cluster,hosts']
+      ["using recusion-method=dsn", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns", '--ignore-tables=mysql.user'],
+      ["using recursion-method=cluster,hosts", '--recursion-method', 'cluster,hosts', '--ignore-tables=mysql.user']
    )
 {
    my $test = shift @$args;
@@ -404,7 +408,7 @@ $node1->do(qq/DELETE FROM dsns.dsns WHERE id=4/);
 my ($master_dbh, $master_dsn) = $sb->start_sandbox(
    server => 'cmaster',
    type   => 'master',
-   env    => q/FORK="pxc" BINLOG_FORMAT="ROW"/,
+   env    => q/BINLOG_FORMAT="ROW"/,
 );
 
 # Since master is new, node1 shouldn't have binlog to replay.
@@ -466,9 +470,9 @@ is(
 
 # Make a diff on node1.  If ptc is really auto-detecting node1, then it
 # should report this diff.
-$node1->do("set sql_log_bin=0");
+$node1->do("set wsrep_on=0");
 $node1->do("update test.t set c='zebra' where c='z'");
-$node1->do("set sql_log_bin=1");
+$node1->do("set wsrep_on=1");
 
 $output = output(
    sub { pt_table_checksum::main($master_dsn,
@@ -502,6 +506,7 @@ like(
       0\s+     # errors
       1\s+     # diffs
       26\s+    # rows
+      0\s+     # diff_rows
       \d+\s+   # chunks
       0\s+     # skipped
       \S+\s+   # time
@@ -548,6 +553,7 @@ like(
       0\s+     # errors
       1\s+     # diffs
       26\s+    # rows
+      0\s+     # diff_rows
       \d+\s+   # chunks
       0\s+     # skipped
       \S+\s+   # time
@@ -575,9 +581,9 @@ for my $args (
 
    # Make a diff on node1.  If ptc is really auto-detecting node1, then it
    # should report this diff.
-   $node1->do("set sql_log_bin=0");
+   $node1->do("set wsrep_on=0");
    $node1->do("update test.t set c='zebra' where c='z'");
-   $node1->do("set sql_log_bin=1");
+   $node1->do("set wsrep_on=1");
    
    $output = output(
       sub { pt_table_checksum::main($master_dsn,
@@ -600,6 +606,7 @@ for my $args (
          0\s+     # errors
          1\s+     # diffs
          26\s+    # rows
+         0\s+     # diff_rows
          \d+\s+   # chunks
          0\s+     # skipped
          \S+\s+   # time
@@ -619,13 +626,13 @@ for my $args (
    # to node1, node1 isn't different, so it broadcasts the result in ROW format
    # that all is ok, which node2 gets and thus false reports.  This is why
    # those ^ warnings exist.
-   $node1->do("set sql_log_bin=0");
+   $node1->do("set wsrep_on=0");
    $node1->do("update test.t set c='z' where c='zebra'");
-   $node1->do("set sql_log_bin=1");
+   $node1->do("set wsrep_on=1");
 
-   $node2->do("set sql_log_bin=0");
+   $node2->do("set wsrep_on=0");
    $node2->do("update test.t set c='zebra' where c='z'");
-   $node2->do("set sql_log_bin=1");
+   $node2->do("set wsrep_on=1");
 
    ($row) = $node2->selectrow_array("select c from test.t order by c desc limit 1");
    is(

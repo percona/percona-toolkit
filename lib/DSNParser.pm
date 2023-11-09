@@ -147,7 +147,7 @@ sub parse {
    foreach my $key ( keys %$opts ) {
       PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
-      if ( !defined $final_props{$key}  
+      if ( !defined $final_props{$key}
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
@@ -265,7 +265,7 @@ sub fill_in_dsn {
 }
 
 # Actually opens a connection, then sets some things on the connection so it is
-# the way the Maatkit tools will expect.  Tools should NEVER open their own
+# the way the Percona tools will expect.  Tools should NEVER open their own
 # connection or use $dbh->reconnect, or these things will not take place!
 sub get_dbh {
    my ( $self, $cxn_string, $user, $pass, $opts ) = @_;
@@ -303,7 +303,7 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass,
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       $dbh = eval { DBI->connect($cxn_string, $user, $pass, $defaults) };
@@ -515,7 +515,7 @@ sub set_vars {
       }
    }
 
-   return; 
+   return;
 }
 
 sub _d {

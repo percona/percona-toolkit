@@ -7,5 +7,5 @@ const BalancerStats = `
                Failed: {{.Failed}}
                Splits: {{.Splits}}
                 Drops: {{.Drops}}
-{{- end -}}				
+{{- end -}}
 `

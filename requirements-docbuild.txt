@@ -1,0 +1,15 @@
+Sphinx==4.2.0
+sphinx-copybutton
+sphinx-gitstamp
+sphinx-material
+sphinxcontrib-applehelp
+sphinxcontrib-contentui
+sphinxcontrib-devhelp
+sphinxcontrib-fulltoc
+sphinxcontrib-htmlhelp
+sphinxcontrib-jsmath
+sphinxcontrib-qthelp
+sphinxcontrib-serializinghtml
+sphinxcontrib-srclinks
+sphinx-tabs
+

@@ -31,6 +31,7 @@ use Data::Dumper;
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
+my $sb_version = VersionParser->new($master_dbh);
 my $slave1_dbh = $sb->get_dbh_for('slave1');
 my $slave2_dbh = $sb->get_dbh_for('slave2');
 
@@ -282,13 +283,17 @@ elsif ( -x "$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqlbinlog" ) {
    $mysqlbinlog = "$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqlbinlog";
 }
 
-$output = `$mysqlbinlog /tmp/12345/data/$row->{file} --start-position=$row->{position} | grep 'use ' | grep -v '^# Warning' |  sort -u | sed -e 's/\`//g'`;
+$output = `$mysqlbinlog /tmp/12345/data/$row->{file} --start-position=$row->{position} | grep 'use ' | grep -v '^# Warning' | grep -v 'pseudo_replica_mode' | sort -u | sed -e 's/\`//g'`;
 
 my $use_dbs = "use mysql/*!*/;
 use percona/*!*/;
 use percona_test/*!*/;
 use sakila/*!*/;
 ";
+
+if ($sb_version >= '5.7') {
+   $use_dbs .= "use sys/*!*/;\n";
+}
 
 is(
    $output,
@@ -301,7 +306,7 @@ $row = $master_dbh->selectrow_hashref('show master status');
 
 pt_table_checksum::main(@args, qw(--quiet --replicate-database percona));
 
-$output = `$mysqlbinlog /tmp/12345/data/$row->{file} --start-position=$row->{position} | grep 'use ' | grep -v '^# Warning' | sort -u | sed -e 's/\`//g'`;
+$output = `$mysqlbinlog /tmp/12345/data/$row->{file} --start-position=$row->{position} | grep 'use ' | grep -v '^# Warning' | grep -v 'pseudo_replica_mode' | sort -u | sed -e 's/\`//g'`;
 
 is(
    $output,

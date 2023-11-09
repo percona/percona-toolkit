@@ -8,20 +8,25 @@ import (
 	"text/template"
 
 	"github.com/alecthomas/kingpin"
-	"github.com/percona/percona-toolkit/src/go/lib/pginfo"
-	"github.com/percona/percona-toolkit/src/go/pt-pg-summary/templates"
+	_ "github.com/lib/pq"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 
-	_ "github.com/lib/pq"
+	"github.com/percona/percona-toolkit/src/go/lib/pginfo"
+	"github.com/percona/percona-toolkit/src/go/pt-pg-summary/templates"
 )
 
+const (
+	toolname = "pt-pg-summary"
+)
+
+// We do not set anything here, these variables are defined by the Makefile
 var (
-	Build     string = "2020-04-23" //nolint
-	Commit    string                //nolint
-	GoVersion string = "1.14.1"     //nolint
-	Version   string = "3.3.1"      //nolint
+	Build     string //nolint
+	GoVersion string //nolint
+	Version   string //nolint
+	Commit    string //nolint
 )
 
 type connOpts struct {
@@ -210,10 +215,11 @@ func safeConnString(opts connOpts, dbName string) string {
 }
 
 func parseCommandLineOpts(args []string) (cliOptions, error) {
-	app := kingpin.New("pt-pg-summary", "Percona Toolkit - PostgreSQL Summary")
+	app := kingpin.New(toolname, "Percona Toolkit - PostgreSQL Summary")
+	app.UsageWriter(os.Stdout)
 	// version, commit and date will be set at build time by the compiler -ldflags param
-	app.Version(fmt.Sprintf("%s version %s\nGIT commit %s\nDate: %s\nGo version: %s",
-		app.Name, Version, Commit, Build, GoVersion))
+	app.Version(fmt.Sprintf("%s\nVersion %s\nBuild: %s using %s\nCommit: %s",
+		app.Name, Version, Build, GoVersion, Commit))
 	opts := cliOptions{app: app}
 
 	app.Flag("ask-pass", "Prompt for a password when connecting to PostgreSQL").
@@ -244,7 +250,7 @@ func parseCommandLineOpts(args []string) (cliOptions, error) {
 	app.Flag("username", "User for login if not current user").
 		Short('U').
 		StringVar(&opts.connOpts.User)
-	app.Flag("disable-ssl", "Diable SSL for the connection").
+	app.Flag("disable-ssl", "Disable SSL for the connection").
 		Default("true").BoolVar(&opts.connOpts.DisableSSL)
 	app.Flag("verbose", "Show verbose log").
 		Default("false").BoolVar(&opts.Verbose)

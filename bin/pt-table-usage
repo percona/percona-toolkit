@@ -129,7 +129,7 @@ sub parse {
    foreach my $key ( keys %$opts ) {
       PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
-      if ( !defined $final_props{$key}  
+      if ( !defined $final_props{$key}
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
@@ -269,7 +269,7 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass,
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       $dbh = eval { DBI->connect($cxn_string, $user, $pass, $defaults) };
@@ -467,7 +467,7 @@ sub set_vars {
       }
    }
 
-   return; 
+   return;
 }
 
 sub _d {
@@ -700,10 +700,10 @@ sub meta {
 # ###########################################################################
 # Lmo::Types package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo/Types.pm
 #   t/lib/Lmo/Types.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Lmo::Types;
@@ -729,7 +729,7 @@ our %TYPES = (
    } qw(Array Code Hash Regexp Glob Scalar)
 );
 
-sub check_type_constaints {
+sub check_type_constraints {
    my ($attribute, $type_check, $check_name, $val) = @_;
    ( ref($type_check) eq 'CODE'
       ? $type_check->($val)
@@ -801,10 +801,10 @@ sub _nested_constraints {
 # ###########################################################################
 # Lmo package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo.pm
 #   t/lib/Lmo.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 BEGIN {
@@ -862,7 +862,7 @@ sub extends {
 
 sub _load_module {
    my ($class) = @_;
-   
+
    (my $file = $class) =~ s{::|'}{/}g;
    $file .= '.pm';
    { local $@; eval { require "$file" } } # or warn $@;
@@ -893,7 +893,7 @@ sub has {
    my $caller = scalar caller();
 
    my $class_metadata = Lmo::Meta->metadata_for($caller);
-   
+
    for my $attribute ( ref $names ? @$names : $names ) {
       my %args   = @_;
       my $method = ($args{is} || '') eq 'ro'
@@ -912,16 +912,16 @@ sub has {
 
       if ( my $type_check = $args{isa} ) {
          my $check_name = $type_check;
-         
+
          if ( my ($aggregate_type, $inner_type) = $type_check =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
             $type_check = Lmo::Types::_nested_constraints($attribute, $aggregate_type, $inner_type);
          }
-         
+
          my $check_sub = sub {
             my ($new_val) = @_;
-            Lmo::Types::check_type_constaints($attribute, $type_check, $check_name, $new_val);
+            Lmo::Types::check_type_constraints($attribute, $type_check, $check_name, $new_val);
          };
-         
+
          $class_metadata->{$attribute}{isa} = [$check_name, $check_sub];
          my $orig_method = $method;
          $method = sub {
@@ -1137,10 +1137,10 @@ sub override {
 # ###########################################################################
 # OptionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/OptionParser.pm
 #   t/lib/OptionParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package OptionParser;
@@ -1198,7 +1198,7 @@ sub new {
       rules             => [],  # desc of rules for --help
       mutex             => [],  # rule: opts are mutually exclusive
       atleast1          => [],  # rule: at least one opt is required
-      disables          => {},  # rule: opt disables other opts 
+      disables          => {},  # rule: opt disables other opts
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
@@ -1361,7 +1361,7 @@ sub _pod_to_specs {
          }
 
          push @specs, {
-            spec  => $self->{parse_attributes}->($self, $option, \%attribs), 
+            spec  => $self->{parse_attributes}->($self, $option, \%attribs),
             desc  => $para
                . (defined $attribs{default} ? " (default $attribs{default})" : ''),
             group => ($attribs{'group'} ? $attribs{'group'} : 'default'),
@@ -1452,7 +1452,7 @@ sub _parse_specs {
          $self->{opts}->{$long} = $opt;
       }
       else { # It's an option rule, not a spec.
-         PTDEBUG && _d('Parsing rule:', $opt); 
+         PTDEBUG && _d('Parsing rule:', $opt);
          push @{$self->{rules}}, $opt;
          my @participants = $self->_get_participants($opt);
          my $rule_ok = 0;
@@ -1497,7 +1497,7 @@ sub _parse_specs {
       PTDEBUG && _d('Option', $long, 'disables', @participants);
    }
 
-   return; 
+   return;
 }
 
 sub _get_participants {
@@ -1584,7 +1584,7 @@ sub _set_option {
 }
 
 sub get_opts {
-   my ( $self ) = @_; 
+   my ( $self ) = @_;
 
    foreach my $long ( keys %{$self->{opts}} ) {
       $self->{opts}->{$long}->{got} = 0;
@@ -1715,7 +1715,7 @@ sub _check_opts {
                   else {
                      $err = join(', ',
                                map { "--$self->{opts}->{$_}->{long}" }
-                               grep { $_ } 
+                               grep { $_ }
                                @restricted_opts[0..scalar(@restricted_opts) - 2]
                             )
                           . ' or --'.$self->{opts}->{$restricted_opts[-1]}->{long};
@@ -1725,7 +1725,7 @@ sub _check_opts {
             }
 
          }
-         elsif ( $opt->{is_required} ) { 
+         elsif ( $opt->{is_required} ) {
             $self->save_error("Required option --$long must be specified");
          }
 
@@ -2109,7 +2109,7 @@ sub clone {
       $clone{$scalar} = $self->{$scalar};
    }
 
-   return bless \%clone;     
+   return bless \%clone;
 }
 
 sub _parse_size {
@@ -2345,7 +2345,7 @@ sub parse_event {
                   PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
                   $host ||= $ip;  # sometimes host is missing when using skip-name-resolve (LP #issue 1262456)
                   push @properties, 'user', $user, 'host', $host, 'ip', $ip;
-                  if ( $thread_id ) {  
+                  if ( $thread_id ) {
                      push @properties, 'Thread_id', $thread_id;
                  }
                  ++$got_uh;
@@ -2358,7 +2358,7 @@ sub parse_event {
                   PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
                   $host ||= $ip;  # sometimes host is missing when using skip-name-resolve (LP #issue 1262456)
                   push @properties, 'user', $user, 'host', $host, 'ip', $ip;
-                  if ( $thread_id ) {       
+                  if ( $thread_id ) {
                      push @properties, 'Thread_id', $thread_id;
                  }
                ++$got_uh;
@@ -2774,7 +2774,7 @@ sub value_to_json {
 
    my $b_obj = B::svref_2object(\$value);  # for round trip problem
    my $flags = $b_obj->FLAGS;
-   return $value # as is 
+   return $value # as is
       if $flags & ( B::SVp_IOK | B::SVp_NOK ) and !( $flags & B::SVp_POK ); # SvTYPE is IV or NV?
 
    my $type = ref($value);
@@ -2829,10 +2829,10 @@ sub _d {
 # ###########################################################################
 # QueryRewriter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/QueryRewriter.pm
 #   t/lib/QueryRewriter.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package QueryRewriter;
@@ -2946,13 +2946,17 @@ sub fingerprint {
    $query =~ s/\Ause \S+\Z/use ?/i       # Abstract the DB in USE
       && return $query;
 
-   $query =~ s/\\["']//g;                # quoted strings
-   $query =~ s/".*?"/?/sg;               # quoted strings
-   $query =~ s/'.*?'/?/sg;               # quoted strings
+   $query =~ s/([^\\])(\\')/$1/sg;
+   $query =~ s/([^\\])(\\")/$1/sg;
+   $query =~ s/\\\\//sg;
+   $query =~ s/\\'//sg;
+   $query =~ s/\\"//sg;
+   $query =~ s/([^\\])(".*?[^\\]?")/$1?/sg;
+   $query =~ s/([^\\])('.*?[^\\]?')/$1?/sg;
 
-   $query =~ s/\bfalse\b|\btrue\b/?/isg; # boolean values 
+   $query =~ s/\bfalse\b|\btrue\b/?/isg; # boolean values
 
-   if ( $self->{match_md5_checksums} ) { 
+   if ( $self->{match_md5_checksums} ) {
       $query =~ s/([._-])[a-f0-9]{32}/$1?/g;
    }
 
@@ -2964,7 +2968,7 @@ sub fingerprint {
    }
 
    if ( $self->{match_md5_checksums} ) {
-      $query =~ s/[xb+-]\?/?/g;                
+      $query =~ s/[xb+-]\?/?/g;
    }
    else {
       $query =~ s/[xb.+-]\?/?/g;
@@ -3037,7 +3041,7 @@ sub distill_verbs {
       $query =~ s/\s+IF(?:\s+NOT)?\s+EXISTS/ /i;
       my ( $obj ) = $query =~ m/$dds.+(DATABASE|TABLE)\b/i;
       $obj = uc $obj if $obj;
-      PTDEBUG && _d('Data def statment:', $dds, 'obj:', $obj);
+      PTDEBUG && _d('Data def statement:', $dds, 'obj:', $obj);
       my ($db_or_tbl)
          = $query =~ m/(?:TABLE|DATABASE)\s+($QueryParser::tbl_ident)(\s+.*)?/i;
       PTDEBUG && _d('Matches db or table:', $db_or_tbl);
@@ -3106,8 +3110,8 @@ sub distill {
       }
       else {
          my @tables = $self->__distill_tables($query, $table, %args);
-         $query     = join(q{ }, $verbs, @tables); 
-      } 
+         $query     = join(q{ }, $verbs, @tables);
+      }
    }
 
    if ( $args{trf} ) {
@@ -3637,10 +3641,10 @@ sub _d {
 # ###########################################################################
 # VersionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/VersionParser.pm
 #   t/lib/VersionParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package VersionParser;
@@ -3658,8 +3662,6 @@ use overload (
 );
 
 use Carp ();
-
-our $VERSION = 0.01;
 
 has major => (
     is       => 'ro',
@@ -4142,7 +4144,7 @@ sub parse_insert {
             (?:INTO\s+)?            # INTO, optional
             (.+?)\s+                # table ref
             (\([^\)]+\)\s+)?        # column list, optional
-            (VALUE.?|SET|SELECT)\s+ # start of next caluse
+            (VALUE.?|SET|SELECT)\s+ # start of next clause
          /xgci)
    ) {
       my $tbl  = shift @into;  # table ref
@@ -4179,7 +4181,7 @@ sub parse_select {
    my ( $self, $query ) = @_;
 
    my @keywords;
-   my $final_keywords = qr/(FOR UPDATE|LOCK IN SHARE MODE)/i; 
+   my $final_keywords = qr/(FOR UPDATE|LOCK IN SHARE MODE)/i;
    1 while $query =~ s/\s+$final_keywords/(push @keywords, $1), ''/gie;
 
    my $keywords = qr/(
@@ -4323,7 +4325,7 @@ sub parse_table_reference {
 
    if ( $tbl_ref =~ s/
          \s+(
-            (?:FORCE|USE|INGORE)\s
+            (?:FORCE|USE|IGNORE)\s
             (?:INDEX|KEY)
             \s*\([^\)]+\)\s*
          )//xi)
@@ -4457,7 +4459,7 @@ sub parse_where {
          $op  =~ s/\s+$//;
       }
       $val =~ s/^\s+//;
-      
+
       if ( ($op || '') !~ m/IN/i && $val !~ m/^\w+\([^\)]+\)$/ ) {
          $val =~ s/\)+$//;
       }
@@ -4842,7 +4844,7 @@ sub parse_identifier {
    else {
       die "Invalid number of parts in $type reference: $ident";
    }
-   
+
    if ( $self->{SchemaQualifier} ) {
       if ( $type eq 'column' && !$ident_struct{tbl} ) {
          my $qcol = $self->{SchemaQualifier}->qualify_column(
@@ -5085,7 +5087,7 @@ sub _get_tables_used_from_query_struct {
          PTDEBUG && _d("Using EXPLAIN EXTENDED to disambiguate columns");
          if ( $self->_reparse_query(%args) ) {
             return $self->_get_tables_used_from_query_struct(%args);
-         } 
+         }
          PTDEBUG && _d('Failed to disambiguate columns');
       }
    }
@@ -5169,7 +5171,7 @@ sub _get_tables_used_from_query_struct {
             PTDEBUG && _d("Using EXPLAIN EXTENDED to disambiguate columns");
             if ( $self->_reparse_query(%args) ) {
                return $self->_get_tables_used_from_query_struct(%args);
-            } 
+            }
             PTDEBUG && _d('Failed to disambiguate columns');
          }
 
@@ -5226,8 +5228,8 @@ sub _get_tables_used_from_query_struct {
                         "to disambiguate columns");
                      if ( $self->_reparse_query(%args) ) {
                         return $self->_get_tables_used_from_query_struct(%args);
-                     } 
-                     PTDEBUG && _d('Failed to disambiguate columns'); 
+                     }
+                     PTDEBUG && _d('Failed to disambiguate columns');
                   }
 
                   foreach my $joined_table ( @{$on_tables->{joined_tables}} ) {
@@ -5620,7 +5622,7 @@ sub _qualify_table_name {
          }
       }
 
-      if ( !$db_tbl && $args{default_db} ) { 
+      if ( !$db_tbl && $args{default_db} ) {
          $db_tbl = "$args{default_db}.$tbl";
       }
 
@@ -5664,9 +5666,9 @@ sub _explain_query {
       PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
    }
-  
+
    $self->{db_version} ||= VersionParser->new($dbh);
-   if ( $self->{db_version} < '5.7.3' ) { 
+   if ( $self->{db_version} < '5.7.3' ) {
       $sql = "EXPLAIN EXTENDED $query";
    }
    else {
@@ -5962,7 +5964,7 @@ sub daemonize {
 
       close STDERR;
       open  STDERR, ">&STDOUT"
-         or die "Cannot dupe STDERR to STDOUT: $OS_ERROR"; 
+         or die "Cannot dupe STDERR to STDOUT: $OS_ERROR";
    }
    else {
       if ( -t STDOUT ) {
@@ -6617,7 +6619,7 @@ sub split_unquote {
       s/`\z//;
       s/``/`/g;
    }
-   
+
    return ($db, $tbl);
 }
 
@@ -6871,9 +6873,9 @@ sub parse {
 sub remove_quoted_text {
    my ($string) = @_;
    $string =~ s/\\['"]//g;
-   $string =~ s/`[^`]*?`//g; 
-   $string =~ s/"[^"]*?"//g; 
-   $string =~ s/'[^']*?'//g; 
+   $string =~ s/`[^`]*?`//g;
+   $string =~ s/"[^"]*?"//g;
+   $string =~ s/'[^']*?'//g;
    return $string;
 }
 
@@ -7410,7 +7412,7 @@ sub get_database_for_table {
    }
    my ($tbl) = @args{@required_args};
    PTDEBUG && _d('Getting database for table', $tbl);
-   
+
    if ( $self->{duplicate_table_name}->{$tbl} ) {
       PTDEBUG && _d('Table name is duplicate, cannot qualify it');
       return;
@@ -7528,7 +7530,7 @@ sub main {
             warn "No CREATE TABLE statements were found in $file";
             next FILE;
          }
-         $sq->set_schema_from_mysqldump(dump => $dump); 
+         $sq->set_schema_from_mysqldump(dump => $dump);
       }
       $sp->set_SchemaQualifier($sq);
    }
@@ -7665,7 +7667,7 @@ sub main {
             if ( $EVAL_ERROR ) {
                die "Failed to load $module module: $EVAL_ERROR";
             }
-            
+
             $pipeline->add(
                name    => ref $parser,
                process => sub {
@@ -7723,7 +7725,7 @@ sub main {
                return;        # 1. exit pipeline early
             }
 
-            # There's input and time left so keep runnning...
+            # There's input and time left so keep running...
             if ( $args->{event} ) {
                PTDEBUG && _d("Event in pipeline, continuing");
                return $args;
@@ -7810,7 +7812,7 @@ sub main {
                   query_id    => $query_id,
                   TableUsage  => $tu,
                   %common_modules,
-               ); 
+               );
             };
             if ( $EVAL_ERROR ) {
                if ( $EVAL_ERROR =~ m/Table .+? doesn't exist/ ) {
@@ -8061,7 +8063,7 @@ Possible contexts are as follows:
 SELECT means that the query retrieves data from the table for one of two
 reasons. The first is to be returned to the user as part of a result set. Only
 SELECT queries return result sets, so the report always shows a SELECT context
-for SELECT queries.  
+for SELECT queries.
 
 The second case is when data flows to another table as part of an INSERT or
 UPDATE.  For example, the UPDATE query in the example above has the usage:
@@ -8432,7 +8434,7 @@ of output.
 
 =head1 ATTENTION
 
-Using <PTDEBUG> might expose passwords. When debug is enabled, all command line 
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
 parameters are shown in the output.
 
 =head1 SYSTEM REQUIREMENTS
@@ -8442,7 +8444,7 @@ installed in any reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs, see L<http://www.percona.com/bugs/pt-table-usage>.
+For a list of known bugs, see L<https://jira.percona.com/projects/PT/issues>.
 
 Please report bugs at L<https://jira.percona.com/projects/PT>.
 Include the following information in your bug report:
@@ -8515,6 +8517,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-usage 3.3.2
+pt-table-usage 3.5.5
 
 =cut

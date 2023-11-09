@@ -1,7 +1,7 @@
 #!/bin/sh
 
 set -e
-set -x 
+set -x
 
 ## Declare an array of images.
 declare -a images=(

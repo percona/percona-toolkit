@@ -70,9 +70,11 @@ like(
    stderr => 1,
 );
 
+my $return_code = ($sandbox_version >= '5.7') ? 16 : 0;
+
 is(
    $exit_status,
-   0,
+   $return_code,
    "PT-204 Starting checksum since RocksDB table was skipped with --ignore-tables",
 );
 
@@ -96,7 +98,7 @@ unlike(
 
 is(
    $exit_status,
-   0,
+   $return_code,
    "PT-204 Starting checksum since RocksDB table was skipped with --ignore-engines",
 );
 

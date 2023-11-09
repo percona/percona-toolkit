@@ -13,7 +13,7 @@ err() {
         echo "$msg" >&2
     done
 
-    if [ "$DEBUG_SANDBOXES" ]; then 
+    if [ "$DEBUG_SANDBOXES" ]; then
         echo
         echo "MySQL processes:" >&2
         ps x | grep mysql >&2
@@ -38,14 +38,14 @@ usage() {
     err "Usage: test-env start|stop|restart|status|checkconfig|reset|kill" \
         ""                                                          \
         "  start       Start test servers in ${TMP_DIR}/PORT"             \
-        "  stop        Stop test servers and remvoe all ${TMP_DIR}/PORT"  \
+        "  stop        Stop test servers and remove all ${TMP_DIR}/PORT"  \
         "  kill        Kill test servers (use if stop fails)"       \
         "  restart     Stop and start test servers"                 \
         "  status      Print status of test servers"                \
         "  checkconfig Check test env and test servers"             \
         "  reset       Reset test server binary logs"               \
         "  version     Print MySQL version of running test servers" \
-        "" 
+        ""
 }
 
 mysql_basedir_ok() {
@@ -210,7 +210,7 @@ kill_sandbox() {
         sleep 2
 
         # See if the sandbox server is still running.
-        sandbox_is_running $p 
+        sandbox_is_running $p
         if [ $? -eq 0 ]; then
             # Kill both mysqld_safe and mysqld.
             pid1=`ps xw | grep -v grep | grep mysqld_safe | grep ${TMP_DIR}/$p | awk '{print $1}'`
@@ -219,12 +219,12 @@ kill_sandbox() {
             [ "$pid2" ] && kill -9 $pid2
             sleep 2
 
-            # Third and finaly check if the sandbox server is running.
+            # Third and finally check if the sandbox server is running.
             sandbox_is_running $p
             if [ $? -eq 0 ]; then
                 err "Failed to kill MySQL test server on port $p (PID $pid1, $pid2)"
                 return 1
-            else 
+            else
                 echo "Killed MySQL test server on port $p (PID $pid1, $pid2)"
             fi
         else
@@ -288,21 +288,22 @@ else
     if [ $conf_err -eq 1 ]; then
         err "The Percona Toolkit test environment config is invalid." \
             "Run '$0 checkconfig' to see the current configuration."
-        exit 1      
+        exit 1
     fi
 fi
 
 case $opt in
     start)
         cd $PERCONA_TOOLKIT_BRANCH/sandbox
+        echo "${2:-"master"}" 12345
         ./start-sandbox "${2:-"master"}" 12345
         exit_status=$((exit_status | $?))
         set_mysql_version
         if [ $exit_status -eq 0 ]; then
             if [ "${2:-""}" = "channels" ] && [ "$MYSQL_VERSION" '>' "5.6" ]; then
-                ./start-sandbox master 12346 
+                ./start-sandbox master 12346
                 exit_status=$((exit_status | $?))
-                ./start-sandbox master 12347 
+                ./start-sandbox master 12347
                 exit_status=$((exit_status | $?))
                 ${TMP_DIR}/12345/use < $PERCONA_TOOLKIT_BRANCH/sandbox/gtid_on.sql
                 exit_status=$?
@@ -338,7 +339,7 @@ case $opt in
                 if [ $SAKILA -eq 1 ]; then
                     echo -n "Loading sakila database... "
                     ./load-sakila-db 12345 "${2:-""}"
-                    exit_status=$((exit_status | $?)) 
+                    exit_status=$((exit_status | $?))
                     if [ $exit_status -ne 0 ]; then
                         echo "FAILED"
                     else
@@ -381,7 +382,7 @@ case $opt in
         ;;
     stop)
         cd $PERCONA_TOOLKIT_BRANCH/sandbox
-        ./stop-sandbox 12349 12348 12347 12346 12345 
+        ./stop-sandbox 12349 12348 12347 12346 12345
         exit_status=$((exit_status | $?))
         ./stop-sandbox 2903 2902 2901 2900
         exit_status=$((exit_status | $?))

@@ -93,7 +93,7 @@ COMMANDS
 
   .. option:: --encrypt-password
 
-     Encrypt the output file using this password. If ommited, it will be asked
+     Encrypt the output file using this password. If omitted, it will be asked
      in the command line.
 
   .. option:: --no-collect
@@ -131,7 +131,7 @@ COMMANDS
 
   .. option:: --outfile
 
-     Write the output to this file. If ommited, the output file
+     Write the output to this file. If omitted, the output file
      name will be the same as the input file, adding the ``.aes`` extension.
 
 * **Encrypt command**
@@ -144,7 +144,7 @@ COMMANDS
 
   .. option:: --outfile
 
-     Write the output to this file. If ommited, the output file
+     Write the output to this file. If omitted, the output file
      name will be the same as the input file, without the ``.aes`` extension.
 
 * **Sanitize command**

@@ -31,15 +31,15 @@ BEGIN {
 # ###########################################################################
 # Percona::Toolkit package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Percona/Toolkit.pm
 #   t/lib/Percona/Toolkit.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.3.2';
+our $VERSION = '3.5.5';
 
 use strict;
 use warnings FATAL => 'all';
@@ -94,10 +94,10 @@ sub _d {
 # ###########################################################################
 # Quoter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Quoter.pm
 #   t/lib/Quoter.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Quoter;
@@ -247,10 +247,10 @@ sub _d {
 # ###########################################################################
 # TableParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/TableParser.pm
 #   t/lib/TableParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package TableParser;
@@ -310,13 +310,15 @@ sub get_create_table {
    eval { $href = $dbh->selectrow_hashref($show_sql); };
    if ( my $e = $EVAL_ERROR ) {
       PTDEBUG && _d($old_sql_mode);
-      $dbh->do($old_sql_mode);
+      eval { $dbh->do($old_sql_mode); };
+      PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
 
       die $e;
    }
 
    PTDEBUG && _d($old_sql_mode);
-   $dbh->do($old_sql_mode);
+   eval { $dbh->do($old_sql_mode); };
+   PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
 
    my ($key) = grep { m/create (?:table|view)/i } keys %$href;
    if ( !$key ) {
@@ -345,7 +347,7 @@ sub parse {
 
    my $engine = $self->get_engine($ddl);
 
-   my @defs   = $ddl =~ m/^(\s+`.*?),?$/gm;
+   my @defs = $ddl =~ m/(?:(?<=,\n)|(?<=\(\n))(\s+`(?:.|\n)+?`.+?),?\n/g;
    my @cols   = map { $_ =~ m/`([^`]+)`/ } @defs;
    PTDEBUG && _d('Table cols:', join(', ', map { "`$_`" } @cols));
 
@@ -526,8 +528,7 @@ sub get_keys {
    my $clustered_key = undef;
 
    KEY:
-   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY .*)$/gm ) {
-
+   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY [\s\S]*?\),?.*)$/gm ) {
       next KEY if $key =~ m/FOREIGN/;
 
       my $key_ddl = $key;
@@ -537,7 +538,7 @@ sub get_keys {
          $key =~ s/USING HASH/USING BTREE/;
       }
 
-      my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \((.+)\)/;
+      my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \(([\s\S]+)\)/;
       my ( $special ) = $key =~ m/(FULLTEXT|SPATIAL)/;
       $type = $type || $special || 'BTREE';
       my ($name) = $key =~ m/(PRIMARY|`[^`]*`)/;
@@ -680,10 +681,10 @@ sub _d {
 # ###########################################################################
 # DSNParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/DSNParser.pm
 #   t/lib/DSNParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package DSNParser;
@@ -1125,10 +1126,10 @@ sub _d {
 # ###########################################################################
 # OptionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/OptionParser.pm
 #   t/lib/OptionParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package OptionParser;
@@ -2236,10 +2237,10 @@ if ( PTDEBUG ) {
 # ###########################################################################
 # KeySize package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/KeySize.pm
 #   t/lib/KeySize.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package KeySize;
@@ -2386,10 +2387,10 @@ sub _d {
 # ###########################################################################
 # DuplicateKeyFinder package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/DuplicateKeyFinder.pm
 #   t/lib/DuplicateKeyFinder.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package DuplicateKeyFinder;
@@ -2790,10 +2791,10 @@ sub _d {
 # ###########################################################################
 # Daemon package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Daemon.pm
 #   t/lib/Daemon.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Daemon;
@@ -3044,10 +3045,10 @@ sub _d {
 # ###########################################################################
 # Schema package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Schema.pm
 #   t/lib/Schema.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Schema;
@@ -3169,7 +3170,9 @@ sub find_column {
       }
    }
 
+   @tbls = sort {$b->{name} cmp $a->{name}} @tbls;
    return \@tbls;
+
 }
 
 sub find_table {
@@ -3220,6 +3223,7 @@ sub find_table {
       }
    }
 
+   @dbs = sort @dbs;
    return \@dbs;
 }
 
@@ -3240,10 +3244,10 @@ sub _d {
 # ###########################################################################
 # SchemaIterator package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/SchemaIterator.pm
 #   t/lib/SchemaIterator.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package SchemaIterator;
@@ -3648,7 +3652,7 @@ sub engine_is_allowed {
    my $filter = $self->{filters};
 
    if ( $filter->{'ignore-engines'}->{$engine} ) {
-      PTDEBUG && _d('Engine', $engine, 'is in --ignore-databases list');
+      PTDEBUG && _d('Engine', $engine, 'is in --ignore-engines list');
       return 0;
    }
 
@@ -3718,10 +3722,10 @@ sub _d {
 # ###########################################################################
 # HTTP::Micro package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/HTTP/Micro.pm
 #   t/lib/HTTP/Micro.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package HTTP::Micro;
@@ -4113,7 +4117,7 @@ sub _split_url {
        $len += $self->write($request->{content});
 
        $len == $content_length
-         or croak(qq/Content-Length missmatch (got: $len expected: $content_length)/);
+         or croak(qq/Content-Length mismatch (got: $len expected: $content_length)/);
 
        return $len;
    }
@@ -4371,10 +4375,10 @@ if ( $INC{"IO/Socket/SSL.pm"} ) {
 # ###########################################################################
 # VersionCheck package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/VersionCheck.pm
 #   t/lib/VersionCheck.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package VersionCheck;
@@ -4475,13 +4479,15 @@ sub version_check {
          return;
       }
       PTDEBUG && _d('Using', $protocol);
+      my $url = $args{url}                       # testing
+                || $ENV{PERCONA_VERSION_CHECK_URL}  # testing
+                || "$protocol://v.percona.com";
+      PTDEBUG && _d('API URL:', $url);
 
       my $advice = pingback(
          instances => $instances_to_check,
          protocol  => $protocol,
-         url       => $args{url}                       # testing
-                   || $ENV{PERCONA_VERSION_CHECK_URL}  # testing
-                   || "$protocol://v.percona.com",
+         url       => $url,
       );
       if ( $advice ) {
          PTDEBUG && _d('Advice:', Dumper($advice));
@@ -4544,7 +4550,7 @@ sub get_instances_to_check {
    my @instances_to_check;
    foreach my $instance ( @$instances ) {
       my $last_check_time = $last_check_time_for{ $instance->{id} };
-      PTDEBUG && _d('Intsance', $instance->{id}, 'last checked',
+      PTDEBUG && _d('Instance', $instance->{id}, 'last checked',
          $last_check_time, 'now', $now, 'diff', $now - ($last_check_time || 0),
          'hours until next check',
          sprintf '%.2f',
@@ -4639,9 +4645,14 @@ sub get_uuid {
     my $filename = $ENV{"HOME"} . $uuid_file;
     my $uuid = _generate_uuid();
 
-    open(my $fh, '>', $filename) or die "Could not open file '$filename' $!";
-    print $fh $uuid;
-    close $fh;
+    my $fh;
+    eval {
+        open($fh, '>', $filename);
+    };
+    if (!$EVAL_ERROR) {
+        print $fh $uuid;
+        close $fh;
+    }
 
     return $uuid;
 }
@@ -4672,7 +4683,7 @@ sub pingback {
    my (%args) = @_;
    my @required_args = qw(url instances);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my $url       = $args{url};
    my $instances = $args{instances};
@@ -4707,8 +4718,9 @@ sub pingback {
       general_id => get_uuid(),
    );
 
+   my $tool_name = $ENV{XTRABACKUP_VERSION} ? "Percona XtraBackup" : File::Basename::basename($0);
    my $client_response = {
-      headers => { "X-Percona-Toolkit-Tool" => File::Basename::basename($0) },
+      headers => { "X-Percona-Toolkit-Tool" => $tool_name },
       content => $client_content,
    };
    PTDEBUG && _d('Client response:', Dumper($client_response));
@@ -4739,7 +4751,7 @@ sub encode_client_response {
    my (%args) = @_;
    my @required_args = qw(items versions general_id);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($items, $versions, $general_id) = @args{@required_args};
 
@@ -4765,7 +4777,7 @@ sub parse_server_response {
    my (%args) = @_;
    my @required_args = qw(response);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($response) = @args{@required_args};
 
@@ -4791,6 +4803,7 @@ my %sub_for_type = (
    perl_version        => \&get_perl_version,
    perl_module_version => \&get_perl_module_version,
    mysql_variable      => \&get_mysql_variable,
+   xtrabackup          => \&get_xtrabackup_version,
 );
 
 sub valid_item {
@@ -4807,7 +4820,7 @@ sub get_versions {
    my (%args) = @_;
    my @required_args = qw(items);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($items) = @args{@required_args};
 
@@ -4916,6 +4929,10 @@ sub get_perl_version {
    my $version = sprintf '%vd', $PERL_VERSION;
    PTDEBUG && _d('Perl version', $version);
    return $version;
+}
+
+sub get_xtrabackup_version {
+    return $ENV{XTRABACKUP_VERSION};
 }
 
 sub get_perl_module_version {
@@ -5687,7 +5704,7 @@ of output.
 
 =head1 ATTENTION
 
-Using <PTDEBUG> might expose passwords. When debug is enabled, all command line 
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
 parameters are shown in the output.
 
 =head1 SYSTEM REQUIREMENTS
@@ -5697,7 +5714,7 @@ installed in any reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs, see L<http://www.percona.com/bugs/pt-duplicate-key-checker>.
+For a list of known bugs, see L<https://jira.percona.com/projects/PT/issues>.
 
 Please report bugs at L<https://jira.percona.com/projects/PT>.
 Include the following information in your bug report:
@@ -5771,6 +5788,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-duplicate-key-checker 3.3.2
+pt-duplicate-key-checker 3.5.5
 
 =cut

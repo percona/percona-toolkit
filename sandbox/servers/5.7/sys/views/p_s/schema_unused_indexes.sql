@@ -15,7 +15,7 @@
 
 --
 -- View: schema_unused_indexes
--- 
+--
 -- Finds indexes that have had no events against them (and hence, no usage).
 --
 -- To trust whether the data from this view is representative of your workload,
@@ -39,7 +39,7 @@
 CREATE OR REPLACE
   ALGORITHM = MERGE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW schema_unused_indexes (
   object_schema,
   object_name,
@@ -48,7 +48,7 @@ VIEW schema_unused_indexes (
 SELECT object_schema,
        object_name,
        index_name
-  FROM performance_schema.table_io_waits_summary_by_index_usage 
+  FROM performance_schema.table_io_waits_summary_by_index_usage
  WHERE index_name IS NOT NULL
    AND count_star = 0
    AND object_schema != 'mysql'

@@ -3,7 +3,7 @@ $ mkdir /tmp/pod2rst
 $ cp util/pod2rst-fixed /tmp/pod2rst/
 $ cd /tmp/pod2rst
 $ mkdir lib
-$ fatpack trace pod2rst-fixed 
+$ fatpack trace pod2rst-fixed
 $ fatpack packlists-for `cat fatpacker.trace` >packlists
 $ fatpack tree `cat packlists`
 $ (echo "#!/usr/bin/env perl"; fatpack file; cat pod2rst-fixed) > pod2rst-fixed.packed

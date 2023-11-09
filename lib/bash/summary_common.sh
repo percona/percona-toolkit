@@ -81,10 +81,10 @@ get_oom_of_pid () {
    if [ -n "${pid}" -a -e /proc/cpuinfo ]; then
       if [ -s "/proc/$pid/oom_score_adj" ]; then
          oom_adj=$(cat "/proc/$pid/oom_score_adj" 2>/dev/null)
-         _d "For $pid, the oom value is $oom_adj, retreived from oom_score_adj"
+         _d "For $pid, the oom value is $oom_adj, retrieved from oom_score_adj"
       else
          oom_adj=$(cat "/proc/$pid/oom_adj" 2>/dev/null)
-         _d "For $pid, the oom value is $oom_adj, retreived from oom_adj"
+         _d "For $pid, the oom value is $oom_adj, retrieved from oom_adj"
       fi
    fi
 

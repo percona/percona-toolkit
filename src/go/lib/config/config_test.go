@@ -63,7 +63,7 @@ func TestReadConfig(t *testing.T) {
 
 	// stringvar=some string var having = and #
 	if got := conf.GetString("stringvar"); got != "some string var having = and #" {
-		t.Errorf("string var incorect value; got %s", got)
+		t.Errorf("string var incorrect value; got %s", got)
 	}
 }
 
@@ -115,12 +115,12 @@ func TestOverrideConfig(t *testing.T) {
 	}
 
 	if got := conf.GetString("stringvar"); got != "some other string" {
-		t.Errorf("string var incorect value; got %s", got)
+		t.Errorf("string var incorrect value; got %s", got)
 	}
 
 	// This exists only in file2
 	if got := conf.GetString("newstring"); got != "a new string" {
-		t.Errorf("string var incorect value; got %s", got)
+		t.Errorf("string var incorrect value; got %s", got)
 	}
 
 	if got := conf.GetInt64("anotherint"); got != 8 {

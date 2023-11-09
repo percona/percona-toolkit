@@ -67,7 +67,7 @@ $output = output(
 
 like(
    $output,
-   qr{PID file $pid_file already exists},
+   qr{PID file $pid_file exists},
    'Dies if PID file already exists (--pid without --daemonize) (issue 391)'
 );
 
@@ -127,7 +127,7 @@ $output = output(
 
 like(
    $output,
-   qr/PID file $pid_file already exists/,
+   qr/PID file $pid_file exists/,
    'Does not run if PID file already exists'
 );
 
