@@ -339,9 +339,9 @@ sub check_table {
 
    my $lower_case_table_names;
    eval { ($lower_case_table_names) = $dbh->selectrow_array($lctn_sql); };
-   if ( my $e = $EVAL_ERROR ) {
-      PTDEBUG && _d($e);
-      $self->{check_table_error} = $e;
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d($EVAL_ERROR);
+      $self->{check_table_error} = $EVAL_ERROR;
       return 0;
    }
 
