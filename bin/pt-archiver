@@ -6243,7 +6243,7 @@ sub main {
    # Remove sentinel file.
    if ( $o->get('unstop') ) {
       unlink $sentinel 
-         or die "Cannot unlink sentinel file: $OS_ERROR\n";
+         or die "Cannot unlink sentinel file ${sentinel}: $OS_ERROR\n";
       print STDOUT "Successfully removed file $sentinel\n"
          unless $quiet;
    }
