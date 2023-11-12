@@ -10653,11 +10653,13 @@ sub main {
                  for my $slave_to_skip (@$slaves_to_skip) {
                      my $h_eq_h = $slave->{dsn}->{h} eq $slave_to_skip->{h};
                      my $p_eq_p;
-                     if (defined($slave->{dsn}->{P}) || defined($slave_to_skip->{P})) {
-                       $p_eq_p = $slave->{dsn}->{P} eq $slave_to_skip->{P};
-                     } else {
+                     if (!defined($slave->{dsn}->{P}) && !defined($slave_to_skip->{P}) ) {
                        PTDEBUG && _d("Both port DSNs are undefined, setting p_eq_p to true");
                        $p_eq_p = 1;
+                     } else {
+                        my $skip_slave_port = defined($slave_to_skip->{P})
+                           ? $slave_to_skip->{P} : '3306';
+                        $p_eq_p = $slave->{dsn}->{P} eq $skip_slave_port;
                      }
                      if ($h_eq_h && $p_eq_p) {
                          $found=1;

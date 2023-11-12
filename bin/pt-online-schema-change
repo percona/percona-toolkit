@@ -8944,11 +8944,15 @@ sub main {
             for my $slave (@$slaves) {
                my $is_skip = 0;
                for my $slave_to_skip (@$slaves_to_skip) {
-                  if ($slave->{dsn}->{h} eq $slave_to_skip->{h} && $slave->{dsn}->{P} eq $slave_to_skip->{P}) {
-                     print "Skipping slave " . $slave->description() . "\n";
-                     $is_skip = 1;
-                     $slave->{dbh}->disconnect();
-                     last;
+                  if ( $slave->{dsn}->{h} eq $slave_to_skip->{h} ) {
+                     my $skip_slave_port = defined($slave_to_skip->{P}) 
+                        ? $slave_to_skip->{P} : '3306';
+                     if ( ($slave->{dsn}->{P} eq $skip_slave_port) ) {
+                        print "Skipping slave " . $slave->description() . "\n";
+                        $is_skip = 1;
+                        $slave->{dbh}->disconnect();
+                        last;
+                     }
                   }
                }
                if (!$is_skip) {

@@ -221,6 +221,21 @@ like(
       qr/$skipping_str/s,
       "--skip-check-slave-lag",
 );
+
+# Test for skip-check-slave-lag and empty replica port
+$output = output(
+   sub { pt_table_checksum::main(@args,
+         '--skip-check-slave-lag', "h=127.0.0.1",
+      ),
+   },
+   stderr => 1
+);
+
+unlike(
+   $output,
+   qr/Use of uninitialized value.*/,
+   'No syntax error if port is missed in --skip-check-slave-lag DSN',
+) or diag($output);
 }
 # #############################################################################
 # Illegal division by zero at pt-table-checksum line 7950
