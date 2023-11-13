@@ -93,11 +93,6 @@ func NoDatesRegex(skipLeadingCircumflex bool) string {
 	return "^(?![0-9]{4})"
 }
 
-/*
-SYSLOG_DATE="\(Jan\|Feb\|Mar\|Apr\|May\|Jun\|Jul\|Aug\|Sep\|Oct\|Nov\|Dec\) \( \|[0-9]\)[0-9] [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}"
-REGEX_LOG_PREFIX="$REGEX_DATE \?[0-9]* "
-*/
-
 const k8sprefix = `{"log":"`
 
 func SearchDateFromLog(logline string) (time.Time, string, bool) {

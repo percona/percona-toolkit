@@ -19,10 +19,7 @@ var (
 		ctx.SetState(newState)
 
 		if newState == "DONOR" || newState == "JOINER" {
-			shiftTimestamp, _, ok := SearchDateFromLog(log)
-			if ok {
-				ctx.ConfirmSSTMetadata(shiftTimestamp)
-			}
+			ctx.ConfirmSSTMetadata(date)
 		}
 
 		log = utils.PaintForState(submatches["state1"], submatches["state1"]) + " -> " + utils.PaintForState(submatches["state2"], submatches["state2"])

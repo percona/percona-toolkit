@@ -192,14 +192,12 @@ func iterateOnGrepResults(path string, regexes types.RegexMap, grepStdout <-chan
 
 		// If it's recentEnough, it means we already validated a log: every next logs necessarily happened later
 		// this is useful because not every logs have a date attached, and some without date are very useful
-		//if !recentEnough && CLI.Since != nil && (!foundDate || (foundDate && CLI.Since.After(date.Time))) {
 		if CLI.Since != nil && CLI.Since.After(timestamp) {
 			continue
 		}
 		if CLI.Until != nil && CLI.Until.Before(timestamp) {
 			return lt
 		}
-		// recentEnough = true
 
 		filetype := regex.FileType(line, CLI.PxcOperator)
 		ctx.FileType = filetype
