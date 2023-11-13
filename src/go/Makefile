@@ -22,7 +22,7 @@ pkgs = $(shell find . -type d -name "pt-*" -exec basename {} \;)
 # VERSION ?=$(shell git describe --abbrev=0) doesn't always work here, need to use git log
 VERSION ?=$(shell git log --no-walk --tags --pretty="%H %d" --decorate=short | head -n1 | awk  -F'[, $(CP)]' '{ print $$4; }')
 BUILD=$(BUILD_DATE)
-GOVERSION=$(shell go version | cut --delimiter=" " -f3)
+GOVERSION=$(shell go version | cut -d " " -f3)
 GOUTILSDIR ?= $(GOPATH)/bin
 FILES = $(shell find . -type f -name '*.go' -not -path "./vendor/*")
 PREFIX=$(shell pwd)
@@ -127,23 +127,29 @@ env-down: env				## Clean-up MongoDB docker containers cluster
 	docker-compose down -v
 	rm .env
 
-linux-amd64: 				## Build Mongo tools for linux-amd64.
+linux-amd64: 				## Build Go tools for linux-amd64.
 	@echo "Building linux/amd64 binaries in ${BIN_DIR} as version ${VERSION}"
 	@cd ${TOP_DIR} && go get ./...
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
 	@$(foreach pkg,$(pkgs),GOOS=linux GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
 
-linux-386: 					## Build Mongo tools for linux-386
+linux-386: 					## Build Go tools for linux-386
 	@echo "Building linux/386 binaries in ${BIN_DIR} as version ${VERSION}"
 	@cd ${TOP_DIR} && go get ./...
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
 	@$(foreach pkg,$(pkgs),GOOS=linux GOARCH=386 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
 
-darwin-amd64:				## Build Mongo tools for darwin-amd64 (MacOS)
+darwin-amd64:				## Build Go tools for darwin-amd64 (MacOS)
 	@echo "Building darwin/amd64 binaries in ${BIN_DIR} as version ${VERSION}"
 	@cd ${TOP_DIR} && go get ./...
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
 	@$(foreach pkg,$(pkgs),GOOS=darwin GOARCH=amd64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
+
+darwin-arm64:               ## Build Go tools for darwin-arm64 (MacOS)
+	@echo "Building darwin/arm64 binaries in ${BIN_DIR} as version ${VERSION}"
+	@cd ${TOP_DIR} && go get ./...
+	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
+	@$(foreach pkg,$(pkgs),GOOS=darwin GOARCH=arm64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
 
 style:						## Check code style
 	@echo ">> checking code style"
