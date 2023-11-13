@@ -23,15 +23,20 @@ func (c *ctx) Run() error {
 		return err
 	}
 
-	fmt.Println(translate.DBToJson())
+	out := struct {
+		DB       any
+		Contexts []any
+	}{}
+	out.DB = translate.GetDB()
 
 	for _, t := range timeline {
-		out, err := json.MarshalIndent(t[len(t)-1].Ctx, "", "\t")
-		if err != nil {
-			return err
-		}
-		fmt.Println(string(out))
+		out.Contexts = append(out.Contexts, t[len(t)-1].Ctx)
 	}
 
+	outjson, err := json.MarshalIndent(out, "", "\t")
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(outjson))
 	return nil
 }
