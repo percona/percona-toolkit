@@ -20,16 +20,17 @@ import (
 
 // Dumper struct is for dumping cluster
 type Dumper struct {
-	cmd         string
-	kubeconfig  string
-	resources   []string
-	filePaths   []string
-	namespace   string
-	location    string
-	errors      string
-	mode        int64
-	crType      string
-	forwardport string
+	cmd           string
+	kubeconfig    string
+	resources     []string
+	filePaths     []string
+	fileContainer string
+	namespace     string
+	location      string
+	errors        string
+	mode          int64
+	crType        string
+	forwardport   string
 }
 
 var resourcesRe = regexp.MustCompile(`(\w+)\.(\w+).percona\.com`)
@@ -124,6 +125,7 @@ func New(location, namespace, resource string, kubeconfig string, forwardport st
 			"var/lib/mysql/mysqld.post.processing.log",
 			"var/lib/mysql/auto.cnf",
 		)
+		d.fileContainer = "logs"
 	}
 	d.resources = resources
 	d.crType = resource
@@ -372,7 +374,7 @@ type crSecrets struct {
 
 // TODO: check if resource parameter is really needed
 func (d *Dumper) getIndividualFiles(resource, namespace string, podName, path, location string, tw *tar.Writer) error {
-	args := []string{"-n", namespace, "cp", podName + ":" + path, "/dev/stdout"}
+	args := []string{"-n", namespace, "-c", d.fileContainer, "cp", podName + ":" + path, "/dev/stdout"}
 	output, err := d.runCmd(args...)
 	if err != nil {
 		d.logError(err.Error(), args...)
