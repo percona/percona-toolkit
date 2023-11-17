@@ -129,14 +129,14 @@ func TestOverrideConfig(t *testing.T) {
 }
 
 func TestDefaultFiles(t *testing.T) {
-	user, _ := user.Current()
+	currentUser, _ := user.Current()
 	toolname := "pt-testing"
 
 	want := []string{
 		"/etc/percona-toolkit/percona-toolkit.conf",
 		fmt.Sprintf("/etc/percona-toolkit/%s.conf", toolname),
-		fmt.Sprintf("%s/.percona-toolkit.conf", user.HomeDir),
-		fmt.Sprintf("%s/.%s.conf", user.HomeDir, toolname),
+		fmt.Sprintf("%s/.percona-toolkit.conf", currentUser.HomeDir),
+		fmt.Sprintf("%s/.%s.conf", currentUser.HomeDir, toolname),
 	}
 
 	got, err := DefaultConfigFiles(toolname)
