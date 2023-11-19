@@ -136,7 +136,7 @@ func TestDefaultFiles(t *testing.T) {
 		"/etc/percona-toolkit/percona-toolkit.conf",
 		fmt.Sprintf("/etc/percona-toolkit/%s.conf", toolname),
 		fmt.Sprintf("%s/.percona-toolkit.conf", current.HomeDir),
-		fmt.Sprintf("%s/.%s.conf", currentUser.HomeDir, toolname),
+		fmt.Sprintf("%s/.%s.conf", current.HomeDir, toolname),
 	}
 
 	got, err := DefaultConfigFiles(toolname)
