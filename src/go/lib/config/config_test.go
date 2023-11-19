@@ -129,7 +129,7 @@ func TestOverrideConfig(t *testing.T) {
 }
 
 func TestDefaultFiles(t *testing.T) {
-	currentUser, _ := user.Current()
+	current, _ := user.Current()
 	toolname := "pt-testing"
 
 	want := []string{
