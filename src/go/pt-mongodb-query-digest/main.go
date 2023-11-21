@@ -418,9 +418,9 @@ func (ms *multiSorter) Sort(queries []stats.QueryStats) {
 	sort.Sort(ms)
 }
 
-// OrderedBy returns a Sorter that sorts using the less functions, in order.
+// orderedBy returns a Sorter that sorts using the less functions, in order.
 // Call its Sort method to sort the data.
-func OrderedBy(less ...lessFunc) *multiSorter {
+func orderedBy(less ...lessFunc) *multiSorter {
 	return &multiSorter{
 		less: less,
 	}
