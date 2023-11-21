@@ -12,7 +12,7 @@ Usage
 
 .. code-block:: bash
 
-   pt-galera-log-explainer [--since=] [--until=] [-vvv] [--merge-by-directory] [--pxc-operator] <command> <paths ...>
+   pt-galera-log-explainer [--since=] [--until=] [-vv] [--merge-by-directory] [--pxc-operator] <command> <paths ...>
 
 
 Commands available
@@ -131,13 +131,11 @@ Available flags
 
 ``--merge-by-directory``
     Instead of relying on extracted information, logs will be merged by their base directory 
-    It is useful when logs are very sparsed and already organized by nodes.
+    It is useful when logs are very sparse and already organized by nodes.
 
 ``-v``, ``--verbosity``        
-    ``-v``: Detailed  
-    ``-vv``: DebugMySQL, add every mysql info the tool used
-    ``-vvv``: internal tool debug
-    Default: ``-v``
+    ``-v``: display in the timeline every mysql info the tool used
+    ``-vv``: internal tool debug
 
 ``--pxc-operator``       
     Analyze logs from Percona PXC operator. 
@@ -145,15 +143,11 @@ Available flags
     Off by default because it negatively impacts performance for non-k8s setups.
 
 ``--exclude-regexes``
-    Remove regexes from analysis. Use 'pt-galera-log-explainer regex-list' to have the list
+    Remove regexes from analysis. Use 'pt-galera-log-explainer regex-list | jq .' to have the list
     
 ``--grep-cmd``
     grep v3 binary command path. For Darwin systems, it could need to be set to 'ggrep'
     Default: ``grep``
-
-``--grep-args``     
-    grep arguments. perl regexp (-P) is necessary. -o will break the tool
-    Default: ``-P``
 
 ``--version``
     Show version and exit.
