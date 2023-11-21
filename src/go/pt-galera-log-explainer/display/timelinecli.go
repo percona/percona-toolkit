@@ -233,7 +233,7 @@ type transitionSummary [RowPerTransitions]string
 // because only those transitions are implemented: file path, ip, node name, version
 const NumberOfPossibleTransition = 4
 
-// transactionSeparator is useful to highligh a change of context
+// transactionSeparator is useful to highlight a change of context
 // example, changing file
 //   mysqld.log.2
 //    (file path)

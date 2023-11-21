@@ -200,13 +200,13 @@ func TestViewsRegex(t *testing.T) {
 		{
 			log:         "2001-01-01T01:01:01.000000Z 0 [Note] WSREP: Found saved state: 8e862473-455e-11e8-a0ca-3fcd8faf3209:-1, safe_to_bootstrap: 1",
 			expectedOut: "safe_to_bootstrap: 1",
-			key:         "RegexSafeToBoostrapSet",
+			key:         "RegexSafeToBootstrapSet",
 		},
 		{
 			name:        "should not match",
 			log:         "2001-01-01T01:01:01.000000Z 0 [Note] WSREP: Found saved state: 8e862473-455e-11e8-a0ca-3fcd8faf3209:-1, safe_to_bootstrap: 0",
 			expectedErr: true,
-			key:         "RegexSafeToBoostrapSet",
+			key:         "RegexSafeToBootstrapSet",
 		},
 
 		{
@@ -218,7 +218,7 @@ func TestViewsRegex(t *testing.T) {
 		{
 			log:         "2001-01-01T01:01:01.000000Z 0 [Warning] [MY-000000] [Galera] No persistent state found. Bootstraping with default state",
 			expectedOut: "bootstrapping(empty grastate)",
-			key:         "RegexBootstrapingDefaultState",
+			key:         "RegexBootstrappingDefaultState",
 		},
 	}
 
