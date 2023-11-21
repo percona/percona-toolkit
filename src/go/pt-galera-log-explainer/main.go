@@ -45,8 +45,7 @@ var CLI struct {
 
 	Version kong.VersionFlag
 
-	GrepCmd  string `help:"'grep' command path. Could need to be set to 'ggrep' for darwin systems" default:"grep"`
-	GrepArgs string `help:"'grep' arguments. perl regexp (-P) is necessary. -o will break the tool" default:"-P"`
+	GrepCmd string `help:"'grep' command path. Could need to be set to 'ggrep' for darwin systems" default:"grep"`
 }
 
 func main() {
