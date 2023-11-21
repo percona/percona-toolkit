@@ -5,6 +5,7 @@ import (
 )
 
 func TestFileType(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		inputline     string
 		inputoperator bool

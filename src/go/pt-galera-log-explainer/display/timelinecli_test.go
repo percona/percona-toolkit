@@ -8,6 +8,7 @@ import (
 )
 
 func TestTransitionSeparator(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		keys          []string
 		oldctxs, ctxs map[string]types.LogCtx
