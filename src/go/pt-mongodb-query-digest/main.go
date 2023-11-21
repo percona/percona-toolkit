@@ -407,32 +407,32 @@ func getTotalsTemplate() string {
 
 type lessFunc func(p1, p2 *stats.QueryStats) bool
 
-type MultiSorter struct {
+type multiSorter struct {
 	queries []stats.QueryStats
 	less    []lessFunc
 }
 
 // Sort sorts the argument slice according to the less functions passed to OrderedBy.
-func (ms *MultiSorter) Sort(queries []stats.QueryStats) {
+func (ms *multiSorter) Sort(queries []stats.QueryStats) {
 	ms.queries = queries
 	sort.Sort(ms)
 }
 
-// OrderedBy returns a Sorter that sorts using the less functions, in order.
+// orderedBy returns a Sorter that sorts using the less functions, in order.
 // Call its Sort method to sort the data.
-func OrderedBy(less ...lessFunc) *MultiSorter {
-	return &MultiSorter{
+func orderedBy(less ...lessFunc) *multiSorter {
+	return &multiSorter{
 		less: less,
 	}
 }
 
 // Len is part of sort.Interface.
-func (ms *MultiSorter) Len() int {
+func (ms *multiSorter) Len() int {
 	return len(ms.queries)
 }
 
 // Swap is part of sort.Interface.
-func (ms *MultiSorter) Swap(i, j int) {
+func (ms *multiSorter) Swap(i, j int) {
 	ms.queries[i], ms.queries[j] = ms.queries[j], ms.queries[i]
 }
 
@@ -441,7 +441,7 @@ func (ms *MultiSorter) Swap(i, j int) {
 // !Less. Note that it can call the less functions twice per call. We
 // could change the functions to return -1, 0, 1 and reduce the
 // number of calls for greater efficiency: an exercise for the reader.
-func (ms *MultiSorter) Less(i, j int) bool {
+func (ms *multiSorter) Less(i, j int) bool {
 	p, q := &ms.queries[i], &ms.queries[j]
 	// Try all but the last comparison.
 	var k int
