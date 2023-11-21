@@ -147,7 +147,7 @@ var ViewsMap = types.RegexMap{
 		},
 	},
 
-	"RegexSafeToBoostrapSet": &types.LogRegex{
+	"RegexSafeToBootstrapSet": &types.LogRegex{
 		Regex: regexp.MustCompile("safe_to_bootstrap: 1"),
 		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 			return ctx, types.SimpleDisplayer(utils.Paint(utils.YellowText, "safe_to_bootstrap: 1"))
@@ -159,8 +159,8 @@ var ViewsMap = types.RegexMap{
 			return ctx, types.SimpleDisplayer(utils.Paint(utils.YellowText, "no grastate.dat file"))
 		},
 	},
-	"RegexBootstrapingDefaultState": &types.LogRegex{
-		Regex: regexp.MustCompile("Bootstraping with default state"),
+	"RegexBootstrappingDefaultState": &types.LogRegex{
+		Regex: regexp.MustCompile("Bootstraping with default state"), // typo is in Galera lib
 		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 			return ctx, types.SimpleDisplayer(utils.Paint(utils.YellowText, "bootstrapping(empty grastate)"))
 		},

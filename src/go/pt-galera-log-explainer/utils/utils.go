@@ -10,7 +10,7 @@ import (
 // Color is given its own type for safe function signatures
 type Color string
 
-// Color codes interpretted by the terminal
+// Color codes interpreted by the terminal
 // NOTE: all codes must be of the same length or they will throw off the field alignment of tabwriter
 const (
 	ResetText         Color = "\x1b[0000m"
@@ -109,11 +109,11 @@ func StringsReplaceReversed(s, old, new string, n int) string {
 }
 
 func UUIDToShortUUID(uuid string) string {
-	splitted := strings.Split(uuid, "-")
-	if len(splitted) != 5 {
+	split := strings.Split(uuid, "-")
+	if len(split) != 5 {
 		return uuid
 	}
-	return splitted[0] + "-" + splitted[3]
+	return split[0] + "-" + split[3]
 }
 
 // ShortNodeName helps reducing the node name when it is the default value (node hostname)

@@ -46,7 +46,7 @@ var PXCOperatorMap = types.RegexMap{
 	// it could have been useful as an "verbosity=types.Detailed" regexes, very rarely
 	// but in context of operators, it is actually a very important information
 	"RegexGcacheScan": &types.LogRegex{
-		// those "operators" regexes do not have the log prefix added implicitely. It's not strictly needed, but
+		// those "operators" regexes do not have the log prefix added implicitly. It's not strictly needed, but
 		// it will help to avoid catching random piece of log out of order
 		Regex: regexp.MustCompile(k8sprefix + ".*GCache::RingBuffer initial scan"),
 		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
@@ -59,7 +59,7 @@ var PXCOperatorMap = types.RegexMap{
 	// so this regex is about capturing subgroups to re-handle each them to the appropriate existing IdentsMap regex
 	"RegexOperatorMemberAssociations": &types.LogRegex{
 		Regex:         regexp.MustCompile("================================================.*View:"),
-		InternalRegex: regexp.MustCompile("own_index: " + regexIdx + ".*(?P<memberlog>" + IdentsMap["RegexMemberCount"].Regex.String() + ")(?P<compiledAssocations>(....-?[0-9]{1,2}(\\.-?[0-9])?: [a-z0-9]+-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]+, [a-zA-Z0-9-_\\.]+)+)"),
+		InternalRegex: regexp.MustCompile("own_index: " + regexIdx + ".*(?P<memberlog>" + IdentsMap["RegexMemberCount"].Regex.String() + ")(?P<compiledAssociations>(....-?[0-9]{1,2}(\\.-?[0-9])?: [a-z0-9]+-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]+, [a-zA-Z0-9-_\\.]+)+)"),
 		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
 			ctx.MyIdx = submatches[groupIdx]
@@ -72,13 +72,13 @@ var PXCOperatorMap = types.RegexMap{
 			ctx, displayer = IdentsMap["RegexMemberCount"].Handle(ctx, submatches["memberlog"], date)
 			msg += displayer(ctx) + "; "
 
-			subAssociations := strings.Split(submatches["compiledAssocations"], "\\n\\t")
+			subAssociations := strings.Split(submatches["compiledAssociations"], "\\n\\t")
 			if len(subAssociations) < 2 {
 				return ctx, types.SimpleDisplayer(msg)
 			}
-			for _, subAssocation := range subAssociations[1:] {
+			for _, subAssociation := range subAssociations[1:] {
 				// better to reuse the idents regex
-				ctx, displayer = IdentsMap["RegexMemberAssociations"].Handle(ctx, subAssocation, date)
+				ctx, displayer = IdentsMap["RegexMemberAssociations"].Handle(ctx, subAssociation, date)
 				msg += displayer(ctx) + "; "
 			}
 			return ctx, types.SimpleDisplayer(msg)

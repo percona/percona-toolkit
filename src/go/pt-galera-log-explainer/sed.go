@@ -47,7 +47,7 @@ func (s *sed) Run() error {
 
 	}
 	if len(args) == 0 {
-		return errors.New("could not find informations to replace")
+		return errors.New("could not find information to replace")
 	}
 
 	fstat, err := os.Stdin.Stat()

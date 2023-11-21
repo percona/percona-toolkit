@@ -10,9 +10,9 @@ import (
 
 // LogCtx is the main context storage for a node.
 // It is the principal storage of this tool, this is the source of truth to merge logs and take decisions
-// It is stored along wih each single log line we matched, and copied for each new log line.
+// It is stored along with each single log line we matched, and copied for each new log line.
 // It is NOT meant to be used as a singleton by pointer, it must keep its original state for each log lines
-// If not, every informaiton would be overwritten (states, sst, version, membercount, ...) and we would not be able to give the history of changes
+// If not, every information would be overwritten (states, sst, version, membercount, ...) and we would not be able to give the history of changes
 type LogCtx struct {
 	FilePath               string
 	FileType               string
@@ -48,7 +48,7 @@ func (ctx *LogCtx) InitMaps() {
 
 // State will return the wsrep state of the current file type
 // That is because for operator related logs, we have every type of files
-// Not tracking and differenciating by file types led to confusions in most subcommands
+// Not tracking and differentiating by file types led to confusions in most subcommands
 // as it would seem that sometimes mysql is restarting after a crash, while actually
 // the operator was simply launching a "wsrep-recover" instance while mysql was still running
 func (ctx LogCtx) State() string {
@@ -101,7 +101,7 @@ func (ctx *LogCtx) IsPrimary() bool {
 // AddOwnName propagates a name into the translation maps using the trusted node's known own hashes and ips
 func (ctx *LogCtx) AddOwnName(name string, date time.Time) {
 	// used to be a simple "if utils.SliceContains", changed to "is it the last known name?"
-	// because somes names/ips come back and forth, we should keep track of that
+	// because some names/ips come back and forth, we should keep track of that
 	name = utils.ShortNodeName(name)
 	if len(ctx.OwnNames) > 0 && ctx.OwnNames[len(ctx.OwnNames)-1] == name {
 		return
