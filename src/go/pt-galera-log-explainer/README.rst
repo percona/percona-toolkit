@@ -146,7 +146,7 @@ Available flags
     Remove regexes from analysis. Use 'pt-galera-log-explainer regex-list | jq .' to have the list
     
 ``--grep-cmd``
-    grep v3 binary command path. For Darwin systems, it could need to be set to 'ggrep'
+    grep v3 binary command path. For Darwin systems, it could need to be set to ``ggrep``
     Default: ``grep``
 
 ``--version``
