@@ -130,7 +130,7 @@ func execGrepAndIterate(path, compiledRegex string, stdout chan<- string) error 
 		logger.Warn().Msg("On Darwin systems, use 'pt-galera-log-explainer --grep-cmd=ggrep' as it requires grep v3")
 	}
 
-	cmd := exec.Command(CLI.GrepCmd, CLI.GrepArgs, compiledRegex, path)
+	cmd := exec.Command(CLI.GrepCmd, "-P", compiledRegex, path)
 
 	out, _ := cmd.StdoutPipe()
 	defer out.Close()
