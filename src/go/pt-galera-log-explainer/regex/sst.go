@@ -273,7 +273,7 @@ var SSTMap = types.RegexMap{
 	},
 
 	"RegexTimeoutReceivingFirstData": &types.LogRegex{
-		Regex: regexp.MustCompile("Possible timeout in receving first data from donor in gtid/keyring stage"),
+		Regex: regexp.MustCompile("Possible timeout in receving first data from donor in gtid/keyring stage"), // typo is in Galera lib
 		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 			return ctx, types.SimpleDisplayer(utils.Paint(utils.RedText, "timeout from donor in gtid/keyring stage"))
 		},
