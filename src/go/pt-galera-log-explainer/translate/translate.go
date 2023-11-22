@@ -25,7 +25,7 @@ type translationsDB struct {
 
 	// incase methods changed in the middle, tls=>ssl
 	IPToMethods map[string][]translationUnit
-	rwlock      *sync.RWMutex
+	rwlock      sync.RWMutex
 }
 
 var AssumeIPStable bool = true
@@ -42,7 +42,6 @@ func initTranslationsDB() {
 		HashToNodeNames: map[string][]translationUnit{},
 		IPToMethods:     map[string][]translationUnit{},
 		IPToNodeNames:   map[string][]translationUnit{},
-		rwlock:          &sync.RWMutex{},
 	}
 }
 
@@ -51,9 +50,9 @@ func ResetDB() {
 	initTranslationsDB()
 }
 
-func DBToJson() string {
-	out, _ := json.MarshalIndent(db, "", "\t")
-	return string(out)
+func DBToJson() (string, error) {
+	out, err := json.MarshalIndent(db, "", "\t")
+	return string(out), err
 }
 
 func GetDB() translationsDB {

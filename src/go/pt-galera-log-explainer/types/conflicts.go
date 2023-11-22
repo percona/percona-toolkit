@@ -45,6 +45,7 @@ func (cs Conflicts) OldestUnresolved() *Conflict {
 	}
 	return nil
 }
+
 func (cs Conflicts) ConflictFromMD5(md5 string) *Conflict {
 	for _, c := range cs {
 		for _, vote := range c.VotePerNode {

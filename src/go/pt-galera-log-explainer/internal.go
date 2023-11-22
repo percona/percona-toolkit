@@ -132,10 +132,13 @@ func execGrepAndIterate(path, compiledRegex string, stdout chan<- string) error 
 
 	cmd := exec.Command(CLI.GrepCmd, "-P", compiledRegex, path)
 
-	out, _ := cmd.StdoutPipe()
+	out, err := cmd.StdoutPipe()
+	if err != nil {
+		return errors.Wrap(err, "could not open stdout pipe")
+	}
 	defer out.Close()
 
-	err := cmd.Start()
+	err = cmd.Start()
 	if err != nil {
 		return errors.Wrapf(err, "failed to search in %s", path)
 	}
