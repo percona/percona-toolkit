@@ -75,7 +75,6 @@ func (ctx *LogCtx) SetState(s string) {
 	if !utils.SliceContains([]string{"SYNCED", "JOINED", "DONOR", "DESYNCED", "JOINER", "PRIMARY", "NON-PRIMARY", "OPEN", "CLOSED", "DESTROYED", "ERROR", "RECOVERY"}, s) {
 		return
 	}
-	//ctx.state[ctx.FileType] = append(ctx.state[ctx.FileType], s)
 	switch ctx.FileType {
 	case "post.processing.log":
 		ctx.statePostProcessingLog = s

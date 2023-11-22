@@ -50,7 +50,11 @@ func (l *list) Run() error {
 	}
 
 	if CLI.Verbosity == types.Debug {
-		fmt.Println(translate.DBToJson())
+		out, err := translate.DBToJson()
+		if err != nil {
+			return errors.Wrap(err, "could not dump translation structs to json")
+		}
+		fmt.Println(out)
 	}
 
 	display.TimelineCLI(timeline, CLI.Verbosity)
