@@ -97,6 +97,12 @@ func TestMain(t *testing.T) {
 			cmd:  []string{"list", "--all", "--pxc-operator", "--no-color"},
 			path: "tests/logs/operator_ambiguous_ips/*",
 		},
+
+		{
+			name: "conflict_conflicts",
+			cmd:  []string{"conflicts"},
+			path: "tests/logs/conflict/*",
+		},
 	}
 
 TESTS:
