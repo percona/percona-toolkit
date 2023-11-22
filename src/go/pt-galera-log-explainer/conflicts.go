@@ -3,9 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/regex"
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/utils"
+	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 )
 
@@ -34,33 +36,57 @@ func (c *conflicts) Run() error {
 		}
 		var out string
 
-		if c.Yaml {
+		switch {
+		case c.Yaml:
 			tmp, err := yaml.Marshal(ctx.Conflicts)
 			if err != nil {
 				return err
 			}
 			out = string(tmp)
-		} else if c.Json {
+		case c.Json:
 			tmp, err := json.Marshal(ctx.Conflicts)
 			if err != nil {
 				return err
 			}
 			out = string(tmp)
-		} else {
 
+		default:
+			var b strings.Builder
 			for _, conflict := range ctx.Conflicts {
-				out += "\n"
-				out += "\n" + utils.Paint(utils.BlueText, "seqno: ") + conflict.Seqno
-				out += "\n\t" + utils.Paint(utils.BlueText, "winner: ") + conflict.Winner
-				out += "\n\t" + utils.Paint(utils.BlueText, "votes per nodes:")
-				for node, vote := range conflict.VotePerNode {
+				b.WriteString("\n\n")
+				b.WriteString(utils.Paint(utils.BlueText, "seqno: "))
+				b.WriteString(conflict.Seqno)
+				b.WriteString("\n\t")
+				b.WriteString(utils.Paint(utils.BlueText, "winner: "))
+				b.WriteString(conflict.Winner)
+				b.WriteString("\n\t")
+				b.WriteString(utils.Paint(utils.BlueText, "votes per nodes:"))
+
+				nodes := []string{}
+				for node := range conflict.VotePerNode {
+					nodes = append(nodes, node)
+				}
+				// do not iterate over VotePerNode map
+				// map accesses are random, it will make regression tests harder
+				slices.Sort(nodes)
+
+				for _, node := range nodes {
+					vote := conflict.VotePerNode[node]
 					displayVote := utils.Paint(utils.RedText, vote.MD5)
 					if vote.MD5 == conflict.Winner {
 						displayVote = utils.Paint(utils.GreenText, vote.MD5)
 					}
-					out += "\n\t\t" + utils.Paint(utils.BlueText, node) + ": (" + displayVote + ") " + vote.Error
+					b.WriteString("\n\t\t")
+					b.WriteString(utils.Paint(utils.BlueText, node))
+					b.WriteString(": (")
+					b.WriteString(displayVote)
+					b.WriteString(") ")
+					b.WriteString(vote.Error)
 				}
-				out += "\n\t" + utils.Paint(utils.BlueText, "initiated by: ") + fmt.Sprintf("%v", conflict.InitiatedBy)
+				b.WriteString("\n\t")
+				b.WriteString(utils.Paint(utils.BlueText, "initiated by: "))
+				b.WriteString(fmt.Sprintf("%v", conflict.InitiatedBy))
+				out = b.String()[2:]
 			}
 
 		}
