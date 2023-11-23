@@ -29,22 +29,22 @@ func (c *conflicts) Run() error {
 		return err
 	}
 
-	ctxs := timeline.GetLatestContextsByNodes()
-	for _, ctx := range ctxs {
-		if len(ctx.Conflicts) == 0 {
+	logCtxs := timeline.GetLatestContextsByNodes()
+	for _, logCtx := range logCtxs {
+		if len(logCtx.Conflicts) == 0 {
 			continue
 		}
 		var out string
 
 		switch {
 		case c.Yaml:
-			tmp, err := yaml.Marshal(ctx.Conflicts)
+			tmp, err := yaml.Marshal(logCtx.Conflicts)
 			if err != nil {
 				return err
 			}
 			out = string(tmp)
 		case c.Json:
-			tmp, err := json.Marshal(ctx.Conflicts)
+			tmp, err := json.Marshal(logCtx.Conflicts)
 			if err != nil {
 				return err
 			}
@@ -52,7 +52,7 @@ func (c *conflicts) Run() error {
 
 		default:
 			var b strings.Builder
-			for _, conflict := range ctx.Conflicts {
+			for _, conflict := range logCtx.Conflicts {
 				b.WriteString("\n\n")
 				b.WriteString(utils.Paint(utils.BlueText, "seqno: "))
 				b.WriteString(conflict.Seqno)

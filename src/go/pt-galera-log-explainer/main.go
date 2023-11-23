@@ -49,7 +49,7 @@ var CLI struct {
 }
 
 func main() {
-	ctx := kong.Parse(&CLI,
+	kongcli := kong.Parse(&CLI,
 		kong.Name(toolname),
 		kong.Description("An utility to merge and help analyzing Galera logs"),
 		kong.UsageOnError(),
@@ -68,6 +68,6 @@ func main() {
 	utils.SkipColor = CLI.NoColor
 	translate.AssumeIPStable = !CLI.PxcOperator
 
-	err := ctx.Run()
-	ctx.FatalIfErrorf(err)
+	err := kongcli.Run()
+	kongcli.FatalIfErrorf(err)
 }

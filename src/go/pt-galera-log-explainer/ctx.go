@@ -30,7 +30,7 @@ func (c *ctx) Run() error {
 	out.DB = translate.GetDB()
 
 	for _, t := range timeline {
-		out.Contexts = append(out.Contexts, t[len(t)-1].Ctx)
+		out.Contexts = append(out.Contexts, t[len(t)-1].LogCtx)
 	}
 
 	outjson, err := json.MarshalIndent(out, "", "\t")

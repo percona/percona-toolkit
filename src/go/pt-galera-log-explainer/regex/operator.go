@@ -20,12 +20,12 @@ var PXCOperatorMap = types.RegexMap{
 	"RegexNodeNameFromEnv": &types.LogRegex{
 		Regex:         regexp.MustCompile(". NODE_NAME="),
 		InternalRegex: regexp.MustCompile("NODE_NAME=" + regexNodeName),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
 			nodename := submatches[groupNodeName]
 			nodename, _, _ = strings.Cut(nodename, ".")
-			ctx.AddOwnName(nodename, date)
-			return ctx, types.SimpleDisplayer("local name:" + nodename)
+			logCtx.AddOwnName(nodename, date)
+			return logCtx, types.SimpleDisplayer("local name:" + nodename)
 		},
 		Verbosity: types.DebugMySQL,
 	},
@@ -33,11 +33,11 @@ var PXCOperatorMap = types.RegexMap{
 	"RegexNodeIPFromEnv": &types.LogRegex{
 		Regex:         regexp.MustCompile(". NODE_IP="),
 		InternalRegex: regexp.MustCompile("NODE_IP=" + regexNodeIP),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
 			ip := submatches[groupNodeIP]
-			ctx.AddOwnIP(ip, date)
-			return ctx, types.SimpleDisplayer("local ip:" + ip)
+			logCtx.AddOwnIP(ip, date)
+			return logCtx, types.SimpleDisplayer("local ip:" + ip)
 		},
 		Verbosity: types.DebugMySQL,
 	},
@@ -49,8 +49,8 @@ var PXCOperatorMap = types.RegexMap{
 		// those "operators" regexes do not have the log prefix added implicitly. It's not strictly needed, but
 		// it will help to avoid catching random piece of log out of order
 		Regex: regexp.MustCompile(k8sprefix + ".*GCache::RingBuffer initial scan"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
-			return ctx, types.SimpleDisplayer("recovering gcache")
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+			return logCtx, types.SimpleDisplayer("recovering gcache")
 		},
 	},
 
@@ -60,28 +60,28 @@ var PXCOperatorMap = types.RegexMap{
 	"RegexOperatorMemberAssociations": &types.LogRegex{
 		Regex:         regexp.MustCompile("================================================.*View:"),
 		InternalRegex: regexp.MustCompile("own_index: " + regexIdx + ".*(?P<memberlog>" + IdentsMap["RegexMemberCount"].Regex.String() + ")(?P<compiledAssociations>(....-?[0-9]{1,2}(\\.-?[0-9])?: [a-z0-9]+-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]+, [a-zA-Z0-9-_\\.]+)+)"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
-			ctx.MyIdx = submatches[groupIdx]
+			logCtx.MyIdx = submatches[groupIdx]
 
 			var (
 				displayer types.LogDisplayer
 				msg       string
 			)
 
-			ctx, displayer = IdentsMap["RegexMemberCount"].Handle(ctx, submatches["memberlog"], date)
-			msg += displayer(ctx) + "; "
+			logCtx, displayer = IdentsMap["RegexMemberCount"].Handle(logCtx, submatches["memberlog"], date)
+			msg += displayer(logCtx) + "; "
 
 			subAssociations := strings.Split(submatches["compiledAssociations"], "\\n\\t")
 			if len(subAssociations) < 2 {
-				return ctx, types.SimpleDisplayer(msg)
+				return logCtx, types.SimpleDisplayer(msg)
 			}
 			for _, subAssociation := range subAssociations[1:] {
 				// better to reuse the idents regex
-				ctx, displayer = IdentsMap["RegexMemberAssociations"].Handle(ctx, subAssociation, date)
-				msg += displayer(ctx) + "; "
+				logCtx, displayer = IdentsMap["RegexMemberAssociations"].Handle(logCtx, subAssociation, date)
+				msg += displayer(logCtx) + "; "
 			}
-			return ctx, types.SimpleDisplayer(msg)
+			return logCtx, types.SimpleDisplayer(msg)
 		},
 		Verbosity: types.DebugMySQL,
 	},

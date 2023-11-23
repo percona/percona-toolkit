@@ -20,15 +20,15 @@ var ViewsMap = types.RegexMap{
 	"RegexNodeEstablished": &types.LogRegex{
 		Regex:         regexp.MustCompile("connection established"),
 		InternalRegex: regexp.MustCompile("established to " + regexNodeHash + " " + regexNodeIPMethod),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
 			ip := submatches[groupNodeIP]
 			hash := submatches[groupNodeHash]
 			translate.AddHashToIP(hash, ip, date)
-			if utils.SliceContains(ctx.OwnIPs, ip) {
-				return ctx, nil
+			if utils.SliceContains(logCtx.OwnIPs, ip) {
+				return logCtx, nil
 			}
-			return ctx, types.FormatByHashDisplayer("%s established", hash, date)
+			return logCtx, types.FormatByHashDisplayer("%s established", hash, date)
 		},
 		Verbosity: types.DebugMySQL,
 	},
@@ -36,26 +36,26 @@ var ViewsMap = types.RegexMap{
 	"RegexNodeJoined": &types.LogRegex{
 		Regex:         regexp.MustCompile("declaring .* stable"),
 		InternalRegex: regexp.MustCompile("declaring " + regexNodeHash + " at " + regexNodeIPMethod),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
 			ip := submatches[groupNodeIP]
 			hash := submatches[groupNodeHash]
 			translate.AddHashToIP(hash, ip, date)
 			translate.AddIPToMethod(ip, submatches[groupMethod], date)
-			return ctx, types.FormatByHashDisplayer("%s"+utils.Paint(utils.GreenText, " joined"), hash, date)
+			return logCtx, types.FormatByHashDisplayer("%s"+utils.Paint(utils.GreenText, " joined"), hash, date)
 		},
 	},
 
 	"RegexNodeLeft": &types.LogRegex{
 		Regex:         regexp.MustCompile("forgetting"),
 		InternalRegex: regexp.MustCompile("forgetting " + regexNodeHash + " \\(" + regexNodeIPMethod),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
 			ip := submatches[groupNodeIP]
 			hash := submatches[groupNodeHash]
 			translate.AddHashToIP(hash, ip, date)
 			translate.AddIPToMethod(ip, submatches[groupMethod], date)
-			return ctx, types.FormatByHashDisplayer("%s"+utils.Paint(utils.RedText, " left"), hash, date)
+			return logCtx, types.FormatByHashDisplayer("%s"+utils.Paint(utils.RedText, " left"), hash, date)
 		},
 	},
 
@@ -63,106 +63,106 @@ var ViewsMap = types.RegexMap{
 	"RegexNewComponent": &types.LogRegex{
 		Regex:         regexp.MustCompile("New COMPONENT:"),
 		InternalRegex: regexp.MustCompile("New COMPONENT: primary = (?P<primary>.+), bootstrap = (?P<bootstrap>.*), my_idx = .*, memb_num = (?P<memb_num>[0-9]{1,2})"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
 			primary := submatches["primary"] == "yes"
 			membNum := submatches["memb_num"]
 			bootstrap := submatches["bootstrap"] == "yes"
 			memberCount, err := strconv.Atoi(membNum)
 			if err != nil {
-				return ctx, nil
+				return logCtx, nil
 			}
 
-			ctx.MemberCount = memberCount
+			logCtx.MemberCount = memberCount
 			if primary {
 				// we don't always store PRIMARY because we could have found DONOR/JOINER/SYNCED/DESYNCED just earlier
 				// and we do not want to override these as they have more value
-				if !ctx.IsPrimary() {
-					ctx.SetState("PRIMARY")
+				if !logCtx.IsPrimary() {
+					logCtx.SetState("PRIMARY")
 				}
 				msg := utils.Paint(utils.GreenText, "PRIMARY") + "(n=" + membNum + ")"
 				if bootstrap {
 					msg += ",bootstrap"
 				}
-				return ctx, types.SimpleDisplayer(msg)
+				return logCtx, types.SimpleDisplayer(msg)
 			}
 
-			ctx.SetState("NON-PRIMARY")
-			return ctx, types.SimpleDisplayer(utils.Paint(utils.RedText, "NON-PRIMARY") + "(n=" + membNum + ")")
+			logCtx.SetState("NON-PRIMARY")
+			return logCtx, types.SimpleDisplayer(utils.Paint(utils.RedText, "NON-PRIMARY") + "(n=" + membNum + ")")
 		},
 	},
 
 	"RegexNodeSuspect": &types.LogRegex{
 		Regex:         regexp.MustCompile("suspecting node"),
 		InternalRegex: regexp.MustCompile("suspecting node: " + regexNodeHash),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
 			hash := submatches[groupNodeHash]
 
-			return ctx, types.FormatByHashDisplayer("%s"+utils.Paint(utils.YellowText, " suspected to be down"), hash, date)
+			return logCtx, types.FormatByHashDisplayer("%s"+utils.Paint(utils.YellowText, " suspected to be down"), hash, date)
 		},
 	},
 
 	"RegexNodeChangedIdentity": &types.LogRegex{
 		Regex:         regexp.MustCompile("remote endpoint.*changed identity"),
 		InternalRegex: regexp.MustCompile("remote endpoint " + regexNodeIPMethod + " changed identity " + regexNodeHash + " -> " + strings.Replace(regexNodeHash, groupNodeHash, groupNodeHash+"2", -1)),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
 			hash := utils.UUIDToShortUUID(submatches[groupNodeHash])
 			hash2 := utils.UUIDToShortUUID(submatches[groupNodeHash+"2"])
 			if ip := translate.GetIPFromHash(hash); ip != "" {
 				translate.AddHashToIP(hash2, ip, date)
 			}
-			return ctx, types.FormatByHashDisplayer("%s"+utils.Paint(utils.YellowText, " changed identity"), hash, date)
+			return logCtx, types.FormatByHashDisplayer("%s"+utils.Paint(utils.YellowText, " changed identity"), hash, date)
 		},
 	},
 
 	"RegexWsrepUnsafeBootstrap": &types.LogRegex{
 		Regex: regexp.MustCompile("ERROR.*not be safe to bootstrap"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
-			ctx.SetState("CLOSED")
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+			logCtx.SetState("CLOSED")
 
-			return ctx, types.SimpleDisplayer(utils.Paint(utils.RedText, "not safe to bootstrap"))
+			return logCtx, types.SimpleDisplayer(utils.Paint(utils.RedText, "not safe to bootstrap"))
 		},
 	},
 	"RegexWsrepConsistenctyCompromised": &types.LogRegex{
 		Regex: regexp.MustCompile(".ode consistency compromi.ed"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
-			ctx.SetState("CLOSED")
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+			logCtx.SetState("CLOSED")
 
-			return ctx, types.SimpleDisplayer(utils.Paint(utils.RedText, "consistency compromised"))
+			return logCtx, types.SimpleDisplayer(utils.Paint(utils.RedText, "consistency compromised"))
 		},
 	},
 	"RegexWsrepNonPrimary": &types.LogRegex{
 		Regex: regexp.MustCompile("failed to reach primary view"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
-			return ctx, types.SimpleDisplayer("received " + utils.Paint(utils.RedText, "non primary"))
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+			return logCtx, types.SimpleDisplayer("received " + utils.Paint(utils.RedText, "non primary"))
 		},
 	},
 
 	"RegexBootstrap": &types.LogRegex{
 		Regex: regexp.MustCompile("gcomm: bootstrapping new group"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
-			return ctx, types.SimpleDisplayer(utils.Paint(utils.YellowText, "bootstrapping"))
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+			return logCtx, types.SimpleDisplayer(utils.Paint(utils.YellowText, "bootstrapping"))
 		},
 	},
 
 	"RegexSafeToBootstrapSet": &types.LogRegex{
 		Regex: regexp.MustCompile("safe_to_bootstrap: 1"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
-			return ctx, types.SimpleDisplayer(utils.Paint(utils.YellowText, "safe_to_bootstrap: 1"))
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+			return logCtx, types.SimpleDisplayer(utils.Paint(utils.YellowText, "safe_to_bootstrap: 1"))
 		},
 	},
 	"RegexNoGrastate": &types.LogRegex{
 		Regex: regexp.MustCompile("Could not open state file for reading.*grastate.dat"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
-			return ctx, types.SimpleDisplayer(utils.Paint(utils.YellowText, "no grastate.dat file"))
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+			return logCtx, types.SimpleDisplayer(utils.Paint(utils.YellowText, "no grastate.dat file"))
 		},
 	},
 	"RegexBootstrappingDefaultState": &types.LogRegex{
 		Regex: regexp.MustCompile("Bootstraping with default state"), // typo is in Galera lib
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
-			return ctx, types.SimpleDisplayer(utils.Paint(utils.YellowText, "bootstrapping(empty grastate)"))
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+			return logCtx, types.SimpleDisplayer(utils.Paint(utils.YellowText, "bootstrapping(empty grastate)"))
 		},
 	},
 }

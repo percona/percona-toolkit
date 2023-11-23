@@ -20,17 +20,17 @@ type LogRegex struct {
 	Verbosity Verbosity // To be able to hide details from summaries
 }
 
-func (l *LogRegex) Handle(ctx LogCtx, line string, date time.Time) (LogCtx, LogDisplayer) {
-	if ctx.minVerbosity > l.Verbosity {
-		ctx.minVerbosity = l.Verbosity
+func (l *LogRegex) Handle(logCtx LogCtx, line string, date time.Time) (LogCtx, LogDisplayer) {
+	if logCtx.minVerbosity > l.Verbosity {
+		logCtx.minVerbosity = l.Verbosity
 	}
 	mergedResults := map[string]string{}
 	if l.InternalRegex == nil {
-		return l.Handler(mergedResults, ctx, line, date)
+		return l.Handler(mergedResults, logCtx, line, date)
 	}
 	slice := l.InternalRegex.FindStringSubmatch(line)
 	if len(slice) == 0 {
-		return ctx, nil
+		return logCtx, nil
 	}
 	for _, subexpname := range l.InternalRegex.SubexpNames() {
 		if subexpname == "" { // 1st element is always empty for the complete regex
@@ -38,7 +38,7 @@ func (l *LogRegex) Handle(ctx LogCtx, line string, date time.Time) (LogCtx, LogD
 		}
 		mergedResults[subexpname] = slice[l.InternalRegex.SubexpIndex(subexpname)]
 	}
-	return l.Handler(mergedResults, ctx, line, date)
+	return l.Handler(mergedResults, logCtx, line, date)
 }
 
 func (l *LogRegex) MarshalJSON() ([]byte, error) {
