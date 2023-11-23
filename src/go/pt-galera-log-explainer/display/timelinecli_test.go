@@ -10,19 +10,19 @@ import (
 func TestTransitionSeparator(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		keys          []string
-		oldctxs, ctxs map[string]types.LogCtx
-		expectedOut   string
-		name          string
+		keys                []string
+		oldlogCtxs, logCtxs map[string]types.LogCtx
+		expectedOut         string
+		name                string
 	}{
 		{
 			name: "no changes",
 			keys: []string{"node0", "node1"},
-			oldctxs: map[string]types.LogCtx{
+			oldlogCtxs: map[string]types.LogCtx{
 				"node0": {},
 				"node1": {},
 			},
-			ctxs: map[string]types.LogCtx{
+			logCtxs: map[string]types.LogCtx{
 
 				"node0": {},
 				"node1": {},
@@ -32,11 +32,11 @@ func TestTransitionSeparator(t *testing.T) {
 		{
 			name: "filepath changed on node0",
 			keys: []string{"node0", "node1"},
-			oldctxs: map[string]types.LogCtx{
+			oldlogCtxs: map[string]types.LogCtx{
 				"node0": {FilePath: "path1"},
 				"node1": {},
 			},
-			ctxs: map[string]types.LogCtx{
+			logCtxs: map[string]types.LogCtx{
 
 				"node0": {FilePath: "path2"},
 				"node1": {},
@@ -52,11 +52,11 @@ func TestTransitionSeparator(t *testing.T) {
 		{
 			name: "filepath changed on node1",
 			keys: []string{"node0", "node1"},
-			oldctxs: map[string]types.LogCtx{
+			oldlogCtxs: map[string]types.LogCtx{
 				"node0": {},
 				"node1": {FilePath: "path1"},
 			},
-			ctxs: map[string]types.LogCtx{
+			logCtxs: map[string]types.LogCtx{
 
 				"node0": {},
 				"node1": {FilePath: "path2"},
@@ -66,11 +66,11 @@ func TestTransitionSeparator(t *testing.T) {
 		{
 			name: "filepath changed on both",
 			keys: []string{"node0", "node1"},
-			oldctxs: map[string]types.LogCtx{
+			oldlogCtxs: map[string]types.LogCtx{
 				"node0": {FilePath: "path1_0"},
 				"node1": {FilePath: "path1_1"},
 			},
-			ctxs: map[string]types.LogCtx{
+			logCtxs: map[string]types.LogCtx{
 				"node0": {FilePath: "path2_0"},
 				"node1": {FilePath: "path2_1"},
 			},
@@ -79,11 +79,11 @@ func TestTransitionSeparator(t *testing.T) {
 		{
 			name: "node name changed on node1",
 			keys: []string{"node0", "node1"},
-			oldctxs: map[string]types.LogCtx{
+			oldlogCtxs: map[string]types.LogCtx{
 				"node0": {},
 				"node1": {OwnNames: []string{"name1"}},
 			},
-			ctxs: map[string]types.LogCtx{
+			logCtxs: map[string]types.LogCtx{
 				"node0": {},
 				"node1": {OwnNames: []string{"name1", "name2"}},
 			},
@@ -92,11 +92,11 @@ func TestTransitionSeparator(t *testing.T) {
 		{
 			name: "node ip changed on node1",
 			keys: []string{"node0", "node1"},
-			oldctxs: map[string]types.LogCtx{
+			oldlogCtxs: map[string]types.LogCtx{
 				"node0": {},
 				"node1": {OwnIPs: []string{"ip1"}},
 			},
-			ctxs: map[string]types.LogCtx{
+			logCtxs: map[string]types.LogCtx{
 				"node0": {},
 				"node1": {OwnIPs: []string{"ip1", "ip2"}},
 			},
@@ -105,11 +105,11 @@ func TestTransitionSeparator(t *testing.T) {
 		{
 			name: "version changed on node1",
 			keys: []string{"node0", "node1"},
-			oldctxs: map[string]types.LogCtx{
+			oldlogCtxs: map[string]types.LogCtx{
 				"node0": {},
 				"node1": {Version: "8.0.28"},
 			},
-			ctxs: map[string]types.LogCtx{
+			logCtxs: map[string]types.LogCtx{
 				"node0": {},
 				"node1": {Version: "8.0.30"},
 			},
@@ -118,11 +118,11 @@ func TestTransitionSeparator(t *testing.T) {
 		{
 			name: "node ip, node name and filepath changed on node1", // very possible with operators
 			keys: []string{"node0", "node1"},
-			oldctxs: map[string]types.LogCtx{
+			oldlogCtxs: map[string]types.LogCtx{
 				"node0": {},
 				"node1": {OwnIPs: []string{"ip1"}, OwnNames: []string{"name1"}, FilePath: "path1"},
 			},
-			ctxs: map[string]types.LogCtx{
+			logCtxs: map[string]types.LogCtx{
 				"node0": {},
 				"node1": {OwnIPs: []string{"ip1", "ip2"}, OwnNames: []string{"name1", "name2"}, FilePath: "path2"},
 			},
@@ -148,11 +148,11 @@ func TestTransitionSeparator(t *testing.T) {
 		{
 			name: "node ip, node name and filepath changed on node1, nodename changed on node2", // very possible with operators
 			keys: []string{"node0", "node1"},
-			oldctxs: map[string]types.LogCtx{
+			oldlogCtxs: map[string]types.LogCtx{
 				"node0": {OwnNames: []string{"name1_0"}},
 				"node1": {OwnIPs: []string{"ip1"}, OwnNames: []string{"name1_1"}, FilePath: "path1"},
 			},
-			ctxs: map[string]types.LogCtx{
+			logCtxs: map[string]types.LogCtx{
 				"node0": {OwnNames: []string{"name1_0", "name2_0"}},
 				"node1": {OwnIPs: []string{"ip1", "ip2"}, OwnNames: []string{"name1_1", "name2_1"}, FilePath: "path2"},
 			},
@@ -178,7 +178,7 @@ func TestTransitionSeparator(t *testing.T) {
 
 	utils.SkipColor = true
 	for _, test := range tests {
-		out := transitionSeparator(test.keys, test.oldctxs, test.ctxs)
+		out := transitionSeparator(test.keys, test.oldlogCtxs, test.logCtxs)
 		if out != test.expectedOut {
 			t.Errorf("testname: %s, expected: \n%#v\n got: \n%#v", test.name, test.expectedOut, out)
 		}

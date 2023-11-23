@@ -60,13 +60,13 @@ func TimelineCLI(timeline types.Timeline, verbosity types.Verbosity) {
 			if !utils.SliceContains(nextNodes, node) {
 				// if there are no events, having a | is needed for tabwriter
 				// A few color can also help highlighting how the node is doing
-				ctx := currentContext[node]
-				args = append(args, utils.PaintForState("| ", ctx.State()))
+				logCtx := currentContext[node]
+				args = append(args, utils.PaintForState("| ", logCtx.State()))
 				continue
 			}
 			loginfo := timeline[node][0]
 			lastContext[node] = currentContext[node]
-			currentContext[node] = loginfo.Ctx
+			currentContext[node] = loginfo.LogCtx
 
 			timeline.Dequeue(node)
 
@@ -75,7 +75,7 @@ func TimelineCLI(timeline types.Timeline, verbosity types.Verbosity) {
 				args = append(args, msg)
 				displayedValue++
 			} else {
-				args = append(args, utils.PaintForState("| ", loginfo.Ctx.State()))
+				args = append(args, utils.PaintForState("| ", loginfo.LogCtx.State()))
 			}
 		}
 
@@ -127,7 +127,7 @@ func initKeysContext(timeline types.Timeline) ([]string, map[string]types.LogCtx
 	for node := range timeline {
 		keys = append(keys, node)
 		if len(timeline[node]) > 0 {
-			currentContext[node] = timeline[node][0].Ctx
+			currentContext[node] = timeline[node][0].LogCtx
 		} else {
 			// Avoid crashing, but not ideal: we could have a better default Ctx with filepath at least
 			currentContext[node] = types.NewLogCtx()
@@ -145,14 +145,14 @@ func headerNodes(keys []string) string {
 	return "identifier\t" + strings.Join(keys, "\t") + "\t"
 }
 
-func headerFilePath(keys []string, ctxs map[string]types.LogCtx) string {
+func headerFilePath(keys []string, logCtxs map[string]types.LogCtx) string {
 	header := "current path\t"
 	for _, node := range keys {
-		if ctx, ok := ctxs[node]; ok {
-			if len(ctx.FilePath) < 50 {
-				header += ctx.FilePath + "\t"
+		if logCtx, ok := logCtxs[node]; ok {
+			if len(logCtx.FilePath) < 50 {
+				header += logCtx.FilePath + "\t"
 			} else {
-				header += "..." + ctx.FilePath[len(ctx.FilePath)-50:] + "\t"
+				header += "..." + logCtx.FilePath[len(logCtx.FilePath)-50:] + "\t"
 			}
 		} else {
 			header += " \t"
@@ -161,11 +161,11 @@ func headerFilePath(keys []string, ctxs map[string]types.LogCtx) string {
 	return header
 }
 
-func headerIP(keys []string, ctxs map[string]types.LogCtx) string {
+func headerIP(keys []string, logCtxs map[string]types.LogCtx) string {
 	header := "last known ip\t"
 	for _, node := range keys {
-		if ctx, ok := ctxs[node]; ok && len(ctx.OwnIPs) > 0 {
-			header += ctx.OwnIPs[len(ctx.OwnIPs)-1] + "\t"
+		if logCtx, ok := logCtxs[node]; ok && len(logCtx.OwnIPs) > 0 {
+			header += logCtx.OwnIPs[len(logCtx.OwnIPs)-1] + "\t"
 		} else {
 			header += " \t"
 		}
@@ -173,21 +173,21 @@ func headerIP(keys []string, ctxs map[string]types.LogCtx) string {
 	return header
 }
 
-func headerVersion(keys []string, ctxs map[string]types.LogCtx) string {
+func headerVersion(keys []string, logCtxs map[string]types.LogCtx) string {
 	header := "mysql version\t"
 	for _, node := range keys {
-		if ctx, ok := ctxs[node]; ok {
-			header += ctx.Version + "\t"
+		if logCtx, ok := logCtxs[node]; ok {
+			header += logCtx.Version + "\t"
 		}
 	}
 	return header
 }
 
-func headerName(keys []string, ctxs map[string]types.LogCtx) string {
+func headerName(keys []string, logCtxs map[string]types.LogCtx) string {
 	header := "last known name\t"
 	for _, node := range keys {
-		if ctx, ok := ctxs[node]; ok && len(ctx.OwnNames) > 0 {
-			header += ctx.OwnNames[len(ctx.OwnNames)-1] + "\t"
+		if logCtx, ok := logCtxs[node]; ok && len(logCtx.OwnNames) > 0 {
+			header += logCtx.OwnNames[len(logCtx.OwnNames)-1] + "\t"
 		} else {
 			header += " \t"
 		}
@@ -198,7 +198,7 @@ func headerName(keys []string, ctxs map[string]types.LogCtx) string {
 func removeEmptyColumns(timeline types.Timeline, verbosity types.Verbosity) types.Timeline {
 
 	for key := range timeline {
-		if !timeline[key][len(timeline[key])-1].Ctx.HasVisibleEvents(verbosity) {
+		if !timeline[key][len(timeline[key])-1].LogCtx.HasVisibleEvents(verbosity) {
 			delete(timeline, key)
 		}
 	}
@@ -245,27 +245,27 @@ const NumberOfPossibleTransition = 4
 // it needs an element on each columns so that we don't break columns
 // The rows can't have a variable count of elements: it has to be strictly identical each time
 // so the whole next functions are here to ensure it takes minimal spaces, while giving context and preserving columns
-func transitionSeparator(keys []string, oldctxs, ctxs map[string]types.LogCtx) string {
+func transitionSeparator(keys []string, oldlogCtxs, logCtxs map[string]types.LogCtx) string {
 
 	ts := map[string]*transitions{}
 
 	// For each columns to print, we build tests
 	for _, node := range keys {
-		ctx, ok1 := ctxs[node]
-		oldctx, ok2 := oldctxs[node]
+		logCtx, ok1 := logCtxs[node]
+		oldlogCtx, ok2 := oldlogCtxs[node]
 
 		ts[node] = &transitions{tests: []*transition{}}
 		if ok1 && ok2 {
-			ts[node].tests = append(ts[node].tests, &transition{s1: oldctx.FilePath, s2: ctx.FilePath, changeType: "file path"})
+			ts[node].tests = append(ts[node].tests, &transition{s1: oldlogCtx.FilePath, s2: logCtx.FilePath, changeType: "file path"})
 
-			if len(oldctx.OwnNames) > 0 && len(ctx.OwnNames) > 0 {
-				ts[node].tests = append(ts[node].tests, &transition{s1: oldctx.OwnNames[len(oldctx.OwnNames)-1], s2: ctx.OwnNames[len(ctx.OwnNames)-1], changeType: "node name"})
+			if len(oldlogCtx.OwnNames) > 0 && len(logCtx.OwnNames) > 0 {
+				ts[node].tests = append(ts[node].tests, &transition{s1: oldlogCtx.OwnNames[len(oldlogCtx.OwnNames)-1], s2: logCtx.OwnNames[len(logCtx.OwnNames)-1], changeType: "node name"})
 			}
-			if len(oldctx.OwnIPs) > 0 && len(ctx.OwnIPs) > 0 {
-				ts[node].tests = append(ts[node].tests, &transition{s1: oldctx.OwnIPs[len(oldctx.OwnIPs)-1], s2: ctx.OwnIPs[len(ctx.OwnIPs)-1], changeType: "node ip"})
+			if len(oldlogCtx.OwnIPs) > 0 && len(logCtx.OwnIPs) > 0 {
+				ts[node].tests = append(ts[node].tests, &transition{s1: oldlogCtx.OwnIPs[len(oldlogCtx.OwnIPs)-1], s2: logCtx.OwnIPs[len(logCtx.OwnIPs)-1], changeType: "node ip"})
 			}
-			if oldctx.Version != "" && ctx.Version != "" {
-				ts[node].tests = append(ts[node].tests, &transition{s1: oldctx.Version, s2: ctx.Version, changeType: "version"})
+			if oldlogCtx.Version != "" && logCtx.Version != "" {
+				ts[node].tests = append(ts[node].tests, &transition{s1: oldlogCtx.Version, s2: logCtx.Version, changeType: "version"})
 			}
 
 		}

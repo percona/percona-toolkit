@@ -17,12 +17,12 @@ var ApplicativeMap = types.RegexMap{
 	"RegexDesync": &types.LogRegex{
 		Regex:         regexp.MustCompile("desyncs itself from group"),
 		InternalRegex: regexp.MustCompile("\\(" + regexNodeName + "\\) desyncs"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
-			ctx.Desynced = true
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+			logCtx.Desynced = true
 
 			node := submatches[groupNodeName]
-			return ctx, func(ctx types.LogCtx) string {
-				if utils.SliceContains(ctx.OwnNames, node) {
+			return logCtx, func(logCtx types.LogCtx) string {
+				if utils.SliceContains(logCtx.OwnNames, node) {
 					return utils.Paint(utils.YellowText, "desyncs itself from group")
 				}
 				return node + utils.Paint(utils.YellowText, " desyncs itself from group")
@@ -33,11 +33,11 @@ var ApplicativeMap = types.RegexMap{
 	"RegexResync": &types.LogRegex{
 		Regex:         regexp.MustCompile("resyncs itself to group"),
 		InternalRegex: regexp.MustCompile("\\(" + regexNodeName + "\\) resyncs"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
-			ctx.Desynced = false
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+			logCtx.Desynced = false
 			node := submatches[groupNodeName]
-			return ctx, func(ctx types.LogCtx) string {
-				if utils.SliceContains(ctx.OwnNames, node) {
+			return logCtx, func(logCtx types.LogCtx) string {
+				if utils.SliceContains(logCtx.OwnNames, node) {
 					return utils.Paint(utils.YellowText, "resyncs itself to group")
 				}
 				return node + utils.Paint(utils.YellowText, " resyncs itself to group")
@@ -48,7 +48,7 @@ var ApplicativeMap = types.RegexMap{
 	"RegexInconsistencyVoteInit": &types.LogRegex{
 		Regex:         regexp.MustCompile("initiates vote on"),
 		InternalRegex: regexp.MustCompile("Member " + regexIdx + "\\(" + regexNodeName + "\\) initiates vote on " + regexUUID + ":" + regexSeqno + "," + regexErrorMD5 + ":  (?P<error>.*), Error_code:"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
 			node := submatches[groupNodeName]
 			seqno := submatches[groupSeqno]
@@ -61,11 +61,11 @@ var ApplicativeMap = types.RegexMap{
 				VotePerNode: map[string]types.ConflictVote{node: types.ConflictVote{MD5: errormd5, Error: errorstring}},
 			}
 
-			ctx.Conflicts = ctx.Conflicts.Merge(c)
+			logCtx.Conflicts = logCtx.Conflicts.Merge(c)
 
-			return ctx, func(ctx types.LogCtx) string {
+			return logCtx, func(logCtx types.LogCtx) string {
 
-				if utils.SliceContains(ctx.OwnNames, node) {
+				if utils.SliceContains(logCtx.OwnNames, node) {
 					return utils.Paint(utils.YellowText, "inconsistency vote started") + "(seqno:" + seqno + ")"
 				}
 
@@ -77,22 +77,22 @@ var ApplicativeMap = types.RegexMap{
 	"RegexInconsistencyVoteRespond": &types.LogRegex{
 		Regex:         regexp.MustCompile("responds to vote on "),
 		InternalRegex: regexp.MustCompile("Member " + regexIdx + "\\(" + regexNodeName + "\\) responds to vote on " + regexUUID + ":" + regexSeqno + "," + regexErrorMD5 + ": (?P<error>.*)"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
 			node := submatches[groupNodeName]
 			seqno := submatches[groupSeqno]
 			errormd5 := submatches[groupErrorMD5]
 			errorstring := submatches["error"]
 
-			latestConflict := ctx.Conflicts.ConflictWithSeqno(seqno)
+			latestConflict := logCtx.Conflicts.ConflictWithSeqno(seqno)
 			if latestConflict == nil {
-				return ctx, nil
+				return logCtx, nil
 			}
 			latestConflict.VotePerNode[node] = types.ConflictVote{MD5: errormd5, Error: errorstring}
 
-			return ctx, func(ctx types.LogCtx) string {
+			return logCtx, func(logCtx types.LogCtx) string {
 
-				for _, name := range ctx.OwnNames {
+				for _, name := range logCtx.OwnNames {
 					vote, ok := latestConflict.VotePerNode[name]
 					if !ok {
 						continue
@@ -115,38 +115,38 @@ var ApplicativeMap = types.RegexMap{
 	"RegexInconsistencyVoteInconsistentWithGroup": &types.LogRegex{
 		Regex:         regexp.MustCompile("is inconsistent with group. Leaving cluster"),
 		InternalRegex: regexp.MustCompile("Vote [0-9] \\(success\\) on " + regexUUID + ":" + regexSeqno + " is inconsistent with group. Leaving cluster"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 			seqno := submatches[groupSeqno]
-			latestConflict := ctx.Conflicts.ConflictWithSeqno(seqno)
+			latestConflict := logCtx.Conflicts.ConflictWithSeqno(seqno)
 			if latestConflict == nil {
-				return ctx, nil
+				return logCtx, nil
 			}
-			if len(ctx.OwnNames) > 0 {
-				latestConflict.VotePerNode[ctx.OwnNames[len(ctx.OwnNames)-1]] = types.ConflictVote{Error: "Success", MD5: "0000000000000000"}
+			if len(logCtx.OwnNames) > 0 {
+				latestConflict.VotePerNode[logCtx.OwnNames[len(logCtx.OwnNames)-1]] = types.ConflictVote{Error: "Success", MD5: "0000000000000000"}
 			}
-			return ctx, types.SimpleDisplayer(utils.Paint(utils.RedText, "vote (success) inconsistent, leaving cluster"))
+			return logCtx, types.SimpleDisplayer(utils.Paint(utils.RedText, "vote (success) inconsistent, leaving cluster"))
 		},
 	},
 
 	"RegexInconsistencyVoted": &types.LogRegex{
 		Regex: regexp.MustCompile("Inconsistency detected: Inconsistent by consensus"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
-			return ctx, types.SimpleDisplayer(utils.Paint(utils.RedText, "found inconsistent by vote"))
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+			return logCtx, types.SimpleDisplayer(utils.Paint(utils.RedText, "found inconsistent by vote"))
 		},
 	},
 
 	"RegexInconsistencyWinner": &types.LogRegex{
 		Regex:         regexp.MustCompile("Winner: "),
 		InternalRegex: regexp.MustCompile("Winner: " + regexErrorMD5),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
 			errormd5 := submatches[groupErrorMD5]
 
-			if len(ctx.Conflicts) == 0 {
-				return ctx, nil // nothing to guess
+			if len(logCtx.Conflicts) == 0 {
+				return logCtx, nil // nothing to guess
 			}
 
-			c := ctx.Conflicts.ConflictFromMD5(errormd5)
+			c := logCtx.Conflicts.ConflictFromMD5(errormd5)
 			if c == nil {
 				// some votes have been observed to be logged again
 				// sometimes days after the initial one
@@ -154,13 +154,13 @@ var ApplicativeMap = types.RegexMap{
 
 				// as they don't add any helpful context, we should ignore
 				// plus, it would need multiline regexes, which is not supported here
-				return ctx, nil
+				return logCtx, nil
 			}
 			c.Winner = errormd5
 
-			return ctx, func(ctx types.LogCtx) string {
+			return logCtx, func(logCtx types.LogCtx) string {
 				out := "consistency vote(seqno:" + c.Seqno + "): "
-				for _, name := range ctx.OwnNames {
+				for _, name := range logCtx.OwnNames {
 
 					vote, ok := c.VotePerNode[name]
 					if !ok {
@@ -180,21 +180,21 @@ var ApplicativeMap = types.RegexMap{
 	"RegexInconsistencyRecovery": &types.LogRegex{
 		Regex:         regexp.MustCompile("Recovering vote result from history"),
 		InternalRegex: regexp.MustCompile("Recovering vote result from history: " + regexUUID + ":" + regexSeqno + "," + regexErrorMD5),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
-			if len(ctx.OwnNames) == 0 {
-				return ctx, nil
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+			if len(logCtx.OwnNames) == 0 {
+				return logCtx, nil
 			}
 
 			errormd5 := submatches[groupErrorMD5]
 			seqno := submatches[groupSeqno]
-			c := ctx.Conflicts.ConflictWithSeqno(seqno)
+			c := logCtx.Conflicts.ConflictWithSeqno(seqno)
 			if c == nil { // the actual vote could have been lost
-				return ctx, nil
+				return logCtx, nil
 			}
 			vote := types.ConflictVote{MD5: errormd5}
-			c.VotePerNode[ctx.OwnNames[len(ctx.OwnNames)-1]] = vote
+			c.VotePerNode[logCtx.OwnNames[len(logCtx.OwnNames)-1]] = vote
 
-			return ctx, types.SimpleDisplayer(voteResponse(vote, *c))
+			return logCtx, types.SimpleDisplayer(voteResponse(vote, *c))
 		},
 		Verbosity: types.DebugMySQL,
 	},

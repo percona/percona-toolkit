@@ -177,8 +177,8 @@ func iterateOnGrepResults(path string, regexes types.RegexMap, grepStdout <-chan
 		displayer types.LogDisplayer
 		timestamp time.Time
 	)
-	ctx := types.NewLogCtx()
-	ctx.FilePath = path
+	logCtx := types.NewLogCtx()
+	logCtx.FilePath = path
 
 	for line := range grepStdout {
 		line = sanitizeLine(line)
@@ -203,7 +203,7 @@ func iterateOnGrepResults(path string, regexes types.RegexMap, grepStdout <-chan
 		}
 
 		filetype := regex.FileType(line, CLI.PxcOperator)
-		ctx.FileType = filetype
+		logCtx.FileType = filetype
 
 		// We have to find again what regex worked to get this log line
 		// it can match multiple regexes
@@ -211,8 +211,8 @@ func iterateOnGrepResults(path string, regexes types.RegexMap, grepStdout <-chan
 			if !regex.Regex.MatchString(line) || utils.SliceContains(CLI.ExcludeRegexes, key) {
 				continue
 			}
-			ctx, displayer = regex.Handle(ctx, line, timestamp)
-			li := types.NewLogInfo(date, displayer, line, regex, key, ctx, filetype)
+			logCtx, displayer = regex.Handle(logCtx, line, timestamp)
+			li := types.NewLogInfo(date, displayer, line, regex, key, logCtx, filetype)
 			lt = lt.Add(li)
 		}
 

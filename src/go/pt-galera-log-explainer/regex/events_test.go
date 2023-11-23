@@ -12,8 +12,8 @@ func TestEventsRegex(t *testing.T) {
 			name: "8.0.30-22",
 			log:  "2001-01-01T01:01:01.000000Z 0 [System] [MY-010116] [Server] /usr/sbin/mysqld (mysqld 8.0.30-22) starting as process 1",
 			expected: regexTestState{
-				Ctx:   types.LogCtx{Version: "8.0.30"},
-				State: "OPEN",
+				LogCtx: types.LogCtx{Version: "8.0.30"},
+				State:  "OPEN",
 			},
 			expectedOut: "starting(8.0.30)",
 			key:         "RegexStarting",
@@ -22,8 +22,8 @@ func TestEventsRegex(t *testing.T) {
 			name: "8.0.2-22",
 			log:  "2001-01-01T01:01:01.000000Z 0 [System] [MY-010116] [Server] /usr/sbin/mysqld (mysqld 8.0.2-22) starting as process 1",
 			expected: regexTestState{
-				Ctx:   types.LogCtx{Version: "8.0.2"},
-				State: "OPEN",
+				LogCtx: types.LogCtx{Version: "8.0.2"},
+				State:  "OPEN",
 			},
 			expectedOut: "starting(8.0.2)",
 			key:         "RegexStarting",
@@ -32,8 +32,8 @@ func TestEventsRegex(t *testing.T) {
 			name: "5.7.31-34-log",
 			log:  "2001-01-01T01:01:01.000000Z 0 [Note] /usr/sbin/mysqld (mysqld 5.7.31-34-log) starting as process 2 ...",
 			expected: regexTestState{
-				Ctx:   types.LogCtx{Version: "5.7.31"},
-				State: "OPEN",
+				LogCtx: types.LogCtx{Version: "5.7.31"},
+				State:  "OPEN",
 			},
 			expectedOut: "starting(5.7.31)",
 			key:         "RegexStarting",
@@ -42,8 +42,8 @@ func TestEventsRegex(t *testing.T) {
 			name: "10.4.25-MariaDB-log",
 			log:  "2001-01-01  01:01:01 0 [Note] /usr/sbin/mysqld (mysqld 10.4.25-MariaDB-log) starting as process 2 ...",
 			expected: regexTestState{
-				Ctx:   types.LogCtx{Version: "10.4.25"},
-				State: "OPEN",
+				LogCtx: types.LogCtx{Version: "10.4.25"},
+				State:  "OPEN",
 			},
 			expectedOut: "starting(10.4.25)",
 			key:         "RegexStarting",
@@ -52,8 +52,8 @@ func TestEventsRegex(t *testing.T) {
 			name: "10.2.31-MariaDB-1:10.2.31+maria~bionic-log",
 			log:  "2001-01-01  01:01:01 0 [Note] /usr/sbin/mysqld (mysqld 10.2.31-MariaDB-1:10.2.31+maria~bionic-log) starting as process 2 ...",
 			expected: regexTestState{
-				Ctx:   types.LogCtx{Version: "10.2.31"},
-				State: "OPEN",
+				LogCtx: types.LogCtx{Version: "10.2.31"},
+				State:  "OPEN",
 			},
 			expectedOut: "starting(10.2.31)",
 			key:         "RegexStarting",
@@ -62,8 +62,8 @@ func TestEventsRegex(t *testing.T) {
 			name: "5.7.28-enterprise-commercial-advanced-log",
 			log:  "2001-01-01T01:01:01.000000Z 0 [Note] /usr/sbin/mysqld (mysqld 5.7.28-enterprise-commercial-advanced-log) starting as process 2 ...",
 			expected: regexTestState{
-				Ctx:   types.LogCtx{Version: "5.7.28"},
-				State: "OPEN",
+				LogCtx: types.LogCtx{Version: "5.7.28"},
+				State:  "OPEN",
 			},
 			expectedOut: "starting(5.7.28)",
 			key:         "RegexStarting",
@@ -72,8 +72,8 @@ func TestEventsRegex(t *testing.T) {
 			name: "8.0.30 operator",
 			log:  "{\"log\":\"2001-01-01T01:01:01.000000Z 0 [System] [MY-010116] [Server] /usr/sbin/mysqld (mysqld 8.0.30-22.1) starting as process 1\n\",\"file\":\"/var/lib/mysql/mysqld-error.log\"}",
 			expected: regexTestState{
-				Ctx:   types.LogCtx{Version: "8.0.30"},
-				State: "OPEN",
+				LogCtx: types.LogCtx{Version: "8.0.30"},
+				State:  "OPEN",
 			},
 			expectedOut: "starting(8.0.30)",
 			key:         "RegexStarting",
@@ -94,8 +94,8 @@ func TestEventsRegex(t *testing.T) {
 			name: "could not catch how it stopped",
 			log:  "{\"log\":\"2001-01-01T01:01:01.000000Z 0 [System] [MY-010116] [Server] /usr/sbin/mysqld (mysqld 8.0.30-22.1) starting as process 1\n\",\"file\":\"/var/lib/mysql/mysqld-error.log\"}",
 			expected: regexTestState{
-				Ctx:   types.LogCtx{Version: "8.0.30"},
-				State: "OPEN",
+				LogCtx: types.LogCtx{Version: "8.0.30"},
+				State:  "OPEN",
 			},
 			input: regexTestState{
 				State: "OPEN",

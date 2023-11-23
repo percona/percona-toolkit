@@ -17,7 +17,7 @@ import (
 
 type regexTestState struct {
 	State           string
-	Ctx             types.LogCtx
+	LogCtx          types.LogCtx
 	HashToNodeNames map[string]string
 	HashToIP        map[string]string
 	IPToMethods     map[string]string
@@ -74,15 +74,15 @@ func iterateRegexTest(t *testing.T, regexmap types.RegexMap, tests []regexTest) 
 		}
 
 		if test.input.State != "" {
-			test.input.Ctx.SetState(test.input.State)
+			test.input.LogCtx.SetState(test.input.State)
 		}
 
 		// Test 3
 		// Get the message to display using the input context
-		ctx, displayer := regexmap[test.key].Handle(test.input.Ctx, test.log, time.Time{})
+		logCtx, displayer := regexmap[test.key].Handle(test.input.LogCtx, test.log, time.Time{})
 		msg := ""
 		if displayer != nil {
-			msg = displayer(ctx)
+			msg = displayer(logCtx)
 		} else if !test.displayerExpectedNil {
 			t.Errorf("key: %s\ntestname: %s\ndisplayer is nil\nexpected: not nil", test.key, test.name)
 		}
@@ -91,16 +91,16 @@ func iterateRegexTest(t *testing.T, regexmap types.RegexMap, tests []regexTest) 
 		// Making sure the updated context  is what we expect
 
 		// alternative to reflect.deepequal, it enables to avoid comparing "states" map
-		res := cmp.Equal(ctx, test.expected.Ctx, cmpopts.IgnoreUnexported(types.LogCtx{}))
-		if !res || ctx.State() != test.expected.State {
-			t.Errorf("context is not as expected: \nkey: %s\ntestname: %s\nctx: %+v\nexpected ctx: %+v\nout: %s\nexpected out: %s\nstate: %s\nexpected state: %s", test.key, test.name, spew.Sdump(ctx), spew.Sdump(test.expected.Ctx), msg, test.expectedOut, ctx.State(), test.expected.State)
+		res := cmp.Equal(logCtx, test.expected.LogCtx, cmpopts.IgnoreUnexported(types.LogCtx{}))
+		if !res || logCtx.State() != test.expected.State {
+			t.Errorf("context is not as expected: \nkey: %s\ntestname: %s\nlogCtx: %+v\nexpected logCtx: %+v\nout: %s\nexpected out: %s\nstate: %s\nexpected state: %s", test.key, test.name, spew.Sdump(logCtx), spew.Sdump(test.expected.LogCtx), msg, test.expectedOut, logCtx.State(), test.expected.State)
 			t.Fail()
 		}
 
 		// Test 5
 		// Making sure the displayed message is correct
 		if msg != test.expectedOut {
-			t.Errorf("displayed message is not as expected: \nkey: %s\ntestname: %s\nctx: %+v\nout: %s\nexpected out: %s\nstate: %s", test.key, test.name, spew.Sdump(ctx), msg, test.expectedOut, ctx.State())
+			t.Errorf("displayed message is not as expected: \nkey: %s\ntestname: %s\nlogCtx: %+v\nout: %s\nexpected out: %s\nstate: %s", test.key, test.name, spew.Sdump(logCtx), msg, test.expectedOut, logCtx.State())
 			t.Fail()
 		}
 
@@ -110,25 +110,25 @@ func iterateRegexTest(t *testing.T, regexmap types.RegexMap, tests []regexTest) 
 		maxTime, _ := time.Parse(time.RFC3339, "2100-01-01T01:01:01Z")
 		for hash, expectedValue := range test.expected.HashToNodeNames {
 			if value := translate.GetNodeNameFromHash(hash, maxTime); value != expectedValue {
-				t.Errorf("wrong HashToNodeNames\ntest key: %s\ntestname: %s\nctx: %+v\nout: %s\nhash: %s\nexpectedValue: %s\nvalue: %s", test.key, test.name, spew.Sdump(ctx), msg, hash, expectedValue, value)
+				t.Errorf("wrong HashToNodeNames\ntest key: %s\ntestname: %s\nlogCtx: %+v\nout: %s\nhash: %s\nexpectedValue: %s\nvalue: %s", test.key, test.name, spew.Sdump(logCtx), msg, hash, expectedValue, value)
 				t.Fail()
 			}
 		}
 		for hash, expectedValue := range test.expected.HashToIP {
 			if value := translate.GetIPFromHash(hash); value != expectedValue {
-				t.Errorf("wrong HashToIP\ntest key: %s\ntestname: %s\nctx: %+v\nout: %s\nhash: %s\nexpectedValue: %s\nvalue: %s", test.key, test.name, spew.Sdump(ctx), msg, hash, expectedValue, value)
+				t.Errorf("wrong HashToIP\ntest key: %s\ntestname: %s\nlogCtx: %+v\nout: %s\nhash: %s\nexpectedValue: %s\nvalue: %s", test.key, test.name, spew.Sdump(logCtx), msg, hash, expectedValue, value)
 				t.Fail()
 			}
 		}
 		for ip, expectedValue := range test.expected.IPToMethods {
 			if value := translate.GetMethodFromIP(ip, maxTime); value != expectedValue {
-				t.Errorf("wrong IPToMethods\ntest key: %s\ntestname: %s\nctx: %+v\nout: %s\nhash: %s\nexpectedValue: %s\nvalue: %s", test.key, test.name, spew.Sdump(ctx), msg, ip, expectedValue, value)
+				t.Errorf("wrong IPToMethods\ntest key: %s\ntestname: %s\nlogCtx: %+v\nout: %s\nhash: %s\nexpectedValue: %s\nvalue: %s", test.key, test.name, spew.Sdump(logCtx), msg, ip, expectedValue, value)
 				t.Fail()
 			}
 		}
 		for ip, expectedValue := range test.expected.IPToNodeNames {
 			if value := translate.GetNodeNameFromIP(ip, maxTime); value != expectedValue {
-				t.Errorf("wrong IPToNodeNames\ntest key: %s\ntestname: %s\nctx: %+v\nout: %s\nhash: %s\nexpectedValue: %s\nvalue: %s", test.key, test.name, spew.Sdump(ctx), msg, ip, expectedValue, value)
+				t.Errorf("wrong IPToNodeNames\ntest key: %s\ntestname: %s\nlogCtx: %+v\nout: %s\nhash: %s\nexpectedValue: %s\nvalue: %s", test.key, test.name, spew.Sdump(logCtx), msg, ip, expectedValue, value)
 				t.Fail()
 			}
 		}
