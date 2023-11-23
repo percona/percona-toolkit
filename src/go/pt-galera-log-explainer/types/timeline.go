@@ -31,7 +31,7 @@ func (timeline Timeline) MergeByIdentifier(lt LocalTimeline) {
 	// identify the node with the easiest to read information
 	// this is critical part to aggregate logs: this is what enable to merge logs
 	// ultimately the "identifier" will be used for columns header
-	node := Identifier(lt[len(lt)-1].Ctx, getlasttime(lt))
+	node := Identifier(lt[len(lt)-1].LogCtx, getlasttime(lt))
 	if lt2, ok := timeline[node]; ok {
 		lt = MergeTimeline(lt2, lt)
 	}
@@ -41,7 +41,7 @@ func (timeline Timeline) MergeByIdentifier(lt LocalTimeline) {
 func (timeline Timeline) MergeByDirectory(path string, lt LocalTimeline) {
 	node := filepath.Base(filepath.Dir(path))
 	for _, lt2 := range timeline {
-		if len(lt2) > 0 && node == filepath.Base(filepath.Dir(lt2[0].Ctx.FilePath)) {
+		if len(lt2) > 0 && node == filepath.Base(filepath.Dir(lt2[0].LogCtx.FilePath)) {
 			lt = MergeTimeline(lt2, lt)
 		}
 	}
@@ -108,18 +108,18 @@ func MergeTimeline(t1, t2 LocalTimeline) LocalTimeline {
 		//>t : --O----OOO-- won't try to get things between t1.end and t2.start
 		// we assume they're identical, they're supposed to be from the same server
 		t2 = CutTimelineAt(t2, endt1)
-		// no return here, to avoid repeating the ctx.inherit
+		// no return here, to avoid repeating the logCtx.inherit
 	}
 
 	// t1: --O--O------
 	// t2: ------O--O--
-	t2[len(t2)-1].Ctx.Inherit(t1[len(t1)-1].Ctx)
+	t2[len(t2)-1].LogCtx.Inherit(t1[len(t1)-1].LogCtx)
 	return append(t1, t2...)
 }
 
 func getfirsttime(l LocalTimeline) time.Time {
 	for _, event := range l {
-		if event.Date != nil && (event.Ctx.FileType == "error.log" || event.Ctx.FileType == "") {
+		if event.Date != nil && (event.LogCtx.FileType == "error.log" || event.LogCtx.FileType == "") {
 			return event.Date.Time
 		}
 	}
@@ -127,7 +127,7 @@ func getfirsttime(l LocalTimeline) time.Time {
 }
 func getlasttime(l LocalTimeline) time.Time {
 	for i := len(l) - 1; i >= 0; i-- {
-		if l[i].Date != nil && (l[i].Ctx.FileType == "error.log" || l[i].Ctx.FileType == "") {
+		if l[i].Date != nil && (l[i].LogCtx.FileType == "error.log" || l[i].LogCtx.FileType == "") {
 			return l[i].Date.Time
 		}
 	}
@@ -148,13 +148,13 @@ func CutTimelineAt(t LocalTimeline, at time.Time) LocalTimeline {
 }
 
 func (t *Timeline) GetLatestContextsByNodes() map[string]LogCtx {
-	latestctxs := map[string]LogCtx{}
+	latestlogCtxs := make(map[string]LogCtx, len(*t))
 
 	for key, localtimeline := range *t {
-		latestctxs[key] = localtimeline[len(localtimeline)-1].Ctx
+		latestlogCtxs[key] = localtimeline[len(localtimeline)-1].LogCtx
 	}
 
-	return latestctxs
+	return latestlogCtxs
 }
 
 // iterateNode is used to search the source node(s) that contains the next chronological events

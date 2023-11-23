@@ -24,13 +24,13 @@ func TestViewsRegex(t *testing.T) {
 			name: "established to node's own ip",
 			log:  "2001-01-01T01:01:01.000000Z 0 [Note] [MY-000000] [Galera] (60205de0-8884, 'ssl://0.0.0.0:4567') connection established to 5873acd0-baa8 ssl://172.17.0.2:4567",
 			input: regexTestState{
-				Ctx: types.LogCtx{
+				LogCtx: types.LogCtx{
 					OwnIPs: []string{"172.17.0.2"},
 				},
 				HashToIP: map[string]string{},
 			},
 			expected: regexTestState{
-				Ctx: types.LogCtx{
+				LogCtx: types.LogCtx{
 					OwnIPs: []string{"172.17.0.2"},
 				},
 				HashToIP: map[string]string{"5873acd0-baa8": "172.17.0.2"},
@@ -77,8 +77,8 @@ func TestViewsRegex(t *testing.T) {
 		{
 			log: "2001-01-01T01:01:01.000000Z 0 [Note] WSREP: New COMPONENT: primary = yes, bootstrap = no, my_idx = 0, memb_num = 2",
 			expected: regexTestState{
-				Ctx:   types.LogCtx{MemberCount: 2},
-				State: "PRIMARY",
+				LogCtx: types.LogCtx{MemberCount: 2},
+				State:  "PRIMARY",
 			},
 			expectedOut: "PRIMARY(n=2)",
 			key:         "RegexNewComponent",
@@ -87,8 +87,8 @@ func TestViewsRegex(t *testing.T) {
 			name: "bootstrap",
 			log:  "2001-01-01T01:01:01.000000Z 0 [Note] WSREP: New COMPONENT: primary = yes, bootstrap = yes, my_idx = 0, memb_num = 2",
 			expected: regexTestState{
-				Ctx:   types.LogCtx{MemberCount: 2},
-				State: "PRIMARY",
+				LogCtx: types.LogCtx{MemberCount: 2},
+				State:  "PRIMARY",
 			},
 			expectedOut: "PRIMARY(n=2),bootstrap",
 			key:         "RegexNewComponent",
@@ -100,8 +100,8 @@ func TestViewsRegex(t *testing.T) {
 				State: "JOINER",
 			},
 			expected: regexTestState{
-				Ctx:   types.LogCtx{MemberCount: 2},
-				State: "JOINER",
+				LogCtx: types.LogCtx{MemberCount: 2},
+				State:  "JOINER",
 			},
 			expectedOut: "PRIMARY(n=2)",
 			key:         "RegexNewComponent",
@@ -110,8 +110,8 @@ func TestViewsRegex(t *testing.T) {
 			name: "non-primary",
 			log:  "2001-01-01T01:01:01.000000Z 0 [Note] WSREP: New COMPONENT: primary = no, bootstrap = no, my_idx = 0, memb_num = 2",
 			expected: regexTestState{
-				Ctx:   types.LogCtx{MemberCount: 2},
-				State: "NON-PRIMARY",
+				LogCtx: types.LogCtx{MemberCount: 2},
+				State:  "NON-PRIMARY",
 			},
 			expectedOut: "NON-PRIMARY(n=2)",
 			key:         "RegexNewComponent",

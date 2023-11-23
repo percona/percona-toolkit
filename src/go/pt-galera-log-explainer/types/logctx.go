@@ -37,13 +37,13 @@ type LogCtx struct {
 }
 
 func NewLogCtx() LogCtx {
-	ctx := LogCtx{minVerbosity: Debug}
-	ctx.InitMaps()
-	return ctx
+	logCtx := LogCtx{minVerbosity: Debug}
+	logCtx.InitMaps()
+	return logCtx
 }
 
-func (ctx *LogCtx) InitMaps() {
-	ctx.SSTs = map[string]SST{}
+func (logCtx *LogCtx) InitMaps() {
+	logCtx.SSTs = map[string]SST{}
 }
 
 // State will return the wsrep state of the current file type
@@ -51,23 +51,23 @@ func (ctx *LogCtx) InitMaps() {
 // Not tracking and differentiating by file types led to confusions in most subcommands
 // as it would seem that sometimes mysql is restarting after a crash, while actually
 // the operator was simply launching a "wsrep-recover" instance while mysql was still running
-func (ctx LogCtx) State() string {
-	switch ctx.FileType {
+func (logCtx LogCtx) State() string {
+	switch logCtx.FileType {
 	case "post.processing.log":
-		return ctx.statePostProcessingLog
+		return logCtx.statePostProcessingLog
 	case "recovery.log":
-		return ctx.stateRecoveryLog
+		return logCtx.stateRecoveryLog
 	case "backup.log":
-		return ctx.stateBackupLog
+		return logCtx.stateBackupLog
 	case "error.log":
 		fallthrough
 	default:
-		return ctx.stateErrorLog
+		return logCtx.stateErrorLog
 	}
 }
 
 // SetState will double-check if the STATE exists, and also store it on the correct status
-func (ctx *LogCtx) SetState(s string) {
+func (logCtx *LogCtx) SetState(s string) {
 
 	// NON-PRIMARY and RECOVERY are not a real wsrep state, but it's helpful here
 	// DONOR and DESYNCED are merged in wsrep, but we are able to distinguish here
@@ -75,68 +75,68 @@ func (ctx *LogCtx) SetState(s string) {
 	if !utils.SliceContains([]string{"SYNCED", "JOINED", "DONOR", "DESYNCED", "JOINER", "PRIMARY", "NON-PRIMARY", "OPEN", "CLOSED", "DESTROYED", "ERROR", "RECOVERY"}, s) {
 		return
 	}
-	switch ctx.FileType {
+	switch logCtx.FileType {
 	case "post.processing.log":
-		ctx.statePostProcessingLog = s
+		logCtx.statePostProcessingLog = s
 	case "recovery.log":
-		ctx.stateRecoveryLog = s
+		logCtx.stateRecoveryLog = s
 	case "backup.log":
-		ctx.stateBackupLog = s
+		logCtx.stateBackupLog = s
 	case "error.log":
 		fallthrough
 	default:
-		ctx.stateErrorLog = s
+		logCtx.stateErrorLog = s
 	}
 }
 
-func (ctx *LogCtx) HasVisibleEvents(level Verbosity) bool {
-	return level >= ctx.minVerbosity
+func (logCtx *LogCtx) HasVisibleEvents(level Verbosity) bool {
+	return level >= logCtx.minVerbosity
 }
 
-func (ctx *LogCtx) IsPrimary() bool {
-	return utils.SliceContains([]string{"SYNCED", "DONOR", "DESYNCED", "JOINER", "PRIMARY"}, ctx.State())
+func (logCtx *LogCtx) IsPrimary() bool {
+	return utils.SliceContains([]string{"SYNCED", "DONOR", "DESYNCED", "JOINER", "PRIMARY"}, logCtx.State())
 }
 
 // AddOwnName propagates a name into the translation maps using the trusted node's known own hashes and ips
-func (ctx *LogCtx) AddOwnName(name string, date time.Time) {
+func (logCtx *LogCtx) AddOwnName(name string, date time.Time) {
 	// used to be a simple "if utils.SliceContains", changed to "is it the last known name?"
 	// because some names/ips come back and forth, we should keep track of that
 	name = utils.ShortNodeName(name)
-	if len(ctx.OwnNames) > 0 && ctx.OwnNames[len(ctx.OwnNames)-1] == name {
+	if len(logCtx.OwnNames) > 0 && logCtx.OwnNames[len(logCtx.OwnNames)-1] == name {
 		return
 	}
-	ctx.OwnNames = append(ctx.OwnNames, name)
-	for _, hash := range ctx.OwnHashes {
+	logCtx.OwnNames = append(logCtx.OwnNames, name)
+	for _, hash := range logCtx.OwnHashes {
 		translate.AddHashToNodeName(hash, name, date)
 	}
-	for _, ip := range ctx.OwnIPs {
+	for _, ip := range logCtx.OwnIPs {
 		translate.AddIPToNodeName(ip, name, date)
 	}
 }
 
 // AddOwnHash propagates a hash into the translation maps
-func (ctx *LogCtx) AddOwnHash(hash string, date time.Time) {
-	if utils.SliceContains(ctx.OwnHashes, hash) {
+func (logCtx *LogCtx) AddOwnHash(hash string, date time.Time) {
+	if utils.SliceContains(logCtx.OwnHashes, hash) {
 		return
 	}
-	ctx.OwnHashes = append(ctx.OwnHashes, hash)
+	logCtx.OwnHashes = append(logCtx.OwnHashes, hash)
 
-	for _, ip := range ctx.OwnIPs {
+	for _, ip := range logCtx.OwnIPs {
 		translate.AddHashToIP(hash, ip, date)
 	}
-	for _, name := range ctx.OwnNames {
+	for _, name := range logCtx.OwnNames {
 		translate.AddHashToNodeName(hash, name, date)
 	}
 }
 
 // AddOwnIP propagates a ip into the translation maps
-func (ctx *LogCtx) AddOwnIP(ip string, date time.Time) {
+func (logCtx *LogCtx) AddOwnIP(ip string, date time.Time) {
 	// see AddOwnName comment
-	if len(ctx.OwnIPs) > 0 && ctx.OwnIPs[len(ctx.OwnIPs)-1] == ip {
+	if len(logCtx.OwnIPs) > 0 && logCtx.OwnIPs[len(logCtx.OwnIPs)-1] == ip {
 		return
 	}
-	ctx.OwnIPs = append(ctx.OwnIPs, ip)
-	for _, name := range ctx.OwnNames {
+	logCtx.OwnIPs = append(logCtx.OwnIPs, ip)
+	for _, name := range logCtx.OwnNames {
 		translate.AddIPToNodeName(ip, name, date)
 	}
 }
@@ -145,37 +145,37 @@ func (ctx *LogCtx) AddOwnIP(ip string, date time.Time) {
 // into the base
 // It is used when merging, so that we do not start from nothing
 // It helps when dealing with many small files
-func (base *LogCtx) Inherit(ctx LogCtx) {
-	base.OwnHashes = append(ctx.OwnHashes, base.OwnHashes...)
-	base.OwnNames = append(ctx.OwnNames, base.OwnNames...)
-	base.OwnIPs = append(ctx.OwnIPs, base.OwnIPs...)
+func (base *LogCtx) Inherit(logCtx LogCtx) {
+	base.OwnHashes = append(logCtx.OwnHashes, base.OwnHashes...)
+	base.OwnNames = append(logCtx.OwnNames, base.OwnNames...)
+	base.OwnIPs = append(logCtx.OwnIPs, base.OwnIPs...)
 	if base.Version == "" {
-		base.Version = ctx.Version
+		base.Version = logCtx.Version
 	}
-	base.Conflicts = append(ctx.Conflicts, base.Conflicts...)
+	base.Conflicts = append(logCtx.Conflicts, base.Conflicts...)
 }
 
-func (ctx *LogCtx) SetSSTTypeMaybe(ssttype string) {
-	for key, sst := range ctx.SSTs {
-		if len(ctx.SSTs) == 1 || (ctx.State() == "DONOR" && utils.SliceContains(ctx.OwnNames, key)) || (ctx.State() == "JOINER" && utils.SliceContains(ctx.OwnNames, sst.Joiner)) {
+func (logCtx *LogCtx) SetSSTTypeMaybe(ssttype string) {
+	for key, sst := range logCtx.SSTs {
+		if len(logCtx.SSTs) == 1 || (logCtx.State() == "DONOR" && utils.SliceContains(logCtx.OwnNames, key)) || (logCtx.State() == "JOINER" && utils.SliceContains(logCtx.OwnNames, sst.Joiner)) {
 			sst.Type = ssttype
-			ctx.SSTs[key] = sst
+			logCtx.SSTs[key] = sst
 			return
 		}
 	}
 }
 
-func (ctx *LogCtx) ConfirmSSTMetadata(shiftTimestamp time.Time) {
-	if ctx.State() != "DONOR" && ctx.State() != "JOINER" {
+func (logCtx *LogCtx) ConfirmSSTMetadata(shiftTimestamp time.Time) {
+	if logCtx.State() != "DONOR" && logCtx.State() != "JOINER" {
 		return
 	}
-	for key, sst := range ctx.SSTs {
+	for key, sst := range logCtx.SSTs {
 		if sst.MustHaveHappenedLocally(shiftTimestamp) {
-			if ctx.State() == "DONOR" {
-				ctx.AddOwnName(key, shiftTimestamp)
+			if logCtx.State() == "DONOR" {
+				logCtx.AddOwnName(key, shiftTimestamp)
 			}
-			if ctx.State() == "JOINER" {
-				ctx.AddOwnName(sst.Joiner, shiftTimestamp)
+			if logCtx.State() == "JOINER" {
+				logCtx.AddOwnName(sst.Joiner, shiftTimestamp)
 			}
 		}
 	}
@@ -183,7 +183,7 @@ func (ctx *LogCtx) ConfirmSSTMetadata(shiftTimestamp time.Time) {
 	return
 }
 
-func (l LogCtx) MarshalJSON() ([]byte, error) {
+func (logCtx *LogCtx) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		FilePath               string
 		FileType               string
@@ -202,20 +202,20 @@ func (l LogCtx) MarshalJSON() ([]byte, error) {
 		MinVerbosity           Verbosity
 		Conflicts              Conflicts
 	}{
-		FilePath:               l.FilePath,
-		FileType:               l.FileType,
-		OwnIPs:                 l.OwnIPs,
-		OwnHashes:              l.OwnHashes,
-		StateErrorLog:          l.stateErrorLog,
-		StateRecoveryLog:       l.stateRecoveryLog,
-		StatePostProcessingLog: l.statePostProcessingLog,
-		StateBackupLog:         l.stateBackupLog,
-		Version:                l.Version,
-		SSTs:                   l.SSTs,
-		MyIdx:                  l.MyIdx,
-		MemberCount:            l.MemberCount,
-		Desynced:               l.Desynced,
-		MinVerbosity:           l.minVerbosity,
-		Conflicts:              l.Conflicts,
+		FilePath:               logCtx.FilePath,
+		FileType:               logCtx.FileType,
+		OwnIPs:                 logCtx.OwnIPs,
+		OwnHashes:              logCtx.OwnHashes,
+		StateErrorLog:          logCtx.stateErrorLog,
+		StateRecoveryLog:       logCtx.stateRecoveryLog,
+		StatePostProcessingLog: logCtx.statePostProcessingLog,
+		StateBackupLog:         logCtx.stateBackupLog,
+		Version:                logCtx.Version,
+		SSTs:                   logCtx.SSTs,
+		MyIdx:                  logCtx.MyIdx,
+		MemberCount:            logCtx.MemberCount,
+		Desynced:               logCtx.Desynced,
+		MinVerbosity:           logCtx.minVerbosity,
+		Conflicts:              logCtx.Conflicts,
 	})
 }

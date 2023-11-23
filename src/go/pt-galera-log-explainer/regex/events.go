@@ -17,99 +17,99 @@ var EventsMap = types.RegexMap{
 	"RegexStarting": &types.LogRegex{
 		Regex:         regexp.MustCompile("starting as process"),
 		InternalRegex: regexp.MustCompile("\\(mysqld " + regexVersion + ".*\\)"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
-			ctx.Version = submatches[groupVersion]
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+			logCtx.Version = submatches[groupVersion]
 
-			msg := "starting(" + ctx.Version
-			if isShutdownReasonMissing(ctx) {
+			msg := "starting(" + logCtx.Version
+			if isShutdownReasonMissing(logCtx) {
 				msg += ", " + utils.Paint(utils.YellowText, "could not catch how/when it stopped")
 			}
 			msg += ")"
-			ctx.SetState("OPEN")
+			logCtx.SetState("OPEN")
 
-			return ctx, types.SimpleDisplayer(msg)
+			return logCtx, types.SimpleDisplayer(msg)
 		},
 	},
 	"RegexShutdownComplete": &types.LogRegex{
 		Regex: regexp.MustCompile("mysqld: Shutdown complete"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
-			ctx.SetState("CLOSED")
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+			logCtx.SetState("CLOSED")
 
-			return ctx, types.SimpleDisplayer(utils.Paint(utils.RedText, "shutdown complete"))
+			return logCtx, types.SimpleDisplayer(utils.Paint(utils.RedText, "shutdown complete"))
 		},
 	},
 	"RegexTerminated": &types.LogRegex{
 		Regex: regexp.MustCompile("mysqld: Terminated"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
-			ctx.SetState("CLOSED")
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+			logCtx.SetState("CLOSED")
 
-			return ctx, types.SimpleDisplayer(utils.Paint(utils.RedText, "terminated"))
+			return logCtx, types.SimpleDisplayer(utils.Paint(utils.RedText, "terminated"))
 		},
 	},
 	"RegexGotSignal6": &types.LogRegex{
 		Regex: regexp.MustCompile("mysqld got signal 6"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
-			ctx.SetState("CLOSED")
-			return ctx, types.SimpleDisplayer(utils.Paint(utils.RedText, "crash: got signal 6"))
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+			logCtx.SetState("CLOSED")
+			return logCtx, types.SimpleDisplayer(utils.Paint(utils.RedText, "crash: got signal 6"))
 		},
 	},
 	"RegexGotSignal11": &types.LogRegex{
 		Regex: regexp.MustCompile("mysqld got signal 11"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
-			ctx.SetState("CLOSED")
-			return ctx, types.SimpleDisplayer(utils.Paint(utils.RedText, "crash: got signal 11"))
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+			logCtx.SetState("CLOSED")
+			return logCtx, types.SimpleDisplayer(utils.Paint(utils.RedText, "crash: got signal 11"))
 		},
 	},
 	"RegexShutdownSignal": &types.LogRegex{
 		Regex: regexp.MustCompile("Normal|Received shutdown"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
-			ctx.SetState("CLOSED")
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+			logCtx.SetState("CLOSED")
 
-			return ctx, types.SimpleDisplayer(utils.Paint(utils.RedText, "received shutdown"))
+			return logCtx, types.SimpleDisplayer(utils.Paint(utils.RedText, "received shutdown"))
 		},
 	},
 
-	// 2023-06-12T07:51:38.135646Z 0 [Warning] [MY-000000] [Galera] Exception while mapping writeset addr: 0x7fb668d4e568, seqno: 2770385572449823232, size: 73316, ctx: 0x56128412e0c0, flags: 1. store: 1, type: 32 into [555, 998): 'deque::_M_new_elements_at_back'. Aborting GCache recovery.
+	// 2023-06-12T07:51:38.135646Z 0 [Warning] [MY-000000] [Galera] Exception while mapping writeset addr: 0x7fb668d4e568, seqno: 2770385572449823232, size: 73316, logCtx: 0x56128412e0c0, flags: 1. store: 1, type: 32 into [555, 998): 'deque::_M_new_elements_at_back'. Aborting GCache recovery.
 
 	"RegexAborting": &types.LogRegex{
 		Regex: regexp.MustCompile("Aborting"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
-			ctx.SetState("CLOSED")
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+			logCtx.SetState("CLOSED")
 
-			return ctx, types.SimpleDisplayer(utils.Paint(utils.RedText, "ABORTING"))
+			return logCtx, types.SimpleDisplayer(utils.Paint(utils.RedText, "ABORTING"))
 		},
 	},
 
 	"RegexWsrepLoad": &types.LogRegex{
 		Regex: regexp.MustCompile("wsrep_load\\(\\): loading provider library"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
-			ctx.SetState("OPEN")
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+			logCtx.SetState("OPEN")
 			if regexWsrepLoadNone.MatchString(log) {
-				return ctx, types.SimpleDisplayer(utils.Paint(utils.GreenText, "started(standalone)"))
+				return logCtx, types.SimpleDisplayer(utils.Paint(utils.GreenText, "started(standalone)"))
 			}
-			return ctx, types.SimpleDisplayer(utils.Paint(utils.GreenText, "started(cluster)"))
+			return logCtx, types.SimpleDisplayer(utils.Paint(utils.GreenText, "started(cluster)"))
 		},
 	},
 	"RegexWsrepRecovery": &types.LogRegex{
 		//  INFO: WSREP: Recovered position 00000000-0000-0000-0000-000000000000:-1
 		Regex: regexp.MustCompile("Recovered position"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
 			msg := "wsrep recovery"
 			// if state is joiner, it can be due to sst
 			// if state is open, it is just a start sequence depending on platform
-			if isShutdownReasonMissing(ctx) && ctx.State() != "JOINER" && ctx.State() != "OPEN" {
+			if isShutdownReasonMissing(logCtx) && logCtx.State() != "JOINER" && logCtx.State() != "OPEN" {
 				msg += "(" + utils.Paint(utils.YellowText, "could not catch how/when it stopped") + ")"
 			}
-			ctx.SetState("RECOVERY")
+			logCtx.SetState("RECOVERY")
 
-			return ctx, types.SimpleDisplayer(msg)
+			return logCtx, types.SimpleDisplayer(msg)
 		},
 	},
 
 	"RegexUnknownConf": &types.LogRegex{
 		Regex: regexp.MustCompile("unknown variable"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 			split := strings.Split(log, "'")
 			v := "?"
 			if len(split) > 0 {
@@ -118,47 +118,47 @@ var EventsMap = types.RegexMap{
 			if len(v) > 20 {
 				v = v[:20] + "..."
 			}
-			return ctx, types.SimpleDisplayer(utils.Paint(utils.YellowText, "unknown variable") + ": " + v)
+			return logCtx, types.SimpleDisplayer(utils.Paint(utils.YellowText, "unknown variable") + ": " + v)
 		},
 	},
 
 	"RegexAssertionFailure": &types.LogRegex{
 		Regex: regexp.MustCompile("Assertion failure"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
-			ctx.SetState("CLOSED")
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+			logCtx.SetState("CLOSED")
 
-			return ctx, types.SimpleDisplayer(utils.Paint(utils.RedText, "ASSERTION FAILURE"))
+			return logCtx, types.SimpleDisplayer(utils.Paint(utils.RedText, "ASSERTION FAILURE"))
 		},
 	},
 	"RegexBindAddressAlreadyUsed": &types.LogRegex{
 		Regex: regexp.MustCompile("asio error .bind: Address already in use"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
-			ctx.SetState("CLOSED")
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+			logCtx.SetState("CLOSED")
 
-			return ctx, types.SimpleDisplayer(utils.Paint(utils.RedText, "bind address already used"))
+			return logCtx, types.SimpleDisplayer(utils.Paint(utils.RedText, "bind address already used"))
 		},
 	},
 	"RegexTooManyConnections": &types.LogRegex{
 		Regex: regexp.MustCompile("Too many connections"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
-			return ctx, types.SimpleDisplayer(utils.Paint(utils.RedText, "too many connections"))
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+			return logCtx, types.SimpleDisplayer(utils.Paint(utils.RedText, "too many connections"))
 		},
 	},
 
 	"RegexReversingHistory": &types.LogRegex{
 		Regex:         regexp.MustCompile("Reversing history"),
 		InternalRegex: regexp.MustCompile("Reversing history: " + regexSeqno + " -> [0-9]*, this member has applied (?P<diff>[0-9]*) more events than the primary component"),
-		Handler: func(submatches map[string]string, ctx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 
-			return ctx, types.SimpleDisplayer(utils.Paint(utils.BrightRedText, "having "+submatches["diff"]+" more events than the other nodes, data loss possible"))
+			return logCtx, types.SimpleDisplayer(utils.Paint(utils.BrightRedText, "having "+submatches["diff"]+" more events than the other nodes, data loss possible"))
 		},
 	},
 }
 var regexWsrepLoadNone = regexp.MustCompile("none")
 
 // isShutdownReasonMissing is returning true if the latest wsrep state indicated a "working" node
-func isShutdownReasonMissing(ctx types.LogCtx) bool {
-	return ctx.State() != "DESTROYED" && ctx.State() != "CLOSED" && ctx.State() != "RECOVERY" && ctx.State() != ""
+func isShutdownReasonMissing(logCtx types.LogCtx) bool {
+	return logCtx.State() != "DESTROYED" && logCtx.State() != "CLOSED" && logCtx.State() != "RECOVERY" && logCtx.State() != ""
 }
 
 /*

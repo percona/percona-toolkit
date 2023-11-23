@@ -11,17 +11,17 @@ import (
 // It will also impacts how logs are merged if we have multiple logs per nodes
 //
 // In order of preference: wsrep_node_name (or galera "node" name), hostname, ip, filepath
-func Identifier(ctx LogCtx, date time.Time) string {
-	if len(ctx.OwnNames) > 0 {
-		return ctx.OwnNames[len(ctx.OwnNames)-1]
+func Identifier(logCtx LogCtx, date time.Time) string {
+	if len(logCtx.OwnNames) > 0 {
+		return logCtx.OwnNames[len(logCtx.OwnNames)-1]
 	}
-	if len(ctx.OwnIPs) > 0 {
-		return translate.SimplestInfoFromIP(ctx.OwnIPs[len(ctx.OwnIPs)-1], date)
+	if len(logCtx.OwnIPs) > 0 {
+		return translate.SimplestInfoFromIP(logCtx.OwnIPs[len(logCtx.OwnIPs)-1], date)
 	}
-	for _, hash := range ctx.OwnHashes {
+	for _, hash := range logCtx.OwnHashes {
 		if out := translate.SimplestInfoFromHash(hash, date); out != hash {
 			return out
 		}
 	}
-	return ctx.FilePath
+	return logCtx.FilePath
 }

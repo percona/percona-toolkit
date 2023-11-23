@@ -24,18 +24,18 @@ type LogInfo struct {
 	Log             string       // the raw log
 	RegexType       RegexType
 	RegexUsed       string
-	Ctx             LogCtx // the context is copied for each logInfo, so that it is easier to handle some info (current state), and this is also interesting to check how it evolved
+	LogCtx          LogCtx // the context is copied for each logInfo, so that it is easier to handle some info (current state), and this is also interesting to check how it evolved
 	Verbosity       Verbosity
 	RepetitionCount int
 	extraNotes      map[string]string
 }
 
-func NewLogInfo(date *Date, displayer LogDisplayer, log string, regex *LogRegex, regexkey string, ctx LogCtx, filetype string) LogInfo {
+func NewLogInfo(date *Date, displayer LogDisplayer, log string, regex *LogRegex, regexkey string, logCtx LogCtx, filetype string) LogInfo {
 	li := LogInfo{
 		Date:       date,
 		Log:        log,
 		displayer:  displayer,
-		Ctx:        ctx,
+		LogCtx:     logCtx,
 		RegexType:  regex.Type,
 		RegexUsed:  regexkey,
 		Verbosity:  regex.Verbosity,
@@ -47,7 +47,7 @@ func NewLogInfo(date *Date, displayer LogDisplayer, log string, regex *LogRegex,
 	return li
 }
 
-func (li *LogInfo) Msg(ctx LogCtx) string {
+func (li *LogInfo) Msg(logCtx LogCtx) string {
 	if li.displayer == nil {
 		return ""
 	}
@@ -55,7 +55,7 @@ func (li *LogInfo) Msg(ctx LogCtx) string {
 	if li.RepetitionCount > 0 {
 		msg += utils.Paint(utils.BlueText, fmt.Sprintf("(repeated x%d)", li.RepetitionCount))
 	}
-	msg += li.displayer(ctx)
+	msg += li.displayer(logCtx)
 	for _, note := range li.extraNotes {
 		msg += utils.Paint(utils.BlueText, fmt.Sprintf("(%s)", note))
 	}
@@ -67,9 +67,9 @@ func (li *LogInfo) Msg(ctx LogCtx) string {
 func (current *LogInfo) IsDuplicatedEvent(base, previous LogInfo) bool {
 	return base.RegexUsed == previous.RegexUsed &&
 		base.displayer != nil && previous.displayer != nil && current.displayer != nil &&
-		base.displayer(base.Ctx) == previous.displayer(previous.Ctx) &&
+		base.displayer(base.LogCtx) == previous.displayer(previous.LogCtx) &&
 		previous.RegexUsed == current.RegexUsed &&
-		previous.displayer(previous.Ctx) == current.displayer(current.Ctx)
+		previous.displayer(previous.LogCtx) == current.displayer(current.LogCtx)
 }
 
 type Date struct {
