@@ -22,9 +22,9 @@ func TimelineCLI(timeline types.Timeline, verbosity types.Verbosity) {
 	// to hold the current context for each node
 	// "keys" is needed, because iterating over a map must give a different order each time
 	// a slice keeps its order
-	keys, currentContext := initKeysContext(timeline)    // currentcontext to follow when important thing changed
-	latestContext := timeline.GetLatestContextsByNodes() // so that we have fully updated context when we print
-	lastContext := map[string]types.LogCtx{}             // just to follow when important thing changed
+	keys, currentContext := initKeysContext(timeline)           // currentcontext to follow when important thing changed
+	latestContext := timeline.GetLatestContextsByNodes()        // so that we have fully updated context when we print
+	lastContext := make(map[string]types.LogCtx, len(timeline)) // just to follow when important thing changed
 
 	w := tabwriter.NewWriter(os.Stdout, 8, 8, 3, ' ', tabwriter.DiscardEmptyColumns)
 	defer w.Flush()
