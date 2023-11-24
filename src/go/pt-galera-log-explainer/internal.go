@@ -55,6 +55,7 @@ func timelineFromPaths(paths []string, regexes types.RegexMap) (types.Timeline, 
 			if err != nil {
 				logger.Error().Str("path", path).Err(err).Msg("execGrepAndIterate returned error")
 			}
+			close(stdout)
 		}()
 
 		// it will iterate on stdout pipe results
@@ -108,8 +109,6 @@ func prepareGrepArgument(regexes types.RegexMap) string {
 }
 
 func execGrepAndIterate(path, compiledRegex string, stdout chan<- string) error {
-
-	defer close(stdout)
 
 	// A first pass is done, with every regexes we want compiled in a single one.
 
