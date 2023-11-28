@@ -151,6 +151,12 @@ darwin-arm64:               ## Build Go tools for darwin-arm64 (MacOS)
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
 	@$(foreach pkg,$(pkgs),GOOS=darwin GOARCH=arm64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
 
+build:
+	@echo "Building binaries in ${BIN_DIR} as version ${VERSION}"
+	@cd ${TOP_DIR} && go get ./...
+	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
+	@$(foreach pkg,$(pkgs),go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
+
 style:						## Check code style
 	@echo ">> checking code style"
 	@! gofmt -d $(shell find . -path ./vendor -prune -o -name '*.go' -print) | grep '^'
