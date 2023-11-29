@@ -274,7 +274,7 @@ func (d *Dumper) DumpCluster() error {
 				// get individual Logs
 				location = filepath.Join(d.location, ns.Name, pod.Name)
 				for _, path := range d.filePaths {
-					err = d.getIndividualFiles(resourceType(d.crType), ns.Name, pod.Name, path, location, tw)
+					err = d.getIndividualFiles(ns.Name, pod.Name, path, location, tw)
 					if err != nil {
 						d.logError(err.Error(), "get file "+path+" for pod "+pod.Name)
 						log.Printf("Error: get %s file: %v", path, err)
@@ -372,13 +372,15 @@ type crSecrets struct {
 	} `json:"spec"`
 }
 
-// TODO: check if resource parameter is really needed
-func (d *Dumper) getIndividualFiles(resource, namespace string, podName, path, location string, tw *tar.Writer) error {
+func (d *Dumper) getIndividualFiles(namespace string, podName, path, location string, tw *tar.Writer) error {
+	if len(d.fileContainer) == 0 {
+		return errors.Errorf("Logs container name is not specified for resource %s in namespace %s", resourceType(d.crType), d.namespace)
+	}
 	args := []string{"-n", namespace, "-c", d.fileContainer, "cp", podName + ":" + path, "/dev/stdout"}
 	output, err := d.runCmd(args...)
 	if err != nil {
 		d.logError(err.Error(), args...)
-		log.Printf("Error: get path %s for resource %s in namespace %s: %v", path, resource, d.namespace, err)
+		log.Printf("Error: get path %s for resource %s in namespace %s: %v", path, resourceType(d.crType), d.namespace, err)
 		return addToArchive(location, d.mode, []byte(err.Error()), tw)
 	}
 
