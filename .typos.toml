@@ -4,6 +4,7 @@ extend-exclude = [
     "sandbox/sakila.sql",
     "sandbox/sakila-db/",
     "sandbox/servers/",
+    "src/go/pt-galera-log-explainer/tests/",
     "src/go/pt-secure-collect/testdata/",
     "util/NaturalDocs/",
     "util/pod2rst-fixed.packed",
