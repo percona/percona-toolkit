@@ -5,5 +5,5 @@
       3 pthread_cond_wait,MYSQL_LOG::wait_for_update
       1 select(libc.so.6),handle_connections_sockets
       1 do_sigwait(libpthread.so.0),sigwait(libpthread.so.0)
-      1 btr_search_guess_on_hash(libc.so.6),btr_cur_search_to_nth_level
+      1 btr_search_guess_on_hash,btr_cur_search_to_nth_level
       1 btr_cur_search_to_nth_level,btr_estimate_n_rows_in_range

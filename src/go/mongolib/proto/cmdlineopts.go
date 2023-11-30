@@ -37,7 +37,7 @@ type Security struct {
 	KeyFile           string `bson:"keyFile"`
 	ClusterAuthMode   string `bson:"clusterAuthMode"`
 	Authorization     string `bson:"authorization"`
-	JavascriptEnabled bool   `bson:javascriptEnabled"`
+	JavascriptEnabled bool   `bson:"javascriptEnabled"`
 	Sasl              struct {
 		HostName            string `bson:"hostName"`
 		ServiceName         string `bson:"serverName"`

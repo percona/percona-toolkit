@@ -412,15 +412,15 @@ type multiSorter struct {
 	less    []lessFunc
 }
 
-// Sort sorts the argument slice according to the less functions passed to OrderedBy.
+// Sort sorts the argument slice according to the less functions passed to orderedBy.
 func (ms *multiSorter) Sort(queries []stats.QueryStats) {
 	ms.queries = queries
 	sort.Sort(ms)
 }
 
-// OrderedBy returns a Sorter that sorts using the less functions, in order.
+// orderedBy returns a Sorter that sorts using the less functions, in order.
 // Call its Sort method to sort the data.
-func OrderedBy(less ...lessFunc) *multiSorter {
+func orderedBy(less ...lessFunc) *multiSorter {
 	return &multiSorter{
 		less: less,
 	}
@@ -520,7 +520,7 @@ func sortQueries(queries []stats.QueryStats, orderby []string) []stats.QueryStat
 		sortFuncs = append(sortFuncs, f)
 	}
 
-	OrderedBy(sortFuncs...).Sort(queries)
+	orderedBy(sortFuncs...).Sort(queries)
 	return queries
 }
 

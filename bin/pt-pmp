@@ -624,6 +624,7 @@ aggregate_stacktrace() {
          }
          else {
             targ = \$2;
+            tfile= \$NF;
          }
          # get rid of long symbol names such as 'pthread_cond_wait@@GLIBC_2.3.2'
          if ( targ ~ /@@/ ) {

@@ -696,21 +696,30 @@ SKIP: {
          qr/$skipping_str/s,
          "--skip-check-slave-lag",
    );
-}
 
-# Use the same data than the previous test
-$master_dbh->do("DROP DATABASE IF EXISTS test");
+   # Test for skip-check-slave-lag and empty replica port
+   # Use the same data than the previous test
+   $master_dbh->do("DROP DATABASE IF EXISTS test");
 
-$sb->load_file('master', "$sample/bug-1613915.sql");
-$output = output(
-   sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=o1",
-         '--execute', 
-         '--alter', "ADD COLUMN c INT",
-         '--chunk-size', '10',
-         '--skip-check-slave-lag', "h=127.0.0.1,P=".$sb->port_for('slave1'),
+   $sb->load_file('master', "$sample/bug-1613915.sql");
+   $output = output(
+      sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=o1",
+            '--execute', 
+            '--alter', "ADD COLUMN c INT",
+            '--chunk-size', '10',
+            '--skip-check-slave-lag', "h=127.0.0.1",
          ),
       },
-);
+      stderr => 1,
+   );
+
+   unlike(
+      $output,
+      qr/Use of uninitialized value.*/,
+      'No syntax error if port is missed in --skip-check-slave-lag DSN',
+   ) or diag($output);
+
+}
 
 # #############################################################################
 # Done.

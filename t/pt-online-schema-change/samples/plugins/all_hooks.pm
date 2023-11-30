@@ -96,6 +96,11 @@ sub before_drop_triggers {
    print "PLUGIN before_drop_triggers\n";
 }
  
+sub before_die {
+   my ($self, %args) = @_;
+   print "PLUGIN before_die\n";
+}
+
 sub before_exit {
    my ($self, %args) = @_;
    print "PLUGIN before_exit\n";

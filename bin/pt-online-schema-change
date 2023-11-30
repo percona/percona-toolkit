@@ -3470,10 +3470,28 @@ sub check_table {
    }
    my ($dbh, $db, $tbl) = @args{@required_args};
    my $q      = $self->{Quoter} || 'Quoter';
+   $self->{check_table_error} = undef;
+
+
+   my $lctn_sql = 'SELECT @@lower_case_table_names';
+   PTDEBUG && _d($lctn_sql);
+
+   my $lower_case_table_names;
+   eval { ($lower_case_table_names) = $dbh->selectrow_array($lctn_sql); };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d($EVAL_ERROR);
+      $self->{check_table_error} = $EVAL_ERROR;
+      return 0;
+   }
+
+   PTDEBUG && _d("lower_case_table_names=$lower_case_table_names");
+   if ($lower_case_table_names > 0) {
+       PTDEBUG && _d("MySQL uses case-insensitive lookup, converting '$tbl' to lowercase");
+       $tbl = lc $tbl;
+   }
+
    my $db_tbl = $q->quote($db, $tbl);
    PTDEBUG && _d('Checking', $db_tbl);
-
-   $self->{check_table_error} = undef;
 
    my $sql = "SHOW TABLES FROM " . $q->quote($db)
            . ' LIKE ' . $q->literal_like($tbl);
@@ -8481,7 +8499,7 @@ my $term_readkey = eval {
 
 use sigtrap 'handler', \&sig_int, 'normal-signals';
 
-
+my $plugin;
 my $exit_status = 0;
 my $oktorun     = 1;
 my $dont_interrupt_now = 0;
@@ -8535,6 +8553,9 @@ sub _die {
    $exit_status ||= 255;
    chomp ($msg);
    print "$msg\n";
+   if ( $plugin && $plugin->can('before_die') ) {
+     $plugin->before_die(exit_status => $exit_status);
+   }
    exit $exit_status;
 }
 
@@ -8853,7 +8874,7 @@ sub main {
    # ########################################################################
    # Create --plugin.
    # ########################################################################
-   my $plugin;
+
    if ( my $file = $o->get('plugin') ) {
       _die("--plugin file $file does not exist", INVALID_PLUGIN_FILE) unless -f $file;
       eval {
@@ -8923,11 +8944,15 @@ sub main {
             for my $slave (@$slaves) {
                my $is_skip = 0;
                for my $slave_to_skip (@$slaves_to_skip) {
-                  if ($slave->{dsn}->{h} eq $slave_to_skip->{h} && $slave->{dsn}->{P} eq $slave_to_skip->{P}) {
-                     print "Skipping slave " . $slave->description() . "\n";
-                     $is_skip = 1;
-                     $slave->{dbh}->disconnect();
-                     last;
+                  if ( $slave->{dsn}->{h} eq $slave_to_skip->{h} ) {
+                     my $skip_slave_port = defined($slave_to_skip->{P}) 
+                        ? $slave_to_skip->{P} : '3306';
+                     if ( ($slave->{dsn}->{P} eq $skip_slave_port) ) {
+                        print "Skipping slave " . $slave->description() . "\n";
+                        $is_skip = 1;
+                        $slave->{dbh}->disconnect();
+                        last;
+                     }
                   }
                }
                if (!$is_skip) {
@@ -9590,6 +9615,9 @@ sub main {
          $cxn->dbh()->do($sql);
       };
       if ( $EVAL_ERROR ) {
+        if ( $plugin && $plugin->can('before_die') ) {
+          $plugin->before_die(exit_status => $EVAL_ERROR);
+        }
          # this is trapped by a signal handler. Don't replace it with _die
          die "Error altering new table $new_tbl->{name}: $EVAL_ERROR\n";
       }
@@ -10172,6 +10200,10 @@ sub main {
       1 while $nibble_iter->next();
    };
    if ( $EVAL_ERROR ) {
+      if ( $plugin && $plugin->can('before_die') ) {
+        $plugin->before_die(exit_status => $EVAL_ERROR);
+      }
+
       die ts("Error copying rows from $orig_tbl->{name} to "
         . "$new_tbl->{name}: $EVAL_ERROR");
    }
@@ -11175,7 +11207,7 @@ sub determine_alter_fk_method {
       return '';  # $alter_fk_method can't be undef
    }
 
-   # The rebuild_constraints method is the default becuase it's safer
+   # The rebuild_constraints method is the default because it's safer
    # and doesn't cause the orig table to go missing for a moment.
    my $method = 'rebuild_constraints';
 
@@ -11630,7 +11662,7 @@ sub random_suffix {
 # duplicate_trigger: If set, it will create the trigger on the new table
 #                    with a random string as a trigger name suffix.
 #                    It will also not drop the original trigger.
-#                    This is usefull when creating a temporary trigger for testing
+#                    This is useful when creating a temporary trigger for testing
 #                    purposes or if --no-swap-tables AND --no-drop-new-table was
 #                    specified along with --preserve-triggers. In this case,
 #                    since the original table and triggers are not going to be
@@ -13197,6 +13229,7 @@ These hooks, in this order, are called if defined:
    before_drop_old_table
    after_drop_old_table
    before_drop_triggers
+   before_die
    before_exit
    get_slave_lag
 
@@ -13311,6 +13344,11 @@ Here's a plugin file template for all hooks:
    sub before_drop_triggers {
       my ($self, %args) = @_;
       print "PLUGIN before_drop_triggers\n";
+   }
+
+   sub before_die {
+      my ($self, %args) = @_;
+      print "PLUGIN before_die\n";
    }
 
    sub before_exit {

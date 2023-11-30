@@ -30,10 +30,10 @@ type ServerStatus struct {
 }
 
 type StorageEngine struct {
-	Name                  string `bson:"name"`
-	SupportCommittedREads bool   `bson:supportsCommittedReads"`
-	ReadOnly              bool   `bson:"readOnly"`
-	Persistent            bool   `bson:"persistent"`
+	Name                   string `bson:"name"`
+	SupportsCommittedReads bool   `bson:"supportsCommittedReads"`
+	ReadOnly               bool   `bson:"readOnly"`
+	Persistent             bool   `bson:"persistent"`
 }
 
 // WiredTiger stores information related to the WiredTiger storage engine.

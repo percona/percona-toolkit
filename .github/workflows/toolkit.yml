@@ -25,9 +25,9 @@ jobs:
       run: cd src/go; make linux-amd64; cd ../../
 
     - name: Build the Docker image
-      run: echo "FROM oraclelinux:9-slim" > Dockerfile; echo "COPY bin/* /usr/bin/" >> Dockerfile; docker build . --file Dockerfile --tag percona-toolkit:${{ github.sha }}
+      run: echo "FROM oraclelinux:9-slim" > Dockerfile; echo "RUN microdnf -y update" >> Dockerfile; echo "COPY bin/* /usr/bin/" >> Dockerfile; docker build . --file Dockerfile --tag percona-toolkit:${{ github.sha }}
     - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@0.12.0
+      uses: aquasecurity/trivy-action@0.14.0
       with:
           image-ref: 'percona-toolkit:${{ github.sha }}'
           format: 'table'
