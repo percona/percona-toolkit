@@ -10,6 +10,7 @@ extend-exclude = [
     "util/pod2rst-fixed.packed",
     # For now
     "t/",
+    "**/*_test.go",
 ]
 ignore-hidden = false
 
