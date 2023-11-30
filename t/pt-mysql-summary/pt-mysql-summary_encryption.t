@@ -97,6 +97,35 @@ like(
    "Security works"
 );
 
+#
+# SQL Mode ANSI_QUOTES
+#
+
+my ($orig_sql_mode) = $master_dbh->selectrow_array(q{SELECT @@SQL_MODE});
+$master_dbh->do("SET GLOBAL SQL_MODE='ANSI_QUOTES'");
+
+$out = `$env $trunk/bin/$tool --sleep 1 --databases mysql 2>/dev/null -- --defaults-file=/tmp/12345/my.sandbox.cnf`;
+
+like(
+   $out,
+   qr/Database Tables Views SPs Trigs Funcs   FKs Partn\s+\Qmysql\E/,
+   "--databases works with SQL Mode ANSI_QUOTES"
+);
+
+like(
+   $out,
+   qr/# InnoDB #.*Version.*# MyISAM #/s,
+   "InnoDB section present with SQL Mode ANSI_QUOTES"
+);
+
+like(
+   $out,
+   qr/Users \| 2/,
+   "Security works with SQL Mode ANSI_QUOTES"
+);
+
+$master_dbh->do("SET GLOBAL SQL_MODE='${orig_sql_mode}'");
+
 # --read-samples
 for my $i (2..9) {
    ok(

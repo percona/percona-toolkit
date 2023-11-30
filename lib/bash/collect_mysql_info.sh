@@ -135,9 +135,9 @@ collect_mysql_processlist () {
 collect_mysql_users () {
 # The where clause has been added to skip listing MySQL 8+ roles as users.
 # ROLES are locked accounts, without passwords and expired.
-   $CMD_MYSQL $EXT_ARGV -ss -e 'SELECT COUNT(*), SUM(user=""), SUM(password=""), SUM(password NOT LIKE "*%") FROM mysql.user' 2>/dev/null
+   $CMD_MYSQL $EXT_ARGV -ss -e "SELECT COUNT(*), SUM(user=''), SUM(password=''), SUM(password NOT LIKE '*%') FROM mysql.user" 2>/dev/null
    if [ "$?" -ne 0 ]; then
-       $CMD_MYSQL $EXT_ARGV -ss -e 'SELECT COUNT(*), SUM(user=""), SUM(authentication_string=""), SUM(authentication_string NOT LIKE "*%") FROM mysql.user WHERE account_locked <> "Y" AND password_expired <> "Y" AND authentication_string <> ""' 2>/dev/null
+       $CMD_MYSQL $EXT_ARGV -ss -e "SELECT COUNT(*), SUM(user=''), SUM(authentication_string=''), SUM(authentication_string NOT LIKE '*%') FROM mysql.user WHERE account_locked <> 'Y' AND password_expired <> 'Y' AND authentication_string <> ''" 2>/dev/null
    fi
 }
 
@@ -168,7 +168,7 @@ collect_internal_vars () {
    local mysqld_executables="${1:-""}"
 
    local FNV_64=""
-   if $CMD_MYSQL $EXT_ARGV -e 'SELECT FNV_64("a")' >/dev/null 2>&1; then
+   if $CMD_MYSQL $EXT_ARGV -e "SELECT FNV_64('a')" >/dev/null 2>&1; then
       FNV_64="Enabled";
    else
       FNV_64="Unknown";
@@ -215,7 +215,7 @@ collect_internal_vars () {
 }
 
 collect_keyring_plugins() {
-    $CMD_MYSQL $EXT_ARGV --table -ss -e 'SELECT PLUGIN_NAME, PLUGIN_STATUS FROM INFORMATION_SCHEMA.PLUGINS WHERE PLUGIN_NAME LIKE "keyring%";'
+    $CMD_MYSQL $EXT_ARGV --table -ss -e "SELECT PLUGIN_NAME, PLUGIN_STATUS FROM INFORMATION_SCHEMA.PLUGINS WHERE PLUGIN_NAME LIKE 'keyring%';"
 }
 
 collect_encrypted_tables() {
