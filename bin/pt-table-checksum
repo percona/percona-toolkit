@@ -10653,11 +10653,13 @@ sub main {
                  for my $slave_to_skip (@$slaves_to_skip) {
                      my $h_eq_h = $slave->{dsn}->{h} eq $slave_to_skip->{h};
                      my $p_eq_p;
-                     if (defined($slave->{dsn}->{P}) || defined($slave_to_skip->{P})) {
-                       $p_eq_p = $slave->{dsn}->{P} eq $slave_to_skip->{P};
-                     } else {
+                     if (!defined($slave->{dsn}->{P}) && !defined($slave_to_skip->{P}) ) {
                        PTDEBUG && _d("Both port DSNs are undefined, setting p_eq_p to true");
                        $p_eq_p = 1;
+                     } else {
+                        my $skip_slave_port = defined($slave_to_skip->{P})
+                           ? $slave_to_skip->{P} : '3306';
+                        $p_eq_p = $slave->{dsn}->{P} eq $skip_slave_port;
                      }
                      if ($h_eq_h && $p_eq_p) {
                          $found=1;
@@ -10955,11 +10957,11 @@ sub main {
    # the user does --chunk-size-limit=0 to disable the 1st, documented
    # purpose because, apparently, they're using non-unique indexes and
    # they don't care about potentially large chunks.  But disabling the
-   # 1st purpose adversely affects the 2nd purpose becuase 0 * the chunk size
+   # 1st purpose adversely affects the 2nd purpose because 0 * the chunk size
    # will always be zero, so tables will only be single-chunked if EXPLAIN
    # says there are 0 rows, but sometimes EXPLAIN says there is 1 row
    # even when the table is empty.  This wouldn't matter except that nibbling
-   # an empty table doesn't currently work becuase there are no boundaries,
+   # an empty table doesn't currently work because there are no boundaries,
    # so no checksum is written for the empty table.  To fix this and
    # preserve the two purposes of this option, usages of the 2nd purpose
    # do || 1 so the limit is never 0 and empty tables are single-chunked.

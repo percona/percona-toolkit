@@ -40,9 +40,13 @@ my $master_dsn = 'h=127.0.0.1,P=12345,u=msandbox,p=msandbox';
 my $slave_dsn1 = 'h=127.0.0.1,P=12346,u=msandbox,p=msandbox';
 my $slave_dsn2 = 'h=127.0.0.1,P=12347,u=msandbox,p=msandbox';
 my $sample = "t/pt-online-schema-change/samples";
+my ($orig_master_info_repository) = $slave_dbh1->selectrow_array(q{SELECT @@master_info_repository});
+my ($orig_relay_log_info_repository) = $slave_dbh1->selectrow_array(q{SELECT @@relay_log_info_repository});
 
 $slave_dbh1->do("stop slave");
 $slave_dbh1->do("reset slave all");
+$slave_dbh1->do("SET GLOBAL master_info_repository='TABLE'");
+$slave_dbh1->do("SET GLOBAL relay_log_info_repository='TABLE'");
 $slave_dbh1->do("CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=12345, MASTER_USER = 'msandbox', MASTER_PASSWORD='msandbox' FOR CHANNEL 'channel1';");
 $slave_dbh1->do("start slave");
 
@@ -74,6 +78,8 @@ like(
 $slave_dbh1->do('STOP SLAVE');
 $master_dbh->do("RESET MASTER");
 $slave_dbh1->do('RESET SLAVE ALL');
+$slave_dbh1->do("SET GLOBAL master_info_repository='${orig_master_info_repository}'");
+$slave_dbh1->do("SET GLOBAL relay_log_info_repository='${orig_relay_log_info_repository}'");
 $slave_dbh1->do("CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=12345, MASTER_USER = 'msandbox', MASTER_PASSWORD='msandbox';");
 $slave_dbh1->do('START SLAVE');
 
