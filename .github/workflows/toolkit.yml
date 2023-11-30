@@ -22,6 +22,8 @@ jobs:
       
     - name: Build the Docker image
       run: echo "FROM oraclelinux:9-slim" > Dockerfile; echo "COPY bin/* /usr/bin/" >> Dockerfile; docker build . --file Dockerfile --tag percona-toolkit:${{ github.sha }}
+    - name: Update the libraries
+      run: yum -y update
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@0.11.2
       with:
