@@ -36,6 +36,7 @@ extend-ignore-re = [
 "EXPLAINed" = "EXPLAINed"
 "FH_ND_FILE" = "FH_ND_FILE"
 "INSERTs" = "INSERTs"
+"IST" = "IST"
 "JOINed" = "JOINed"
 "MERCHANTIBILITY" = "MERCHANTIBILITY"
 "ND" = "ND"
