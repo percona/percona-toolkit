@@ -84,7 +84,26 @@ like(
    'Created the sentinel OK'
 );
 
-diag(`rm -f $sentinel`);
+# Test --unstop, which removes the sentinel
+$output = output(
+   sub { pt_archiver::main("--source", "D=test,t=table_1,F=$cnf",
+      qw(--where 1=1 --why-quit --purge),
+      "--sentinel", $sentinel, "--unstop")
+   },
+);
+
+like(
+   $output,
+   qr/Successfully removed file $sentinel/,
+   'Removed the sentinel OK'
+) or diag($output);
+
+$output = `/tmp/12345/use -N -e "select count(*) from test.table_1"`;
+is(
+   $output + 0,
+   0,
+   'Rows were deleted'
+) or diag($output);
 
 # #############################################################################
 # Issue 391: Add --pid option to mk-table-sync

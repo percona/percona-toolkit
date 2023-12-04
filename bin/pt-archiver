@@ -6240,6 +6240,14 @@ sub main {
       return 0;
    }
 
+   # Remove sentinel file.
+   if ( $o->get('unstop') ) {
+      unlink $sentinel 
+         or die "Cannot unlink sentinel file ${sentinel}: $OS_ERROR\n";
+      print STDOUT "Successfully removed file $sentinel\n"
+         unless $quiet;
+   }
+
    # Generate a filename with sprintf-like formatting codes.
    if ( $archive_file ) {
       my @time = localtime();
@@ -8347,7 +8355,7 @@ Stop running instances by creating the sentinel file.
 
 Causes pt-archiver to create the sentinel file specified by L<"--sentinel"> and
 exit.  This should have the effect of stopping all running instances which are
-watching the same sentinel file.
+watching the same sentinel file. See also L<"--unstop">.
 
 =item --txn-size
 
@@ -8373,6 +8381,13 @@ autocommit, dropped performance to 38 seconds per thousand rows.
 
 If you are not archiving from or to a transactional storage engine, you may
 want to disable transactions so pt-archiver doesn't try to commit.
+
+=item --unstop
+
+Remove sentinel file
+
+Causes pt-archiver to remove the sentinel file specified by L<"--sentinel"> and
+continue. See also L<"--stop">.
 
 =item --user
 
