@@ -4,16 +4,20 @@ v3.5.6 released 2023-12-
 
 * Feature PR-669: Add pt-galera-log-explainer
 * Improvement PT-1860: pt-osc case sensitivity issue (Thanks to Ivan Kruglov for the contribution)
-* Improvement PR-691: Fix newly discovered typos (Thanks to Viktor Szépe for the contribution)
-* Improvement PR-681: Introduce EditorConfig (Thanks to Viktor Szépe for the contribution)
+* Improvement PR-388: Check undefined skip check slave lag schema change (Thanks to Chrys Swingler for the contribution)
+* Improvement PR-471: Support adding explain output for slow query in JSON
+report as well (Thanks to Ayush Goyal for the contribution)
 * Improvement PR-509: added new hook before_die (Thanks to Ilaria Migliozzi for the contribution)
+* Improvement PR-604: Only rollback destination if it's defined (Thanks to Jakob for the contribution)
+* Improvement PR-681: Introduce EditorConfig (Thanks to Viktor Szépe for the contribution)
+* Improvement PR-691: Fix newly discovered typos (Thanks to Viktor Szépe for the contribution)
 * Improvement PR-706: Follow PR-429 unstop option with testcase (Thanks to fraff for the contribution)
-* Improvement PR-720: build Go tools from top Makefile (Thanks to Sami Ahlroos and Yoann La Cancellera for the contribution)
-* Improvement PR-716: Make OrderedBy not exported (Thanks to Viktor Szépe for the contribution)
-* Improvement PR-715: Fix variable collision with imported package name (Thanks to Viktor Szépe for the contribution)
-* Improvement PR-714: Fix MongoDB Security (Thanks to Viktor Szépe for the contribution)
-* Improvement PR-713: Fix MongoDB StorageEngine (Thanks to Viktor Szépe for the contribution)
 * Improvement PR-712: ARM64 support for macOS
+* Improvement PR-713: Fix MongoDB StorageEngine (Thanks to Viktor Szépe for the contribution)
+* Improvement PR-714: Fix MongoDB Security (Thanks to Viktor Szépe for the contribution)
+* Improvement PR-715: Fix variable collision with imported package name (Thanks to Viktor Szépe for the contribution)
+* Improvement PR-716: Make OrderedBy not exported (Thanks to Viktor Szépe for the contribution)
+* Improvement PR-720: build Go tools from top Makefile (Thanks to Sami Ahlroos and Yoann La Cancellera for the contribution)
 * Fixed bug PT-2064: pt-archiver: Can't call method "rollback" on an undefined value (Thanks to Jakob for the contribution)
 * --Fixed bug PT-2083: Pt-archiver --charset option is not working for MySQL8.0
 * Fixed bug PT-2109: pt-mysql-summary throws an error when using sql_mode="ANSI_QUOTES"
