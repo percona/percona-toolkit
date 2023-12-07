@@ -67,7 +67,7 @@ unlike(
 unlike(
    $output,
    qr/Cannot open :encoding(utf8mb4)/,
-   'Destination file can be read if encoding utf8mb4 is used'
+   'Destination file can be read if encodin utf8mb4 is used'
 ) or diag($output);
 
 # #############################################################################
