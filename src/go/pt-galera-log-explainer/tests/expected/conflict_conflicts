@@ -1,0 +1,7 @@
+[0034mseqno: [0000m102573168
+	[0034mwinner: [0000m0000000000000000
+	[0034mvotes per nodes:[0000m
+		[0034mnode1[0000m: ([0031mcd3bd7de926232d8[0000m) File '/var/log/mysqld-slow.log' not found (OS errno 13 - Permission denied)
+		[0034mnode2[0000m: ([0032m0000000000000000[0000m) Success
+		[0034mnode3[0000m: ([0032m0000000000000000[0000m) Success
+	[0034minitiated by: [0000m[node1]
