@@ -19,7 +19,7 @@ report as well (Thanks to Ayush Goyal for the contribution)
 * Improvement PR-716: Make OrderedBy not exported (Thanks to Viktor Szépe for the contribution)
 * Improvement PR-720: build Go tools from top Makefile (Thanks to Sami Ahlroos and Yoann La Cancellera for the contribution)
 * Fixed bug PT-2064: pt-archiver: Can't call method "rollback" on an undefined value (Thanks to Jakob for the contribution)
-* --Fixed bug PT-2083: Pt-archiver --charset option is not working for MySQL8.0
+* Fixed bug PT-2083: Pt-archiver --charset option is not working for MySQL8.0
 * Fixed bug PT-2109: pt-mysql-summary throws an error when using sql_mode="ANSI_QUOTES"
 * Fixed bug PT-2207: pt-archiver doesn't work when ANSI_QUOTES is set in sql_mode
 * Fixed bug PT-2211: This pstack return error code line number (Thanks to Zongzhi Chen for the contribution)
@@ -27,7 +27,7 @@ report as well (Thanks to Ayush Goyal for the contribution)
 * Fixed bug PT-2277: pt-visual-explain errors out on some valid inputs (Thanks to Jason Ng for the contribution)
 * Fixed bug PT-2279: Option --charset is confusing when set to utf8mb4
 * Fixed bug PT-2281: provide container name for copying files in the dump
-* --Fixed bug PT-2286: CVE reported in Percona Toolkit version 3.5.5 related to GO (Thanks to Kushal Haldar for reporting this issue)
+* Fixed bug PT-2286: CVE reported in Percona Toolkit version 3.5.5 related to GO (Thanks to Kushal Haldar for reporting this issue)
 
 v3.5.5 released 2023-10-03
 
