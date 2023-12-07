@@ -33,41 +33,47 @@ $sb->wipe_clean($dbh);
 $sb->create_dbs($dbh, ['test']);
 
 # Test --bulk-insert
-$sb->load_file('master', 't/pt-archiver/samples/pt-2279.sql');
+$sb->load_file('master', 't/pt-archiver/samples/pt-2083.sql');
 
 $output = output(
-   sub { pt_archiver::main(qw(--limit 50 --bulk-insert),
-      qw(--bulk-delete --where 1=1 --statistics --charset utf8mb4),
+   sub { pt_archiver::main(qw(--commit-each --where 1=1 --statistics --charset latin1),
       '--source', "L=1,D=test,t=table_1,F=$cnf",
       '--dest',   "t=table_1_dest") },
 );
 
 unlike(
    $output,
-   qr/Cannot find encoding "utf8mb4"/,
-   'Bulk insert does not fail due to missing utf8mb4'
+   qr/Character set mismatch/,
+   'No character set mismatch error'
 ) or diag($output);
 
+my @copied = $dbh->selectrow_array('SELECT c1 FROM test.table_1_dest');
+
+like(
+   $copied[0],
+   qr/I love MySQL!/,
+   'Rows copied into the table successfully'
+) or diag($copied[0]);
+
 # Test --file
-$sb->load_file('master', 't/pt-archiver/samples/pt-2279.sql');
+$sb->load_file('master', 't/pt-archiver/samples/pt-2083.sql');
 
 $output = output(
-   sub { pt_archiver::main(qw(--limit 50),
-      qw(--where 1=1 --statistics --charset utf8mb4),
+   sub { pt_archiver::main(qw(--where 1=1 --statistics --charset latin1),
       '--source', "L=1,D=test,t=table_1,F=$cnf",
       '--file',   '/tmp/%Y-%m-%d-%D_%H:%i:%s.%t') },
 );
 
 unlike(
    $output,
-   qr/Cannot find encoding "utf8mb4"/,
-   'Destination file does not fail due to missing utf8mb4'
+   qr/Character set mismatch/,
+   'No character set mismatch error'
 ) or diag($output);
 
-unlike(
-   $output,
-   qr/Cannot open :encoding(utf8mb4)/,
-   'Destination file can be read if encoding utf8mb4 is used'
+like(
+   `cat /tmp/*.table_1`,
+   qr/I love MySQL!/,
+   'Rows copied into the file successfully'
 ) or diag($output);
 
 # #############################################################################
