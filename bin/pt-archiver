@@ -6368,11 +6368,11 @@ sub main {
       }
 
       my ($dbh_version) =  $dbh->selectrow_array("SELECT version()");
-      #if ($dbh_version =~ m/^(\d+\.\d+)\.\d+.*/ && $1 ge '8.0' && !$o->get('charset')) {
-      if ($dbh_version =~ m/^(\d+\.\d+)\.\d+.*/ && $1 ge '8.0') {
+      if ( $dbh_version =~ m/^(\d+\.\d+)\.\d+.*/ && $1 ge '8.0' && !$got_charset ) {
          PTDEBUG && _d("MySQL 8.0+ detected and charset was not specified.\n Setting character_set_client = utf8mb4 and --charset=utf8");
          $dbh->do('/*!40101 SET character_set_connection = utf8mb4 */;');
-         $o->set('charset', 'utf8');
+      } elsif ( $got_charset ) {
+         $dbh->do("/*!40101 SET character_set_connection = ${got_charset} */;");
       }
 
       $table->{dbh}  = $dbh;
