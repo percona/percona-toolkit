@@ -23,7 +23,7 @@ report as well (Thanks to Ayush Goyal for the contribution)
 * Fixed bug PT-2109: pt-mysql-summary throws an error when using sql_mode="ANSI_QUOTES"
 * Fixed bug PT-2207: pt-archiver doesn't work when ANSI_QUOTES is set in sql_mode
 * Fixed bug PT-2211: This pstack return error code line number (Thanks to Zongzhi Chen for the contribution)
-* --Fixed bug PT-2268: pt-online-schema-change 3.5.5 breaks on mysql5.7 with server_id 0
+* Fixed bug PT-2268: pt-online-schema-change 3.5.5 breaks on mysql5.7 with server_id 0
 * Fixed bug PT-2277: pt-visual-explain errors out on some valid inputs (Thanks to Jason Ng for the contribution)
 * Fixed bug PT-2279: Option --charset is confusing when set to utf8mb4
 * Fixed bug PT-2281: provide container name for copying files in the dump
