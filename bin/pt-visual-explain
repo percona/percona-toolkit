@@ -330,7 +330,7 @@ sub transform {
    # Dispatch to a class method to generate the tree.
    # ##################################################################
    my $no_matching_row = join('|',
-      "Impossible (?:WHERE|HAVING)(?: noticed after reading const tables)?",
+      "Impossible (?:WHERE|HAVING|ON)(?: noticed after reading const tables| condition)?",
       'No matching.*row',
       '(?:unique|const) row not found',
    );
@@ -499,6 +499,13 @@ sub ref_or_null {
 
 sub const {
    my ( $self, $row ) = @_;
+   if ( !$row->{key} ) {
+      return {
+         type => 'Constant table access',
+         rows => $row->{rows},
+         children => [$self->table($row)]
+      }
+   }
    return $self->index_access($row, 'Constant index lookup');
 }
 

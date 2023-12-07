@@ -4,11 +4,13 @@ extend-exclude = [
     "sandbox/sakila.sql",
     "sandbox/sakila-db/",
     "sandbox/servers/",
+    "src/go/pt-galera-log-explainer/tests/",
     "src/go/pt-secure-collect/testdata/",
     "util/NaturalDocs/",
     "util/pod2rst-fixed.packed",
     # For now
     "t/",
+    "**/*_test.go",
 ]
 ignore-hidden = false
 
@@ -30,12 +32,15 @@ extend-ignore-re = [
 ]
 
 [default.extend-identifiers]
+"Bootstraping" = "Bootstraping" # typo in Galera lib
 "Continuent" = "Continuent"
 "END_ND_SUMMARY" = "END_ND_SUMMARY"
 "END_ND_TOOLTIPS" = "END_ND_TOOLTIPS"
 "EXPLAINed" = "EXPLAINed"
 "FH_ND_FILE" = "FH_ND_FILE"
 "INSERTs" = "INSERTs"
+"IST" = "IST"
+"istError" = "istError"
 "JOINed" = "JOINed"
 "MERCHANTIBILITY" = "MERCHANTIBILITY"
 "ND" = "ND"
@@ -46,8 +51,16 @@ extend-ignore-re = [
 "NDOnResize" = "NDOnResize"
 "NULLable" = "NULLable"
 "O_WRONLY" = "O_WRONLY"
+"receving" = "receving" # typo in Galera lib
+"RegexFailedToPrepareIST" = "RegexFailedToPrepareIST"
+"RegexISTFailed" = "RegexISTFailed"
+"RegexISTReceived" = "RegexISTReceived"
+"RegexISTReceiver" = "RegexISTReceiver"
+"RegexISTSender" = "RegexISTSender"
+"RegexXtrabackupISTReceived" = "RegexXtrabackupISTReceived"
 "START_ND_SUMMARY" = "START_ND_SUMMARY"
 "START_ND_TOOLTIPS" = "START_ND_TOOLTIPS"
 "TOI" = "TOI"
 "UNIONed" = "UNIONed"
 "UNIONs" = "UNIONs"
+"xtrabackup_ist" = "xtrabackup_ist"

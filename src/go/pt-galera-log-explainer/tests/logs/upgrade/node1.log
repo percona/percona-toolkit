@@ -1,0 +1,579 @@
+2023-03-12T19:35:05.838493Z 0 [Warning] [MY-011068] [Server] The syntax 'expire-logs-days' is deprecated and will be removed in a future release. Please use binlog_expire_logs_seconds instead.
+2023-03-12T19:35:05.838511Z 0 [Warning] [MY-011069] [Server] The syntax '--master-info-repository' is deprecated and will be removed in a future release.
+2023-03-12T19:35:05.838518Z 0 [Warning] [MY-011069] [Server] The syntax '--relay-log-info-repository' is deprecated and will be removed in a future release.
+2023-03-12T19:35:05.838549Z 0 [Warning] [MY-011069] [Server] The syntax '--relay-log-info-repository' is deprecated and will be removed in a future release.
+2023-03-12T19:35:05.838559Z 0 [Warning] [MY-011068] [Server] The syntax 'log_slave_updates' is deprecated and will be removed in a future release. Please use log_replica_updates instead.
+2023-03-12T19:35:05.838567Z 0 [Warning] [MY-011068] [Server] The syntax 'skip_slave_start' is deprecated and will be removed in a future release. Please use skip_replica_start instead.
+2023-03-12T19:35:05.838584Z 0 [Warning] [MY-011068] [Server] The syntax 'wsrep_slave_threads' is deprecated and will be removed in a future release. Please use wsrep_applier_threads instead.
+2023-03-12T19:35:05.840728Z 0 [Note] [MY-010949] [Server] Basedir set to /usr/.
+2023-03-12T19:35:05.840743Z 0 [System] [MY-010116] [Server] /usr/sbin/mysqld (mysqld 8.0.28-19.1) starting as process 2070978
+2023-03-12T19:35:05.841616Z 0 [Warning] [MY-013242] [Server] --character-set-server: 'utf8' is currently an alias for the character set UTF8MB3, but will be an alias for UTF8MB4 in a future release. Please consider using UTF8MB4 in order to be unambiguous.
+2023-03-12T19:35:05.841622Z 0 [Warning] [MY-013244] [Server] --collation-server: 'utf8_general_ci' is a collation of the deprecated character set UTF8MB3. Please consider using UTF8MB4 with an appropriate collation instead.
+2023-03-12T19:35:05.846622Z 0 [Note] [MY-010182] [Server] Found ca.pem, server-cert.pem and server-key.pem in data directory. Trying to enable SSL support using them.
+2023-03-12T19:35:05.846740Z 0 [Note] [MY-010304] [Server] Skipping generation of SSL certificates as certificate files are present in data directory.
+2023-03-12T19:35:05.848442Z 0 [Warning] [MY-010068] [Server] CA certificate ca.pem is self signed.
+2023-03-12T19:35:05.848473Z 0 [System] [MY-013602] [Server] Channel mysql_main configured to support TLS. Encrypted connections are now supported for this channel.
+2023-03-12T19:35:05.848484Z 0 [Note] [MY-000000] [WSREP] New joining cluster node configured to use specified SSL artifacts
+2023-03-12T19:35:05.848525Z 0 [Note] [MY-000000] [Galera] Loading provider /usr/lib64/libgalera_smm.so initial position: 9db0bcdf-b31a-11ed-a398-2a4cfdd82049:170403896
+2023-03-12T19:35:05.848542Z 0 [Note] [MY-000000] [Galera] wsrep_load(): loading provider library '/usr/lib64/libgalera_smm.so'
+2023-03-12T19:35:05.851530Z 0 [Note] [MY-000000] [Galera] wsrep_load(): Galera 4.11(a9008fc) by Codership Oy <info@codership.com> (modified by Percona <https://percona.com/>) loaded successfully.
+2023-03-12T19:35:05.851570Z 0 [Note] [MY-000000] [Galera] CRC-32C: using 64-bit x86 acceleration.
+2023-03-12T19:35:05.852131Z 0 [Note] [MY-000000] [Galera] Found saved state: 9db0bcdf-b31a-11ed-a398-2a4cfdd82049:170403896, safe_to_bootstrap: 0
+2023-03-12T19:35:05.853307Z 0 [Note] [MY-000000] [Galera] GCache DEBUG: opened preamble:
+Version: 0
+UUID: 00000000-0000-0000-0000-000000000000
+Seqno: -1 - -1
+Offset: -1
+Synced: 0
+2023-03-12T19:35:05.853332Z 0 [Note] [MY-000000] [Galera] Skipped GCache ring buffer recovery: could not determine history UUID.
+2023-03-12T19:35:05.859104Z 0 [Warning] [MY-000000] [Galera] Option 'gcs.fc_master_slave' is deprecated and will be removed in the future versions, please use 'gcs.fc_single_primary' instead. 
+2023-03-12T19:35:05.859705Z 0 [Note] [MY-000000] [Galera] Passing config to GCS: base_dir = /var/lib/mysql; base_host = 172.17.0.2; base_port = 4567; cert.log_conflicts = no; cert.optimistic_pa = no; debug = no; evs.auto_evict = 0; evs.delay_margin = PT1S; evs.delayed_keep_period = PT30S; evs.inactive_check_period = PT0.5S; evs.inactive_timeout = PT15S; evs.join_retrans_period = PT1S; evs.max_install_timeouts = 3; evs.send_window = 10; evs.stats_report_period = PT1M; evs.suspect_timeout = PT5S; evs.user_send_window = 4; evs.view_forget_timeout = PT24H; gcache.dir = /var/lib/mysql; gcache.freeze_purge_at_seqno = -1; gcache.keep_pages_count = 0; gcache.keep_pages_size = 0; gcache.mem_size = 0; gcache.name = galera.cache; gcache.page_size = 128M; gcache.recover = yes; gcache.size = 50G; gcomm.thread_prio = ; gcs.fc_debug = 0; gcs.fc_factor = 1.0; gcs.fc_limit = 100; gcs.fc_master_slave = no; gcs.fc_single_primary = no; gcs.max_packet_size = 64500; gcs.max_throttle = 0.25; gcs.recv_q_hard_limit = 9223372036854775807; gcs.recv_q_soft_limit = 0.25; gcs.sync_donor = no; gmcast.segment = 0; gmcast.version = 0; pc.announce_timeout = PT3S; pc.checksum = false; pc.ignore_quorum = false; pc.ignore_sb = false; pc.npvo = false; pc.recovery = true; pc.version = 0; pc.wait_prim = true; pc.wait_prim_timeout = PT30S; pc.weight = 1; protonet.backend = asio; protonet.version = 0; repl.causal_read_timeout = PT30S; repl.commit_order = 3; repl.key_format = FLAT8; repl.max_ws_size = 2147483647; repl.proto_max = 10; socket.checksum = 2; socket.recv_buf_size = auto; socket.send_buf_size = auto; socket.ssl = YES; socket.ssl_ca = ca.pem; socket.ssl_cert = server-cert.pem; socket.ssl_cipher = ; socket.ssl_compression = YES; socket.ssl_key = server-key.pem; socket.ssl_reload = 1; 
+2023-03-12T19:35:05.871746Z 0 [Note] [MY-000000] [Galera] Service thread queue flushed.
+2023-03-12T19:35:05.871808Z 0 [Note] [MY-000000] [Galera] ####### Assign initial position for certification: 9db0bcdf-b31a-11ed-a398-2a4cfdd82049:170403896, protocol version: -1
+2023-03-12T19:35:05.871835Z 0 [Note] [MY-000000] [Galera] GCache history reset: 00000000-0000-0000-0000-000000000000:0 -> 9db0bcdf-b31a-11ed-a398-2a4cfdd82049:170403896
+2023-03-12T19:35:05.873848Z 0 [Note] [MY-000000] [WSREP] Starting replication
+2023-03-12T19:35:05.873867Z 0 [Note] [MY-000000] [Galera] Connecting with bootstrap option: 0
+2023-03-12T19:35:05.873881Z 0 [Note] [MY-000000] [Galera] Setting GCS initial position to 9db0bcdf-b31a-11ed-a398-2a4cfdd82049:170403896
+2023-03-12T19:35:05.873923Z 0 [Note] [MY-000000] [Galera] protonet asio version 0
+2023-03-12T19:35:05.874250Z 0 [Note] [MY-000000] [Galera] Using CRC-32C for message checksums.
+2023-03-12T19:35:05.874274Z 0 [Note] [MY-000000] [Galera] backend: asio
+2023-03-12T19:35:05.874373Z 0 [Note] [MY-000000] [Galera] gcomm thread scheduling priority set to other:0 
+2023-03-12T19:35:05.874454Z 0 [Warning] [MY-000000] [Galera] Fail to access the file (/var/lib/mysql/gvwstate.dat) error (No such file or directory). It is possible if node is booting for first time or re-booting after a graceful shutdown
+2023-03-12T19:35:05.874468Z 0 [Note] [MY-000000] [Galera] Restoring primary-component from disk failed. Either node is booting for first time or re-booting after a graceful shutdown
+2023-03-12T19:35:05.874589Z 0 [Note] [MY-000000] [Galera] GMCast version 0
+2023-03-12T19:35:05.874692Z 0 [Note] [MY-000000] [Galera] (ca2c2a5f-a82a, 'ssl://0.0.0.0:4567') listening at ssl://0.0.0.0:4567
+2023-03-12T19:35:05.874702Z 0 [Note] [MY-000000] [Galera] (ca2c2a5f-a82a, 'ssl://0.0.0.0:4567') multicast: , ttl: 1
+2023-03-12T19:35:05.874881Z 0 [Note] [MY-000000] [Galera] EVS version 1
+2023-03-12T19:35:05.874938Z 0 [Note] [MY-000000] [Galera] gcomm: connecting to group 'pxc_cluster', peer '172.17.0.2:,172.17.0.3:,172.17.0.4:'
+2023-03-12T19:35:05.878714Z 0 [Note] [MY-000000] [Galera] (ca2c2a5f-a82a, 'ssl://0.0.0.0:4567') Found matching local endpoint for a connection, blacklisting address ssl://172.17.0.2:4567
+2023-03-12T19:35:05.881164Z 0 [Note] [MY-000000] [Galera] (ca2c2a5f-a82a, 'ssl://0.0.0.0:4567') connection established to 7026494c-a649 ssl://172.17.0.3:4567
+2023-03-12T19:35:05.881223Z 0 [Note] [MY-000000] [Galera] (ca2c2a5f-a82a, 'ssl://0.0.0.0:4567') turning message relay requesting on, nonlive peers: 
+2023-03-12T19:35:05.896920Z 0 [Note] [MY-000000] [Galera] (ca2c2a5f-a82a, 'ssl://0.0.0.0:4567') connection established to 0509936f-8cc2 ssl://172.17.0.4:4567
+2023-03-12T19:35:05.897109Z 0 [Note] [MY-000000] [Galera] (ca2c2a5f-a82a, 'ssl://0.0.0.0:4567') connection established to 0509936f-8cc2 ssl://172.17.0.4:4567
+2023-03-12T19:35:06.375965Z 0 [Note] [MY-000000] [Galera] EVS version upgrade 0 -> 1
+2023-03-12T19:35:06.376012Z 0 [Note] [MY-000000] [Galera] declaring 0509936f-8cc2 at ssl://172.17.0.4:4567 stable
+2023-03-12T19:35:06.376026Z 0 [Note] [MY-000000] [Galera] declaring 7026494c-a649 at ssl://172.17.0.3:4567 stable
+2023-03-12T19:35:06.376044Z 0 [Note] [MY-000000] [Galera] PC protocol upgrade 0 -> 1
+2023-03-12T19:35:06.376304Z 0 [Note] [MY-000000] [Galera] Node 0509936f-8cc2 state primary
+2023-03-12T19:35:06.376551Z 0 [Note] [MY-000000] [Galera] Current view of cluster as seen by this node
+view (view_id(PRIM,0509936f-8cc2,9)
+memb {
+	0509936f-8cc2,0
+	7026494c-a649,0
+	ca2c2a5f-a82a,0
+	}
+joined {
+	}
+left {
+	}
+partitioned {
+	}
+)
+2023-03-12T19:35:06.376568Z 0 [Note] [MY-000000] [Galera] Save the discovered primary-component to disk
+2023-03-12T19:35:06.875414Z 0 [Note] [MY-000000] [Galera] gcomm: connected
+2023-03-12T19:35:06.875464Z 0 [Note] [MY-000000] [Galera] Changing maximum packet size to 64500, resulting msg size: 32636
+2023-03-12T19:35:06.875619Z 0 [Note] [MY-000000] [Galera] Shifting CLOSED -> OPEN (TO: 0)
+2023-03-12T19:35:06.875634Z 0 [Note] [MY-000000] [Galera] Opened channel 'pxc_cluster'
+2023-03-12T19:35:06.875717Z 0 [Note] [MY-000000] [Galera] New COMPONENT: primary = yes, bootstrap = no, my_idx = 2, memb_num = 3
+2023-03-12T19:35:06.875755Z 0 [Note] [MY-000000] [Galera] STATE EXCHANGE: Waiting for state UUID.
+2023-03-12T19:35:06.875766Z 0 [Warning] [MY-000000] [Galera] Action message in non-primary configuration from member 0
+2023-03-12T19:35:06.875779Z 0 [Warning] [MY-000000] [Galera] Action message in non-primary configuration from member 0
+2023-03-12T19:35:06.875790Z 0 [Warning] [MY-000000] [Galera] Action message in non-primary configuration from member 0
+2023-03-12T19:35:06.875800Z 0 [Warning] [MY-000000] [Galera] Action message in non-primary configuration from member 0
+2023-03-12T19:35:06.875810Z 0 [Warning] [MY-000000] [Galera] Action message in non-primary configuration from member 0
+2023-03-12T19:35:06.875818Z 0 [Warning] [MY-000000] [Galera] Action message in non-primary configuration from member 0
+2023-03-12T19:35:06.875828Z 0 [Warning] [MY-000000] [Galera] Action message in non-primary configuration from member 0
+2023-03-12T19:35:06.875838Z 0 [Warning] [MY-000000] [Galera] Action message in non-primary configuration from member 0
+2023-03-12T19:35:06.875848Z 0 [Warning] [MY-000000] [Galera] Action message in non-primary configuration from member 0
+2023-03-12T19:35:06.875857Z 0 [Warning] [MY-000000] [Galera] Action message in non-primary configuration from member 0
+2023-03-12T19:35:06.875867Z 0 [Warning] [MY-000000] [Galera] Action message in non-primary configuration from member 0
+2023-03-12T19:35:06.875877Z 0 [Warning] [MY-000000] [Galera] Action message in non-primary configuration from member 0
+2023-03-12T19:35:06.875886Z 0 [Warning] [MY-000000] [Galera] Action message in non-primary configuration from member 0
+2023-03-12T19:35:06.875896Z 0 [Warning] [MY-000000] [Galera] Action message in non-primary configuration from member 0
+2023-03-12T19:35:06.875906Z 0 [Warning] [MY-000000] [Galera] Action message in non-primary configuration from member 0
+2023-03-12T19:35:06.875914Z 0 [Warning] [MY-000000] [Galera] Action message in non-primary configuration from member 0
+2023-03-12T19:35:06.875931Z 1 [Note] [MY-000000] [WSREP] Starting rollbacker thread 1
+2023-03-12T19:35:06.875960Z 0 [Note] [MY-000000] [Galera] STATE EXCHANGE: sent state msg: ca7a22c9-dc8d-11ed-964b-af60786b1721
+2023-03-12T19:35:06.875979Z 2 [Note] [MY-000000] [WSREP] Starting applier thread 2
+2023-03-12T19:35:06.876015Z 0 [Note] [MY-000000] [Galera] STATE EXCHANGE: got state msg: ca7a22c9-dc8d-11ed-964b-af60786b1721 from 0 (node3)
+2023-03-12T19:35:06.876043Z 0 [Note] [MY-000000] [Galera] STATE EXCHANGE: got state msg: ca7a22c9-dc8d-11ed-964b-af60786b1721 from 1 (node2)
+2023-03-12T19:35:06.876427Z 0 [Note] [MY-000000] [Galera] STATE EXCHANGE: got state msg: ca7a22c9-dc8d-11ed-964b-af60786b1721 from 2 (node1)
+2023-03-12T19:35:06.876442Z 0 [Note] [MY-000000] [Galera] Quorum results:
+	version    = 6,
+	component  = PRIMARY,
+	conf_id    = 8,
+	members    = 2/3 (primary/total),
+	act_id     = 178226773,
+	last_appl. = 178226713,
+	protocols  = 2/10/4 (gcs/repl/appl),
+	vote policy= 0,
+	group UUID = 9db0bcdf-b31a-11ed-a398-2a4cfdd82049
+2023-03-12T19:35:06.876491Z 0 [Note] [MY-000000] [Galera] Flow-control interval: [173, 173]
+2023-03-12T19:35:06.876501Z 0 [Note] [MY-000000] [Galera] Shifting OPEN -> PRIMARY (TO: 178226774)
+2023-03-12T19:35:06.876554Z 2 [Note] [MY-000000] [Galera] ####### processing CC 178226774, local, ordered
+2023-03-12T19:35:06.876572Z 2 [Note] [MY-000000] [Galera] Maybe drain monitors from 170403896 upto current CC event 178226774 upto:170403896
+2023-03-12T19:35:06.876586Z 2 [Note] [MY-000000] [Galera] Drain monitors from 170403896 up to 170403896
+2023-03-12T19:35:06.876603Z 2 [Note] [MY-000000] [Galera] Process first view: 9db0bcdf-b31a-11ed-a398-2a4cfdd82049 my uuid: ca2c2a5f-dc8d-11ed-a82a-ebad461f7ad9
+2023-03-12T19:35:06.876625Z 2 [Note] [MY-000000] [Galera] Server node1 connected to cluster at position 9db0bcdf-b31a-11ed-a398-2a4cfdd82049:178226774 with ID ca2c2a5f-dc8d-11ed-a82a-ebad461f7ad9
+2023-03-12T19:35:06.876639Z 2 [Note] [MY-000000] [WSREP] Server status change disconnected -> connected
+2023-03-12T19:35:06.876665Z 2 [Note] [MY-000000] [WSREP] wsrep_notify_cmd is not defined, skipping notification.
+2023-03-12T19:35:06.876690Z 2 [Note] [MY-000000] [Galera] ####### My UUID: ca2c2a5f-dc8d-11ed-a82a-ebad461f7ad9
+2023-03-12T19:35:06.876704Z 2 [Note] [MY-000000] [Galera] Cert index reset to 00000000-0000-0000-0000-000000000000:-1 (proto: 10), state transfer needed: yes
+2023-03-12T19:35:06.876736Z 0 [Note] [MY-000000] [Galera] Service thread queue flushed.
+2023-03-12T19:35:06.876764Z 2 [Note] [MY-000000] [Galera] ####### Assign initial position for certification: 00000000-0000-0000-0000-000000000000:-1, protocol version: -1
+2023-03-12T19:35:06.876777Z 2 [Note] [MY-000000] [Galera] State transfer required: 
+	Group state: 9db0bcdf-b31a-11ed-a398-2a4cfdd82049:178226774
+	Local state: 9db0bcdf-b31a-11ed-a398-2a4cfdd82049:170403896
+2023-03-12T19:35:06.876785Z 2 [Note] [MY-000000] [WSREP] Server status change connected -> joiner
+2023-03-12T19:35:06.876795Z 2 [Note] [MY-000000] [WSREP] wsrep_notify_cmd is not defined, skipping notification.
+2023-03-12T19:35:06.876942Z 0 [Note] [MY-000000] [WSREP] Initiating SST/IST transfer on JOINER side (wsrep_sst_xtrabackup-v2 --role 'joiner' --address '172.17.0.2' --datadir '/var/lib/mysql' --basedir '/usr/' --plugindir '/usr/lib64/mysql/plugin/' --defaults-file '/etc/my.cnf' --defaults-group-suffix '' --parent '2070978' --mysqld-version '8.0.28-19.1'   '' )
+2023-03-12T19:35:07.638354Z 2 [Note] [MY-000000] [WSREP] Prepared SST request: xtrabackup-v2|172.17.0.2:4444/xtrabackup_sst//1
+2023-03-12T19:35:07.638410Z 2 [Note] [MY-000000] [Galera] Check if state gap can be serviced using IST
+2023-03-12T19:35:07.638435Z 2 [Note] [MY-000000] [Galera] ####### IST uuid:9db0bcdf-b31a-11ed-a398-2a4cfdd82049 f: 170403897, l: 178226774, STRv: 3
+2023-03-12T19:35:07.638510Z 2 [Note] [MY-000000] [Galera] IST receiver addr using ssl://172.17.0.2:4568
+2023-03-12T19:35:07.638540Z 2 [Note] [MY-000000] [Galera] IST receiver using ssl
+2023-03-12T19:35:07.638676Z 2 [Note] [MY-000000] [Galera] Prepared IST receiver for 170403897-178226774, listening at: ssl://172.17.0.2:4568
+2023-03-12T19:35:07.644638Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:35:07.644668Z 0 [Note] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node'. Selected 0.0 (node3)(SYNCED) as donor.
+2023-03-12T19:35:07.644683Z 0 [Note] [MY-000000] [Galera] Shifting PRIMARY -> JOINER (TO: 178226790)
+2023-03-12T19:35:07.644728Z 2 [Note] [MY-000000] [Galera] Requesting state transfer: success, donor: 0
+2023-03-12T19:35:09.375742Z 0 [Note] [MY-000000] [Galera] (ca2c2a5f-a82a, 'ssl://0.0.0.0:4567') turning message relay requesting off
+2023-03-12T19:36:47.542094Z 0 [Note] [MY-000000] [WSREP-SST] Trying to terminate (2071446) socat -u openssl-listen:4444,reuseaddr,cert=/var/lib/mysqlserver-cert.pem,key=/var/lib/mysqlserver-key.pem,cafile=/var/lib/mysqlca.pem,verify=1,retry=30 stdio | /usr/bin/pxc_extra/pxb-8.0/bin/xbstream -x  with SIGTERM
+2023-03-12T19:36:47.564067Z 0 [Note] [MY-000000] [WSREP-SST] /usr/bin/wsrep_sst_xtrabackup-v2: line 212: 2071448 Exit 143                socat -u openssl-listen:4444,reuseaddr,cert=/var/lib/mysqlserver-cert.pem,key=/var/lib/mysqlserver-key.pem,cafile=/var/lib/mysqlca.pem,verify=1,retry=30 stdio
+2023-03-12T19:36:47.564124Z 0 [Note] [MY-000000] [WSREP-SST]      2071449 Terminated              | /usr/bin/pxc_extra/pxb-8.0/bin/xbstream -x
+2023-03-12T19:36:48.566628Z 0 [ERROR] [MY-000000] [WSREP-SST] ******************* FATAL ERROR ********************** 
+2023-03-12T19:36:48.567087Z 0 [ERROR] [MY-000000] [WSREP-SST] Possible timeout in receving first data from donor in gtid/keyring stage
+2023-03-12T19:36:48.567109Z 0 [ERROR] [MY-000000] [WSREP-SST] Line 1304
+2023-03-12T19:36:48.567118Z 0 [ERROR] [MY-000000] [WSREP-SST] ****************************************************** 
+2023-03-12T19:36:48.567128Z 0 [ERROR] [MY-000000] [WSREP-SST] Cleanup after exit with status:32
+2023-03-12T19:36:48.589084Z 0 [ERROR] [MY-000000] [WSREP] Process completed with error: wsrep_sst_xtrabackup-v2 --role 'joiner' --address '172.17.0.2' --datadir '/var/lib/mysql' --basedir '/usr/' --plugindir '/usr/lib64/mysql/plugin/' --defaults-file '/etc/my.cnf' --defaults-group-suffix '' --parent '2070978' --mysqld-version '8.0.28-19.1'   '' : 32 (Broken pipe)
+2023-03-12T19:36:48.589138Z 0 [ERROR] [MY-000000] [WSREP] Failed to read uuid:seqno from joiner script.
+2023-03-12T19:36:48.589159Z 0 [ERROR] [MY-000000] [WSREP] SST script aborted with error 32 (Broken pipe)
+2023-03-12T19:36:48.589237Z 3 [Note] [MY-000000] [Galera] Processing SST received
+2023-03-12T19:36:48.589265Z 3 [Note] [MY-000000] [Galera] SST request was cancelled
+2023-03-12T19:36:48.589296Z 3 [ERROR] [MY-000000] [Galera] State transfer request failed unrecoverably: 32 (Broken pipe). Most likely it is due to inability to communicate with the cluster primary component. Restart required.
+2023-03-12T19:36:48.589312Z 3 [Note] [MY-000000] [Galera] ReplicatorSMM::abort()
+2023-03-12T19:36:48.589326Z 3 [Note] [MY-000000] [Galera] Closing send monitor...
+2023-03-12T19:36:48.589346Z 3 [Note] [MY-000000] [Galera] Closed send monitor.
+2023-03-12T19:36:48.589360Z 3 [Note] [MY-000000] [Galera] gcomm: terminating thread
+2023-03-12T19:36:48.589381Z 3 [Note] [MY-000000] [Galera] gcomm: joining thread
+2023-03-12T19:36:48.589473Z 3 [Note] [MY-000000] [Galera] gcomm: closing backend
+2023-03-12T19:36:48.590013Z 3 [Note] [MY-000000] [Galera] Current view of cluster as seen by this node
+view (view_id(NON_PRIM,0509936f-8cc2,9)
+memb {
+	ca2c2a5f-a82a,0
+	}
+joined {
+	}
+left {
+	}
+partitioned {
+	0509936f-8cc2,0
+	7026494c-a649,0
+	}
+)
+2023-03-12T19:36:48.590071Z 3 [Note] [MY-000000] [Galera] PC protocol downgrade 1 -> 0
+2023-03-12T19:36:48.590096Z 3 [Note] [MY-000000] [Galera] Current view of cluster as seen by this node
+view ((empty))
+2023-03-12T19:36:48.590284Z 3 [Note] [MY-000000] [Galera] gcomm: closed
+2023-03-12T19:36:48.590338Z 0 [Note] [MY-000000] [Galera] New COMPONENT: primary = no, bootstrap = no, my_idx = 0, memb_num = 1
+2023-03-12T19:36:48.590412Z 0 [Note] [MY-000000] [Galera] Flow-control interval: [100, 100]
+2023-03-12T19:36:48.590431Z 0 [Note] [MY-000000] [Galera] Received NON-PRIMARY.
+2023-03-12T19:36:48.590443Z 0 [Note] [MY-000000] [Galera] Shifting JOINER -> OPEN (TO: 178226790)
+2023-03-12T19:36:48.590462Z 0 [Note] [MY-000000] [Galera] New SELF-LEAVE.
+2023-03-12T19:36:48.590482Z 0 [Note] [MY-000000] [Galera] Flow-control interval: [0, 0]
+2023-03-12T19:36:48.590503Z 0 [Note] [MY-000000] [Galera] Received SELF-LEAVE. Closing connection.
+2023-03-12T19:36:48.590514Z 0 [Note] [MY-000000] [Galera] Shifting OPEN -> CLOSED (TO: 178226790)
+2023-03-12T19:36:48.590529Z 0 [Note] [MY-000000] [Galera] RECV thread exiting 0: Success
+2023-03-12T19:36:48.590584Z 3 [Note] [MY-000000] [Galera] recv_thread() joined.
+2023-03-12T19:36:48.590603Z 3 [Note] [MY-000000] [Galera] Closing replication queue.
+2023-03-12T19:36:48.590614Z 3 [Note] [MY-000000] [Galera] Closing slave action queue.
+2023-03-12T19:36:48.590632Z 3 [Note] [MY-000000] [Galera] /usr/sbin/mysqld: Terminated.
+2023-03-12T19:36:48.590647Z 3 [Note] [MY-000000] [WSREP] Initiating SST cancellation
+2023-03-12T19:36:48.590660Z 3 [Note] [MY-000000] [WSREP] Terminating SST process
+Log of wsrep recovery (--wsrep-recover):
+ INFO: WSREP: Running position recovery with --log_error='/var/lib/mysqlwsrep_recovery_verbose.d7cEYM' --pid-file='/var/lib/mysql.pid'
+ INFO: WSREP: Recovered position 9db0bcdf-b31a-11ed-a398-2a4cfdd82049:170403896
+2023-03-12T19:41:28.490918Z 0 [Warning] [MY-011068] [Server] The syntax 'expire-logs-days' is deprecated and will be removed in a future release. Please use binlog_expire_logs_seconds instead.
+2023-03-12T19:41:28.490933Z 0 [Warning] [MY-011069] [Server] The syntax '--master-info-repository' is deprecated and will be removed in a future release.
+2023-03-12T19:41:28.490940Z 0 [Warning] [MY-011069] [Server] The syntax '--relay-log-info-repository' is deprecated and will be removed in a future release.
+2023-03-12T19:41:28.490970Z 0 [Warning] [MY-011069] [Server] The syntax '--relay-log-info-repository' is deprecated and will be removed in a future release.
+2023-03-12T19:41:28.490980Z 0 [Warning] [MY-011068] [Server] The syntax 'log_slave_updates' is deprecated and will be removed in a future release. Please use log_replica_updates instead.
+2023-03-12T19:41:28.490987Z 0 [Warning] [MY-011068] [Server] The syntax 'skip_slave_start' is deprecated and will be removed in a future release. Please use skip_replica_start instead.
+2023-03-12T19:41:28.491002Z 0 [Warning] [MY-011068] [Server] The syntax 'wsrep_slave_threads' is deprecated and will be removed in a future release. Please use wsrep_applier_threads instead.
+2023-03-12T19:41:28.493032Z 0 [Note] [MY-010949] [Server] Basedir set to /usr/.
+2023-03-12T19:41:28.493046Z 0 [System] [MY-010116] [Server] /usr/sbin/mysqld (mysqld 8.0.28-19.1) starting as process 2072129
+2023-03-12T19:41:28.493882Z 0 [Warning] [MY-013242] [Server] --character-set-server: 'utf8' is currently an alias for the character set UTF8MB3, but will be an alias for UTF8MB4 in a future release. Please consider using UTF8MB4 in order to be unambiguous.
+2023-03-12T19:41:28.493889Z 0 [Warning] [MY-013244] [Server] --collation-server: 'utf8_general_ci' is a collation of the deprecated character set UTF8MB3. Please consider using UTF8MB4 with an appropriate collation instead.
+2023-03-12T19:41:28.498822Z 0 [Note] [MY-010182] [Server] Found ca.pem, server-cert.pem and server-key.pem in data directory. Trying to enable SSL support using them.
+2023-03-12T19:41:28.498966Z 0 [Note] [MY-010304] [Server] Skipping generation of SSL certificates as certificate files are present in data directory.
+2023-03-12T19:41:28.500666Z 0 [Warning] [MY-010068] [Server] CA certificate ca.pem is self signed.
+2023-03-12T19:41:28.500708Z 0 [System] [MY-013602] [Server] Channel mysql_main configured to support TLS. Encrypted connections are now supported for this channel.
+2023-03-12T19:41:28.500726Z 0 [Note] [MY-000000] [WSREP] New joining cluster node configured to use specified SSL artifacts
+2023-03-12T19:41:28.500767Z 0 [Note] [MY-000000] [Galera] Loading provider /usr/lib64/libgalera_smm.so initial position: 9db0bcdf-b31a-11ed-a398-2a4cfdd82049:170403896
+2023-03-12T19:41:28.500789Z 0 [Note] [MY-000000] [Galera] wsrep_load(): loading provider library '/usr/lib64/libgalera_smm.so'
+2023-03-12T19:41:28.504332Z 0 [Note] [MY-000000] [Galera] wsrep_load(): Galera 4.11(a9008fc) by Codership Oy <info@codership.com> (modified by Percona <https://percona.com/>) loaded successfully.
+2023-03-12T19:41:28.504385Z 0 [Note] [MY-000000] [Galera] CRC-32C: using 64-bit x86 acceleration.
+2023-03-12T19:41:28.504952Z 0 [Note] [MY-000000] [Galera] Found saved state: 9db0bcdf-b31a-11ed-a398-2a4cfdd82049:-1, safe_to_bootstrap: 0
+2023-03-12T19:41:28.509395Z 0 [Note] [MY-000000] [Galera] GCache DEBUG: opened preamble:
+Version: 2
+UUID: 9db0bcdf-b31a-11ed-a398-2a4cfdd82049
+Seqno: -1 - -1
+Offset: -1
+Synced: 0
+2023-03-12T19:41:28.509433Z 0 [Note] [MY-000000] [Galera] Recovering GCache ring buffer: version: 2, UUID: 9db0bcdf-b31a-11ed-a398-2a4cfdd82049, offset: -1
+2023-03-12T19:41:28.509506Z 0 [Note] [MY-000000] [Galera] GCache::RingBuffer initial scan...  0.0% (          0/53687091224 bytes) complete.
+2023-03-12T19:41:38.511646Z 0 [Note] [MY-000000] [Galera] GCache::RingBuffer initial scan... 34.3% (18438160384/53687091224 bytes) complete.
+2023-03-12T19:41:48.512784Z 0 [Note] [MY-000000] [Galera] GCache::RingBuffer initial scan... 71.5% (38411436032/53687091224 bytes) complete.
+2023-03-12T19:41:56.652795Z 0 [Note] [MY-000000] [Galera] GCache::RingBuffer initial scan...100.0% (53687091224/53687091224 bytes) complete.
+2023-03-12T19:41:56.656455Z 0 [Note] [MY-000000] [Galera] Recovering GCache ring buffer: Recovery failed, need to do full reset.
+2023-03-12T19:41:56.666035Z 0 [Note] [MY-000000] [Galera] Complete reset of the galera cache
+2023-03-12T19:43:13.076415Z 0 [Note] [MY-000000] [Galera] Flushing memory map to disk...
+2023-03-12T19:43:17.104673Z 0 [Warning] [MY-000000] [Galera] Option 'gcs.fc_master_slave' is deprecated and will be removed in the future versions, please use 'gcs.fc_single_primary' instead. 
+2023-03-12T19:43:17.105407Z 0 [Note] [MY-000000] [Galera] Passing config to GCS: base_dir = /var/lib/mysql; base_host = 172.17.0.2; base_port = 4567; cert.log_conflicts = no; cert.optimistic_pa = no; debug = no; evs.auto_evict = 0; evs.delay_margin = PT1S; evs.delayed_keep_period = PT30S; evs.inactive_check_period = PT0.5S; evs.inactive_timeout = PT15S; evs.join_retrans_period = PT1S; evs.max_install_timeouts = 3; evs.send_window = 10; evs.stats_report_period = PT1M; evs.suspect_timeout = PT5S; evs.user_send_window = 4; evs.view_forget_timeout = PT24H; gcache.dir = /var/lib/mysql; gcache.freeze_purge_at_seqno = -1; gcache.keep_pages_count = 0; gcache.keep_pages_size = 0; gcache.mem_size = 0; gcache.name = galera.cache; gcache.page_size = 128M; gcache.recover = yes; gcache.size = 50G; gcomm.thread_prio = ; gcs.fc_debug = 0; gcs.fc_factor = 1.0; gcs.fc_limit = 100; gcs.fc_master_slave = no; gcs.fc_single_primary = no; gcs.max_packet_size = 64500; gcs.max_throttle = 0.25; gcs.recv_q_hard_limit = 9223372036854775807; gcs.recv_q_soft_limit = 0.25; gcs.sync_donor = no; gmcast.segment = 0; gmcast.version = 0; pc.announce_timeout = PT3S; pc.checksum = false; pc.ignore_quorum = false; pc.ignore_sb = false; pc.npvo = false; pc.recovery = true; pc.version = 0; pc.wait_prim = true; pc.wait_prim_timeout = PT30S; pc.weight = 1; protonet.backend = asio; protonet.version = 0; repl.causal_read_timeout = PT30S; repl.commit_order = 3; repl.key_format = FLAT8; repl.max_ws_size = 2147483647; repl.proto_max = 10; socket.checksum = 2; socket.recv_buf_size = auto; socket.send_buf_size = auto; socket.ssl = YES; socket.ssl_ca = ca.pem; socket.ssl_cert = server-cert.pem; socket.ssl_cipher = ; socket.ssl_compression = YES; socket.ssl_key = server-key.pem; socket.ssl_reload = 1; 
+2023-03-12T19:43:17.123279Z 0 [Note] [MY-000000] [Galera] Service thread queue flushed.
+2023-03-12T19:43:17.123360Z 0 [Note] [MY-000000] [Galera] ####### Assign initial position for certification: 9db0bcdf-b31a-11ed-a398-2a4cfdd82049:170403896, protocol version: -1
+2023-03-12T19:43:17.123396Z 0 [Note] [MY-000000] [Galera] GCache history reset: 9db0bcdf-b31a-11ed-a398-2a4cfdd82049:0 -> 9db0bcdf-b31a-11ed-a398-2a4cfdd82049:170403896
+2023-03-12T19:43:17.127972Z 0 [Note] [MY-000000] [WSREP] Starting replication
+2023-03-12T19:43:17.128006Z 0 [Note] [MY-000000] [Galera] Connecting with bootstrap option: 0
+2023-03-12T19:43:17.128032Z 0 [Note] [MY-000000] [Galera] Setting GCS initial position to 9db0bcdf-b31a-11ed-a398-2a4cfdd82049:170403896
+2023-03-12T19:43:17.128094Z 0 [Note] [MY-000000] [Galera] protonet asio version 0
+2023-03-12T19:43:17.128475Z 0 [Note] [MY-000000] [Galera] Using CRC-32C for message checksums.
+2023-03-12T19:43:17.128505Z 0 [Note] [MY-000000] [Galera] backend: asio
+2023-03-12T19:43:17.128579Z 0 [Note] [MY-000000] [Galera] gcomm thread scheduling priority set to other:0 
+2023-03-12T19:43:17.128675Z 0 [Warning] [MY-000000] [Galera] Fail to access the file (/var/lib/mysql/gvwstate.dat) error (No such file or directory). It is possible if node is booting for first time or re-booting after a graceful shutdown
+2023-03-12T19:43:17.128694Z 0 [Note] [MY-000000] [Galera] Restoring primary-component from disk failed. Either node is booting for first time or re-booting after a graceful shutdown
+2023-03-12T19:43:17.128815Z 0 [Note] [MY-000000] [Galera] GMCast version 0
+2023-03-12T19:43:17.128935Z 0 [Note] [MY-000000] [Galera] (eefb9c8a-b69a, 'ssl://0.0.0.0:4567') listening at ssl://0.0.0.0:4567
+2023-03-12T19:43:17.128952Z 0 [Note] [MY-000000] [Galera] (eefb9c8a-b69a, 'ssl://0.0.0.0:4567') multicast: , ttl: 1
+2023-03-12T19:43:17.129135Z 0 [Note] [MY-000000] [Galera] EVS version 1
+2023-03-12T19:43:17.129206Z 0 [Note] [MY-000000] [Galera] gcomm: connecting to group 'pxc_cluster', peer '172.17.0.2:,172.17.0.3:,172.17.0.4:'
+2023-03-12T19:43:17.133790Z 0 [Note] [MY-000000] [Galera] (eefb9c8a-b69a, 'ssl://0.0.0.0:4567') Found matching local endpoint for a connection, blacklisting address ssl://172.17.0.2:4567
+2023-03-12T19:43:17.133988Z 0 [Note] [MY-000000] [Galera] (eefb9c8a-b69a, 'ssl://0.0.0.0:4567') connection established to 7026494c-a649 ssl://172.17.0.3:4567
+2023-03-12T19:43:17.134030Z 0 [Note] [MY-000000] [Galera] (eefb9c8a-b69a, 'ssl://0.0.0.0:4567') connection established to 0509936f-8cc2 ssl://172.17.0.4:4567
+2023-03-12T19:43:17.134099Z 0 [Note] [MY-000000] [Galera] (eefb9c8a-b69a, 'ssl://0.0.0.0:4567') turning message relay requesting on, nonlive peers: 
+2023-03-12T19:43:17.630145Z 0 [Note] [MY-000000] [Galera] EVS version upgrade 0 -> 1
+2023-03-12T19:43:17.630208Z 0 [Note] [MY-000000] [Galera] declaring 0509936f-8cc2 at ssl://172.17.0.4:4567 stable
+2023-03-12T19:43:17.630221Z 0 [Note] [MY-000000] [Galera] declaring 7026494c-a649 at ssl://172.17.0.3:4567 stable
+2023-03-12T19:43:17.630246Z 0 [Note] [MY-000000] [Galera] PC protocol upgrade 0 -> 1
+2023-03-12T19:43:17.634701Z 0 [Note] [MY-000000] [Galera] Node 0509936f-8cc2 state primary
+2023-03-12T19:43:17.635037Z 0 [Note] [MY-000000] [Galera] Current view of cluster as seen by this node
+view (view_id(PRIM,0509936f-8cc2,11)
+memb {
+	0509936f-8cc2,0
+	7026494c-a649,0
+	eefb9c8a-b69a,0
+	}
+joined {
+	}
+left {
+	}
+partitioned {
+	}
+)
+2023-03-12T19:43:17.635065Z 0 [Note] [MY-000000] [Galera] Save the discovered primary-component to disk
+2023-03-12T19:43:18.129605Z 0 [Note] [MY-000000] [Galera] gcomm: connected
+2023-03-12T19:43:18.129659Z 0 [Note] [MY-000000] [Galera] Changing maximum packet size to 64500, resulting msg size: 32636
+2023-03-12T19:43:18.130088Z 0 [Note] [MY-000000] [Galera] Shifting CLOSED -> OPEN (TO: 0)
+2023-03-12T19:43:18.130117Z 0 [Note] [MY-000000] [Galera] Opened channel 'pxc_cluster'
+2023-03-12T19:43:18.130230Z 0 [Note] [MY-000000] [Galera] New COMPONENT: primary = yes, bootstrap = no, my_idx = 2, memb_num = 3
+2023-03-12T19:43:18.130280Z 0 [Note] [MY-000000] [Galera] STATE EXCHANGE: Waiting for state UUID.
+2023-03-12T19:43:18.130331Z 0 [Note] [MY-000000] [Galera] STATE EXCHANGE: sent state msg: ef4ae07b-dc8e-11ed-92ad-47fe88dd637c
+2023-03-12T19:43:18.130361Z 0 [Note] [MY-000000] [Galera] STATE EXCHANGE: got state msg: ef4ae07b-dc8e-11ed-92ad-47fe88dd637c from 0 (node3)
+2023-03-12T19:43:18.130381Z 0 [Note] [MY-000000] [Galera] STATE EXCHANGE: got state msg: ef4ae07b-dc8e-11ed-92ad-47fe88dd637c from 1 (node2)
+2023-03-12T19:43:18.130520Z 2 [Note] [MY-000000] [WSREP] Starting rollbacker thread 2
+2023-03-12T19:43:18.130624Z 1 [Note] [MY-000000] [WSREP] Starting applier thread 1
+2023-03-12T19:43:18.130826Z 0 [Note] [MY-000000] [Galera] STATE EXCHANGE: got state msg: ef4ae07b-dc8e-11ed-92ad-47fe88dd637c from 2 (node1)
+2023-03-12T19:43:18.130845Z 0 [Note] [MY-000000] [Galera] Quorum results:
+	version    = 6,
+	component  = PRIMARY,
+	conf_id    = 10,
+	members    = 2/3 (primary/total),
+	act_id     = 178226791,
+	last_appl. = 178226713,
+	protocols  = 2/10/4 (gcs/repl/appl),
+	vote policy= 0,
+	group UUID = 9db0bcdf-b31a-11ed-a398-2a4cfdd82049
+2023-03-12T19:43:18.130900Z 0 [Note] [MY-000000] [Galera] Flow-control interval: [173, 173]
+2023-03-12T19:43:18.130916Z 0 [Note] [MY-000000] [Galera] Shifting OPEN -> PRIMARY (TO: 178226792)
+2023-03-12T19:43:18.130979Z 1 [Note] [MY-000000] [Galera] ####### processing CC 178226792, local, ordered
+2023-03-12T19:43:18.131012Z 1 [Note] [MY-000000] [Galera] Maybe drain monitors from 170403896 upto current CC event 178226792 upto:170403896
+2023-03-12T19:43:18.131032Z 1 [Note] [MY-000000] [Galera] Drain monitors from 170403896 up to 170403896
+2023-03-12T19:43:18.131060Z 1 [Note] [MY-000000] [Galera] Process first view: 9db0bcdf-b31a-11ed-a398-2a4cfdd82049 my uuid: eefb9c8a-dc8e-11ed-b69a-5ff81ce70855
+2023-03-12T19:43:18.131099Z 1 [Note] [MY-000000] [Galera] Server node1 connected to cluster at position 9db0bcdf-b31a-11ed-a398-2a4cfdd82049:178226792 with ID eefb9c8a-dc8e-11ed-b69a-5ff81ce70855
+2023-03-12T19:43:18.131120Z 1 [Note] [MY-000000] [WSREP] Server status change disconnected -> connected
+2023-03-12T19:43:18.131156Z 1 [Note] [MY-000000] [WSREP] wsrep_notify_cmd is not defined, skipping notification.
+2023-03-12T19:43:18.131189Z 1 [Note] [MY-000000] [Galera] ####### My UUID: eefb9c8a-dc8e-11ed-b69a-5ff81ce70855
+2023-03-12T19:43:18.131209Z 1 [Note] [MY-000000] [Galera] Cert index reset to 00000000-0000-0000-0000-000000000000:-1 (proto: 10), state transfer needed: yes
+2023-03-12T19:43:18.131247Z 0 [Note] [MY-000000] [Galera] Service thread queue flushed.
+2023-03-12T19:43:18.131282Z 1 [Note] [MY-000000] [Galera] ####### Assign initial position for certification: 00000000-0000-0000-0000-000000000000:-1, protocol version: -1
+2023-03-12T19:43:18.131301Z 1 [Note] [MY-000000] [Galera] State transfer required: 
+	Group state: 9db0bcdf-b31a-11ed-a398-2a4cfdd82049:178226792
+	Local state: 9db0bcdf-b31a-11ed-a398-2a4cfdd82049:170403896
+2023-03-12T19:43:18.131311Z 1 [Note] [MY-000000] [WSREP] Server status change connected -> joiner
+2023-03-12T19:43:18.131322Z 1 [Note] [MY-000000] [WSREP] wsrep_notify_cmd is not defined, skipping notification.
+2023-03-12T19:43:18.131504Z 0 [Note] [MY-000000] [WSREP] Initiating SST/IST transfer on JOINER side (wsrep_sst_xtrabackup-v2 --role 'joiner' --address '172.17.0.2' --datadir '/var/lib/mysql' --basedir '/usr/' --plugindir '/usr/lib64/mysql/plugin/' --defaults-file '/etc/my.cnf' --defaults-group-suffix '' --parent '2072129' --mysqld-version '8.0.28-19.1'   '' )
+2023-03-12T19:43:18.507732Z 0 [Warning] [MY-000000] [WSREP-SST] Found a stale sst_in_progress file: /var/lib/mysql/sst_in_progress
+2023-03-12T19:43:18.904004Z 1 [Note] [MY-000000] [WSREP] Prepared SST request: xtrabackup-v2|172.17.0.2:4444/xtrabackup_sst//1
+2023-03-12T19:43:18.904085Z 1 [Note] [MY-000000] [Galera] Check if state gap can be serviced using IST
+2023-03-12T19:43:18.904117Z 1 [Note] [MY-000000] [Galera] ####### IST uuid:9db0bcdf-b31a-11ed-a398-2a4cfdd82049 f: 170403897, l: 178226792, STRv: 3
+2023-03-12T19:43:18.904196Z 1 [Note] [MY-000000] [Galera] IST receiver addr using ssl://172.17.0.2:4568
+2023-03-12T19:43:18.904237Z 1 [Note] [MY-000000] [Galera] IST receiver using ssl
+2023-03-12T19:43:18.904410Z 1 [Note] [MY-000000] [Galera] Prepared IST receiver for 170403897-178226792, listening at: ssl://172.17.0.2:4568
+2023-03-12T19:43:18.913384Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:18.913429Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:18.913478Z 1 [Note] [MY-000000] [Galera] Requesting state transfer failed: -11(Resource temporarily unavailable). Will keep retrying every 1 second(s)
+2023-03-12T19:43:19.914195Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:19.914259Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:20.629868Z 0 [Note] [MY-000000] [Galera] (eefb9c8a-b69a, 'ssl://0.0.0.0:4567') turning message relay requesting off
+2023-03-12T19:43:20.915085Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:20.915143Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:21.916061Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:21.916151Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:22.916971Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:22.917070Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:23.917940Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:23.918014Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:24.918890Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:24.918962Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:25.919805Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:25.919886Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:26.920759Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:26.920848Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:27.921693Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:27.921784Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:28.922621Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:28.922696Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:29.923504Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:29.923575Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:30.924476Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:30.924541Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:31.925339Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:31.925407Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:32.926188Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:32.926282Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:33.927093Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:33.927175Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:34.927960Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:34.928027Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:35.928841Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:35.928915Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:36.929682Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:36.929753Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:37.930480Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:37.930579Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:38.931294Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:38.931395Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:39.932202Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:39.932277Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:40.933017Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:40.933102Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:41.933850Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:41.933919Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:42.934701Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:42.934782Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:43.935527Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:43.935617Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:44.936351Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:44.936439Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:45.937201Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:45.937283Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:46.938032Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:46.938114Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:47.938900Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:47.938960Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:48.939728Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:48.939823Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:49.940599Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:49.940690Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:50.941564Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:50.941630Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:51.942462Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:51.942536Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:52.943303Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:52.943372Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:53.944226Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:53.944307Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:54.945093Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:54.945181Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:55.945935Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:55.946010Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:56.946879Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:56.946960Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:57.947756Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:57.947813Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:58.948681Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:58.948769Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:43:59.949559Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:43:59.949643Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:00.950394Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:00.950488Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:01.951244Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:01.951320Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:02.952128Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:02.952201Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:03.953032Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:03.953102Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:04.953900Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:04.953969Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:05.954722Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:05.954821Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:06.955656Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:06.955734Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:07.956552Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:07.956622Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:08.957451Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:08.957519Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:09.958375Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:09.958440Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:10.959225Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:10.959326Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:11.960221Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:11.960292Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:12.961043Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:12.961127Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:13.961891Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:13.961966Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:14.962746Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:14.962830Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:15.963664Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:15.963747Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:16.964549Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:16.964650Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:17.965465Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:17.965541Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:18.966251Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:18.966320Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:19.967066Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:19.967141Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:20.967883Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:20.967946Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:21.968706Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:21.968780Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:22.969501Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:22.969579Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:23.971518Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:23.971585Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:24.972252Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:24.972320Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:25.972956Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:25.973023Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:26.973679Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:26.973760Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:27.974430Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:27.974501Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:28.975247Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:28.975316Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:29.976078Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:29.976138Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:30.976912Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:30.976996Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:31.977737Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:31.977795Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:32.978471Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:32.978548Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:33.979258Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:33.979335Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:34.979986Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:34.980062Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:35.980756Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:35.980823Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:36.981585Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:36.981649Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:37.982289Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:37.982364Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:38.983159Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:38.983259Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:39.984060Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:39.984123Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:40.985107Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:40.985186Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:41.985915Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:41.985988Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:42.986733Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:42.986796Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:43.987509Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:43.987589Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:44.988408Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:44.988478Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:45.989168Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:45.989223Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:46.989929Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:46.989996Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:47.990686Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:47.990747Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:48.991442Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:48.991529Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:49.992180Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:49.992262Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:50.992947Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:50.993015Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:51.993718Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:51.993771Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:52.994445Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:52.994499Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:53.995254Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:53.995317Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:54.995982Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:54.996062Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:55.996766Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:55.996831Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:56.997566Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:56.997629Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:57.998986Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:57.999038Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:58.796607Z 0 [Note] [MY-000000] [WSREP-SST] Trying to terminate (2072653) socat -u openssl-listen:4444,reuseaddr,cert=/var/lib/mysqlserver-cert.pem,key=/var/lib/mysqlserver-key.pem,cafile=/var/lib/mysqlca.pem,verify=1,retry=30 stdio | /usr/bin/pxc_extra/pxb-8.0/bin/xbstream -x  with SIGTERM
+2023-03-12T19:44:58.814422Z 0 [Note] [MY-000000] [WSREP-SST] /usr/bin/wsrep_sst_xtrabackup-v2: line 212: 2072655 Exit 143                socat -u openssl-listen:4444,reuseaddr,cert=/var/lib/mysqlserver-cert.pem,key=/var/lib/mysqlserver-key.pem,cafile=/var/lib/mysqlca.pem,verify=1,retry=30 stdio
+2023-03-12T19:44:58.814478Z 0 [Note] [MY-000000] [WSREP-SST]      2072656 Terminated              | /usr/bin/pxc_extra/pxb-8.0/bin/xbstream -x
+2023-03-12T19:44:58.999736Z 0 [Note] [MY-000000] [Galera] may fallback to sst. ist_seqno [170403896] < safe_ist_seqno [170465012]
+2023-03-12T19:44:58.999791Z 0 [Warning] [MY-000000] [Galera] Member 2.0 (node1) requested state transfer from 'node', but it is impossible to select State Transfer donor: Resource temporarily unavailable
+2023-03-12T19:44:59.816942Z 0 [ERROR] [MY-000000] [WSREP-SST] ******************* FATAL ERROR ********************** 
+2023-03-12T19:44:59.817822Z 0 [ERROR] [MY-000000] [WSREP-SST] Possible timeout in receving first data from donor in gtid/keyring stage
+2023-03-12T19:44:59.817848Z 0 [ERROR] [MY-000000] [WSREP-SST] Line 1304
+2023-03-12T19:44:59.817858Z 0 [ERROR] [MY-000000] [WSREP-SST] ****************************************************** 
+2023-03-12T19:44:59.817872Z 0 [ERROR] [MY-000000] [WSREP-SST] Cleanup after exit with status:32
+2023-03-12T19:44:59.839692Z 0 [ERROR] [MY-000000] [WSREP] Process completed with error: wsrep_sst_xtrabackup-v2 --role 'joiner' --address '172.17.0.2' --datadir '/var/lib/mysql' --basedir '/usr/' --plugindir '/usr/lib64/mysql/plugin/' --defaults-file '/etc/my.cnf' --defaults-group-suffix '' --parent '2072129' --mysqld-version '8.0.28-19.1'   '' : 32 (Broken pipe)
+2023-03-12T19:44:59.839773Z 0 [ERROR] [MY-000000] [WSREP] Failed to read uuid:seqno from joiner script.
+2023-03-12T19:44:59.839795Z 0 [ERROR] [MY-000000] [WSREP] SST script aborted with error 32 (Broken pipe)
+2023-03-12T19:44:59.839898Z 3 [Note] [MY-000000] [Galera] Processing SST received
+2023-03-12T19:44:59.839926Z 3 [Note] [MY-000000] [Galera] SST request was cancelled
+2023-03-12T19:44:59.839949Z 3 [ERROR] [MY-000000] [Galera] State transfer request failed unrecoverably: 32 (Broken pipe). Most likely it is due to inability to communicate with the cluster primary component. Restart required.
+2023-03-12T19:44:59.839965Z 3 [Note] [MY-000000] [Galera] ReplicatorSMM::abort()
+2023-03-12T19:44:59.839986Z 3 [Note] [MY-000000] [Galera] Closing send monitor...
+2023-03-12T19:44:59.840006Z 3 [Note] [MY-000000] [Galera] Closed send monitor.
+2023-03-12T19:44:59.840019Z 3 [Note] [MY-000000] [Galera] gcomm: terminating thread
+2023-03-12T19:44:59.840042Z 3 [Note] [MY-000000] [Galera] gcomm: joining thread
+2023-03-12T19:44:59.840150Z 3 [Note] [MY-000000] [Galera] gcomm: closing backend
+2023-03-12T19:44:59.840697Z 3 [Note] [MY-000000] [Galera] Current view of cluster as seen by this node
+view (view_id(NON_PRIM,0509936f-8cc2,11)
+memb {
+	eefb9c8a-b69a,0
+	}
+joined {
+	}
+left {
+	}
+partitioned {
+	0509936f-8cc2,0
+	7026494c-a649,0
+	}
+)
+2023-03-12T19:44:59.840744Z 3 [Note] [MY-000000] [Galera] PC protocol downgrade 1 -> 0
+2023-03-12T19:44:59.840769Z 3 [Note] [MY-000000] [Galera] Current view of cluster as seen by this node
+view ((empty))
+2023-03-12T19:44:59.840968Z 3 [Note] [MY-000000] [Galera] gcomm: closed
+2023-03-12T19:44:59.841189Z 0 [Note] [MY-000000] [Galera] New COMPONENT: primary = no, bootstrap = no, my_idx = 0, memb_num = 1
+2023-03-12T19:44:59.841260Z 0 [Note] [MY-000000] [Galera] Flow-control interval: [100, 100]
+2023-03-12T19:44:59.841279Z 0 [Note] [MY-000000] [Galera] Received NON-PRIMARY.
+2023-03-12T19:44:59.841292Z 0 [Note] [MY-000000] [Galera] Shifting PRIMARY -> OPEN (TO: 178226792)
+2023-03-12T19:44:59.841311Z 0 [Note] [MY-000000] [Galera] New SELF-LEAVE.
+2023-03-12T19:44:59.841327Z 0 [Note] [MY-000000] [Galera] Flow-control interval: [0, 0]
+2023-03-12T19:44:59.841341Z 0 [Note] [MY-000000] [Galera] Received SELF-LEAVE. Closing connection.
+2023-03-12T19:44:59.841352Z 0 [Note] [MY-000000] [Galera] Shifting OPEN -> CLOSED (TO: 178226792)
+2023-03-12T19:44:59.841365Z 0 [Note] [MY-000000] [Galera] RECV thread exiting 0: Success
+2023-03-12T19:44:59.841464Z 3 [Note] [MY-000000] [Galera] recv_thread() joined.
+2023-03-12T19:44:59.841485Z 3 [Note] [MY-000000] [Galera] Closing replication queue.
+2023-03-12T19:44:59.841496Z 3 [Note] [MY-000000] [Galera] Closing slave action queue.
+2023-03-12T19:44:59.841515Z 3 [Note] [MY-000000] [Galera] /usr/sbin/mysqld: Terminated.
+2023-03-12T19:44:59.841529Z 3 [Note] [MY-000000] [WSREP] Initiating SST cancellation
+2023-03-12T19:44:59.841539Z 3 [Note] [MY-000000] [WSREP] Terminating SST process
