@@ -15,10 +15,10 @@ Bugs Fixed
 * :jirabug:`PT-2083`: Pt-archiver --charset option is not working for MySQL8.0 (Thanks to Yijian Zhang for reporting this issue)
 * :jirabug:`PT-2109`: pt-mysql-summary throws an error when using sql_mode="ANSI_QUOTES"
 * :jirabug:`PT-2207`: pt-archiver doesn't work when ANSI_QUOTES is set in sql_mode
-* :jirabug:`PT-2268`: pt-online-schema-change 3.5.5 breaks on mysql5.7 with server_id 0 (Thanks to Hristo Mitev for reorting this issue)
+* :jirabug:`PT-2268`: pt-online-schema-change 3.5.5 breaks on mysql5.7 with server_id 0 (Thanks to Hristo Mitev for reporting this issue)
 * :jirabug:`PT-2279`: Option --charset is confusing when set to utf8mb4
 * :jirabug:`PT-2281`: provide container name for copying files in the dump
-* :jirabug:`PT-2286`: CVE reported in Percona Toolkit version 3.5.5 related to GO (Thanks to Kushal Haldar for reorting this issue)
+* :jirabug:`PT-2286`: CVE reported in Percona Toolkit version 3.5.5 related to GO (Thanks to Kushal Haldar for reporting this issue)
 
 v3.5.5 released 2023-10-03
 ==============================
