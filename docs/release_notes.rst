@@ -4,18 +4,40 @@ Percona Toolkit
 v3.5.6 released 2023-12-
 ==============================
 
+New Features
+------------------------------------------------------------
+
+* `PR-669`: Add pt-galera-log-explainer
+
 Improvements
 ------------------------------------------------------------
 
 * :jirabug:`PT-1860`: pt-osc case sensitivity issue (Thanks to ikruglov implementing this improvement)
+* `PR-388`: Check undefined skip check slave lag schema change (Thanks to Chrys Swingler for the contribution)
+* `PR-471`: Support adding explain output for slow query in JSON
+report as well (Thanks to Ayush Goyal for the contribution)
+* `PR-509`: added new hook before_die (Thanks to Ilaria Migliozzi for the contribution)
+* `PR-604`: Only rollback destination if it's defined (Thanks to Jakob for the contribution)
+* `PR-681`: Introduce EditorConfig (Thanks to Viktor Szépe for the contribution)
+* `PR-691`: Fix newly discovered typos (Thanks to Viktor Szépe for the contribution)
+* `PR-706`: Follow PR-429 unstop option with testcase (Thanks to fraff for the contribution)
+* `PR-712`: ARM64 support for macOS
+* `PR-713`: Fix MongoDB StorageEngine (Thanks to Viktor Szépe for the contribution)
+* `PR-714`: Fix MongoDB Security (Thanks to Viktor Szépe for the contribution)
+* `PR-715`: Fix variable collision with imported package name (Thanks to Viktor Szépe for the contribution)
+* `PR-716`: Make OrderedBy not exported (Thanks to Viktor Szépe for the contribution)
+* `PR-720`: build Go tools from top Makefile (Thanks to Sami Ahlroos and Yoann La Cancellera for the contribution)
 
 Bugs Fixed
 ------------
 
+* :jirabug:`PT-2064`: pt-archiver: Can't call method "rollback" on an undefined value (Thanks to Jakob for the contribution)
 * :jirabug:`PT-2083`: Pt-archiver --charset option is not working for MySQL8.0 (Thanks to Yijian Zhang for reporting this issue)
 * :jirabug:`PT-2109`: pt-mysql-summary throws an error when using sql_mode="ANSI_QUOTES"
 * :jirabug:`PT-2207`: pt-archiver doesn't work when ANSI_QUOTES is set in sql_mode
+* :jirabug:`PT-2211`: This pstack return error code line number (Thanks to Zongzhi Chen for the contribution)
 * :jirabug:`PT-2268`: pt-online-schema-change 3.5.5 breaks on mysql5.7 with server_id 0 (Thanks to Hristo Mitev for reporting this issue)
+* :jirabug:`PT-2277`: pt-visual-explain errors out on some valid inputs (Thanks to Jason Ng for the contribution)
 * :jirabug:`PT-2279`: Option --charset is confusing when set to utf8mb4
 * :jirabug:`PT-2281`: provide container name for copying files in the dump
 * :jirabug:`PT-2286`: CVE reported in Percona Toolkit version 3.5.5 related to GO (Thanks to Kushal Haldar for reporting this issue)
