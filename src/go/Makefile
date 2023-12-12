@@ -151,7 +151,7 @@ darwin-arm64:               ## Build Go tools for darwin-arm64 (MacOS)
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
 	@$(foreach pkg,$(pkgs),GOOS=darwin GOARCH=arm64 go build -ldflags ${LDFLAGS} -o ${BIN_DIR}/$(pkg) ./$(pkg);)
 
-build:
+build:						## Build Go tools for current platform
 	@echo "Building binaries in ${BIN_DIR} as version ${VERSION}"
 	@cd ${TOP_DIR} && go get ./...
 	@$(foreach pkg,$(pkgs),rm -f ${BIN_DIR}/$(pkg) 2> /dev/null;)
@@ -165,7 +165,7 @@ test:						## Run tests
 	@echo ">> running tests"
 	@./runtests.sh
 
-format:                         ## Format source code.
+format:                     ## Format source code.
 	gofumpt -w -s $(FILES)
 	gofumports -local github.com/percona/pmm-managed -l -w $(FILES)
 
