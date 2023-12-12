@@ -1,7 +1,7 @@
 Percona Toolkit
 ***************
 
-v3.5.6 released 2023-12-
+v3.5.6 released 2023-12-21
 ==============================
 
 New Features
@@ -17,7 +17,6 @@ Improvements
 * `PR-471`: Support adding explain output for slow query in JSON
 report as well (Thanks to Ayush Goyal for the contribution)
 * `PR-509`: added new hook before_die (Thanks to Ilaria Migliozzi for the contribution)
-* `PR-604`: Only rollback destination if it's defined (Thanks to Jakob for the contribution)
 * `PR-681`: Introduce EditorConfig (Thanks to Viktor Szépe for the contribution)
 * `PR-691`: Fix newly discovered typos (Thanks to Viktor Szépe for the contribution)
 * `PR-706`: Follow PR-429 unstop option with testcase (Thanks to fraff for the contribution)
