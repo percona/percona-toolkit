@@ -235,7 +235,7 @@ sub recurse_to_slaves {
             die $EVAL_ERROR;
          }
       }
-   } until ($id);
+   } until (defined $id);
    PTDEBUG && _d('Working on server ID', $id);
    my $master_thinks_i_am = $dsn->{server_id};
    if ( !defined $id
