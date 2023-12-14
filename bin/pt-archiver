@@ -45,7 +45,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.5.5';
+our $VERSION = '3.5.6';
 
 use strict;
 use warnings FATAL => 'all';
@@ -3819,7 +3819,7 @@ sub recurse_to_slaves {
             die $EVAL_ERROR;
          }
       }
-   } until ($id);
+   } until (defined $id);
    PTDEBUG && _d('Working on server ID', $id);
    my $master_thinks_i_am = $dsn->{server_id};
    if ( !defined $id
@@ -8858,6 +8858,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-archiver 3.5.5
+pt-archiver 3.5.6
 
 =cut
