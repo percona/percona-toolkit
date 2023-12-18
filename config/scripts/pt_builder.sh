@@ -160,7 +160,7 @@ install_go() {
     rm -rf /usr/local/go /usr/local/go1.8 /usr/local/go1.9
     mv go1.9 /usr/local/
     ln -s /usr/local/go1.9 /usr/local/go
-    GO_VERSION=1.21.1
+    GO_VERSION=1.21.5
     wget --progress=dot:giga https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz -O /tmp/golang.tar.gz
     tar -C /usr/local -xzf /tmp/golang.tar.gz
     update-alternatives --install "/usr/bin/go" "go" "/usr/local/go/bin/go" 0
@@ -370,12 +370,6 @@ build_rpm(){
     rm -fr rpmbuild
     mkdir -vp rpmbuild/{SOURCES,SPECS,BUILD,SRPMS,RPMS}
     cp $SRC_RPM rpmbuild/SRPMS/
-
-    cd rpmbuild/SPECS
-    echo '%undefine _missing_build_ids_terminate_build' | cat - percona-toolkit.spec > pt.spec && mv pt.spec percona-toolkit.spec
-    echo '%define debug_package %{nil}' | cat - percona-toolkit.spec > pt.spec && mv pt.spec percona-toolkit.spec
-    sed -i "s/@@ARHITECTURE@@/x86_64/" percona-toolkit.spec
-    #
     cd $WORKDIR
     RHEL=$(rpm --eval %rhel)
     ARCH=$(echo $(uname -m) | sed -e 's:i686:i386:g')
