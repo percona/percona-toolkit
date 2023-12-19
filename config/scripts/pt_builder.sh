@@ -233,7 +233,7 @@ install_deps() {
               sleep 1
           done
       fi
-      if [ $DEBIAN_VERSION = bionic -o $DEBIAN_VERSION = focal -o $DEBIAN_VERSION = bullseye -o $DEBIAN_VERSION = buster -o $DEBIAN_VERSION = xenial -o $DEBIAN_VERSION = jammy ]; then
+      if [ $DEBIAN_VERSION = bionic -o $DEBIAN_VERSION = focal -o $DEBIAN_VERSION = bullseye -o $DEBIAN_VERSION = buster -o $DEBIAN_VERSION = bookworm -o $DEBIAN_VERSION = jammy -o $DEBIAN_VERSION = xenial ]; then
           until apt-get update; do
               echo "waiting"
               sleep 1
@@ -515,7 +515,23 @@ build_deb(){
     mkdir -p $WORKDIR/deb
     cp $WORKDIR/*.*deb $WORKDIR/deb
     cp $WORKDIR/*.*deb $CURDIR/deb
+    if [ "x$DEBIAN_VERSION" = "xjammy" ]; then
+        for dir in $WORKDIR/deb $CURDIR/deb; do
+	    cd $dir
+            COMP=gzip
+            for i in *.deb; do
+                echo "$i"
+                mkdir "$i.extract"
+                dpkg-deb -R "$i" "$i.extract"
+                rm "$i"
+                dpkg-deb -b "-Z$COMP" "$i.extract" "$i"
+                rm -rf "$i.extract"
+            done
+        done
+    fi
+    cd $WORKDIR
 }
+#===========================
 #main
 export GIT_SSL_NO_VERIFY=1
 CURDIR=$(pwd)
