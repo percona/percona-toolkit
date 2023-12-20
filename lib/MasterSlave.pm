@@ -986,9 +986,43 @@ sub get_cxn_from_dsn_table {
    PTDEBUG && _d($sql);
    my $dsn_strings = $dbh->selectcol_arrayref($sql);
    my @cxn;
+   my $o = $self->{OptionParser};
+
    if ( $dsn_strings ) {
       foreach my $dsn_string ( @$dsn_strings ) {
          PTDEBUG && _d('DSN from DSN table:', $dsn_string);
+
+         my $dsn_tmp = $dp->parse($dsn_string);
+
+         my $slave_user = '';
+         my $dsn_user = $dsn_tmp->{u};
+
+         if (!defined $dsn_user) {
+                if ($o->got('slave-user')) {
+                     my $slave_user_raw = $o->get('slave-user');
+                     $slave_user = "u=$slave_user_raw,";
+                     PTDEBUG && _d('DSN - username set from --slave-user: ', $slave_user);
+             } else{
+                     PTDEBUG && _d('DSN - Try to use an old username from prior DSN');
+             }
+         }
+
+         my $slave_pass = '';
+         my $dsn_pass = $dsn_tmp->{p};
+
+         if (!defined $dsn_pass) {
+                if ($o->got('slave-password')) {
+                     my $slave_pass_raw = $o->get('slave-password');
+                     $slave_pass = "p=$slave_pass_raw,";
+                     PTDEBUG && _d('DSN - password set from --slave-password: ', $slave_pass);
+             } else{
+                     PTDEBUG && _d('DSN - Try to use an old password from prior DSN');
+             }
+         }
+
+         $dsn_string = "$slave_user$slave_pass$dsn_string";
+         PTDEBUG && _d('DSN : Finalized DSN connection string:', $dsn_string);
+
          push @cxn, $make_cxn->(dsn_string => $dsn_string);
       }
    }

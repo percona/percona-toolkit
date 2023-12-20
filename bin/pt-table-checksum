@@ -5892,6 +5892,7 @@ sub get_cxn_from_dsn_table {
    PTDEBUG && _d($sql);
    my $dsn_strings = $dbh->selectcol_arrayref($sql);
    my @cxn;
+
    if ( $dsn_strings ) {
       foreach my $dsn_string ( @$dsn_strings ) {
          PTDEBUG && _d('DSN from DSN table:', $dsn_string);
