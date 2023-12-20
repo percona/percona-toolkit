@@ -44,7 +44,7 @@ VERSION=3.5.6 make %{?_smp_mflags}
 
 %install
 rm -rf $RPM_BUILD_ROOT
-make pure_install PERL_INSTALL_ROOT=$RPM_BUILD_ROOT
+VERSION=3.5.6 make pure_install PERL_INSTALL_ROOT=$RPM_BUILD_ROOT
 for file in $(diff -rq bin/ $RPM_BUILD_ROOT/usr/bin | awk '{print $NF}'); do cp bin/$file $RPM_BUILD_ROOT/usr/bin || true; done
 find $RPM_BUILD_ROOT -type f -name .packlist -exec rm -f {} ';'
 find $RPM_BUILD_ROOT -type d -depth -exec rmdir {} 2>/dev/null ';'
