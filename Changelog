@@ -1,6 +1,6 @@
 Changelog for Percona Toolkit
 
-v3.5.6 released 2023-12-
+v3.5.6 released 2023-12-21
 
 * Feature PR-669: Add pt-galera-log-explainer
 * Improvement PT-1860: pt-osc case sensitivity issue (Thanks to Ivan Kruglov for the contribution)
