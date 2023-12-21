@@ -5,7 +5,7 @@ build: build-stamp
 build-stamp:
 	dh_testdir
 	perl Makefile.PL INSTALLDIRS=vendor
-	$(MAKE)
+	VERSION=3.5.6 $(MAKE)
 	touch build-stamp
 
 clean:
