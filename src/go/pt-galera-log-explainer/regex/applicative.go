@@ -94,10 +94,9 @@ var ApplicativeMap = types.RegexMap{
 
 				for _, name := range logCtx.OwnNames {
 					vote, ok := latestConflict.VotePerNode[name]
-					if !ok {
+					if !ok || node != name {
 						continue
 					}
-
 					return voteResponse(vote, *latestConflict)
 				}
 

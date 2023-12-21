@@ -99,6 +99,12 @@ func TestMain(t *testing.T) {
 		},
 
 		{
+			name: "conflict_list_all_no_color",
+			cmd:  []string{"list", "--all", "--no-color"},
+			path: "tests/logs/conflict/*",
+		},
+
+		{
 			name: "conflict_conflicts",
 			cmd:  []string{"conflicts"},
 			path: "tests/logs/conflict/*",

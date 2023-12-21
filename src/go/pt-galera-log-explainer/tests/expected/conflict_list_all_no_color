@@ -1,0 +1,12 @@
+identifier                    node1                                         
+current path                  tests/logs/conflict/node.log                  
+last known ip                                                               
+last known name               node1                                         
+mysql version                                                               
+                                                                            
+2023-10-21T04:01:01.700706Z   inconsistency vote started(seqno:102573168)   
+                              consistency vote(seqno:102573168): lost       
+2023-10-21T04:01:01.701512Z   found inconsistent by vote                    
+2023-10-21T04:01:01.704318Z   NON-PRIMARY(n=1)                              
+2023-10-21T04:01:01.704384Z   SYNCED -> OPEN                                
+2023-10-21T04:01:01.704465Z   OPEN -> CLOSED                                
