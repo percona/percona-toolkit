@@ -575,6 +575,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-Percona Toolkit v3.5.6 released 2023-12-20
+Percona Toolkit v3.5.6 released 2023-12-21
 
 =cut
