@@ -61,7 +61,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.5.6';
+our $VERSION = '3.5.7';
 
 use strict;
 use warnings FATAL => 'all';
@@ -11528,6 +11528,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-upgrade 3.5.6
+pt-upgrade 3.5.7
 
 =cut
