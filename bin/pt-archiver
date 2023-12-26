@@ -6260,7 +6260,7 @@ sub main {
 
    # Remove sentinel file.
    if ( $o->get('unstop') ) {
-      unlink $sentinel 
+      unlink $sentinel
          or die "Cannot unlink sentinel file ${sentinel}: $OS_ERROR\n";
       print STDOUT "Successfully removed file $sentinel\n"
          unless $quiet;
@@ -6613,7 +6613,7 @@ sub main {
    ) {
       my $col = $q->quote($sel_stmt->{scols}->[0]);
       my ($val) = $dbh->selectrow_array("SELECT MAX($col) FROM $src->{db_tbl}");
-      $first_sql .= " AND ($col < " . $q->quote_val($val) . ")";
+      $first_sql .= " AND ($col <= " . $q->quote_val($val) . ")";
    }
 
    $next_sql = $first_sql;
