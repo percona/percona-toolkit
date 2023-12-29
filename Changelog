@@ -2,6 +2,8 @@ Changelog for Percona Toolkit
 
 v3.5.8 released
 
+* Improvement PR-734:  PT-2100 - fixed Wide character error (Thanks to Satoshi MITANI for the contribution)
+
 v3.5.7 released 2023-12-23
 
 This is a HotFix release that does not have any public bug fix
