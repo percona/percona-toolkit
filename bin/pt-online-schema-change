@@ -8706,7 +8706,7 @@ sub main {
 
       # Issue a strong warning if alter-foreign-keys-method = none
       if ( $alter_fk_method eq 'none' && !$o->get('force') ) {
-         print STDERR "WARNING! Using alter-foreign-keys-method = \"none\". This will typically cause foreign key violations!\nThis method of handling foreign key constraints is only provided so that the database administrator can disable the tool's built-in functionality if desired.\n\nContinue anyway? (y/N)";
+         print STDERR "WARNING! Using alter-foreign-keys-method = \"none\". This will typically cause foreign key violations!\nThis method of handling foreign key constraints is only provided so that the database administrator can disable the built-in functionality if desired.\n\nContinue anyway? (y/N)";
          my $response;
          chomp($response = <STDIN>);
          if ($response !~ /y|(yes)/i) {
