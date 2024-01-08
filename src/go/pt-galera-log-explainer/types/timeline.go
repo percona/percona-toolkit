@@ -139,7 +139,7 @@ func getlasttime(l LocalTimeline) time.Time {
 func CutTimelineAt(t LocalTimeline, at time.Time) LocalTimeline {
 	var i int
 	for i = 0; i < len(t); i++ {
-		if t[i].Date.Time.After(at) {
+		if t[i].Date != nil && t[i].Date.Time.After(at) {
 			break
 		}
 	}
