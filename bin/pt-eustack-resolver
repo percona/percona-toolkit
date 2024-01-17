@@ -113,15 +113,19 @@ foreach $lwp (sort {$a<=>$b} keys %sf)
 # ############################################################################
 # Documentation
 # ############################################################################
+
 =pod
 
 =head1 NAME
 
-pt-eustack-resover - Get stack traces for a selected program with eu-stack and resolve symbols 
+pt-eustack-resolver - Get stack traces for a selected program with C<eu-stack> 
+and resolve symbols.
 
 =head1 SYNOPSIS
 
 Usage: pt-eustack-resolver <pid>
+
+pt-eustack-resolver collects stack traces for the process with specified C<pid>.
 
 =head1 RISKS
 
@@ -143,17 +147,17 @@ server.  Before using this tool, please:
 
 =head1 DESCRIPTION
 
-pt-eustack-resover is the tool that gets stack traces for a selected program 
-with eu-stack and resolves symbols. This is companion tool for L<pt-pmp>, called
-when option --dumper=pteu is specified.
+pt-eustack-resolver is the tool that gets stack traces for a selected program 
+with C<eu-stack> and resolves symbols. This is companion tool for L<pt-pmp|pt-pmp.html>, called
+when option C<--dumper=pteu> is specified.
 
-eu-stack is a tool from elfutils package that prints a stack for each thread in 
-a process or core file. eu-stack is faster than gdb and smaller overhead on the
-diagnosed process.
+C<eu-stack> is a tool from L<elfutils|https://sourceware.org/elfutils> package that 
+prints a stack for each thread in a process or core file. C<eu-stack> is faster 
+than gdb and have smaller overhead on the diagnosed process.
 
 =head1 OUTPUT
 
-Stack for each thread, formatted similarly to `gdb thread apply all bt` output.
+Stack for each thread, formatted similarly to C<gdb thread apply all bt> output.
 
 =head1 ATTENTION
 
@@ -162,7 +166,7 @@ parameters are shown in the output.
 
 =head1 SYSTEM REQUIREMENTS
 
-You need eu-stack from the elfutils package.
+You need C<eu-stack> from the L<elfutils|https://sourceware.org/elfutils> package.
 
 =head1 BUGS
 

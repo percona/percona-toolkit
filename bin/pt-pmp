@@ -619,7 +619,7 @@ aggregate_stacktrace() {
                         }
                      }
                   }
-                  if ( dumper ~ /gdb/ || dumper ~ /qs/ ) {
+                  if ( dumper ~ /gdb/ ) {
                      targ = substr(\$0, index(\$0, \" in \") + 4);
                      if ( targ ~ / from / ) {
                         targ = substr(targ, 1, index(targ, \" from \") - 1);
@@ -735,14 +735,8 @@ main() {
            else
               die "Can't find eu-stack binary from elfutils or pt-eustack-resolver. Exiting"
            fi
-        elif [ $OPT_DUMPER == "qs" ]; then
-           if [ `_which quickstack` ]; then
-              quickstack -l -f -p $OPT_PID >> "$output_file"
-           else
-              die "Can't find quickstack binary from https://github.com/yoshinorim/quickstack. Exiting"
-           fi
         fi
-             
+        
         date +'TS %N.%s %F %T' >> "$output_file"
         sleep $OPT_INTERVAL
       done
@@ -851,13 +845,35 @@ Which binary to trace.
 
 short form: -d; type: string; default: gdb
 
-Which dumper use to get stack traces(gdb: gdb, eu: eu-stack, pteu: pt-eustack-resolver, qs: quickstack).
+Which dumper use to get stack traces(gdb: gdb, eu: eu-stack, pteu: pt-eustack-resolver).
 
 =item --tids
 
 short form: -t; type: string; default: *
 
 Extract traces only for specific tids.
+
+This option uses regular expressions to select threads. For example, if the
+collected stack trace has data for threads:
+
+  [New Thread 0x52173940 (LWP 23846)]
+  [New Thread 0x52132940 (LWP 23845)]
+  [New Thread 0x520f1940 (LWP 23844)]
+  [New Thread 0x520b0940 (LWP 23798)]
+  [New Thread 0x5206f940 (LWP 23776)]
+  [New Thread 0x5202e940 (LWP 23775)]
+  [New Thread 0x51fed940 (LWP 23774)]
+  [New Thread 0x51fac940 (LWP 23728)]
+  [New Thread 0x51f6b940 (LWP 23727)]
+  [New Thread 0x51f2a940 (LWP 21264)]
+  [New Thread 0x51ee9940 (LWP 21263)]
+  [New Thread 0x51ea8940 (LWP 21201)]
+
+C<-t 21> will print stack traces for threads 21264, 21263, 21201
+
+C<-t 21201,23846> will print stack traces for threads 21201, 23846
+
+C<-t 21201,237.8> will print stack traces for threads 21201, 23798, 23728
 
 =item --help
 
