@@ -1,4 +1,4 @@
-Sphinx==4.2.0
+Sphinx==5.0
 sphinx-copybutton
 sphinx-gitstamp
 sphinx-material
