@@ -692,6 +692,10 @@ aggregate_stacktrace() {
 # The main program to run.
 main() {
    local output_file="${OPT_SAVE_SAMPLES:-"$PT_TMPDIR/percona-toolkit"}"
+   
+   if [ $OPT_READNEVER ] && [ $OPT_DUMPER != "gdb" ]; then
+   	  option_error "Option --readnever not supported for dumper ${OPT_DUMPER}, ignoring."
+   fi
 
    if [ -z "$ARGV" ]; then
       # There are no files to analyze, so we'll make one.
@@ -704,39 +708,48 @@ main() {
             OPT_PID=$(ps -eaf | grep "$OPT_BINARY" | grep -v grep | awk '{print $2}' | head -n1);
          fi
       fi
-      date
-      for x in $(_seq $OPT_ITERATIONS); do
-           
-         if [ $OPT_DUMPER == "gdb" ]; then
-            if [ `_which gdb` ]; then 
-
-               readnever=""
+      
+      DUMPER=""
+      if [ $OPT_DUMPER == "gdb" ]; then
+      	 if [ `_which gdb` ]; then
+      	 
+      	    readnever=""
+      	    if [ $OPT_READNEVER ]; then
                if gdb -nx --quiet --batch --readnever > /dev/null 2>&1; then
                   readnever="--readnever"
+               else
+                  die "gdb does not support option --readnever. Exiting"
                fi
-
-               gdb $readnever -ex "set pagination 0"    \
-                   -ex "thread apply all bt" \
+            fi
+         
+            DUMPER="
+               gdb ${readnever} -ex 'set pagination 0' \
+                   -ex 'thread apply all bt' \
                    -batch                    \
-                   -p $OPT_PID               \
-                   >> "$output_file"
-           else
-              die "Can't find gdb binary. Exiting"
-           fi
-        elif [ $OPT_DUMPER == "eu" ]; then
-           if [ `_which eu-stack` ]; then
-              eu-stack -s -m -p $OPT_PID | sed -e '$!N;s/\n //g;P;D' | sed -e 's/\(0x[[:xdigit:]]*\) -/\1 ??() -/' >> "$output_file"
-           else
-              die "Can't find eu-stack binary from elfutils. Exiting"
-           fi
-        elif [ $OPT_DUMPER == "pteu" ]; then
-           if [ `_which eu-stack` ] && [ `_which pt-eustack-resolver` ]; then
-              pt-eustack-resolver $OPT_PID  >> "$output_file"
-           else
-              die "Can't find eu-stack binary from elfutils or pt-eustack-resolver. Exiting"
-           fi
-        fi
-        
+                   -p ${OPT_PID}
+               "
+         else
+         	die "Can't find gdb binary. Exiting"
+         fi
+      elif [ $OPT_DUMPER == "eu" ]; then
+      	 if [ `_which eu-stack` ]; then
+      	    DUMPER="eu-stack -s -m -p ${OPT_PID} | sed -e '\$!N;s/\n //g;P;D' | sed -e 's/\(0x[[:xdigit:]]*\) -/\1 ??() -/'"
+      	 else
+      	 	die "Can't find eu-stack binary from elfutils. Exiting"
+      	 fi
+      elif [ $OPT_DUMPER == "pteu" ]; then
+      	 if [ `_which eu-stack` ] && [ `_which pt-eustack-resolver` ]; then
+      	    DUMPER="pt-eustack-resolver ${OPT_PID}"
+      	 else
+      	 	die "Can't find eu-stack binary from elfutils or pt-eustack-resolver. Exiting"
+      	 fi
+      else
+      	 die "Unknown dumper: ${OPT_DUMPER}. Exiting"
+      fi
+      	 
+      date
+      for x in $(_seq $OPT_ITERATIONS); do
+      	eval $DUMPER >> "$output_file"
         date +'TS %N.%s %F %T' >> "$output_file"
         sleep $OPT_INTERVAL
       done
@@ -847,34 +860,6 @@ short form: -d; type: string; default: gdb
 
 Which dumper use to get stack traces(gdb: gdb, eu: eu-stack, pteu: pt-eustack-resolver).
 
-=item --tids
-
-short form: -t; type: string; default: *
-
-Extract traces only for specific tids.
-
-This option uses regular expressions to select threads. For example, if the
-collected stack trace has data for threads:
-
-  [New Thread 0x52173940 (LWP 23846)]
-  [New Thread 0x52132940 (LWP 23845)]
-  [New Thread 0x520f1940 (LWP 23844)]
-  [New Thread 0x520b0940 (LWP 23798)]
-  [New Thread 0x5206f940 (LWP 23776)]
-  [New Thread 0x5202e940 (LWP 23775)]
-  [New Thread 0x51fed940 (LWP 23774)]
-  [New Thread 0x51fac940 (LWP 23728)]
-  [New Thread 0x51f6b940 (LWP 23727)]
-  [New Thread 0x51f2a940 (LWP 21264)]
-  [New Thread 0x51ee9940 (LWP 21263)]
-  [New Thread 0x51ea8940 (LWP 21201)]
-
-C<-t 21> will print stack traces for threads 21264, 21263, 21201
-
-C<-t 21201,23846> will print stack traces for threads 21201, 23846
-
-C<-t 21201,237.8> will print stack traces for threads 21201, 23798, 23728
-
 =item --help
 
 Show help and exit.
@@ -903,11 +888,45 @@ short form: -p; type: int
 
 Process ID of the process to trace; overrides L<"--binary">.
 
+=item --readnever
+
+Pass option C<--readnever> to C<gdb>. With this option C<gdb> will not read 
+symbol files, thus produce stack traces way faster. However, such traces may
+not be sufficient for the diagnostic.
+
 =item --save-samples
 
 short form: -k; type: string
 
 Keep the raw traces in this file after aggregation.
+
+=item --tids
+
+short form: -t; type: string; default: *
+
+Extract traces only for specific tids.
+
+This option uses regular expressions to select threads. For example, if the
+collected stack trace has data for threads:
+
+  [New Thread 0x52173940 (LWP 23846)]
+  [New Thread 0x52132940 (LWP 23845)]
+  [New Thread 0x520f1940 (LWP 23844)]
+  [New Thread 0x520b0940 (LWP 23798)]
+  [New Thread 0x5206f940 (LWP 23776)]
+  [New Thread 0x5202e940 (LWP 23775)]
+  [New Thread 0x51fed940 (LWP 23774)]
+  [New Thread 0x51fac940 (LWP 23728)]
+  [New Thread 0x51f6b940 (LWP 23727)]
+  [New Thread 0x51f2a940 (LWP 21264)]
+  [New Thread 0x51ee9940 (LWP 21263)]
+  [New Thread 0x51ea8940 (LWP 21201)]
+
+C<-t 21> will print stack traces for threads 21264, 21263, 21201
+
+C<-t 21201,23846> will print stack traces for threads 21201, 23846
+
+C<-t 21201,237.8> will print stack traces for threads 21201, 23798, 23728
 
 =item --version
 
