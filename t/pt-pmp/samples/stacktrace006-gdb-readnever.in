@@ -1,0 +1,341 @@
+[New LWP 3441805]
+[New LWP 3441806]
+[New LWP 3441807]
+[New LWP 3441808]
+[New LWP 3441809]
+[New LWP 3441810]
+[New LWP 3441811]
+[New LWP 3441812]
+[New LWP 3441813]
+[New LWP 3441814]
+[New LWP 3441815]
+[New LWP 3441816]
+[New LWP 3441817]
+[New LWP 3441818]
+[New LWP 3441819]
+[New LWP 3441820]
+[New LWP 3441821]
+[New LWP 3441822]
+[New LWP 3441823]
+[New LWP 3441828]
+[New LWP 3441829]
+[New LWP 3441830]
+[New LWP 3441831]
+[New LWP 3441832]
+[New LWP 3441833]
+[New LWP 3441834]
+[New LWP 3441835]
+[New LWP 3441836]
+[New LWP 3441874]
+[New LWP 3441875]
+[New LWP 3441876]
+[New LWP 3441877]
+[New LWP 3441878]
+[New LWP 3441879]
+[New LWP 3441880]
+[New LWP 3441881]
+[New LWP 3441883]
+[New LWP 3441885]
+[New LWP 3441888]
+[New LWP 3442446]
+[New LWP 3772082]
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+0x00007f2763f18bcf in poll () from /lib/x86_64-linux-gnu/libc.so.6
+
+Thread 42 (Thread 0x7f274d19f640 (LWP 3772082) "connection"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007f272bd28088 in ?? ()
+#2  0x0000008900000228 in ?? ()
+#3  0x00007f2744699144 in ?? ()
+#4  0x00007f274d19af20 in ?? ()
+#5  0x0000000000000000 in ?? ()
+
+Thread 41 (Thread 0x7f274d3a2640 (LWP 3442446) "connection"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x000055be6ac8921f in ?? ()
+#2  0x000001896974f85a in ?? ()
+#3  0x000055be6bb33808 in Per_thread_connection_handler::COND_thread_cache ()
+#4  0x0000000000000000 in ?? ()
+
+Thread 40 (Thread 0x7f274e9fc640 (LWP 3441888) "connection"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007f27308203d8 in ?? ()
+#2  0x000001894e9f9f60 in ?? ()
+#3  0x000055be6bb4ad64 in mysql_bin_log ()
+#4  0x00007f274e9f9610 in ?? ()
+#5  0x0000000000000000 in ?? ()
+
+Thread 39 (Thread 0x7f2731fff640 (LWP 3441885) "gtid_zip"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x000055be6b69f390 in vtable for Gtid_table_access_context ()
+#2  0x000001890000480b in ?? ()
+#3  0x000055be6ba8e1c8 in COND_compress_gtid_table ()
+#4  0x0000000000000000 in ?? ()
+
+Thread 38 (Thread 0x7f274ebfe640 (LWP 3441883) "xpl_accept-2"):
+#0  0x00007f2763f25e2e in epoll_wait () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x0000000000000001 in ?? ()
+#2  0x0000000f00000001 in ?? ()
+#3  0x00007f274f4d4000 in ?? ()
+#4  0x000003e800000020 in ?? ()
+#5  0x0000000000000000 in ?? ()
+
+Thread 37 (Thread 0x7f2750dfb640 (LWP 3441881) "sig_handler"):
+#0  0x00007f2763e4321a in sigtimedwait () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007f2750dfaaa0 in ?? ()
+#2  0x0000000000000000 in ?? ()
+
+Thread 36 (Thread 0x7f2750efd640 (LWP 3441880) "evt_sched"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x000000004d430001 in ?? ()
+#2  0x0000018932035d00 in ?? ()
+#3  0x00007f2751921038 in ?? ()
+#4  0x0000000000000000 in ?? ()
+
+Thread 35 (Thread 0x7f27333fb640 (LWP 3441879) "ib_srv_wkr-3"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007f272ebda288 in ?? ()
+#2  0x00000189333fa858 in ?? ()
+#3  0x00007f275087d8c0 in ?? ()
+#4  0x0000000000000000 in ?? ()
+
+Thread 34 (Thread 0x7f2733bfc640 (LWP 3441878) "ib_srv_wkr-2"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007f272ebda288 in ?? ()
+#2  0x0000018933bfb858 in ?? ()
+#3  0x00007f275087d824 in ?? ()
+#4  0x0000000000000000 in ?? ()
+
+Thread 33 (Thread 0x7f27343fd640 (LWP 3441877) "ib_srv_wkr-1"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007f272ebda288 in ?? ()
+#2  0x00000189343fc858 in ?? ()
+#3  0x00007f275087d780 in ?? ()
+#4  0x0000000000000000 in ?? ()
+
+Thread 32 (Thread 0x7f2734bfe640 (LWP 3441876) "ib_srv_purge"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007f2734bfd600 in ?? ()
+#2  0x00000089695fed00 in ?? ()
+#3  0x00007f275087d6e0 in ?? ()
+#4  0x00007f2734bfd890 in ?? ()
+#5  0x0000000000000000 in ?? ()
+
+Thread 31 (Thread 0x7f27353ff640 (LWP 3441875) "ib_clone_gtid"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x0000000000000000 in ?? ()
+
+Thread 30 (Thread 0x7f27517ff640 (LWP 3441874) "ib_buf_dump"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x0000000000000000 in ?? ()
+
+Thread 29 (Thread 0x7f2750ffe640 (LWP 3441836) "xpl_accept-1"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x000055be69ee80d0 in ?? ()
+#2  0x0000018963e91122 in ?? ()
+#3  0x00007f2751a1c098 in ?? ()
+#4  0x0000000000000000 in ?? ()
+
+Thread 28 (Thread 0x7f2763dff640 (LWP 3441835) "xpl_worker-2"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x0000000000000003 in ?? ()
+#2  0x0000018900000003 in ?? ()
+#3  0x00007f276346f6b0 in ?? ()
+#4  0x00007f2763dfe9d0 in ?? ()
+#5  0x0000000000000000 in ?? ()
+
+Thread 27 (Thread 0x7f27641ff640 (LWP 3441834) "xpl_worker-1"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x0000000000000003 in ?? ()
+#2  0x0000018900000003 in ?? ()
+#3  0x00007f276346f6b0 in ?? ()
+#4  0x00007f27641fe9d0 in ?? ()
+#5  0x0000000000000000 in ?? ()
+
+Thread 26 (Thread 0x7f2738ffe640 (LWP 3441833) "ib_fts_opt"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007f2763a5efd8 in ?? ()
+#2  0x0000008969ef554e in ?? ()
+#3  0x00007f274f568720 in ?? ()
+#4  0x00007f2738ffd850 in ?? ()
+#5  0x0000000000000000 in ?? ()
+
+Thread 25 (Thread 0x7f27397ff640 (LWP 3441832) "ib_dict_stats"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x0000000000000000 in ?? ()
+
+Thread 24 (Thread 0x7f273cbfd640 (LWP 3441831) "ib_src_main"):
+#0  0x00007f2763ee57f8 in clock_nanosleep () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x0000000000000000 in ?? ()
+
+Thread 23 (Thread 0x7f273d3fe640 (LWP 3441830) "ib_buf_resize"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007f273d3fdb00 in ?? ()
+#2  0x0000018969f175a6 in ?? ()
+#3  0x00007f275087dc80 in ?? ()
+#4  0x0000000000000000 in ?? ()
+
+Thread 22 (Thread 0x7f273dbff640 (LWP 3441829) "ib_srv_err"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x0000000000000002 in ?? ()
+#2  0x00000089508537c0 in ?? ()
+#3  0x00007f275087d960 in ?? ()
+#4  0x00007f273dbfc880 in ?? ()
+#5  0x0000000000000000 in ?? ()
+
+Thread 21 (Thread 0x7f273c3fc640 (LWP 3441828) "ib_srv_lock_to"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x0000000000000002 in ?? ()
+#2  0x0000008900000000 in ?? ()
+#3  0x00007f274c439180 in ?? ()
+#4  0x00007f273c3fb950 in ?? ()
+#5  0x0000000000000000 in ?? ()
+
+Thread 20 (Thread 0x7f273ebf9640 (LWP 3441823) "ib_log_files_g"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007f2744bfb960 in ?? ()
+#2  0x0000008900000000 in ?? ()
+#3  0x00007f2744bfb280 in ?? ()
+#4  0x00007f273ebf8a80 in ?? ()
+#5  0x0000000000000000 in ?? ()
+
+Thread 19 (Thread 0x7f273f3fa640 (LWP 3441822) "ib_log_writer"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007f273f3f9760 in ?? ()
+#2  0x0000008964c0b85e in ?? ()
+#3  0x00007f274c439f44 in ?? ()
+#4  0x00007f273f3f9a20 in ?? ()
+#5  0x0000000000000000 in ?? ()
+
+Thread 18 (Thread 0x7f273fbfb640 (LWP 3441821) "ib_log_wr_notif"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x000055be69ee80d0 in ?? ()
+#2  0x0000008900000000 in ?? ()
+#3  0x00007f274c439e04 in ?? ()
+#4  0x00007f273fbfaa60 in ?? ()
+#5  0x0000000000000000 in ?? ()
+
+Thread 17 (Thread 0x7f27403fc640 (LWP 3441820) "ib_log_flush"):
+#0  0x00007f2763f1b8ab in fsync () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x0000000000000000 in ?? ()
+
+Thread 16 (Thread 0x7f2740bfd640 (LWP 3441819) "ib_log_fl_notif"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x000055be69ee80d0 in ?? ()
+#2  0x0000008900000000 in ?? ()
+#3  0x00007f274c439ea0 in ?? ()
+#4  0x00007f2740bfca60 in ?? ()
+#5  0x0000000000000000 in ?? ()
+
+Thread 15 (Thread 0x7f27413fe640 (LWP 3441818) "ib_log_checkpt"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x0000000000000000 in ?? ()
+
+Thread 14 (Thread 0x7f2741bff640 (LWP 3441817) "ib_srv_mon"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007f2741bfe7f0 in ?? ()
+#2  0x0000008969ee7c6b in ?? ()
+#3  0x00007f275087da00 in ?? ()
+#4  0x00007f2741bfeab0 in ?? ()
+#5  0x0000000000000000 in ?? ()
+
+Thread 13 (Thread 0x7f27473f5640 (LWP 3441816) "ib_buf_lru-0"):
+#0  0x00007f2763ee57f8 in clock_nanosleep () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007f274e48cef0 in ?? ()
+#2  0x000000004e48cf18 in ?? ()
+#3  0x00007fff8e15384a in ?? ()
+#4  0x00007f2750bec020 in ?? ()
+#5  0x00007f27473f49f0 in ?? ()
+#6  0x00000000000003e8 in ?? ()
+#7  0x000055be6bb7b4a8 in srv_monitor_file_name ()
+#8  0xcd7dedf1695fed00 in ?? ()
+#9  0x00007f27473f4bc0 in ?? ()
+#10 0x00007f2750bec020 in ?? ()
+#11 0x00007f27473f4bc0 in ?? ()
+#12 0x00007f27473f49f0 in ?? ()
+#13 0x00000000000003e8 in ?? ()
+#14 0x000055be6bb7b4a8 in srv_monitor_file_name ()
+#15 0x0000000000000322 in ?? ()
+#16 0x00007f2763eea677 in nanosleep () from /lib/x86_64-linux-gnu/libc.so.6
+#17 0x00007f27473f4bc0 in ?? ()
+#18 0x000055be69d2729d in buf_lru_manager_thread(unsigned long) ()
+#19 0x000055be69c480e6 in std::thread::_State_impl<std::thread::_Invoker<std::tuple<Detached_thread, void (*)(unsigned long), unsigned long> > >::_M_run() ()
+#20 0x00007f27642dc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#21 0x0000000000000000 in ?? ()
+
+Thread 12 (Thread 0x7f2747bf6640 (LWP 3441815) "ib_pg_flush_co"):
+#0  0x00007f2763e91117 in __futex_abstimed_wait_cancelable64 () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x0000000000000000 in ?? ()
+
+Thread 11 (Thread 0x7f27483f7640 (LWP 3441814) "ib_io_wr-4"):
+#0  0x00007f2763f1e88d in syscall () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007f2764a91279 in io_getevents () from /lib/x86_64-linux-gnu/libaio.so.1
+#2  0x0000000000000000 in ?? ()
+
+Thread 10 (Thread 0x7f2748bf8640 (LWP 3441813) "ib_io_wr-3"):
+#0  0x00007f2763f1e88d in syscall () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007f2764a91279 in io_getevents () from /lib/x86_64-linux-gnu/libaio.so.1
+#2  0x0000000000000000 in ?? ()
+
+Thread 9 (Thread 0x7f27493f9640 (LWP 3441812) "ib_io_wr-2"):
+#0  0x00007f2763f1e88d in syscall () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007f2764a91279 in io_getevents () from /lib/x86_64-linux-gnu/libaio.so.1
+#2  0x0000000000000000 in ?? ()
+
+Thread 8 (Thread 0x7f2749bfa640 (LWP 3441811) "ib_io_wr-1"):
+#0  0x00007f2763f1e88d in syscall () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007f2764a91279 in io_getevents () from /lib/x86_64-linux-gnu/libaio.so.1
+#2  0x00007f2749bf94c0 in ?? ()
+#3  0x0000000000000000 in ?? ()
+
+Thread 7 (Thread 0x7f274a3fb640 (LWP 3441810) "ib_io_rd-4"):
+#0  0x00007f2763f1e88d in syscall () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007f2764a91279 in io_getevents () from /lib/x86_64-linux-gnu/libaio.so.1
+#2  0x0000000000000000 in ?? ()
+
+Thread 6 (Thread 0x7f274abfc640 (LWP 3441809) "ib_io_rd-3"):
+#0  0x00007f2763f1e88d in syscall () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007f2764a91279 in io_getevents () from /lib/x86_64-linux-gnu/libaio.so.1
+#2  0x0000000000000000 in ?? ()
+
+Thread 5 (Thread 0x7f274b3fd640 (LWP 3441808) "ib_io_rd-2"):
+#0  0x00007f2763f1e88d in syscall () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007f2764a91279 in io_getevents () from /lib/x86_64-linux-gnu/libaio.so.1
+#2  0x0000000000000000 in ?? ()
+
+Thread 4 (Thread 0x7f274bbfe640 (LWP 3441807) "ib_io_rd-1"):
+#0  0x00007f2763f1e88d in syscall () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007f2764a91279 in io_getevents () from /lib/x86_64-linux-gnu/libaio.so.1
+#2  0x0000000000000000 in ?? ()
+
+Thread 3 (Thread 0x7f274c3ff640 (LWP 3441806) "ib_io_log"):
+#0  0x00007f2763f1e88d in syscall () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007f2764a91279 in io_getevents () from /lib/x86_64-linux-gnu/libaio.so.1
+#2  0x0000000000000000 in ?? ()
+
+Thread 2 (Thread 0x7f274f3ff640 (LWP 3441805) "ib_io_ibuf"):
+#0  0x00007f2763f1e88d in syscall () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007f2764a91279 in io_getevents () from /lib/x86_64-linux-gnu/libaio.so.1
+#2  0x0000000000000000 in ?? ()
+
+Thread 1 (Thread 0x7f2764a89980 (LWP 3441765) "mysqld"):
+#0  0x00007f2763f18bcf in poll () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x000055be6ba9381c in server_operational_state ()
+#2  0x00007f276343f110 in ?? ()
+#3  0x0000000000000002 in ?? ()
+#4  0xffffffff642ae9bd in ?? ()
+#5  0x00007fff8dffdd30 in ?? ()
+#6  0x000055be68a34432 in Mysqld_socket_listener::listen_for_connection_event() ()
+#7  0x0000003a695fed00 in ?? ()
+#8  0x000000000000003a in ?? ()
+#9  0xcd7dedf1695fed00 in ?? ()
+#10 0x00007f2751b7bf80 in ?? ()
+#11 0x00007f2758bfad90 in ?? ()
+#12 0x00007f2751b44ab0 in ?? ()
+#13 0x00007fff8dffde50 in ?? ()
+#14 0x00007fff8dffdd10 in ?? ()
+#15 0x000055be68a2e4d4 in Per_thread_connection_handler::add_connection(Channel_info*) ()
+Backtrace stopped: previous frame inner to this frame (corrupt stack?)
+[Inferior 1 (process 3441765) detached]
+TS 562988615.1705596331 2024-01-18 19:45:31
