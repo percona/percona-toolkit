@@ -37,4 +37,20 @@ ok(
    "Limit 2 (stacktrace003-limit2.out)"
 ) or diag($test_diff);
 
+ok(
+   no_diff(
+      "$trunk/bin/pt-pmp -d eu $sample/stacktrace006-eu.in",
+      "t/pt-pmp/samples/stacktrace006-eu-deu.out",
+   ),
+   "eu-stack dump read correctly if option -d eu specified"
+) or diag($test_diff);
+
+ok(
+   no_diff(
+      "$trunk/bin/pt-pmp -d pteu $sample/stacktrace006-pteu.in",
+      "t/pt-pmp/samples/stacktrace006-pteu-dpteu.out",
+   ),
+   "pt-eustack-resolver dump read correctly if option -d pteu specified"
+) or diag($test_diff);
+
 done_testing;
