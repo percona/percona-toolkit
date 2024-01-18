@@ -187,8 +187,8 @@ update_copyright_year() {
    cd $BRANCH/bin
    for tool_file in *; do
       # Skip checking binary files (golang binaries)
-      file bin/pt-pg-summary | grep -q "ELF"
-      if [ $? -eq 0 ]; then
+      local is_binary=$(file $tool_file | grep -c "ELF")
+      if [ $is_binary -gt 0 ]; then
           continue
       fi
       local copyright="$(grep "[0-9] Percona LLC and/or its affiliates" $tool_file)"
@@ -483,6 +483,7 @@ REL_NOTES=$2
 OS_ARCH=${3:-linux-amd64}
 
 ONLY_UPDATE_VERSION=${ONLY_UPDATE_VERSION:-0}
+ONLY_UPDATE_COPYRIGHT_YEAR=${ONLY_UPDATE_COPYRIGHT_YEAR:-0}
 
 if [ $OS_ARCH != "linux-amd64" ] && [ $OS_ARCH != "linux-386" ] && [ $OS_ARCH != "darwin-amd64" ]; then
    die "Valid OS-ARCH combinations are: linux-amd64, linux-386, darwin-amd64"
@@ -519,6 +520,11 @@ PKG="percona-toolkit-$VERSION"             # what we're building
 
 if [ $ONLY_UPDATE_VERSION -eq 1 ]; then
    update_version
+   exit
+fi
+
+if [ $ONLY_UPDATE_COPYRIGHT_YEAR -eq 1 ]; then
+   update_copyright_year
    exit
 fi
 
