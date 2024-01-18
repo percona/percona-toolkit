@@ -192,6 +192,18 @@ func TestViewsRegex(t *testing.T) {
 		},
 
 		{
+			log:         "2001-01-01T01:01:01.000000Z [Warning] WSREP: last inactive check more than PT1.5S (3*evs.inactive_check_period) ago (PT4.51947S), skipping check",
+			expectedOut: "inactive check more than 1.5s (4.51947s)",
+			key:         "RegexLastInactiveCheck",
+		},
+		{
+			name:        "mariadb variation",
+			log:         "2001-01-01T01:01:01.000000Z [Warning] WSREP: last inactive check more than PT1.5S ago (PT4.51947S), skipping check",
+			expectedOut: "inactive check more than 1.5s (4.51947s)",
+			key:         "RegexLastInactiveCheck",
+		},
+
+		{
 			log:         "2001-01-01  5:06:12 47285568576576 [Note] WSREP: gcomm: bootstrapping new group 'cluster'",
 			expectedOut: "bootstrapping",
 			key:         "RegexBootstrap",

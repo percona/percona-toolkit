@@ -117,6 +117,15 @@ var ViewsMap = types.RegexMap{
 		},
 	},
 
+	"RegexLastInactiveCheck": &types.LogRegex{
+		Regex:         regexp.MustCompile("last inactive check more than"),
+		InternalRegex: regexp.MustCompile("last inactive check more than PT(?P<configuredValue>.*)S (\\(3\\*evs.inactive_check_period\\) )?ago \\(PT(?P<inactiveTime>.*)S\\),"),
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+
+			return logCtx, types.SimpleDisplayer(utils.Paint(utils.YellowText, "inactive check more than "+submatches["configuredValue"]+"s ("+submatches["inactiveTime"]+"s)"))
+		},
+	},
+
 	"RegexWsrepUnsafeBootstrap": &types.LogRegex{
 		Regex: regexp.MustCompile("ERROR.*not be safe to bootstrap"),
 		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {

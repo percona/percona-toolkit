@@ -504,6 +504,7 @@ mysql version                 8.0.31                                        8.0.
 2023-05-16T07:51:58.379294Z   |                                             recovering gcache                             |                                             
 2023-05-16T07:52:26.431252Z   |                                             CLOSED -> OPEN                                |                                             
 2023-05-16T07:52:26.431427Z   |                                             NON-PRIMARY(n=1)                              |                                             
+2023-05-16T07:52:26.931116Z   |                                             inactive check more than 1.5s (3.50171s)      |                                             
 2023-05-16T10:03:18.655740Z   starting(8.0.31)                              |                                             |                                             
 2023-05-16T10:03:18.658268Z   started(cluster)                              |                                             |                                             
 2023-05-16T10:03:18.659239Z   no grastate.dat file                          |                                             |                                             
