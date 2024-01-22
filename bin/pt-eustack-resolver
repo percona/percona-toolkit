@@ -8,40 +8,49 @@ use strict;
 use Data::Dumper;
 
 my $mmap;
+my $FH;
 
 sub load_mapping {
-  my ($pid)= @_;
+   my ($pid)= @_;
 
-  if ($pid =~ /^[0-9]+$/) {
-    open F, '<', "/proc/$pid/maps"
-        or die "Failed to open /proc/$pid/maps: $!\n";
-  } else {
-    open F, '<', $pid
-        or die "Failed to open saved map file '$pid': $!\n";
-  }
+   if ($pid =~ /^[0-9]+$/) {
+      open $FH, '<', "/proc/$pid/maps"
+         or die "Failed to open /proc/$pid/maps: $!\n";
+   } else {
+      open $FH, '<', $pid
+         or die "Failed to open saved map file '$pid': $!\n";
+   }
 
-  my $arr= [];
-  while (<F>) {
-    next unless m/^([a-f0-9]+)-([a-f0-9]+) ..x. ([a-f0-9]+) [a-f0-9:]+ [0-9]+ +(.*)/;
-    push @$arr, { S => hex($1), E => hex($2), B => hex($3), F => $4 };
-  }
-  close F;
-  sort { $a->{S} <=> $b->{S} } @$arr;
-  $mmap= $arr;
+   my $arr= [];
+   while (<$FH>) {
+      next unless m/^([a-f0-9]+)-([a-f0-9]+) ..x. ([a-f0-9]+) [a-f0-9:]+ [0-9]+ +(.*)/;
+      push @$arr, { S => hex($1), E => hex($2), B => hex($3), F => $4 };
+   }
+   close $FH;
+   sort { $a->{S} <=> $b->{S} } @$arr;
+   $mmap= $arr;
 }
 
 my $syms= { };
 
 sub get_image {
-  my ($addr)= @_;
-  my $e;
-  for $e (@$mmap) {
-    next if $e->{E} <= $addr;
-    last if $e->{S} > $addr;
-    # Found, look up.  
+   my ($addr)= @_;
+  
+   # Ensure addr is defined
+   die "Address is undefined" unless defined $addr;
+
+   # Check if the global memory map is defined and is an array reference
+   die "Global memory map is undefined or not an array reference"
+      unless defined $mmap and ref($mmap) eq 'ARRAY';
+
+   my $e;
+   for $e (@$mmap) {
+      next if $e->{E} <= $addr;
+      last if $e->{S} > $addr;
+      # Found, look up.  
       return $e->{F};
-  }
-  return "";
+   }
+   return "";
 }
 
 die "Usage: $0 <pid>" unless @ARGV == 1;
@@ -49,13 +58,9 @@ die "Usage: $0 <pid>" unless @ARGV == 1;
 my $pid= $ARGV[0];
 load_mapping($pid);
 
-#for (@$mmap) {
-#  printf "0x%x - 0x%x (0x%x): %s\n", $_->{S}, $_->{E}, $_->{B}, $_->{F};
-#}
-
-open (STACK_TRACE, "eu-stack -q -p $pid 2>/dev/null|") or die "open(): $!";
-my @lines= <STACK_TRACE>;
-close(STACK_TRACE);
+open (my $STACK_TRACE, "eu-stack -q -p $pid 2>/dev/null|") or die "open(): $!";
+my @lines= <$STACK_TRACE>;
+close($STACK_TRACE);
 
 my $frame_no= 0;
 my %addr=();
@@ -99,14 +104,14 @@ foreach my $bin (keys %inverse)
 
 foreach $lwp (sort {$a<=>$b} keys %sf)
 {
-  my $idx=0;
-  print "Thread $lwp (LWP $lwp):\n";
-  foreach $frame_no (@{$sf{$lwp}})
-  {
-    print join(" ","#".$idx, "0x".$frame_no,"in", $addr{$frame_no}->[1]),"\n";
-    $idx++;
-  }
-  print "\n";
+   my $idx=0;
+   print "Thread $lwp (LWP $lwp):\n";
+   foreach $frame_no (@{$sf{$lwp}})
+   {
+      print join(" ","#".$idx, "0x".$frame_no,"in", $addr{$frame_no}->[1]),"\n";
+      $idx++;
+   }
+   print "\n";
 }
     
     
