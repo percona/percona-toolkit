@@ -69,7 +69,7 @@ func timelineFromPaths(paths []string, regexes types.RegexMap) (types.Timeline, 
 		// Why it should not just identify using the file path:
 		// so that we are able to merge files that belong to the same nodes
 		// we wouldn't want them to be shown as from different nodes
-		if CLI.PxcOperator {
+		if CLI.PxcOperator || CLI.SkipMerge {
 			timeline[path] = localTimeline
 		} else if CLI.MergeByDirectory {
 			timeline.MergeByDirectory(path, localTimeline)
@@ -129,7 +129,7 @@ func execGrepAndIterate(path, compiledRegex string, stdout chan<- string) error 
 		logger.Warn().Msg("On Darwin systems, use 'pt-galera-log-explainer --grep-cmd=ggrep' as it requires grep v3")
 	}
 
-	cmd := exec.Command(CLI.GrepCmd, "-P", compiledRegex, path)
+	cmd := exec.Command(CLI.GrepCmd, "-a", "-P", compiledRegex, path)
 
 	out, err := cmd.StdoutPipe()
 	if err != nil {
