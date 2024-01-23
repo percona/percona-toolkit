@@ -8,10 +8,10 @@ use strict;
 use Data::Dumper;
 
 my $mmap;
-my $FH;
 
 sub load_mapping {
    my ($pid)= @_;
+   my $FH;
 
    if ($pid =~ /^[0-9]+$/) {
       open $FH, '<', "/proc/$pid/maps"
@@ -43,8 +43,7 @@ sub get_image {
    die "Global memory map is undefined or not an array reference"
       unless defined $mmap and ref($mmap) eq 'ARRAY';
 
-   my $e;
-   for $e (@$mmap) {
+   for my $e (@$mmap) {
       next if $e->{E} <= $addr;
       last if $e->{S} > $addr;
       # Found, look up.  
