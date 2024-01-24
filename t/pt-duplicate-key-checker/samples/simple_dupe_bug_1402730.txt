@@ -1,0 +1,25 @@
+# ########################################################################
+# test.domains                                                            
+# ########################################################################
+
+# PRIMARY (`id`)
+# domain (`domain`)
+# unique_key_domain (`domain`)
+
+# Uniqueness of domain ignored because unique_key_domain is a duplicate constraint
+# domain is a duplicate of unique_key_domain
+# Key definitions:
+#   UNIQUE KEY `domain` (`domain`),
+#   UNIQUE KEY `unique_key_domain` (`domain`)
+# Column types:
+#	  `domain` varchar(175) collate utf8_bin not null
+# To remove this duplicate index, execute:
+ALTER TABLE `test`.`domains` DROP INDEX `domain`;
+
+# ########################################################################
+# Summary of indexes                                                      
+# ########################################################################
+
+# Size Duplicate Indexes   527
+# Total Duplicate Indexes  1
+# Total Indexes            3

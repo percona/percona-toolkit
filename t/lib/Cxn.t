@@ -102,6 +102,7 @@ my $cxn = make_cxn(
    dsn_string => 'h=127.1,P=12345,u=msandbox,p=msandbox',
    set        => sub {
       my ($dbh) = @_;
+      warn "---------------";
       $set_calls++;
       $dbh->do("SET \@a := \@a + 1");
    },
@@ -352,25 +353,29 @@ SKIP: {
       "Re-connect connect()"
    );
 
-   ($row) = $cxn->dbh()->selectrow_hashref('SHOW SLAVE STATUS');
-   ok(
-      $row,
-      "Re-connect connect(slave_dsn) to slave"
-   ) or diag(Dumper($row));
+PXC_SKIP: {
+      skip 'Not for PXC' if ( $sb->is_cluster_mode );
 
-   $cxn->dbh->disconnect();
-   $cxn->connect();
+      ($row) = $cxn->dbh()->selectrow_hashref('SHOW SLAVE STATUS');
+      ok(
+         $row,
+         "Re-connect connect(slave_dsn) to slave"
+      ) or diag(Dumper($row));
 
-   ok(
-      $cxn->dbh()->ping(),
-      "Re-re-connect connect()"
-   );
+      $cxn->dbh->disconnect();
+      $cxn->connect();
 
-   ($row) = $cxn->dbh()->selectrow_hashref('SHOW SLAVE STATUS');
-   ok(
-      $row,
-      "Re-re-connect connect() to slave"
-   ) or diag(Dumper($row));
+      ok(
+         $cxn->dbh()->ping(),
+         "Re-re-connect connect()"
+      );
+
+      ($row) = $cxn->dbh()->selectrow_hashref('SHOW SLAVE STATUS');
+      ok(
+         $row,
+         "Re-re-connect connect() to slave"
+      ) or diag(Dumper($row));
+   }
 }
 
 # #############################################################################

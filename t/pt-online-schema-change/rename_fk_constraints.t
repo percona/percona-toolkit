@@ -21,6 +21,12 @@ my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
 
+my $vp = VersionParser->new($master_dbh);
+
+if ($vp->cmp('8.0') > -1 && $vp->cmp('8.0.14') < 0 && $vp->flavor() !~ m/maria/i) {
+   plan skip_all => 'Cannot run this test under the current MySQL version';
+}
+
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
@@ -50,21 +56,30 @@ $sb->load_file('master', "$sample/bug-1215587.sql");
       qw(--execute)) },
 );
 
-my $constraints = $master_dbh->selectall_arrayref("SELECT TABLE_NAME, CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE table_schema='bug1215587' and (TABLE_NAME='Table1' OR TABLE_NAME='Table2') and CONSTRAINT_NAME LIKE '%fkey%' ORDER BY TABLE_NAME, CONSTRAINT_NAME"); 
+my $query = <<__SQL;
+  SELECT TABLE_NAME, CONSTRAINT_NAME 
+    FROM information_schema.KEY_COLUMN_USAGE 
+   WHERE table_schema='bug1215587' 
+     and (TABLE_NAME='Table1' OR TABLE_NAME='Table2') 
+     and CONSTRAINT_NAME LIKE '%fkey%' 
+ORDER BY TABLE_NAME, CONSTRAINT_NAME 
+__SQL
 
+my $constraints = $master_dbh->selectall_arrayref($query); 
+# why we need to sort? Depending on the MySQL version and the characters set, the ORDER BY clause
+# in the query will return different values so, it is better to rely on our own sorted results.
+my @sorted_constraints = sort { @$a[0].@$a[1] cmp @$b[0].@$b[1] } @$constraints;
 
 is_deeply(
-   $constraints,
+   \@sorted_constraints,
    [
-      ['Table1', '_fkey1b'],
       ['Table1', '__fkey1a'],
-      ['Table2', '_fkey2a'],
+      ['Table1', '_fkey1b'],
       ['Table2', '__fkey2b'],
+      ['Table2', '_fkey2a'],
    ],
    "First run adds or removes underscore from constraint names, accordingly"
 );
-
-
 
 # run second time: we expect constraint names to be prefixed with one underscore
 # if they havre't one, and to remove 2 if they have 2
@@ -76,15 +91,15 @@ is_deeply(
 );
 
 $constraints = $master_dbh->selectall_arrayref("SELECT TABLE_NAME, CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE table_schema='bug1215587' and (TABLE_NAME='Table1' OR TABLE_NAME='Table2') and CONSTRAINT_NAME LIKE '%fkey%' ORDER BY TABLE_NAME, CONSTRAINT_NAME"); 
-
+@sorted_constraints = sort { @$a[0].@$a[1] cmp @$b[0].@$b[1] } @$constraints; # read above why we need to sort
 
 is_deeply(
-   $constraints,
+   \@sorted_constraints,
    [
-      ['Table1', 'fkey1a'],
       ['Table1', '__fkey1b'],
-      ['Table2', 'fkey2b'],
+      ['Table1', 'fkey1a'],
       ['Table2', '__fkey2a'],
+      ['Table2', 'fkey2b'],
    ],
    "Second run adds or removes underscore from constraint names, accordingly"
 );
@@ -98,15 +113,15 @@ is_deeply(
 );
 
 $constraints = $master_dbh->selectall_arrayref("SELECT TABLE_NAME, CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE table_schema='bug1215587' and (TABLE_NAME='Table1' OR TABLE_NAME='Table2') and CONSTRAINT_NAME LIKE '%fkey%' ORDER BY TABLE_NAME, CONSTRAINT_NAME"); 
-
+@sorted_constraints = sort { @$a[0].@$a[1] cmp @$b[0].@$b[1] } @$constraints; # read above why we need to sort
 
 is_deeply(
-   $constraints,
+   \@sorted_constraints,
    [
-      ['Table1', 'fkey1b'],
       ['Table1', '_fkey1a'],
-      ['Table2', 'fkey2a'],
+      ['Table1', 'fkey1b'],
       ['Table2', '_fkey2b'],
+      ['Table2', 'fkey2a'],
    ],
    "Third run toggles constraint names back to how they were"
 );

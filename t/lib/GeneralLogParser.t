@@ -270,6 +270,61 @@ test_log_parser(
    ],
 );
 
+# Customer issue from Ernie.
+test_log_parser(
+   parser  => $p,
+   file    => $sample.'pt-1573-general-log-system.log',
+   oktorun => sub { $oktorun = $_[0]; },
+   result  => [
+               {
+                 Query_time => 0,
+                 Thread_id => '257426',
+                 arg => 'administrator command: Connect',
+                 bytes => 30,
+                 cmd => 'Admin',
+                 host => '127.0.0.1',
+                 pos_in_log => 0,
+                 ts => '2018-09-07T18:45:40.098124+08:00',
+                 user => 'mysqlha_common'
+               },
+               {
+                 Query_time => 0,
+                 Thread_id => '257426',
+                 arg => 'set autocommit=0',
+                 bytes => 16,
+                 cmd => 'Query',
+                 pos_in_log => 285,
+                 ts => '2018-09-07T18:45:40.098511+08:00'
+               },
+               {
+                 Query_time => 0,
+                 Thread_id => '257426',
+                 arg => 'set autocommit=1',
+                 bytes => 16,
+                 cmd => 'Query',
+                 pos_in_log => 411,
+                 ts => '2018-09-07T18:45:40.098613+08:00'
+               },
+               {
+                 Query_time => 0,
+                 Thread_id => '257426',
+                 arg => 'show global status like \'Threads_connected\'',
+                 bytes => 43,
+                 cmd => 'Query',
+                 pos_in_log => 501,
+                 ts => '2018-09-07T18:45:40.098769+08:00'
+               },
+               {
+                 Query_time => 0,
+                 Thread_id => '257426',
+                 arg => 'administrator command: Quit',
+                 bytes => 27,
+                 cmd => 'Admin',
+                 pos_in_log => 547,
+                 ts => '2018-09-07T18:45:40.101009+08:00'
+               }
+              ],   
+);
 # #############################################################################
 # Done.
 # #############################################################################

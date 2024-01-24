@@ -32,9 +32,10 @@ my $sample     = "t/pt-table-checksum/samples/";
 my $row;
 my $output;
 
+$sb->create_dbs($master_dbh, [qw(test)]);
 
-eval { $master_dbh->do('DROP FUNCTION test.fnv_64'); };
-eval { $master_dbh->do("CREATE FUNCTION fnv_64 RETURNS INTEGER SONAME 'fnv_udf.so';"); };
+eval { $master_dbh->do('DROP FUNCTION IF EXISTS fnv_64'); };
+eval { $master_dbh->do("CREATE FUNCTION fnv_64 RETURNS INTEGER SONAME 'libfnv_udf.so';"); };
 if ( $EVAL_ERROR ) {
    chomp $EVAL_ERROR;
    plan skip_all => "No FNV_64 UDF lib"
@@ -42,8 +43,6 @@ if ( $EVAL_ERROR ) {
 else {
    plan tests => 7;
 }
-
-$sb->create_dbs($master_dbh, [qw(test)]);
 
 # ############################################################################
 # First test the the FNV function works in MySQL and gives the correct results.
@@ -108,6 +107,7 @@ is(
 # #############################################################################
 # Done.
 # #############################################################################
+$master_dbh->do('DROP FUNCTION IF EXISTS fnv_64');
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

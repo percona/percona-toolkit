@@ -1,3 +1,156 @@
+percona-toolkit (3.0.13-1) unstable; urgency=low
+
+ * Fixed bug   PT-1673: Fix pt-show-grants for MariaDB 10+ (thanks Tim Birkett)
+ * Fixed bug   PT-1638: pt-online-schema-change not working with MariaDB 10.x
+ * Improvement PT-1637: Added --fail-on stopped-replication param to table checksum
+ * Fixed bug   PT-1616: pt-table-checksum fails to --resume on certain binary strings
+ * Fixed bug   PT-1573: pt-query-digest log_timestamps = SYSTEM # No events processed
+ * Improvement PT-1340: pt-stalk should not call mysqladmin debug by default
+ * Fixed bug   PT-1114: pt-table-checksum fails when table is empty
+ * Fixed bug    PT-157: Specifying the index to use for pt-archiver ignores --primary-key-only
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Fri, 28 Dec 2018 08:06:00 +0000
+
+percona-toolkit (3.0.12-1) unstable; urgency=low
+
+ * Fixed bug   PT-1611: pt-archiver fails with UTF-8 chars
+ * Fixed bug   PT-1603: pt-table-sync is not considering unsorted enum fields in indexes for calculating chunk boundaries
+ * Fixed bug   PT-1574: pt-online-schema-change fails on UK and NULLs
+ * Fixed bug   PT-1572: Better usage of ENUM fields in keys in NibbleIterator
+ * Fixed bug   PT-1422: pt-mysql-summary may get stuck when Time: NULL in processlist
+ * Improvement PT-1321: Add required MySQL privileges to pt-online-schema-change documentation
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Tue, 11 Sep 2018 11:20:08 +0000
+
+percona-toolkit (3.0.11-1) unstable; urgency=low
+
+ * Improvement PT-1571 : Improved hostname recognition in pt-secure-collect
+ * Fixed bug   PT-1570 : pt-archiver fails to detect columns with the word GENERATED as part of the comment
+ * Improvement PT-1569 : Disabled --alter-foreign-keys-method=drop_swap in pt-osc
+ * Fixed bug   PT-1563 : Fixed pt-show-grants for MySQL 5.6
+ * Improvement PT-1562 : pt-mysql-summary: Fix mysqld command for Travis
+ * Fixed bug   PT-1551 : pt-table-checksum fails on MySQL 8.0.11
+ * Improvement  PT-242 : (pt-stalk) Include SHOW SLAVE STATUS on 5.7 (Thanks Marcelo Altmann)
+ * Fixed bug    PT-241 : (pt-stalk) Slave queries doesn't run on 5.7 (Thanks Marcelo Altmann)
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Fri, 06 Jul 2018 15:07:41 +0000
+
+percona-toolkit (3.0.11-1) unstable; urgency=low
+
+ * Improvement PT-1571 : Improved hostname recognition in pt-secure-collect
+ * Fixed bug   PT-1570 : pt-archiver fails to detect columns with the word GENERATED as part of the comment
+ * Improvement PT-1569 : Disabled --alter-foreign-keys-method=drop_swap in pt-osc
+ * Fixed bug   PT-1563 : Fixed pt-show-grants for MySQL 5.6
+ * Improvement PT-1562 : pt-mysql-summary: Fix mysqld command for Travis
+ * Fixed bug   PT-1551 : pt-table-checksum fails on MySQL 8.0.11
+ * Improvement  PT-242 : (pt-stalk) Include SHOW SLAVE STATUS on 5.7 (Thanks Marcelo Altmann)
+ * Fixed bug    PT-241 : (pt-stalk) Slave queries doesn't run on 5.7 (Thanks Marcelo Altmann)
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Tue, 03 Jul 2018 12:54:53 +0000
+
+percona-toolkit (3.0.10-1) unstable; urgency=low
+
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Mon, 21 May 2018 17:36:10 +0000
+
+percona-toolkit (3.0.9-1) unstable; urgency=low
+
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Tue, 17 Apr 2018 10:24:47 +0000
+
+percona-toolkit (3.0.8-1) unstable; urgency=low
+
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Tue, 13 Mar 2018 13:58:27 +0000
+
+percona-toolkit (3.0.7-1) unstable; urgency=low
+
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Thu, 01 Mar 2018 12:11:13 +0000
+
+percona-toolkit (3.0.6-1) unstable; urgency=low
+
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Wed, 20 Dec 2017 14:02:29 +0000
+
+percona-toolkit (3.0.5-1) unstable; urgency=low
+
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Fri, 17 Nov 2017 08:02:47 +0000
+
+percona-toolkit (3.0.4-1) unstable; urgency=low
+
+ * Fixed bug PT-181 : pt-online-schema-change not in sync with modules (Thanks Daniël van Eeden)
+ * Fixed bug PT-180 : pt-online-schema-change --skip-check-slave-lag doesn't work
+ * Fixed bug PT-178 : pt-online-schema-change appears to ignore the --check-slave-lag option
+ * Fixed bug PT-162 : Updated pt-table-checksum ignored dbs (Thanks Agustin Gallego)
+ * Fixed bug PT-161 : Safely check for undefined values in --skip-check-slave-lag (Thanks Chris Swingler)
+ * Fixed bug PT-154 : pt-online-schema-change --no-use-insert-ignore is broken
+ * Fixed bug PT-153 : pt-online-schema-change data loss when adding unique keys
+ * Fixed bug PT-151 : point is not decimal
+ * Fixed bug PT-148 : pt-osc Use of uninitialized value in printf
+ * Fixed bug PT-146 : Turn off statement based binlog checks
+ * Fixed bug PT-144 : Constraint name is too long (> 64 chars)
+ * Fixed bug PT-143 : pt-archiver SELECT query fails because of primary key
+ * Fixed bug PT-142 : pt-online-schema-change find_child_tables slow
+ * Fixed bug PT-138 : Added --output-format option to pt-mongodb-summary
+ * Fixed bug PT-136 : pt-table-checksum fails with columns having different collation/charset
+ * Feature   PT-173 : Enable pt-table-checksum to ensure stale data is removed
+ * Feature   PT-141 : pt-archiver archive records into csv file
+ * Feature   PT-91  : Make pt-osc compatible with AFTER triggers
+ * Feature   PT-90  : pt-stalk: Collect information about prepared statements if P_S is enabled (Thanks Agustin Gallego)
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Tue, 01 Aug 2017 09:35:45 +0000
+
+percona-toolkit (3.0.3-1) unstable; urgency=low
+
+ * Fixed bug PT-133 : Sandbox won't start correctly if autocommit=0 in my.cnf
+ * Fixed bug PT-132 : pt-online-schema-change should imply --no-drop-new-table
+ * Fixed bug PT-130 : Fixed pt-mext not working with not empty Rsa_public_key
+ * Fixed bug PT-128 : pt-stalk ps include memory usage outputs
+ * Fixed bug PT-126 : Recognize comments in ALTER
+ * Fixed bug PT-116 : pt-online-schema change eats data on adding a unique index. Added --[no]use-insert-ignore
+ * Feature   PT-115 : Make DSNs params able to be repeatable
+ * Fixed bug PT-115 : Made OptionParser to accept repeatable DSNs
+ * Fixed bug PT-111 : Collect MySQL variables
+ * Fixed bug PT-087 : Add --skip-check-slave-lag to pt-table-checksum
+ * Fixed bug PT-086 : Added --skip-check-slave-lag to pt-osc
+ * Fixed bug PT-080 : Added support for slave status in pt-stalk
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Tue, 01 Aug 2017 10:23:25 +0000
+
+percona-toolkit (3.0.2-1) unstable; urgency=low
+
+ * Fixed bug PT-73  : pt-mongodb tools add support for SSL connections
+ * Fixed bug PT-74  : pt-mongodb-summary Cannot get security settings when connected to a mongod instance
+ * Fixed bug PT-75  : pt-mongodb-query-digest Change the default sort order to -count (descending)
+ * Fixed bug PT-76  : pt-mysql-summary password doesn't support '&' and '#' symbols
+ * Fixed bug PT-77  : Update Makefile for mongodb tools
+ * Fixed bug PT-81  : Collect information about locks and transactions using P_S (Thanks Agustin Gallego)
+ * Fixed bug PT-89  : pt-stalk top CPU usage is useless
+ * Fixed bug PT-93  : Fix pt-mongodb-query-digest query ID (Thanks Kamil Dziedzic)
+ * Fixed bug PT-94  : pt-online-schema-change makes duplicate rows in _t_new for UPDATE t set pk=0 where pk=1
+ * Fixed bug PT-96  : Fixed PT tests
+ * Fixed bug PT-101 : pt-table-checksum ignores slave-user and slave-password
+ * Fixed bug PT-105 : pt-table-checksum fails if a database is dropped while the tool is running
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Thu, 23 Mar 2017 12:16:45 +0000
+
+percona-toolkit (3.0.1-1) unstable; urgency=low
+
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Thu, 16 Feb 2017 16:08:43 +0000
+
+percona-toolkit (3.0-1) unstable; urgency=low
+
+ * Fixed bug 1402776: Improved fix (protocol parser fix): error when parsing tcpdump capture with pt-query-digest
+ * Fixed bug 1632522: pt-osc: Fails with duplicate key in table for self-referencing (Thanks Amiel Marqeta)
+ * Fixed bug 1654668: pt-summary exists with an error (Thanks Marcelo Altmann)
+ * New tool         : pt-mongodb-summary
+ * New tool         : pt-mongodb-query-digest
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Fri, 03 Feb 2017 23:23:31 +0000
+
 percona-toolkit (2.2.20-1) unstable; urgency=low
 
 
@@ -39,7 +192,7 @@ percona-toolkit (2.2.17-1) unstable; urgency=low
  * Fixed bug 1523730:  pt-show-grants doesn't sort column-level privileges
  * Fixed bug 1362942:  pt-slave-restart fails on MariaDB 10.0.13 (gtid_mode confusion)
  * Fixed bug PT-30:    pt-stalk: new var binlog_error_action causes bug in collect module
- * Fixed bug 1389041:  pt-table-checksum has high likelyhood to skip a table when row count is around chunk-size * chunk-size-limit
+ * Fixed bug 1389041:  pt-table-checksum has high likelihood to skip a table when row count is around chunk-size * chunk-size-limit
  * Fixed bug 1480719:  pt-table-checksum redundant argument in printf
 
  -- Percona Toolkit Developers <toolkit-dev@percona.com>  Fri, 04 Mar 2016 12:09:54 +0000
@@ -75,7 +228,7 @@ percona-toolkit (2.2.15-2) unstable; urgency=low
   * Fixed bug 1457573: pt-sift failed when fetching missing tools
   * Feature   1488600: pt-stalk monitors tokudb status
   * Fixed bug 1042727: pt-table-checksum doesn't reconnect to slaves when timed out on very long lags
-  * Fixed bug 1277049: passsword parameter must escape commas - all tools [DOC]
+  * Fixed bug 1277049: password parameter must escape commas - all tools [DOC]
   * Fixed bug BLD-271: changes needed to build packages from git tree
   * Fixed bug PT-21  : write-user-docs script stopped working after switching to github
   * Fixed bug 1488611: testing bugs related to newer perl versions
@@ -107,19 +260,19 @@ percona-toolkit (2.2.14) unstable; urgency=low
 
 percona-toolkit (2.2.13) unstable; urgency=low
 
-  * Feature   1391240:  pt-kill added query fingerprint hash to output 
-  * Fixed bug 1402668:  pt-mysql-summary fails on cluster in Donor/Desynced status 
-  * Fixed bug 1396870:  pt-online-schema-change CTRL+C leaves terminal in inconsistent state 
+  * Feature   1391240:  pt-kill added query fingerprint hash to output
+  * Fixed bug 1402668:  pt-mysql-summary fails on cluster in Donor/Desynced status
+  * Fixed bug 1396870:  pt-online-schema-change CTRL+C leaves terminal in inconsistent state
   * Fixed bug 1396868:	pt-online-schema-change --ask-pass option error
-  * Fixed bug 1266869:  pt-stalk fails to start if $HOME environment variable is not set 
+  * Fixed bug 1266869:  pt-stalk fails to start if $HOME environment variable is not set
   * Fixed bug 1019479:	pt-table-checksum does not work with sql_mode ONLY_FULL_GROUP_BY
   * Fixed bug 1394934:  pt-table-checksum error in debug mode
-  * Fixed bug 1321297:  pt-table-checksum reports diffs on timestamp columns in 5.5 vs 5.6 
+  * Fixed bug 1321297:  pt-table-checksum reports diffs on timestamp columns in 5.5 vs 5.6
   * Fixed bug 1399789:	pt-table-checksum fails to find pxc nodes when wsrep_node_incoming_address is set to AUTO
   * Fixed bug 1388870:  pt-table-checksum has some errors with different time zones
   * Fixed bug 1408375:  vulnerable to MITM attack which would allow exfiltration of MySQL configuration information via --version-check
-  * Fixed bug 1404298:  missing MySQL5.7 test files for pt-table-checksum 
-  * Fixed bug 1403900:  added sandbox and fixed sakila test db for 5.7 
+  * Fixed bug 1404298:  missing MySQL5.7 test files for pt-table-checksum
+  * Fixed bug 1403900:  added sandbox and fixed sakila test db for 5.7
 
  -- Percona Toolkit Developers <toolkit-dev@percona.com>  Fri, 23 Jan 2015 10:08:15 +0000
 
@@ -131,7 +284,7 @@ percona-toolkit (2.2.12) unstable; urgency=low
   * Fixed bug 1217466:	pt-table-checksum refuses to run on PXC if server_id is the same on all nodes
   * Fixed bug 1373937:	pt-table-checksum requires recursion when working with and XtraDB Cluster node
   * Fixed bug 1377888:	pt-query-digest manual for --type binlog is ambiguous
-  * Fixed bug 1349086:	pt-stalk should also gather dmesg output 
+  * Fixed bug 1349086:	pt-stalk should also gather dmesg output
   * Fixed bug 1361293:	Some scripts fail when no-version-check option is put in global config file
 
  -- Percona Toolkit Developers <toolkit-dev@percona.com>  Tue, 11 Nov 2014 13:02:51 +0000
@@ -150,22 +303,22 @@ percona-toolkit (2.2.11) unstable; urgency=low
 
 percona-toolkit (2.2.10) unstable; urgency=low
 
-  * Fixed bug 1287253: pt-table-checksum deadlock 
+  * Fixed bug 1287253: pt-table-checksum deadlock
   * Fixed bug 1299387: 5.6 slow query log Thead_id becomes Id
   * Fixed bug 1311654: pt-table-checksum + PXC inconsistent results upon --resume
   * Fixed bug 1340728: pt-online-schema-change doesn't work with HASH indexes
   * Fixed bug 1253872: pt-table-checksum max load 20% rounds down
-  * Fixed bug 1340364: some shell tools output error when queried for --version 
+  * Fixed bug 1340364: some shell tools output error when queried for --version
 
  -- Percona Toolkit Developers <toolkit-dev@percona.com>  Wed, 06 Aug 2014 19:53:53 +0000
 
 percona-toolkit (2.2.9) unstable; urgency=low
 
   * Fixed bug 1258135: pt-deadlock-logger introduces a noise to MySQL
-  * Fixed bug 1329422: pt-online-schema-change foreign-keys-method=none breaks constraints 
-  * Fixed bug 1315130: pt-online-schema-change not properly detecting foreign keys 
+  * Fixed bug 1329422: pt-online-schema-change foreign-keys-method=none breaks constraints
+  * Fixed bug 1315130: pt-online-schema-change not properly detecting foreign keys
   * Fixed bug 1335960: pt-query-digest cannot parse binlogs from 5.6
-  * Fixed bug 1335322: pt-stalk fails when variable or threshold is non-integer 
+  * Fixed bug 1335322: pt-stalk fails when variable or threshold is non-integer
 
  -- Percona Toolkit Developers <toolkit-dev@percona.com>  Tue, 08 Jul 2014 12:04:05 +0000
 
@@ -231,7 +384,7 @@ percona-toolkit (2.2.5) unstable; urgency=low
   * Fixed bug #1226721: pt-agent on CentOS 5 fails to send data
   * Fixed bug #821690: pt-query-digest doesn't distill IF EXISTS correctly
   * Fixed bug #1206677: pt-agent docs reference clodu.percona.com
-  
+
  -- Percona Toolkit Developers <toolkit-dev@percona.com>  Thu, 17 Oct 2013 05:00:27 +0000
 
 percona-toolkit (2.2.3) unstable; urgency=low
@@ -458,7 +611,7 @@ percona-toolkit (2.1.3) unstable; urgency=low
   * Fixed bug 954990: pt-stalk --nostalk does not work
   * Fixed bug 977226: pt-summary doesn't detect LSI RAID control
   * Fixed bug 1030031: pt-table-checksum reports wrong number of DIFFS
-  * Fixed bug 916168: pt-table-checksum privilege check fails on MySQL 5.5 
+  * Fixed bug 916168: pt-table-checksum privilege check fails on MySQL 5.5
   * Fixed bug 950294: pt-table-checksum should always create schema and tables with IF NOT EXISTS
   * Fixed bug 953141: pt-table-checksum ignores its default and explicit --recursion-method
   * Fixed bug 1030975: pt-table-sync crashes if sql_mode includes ANSI_QUOTES
@@ -531,7 +684,7 @@ percona-toolkit (2.1.2) unstable; urgency=low
   * Fixed bug 978432: pt-table-checksum ignoring primary key
   * Fixed bug 995274: pt-table-checksum can't use an undefined value as an ARRAY reference at line 2206
   * Fixed bug 996110: pt-table-checksum crashes if InnoDB is disabled
-  * Fixed bug 987393: pt-table-checksum: Empy tables cause "undefined value as an ARRAY" errors
+  * Fixed bug 987393: pt-table-checksum: Empty tables cause "undefined value as an ARRAY" errors
   * Fixed bug 1002365: pt-table-sync --ignore-* options don't work with --replicate
   * Fixed bug 1003014: pt-table-sync --replicate and --sync-to-master error "index does not exist"
   * Fixed bug 823403: pt-table-sync --lock-and-rename doesn't work on 5.1

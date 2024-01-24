@@ -1,5 +1,5 @@
 
-# Query 1: 0 QPS, 0x concurrency, ID 0xAA353644DE4C4CB4 at byte 435 ______
+# Query 1: 0 QPS, 0x concurrency, ID 0xEDBC971AEC392917AA353644DE4C4CB4 at byte 435
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.02
 # Attribute    pct   total     min     max     avg     95%  stddev  median
@@ -25,7 +25,7 @@
 #  10s+
 administrator command: Quit\G
 
-# Query 2: 0 QPS, 0x concurrency, ID 0xCC47B42511EA22DD at byte 663 ______
+# Query 2: 0 QPS, 0x concurrency, ID 0x36C2C875DF9317B4CC47B42511EA22DD at byte 663
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Attribute    pct   total     min     max     avg     95%  stddev  median

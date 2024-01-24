@@ -50,6 +50,7 @@ $sb->wipe_clean($master_dbh);
 eval {
    pt_table_checksum::main(@args, '--no-create-replicate-table');
 };
+#1
 like(
    $EVAL_ERROR,
    qr/--replicate database percona does not exist/,
@@ -61,6 +62,7 @@ $master_dbh->do('use percona');
 eval {
    pt_table_checksum::main(@args, '--no-create-replicate-table');
 };
+#2
 like(
    $EVAL_ERROR,
    qr/--replicate table `percona`.`checksums` does not exist/,
@@ -90,11 +92,12 @@ $output = output(
    sub { pt_table_checksum::main(@args, '--no-create-replicate-table',
       qw(-t sakila.country)) },
 );
+#3
 like(
    $output,
-   qr/^\S+\s+0\s+0\s+109\s+1\s+0\s+\S+\s+sakila.country$/m,
+   qr/^\S+\s+0\s+0\s+109\s+0\s+1\s+0\s+\S+\s+sakila.country$/m,
    "Uses pre-created replicate table"
-);
+) or diag($output);
 
 # ############################################################################
 # Issue 1318: mk-tabke-checksum --create-replicate-table doesn't replicate

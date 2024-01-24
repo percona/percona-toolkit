@@ -4,7 +4,7 @@ BEGIN {
    die "The PERCONA_TOOLKIT_BRANCH environment variable is not set.\n"
       unless $ENV{PERCONA_TOOLKIT_BRANCH} && -d $ENV{PERCONA_TOOLKIT_BRANCH};
    unshift @INC, "$ENV{PERCONA_TOOLKIT_BRANCH}/lib";
-   $ENV{PTTEST_PRETTY_JSON} = 1;
+   $ENV{PTTEST_PRETTY_JSON} = 0;
 
 };
 
@@ -12,6 +12,8 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
+use JSON;
+use File::Slurp;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -155,14 +157,27 @@ $result = $j->query_report(
    groupby => 'fingerprint',
 );
 
-ok(
-   no_diff(
-      $result,
-      "t/lib/samples/JSONReportFormatter/report001.json",
-      cmd_output => 1,
-   ),
-   'Basic output'
-) or diag($test_diff);
+my $sample_file = "t/lib/samples/JSONReportFormatter/report001.json";
+my $want_text = read_file($sample_file);
+my $want = decode_json $want_text;
+my $got = decode_json $result;
+
+
+# I've change the original test because it was comparing JSONs as strings
+# but it is hard (or impossible) to ensure in all environments the output
+# will have a particular order.
+# I prefer to decode_json($result) and compare it against the struct I am
+# expecting as a result for 2 reasons:
+# 1) using decode_json ensures that the json syntax is valid, but comparing 
+# strings cannot ensure that since the sample json may contain syntax errors.
+# 2) Using structs (hashes) and is_deeply makes this test to work regarding
+# of the sort order during the encoding process.
+
+is_deeply(
+           $got,
+           $want,
+           'Basic output',
+);
 
 # #############################################################################
 # Done.

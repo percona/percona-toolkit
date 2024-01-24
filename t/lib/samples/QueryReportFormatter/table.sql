@@ -6,7 +6,7 @@ CREATE TABLE t (
    v varchar(16)
 ) engine=InnoDB;
 insert into qrf.t values
-   (null, 'hello'),
-   (null, ','),
-   (null, 'world'),
-   (null, '!');
+   (1, 'hello'),
+   (2, ','),
+   (3, 'world'),
+   (4, '!');

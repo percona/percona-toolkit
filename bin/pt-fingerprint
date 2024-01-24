@@ -22,10 +22,10 @@ BEGIN {
 # ###########################################################################
 # OptionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/OptionParser.pm
 #   t/lib/OptionParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package OptionParser;
@@ -83,7 +83,7 @@ sub new {
       rules             => [],  # desc of rules for --help
       mutex             => [],  # rule: opts are mutually exclusive
       atleast1          => [],  # rule: at least one opt is required
-      disables          => {},  # rule: opt disables other opts 
+      disables          => {},  # rule: opt disables other opts
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
@@ -246,7 +246,7 @@ sub _pod_to_specs {
          }
 
          push @specs, {
-            spec  => $self->{parse_attributes}->($self, $option, \%attribs), 
+            spec  => $self->{parse_attributes}->($self, $option, \%attribs),
             desc  => $para
                . (defined $attribs{default} ? " (default $attribs{default})" : ''),
             group => ($attribs{'group'} ? $attribs{'group'} : 'default'),
@@ -337,7 +337,7 @@ sub _parse_specs {
          $self->{opts}->{$long} = $opt;
       }
       else { # It's an option rule, not a spec.
-         PTDEBUG && _d('Parsing rule:', $opt); 
+         PTDEBUG && _d('Parsing rule:', $opt);
          push @{$self->{rules}}, $opt;
          my @participants = $self->_get_participants($opt);
          my $rule_ok = 0;
@@ -382,7 +382,7 @@ sub _parse_specs {
       PTDEBUG && _d('Option', $long, 'disables', @participants);
    }
 
-   return; 
+   return;
 }
 
 sub _get_participants {
@@ -469,7 +469,7 @@ sub _set_option {
 }
 
 sub get_opts {
-   my ( $self ) = @_; 
+   my ( $self ) = @_;
 
    foreach my $long ( keys %{$self->{opts}} ) {
       $self->{opts}->{$long}->{got} = 0;
@@ -600,7 +600,7 @@ sub _check_opts {
                   else {
                      $err = join(', ',
                                map { "--$self->{opts}->{$_}->{long}" }
-                               grep { $_ } 
+                               grep { $_ }
                                @restricted_opts[0..scalar(@restricted_opts) - 2]
                             )
                           . ' or --'.$self->{opts}->{$restricted_opts[-1]}->{long};
@@ -610,7 +610,7 @@ sub _check_opts {
             }
 
          }
-         elsif ( $opt->{is_required} ) { 
+         elsif ( $opt->{is_required} ) {
             $self->save_error("Required option --$long must be specified");
          }
 
@@ -679,7 +679,15 @@ sub _validate_type {
          }
       }
       my $defaults = $self->{DSNParser}->parse_options($self);
-      $opt->{value} = $self->{DSNParser}->parse($val, $prev, $defaults);
+      if (!$opt->{attributes}->{repeatable}) {
+          $opt->{value} = $self->{DSNParser}->parse($val, $prev, $defaults);
+      } else {
+          my $values = [];
+          for my $dsn_string (@$val) {
+              push @$values, $self->{DSNParser}->parse($dsn_string, $prev, $defaults);
+          }
+          $opt->{value} = $values;
+      }
    }
    elsif ( $val && $opt->{type} eq 'z' ) {  # type size
       PTDEBUG && _d('Parsing option', $opt->{long}, 'as a size value');
@@ -986,7 +994,7 @@ sub clone {
       $clone{$scalar} = $self->{$scalar};
    }
 
-   return bless \%clone;     
+   return bless \%clone;
 }
 
 sub _parse_size {
@@ -1125,10 +1133,10 @@ if ( PTDEBUG ) {
 # ###########################################################################
 # QueryParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/QueryParser.pm
 #   t/lib/QueryParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package QueryParser;
@@ -1184,7 +1192,7 @@ sub get_tables {
       return ($tbl);
    }
 
-   $query =~ s/ (?:LOW_PRIORITY|IGNORE|STRAIGHT_JOIN)//ig;
+   $query =~ s/(?:LOW_PRIORITY|IGNORE|STRAIGHT_JOIN|DELAYED)\s+/ /ig;
 
    if ( $query =~ s/^\s*LOCK TABLES\s+//i ) {
       PTDEBUG && _d('Special table type: LOCK TABLES');
@@ -1193,9 +1201,18 @@ sub get_tables {
       $query = "FROM $query";
    }
 
-   $query =~ s/\\["']//g;                # quoted strings
-   $query =~ s/".*?"/?/sg;               # quoted strings
-   $query =~ s/'.*?'/?/sg;               # quoted strings
+   $query =~ s/\\["']//g;   # quoted strings
+   $query =~ s/".*?"/?/sg;  # quoted strings
+   $query =~ s/'.*?'/?/sg;  # quoted strings
+
+   if ( $query =~ m/\A\s*(?:INSERT|REPLACE)(?!\s+INTO)/i ) {
+      $query =~ s/\A\s*((?:INSERT|REPLACE))\s+/$1 INTO /i;
+   }
+
+   if ( $query =~ m/\A\s*LOAD DATA/i ) {
+      my ($tbl) = $query =~ m/INTO TABLE\s+(\S+)/i;
+      return $tbl;
+   }
 
    my @tables;
    foreach my $tbls ( $query =~ m/$tbl_regex/gio ) {
@@ -1528,10 +1545,10 @@ sub _d {
 # ###########################################################################
 # QueryRewriter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/QueryRewriter.pm
 #   t/lib/QueryRewriter.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package QueryRewriter;
@@ -1557,8 +1574,8 @@ $bal         = qr/
 
 my $olc_re = qr/(?:--|#)[^'"\r\n]*(?=[\r\n]|\Z)/;  # One-line comments
 my $mlc_re = qr#/\*[^!].*?\*/#sm;                  # But not /*!version */
-my $vlc_re = qr#/\*.*?[0-9+].*?\*/#sm;             # For SHOW + /*!version */
-my $vlc_rf = qr#^(SHOW).*?/\*![0-9+].*?\*/#sm;     # Variation for SHOW
+my $vlc_re = qr#/\*.*?[0-9]+.*?\*/#sm;             # For SHOW + /*!version */
+my $vlc_rf = qr#^(?:SHOW).*?/\*![0-9]+(.*?)\*/#sm;     # Variation for SHOW
 
 
 sub new {
@@ -1573,7 +1590,8 @@ sub strip_comments {
    $query =~ s/$mlc_re//go;
    $query =~ s/$olc_re//go;
    if ( $query =~ m/$vlc_rf/i ) { # contains show + version
-      $query =~ s/$vlc_re//go;
+      my $qualifier = $1 || '';
+      $query =~ s/$vlc_re/$qualifier/go;
    }
    return $query;
 }
@@ -1644,11 +1662,17 @@ sub fingerprint {
    $query =~ s/\Ause \S+\Z/use ?/i       # Abstract the DB in USE
       && return $query;
 
-   $query =~ s/\\["']//g;                # quoted strings
-   $query =~ s/".*?"/?/sg;               # quoted strings
-   $query =~ s/'.*?'/?/sg;               # quoted strings
+   $query =~ s/([^\\])(\\')/$1/sg;
+   $query =~ s/([^\\])(\\")/$1/sg;
+   $query =~ s/\\\\//sg;
+   $query =~ s/\\'//sg;
+   $query =~ s/\\"//sg;
+   $query =~ s/([^\\])(".*?[^\\]?")/$1?/sg;
+   $query =~ s/([^\\])('.*?[^\\]?')/$1?/sg;
 
-   if ( $self->{match_md5_checksums} ) { 
+   $query =~ s/\bfalse\b|\btrue\b/?/isg; # boolean values
+
+   if ( $self->{match_md5_checksums} ) {
       $query =~ s/([._-])[a-f0-9]{32}/$1?/g;
    }
 
@@ -1660,7 +1684,7 @@ sub fingerprint {
    }
 
    if ( $self->{match_md5_checksums} ) {
-      $query =~ s/[xb+-]\?/?/g;                
+      $query =~ s/[xb+-]\?/?/g;
    }
    else {
       $query =~ s/[xb.+-]\?/?/g;
@@ -1696,6 +1720,13 @@ sub distill_verbs {
    $query =~ m/\A\s*UNLOCK TABLES/i  && return "UNLOCK";
    $query =~ m/\A\s*xa\s+(\S+)/i     && return "XA_$1";
 
+   if ( $query =~ m/\A\s*LOAD/i ) {
+      my ($tbl) = $query =~ m/INTO TABLE\s+(\S+)/i;
+      $tbl ||= '';
+      $tbl =~ s/`//g;
+      return "LOAD DATA $tbl";
+   }
+
    if ( $query =~ m/\Aadministrator command:/ ) {
       $query =~ s/administrator command:/ADMIN/;
       $query = uc $query;
@@ -1708,7 +1739,7 @@ sub distill_verbs {
       PTDEBUG && _d($query);
 
       $query = uc $query;
-      $query =~ s/\s+(?:GLOBAL|SESSION|FULL|STORAGE|ENGINE)\b/ /g;
+      $query =~ s/\s+(?:SESSION|FULL|STORAGE|ENGINE)\b/ /g;
       $query =~ s/\s+COUNT[^)]+\)//g;
 
       $query =~ s/\s+(?:FOR|FROM|LIKE|WHERE|LIMIT|IN)\b.+//ms;
@@ -1723,9 +1754,10 @@ sub distill_verbs {
    eval $QueryParser::tbl_ident;
    my ( $dds ) = $query =~ /^\s*($QueryParser::data_def_stmts)\b/i;
    if ( $dds) {
+      $query =~ s/\s+IF(?:\s+NOT)?\s+EXISTS/ /i;
       my ( $obj ) = $query =~ m/$dds.+(DATABASE|TABLE)\b/i;
       $obj = uc $obj if $obj;
-      PTDEBUG && _d('Data def statment:', $dds, 'obj:', $obj);
+      PTDEBUG && _d('Data def statement:', $dds, 'obj:', $obj);
       my ($db_or_tbl)
          = $query =~ m/(?:TABLE|DATABASE)\s+($QueryParser::tbl_ident)(\s+.*)?/i;
       PTDEBUG && _d('Matches db or table:', $db_or_tbl);
@@ -1789,10 +1821,13 @@ sub distill {
          map { $verbs =~ s/$_/$alias_for{$_}/ } keys %alias_for;
          $query = $verbs;
       }
+      elsif ( $verbs && $verbs =~ m/^LOAD DATA/ ) {
+         return $verbs;
+      }
       else {
          my @tables = $self->__distill_tables($query, $table, %args);
-         $query     = join(q{ }, $verbs, @tables); 
-      } 
+         $query     = join(q{ }, $verbs, @tables);
+      }
    }
 
    if ( $args{trf} ) {
@@ -2151,6 +2186,11 @@ To enable debugging and capture all output to a file, run the tool like:
 Be careful: debugging output is voluminous and can generate several megabytes
 of output.
 
+=head1 ATTENTION
+
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
+parameters are shown in the output.
+
 =head1 SYSTEM REQUIREMENTS
 
 You need Perl, DBI, DBD::mysql, and some core packages that ought to be
@@ -2158,9 +2198,9 @@ installed in any reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs, see L<http://www.percona.com/bugs/pt-fingerprint>.
+For a list of known bugs, see L<https://jira.percona.com/projects/PT/issues>.
 
-Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
+Please report bugs at L<https://jira.percona.com/projects/PT>.
 Include the following information in your bug report:
 
 =over
@@ -2213,7 +2253,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2016 Percona LLC and/or its affiliates.
+This program is copyright 2011-2024 Percona LLC and/or its affiliates.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
@@ -2231,6 +2271,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-fingerprint 2.2.20
+pt-fingerprint 3.5.7
 
 =cut

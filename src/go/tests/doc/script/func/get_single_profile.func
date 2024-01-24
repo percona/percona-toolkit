@@ -1,0 +1,38 @@
+#!/bin/sh
+
+get_single_profile() {
+    mongo --quiet <<'EOF'
+    {
+        var sp = db.system.profile.find().sort( { ts : -1 } ).limit(1).toArray()
+        if ("ts" in sp[0]) {
+            sp[0].ts = ISODate("2020-01-01T00:00:00.000Z")
+        }
+        if ("millis" in sp[0]) {
+            sp[0].millis = 42
+        }
+        if ("lockStats" in sp[0]) {
+            if ("timeLockedMicros" in sp[0].lockStats) {
+                if ("r" in sp[0].lockStats.timeLockedMicros) {
+                    sp[0].lockStats.timeLockedMicros.r = NumberLong(1234)
+                    sp[0].lockStats.timeLockedMicros.w = NumberLong(4321)
+                }
+                if ("R" in sp[0].lockStats.timeLockedMicros) {
+                    sp[0].lockStats.timeLockedMicros.R = NumberLong(1234)
+                    sp[0].lockStats.timeLockedMicros.W = NumberLong(4321)
+                }
+            }
+            if ("timeAcquiringMicros" in sp[0].lockStats) {
+                if ("r" in sp[0].lockStats.timeAcquiringMicros) {
+                    sp[0].lockStats.timeAcquiringMicros.r = NumberLong(9876)
+                    sp[0].lockStats.timeAcquiringMicros.w = NumberLong(6789)
+                }
+                if ("R" in sp[0].lockStats.timeAcquiringMicros) {
+                    sp[0].lockStats.timeAcquiringMicros.R = NumberLong(9876)
+                    sp[0].lockStats.timeAcquiringMicros.W = NumberLong(6789)
+                }
+            }
+        }
+        printjson(sp[0])
+    }
+EOF
+}

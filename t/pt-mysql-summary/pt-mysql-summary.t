@@ -9,20 +9,43 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-
 use PerconaTest;
-
-my ($tool) = $PROGRAM_NAME =~ m/([\w-]+)\.t$/;
-
+use Sandbox;
+use DSNParser;
+require VersionParser;
 use Test::More;
 use File::Temp qw( tempdir );
 
 local $ENV{PTDEBUG} = "";
 
+my $dp         = new DSNParser(opts=>$dsn_opts);
+my $sb         = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $master_dbh = $sb->get_dbh_for('master');
+my $has_keyring_plugin;
+
+my $db_flavor = VersionParser->new($master_dbh)->flavor();
+if ( $db_flavor =~ m/Percona Server/ ) {
+    my $rows = $master_dbh->selectall_hashref("SHOW PLUGINS", "name");
+    while (my ($key, $values) = each %$rows) {
+        if ($key =~ m/^keyring_/) {
+            $has_keyring_plugin=1;
+            last;
+        }
+    }
+}
+
+if ($has_keyring_plugin) {
+    plan skip_all => 'Keyring plugins are enabled.';
+}
+
+my ($tool) = $PROGRAM_NAME =~ m/([\w-]+)\.t$/;
+
 # mysqldump from earlier versions doesn't seem to work with 5.6,
 # so use the actual mysqldump from each MySQL bin which should
 # always be compatible with itself.
-my $env = qq\CMD_MYSQLDUMP="$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqldump"\;
+# We need LC_NUMERIC=POSIX, so test does not fail in environment 
+# which use , insead of . for numbers.
+my $env = qq\CMD_MYSQLDUMP="$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqldump" LC_NUMERIC=POSIX\;
 
 #
 # --save-samples
@@ -42,7 +65,7 @@ ok(
 my @files = glob("$dir/*");
 my $n_files = scalar @files;
 ok(
-   $n_files == 15 || $n_files == 14,
+   $n_files >= 15 && $n_files <= 18,
    "And leaves all files in there"
 ) or diag($n_files, `ls -l $dir`);
 
@@ -66,6 +89,15 @@ like(
    "InnoDB section present"
 );
 
+my $users_count = 2;
+if ($ENV{FORK} || "" eq 'mariadb') {
+    $users_count = 8;
+}
+like(
+   $out,
+   qr/Users \| $users_count/,
+   "Security works"
+);
 
 # --read-samples
 for my $i (2..7) {
@@ -73,7 +105,7 @@ for my $i (2..7) {
       no_diff(
          sub {
             local $ENV{_NO_FALSE_NEGATIVES} = 1;
-            print `$env $trunk/bin/$tool --read-samples $trunk/t/pt-mysql-summary/samples/temp00$i  -- --defaults-file=/tmp/12345/my.sandbox.cnf | tail -n+3 | perl -wlnpe 's/Skipping schema analysis.*/Specify --databases or --all-databases to dump and summarize schemas/'`
+            print `$env $trunk/bin/$tool --read-samples $trunk/t/pt-mysql-summary/samples/temp00$i  -- --defaults-file=/tmp/12345/my.sandbox.cnf | tail -n+3 | perl -wlnpe 's/Skipping schema analysis.*/Specify --databases or --all-databases to dump and summarize schemas/' | grep -v jemalloc`
          },
          "t/pt-mysql-summary/samples/expected_output_temp00$i.txt",
       ),

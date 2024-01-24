@@ -1,0 +1,27 @@
+[
+  {
+    "ID": "20fe80188ec82c9d3c3dcf3f4817f8f9",
+    "Namespace": "test.coll",
+    "Operation": "FIND",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"query\",\"query\":{\"find\":\"coll\",\"filter\":{\"c\":1},\"sort\":{\"b\":-1}}}\n",
+    "Fingerprint": "FIND coll b,c",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
+    "TableScan": false,
+    "Count": 1,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      2
+    ],
+    "NScanned": [
+      2
+    ],
+    "QueryTime": [
+      42
+    ],
+    "ResponseLength": [
+      176
+    ]
+  }
+]

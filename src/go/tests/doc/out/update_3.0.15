@@ -1,0 +1,1 @@
+{"ns":"test.coll","op":"update","query":{"a":{"$gte":2}},"updateobj":{"$set":{"c":1},"$inc":{"a":-10}}}

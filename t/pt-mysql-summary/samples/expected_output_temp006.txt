@@ -304,6 +304,8 @@ wsrep_cluster_size                          100
 # Security ###################################################
                     Users | 2 users, 0 anon, 0 w/o pw, 0 old pw
             Old Passwords | OFF
+# Encryption #################################################
+No keyring plugins found
 # Binary Logging #############################################
                   Binlogs | 1
                Zero-Sized | 0
@@ -338,4 +340,5 @@ log_queries_not_using_indexes | OFF
         log_slave_updates | ON
 # Configuration File #########################################
               Config File | Cannot autodetect or find, giving up
+# Memory management library ##################################
 # The End ####################################################

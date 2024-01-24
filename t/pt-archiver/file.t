@@ -46,7 +46,6 @@ is($output, <<EOF
 2\t\\N\t3\t4
 3\t2\t3\t\\\t
 4\t2\t3\t\\
-
 EOF
 , 'File has the right stuff');
 `rm -f archive.test.table_1`;
@@ -114,6 +113,25 @@ like(
    qr/\QError setting NAMES to some_charset_that_doesn/,
    "..but an unknown charset fails"
 );
+
+local $SIG{__WARN__} = undef;
+
+$sb->load_file('master', 't/pt-archiver/samples/table2.sql');
+`rm -f archive.test.table_2`;
+$output = output(
+    sub { pt_archiver::main(qw(--where 1=1 --output-format=csv), "--source", "D=test,t=table_2,F=$cnf", "--file", 'archive.%D.%t') },
+);
+$output = `cat archive.test.table_2`;
+is($output, <<EOF
+1, 2, 3, 4
+2, "\\N", 3, 4
+3, 2, 3, "\\\t"
+4, 2, 3, "\\\n"
+5, 2, 3, "Zapp \\"Brannigan"
+EOF
+, '--output-format=csv');
+`rm -f archive.test.table_2`;
+
 
 # #############################################################################
 # Done.

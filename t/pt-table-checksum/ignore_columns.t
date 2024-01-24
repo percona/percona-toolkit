@@ -42,14 +42,14 @@ $sb->load_file('master', 't/pt-table-checksum/samples/issue_94.sql');
 $slave_dbh->do("update test.issue_94 set c=''");
 
 $output = output(
-   sub { pt_table_checksum::main(@args, qw(-d test -t issue_94)) },
+   sub { pt_table_checksum::main(@args, qw(-d test --ignore-databases mysql -t issue_94)) },
    trf => sub { return PerconaTest::count_checksum_results(@_, 'DIFFS') },
 );
 is(
    $output,
    "1",
    "Diff when column not ignored"
-);
+) or diag($output);
 
 $output = output(
    sub { pt_table_checksum::main(@args, qw(-d test -t issue_94),
@@ -60,7 +60,7 @@ is(
    $output,
    "0",
    "No diff when column ignored"
-);
+) or diag($output);
 
 $output = output(
    sub { pt_table_checksum::main(@args, qw(-d test -t issue_94),

@@ -232,6 +232,8 @@ for my $i ( 0..4 ) {
    $master_dbh->do(qq{create table `bug_1041372`.$tbl (a INT NOT NULL AUTO_INCREMENT PRIMARY KEY )});
    $master_dbh->do(qq{insert into `bug_1041372`.$tbl values (1), (2), (3), (4), (5)});
 
+   $sb->wait_for_slaves();
+
    ($output) = full_output(sub {
       pt_online_schema_change::main(@args,
           '--alter', "ADD COLUMN ptosc INT",
@@ -286,14 +288,20 @@ $sb->load_file('master', "$sample/del-trg-bug-1062324.sql");
       "No delete trigger error after altering PK (bug 1062324)"
    ) or diag($output);
 
-   # The original row was (c1,c2,c3) = (1,1,1).  We deleted where c1=1,
-   # so the row where c2=1 AND c3=1 should no longer exist.
-   my $row = $master_dbh->selectrow_arrayref("SELECT * FROM test._t1_new WHERE c2=1 AND c3=1");
-   is(
-      $row,
-      undef,
-      "Delete trigger works after altering PK (bug 1062324)"
-   );
+   my $row;
+
+   SKIP: {
+      skip 'Not for PXC' if ( $sb->is_cluster_mode );
+
+      # The original row was (c1,c2,c3) = (1,1,1).  We deleted where c1=1,
+      # so the row where c2=1 AND c3=1 should no longer exist.
+      my $row = $master_dbh->selectrow_arrayref("SELECT * FROM test._t1_new WHERE c2=1 AND c3=1");
+      is(
+         $row,
+         undef,
+         "Delete trigger works after altering PK (bug 1062324)"
+      );
+   }
 
    # Another instance of this bug:
    # https://bugs.launchpad.net/percona-toolkit/+bug/1103672
@@ -445,6 +453,31 @@ $output = output(
 # clear databases with their foreign keys
 $sb->load_file('master', "$sample/bug-1315130_cleanup.sql");  
 
+# #############################################################################
+# Issue 1315130
+# Failed to detect child tables in other schema, and falsely identified
+# child tables in own schema
+# #############################################################################
+
+$sb->load_file('master', "$sample/bug-1315130_cleanup.sql");
+$sb->load_file('master', "$sample/bug-1315130.sql");
+
+$output = output(
+   sub { pt_online_schema_change::main(@args, "$master_dsn,D=bug_1315130_a,t=parent_table",
+         '--dry-run', 
+         '--alter', "add column c varchar(16)",
+         '--alter-foreign-keys-method', 'auto', '--only-same-schema-fks'),
+      },
+);
+
+like(
+      $output,
+      qr/Child tables:\s*`bug_1315130_a`\.`child_table_in_same_schema` \(approx\. 1 rows\)[^`]*?Will/s,
+      "Ignore child tables in other schemas.",
+);
+# clear databases with their foreign keys
+$sb->load_file('master', "$sample/bug-1315130_cleanup.sql");  
+
 
 # #############################################################################
 # Issue 1340728
@@ -466,7 +499,8 @@ for (my $i = 0; $i < $rows; $i++) {
 $big_insert .= "(NULL, 'xx')";
 
 $master_dbh->do($big_insert);
-
+# This big test causes slave lag error on slow boxes
+$sb->wait_for_slaves();
 
 $output = output(
    sub { pt_online_schema_change::main(@args, "$master_dsn,D=bug_1340728,t=test",
@@ -493,7 +527,7 @@ $sb->load_file('master', "$sample/bug-1340728_cleanup.sql");
 # If this test fails it might lead to "segmentation fault" or "out of memory"
 # #############################################################################
 
-$output = output(
+($output, $exit_status) = full_output(
    sub { pt_online_schema_change::main(@args, "$master_dsn,D=sakila,t=actor",
          '--execute', 
          '--alter-foreign-keys-method=drop_swap',
@@ -501,7 +535,6 @@ $output = output(
          '--nocheck-plan',
          ),
       },
-      stderr => 1,
 );
 
 like(
@@ -602,6 +635,91 @@ is(
 
 $master_dbh->do("DROP DATABASE IF EXISTS test");
 
+
+
+
+
+$sb->load_file('master', "$sample/bug-1613915.sql");
+$output = output(
+   sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=o1",
+         '--execute', 
+         '--alter', "ADD COLUMN c INT COMMENT 'change \"plus\" more than one word'",
+         '--chunk-size', '10', '--no-check-alter',
+         ),
+      },
+);
+
+like(
+      $output,
+      qr/Successfully altered/s,
+      "recognize comments",
+);
+
+$rows = $master_dbh->selectrow_arrayref(
+   "SELECT COUNT(*) FROM test.o1");
+is(
+   $rows->[0],
+   100,
+   "recognize comments fields count"
+) or diag(Dumper($rows));
+
+$rows = $master_dbh->selectrow_arrayref("SHOW CREATE TABLE test.o1");
+like(
+      $rows->[1],
+      qr/COMMENT 'change "plus" more than one word'/,
+      "recognize comments",
+);
+
+$master_dbh->do("DROP DATABASE IF EXISTS test");
+
+# Test for --skip-check-slave-lag
+# Use the same files from previous test because for this test we are going to
+# run a nonop so, any file will work
+SKIP: {
+   skip 'Not for PXC' if ( $sb->is_cluster_mode );
+
+   $master_dbh->do("DROP DATABASE IF EXISTS test");
+
+   $sb->load_file('master', "$sample/bug-1613915.sql");
+   $output = output(
+      sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=o1",
+            '--execute', 
+            '--alter', "ENGINE=INNODB",
+            '--skip-check-slave-lag', "h=127.0.0.1,P=".$sb->port_for('slave1'),
+            ),
+         },
+   );
+
+   my $skipping_str = "Skipping.*".$sb->port_for('slave1');
+   like(
+         $output,
+         qr/$skipping_str/s,
+         "--skip-check-slave-lag",
+   );
+
+   # Test for skip-check-slave-lag and empty replica port
+   # Use the same data than the previous test
+   $master_dbh->do("DROP DATABASE IF EXISTS test");
+
+   $sb->load_file('master', "$sample/bug-1613915.sql");
+   $output = output(
+      sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=o1",
+            '--execute', 
+            '--alter', "ADD COLUMN c INT",
+            '--chunk-size', '10',
+            '--skip-check-slave-lag', "h=127.0.0.1",
+         ),
+      },
+      stderr => 1,
+   );
+
+   unlike(
+      $output,
+      qr/Use of uninitialized value.*/,
+      'No syntax error if port is missed in --skip-check-slave-lag DSN',
+   ) or diag($output);
+
+}
 
 # #############################################################################
 # Done.

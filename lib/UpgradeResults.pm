@@ -220,7 +220,7 @@ sub report_unreported_classes {
             class   => $class,
             reasons => ["$reason, but hasn't been reported yet"],
          );
-         $class->{reported} = 1; 
+         $class->{reported} = 1;
       };
       if ( $EVAL_ERROR ) {
          $success = 1;
@@ -268,7 +268,7 @@ sub report_if_ready {
          class   => $class,
          reasons => \@report_reasons,
       );
-      $class->{reported} = 1; 
+      $class->{reported} = 1;
    }
 
    return;
@@ -405,7 +405,7 @@ sub _print_failures {
    foreach my $failure ( @$failures ) {
       print "\n-- $failno.\n";
       if ( ($failure->[1] || '') eq ($failure->[2] || '') ) {
-         printf "\nOn both hosts:\n\n" . ($failure->[1] || '') . "\n";
+         print "\nOn both hosts:\n\n" . ($failure->[1] || '') . "\n";
       }
       else {
          printf "\n%s\n\nvs.\n\n%s\n",
@@ -483,13 +483,13 @@ sub _format_warnings {
       my $warn1 = $warn->[1];
       my $warn2 = $warn->[2];
       my $host1_warn
-         = $warn1 ? sprintf $warning_format, 
+         = $warn1 ? sprintf $warning_format,
                        ($warn1->{Code}    || $warn1->{code}    || '?'),
                        ($warn1->{Level}   || $warn1->{level}   || '?'),
                        ($warn1->{Message} || $warn1->{message} || '?')
          :          "No warning $code\n";
       my $host2_warn
-         = $warn2 ? sprintf $warning_format, 
+         = $warn2 ? sprintf $warning_format,
                        ($warn2->{Code}    || $warn2->{code}    || '?'),
                        ($warn2->{Level}   || $warn2->{level}   || '?'),
                        ($warn2->{Message} || $warn2->{message} || '?')

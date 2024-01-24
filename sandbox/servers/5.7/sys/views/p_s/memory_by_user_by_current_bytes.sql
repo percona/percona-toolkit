@@ -17,8 +17,8 @@
 -- View: memory_by_user_by_current_bytes
 --
 -- Summarizes memory use by user using the 5.7 Performance Schema instrumentation.
--- 
--- When the user found is NULL, it is assumed to be a "background" thread.  
+--
+-- When the user found is NULL, it is assumed to be a "background" thread.
 --
 -- mysql> select * from memory_by_user_by_current_bytes;
 -- +------+--------------------+-------------------+-------------------+-------------------+-----------------+
@@ -32,7 +32,7 @@
 CREATE OR REPLACE
   ALGORITHM = TEMPTABLE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW memory_by_user_by_current_bytes (
   user,
   current_count_used,

@@ -33,6 +33,17 @@ my @args   = ('-F', $cnf, qw(-h 127.1));
 $sb->wipe_clean($dbh);
 $sb->create_dbs($dbh, ['test']);
 
+my $transform_int = undef;
+# In version 8.0 integer display width is deprecated and not shown in the outputs.
+# So we need to transform our samples.
+if ($sandbox_version ge '8.0') {
+   $transform_int = sub {
+      my $txt = slurp_file(shift);
+      $txt =~ s/int\(\d{1,2}\)/int/g;
+      print $txt;
+   };
+}
+
 # #############################################################################
 # Issue 331: mk-duplicate-key-checker crashes getting size of foreign keys
 # #############################################################################
@@ -41,7 +52,8 @@ $sb->load_file('master', 't/pt-duplicate-key-checker/samples/issue_331.sql', 'te
 ok(
    no_diff(
       sub { pt_duplicate_key_checker::main(@args, qw(-d issue_331)) },
-      't/pt-duplicate-key-checker/samples/issue_331.txt'
+      't/pt-duplicate-key-checker/samples/issue_331.txt',
+      transform_sample => $transform_int
    ),
    'Issue 331 crash on fks'
 ) or diag($test_diff);

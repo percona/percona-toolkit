@@ -1,8 +1,7 @@
 #!/usr/bin/env perl
 
 BEGIN {
-   die "The PERCONA_TOOLKIT_BRANCH environment variable is not set.  See http://code.google.
-com/p/maatkit/wiki/Testing"
+   die "The PERCONA_TOOLKIT_BRANCH environment variable is not set.\n"
       unless $ENV{PERCONA_TOOLKIT_BRANCH} && -d $ENV{PERCONA_TOOLKIT_BRANCH};
    unshift @INC, "$ENV{PERCONA_TOOLKIT_BRANCH}/lib";
 
@@ -20,6 +19,10 @@ require "$trunk/bin/pt-slave-delay";
 my $dp  = DSNParser->new(opts => $dsn_opts);
 my $sb  = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('slave1');
+
+if ($sandbox_version ge '5.7') {
+   plan skip_all => 'Use SQL_DELAY';
+}
 
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to MySQL slave.';

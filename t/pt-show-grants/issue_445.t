@@ -37,10 +37,8 @@ my $cnf = '/tmp/12345/my.sandbox.cnf';
 # #############################################################################
 
 # allow auto create user for a moment
-my $modes = new SqlModes($dbh, global=>1);
-$modes->del('NO_AUTO_CREATE_USER');
+diag(`/tmp/12345/use -u root -e "CREATE USER ''\@''"`);
 diag(`/tmp/12345/use -u root -e "GRANT USAGE ON *.* TO ''\@''"`);
-$modes->restore_original_modes();
 
 $output = `/tmp/12345/use -e "SELECT user FROM mysql.user WHERE user = ''"`;
 like(
@@ -61,10 +59,9 @@ is(
 );
 like(
    $output,
-   qr/REVOKE USAGE ON \*\.\* FROM ''\@'';/,
+   qr/REVOKE USAGE ON \*\.\* FROM ['`]['`]\@['`]['`];/,
    'Prints revoke for anonymous user (issue 445)'
 ) or diag($output);
-
 diag(`/tmp/12345/use -u root -e "DROP USER ''\@''"`);
 $output = `/tmp/12345/use -e "SELECT user FROM mysql.user WHERE user = ''"`;
 is(

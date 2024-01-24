@@ -20,6 +20,10 @@ my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
 my $slave_dbh  = $sb->get_dbh_for('slave1');
 
+if ($sandbox_version ge '5.7') {
+   plan skip_all => 'Use SQL_DELAY';
+}
+
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
@@ -87,7 +91,7 @@ like(
 $output = `$cmd --run-time 1s --interval 1s --use-master --pid /tmp/mk-script.pid 2>&1`;
 like(
    $output,
-   qr{PID file /tmp/mk-script.pid already exists},
+   qr{PID file /tmp/mk-script.pid exists},
    'Dies if PID file already exists (--pid without --daemonize) (issue 391)'
 );
 `rm -rf /tmp/mk-script.pid`;

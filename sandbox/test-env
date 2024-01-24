@@ -1,262 +1,264 @@
-#!/bin/sh
+#!/bin/bash
+
+TMP_DIR=${TMP_DIR:-/tmp}
 
 # This script controls the Percona Toolkit test environment.  The basic
-# environment is a master on port 12345 in /tmp/12345 and a slave on port
-# 12346 in /tmp/12346.  This script attempts to ensure that all environment
+# environment is a master on port 12345 in ${TMP_DIR}/12345 and a slave on port
+# 12346 in ${TMP_DIR}/12346.  This script attempts to ensure that all environment
 # vars like PERCONA_TOOLKIT_BRANCH and PERCONA_TOOLKIT_SANDBOX are correct.
 # Exist 0 on success/no errors, or 1 on any warnings or errors.
 
 err() {
-   for msg; do
-      echo "$msg" >&2
-   done
+    for msg; do
+        echo "$msg" >&2
+    done
 
-   if [ "$DEBUG_SANDBOXES" ]; then 
-      echo
-      echo "MySQL processes:" >&2
-      ps x | grep mysql >&2
+    if [ "$DEBUG_SANDBOXES" ]; then
+        echo
+        echo "MySQL processes:" >&2
+        ps x | grep mysql >&2
 
-      echo
-      for p in 12345 12346 12347; do
-         echo "Sandbox $p:" >&2
-         if [ -d "/tmp/$p" ]; then
-            ls -lh /tmp/$p/* >&2
-            echo
-            cat /tmp/$p/data/mysqld.log >&2
-            echo
-            tail -n 100 /tmp/$p/data/genlog >&2
-         else
-            echo "/tmp/$p does not exist" >&2
-         fi
-      done
-   fi
+        echo
+        for p in 12345 12346 12347; do
+            echo "Sandbox $p:" >&2
+            if [ -d "${TMP_DIR}/$p" ]; then
+                ls -lh ${TMP_DIR}/$p/* >&2
+                echo
+                cat ${TMP_DIR}/$p/data/mysqld.log >&2
+                echo
+                tail -n 100 ${TMP_DIR}/$p/data/genlog >&2
+            else
+                echo "${TMP_DIR}/$p does not exist" >&2
+            fi
+        done
+    fi
 }
 
 usage() {
-   err "Usage: test-env start|stop|restart|status|checkconfig|reset|kill" \
-       ""                                                          \
-       "  start       Start test servers in /tmp/PORT"             \
-       "  stop        Stop test servers and remvoe all /tmp/PORT"  \
-       "  kill        Kill test servers (use if stop fails)"       \
-       "  restart     Stop and start test servers"                 \
-       "  status      Print status of test servers"                \
-       "  checkconfig Check test env and test servers"             \
-       "  reset       Reset test server binary logs"               \
-       "  version     Print MySQL version of running test servers" \
-       "" 
+    err "Usage: test-env start|stop|restart|status|checkconfig|reset|kill" \
+        ""                                                          \
+        "  start       Start test servers in ${TMP_DIR}/PORT"             \
+        "  stop        Stop test servers and remove all ${TMP_DIR}/PORT"  \
+        "  kill        Kill test servers (use if stop fails)"       \
+        "  restart     Stop and start test servers"                 \
+        "  status      Print status of test servers"                \
+        "  checkconfig Check test env and test servers"             \
+        "  reset       Reset test server binary logs"               \
+        "  version     Print MySQL version of running test servers" \
+        ""
 }
 
 mysql_basedir_ok() {
-   local basedir=$1
-   if [ ! -d "$basedir" ] || [ ! -d "$basedir/bin" ]; then
-      return 0
-   fi
-   if [ ! -x "$basedir/bin/mysqld_safe" ]; then
-      return 0
-   fi
-   return 1  # basedir is ok
+    local basedir=$1
+    if [ ! -d "$basedir" ] || [ ! -d "$basedir/bin" ]; then
+        return 0
+    fi
+    if [ ! -x "$basedir/bin/mysqld_safe" ]; then
+        return 0
+    fi
+    return 1  # basedir is ok
 }
 
 set_mysql_basedir() {
-   if [ -x "$PERCONA_TOOLKIT_SANDBOX/bin/mysqld" ]; then
-      mysqld="$PERCONA_TOOLKIT_SANDBOX/bin/mysqld"
-   elif [ -x "$PERCONA_TOOLKIT_SANDBOX/sbin/mysqld" ]; then
-      mysqld="$PERCONA_TOOLKIT_SANDBOX/sbin/mysqld"
-   elif [ -x "$PERCONA_TOOLKIT_SANDBOX/libexec/mysqld" ]; then
-      mysqld="$PERCONA_TOOLKIT_SANDBOX/libexec/mysqld"
-   else
-      err "Cannot find executable mysqld in $PERCONA_TOOLKIT_SANDBOX/bin, $PERCONA_TOOLKIT_SANDBOX/sbin or $PERCONA_TOOLKIT_SANDBOX/libexec."
-      return 0
-   fi
-   mysql_basedir_ok $PERCONA_TOOLKIT_SANDBOX
-   local basedir_ok=$?
-   if [ $basedir_ok -eq 1 ]; then
-      export PERCONA_TOOLKIT_SANDBOX=$PERCONA_TOOLKIT_SANDBOX
-   fi
-   return $basedir_ok
+    if [ -x "$PERCONA_TOOLKIT_SANDBOX/bin/mysqld" ]; then
+        mysqld="$PERCONA_TOOLKIT_SANDBOX/bin/mysqld"
+    elif [ -x "$PERCONA_TOOLKIT_SANDBOX/sbin/mysqld" ]; then
+        mysqld="$PERCONA_TOOLKIT_SANDBOX/sbin/mysqld"
+    elif [ -x "$PERCONA_TOOLKIT_SANDBOX/libexec/mysqld" ]; then
+        mysqld="$PERCONA_TOOLKIT_SANDBOX/libexec/mysqld"
+    else
+        err "Cannot find executable mysqld in $PERCONA_TOOLKIT_SANDBOX/bin, $PERCONA_TOOLKIT_SANDBOX/sbin or $PERCONA_TOOLKIT_SANDBOX/libexec."
+        return 0
+    fi
+    mysql_basedir_ok $PERCONA_TOOLKIT_SANDBOX
+    local basedir_ok=$?
+    if [ $basedir_ok -eq 1 ]; then
+        export PERCONA_TOOLKIT_SANDBOX=$PERCONA_TOOLKIT_SANDBOX
+    fi
+    return $basedir_ok
 }
 
 checkconfig() {
-   local print_conf=$1
-   local stat=""
-   conf_err=0
+    local print_conf=$1
+    local stat=""
+    conf_err=0
 
-   if [ -z "$PERCONA_TOOLKIT_BRANCH" ] || [ ! -d "$PERCONA_TOOLKIT_BRANCH" ]; then
-      conf_err=1
-      stat="INVALID"
-   else
-      stat="ok"
-   fi
-   if [ $print_conf ]; then
-      echo "PERCONA_TOOLKIT_BRANCH=$PERCONA_TOOLKIT_BRANCH - $stat"
-   fi
+    if [ -z "$PERCONA_TOOLKIT_BRANCH" ] || [ ! -d "$PERCONA_TOOLKIT_BRANCH" ]; then
+        conf_err=1
+        stat="INVALID"
+    else
+        stat="ok"
+    fi
+    if [ $print_conf ]; then
+        echo "PERCONA_TOOLKIT_BRANCH=$PERCONA_TOOLKIT_BRANCH - $stat"
+    fi
 
-   set_mysql_basedir
-   if [ $? -ne 1  ]; then
-      conf_err=1
-      stat="INVALID"
-   else
-      stat="ok"
-   fi
-   if [ $print_conf ]; then
-      echo -n "PERCONA_TOOLKIT_SANDBOX=$PERCONA_TOOLKIT_SANDBOX - $stat"
-      if [ -n "$BASEDIR_AUTO_DETECTED" ]; then
-         echo " (auto-detected)"
-      else
-         echo
-      fi
-   fi
+    set_mysql_basedir
+    if [ $? -ne 1  ]; then
+        conf_err=1
+        stat="INVALID"
+    else
+        stat="ok"
+    fi
+    if [ $print_conf ]; then
+        echo -n "PERCONA_TOOLKIT_SANDBOX=$PERCONA_TOOLKIT_SANDBOX - $stat"
+        if [ -n "$BASEDIR_AUTO_DETECTED" ]; then
+            echo " (auto-detected)"
+        else
+            echo
+        fi
+    fi
 
-   return $conf_err
+    return $conf_err
 }
 
 sandbox_status() {
-   local type=$1
-   local port=$2
-   local master_port=$3
-   local status=0  # sandbox is ok, no problems
+    local type=$1
+    local port=$2
+    local master_port=$3
+    local status=0  # sandbox is ok, no problems
 
-   echo "MySQL $type test server on port $port:"
+    echo "MySQL $type test server on port $port:"
 
-   echo -n "  PID file exists - "
-   if [ -f "/tmp/$port/data/mysql_sandbox$port.pid" ]; then
-      echo "yes"
-      echo -n "  PID file has a PID - "
-      local pid=`cat /tmp/$port/data/mysql_sandbox$port.pid 2>/dev/null`
-      if [ -n "$pid" ]; then
-         echo "yes"
-         echo -n "  process $pid is alive - "
-         kill -0 $pid >/dev/null 2>&1
-         if [ $? -eq 0 ]; then
+    echo -n "  PID file exists - "
+    if [ -f "${TMP_DIR}/$port/data/mysql_sandbox$port.pid" ]; then
+        echo "yes"
+        echo -n "  PID file has a PID - "
+        local pid=`cat ${TMP_DIR}/$port/data/mysql_sandbox$port.pid 2>/dev/null`
+        if [ -n "$pid" ]; then
             echo "yes"
-         else
-            echo "NO"
-            status=1
-         fi
-      else
-         echo "NO"
-         status=1
-      fi
-   else
-      echo "NO"
-      status=1
-   fi
-
-   echo -n "  MySQL is alive - "
-   $PERCONA_TOOLKIT_SANDBOX/bin/mysqladmin --defaults-file="/tmp/$port/my.sandbox.cnf" ping >/dev/null 2>&1
-   if [ $? -eq 0 ]; then
-      echo "yes"
-
-      if [ "$MYSQL_VERSION" '>' "4.1" ]; then
-         echo -n "  sakila db is loaded - "
-         /tmp/$port/use -e 'show databases like "sakila"' 2>/dev/null | grep sakila >/dev/null 2>&1
-         if [ $? -eq 0 ]; then
-            echo "yes"
-         else
-            echo "NO"
-            status=1
-         fi
-      fi
-
-      if [ "$type" = "slave" ]; then
-         echo -n "  slave is running - "
-         # Slave status should show:
-         #   Slave_IO_Running: Yes
-         #   Slave_SQL_Running: Yes
-         local slave_running=`/tmp/$port/use -e 'show slave status\G' 2>/dev/null | grep Running | grep -c Yes`
-         if [ $slave_running -eq 2 ]; then
-            echo "yes"
-         else
-            echo "NO"
-            status=1
-         fi
-
-         if [ -n "$master_port" ]; then
-            echo -n "  slave to master $master_port - "
-            local mp=`/tmp/$port/use -e 'show slave status\G' 2>/dev/null | grep Master_Port | awk '{print $2}'`
-            if [ "$mp" = "$master_port" ]; then
-               echo "yes"
+            echo -n "  process $pid is alive - "
+            kill -0 $pid >/dev/null 2>&1
+            if [ $? -eq 0 ]; then
+                echo "yes"
             else
-               echo "NO"
-               status=1
+                echo "NO"
+                status=1
             fi
-         fi
-      fi
-   else
-      echo "NO"
-      status=1
-   fi
-   return $status
+        else
+            echo "NO"
+            status=1
+        fi
+    else
+        echo "NO"
+        status=1
+    fi
+
+    echo -n "  MySQL is alive - "
+    $PERCONA_TOOLKIT_SANDBOX/bin/mysqladmin --defaults-file="${TMP_DIR}/$port/my.sandbox.cnf" ping >/dev/null 2>&1
+    if [ $? -eq 0 ]; then
+        echo "yes"
+
+        if [ "$MYSQL_VERSION" '>' "4.1" ]; then
+            echo -n "  sakila db is loaded - "
+            ${TMP_DIR}/$port/use -e 'show databases like "sakila"' 2>/dev/null | grep sakila >/dev/null 2>&1
+            if [ $? -eq 0 ]; then
+                echo "yes"
+            else
+                echo "NO"
+                status=1
+            fi
+        fi
+
+        if [ "$type" = "slave" ]; then
+            echo -n "  slave is running - "
+            # Slave status should show:
+            #   Slave_IO_Running: Yes
+            #   Slave_SQL_Running: Yes
+            local slave_running=`${TMP_DIR}/$port/use -e 'show slave status\G' 2>/dev/null | grep Running | grep -c Yes`
+            if [ $slave_running -eq 2 ]; then
+                echo "yes"
+            else
+                echo "NO"
+                status=1
+            fi
+
+            if [ -n "$master_port" ]; then
+                echo -n "  slave to master $master_port - "
+                local mp=`${TMP_DIR}/$port/use -e 'show slave status\G' 2>/dev/null | grep Master_Port | awk '{print $2}'`
+                if [ "$mp" = "$master_port" ]; then
+                    echo "yes"
+                else
+                    echo "NO"
+                    status=1
+                fi
+            fi
+        fi
+    else
+        echo "NO"
+        status=1
+    fi
+    return $status
 }
 
 sandbox_is_running() {
-   local p=$1
-   ps xw | grep mysqld | grep -v grep | grep /tmp/$p >/dev/null
+    local p=$1
+    ps xw | grep mysqld | grep -v grep | grep ${TMP_DIR}/$p >/dev/null
 }
 
 kill_sandbox() {
-   local p=$1
+    local p=$1
 
-   # See if the sandbox server is running.
-   sandbox_is_running $p
-   if [ $? -eq 0 ]; then
-      # Try to kill it with mysqladmin shutdown.  We try different
-      # user/pass because sometimes a test can bork acct privs.
-      mysqladmin -h127.1 -P$p -umsandbox -pmsandbox shutdown >/dev/null 2>&1
-      mysqladmin -h127.1 -P$p -uroot -pmsandbox shutdown >/dev/null 2>&1
-      mysqladmin -h127.1 -P$p -uroot shutdown >/dev/null 2>&1
-      sleep 2
+    # See if the sandbox server is running.
+    sandbox_is_running $p
+    if [ $? -eq 0 ]; then
+        # Try to kill it with mysqladmin shutdown.  We try different
+        # user/pass because sometimes a test can bork acct privs.
+        mysqladmin -h127.1 -P$p -umsandbox -pmsandbox shutdown >/dev/null 2>&1
+        mysqladmin -h127.1 -P$p -uroot -pmsandbox shutdown >/dev/null 2>&1
+        mysqladmin -h127.1 -P$p -uroot shutdown >/dev/null 2>&1
+        sleep 2
 
-      # See if the sandbox server is still running.
-      sandbox_is_running $p 
-      if [ $? -eq 0 ]; then
-         # Kill both mysqld_safe and mysqld.
-         pid1=`ps xw | grep -v grep | grep mysqld_safe | grep /tmp/$p | awk '{print $1}'`
-         pid2=`ps xw | grep -v grep | grep -v mysqld_safe | grep mysqld | grep /tmp/$p | awk '{print $1}'`
-         [ "$pid1" ] && kill -9 $pid1  # Die, damn you, die!
-         [ "$pid2" ] && kill -9 $pid2
-         sleep 2
+        # See if the sandbox server is still running.
+        sandbox_is_running $p
+        if [ $? -eq 0 ]; then
+            # Kill both mysqld_safe and mysqld.
+            pid1=`ps xw | grep -v grep | grep mysqld_safe | grep ${TMP_DIR}/$p | awk '{print $1}'`
+            pid2=`ps xw | grep -v grep | grep -v mysqld_safe | grep mysqld | grep ${TMP_DIR}/$p | awk '{print $1}'`
+            [ "$pid1" ] && kill -9 $pid1  # Die, damn you, die!
+            [ "$pid2" ] && kill -9 $pid2
+            sleep 2
 
-         # Third and finaly check if the sandbox server is running.
-         sandbox_is_running $p
-         if [ $? -eq 0 ]; then
-            err "Failed to kill MySQL test server on port $p (PID $pid1, $pid2)"
-            return 1
-         else 
-            echo "Killed MySQL test server on port $p (PID $pid1, $pid2)"
-         fi
-      else
-         echo "Killed MySQL test server on port $p"
-      fi
-   fi
+            # Third and finally check if the sandbox server is running.
+            sandbox_is_running $p
+            if [ $? -eq 0 ]; then
+                err "Failed to kill MySQL test server on port $p (PID $pid1, $pid2)"
+                return 1
+            else
+                echo "Killed MySQL test server on port $p (PID $pid1, $pid2)"
+            fi
+        else
+            echo "Killed MySQL test server on port $p"
+        fi
+    fi
 
-   if [ -d "/tmp/$p" ]; then
-      rm -rf /tmp/$p
-      echo "Removed /tmp/$p"
-   fi
+    if [ -d "${TMP_DIR}/$p" ]; then
+        rm -rf ${TMP_DIR}/$p
+        echo "Removed ${TMP_DIR}/$p"
+    fi
 
-   return 0
+    return 0
 }
 
 MYSQL_VERSION=""
 set_mysql_version() {
-   if [ -d /tmp/12345 ] && [ -f /tmp/12345/use ]; then
-      MYSQL_VERSION=$(/tmp/12345/use -ss -e "SELECT VERSION()" \
-	| cut -d'.' -f1,2)
-   fi
+    if [ -d ${TMP_DIR}/12345 ] && [ -f ${TMP_DIR}/12345/use ]; then
+        MYSQL_VERSION=$(${TMP_DIR}/12345/use -ss -e "SELECT VERSION()" \
+            | cut -d'.' -f1,2)
+    fi
 }
 
 _seq() {
-   local i="$1"
-   awk "BEGIN { for(i=1; i<=$i; i++) print i; }"
+    local i="$1"
+    awk "BEGIN { for(i=1; i<=$i; i++) print i; }"
 }
 
 # ###########################################################################
 # Sanity check the cmd line options.
 # ###########################################################################
 if [ $# -lt 1 ]; then
-   usage
-   exit 1
+    usage
+    exit 1
 fi
 
 opt=$1
@@ -267,146 +269,164 @@ opt=$1
 
 exit_status=0
 
+if [ -e ${PERCONA_TOOLKIT_SANDBOX}/lib/mysql/libjemalloc.so ]; then
+    export LD_PRELOAD=${PERCONA_TOOLKIT_SANDBOX}/lib/mysql/libjemalloc.so
+fi
+
 if [ $opt = 'checkconfig' ]; then
-   checkconfig 1
-   echo -n "Percona Toolkit test environment config is "
-   if [ $conf_err -eq 0 ]; then
-      echo "ok!"
-      exit 0
-   else
-      echo "invalid."
-      exit 1
-   fi
+    checkconfig 1
+    echo -n "Percona Toolkit test environment config is "
+    if [ $conf_err -eq 0 ]; then
+        echo "ok!"
+        exit 0
+    else
+        echo "invalid."
+        exit 1
+    fi
 else
-   checkconfig
-   if [ $conf_err -eq 1 ]; then
-      err "The Percona Toolkit test environment config is invalid." \
-          "Run '$0 checkconfig' to see the current configuration."
-      exit 1      
-   fi
+    checkconfig
+    if [ $conf_err -eq 1 ]; then
+        err "The Percona Toolkit test environment config is invalid." \
+            "Run '$0 checkconfig' to see the current configuration."
+        exit 1
+    fi
 fi
 
 case $opt in
-   start)
-      cd $PERCONA_TOOLKIT_BRANCH/sandbox
-      ./start-sandbox "${2:-"master"}" 12345
-      exit_status=$((exit_status | $?))
-      set_mysql_version
-      if [ $exit_status -eq 0 ]; then
-         ./start-sandbox "${2:-"slave"}" 12346 12345
-         exit_status=$((exit_status | $?))
-         ./start-sandbox "${2:-"slave"}" 12347 12346
-         exit_status=$((exit_status | $?))
-
-         if [ "${2:-""}" = "cluster" ]; then
-            # Bit of magic here. 'start-sandbox cluster new_node old_node'
-            # changes old_node's my.sandbox.cnf's wsrep_cluster_address to
-            # point to new_node. This is especially useful because otherwise,
-            # calling stop/start like below on 12345 would create a new cluster.
-            /tmp/12345/stop  >/dev/null
-            /tmp/12345/start >/dev/null
-            echo -n "Checking that the cluster size is correct... "
-            size=$(/tmp/12345/use -ss -e "SHOW STATUS LIKE 'wsrep_cluster_size'" | awk '{print $2}')
-            if [ ${size:-0} -ne 3 ]; then
-               echo "FAILED"
+    start)
+        cd $PERCONA_TOOLKIT_BRANCH/sandbox
+        echo "${2:-"master"}" 12345
+        ./start-sandbox "${2:-"master"}" 12345
+        exit_status=$((exit_status | $?))
+        set_mysql_version
+        if [ $exit_status -eq 0 ]; then
+            if [ "${2:-""}" = "channels" ] && [ "$MYSQL_VERSION" '>' "5.6" ]; then
+                ./start-sandbox master 12346
+                exit_status=$((exit_status | $?))
+                ./start-sandbox master 12347
+                exit_status=$((exit_status | $?))
+                ${TMP_DIR}/12345/use < $PERCONA_TOOLKIT_BRANCH/sandbox/gtid_on.sql
+                exit_status=$?
+                ${TMP_DIR}/12346/use < $PERCONA_TOOLKIT_BRANCH/sandbox/gtid_on.sql
+                exit_status=$?
+                ${TMP_DIR}/12347/use < $PERCONA_TOOLKIT_BRANCH/sandbox/slave_channels.sql
+                exit_status=$?
             else
-               echo "OK"
-            fi
-         fi
-
-         if [ $? -eq 0 -a "$MYSQL_VERSION" '>' "4.1" ]; then
-            SAKILA=${SAKILA:-1}
-            if [ $SAKILA -eq 1 ]; then
-               echo -n "Loading sakila database... "
-               ./load-sakila-db 12345 "${2:-""}"
-               exit_status=$((exit_status | $?)) 
-               if [ $exit_status -ne 0 ]; then
-                  echo "FAILED"
-               else
-                  echo "OK"
-               fi
+                ./start-sandbox "${2:-"slave"}" 12346 12345
+                exit_status=$((exit_status | $?))
+                ./start-sandbox "${2:-"slave"}" 12347 12346
+                exit_status=$((exit_status | $?))
             fi
 
-            # Create percona_test db and checksum all the tables.
-            ../util/checksum-test-dataset
-
-            # LOAD DATA is disabled or broken on some boxes.
-            # PerconaTest exports $can_load_data which is true
-            # if percona_test.load_data has a row with 1,
-            # signaling that LOAD DATA LOCAL INFILE worked.
-            ../util/check-load-data
-
-            ping=$(/tmp/12345/use -ss -e "SELECT MD5(RAND())")
-            /tmp/12345/use -e "REPLACE INTO percona_test.sentinel (id, ping) VALUES (1, '$ping')";
-            echo -n "Waiting for replication to finish..."
-            for i in $(_seq 60); do
-               pong=$(/tmp/12347/use -ss -e "SELECT ping FROM percona_test.sentinel WHERE id=1 AND ping='$ping'" 2>/dev/null)
-               [ "$ping" = "$pong" ] && break
-               echo -n '.'
-               sleep 1
-            done
-            if [ "$ping" = "$pong" ]; then
-               echo " OK"
-            else
-               echo " FAILED"
-               exit_status=$((exit_status | 1))
+            if [ "${2:-""}" = "cluster" ]; then
+                # Bit of magic here. 'start-sandbox cluster new_node old_node'
+                # changes old_node's my.sandbox.cnf's wsrep_cluster_address to
+                # point to new_node. This is especially useful because otherwise,
+                # calling stop/start like below on 12345 would create a new cluster.
+                ${TMP_DIR}/12345/stop  >/dev/null
+                ${TMP_DIR}/12345/start >/dev/null
+                echo -n "Checking that the cluster size is correct... "
+                size=$(${TMP_DIR}/12345/use -ss -e "SHOW STATUS LIKE 'wsrep_cluster_size'" | awk '{print $2}')
+                if [ ${size:-0} -ne 3 ]; then
+                    echo "FAILED"
+                else
+                    echo "OK"
+                fi
             fi
-         fi
-      fi
-      if [ $exit_status -eq 0 ]; then
-         echo "Percona Toolkit test environment started with MySQL v$MYSQL_VERSION."
-      else
-         DEBUG_SANDBOXES=1
-         err "There was an error starting the Percona Toolkit test environment."
-      fi
-      ;;
-   stop)
-      cd $PERCONA_TOOLKIT_BRANCH/sandbox
-      ./stop-sandbox 12349 12348 12347 12346 12345 
-      exit_status=$((exit_status | $?))
-      ./stop-sandbox 2903 2902 2901 2900
-      exit_status=$((exit_status | $?))
-      if [ $exit_status -eq 0 ]; then
-         echo "Percona Toolkit test environment stopped."
-      else
-         DEBUG_SANDBOXES=1
-         err "Error stopping the Percona Toolkit test environment."
-      fi
-      ;;
-   kill)
-      # This is a blunt approach for killing the entire test env
-      # when a polite stop fails.  It uses kill -9 as a last resort.
-      for port in 12349 12348 12347 12346 12345 2903 2902 2901 2900; do
-         kill_sandbox $port
-         exit_status=$((exit_status | $?))
-      done
-      ;;
-   restart)
-      shift;
-      $0 stop "$@"
-      $0 start "$@"
-      ;;
-   status)
-      sandbox_status 'master' '12345'
-      master_status=$?
-      sandbox_status 'slave' '12346' '12345'
-      slave_status=$?
-      echo -n "Percona Test test environment is "
-      if [ $master_status -eq 0 ] && [ $slave_status -eq 0 ]; then
-         echo "ok!"
-      else
-         echo "invalid."
-         exit_status=1
-      fi
-      ;;
-   version)
-      set_mysql_version
-      echo $MYSQL_VERSION
-      ;;
-   *)
-      usage
-      exit_status=1
-      ;;
+
+            if [ $? -eq 0 ]; then
+                SAKILA=${SAKILA:-1}
+                if [ $SAKILA -eq 1 ]; then
+                    echo -n "Loading sakila database... "
+                    ./load-sakila-db 12345 "${2:-""}"
+                    exit_status=$((exit_status | $?))
+                    if [ $exit_status -ne 0 ]; then
+                        echo "FAILED"
+                    else
+                        echo "OK"
+                    fi
+                fi
+
+                # Create percona_test db and checksum all the tables.
+                ../util/checksum-test-dataset
+
+                # LOAD DATA is disabled or broken on some boxes.
+                # PerconaTest exports $can_load_data which is true
+                # if percona_test.load_data has a row with 1,
+                # signaling that LOAD DATA LOCAL INFILE worked.
+                ../util/check-load-data
+
+                ping=$(${TMP_DIR}/12345/use -ss -e "SELECT MD5(RAND())")
+                ${TMP_DIR}/12345/use -e "SET AUTOCOMMIT=1; REPLACE INTO percona_test.sentinel (id, ping) VALUES (1, '$ping')";
+                echo -n "Waiting for replication to finish..."
+                for i in $(_seq 60); do
+                    pong=$(${TMP_DIR}/12347/use -ss -e "SELECT ping FROM percona_test.sentinel WHERE id=1 AND ping='$ping'" 2>/dev/null)
+                    [ "$ping" = "$pong" ] && break
+                    echo -n '.'
+                    sleep 1
+                done
+                if [ "$ping" = "$pong" ]; then
+                    echo " OK"
+                else
+                    echo " FAILED"
+                    exit_status=$((exit_status | 1))
+                fi
+            fi
+        fi
+        if [ $exit_status -eq 0 ]; then
+            echo "Percona Toolkit test environment started with MySQL v$MYSQL_VERSION."
+        else
+            DEBUG_SANDBOXES=1
+            err "There was an error starting the Percona Toolkit test environment."
+        fi
+        ;;
+    stop)
+        cd $PERCONA_TOOLKIT_BRANCH/sandbox
+        ./stop-sandbox 12349 12348 12347 12346 12345
+        exit_status=$((exit_status | $?))
+        ./stop-sandbox 2903 2902 2901 2900
+        exit_status=$((exit_status | $?))
+        if [ $exit_status -eq 0 ]; then
+            echo "Percona Toolkit test environment stopped."
+        else
+            DEBUG_SANDBOXES=1
+            err "Error stopping the Percona Toolkit test environment."
+        fi
+        ;;
+    kill)
+        # This is a blunt approach for killing the entire test env
+        # when a polite stop fails.  It uses kill -9 as a last resort.
+        for port in 12349 12348 12347 12346 12345 2903 2902 2901 2900; do
+            kill_sandbox $port
+            exit_status=$((exit_status | $?))
+        done
+        ;;
+    restart)
+        shift;
+        $0 stop "$@"
+        $0 start "$@"
+        ;;
+    status)
+        sandbox_status 'master' '12345'
+        master_status=$?
+        sandbox_status 'slave' '12346' '12345'
+        slave_status=$?
+        echo -n "Percona Test test environment is "
+        if [ $master_status -eq 0 ] && [ $slave_status -eq 0 ]; then
+            echo "ok!"
+        else
+            echo "invalid."
+            exit_status=1
+        fi
+        ;;
+    version)
+        set_mysql_version
+        echo $MYSQL_VERSION
+        ;;
+    *)
+        usage
+        exit_status=1
+        ;;
 esac
 
 exit $exit_status

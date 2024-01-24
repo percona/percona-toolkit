@@ -1,0 +1,1 @@
+{"ns":"test.coll","op":"command","command":{"count":"coll","query":{},"fields":{}}}

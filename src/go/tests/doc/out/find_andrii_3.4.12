@@ -1,0 +1,1 @@
+{"ns":"test.coll","op":"query","query":{"find":"coll","filter":{"$and":[{"k":{"$gt":1}},{"k":{"$lt":2}},{"$or":[{"c":{"$in":["/^0/","/^2/","/^4/","/^6/"]}},{"pad":{"$in":["/9$/","/7$/","/5$/","/3$/"]}}]}]},"limit":100,"singleBatch":false,"sort":{"k":-1}}}

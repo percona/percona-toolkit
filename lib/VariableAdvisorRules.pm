@@ -367,7 +367,7 @@ sub get_rules {
          return _var_gt($args{variables}->{relay_log_space_limit}, 0);
       },
    },
-   
+
    {
       id   => 'slave_net_timeout',
       code => sub {

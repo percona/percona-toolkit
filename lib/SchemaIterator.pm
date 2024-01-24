@@ -270,7 +270,7 @@ sub _iterate_files {
       }
       elsif ($self->{db} && $chunk =~ m/CREATE TABLE/) {
          if ($chunk =~ m/DROP VIEW IF EXISTS/) {
-            # Tables that are actually views have this DROP statment in the
+            # Tables that are actually views have this DROP statement in the
             # chunk just before the CREATE TABLE.  We don't want views.
             PTDEBUG && _d('Table is a VIEW, skipping');
             next CHUNK;
@@ -353,7 +353,14 @@ sub _iterate_dbh {
             && $self->_resume_from_table($tbl)
             && $self->table_is_allowed($self->{db}, $tbl);
          }
-         @{$dbh->selectall_arrayref($sql)};
+
+         eval { @{$dbh->selectall_arrayref($sql)}; };
+         if ($EVAL_ERROR) {
+             warn "Skipping $self->{db}...";
+             $self->{db} = undef;
+             next;
+         }
+
          PTDEBUG && _d('Found', scalar @tbls, 'tables in database',$self->{db});
          $self->{tbls} = \@tbls;
       }
@@ -405,7 +412,7 @@ sub database_is_allowed {
 
    my $filter = $self->{filters};
 
-   if ( $db =~ m/information_schema|performance_schema|lost\+found|percona|percona_schema|test/ ) {
+   if ( $db =~ m/^(information_schema|performance_schema|lost\+found|percona_schema)$/ ) {
       PTDEBUG && _d('Database', $db, 'is a system database, ignoring');
       return 0;
    }
@@ -449,23 +456,16 @@ sub table_is_allowed {
    # Always auto-skip these pseudo tables.
    return 0 if $db eq 'mysql' && $tbl =~ m/^(?:
        general_log
-      |gtid_execution
+      |gtid_executed
       |innodb_index_stats
       |innodb_table_stats
-      |inventory
-      |plugin
-      |proc
       |slave_master_info
       |slave_relay_log_info
       |slave_worker_info
-      |slow_log    
+      |slow_log
    )$/x;
 
-   return 0 if $db eq 'sys' && $tbl =~ m/^(?:
-       sys_config
-   )$/x;
-
-   if ( $filter->{'ignore-tables'}->{'*'}->{$tbl} 
+   if ( $filter->{'ignore-tables'}->{'*'}->{$tbl}
          || $filter->{'ignore-tables'}->{$db}->{$tbl}) {
       PTDEBUG && _d('Table', $tbl, 'is in --ignore-tables list');
       return 0;
@@ -478,7 +478,7 @@ sub table_is_allowed {
    }
 
    if ( $filter->{'tables'}
-        && (!$filter->{'tables'}->{'*'}->{$tbl} && !$filter->{'tables'}->{$db}->{$tbl}) ) { 
+        && (!$filter->{'tables'}->{'*'}->{$tbl} && !$filter->{'tables'}->{$db}->{$tbl}) ) {
       PTDEBUG && _d('Table', $tbl, 'is not in --tables list, ignoring');
       return 0;
    }
@@ -527,7 +527,7 @@ sub engine_is_allowed {
    my $filter = $self->{filters};
 
    if ( $filter->{'ignore-engines'}->{$engine} ) {
-      PTDEBUG && _d('Engine', $engine, 'is in --ignore-databases list');
+      PTDEBUG && _d('Engine', $engine, 'is in --ignore-engines list');
       return 0;
    }
 

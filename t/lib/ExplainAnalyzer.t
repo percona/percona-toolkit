@@ -42,45 +42,59 @@ my $exa = new ExplainAnalyzer(QueryRewriter => $qr, QueryParser => $qp);
 # Tests for getting an EXPLAIN from a database.
 # #############################################################################
 
-is_deeply(
-   $exa->explain_query(
+my $want = [
+         { id            => 1,
+           select_type   => 'SIMPLE',
+           table         => 'actor',
+           type          => 'const',
+           possible_keys => 'PRIMARY',
+           key           => 'PRIMARY',
+           key_len       => 2,
+           ref           => 'const',
+           rows          => 1,
+           Extra         => $sandbox_version eq '5.6' ? undef : '',
+         },
+      ];
+if ( $sandbox_version gt '5.6' ) {
+ $want = [
+         { id            => 1,
+           select_type   => 'SIMPLE',
+           table         => 'actor',
+           type          => 'const',
+           possible_keys => 'PRIMARY',
+           key           => 'PRIMARY',
+           key_len       => 2,
+           filtered      => 100,
+           partitions    => undef,
+           ref           => 'const',
+           rows          => 1,
+           Extra         => $sandbox_version gt '5.6' ? undef : '',
+         },
+      ];
+}
+
+my $got = $exa->explain_query(
       dbh   => $dbh,
       query => 'select * from actor where actor_id = 5',
-   ),
-   [
-      { id            => 1,
-        select_type   => 'SIMPLE',
-        table         => 'actor',
-        type          => 'const',
-        possible_keys => 'PRIMARY',
-        key           => 'PRIMARY',
-        key_len       => 2,
-        ref           => 'const',
-        rows          => 1,
-        Extra         => $sandbox_version eq '5.6' ? undef : '',
-      },
-   ],
+);
+
+$got->[0]->{filtered} = int($got->[0]->{filtered}) if (defined($got->[0]->{filtered}));
+
+is_deeply(
+   $got,
+   $want,
    'Got a simple EXPLAIN result',
 );
 
-is_deeply(
-   $exa->explain_query(
+$got = $exa->explain_query(
       dbh   => $dbh,
       query => 'delete from actor where actor_id = 5',
-   ),
-   [
-      { id            => 1,
-        select_type   => 'SIMPLE',
-        table         => 'actor',
-        type          => 'const',
-        possible_keys => 'PRIMARY',
-        key           => 'PRIMARY',
-        key_len       => 2,
-        ref           => 'const',
-        rows          => 1,
-        Extra         => $sandbox_version eq '5.6' ? undef : '',
-      },
-   ],
+);
+$got->[0]->{filtered} = int($got->[0]->{filtered}) if (defined($got->[0]->{filtered}));
+
+is_deeply(
+   $got,
+   $want,
    'Got EXPLAIN result for a DELETE',
 );
 

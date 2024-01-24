@@ -39,6 +39,7 @@ use Data::Dumper;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
+use VersionParser;
 
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
@@ -240,7 +241,7 @@ sub _get_tables_used_from_query_struct {
          PTDEBUG && _d("Using EXPLAIN EXTENDED to disambiguate columns");
          if ( $self->_reparse_query(%args) ) {
             return $self->_get_tables_used_from_query_struct(%args);
-         } 
+         }
          PTDEBUG && _d('Failed to disambiguate columns');
       }
    }
@@ -332,7 +333,7 @@ sub _get_tables_used_from_query_struct {
             PTDEBUG && _d("Using EXPLAIN EXTENDED to disambiguate columns");
             if ( $self->_reparse_query(%args) ) {
                return $self->_get_tables_used_from_query_struct(%args);
-            } 
+            }
             PTDEBUG && _d('Failed to disambiguate columns');
          }
 
@@ -389,8 +390,8 @@ sub _get_tables_used_from_query_struct {
                         "to disambiguate columns");
                      if ( $self->_reparse_query(%args) ) {
                         return $self->_get_tables_used_from_query_struct(%args);
-                     } 
-                     PTDEBUG && _d('Failed to disambiguate columns'); 
+                     }
+                     PTDEBUG && _d('Failed to disambiguate columns');
                   }
 
                   foreach my $joined_table ( @{$on_tables->{joined_tables}} ) {
@@ -798,7 +799,7 @@ sub _qualify_table_name {
       }
 
       # Last resort: use default db if it's given.
-      if ( !$db_tbl && $args{default_db} ) { 
+      if ( !$db_tbl && $args{default_db} ) {
          $db_tbl = "$args{default_db}.$tbl";
       }
 
@@ -844,7 +845,14 @@ sub _explain_query {
       $dbh->do($sql);
    }
 
-   $sql = "EXPLAIN EXTENDED $query";
+   $self->{db_version} ||= VersionParser->new($dbh);
+   if ( $self->{db_version} < '5.7.3' ) {
+      $sql = "EXPLAIN EXTENDED $query";
+   }
+   else {
+      $sql = "EXPLAIN $query"; # EXTENDED is implicit as of 5.7.3
+   }
+
    PTDEBUG && _d($dbh, $sql);
    eval {
       $dbh->do($sql);  # don't need the result

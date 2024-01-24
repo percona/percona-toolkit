@@ -46,7 +46,7 @@ use constant MAX_STRING_LENGTH => 10;
 { local $EVAL_ERROR; eval { require ReportFormatter } };
 
 # Sub: new
-# 
+#
 # Parameters:
 #   %args - Required arguments
 #
@@ -122,10 +122,15 @@ sub BUILDARGS {
          shorten          => 1024,
          report_all       => $o->get('report-all'),
          report_histogram => $o->get('report-histogram'),
+         output           => $o->got('output') ? $o->get('output') : '',
       },
       num_format     => '# %1$-'.$label_width.'s %2$3s %3$7s %4$7s %5$7s %6$7s %7$7s %8$7s %9$7s',
       bool_format    => '# %1$-'.$label_width.'s %2$3d%% yes, %3$3d%% no',
       string_format  => '# %1$-'.$label_width.'s %2$s',
+      # MySQL 8 doesn't support partitions.
+      # sub explain_report can handle the error but we need to know if /*!50100 PARTITIONS */
+      # was used or not, to write the correct report headers
+      no_partitions  => 0,
       hidden_attrib  => {   # Don't sort/print these attribs in the reports.
          arg         => 1, # They're usually handled specially, or not
          fingerprint => 1, # printed at all.
@@ -133,6 +138,12 @@ sub BUILDARGS {
          ts          => 1,
       },
    };
+   if (!defined($self->{max_hostname_length})) {
+       $self->{max_hostname_length} = MAX_STRING_LENGTH;
+   }
+   if (!defined($self->{max_line_length})) {
+       $self->{max_line_length} = LINE_LENGTH;
+   }
    return $self;
 }
 
@@ -147,7 +158,7 @@ sub BUILDARGS {
 #   * files         arrayref: files read for input
 #   * group         hashref: don't add blank line between these reports
 #                            if they appear together
-# Prints the given reports (rusage, heade (global), query_report, etc.) in
+# Prints the given reports (rusage, header (global), query_report, etc.) in
 # the given order.  These usually come from mk-query-digest --report-format.
 # Most of the required args are for header() and query_report().
 sub print_reports {
@@ -160,7 +171,7 @@ sub print_reports {
    my $last_report;
 
    foreach my $report ( @$reports ) {
-      PTDEBUG && _d('Printing', $report, 'report'); 
+      PTDEBUG && _d('Printing', $report, 'report');
       my $report_output = $self->$report(%args);
       if ( $report_output ) {
          print "\n"
@@ -295,7 +306,7 @@ sub header {
          my $store   = $results->{globals}->{$attrib};
          my $metrics = $ea->stats()->{globals}->{$attrib};
          my $func    = $attrib =~ m/time|wait$/ ? \&micro_t : \&shorten;
-         my @values  = ( 
+         my @values  = (
             @{$store}{qw(sum min max)},
             $store->{sum} / $store->{cnt},
             @{$metrics}{qw(pct_95 stddev median)},
@@ -316,7 +327,7 @@ sub header {
          next unless exists $results->{globals}->{$attrib};
 
          my $store = $results->{globals}->{$attrib};
-         if ( $store->{sum} > 0 ) { 
+         if ( $store->{sum} > 0 ) {
             push @result,
                sprintf $self->{bool_format},
                   $self->make_label($attrib), $self->bool_percents($store);
@@ -354,7 +365,7 @@ sub query_report_values {
       my $rank       = $top_event->[2];
       my $stats      = $ea->results->{classes}->{$item};
       my $sample     = $ea->results->{samples}->{$item};
-      my $samp_query = $sample->{arg} || '';
+      my $samp_query = ($self->{options}->{output} eq 'secure-slowlog') ? $sample->{fingerprint} || '' : $sample->{arg} || '';
 
       my %item_vals = (
          item       => $item,
@@ -463,8 +474,9 @@ sub query_report {
          }
       }
 
+      my $partitions_msg = $self->{no_partitions} ? '' : '/*!50100 PARTITIONS*/';
       if ( $groupby eq 'fingerprint' ) {
-         # Shorten it if necessary (issue 216 and 292).           
+         # Shorten it if necessary (issue 216 and 292).
          my $samp_query = $qr->shorten($vals->{samp_query}, $self->{options}->{shorten})
             if $self->{options}->{shorten};
 
@@ -491,17 +503,17 @@ sub query_report {
                $report .= "$samp_query${mark}\n";
             }
             else {
-               $report .= "# EXPLAIN /*!50100 PARTITIONS*/\n$samp_query${mark}\n"; 
+               $report .= "# EXPLAIN $partitions_msg\n$samp_query${mark}\n";
                $report .= $self->explain_report($samp_query, $vals->{default_db});
             }
          }
          else {
-            $report .= "$samp_query${mark}\n"; 
+            $report .= "$samp_query${mark}\n";
             my $converted = $qr->convert_to_select($samp_query);
             if ( $converted
                  && $converted =~ m/^[\(\s]*select/i ) {
                # It converted OK to a SELECT
-               $report .= "# Converted for EXPLAIN\n# EXPLAIN /*!50100 PARTITIONS*/\n$converted${mark}\n";
+               $report .= "# Converted for EXPLAIN\n# EXPLAIN $partitions_msg\n$converted${mark}\n";
             }
          }
       }
@@ -855,7 +867,7 @@ sub profile {
                     $qr->distill($samp_query, %{$args{distill_args}}) : $item,
          id     => $groupby eq 'fingerprint' ? make_checksum($item)   : '',
          vmr    => ($query_time->{stddev}**2) / ($query_time->{avg} || 1),
-      ); 
+      );
 
       push @profiles, \%profile;
    }
@@ -864,7 +876,7 @@ sub profile {
    $report->title('Profile');
    my @cols = (
       { name => 'Rank',          right_justify => 1,             },
-      { name => 'Query ID',                                      },
+      { name => 'Query ID',      width => 35                     },
       { name => 'Response time', right_justify => 1,             },
       { name => 'Calls',         right_justify => 1,             },
       { name => 'R/Call',        right_justify => 1,             },
@@ -994,7 +1006,7 @@ sub prepared {
          }
 
          push @prepared, {
-            prep_r   => $prep_r, 
+            prep_r   => $prep_r,
             prep_cnt => $prep_cnt,
             exec_r   => $exec_r,
             exec_cnt => $exec_cnt,
@@ -1045,7 +1057,7 @@ sub make_global_header {
    my ( $self ) = @_;
    my @lines;
 
-   # First line: 
+   # First line:
    # Attribute          total     min     max     avg     95%  stddev  median
    push @lines,
       sprintf $self->{num_format}, "Attribute", '', @{$self->global_headers()};
@@ -1128,7 +1140,7 @@ sub bool_percents {
 # Does pretty-printing for lists of strings like users, hosts, db.
 sub format_string_list {
    my ( $self, $attrib, $vals, $class_cnt ) = @_;
-   
+
    # Only class result values have unq.  So if unq doesn't exist,
    # then we've been given global values.
    if ( !exists $vals->{unq} ) {
@@ -1154,16 +1166,19 @@ sub format_string_list {
       if ( $str =~ m/(?:\d+\.){3}\d+/ ) {
          $print_str = $str;  # Do not shorten IP addresses.
       }
-      elsif ( length $str > MAX_STRING_LENGTH ) {
-         $print_str = substr($str, 0, MAX_STRING_LENGTH) . '...';
-      }
-      else {
+      elsif ( $self->{max_hostname_length} > 0 and length $str > $self->{max_hostname_length} ) {
+         $print_str = substr($str, 0, $self->{max_hostname_length}) . '...';
+      } else {
          $print_str = $str;
       }
       my $p = percentage_of($cnt_for->{$str}, $class_cnt);
       $print_str .= " ($cnt_for->{$str}/$p%)";
-      if ( !$show_all->{$attrib} ) {
-         last if (length $line) + (length $print_str)  > LINE_LENGTH - 27;
+      my $trim_length = LINE_LENGTH;
+      if ($self->{max_hostname_length} == 0 or $self->{max_hostname_length} > LINE_LENGTH) {
+          $trim_length = $self->{max_hostname_length};
+      }
+      if ( $self->{max_line_length} > 0 and !$show_all->{$attrib} ) {
+         last if (length $line) + (length $print_str)  > $self->{max_line_length} - 27;
       }
       $line .= "$print_str, ";
       $i++;
@@ -1301,14 +1316,24 @@ sub explain_report {
             PTDEBUG && _d($dbh, "USE", $db);
             $dbh->do("USE " . $q->quote($db));
          }
-         my $sth = $dbh->prepare("EXPLAIN /*!50100 PARTITIONS */ $query");
+         my $sth;
+         eval {
+             $sth = $dbh->prepare("EXPLAIN /*!50100 PARTITIONS*/ $query");
+             $sth->execute();
+         };
+         if ($EVAL_ERROR) { # MySQL 8.0+ doesn't support PARTITIONS
+             $self->{no_partitions} = 1;
+             $sth = $dbh->prepare("EXPLAIN $query");
+             $sth->execute();
+         }
          $sth->execute();
          my $i = 1;
          while ( my @row = $sth->fetchrow_array() ) {
             $explain .= "# *************************** $i. "
                       . "row ***************************\n";
             foreach my $j ( 0 .. $#row ) {
-               $explain .= sprintf "# %13s: %s\n", $sth->{NAME}->[$j],
+               my $value_format = $sth->{NAME}->[$j] eq 'filtered' ? "%.02f" : "%s";
+               $explain .= sprintf "# %13s: $value_format\n", $sth->{NAME}->[$j],
                   defined $row[$j] ? $row[$j] : 'NULL';
             }
             $i++;  # next row number

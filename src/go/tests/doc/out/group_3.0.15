@@ -1,0 +1,1 @@
+{"ns":"test.$cmd","op":"command","command":{"group":{"key":{"a":1,"b":1},"cond":{"b":3},"initial":{},"ns":"coll","$reduce":""}}}

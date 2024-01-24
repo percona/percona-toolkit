@@ -38,17 +38,17 @@ sub clear_warnings {
 
 # default 5.7 mode "STRICT_TRANS_TABLES" converts truncation warnings to errors
 # as this is simply a change in category of difference, we disable it for
-# test to work.
-
+# test to work. DON'T USE GLOBAL for SqlModes otherwise it will affect the server
+# globally but the current connection will remain unchanged.
 use SqlModes;
-my $modes_host1 = new SqlModes($dbh1, global=>1);
-my $modes_host2 = new SqlModes($dbh2, global=>1);
+my $modes_host1 = new SqlModes($dbh1);
+my $modes_host2 = new SqlModes($dbh2);
+
 $modes_host1->del('STRICT_TRANS_TABLES');
 $modes_host2->del('STRICT_TRANS_TABLES');
 
 $dbh1->do("INSERT INTO test.t VALUES (2, '', 123456789)");
 $dbh2->do("INSERT INTO test.t VALUES (3, '', 123456789)");
-
 
 my $event_exec = EventExecutor->new();
 my $w1 = $event_exec->get_warnings(dbh => $dbh1);

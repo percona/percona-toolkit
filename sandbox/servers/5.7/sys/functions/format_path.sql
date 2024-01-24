@@ -26,7 +26,7 @@ CREATE DEFINER='root'@'localhost' FUNCTION format_path (
              -----------
 
              Takes a raw path value, and strips out the datadir or tmpdir
-             replacing with @@datadir and @@tmpdir respectively. 
+             replacing with @@datadir and @@tmpdir respectively.
 
              Also normalizes the paths across operating systems, so backslashes
              on Windows are converted to forward slashes
@@ -69,7 +69,7 @@ BEGIN
   DECLARE v_undo_dir VARCHAR(1024);
 
   -- OSX hides /private/ in variables, but Performance Schema does not
-  IF path LIKE '/private/%' 
+  IF path LIKE '/private/%'
     THEN SET v_path = REPLACE(path, '/private', '');
     ELSE SET v_path = path;
   END IF;

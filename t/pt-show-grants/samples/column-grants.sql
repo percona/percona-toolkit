@@ -6,7 +6,7 @@ CREATE TABLE t (
   `SOrNum` mediumint(9) unsigned NOT NULL auto_increment,
   `SPNum` mediumint(9) unsigned NOT NULL,
   `DateCreated` timestamp NOT NULL default CURRENT_TIMESTAMP,
-  `DateRelease` timestamp NOT NULL default CURRENT_TIMESTAMP,
+  `DateRelease` timestamp NULL,
   `ActualReleasedDate` timestamp NULL default NULL,
   `PckPrice` decimal(10,2) NOT NULL default '0.00',
   `Status` varchar(20) NOT NULL,

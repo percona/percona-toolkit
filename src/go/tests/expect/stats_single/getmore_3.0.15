@@ -1,0 +1,27 @@
+[
+  {
+    "ID": "db759bfd83441deecc71382323041ce6",
+    "Namespace": "test.coll",
+    "Operation": "GETMORE",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"getmore\",\"query\":{\"a\":{\"$gt\":0}}}\n",
+    "Fingerprint": "GETMORE coll",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
+    "TableScan": false,
+    "Count": 1,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0
+    ],
+    "NScanned": [
+      0
+    ],
+    "QueryTime": [
+      42
+    ],
+    "ResponseLength": [
+      20
+    ]
+  }
+]

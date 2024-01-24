@@ -1,0 +1,421 @@
+{
+  "aggregate": {
+    "2.6.12": {
+      "Millis": 42,
+      "ResponseLength": 385
+    },
+    "3.0.15": {
+      "Millis": 42,
+      "ResponseLength": 385
+    },
+    "3.2.19": {
+      "Millis": 42,
+      "ResponseLength": 388
+    },
+    "3.4.12": {
+      "DocsExamined": 8,
+      "Millis": 42,
+      "Nreturned": 8,
+      "ResponseLength": 370
+    },
+    "3.6.2": {
+      "DocsExamined": 8,
+      "Millis": 42,
+      "Nreturned": 8,
+      "ResponseLength": 370
+    }
+  },
+  "count": {
+    "2.6.12": {
+      "Millis": 42,
+      "ResponseLength": 48
+    },
+    "3.0.15": {
+      "Millis": 42,
+      "ResponseLength": 44
+    },
+    "3.2.19": {
+      "Millis": 42,
+      "ResponseLength": 47
+    },
+    "3.4.12": {
+      "DocsExamined": 0,
+      "Millis": 42,
+      "ResponseLength": 29
+    },
+    "3.6.2": {
+      "DocsExamined": 0,
+      "Millis": 42,
+      "ResponseLength": 29
+    }
+  },
+  "count_with_query": {
+    "2.6.12": {
+      "Millis": 42,
+      "ResponseLength": 48
+    },
+    "3.0.15": {
+      "Millis": 42,
+      "ResponseLength": 44
+    },
+    "3.2.19": {
+      "Millis": 42,
+      "ResponseLength": 47
+    },
+    "3.4.12": {
+      "DocsExamined": 10,
+      "Millis": 42,
+      "ResponseLength": 29
+    },
+    "3.6.2": {
+      "DocsExamined": 10,
+      "Millis": 42,
+      "ResponseLength": 29
+    }
+  },
+  "delete": {
+    "2.6.12": {
+      "Millis": 42
+    },
+    "3.0.15": {
+      "Millis": 42
+    },
+    "3.2.19": {
+      "Millis": 42
+    },
+    "3.4.12": {
+      "DocsExamined": 1,
+      "Millis": 42
+    },
+    "3.6.2": {
+      "DocsExamined": 1,
+      "Millis": 42
+    }
+  },
+  "delete_all": {
+    "2.6.12": {
+      "Millis": 42
+    },
+    "3.0.15": {
+      "Millis": 42
+    },
+    "3.2.19": {
+      "Millis": 42
+    },
+    "3.4.12": {
+      "DocsExamined": 8,
+      "Millis": 42
+    },
+    "3.6.2": {
+      "DocsExamined": 8,
+      "Millis": 42
+    }
+  },
+  "distinct": {
+    "2.6.12": {
+      "Millis": 42,
+      "ResponseLength": 199
+    },
+    "3.0.15": {
+      "Millis": 42,
+      "ResponseLength": 206
+    },
+    "3.2.19": {
+      "Millis": 42,
+      "ResponseLength": 209
+    },
+    "3.4.12": {
+      "DocsExamined": 5,
+      "Millis": 42,
+      "ResponseLength": 90
+    },
+    "3.6.2": {
+      "DocsExamined": 5,
+      "Millis": 42,
+      "ResponseLength": 90
+    }
+  },
+  "eval": {
+    "2.6.12": {
+      "Millis": 42,
+      "ResponseLength": 53
+    },
+    "3.0.15": {
+      "Millis": 42,
+      "ResponseLength": 53
+    },
+    "3.2.19": {
+      "Millis": 42,
+      "ResponseLength": 38
+    },
+    "3.4.12": {
+      "Millis": 42,
+      "ResponseLength": 38
+    },
+    "3.6.2": {
+      "Millis": 42,
+      "ResponseLength": 38
+    }
+  },
+  "explain": {
+    "2.6.12": {
+      "NscannedObjects": 10,
+      "Millis": 42,
+      "Nreturned": 1,
+      "ResponseLength": 583
+    },
+    "3.0.15": {
+      "Millis": 42,
+      "ResponseLength": 379
+    },
+    "3.2.19": {
+      "Millis": 42,
+      "ResponseLength": 364
+    },
+    "3.4.12": {
+      "Millis": 42,
+      "ResponseLength": 329
+    },
+    "3.6.2": {
+      "Millis": 42,
+      "ResponseLength": 328
+    }
+  },
+  "find": {
+    "2.6.12": {
+      "NscannedObjects": 2,
+      "Millis": 42,
+      "Nreturned": 2,
+      "ResponseLength": 86
+    },
+    "3.0.15": {
+      "NscannedObjects": 2,
+      "Millis": 42,
+      "Nreturned": 2,
+      "ResponseLength": 86
+    },
+    "3.2.19": {
+      "DocsExamined": 2,
+      "Millis": 42,
+      "Nreturned": 2,
+      "ResponseLength": 172
+    },
+    "3.4.12": {
+      "DocsExamined": 2,
+      "Millis": 42,
+      "Nreturned": 2,
+      "ResponseLength": 154
+    },
+    "3.6.2": {
+      "DocsExamined": 2,
+      "Millis": 42,
+      "Nreturned": 2,
+      "ResponseLength": 154
+    }
+  },
+  "find_andrii": {
+    "2.6.12": {
+      "NscannedObjects": 0,
+      "Millis": 42,
+      "Nreturned": 0,
+      "ResponseLength": 20
+    },
+    "3.0.15": {
+      "NscannedObjects": 0,
+      "Millis": 42,
+      "Nreturned": 0,
+      "ResponseLength": 20
+    },
+    "3.2.19": {
+      "DocsExamined": 0,
+      "Millis": 42,
+      "Nreturned": 0,
+      "ResponseLength": 100
+    },
+    "3.4.12": {
+      "DocsExamined": 0,
+      "Millis": 42,
+      "Nreturned": 0,
+      "ResponseLength": 82
+    },
+    "3.6.2": {
+      "DocsExamined": 0,
+      "Millis": 42,
+      "Nreturned": 0,
+      "ResponseLength": 82
+    }
+  },
+  "find_empty": {
+    "2.6.12": {
+      "NscannedObjects": 0,
+      "Millis": 42,
+      "Nreturned": 0,
+      "ResponseLength": 20
+    },
+    "3.0.15": {
+      "NscannedObjects": 0,
+      "Millis": 42,
+      "Nreturned": 0,
+      "ResponseLength": 20
+    },
+    "3.2.19": {
+      "DocsExamined": 0,
+      "Millis": 42,
+      "Nreturned": 0,
+      "ResponseLength": 100
+    },
+    "3.4.12": {
+      "DocsExamined": 0,
+      "Millis": 42,
+      "Nreturned": 0,
+      "ResponseLength": 82
+    },
+    "3.6.2": {
+      "DocsExamined": 0,
+      "Millis": 42,
+      "Nreturned": 0,
+      "ResponseLength": 82
+    }
+  },
+  "findandmodify": {
+    "2.6.12": {
+      "NscannedObjects": 1,
+      "Millis": 42,
+      "ResponseLength": 131
+    },
+    "3.0.15": {
+      "NscannedObjects": 1,
+      "Millis": 42,
+      "ResponseLength": 131
+    },
+    "3.2.19": {
+      "DocsExamined": 3,
+      "Millis": 42,
+      "ResponseLength": 116
+    },
+    "3.4.12": {
+      "DocsExamined": 3,
+      "Millis": 42,
+      "ResponseLength": 116
+    },
+    "3.6.2": {
+      "DocsExamined": 3,
+      "Millis": 42,
+      "ResponseLength": 116
+    }
+  },
+  "geonear": {
+    "2.6.12": {
+      "Millis": 42,
+      "ResponseLength": 1406
+    },
+    "3.0.15": {
+      "Millis": 42,
+      "ResponseLength": 1398
+    },
+    "3.2.19": {
+      "Millis": 42,
+      "ResponseLength": 1401
+    },
+    "3.4.12": {
+      "DocsExamined": 10,
+      "Millis": 42,
+      "ResponseLength": 1383
+    },
+    "3.6.2": {
+      "DocsExamined": 10,
+      "Millis": 42,
+      "ResponseLength": 1383
+    }
+  },
+  "group": {
+    "2.6.12": {
+      "Millis": 42,
+      "ResponseLength": 135
+    },
+    "3.0.15": {
+      "Millis": 42,
+      "ResponseLength": 139
+    },
+    "3.2.19": {
+      "Millis": 42,
+      "ResponseLength": 142
+    },
+    "3.4.12": {
+      "DocsExamined": 2,
+      "Millis": 42,
+      "ResponseLength": 124
+    },
+    "3.6.2": {
+      "DocsExamined": 2,
+      "Millis": 42,
+      "ResponseLength": 124
+    }
+  },
+  "insert": {
+    "2.6.12": {
+      "Millis": 42
+    },
+    "3.0.15": {
+      "Millis": 42
+    },
+    "3.2.19": {
+      "Millis": 42,
+      "ResponseLength": 25
+    },
+    "3.4.12": {
+      "Millis": 42,
+      "ResponseLength": 29
+    },
+    "3.6.2": {
+      "Millis": 42,
+      "ResponseLength": 29
+    }
+  },
+  "mapreduce": {
+    "2.6.12": {
+      "Millis": 42,
+      "ResponseLength": 233
+    },
+    "3.0.15": {
+      "Millis": 42,
+      "ResponseLength": 233
+    },
+    "3.2.19": {
+      "Millis": 42,
+      "ResponseLength": 218
+    },
+    "3.4.12": {
+      "DocsExamined": 3,
+      "Millis": 42,
+      "ResponseLength": 218
+    },
+    "3.6.2": {
+      "DocsExamined": 3,
+      "Millis": 42,
+      "ResponseLength": 218
+    }
+  },
+  "update": {
+    "2.6.12": {
+      "NscannedObjects": 1,
+      "Millis": 42
+    },
+    "3.0.15": {
+      "NscannedObjects": 1,
+      "Millis": 42
+    },
+    "3.2.19": {
+      "DocsExamined": 1,
+      "Millis": 42
+    },
+    "3.4.12": {
+      "DocsExamined": 1,
+      "Millis": 42
+    },
+    "3.6.2": {
+      "DocsExamined": 1,
+      "Millis": 42
+    }
+  }
+}

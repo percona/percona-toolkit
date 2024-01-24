@@ -184,9 +184,9 @@ $output = output(
 
 chomp($output);
 
-is(
+like(
    $output,
-   '',
+   qr/Starting checksum/,
    "Bug 1074179: ignore-tables-regex works with --replicate-check-only"
 );
 # #############################################################################
@@ -206,6 +206,37 @@ like(
    "Bug 1016131: ptc should skip tables where all columns are excluded"
 );
 
+# Test #12
+{
+$output = output(
+   sub { pt_table_checksum::main(@args, 
+         '--skip-check-slave-lag', "h=127.0.0.1,P=".$sb->port_for('slave1'),
+         ),
+      },
+);
+
+my $skipping_str = "Skipping.*".$sb->port_for('slave1');
+like(
+      $output,
+      qr/$skipping_str/s,
+      "--skip-check-slave-lag",
+);
+
+# Test for skip-check-slave-lag and empty replica port
+$output = output(
+   sub { pt_table_checksum::main(@args,
+         '--skip-check-slave-lag', "h=127.0.0.1",
+      ),
+   },
+   stderr => 1
+);
+
+unlike(
+   $output,
+   qr/Use of uninitialized value.*/,
+   'No syntax error if port is missed in --skip-check-slave-lag DSN',
+) or diag($output);
+}
 # #############################################################################
 # Illegal division by zero at pt-table-checksum line 7950
 # https://bugs.launchpad.net/percona-toolkit/+bug/1075638
@@ -319,6 +350,7 @@ diag(`/tmp/12346/stop >/dev/null`);
 diag(`/tmp/12346/start >/dev/null`); 
 
 
+#
 # #############################################################################
 # Done.
 # #############################################################################

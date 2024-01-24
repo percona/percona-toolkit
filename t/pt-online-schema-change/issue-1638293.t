@@ -22,10 +22,14 @@ require "$trunk/bin/pt-online-schema-change";
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 
+if ( !$sb->is_cluster_mode ) {
+   plan skip_all => 'Only for PXC',
+}
+
 my ($master_dbh, $master_dsn) = $sb->start_sandbox(
    server => 'cmaster',
    type   => 'master',
-   env    => q/FORK="pxc" BINLOG_FORMAT="ROW"/,
+   env    => q/BINLOG_FORMAT="ROW"/,
 );
 
 if ( !$master_dbh ) {
@@ -43,6 +47,16 @@ my $sample  = "t/pt-online-schema-change/samples/";
 # This is the same test we have for bug-1613915 but using DATA-DIR
 $sb->load_file('cmaster', "$sample/bug-1613915.sql");
 my $dir = tempdir( CLEANUP => 1 );
+my $cmaster_port=$sb->port_for('cmaster');
+
+if ($sandbox_version ge '8.0') {
+    diag(`/tmp/$cmaster_port/stop >/dev/null`);
+	diag(`echo "innodb_directories='$dir'" >> /tmp/$cmaster_port/my.sandbox.cnf`);
+    diag(`/tmp/$cmaster_port/start > /dev/null`);
+}
+
+$master_dbh = $sb->get_dbh_for('cmaster');
+
 $output = output(
    sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=o1",
          '--execute', 

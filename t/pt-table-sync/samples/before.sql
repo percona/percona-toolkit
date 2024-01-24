@@ -1,3 +1,5 @@
+DROP DATABASE IF EXISTS test;
+create database if not exists test;
 use test;
 
 drop table if exists test1;

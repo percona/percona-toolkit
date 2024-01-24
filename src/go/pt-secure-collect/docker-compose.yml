@@ -1,0 +1,35 @@
+version: '3'
+services:
+  mysql5.6:
+    image: ${MYSQL_IMAGE:-mysql:5.6}
+    ports:
+      - ${MYSQL_HOST:-127.0.0.1}:${MYSQL_PORT:-3306}:3306
+    environment:
+      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+    # MariaDB >= 10.0.12 doesn't enable Performance Schema by default so we need to do it manually
+    # https://mariadb.com/kb/en/mariadb/performance-schema-overview/#activating-the-performance-schema
+    command: --performance-schema --secure-file-priv=""
+    volumes:
+      - ./testdata/schema/:/docker-entrypoint-initdb.d/:rw
+  mysql5.7:
+    image: ${MYSQL_IMAGE:-mysql:5.7}
+    ports:
+      - ${MYSQL_HOST:-127.0.0.1}:${MYSQL_PORT:-3307}:3306
+    environment:
+      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+    # MariaDB >= 10.0.12 doesn't enable Performance Schema by default so we need to do it manually
+    # https://mariadb.com/kb/en/mariadb/performance-schema-overview/#activating-the-performance-schema
+    command: --performance-schema --secure-file-priv=""
+    volumes:
+      - ./testdata/schema/:/docker-entrypoint-initdb.d/:rw
+  mysql8.0:
+    image: ${MYSQL_IMAGE:-mysql:8.0.4}
+    ports:
+      - ${MYSQL_HOST:-127.0.0.1}:${MYSQL_PORT:-3308}:3306
+    environment:
+      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+    # MariaDB >= 10.0.12 doesn't enable Performance Schema by default so we need to do it manually
+    # https://mariadb.com/kb/en/mariadb/performance-schema-overview/#activating-the-performance-schema
+    command: --performance-schema --secure-file-priv=""
+    volumes:
+      - ./testdata/schema/:/docker-entrypoint-initdb.d/:rw

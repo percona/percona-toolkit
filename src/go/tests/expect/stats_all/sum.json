@@ -1,0 +1,760 @@
+[
+  {
+    "ID": "30dbfbc89efd8cfd40774dff0266a28f",
+    "Namespace": "test.coll",
+    "Operation": "AGGREGATE",
+    "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"aggregate\":\"coll\",\"pipeline\":[{\"$match\":{\"a\":{\"$gte\":2}}}],\"cursor\":{}}}\n",
+    "Fingerprint": "AGGREGATE coll a",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
+    "TableScan": false,
+    "Count": 5,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0,
+      8,
+      8
+    ],
+    "NScanned": [
+      0,
+      0,
+      0,
+      8,
+      8
+    ],
+    "QueryTime": [
+      42,
+      42,
+      42,
+      42,
+      42
+    ],
+    "ResponseLength": [
+      385,
+      385,
+      388,
+      370,
+      370
+    ]
+  },
+  {
+    "ID": "cba2dff0740762c6e5769f0e300df676",
+    "Namespace": "test.coll",
+    "Operation": "COUNT",
+    "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"count\":\"coll\",\"query\":{},\"fields\":{}}}\n",
+    "Fingerprint": "COUNT coll",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
+    "TableScan": false,
+    "Count": 5,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "QueryTime": [
+      42,
+      42,
+      42,
+      42,
+      42
+    ],
+    "ResponseLength": [
+      48,
+      44,
+      47,
+      29,
+      29
+    ]
+  },
+  {
+    "ID": "10b8f47b366fbfd1fb01f8d17d75b1a2",
+    "Namespace": "test.coll",
+    "Operation": "COUNT",
+    "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"count\":\"coll\",\"query\":{\"a\":{\"$gt\":5}},\"fields\":{}}}\n",
+    "Fingerprint": "COUNT coll a",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
+    "TableScan": false,
+    "Count": 5,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0,
+      0,
+      10,
+      10
+    ],
+    "QueryTime": [
+      42,
+      42,
+      42,
+      42,
+      42
+    ],
+    "ResponseLength": [
+      48,
+      44,
+      47,
+      29,
+      29
+    ]
+  },
+  {
+    "ID": "e4122a58c99ab0a4020ce7d195c5a8cb",
+    "Namespace": "test.coll",
+    "Operation": "DISTINCT",
+    "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"distinct\":\"coll\",\"key\":\"a\",\"query\":{\"b\":{\"$gte\":5}}}}\n",
+    "Fingerprint": "DISTINCT coll a,b",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
+    "TableScan": false,
+    "Count": 5,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0,
+      0,
+      5,
+      5
+    ],
+    "QueryTime": [
+      42,
+      42,
+      42,
+      42,
+      42
+    ],
+    "ResponseLength": [
+      199,
+      206,
+      209,
+      90,
+      90
+    ]
+  },
+  {
+    "ID": "a6782ae38ef891d5506341a4b0ab2747",
+    "Namespace": "test",
+    "Operation": "EVAL",
+    "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"$eval\":\"1\"}}\n",
+    "Fingerprint": "EVAL",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
+    "TableScan": false,
+    "Count": 5,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "QueryTime": [
+      42,
+      42,
+      42,
+      42,
+      42
+    ],
+    "ResponseLength": [
+      53,
+      53,
+      38,
+      38,
+      38
+    ]
+  },
+  {
+    "ID": "76d7662df07b44135ac3e07e44a6eb39",
+    "Namespace": "",
+    "Operation": "EXPLAIN",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"query\",\"query\":{\"query\":{},\"$explain\":true}}\n",
+    "Fingerprint": "EXPLAIN",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
+    "TableScan": false,
+    "Count": 5,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      1,
+      0,
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      10,
+      0,
+      0,
+      0,
+      0
+    ],
+    "QueryTime": [
+      42,
+      42,
+      42,
+      42,
+      42
+    ],
+    "ResponseLength": [
+      583,
+      379,
+      364,
+      329,
+      328
+    ]
+  },
+  {
+    "ID": "e8a3f05a4bd3f0bfa7d38eb2372258b1",
+    "Namespace": "test.coll",
+    "Operation": "FINDANDMODIFY",
+    "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"findandmodify\":\"coll\",\"query\":{\"a\":2},\"update\":{\"$inc\":{\"b\":1}}},\"updateobj\":{\"$inc\":{\"b\":1}}}\n",
+    "Fingerprint": "FINDANDMODIFY coll a",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
+    "TableScan": false,
+    "Count": 5,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      1,
+      1,
+      3,
+      3,
+      3
+    ],
+    "QueryTime": [
+      42,
+      42,
+      42,
+      42,
+      42
+    ],
+    "ResponseLength": [
+      131,
+      131,
+      116,
+      116,
+      116
+    ]
+  },
+  {
+    "ID": "2a639e77efe3e68399ef9482575b3421",
+    "Namespace": "test.coll",
+    "Operation": "FIND",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"query\"}\n",
+    "Fingerprint": "FIND coll",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
+    "TableScan": false,
+    "Count": 5,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "QueryTime": [
+      42,
+      42,
+      42,
+      42,
+      42
+    ],
+    "ResponseLength": [
+      20,
+      20,
+      100,
+      82,
+      82
+    ]
+  },
+  {
+    "ID": "20fe80188ec82c9d3c3dcf3f4817f8f9",
+    "Namespace": "test.coll",
+    "Operation": "FIND",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"query\",\"query\":{\"query\":{\"c\":1},\"orderby\":{\"b\":-1}}}\n",
+    "Fingerprint": "FIND coll b,c",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
+    "TableScan": false,
+    "Count": 5,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      2,
+      2,
+      2,
+      2,
+      2
+    ],
+    "NScanned": [
+      2,
+      2,
+      2,
+      2,
+      2
+    ],
+    "QueryTime": [
+      42,
+      42,
+      42,
+      42,
+      42
+    ],
+    "ResponseLength": [
+      108,
+      108,
+      194,
+      176,
+      176
+    ]
+  },
+  {
+    "ID": "02104210d67fe680273784d833f86831",
+    "Namespace": "test.coll",
+    "Operation": "FIND",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"query\",\"query\":{\"query\":{\"$and\":[{\"k\":{\"$gt\":1}},{\"k\":{\"$lt\":2}},{\"$or\":[{\"c\":{\"$in\":[\"/^0/\",\"/^2/\",\"/^4/\",\"/^6/\"]}},{\"pad\":{\"$in\":[\"/9$/\",\"/7$/\",\"/5$/\",\"/3$/\"]}}]}]},\"orderby\":{\"k\":-1}}}\n",
+    "Fingerprint": "FIND coll c,k,pad",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
+    "TableScan": false,
+    "Count": 5,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "QueryTime": [
+      42,
+      42,
+      42,
+      42,
+      42
+    ],
+    "ResponseLength": [
+      20,
+      20,
+      100,
+      82,
+      82
+    ]
+  },
+  {
+    "ID": "5efe4738d807c74b3980de76c37a0870",
+    "Namespace": "test.coll",
+    "Operation": "FIND",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"query\",\"query\":{\"k\":1}}\n",
+    "Fingerprint": "FIND coll k",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
+    "TableScan": false,
+    "Count": 5,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      2,
+      2,
+      2,
+      2,
+      2
+    ],
+    "NScanned": [
+      2,
+      2,
+      2,
+      2,
+      2
+    ],
+    "QueryTime": [
+      42,
+      42,
+      42,
+      42,
+      42
+    ],
+    "ResponseLength": [
+      86,
+      86,
+      172,
+      154,
+      154
+    ]
+  },
+  {
+    "ID": "c70403cbd55ffbb07f08c0cb77a24b19",
+    "Namespace": "test.coll",
+    "Operation": "GEONEAR",
+    "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"geoNear\":\"coll\",\"near\":{\"type\":\"Point\",\"coordinates\":[1,1]},\"spherical\":true}}\n",
+    "Fingerprint": "GEONEAR coll",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
+    "TableScan": false,
+    "Count": 5,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0,
+      0,
+      10,
+      10
+    ],
+    "QueryTime": [
+      42,
+      42,
+      42,
+      42,
+      42
+    ],
+    "ResponseLength": [
+      1406,
+      1398,
+      1401,
+      1383,
+      1383
+    ]
+  },
+  {
+    "ID": "db759bfd83441deecc71382323041ce6",
+    "Namespace": "test.coll",
+    "Operation": "GETMORE",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"getmore\",\"query\":{\"a\":{\"$gt\":0}}}\n",
+    "Fingerprint": "GETMORE coll",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
+    "TableScan": false,
+    "Count": 5,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "QueryTime": [
+      42,
+      42,
+      42,
+      42,
+      42
+    ],
+    "ResponseLength": [
+      20,
+      20,
+      81,
+      81,
+      81
+    ]
+  },
+  {
+    "ID": "ca8bb19386488570447f5753741fb494",
+    "Namespace": "test.coll",
+    "Operation": "GROUP",
+    "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"group\":{\"key\":{\"a\":1,\"b\":1},\"cond\":{\"b\":3},\"initial\":{},\"ns\":\"coll\",\"$reduce\":\"\"}}}\n",
+    "Fingerprint": "GROUP coll a,b",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
+    "TableScan": false,
+    "Count": 5,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0,
+      0,
+      2,
+      2
+    ],
+    "QueryTime": [
+      42,
+      42,
+      42,
+      42,
+      42
+    ],
+    "ResponseLength": [
+      135,
+      139,
+      142,
+      124,
+      124
+    ]
+  },
+  {
+    "ID": "e357abe482dcc0cd03ab742741bf1c86",
+    "Namespace": "test.coll",
+    "Operation": "INSERT",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"insert\",\"query\":{\"_id\":1}}\n",
+    "Fingerprint": "INSERT coll",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
+    "TableScan": false,
+    "Count": 5,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "QueryTime": [
+      42,
+      42,
+      42,
+      42,
+      42
+    ],
+    "ResponseLength": [
+      0,
+      0,
+      25,
+      29,
+      29
+    ]
+  },
+  {
+    "ID": "cc3cb3824eea4094eb042f5ca76bd385",
+    "Namespace": "test.coll",
+    "Operation": "MAPREDUCE",
+    "Query": "{\"ns\":\"test.$cmd\",\"op\":\"command\",\"command\":{\"mapreduce\":\"coll\",\"map\":\"\",\"reduce\":\"\",\"query\":{\"a\":{\"$gte\":0}},\"out\":{\"inline\":1}}}\n",
+    "Fingerprint": "MAPREDUCE coll a",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
+    "TableScan": false,
+    "Count": 5,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0,
+      0,
+      3,
+      3
+    ],
+    "QueryTime": [
+      42,
+      42,
+      42,
+      42,
+      42
+    ],
+    "ResponseLength": [
+      233,
+      233,
+      218,
+      218,
+      218
+    ]
+  },
+  {
+    "ID": "e72ad41302045bd6c2bcad76511f915a",
+    "Namespace": "test.coll",
+    "Operation": "REMOVE",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"remove\",\"query\":{\"a\":{\"$gte\":2},\"b\":{\"$gte\":2}}}\n",
+    "Fingerprint": "REMOVE coll a,b",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
+    "TableScan": false,
+    "Count": 10,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      0,
+      0,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0,
+      8,
+      8
+    ],
+    "QueryTime": [
+      42,
+      42,
+      42,
+      42,
+      42,
+      42,
+      42,
+      42,
+      42,
+      42
+    ],
+    "ResponseLength": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "ID": "f74a5120ac22d02120ccbf6d478b0dbc",
+    "Namespace": "test.coll",
+    "Operation": "UPDATE",
+    "Query": "{\"ns\":\"test.coll\",\"op\":\"update\",\"query\":{\"a\":{\"$gte\":2}},\"updateobj\":{\"$set\":{\"c\":1},\"$inc\":{\"a\":-10}}}\n",
+    "Fingerprint": "UPDATE coll a",
+    "FirstSeen": "2020-01-01T00:00:00Z",
+    "LastSeen": "2020-01-01T00:00:00Z",
+    "TableScan": false,
+    "Count": 5,
+    "BlockedTime": null,
+    "LockTime": null,
+    "NReturned": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "NScanned": [
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "QueryTime": [
+      42,
+      42,
+      42,
+      42,
+      42
+    ],
+    "ResponseLength": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  }
+]

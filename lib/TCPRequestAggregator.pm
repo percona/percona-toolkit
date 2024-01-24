@@ -145,7 +145,7 @@ sub parse_event {
       # If $timestamp is not within the current interval, then we need to save
       # everything for later, compute stats for the rest of this interval, and
       # return an event.  The next time we are called, we'll begin the next
-      # interval.  
+      # interval.
       if ( $t_start > $self->{t_start} ) {
          PTDEBUG && _d("Timestamp doesn't belong to this interval");
          # We need to compute how much time is left in this interval, and add

@@ -87,7 +87,7 @@ sub find_cluster_nodes {
    # useful for safety.
    # TODO this fails with a strange error.
    #$dp->fill_in_dsn($dbh, $dsn);
-   
+
    my $sql = q{SHOW STATUS LIKE 'wsrep\_incoming\_addresses'};
    PTDEBUG && _d($sql);
    my (undef, $addresses) = $dbh->selectrow_array($sql);
@@ -174,7 +174,7 @@ sub autodetect_nodes {
    my $new_nodes = [];
 
    return $new_nodes unless @$nodes;
-   
+
    for my $node ( @$nodes ) {
       my $nodes_found = $self->find_cluster_nodes(
          dbh       => $node->dbh(),
@@ -208,12 +208,12 @@ sub autodetect_nodes {
    # If some of the new slaves is a cluster node, autodetect new nodes
    # from there too.
    my @new_slave_nodes = grep { $self->is_cluster_node($_) } @$new_slaves;
-   
+
    my $slaves_of_slaves = $self->autodetect_nodes(
          %args,
          nodes => \@new_slave_nodes,
    );
-   
+
    my @autodetected_nodes = ( @$new_nodes, @$new_slaves, @$slaves_of_slaves );
    return \@autodetected_nodes;
 }

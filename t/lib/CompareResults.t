@@ -229,80 +229,82 @@ ok(
    'checksum: wrapped query removed after compare'
 );
 
-# Make checksums differ.
-$dbh2->do('update test.t set i = 99 where i=1');
+SKIP: {
+   skip 'Not for PXC' if ( $sb->is_cluster_mode );
 
-proc('before_execute', db=>'test', 'temp-table'=>'dropme');
-proc('execute');
-proc('after_execute');
+   # Make checksums differ.
+   $dbh2->do('update test.t set i = 99 where i=1');
 
-is_deeply(
-   [ $cr->compare(
-      events => \@events,
-      hosts  => $hosts,
-   ) ],
-   [
-      different_row_counts    => 0,
-      different_checksums     => 1,
-      different_column_counts => 0,
-      different_column_types  => 0,
-   ],
-   'checksum: compare, different checksums' 
-);
+   proc('before_execute', db=>'test', 'temp-table'=>'dropme');
+   proc('execute');
+   proc('after_execute');
 
-# Make row counts differ, too.
-$dbh2->do('insert into test.t values (4)');
+   is_deeply(
+      [ $cr->compare(
+         events => \@events,
+         hosts  => $hosts,
+      ) ],
+      [
+         different_row_counts    => 0,
+         different_checksums     => 1,
+         different_column_counts => 0,
+         different_column_types  => 0,
+      ],
+      'checksum: compare, different checksums' 
+   );
 
-proc('before_execute', db=>'test', 'temp-table'=>'dropme');
-proc('execute');
-proc('after_execute');
+   # Make row counts differ, too.
+   $dbh2->do('insert into test.t values (4)');
 
-is_deeply(
-   [ $cr->compare(
-      events => \@events,
-      hosts  => $hosts,
-   ) ],
-   [
-      different_row_counts    => 1,
-      different_checksums     => 1,
-      different_column_counts => 0,
-      different_column_types  => 0,
-   ],
-   'checksum: compare, different checksums and row counts'
-);
+   proc('before_execute', db=>'test', 'temp-table'=>'dropme');
+   proc('execute');
+   proc('after_execute');
 
-$report = <<EOF;
+   is_deeply(
+      [ $cr->compare(
+         events => \@events,
+         hosts  => $hosts,
+      ) ],
+      [
+         different_row_counts    => 1,
+         different_checksums     => 1,
+         different_column_counts => 0,
+         different_column_types  => 0,
+      ],
+      'checksum: compare, different checksums and row counts'
+   );
+
+   $report = <<EOF;
 # Checksum differences
-# Query ID           host1     host2
-# ================== ========= ==========
-# D2D386B840D3BEEA-1 $events[0]->{checksum} $events[1]->{checksum}
+# Query ID                           host1     host2
+# ================================== ========= ==========
+# 5B07DA841600FC6FD2D386B840D3BEEA-1 $events[0]->{checksum} $events[1]->{checksum}
 
 # Row count differences
-# Query ID           host1 host2
-# ================== ===== =====
-# D2D386B840D3BEEA-1     3     4
+# Query ID                           host1 host2
+# ================================== ===== =====
+# 5B07DA841600FC6FD2D386B840D3BEEA-1     3     4
 EOF
 
-is(
-   $cr->report(hosts => $hosts),
-   $report,
-   'checksum: report'
-);
+   is(
+      $cr->report(hosts => $hosts),
+      $report,
+      'checksum: report'
+   );
 
-my %samples = $cr->samples($events[0]->{fingerprint});
-is_deeply(
-   \%samples,
-   {
-      1 => 'select * from test.t where i>0',
-   },
-   'checksum: samples'
-);
-
+   my %samples = $cr->samples($events[0]->{fingerprint});
+   is_deeply(
+      \%samples,
+      {
+         1 => 'select * from test.t where i>0',
+      },
+      'checksum: samples'
+   );
+}
 # #############################################################################
 # Test the rows method.
 # #############################################################################
 my $tmpdir = '/tmp/mk-upgrade-res';
-SKIP: {
 
 diag(`rm -rf $tmpdir 2>/dev/null; mkdir $tmpdir`);
 
@@ -414,26 +416,29 @@ is(
    "rows: compare() sets row_count"
 );
 
-# Make the result set differ.
-$dbh2->do('insert into test.t values (5)');
+SKIP: {
+   skip 'Not for PXC' if ( $sb->is_cluster_mode );
 
-proc('before_execute');
-proc('execute');
+   # Make the result set differ.
+   $dbh2->do('insert into test.t values (5)');
 
-is_deeply(
-   [ $cr->compare(
-      events => \@events,
-      hosts  => $hosts,
-   ) ],
-   [
-      different_row_counts    => 1,
-      different_column_values => 0,
-      different_column_counts => 0,
-      different_column_types  => 0,
-   ],
-   'rows: compare, different row counts'
-);
+   proc('before_execute');
+   proc('execute');
 
+   is_deeply(
+      [ $cr->compare(
+         events => \@events,
+         hosts  => $hosts,
+      ) ],
+      [
+         different_row_counts    => 1,
+         different_column_values => 0,
+         different_column_counts => 0,
+         different_column_types  => 0,
+      ],
+      'rows: compare, different row counts'
+   );
+}
 # Use test.t2 and make a column value differ.
 @events = (
    {
@@ -458,84 +463,91 @@ is_deeply(
    'rows: column value is different'
 );
 
-proc('before_execute');
-proc('execute');
+SKIP: {
+   skip 'Not for PXC' if ( $sb->is_cluster_mode );
 
-is_deeply(
-   [ $cr->compare(
-      events => \@events,
-      hosts  => $hosts,
-   ) ],
-   [
-      different_row_counts    => 0,
-      different_column_values => 1,
-      different_column_counts => 0,
-      different_column_types  => 0,
-   ],
-   'rows: compare, different column values'
-);
+   proc('before_execute');
+   proc('execute');
 
-is_deeply(
-   $dbh1->selectall_arrayref('show indexes from test.mk_upgrade_left'),
-   [],
-   'Did not add indexes'
-);
+   is_deeply(
+      [ $cr->compare(
+         events => \@events,
+         hosts  => $hosts,
+      ) ],
+      [
+         different_row_counts    => 0,
+         different_column_values => 1,
+         different_column_counts => 0,
+         different_column_types  => 0,
+      ],
+      'rows: compare, different column values'
+   );
 
-$report = <<EOF;
+   is_deeply(
+      $dbh1->selectall_arrayref('show indexes from test.mk_upgrade_left'),
+      [],
+      'Did not add indexes'
+   );
+
+   $report = <<EOF;
 # Column value differences
-# Query ID           Column host1 host2
-# ================== ====== ===== ===========
-# CFC309761E9131C5-3 c      c     should be c
+# Query ID                           Column host1 host2
+# ================================== ====== ===== ===========
+# C5434AE784E8BC8BCFC309761E9131C5-3 c      c     should be c
 
 # Row count differences
-# Query ID           host1 host2
-# ================== ===== =====
-# B8B721D77EA1FD78-0     3     4
+# Query ID                           host1 host2
+# ================================== ===== =====
+# 5F9FE76EA02DE954B8B721D77EA1FD78-0     3     4
 EOF
 
-is(
-   $cr->report(hosts => $hosts),
-   $report,
-   'rows: report'
-);
+   is(
+      $cr->report(hosts => $hosts),
+      $report,
+      'rows: report'
+   );
 
-%samples = $cr->samples($events[0]->{fingerprint});
-is_deeply(
-   \%samples,
-   {
-      3 => 'select * from test.t2'
-   },
-   'rows: samples'
-);
+   my %samples = $cr->samples($events[0]->{fingerprint});
+   is_deeply(
+      \%samples,
+      {
+         3 => 'select * from test.t2'
+      },
+      'rows: samples'
+   );
 
-# #############################################################################
-# Test max-different-rows.
-# #############################################################################
-$cr->reset();
-$dbh2->do("update test.t2 set c='should be a' where i=1");
-$dbh2->do("update test.t2 set c='should be b' where i=2");
-proc('before_execute');
-proc('execute');
+   # #############################################################################
+   # Test max-different-rows.
+   # #############################################################################
+   $cr->reset();
+   $dbh2->do("update test.t2 set c='should be a' where i=1");
+   $dbh2->do("update test.t2 set c='should be b' where i=2");
+   proc('before_execute');
+   proc('execute');
 
-is_deeply(
-   [ $cr->compare(
-      events => \@events,
-      hosts  => $hosts,
-      'max-different-rows' => 1,
-      'add-indexes'        => 1,
-   ) ],
-   [
-      different_row_counts    => 0,
-      different_column_values => 1,
-      different_column_counts => 0,
-      different_column_types  => 0,
-   ],
-   'rows: compare, stop at max-different-rows'
-);
-
+   is_deeply(
+      [ $cr->compare(
+         events => \@events,
+         hosts  => $hosts,
+         'max-different-rows' => 1,
+         'add-indexes'        => 1,
+      ) ],
+      [
+         different_row_counts    => 0,
+         different_column_values => 1,
+         different_column_counts => 0,
+         different_column_types  => 0,
+      ],
+      'rows: compare, stop at max-different-rows'
+   );
+}
 # I don't know why but several months ago this test started
 # failing although nothing afaik was changed.  This module
 # is only used in pt-upgrade and that tool passes its tests.
+# Added by Daniel Nichter on Feb 02, 2012, 
+# by commit 38c421351df19f463c046100b0b6889b018428d3
+# Likely affected by move of the function get_create_table 
+# to TableParser.pm and subsequent changes. Need to investigate.
 SKIP: {
    skip "Fix this test", 1;
 is_deeply(
@@ -545,141 +557,143 @@ is_deeply(
 );
 }
 
-$report = <<EOF;
+SKIP: {
+   skip 'Not for PXC' if ( $sb->is_cluster_mode );
+
+   $report = <<EOF;
 # Column value differences
-# Query ID           Column host1 host2
-# ================== ====== ===== ===========
-# CFC309761E9131C5-3 c      a     should be a
+# Query ID                           Column host1 host2
+# ================================== ====== ===== ===========
+# C5434AE784E8BC8BCFC309761E9131C5-3 c      a     should be a
 EOF
 
-is(
-   $cr->report(hosts => $hosts),
-   $report,
-   'rows: report max-different-rows'
-);
+   is(
+      $cr->report(hosts => $hosts),
+      $report,
+      'rows: report max-different-rows'
+   );
 
-# #############################################################################
-# Double check that outfiles have correct contents.
-# #############################################################################
+   # #############################################################################
+   # Double check that outfiles have correct contents.
+   # #############################################################################
 
-# This test uses the results from the max-different-rows test above.
+   # This test uses the results from the max-different-rows test above.
 
-my @outfile = split(/[\t\n]+/, `cat /tmp/mk-upgrade-res/left-outfile.txt`);
-is_deeply(
-	\@outfile,
-	[qw(1 a 2 b 3 c)],
-   'Left outfile'
-);
+   my @outfile = split(/[\t\n]+/, `cat /tmp/mk-upgrade-res/left-outfile.txt`);
+   is_deeply(
+      \@outfile,
+      [qw(1 a 2 b 3 c)],
+      'Left outfile'
+   );
 
-@outfile = split(/[\t\n]+/, `cat /tmp/mk-upgrade-res/right-outfile.txt`);
-is_deeply(
-	\@outfile,
-	['1', 'should be a', '2', 'should be b', '3', 'should be c'],
-   'Right outfile'
-);
+   @outfile = split(/[\t\n]+/, `cat /tmp/mk-upgrade-res/right-outfile.txt`);
+   is_deeply(
+      \@outfile,
+      ['1', 'should be a', '2', 'should be b', '3', 'should be c'],
+      'Right outfile'
+   );
+   # #############################################################################
+   # Test float-precision.
+   # #############################################################################
+   @events = (
+      {
+         arg         => 'select * from test.t3',
+         db          => 'test',
+         fingerprint => 'select * from test.t3',
+         sampleno    => 3,
+      },
+      {
+         arg         => 'select * from test.t3',
+         db          => 'test',
+         fingerprint => 'select * from test.t3',
+         sampleno    => 3,
+      },
+   );
 
-# #############################################################################
-# Test float-precision.
-# #############################################################################
-@events = (
-   {
-      arg         => 'select * from test.t3',
-      db          => 'test',
-      fingerprint => 'select * from test.t3',
-      sampleno    => 3,
-   },
-   {
-      arg         => 'select * from test.t3',
-      db          => 'test',
-      fingerprint => 'select * from test.t3',
-      sampleno    => 3,
-   },
-);
+   $cr->reset();
+   $dbh2->do('update test.t3 set f=1.12346 where 1');
+   proc('before_execute');
+   proc('execute');
 
-$cr->reset();
-$dbh2->do('update test.t3 set f=1.12346 where 1');
-proc('before_execute');
-proc('execute');
+   is_deeply(
+      [ $cr->compare(
+         events => \@events,
+         hosts  => $hosts,
+      ) ],
+      [
+         different_row_counts    => 0,
+         different_column_values => 1,
+         different_column_counts => 0,
+         different_column_types  => 0,
+      ],
+      'rows: compare, different without float-precision'
+   );
 
-is_deeply(
-   [ $cr->compare(
-      events => \@events,
-      hosts  => $hosts,
-   ) ],
-   [
-      different_row_counts    => 0,
-      different_column_values => 1,
-      different_column_counts => 0,
-      different_column_types  => 0,
-   ],
-   'rows: compare, different without float-precision'
-);
+   proc('before_execute');
+   proc('execute');
 
-proc('before_execute');
-proc('execute');
+   is_deeply(
+      [ $cr->compare(
+         events => \@events,
+         hosts  => $hosts,
+         'float-precision' => 3
+      ) ],
+      [
+         different_row_counts    => 0,
+         different_column_values => 0,
+         different_column_counts => 0,
+         different_column_types  => 0,
+      ],
+      'rows: compare, not different with float-precision'
+   );
 
-is_deeply(
-   [ $cr->compare(
-      events => \@events,
-      hosts  => $hosts,
-      'float-precision' => 3
-   ) ],
-   [
-      different_row_counts    => 0,
-      different_column_values => 0,
-      different_column_counts => 0,
-      different_column_types  => 0,
-   ],
-   'rows: compare, not different with float-precision'
-);
+   # #############################################################################
+   # Test when left has more rows than right.
+   # #############################################################################
+   $cr->reset();
+   $dbh1->do('update test.t3 set f=0 where 1');
+   $dbh1->do('SET SQL_LOG_BIN=0');
+   $dbh1->do('insert into test.t3 values (2.0),(3.0)');
+   $dbh1->do('SET SQL_LOG_BIN=1');
+   $sb->wait_for_slaves();
 
-# #############################################################################
-# Test when left has more rows than right.
-# #############################################################################
-$cr->reset();
-$dbh1->do('update test.t3 set f=0 where 1');
-$dbh1->do('SET SQL_LOG_BIN=0');
-$dbh1->do('insert into test.t3 values (2.0),(3.0)');
-$dbh1->do('SET SQL_LOG_BIN=1');
-$sb->wait_for_slaves();
+   my $left_n_rows = $dbh1->selectcol_arrayref('select count(*) from test.t3')->[0];
+   my $right_n_rows = $dbh2->selectcol_arrayref('select count(*) from test.t3')->[0];
+   ok(
+      $left_n_rows == 3 && $right_n_rows == 1,
+      'Left has extra rows'
+   );
 
-my $left_n_rows = $dbh1->selectcol_arrayref('select count(*) from test.t3')->[0];
-my $right_n_rows = $dbh2->selectcol_arrayref('select count(*) from test.t3')->[0];
-ok(
-   $left_n_rows == 3 && $right_n_rows == 1,
-   'Left has extra rows'
-);
+   proc('before_execute');
+   proc('execute');
 
-proc('before_execute');
-proc('execute');
+   is_deeply(
+      [ $cr->compare(
+         events => \@events,
+         hosts  => $hosts,
+         'float-precision' => 3
+      ) ],
+      [
+         different_row_counts    => 1,
+         different_column_values => 0,
+         different_column_counts => 0,
+         different_column_types  => 0,
+      ],
+      'rows: compare, left with more rows'
+   );
 
-is_deeply(
-   [ $cr->compare(
-      events => \@events,
-      hosts  => $hosts,
-      'float-precision' => 3
-   ) ],
-   [
-      different_row_counts    => 1,
-      different_column_values => 0,
-      different_column_counts => 0,
-      different_column_types  => 0,
-   ],
-   'rows: compare, left with more rows'
-);
-
-$report = <<EOF;
+   $report = <<EOF;
 # Row count differences
-# Query ID           host1 host2
-# ================== ===== =====
-# D56E6FABA26D1F1C-3     3     1
+# Query ID                           host1 host2
+# ================================== ===== =====
+# B26B22621BF4FD9CD56E6FABA26D1F1C-3     3     1
 EOF
 
-is(
-   $cr->report(hosts => $hosts),
-   $report,
-   'rows: report, left with more rows'
-);
+   is(
+      $cr->report(hosts => $hosts),
+      $report,
+      'rows: report, left with more rows'
+   );
 }
 
 # #############################################################################
@@ -726,8 +740,6 @@ is_deeply(
    'No differences after bad compare()'
 );
 
-SKIP: {
-
 $cr = new CompareResults(
    method     => 'rows',
    'base-dir' => $tmpdir,
@@ -756,8 +768,6 @@ is_deeply(
    ],
    'No differences after bad compare()'
 );
-
-}
 
 # #############################################################################
 # Done.
