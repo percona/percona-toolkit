@@ -40,12 +40,40 @@ func (timeline Timeline) MergeByIdentifier(lt LocalTimeline) {
 
 func (timeline Timeline) MergeByDirectory(path string, lt LocalTimeline) {
 	node := filepath.Base(filepath.Dir(path))
+MERGE:
 	for _, lt2 := range timeline {
 		if len(lt2) > 0 && node == filepath.Base(filepath.Dir(lt2[0].LogCtx.FilePath)) {
 			lt = MergeTimeline(lt2, lt)
+			break MERGE
 		}
 	}
 	timeline[node] = lt
+}
+
+// MergeByPodnameElsePath will try to keep podnames as identifier as it make more sense
+// if it does not have any metadata to use, it will resort to file paths
+// Merging operator logs is rare, but it happens when following multiple pt-k8s-debug-collector dumps
+func (timeline Timeline) MergeByPodnameElsePath(path string, lt LocalTimeline) {
+	metadata := lt[len(lt)-1].LogCtx.OperatorMetadata
+	if metadata == nil {
+		timeline[path] = lt
+		return
+	}
+MERGE:
+	for _, lt2 := range timeline {
+		if len(lt2) == 0 {
+			continue
+		}
+		if metadata2 := lt2[len(lt2)-1].LogCtx.OperatorMetadata; metadata2 != nil &&
+			metadata.PodName == metadata2.PodName &&
+			metadata.Deployment == metadata2.Deployment &&
+			metadata.Namespace == metadata2.Namespace {
+
+			lt = MergeTimeline(lt2, lt)
+			break MERGE
+		}
+	}
+	timeline[metadata.PodName] = lt
 }
 
 // MergeTimeline is helpful when log files are split by date, it can be useful to be able to merge content

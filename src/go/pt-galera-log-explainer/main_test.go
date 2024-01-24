@@ -99,6 +99,12 @@ func TestMain(t *testing.T) {
 		},
 
 		{
+			name: "operator_split_list_all_no_color",
+			cmd:  []string{"list", "--all", "--pxc-operator", "--no-color"},
+			path: "tests/logs/operator_split/*",
+		},
+
+		{
 			name: "conflict_conflicts",
 			cmd:  []string{"conflicts"},
 			path: "tests/logs/conflict/*",

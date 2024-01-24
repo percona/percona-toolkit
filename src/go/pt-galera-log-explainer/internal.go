@@ -69,8 +69,10 @@ func timelineFromPaths(paths []string, regexes types.RegexMap) (types.Timeline, 
 		// Why it should not just identify using the file path:
 		// so that we are able to merge files that belong to the same nodes
 		// we wouldn't want them to be shown as from different nodes
-		if CLI.PxcOperator || CLI.SkipMerge {
+		if CLI.SkipMerge {
 			timeline[path] = localTimeline
+		} else if CLI.PxcOperator {
+			timeline.MergeByPodnameElsePath(path, localTimeline)
 		} else if CLI.MergeByDirectory {
 			timeline.MergeByDirectory(path, localTimeline)
 		} else {

@@ -1,4 +1,4 @@
-identifier                    tests/logs/operator_ambiguous_ips/node1.log   tests/logs/operator_ambiguous_ips/node2.log   tests/logs/operator_ambiguous_ips/node3.log   
+identifier                    cluster1-0                                    cluster1-1                                    cluster1-2                                    
 current path                  tests/logs/operator_ambiguous_ips/node1.log   tests/logs/operator_ambiguous_ips/node2.log   tests/logs/operator_ambiguous_ips/node3.log   
 last known ip                 10.16.29.34                                   10.16.27.98                                   10.16.28.213                                  
 last known name               cluster1-0                                    cluster1-1                                    cluster1-2                                    
@@ -2323,7 +2323,7 @@ mysql version                 8.0.31                                        8.0.
 2023-05-29T08:45:21.454564Z   |                                             |                                             garb left                                     
 2023-05-29T08:45:21.454608Z   |                                             |                                             PRIMARY(n=3)                                  
                                                                                                                                                                         
-identifier                    tests/logs/operator_ambiguous_ips/node1.log   tests/logs/operator_ambiguous_ips/node2.log   tests/logs/operator_ambiguous_ips/node3.log   
+identifier                    cluster1-0                                    cluster1-1                                    cluster1-2                                    
 current path                  tests/logs/operator_ambiguous_ips/node1.log   tests/logs/operator_ambiguous_ips/node2.log   tests/logs/operator_ambiguous_ips/node3.log   
 last known ip                 10.16.29.34                                   10.16.27.98                                   10.16.28.213                                  
 last known name               cluster1-0                                    cluster1-1                                    cluster1-2                                    

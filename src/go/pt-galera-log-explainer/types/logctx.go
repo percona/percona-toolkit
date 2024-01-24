@@ -24,6 +24,7 @@ type LogCtx struct {
 	statePostProcessingLog string
 	stateBackupLog         string
 	Version                string
+	OperatorMetadata       *OperatorMetadata
 
 	// SSTs where key is donor name, as it will always be known.
 	// is meant to be shared with a deep copy, there's no sense to share the pointer

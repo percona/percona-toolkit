@@ -1,6 +1,7 @@
 package regex
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 	"time"
@@ -43,8 +44,9 @@ var PXCOperatorMap = types.RegexMap{
 	},
 
 	// Why is it not in regular "views" regexes:
-	// it could have been useful as an "verbosity=types.Detailed" regexes, very rarely
-	// but in context of operators, it is actually a very important information
+	// it would have been useful very rarely for on-premise setups but in context of operators,
+	// it is actually an important info because gcache recovery can provoke out of memories due to
+	// filecache counting against memory usage
 	"RegexGcacheScan": &types.LogRegex{
 		// those "operators" regexes do not have the log prefix added implicitly. It's not strictly needed, but
 		// it will help to avoid catching random piece of log out of order
@@ -82,6 +84,22 @@ var PXCOperatorMap = types.RegexMap{
 				msg += displayer(logCtx) + "; "
 			}
 			return logCtx, types.SimpleDisplayer(msg)
+		},
+		Verbosity: types.DebugMySQL,
+	},
+
+	"RegexPodName": &types.LogRegex{
+		Regex:         regexp.MustCompile("^wsrep_node_incoming_address="),
+		InternalRegex: regexp.MustCompile("^wsrep_node_incoming_address=(?P<podname>[a-zA-Z0-9-]*)\\.(?P<deployment>[a-zA-Z0-9-]*)\\.(?P<namespace>[a-zA-Z0-9-]*)\\."),
+		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
+
+			logCtx.OperatorMetadata = &types.OperatorMetadata{
+				PodName:    submatches["podname"],
+				Deployment: submatches["deployment"],
+				Namespace:  submatches["namespace"],
+			}
+
+			return logCtx, types.SimpleDisplayer(fmt.Sprintf("podname: %s, dep: %s, namespace: %s", submatches["podname"], submatches["deployment"], submatches["namespace"]))
 		},
 		Verbosity: types.DebugMySQL,
 	},
