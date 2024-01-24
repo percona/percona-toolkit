@@ -42,7 +42,7 @@ our %TYPES = (
    } qw(Array Code Hash Regexp Glob Scalar)
 );
 
-sub check_type_constaints {
+sub check_type_constraints {
    my ($attribute, $type_check, $check_name, $val) = @_;
    ( ref($type_check) eq 'CODE'
       ? $type_check->($val)

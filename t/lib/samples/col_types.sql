@@ -16,5 +16,5 @@ CREATE TABLE col_types_1 (
    v  varchar(32),
    t  text
 );
-INSERT INTO col_types_1 VALUES (NULL, 1, 3.14, 5.08, NOW(), NOW(), 'c', 'c2', 'hello world', 'this is text');
+INSERT INTO col_types_1 VALUES (1, 1, 3.14, 5.08, NOW(), NOW(), 'c', 'c2', 'hello world', 'this is text');
 

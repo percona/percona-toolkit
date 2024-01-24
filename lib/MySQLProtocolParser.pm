@@ -120,24 +120,24 @@ my %com_for = (
 );
 
 my %flag_for = (
-   'CLIENT_LONG_PASSWORD'     => 1,       # new more secure passwords 
-   'CLIENT_FOUND_ROWS'        => 2,       # Found instead of affected rows 
-   'CLIENT_LONG_FLAG'         => 4,       # Get all column flags 
-   'CLIENT_CONNECT_WITH_DB'   => 8,       # One can specify db on connect 
-   'CLIENT_NO_SCHEMA'         => 16,      # Don't allow database.table.column 
-   'CLIENT_COMPRESS'          => 32,      # Can use compression protocol 
-   'CLIENT_ODBC'              => 64,      # Odbc client 
-   'CLIENT_LOCAL_FILES'       => 128,     # Can use LOAD DATA LOCAL 
-   'CLIENT_IGNORE_SPACE'      => 256,     # Ignore spaces before '(' 
-   'CLIENT_PROTOCOL_41'       => 512,     # New 4.1 protocol 
-   'CLIENT_INTERACTIVE'       => 1024,    # This is an interactive client 
-   'CLIENT_SSL'               => 2048,    # Switch to SSL after handshake 
-   'CLIENT_IGNORE_SIGPIPE'    => 4096,    # IGNORE sigpipes 
-   'CLIENT_TRANSACTIONS'      => 8192,    # Client knows about transactions 
-   'CLIENT_RESERVED'          => 16384,   # Old flag for 4.1 protocol  
-   'CLIENT_SECURE_CONNECTION' => 32768,   # New 4.1 authentication 
-   'CLIENT_MULTI_STATEMENTS'  => 65536,   # Enable/disable multi-stmt support 
-   'CLIENT_MULTI_RESULTS'     => 131072,  # Enable/disable multi-results 
+   'CLIENT_LONG_PASSWORD'     => 1,       # new more secure passwords
+   'CLIENT_FOUND_ROWS'        => 2,       # Found instead of affected rows
+   'CLIENT_LONG_FLAG'         => 4,       # Get all column flags
+   'CLIENT_CONNECT_WITH_DB'   => 8,       # One can specify db on connect
+   'CLIENT_NO_SCHEMA'         => 16,      # Don't allow database.table.column
+   'CLIENT_COMPRESS'          => 32,      # Can use compression protocol
+   'CLIENT_ODBC'              => 64,      # Odbc client
+   'CLIENT_LOCAL_FILES'       => 128,     # Can use LOAD DATA LOCAL
+   'CLIENT_IGNORE_SPACE'      => 256,     # Ignore spaces before '('
+   'CLIENT_PROTOCOL_41'       => 512,     # New 4.1 protocol
+   'CLIENT_INTERACTIVE'       => 1024,    # This is an interactive client
+   'CLIENT_SSL'               => 2048,    # Switch to SSL after handshake
+   'CLIENT_IGNORE_SIGPIPE'    => 4096,    # IGNORE sigpipes
+   'CLIENT_TRANSACTIONS'      => 8192,    # Client knows about transactions
+   'CLIENT_RESERVED'          => 16384,   # Old flag for 4.1 protocol
+   'CLIENT_SECURE_CONNECTION' => 32768,   # New 4.1 authentication
+   'CLIENT_MULTI_STATEMENTS'  => 65536,   # Enable/disable multi-stmt support
+   'CLIENT_MULTI_RESULTS'     => 131072,  # Enable/disable multi-results
 );
 
 use constant {
@@ -369,7 +369,7 @@ sub parse_event {
       PTDEBUG && _d('Appending data to buff; expecting',
          $session->{buff_left}, 'more bytes');
    }
-   else { 
+   else {
       # Remove the first MySQL header.  A single TCP packet can contain many
       # MySQL packets, but we only look at the first.  The 2nd and subsequent
       # packets are usually parts of a result set returned by the server, but
@@ -472,7 +472,7 @@ sub _packet_from_server {
    die "I need a packet"  unless $packet;
    die "I need a session" unless $session;
 
-   PTDEBUG && _d('Packet is from server; client state:', $session->{state}); 
+   PTDEBUG && _d('Packet is from server; client state:', $session->{state});
 
    if ( ($session->{server_seq} || '') eq $packet->{seq} ) {
       push @{ $session->{server_retransmissions} }, $packet->{seq};
@@ -529,7 +529,7 @@ sub _packet_from_server {
       }
    }
    else {
-      if ( $first_byte eq '00' ) { 
+      if ( $first_byte eq '00' ) {
          if ( ($session->{state} || '') eq 'client_auth' ) {
             # We logged in OK!  Trigger an admin Connect command.
 
@@ -601,7 +601,7 @@ sub _packet_from_server {
                },
                $packet, $session
             );
-         } 
+         }
          else {
             PTDEBUG && _d('Looks like an OK packet but session has no cmd');
          }
@@ -706,7 +706,7 @@ sub _packet_from_server {
                # packet.
                my ( $warning_count, $status_flags )
                   = $data =~ m/fe(.{4})(.{4})\Z/;
-               if ( $warning_count ) { 
+               if ( $warning_count ) {
                   $event->{Warnings} = to_num($warning_count);
                   my $flags = to_num($status_flags); # TODO set all flags?
                   $event->{No_good_index_used}
@@ -739,7 +739,7 @@ sub _packet_from_client {
    die "I need a packet"  unless $packet;
    die "I need a session" unless $session;
 
-   PTDEBUG && _d('Packet is from client; state:', $session->{state}); 
+   PTDEBUG && _d('Packet is from client; state:', $session->{state});
 
    if ( ($session->{client_seq} || '') eq $packet->{seq} ) {
       push @{ $session->{client_retransmissions} }, $packet->{seq};
@@ -784,7 +784,7 @@ sub _packet_from_client {
    elsif ( ($session->{state} || '') eq 'awaiting_reply' ) {
       my $arg = $session->{cmd}->{arg} ? substr($session->{cmd}->{arg}, 0, 50)
               : 'unknown';
-      PTDEBUG && _d('More data for previous command:', $arg, '...'); 
+      PTDEBUG && _d('More data for previous command:', $arg, '...');
       return;
    }
    else {
@@ -1022,7 +1022,8 @@ sub decode_len {
 }
 
 # All numbers are stored with the least significant byte first in the MySQL
-# protocol.
+# protocol (little endian).
+# This function converts from little endian to big endian
 sub to_num {
    my ( $str, $len ) = @_;
    if ( $len ) {
@@ -1070,7 +1071,7 @@ sub get_lcb {
 # 4       23                  SQL state marker, always '#'
 # 6       00 00 00 00 00      SQL state
 # 16      00 ...              Error message
-# The sqlstate marker and actual sqlstate are combined into one value. 
+# The sqlstate marker and actual sqlstate are combined into one value.
 sub parse_error_packet {
    my ( $data ) = @_;
    return unless $data;
@@ -1214,17 +1215,21 @@ sub parse_client_handshake_packet {
       return;
    }
 
-   # This length-coded binary doesn't seem to be a normal one, it
-   # seems more like a length-coded string actually.
    my $code_len = hex($buff_len);
-   # The (.*?)00.?\Z part in the regex, is to remove an erroneous 
-   # null char + mysql_native_password after the db name
-   # https://bugs.launchpad.net/percona-toolkit/+bug/1402776
-   my ( $db ) = $data =~ m!
-      ^.{64}${user}00..   # Everything matched before
-      (?:..){$code_len}   # The scramble buffer
-      (.*?)00.*\Z         # The database name
-   !x;
+   my $db;
+
+   #  Only try to get the db if CLIENT_CONNECT_WITH_DB flag is set
+   #  https://dev.mysql.com/doc/internals/en/connection-phase-packets.html#packet-Protocol::HandshakeResponse41
+   my $capability_flags = to_num($flags); # $flags is stored as little endian.
+
+   if ($capability_flags & $flag_for{CLIENT_CONNECT_WITH_DB}) {
+      ( $db ) = $data =~ m!
+         ^.{64}${user}00..   # Everything matched before
+         (?:..){$code_len}   # The scramble buffer
+         (.*?)00.*\Z         # The database name
+      !x;
+   }
+
    my $pkt = {
       user  => to_string($user),
       db    => $db ? to_string($db) : '',
@@ -1291,12 +1296,12 @@ sub parse_execute_packet {
    my $null_count  = int(($sth->{num_params} + 7) / 8) || 1;
    my $null_bitmap = to_num(substr($data, 20, $null_count * 2));
    PTDEBUG && _d('NULL bitmap:', $null_bitmap, 'count:', $null_count);
-   
+
    # This chops off everything up to the byte for new params.
    substr($data, 0, 20 + ($null_count * 2), '');
 
    my $new_params = to_num(substr($data, 0, 2, ''));
-   my @types; 
+   my @types;
    if ( $new_params ) {
       PTDEBUG && _d('New param types');
       # It seems all params are type 254, MYSQL_TYPE_STRING.  Perhaps

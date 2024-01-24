@@ -36,15 +36,15 @@ BEGIN {
 # ###########################################################################
 # Percona::Toolkit package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Percona/Toolkit.pm
 #   t/lib/Percona/Toolkit.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Percona::Toolkit;
 
-our $VERSION = '2.2.19';
+our $VERSION = '3.5.7';
 
 use strict;
 use warnings FATAL => 'all';
@@ -99,10 +99,10 @@ sub _d {
 # ###########################################################################
 # MasterSlave package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/MasterSlave.pm
 #   t/lib/MasterSlave.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package MasterSlave;
@@ -112,22 +112,22 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-sub check_recursion_method {                                                       
+sub check_recursion_method {
    my ($methods) = @_;
-   if ( @$methods != 1 ) {                                                         
-      if ( grep({ !m/processlist|hosts/i } @$methods)                              
-            && $methods->[0] !~ /^dsn=/i ) 
-      {     
-         die  "Invalid combination of recursion methods: "                         
-            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "      
-            . "Only hosts and processlist may be combined.\n"                      
-      }                                                                            
-   }     
-   else {   
+   if ( @$methods != 1 ) {
+      if ( grep({ !m/processlist|hosts/i } @$methods)
+            && $methods->[0] !~ /^dsn=/i )
+      {
+         die  "Invalid combination of recursion methods: "
+            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "
+            . "Only hosts and processlist may be combined.\n"
+      }
+   }
+   else {
       my ($method) = @$methods;
-      die "Invalid recursion method: " . ( $method || 'undef' )                    
-         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster$|dsn=)/i;     
-   }                                                                               
+      die "Invalid recursion method: " . ( $method || 'undef' )
+         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|cluster$|dsn=)/i;
+   }
 }
 
 sub new {
@@ -156,7 +156,7 @@ sub get_slaves {
    my $methods = $self->_resolve_recursion_methods($args{dsn});
 
    return $slaves unless @$methods;
-   
+
    if ( grep { m/processlist|hosts/i } @$methods ) {
       my @required_args = qw(dbh dsn);
       foreach my $arg ( @required_args ) {
@@ -166,8 +166,11 @@ sub get_slaves {
       my $o = $self->{OptionParser};
 
       $self->recurse_to_slaves(
-         {  dbh       => $dbh,
-            dsn       => $dsn,
+         {  dbh            => $dbh,
+            dsn            => $dsn,
+            slave_user     => $o->got('slave-user') ? $o->get('slave-user') : '',
+            slave_password => $o->got('slave-password') ? $o->get('slave-password') : '',
+            slaves         => $args{slaves},
             callback  => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
@@ -181,17 +184,18 @@ sub get_slaves {
                   $slave_dsn->{p} = $o->get('slave-password');
                   PTDEBUG && _d("Slave password set");
                }
-               push @$slaves, $make_cxn->(dsn => $slave_dsn, dbh => $dbh);
+               push @$slaves, $make_cxn->(dsn => $slave_dsn, dbh => $dbh, parent => $parent);
                return;
             },
+            wait_no_die => $args{'wait_no_die'},
          }
       );
-   }
-   elsif ( $methods->[0] =~ m/^dsn=/i ) {
+   } elsif ( $methods->[0] =~ m/^dsn=/i ) {
       (my $dsn_table_dsn = join ",", @$methods) =~ s/^dsn=//i;
       $slaves = $self->get_cxn_from_dsn_table(
          %args,
          dsn_table_dsn => $dsn_table_dsn,
+         wait_no_die => $args{'wait_no_die'},
       );
    }
    elsif ( $methods->[0] =~ m/none/i ) {
@@ -200,7 +204,7 @@ sub get_slaves {
    else {
       die "Unexpected recursion methods: @$methods";
    }
-   
+
    return $slaves;
 }
 
@@ -222,9 +226,11 @@ sub _resolve_recursion_methods {
 sub recurse_to_slaves {
    my ( $self, $args, $level ) = @_;
    $level ||= 0;
-   my $dp      = $self->{DSNParser};
+   my $dp = $self->{DSNParser};
    my $recurse = $args->{recurse} || $self->{OptionParser}->get('recurse');
-   my $dsn     = $args->{dsn};
+   my $dsn = $args->{dsn};
+   my $slave_user = $args->{slave_user} || '';
+   my $slave_password = $args->{slave_password} || '';
 
    my $methods = $self->_resolve_recursion_methods($dsn);
    PTDEBUG && _d('Recursion methods:', @$methods);
@@ -233,21 +239,64 @@ sub recurse_to_slaves {
       return;
    }
 
-   my $dbh;
-   eval {
-      $dbh = $args->{dbh} || $dp->get_dbh(
-         $dp->get_cxn_params($dsn), { AutoCommit => 1 });
-      PTDEBUG && _d('Connected to', $dp->as_string($dsn));
+   my $slave_dsn = $dsn;
+   if ($slave_user) {
+      $slave_dsn->{u} = $slave_user;
+      PTDEBUG && _d("Using slave user $slave_user on ".$slave_dsn->{h}.":".$slave_dsn->{P});
+   }
+   if ($slave_password) {
+      $slave_dsn->{p} = $slave_password;
+      PTDEBUG && _d("Slave password set");
+   }
+
+   my $dbh = $args->{dbh};
+
+   my $get_dbh = sub {
+         eval {
+            $dbh = $dp->get_dbh(
+               $dp->get_cxn_params($slave_dsn), { AutoCommit => 1 }
+            );
+            PTDEBUG && _d('Connected to', $dp->as_string($slave_dsn));
+         };
+         if ( $EVAL_ERROR ) {
+            print STDERR "Cannot connect to ", $dp->as_string($slave_dsn), ": ", $EVAL_ERROR, "\n"
+               or die "Cannot print: $OS_ERROR";
+            return;
+         }
    };
-   if ( $EVAL_ERROR ) {
-      print STDERR "Cannot connect to ", $dp->as_string($dsn), "\n"
-         or die "Cannot print: $OS_ERROR";
-      return;
+
+   DBH: {
+      if ( !defined $dbh ) {
+         foreach my $known_slave ( @{$args->{slaves}} ) {
+            if ($known_slave->{dsn}->{h} eq $slave_dsn->{h} and
+                $known_slave->{dsn}->{P} eq $slave_dsn->{P} ) {
+               $dbh = $known_slave->{dbh};
+               last DBH;
+            }
+         }
+         $get_dbh->();
+      }
    }
 
    my $sql  = 'SELECT @@SERVER_ID';
    PTDEBUG && _d($sql);
-   my ($id) = $dbh->selectrow_array($sql);
+   my $id = undef;
+   do {
+      eval {
+         ($id) = $dbh->selectrow_array($sql);
+      };
+	   if ( $EVAL_ERROR ) {
+		   if ( $args->{wait_no_die} ) {
+			   print STDERR "Error getting server id: ", $EVAL_ERROR,
+               "\nRetrying query for server ", $slave_dsn->{h}, ":", $slave_dsn->{P}, "\n";
+            sleep 1;
+            $dbh->disconnect();
+            $get_dbh->();
+         } else {
+            die $EVAL_ERROR;
+         }
+      }
+   } until (defined $id);
    PTDEBUG && _d('Working on server ID', $id);
    my $master_thinks_i_am = $dsn->{server_id};
    if ( !defined $id
@@ -273,7 +322,7 @@ sub recurse_to_slaves {
          PTDEBUG && _d('Recursing from',
             $dp->as_string($dsn), 'to', $dp->as_string($slave));
          $self->recurse_to_slaves(
-            { %$args, dsn => $slave, dbh => undef, parent => $dsn }, $level + 1 );
+            { %$args, dsn => $slave, dbh => undef, parent => $dsn, slave_user => $slave_user, $slave_password => $slave_password }, $level + 1 );
       }
    }
 }
@@ -299,7 +348,13 @@ sub find_slave_hosts {
 
 sub _find_slaves_by_processlist {
    my ( $self, $dsn_parser, $dbh, $dsn ) = @_;
+   my @connected_slaves = $self->get_connected_slaves($dbh);
+   my @slaves = $self->_process_slaves_list($dsn_parser, $dsn, \@connected_slaves);
+   return @slaves;
+}
 
+sub _process_slaves_list {
+   my ($self, $dsn_parser, $dsn, $connected_slaves) = @_;
    my @slaves = map  {
       my $slave        = $dsn_parser->parse("h=$_", $dsn);
       $slave->{source} = 'processlist';
@@ -307,12 +362,15 @@ sub _find_slaves_by_processlist {
    }
    grep { $_ }
    map  {
-      my ( $host ) = $_->{host} =~ m/^([^:]+):/;
+      my ( $host ) = $_->{host} =~ m/^(.*):\d+$/;
       if ( $host eq 'localhost' ) {
          $host = '127.0.0.1'; # Replication never uses sockets.
       }
+      if ($host =~ m/::/) {
+          $host = '['.$host.']';
+      }
       $host;
-   } $self->get_connected_slaves($dbh);
+   } @$connected_slaves;
 
    return @slaves;
 }
@@ -437,21 +495,54 @@ sub get_master_dsn {
 
 sub get_slave_status {
    my ( $self, $dbh ) = @_;
+
    if ( !$self->{not_a_slave}->{$dbh} ) {
       my $sth = $self->{sths}->{$dbh}->{SLAVE_STATUS}
             ||= $dbh->prepare('SHOW SLAVE STATUS');
       PTDEBUG && _d($dbh, 'SHOW SLAVE STATUS');
       $sth->execute();
-      my ($ss) = @{$sth->fetchall_arrayref({})};
+      my ($sss_rows) = $sth->fetchall_arrayref({}); # Show Slave Status rows
 
-      if ( $ss && %$ss ) {
-         $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
-         return $ss;
+      my $ss;
+      if ( $sss_rows && @$sss_rows ) {
+          if (scalar @$sss_rows > 1) {
+              if (!$self->{channel}) {
+                  die 'This server returned more than one row for SHOW SLAVE STATUS but "channel" was not specified on the command line';
+              }
+              my $slave_use_channels;
+              for my $row (@$sss_rows) {
+                  $row = { map { lc($_) => $row->{$_} } keys %$row }; # lowercase the keys
+                  if ($row->{channel_name}) {
+                      $slave_use_channels = 1;
+                  }
+                  if ($row->{channel_name} eq $self->{channel}) {
+                      $ss = $row;
+                      last;
+                  }
+              }
+              if (!$ss && $slave_use_channels) {
+                 die 'This server is using replication channels but "channel" was not specified on the command line';
+              }
+          } else {
+              if ($sss_rows->[0]->{channel_name} && $sss_rows->[0]->{channel_name} ne $self->{channel}) {
+                  die 'This server is using replication channels but "channel" was not specified on the command line';
+              } else {
+                  $ss = $sss_rows->[0];
+              }
+          }
+
+          if ( $ss && %$ss ) {
+             $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
+             return $ss;
+          }
+          if (!$ss && $self->{channel}) {
+              die "Specified channel name is invalid";
+          }
       }
 
       PTDEBUG && _d('This server returns nothing for SHOW SLAVE STATUS');
       $self->{not_a_slave}->{$dbh}++;
-   }
+  }
 }
 
 sub get_master_status {
@@ -491,8 +582,20 @@ sub wait_for_master {
    my $result;
    my $waited;
    if ( $master_status ) {
-      my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', "
-              . "$master_status->{position}, $timeout)";
+      my $slave_status;
+      eval {
+          $slave_status = $self->get_slave_status($slave_dbh);
+      };
+      if ($EVAL_ERROR) {
+          return {
+              result => undef,
+              waited => 0,
+              error  =>'Wait for master: this is a multi-master slave but "channel" was not specified on the command line',
+          };
+      }
+      my $server_version = VersionParser->new($slave_dbh);
+      my $channel_sql = $server_version > '5.6' && $self->{channel} ? ", '$self->{channel}'" : '';
+      my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', $master_status->{position}, $timeout $channel_sql)";
       PTDEBUG && _d($slave_dbh, $sql);
       my $start = time;
       ($result) = $slave_dbh->selectrow_array($sql);
@@ -558,6 +661,9 @@ sub catchup_to_master {
             timeout       => $timeout,
             master_status => $master_status
       );
+      if ($result->{error}) {
+          die $result->{error};
+      }
       if ( !defined $result->{result} ) {
          $slave_status = $self->get_slave_status($slave);
          if ( !$self->slave_is_running($slave_status) ) {
@@ -668,7 +774,7 @@ sub short_host {
 }
 
 sub is_replication_thread {
-   my ( $self, $query, %args ) = @_; 
+   my ( $self, $query, %args ) = @_;
    return unless $query;
 
    my $type = lc($args{type} || 'all');
@@ -683,7 +789,7 @@ sub is_replication_thread {
    if ( !$match ) {
       if ( ($query->{User} || $query->{user} || '') eq "system user" ) {
          PTDEBUG && _d("Slave replication thread");
-         if ( $type ne 'all' ) { 
+         if ( $type ne 'all' ) {
             my $state = $query->{State} || $query->{state} || '';
 
             if ( $state =~ m/^init|end$/ ) {
@@ -696,7 +802,7 @@ sub is_replication_thread {
                    |Reading\sevent\sfrom\sthe\srelay\slog
                    |Has\sread\sall\srelay\slog;\swaiting
                    |Making\stemp\sfile
-                   |Waiting\sfor\sslave\smutex\son\sexit)/xi; 
+                   |Waiting\sfor\sslave\smutex\son\sexit)/xi;
 
                $match = $type eq 'slave_sql' &&  $slave_sql ? 1
                       : $type eq 'slave_io'  && !$slave_sql ? 1
@@ -760,7 +866,7 @@ sub get_replication_filters {
          replicate_do_db
          replicate_ignore_db
          replicate_do_table
-         replicate_ignore_table 
+         replicate_ignore_table
          replicate_wild_do_table
          replicate_wild_ignore_table
       );
@@ -771,7 +877,7 @@ sub get_replication_filters {
       $filters{slave_skip_errors} = $row->[1] if $row->[1] && $row->[1] ne 'OFF';
    }
 
-   return \%filters; 
+   return \%filters;
 }
 
 
@@ -812,18 +918,39 @@ sub get_cxn_from_dsn_table {
         . "or a database-qualified table (t)";
    }
 
+   my $done = 0;
    my $dsn_tbl_cxn = $make_cxn->(dsn => $dsn);
    my $dbh         = $dsn_tbl_cxn->connect();
    my $sql         = "SELECT dsn FROM $dsn_table ORDER BY id";
    PTDEBUG && _d($sql);
-   my $dsn_strings = $dbh->selectcol_arrayref($sql);
    my @cxn;
-   if ( $dsn_strings ) {
-      foreach my $dsn_string ( @$dsn_strings ) {
-         PTDEBUG && _d('DSN from DSN table:', $dsn_string);
-         push @cxn, $make_cxn->(dsn_string => $dsn_string);
+   use Data::Dumper;
+   DSN:
+   do {
+      @cxn = ();
+      my $dsn_strings = $dbh->selectcol_arrayref($sql);
+      if ( $dsn_strings ) {
+         foreach my $dsn_string ( @$dsn_strings ) {
+            PTDEBUG && _d('DSN from DSN table:', $dsn_string);
+            if ($args{wait_no_die}) {
+               my $lcxn;
+               eval {
+                  $lcxn = $make_cxn->(dsn_string => $dsn_string);
+               };
+               if ( $EVAL_ERROR && ($dsn_tbl_cxn->lost_connection($EVAL_ERROR)
+                     || $EVAL_ERROR =~ m/Can't connect to MySQL server/)) {
+                  PTDEBUG && _d("Server is not accessible, waiting when it is online again");
+                  sleep(1);
+                  goto DSN;
+               }
+               push @cxn, $lcxn;
+            } else {
+               push @cxn, $make_cxn->(dsn_string => $dsn_string);
+            }
+         }
       }
-   }
+      $done = 1;
+   } until $done;
    return \@cxn;
 }
 
@@ -844,10 +971,10 @@ sub _d {
 # ###########################################################################
 # OptionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/OptionParser.pm
 #   t/lib/OptionParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package OptionParser;
@@ -905,7 +1032,7 @@ sub new {
       rules             => [],  # desc of rules for --help
       mutex             => [],  # rule: opts are mutually exclusive
       atleast1          => [],  # rule: at least one opt is required
-      disables          => {},  # rule: opt disables other opts 
+      disables          => {},  # rule: opt disables other opts
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
@@ -1068,7 +1195,7 @@ sub _pod_to_specs {
          }
 
          push @specs, {
-            spec  => $self->{parse_attributes}->($self, $option, \%attribs), 
+            spec  => $self->{parse_attributes}->($self, $option, \%attribs),
             desc  => $para
                . (defined $attribs{default} ? " (default $attribs{default})" : ''),
             group => ($attribs{'group'} ? $attribs{'group'} : 'default'),
@@ -1159,7 +1286,7 @@ sub _parse_specs {
          $self->{opts}->{$long} = $opt;
       }
       else { # It's an option rule, not a spec.
-         PTDEBUG && _d('Parsing rule:', $opt); 
+         PTDEBUG && _d('Parsing rule:', $opt);
          push @{$self->{rules}}, $opt;
          my @participants = $self->_get_participants($opt);
          my $rule_ok = 0;
@@ -1204,7 +1331,7 @@ sub _parse_specs {
       PTDEBUG && _d('Option', $long, 'disables', @participants);
    }
 
-   return; 
+   return;
 }
 
 sub _get_participants {
@@ -1291,7 +1418,7 @@ sub _set_option {
 }
 
 sub get_opts {
-   my ( $self ) = @_; 
+   my ( $self ) = @_;
 
    foreach my $long ( keys %{$self->{opts}} ) {
       $self->{opts}->{$long}->{got} = 0;
@@ -1304,6 +1431,12 @@ sub get_opts {
 
    $self->{errors} = [];
 
+   if ( @ARGV && $ARGV[0] =~/^--config=/ ) {
+      $ARGV[0] = substr($ARGV[0],9);
+      $ARGV[0] =~ s/^'(.*)'$/$1/;
+      $ARGV[0] =~ s/^"(.*)"$/$1/;
+      $self->_set_option('config', shift @ARGV);
+   }
    if ( @ARGV && $ARGV[0] eq "--config" ) {
       shift @ARGV;
       $self->_set_option('config', shift @ARGV);
@@ -1416,7 +1549,7 @@ sub _check_opts {
                   else {
                      $err = join(', ',
                                map { "--$self->{opts}->{$_}->{long}" }
-                               grep { $_ } 
+                               grep { $_ }
                                @restricted_opts[0..scalar(@restricted_opts) - 2]
                             )
                           . ' or --'.$self->{opts}->{$restricted_opts[-1]}->{long};
@@ -1426,7 +1559,7 @@ sub _check_opts {
             }
 
          }
-         elsif ( $opt->{is_required} ) { 
+         elsif ( $opt->{is_required} ) {
             $self->save_error("Required option --$long must be specified");
          }
 
@@ -1495,7 +1628,15 @@ sub _validate_type {
          }
       }
       my $defaults = $self->{DSNParser}->parse_options($self);
-      $opt->{value} = $self->{DSNParser}->parse($val, $prev, $defaults);
+      if (!$opt->{attributes}->{repeatable}) {
+          $opt->{value} = $self->{DSNParser}->parse($val, $prev, $defaults);
+      } else {
+          my $values = [];
+          for my $dsn_string (@$val) {
+              push @$values, $self->{DSNParser}->parse($dsn_string, $prev, $defaults);
+          }
+          $opt->{value} = $values;
+      }
    }
    elsif ( $val && $opt->{type} eq 'z' ) {  # type size
       PTDEBUG && _d('Parsing option', $opt->{long}, 'as a size value');
@@ -1802,7 +1943,7 @@ sub clone {
       $clone{$scalar} = $self->{$scalar};
    }
 
-   return bless \%clone;     
+   return bless \%clone;
 }
 
 sub _parse_size {
@@ -1941,10 +2082,10 @@ if ( PTDEBUG ) {
 # ###########################################################################
 # Lmo::Utils package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo/Utils.pm
 #   t/lib/Lmo/Utils.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Lmo::Utils;
@@ -2001,10 +2142,10 @@ sub _unimport_coderefs {
 # ###########################################################################
 # Lmo::Meta package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo/Meta.pm
 #   t/lib/Lmo/Meta.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Lmo::Meta;
@@ -2058,10 +2199,10 @@ sub attributes_for_new {
 # ###########################################################################
 # Lmo::Object package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo/Object.pm
 #   t/lib/Lmo/Object.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Lmo::Object;
@@ -2154,10 +2295,10 @@ sub meta {
 # ###########################################################################
 # Lmo::Types package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo/Types.pm
 #   t/lib/Lmo/Types.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Lmo::Types;
@@ -2183,7 +2324,7 @@ our %TYPES = (
    } qw(Array Code Hash Regexp Glob Scalar)
 );
 
-sub check_type_constaints {
+sub check_type_constraints {
    my ($attribute, $type_check, $check_name, $val) = @_;
    ( ref($type_check) eq 'CODE'
       ? $type_check->($val)
@@ -2255,10 +2396,10 @@ sub _nested_constraints {
 # ###########################################################################
 # Lmo package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Lmo.pm
 #   t/lib/Lmo.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 BEGIN {
@@ -2316,7 +2457,7 @@ sub extends {
 
 sub _load_module {
    my ($class) = @_;
-   
+
    (my $file = $class) =~ s{::|'}{/}g;
    $file .= '.pm';
    { local $@; eval { require "$file" } } # or warn $@;
@@ -2347,7 +2488,7 @@ sub has {
    my $caller = scalar caller();
 
    my $class_metadata = Lmo::Meta->metadata_for($caller);
-   
+
    for my $attribute ( ref $names ? @$names : $names ) {
       my %args   = @_;
       my $method = ($args{is} || '') eq 'ro'
@@ -2366,16 +2507,16 @@ sub has {
 
       if ( my $type_check = $args{isa} ) {
          my $check_name = $type_check;
-         
+
          if ( my ($aggregate_type, $inner_type) = $type_check =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
             $type_check = Lmo::Types::_nested_constraints($attribute, $aggregate_type, $inner_type);
          }
-         
+
          my $check_sub = sub {
             my ($new_val) = @_;
-            Lmo::Types::check_type_constaints($attribute, $type_check, $check_name, $new_val);
+            Lmo::Types::check_type_constraints($attribute, $type_check, $check_name, $new_val);
          };
-         
+
          $class_metadata->{$attribute}{isa} = [$check_name, $check_sub];
          my $orig_method = $method;
          $method = sub {
@@ -2590,10 +2731,10 @@ sub override {
 # ###########################################################################
 # DSNParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/DSNParser.pm
 #   t/lib/DSNParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package DSNParser;
@@ -2677,7 +2818,7 @@ sub parse {
    foreach my $key ( keys %$opts ) {
       PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
-      if (   !defined $final_props{$key}
+      if ( !defined $final_props{$key}
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
@@ -2817,7 +2958,7 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass,
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       $dbh = eval { DBI->connect($cxn_string, $user, $pass, $defaults) };
@@ -2884,6 +3025,28 @@ sub get_dbh {
            . ($sql_mode ? " and $sql_mode" : '')
            . ": $EVAL_ERROR";
       }
+   }
+   my ($mysql_version) = eval { $dbh->selectrow_array('SELECT VERSION()') };
+   if ($EVAL_ERROR) {
+       die "Cannot get MySQL version: $EVAL_ERROR";
+   }
+
+   my (undef, $character_set_server) = eval { $dbh->selectrow_array("SHOW VARIABLES LIKE 'character_set_server'") };
+   if ($EVAL_ERROR) {
+       die "Cannot get MySQL var character_set_server: $EVAL_ERROR";
+   }
+
+   if ($mysql_version =~ m/^(\d+)\.(\d)\.(\d+).*/) {
+       if ($1 >= 8 && $character_set_server =~ m/^utf8/) {
+           $dbh->{mysql_enable_utf8} = 1;
+           my $msg = "MySQL version $mysql_version >= 8 and character_set_server = $character_set_server\n".
+                     "Setting: SET NAMES $character_set_server";
+           PTDEBUG && _d($msg);
+           eval { $dbh->do("SET NAMES 'utf8mb4'") };
+           if ($EVAL_ERROR) {
+               die "Cannot SET NAMES $character_set_server: $EVAL_ERROR";
+           }
+       }
    }
 
    PTDEBUG && _d('DBH info: ',
@@ -2993,7 +3156,7 @@ sub set_vars {
       }
    }
 
-   return; 
+   return;
 }
 
 sub _d {
@@ -3013,10 +3176,10 @@ sub _d {
 # ###########################################################################
 # Daemon package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Daemon.pm
 #   t/lib/Daemon.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Daemon;
@@ -3024,157 +3187,214 @@ package Daemon;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use POSIX qw(setsid);
+use Fcntl qw(:DEFAULT);
 
 sub new {
-   my ( $class, %args ) = @_;
-   foreach my $arg ( qw(o) ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my $o = $args{o};
+   my ($class, %args) = @_;
    my $self = {
-      o        => $o,
-      log_file => $o->has('log') ? $o->get('log') : undef,
-      PID_file => $o->has('pid') ? $o->get('pid') : undef,
+      log_file       => $args{log_file},
+      pid_file       => $args{pid_file},
+      daemonize      => $args{daemonize},
+      force_log_file => $args{force_log_file},
+      parent_exit    => $args{parent_exit},
+      pid_file_owner => 0,
    };
-
-   check_PID_file(undef, $self->{PID_file});
-
-   PTDEBUG && _d('Daemonized child will log to', $self->{log_file});
    return bless $self, $class;
 }
 
-sub daemonize {
-   my ( $self ) = @_;
+sub run {
+   my ($self) = @_;
 
-   PTDEBUG && _d('About to fork and daemonize');
-   defined (my $pid = fork()) or die "Cannot fork: $OS_ERROR";
-   if ( $pid ) {
-      PTDEBUG && _d('Parent PID', $PID, 'exiting after forking child PID',$pid);
-      exit;
-   }
+   my $daemonize      = $self->{daemonize};
+   my $pid_file       = $self->{pid_file};
+   my $log_file       = $self->{log_file};
+   my $force_log_file = $self->{force_log_file};
+   my $parent_exit    = $self->{parent_exit};
 
-   PTDEBUG && _d('Daemonizing child PID', $PID);
-   $self->{PID_owner} = $PID;
-   $self->{child}     = 1;
+   PTDEBUG && _d('Starting daemon');
 
-   POSIX::setsid() or die "Cannot start a new session: $OS_ERROR";
-   chdir '/'       or die "Cannot chdir to /: $OS_ERROR";
-
-   $self->_make_PID_file();
-
-   $OUTPUT_AUTOFLUSH = 1;
-
-   PTDEBUG && _d('Redirecting STDIN to /dev/null');
-   close STDIN;
-   open  STDIN, '/dev/null'
-      or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
-
-   if ( $self->{log_file} ) {
-      PTDEBUG && _d('Redirecting STDOUT and STDERR to', $self->{log_file});
-      close STDOUT;
-      open  STDOUT, '>>', $self->{log_file}
-         or die "Cannot open log file $self->{log_file}: $OS_ERROR";
-
-      close STDERR;
-      open  STDERR, ">&STDOUT"
-         or die "Cannot dupe STDERR to STDOUT: $OS_ERROR"; 
-   }
-   else {
-      if ( -t STDOUT ) {
-         PTDEBUG && _d('No log file and STDOUT is a terminal;',
-            'redirecting to /dev/null');
-         close STDOUT;
-         open  STDOUT, '>', '/dev/null'
-            or die "Cannot reopen STDOUT to /dev/null: $OS_ERROR";
-      }
-      if ( -t STDERR ) {
-         PTDEBUG && _d('No log file and STDERR is a terminal;',
-            'redirecting to /dev/null');
-         close STDERR;
-         open  STDERR, '>', '/dev/null'
-            or die "Cannot reopen STDERR to /dev/null: $OS_ERROR";
-      }
-   }
-
-   return;
-}
-
-sub check_PID_file {
-   my ( $self, $file ) = @_;
-   my $PID_file = $self ? $self->{PID_file} : $file;
-   PTDEBUG && _d('Checking PID file', $PID_file);
-   if ( $PID_file && -f $PID_file ) {
-      my $pid;
+   if ( $pid_file ) {
       eval {
-         chomp($pid = (slurp_file($PID_file) || ''));
+         $self->_make_pid_file(
+            pid      => $PID,  # parent's pid
+            pid_file => $pid_file,
+         );
       };
-      if ( $EVAL_ERROR ) {
-         die "The PID file $PID_file already exists but it cannot be read: "
-            . $EVAL_ERROR;
+      die "$EVAL_ERROR\n" if $EVAL_ERROR;
+      if ( !$daemonize ) {
+         $self->{pid_file_owner} = $PID;  # parent's pid
       }
-      PTDEBUG && _d('PID file exists; it contains PID', $pid);
-      if ( $pid ) {
-         my $pid_is_alive = kill 0, $pid;
-         if ( $pid_is_alive ) {
-            die "The PID file $PID_file already exists "
-               . " and the PID that it contains, $pid, is running";
-         }
-         else {
-            warn "Overwriting PID file $PID_file because the PID that it "
-               . "contains, $pid, is not running";
-         }
+   }
+
+   if ( $daemonize ) {
+      defined (my $child_pid = fork()) or die "Cannot fork: $OS_ERROR";
+      if ( $child_pid ) {
+         PTDEBUG && _d('Forked child', $child_pid);
+         $parent_exit->($child_pid) if $parent_exit;
+         exit 0;
+      }
+
+      POSIX::setsid() or die "Cannot start a new session: $OS_ERROR";
+      chdir '/'       or die "Cannot chdir to /: $OS_ERROR";
+
+      if ( $pid_file ) {
+         $self->_update_pid_file(
+            pid      => $PID,  # child's pid
+            pid_file => $pid_file,
+         );
+         $self->{pid_file_owner} = $PID;
+      }
+   }
+
+   if ( $daemonize || $force_log_file ) {
+      PTDEBUG && _d('Redirecting STDIN to /dev/null');
+      close STDIN;
+      open  STDIN, '/dev/null'
+         or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
+      if ( $log_file ) {
+         PTDEBUG && _d('Redirecting STDOUT and STDERR to', $log_file);
+         close STDOUT;
+         open  STDOUT, '>>', $log_file
+            or die "Cannot open log file $log_file: $OS_ERROR";
+
+         close STDERR;
+         open  STDERR, ">&STDOUT"
+            or die "Cannot dupe STDERR to STDOUT: $OS_ERROR";
       }
       else {
-         die "The PID file $PID_file already exists but it does not "
-            . "contain a PID";
+         if ( -t STDOUT ) {
+            PTDEBUG && _d('No log file and STDOUT is a terminal;',
+               'redirecting to /dev/null');
+            close STDOUT;
+            open  STDOUT, '>', '/dev/null'
+               or die "Cannot reopen STDOUT to /dev/null: $OS_ERROR";
+         }
+         if ( -t STDERR ) {
+            PTDEBUG && _d('No log file and STDERR is a terminal;',
+               'redirecting to /dev/null');
+            close STDERR;
+            open  STDERR, '>', '/dev/null'
+               or die "Cannot reopen STDERR to /dev/null: $OS_ERROR";
+         }
+      }
+
+      $OUTPUT_AUTOFLUSH = 1;
+   }
+
+   PTDEBUG && _d('Daemon running');
+   return;
+}
+
+sub _make_pid_file {
+   my ($self, %args) = @_;
+   my @required_args = qw(pid pid_file);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my $pid      = $args{pid};
+   my $pid_file = $args{pid_file};
+
+   eval {
+      sysopen(PID_FH, $pid_file, O_RDWR|O_CREAT|O_EXCL) or die $OS_ERROR;
+      print PID_FH $PID, "\n";
+      close PID_FH;
+   };
+   if ( my $e = $EVAL_ERROR ) {
+      if ( $e =~ m/file exists/i ) {
+         my $old_pid = $self->_check_pid_file(
+            pid_file => $pid_file,
+            pid      => $PID,
+         );
+         if ( $old_pid ) {
+            warn "Overwriting PID file $pid_file because PID $old_pid "
+               . "is not running.\n";
+         }
+         $self->_update_pid_file(
+            pid      => $PID,
+            pid_file => $pid_file
+         );
+      }
+      else {
+         die "Error creating PID file $pid_file: $e\n";
       }
    }
-   else {
-      PTDEBUG && _d('No PID file');
-   }
+
    return;
 }
 
-sub make_PID_file {
-   my ( $self ) = @_;
-   if ( exists $self->{child} ) {
-      die "Do not call Daemon::make_PID_file() for daemonized scripts";
-   }
-   $self->_make_PID_file();
-   $self->{PID_owner} = $PID;
-   return;
-}
+sub _check_pid_file {
+   my ($self, %args) = @_;
+   my @required_args = qw(pid_file pid);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my $pid_file = $args{pid_file};
+   my $pid      = $args{pid};
 
-sub _make_PID_file {
-   my ( $self ) = @_;
+   PTDEBUG && _d('Checking if PID in', $pid_file, 'is running');
 
-   my $PID_file = $self->{PID_file};
-   if ( !$PID_file ) {
-      PTDEBUG && _d('No PID file to create');
+   if ( ! -f $pid_file ) {
+      PTDEBUG && _d('PID file', $pid_file, 'does not exist');
       return;
    }
 
-   $self->check_PID_file();
+   open my $fh, '<', $pid_file
+      or die "Error opening $pid_file: $OS_ERROR";
+   my $existing_pid = do { local $/; <$fh> };
+   chomp($existing_pid) if $existing_pid;
+   close $fh
+      or die "Error closing $pid_file: $OS_ERROR";
 
-   open my $PID_FH, '>', $PID_file
-      or die "Cannot open PID file $PID_file: $OS_ERROR";
-   print $PID_FH $PID
-      or die "Cannot print to PID file $PID_file: $OS_ERROR";
-   close $PID_FH
-      or die "Cannot close PID file $PID_file: $OS_ERROR";
+   if ( $existing_pid ) {
+      if ( $existing_pid == $pid ) {
+         warn "The current PID $pid already holds the PID file $pid_file\n";
+         return;
+      }
+      else {
+         PTDEBUG && _d('Checking if PID', $existing_pid, 'is running');
+         my $pid_is_alive = kill 0, $existing_pid;
+         if ( $pid_is_alive ) {
+            die "PID file $pid_file exists and PID $existing_pid is running\n";
+         }
+      }
+   }
+   else {
+      die "PID file $pid_file exists but it is empty.  Remove the file "
+         . "if the process is no longer running.\n";
+   }
 
-   PTDEBUG && _d('Created PID file:', $self->{PID_file});
+   return $existing_pid;
+}
+
+sub _update_pid_file {
+   my ($self, %args) = @_;
+   my @required_args = qw(pid pid_file);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my $pid      = $args{pid};
+   my $pid_file = $args{pid_file};
+
+   open my $fh, '>', $pid_file
+      or die "Cannot open $pid_file: $OS_ERROR";
+   print { $fh } $pid, "\n"
+      or die "Cannot print to $pid_file: $OS_ERROR";
+   close $fh
+      or warn "Cannot close $pid_file: $OS_ERROR";
+
    return;
 }
 
-sub _remove_PID_file {
-   my ( $self ) = @_;
-   if ( $self->{PID_file} && -f $self->{PID_file} ) {
-      unlink $self->{PID_file}
-         or warn "Cannot remove PID file $self->{PID_file}: $OS_ERROR";
+sub remove_pid_file {
+   my ($self, $pid_file) = @_;
+   $pid_file ||= $self->{pid_file};
+   if ( $pid_file && -f $pid_file ) {
+      unlink $self->{pid_file}
+         or warn "Cannot remove PID file $pid_file: $OS_ERROR";
       PTDEBUG && _d('Removed PID file');
    }
    else {
@@ -3184,18 +3404,13 @@ sub _remove_PID_file {
 }
 
 sub DESTROY {
-   my ( $self ) = @_;
+   my ($self) = @_;
 
-   $self->_remove_PID_file() if ($self->{PID_owner} || 0) == $PID;
+   if ( $self->{pid_file_owner} == $PID ) {
+      $self->remove_pid_file();
+   }
 
    return;
-}
-
-sub slurp_file {
-   my ($file) = @_;
-   return unless $file;
-   open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
-   return do { local $/; <$fh> };
 }
 
 sub _d {
@@ -3215,10 +3430,10 @@ sub _d {
 # ###########################################################################
 # Quoter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Quoter.pm
 #   t/lib/Quoter.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Quoter;
@@ -3254,6 +3469,8 @@ sub quote_val {
    return $val if $val =~ m/^0x[0-9a-fA-F]+$/  # quote hex data
                   && !$args{is_char};          # unless is_char is true
 
+   return $val if $args{is_float};
+
    $val =~ s/(['\\])/\\$1/g;
    return "'$val'";
 }
@@ -3271,7 +3488,7 @@ sub split_unquote {
       s/`\z//;
       s/``/`/g;
    }
-   
+
    return ($db, $tbl);
 }
 
@@ -3366,10 +3583,10 @@ sub _d {
 # ###########################################################################
 # TableParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/TableParser.pm
 #   t/lib/TableParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package TableParser;
@@ -3429,13 +3646,15 @@ sub get_create_table {
    eval { $href = $dbh->selectrow_hashref($show_sql); };
    if ( my $e = $EVAL_ERROR ) {
       PTDEBUG && _d($old_sql_mode);
-      $dbh->do($old_sql_mode);
+      eval { $dbh->do($old_sql_mode); };
+      PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
 
       die $e;
    }
 
    PTDEBUG && _d($old_sql_mode);
-   $dbh->do($old_sql_mode);
+   eval { $dbh->do($old_sql_mode); };
+   PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
 
    my ($key) = grep { m/create (?:table|view)/i } keys %$href;
    if ( !$key ) {
@@ -3460,19 +3679,19 @@ sub parse {
    my ($name)     = $ddl =~ m/CREATE (?:TEMPORARY )?TABLE\s+(`.+?`)/;
    (undef, $name) = $self->{Quoter}->split_unquote($name) if $name;
 
-   $ddl =~ s/(`[^`]+`)/\L$1/g;
+   $ddl =~ s/(`[^`\n]+`)/\L$1/gm;
 
    my $engine = $self->get_engine($ddl);
 
-   my @defs   = $ddl =~ m/^(\s+`.*?),?$/gm;
+   my @defs = $ddl =~ m/(?:(?<=,\n)|(?<=\(\n))(\s+`(?:.|\n)+?`.+?),?\n/g;
    my @cols   = map { $_ =~ m/`([^`]+)`/ } @defs;
    PTDEBUG && _d('Table cols:', join(', ', map { "`$_`" } @cols));
 
    my %def_for;
    @def_for{@cols} = @defs;
 
-   my (@nums, @null);
-   my (%type_for, %is_nullable, %is_numeric, %is_autoinc);
+   my (@nums, @null, @non_generated);
+   my (%type_for, %is_nullable, %is_numeric, %is_autoinc, %is_generated);
    foreach my $col ( @cols ) {
       my $def = $def_for{$col};
 
@@ -3489,6 +3708,11 @@ sub parse {
          push @null, $col;
          $is_nullable{$col} = 1;
       }
+      if ( remove_quoted_text($def) =~ m/\WGENERATED\W/i ) {
+          $is_generated{$col} = 1;
+      } else {
+          push @non_generated, $col;
+      }
       $is_autoinc{$col} = $def =~ m/AUTO_INCREMENT/i ? 1 : 0;
    }
 
@@ -3497,22 +3721,33 @@ sub parse {
    my ($charset) = $ddl =~ m/DEFAULT CHARSET=(\w+)/;
 
    return {
-      name           => $name,
-      cols           => \@cols,
-      col_posn       => { map { $cols[$_] => $_ } 0..$#cols },
-      is_col         => { map { $_ => 1 } @cols },
-      null_cols      => \@null,
-      is_nullable    => \%is_nullable,
-      is_autoinc     => \%is_autoinc,
-      clustered_key  => $clustered_key,
-      keys           => $keys,
-      defs           => \%def_for,
-      numeric_cols   => \@nums,
-      is_numeric     => \%is_numeric,
-      engine         => $engine,
-      type_for       => \%type_for,
-      charset        => $charset,
+      name               => $name,
+      cols               => \@cols,
+      col_posn           => { map { $cols[$_] => $_ } 0..$#cols },
+      is_col             => { map { $_ => 1 } @non_generated },
+      null_cols          => \@null,
+      is_nullable        => \%is_nullable,
+      non_generated_cols => \@non_generated,
+      is_autoinc         => \%is_autoinc,
+      is_generated       => \%is_generated,
+      clustered_key      => $clustered_key,
+      keys               => $keys,
+      defs               => \%def_for,
+      numeric_cols       => \@nums,
+      is_numeric         => \%is_numeric,
+      engine             => $engine,
+      type_for           => \%type_for,
+      charset            => $charset,
    };
+}
+
+sub remove_quoted_text {
+   my ($string) = @_;
+   $string =~ s/\\['"]//g;
+   $string =~ s/`[^`]*?`//g;
+   $string =~ s/"[^"]*?"//g;
+   $string =~ s/'[^']*?'//g;
+   return $string;
 }
 
 sub sort_indexes {
@@ -3588,6 +3823,26 @@ sub check_table {
    }
    my ($dbh, $db, $tbl) = @args{@required_args};
    my $q      = $self->{Quoter} || 'Quoter';
+   $self->{check_table_error} = undef;
+
+
+   my $lctn_sql = 'SELECT @@lower_case_table_names';
+   PTDEBUG && _d($lctn_sql);
+
+   my $lower_case_table_names;
+   eval { ($lower_case_table_names) = $dbh->selectrow_array($lctn_sql); };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d($EVAL_ERROR);
+      $self->{check_table_error} = $EVAL_ERROR;
+      return 0;
+   }
+
+   PTDEBUG && _d("lower_case_table_names=$lower_case_table_names");
+   if ($lower_case_table_names > 0) {
+       PTDEBUG && _d("MySQL uses case-insensitive lookup, converting '$tbl' to lowercase");
+       $tbl = lc $tbl;
+   }
+
    my $db_tbl = $q->quote($db, $tbl);
    PTDEBUG && _d('Checking', $db_tbl);
 
@@ -3598,8 +3853,9 @@ sub check_table {
    eval {
       $row = $dbh->selectrow_arrayref($sql);
    };
-   if ( $EVAL_ERROR ) {
-      PTDEBUG && _d($EVAL_ERROR);
+   if ( my $e = $EVAL_ERROR ) {
+      PTDEBUG && _d($e);
+      $self->{check_table_error} = $e;
       return 0;
    }
    if ( !$row->[0] || $row->[0] ne $tbl ) {
@@ -3626,8 +3882,7 @@ sub get_keys {
    my $clustered_key = undef;
 
    KEY:
-   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY .*)$/gm ) {
-
+   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY [\s\S]*?\),?.*)$/gm ) {
       next KEY if $key =~ m/FOREIGN/;
 
       my $key_ddl = $key;
@@ -3637,7 +3892,7 @@ sub get_keys {
          $key =~ s/USING HASH/USING BTREE/;
       }
 
-      my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \((.+)\)/;
+      my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \(([\s\S]+)\)/;
       my ( $special ) = $key =~ m/(FULLTEXT|SPATIAL)/;
       $type = $type || $special || 'BTREE';
       my ($name) = $key =~ m/(PRIMARY|`[^`]*`)/;
@@ -3780,10 +4035,10 @@ sub _d {
 # ###########################################################################
 # Retry package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Retry.pm
 #   t/lib/Retry.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Retry;
@@ -3860,10 +4115,10 @@ sub _d {
 # ###########################################################################
 # Transformers package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/Transformers.pm
 #   t/lib/Transformers.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package Transformers;
@@ -4086,7 +4341,7 @@ sub any_unix_timestamp {
 
 sub make_checksum {
    my ( $val ) = @_;
-   my $checksum = uc substr(md5_hex($val), -16);
+   my $checksum = uc md5_hex($val);
    PTDEBUG && _d($checksum, 'checksum for', $val);
    return $checksum;
 }
@@ -4158,7 +4413,7 @@ sub value_to_json {
 
    my $b_obj = B::svref_2object(\$value);  # for round trip problem
    my $flags = $b_obj->FLAGS;
-   return $value # as is 
+   return $value # as is
       if $flags & ( B::SVp_IOK | B::SVp_NOK ) and !( $flags & B::SVp_POK ); # SvTYPE is IV or NV?
 
    my $type = ref($value);
@@ -4213,10 +4468,10 @@ sub _d {
 # ###########################################################################
 # HTTP::Micro package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/HTTP/Micro.pm
 #   t/lib/HTTP/Micro.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package HTTP::Micro;
@@ -4442,7 +4697,7 @@ sub _split_url {
                   or die(qq/SSL certificate not valid for $host\n/);
             }
        }
-         
+
        $self->{host} = $host;
        $self->{port} = $port;
 
@@ -4608,7 +4863,7 @@ sub _split_url {
        $len += $self->write($request->{content});
 
        $len == $content_length
-         or croak(qq/Content-Length missmatch (got: $len expected: $content_length)/);
+         or croak(qq/Content-Length mismatch (got: $len expected: $content_length)/);
 
        return $len;
    }
@@ -4866,10 +5121,10 @@ if ( $INC{"IO/Socket/SSL.pm"} ) {
 # ###########################################################################
 # VersionCheck package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/VersionCheck.pm
 #   t/lib/VersionCheck.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package VersionCheck;
@@ -4897,15 +5152,16 @@ eval {
    require HTTP::Micro;
 };
 
+my $home    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
+my @vc_dirs = (
+   '/etc/percona',
+   '/etc/percona-toolkit',
+   '/tmp',
+   "$home",
+);
+
 {
    my $file    = 'percona-version-check';
-   my $home    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
-   my @vc_dirs = (
-      '/etc/percona',
-      '/etc/percona-toolkit',
-      '/tmp',
-      "$home",
-   );
 
    sub version_check_file {
       foreach my $dir ( @vc_dirs ) {
@@ -4916,7 +5172,7 @@ eval {
       }
       PTDEBUG && _d('Version check file', $file, 'in', $ENV{PWD});
       return $file;  # in the CWD
-   } 
+   }
 }
 
 sub version_check_time_limit {
@@ -4933,11 +5189,11 @@ sub version_check {
    PTDEBUG && _d('FindBin::Bin:', $FindBin::Bin);
    if ( !$args{force} ) {
       if ( $FindBin::Bin
-           && (-d "$FindBin::Bin/../.bzr"    || 
+           && (-d "$FindBin::Bin/../.bzr"    ||
                -d "$FindBin::Bin/../../.bzr" ||
-               -d "$FindBin::Bin/../.git"    || 
-               -d "$FindBin::Bin/../../.git" 
-              ) 
+               -d "$FindBin::Bin/../.git"    ||
+               -d "$FindBin::Bin/../../.git"
+              )
          ) {
          PTDEBUG && _d("$FindBin::Bin/../.bzr disables --version-check");
          return;
@@ -4961,7 +5217,7 @@ sub version_check {
       PTDEBUG && _d(scalar @$instances_to_check, 'instances to check');
       return unless @$instances_to_check;
 
-      my $protocol = 'https';  
+      my $protocol = 'https';
       eval { require IO::Socket::SSL; };
       if ( $EVAL_ERROR ) {
          PTDEBUG && _d($EVAL_ERROR);
@@ -4969,13 +5225,15 @@ sub version_check {
          return;
       }
       PTDEBUG && _d('Using', $protocol);
+      my $url = $args{url}                       # testing
+                || $ENV{PERCONA_VERSION_CHECK_URL}  # testing
+                || "$protocol://v.percona.com";
+      PTDEBUG && _d('API URL:', $url);
 
       my $advice = pingback(
          instances => $instances_to_check,
          protocol  => $protocol,
-         url       => $args{url}                       # testing
-                   || $ENV{PERCONA_VERSION_CHECK_URL}  # testing
-                   || "$protocol://v.percona.com",
+         url       => $url,
       );
       if ( $advice ) {
          PTDEBUG && _d('Advice:', Dumper($advice));
@@ -5038,7 +5296,7 @@ sub get_instances_to_check {
    my @instances_to_check;
    foreach my $instance ( @$instances ) {
       my $last_check_time = $last_check_time_for{ $instance->{id} };
-      PTDEBUG && _d('Intsance', $instance->{id}, 'last checked',
+      PTDEBUG && _d('Instance', $instance->{id}, 'last checked',
          $last_check_time, 'now', $now, 'diff', $now - ($last_check_time || 0),
          'hours until next check',
          sprintf '%.2f',
@@ -5122,11 +5380,56 @@ sub get_instance_id {
 }
 
 
+sub get_uuid {
+    my $uuid_file = '/.percona-toolkit.uuid';
+    foreach my $dir (@vc_dirs) {
+        my $filename = $dir.$uuid_file;
+        my $uuid=_read_uuid($filename);
+        return $uuid if $uuid;
+    }
+
+    my $filename = $ENV{"HOME"} . $uuid_file;
+    my $uuid = _generate_uuid();
+
+    my $fh;
+    eval {
+        open($fh, '>', $filename);
+    };
+    if (!$EVAL_ERROR) {
+        print $fh $uuid;
+        close $fh;
+    }
+
+    return $uuid;
+}
+
+sub _generate_uuid {
+    return sprintf+($}="%04x")."$}-$}-$}-$}-".$}x3,map rand 65537,0..7;
+}
+
+sub _read_uuid {
+    my $filename = shift;
+    my $fh;
+
+    eval {
+        open($fh, '<:encoding(UTF-8)', $filename);
+    };
+    return if ($EVAL_ERROR);
+
+    my $uuid;
+    eval { $uuid = <$fh>; };
+    return if ($EVAL_ERROR);
+
+    chomp $uuid;
+    return $uuid;
+}
+
+
 sub pingback {
    my (%args) = @_;
    my @required_args = qw(url instances);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my $url       = $args{url};
    my $instances = $args{instances};
@@ -5147,7 +5450,7 @@ sub pingback {
    );
    die "Failed to parse server requested programs: $response->{content}"
       if !scalar keys %$items;
-      
+
    my $versions = get_versions(
       items     => $items,
       instances => $instances,
@@ -5158,11 +5461,12 @@ sub pingback {
    my $client_content = encode_client_response(
       items      => $items,
       versions   => $versions,
-      general_id => md5_hex( hostname() ),
+      general_id => get_uuid(),
    );
 
+   my $tool_name = $ENV{XTRABACKUP_VERSION} ? "Percona XtraBackup" : File::Basename::basename($0);
    my $client_response = {
-      headers => { "X-Percona-Toolkit-Tool" => File::Basename::basename($0) },
+      headers => { "X-Percona-Toolkit-Tool" => $tool_name },
       content => $client_content,
    };
    PTDEBUG && _d('Client response:', Dumper($client_response));
@@ -5193,7 +5497,7 @@ sub encode_client_response {
    my (%args) = @_;
    my @required_args = qw(items versions general_id);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($items, $versions, $general_id) = @args{@required_args};
 
@@ -5219,7 +5523,7 @@ sub parse_server_response {
    my (%args) = @_;
    my @required_args = qw(response);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($response) = @args{@required_args};
 
@@ -5245,6 +5549,7 @@ my %sub_for_type = (
    perl_version        => \&get_perl_version,
    perl_module_version => \&get_perl_module_version,
    mysql_variable      => \&get_mysql_variable,
+   xtrabackup          => \&get_xtrabackup_version,
 );
 
 sub valid_item {
@@ -5261,7 +5566,7 @@ sub get_versions {
    my (%args) = @_;
    my @required_args = qw(items);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
+      die "I need a $arg argument" unless $args{$arg};
    }
    my ($items) = @args{@required_args};
 
@@ -5372,6 +5677,10 @@ sub get_perl_version {
    return $version;
 }
 
+sub get_xtrabackup_version {
+    return $ENV{XTRABACKUP_VERSION};
+}
+
 sub get_perl_module_version {
    my (%args) = @_;
    my $item = $args{item};
@@ -5406,7 +5715,7 @@ sub get_from_mysql {
    if ($item->{item} eq 'MySQL' && $item->{type} eq 'mysql_variable') {
       @{$item->{vars}} = grep { $_ eq 'version' || $_ eq 'version_comment' } @{$item->{vars}};
    }
- 
+
 
    my @versions;
    my %version_for;
@@ -5449,10 +5758,10 @@ sub _d {
 # ###########################################################################
 # VersionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/VersionParser.pm
 #   t/lib/VersionParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package VersionParser;
@@ -5668,7 +5977,7 @@ sub main {
 
    # Reset all global vars between test runs else weird things happen.
    @dbhs = ();
-   @sths = ();  
+   @sths = ();
 
    # ########################################################################
    # Get configuration information.
@@ -5691,7 +6000,7 @@ sub main {
                $o->save_error("Invalid --frames argument");
             }
             else {
-               push @times, 
+               push @times,
                     $suf eq 's' ? $num            # Seconds
                   : $suf eq 'm' ? $num * 60       # Minutes
                   : $suf eq 'h' ? $num * 3600     # Hours
@@ -5779,15 +6088,19 @@ sub main {
    my $dsn          = @ARGV ? $dp->parse(shift @ARGV, $dsn_defaults)
                     :         $dsn_defaults;
    my $dbh          = $dp->get_dbh($dp->get_cxn_params($dsn), {AutoCommit=>1});
+   if ($EVAL_ERROR) {
+      _die("Cannot connect to MySQL: $EVAL_ERROR", 1);
+   }
 
    $dbh->{InactiveDestroy}  = 1; # Don't disconnect on fork
    $dbh->{FetchHashKeyName} = 'NAME_lc';
+   $dbh->{mysql_auto_reconnect} = 1;
    $dbh->do("USE `$db`");
 
    # ########################################################################
-   # If --check-read-only option was given and we are in --update mode 
+   # If --check-read-only option was given and we are in --update mode
    # we wait until server is writable , or run-time is over, or sentinel file
-   # We also do this check after daemon is up and running, but it is necessary 
+   # We also do this check after daemon is up and running, but it is necessary
    # to check this before attempting to create the table and inserting rows
    # https://bugs.launchpad.net/percona-toolkit/+bug/1328686
    # #######################################################################
@@ -5796,12 +6109,14 @@ sub main {
       if ( server_is_readonly($dbh) &&  PTDEBUG ) {
          _d('Server is read-only, waiting')
       }
-      my $start_time = time;
-      my $run_time   = $o->get('run-time');
-      my $interval   = $o->get('interval') || 5;
+      my $start_time         = time;
+      my $run_time           = $o->get('run-time');
+      my $interval           = $o->get('interval') || 5;
+      my $read_only_interval = $o->get('read-only-interval') || $interval;
       while (server_is_readonly($dbh)) {
-         sleep($interval); 
-         if ( 
+         PTDEBUG && _d("Sleeping for $read_only_interval seconds");
+         sleep($read_only_interval);
+         if (
             ($run_time && $run_time < time - $start_time)
             || -f $sentinel
          ) {
@@ -5831,7 +6146,7 @@ sub main {
       if ( $EVAL_ERROR ) {
           die "Error creating heartbeat table:". $EVAL_ERROR;
       }
-     
+
       # Now we insert first row.
       # Some caveats:
 
@@ -5845,18 +6160,18 @@ sub main {
            . qq/ INTO $db_tbl (ts, server_id) VALUES ($now_func, $server_id)/;
 
       # 2)
-      # RBR (Row Based Replication) converts REPLACE to INSERT if row isn't 
-      # present in master. This breakes replication when the row is present in slave.
-      # Other workarounds also fail. 
+      # RBR (Row Based Replication) converts REPLACE to INSERT if row isn't
+      # present in master. This breaks replication when the row is present in slave.
+      # Other workarounds also fail.
       #     INSERT IGNORE (ignore is not replicated if no error in master)
-      #     DELETE then INSERT (DELETE is ignored, INSERT breaks replication) 
+      #     DELETE then INSERT (DELETE is ignored, INSERT breaks replication)
       #     INSERT ON DUPLICATE UPDATE (converts to simple INSERT)
-      # TRUNCATE gets trough and replicates! So we use that to wipe slave(s). 
+      # TRUNCATE gets trough and replicates! So we use that to wipe slave(s).
       if ($o->get('replace')) {
          my $sql_truncate = "TRUNCATE TABLE $db_tbl";
          PTDEBUG && _d($sql_truncate);
          eval { $dbh->do($sql_truncate) };
-      }   
+      }
       PTDEBUG && _d($sql_insert_row);
       eval { $dbh->do($sql_insert_row); };
    }
@@ -6012,8 +6327,8 @@ sub main {
          my @vals;
 
          return if $ro_check && server_is_readonly($dbh);
-        
-         my $sql; 
+
+         my $sql;
          if ( @master_status_cols ) {
             $sql = "SHOW MASTER STATUS";
             PTDEBUG && _d($dbh, $sql);
@@ -6026,7 +6341,7 @@ sub main {
                push @vals, map { $row->{$_} } @master_status_cols;
             }
          }
-         
+
          if ( @slave_status_cols ) {
             $sql = "SHOW SLAVE STATUS";
             PTDEBUG && _d($dbh, $sql);
@@ -6064,7 +6379,7 @@ sub main {
                die $args{error};
             }
          );
-         
+
          return;
       };
    }
@@ -6100,7 +6415,7 @@ sub main {
          PTDEBUG && _d('Delay', sprintf('%.6f', $delay), 'on', $hostname);
 
          # Because we adjust for skew, if the ts are less than skew seconds
-         # apart (i.e. replication is very fast) then delay will be negative. 
+         # apart (i.e. replication is very fast) then delay will be negative.
          # So it's effectively 0 seconds of lag.
          $delay = 0.00 if $delay < 0;
 
@@ -6131,21 +6446,20 @@ sub main {
    # Daemonize only after (potentially) asking for passwords for --ask-pass.
    # ########################################################################
    my $daemon;
-   if ( $o->get('daemonize') ) {
-      $daemon = new Daemon(o=>$o);
-      $daemon->daemonize();
-      PTDEBUG && _d('I am a daemon now');
-   }
-   elsif ( $o->get('pid') ) {
-      # We're not daemoninzing, it just handles PID stuff.
-      $daemon = new Daemon(o=>$o);
-      $daemon->make_PID_file();
+   if ( $o->get('daemonize') || $o->get('pid')) {
+      $daemon = new Daemon(
+         log_file => $o->get('log'),
+         pid_file => $o->get('pid'),
+         daemonize => $o->get('daemonize'),
+      );
+      $daemon->run();
+      PTDEBUG && $o->get('daemonize') && _d('I am a daemon now');
    }
 
    # ########################################################################
    # --check and exit if --check was given.
    # ########################################################################
-   if ( $o->get('check') ) { 
+   if ( $o->get('check') ) {
       PTDEBUG && _d('--check and exit');
       check_delay(
          dsn          => $dsn,
@@ -6198,6 +6512,8 @@ sub main {
    PTDEBUG && _d($end ? ('Will exit at', ts($end)) : 'Running forever');
 
    my $get_next_interval = make_interval_iter($interval, $skew);
+   my $max_successive_errors = $o->get('fail-successive-errors') || 0;
+   my $num_successive_errors = 0;
 
    while (                         # Stop if...
       (!$end || int(time) < $end)  # runtime exceeded, or
@@ -6227,6 +6543,17 @@ sub main {
             $heartbeat_sth = undef;
          }
 
+         if ( $o->get('check-read-only') && $o->get('update') ) {
+           my $read_only_interval = $o->get('read-only-interval') || $interval;
+           while (server_is_readonly($dbh)) {
+              PTDEBUG && _d("Server is read only. Sleeping for $read_only_interval seconds...");
+              sleep($read_only_interval);
+              if (-f $sentinel) {
+                  return 0;
+              }
+           }
+         }
+
          if ( $o->get('monitor') ) {
             $heartbeat_sth ||= $dbh->prepare($heartbeat_sql);
             my ($delay) = $get_delay->($heartbeat_sth);
@@ -6241,7 +6568,7 @@ sub main {
             } @$frames;
 
             my $output = sprintf $format, $delay, @vals, $pk_val;
-            if ( my $file = $o->get('file') ) { 
+            if ( my $file = $o->get('file') ) {
                open my $file, '>', $file
                   or die "Can't open $file: $OS_ERROR";
                print $file $output
@@ -6259,6 +6586,7 @@ sub main {
          }
       };
       if ( $EVAL_ERROR ) {
+         $num_successive_errors = $num_successive_errors + 1;
          my ( $err ) = $EVAL_ERROR =~ m/^(?:DBI|DBD).*failed: (.*?)\s*at \S+ line .*/;
          if ( $err ) {
             warn "$err\n";
@@ -6266,6 +6594,12 @@ sub main {
          else {
             die $EVAL_ERROR;
          }
+         if ($max_successive_errors > 0 && $num_successive_errors >= $max_successive_errors) {
+            die $EVAL_ERROR;
+         }
+      }
+      else {
+        $num_successive_errors = 0;
       }
    }
 
@@ -6383,7 +6717,7 @@ sub check_delay {
 # next interval is or should be.  The caller can then sleep(time-next_interval)
 # to wake up at that interval.  If the caller misses the next interval,
 # they just call the iterator until the next interval is later then the
-# current time. 
+# current time.
 sub make_interval_iter {
    my ( $interval, $skew ) = @_;
    die "I need an interval argument" unless defined $interval;
@@ -6543,7 +6877,7 @@ specify the L<"--master-server-id"> to use.
 For example, if the replication hierarchy is "master -> slave1 -> slave2"
 with corresponding server IDs 1, 2 and 3, you can:
 
-  pt-heartbeat --daemonize -D test --update -h master 
+  pt-heartbeat --daemonize -D test --update -h master
   pt-heartbeat --daemonize -D test --update -h slave1
 
 Then check (or monitor) the replication delay from master to slave2:
@@ -6572,7 +6906,7 @@ Cluster (PXC), we recommend using 5.5.28-23.7 and newer.
 If you are setting up heartbeat instances between cluster nodes, keep in mind
 that, since the speed of the cluster is determined by its slowest node,
 pt-heartbeat will not report how fast the cluster itself is, but only how
-fast events are replicating from one node to another.  
+fast events are replicating from one node to another.
 
 You must specify L<"--master-server-id"> for L<"--monitor"> and L<"--check">
 instances.
@@ -6613,7 +6947,7 @@ before its delay.  L<"--recurse"> only works with MySQL.
 =item --check-read-only
 
 Check if the server has read_only enabled; If it does, the tool skips doing
-any inserts.
+any inserts. See also L<"--read-only-interval">
 
 =item --config
 
@@ -6634,7 +6968,7 @@ be created with the following MAGIC_create_heartbeat table definition:
     server_id             int unsigned NOT NULL PRIMARY KEY,
     file                  varchar(255) DEFAULT NULL,    -- SHOW MASTER STATUS
     position              bigint unsigned DEFAULT NULL, -- SHOW MASTER STATUS
-    relay_master_log_file varchar(255) DEFAULT NULL,    -- SHOW SLAVE STATUS 
+    relay_master_log_file varchar(255) DEFAULT NULL,    -- SHOW SLAVE STATUS
     exec_master_log_pos   bigint unsigned DEFAULT NULL  -- SHOW SLAVE STATUS
   );
 
@@ -6800,6 +7134,13 @@ L<"--frames">.  For example,
 
  5s [  0.25s,  0.05s,  0.02s ]
 
+=item --fail-successive-errors
+
+type: int
+
+If specified, pt-heartbeat will fail after given number of successive DBI errors
+(failure to connect to server or issue a query).
+
 =item --password
 
 short form: -p; type: string
@@ -6828,6 +7169,13 @@ Port number to use for connection.
 Print the auto-detected or given L<"--master-server-id">.  If L<"--check">
 or L<"--monitor"> is specified, specifying this option will print the
 auto-detected or given L<"--master-server-id"> at the end of each line.
+
+=item --read-only-interval
+
+type: int
+
+When L<"--check-read-only"> is specified, the interval to sleep while the
+server is found to be read-only. If unspecified, L<"--interval"> is used.
 
 =item --recurse
 
@@ -7008,18 +7356,24 @@ default: yes
 Check for the latest version of Percona Toolkit, MySQL, and other programs.
 
 This is a standard "check for updates automatically" feature, with two
-additional features.  First, the tool checks the version of other programs
-on the local system in addition to its own version.  For example, it checks
-the version of every MySQL server it connects to, Perl, and the Perl module
-DBD::mysql.  Second, it checks for and warns about versions with known
-problems.  For example, MySQL 5.5.25 had a critical bug and was re-released
+additional features.  First, the tool checks its own version and also the
+versions of the following software: operating system, Percona Monitoring and
+Management (PMM), MySQL, Perl, MySQL driver for Perl (DBD::mysql), and
+Percona Toolkit. Second, it checks for and warns about versions with known
+problems. For example, MySQL 5.5.25 had a critical bug and was re-released
 as 5.5.25a.
+
+A secure connection to Percona’s Version Check database server is done to
+perform these checks. Each request is logged by the server, including software
+version numbers and unique ID of the checked system. The ID is generated by the
+Percona Toolkit installation script or when the Version Check database call is
+done for the first time.
 
 Any updates or known problems are printed to STDOUT before the tool's normal
 output.  This feature should never interfere with the normal operation of the
-tool.  
+tool.
 
-For more information, visit L<https://www.percona.com/version-check>.
+For more information, visit L<https://www.percona.com/doc/percona-toolkit/LATEST/version-check.html>.
 
 =back
 
@@ -7094,6 +7448,11 @@ To enable debugging and capture all output to a file, run the tool like:
 Be careful: debugging output is voluminous and can generate several megabytes
 of output.
 
+=head1 ATTENTION
+
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
+parameters are shown in the output.
+
 =head1 SYSTEM REQUIREMENTS
 
 You need Perl, DBI, DBD::mysql, and some core packages that ought to be
@@ -7101,9 +7460,9 @@ installed in any reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs, see L<http://www.percona.com/bugs/pt-heartbeat>.
+For a list of known bugs, see L<https://jira.percona.com/projects/PT/issues>.
 
-Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
+Please report bugs at L<https://jira.percona.com/projects/PT>.
 Include the following information in your bug report:
 
 =over
@@ -7156,7 +7515,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2007-2016 Percona LLC and/or its affiliates,
+This program is copyright 2007-2024 Percona LLC and/or its affiliates,
 2006 Proven Scaling LLC and Six Apart Ltd.
 
 Feedback and improvements are welcome.
@@ -7177,6 +7536,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-heartbeat 2.2.19
+pt-heartbeat 3.5.7
 
 =cut

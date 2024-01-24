@@ -43,7 +43,7 @@ sub new {
 
 my $genlog_line_1= qr{
    \A
-   (?:(\d{6}\s+\d{1,2}:\d\d:\d\d|\d{4}-\d{1,2}-\d{1,2}T\d\d:\d\d:\d\d\.\d+Z))? # Timestamp
+   (?:(\d{6}\s+\d{1,2}:\d\d:\d\d|\d{4}-\d{1,2}-\d{1,2}T\d\d:\d\d:\d\d\.\d+(?:Z|[-+]?\d\d:\d\d)?))? # Timestamp
    \s+
    (?:\s*(\d+))                     # Thread ID
    \s

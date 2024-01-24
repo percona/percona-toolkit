@@ -1,0 +1,36 @@
+Settings for br-5bbb6abaea1c:
+	Supported ports: [ ]
+	Supported link modes:   Not reported
+	Supported pause frame use: No
+	Supports auto-negotiation: No
+	Supported FEC modes: Not reported
+	Advertised link modes:  Not reported
+	Advertised pause frame use: No
+	Advertised auto-negotiation: No
+	Advertised FEC modes: Not reported
+	Speed: Unknown!
+	Duplex: Unknown! (255)
+	Port: Other
+	PHYAD: 0
+	Transceiver: internal
+	Auto-negotiation: off
+	Link detected: no
+Settings for docker0:
+	Supported ports: [ ]
+	Supported link modes:   Not reported
+	Supported pause frame use: No
+	Supports auto-negotiation: No
+	Supported FEC modes: Not reported
+	Advertised link modes:  Not reported
+	Advertised pause frame use: No
+	Advertised auto-negotiation: No
+	Advertised FEC modes: Not reported
+	Speed: 10000Mb/s
+	Duplex: Unknown! (255)
+	Port: Other
+	PHYAD: 0
+	Transceiver: internal
+	Auto-negotiation: off
+	Link detected: yes
+Settings for wlp0s20f3:
+	Link detected: yes

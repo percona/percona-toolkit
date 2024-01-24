@@ -1,0 +1,252 @@
+{
+  "aggregate": {
+    "Bytes Sent": [
+      "yes"
+    ],
+    "Docs Returned": [
+      "3.4.12",
+      "3.6.2"
+    ],
+    "Docs Scanned": [
+      "3.4.12",
+      "3.6.2"
+    ],
+    "Query Time": [
+      "yes"
+    ]
+  },
+  "count": {
+    "Bytes Sent": [
+      "yes"
+    ],
+    "Docs Returned": [
+      "no"
+    ],
+    "Docs Scanned": [
+      "3.4.12",
+      "3.6.2"
+    ],
+    "Query Time": [
+      "yes"
+    ]
+  },
+  "count_with_query": {
+    "Bytes Sent": [
+      "yes"
+    ],
+    "Docs Returned": [
+      "no"
+    ],
+    "Docs Scanned": [
+      "3.4.12",
+      "3.6.2"
+    ],
+    "Query Time": [
+      "yes"
+    ]
+  },
+  "delete": {
+    "Bytes Sent": [
+      "no"
+    ],
+    "Docs Returned": [
+      "no"
+    ],
+    "Docs Scanned": [
+      "3.4.12",
+      "3.6.2"
+    ],
+    "Query Time": [
+      "yes"
+    ]
+  },
+  "delete_all": {
+    "Bytes Sent": [
+      "no"
+    ],
+    "Docs Returned": [
+      "no"
+    ],
+    "Docs Scanned": [
+      "3.4.12",
+      "3.6.2"
+    ],
+    "Query Time": [
+      "yes"
+    ]
+  },
+  "distinct": {
+    "Bytes Sent": [
+      "yes"
+    ],
+    "Docs Returned": [
+      "no"
+    ],
+    "Docs Scanned": [
+      "3.4.12",
+      "3.6.2"
+    ],
+    "Query Time": [
+      "yes"
+    ]
+  },
+  "eval": {
+    "Bytes Sent": [
+      "yes"
+    ],
+    "Docs Returned": [
+      "no"
+    ],
+    "Docs Scanned": [
+      "no"
+    ],
+    "Query Time": [
+      "yes"
+    ]
+  },
+  "explain": {
+    "Bytes Sent": [
+      "yes"
+    ],
+    "Docs Returned": [
+      "2.6.12"
+    ],
+    "Docs Scanned": [
+      "2.6.12"
+    ],
+    "Query Time": [
+      "yes"
+    ]
+  },
+  "find": {
+    "Bytes Sent": [
+      "yes"
+    ],
+    "Docs Returned": [
+      "yes"
+    ],
+    "Docs Scanned": [
+      "yes"
+    ],
+    "Query Time": [
+      "yes"
+    ]
+  },
+  "find_andrii": {
+    "Bytes Sent": [
+      "yes"
+    ],
+    "Docs Returned": [
+      "yes"
+    ],
+    "Docs Scanned": [
+      "yes"
+    ],
+    "Query Time": [
+      "yes"
+    ]
+  },
+  "find_empty": {
+    "Bytes Sent": [
+      "yes"
+    ],
+    "Docs Returned": [
+      "yes"
+    ],
+    "Docs Scanned": [
+      "yes"
+    ],
+    "Query Time": [
+      "yes"
+    ]
+  },
+  "findandmodify": {
+    "Bytes Sent": [
+      "yes"
+    ],
+    "Docs Returned": [
+      "no"
+    ],
+    "Docs Scanned": [
+      "yes"
+    ],
+    "Query Time": [
+      "yes"
+    ]
+  },
+  "geonear": {
+    "Bytes Sent": [
+      "yes"
+    ],
+    "Docs Returned": [
+      "no"
+    ],
+    "Docs Scanned": [
+      "3.4.12",
+      "3.6.2"
+    ],
+    "Query Time": [
+      "yes"
+    ]
+  },
+  "group": {
+    "Bytes Sent": [
+      "yes"
+    ],
+    "Docs Returned": [
+      "no"
+    ],
+    "Docs Scanned": [
+      "3.4.12",
+      "3.6.2"
+    ],
+    "Query Time": [
+      "yes"
+    ]
+  },
+  "insert": {
+    "Bytes Sent": [
+      "3.2.19",
+      "3.4.12",
+      "3.6.2"
+    ],
+    "Docs Returned": [
+      "no"
+    ],
+    "Docs Scanned": [
+      "no"
+    ],
+    "Query Time": [
+      "yes"
+    ]
+  },
+  "mapreduce": {
+    "Bytes Sent": [
+      "yes"
+    ],
+    "Docs Returned": [
+      "no"
+    ],
+    "Docs Scanned": [
+      "3.4.12",
+      "3.6.2"
+    ],
+    "Query Time": [
+      "yes"
+    ]
+  },
+  "update": {
+    "Bytes Sent": [
+      "no"
+    ],
+    "Docs Returned": [
+      "no"
+    ],
+    "Docs Scanned": [
+      "yes"
+    ],
+    "Query Time": [
+      "yes"
+    ]
+  }
+}

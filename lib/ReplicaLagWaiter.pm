@@ -40,7 +40,7 @@ use Data::Dumper;
 #   slaves  - Arrayref of <Cxn> objects
 #
 # Returns:
-#   ReplicaLagWaiter object 
+#   ReplicaLagWaiter object
 sub new {
    my ( $class, %args ) = @_;
    my @required_args = qw(oktorun get_lag sleep max_lag slaves);
@@ -86,13 +86,13 @@ sub wait {
    my $pr_refresh_slave_list = sub {
       my ($self) = @_;
       my ($slaves, $refresher) = ($self->{slaves}, $self->{get_slaves_cb});
-      return if ( not defined $refresher );
-      my $before = join ' ', sort map {$_->name()} @$slaves;
+      return $slaves if ( not defined $refresher );
+      my $before = join ' ', sort map {$_->description()} @$slaves;
       $slaves = $refresher->();
-      my $after = join ' ', sort map {$_->name()} @$slaves;
+      my $after = join ' ', sort map {$_->description()} @$slaves;
       if ($before ne $after) {
          $self->{slaves} = $slaves;
-         printf "Slave set to watch has changed\n  Was: %s\n  Now: %s\n",
+         printf STDERR "Slave set to watch has changed\n  Was: %s\n  Now: %s\n",
             $before, $after;
       }
       return($self->{slaves});
@@ -106,11 +106,15 @@ sub wait {
       $pr_callback = sub {
          my ($fraction, $elapsed, $remaining, $eta, $completed) = @_;
          my $dsn_name = $worst->{cxn}->name();
+         my $dsn_description = $worst->{cxn}->description();
          if ( defined $worst->{lag} ) {
             print STDERR "Replica lag is " . ($worst->{lag} || '?')
-               . " seconds on $dsn_name.  Waiting.\n";
+               . " seconds on $dsn_description.  Waiting.\n";
          }
          else {
+            if ($self->{fail_on_stopped_replication}) {
+                die 'replication is stopped';
+            }
             print STDERR "Replica $dsn_name is stopped.  Waiting.\n";
          }
          return;
@@ -123,6 +127,9 @@ sub wait {
       $pr_first_report = sub {
          my $dsn_name = $worst->{cxn}->name();
          if ( !defined $worst->{lag} ) {
+            if ($self->{fail_on_stopped_replication}) {
+                die 'replication is stopped';
+            }
             print STDERR "Replica $dsn_name is stopped.  Waiting.\n";
          }
          return;
@@ -130,11 +137,11 @@ sub wait {
    }
 
    # First check all slaves.
-   my @lagged_slaves = map { {cxn=>$_, lag=>undef} } @$slaves;  
+   my @lagged_slaves = map { {cxn=>$_, lag=>undef} } @$slaves;
    while ( $oktorun->() && @lagged_slaves ) {
       PTDEBUG && _d('Checking slave lag');
 
-      ### while we were waiting our list of slaves may have changed...
+      ### while we were waiting our list of slaves may have changed
       $slaves = $pr_refresh_slave_list->($self);
       my $watched = 0;
       @lagged_slaves = grep {
@@ -143,7 +150,13 @@ sub wait {
                             } @lagged_slaves;
 
       for my $i ( 0..$#lagged_slaves ) {
-         my $lag = $get_lag->($lagged_slaves[$i]->{cxn});
+         my $lag;
+         eval {
+             $lag = $get_lag->($lagged_slaves[$i]->{cxn});
+         };
+         if ($EVAL_ERROR) {
+             die $EVAL_ERROR;
+         }
          PTDEBUG && _d($lagged_slaves[$i]->{cxn}->name(),
             'slave lag:', $lag);
          if ( !defined $lag || $lag > $max_lag ) {

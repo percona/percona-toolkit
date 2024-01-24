@@ -20,7 +20,7 @@
 {
 # Package: Schema
 # Schema encapsulates a data structure representing databases and tables.
-# Although in MySQL "schema" is technically equivalent to "databae", we
+# Although in MySQL "schema" is technically equivalent to "database", we
 # use "schema" loosely to mean a collection of schema objects: databases,
 # tables, and columns.  These objects are organized in a hash keyed on
 # database and table names.  The hash is called schema and looks like,
@@ -197,7 +197,9 @@ sub find_column {
       }
    }
 
+   @tbls = sort {$b->{name} cmp $a->{name}} @tbls;
    return \@tbls;
+
 }
 
 sub find_table {
@@ -248,6 +250,7 @@ sub find_table {
       }
    }
 
+   @dbs = sort @dbs;
    return \@dbs;
 }
 

@@ -881,6 +881,84 @@ ok(
    "IPs not shortened with more"
 );
 
+# Don't shorten hostnames
+$events = [
+   {
+      cmd        => 'Query',
+      arg        => "foo",
+      Query_time => '8.000652',
+      host       => 'a-really-long-host-name',
+   },
+   {
+      cmd        => 'Query',
+      arg        => "foo",
+      Query_time => '8.000652',
+      host       => '123.123.123.789',
+   },
+];
+
+$ea  = new EventAggregator(
+   groupby => 'arg',
+   worst   => 'Query_time',
+   ignore_attributes => [qw(arg cmd)],
+);
+foreach my $event (@$events) {
+   $ea->aggregate($event);
+}
+$ea->calculate_statistical_metrics();
+my $no_trim_qrf = new QueryReportFormatter(
+   OptionParser        => $o,
+   QueryRewriter       => $qr,
+   QueryParser         => $qp,
+   Quoter              => $q, 
+   ExplainAnalyzer     => $ex,
+   max_hostname_length => 0,
+);
+
+$result = $no_trim_qrf->event_report(
+   ea      => $ea,
+   select  => [ qw(Query_time host) ],
+   item    => 'foo',
+   rank    => 1,
+   orderby => 'Query_time',
+);
+
+ok(
+   no_diff(
+      $result,
+      "t/lib/samples/QueryReportFormatter/report014_no_trim.txt",
+      cmd_output => 1,
+   ),
+   "Hostnames were not trimmed"
+);
+
+$no_trim_qrf = new QueryReportFormatter(
+   OptionParser        => $o,
+   QueryRewriter       => $qr,
+   QueryParser         => $qp,
+   Quoter              => $q, 
+   ExplainAnalyzer     => $ex,
+   max_hostname_length => 12,
+   max_line_length     => 200,
+);
+
+$result = $no_trim_qrf->event_report(
+   ea      => $ea,
+   select  => [ qw(Query_time host) ],
+   item    => 'foo',
+   rank    => 1,
+   orderby => 'Query_time',
+);
+
+ok(
+   no_diff(
+      $result,
+      "t/lib/samples/QueryReportFormatter/report014_trim_12.txt",
+      cmd_output => 1,
+   ),
+   "Hostnames were not trimmed"
+);
+
 $result = $qrf->event_report(
    ea       => $ea,
    select   => [ qw(Query_time host) ],
@@ -974,15 +1052,7 @@ $qrf = new QueryReportFormatter(
    Quoter          => $q, 
    ExplainAnalyzer => $ex,
 );
-# Normally, the report subs will make their own ReportFormatter but
-# that package isn't visible to QueryReportFormatter right now so we
-# make ReportFormatters and pass them in.  Since ReporFormatters can't
-# be shared, we can only test one subreport at a time, else the
-# prepared statements subreport will reuse/reprint stuff from the
-# profile subreport.  And the line width is 82 because that's the new
-# default to accommodate the EXPLAIN sparkline (issue 1141).
-my $report = new ReportFormatter(line_width=>82);
-$qrf->{formatter} = $report;
+
 ok(
    no_diff(
       sub { $qrf->print_reports(
@@ -1137,12 +1207,16 @@ SKIP: {
    );
 
    my $explain = load_file(
-        $sandbox_version eq '5.6' ? "t/lib/samples/QueryReportFormatter/report031.txt"
+        $sandbox_version ge '5.7' ? "t/lib/samples/QueryReportFormatter/report031-5.7.txt"
+      : $sandbox_version eq '5.6' ? "t/lib/samples/QueryReportFormatter/report031.txt"
       : $sandbox_version ge '5.1' ? "t/lib/samples/QueryReportFormatter/report025.txt"
       :                             "t/lib/samples/QueryReportFormatter/report026.txt");
 
+   # 32
+   my $explain_report = $qrf->explain_report("select * from qrf.t where i=2", 'qrf');
+   $explain_report =~ s/filtered: 100(\s+)/filtered: 100.00$1/;
    is(
-      $qrf->explain_report("select * from qrf.t where i=2", 'qrf'),
+      $explain_report,
       $explain,
       "explain_report()"
    );

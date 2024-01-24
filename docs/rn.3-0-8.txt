@@ -1,0 +1,12 @@
+
+v3.0.8 released 2018-03-13
+==========================
+
+New Features
+
+* :jirabug:`PT-1500`: Added --output=secure-slowlog option to ``pt-query-digest``
+
+Buf Fixes
+
+* :jirabug:`PT-1503`: The post-install script fails on VM due to improper UUID file detection
+* :jirabug:`PT-1492`: ``pt-kill`` in version 3.0.7 ignores the value of the  ``--busy-time``

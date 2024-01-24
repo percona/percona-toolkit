@@ -1,0 +1,611 @@
+mysql.columns_priv
+CREATE TABLE `columns_priv` (
+  `Host` char(255) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '',
+  `Db` char(64) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  `User` char(32) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  `Table_name` char(64) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  `Column_name` char(64) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  `Timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `Column_priv` set('Select','Insert','Update','References') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT '',
+  PRIMARY KEY (`Host`,`User`,`Db`,`Table_name`,`Column_name`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='Column privileges'
+
+mysql.component
+CREATE TABLE `component` (
+  `component_id` int unsigned NOT NULL AUTO_INCREMENT,
+  `component_group_id` int unsigned NOT NULL,
+  `component_urn` text NOT NULL,
+  PRIMARY KEY (`component_id`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 ROW_FORMAT=DYNAMIC COMMENT='Components'
+
+mysql.db
+CREATE TABLE `db` (
+  `Host` char(255) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '',
+  `Db` char(64) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  `User` char(32) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  `Select_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Insert_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Update_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Delete_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Create_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Drop_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Grant_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `References_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Index_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Alter_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Create_tmp_table_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Lock_tables_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Create_view_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Show_view_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Create_routine_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Alter_routine_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Execute_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Event_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Trigger_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  PRIMARY KEY (`Host`,`User`,`Db`),
+  KEY `User` (`User`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='Database privileges'
+
+mysql.default_roles
+CREATE TABLE `default_roles` (
+  `HOST` char(255) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '',
+  `USER` char(32) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  `DEFAULT_ROLE_HOST` char(255) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '%',
+  `DEFAULT_ROLE_USER` char(32) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  PRIMARY KEY (`HOST`,`USER`,`DEFAULT_ROLE_HOST`,`DEFAULT_ROLE_USER`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='Default roles'
+
+mysql.engine_cost
+CREATE TABLE `engine_cost` (
+  `engine_name` varchar(64) NOT NULL,
+  `device_type` int NOT NULL,
+  `cost_name` varchar(64) NOT NULL,
+  `cost_value` float DEFAULT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `comment` varchar(1024) DEFAULT NULL,
+  `default_value` float GENERATED ALWAYS AS ((case `cost_name` when _utf8mb3'io_block_read_cost' then 1.0 when _utf8mb3'memory_block_read_cost' then 0.25 else NULL end)) VIRTUAL,
+  PRIMARY KEY (`cost_name`,`engine_name`,`device_type`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC
+
+mysql.func
+CREATE TABLE `func` (
+  `name` char(64) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  `ret` tinyint NOT NULL DEFAULT '0',
+  `dl` char(128) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  `type` enum('function','aggregate') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,
+  PRIMARY KEY (`name`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='User defined functions'
+
+mysql.global_grants
+CREATE TABLE `global_grants` (
+  `USER` char(32) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  `HOST` char(255) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '',
+  `PRIV` char(32) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT '',
+  `WITH_GRANT_OPTION` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  PRIMARY KEY (`USER`,`HOST`,`PRIV`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='Extended global grants'
+
+mysql.help_category
+CREATE TABLE `help_category` (
+  `help_category_id` smallint unsigned NOT NULL,
+  `name` char(64) NOT NULL,
+  `parent_category_id` smallint unsigned DEFAULT NULL,
+  `url` text NOT NULL,
+  PRIMARY KEY (`help_category_id`),
+  UNIQUE KEY `name` (`name`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='help categories'
+
+mysql.help_keyword
+CREATE TABLE `help_keyword` (
+  `help_keyword_id` int unsigned NOT NULL,
+  `name` char(64) NOT NULL,
+  PRIMARY KEY (`help_keyword_id`),
+  UNIQUE KEY `name` (`name`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='help keywords'
+
+mysql.help_relation
+CREATE TABLE `help_relation` (
+  `help_topic_id` int unsigned NOT NULL,
+  `help_keyword_id` int unsigned NOT NULL,
+  PRIMARY KEY (`help_keyword_id`,`help_topic_id`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='keyword-topic relation'
+
+mysql.help_topic
+CREATE TABLE `help_topic` (
+  `help_topic_id` int unsigned NOT NULL,
+  `name` char(64) NOT NULL,
+  `help_category_id` smallint unsigned NOT NULL,
+  `description` text NOT NULL,
+  `example` text NOT NULL,
+  `url` text NOT NULL,
+  PRIMARY KEY (`help_topic_id`),
+  UNIQUE KEY `name` (`name`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='help topics'
+
+mysql.ndb_binlog_index
+CREATE TABLE `ndb_binlog_index` (
+  `Position` bigint unsigned NOT NULL,
+  `File` varchar(255) NOT NULL,
+  `epoch` bigint unsigned NOT NULL,
+  `inserts` int unsigned NOT NULL,
+  `updates` int unsigned NOT NULL,
+  `deletes` int unsigned NOT NULL,
+  `schemaops` int unsigned NOT NULL,
+  `orig_server_id` int unsigned NOT NULL,
+  `orig_epoch` bigint unsigned NOT NULL,
+  `gci` int unsigned NOT NULL,
+  `next_position` bigint unsigned NOT NULL,
+  `next_file` varchar(255) NOT NULL,
+  PRIMARY KEY (`epoch`,`orig_server_id`,`orig_epoch`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=latin1 STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC
+
+mysql.password_history
+CREATE TABLE `password_history` (
+  `Host` char(255) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '',
+  `User` char(32) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  `Password_timestamp` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `Password` text COLLATE utf8mb3_bin,
+  PRIMARY KEY (`Host`,`User`,`Password_timestamp` DESC)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='Password history for user accounts'
+
+mysql.plugin
+CREATE TABLE `plugin` (
+  `name` varchar(64) NOT NULL DEFAULT '',
+  `dl` varchar(128) NOT NULL DEFAULT '',
+  PRIMARY KEY (`name`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='MySQL plugins'
+
+mysql.procs_priv
+CREATE TABLE `procs_priv` (
+  `Host` char(255) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '',
+  `Db` char(64) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  `User` char(32) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  `Routine_name` char(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT '',
+  `Routine_type` enum('FUNCTION','PROCEDURE') COLLATE utf8mb3_bin NOT NULL,
+  `Grantor` varchar(288) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  `Proc_priv` set('Execute','Alter Routine','Grant') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT '',
+  `Timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`Host`,`User`,`Db`,`Routine_name`,`Routine_type`),
+  KEY `Grantor` (`Grantor`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='Procedure privileges'
+
+mysql.proxies_priv
+CREATE TABLE `proxies_priv` (
+  `Host` char(255) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '',
+  `User` char(32) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  `Proxied_host` char(255) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '',
+  `Proxied_user` char(32) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  `With_grant` tinyint(1) NOT NULL DEFAULT '0',
+  `Grantor` varchar(288) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  `Timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`Host`,`User`,`Proxied_host`,`Proxied_user`),
+  KEY `Grantor` (`Grantor`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='User proxy privileges'
+
+mysql.replication_asynchronous_connection_failover
+CREATE TABLE `replication_asynchronous_connection_failover` (
+  `Channel_name` char(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL COMMENT 'The replication channel name that connects source and replica.',
+  `Host` char(255) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL COMMENT 'The source hostname that the replica will attempt to switch over the replication connection to in case of a failure.',
+  `Port` int unsigned NOT NULL COMMENT 'The source port that the replica will attempt to switch over the replication connection to in case of a failure.',
+  `Network_namespace` char(64) NOT NULL COMMENT 'The source network namespace that the replica will attempt to switch over the replication connection to in case of a failure. If its value is empty, connections use the default (global) namespace.',
+  `Weight` tinyint unsigned NOT NULL COMMENT 'The order in which the replica shall try to switch the connection over to when there are failures. Weight can be set to a number between 1 and 100, where 100 is the highest weight and 1 the lowest.',
+  `Managed_name` char(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT '' COMMENT 'The name of the group which this server belongs to.',
+  PRIMARY KEY (`Channel_name`,`Host`,`Port`,`Network_namespace`,`Managed_name`),
+  KEY `Channel_name` (`Channel_name`,`Managed_name`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='The source configuration details'
+
+mysql.replication_asynchronous_connection_failover_managed
+CREATE TABLE `replication_asynchronous_connection_failover_managed` (
+  `Channel_name` char(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL COMMENT 'The replication channel name that connects source and replica.',
+  `Managed_name` char(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT '' COMMENT 'The name of the source which needs to be managed.',
+  `Managed_type` char(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT '' COMMENT 'Determines the managed type.',
+  `Configuration` json DEFAULT NULL COMMENT 'The data to help manage group. For Managed_type = GroupReplication, Configuration value should contain {"Primary_weight": 80, "Secondary_weight": 60}, so that it assigns weight=80 to PRIMARY of the group, and weight=60 for rest of the members in mysql.replication_asynchronous_connection_failover table.',
+  PRIMARY KEY (`Channel_name`,`Managed_name`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='The managed source configuration details'
+
+mysql.replication_group_configuration_version
+CREATE TABLE `replication_group_configuration_version` (
+  `name` char(255) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL COMMENT 'The configuration name.',
+  `version` bigint unsigned NOT NULL COMMENT 'The version of the configuration name.',
+  PRIMARY KEY (`name`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='The group configuration version.'
+
+mysql.replication_group_member_actions
+CREATE TABLE `replication_group_member_actions` (
+  `name` char(255) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL COMMENT 'The action name.',
+  `event` char(64) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL COMMENT 'The event that will trigger the action.',
+  `enabled` tinyint(1) NOT NULL COMMENT 'Whether the action is enabled.',
+  `type` char(64) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL COMMENT 'The action type.',
+  `priority` tinyint unsigned NOT NULL COMMENT 'The order on which the action will be run, value between 1 and 100, lower values first.',
+  `error_handling` char(64) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL COMMENT 'On errors during the action will be handled: IGNORE, CRITICAL.',
+  PRIMARY KEY (`name`,`event`),
+  KEY `event` (`event`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='The member actions configuration.'
+
+mysql.role_edges
+CREATE TABLE `role_edges` (
+  `FROM_HOST` char(255) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '',
+  `FROM_USER` char(32) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  `TO_HOST` char(255) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '',
+  `TO_USER` char(32) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  `WITH_ADMIN_OPTION` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  PRIMARY KEY (`FROM_HOST`,`FROM_USER`,`TO_HOST`,`TO_USER`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='Role hierarchy and role grants'
+
+mysql.server_cost
+CREATE TABLE `server_cost` (
+  `cost_name` varchar(64) NOT NULL,
+  `cost_value` float DEFAULT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `comment` varchar(1024) DEFAULT NULL,
+  `default_value` float GENERATED ALWAYS AS ((case `cost_name` when _utf8mb3'disk_temptable_create_cost' then 20.0 when _utf8mb3'disk_temptable_row_cost' then 0.5 when _utf8mb3'key_compare_cost' then 0.05 when _utf8mb3'memory_temptable_create_cost' then 1.0 when _utf8mb3'memory_temptable_row_cost' then 0.1 when _utf8mb3'row_evaluate_cost' then 0.1 else NULL end)) VIRTUAL,
+  PRIMARY KEY (`cost_name`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC
+
+mysql.servers
+CREATE TABLE `servers` (
+  `Server_name` char(64) NOT NULL DEFAULT '',
+  `Host` char(255) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '',
+  `Db` char(64) NOT NULL DEFAULT '',
+  `Username` char(64) NOT NULL DEFAULT '',
+  `Password` char(64) NOT NULL DEFAULT '',
+  `Port` int NOT NULL DEFAULT '0',
+  `Socket` char(64) NOT NULL DEFAULT '',
+  `Wrapper` char(64) NOT NULL DEFAULT '',
+  `Owner` char(64) NOT NULL DEFAULT '',
+  PRIMARY KEY (`Server_name`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='MySQL Foreign Servers table'
+
+mysql.tables_priv
+CREATE TABLE `tables_priv` (
+  `Host` char(255) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '',
+  `Db` char(64) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  `User` char(32) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  `Table_name` char(64) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  `Grantor` varchar(288) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  `Timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `Table_priv` set('Select','Insert','Update','Delete','Create','Drop','Grant','References','Index','Alter','Create View','Show view','Trigger') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT '',
+  `Column_priv` set('Select','Insert','Update','References') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT '',
+  PRIMARY KEY (`Host`,`User`,`Db`,`Table_name`),
+  KEY `Grantor` (`Grantor`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='Table privileges'
+
+mysql.time_zone
+CREATE TABLE `time_zone` (
+  `Time_zone_id` int unsigned NOT NULL AUTO_INCREMENT,
+  `Use_leap_seconds` enum('Y','N') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  PRIMARY KEY (`Time_zone_id`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='Time zones'
+
+mysql.time_zone_leap_second
+CREATE TABLE `time_zone_leap_second` (
+  `Transition_time` bigint NOT NULL,
+  `Correction` int NOT NULL,
+  PRIMARY KEY (`Transition_time`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='Leap seconds information for time zones'
+
+mysql.time_zone_name
+CREATE TABLE `time_zone_name` (
+  `Name` char(64) NOT NULL,
+  `Time_zone_id` int unsigned NOT NULL,
+  PRIMARY KEY (`Name`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='Time zone names'
+
+mysql.time_zone_transition
+CREATE TABLE `time_zone_transition` (
+  `Time_zone_id` int unsigned NOT NULL,
+  `Transition_time` bigint NOT NULL,
+  `Transition_type_id` int unsigned NOT NULL,
+  PRIMARY KEY (`Time_zone_id`,`Transition_time`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='Time zone transitions'
+
+mysql.time_zone_transition_type
+CREATE TABLE `time_zone_transition_type` (
+  `Time_zone_id` int unsigned NOT NULL,
+  `Transition_type_id` int unsigned NOT NULL,
+  `Offset` int NOT NULL DEFAULT '0',
+  `Is_DST` tinyint unsigned NOT NULL DEFAULT '0',
+  `Abbreviation` char(8) NOT NULL DEFAULT '',
+  PRIMARY KEY (`Time_zone_id`,`Transition_type_id`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='Time zone transition types'
+
+mysql.user
+CREATE TABLE `user` (
+  `Host` char(255) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '',
+  `User` char(32) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  `Select_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Insert_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Update_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Delete_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Create_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Drop_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Reload_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Shutdown_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Process_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `File_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Grant_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `References_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Index_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Alter_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Show_db_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Super_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Create_tmp_table_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Lock_tables_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Execute_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Repl_slave_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Repl_client_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Create_view_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Show_view_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Create_routine_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Alter_routine_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Create_user_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Event_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Trigger_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Create_tablespace_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `ssl_type` enum('','ANY','X509','SPECIFIED') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT '',
+  `ssl_cipher` blob NOT NULL,
+  `x509_issuer` blob NOT NULL,
+  `x509_subject` blob NOT NULL,
+  `max_questions` int unsigned NOT NULL DEFAULT '0',
+  `max_updates` int unsigned NOT NULL DEFAULT '0',
+  `max_connections` int unsigned NOT NULL DEFAULT '0',
+  `max_user_connections` int unsigned NOT NULL DEFAULT '0',
+  `plugin` char(64) COLLATE utf8mb3_bin NOT NULL DEFAULT 'caching_sha2_password',
+  `authentication_string` text COLLATE utf8mb3_bin,
+  `password_expired` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `password_last_changed` timestamp NULL DEFAULT NULL,
+  `password_lifetime` smallint unsigned DEFAULT NULL,
+  `account_locked` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Create_role_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Drop_role_priv` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N',
+  `Password_reuse_history` smallint unsigned DEFAULT NULL,
+  `Password_reuse_time` smallint unsigned DEFAULT NULL,
+  `Password_require_current` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL,
+  `User_attributes` json DEFAULT NULL,
+  PRIMARY KEY (`Host`,`User`)
+) /*!50100 TABLESPACE `mysql` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin STATS_PERSISTENT=0 ROW_FORMAT=DYNAMIC COMMENT='Users and global privileges'
+
+percona_test.checksums
+CREATE TABLE `checksums` (
+  `db_tbl` varchar(128) NOT NULL,
+  `checksum` int unsigned NOT NULL,
+  PRIMARY KEY (`db_tbl`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+
+percona_test.load_data
+CREATE TABLE `load_data` (
+  `i` int DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+
+percona_test.sentinel
+CREATE TABLE `sentinel` (
+  `id` int NOT NULL,
+  `ping` varchar(64) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+
+sakila.actor
+CREATE TABLE `actor` (
+  `actor_id` smallint unsigned NOT NULL AUTO_INCREMENT,
+  `first_name` varchar(45) NOT NULL,
+  `last_name` varchar(45) NOT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`actor_id`),
+  KEY `idx_actor_last_name` (`last_name`)
+) ENGINE=InnoDB AUTO_INCREMENT=201 DEFAULT CHARSET=utf8mb3
+
+sakila.address
+CREATE TABLE `address` (
+  `address_id` smallint unsigned NOT NULL AUTO_INCREMENT,
+  `address` varchar(50) NOT NULL,
+  `address2` varchar(50) DEFAULT NULL,
+  `district` varchar(20) NOT NULL,
+  `city_id` smallint unsigned NOT NULL,
+  `postal_code` varchar(10) DEFAULT NULL,
+  `phone` varchar(20) NOT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`address_id`),
+  KEY `idx_fk_city_id` (`city_id`),
+  CONSTRAINT `fk_address_city` FOREIGN KEY (`city_id`) REFERENCES `city` (`city_id`) ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=606 DEFAULT CHARSET=utf8mb3
+
+sakila.category
+CREATE TABLE `category` (
+  `category_id` tinyint unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(25) NOT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`category_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb3
+
+sakila.city
+CREATE TABLE `city` (
+  `city_id` smallint unsigned NOT NULL AUTO_INCREMENT,
+  `city` varchar(50) NOT NULL,
+  `country_id` smallint unsigned NOT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`city_id`),
+  KEY `idx_fk_country_id` (`country_id`),
+  CONSTRAINT `fk_city_country` FOREIGN KEY (`country_id`) REFERENCES `country` (`country_id`) ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=601 DEFAULT CHARSET=utf8mb3
+
+sakila.country
+CREATE TABLE `country` (
+  `country_id` smallint unsigned NOT NULL AUTO_INCREMENT,
+  `country` varchar(50) NOT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`country_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=110 DEFAULT CHARSET=utf8mb3
+
+sakila.customer
+CREATE TABLE `customer` (
+  `customer_id` smallint unsigned NOT NULL AUTO_INCREMENT,
+  `store_id` tinyint unsigned NOT NULL,
+  `first_name` varchar(45) NOT NULL,
+  `last_name` varchar(45) NOT NULL,
+  `email` varchar(50) DEFAULT NULL,
+  `address_id` smallint unsigned NOT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT '1',
+  `create_date` datetime NOT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`customer_id`),
+  KEY `idx_fk_store_id` (`store_id`),
+  KEY `idx_fk_address_id` (`address_id`),
+  KEY `idx_last_name` (`last_name`),
+  CONSTRAINT `fk_customer_address` FOREIGN KEY (`address_id`) REFERENCES `address` (`address_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_customer_store` FOREIGN KEY (`store_id`) REFERENCES `store` (`store_id`) ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=600 DEFAULT CHARSET=utf8mb3
+
+sakila.film
+CREATE TABLE `film` (
+  `film_id` smallint unsigned NOT NULL AUTO_INCREMENT,
+  `title` varchar(255) NOT NULL,
+  `description` text,
+  `release_year` year DEFAULT NULL,
+  `language_id` tinyint unsigned NOT NULL,
+  `original_language_id` tinyint unsigned DEFAULT NULL,
+  `rental_duration` tinyint unsigned NOT NULL DEFAULT '3',
+  `rental_rate` decimal(4,2) NOT NULL DEFAULT '4.99',
+  `length` smallint unsigned DEFAULT NULL,
+  `replacement_cost` decimal(5,2) NOT NULL DEFAULT '19.99',
+  `rating` enum('G','PG','PG-13','R','NC-17') DEFAULT 'G',
+  `special_features` set('Trailers','Commentaries','Deleted Scenes','Behind the Scenes') DEFAULT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`film_id`),
+  KEY `idx_title` (`title`),
+  KEY `idx_fk_language_id` (`language_id`),
+  KEY `idx_fk_original_language_id` (`original_language_id`),
+  CONSTRAINT `fk_film_language` FOREIGN KEY (`language_id`) REFERENCES `language` (`language_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_film_language_original` FOREIGN KEY (`original_language_id`) REFERENCES `language` (`language_id`) ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=1001 DEFAULT CHARSET=utf8mb3
+
+sakila.film_actor
+CREATE TABLE `film_actor` (
+  `actor_id` smallint unsigned NOT NULL,
+  `film_id` smallint unsigned NOT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`actor_id`,`film_id`),
+  KEY `idx_fk_film_id` (`film_id`),
+  CONSTRAINT `fk_film_actor_actor` FOREIGN KEY (`actor_id`) REFERENCES `actor` (`actor_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_film_actor_film` FOREIGN KEY (`film_id`) REFERENCES `film` (`film_id`) ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3
+
+sakila.film_category
+CREATE TABLE `film_category` (
+  `film_id` smallint unsigned NOT NULL,
+  `category_id` tinyint unsigned NOT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`film_id`,`category_id`),
+  KEY `fk_film_category_category` (`category_id`),
+  CONSTRAINT `fk_film_category_category` FOREIGN KEY (`category_id`) REFERENCES `category` (`category_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_film_category_film` FOREIGN KEY (`film_id`) REFERENCES `film` (`film_id`) ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3
+
+sakila.film_text
+CREATE TABLE `film_text` (
+  `film_id` smallint NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `description` text,
+  PRIMARY KEY (`film_id`),
+  FULLTEXT KEY `idx_title_description` (`title`,`description`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3
+
+sakila.inventory
+CREATE TABLE `inventory` (
+  `inventory_id` mediumint unsigned NOT NULL AUTO_INCREMENT,
+  `film_id` smallint unsigned NOT NULL,
+  `store_id` tinyint unsigned NOT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`inventory_id`),
+  KEY `idx_fk_film_id` (`film_id`),
+  KEY `idx_store_id_film_id` (`store_id`,`film_id`),
+  CONSTRAINT `fk_inventory_film` FOREIGN KEY (`film_id`) REFERENCES `film` (`film_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_inventory_store` FOREIGN KEY (`store_id`) REFERENCES `store` (`store_id`) ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=4582 DEFAULT CHARSET=utf8mb3
+
+sakila.language
+CREATE TABLE `language` (
+  `language_id` tinyint unsigned NOT NULL AUTO_INCREMENT,
+  `name` char(20) NOT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`language_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb3
+
+sakila.payment
+CREATE TABLE `payment` (
+  `payment_id` smallint unsigned NOT NULL AUTO_INCREMENT,
+  `customer_id` smallint unsigned NOT NULL,
+  `staff_id` tinyint unsigned NOT NULL,
+  `rental_id` int DEFAULT NULL,
+  `amount` decimal(5,2) NOT NULL,
+  `payment_date` datetime NOT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`payment_id`),
+  KEY `idx_fk_staff_id` (`staff_id`),
+  KEY `idx_fk_customer_id` (`customer_id`),
+  KEY `fk_payment_rental` (`rental_id`),
+  CONSTRAINT `fk_payment_customer` FOREIGN KEY (`customer_id`) REFERENCES `customer` (`customer_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_payment_rental` FOREIGN KEY (`rental_id`) REFERENCES `rental` (`rental_id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_payment_staff` FOREIGN KEY (`staff_id`) REFERENCES `staff` (`staff_id`) ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=16050 DEFAULT CHARSET=utf8mb3
+
+sakila.rental
+CREATE TABLE `rental` (
+  `rental_id` int NOT NULL AUTO_INCREMENT,
+  `rental_date` datetime NOT NULL,
+  `inventory_id` mediumint unsigned NOT NULL,
+  `customer_id` smallint unsigned NOT NULL,
+  `return_date` datetime DEFAULT NULL,
+  `staff_id` tinyint unsigned NOT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`rental_id`),
+  UNIQUE KEY `rental_date` (`rental_date`,`inventory_id`,`customer_id`),
+  KEY `idx_fk_inventory_id` (`inventory_id`),
+  KEY `idx_fk_customer_id` (`customer_id`),
+  KEY `idx_fk_staff_id` (`staff_id`),
+  CONSTRAINT `fk_rental_customer` FOREIGN KEY (`customer_id`) REFERENCES `customer` (`customer_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_rental_inventory` FOREIGN KEY (`inventory_id`) REFERENCES `inventory` (`inventory_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_rental_staff` FOREIGN KEY (`staff_id`) REFERENCES `staff` (`staff_id`) ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=16050 DEFAULT CHARSET=utf8mb3
+
+sakila.staff
+CREATE TABLE `staff` (
+  `staff_id` tinyint unsigned NOT NULL AUTO_INCREMENT,
+  `first_name` varchar(45) NOT NULL,
+  `last_name` varchar(45) NOT NULL,
+  `address_id` smallint unsigned NOT NULL,
+  `picture` blob,
+  `email` varchar(50) DEFAULT NULL,
+  `store_id` tinyint unsigned NOT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT '1',
+  `username` varchar(16) NOT NULL,
+  `password` varchar(40) CHARACTER SET utf8mb3 COLLATE utf8mb3_bin DEFAULT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`staff_id`),
+  KEY `idx_fk_store_id` (`store_id`),
+  KEY `idx_fk_address_id` (`address_id`),
+  CONSTRAINT `fk_staff_address` FOREIGN KEY (`address_id`) REFERENCES `address` (`address_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_staff_store` FOREIGN KEY (`store_id`) REFERENCES `store` (`store_id`) ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb3
+
+sakila.store
+CREATE TABLE `store` (
+  `store_id` tinyint unsigned NOT NULL AUTO_INCREMENT,
+  `manager_staff_id` tinyint unsigned NOT NULL,
+  `address_id` smallint unsigned NOT NULL,
+  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`store_id`),
+  UNIQUE KEY `idx_unique_manager` (`manager_staff_id`),
+  KEY `idx_fk_address_id` (`address_id`),
+  CONSTRAINT `fk_store_address` FOREIGN KEY (`address_id`) REFERENCES `address` (`address_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_store_staff` FOREIGN KEY (`manager_staff_id`) REFERENCES `staff` (`staff_id`) ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb3
+
+sys.sys_config
+CREATE TABLE `sys_config` (
+  `variable` varchar(128) NOT NULL,
+  `value` varchar(128) DEFAULT NULL,
+  `set_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `set_by` varchar(128) DEFAULT NULL,
+  PRIMARY KEY (`variable`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+

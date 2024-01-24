@@ -27,7 +27,7 @@ CREATE TABLE `comp` (
   `name` varchar(255) default NULL,
   `otherinfo` varchar(255) default NULL,
   PRIMARY KEY  (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=4;
 SET character_set_client = @saved_cs_client;
 
 --
@@ -54,7 +54,7 @@ CREATE TABLE `prod` (
   PRIMARY KEY  (`id`),
   KEY `prod_comp_id` (`comp_id`),
   CONSTRAINT `prod_comp_id` FOREIGN KEY (`comp_id`) REFERENCES `comp` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=7;
 SET character_set_client = @saved_cs_client;
 
 --
@@ -81,7 +81,7 @@ CREATE TABLE `prod_details` (
   PRIMARY KEY  (`id`),
   KEY `prod_det_prod_id` (`prod_id`),
   CONSTRAINT `prod_det_prod_id` FOREIGN KEY (`prod_id`) REFERENCES `prod` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=7;
 SET character_set_client = @saved_cs_client;
 
 --
@@ -111,7 +111,7 @@ CREATE TABLE `user` (
   KEY `user_prod_id` (`prod_id`),
   CONSTRAINT `user_comp_id` FOREIGN KEY (`comp_id`) REFERENCES `comp` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION,
   CONSTRAINT `user_prod_id` FOREIGN KEY (`prod_id`) REFERENCES `prod` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=5;
 SET character_set_client = @saved_cs_client;
 
 --

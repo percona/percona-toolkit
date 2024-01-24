@@ -17,7 +17,7 @@
 -- View: statements_with_runtimes_in_95th_percentile
 --
 -- List all statements whose average runtime, in microseconds, is in the top 95th percentile.
--- 
+--
 -- mysql> select * from statements_with_runtimes_in_95th_percentile limit 5;
 -- +-------------------------------------------------------------------+------+-----------+------------+-----------+------------+---------------+-------------+-------------+-----------+---------------+---------------+-------------------+---------------------+---------------------+----------------------------------+
 -- | query                                                             | db   | full_scan | exec_count | err_count | warn_count | total_latency | max_latency | avg_latency | rows_sent | rows_sent_avg | rows_examined | rows_examined_avg | FIRST_SEEN          | LAST_SEEN           | digest                           |
@@ -33,7 +33,7 @@
 CREATE OR REPLACE
   ALGORITHM = MERGE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW statements_with_runtimes_in_95th_percentile (
   query,
   db,

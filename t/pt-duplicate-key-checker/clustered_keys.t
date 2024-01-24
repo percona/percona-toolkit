@@ -30,6 +30,17 @@ my @args   = ('-F', $cnf, qw(-h 127.1));
 $sb->wipe_clean($dbh);
 $sb->create_dbs($dbh, ['test']);
 
+my $transform_int = undef;
+# In version 8.0 integer display width is deprecated and not shown in the outputs.
+# So we need to transform our samples.
+if ($sandbox_version ge '8.0') {
+   $transform_int = sub {
+      my $txt = slurp_file(shift);
+      $txt =~ s/int\(\d{1,2}\)/int/g;
+      print $txt;
+   };
+}
+
 # #############################################################################
 # Issue 295: Enhance rules for clustered keys in mk-duplicate-key-checker
 # #############################################################################
@@ -38,7 +49,8 @@ ok(
    no_diff(
       sub { pt_duplicate_key_checker::main(@args, qw(-d issue_295)) },
       ($sandbox_version ge '5.1' ? "$sample/issue_295-51.txt"
-                                 : "$sample/issue_295.txt")
+                                 : "$sample/issue_295.txt"),
+      transform_sample => $transform_int
    ),
    "Shorten, not remove, clustered dupes"
 ) or diag($test_diff);

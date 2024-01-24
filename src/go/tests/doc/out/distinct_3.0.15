@@ -1,0 +1,1 @@
+{"ns":"test.$cmd","op":"command","command":{"distinct":"coll","key":"a","query":{"b":{"$gte":5}}}}

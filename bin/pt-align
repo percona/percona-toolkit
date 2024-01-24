@@ -20,10 +20,10 @@ BEGIN {
 # ###########################################################################
 # OptionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/OptionParser.pm
 #   t/lib/OptionParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {
 package OptionParser;
@@ -81,7 +81,7 @@ sub new {
       rules             => [],  # desc of rules for --help
       mutex             => [],  # rule: opts are mutually exclusive
       atleast1          => [],  # rule: at least one opt is required
-      disables          => {},  # rule: opt disables other opts 
+      disables          => {},  # rule: opt disables other opts
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
@@ -244,7 +244,7 @@ sub _pod_to_specs {
          }
 
          push @specs, {
-            spec  => $self->{parse_attributes}->($self, $option, \%attribs), 
+            spec  => $self->{parse_attributes}->($self, $option, \%attribs),
             desc  => $para
                . (defined $attribs{default} ? " (default $attribs{default})" : ''),
             group => ($attribs{'group'} ? $attribs{'group'} : 'default'),
@@ -335,7 +335,7 @@ sub _parse_specs {
          $self->{opts}->{$long} = $opt;
       }
       else { # It's an option rule, not a spec.
-         PTDEBUG && _d('Parsing rule:', $opt); 
+         PTDEBUG && _d('Parsing rule:', $opt);
          push @{$self->{rules}}, $opt;
          my @participants = $self->_get_participants($opt);
          my $rule_ok = 0;
@@ -380,7 +380,7 @@ sub _parse_specs {
       PTDEBUG && _d('Option', $long, 'disables', @participants);
    }
 
-   return; 
+   return;
 }
 
 sub _get_participants {
@@ -467,7 +467,7 @@ sub _set_option {
 }
 
 sub get_opts {
-   my ( $self ) = @_; 
+   my ( $self ) = @_;
 
    foreach my $long ( keys %{$self->{opts}} ) {
       $self->{opts}->{$long}->{got} = 0;
@@ -480,6 +480,12 @@ sub get_opts {
 
    $self->{errors} = [];
 
+   if ( @ARGV && $ARGV[0] =~/^--config=/ ) {
+      $ARGV[0] = substr($ARGV[0],9);
+      $ARGV[0] =~ s/^'(.*)'$/$1/;
+      $ARGV[0] =~ s/^"(.*)"$/$1/;
+      $self->_set_option('config', shift @ARGV);
+   }
    if ( @ARGV && $ARGV[0] eq "--config" ) {
       shift @ARGV;
       $self->_set_option('config', shift @ARGV);
@@ -592,7 +598,7 @@ sub _check_opts {
                   else {
                      $err = join(', ',
                                map { "--$self->{opts}->{$_}->{long}" }
-                               grep { $_ } 
+                               grep { $_ }
                                @restricted_opts[0..scalar(@restricted_opts) - 2]
                             )
                           . ' or --'.$self->{opts}->{$restricted_opts[-1]}->{long};
@@ -602,7 +608,7 @@ sub _check_opts {
             }
 
          }
-         elsif ( $opt->{is_required} ) { 
+         elsif ( $opt->{is_required} ) {
             $self->save_error("Required option --$long must be specified");
          }
 
@@ -671,7 +677,15 @@ sub _validate_type {
          }
       }
       my $defaults = $self->{DSNParser}->parse_options($self);
-      $opt->{value} = $self->{DSNParser}->parse($val, $prev, $defaults);
+      if (!$opt->{attributes}->{repeatable}) {
+          $opt->{value} = $self->{DSNParser}->parse($val, $prev, $defaults);
+      } else {
+          my $values = [];
+          for my $dsn_string (@$val) {
+              push @$values, $self->{DSNParser}->parse($dsn_string, $prev, $defaults);
+          }
+          $opt->{value} = $values;
+      }
    }
    elsif ( $val && $opt->{type} eq 'z' ) {  # type size
       PTDEBUG && _d('Parsing option', $opt->{long}, 'as a size value');
@@ -978,7 +992,7 @@ sub clone {
       $clone{$scalar} = $self->{$scalar};
    }
 
-   return bless \%clone;     
+   return bless \%clone;
 }
 
 sub _parse_size {
@@ -1149,15 +1163,15 @@ sub main {
       push @lines, \@words;
       $word_count{ scalar @words }++;
    }
-   
+
    # Find max number of words per line
    my @wc = reverse sort { $word_count{$a}<=>$word_count{$b} } keys %word_count;
    my $m_words = $wc[0];
-   
+
    # Filter out non-conformists
    @lines = grep { scalar @$_ == $m_words } @lines;
    die "I need at least 2 lines" unless @lines > 1;
-   
+
    # Find the widths and alignments of each column
    my @fmt;
    foreach my $i ( 0 .. $m_words-1 ) {
@@ -1168,7 +1182,7 @@ sub main {
       push @fmt, $code;
    }
    my $fmt = join(' ', @fmt) . "\n";
-   
+
    # Print!
    foreach my $l ( @lines ) {
       printf $fmt, @$l;
@@ -1271,9 +1285,9 @@ reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs, see L<http://www.percona.com/bugs/pt-align>.
+For a list of known bugs, see L<https://jira.percona.com/projects/PT/issues>.
 
-Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
+Please report bugs at L<https://jira.percona.com/projects/PT>.
 Include the following information in your bug report:
 
 =over
@@ -1292,6 +1306,11 @@ Include the following information in your bug report:
 
 If possible, include debugging output by running the tool with C<PTDEBUG>;
 see L<"ENVIRONMENT">.
+
+=head1 ATTENTION
+
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
+parameters are shown in the output.
 
 =head1 DOWNLOADING
 
@@ -1326,7 +1345,7 @@ software from Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011-2016 Percona LLC and/or its affiliates,
+This program is copyright 2011-2024 Percona LLC and/or its affiliates,
 2010-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -1345,6 +1364,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-align 2.2.19
+pt-align 3.5.7
 
 =cut

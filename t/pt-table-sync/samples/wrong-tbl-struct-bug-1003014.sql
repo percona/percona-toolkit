@@ -8,7 +8,7 @@ use test;
 create table aaa (
   `STOP_ARCHIVE` int(11) NOT NULL default '1',
   UNIQUE KEY `STOP_ARCHIVE` (`STOP_ARCHIVE`)
-) ENGINE=MyISAM;
+);
 
 insert into aaa values (1),(2),(3),(4),(5),(6),(7),(8),(9),(10);
 

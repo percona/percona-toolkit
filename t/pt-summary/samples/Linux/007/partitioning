@@ -1,0 +1,98 @@
+
+Disk /dev/dm-0: 3032.2 GB, 3032246910976 bytes, 5922357248 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+
+
+Disk /dev/dm-1: 37.6 GB, 37580963840 bytes, 73400320 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+
+
+Disk /dev/dm-2: 10.7 GB, 10737418240 bytes, 20971520 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+
+
+Disk /dev/dm-3: 107.4 GB, 107374182400 bytes, 209715200 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+
+
+Disk /dev/dm-4: 107.4 GB, 107374182400 bytes, 209715200 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+
+
+Disk /dev/dm-5: 6000.1 GB, 6000065118208 bytes, 11718877184 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+
+
+Disk /dev/dm-6: 107.4 GB, 107372085248 bytes, 209711104 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+
+
+Disk /dev/dm-7: 3032.2 GB, 3032244813824 bytes, 5922353152 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+
+
+Disk /dev/nvme0n1: 400.1 GB, 400088457216 bytes, 781422768 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+
+
+Disk /dev/nvme1n1: 400.1 GB, 400088457216 bytes, 781422768 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+
+
+Disk /dev/sda: 499.6 GB, 499558383616 bytes, 975699968 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk label type: gpt
+Disk identifier: 28DFB3B2-EBDC-4E03-A51F-71850B1FE388
+
+
+#         Start          End    Size  Type            Name
+ 1         2048       391167    190M  EFI System      EFI System Partition
+ 2       391168      2488319      1G  Microsoft basic 
+ 3      2488320    317061119    150G  Microsoft basic 
+ 4    317061120    325449727      4G  Linux swap      
+ 5    325449728    975697919  310.1G  Microsoft basic 
+
+Disk /dev/sdb: 3999.7 GB, 3999688294400 bytes, 7811891200 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk label type: gpt
+Disk identifier: 19C86533-0E7A-384A-9ED9-C67C8F8A5CAB
+
+
+#         Start          End    Size  Type            Name
+ 1         2048    195311615   93.1G  Microsoft basic 
+ 2    195311616   7811889151    3.6T  Linux LVM       
+
+Disk /dev/sdc: 6000.1 GB, 6000069312512 bytes, 11718885376 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk label type: gpt
+Disk identifier: D74F6077-C26D-4331-A5A9-81F5B8983794
+
+
+#         Start          End    Size  Type            Name
+ 1         2048  11718883327    5.5T  Linux filesyste primary

@@ -1,0 +1,217 @@
+version: '3'
+services:
+    mongo-1-1:
+        container_name: "mongo-1-1"
+        image: ${TEST_MONGODB_IMAGE:-mongo:4.2}
+        ports:
+            - "${TEST_MONGODB_S1_PRIMARY_PORT:-17001}:27017"
+        command: mongod --replSet rs1 --shardsvr --port 27017  --oplogSize 16
+        links:
+            - mongo-1-2:mongo-1-2
+            - mongo-1-3:mongo-1-3
+
+    mongo-1-2:
+        container_name: "mongo-1-2"
+        image: ${TEST_MONGODB_IMAGE:-mongo:4.2}
+        ports:
+            - "${TEST_MONGODB_S1_SECONDARY1_PORT:-17002}:27017"
+        command: mongod --replSet rs1 --shardsvr --port 27017  --oplogSize 16
+
+    mongo-1-3:
+        container_name: "mongo-1-3"
+        image: ${TEST_MONGODB_IMAGE:-mongo:4.2}
+        ports:
+            - "${TEST_MONGODB_S1_SECONDARY2_PORT:-17003}:27017"
+        command: mongod --replSet rs1 --shardsvr --port 27017  --oplogSize 16
+
+    mongo-rs1-setup:
+        container_name: "mongo-rs1-setup"
+        image: ${TEST_MONGODB_IMAGE:-mongo:4.2}
+        depends_on:
+            - "mongo-1-1"
+            - "mongo-1-2"
+            - "mongo-1-3"
+        links:
+            - mongo-1-1:mongo-1-1
+            - mongo-1-2:mongo-1-2
+            - mongo-1-3:mongo-1-3
+        volumes:
+            - ./docker/scripts:/scripts
+        environment:
+            - MONGO1=mongo-1-1
+            - MONGO2=mongo-1-2
+            - MONGO3=mongo-1-3
+            - RS=rs1
+        entrypoint: [ "/scripts/setup.sh" ]
+
+    mongo-2-2:
+        container_name: "mongo-2-2"
+        image: ${TEST_MONGODB_IMAGE:-mongo:4.2}
+        ports:
+            - "${TEST_MONGODB_S2_PRIMARY_PORT:-17004}:27017"
+        command: mongod --replSet rs2 --shardsvr --port 27017  --oplogSize 16
+
+    mongo-2-3:
+        container_name: "mongo-2-3"
+        image: ${TEST_MONGODB_IMAGE:-mongo:4.2}
+        ports:
+            - "${TEST_MONGODB_S2_SECONDARY1_PORT:-17005}:27017"
+        command: mongod --replSet rs2 --shardsvr --port 27017  --oplogSize 16
+
+    mongo-2-1:
+        container_name: "mongo-2-1"
+        image: ${TEST_MONGODB_IMAGE:-mongo:4.2}
+        ports:
+            - "${TEST_MONGODB_S2_SECONDARY2_PORT:-17006}:27017"
+        command: mongod --replSet rs2 --shardsvr --port 27017  --oplogSize 16
+        links:
+            - mongo-2-2:mongo-2-2
+            - mongo-2-3:mongo-2-3
+
+    mongo-rs2-setup:
+        container_name: "mongo-rs2-setup"
+        image: ${TEST_MONGODB_IMAGE:-mongo:4.2}
+        depends_on:
+            - "mongo-2-1"
+            - "mongo-2-2"
+            - "mongo-2-3"
+        links:
+            - mongo-2-1:mongo-2-1
+            - mongo-2-2:mongo-2-2
+            - mongo-2-3:mongo-2-3
+        volumes:
+            - ./docker/scripts:/scripts
+        environment:
+            - MONGO1=mongo-2-1
+            - MONGO2=mongo-2-2
+            - MONGO3=mongo-2-3
+            - RS=rs2
+        entrypoint: [ "/scripts/setup.sh" ]
+
+    # Config servers
+    mongo-cnf-2:
+        container_name: "mongo-cnf-2"
+        image: ${TEST_MONGODB_IMAGE:-mongo:4.2}
+        ports:
+            - "${TEST_MONGODB_CONFIGSVR1_PORT:-17007}:27017"
+        command: mongod --dbpath /data/db --replSet cnf-serv --configsvr --port 27017 --oplogSize 16
+
+    mongo-cnf-3:
+        container_name: "mongo-cnf-3"
+        image: ${TEST_MONGODB_IMAGE:-mongo:4.2}
+        ports:
+            - "${TEST_MONGODB_CONFIGSVR2_PORT:-17008}:27017"
+        command: mongod --dbpath /data/db --replSet cnf-serv --configsvr --port 27017 --oplogSize 16
+
+    mongo-cnf-1:
+        container_name: "mongo-cnf-1"
+        image: ${TEST_MONGODB_IMAGE:-mongo:4.2}
+        ports:
+            - "${TEST_MONGODB_CONFIGSVR3_PORT:-17009}:27017"
+        command: mongod --dbpath /data/db --replSet cnf-serv --configsvr --port 27017 --oplogSize 16
+        links:
+            - mongo-cnf-2:mongo-cnf-2
+            - mongo-cnf-3:mongo-cnf-3
+
+    mongo-cnf-setup:
+        container_name: "mongo-cnf-setup"
+        image: ${TEST_MONGODB_IMAGE:-mongo:4.2}
+        depends_on:
+            - "mongo-cnf-1"
+            - "mongo-cnf-2"
+            - "mongo-cnf-3"
+        links:
+            - mongo-cnf-1:mongo-cnf-1
+            - mongo-cnf-2:mongo-cnf-2
+            - mongo-cnf-3:mongo-cnf-3
+        volumes:
+            - ./docker/scripts:/scripts
+        environment:
+            - MONGO1=mongo-cnf-1
+            - MONGO2=mongo-cnf-2
+            - MONGO3=mongo-cnf-3
+            - RS=cnf-serv
+            - PORT=27017
+        entrypoint: [ "/scripts/setup.sh" ]
+
+    mongos:
+        container_name: "mongos"
+        image: ${TEST_MONGODB_IMAGE:-mongo:4.2}
+        ports:
+            - "${TEST_MONGODB_MONGOS_PORT:-17000}:27017"
+        depends_on:
+            - "mongo-rs1-setup"
+            - "mongo-rs2-setup"
+            - "mongo-cnf-setup"
+        external_links:
+            - mongo-cnf-1:mongo-cnf-1
+            - mongo-cnf-2:mongo-cnf-2
+            - mongo-cnf-3:mongo-cnf-3
+            - mongo-1-1:mongo-1-1
+            - mongo-1-2:mongo-1-2
+            - mongo-1-3:mongo-1-3
+            - mongo-2-1:mongo-2-1
+            - mongo-2-2:mongo-2-2
+            - mongo-2-3:mongo-2-3
+        command: mongos --configdb cnf-serv/mongo-cnf-1:27017,mongo-cnf-2:27017,mongo-cnf-3:27017 --port 27017 --bind_ip 0.0.0.0
+
+    mongo-shard-setup:
+        container_name: "mongo-shard-setup"
+        image: ${TEST_MONGODB_IMAGE:-mongo:4.2}
+        depends_on:
+            - "mongos"
+        links:
+            - mongos:mongos
+        volumes:
+            - ./docker/scripts:/scripts
+        environment:
+            - MONGOS=mongos
+            - MONGO11=mongo-1-1
+            - MONGO12=mongo-1-2
+            - MONGO13=mongo-1-3
+            - MONGO21=mongo-2-1
+            - MONGO22=mongo-2-2
+            - MONGO23=mongo-2-3
+            - RS1=rs1
+            - RS2=rs2
+            - PORT=27017
+            - PORT1=27017
+            - PORT2=27017
+            - PORT3=27017
+        entrypoint: [ "/scripts/init-shard.sh" ]
+        restart: on-failure:20
+
+    standalone:
+        container_name: "standalone"
+        image: ${TEST_MONGODB_IMAGE:-mongo:4.2}
+        ports:
+            - "${TEST_MONGODB_STANDALONE_PORT:-27017}:27017"
+        command: mongod --replSet rs1 --shardsvr --port 27017  --oplogSize 16
+    postgres9:
+        image: ${POSTGRE_IMAGE:-postgres:9.6}
+        container_name: go_postgres9_1
+        ports:
+          - ${POSTGRE_HOST:-127.0.0.1}:${POSTGRE_96_PORT:-6432}:5432
+        environment:
+          - POSTGRES_PASSWORD=root
+    postgres10:
+        image: ${POSTGRE_IMAGE:-postgres:10.7}
+        container_name: go_postgres10_1
+        ports:
+          - ${POSTGRE_HOST:-127.0.0.1}:${POSTGRE_10_PORT:-6433}:5432
+        environment:
+          - POSTGRES_PASSWORD=root
+    postgres11:
+        image: ${POSTGRE_IMAGE:-postgres:11}
+        container_name: go_postgres11_1
+        ports:
+          - ${POSTGRE_HOST:-127.0.0.1}:${POSTGRE_11_PORT:-6434}:5432
+        environment:
+          - POSTGRES_PASSWORD=root
+    postgres12:
+        image: ${POSTGRE_IMAGE:-postgres:12}
+        container_name: go_postgres12_1
+        ports:
+          - ${POSTGRE_HOST:-127.0.0.1}:${POSTGRE_12_PORT:-6435}:5432
+        environment:
+          - POSTGRES_PASSWORD=root

@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More;
+use Test::More tests => 42;
 
 use SchemaIterator;
 use FileIterator;
@@ -98,6 +98,9 @@ sub test_so {
 
    if ( $result_file ) {
       my $transform = sub { print sort_query_output(slurp_file(shift)) };
+      if ($sandbox_version gt '5.7') {
+         $transform = sub { print sort_query_output(fix_auto_increment(slurp_file(shift))) };
+      }
       ok(
          no_diff(
             $res,
@@ -105,6 +108,7 @@ sub test_so {
             cmd_output => 1,
             transform_result => $transform,
             transform_sample => $transform,
+            update_sample => 1,
          ),
          $args{test_name},
       );
@@ -148,6 +152,15 @@ sub sort_query_output {
    return $sorted;
 }
 
+# Starting with MySQL 8, AUTO_INCREMENT value is maintained between sessions.
+# Since we cannot predict the value of the test environment for each table and since its value
+# is not important for these tests, we just replace it by 0
+sub fix_auto_increment {
+   my $in = shift;
+   $in =~ s/AUTO_INCREMENT=\d+/AUTO_INCREMENT=0/g;
+   return $in;
+}
+
 SKIP: {
    skip "Cannot connect to sandbox master", 22 unless $dbh;
    $sb->wipe_clean($dbh);
@@ -156,7 +169,9 @@ SKIP: {
    # Test simple, unfiltered get_db_itr().
    # ########################################################################
    test_so(
-      result    => "$out/all-dbs-tbls-$sandbox_version.txt",
+      result    => $sb->is_cluster_mode 
+	     ? "$out/all-dbs-tbls-cluster-$sandbox_version.txt" 
+		 : "$out/all-dbs-tbls-$sandbox_version.txt",
       test_name => "Iterate all schema objects with dbh",
    );
 
@@ -164,61 +179,61 @@ SKIP: {
    # Test filters.
    # ########################################################################
    $sb->load_file('master', "t/lib/samples/SchemaIterator.sql");
-
+   
    test_so(
       filters   => [qw(-d this_db_does_not_exist)],
       result    => "",
       test_name => "No databases match",
    );
-
+   
    test_so(
       filters   => [qw(-t this_table_does_not_exist)],
       result    => "",
       test_name => "No tables match",
    );
-
+   
    # Filter by --databases (-d).
    test_so(
       filters   => [qw(--databases d1)],
       result    => "d1.t1 d1.t2 d1.t3 ",
       test_name => '--databases',
    ); 
-
+   
    # Filter by --databases (-d) and --tables (-t).
    test_so(
       filters   => [qw(-d d1 -t t2)],
       result    => "d1.t2 ",
       test_name => '--databases and --tables',
    );
-
+   
    # Ignore some dbs and tbls.
    test_so(
-      filters   => ['--ignore-databases', 'mysql,sakila,d1,d3,percona_test'],
+      filters   => ['--ignore-databases', 'mysql,sakila,d1,d3,percona_test,sys'],
       result    => "d2.t1 ",
       test_name => '--ignore-databases',
    );
-
+   
    test_so(
-      filters   => ['--ignore-databases', 'mysql,sakila,d2,d3,percona_test',
+      filters   => ['--ignore-databases', 'mysql,sakila,d2,d3,percona_test,sys',
                     '--ignore-tables', 't1,t2'],
       result    => "d1.t3 ",
       test_name => '--ignore-databases and --ignore-tables',
    );
-  
+   
    # Select some dbs but ignore some tables.
    test_so(
       filters   => ['-d', 'd1', '--ignore-tables', 't1,t3'],
       result    => "d1.t2 ",
       test_name => '--databases and --ignore-tables',
    );
-
+   
    # Filter by engines.  This also tests that --engines is case-insensitive
    test_so(
       filters   => ['-d', 'd1,d2,d3', '--engines', 'INNODB'],
       result    => ($sandbox_version ge '5.5' ? 'd1.t2 d2.t1 ' : "d1.t2 "),
       test_name => '--engines',
    );
-
+   
    test_so(
       filters   => ['-d', 'd1,d2,d3', '--ignore-engines', 'innodb,myisam'],
       result    => "d1.t3 ",
@@ -231,21 +246,21 @@ SKIP: {
       result    => "d1.t1 d1.t2 ",
       test_name => '--databases-regex and --tables-regex',
    );
-
+   
    test_so(
-      filters   => ['--ignore-databases-regex', '(?:^d[23]|mysql|info|sakila|percona_test)',
+      filters   => ['--ignore-databases-regex', '(?:^d[23]|mysql|info|sakila|percona_test|sys)',
                     '--ignore-tables-regex', 't[^23]'],
       result    => "d1.t2 d1.t3 ",
       test_name => '--ignore-databases-regex',
    );
-
+   
    # ########################################################################
    # Filter views.
    # ########################################################################
    SKIP: {
       skip 'Sandbox master does not have the sakila database', 1
          unless @{$dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
-
+   
       test_so(
          filters   => [qw(-d sakila)],
          result    => "",  # hack; uses unlike instead
@@ -260,49 +275,51 @@ SKIP: {
          test_name => "Iterator does not return views",
       );
    };
-
+   
    # ########################################################################
    # Issue 806: mk-table-sync --tables does not honor schema qualier
    # ########################################################################
    # Filter by db-qualified table.  There is t1 in both d1 and d2.
    # We want only d1.t1.
+   
    test_so(
       filters   => [qw(-t d1.t1)],
       result    => "d1.t1 ",
       test_name => '-t d1.t1 (issue 806)',
    );
-
+   
    test_so(
       filters   => [qw(-d d1 -t d1.t1)],
       result    => "d1.t1 ",
       test_name => '-d d1 -t d1.t1 (issue 806)',
    );
-
+   
    test_so(
       filters   => [qw(-d d2 -t d1.t1)],
       result    => "",
       test_name => '-d d2 -t d1.t1 (issue 806)',
    );
-
+   
    test_so(
       filters   => ['-t','d1.t1,d1.t3'],
       result    => "d1.t1 d1.t3 ",
       test_name => '-t d1.t1,d1.t3 (issue 806)',
    );
-
+   
+   my $want = $sandbox_version le '5.6' ? "d1.t2 d1.t3 d2.t1 " : 'd1.t2 d1.t3 d2.t1 sys.sys_config ';
    test_so(
       filters   => ['--ignore-databases', 'mysql,sakila,percona_test',
                     '--ignore-tables', 'd1.t1'],
-      result    => "d1.t2 d1.t3 d2.t1 ",
+      result    => $want,
       test_name => '--ignore-databases and --ignore-tables d1.t1 (issue 806)',
    );
-
+   
    test_so(
       filters   => ['-t','d1.t3,d2.t1'],
       result    => "d1.t3 d2.t1 ",
       test_name => '-t d1.t3,d2.t1 (issue 806)',
    );
-
+   
    # ########################################################################
    # Issue 1161: make_filter() with only --tables db.foo filter does not work
    # ########################################################################
@@ -311,26 +328,26 @@ SKIP: {
    # filter.
    $o = new OptionParser(description => 'SchemaIterator');
    $o->get_specs("$trunk/bin/pt-index-usage");
-
+   
    test_so(
       filters   => [qw(-t d1.t1)],
       result    => "d1.t1 ",
       test_name => '-t d1.t1 (issue 1161)',
    );
-
+   
    # ########################################################################
    # Issue 1193: Make SchemaIterator skip PERFORMANCE_SCHEMA
    # ########################################################################
    SKIP: {
       skip "Test for MySQL v5.5", 1 unless $sandbox_version ge '5.5';
-
+   
       test_so(
          result    => "", # hack, uses unlike instead
          unlike    => qr/^performance_schema/,
          test_name => "performance_schema automatically ignored",
       );
    }
-
+   
    # ########################################################################
    # Getting CREATE TALBE (ddl).
    # ########################################################################
@@ -339,7 +356,7 @@ SKIP: {
       result    => "$out/mysql-user-ddl-$sandbox_version.txt",
       test_name => "Get CREATE TABLE with dbh",
    );
-
+   
    $sb->wipe_clean($dbh);
 };
 
@@ -362,7 +379,7 @@ test_so(
 
 test_so(
    files     => ["$in/dump001.txt", "$in/dump001.txt"],
-   result    => "$out/dump001-twice.txt",
+   result    => "$out/multiple-files.txt",
    ddl       => 1,
    test_name => "Iterate schema in multiple files",
 );
@@ -370,7 +387,7 @@ test_so(
 test_so(
    files     => ["$in/dump001.txt"],
    filters   => [qw(--databases TEST2)],
-   result    => "test2.a ",
+   result    => "$out/all-dbs-dump001.txt",
    test_name => "Filter dump file by --databases",
 );
 
@@ -398,7 +415,9 @@ is(
 test_so(
    filters   => [qw(-d sakila)],
    result    => $sandbox_version ge '5.1'
-                ? "$out/resume-from-sakila-payment.txt"
+                ? ($sandbox_version ge '8.0'
+                   ? "$out/resume-from-sakila-payment-8.0.txt"
+                   : "$out/resume-from-sakila-payment.txt")
                 : "$out/resume-from-sakila-payment-5.0.txt",
    resume    => 'sakila.payment',
    test_name => "Resume"
@@ -408,7 +427,9 @@ test_so(
 test_so(
    filters   => [qw(-d sakila --ignore-tables sakila.payment)],
    result    => $sandbox_version ge '5.1'
-                ? "$out/resume-from-ignored-sakila-payment.txt"
+                ? ($sandbox_version ge '8.0'
+			   	   ? "$out/resume-from-ignored-sakila-payment-8.0.txt"
+			   	   : "$out/resume-from-ignored-sakila-payment.txt")
                 : "$out/resume-from-ignored-sakila-payment-5.0.txt",
    resume    => 'sakila.payment',
    test_name => "Resume from ignored table"
@@ -420,7 +441,7 @@ test_so(
 # ############################################################################
 
 test_so(
-   filters   => ['--ignore-databases', 'sakila,mysql'],
+   filters   => ['--ignore-databases', 'sakila,mysql,sys'],
    result    => "",
    lives_ok  => 1,
    resume    => 'sakila.payment',
@@ -430,7 +451,7 @@ test_so(
 $dbh->do("CREATE DATABASE zakila");
 $dbh->do("CREATE TABLE zakila.bug_911385 (i int)");
 test_so(
-   filters   => ['--ignore-databases', 'sakila,mysql'],
+   filters   => ['--ignore-databases', 'sakila,mysql,sys'],
    result    => "zakila.bug_911385 ",
    resume    => 'sakila.payment',
    test_name => "Bug 911385: ...and continues to the next db"
@@ -438,7 +459,7 @@ test_so(
 $dbh->do("DROP DATABASE zakila");
 
 test_so(
-   filters   => [qw(--ignore-tables-regex payment --ignore-databases mysql)],
+   filters   => ['--ignore-tables-regex', 'payment', '--ignore-databases', 'mysql,sys'],
    result    => "",
    lives_ok  => 1,
    resume    => 'sakila.payment',
@@ -446,7 +467,7 @@ test_so(
 );
 
 test_so(
-   filters   => [qw(--ignore-tables-regex payment --ignore-databases mysql)],
+   filters   => ['--ignore-tables-regex', 'payment', '--ignore-databases', 'mysql,sys'],
    result    => "sakila.rental sakila.staff sakila.store ",
    resume    => 'sakila.payment',
    test_name => "Bug 911385: ...and continues to the next table"
@@ -457,15 +478,18 @@ test_so(
 # https://bugs.launchpad.net/percona-toolkit/+bug/1047335
 # #############################################################################
 
-my $master3_port   = 2900;
-my $master_basedir = "/tmp/$master3_port";
-diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
-diag(`$trunk/sandbox/start-sandbox master $master3_port >/dev/null`);
-my $dbh3 = $sb->get_dbh_for("master3");
 
 SKIP: {
-   skip "No /dev/urandom, can't corrupt the database", 1
+   skip "No /dev/urandom, can't corrupt the database", 2
       unless -e q{/dev/urandom};
+
+   skip "Cannot test on MySQL > 5.7 since there are no .frm files", 2 if $sandbox_version gt '5.7';
+
+   my $master3_port   = 2900;
+   my $master_basedir = "/tmp/$master3_port";
+   diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
+   diag(`$trunk/sandbox/start-sandbox master $master3_port >/dev/null`);
+   my $dbh3 = $sb->get_dbh_for("master3");
 
    $sb->load_file('master3', "t/lib/samples/bug_1047335_crashed_table.sql");
 
@@ -485,6 +509,7 @@ SKIP: {
    my $frm    = glob("$db_dir/crashed_table.[Ff][Rr][Mm]");
 
    die "Cannot find .myi file for crashed_table" unless $myi && -f $myi;
+
 
    # Truncate the .myi file to corrupt it
    truncate($myi, 4096);
@@ -512,47 +537,47 @@ SKIP: {
       "->next() gives a warning if ->get_create_table dies from a strange error",
    );
 
+
+   $dbh3->do(q{DROP DATABASE IF EXISTS bug_1047335_2});
+   $dbh3->do(q{CREATE DATABASE bug_1047335_2});
+   
+   my $broken_frm = "$trunk/t/lib/samples/broken_tbl.frm";
+   my $db_dir_2   = "$master_basedir/data/bug_1047335_2";
+   
+   diag(`cp $broken_frm $db_dir_2 2>&1`);
+   
+   $dbh3->do("FLUSH TABLES");
+   
+   my $tmp_si2 = new SchemaIterator(
+            dbh          => $dbh3,
+            OptionParser => $o,
+            Quoter       => $q,
+            TableParser  => $tp,
+            # This is needed because the way we corrupt tables
+            # accidentally removes the database from SHOW DATABASES
+            db           => 'bug_1047335_2',
+         );
+   
+   $w = '';
+   {
+      local $SIG{__WARN__} = sub { $w .= shift };
+      1 while $tmp_si2->next();
+   }
+   
+   like(
+      $w,
+      qr/\QSkipping bug_1047335_2.broken_tbl because SHOW CREATE TABLE failed:/,
+      "...same as above, but using t/lib/samples/broken_tbl.frm",
+   );
+   
+   # This might fail. Doesn't matter -- stop_sandbox will just rm -rf the folder
+   eval {
+      $dbh3->do("DROP DATABASE IF EXISTS bug_1047335");
+      $dbh3->do("DROP DATABASE IF EXISTS bug_1047335_2");
+   };
+   
+   diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
 }
-
-$dbh3->do(q{DROP DATABASE IF EXISTS bug_1047335_2});
-$dbh3->do(q{CREATE DATABASE bug_1047335_2});
-
-my $broken_frm = "$trunk/t/lib/samples/broken_tbl.frm";
-my $db_dir_2   = "$master_basedir/data/bug_1047335_2";
-
-diag(`cp $broken_frm $db_dir_2 2>&1`);
-
-$dbh3->do("FLUSH TABLES");
-
-my $tmp_si2 = new SchemaIterator(
-         dbh          => $dbh3,
-         OptionParser => $o,
-         Quoter       => $q,
-         TableParser  => $tp,
-         # This is needed because the way we corrupt tables
-         # accidentally removes the database from SHOW DATABASES
-         db           => 'bug_1047335_2',
-      );
-
-my $w = '';
-{
-   local $SIG{__WARN__} = sub { $w .= shift };
-   1 while $tmp_si2->next();
-}
-
-like(
-   $w,
-   qr/\QSkipping bug_1047335_2.broken_tbl because SHOW CREATE TABLE failed:/,
-   "...same as above, but using t/lib/samples/broken_tbl.frm",
-);
-
-# This might fail. Doesn't matter -- stop_sandbox will just rm -rf the folder
-eval {
-   $dbh3->do("DROP DATABASE IF EXISTS bug_1047335");
-   $dbh3->do("DROP DATABASE IF EXISTS bug_1047335_2");
-};
-
-diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
 
 # #############################################################################
 # Bug 1136559: Deep recursion on subroutine "SchemaIterator::_iterate_dbh"
@@ -585,9 +610,24 @@ test_so(
    test_name => '--ignore-tables (bug 1304062)',
 );
 
+my $si = new SchemaIterator(
+   dbh          => $dbh,
+   OptionParser => $o,
+   Quoter       => $q,
+   TableParser  => $tp,
+);
+for my $db (qw( information_schema performance_schema lost+found percona_schema )) {
+   is(
+      $si->database_is_allowed($db),
+      0,
+      "database is allowed: $db",
+   );
+}
+
 # #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);  
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
+exit;

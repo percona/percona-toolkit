@@ -16,9 +16,9 @@
 --
 -- View: x$processlist
 --
--- A detailed non-blocking processlist view to replace 
+-- A detailed non-blocking processlist view to replace
 -- [INFORMATION_SCHEMA. | SHOW FULL] PROCESSLIST
--- 
+--
 -- Performs less locking than the legacy sources, whilst giving extra information.
 --
 -- mysql> select * from sys.x$processlist where conn_id is not null and command != 'daemon' and conn_id != connection_id()\G
@@ -120,7 +120,7 @@ SELECT pps.thread_id AS thd_id,
        mem.current_allocated AS current_memory,
        ewc.event_name AS last_wait,
        IF(ewc.end_event_id IS NULL AND ewc.event_name IS NOT NULL,
-          'Still Waiting', 
+          'Still Waiting',
           ewc.timer_wait) last_wait_latency,
        ewc.source,
        etc.timer_wait AS trx_latency,

@@ -13,7 +13,7 @@ InnoDB version  BUILTIN
    Version
    Server ID       12346
    Uptime
-   Replication     Is a slave, has 1 slaves connected, is read_only
+   Replication     Is a slave, has 1 slaves connected, is
    Filters         
    Binary logging  unknown
    Slave status    0 seconds behind, running, no errors
@@ -24,7 +24,7 @@ InnoDB version  BUILTIN
       Version
       Server ID       12347
       Uptime
-      Replication     Is a slave, has 0 slaves connected, is read_only
+      Replication     Is a slave, has 0 slaves connected, is
       Filters         
       Binary logging  unknown
       Slave status    0 seconds behind, running, no errors

@@ -165,7 +165,7 @@ sub parse_event {
                   $host ||= $ip;  # sometimes host is missing when using skip-name-resolve (LP #issue 1262456)
                   push @properties, 'user', $user, 'host', $host, 'ip', $ip;
                   # 5.6 has the thread id on the User@Host line
-                  if ( $thread_id ) {  
+                  if ( $thread_id ) {
                      push @properties, 'Thread_id', $thread_id;
                  }
                  ++$got_uh;
@@ -181,7 +181,7 @@ sub parse_event {
                   $host ||= $ip;  # sometimes host is missing when using skip-name-resolve (LP #issue 1262456)
                   push @properties, 'user', $user, 'host', $host, 'ip', $ip;
                   # 5.6 has the thread id on the User@Host line
-                  if ( $thread_id ) {       
+                  if ( $thread_id ) {
                      push @properties, 'Thread_id', $thread_id;
                  }
                ++$got_uh;

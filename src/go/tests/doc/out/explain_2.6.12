@@ -1,0 +1,1 @@
+{"ns":"test.coll","op":"query","query":{"query":{},"$explain":true}}

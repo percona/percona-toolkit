@@ -33,6 +33,17 @@ my $cmd = "$trunk/bin/pt-duplicate-key-checker -F $cnf -h 127.1";
 $sb->wipe_clean($dbh);
 $sb->create_dbs($dbh, ['issue_1192']);
 
+my $transform_int = undef;
+# In version 8.0 integer display width is deprecated and not shown in the outputs.
+# So we need to transform our samples.
+if ($sandbox_version ge '8.0') {
+   $transform_int = sub {
+      my $txt = slurp_file(shift);
+      $txt =~ s/int\(\d{1,2}\)/int/g;
+      print $txt;
+   };
+}
+
 # #############################################################################
 # Issue 1192: DROP/ADD leaves structure unchanged
 # #############################################################################
@@ -43,6 +54,7 @@ ok(
       "$cmd -d issue_1192 --no-summary",
       "t/pt-duplicate-key-checker/samples/issue_1192.txt",
       sed => ["'s/  (/ (/g'"],
+      transform_sample => $transform_int
    ),
    "Keys are sorted lc so left-prefix magic works (issue 1192)"
 );

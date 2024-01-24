@@ -184,11 +184,13 @@ SKIP: {
       "--trigger that doesn't match with non-matching --trigger-table"
    );
 
-   # Test NULL sizes.
-   $output = `$cmd sakila  --datasize NULL`,
-   is(
-      $output,
-"`sakila`.`actor_info`
+   SKIP: {
+      skip "MySQL 8.0+ returns 0, not NULL", 1 if ($sandbox_version gt '5.7');
+      # Test NULL sizes.
+      $output = `$cmd sakila  --datasize NULL`,
+      is(
+         $output,
+   "`sakila`.`actor_info`
 `sakila`.`customer_list`
 `sakila`.`film_list`
 `sakila`.`nicer_but_slower_film_list`
@@ -196,9 +198,10 @@ SKIP: {
 `sakila`.`sales_by_store`
 `sakila`.`staff_list`
 ",
-      '--datasize NULL',
-   );
-};
+         '--datasize NULL',
+      );
+   };
+}
 
 $sb->load_file('master', "t/pt-find/samples/pseudo-sakila.sql");
 
@@ -285,7 +288,7 @@ $dbh->do("DROP DATABASE sakila_test");
 $output = `$cmd mysql --pid /tmp/mk-script.pid 2>&1`;
 like(
    $output,
-   qr{PID file /tmp/mk-script.pid already exists},
+   qr{PID file /tmp/mk-script.pid exists},
    'Dies if PID file already exists (issue 391)'
 );
 `rm -rf /tmp/mk-script.pid`;

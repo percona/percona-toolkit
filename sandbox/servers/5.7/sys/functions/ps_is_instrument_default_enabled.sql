@@ -19,7 +19,7 @@ DELIMITER $$
 
 CREATE DEFINER='root'@'localhost' FUNCTION ps_is_instrument_default_enabled (
         in_instrument VARCHAR(128)
-    ) 
+    )
     RETURNS ENUM('YES', 'NO')
     COMMENT '
              Description
@@ -30,7 +30,7 @@ CREATE DEFINER='root'@'localhost' FUNCTION ps_is_instrument_default_enabled (
              Parameters
              -----------
 
-             in_instrument VARCHAR(128): 
+             in_instrument VARCHAR(128):
                The instrument to check.
 
              Returns
@@ -50,8 +50,8 @@ CREATE DEFINER='root'@'localhost' FUNCTION ps_is_instrument_default_enabled (
              1 row in set (0.00 sec)
             '
     SQL SECURITY INVOKER
-    DETERMINISTIC 
-    READS SQL DATA 
+    DETERMINISTIC
+    READS SQL DATA
 BEGIN
     DECLARE v_enabled ENUM('YES', 'NO');
 

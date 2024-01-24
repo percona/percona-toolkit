@@ -47,7 +47,7 @@ sub new {
    }
    my $self = {
       step       => 0.05,  # default
-      %args, 
+      %args,
       rate_ok    => undef,
       last_check => undef,
       stats      => {
@@ -106,7 +106,7 @@ sub throttle {
             ($args{stats}->{throttle_rate_max} || ()), $current_rate);
       }
       PTDEBUG && _d('Current rate:', $current_rate);
-   } 
+   }
 
    # rand() returns a fractional value between [0,1).  If skip_prob is
    # 0 then, then no queries will be skipped.  If its 1.0, then all queries

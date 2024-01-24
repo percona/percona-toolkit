@@ -41,7 +41,7 @@ my $output;
 sub load_data_infile {
    my ($file, $where) = @_;
    $master_dbh->do('truncate table percona.checksums');
-   $master_dbh->do("LOAD DATA INFILE '$trunk/t/pt-table-checksum/samples/checksum_results/$file' INTO TABLE percona.checksums");
+   $master_dbh->do("LOAD DATA LOCAL INFILE '$trunk/t/pt-table-checksum/samples/checksum_results/$file' INTO TABLE percona.checksums");
    if ( $where ) {
       PerconaTest::wait_for_table($slave1_dbh, 'percona.checksums', $where);
    }
@@ -98,9 +98,9 @@ $output = output(
    sub { pt_table_checksum::main(@args, qw(-d sakila --resume)) },
 );
 
-is(
+like(
    $output,
-   "",
+   qr/Starting checksum/,
    "Resume with nothing to do"
 );
 
@@ -140,7 +140,7 @@ is_deeply(
    "Resume finished sakila"
 );
 
-my (undef, $first_tbl) = split /\n/, $output;
+my (undef, undef, undef, $first_tbl) = split /\n/, $output;
 like(
    $first_tbl,
    qr/sakila.country$/,
@@ -263,17 +263,17 @@ is_deeply(
    "Resume finished sakila"
 );
 
-(undef, undef, $first_tbl) = split /\n/, $output;
+(undef, undef, undef, undef, $first_tbl) = split /\n/, $output;
 like(
    $first_tbl,
    qr/sakila.payment$/,
-   "Resumed from sakila.payment"
+   "Resuming from sakila.payment"
 );
 
 like(
    $output,
-   qr/^Resuming from sakila.payment chunk 7, timestamp 2011-10-15 13:00:28\n/,
-    "Resumed from sakila.payment chunk 7"  
+   qr/Resuming from sakila.payment chunk 7, timestamp 2011-10-15 13:00:28/s,
+    "Resuming from sakila.payment chunk 7"  
 );
 
 is(
@@ -342,7 +342,7 @@ is_deeply(
    "Resume finished sakila"
 );
 
-(undef, $first_tbl) = split /\n/, $output;
+(undef, undef, undef, $first_tbl) = split /\n/, $output;
 like(
    $first_tbl,
    qr/sakila.rental$/,
@@ -438,11 +438,13 @@ is_deeply(
 
 is(
    $output,
-"Resuming from sakila.rental chunk 11, timestamp 2011-10-15 13:00:49
-ERRORS DIFFS ROWS CHUNKS SKIPPED TABLE
-0 0 5044 8 0 sakila.rental
-0 0 2 1 0 sakila.staff
-0 0 2 1 0 sakila.store
+"Checking if all tables can be checksummed ...
+Starting checksum ...
+Resuming from sakila.rental chunk 11, timestamp 2011-10-15 13:00:49
+ERRORS DIFFS ROWS DIFF_ROWS CHUNKS SKIPPED TABLE
+0 0 5044 0 8 0 sakila.rental
+0 0 2 0 1 0 sakila.staff
+0 0 2 0 1 0 sakila.store
 ",
    "Resumed from last updated chunk"
 );
@@ -493,8 +495,10 @@ $output = output(
 
 is(
    $output,
-"ERRORS DIFFS ROWS CHUNKS SKIPPED TABLE
-0 0 26 8 0 test.t3
+"Checking if all tables can be checksummed ...
+Starting checksum ...
+ERRORS DIFFS ROWS DIFF_ROWS CHUNKS SKIPPED TABLE
+0 0 26 0 8 0 test.t3
 ",
    "Resumed from t3"
 );
@@ -564,7 +568,7 @@ $output = output(
 (undef, undef, $first_tbl) = split /\n/, $output;
 like(
    $first_tbl,
-   qr/test.t1$/,
+   qr/test.t1/,
    "Resumed from test.t1"
 );
 
@@ -622,7 +626,7 @@ $output = output(
 (undef, undef, $first_tbl) = split /\n/, $output;
 like(
    $first_tbl,
-   qr/test.t1$/,
+   qr/test.t1/,
    "Resumed from test.t1"
 );
 

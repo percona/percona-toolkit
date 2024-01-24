@@ -47,6 +47,33 @@ test_protocol_parser(
    ],
 );
 
+$protocol = new MySQLProtocolParser(port=>3307);
+test_protocol_parser(
+   parser   => $tcpdump,
+   protocol => $protocol,
+   file     => "$sample/tcpdump-1402776.txt",
+   result   => [
+    {
+      No_good_index_used => 'No',
+      No_index_used => 'No',
+      Query_time => '0.001271',
+      Rows_affected => 0,
+      Thread_id => 3826,
+      Warning_count => 0,
+      arg => 'administrator command: Connect',
+      bytes => 30,
+      cmd => 'Admin',
+      db => '',
+      host => '127.0.0.1',
+      ip => '127.0.0.1',
+      port => '38784',
+      pos_in_log => 2011,
+      ts => '161215 17:07:52.041966',
+      user => 'root'
+    }
+   ],
+);
+
 # A more complex session with a complete login/logout cycle.
 $protocol = new MySQLProtocolParser();
 test_protocol_parser(

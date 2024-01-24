@@ -20,7 +20,7 @@
 {
 # Package: AdvisorRules
 # AdvisorRules is a parent class for advisor rule modules like
-# <QueryAdivsorRules>.
+# <QueryAdvisorRules>.
 package AdvisorRules;
 
 use strict;

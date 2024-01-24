@@ -72,19 +72,19 @@ replace_pkg_in_tool() {
    if [ "$tool_lang" = "perl" ]; then
       echo "# $pkg package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/$pkg_file_base.pm
 #   t/lib/$pkg_file_base.t
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 {" >> $tmp_file
    else
       echo "# $pkg package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
+# with comments and its test file can be found in the GitHub repository at,
 #   lib/bash/$pkg.sh
 #   t/lib/bash/$pkg.sh
-# See https://launchpad.net/percona-toolkit for more information.
+# See https://github.com/percona/percona-toolkit for more information.
 # ###########################################################################
 " >> $tmp_file
    fi
@@ -99,9 +99,9 @@ echo "# ########################################################################
 # End $pkg package" >> $tmp_file
 
    tail -n +$pkg_end_line  $tool_file >> $tmp_file
- 
+
    mv $tmp_file $tool_file
-} 
+}
 
 update_tool_header() {
    local tool_file=$1

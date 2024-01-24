@@ -35,8 +35,8 @@ $Data::Dumper::Quotekeys = 0;
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 use constant {
    # 0-7 are the standard processlist columns.
-   ID      => 0,  
-   USER    => 1,  
+   ID      => 0,
+   USER    => 1,
    HOST    => 2,
    DB      => 3,
    COMMAND => 4,
@@ -69,6 +69,19 @@ sub new {
    foreach my $arg ( qw(MasterSlave) ) {
       die "I need a $arg argument" unless $args{$arg};
    }
+   # Convert the list of kill commands (Query, Execute, etc) to a hashref for
+   # faster check later
+   my $kill_busy_commands = {};
+   if ($args{kill_busy_commands}) {
+       for my $command (split /,/,$args{kill_busy_commands}) {
+           $command =~ s/^\s+|\s+$//g;
+           $kill_busy_commands->{$command} = 1;
+       }
+   } else {
+       $kill_busy_commands->{Query} = 1;
+   }
+   $args{kill_busy_commands} = $kill_busy_commands;
+
    my $self = {
       %args,
       polls       => 0,
@@ -252,7 +265,7 @@ sub parse_event {
                # the query has restarted.  I.e. the new start time is after
                # the previous start time.
                my $ms = $self->{MasterSlave};
-               
+
                my $is_repl_thread = $ms->is_replication_thread({
                                         Command => $curr->[COMMAND],
                                         User    => $curr->[USER],
@@ -289,25 +302,25 @@ sub parse_event {
             else {
                PTDEBUG && _d('Saving new query, state', $curr->[STATE]);
                push @new_cxn, [
-                  @{$curr}[0..7],           # proc info
-                  int($query_start),        # START
-                  $etime,                   # ETIME
-                  $time,                    # FSEEN
+                  @{$curr}[0..7],                  # proc info
+                  $query_start,                    # START
+                  $etime,                          # ETIME
+                  $time,                           # FSEEN
                   { ($curr->[STATE] || "") => 0 }, # PROFILE
                ];
             }
          }
-      } 
+      }
       else {
          PTDEBUG && _d('New cxn', $curr->[ID]);
          if ( $curr->[INFO] && defined $curr->[TIME] ) {
             # But only save the new cxn if it's executing.
             PTDEBUG && _d('Saving query of new cxn, state', $curr->[STATE]);
             push @new_cxn, [
-               @{$curr}[0..7],           # proc info
-               int($query_start),        # START
-               $etime,                   # ETIME
-               $time,                    # FSEEN
+               @{$curr}[0..7],                  # proc info
+               $query_start,                    # START
+               $etime,                          # ETIME
+               $time,                           # FSEEN
                { ($curr->[STATE] || "") => 0 }, # PROFILE
             ];
          }
@@ -327,7 +340,7 @@ sub parse_event {
             $self->make_event($prev, $time);
          delete $active_cxn->{$prev->[ID]};
       }
-      elsif (   ($curr_cxn->{$prev->[ID]}->[COMMAND] || "") eq 'Sleep' 
+      elsif (   ($curr_cxn->{$prev->[ID]}->[COMMAND] || "") eq 'Sleep'
              || !$curr_cxn->{$prev->[ID]}->[STATE]
              || !$curr_cxn->{$prev->[ID]}->[INFO] ) {
          PTDEBUG && _d('cxn', $prev->[ID], 'became idle');
@@ -471,6 +484,7 @@ sub find {
    my $ms  = $self->{MasterSlave};
 
    my @matches;
+   $self->{_reasons_for_matching} = undef;
    QUERY:
    foreach my $query ( @$proclist ) {
       PTDEBUG && _d('Checking query', Dumper($query));
@@ -484,7 +498,8 @@ sub find {
       }
 
       # Match special busy_time.
-      if ( $find_spec{busy_time} && ($query->{Command} || '') eq 'Query' ) {
+      #if ( $find_spec{busy_time} && ($query->{Command} || '') eq 'Query' ) {
+      if ( $find_spec{busy_time} && exists($self->{kill_busy_commands}->{$query->{Command} || ''}) ) {
          next QUERY unless defined($query->{Time});
          if ( $query->{Time} < $find_spec{busy_time} ) {
             PTDEBUG && _d("Query isn't running long enough");
@@ -514,7 +529,7 @@ sub find {
          push @{$self->{_reasons_for_matching}->{$query} ||= []}, $reason;
          $matched++;
       }
- 
+
       PROPERTY:
       foreach my $property ( qw(Id User Host db State Command Info) ) {
          my $filter = "_find_match_$property";

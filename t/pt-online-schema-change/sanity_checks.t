@@ -116,7 +116,7 @@ like(
    $output,
    qr/Failed to find a unique new table name/,
    "Doesn't try forever to find a new table name"
-);
+) or diag($output);
 
 # #############################################################################
 # Done.

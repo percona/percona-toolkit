@@ -23,8 +23,9 @@ my $dbh = $sb->get_dbh_for('master');
 
 if ( !$dbh ) {
    plan skip_all => "Cannot connect to sandbox master";
-}
-else {
+} elsif ($sandbox_version ge '8.0') {
+   plan skip_all => "There is no NO_AUTO_CREATE_USER in MySQL 8.0+";
+} else {
    plan tests => 4;
 }
 

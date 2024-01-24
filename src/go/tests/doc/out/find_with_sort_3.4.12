@@ -1,0 +1,1 @@
+{"ns":"test.coll","op":"query","query":{"find":"coll","filter":{"c":1},"sort":{"b":-1}}}

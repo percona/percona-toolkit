@@ -1,0 +1,1 @@
+{"ns":"test.coll","op":"query","query":{"query":{"c":1},"orderby":{"b":-1}}}

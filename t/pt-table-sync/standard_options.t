@@ -48,7 +48,7 @@ EOF
 $output = `$trunk/bin/pt-table-sync h=127.1,P=12346,u=msandbox,p=msandbox --sync-to-master --print --no-check-triggers --pid /tmp/mk-table-sync.pid 2>&1`;
 like(
    $output,
-   qr{PID file /tmp/mk-table-sync.pid already exists},
+   qr{PID file /tmp/mk-table-sync.pid exists},
    'Dies if PID file already exists (issue 391)'
 );
 

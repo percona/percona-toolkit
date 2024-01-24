@@ -15,11 +15,11 @@
 
 --
 -- View: innodb_buffer_stats_by_schema
--- 
--- Summarizes the output of the INFORMATION_SCHEMA.INNODB_BUFFER_PAGE 
+--
+-- Summarizes the output of the INFORMATION_SCHEMA.INNODB_BUFFER_PAGE
 -- table, aggregating by schema
 --
--- 
+--
 -- mysql> select * from innodb_buffer_stats_by_schema;
 -- +--------------------------+------------+------------+-------+--------------+-----------+-------------+
 -- | object_schema            | allocated  | data       | pages | pages_hashed | pages_old | rows_cached |
@@ -33,7 +33,7 @@
 CREATE OR REPLACE
   ALGORITHM = TEMPTABLE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW innodb_buffer_stats_by_schema (
   object_schema,
   allocated,
@@ -49,8 +49,8 @@ SELECT IF(LOCATE('.', ibp.table_name) = 0, 'InnoDB System', REPLACE(SUBSTRING_IN
        COUNT(ibp.page_number) AS pages,
        COUNT(IF(ibp.is_hashed = 'YES', 1, 0)) AS pages_hashed,
        COUNT(IF(ibp.is_old = 'YES', 1, 0)) AS pages_old,
-       ROUND(SUM(ibp.number_records)/COUNT(DISTINCT ibp.index_name)) AS rows_cached 
-  FROM information_schema.innodb_buffer_page ibp 
+       ROUND(SUM(ibp.number_records)/COUNT(DISTINCT ibp.index_name)) AS rows_cached
+  FROM information_schema.innodb_buffer_page ibp
  WHERE table_name IS NOT NULL
  GROUP BY object_schema
  ORDER BY SUM(IF(ibp.compressed_size = 0, 16384, compressed_size)) DESC;

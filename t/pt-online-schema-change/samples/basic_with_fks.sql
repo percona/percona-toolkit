@@ -32,25 +32,25 @@ CREATE TABLE `address` (
   CONSTRAINT `fk_address_city` FOREIGN KEY (`city_id`) REFERENCES `city` (`city_id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB;
 
-INSERT INTO pt_osc.country VALUES
-  (1, 'Canada', null),
-  (2, 'USA',    null),
-  (3, 'Mexico', null),
-  (4, 'France', null),
-  (5, 'Spain',  null);
+INSERT INTO pt_osc.country (`country_id`, `country`) VALUES
+  (1, 'Canada'),
+  (2, 'USA'),
+  (3, 'Mexico'),
+  (4, 'France'),
+  (5, 'Spain');
 
-INSERT INTO pt_osc.city VALUES
-  (1, 'Montréal', 1, null),
-  (2, 'New York', 2, null),
-  (3, 'Durango',  3, null),
-  (4, 'Paris',    4, null),
-  (5, 'Madrid',   5, null);
+INSERT INTO pt_osc.city (`city_id`, `city`, `country_id`) VALUES
+  (1, 'Montréal', 1),
+  (2, 'New York', 2),
+  (3, 'Durango',  3),
+  (4, 'Paris',    4),
+  (5, 'Madrid',   5);
 
-INSERT INTO pt_osc.address VALUES
-  (1, 'addy 1', 1, '10000', null),
-  (2, 'addy 2', 2, '20000', null),
-  (3, 'addy 3', 3, '30000', null),
-  (4, 'addy 4', 4, '40000', null),
-  (5, 'addy 5', 5, '50000', null);
+INSERT INTO pt_osc.address (`address_id`, `address`, `city_id`, `postal_code`) VALUES
+  (1, 'addy 1', 1, '10000'),
+  (2, 'addy 2', 2, '20000'),
+  (3, 'addy 3', 3, '30000'),
+  (4, 'addy 4', 4, '40000'),
+  (5, 'addy 5', 5, '50000');
 
 SET foreign_key_checks=1;

@@ -23,7 +23,7 @@ my $output;
 $output = `$trunk/bin/pt-show-grants -F /tmp/12345/my.sandbox.cnf --drop --pid /tmp/mk-script.pid 2>&1`;
 like(
    $output,
-   qr{PID file /tmp/mk-script.pid already exists},
+   qr{PID file /tmp/mk-script.pid exists},
    'Dies if PID file already exists (issue 391)'
 );
 `rm -rf /tmp/mk-script.pid`;

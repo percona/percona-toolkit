@@ -1,5 +1,5 @@
 
-# Query 1: 0 QPS, 0x concurrency, ID 0xB211BA2B8D6D065C at byte 3374 _____
+# Query 1: 0 QPS, 0x concurrency, ID 0x32F63B9B2CE5A9B1B211BA2B8D6D065C at byte 3374
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2007-12-18 11:48:27
@@ -41,24 +41,24 @@ SET    biz = '91848182522'\G
 # EXPLAIN /*!50100 PARTITIONS*/
 select     biz = '91848182522' from foo.bar \G
 
-# Query 2: 0 QPS, 0x concurrency, ID 0x7546F89214254F2F at byte 815 ______
+# Query 2: 0 QPS, 0x concurrency, ID 0xE51503DB1DA4B1FC0FFE94ABA6A2A9E8 at byte 1334
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
 # Time range: all events occurred at 2007-12-18 11:48:27
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
 # Count         12       1
-# Exec time      0   512us   512us   512us   512us   512us       0   512us
-# Lock time     25    77us    77us    77us    77us    77us       0    77us
+# Exec time      4    33ms    33ms    33ms    33ms    33ms       0    33ms
+# Lock time      9    28us    28us    28us    28us    28us       0    28us
 # Rows sent      0       0       0       0       0       0       0       0
 # Rows examine   0       0       0       0       0       0       0       0
 # Merge passes   0       0       0       0       0       0       0       0
-# Query size    13      66      66      66      66      66       0      66
+# Query size    20     103     103     103     103     103       0     103
 # InnoDB:
 # IO r bytes     0       0       0       0       0       0       0       0
 # IO r ops       0       0       0       0       0       0       0       0
 # IO r wait      0       0       0       0       0       0       0       0
-# pages distin  22      24      24      24      24      24       0      24
+# pages distin  10      11      11      11      11      11       0      11
 # queue wait     0       0       0       0       0       0       0       0
 # rec lock wai   0       0       0       0       0       0       0       0
 # String:
@@ -68,14 +68,18 @@ select     biz = '91848182522' from foo.bar \G
 # Query_time distribution
 #   1us
 #  10us
-# 100us  ################################################################
+# 100us
 #   1ms
-#  10ms
+#  10ms  ################################################################
 # 100ms
 #    1s
 #  10s+
 # Tables
-#    SHOW TABLE STATUS FROM `db3` LIKE 'vendor11gonzo'\G
-#    SHOW CREATE TABLE `db3`.`vendor11gonzo`\G
-INSERT INTO db3.vendor11gonzo (makef, bizzle)
-VALUES ('', 'Exact')\G
+#    SHOW TABLE STATUS FROM `db4` LIKE 'vab3concept1upload'\G
+#    SHOW CREATE TABLE `db4`.`vab3concept1upload`\G
+UPDATE db4.vab3concept1upload
+SET    vab3concept1id = '91848182522'
+WHERE  vab3concept1upload='6994465'\G
+# Converted for EXPLAIN
+# EXPLAIN /*!50100 PARTITIONS*/
+select     vab3concept1id = '91848182522' from db4.vab3concept1upload where   vab3concept1upload='6994465'\G

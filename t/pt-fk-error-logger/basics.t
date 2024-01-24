@@ -193,7 +193,7 @@ $output = `$trunk/bin/pt-fk-error-logger h=127.1,P=12345,u=msandbox,p=msandbox -
 
 like(
    $output,
-   qr{PID file $pid_file already exists},
+   qr{PID file $pid_file exists},
    'Dies if PID file already exists (--pid without --daemonize) (issue 391)'
 );
 

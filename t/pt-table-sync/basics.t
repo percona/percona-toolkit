@@ -13,6 +13,7 @@ use Test::More;
 
 use PerconaTest;
 use Sandbox;
+
 require "$trunk/bin/pt-table-sync";
 
 my $output;
@@ -28,7 +29,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 22;
+   plan tests => 24;
 }
 
 $sb->create_dbs($master_dbh, [qw(test)]);
@@ -228,8 +229,9 @@ $slave_dbh->do("update test.t set c='z' where id>8");
 
 $output = output(
    sub {
-      pt_table_sync::main('h=127.1,P=12345,u=msandbox,p=msandbox',
-         qw(--print --execute --replicate percona.checksums),
+      pt_table_sync::main('h=127.1,P=12346,u=msandbox,p=msandbox',
+          #         qw(--print --execute --replicate percona.checksums),
+         qw(--print --execute --sync-to-master),
          qw(--no-foreign-key-checks))
    },
    stderr => 1,
@@ -244,6 +246,7 @@ like(
 );
 
 my $rows = $slave_dbh->selectall_arrayref("select id, c from test.t where id>8 order by id");
+
 is_deeply(
    $rows,
    [

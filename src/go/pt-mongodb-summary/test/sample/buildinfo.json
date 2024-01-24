@@ -1,0 +1,10 @@
+{
+    "Version": "3.0.11",
+    "VersionArray": [ 3, 0, 11, 0 ],
+    "GitVersion": "48f8b49dc30cc2485c6c1f3db31b723258fcbf39",
+    "SysInfo": "Linux build2.ny.cbi.10gen.cc 2.6.32-431.3.1.el6.x86_64 #1 SMP Fri Jan 3 21:39:27 UTC 2014 x86_64 BOOST_LIB_VERSION=1_49",
+    "Bits": 64,
+    "Debug": false,
+    "MaxObjectSize": 16777216
+}
+

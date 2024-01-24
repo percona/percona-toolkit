@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# pt-stalk --no-stalk --iterations=2 --sleep=30 --host=127.0.0.1 --dest=/home/karl/data_collection_2018-04-17_15_41_29 --port=5721 --user=msandbox --password=********
+#  arg[0]     [1]           [2]         [3]           [4]                           [5]                                    [6]         [7]              [8]
+
+preffix="--dest="
+dest_dir=${5#$prefix}; #Remove prefix
+
+echo "a dummy output for pt-stalk" > ${dest_dir}/dummy.log

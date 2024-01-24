@@ -1,0 +1,1 @@
+{"ns":"test.$cmd","op":"command","command":{"mapreduce":"coll","map":"","reduce":"","query":{"a":{"$gte":0}},"out":{"inline":1}}}

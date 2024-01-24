@@ -39,7 +39,7 @@
 CREATE OR REPLACE
   ALGORITHM = MERGE
   DEFINER = 'root'@'localhost'
-  SQL SECURITY INVOKER 
+  SQL SECURITY INVOKER
 VIEW x$io_global_by_wait_by_bytes (
   event_name,
   total,
@@ -69,6 +69,6 @@ SELECT SUBSTRING_INDEX(event_name, '/', -2) AS event_name,
        IFNULL(sum_number_of_bytes_write / NULLIF(count_write, 0), 0) AS avg_written,
        sum_number_of_bytes_write + sum_number_of_bytes_read AS total_requested
   FROM performance_schema.file_summary_by_event_name
- WHERE event_name LIKE 'wait/io/file/%' 
+ WHERE event_name LIKE 'wait/io/file/%'
    AND count_star > 0
  ORDER BY sum_number_of_bytes_write + sum_number_of_bytes_read DESC;

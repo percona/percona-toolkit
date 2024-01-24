@@ -1,0 +1,228 @@
+# Instances ##################################################
+  Port  Data Directory             Nice OOM Socket
+  ===== ========================== ==== === ======
+  12345 /tmp/12345/data            0    0   /tmp/12345/mysql_sandbox12345.sock
+# Report On Port 12345 #######################################
+                     User | msandbox@%
+                     Time | 2012-03-27 16:33:46 (BST)
+                 Hostname | vagrant-debian-squeeze
+                  Version | 5.1.49-log MySQL Community Server (GPL)
+                 Built On | pc-linux-gnu i686
+                  Started | 2012-03-27 16:15 (up 0+00:18:12)
+                Databases | 2
+                  Datadir | /tmp/12345/data/
+                Processes | 1 connected, 1 running
+              Replication | Is not a slave, has 0 slaves connected
+                  Pidfile | /tmp/12345/data/mysql_sandbox12345.pid (exists)
+# Processlist ################################################
+
+  Command                        COUNT(*) Working SUM(Time) MAX(Time)
+  ------------------------------ -------- ------- --------- ---------
+  Query                                 1       1         0         0
+
+  User                           COUNT(*) Working SUM(Time) MAX(Time)
+  ------------------------------ -------- ------- --------- ---------
+  msandbox                              1       1         0         0
+
+  Host                           COUNT(*) Working SUM(Time) MAX(Time)
+  ------------------------------ -------- ------- --------- ---------
+  localhost                             1       1         0         0
+
+  db                             COUNT(*) Working SUM(Time) MAX(Time)
+  ------------------------------ -------- ------- --------- ---------
+  NULL                                  1       1         0         0
+
+  State                          COUNT(*) Working SUM(Time) MAX(Time)
+  ------------------------------ -------- ------- --------- ---------
+  NULL                                  1       1         0         0
+
+# Status Counters (Wait 10 Seconds) ##########################
+Variable                                Per day  Per second     10 secs
+Bytes_received                           250000           2         200
+Bytes_sent                              3500000          40        1500
+Com_admin_commands                           80                        
+Com_select                                 2250                       1
+Com_show_binlogs                             80                        
+Com_show_databases                           80                        
+Com_show_engine_status                      150                        
+Com_show_master_status                       80                        
+Com_show_plugins                             80                        
+Com_show_processlist                         80                        
+Com_show_slave_status                        80                        
+Com_show_status                             225                        
+Com_show_variables                          150                        
+Connections                                1750                       1
+Created_tmp_disk_tables                     800                       1
+Created_tmp_files                           400                        
+Created_tmp_tables                         3000                       3
+Flush_commands                               80                        
+Handler_read_first                          225                        
+Handler_read_rnd_next                     90000           1          30
+Handler_write                             90000           1          30
+Innodb_buffer_pool_pages_flushed          15000                        
+Innodb_buffer_pool_read_requests         100000           1            
+Innodb_buffer_pool_write_requests         90000           1            
+Innodb_data_fsyncs                         1250                        
+Innodb_data_writes                         3000                        
+Innodb_data_written                   250000000        3000            
+Innodb_dblwr_pages_written                 1250                        
+Innodb_dblwr_writes                          80                        
+Innodb_log_write_requests                  6000                        
+Innodb_log_writes                           300                        
+Innodb_os_log_fsyncs                        800                        
+Innodb_os_log_written                   3000000          35            
+Innodb_pages_created                      15000                        
+Innodb_pages_written                      15000                        
+Open_table_definitions                     1750                        
+Opened_files                              10000                       4
+Opened_table_definitions                   1750                        
+Opened_tables                              2250                        
+Queries                                    5000                       4
+Questions                                  5000                       4
+Select_scan                                 700                        
+Table_locks_immediate                      1500                        
+Threads_created                            1750                       1
+Uptime                                    90000           1           1
+# Table cache ################################################
+                     Size | 64
+                    Usage | 35%
+# Key Percona Server features ################################
+      Table & Index Stats | Not Supported
+     Multiple I/O Threads | Not Supported
+     Corruption Resilient | Not Supported
+      Durable Replication | Not Supported
+     Import InnoDB Tables | Not Supported
+     Fast Server Restarts | Not Supported
+         Enhanced Logging | Not Supported
+     Replica Perf Logging | Not Supported
+      Response Time Hist. | Not Supported
+          Smooth Flushing | Not Supported
+      HandlerSocket NoSQL | Not Supported
+           Fast Hash UDFs | Unknown
+# Percona XtraDB Cluster #####################################
+# Plugins ####################################################
+       InnoDB compression | Not found
+# Query cache ################################################
+         query_cache_type | ON
+                     Size | 0.0
+                    Usage | 0%
+         HitToInsertRatio | 0%
+# Schema #####################################################
+Specify --databases or --all-databases to dump and summarize schemas
+# Noteworthy Technologies ####################################
+                      SSL | No
+     Explicit LOCK TABLES | No
+           Delayed Insert | No
+          XA Transactions | No
+              NDB Cluster | No
+      Prepared Statements | No
+ Prepared statement count | 0
+# InnoDB #####################################################
+                  Version | default
+         Buffer Pool Size | 16.0M
+         Buffer Pool Fill | 15%
+        Buffer Pool Dirty | 0%
+           File Per Table | OFF
+                Page Size | 16k
+            Log File Size | 2 * 5.0M = 10.0M
+          Log Buffer Size | 1M
+             Flush Method | 
+      Flush Log At Commit | 1
+               XA Support | ON
+                Checksums | ON
+              Doublewrite | ON
+          R/W I/O Threads |  
+             I/O Capacity | 
+       Thread Concurrency | 8
+      Concurrency Tickets | 500
+       Commit Concurrency | 0
+      Txn Isolation Level | REPEATABLE-READ
+        Adaptive Flushing | 
+      Adaptive Checkpoint | 
+           Checkpoint Age | 0
+             InnoDB Queue | 0 queries inside InnoDB, 0 queries in queue
+       Oldest Transaction | 0 Seconds
+         History List Len | 0
+               Read Views | 1
+         Undo Log Entries | 0 transactions, 0 total undo, 0 max undo
+        Pending I/O Reads | 0 buf pool reads, 0 normal AIO, 0 ibuf AIO, 0 preads
+       Pending I/O Writes | 0 buf pool (0 LRU, 0 flush list, 0 page); 0 AIO, 0 sync, 0 log IO (0 log, 0 chkp); 0 pwrites
+      Pending I/O Flushes | 0 buf pool, 0 log
+       Transaction States | 1xnot started
+# MyISAM #####################################################
+                Key Cache | 16.0M
+                 Pct Used | 10%
+                Unflushed | 0%
+# Security ###################################################
+                    Users | 2 users, 0 anon, 0 w/o pw, 0 old pw
+            Old Passwords | OFF
+# Encryption #################################################
+Keyring plugins:
+'+--------------+---------------+
+| PLUGIN_NAME  | PLUGIN_STATUS |
++--------------+---------------+
+| keyring_file | ACTIVE        |
++--------------+---------------+'
+# Binary Logging #############################################
+                  Binlogs | 1
+               Zero-Sized | 0
+               Total Size | 106.0
+            binlog_format | STATEMENT
+         expire_logs_days | 0
+              sync_binlog | 0
+                server_id | 12345
+             binlog_do_db | 
+         binlog_ignore_db | 
+# Noteworthy Variables #######################################
+     Auto-Inc Incr/Offset | 1/1
+   default_storage_engine | 
+               flush_time | 0
+             init_connect | 
+                init_file | 
+                 sql_mode | 
+         join_buffer_size | 128k
+         sort_buffer_size | 2M
+         read_buffer_size | 128k
+     read_rnd_buffer_size | 256k
+       bulk_insert_buffer | 0.00
+      max_heap_table_size | 16M
+           tmp_table_size | 16M
+       max_allowed_packet | 1M
+             thread_stack | 192k
+                      log | OFF
+                log_error | /tmp/12345/data/mysqld.log
+             log_warnings | 1
+         log_slow_queries | OFF
+log_queries_not_using_indexes | OFF
+        log_slave_updates | ON
+# Configuration File #########################################
+              Config File | /tmp/12345/my.sandbox.cnf
+
+[client]
+user                                = msandbox
+password                            = msandbox
+port                                = 12345
+socket                              = /tmp/12345/mysql_sandbox12345.sock
+
+[mysqld]
+port                                = 12345
+socket                              = /tmp/12345/mysql_sandbox12345.sock
+pid-file                            = /tmp/12345/data/mysql_sandbox12345.pid
+basedir                             = /home/hugmeir/mysql5/mysqlbrew/mysqls/Percona-Server-5.1/
+datadir                             = /tmp/12345/data
+key_buffer_size                     = 16M
+innodb_buffer_pool_size             = 16M
+innodb_data_home_dir                = /tmp/12345/data
+innodb_log_group_home_dir           = /tmp/12345/data
+innodb_data_file_path               = ibdata1:10M:autoextend
+innodb_log_file_size                = 5M
+log-bin                             = mysql-bin
+relay_log                           = mysql-relay-bin
+log_slave_updates
+server-id                           = 12345
+report-host                         = 127.0.0.1
+report-port                         = 12345
+log-error                           = mysqld.log
+innodb_lock_wait_timeout            = 3
+# Memory management library ##################################
+# The End ####################################################

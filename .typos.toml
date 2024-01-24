@@ -1,0 +1,66 @@
+[files]
+extend-exclude = [
+    ".git/",
+    "sandbox/sakila.sql",
+    "sandbox/sakila-db/",
+    "sandbox/servers/",
+    "src/go/pt-galera-log-explainer/tests/",
+    "src/go/pt-secure-collect/testdata/",
+    "util/NaturalDocs/",
+    "util/pod2rst-fixed.packed",
+    # For now
+    "t/",
+    "**/*_test.go",
+]
+ignore-hidden = false
+
+[default]
+extend-ignore-re = [
+    "Info\\.nd",
+    "State\\.nd",
+    "Table\\.nd",
+    "perl -ane",
+    "begin nd\\b",
+    "end nd\\b",
+    "\\$nin",
+    "set -ue",
+    "\\[R\\]esponding",
+    "ne 'toi'",
+    "FDEA8D2993C9CAF3",
+    "\\$parms",
+    "Claus Jeppesen",
+]
+
+[default.extend-identifiers]
+"Bootstraping" = "Bootstraping" # typo in Galera lib
+"Continuent" = "Continuent"
+"END_ND_SUMMARY" = "END_ND_SUMMARY"
+"END_ND_TOOLTIPS" = "END_ND_TOOLTIPS"
+"EXPLAINed" = "EXPLAINed"
+"FH_ND_FILE" = "FH_ND_FILE"
+"INSERTs" = "INSERTs"
+"IST" = "IST"
+"istError" = "istError"
+"JOINed" = "JOINed"
+"MERCHANTIBILITY" = "MERCHANTIBILITY"
+"ND" = "ND"
+"NDDoResize" = "NDDoResize"
+"NDMarkup" = "NDMarkup"
+"NDMarkupToHTML" = "NDMarkupToHTML"
+"NDOnLoad" = "NDOnLoad"
+"NDOnResize" = "NDOnResize"
+"NULLable" = "NULLable"
+"O_WRONLY" = "O_WRONLY"
+"receving" = "receving" # typo in Galera lib
+"RegexFailedToPrepareIST" = "RegexFailedToPrepareIST"
+"RegexISTFailed" = "RegexISTFailed"
+"RegexISTReceived" = "RegexISTReceived"
+"RegexISTReceiver" = "RegexISTReceiver"
+"RegexISTSender" = "RegexISTSender"
+"RegexXtrabackupISTReceived" = "RegexXtrabackupISTReceived"
+"START_ND_SUMMARY" = "START_ND_SUMMARY"
+"START_ND_TOOLTIPS" = "START_ND_TOOLTIPS"
+"TOI" = "TOI"
+"UNIONed" = "UNIONed"
+"UNIONs" = "UNIONs"
+"xtrabackup_ist" = "xtrabackup_ist"
