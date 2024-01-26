@@ -95,7 +95,7 @@ func prepareGrepArgument(regexes types.RegexMap) string {
 		// I'm not adding pxcoperator map the same way others are used, because they do not have the same formats and same place
 		// it needs to be put on the front so that it's not 'merged' with the '{"log":"' json prefix
 		// this is to keep things as close as '^' as possible to keep doing prefix searches
-		grepRegex += "((" + strings.Join(regex.PXCOperatorMap.Compile(), "|") + ")|^{\"log\":\""
+		grepRegex += "((" + strings.Join(regex.PXCOperatorMap.Compile(), "|") + ")|^" + types.OperatorLogPrefix
 		regexes.Merge(regex.PXCOperatorMap)
 	}
 	if CLI.Since != nil {

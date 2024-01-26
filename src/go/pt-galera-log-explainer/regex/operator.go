@@ -50,7 +50,7 @@ var PXCOperatorMap = types.RegexMap{
 	"RegexGcacheScan": &types.LogRegex{
 		// those "operators" regexes do not have the log prefix added implicitly. It's not strictly needed, but
 		// it will help to avoid catching random piece of log out of order
-		Regex: regexp.MustCompile(k8sprefix + ".*GCache::RingBuffer initial scan"),
+		Regex: regexp.MustCompile(types.OperatorLogPrefix + ".*GCache::RingBuffer initial scan"),
 		Handler: func(submatches map[string]string, logCtx types.LogCtx, log string, date time.Time) (types.LogCtx, types.LogDisplayer) {
 			return logCtx, types.SimpleDisplayer("recovering gcache")
 		},

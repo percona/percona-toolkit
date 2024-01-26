@@ -60,13 +60,29 @@ func main() {
 	)
 
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	zerolog.SetGlobalLevel(zerolog.WarnLevel)
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, NoColor: CLI.NoColor, FormatTimestamp: func(_ interface{}) string { return "" }})
 	if CLI.Verbosity == types.Debug {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
 	utils.SkipColor = CLI.NoColor
+
+	var paths []string
+	switch kongcli.Command() {
+	case "list <paths>":
+		paths = CLI.List.Paths
+	case "ctx <paths>":
+		paths = CLI.Ctx.Paths
+	case "conflicts <paths>":
+		paths = CLI.Conflicts.Paths
+	}
+
+	if !CLI.PxcOperator && areOperatorFiles(paths) {
+		CLI.PxcOperator = true
+		log.Info().Msg("Detected logs coming from Percona XtraDB Cluster Operator, enabling --pxc-operator")
+	}
+
 	translate.AssumeIPStable = !CLI.PxcOperator
 
 	err := kongcli.Run()

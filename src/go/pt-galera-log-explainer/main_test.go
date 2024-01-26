@@ -105,6 +105,12 @@ func TestMain(t *testing.T) {
 		},
 
 		{
+			name: "operator_auto_ambiguous_ips_list_all_no_color",
+			cmd:  []string{"list", "--all", "--no-color"},
+			path: "tests/logs/operator_ambiguous_ips/*",
+		},
+
+		{
 			name: "conflict_conflicts",
 			cmd:  []string{"conflicts"},
 			path: "tests/logs/conflict/*",
