@@ -200,12 +200,14 @@ collect_mysql_data_one() {
    # Next, start oprofile gathering data during the whole rest of this process.
    # The --init should be a no-op if it has already been init-ed.
    if [ "$CMD_OPCONTROL" -a "$OPT_COLLECT_OPROFILE" ]; then
-      if [ $(echo $CMD_OPCONTROL | grep -c opcontrol) -gt 0 ]; then 
-	      # use legacy opcontrol
+      if [ $(echo $CMD_OPCONTROL | grep -cv operf) -gt 0 ]; then 
+	      # use legacy or custom opcontrol
 	      if $CMD_OPCONTROL --init; then
 	         $CMD_OPCONTROL --start --no-vmlinux
+	         have_oprofile="yes"
 	      fi
       else
+	      have_oprofile="yes"
          local tmpfile="$PT_TMPDIR/oprofile"
          mkdir "$d/pt_collect_$p"
          # use operf, may fail under VirtualBox or old processor models (see http://oprofile.sourceforge.net/doc/perf_events.html)
@@ -214,7 +216,6 @@ collect_mysql_data_one() {
          OPERF_PID=$(grep -Eo "kill -SIGINT [[:digit:]]+" "$tmpfile" | grep -Eo "[[:digit:]]+")
          rm "$tmpfile"
       fi
-	   have_oprofile="yes"
    elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" -a "$mysqld_pid" ]; then
       # Don't run oprofile and strace at the same time.
       $CMD_STRACE -T -s 0 -f -p $mysqld_pid -o "$d/$p-strace" &
@@ -354,7 +355,8 @@ collect_mysql_data_two() {
    if [ "$have_oprofile" ]; then
       local session="--session-dir=$d/pt_collect_$p"
 
-      if [ $(echo $CMD_OPCONTROL | grep -c opcontrol) -gt 0 ]; then
+      if [ $(echo $CMD_OPCONTROL | grep -cv operf) -gt 0 ]; then
+	      # use legacy or custom opcontrol
          $CMD_OPCONTROL --stop
          $CMD_OPCONTROL --dump
 

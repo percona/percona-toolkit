@@ -932,12 +932,14 @@ collect_mysql_data_one() {
    fi
 
    if [ "$CMD_OPCONTROL" -a "$OPT_COLLECT_OPROFILE" ]; then
-      if [ $(echo $CMD_OPCONTROL | grep -c opcontrol) -gt 0 ]; then 
-	      # use legacy opcontrol
+      if [ $(echo $CMD_OPCONTROL | grep -cv operf) -gt 0 ]; then 
+	      # use legacy or custom opcontrol
 	      if $CMD_OPCONTROL --init; then
 	         $CMD_OPCONTROL --start --no-vmlinux
+	         have_oprofile="yes"
 	      fi
       else
+	      have_oprofile="yes"
          local tmpfile="$PT_TMPDIR/oprofile"
          mkdir "$d/pt_collect_$p"
          $CMD_OPCONTROL -p "$mysqld_pid" -d "$d/pt_collect_$p" > "$tmpfile" &
@@ -945,7 +947,6 @@ collect_mysql_data_one() {
          OPERF_PID=$(grep -Eo "kill -SIGINT [[:digit:]]+" "$tmpfile" | grep -Eo "[[:digit:]]+")
          rm "$tmpfile"
       fi
-	   have_oprofile="yes"
    elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" -a "$mysqld_pid" ]; then
       $CMD_STRACE -T -s 0 -f -p $mysqld_pid -o "$d/$p-strace" &
       local strace_pid=$!
@@ -1068,7 +1069,8 @@ collect_mysql_data_two() {
    if [ "$have_oprofile" ]; then
       local session="--session-dir=$d/pt_collect_$p"
 
-      if [ $(echo $CMD_OPCONTROL | grep -c opcontrol) -gt 0 ]; then
+      if [ $(echo $CMD_OPCONTROL | grep -cv operf) -gt 0 ]; then
+	      # use legacy or custom opcontrol
          $CMD_OPCONTROL --stop
          $CMD_OPCONTROL --dump
 
