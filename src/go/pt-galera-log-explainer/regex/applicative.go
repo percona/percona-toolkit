@@ -93,14 +93,15 @@ var ApplicativeMap = types.RegexMap{
 			return logCtx, func(logCtx types.LogCtx) string {
 
 				for _, localname := range logCtx.OwnNames {
-					vote, ok := latestConflict.VotePerNode[localname]
-					// don't print other nodes vote, their should be in their own column
-					// else it just takes too much place without adding much usability
-					if node != localname || !ok {
+					if node != localname {
+						// don't print other nodes vote, their should be in their own column
+						// else it just takes too much place without adding much usability
 						continue
 					}
 
-					return voteResponse(vote, *latestConflict)
+					if vote, ok := latestConflict.VotePerNode[localname]; ok {
+						return voteResponse(vote, *latestConflict)
+					}
 				}
 
 				return ""
