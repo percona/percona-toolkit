@@ -956,6 +956,39 @@ like(
    "numastat collection has data"
 );
 
+# ###########################################################################
+# Test if option operf collection works
+# ###########################################################################
+
+# ./bin/pt-stalk --no-stalk --iterations=1 --sleep=1 --dest=tmp/pt-stalk --collect-oprofile -- --user=msandbox --password=msandbox --port=12345 --host=127.0.0.1  ^C
+SKIP: {
+   my $operf = `which operf`;
+   chomp $operf;
+   skip "--collect-oprofile tests require operf" unless -x "$operf";
+
+   cleanup();
+
+   $retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 10 --sleep 2 --dest $dest --pid $pid_file --iterations 1 --collect-oprofile -- --defaults-file=$cnf >$log_file 2>&1");
+
+   PerconaTest::wait_until(sub { !-f $pid_file });
+
+   $output = `ls $dest`;
+
+   like(
+      $output,
+      qr/opreport/,
+      "operf data collected"
+   ) or diag($output);
+
+   $output = `cat $dest/*-opreport`;
+
+   like(
+      $output,
+      qr/(mysqld)/,
+      "operf collection has data"
+   );
+}
+
 # #############################################################################
 # Done.
 # #############################################################################
