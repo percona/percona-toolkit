@@ -2,7 +2,11 @@ Changelog for Percona Toolkit
 
 v3.5.8 released
 
-* Improvement PR-734:  PT-2100 - fixed Wide character error (Thanks to Satoshi MITANI for the contribution)
+* Feature PR-754: Port improved pt-pmp (Thanks to  Alexey Stroganov for the contribution)
+* Improvement PT-2100: fixed Wide character error (Thanks to Satoshi MITANI for the contribution)
+* Improvement PT-2307: Include last inactive check messages on pt-galera-log-explainer
+* Improvement PR-160:  added support for operf if present, and if CMD_OPCONTROL is not set (Thanks to Fernando Ipar for the contribution)
+* Fixed bug PT-2298: pt-galera-log-explainer: superfluous lines on conflicts
 
 v3.5.7 released 2023-12-23
 
