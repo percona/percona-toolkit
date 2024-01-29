@@ -1,0 +1,14 @@
+     12 __futex_abstimed_wait_cancelable64(libc.so.6),::??,::??,::??,::??,??
+      9 syscall(libc.so.6),io_getevents(libaio.so.1),??
+      6 __futex_abstimed_wait_cancelable64(libc.so.6),::??,::??,::??,??
+      5 __futex_abstimed_wait_cancelable64(libc.so.6),??
+      1 syscall(libc.so.6),io_getevents(libaio.so.1),::??,??
+      1 sigtimedwait(libc.so.6),::??,??
+      1 poll(libc.so.6),server_operational_state,::??,::??,::??,::??,Mysqld_socket_listener::listen_for_connection_event,::??,::??,::??,::??,::??,::??,::??,::??,Per_thread_connection_handler::add_connection
+      1 __futex_abstimed_wait_cancelable64(libc.so.6),vtable,::??,COND_compress_gtid_table,??
+      1 __futex_abstimed_wait_cancelable64(libc.so.6),::??,::??,Per_thread_connection_handler::COND_thread_cache,??
+      1 __futex_abstimed_wait_cancelable64(libc.so.6),::??,::??,mysql_bin_log,::??,??
+      1 fsync(libc.so.6),??
+      1 epoll_wait(libc.so.6),::??,::??,::??,::??,??
+      1 clock_nanosleep(libc.so.6),::??,::??,::??,::??,::??,::??,srv_monitor_file_name,::??,::??,::??,::??,::??,::??,srv_monitor_file_name,::??,nanosleep(libc.so.6),::??,buf_lru_manager_thread,std::thread::_State_impl::_M_run,libstdc++::??(libstdc++.so.6),??
+      1 clock_nanosleep(libc.so.6),??

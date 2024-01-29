@@ -567,91 +567,124 @@ set +u
 # to pass the maxlen argument into this function to make maxlen testable.
 aggregate_stacktrace() {
    local maxlen=$1;
+   local tids=$2;
+
+   if [ "$tids" == "*" ]; then tids="" ; fi
+
    shift
-   awk "
+   shift
+   awk -v tids=$tids -v dumper=$OPT_DUMPER "
       BEGIN {
          s = \"\";
+         n_tid=split(tids,tids_array,\",\");
       }
-      /^Thread/ {
-         if ( s != \"\" ) {
+      /^Thread|^TID/ {
+         if ( s != \"\" && tid_found ~ 1 ) {
             print s;
          }
          s = \"\";
          c = 0;
+         
+         tid_found=1;
+         if (n_tid>0)
+         {
+           tid_found=0;
+           tid=\$NF;
+           gsub(/)*:/,\"\",tid);
+           for (i=1;i<=n_tid;i++) { if ( tid ~ tids_array[i]){tid_found=1;} }
+         }
       }
-      /^\#/ {
-         if ( \$2 ~ /0x/ ) {
-            if ( \$4 ~/void|const/ ) {
-               targ = \$5;
+      /^#/ {
+         if ( ${maxlen:-0} == 0 || c < ${maxlen:-0} ) {
+            if ( \$2 ~ /0x/ ) {
+               if (dumper ~ /^eu/) {
+                  targ = \$3;
+                  tfile= \$NF;
+               }
+               else {
+                  if ( \$4 ~/void|const/ ) {
+                     targ = \$5;
+                  }
+                  else {
+                     targ = \$4;
+                     tfile= \$NF;
+                  }
+               }
+            
+               if ( targ ~ /[<\\(]/ ) {
+                  if (dumper ~ /eu/) {
+                     while ( targ ~ /\\(/ ) {
+                        if ( 0 == gsub(/\\(.*\$/, \"\", targ) ) {
+                           break;
+                        }
+                     }
+                  }
+                  if ( dumper ~ /gdb/ ) {
+                     targ = substr(\$0, index(\$0, \" in \") + 4);
+                     if ( targ ~ / from / ) {
+                        targ = substr(targ, 1, index(targ, \" from \") - 1);
+                     }
+                     if ( targ ~ / at / ) {
+                        targ = substr(targ, 1, index(targ, \" at \") - 1);
+                     }
+                  }
+                  # Shorten C++ templates, e.g. in t/samples/stacktrace-004.txt
+                  while ( targ ~ />::/ ) {
+                     if ( 0 == gsub(/<[^<>]*>/, \"\", targ) ) {
+                        break;
+                     }
+                  }
+                  # Further shorten argument lists.
+                  while ( targ ~ /\\(/ ) {
+                     if ( 0 == gsub(/\\([^()]*\\)/, \"\", targ) ) {
+                        break;
+                     }
+                  }
+                  # Remove void and const decorators.
+                  gsub(/ ?(void|const) ?/, \"\", targ);
+                  gsub(/ /, \"\", targ);
+               }
+               else if ( targ ~ /\\?\\?/ && \$2 ~ /[1-9]/ ) {
+                  # Substitute ?? by the name of the library.
+                  targ = \$NF;
+                  while ( targ ~ /\\// ) {
+                     targ = substr(targ, index(targ, \"/\") + 1);
+                  }
+                  targ = substr(targ, 1, index(targ, \".\") - 1);
+                  targ = targ \"::??\";
+               }
             }
             else {
-               targ = \$4;
+               targ = \$2;
                tfile= \$NF;
             }
-            if ( targ ~ /[<\\(]/ ) {
-               targ = substr(\$0, index(\$0, \" in \") + 4);
-               if ( targ ~ / from / ) {
-                  targ = substr(targ, 1, index(targ, \" from \") - 1);
-               }
-               if ( targ ~ / at / ) {
-                  targ = substr(targ, 1, index(targ, \" at \") - 1);
-               }
-               # Shorten C++ templates, e.g. in t/samples/stacktrace-004.txt
-               while ( targ ~ />::/ ) {
-                  if ( 0 == gsub(/<[^<>]*>/, \"\", targ) ) {
-                     break;
-                  }
-               }
-               # Further shorten argument lists.
-               while ( targ ~ /\\(/ ) {
-                  if ( 0 == gsub(/\\([^()]*\\)/, \"\", targ) ) {
-                     break;
-                  }
-               }
-               # Remove void and const decorators.
-               gsub(/ ?(void|const) ?/, \"\", targ);
-               gsub(/ /, \"\", targ);
-            }
-            else if ( targ ~ /\\?\\?/ && \$2 ~ /[1-9]/ ) {
-               # Substitute ?? by the name of the library.
-               targ = \$NF;
-               while ( targ ~ /\\// ) {
-                  targ = substr(targ, index(targ, \"/\") + 1);
-               }
-               targ = substr(targ, 1, index(targ, \".\") - 1);
-               targ = targ \"::??\";
-            }
-         }
-         else {
-            targ = \$2;
-            tfile= \$NF;
-         }
-         # get rid of long symbol names such as 'pthread_cond_wait@@GLIBC_2.3.2'
-         if ( targ ~ /@@/ ) {
-            fname = substr(targ, 1, index(targ, \"@@\") - 1);
-         }
-         else {
-            fname = targ;
-            if ( tfile ~ /^\// ) {
-               last=split(tfile,filen,/\//);
-               fname = targ \"(\" filen[last] \")\";
+            # get rid of long symbol names such as 'pthread_cond_wait@@GLIBC_2.3.2'
+            if ( targ ~ /@@/ ) {
+               fname = substr(targ, 1, index(targ, \"@@\") - 1);
             }
             else {
-               fname = targ
+               fname = targ;
+               if ( tfile ~ /^\// ) {
+                  last=split(tfile,filen,/\//);
+                  fname = targ \"(\" filen[last] \")\";
+               }
+               else {
+                  fname = targ
+               }
             }
-         }
-         if ( ${maxlen:-0} == 0 || c < ${maxlen:-0} ) {
             if (s != \"\" ) {
                s = s \",\" fname;
             }
             else {
                s = fname;
             }
+            c++;
          }
-         c++;
       }
       END {
-         print s
+         if (tid_found ~ 1 ) {
+            print s
+         }
       }
    " "$@" | sort | uniq -c | sort -r -n -k 1,1
 }
@@ -659,6 +692,10 @@ aggregate_stacktrace() {
 # The main program to run.
 main() {
    local output_file="${OPT_SAVE_SAMPLES:-"$PT_TMPDIR/percona-toolkit"}"
+   
+   if [ $OPT_READNEVER ] && [ $OPT_DUMPER != "gdb" ]; then
+   	  option_error "Option --readnever not supported for dumper ${OPT_DUMPER}, ignoring."
+   fi
 
    if [ -z "$ARGV" ]; then
       # There are no files to analyze, so we'll make one.
@@ -671,22 +708,63 @@ main() {
             OPT_PID=$(ps -eaf | grep "$OPT_BINARY" | grep -v grep | awk '{print $2}' | head -n1);
          fi
       fi
+      
+      DUMPER=""
+      if [ $OPT_DUMPER == "gdb" ]; then
+      	 if [ `_which gdb` ]; then
+      	 
+      	    readnever=""
+      	    if [ $OPT_READNEVER ]; then
+               if gdb -nx --quiet --batch --readnever > /dev/null 2>&1; then
+                  readnever="--readnever"
+               else
+                  die "gdb does not support option --readnever. Exiting"
+               fi
+            fi
+         
+            DUMPER="
+               gdb ${readnever} -ex 'set pagination 0' \
+                   -ex 'thread apply all bt' \
+                   -batch                    \
+                   -p ${OPT_PID}
+               "
+         else
+         	die "Can't find gdb binary. Exiting"
+         fi
+      elif [ $OPT_DUMPER == "eu" ]; then
+      	 if [ `_which eu-stack` ]; then
+      	    DUMPER="eu-stack -s -m -p ${OPT_PID} | sed -e '\$!N;s/\n //g;P;D' | sed -e 's/\(0x[[:xdigit:]]*\) -/\1 ??() -/'"
+      	 else
+             die "Can't find eu-stack binary from elfutils package. Exiting"
+      	 fi
+      elif [ $OPT_DUMPER == "pteu" ]; then
+      	 if [ `_which eu-stack` ] && [ `_which pt-eustack-resolver` ]; then
+      	    DUMPER="pt-eustack-resolver ${OPT_PID}"
+      	 else
+             if [ ! `_which eu-stack` ] && [ ! `_which pt-eustack-resolver` ]; then
+                die "Can't find eu-stack binary from elfutils package and pt-eustack-resolver tool in \$PATH. Exiting"
+             elif [ ! `_which eu-stack` ]; then
+                die "Can't find eu-stack binary from elfutils package. Exiting"
+             else
+                die "Can't find pt-eustack-resolver tool in \$PATH. Exiting"
+             fi
+      	 fi
+      else
+      	 die "Unknown dumper: ${OPT_DUMPER}. Exiting"
+      fi
+      	 
       date
       for x in $(_seq $OPT_ITERATIONS); do
-         gdb -ex "set pagination 0"    \
-             -ex "thread apply all bt" \
-             -batch                    \
-             -p $OPT_PID               \
-             >> "$output_file"
-         date +'TS %N.%s %F %T' >> "$output_file"
-         sleep $OPT_INTERVAL
+      	eval $DUMPER >> "$output_file"
+        date +'TS %N.%s %F %T' >> "$output_file"
+        sleep $OPT_INTERVAL
       done
    fi
 
    if [ -z "$ARGV" ]; then
-      aggregate_stacktrace "$OPT_LINES" "$output_file"
+      aggregate_stacktrace "$OPT_LINES" "${OPT_TIDS}" "$output_file"
    else
-      aggregate_stacktrace "$OPT_LINES" $ARGV
+      aggregate_stacktrace "$OPT_LINES" "${OPT_TIDS}" $ARGV
    fi
 }
 
@@ -782,6 +860,12 @@ short form: -b; type: string; default: mysqld
 
 Which binary to trace.
 
+=item --dumper
+
+short form: -d; type: string; default: gdb
+
+Which dumper use to get stack traces(gdb: gdb, eu: eu-stack, pteu: pt-eustack-resolver).
+
 =item --help
 
 Show help and exit.
@@ -810,11 +894,45 @@ short form: -p; type: int
 
 Process ID of the process to trace; overrides L<"--binary">.
 
+=item --readnever
+
+Pass option C<--readnever> to C<gdb>. With this option C<gdb> will not read 
+symbol files, thus produce stack traces way faster. However, such traces may
+not be sufficient for the diagnostic.
+
 =item --save-samples
 
 short form: -k; type: string
 
 Keep the raw traces in this file after aggregation.
+
+=item --tids
+
+short form: -t; type: string; default: *
+
+Extract traces only for specific tids.
+
+This option uses regular expressions to select threads. For example, if the
+collected stack trace has data for threads:
+
+  [New Thread 0x52173940 (LWP 23846)]
+  [New Thread 0x52132940 (LWP 23845)]
+  [New Thread 0x520f1940 (LWP 23844)]
+  [New Thread 0x520b0940 (LWP 23798)]
+  [New Thread 0x5206f940 (LWP 23776)]
+  [New Thread 0x5202e940 (LWP 23775)]
+  [New Thread 0x51fed940 (LWP 23774)]
+  [New Thread 0x51fac940 (LWP 23728)]
+  [New Thread 0x51f6b940 (LWP 23727)]
+  [New Thread 0x51f2a940 (LWP 21264)]
+  [New Thread 0x51ee9940 (LWP 21263)]
+  [New Thread 0x51ea8940 (LWP 21201)]
+
+C<-t 21> will print stack traces for threads 21264, 21263, 21201
+
+C<-t 21201,23846> will print stack traces for threads 21201, 23846
+
+C<-t 21201,237.8> will print stack traces for threads 21201, 23798, 23728
 
 =item --version
 

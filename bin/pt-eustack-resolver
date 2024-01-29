@@ -1,0 +1,257 @@
+#!/usr/bin/env perl
+
+# This program is part of Percona Toolkit: http://www.percona.com/software/
+# See "COPYRIGHT, LICENSE, AND WARRANTY" at the end of this file for legal
+# notices and disclaimers.
+
+use strict;
+use Data::Dumper;
+
+my $mmap;
+
+sub load_mapping {
+   my ($pid)= @_;
+   my $FH;
+
+   if ($pid =~ /^[0-9]+$/) {
+      open $FH, '<', "/proc/$pid/maps"
+         or die "Failed to open /proc/$pid/maps: $!\n";
+   } else {
+      open $FH, '<', $pid
+         or die "Failed to open saved map file '$pid': $!\n";
+   }
+
+   my $arr= [];
+   while (<$FH>) {
+      next unless m/^([a-f0-9]+)-([a-f0-9]+) ..x. ([a-f0-9]+) [a-f0-9:]+ [0-9]+ +(.*)/;
+      push @$arr, { S => hex($1), E => hex($2), B => hex($3), F => $4 };
+   }
+   close $FH;
+   sort { $a->{S} <=> $b->{S} } @$arr;
+   $mmap= $arr;
+}
+
+my $syms= { };
+
+sub get_image {
+   my ($addr)= @_;
+  
+   # Ensure addr is defined
+   die "Address is undefined" unless defined $addr;
+
+   # Check if the global memory map is defined and is an array reference
+   die "Global memory map is undefined or not an array reference"
+      unless defined $mmap and ref($mmap) eq 'ARRAY';
+
+   for my $e (@$mmap) {
+      next if $e->{E} <= $addr;
+      last if $e->{S} > $addr;
+      # Found, look up.  
+      return $e->{F};
+   }
+   return "";
+}
+
+die "Usage: $0 <pid>" unless @ARGV == 1;
+
+my $pid= $ARGV[0];
+load_mapping($pid);
+
+open (my $STACK_TRACE, "eu-stack -q -p $pid 2>/dev/null|") or die "open(): $!";
+my @lines= <$STACK_TRACE>;
+close($STACK_TRACE);
+
+my $frame_no= 0;
+my %addr=();
+my %sf=();
+my $lwp;
+
+for my $line (@lines) {
+   if ($line =~ /^TID ([0-9]+):/)
+   {
+     $frame_no= 0;
+     $lwp=$1;
+   }
+   elsif ($line =~ /^#[0-9]+?\s*0x([a-f0-9]+)/) 
+   {
+     push @{$sf{$lwp}},$1;
+     $addr{$1}=[get_image(hex($1)),""];
+   } else {
+     #print $line;
+   }
+}
+
+my %inverse;
+push @{ $inverse{ $addr{$_}->[0] } }, $_ for keys %addr;
+
+foreach my $bin (keys %inverse)
+{
+   my $addrs=join(" ",@{$inverse{$bin}});
+   my @resolved=();
+   
+   @resolved=(`eu-addr2line --pretty-print -s -C -f -p $pid $addrs`);          
+   
+   my $idx=0;
+   foreach $a (@{$inverse{$bin}})
+   {
+      $addr{$a}->[1]=$resolved[$idx];
+      $addr{$a}->[1]=~ s/\n//;
+      $addr{$a}->[1]=~ s/at \?\?:0/from $addr{$a}->[0]/;
+      $idx++;
+   }
+}
+
+foreach $lwp (sort {$a<=>$b} keys %sf)
+{
+   my $idx=0;
+   print "Thread $lwp (LWP $lwp):\n";
+   foreach $frame_no (@{$sf{$lwp}})
+   {
+      print join(" ","#".$idx, "0x".$frame_no,"in", $addr{$frame_no}->[1]),"\n";
+      $idx++;
+   }
+   print "\n";
+}
+    
+    
+# ############################################################################
+# Documentation
+# ############################################################################
+
+=pod
+
+=head1 NAME
+
+pt-eustack-resolver - Get stack traces for a selected program with C<eu-stack> 
+and resolve symbols.
+
+=head1 SYNOPSIS
+
+Usage: pt-eustack-resolver <pid>
+
+pt-eustack-resolver collects stack traces for the process with specified C<pid>.
+
+=head1 RISKS
+
+Percona Toolkit is mature, proven in the real world, and well tested,
+but all database tools can pose a risk to the system and the database
+server.  Before using this tool, please:
+
+=over
+
+=item * Read the tool's documentation
+
+=item * Review the tool's known L<"BUGS">
+
+=item * Test the tool on a non-production server
+
+=item * Backup your production server and verify the backups
+
+=back
+
+=head1 DESCRIPTION
+
+pt-eustack-resolver is the tool that gets stack traces for a selected program 
+with C<eu-stack> and resolves symbols. This is companion tool for L<pt-pmp|pt-pmp.html>, called
+when option C<--dumper=pteu> is specified.
+
+C<eu-stack> is a tool from L<elfutils|https://sourceware.org/elfutils> package that 
+prints a stack for each thread in a process or core file. C<eu-stack> is faster 
+than gdb and have smaller overhead on the diagnosed process.
+
+=head1 OUTPUT
+
+Stack for each thread, formatted similarly to C<gdb thread apply all bt> output.
+
+=head1 ATTENTION
+
+Using <PTDEBUG> might expose passwords. When debug is enabled, all command line
+parameters are shown in the output.
+
+=head1 SYSTEM REQUIREMENTS
+
+You need C<eu-stack> from the L<elfutils|https://sourceware.org/elfutils> package.
+
+=head1 BUGS
+
+For a list of known bugs, see L<https://jira.percona.com/projects/PT/issues>.
+
+Please report bugs at L<https://jira.percona.com/projects/PT>.
+Include the following information in your bug report:
+
+=over
+
+=item * Complete command-line used to run the tool
+
+=item * Tool L<"--version">
+
+=item * MySQL version of all servers involved
+
+=item * Output from the tool including STDERR
+
+=item * Input files (log/dump/config files, etc.)
+
+=back
+
+If possible, include debugging output by running the tool with C<PTDEBUG>;
+see L<"ENVIRONMENT">.
+
+=head1 DOWNLOADING
+
+Visit L<http://www.percona.com/software/percona-toolkit/> to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+   wget percona.com/get/percona-toolkit.tar.gz
+
+   wget percona.com/get/percona-toolkit.rpm
+
+   wget percona.com/get/percona-toolkit.deb
+
+You can also get individual tools from the latest release:
+
+   wget percona.com/get/TOOL
+
+Replace C<TOOL> with the name of any tool.
+
+=head1 AUTHORS
+
+Alexey Stroganov
+
+=head1 ACKNOWLEDGMENTS
+
+Part of code for symbol resolving derived from resolve-stack-traces.pl script
+(https://github.com/knielsen/knielsen-pmp)
+
+=head1 ABOUT PERCONA TOOLKIT
+      
+This tool is part of Percona Toolkit, a collection of advanced command-line
+tools for MySQL developed by Percona.  Percona Toolkit was forked from two
+projects in June, 2011: Maatkit and Aspersa.  Those projects were created by
+Baron Schwartz and primarily developed by him and Daniel Nichter.  Visit
+L<http://www.percona.com/software/> to learn about other free, open-source
+software from Percona.
+
+=head1 COPYRIGHT, LICENSE, AND WARRANTY
+
+This program is copyright 2017-2024 Percona LLC and/or its affiliates.
+
+THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+systems, you can issue `man perlgpl' or `man perlartistic' to read these
+licenses.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+Place, Suite 330, Boston, MA  02111-1307  USA.
+   
+=head1 VERSION
+
+pt-eustack-resolver 3.5.7
+
+=cut

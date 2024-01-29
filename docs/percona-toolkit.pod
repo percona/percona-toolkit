@@ -50,6 +50,10 @@ An interactive I/O monitoring tool for GNU/Linux.
 
 Find duplicate indexes and foreign keys on MySQL tables.
 
+=item pt-eustack-resolver
+
+Get stack traces for a selected program with eu-stack and resolve symbols.
+
 =item pt-fifo-split
 
 Split files and pipe lines to a fifo without really splitting.
@@ -66,6 +70,10 @@ Convert queries into fingerprints.
 
 Log MySQL foreign key errors.
 
+=item pt-galera-log-explainer
+
+Filter, aggregate and summarize multiple galera logs together.
+
 =item pt-heartbeat
 
 Monitor MySQL replication delay.
@@ -77,6 +85,10 @@ Read queries from a log and analyze how they use indexes.
 =item pt-ioprofile
 
 Watch process IO and print a table of file and I/O activity.
+
+=item pt-k8s-debug-collector
+
+Collect debug data from a k8s/OpenShift cluster.
 
 =item pt-kill
 
@@ -94,6 +106,10 @@ Performs checks on MongoDB indexes
 
 Reports query usage statistics by aggregating queries from MongoDB query profiler
 
+=item pt-mongodb-summary
+
+Collect information about a MongoDB cluster.
+
 =item pt-mysql-summary
 
 Summarize MySQL information nicely.
@@ -102,6 +118,10 @@ Summarize MySQL information nicely.
 
 ALTER tables without locking them.
 
+=item pt-pg-summary
+
+Collect information about a PostgreSQL cluster.
+
 =item pt-pmp
 
 Aggregate GDB stack traces for a selected program.
@@ -109,6 +129,10 @@ Aggregate GDB stack traces for a selected program.
 =item pt-query-digest
 
 Analyze MySQL queries from logs, processlist, and tcpdump.
+
+=item pt-secure-collect
+
+Collect, sanitize, pack and encrypt data.
 
 =item pt-show-grants
 
@@ -545,7 +569,11 @@ Frank was a full-time Percona Toolkit developer employed by Percona until 2016.
 
 =item Carlos Salguero
 
-Carlos has been the project's lead developer since 2016. He is hired by Percona.
+Carlos has been the project's lead developer since 2016 until 2022.
+
+=item Sveta Smirnova
+
+Sveta has been the project's lead developer since 2022.
 
 =item Others
 
