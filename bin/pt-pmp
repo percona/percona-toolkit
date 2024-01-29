@@ -735,13 +735,19 @@ main() {
       	 if [ `_which eu-stack` ]; then
       	    DUMPER="eu-stack -s -m -p ${OPT_PID} | sed -e '\$!N;s/\n //g;P;D' | sed -e 's/\(0x[[:xdigit:]]*\) -/\1 ??() -/'"
       	 else
-      	 	die "Can't find eu-stack binary from elfutils. Exiting"
+             die "Can't find eu-stack binary from elfutils package. Exiting"
       	 fi
       elif [ $OPT_DUMPER == "pteu" ]; then
       	 if [ `_which eu-stack` ] && [ `_which pt-eustack-resolver` ]; then
       	    DUMPER="pt-eustack-resolver ${OPT_PID}"
       	 else
-      	 	die "Can't find eu-stack binary from elfutils or pt-eustack-resolver. Exiting"
+             if [ ! `_which eu-stack` ] && [ ! `_which pt-eustack-resolver` ]; then
+                die "Can't find eu-stack binary from elfutils package and pt-eustack-resolver tool in \$PATH. Exiting"
+             elif [ ! `_which eu-stack` ]; then
+                die "Can't find eu-stack binary from elfutils package. Exiting"
+             else
+                die "Can't find pt-eustack-resolver tool in \$PATH. Exiting"
+             fi
       	 fi
       else
       	 die "Unknown dumper: ${OPT_DUMPER}. Exiting"
