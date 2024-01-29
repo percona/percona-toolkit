@@ -34,6 +34,7 @@ CMD_MPSTAT="${CMD_MPSTAT:-"$(_which mpstat)"}"
 CMD_MYSQL="${CMD_MYSQL:-"$(_which mysql)"}"
 CMD_MYSQLADMIN="${CMD_MYSQLADMIN:-"$(_which mysqladmin)"}"
 CMD_OPCONTROL="${CMD_OPCONTROL:-"$(_which opcontrol)"}"
+[ -z "$CMD_OPCONTROL" ] && CMD_OPCONTROL=$(_which operf)
 CMD_OPREPORT="${CMD_OPREPORT:-"$(_which opreport)"}"
 CMD_PMAP="${CMD_PMAP:-"$(_which pmap)"}"
 CMD_STRACE="${CMD_STRACE:-"$(_which strace)"}"
@@ -199,9 +200,21 @@ collect_mysql_data_one() {
    # Next, start oprofile gathering data during the whole rest of this process.
    # The --init should be a no-op if it has already been init-ed.
    if [ "$CMD_OPCONTROL" -a "$OPT_COLLECT_OPROFILE" ]; then
-      if $CMD_OPCONTROL --init; then
-         $CMD_OPCONTROL --start --no-vmlinux
-         have_oprofile="yes"
+      if [ $(echo $CMD_OPCONTROL | grep -cv operf) -gt 0 ]; then 
+	      # use legacy or custom opcontrol
+	      if $CMD_OPCONTROL --init; then
+	         $CMD_OPCONTROL --start --no-vmlinux
+	         have_oprofile="yes"
+	      fi
+      else
+	      have_oprofile="yes"
+         local tmpfile="$PT_TMPDIR/oprofile"
+         mkdir "$d/pt_collect_$p"
+         # use operf, may fail under VirtualBox or old processor models (see http://oprofile.sourceforge.net/doc/perf_events.html)
+         $CMD_OPCONTROL -p "$mysqld_pid" -d "$d/pt_collect_$p" > "$tmpfile" &
+         sleep 1
+         OPERF_PID=$(grep -Eo "kill -SIGINT [[:digit:]]+" "$tmpfile" | grep -Eo "[[:digit:]]+")
+         rm "$tmpfile"
       fi
    elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" -a "$mysqld_pid" ]; then
       # Don't run oprofile and strace at the same time.
@@ -340,27 +353,38 @@ collect_system_data_loop() {
 
 collect_mysql_data_two() {
    if [ "$have_oprofile" ]; then
-      $CMD_OPCONTROL --stop
-      $CMD_OPCONTROL --dump
+      local session="--session-dir=$d/pt_collect_$p"
 
-      local oprofiled_pid=$(_pidof oprofiled | awk '{print $1; exit;}')
-      if [ "$oprofiled_pid" ]; then
-         kill $oprofiled_pid
+      if [ $(echo $CMD_OPCONTROL | grep -cv operf) -gt 0 ]; then
+	      # use legacy or custom opcontrol
+         $CMD_OPCONTROL --stop
+         $CMD_OPCONTROL --dump
+
+         local oprofiled_pid=$(_pidof oprofiled | awk '{print $1; exit;}')
+         if [ "$oprofiled_pid" ]; then
+            kill $oprofiled_pid
+         else
+            warn "Cannot kill oprofiled because its PID cannot be determined"
+         fi
+
+         session="session:pt_collect_$p"
+
+         $CMD_OPCONTROL --save="pt_collect_$p"
       else
-         warn "Cannot kill oprofiled because its PID cannot be determined"
+         log "$OPERF_PID"
+	      kill -SIGINT "$OPERF_PID"
       fi
 
-      $CMD_OPCONTROL --save=pt_collect_$p
 
       # Attempt to generate a report; if this fails, then just tell the user
       # how to generate the report.
-      local mysqld_path=$(_which mysqld);
+      local mysqld_path=$(readlink -f "/proc/$mysqld_pid/exe");
       if [ "$mysqld_path" -a -f "$mysqld_path" ]; then
          $CMD_OPREPORT            \
             --demangle=smart      \
             --symbols             \
             --merge tgid          \
-            session:pt_collect_$p \
+            "$session"            \
             "$mysqld_path"        \
             > "$d/$p-opreport"
       else
@@ -377,7 +401,7 @@ collect_mysql_data_two() {
       # Sometimes strace leaves threads/processes in T status.
       [ "$mysqld_pid" ] && kill -s 18 $mysqld_pid
    fi
-
+   
    innodb_status 2
    tokudb_status 2
    rocksdb_status 2
