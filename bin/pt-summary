@@ -1545,6 +1545,24 @@ parse_dmidecode_mem_devices () { local PTFUNCNAME=parse_dmidecode_mem_devices;
        | awk -F'|' '{printf("  %-9s %-8s %-17s %-13s %-13s %-8s\n", $4, $2, $7, $3, $5, $6);}'
 }
 
+parse_dmidecode_cache_info () { local PTFUNCNAME=parse_dmidecode_cache_info;
+   local file="$1"
+
+   [ -e "$file" ] || return
+
+   echo "  Designation               Configuration                  Size     Associativity"
+   echo "  ========================= ============================== ======== ======================"
+   sed    -e '/./{H;$!d;}' \
+          -e 'x;/Cache Information\n/!d;' \
+          -e 's/: /:/g' \
+          -e 's/</{/g' \
+          -e 's/>/}/g' \
+          -e 's/[ \t]*\n/\n/g' \
+       "${file}" \
+       | awk -F: '/Socket Designation|Configuration|Installed Size/{printf("|%s", $2)}/^[\t ]+Associativity/{print "|" $2}' \
+       | awk -F'|' '{printf("  %-25s %-30s %-8s %-22s\n", $2, $3, $4, $5);}'
+}
+
 parse_numactl () { local PTFUNCNAME=parse_numactl;
    local file="$1"
 
@@ -2083,6 +2101,10 @@ section_Processor () {
       parse_sysctl_cpu_openbsd "$data_dir/sysctl"
    elif [ "${platform}" = "SunOS" ]; then
       parse_psrinfo_cpus "$data_dir/psrinfo_minus_v"
+   fi
+
+   if [ -s "$data_dir/dmidecode" ]; then
+      parse_dmidecode_cache_info "$data_dir/dmidecode"
    fi
 }
 

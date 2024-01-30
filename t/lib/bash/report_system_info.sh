@@ -1489,6 +1489,10 @@ Architecture | CPU = 32-bit, OS = 32-bit
       Speeds | 1x1000.000, 1x1666.000
       Models | 2xIntel(R) Atom(TM) CPU N455 @ 1.66GHz
       Caches | 2x512 KB
+  Designation               Configuration                  Size     Associativity
+  ========================= ============================== ======== ======================
+  Unknown                   Enabled, Not Socketed, Level 2 512 KB   8-way Set-associative 
+  Unknown                   Enabled, Not Socketed, Level 1 32 KB    8-way Set-associative 
 # Memory #####################################################
          Total | 2.0G
           Free | 477.3M

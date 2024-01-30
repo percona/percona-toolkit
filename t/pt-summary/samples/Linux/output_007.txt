@@ -15,6 +15,14 @@ Architecture | CPU = 64-bit, OS = 64-bit
       Speeds | 1x1348.923, 1x1456.632, 1x1494.384, 1x1522.090, 1x1525.616, 1x1544.334, 1x1580.156, 1x1604.659, 1x1620.505, 1x1649.961, 1x1667.597, 1x1780.690, 1x2084.880, 1x2109.796, 1x2194.581, 1x2211.704, 1x2246.397, 1x2265.713, 1x2307.331, 1x2320.030, 1x2345.087, 1x2385.594, 1x2389.942, 1x2452.398
       Models | 24xIntel(R) Xeon(R) CPU E5-2430 0 @ 2.20GHz
       Caches | 24x15360 KB
+  Designation               Configuration                  Size     Associativity
+  ========================= ============================== ======== ======================
+  Not Specified             Enabled, Not Socketed, Level 1 192 kB   8-way Set-associative 
+  Not Specified             Enabled, Not Socketed, Level 2 1536 kB  8-way Set-associative 
+  Not Specified             Enabled, Not Socketed, Level 3 15 MB    20-way Set-associative
+  Not Specified             Enabled, Not Socketed, Level 1 192 kB   8-way Set-associative 
+  Not Specified             Enabled, Not Socketed, Level 2 1536 kB  8-way Set-associative 
+  Not Specified             Enabled, Not Socketed, Level 3 15 MB    20-way Set-associative
 # Memory #####################################################
          Total | 188.8G
           Free | 72.1G

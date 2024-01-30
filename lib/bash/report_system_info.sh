@@ -239,6 +239,27 @@ parse_dmidecode_mem_devices () { local PTFUNCNAME=parse_dmidecode_mem_devices;
 }
 
 # ##############################################################################
+# Parse CPU cache from the output of 'dmidecode'.
+# ##############################################################################
+parse_dmidecode_cache_info () { local PTFUNCNAME=parse_dmidecode_cache_info;
+   local file="$1"
+
+   [ -e "$file" ] || return
+
+   echo "  Designation               Configuration                  Size     Associativity"
+   echo "  ========================= ============================== ======== ======================"
+   sed    -e '/./{H;$!d;}' \
+          -e 'x;/Cache Information\n/!d;' \
+          -e 's/: /:/g' \
+          -e 's/</{/g' \
+          -e 's/>/}/g' \
+          -e 's/[ \t]*\n/\n/g' \
+       "${file}" \
+       | awk -F: '/Socket Designation|Configuration|Installed Size/{printf("|%s", $2)}/^[\t ]+Associativity/{print "|" $2}' \
+       | awk -F'|' '{printf("  %-25s %-30s %-8s %-22s\n", $2, $3, $4, $5);}'
+}
+
+# ##############################################################################
 # Parse the output of 'numactl'.
 # ##############################################################################
 parse_numactl () { local PTFUNCNAME=parse_numactl;
@@ -862,6 +883,10 @@ section_Processor () {
    elif [ "${platform}" = "SunOS" ]; then
       parse_psrinfo_cpus "$data_dir/psrinfo_minus_v"
       # TODO: prtconf -v actually prints the CPU model name etc.
+   fi
+
+   if [ -s "$data_dir/dmidecode" ]; then
+      parse_dmidecode_cache_info "$data_dir/dmidecode"
    fi
 }
 

@@ -14,6 +14,8 @@ Architecture | CPU = 64-bit, OS = 64-bit
       Speeds | 4x2043.942
       Models | 4xIntel(R) Core(TM) i7-8565U CPU @ 1.80GHz
       Caches | 4x8192 KB
+  Designation               Configuration                  Size     Associativity
+  ========================= ============================== ======== ======================
 # Memory #####################################################
          Total | 3.7G
           Free | 2.9G

@@ -14,6 +14,12 @@ Architecture | CPU = 64-bit, OS = 64-bit
       Speeds | 7x1500.000, 1x3113.329
       Models | 8xIntel(R) Core(TM) i7-1065G7 CPU @ 1.30GHz
       Caches | 8x8192 KB
+  Designation               Configuration                  Size     Associativity
+  ========================= ============================== ======== ======================
+  L1 Cache                  Enabled, Not Socketed, Level 1 0 kB     12-way Set-associative
+  L1 Cache                  Enabled, Not Socketed, Level 1 0 kB     8-way Set-associative 
+  L2 Cache                  Enabled, Not Socketed, Level 2 0 kB     8-way Set-associative 
+  L3 Cache                  Enabled, Not Socketed, Level 3 0 kB     16-way Set-associative
 # Memory #####################################################
          Total | 31.1G
           Free | 2.2G
