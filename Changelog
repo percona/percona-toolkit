@@ -6,6 +6,7 @@ v3.5.8 released
 * Improvement PT-2100: fixed Wide character error (Thanks to Satoshi MITANI for the contribution)
 * Improvement PT-2307: Include last inactive check messages on pt-galera-log-explainer
 * Improvement PR-160:  added support for operf if present, and if CMD_OPCONTROL is not set (Thanks to Fernando Ipar for the contribution)
+* Improvement PR-140:  Add CPU cache configuration info to pt-summary (Thanks to Alexey Kopytov for the contribution)
 * Fixed bug PT-2298: pt-galera-log-explainer: superfluous lines on conflicts
 
 v3.5.7 released 2023-12-23
