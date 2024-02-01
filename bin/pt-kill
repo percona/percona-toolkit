@@ -5543,7 +5543,9 @@ sub lost_connection {
    my ($self, $e) = @_;
    return 0 unless $e;
    return $e =~ m/MySQL server has gone away/
+       || $e =~ m/Server has gone away/
        || $e =~ m/Lost connection to MySQL server/
+       || $e =~ m/Lost connection to server/
        || $e =~ m/Server shutdown in progress/;
 }
 
@@ -7177,7 +7179,11 @@ sub main {
                # The 1st pattern means that MySQL itself died or was stopped.
                # The 2nd pattern means that our cxn was killed (KILL <id>).
                if (    $error =~ m/MySQL server has gone away/
+                    || $error =~ m/Server has gone away/
+                    || $error =~ m/Lost connection to server/
                     || $error =~ m/Lost connection to MySQL server/ ) {
+                  eval {
+                  eval {
                   eval {
                      $dbh      = $cxn->connect();
                      $proc_sth = $dbh->prepare('SHOW FULL PROCESSLIST');
@@ -7210,6 +7216,8 @@ sub main {
                # The 1st pattern means that MySQL itself died or was stopped.
                # The 2nd pattern means that our cxn was killed (KILL <id>).
                if (    $error =~ m/MySQL server has gone away/
+                    || $error =~ m/Server has gone away/
+                    || $error =~ m/Lost connection to server/
                     || $error =~ m/Lost connection to MySQL server/ ) {
                   eval {
                      $dbh      = $cxn->connect();
@@ -7299,6 +7307,8 @@ sub main {
                # The 1st pattern means that MySQL itself died or was stopped.
                # The 2nd pattern means that our cxn was killed (KILL <id>).
                if (    $error =~ m/MySQL server has gone away/
+                    || $error =~ m/Server has gone away/
+                    || $error =~ m/Lost connection to server/
                     || $error =~ m/Lost connection to MySQL server/ ) {
                   eval {
                      $log_dbh = $log_cxn->connect();
