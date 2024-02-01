@@ -7183,8 +7183,6 @@ sub main {
                     || $error =~ m/Lost connection to server/
                     || $error =~ m/Lost connection to MySQL server/ ) {
                   eval {
-                  eval {
-                  eval {
                      $dbh      = $cxn->connect();
                      $proc_sth = $dbh->prepare('SHOW FULL PROCESSLIST');
                      msg('Reconnected to ' . $cxn->name());

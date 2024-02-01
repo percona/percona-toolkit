@@ -507,7 +507,7 @@ is(
    $output,
    0,
    "Retention test 3: tests, matched auto-generated patern, are removed"
-);
+) or diag(`ls -l $dest`);
 
 # ###########################################################################
 # Test if retention by size works as expected
