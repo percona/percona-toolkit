@@ -23,6 +23,10 @@ use Sandbox;
 
 require "$trunk/bin/pt-table-checksum";
 
+# We need to restart, so environment is clean for the 
+# "Default checksum" test
+diag(`$trunk/sandbox/test-env restart`);
+
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
