@@ -753,7 +753,7 @@ SKIP: {
 
    # msandbox user does not have GRANT privs.
    my $root_dbh = DBI->connect(
-      "DBI:mysql:host=127.0.0.1;port=12345;mysql_ssl=1", 'root', 'msandbox',
+      "DBI:mysql:host=127.0.0.1;port=12345", 'root', 'msandbox',
       { PrintError => 0, RaiseError => 1 });
 
    $root_dbh->do(q[CREATE USER 'user'@'%' IDENTIFIED BY '';] ) || die($root_dbh->errstr);
