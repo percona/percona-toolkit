@@ -78,5 +78,6 @@ is(
 
 
 cleanup();
+$sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
