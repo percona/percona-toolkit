@@ -63,7 +63,7 @@ is(
       $exit_status,
       $ERROR_UPDATING_FKS,
       "--alter rename columns with uppercase names -> exit status 0",
-);
+) or diag($output);
 
 # 2
 # Since drop_swap has failed, the clueanup process should be skipped and the new table
@@ -73,7 +73,7 @@ is (
     $row->{how_many},
     1,
     "Correct number of rows",
-);
+) or diag($row);
 
 $master_dbh->do("DROP DATABASE IF EXISTS test");
 
