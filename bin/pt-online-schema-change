@@ -8693,6 +8693,13 @@ sub main {
          }
       }
 
+      if ( $o->get('where') && !$o->get('force')
+           && ( $o->get('drop-new-table') || $o->get('swap-tables') ) )
+        {
+         _die("Using option --where together with --drop-new-table and --swap-tables may lead to data loss, therefore this operation is only allowed if option --force also specified. Aborting.", UNSUPPORTED_OPERATION);
+      }
+
+
       # See the "pod-based-option-value-validation" spec for how this may
       # be automagically validated.
       if ( $alter_fk_method
@@ -9254,6 +9261,7 @@ sub main {
          Cxn    => $cxn,
          Quoter => $q,
          only_same_schema_fks => $o->get('only-same-schema-fks'),
+         where  => $o->get('where'),
       );
       if ( !$child_tables ) {
          if ( $alter_fk_method ) {
@@ -9279,6 +9287,12 @@ sub main {
             printf "  %s (approx. %s rows)\n",
                $child_table->{name},
                $child_table->{row_est} || '?';
+         }
+
+         if ( $o->get('where') && !$o->get('force') ) {
+            print "Child tables found and option --where specified. Rebuilding foreign key constraints may lead to errors.\n";
+            print "Use --force to override this check\n";
+            return 1;
          }
 
          # TODO: Fix self referencing foreign keys handling.
@@ -9900,6 +9914,7 @@ sub main {
                my ($n_rows) = NibbleIterator::get_row_estimate(
                   Cxn   => $slave,
                   tbl   => $tbl,
+                  where => $o->get('where'),
                );
                PTDEBUG && _d('Table on',$slave->name(),'has', $n_rows, 'rows');
                if ( $limit && $n_rows && $n_rows > ($tbl->{chunk_size} * $limit) ) {
@@ -10230,6 +10245,7 @@ sub main {
          max_rows     => $max_rows,
          Cxn          => $cxn,
          OptionParser => $o,
+         where        => $o->get('where'),
       );
 
       if ( $alter_fk_method eq 'drop_swap' ) {
@@ -11183,6 +11199,7 @@ sub find_child_tables {
       my ($n_rows) = NibbleIterator::get_row_estimate(
          Cxn => $cxn,
          tbl => $tbl,
+         where => $args{where},
       );
       $tbl->{row_est} = $n_rows;
 
@@ -11218,6 +11235,7 @@ sub determine_alter_fk_method {
       my ($n_rows) = NibbleIterator::get_row_estimate(
          Cxn   => $cxn,
          tbl   => $child_tbl,
+         where => $args{where},
       );
       if ( $n_rows > $max_rows ) {
          print "too many rows: $n_rows; must use drop_swap\n";
@@ -12738,7 +12756,9 @@ duplicate rows and this data will be lost.
 
 =item --force
 
-This options bypasses confirmation in case of using alter-foreign-keys-method = none , which might break foreign key constraints.
+This option bypasses confirmation in case of using alter-foreign-keys-method = none, which might break foreign key constraints.
+
+This option also allows to use option --where without options --no-drop-new-table and --no-swap-tables.
 
 =item --help
 
@@ -13192,6 +13212,23 @@ output.  This feature should never interfere with the normal operation of the
 tool.
 
 For more information, visit L<https://www.percona.com/doc/percona-toolkit/LATEST/version-check.html>.
+
+=item --where
+
+type: string
+
+Copy only rows matching this WHERE clause.  You can use this option to limit
+the copying to only part of the table.  This is particularly useful if you want
+to restart pt-online-schema-change job after it was failed.
+
+This option is much like the -w option to mysqldump.  Do not specify the WHERE
+keyword.  You might need to quote the value.  Here is an example:
+
+  pt-online-schema-change --where "id > 12345678"
+
+IMPORTANT. If used without options --no-drop-new-table and --no-swap-tables
+may lead to data loss, therefore this operation only allowed if option --force
+also specified.
 
 =item --[no]fail-on-stopped-replication
 
