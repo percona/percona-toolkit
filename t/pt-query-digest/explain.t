@@ -145,9 +145,11 @@ ok(
        : $sandbox_version ge '5.6' ? "t/pt-query-digest/samples/issue_1196-output-5.6.txt"
        : $sandbox_version ge '5.1' ? "t/pt-query-digest/samples/issue_1196-output.txt"
        :                             "t/pt-query-digest/samples/issue_1196-output-5.0.txt"),
+      keep_output => 1,
    ),
    "--explain sparkline uses event db and doesn't crash ea (issue 1196)"
-);
+) or diag(`cat /tmp/percona-toolkit-test-output.txt`);
+diag(`rm /tmp/percona-toolkit-test-output.txt`);
 
 # #############################################################################
 # Done.

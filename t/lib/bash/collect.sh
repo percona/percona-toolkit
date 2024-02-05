@@ -192,6 +192,7 @@ collect "$PT_TMPDIR/collect" "2011_12_05" > $p-output 2>&1
 CMD_OPCONTROL=""
 OPT_COLLECT_OPROFILE=""
 
+cat $p-df | grep -c '^TS '
 iters=$(cat $p-df | grep -c '^TS ')
 is "$iters" "2" "2 iteration/2s run time"
 
