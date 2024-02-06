@@ -9352,6 +9352,7 @@ sub main {
          # and the mentioned test error doesn't arise
 
          my $original_error = $EVAL_ERROR;
+         my $original_error_code = $?;
 
          foreach my $task ( reverse @cleanup_tasks ) {
             eval {
@@ -9361,7 +9362,14 @@ sub main {
                warn "Error cleaning up: $EVAL_ERROR\n";
             }
          }
-         die $original_error if $original_error;  # rethrow original error
+         
+         # rethrow original error
+         # we do not call _die here, because it prints messages to STDOUT
+         if ($original_error) {
+            print STDERR $original_error;
+            exit $original_error_code;
+         }
+         
          return;
       }
    );
