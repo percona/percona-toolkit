@@ -423,75 +423,13 @@ func (d *Dumper) getPodSummary(resource, podName, crName string, namespace strin
 		summCmdName = "pt-mysql-summary"
 		summCmdArgs = []string{"--host=127.0.0.1", "--port=" + port, "--user=root", "--password='" + string(pass) + "'"}
 	case "pg":
-		var user, pass, port string
-		if d.forwardport != "" {
-			port = d.forwardport
-		} else {
-			port = "5432"
-		}
-		cr, err := d.getCR("pgclusters", namespace)
-		if err != nil {
-			return nil, errors.Wrap(err, "get cr")
-		}
-		if cr.Spec.SecretName != "" {
-			user, err = d.getDataFromSecret(cr.Spec.SecretName, "username", namespace)
-		} else {
-			user, err = d.getDataFromSecret(crName+"-postgres-secret", "username", namespace)
-		}
-		if err != nil {
-			return nil, errors.Wrap(err, "get user from PostgreSQL users secret")
-		}
-		if cr.Spec.SecretName != "" {
-			pass, err = d.getDataFromSecret(cr.Spec.SecretName, "password", namespace)
-		} else {
-			pass, err = d.getDataFromSecret(crName+"-postgres-secret", "password", namespace)
-		}
-		if err != nil {
-			return nil, errors.Wrap(err, "get password from PostgreSQL users secret")
-		}
-		ports = port + ":5432"
 		summCmdName = "sh"
-		summCmdArgs = []string{"-c", "curl https://raw.githubusercontent.com/percona/support-snippets/master/postgresql/pg_gather/gather.sql" +
-			" 2>/dev/null | PGPASSWORD='" + string(pass) + "' psql -X --host=127.0.0.1 --port=" + port + " --user='" + user + "'"}
+		summCmdArgs = []string{"-c", "curl https://raw.githubusercontent.com/percona/support-snippets/master/postgresql/pg_gather/gather.sql | " +
+			d.cmd + " -n "+ namespace + " exec -i "+ podName +" -- psql -X -f - "}
 	case "pgv2":
-		var user, pass, port string
-		if d.forwardport != "" {
-			port = d.forwardport
-		} else {
-			port = "5432"
-		}
-		cr, err := d.getCR("perconapgclusters/"+crName, namespace)
-		if err != nil {
-			return nil, errors.Wrap(err, "get cr")
-		}
-		if cr.Spec.SecretName != "" {
-			user, err = d.getDataFromSecret(cr.Spec.SecretName, "user", namespace)
-		} else if len(cr.Spec.Users) > 0 && cr.Spec.Users[0].Name != "" {
-			user = cr.Spec.Users[0].Name
-		} else {
-			user, err = d.getDataFromSecret(crName+"-pguser-"+crName, "user", namespace)
-		}
-		if err != nil {
-			return nil, errors.Wrap(err, "get user from PostgreSQL users secret")
-		}
-		if cr.Spec.SecretName != "" {
-			pass, err = d.getDataFromSecret(cr.Spec.SecretName, "password", namespace)
-		} else if len(cr.Spec.Users) > 0 {
-			if cr.Spec.Users[0].SecretName != "" {
-				pass, err = d.getDataFromSecret(cr.Spec.Users[0].SecretName, "password", namespace)
-			} else {
-				pass, err = d.getDataFromSecret(crName+"-pguser-"+user, "password", namespace)
-			}
-		} else {
-			pass, err = d.getDataFromSecret(crName+"-pguser-"+crName, "password", namespace)
-		}
-		if err != nil {
-			return nil, errors.Wrap(err, "get password from PostgreSQL users secret")
-		}
-		ports = port + ":5432"
 		summCmdName = "sh"
-		summCmdArgs = []string{"-c", "curl https://raw.githubusercontent.com/percona/support-snippets/master/postgresql/pg_gather/gather.sql" +
-			" 2>/dev/null | PGPASSWORD='" + string(pass) + "' psql -X --host=127.0.0.1 --port=" + port + " --user='" + user + "'"}
+		summCmdArgs = []string{"-c", "curl https://raw.githubusercontent.com/percona/support-snippets/master/postgresql/pg_gather/gather.sql | " +
+			d.cmd + " -n "+ namespace +" exec -i "+ podName +" -- psql -X -f - "}
 	case "psmdb":
 		var port string
 		if d.forwardport != "" {
