@@ -12,13 +12,14 @@ import (
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/types"
 	"github.com/percona/percona-toolkit/src/go/pt-galera-log-explainer/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
-var logger = log.With().Str("component", "extractor").Logger()
+var logger zerolog.Logger
 
-func init() {
-
+func initComponentLogger() {
+	logger = log.With().Str("component", "extractor").Logger()
 	if CLI.Since != nil {
 		logger = logger.With().Time("since", *CLI.Since).Logger()
 	}

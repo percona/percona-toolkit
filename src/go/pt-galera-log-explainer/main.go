@@ -62,6 +62,7 @@ func main() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, NoColor: CLI.NoColor, FormatTimestamp: func(_ interface{}) string { return "" }})
+	initComponentLogger()
 	if CLI.Verbosity == types.Debug {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
