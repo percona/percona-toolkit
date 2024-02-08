@@ -173,6 +173,25 @@ parse_options "$BIN_DIR/pt-stalk" --run-time 2 -- --defaults-file=/tmp/12345/my.
 
 rm $PT_TMPDIR/collect/*
 
+collect "$PT_TMPDIR/collect" "2011_12_05" > $p-output 2>&1
+
+cat $p-output
+
+iters=$(cat $p-df | grep -c '^TS ')
+is "$iters" "2" "2 iteration/2s run time"
+
+if [ -f "$p-vmstat" ]; then
+   n=$(awk '/[ ]*[0-9]/ { n += 1 } END { print n }' "$p-vmstat")
+   is \
+      "$n" \
+      "2" \
+      "vmstat runs for --run-time seconds (bug 955860)"
+else
+   is "1" "1" "SKIP vmstat not installed"
+fi
+
+rm $PT_TMPDIR/collect/*
+
 fake_opcontrol="$PT_TMPDIR/collect/fake_opcontrol"
 fake_out="$PT_TMPDIR/collect/pt-faked-opcontrol-out"
 cat <<FAKE_EXEC > "$fake_opcontrol"
@@ -192,25 +211,13 @@ collect "$PT_TMPDIR/collect" "2011_12_05" > $p-output 2>&1
 CMD_OPCONTROL=""
 OPT_COLLECT_OPROFILE=""
 
-cat $p-df | grep -c '^TS '
-iters=$(cat $p-df | grep -c '^TS ')
-is "$iters" "2" "2 iteration/2s run time"
-
 is \
    "$(cat "$fake_out")" \
    "Faked opcontrol: --init" \
    "Bug 986847: Can manually set which commands pt-stalk uses"
 
-if [ -f "$p-vmstat" ]; then
-   n=$(awk '/[ ]*[0-9]/ { n += 1 } END { print n }' "$p-vmstat")
-   is \
-      "$n" \
-      "2" \
-      "vmstat runs for --run-time seconds (bug 955860)"
-else
-   is "1" "1" "SKIP vmstat not installed"
-fi
-
 # ############################################################################
 # Done
 # ############################################################################
+
+rm $PT_TMPDIR/collect/*

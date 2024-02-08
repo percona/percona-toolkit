@@ -85,16 +85,18 @@ sub reset_repl_db {
 # So we will re-run failed code if test does not pass.
 my $cmd = sub { pt_table_checksum::main(@args) };
 
-diag(output($cmd)) if not ok(
+#diag(output($cmd)) 
+ok(
    no_diff(
       $cmd,
       "$sample/default-results-$sandbox_version.txt",
       sed_out => '\'/mysql.plugin$/d; /percona_test.checksums$/d; /mysql.help_category$/d; /mysql.help_keyword$/d; /mysql.help_relation$/d; /mysql.help_topic$/d\'',
       post_pipe => 'sed \'/mysql.plugin$/d; /percona_test.checksums$/d; /mysql.help_category$/d; /mysql.help_keyword$/d; /mysql.help_relation$/d; /mysql.help_topic$/d; /mysql.ndb_binlog_index$/d; /mysql.global_grants$/d\' | ' .
                    'awk \'{print $2 " " $3 " " $4 " " $7 " " $9}\'',
+      keep_ouput => 1,
    ),
    "Default checksum"
-);
+) or diag($test_diff);
 
 # On fast machines, the chunk size will probably be be auto-adjusted so
 # large that all tables will be done in a single chunk without an index.

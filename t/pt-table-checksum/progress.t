@@ -48,7 +48,7 @@ else {
 # worse. This is a random stab in the dark. There is a problem either way.)
 my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
 my @args       = ($master_dsn, qw(--set-vars innodb_lock_wait_timeout=3),
-                   '--chunk-size', '200'); 
+                   '--chunk-size', '50'); 
 my $output;
 my $row;
 my $scripts = "$trunk/t/pt-table-checksum/scripts/";
@@ -83,7 +83,7 @@ like(
    $output,
    qr/Replica h=127.0.0.1,P=12347 is stopped/,
    "--progress for slave lag"
-);
+) or diag($output);
 
 like(
    $output,

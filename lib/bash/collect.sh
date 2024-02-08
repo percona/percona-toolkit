@@ -317,6 +317,8 @@ collect_system_data_loop() {
    # Sleep between collect cycles.
    # Synchronize ourselves onto the clock tick, so the sleeps are 1-second
    sleep $(date +'%s.%N' | awk "{print $OPT_SLEEP_COLLECT - (\$1 % $OPT_SLEEP_COLLECT)}")
+   log "In collect_system_data_loop"
+   log  $(date +'%s.%N' | awk "{print $OPT_SLEEP_COLLECT - (\$1 % $OPT_SLEEP_COLLECT)}")
    ts="$(date +"TS %s.%N %F %T")"
 
    # #####################################################################
