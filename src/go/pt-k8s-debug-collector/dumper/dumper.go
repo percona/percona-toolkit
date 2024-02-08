@@ -422,14 +422,14 @@ func (d *Dumper) getPodSummary(resource, podName, crName string, namespace strin
 		ports = port + ":3306"
 		summCmdName = "pt-mysql-summary"
 		summCmdArgs = []string{"--host=127.0.0.1", "--port=" + port, "--user=root", "--password='" + string(pass) + "'"}
-	case "pg":
+	case "pg","pgv2":
+		var kubeconfig string=""
+		if d.kubeconfig != "" { 
+			kubeconfig=" --kubeconfig=" + d.kubeconfig 
+		}
 		summCmdName = "sh"
-		summCmdArgs = []string{"-c", "curl https://raw.githubusercontent.com/percona/support-snippets/master/postgresql/pg_gather/gather.sql | " +
-			d.cmd + " -n "+ namespace + " exec -i "+ podName +" -- psql -X -f - "}
-	case "pgv2":
-		summCmdName = "sh"
-		summCmdArgs = []string{"-c", "curl https://raw.githubusercontent.com/percona/support-snippets/master/postgresql/pg_gather/gather.sql | " +
-			d.cmd + " -n "+ namespace +" exec -i "+ podName +" -- psql -X -f - "}
+		summCmdArgs = []string{"-c", "curl https://raw.githubusercontent.com/percona/support-snippets/master/postgresql/pg_gather/gather.sql 2>/dev/null | " +
+			d.cmd + kubeconfig + " -n "+ namespace + " exec -i "+ podName +" -- psql -X -f - "}
 	case "psmdb":
 		var port string
 		if d.forwardport != "" {
