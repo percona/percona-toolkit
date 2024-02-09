@@ -70,20 +70,14 @@ func main() {
 
 	utils.SkipColor = CLI.NoColor
 
-	var paths []string
-	switch kongcli.Command() {
-	case "list <paths>":
-		paths = CLI.List.Paths
-	case "ctx <paths>":
-		paths = CLI.Ctx.Paths
-	case "conflicts <paths>":
-		paths = CLI.Conflicts.Paths
-	}
-
-	if !CLI.PxcOperator && !CLI.SkipOperatorDetection && areOperatorFiles(paths) {
-		CLI.PxcOperator = true
-		log.Info().Msg("Detected logs coming from Percona XtraDB Cluster Operator, enabling --pxc-operator")
-
+	for _, path := range kongcli.Path {
+		if path.Positional != nil && path.Positional.Name == "paths" {
+			paths, ok := path.Positional.Target.Interface().([]string)
+			if ok && !CLI.PxcOperator && !CLI.SkipOperatorDetection && areOperatorFiles(paths) {
+				CLI.PxcOperator = true
+				log.Info().Msg("Detected logs coming from Percona XtraDB Cluster Operator, enabling --pxc-operator")
+			}
+		}
 	}
 
 	translate.AssumeIPStable = !CLI.PxcOperator
