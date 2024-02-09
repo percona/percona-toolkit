@@ -133,14 +133,21 @@ Available flags
     Instead of relying on extracted information, logs will be merged by their base directory 
     It is useful when logs are very sparse and already organized by nodes.
 
+``--skip-merge``
+    Disable the ability to merge log files together. Can be used when every nodes have the same wsrep_node_name
+
 ``-v``, ``--verbosity``        
     ``-v``: display in the timeline every mysql info the tool used
     ``-vv``: internal tool debug
 
 ``--pxc-operator``       
-    Analyze logs from Percona PXC operator. 
+    Analyze logs from Percona PXC operator. Operator logs should be automatically detected (see --skip-operator-detection).
     It will prevent logs from being merged together, add operator specific regexes, and fine-tune regexes for logs taken from pt-k8s-debug-collector
     Off by default because it negatively impacts performance for non-k8s setups.
+
+``--skip-operator-detection``
+    Disable automatic detection of PXC operator logs. When detected, a message will be shown.
+    Detection is done using a prefix regex.
 
 ``--exclude-regexes``
     Remove regexes from analysis. Use 'pt-galera-log-explainer regex-list | jq .' to have the list
@@ -229,5 +236,4 @@ Known issues
   This is mainly when the log file does not contain enough information.
 * Some information will seems missed. Depending on the case, it may be simply unimplemented yet, or it was disabled later because it was found to be unreliable (node index numbers are not reliable for example)
 * Columns width are sometimes too large to be easily readable. This usually happens when printing SST events with long node names
-* Using ``list`` on PXC operator logs can silently lead to broken results, ``--pxc-operator`` should be used
 * When some display corner-cases seems broken (events not deduplicated, ...), it is because of extra hidden internal events.
