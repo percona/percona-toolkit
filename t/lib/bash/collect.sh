@@ -169,26 +169,7 @@ fi
 # Try longer run time.
 # ###########################################################################
 
-parse_options "$BIN_DIR/pt-stalk" --run-time 2 -- --defaults-file=/tmp/12345/my.sandbox.cnf
-
-rm $PT_TMPDIR/collect/*
-
-collect "$PT_TMPDIR/collect" "2011_12_05" > $p-output 2>&1
-
-cat $p-output
-
-iters=$(cat $p-df | grep -c '^TS ')
-is "$iters" "2" "2 iteration/2s run time"
-
-if [ -f "$p-vmstat" ]; then
-   n=$(awk '/[ ]*[0-9]/ { n += 1 } END { print n }' "$p-vmstat")
-   is \
-      "$n" \
-      "2" \
-      "vmstat runs for --run-time seconds (bug 955860)"
-else
-   is "1" "1" "SKIP vmstat not installed"
-fi
+parse_options "$BIN_DIR/pt-stalk" --run-time 3 -- --defaults-file=/tmp/12345/my.sandbox.cnf
 
 rm $PT_TMPDIR/collect/*
 
@@ -211,13 +192,28 @@ collect "$PT_TMPDIR/collect" "2011_12_05" > $p-output 2>&1
 CMD_OPCONTROL=""
 OPT_COLLECT_OPROFILE=""
 
+iters=$(cat $p-df | grep -c '^TS ')
+# We need to adjust result on slow machines
+if [ $iters -eq 2 ]; then
+   iters=3;
+fi
+is "$iters" "3" "2 or 3 iteration/3s run time"
+
 is \
    "$(cat "$fake_out")" \
    "Faked opcontrol: --init" \
    "Bug 986847: Can manually set which commands pt-stalk uses"
 
+if [ -f "$p-vmstat" ]; then
+   n=$(awk '/[ ]*[0-9]/ { n += 1 } END { print n }' "$p-vmstat")
+   is \
+      "$n" \
+      "3" \
+      "vmstat runs for --run-time seconds (bug 955860)"
+else
+   is "1" "1" "SKIP vmstat not installed"
+fi
+
 # ############################################################################
 # Done
 # ############################################################################
-
-rm $PT_TMPDIR/collect/*

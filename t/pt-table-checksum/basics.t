@@ -85,7 +85,6 @@ sub reset_repl_db {
 # So we will re-run failed code if test does not pass.
 my $cmd = sub { pt_table_checksum::main(@args) };
 
-#diag(output($cmd)) 
 ok(
    no_diff(
       $cmd,
