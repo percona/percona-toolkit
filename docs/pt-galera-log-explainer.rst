@@ -134,15 +134,15 @@ Available flags
     It is useful when logs are very sparse and already organized by nodes.
 
 ``--skip-merge``
-    Disable the ability to merge log files together. Can be used when every nodes have the same wsrep_node_name
+    Disable the ability to merge log files together. Can be used when every nodes have the same ``wsrep_node_name``
 
 ``-v``, ``--verbosity``        
     ``-v``: display in the timeline every mysql info the tool used
     ``-vv``: internal tool debug
 
 ``--pxc-operator``       
-    Analyze logs from Percona PXC operator. Operator logs should be automatically detected (see --skip-operator-detection).
-    It will prevent logs from being merged together, add operator specific regexes, and fine-tune regexes for logs taken from pt-k8s-debug-collector
+    Analyze logs from Percona PXC operator. Operator logs should be automatically detected (see ``--skip-operator-detection``).
+    It will prevent logs from being merged together, add operator specific regexes, and fine-tune regexes for logs taken from ``pt-k8s-debug-collector``.
     Off by default because it negatively impacts performance for non-k8s setups.
 
 ``--skip-operator-detection``
